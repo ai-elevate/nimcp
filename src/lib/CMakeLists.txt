@@ -20,7 +20,8 @@ add_library(nimcp_core SHARED
 
 target_include_directories(nimcp_core
     PUBLIC
-        ${NIMCP_INCLUDE_DIR}
+        $<BUILD_INTERFACE:${NIMCP_INCLUDE_DIR}>
+        $<INSTALL_INTERFACE:include/nimcp>
     PRIVATE
         ${NIMCP_LIB_DIR}
         ${Python3_INCLUDE_DIRS}
@@ -31,10 +32,13 @@ target_link_libraries(nimcp_core
         Python3::Python
 )
 
-# Enable Position Independent Code
+# Enable Position Independent Code and set library properties
 set_target_properties(nimcp_core PROPERTIES
     POSITION_INDEPENDENT_CODE ON
     ENABLE_EXPORTS ON
+    VERSION ${PROJECT_VERSION}
+    SOVERSION 2
+    OUTPUT_NAME nimcp_core
 )
 
 # Installation rules

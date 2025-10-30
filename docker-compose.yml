@@ -1,0 +1,186 @@
+#==============================================================================
+# NIMCP 2.5 Docker Compose Configuration
+#==============================================================================
+# Production-ready orchestration with monitoring and persistence
+#==============================================================================
+
+version: '3.8'
+
+services:
+  #----------------------------------------------------------------------------
+  # NIMCP Core Service
+  #----------------------------------------------------------------------------
+  nimcp:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: runtime
+    image: nimcp:2.5.0
+    container_name: nimcp-core
+    restart: unless-stopped
+
+    # Resource limits (adjust based on your needs)
+    deploy:
+      resources:
+        limits:
+          cpus: '4'
+          memory: 4G
+        reservations:
+          cpus: '2'
+          memory: 2G
+
+    # Environment configuration
+    environment:
+      - NIMCP_LOG_LEVEL=info
+      - NIMCP_ENABLE_TELEMETRY=true
+      - NIMCP_METRICS_PORT=9090
+
+    # Persistent volumes
+    volumes:
+      - nimcp-data:/var/lib/nimcp
+      - nimcp-logs:/var/log/nimcp
+      - nimcp-models:/opt/nimcp/models
+      - ./config:/etc/nimcp:ro
+
+    # Networking
+    ports:
+      - "8080:8080"  # Main service
+      - "9090:9090"  # Metrics
+
+    networks:
+      - nimcp-network
+
+    # Health check
+    healthcheck:
+      test: ["CMD", "/usr/local/bin/healthcheck.sh"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 10s
+
+    # Logging configuration
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  #----------------------------------------------------------------------------
+  # Prometheus - Metrics Collection
+  #----------------------------------------------------------------------------
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: nimcp-prometheus
+    restart: unless-stopped
+
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus-data:/prometheus
+
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--storage.tsdb.retention.time=30d'
+
+    ports:
+      - "9091:9090"
+
+    networks:
+      - nimcp-network
+
+    depends_on:
+      - nimcp
+
+  #----------------------------------------------------------------------------
+  # Grafana - Metrics Visualization
+  #----------------------------------------------------------------------------
+  grafana:
+    image: grafana/grafana:latest
+    container_name: nimcp-grafana
+    restart: unless-stopped
+
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_USERS_ALLOW_SIGN_UP=false
+
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./monitoring/grafana/dashboards:/etc/grafana/provisioning/dashboards:ro
+      - ./monitoring/grafana/datasources:/etc/grafana/provisioning/datasources:ro
+
+    ports:
+      - "3000:3000"
+
+    networks:
+      - nimcp-network
+
+    depends_on:
+      - prometheus
+
+  #----------------------------------------------------------------------------
+  # Loki - Log Aggregation
+  #----------------------------------------------------------------------------
+  loki:
+    image: grafana/loki:latest
+    container_name: nimcp-loki
+    restart: unless-stopped
+
+    volumes:
+      - ./monitoring/loki-config.yml:/etc/loki/local-config.yaml:ro
+      - loki-data:/loki
+
+    ports:
+      - "3100:3100"
+
+    networks:
+      - nimcp-network
+
+    command: -config.file=/etc/loki/local-config.yaml
+
+  #----------------------------------------------------------------------------
+  # Promtail - Log Shipper
+  #----------------------------------------------------------------------------
+  promtail:
+    image: grafana/promtail:latest
+    container_name: nimcp-promtail
+    restart: unless-stopped
+
+    volumes:
+      - ./monitoring/promtail-config.yml:/etc/promtail/config.yml:ro
+      - nimcp-logs:/var/log/nimcp:ro
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+
+    networks:
+      - nimcp-network
+
+    command: -config.file=/etc/promtail/config.yml
+
+    depends_on:
+      - loki
+
+#------------------------------------------------------------------------------
+# Networks
+#------------------------------------------------------------------------------
+networks:
+  nimcp-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16
+
+#------------------------------------------------------------------------------
+# Volumes - Persistent Storage
+#------------------------------------------------------------------------------
+volumes:
+  nimcp-data:
+    driver: local
+  nimcp-logs:
+    driver: local
+  nimcp-models:
+    driver: local
+  prometheus-data:
+    driver: local
+  grafana-data:
+    driver: local
+  loki-data:
+    driver: local

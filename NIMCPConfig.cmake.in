@@ -1,0 +1,19 @@
+# NIMCPConfig.cmake - CMake configuration file for NIMCP
+
+@PACKAGE_INIT@
+
+set(NIMCP_VERSION "@PROJECT_VERSION@")
+
+# Import targets
+include("${CMAKE_CURRENT_LIST_DIR}/NIMCPTargets.cmake")
+
+# Provide targets
+if(NOT TARGET NIMCP::core)
+    message(FATAL_ERROR "Expected target NIMCP::core not found")
+endif()
+
+# Set variables for backward compatibility
+set(NIMCP_LIBRARIES NIMCP::core)
+set(NIMCP_INCLUDE_DIRS "@CMAKE_INSTALL_PREFIX@/include")
+
+check_required_components(NIMCP)

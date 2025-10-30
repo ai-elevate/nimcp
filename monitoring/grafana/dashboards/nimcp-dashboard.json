@@ -1,0 +1,52 @@
+{
+  "dashboard": {
+    "title": "NIMCP 2.5 Overview",
+    "tags": ["nimcp", "neural", "inference"],
+    "timezone": "browser",
+    "panels": [
+      {
+        "title": "Inference Latency",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "histogram_quantile(0.95, nimcp_inference_duration_seconds)",
+            "legendFormat": "P95"
+          },
+          {
+            "expr": "histogram_quantile(0.99, nimcp_inference_duration_seconds)",
+            "legendFormat": "P99"
+          }
+        ]
+      },
+      {
+        "title": "Memory Usage",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "nimcp_memory_usage_bytes / 1024 / 1024",
+            "legendFormat": "Memory (MB)"
+          }
+        ]
+      },
+      {
+        "title": "Active Neurons",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "nimcp_brain_neurons_total"
+          }
+        ]
+      },
+      {
+        "title": "Learning Rate",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "rate(nimcp_learning_steps_total[5m])",
+            "legendFormat": "Steps/sec"
+          }
+        ]
+      }
+    ]
+  }
+}

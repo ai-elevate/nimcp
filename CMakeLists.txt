@@ -38,10 +38,42 @@ install(DIRECTORY ${NIMCP_INCLUDE_DIR}/
         DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/nimcp
         FILES_MATCHING PATTERN "*.h")
 
+# Generate and install pkg-config file
+configure_file(nimcp.pc.in nimcp.pc @ONLY)
+install(FILES ${CMAKE_BINARY_DIR}/nimcp.pc
+    DESTINATION ${CMAKE_INSTALL_LIBDIR}/pkgconfig)
+
 # Export targets
 include(CMakePackageConfigHelpers)
 write_basic_package_version_file(
-    "${CMAKE_CURRENT_BINARY_DIR}/nimcpConfigVersion.cmake"
+    "${CMAKE_CURRENT_BINARY_DIR}/NIMCPConfigVersion.cmake"
     VERSION ${PROJECT_VERSION}
     COMPATIBILITY SameMajorVersion
 )
+
+configure_package_config_file(
+    ${CMAKE_CURRENT_SOURCE_DIR}/NIMCPConfig.cmake.in
+    ${CMAKE_CURRENT_BINARY_DIR}/NIMCPConfig.cmake
+    INSTALL_DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/NIMCP
+)
+
+install(FILES
+    ${CMAKE_CURRENT_BINARY_DIR}/NIMCPConfig.cmake
+    ${CMAKE_CURRENT_BINARY_DIR}/NIMCPConfigVersion.cmake
+    DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/NIMCP
+)
+
+install(EXPORT nimcp-targets
+    FILE NIMCPTargets.cmake
+    NAMESPACE NIMCP::
+    DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/NIMCP
+)
+
+# Configuration summary
+message(STATUS "")
+message(STATUS "NIMCP ${PROJECT_VERSION} - Library Integration Enabled")
+message(STATUS "  Install prefix: ${CMAKE_INSTALL_PREFIX}")
+message(STATUS "  Library: ${CMAKE_INSTALL_LIBDIR}/libnimcp_core.so")
+message(STATUS "  Headers: ${CMAKE_INSTALL_INCLUDEDIR}/nimcp/")
+message(STATUS "  Pkg-config: ${CMAKE_INSTALL_LIBDIR}/pkgconfig/nimcp.pc")
+message(STATUS "")

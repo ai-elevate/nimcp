@@ -1,0 +1,46 @@
+[Unit]
+Description=NIMCP 2.5 Neural Inference Service
+Documentation=https://github.com/redmage123/nimcp
+After=network.target
+
+[Service]
+Type=simple
+User=nimcp
+Group=nimcp
+
+# Working directory
+WorkingDirectory=/opt/nimcp
+
+# Environment
+Environment="NIMCP_HOME=/opt/nimcp"
+Environment="NIMCP_DATA=/var/lib/nimcp"
+Environment="NIMCP_LOG=/var/log/nimcp"
+Environment="LD_LIBRARY_PATH=/usr/local/lib:/opt/nimcp/lib"
+
+# Start command
+ExecStart=/opt/nimcp/bin/integrated_demo
+
+# Restart policy
+Restart=on-failure
+RestartSec=5s
+StartLimitInterval=60s
+StartLimitBurst=3
+
+# Resource limits
+LimitNOFILE=65536
+LimitNPROC=4096
+
+# Security hardening
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/nimcp /var/log/nimcp
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=nimcp
+
+[Install]
+WantedBy=multi-user.target

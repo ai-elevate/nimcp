@@ -1,0 +1,92 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nimcp
+  namespace: nimcp
+  labels:
+    app: nimcp
+    version: "2.5.0"
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: nimcp
+  template:
+    metadata:
+      labels:
+        app: nimcp
+        version: "2.5.0"
+    spec:
+      containers:
+      - name: nimcp
+        image: nimcp:2.5.0
+        ports:
+        - containerPort: 8080
+          name: http
+        - containerPort: 9090
+          name: metrics
+        resources:
+          requests:
+            memory: "2Gi"
+            cpu: "1"
+          limits:
+            memory: "4Gi"
+            cpu: "2"
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8080
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8080
+          initialDelaySeconds: 10
+          periodSeconds: 5
+        volumeMounts:
+        - name: data
+          mountPath: /var/lib/nimcp
+        - name: config
+          mountPath: /etc/nimcp
+        env:
+        - name: NIMCP_LOG_LEVEL
+          value: "info"
+        - name: NIMCP_ENABLE_METRICS
+          value: "true"
+      volumes:
+      - name: data
+        persistentVolumeClaim:
+          claimName: nimcp-data
+      - name: config
+        configMap:
+          name: nimcp-config
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: nimcp
+  namespace: nimcp
+spec:
+  selector:
+    app: nimcp
+  ports:
+  - name: http
+    port: 8080
+    targetPort: 8080
+  - name: metrics
+    port: 9090
+    targetPort: 9090
+  type: ClusterIP
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: nimcp-data
+  namespace: nimcp
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 10Gi

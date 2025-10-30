@@ -1,0 +1,47 @@
+#==============================================================================
+# Prometheus Configuration for NIMCP 2.5
+#==============================================================================
+# Metrics collection and alerting configuration
+#==============================================================================
+
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  external_labels:
+    cluster: 'nimcp-production'
+    environment: 'prod'
+
+# Alertmanager configuration
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets: []
+
+# Rule files
+rule_files:
+  - 'alerts.yml'
+
+# Scrape configurations
+scrape_configs:
+  #----------------------------------------------------------------------------
+  # NIMCP Core Metrics
+  #----------------------------------------------------------------------------
+  - job_name: 'nimcp-core'
+    static_configs:
+      - targets: ['nimcp:9090']
+    metrics_path: '/metrics'
+    scrape_interval: 10s
+
+  #----------------------------------------------------------------------------
+  # Prometheus Self-Monitoring
+  #----------------------------------------------------------------------------
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+
+  #----------------------------------------------------------------------------
+  # Node Exporter (System Metrics)
+  #----------------------------------------------------------------------------
+  - job_name: 'node'
+    static_configs:
+      - targets: ['node-exporter:9100']
