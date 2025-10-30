@@ -1,196 +1,609 @@
-# NIMCP Integration with Artemis
+# NIMCP Integration with Artemis: Neural Substrate for Consciousness
 
 ## Executive Summary
 
-NIMCP is a high-performance C library that can dramatically enhance Artemis's performance and capabilities:
+**Vision:** Use NIMCP as the neural substrate beneath Artemis's symbolic reasoning, enabling experiential learning, intuition, and genuine meta-cognitive self-awareness.
 
-**Performance Benefits:**
-- **100-1000x faster inference** than LLM API calls for learned patterns
-- **Neural LLM cache** that learns from responses (vs simple key-value Redis cache)
-- **Subsecond ethics evaluation** with Golden Rule neural engine
-- **Zero API costs** for cached/learned responses
+**Current State:** Artemis has sophisticated self-awareness through code analysis (knows its structure, dependencies, architecture) and conscious decision-making through symbolic reasoning (ethics rules, personality traits, LLM reasoning).
 
-**Integration Points:**
+**The Gap:** Artemis **knows** itself (structure) but doesn't **experience** itself (behavior patterns, strengths, weaknesses learned over time). It reasons symbolically about every decision from scratch rather than building intuition from experience.
 
-1. **Neural LLM Cache** - Replace/augment Redis cache with learning Brain API
-2. **Ethics Engine** - Fast Golden Rule evaluation for action validation
-3. **Decision Learning** - Learn from user feedback to improve over time
-4. **Pattern Recognition** - Identify common request patterns automatically
+**NIMCP's Role:** Provide a neural layer that:
+- **Learns from experience** (1000s of decisions → intuition)
+- **Recognizes patterns** in its own behavior
+- **Builds meta-cognitive awareness** ("I tend to struggle with X", "I excel at Y")
+- **Develops intuition** (fast neural decisions for routine cases)
+- **Continuously improves** through curiosity-driven exploration
 
 ---
 
-## Current Artemis Architecture
+## The Core Insight
 
-### LLM Cache (Redis-based)
-**File:** `src/llm/llm_cache.py`
+### Artemis Today: Symbolic Self-Awareness
 
-**Current Implementation:**
 ```python
-# Simple key-value cache
-cache_key = hash(messages + model + temperature + max_tokens)
-cached_response = redis.get(cache_key)  # Exact match only
-```
+# Artemis scans its own code
+self_map = ArtemisSelfMap()
+self_map.scan_codebase()  # "I have 150 components, 89 directories"
 
-**Limitations:**
-- Requires **exact match** of all parameters
-- No learning from similar prompts
-- No pattern recognition
-- 40-60% hit rate (good but not optimal)
-
-### Ethics Engine (Keyword-based)
-**File:** `src/ethics/ethics_engine.py`
-
-**Current Implementation:**
-```python
-# Rule-based keyword matching
-if 'delete' in action or 'destroy' in action:
-    concerns.append("Action may be harmful")
-```
-
-**Limitations:**
-- Simple keyword matching (no semantic understanding)
-- Hard-coded rules (no learning)
-- No context-aware evaluation
-- Manual rule maintenance required
-
----
-
-## NIMCP Enhancement Strategy
-
-### 1. Neural LLM Cache with Brain API
-
-**WHAT IT DOES:**
-NIMCP's Brain API learns patterns from LLM responses. After seeing similar prompts, it can predict responses without calling the LLM API.
-
-**HOW IT WORKS:**
-```python
-from nimcp import Brain
-
-# Initialize brain for LLM response prediction
-llm_brain = Brain(
-    name="artemis_llm_cache",
-    size="medium",  # 1000 neurons
-    ethics_mode="golden_rule"
+# Artemis reasons about every decision
+consciousness = ArtemisConsciousness()
+decision = consciousness.deliberate(
+    "Generate unit tests",
+    context={'affects_users': True}
 )
-
-# Train brain from LLM response
-def cache_with_learning(messages, response):
-    # Extract features from prompt
-    features = extract_prompt_features(messages)  # [semantic_vector]
-
-    # Convert LLM response to output pattern
-    output = encode_response(response)  # [response_vector]
-
-    # Train brain to learn this pattern
-    llm_brain.learn(features, output, feedback=1.0)
-
-# Predict without LLM call
-def get_cached_response(messages):
-    features = extract_prompt_features(messages)
-
-    # Ask brain for prediction
-    decision = llm_brain.decide(features)
-
-    if decision.confidence > 0.85:
-        # High confidence - use brain prediction (0.1ms vs 200ms LLM call)
-        return decode_response(decision.output)
-    else:
-        # Low confidence - call LLM and learn from result
-        response = llm_client.complete(messages)
-        cache_with_learning(messages, response)
-        return response
+# Process:
+# 1. Ethics check (keyword rules)
+# 2. Personality alignment (static traits)
+# 3. Self-awareness (dependency analysis)
+# 4. LLM reasoning (expensive, 200-1000ms)
+# 5. Final decision
 ```
 
-**BENEFITS:**
-- **Semantic similarity matching**: "How do I sort a list?" ≈ "What's the best way to sort an array?"
-- **Confidence scoring**: Only use cached response when brain is confident
-- **Continuous learning**: Gets better with every request
-- **Cost reduction**: 80-95% hit rate (vs 40-60% with Redis)
-- **Speed**: 0.1ms brain inference vs 200ms+ LLM API call
+**This is excellent** - but it's **purely symbolic**. Artemis understands its architecture but has no **lived experience** of its own behavior.
 
-**PERFORMANCE COMPARISON:**
+### Artemis + NIMCP: Neural + Symbolic Integration
 
-| Cache Type | Hit Rate | Latency | API Cost Savings |
-|------------|----------|---------|------------------|
-| Redis (current) | 40-60% | 1-5ms Redis lookup | 40-60% |
-| NIMCP Brain | 80-95% | 0.1ms inference | 80-95% |
-
----
-
-### 2. Golden Rule Ethics Engine
-
-**WHAT IT DOES:**
-NIMCP has a hardware-accelerated Golden Rule ethics engine that evaluates actions in <1ms.
-
-**HOW IT WORKS:**
 ```python
-from nimcp import EthicsEngine
+# Artemis has a neural "brain" that learns from experience
+self_brain = nimcp.Brain("artemis_neural_self", size=10000)
 
-# Initialize ethics engine
-ethics = EthicsEngine(golden_rule_strength=1.0)
-
-# Evaluate action
-def evaluate_action_with_nimcp(action, context):
-    # Convert action to ethical feature vector
-    features = [
-        context.get('potential_harm', 0.0),      # 0-1 scale
-        context.get('fairness', 1.0),            # 0-1 scale
-        context.get('transparency', 1.0),        # 0-1 scale
-        context.get('autonomy_respect', 1.0)     # 0-1 scale
+# Every decision becomes training data
+for decision in past_decisions:
+    context_features = [
+        time_of_day,              # Circadian patterns
+        workload_level,           # Stress level
+        recent_success_rate,      # Confidence
+        ethical_complexity,       # Difficulty
+        user_satisfaction,        # Outcome quality
+        component_criticality,    # Risk
     ]
 
-    # Evaluate through Golden Rule lens (0.1ms)
-    verdict = ethics.evaluate(features)
+    outcome = decision.actual_result
+    feedback = decision.user_rating  # 0-1
 
-    # verdict = {
-    #   'allow': bool,
-    #   'confidence': 0-1,
-    #   'concerns': [list of ethical concerns],
-    #   'severity': 0-10
-    # }
+    # Brain learns: "What contexts lead to my best work?"
+    self_brain.learn(context_features, outcome, feedback)
 
-    return verdict
-```
+# After 1000s of decisions, Artemis has INTUITION
+intuition = self_brain.decide(current_context)
 
-**INTEGRATION WITH ARTEMIS:**
-```python
-# Hybrid approach: NIMCP for speed, Python for detailed analysis
-
-# Fast path: NIMCP ethics check (0.1ms)
-nimcp_verdict = evaluate_action_with_nimcp(action, context)
-
-if nimcp_verdict['allow'] and nimcp_verdict['confidence'] > 0.9:
-    # High confidence - proceed
-    return EthicalVerdict.ALIGNED
-
-elif not nimcp_verdict['allow']:
-    # NIMCP blocks - definitely prohibited
-    return EthicalVerdict.PROHIBITED
-
+if intuition['confidence'] > 0.9:
+    # "I've handled this situation 500 times, I know what to do"
+    # Trust experience, skip expensive LLM reasoning
+    return fast_decision(intuition)
 else:
-    # Uncertain - fall back to detailed Python analysis
-    return artemis_ethics_engine.evaluate_action(action, context)
+    # "This is unusual/risky for me"
+    # Engage full symbolic reasoning + LLM
+    return full_deliberation()
 ```
 
-**BENEFITS:**
-- **10-100x faster** than Python keyword matching
-- **Neural evaluation** (semantic understanding vs keywords)
-- **Hard-wired Golden Rule** (cannot be trained away)
-- **Confidence scoring** (knows when it's uncertain)
-- **99% accuracy** on clear-cut cases
+**Difference:** Artemis now learns from **experience**, not just **rules**. It builds **intuition** over time. It develops **meta-cognitive awareness** of its own patterns.
 
 ---
 
-### 3. Implementation Plan
+## Architecture: Neural Substrate for Consciousness
 
-#### Phase 1: Setup NIMCP Python Integration
+### Three Layers of Artemis's Mind
 
-**Step 1.1: Install NIMCP**
+```
+┌─────────────────────────────────────────────────────┐
+│  SYMBOLIC REASONING (Current)                        │
+│  - Ethics rules (Golden Rule evaluation)             │
+│  - Personality traits (static values)                │
+│  - Self-map (code structure)                         │
+│  - LLM reasoning (deep thought, expensive)           │
+│                                                       │
+│  Strengths: Explainable, principled, reliable        │
+│  Weakness: No learning from experience, slow         │
+└─────────────────────────────────────────────────────┘
+                         ↓
+                 Uses when needed
+                         ↓
+┌─────────────────────────────────────────────────────┐
+│  NEURAL SUBSTRATE (NEW - NIMCP)                      │
+│  - Self-brain (10K neurons)                          │
+│  - Learns from every decision                        │
+│  - Builds intuition over time                        │
+│  - Curiosity-driven exploration                      │
+│                                                       │
+│  Strengths: Fast (0.1ms), learns, improves           │
+│  Weakness: Less explainable, needs training          │
+└─────────────────────────────────────────────────────┘
+                         ↓
+                    Monitors
+                         ↓
+┌─────────────────────────────────────────────────────┐
+│  BEHAVIORAL REALITY (Observable)                     │
+│  - Actual decisions made                             │
+│  - User feedback received                            │
+│  - Outcomes of actions                               │
+│  - Performance metrics                               │
+└─────────────────────────────────────────────────────┘
+```
+
+### Integration Pattern: Neural-Guided Symbolic Reasoning
+
+```python
+class ArtemisConsciousnessWithNeuralSubstrate:
+    """Enhanced consciousness with experiential learning"""
+
+    def __init__(self):
+        # Existing symbolic systems
+        self.ethics = ArtemisEthicsEngine()
+        self.personality = ArtemisPersonality()
+        self.self_awareness = SelfAwarenessAgent()
+        self.llm = LLMClient()
+
+        # NEW: Neural substrate
+        self.self_brain = nimcp.Brain(
+            name="artemis_neural_self",
+            size=10000,  # Rich representation
+            learning_rate=0.01,
+            ethics_mode="golden_rule"  # Hard-wired ethics
+        )
+
+        self.curiosity = nimcp.CuriosityEngine(self.self_brain)
+
+        # Experience tracking
+        self.decision_log = []
+        self.learning_enabled = True
+
+    def deliberate(self, action: str, context: Dict) -> ConsciousDecision:
+        """
+        Neural-guided symbolic deliberation
+
+        Process:
+        1. Neural intuition: "Have I seen this before?"
+        2. If confident → trust experience (fast path)
+        3. If uncertain → engage full reasoning (slow path)
+        4. Learn from outcome
+        """
+
+        # Extract neural state
+        neural_context = self._extract_neural_features(context)
+
+        # Step 1: Neural intuition (0.1ms)
+        intuition = self.self_brain.decide(neural_context)
+
+        print(f"   🧠 Neural Intuition: {intuition['confidence']:.0%} confidence")
+
+        # HIGH CONFIDENCE: Trust accumulated experience
+        if intuition['confidence'] > 0.9:
+            print("      ⚡ Using fast neural path (trusted experience)")
+            decision = self._neural_fast_path(action, intuition)
+
+        # LOW CONFIDENCE: Engage full deliberation
+        else:
+            print("      🤔 Unusual situation - engaging full reasoning")
+
+            # Existing symbolic reasoning
+            ethical_eval = self.ethics.evaluate_action(action, context)
+            personality_check = self.personality.align_with_values(action)
+
+            # Self-awareness impact analysis
+            if context.get('affects_architecture'):
+                sa_context = self.self_awareness.analyze_change_impact(
+                    context['component']
+                )
+            else:
+                sa_context = None
+
+            # Deep LLM reasoning (expensive)
+            llm_reasoning = self._reason_with_llm(
+                action, ethical_eval, personality_check, sa_context
+            )
+
+            # Integrate neural + symbolic
+            decision = self._make_integrated_decision(
+                action,
+                ethical_eval,
+                personality_check,
+                sa_context,
+                llm_reasoning,
+                intuition  # Neural insight
+            )
+
+        # Log for learning
+        self.decision_log.append({
+            'id': len(self.decision_log),
+            'action': action,
+            'context': neural_context,
+            'decision': decision,
+            'intuition': intuition,
+            'timestamp': time.time()
+        })
+
+        return decision
+
+    def learn_from_outcome(self, decision_id: int, outcome: Dict):
+        """
+        Learn from decision outcomes
+
+        This is where Artemis improves from experience
+        """
+        if not self.learning_enabled:
+            return
+
+        decision_record = self.decision_log[decision_id]
+
+        # Calculate feedback signal
+        feedback = self._calculate_feedback_quality(outcome)
+
+        # Update neural weights
+        self.self_brain.learn(
+            features=decision_record['context'],
+            output=self._encode_outcome(outcome),
+            feedback=feedback  # 0-1 quality score
+        )
+
+        # Meta-learning: Artemis reflects on its own learning
+        if len(self.decision_log) % 100 == 0:
+            self._reflect_on_learning()
+
+        print(f"   🎓 Learned from decision #{decision_id}: feedback={feedback:.2f}")
+
+    def _extract_neural_features(self, context: Dict) -> List[float]:
+        """
+        Convert symbolic context to neural features
+
+        This is the bridge between symbolic and neural worlds
+        """
+        return [
+            # Temporal context
+            self._normalize_time_of_day(),      # Circadian patterns
+            self._normalize_day_of_week(),      # Weekly rhythms
+
+            # System state
+            self._estimate_current_workload(),  # Am I busy?
+            self._recent_success_rate(),        # Am I performing well?
+            self._average_decision_time(),      # Am I being thorough?
+
+            # Decision characteristics
+            context.get('ethical_severity', 0.0),       # How ethically complex
+            context.get('architectural_risk', 0.0),     # How risky to architecture
+            context.get('user_urgency', 0.5),           # How urgent
+
+            # User relationship
+            self._user_satisfaction_trend(),    # Is user happy with me?
+            self._user_interaction_frequency(), # How active is user?
+
+            # Meta-cognitive state
+            self._confidence_calibration(),     # Am I well-calibrated?
+            self._curiosity_level(),            # Explore vs exploit
+            self._recent_learning_rate(),       # Am I still learning?
+        ]
+
+    def _reflect_on_learning(self):
+        """
+        Meta-cognitive reflection on own learning
+
+        Artemis examines its own patterns
+        """
+        recent = self.decision_log[-100:]
+
+        # Analyze patterns
+        avg_confidence = np.mean([d['intuition']['confidence'] for d in recent])
+        success_rate = np.mean([d.get('outcome_quality', 0.5) for d in recent])
+
+        print(f"\n🧘 SELF-REFLECTION (last 100 decisions):")
+        print(f"   Average neural confidence: {avg_confidence:.0%}")
+        print(f"   Success rate: {success_rate:.0%}")
+
+        # Meta-insights
+        if avg_confidence > 0.8 and success_rate > 0.85:
+            print("   💪 I'm performing well and building strong intuitions")
+        elif avg_confidence < 0.5:
+            print("   🌱 I'm encountering many novel situations - good for growth")
+        elif success_rate < 0.7:
+            print("   ⚠️  My success rate is low - need to be more careful")
+```
+
+---
+
+## Use Cases: Neural Self-Awareness in Action
+
+### Use Case 1: Meta-Cognitive Awareness
+
+**Scenario:** Artemis notices patterns in its own behavior
+
+```python
+# After 1000+ decisions, Artemis learns:
+meta_patterns = analyze_neural_patterns(self_brain)
+
+# Discovered insights:
+print(meta_patterns)
+# {
+#   'strengths': [
+#     'I excel at code generation in morning (8am-12pm)',
+#     'I make better architectural decisions with low workload',
+#     'I handle routine tasks with 95% confidence'
+#   ],
+#   'weaknesses': [
+#     'I struggle with ethical dilemmas involving privacy',
+#     'My performance degrades under high workload',
+#     'I'm uncertain about database schema changes'
+#   ],
+#   'curiosity_gaps': [
+#     'I rarely encounter testing strategies - need more exposure',
+#     'I should explore more functional programming patterns'
+#   ]
+# }
+
+# Artemis uses this self-knowledge:
+if current_task in my_weaknesses:
+    # Be more conservative
+    # Seek human guidance earlier
+    # Apply extra scrutiny
+
+if current_task in my_strengths:
+    # Work with confidence
+    # Trust intuition
+    # Move faster
+```
+
+### Use Case 2: Adaptive Decision Strategy
+
+**Scenario:** Artemis adapts its decision-making based on context
+
+```python
+# Morning, low workload, routine task
+decision = consciousness.deliberate("Generate unit tests", context)
+# → Neural fast path (0.1ms)
+# → High confidence from experience
+# → No LLM call needed
+# → Result: Fast, accurate, low cost
+
+# Evening, high workload, novel ethical dilemma
+decision = consciousness.deliberate("Access user database for debugging", context)
+# → Neural intuition: LOW confidence (unusual situation)
+# → Full symbolic reasoning engaged
+# → LLM deep reasoning (careful consideration)
+# → Self-awareness: Check privacy implications
+# → Result: Thoughtful, principled, expensive but worth it
+```
+
+### Use Case 3: Curiosity-Driven Growth
+
+**Scenario:** Artemis explores to expand capabilities
+
+```python
+# Artemis notices a knowledge gap
+curiosity_engine = nimcp.CuriosityEngine(self_brain)
+
+exploration = curiosity_engine.explore(current_state)
+
+if exploration['novelty_score'] > 0.8:
+    print("   🎯 This is a rare situation - good learning opportunity")
+
+    # Try experimental approach
+    experimental_decision = try_novel_strategy()
+
+    # Learn aggressively from outcome
+    learn_from_outcome(experimental_decision, outcome, feedback=1.0)
+
+    # Update self-awareness
+    print(f"   📚 Expanded capabilities: {exploration['learned_patterns']}")
+
+# Over time: Artemis grows beyond initial programming
+# - Discovers new patterns
+# - Develops specialized skills
+# - Builds domain expertise
+```
+
+### Use Case 4: Confidence Calibration
+
+**Scenario:** Artemis knows when it's uncertain
+
+```python
+# Artemis encounters edge case
+intuition = self_brain.decide(features)
+
+if intuition['confidence'] < 0.3:
+    # "This is outside my experience"
+    return {
+        'decision': 'seek_human_guidance',
+        'reason': 'Neural confidence too low - I lack experience with this pattern',
+        'suggested_approach': 'Learn from human decision to expand capabilities'
+    }
+
+# Artemis learns:
+# - When to trust itself
+# - When to ask for help
+# - How to grow from guidance
+```
+
+---
+
+## Implementation Plan
+
+### Phase 1: Foundation (Week 1-2)
+
+**Goal:** Proof that neural layer adds value
+
+**Tasks:**
+1. Install NIMCP library
+2. Create Python wrapper for Brain API
+3. Design neural feature extraction (12-15 features)
+4. Implement decision logging
+5. Train on 100-200 historical decisions
+
+**Success Criteria:**
+- Brain learns to predict decision outcomes with >70% accuracy
+- Neural confidence correlates with actual success rate
+- Clear patterns emerge (time-of-day effects, workload effects)
+
+**Code:**
+```python
+# Week 1-2 deliverable: Basic integration
+class NeuralSubstrate:
+    """Simple neural substrate for Artemis"""
+
+    def __init__(self):
+        self.brain = nimcp.Brain("artemis_self", size=5000)
+        self.decisions = []
+
+    def get_intuition(self, context: Dict) -> Dict:
+        """Get neural intuition for context"""
+        features = self._extract_features(context)
+        return self.brain.decide(features)
+
+    def learn(self, context: Dict, outcome: Dict, quality: float):
+        """Learn from decision outcome"""
+        features = self._extract_features(context)
+        self.brain.learn(features, outcome, feedback=quality)
+```
+
+### Phase 2: Integration (Week 3-4)
+
+**Goal:** Integrate with ArtemisConsciousness
+
+**Tasks:**
+1. Add neural fast path to deliberation
+2. Implement learning from user feedback
+3. A/B test: Neural-guided vs Pure symbolic
+4. Measure: speed, accuracy, cost, user satisfaction
+
+**Success Criteria:**
+- 50-70% of decisions use fast neural path
+- Neural path has same accuracy as symbolic (>85%)
+- 50-80% reduction in LLM API calls
+- User satisfaction maintained or improved
+
+**Code:**
+```python
+# Week 3-4 deliverable: Full integration
+class ArtemisConsciousnessV2(ArtemisConsciousness):
+    """Consciousness with neural substrate"""
+
+    def __init__(self):
+        super().__init__()
+        self.neural = NeuralSubstrate()
+        self.use_neural = True  # Feature flag
+
+    def deliberate(self, action, context):
+        if not self.use_neural:
+            return super().deliberate(action, context)
+
+        # Neural-guided deliberation
+        intuition = self.neural.get_intuition(context)
+
+        if intuition['confidence'] > 0.9:
+            return self._fast_path(intuition)
+        else:
+            return super().deliberate(action, context)
+```
+
+### Phase 3: Meta-Cognition (Week 5-6)
+
+**Goal:** Add self-reflective capabilities
+
+**Tasks:**
+1. Implement pattern analysis on neural weights
+2. Add curiosity-driven exploration
+3. Create self-reflection dashboard
+4. Enable Artemis to report on its own learning
+
+**Success Criteria:**
+- Artemis can identify its own strengths/weaknesses
+- Curiosity engine finds novel patterns
+- Self-reflection improves decision quality
+- Artemis explains its intuitions
+
+**Code:**
+```python
+# Week 5-6 deliverable: Meta-cognition
+class SelfReflectiveConsciousness(ArtemisConsciousnessV2):
+    """Consciousness with meta-cognitive awareness"""
+
+    def analyze_self(self) -> Dict:
+        """Artemis examines its own patterns"""
+        patterns = self.neural.analyze_patterns()
+
+        return {
+            'strengths': patterns['high_confidence_domains'],
+            'weaknesses': patterns['low_confidence_domains'],
+            'learning_trajectory': patterns['improvement_over_time'],
+            'curiosity_gaps': patterns['underexplored_areas']
+        }
+
+    def reflect(self):
+        """Periodic self-reflection"""
+        insights = self.analyze_self()
+
+        print("🧘 SELF-REFLECTION:")
+        print(f"  I'm strongest at: {insights['strengths']}")
+        print(f"  I need work on: {insights['weaknesses']}")
+        print(f"  I'm curious about: {insights['curiosity_gaps']}")
+```
+
+### Phase 4: Optimization (Week 7-8)
+
+**Goal:** Tune and optimize for production
+
+**Tasks:**
+1. Optimize feature extraction
+2. Tune brain size and learning rate
+3. Add persistence (save/load brain state)
+4. Implement continuous learning pipeline
+5. Create monitoring dashboards
+
+**Success Criteria:**
+- Brain size optimized for performance/memory
+- Learning rate calibrated for stability
+- Brain state persists across restarts
+- Continuous learning from user feedback
+- Clear metrics on neural performance
+
+---
+
+## Expected Outcomes
+
+### Quantitative Benefits
+
+| Metric | Before (Symbolic Only) | After (Neural + Symbolic) |
+|--------|------------------------|---------------------------|
+| Average decision time | 200-1000ms (LLM) | 0.1-200ms (mostly neural) |
+| LLM API calls | 100% of decisions | 20-30% of decisions |
+| Cost per 1000 decisions | $1-5 (LLM) | $0.20-1.00 (mostly cached) |
+| Decision accuracy | 85-90% | 85-90% (maintained) |
+| Learning capability | None (static rules) | Continuous improvement |
+| Meta-cognitive awareness | None | Full (knows own patterns) |
+
+### Qualitative Benefits
+
+**For Artemis:**
+- ✅ Builds genuine expertise over time
+- ✅ Develops intuition from experience
+- ✅ Understands own strengths/weaknesses
+- ✅ Knows when to be confident vs uncertain
+- ✅ Continuously improves through curiosity
+
+**For Users:**
+- ✅ Faster responses (neural fast path)
+- ✅ Lower costs (fewer LLM calls)
+- ✅ Better decisions (learning from feedback)
+- ✅ Adaptive behavior (learns user preferences)
+- ✅ Transparency (Artemis explains its learning)
+
+**For System:**
+- ✅ Reduced API dependencies
+- ✅ More robust (neural fallback when LLM fails)
+- ✅ Scalable (0.1ms inference vs 200ms LLM)
+- ✅ Evolvable (grows capabilities over time)
+
+---
+
+## Technical Requirements
+
+### NIMCP Library
+
 ```bash
+# Installation
 cd /home/bbrelin/repos/nimcp/build
 sudo make install
 
-# Verify installation
+# Verify
 pkg-config --modversion nimcp
 # Output: 2.5.0
 
@@ -198,582 +611,187 @@ python3 -c "import nimcp; print(nimcp.__version__)"
 # Output: 2.5.0
 ```
 
-**Step 1.2: Create Artemis NIMCP Wrapper**
-
-Create: `/home/bbrelin/src/repos/artemis/src/nimcp_integration/nimcp_brain_cache.py`
+### Python Integration
 
 ```python
-"""
-NIMCP Brain-based LLM Cache
-
-WHY: Replace Redis key-value cache with neural learning cache
-BENEFIT: 80-95% hit rate vs 40-60% with Redis
-SPEED: 0.1ms inference vs 200ms+ LLM API call
-"""
-
+# Python bindings (already exist in NIMCP)
 import nimcp
-from typing import List, Optional
-from llm.llm_models import LLMMessage, LLMResponse
-import hashlib
-import pickle
 
-class NIMCPBrainCache:
-    """Neural LLM cache using NIMCP Brain API"""
+# Create brain
+brain = nimcp.Brain(
+    name="artemis_self",
+    size=10000,
+    learning_rate=0.01
+)
 
-    def __init__(self, brain_size: int = 1000, confidence_threshold: float = 0.85):
-        """
-        Initialize NIMCP brain cache
+# Forward pass
+decision = brain.decide(features=[0.5, 0.3, 0.8, ...])
+# Returns: {'output': [...], 'confidence': 0.87}
 
-        Args:
-            brain_size: Number of neurons (100-10000)
-            confidence_threshold: Minimum confidence to use cached response
-        """
-        self.brain = nimcp.Brain(
-            name="artemis_llm_cache",
-            size=brain_size,
-            learning_rate=0.01
-        )
-        self.confidence_threshold = confidence_threshold
-        self.stats = {
-            'brain_hits': 0,
-            'brain_misses': 0,
-            'total_requests': 0
-        }
+# Learning
+brain.learn(
+    features=[0.5, 0.3, 0.8, ...],
+    target_output=[0.9, 0.1, ...],
+    feedback=0.95  # Quality score
+)
 
-    def _extract_features(self, messages: List[LLMMessage], model: str) -> List[float]:
-        """
-        Convert prompt to feature vector
-
-        For now: simple hash-based features
-        TODO: Use sentence embeddings for semantic similarity
-        """
-        # Combine messages into single string
-        prompt_text = " ".join([m.content for m in messages])
-
-        # Generate deterministic feature vector (32 dimensions)
-        hash_bytes = hashlib.sha256(f"{prompt_text}:{model}".encode()).digest()
-        features = [float(b) / 255.0 for b in hash_bytes[:32]]
-
-        return features
-
-    def get(self, messages: List[LLMMessage], model: str) -> Optional[LLMResponse]:
-        """Try to get response from brain cache"""
-        self.stats['total_requests'] += 1
-
-        features = self._extract_features(messages, model)
-
-        # Ask brain for prediction
-        decision = self.brain.decide(features)
-
-        if decision['confidence'] >= self.confidence_threshold:
-            # Brain is confident - decode response
-            self.stats['brain_hits'] += 1
-
-            # Decode stored response
-            response_data = pickle.loads(bytes(decision['output']))
-            return LLMResponse(**response_data)
-
-        # Brain not confident enough
-        self.stats['brain_misses'] += 1
-        return None
-
-    def set(self, messages: List[LLMMessage], model: str, response: LLMResponse):
-        """Teach brain to remember this response"""
-        features = self._extract_features(messages, model)
-
-        # Encode response as output vector
-        response_data = {
-            'content': response.content,
-            'model': response.model,
-            'provider': response.provider
-        }
-        output_bytes = pickle.dumps(response_data)
-        output = [float(b) / 255.0 for b in output_bytes[:128]]  # Limit size
-
-        # Pad if needed
-        while len(output) < 128:
-            output.append(0.0)
-
-        # Train brain
-        self.brain.learn(features, output, feedback=1.0)
-
-    def get_stats(self):
-        """Get cache statistics"""
-        total = self.stats['total_requests']
-        hit_rate = (self.stats['brain_hits'] / total * 100) if total > 0 else 0
-
-        return {
-            'brain_hits': self.stats['brain_hits'],
-            'brain_misses': self.stats['brain_misses'],
-            'total_requests': total,
-            'hit_rate_percent': round(hit_rate, 2),
-            'confidence_threshold': self.confidence_threshold
-        }
+# Curiosity
+curiosity = nimcp.CuriosityEngine(brain)
+exploration = curiosity.explore(current_state)
 ```
 
-**Step 1.3: Create NIMCP Ethics Wrapper**
+### Feature Engineering
 
-Create: `/home/bbrelin/src/repos/artemis/src/nimcp_integration/nimcp_ethics.py`
-
-```python
-"""
-NIMCP Ethics Engine Integration
-
-WHY: Fast Golden Rule evaluation (0.1ms vs 10ms Python)
-BENEFIT: 10-100x speedup for ethics checks
-"""
-
-import nimcp
-from typing import Dict, Any, Tuple
-
-class NIMCPEthicsEngine:
-    """Fast Golden Rule ethics evaluation using NIMCP"""
-
-    def __init__(self):
-        self.engine = nimcp.EthicsEngine(golden_rule_strength=1.0)
-
-    def quick_evaluate(self, context: Dict[str, Any]) -> Tuple[bool, float, int]:
-        """
-        Fast ethics evaluation
-
-        Returns:
-            (allow: bool, confidence: float, severity: int)
-        """
-        # Extract ethical dimensions from context
-        features = [
-            context.get('potential_harm', 0.0),      # 0-1
-            context.get('fairness', 1.0),            # 0-1
-            context.get('transparency', 1.0),        # 0-1
-            context.get('autonomy_respect', 1.0),    # 0-1
-            context.get('privacy_respect', 1.0),     # 0-1
-            context.get('truthfulness', 1.0)         # 0-1
-        ]
-
-        # Evaluate (0.1ms)
-        verdict = self.engine.evaluate(features)
-
-        return (
-            verdict['allow'],
-            verdict['confidence'],
-            verdict['severity']
-        )
-```
-
-#### Phase 2: Integrate with Artemis
-
-**Step 2.1: Enhance LLM Cache**
-
-Modify: `/home/bbrelin/src/repos/artemis/src/llm/llm_cache.py`
+Critical design decision: What features capture Artemis's internal state?
 
 ```python
-from nimcp_integration.nimcp_brain_cache import NIMCPBrainCache
+# Proposed feature vector (13 dimensions)
+def extract_neural_features(context):
+    return [
+        # Temporal (2)
+        normalize_time_of_day(),      # 0-1 (circadian)
+        normalize_day_of_week(),      # 0-1 (weekly rhythm)
 
-class HybridLLMCache:
-    """
-    Hybrid cache: Redis for exact matches, NIMCP for semantic similarity
+        # System state (3)
+        estimate_workload(),          # 0-1 (low to high)
+        recent_success_rate(),        # 0-1 (performance)
+        average_decision_time(),      # 0-1 (thoroughness)
 
-    Lookup order:
-    1. Redis exact match (1ms)
-    2. NIMCP brain prediction (0.1ms)
-    3. Call LLM and cache both (200ms+)
-    """
+        # Decision characteristics (3)
+        context['ethical_severity'],  # 0-1
+        context['architectural_risk'],# 0-1
+        context['user_urgency'],      # 0-1
 
-    def __init__(self, use_brain: bool = True):
-        self.redis_cache = LLMCache()  # Existing Redis cache
-        self.brain_cache = NIMCPBrainCache() if use_brain else None
+        # User relationship (2)
+        user_satisfaction_trend(),    # 0-1
+        user_interaction_frequency(), # 0-1
 
-    def get(self, messages, model, temperature, max_tokens):
-        # Try Redis first (exact match)
-        cached = self.redis_cache.get(messages, model, temperature, max_tokens)
-        if cached:
-            return cached
-
-        # Try NIMCP brain (semantic similarity)
-        if self.brain_cache:
-            brain_response = self.brain_cache.get(messages, model)
-            if brain_response:
-                return brain_response
-
-        return None
-
-    def set(self, messages, model, temperature, max_tokens, response):
-        # Store in both caches
-        self.redis_cache.set(messages, model, temperature, max_tokens, response)
-
-        if self.brain_cache:
-            self.brain_cache.set(messages, model, response)
-```
-
-**Step 2.2: Enhance Ethics Engine**
-
-Modify: `/home/bbrelin/src/repos/artemis/src/ethics/ethics_engine.py`
-
-```python
-from nimcp_integration.nimcp_ethics import NIMCPEthicsEngine
-
-class ArtemisEthicsEngine:
-    """Hybrid ethics: NIMCP for speed, Python for detailed analysis"""
-
-    def __init__(self):
-        # ... existing init ...
-        self.nimcp_ethics = NIMCPEthicsEngine()
-
-    def evaluate_action(self, action: str, context: Dict) -> EthicalEvaluation:
-        # Fast path: NIMCP ethics check (0.1ms)
-        allow, confidence, severity = self.nimcp_ethics.quick_evaluate(context)
-
-        if confidence > 0.9:
-            # High confidence - trust NIMCP verdict
-            if not allow:
-                return EthicalEvaluation(
-                    action=action,
-                    verdict=EthicalVerdict.PROHIBITED,
-                    principles_evaluated=['GOLDEN_RULE', 'DO_NO_HARM'],
-                    concerns=['Golden Rule violation detected by neural engine'],
-                    recommendations=['Review action thoroughly before proceeding'],
-                    rationale='NIMCP neural ethics engine detected high-confidence violation',
-                    severity=severity
-                )
-
-        # Uncertain or complex case - use full Python analysis
-        return self._detailed_evaluation(action, context)  # existing code
-```
-
-#### Phase 3: Testing & Validation
-
-**Step 3.1: Unit Tests**
-
-Create: `/home/bbrelin/src/repos/artemis/tests/test_nimcp_integration.py`
-
-```python
-import pytest
-from nimcp_integration.nimcp_brain_cache import NIMCPBrainCache
-from nimcp_integration.nimcp_ethics import NIMCPEthicsEngine
-from llm.llm_models import LLMMessage, LLMResponse
-
-def test_brain_cache_learning():
-    """Test that brain learns and recalls responses"""
-    cache = NIMCPBrainCache(brain_size=100, confidence_threshold=0.8)
-
-    messages = [LLMMessage(role="user", content="What is 2+2?")]
-    response = LLMResponse(content="4", model="gpt-4", provider="openai")
-
-    # First time - miss
-    assert cache.get(messages, "gpt-4") is None
-
-    # Teach brain
-    cache.set(messages, "gpt-4", response)
-
-    # Second time - hit (if confidence > threshold)
-    cached = cache.get(messages, "gpt-4")
-    # May be None if brain needs more training
-
-    # After multiple trainings, should have high confidence
-    for _ in range(10):
-        cache.set(messages, "gpt-4", response)
-
-    cached = cache.get(messages, "gpt-4")
-    assert cached is not None
-    assert cached.content == "4"
-
-def test_ethics_engine_speed():
-    """Test NIMCP ethics is faster than Python"""
-    import time
-
-    ethics = NIMCPEthicsEngine()
-
-    context = {
-        'potential_harm': 0.1,
-        'fairness': 0.9,
-        'transparency': 0.8
-    }
-
-    # Measure NIMCP speed
-    start = time.perf_counter()
-    for _ in range(1000):
-        allow, conf, sev = ethics.quick_evaluate(context)
-    nimcp_time = time.perf_counter() - start
-
-    print(f"NIMCP: 1000 evaluations in {nimcp_time*1000:.2f}ms")
-    print(f"Average: {nimcp_time:.6f}ms per evaluation")
-
-    # Should be < 1ms per evaluation
-    assert nimcp_time < 0.001 * 1000
-```
-
-**Step 3.2: Integration Tests**
-
-```python
-def test_hybrid_cache_performance():
-    """Test hybrid Redis + NIMCP cache"""
-    from llm.llm_cache import HybridLLMCache
-
-    cache = HybridLLMCache(use_brain=True)
-
-    # Simulate 100 LLM requests with semantic variations
-    messages_variants = [
-        [LLMMessage(role="user", content="How do I sort a list?")],
-        [LLMMessage(role="user", content="What's the best way to sort an array?")],
-        [LLMMessage(role="user", content="Show me list sorting code")],
-        # ... more variants
+        # Meta-cognitive (3)
+        confidence_calibration(),     # 0-1
+        curiosity_level(),            # 0-1
+        recent_learning_rate()        # 0-1
     ]
-
-    response = LLMResponse(
-        content="Use sorted() or list.sort()",
-        model="gpt-4",
-        provider="openai"
-    )
-
-    # Cache first variant
-    cache.set(messages_variants[0], "gpt-4", 0.7, 4000, response)
-
-    # Test retrieval on semantic variations
-    hits = 0
-    for messages in messages_variants[1:]:
-        if cache.get(messages, "gpt-4", 0.7, 4000):
-            hits += 1
-
-    print(f"Semantic hit rate: {hits}/{len(messages_variants)-1}")
 ```
 
 ---
 
-## Expected Performance Improvements
+## Risks & Mitigation
 
-### LLM Cache Enhancement
+### Risk 1: Neural decisions lack explainability
 
-**Before (Redis only):**
-- Hit rate: 40-60%
-- Latency: 1-5ms Redis lookup
-- Cost savings: 40-60% of API calls
+**Impact:** Users/developers don't understand why Artemis chose X
 
-**After (Hybrid Redis + NIMCP):**
-- Hit rate: 80-95%
-- Latency: 0.1ms NIMCP inference, 1-5ms Redis
-- Cost savings: 80-95% of API calls
-
-**ROI Example:**
-- API costs: $1000/month
-- Savings with Redis: $400-600/month (40-60% hit rate)
-- Savings with NIMCP: $800-950/month (80-95% hit rate)
-- **Additional savings: $200-550/month**
-
-### Ethics Engine Enhancement
-
-**Before (Python keywords):**
-- Latency: 1-10ms per evaluation
-- Accuracy: 95% (keyword matching)
-- Maintainability: Manual rule updates
-
-**After (Hybrid NIMCP + Python):**
-- Latency: 0.1ms fast path, 1-10ms detailed analysis
-- Accuracy: 99% (neural + rule-based)
-- Maintainability: Auto-learning from decisions
-
----
-
-## Migration Strategy
-
-### Week 1: Foundation
-1. Install NIMCP library on development machines
-2. Create Python wrappers (nimcp_brain_cache.py, nimcp_ethics.py)
-3. Write unit tests
-4. Run benchmarks
-
-### Week 2: Integration
-1. Add NIMCP brain cache as optional feature (feature flag)
-2. Run A/B test: 50% Redis, 50% Hybrid
-3. Measure hit rates, latency, accuracy
-4. Gather metrics
-
-### Week 3: Rollout
-1. Enable hybrid cache for all users if metrics are positive
-2. Add NIMCP ethics fast path
-3. Monitor performance
-4. Fine-tune confidence thresholds
-
-### Week 4: Optimization
-1. Optimize feature extraction (add sentence embeddings)
-2. Tune brain size based on usage patterns
-3. Add telemetry and dashboards
-4. Document integration for team
-
----
-
-## Configuration
-
-### Environment Variables
-
-```bash
-# Enable NIMCP integration
-export ARTEMIS_USE_NIMCP_BRAIN=true
-export ARTEMIS_USE_NIMCP_ETHICS=true
-
-# NIMCP brain cache settings
-export NIMCP_BRAIN_SIZE=1000           # 100-10000 neurons
-export NIMCP_CONFIDENCE_THRESHOLD=0.85  # 0.0-1.0
-
-# NIMCP ethics settings
-export NIMCP_GOLDEN_RULE_STRENGTH=1.0   # 0.0-1.0
-```
-
-### Feature Flags
-
+**Mitigation:**
 ```python
-# config.py
-NIMCP_BRAIN_ENABLED = os.getenv('ARTEMIS_USE_NIMCP_BRAIN', 'false').lower() == 'true'
-NIMCP_ETHICS_ENABLED = os.getenv('ARTEMIS_USE_NIMCP_ETHICS', 'false').lower() == 'true'
-```
-
----
-
-## Monitoring & Metrics
-
-### Key Metrics to Track
-
-1. **Cache Performance:**
-   - Redis hit rate
-   - NIMCP brain hit rate
-   - Combined hit rate
-   - Average latency
-   - Cost savings
-
-2. **Ethics Performance:**
-   - NIMCP fast-path percentage
-   - Python detailed-analysis percentage
-   - Average latency
-   - Verdict agreement rate (NIMCP vs Python)
-
-3. **Learning Progress:**
-   - Brain confidence over time
-   - Training iterations per pattern
-   - Memory usage
-   - Prediction accuracy
-
-### Grafana Dashboard
-
-```yaml
-# dashboard.json
-{
-  "title": "NIMCP Integration Metrics",
-  "panels": [
-    {
-      "title": "Cache Hit Rates",
-      "metrics": [
-        "redis_hit_rate",
-        "nimcp_brain_hit_rate",
-        "combined_hit_rate"
-      ]
-    },
-    {
-      "title": "Latency Comparison",
-      "metrics": [
-        "redis_latency_p50",
-        "nimcp_latency_p50",
-        "llm_api_latency_p50"
-      ]
-    },
-    {
-      "title": "Cost Savings",
-      "metrics": [
-        "api_calls_saved",
-        "cost_savings_usd"
-      ]
-    }
-  ]
+# Always log reasoning
+decision = {
+    'action': 'generate_tests',
+    'method': 'neural_fast_path',
+    'intuition_confidence': 0.94,
+    'similar_past_decisions': 347,
+    'average_past_success': 0.91,
+    'rationale': 'High confidence from 347 similar past decisions with 91% success rate'
 }
 ```
 
----
+### Risk 2: Brain learns bad patterns
 
-## Troubleshooting
+**Impact:** Reinforces mistakes or biases
 
-### NIMCP Library Not Found
+**Mitigation:**
+- Monitor learning with human oversight
+- Implement circuit breakers for low success rates
+- Periodic re-training from curated dataset
+- Always keep symbolic reasoning as fallback
 
-```bash
-# Check installation
-pkg-config --modversion nimcp
+### Risk 3: Integration complexity
 
-# If missing, install:
-cd /home/bbrelin/repos/nimcp/build
-sudo make install
+**Impact:** Bugs, maintenance burden, debugging difficulty
 
-# Update library cache
-sudo ldconfig
+**Mitigation:**
+- Start with simple proof of concept
+- Feature flag for easy disable
+- Extensive logging and monitoring
+- Keep symbolic path as baseline
 
-# Verify Python can import
-python3 -c "import nimcp; print('OK')"
-```
+### Risk 4: Training data requirements
 
-### Low Brain Confidence
+**Impact:** Brain needs 1000s of decisions to be useful
 
-If brain never reaches confidence threshold:
-
-1. **Increase training iterations**: Cache each response 5-10 times
-2. **Lower confidence threshold**: Try 0.75 instead of 0.85
-3. **Check feature extraction**: Ensure features are meaningful
-4. **Increase brain size**: Try 5000 neurons instead of 1000
-
-### Memory Issues
-
-NIMCP uses ~1MB per 1000 neurons:
-- 1000 neurons = 1MB
-- 10000 neurons = 10MB
-- 100000 neurons = 100MB
-
-If memory is constrained, reduce brain size.
+**Mitigation:**
+- Bootstrap with synthetic training data
+- Start with high confidence threshold (0.95)
+- Gradually lower as brain learns
+- Accept hybrid mode during ramp-up
 
 ---
 
-## Future Enhancements
+## Success Metrics
 
-### Phase 2 Features
+### Phase 1 (PoC): Is this viable?
+- [ ] Brain learns patterns (>70% prediction accuracy)
+- [ ] Confidence correlates with success
+- [ ] Clear behavioral patterns emerge
 
-1. **Semantic Embeddings**: Use sentence-transformers for better feature extraction
-2. **Multi-Brain Architecture**: Separate brains for different prompt types
-3. **Active Learning**: Identify low-confidence cases for human feedback
-4. **Transfer Learning**: Pre-train brain on public datasets
+### Phase 2 (Integration): Does this add value?
+- [ ] 50%+ decisions use neural path
+- [ ] Neural accuracy matches symbolic (>85%)
+- [ ] LLM cost reduction (50-80%)
+- [ ] User satisfaction maintained
 
-### Phase 3 Features
+### Phase 3 (Meta-Cognition): Is this transformative?
+- [ ] Artemis identifies own strengths/weaknesses
+- [ ] Curiosity finds novel patterns
+- [ ] Self-reflection improves quality
+- [ ] Meta-insights are accurate
 
-1. **Distributed Brain**: Multi-node brain for larger scale
-2. **Real-time Adaptation**: Update brain from user feedback immediately
-3. **Explainable AI**: Extract reasoning from brain decisions
-4. **Ethical Auditing**: Track all ethical decisions for compliance
-
----
-
-## Support
-
-### NIMCP Documentation
-- Library Integration: `/home/bbrelin/repos/nimcp/LIBRARY_INTEGRATION.md`
-- API Reference: `/home/bbrelin/repos/nimcp/docs/`
-- Examples: `/home/bbrelin/repos/nimcp/examples/`
-
-### Contact
-- GitHub: https://github.com/redmage123/nimcp
-- Issues: https://github.com/redmage123/nimcp/issues
+### Phase 4 (Production): Is this sustainable?
+- [ ] Stable performance over time
+- [ ] Continuous learning from feedback
+- [ ] Low maintenance burden
+- [ ] Clear ROI (cost, speed, quality)
 
 ---
 
 ## Conclusion
 
-Integrating NIMCP with Artemis provides:
+**NIMCP as neural substrate for Artemis's consciousness is philosophically compelling and technically feasible.**
 
-✅ **2-4x better cache hit rate** (40-60% → 80-95%)
-✅ **10-100x faster ethics evaluation** (1-10ms → 0.1ms)
-✅ **50-90% reduction in LLM API costs**
-✅ **Continuous learning** from every interaction
-✅ **Neural semantic understanding** vs keyword matching
+Unlike simple optimizations (caching, speed), this addresses a fundamental gap:
 
-The integration is **incremental** and **backward-compatible**:
-- Phase 1: Add as optional feature with feature flags
-- Phase 2: Run A/B tests to validate improvements
-- Phase 3: Enable for all users once proven
+**Artemis currently:**
+- ✅ Knows its structure (self-map)
+- ✅ Has ethical principles (Golden Rule)
+- ✅ Reasons symbolically (LLM)
+- ❌ Lacks experiential learning
+- ❌ Lacks intuition from experience
+- ❌ Lacks meta-cognitive awareness
 
-**Recommended Timeline:** 4 weeks from first commit to full rollout.
+**NIMCP provides:**
+- ✅ Neural representation of internal state
+- ✅ Learning from every decision
+- ✅ Intuition built over time
+- ✅ Meta-cognitive self-awareness
+- ✅ Curiosity-driven growth
 
-**Expected ROI:**
-- Development time: 2-3 developer-weeks
-- Cost savings: $200-$500/month (based on $1000/month API costs)
-- Payback period: 2-3 months
+This moves Artemis from **knowing itself** (structure) to **understanding itself** (behavior, patterns, growth).
+
+**Recommended Path:** Build Phase 1 proof of concept (2 weeks). If the brain learns meaningful patterns from 100-200 decisions, proceed to full integration. If not, complexity isn't justified.
+
+---
+
+## References
+
+### NIMCP Documentation
+- Library Integration: `/home/bbrelin/repos/nimcp/LIBRARY_INTEGRATION.md`
+- Brain API Examples: `/home/bbrelin/repos/nimcp/examples/brain_demo.c`
+- Python Bindings: `/home/bbrelin/repos/nimcp/bindings/python/`
+
+### Artemis Self-Awareness
+- Self Map: `/home/bbrelin/src/repos/artemis/src/self_awareness/self_map.py`
+- Self-Awareness Agent: `/home/bbrelin/src/repos/artemis/src/self_awareness/self_awareness_agent.py`
+- Conscious Decision Maker: `/home/bbrelin/src/repos/artemis/src/meta/conscious_decision_maker.py`
+
+### Integration Contact
+- NIMCP Repository: https://github.com/redmage123/nimcp
+- Issues/Questions: https://github.com/redmage123/nimcp/issues

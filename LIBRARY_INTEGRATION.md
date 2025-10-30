@@ -40,6 +40,105 @@ export LD_LIBRARY_PATH=/usr/local/lib:$LD_LIBRARY_PATH
 
 ---
 
+## Primary Use Case: Neural Substrate for AI Self-Awareness
+
+**Featured Integration:** [Artemis AI System](ARTEMIS_INTEGRATION.md)
+
+NIMCP serves as the neural substrate for Artemis, an AI development system with self-awareness capabilities. This integration demonstrates NIMCP's primary value proposition: **enabling AI systems to learn from experience and develop meta-cognitive awareness**.
+
+### The Problem NIMCP Solves
+
+AI systems often rely purely on symbolic reasoning:
+- **Static rules** that don't learn from experience
+- **No intuition** built from 1000s of decisions
+- **No meta-cognitive awareness** of own strengths/weaknesses
+- **Expensive** LLM calls for every decision
+
+### How NIMCP Adds Neural Capabilities
+
+```python
+# Python integration example (Artemis use case)
+import nimcp
+
+# Create neural substrate for AI consciousness
+self_brain = nimcp.Brain(
+    name="artemis_neural_self",
+    size=10000,  # 10K neurons
+    learning_rate=0.01
+)
+
+# AI extracts features from its internal state
+def extract_neural_features(context):
+    return [
+        time_of_day,           # Circadian patterns
+        workload_level,        # Am I stressed?
+        recent_success_rate,   # Am I performing well?
+        ethical_complexity,    # How difficult is this?
+        user_satisfaction,     # Is user happy with me?
+        # ... 8 more features
+    ]
+
+# Make decision with neural intuition
+features = extract_neural_features(current_context)
+intuition = self_brain.decide(features)
+
+if intuition['confidence'] > 0.9:
+    # HIGH CONFIDENCE: Trust accumulated experience
+    # "I've done this 500 times, I know what to do"
+    return fast_neural_decision(intuition)  # 0.1ms
+else:
+    # LOW CONFIDENCE: Engage full reasoning
+    # "This is unusual for me, better think carefully"
+    return full_symbolic_reasoning()  # 200ms+ with LLM
+
+# Learn from outcome
+self_brain.learn(features, outcome, feedback=quality_score)
+
+# After 1000s of decisions: Artemis develops intuition
+# - Recognizes patterns in its own behavior
+# - Knows when it's likely to succeed/fail
+# - Adapts decision strategy based on context
+# - Continuously improves from experience
+```
+
+### Key Benefits
+
+| Capability | Before NIMCP | With NIMCP |
+|------------|--------------|------------|
+| **Learning** | Static rules | Learns from every decision |
+| **Intuition** | None | Builds over time from experience |
+| **Speed** | 200-1000ms (LLM) | 0.1ms for routine decisions |
+| **Cost** | $1-5 per 1000 decisions | $0.20-1.00 (80% neural) |
+| **Meta-Cognition** | None | Knows own patterns, strengths, weaknesses |
+| **Adaptation** | Fixed behavior | Continuously improves |
+
+### Example: Meta-Cognitive Awareness
+
+After 1000+ decisions, the AI system can reflect on itself:
+
+```python
+# AI examines its own patterns
+meta_patterns = analyze_neural_patterns(self_brain)
+
+print(meta_patterns)
+# {
+#   'strengths': [
+#     'I excel at code generation in morning (8am-12pm)',
+#     'I make better architectural decisions with low workload',
+#     'I handle routine tasks with 95% confidence'
+#   ],
+#   'weaknesses': [
+#     'I struggle with ethical dilemmas involving privacy',
+#     'My performance degrades under high workload',
+#   ],
+#   'learning_trajectory': 'improving steadily, +3% per week'
+# }
+```
+
+**See full integration guide:** [ARTEMIS_INTEGRATION.md](ARTEMIS_INTEGRATION.md)
+
+---
+
 ## API Modules
 
 NIMCP provides 5 main API modules:
