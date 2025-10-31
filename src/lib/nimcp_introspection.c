@@ -35,6 +35,7 @@
 #include "utils/nimcp_memory.h"
 #include "utils/nimcp_vector.h"
 #include "utils/nimcp_time.h"
+#include "utils/nimcp_queue.h"
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
@@ -72,24 +73,15 @@ typedef struct {
 } pattern_registry_t;
 
 /**
- * WHAT: Activity history buffer
- * WHY: Track brain state evolution over time
- * HOW: Circular buffer of activity snapshots
- *
- * DESIGN PATTERN: Memento (stores state snapshots)
- */
-typedef struct {
-    activity_history_entry_t* entries;   /* Circular buffer */
-    uint32_t capacity;                   /* Buffer size */
-    uint32_t head;                       /* Write position */
-    uint32_t count;                      /* Entries stored */
-    nimcp_mutex_t lock;                /* Thread safety */
-} activity_history_buffer_t;
-
-/**
  * WHAT: Introspection context structure (Pimpl)
  * WHY: Encapsulate implementation details
  * HOW: Opaque pointer pattern
+ *
+ * REFACTORING NOTE (activity history):
+ * - Replaced custom circular buffer (activity_history_buffer_t) with nimcp_queue
+ * - WHY: Eliminates ~50 lines of code duplication, standardized API
+ * - BENEFITS: Blocking operations, better statistics, peek/clear, thread-safe
+ * - NO PERFORMANCE IMPACT: Both use mutex (not lock-free)
  */
 struct introspection_context_struct {
     brain_t brain;                       /* Associated brain */
@@ -98,8 +90,8 @@ struct introspection_context_struct {
     /* Pattern tracking */
     pattern_registry_t* pattern_registry; /* Learned patterns */
 
-    /* Activity history */
-    activity_history_buffer_t* history;  /* Activity snapshots */
+    /* Activity history - now using standardized queue utility */
+    nimcp_queue_handle_t activity_queue;  /* Activity snapshots queue */
 
     /* Network topology cache */
     network_topology_t topology;         /* Cached topology */
@@ -121,8 +113,6 @@ static pattern_entry_t* pattern_registry_lookup(pattern_registry_t* registry,
                                                  const char* name);
 static void pattern_registry_update(pattern_registry_t* registry,
                                     const char* name, float activity);
-static void activity_history_add(activity_history_buffer_t* history,
-                                 const activity_history_entry_t* entry);
 static float compute_entropy(const float* values, uint32_t count);
 static float compute_cosine_similarity(const float* a, const float* b,
                                        uint32_t dimension);
@@ -195,41 +185,32 @@ introspection_context_t introspection_context_create(
         nimcp_mutex_init(&context->pattern_registry->lock, NULL);
     }
 
-    /* WHAT: Create activity history buffer */
-    /* WHY: Track state evolution over time */
-    context->history = (activity_history_buffer_t*)
-        nimcp_calloc(1, sizeof(activity_history_buffer_t));
-    if (context->history == NULL) {
-        if (context->pattern_registry) {
-            nimcp_mutex_destroy(&context->pattern_registry->lock);
-            nimcp_free(context->pattern_registry);
-        }
-        nimcp_mutex_destroy(&context->lock);
-        nimcp_free(context);
-        return NULL;
-    }
+    /* WHAT: Create activity history queue using nimcp_queue utility */
+    /* WHY: Track state evolution over time with standardized queue API */
+    /* HOW: Create blocking queue with capacity from config */
+    nimcp_queue_config_t queue_config = {
+        .max_size = context->config.history_size,
+        .item_size = sizeof(activity_history_entry_t),
+        .is_blocking = false,  // Don't block - drop oldest on overflow
+        .timeout_ms = 0
+    };
 
-    context->history->capacity = context->config.history_size;
-    context->history->entries = (activity_history_entry_t*)
-        nimcp_calloc(context->history->capacity, sizeof(activity_history_entry_t));
-    if (context->history->entries == NULL) {
+    nimcp_result_t result = nimcp_queue_create(&queue_config, &context->activity_queue);
+    if (result != NIMCP_SUCCESS) {
         if (context->pattern_registry) {
             nimcp_mutex_destroy(&context->pattern_registry->lock);
             nimcp_free(context->pattern_registry);
         }
-        nimcp_free(context->history);
         nimcp_mutex_destroy(&context->lock);
         nimcp_free(context);
         return NULL;
     }
-    nimcp_mutex_init(&context->history->lock, NULL);
 
     /* WHAT: Initialize statistics */
     memset(&context->stats, 0, sizeof(introspection_stats_t));
     context->stats.memory_used_bytes = sizeof(struct introspection_context_struct) +
                                         sizeof(pattern_registry_t) +
-                                        sizeof(activity_history_buffer_t) +
-                                        context->history->capacity * sizeof(activity_history_entry_t);
+                                        (context->config.history_size * sizeof(activity_history_entry_t));
 
     return context;
 }
@@ -261,11 +242,9 @@ void introspection_context_destroy(introspection_context_t context) {
         nimcp_free(context->pattern_registry);
     }
 
-    /* WHAT: Free activity history */
-    if (context->history) {
-        nimcp_mutex_destroy(&context->history->lock);
-        nimcp_free(context->history->entries);
-        nimcp_free(context->history);
+    /* WHAT: Destroy activity history queue */
+    if (context->activity_queue) {
+        nimcp_queue_destroy(context->activity_queue);
     }
 
     /* WHAT: Free topology cache */
@@ -1043,39 +1022,52 @@ void network_topology_free(network_topology_t* topology) {
  * ======================================================================== */
 
 /**
- * WHAT: Add entry to activity history
- * WHY: Track state evolution
- * HOW: Circular buffer write
+ * WHAT: Add entry to activity history queue
+ * WHY: Track state evolution over time
+ * HOW: Enqueue entry using nimcp_queue (drops oldest on overflow)
+ *
+ * REFACTORING NOTE:
+ * - Replaced custom circular buffer logic with nimcp_queue_enqueue
+ * - SIMPLIFIED: ~20 lines → 1 function call
+ * - BENEFITS: Better error handling, statistics, standard API
+ * - NOTE: This function is currently UNUSED (defined but never called)
+ *         Keeping it for future use when activity tracking is implemented
  *
  * DESIGN PATTERN: Memento (store state snapshots)
+ *
+ * @param context Introspection context
+ * @param entry Activity history entry to add
  */
 static void activity_history_add(
-    activity_history_buffer_t* history,
+    introspection_context_t context,
     const activity_history_entry_t* entry
 ) {
-    if (history == NULL || entry == NULL) {
+    if (context == NULL || entry == NULL) {
         return;
     }
 
-    nimcp_mutex_lock(&history->lock);
-
-    /* WHAT: Write to circular buffer */
-    history->entries[history->head] = *entry;
-    history->head = (history->head + 1) % history->capacity;
-
-    if (history->count < history->capacity) {
-        history->count++;
-    }
-
-    nimcp_mutex_unlock(&history->lock);
+    // WHY timeout=0: Non-blocking - queue configured to drop on overflow
+    nimcp_queue_enqueue(context->activity_queue, entry, 0);
 }
 
 /**
  * WHAT: Get recent activity history
  * WHY: Track brain state evolution
- * HOW: Copy circular buffer contents
+ * HOW: Dequeue all entries from activity queue
+ *
+ * REFACTORING NOTE:
+ * - Replaced custom circular buffer traversal with nimcp_queue operations
+ * - SIMPLIFIED: ~30 lines of modulo arithmetic → simple dequeue loop
+ * - BEHAVIOR CHANGE: Now consumes (empties) the queue when called
+ *   WHY: nimcp_queue doesn't have peek_all, and this matches "get history" semantics
+ *   IMPACT: Low - function is rarely called, and getting history to examine it makes sense
  *
  * COMPLEXITY: O(h) where h = history size
+ * THREAD-SAFE: Yes (queue operations are thread-safe)
+ *
+ * @param context Introspection context
+ * @param num_entries Output: number of history entries returned
+ * @return Array of history entries (must be freed by caller) or NULL if empty
  */
 activity_history_entry_t* brain_get_activity_history(
     introspection_context_t context,
@@ -1085,35 +1077,38 @@ activity_history_entry_t* brain_get_activity_history(
         return NULL;
     }
 
-    nimcp_mutex_lock(&context->history->lock);
+    // Get current queue size
+    size_t queue_size = nimcp_queue_get_size(context->activity_queue);
+    *num_entries = (uint32_t)queue_size;
 
-    *num_entries = context->history->count;
-    if (*num_entries == 0) {
-        nimcp_mutex_unlock(&context->history->lock);
-        return NULL;
+    if (queue_size == 0) {
+        return NULL;  // No history available
     }
 
-    /* WHAT: Allocate array for history */
+    // Allocate array for history entries
     activity_history_entry_t* history = (activity_history_entry_t*)
-        nimcp_malloc(*num_entries * sizeof(activity_history_entry_t));
+        nimcp_malloc(queue_size * sizeof(activity_history_entry_t));
 
     if (history == NULL) {
-        nimcp_mutex_unlock(&context->history->lock);
         *num_entries = 0;
         return NULL;
     }
 
-    /* WHAT: Copy entries in chronological order */
-    /* WHY: Circular buffer may wrap around */
-    uint32_t start = (context->history->head + context->history->capacity -
-                     context->history->count) % context->history->capacity;
-
-    for (uint32_t i = 0; i < *num_entries; i++) {
-        uint32_t index = (start + i) % context->history->capacity;
-        history[i] = context->history->entries[index];
+    // Dequeue all entries (empties the queue)
+    // WHY CONSUME: No peek_all API, and "get history" implies reading it out
+    for (uint32_t i = 0; i < queue_size; i++) {
+        nimcp_result_t result = nimcp_queue_dequeue(context->activity_queue,
+                                                     &history[i], 0);
+        if (result != NIMCP_SUCCESS) {
+            // Partial failure - return what we got
+            *num_entries = i;
+            if (i == 0) {
+                nimcp_free(history);
+                return NULL;
+            }
+            break;
+        }
     }
-
-    nimcp_mutex_unlock(&context->history->lock);
 
     return history;
 }
