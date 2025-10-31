@@ -28,6 +28,7 @@
 //=============================================================================
 
 #include "../include/nimcp_events.h"
+#include "utils/nimcp_hash_table.h"
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
@@ -45,27 +46,14 @@
 //=============================================================================
 
 /**
- * @brief Hash table entry for feature-to-neuron mapping
+ * @brief Neuron ID value stored in hash table
  *
- * WHY: Provides O(1) average case lookup vs O(n) linear search.
- * Critical for real-time event processing performance.
- */
-typedef struct hash_entry {
-    feature_code_t feature_code;
-    uint32_t neuron_id;
-    struct hash_entry* next;
-} hash_entry_t;
-
-/**
- * @brief Hash table for feature mappings
- *
- * INVARIANT: No duplicate feature codes in table
- * COMPLEXITY: O(1) average for insert, lookup, delete
+ * WHY: Maps feature codes to neuron IDs for O(1) lookup.
+ * No longer needs 'next' pointer as chaining is handled by nimcp_hash_table.
  */
 typedef struct {
-    hash_entry_t* buckets[HASH_TABLE_SIZE];
-    uint32_t num_entries;
-} feature_hash_table_t;
+    uint32_t neuron_id;
+} neuron_id_value_t;
 
 /**
  * @brief Internal event generator structure
@@ -95,8 +83,8 @@ struct event_receiver_struct {
     uint32_t max_filters;
     bool auto_create_neurons;
 
-    // Hash table for O(1) feature lookup
-    feature_hash_table_t feature_table;
+    // Hash table for O(1) feature lookup (using nimcp_hash_table utility)
+    hash_table_t* feature_table;
 };
 
 //=============================================================================
@@ -104,83 +92,44 @@ struct event_receiver_struct {
 //=============================================================================
 
 /**
- * @brief Hash function for feature codes
- *
- * WHY: Distributes feature codes uniformly across hash table buckets,
- * minimizing collisions for O(1) average lookup time.
- *
- * COMPLEXITY: O(1)
- *
- * @param feature_code - Feature code to hash
- * @return Hash value in range [0, HASH_TABLE_SIZE)
- */
-static uint32_t hash_feature_code(feature_code_t feature_code) {
-    uint32_t hash = feature_code;
-    hash ^= (hash >> 16);
-    hash *= 0x85ebca6b;
-    hash ^= (hash >> 13);
-    hash *= 0xc2b2ae35;
-    hash ^= (hash >> 16);
-    return hash % HASH_TABLE_SIZE;
-}
-
-/**
- * @brief Initializes feature hash table
+ * @brief Creates feature hash table using nimcp_hash_table utility
  *
  * WHY: Sets up O(1) lookup structure for feature-to-neuron mappings.
+ * Uses MurmurHash3 for uint32_t feature codes.
  *
  * COMPLEXITY: O(1)
  */
-static void init_feature_hash_table(feature_hash_table_t* table) {
-    // Guard clause: Validate input
-    if (!table) return;
-
-    memset(table->buckets, 0, sizeof(table->buckets));
-    table->num_entries = 0;
+static hash_table_t* create_feature_hash_table(void) {
+    hash_table_config_t config = {
+        .initial_buckets = HASH_TABLE_SIZE,
+        .key_type = HASH_KEY_UINT32,
+        .hash_algorithm = HASH_ALG_MURMUR3,
+        .case_insensitive = false,
+        .value_destructor = NULL,  // neuron_id_value_t doesn't need cleanup
+        .thread_safe = false
+    };
+    return hash_table_create(&config);
 }
 
 /**
- * @brief Inserts feature-to-neuron mapping into hash table
+ * @brief Inserts feature-to-neuron mapping using nimcp_hash_table utility
  *
- * WHY: O(1) insertion enables fast mapping updates without degrading
- * lookup performance as mapping count grows.
+ * WHY: O(1) insertion enables fast mapping updates.
+ * Delegates to nimcp_hash_table for consistent behavior.
  *
  * COMPLEXITY: O(1) average case
  *
  * @return true if inserted/updated, false on failure
  */
 static bool hash_table_insert_feature(
-    feature_hash_table_t* table,
+    hash_table_t* table,
     feature_code_t feature_code,
     uint32_t neuron_id) {
 
-    // Guard clause: Validate inputs
     if (!table) return false;
 
-    uint32_t bucket = hash_feature_code(feature_code);
-
-    // Check if entry already exists (update case)
-    hash_entry_t* entry = table->buckets[bucket];
-    while (entry) {
-        if (entry->feature_code == feature_code) {
-            entry->neuron_id = neuron_id;
-            return true;
-        }
-        entry = entry->next;
-    }
-
-    // Create new entry
-    hash_entry_t* new_entry = malloc(sizeof(hash_entry_t));
-    // Guard clause: Check allocation
-    if (!new_entry) return false;
-
-    new_entry->feature_code = feature_code;
-    new_entry->neuron_id = neuron_id;
-    new_entry->next = table->buckets[bucket];
-    table->buckets[bucket] = new_entry;
-    table->num_entries++;
-
-    return true;
+    neuron_id_value_t value = { .neuron_id = neuron_id };
+    return hash_table_insert_uint32(table, feature_code, &value, sizeof(neuron_id_value_t));
 }
 
 /**
@@ -195,46 +144,19 @@ static bool hash_table_insert_feature(
  * @return true if found, false if not found
  */
 static bool hash_table_lookup_feature(
-    const feature_hash_table_t* table,
+    hash_table_t* table,
     feature_code_t feature_code,
     uint32_t* neuron_id) {
 
     // Guard clause: Validate inputs
     if (!table || !neuron_id) return false;
 
-    uint32_t bucket = hash_feature_code(feature_code);
-    hash_entry_t* entry = table->buckets[bucket];
-
-    while (entry) {
-        if (entry->feature_code == feature_code) {
-            *neuron_id = entry->neuron_id;
-            return true;
-        }
-        entry = entry->next;
+    neuron_id_value_t* entry = (neuron_id_value_t*)hash_table_lookup_uint32(table, feature_code);
+    if (entry) {
+        *neuron_id = entry->neuron_id;
+        return true;
     }
-
     return false;
-}
-
-/**
- * @brief Destroys hash table and frees all entries
- *
- * WHY: Prevents memory leaks by cleaning up all allocated hash entries.
- *
- * COMPLEXITY: O(n) where n = number of entries
- */
-static void destroy_feature_hash_table(feature_hash_table_t* table) {
-    // Guard clause: Validate input
-    if (!table) return;
-
-    for (uint32_t i = 0; i < HASH_TABLE_SIZE; i++) {
-        hash_entry_t* entry = table->buckets[i];
-        while (entry) {
-            hash_entry_t* next = entry->next;
-            free(entry);
-            entry = next;
-        }
-    }
 }
 
 //=============================================================================
@@ -632,7 +554,7 @@ event_receiver_t event_receiver_create(const event_receiver_config_t* config) {
     receiver->max_filters = MAX_SUBSCRIPTIONS;
 
     // Initialize hash table for O(1) feature lookup
-    init_feature_hash_table(&receiver->feature_table);
+    receiver->feature_table = create_feature_hash_table();
 
     // Allocate filter storage
     if (!allocate_filter_storage(receiver)) {
@@ -659,7 +581,7 @@ void event_receiver_destroy(event_receiver_t receiver) {
     if (!receiver) return;
 
     // Destroy hash table
-    destroy_feature_hash_table(&receiver->feature_table);
+    hash_table_destroy(receiver->feature_table);
 
     // Free filter array
     free(receiver->filters);
@@ -776,7 +698,7 @@ static bool resolve_target_neuron(
     if (!receiver || !target_neuron) return false;
 
     // Try to find existing mapping (O(1) hash lookup)
-    if (hash_table_lookup_feature(&receiver->feature_table,
+    if (hash_table_lookup_feature(receiver->feature_table,
                                    feature_code,
                                    target_neuron)) {
         return true;
@@ -952,7 +874,7 @@ bool event_receiver_map_feature_to_neuron(
 
     // Insert/update mapping in hash table (O(1))
     return hash_table_insert_feature(
-        &receiver->feature_table,
+        receiver->feature_table,
         feature_code,
         neuron_id);
 }

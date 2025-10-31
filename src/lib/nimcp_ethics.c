@@ -23,6 +23,7 @@
 
 #include "../include/nimcp_ethics.h"
 #include "../include/nimcp_brain.h"
+#include "utils/nimcp_hash_table.h"
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
@@ -59,26 +60,14 @@ typedef struct {
 } feature_buffer_pool_t;
 
 /**
- * @brief Hash table entry for O(1) policy lookup
+ * @brief Value type for policy hash table entries
  *
- * WHY: Linear search through policies is O(n). Hash table provides O(1)
- * average case lookup, critical for real-time ethics evaluation.
- */
-typedef struct hash_entry {
-    uint32_t policy_id;
-    ethics_policy_t* policy;
-    struct hash_entry* next;
-} hash_entry_t;
-
-/**
- * @brief Hash table for policy storage (Repository Pattern)
- *
- * COMPLEXITY: O(1) average case for insert, lookup, delete
+ * WHY: Stores policy pointer as hash table value. Generic hash table
+ * handles all chaining and collision resolution internally.
  */
 typedef struct {
-    hash_entry_t* buckets[HASH_TABLE_SIZE];
-    uint32_t num_entries;
-} policy_hash_table_t;
+    ethics_policy_t* policy;
+} policy_value_t;
 
 //=============================================================================
 // Strategy Pattern - Policy evaluation strategies
@@ -116,7 +105,7 @@ struct ethics_engine_struct {
     empathy_network_t empathy_net;
 
     // Repository Pattern: Hash-indexed policy storage
-    policy_hash_table_t policy_table;
+    hash_table_t* policy_table;
 
     // Object Pool: Reusable feature buffers
     feature_buffer_pool_t buffer_pool;
@@ -222,40 +211,25 @@ static void release_buffer(feature_buffer_pool_t* pool, float* buffer) {
 //=============================================================================
 
 /**
- * @brief Hash function for policy IDs
- *
- * WHY: Distributes policy IDs uniformly across hash table buckets,
- * minimizing collisions for O(1) average lookup time.
- *
- * COMPLEXITY: O(1)
- *
- * @param policy_id - Policy identifier to hash
- * @return Hash value in range [0, HASH_TABLE_SIZE)
- */
-static uint32_t hash_policy_id(uint32_t policy_id) {
-    // Simple but effective hash function
-    uint32_t hash = policy_id;
-    hash ^= (hash >> 16);
-    hash *= 0x85ebca6b;
-    hash ^= (hash >> 13);
-    hash *= 0xc2b2ae35;
-    hash ^= (hash >> 16);
-    return hash % HASH_TABLE_SIZE;
-}
-
-/**
- * @brief Initializes hash table for policy storage
+ * @brief Creates policy hash table with MurmurHash3
  *
  * WHY: Provides O(1) policy lookup vs O(n) linear search through array.
  * Essential for real-time performance with many policies.
  *
  * COMPLEXITY: O(1)
+ *
+ * @return New hash table instance or NULL on failure
  */
-static void init_policy_hash_table(policy_hash_table_t* table) {
-    if (!table) return;
-
-    memset(table->buckets, 0, sizeof(table->buckets));
-    table->num_entries = 0;
+static hash_table_t* create_policy_hash_table(void) {
+    hash_table_config_t config = {
+        .initial_buckets = HASH_TABLE_SIZE,
+        .key_type = HASH_KEY_UINT32,
+        .hash_algorithm = HASH_ALG_MURMUR3,
+        .case_insensitive = false,
+        .value_destructor = NULL,
+        .thread_safe = false
+    };
+    return hash_table_create(&config);
 }
 
 /**
@@ -268,50 +242,12 @@ static void init_policy_hash_table(policy_hash_table_t* table) {
  *
  * @return true if inserted, false on failure
  */
-static bool hash_table_insert(policy_hash_table_t* table, ethics_policy_t* policy) {
+static bool hash_table_insert(hash_table_t* table, ethics_policy_t* policy) {
     // Guard clause: Validate inputs
     if (!table || !policy) return false;
 
-    uint32_t bucket = hash_policy_id(policy->policy_id);
-
-    hash_entry_t* entry = malloc(sizeof(hash_entry_t));
-    // Guard clause: Check allocation
-    if (!entry) return false;
-
-    entry->policy_id = policy->policy_id;
-    entry->policy = policy;
-    entry->next = table->buckets[bucket];
-    table->buckets[bucket] = entry;
-    table->num_entries++;
-
-    return true;
-}
-
-/**
- * @brief Looks up policy by ID in hash table
- *
- * WHY: O(1) average case lookup is critical for real-time ethics evaluation.
- * Replaces O(n) linear search through policy array.
- *
- * COMPLEXITY: O(1) average, O(k) worst case where k = collision chain length
- *
- * @return Pointer to policy or NULL if not found
- */
-static ethics_policy_t* hash_table_lookup(policy_hash_table_t* table, uint32_t policy_id) {
-    // Guard clause: Validate input
-    if (!table) return NULL;
-
-    uint32_t bucket = hash_policy_id(policy_id);
-    hash_entry_t* entry = table->buckets[bucket];
-
-    while (entry) {
-        if (entry->policy_id == policy_id) {
-            return entry->policy;
-        }
-        entry = entry->next;
-    }
-
-    return NULL;
+    policy_value_t value = { .policy = policy };
+    return hash_table_insert_uint32(table, policy->policy_id, &value, sizeof(policy_value_t));
 }
 
 /**
@@ -321,46 +257,11 @@ static ethics_policy_t* hash_table_lookup(policy_hash_table_t* table, uint32_t p
  *
  * COMPLEXITY: O(1) average case
  */
-static bool hash_table_remove(policy_hash_table_t* table, uint32_t policy_id) {
+static bool hash_table_remove(hash_table_t* table, uint32_t policy_id) {
     // Guard clause: Validate input
     if (!table) return false;
 
-    uint32_t bucket = hash_policy_id(policy_id);
-    hash_entry_t** entry_ptr = &table->buckets[bucket];
-
-    while (*entry_ptr) {
-        hash_entry_t* entry = *entry_ptr;
-        if (entry->policy_id == policy_id) {
-            *entry_ptr = entry->next;
-            free(entry);
-            table->num_entries--;
-            return true;
-        }
-        entry_ptr = &entry->next;
-    }
-
-    return false;
-}
-
-/**
- * @brief Destroys hash table and frees all entries
- *
- * WHY: Prevents memory leaks by cleaning up all allocated hash entries.
- *
- * COMPLEXITY: O(n) where n = number of entries
- */
-static void destroy_policy_hash_table(policy_hash_table_t* table) {
-    // Guard clause: Validate input
-    if (!table) return;
-
-    for (uint32_t i = 0; i < HASH_TABLE_SIZE; i++) {
-        hash_entry_t* entry = table->buckets[i];
-        while (entry) {
-            hash_entry_t* next = entry->next;
-            free(entry);
-            entry = next;
-        }
-    }
+    return hash_table_remove_uint32(table, policy_id);
 }
 
 //=============================================================================
@@ -720,7 +621,7 @@ static void add_golden_rule_policy(ethics_engine_t engine) {
 
     engine->policies[0] = policy;
     engine->num_policies = 1;
-    hash_table_insert(&engine->policy_table, &engine->policies[0]);
+    hash_table_insert(engine->policy_table, &engine->policies[0]);
 }
 
 /**
@@ -746,7 +647,7 @@ ethics_engine_t ethics_engine_create(const ethics_config_t* config) {
 
     // Initialize design pattern components
     init_buffer_pool(&engine->buffer_pool);
-    init_policy_hash_table(&engine->policy_table);
+    engine->policy_table = create_policy_hash_table();
     init_strategy_table(&engine->strategy_table);
 
     // Create neural networks
@@ -798,7 +699,7 @@ void ethics_engine_destroy(ethics_engine_t engine) {
     if (!engine) return;
 
     // Destroy hash table
-    destroy_policy_hash_table(&engine->policy_table);
+    hash_table_destroy(engine->policy_table);
 
     // Destroy neural networks
     if (engine->golden_rule_evaluator) {
@@ -1311,7 +1212,7 @@ bool ethics_add_policy(ethics_engine_t engine, const ethics_policy_t* policy) {
 
     // Add to hash table for O(1) lookup
     bool success = hash_table_insert(
-        &engine->policy_table,
+        engine->policy_table,
         &engine->policies[engine->num_policies]);
 
     if (success) {
@@ -1336,7 +1237,7 @@ bool ethics_remove_policy(ethics_engine_t engine, uint32_t policy_id) {
     if (!engine) return false;
 
     // Remove from hash table (O(1))
-    if (!hash_table_remove(&engine->policy_table, policy_id)) {
+    if (!hash_table_remove(engine->policy_table, policy_id)) {
         return false;
     }
 
