@@ -29,6 +29,7 @@
 #include "../include/nimcp_replication.h"
 #include "../include/nimcp_brain.h"
 #include "utils/nimcp_memory.h"
+#include "utils/nimcp_time.h"
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
@@ -438,7 +439,7 @@ static uint32_t filesystem_get_nodes(void* context,
 
     uint32_t count = 0;
     struct dirent* entry;
-    time_t now = time(NULL);
+    time_t now = nimcp_time_get_sec();
 
     // Scan for .heartbeat files
     while ((entry = readdir(dir)) != NULL && count < max_nodes) {
@@ -499,7 +500,7 @@ static bool filesystem_heartbeat(void* context, const char* node_id) {
     FILE* f = fopen(heartbeat_path, "w");
     if (!f) return false;
 
-    fprintf(f, "%ld\n", time(NULL));
+    fprintf(f, "%ld\n", (long)nimcp_time_get_sec());
     fclose(f);
 
     return true;
@@ -826,7 +827,7 @@ bool replication_sync_push(replication_cluster_t cluster,
     // Save brain to temporary file
     char tmp_path[512];
     snprintf(tmp_path, sizeof(tmp_path), "/tmp/nimcp_sync_%s_%ld.tmp",
-             brain_name, time(NULL));
+             brain_name, (long)nimcp_time_get_sec());
 
     if (!brain_save(brain_entry->brain, tmp_path)) {
         set_replication_error("Failed to serialize brain '%s'", brain_name);
@@ -898,7 +899,7 @@ bool replication_sync_pull(replication_cluster_t cluster,
     // Write to temporary file
     char tmp_path[512];
     snprintf(tmp_path, sizeof(tmp_path), "/tmp/nimcp_pull_%s_%ld.tmp",
-             brain_name, time(NULL));
+             brain_name, (long)nimcp_time_get_sec());
 
     FILE* f = fopen(tmp_path, "wb");
     if (!f) {

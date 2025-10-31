@@ -23,10 +23,10 @@
 #include "utils/nimcp_thread_pool.h"
 #include "utils/nimcp_memory.h"
 #include "utils/nimcp_vector.h"
+#include "utils/nimcp_time.h"
 #include <stdio.h>
 #include <string.h>
 #include <math.h>
-#include <time.h>
 
 //=============================================================================
 // Thread-Local Error Handling
@@ -775,8 +775,7 @@ brain_salience_t brain_evaluate_salience_temporal(
         return salience;  // Return zeros
     }
 
-    struct timespec start, end;
-    clock_gettime(CLOCK_MONOTONIC, &start);
+    uint64_t start_time = nimcp_time_monotonic_us();
 
     nimcp_mutex_lock(&eval->eval_lock);
 
@@ -863,9 +862,7 @@ brain_salience_t brain_evaluate_salience_temporal(
         }
     }
 
-    clock_gettime(CLOCK_MONOTONIC, &end);
-    uint64_t elapsed_us = (end.tv_sec - start.tv_sec) * 1000000 +
-                         (end.tv_nsec - start.tv_nsec) / 1000;
+    uint64_t elapsed_us = nimcp_time_elapsed_us(start_time);
     eval->total_eval_time_us += elapsed_us;
 
     return salience;

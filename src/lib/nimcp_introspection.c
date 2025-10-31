@@ -34,16 +34,11 @@
 #include "utils/nimcp_thread.h"
 #include "utils/nimcp_memory.h"
 #include "utils/nimcp_vector.h"
-#include "utils/nimcp_thread.h"
+#include "utils/nimcp_time.h"
 #include <stdlib.h>
-#include "utils/nimcp_thread.h"
 #include <string.h>
-#include "utils/nimcp_thread.h"
 #include <math.h>
-#include "utils/nimcp_thread.h"
-#include "utils/nimcp_thread.h"
 #include <time.h>
-#include "utils/nimcp_thread.h"
 
 /* ========================================================================
  * INTERNAL STRUCTURES
@@ -128,7 +123,6 @@ static void pattern_registry_update(pattern_registry_t* registry,
                                     const char* name, float activity);
 static void activity_history_add(activity_history_buffer_t* history,
                                  const activity_history_entry_t* entry);
-static uint64_t get_timestamp_ms(void);
 static float compute_entropy(const float* values, uint32_t count);
 static float compute_cosine_similarity(const float* a, const float* b,
                                        uint32_t dimension);
@@ -344,7 +338,7 @@ neuron_population_t brain_get_active_population(
     /* WHAT: Set population metadata */
     population.total_neurons = total_neurons;
     population.activity_threshold = threshold;
-    population.timestamp = get_timestamp_ms();
+    population.timestamp = nimcp_time_monotonic_ms();
     population.num_active = active_count;
 
     if (active_count == 0) {
@@ -559,7 +553,7 @@ brain_state_t brain_get_internal_state(
 
     /* WHAT: Set metadata */
     state.compression_ratio = (float)total_neurons / (float)sampled_neurons;
-    state.timestamp = get_timestamp_ms();
+    state.timestamp = nimcp_time_monotonic_ms();
 
     /* WHAT: Generate human-readable interpretation */
     /* WHY: Help developers understand what state means */
@@ -788,7 +782,7 @@ static void pattern_registry_update(
         entry->current_activity = activity;
         entry->activity_sum += activity;
         entry->activation_count++;
-        entry->last_activated = get_timestamp_ms();
+        entry->last_activated = nimcp_time_monotonic_ms();
     } else {
         /* WHAT: Create new pattern entry */
         entry = (pattern_entry_t*)nimcp_calloc(1, sizeof(pattern_entry_t));
@@ -802,7 +796,7 @@ static void pattern_registry_update(
         entry->activity_sum = activity;
         entry->activation_count = 1;
         entry->pattern_strength = 0.5f;  /* Initial strength */
-        entry->first_learned = get_timestamp_ms();
+        entry->first_learned = nimcp_time_monotonic_ms();
         entry->last_activated = entry->first_learned;
 
         /* WHAT: Insert into hash table */
@@ -1175,16 +1169,6 @@ void introspection_reset_stats(introspection_context_t context) {
  * HELPER FUNCTIONS
  * ======================================================================== */
 
-/**
- * WHAT: Get current timestamp in milliseconds
- * WHY: Timestamp activity events
- * HOW: Use clock_gettime with CLOCK_MONOTONIC
- */
-static uint64_t get_timestamp_ms(void) {
-    struct timespec ts;
-    clock_gettime(CLOCK_MONOTONIC, &ts);
-    return (uint64_t)ts.tv_sec * 1000 + (uint64_t)ts.tv_nsec / 1000000;
-}
 
 /**
  * WHAT: Compute Shannon entropy of values
