@@ -358,10 +358,6 @@ uint32_t nimcp_read_uint32(NimcpSerializer* serializer) {
     return value;
 }
 
-
-
-}
-
 /**
  * @brief Reads an unsigned 8-bit integer from the serializer
  * @param serializer The serializer instance

@@ -32,7 +32,7 @@ nimcp_result_t nimcp_queue_create(const nimcp_queue_config_t* config,
     q->head = q->tail = 0;
     memset(&q->status, 0, sizeof(nimcp_queue_status_t));
 
-    if (nimcp_mutex_init(&q->mutex) != NIMCP_SUCCESS ||
+    if (nimcp_mutex_init(&q->mutex, NULL) != NIMCP_SUCCESS ||
         nimcp_cond_init(&q->not_empty) != NIMCP_SUCCESS ||
         nimcp_cond_init(&q->not_full) != NIMCP_SUCCESS) {
         nimcp_free(q->buffer);

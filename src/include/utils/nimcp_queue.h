@@ -1,6 +1,11 @@
 #ifndef NIMCP_QUEUE_H
 #define NIMCP_QUEUE_H
+
+#include <stdint.h>
+#include <stdbool.h>
+#include <stddef.h>
 #include <pthread.h>
+#include "nimcp_common.h"
 
 // Queue configuration
 typedef struct {

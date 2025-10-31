@@ -23,12 +23,12 @@ set(NIMCP_CORE_SOURCES
     utils/nimcp_hash_table.c                         # Generic hash table implementation
     logging/nimcp_logging.c                          # Logging system
     utils/nimcp_btree.c                              # B-tree implementation
+    utils/nimcp_queue.c                              # Queue implementation
+    utils/nimcp_graph.c                              # Graph data structure
+    utils/nimcp_serialization.c                      # Serialization utilities
+    # utils/nimcp_json.c                             # JSON (function name conflicts with jansson)
     # utils/nimcp_validate.c                         # Validate (missing NIMCP_FIELD_* types)
-    # utils/nimcp_json.c                             # JSON (structural issues)
-    # utils/nimcp_queue.c                            # Queue (needs nimcp_common.h)
-    # utils/nimcp_queue_manager.c                    # Queue manager (needs dependencies)
-    # utils/nimcp_graph.c                            # Graph (needs dependencies)
-    # utils/nimcp_serialization.c                    # Serialization (needs common)
+    # utils/nimcp_queue_manager.c                    # Queue manager (needs messages module)
     ${CMAKE_SOURCE_DIR}/src/python/nimcp_module.c   # Add the Python module source
     ${CMAKE_SOURCE_DIR}/src/python/nimcp_types.c    # Add the Python types
 )
@@ -50,6 +50,7 @@ target_include_directories(nimcp_core
 target_link_libraries(nimcp_core
     PUBLIC
         Python3::Python
+        lz4
 )
 
 # Enable Position Independent Code and set library properties
