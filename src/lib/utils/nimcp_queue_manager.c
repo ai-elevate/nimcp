@@ -3,15 +3,55 @@
  * @brief Implementation of thread pool-based queue management system
  */
 
+#define NIMCP_INTERNAL
 #include "utils/nimcp_queue_manager.h"
 #include "utils/nimcp_memory.h"
+#include "utils/nimcp_thread_pool.h"
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
 
 // Default configuration values
 #define DEFAULT_WORKER_THREADS 4
-#define DEFAULT_THREAD_POOL_FLAGS (POOL_FLAG_DYNAMIC_SCALING | POOL_FLAG_MONITOR_STATS)
+
+// Forward declarations of helper functions
+static uint64_t nimcp_get_timestamp_ms(void);
+static void nimcp_yield_thread(void);
+
+// Message helper functions (simple implementations since messages module was removed)
+static nimcp_result_t nimcp_msg_clone(const nimcp_message_t* src, nimcp_message_t** dst) {
+    if (!src || !dst) return NIMCP_INVALID_PARAM;
+
+    nimcp_message_t* msg = nimcp_malloc(sizeof(nimcp_message_t));
+    if (!msg) return NIMCP_NO_MEMORY;
+
+    msg->type = src->type;
+    msg->flags = src->flags;
+    msg->size = src->size;
+
+    if (src->data && src->size > 0) {
+        msg->data = nimcp_malloc(src->size);
+        if (!msg->data) {
+            nimcp_free(msg);
+            return NIMCP_NO_MEMORY;
+        }
+        memcpy(msg->data, src->data, src->size);
+    } else {
+        msg->data = NULL;
+    }
+
+    *dst = msg;
+    return NIMCP_SUCCESS;
+}
+
+static void nimcp_msg_destroy(nimcp_message_t* msg) {
+    if (msg) {
+        if (msg->data) {
+            nimcp_free(msg->data);
+        }
+        nimcp_free(msg);
+    }
+}
 
 static nimcp_result_t validate_config(const nimcp_queue_manager_config_t* config) {
     if (!config) return NIMCP_INVALID_PARAM;
@@ -168,11 +208,10 @@ static nimcp_result_t submit_queue_operation(
     op_ctx->result = manager; // Store manager reference for handler
     atomic_store(&op_ctx->completed, false);
     
-    nimcp_result_t result = nimcp_thread_pool_submit(
+    nimcp_result_t result = nimcp_pool_submit(
         manager->thread_pool,
         queue_operation_handler,
-        op_ctx,
-        op_ctx->timeout_ms
+        op_ctx
     );
     
     if (result != NIMCP_SUCCESS) {
@@ -200,18 +239,12 @@ nimcp_result_t nimcp_queue_manager_create(
     nimcp_result_t result = validate_config(config);
     if (result != NIMCP_SUCCESS) return result;
 
-    nimcp_queue_manager_t* mgr = nimcp_memory_allocate(
-        sizeof(nimcp_queue_manager_t),
-        "queue_manager"
-    );
+    nimcp_queue_manager_t* mgr = nimcp_calloc(1, sizeof(nimcp_queue_manager_t));
     if (!mgr) return NIMCP_NO_MEMORY;
 
-    mgr->channels = nimcp_memory_allocate(
-        config->max_channels * sizeof(nimcp_queue_channel_t),
-        "queue_channels"
-    );
+    mgr->channels = nimcp_calloc(config->max_channels, sizeof(nimcp_queue_channel_t));
     if (!mgr->channels) {
-        nimcp_memory_free(mgr, "queue_manager");
+        nimcp_free(mgr);
         return NIMCP_NO_MEMORY;
     }
 
@@ -222,20 +255,20 @@ nimcp_result_t nimcp_queue_manager_create(
             for (size_t j = 0; j < i; j++) {
                 destroy_channel(&mgr->channels[j]);
             }
-            nimcp_memory_free(mgr->channels, "queue_channels");
-            nimcp_memory_free(mgr, "queue_manager");
+            nimcp_free(mgr->channels);
+            nimcp_free(mgr);
             return result;
         }
     }
 
     // Create thread pool
-    result = nimcp_thread_pool_create(&config->thread_pool_config, &mgr->thread_pool);
-    if (result != NIMCP_SUCCESS) {
+    mgr->thread_pool = nimcp_pool_create(config->worker_threads > 0 ? config->worker_threads : DEFAULT_WORKER_THREADS);
+    if (!mgr->thread_pool) {
         for (size_t i = 0; i < config->max_channels; i++) {
             destroy_channel(&mgr->channels[i]);
         }
-        nimcp_memory_free(mgr->channels, "queue_channels");
-        nimcp_memory_free(mgr, "queue_manager");
+        nimcp_free(mgr->channels);
+        nimcp_free(mgr);
         return result;
     }
 
@@ -253,15 +286,15 @@ nimcp_result_t nimcp_queue_manager_destroy(nimcp_queue_manager_handle_t manager)
     atomic_store(&manager->shutting_down, true);
     
     // Destroy thread pool
-    nimcp_thread_pool_destroy(manager->thread_pool);
+    nimcp_pool_destroy(manager->thread_pool);
 
     // Cleanup channels
     for (size_t i = 0; i < manager->config.max_channels; i++) {
         destroy_channel(&manager->channels[i]);
     }
 
-    nimcp_memory_free(manager->channels, "queue_channels");
-    nimcp_memory_free(manager, "queue_manager");
+    nimcp_free(manager->channels);
+    nimcp_free(manager);
     
     return NIMCP_SUCCESS;
 }
@@ -276,10 +309,13 @@ nimcp_result_t nimcp_queue_manager_enqueue(
         return NIMCP_INVALID_PARAM;
     }
 
+    // Map message flags to queue priority
+    // Lower 2 bits of flags can indicate priority (0=low, 1=normal, 2=high)
     nimcp_queue_priority_t priority = NIMCP_QUEUE_PRIORITY_NORMAL;
-    if (message->header.priority == NIMCP_MSG_PRIORITY_HIGH) {
+    uint32_t priority_bits = message->flags & 0x3;
+    if (priority_bits == 2) {
         priority = NIMCP_QUEUE_PRIORITY_HIGH;
-    } else if (message->header.priority == NIMCP_MSG_PRIORITY_LOW) {
+    } else if (priority_bits == 0) {
         priority = NIMCP_QUEUE_PRIORITY_LOW;
     }
 

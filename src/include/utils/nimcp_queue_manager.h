@@ -8,7 +8,7 @@
 
 #include "nimcp_common.h"
 #include "nimcp_queue.h"
-#include "../messages/nimcp_messages.h"
+#include "nimcp_thread_pool.h"
 
 
 // Constants
@@ -57,7 +57,6 @@ typedef struct {
     bool blocking_mode;         // Whether queues should block when full/empty
     size_t max_channels;        // Maximum number of channels supported
     size_t worker_threads;      // Number of worker threads for queue operations
-    pool_config_t thread_pool_config; // Thread pool configuration
 } nimcp_queue_manager_config_t;
 
 // Queue statistics
