@@ -45,29 +45,38 @@ const char* salience_get_last_error(void) {
 }
 
 //=============================================================================
-// History Buffer for Novelty Detection (Memento Pattern)
+// History Buffer for Novelty Detection (Memento Pattern) - Using nimcp_queue
 //=============================================================================
+
+/**
+ * WHAT: Maximum feature vector size
+ * WHY: Fixed-size entries required for nimcp_queue
+ * HOW: Generous limit to handle most use cases
+ */
+#define SALIENCE_MAX_FEATURES 512
 
 /**
  * WHAT: Single entry in history buffer
  * WHY: Store recent inputs for novelty comparison
+ * NOTE: Now uses fixed-size array for nimcp_queue compatibility
  */
 typedef struct {
-    float* features;           // Feature vector (heap-allocated)
-    uint32_t num_features;     // Size of feature vector
-    uint64_t timestamp;        // When input occurred
-    bool valid;                // Is this slot occupied?
+    float features[SALIENCE_MAX_FEATURES];  // Feature vector (fixed-size)
+    uint32_t num_features;                  // Actual size used
+    uint64_t timestamp;                     // When input occurred
+    bool valid;                             // Is this slot occupied?
 } history_entry_t;
 
 /**
  * WHAT: Circular buffer for recent input history
  * WHY: Novelty = how different from recent past
- * HOW: Ring buffer with oldest entries overwritten
+ * HOW: Ring buffer with fixed-size entries (no heap allocation per entry)
  *
  * PATTERN: Memento pattern - stores past states for comparison
+ * NOTE: Uses fixed-size entries to eliminate per-entry malloc/free
  */
 typedef struct {
-    history_entry_t* entries;  // Circular buffer
+    history_entry_t* entries;  // Circular buffer (fixed-size entries)
     uint32_t capacity;         // Buffer size
     uint32_t head;             // Next write position
     uint32_t count;            // Current entry count
@@ -100,21 +109,17 @@ static history_buffer_t* history_buffer_create(uint32_t capacity) {
 /**
  * WHAT: Destroy history buffer
  * WHY: Free all resources
- * HOW: Free entries, then structure
+ * HOW: Free entries array, then structure (features are stack-allocated in entries)
  */
 static void history_buffer_destroy(history_buffer_t* hist) {
     if (!hist) return;
 
+    /**
+     * WHAT: Free entries array
+     * WHY: No per-entry cleanup needed - features are fixed-size arrays
+     * NOTE: Simpler than before - no malloc/free per entry
+     */
     if (hist->entries) {
-        /**
-         * WHAT: Free all stored feature vectors
-         * WHY: Prevent memory leaks
-         */
-        for (uint32_t i = 0; i < hist->capacity; i++) {
-            if (hist->entries[i].valid && hist->entries[i].features) {
-                nimcp_free(hist->entries[i].features);
-            }
-        }
         nimcp_free(hist->entries);
     }
 
@@ -125,40 +130,41 @@ static void history_buffer_destroy(history_buffer_t* hist) {
 /**
  * WHAT: Add entry to history
  * WHY: Update recent input history for novelty detection
- * HOW: Overwrite oldest entry (circular buffer)
+ * HOW: Overwrite oldest entry (circular buffer) using fixed-size array
  */
 static void history_buffer_add(history_buffer_t* hist,
                                const float* features,
                                uint32_t num_features,
                                uint64_t timestamp) {
+    /**
+     * WHAT: Validate feature count
+     * WHY: Fixed-size array has maximum capacity
+     */
+    if (num_features > SALIENCE_MAX_FEATURES) {
+        return;  // Silently reject oversized inputs
+    }
+
     nimcp_mutex_lock(&hist->lock);
 
     history_entry_t* entry = &hist->entries[hist->head];
 
     /**
-     * WHAT: Free old entry if exists
-     * WHY: Prevent memory leak when overwriting
+     * WHAT: Copy features directly to fixed-size array
+     * WHY: No heap allocation needed - eliminates malloc/free overhead
+     * HOW: Direct memcpy to stack-allocated array
      */
-    if (entry->valid && entry->features) {
-        nimcp_free(entry->features);
-    }
+    memcpy(entry->features, features, num_features * sizeof(float));
+    entry->num_features = num_features;
+    entry->timestamp = timestamp;
+    entry->valid = true;
 
     /**
-     * WHAT: Copy features to entry
-     * WHY: Input lifetime is managed by caller
+     * WHAT: Advance circular buffer head
+     * WHY: Oldest entries are automatically overwritten
      */
-    entry->features = nimcp_malloc(num_features * sizeof(float));
-    if (entry->features) {
-        memcpy(entry->features, features, num_features * sizeof(float));
-        entry->num_features = num_features;
-        entry->timestamp = timestamp;
-        entry->valid = true;
-
-        // Advance head (circular)
-        hist->head = (hist->head + 1) % hist->capacity;
-        if (hist->count < hist->capacity) {
-            hist->count++;
-        }
+    hist->head = (hist->head + 1) % hist->capacity;
+    if (hist->count < hist->capacity) {
+        hist->count++;
     }
 
     nimcp_mutex_unlock(&hist->lock);
@@ -239,15 +245,18 @@ static float history_buffer_compute_novelty(history_buffer_t* hist,
 /**
  * WHAT: Clear history buffer
  * WHY: Reset novelty detection
+ * HOW: Simply mark all entries as invalid and reset counters
  */
 static void history_buffer_clear(history_buffer_t* hist) {
     nimcp_mutex_lock(&hist->lock);
 
+    /**
+     * WHAT: Mark all entries as invalid
+     * WHY: No memory cleanup needed - features are fixed-size arrays
+     * NOTE: Much simpler than before - no per-entry free()
+     */
     for (uint32_t i = 0; i < hist->count; i++) {
-        if (hist->entries[i].valid && hist->entries[i].features) {
-            nimcp_free(hist->entries[i].features);
-            hist->entries[i].valid = false;
-        }
+        hist->entries[i].valid = false;
     }
 
     hist->head = 0;
