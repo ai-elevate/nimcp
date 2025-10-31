@@ -33,6 +33,7 @@
 #include "nimcp_adaptive.h"
 #include "utils/nimcp_thread.h"
 #include "utils/nimcp_memory.h"
+#include "utils/nimcp_vector.h"
 #include "utils/nimcp_thread.h"
 #include <stdlib.h>
 #include "utils/nimcp_thread.h"
@@ -1231,30 +1232,10 @@ static float compute_cosine_similarity(
     const float* b,
     uint32_t dimension
 ) {
-    if (a == NULL || b == NULL || dimension == 0) {
-        return 0.0f;
-    }
-
-    float dot_product = 0.0f;
-    float norm_a = 0.0f;
-    float norm_b = 0.0f;
-
-    for (uint32_t i = 0; i < dimension; i++) {
-        dot_product += a[i] * b[i];
-        norm_a += a[i] * a[i];
-        norm_b += b[i] * b[i];
-    }
-
-    float denom = sqrtf(norm_a) * sqrtf(norm_b);
-    if (denom < 1e-10f) {
-        /* WHAT: Both vectors are zero or near-zero */
-        /* WHY: Cosine similarity is undefined for zero vectors */
-        /* HOW: If both are zero, they're identical -> similarity = 1.0 */
-        if (norm_a < 1e-10f && norm_b < 1e-10f) {
-            return 1.0f;  /* Both zero = perfect match */
-        }
-        return 0.0f;  /* One zero, one non-zero = no similarity */
-    }
-
-    return dot_product / denom;
+    /**
+     * WHAT: Delegate to vector utility function
+     * WHY: Eliminate code duplication, use centralized implementation
+     * HOW: Direct call to nimcp_vector_cosine_similarity
+     */
+    return nimcp_vector_cosine_similarity(a, b, dimension);
 }

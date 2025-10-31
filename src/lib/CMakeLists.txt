@@ -18,6 +18,7 @@ set(NIMCP_CORE_SOURCES
     utils/nimcp_memory.c                             # Memory tracking and allocation
     utils/nimcp_thread.c                             # Thread utilities and wrappers
     utils/nimcp_thread_pool.c                        # Thread pool for batch processing
+    utils/nimcp_vector.c                             # Vector math operations
     ${CMAKE_SOURCE_DIR}/src/python/nimcp_module.c   # Add the Python module source
     ${CMAKE_SOURCE_DIR}/src/python/nimcp_types.c    # Add the Python types
 )

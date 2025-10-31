@@ -22,6 +22,7 @@
 #include "utils/nimcp_thread.h"
 #include "utils/nimcp_thread_pool.h"
 #include "utils/nimcp_memory.h"
+#include "utils/nimcp_vector.h"
 #include <stdio.h>
 #include <string.h>
 #include <math.h>
@@ -207,22 +208,11 @@ static float history_buffer_compute_novelty(history_buffer_t* hist,
         }
 
         /**
-         * WHAT: Compute cosine distance
+         * WHAT: Compute cosine distance using vector utilities
          * WHY: Scale-invariant similarity metric
-         * HOW: 1.0 - cosine_similarity
+         * HOW: Use nimcp_vector_cosine_distance for consistency
          */
-        float dot_product = 0.0f;
-        float norm_a = 0.0f;
-        float norm_b = 0.0f;
-
-        for (uint32_t j = 0; j < num_features; j++) {
-            dot_product += features[j] * entry->features[j];
-            norm_a += features[j] * features[j];
-            norm_b += entry->features[j] * entry->features[j];
-        }
-
-        float cosine_sim = dot_product / (sqrtf(norm_a) * sqrtf(norm_b) + 1e-10f);
-        float distance = 1.0f - cosine_sim;
+        float distance = nimcp_vector_cosine_distance(features, entry->features, num_features);
 
         if (distance < min_distance) {
             min_distance = distance;
