@@ -8,7 +8,7 @@
  */
 
 #include "utils/nimcp_memory.h"
-#include "../include/utils/nimcp_thread.h"
+#include "utils/nimcp_thread.h"
 
 /**
  * WHAT: Undefine macro redirections
@@ -21,16 +21,16 @@
 #undef free
 
 #include <stdlib.h>
-#include "../include/utils/nimcp_thread.h"
+#include "utils/nimcp_thread.h"
 #include <string.h>
-#include "../include/utils/nimcp_thread.h"
+#include "utils/nimcp_thread.h"
 #include <stdio.h>
-#include "../include/utils/nimcp_thread.h"
+#include "utils/nimcp_thread.h"
 #include <time.h>
-#include "../include/utils/nimcp_thread.h"
-#include "../include/utils/nimcp_thread.h"
+#include "utils/nimcp_thread.h"
+#include "utils/nimcp_thread.h"
 #include <stdarg.h>
-#include "../include/utils/nimcp_thread.h"
+#include "utils/nimcp_thread.h"
 
 //=============================================================================
 // Internal Structures

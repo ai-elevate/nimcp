@@ -27,22 +27,22 @@
  */
 
 #include "nimcp_introspection.h"
-#include "../include/utils/nimcp_thread.h"
+#include "utils/nimcp_thread.h"
 #include "nimcp_brain.h"
-#include "../include/utils/nimcp_thread.h"
+#include "utils/nimcp_thread.h"
 #include "nimcp_adaptive.h"
-#include "../include/utils/nimcp_thread.h"
+#include "utils/nimcp_thread.h"
 #include "utils/nimcp_memory.h"
-#include "../include/utils/nimcp_thread.h"
+#include "utils/nimcp_thread.h"
 #include <stdlib.h>
-#include "../include/utils/nimcp_thread.h"
+#include "utils/nimcp_thread.h"
 #include <string.h>
-#include "../include/utils/nimcp_thread.h"
+#include "utils/nimcp_thread.h"
 #include <math.h>
-#include "../include/utils/nimcp_thread.h"
-#include "../include/utils/nimcp_thread.h"
+#include "utils/nimcp_thread.h"
+#include "utils/nimcp_thread.h"
 #include <time.h>
-#include "../include/utils/nimcp_thread.h"
+#include "utils/nimcp_thread.h"
 
 /* ========================================================================
  * INTERNAL STRUCTURES

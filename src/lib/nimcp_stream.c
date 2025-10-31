@@ -23,20 +23,20 @@
  */
 
 #include "nimcp_stream.h"
-#include "../include/utils/nimcp_thread.h"
+#include "utils/nimcp_thread.h"
 #include "utils/nimcp_memory.h"
-#include "../include/utils/nimcp_thread.h"
+#include "utils/nimcp_thread.h"
 #include <stdio.h>
-#include "../include/utils/nimcp_thread.h"
+#include "utils/nimcp_thread.h"
 #include <string.h>
-#include "../include/utils/nimcp_thread.h"
-#include "../include/utils/nimcp_thread.h"
+#include "utils/nimcp_thread.h"
+#include "utils/nimcp_thread.h"
 #include <time.h>
-#include "../include/utils/nimcp_thread.h"
+#include "utils/nimcp_thread.h"
 #include <unistd.h>
-#include "../include/utils/nimcp_thread.h"
+#include "utils/nimcp_thread.h"
 #include <stdatomic.h>
-#include "../include/utils/nimcp_thread.h"
+#include "utils/nimcp_thread.h"
 
 //=============================================================================
 // Thread-Local Error Handling

@@ -2,7 +2,7 @@
 // nimcp_thread.c - NIMCP Thread Utilities Implementation
 //=============================================================================
 
-#include "../../include/utils/nimcp_thread.h"
+#include "utils/nimcp_thread.h"
 #include <stdlib.h>
 #include <string.h>
 #include <errno.h>
