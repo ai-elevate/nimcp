@@ -5,6 +5,7 @@
 
 #include "../include/nimcp_curiosity.h"
 #include "../include/nimcp_brain.h"
+#include "utils/nimcp_hash_table.h"
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
@@ -16,40 +17,16 @@
 //=============================================================================
 
 #define HASH_TABLE_SIZE 4096        // Power of 2 for fast modulo via bitwise AND
-#define HASH_TABLE_MASK 4095        // HASH_TABLE_SIZE - 1
-
-/**
- * @brief Hash function for concept strings
- *
- * Uses FNV-1a hash algorithm for fast, uniform distribution.
- * FNV-1a provides good avalanche properties and minimal collisions.
- *
- * Time Complexity: O(n) where n is string length (unavoidable)
- * Space Complexity: O(1)
- *
- * @param key Concept string to hash
- * @return Hash value in range [0, UINT32_MAX]
- */
-static uint32_t hash_string(const char* key) {
-    uint32_t hash = 2166136261u;  // FNV offset basis
-
-    while (*key) {
-        hash ^= (uint32_t)(unsigned char)tolower(*key++);
-        hash *= 16777619u;  // FNV prime
-    }
-
-    return hash;
-}
 
 //=============================================================================
 // Internal Structures
 //=============================================================================
 
 /**
- * @brief Hash table bucket entry for concept storage
+ * @brief Concept data stored in hash table
  *
- * Implements chaining collision resolution using linked list.
- * Each bucket stores concepts that hash to the same index.
+ * NOTE: Hash table now handles chaining internally via nimcp_hash_table utility.
+ * No need for explicit 'next' pointer.
  */
 typedef struct concept_bucket_struct {
     char concept[256];
@@ -58,8 +35,29 @@ typedef struct concept_bucket_struct {
     uint64_t last_encountered;
     char** related_concepts;
     uint32_t num_related;
-    struct concept_bucket_struct* next;  // Chaining for collisions
 } concept_bucket_t;
+
+/**
+ * @brief Value destructor for concept_bucket_t
+ *
+ * WHAT: Clean up concept bucket and related concepts
+ * WHY: Called by hash table when entry is removed or table destroyed
+ * HOW: Free related_concepts array and strings
+ */
+static void concept_bucket_destructor(void* value, size_t value_size) {
+    (void)value_size;  // Unused parameter
+    if (!value) return;
+
+    concept_bucket_t* bucket = (concept_bucket_t*)value;
+
+    // Free related concepts
+    if (bucket->related_concepts) {
+        for (uint32_t j = 0; j < bucket->num_related; j++) {
+            free(bucket->related_concepts[j]);
+        }
+        free(bucket->related_concepts);
+    }
+}
 
 /**
  * @brief Question history entry
@@ -140,8 +138,8 @@ static const question_strategy_t* get_question_strategy(question_type_t type);
 struct curiosity_engine_struct {
     char learner_name[128];
 
-    // Hash table for O(1) concept lookup
-    concept_bucket_t* concept_hash_table[HASH_TABLE_SIZE];
+    // Hash table for O(1) concept lookup (using nimcp_hash_table utility)
+    hash_table_t* concept_hash_table;
     uint32_t total_concepts;
 
     // Question history
@@ -628,30 +626,11 @@ static concept_bucket_t* find_concept_bucket(
     curiosity_engine_t engine,
     const char* concept)
 {
-    if (!engine || !concept) {
+    if (!engine || !concept || !engine->concept_hash_table) {
         return NULL;
     }
 
-    char normalized[256];
-    normalize_string(concept, normalized, sizeof(normalized));
-
-    uint32_t hash = hash_string(normalized);
-    uint32_t index = hash & HASH_TABLE_MASK;  // Fast modulo
-
-    concept_bucket_t* bucket = engine->concept_hash_table[index];
-
-    while (bucket) {
-        char bucket_norm[256];
-        normalize_string(bucket->concept, bucket_norm, sizeof(bucket_norm));
-
-        if (strcmp(normalized, bucket_norm) == 0) {
-            return bucket;
-        }
-
-        bucket = bucket->next;
-    }
-
-    return NULL;
+    return (concept_bucket_t*)hash_table_lookup_string(engine->concept_hash_table, concept);
 }
 
 /**
@@ -682,65 +661,42 @@ static concept_bucket_t* add_concept_to_hash_table(
     }
 
     // Create new bucket
-    concept_bucket_t* new_bucket = calloc(1, sizeof(concept_bucket_t));
-    if (!new_bucket) {
+    concept_bucket_t new_bucket = {0};
+    strncpy(new_bucket.concept, concept, sizeof(new_bucket.concept) - 1);
+    new_bucket.familiarity = 0.0f;
+    new_bucket.exposure_count = 1;
+    new_bucket.last_encountered = 0;
+    new_bucket.related_concepts = NULL;
+    new_bucket.num_related = 0;
+
+    // Insert into hash table
+    if (!hash_table_insert_string(engine->concept_hash_table, concept,
+                                   &new_bucket, sizeof(concept_bucket_t))) {
         return NULL;
     }
 
-    strncpy(new_bucket->concept, concept, sizeof(new_bucket->concept) - 1);
-    new_bucket->familiarity = 0.0f;
-    new_bucket->exposure_count = 1;
-    new_bucket->last_encountered = 0;
-    new_bucket->related_concepts = NULL;
-    new_bucket->num_related = 0;
-    new_bucket->next = NULL;
-
-    // Insert at head of chain
-    char normalized[256];
-    normalize_string(concept, normalized, sizeof(normalized));
-    uint32_t hash = hash_string(normalized);
-    uint32_t index = hash & HASH_TABLE_MASK;
-
-    new_bucket->next = engine->concept_hash_table[index];
-    engine->concept_hash_table[index] = new_bucket;
     engine->total_concepts++;
 
-    return new_bucket;
+    // Return pointer to the stored bucket
+    return find_concept_bucket(engine, concept);
 }
 
 /**
  * @brief Free all concepts in hash table
  *
- * Traverses all buckets and chains, freeing memory.
- * Called during engine destruction.
+ * WHAT: Destroy hash table and all concepts
+ * WHY: Called during engine destruction
+ * HOW: Delegate to hash_table_destroy (calls concept_bucket_destructor)
  *
  * Complexity: O(n) where n is total concepts
  */
 static void free_hash_table(curiosity_engine_t engine) {
-    if (!engine) {
+    if (!engine || !engine->concept_hash_table) {
         return;
     }
 
-    for (uint32_t i = 0; i < HASH_TABLE_SIZE; i++) {
-        concept_bucket_t* bucket = engine->concept_hash_table[i];
-
-        while (bucket) {
-            concept_bucket_t* next = bucket->next;
-
-            // Free related concepts
-            if (bucket->related_concepts) {
-                for (uint32_t j = 0; j < bucket->num_related; j++) {
-                    free(bucket->related_concepts[j]);
-                }
-                free(bucket->related_concepts);
-            }
-
-            free(bucket);
-            bucket = next;
-        }
-
-        engine->concept_hash_table[i] = NULL;
-    }
+    hash_table_destroy(engine->concept_hash_table);
+    engine->concept_hash_table = NULL;
 }
 
 //=============================================================================
@@ -774,8 +730,20 @@ curiosity_engine_t curiosity_engine_create(const char* learner_name) {
 
     strncpy(engine->learner_name, learner_name, sizeof(engine->learner_name) - 1);
 
-    // Initialize hash table
-    memset(engine->concept_hash_table, 0, sizeof(engine->concept_hash_table));
+    // Initialize hash table with nimcp_hash_table utility
+    hash_table_config_t ht_config = {
+        .initial_buckets = HASH_TABLE_SIZE,
+        .key_type = HASH_KEY_STRING,
+        .hash_algorithm = HASH_ALG_FNV1A,
+        .case_insensitive = true,
+        .value_destructor = concept_bucket_destructor,
+        .thread_safe = false
+    };
+    engine->concept_hash_table = hash_table_create(&ht_config);
+    if (!engine->concept_hash_table) {
+        free(engine);
+        return NULL;
+    }
     engine->total_concepts = 0;
 
     // Allocate question storage
@@ -1531,24 +1499,46 @@ static bool concept_in_domain(const char* concept, const char* domain) {
  *
  * Complexity: O(n) where n is total concepts
  */
+/**
+ * @brief Context for count_domain_concepts iteration
+ */
+typedef struct {
+    const char* domain;
+    uint32_t count;
+} count_domain_context_t;
+
+/**
+ * @brief Iterator callback for counting domain concepts
+ */
+static bool count_domain_callback(const void* key, size_t key_size,
+                                   void* value, size_t value_size,
+                                   void* user_data) {
+    concept_bucket_t* bucket = (concept_bucket_t*)value;
+    count_domain_context_t* ctx = (count_domain_context_t*)user_data;
+
+    if (concept_in_domain(bucket->concept, ctx->domain)) {
+        ctx->count++;
+    }
+
+    return true;  // Continue iteration
+}
+
 static uint32_t count_domain_concepts(
     curiosity_engine_t engine,
     const char* domain)
 {
-    uint32_t count = 0;
-
-    for (uint32_t i = 0; i < HASH_TABLE_SIZE; i++) {
-        concept_bucket_t* bucket = engine->concept_hash_table[i];
-
-        while (bucket) {
-            if (concept_in_domain(bucket->concept, domain)) {
-                count++;
-            }
-            bucket = bucket->next;
-        }
+    if (!engine || !engine->concept_hash_table) {
+        return 0;
     }
 
-    return count;
+    count_domain_context_t ctx = {
+        .domain = domain,
+        .count = 0
+    };
+
+    hash_table_iterate(engine->concept_hash_table, count_domain_callback, &ctx);
+
+    return ctx.count;
 }
 
 /**
