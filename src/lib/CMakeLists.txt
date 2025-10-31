@@ -21,13 +21,14 @@ set(NIMCP_CORE_SOURCES
     utils/nimcp_vector.c                             # Vector math operations
     utils/nimcp_time.c                               # Time and timing utilities
     utils/nimcp_hash_table.c                         # Generic hash table implementation
+    logging/nimcp_logging.c                          # Logging system
     # utils/nimcp_queue.c                            # Queue (needs nimcp_common.h)
-    # utils/nimcp_queue_manager.c                    # Queue manager (needs messages)
-    # utils/nimcp_btree.c                            # B-tree (needs logging)
-    # utils/nimcp_graph.c                            # Graph (needs monitoring)
-    # utils/nimcp_json.c                             # JSON (needs logging)
+    # utils/nimcp_queue_manager.c                    # Queue manager (needs dependencies)
+    # utils/nimcp_btree.c                            # B-tree (needs logging macros)
+    # utils/nimcp_graph.c                            # Graph (needs dependencies)
+    # utils/nimcp_json.c                             # JSON (needs logging macros)
     # utils/nimcp_serialization.c                    # Serialization (needs common)
-    # utils/nimcp_validate.c                         # Validate (needs logging)
+    # utils/nimcp_validate.c                         # Validate (needs logging macros)
     ${CMAKE_SOURCE_DIR}/src/python/nimcp_module.c   # Add the Python module source
     ${CMAKE_SOURCE_DIR}/src/python/nimcp_types.c    # Add the Python types
 )
