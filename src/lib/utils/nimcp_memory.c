@@ -858,6 +858,13 @@ static void untrack_allocation(void* ptr) {
 static bool check_double_free(void* ptr) {
     if (!ptr) return false;
 
+    // WHY: Only check when tracking is enabled
+    // If tracking is disabled, nothing is in the tracking list,
+    // so all pointers would be flagged as double-free (false positive)
+    if (!g_memory_state.tracking_enabled) {
+        return false;  // Can't detect double-free without tracking
+    }
+
     nimcp_mutex_lock(&g_memory_state.lock);
     memory_block_t* current = g_memory_state.blocks;
     bool found = false;
