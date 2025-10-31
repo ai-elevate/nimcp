@@ -304,4 +304,56 @@ uint32_t nimcp_ntohl(uint32_t value);
  */
 uint64_t nimcp_ntohll(uint64_t value);
 
+/* ============================================================================
+ * State Validation Types and Constants
+ * ============================================================================ */
+
+/* Field type enumeration */
+typedef enum {
+    NIMCP_FIELD_INTEGER = 0,
+    NIMCP_FIELD_FLOAT = 1,
+    NIMCP_FIELD_STRING = 2,
+    NIMCP_FIELD_ARRAY = 3
+} NimcpFieldType;
+
+/* Array element type enumeration */
+typedef enum {
+    NIMCP_ARRAY_INTEGER = 0,
+    NIMCP_ARRAY_FLOAT = 1,
+    NIMCP_ARRAY_STRING = 2
+} NimcpArrayElementType;
+
+/* State field descriptor */
+typedef struct {
+    NimcpFieldType type;    /* Field type */
+    uint32_t offset;        /* Offset from start of state data */
+    uint32_t size;          /* Size of field in bytes */
+} NimcpStateField;
+
+/* State header */
+typedef struct {
+    uint32_t magic;         /* Magic number for validation */
+    uint32_t field_count;   /* Number of fields */
+} NimcpStateHeader;
+
+/* Array field header */
+typedef struct {
+    NimcpArrayElementType element_type;  /* Type of array elements */
+    uint32_t element_size;                /* Size of each element */
+    uint32_t element_count;               /* Number of elements */
+} NimcpArrayHeader;
+
+/* State validation constants */
+#define NIMCP_STATE_MAGIC          0x4E494D43  /* 'NIMC' */
+#define NIMCP_MAX_FIELDS           1024
+#define NIMCP_INT32_MIN            (-2147483647-1)
+#define NIMCP_INT32_MAX            2147483647
+#define NIMCP_INT64_MIN            (-9223372036854775807LL-1)
+#define NIMCP_INT64_MAX            9223372036854775807LL
+#define NIMCP_FLOAT_MAX            3.40282347e+38F
+#define NIMCP_DOUBLE_MAX           1.7976931348623157e+308
+#define NIMCP_STRING_MAX_LENGTH    65536
+#define NIMCP_ARRAY_MAX_ELEMENTS   100000
+#define NIMCP_ARRAY_ALIGNMENT      8
+
 #endif /* NIMCP_COMMON_H */

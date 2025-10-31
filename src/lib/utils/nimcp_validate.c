@@ -4,6 +4,12 @@
  */
 
 #include "utils/nimcp_validate.h"
+#include "logging/nimcp_logging.h"
+#include <stdlib.h>
+#include <string.h>
+#include <ctype.h>
+#include <math.h>
+#include <stdint.h>
 
 /* Internal helper function prototypes */
 static bool is_valid_utf8_char(const char* str, size_t len);

@@ -26,8 +26,8 @@ set(NIMCP_CORE_SOURCES
     utils/nimcp_queue.c                              # Queue implementation
     utils/nimcp_graph.c                              # Graph data structure
     utils/nimcp_serialization.c                      # Serialization utilities
+    utils/nimcp_validate.c                           # Input validation
     # utils/nimcp_json.c                             # JSON (function name conflicts with jansson)
-    # utils/nimcp_validate.c                         # Validate (missing NIMCP_FIELD_* types)
     # utils/nimcp_queue_manager.c                    # Queue manager (needs messages module)
     ${CMAKE_SOURCE_DIR}/src/python/nimcp_module.c   # Add the Python module source
     ${CMAKE_SOURCE_DIR}/src/python/nimcp_types.c    # Add the Python types
