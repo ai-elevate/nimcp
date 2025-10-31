@@ -25,18 +25,11 @@
 #include "nimcp_stream.h"
 #include "utils/nimcp_thread.h"
 #include "utils/nimcp_memory.h"
-#include "utils/nimcp_thread.h"
+#include "utils/nimcp_time.h"
 #include <stdio.h>
-#include "utils/nimcp_thread.h"
 #include <string.h>
-#include "utils/nimcp_thread.h"
-#include "utils/nimcp_thread.h"
-#include <time.h>
-#include "utils/nimcp_thread.h"
 #include <unistd.h>
-#include "utils/nimcp_thread.h"
 #include <stdatomic.h>
-#include "utils/nimcp_thread.h"
 
 //=============================================================================
 // Thread-Local Error Handling
@@ -354,7 +347,7 @@ struct brain_stream_struct {
     atomic_uint_fast64_t stats_processing_time_ns;  // Accumulated time
 
     // Timing for throughput calculation
-    struct timespec last_stats_time;
+    uint64_t last_stats_time;
     uint64_t last_stats_count;
 };
 
@@ -517,7 +510,7 @@ brain_stream_t brain_create_stream(brain_t brain, const stream_config_t* config)
     atomic_store(&stream->stats_decisions_generated, 0);
     atomic_store(&stream->stats_processing_time_ns, 0);
 
-    clock_gettime(CLOCK_MONOTONIC, &stream->last_stats_time);
+    stream->last_stats_time = nimcp_time_monotonic_ns();
     stream->last_stats_count = 0;
 
     /**
@@ -728,10 +721,8 @@ bool brain_stream_get_stats(brain_stream_t stream, stream_stats_t* stats) {
         (float)total_time_ns / processed / 1000000.0f : 0.0f;
 
     // Calculate current throughput
-    struct timespec now;
-    clock_gettime(CLOCK_MONOTONIC, &now);
-    double elapsed = (now.tv_sec - stream->last_stats_time.tv_sec) +
-                    (now.tv_nsec - stream->last_stats_time.tv_nsec) / 1e9;
+    uint64_t elapsed_ns = nimcp_time_elapsed_ns(stream->last_stats_time);
+    double elapsed = elapsed_ns / 1e9;
 
     uint64_t count_delta = stats->inputs_processed - stream->last_stats_count;
     stats->current_throughput = elapsed > 0 ? (float)count_delta / elapsed : 0.0f;
@@ -783,7 +774,7 @@ bool brain_stream_reset_stats(brain_stream_t stream) {
      * WHY: Throughput is calculated as delta over time
      * HOW: Record new baseline timestamp and count
      */
-    clock_gettime(CLOCK_MONOTONIC, &stream->last_stats_time);
+    stream->last_stats_time = nimcp_time_monotonic_ns();
     stream->last_stats_count = 0;
 
     return true;
@@ -807,8 +798,7 @@ static void stream_process_single_input(brain_stream_t stream,
                                        const float* features,
                                        uint32_t num_features,
                                        uint64_t timestamp) {
-    struct timespec start, end;
-    clock_gettime(CLOCK_MONOTONIC, &start);
+    uint64_t start_time = nimcp_time_monotonic_ns();
 
     /**
      * WHAT: Run brain decision
@@ -875,9 +865,7 @@ static void stream_process_single_input(brain_stream_t stream,
     atomic_fetch_add(&stream->stats_inputs_processed, 1);
 
     // Track processing time
-    clock_gettime(CLOCK_MONOTONIC, &end);
-    uint64_t elapsed_ns = (end.tv_sec - start.tv_sec) * 1000000000ULL +
-                         (end.tv_nsec - start.tv_nsec);
+    uint64_t elapsed_ns = nimcp_time_elapsed_ns(start_time);
     atomic_fetch_add(&stream->stats_processing_time_ns, elapsed_ns);
 }
 

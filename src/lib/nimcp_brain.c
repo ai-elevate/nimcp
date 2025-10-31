@@ -27,11 +27,11 @@
 #include "../include/nimcp_adaptive.h"
 #include "../include/nimcp_neuralnet.h"
 #include "utils/nimcp_memory.h"
+#include "utils/nimcp_time.h"
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
 #include <stdarg.h>
-#include <time.h>
 #include <math.h>
 
 //=============================================================================
@@ -1167,8 +1167,7 @@ static uint32_t perform_forward_pass(
     uint32_t num_features,
     brain_decision_t* decision
 ) {
-    struct timespec start, end;
-    clock_gettime(CLOCK_MONOTONIC, &start);
+    uint64_t start_time = nimcp_time_monotonic_us();
 
     uint32_t active_neurons = adaptive_network_forward(
         brain->network,
@@ -1179,9 +1178,7 @@ static uint32_t perform_forward_pass(
         0
     );
 
-    clock_gettime(CLOCK_MONOTONIC, &end);
-    decision->inference_time_us = (end.tv_sec - start.tv_sec) * 1000000 +
-                                  (end.tv_nsec - start.tv_nsec) / 1000;
+    decision->inference_time_us = nimcp_time_elapsed_us(start_time);
 
     return active_neurons;
 }

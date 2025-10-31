@@ -33,10 +33,10 @@
 #include "nimcp_consolidation.h"
 #include "utils/nimcp_memory.h"
 #include "utils/nimcp_thread.h"
+#include "utils/nimcp_time.h"
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
-#include <time.h>
 #include <unistd.h>
 
 /* ========================================================================
@@ -104,7 +104,6 @@ static bool consolidate_scaling(brain_t brain,
 static bool consolidate_pruning(brain_t brain,
                                 const consolidation_config_t* config,
                                 consolidation_stats_t* stats);
-static uint64_t get_timestamp_ms(void);
 
 /* ========================================================================
  * CONFIGURATION
@@ -175,7 +174,7 @@ bool brain_consolidate_memory(
     }
 
     /* WHAT: Perform consolidation */
-    uint64_t start_time = get_timestamp_ms();
+    uint64_t start_time = nimcp_time_monotonic_ms();
     float progress = 0.0f;
 
     ensure_sync_stats_init();
@@ -184,7 +183,7 @@ bool brain_consolidate_memory(
 
     /* WHAT: Update statistics */
     if (success) {
-        uint64_t end_time = get_timestamp_ms();
+        uint64_t end_time = nimcp_time_monotonic_ms();
         float duration_ms = (float)(end_time - start_time);
 
         /* WHAT: Ensure non-zero duration for fast consolidations */
@@ -433,14 +432,14 @@ static void* consolidation_thread_fn(void* arg) {
         nimcp_mutex_unlock(&handle->lock);
 
         /* WHAT: Perform consolidation */
-        uint64_t start_time = get_timestamp_ms();
+        uint64_t start_time = nimcp_time_monotonic_ms();
 
         perform_consolidation(handle->brain,
                             &handle->config,
                             &handle->stats,
                             &handle->current_progress);
 
-        uint64_t end_time = get_timestamp_ms();
+        uint64_t end_time = nimcp_time_monotonic_ms();
 
         /* WHAT: Update statistics */
         nimcp_mutex_lock(&handle->lock);
@@ -658,7 +657,7 @@ pattern_importance_t* brain_get_important_patterns(
         patterns[i].novelty_score = 0.5f + (i * 0.02f);
         patterns[i].strength = 0.8f - (i * 0.04f);
         patterns[i].activation_count = 1000 - (i * 50);
-        patterns[i].last_activated = get_timestamp_ms() - (i * 60000);  /* Recent */
+        patterns[i].last_activated = nimcp_time_monotonic_ms() - (i * 60000);  /* Recent */
     }
 
     return patterns;
@@ -873,13 +872,3 @@ uint32_t brain_prune_weak_connections(
  * HELPER FUNCTIONS
  * ======================================================================== */
 
-/**
- * WHAT: Get current timestamp in milliseconds
- * WHY: Timestamp consolidation events
- * HOW: Use clock_gettime with CLOCK_MONOTONIC
- */
-static uint64_t get_timestamp_ms(void) {
-    struct timespec ts;
-    clock_gettime(CLOCK_MONOTONIC, &ts);
-    return (uint64_t)ts.tv_sec * 1000 + (uint64_t)ts.tv_nsec / 1000000;
-}

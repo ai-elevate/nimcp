@@ -29,10 +29,10 @@
 
 #include "../include/nimcp_events.h"
 #include "utils/nimcp_hash_table.h"
+#include "utils/nimcp_time.h"
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
-#include <sys/time.h>
 
 //=============================================================================
 // Constants and Configuration
@@ -157,26 +157,6 @@ static bool hash_table_lookup_feature(
         return true;
     }
     return false;
-}
-
-//=============================================================================
-// Timestamp Helper Function
-//=============================================================================
-
-/**
- * @brief Get current timestamp in microseconds
- *
- * WHY: Provides consistent timestamp format for event packets.
- * Microsecond precision sufficient for neural event timing.
- *
- * COMPLEXITY: O(1)
- *
- * @return Timestamp in microseconds since epoch
- */
-static uint64_t get_timestamp_us(void) {
-    struct timeval tv;
-    gettimeofday(&tv, NULL);
-    return (uint64_t)tv.tv_sec * 1000000ULL + (uint64_t)tv.tv_usec;
 }
 
 //=============================================================================
@@ -375,7 +355,7 @@ static void populate_event_packet(
     packet->source_node_id = generator->config.node_id;
 
     // Set timestamp (use provided or generate current)
-    packet->timestamp = (timestamp > 0) ? timestamp : get_timestamp_us();
+    packet->timestamp = (timestamp > 0) ? timestamp : nimcp_time_get_us();
 
     // Calculate and set confidence from neuron state
     float confidence = event_calculate_confidence(neuron_state, 0.5f);
