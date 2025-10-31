@@ -3,7 +3,7 @@
 //=============================================================================
 
 #include "utils/nimcp_thread_pool.h"
-#include "nimcp_memory.h"
+#include "utils/nimcp_memory.h"
 #include <stdlib.h>
 #include <string.h>
 

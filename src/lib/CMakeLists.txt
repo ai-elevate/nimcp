@@ -11,11 +11,11 @@ set(NIMCP_CORE_SOURCES
     nimcp_knowledge.c
     nimcp_replication.c                              # Distributed brain replication
     nimcp_dataio.c                                   # External dataset I/O
-    nimcp_memory.c                                   # Memory tracking and allocation
     nimcp_stream.c                                   # Continuous input streaming
     nimcp_salience.c                                 # Attention/salience evaluation
     nimcp_introspection.c                            # Brain state introspection
     nimcp_consolidation.c                            # Memory consolidation (sleep)
+    utils/nimcp_memory.c                             # Memory tracking and allocation
     utils/nimcp_thread.c                             # Thread utilities and wrappers
     utils/nimcp_thread_pool.c                        # Thread pool for batch processing
     ${CMAKE_SOURCE_DIR}/src/python/nimcp_module.c   # Add the Python module source

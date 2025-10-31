@@ -24,7 +24,7 @@
 
 #include "nimcp_stream.h"
 #include "../include/utils/nimcp_thread.h"
-#include "nimcp_memory.h"
+#include "utils/nimcp_memory.h"
 #include "../include/utils/nimcp_thread.h"
 #include <stdio.h>
 #include "../include/utils/nimcp_thread.h"

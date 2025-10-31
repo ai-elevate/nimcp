@@ -28,7 +28,7 @@
 
 #include "../include/nimcp_replication.h"
 #include "../include/nimcp_brain.h"
-#include "../include/nimcp_memory.h"
+#include "utils/nimcp_memory.h"
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>

@@ -26,7 +26,7 @@
 #include "../include/nimcp_brain.h"
 #include "../include/nimcp_adaptive.h"
 #include "../include/nimcp_neuralnet.h"
-#include "../include/nimcp_memory.h"
+#include "utils/nimcp_memory.h"
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>

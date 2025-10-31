@@ -7,7 +7,7 @@
  * HOW: Canary guards + tracking list + pattern analysis
  */
 
-#include "nimcp_memory.h"
+#include "utils/nimcp_memory.h"
 #include "../include/utils/nimcp_thread.h"
 
 /**

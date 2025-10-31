@@ -31,7 +31,7 @@
  */
 
 #include "nimcp_consolidation.h"
-#include "nimcp_memory.h"
+#include "utils/nimcp_memory.h"
 #include "../include/utils/nimcp_thread.h"
 #include <stdlib.h>
 #include <string.h>

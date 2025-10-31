@@ -21,7 +21,7 @@
 #include "nimcp_salience.h"
 #include "utils/nimcp_thread.h"
 #include "utils/nimcp_thread_pool.h"
-#include "nimcp_memory.h"
+#include "utils/nimcp_memory.h"
 #include <stdio.h>
 #include <string.h>
 #include <math.h>

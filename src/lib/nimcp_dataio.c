@@ -17,7 +17,7 @@
 
 #include "nimcp_dataio.h"
 #include "nimcp_brain.h"
-#include "nimcp_memory.h"
+#include "utils/nimcp_memory.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
