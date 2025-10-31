@@ -19,18 +19,13 @@
  */
 
 #include "nimcp_salience.h"
-#include "../include/utils/nimcp_thread.h"
+#include "utils/nimcp_thread.h"
+#include "utils/nimcp_thread_pool.h"
 #include "nimcp_memory.h"
-#include "../include/utils/nimcp_thread.h"
 #include <stdio.h>
-#include "../include/utils/nimcp_thread.h"
 #include <string.h>
-#include "../include/utils/nimcp_thread.h"
 #include <math.h>
-#include "../include/utils/nimcp_thread.h"
-#include "../include/utils/nimcp_thread.h"
 #include <time.h>
-#include "../include/utils/nimcp_thread.h"
 
 //=============================================================================
 // Thread-Local Error Handling
@@ -425,6 +420,9 @@ struct salience_evaluator_struct {
 
     // Thread safety
     nimcp_mutex_t eval_lock;
+
+    // Parallel processing (for batch operations)
+    nimcp_thread_pool_t* thread_pool;
 };
 
 //=============================================================================
@@ -660,11 +658,35 @@ salience_evaluator_t salience_evaluator_create(
     // Initialize mutex
     nimcp_mutex_init(&eval->eval_lock, NULL);
 
+    /**
+     * WHAT: Create thread pool for batch processing
+     * WHY: Parallel evaluation significantly improves batch performance
+     * HOW: 4 worker threads for optimal CPU utilization
+     */
+    eval->thread_pool = nimcp_pool_create(4);
+    if (!eval->thread_pool) {
+        salience_set_error("Failed to create thread pool");
+        if (eval->history) history_buffer_destroy(eval->history);
+        if (eval->predictor) predictor_destroy(eval->predictor);
+        nimcp_mutex_destroy(&eval->eval_lock);
+        nimcp_free(eval);
+        return NULL;
+    }
+
     return eval;
 }
 
 void salience_evaluator_destroy(salience_evaluator_t eval) {
     if (!eval) return;
+
+    /**
+     * WHAT: Destroy thread pool first
+     * WHY: Ensures all pending tasks complete before cleanup
+     * HOW: nimcp_pool_destroy waits for completion
+     */
+    if (eval->thread_pool) {
+        nimcp_pool_destroy(eval->thread_pool);
+    }
 
     if (eval->history) {
         history_buffer_destroy(eval->history);
@@ -689,6 +711,57 @@ brain_salience_t brain_evaluate_salience(
     uint32_t num_features) {
 
     return brain_evaluate_salience_temporal(eval, features, num_features, 0);
+}
+
+/**
+ * WHAT: Task context for parallel batch evaluation
+ * WHY: Worker threads need access to evaluator and specific sample
+ * PATTERN: Command pattern - encapsulates evaluation request
+ */
+typedef struct {
+    salience_evaluator_t eval;      /* Evaluator to use */
+    const float* features;           /* Input features for this sample */
+    uint32_t num_features;           /* Feature count */
+    brain_salience_t* output;        /* Where to store result */
+} batch_task_t;
+
+/**
+ * WHAT: Worker function for parallel salience evaluation (stateless)
+ * WHY: Executed by thread pool workers
+ * HOW: Evaluates single sample WITHOUT updating shared state
+ *
+ * NOTE: Does NOT update history/predictor to avoid lock contention
+ */
+static void evaluate_single_task(void* arg) {
+    batch_task_t* task = (batch_task_t*)arg;
+    if (!task || !task->eval || !task->features || !task->output) {
+        return;
+    }
+
+    /**
+     * WHAT: Compute salience WITHOUT state updates
+     * WHY: Avoid lock contention - state updated after batch completes
+     * HOW: Call strategy function directly, skip history/predictor updates
+     */
+    salience_evaluator_t eval = task->eval;
+
+    /* WHAT: Use configured strategy for evaluation */
+    switch (eval->config.strategy) {
+        case SALIENCE_STRATEGY_FAST:
+            *task->output = compute_salience_fast(eval, task->features,
+                                                   task->num_features, 0);
+            break;
+
+        case SALIENCE_STRATEGY_BALANCED:
+            *task->output = compute_salience_balanced(eval, task->features,
+                                                      task->num_features, 0);
+            break;
+
+        case SALIENCE_STRATEGY_ACCURATE:
+            *task->output = compute_salience_accurate(eval, task->features,
+                                                       task->num_features, 0);
+            break;
+    }
 }
 
 brain_salience_t brain_evaluate_salience_temporal(
@@ -810,14 +883,142 @@ uint32_t brain_evaluate_salience_batch(
         return 0;
     }
 
-    uint32_t evaluated = 0;
-    for (uint32_t i = 0; i < num_samples; i++) {
-        salience_scores[i] = brain_evaluate_salience(
-            eval, features[i], num_features);
-        evaluated++;
+    /**
+     * WHAT: Choose sequential vs parallel based on batch size
+     * WHY: Thread pool overhead makes small batches slower
+     * HOW: Use sequential for < 200 samples, parallel for larger batches
+     *
+     * PERFORMANCE: Thread pool overhead ~1ms, so need enough work to amortize
+     */
+    const uint32_t PARALLEL_THRESHOLD = 200;
+
+    if (num_samples < PARALLEL_THRESHOLD) {
+        /**
+         * WHAT: Sequential evaluation for small batches
+         * WHY: Avoid thread pool overhead
+         * HOW: Call evaluation function directly for each sample
+         */
+        for (uint32_t i = 0; i < num_samples; i++) {
+            salience_scores[i] = brain_evaluate_salience(
+                eval, features[i], num_features);
+        }
+        return num_samples;
     }
 
-    return evaluated;
+    /**
+     * WHAT: Use thread pool for parallel batch evaluation (large batches)
+     * WHY: Significant performance improvement for batch processing
+     * HOW: Parallel evaluation WITHOUT state updates, then sequential state update
+     *
+     * PATTERN: Map-reduce with thread pool
+     * KEY INSIGHT: Lock contention kills parallelism - compute in parallel, update sequentially
+     */
+
+    /**
+     * WHAT: Allocate task context array
+     * WHY: Each worker needs context for its sample
+     * HOW: Heap allocation for safety across threads
+     */
+    batch_task_t* tasks = (batch_task_t*)nimcp_malloc(
+        num_samples * sizeof(batch_task_t));
+    if (!tasks) {
+        return 0;
+    }
+
+    /**
+     * WHAT: Prepare all tasks
+     * WHY: Submit them to thread pool for parallel execution
+     */
+    for (uint32_t i = 0; i < num_samples; i++) {
+        tasks[i].eval = eval;
+        tasks[i].features = features[i];
+        tasks[i].num_features = num_features;
+        tasks[i].output = &salience_scores[i];
+    }
+
+    /**
+     * WHAT: Submit all tasks to thread pool
+     * WHY: Workers will execute them in parallel WITHOUT locks
+     * HOW: Pool distributes work across available threads
+     */
+    for (uint32_t i = 0; i < num_samples; i++) {
+        nimcp_result_t result = nimcp_pool_submit(
+            eval->thread_pool, evaluate_single_task, &tasks[i]);
+
+        if (result != NIMCP_SUCCESS) {
+            /**
+             * WHAT: Handle submission failure
+             * WHY: Queue might be full or system error
+             * HOW: Wait for pool to drain, retry
+             */
+            nimcp_pool_wait(eval->thread_pool);
+            nimcp_pool_submit(eval->thread_pool, evaluate_single_task, &tasks[i]);
+        }
+    }
+
+    /**
+     * WHAT: Wait for all tasks to complete
+     * WHY: Ensure all results are ready before state updates
+     * HOW: Blocks until queue empty and no active workers
+     */
+    nimcp_pool_wait(eval->thread_pool);
+
+    /**
+     * WHAT: Update shared state sequentially after parallel evaluation
+     * WHY: Maintain history/predictor consistency without lock contention
+     * HOW: Add each sample to history and update predictor
+     *
+     * NOTE: This is the only place we update shared state - avoids parallelism bottleneck
+     */
+    nimcp_mutex_lock(&eval->eval_lock);
+
+    for (uint32_t i = 0; i < num_samples; i++) {
+        /* WHAT: Update history buffer if enabled */
+        if (eval->history) {
+            history_buffer_add(eval->history, features[i], num_features, 0);
+        }
+
+        /* WHAT: Update predictor if enabled */
+        if (eval->predictor) {
+            predictor_update(eval->predictor, features[i]);
+        }
+
+        /* WHAT: Update statistics */
+        eval->stats_evaluations++;
+
+        float alpha = 0.1f;
+        eval->running_avg_salience = alpha * salience_scores[i].salience +
+                                     (1.0f - alpha) * eval->running_avg_salience;
+        eval->running_avg_novelty = alpha * salience_scores[i].novelty +
+                                    (1.0f - alpha) * eval->running_avg_novelty;
+        eval->running_avg_surprise = alpha * salience_scores[i].surprise +
+                                     (1.0f - alpha) * eval->running_avg_surprise;
+        eval->running_avg_urgency = alpha * salience_scores[i].urgency +
+                                    (1.0f - alpha) * eval->running_avg_urgency;
+
+        if (salience_scores[i].salience > eval->config.high_salience_threshold) {
+            eval->stats_high_salience++;
+        }
+        if (salience_scores[i].novelty > eval->config.high_novelty_threshold) {
+            eval->stats_high_novelty++;
+        }
+        if (salience_scores[i].surprise > eval->config.high_surprise_threshold) {
+            eval->stats_high_surprise++;
+        }
+        if (salience_scores[i].urgency > eval->config.high_urgency_threshold) {
+            eval->stats_high_urgency++;
+        }
+    }
+
+    nimcp_mutex_unlock(&eval->eval_lock);
+
+    /**
+     * WHAT: Free task array
+     * WHY: Cleanup temporary allocation
+     */
+    nimcp_free(tasks);
+
+    return num_samples;
 }
 
 //=============================================================================

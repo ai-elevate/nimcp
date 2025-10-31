@@ -11,6 +11,7 @@ set(NIMCP_TEST_SOURCES
     test_salience.cpp           # Salience/attention tests
     test_introspection.cpp      # Introspection API tests
     test_consolidation.cpp      # Memory consolidation tests
+    test_thread_utils.cpp       # Thread utilities and pool tests
 )
 
 # Create test executable
