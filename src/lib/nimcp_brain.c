@@ -26,6 +26,7 @@
 #include "../include/nimcp_brain.h"
 #include "../include/nimcp_adaptive.h"
 #include "../include/nimcp_neuralnet.h"
+#include "../include/nimcp_memory.h"
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
@@ -1116,14 +1117,14 @@ float brain_learn_from_llm(
  * COMPLEXITY: O(1)
  */
 static brain_decision_t* allocate_decision(uint32_t output_size) {
-    brain_decision_t* decision = calloc(1, sizeof(brain_decision_t));
+    brain_decision_t* decision = nimcp_calloc(1, sizeof(brain_decision_t));
     if (!decision) return NULL;
 
     decision->output_size = output_size;
-    decision->output_vector = malloc(output_size * sizeof(float));
+    decision->output_vector = nimcp_malloc(output_size * sizeof(float));
 
     if (!decision->output_vector) {
-        free(decision);
+        nimcp_free(decision);
         return NULL;
     }
 
@@ -1221,7 +1222,7 @@ static void populate_interpretability(
     }
 
     // Populate active neuron IDs
-    decision->active_neuron_ids = malloc(active_neurons * sizeof(uint32_t));
+    decision->active_neuron_ids = nimcp_malloc(active_neurons * sizeof(uint32_t));
     for (uint32_t i = 0; i < active_neurons; i++) {
         decision->active_neuron_ids[i] = i;
     }
@@ -1327,9 +1328,18 @@ brain_decision_t* brain_decide(
 void brain_free_decision(brain_decision_t* decision) {
     if (!decision) return;
 
-    free(decision->output_vector);
-    free(decision->active_neuron_ids);
-    free(decision);
+    /**
+     * WHAT: Free decision structure and its allocated fields
+     * WHY: Prevent memory leaks
+     * HOW: Use nimcp_free() for memory allocated with nimcp_malloc()
+     */
+    if (decision->output_vector) {
+        nimcp_free(decision->output_vector);
+    }
+    if (decision->active_neuron_ids) {
+        nimcp_free(decision->active_neuron_ids);
+    }
+    nimcp_free(decision);
 }
 
 /**

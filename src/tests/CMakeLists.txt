@@ -5,6 +5,12 @@ set(NIMCP_TEST_SOURCES
     test_neuralnet_learning.cpp
     test_p2pnode.cpp
     test_protocol.cpp
+    test_replication.cpp        # Brain replication tests
+    test_dataio.cpp             # Data I/O tests
+    test_stream.cpp             # Streaming API tests
+    test_salience.cpp           # Salience/attention tests
+    test_introspection.cpp      # Introspection API tests
+    test_consolidation.cpp      # Memory consolidation tests
 )
 
 # Create test executable
