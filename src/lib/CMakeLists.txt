@@ -16,6 +16,7 @@ set(NIMCP_CORE_SOURCES
     nimcp_salience.c                                 # Attention/salience evaluation
     nimcp_introspection.c                            # Brain state introspection
     nimcp_consolidation.c                            # Memory consolidation (sleep)
+    utils/nimcp_thread.c                             # Thread utilities and wrappers
     ${CMAKE_SOURCE_DIR}/src/python/nimcp_module.c   # Add the Python module source
     ${CMAKE_SOURCE_DIR}/src/python/nimcp_types.c    # Add the Python types
 )
