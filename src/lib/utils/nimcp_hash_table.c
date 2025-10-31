@@ -1,0 +1,679 @@
+/**
+ * @file nimcp_hash_table.c
+ * @brief Generic hash table implementation
+ *
+ * WHAT: Hash table with separate chaining for collision resolution
+ * WHY: Consolidate duplicate hash table code across NIMCP
+ * HOW: Configurable key types, hash functions, and comparison strategies
+ */
+
+#include "utils/nimcp_hash_table.h"
+#include <stdlib.h>
+#include <string.h>
+#include <ctype.h>
+#include <math.h>
+
+//=============================================================================
+// Internal Data Structures
+//=============================================================================
+
+/**
+ * WHAT: Chain node for collision resolution
+ * WHY: Separate chaining with linked list
+ * HOW: Each bucket points to head of chain
+ */
+typedef struct hash_entry_t {
+    void* key;                      // Key data (copied)
+    size_t key_size;                // Size of key in bytes
+    void* value;                    // Value data (copied)
+    size_t value_size;              // Size of value in bytes
+    uint32_t hash;                  // Cached hash value
+    struct hash_entry_t* next;      // Next in chain
+} hash_entry_t;
+
+/**
+ * WHAT: Hash table structure
+ * WHY: Encapsulate all table state
+ * HOW: Bucket array + configuration
+ */
+struct hash_table_t {
+    hash_entry_t** buckets;         // Array of bucket heads
+    size_t bucket_count;            // Number of buckets
+    size_t entry_count;             // Number of entries
+    hash_table_config_t config;     // Configuration
+};
+
+//=============================================================================
+// Hash Functions
+//=============================================================================
+
+/**
+ * WHAT: FNV-1a hash algorithm
+ * WHY: Fast, good distribution for strings
+ * HOW: XOR with prime, multiply by prime
+ */
+static uint32_t hash_fnv1a(const void* key, size_t key_size) {
+    const uint8_t* data = (const uint8_t*)key;
+    uint32_t hash = 2166136261u;  // FNV offset basis
+
+    for (size_t i = 0; i < key_size; i++) {
+        hash ^= data[i];
+        hash *= 16777619u;  // FNV prime
+    }
+
+    return hash;
+}
+
+/**
+ * WHAT: djb2 hash algorithm
+ * WHY: Simple, fast for strings
+ * HOW: hash = hash * 33 + byte
+ */
+static uint32_t hash_djb2(const void* key, size_t key_size) {
+    const uint8_t* data = (const uint8_t*)key;
+    uint32_t hash = 5381;
+
+    for (size_t i = 0; i < key_size; i++) {
+        hash = ((hash << 5) + hash) + data[i];  // hash * 33 + byte
+    }
+
+    return hash;
+}
+
+/**
+ * WHAT: MurmurHash3 32-bit finalizer
+ * WHY: Excellent avalanche properties for integers
+ * HOW: Bit mixing operations
+ */
+static uint32_t hash_murmur3_32(uint32_t h) {
+    h ^= h >> 16;
+    h *= 0x85ebca6b;
+    h ^= h >> 13;
+    h *= 0xc2b2ae35;
+    h ^= h >> 16;
+    return h;
+}
+
+/**
+ * WHAT: MurmurHash3 for arbitrary data
+ * WHY: General-purpose hashing for any key type
+ * HOW: Process 4-byte blocks, finalize with tail bytes
+ */
+static uint32_t hash_murmur3(const void* key, size_t key_size) {
+    const uint8_t* data = (const uint8_t*)key;
+    const int nblocks = key_size / 4;
+    uint32_t h = 0;  // seed = 0
+
+    const uint32_t c1 = 0xcc9e2d51;
+    const uint32_t c2 = 0x1b873593;
+
+    // Body - process 4-byte blocks
+    const uint32_t* blocks = (const uint32_t*)(data);
+    for (int i = 0; i < nblocks; i++) {
+        uint32_t k = blocks[i];
+
+        k *= c1;
+        k = (k << 15) | (k >> 17);  // rotl32(k, 15)
+        k *= c2;
+
+        h ^= k;
+        h = (h << 13) | (h >> 19);  // rotl32(h, 13)
+        h = h * 5 + 0xe6546b64;
+    }
+
+    // Tail - process remaining bytes
+    const uint8_t* tail = (const uint8_t*)(data + nblocks * 4);
+    uint32_t k = 0;
+
+    switch (key_size & 3) {
+        case 3: k ^= tail[2] << 16;  // fallthrough
+        case 2: k ^= tail[1] << 8;   // fallthrough
+        case 1: k ^= tail[0];
+                k *= c1;
+                k = (k << 15) | (k >> 17);
+                k *= c2;
+                h ^= k;
+    }
+
+    // Finalization
+    h ^= key_size;
+    return hash_murmur3_32(h);
+}
+
+//=============================================================================
+// Key Comparison Functions
+//=============================================================================
+
+/**
+ * WHAT: Case-sensitive string comparison
+ * WHY: Default string key comparison
+ * HOW: memcmp after size check
+ */
+static bool key_compare_string_sensitive(const void* key1, size_t key1_size,
+                                          const void* key2, size_t key2_size) {
+    if (key1_size != key2_size) {
+        return false;
+    }
+    return memcmp(key1, key2, key1_size) == 0;
+}
+
+/**
+ * WHAT: Case-insensitive string comparison
+ * WHY: Support curiosity engine use case
+ * HOW: Convert to lowercase during comparison
+ */
+static bool key_compare_string_insensitive(const void* key1, size_t key1_size,
+                                            const void* key2, size_t key2_size) {
+    if (key1_size != key2_size) {
+        return false;
+    }
+
+    const char* s1 = (const char*)key1;
+    const char* s2 = (const char*)key2;
+
+    for (size_t i = 0; i < key1_size; i++) {
+        if (tolower((unsigned char)s1[i]) != tolower((unsigned char)s2[i])) {
+            return false;
+        }
+    }
+
+    return true;
+}
+
+/**
+ * WHAT: Integer key comparison
+ * WHY: Fast comparison for uint32_t and uint64_t keys
+ * HOW: memcmp is sufficient for integer types
+ */
+static bool key_compare_integer(const void* key1, size_t key1_size,
+                                 const void* key2, size_t key2_size) {
+    if (key1_size != key2_size) {
+        return false;
+    }
+    return memcmp(key1, key2, key1_size) == 0;
+}
+
+//=============================================================================
+// Internal Helper Functions
+//=============================================================================
+
+/**
+ * WHAT: Compute hash for a key
+ * WHY: Centralize hash computation logic
+ * HOW: Dispatch to appropriate hash function
+ */
+static uint32_t compute_hash(hash_table_t* table, const void* key, size_t key_size) {
+    switch (table->config.hash_algorithm) {
+        case HASH_ALG_FNV1A:
+            return hash_fnv1a(key, key_size);
+        case HASH_ALG_DJB2:
+            return hash_djb2(key, key_size);
+        case HASH_ALG_MURMUR3:
+            return hash_murmur3(key, key_size);
+        case HASH_ALG_CUSTOM:
+            if (table->config.custom_hash_fn) {
+                return table->config.custom_hash_fn(key, key_size);
+            }
+            // Fallback to FNV-1a if custom function not provided
+            return hash_fnv1a(key, key_size);
+        default:
+            return hash_fnv1a(key, key_size);
+    }
+}
+
+/**
+ * WHAT: Compare two keys for equality
+ * WHY: Centralize key comparison logic
+ * HOW: Dispatch to appropriate comparison function
+ */
+static bool keys_equal(hash_table_t* table,
+                       const void* key1, size_t key1_size,
+                       const void* key2, size_t key2_size) {
+    // First check if custom comparison provided
+    if (table->config.key_type == HASH_KEY_CUSTOM &&
+        table->config.custom_compare_fn) {
+        return table->config.custom_compare_fn(key1, key1_size, key2, key2_size);
+    }
+
+    // String comparison
+    if (table->config.key_type == HASH_KEY_STRING) {
+        if (table->config.case_insensitive) {
+            return key_compare_string_insensitive(key1, key1_size, key2, key2_size);
+        } else {
+            return key_compare_string_sensitive(key1, key1_size, key2, key2_size);
+        }
+    }
+
+    // Integer comparison (uint32_t, uint64_t, or custom)
+    return key_compare_integer(key1, key1_size, key2, key2_size);
+}
+
+/**
+ * WHAT: Create a new hash entry
+ * WHY: Allocate and initialize entry node
+ * HOW: Copy key and value data
+ */
+static hash_entry_t* create_entry(const void* key, size_t key_size,
+                                   const void* value, size_t value_size,
+                                   uint32_t hash) {
+    hash_entry_t* entry = (hash_entry_t*)malloc(sizeof(hash_entry_t));
+    if (!entry) {
+        return NULL;
+    }
+
+    // Copy key
+    entry->key = malloc(key_size);
+    if (!entry->key) {
+        free(entry);
+        return NULL;
+    }
+    memcpy(entry->key, key, key_size);
+    entry->key_size = key_size;
+
+    // Copy value
+    entry->value = malloc(value_size);
+    if (!entry->value) {
+        free(entry->key);
+        free(entry);
+        return NULL;
+    }
+    memcpy(entry->value, value, value_size);
+    entry->value_size = value_size;
+
+    entry->hash = hash;
+    entry->next = NULL;
+
+    return entry;
+}
+
+/**
+ * WHAT: Free a hash entry
+ * WHY: Release all memory associated with entry
+ * HOW: Call destructor if configured, free key/value/entry
+ */
+static void free_entry(hash_table_t* table, hash_entry_t* entry) {
+    if (!entry) {
+        return;
+    }
+
+    // Call value destructor if configured
+    if (table->config.value_destructor) {
+        table->config.value_destructor(entry->value, entry->value_size);
+    }
+
+    free(entry->key);
+    free(entry->value);
+    free(entry);
+}
+
+/**
+ * WHAT: Find entry in chain
+ * WHY: Locate entry for lookup/update/remove
+ * HOW: Traverse chain, compare keys
+ *
+ * @param prev [OUT] Previous entry in chain (for removal)
+ */
+static hash_entry_t* find_entry(hash_table_t* table,
+                                 hash_entry_t* head,
+                                 const void* key, size_t key_size,
+                                 uint32_t hash,
+                                 hash_entry_t** prev) {
+    hash_entry_t* current = head;
+    hash_entry_t* previous = NULL;
+
+    while (current) {
+        // Check hash first (fast rejection)
+        if (current->hash == hash) {
+            // Hash matches, now compare keys
+            if (keys_equal(table, current->key, current->key_size, key, key_size)) {
+                if (prev) {
+                    *prev = previous;
+                }
+                return current;
+            }
+        }
+
+        previous = current;
+        current = current->next;
+    }
+
+    if (prev) {
+        *prev = previous;
+    }
+    return NULL;
+}
+
+//=============================================================================
+// Core Operations
+//=============================================================================
+
+hash_table_t* hash_table_create(const hash_table_config_t* config) {
+    hash_table_t* table = (hash_table_t*)malloc(sizeof(hash_table_t));
+    if (!table) {
+        return NULL;
+    }
+
+    // Set configuration with defaults
+    if (config) {
+        table->config = *config;
+    } else {
+        // Default configuration
+        memset(&table->config, 0, sizeof(hash_table_config_t));
+        table->config.initial_buckets = 256;
+        table->config.key_type = HASH_KEY_STRING;
+        table->config.hash_algorithm = HASH_ALG_FNV1A;
+        table->config.case_insensitive = false;
+        table->config.thread_safe = false;
+    }
+
+    // Ensure bucket count is at least 1
+    if (table->config.initial_buckets == 0) {
+        table->config.initial_buckets = 256;
+    }
+
+    // Allocate bucket array
+    table->bucket_count = table->config.initial_buckets;
+    table->buckets = (hash_entry_t**)calloc(table->bucket_count, sizeof(hash_entry_t*));
+    if (!table->buckets) {
+        free(table);
+        return NULL;
+    }
+
+    table->entry_count = 0;
+
+    return table;
+}
+
+void hash_table_destroy(hash_table_t* table) {
+    if (!table) {
+        return;
+    }
+
+    // Free all entries in all buckets
+    for (size_t i = 0; i < table->bucket_count; i++) {
+        hash_entry_t* current = table->buckets[i];
+        while (current) {
+            hash_entry_t* next = current->next;
+            free_entry(table, current);
+            current = next;
+        }
+    }
+
+    free(table->buckets);
+    free(table);
+}
+
+size_t hash_table_size(const hash_table_t* table) {
+    return table ? table->entry_count : 0;
+}
+
+size_t hash_table_bucket_count(const hash_table_t* table) {
+    return table ? table->bucket_count : 0;
+}
+
+void hash_table_clear(hash_table_t* table) {
+    if (!table) {
+        return;
+    }
+
+    // Free all entries in all buckets
+    for (size_t i = 0; i < table->bucket_count; i++) {
+        hash_entry_t* current = table->buckets[i];
+        while (current) {
+            hash_entry_t* next = current->next;
+            free_entry(table, current);
+            current = next;
+        }
+        table->buckets[i] = NULL;
+    }
+
+    table->entry_count = 0;
+}
+
+//=============================================================================
+// Generic Insert/Lookup/Remove
+//=============================================================================
+
+/**
+ * WHAT: Generic insert function
+ * WHY: Common logic for all key types
+ * HOW: Hash key, find bucket, insert or update
+ */
+static bool hash_table_insert_generic(hash_table_t* table,
+                                       const void* key, size_t key_size,
+                                       const void* value, size_t value_size) {
+    if (!table || !key || !value) {
+        return false;
+    }
+
+    // Compute hash
+    uint32_t hash = compute_hash(table, key, key_size);
+    size_t bucket_index = hash % table->bucket_count;
+
+    // Check if key already exists
+    hash_entry_t* existing = find_entry(table, table->buckets[bucket_index],
+                                         key, key_size, hash, NULL);
+
+    if (existing) {
+        // Update existing entry
+        void* new_value = malloc(value_size);
+        if (!new_value) {
+            return false;
+        }
+        memcpy(new_value, value, value_size);
+
+        // Call destructor on old value
+        if (table->config.value_destructor) {
+            table->config.value_destructor(existing->value, existing->value_size);
+        }
+
+        free(existing->value);
+        existing->value = new_value;
+        existing->value_size = value_size;
+
+        return true;
+    }
+
+    // Create new entry
+    hash_entry_t* new_entry = create_entry(key, key_size, value, value_size, hash);
+    if (!new_entry) {
+        return false;
+    }
+
+    // Insert at head of chain
+    new_entry->next = table->buckets[bucket_index];
+    table->buckets[bucket_index] = new_entry;
+    table->entry_count++;
+
+    return true;
+}
+
+/**
+ * WHAT: Generic lookup function
+ * WHY: Common logic for all key types
+ * HOW: Hash key, find bucket, search chain
+ */
+static void* hash_table_lookup_generic(hash_table_t* table,
+                                        const void* key, size_t key_size) {
+    if (!table || !key) {
+        return NULL;
+    }
+
+    // Compute hash
+    uint32_t hash = compute_hash(table, key, key_size);
+    size_t bucket_index = hash % table->bucket_count;
+
+    // Find entry
+    hash_entry_t* entry = find_entry(table, table->buckets[bucket_index],
+                                      key, key_size, hash, NULL);
+
+    return entry ? entry->value : NULL;
+}
+
+/**
+ * WHAT: Generic remove function
+ * WHY: Common logic for all key types
+ * HOW: Hash key, find bucket, unlink from chain
+ */
+static bool hash_table_remove_generic(hash_table_t* table,
+                                       const void* key, size_t key_size) {
+    if (!table || !key) {
+        return false;
+    }
+
+    // Compute hash
+    uint32_t hash = compute_hash(table, key, key_size);
+    size_t bucket_index = hash % table->bucket_count;
+
+    // Find entry and its predecessor
+    hash_entry_t* prev = NULL;
+    hash_entry_t* entry = find_entry(table, table->buckets[bucket_index],
+                                      key, key_size, hash, &prev);
+
+    if (!entry) {
+        return false;  // Not found
+    }
+
+    // Unlink from chain
+    if (prev) {
+        prev->next = entry->next;
+    } else {
+        table->buckets[bucket_index] = entry->next;
+    }
+
+    // Free entry
+    free_entry(table, entry);
+    table->entry_count--;
+
+    return true;
+}
+
+//=============================================================================
+// String Key Operations
+//=============================================================================
+
+bool hash_table_insert_string(hash_table_t* table, const char* key,
+                               const void* value, size_t value_size) {
+    if (!key) {
+        return false;
+    }
+
+    size_t key_size = strlen(key) + 1;  // Include null terminator
+    return hash_table_insert_generic(table, key, key_size, value, value_size);
+}
+
+void* hash_table_lookup_string(hash_table_t* table, const char* key) {
+    if (!key) {
+        return NULL;
+    }
+
+    size_t key_size = strlen(key) + 1;  // Include null terminator
+    return hash_table_lookup_generic(table, key, key_size);
+}
+
+bool hash_table_remove_string(hash_table_t* table, const char* key) {
+    if (!key) {
+        return false;
+    }
+
+    size_t key_size = strlen(key) + 1;  // Include null terminator
+    return hash_table_remove_generic(table, key, key_size);
+}
+
+//=============================================================================
+// Integer Key Operations (uint32_t)
+//=============================================================================
+
+bool hash_table_insert_uint32(hash_table_t* table, uint32_t key,
+                               const void* value, size_t value_size) {
+    return hash_table_insert_generic(table, &key, sizeof(uint32_t), value, value_size);
+}
+
+void* hash_table_lookup_uint32(hash_table_t* table, uint32_t key) {
+    return hash_table_lookup_generic(table, &key, sizeof(uint32_t));
+}
+
+bool hash_table_remove_uint32(hash_table_t* table, uint32_t key) {
+    return hash_table_remove_generic(table, &key, sizeof(uint32_t));
+}
+
+//=============================================================================
+// Iteration
+//=============================================================================
+
+void hash_table_iterate(hash_table_t* table,
+                        hash_table_iterator_fn_t callback,
+                        void* user_data) {
+    if (!table || !callback) {
+        return;
+    }
+
+    for (size_t i = 0; i < table->bucket_count; i++) {
+        hash_entry_t* current = table->buckets[i];
+        while (current) {
+            // Call callback
+            bool continue_iteration = callback(current->key, current->key_size,
+                                                current->value, current->value_size,
+                                                user_data);
+
+            if (!continue_iteration) {
+                return;  // Stop iteration
+            }
+
+            current = current->next;
+        }
+    }
+}
+
+//=============================================================================
+// Statistics
+//=============================================================================
+
+void hash_table_stats(const hash_table_t* table,
+                      size_t* max_chain_length,
+                      float* avg_chain_length,
+                      size_t* empty_buckets) {
+    if (!table) {
+        if (max_chain_length) *max_chain_length = 0;
+        if (avg_chain_length) *avg_chain_length = 0.0f;
+        if (empty_buckets) *empty_buckets = 0;
+        return;
+    }
+
+    size_t max_len = 0;
+    size_t total_len = 0;
+    size_t non_empty = 0;
+    size_t empty = 0;
+
+    for (size_t i = 0; i < table->bucket_count; i++) {
+        size_t chain_len = 0;
+        hash_entry_t* current = table->buckets[i];
+
+        while (current) {
+            chain_len++;
+            current = current->next;
+        }
+
+        if (chain_len == 0) {
+            empty++;
+        } else {
+            non_empty++;
+            total_len += chain_len;
+            if (chain_len > max_len) {
+                max_len = chain_len;
+            }
+        }
+    }
+
+    if (max_chain_length) {
+        *max_chain_length = max_len;
+    }
+
+    if (avg_chain_length) {
+        *avg_chain_length = non_empty > 0 ? (float)total_len / non_empty : 0.0f;
+    }
+
+    if (empty_buckets) {
+        *empty_buckets = empty;
+    }
+}
