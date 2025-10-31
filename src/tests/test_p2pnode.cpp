@@ -197,10 +197,10 @@ TEST_F(P2PNodeIntegrationTest, NodeReconnection) {
 TEST_F(P2PNodeIntegrationTest, RapidConnectionDisconnection) {
     ASSERT_NE(node1, nullptr);
     ASSERT_NE(node2, nullptr);
-    
+
     ASSERT_TRUE(p2p_node_start(node1));
     ASSERT_TRUE(p2p_node_start(node2));
-    
+
     for (int i = 0; i < 10; i++) {
         ASSERT_TRUE(p2p_node_connect_peer(node1, "127.0.0.1", 8002));
         usleep(10000);
@@ -208,3 +208,4 @@ TEST_F(P2PNodeIntegrationTest, RapidConnectionDisconnection) {
         usleep(10000);
     }
 }
+

@@ -30,6 +30,8 @@
 //=============================================================================
 
 #include "../include/nimcp_p2pnode.h"
+#include "utils/nimcp_memory.h"
+#include "utils/nimcp_thread.h"
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
@@ -116,6 +118,9 @@ struct p2p_node_struct {
     // State
     node_status_t status;
     bool running;
+
+    // Thread Safety (Monitor Pattern)
+    nimcp_mutex_t lock;
 
     // Network
     int listen_socket;
@@ -209,7 +214,7 @@ static bool hash_table_insert_peer(peer_hash_table_t* table,
 
     uint32_t bucket = hash_peer_key(key);
 
-    peer_hash_entry_t* entry = malloc(sizeof(peer_hash_entry_t));
+    peer_hash_entry_t* entry = nimcp_malloc(sizeof(peer_hash_entry_t));
     // Guard clause: Check allocation
     if (!entry) return false;
 
@@ -269,7 +274,7 @@ static bool hash_table_remove_peer(peer_hash_table_t* table, const char* key) {
         peer_hash_entry_t* entry = *entry_ptr;
         if (strcmp(entry->peer_key, key) == 0) {
             *entry_ptr = entry->next;
-            free(entry);
+            nimcp_free(entry);
             table->num_entries--;
             return true;
         }
@@ -294,7 +299,7 @@ static void destroy_peer_hash_table(peer_hash_table_t* table) {
         peer_hash_entry_t* entry = table->buckets[i];
         while (entry) {
             peer_hash_entry_t* next = entry->next;
-            free(entry);
+            nimcp_free(entry);
             entry = next;
         }
     }
@@ -494,7 +499,7 @@ static bool allocate_peer_storage(p2p_node_t node) {
     // Guard clause: Validate input
     if (!node) return false;
 
-    node->peers = calloc(node->config.max_peers, sizeof(peer_info_t));
+    node->peers = nimcp_calloc(node->config.max_peers, sizeof(peer_info_t));
     return node->peers != NULL;
 }
 
@@ -545,7 +550,7 @@ p2p_node_t p2p_node_create(const node_config_t* config) {
     if (!validate_config(config)) return NULL;
 
     // Allocate node structure
-    p2p_node_t node = calloc(1, sizeof(struct p2p_node_struct));
+    p2p_node_t node = nimcp_calloc(1, sizeof(struct p2p_node_struct));
     // Guard clause: Check allocation
     if (!node) return NULL;
 
@@ -557,12 +562,19 @@ p2p_node_t p2p_node_create(const node_config_t* config) {
 
     // Allocate peer storage
     if (!allocate_peer_storage(node)) {
-        free(node);
+        nimcp_free(node);
         return NULL;
     }
 
     // Initialize node state
     initialize_node_state(node);
+
+    // Initialize mutex for thread safety
+    if (nimcp_mutex_init(&node->lock, NULL) != NIMCP_SUCCESS) {
+        nimcp_free(node->peers);
+        nimcp_free(node);
+        return NULL;
+    }
 
     return node;
 }
@@ -616,13 +628,16 @@ void p2p_node_destroy(p2p_node_t node) {
     destroy_peer_hash_table(&node->peer_table);
 
     // Free peer array
-    free(node->peers);
+    nimcp_free(node->peers);
 
     // Close listen socket
     close_listen_socket(node);
 
+    // Destroy mutex
+    nimcp_mutex_destroy(&node->lock);
+
     // Free node structure
-    free(node);
+    nimcp_free(node);
 }
 
 //=============================================================================
@@ -660,6 +675,9 @@ bool p2p_node_is_peer_connected(p2p_node_t node, const char* peer_ip, uint16_t p
     // Guard clause: Validate inputs
     if (!node || !peer_ip) return false;
 
+    // Lock for thread safety
+    nimcp_mutex_lock(&node->lock);
+
     // Generate hash key
     char key[32];
     generate_peer_key(key, sizeof(key), peer_ip, peer_port);
@@ -668,9 +686,14 @@ bool p2p_node_is_peer_connected(p2p_node_t node, const char* peer_ip, uint16_t p
     peer_info_t* peer = hash_table_lookup_peer(&node->peer_table, key);
 
     // Guard clause: Check if peer found
-    if (!peer) return false;
+    if (!peer) {
+        nimcp_mutex_unlock(&node->lock);
+        return false;
+    }
 
-    return peer->connected;
+    bool connected = peer->connected;
+    nimcp_mutex_unlock(&node->lock);
+    return connected;
 }
 
 //=============================================================================
@@ -821,8 +844,14 @@ bool p2p_node_connect_peer(p2p_node_t node, const char* peer_ip, uint16_t peer_p
     // Guard clause: Validate inputs
     if (!node || !peer_ip) return false;
 
+    // Lock for thread safety
+    nimcp_mutex_lock(&node->lock);
+
     // Guard clause: Check capacity
-    if (node->peer_count >= node->config.max_peers) return false;
+    if (node->peer_count >= node->config.max_peers) {
+        nimcp_mutex_unlock(&node->lock);
+        return false;
+    }
 
     // Generate key for lookup
     char key[32];
@@ -831,7 +860,9 @@ bool p2p_node_connect_peer(p2p_node_t node, const char* peer_ip, uint16_t peer_p
     // Check if peer already exists (O(1) via hash table)
     if (peer_already_exists(node, key)) {
         peer_info_t* existing = hash_table_lookup_peer(&node->peer_table, key);
-        return existing ? existing->connected : false;
+        bool result = existing ? existing->connected : false;
+        nimcp_mutex_unlock(&node->lock);
+        return result;
     }
 
     // Create non-blocking socket
@@ -839,6 +870,7 @@ bool p2p_node_connect_peer(p2p_node_t node, const char* peer_ip, uint16_t peer_p
     // Guard clause: Check socket creation
     if (sock < 0) {
         node->failed_connections++;
+        nimcp_mutex_unlock(&node->lock);
         return false;
     }
 
@@ -847,6 +879,7 @@ bool p2p_node_connect_peer(p2p_node_t node, const char* peer_ip, uint16_t peer_p
     if (!create_sockaddr(&addr, peer_ip, peer_port)) {
         close(sock);
         node->failed_connections++;
+        nimcp_mutex_unlock(&node->lock);
         return false;
     }
 
@@ -854,6 +887,7 @@ bool p2p_node_connect_peer(p2p_node_t node, const char* peer_ip, uint16_t peer_p
     if (!attempt_connection(sock, &addr)) {
         close(sock);
         node->failed_connections++;
+        nimcp_mutex_unlock(&node->lock);
         return false;
     }
 
@@ -861,9 +895,11 @@ bool p2p_node_connect_peer(p2p_node_t node, const char* peer_ip, uint16_t peer_p
     if (!add_peer_to_node(node, peer_ip, peer_port, sock)) {
         close(sock);
         node->failed_connections++;
+        nimcp_mutex_unlock(&node->lock);
         return false;
     }
 
+    nimcp_mutex_unlock(&node->lock);
     return true;
 }
 
@@ -956,6 +992,9 @@ bool p2p_node_disconnect_peer(p2p_node_t node, const char* peer_ip, uint16_t pee
     // Guard clause: Validate inputs
     if (!node || !peer_ip) return false;
 
+    // Lock for thread safety
+    nimcp_mutex_lock(&node->lock);
+
     // Generate peer key
     char key[32];
     generate_peer_key(key, sizeof(key), peer_ip, peer_port);
@@ -963,7 +1002,10 @@ bool p2p_node_disconnect_peer(p2p_node_t node, const char* peer_ip, uint16_t pee
     // Lookup peer in hash table (O(1))
     peer_info_t* peer = hash_table_lookup_peer(&node->peer_table, key);
     // Guard clause: Check if peer exists
-    if (!peer) return false;
+    if (!peer) {
+        nimcp_mutex_unlock(&node->lock);
+        return false;
+    }
 
     // Close peer socket
     close_peer_socket(peer);
@@ -974,11 +1016,15 @@ bool p2p_node_disconnect_peer(p2p_node_t node, const char* peer_ip, uint16_t pee
     // Find peer index in array
     int index = find_peer_index(node, peer_ip, peer_port);
     // Guard clause: Check if found in array
-    if (index < 0) return false;
+    if (index < 0) {
+        nimcp_mutex_unlock(&node->lock);
+        return false;
+    }
 
     // Compact peer array
     compact_peer_array(node, (uint32_t)index);
 
+    nimcp_mutex_unlock(&node->lock);
     return true;
 }
 
@@ -1021,18 +1067,26 @@ bool p2p_node_start(p2p_node_t node) {
     // Guard clause: Validate input
     if (!node) return false;
 
+    // Lock for thread safety
+    nimcp_mutex_lock(&node->lock);
+
     // Guard clause: Check if already running
-    if (node->running) return false;
+    if (node->running) {
+        nimcp_mutex_unlock(&node->lock);
+        return false;
+    }
 
     // Setup listen socket
     if (!setup_listen_socket(node)) {
         update_node_status(node, NODE_STATUS_ERROR, false);
+        nimcp_mutex_unlock(&node->lock);
         return false;
     }
 
     // Update node status to running
     update_node_status(node, NODE_STATUS_RUNNING, true);
 
+    nimcp_mutex_unlock(&node->lock);
     return true;
 }
 
@@ -1096,8 +1150,14 @@ bool p2p_node_stop(p2p_node_t node) {
     // Guard clause: Validate input
     if (!node) return false;
 
+    // Lock for thread safety
+    nimcp_mutex_lock(&node->lock);
+
     // Guard clause: Check if running
-    if (!node->running) return false;
+    if (!node->running) {
+        nimcp_mutex_unlock(&node->lock);
+        return false;
+    }
 
     // Close listen socket
     close_listen_socket(node);
@@ -1108,6 +1168,7 @@ bool p2p_node_stop(p2p_node_t node) {
     // Update node status
     update_node_status(node, NODE_STATUS_SHUTDOWN, false);
 
+    nimcp_mutex_unlock(&node->lock);
     return true;
 }
 
