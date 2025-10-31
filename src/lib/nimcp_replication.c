@@ -622,17 +622,23 @@ replication_cluster_t replication_create_cluster(const replication_config_t* con
         case REPLICATION_BACKEND_REDIS:
             // TODO: Implement Redis strategy
             set_replication_error("Redis backend not yet implemented");
+            pthread_mutex_destroy(&cluster->brains_lock);
+            pthread_mutex_destroy(&cluster->nodes_lock);
             nimcp_free(cluster);
             return NULL;
 
         case REPLICATION_BACKEND_POSTGRES:
             // TODO: Implement PostgreSQL strategy
             set_replication_error("PostgreSQL backend not yet implemented");
+            pthread_mutex_destroy(&cluster->brains_lock);
+            pthread_mutex_destroy(&cluster->nodes_lock);
             nimcp_free(cluster);
             return NULL;
 
         default:
             set_replication_error("Unknown backend type: %d", config->backend);
+            pthread_mutex_destroy(&cluster->brains_lock);
+            pthread_mutex_destroy(&cluster->nodes_lock);
             nimcp_free(cluster);
             return NULL;
     }
@@ -650,7 +656,18 @@ replication_cluster_t replication_create_cluster(const replication_config_t* con
 
     // Start heartbeat thread
     cluster->heartbeat_running = true;
-    pthread_create(&cluster->heartbeat_thread, NULL, heartbeat_thread_fn, cluster);
+    int thread_result = pthread_create(&cluster->heartbeat_thread, NULL, heartbeat_thread_fn, cluster);
+    if (thread_result != 0) {
+        set_replication_error("Failed to create heartbeat thread: %d", thread_result);
+        cluster->heartbeat_running = false;
+        if (cluster->strategy && cluster->strategy->shutdown) {
+            cluster->strategy->shutdown(cluster->backend_context);
+        }
+        pthread_mutex_destroy(&cluster->brains_lock);
+        pthread_mutex_destroy(&cluster->nodes_lock);
+        nimcp_free(cluster);
+        return NULL;
+    }
 
     return cluster;
 }
@@ -684,6 +701,7 @@ void replication_destroy_cluster(replication_cluster_t cluster) {
     // Shutdown backend
     if (cluster->strategy && cluster->strategy->shutdown) {
         cluster->strategy->shutdown(cluster->backend_context);
+        cluster->backend_context = NULL;
     }
 
     // Cleanup mutexes
@@ -1077,6 +1095,12 @@ replication_cluster_t replication_create_filesystem_cluster(
     const char* shared_dir,
     const char* node_id)
 {
+    // Guard: Validate parameters
+    if (!shared_dir || !node_id) {
+        set_replication_error("Null shared_dir or node_id provided");
+        return NULL;
+    }
+
     replication_config_t config = {
         .backend = REPLICATION_BACKEND_FILESYSTEM,
         .strategy = REPLICATION_STRATEGY_EVENTUAL,
