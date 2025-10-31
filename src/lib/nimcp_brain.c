@@ -345,6 +345,25 @@ void brain_clear_error(void) {
 }
 
 //=============================================================================
+// Internal Access API (NIMCP 2.5 Consciousness Subsystems)
+//=============================================================================
+
+/**
+ * WHAT: Get underlying adaptive network from brain
+ * WHY: Introspection/salience/consolidation need direct network access
+ * HOW: Return internal network handle
+ *
+ * WARNING: Exposes internals - for consciousness subsystems only!
+ */
+adaptive_network_t brain_get_network(brain_t brain) {
+    if (!brain) {
+        set_error("NULL brain passed to brain_get_network");
+        return NULL;
+    }
+    return brain->network;
+}
+
+//=============================================================================
 // Size Presets - Builder Helpers
 //=============================================================================
 

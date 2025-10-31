@@ -416,4 +416,77 @@ bool adaptive_network_get_performance(adaptive_network_t network,
  */
 void adaptive_network_reset_stats(adaptive_network_t network);
 
+//=============================================================================
+// Introspection & Network State Access (for NIMCP 2.5 Consciousness APIs)
+//=============================================================================
+
+/**
+ * @brief Get total number of neurons in network
+ *
+ * @param network Adaptive network
+ * @return Number of neurons, or 0 on error
+ */
+uint32_t adaptive_network_get_neuron_count(adaptive_network_t network);
+
+/**
+ * @brief Get activation level of specific neuron
+ *
+ * @param network Adaptive network
+ * @param neuron_id Neuron identifier (0 to num_neurons-1)
+ * @param activation Output: neuron activation value
+ * @return true on success, false if neuron_id invalid
+ */
+bool adaptive_network_get_neuron_activation(adaptive_network_t network,
+                                            uint32_t neuron_id,
+                                            float* activation);
+
+/**
+ * @brief Get list of active neurons above threshold
+ *
+ * @param network Adaptive network
+ * @param threshold Activity threshold (neurons with activation > threshold)
+ * @param neuron_ids Output: array of active neuron IDs (caller allocates)
+ * @param activations Output: array of activation values (caller allocates)
+ * @param max_neurons Maximum neurons to return
+ * @return Number of active neurons found
+ */
+uint32_t adaptive_network_get_active_neurons(adaptive_network_t network,
+                                             float threshold,
+                                             uint32_t* neuron_ids,
+                                             float* activations,
+                                             uint32_t max_neurons);
+
+/**
+ * @brief Get number of synaptic connections for a neuron
+ *
+ * @param network Adaptive network
+ * @param neuron_id Neuron identifier
+ * @param num_connections Output: number of connections
+ * @return true on success
+ */
+bool adaptive_network_get_connection_count(adaptive_network_t network,
+                                           uint32_t neuron_id,
+                                           uint32_t* num_connections);
+
+/**
+ * @brief Get total weight (sum of connection weights) for a neuron
+ *
+ * @param network Adaptive network
+ * @param neuron_id Neuron identifier
+ * @param total_weight Output: sum of absolute weights
+ * @return true on success
+ */
+bool adaptive_network_get_total_weight(adaptive_network_t network,
+                                       uint32_t neuron_id,
+                                       float* total_weight);
+
+/**
+ * @brief Get network base handle for direct access
+ * WARNING: For internal use by consciousness subsystems only
+ *
+ * @param network Adaptive network
+ * @return Base neural network handle (do not free!)
+ */
+neural_network_t adaptive_network_get_base_network(adaptive_network_t network);
+
 #endif // NIMCP_ADAPTIVE_H

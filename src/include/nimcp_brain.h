@@ -430,4 +430,19 @@ const char* brain_get_last_error(void);
  */
 void brain_clear_error(void);
 
+//=============================================================================
+// Internal Access API (for NIMCP 2.5 Consciousness Subsystems)
+//=============================================================================
+
+/**
+ * @brief Get underlying adaptive network
+ *
+ * WARNING: For internal use by introspection/salience/consolidation only!
+ * Direct network access bypasses brain abstraction layer.
+ *
+ * @param brain Brain handle
+ * @return Adaptive network handle (do not free!)
+ */
+adaptive_network_t brain_get_network(brain_t brain);
+
 #endif // NIMCP_BRAIN_H

@@ -27,6 +27,8 @@
  */
 
 #include "nimcp_introspection.h"
+#include "nimcp_brain.h"
+#include "nimcp_adaptive.h"
 #include "nimcp_memory.h"
 #include <stdlib.h>
 #include <string.h>
@@ -301,68 +303,67 @@ neuron_population_t brain_get_active_population(
     context->stats.queries_active_population++;
     pthread_mutex_unlock(&context->lock);
 
-    /* WHAT: Get brain info to determine network size */
-    /* WHY: Need to know how many neurons to scan */
-    /* NOTE: This is a placeholder - actual implementation would access */
-    /* internal brain structures. For now, assume 10000 neurons. */
-    uint32_t total_neurons = 10000;  /* TODO: Get from brain_get_info() */
-
-    /* WHAT: Generate simulated activations (will be from real brain later) */
-    /* WHY: Need consistent activation values for both counting and collecting */
-    /* BUG FIX: Previously used rand() twice, causing different counts and buffer overflow */
-    float* activations = (float*)nimcp_malloc(total_neurons * sizeof(float));
-    if (activations == NULL) {
+    /* WHAT: Get brain's underlying adaptive network */
+    /* WHY: Need direct access to neuron activations */
+    adaptive_network_t network = brain_get_network(context->brain);
+    if (network == NULL) {
         return population;
     }
 
-    /* TODO: Replace this simulation with actual brain neuron access */
-    for (uint32_t i = 0; i < total_neurons; i++) {
-        activations[i] = (float)rand() / RAND_MAX;
+    /* WHAT: Get network size */
+    uint32_t total_neurons = adaptive_network_get_neuron_count(network);
+    if (total_neurons == 0) {
+        return population;
     }
 
-    /* WHAT: First pass - count active neurons */
-    /* WHY: Need to allocate exact size arrays */
-    uint32_t active_count = 0;
-    for (uint32_t i = 0; i < total_neurons; i++) {
-        if (activations[i] >= threshold) {
-            active_count++;
-        }
+    /* WHAT: Allocate temporary arrays for gathering active neurons */
+    /* WHY: Don't know count until we scan, so use max size */
+    uint32_t* temp_ids = (uint32_t*)nimcp_malloc(total_neurons * sizeof(uint32_t));
+    float* temp_activations = (float*)nimcp_malloc(total_neurons * sizeof(float));
+
+    if (temp_ids == NULL || temp_activations == NULL) {
+        nimcp_free(temp_ids);
+        nimcp_free(temp_activations);
+        return population;
     }
 
-    /* WHAT: Allocate arrays for results */
-    population.num_active = active_count;
+    /* WHAT: Get active neurons from real network */
+    /* HOW: Use new adaptive_network API that does the scan for us */
+    uint32_t active_count = adaptive_network_get_active_neurons(
+        network, threshold, temp_ids, temp_activations, total_neurons);
+
+    /* WHAT: Set population metadata */
     population.total_neurons = total_neurons;
     population.activity_threshold = threshold;
     population.timestamp = get_timestamp_ms();
+    population.num_active = active_count;
 
     if (active_count == 0) {
-        nimcp_free(activations);
+        nimcp_free(temp_ids);
+        nimcp_free(temp_activations);
         return population;
     }
 
+    /* WHAT: Allocate right-sized arrays for results */
     population.neuron_ids = (uint32_t*)nimcp_malloc(active_count * sizeof(uint32_t));
     population.activation_levels = (float*)nimcp_malloc(active_count * sizeof(float));
 
     if (population.neuron_ids == NULL || population.activation_levels == NULL) {
         nimcp_free(population.neuron_ids);
         nimcp_free(population.activation_levels);
-        nimcp_free(activations);
+        nimcp_free(temp_ids);
+        nimcp_free(temp_activations);
         memset(&population, 0, sizeof(neuron_population_t));
         return population;
     }
 
-    /* WHAT: Second pass - collect active neurons */
-    uint32_t index = 0;
-    for (uint32_t i = 0; i < total_neurons; i++) {
-        if (activations[i] >= threshold) {
-            population.neuron_ids[index] = i;
-            population.activation_levels[index] = activations[i];
-            index++;
-        }
-    }
+    /* WHAT: Copy active neuron data to results */
+    memcpy(population.neuron_ids, temp_ids, active_count * sizeof(uint32_t));
+    memcpy(population.activation_levels, temp_activations, active_count * sizeof(float));
 
-    /* WHAT: Free temporary activation array */
-    nimcp_free(activations);
+    /* WHAT: Free temporary arrays */
+    nimcp_free(temp_ids);
+    nimcp_free(temp_activations);
 
     return population;
 }
@@ -404,14 +405,41 @@ neuron_activity_t brain_get_neuron_activity(
     context->stats.queries_total++;
     pthread_mutex_unlock(&context->lock);
 
-    /* TODO: Access actual brain neuron structure */
-    /* For now, return simulated data */
+    /* WHAT: Get brain's underlying network */
+    adaptive_network_t network = brain_get_network(context->brain);
+    if (network == NULL) {
+        return activity;
+    }
+
+    /* WHAT: Fill in neuron metadata */
     activity.neuron_id = neuron_id;
-    activity.activation = (float)rand() / RAND_MAX;
-    activity.gradient = ((float)rand() / RAND_MAX) * 2.0f - 1.0f;
-    activity.num_connections = 50 + (rand() % 100);
-    activity.total_weight = ((float)rand() / RAND_MAX) * 10.0f;
-    activity.decision_contribution = (float)rand() / RAND_MAX;
+
+    /* WHAT: Get real neuron activation from network */
+    float raw_activation;
+    if (!adaptive_network_get_neuron_activation(network, neuron_id, &raw_activation)) {
+        return activity;  /* Neuron doesn't exist */
+    }
+
+    /* WHAT: Normalize biological potential to 0-1 range */
+    /* WHY: Neurons use biological potentials (-65 to +30 mV), but
+     * introspection API should present normalized activations */
+    /* HOW: Map [-65, +30] mV to [0, 1] */
+    const float REST_POTENTIAL = -65.0f;
+    const float PEAK_POTENTIAL = 30.0f;
+    activity.activation = (raw_activation - REST_POTENTIAL) / (PEAK_POTENTIAL - REST_POTENTIAL);
+
+    /* WHAT: Clamp to valid range */
+    if (activity.activation < 0.0f) activity.activation = 0.0f;
+    if (activity.activation > 1.0f) activity.activation = 1.0f;
+
+    /* WHAT: Get connection count and total weight */
+    adaptive_network_get_connection_count(network, neuron_id, &activity.num_connections);
+    adaptive_network_get_total_weight(network, neuron_id, &activity.total_weight);
+
+    /* WHAT: Compute derived properties */
+    /* TODO: Get gradient from actual backprop when available */
+    activity.gradient = 0.0f;  /* Not tracked yet */
+    activity.decision_contribution = activity.activation;  /* Approximate */
     activity.is_active = activity.activation >= context->config.activity_threshold;
 
     return activity;
@@ -467,9 +495,19 @@ brain_state_t brain_get_internal_state(
             strategy_name = "balanced";
     }
 
-    /* TODO: Get actual network size from brain */
-    uint32_t total_neurons = 10000;
+    /* WHAT: Get brain's underlying network */
+    adaptive_network_t network = brain_get_network(context->brain);
+    if (network == NULL) {
+        return state;
+    }
+
+    /* WHAT: Get actual network size */
+    uint32_t total_neurons = adaptive_network_get_neuron_count(network);
     uint32_t sampled_neurons = (uint32_t)(total_neurons * sampling_rate);
+
+    if (sampled_neurons == 0) {
+        sampled_neurons = 1;  /* At least one sample */
+    }
 
     /* WHAT: Allocate state vector */
     state.dimension = sampled_neurons;
@@ -478,14 +516,32 @@ brain_state_t brain_get_internal_state(
         return state;
     }
 
-    /* WHAT: Sample neuron activations */
+    /* WHAT: Sample neuron activations from real network */
     /* HOW: For fast/balanced, sample evenly spaced neurons */
     /*      For detailed, get all neurons */
     uint32_t stride = (uint32_t)(1.0f / sampling_rate);
+    if (stride == 0) stride = 1;
+
+    /* WHAT: Biological potential normalization constants */
+    const float REST_POTENTIAL = -65.0f;
+    const float PEAK_POTENTIAL = 30.0f;
+
     for (uint32_t i = 0; i < sampled_neurons; i++) {
         uint32_t neuron_id = i * stride;
-        /* TODO: Get actual activation from brain */
-        state.state_vector[i] = (float)rand() / RAND_MAX;
+        if (neuron_id >= total_neurons) {
+            neuron_id = total_neurons - 1;  /* Clamp to valid range */
+        }
+
+        /* WHAT: Get real neuron activation */
+        float raw_activation;
+        if (adaptive_network_get_neuron_activation(network, neuron_id, &raw_activation)) {
+            /* WHAT: Normalize biological potential to 0-1 range */
+            state.state_vector[i] = (raw_activation - REST_POTENTIAL) / (PEAK_POTENTIAL - REST_POTENTIAL);
+            if (state.state_vector[i] < 0.0f) state.state_vector[i] = 0.0f;
+            if (state.state_vector[i] > 1.0f) state.state_vector[i] = 1.0f;
+        } else {
+            state.state_vector[i] = 0.0f;  /* Default if unavailable */
+        }
     }
 
     /* WHAT: Compute information content (entropy) */
@@ -1183,7 +1239,13 @@ static float compute_cosine_similarity(
 
     float denom = sqrtf(norm_a) * sqrtf(norm_b);
     if (denom < 1e-10f) {
-        return 0.0f;
+        /* WHAT: Both vectors are zero or near-zero */
+        /* WHY: Cosine similarity is undefined for zero vectors */
+        /* HOW: If both are zero, they're identical -> similarity = 1.0 */
+        if (norm_a < 1e-10f && norm_b < 1e-10f) {
+            return 1.0f;  /* Both zero = perfect match */
+        }
+        return 0.0f;  /* One zero, one non-zero = no similarity */
     }
 
     return dot_product / denom;

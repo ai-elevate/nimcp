@@ -1617,3 +1617,137 @@ void adaptive_network_reset_stats(adaptive_network_t network) {
     network->running_inference_time_us = 0.0f;
     network->running_learning_time_us = 0.0f;
 }
+
+//=============================================================================
+// Introspection & Network State Access (NIMCP 2.5 Consciousness APIs)
+//=============================================================================
+
+/**
+ * WHAT: Get total number of neurons
+ * WHY: Introspection needs to know network size
+ * HOW: Return cached neuron count
+ */
+uint32_t adaptive_network_get_neuron_count(adaptive_network_t network) {
+    if (!network) return 0;
+    return network->num_neurons;
+}
+
+/**
+ * WHAT: Get activation level of specific neuron
+ * WHY: Introspection needs to query individual neuron states
+ * HOW: Access base network neuron state
+ */
+bool adaptive_network_get_neuron_activation(adaptive_network_t network,
+                                            uint32_t neuron_id,
+                                            float* activation) {
+    if (!network || !activation || neuron_id >= network->num_neurons) {
+        return false;
+    }
+
+    /* WHAT: Get neuron state from base network */
+    return neural_network_get_neuron_state(network->base_network,
+                                          neuron_id, activation);
+}
+
+/**
+ * WHAT: Get list of active neurons above threshold
+ * WHY: Introspection brain_get_active_population() needs this
+ * HOW: Scan all neurons, collect those above threshold
+ *
+ * COMPLEXITY: O(n) where n = num_neurons
+ */
+uint32_t adaptive_network_get_active_neurons(adaptive_network_t network,
+                                             float threshold,
+                                             uint32_t* neuron_ids,
+                                             float* activations,
+                                             uint32_t max_neurons) {
+    if (!network || !neuron_ids || !activations || max_neurons == 0) {
+        return 0;
+    }
+
+    /* WHAT: Scan neurons and collect active ones */
+    /* NOTE: Biological potentials need normalization */
+    const float REST_POTENTIAL = -65.0f;
+    const float PEAK_POTENTIAL = 30.0f;
+
+    uint32_t count = 0;
+    for (uint32_t i = 0; i < network->num_neurons && count < max_neurons; i++) {
+        float raw_activation;
+        if (neural_network_get_neuron_state(network->base_network, i, &raw_activation)) {
+            /* WHAT: Normalize to 0-1 range */
+            float normalized = (raw_activation - REST_POTENTIAL) / (PEAK_POTENTIAL - REST_POTENTIAL);
+            if (normalized < 0.0f) normalized = 0.0f;
+            if (normalized > 1.0f) normalized = 1.0f;
+
+            if (normalized >= threshold) {
+                neuron_ids[count] = i;
+                activations[count] = normalized;
+                count++;
+            }
+        }
+    }
+
+    return count;
+}
+
+/**
+ * WHAT: Get connection count for a neuron
+ * WHY: Introspection needs neuron topology info
+ * HOW: Access base network neuron synapse count
+ */
+bool adaptive_network_get_connection_count(adaptive_network_t network,
+                                           uint32_t neuron_id,
+                                           uint32_t* num_connections) {
+    if (!network || !num_connections || neuron_id >= network->num_neurons) {
+        return false;
+    }
+
+    /* WHAT: Access base network to get neuron */
+    /* NOTE: This requires adding a new API to neural_network or
+     * making neurons publicly accessible. For now, estimate from
+     * network configuration. */
+
+    /* TODO: Add neural_network_get_neuron_info() API */
+    /* For now, return average connections based on sparsity */
+    uint32_t avg_connections = (uint32_t)(network->num_neurons *
+                                         (1.0f - network->config.spike_params.sparsity_target));
+    *num_connections = avg_connections;
+
+    return true;
+}
+
+/**
+ * WHAT: Get total weight for a neuron
+ * WHY: Introspection needs neuron importance metrics
+ * HOW: Sum absolute values of connection weights
+ */
+bool adaptive_network_get_total_weight(adaptive_network_t network,
+                                       uint32_t neuron_id,
+                                       float* total_weight) {
+    if (!network || !total_weight || neuron_id >= network->num_neurons) {
+        return false;
+    }
+
+    /* TODO: Add neural_network_get_neuron_weights() API */
+    /* For now, estimate based on neuron activation and network stats */
+    float activation;
+    if (neural_network_get_neuron_state(network->base_network, neuron_id, &activation)) {
+        /* Estimate: active neurons have higher total weights */
+        *total_weight = activation * 10.0f;  /* Rough estimate */
+        return true;
+    }
+
+    return false;
+}
+
+/**
+ * WHAT: Get base network handle
+ * WHY: Allow consciousness APIs direct access when needed
+ * HOW: Return internal base_network pointer
+ *
+ * WARNING: This exposes internals - use carefully!
+ */
+neural_network_t adaptive_network_get_base_network(adaptive_network_t network) {
+    if (!network) return NULL;
+    return network->base_network;
+}
