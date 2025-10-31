@@ -27,14 +27,22 @@
  */
 
 #include "nimcp_introspection.h"
+#include "../include/utils/nimcp_thread.h"
 #include "nimcp_brain.h"
+#include "../include/utils/nimcp_thread.h"
 #include "nimcp_adaptive.h"
+#include "../include/utils/nimcp_thread.h"
 #include "nimcp_memory.h"
+#include "../include/utils/nimcp_thread.h"
 #include <stdlib.h>
+#include "../include/utils/nimcp_thread.h"
 #include <string.h>
+#include "../include/utils/nimcp_thread.h"
 #include <math.h>
-#include <pthread.h>
+#include "../include/utils/nimcp_thread.h"
+#include "../include/utils/nimcp_thread.h"
 #include <time.h>
+#include "../include/utils/nimcp_thread.h"
 
 /* ========================================================================
  * INTERNAL STRUCTURES
@@ -64,7 +72,7 @@ typedef struct pattern_entry {
 typedef struct {
     pattern_entry_t* buckets[256];       /* Hash buckets */
     uint32_t num_patterns;               /* Total patterns */
-    pthread_mutex_t lock;                /* Thread safety */
+    nimcp_mutex_t lock;                /* Thread safety */
 } pattern_registry_t;
 
 /**
@@ -79,7 +87,7 @@ typedef struct {
     uint32_t capacity;                   /* Buffer size */
     uint32_t head;                       /* Write position */
     uint32_t count;                      /* Entries stored */
-    pthread_mutex_t lock;                /* Thread safety */
+    nimcp_mutex_t lock;                /* Thread safety */
 } activity_history_buffer_t;
 
 /**
@@ -105,7 +113,7 @@ struct introspection_context_struct {
     introspection_stats_t stats;         /* Performance stats */
 
     /* Thread safety */
-    pthread_mutex_t lock;                /* Protects context */
+    nimcp_mutex_t lock;                /* Protects context */
 };
 
 /* ========================================================================
@@ -178,7 +186,7 @@ introspection_context_t introspection_context_create(
     context->brain = brain;
     context->config = config ? *config : introspection_default_config();
     context->topology_cached = false;
-    pthread_mutex_init(&context->lock, NULL);
+    nimcp_mutex_init(&context->lock, NULL);
 
     /* WHAT: Create pattern registry if enabled */
     /* WHY: Track learned patterns for queries */
@@ -189,7 +197,7 @@ introspection_context_t introspection_context_create(
             nimcp_free(context);
             return NULL;
         }
-        pthread_mutex_init(&context->pattern_registry->lock, NULL);
+        nimcp_mutex_init(&context->pattern_registry->lock, NULL);
     }
 
     /* WHAT: Create activity history buffer */
@@ -198,10 +206,10 @@ introspection_context_t introspection_context_create(
         nimcp_calloc(1, sizeof(activity_history_buffer_t));
     if (context->history == NULL) {
         if (context->pattern_registry) {
-            pthread_mutex_destroy(&context->pattern_registry->lock);
+            nimcp_mutex_destroy(&context->pattern_registry->lock);
             nimcp_free(context->pattern_registry);
         }
-        pthread_mutex_destroy(&context->lock);
+        nimcp_mutex_destroy(&context->lock);
         nimcp_free(context);
         return NULL;
     }
@@ -211,15 +219,15 @@ introspection_context_t introspection_context_create(
         nimcp_calloc(context->history->capacity, sizeof(activity_history_entry_t));
     if (context->history->entries == NULL) {
         if (context->pattern_registry) {
-            pthread_mutex_destroy(&context->pattern_registry->lock);
+            nimcp_mutex_destroy(&context->pattern_registry->lock);
             nimcp_free(context->pattern_registry);
         }
         nimcp_free(context->history);
-        pthread_mutex_destroy(&context->lock);
+        nimcp_mutex_destroy(&context->lock);
         nimcp_free(context);
         return NULL;
     }
-    pthread_mutex_init(&context->history->lock, NULL);
+    nimcp_mutex_init(&context->history->lock, NULL);
 
     /* WHAT: Initialize statistics */
     memset(&context->stats, 0, sizeof(introspection_stats_t));
@@ -243,7 +251,7 @@ void introspection_context_destroy(introspection_context_t context) {
 
     /* WHAT: Free pattern registry */
     if (context->pattern_registry) {
-        pthread_mutex_lock(&context->pattern_registry->lock);
+        nimcp_mutex_lock(&context->pattern_registry->lock);
         for (uint32_t i = 0; i < 256; i++) {
             pattern_entry_t* entry = context->pattern_registry->buckets[i];
             while (entry) {
@@ -253,14 +261,14 @@ void introspection_context_destroy(introspection_context_t context) {
                 entry = next;
             }
         }
-        pthread_mutex_unlock(&context->pattern_registry->lock);
-        pthread_mutex_destroy(&context->pattern_registry->lock);
+        nimcp_mutex_unlock(&context->pattern_registry->lock);
+        nimcp_mutex_destroy(&context->pattern_registry->lock);
         nimcp_free(context->pattern_registry);
     }
 
     /* WHAT: Free activity history */
     if (context->history) {
-        pthread_mutex_destroy(&context->history->lock);
+        nimcp_mutex_destroy(&context->history->lock);
         nimcp_free(context->history->entries);
         nimcp_free(context->history);
     }
@@ -271,7 +279,7 @@ void introspection_context_destroy(introspection_context_t context) {
     }
 
     /* WHAT: Destroy mutex and free context */
-    pthread_mutex_destroy(&context->lock);
+    nimcp_mutex_destroy(&context->lock);
     nimcp_free(context);
 }
 
@@ -298,10 +306,10 @@ neuron_population_t brain_get_active_population(
         return population;
     }
 
-    pthread_mutex_lock(&context->lock);
+    nimcp_mutex_lock(&context->lock);
     context->stats.queries_total++;
     context->stats.queries_active_population++;
-    pthread_mutex_unlock(&context->lock);
+    nimcp_mutex_unlock(&context->lock);
 
     /* WHAT: Get brain's underlying adaptive network */
     /* WHY: Need direct access to neuron activations */
@@ -401,9 +409,9 @@ neuron_activity_t brain_get_neuron_activity(
         return activity;
     }
 
-    pthread_mutex_lock(&context->lock);
+    nimcp_mutex_lock(&context->lock);
     context->stats.queries_total++;
-    pthread_mutex_unlock(&context->lock);
+    nimcp_mutex_unlock(&context->lock);
 
     /* WHAT: Get brain's underlying network */
     adaptive_network_t network = brain_get_network(context->brain);
@@ -468,10 +476,10 @@ brain_state_t brain_get_internal_state(
         return state;
     }
 
-    pthread_mutex_lock(&context->lock);
+    nimcp_mutex_lock(&context->lock);
     context->stats.queries_total++;
     context->stats.queries_internal_state++;
-    pthread_mutex_unlock(&context->lock);
+    nimcp_mutex_unlock(&context->lock);
 
     /* WHAT: Determine sampling rate based on strategy */
     /* WHY: Trade-off between speed and accuracy */
@@ -639,10 +647,10 @@ brain_uncertainty_t brain_get_uncertainty(
         return uncertainty;
     }
 
-    pthread_mutex_lock(&context->lock);
+    nimcp_mutex_lock(&context->lock);
     context->stats.queries_total++;
     context->stats.queries_uncertainty++;
-    pthread_mutex_unlock(&context->lock);
+    nimcp_mutex_unlock(&context->lock);
 
     /* WHAT: Get ensemble size from config */
     uint32_t ensemble_size = context->config.uncertainty_ensemble_size;
@@ -769,7 +777,7 @@ static void pattern_registry_update(
         return;
     }
 
-    pthread_mutex_lock(&registry->lock);
+    nimcp_mutex_lock(&registry->lock);
 
     /* WHAT: Try to find existing entry */
     pattern_entry_t* entry = pattern_registry_lookup(registry, name);
@@ -784,7 +792,7 @@ static void pattern_registry_update(
         /* WHAT: Create new pattern entry */
         entry = (pattern_entry_t*)nimcp_calloc(1, sizeof(pattern_entry_t));
         if (entry == NULL) {
-            pthread_mutex_unlock(&registry->lock);
+            nimcp_mutex_unlock(&registry->lock);
             return;
         }
 
@@ -803,7 +811,7 @@ static void pattern_registry_update(
         registry->num_patterns++;
     }
 
-    pthread_mutex_unlock(&registry->lock);
+    nimcp_mutex_unlock(&registry->lock);
 }
 
 /**
@@ -825,16 +833,16 @@ bool brain_is_pattern_active(
         return false;
     }
 
-    pthread_mutex_lock(&context->lock);
+    nimcp_mutex_lock(&context->lock);
     context->stats.queries_total++;
     context->stats.queries_pattern++;
-    pthread_mutex_unlock(&context->lock);
+    nimcp_mutex_unlock(&context->lock);
 
-    pthread_mutex_lock(&context->pattern_registry->lock);
+    nimcp_mutex_lock(&context->pattern_registry->lock);
     pattern_entry_t* entry = pattern_registry_lookup(context->pattern_registry, pattern_name);
     bool is_active = (entry != NULL &&
                      entry->current_activity >= context->config.activity_threshold);
-    pthread_mutex_unlock(&context->pattern_registry->lock);
+    nimcp_mutex_unlock(&context->pattern_registry->lock);
 
     return is_active;
 }
@@ -858,18 +866,18 @@ pattern_info_t* brain_get_pattern_info(
         return NULL;
     }
 
-    pthread_mutex_lock(&context->pattern_registry->lock);
+    nimcp_mutex_lock(&context->pattern_registry->lock);
     pattern_entry_t* entry = pattern_registry_lookup(context->pattern_registry, pattern_name);
 
     if (entry == NULL) {
-        pthread_mutex_unlock(&context->pattern_registry->lock);
+        nimcp_mutex_unlock(&context->pattern_registry->lock);
         return NULL;
     }
 
     /* WHAT: Allocate and populate info structure */
     pattern_info_t* info = (pattern_info_t*)nimcp_malloc(sizeof(pattern_info_t));
     if (info == NULL) {
-        pthread_mutex_unlock(&context->pattern_registry->lock);
+        nimcp_mutex_unlock(&context->pattern_registry->lock);
         return NULL;
     }
 
@@ -881,7 +889,7 @@ pattern_info_t* brain_get_pattern_info(
     info->first_learned = entry->first_learned;
     info->last_activated = entry->last_activated;
 
-    pthread_mutex_unlock(&context->pattern_registry->lock);
+    nimcp_mutex_unlock(&context->pattern_registry->lock);
 
     return info;
 }
@@ -920,18 +928,18 @@ char** brain_list_patterns(
         return NULL;
     }
 
-    pthread_mutex_lock(&context->pattern_registry->lock);
+    nimcp_mutex_lock(&context->pattern_registry->lock);
 
     *num_patterns = context->pattern_registry->num_patterns;
     if (*num_patterns == 0) {
-        pthread_mutex_unlock(&context->pattern_registry->lock);
+        nimcp_mutex_unlock(&context->pattern_registry->lock);
         return NULL;
     }
 
     /* WHAT: Allocate array of strings */
     char** pattern_list = (char**)nimcp_malloc(*num_patterns * sizeof(char*));
     if (pattern_list == NULL) {
-        pthread_mutex_unlock(&context->pattern_registry->lock);
+        nimcp_mutex_unlock(&context->pattern_registry->lock);
         *num_patterns = 0;
         return NULL;
     }
@@ -946,7 +954,7 @@ char** brain_list_patterns(
         }
     }
 
-    pthread_mutex_unlock(&context->pattern_registry->lock);
+    nimcp_mutex_unlock(&context->pattern_registry->lock);
 
     return pattern_list;
 }
@@ -986,13 +994,13 @@ network_topology_t brain_get_topology(introspection_context_t context) {
         return topology;
     }
 
-    pthread_mutex_lock(&context->lock);
+    nimcp_mutex_lock(&context->lock);
 
     /* WHAT: Return cached topology if available */
     /* WHY: Topology doesn't change, expensive to recompute */
     if (context->topology_cached) {
         network_topology_t result = context->topology;
-        pthread_mutex_unlock(&context->lock);
+        nimcp_mutex_unlock(&context->lock);
         return result;
     }
 
@@ -1016,7 +1024,7 @@ network_topology_t brain_get_topology(introspection_context_t context) {
     context->topology = topology;
     context->topology_cached = true;
 
-    pthread_mutex_unlock(&context->lock);
+    nimcp_mutex_unlock(&context->lock);
 
     return topology;
 }
@@ -1054,7 +1062,7 @@ static void activity_history_add(
         return;
     }
 
-    pthread_mutex_lock(&history->lock);
+    nimcp_mutex_lock(&history->lock);
 
     /* WHAT: Write to circular buffer */
     history->entries[history->head] = *entry;
@@ -1064,7 +1072,7 @@ static void activity_history_add(
         history->count++;
     }
 
-    pthread_mutex_unlock(&history->lock);
+    nimcp_mutex_unlock(&history->lock);
 }
 
 /**
@@ -1082,11 +1090,11 @@ activity_history_entry_t* brain_get_activity_history(
         return NULL;
     }
 
-    pthread_mutex_lock(&context->history->lock);
+    nimcp_mutex_lock(&context->history->lock);
 
     *num_entries = context->history->count;
     if (*num_entries == 0) {
-        pthread_mutex_unlock(&context->history->lock);
+        nimcp_mutex_unlock(&context->history->lock);
         return NULL;
     }
 
@@ -1095,7 +1103,7 @@ activity_history_entry_t* brain_get_activity_history(
         nimcp_malloc(*num_entries * sizeof(activity_history_entry_t));
 
     if (history == NULL) {
-        pthread_mutex_unlock(&context->history->lock);
+        nimcp_mutex_unlock(&context->history->lock);
         *num_entries = 0;
         return NULL;
     }
@@ -1110,7 +1118,7 @@ activity_history_entry_t* brain_get_activity_history(
         history[i] = context->history->entries[index];
     }
 
-    pthread_mutex_unlock(&context->history->lock);
+    nimcp_mutex_unlock(&context->history->lock);
 
     return history;
 }
@@ -1134,9 +1142,9 @@ bool introspection_get_stats(
         return false;
     }
 
-    pthread_mutex_lock(&context->lock);
+    nimcp_mutex_lock(&context->lock);
     *stats = context->stats;
-    pthread_mutex_unlock(&context->lock);
+    nimcp_mutex_unlock(&context->lock);
 
     return true;
 }
@@ -1153,13 +1161,13 @@ void introspection_reset_stats(introspection_context_t context) {
         return;
     }
 
-    pthread_mutex_lock(&context->lock);
+    nimcp_mutex_lock(&context->lock);
 
     size_t memory_used = context->stats.memory_used_bytes;
     memset(&context->stats, 0, sizeof(introspection_stats_t));
     context->stats.memory_used_bytes = memory_used;
 
-    pthread_mutex_unlock(&context->lock);
+    nimcp_mutex_unlock(&context->lock);
 }
 
 /* ========================================================================

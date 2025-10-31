@@ -19,12 +19,18 @@
  */
 
 #include "nimcp_salience.h"
+#include "../include/utils/nimcp_thread.h"
 #include "nimcp_memory.h"
+#include "../include/utils/nimcp_thread.h"
 #include <stdio.h>
+#include "../include/utils/nimcp_thread.h"
 #include <string.h>
+#include "../include/utils/nimcp_thread.h"
 #include <math.h>
-#include <pthread.h>
+#include "../include/utils/nimcp_thread.h"
+#include "../include/utils/nimcp_thread.h"
 #include <time.h>
+#include "../include/utils/nimcp_thread.h"
 
 //=============================================================================
 // Thread-Local Error Handling
@@ -70,7 +76,7 @@ typedef struct {
     uint32_t capacity;         // Buffer size
     uint32_t head;             // Next write position
     uint32_t count;            // Current entry count
-    pthread_mutex_t lock;      // Thread safety
+    nimcp_mutex_t lock;      // Thread safety
 } history_buffer_t;
 
 /**
@@ -91,7 +97,7 @@ static history_buffer_t* history_buffer_create(uint32_t capacity) {
     hist->capacity = capacity;
     hist->head = 0;
     hist->count = 0;
-    pthread_mutex_init(&hist->lock, NULL);
+    nimcp_mutex_init(&hist->lock, NULL);
 
     return hist;
 }
@@ -117,7 +123,7 @@ static void history_buffer_destroy(history_buffer_t* hist) {
         nimcp_free(hist->entries);
     }
 
-    pthread_mutex_destroy(&hist->lock);
+    nimcp_mutex_destroy(&hist->lock);
     nimcp_free(hist);
 }
 
@@ -130,7 +136,7 @@ static void history_buffer_add(history_buffer_t* hist,
                                const float* features,
                                uint32_t num_features,
                                uint64_t timestamp) {
-    pthread_mutex_lock(&hist->lock);
+    nimcp_mutex_lock(&hist->lock);
 
     history_entry_t* entry = &hist->entries[hist->head];
 
@@ -160,7 +166,7 @@ static void history_buffer_add(history_buffer_t* hist,
         }
     }
 
-    pthread_mutex_unlock(&hist->lock);
+    nimcp_mutex_unlock(&hist->lock);
 }
 
 /**
@@ -184,7 +190,7 @@ static float history_buffer_compute_novelty(history_buffer_t* hist,
         return 1.0f;
     }
 
-    pthread_mutex_lock(&hist->lock);
+    nimcp_mutex_lock(&hist->lock);
 
     /**
      * WHAT: Find minimum distance to any historical entry
@@ -222,7 +228,7 @@ static float history_buffer_compute_novelty(history_buffer_t* hist,
         }
     }
 
-    pthread_mutex_unlock(&hist->lock);
+    nimcp_mutex_unlock(&hist->lock);
 
     /**
      * WHAT: Normalize distance to 0-1
@@ -240,7 +246,7 @@ static float history_buffer_compute_novelty(history_buffer_t* hist,
  * WHY: Reset novelty detection
  */
 static void history_buffer_clear(history_buffer_t* hist) {
-    pthread_mutex_lock(&hist->lock);
+    nimcp_mutex_lock(&hist->lock);
 
     for (uint32_t i = 0; i < hist->count; i++) {
         if (hist->entries[i].valid && hist->entries[i].features) {
@@ -252,7 +258,7 @@ static void history_buffer_clear(history_buffer_t* hist) {
     hist->head = 0;
     hist->count = 0;
 
-    pthread_mutex_unlock(&hist->lock);
+    nimcp_mutex_unlock(&hist->lock);
 }
 
 //=============================================================================
@@ -271,7 +277,7 @@ typedef struct {
     uint32_t num_features;     // Feature dimension
     float alpha;               // EMA smoothing factor (0-1)
     bool initialized;          // Has seen at least one input?
-    pthread_mutex_t lock;      // Thread safety
+    nimcp_mutex_t lock;      // Thread safety
 } predictor_t;
 
 /**
@@ -290,7 +296,7 @@ static predictor_t* predictor_create(uint32_t num_features) {
     pred->num_features = num_features;
     pred->alpha = 0.3f;  // 30% new, 70% old
     pred->initialized = false;
-    pthread_mutex_init(&pred->lock, NULL);
+    nimcp_mutex_init(&pred->lock, NULL);
 
     return pred;
 }
@@ -305,7 +311,7 @@ static void predictor_destroy(predictor_t* pred) {
         nimcp_free(pred->prediction);
     }
 
-    pthread_mutex_destroy(&pred->lock);
+    nimcp_mutex_destroy(&pred->lock);
     nimcp_free(pred);
 }
 
@@ -315,7 +321,7 @@ static void predictor_destroy(predictor_t* pred) {
  * HOW: Exponential moving average
  */
 static void predictor_update(predictor_t* pred, const float* features) {
-    pthread_mutex_lock(&pred->lock);
+    nimcp_mutex_lock(&pred->lock);
 
     if (!pred->initialized) {
         /**
@@ -336,7 +342,7 @@ static void predictor_update(predictor_t* pred, const float* features) {
         }
     }
 
-    pthread_mutex_unlock(&pred->lock);
+    nimcp_mutex_unlock(&pred->lock);
 }
 
 /**
@@ -351,7 +357,7 @@ static float predictor_compute_surprise(predictor_t* pred, const float* features
         return 0.5f;  // Moderate surprise when no prediction exists
     }
 
-    pthread_mutex_lock(&pred->lock);
+    nimcp_mutex_lock(&pred->lock);
 
     /**
      * WHAT: Compute mean absolute prediction error
@@ -365,7 +371,7 @@ static float predictor_compute_surprise(predictor_t* pred, const float* features
 
     float mae = total_error / pred->num_features;
 
-    pthread_mutex_unlock(&pred->lock);
+    nimcp_mutex_unlock(&pred->lock);
 
     /**
      * WHAT: Normalize to 0-1
@@ -418,7 +424,7 @@ struct salience_evaluator_struct {
     uint64_t total_eval_time_us;
 
     // Thread safety
-    pthread_mutex_t eval_lock;
+    nimcp_mutex_t eval_lock;
 };
 
 //=============================================================================
@@ -652,7 +658,7 @@ salience_evaluator_t salience_evaluator_create(
     eval->total_eval_time_us = 0;
 
     // Initialize mutex
-    pthread_mutex_init(&eval->eval_lock, NULL);
+    nimcp_mutex_init(&eval->eval_lock, NULL);
 
     return eval;
 }
@@ -668,7 +674,7 @@ void salience_evaluator_destroy(salience_evaluator_t eval) {
         predictor_destroy(eval->predictor);
     }
 
-    pthread_mutex_destroy(&eval->eval_lock);
+    nimcp_mutex_destroy(&eval->eval_lock);
 
     nimcp_free(eval);
 }
@@ -700,7 +706,7 @@ brain_salience_t brain_evaluate_salience_temporal(
     struct timespec start, end;
     clock_gettime(CLOCK_MONOTONIC, &start);
 
-    pthread_mutex_lock(&eval->eval_lock);
+    nimcp_mutex_lock(&eval->eval_lock);
 
     /**
      * WHAT: Compute salience using configured strategy
@@ -765,7 +771,7 @@ brain_salience_t brain_evaluate_salience_temporal(
         eval->stats_high_urgency++;
     }
 
-    pthread_mutex_unlock(&eval->eval_lock);
+    nimcp_mutex_unlock(&eval->eval_lock);
 
     /**
      * WHAT: Trigger callbacks if thresholds exceeded
@@ -826,13 +832,13 @@ bool salience_set_weights(
 
     if (!eval) return false;
 
-    pthread_mutex_lock(&eval->eval_lock);
+    nimcp_mutex_lock(&eval->eval_lock);
 
     eval->config.novelty_weight = novelty_weight;
     eval->config.surprise_weight = surprise_weight;
     eval->config.urgency_weight = urgency_weight;
 
-    pthread_mutex_unlock(&eval->eval_lock);
+    nimcp_mutex_unlock(&eval->eval_lock);
 
     return true;
 }
@@ -846,14 +852,14 @@ bool salience_set_thresholds(
 
     if (!eval) return false;
 
-    pthread_mutex_lock(&eval->eval_lock);
+    nimcp_mutex_lock(&eval->eval_lock);
 
     eval->config.high_salience_threshold = high_salience_threshold;
     eval->config.high_novelty_threshold = high_novelty_threshold;
     eval->config.high_surprise_threshold = high_surprise_threshold;
     eval->config.high_urgency_threshold = high_urgency_threshold;
 
-    pthread_mutex_unlock(&eval->eval_lock);
+    nimcp_mutex_unlock(&eval->eval_lock);
 
     return true;
 }
@@ -865,12 +871,12 @@ bool salience_register_callback(
 
     if (!eval) return false;
 
-    pthread_mutex_lock(&eval->eval_lock);
+    nimcp_mutex_lock(&eval->eval_lock);
 
     eval->callback = callback;
     eval->callback_context = context;
 
-    pthread_mutex_unlock(&eval->eval_lock);
+    nimcp_mutex_unlock(&eval->eval_lock);
 
     return true;
 }
@@ -886,7 +892,7 @@ bool salience_clear_history(salience_evaluator_t eval) {
 bool salience_get_stats(salience_evaluator_t eval, salience_stats_t* stats) {
     if (!eval || !stats) return false;
 
-    pthread_mutex_lock(&eval->eval_lock);
+    nimcp_mutex_lock(&eval->eval_lock);
 
     stats->evaluations_performed = eval->stats_evaluations;
     stats->high_salience_count = eval->stats_high_salience;
@@ -905,7 +911,7 @@ bool salience_get_stats(salience_evaluator_t eval, salience_stats_t* stats) {
     stats->history_size = eval->history ? eval->history->count : 0;
     stats->cache_hit_rate = 0;  // TODO: Implement caching
 
-    pthread_mutex_unlock(&eval->eval_lock);
+    nimcp_mutex_unlock(&eval->eval_lock);
 
     return true;
 }
@@ -930,7 +936,7 @@ bool salience_reset_stats(salience_evaluator_t eval) {
      * WHY: Provide clean slate for new measurement period
      * HOW: Mutex-protected zero assignment to all counters
      */
-    pthread_mutex_lock(&eval->eval_lock);
+    nimcp_mutex_lock(&eval->eval_lock);
 
     eval->stats_evaluations = 0;
     eval->stats_high_salience = 0;
@@ -945,7 +951,7 @@ bool salience_reset_stats(salience_evaluator_t eval) {
 
     eval->total_eval_time_us = 0;
 
-    pthread_mutex_unlock(&eval->eval_lock);
+    nimcp_mutex_unlock(&eval->eval_lock);
 
     return true;
 }

@@ -8,6 +8,7 @@
  */
 
 #include "nimcp_memory.h"
+#include "../include/utils/nimcp_thread.h"
 
 /**
  * WHAT: Undefine macro redirections
@@ -20,11 +21,16 @@
 #undef free
 
 #include <stdlib.h>
+#include "../include/utils/nimcp_thread.h"
 #include <string.h>
+#include "../include/utils/nimcp_thread.h"
 #include <stdio.h>
+#include "../include/utils/nimcp_thread.h"
 #include <time.h>
-#include <pthread.h>
+#include "../include/utils/nimcp_thread.h"
+#include "../include/utils/nimcp_thread.h"
 #include <stdarg.h>
+#include "../include/utils/nimcp_thread.h"
 
 //=============================================================================
 // Internal Structures
@@ -76,7 +82,7 @@ typedef struct {
     bool initialized;
     bool tracking_enabled;
     bool debug_output;
-    pthread_mutex_t lock;
+    nimcp_mutex_t lock;
     memory_block_t* blocks;
     size_pattern_t* patterns;
     nimcp_memory_stats_t stats;
@@ -125,7 +131,7 @@ static uint64_t timespec_diff_ms(const timespec_internal_t* end,
  */
 static void init_if_needed(void) {
     if (!g_memory_state.initialized) {
-        pthread_mutex_init(&g_memory_state.lock, NULL);
+        nimcp_mutex_init(&g_memory_state.lock, NULL);
         memset(&g_memory_state.stats, 0, sizeof(nimcp_memory_stats_t));
         g_memory_state.initialized = true;
         g_memory_state.blocks = NULL;
@@ -175,7 +181,7 @@ static bool check_memory_guards(void* ptr, size_t size) {
 static size_t get_allocation_size(void* ptr) {
     if (!ptr || !g_memory_state.tracking_enabled) return 0;
 
-    pthread_mutex_lock(&g_memory_state.lock);
+    nimcp_mutex_lock(&g_memory_state.lock);
     memory_block_t* current = g_memory_state.blocks;
     size_t size = 0;
 
@@ -187,7 +193,7 @@ static size_t get_allocation_size(void* ptr) {
         current = current->next;
     }
 
-    pthread_mutex_unlock(&g_memory_state.lock);
+    nimcp_mutex_unlock(&g_memory_state.lock);
     return size;
 }
 
@@ -198,7 +204,7 @@ static size_t get_allocation_size(void* ptr) {
 static uint64_t get_allocation_lifetime_ms(void* ptr) {
     if (!ptr || !g_memory_state.tracking_enabled) return 0;
 
-    pthread_mutex_lock(&g_memory_state.lock);
+    nimcp_mutex_lock(&g_memory_state.lock);
     memory_block_t* current = g_memory_state.blocks;
     uint64_t lifetime = 0;
 
@@ -212,7 +218,7 @@ static uint64_t get_allocation_lifetime_ms(void* ptr) {
         current = current->next;
     }
 
-    pthread_mutex_unlock(&g_memory_state.lock);
+    nimcp_mutex_unlock(&g_memory_state.lock);
     return lifetime;
 }
 
@@ -271,7 +277,7 @@ static void track_allocation(void* ptr, size_t size,
     block->head_canary = g_memory_state.CANARY_VALUE;
     block->tail_canary = g_memory_state.CANARY_VALUE;
 
-    pthread_mutex_lock(&g_memory_state.lock);
+    nimcp_mutex_lock(&g_memory_state.lock);
     block->next = g_memory_state.blocks;
     g_memory_state.blocks = block;
     g_memory_state.stats.total_allocated += size;
@@ -283,7 +289,7 @@ static void track_allocation(void* ptr, size_t size,
     }
 
     update_memory_patterns(ptr, size, true);
-    pthread_mutex_unlock(&g_memory_state.lock);
+    nimcp_mutex_unlock(&g_memory_state.lock);
 }
 
 /**
@@ -293,7 +299,7 @@ static void track_allocation(void* ptr, size_t size,
 static void untrack_allocation(void* ptr) {
     if (!g_memory_state.tracking_enabled || !ptr) return;
 
-    pthread_mutex_lock(&g_memory_state.lock);
+    nimcp_mutex_lock(&g_memory_state.lock);
 
     memory_block_t* current = g_memory_state.blocks;
     memory_block_t* prev = NULL;
@@ -315,7 +321,7 @@ static void untrack_allocation(void* ptr) {
         current = current->next;
     }
 
-    pthread_mutex_unlock(&g_memory_state.lock);
+    nimcp_mutex_unlock(&g_memory_state.lock);
 }
 
 /**
@@ -325,7 +331,7 @@ static void untrack_allocation(void* ptr) {
 static bool check_double_free(void* ptr) {
     if (!ptr) return false;
 
-    pthread_mutex_lock(&g_memory_state.lock);
+    nimcp_mutex_lock(&g_memory_state.lock);
     memory_block_t* current = g_memory_state.blocks;
     bool found = false;
 
@@ -337,7 +343,7 @@ static bool check_double_free(void* ptr) {
         current = current->next;
     }
 
-    pthread_mutex_unlock(&g_memory_state.lock);
+    nimcp_mutex_unlock(&g_memory_state.lock);
 
     if (!found) {
         fprintf(stderr, "[MEMORY] Double-free detected at %p\n", ptr);
@@ -365,9 +371,9 @@ void* nimcp_malloc(size_t size) {
             printf("[MEMORY] Allocated: %zu bytes at %p\n", size, ptr);
         }
     } else {
-        pthread_mutex_lock(&g_memory_state.lock);
+        nimcp_mutex_lock(&g_memory_state.lock);
         g_memory_state.stats.failed_allocations++;
-        pthread_mutex_unlock(&g_memory_state.lock);
+        nimcp_mutex_unlock(&g_memory_state.lock);
 
         if (g_memory_state.debug_output) {
             fprintf(stderr, "[MEMORY] Allocation failed: %zu bytes\n", size);
@@ -392,9 +398,9 @@ void* nimcp_calloc(size_t count, size_t size) {
                    count * size, ptr);
         }
     } else {
-        pthread_mutex_lock(&g_memory_state.lock);
+        nimcp_mutex_lock(&g_memory_state.lock);
         g_memory_state.stats.failed_allocations++;
-        pthread_mutex_unlock(&g_memory_state.lock);
+        nimcp_mutex_unlock(&g_memory_state.lock);
 
         if (g_memory_state.debug_output) {
             fprintf(stderr, "[MEMORY] Allocation failed (calloc): %zu bytes\n",
@@ -430,9 +436,9 @@ void* nimcp_realloc(void* ptr, size_t new_size) {
                    new_size, new_ptr, ptr);
         }
     } else {
-        pthread_mutex_lock(&g_memory_state.lock);
+        nimcp_mutex_lock(&g_memory_state.lock);
         g_memory_state.stats.failed_allocations++;
-        pthread_mutex_unlock(&g_memory_state.lock);
+        nimcp_mutex_unlock(&g_memory_state.lock);
 
         if (g_memory_state.debug_output) {
             fprintf(stderr, "[MEMORY] Reallocation failed: %zu bytes\n", new_size);
@@ -482,9 +488,9 @@ void* nimcp_aligned_malloc(size_t size, size_t alignment) {
     void* ptr;
     int result = posix_memalign(&ptr, alignment, size);
     if (result != 0) {
-        pthread_mutex_lock(&g_memory_state.lock);
+        nimcp_mutex_lock(&g_memory_state.lock);
         g_memory_state.stats.failed_allocations++;
-        pthread_mutex_unlock(&g_memory_state.lock);
+        nimcp_mutex_unlock(&g_memory_state.lock);
         return NULL;
     }
     track_allocation(ptr, size, __FILE__, __LINE__, __func__);
@@ -504,7 +510,7 @@ void nimcp_memory_init(void) {
 void nimcp_memory_cleanup(void) {
     if (!g_memory_state.initialized) return;
 
-    pthread_mutex_lock(&g_memory_state.lock);
+    nimcp_mutex_lock(&g_memory_state.lock);
 
     // Free all leaked blocks
     memory_block_t* current = g_memory_state.blocks;
@@ -531,25 +537,25 @@ void nimcp_memory_cleanup(void) {
     g_memory_state.patterns = NULL;
     memset(&g_memory_state.stats, 0, sizeof(nimcp_memory_stats_t));
 
-    pthread_mutex_unlock(&g_memory_state.lock);
-    pthread_mutex_destroy(&g_memory_state.lock);
+    nimcp_mutex_unlock(&g_memory_state.lock);
+    nimcp_mutex_destroy(&g_memory_state.lock);
     g_memory_state.initialized = false;
 }
 
 bool nimcp_memory_get_stats(nimcp_memory_stats_t* stats) {
     if (!stats) return false;
 
-    pthread_mutex_lock(&g_memory_state.lock);
+    nimcp_mutex_lock(&g_memory_state.lock);
     memcpy(stats, &g_memory_state.stats, sizeof(nimcp_memory_stats_t));
-    pthread_mutex_unlock(&g_memory_state.lock);
+    nimcp_mutex_unlock(&g_memory_state.lock);
 
     return true;
 }
 
 void nimcp_memory_clear_stats(void) {
-    pthread_mutex_lock(&g_memory_state.lock);
+    nimcp_mutex_lock(&g_memory_state.lock);
     memset(&g_memory_state.stats, 0, sizeof(nimcp_memory_stats_t));
-    pthread_mutex_unlock(&g_memory_state.lock);
+    nimcp_mutex_unlock(&g_memory_state.lock);
 }
 
 void nimcp_memory_enable_tracking(bool enable) {
@@ -568,7 +574,7 @@ void nimcp_memory_dump_allocations(void) {
         return;
     }
 
-    pthread_mutex_lock(&g_memory_state.lock);
+    nimcp_mutex_lock(&g_memory_state.lock);
 
     printf("\n========== Memory Allocation Dump ==========\n");
     printf("Total allocated: %zu bytes\n", g_memory_state.stats.total_allocated);
@@ -589,7 +595,7 @@ void nimcp_memory_dump_allocations(void) {
     }
     printf("============================================\n\n");
 
-    pthread_mutex_unlock(&g_memory_state.lock);
+    nimcp_mutex_unlock(&g_memory_state.lock);
 }
 
 void nimcp_memory_check_leaks(void) {
@@ -598,7 +604,7 @@ void nimcp_memory_check_leaks(void) {
         return;
     }
 
-    pthread_mutex_lock(&g_memory_state.lock);
+    nimcp_mutex_lock(&g_memory_state.lock);
 
     memory_block_t* current = g_memory_state.blocks;
     size_t total_leaked = 0;
@@ -606,7 +612,7 @@ void nimcp_memory_check_leaks(void) {
 
     if (!current) {
         printf("\n[MEMORY] ✓ No memory leaks detected!\n\n");
-        pthread_mutex_unlock(&g_memory_state.lock);
+        nimcp_mutex_unlock(&g_memory_state.lock);
         return;
     }
 
@@ -628,7 +634,7 @@ void nimcp_memory_check_leaks(void) {
     printf("Total leaks: %u blocks, %zu bytes\n", leak_count, total_leaked);
     printf("========================================\n\n");
 
-    pthread_mutex_unlock(&g_memory_state.lock);
+    nimcp_mutex_unlock(&g_memory_state.lock);
 }
 
 void nimcp_memory_analyze_patterns(void) {
@@ -637,14 +643,14 @@ void nimcp_memory_analyze_patterns(void) {
         return;
     }
 
-    pthread_mutex_lock(&g_memory_state.lock);
+    nimcp_mutex_lock(&g_memory_state.lock);
 
     printf("\n========== Allocation Pattern Analysis ==========\n");
     size_pattern_t* pattern = g_memory_state.patterns;
 
     if (!pattern) {
         printf("No allocation patterns recorded\n");
-        pthread_mutex_unlock(&g_memory_state.lock);
+        nimcp_mutex_unlock(&g_memory_state.lock);
         return;
     }
 
@@ -667,5 +673,5 @@ void nimcp_memory_analyze_patterns(void) {
     }
     printf("=================================================\n\n");
 
-    pthread_mutex_unlock(&g_memory_state.lock);
+    nimcp_mutex_unlock(&g_memory_state.lock);
 }

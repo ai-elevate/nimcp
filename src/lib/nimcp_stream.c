@@ -23,13 +23,20 @@
  */
 
 #include "nimcp_stream.h"
+#include "../include/utils/nimcp_thread.h"
 #include "nimcp_memory.h"
+#include "../include/utils/nimcp_thread.h"
 #include <stdio.h>
+#include "../include/utils/nimcp_thread.h"
 #include <string.h>
-#include <pthread.h>
+#include "../include/utils/nimcp_thread.h"
+#include "../include/utils/nimcp_thread.h"
 #include <time.h>
+#include "../include/utils/nimcp_thread.h"
 #include <unistd.h>
+#include "../include/utils/nimcp_thread.h"
 #include <stdatomic.h>
+#include "../include/utils/nimcp_thread.h"
 
 //=============================================================================
 // Thread-Local Error Handling
@@ -327,15 +334,15 @@ struct brain_stream_struct {
     ring_buffer_t* input_queue;
 
     // Output cache (mutex-protected)
-    pthread_mutex_t decision_lock;
+    nimcp_mutex_t decision_lock;
     brain_decision_t* cached_decision;  // Most recent decision
     float cached_salience;              // Most recent salience
 
     // Background processing thread (if BACKGROUND or BATCHED mode)
-    pthread_t processing_thread;
+    nimcp_thread_t processing_thread;
     bool thread_running;
     bool thread_should_stop;
-    pthread_mutex_t control_lock;       // For pause/resume
+    nimcp_mutex_t control_lock;       // For pause/resume
 
     // State flags
     bool paused;
@@ -497,8 +504,8 @@ brain_stream_t brain_create_stream(brain_t brain, const stream_config_t* config)
     }
 
     // Initialize mutex for decision cache
-    pthread_mutex_init(&stream->decision_lock, NULL);
-    pthread_mutex_init(&stream->control_lock, NULL);
+    nimcp_mutex_init(&stream->decision_lock, NULL);
+    nimcp_mutex_init(&stream->control_lock, NULL);
 
     stream->cached_decision = NULL;
     stream->cached_salience = 0.0f;
@@ -524,12 +531,12 @@ brain_stream_t brain_create_stream(brain_t brain, const stream_config_t* config)
         stream->thread_running = false;
         stream->thread_should_stop = false;
 
-        if (pthread_create(&stream->processing_thread, NULL,
+        if (nimcp_thread_create(&stream->processing_thread, NULL,
                           stream_processing_thread, stream) != 0) {
             stream_set_error("Failed to create processing thread");
             ring_buffer_destroy(stream->input_queue);
-            pthread_mutex_destroy(&stream->decision_lock);
-            pthread_mutex_destroy(&stream->control_lock);
+            nimcp_mutex_destroy(&stream->decision_lock);
+            nimcp_mutex_destroy(&stream->control_lock);
             nimcp_free(stream);
             return NULL;
         }
@@ -550,7 +557,7 @@ void brain_destroy_stream(brain_stream_t stream) {
      */
     if (stream->thread_running) {
         stream->thread_should_stop = true;
-        pthread_join(stream->processing_thread, NULL);
+        nimcp_thread_join(stream->processing_thread, NULL);
     }
 
     // Destroy input queue (frees any pending inputs)
@@ -562,8 +569,8 @@ void brain_destroy_stream(brain_stream_t stream) {
     }
 
     // Destroy mutexes
-    pthread_mutex_destroy(&stream->decision_lock);
-    pthread_mutex_destroy(&stream->control_lock);
+    nimcp_mutex_destroy(&stream->decision_lock);
+    nimcp_mutex_destroy(&stream->control_lock);
 
     // Free stream structure
     nimcp_free(stream);
@@ -652,7 +659,7 @@ brain_decision_t* brain_stream_get_decision(brain_stream_t stream) {
      * WHY: Cache is shared, caller needs own copy
      * HOW: Mutex-protected read and deep copy
      */
-    pthread_mutex_lock(&stream->decision_lock);
+    nimcp_mutex_lock(&stream->decision_lock);
 
     brain_decision_t* decision_copy = NULL;
     if (stream->cached_decision) {
@@ -682,7 +689,7 @@ brain_decision_t* brain_stream_get_decision(brain_stream_t stream) {
         }
     }
 
-    pthread_mutex_unlock(&stream->decision_lock);
+    nimcp_mutex_unlock(&stream->decision_lock);
 
     return decision_copy;
 }
@@ -692,9 +699,9 @@ float brain_stream_get_salience(brain_stream_t stream) {
         return -1.0f;
     }
 
-    pthread_mutex_lock(&stream->decision_lock);
+    nimcp_mutex_lock(&stream->decision_lock);
     float salience = stream->cached_salience;
-    pthread_mutex_unlock(&stream->decision_lock);
+    nimcp_mutex_unlock(&stream->decision_lock);
 
     return salience;
 }
@@ -816,7 +823,7 @@ static void stream_process_single_input(brain_stream_t stream,
          * WHY: brain_stream_get_decision() needs non-blocking access
          * HOW: Mutex-protected cache update
          */
-        pthread_mutex_lock(&stream->decision_lock);
+        nimcp_mutex_lock(&stream->decision_lock);
 
         // Free old cached decision
         if (stream->cached_decision) {
@@ -828,7 +835,7 @@ static void stream_process_single_input(brain_stream_t stream,
         // Update salience (simplified: use confidence as proxy)
         stream->cached_salience = decision->confidence;
 
-        pthread_mutex_unlock(&stream->decision_lock);
+        nimcp_mutex_unlock(&stream->decision_lock);
 
         atomic_fetch_add(&stream->stats_decisions_generated, 1);
 
@@ -898,9 +905,9 @@ static void* stream_processing_thread(void* arg) {
          * WHY: Allow temporary suspension of processing
          * HOW: Sleep while paused
          */
-        pthread_mutex_lock(&stream->control_lock);
+        nimcp_mutex_lock(&stream->control_lock);
         bool is_paused = stream->paused;
-        pthread_mutex_unlock(&stream->control_lock);
+        nimcp_mutex_unlock(&stream->control_lock);
 
         if (is_paused) {
             usleep(10000);  // 10ms
@@ -953,9 +960,9 @@ static void* stream_processing_thread(void* arg) {
 bool brain_stream_pause(brain_stream_t stream) {
     if (!stream) return false;
 
-    pthread_mutex_lock(&stream->control_lock);
+    nimcp_mutex_lock(&stream->control_lock);
     stream->paused = true;
-    pthread_mutex_unlock(&stream->control_lock);
+    nimcp_mutex_unlock(&stream->control_lock);
 
     return true;
 }
@@ -963,9 +970,9 @@ bool brain_stream_pause(brain_stream_t stream) {
 bool brain_stream_resume(brain_stream_t stream) {
     if (!stream) return false;
 
-    pthread_mutex_lock(&stream->control_lock);
+    nimcp_mutex_lock(&stream->control_lock);
     stream->paused = false;
-    pthread_mutex_unlock(&stream->control_lock);
+    nimcp_mutex_unlock(&stream->control_lock);
 
     return true;
 }
