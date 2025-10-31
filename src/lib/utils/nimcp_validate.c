@@ -21,13 +21,13 @@ bool nimcp_validate_integer_field(const void* field_data, size_t size) {
         case sizeof(int64_t):
             break;
         default:
-            NIMCP_LOG_ERROR("Invalid integer field size: %zu", size);
+            NIMCP_LOGGING_ERROR("Invalid integer field size: %zu", size);
             return false;
     }
 
     /* Check alignment */
     if (((uintptr_t)field_data) % size != 0) {
-        NIMCP_LOG_ERROR("Integer field misaligned");
+        NIMCP_LOGGING_ERROR("Integer field misaligned");
         return false;
     }
 
@@ -36,7 +36,7 @@ bool nimcp_validate_integer_field(const void* field_data, size_t size) {
         case sizeof(int32_t): {
             const int32_t value = *(const int32_t*)field_data;
             if (value < NIMCP_INT32_MIN || value > NIMCP_INT32_MAX) {
-                NIMCP_LOG_ERROR("Integer value out of range: %d", value);
+                NIMCP_LOGGING_ERROR("Integer value out of range: %d", value);
                 return false;
             }
             break;
@@ -44,7 +44,7 @@ bool nimcp_validate_integer_field(const void* field_data, size_t size) {
         case sizeof(int64_t): {
             const int64_t value = *(const int64_t*)field_data;
             if (value < NIMCP_INT64_MIN || value > NIMCP_INT64_MAX) {
-                NIMCP_LOG_ERROR("Integer value out of range: %ld", value);
+                NIMCP_LOGGING_ERROR("Integer value out of range: %ld", value);
                 return false;
             }
             break;
@@ -65,13 +65,13 @@ bool nimcp_validate_float_field(const void* field_data, size_t size) {
         case sizeof(double):
             break;
         default:
-            NIMCP_LOG_ERROR("Invalid float field size: %zu", size);
+            NIMCP_LOGGING_ERROR("Invalid float field size: %zu", size);
             return false;
     }
 
     /* Check alignment */
     if (((uintptr_t)field_data) % size != 0) {
-        NIMCP_LOG_ERROR("Float field misaligned");
+        NIMCP_LOGGING_ERROR("Float field misaligned");
         return false;
     }
 
@@ -80,34 +80,34 @@ bool nimcp_validate_float_field(const void* field_data, size_t size) {
         const float value = *(const float*)field_data;
         
         if (isnan(value)) {
-            NIMCP_LOG_ERROR("Float field contains NaN");
+            NIMCP_LOGGING_ERROR("Float field contains NaN");
             return false;
         }
 
         if (isinf(value)) {
-            NIMCP_LOG_ERROR("Float field contains infinity");
+            NIMCP_LOGGING_ERROR("Float field contains infinity");
             return false;
         }
 
         if (fabsf(value) > NIMCP_FLOAT_MAX) {
-            NIMCP_LOG_ERROR("Float value out of range: %f", value);
+            NIMCP_LOGGING_ERROR("Float value out of range: %f", value);
             return false;
         }
     } else {
         const double value = *(const double*)field_data;
         
         if (isnan(value)) {
-            NIMCP_LOG_ERROR("Double field contains NaN");
+            NIMCP_LOGGING_ERROR("Double field contains NaN");
             return false;
         }
 
         if (isinf(value)) {
-            NIMCP_LOG_ERROR("Double field contains infinity");
+            NIMCP_LOGGING_ERROR("Double field contains infinity");
             return false;
         }
 
         if (fabs(value) > NIMCP_DOUBLE_MAX) {
-            NIMCP_LOG_ERROR("Double value out of range: %f", value);
+            NIMCP_LOGGING_ERROR("Double value out of range: %f", value);
             return false;
         }
     }
@@ -124,20 +124,20 @@ bool nimcp_validate_string_field(const void* field_data, size_t size) {
 
     /* Check for NULL termination */
     if (str[size - 1] != '\0') {
-        NIMCP_LOG_ERROR("String not NULL terminated");
+        NIMCP_LOGGING_ERROR("String not NULL terminated");
         return false;
     }
 
     /* Get string length */
     size_t len = strnlen(str, size);
     if (len >= size) {
-        NIMCP_LOG_ERROR("String exceeds field size");
+        NIMCP_LOGGING_ERROR("String exceeds field size");
         return false;
     }
 
     /* Validate length constraints */
     if (len > NIMCP_STRING_MAX_LENGTH) {
-        NIMCP_LOG_ERROR("String too long: %zu chars", len);
+        NIMCP_LOGGING_ERROR("String too long: %zu chars", len);
         return false;
     }
 
@@ -145,13 +145,13 @@ bool nimcp_validate_string_field(const void* field_data, size_t size) {
     for (size_t i = 0; i < len; i++) {
         /* Check for control characters */
         if (iscntrl(str[i]) && str[i] != '\n' && str[i] != '\t') {
-            NIMCP_LOG_ERROR("Invalid control character in string at pos %zu", i);
+            NIMCP_LOGGING_ERROR("Invalid control character in string at pos %zu", i);
             return false;
         }
 
         /* Check for valid UTF-8 encoding */
         if (!is_valid_utf8_char(str + i, len - i)) {
-            NIMCP_LOG_ERROR("Invalid UTF-8 encoding at pos %zu", i);
+            NIMCP_LOGGING_ERROR("Invalid UTF-8 encoding at pos %zu", i);
             return false;
         }
     }
@@ -170,7 +170,7 @@ bool nimcp_validate_array_field(const void* field_data, size_t size) {
     if (header->element_count == 0 || 
         header->element_size == 0 ||
         header->element_count > NIMCP_ARRAY_MAX_ELEMENTS) {
-        NIMCP_LOG_ERROR("Invalid array header values");
+        NIMCP_LOGGING_ERROR("Invalid array header values");
         return false;
     }
 
@@ -178,7 +178,7 @@ bool nimcp_validate_array_field(const void* field_data, size_t size) {
     size_t required_size = sizeof(NimcpArrayHeader) + 
                           (header->element_count * header->element_size);
     if (required_size > size) {
-        NIMCP_LOG_ERROR("Array size exceeds field size");
+        NIMCP_LOGGING_ERROR("Array size exceeds field size");
         return false;
     }
 
@@ -187,7 +187,7 @@ bool nimcp_validate_array_field(const void* field_data, size_t size) {
 
     /* Check alignment */
     if (((uintptr_t)array_data) % NIMCP_ARRAY_ALIGNMENT != 0) {
-        NIMCP_LOG_ERROR("Array data misaligned");
+        NIMCP_LOGGING_ERROR("Array data misaligned");
         return false;
     }
 
@@ -198,27 +198,27 @@ bool nimcp_validate_array_field(const void* field_data, size_t size) {
         switch (header->element_type) {
             case NIMCP_ARRAY_INTEGER:
                 if (!nimcp_validate_integer_field(element, header->element_size)) {
-                    NIMCP_LOG_ERROR("Invalid integer array element at index %u", i);
+                    NIMCP_LOGGING_ERROR("Invalid integer array element at index %u", i);
                     return false;
                 }
                 break;
 
             case NIMCP_ARRAY_FLOAT:
                 if (!nimcp_validate_float_field(element, header->element_size)) {
-                    NIMCP_LOG_ERROR("Invalid float array element at index %u", i);
+                    NIMCP_LOGGING_ERROR("Invalid float array element at index %u", i);
                     return false;
                 }
                 break;
 
             case NIMCP_ARRAY_STRING:
                 if (!nimcp_validate_string_field(element, header->element_size)) {
-                    NIMCP_LOG_ERROR("Invalid string array element at index %u", i);
+                    NIMCP_LOGGING_ERROR("Invalid string array element at index %u", i);
                     return false;
                 }
                 break;
 
             default:
-                NIMCP_LOG_ERROR("Unknown array element type: %d", 
+                NIMCP_LOGGING_ERROR("Unknown array element type: %d", 
                               header->element_type);
                 return false;
         }
@@ -229,7 +229,7 @@ bool nimcp_validate_array_field(const void* field_data, size_t size) {
 
 bool nimcp_validate_state_fields(const void* state_data, size_t size) {
     if (!state_data || size < sizeof(NimcpStateHeader)) {
-        NIMCP_LOG_ERROR("Invalid state data pointer or size");
+        NIMCP_LOGGING_ERROR("Invalid state data pointer or size");
         return false;
     }
 
@@ -237,12 +237,12 @@ bool nimcp_validate_state_fields(const void* state_data, size_t size) {
     
     /* Validate header */
     if (header->magic != NIMCP_STATE_MAGIC) {
-        NIMCP_LOG_ERROR("Invalid state magic number");
+        NIMCP_LOGGING_ERROR("Invalid state magic number");
         return false;
     }
 
     if (header->field_count == 0 || header->field_count > NIMCP_MAX_FIELDS) {
-        NIMCP_LOG_ERROR("Invalid field count: %u", header->field_count);
+        NIMCP_LOGGING_ERROR("Invalid field count: %u", header->field_count);
         return false;
     }
 
@@ -253,7 +253,7 @@ bool nimcp_validate_state_fields(const void* state_data, size_t size) {
     /* Track used memory regions to detect overlaps */
     uint8_t* usage_map = calloc(size, sizeof(uint8_t));
     if (!usage_map) {
-        NIMCP_LOG_ERROR("Failed to allocate usage map");
+        NIMCP_LOGGING_ERROR("Failed to allocate usage map");
         return false;
     }
 
@@ -267,7 +267,7 @@ bool nimcp_validate_state_fields(const void* state_data, size_t size) {
 
         /* Check field boundaries */
         if (field->offset + field->size > size) {
-            NIMCP_LOG_ERROR("Field %u exceeds state boundaries", i);
+            NIMCP_LOGGING_ERROR("Field %u exceeds state boundaries", i);
             free(usage_map);
             return false;
         }
@@ -275,7 +275,7 @@ bool nimcp_validate_state_fields(const void* state_data, size_t size) {
         /* Check for overlaps */
         for (size_t j = 0; j < field->size; j++) {
             if (usage_map[field->offset + j]) {
-                NIMCP_LOG_ERROR("Field %u overlaps with other data", i);
+                NIMCP_LOGGING_ERROR("Field %u overlaps with other data", i);
                 free(usage_map);
                 return false;
             }
@@ -304,7 +304,7 @@ bool nimcp_validate_state_fields(const void* state_data, size_t size) {
                 break;
 
             default:
-                NIMCP_LOG_ERROR("Unknown field type %d for field %u", 
+                NIMCP_LOGGING_ERROR("Unknown field type %d for field %u", 
                               field->type, i);
                 free(usage_map);
                 return false;

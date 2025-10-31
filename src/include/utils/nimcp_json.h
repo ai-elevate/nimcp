@@ -9,7 +9,7 @@
 #include "nimcp_common.h"
 #include "nimcp_memory.h"
 #include "nimcp_thread.h"
-#include "../monitoring/nimcp_logging.h"
+#include "logging/nimcp_logging.h"
 #include <jansson.h>
 #include <stdbool.h>
 #include <stdint.h>

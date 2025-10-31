@@ -22,13 +22,13 @@ set(NIMCP_CORE_SOURCES
     utils/nimcp_time.c                               # Time and timing utilities
     utils/nimcp_hash_table.c                         # Generic hash table implementation
     logging/nimcp_logging.c                          # Logging system
+    utils/nimcp_btree.c                              # B-tree implementation
+    # utils/nimcp_validate.c                         # Validate (missing NIMCP_FIELD_* types)
+    # utils/nimcp_json.c                             # JSON (structural issues)
     # utils/nimcp_queue.c                            # Queue (needs nimcp_common.h)
     # utils/nimcp_queue_manager.c                    # Queue manager (needs dependencies)
-    # utils/nimcp_btree.c                            # B-tree (needs logging macros)
     # utils/nimcp_graph.c                            # Graph (needs dependencies)
-    # utils/nimcp_json.c                             # JSON (needs logging macros)
     # utils/nimcp_serialization.c                    # Serialization (needs common)
-    # utils/nimcp_validate.c                         # Validate (needs logging macros)
     ${CMAKE_SOURCE_DIR}/src/python/nimcp_module.c   # Add the Python module source
     ${CMAKE_SOURCE_DIR}/src/python/nimcp_types.c    # Add the Python types
 )
