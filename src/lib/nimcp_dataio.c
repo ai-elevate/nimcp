@@ -263,20 +263,32 @@ static bool csv_next_batch(void* context, data_batch_t* batch) {
             break;
         }
 
-        // Allocate row storage
+        // WHAT: Allocate row storage at write index (num_samples)
+        // WHY: Prevents double-free when parse fails
+        // HOW: Use num_samples as write pointer, only increment on success
+        //
+        // BUG FIX: Previously allocated at index i, but freed and continued
+        // on parse failure, leaving freed pointers in array. When
+        // dataset_free_batch() tried to free indices 0..num_samples-1,
+        // it would hit the freed pointers → double-free!
+        //
+        // SOLUTION: Allocate at num_samples (write index). If parse fails,
+        // free immediately and DON'T increment. Next allocation overwrites.
         uint32_t num_features = 13;  // TODO: get from config
-        batch->features[i] = nimcp_calloc(num_features, sizeof(float));
-        batch->labels[i] = nimcp_calloc(64, sizeof(char));
+        batch->features[batch->num_samples] = nimcp_calloc(num_features, sizeof(float));
+        batch->labels[batch->num_samples] = nimcp_calloc(64, sizeof(char));
 
         // Parse line
         if (!csv_parse_line(line, ',', num_features, 1,
-                           batch->features[i], batch->labels[i], 64)) {
-            // Skip invalid lines
-            nimcp_free(batch->features[i]);
-            nimcp_free(batch->labels[i]);
+                           batch->features[batch->num_samples],
+                           batch->labels[batch->num_samples], 64)) {
+            // Skip invalid lines - free immediately and don't increment
+            nimcp_free(batch->features[batch->num_samples]);
+            nimcp_free(batch->labels[batch->num_samples]);
             continue;
         }
 
+        // Only increment write pointer on successful parse
         batch->num_samples++;
         csv_ctx->total_rows++;
     }
