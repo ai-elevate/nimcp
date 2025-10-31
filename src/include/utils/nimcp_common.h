@@ -19,7 +19,9 @@
 #include <stdarg.h>
 #include <stdint.h>
 #include <stdbool.h>
+#ifndef __cplusplus
 #include <stdatomic.h>
+#endif
 #include <string.h>
 #include <time.h>
 #include <math.h>

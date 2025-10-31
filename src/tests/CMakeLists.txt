@@ -12,6 +12,7 @@ set(NIMCP_TEST_SOURCES
     test_introspection.cpp      # Introspection API tests
     test_consolidation.cpp      # Memory consolidation tests
     test_thread_utils.cpp       # Thread utilities and pool tests
+    test_queue_utils.cpp        # Queue and queue manager tests
 )
 
 # Create test executable
