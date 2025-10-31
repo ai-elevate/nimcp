@@ -32,10 +32,10 @@
 
 #include "nimcp_consolidation.h"
 #include "nimcp_memory.h"
+#include "../include/utils/nimcp_thread.h"
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
-#include <pthread.h>
 #include <time.h>
 #include <unistd.h>
 
@@ -52,7 +52,7 @@ struct consolidation_handle_struct {
     brain_t brain;                       /* Associated brain */
     consolidation_config_t config;       /* Configuration */
 
-    pthread_t thread;                    /* Background thread */
+    nimcp_thread_t thread;               /* Background thread */
     bool thread_running;                 /* Is thread active? */
     bool thread_should_stop;             /* Stop signal */
     bool paused;                         /* Is consolidation paused? */
@@ -65,8 +65,8 @@ struct consolidation_handle_struct {
     float current_progress;              /* Current progress (0-1) */
     bool is_consolidating;               /* Is consolidation running? */
 
-    pthread_mutex_t lock;                /* Protects handle state */
-    pthread_cond_t trigger_cond;         /* Condition for triggering */
+    nimcp_mutex_t lock;                  /* Protects handle state */
+    nimcp_cond_t trigger_cond;           /* Condition for triggering */
 };
 
 /**
@@ -75,7 +75,16 @@ struct consolidation_handle_struct {
  * HOW: Static global variable
  */
 static consolidation_stats_t g_sync_stats = {0};
-static pthread_mutex_t g_sync_stats_lock = PTHREAD_MUTEX_INITIALIZER;
+static nimcp_mutex_t g_sync_stats_lock;
+static nimcp_once_t g_sync_stats_init = NIMCP_ONCE_INIT;
+
+static void init_sync_stats_lock(void) {
+    nimcp_mutex_init(&g_sync_stats_lock, NULL);
+}
+
+static void ensure_sync_stats_init(void) {
+    nimcp_once(&g_sync_stats_init, init_sync_stats_lock);
+}
 
 /* ========================================================================
  * FORWARD DECLARATIONS
@@ -169,7 +178,8 @@ bool brain_consolidate_memory(
     uint64_t start_time = get_timestamp_ms();
     float progress = 0.0f;
 
-    pthread_mutex_lock(&g_sync_stats_lock);
+    ensure_sync_stats_init();
+    nimcp_mutex_lock(&g_sync_stats_lock);
     bool success = perform_consolidation(brain, cfg, &g_sync_stats, &progress);
 
     /* WHAT: Update statistics */
@@ -194,7 +204,7 @@ bool brain_consolidate_memory(
 
         g_sync_stats.last_consolidation_timestamp = end_time;
     }
-    pthread_mutex_unlock(&g_sync_stats_lock);
+    nimcp_mutex_unlock(&g_sync_stats_lock);
 
     /* WHAT: Invoke complete callback if provided */
     if (cfg->on_consolidation_complete) {
@@ -393,26 +403,23 @@ static void* consolidation_thread_fn(void* arg) {
 
     while (!handle->thread_should_stop) {
         /* WHAT: Wait for interval or trigger signal */
-        pthread_mutex_lock(&handle->lock);
+        nimcp_mutex_lock(&handle->lock);
 
         if (!handle->trigger_now && !handle->thread_should_stop) {
             /* WHAT: Wait with timeout for trigger or interval */
-            struct timespec ts;
-            clock_gettime(CLOCK_REALTIME, &ts);
-            ts.tv_sec += handle->interval_seconds;
-
-            pthread_cond_timedwait(&handle->trigger_cond, &handle->lock, &ts);
+            uint32_t timeout_ms = handle->interval_seconds * 1000;
+            nimcp_cond_timedwait(&handle->trigger_cond, &handle->lock, timeout_ms);
         }
 
         /* WHAT: Check if we should stop */
         if (handle->thread_should_stop) {
-            pthread_mutex_unlock(&handle->lock);
+            nimcp_mutex_unlock(&handle->lock);
             break;
         }
 
         /* WHAT: Check if paused */
         if (handle->paused && !handle->trigger_now) {
-            pthread_mutex_unlock(&handle->lock);
+            nimcp_mutex_unlock(&handle->lock);
             continue;
         }
 
@@ -423,7 +430,7 @@ static void* consolidation_thread_fn(void* arg) {
         handle->is_consolidating = true;
         handle->current_progress = 0.0f;
 
-        pthread_mutex_unlock(&handle->lock);
+        nimcp_mutex_unlock(&handle->lock);
 
         /* WHAT: Perform consolidation */
         uint64_t start_time = get_timestamp_ms();
@@ -436,7 +443,7 @@ static void* consolidation_thread_fn(void* arg) {
         uint64_t end_time = get_timestamp_ms();
 
         /* WHAT: Update statistics */
-        pthread_mutex_lock(&handle->lock);
+        nimcp_mutex_lock(&handle->lock);
 
         float duration_ms = (float)(end_time - start_time);
         /* WHAT: Ensure non-zero duration for fast consolidations */
@@ -458,7 +465,7 @@ static void* consolidation_thread_fn(void* arg) {
         handle->is_consolidating = false;
         handle->current_progress = 0.0f;
 
-        pthread_mutex_unlock(&handle->lock);
+        nimcp_mutex_unlock(&handle->lock);
     }
 
     return NULL;
@@ -498,16 +505,18 @@ consolidation_handle_t brain_start_background_consolidation(
     handle->is_consolidating = false;
     handle->current_progress = 0.0f;
 
-    pthread_mutex_init(&handle->lock, NULL);
-    pthread_cond_init(&handle->trigger_cond, NULL);
+    nimcp_mutex_init(&handle->lock, NULL);
+    nimcp_cond_init(&handle->trigger_cond);
 
     memset(&handle->stats, 0, sizeof(consolidation_stats_t));
 
     /* WHAT: Create background thread */
-    int result = pthread_create(&handle->thread, NULL, consolidation_thread_fn, handle);
-    if (result != 0) {
-        pthread_mutex_destroy(&handle->lock);
-        pthread_cond_destroy(&handle->trigger_cond);
+    nimcp_result_t result = nimcp_thread_create(&handle->thread,
+                                                 consolidation_thread_fn,
+                                                 handle, NULL);
+    if (result != NIMCP_SUCCESS) {
+        nimcp_mutex_destroy(&handle->lock);
+        nimcp_cond_destroy(&handle->trigger_cond);
         nimcp_free(handle);
         return NULL;
     }
@@ -528,19 +537,19 @@ void brain_stop_background_consolidation(consolidation_handle_t handle) {
     }
 
     /* WHAT: Signal thread to stop */
-    pthread_mutex_lock(&handle->lock);
+    nimcp_mutex_lock(&handle->lock);
     handle->thread_should_stop = true;
-    pthread_cond_signal(&handle->trigger_cond);  /* Wake thread if sleeping */
-    pthread_mutex_unlock(&handle->lock);
+    nimcp_cond_signal(&handle->trigger_cond);  /* Wake thread if sleeping */
+    nimcp_mutex_unlock(&handle->lock);
 
     /* WHAT: Wait for thread to finish */
     if (handle->thread_running) {
-        pthread_join(handle->thread, NULL);
+        nimcp_thread_join(handle->thread, NULL);
     }
 
     /* WHAT: Destroy synchronization primitives */
-    pthread_mutex_destroy(&handle->lock);
-    pthread_cond_destroy(&handle->trigger_cond);
+    nimcp_mutex_destroy(&handle->lock);
+    nimcp_cond_destroy(&handle->trigger_cond);
 
     /* WHAT: Free handle */
     nimcp_free(handle);
@@ -556,9 +565,9 @@ void brain_pause_consolidation(consolidation_handle_t handle) {
         return;
     }
 
-    pthread_mutex_lock(&handle->lock);
+    nimcp_mutex_lock(&handle->lock);
     handle->paused = true;
-    pthread_mutex_unlock(&handle->lock);
+    nimcp_mutex_unlock(&handle->lock);
 }
 
 /**
@@ -571,10 +580,10 @@ void brain_resume_consolidation(consolidation_handle_t handle) {
         return;
     }
 
-    pthread_mutex_lock(&handle->lock);
+    nimcp_mutex_lock(&handle->lock);
     handle->paused = false;
-    pthread_cond_signal(&handle->trigger_cond);  /* Wake thread */
-    pthread_mutex_unlock(&handle->lock);
+    nimcp_cond_signal(&handle->trigger_cond);  /* Wake thread */
+    nimcp_mutex_unlock(&handle->lock);
 }
 
 /**
@@ -587,10 +596,10 @@ bool brain_trigger_consolidation(consolidation_handle_t handle) {
         return false;
     }
 
-    pthread_mutex_lock(&handle->lock);
+    nimcp_mutex_lock(&handle->lock);
     handle->trigger_now = true;
-    pthread_cond_signal(&handle->trigger_cond);  /* Wake thread */
-    pthread_mutex_unlock(&handle->lock);
+    nimcp_cond_signal(&handle->trigger_cond);  /* Wake thread */
+    nimcp_mutex_unlock(&handle->lock);
 
     return true;
 }
@@ -712,14 +721,14 @@ bool consolidation_get_stats(
 
     if (handle == NULL) {
         /* WHAT: Return synchronous consolidation stats */
-        pthread_mutex_lock(&g_sync_stats_lock);
+        nimcp_mutex_lock(&g_sync_stats_lock);
         *stats = g_sync_stats;
-        pthread_mutex_unlock(&g_sync_stats_lock);
+        nimcp_mutex_unlock(&g_sync_stats_lock);
     } else {
         /* WHAT: Return background consolidation stats */
-        pthread_mutex_lock(&handle->lock);
+        nimcp_mutex_lock(&handle->lock);
         *stats = handle->stats;
-        pthread_mutex_unlock(&handle->lock);
+        nimcp_mutex_unlock(&handle->lock);
     }
 
     return true;
@@ -733,14 +742,14 @@ bool consolidation_get_stats(
 void consolidation_reset_stats(consolidation_handle_t handle) {
     if (handle == NULL) {
         /* WHAT: Reset synchronous stats */
-        pthread_mutex_lock(&g_sync_stats_lock);
+        nimcp_mutex_lock(&g_sync_stats_lock);
         memset(&g_sync_stats, 0, sizeof(consolidation_stats_t));
-        pthread_mutex_unlock(&g_sync_stats_lock);
+        nimcp_mutex_unlock(&g_sync_stats_lock);
     } else {
         /* WHAT: Reset background stats */
-        pthread_mutex_lock(&handle->lock);
+        nimcp_mutex_lock(&handle->lock);
         memset(&handle->stats, 0, sizeof(consolidation_stats_t));
-        pthread_mutex_unlock(&handle->lock);
+        nimcp_mutex_unlock(&handle->lock);
     }
 }
 
@@ -754,9 +763,9 @@ bool consolidation_is_running(consolidation_handle_t handle) {
         return false;
     }
 
-    pthread_mutex_lock(&handle->lock);
+    nimcp_mutex_lock(&handle->lock);
     bool is_running = handle->is_consolidating;
-    pthread_mutex_unlock(&handle->lock);
+    nimcp_mutex_unlock(&handle->lock);
 
     return is_running;
 }
@@ -771,9 +780,9 @@ float consolidation_get_progress(consolidation_handle_t handle) {
         return -1.0f;
     }
 
-    pthread_mutex_lock(&handle->lock);
+    nimcp_mutex_lock(&handle->lock);
     float progress = handle->is_consolidating ? handle->current_progress : -1.0f;
-    pthread_mutex_unlock(&handle->lock);
+    nimcp_mutex_unlock(&handle->lock);
 
     return progress;
 }

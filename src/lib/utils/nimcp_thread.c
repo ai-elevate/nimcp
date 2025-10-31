@@ -141,6 +141,22 @@ bool nimcp_thread_equal(nimcp_thread_t t1, nimcp_thread_t t2) {
     return pthread_equal(t1, t2);
 }
 
+nimcp_result_t nimcp_once(nimcp_once_t* once_control, void (*init_routine)(void)) {
+    if (!once_control || !init_routine) {
+        set_thread_error(NIMCP_ERROR_INVALID_PARAM, "Invalid once parameters");
+        return NIMCP_ERROR_INVALID_PARAM;
+    }
+
+    int result = pthread_once(once_control, init_routine);
+    if (result != 0) {
+        set_thread_error(NIMCP_ERROR_SYSTEM, "pthread_once failed: %s",
+                        strerror(result));
+        return NIMCP_ERROR_SYSTEM;
+    }
+
+    return NIMCP_SUCCESS;
+}
+
 //=============================================================================
 // Mutex Operations
 //=============================================================================
@@ -236,6 +252,117 @@ nimcp_result_t nimcp_mutex_unlock(nimcp_mutex_t* mutex) {
     int result = pthread_mutex_unlock(mutex);
     if (result != 0) {
         set_thread_error(NIMCP_ERROR_SYSTEM, "Mutex unlock failed: %s",
+                        strerror(result));
+        return NIMCP_ERROR_SYSTEM;
+    }
+
+    return NIMCP_SUCCESS;
+}
+
+//=============================================================================
+// Condition Variables
+//=============================================================================
+
+nimcp_result_t nimcp_cond_init(nimcp_cond_t* cond) {
+    if (!cond) {
+        set_thread_error(NIMCP_ERROR_INVALID_PARAM, "Invalid cond pointer");
+        return NIMCP_ERROR_INVALID_PARAM;
+    }
+
+    int result = pthread_cond_init(cond, NULL);
+    if (result != 0) {
+        set_thread_error(NIMCP_ERROR_SYSTEM, "Cond initialization failed: %s",
+                        strerror(result));
+        return NIMCP_ERROR_SYSTEM;
+    }
+
+    return NIMCP_SUCCESS;
+}
+
+nimcp_result_t nimcp_cond_destroy(nimcp_cond_t* cond) {
+    if (!cond) {
+        return NIMCP_ERROR_INVALID_PARAM;
+    }
+
+    int result = pthread_cond_destroy(cond);
+    if (result != 0) {
+        set_thread_error(NIMCP_ERROR_SYSTEM, "Cond destruction failed: %s",
+                        strerror(result));
+        return NIMCP_ERROR_SYSTEM;
+    }
+
+    return NIMCP_SUCCESS;
+}
+
+nimcp_result_t nimcp_cond_wait(nimcp_cond_t* cond, nimcp_mutex_t* mutex) {
+    if (!cond || !mutex) {
+        return NIMCP_ERROR_INVALID_PARAM;
+    }
+
+    int result = pthread_cond_wait(cond, mutex);
+    if (result != 0) {
+        set_thread_error(NIMCP_ERROR_SYSTEM, "Cond wait failed: %s",
+                        strerror(result));
+        return NIMCP_ERROR_SYSTEM;
+    }
+
+    return NIMCP_SUCCESS;
+}
+
+nimcp_result_t nimcp_cond_timedwait(nimcp_cond_t* cond, nimcp_mutex_t* mutex,
+                                     uint32_t timeout_ms) {
+    if (!cond || !mutex) {
+        return NIMCP_ERROR_INVALID_PARAM;
+    }
+
+    struct timespec ts;
+    clock_gettime(CLOCK_REALTIME, &ts);
+
+    /* Add timeout */
+    ts.tv_sec += timeout_ms / 1000;
+    ts.tv_nsec += (timeout_ms % 1000) * 1000000;
+
+    /* Handle nanosecond overflow */
+    if (ts.tv_nsec >= 1000000000) {
+        ts.tv_sec += 1;
+        ts.tv_nsec -= 1000000000;
+    }
+
+    int result = pthread_cond_timedwait(cond, mutex, &ts);
+    if (result == ETIMEDOUT) {
+        return NIMCP_BUSY;  /* Timeout = resource busy */
+    } else if (result != 0) {
+        set_thread_error(NIMCP_ERROR_SYSTEM, "Cond timedwait failed: %s",
+                        strerror(result));
+        return NIMCP_ERROR_SYSTEM;
+    }
+
+    return NIMCP_SUCCESS;
+}
+
+nimcp_result_t nimcp_cond_signal(nimcp_cond_t* cond) {
+    if (!cond) {
+        return NIMCP_ERROR_INVALID_PARAM;
+    }
+
+    int result = pthread_cond_signal(cond);
+    if (result != 0) {
+        set_thread_error(NIMCP_ERROR_SYSTEM, "Cond signal failed: %s",
+                        strerror(result));
+        return NIMCP_ERROR_SYSTEM;
+    }
+
+    return NIMCP_SUCCESS;
+}
+
+nimcp_result_t nimcp_cond_broadcast(nimcp_cond_t* cond) {
+    if (!cond) {
+        return NIMCP_ERROR_INVALID_PARAM;
+    }
+
+    int result = pthread_cond_broadcast(cond);
+    if (result != 0) {
+        set_thread_error(NIMCP_ERROR_SYSTEM, "Cond broadcast failed: %s",
                         strerror(result));
         return NIMCP_ERROR_SYSTEM;
     }

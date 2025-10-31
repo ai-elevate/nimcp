@@ -145,6 +145,11 @@ nimcp_thread_t nimcp_thread_self(void);
  */
 bool nimcp_thread_equal(nimcp_thread_t t1, nimcp_thread_t t2);
 
+/**
+ * @brief Execute function exactly once (thread-safe initialization)
+ */
+nimcp_result_t nimcp_once(nimcp_once_t* once_control, void (*init_routine)(void));
+
 //=============================================================================
 // Mutex Operations
 //=============================================================================
@@ -174,6 +179,41 @@ nimcp_result_t nimcp_mutex_trylock(nimcp_mutex_t* mutex);
  * @brief Unlock mutex
  */
 nimcp_result_t nimcp_mutex_unlock(nimcp_mutex_t* mutex);
+
+//=============================================================================
+// Condition Variables
+//=============================================================================
+
+/**
+ * @brief Initialize condition variable
+ */
+nimcp_result_t nimcp_cond_init(nimcp_cond_t* cond);
+
+/**
+ * @brief Destroy condition variable
+ */
+nimcp_result_t nimcp_cond_destroy(nimcp_cond_t* cond);
+
+/**
+ * @brief Wait on condition variable (releases mutex)
+ */
+nimcp_result_t nimcp_cond_wait(nimcp_cond_t* cond, nimcp_mutex_t* mutex);
+
+/**
+ * @brief Wait on condition with timeout (milliseconds)
+ */
+nimcp_result_t nimcp_cond_timedwait(nimcp_cond_t* cond, nimcp_mutex_t* mutex,
+                                     uint32_t timeout_ms);
+
+/**
+ * @brief Signal one waiting thread
+ */
+nimcp_result_t nimcp_cond_signal(nimcp_cond_t* cond);
+
+/**
+ * @brief Signal all waiting threads
+ */
+nimcp_result_t nimcp_cond_broadcast(nimcp_cond_t* cond);
 
 //=============================================================================
 // Named Resource Locks
