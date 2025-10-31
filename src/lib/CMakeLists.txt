@@ -28,7 +28,7 @@ set(NIMCP_CORE_SOURCES
     utils/nimcp_serialization.c                      # Serialization utilities
     utils/nimcp_validate.c                           # Input validation
     utils/nimcp_queue_manager.c                      # Queue manager with thread pool
-    # utils/nimcp_json.c                             # JSON (function name conflicts with jansson)
+    utils/nimcp_json.c                               # JSON wrapper for jansson
     ${CMAKE_SOURCE_DIR}/src/python/nimcp_module.c   # Add the Python module source
     ${CMAKE_SOURCE_DIR}/src/python/nimcp_types.c    # Add the Python types
 )
@@ -51,6 +51,7 @@ target_link_libraries(nimcp_core
     PUBLIC
         Python3::Python
         lz4
+        jansson
 )
 
 # Enable Position Independent Code and set library properties

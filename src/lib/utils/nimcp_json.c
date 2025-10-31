@@ -3,47 +3,33 @@
  * @brief Implementation of thread-safe JSON wrapper using Jansson
  */
 
+#define NIMCP_INTERNAL
 #include "utils/nimcp_json.h"
+#include "utils/nimcp_memory.h"
 #include <string.h>
 #include <stdio.h>
 
 // Static error messages
 static const char* const ERROR_MESSAGES[] = {
     [JSON_SUCCESS] = "Success",
-    [JSON_ERROR_INVALID_PARAM] = "Invalid parameter",
-    [JSON_ERROR_MEMORY] = "Memory allocation failed",
-    [JSON_ERROR_PARSE] = "JSON parsing failed",
-    [JSON_ERROR_FILE] = "File operation failed",
-    [JSON_ERROR_TYPE] = "Type mismatch",
-    [JSON_ERROR_NOT_FOUND] = "Path not found",
-    [JSON_ERROR_LOCK] = "Lock acquisition failed"
-    [JSON_ERROR_NULL_VALUE] = "Null value encountered"
+    [-JSON_ERROR_INVALID_PARAM] = "Invalid parameter",
+    [-JSON_ERROR_MEMORY] = "Memory allocation failed",
+    [-JSON_ERROR_PARSE] = "JSON parsing failed",
+    [-JSON_ERROR_FILE] = "File operation failed",
+    [-JSON_ERROR_TYPE] = "Type mismatch",
+    [-JSON_ERROR_NOT_FOUND] = "Path not found",
+    [-JSON_ERROR_LOCK] = "Lock acquisition failed"
 };
-
-// Custom memory functions for Jansson
-static void* json_malloc_wrapper(size_t size) {
-    return memory_pool_alloc(NULL, size); // Global pool will be used
-}
-
-static void json_free_wrapper(void* ptr) {
-    memory_pool_free(NULL, ptr);
-}
 
 // Internal helper functions
 static JsonResult acquire_lock(JsonContext* ctx) {
     if (!ctx) return JSON_ERROR_INVALID_PARAM;
-    if (thread_mutex_lock(&ctx->mutex) != 0) return JSON_ERROR_LOCK;
+    if (nimcp_mutex_lock(&ctx->mutex) != NIMCP_SUCCESS) return JSON_ERROR_LOCK;
     return JSON_SUCCESS;
 }
 
 static void release_lock(JsonContext* ctx) {
-    if (ctx) thread_mutex_unlock(&ctx->mutex);
-}
-
-static void log_json_error(JsonContext* ctx, const char* message, JsonResult result) {
-    if (ctx && ctx->logger) {
-        log_error(ctx->logger, "JSON error: %s (%s)", message, json_get_error(result));
-    }
+    if (ctx) nimcp_mutex_unlock(&ctx->mutex);
 }
 
 static json_t* resolve_json_path(json_t* root, const char* path, json_t** parent, char** last_key) {
@@ -86,63 +72,38 @@ static json_t* resolve_json_path(json_t* root, const char* path, json_t** parent
 }
 
 // Context management implementation
-JsonResult json_create_context(JsonContext** ctx, memory_pool_t* pool, log_context_t* logger) {
+JsonResult nimcp_json_create_context(JsonContext** ctx) {
     if (!ctx) return JSON_ERROR_INVALID_PARAM;
-    
-    JsonContext* new_ctx = NULL;
-    if (pool) {
-        new_ctx = memory_pool_alloc(pool, sizeof(JsonContext));
-    } else {
-        new_ctx = malloc(sizeof(JsonContext));
-    }
-    
+
+    JsonContext* new_ctx = nimcp_calloc(1, sizeof(JsonContext));
     if (!new_ctx) return JSON_ERROR_MEMORY;
-    
-    memset(new_ctx, 0, sizeof(JsonContext));
-    new_ctx->memory_pool = pool;
-    new_ctx->logger = logger;
-    new_ctx->owns_memory_pool = (pool == NULL);
-    new_ctx->root = NULL;
-    
-    if (thread_mutex_init(&new_ctx->mutex) != 0) {
-        if (pool) {
-            memory_pool_free(pool, new_ctx);
-        } else {
-            free(new_ctx);
-        }
+
+    if (nimcp_mutex_init(&new_ctx->mutex, NULL) != NIMCP_SUCCESS) {
+        nimcp_free(new_ctx);
         return JSON_ERROR_LOCK;
     }
-    
-    // Set up custom memory functions if using memory pool
-    if (pool) {
-        json_set_alloc_funcs(json_malloc_wrapper, json_free_wrapper);
-    }
-    
+
+    new_ctx->root = NULL;
     *ctx = new_ctx;
     return JSON_SUCCESS;
 }
 
-void json_destroy_context(JsonContext* ctx) {
+void nimcp_json_destroy_context(JsonContext* ctx) {
     if (!ctx) return;
-    
-    thread_mutex_lock(&ctx->mutex);
+
+    nimcp_mutex_lock(&ctx->mutex);
     if (ctx->root) {
         json_decref(ctx->root);
         ctx->root = NULL;
     }
-    thread_mutex_unlock(&ctx->mutex);
-    
-    thread_mutex_destroy(&ctx->mutex);
-    
-    if (ctx->owns_memory_pool) {
-        free(ctx);
-    } else if (ctx->memory_pool) {
-        memory_pool_free(ctx->memory_pool, ctx);
-    }
+    nimcp_mutex_unlock(&ctx->mutex);
+
+    nimcp_mutex_destroy(&ctx->mutex);
+    nimcp_free(ctx);
 }
 
 // File operations implementation
-JsonResult json_load_file(JsonContext* ctx, const char* filename, size_t flags) {
+JsonResult nimcp_json_load_file(JsonContext* ctx, const char* filename, size_t flags) {
     if (!ctx || !filename) return JSON_ERROR_INVALID_PARAM;
     
     JsonResult result = acquire_lock(ctx);
@@ -152,7 +113,6 @@ JsonResult json_load_file(JsonContext* ctx, const char* filename, size_t flags) 
     json_t* new_root = json_load_file(filename, flags, &error);
     
     if (!new_root) {
-        log_json_error(ctx, error.text, JSON_ERROR_PARSE);
         release_lock(ctx);
         return JSON_ERROR_PARSE;
     }
@@ -166,7 +126,7 @@ JsonResult json_load_file(JsonContext* ctx, const char* filename, size_t flags) 
     return JSON_SUCCESS;
 }
 
-JsonResult json_dump_file(JsonContext* ctx, const char* filename, size_t flags) {
+JsonResult nimcp_json_dump_file(JsonContext* ctx, const char* filename, size_t flags) {
     if (!ctx || !filename || !ctx->root) return JSON_ERROR_INVALID_PARAM;
     
     JsonResult result = acquire_lock(ctx);
@@ -182,7 +142,7 @@ JsonResult json_dump_file(JsonContext* ctx, const char* filename, size_t flags) 
 }
 
 // Value access implementation
-JsonResult json_get_value(JsonContext* ctx, const char* path, json_t** value) {
+JsonResult nimcp_json_get_value(JsonContext* ctx, const char* path, json_t** value) {
     if (!ctx || !path || !value) return JSON_ERROR_INVALID_PARAM;
     
     JsonResult result = acquire_lock(ctx);
@@ -199,7 +159,7 @@ JsonResult json_get_value(JsonContext* ctx, const char* path, json_t** value) {
     return JSON_SUCCESS;
 }
 
-JsonResult json_set_value(JsonContext* ctx, const char* path, json_t* value) {
+JsonResult nimcp_json_set_value(JsonContext* ctx, const char* path, json_t* value) {
     if (!ctx || !path || !value) return JSON_ERROR_INVALID_PARAM;
     
     JsonResult result = acquire_lock(ctx);
@@ -248,11 +208,11 @@ JsonResult json_set_value(JsonContext* ctx, const char* path, json_t* value) {
 
 // Convenience functions implementation
 
-JsonResult json_get_string_value(JsonContext* ctx, const char* path, char* buffer, size_t size) {
+JsonResult nimcp_json_get_string_value(JsonContext* ctx, const char* path, char* buffer, size_t size) {
     if (!buffer || size == 0) return JSON_ERROR_INVALID_PARAM;
     
     json_t* value = NULL;
-    JsonResult result = json_get_value(ctx, path, &value);
+    JsonResult result = nimcp_json_get_value(ctx, path, &value);
     
     if (result != JSON_SUCCESS) return result;
     
@@ -274,11 +234,11 @@ JsonResult json_get_string_value(JsonContext* ctx, const char* path, char* buffe
     return JSON_SUCCESS;
 }
 
-JsonResult json_get_integer_value(JsonContext* ctx, const char* path, int64_t* value) {
+JsonResult nimcp_json_get_integer_value(JsonContext* ctx, const char* path, int64_t* value) {
     if (!value) return JSON_ERROR_INVALID_PARAM;
-    
+
     json_t* json_value = NULL;
-    JsonResult result = json_get_value(ctx, path, &json_value);
+    JsonResult result = nimcp_json_get_value(ctx, path, &json_value);
     
     if (result != JSON_SUCCESS) return result;
     
@@ -297,11 +257,11 @@ JsonResult json_get_integer_value(JsonContext* ctx, const char* path, int64_t* v
     return JSON_SUCCESS;
 }
 
-JsonResult json_get_boolean_value(JsonContext* ctx, const char* path, bool* value) {
+JsonResult nimcp_json_get_boolean_value(JsonContext* ctx, const char* path, bool* value) {
     if (!value) return JSON_ERROR_INVALID_PARAM;
-    
+
     json_t* json_value = NULL;
-    JsonResult result = json_get_value(ctx, path, &json_value);
+    JsonResult result = nimcp_json_get_value(ctx, path, &json_value);
     
     if (result != JSON_SUCCESS) return result;
     
@@ -320,11 +280,11 @@ JsonResult json_get_boolean_value(JsonContext* ctx, const char* path, bool* valu
     return JSON_SUCCESS;
 }
 
-JsonResult json_get_number_value(JsonContext* ctx, const char* path, double* value) {
+JsonResult nimcp_json_get_number_value(JsonContext* ctx, const char* path, double* value) {
     if (!value) return JSON_ERROR_INVALID_PARAM;
-    
+
     json_t* json_value = NULL;
-    JsonResult result = json_get_value(ctx, path, &json_value);
+    JsonResult result = nimcp_json_get_value(ctx, path, &json_value);
     
     if (result != JSON_SUCCESS) return result;
     
@@ -345,12 +305,12 @@ JsonResult json_get_number_value(JsonContext* ctx, const char* path, double* val
 
 
 // Error handling implementation
-const char* json_get_error(JsonResult result) {
+const char* nimcp_json_get_error(JsonResult result) {
     if (result >= 0 || result < -7) return "Unknown error";
     return ERROR_MESSAGES[-result];
 }
 
-JsonResult json_is_null_value(JsonContext* ctx, const char* path, bool* is_null) {
+JsonResult nimcp_json_is_null_value(JsonContext* ctx, const char* path, bool* is_null) {
     if (!ctx || !path || !is_null) return JSON_ERROR_INVALID_PARAM;
     
     JsonResult result = acquire_lock(ctx);
@@ -367,7 +327,7 @@ JsonResult json_is_null_value(JsonContext* ctx, const char* path, bool* is_null)
     return JSON_SUCCESS;
 }
 
-JsonResult json_set_null_value(JsonContext* ctx, const char* path) {
+JsonResult nimcp_json_set_null_value(JsonContext* ctx, const char* path) {
     if (!ctx || !path) return JSON_ERROR_INVALID_PARAM;
     
     JsonResult result = acquire_lock(ctx);
