@@ -960,26 +960,77 @@ void pattern_list_free(char** pattern_list, uint32_t num_patterns) {
  *
  * COMPLEXITY: O(n + e) where n=neurons, e=edges
  */
-network_topology_t brain_get_topology(introspection_context_t context) {
+/**
+ * @brief Deep copy neurons_per_layer array
+ *
+ * DESIGN PATTERN: Extract Method
+ * WHY: Eliminates code duplication, single responsibility
+ * PREVENTS: Double-free by ensuring separate memory allocations
+ *
+ * @param source Source array to copy from
+ * @param num_layers Number of layers to copy
+ * @return New allocated array or NULL on failure
+ */
+static uint32_t* clone_neurons_per_layer(const uint32_t* source, uint32_t num_layers) {
+    /* Guard clause: validate inputs */
+    if (source == NULL || num_layers == 0) {
+        return NULL;
+    }
+
+    /* Allocate new array */
+    uint32_t* clone = (uint32_t*)nimcp_malloc(num_layers * sizeof(uint32_t));
+
+    /* Guard clause: allocation failed */
+    if (clone == NULL) {
+        return NULL;
+    }
+
+    /* Copy data */
+    memcpy(clone, source, num_layers * sizeof(uint32_t));
+    return clone;
+}
+
+/**
+ * @brief Create deep copy of topology structure
+ *
+ * DESIGN PATTERN: Prototype (deep copy for safety)
+ * WHY: Prevents double-free when caller frees returned topology
+ *
+ * @param source Topology to copy
+ * @return Deep copy with separate neurons_per_layer allocation
+ */
+static network_topology_t clone_topology(const network_topology_t* source) {
+    /* Guard clause: validate input */
+    if (source == NULL) {
+        network_topology_t empty;
+        memset(&empty, 0, sizeof(network_topology_t));
+        return empty;
+    }
+
+    /* Shallow copy all scalar fields */
+    network_topology_t clone = *source;
+
+    /* Deep copy neurons_per_layer array */
+    clone.neurons_per_layer = clone_neurons_per_layer(
+        source->neurons_per_layer, source->num_layers);
+
+    return clone;
+}
+
+/**
+ * @brief Build new topology from brain structure
+ *
+ * DESIGN PATTERN: Builder
+ * WHY: Separate topology construction from caching logic
+ * TODO: Replace simulated data with actual brain structure
+ *
+ * @return Newly constructed topology
+ */
+static network_topology_t build_topology(void) {
     network_topology_t topology;
     memset(&topology, 0, sizeof(network_topology_t));
 
-    if (context == NULL) {
-        return topology;
-    }
-
-    nimcp_mutex_lock(&context->lock);
-
-    /* WHAT: Return cached topology if available */
-    /* WHY: Topology doesn't change, expensive to recompute */
-    if (context->topology_cached) {
-        network_topology_t result = context->topology;
-        nimcp_mutex_unlock(&context->lock);
-        return result;
-    }
-
-    /* TODO: Access actual brain structure for real topology */
-    /* For now, provide simulated topology */
+    /* Populate scalar fields */
     topology.total_neurons = 10000;
     topology.total_connections = 50000;
     topology.avg_connections_per_neuron = 5.0f;
@@ -987,15 +1038,44 @@ network_topology_t brain_get_topology(introspection_context_t context) {
     topology.clustering_coefficient = 0.3f;
     topology.num_layers = 3;
 
+    /* Allocate and populate layer array */
     topology.neurons_per_layer = (uint32_t*)nimcp_malloc(3 * sizeof(uint32_t));
-    if (topology.neurons_per_layer) {
-        topology.neurons_per_layer[0] = 1000;  /* Input layer */
-        topology.neurons_per_layer[1] = 8000;  /* Hidden layer */
-        topology.neurons_per_layer[2] = 1000;  /* Output layer */
+
+    /* Guard clause: allocation failed */
+    if (topology.neurons_per_layer == NULL) {
+        return topology;
     }
 
-    /* WHAT: Cache the topology */
-    context->topology = topology;
+    topology.neurons_per_layer[0] = 1000;  /* Input layer */
+    topology.neurons_per_layer[1] = 8000;  /* Hidden layer */
+    topology.neurons_per_layer[2] = 1000;  /* Output layer */
+
+    return topology;
+}
+
+network_topology_t brain_get_topology(introspection_context_t context) {
+    /* Guard clause: validate context */
+    if (context == NULL) {
+        network_topology_t empty;
+        memset(&empty, 0, sizeof(network_topology_t));
+        return empty;
+    }
+
+    nimcp_mutex_lock(&context->lock);
+
+    /* CASE 1: Return cached topology (most common path) */
+    /* DESIGN PATTERN: Lazy Initialization with memoization */
+    if (context->topology_cached) {
+        network_topology_t result = clone_topology(&context->topology);
+        nimcp_mutex_unlock(&context->lock);
+        return result;
+    }
+
+    /* CASE 2: Build and cache new topology (first call only) */
+    network_topology_t topology = build_topology();
+
+    /* Cache with independent copy to prevent double-free */
+    context->topology = clone_topology(&topology);
     context->topology_cached = true;
 
     nimcp_mutex_unlock(&context->lock);
