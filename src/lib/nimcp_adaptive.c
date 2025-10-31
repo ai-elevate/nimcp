@@ -32,6 +32,7 @@
 
 #include "../include/nimcp_adaptive.h"
 #include "../include/nimcp_neuralnet.h"
+#include "utils/nimcp_hash_table.h"
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
@@ -69,30 +70,17 @@ typedef struct {
 } spike_buffer_pool_t;
 
 /**
- * @brief Hash table entry for O(1) label lookup
+ * @brief Label index value stored in hash table
  *
- * WHY: Linear search through labels is O(n). Hash table provides O(1)
- * average case lookup, critical for real-time classification.
+ * WHY: Hash table maps label strings to neuron indices for O(1) lookup.
+ * No longer needs 'next' pointer as chaining is handled by nimcp_hash_table.
  *
  * INVARIANTS:
- * - label pointer always valid until entry destroyed
  * - index matches position in label_map array
  */
-typedef struct hash_entry {
-    char* label;
-    uint32_t index;
-    struct hash_entry* next;
-} label_hash_entry_t;
-
-/**
- * @brief Hash table for label storage (Repository Pattern)
- *
- * COMPLEXITY: O(1) average case for insert, lookup, delete
- */
 typedef struct {
-    label_hash_entry_t* buckets[HASH_TABLE_SIZE];
-    uint32_t num_entries;
-} label_hash_table_t;
+    uint32_t index;
+} label_index_t;
 
 /**
  * @brief Strategy Pattern - Spike encoding function pointer
@@ -153,7 +141,7 @@ struct adaptive_network_struct {
 
     // Design pattern components
     spike_buffer_pool_t buffer_pool;
-    label_hash_table_t label_table;
+    hash_table_t* label_table;  // Using nimcp_hash_table utility
     spike_strategy_table_t strategy_table;
 
     // Statistics
@@ -245,122 +233,59 @@ static void release_spike_buffer(spike_buffer_pool_t* pool, uint8_t* buffer) {
 //=============================================================================
 
 /**
- * @brief Hash function for label strings
+ * @brief Initializes hash table for label storage using nimcp_hash_table utility
  *
- * WHY: Distributes labels uniformly across hash table buckets,
- * minimizing collisions for O(1) average lookup time.
- *
- * COMPLEXITY: O(n) where n = string length (typically small)
- *
- * @param label - String to hash
- * @return Hash value in range [0, HASH_TABLE_SIZE)
- */
-static uint32_t hash_label_string(const char* label) {
-    // Guard clause: Handle NULL
-    if (!label) return 0;
-
-    uint32_t hash = 5381;
-    int c;
-
-    while ((c = *label++)) {
-        hash = ((hash << 5) + hash) + c;  // hash * 33 + c
-    }
-
-    return hash % HASH_TABLE_SIZE;
-}
-
-/**
- * @brief Initializes hash table for label storage
- *
- * WHY: Provides O(1) label lookup vs O(n) linear search through array.
+ * WHY: Provides O(1) label lookup. Uses nimcp_hash_table with djb2 algorithm.
  * Essential for real-time performance with many labels.
  *
  * COMPLEXITY: O(1)
  */
-static void init_label_hash_table(label_hash_table_t* table) {
-    // Guard clause: Validate input
-    if (!table) return;
-
-    memset(table->buckets, 0, sizeof(table->buckets));
-    table->num_entries = 0;
+static hash_table_t* create_label_hash_table(void) {
+    hash_table_config_t config = {
+        .initial_buckets = HASH_TABLE_SIZE,
+        .key_type = HASH_KEY_STRING,
+        .hash_algorithm = HASH_ALG_DJB2,
+        .case_insensitive = false,
+        .value_destructor = NULL,  // label_index_t doesn't need cleanup
+        .thread_safe = false
+    };
+    return hash_table_create(&config);
 }
 
 /**
- * @brief Looks up label in hash table
+ * @brief Looks up label in hash table using nimcp_hash_table utility
  *
  * WHY: O(1) average case lookup is critical for real-time classification.
- * Replaces O(n) linear search through label array.
+ * Delegates to nimcp_hash_table for consistent behavior.
  *
  * COMPLEXITY: O(1) average, O(k) worst case where k = collision chain length
  *
  * @return Label index or UINT32_MAX if not found
  */
-static uint32_t hash_table_lookup_label(label_hash_table_t* table, const char* label) {
-    // Guard clause: Validate inputs
+static uint32_t hash_table_lookup_label(hash_table_t* table, const char* label) {
     if (!table || !label) return UINT32_MAX;
 
-    uint32_t bucket = hash_label_string(label);
-    label_hash_entry_t* entry = table->buckets[bucket];
-
-    while (entry) {
-        if (strcmp(entry->label, label) == 0) {
-            return entry->index;
-        }
-        entry = entry->next;
-    }
-
-    return UINT32_MAX;  // Not found
+    label_index_t* entry = (label_index_t*)hash_table_lookup_string(table, label);
+    return entry ? entry->index : UINT32_MAX;
 }
 
 /**
- * @brief Inserts label into hash table
+ * @brief Inserts label into hash table using nimcp_hash_table utility
  *
- * WHY: O(1) insertion enables fast label registration without degrading
- * lookup performance as label count grows.
+ * WHY: O(1) insertion enables fast label registration.
+ * Delegates to nimcp_hash_table for consistent behavior.
  *
  * COMPLEXITY: O(1) average case
  *
  * @return true if inserted, false on failure
  */
-static bool hash_table_insert_label(label_hash_table_t* table, const char* label, uint32_t index) {
-    // Guard clause: Validate inputs
+static bool hash_table_insert_label(hash_table_t* table, const char* label, uint32_t index) {
     if (!table || !label) return false;
 
-    uint32_t bucket = hash_label_string(label);
-
-    label_hash_entry_t* entry = malloc(sizeof(label_hash_entry_t));
-    // Guard clause: Check allocation
-    if (!entry) return false;
-
-    entry->label = (char*)label;  // Assumes label lifetime managed externally
-    entry->index = index;
-    entry->next = table->buckets[bucket];
-    table->buckets[bucket] = entry;
-    table->num_entries++;
-
-    return true;
+    label_index_t value = { .index = index };
+    return hash_table_insert_string(table, label, &value, sizeof(label_index_t));
 }
 
-/**
- * @brief Destroys hash table and frees all entries
- *
- * WHY: Prevents memory leaks by cleaning up all allocated hash entries.
- *
- * COMPLEXITY: O(n) where n = number of entries
- */
-static void destroy_label_hash_table(label_hash_table_t* table) {
-    // Guard clause: Validate input
-    if (!table) return;
-
-    for (uint32_t i = 0; i < HASH_TABLE_SIZE; i++) {
-        label_hash_entry_t* entry = table->buckets[i];
-        while (entry) {
-            label_hash_entry_t* next = entry->next;
-            free(entry);
-            entry = next;
-        }
-    }
-}
 
 //=============================================================================
 // Utility Functions
@@ -791,7 +716,7 @@ static void initialize_design_patterns(adaptive_network_t network) {
     if (!network) return;
 
     init_spike_buffer_pool(&network->buffer_pool);
-    init_label_hash_table(&network->label_table);
+    network->label_table = create_label_hash_table();
     init_spike_strategy_table(&network->strategy_table);
 }
 
@@ -932,7 +857,9 @@ void adaptive_network_destroy(adaptive_network_t network) {
     }
 
     // Destroy hash table
-    destroy_label_hash_table(&network->label_table);
+    if (network->label_table) {
+        hash_table_destroy(network->label_table);
+    }
 
     free(network);
 }
