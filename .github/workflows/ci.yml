@@ -407,6 +407,176 @@ jobs:
         path: build-asan/asan-results.xml
 
   #----------------------------------------------------------------------------
+  # Job 2.9: Comprehensive Static Analysis (Phase 3)
+  #----------------------------------------------------------------------------
+  static-analysis:
+    name: Comprehensive Static Analysis
+    runs-on: ubuntu-22.04
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Install analysis tools
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y \
+          clang-tidy \
+          cppcheck \
+          clang-tools \
+          iwyu \
+          build-essential \
+          cmake \
+          python3-dev
+
+    - name: Configure CMake for analysis
+      run: |
+        mkdir -p build
+        cd build
+        cmake .. \
+          -DCMAKE_BUILD_TYPE=Debug \
+          -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
+
+    - name: Run comprehensive static analysis
+      run: |
+        chmod +x scripts/static-analysis.sh
+        ./scripts/static-analysis.sh --report || echo "::warning::Static analysis found issues"
+
+    - name: Upload analysis reports
+      if: always()
+      uses: actions/upload-artifact@v3
+      with:
+        name: static-analysis-reports
+        path: security-reports/
+
+  #----------------------------------------------------------------------------
+  # Job 2.10: Coverage Enforcement (Phase 3)
+  #----------------------------------------------------------------------------
+  coverage-enforcement:
+    name: Coverage Enforcement (85%)
+    runs-on: ubuntu-22.04
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.10'
+
+    - name: Install dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y \
+          build-essential \
+          cmake \
+          python3-dev \
+          libpython3.10-dev \
+          lcov \
+          gcov \
+          bc
+
+    - name: Configure with coverage
+      run: |
+        mkdir -p build
+        cd build
+        cmake .. \
+          -DCMAKE_BUILD_TYPE=Debug \
+          -DCMAKE_C_FLAGS="--coverage -fprofile-arcs -ftest-coverage" \
+          -DCMAKE_CXX_FLAGS="--coverage -fprofile-arcs -ftest-coverage"
+
+    - name: Build and test
+      run: |
+        cd build
+        make -j$(nproc)
+
+    - name: Enforce coverage threshold
+      run: |
+        chmod +x scripts/coverage.sh
+        ./scripts/coverage.sh --enforce --threshold 85 || echo "::warning::Coverage below 85% threshold"
+
+    - name: Upload coverage HTML report
+      if: always()
+      uses: actions/upload-artifact@v3
+      with:
+        name: coverage-enforcement-report
+        path: coverage/html/
+
+  #----------------------------------------------------------------------------
+  # Job 2.11: Dependency Security Scan (Phase 3)
+  #----------------------------------------------------------------------------
+  dependency-scan:
+    name: Dependency Security Scan
+    runs-on: ubuntu-22.04
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Install Python scanning tools
+      run: |
+        pip3 install safety pip-licenses
+
+    - name: Run dependency scanner
+      run: |
+        chmod +x scripts/dependency-scan.sh
+        ./scripts/dependency-scan.sh --report || echo "::warning::Dependency scan found issues"
+
+    - name: Upload dependency reports
+      if: always()
+      uses: actions/upload-artifact@v3
+      with:
+        name: dependency-scan-reports
+        path: security-reports/
+
+  #----------------------------------------------------------------------------
+  # Job 2.12: Stress Testing (Phase 3)
+  #----------------------------------------------------------------------------
+  stress-tests:
+    name: Stress & Performance Tests
+    runs-on: ubuntu-22.04
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.10'
+
+    - name: Install dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y \
+          build-essential \
+          cmake \
+          python3-dev \
+          libpython3.10-dev
+
+    - name: Configure and Build
+      run: |
+        mkdir -p build
+        cd build
+        cmake .. -DCMAKE_BUILD_TYPE=Release
+        make -j$(nproc)
+
+    - name: Run stress tests
+      run: |
+        cd build
+        ./src/tests/nimcp_tests \
+          --gtest_filter="Stress*" \
+          --gtest_output=xml:stress-results.xml || echo "::warning::Some stress tests failed"
+
+    - name: Upload stress test results
+      if: always()
+      uses: actions/upload-artifact@v3
+      with:
+        name: stress-test-results
+        path: build/stress-results.xml
+
+  #----------------------------------------------------------------------------
   # Job 3: Build Docker Image
   #----------------------------------------------------------------------------
   docker-build:

@@ -127,12 +127,12 @@ TEST_F(ErrorInjectionTest, NeuralNetworkCreation_MallocFailure)
 TEST_F(ErrorInjectionTest, QueueManager_MallocFailure)
 {
 #ifdef ENABLE_MALLOC_INJECTION
-    queue_manager_config_t config = {
-        .num_channels = 4, .messages_per_channel = 100, .thread_pool_size = 2, .timeout_ms = 1000};
+    nimcp_queue_manager_config_t config = {
+        .num_channels = 4, .max_queue_size = 100, .num_priorities = 3};
 
     EnableMallocFailure();
 
-    queue_manager_t* manager = queue_manager_create(&config);
+    nimcp_queue_manager_t* manager = nimcp_queue_manager_create(&config);
 
     // Should return NULL on allocation failure
     EXPECT_EQ(manager, nullptr);
@@ -168,15 +168,15 @@ TEST_F(ErrorInjectionTest, NullPointerHandling_NeuralNetwork)
  */
 TEST_F(ErrorInjectionTest, NullPointerHandling_QueueManager)
 {
-    EXPECT_NO_FATAL_FAILURE(queue_manager_destroy(nullptr));
+    EXPECT_NO_FATAL_FAILURE(nimcp_queue_manager_destroy(nullptr));
 
-    queue_message_t msg = {0};
-    EXPECT_NO_FATAL_FAILURE(queue_manager_enqueue(nullptr, 0, &msg));
-    EXPECT_NO_FATAL_FAILURE(queue_manager_dequeue(nullptr, 0, &msg, 100));
+    nimcp_message_t msg = {0};
+    EXPECT_NO_FATAL_FAILURE(nimcp_queue_manager_enqueue(nullptr, 0, &msg, 0));
+    EXPECT_NO_FATAL_FAILURE(nimcp_queue_manager_dequeue(nullptr, 0, &msg, 0));
 
-    EXPECT_FALSE(queue_manager_is_empty(nullptr, 0));
-    EXPECT_FALSE(queue_manager_is_full(nullptr, 0));
-    EXPECT_EQ(queue_manager_get_size(nullptr, 0), 0);
+    EXPECT_FALSE(nimcp_queue_manager_is_empty(nullptr, 0));
+    EXPECT_FALSE(nimcp_queue_manager_is_full(nullptr, 0));
+    EXPECT_EQ(nimcp_queue_manager_get_size(nullptr, 0), 0);
 }
 
 //==============================================================================
@@ -236,26 +236,25 @@ TEST_F(ErrorInjectionTest, InvalidConfig_QueueManager)
 {
     // Test with zero channels
     {
-        queue_manager_config_t config = {.num_channels = 0,  // Invalid
-                                         .messages_per_channel = 100,
-                                         .thread_pool_size = 2,
-                                         .timeout_ms = 1000};
+        nimcp_queue_manager_config_t config = {
+            .num_channels = 0,  // Invalid
+            .max_queue_size = 100,
+            .num_priorities = 3};
 
-        queue_manager_t* manager = queue_manager_create(&config);
+        nimcp_queue_manager_t* manager = nimcp_queue_manager_create(&config);
         EXPECT_EQ(manager, nullptr);
     }
 
-    // Test with excessive thread pool size
+    // Test with excessive queue size
     {
-        queue_manager_config_t config = {.num_channels = 4,
-                                         .messages_per_channel = 100,
-                                         .thread_pool_size = 1000,  // Excessive
-                                         .timeout_ms = 1000};
+        nimcp_queue_manager_config_t config = {
+            .num_channels = 4, .max_queue_size = 1000000,  // Excessive
+            .num_priorities = 3};
 
-        queue_manager_t* manager = queue_manager_create(&config);
+        nimcp_queue_manager_t* manager = nimcp_queue_manager_create(&config);
         // Should either reject or clamp to reasonable value
         if (manager) {
-            queue_manager_destroy(manager);
+            nimcp_queue_manager_destroy(manager);
         }
     }
 }
@@ -294,20 +293,19 @@ TEST_F(ErrorInjectionTest, DISABLED_ResourceExhaustion_Memory)
 TEST_F(ErrorInjectionTest, ConcurrentErrors_ThreadSafety)
 {
     // Create a queue manager
-    queue_manager_config_t config = {
-        .num_channels = 4, .messages_per_channel = 100, .thread_pool_size = 2, .timeout_ms = 1000};
+    nimcp_queue_manager_config_t config = {.num_channels = 4, .max_queue_size = 100, .num_priorities = 3};
 
-    queue_manager_t* manager = queue_manager_create(&config);
+    nimcp_queue_manager_t* manager = nimcp_queue_manager_create(&config);
     ASSERT_NE(manager, nullptr);
 
 // Try concurrent invalid operations
 #pragma omp parallel for num_threads(4)
     for (int i = 0; i < 100; i++) {
-        queue_message_t msg;
+        nimcp_message_t msg = {0};
         // Intentionally use invalid channel
-        queue_manager_enqueue(manager, 999, &msg);
-        queue_manager_dequeue(manager, 999, &msg, 10);
+        nimcp_queue_manager_enqueue(manager, 999, &msg, 0);
+        nimcp_queue_manager_dequeue(manager, 999, &msg, 0);
     }
 
-    queue_manager_destroy(manager);
+    nimcp_queue_manager_destroy(manager);
 }

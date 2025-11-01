@@ -38,6 +38,8 @@ SRC_DIR="$PROJECT_ROOT/src"
 # Options
 GENERATE_HTML=true
 CLEAN_FIRST=false
+ENFORCE_THRESHOLD=false
+MIN_COVERAGE=85.0
 
 # Parse arguments
 for arg in "$@"; do
@@ -48,11 +50,19 @@ for arg in "$@"; do
         --clean)
             CLEAN_FIRST=true
             ;;
+        --enforce)
+            ENFORCE_THRESHOLD=true
+            ;;
+        --threshold)
+            shift
+            MIN_COVERAGE="$1"
+            ;;
         --help)
             head -n 30 "$0" | grep "^#" | sed 's/^# //' | sed 's/^#//'
             exit 0
             ;;
     esac
+    shift || true
 done
 
 # Colors
@@ -254,16 +264,26 @@ if [[ "$LCOV_AVAILABLE" == true && -f "$COVERAGE_DIR/coverage.info" ]]; then
     echo "========================================"
     echo "Line Coverage:     ${LINE_COVERAGE}%"
     echo "Function Coverage: ${FUNC_COVERAGE}%"
+    echo "Minimum Required:  ${MIN_COVERAGE}%"
     echo "========================================"
     echo ""
 
-    # Coverage thresholds
-    REQUIRED_COVERAGE=70
+    # Check coverage threshold
+    if command -v bc &> /dev/null; then
+        IS_BELOW=$(echo "$LINE_COVERAGE < $MIN_COVERAGE" | bc -l 2>/dev/null || echo 0)
 
-    if (( $(echo "$LINE_COVERAGE < $REQUIRED_COVERAGE" | bc -l 2>/dev/null || echo 0) )); then
-        log_warning "Line coverage (${LINE_COVERAGE}%) is below threshold (${REQUIRED_COVERAGE}%)"
+        if [[ "$IS_BELOW" -eq 1 ]]; then
+            log_warning "Line coverage (${LINE_COVERAGE}%) is below threshold (${MIN_COVERAGE}%)"
+
+            if [[ "$ENFORCE_THRESHOLD" == true ]]; then
+                log_error "Coverage enforcement failed. Please add more tests."
+                exit 1
+            fi
+        else
+            log_success "Coverage ${LINE_COVERAGE}% meets threshold (${MIN_COVERAGE}%)"
+        fi
     else
-        log_success "Coverage meets threshold (${REQUIRED_COVERAGE}%)"
+        log_warning "bc not found, cannot compare thresholds"
     fi
 fi
 

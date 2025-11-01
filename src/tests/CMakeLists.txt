@@ -30,6 +30,7 @@ set(NIMCP_TEST_SOURCES
     test_validate.cpp           # Input validation utilities tests
     test_graph.cpp              # Graph data structure tests
     test_error_injection.cpp    # Error injection and failure path testing
+    test_stress.cpp             # Stress and load testing (Phase 3)
     test_integration_networking.cpp  # P2P networking integration tests
     # test_integration_cognitive.cpp   # Multi-module cognitive integration tests (disabled: compilation issues)
         test_integration_e2e.cpp    # End-to-end integration tests across modules

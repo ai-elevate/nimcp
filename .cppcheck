@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Comprehensive cppcheck configuration for NIMCP
+  Run: cppcheck --project=.cppcheck --xml 2> cppcheck-report.xml
+-->
+<project version="1">
+    <!-- Enable all checks for maximum security coverage -->
+    <check-config>true</check-config>
+    <check-library>true</check-library>
+
+    <!-- Paths to analyze -->
+    <paths>
+        <dir name="src/lib/"/>
+        <dir name="src/include/"/>
+        <dir name="src/python/"/>
+    </paths>
+
+    <!-- Include directories -->
+    <includedir>
+        <dir name="src/include/"/>
+        <dir name="/usr/include/"/>
+    </includedir>
+
+    <!-- Exclude patterns -->
+    <exclude>
+        <path name="build/"/>
+        <path name="src/tests/"/>
+        <path name="src/fuzz/"/>
+        <path name="examples/"/>
+    </exclude>
+
+    <!-- Enable all warning categories -->
+    <enable>
+        <id>warning</id>
+        <id>style</id>
+        <id>performance</id>
+        <id>portability</id>
+        <id>information</id>
+        <id>unusedFunction</id>
+        <id>missingInclude</id>
+    </enable>
+
+    <!-- Security-critical checks -->
+    <addon>cert.py</addon>
+    <addon>threadsafety.py</addon>
+
+    <!-- Suppression rules (minimal - only for false positives) -->
+    <suppressions>
+        <!-- Suppress external library warnings -->
+        <suppression>
+            <id>*</id>
+            <fileName>*/usr/include/*</fileName>
+        </suppression>
+    </suppressions>
+
+    <!-- Platform settings -->
+    <platform>unix64</platform>
+
+    <!-- Standards compliance -->
+    <standards>
+        <c>c11</c>
+        <cpp>c++17</cpp>
+        <posix>true</posix>
+    </standards>
+
+    <!-- Max configurations to check -->
+    <max-configs>64</max-configs>
+
+    <!-- Max template instantiation depth -->
+    <max-ctu-depth>4</max-ctu-depth>
+</project>
