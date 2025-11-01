@@ -111,10 +111,38 @@ src/tests/CMakeFiles/nimcp_tests.dir/test_neuralnet_learning.cpp.s: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Compiling CXX source to assembly CMakeFiles/nimcp_tests.dir/test_neuralnet_learning.cpp.s"
 	cd /home/bbrelin/src/repos/nimcp/build/src/tests && /usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/bbrelin/src/repos/nimcp/src/tests/test_neuralnet_learning.cpp -o CMakeFiles/nimcp_tests.dir/test_neuralnet_learning.cpp.s
 
+src/tests/CMakeFiles/nimcp_tests.dir/test_adaptive.cpp.o: src/tests/CMakeFiles/nimcp_tests.dir/flags.make
+src/tests/CMakeFiles/nimcp_tests.dir/test_adaptive.cpp.o: ../src/tests/test_adaptive.cpp
+src/tests/CMakeFiles/nimcp_tests.dir/test_adaptive.cpp.o: src/tests/CMakeFiles/nimcp_tests.dir/compiler_depend.ts
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/bbrelin/src/repos/nimcp/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_4) "Building CXX object src/tests/CMakeFiles/nimcp_tests.dir/test_adaptive.cpp.o"
+	cd /home/bbrelin/src/repos/nimcp/build/src/tests && /usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT src/tests/CMakeFiles/nimcp_tests.dir/test_adaptive.cpp.o -MF CMakeFiles/nimcp_tests.dir/test_adaptive.cpp.o.d -o CMakeFiles/nimcp_tests.dir/test_adaptive.cpp.o -c /home/bbrelin/src/repos/nimcp/src/tests/test_adaptive.cpp
+
+src/tests/CMakeFiles/nimcp_tests.dir/test_adaptive.cpp.i: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Preprocessing CXX source to CMakeFiles/nimcp_tests.dir/test_adaptive.cpp.i"
+	cd /home/bbrelin/src/repos/nimcp/build/src/tests && /usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /home/bbrelin/src/repos/nimcp/src/tests/test_adaptive.cpp > CMakeFiles/nimcp_tests.dir/test_adaptive.cpp.i
+
+src/tests/CMakeFiles/nimcp_tests.dir/test_adaptive.cpp.s: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Compiling CXX source to assembly CMakeFiles/nimcp_tests.dir/test_adaptive.cpp.s"
+	cd /home/bbrelin/src/repos/nimcp/build/src/tests && /usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/bbrelin/src/repos/nimcp/src/tests/test_adaptive.cpp -o CMakeFiles/nimcp_tests.dir/test_adaptive.cpp.s
+
+src/tests/CMakeFiles/nimcp_tests.dir/test_events.cpp.o: src/tests/CMakeFiles/nimcp_tests.dir/flags.make
+src/tests/CMakeFiles/nimcp_tests.dir/test_events.cpp.o: ../src/tests/test_events.cpp
+src/tests/CMakeFiles/nimcp_tests.dir/test_events.cpp.o: src/tests/CMakeFiles/nimcp_tests.dir/compiler_depend.ts
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/bbrelin/src/repos/nimcp/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_5) "Building CXX object src/tests/CMakeFiles/nimcp_tests.dir/test_events.cpp.o"
+	cd /home/bbrelin/src/repos/nimcp/build/src/tests && /usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT src/tests/CMakeFiles/nimcp_tests.dir/test_events.cpp.o -MF CMakeFiles/nimcp_tests.dir/test_events.cpp.o.d -o CMakeFiles/nimcp_tests.dir/test_events.cpp.o -c /home/bbrelin/src/repos/nimcp/src/tests/test_events.cpp
+
+src/tests/CMakeFiles/nimcp_tests.dir/test_events.cpp.i: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Preprocessing CXX source to CMakeFiles/nimcp_tests.dir/test_events.cpp.i"
+	cd /home/bbrelin/src/repos/nimcp/build/src/tests && /usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /home/bbrelin/src/repos/nimcp/src/tests/test_events.cpp > CMakeFiles/nimcp_tests.dir/test_events.cpp.i
+
+src/tests/CMakeFiles/nimcp_tests.dir/test_events.cpp.s: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Compiling CXX source to assembly CMakeFiles/nimcp_tests.dir/test_events.cpp.s"
+	cd /home/bbrelin/src/repos/nimcp/build/src/tests && /usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/bbrelin/src/repos/nimcp/src/tests/test_events.cpp -o CMakeFiles/nimcp_tests.dir/test_events.cpp.s
+
 src/tests/CMakeFiles/nimcp_tests.dir/test_p2pnode.cpp.o: src/tests/CMakeFiles/nimcp_tests.dir/flags.make
 src/tests/CMakeFiles/nimcp_tests.dir/test_p2pnode.cpp.o: ../src/tests/test_p2pnode.cpp
 src/tests/CMakeFiles/nimcp_tests.dir/test_p2pnode.cpp.o: src/tests/CMakeFiles/nimcp_tests.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/bbrelin/src/repos/nimcp/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_4) "Building CXX object src/tests/CMakeFiles/nimcp_tests.dir/test_p2pnode.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/bbrelin/src/repos/nimcp/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_6) "Building CXX object src/tests/CMakeFiles/nimcp_tests.dir/test_p2pnode.cpp.o"
 	cd /home/bbrelin/src/repos/nimcp/build/src/tests && /usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT src/tests/CMakeFiles/nimcp_tests.dir/test_p2pnode.cpp.o -MF CMakeFiles/nimcp_tests.dir/test_p2pnode.cpp.o.d -o CMakeFiles/nimcp_tests.dir/test_p2pnode.cpp.o -c /home/bbrelin/src/repos/nimcp/src/tests/test_p2pnode.cpp
 
 src/tests/CMakeFiles/nimcp_tests.dir/test_p2pnode.cpp.i: cmake_force
@@ -128,7 +156,7 @@ src/tests/CMakeFiles/nimcp_tests.dir/test_p2pnode.cpp.s: cmake_force
 src/tests/CMakeFiles/nimcp_tests.dir/test_protocol.cpp.o: src/tests/CMakeFiles/nimcp_tests.dir/flags.make
 src/tests/CMakeFiles/nimcp_tests.dir/test_protocol.cpp.o: ../src/tests/test_protocol.cpp
 src/tests/CMakeFiles/nimcp_tests.dir/test_protocol.cpp.o: src/tests/CMakeFiles/nimcp_tests.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/bbrelin/src/repos/nimcp/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_5) "Building CXX object src/tests/CMakeFiles/nimcp_tests.dir/test_protocol.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/bbrelin/src/repos/nimcp/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_7) "Building CXX object src/tests/CMakeFiles/nimcp_tests.dir/test_protocol.cpp.o"
 	cd /home/bbrelin/src/repos/nimcp/build/src/tests && /usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT src/tests/CMakeFiles/nimcp_tests.dir/test_protocol.cpp.o -MF CMakeFiles/nimcp_tests.dir/test_protocol.cpp.o.d -o CMakeFiles/nimcp_tests.dir/test_protocol.cpp.o -c /home/bbrelin/src/repos/nimcp/src/tests/test_protocol.cpp
 
 src/tests/CMakeFiles/nimcp_tests.dir/test_protocol.cpp.i: cmake_force
@@ -142,7 +170,7 @@ src/tests/CMakeFiles/nimcp_tests.dir/test_protocol.cpp.s: cmake_force
 src/tests/CMakeFiles/nimcp_tests.dir/test_replication.cpp.o: src/tests/CMakeFiles/nimcp_tests.dir/flags.make
 src/tests/CMakeFiles/nimcp_tests.dir/test_replication.cpp.o: ../src/tests/test_replication.cpp
 src/tests/CMakeFiles/nimcp_tests.dir/test_replication.cpp.o: src/tests/CMakeFiles/nimcp_tests.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/bbrelin/src/repos/nimcp/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_6) "Building CXX object src/tests/CMakeFiles/nimcp_tests.dir/test_replication.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/bbrelin/src/repos/nimcp/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_8) "Building CXX object src/tests/CMakeFiles/nimcp_tests.dir/test_replication.cpp.o"
 	cd /home/bbrelin/src/repos/nimcp/build/src/tests && /usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT src/tests/CMakeFiles/nimcp_tests.dir/test_replication.cpp.o -MF CMakeFiles/nimcp_tests.dir/test_replication.cpp.o.d -o CMakeFiles/nimcp_tests.dir/test_replication.cpp.o -c /home/bbrelin/src/repos/nimcp/src/tests/test_replication.cpp
 
 src/tests/CMakeFiles/nimcp_tests.dir/test_replication.cpp.i: cmake_force
@@ -156,7 +184,7 @@ src/tests/CMakeFiles/nimcp_tests.dir/test_replication.cpp.s: cmake_force
 src/tests/CMakeFiles/nimcp_tests.dir/test_dataio.cpp.o: src/tests/CMakeFiles/nimcp_tests.dir/flags.make
 src/tests/CMakeFiles/nimcp_tests.dir/test_dataio.cpp.o: ../src/tests/test_dataio.cpp
 src/tests/CMakeFiles/nimcp_tests.dir/test_dataio.cpp.o: src/tests/CMakeFiles/nimcp_tests.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/bbrelin/src/repos/nimcp/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_7) "Building CXX object src/tests/CMakeFiles/nimcp_tests.dir/test_dataio.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/bbrelin/src/repos/nimcp/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_9) "Building CXX object src/tests/CMakeFiles/nimcp_tests.dir/test_dataio.cpp.o"
 	cd /home/bbrelin/src/repos/nimcp/build/src/tests && /usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT src/tests/CMakeFiles/nimcp_tests.dir/test_dataio.cpp.o -MF CMakeFiles/nimcp_tests.dir/test_dataio.cpp.o.d -o CMakeFiles/nimcp_tests.dir/test_dataio.cpp.o -c /home/bbrelin/src/repos/nimcp/src/tests/test_dataio.cpp
 
 src/tests/CMakeFiles/nimcp_tests.dir/test_dataio.cpp.i: cmake_force
@@ -170,7 +198,7 @@ src/tests/CMakeFiles/nimcp_tests.dir/test_dataio.cpp.s: cmake_force
 src/tests/CMakeFiles/nimcp_tests.dir/test_stream.cpp.o: src/tests/CMakeFiles/nimcp_tests.dir/flags.make
 src/tests/CMakeFiles/nimcp_tests.dir/test_stream.cpp.o: ../src/tests/test_stream.cpp
 src/tests/CMakeFiles/nimcp_tests.dir/test_stream.cpp.o: src/tests/CMakeFiles/nimcp_tests.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/bbrelin/src/repos/nimcp/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_8) "Building CXX object src/tests/CMakeFiles/nimcp_tests.dir/test_stream.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/bbrelin/src/repos/nimcp/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_10) "Building CXX object src/tests/CMakeFiles/nimcp_tests.dir/test_stream.cpp.o"
 	cd /home/bbrelin/src/repos/nimcp/build/src/tests && /usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT src/tests/CMakeFiles/nimcp_tests.dir/test_stream.cpp.o -MF CMakeFiles/nimcp_tests.dir/test_stream.cpp.o.d -o CMakeFiles/nimcp_tests.dir/test_stream.cpp.o -c /home/bbrelin/src/repos/nimcp/src/tests/test_stream.cpp
 
 src/tests/CMakeFiles/nimcp_tests.dir/test_stream.cpp.i: cmake_force
@@ -184,7 +212,7 @@ src/tests/CMakeFiles/nimcp_tests.dir/test_stream.cpp.s: cmake_force
 src/tests/CMakeFiles/nimcp_tests.dir/test_salience.cpp.o: src/tests/CMakeFiles/nimcp_tests.dir/flags.make
 src/tests/CMakeFiles/nimcp_tests.dir/test_salience.cpp.o: ../src/tests/test_salience.cpp
 src/tests/CMakeFiles/nimcp_tests.dir/test_salience.cpp.o: src/tests/CMakeFiles/nimcp_tests.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/bbrelin/src/repos/nimcp/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_9) "Building CXX object src/tests/CMakeFiles/nimcp_tests.dir/test_salience.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/bbrelin/src/repos/nimcp/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_11) "Building CXX object src/tests/CMakeFiles/nimcp_tests.dir/test_salience.cpp.o"
 	cd /home/bbrelin/src/repos/nimcp/build/src/tests && /usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT src/tests/CMakeFiles/nimcp_tests.dir/test_salience.cpp.o -MF CMakeFiles/nimcp_tests.dir/test_salience.cpp.o.d -o CMakeFiles/nimcp_tests.dir/test_salience.cpp.o -c /home/bbrelin/src/repos/nimcp/src/tests/test_salience.cpp
 
 src/tests/CMakeFiles/nimcp_tests.dir/test_salience.cpp.i: cmake_force
@@ -198,7 +226,7 @@ src/tests/CMakeFiles/nimcp_tests.dir/test_salience.cpp.s: cmake_force
 src/tests/CMakeFiles/nimcp_tests.dir/test_introspection.cpp.o: src/tests/CMakeFiles/nimcp_tests.dir/flags.make
 src/tests/CMakeFiles/nimcp_tests.dir/test_introspection.cpp.o: ../src/tests/test_introspection.cpp
 src/tests/CMakeFiles/nimcp_tests.dir/test_introspection.cpp.o: src/tests/CMakeFiles/nimcp_tests.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/bbrelin/src/repos/nimcp/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_10) "Building CXX object src/tests/CMakeFiles/nimcp_tests.dir/test_introspection.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/bbrelin/src/repos/nimcp/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_12) "Building CXX object src/tests/CMakeFiles/nimcp_tests.dir/test_introspection.cpp.o"
 	cd /home/bbrelin/src/repos/nimcp/build/src/tests && /usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT src/tests/CMakeFiles/nimcp_tests.dir/test_introspection.cpp.o -MF CMakeFiles/nimcp_tests.dir/test_introspection.cpp.o.d -o CMakeFiles/nimcp_tests.dir/test_introspection.cpp.o -c /home/bbrelin/src/repos/nimcp/src/tests/test_introspection.cpp
 
 src/tests/CMakeFiles/nimcp_tests.dir/test_introspection.cpp.i: cmake_force
@@ -212,7 +240,7 @@ src/tests/CMakeFiles/nimcp_tests.dir/test_introspection.cpp.s: cmake_force
 src/tests/CMakeFiles/nimcp_tests.dir/test_consolidation.cpp.o: src/tests/CMakeFiles/nimcp_tests.dir/flags.make
 src/tests/CMakeFiles/nimcp_tests.dir/test_consolidation.cpp.o: ../src/tests/test_consolidation.cpp
 src/tests/CMakeFiles/nimcp_tests.dir/test_consolidation.cpp.o: src/tests/CMakeFiles/nimcp_tests.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/bbrelin/src/repos/nimcp/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_11) "Building CXX object src/tests/CMakeFiles/nimcp_tests.dir/test_consolidation.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/bbrelin/src/repos/nimcp/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_13) "Building CXX object src/tests/CMakeFiles/nimcp_tests.dir/test_consolidation.cpp.o"
 	cd /home/bbrelin/src/repos/nimcp/build/src/tests && /usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT src/tests/CMakeFiles/nimcp_tests.dir/test_consolidation.cpp.o -MF CMakeFiles/nimcp_tests.dir/test_consolidation.cpp.o.d -o CMakeFiles/nimcp_tests.dir/test_consolidation.cpp.o -c /home/bbrelin/src/repos/nimcp/src/tests/test_consolidation.cpp
 
 src/tests/CMakeFiles/nimcp_tests.dir/test_consolidation.cpp.i: cmake_force
@@ -226,7 +254,7 @@ src/tests/CMakeFiles/nimcp_tests.dir/test_consolidation.cpp.s: cmake_force
 src/tests/CMakeFiles/nimcp_tests.dir/test_thread_utils.cpp.o: src/tests/CMakeFiles/nimcp_tests.dir/flags.make
 src/tests/CMakeFiles/nimcp_tests.dir/test_thread_utils.cpp.o: ../src/tests/test_thread_utils.cpp
 src/tests/CMakeFiles/nimcp_tests.dir/test_thread_utils.cpp.o: src/tests/CMakeFiles/nimcp_tests.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/bbrelin/src/repos/nimcp/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_12) "Building CXX object src/tests/CMakeFiles/nimcp_tests.dir/test_thread_utils.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/bbrelin/src/repos/nimcp/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_14) "Building CXX object src/tests/CMakeFiles/nimcp_tests.dir/test_thread_utils.cpp.o"
 	cd /home/bbrelin/src/repos/nimcp/build/src/tests && /usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT src/tests/CMakeFiles/nimcp_tests.dir/test_thread_utils.cpp.o -MF CMakeFiles/nimcp_tests.dir/test_thread_utils.cpp.o.d -o CMakeFiles/nimcp_tests.dir/test_thread_utils.cpp.o -c /home/bbrelin/src/repos/nimcp/src/tests/test_thread_utils.cpp
 
 src/tests/CMakeFiles/nimcp_tests.dir/test_thread_utils.cpp.i: cmake_force
@@ -240,7 +268,7 @@ src/tests/CMakeFiles/nimcp_tests.dir/test_thread_utils.cpp.s: cmake_force
 src/tests/CMakeFiles/nimcp_tests.dir/test_queue_utils.cpp.o: src/tests/CMakeFiles/nimcp_tests.dir/flags.make
 src/tests/CMakeFiles/nimcp_tests.dir/test_queue_utils.cpp.o: ../src/tests/test_queue_utils.cpp
 src/tests/CMakeFiles/nimcp_tests.dir/test_queue_utils.cpp.o: src/tests/CMakeFiles/nimcp_tests.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/bbrelin/src/repos/nimcp/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_13) "Building CXX object src/tests/CMakeFiles/nimcp_tests.dir/test_queue_utils.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/bbrelin/src/repos/nimcp/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_15) "Building CXX object src/tests/CMakeFiles/nimcp_tests.dir/test_queue_utils.cpp.o"
 	cd /home/bbrelin/src/repos/nimcp/build/src/tests && /usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT src/tests/CMakeFiles/nimcp_tests.dir/test_queue_utils.cpp.o -MF CMakeFiles/nimcp_tests.dir/test_queue_utils.cpp.o.d -o CMakeFiles/nimcp_tests.dir/test_queue_utils.cpp.o -c /home/bbrelin/src/repos/nimcp/src/tests/test_queue_utils.cpp
 
 src/tests/CMakeFiles/nimcp_tests.dir/test_queue_utils.cpp.i: cmake_force
@@ -251,10 +279,206 @@ src/tests/CMakeFiles/nimcp_tests.dir/test_queue_utils.cpp.s: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Compiling CXX source to assembly CMakeFiles/nimcp_tests.dir/test_queue_utils.cpp.s"
 	cd /home/bbrelin/src/repos/nimcp/build/src/tests && /usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/bbrelin/src/repos/nimcp/src/tests/test_queue_utils.cpp -o CMakeFiles/nimcp_tests.dir/test_queue_utils.cpp.s
 
+src/tests/CMakeFiles/nimcp_tests.dir/test_queue_manager.cpp.o: src/tests/CMakeFiles/nimcp_tests.dir/flags.make
+src/tests/CMakeFiles/nimcp_tests.dir/test_queue_manager.cpp.o: ../src/tests/test_queue_manager.cpp
+src/tests/CMakeFiles/nimcp_tests.dir/test_queue_manager.cpp.o: src/tests/CMakeFiles/nimcp_tests.dir/compiler_depend.ts
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/bbrelin/src/repos/nimcp/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_16) "Building CXX object src/tests/CMakeFiles/nimcp_tests.dir/test_queue_manager.cpp.o"
+	cd /home/bbrelin/src/repos/nimcp/build/src/tests && /usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT src/tests/CMakeFiles/nimcp_tests.dir/test_queue_manager.cpp.o -MF CMakeFiles/nimcp_tests.dir/test_queue_manager.cpp.o.d -o CMakeFiles/nimcp_tests.dir/test_queue_manager.cpp.o -c /home/bbrelin/src/repos/nimcp/src/tests/test_queue_manager.cpp
+
+src/tests/CMakeFiles/nimcp_tests.dir/test_queue_manager.cpp.i: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Preprocessing CXX source to CMakeFiles/nimcp_tests.dir/test_queue_manager.cpp.i"
+	cd /home/bbrelin/src/repos/nimcp/build/src/tests && /usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /home/bbrelin/src/repos/nimcp/src/tests/test_queue_manager.cpp > CMakeFiles/nimcp_tests.dir/test_queue_manager.cpp.i
+
+src/tests/CMakeFiles/nimcp_tests.dir/test_queue_manager.cpp.s: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Compiling CXX source to assembly CMakeFiles/nimcp_tests.dir/test_queue_manager.cpp.s"
+	cd /home/bbrelin/src/repos/nimcp/build/src/tests && /usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/bbrelin/src/repos/nimcp/src/tests/test_queue_manager.cpp -o CMakeFiles/nimcp_tests.dir/test_queue_manager.cpp.s
+
+src/tests/CMakeFiles/nimcp_tests.dir/test_logging.cpp.o: src/tests/CMakeFiles/nimcp_tests.dir/flags.make
+src/tests/CMakeFiles/nimcp_tests.dir/test_logging.cpp.o: ../src/tests/test_logging.cpp
+src/tests/CMakeFiles/nimcp_tests.dir/test_logging.cpp.o: src/tests/CMakeFiles/nimcp_tests.dir/compiler_depend.ts
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/bbrelin/src/repos/nimcp/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_17) "Building CXX object src/tests/CMakeFiles/nimcp_tests.dir/test_logging.cpp.o"
+	cd /home/bbrelin/src/repos/nimcp/build/src/tests && /usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT src/tests/CMakeFiles/nimcp_tests.dir/test_logging.cpp.o -MF CMakeFiles/nimcp_tests.dir/test_logging.cpp.o.d -o CMakeFiles/nimcp_tests.dir/test_logging.cpp.o -c /home/bbrelin/src/repos/nimcp/src/tests/test_logging.cpp
+
+src/tests/CMakeFiles/nimcp_tests.dir/test_logging.cpp.i: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Preprocessing CXX source to CMakeFiles/nimcp_tests.dir/test_logging.cpp.i"
+	cd /home/bbrelin/src/repos/nimcp/build/src/tests && /usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /home/bbrelin/src/repos/nimcp/src/tests/test_logging.cpp > CMakeFiles/nimcp_tests.dir/test_logging.cpp.i
+
+src/tests/CMakeFiles/nimcp_tests.dir/test_logging.cpp.s: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Compiling CXX source to assembly CMakeFiles/nimcp_tests.dir/test_logging.cpp.s"
+	cd /home/bbrelin/src/repos/nimcp/build/src/tests && /usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/bbrelin/src/repos/nimcp/src/tests/test_logging.cpp -o CMakeFiles/nimcp_tests.dir/test_logging.cpp.s
+
+src/tests/CMakeFiles/nimcp_tests.dir/test_knowledge.cpp.o: src/tests/CMakeFiles/nimcp_tests.dir/flags.make
+src/tests/CMakeFiles/nimcp_tests.dir/test_knowledge.cpp.o: ../src/tests/test_knowledge.cpp
+src/tests/CMakeFiles/nimcp_tests.dir/test_knowledge.cpp.o: src/tests/CMakeFiles/nimcp_tests.dir/compiler_depend.ts
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/bbrelin/src/repos/nimcp/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_18) "Building CXX object src/tests/CMakeFiles/nimcp_tests.dir/test_knowledge.cpp.o"
+	cd /home/bbrelin/src/repos/nimcp/build/src/tests && /usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT src/tests/CMakeFiles/nimcp_tests.dir/test_knowledge.cpp.o -MF CMakeFiles/nimcp_tests.dir/test_knowledge.cpp.o.d -o CMakeFiles/nimcp_tests.dir/test_knowledge.cpp.o -c /home/bbrelin/src/repos/nimcp/src/tests/test_knowledge.cpp
+
+src/tests/CMakeFiles/nimcp_tests.dir/test_knowledge.cpp.i: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Preprocessing CXX source to CMakeFiles/nimcp_tests.dir/test_knowledge.cpp.i"
+	cd /home/bbrelin/src/repos/nimcp/build/src/tests && /usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /home/bbrelin/src/repos/nimcp/src/tests/test_knowledge.cpp > CMakeFiles/nimcp_tests.dir/test_knowledge.cpp.i
+
+src/tests/CMakeFiles/nimcp_tests.dir/test_knowledge.cpp.s: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Compiling CXX source to assembly CMakeFiles/nimcp_tests.dir/test_knowledge.cpp.s"
+	cd /home/bbrelin/src/repos/nimcp/build/src/tests && /usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/bbrelin/src/repos/nimcp/src/tests/test_knowledge.cpp -o CMakeFiles/nimcp_tests.dir/test_knowledge.cpp.s
+
+src/tests/CMakeFiles/nimcp_tests.dir/test_curiosity.cpp.o: src/tests/CMakeFiles/nimcp_tests.dir/flags.make
+src/tests/CMakeFiles/nimcp_tests.dir/test_curiosity.cpp.o: ../src/tests/test_curiosity.cpp
+src/tests/CMakeFiles/nimcp_tests.dir/test_curiosity.cpp.o: src/tests/CMakeFiles/nimcp_tests.dir/compiler_depend.ts
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/bbrelin/src/repos/nimcp/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_19) "Building CXX object src/tests/CMakeFiles/nimcp_tests.dir/test_curiosity.cpp.o"
+	cd /home/bbrelin/src/repos/nimcp/build/src/tests && /usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT src/tests/CMakeFiles/nimcp_tests.dir/test_curiosity.cpp.o -MF CMakeFiles/nimcp_tests.dir/test_curiosity.cpp.o.d -o CMakeFiles/nimcp_tests.dir/test_curiosity.cpp.o -c /home/bbrelin/src/repos/nimcp/src/tests/test_curiosity.cpp
+
+src/tests/CMakeFiles/nimcp_tests.dir/test_curiosity.cpp.i: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Preprocessing CXX source to CMakeFiles/nimcp_tests.dir/test_curiosity.cpp.i"
+	cd /home/bbrelin/src/repos/nimcp/build/src/tests && /usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /home/bbrelin/src/repos/nimcp/src/tests/test_curiosity.cpp > CMakeFiles/nimcp_tests.dir/test_curiosity.cpp.i
+
+src/tests/CMakeFiles/nimcp_tests.dir/test_curiosity.cpp.s: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Compiling CXX source to assembly CMakeFiles/nimcp_tests.dir/test_curiosity.cpp.s"
+	cd /home/bbrelin/src/repos/nimcp/build/src/tests && /usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/bbrelin/src/repos/nimcp/src/tests/test_curiosity.cpp -o CMakeFiles/nimcp_tests.dir/test_curiosity.cpp.s
+
+src/tests/CMakeFiles/nimcp_tests.dir/test_ethics.cpp.o: src/tests/CMakeFiles/nimcp_tests.dir/flags.make
+src/tests/CMakeFiles/nimcp_tests.dir/test_ethics.cpp.o: ../src/tests/test_ethics.cpp
+src/tests/CMakeFiles/nimcp_tests.dir/test_ethics.cpp.o: src/tests/CMakeFiles/nimcp_tests.dir/compiler_depend.ts
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/bbrelin/src/repos/nimcp/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_20) "Building CXX object src/tests/CMakeFiles/nimcp_tests.dir/test_ethics.cpp.o"
+	cd /home/bbrelin/src/repos/nimcp/build/src/tests && /usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT src/tests/CMakeFiles/nimcp_tests.dir/test_ethics.cpp.o -MF CMakeFiles/nimcp_tests.dir/test_ethics.cpp.o.d -o CMakeFiles/nimcp_tests.dir/test_ethics.cpp.o -c /home/bbrelin/src/repos/nimcp/src/tests/test_ethics.cpp
+
+src/tests/CMakeFiles/nimcp_tests.dir/test_ethics.cpp.i: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Preprocessing CXX source to CMakeFiles/nimcp_tests.dir/test_ethics.cpp.i"
+	cd /home/bbrelin/src/repos/nimcp/build/src/tests && /usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /home/bbrelin/src/repos/nimcp/src/tests/test_ethics.cpp > CMakeFiles/nimcp_tests.dir/test_ethics.cpp.i
+
+src/tests/CMakeFiles/nimcp_tests.dir/test_ethics.cpp.s: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Compiling CXX source to assembly CMakeFiles/nimcp_tests.dir/test_ethics.cpp.s"
+	cd /home/bbrelin/src/repos/nimcp/build/src/tests && /usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/bbrelin/src/repos/nimcp/src/tests/test_ethics.cpp -o CMakeFiles/nimcp_tests.dir/test_ethics.cpp.s
+
+src/tests/CMakeFiles/nimcp_tests.dir/test_time.cpp.o: src/tests/CMakeFiles/nimcp_tests.dir/flags.make
+src/tests/CMakeFiles/nimcp_tests.dir/test_time.cpp.o: ../src/tests/test_time.cpp
+src/tests/CMakeFiles/nimcp_tests.dir/test_time.cpp.o: src/tests/CMakeFiles/nimcp_tests.dir/compiler_depend.ts
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/bbrelin/src/repos/nimcp/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_21) "Building CXX object src/tests/CMakeFiles/nimcp_tests.dir/test_time.cpp.o"
+	cd /home/bbrelin/src/repos/nimcp/build/src/tests && /usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT src/tests/CMakeFiles/nimcp_tests.dir/test_time.cpp.o -MF CMakeFiles/nimcp_tests.dir/test_time.cpp.o.d -o CMakeFiles/nimcp_tests.dir/test_time.cpp.o -c /home/bbrelin/src/repos/nimcp/src/tests/test_time.cpp
+
+src/tests/CMakeFiles/nimcp_tests.dir/test_time.cpp.i: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Preprocessing CXX source to CMakeFiles/nimcp_tests.dir/test_time.cpp.i"
+	cd /home/bbrelin/src/repos/nimcp/build/src/tests && /usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /home/bbrelin/src/repos/nimcp/src/tests/test_time.cpp > CMakeFiles/nimcp_tests.dir/test_time.cpp.i
+
+src/tests/CMakeFiles/nimcp_tests.dir/test_time.cpp.s: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Compiling CXX source to assembly CMakeFiles/nimcp_tests.dir/test_time.cpp.s"
+	cd /home/bbrelin/src/repos/nimcp/build/src/tests && /usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/bbrelin/src/repos/nimcp/src/tests/test_time.cpp -o CMakeFiles/nimcp_tests.dir/test_time.cpp.s
+
+src/tests/CMakeFiles/nimcp_tests.dir/test_serialization.cpp.o: src/tests/CMakeFiles/nimcp_tests.dir/flags.make
+src/tests/CMakeFiles/nimcp_tests.dir/test_serialization.cpp.o: ../src/tests/test_serialization.cpp
+src/tests/CMakeFiles/nimcp_tests.dir/test_serialization.cpp.o: src/tests/CMakeFiles/nimcp_tests.dir/compiler_depend.ts
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/bbrelin/src/repos/nimcp/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_22) "Building CXX object src/tests/CMakeFiles/nimcp_tests.dir/test_serialization.cpp.o"
+	cd /home/bbrelin/src/repos/nimcp/build/src/tests && /usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT src/tests/CMakeFiles/nimcp_tests.dir/test_serialization.cpp.o -MF CMakeFiles/nimcp_tests.dir/test_serialization.cpp.o.d -o CMakeFiles/nimcp_tests.dir/test_serialization.cpp.o -c /home/bbrelin/src/repos/nimcp/src/tests/test_serialization.cpp
+
+src/tests/CMakeFiles/nimcp_tests.dir/test_serialization.cpp.i: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Preprocessing CXX source to CMakeFiles/nimcp_tests.dir/test_serialization.cpp.i"
+	cd /home/bbrelin/src/repos/nimcp/build/src/tests && /usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /home/bbrelin/src/repos/nimcp/src/tests/test_serialization.cpp > CMakeFiles/nimcp_tests.dir/test_serialization.cpp.i
+
+src/tests/CMakeFiles/nimcp_tests.dir/test_serialization.cpp.s: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Compiling CXX source to assembly CMakeFiles/nimcp_tests.dir/test_serialization.cpp.s"
+	cd /home/bbrelin/src/repos/nimcp/build/src/tests && /usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/bbrelin/src/repos/nimcp/src/tests/test_serialization.cpp -o CMakeFiles/nimcp_tests.dir/test_serialization.cpp.s
+
+src/tests/CMakeFiles/nimcp_tests.dir/test_json.cpp.o: src/tests/CMakeFiles/nimcp_tests.dir/flags.make
+src/tests/CMakeFiles/nimcp_tests.dir/test_json.cpp.o: ../src/tests/test_json.cpp
+src/tests/CMakeFiles/nimcp_tests.dir/test_json.cpp.o: src/tests/CMakeFiles/nimcp_tests.dir/compiler_depend.ts
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/bbrelin/src/repos/nimcp/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_23) "Building CXX object src/tests/CMakeFiles/nimcp_tests.dir/test_json.cpp.o"
+	cd /home/bbrelin/src/repos/nimcp/build/src/tests && /usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT src/tests/CMakeFiles/nimcp_tests.dir/test_json.cpp.o -MF CMakeFiles/nimcp_tests.dir/test_json.cpp.o.d -o CMakeFiles/nimcp_tests.dir/test_json.cpp.o -c /home/bbrelin/src/repos/nimcp/src/tests/test_json.cpp
+
+src/tests/CMakeFiles/nimcp_tests.dir/test_json.cpp.i: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Preprocessing CXX source to CMakeFiles/nimcp_tests.dir/test_json.cpp.i"
+	cd /home/bbrelin/src/repos/nimcp/build/src/tests && /usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /home/bbrelin/src/repos/nimcp/src/tests/test_json.cpp > CMakeFiles/nimcp_tests.dir/test_json.cpp.i
+
+src/tests/CMakeFiles/nimcp_tests.dir/test_json.cpp.s: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Compiling CXX source to assembly CMakeFiles/nimcp_tests.dir/test_json.cpp.s"
+	cd /home/bbrelin/src/repos/nimcp/build/src/tests && /usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/bbrelin/src/repos/nimcp/src/tests/test_json.cpp -o CMakeFiles/nimcp_tests.dir/test_json.cpp.s
+
+src/tests/CMakeFiles/nimcp_tests.dir/test_memory.cpp.o: src/tests/CMakeFiles/nimcp_tests.dir/flags.make
+src/tests/CMakeFiles/nimcp_tests.dir/test_memory.cpp.o: ../src/tests/test_memory.cpp
+src/tests/CMakeFiles/nimcp_tests.dir/test_memory.cpp.o: src/tests/CMakeFiles/nimcp_tests.dir/compiler_depend.ts
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/bbrelin/src/repos/nimcp/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_24) "Building CXX object src/tests/CMakeFiles/nimcp_tests.dir/test_memory.cpp.o"
+	cd /home/bbrelin/src/repos/nimcp/build/src/tests && /usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT src/tests/CMakeFiles/nimcp_tests.dir/test_memory.cpp.o -MF CMakeFiles/nimcp_tests.dir/test_memory.cpp.o.d -o CMakeFiles/nimcp_tests.dir/test_memory.cpp.o -c /home/bbrelin/src/repos/nimcp/src/tests/test_memory.cpp
+
+src/tests/CMakeFiles/nimcp_tests.dir/test_memory.cpp.i: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Preprocessing CXX source to CMakeFiles/nimcp_tests.dir/test_memory.cpp.i"
+	cd /home/bbrelin/src/repos/nimcp/build/src/tests && /usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /home/bbrelin/src/repos/nimcp/src/tests/test_memory.cpp > CMakeFiles/nimcp_tests.dir/test_memory.cpp.i
+
+src/tests/CMakeFiles/nimcp_tests.dir/test_memory.cpp.s: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Compiling CXX source to assembly CMakeFiles/nimcp_tests.dir/test_memory.cpp.s"
+	cd /home/bbrelin/src/repos/nimcp/build/src/tests && /usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/bbrelin/src/repos/nimcp/src/tests/test_memory.cpp -o CMakeFiles/nimcp_tests.dir/test_memory.cpp.s
+
+src/tests/CMakeFiles/nimcp_tests.dir/test_vector.cpp.o: src/tests/CMakeFiles/nimcp_tests.dir/flags.make
+src/tests/CMakeFiles/nimcp_tests.dir/test_vector.cpp.o: ../src/tests/test_vector.cpp
+src/tests/CMakeFiles/nimcp_tests.dir/test_vector.cpp.o: src/tests/CMakeFiles/nimcp_tests.dir/compiler_depend.ts
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/bbrelin/src/repos/nimcp/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_25) "Building CXX object src/tests/CMakeFiles/nimcp_tests.dir/test_vector.cpp.o"
+	cd /home/bbrelin/src/repos/nimcp/build/src/tests && /usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT src/tests/CMakeFiles/nimcp_tests.dir/test_vector.cpp.o -MF CMakeFiles/nimcp_tests.dir/test_vector.cpp.o.d -o CMakeFiles/nimcp_tests.dir/test_vector.cpp.o -c /home/bbrelin/src/repos/nimcp/src/tests/test_vector.cpp
+
+src/tests/CMakeFiles/nimcp_tests.dir/test_vector.cpp.i: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Preprocessing CXX source to CMakeFiles/nimcp_tests.dir/test_vector.cpp.i"
+	cd /home/bbrelin/src/repos/nimcp/build/src/tests && /usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /home/bbrelin/src/repos/nimcp/src/tests/test_vector.cpp > CMakeFiles/nimcp_tests.dir/test_vector.cpp.i
+
+src/tests/CMakeFiles/nimcp_tests.dir/test_vector.cpp.s: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Compiling CXX source to assembly CMakeFiles/nimcp_tests.dir/test_vector.cpp.s"
+	cd /home/bbrelin/src/repos/nimcp/build/src/tests && /usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/bbrelin/src/repos/nimcp/src/tests/test_vector.cpp -o CMakeFiles/nimcp_tests.dir/test_vector.cpp.s
+
+src/tests/CMakeFiles/nimcp_tests.dir/test_hash_table.cpp.o: src/tests/CMakeFiles/nimcp_tests.dir/flags.make
+src/tests/CMakeFiles/nimcp_tests.dir/test_hash_table.cpp.o: ../src/tests/test_hash_table.cpp
+src/tests/CMakeFiles/nimcp_tests.dir/test_hash_table.cpp.o: src/tests/CMakeFiles/nimcp_tests.dir/compiler_depend.ts
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/bbrelin/src/repos/nimcp/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_26) "Building CXX object src/tests/CMakeFiles/nimcp_tests.dir/test_hash_table.cpp.o"
+	cd /home/bbrelin/src/repos/nimcp/build/src/tests && /usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT src/tests/CMakeFiles/nimcp_tests.dir/test_hash_table.cpp.o -MF CMakeFiles/nimcp_tests.dir/test_hash_table.cpp.o.d -o CMakeFiles/nimcp_tests.dir/test_hash_table.cpp.o -c /home/bbrelin/src/repos/nimcp/src/tests/test_hash_table.cpp
+
+src/tests/CMakeFiles/nimcp_tests.dir/test_hash_table.cpp.i: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Preprocessing CXX source to CMakeFiles/nimcp_tests.dir/test_hash_table.cpp.i"
+	cd /home/bbrelin/src/repos/nimcp/build/src/tests && /usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /home/bbrelin/src/repos/nimcp/src/tests/test_hash_table.cpp > CMakeFiles/nimcp_tests.dir/test_hash_table.cpp.i
+
+src/tests/CMakeFiles/nimcp_tests.dir/test_hash_table.cpp.s: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Compiling CXX source to assembly CMakeFiles/nimcp_tests.dir/test_hash_table.cpp.s"
+	cd /home/bbrelin/src/repos/nimcp/build/src/tests && /usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/bbrelin/src/repos/nimcp/src/tests/test_hash_table.cpp -o CMakeFiles/nimcp_tests.dir/test_hash_table.cpp.s
+
+src/tests/CMakeFiles/nimcp_tests.dir/test_btree.cpp.o: src/tests/CMakeFiles/nimcp_tests.dir/flags.make
+src/tests/CMakeFiles/nimcp_tests.dir/test_btree.cpp.o: ../src/tests/test_btree.cpp
+src/tests/CMakeFiles/nimcp_tests.dir/test_btree.cpp.o: src/tests/CMakeFiles/nimcp_tests.dir/compiler_depend.ts
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/bbrelin/src/repos/nimcp/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_27) "Building CXX object src/tests/CMakeFiles/nimcp_tests.dir/test_btree.cpp.o"
+	cd /home/bbrelin/src/repos/nimcp/build/src/tests && /usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT src/tests/CMakeFiles/nimcp_tests.dir/test_btree.cpp.o -MF CMakeFiles/nimcp_tests.dir/test_btree.cpp.o.d -o CMakeFiles/nimcp_tests.dir/test_btree.cpp.o -c /home/bbrelin/src/repos/nimcp/src/tests/test_btree.cpp
+
+src/tests/CMakeFiles/nimcp_tests.dir/test_btree.cpp.i: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Preprocessing CXX source to CMakeFiles/nimcp_tests.dir/test_btree.cpp.i"
+	cd /home/bbrelin/src/repos/nimcp/build/src/tests && /usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /home/bbrelin/src/repos/nimcp/src/tests/test_btree.cpp > CMakeFiles/nimcp_tests.dir/test_btree.cpp.i
+
+src/tests/CMakeFiles/nimcp_tests.dir/test_btree.cpp.s: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Compiling CXX source to assembly CMakeFiles/nimcp_tests.dir/test_btree.cpp.s"
+	cd /home/bbrelin/src/repos/nimcp/build/src/tests && /usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/bbrelin/src/repos/nimcp/src/tests/test_btree.cpp -o CMakeFiles/nimcp_tests.dir/test_btree.cpp.s
+
+src/tests/CMakeFiles/nimcp_tests.dir/test_validate.cpp.o: src/tests/CMakeFiles/nimcp_tests.dir/flags.make
+src/tests/CMakeFiles/nimcp_tests.dir/test_validate.cpp.o: ../src/tests/test_validate.cpp
+src/tests/CMakeFiles/nimcp_tests.dir/test_validate.cpp.o: src/tests/CMakeFiles/nimcp_tests.dir/compiler_depend.ts
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/bbrelin/src/repos/nimcp/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_28) "Building CXX object src/tests/CMakeFiles/nimcp_tests.dir/test_validate.cpp.o"
+	cd /home/bbrelin/src/repos/nimcp/build/src/tests && /usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT src/tests/CMakeFiles/nimcp_tests.dir/test_validate.cpp.o -MF CMakeFiles/nimcp_tests.dir/test_validate.cpp.o.d -o CMakeFiles/nimcp_tests.dir/test_validate.cpp.o -c /home/bbrelin/src/repos/nimcp/src/tests/test_validate.cpp
+
+src/tests/CMakeFiles/nimcp_tests.dir/test_validate.cpp.i: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Preprocessing CXX source to CMakeFiles/nimcp_tests.dir/test_validate.cpp.i"
+	cd /home/bbrelin/src/repos/nimcp/build/src/tests && /usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /home/bbrelin/src/repos/nimcp/src/tests/test_validate.cpp > CMakeFiles/nimcp_tests.dir/test_validate.cpp.i
+
+src/tests/CMakeFiles/nimcp_tests.dir/test_validate.cpp.s: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Compiling CXX source to assembly CMakeFiles/nimcp_tests.dir/test_validate.cpp.s"
+	cd /home/bbrelin/src/repos/nimcp/build/src/tests && /usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/bbrelin/src/repos/nimcp/src/tests/test_validate.cpp -o CMakeFiles/nimcp_tests.dir/test_validate.cpp.s
+
+src/tests/CMakeFiles/nimcp_tests.dir/test_graph.cpp.o: src/tests/CMakeFiles/nimcp_tests.dir/flags.make
+src/tests/CMakeFiles/nimcp_tests.dir/test_graph.cpp.o: ../src/tests/test_graph.cpp
+src/tests/CMakeFiles/nimcp_tests.dir/test_graph.cpp.o: src/tests/CMakeFiles/nimcp_tests.dir/compiler_depend.ts
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/bbrelin/src/repos/nimcp/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_29) "Building CXX object src/tests/CMakeFiles/nimcp_tests.dir/test_graph.cpp.o"
+	cd /home/bbrelin/src/repos/nimcp/build/src/tests && /usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT src/tests/CMakeFiles/nimcp_tests.dir/test_graph.cpp.o -MF CMakeFiles/nimcp_tests.dir/test_graph.cpp.o.d -o CMakeFiles/nimcp_tests.dir/test_graph.cpp.o -c /home/bbrelin/src/repos/nimcp/src/tests/test_graph.cpp
+
+src/tests/CMakeFiles/nimcp_tests.dir/test_graph.cpp.i: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Preprocessing CXX source to CMakeFiles/nimcp_tests.dir/test_graph.cpp.i"
+	cd /home/bbrelin/src/repos/nimcp/build/src/tests && /usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /home/bbrelin/src/repos/nimcp/src/tests/test_graph.cpp > CMakeFiles/nimcp_tests.dir/test_graph.cpp.i
+
+src/tests/CMakeFiles/nimcp_tests.dir/test_graph.cpp.s: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Compiling CXX source to assembly CMakeFiles/nimcp_tests.dir/test_graph.cpp.s"
+	cd /home/bbrelin/src/repos/nimcp/build/src/tests && /usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/bbrelin/src/repos/nimcp/src/tests/test_graph.cpp -o CMakeFiles/nimcp_tests.dir/test_graph.cpp.s
+
 src/tests/CMakeFiles/nimcp_tests.dir/__/python/nimcp_module.c.o: src/tests/CMakeFiles/nimcp_tests.dir/flags.make
 src/tests/CMakeFiles/nimcp_tests.dir/__/python/nimcp_module.c.o: ../src/python/nimcp_module.c
 src/tests/CMakeFiles/nimcp_tests.dir/__/python/nimcp_module.c.o: src/tests/CMakeFiles/nimcp_tests.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/bbrelin/src/repos/nimcp/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_14) "Building C object src/tests/CMakeFiles/nimcp_tests.dir/__/python/nimcp_module.c.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/bbrelin/src/repos/nimcp/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_30) "Building C object src/tests/CMakeFiles/nimcp_tests.dir/__/python/nimcp_module.c.o"
 	cd /home/bbrelin/src/repos/nimcp/build/src/tests && /usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -MD -MT src/tests/CMakeFiles/nimcp_tests.dir/__/python/nimcp_module.c.o -MF CMakeFiles/nimcp_tests.dir/__/python/nimcp_module.c.o.d -o CMakeFiles/nimcp_tests.dir/__/python/nimcp_module.c.o -c /home/bbrelin/src/repos/nimcp/src/python/nimcp_module.c
 
 src/tests/CMakeFiles/nimcp_tests.dir/__/python/nimcp_module.c.i: cmake_force
@@ -270,6 +494,8 @@ nimcp_tests_OBJECTS = \
 "CMakeFiles/nimcp_tests.dir/test_module.cpp.o" \
 "CMakeFiles/nimcp_tests.dir/test_neuralnet_create.cpp.o" \
 "CMakeFiles/nimcp_tests.dir/test_neuralnet_learning.cpp.o" \
+"CMakeFiles/nimcp_tests.dir/test_adaptive.cpp.o" \
+"CMakeFiles/nimcp_tests.dir/test_events.cpp.o" \
 "CMakeFiles/nimcp_tests.dir/test_p2pnode.cpp.o" \
 "CMakeFiles/nimcp_tests.dir/test_protocol.cpp.o" \
 "CMakeFiles/nimcp_tests.dir/test_replication.cpp.o" \
@@ -280,6 +506,20 @@ nimcp_tests_OBJECTS = \
 "CMakeFiles/nimcp_tests.dir/test_consolidation.cpp.o" \
 "CMakeFiles/nimcp_tests.dir/test_thread_utils.cpp.o" \
 "CMakeFiles/nimcp_tests.dir/test_queue_utils.cpp.o" \
+"CMakeFiles/nimcp_tests.dir/test_queue_manager.cpp.o" \
+"CMakeFiles/nimcp_tests.dir/test_logging.cpp.o" \
+"CMakeFiles/nimcp_tests.dir/test_knowledge.cpp.o" \
+"CMakeFiles/nimcp_tests.dir/test_curiosity.cpp.o" \
+"CMakeFiles/nimcp_tests.dir/test_ethics.cpp.o" \
+"CMakeFiles/nimcp_tests.dir/test_time.cpp.o" \
+"CMakeFiles/nimcp_tests.dir/test_serialization.cpp.o" \
+"CMakeFiles/nimcp_tests.dir/test_json.cpp.o" \
+"CMakeFiles/nimcp_tests.dir/test_memory.cpp.o" \
+"CMakeFiles/nimcp_tests.dir/test_vector.cpp.o" \
+"CMakeFiles/nimcp_tests.dir/test_hash_table.cpp.o" \
+"CMakeFiles/nimcp_tests.dir/test_btree.cpp.o" \
+"CMakeFiles/nimcp_tests.dir/test_validate.cpp.o" \
+"CMakeFiles/nimcp_tests.dir/test_graph.cpp.o" \
 "CMakeFiles/nimcp_tests.dir/__/python/nimcp_module.c.o"
 
 # External object files for target nimcp_tests
@@ -288,6 +528,8 @@ nimcp_tests_EXTERNAL_OBJECTS =
 src/tests/nimcp_tests: src/tests/CMakeFiles/nimcp_tests.dir/test_module.cpp.o
 src/tests/nimcp_tests: src/tests/CMakeFiles/nimcp_tests.dir/test_neuralnet_create.cpp.o
 src/tests/nimcp_tests: src/tests/CMakeFiles/nimcp_tests.dir/test_neuralnet_learning.cpp.o
+src/tests/nimcp_tests: src/tests/CMakeFiles/nimcp_tests.dir/test_adaptive.cpp.o
+src/tests/nimcp_tests: src/tests/CMakeFiles/nimcp_tests.dir/test_events.cpp.o
 src/tests/nimcp_tests: src/tests/CMakeFiles/nimcp_tests.dir/test_p2pnode.cpp.o
 src/tests/nimcp_tests: src/tests/CMakeFiles/nimcp_tests.dir/test_protocol.cpp.o
 src/tests/nimcp_tests: src/tests/CMakeFiles/nimcp_tests.dir/test_replication.cpp.o
@@ -298,6 +540,20 @@ src/tests/nimcp_tests: src/tests/CMakeFiles/nimcp_tests.dir/test_introspection.c
 src/tests/nimcp_tests: src/tests/CMakeFiles/nimcp_tests.dir/test_consolidation.cpp.o
 src/tests/nimcp_tests: src/tests/CMakeFiles/nimcp_tests.dir/test_thread_utils.cpp.o
 src/tests/nimcp_tests: src/tests/CMakeFiles/nimcp_tests.dir/test_queue_utils.cpp.o
+src/tests/nimcp_tests: src/tests/CMakeFiles/nimcp_tests.dir/test_queue_manager.cpp.o
+src/tests/nimcp_tests: src/tests/CMakeFiles/nimcp_tests.dir/test_logging.cpp.o
+src/tests/nimcp_tests: src/tests/CMakeFiles/nimcp_tests.dir/test_knowledge.cpp.o
+src/tests/nimcp_tests: src/tests/CMakeFiles/nimcp_tests.dir/test_curiosity.cpp.o
+src/tests/nimcp_tests: src/tests/CMakeFiles/nimcp_tests.dir/test_ethics.cpp.o
+src/tests/nimcp_tests: src/tests/CMakeFiles/nimcp_tests.dir/test_time.cpp.o
+src/tests/nimcp_tests: src/tests/CMakeFiles/nimcp_tests.dir/test_serialization.cpp.o
+src/tests/nimcp_tests: src/tests/CMakeFiles/nimcp_tests.dir/test_json.cpp.o
+src/tests/nimcp_tests: src/tests/CMakeFiles/nimcp_tests.dir/test_memory.cpp.o
+src/tests/nimcp_tests: src/tests/CMakeFiles/nimcp_tests.dir/test_vector.cpp.o
+src/tests/nimcp_tests: src/tests/CMakeFiles/nimcp_tests.dir/test_hash_table.cpp.o
+src/tests/nimcp_tests: src/tests/CMakeFiles/nimcp_tests.dir/test_btree.cpp.o
+src/tests/nimcp_tests: src/tests/CMakeFiles/nimcp_tests.dir/test_validate.cpp.o
+src/tests/nimcp_tests: src/tests/CMakeFiles/nimcp_tests.dir/test_graph.cpp.o
 src/tests/nimcp_tests: src/tests/CMakeFiles/nimcp_tests.dir/__/python/nimcp_module.c.o
 src/tests/nimcp_tests: src/tests/CMakeFiles/nimcp_tests.dir/build.make
 src/tests/nimcp_tests: src/lib/libnimcp_core.so.2.5.0
@@ -305,7 +561,7 @@ src/tests/nimcp_tests: /usr/lib/x86_64-linux-gnu/libpython3.10.so
 src/tests/nimcp_tests: /usr/lib/x86_64-linux-gnu/libgtest_main.a
 src/tests/nimcp_tests: /usr/lib/x86_64-linux-gnu/libgtest.a
 src/tests/nimcp_tests: src/tests/CMakeFiles/nimcp_tests.dir/link.txt
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --bold --progress-dir=/home/bbrelin/src/repos/nimcp/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_15) "Linking CXX executable nimcp_tests"
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --bold --progress-dir=/home/bbrelin/src/repos/nimcp/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_31) "Linking CXX executable nimcp_tests"
 	cd /home/bbrelin/src/repos/nimcp/build/src/tests && $(CMAKE_COMMAND) -E cmake_link_script CMakeFiles/nimcp_tests.dir/link.txt --verbose=$(VERBOSE)
 
 # Rule to build all files generated by this target.

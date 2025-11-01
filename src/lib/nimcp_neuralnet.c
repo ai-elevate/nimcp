@@ -599,15 +599,22 @@ static float sum_synaptic_inputs(neuron_t* neuron, neural_network_t network) {
 
     float total_input = 0.0f;
 
-    // Single pass through synapses - O(s)
-    for (uint32_t i = 0; i < neuron->num_synapses; i++) {
-        synapse_t* syn = &neuron->synapses[i];
+    // Scan all neurons to find synapses targeting this neuron
+    // WHY: Synapses are stored in pre-synaptic neurons, but we need incoming inputs
+    // COMPLEXITY: O(N * S) where N = num_neurons, S = avg synapses per neuron
+    for (uint32_t src_id = 0; src_id < network->num_neurons; src_id++) {
+        neuron_t* src_neuron = &network->neurons[src_id];
 
-        // Guard: Ensure valid target neuron
-        if (syn->target_id >= network->num_neurons) continue;
+        // Check all synapses from this source neuron
+        for (uint32_t i = 0; i < src_neuron->num_synapses; i++) {
+            synapse_t* syn = &src_neuron->synapses[i];
 
-        float pre_activity = network->neurons[syn->target_id].state;
-        total_input += pre_activity * syn->weight * syn->strength;
+            // If this synapse targets our neuron, include it
+            if (syn->target_id == neuron->id) {
+                float pre_activity = src_neuron->state;
+                total_input += pre_activity * syn->weight * syn->strength;
+            }
+        }
     }
 
     return total_input;
@@ -663,6 +670,8 @@ static float compute_membrane_potential(neuron_t* neuron, neural_network_t netwo
  * @return true if in refractory period (cannot spike)
  */
 static bool is_in_refractory_period(neuron_t* neuron, uint64_t timestamp) {
+    // If neuron has never spiked (last_spike == 0), not in refractory period
+    if (neuron->last_spike == 0) return false;
     return (timestamp - neuron->last_spike) < neuron->refractory_period;
 }
 
@@ -1100,6 +1109,11 @@ bool neural_network_record_spike(neural_network_t network, uint32_t neuron_id,
     // Update last spike time
     neuron->last_spike = timestamp;
 
+    // Update network time to stay current with spike events
+    if (timestamp > network->network_time) {
+        network->network_time = timestamp;
+    }
+
     // Increase calcium concentration
     neuron->calcium_concentration += 1.0f;
 
@@ -1174,10 +1188,14 @@ float neural_network_get_average_activity(neural_network_t network, uint32_t neu
     // Count recent spikes
     uint32_t spike_count = 0;
     uint64_t current_time = network->network_time;
-    uint64_t window_start = current_time - HISTORY_WINDOW;
+
+    // Handle underflow: if current_time < HISTORY_WINDOW, start from 0
+    uint64_t window_start = (current_time >= HISTORY_WINDOW) ?
+                            (current_time - HISTORY_WINDOW) : 0;
 
     for (uint32_t i = 0; i < SPIKE_HISTORY_LENGTH; i++) {
-        if (neuron->spike_history[i].timestamp > window_start) {
+        if (neuron->spike_history[i].timestamp > window_start &&
+            neuron->spike_history[i].timestamp > 0) {  // Ignore uninitialized (0) timestamps
             spike_count++;
         }
     }
@@ -1196,7 +1214,7 @@ uint32_t neural_network_compute_step(neural_network_t network, uint64_t timestam
         neuron_t* neuron = &network->neurons[i];
 
         // Skip neurons in refractory period
-        if (timestamp - neuron->last_spike < neuron->refractory_period) {
+        if (is_in_refractory_period(neuron, timestamp)) {
             continue;
         }
 
@@ -1253,6 +1271,13 @@ bool neural_network_add_connection(neural_network_t network, uint32_t from_id,
 
     from_neuron->num_synapses++;
 
+    // Update weight norm to reflect new synapse
+    float sum_weights = 0.0f;
+    for (uint32_t i = 0; i < from_neuron->num_synapses; i++) {
+        sum_weights += fabsf(from_neuron->synapses[i].weight);
+    }
+    from_neuron->weight_norm = sum_weights;
+
     return true;
 }
 
@@ -1278,10 +1303,13 @@ static void normalize_synaptic_weights(neuron_t* neuron) {
             float sign = (syn->weight >= 0.0f) ? 1.0f : -1.0f;
             syn->weight = sign * fabs(syn->weight) * norm_factor;
         }
-    }
 
-    // Update weight norm
-    neuron->weight_norm = sum_weights;
+        // After normalization, weight_norm should be target_norm
+        neuron->weight_norm = neuron->oja_params.target_norm;
+    } else {
+        // If sum is too small, keep original sum
+        neuron->weight_norm = sum_weights;
+    }
 }
 
 

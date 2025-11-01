@@ -199,6 +199,54 @@ __/python/nimcp_module.c.s:
 	cd /home/bbrelin/src/repos/nimcp/build && $(MAKE) $(MAKESILENT) -f src/tests/CMakeFiles/nimcp_tests.dir/build.make src/tests/CMakeFiles/nimcp_tests.dir/__/python/nimcp_module.c.s
 .PHONY : __/python/nimcp_module.c.s
 
+test_adaptive.o: test_adaptive.cpp.o
+.PHONY : test_adaptive.o
+
+# target to build an object file
+test_adaptive.cpp.o:
+	cd /home/bbrelin/src/repos/nimcp/build && $(MAKE) $(MAKESILENT) -f src/tests/CMakeFiles/nimcp_tests.dir/build.make src/tests/CMakeFiles/nimcp_tests.dir/test_adaptive.cpp.o
+.PHONY : test_adaptive.cpp.o
+
+test_adaptive.i: test_adaptive.cpp.i
+.PHONY : test_adaptive.i
+
+# target to preprocess a source file
+test_adaptive.cpp.i:
+	cd /home/bbrelin/src/repos/nimcp/build && $(MAKE) $(MAKESILENT) -f src/tests/CMakeFiles/nimcp_tests.dir/build.make src/tests/CMakeFiles/nimcp_tests.dir/test_adaptive.cpp.i
+.PHONY : test_adaptive.cpp.i
+
+test_adaptive.s: test_adaptive.cpp.s
+.PHONY : test_adaptive.s
+
+# target to generate assembly for a file
+test_adaptive.cpp.s:
+	cd /home/bbrelin/src/repos/nimcp/build && $(MAKE) $(MAKESILENT) -f src/tests/CMakeFiles/nimcp_tests.dir/build.make src/tests/CMakeFiles/nimcp_tests.dir/test_adaptive.cpp.s
+.PHONY : test_adaptive.cpp.s
+
+test_btree.o: test_btree.cpp.o
+.PHONY : test_btree.o
+
+# target to build an object file
+test_btree.cpp.o:
+	cd /home/bbrelin/src/repos/nimcp/build && $(MAKE) $(MAKESILENT) -f src/tests/CMakeFiles/nimcp_tests.dir/build.make src/tests/CMakeFiles/nimcp_tests.dir/test_btree.cpp.o
+.PHONY : test_btree.cpp.o
+
+test_btree.i: test_btree.cpp.i
+.PHONY : test_btree.i
+
+# target to preprocess a source file
+test_btree.cpp.i:
+	cd /home/bbrelin/src/repos/nimcp/build && $(MAKE) $(MAKESILENT) -f src/tests/CMakeFiles/nimcp_tests.dir/build.make src/tests/CMakeFiles/nimcp_tests.dir/test_btree.cpp.i
+.PHONY : test_btree.cpp.i
+
+test_btree.s: test_btree.cpp.s
+.PHONY : test_btree.s
+
+# target to generate assembly for a file
+test_btree.cpp.s:
+	cd /home/bbrelin/src/repos/nimcp/build && $(MAKE) $(MAKESILENT) -f src/tests/CMakeFiles/nimcp_tests.dir/build.make src/tests/CMakeFiles/nimcp_tests.dir/test_btree.cpp.s
+.PHONY : test_btree.cpp.s
+
 test_consolidation.o: test_consolidation.cpp.o
 .PHONY : test_consolidation.o
 
@@ -222,6 +270,30 @@ test_consolidation.s: test_consolidation.cpp.s
 test_consolidation.cpp.s:
 	cd /home/bbrelin/src/repos/nimcp/build && $(MAKE) $(MAKESILENT) -f src/tests/CMakeFiles/nimcp_tests.dir/build.make src/tests/CMakeFiles/nimcp_tests.dir/test_consolidation.cpp.s
 .PHONY : test_consolidation.cpp.s
+
+test_curiosity.o: test_curiosity.cpp.o
+.PHONY : test_curiosity.o
+
+# target to build an object file
+test_curiosity.cpp.o:
+	cd /home/bbrelin/src/repos/nimcp/build && $(MAKE) $(MAKESILENT) -f src/tests/CMakeFiles/nimcp_tests.dir/build.make src/tests/CMakeFiles/nimcp_tests.dir/test_curiosity.cpp.o
+.PHONY : test_curiosity.cpp.o
+
+test_curiosity.i: test_curiosity.cpp.i
+.PHONY : test_curiosity.i
+
+# target to preprocess a source file
+test_curiosity.cpp.i:
+	cd /home/bbrelin/src/repos/nimcp/build && $(MAKE) $(MAKESILENT) -f src/tests/CMakeFiles/nimcp_tests.dir/build.make src/tests/CMakeFiles/nimcp_tests.dir/test_curiosity.cpp.i
+.PHONY : test_curiosity.cpp.i
+
+test_curiosity.s: test_curiosity.cpp.s
+.PHONY : test_curiosity.s
+
+# target to generate assembly for a file
+test_curiosity.cpp.s:
+	cd /home/bbrelin/src/repos/nimcp/build && $(MAKE) $(MAKESILENT) -f src/tests/CMakeFiles/nimcp_tests.dir/build.make src/tests/CMakeFiles/nimcp_tests.dir/test_curiosity.cpp.s
+.PHONY : test_curiosity.cpp.s
 
 test_dataio.o: test_dataio.cpp.o
 .PHONY : test_dataio.o
@@ -247,6 +319,102 @@ test_dataio.cpp.s:
 	cd /home/bbrelin/src/repos/nimcp/build && $(MAKE) $(MAKESILENT) -f src/tests/CMakeFiles/nimcp_tests.dir/build.make src/tests/CMakeFiles/nimcp_tests.dir/test_dataio.cpp.s
 .PHONY : test_dataio.cpp.s
 
+test_ethics.o: test_ethics.cpp.o
+.PHONY : test_ethics.o
+
+# target to build an object file
+test_ethics.cpp.o:
+	cd /home/bbrelin/src/repos/nimcp/build && $(MAKE) $(MAKESILENT) -f src/tests/CMakeFiles/nimcp_tests.dir/build.make src/tests/CMakeFiles/nimcp_tests.dir/test_ethics.cpp.o
+.PHONY : test_ethics.cpp.o
+
+test_ethics.i: test_ethics.cpp.i
+.PHONY : test_ethics.i
+
+# target to preprocess a source file
+test_ethics.cpp.i:
+	cd /home/bbrelin/src/repos/nimcp/build && $(MAKE) $(MAKESILENT) -f src/tests/CMakeFiles/nimcp_tests.dir/build.make src/tests/CMakeFiles/nimcp_tests.dir/test_ethics.cpp.i
+.PHONY : test_ethics.cpp.i
+
+test_ethics.s: test_ethics.cpp.s
+.PHONY : test_ethics.s
+
+# target to generate assembly for a file
+test_ethics.cpp.s:
+	cd /home/bbrelin/src/repos/nimcp/build && $(MAKE) $(MAKESILENT) -f src/tests/CMakeFiles/nimcp_tests.dir/build.make src/tests/CMakeFiles/nimcp_tests.dir/test_ethics.cpp.s
+.PHONY : test_ethics.cpp.s
+
+test_events.o: test_events.cpp.o
+.PHONY : test_events.o
+
+# target to build an object file
+test_events.cpp.o:
+	cd /home/bbrelin/src/repos/nimcp/build && $(MAKE) $(MAKESILENT) -f src/tests/CMakeFiles/nimcp_tests.dir/build.make src/tests/CMakeFiles/nimcp_tests.dir/test_events.cpp.o
+.PHONY : test_events.cpp.o
+
+test_events.i: test_events.cpp.i
+.PHONY : test_events.i
+
+# target to preprocess a source file
+test_events.cpp.i:
+	cd /home/bbrelin/src/repos/nimcp/build && $(MAKE) $(MAKESILENT) -f src/tests/CMakeFiles/nimcp_tests.dir/build.make src/tests/CMakeFiles/nimcp_tests.dir/test_events.cpp.i
+.PHONY : test_events.cpp.i
+
+test_events.s: test_events.cpp.s
+.PHONY : test_events.s
+
+# target to generate assembly for a file
+test_events.cpp.s:
+	cd /home/bbrelin/src/repos/nimcp/build && $(MAKE) $(MAKESILENT) -f src/tests/CMakeFiles/nimcp_tests.dir/build.make src/tests/CMakeFiles/nimcp_tests.dir/test_events.cpp.s
+.PHONY : test_events.cpp.s
+
+test_graph.o: test_graph.cpp.o
+.PHONY : test_graph.o
+
+# target to build an object file
+test_graph.cpp.o:
+	cd /home/bbrelin/src/repos/nimcp/build && $(MAKE) $(MAKESILENT) -f src/tests/CMakeFiles/nimcp_tests.dir/build.make src/tests/CMakeFiles/nimcp_tests.dir/test_graph.cpp.o
+.PHONY : test_graph.cpp.o
+
+test_graph.i: test_graph.cpp.i
+.PHONY : test_graph.i
+
+# target to preprocess a source file
+test_graph.cpp.i:
+	cd /home/bbrelin/src/repos/nimcp/build && $(MAKE) $(MAKESILENT) -f src/tests/CMakeFiles/nimcp_tests.dir/build.make src/tests/CMakeFiles/nimcp_tests.dir/test_graph.cpp.i
+.PHONY : test_graph.cpp.i
+
+test_graph.s: test_graph.cpp.s
+.PHONY : test_graph.s
+
+# target to generate assembly for a file
+test_graph.cpp.s:
+	cd /home/bbrelin/src/repos/nimcp/build && $(MAKE) $(MAKESILENT) -f src/tests/CMakeFiles/nimcp_tests.dir/build.make src/tests/CMakeFiles/nimcp_tests.dir/test_graph.cpp.s
+.PHONY : test_graph.cpp.s
+
+test_hash_table.o: test_hash_table.cpp.o
+.PHONY : test_hash_table.o
+
+# target to build an object file
+test_hash_table.cpp.o:
+	cd /home/bbrelin/src/repos/nimcp/build && $(MAKE) $(MAKESILENT) -f src/tests/CMakeFiles/nimcp_tests.dir/build.make src/tests/CMakeFiles/nimcp_tests.dir/test_hash_table.cpp.o
+.PHONY : test_hash_table.cpp.o
+
+test_hash_table.i: test_hash_table.cpp.i
+.PHONY : test_hash_table.i
+
+# target to preprocess a source file
+test_hash_table.cpp.i:
+	cd /home/bbrelin/src/repos/nimcp/build && $(MAKE) $(MAKESILENT) -f src/tests/CMakeFiles/nimcp_tests.dir/build.make src/tests/CMakeFiles/nimcp_tests.dir/test_hash_table.cpp.i
+.PHONY : test_hash_table.cpp.i
+
+test_hash_table.s: test_hash_table.cpp.s
+.PHONY : test_hash_table.s
+
+# target to generate assembly for a file
+test_hash_table.cpp.s:
+	cd /home/bbrelin/src/repos/nimcp/build && $(MAKE) $(MAKESILENT) -f src/tests/CMakeFiles/nimcp_tests.dir/build.make src/tests/CMakeFiles/nimcp_tests.dir/test_hash_table.cpp.s
+.PHONY : test_hash_table.cpp.s
+
 test_introspection.o: test_introspection.cpp.o
 .PHONY : test_introspection.o
 
@@ -270,6 +438,102 @@ test_introspection.s: test_introspection.cpp.s
 test_introspection.cpp.s:
 	cd /home/bbrelin/src/repos/nimcp/build && $(MAKE) $(MAKESILENT) -f src/tests/CMakeFiles/nimcp_tests.dir/build.make src/tests/CMakeFiles/nimcp_tests.dir/test_introspection.cpp.s
 .PHONY : test_introspection.cpp.s
+
+test_json.o: test_json.cpp.o
+.PHONY : test_json.o
+
+# target to build an object file
+test_json.cpp.o:
+	cd /home/bbrelin/src/repos/nimcp/build && $(MAKE) $(MAKESILENT) -f src/tests/CMakeFiles/nimcp_tests.dir/build.make src/tests/CMakeFiles/nimcp_tests.dir/test_json.cpp.o
+.PHONY : test_json.cpp.o
+
+test_json.i: test_json.cpp.i
+.PHONY : test_json.i
+
+# target to preprocess a source file
+test_json.cpp.i:
+	cd /home/bbrelin/src/repos/nimcp/build && $(MAKE) $(MAKESILENT) -f src/tests/CMakeFiles/nimcp_tests.dir/build.make src/tests/CMakeFiles/nimcp_tests.dir/test_json.cpp.i
+.PHONY : test_json.cpp.i
+
+test_json.s: test_json.cpp.s
+.PHONY : test_json.s
+
+# target to generate assembly for a file
+test_json.cpp.s:
+	cd /home/bbrelin/src/repos/nimcp/build && $(MAKE) $(MAKESILENT) -f src/tests/CMakeFiles/nimcp_tests.dir/build.make src/tests/CMakeFiles/nimcp_tests.dir/test_json.cpp.s
+.PHONY : test_json.cpp.s
+
+test_knowledge.o: test_knowledge.cpp.o
+.PHONY : test_knowledge.o
+
+# target to build an object file
+test_knowledge.cpp.o:
+	cd /home/bbrelin/src/repos/nimcp/build && $(MAKE) $(MAKESILENT) -f src/tests/CMakeFiles/nimcp_tests.dir/build.make src/tests/CMakeFiles/nimcp_tests.dir/test_knowledge.cpp.o
+.PHONY : test_knowledge.cpp.o
+
+test_knowledge.i: test_knowledge.cpp.i
+.PHONY : test_knowledge.i
+
+# target to preprocess a source file
+test_knowledge.cpp.i:
+	cd /home/bbrelin/src/repos/nimcp/build && $(MAKE) $(MAKESILENT) -f src/tests/CMakeFiles/nimcp_tests.dir/build.make src/tests/CMakeFiles/nimcp_tests.dir/test_knowledge.cpp.i
+.PHONY : test_knowledge.cpp.i
+
+test_knowledge.s: test_knowledge.cpp.s
+.PHONY : test_knowledge.s
+
+# target to generate assembly for a file
+test_knowledge.cpp.s:
+	cd /home/bbrelin/src/repos/nimcp/build && $(MAKE) $(MAKESILENT) -f src/tests/CMakeFiles/nimcp_tests.dir/build.make src/tests/CMakeFiles/nimcp_tests.dir/test_knowledge.cpp.s
+.PHONY : test_knowledge.cpp.s
+
+test_logging.o: test_logging.cpp.o
+.PHONY : test_logging.o
+
+# target to build an object file
+test_logging.cpp.o:
+	cd /home/bbrelin/src/repos/nimcp/build && $(MAKE) $(MAKESILENT) -f src/tests/CMakeFiles/nimcp_tests.dir/build.make src/tests/CMakeFiles/nimcp_tests.dir/test_logging.cpp.o
+.PHONY : test_logging.cpp.o
+
+test_logging.i: test_logging.cpp.i
+.PHONY : test_logging.i
+
+# target to preprocess a source file
+test_logging.cpp.i:
+	cd /home/bbrelin/src/repos/nimcp/build && $(MAKE) $(MAKESILENT) -f src/tests/CMakeFiles/nimcp_tests.dir/build.make src/tests/CMakeFiles/nimcp_tests.dir/test_logging.cpp.i
+.PHONY : test_logging.cpp.i
+
+test_logging.s: test_logging.cpp.s
+.PHONY : test_logging.s
+
+# target to generate assembly for a file
+test_logging.cpp.s:
+	cd /home/bbrelin/src/repos/nimcp/build && $(MAKE) $(MAKESILENT) -f src/tests/CMakeFiles/nimcp_tests.dir/build.make src/tests/CMakeFiles/nimcp_tests.dir/test_logging.cpp.s
+.PHONY : test_logging.cpp.s
+
+test_memory.o: test_memory.cpp.o
+.PHONY : test_memory.o
+
+# target to build an object file
+test_memory.cpp.o:
+	cd /home/bbrelin/src/repos/nimcp/build && $(MAKE) $(MAKESILENT) -f src/tests/CMakeFiles/nimcp_tests.dir/build.make src/tests/CMakeFiles/nimcp_tests.dir/test_memory.cpp.o
+.PHONY : test_memory.cpp.o
+
+test_memory.i: test_memory.cpp.i
+.PHONY : test_memory.i
+
+# target to preprocess a source file
+test_memory.cpp.i:
+	cd /home/bbrelin/src/repos/nimcp/build && $(MAKE) $(MAKESILENT) -f src/tests/CMakeFiles/nimcp_tests.dir/build.make src/tests/CMakeFiles/nimcp_tests.dir/test_memory.cpp.i
+.PHONY : test_memory.cpp.i
+
+test_memory.s: test_memory.cpp.s
+.PHONY : test_memory.s
+
+# target to generate assembly for a file
+test_memory.cpp.s:
+	cd /home/bbrelin/src/repos/nimcp/build && $(MAKE) $(MAKESILENT) -f src/tests/CMakeFiles/nimcp_tests.dir/build.make src/tests/CMakeFiles/nimcp_tests.dir/test_memory.cpp.s
+.PHONY : test_memory.cpp.s
 
 test_module.o: test_module.cpp.o
 .PHONY : test_module.o
@@ -391,6 +655,30 @@ test_protocol.cpp.s:
 	cd /home/bbrelin/src/repos/nimcp/build && $(MAKE) $(MAKESILENT) -f src/tests/CMakeFiles/nimcp_tests.dir/build.make src/tests/CMakeFiles/nimcp_tests.dir/test_protocol.cpp.s
 .PHONY : test_protocol.cpp.s
 
+test_queue_manager.o: test_queue_manager.cpp.o
+.PHONY : test_queue_manager.o
+
+# target to build an object file
+test_queue_manager.cpp.o:
+	cd /home/bbrelin/src/repos/nimcp/build && $(MAKE) $(MAKESILENT) -f src/tests/CMakeFiles/nimcp_tests.dir/build.make src/tests/CMakeFiles/nimcp_tests.dir/test_queue_manager.cpp.o
+.PHONY : test_queue_manager.cpp.o
+
+test_queue_manager.i: test_queue_manager.cpp.i
+.PHONY : test_queue_manager.i
+
+# target to preprocess a source file
+test_queue_manager.cpp.i:
+	cd /home/bbrelin/src/repos/nimcp/build && $(MAKE) $(MAKESILENT) -f src/tests/CMakeFiles/nimcp_tests.dir/build.make src/tests/CMakeFiles/nimcp_tests.dir/test_queue_manager.cpp.i
+.PHONY : test_queue_manager.cpp.i
+
+test_queue_manager.s: test_queue_manager.cpp.s
+.PHONY : test_queue_manager.s
+
+# target to generate assembly for a file
+test_queue_manager.cpp.s:
+	cd /home/bbrelin/src/repos/nimcp/build && $(MAKE) $(MAKESILENT) -f src/tests/CMakeFiles/nimcp_tests.dir/build.make src/tests/CMakeFiles/nimcp_tests.dir/test_queue_manager.cpp.s
+.PHONY : test_queue_manager.cpp.s
+
 test_queue_utils.o: test_queue_utils.cpp.o
 .PHONY : test_queue_utils.o
 
@@ -463,6 +751,30 @@ test_salience.cpp.s:
 	cd /home/bbrelin/src/repos/nimcp/build && $(MAKE) $(MAKESILENT) -f src/tests/CMakeFiles/nimcp_tests.dir/build.make src/tests/CMakeFiles/nimcp_tests.dir/test_salience.cpp.s
 .PHONY : test_salience.cpp.s
 
+test_serialization.o: test_serialization.cpp.o
+.PHONY : test_serialization.o
+
+# target to build an object file
+test_serialization.cpp.o:
+	cd /home/bbrelin/src/repos/nimcp/build && $(MAKE) $(MAKESILENT) -f src/tests/CMakeFiles/nimcp_tests.dir/build.make src/tests/CMakeFiles/nimcp_tests.dir/test_serialization.cpp.o
+.PHONY : test_serialization.cpp.o
+
+test_serialization.i: test_serialization.cpp.i
+.PHONY : test_serialization.i
+
+# target to preprocess a source file
+test_serialization.cpp.i:
+	cd /home/bbrelin/src/repos/nimcp/build && $(MAKE) $(MAKESILENT) -f src/tests/CMakeFiles/nimcp_tests.dir/build.make src/tests/CMakeFiles/nimcp_tests.dir/test_serialization.cpp.i
+.PHONY : test_serialization.cpp.i
+
+test_serialization.s: test_serialization.cpp.s
+.PHONY : test_serialization.s
+
+# target to generate assembly for a file
+test_serialization.cpp.s:
+	cd /home/bbrelin/src/repos/nimcp/build && $(MAKE) $(MAKESILENT) -f src/tests/CMakeFiles/nimcp_tests.dir/build.make src/tests/CMakeFiles/nimcp_tests.dir/test_serialization.cpp.s
+.PHONY : test_serialization.cpp.s
+
 test_stream.o: test_stream.cpp.o
 .PHONY : test_stream.o
 
@@ -511,6 +823,78 @@ test_thread_utils.cpp.s:
 	cd /home/bbrelin/src/repos/nimcp/build && $(MAKE) $(MAKESILENT) -f src/tests/CMakeFiles/nimcp_tests.dir/build.make src/tests/CMakeFiles/nimcp_tests.dir/test_thread_utils.cpp.s
 .PHONY : test_thread_utils.cpp.s
 
+test_time.o: test_time.cpp.o
+.PHONY : test_time.o
+
+# target to build an object file
+test_time.cpp.o:
+	cd /home/bbrelin/src/repos/nimcp/build && $(MAKE) $(MAKESILENT) -f src/tests/CMakeFiles/nimcp_tests.dir/build.make src/tests/CMakeFiles/nimcp_tests.dir/test_time.cpp.o
+.PHONY : test_time.cpp.o
+
+test_time.i: test_time.cpp.i
+.PHONY : test_time.i
+
+# target to preprocess a source file
+test_time.cpp.i:
+	cd /home/bbrelin/src/repos/nimcp/build && $(MAKE) $(MAKESILENT) -f src/tests/CMakeFiles/nimcp_tests.dir/build.make src/tests/CMakeFiles/nimcp_tests.dir/test_time.cpp.i
+.PHONY : test_time.cpp.i
+
+test_time.s: test_time.cpp.s
+.PHONY : test_time.s
+
+# target to generate assembly for a file
+test_time.cpp.s:
+	cd /home/bbrelin/src/repos/nimcp/build && $(MAKE) $(MAKESILENT) -f src/tests/CMakeFiles/nimcp_tests.dir/build.make src/tests/CMakeFiles/nimcp_tests.dir/test_time.cpp.s
+.PHONY : test_time.cpp.s
+
+test_validate.o: test_validate.cpp.o
+.PHONY : test_validate.o
+
+# target to build an object file
+test_validate.cpp.o:
+	cd /home/bbrelin/src/repos/nimcp/build && $(MAKE) $(MAKESILENT) -f src/tests/CMakeFiles/nimcp_tests.dir/build.make src/tests/CMakeFiles/nimcp_tests.dir/test_validate.cpp.o
+.PHONY : test_validate.cpp.o
+
+test_validate.i: test_validate.cpp.i
+.PHONY : test_validate.i
+
+# target to preprocess a source file
+test_validate.cpp.i:
+	cd /home/bbrelin/src/repos/nimcp/build && $(MAKE) $(MAKESILENT) -f src/tests/CMakeFiles/nimcp_tests.dir/build.make src/tests/CMakeFiles/nimcp_tests.dir/test_validate.cpp.i
+.PHONY : test_validate.cpp.i
+
+test_validate.s: test_validate.cpp.s
+.PHONY : test_validate.s
+
+# target to generate assembly for a file
+test_validate.cpp.s:
+	cd /home/bbrelin/src/repos/nimcp/build && $(MAKE) $(MAKESILENT) -f src/tests/CMakeFiles/nimcp_tests.dir/build.make src/tests/CMakeFiles/nimcp_tests.dir/test_validate.cpp.s
+.PHONY : test_validate.cpp.s
+
+test_vector.o: test_vector.cpp.o
+.PHONY : test_vector.o
+
+# target to build an object file
+test_vector.cpp.o:
+	cd /home/bbrelin/src/repos/nimcp/build && $(MAKE) $(MAKESILENT) -f src/tests/CMakeFiles/nimcp_tests.dir/build.make src/tests/CMakeFiles/nimcp_tests.dir/test_vector.cpp.o
+.PHONY : test_vector.cpp.o
+
+test_vector.i: test_vector.cpp.i
+.PHONY : test_vector.i
+
+# target to preprocess a source file
+test_vector.cpp.i:
+	cd /home/bbrelin/src/repos/nimcp/build && $(MAKE) $(MAKESILENT) -f src/tests/CMakeFiles/nimcp_tests.dir/build.make src/tests/CMakeFiles/nimcp_tests.dir/test_vector.cpp.i
+.PHONY : test_vector.cpp.i
+
+test_vector.s: test_vector.cpp.s
+.PHONY : test_vector.s
+
+# target to generate assembly for a file
+test_vector.cpp.s:
+	cd /home/bbrelin/src/repos/nimcp/build && $(MAKE) $(MAKESILENT) -f src/tests/CMakeFiles/nimcp_tests.dir/build.make src/tests/CMakeFiles/nimcp_tests.dir/test_vector.cpp.s
+.PHONY : test_vector.cpp.s
+
 # Help Target
 help:
 	@echo "The following are some of the valid targets for this Makefile:"
@@ -527,15 +911,48 @@ help:
 	@echo "... __/python/nimcp_module.o"
 	@echo "... __/python/nimcp_module.i"
 	@echo "... __/python/nimcp_module.s"
+	@echo "... test_adaptive.o"
+	@echo "... test_adaptive.i"
+	@echo "... test_adaptive.s"
+	@echo "... test_btree.o"
+	@echo "... test_btree.i"
+	@echo "... test_btree.s"
 	@echo "... test_consolidation.o"
 	@echo "... test_consolidation.i"
 	@echo "... test_consolidation.s"
+	@echo "... test_curiosity.o"
+	@echo "... test_curiosity.i"
+	@echo "... test_curiosity.s"
 	@echo "... test_dataio.o"
 	@echo "... test_dataio.i"
 	@echo "... test_dataio.s"
+	@echo "... test_ethics.o"
+	@echo "... test_ethics.i"
+	@echo "... test_ethics.s"
+	@echo "... test_events.o"
+	@echo "... test_events.i"
+	@echo "... test_events.s"
+	@echo "... test_graph.o"
+	@echo "... test_graph.i"
+	@echo "... test_graph.s"
+	@echo "... test_hash_table.o"
+	@echo "... test_hash_table.i"
+	@echo "... test_hash_table.s"
 	@echo "... test_introspection.o"
 	@echo "... test_introspection.i"
 	@echo "... test_introspection.s"
+	@echo "... test_json.o"
+	@echo "... test_json.i"
+	@echo "... test_json.s"
+	@echo "... test_knowledge.o"
+	@echo "... test_knowledge.i"
+	@echo "... test_knowledge.s"
+	@echo "... test_logging.o"
+	@echo "... test_logging.i"
+	@echo "... test_logging.s"
+	@echo "... test_memory.o"
+	@echo "... test_memory.i"
+	@echo "... test_memory.s"
 	@echo "... test_module.o"
 	@echo "... test_module.i"
 	@echo "... test_module.s"
@@ -551,6 +968,9 @@ help:
 	@echo "... test_protocol.o"
 	@echo "... test_protocol.i"
 	@echo "... test_protocol.s"
+	@echo "... test_queue_manager.o"
+	@echo "... test_queue_manager.i"
+	@echo "... test_queue_manager.s"
 	@echo "... test_queue_utils.o"
 	@echo "... test_queue_utils.i"
 	@echo "... test_queue_utils.s"
@@ -560,12 +980,24 @@ help:
 	@echo "... test_salience.o"
 	@echo "... test_salience.i"
 	@echo "... test_salience.s"
+	@echo "... test_serialization.o"
+	@echo "... test_serialization.i"
+	@echo "... test_serialization.s"
 	@echo "... test_stream.o"
 	@echo "... test_stream.i"
 	@echo "... test_stream.s"
 	@echo "... test_thread_utils.o"
 	@echo "... test_thread_utils.i"
 	@echo "... test_thread_utils.s"
+	@echo "... test_time.o"
+	@echo "... test_time.i"
+	@echo "... test_time.s"
+	@echo "... test_validate.o"
+	@echo "... test_validate.i"
+	@echo "... test_validate.s"
+	@echo "... test_vector.o"
+	@echo "... test_vector.i"
+	@echo "... test_vector.s"
 .PHONY : help
 
 
