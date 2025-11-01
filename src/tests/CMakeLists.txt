@@ -42,6 +42,7 @@ set(NIMCP_TEST_SOURCES
     test_integration_e2e.cpp    # End-to-end integration tests across modules
     test_lint.cpp               # Lint and code quality tests
     test_memory_leaks.cpp       # Memory leak detection tests
+    test_regression.cpp         # Comprehensive regression tests for all 34 modules
 )
 
 # Create test executable
