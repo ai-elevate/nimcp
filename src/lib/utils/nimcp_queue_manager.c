@@ -518,7 +518,7 @@ static void queue_operation_handler(void* arg) {
 
     // Recover manager reference from context
     // WHY STORED: Handler needs manager to access channels
-    nimcp_queue_manager_handle_t manager = (nimcp_queue_manager_handle_t)ctx->result;
+    nimcp_queue_manager_handle_t manager = (nimcp_queue_manager_handle_t)ctx->manager_handle;
     nimcp_queue_channel_t* channel = &manager->channels[ctx->channel_id];
 
     // Dispatch based on operation type
@@ -649,7 +649,7 @@ static nimcp_result_t submit_queue_operation(
 
     // Store manager reference for handler access
     // WHY: Handler needs manager to access channels
-    op_ctx->result = manager;
+    op_ctx->manager_handle = manager;
     atomic_store(&op_ctx->completed, false);
 
     // Submit to thread pool for async execution

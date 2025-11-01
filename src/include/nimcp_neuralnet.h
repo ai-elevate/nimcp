@@ -254,4 +254,11 @@ void neural_network_get_weight_statistics(neural_network_t network, uint32_t neu
  */
 bool neural_network_get_stats(neural_network_t network, network_stats_t* stats);
 
+// Maintenance and utility functions
+void neural_network_maintain(neural_network_t network, uint64_t timestamp);
+void neural_network_maintain_homeostasis(neural_network_t network, uint64_t timestamp);
+void neural_network_reset(neural_network_t network);
+uint32_t neural_network_prune_synapses(neural_network_t network, float threshold);
+void neural_network_dump_neuron(neural_network_t network, uint32_t neuron_id);
+
 #endif // NIMCP_NEURALNET_H

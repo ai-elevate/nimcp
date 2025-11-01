@@ -3,7 +3,9 @@
 
 #include <stddef.h>
 #include <stdbool.h>
+#ifndef __cplusplus
 #include <stdatomic.h>
+#endif
 #include <pthread.h>
 
 // Forward declarations

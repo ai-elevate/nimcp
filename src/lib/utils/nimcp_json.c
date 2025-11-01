@@ -1188,6 +1188,142 @@ JsonResult nimcp_json_get_number_value(JsonContext* ctx, const char* path, doubl
     return JSON_SUCCESS;
 }
 
+/**
+ * @brief Set string value by path
+ *
+ * WHY CONVENIENCE FUNCTION:
+ * - Most common setter operation
+ * - Type-safe (creates JSON string)
+ * - Avoids boilerplate (create value + set + decref)
+ *
+ * ALGORITHM:
+ * 1. Create JSON string value using Jansson
+ * 2. Call nimcp_json_set_value
+ * 3. Decref the value (set_value borrows reference)
+ * 4. Return result
+ *
+ * ERROR HANDLING:
+ * - NULL value: INVALID_PARAM
+ * - Propagates errors from set_value (NOT_FOUND, TYPE, etc.)
+ *
+ * COMPLEXITY: O(d + n) where d = path depth, n = string length
+ * THREAD SAFETY: Fully thread-safe (set_value handles locking)
+ *
+ * @param ctx Context to modify
+ * @param path Path to string value
+ * @param value String to set
+ * @return JSON_SUCCESS or error code
+ */
+JsonResult nimcp_json_set_string_value(JsonContext* ctx, const char* path, const char* value) {
+    if (!value) return JSON_ERROR_INVALID_PARAM;
+
+    // Create JSON string value
+    json_t* json_value = json_string(value);
+    if (!json_value) return JSON_ERROR_MEMORY;
+
+    // Set value in tree
+    JsonResult result = nimcp_json_set_value(ctx, path, json_value);
+
+    // Release our reference (parent owns it now)
+    json_decref(json_value);
+    return result;
+}
+
+/**
+ * @brief Set integer value by path
+ *
+ * WHY CONVENIENCE FUNCTION:
+ * - Common for numeric config (ports, timeouts, counts)
+ * - Type-safe (creates JSON integer)
+ * - Avoids boilerplate
+ *
+ * ALGORITHM:
+ * 1. Create JSON integer value
+ * 2. Set via nimcp_json_set_value
+ * 3. Decref
+ *
+ * COMPLEXITY: O(d) where d = path depth
+ * THREAD SAFETY: Fully thread-safe
+ *
+ * @param ctx Context to modify
+ * @param path Path to integer value
+ * @param value Integer to set
+ * @return JSON_SUCCESS or error code
+ */
+JsonResult nimcp_json_set_integer_value(JsonContext* ctx, const char* path, int64_t value) {
+    // Create JSON integer value
+    json_t* json_value = json_integer(value);
+    if (!json_value) return JSON_ERROR_MEMORY;
+
+    // Set value in tree
+    JsonResult result = nimcp_json_set_value(ctx, path, json_value);
+
+    // Release our reference
+    json_decref(json_value);
+    return result;
+}
+
+/**
+ * @brief Set boolean value by path
+ *
+ * WHY CONVENIENCE FUNCTION:
+ * - Common for flags and toggles
+ * - Type-safe (creates JSON boolean)
+ * - Simple API (C bool -> JSON boolean)
+ *
+ * COMPLEXITY: O(d) where d = path depth
+ * THREAD SAFETY: Fully thread-safe
+ *
+ * @param ctx Context to modify
+ * @param path Path to boolean value
+ * @param value Boolean to set
+ * @return JSON_SUCCESS or error code
+ */
+JsonResult nimcp_json_set_boolean_value(JsonContext* ctx, const char* path, bool value) {
+    // Create JSON boolean value
+    json_t* json_value = json_boolean(value);
+    if (!json_value) return JSON_ERROR_MEMORY;
+
+    // Set value in tree
+    JsonResult result = nimcp_json_set_value(ctx, path, json_value);
+
+    // Release our reference
+    json_decref(json_value);
+    return result;
+}
+
+/**
+ * @brief Set number value by path
+ *
+ * WHY SEPARATE FROM INTEGER:
+ * - For floating-point values (ratios, percentages, etc.)
+ * - Creates JSON real type (not integer)
+ *
+ * TYPE HANDLING:
+ * - Always creates JSON real (even for 1.0)
+ * - Use set_integer_value if you want JSON integer type
+ *
+ * COMPLEXITY: O(d) where d = path depth
+ * THREAD SAFETY: Fully thread-safe
+ *
+ * @param ctx Context to modify
+ * @param path Path to number value
+ * @param value Number to set
+ * @return JSON_SUCCESS or error code
+ */
+JsonResult nimcp_json_set_number_value(JsonContext* ctx, const char* path, double value) {
+    // Create JSON real value
+    json_t* json_value = json_real(value);
+    if (!json_value) return JSON_ERROR_MEMORY;
+
+    // Set value in tree
+    JsonResult result = nimcp_json_set_value(ctx, path, json_value);
+
+    // Release our reference
+    json_decref(json_value);
+    return result;
+}
+
 //=============================================================================
 // Null Value Handling
 //=============================================================================

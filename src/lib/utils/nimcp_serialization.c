@@ -392,6 +392,10 @@ uint64_t nimcp_read_uint64(NimcpSerializer* serializer) {
     return value;
 }
 
+int8_t nimcp_read_int8(NimcpSerializer* serializer) {
+    return (int8_t)nimcp_read_uint8(serializer);
+}
+
 int16_t nimcp_read_int16(NimcpSerializer* serializer) {
     return (int16_t)nimcp_read_uint16(serializer);
 }

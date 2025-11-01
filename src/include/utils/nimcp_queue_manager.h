@@ -42,8 +42,9 @@ typedef struct {
     nimcp_message_t* message;
     uint32_t timeout_ms;
     void* result;
+    void* manager_handle;  // Internal: manager reference for handler
     nimcp_result_t status;
-    atomic_bool completed;
+    volatile bool completed;  // Accessed atomically in implementation
 } nimcp_queue_operation_ctx_t;
 
 // Queue manager configuration
@@ -62,13 +63,13 @@ typedef struct {
 // Queue statistics
 typedef struct {
     struct {
-        atomic_uint_least64_t enqueued;   // Total messages enqueued
-        atomic_uint_least64_t dequeued;   // Total messages dequeued
-        atomic_uint_least64_t dropped;    // Messages dropped due to overflow
-        atomic_size_t current_size;       // Current number of messages
-        atomic_size_t peak_size;          // Maximum size reached
-        atomic_uint_least64_t op_latency_sum; // Sum of operation latencies
-        atomic_uint_least64_t op_count;   // Total operation count
+        uint_least64_t enqueued;   // Total messages enqueued (accessed atomically in implementation)
+        uint_least64_t dequeued;   // Total messages dequeued (accessed atomically in implementation)
+        uint_least64_t dropped;    // Messages dropped due to overflow (accessed atomically in implementation)
+        size_t current_size;       // Current number of messages (accessed atomically in implementation)
+        size_t peak_size;          // Maximum size reached (accessed atomically in implementation)
+        uint_least64_t op_latency_sum; // Sum of operation latencies (accessed atomically in implementation)
+        uint_least64_t op_count;   // Total operation count (accessed atomically in implementation)
     } priorities[NIMCP_QUEUE_PRIORITY_COUNT];
 } nimcp_queue_manager_stats_t;
 

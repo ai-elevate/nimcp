@@ -1494,3 +1494,112 @@ bool ethics_get_statistics(ethics_engine_t engine, ethics_statistics_t* stats) {
 
     return true;
 }
+
+/**
+ * @brief Add ethical policy
+ *
+ * WHY: Allows dynamic policy management, enabling systems to add new
+ * ethical constraints at runtime.
+ *
+ * ALGORITHM:
+ * 1. Validate inputs
+ * 2. Check if policy array needs expansion (double capacity if full)
+ * 3. Copy policy into array
+ * 4. Add to hash table for O(1) lookup by policy_id
+ * 5. Increment policy count
+ *
+ * COMPLEXITY: O(1) amortized (O(n) when array needs realloc)
+ * THREAD SAFETY: Not thread-safe, caller must synchronize
+ *
+ * @param engine Ethics engine
+ * @param policy Policy to add
+ * @return true on success, false on error
+ */
+bool ethics_engine_add_policy(ethics_engine_t engine,
+                              const ethics_policy_t* policy) {
+    // Guard clauses: Validate inputs
+    if (!engine || !policy) return false;
+
+    // Check if array needs expansion
+    if (engine->num_policies >= engine->policies_capacity) {
+        // Double capacity (or initial size of 8)
+        uint32_t new_capacity = engine->policies_capacity > 0 ?
+                                engine->policies_capacity * 2 : 8;
+
+        ethics_policy_t* new_policies = (ethics_policy_t*)realloc(
+            engine->policies,
+            new_capacity * sizeof(ethics_policy_t)
+        );
+
+        if (!new_policies) return false;  // Allocation failed
+
+        engine->policies = new_policies;
+        engine->policies_capacity = new_capacity;
+    }
+
+    // Copy policy into array
+    engine->policies[engine->num_policies] = *policy;
+
+    // Add to hash table for O(1) lookup by policy_id
+    if (engine->policy_table) {
+        hash_table_insert(engine->policy_table, &engine->policies[engine->num_policies]);
+    }
+
+    engine->num_policies++;
+    return true;
+}
+
+/**
+ * @brief Remove ethical policy by policy_id
+ *
+ * WHY: Allows dynamic policy management, enabling systems to remove
+ * outdated or incorrect ethical constraints.
+ *
+ * ALGORITHM:
+ * 1. Validate inputs
+ * 2. Search for policy with matching policy_id (O(n) linear search)
+ * 3. If found:
+ *    a. Remove from hash table (O(1))
+ *    b. Shift array elements down to fill gap (O(n))
+ *    c. Decrement policy count
+ * 4. Return true if found, false otherwise
+ *
+ * COMPLEXITY: O(n) where n = number of policies
+ * THREAD SAFETY: Not thread-safe, caller must synchronize
+ *
+ * @param engine Ethics engine
+ * @param policy_id Policy ID to remove
+ * @return true if policy was found and removed, false otherwise
+ */
+bool ethics_engine_remove_policy(ethics_engine_t engine, uint32_t policy_id) {
+    // Guard clause: Validate input
+    if (!engine) return false;
+
+    // Search for policy with matching policy_id
+    int found_index = -1;
+    for (uint32_t i = 0; i < engine->num_policies; i++) {
+        if (engine->policies[i].policy_id == policy_id) {
+            found_index = (int)i;
+            break;
+        }
+    }
+
+    // Policy not found
+    if (found_index < 0) return false;
+
+    // Remove from hash table
+    if (engine->policy_table) {
+        hash_table_remove(engine->policy_table, policy_id);
+    }
+
+    // Shift array elements down to fill gap
+    for (uint32_t i = (uint32_t)found_index; i < engine->num_policies - 1; i++) {
+        engine->policies[i] = engine->policies[i + 1];
+    }
+
+    // Note: Hash table pointers are automatically updated because they point
+    // to the array elements, not copied values
+
+    engine->num_policies--;
+    return true;
+}
