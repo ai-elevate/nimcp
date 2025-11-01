@@ -225,12 +225,12 @@ src/python/CMakeFiles/nimcp_python.dir/clean:
 src/tests/CMakeFiles/nimcp_tests.dir/all: src/lib/CMakeFiles/nimcp_core.dir/all
 	$(MAKE) $(MAKESILENT) -f src/tests/CMakeFiles/nimcp_tests.dir/build.make src/tests/CMakeFiles/nimcp_tests.dir/depend
 	$(MAKE) $(MAKESILENT) -f src/tests/CMakeFiles/nimcp_tests.dir/build.make src/tests/CMakeFiles/nimcp_tests.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --progress-dir=/home/bbrelin/src/repos/nimcp/build/CMakeFiles --progress-num=45,46,47,48,49,50,51,52,53,54,55,56,57,58,59,60,61,62,63,64,65,66,67,68,69,70,71,72,73,74,75 "Built target nimcp_tests"
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --progress-dir=/home/bbrelin/src/repos/nimcp/build/CMakeFiles --progress-num=45,46,47,48,49,50,51,52,53,54,55,56,57,58,59,60,61,62,63,64,65,66,67,68,69,70,71,72,73,74,75,76,77 "Built target nimcp_tests"
 .PHONY : src/tests/CMakeFiles/nimcp_tests.dir/all
 
 # Build rule for subdir invocation for target.
 src/tests/CMakeFiles/nimcp_tests.dir/rule: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/src/repos/nimcp/build/CMakeFiles 63
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/src/repos/nimcp/build/CMakeFiles 65
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 src/tests/CMakeFiles/nimcp_tests.dir/all
 	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/src/repos/nimcp/build/CMakeFiles 0
 .PHONY : src/tests/CMakeFiles/nimcp_tests.dir/rule

@@ -18,6 +18,8 @@ set(CMAKE_DEPENDS_DEPENDENCY_FILES
   "/home/bbrelin/src/repos/nimcp/src/tests/test_events.cpp" "src/tests/CMakeFiles/nimcp_tests.dir/test_events.cpp.o" "gcc" "src/tests/CMakeFiles/nimcp_tests.dir/test_events.cpp.o.d"
   "/home/bbrelin/src/repos/nimcp/src/tests/test_graph.cpp" "src/tests/CMakeFiles/nimcp_tests.dir/test_graph.cpp.o" "gcc" "src/tests/CMakeFiles/nimcp_tests.dir/test_graph.cpp.o.d"
   "/home/bbrelin/src/repos/nimcp/src/tests/test_hash_table.cpp" "src/tests/CMakeFiles/nimcp_tests.dir/test_hash_table.cpp.o" "gcc" "src/tests/CMakeFiles/nimcp_tests.dir/test_hash_table.cpp.o.d"
+  "/home/bbrelin/src/repos/nimcp/src/tests/test_integration_e2e.cpp" "src/tests/CMakeFiles/nimcp_tests.dir/test_integration_e2e.cpp.o" "gcc" "src/tests/CMakeFiles/nimcp_tests.dir/test_integration_e2e.cpp.o.d"
+  "/home/bbrelin/src/repos/nimcp/src/tests/test_integration_networking.cpp" "src/tests/CMakeFiles/nimcp_tests.dir/test_integration_networking.cpp.o" "gcc" "src/tests/CMakeFiles/nimcp_tests.dir/test_integration_networking.cpp.o.d"
   "/home/bbrelin/src/repos/nimcp/src/tests/test_introspection.cpp" "src/tests/CMakeFiles/nimcp_tests.dir/test_introspection.cpp.o" "gcc" "src/tests/CMakeFiles/nimcp_tests.dir/test_introspection.cpp.o.d"
   "/home/bbrelin/src/repos/nimcp/src/tests/test_json.cpp" "src/tests/CMakeFiles/nimcp_tests.dir/test_json.cpp.o" "gcc" "src/tests/CMakeFiles/nimcp_tests.dir/test_json.cpp.o.d"
   "/home/bbrelin/src/repos/nimcp/src/tests/test_knowledge.cpp" "src/tests/CMakeFiles/nimcp_tests.dir/test_knowledge.cpp.o" "gcc" "src/tests/CMakeFiles/nimcp_tests.dir/test_knowledge.cpp.o.d"

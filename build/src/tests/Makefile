@@ -415,6 +415,54 @@ test_hash_table.cpp.s:
 	cd /home/bbrelin/src/repos/nimcp/build && $(MAKE) $(MAKESILENT) -f src/tests/CMakeFiles/nimcp_tests.dir/build.make src/tests/CMakeFiles/nimcp_tests.dir/test_hash_table.cpp.s
 .PHONY : test_hash_table.cpp.s
 
+test_integration_e2e.o: test_integration_e2e.cpp.o
+.PHONY : test_integration_e2e.o
+
+# target to build an object file
+test_integration_e2e.cpp.o:
+	cd /home/bbrelin/src/repos/nimcp/build && $(MAKE) $(MAKESILENT) -f src/tests/CMakeFiles/nimcp_tests.dir/build.make src/tests/CMakeFiles/nimcp_tests.dir/test_integration_e2e.cpp.o
+.PHONY : test_integration_e2e.cpp.o
+
+test_integration_e2e.i: test_integration_e2e.cpp.i
+.PHONY : test_integration_e2e.i
+
+# target to preprocess a source file
+test_integration_e2e.cpp.i:
+	cd /home/bbrelin/src/repos/nimcp/build && $(MAKE) $(MAKESILENT) -f src/tests/CMakeFiles/nimcp_tests.dir/build.make src/tests/CMakeFiles/nimcp_tests.dir/test_integration_e2e.cpp.i
+.PHONY : test_integration_e2e.cpp.i
+
+test_integration_e2e.s: test_integration_e2e.cpp.s
+.PHONY : test_integration_e2e.s
+
+# target to generate assembly for a file
+test_integration_e2e.cpp.s:
+	cd /home/bbrelin/src/repos/nimcp/build && $(MAKE) $(MAKESILENT) -f src/tests/CMakeFiles/nimcp_tests.dir/build.make src/tests/CMakeFiles/nimcp_tests.dir/test_integration_e2e.cpp.s
+.PHONY : test_integration_e2e.cpp.s
+
+test_integration_networking.o: test_integration_networking.cpp.o
+.PHONY : test_integration_networking.o
+
+# target to build an object file
+test_integration_networking.cpp.o:
+	cd /home/bbrelin/src/repos/nimcp/build && $(MAKE) $(MAKESILENT) -f src/tests/CMakeFiles/nimcp_tests.dir/build.make src/tests/CMakeFiles/nimcp_tests.dir/test_integration_networking.cpp.o
+.PHONY : test_integration_networking.cpp.o
+
+test_integration_networking.i: test_integration_networking.cpp.i
+.PHONY : test_integration_networking.i
+
+# target to preprocess a source file
+test_integration_networking.cpp.i:
+	cd /home/bbrelin/src/repos/nimcp/build && $(MAKE) $(MAKESILENT) -f src/tests/CMakeFiles/nimcp_tests.dir/build.make src/tests/CMakeFiles/nimcp_tests.dir/test_integration_networking.cpp.i
+.PHONY : test_integration_networking.cpp.i
+
+test_integration_networking.s: test_integration_networking.cpp.s
+.PHONY : test_integration_networking.s
+
+# target to generate assembly for a file
+test_integration_networking.cpp.s:
+	cd /home/bbrelin/src/repos/nimcp/build && $(MAKE) $(MAKESILENT) -f src/tests/CMakeFiles/nimcp_tests.dir/build.make src/tests/CMakeFiles/nimcp_tests.dir/test_integration_networking.cpp.s
+.PHONY : test_integration_networking.cpp.s
+
 test_introspection.o: test_introspection.cpp.o
 .PHONY : test_introspection.o
 
@@ -938,6 +986,12 @@ help:
 	@echo "... test_hash_table.o"
 	@echo "... test_hash_table.i"
 	@echo "... test_hash_table.s"
+	@echo "... test_integration_e2e.o"
+	@echo "... test_integration_e2e.i"
+	@echo "... test_integration_e2e.s"
+	@echo "... test_integration_networking.o"
+	@echo "... test_integration_networking.i"
+	@echo "... test_integration_networking.s"
 	@echo "... test_introspection.o"
 	@echo "... test_introspection.i"
 	@echo "... test_introspection.s"

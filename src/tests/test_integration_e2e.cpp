@@ -113,7 +113,7 @@ TEST(LearningPipeline, CreateTrainValidate) {
     config.input_size = 2;
     config.output_size = 1;
     config.num_layers = 2;
-    uint32_t layers[] = {5, 1};
+    uint32_t layers[] = {2, 1};  // Fixed: 2 inputs, 1 output
     config.layer_sizes = layers;
     config.learning_rate = 0.1f;
     config.enable_hebbian = true;
@@ -323,7 +323,7 @@ TEST(LearningPipeline, MultiLayerConvergence) {
     config.input_size = 2;
     config.output_size = 1;
     config.num_layers = 3;
-    uint32_t layers[] = {5, 3, 1};
+    uint32_t layers[] = {2, 3, 1};  // Fixed: 2 inputs, 3 hidden, 1 output
     config.layer_sizes = layers;
     config.learning_rate = 0.05f;
     config.enable_hebbian = true;
@@ -1087,7 +1087,7 @@ TEST(RealWorldScenario, SimplePatternRecognition) {
     config.input_size = 3;
     config.output_size = 2;
     config.num_layers = 2;
-    uint32_t layers[] = {5, 2};
+    uint32_t layers[] = {3, 2};  // Fixed: 3 inputs, 2 outputs
     config.layer_sizes = layers;
     config.learning_rate = 0.05f;
     config.enable_hebbian = true;
@@ -1174,7 +1174,7 @@ TEST(RealWorldScenario, AssociationLearning) {
     config.input_size = 4; // Two pairs of associated inputs
     config.output_size = 1;
     config.num_layers = 2;
-    uint32_t layers[] = {10, 1};
+    uint32_t layers[] = {4, 1};  // Fixed: 4 inputs, 1 output
     config.layer_sizes = layers;
     config.learning_rate = 0.05f;
     config.enable_hebbian = true;

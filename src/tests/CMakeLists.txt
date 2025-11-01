@@ -29,6 +29,11 @@ set(NIMCP_TEST_SOURCES
     test_btree.cpp              # B-tree data structure tests
     test_validate.cpp           # Input validation utilities tests
     test_graph.cpp              # Graph data structure tests
+    test_integration_networking.cpp  # P2P networking integration tests
+    # test_integration_cognitive.cpp   # Multi-module cognitive integration tests (disabled: compilation issues)
+        test_integration_e2e.cpp    # End-to-end integration tests across modules
+    # test_lint.cpp               # Lint and code quality tests (disabled: compilation issues)
+    # test_memory_leaks.cpp       # Memory leak detection tests (disabled: compilation issues)
 )
 
 # Create test executable

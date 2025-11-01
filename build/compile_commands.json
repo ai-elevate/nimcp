@@ -1,0 +1,347 @@
+[
+{
+  "directory": "/home/bbrelin/src/repos/nimcp/build/src/lib",
+  "command": "/usr/bin/cc -Dnimcp_core_EXPORTS -I/home/bbrelin/src/repos/nimcp/src/include -I/home/bbrelin/src/repos/nimcp/src/lib -isystem /usr/include/python3.10  -Wall -Wextra -Wpedantic -g -fPIC -std=gnu11 -o CMakeFiles/nimcp_core.dir/nimcp_neuralnet.c.o -c /home/bbrelin/src/repos/nimcp/src/lib/nimcp_neuralnet.c",
+  "file": "/home/bbrelin/src/repos/nimcp/src/lib/nimcp_neuralnet.c"
+},
+{
+  "directory": "/home/bbrelin/src/repos/nimcp/build/src/lib",
+  "command": "/usr/bin/cc -Dnimcp_core_EXPORTS -I/home/bbrelin/src/repos/nimcp/src/include -I/home/bbrelin/src/repos/nimcp/src/lib -isystem /usr/include/python3.10  -Wall -Wextra -Wpedantic -g -fPIC -std=gnu11 -o CMakeFiles/nimcp_core.dir/nimcp_p2pnode.c.o -c /home/bbrelin/src/repos/nimcp/src/lib/nimcp_p2pnode.c",
+  "file": "/home/bbrelin/src/repos/nimcp/src/lib/nimcp_p2pnode.c"
+},
+{
+  "directory": "/home/bbrelin/src/repos/nimcp/build/src/lib",
+  "command": "/usr/bin/cc -Dnimcp_core_EXPORTS -I/home/bbrelin/src/repos/nimcp/src/include -I/home/bbrelin/src/repos/nimcp/src/lib -isystem /usr/include/python3.10  -Wall -Wextra -Wpedantic -g -fPIC -std=gnu11 -o CMakeFiles/nimcp_core.dir/nimcp_protocol.c.o -c /home/bbrelin/src/repos/nimcp/src/lib/nimcp_protocol.c",
+  "file": "/home/bbrelin/src/repos/nimcp/src/lib/nimcp_protocol.c"
+},
+{
+  "directory": "/home/bbrelin/src/repos/nimcp/build/src/lib",
+  "command": "/usr/bin/cc -Dnimcp_core_EXPORTS -I/home/bbrelin/src/repos/nimcp/src/include -I/home/bbrelin/src/repos/nimcp/src/lib -isystem /usr/include/python3.10  -Wall -Wextra -Wpedantic -g -fPIC -std=gnu11 -o CMakeFiles/nimcp_core.dir/nimcp_events.c.o -c /home/bbrelin/src/repos/nimcp/src/lib/nimcp_events.c",
+  "file": "/home/bbrelin/src/repos/nimcp/src/lib/nimcp_events.c"
+},
+{
+  "directory": "/home/bbrelin/src/repos/nimcp/build/src/lib",
+  "command": "/usr/bin/cc -Dnimcp_core_EXPORTS -I/home/bbrelin/src/repos/nimcp/src/include -I/home/bbrelin/src/repos/nimcp/src/lib -isystem /usr/include/python3.10  -Wall -Wextra -Wpedantic -g -fPIC -std=gnu11 -o CMakeFiles/nimcp_core.dir/nimcp_adaptive.c.o -c /home/bbrelin/src/repos/nimcp/src/lib/nimcp_adaptive.c",
+  "file": "/home/bbrelin/src/repos/nimcp/src/lib/nimcp_adaptive.c"
+},
+{
+  "directory": "/home/bbrelin/src/repos/nimcp/build/src/lib",
+  "command": "/usr/bin/cc -Dnimcp_core_EXPORTS -I/home/bbrelin/src/repos/nimcp/src/include -I/home/bbrelin/src/repos/nimcp/src/lib -isystem /usr/include/python3.10  -Wall -Wextra -Wpedantic -g -fPIC -std=gnu11 -o CMakeFiles/nimcp_core.dir/nimcp_brain.c.o -c /home/bbrelin/src/repos/nimcp/src/lib/nimcp_brain.c",
+  "file": "/home/bbrelin/src/repos/nimcp/src/lib/nimcp_brain.c"
+},
+{
+  "directory": "/home/bbrelin/src/repos/nimcp/build/src/lib",
+  "command": "/usr/bin/cc -Dnimcp_core_EXPORTS -I/home/bbrelin/src/repos/nimcp/src/include -I/home/bbrelin/src/repos/nimcp/src/lib -isystem /usr/include/python3.10  -Wall -Wextra -Wpedantic -g -fPIC -std=gnu11 -o CMakeFiles/nimcp_core.dir/nimcp_ethics.c.o -c /home/bbrelin/src/repos/nimcp/src/lib/nimcp_ethics.c",
+  "file": "/home/bbrelin/src/repos/nimcp/src/lib/nimcp_ethics.c"
+},
+{
+  "directory": "/home/bbrelin/src/repos/nimcp/build/src/lib",
+  "command": "/usr/bin/cc -Dnimcp_core_EXPORTS -I/home/bbrelin/src/repos/nimcp/src/include -I/home/bbrelin/src/repos/nimcp/src/lib -isystem /usr/include/python3.10  -Wall -Wextra -Wpedantic -g -fPIC -std=gnu11 -o CMakeFiles/nimcp_core.dir/nimcp_curiosity.c.o -c /home/bbrelin/src/repos/nimcp/src/lib/nimcp_curiosity.c",
+  "file": "/home/bbrelin/src/repos/nimcp/src/lib/nimcp_curiosity.c"
+},
+{
+  "directory": "/home/bbrelin/src/repos/nimcp/build/src/lib",
+  "command": "/usr/bin/cc -Dnimcp_core_EXPORTS -I/home/bbrelin/src/repos/nimcp/src/include -I/home/bbrelin/src/repos/nimcp/src/lib -isystem /usr/include/python3.10  -Wall -Wextra -Wpedantic -g -fPIC -std=gnu11 -o CMakeFiles/nimcp_core.dir/nimcp_knowledge.c.o -c /home/bbrelin/src/repos/nimcp/src/lib/nimcp_knowledge.c",
+  "file": "/home/bbrelin/src/repos/nimcp/src/lib/nimcp_knowledge.c"
+},
+{
+  "directory": "/home/bbrelin/src/repos/nimcp/build/src/lib",
+  "command": "/usr/bin/cc -Dnimcp_core_EXPORTS -I/home/bbrelin/src/repos/nimcp/src/include -I/home/bbrelin/src/repos/nimcp/src/lib -isystem /usr/include/python3.10  -Wall -Wextra -Wpedantic -g -fPIC -std=gnu11 -o CMakeFiles/nimcp_core.dir/nimcp_replication.c.o -c /home/bbrelin/src/repos/nimcp/src/lib/nimcp_replication.c",
+  "file": "/home/bbrelin/src/repos/nimcp/src/lib/nimcp_replication.c"
+},
+{
+  "directory": "/home/bbrelin/src/repos/nimcp/build/src/lib",
+  "command": "/usr/bin/cc -Dnimcp_core_EXPORTS -I/home/bbrelin/src/repos/nimcp/src/include -I/home/bbrelin/src/repos/nimcp/src/lib -isystem /usr/include/python3.10  -Wall -Wextra -Wpedantic -g -fPIC -std=gnu11 -o CMakeFiles/nimcp_core.dir/nimcp_dataio.c.o -c /home/bbrelin/src/repos/nimcp/src/lib/nimcp_dataio.c",
+  "file": "/home/bbrelin/src/repos/nimcp/src/lib/nimcp_dataio.c"
+},
+{
+  "directory": "/home/bbrelin/src/repos/nimcp/build/src/lib",
+  "command": "/usr/bin/cc -Dnimcp_core_EXPORTS -I/home/bbrelin/src/repos/nimcp/src/include -I/home/bbrelin/src/repos/nimcp/src/lib -isystem /usr/include/python3.10  -Wall -Wextra -Wpedantic -g -fPIC -std=gnu11 -o CMakeFiles/nimcp_core.dir/nimcp_stream.c.o -c /home/bbrelin/src/repos/nimcp/src/lib/nimcp_stream.c",
+  "file": "/home/bbrelin/src/repos/nimcp/src/lib/nimcp_stream.c"
+},
+{
+  "directory": "/home/bbrelin/src/repos/nimcp/build/src/lib",
+  "command": "/usr/bin/cc -Dnimcp_core_EXPORTS -I/home/bbrelin/src/repos/nimcp/src/include -I/home/bbrelin/src/repos/nimcp/src/lib -isystem /usr/include/python3.10  -Wall -Wextra -Wpedantic -g -fPIC -std=gnu11 -o CMakeFiles/nimcp_core.dir/nimcp_salience.c.o -c /home/bbrelin/src/repos/nimcp/src/lib/nimcp_salience.c",
+  "file": "/home/bbrelin/src/repos/nimcp/src/lib/nimcp_salience.c"
+},
+{
+  "directory": "/home/bbrelin/src/repos/nimcp/build/src/lib",
+  "command": "/usr/bin/cc -Dnimcp_core_EXPORTS -I/home/bbrelin/src/repos/nimcp/src/include -I/home/bbrelin/src/repos/nimcp/src/lib -isystem /usr/include/python3.10  -Wall -Wextra -Wpedantic -g -fPIC -std=gnu11 -o CMakeFiles/nimcp_core.dir/nimcp_introspection.c.o -c /home/bbrelin/src/repos/nimcp/src/lib/nimcp_introspection.c",
+  "file": "/home/bbrelin/src/repos/nimcp/src/lib/nimcp_introspection.c"
+},
+{
+  "directory": "/home/bbrelin/src/repos/nimcp/build/src/lib",
+  "command": "/usr/bin/cc -Dnimcp_core_EXPORTS -I/home/bbrelin/src/repos/nimcp/src/include -I/home/bbrelin/src/repos/nimcp/src/lib -isystem /usr/include/python3.10  -Wall -Wextra -Wpedantic -g -fPIC -std=gnu11 -o CMakeFiles/nimcp_core.dir/nimcp_consolidation.c.o -c /home/bbrelin/src/repos/nimcp/src/lib/nimcp_consolidation.c",
+  "file": "/home/bbrelin/src/repos/nimcp/src/lib/nimcp_consolidation.c"
+},
+{
+  "directory": "/home/bbrelin/src/repos/nimcp/build/src/lib",
+  "command": "/usr/bin/cc -Dnimcp_core_EXPORTS -I/home/bbrelin/src/repos/nimcp/src/include -I/home/bbrelin/src/repos/nimcp/src/lib -isystem /usr/include/python3.10  -Wall -Wextra -Wpedantic -g -fPIC -std=gnu11 -o CMakeFiles/nimcp_core.dir/utils/nimcp_memory.c.o -c /home/bbrelin/src/repos/nimcp/src/lib/utils/nimcp_memory.c",
+  "file": "/home/bbrelin/src/repos/nimcp/src/lib/utils/nimcp_memory.c"
+},
+{
+  "directory": "/home/bbrelin/src/repos/nimcp/build/src/lib",
+  "command": "/usr/bin/cc -Dnimcp_core_EXPORTS -I/home/bbrelin/src/repos/nimcp/src/include -I/home/bbrelin/src/repos/nimcp/src/lib -isystem /usr/include/python3.10  -Wall -Wextra -Wpedantic -g -fPIC -std=gnu11 -o CMakeFiles/nimcp_core.dir/utils/nimcp_thread.c.o -c /home/bbrelin/src/repos/nimcp/src/lib/utils/nimcp_thread.c",
+  "file": "/home/bbrelin/src/repos/nimcp/src/lib/utils/nimcp_thread.c"
+},
+{
+  "directory": "/home/bbrelin/src/repos/nimcp/build/src/lib",
+  "command": "/usr/bin/cc -Dnimcp_core_EXPORTS -I/home/bbrelin/src/repos/nimcp/src/include -I/home/bbrelin/src/repos/nimcp/src/lib -isystem /usr/include/python3.10  -Wall -Wextra -Wpedantic -g -fPIC -std=gnu11 -o CMakeFiles/nimcp_core.dir/utils/nimcp_thread_pool.c.o -c /home/bbrelin/src/repos/nimcp/src/lib/utils/nimcp_thread_pool.c",
+  "file": "/home/bbrelin/src/repos/nimcp/src/lib/utils/nimcp_thread_pool.c"
+},
+{
+  "directory": "/home/bbrelin/src/repos/nimcp/build/src/lib",
+  "command": "/usr/bin/cc -Dnimcp_core_EXPORTS -I/home/bbrelin/src/repos/nimcp/src/include -I/home/bbrelin/src/repos/nimcp/src/lib -isystem /usr/include/python3.10  -Wall -Wextra -Wpedantic -g -fPIC -std=gnu11 -o CMakeFiles/nimcp_core.dir/utils/nimcp_vector.c.o -c /home/bbrelin/src/repos/nimcp/src/lib/utils/nimcp_vector.c",
+  "file": "/home/bbrelin/src/repos/nimcp/src/lib/utils/nimcp_vector.c"
+},
+{
+  "directory": "/home/bbrelin/src/repos/nimcp/build/src/lib",
+  "command": "/usr/bin/cc -Dnimcp_core_EXPORTS -I/home/bbrelin/src/repos/nimcp/src/include -I/home/bbrelin/src/repos/nimcp/src/lib -isystem /usr/include/python3.10  -Wall -Wextra -Wpedantic -g -fPIC -std=gnu11 -o CMakeFiles/nimcp_core.dir/utils/nimcp_time.c.o -c /home/bbrelin/src/repos/nimcp/src/lib/utils/nimcp_time.c",
+  "file": "/home/bbrelin/src/repos/nimcp/src/lib/utils/nimcp_time.c"
+},
+{
+  "directory": "/home/bbrelin/src/repos/nimcp/build/src/lib",
+  "command": "/usr/bin/cc -Dnimcp_core_EXPORTS -I/home/bbrelin/src/repos/nimcp/src/include -I/home/bbrelin/src/repos/nimcp/src/lib -isystem /usr/include/python3.10  -Wall -Wextra -Wpedantic -g -fPIC -std=gnu11 -o CMakeFiles/nimcp_core.dir/utils/nimcp_hash_table.c.o -c /home/bbrelin/src/repos/nimcp/src/lib/utils/nimcp_hash_table.c",
+  "file": "/home/bbrelin/src/repos/nimcp/src/lib/utils/nimcp_hash_table.c"
+},
+{
+  "directory": "/home/bbrelin/src/repos/nimcp/build/src/lib",
+  "command": "/usr/bin/cc -Dnimcp_core_EXPORTS -I/home/bbrelin/src/repos/nimcp/src/include -I/home/bbrelin/src/repos/nimcp/src/lib -isystem /usr/include/python3.10  -Wall -Wextra -Wpedantic -g -fPIC -std=gnu11 -o CMakeFiles/nimcp_core.dir/logging/nimcp_logging.c.o -c /home/bbrelin/src/repos/nimcp/src/lib/logging/nimcp_logging.c",
+  "file": "/home/bbrelin/src/repos/nimcp/src/lib/logging/nimcp_logging.c"
+},
+{
+  "directory": "/home/bbrelin/src/repos/nimcp/build/src/lib",
+  "command": "/usr/bin/cc -Dnimcp_core_EXPORTS -I/home/bbrelin/src/repos/nimcp/src/include -I/home/bbrelin/src/repos/nimcp/src/lib -isystem /usr/include/python3.10  -Wall -Wextra -Wpedantic -g -fPIC -std=gnu11 -o CMakeFiles/nimcp_core.dir/utils/nimcp_btree.c.o -c /home/bbrelin/src/repos/nimcp/src/lib/utils/nimcp_btree.c",
+  "file": "/home/bbrelin/src/repos/nimcp/src/lib/utils/nimcp_btree.c"
+},
+{
+  "directory": "/home/bbrelin/src/repos/nimcp/build/src/lib",
+  "command": "/usr/bin/cc -Dnimcp_core_EXPORTS -I/home/bbrelin/src/repos/nimcp/src/include -I/home/bbrelin/src/repos/nimcp/src/lib -isystem /usr/include/python3.10  -Wall -Wextra -Wpedantic -g -fPIC -std=gnu11 -o CMakeFiles/nimcp_core.dir/utils/nimcp_queue.c.o -c /home/bbrelin/src/repos/nimcp/src/lib/utils/nimcp_queue.c",
+  "file": "/home/bbrelin/src/repos/nimcp/src/lib/utils/nimcp_queue.c"
+},
+{
+  "directory": "/home/bbrelin/src/repos/nimcp/build/src/lib",
+  "command": "/usr/bin/cc -Dnimcp_core_EXPORTS -I/home/bbrelin/src/repos/nimcp/src/include -I/home/bbrelin/src/repos/nimcp/src/lib -isystem /usr/include/python3.10  -Wall -Wextra -Wpedantic -g -fPIC -std=gnu11 -o CMakeFiles/nimcp_core.dir/utils/nimcp_graph.c.o -c /home/bbrelin/src/repos/nimcp/src/lib/utils/nimcp_graph.c",
+  "file": "/home/bbrelin/src/repos/nimcp/src/lib/utils/nimcp_graph.c"
+},
+{
+  "directory": "/home/bbrelin/src/repos/nimcp/build/src/lib",
+  "command": "/usr/bin/cc -Dnimcp_core_EXPORTS -I/home/bbrelin/src/repos/nimcp/src/include -I/home/bbrelin/src/repos/nimcp/src/lib -isystem /usr/include/python3.10  -Wall -Wextra -Wpedantic -g -fPIC -std=gnu11 -o CMakeFiles/nimcp_core.dir/utils/nimcp_serialization.c.o -c /home/bbrelin/src/repos/nimcp/src/lib/utils/nimcp_serialization.c",
+  "file": "/home/bbrelin/src/repos/nimcp/src/lib/utils/nimcp_serialization.c"
+},
+{
+  "directory": "/home/bbrelin/src/repos/nimcp/build/src/lib",
+  "command": "/usr/bin/cc -Dnimcp_core_EXPORTS -I/home/bbrelin/src/repos/nimcp/src/include -I/home/bbrelin/src/repos/nimcp/src/lib -isystem /usr/include/python3.10  -Wall -Wextra -Wpedantic -g -fPIC -std=gnu11 -o CMakeFiles/nimcp_core.dir/utils/nimcp_validate.c.o -c /home/bbrelin/src/repos/nimcp/src/lib/utils/nimcp_validate.c",
+  "file": "/home/bbrelin/src/repos/nimcp/src/lib/utils/nimcp_validate.c"
+},
+{
+  "directory": "/home/bbrelin/src/repos/nimcp/build/src/lib",
+  "command": "/usr/bin/cc -Dnimcp_core_EXPORTS -I/home/bbrelin/src/repos/nimcp/src/include -I/home/bbrelin/src/repos/nimcp/src/lib -isystem /usr/include/python3.10  -Wall -Wextra -Wpedantic -g -fPIC -std=gnu11 -o CMakeFiles/nimcp_core.dir/utils/nimcp_queue_manager.c.o -c /home/bbrelin/src/repos/nimcp/src/lib/utils/nimcp_queue_manager.c",
+  "file": "/home/bbrelin/src/repos/nimcp/src/lib/utils/nimcp_queue_manager.c"
+},
+{
+  "directory": "/home/bbrelin/src/repos/nimcp/build/src/lib",
+  "command": "/usr/bin/cc -Dnimcp_core_EXPORTS -I/home/bbrelin/src/repos/nimcp/src/include -I/home/bbrelin/src/repos/nimcp/src/lib -isystem /usr/include/python3.10  -Wall -Wextra -Wpedantic -g -fPIC -std=gnu11 -o CMakeFiles/nimcp_core.dir/utils/nimcp_json.c.o -c /home/bbrelin/src/repos/nimcp/src/lib/utils/nimcp_json.c",
+  "file": "/home/bbrelin/src/repos/nimcp/src/lib/utils/nimcp_json.c"
+},
+{
+  "directory": "/home/bbrelin/src/repos/nimcp/build/src/lib",
+  "command": "/usr/bin/cc -Dnimcp_core_EXPORTS -I/home/bbrelin/src/repos/nimcp/src/include -I/home/bbrelin/src/repos/nimcp/src/lib -isystem /usr/include/python3.10  -Wall -Wextra -Wpedantic -g -fPIC -std=gnu11 -o CMakeFiles/nimcp_core.dir/__/python/nimcp_module.c.o -c /home/bbrelin/src/repos/nimcp/src/python/nimcp_module.c",
+  "file": "/home/bbrelin/src/repos/nimcp/src/python/nimcp_module.c"
+},
+{
+  "directory": "/home/bbrelin/src/repos/nimcp/build/src/lib",
+  "command": "/usr/bin/cc -Dnimcp_core_EXPORTS -I/home/bbrelin/src/repos/nimcp/src/include -I/home/bbrelin/src/repos/nimcp/src/lib -isystem /usr/include/python3.10  -Wall -Wextra -Wpedantic -g -fPIC -std=gnu11 -o CMakeFiles/nimcp_core.dir/__/python/nimcp_types.c.o -c /home/bbrelin/src/repos/nimcp/src/python/nimcp_types.c",
+  "file": "/home/bbrelin/src/repos/nimcp/src/python/nimcp_types.c"
+},
+{
+  "directory": "/home/bbrelin/src/repos/nimcp/build/src/python",
+  "command": "/usr/bin/cc -Dnimcp_python_EXPORTS -I/home/bbrelin/src/repos/nimcp/src/include -I/home/bbrelin/src/repos/nimcp/src/lib -isystem /usr/include/python3.10  -Wall -Wextra -Wpedantic -g -fPIC -std=gnu11 -o CMakeFiles/nimcp_python.dir/nimcp_module.c.o -c /home/bbrelin/src/repos/nimcp/src/python/nimcp_module.c",
+  "file": "/home/bbrelin/src/repos/nimcp/src/python/nimcp_module.c"
+},
+{
+  "directory": "/home/bbrelin/src/repos/nimcp/build/src/tests",
+  "command": "/usr/bin/c++  -I/home/bbrelin/src/repos/nimcp/src/include -I/home/bbrelin/src/repos/nimcp/src/tests -I/home/bbrelin/src/repos/nimcp/src/lib -isystem /usr/include/python3.10  -Wall -Wextra -Wpedantic -g -fPIE --coverage -DGTEST_HAS_PTHREAD=1 -std=gnu++17 -o CMakeFiles/nimcp_tests.dir/test_module.cpp.o -c /home/bbrelin/src/repos/nimcp/src/tests/test_module.cpp",
+  "file": "/home/bbrelin/src/repos/nimcp/src/tests/test_module.cpp"
+},
+{
+  "directory": "/home/bbrelin/src/repos/nimcp/build/src/tests",
+  "command": "/usr/bin/c++  -I/home/bbrelin/src/repos/nimcp/src/include -I/home/bbrelin/src/repos/nimcp/src/tests -I/home/bbrelin/src/repos/nimcp/src/lib -isystem /usr/include/python3.10  -Wall -Wextra -Wpedantic -g -fPIE --coverage -DGTEST_HAS_PTHREAD=1 -std=gnu++17 -o CMakeFiles/nimcp_tests.dir/test_neuralnet_create.cpp.o -c /home/bbrelin/src/repos/nimcp/src/tests/test_neuralnet_create.cpp",
+  "file": "/home/bbrelin/src/repos/nimcp/src/tests/test_neuralnet_create.cpp"
+},
+{
+  "directory": "/home/bbrelin/src/repos/nimcp/build/src/tests",
+  "command": "/usr/bin/c++  -I/home/bbrelin/src/repos/nimcp/src/include -I/home/bbrelin/src/repos/nimcp/src/tests -I/home/bbrelin/src/repos/nimcp/src/lib -isystem /usr/include/python3.10  -Wall -Wextra -Wpedantic -g -fPIE --coverage -DGTEST_HAS_PTHREAD=1 -std=gnu++17 -o CMakeFiles/nimcp_tests.dir/test_neuralnet_learning.cpp.o -c /home/bbrelin/src/repos/nimcp/src/tests/test_neuralnet_learning.cpp",
+  "file": "/home/bbrelin/src/repos/nimcp/src/tests/test_neuralnet_learning.cpp"
+},
+{
+  "directory": "/home/bbrelin/src/repos/nimcp/build/src/tests",
+  "command": "/usr/bin/c++  -I/home/bbrelin/src/repos/nimcp/src/include -I/home/bbrelin/src/repos/nimcp/src/tests -I/home/bbrelin/src/repos/nimcp/src/lib -isystem /usr/include/python3.10  -Wall -Wextra -Wpedantic -g -fPIE --coverage -DGTEST_HAS_PTHREAD=1 -std=gnu++17 -o CMakeFiles/nimcp_tests.dir/test_adaptive.cpp.o -c /home/bbrelin/src/repos/nimcp/src/tests/test_adaptive.cpp",
+  "file": "/home/bbrelin/src/repos/nimcp/src/tests/test_adaptive.cpp"
+},
+{
+  "directory": "/home/bbrelin/src/repos/nimcp/build/src/tests",
+  "command": "/usr/bin/c++  -I/home/bbrelin/src/repos/nimcp/src/include -I/home/bbrelin/src/repos/nimcp/src/tests -I/home/bbrelin/src/repos/nimcp/src/lib -isystem /usr/include/python3.10  -Wall -Wextra -Wpedantic -g -fPIE --coverage -DGTEST_HAS_PTHREAD=1 -std=gnu++17 -o CMakeFiles/nimcp_tests.dir/test_events.cpp.o -c /home/bbrelin/src/repos/nimcp/src/tests/test_events.cpp",
+  "file": "/home/bbrelin/src/repos/nimcp/src/tests/test_events.cpp"
+},
+{
+  "directory": "/home/bbrelin/src/repos/nimcp/build/src/tests",
+  "command": "/usr/bin/c++  -I/home/bbrelin/src/repos/nimcp/src/include -I/home/bbrelin/src/repos/nimcp/src/tests -I/home/bbrelin/src/repos/nimcp/src/lib -isystem /usr/include/python3.10  -Wall -Wextra -Wpedantic -g -fPIE --coverage -DGTEST_HAS_PTHREAD=1 -std=gnu++17 -o CMakeFiles/nimcp_tests.dir/test_p2pnode.cpp.o -c /home/bbrelin/src/repos/nimcp/src/tests/test_p2pnode.cpp",
+  "file": "/home/bbrelin/src/repos/nimcp/src/tests/test_p2pnode.cpp"
+},
+{
+  "directory": "/home/bbrelin/src/repos/nimcp/build/src/tests",
+  "command": "/usr/bin/c++  -I/home/bbrelin/src/repos/nimcp/src/include -I/home/bbrelin/src/repos/nimcp/src/tests -I/home/bbrelin/src/repos/nimcp/src/lib -isystem /usr/include/python3.10  -Wall -Wextra -Wpedantic -g -fPIE --coverage -DGTEST_HAS_PTHREAD=1 -std=gnu++17 -o CMakeFiles/nimcp_tests.dir/test_protocol.cpp.o -c /home/bbrelin/src/repos/nimcp/src/tests/test_protocol.cpp",
+  "file": "/home/bbrelin/src/repos/nimcp/src/tests/test_protocol.cpp"
+},
+{
+  "directory": "/home/bbrelin/src/repos/nimcp/build/src/tests",
+  "command": "/usr/bin/c++  -I/home/bbrelin/src/repos/nimcp/src/include -I/home/bbrelin/src/repos/nimcp/src/tests -I/home/bbrelin/src/repos/nimcp/src/lib -isystem /usr/include/python3.10  -Wall -Wextra -Wpedantic -g -fPIE --coverage -DGTEST_HAS_PTHREAD=1 -std=gnu++17 -o CMakeFiles/nimcp_tests.dir/test_replication.cpp.o -c /home/bbrelin/src/repos/nimcp/src/tests/test_replication.cpp",
+  "file": "/home/bbrelin/src/repos/nimcp/src/tests/test_replication.cpp"
+},
+{
+  "directory": "/home/bbrelin/src/repos/nimcp/build/src/tests",
+  "command": "/usr/bin/c++  -I/home/bbrelin/src/repos/nimcp/src/include -I/home/bbrelin/src/repos/nimcp/src/tests -I/home/bbrelin/src/repos/nimcp/src/lib -isystem /usr/include/python3.10  -Wall -Wextra -Wpedantic -g -fPIE --coverage -DGTEST_HAS_PTHREAD=1 -std=gnu++17 -o CMakeFiles/nimcp_tests.dir/test_dataio.cpp.o -c /home/bbrelin/src/repos/nimcp/src/tests/test_dataio.cpp",
+  "file": "/home/bbrelin/src/repos/nimcp/src/tests/test_dataio.cpp"
+},
+{
+  "directory": "/home/bbrelin/src/repos/nimcp/build/src/tests",
+  "command": "/usr/bin/c++  -I/home/bbrelin/src/repos/nimcp/src/include -I/home/bbrelin/src/repos/nimcp/src/tests -I/home/bbrelin/src/repos/nimcp/src/lib -isystem /usr/include/python3.10  -Wall -Wextra -Wpedantic -g -fPIE --coverage -DGTEST_HAS_PTHREAD=1 -std=gnu++17 -o CMakeFiles/nimcp_tests.dir/test_stream.cpp.o -c /home/bbrelin/src/repos/nimcp/src/tests/test_stream.cpp",
+  "file": "/home/bbrelin/src/repos/nimcp/src/tests/test_stream.cpp"
+},
+{
+  "directory": "/home/bbrelin/src/repos/nimcp/build/src/tests",
+  "command": "/usr/bin/c++  -I/home/bbrelin/src/repos/nimcp/src/include -I/home/bbrelin/src/repos/nimcp/src/tests -I/home/bbrelin/src/repos/nimcp/src/lib -isystem /usr/include/python3.10  -Wall -Wextra -Wpedantic -g -fPIE --coverage -DGTEST_HAS_PTHREAD=1 -std=gnu++17 -o CMakeFiles/nimcp_tests.dir/test_salience.cpp.o -c /home/bbrelin/src/repos/nimcp/src/tests/test_salience.cpp",
+  "file": "/home/bbrelin/src/repos/nimcp/src/tests/test_salience.cpp"
+},
+{
+  "directory": "/home/bbrelin/src/repos/nimcp/build/src/tests",
+  "command": "/usr/bin/c++  -I/home/bbrelin/src/repos/nimcp/src/include -I/home/bbrelin/src/repos/nimcp/src/tests -I/home/bbrelin/src/repos/nimcp/src/lib -isystem /usr/include/python3.10  -Wall -Wextra -Wpedantic -g -fPIE --coverage -DGTEST_HAS_PTHREAD=1 -std=gnu++17 -o CMakeFiles/nimcp_tests.dir/test_introspection.cpp.o -c /home/bbrelin/src/repos/nimcp/src/tests/test_introspection.cpp",
+  "file": "/home/bbrelin/src/repos/nimcp/src/tests/test_introspection.cpp"
+},
+{
+  "directory": "/home/bbrelin/src/repos/nimcp/build/src/tests",
+  "command": "/usr/bin/c++  -I/home/bbrelin/src/repos/nimcp/src/include -I/home/bbrelin/src/repos/nimcp/src/tests -I/home/bbrelin/src/repos/nimcp/src/lib -isystem /usr/include/python3.10  -Wall -Wextra -Wpedantic -g -fPIE --coverage -DGTEST_HAS_PTHREAD=1 -std=gnu++17 -o CMakeFiles/nimcp_tests.dir/test_consolidation.cpp.o -c /home/bbrelin/src/repos/nimcp/src/tests/test_consolidation.cpp",
+  "file": "/home/bbrelin/src/repos/nimcp/src/tests/test_consolidation.cpp"
+},
+{
+  "directory": "/home/bbrelin/src/repos/nimcp/build/src/tests",
+  "command": "/usr/bin/c++  -I/home/bbrelin/src/repos/nimcp/src/include -I/home/bbrelin/src/repos/nimcp/src/tests -I/home/bbrelin/src/repos/nimcp/src/lib -isystem /usr/include/python3.10  -Wall -Wextra -Wpedantic -g -fPIE --coverage -DGTEST_HAS_PTHREAD=1 -std=gnu++17 -o CMakeFiles/nimcp_tests.dir/test_thread_utils.cpp.o -c /home/bbrelin/src/repos/nimcp/src/tests/test_thread_utils.cpp",
+  "file": "/home/bbrelin/src/repos/nimcp/src/tests/test_thread_utils.cpp"
+},
+{
+  "directory": "/home/bbrelin/src/repos/nimcp/build/src/tests",
+  "command": "/usr/bin/c++  -I/home/bbrelin/src/repos/nimcp/src/include -I/home/bbrelin/src/repos/nimcp/src/tests -I/home/bbrelin/src/repos/nimcp/src/lib -isystem /usr/include/python3.10  -Wall -Wextra -Wpedantic -g -fPIE --coverage -DGTEST_HAS_PTHREAD=1 -std=gnu++17 -o CMakeFiles/nimcp_tests.dir/test_queue_utils.cpp.o -c /home/bbrelin/src/repos/nimcp/src/tests/test_queue_utils.cpp",
+  "file": "/home/bbrelin/src/repos/nimcp/src/tests/test_queue_utils.cpp"
+},
+{
+  "directory": "/home/bbrelin/src/repos/nimcp/build/src/tests",
+  "command": "/usr/bin/c++  -I/home/bbrelin/src/repos/nimcp/src/include -I/home/bbrelin/src/repos/nimcp/src/tests -I/home/bbrelin/src/repos/nimcp/src/lib -isystem /usr/include/python3.10  -Wall -Wextra -Wpedantic -g -fPIE --coverage -DGTEST_HAS_PTHREAD=1 -std=gnu++17 -o CMakeFiles/nimcp_tests.dir/test_queue_manager.cpp.o -c /home/bbrelin/src/repos/nimcp/src/tests/test_queue_manager.cpp",
+  "file": "/home/bbrelin/src/repos/nimcp/src/tests/test_queue_manager.cpp"
+},
+{
+  "directory": "/home/bbrelin/src/repos/nimcp/build/src/tests",
+  "command": "/usr/bin/c++  -I/home/bbrelin/src/repos/nimcp/src/include -I/home/bbrelin/src/repos/nimcp/src/tests -I/home/bbrelin/src/repos/nimcp/src/lib -isystem /usr/include/python3.10  -Wall -Wextra -Wpedantic -g -fPIE --coverage -DGTEST_HAS_PTHREAD=1 -std=gnu++17 -o CMakeFiles/nimcp_tests.dir/test_logging.cpp.o -c /home/bbrelin/src/repos/nimcp/src/tests/test_logging.cpp",
+  "file": "/home/bbrelin/src/repos/nimcp/src/tests/test_logging.cpp"
+},
+{
+  "directory": "/home/bbrelin/src/repos/nimcp/build/src/tests",
+  "command": "/usr/bin/c++  -I/home/bbrelin/src/repos/nimcp/src/include -I/home/bbrelin/src/repos/nimcp/src/tests -I/home/bbrelin/src/repos/nimcp/src/lib -isystem /usr/include/python3.10  -Wall -Wextra -Wpedantic -g -fPIE --coverage -DGTEST_HAS_PTHREAD=1 -std=gnu++17 -o CMakeFiles/nimcp_tests.dir/test_knowledge.cpp.o -c /home/bbrelin/src/repos/nimcp/src/tests/test_knowledge.cpp",
+  "file": "/home/bbrelin/src/repos/nimcp/src/tests/test_knowledge.cpp"
+},
+{
+  "directory": "/home/bbrelin/src/repos/nimcp/build/src/tests",
+  "command": "/usr/bin/c++  -I/home/bbrelin/src/repos/nimcp/src/include -I/home/bbrelin/src/repos/nimcp/src/tests -I/home/bbrelin/src/repos/nimcp/src/lib -isystem /usr/include/python3.10  -Wall -Wextra -Wpedantic -g -fPIE --coverage -DGTEST_HAS_PTHREAD=1 -std=gnu++17 -o CMakeFiles/nimcp_tests.dir/test_curiosity.cpp.o -c /home/bbrelin/src/repos/nimcp/src/tests/test_curiosity.cpp",
+  "file": "/home/bbrelin/src/repos/nimcp/src/tests/test_curiosity.cpp"
+},
+{
+  "directory": "/home/bbrelin/src/repos/nimcp/build/src/tests",
+  "command": "/usr/bin/c++  -I/home/bbrelin/src/repos/nimcp/src/include -I/home/bbrelin/src/repos/nimcp/src/tests -I/home/bbrelin/src/repos/nimcp/src/lib -isystem /usr/include/python3.10  -Wall -Wextra -Wpedantic -g -fPIE --coverage -DGTEST_HAS_PTHREAD=1 -std=gnu++17 -o CMakeFiles/nimcp_tests.dir/test_ethics.cpp.o -c /home/bbrelin/src/repos/nimcp/src/tests/test_ethics.cpp",
+  "file": "/home/bbrelin/src/repos/nimcp/src/tests/test_ethics.cpp"
+},
+{
+  "directory": "/home/bbrelin/src/repos/nimcp/build/src/tests",
+  "command": "/usr/bin/c++  -I/home/bbrelin/src/repos/nimcp/src/include -I/home/bbrelin/src/repos/nimcp/src/tests -I/home/bbrelin/src/repos/nimcp/src/lib -isystem /usr/include/python3.10  -Wall -Wextra -Wpedantic -g -fPIE --coverage -DGTEST_HAS_PTHREAD=1 -std=gnu++17 -o CMakeFiles/nimcp_tests.dir/test_time.cpp.o -c /home/bbrelin/src/repos/nimcp/src/tests/test_time.cpp",
+  "file": "/home/bbrelin/src/repos/nimcp/src/tests/test_time.cpp"
+},
+{
+  "directory": "/home/bbrelin/src/repos/nimcp/build/src/tests",
+  "command": "/usr/bin/c++  -I/home/bbrelin/src/repos/nimcp/src/include -I/home/bbrelin/src/repos/nimcp/src/tests -I/home/bbrelin/src/repos/nimcp/src/lib -isystem /usr/include/python3.10  -Wall -Wextra -Wpedantic -g -fPIE --coverage -DGTEST_HAS_PTHREAD=1 -std=gnu++17 -o CMakeFiles/nimcp_tests.dir/test_serialization.cpp.o -c /home/bbrelin/src/repos/nimcp/src/tests/test_serialization.cpp",
+  "file": "/home/bbrelin/src/repos/nimcp/src/tests/test_serialization.cpp"
+},
+{
+  "directory": "/home/bbrelin/src/repos/nimcp/build/src/tests",
+  "command": "/usr/bin/c++  -I/home/bbrelin/src/repos/nimcp/src/include -I/home/bbrelin/src/repos/nimcp/src/tests -I/home/bbrelin/src/repos/nimcp/src/lib -isystem /usr/include/python3.10  -Wall -Wextra -Wpedantic -g -fPIE --coverage -DGTEST_HAS_PTHREAD=1 -std=gnu++17 -o CMakeFiles/nimcp_tests.dir/test_json.cpp.o -c /home/bbrelin/src/repos/nimcp/src/tests/test_json.cpp",
+  "file": "/home/bbrelin/src/repos/nimcp/src/tests/test_json.cpp"
+},
+{
+  "directory": "/home/bbrelin/src/repos/nimcp/build/src/tests",
+  "command": "/usr/bin/c++  -I/home/bbrelin/src/repos/nimcp/src/include -I/home/bbrelin/src/repos/nimcp/src/tests -I/home/bbrelin/src/repos/nimcp/src/lib -isystem /usr/include/python3.10  -Wall -Wextra -Wpedantic -g -fPIE --coverage -DGTEST_HAS_PTHREAD=1 -std=gnu++17 -o CMakeFiles/nimcp_tests.dir/test_memory.cpp.o -c /home/bbrelin/src/repos/nimcp/src/tests/test_memory.cpp",
+  "file": "/home/bbrelin/src/repos/nimcp/src/tests/test_memory.cpp"
+},
+{
+  "directory": "/home/bbrelin/src/repos/nimcp/build/src/tests",
+  "command": "/usr/bin/c++  -I/home/bbrelin/src/repos/nimcp/src/include -I/home/bbrelin/src/repos/nimcp/src/tests -I/home/bbrelin/src/repos/nimcp/src/lib -isystem /usr/include/python3.10  -Wall -Wextra -Wpedantic -g -fPIE --coverage -DGTEST_HAS_PTHREAD=1 -std=gnu++17 -o CMakeFiles/nimcp_tests.dir/test_vector.cpp.o -c /home/bbrelin/src/repos/nimcp/src/tests/test_vector.cpp",
+  "file": "/home/bbrelin/src/repos/nimcp/src/tests/test_vector.cpp"
+},
+{
+  "directory": "/home/bbrelin/src/repos/nimcp/build/src/tests",
+  "command": "/usr/bin/c++  -I/home/bbrelin/src/repos/nimcp/src/include -I/home/bbrelin/src/repos/nimcp/src/tests -I/home/bbrelin/src/repos/nimcp/src/lib -isystem /usr/include/python3.10  -Wall -Wextra -Wpedantic -g -fPIE --coverage -DGTEST_HAS_PTHREAD=1 -std=gnu++17 -o CMakeFiles/nimcp_tests.dir/test_hash_table.cpp.o -c /home/bbrelin/src/repos/nimcp/src/tests/test_hash_table.cpp",
+  "file": "/home/bbrelin/src/repos/nimcp/src/tests/test_hash_table.cpp"
+},
+{
+  "directory": "/home/bbrelin/src/repos/nimcp/build/src/tests",
+  "command": "/usr/bin/c++  -I/home/bbrelin/src/repos/nimcp/src/include -I/home/bbrelin/src/repos/nimcp/src/tests -I/home/bbrelin/src/repos/nimcp/src/lib -isystem /usr/include/python3.10  -Wall -Wextra -Wpedantic -g -fPIE --coverage -DGTEST_HAS_PTHREAD=1 -std=gnu++17 -o CMakeFiles/nimcp_tests.dir/test_btree.cpp.o -c /home/bbrelin/src/repos/nimcp/src/tests/test_btree.cpp",
+  "file": "/home/bbrelin/src/repos/nimcp/src/tests/test_btree.cpp"
+},
+{
+  "directory": "/home/bbrelin/src/repos/nimcp/build/src/tests",
+  "command": "/usr/bin/c++  -I/home/bbrelin/src/repos/nimcp/src/include -I/home/bbrelin/src/repos/nimcp/src/tests -I/home/bbrelin/src/repos/nimcp/src/lib -isystem /usr/include/python3.10  -Wall -Wextra -Wpedantic -g -fPIE --coverage -DGTEST_HAS_PTHREAD=1 -std=gnu++17 -o CMakeFiles/nimcp_tests.dir/test_validate.cpp.o -c /home/bbrelin/src/repos/nimcp/src/tests/test_validate.cpp",
+  "file": "/home/bbrelin/src/repos/nimcp/src/tests/test_validate.cpp"
+},
+{
+  "directory": "/home/bbrelin/src/repos/nimcp/build/src/tests",
+  "command": "/usr/bin/c++  -I/home/bbrelin/src/repos/nimcp/src/include -I/home/bbrelin/src/repos/nimcp/src/tests -I/home/bbrelin/src/repos/nimcp/src/lib -isystem /usr/include/python3.10  -Wall -Wextra -Wpedantic -g -fPIE --coverage -DGTEST_HAS_PTHREAD=1 -std=gnu++17 -o CMakeFiles/nimcp_tests.dir/test_graph.cpp.o -c /home/bbrelin/src/repos/nimcp/src/tests/test_graph.cpp",
+  "file": "/home/bbrelin/src/repos/nimcp/src/tests/test_graph.cpp"
+},
+{
+  "directory": "/home/bbrelin/src/repos/nimcp/build/src/tests",
+  "command": "/usr/bin/c++  -I/home/bbrelin/src/repos/nimcp/src/include -I/home/bbrelin/src/repos/nimcp/src/tests -I/home/bbrelin/src/repos/nimcp/src/lib -isystem /usr/include/python3.10  -Wall -Wextra -Wpedantic -g -fPIE --coverage -DGTEST_HAS_PTHREAD=1 -std=gnu++17 -o CMakeFiles/nimcp_tests.dir/test_integration_networking.cpp.o -c /home/bbrelin/src/repos/nimcp/src/tests/test_integration_networking.cpp",
+  "file": "/home/bbrelin/src/repos/nimcp/src/tests/test_integration_networking.cpp"
+},
+{
+  "directory": "/home/bbrelin/src/repos/nimcp/build/src/tests",
+  "command": "/usr/bin/c++  -I/home/bbrelin/src/repos/nimcp/src/include -I/home/bbrelin/src/repos/nimcp/src/tests -I/home/bbrelin/src/repos/nimcp/src/lib -isystem /usr/include/python3.10  -Wall -Wextra -Wpedantic -g -fPIE --coverage -DGTEST_HAS_PTHREAD=1 -std=gnu++17 -o CMakeFiles/nimcp_tests.dir/test_integration_e2e.cpp.o -c /home/bbrelin/src/repos/nimcp/src/tests/test_integration_e2e.cpp",
+  "file": "/home/bbrelin/src/repos/nimcp/src/tests/test_integration_e2e.cpp"
+},
+{
+  "directory": "/home/bbrelin/src/repos/nimcp/build/src/tests",
+  "command": "/usr/bin/cc  -I/home/bbrelin/src/repos/nimcp/src/include -I/home/bbrelin/src/repos/nimcp/src/tests -I/home/bbrelin/src/repos/nimcp/src/lib -isystem /usr/include/python3.10  -Wall -Wextra -Wpedantic -g -fPIE --coverage -DGTEST_HAS_PTHREAD=1 -std=gnu11 -o CMakeFiles/nimcp_tests.dir/__/python/nimcp_module.c.o -c /home/bbrelin/src/repos/nimcp/src/python/nimcp_module.c",
+  "file": "/home/bbrelin/src/repos/nimcp/src/python/nimcp_module.c"
+},
+{
+  "directory": "/home/bbrelin/src/repos/nimcp/build/examples",
+  "command": "/usr/bin/cc  -I/home/bbrelin/src/repos/nimcp/src/include -isystem /usr/include/python3.10  -Wall -Wextra -Wpedantic -g -std=gnu11 -o CMakeFiles/event_demo.dir/event_demo.c.o -c /home/bbrelin/src/repos/nimcp/examples/event_demo.c",
+  "file": "/home/bbrelin/src/repos/nimcp/examples/event_demo.c"
+},
+{
+  "directory": "/home/bbrelin/src/repos/nimcp/build/examples",
+  "command": "/usr/bin/cc  -I/home/bbrelin/src/repos/nimcp/src/include -isystem /usr/include/python3.10  -Wall -Wextra -Wpedantic -g -std=gnu11 -o CMakeFiles/brain_demo.dir/brain_demo.c.o -c /home/bbrelin/src/repos/nimcp/examples/brain_demo.c",
+  "file": "/home/bbrelin/src/repos/nimcp/examples/brain_demo.c"
+},
+{
+  "directory": "/home/bbrelin/src/repos/nimcp/build/examples",
+  "command": "/usr/bin/cc  -I/home/bbrelin/src/repos/nimcp/src/include -isystem /usr/include/python3.10  -Wall -Wextra -Wpedantic -g -std=gnu11 -o CMakeFiles/ethics_demo.dir/ethics_demo.c.o -c /home/bbrelin/src/repos/nimcp/examples/ethics_demo.c",
+  "file": "/home/bbrelin/src/repos/nimcp/examples/ethics_demo.c"
+},
+{
+  "directory": "/home/bbrelin/src/repos/nimcp/build/examples",
+  "command": "/usr/bin/cc  -I/home/bbrelin/src/repos/nimcp/src/include -isystem /usr/include/python3.10  -Wall -Wextra -Wpedantic -g -std=gnu11 -o CMakeFiles/infant_demo.dir/infant_learning_demo.c.o -c /home/bbrelin/src/repos/nimcp/examples/infant_learning_demo.c",
+  "file": "/home/bbrelin/src/repos/nimcp/examples/infant_learning_demo.c"
+},
+{
+  "directory": "/home/bbrelin/src/repos/nimcp/build/examples",
+  "command": "/usr/bin/cc  -I/home/bbrelin/src/repos/nimcp/src/include -isystem /usr/include/python3.10  -Wall -Wextra -Wpedantic -g -std=gnu11 -o CMakeFiles/integrated_demo.dir/integrated_learning_demo.c.o -c /home/bbrelin/src/repos/nimcp/examples/integrated_learning_demo.c",
+  "file": "/home/bbrelin/src/repos/nimcp/examples/integrated_learning_demo.c"
+}
+]

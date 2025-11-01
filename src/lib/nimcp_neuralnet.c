@@ -419,6 +419,19 @@ neural_network_t neural_network_create(const network_config_t* config) {
     memset(network, 0, sizeof(struct neural_network_struct));
     memcpy(&network->config, config, sizeof(network_config_t));
 
+    // Deep copy layer_sizes array if present (NIMCP 2.5 layered networks)
+    if (config->num_layers > 0 && config->layer_sizes) {
+        uint32_t* layer_sizes_copy = (uint32_t*)malloc(config->num_layers * sizeof(uint32_t));
+        if (!layer_sizes_copy) {
+            free(network);
+            return NULL;
+        }
+        memcpy(layer_sizes_copy, config->layer_sizes, config->num_layers * sizeof(uint32_t));
+        network->config.layer_sizes = layer_sizes_copy;
+    } else {
+        network->config.layer_sizes = NULL;
+    }
+
     network->network_time = 0;
     network->current_time = 0;
     network->global_activity = 0.0f;
@@ -447,6 +460,28 @@ neural_network_t neural_network_create(const network_config_t* config) {
     }
 
     network->num_neurons = config->num_neurons;
+
+    // For layered networks (NIMCP 2.5), create connections between layers
+    if (config->num_layers > 1 && config->layer_sizes) {
+        uint32_t offset = 0;
+        for (uint32_t layer = 0; layer < config->num_layers - 1; layer++) {
+            uint32_t curr_layer_size = config->layer_sizes[layer];
+            uint32_t next_layer_size = config->layer_sizes[layer + 1];
+            uint32_t next_layer_offset = offset + curr_layer_size;
+
+            // Connect each neuron in current layer to each neuron in next layer
+            for (uint32_t i = 0; i < curr_layer_size && offset + i < network->num_neurons; i++) {
+                for (uint32_t j = 0; j < next_layer_size && next_layer_offset + j < network->num_neurons; j++) {
+                    // Random initial weight between -0.5 and 0.5
+                    float weight = ((float)rand() / RAND_MAX) - 0.5f;
+                    neural_network_add_connection(network, offset + i, next_layer_offset + j, weight);
+                }
+            }
+
+            offset = next_layer_offset;
+        }
+    }
+
     return network;
 }
 
@@ -461,6 +496,11 @@ neural_network_t neural_network_create(const network_config_t* config) {
 void neural_network_destroy(neural_network_t network) {
     // Guard clause: Handle NULL input
     if (!network) return;
+
+    // Free layer_sizes array if allocated (NIMCP 2.5 layered networks)
+    if (network->config.layer_sizes) {
+        free((void*)network->config.layer_sizes);
+    }
 
     // In future: Free any dynamically allocated synapses, etc.
     free(network);

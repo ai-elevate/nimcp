@@ -475,10 +475,38 @@ src/tests/CMakeFiles/nimcp_tests.dir/test_graph.cpp.s: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Compiling CXX source to assembly CMakeFiles/nimcp_tests.dir/test_graph.cpp.s"
 	cd /home/bbrelin/src/repos/nimcp/build/src/tests && /usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/bbrelin/src/repos/nimcp/src/tests/test_graph.cpp -o CMakeFiles/nimcp_tests.dir/test_graph.cpp.s
 
+src/tests/CMakeFiles/nimcp_tests.dir/test_integration_networking.cpp.o: src/tests/CMakeFiles/nimcp_tests.dir/flags.make
+src/tests/CMakeFiles/nimcp_tests.dir/test_integration_networking.cpp.o: ../src/tests/test_integration_networking.cpp
+src/tests/CMakeFiles/nimcp_tests.dir/test_integration_networking.cpp.o: src/tests/CMakeFiles/nimcp_tests.dir/compiler_depend.ts
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/bbrelin/src/repos/nimcp/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_30) "Building CXX object src/tests/CMakeFiles/nimcp_tests.dir/test_integration_networking.cpp.o"
+	cd /home/bbrelin/src/repos/nimcp/build/src/tests && /usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT src/tests/CMakeFiles/nimcp_tests.dir/test_integration_networking.cpp.o -MF CMakeFiles/nimcp_tests.dir/test_integration_networking.cpp.o.d -o CMakeFiles/nimcp_tests.dir/test_integration_networking.cpp.o -c /home/bbrelin/src/repos/nimcp/src/tests/test_integration_networking.cpp
+
+src/tests/CMakeFiles/nimcp_tests.dir/test_integration_networking.cpp.i: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Preprocessing CXX source to CMakeFiles/nimcp_tests.dir/test_integration_networking.cpp.i"
+	cd /home/bbrelin/src/repos/nimcp/build/src/tests && /usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /home/bbrelin/src/repos/nimcp/src/tests/test_integration_networking.cpp > CMakeFiles/nimcp_tests.dir/test_integration_networking.cpp.i
+
+src/tests/CMakeFiles/nimcp_tests.dir/test_integration_networking.cpp.s: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Compiling CXX source to assembly CMakeFiles/nimcp_tests.dir/test_integration_networking.cpp.s"
+	cd /home/bbrelin/src/repos/nimcp/build/src/tests && /usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/bbrelin/src/repos/nimcp/src/tests/test_integration_networking.cpp -o CMakeFiles/nimcp_tests.dir/test_integration_networking.cpp.s
+
+src/tests/CMakeFiles/nimcp_tests.dir/test_integration_e2e.cpp.o: src/tests/CMakeFiles/nimcp_tests.dir/flags.make
+src/tests/CMakeFiles/nimcp_tests.dir/test_integration_e2e.cpp.o: ../src/tests/test_integration_e2e.cpp
+src/tests/CMakeFiles/nimcp_tests.dir/test_integration_e2e.cpp.o: src/tests/CMakeFiles/nimcp_tests.dir/compiler_depend.ts
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/bbrelin/src/repos/nimcp/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_31) "Building CXX object src/tests/CMakeFiles/nimcp_tests.dir/test_integration_e2e.cpp.o"
+	cd /home/bbrelin/src/repos/nimcp/build/src/tests && /usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT src/tests/CMakeFiles/nimcp_tests.dir/test_integration_e2e.cpp.o -MF CMakeFiles/nimcp_tests.dir/test_integration_e2e.cpp.o.d -o CMakeFiles/nimcp_tests.dir/test_integration_e2e.cpp.o -c /home/bbrelin/src/repos/nimcp/src/tests/test_integration_e2e.cpp
+
+src/tests/CMakeFiles/nimcp_tests.dir/test_integration_e2e.cpp.i: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Preprocessing CXX source to CMakeFiles/nimcp_tests.dir/test_integration_e2e.cpp.i"
+	cd /home/bbrelin/src/repos/nimcp/build/src/tests && /usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /home/bbrelin/src/repos/nimcp/src/tests/test_integration_e2e.cpp > CMakeFiles/nimcp_tests.dir/test_integration_e2e.cpp.i
+
+src/tests/CMakeFiles/nimcp_tests.dir/test_integration_e2e.cpp.s: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Compiling CXX source to assembly CMakeFiles/nimcp_tests.dir/test_integration_e2e.cpp.s"
+	cd /home/bbrelin/src/repos/nimcp/build/src/tests && /usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/bbrelin/src/repos/nimcp/src/tests/test_integration_e2e.cpp -o CMakeFiles/nimcp_tests.dir/test_integration_e2e.cpp.s
+
 src/tests/CMakeFiles/nimcp_tests.dir/__/python/nimcp_module.c.o: src/tests/CMakeFiles/nimcp_tests.dir/flags.make
 src/tests/CMakeFiles/nimcp_tests.dir/__/python/nimcp_module.c.o: ../src/python/nimcp_module.c
 src/tests/CMakeFiles/nimcp_tests.dir/__/python/nimcp_module.c.o: src/tests/CMakeFiles/nimcp_tests.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/bbrelin/src/repos/nimcp/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_30) "Building C object src/tests/CMakeFiles/nimcp_tests.dir/__/python/nimcp_module.c.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/bbrelin/src/repos/nimcp/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_32) "Building C object src/tests/CMakeFiles/nimcp_tests.dir/__/python/nimcp_module.c.o"
 	cd /home/bbrelin/src/repos/nimcp/build/src/tests && /usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -MD -MT src/tests/CMakeFiles/nimcp_tests.dir/__/python/nimcp_module.c.o -MF CMakeFiles/nimcp_tests.dir/__/python/nimcp_module.c.o.d -o CMakeFiles/nimcp_tests.dir/__/python/nimcp_module.c.o -c /home/bbrelin/src/repos/nimcp/src/python/nimcp_module.c
 
 src/tests/CMakeFiles/nimcp_tests.dir/__/python/nimcp_module.c.i: cmake_force
@@ -520,6 +548,8 @@ nimcp_tests_OBJECTS = \
 "CMakeFiles/nimcp_tests.dir/test_btree.cpp.o" \
 "CMakeFiles/nimcp_tests.dir/test_validate.cpp.o" \
 "CMakeFiles/nimcp_tests.dir/test_graph.cpp.o" \
+"CMakeFiles/nimcp_tests.dir/test_integration_networking.cpp.o" \
+"CMakeFiles/nimcp_tests.dir/test_integration_e2e.cpp.o" \
 "CMakeFiles/nimcp_tests.dir/__/python/nimcp_module.c.o"
 
 # External object files for target nimcp_tests
@@ -554,6 +584,8 @@ src/tests/nimcp_tests: src/tests/CMakeFiles/nimcp_tests.dir/test_hash_table.cpp.
 src/tests/nimcp_tests: src/tests/CMakeFiles/nimcp_tests.dir/test_btree.cpp.o
 src/tests/nimcp_tests: src/tests/CMakeFiles/nimcp_tests.dir/test_validate.cpp.o
 src/tests/nimcp_tests: src/tests/CMakeFiles/nimcp_tests.dir/test_graph.cpp.o
+src/tests/nimcp_tests: src/tests/CMakeFiles/nimcp_tests.dir/test_integration_networking.cpp.o
+src/tests/nimcp_tests: src/tests/CMakeFiles/nimcp_tests.dir/test_integration_e2e.cpp.o
 src/tests/nimcp_tests: src/tests/CMakeFiles/nimcp_tests.dir/__/python/nimcp_module.c.o
 src/tests/nimcp_tests: src/tests/CMakeFiles/nimcp_tests.dir/build.make
 src/tests/nimcp_tests: src/lib/libnimcp_core.so.2.5.0
@@ -561,7 +593,7 @@ src/tests/nimcp_tests: /usr/lib/x86_64-linux-gnu/libpython3.10.so
 src/tests/nimcp_tests: /usr/lib/x86_64-linux-gnu/libgtest_main.a
 src/tests/nimcp_tests: /usr/lib/x86_64-linux-gnu/libgtest.a
 src/tests/nimcp_tests: src/tests/CMakeFiles/nimcp_tests.dir/link.txt
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --bold --progress-dir=/home/bbrelin/src/repos/nimcp/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_31) "Linking CXX executable nimcp_tests"
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --bold --progress-dir=/home/bbrelin/src/repos/nimcp/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_33) "Linking CXX executable nimcp_tests"
 	cd /home/bbrelin/src/repos/nimcp/build/src/tests && $(CMAKE_COMMAND) -E cmake_link_script CMakeFiles/nimcp_tests.dir/link.txt --verbose=$(VERBOSE)
 
 # Rule to build all files generated by this target.
