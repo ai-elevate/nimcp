@@ -158,16 +158,19 @@ uint32_t protocol_calculate_checksum(const msg_header_t* header, const void* pay
  * @brief Feature code domains (high 8 bits of 24-bit feature code)
  */
 typedef enum {
-    FEATURE_DOMAIN_SYSTEM = 0x00,   /**< System/Control */
-    FEATURE_DOMAIN_VISION = 0x10,   /**< Vision processing */
-    FEATURE_DOMAIN_AUDITORY = 0x20, /**< Auditory processing */
-    FEATURE_DOMAIN_LANGUAGE = 0x30, /**< Language processing */
-    FEATURE_DOMAIN_MOTOR = 0x40,    /**< Motor control */
-    FEATURE_DOMAIN_MEMORY = 0x50,   /**< Memory operations */
-    FEATURE_DOMAIN_EMOTION = 0x60,  /**< Emotional processing */
-    FEATURE_DOMAIN_ETHICS = 0x70,   /**< Ethical regulation */
-    FEATURE_DOMAIN_USER_MIN = 0x80, /**< User-defined domains start */
-    FEATURE_DOMAIN_USER_MAX = 0xFF  /**< User-defined domains end */
+    FEATURE_DOMAIN_SYSTEM = 0x00,      /**< System/Control */
+    FEATURE_DOMAIN_VISION = 0x10,      /**< Vision processing */
+    FEATURE_DOMAIN_AUDITORY = 0x20,    /**< Auditory processing */
+    FEATURE_DOMAIN_LANGUAGE = 0x30,    /**< Language processing */
+    FEATURE_DOMAIN_MOTOR = 0x40,       /**< Motor control */
+    FEATURE_DOMAIN_MEMORY = 0x50,      /**< Memory operations */
+    FEATURE_DOMAIN_EMOTION = 0x60,     /**< Emotional processing */
+    FEATURE_DOMAIN_ETHICS = 0x70,      /**< Ethical regulation */
+    FEATURE_DOMAIN_USER_MIN = 0x80,    /**< User-defined domains start */
+    FEATURE_DOMAIN_NEUROMOD = 0x90,    /**< Neuromodulator signaling (dopamine, serotonin, etc.) */
+    FEATURE_DOMAIN_GLIAL = 0xA0,       /**< Glial cell coordination (astrocytes, microglia) */
+    FEATURE_DOMAIN_BRAIN_REGION = 0xB0,/**< Brain region synchronization and state */
+    FEATURE_DOMAIN_USER_MAX = 0xFF     /**< User-defined domains end */
 } feature_domain_t;
 
 /**
@@ -302,6 +305,12 @@ typedef enum {
     CTRL_MSG_HEARTBEAT = 0x0D,
     CTRL_MSG_PARTITION_DETECTED = 0x0E,
     CTRL_MSG_RECOVERY_SYNC = 0x0F,
+    CTRL_MSG_NEUROMOD_LEVEL = 0x10,      /**< Set neuromodulator concentration level */
+    CTRL_MSG_NEUROMOD_DIFFUSION = 0x11,  /**< Propagate neuromodulator diffusion */
+    CTRL_MSG_GLIAL_PRUNING = 0x12,       /**< Coordinate synaptic pruning (microglia) */
+    CTRL_MSG_GLIAL_CALCIUM = 0x13,       /**< Astrocyte calcium wave propagation */
+    CTRL_MSG_REGION_SYNC = 0x14,         /**< Brain region state synchronization */
+    CTRL_MSG_REGION_ACTIVITY = 0x15,     /**< Brain region activity statistics */
     CTRL_MSG_MAX
 } control_msg_type_t;
 
@@ -329,6 +338,83 @@ typedef struct __attribute__((packed)) {
     uint16_t reserved2;        /**< Reserved */
     // Followed by TLV-encoded parameters
 } control_message_t;
+
+//=============================================================================
+// NIMCP 2.0: Neuromodulator and Glial Extensions
+//=============================================================================
+
+/**
+ * @brief Neuromodulator types for cross-node diffusion
+ */
+typedef enum {
+    NEUROMOD_DOPAMINE = 0x01,      /**< Dopamine (reward, motivation) */
+    NEUROMOD_SEROTONIN = 0x02,     /**< Serotonin (mood, well-being) */
+    NEUROMOD_ACETYLCHOLINE = 0x03, /**< Acetylcholine (attention, learning) */
+    NEUROMOD_NOREPINEPHRINE = 0x04,/**< Norepinephrine (arousal, alertness) */
+    NEUROMOD_GABA = 0x05,          /**< GABA (inhibition) */
+    NEUROMOD_GLUTAMATE = 0x06,     /**< Glutamate (excitation) */
+    NEUROMOD_MAX
+} neuromod_type_t;
+
+/**
+ * @brief Neuromodulator level message payload
+ *
+ * Used with CTRL_MSG_NEUROMOD_LEVEL to synchronize neuromodulator
+ * concentrations across distributed brain regions.
+ */
+typedef struct __attribute__((packed)) {
+    uint8_t neuromod_type;      /**< Neuromodulator type (neuromod_type_t) */
+    uint8_t reserved;           /**< Reserved for alignment */
+    uint16_t region_id;         /**< Brain region ID */
+    float concentration;        /**< Concentration level (0.0-1.0) */
+    uint64_t timestamp;         /**< Timestamp (microseconds) */
+} neuromod_level_payload_t;
+
+/**
+ * @brief Glial pruning coordination message payload
+ *
+ * Used with CTRL_MSG_GLIAL_PRUNING to coordinate synaptic pruning
+ * decisions across microglia in distributed nodes.
+ */
+typedef struct __attribute__((packed)) {
+    uint32_t source_neuron_id;  /**< Source neuron of synapse */
+    uint32_t target_neuron_id;  /**< Target neuron of synapse */
+    float activity_score;       /**< Activity score (0.0-1.0) */
+    uint8_t pruning_action;     /**< 0=monitor, 1=prune, 2=preserve */
+    uint8_t reserved[3];        /**< Reserved for alignment */
+    uint64_t timestamp;         /**< Timestamp (microseconds) */
+} glial_pruning_payload_t;
+
+/**
+ * @brief Astrocyte calcium wave message payload
+ *
+ * Used with CTRL_MSG_GLIAL_CALCIUM to propagate calcium waves
+ * through astrocyte networks across nodes.
+ */
+typedef struct __attribute__((packed)) {
+    uint32_t astrocyte_id;      /**< Source astrocyte ID */
+    float calcium_level;        /**< Calcium concentration (0.0-1.0) */
+    float wave_velocity;        /**< Propagation velocity (µm/s) */
+    uint16_t affected_synapses; /**< Number of modulated synapses */
+    uint16_t reserved;          /**< Reserved */
+    uint64_t timestamp;         /**< Timestamp (microseconds) */
+} glial_calcium_payload_t;
+
+/**
+ * @brief Brain region activity statistics payload
+ *
+ * Used with CTRL_MSG_REGION_ACTIVITY to share aggregate region
+ * statistics for multi-node brain coordination.
+ */
+typedef struct __attribute__((packed)) {
+    uint16_t region_type;       /**< Brain region type (brain_region_type_t) */
+    uint16_t reserved;          /**< Reserved */
+    float avg_activity;         /**< Average activity level (0.0-1.0) */
+    float spike_rate;           /**< Average spike rate (Hz) */
+    uint32_t active_neurons;    /**< Number of active neurons */
+    uint32_t total_neurons;     /**< Total neurons in region */
+    uint64_t timestamp;         /**< Timestamp (microseconds) */
+} region_activity_payload_t;
 
 //=============================================================================
 // NIMCP 2.0: Subscription and Filtering
