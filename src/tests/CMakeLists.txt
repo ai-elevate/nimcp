@@ -13,6 +13,7 @@ set(NIMCP_TEST_SOURCES
     test_salience.cpp           # Salience/attention tests
     test_introspection.cpp      # Introspection API tests
     test_consolidation.cpp      # Memory consolidation tests
+    test_attention.cpp          # Biology-based multihead attention tests (cortical columns + thalamic gating)
     test_thread_utils.cpp       # Thread utilities and pool tests
     test_queue_utils.cpp        # Queue and queue manager tests
     test_queue_manager.cpp      # Queue manager tests
@@ -29,14 +30,18 @@ set(NIMCP_TEST_SOURCES
     test_btree.cpp              # B-tree data structure tests
     test_validate.cpp           # Input validation utilities tests
     test_graph.cpp              # Graph data structure tests
-    # test_error_injection.cpp    # Error injection and failure path testing (disabled: API compatibility issues)
-    # test_stress.cpp             # Stress and load testing (Phase 3) (disabled: API compatibility issues)
-    # test_performance_optimizations.cpp  # TDD tests for algorithmic optimizations (disabled: tests are DISABLED_ prefix)
+    test_security.cpp           # Security framework tests (directives, encryption, validation)
+    test_neuromodulators.cpp    # Neuromodulator system tests (dopamine, serotonin, ACh, NE)
+    test_bcm.cpp                # BCM sliding threshold plasticity tests
+    test_error_injection.cpp    # Error injection and failure path testing
+    test_stress.cpp             # Stress and load testing
+    test_performance_optimizations.cpp  # TDD tests for algorithmic optimizations (bidirectional synapses, min-heap)
+
     test_integration_networking.cpp  # P2P networking integration tests
-    # test_integration_cognitive.cpp   # Multi-module cognitive integration tests (disabled: compilation issues)
-        test_integration_e2e.cpp    # End-to-end integration tests across modules
-    # test_lint.cpp               # Lint and code quality tests (disabled: compilation issues)
-    # test_memory_leaks.cpp       # Memory leak detection tests (disabled: compilation issues)
+    test_integration_cognitive.cpp   # Multi-module cognitive integration tests
+    test_integration_e2e.cpp    # End-to-end integration tests across modules
+    test_lint.cpp               # Lint and code quality tests
+    test_memory_leaks.cpp       # Memory leak detection tests
 )
 
 # Create test executable

@@ -15,6 +15,10 @@ set(NIMCP_CORE_SOURCES
     nimcp_salience.c                                 # Attention/salience evaluation
     nimcp_introspection.c                            # Brain state introspection
     nimcp_consolidation.c                            # Memory consolidation (sleep)
+    nimcp_attention.c                                # Biology-based multihead attention (cortical columns + thalamic gating)
+    nimcp_security.c                                 # Security framework (directives, encryption, validation)
+    nimcp_neuromodulators.c                          # Neuromodulator system (dopamine, serotonin, ACh, NE)
+    nimcp_bcm.c                                      # BCM (Bienenstock-Cooper-Munro) sliding threshold plasticity
     utils/nimcp_memory.c                             # Memory tracking and allocation
     utils/nimcp_thread.c                             # Thread utilities and wrappers
     utils/nimcp_thread_pool.c                        # Thread pool for batch processing
