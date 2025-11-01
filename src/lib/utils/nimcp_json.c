@@ -513,7 +513,7 @@ static json_t* resolve_json_path(json_t* root, const char* path, json_t** parent
         *parent = prev;
     if (last_key && last_token)
         *last_key = strdup(last_token);
-    free(path_copy);
+    nimcp_free(path_copy);
 
     return current;
 }
@@ -818,7 +818,7 @@ JsonResult nimcp_json_dump_file(JsonContext* ctx, const char* filename, size_t f
  * REFERENCE COUNTING:
  * - Increments refcount before returning (json_incref)
  * - Caller receives new reference (must decref when done)
- * - Prevents use-after-free (node remains valid until caller decrefs)
+ * - Prevents use-after-nimcp_free(node remains valid until caller decrefs)
  *
  * WHY INCREF:
  * - Node might be deleted from tree after we release lock
@@ -952,7 +952,7 @@ JsonResult nimcp_json_set_value(JsonContext* ctx, const char* path, json_t* valu
     if (!parent || !last_key) {
         // Parent doesn't exist or invalid path
         release_lock(ctx);
-        free(last_key);
+        nimcp_free(last_key);
         return JSON_ERROR_NOT_FOUND;
     }
 
@@ -966,19 +966,19 @@ JsonResult nimcp_json_set_value(JsonContext* ctx, const char* path, json_t* valu
         long index = strtol(last_key, &endptr, 10);
         if (*endptr != '\0' || index < 0) {
             // Invalid array index
-            free(last_key);
+            nimcp_free(last_key);
             release_lock(ctx);
             return JSON_ERROR_INVALID_PARAM;
         }
         json_array_set(parent, index, value);
     } else {
         // Parent is neither object nor array (type mismatch)
-        free(last_key);
+        nimcp_free(last_key);
         release_lock(ctx);
         return JSON_ERROR_TYPE;
     }
 
-    free(last_key);
+    nimcp_free(last_key);
     release_lock(ctx);
     return JSON_SUCCESS;
 }
@@ -1475,7 +1475,7 @@ JsonResult nimcp_json_set_null_value(JsonContext* ctx, const char* path)
     resolve_json_path(ctx->root, path, &parent, &last_key);
 
     if (!parent || !last_key) {
-        free(last_key);
+        nimcp_free(last_key);
         release_lock(ctx);
         return JSON_ERROR_NOT_FOUND;
     }
@@ -1491,20 +1491,20 @@ JsonResult nimcp_json_set_null_value(JsonContext* ctx, const char* path)
         long index = strtol(last_key, &endptr, 10);
         if (*endptr != '\0' || index < 0) {
             json_decref(null_value);
-            free(last_key);
+            nimcp_free(last_key);
             release_lock(ctx);
             return JSON_ERROR_INVALID_PARAM;
         }
         json_array_set(parent, index, null_value);
     } else {
         json_decref(null_value);
-        free(last_key);
+        nimcp_free(last_key);
         release_lock(ctx);
         return JSON_ERROR_TYPE;
     }
 
     json_decref(null_value);  // Release our reference (parent now owns)
-    free(last_key);
+    nimcp_free(last_key);
     release_lock(ctx);
     return JSON_SUCCESS;
 }

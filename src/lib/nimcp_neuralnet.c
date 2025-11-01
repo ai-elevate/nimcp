@@ -424,7 +424,7 @@ neural_network_t neural_network_create(const network_config_t* config)
         return NULL;
     }
     // Allocate network structure
-    neural_network_t network = (neural_network_t) malloc(sizeof(struct neural_network_struct));
+    neural_network_t network = (neural_network_t) nimcp_malloc(sizeof(struct neural_network_struct));
 
     // Guard clause: Check allocation
     if (!network)
@@ -436,9 +436,9 @@ neural_network_t neural_network_create(const network_config_t* config)
 
     // Deep copy layer_sizes array if present (NIMCP 2.5 layered networks)
     if (config->num_layers > 0 && config->layer_sizes) {
-        uint32_t* layer_sizes_copy = (uint32_t*) malloc(config->num_layers * sizeof(uint32_t));
+        uint32_t* layer_sizes_copy = (uint32_t*) nimcp_malloc(config->num_layers * sizeof(uint32_t));
         if (!layer_sizes_copy) {
-            free(network);
+            nimcp_free(network);
             return NULL;
         }
         memcpy(layer_sizes_copy, config->layer_sizes, config->num_layers * sizeof(uint32_t));
@@ -518,11 +518,11 @@ void neural_network_destroy(neural_network_t network)
 
     // Free layer_sizes array if allocated (NIMCP 2.5 layered networks)
     if (network->config.layer_sizes) {
-        free((void*) network->config.layer_sizes);
+        nimcp_free((void*) network->config.layer_sizes);
     }
 
     // In future: Free any dynamically allocated synapses, etc.
-    free(network);
+    nimcp_free(network);
 }
 
 //=============================================================================

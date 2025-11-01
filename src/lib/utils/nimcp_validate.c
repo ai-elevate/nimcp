@@ -1175,7 +1175,7 @@ bool nimcp_validate_state_fields(const void* state_data, size_t size)
 
     // Allocate usage map (1 byte per byte of state)
     // WHY calloc: Initialize to 0 (unused)
-    uint8_t* usage_map = calloc(size, sizeof(uint8_t));
+    uint8_t* usage_map = nimcp_calloc(size, sizeof(uint8_t));
     if (!usage_map) {
         NIMCP_LOGGING_ERROR("Failed to allocate usage map");
         return false;
@@ -1196,7 +1196,7 @@ bool nimcp_validate_state_fields(const void* state_data, size_t size)
         // FORMULA: offset + size must be <= total size
         if (field->offset + field->size > size) {
             NIMCP_LOGGING_ERROR("Field %u exceeds state boundaries", i);
-            free(usage_map);
+            nimcp_free(usage_map);
             return false;
         }
 
@@ -1207,7 +1207,7 @@ bool nimcp_validate_state_fields(const void* state_data, size_t size)
             if (usage_map[field->offset + j]) {
                 // Overlap detected: byte already used by header or another field
                 NIMCP_LOGGING_ERROR("Field %u overlaps with other data", i);
-                free(usage_map);
+                nimcp_free(usage_map);
                 return false;
             }
             // Mark byte as used
@@ -1243,20 +1243,20 @@ bool nimcp_validate_state_fields(const void* state_data, size_t size)
                 // Unknown field type
                 // WHY REJECT: Cannot validate unknown types
                 NIMCP_LOGGING_ERROR("Unknown field type %d for field %u", field->type, i);
-                free(usage_map);
+                nimcp_free(usage_map);
                 return false;
         }
 
         // Check validation result
         // WHY: Fail-fast on first invalid field
         if (!valid) {
-            free(usage_map);
+            nimcp_free(usage_map);
             return false;
         }
     }
 
     // Cleanup and success
-    free(usage_map);
+    nimcp_free(usage_map);
     return true;
 }
 

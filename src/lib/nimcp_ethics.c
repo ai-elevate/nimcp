@@ -578,7 +578,7 @@ static bool allocate_policy_storage(ethics_engine_t engine)
         return false;
 
     engine->policies_capacity = 100;
-    engine->policies = calloc(engine->policies_capacity, sizeof(ethics_policy_t));
+    engine->policies = nimcp_calloc(engine->policies_capacity, sizeof(ethics_policy_t));
 
     return engine->policies != NULL;
 }
@@ -597,7 +597,7 @@ static bool allocate_violation_storage(ethics_engine_t engine)
         return false;
 
     engine->violations_capacity = 1000;
-    engine->violations = calloc(engine->violations_capacity, sizeof(violation_record_t));
+    engine->violations = nimcp_calloc(engine->violations_capacity, sizeof(violation_record_t));
 
     return engine->violations != NULL;
 }
@@ -650,7 +650,7 @@ ethics_engine_t ethics_engine_create(const ethics_config_t* config)
     if (!config)
         return NULL;
 
-    ethics_engine_t engine = calloc(1, sizeof(struct ethics_engine_struct));
+    ethics_engine_t engine = nimcp_calloc(1, sizeof(struct ethics_engine_struct));
     // Guard clause: Check allocation
     if (!engine)
         return NULL;
@@ -664,7 +664,7 @@ ethics_engine_t ethics_engine_create(const ethics_config_t* config)
     engine->golden_rule_evaluator = create_golden_rule_network(config->action_feature_size);
     // Guard clause: Check network creation
     if (!engine->golden_rule_evaluator) {
-        free(engine);
+        nimcp_free(engine);
         return NULL;
     }
 
@@ -672,7 +672,7 @@ ethics_engine_t ethics_engine_create(const ethics_config_t* config)
     // Guard clause: Check empathy network
     if (!engine->empathy_net) {
         brain_destroy(engine->golden_rule_evaluator);
-        free(engine);
+        nimcp_free(engine);
         return NULL;
     }
 
@@ -680,7 +680,7 @@ ethics_engine_t ethics_engine_create(const ethics_config_t* config)
     if (!allocate_policy_storage(engine) || !allocate_violation_storage(engine)) {
         empathy_network_destroy(engine->empathy_net);
         brain_destroy(engine->golden_rule_evaluator);
-        free(engine);
+        nimcp_free(engine);
         return NULL;
     }
 
@@ -720,9 +720,9 @@ void ethics_engine_destroy(ethics_engine_t engine)
     }
 
     // Free storage arrays
-    free(engine->policies);
-    free(engine->violations);
-    free(engine);
+    nimcp_free(engine->policies);
+    nimcp_free(engine->violations);
+    nimcp_free(engine);
 }
 
 //=============================================================================
@@ -1040,7 +1040,7 @@ empathy_network_t empathy_network_create(const empathy_config_t* config)
     if (!config)
         return NULL;
 
-    empathy_network_t network = calloc(1, sizeof(struct empathy_network_struct));
+    empathy_network_t network = nimcp_calloc(1, sizeof(struct empathy_network_struct));
     // Guard clause: Check allocation
     if (!network)
         return NULL;
@@ -1055,21 +1055,21 @@ empathy_network_t empathy_network_create(const empathy_config_t* config)
 
     // Guard clause: Check network creation
     if (!network->perspective_network) {
-        free(network);
+        nimcp_free(network);
         return NULL;
     }
 
     network->num_agents = max_agents;
-    network->states = calloc(max_agents, sizeof(empathy_state_t));
+    network->states = nimcp_calloc(max_agents, sizeof(empathy_state_t));
     network->num_emotions = 10;
-    network->emotional_states = calloc(max_agents * network->num_emotions, sizeof(float));
+    network->emotional_states = nimcp_calloc(max_agents * network->num_emotions, sizeof(float));
 
     // Guard clause: Check allocations
     if (!network->states || !network->emotional_states) {
         brain_destroy(network->perspective_network);
-        free(network->states);
-        free(network->emotional_states);
-        free(network);
+        nimcp_free(network->states);
+        nimcp_free(network->emotional_states);
+        nimcp_free(network);
         return NULL;
     }
 
@@ -1088,9 +1088,9 @@ void empathy_network_destroy(empathy_network_t network)
         return;
 
     brain_destroy(network->perspective_network);
-    free(network->states);
-    free(network->emotional_states);
-    free(network);
+    nimcp_free(network->states);
+    nimcp_free(network->emotional_states);
+    nimcp_free(network);
 }
 
 /**
@@ -1184,7 +1184,7 @@ bool ethics_add_policy(ethics_engine_t engine, const ethics_policy_t* policy)
     if (engine->num_policies >= engine->policies_capacity) {
         engine->policies_capacity *= 2;
         ethics_policy_t* new_policies =
-            realloc(engine->policies, engine->policies_capacity * sizeof(ethics_policy_t));
+            nimcp_realloc(engine->policies, engine->policies_capacity * sizeof(ethics_policy_t));
 
         // Guard clause: Check reallocation
         if (!new_policies)
@@ -1511,7 +1511,7 @@ bool ethics_engine_add_policy(ethics_engine_t engine, const ethics_policy_t* pol
         uint32_t new_capacity = engine->policies_capacity > 0 ? engine->policies_capacity * 2 : 8;
 
         ethics_policy_t* new_policies =
-            (ethics_policy_t*) realloc(engine->policies, new_capacity * sizeof(ethics_policy_t));
+            (ethics_policy_t*) nimcp_realloc(engine->policies, new_capacity * sizeof(ethics_policy_t));
 
         if (!new_policies)
             return false;  // Allocation failed

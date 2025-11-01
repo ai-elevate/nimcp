@@ -44,6 +44,8 @@ typedef pthread_t nimcp_thread_t;
 typedef pthread_mutex_t nimcp_mutex_t;
 typedef pthread_cond_t nimcp_cond_t;
 typedef pthread_once_t nimcp_once_t;
+typedef pthread_mutex_t nimcp_spinlock_t;  // Using mutex for portability
+typedef pthread_rwlock_t nimcp_rwlock_t;   // Read-write lock
 
 // Thread error information
 typedef struct {
@@ -173,6 +175,59 @@ nimcp_result_t nimcp_mutex_trylock(nimcp_mutex_t* mutex);
  * @brief Unlock mutex
  */
 nimcp_result_t nimcp_mutex_unlock(nimcp_mutex_t* mutex);
+
+//=============================================================================
+// Spinlock Operations (implemented as mutexes for portability)
+//=============================================================================
+
+/**
+ * @brief Initialize spinlock
+ */
+nimcp_result_t nimcp_spinlock_init(nimcp_spinlock_t* lock);
+
+/**
+ * @brief Destroy spinlock
+ */
+nimcp_result_t nimcp_spinlock_destroy(nimcp_spinlock_t* lock);
+
+/**
+ * @brief Lock spinlock (blocking)
+ */
+nimcp_result_t nimcp_spinlock_lock(nimcp_spinlock_t* lock);
+
+/**
+ * @brief Unlock spinlock
+ */
+nimcp_result_t nimcp_spinlock_unlock(nimcp_spinlock_t* lock);
+
+//=============================================================================
+// Read-Write Lock Operations
+//=============================================================================
+
+/**
+ * @brief Initialize read-write lock
+ */
+nimcp_result_t nimcp_rwlock_init(nimcp_rwlock_t* lock);
+
+/**
+ * @brief Destroy read-write lock
+ */
+nimcp_result_t nimcp_rwlock_destroy(nimcp_rwlock_t* lock);
+
+/**
+ * @brief Acquire read lock (shared access)
+ */
+nimcp_result_t nimcp_rwlock_rdlock(nimcp_rwlock_t* lock);
+
+/**
+ * @brief Acquire write lock (exclusive access)
+ */
+nimcp_result_t nimcp_rwlock_wrlock(nimcp_rwlock_t* lock);
+
+/**
+ * @brief Unlock read-write lock
+ */
+nimcp_result_t nimcp_rwlock_unlock(nimcp_rwlock_t* lock);
 
 //=============================================================================
 // Condition Variables

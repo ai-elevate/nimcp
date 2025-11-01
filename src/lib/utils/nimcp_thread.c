@@ -1240,6 +1240,310 @@ nimcp_result_t nimcp_mutex_unlock(nimcp_mutex_t* mutex)
 }
 
 //=============================================================================
+// Spinlock Operations (implemented as mutexes for portability)
+//=============================================================================
+
+/**
+ * @brief Initialize spinlock (Adapter for pthread_mutex_init)
+ *
+ * WHY MUTEX NOT SPINLOCK:
+ * - pthread_spin_lock not universally available (optional POSIX feature)
+ * - Mutex provides better portability across platforms
+ * - For short critical sections, mutex performance is comparable
+ * - Futex-based mutexes (Linux) already spin briefly before blocking
+ *
+ * WHY SPINLOCK INTERFACE:
+ * - Semantic clarity: indicates intent for short critical sections
+ * - Future optimization: could use real spinlocks on platforms that support them
+ * - Matches expected API in glial cell modules
+ *
+ * COMPLEXITY: O(1)
+ * THREAD SAFETY: Fully safe (creates new independent lock)
+ *
+ * @param lock Spinlock to initialize
+ * @return NIMCP_SUCCESS or NIMCP_ERROR_INVALID_PARAM or NIMCP_ERROR_SYSTEM
+ */
+nimcp_result_t nimcp_spinlock_init(nimcp_spinlock_t* lock)
+{
+    if (!lock) {
+        set_thread_error(NIMCP_ERROR_INVALID_PARAM, "Invalid spinlock pointer");
+        return NIMCP_ERROR_INVALID_PARAM;
+    }
+
+    int result = pthread_mutex_init(lock, NULL);
+    if (result != 0) {
+        set_thread_error(NIMCP_ERROR_SYSTEM, "Spinlock initialization failed: %s", strerror(result));
+        return NIMCP_ERROR_SYSTEM;
+    }
+
+    return NIMCP_SUCCESS;
+}
+
+/**
+ * @brief Destroy spinlock (Adapter for pthread_mutex_destroy)
+ *
+ * WHY DESTROY:
+ * - Free kernel resources (futex on Linux)
+ * - Clean shutdown
+ * - Detect programming errors (destroying locked spinlock fails)
+ *
+ * PRECONDITIONS:
+ * - Spinlock must not be locked
+ * - No threads waiting on spinlock
+ *
+ * COMPLEXITY: O(1)
+ * THREAD SAFETY: Caller must ensure no concurrent use
+ *
+ * @param lock Spinlock to destroy
+ * @return NIMCP_SUCCESS or NIMCP_ERROR_INVALID_PARAM or NIMCP_ERROR_SYSTEM
+ */
+nimcp_result_t nimcp_spinlock_destroy(nimcp_spinlock_t* lock)
+{
+    if (!lock) {
+        return NIMCP_ERROR_INVALID_PARAM;
+    }
+
+    int result = pthread_mutex_destroy(lock);
+    if (result != 0) {
+        set_thread_error(NIMCP_ERROR_SYSTEM, "Spinlock destruction failed: %s", strerror(result));
+        return NIMCP_ERROR_SYSTEM;
+    }
+
+    return NIMCP_SUCCESS;
+}
+
+/**
+ * @brief Lock spinlock (Adapter for pthread_mutex_lock)
+ *
+ * WHY LOCK:
+ * - Protect critical section in glial cells (short duration)
+ * - Ensure mutual exclusion for activity score updates
+ * - Serialize access to monitored synapse arrays
+ *
+ * SEMANTICS:
+ * - Blocks if spinlock already locked
+ * - Acquires lock when available
+ * - Must be unlocked by same thread
+ *
+ * TYPICAL USAGE (microglia activity tracking):
+ *   nimcp_spinlock_lock(&microglia->lock);
+ *   microglia->synapse_activity_scores[idx] = new_score;
+ *   nimcp_spinlock_unlock(&microglia->lock);
+ *
+ * COMPLEXITY: O(1) uncontended
+ * THREAD SAFETY: Fully safe
+ *
+ * @param lock Spinlock to lock
+ * @return NIMCP_SUCCESS or NIMCP_ERROR_INVALID_PARAM or NIMCP_ERROR_SYSTEM
+ */
+nimcp_result_t nimcp_spinlock_lock(nimcp_spinlock_t* lock)
+{
+    if (!lock) {
+        return NIMCP_ERROR_INVALID_PARAM;
+    }
+
+    int result = pthread_mutex_lock(lock);
+    if (result != 0) {
+        set_thread_error(NIMCP_ERROR_SYSTEM, "Spinlock lock failed: %s", strerror(result));
+        return NIMCP_ERROR_SYSTEM;
+    }
+
+    return NIMCP_SUCCESS;
+}
+
+/**
+ * @brief Unlock spinlock (Adapter for pthread_mutex_unlock)
+ *
+ * WHY UNLOCK:
+ * - Release critical section
+ * - Allow other threads to acquire lock
+ * - Required pairing with lock
+ *
+ * SEMANTICS:
+ * - Must be called by thread that locked spinlock
+ * - Wakes one waiting thread (if any)
+ *
+ * COMPLEXITY: O(1)
+ * THREAD SAFETY: Fully safe (must be called by locking thread)
+ *
+ * @param lock Spinlock to unlock
+ * @return NIMCP_SUCCESS or NIMCP_ERROR_INVALID_PARAM or NIMCP_ERROR_SYSTEM
+ */
+nimcp_result_t nimcp_spinlock_unlock(nimcp_spinlock_t* lock)
+{
+    if (!lock) {
+        return NIMCP_ERROR_INVALID_PARAM;
+    }
+
+    int result = pthread_mutex_unlock(lock);
+    if (result != 0) {
+        set_thread_error(NIMCP_ERROR_SYSTEM, "Spinlock unlock failed: %s", strerror(result));
+        return NIMCP_ERROR_SYSTEM;
+    }
+
+    return NIMCP_SUCCESS;
+}
+
+//=============================================================================
+// Read-Write Lock Operations
+//=============================================================================
+
+/**
+ * @brief Initialize read-write lock (Adapter for pthread_rwlock_init)
+ *
+ * WHY READ-WRITE LOCKS:
+ * - Allow multiple concurrent readers (shared access)
+ * - Exclusive write access (only one writer, no readers)
+ * - Better performance for read-heavy workloads
+ * - Used in neuromodulator system for concurrent reads
+ *
+ * COMPLEXITY: O(1)
+ * THREAD SAFETY: Fully safe (creates new independent lock)
+ *
+ * @param lock Read-write lock to initialize
+ * @return NIMCP_SUCCESS or NIMCP_ERROR_INVALID_PARAM or NIMCP_ERROR_SYSTEM
+ */
+nimcp_result_t nimcp_rwlock_init(nimcp_rwlock_t* lock)
+{
+    if (!lock) {
+        set_thread_error(NIMCP_ERROR_INVALID_PARAM, "Invalid rwlock pointer");
+        return NIMCP_ERROR_INVALID_PARAM;
+    }
+
+    int result = pthread_rwlock_init(lock, NULL);
+    if (result != 0) {
+        set_thread_error(NIMCP_ERROR_SYSTEM, "RWlock initialization failed: %s", strerror(result));
+        return NIMCP_ERROR_SYSTEM;
+    }
+
+    return NIMCP_SUCCESS;
+}
+
+/**
+ * @brief Destroy read-write lock (Adapter for pthread_rwlock_destroy)
+ *
+ * PRECONDITIONS:
+ * - Lock must not be held by any thread
+ *
+ * COMPLEXITY: O(1)
+ * THREAD SAFETY: Caller must ensure no concurrent use
+ *
+ * @param lock Read-write lock to destroy
+ * @return NIMCP_SUCCESS or NIMCP_ERROR_INVALID_PARAM or NIMCP_ERROR_SYSTEM
+ */
+nimcp_result_t nimcp_rwlock_destroy(nimcp_rwlock_t* lock)
+{
+    if (!lock) {
+        return NIMCP_ERROR_INVALID_PARAM;
+    }
+
+    int result = pthread_rwlock_destroy(lock);
+    if (result != 0) {
+        set_thread_error(NIMCP_ERROR_SYSTEM, "RWlock destruction failed: %s", strerror(result));
+        return NIMCP_ERROR_SYSTEM;
+    }
+
+    return NIMCP_SUCCESS;
+}
+
+/**
+ * @brief Acquire read lock (Adapter for pthread_rwlock_rdlock)
+ *
+ * WHY READ LOCK:
+ * - Multiple readers can hold lock simultaneously
+ * - Blocks if writer holds lock
+ * - Allows concurrent read access to shared data
+ *
+ * TYPICAL USAGE (neuromodulator levels):
+ *   nimcp_rwlock_rdlock(&neuromod->lock);
+ *   float level = neuromod->concentration;
+ *   nimcp_rwlock_unlock(&neuromod->lock);
+ *
+ * COMPLEXITY: O(1) if no writers
+ * THREAD SAFETY: Fully safe
+ *
+ * @param lock Read-write lock
+ * @return NIMCP_SUCCESS or NIMCP_ERROR_INVALID_PARAM or NIMCP_ERROR_SYSTEM
+ */
+nimcp_result_t nimcp_rwlock_rdlock(nimcp_rwlock_t* lock)
+{
+    if (!lock) {
+        return NIMCP_ERROR_INVALID_PARAM;
+    }
+
+    int result = pthread_rwlock_rdlock(lock);
+    if (result != 0) {
+        set_thread_error(NIMCP_ERROR_SYSTEM, "RWlock rdlock failed: %s", strerror(result));
+        return NIMCP_ERROR_SYSTEM;
+    }
+
+    return NIMCP_SUCCESS;
+}
+
+/**
+ * @brief Acquire write lock (Adapter for pthread_rwlock_wrlock)
+ *
+ * WHY WRITE LOCK:
+ * - Exclusive access (no readers, no other writers)
+ * - Blocks until all readers and writers release lock
+ * - Required for modifying shared data
+ *
+ * TYPICAL USAGE (neuromodulator update):
+ *   nimcp_rwlock_wrlock(&neuromod->lock);
+ *   neuromod->concentration += delta;
+ *   nimcp_rwlock_unlock(&neuromod->lock);
+ *
+ * COMPLEXITY: O(1) once acquired (may wait for readers to finish)
+ * THREAD SAFETY: Fully safe
+ *
+ * @param lock Read-write lock
+ * @return NIMCP_SUCCESS or NIMCP_ERROR_INVALID_PARAM or NIMCP_ERROR_SYSTEM
+ */
+nimcp_result_t nimcp_rwlock_wrlock(nimcp_rwlock_t* lock)
+{
+    if (!lock) {
+        return NIMCP_ERROR_INVALID_PARAM;
+    }
+
+    int result = pthread_rwlock_wrlock(lock);
+    if (result != 0) {
+        set_thread_error(NIMCP_ERROR_SYSTEM, "RWlock wrlock failed: %s", strerror(result));
+        return NIMCP_ERROR_SYSTEM;
+    }
+
+    return NIMCP_SUCCESS;
+}
+
+/**
+ * @brief Unlock read-write lock (Adapter for pthread_rwlock_unlock)
+ *
+ * WHY UNLOCK:
+ * - Release read or write lock
+ * - Allow other threads to acquire lock
+ * - Works for both read and write locks
+ *
+ * COMPLEXITY: O(1)
+ * THREAD SAFETY: Must be called by thread that acquired lock
+ *
+ * @param lock Read-write lock to unlock
+ * @return NIMCP_SUCCESS or NIMCP_ERROR_INVALID_PARAM or NIMCP_ERROR_SYSTEM
+ */
+nimcp_result_t nimcp_rwlock_unlock(nimcp_rwlock_t* lock)
+{
+    if (!lock) {
+        return NIMCP_ERROR_INVALID_PARAM;
+    }
+
+    int result = pthread_rwlock_unlock(lock);
+    if (result != 0) {
+        set_thread_error(NIMCP_ERROR_SYSTEM, "RWlock unlock failed: %s", strerror(result));
+        return NIMCP_ERROR_SYSTEM;
+    }
+
+    return NIMCP_SUCCESS;
+}
+
+//=============================================================================
 // Condition Variables
 //=============================================================================
 
@@ -1711,7 +2015,7 @@ nimcp_result_t nimcp_get_resource_lock(const char* resource_id, nimcp_mutex_t** 
 
     // Allocate entry structure
     // WHY MALLOC: Dynamic number of locks (not known at compile time)
-    entry = malloc(sizeof(resource_entry_t));
+    entry = nimcp_malloc(sizeof(resource_entry_t));
     if (!entry) {
         pthread_mutex_unlock(&resource_table.buckets[bucket].bucket_mutex);
         set_thread_error(NIMCP_ERROR_MEMORY, "Failed to allocate resource entry");
@@ -1722,14 +2026,14 @@ nimcp_result_t nimcp_get_resource_lock(const char* resource_id, nimcp_mutex_t** 
     entry->resource_id = strdup(resource_id);
 
     // Allocate mutex structure
-    entry->lock = malloc(sizeof(nimcp_mutex_t));
+    entry->lock = nimcp_malloc(sizeof(nimcp_mutex_t));
 
     // Check allocations
     if (!entry->resource_id || !entry->lock) {
         // Cleanup partial allocation
-        free(entry->resource_id);
-        free(entry->lock);
-        free(entry);
+        nimcp_free(entry->resource_id);
+        nimcp_free(entry->lock);
+        nimcp_free(entry);
         pthread_mutex_unlock(&resource_table.buckets[bucket].bucket_mutex);
         set_thread_error(NIMCP_ERROR_MEMORY, "Failed to allocate resource lock");
         return NIMCP_ERROR_MEMORY;
@@ -1738,9 +2042,9 @@ nimcp_result_t nimcp_get_resource_lock(const char* resource_id, nimcp_mutex_t** 
     // Initialize mutex
     if (pthread_mutex_init(entry->lock, NULL) != 0) {
         // Cleanup on init failure
-        free(entry->resource_id);
-        free(entry->lock);
-        free(entry);
+        nimcp_free(entry->resource_id);
+        nimcp_free(entry->lock);
+        nimcp_free(entry);
         pthread_mutex_unlock(&resource_table.buckets[bucket].bucket_mutex);
         set_thread_error(NIMCP_ERROR_SYSTEM, "Failed to initialize resource mutex");
         return NIMCP_ERROR_SYSTEM;
@@ -1849,9 +2153,9 @@ nimcp_result_t nimcp_release_resource_lock(const char* resource_id)
                 pthread_mutex_destroy(entry->lock);
 
                 // Free allocated memory
-                free(entry->lock);
-                free(entry->resource_id);  // Free duplicated string
-                free(entry);               // Free entry structure
+                nimcp_free(entry->lock);
+                nimcp_free(entry->resource_id);  // Free duplicated string
+                nimcp_free(entry);               // Free entry structure
             }
 
             pthread_mutex_unlock(&resource_table.buckets[bucket].bucket_mutex);
@@ -1935,9 +2239,9 @@ void nimcp_thread_cleanup(void)
 
             // Destroy mutex and free memory
             pthread_mutex_destroy(entry->lock);
-            free(entry->lock);
-            free(entry->resource_id);
-            free(entry);
+            nimcp_free(entry->lock);
+            nimcp_free(entry->resource_id);
+            nimcp_free(entry);
 
             entry = next;
         }

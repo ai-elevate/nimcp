@@ -274,7 +274,7 @@ static float strategy_association_loss(const float* pred, const float* target, u
  */
 static task_strategy_t* strategy_create(brain_task_t task)
 {
-    task_strategy_t* strategy = calloc(1, sizeof(task_strategy_t));
+    task_strategy_t* strategy = nimcp_calloc(1, sizeof(task_strategy_t));
     if (!strategy)
         return NULL;
 
@@ -323,7 +323,7 @@ static task_strategy_t* strategy_create(brain_task_t task)
  */
 static void strategy_destroy(task_strategy_t* strategy)
 {
-    free(strategy);
+    nimcp_free(strategy);
 }
 
 //=============================================================================
@@ -504,7 +504,7 @@ static network_config_t build_base_network_config(uint32_t num_inputs, uint32_t 
     config.num_neurons = num_neurons;
     config.num_layers = 3;
 
-    config.layer_sizes = calloc(3, sizeof(uint32_t));
+    config.layer_sizes = nimcp_calloc(3, sizeof(uint32_t));
     config.layer_sizes[0] = num_inputs;
     config.layer_sizes[1] = num_neurons;
     config.layer_sizes[2] = num_outputs;
@@ -648,7 +648,7 @@ static void cache_decision(brain_t brain, const float* features, uint32_t num_fe
                            brain_decision_t* decision)
 {
     if (!brain->last_input) {
-        brain->last_input = malloc(num_features * sizeof(float));
+        brain->last_input = nimcp_malloc(num_features * sizeof(float));
         brain->input_size = num_features;
     }
 
@@ -667,7 +667,7 @@ static void cache_decision(brain_t brain, const float* features, uint32_t num_fe
  */
 static void clear_cache(brain_t brain)
 {
-    free(brain->last_input);
+    nimcp_free(brain->last_input);
     brain->last_input = NULL;
 
     if (brain->cached_decision) {
@@ -726,7 +726,7 @@ static bool validate_creation_params(const char* task_name, uint32_t num_inputs,
  */
 static brain_t allocate_brain(void)
 {
-    brain_t brain = calloc(1, sizeof(struct brain_struct));
+    brain_t brain = nimcp_calloc(1, sizeof(struct brain_struct));
     if (!brain) {
         set_error("Failed to allocate brain structure");
         return NULL;
@@ -761,7 +761,7 @@ static adaptive_network_t create_brain_network(uint32_t num_inputs, uint32_t num
 
     adaptive_network_t network = adaptive_network_create(&net_config);
 
-    free(net_config.base_config.layer_sizes);
+    nimcp_free(net_config.base_config.layer_sizes);
 
     return network;
 }
@@ -777,7 +777,7 @@ static adaptive_network_t create_brain_network(uint32_t num_inputs, uint32_t num
  */
 static bool init_output_labels(brain_t brain, uint32_t num_outputs)
 {
-    brain->output_labels = calloc(num_outputs, sizeof(char*));
+    brain->output_labels = nimcp_calloc(num_outputs, sizeof(char*));
     if (!brain->output_labels) {
         set_error("Failed to allocate output labels");
         return false;
@@ -821,7 +821,7 @@ brain_t brain_create(const char* task_name, brain_size_t size, brain_task_t task
     brain->strategy = strategy_create(task);
     if (!brain->strategy) {
         set_error("Failed to create task strategy");
-        free(brain);
+        nimcp_free(brain);
         return NULL;
     }
 
@@ -837,7 +837,7 @@ brain_t brain_create(const char* task_name, brain_size_t size, brain_task_t task
     if (!brain->network) {
         set_error("Failed to create adaptive network");
         strategy_destroy(brain->strategy);
-        free(brain);
+        nimcp_free(brain);
         return NULL;
     }
 
@@ -845,7 +845,7 @@ brain_t brain_create(const char* task_name, brain_size_t size, brain_task_t task
     if (!init_output_labels(brain, num_outputs)) {
         adaptive_network_destroy(brain->network);
         strategy_destroy(brain->strategy);
-        free(brain);
+        nimcp_free(brain);
         return NULL;
     }
 
@@ -942,13 +942,13 @@ void brain_destroy(brain_t brain)
 
     if (brain->output_labels) {
         for (uint32_t i = 0; i < brain->num_output_labels; i++) {
-            free(brain->output_labels[i]);
+            nimcp_free(brain->output_labels[i]);
         }
-        free(brain->output_labels);
+        nimcp_free(brain->output_labels);
     }
 
     clear_cache(brain);
-    free(brain);
+    nimcp_free(brain);
 }
 
 //=============================================================================
@@ -1041,7 +1041,7 @@ float brain_learn_example(brain_t brain, const float* features, uint32_t num_fea
     }
 
     // Convert label to target output
-    float* target = malloc(brain->config.num_outputs * sizeof(float));
+    float* target = nimcp_malloc(brain->config.num_outputs * sizeof(float));
     label_to_output(brain, label, target, confidence);
 
     // Create training example
@@ -1056,7 +1056,7 @@ float brain_learn_example(brain_t brain, const float* features, uint32_t num_fea
     float loss = adaptive_network_learn(brain->network, &example, LEARN_MODE_SUPERVISED,
                                         brain->config.learning_rate);
 
-    free(target);
+    nimcp_free(target);
 
     // Update statistics
     brain->stats.total_learning_steps++;
@@ -1473,7 +1473,7 @@ bool brain_decide_batch(brain_t brain, const float** inputs, uint32_t num_inputs
         }
 
         memcpy(&decisions[i], decision, sizeof(brain_decision_t));
-        free(decision);
+        nimcp_free(decision);
     }
 
     brain_clear_error();
@@ -1632,7 +1632,7 @@ static bool load_metadata(brain_t brain, const char* filepath)
         return true;
     }
 
-    brain->output_labels = malloc(brain->num_output_labels * sizeof(char*));
+    brain->output_labels = nimcp_malloc(brain->num_output_labels * sizeof(char*));
     if (!brain->output_labels) {
         fprintf(stderr, "ERROR: Failed to allocate output_labels array\n");
         fclose(meta_file);
@@ -1654,7 +1654,7 @@ static bool load_metadata(brain_t brain, const char* filepath)
             goto cleanup;
         }
 
-        brain->output_labels[i] = malloc(len);
+        brain->output_labels[i] = nimcp_malloc(len);
         if (!brain->output_labels[i]) {
             fprintf(stderr, "ERROR: Failed to allocate label at index %u\n", i);
             goto cleanup;
@@ -1669,9 +1669,9 @@ static bool load_metadata(brain_t brain, const char* filepath)
 cleanup:
     // Free any allocated labels before the failed one
     for (uint32_t j = 0; j < i; j++) {
-        free(brain->output_labels[j]);
+        nimcp_free(brain->output_labels[j]);
     }
-    free(brain->output_labels);
+    nimcp_free(brain->output_labels);
     brain->output_labels = NULL;
     fclose(meta_file);
     return false;
@@ -1868,7 +1868,7 @@ uint32_t brain_get_top_neurons(brain_t brain, uint32_t top_n, uint32_t* neuron_i
     }
 
     // Get neuron rankings from adaptive network
-    neuron_importance_t* rankings = malloc(top_n * sizeof(neuron_importance_t));
+    neuron_importance_t* rankings = nimcp_malloc(top_n * sizeof(neuron_importance_t));
     uint32_t count = adaptive_network_rank_neurons(brain->network, rankings, top_n);
 
     // Extract IDs and importances
@@ -1877,7 +1877,7 @@ uint32_t brain_get_top_neurons(brain_t brain, uint32_t top_n, uint32_t* neuron_i
         importances[i] = rankings[i].importance;
     }
 
-    free(rankings);
+    nimcp_free(rankings);
 
     brain_clear_error();
     return count;

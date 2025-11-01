@@ -266,25 +266,25 @@ static bool keys_equal(hash_table_t* table, const void* key1, size_t key1_size, 
 static hash_entry_t* create_entry(const void* key, size_t key_size, const void* value,
                                   size_t value_size, uint32_t hash)
 {
-    hash_entry_t* entry = (hash_entry_t*) malloc(sizeof(hash_entry_t));
+    hash_entry_t* entry = (hash_entry_t*) nimcp_malloc(sizeof(hash_entry_t));
     if (!entry) {
         return NULL;
     }
 
     // Copy key
-    entry->key = malloc(key_size);
+    entry->key = nimcp_malloc(key_size);
     if (!entry->key) {
-        free(entry);
+        nimcp_free(entry);
         return NULL;
     }
     memcpy(entry->key, key, key_size);
     entry->key_size = key_size;
 
     // Copy value
-    entry->value = malloc(value_size);
+    entry->value = nimcp_malloc(value_size);
     if (!entry->value) {
-        free(entry->key);
-        free(entry);
+        nimcp_free(entry->key);
+        nimcp_free(entry);
         return NULL;
     }
     memcpy(entry->value, value, value_size);
@@ -312,9 +312,9 @@ static void free_entry(hash_table_t* table, hash_entry_t* entry)
         table->config.value_destructor(entry->value, entry->value_size);
     }
 
-    free(entry->key);
-    free(entry->value);
-    free(entry);
+    nimcp_free(entry->key);
+    nimcp_free(entry->value);
+    nimcp_free(entry);
 }
 
 /**
@@ -358,7 +358,7 @@ static hash_entry_t* find_entry(hash_table_t* table, hash_entry_t* head, const v
 
 hash_table_t* hash_table_create(const hash_table_config_t* config)
 {
-    hash_table_t* table = (hash_table_t*) malloc(sizeof(hash_table_t));
+    hash_table_t* table = (hash_table_t*) nimcp_malloc(sizeof(hash_table_t));
     if (!table) {
         return NULL;
     }
@@ -383,9 +383,9 @@ hash_table_t* hash_table_create(const hash_table_config_t* config)
 
     // Allocate bucket array
     table->bucket_count = table->config.initial_buckets;
-    table->buckets = (hash_entry_t**) calloc(table->bucket_count, sizeof(hash_entry_t*));
+    table->buckets = (hash_entry_t**) nimcp_calloc(table->bucket_count, sizeof(hash_entry_t*));
     if (!table->buckets) {
-        free(table);
+        nimcp_free(table);
         return NULL;
     }
 
@@ -410,8 +410,8 @@ void hash_table_destroy(hash_table_t* table)
         }
     }
 
-    free(table->buckets);
-    free(table);
+    nimcp_free(table->buckets);
+    nimcp_free(table);
 }
 
 size_t hash_table_size(const hash_table_t* table)
@@ -470,7 +470,7 @@ static bool hash_table_insert_generic(hash_table_t* table, const void* key, size
 
     if (existing) {
         // Update existing entry
-        void* new_value = malloc(value_size);
+        void* new_value = nimcp_malloc(value_size);
         if (!new_value) {
             return false;
         }
@@ -481,7 +481,7 @@ static bool hash_table_insert_generic(hash_table_t* table, const void* key, size
             table->config.value_destructor(existing->value, existing->value_size);
         }
 
-        free(existing->value);
+        nimcp_free(existing->value);
         existing->value = new_value;
         existing->value_size = value_size;
 

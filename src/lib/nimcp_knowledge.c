@@ -175,13 +175,13 @@ static uint32_t hash_concept(const char* concept)
  */
 static hash_table_t* hash_table_create(void)
 {
-    hash_table_t* table = calloc(1, sizeof(hash_table_t));
+    hash_table_t* table = nimcp_calloc(1, sizeof(hash_table_t));
     if (!table)
         return NULL;
 
-    table->entries = calloc(HASH_TABLE_SIZE, sizeof(hash_entry_t*));
+    table->entries = nimcp_calloc(HASH_TABLE_SIZE, sizeof(hash_entry_t*));
     if (!table->entries) {
-        free(table);
+        nimcp_free(table);
         return NULL;
     }
 
@@ -209,13 +209,13 @@ static bool hash_table_insert(hash_table_t* table, const char* concept, uint32_t
 
     uint32_t hash = hash_concept(concept);
 
-    hash_entry_t* entry = malloc(sizeof(hash_entry_t));
+    hash_entry_t* entry = nimcp_malloc(sizeof(hash_entry_t));
     if (!entry)
         return false;
 
     entry->concept = strdup(concept);
     if (!entry->concept) {
-        free(entry);
+        nimcp_free(entry);
         return false;
     }
 
@@ -276,15 +276,15 @@ static void hash_table_destroy(hash_table_t* table)
             hash_entry_t* entry = table->entries[i];
             while (entry) {
                 hash_entry_t* next = entry->next;
-                free(entry->concept);
-                free(entry);
+                nimcp_free(entry->concept);
+                nimcp_free(entry);
                 entry = next;
             }
         }
-        free(table->entries);
+        nimcp_free(table->entries);
     }
 
-    free(table);
+    nimcp_free(table);
 }
 
 //=============================================================================
@@ -304,20 +304,20 @@ static void hash_table_destroy(hash_table_t* table)
  */
 static knowledge_repository_t* repository_create(uint32_t initial_capacity)
 {
-    knowledge_repository_t* repo = calloc(1, sizeof(knowledge_repository_t));
+    knowledge_repository_t* repo = nimcp_calloc(1, sizeof(knowledge_repository_t));
     if (!repo)
         return NULL;
 
-    repo->items = calloc(initial_capacity, sizeof(knowledge_item_t));
+    repo->items = nimcp_calloc(initial_capacity, sizeof(knowledge_item_t));
     if (!repo->items) {
-        free(repo);
+        nimcp_free(repo);
         return NULL;
     }
 
     repo->index = hash_table_create();
     if (!repo->index) {
-        free(repo->items);
-        free(repo);
+        nimcp_free(repo->items);
+        nimcp_free(repo);
         return NULL;
     }
 
@@ -410,22 +410,22 @@ static void repository_destroy(knowledge_repository_t* repo)
         for (uint32_t i = 0; i < repo->num_items; i++) {
             if (repo->items[i].examples) {
                 for (uint32_t j = 0; j < repo->items[i].num_examples; j++) {
-                    free(repo->items[i].examples[j]);
+                    nimcp_free(repo->items[i].examples[j]);
                 }
-                free(repo->items[i].examples);
+                nimcp_free(repo->items[i].examples);
             }
             if (repo->items[i].related_concepts) {
                 for (uint32_t j = 0; j < repo->items[i].num_related; j++) {
-                    free(repo->items[i].related_concepts[j]);
+                    nimcp_free(repo->items[i].related_concepts[j]);
                 }
-                free(repo->items[i].related_concepts);
+                nimcp_free(repo->items[i].related_concepts);
             }
         }
-        free(repo->items);
+        nimcp_free(repo->items);
     }
 
     hash_table_destroy(repo->index);
-    free(repo);
+    nimcp_free(repo);
 }
 
 //=============================================================================
@@ -502,7 +502,7 @@ static uint32_t extract_concepts_optimized(const char* text, char concepts[][256
         token = strtok(NULL, delimiters);
     }
 
-    free(text_copy);
+    nimcp_free(text_copy);
     return num_concepts;
 }
 
@@ -785,7 +785,7 @@ knowledge_system_t knowledge_system_create(const char* learner_name)
     if (!learner_name)
         return NULL;
 
-    knowledge_system_t system = calloc(1, sizeof(struct knowledge_system_struct));
+    knowledge_system_t system = nimcp_calloc(1, sizeof(struct knowledge_system_struct));
     if (!system)
         return NULL;
 
@@ -793,20 +793,20 @@ knowledge_system_t knowledge_system_create(const char* learner_name)
 
     system->repository = repository_create(INITIAL_CAPACITY);
     if (!system->repository) {
-        free(system);
+        nimcp_free(system);
         return NULL;
     }
 
-    system->narratives = calloc(1000, sizeof(narrative_knowledge_t));
+    system->narratives = nimcp_calloc(1000, sizeof(narrative_knowledge_t));
     system->narratives_capacity = 1000;
 
-    system->artworks = calloc(500, sizeof(aesthetic_knowledge_t));
+    system->artworks = nimcp_calloc(500, sizeof(aesthetic_knowledge_t));
     system->artworks_capacity = 500;
 
-    system->history = calloc(1000, sizeof(historical_knowledge_t));
+    system->history = nimcp_calloc(1000, sizeof(historical_knowledge_t));
     system->history_capacity = 1000;
 
-    system->reading_list = calloc(100, sizeof(reading_progress_t));
+    system->reading_list = nimcp_calloc(100, sizeof(reading_progress_t));
     system->reading_capacity = 100;
 
     const char* domain_names[] = {"language",  "literature", "art",         "ethics",
@@ -826,7 +826,7 @@ knowledge_system_t knowledge_system_create(const char* learner_name)
 /**
  * @brief Free narrative array memory
  *
- * @param narratives Array to free (can be NULL)
+ * @param narratives Array to nimcp_free(can be NULL)
  * @param num_narratives Number of narratives
  *
  * Why: Extracted to reduce complexity and improve maintainability.
@@ -840,30 +840,30 @@ static void free_narratives(narrative_knowledge_t* narratives, uint32_t num_narr
     for (uint32_t i = 0; i < num_narratives; i++) {
         if (narratives[i].characters) {
             for (uint32_t j = 0; j < narratives[i].num_characters; j++) {
-                free(narratives[i].characters[j]);
+                nimcp_free(narratives[i].characters[j]);
             }
-            free(narratives[i].characters);
+            nimcp_free(narratives[i].characters);
         }
         if (narratives[i].themes) {
             for (uint32_t j = 0; j < narratives[i].num_themes; j++) {
-                free(narratives[i].themes[j]);
+                nimcp_free(narratives[i].themes[j]);
             }
-            free(narratives[i].themes);
+            nimcp_free(narratives[i].themes);
         }
         if (narratives[i].moral_lessons) {
             for (uint32_t j = 0; j < narratives[i].num_lessons; j++) {
-                free(narratives[i].moral_lessons[j]);
+                nimcp_free(narratives[i].moral_lessons[j]);
             }
-            free(narratives[i].moral_lessons);
+            nimcp_free(narratives[i].moral_lessons);
         }
     }
-    free(narratives);
+    nimcp_free(narratives);
 }
 
 /**
  * @brief Free artwork array memory
  *
- * @param artworks Array to free (can be NULL)
+ * @param artworks Array to nimcp_free(can be NULL)
  * @param num_artworks Number of artworks
  *
  * Why: Separated for clarity and single responsibility.
@@ -876,18 +876,18 @@ static void free_artworks(aesthetic_knowledge_t* artworks, uint32_t num_artworks
     for (uint32_t i = 0; i < num_artworks; i++) {
         if (artworks[i].aesthetic_qualities) {
             for (uint32_t j = 0; j < artworks[i].num_qualities; j++) {
-                free(artworks[i].aesthetic_qualities[j]);
+                nimcp_free(artworks[i].aesthetic_qualities[j]);
             }
-            free(artworks[i].aesthetic_qualities);
+            nimcp_free(artworks[i].aesthetic_qualities);
         }
     }
-    free(artworks);
+    nimcp_free(artworks);
 }
 
 /**
  * @brief Free history array memory
  *
- * @param history Array to free (can be NULL)
+ * @param history Array to nimcp_free(can be NULL)
  * @param num_history Number of history entries
  *
  * Why: Extracted for maintainability and single responsibility.
@@ -900,18 +900,18 @@ static void free_history(historical_knowledge_t* history, uint32_t num_history)
     for (uint32_t i = 0; i < num_history; i++) {
         if (history[i].key_people) {
             for (uint32_t j = 0; j < history[i].num_people; j++) {
-                free(history[i].key_people[j]);
+                nimcp_free(history[i].key_people[j]);
             }
-            free(history[i].key_people);
+            nimcp_free(history[i].key_people);
         }
         if (history[i].related_events) {
             for (uint32_t j = 0; j < history[i].num_related_events; j++) {
-                free(history[i].related_events[j]);
+                nimcp_free(history[i].related_events[j]);
             }
-            free(history[i].related_events);
+            nimcp_free(history[i].related_events);
         }
     }
-    free(history);
+    nimcp_free(history);
 }
 
 /**
@@ -953,14 +953,14 @@ void knowledge_system_destroy(knowledge_system_t system)
     free_narratives(system->narratives, system->num_narratives);
     free_artworks(system->artworks, system->num_artworks);
     free_history(system->history, system->num_history);
-    free(system->reading_list);
+    nimcp_free(system->reading_list);
     free_domain_brains(system->domain_brains, 11);
 
     if (system->curiosity) {
         curiosity_engine_destroy(system->curiosity);
     }
 
-    free(system);
+    nimcp_free(system);
 }
 
 //=============================================================================
@@ -1467,7 +1467,7 @@ bool knowledge_reinforce(knowledge_system_t system, const char* concept, const c
 
     if (new_example && item->num_examples < 10) {
         if (!item->examples) {
-            item->examples = malloc(10 * sizeof(char*));
+            item->examples = nimcp_malloc(10 * sizeof(char*));
             if (!item->examples)
                 return false;
         }

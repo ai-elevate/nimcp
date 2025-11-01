@@ -373,7 +373,7 @@ static uint32_t get_label_index(adaptive_network_t network, const char* label)
         return index;
 
     // Add new label
-    char** new_map = realloc(network->label_map, (network->num_labels + 1) * sizeof(char*));
+    char** new_map = nimcp_realloc(network->label_map, (network->num_labels + 1) * sizeof(char*));
     // Guard clause: Check allocation
     if (!new_map)
         return 0;
@@ -745,7 +745,7 @@ static void initialize_neuron_states(adaptive_neuron_state_t* states, uint32_t n
 static adaptive_neuron_state_t* allocate_neuron_states(uint32_t num_neurons,
                                                        float default_threshold)
 {
-    adaptive_neuron_state_t* states = calloc(num_neurons, sizeof(adaptive_neuron_state_t));
+    adaptive_neuron_state_t* states = nimcp_calloc(num_neurons, sizeof(adaptive_neuron_state_t));
 
     // Guard clause: Check allocation
     if (!states)
@@ -796,7 +796,7 @@ adaptive_network_t adaptive_network_create(const adaptive_network_config_t* conf
     if (!validate_network_config(config))
         return NULL;
 
-    adaptive_network_t network = calloc(1, sizeof(struct adaptive_network_struct));
+    adaptive_network_t network = nimcp_calloc(1, sizeof(struct adaptive_network_struct));
     // Guard clause: Check allocation
     if (!network)
         return NULL;
@@ -811,7 +811,7 @@ adaptive_network_t adaptive_network_create(const adaptive_network_config_t* conf
     network->base_network = neural_network_create(&config->base_config);
     // Guard clause: Check base network creation
     if (!network->base_network) {
-        free(network);
+        nimcp_free(network);
         return NULL;
     }
 
@@ -824,17 +824,17 @@ adaptive_network_t adaptive_network_create(const adaptive_network_config_t* conf
     // Guard clause: Check neuron states allocation
     if (!network->neuron_states) {
         neural_network_destroy(network->base_network);
-        free(network);
+        nimcp_free(network);
         return NULL;
     }
 
     // Allocate input statistics buffer
-    network->input_statistics = calloc(config->base_config.input_size, sizeof(float));
+    network->input_statistics = nimcp_calloc(config->base_config.input_size, sizeof(float));
     // Guard clause: Check statistics buffer
     if (!network->input_statistics) {
-        free(network->neuron_states);
+        nimcp_free(network->neuron_states);
         neural_network_destroy(network->base_network);
-        free(network);
+        nimcp_free(network);
         return NULL;
     }
 
@@ -860,7 +860,7 @@ static void free_neuron_spike_trains(adaptive_neuron_state_t* states, uint32_t n
 
     for (uint32_t i = 0; i < num_neurons; i++) {
         if (states[i].spike_train) {
-            free(states[i].spike_train);
+            nimcp_free(states[i].spike_train);
             states[i].spike_train = NULL;
         }
     }
@@ -880,9 +880,9 @@ static void free_label_map(char** label_map, uint32_t num_labels)
         return;
 
     for (uint32_t i = 0; i < num_labels; i++) {
-        free(label_map[i]);
+        nimcp_free(label_map[i]);
     }
-    free(label_map);
+    nimcp_free(label_map);
 }
 
 /**
@@ -908,11 +908,11 @@ void adaptive_network_destroy(adaptive_network_t network)
     // Free neuron states and their spike trains
     if (network->neuron_states) {
         free_neuron_spike_trains(network->neuron_states, network->num_neurons);
-        free(network->neuron_states);
+        nimcp_free(network->neuron_states);
     }
 
     // Free input statistics buffer
-    free(network->input_statistics);
+    nimcp_free(network->input_statistics);
 
     // Free label map
     if (network->label_map) {
@@ -924,7 +924,7 @@ void adaptive_network_destroy(adaptive_network_t network)
         hash_table_destroy(network->label_table);
     }
 
-    free(network);
+    nimcp_free(network);
 }
 
 //=============================================================================
@@ -943,7 +943,7 @@ void adaptive_network_destroy(adaptive_network_t network)
 static float* convert_input_to_spikes(const float* input, uint32_t input_size, float threshold,
                                       spike_encoding_t encoding)
 {
-    float* spike_input = malloc(input_size * sizeof(float));
+    float* spike_input = nimcp_malloc(input_size * sizeof(float));
     // Guard clause: Check allocation
     if (!spike_input)
         return NULL;
@@ -1160,7 +1160,7 @@ uint32_t adaptive_network_forward(adaptive_network_t network, const float* input
     // Step 3: Forward pass through base network
     neural_network_forward(network->base_network, spike_input, input_size, output, output_size);
 
-    free(spike_input);
+    nimcp_free(spike_input);
 
     // Step 4: Process outputs with adaptive thresholding
     uint32_t active_count = process_network_outputs(network, output, output_size);
@@ -1209,7 +1209,7 @@ float adaptive_network_learn(adaptive_network_t network, const training_example_
         return -1.0f;
 
     // Forward pass to get current output
-    float* output = malloc(example->target_size * sizeof(float));
+    float* output = nimcp_malloc(example->target_size * sizeof(float));
     adaptive_network_forward(network, example->input, example->input_size, output,
                              example->target_size, 0);
 
@@ -1246,7 +1246,7 @@ float adaptive_network_learn(adaptive_network_t network, const training_example_
             break;
     }
 
-    free(output);
+    nimcp_free(output);
 
     network->total_learning_steps++;
 
@@ -1419,7 +1419,7 @@ adaptive_network_t adaptive_network_load(const char* filepath)
         return NULL;
     }
 
-    network->label_map = malloc(num_labels * sizeof(char*));
+    network->label_map = nimcp_malloc(num_labels * sizeof(char*));
     network->num_labels = num_labels;
 
     for (uint32_t i = 0; i < num_labels; i++) {
@@ -1430,7 +1430,7 @@ adaptive_network_t adaptive_network_load(const char* filepath)
             return NULL;
         }
 
-        network->label_map[i] = malloc(label_len);
+        network->label_map[i] = nimcp_malloc(label_len);
         if (fread(network->label_map[i], label_len, 1, file) != 1) {
             adaptive_network_destroy(network);
             fclose(file);
@@ -1478,7 +1478,7 @@ bool adaptive_network_analyze_activation(adaptive_network_t network, const float
         return false;
 
     // Forward pass
-    float* output = malloc(network->config.base_config.output_size * sizeof(float));
+    float* output = nimcp_malloc(network->config.base_config.output_size * sizeof(float));
     uint32_t active_count = adaptive_network_forward(network, input, input_size, output,
                                                      network->config.base_config.output_size, 0);
 
@@ -1486,8 +1486,8 @@ bool adaptive_network_analyze_activation(adaptive_network_t network, const float
     analysis->sparsity = network->running_sparsity;
 
     // Allocate arrays for active neurons
-    analysis->active_neuron_ids = malloc(active_count * sizeof(uint32_t));
-    analysis->activation_strengths = malloc(active_count * sizeof(float));
+    analysis->active_neuron_ids = nimcp_malloc(active_count * sizeof(uint32_t));
+    analysis->activation_strengths = nimcp_malloc(active_count * sizeof(float));
 
     // Collect active neurons
     uint32_t idx = 0;
@@ -1508,7 +1508,7 @@ bool adaptive_network_analyze_activation(adaptive_network_t network, const float
     }
     analysis->confidence = fminf(max_activation / 10.0f, 1.0f);  // Normalize to [0,1]
 
-    free(output);
+    nimcp_free(output);
     return true;
 }
 
@@ -1581,8 +1581,8 @@ uint32_t adaptive_network_explain(adaptive_network_t network, const float* input
     }
 
     // Free analysis arrays
-    free(analysis.active_neuron_ids);
-    free(analysis.activation_strengths);
+    nimcp_free(analysis.active_neuron_ids);
+    nimcp_free(analysis.activation_strengths);
 
     return written;
 }

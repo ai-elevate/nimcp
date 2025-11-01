@@ -249,7 +249,7 @@ static void history_buffer_clear(history_buffer_t* hist)
     /**
      * WHAT: Mark all entries as invalid
      * WHY: No memory cleanup needed - features are fixed-size arrays
-     * NOTE: Much simpler than before - no per-entry free()
+     * NOTE: Much simpler than before - no per-entry nimcp_free()
      */
     for (uint32_t i = 0; i < hist->count; i++) {
         hist->entries[i].valid = false;

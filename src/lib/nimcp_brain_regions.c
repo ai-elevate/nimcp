@@ -150,15 +150,15 @@ static neuron_type_extended_t get_layer_neuron_type(brain_region_type_t region_t
 // ============================================================================
 
 brain_module_t* brain_module_create(uint32_t max_regions) {
-    brain_module_t* brain = (brain_module_t*)calloc(1, sizeof(brain_module_t));
+    brain_module_t* brain = (brain_module_t*)nimcp_calloc(1, sizeof(brain_module_t));
     if (!brain) return NULL;
 
     brain->id = 1; // Fixed ID for now
     brain->max_regions = max_regions;
 
-    brain->regions = (brain_region_t**)calloc(max_regions, sizeof(brain_region_t*));
+    brain->regions = (brain_region_t**)nimcp_calloc(max_regions, sizeof(brain_region_t*));
     if (!brain->regions) {
-        free(brain);
+        nimcp_free(brain);
         return NULL;
     }
 
@@ -181,18 +181,18 @@ void brain_module_destroy(brain_module_t* brain) {
         brain_region_destroy(brain->regions[i]);
     }
 
-    free(brain->regions);
+    nimcp_free(brain->regions);
 
     // Destroy connections
     if (brain->connections) {
         for (uint32_t i = 0; i < brain->num_connections; i++) {
-            free(brain->connections[i]);
+            nimcp_free(brain->connections[i]);
         }
-        free(brain->connections);
+        nimcp_free(brain->connections);
     }
 
     nimcp_mutex_destroy(&brain->lock);
-    free(brain);
+    nimcp_free(brain);
 }
 
 nimcp_result_t brain_module_add_region(brain_module_t* brain, brain_region_t* region) {
@@ -245,7 +245,7 @@ brain_region_t* brain_module_get_region_by_type(brain_module_t* brain,
 // ============================================================================
 
 brain_region_t* brain_region_create(brain_region_type_t type, uint32_t num_neurons) {
-    brain_region_t* region = (brain_region_t*)calloc(1, sizeof(brain_region_t));
+    brain_region_t* region = (brain_region_t*)nimcp_calloc(1, sizeof(brain_region_t));
     if (!region) return NULL;
 
     region->id = generate_region_id();
@@ -267,7 +267,7 @@ brain_region_t* brain_region_create(brain_region_type_t type, uint32_t num_neuro
 
     region->network = neural_network_create(&config);
     if (!region->network) {
-        free(region);
+        nimcp_free(region);
         return NULL;
     }
 
@@ -295,7 +295,7 @@ brain_region_t* brain_region_create(brain_region_type_t type, uint32_t num_neuro
         nimcp_free(region->neuron_extended_types);
         nimcp_free(region->neuron_type_params);
         neural_network_destroy(region->network);
-        free(region);
+        nimcp_free(region);
         return NULL;
     }
 
@@ -335,12 +335,12 @@ void brain_region_destroy(brain_region_t* region) {
         for (uint32_t i = 0; i < region->num_minicolumns; i++) {
             if (region->minicolumns[i]) {
                 for (int layer = 0; layer < LAYER_COUNT; layer++) {
-                    free(region->minicolumns[i]->layer_neuron_ids[layer]);
+                    nimcp_free(region->minicolumns[i]->layer_neuron_ids[layer]);
                 }
-                free(region->minicolumns[i]);
+                nimcp_free(region->minicolumns[i]);
             }
         }
-        free(region->minicolumns);
+        nimcp_free(region->minicolumns);
     }
 
     // Free extended neuron types
@@ -357,11 +357,11 @@ void brain_region_destroy(brain_region_t* region) {
         neural_network_destroy(region->network);
     }
 
-    free(region->input_regions);
-    free(region->output_regions);
+    nimcp_free(region->input_regions);
+    nimcp_free(region->output_regions);
 
     nimcp_mutex_destroy(&region->lock);
-    free(region);
+    nimcp_free(region);
 }
 
 nimcp_result_t brain_region_organize_columns(brain_region_t* region,
@@ -373,7 +373,7 @@ nimcp_result_t brain_region_organize_columns(brain_region_t* region,
 
     uint32_t num_columns = columns_x * columns_y;
 
-    region->minicolumns = (brain_minicolumn_t**)calloc(num_columns, sizeof(brain_minicolumn_t*));
+    region->minicolumns = (brain_minicolumn_t**)nimcp_calloc(num_columns, sizeof(brain_minicolumn_t*));
     if (!region->minicolumns) {
         return NIMCP_ERROR;
     }
@@ -386,7 +386,7 @@ nimcp_result_t brain_region_organize_columns(brain_region_t* region,
 
     // Create each minicolumn
     for (uint32_t col_idx = 0; col_idx < num_columns; col_idx++) {
-        brain_minicolumn_t* col = (brain_minicolumn_t*)calloc(1, sizeof(brain_minicolumn_t));
+        brain_minicolumn_t* col = (brain_minicolumn_t*)nimcp_calloc(1, sizeof(brain_minicolumn_t));
         if (!col) continue;
 
         col->id = col_idx;
@@ -402,7 +402,7 @@ nimcp_result_t brain_region_organize_columns(brain_region_t* region,
         for (int layer = 0; layer < LAYER_COUNT; layer++) {
             uint32_t layer_neurons_in_col = region->layer_sizes[layer] / num_columns;
             if (layer_neurons_in_col > 0) {
-                col->layer_neuron_ids[layer] = (uint32_t*)calloc(layer_neurons_in_col, sizeof(uint32_t));
+                col->layer_neuron_ids[layer] = (uint32_t*)nimcp_calloc(layer_neurons_in_col, sizeof(uint32_t));
                 col->layer_neuron_counts[layer] = layer_neurons_in_col;
 
                 // Assign neuron IDs
@@ -466,7 +466,7 @@ nimcp_result_t brain_module_connect_regions(brain_module_t* brain,
     }
 
     // Create connection record
-    brain_connection_t* conn = (brain_connection_t*)calloc(1, sizeof(brain_connection_t));
+    brain_connection_t* conn = (brain_connection_t*)nimcp_calloc(1, sizeof(brain_connection_t));
     if (!conn) {
         return NIMCP_ERROR;
     }
@@ -481,7 +481,7 @@ nimcp_result_t brain_module_connect_regions(brain_module_t* brain,
     conn->target_layer = LAYER_4;
 
     // Add to brain's connection list
-    brain->connections = (brain_connection_t**)realloc(
+    brain->connections = (brain_connection_t**)nimcp_realloc(
         brain->connections,
         (brain->num_connections + 1) * sizeof(brain_connection_t*));
 
@@ -501,7 +501,7 @@ nimcp_result_t brain_module_connect_layers(brain_module_t* brain,
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
-    brain_connection_t* conn = (brain_connection_t*)calloc(1, sizeof(brain_connection_t));
+    brain_connection_t* conn = (brain_connection_t*)nimcp_calloc(1, sizeof(brain_connection_t));
     if (!conn) {
         return NIMCP_ERROR;
     }
@@ -513,7 +513,7 @@ nimcp_result_t brain_module_connect_layers(brain_module_t* brain,
     conn->connection_strength = connection_density;
     conn->feedforward = (target_layer == LAYER_4);
 
-    brain->connections = (brain_connection_t**)realloc(
+    brain->connections = (brain_connection_t**)nimcp_realloc(
         brain->connections,
         (brain->num_connections + 1) * sizeof(brain_connection_t*));
 

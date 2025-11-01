@@ -55,9 +55,9 @@ static void concept_bucket_destructor(void* value, size_t value_size)
     // Free related concepts
     if (bucket->related_concepts) {
         for (uint32_t j = 0; j < bucket->num_related; j++) {
-            free(bucket->related_concepts[j]);
+            nimcp_free(bucket->related_concepts[j]);
         }
-        free(bucket->related_concepts);
+        nimcp_free(bucket->related_concepts);
     }
 }
 
@@ -699,7 +699,7 @@ curiosity_engine_t curiosity_engine_create(const char* learner_name)
         return NULL;
     }
 
-    curiosity_engine_t engine = calloc(1, sizeof(struct curiosity_engine_struct));
+    curiosity_engine_t engine = nimcp_calloc(1, sizeof(struct curiosity_engine_struct));
     if (!engine) {
         return NULL;
     }
@@ -715,25 +715,25 @@ curiosity_engine_t curiosity_engine_create(const char* learner_name)
                                      .thread_safe = false};
     engine->concept_hash_table = hash_table_create(&ht_config);
     if (!engine->concept_hash_table) {
-        free(engine);
+        nimcp_free(engine);
         return NULL;
     }
     engine->total_concepts = 0;
 
     // Allocate question storage
     engine->questions_capacity = 10000;
-    engine->questions = calloc(engine->questions_capacity, sizeof(question_history_t));
+    engine->questions = nimcp_calloc(engine->questions_capacity, sizeof(question_history_t));
     if (!engine->questions) {
-        free(engine);
+        nimcp_free(engine);
         return NULL;
     }
 
     // Allocate source storage
     engine->sources_capacity = 10;
-    engine->sources = calloc(engine->sources_capacity, sizeof(knowledge_source_t));
+    engine->sources = nimcp_calloc(engine->sources_capacity, sizeof(knowledge_source_t));
     if (!engine->sources) {
-        free(engine->questions);
-        free(engine);
+        nimcp_free(engine->questions);
+        nimcp_free(engine);
         return NULL;
     }
 
@@ -777,13 +777,13 @@ void curiosity_engine_destroy(curiosity_engine_t engine)
 
     free_hash_table(engine);
 
-    free(engine->questions);
-    free(engine->sources);
+    nimcp_free(engine->questions);
+    nimcp_free(engine->sources);
 
     brain_destroy(engine->gap_detector);
     brain_destroy(engine->question_prioritizer);
 
-    free(engine);
+    nimcp_free(engine);
 }
 
 //=============================================================================
@@ -1240,7 +1240,7 @@ static bool ensure_source_capacity(curiosity_engine_t engine)
 
     engine->sources_capacity *= 2;
     knowledge_source_t* new_sources =
-        realloc(engine->sources, engine->sources_capacity * sizeof(knowledge_source_t));
+        nimcp_realloc(engine->sources, engine->sources_capacity * sizeof(knowledge_source_t));
 
     if (!new_sources) {
         return false;
