@@ -37,6 +37,7 @@ set(NIMCP_TEST_SOURCES
     test_oligodendrocytes.cpp   # Oligodendrocyte glial cell tests (myelination, conduction velocity)
     test_microglia.cpp          # Microglia glial cell tests (synaptic surveillance, pruning)
     test_glial_integration.cpp  # Glial-neuron integration tests (tripartite synapses, myelination, pruning)
+    test_neuron_types.cpp       # Extended neuron type specialization tests (visual, auditory, motor, interneurons)
     test_error_injection.cpp    # Error injection and failure path testing
     test_stress.cpp             # Stress and load testing
     test_performance_optimizations.cpp  # TDD tests for algorithmic optimizations (bidirectional synapses, min-heap)

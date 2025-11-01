@@ -23,6 +23,7 @@ set(NIMCP_CORE_SOURCES
     nimcp_oligodendrocytes.c                         # Oligodendrocyte glial cells (axon myelination, conduction velocity)
     nimcp_microglia.c                                # Microglia glial cells (synaptic surveillance, pruning)
     nimcp_glial_integration.c                        # Glial-neuron integration layer (tripartite synapses, myelination, pruning)
+    nimcp_neuron_types.c                             # Extended neuron type specialization (visual, auditory, motor, interneurons)
     utils/nimcp_memory.c                             # Memory tracking and allocation
     utils/nimcp_thread.c                             # Thread utilities and wrappers
     utils/nimcp_thread_pool.c                        # Thread pool for batch processing
