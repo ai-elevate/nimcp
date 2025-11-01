@@ -2,12 +2,13 @@
  * @file nimcp_graph.c
  * @brief Implementation of network topology graph structure
  *
- * REFACTORED: Added memory tracking and will add thread safety
- * WHY: Prevent memory leaks and ensure thread-safe topology updates
+ * REFACTORED: Added memory tracking, thread safety, and validation
+ * WHY: Prevent memory leaks, ensure thread-safe topology updates, validate inputs
  */
 
 #include "utils/nimcp_graph.h"
 #include "utils/nimcp_memory.h"
+#include "utils/nimcp_validate.h"
 #include <stdlib.h>
 #include <string.h>
 #include <float.h>
@@ -22,6 +23,12 @@
  * PATTERN: Factory Method - centralized edge creation
  */
 static NimcpEdgeNode* create_edge_node(uint32_t dest, nimcp_weight_t weight) {
+    // Validate edge weight
+    // WHY: Ensure weight is valid float (no NaN/Inf, within range)
+    if (!nimcp_validate_float_field(&weight, sizeof(nimcp_weight_t))) {
+        return NULL;
+    }
+
     NimcpEdgeNode* node = (NimcpEdgeNode*)nimcp_malloc(sizeof(NimcpEdgeNode));
     if (node) {
         node->dest = dest;
@@ -472,6 +479,14 @@ bool nimcp_graph_update_coordinates(
     float z) {
 
     if (!graph) return false;
+
+    // Validate coordinates before locking
+    // WHY: Ensure coordinates are valid floats (no NaN/Inf, within range)
+    if (!nimcp_validate_float_field(&x, sizeof(float)) ||
+        !nimcp_validate_float_field(&y, sizeof(float)) ||
+        !nimcp_validate_float_field(&z, sizeof(float))) {
+        return false;
+    }
 
     nimcp_mutex_lock(&graph->lock);
 

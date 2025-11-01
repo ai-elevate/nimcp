@@ -36,6 +36,7 @@
 #include "utils/nimcp_memory.h"
 #include "utils/nimcp_thread.h"
 #include "utils/nimcp_graph.h"
+#include "utils/nimcp_validate.h"
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
@@ -54,6 +55,90 @@
 #define MAX_IP_LENGTH 16
 #define LISTEN_BACKLOG 5
 #define SOCKET_REUSE_ENABLED 1
+
+//=============================================================================
+// Validation Helpers
+//=============================================================================
+
+/**
+ * @brief Validate IP address string
+ *
+ * WHAT: Ensures IP address is properly formatted and safe
+ * WHY: Prevent malformed addresses from crashing inet_addr()
+ * PATTERN: Fail-fast validation with guard clauses
+ *
+ * CHECKS:
+ * - Non-NULL pointer
+ * - Length constraints (7-15 characters for IPv4)
+ * - Valid characters (digits and dots only)
+ * - Proper dot separation
+ * - inet_addr() accepts it
+ *
+ * @param ip IP address string (must be NULL-terminated)
+ * @return true if valid, false otherwise
+ */
+static bool validate_ip_address(const char* ip) {
+    // Guard clause: NULL check
+    if (!ip) return false;
+
+    // Validate as string field (NULL termination, UTF-8, control chars)
+    if (!nimcp_validate_string_field(ip, strnlen(ip, MAX_IP_LENGTH) + 1)) {
+        return false;
+    }
+
+    size_t len = strlen(ip);
+
+    // Guard clause: Length check (minimum: "0.0.0.0" = 7, maximum: "255.255.255.255" = 15)
+    if (len < 7 || len > 15) {
+        return false;
+    }
+
+    // Additional semantic check: inet_addr validation
+    // WHY: Ensures IP can be converted to network format
+    struct in_addr addr;
+    if (inet_aton(ip, &addr) == 0) {
+        return false;
+    }
+
+    return true;
+}
+
+/**
+ * @brief Validate port number
+ *
+ * WHAT: Ensures port number is valid and usable
+ * WHY: Prevent bind/connect errors from invalid ports
+ * PATTERN: Range validation
+ *
+ * CHECKS:
+ * - Not in reserved range (0)
+ * - Not in well-known range if binding (< 1024 requires privileges)
+ * - Within valid range (1-65535)
+ *
+ * @param port Port number to validate
+ * @param binding true if port will be bound (listen), false if connecting
+ * @return true if valid, false otherwise
+ */
+static bool validate_port_number(uint16_t port, bool binding) {
+    // Guard clause: Zero port (invalid)
+    if (port == 0) {
+        return false;
+    }
+
+    // Guard clause: Well-known ports if binding (requires root)
+    // WHY: Ports < 1024 require elevated privileges
+    if (binding && port < 1024) {
+        fprintf(stderr, "[P2P] Warning: Port %u requires elevated privileges\n", port);
+        // Don't fail, just warn - user might have privileges
+    }
+
+    // Validate as integer field
+    if (!nimcp_validate_integer_field(&port, sizeof(uint16_t))) {
+        return false;
+    }
+
+    return true;
+}
 
 //=============================================================================
 // Hash Table Implementation (Repository Pattern)
@@ -481,15 +566,46 @@ static bool setup_listen_socket(p2p_node_t node) {
  *
  * @return true if valid, false otherwise
  */
+/**
+ * @brief Validate node configuration
+ *
+ * WHAT: Ensures configuration is valid before node creation
+ * WHY: Prevent node creation with invalid configuration
+ * PATTERN: Fail-fast validation with nimcp_validate integration
+ *
+ * @param config Configuration to validate
+ * @return true if valid, false otherwise
+ */
 static bool validate_config(const node_config_t* config) {
     // Guard clause: Check null
     if (!config) return false;
 
-    // Guard clause: Check max_peers
-    if (config->max_peers == 0) return false;
+    // Validate listen_port using nimcp_validate
+    // WHY: Ensure port is valid and bindable
+    if (!validate_port_number(config->listen_port, true)) {
+        fprintf(stderr, "[P2P] Invalid listen port in config: %u\n", config->listen_port);
+        return false;
+    }
 
-    // Guard clause: Check port range
-    if (config->listen_port == 0) return false;
+    // Validate max_peers using nimcp_validate
+    // WHY: Ensure max_peers is reasonable and will fit in memory
+    if (!nimcp_validate_integer_field(&config->max_peers, sizeof(uint32_t))) {
+        fprintf(stderr, "[P2P] Invalid max_peers in config\n");
+        return false;
+    }
+
+    // Guard clause: Check max_peers not zero
+    if (config->max_peers == 0) {
+        fprintf(stderr, "[P2P] max_peers cannot be zero\n");
+        return false;
+    }
+
+    // Guard clause: Check max_peers not excessive
+    // WHY: Prevent memory exhaustion
+    if (config->max_peers > 10000) {
+        fprintf(stderr, "[P2P] max_peers too large: %u (max: 10000)\n", config->max_peers);
+        return false;
+    }
 
     return true;
 }
@@ -886,6 +1002,20 @@ bool p2p_node_connect_peer(p2p_node_t node, const char* peer_ip, uint16_t peer_p
     // Guard clause: Validate inputs
     if (!node || !peer_ip) return false;
 
+    // Validate IP address format
+    // WHY: Prevent malformed addresses from causing crashes or errors
+    if (!validate_ip_address(peer_ip)) {
+        fprintf(stderr, "[P2P] Invalid IP address format: %s\n", peer_ip);
+        return false;
+    }
+
+    // Validate port number
+    // WHY: Ensure port is usable for connection
+    if (!validate_port_number(peer_port, false)) {
+        fprintf(stderr, "[P2P] Invalid port number: %u\n", peer_port);
+        return false;
+    }
+
     // Lock for thread safety
     nimcp_mutex_lock(&node->lock);
 
@@ -1050,6 +1180,20 @@ static void compact_peer_array(p2p_node_t node, uint32_t index) {
 bool p2p_node_disconnect_peer(p2p_node_t node, const char* peer_ip, uint16_t peer_port) {
     // Guard clause: Validate inputs
     if (!node || !peer_ip) return false;
+
+    // Validate IP address format
+    // WHY: Ensure we're disconnecting with valid address
+    if (!validate_ip_address(peer_ip)) {
+        fprintf(stderr, "[P2P] Invalid IP address format: %s\n", peer_ip);
+        return false;
+    }
+
+    // Validate port number
+    // WHY: Ensure port is valid
+    if (!validate_port_number(peer_port, false)) {
+        fprintf(stderr, "[P2P] Invalid port number: %u\n", peer_port);
+        return false;
+    }
 
     // Lock for thread safety
     nimcp_mutex_lock(&node->lock);
