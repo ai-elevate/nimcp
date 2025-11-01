@@ -21,6 +21,7 @@ set(NIMCP_CORE_SOURCES
     nimcp_bcm.c                                      # BCM (Bienenstock-Cooper-Munro) sliding threshold plasticity
     nimcp_astrocytes.c                               # Astrocyte glial cells (calcium dynamics, synaptic modulation, homeostasis)
     nimcp_oligodendrocytes.c                         # Oligodendrocyte glial cells (axon myelination, conduction velocity)
+    nimcp_microglia.c                                # Microglia glial cells (synaptic surveillance, pruning)
     utils/nimcp_memory.c                             # Memory tracking and allocation
     utils/nimcp_thread.c                             # Thread utilities and wrappers
     utils/nimcp_thread_pool.c                        # Thread pool for batch processing

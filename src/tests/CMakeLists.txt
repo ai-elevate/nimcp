@@ -35,6 +35,7 @@ set(NIMCP_TEST_SOURCES
     test_bcm.cpp                # BCM sliding threshold plasticity tests
     test_astrocytes.cpp         # Astrocyte glial cell tests (calcium, glutamate, homeostasis)
     test_oligodendrocytes.cpp   # Oligodendrocyte glial cell tests (myelination, conduction velocity)
+    test_microglia.cpp          # Microglia glial cell tests (synaptic surveillance, pruning)
     test_error_injection.cpp    # Error injection and failure path testing
     test_stress.cpp             # Stress and load testing
     test_performance_optimizations.cpp  # TDD tests for algorithmic optimizations (bidirectional synapses, min-heap)
