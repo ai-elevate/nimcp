@@ -172,25 +172,26 @@ typedef enum {
 } feature_domain_t;
 
 /**
- * @brief Feature code type (24-bit hierarchical namespace)
+ * @brief Feature code type (32-bit hierarchical namespace)
  */
 typedef uint32_t feature_code_t;
 
 /**
  * @brief Create a feature code from domain and sub-feature
+ * Domain is in bits 24-31, subfeature in bits 0-23
  */
 #define MAKE_FEATURE_CODE(domain, subfeature) \
-    ((feature_code_t)(((domain) << 16) | ((subfeature) & 0xFFFF)))
+    ((feature_code_t)(((domain) << 24) | ((subfeature) & 0xFFFFFF)))
 
 /**
- * @brief Extract domain from feature code
+ * @brief Extract domain from feature code (bits 24-31)
  */
-#define GET_FEATURE_DOMAIN(code) ((uint8_t)(((code) >> 16) & 0xFF))
+#define GET_FEATURE_DOMAIN(code) ((uint8_t)(((code) >> 24) & 0xFF))
 
 /**
- * @brief Extract sub-feature from feature code
+ * @brief Extract sub-feature from feature code (bits 0-23)
  */
-#define GET_FEATURE_SUBCODE(code) ((uint16_t)((code) & 0xFFFF))
+#define GET_FEATURE_SUBCODE(code) ((uint32_t)((code) & 0xFFFFFF))
 
 //=============================================================================
 // NIMCP 2.0: Event Packet (High-Frequency Neural Spikes)
@@ -207,24 +208,27 @@ typedef uint32_t feature_code_t;
 /**
  * @brief Event Packet structure (optimized for high-frequency transmission)
  *
- * Wire format (20 bytes minimum):
- * - 4 bytes: Version (4 bits) + Flags (4 bits) + Feature Code (24 bits)
+ * Wire format (24 bytes minimum):
+ * - 1 byte:  Version (4 bits) + Flags (4 bits)
+ * - 1 byte:  Reserved
+ * - 4 bytes: Feature Code (32 bits full)
  * - 4 bytes: Source Node ID
  * - 8 bytes: Timestamp (microseconds)
  * - 2 bytes: Confidence (0-65535 maps to 0.0-1.0)
  * - 1 byte:  Hop Count
- * - 1 byte:  Reserved
+ * - 1 byte:  Reserved2
  * - N bytes: Optional Payload
  */
 typedef struct __attribute__((packed)) {
     uint8_t version_flags;      /**< Version (4 bits) + Flags (4 bits) */
-    uint8_t feature_high;       /**< Feature code high byte */
+    uint8_t reserved;           /**< Reserved for alignment */
+    uint16_t feature_high;      /**< Feature code high 16 bits */
     uint16_t feature_low;       /**< Feature code low 16 bits */
     uint32_t source_node_id;    /**< Source node identifier */
     uint64_t timestamp;         /**< Timestamp in microseconds */
     uint16_t confidence;        /**< Confidence: 0-65535 maps to 0.0-1.0 */
     uint8_t hop_count;          /**< Hop count for TTL */
-    uint8_t reserved;           /**< Reserved for future use */
+    uint8_t reserved2;          /**< Reserved for future use */
     uint32_t payload_length;    /**< Length of optional payload */
     // Followed by optional payload data
 } event_packet_t;
@@ -252,16 +256,16 @@ typedef struct __attribute__((packed)) {
     ((pkt)->version_flags = ((pkt)->version_flags & 0xF0) | ((flags) & 0x0F))
 
 /**
- * @brief Get full feature code from event packet
+ * @brief Get full feature code from event packet (32-bit)
  */
 #define EVENT_GET_FEATURE_CODE(pkt) \
     ((feature_code_t)(((uint32_t)(pkt)->feature_high << 16) | (pkt)->feature_low))
 
 /**
- * @brief Set feature code in event packet
+ * @brief Set feature code in event packet (32-bit)
  */
 #define EVENT_SET_FEATURE_CODE(pkt, code) do { \
-    (pkt)->feature_high = (uint8_t)(((code) >> 16) & 0xFF); \
+    (pkt)->feature_high = (uint16_t)(((code) >> 16) & 0xFFFF); \
     (pkt)->feature_low = (uint16_t)((code) & 0xFFFF); \
 } while(0)
 

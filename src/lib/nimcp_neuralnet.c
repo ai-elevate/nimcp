@@ -611,7 +611,9 @@ static float sum_synaptic_inputs(neuron_t* neuron, neural_network_t network) {
 
             // If this synapse targets our neuron, include it
             if (syn->target_id == neuron->id) {
-                float pre_activity = src_neuron->state;
+                // Only transmit if presynaptic neuron is active (not at rest)
+                // For spiking neurons, we use state > threshold as activity indicator
+                float pre_activity = (src_neuron->state > src_neuron->threshold) ? src_neuron->state : 0.0f;
                 total_input += pre_activity * syn->weight * syn->strength;
             }
         }
@@ -1117,25 +1119,18 @@ bool neural_network_record_spike(neural_network_t network, uint32_t neuron_id,
     // Increase calcium concentration
     neuron->calcium_concentration += 1.0f;
 
-    // Propagate spike to connected neurons
+    // Update synaptic traces (but don't propagate immediately)
+    // Synaptic inputs will be computed when target neurons are updated
     for (uint32_t i = 0; i < neuron->num_synapses; i++) {
         synapse_t* syn = &neuron->synapses[i];
-        neuron_t* target = &network->neurons[syn->target_id];
 
-        // Update synaptic trace
+        // Update synaptic trace for STDP
         syn->trace += 1.0f;
 
-        // Compute post-synaptic potential
-        float psp = magnitude * syn->weight * syn->strength;
-
-        // Scale by neuron type (excitatory/inhibitory)
-        if (neuron->type == NEURON_INHIBITORY) {
-            psp = -fabs(psp);
-        }
-
-        // Apply post-synaptic potential to target neuron
-        float new_state = target->state + psp;
-        neural_network_update_neuron(network, syn->target_id, new_state, timestamp);
+        // Note: We don't propagate spikes immediately here because
+        // sum_synaptic_inputs() handles synaptic integration when
+        // target neurons are updated. Immediate propagation would
+        // cause double-counting of synaptic inputs.
     }
 
     return true;

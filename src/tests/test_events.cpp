@@ -215,8 +215,8 @@ TEST(EventReceiver, ProcessPacket) {
     event_receiver_t receiver = event_receiver_create(&config);
     ASSERT_NE(receiver, nullptr);
 
-    // Map feature to neuron
-    feature_code_t feature = 0x01000001;
+    // Map feature to neuron (use 24-bit feature code: domain 0x01, subfeature 0x0001)
+    feature_code_t feature = MAKE_FEATURE_CODE(0x01, 0x0001);
     ASSERT_TRUE(event_receiver_map_feature_to_neuron(receiver, feature, 0));
 
     // Create test event packet
