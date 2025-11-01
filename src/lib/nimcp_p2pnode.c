@@ -669,6 +669,24 @@ void p2p_node_destroy(p2p_node_t node) {
 //=============================================================================
 
 /**
+ * @brief Get topology graph for network analysis
+ *
+ * WHY: Expose graph for introspection, pathfinding, and analysis
+ * PATTERN: Accessor - provides controlled read access to internal state
+ *
+ * COMPLEXITY: O(1)
+ *
+ * @param node Handle to the node
+ * @return Pointer to topology graph, or NULL if node is invalid
+ */
+struct NimcpGraph* p2p_node_get_topology_graph(p2p_node_t node) {
+    // Guard clause: Validate input
+    if (!node) return NULL;
+
+    return node->topology_graph;
+}
+
+/**
  * @brief Gets current status of the node
  *
  * WHY: Simple getter with guard clause. Returns error status if node is null.

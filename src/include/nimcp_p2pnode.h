@@ -112,4 +112,19 @@ bool p2p_node_start(p2p_node_t node);
  */
 bool p2p_node_stop(p2p_node_t node);
 
+/**
+ * @brief Get topology graph for network analysis
+ *
+ * Returns the internal topology graph that tracks peer connections.
+ * Useful for introspection, pathfinding, and network analysis.
+ *
+ * @param node Handle to the node
+ * @return Pointer to topology graph, or NULL if node is invalid
+ *
+ * @note The graph is owned by the node - do not destroy it
+ * @note Graph operations are thread-safe (protected by internal mutex)
+ * @note Use nimcp_graph.h API functions to query the graph
+ */
+struct NimcpGraph* p2p_node_get_topology_graph(p2p_node_t node);
+
 #endif // NIMCP_P2PNODE_H
