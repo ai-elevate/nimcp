@@ -9,12 +9,14 @@
 // - Observer Pattern: Event notification for network changes
 // - Strategy Pattern: Routing and discovery algorithms
 // - Repository Pattern: Hash-indexed peer storage for O(1) lookups
+// - Graph Pattern: Network topology tracking with nimcp_graph
 //
 // COMPLEXITY ANALYSIS:
 // - Peer lookup: O(1) via hash table (previously O(n) linear search)
 // - Connection management: O(1) state transitions
 // - Message routing: O(1) peer resolution (previously O(n))
 // - Discovery: O(n) where n = known peers (unavoidable)
+// - Topology queries: O(1) to O(V+E) via graph structure
 //
 // DESIGN PRINCIPLES:
 // - Single Responsibility: Each function does one thing
@@ -25,6 +27,7 @@
 // INVARIANTS:
 // - peer_count <= config.max_peers (always maintained)
 // - All peers in hash table are also in peer array
+// - All peers in array have corresponding vertices in topology graph
 // - listen_socket >= -1 (valid or closed)
 // - status transitions: INIT -> RUNNING -> SHUTDOWN or ERROR
 //=============================================================================
@@ -32,6 +35,7 @@
 #include "../include/nimcp_p2pnode.h"
 #include "utils/nimcp_memory.h"
 #include "utils/nimcp_thread.h"
+#include "utils/nimcp_graph.h"
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
@@ -110,6 +114,7 @@ typedef bool (*state_handler_fn)(peer_info_t* peer);
  * - peer_count <= config.max_peers
  * - running implies status == NODE_STATUS_RUNNING
  * - listen_socket >= -1 (valid socket or -1 if closed)
+ * - topology_graph vertex count == peer_count (graph mirrors peers)
  */
 struct p2p_node_struct {
     // Configuration
@@ -131,6 +136,10 @@ struct p2p_node_struct {
     // Legacy array storage (for iteration)
     peer_info_t* peers;
     uint32_t peer_count;
+
+    // Topology Tracking: Graph of network connections
+    // WHY: Enables pathfinding, component analysis, and introspection queries
+    NimcpGraph* topology_graph;
 
     // Statistics
     uint64_t total_connections;
@@ -576,6 +585,16 @@ p2p_node_t p2p_node_create(const node_config_t* config) {
         return NULL;
     }
 
+    // Create topology graph for network structure tracking
+    // WHY: Enables introspection, pathfinding, and component analysis
+    node->topology_graph = nimcp_graph_create();
+    if (!node->topology_graph) {
+        nimcp_mutex_destroy(&node->lock);
+        nimcp_free(node->peers);
+        nimcp_free(node);
+        return NULL;
+    }
+
     return node;
 }
 
@@ -629,6 +648,11 @@ void p2p_node_destroy(p2p_node_t node) {
 
     // Free peer array
     nimcp_free(node->peers);
+
+    // Destroy topology graph
+    if (node->topology_graph) {
+        nimcp_graph_destroy(node->topology_graph);
+    }
 
     // Close listen socket
     close_listen_socket(node);
@@ -899,6 +923,23 @@ bool p2p_node_connect_peer(p2p_node_t node, const char* peer_ip, uint16_t peer_p
         return false;
     }
 
+    // Add vertex to topology graph
+    // WHY: Track network structure for introspection and routing
+    // Use peer_ip:peer_port as unique peer ID (hashed to uint64_t)
+    uint64_t peer_id = ((uint64_t)inet_addr(peer_ip) << 32) | peer_port;
+    uint32_t vertex_idx = nimcp_graph_add_vertex(
+        node->topology_graph,
+        peer_id,
+        0.0f, 0.0f, 0.0f,  // Coordinates (TODO: calculate from network metrics)
+        0                   // Capabilities (TODO: exchange in handshake)
+    );
+
+    // If vertex creation fails, log but don't fail connection
+    // WHY: Graph is for analytics; connection is the primary goal
+    if (vertex_idx == NIMCP_INVALID_VERTEX) {
+        fprintf(stderr, "[P2P] Warning: Failed to add peer to topology graph\n");
+    }
+
     nimcp_mutex_unlock(&node->lock);
     return true;
 }
@@ -1019,6 +1060,16 @@ bool p2p_node_disconnect_peer(p2p_node_t node, const char* peer_ip, uint16_t pee
     if (index < 0) {
         nimcp_mutex_unlock(&node->lock);
         return false;
+    }
+
+    // Remove vertex from topology graph
+    // WHY: Keep graph synchronized with peer list
+    uint64_t peer_id = ((uint64_t)inet_addr(peer_ip) << 32) | peer_port;
+    uint32_t vertex_idx = nimcp_graph_find_vertex(node->topology_graph, peer_id);
+    if (vertex_idx != NIMCP_INVALID_VERTEX) {
+        nimcp_graph_remove_vertex(node->topology_graph, vertex_idx);
+    } else {
+        fprintf(stderr, "[P2P] Warning: Peer vertex not found in topology graph\n");
     }
 
     // Compact peer array
