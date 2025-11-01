@@ -534,7 +534,7 @@ static bool check_memory_guards(void* ptr, size_t size)
         return false;
 
     uint32_t* head_guard = (uint32_t*) ((char*) ptr - sizeof(uint32_t));
-    uint32_t* tail_guard = (uint32_t*) ((char*) ptr + size - sizeof(uint32_t));
+    uint32_t* tail_guard = (uint32_t*) ((char*) ptr + size);
 
     if (*head_guard != g_memory_state.CANARY_VALUE || *tail_guard != g_memory_state.CANARY_VALUE) {
         fprintf(stderr, "[MEMORY] Buffer overflow detected at %p\n", ptr);
@@ -657,11 +657,11 @@ static uint64_t get_allocation_lifetime_ms(void* ptr)
  * COMPLEXITY: O(p) where p = number of unique sizes
  * THREAD SAFETY: Must be called with lock held
  *
- * @param ptr Pointer being allocated/freed (for lifetime)
  * @param size Size being allocated/freed
  * @param is_alloc true for allocation, false for free
+ * @param lifetime_ms Allocation lifetime in milliseconds (only used for free)
  */
-static void update_memory_patterns(void* ptr, size_t size, bool is_alloc)
+static void update_memory_patterns(size_t size, bool is_alloc, uint64_t lifetime_ms)
 {
     if (!g_memory_state.tracking_enabled)
         return;
@@ -674,7 +674,7 @@ static void update_memory_patterns(void* ptr, size_t size, bool is_alloc)
                 pattern->allocation_count++;
             } else {
                 pattern->free_count++;
-                pattern->total_lifetime_ms += get_allocation_lifetime_ms(ptr);
+                pattern->total_lifetime_ms += lifetime_ms;
             }
             return;
         }
@@ -771,7 +771,7 @@ static void track_allocation(void* ptr, size_t size, const char* file, int line,
     }
 
     // Update pattern analysis
-    update_memory_patterns(ptr, size, true);
+    update_memory_patterns(size, true, 0);
 
     nimcp_mutex_unlock(&g_memory_state.lock);
 }
@@ -826,8 +826,13 @@ static void untrack_allocation(void* ptr)
             g_memory_state.stats.current_allocated -= current->size;
             g_memory_state.stats.free_count++;
 
+            // Calculate lifetime for pattern analysis
+            timespec_internal_t now;
+            get_current_time(&now);
+            uint64_t lifetime_ms = timespec_diff_ms(&now, &current->allocation_time);
+
             // Update patterns
-            update_memory_patterns(ptr, current->size, false);
+            update_memory_patterns(current->size, false, lifetime_ms);
 
             // Free tracking structure
             free(current);
