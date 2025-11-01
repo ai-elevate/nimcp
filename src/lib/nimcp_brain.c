@@ -28,6 +28,7 @@
 #include "../include/nimcp_neuralnet.h"
 #include "utils/nimcp_memory.h"
 #include "utils/nimcp_time.h"
+#include "utils/nimcp_validate.h"
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
@@ -854,6 +855,45 @@ brain_t brain_create_custom(const brain_config_t* config) {
         return NULL;
     }
 
+    // Validate task_name as string field (NULL termination, UTF-8)
+    size_t task_name_size = sizeof(config->task_name);
+    if (!nimcp_validate_string_field(config->task_name, task_name_size)) {
+        set_error("Invalid task_name in config");
+        return NULL;
+    }
+
+    // Validate num_inputs (integer field, range 1-10000)
+    if (!nimcp_validate_integer_field(&config->num_inputs, sizeof(config->num_inputs))) {
+        set_error("Invalid num_inputs in config");
+        return NULL;
+    }
+    if (config->num_inputs < 1 || config->num_inputs > 10000) {
+        set_error("num_inputs out of range (1-10000): %u", config->num_inputs);
+        return NULL;
+    }
+
+    // Validate num_outputs (integer field, range 1-10000)
+    if (!nimcp_validate_integer_field(&config->num_outputs, sizeof(config->num_outputs))) {
+        set_error("Invalid num_outputs in config");
+        return NULL;
+    }
+    if (config->num_outputs < 1 || config->num_outputs > 10000) {
+        set_error("num_outputs out of range (1-10000): %u", config->num_outputs);
+        return NULL;
+    }
+
+    // Validate learning_rate (float field - NaN/Inf)
+    if (!nimcp_validate_float_field(&config->learning_rate, sizeof(config->learning_rate))) {
+        set_error("Invalid learning_rate in config (NaN or Inf)");
+        return NULL;
+    }
+
+    // Validate sparsity_target (float field - NaN/Inf)
+    if (!nimcp_validate_float_field(&config->sparsity_target, sizeof(config->sparsity_target))) {
+        set_error("Invalid sparsity_target in config (NaN or Inf)");
+        return NULL;
+    }
+
     return brain_create(
         config->task_name,
         config->size,
@@ -1486,18 +1526,110 @@ static bool load_metadata(brain_t brain, const char* filepath) {
     if (!meta_file) return false;
 
     fread(&brain->config, sizeof(brain_config_t), 1, meta_file);
+
+    // Validate brain->config fields after reading
+    // Validate learning_rate (float field - NaN/Inf check)
+    if (!nimcp_validate_float_field(&brain->config.learning_rate, sizeof(brain->config.learning_rate))) {
+        fprintf(stderr, "ERROR: Invalid learning_rate in loaded config (NaN or Inf)\n");
+        fclose(meta_file);
+        return false;
+    }
+
+    // Validate sparsity_target (float field - NaN/Inf check)
+    if (!nimcp_validate_float_field(&brain->config.sparsity_target, sizeof(brain->config.sparsity_target))) {
+        fprintf(stderr, "ERROR: Invalid sparsity_target in loaded config (NaN or Inf)\n");
+        fclose(meta_file);
+        return false;
+    }
+
+    // Validate num_inputs (integer field, range 1-10000)
+    if (!nimcp_validate_integer_field(&brain->config.num_inputs, sizeof(brain->config.num_inputs))) {
+        fprintf(stderr, "ERROR: Invalid num_inputs in loaded config\n");
+        fclose(meta_file);
+        return false;
+    }
+    if (brain->config.num_inputs < 1 || brain->config.num_inputs > 10000) {
+        fprintf(stderr, "ERROR: num_inputs out of range (1-10000): %u\n", brain->config.num_inputs);
+        fclose(meta_file);
+        return false;
+    }
+
+    // Validate num_outputs (integer field, range 1-10000)
+    if (!nimcp_validate_integer_field(&brain->config.num_outputs, sizeof(brain->config.num_outputs))) {
+        fprintf(stderr, "ERROR: Invalid num_outputs in loaded config\n");
+        fclose(meta_file);
+        return false;
+    }
+    if (brain->config.num_outputs < 1 || brain->config.num_outputs > 10000) {
+        fprintf(stderr, "ERROR: num_outputs out of range (1-10000): %u\n", brain->config.num_outputs);
+        fclose(meta_file);
+        return false;
+    }
+
     fread(&brain->num_output_labels, sizeof(uint32_t), 1, meta_file);
 
+    // Validate num_output_labels (range 0-10000, 0 means no labels)
+    if (!nimcp_validate_integer_field(&brain->num_output_labels, sizeof(brain->num_output_labels))) {
+        fprintf(stderr, "ERROR: Invalid num_output_labels in loaded metadata\n");
+        fclose(meta_file);
+        return false;
+    }
+    if (brain->num_output_labels > 10000) {
+        fprintf(stderr, "ERROR: num_output_labels out of range (0-10000): %u\n", brain->num_output_labels);
+        fclose(meta_file);
+        return false;
+    }
+
+    // Handle case where there are no labels
+    if (brain->num_output_labels == 0) {
+        brain->output_labels = NULL;
+        fclose(meta_file);
+        return true;
+    }
+
     brain->output_labels = malloc(brain->num_output_labels * sizeof(char*));
-    for (uint32_t i = 0; i < brain->num_output_labels; i++) {
+    if (!brain->output_labels) {
+        fprintf(stderr, "ERROR: Failed to allocate output_labels array\n");
+        fclose(meta_file);
+        return false;
+    }
+
+    uint32_t i;
+    for (i = 0; i < brain->num_output_labels; i++) {
         uint32_t len;
         fread(&len, sizeof(uint32_t), 1, meta_file);
+
+        // Validate label length (1-1024 bytes)
+        if (!nimcp_validate_integer_field(&len, sizeof(len))) {
+            fprintf(stderr, "ERROR: Invalid label length at index %u\n", i);
+            goto cleanup;
+        }
+        if (len < 1 || len > 1024) {
+            fprintf(stderr, "ERROR: Label length out of range (1-1024) at index %u: %u\n", i, len);
+            goto cleanup;
+        }
+
         brain->output_labels[i] = malloc(len);
+        if (!brain->output_labels[i]) {
+            fprintf(stderr, "ERROR: Failed to allocate label at index %u\n", i);
+            goto cleanup;
+        }
+
         fread(brain->output_labels[i], len, 1, meta_file);
     }
 
     fclose(meta_file);
     return true;
+
+cleanup:
+    // Free any allocated labels before the failed one
+    for (uint32_t j = 0; j < i; j++) {
+        free(brain->output_labels[j]);
+    }
+    free(brain->output_labels);
+    brain->output_labels = NULL;
+    fclose(meta_file);
+    return false;
 }
 
 /**
@@ -1543,6 +1675,11 @@ brain_t brain_load(const char* filepath) {
         brain->config.sparsity_target = 0.8f;
         brain->config.enable_explanations = true;
         strcpy(brain->config.task_name, "loaded_brain");
+
+        // Set placeholder dimensions (actual dimensions are in the network)
+        // TODO: Add adaptive_network getter functions to retrieve actual values
+        brain->config.num_inputs = 1;
+        brain->config.num_outputs = 1;
     }
 
     // Create strategy for task

@@ -30,6 +30,7 @@
 //=============================================================================
 
 #include "../include/nimcp_protocol.h"
+#include "utils/nimcp_validate.h"
 #include <string.h>
 #include <stdio.h>
 #include <arpa/inet.h>
@@ -457,17 +458,47 @@ bool protocol_validate_header(const msg_header_t* header) {
     // Guard clause: Check pointer
     if (!header) return false;
 
+    // Guard clause: Validate magic field using nimcp_validate
+    if (!nimcp_validate_integer_field(&header->magic, sizeof(uint32_t))) {
+        return false;
+    }
+
     // Guard clause: Check magic number
     if (!is_magic_valid(header->magic)) return false;
+
+    // Guard clause: Validate version field using nimcp_validate
+    if (!nimcp_validate_integer_field(&header->version, sizeof(uint8_t))) {
+        return false;
+    }
 
     // Guard clause: Check version
     if (!is_version_valid(header->version)) return false;
 
+    // Guard clause: Validate message type field using nimcp_validate
+    if (!nimcp_validate_integer_field(&header->type, sizeof(msg_type_t))) {
+        return false;
+    }
+
     // Guard clause: Check message type
     if (!is_type_valid(header->type)) return false;
 
+    // Guard clause: Validate length field using nimcp_validate
+    if (!nimcp_validate_integer_field(&header->length, sizeof(uint32_t))) {
+        return false;
+    }
+
     // Guard clause: Check payload length
     if (!is_payload_length_valid(header->length)) return false;
+
+    // Guard clause: Validate sequence field using nimcp_validate
+    if (!nimcp_validate_integer_field(&header->sequence, sizeof(uint32_t))) {
+        return false;
+    }
+
+    // Guard clause: Validate checksum field using nimcp_validate
+    if (!nimcp_validate_integer_field(&header->checksum, sizeof(uint32_t))) {
+        return false;
+    }
 
     return true;
 }

@@ -19,6 +19,7 @@
 #include "nimcp_brain.h"
 #include "utils/nimcp_memory.h"
 #include "utils/nimcp_queue.h"
+#include "utils/nimcp_validate.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -220,7 +221,21 @@ static bool csv_parse_line(const char* line, char delimiter,
     // Parse features
     for (uint32_t i = 0; i < num_features; i++) {
         if (!token) return false;
+
+        // Store token for error reporting before parsing
+        char token_copy[256];
+        strncpy(token_copy, token, sizeof(token_copy) - 1);
+        token_copy[sizeof(token_copy) - 1] = '\0';
+
         features[i] = atof(token);
+
+        // Validate parsed float value
+        if (!nimcp_validate_float_field(&features[i], sizeof(float))) {
+            fprintf(stderr, "[DataIO] Invalid feature value at index %u: %f from token '%s'\n",
+                    i, features[i], token_copy);
+            return false;
+        }
+
         token = strtok(NULL, delim_str);
     }
 

@@ -77,6 +77,8 @@
 #include "utils/nimcp_queue_manager.h"
 #include "utils/nimcp_thread.h"
 #include "utils/nimcp_memory.h"
+#include "utils/nimcp_validate.h"
+#include "logging/nimcp_logging.h"
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
@@ -436,6 +438,25 @@ event_generator_t event_generator_create(const event_generator_config_t* config)
 
     // Guard clause: Check required callback
     if (!config->callback) return NULL;
+
+    // MEDIUM PRIORITY VALIDATION: Validate configuration parameters
+    // Validate node_id (uint32_t field)
+    if (!nimcp_validate_integer_field(&config->node_id, sizeof(config->node_id))) {
+        NIMCP_LOGGING_ERROR("Invalid node_id in event generator config");
+        return NULL;
+    }
+
+    // Validate base_feature_code (feature_code_t is uint32_t)
+    if (!nimcp_validate_integer_field(&config->base_feature_code, sizeof(config->base_feature_code))) {
+        NIMCP_LOGGING_ERROR("Invalid base_feature_code in event generator config");
+        return NULL;
+    }
+
+    // Validate max_hop_count (uint8_t field)
+    if (!nimcp_validate_integer_field(&config->max_hop_count, sizeof(config->max_hop_count))) {
+        NIMCP_LOGGING_ERROR("Invalid max_hop_count in event generator config");
+        return NULL;
+    }
 
     event_generator_t gen = nimcp_malloc(sizeof(struct event_generator_struct));
     // Guard clause: Check allocation
