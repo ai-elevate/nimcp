@@ -8,9 +8,9 @@
  */
 
 #include <gtest/gtest.h>
+#include <jansson.h>
 #include <cstring>
 #include <fstream>
-#include <jansson.h>
 
 extern "C" {
 #define NIMCP_INTERNAL
@@ -23,30 +23,34 @@ extern "C" {
 //=============================================================================
 
 class JsonContextTest : public ::testing::Test {
-protected:
+   protected:
     JsonContext* ctx;
 
-    void SetUp() override {
+    void SetUp() override
+    {
         ctx = nullptr;
         nimcp_memory_init();
-        nimcp_memory_enable_tracking(false); // Disable for cleaner output
+        nimcp_memory_enable_tracking(false);  // Disable for cleaner output
     }
 
-    void TearDown() override {
+    void TearDown() override
+    {
         if (ctx) {
             nimcp_json_destroy_context(ctx);
         }
     }
 
     // Helper to create a temporary JSON file
-    void CreateTestJsonFile(const char* filename, const char* content) {
+    void CreateTestJsonFile(const char* filename, const char* content)
+    {
         std::ofstream file(filename);
         file << content;
         file.close();
     }
 
     // Helper to cleanup test file
-    void RemoveTestFile(const char* filename) {
+    void RemoveTestFile(const char* filename)
+    {
         std::remove(filename);
     }
 };
@@ -59,7 +63,8 @@ protected:
  * WHAT: Test context creation
  * WHY: Verify basic initialization works
  */
-TEST_F(JsonContextTest, CreateContext) {
+TEST_F(JsonContextTest, CreateContext)
+{
     JsonResult result = nimcp_json_create_context(&ctx);
     EXPECT_EQ(result, JSON_SUCCESS);
     ASSERT_NE(ctx, nullptr);
@@ -69,7 +74,8 @@ TEST_F(JsonContextTest, CreateContext) {
  * WHAT: Test context creation with NULL parameter
  * WHY: Verify error handling
  */
-TEST_F(JsonContextTest, CreateContextWithNull) {
+TEST_F(JsonContextTest, CreateContextWithNull)
+{
     JsonResult result = nimcp_json_create_context(nullptr);
     EXPECT_EQ(result, JSON_ERROR_INVALID_PARAM);
 }
@@ -78,11 +84,12 @@ TEST_F(JsonContextTest, CreateContextWithNull) {
  * WHAT: Test context destruction
  * WHY: Verify cleanup works without memory leaks
  */
-TEST_F(JsonContextTest, DestroyContext) {
+TEST_F(JsonContextTest, DestroyContext)
+{
     ASSERT_EQ(nimcp_json_create_context(&ctx), JSON_SUCCESS);
 
     nimcp_json_destroy_context(ctx);
-    ctx = nullptr; // Prevent double-free in TearDown
+    ctx = nullptr;  // Prevent double-free in TearDown
 
     // Should not crash
     SUCCEED();
@@ -92,7 +99,8 @@ TEST_F(JsonContextTest, DestroyContext) {
  * WHAT: Test destroying NULL context
  * WHY: Verify NULL safety
  */
-TEST_F(JsonContextTest, DestroyNullContext) {
+TEST_F(JsonContextTest, DestroyNullContext)
+{
     nimcp_json_destroy_context(nullptr);
     SUCCEED();
 }
@@ -102,7 +110,7 @@ TEST_F(JsonContextTest, DestroyNullContext) {
 //=============================================================================
 
 class JsonFileTest : public JsonContextTest {
-protected:
+   protected:
     const char* test_file = "test_json_temp.json";
 };
 
@@ -110,7 +118,8 @@ protected:
  * WHAT: Test loading JSON from file
  * WHY: Verify file parsing works
  */
-TEST_F(JsonFileTest, LoadValidJsonFile) {
+TEST_F(JsonFileTest, LoadValidJsonFile)
+{
     CreateTestJsonFile(test_file, R"(
         {
             "name": "test",
@@ -131,7 +140,8 @@ TEST_F(JsonFileTest, LoadValidJsonFile) {
  * WHAT: Test loading invalid JSON
  * WHY: Verify parse error handling
  */
-TEST_F(JsonFileTest, LoadInvalidJsonFile) {
+TEST_F(JsonFileTest, LoadInvalidJsonFile)
+{
     CreateTestJsonFile(test_file, "{ invalid json }");
 
     ASSERT_EQ(nimcp_json_create_context(&ctx), JSON_SUCCESS);
@@ -146,7 +156,8 @@ TEST_F(JsonFileTest, LoadInvalidJsonFile) {
  * WHAT: Test loading non-existent file
  * WHY: Verify file error handling
  */
-TEST_F(JsonFileTest, LoadNonexistentFile) {
+TEST_F(JsonFileTest, LoadNonexistentFile)
+{
     ASSERT_EQ(nimcp_json_create_context(&ctx), JSON_SUCCESS);
 
     JsonResult result = nimcp_json_load_file(ctx, "nonexistent_file.json", 0);
@@ -157,7 +168,8 @@ TEST_F(JsonFileTest, LoadNonexistentFile) {
  * WHAT: Test dumping JSON to file
  * WHY: Verify file writing works
  */
-TEST_F(JsonFileTest, DumpJsonToFile) {
+TEST_F(JsonFileTest, DumpJsonToFile)
+{
     ASSERT_EQ(nimcp_json_create_context(&ctx), JSON_SUCCESS);
 
     // Set some values
@@ -179,7 +191,8 @@ TEST_F(JsonFileTest, DumpJsonToFile) {
  * WHAT: Test dumping with NULL context
  * WHY: Verify error handling
  */
-TEST_F(JsonFileTest, DumpWithNullContext) {
+TEST_F(JsonFileTest, DumpWithNullContext)
+{
     JsonResult result = nimcp_json_dump_file(nullptr, test_file, 0);
     EXPECT_EQ(result, JSON_ERROR_INVALID_PARAM);
 }
@@ -194,7 +207,8 @@ class JsonValueTest : public JsonContextTest {};
  * WHAT: Test getting string values
  * WHY: Verify string extraction works
  */
-TEST_F(JsonValueTest, GetStringValue) {
+TEST_F(JsonValueTest, GetStringValue)
+{
     ASSERT_EQ(nimcp_json_create_context(&ctx), JSON_SUCCESS);
 
     // Set a string value
@@ -211,7 +225,8 @@ TEST_F(JsonValueTest, GetStringValue) {
  * WHAT: Test getting integer values
  * WHY: Verify integer extraction works
  */
-TEST_F(JsonValueTest, GetIntegerValue) {
+TEST_F(JsonValueTest, GetIntegerValue)
+{
     ASSERT_EQ(nimcp_json_create_context(&ctx), JSON_SUCCESS);
 
     nimcp_json_set_integer_value(ctx, "count", 12345);
@@ -226,7 +241,8 @@ TEST_F(JsonValueTest, GetIntegerValue) {
  * WHAT: Test getting boolean values
  * WHY: Verify boolean extraction works
  */
-TEST_F(JsonValueTest, GetBooleanValue) {
+TEST_F(JsonValueTest, GetBooleanValue)
+{
     ASSERT_EQ(nimcp_json_create_context(&ctx), JSON_SUCCESS);
 
     nimcp_json_set_boolean_value(ctx, "enabled", true);
@@ -244,7 +260,8 @@ TEST_F(JsonValueTest, GetBooleanValue) {
  * WHAT: Test getting number (double) values
  * WHY: Verify floating-point extraction works
  */
-TEST_F(JsonValueTest, GetNumberValue) {
+TEST_F(JsonValueTest, GetNumberValue)
+{
     ASSERT_EQ(nimcp_json_create_context(&ctx), JSON_SUCCESS);
 
     nimcp_json_set_number_value(ctx, "pi", 3.14159);
@@ -259,7 +276,8 @@ TEST_F(JsonValueTest, GetNumberValue) {
  * WHAT: Test getting non-existent value
  * WHY: Verify NOT_FOUND error
  */
-TEST_F(JsonValueTest, GetNonexistentValue) {
+TEST_F(JsonValueTest, GetNonexistentValue)
+{
     ASSERT_EQ(nimcp_json_create_context(&ctx), JSON_SUCCESS);
 
     int64_t value = 0;
@@ -271,7 +289,8 @@ TEST_F(JsonValueTest, GetNonexistentValue) {
  * WHAT: Test type mismatch errors
  * WHY: Verify type checking works
  */
-TEST_F(JsonValueTest, TypeMismatch) {
+TEST_F(JsonValueTest, TypeMismatch)
+{
     ASSERT_EQ(nimcp_json_create_context(&ctx), JSON_SUCCESS);
 
     nimcp_json_set_string_value(ctx, "name", "test");
@@ -292,7 +311,8 @@ class JsonPathTest : public JsonContextTest {};
  * WHAT: Test nested path access
  * WHY: Verify path resolution works for nested objects
  */
-TEST_F(JsonPathTest, NestedPathAccess) {
+TEST_F(JsonPathTest, NestedPathAccess)
+{
     const char* json_content = R"(
         {
             "server": {
@@ -324,7 +344,8 @@ TEST_F(JsonPathTest, NestedPathAccess) {
  * WHAT: Test setting nested values
  * WHY: Verify path-based setting works
  */
-TEST_F(JsonPathTest, SetNestedValue) {
+TEST_F(JsonPathTest, SetNestedValue)
+{
     ASSERT_EQ(nimcp_json_create_context(&ctx), JSON_SUCCESS);
 
     // Create nested structure manually
@@ -351,7 +372,8 @@ TEST_F(JsonPathTest, SetNestedValue) {
  * WHAT: Test invalid path
  * WHY: Verify error handling for malformed paths
  */
-TEST_F(JsonPathTest, InvalidPath) {
+TEST_F(JsonPathTest, InvalidPath)
+{
     ASSERT_EQ(nimcp_json_create_context(&ctx), JSON_SUCCESS);
 
     int64_t value = 0;
@@ -369,7 +391,8 @@ class JsonNullTest : public JsonContextTest {};
  * WHAT: Test checking for null values
  * WHY: Verify null detection works
  */
-TEST_F(JsonNullTest, CheckNullValue) {
+TEST_F(JsonNullTest, CheckNullValue)
+{
     ASSERT_EQ(nimcp_json_create_context(&ctx), JSON_SUCCESS);
 
     // Set a null value
@@ -386,7 +409,8 @@ TEST_F(JsonNullTest, CheckNullValue) {
  * WHAT: Test null vs non-existent
  * WHY: Verify distinction between null and missing
  */
-TEST_F(JsonNullTest, NullVsNonexistent) {
+TEST_F(JsonNullTest, NullVsNonexistent)
+{
     ASSERT_EQ(nimcp_json_create_context(&ctx), JSON_SUCCESS);
 
     nimcp_json_set_null_value(ctx, "nullfield");
@@ -405,7 +429,8 @@ TEST_F(JsonNullTest, NullVsNonexistent) {
  * WHAT: Test getting null value as string
  * WHY: Verify type error for null values
  */
-TEST_F(JsonNullTest, GetNullAsString) {
+TEST_F(JsonNullTest, GetNullAsString)
+{
     ASSERT_EQ(nimcp_json_create_context(&ctx), JSON_SUCCESS);
 
     nimcp_json_set_null_value(ctx, "nullfield");
@@ -425,7 +450,8 @@ class JsonErrorTest : public JsonContextTest {};
  * WHAT: Test error message retrieval
  * WHY: Verify error descriptions are available
  */
-TEST_F(JsonErrorTest, GetErrorMessages) {
+TEST_F(JsonErrorTest, GetErrorMessages)
+{
     EXPECT_STREQ(nimcp_json_get_error(JSON_SUCCESS), "Success");
     EXPECT_STREQ(nimcp_json_get_error(JSON_ERROR_INVALID_PARAM), "Invalid parameter");
     EXPECT_STREQ(nimcp_json_get_error(JSON_ERROR_MEMORY), "Memory allocation failed");
@@ -440,7 +466,8 @@ TEST_F(JsonErrorTest, GetErrorMessages) {
  * WHAT: Test NULL parameter handling across all functions
  * WHY: Verify comprehensive NULL safety
  */
-TEST_F(JsonErrorTest, NullParameterHandling) {
+TEST_F(JsonErrorTest, NullParameterHandling)
+{
     char buffer[256];
     int64_t int_val;
     double num_val;
@@ -478,7 +505,8 @@ class JsonIntegrationTest : public JsonContextTest {};
  * WHAT: Test complete workflow: load, modify, save
  * WHY: Verify real-world usage scenario
  */
-TEST_F(JsonIntegrationTest, LoadModifySave) {
+TEST_F(JsonIntegrationTest, LoadModifySave)
+{
     const char* input_file = "test_input.json";
     const char* output_file = "test_output.json";
 
@@ -531,27 +559,28 @@ TEST_F(JsonIntegrationTest, LoadModifySave) {
  * WHAT: Test complex nested structure
  * WHY: Verify handling of deeply nested JSON
  */
-TEST_F(JsonIntegrationTest, ComplexNestedStructure) {
+TEST_F(JsonIntegrationTest, ComplexNestedStructure)
+{
     const char* complex_json = "{"
-        "\"application\": {"
-            "\"name\": \"TestApp\","
-            "\"version\": \"1.0.0\","
-            "\"config\": {"
-                "\"database\": {"
-                    "\"host\": \"localhost\","
-                    "\"port\": 5432,"
-                    "\"credentials\": {"
-                        "\"username\": \"admin\","
-                        "\"password\": \"secret\""
-                    "}"
-                "},"
-                "\"logging\": {"
-                    "\"level\": \"debug\","
-                    "\"enabled\": true"
-                "}"
-            "}"
-        "}"
-    "}";
+                               "\"application\": {"
+                               "\"name\": \"TestApp\","
+                               "\"version\": \"1.0.0\","
+                               "\"config\": {"
+                               "\"database\": {"
+                               "\"host\": \"localhost\","
+                               "\"port\": 5432,"
+                               "\"credentials\": {"
+                               "\"username\": \"admin\","
+                               "\"password\": \"secret\""
+                               "}"
+                               "},"
+                               "\"logging\": {"
+                               "\"level\": \"debug\","
+                               "\"enabled\": true"
+                               "}"
+                               "}"
+                               "}"
+                               "}";
 
     const char* test_file = "test_complex.json";
     CreateTestJsonFile(test_file, complex_json);
@@ -564,16 +593,17 @@ TEST_F(JsonIntegrationTest, ComplexNestedStructure) {
     int64_t port;
     bool enabled;
 
-    EXPECT_EQ(nimcp_json_get_string_value(ctx, "application/config/database/host",
-                                           host, sizeof(host)), JSON_SUCCESS);
+    EXPECT_EQ(
+        nimcp_json_get_string_value(ctx, "application/config/database/host", host, sizeof(host)),
+        JSON_SUCCESS);
     EXPECT_STREQ(host, "localhost");
 
-    EXPECT_EQ(nimcp_json_get_integer_value(ctx, "application/config/database/port",
-                                            &port), JSON_SUCCESS);
+    EXPECT_EQ(nimcp_json_get_integer_value(ctx, "application/config/database/port", &port),
+              JSON_SUCCESS);
     EXPECT_EQ(port, 5432);
 
-    EXPECT_EQ(nimcp_json_get_boolean_value(ctx, "application/config/logging/enabled",
-                                             &enabled), JSON_SUCCESS);
+    EXPECT_EQ(nimcp_json_get_boolean_value(ctx, "application/config/logging/enabled", &enabled),
+              JSON_SUCCESS);
     EXPECT_TRUE(enabled);
 
     RemoveTestFile(test_file);
@@ -583,7 +613,8 @@ TEST_F(JsonIntegrationTest, ComplexNestedStructure) {
  * WHAT: Test building JSON from scratch
  * WHY: Verify creating JSON without loading from file
  */
-TEST_F(JsonIntegrationTest, BuildJsonFromScratch) {
+TEST_F(JsonIntegrationTest, BuildJsonFromScratch)
+{
     ASSERT_EQ(nimcp_json_create_context(&ctx), JSON_SUCCESS);
 
     // Build structure
@@ -626,7 +657,8 @@ TEST_F(JsonIntegrationTest, BuildJsonFromScratch) {
  * WHAT: Test handling of various data types
  * WHY: Verify all JSON types are supported
  */
-TEST_F(JsonIntegrationTest, AllDataTypes) {
+TEST_F(JsonIntegrationTest, AllDataTypes)
+{
     ASSERT_EQ(nimcp_json_create_context(&ctx), JSON_SUCCESS);
 
     // Set various types

@@ -10,8 +10,8 @@
 #include "test_helpers.h"
 
 extern "C" {
-#include "../include/nimcp_consolidation.h"
 #include "../include/nimcp_brain.h"
+#include "../include/nimcp_consolidation.h"
 }
 
 #include <gtest/gtest.h>
@@ -28,7 +28,7 @@ extern "C" {
  * WHY: Set up/tear down brain and handle for each test
  */
 class ConsolidationTest : public ::testing::Test {
-protected:
+   protected:
     brain_t brain;
     consolidation_handle_t handle;
 
@@ -36,21 +36,23 @@ protected:
     static const uint32_t NUM_FEATURES = 13;
     float test_features[NUM_FEATURES];
 
-    void SetUp() override {
+    void SetUp() override
+    {
         // Create test brain
-        brain = brain_create("test_consol_brain", BRAIN_SIZE_SMALL,
-                            BRAIN_TASK_CLASSIFICATION, NUM_FEATURES, 3);
+        brain = brain_create("test_consol_brain", BRAIN_SIZE_SMALL, BRAIN_TASK_CLASSIFICATION,
+                             NUM_FEATURES, 3);
         ASSERT_NE(brain, nullptr);
 
         // Initialize test features
         for (uint32_t i = 0; i < NUM_FEATURES; i++) {
-            test_features[i] = (float)i / NUM_FEATURES;
+            test_features[i] = (float) i / NUM_FEATURES;
         }
 
         handle = nullptr;
     }
 
-    void TearDown() override {
+    void TearDown() override
+    {
         // Clean up handle
         if (handle) {
             brain_stop_background_consolidation(handle);
@@ -68,15 +70,18 @@ static std::atomic<uint32_t> g_consolidation_start_count{0};
 static std::atomic<uint32_t> g_consolidation_progress_count{0};
 static std::atomic<uint32_t> g_consolidation_complete_count{0};
 
-static void consolidation_start_callback(void* context) {
+static void consolidation_start_callback(void* context)
+{
     g_consolidation_start_count++;
 }
 
-static void consolidation_progress_callback(float progress, void* context) {
+static void consolidation_progress_callback(float progress, void* context)
+{
     g_consolidation_progress_count++;
 }
 
-static void consolidation_complete_callback(void* context) {
+static void consolidation_complete_callback(void* context)
+{
     g_consolidation_complete_count++;
 }
 
@@ -88,7 +93,8 @@ static void consolidation_complete_callback(void* context) {
  * WHAT: Test default consolidation configuration
  * WHY: Verify sensible defaults are provided
  */
-TEST_F(ConsolidationTest, DefaultConfig) {
+TEST_F(ConsolidationTest, DefaultConfig)
+{
     consolidation_config_t config = consolidation_default_config();
 
     EXPECT_EQ(config.strategy, CONSOLIDATION_STRATEGY_FULL);
@@ -108,7 +114,8 @@ TEST_F(ConsolidationTest, DefaultConfig) {
  * WHAT: Test synchronous consolidation with default config
  * WHY: Verify basic consolidation works
  */
-TEST_F(ConsolidationTest, ConsolidateMemoryDefault) {
+TEST_F(ConsolidationTest, ConsolidateMemoryDefault)
+{
     consolidation_config_t config = consolidation_default_config();
     config.consolidation_cycles = 5;  // Keep it short for testing
 
@@ -121,7 +128,8 @@ TEST_F(ConsolidationTest, ConsolidateMemoryDefault) {
  * WHAT: Test synchronous consolidation with NULL brain
  * WHY: Verify proper error handling
  */
-TEST_F(ConsolidationTest, ConsolidateNullBrain) {
+TEST_F(ConsolidationTest, ConsolidateNullBrain)
+{
     consolidation_config_t config = consolidation_default_config();
 
     bool result = brain_consolidate_memory(nullptr, &config);
@@ -133,7 +141,8 @@ TEST_F(ConsolidationTest, ConsolidateNullBrain) {
  * WHAT: Test consolidation with NULL config (uses defaults)
  * WHY: Verify NULL config handling
  */
-TEST_F(ConsolidationTest, ConsolidateNullConfig) {
+TEST_F(ConsolidationTest, ConsolidateNullConfig)
+{
     bool result = brain_consolidate_memory(brain, nullptr);
 
     EXPECT_TRUE(result);
@@ -143,7 +152,8 @@ TEST_F(ConsolidationTest, ConsolidateNullConfig) {
  * WHAT: Test consolidation with callbacks
  * WHY: Verify callbacks are invoked
  */
-TEST_F(ConsolidationTest, ConsolidateWithCallbacks) {
+TEST_F(ConsolidationTest, ConsolidateWithCallbacks)
+{
     g_consolidation_start_count = 0;
     g_consolidation_progress_count = 0;
     g_consolidation_complete_count = 0;
@@ -166,7 +176,8 @@ TEST_F(ConsolidationTest, ConsolidateWithCallbacks) {
  * WHAT: Test consolidation statistics
  * WHY: Verify statistics are tracked
  */
-TEST_F(ConsolidationTest, ConsolidateStatistics) {
+TEST_F(ConsolidationTest, ConsolidateStatistics)
+{
     consolidation_config_t config = consolidation_default_config();
     config.consolidation_cycles = 2;
 
@@ -188,7 +199,8 @@ TEST_F(ConsolidationTest, ConsolidateStatistics) {
  * WHAT: Test replay strategy
  * WHY: Verify replay-based consolidation works
  */
-TEST_F(ConsolidationTest, ReplayStrategy) {
+TEST_F(ConsolidationTest, ReplayStrategy)
+{
     consolidation_config_t config = consolidation_default_config();
     config.strategy = CONSOLIDATION_STRATEGY_REPLAY;
     config.consolidation_cycles = 3;
@@ -202,7 +214,8 @@ TEST_F(ConsolidationTest, ReplayStrategy) {
  * WHAT: Test scaling strategy
  * WHY: Verify synaptic scaling works
  */
-TEST_F(ConsolidationTest, ScalingStrategy) {
+TEST_F(ConsolidationTest, ScalingStrategy)
+{
     consolidation_config_t config = consolidation_default_config();
     config.strategy = CONSOLIDATION_STRATEGY_SCALING;
     config.consolidation_cycles = 3;
@@ -216,7 +229,8 @@ TEST_F(ConsolidationTest, ScalingStrategy) {
  * WHAT: Test pruning strategy
  * WHY: Verify connection pruning works
  */
-TEST_F(ConsolidationTest, PruningStrategy) {
+TEST_F(ConsolidationTest, PruningStrategy)
+{
     consolidation_config_t config = consolidation_default_config();
     config.strategy = CONSOLIDATION_STRATEGY_PRUNING;
     config.consolidation_cycles = 3;
@@ -230,7 +244,8 @@ TEST_F(ConsolidationTest, PruningStrategy) {
  * WHAT: Test integration strategy
  * WHY: Verify knowledge integration works
  */
-TEST_F(ConsolidationTest, IntegrationStrategy) {
+TEST_F(ConsolidationTest, IntegrationStrategy)
+{
     consolidation_config_t config = consolidation_default_config();
     config.strategy = CONSOLIDATION_STRATEGY_INTEGRATION;
     config.consolidation_cycles = 3;
@@ -244,7 +259,8 @@ TEST_F(ConsolidationTest, IntegrationStrategy) {
  * WHAT: Test full strategy (all methods)
  * WHY: Verify comprehensive consolidation works
  */
-TEST_F(ConsolidationTest, FullStrategy) {
+TEST_F(ConsolidationTest, FullStrategy)
+{
     consolidation_config_t config = consolidation_default_config();
     config.strategy = CONSOLIDATION_STRATEGY_FULL;
     config.consolidation_cycles = 3;
@@ -262,7 +278,8 @@ TEST_F(ConsolidationTest, FullStrategy) {
  * WHAT: Test starting background consolidation
  * WHY: Verify background thread starts correctly
  */
-TEST_F(ConsolidationTest, StartBackgroundConsolidation) {
+TEST_F(ConsolidationTest, StartBackgroundConsolidation)
+{
     consolidation_config_t config = consolidation_default_config();
     config.consolidation_cycles = 2;
 
@@ -278,7 +295,8 @@ TEST_F(ConsolidationTest, StartBackgroundConsolidation) {
  * WHAT: Test background consolidation with NULL brain
  * WHY: Verify proper error handling
  */
-TEST_F(ConsolidationTest, StartBackgroundNullBrain) {
+TEST_F(ConsolidationTest, StartBackgroundNullBrain)
+{
     consolidation_config_t config = consolidation_default_config();
 
     handle = brain_start_background_consolidation(nullptr, 60, &config);
@@ -290,7 +308,8 @@ TEST_F(ConsolidationTest, StartBackgroundNullBrain) {
  * WHAT: Test stopping background consolidation
  * WHY: Verify graceful shutdown works
  */
-TEST_F(ConsolidationTest, StopBackgroundConsolidation) {
+TEST_F(ConsolidationTest, StopBackgroundConsolidation)
+{
     consolidation_config_t config = consolidation_default_config();
 
     handle = brain_start_background_consolidation(brain, 60, &config);
@@ -308,7 +327,8 @@ TEST_F(ConsolidationTest, StopBackgroundConsolidation) {
  * WHAT: Test pausing background consolidation
  * WHY: Verify pause functionality works
  */
-TEST_F(ConsolidationTest, PauseConsolidation) {
+TEST_F(ConsolidationTest, PauseConsolidation)
+{
     consolidation_config_t config = consolidation_default_config();
 
     handle = brain_start_background_consolidation(brain, 60, &config);
@@ -324,7 +344,8 @@ TEST_F(ConsolidationTest, PauseConsolidation) {
  * WHAT: Test resuming background consolidation
  * WHY: Verify resume functionality works
  */
-TEST_F(ConsolidationTest, ResumeConsolidation) {
+TEST_F(ConsolidationTest, ResumeConsolidation)
+{
     consolidation_config_t config = consolidation_default_config();
 
     handle = brain_start_background_consolidation(brain, 60, &config);
@@ -341,7 +362,8 @@ TEST_F(ConsolidationTest, ResumeConsolidation) {
  * WHAT: Test triggering immediate consolidation
  * WHY: Verify on-demand triggering works
  */
-TEST_F(ConsolidationTest, TriggerConsolidation) {
+TEST_F(ConsolidationTest, TriggerConsolidation)
+{
     consolidation_config_t config = consolidation_default_config();
     config.consolidation_cycles = 2;
 
@@ -360,7 +382,8 @@ TEST_F(ConsolidationTest, TriggerConsolidation) {
  * WHAT: Test checking if consolidation is running
  * WHY: Verify status query works
  */
-TEST_F(ConsolidationTest, IsConsolidationRunning) {
+TEST_F(ConsolidationTest, IsConsolidationRunning)
+{
     consolidation_config_t config = consolidation_default_config();
     config.consolidation_cycles = 2;
 
@@ -377,14 +400,15 @@ TEST_F(ConsolidationTest, IsConsolidationRunning) {
 
     // Might be running or might have finished already
     // Just verify it doesn't crash
-    (void)is_running;
+    (void) is_running;
 }
 
 /**
  * WHAT: Test getting consolidation progress
  * WHY: Verify progress monitoring works
  */
-TEST_F(ConsolidationTest, GetConsolidationProgress) {
+TEST_F(ConsolidationTest, GetConsolidationProgress)
+{
     consolidation_config_t config = consolidation_default_config();
     config.consolidation_cycles = 10;  // Longer consolidation
 
@@ -408,7 +432,8 @@ TEST_F(ConsolidationTest, GetConsolidationProgress) {
  * WHAT: Test background consolidation statistics
  * WHY: Verify statistics are tracked for background consolidation
  */
-TEST_F(ConsolidationTest, BackgroundStatistics) {
+TEST_F(ConsolidationTest, BackgroundStatistics)
+{
     consolidation_config_t config = consolidation_default_config();
     config.consolidation_cycles = 2;
 
@@ -435,7 +460,8 @@ TEST_F(ConsolidationTest, BackgroundStatistics) {
  * WHAT: Test getting important patterns
  * WHY: Verify pattern importance tracking works
  */
-TEST_F(ConsolidationTest, GetImportantPatterns) {
+TEST_F(ConsolidationTest, GetImportantPatterns)
+{
     uint32_t num_patterns = 0;
     pattern_importance_t* patterns = brain_get_important_patterns(brain, &num_patterns);
 
@@ -457,7 +483,8 @@ TEST_F(ConsolidationTest, GetImportantPatterns) {
  * WHAT: Test getting patterns with NULL brain
  * WHY: Verify proper error handling
  */
-TEST_F(ConsolidationTest, GetPatternsNullBrain) {
+TEST_F(ConsolidationTest, GetPatternsNullBrain)
+{
     uint32_t num_patterns = 0;
     pattern_importance_t* patterns = brain_get_important_patterns(nullptr, &num_patterns);
 
@@ -469,7 +496,8 @@ TEST_F(ConsolidationTest, GetPatternsNullBrain) {
  * WHAT: Test marking pattern as important
  * WHY: Verify manual importance setting works
  */
-TEST_F(ConsolidationTest, MarkPatternImportant) {
+TEST_F(ConsolidationTest, MarkPatternImportant)
+{
     bool result = brain_mark_pattern_important(brain, "critical_pattern", 0.95f);
 
     EXPECT_TRUE(result);
@@ -483,7 +511,8 @@ TEST_F(ConsolidationTest, MarkPatternImportant) {
  * WHAT: Test replaying specific pattern
  * WHY: Verify manual pattern replay works
  */
-TEST_F(ConsolidationTest, ReplayPattern) {
+TEST_F(ConsolidationTest, ReplayPattern)
+{
     bool result = brain_replay_pattern(brain, "test_pattern", 10, 0.1f);
 
     EXPECT_TRUE(result);
@@ -493,7 +522,8 @@ TEST_F(ConsolidationTest, ReplayPattern) {
  * WHAT: Test applying synaptic scaling
  * WHY: Verify manual scaling works
  */
-TEST_F(ConsolidationTest, ApplySynapticScaling) {
+TEST_F(ConsolidationTest, ApplySynapticScaling)
+{
     bool result = brain_apply_synaptic_scaling(brain, 0.5f);
 
     EXPECT_TRUE(result);
@@ -503,7 +533,8 @@ TEST_F(ConsolidationTest, ApplySynapticScaling) {
  * WHAT: Test pruning weak connections
  * WHY: Verify manual pruning works
  */
-TEST_F(ConsolidationTest, PruneWeakConnections) {
+TEST_F(ConsolidationTest, PruneWeakConnections)
+{
     uint32_t pruned = brain_prune_weak_connections(brain, 0.01f);
 
     // Should return count of pruned connections
@@ -518,7 +549,8 @@ TEST_F(ConsolidationTest, PruneWeakConnections) {
  * WHAT: Test consolidation with recent priority
  * WHY: Verify priority affects consolidation
  */
-TEST_F(ConsolidationTest, RecentPriority) {
+TEST_F(ConsolidationTest, RecentPriority)
+{
     consolidation_config_t config = consolidation_default_config();
     config.priority = CONSOLIDATION_PRIORITY_RECENT;
     config.consolidation_cycles = 2;
@@ -532,7 +564,8 @@ TEST_F(ConsolidationTest, RecentPriority) {
  * WHAT: Test consolidation with frequent priority
  * WHY: Verify priority affects consolidation
  */
-TEST_F(ConsolidationTest, FrequentPriority) {
+TEST_F(ConsolidationTest, FrequentPriority)
+{
     consolidation_config_t config = consolidation_default_config();
     config.priority = CONSOLIDATION_PRIORITY_FREQUENT;
     config.consolidation_cycles = 2;
@@ -546,7 +579,8 @@ TEST_F(ConsolidationTest, FrequentPriority) {
  * WHAT: Test consolidation with novel priority
  * WHY: Verify priority affects consolidation
  */
-TEST_F(ConsolidationTest, NovelPriority) {
+TEST_F(ConsolidationTest, NovelPriority)
+{
     consolidation_config_t config = consolidation_default_config();
     config.priority = CONSOLIDATION_PRIORITY_NOVEL;
     config.consolidation_cycles = 2;
@@ -564,7 +598,8 @@ TEST_F(ConsolidationTest, NovelPriority) {
  * WHAT: Test resetting statistics
  * WHY: Verify stats reset works
  */
-TEST_F(ConsolidationTest, ResetStatistics) {
+TEST_F(ConsolidationTest, ResetStatistics)
+{
     consolidation_config_t config = consolidation_default_config();
     config.consolidation_cycles = 2;
 
@@ -588,7 +623,8 @@ TEST_F(ConsolidationTest, ResetStatistics) {
  * WHAT: Test multiple background consolidations
  * WHY: Verify thread safety
  */
-TEST_F(ConsolidationTest, MultipleBackgroundConsolidations) {
+TEST_F(ConsolidationTest, MultipleBackgroundConsolidations)
+{
     consolidation_config_t config = consolidation_default_config();
     config.consolidation_cycles = 2;
 
@@ -615,7 +651,8 @@ TEST_F(ConsolidationTest, MultipleBackgroundConsolidations) {
  * WHAT: Test consolidation performance
  * WHY: Verify consolidation completes in reasonable time
  */
-TEST_F(ConsolidationTest, ConsolidationPerformance) {
+TEST_F(ConsolidationTest, ConsolidationPerformance)
+{
     consolidation_config_t config = consolidation_default_config();
     config.consolidation_cycles = 10;
 

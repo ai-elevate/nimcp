@@ -29,12 +29,12 @@
 
 typedef int32_t nimcp_result_t;
 
-#define NIMCP_SUCCESS                0    // Operation successful
-#define NIMCP_ERROR_INVALID_PARAM   -1    // Invalid parameter
-#define NIMCP_ERROR_SYSTEM          -2    // System error (check errno)
-#define NIMCP_ERROR_MEMORY          -3    // Memory allocation failed
-#define NIMCP_ERROR_NOT_FOUND       -4    // Resource not found
-#define NIMCP_BUSY                  -5    // Resource busy (trylock)
+#define NIMCP_SUCCESS 0               // Operation successful
+#define NIMCP_ERROR_INVALID_PARAM -1  // Invalid parameter
+#define NIMCP_ERROR_SYSTEM -2         // System error (check errno)
+#define NIMCP_ERROR_MEMORY -3         // Memory allocation failed
+#define NIMCP_ERROR_NOT_FOUND -4      // Resource not found
+#define NIMCP_BUSY -5                 // Resource busy (trylock)
 
 //=============================================================================
 // Type Definitions
@@ -59,11 +59,7 @@ typedef struct {
 } thread_attr_t;
 
 // Mutex attributes
-typedef enum {
-    MUTEX_TYPE_NORMAL,
-    MUTEX_TYPE_RECURSIVE,
-    MUTEX_TYPE_ERRORCHECK
-} mutex_type_t;
+typedef enum { MUTEX_TYPE_NORMAL, MUTEX_TYPE_RECURSIVE, MUTEX_TYPE_ERRORCHECK } mutex_type_t;
 
 typedef struct {
     mutex_type_t type;
@@ -115,9 +111,7 @@ nimcp_result_t nimcp_thread_init(void);
  * @param arg Argument to thread function
  * @param attr Thread attributes (NULL for defaults)
  */
-nimcp_result_t nimcp_thread_create(nimcp_thread_t* thread,
-                                   void* (*start_routine)(void*),
-                                   void* arg,
+nimcp_result_t nimcp_thread_create(nimcp_thread_t* thread, void* (*start_routine)(void*), void* arg,
                                    const thread_attr_t* attr);
 
 /**
@@ -202,8 +196,7 @@ nimcp_result_t nimcp_cond_wait(nimcp_cond_t* cond, nimcp_mutex_t* mutex);
 /**
  * @brief Wait on condition with timeout (milliseconds)
  */
-nimcp_result_t nimcp_cond_timedwait(nimcp_cond_t* cond, nimcp_mutex_t* mutex,
-                                     uint32_t timeout_ms);
+nimcp_result_t nimcp_cond_timedwait(nimcp_cond_t* cond, nimcp_mutex_t* mutex, uint32_t timeout_ms);
 
 /**
  * @brief Signal one waiting thread
@@ -226,8 +219,7 @@ nimcp_result_t nimcp_cond_broadcast(nimcp_cond_t* cond);
  *
  * Reference counted - automatically freed when all holders release
  */
-nimcp_result_t nimcp_get_resource_lock(const char* resource_id,
-                                       nimcp_mutex_t** mutex);
+nimcp_result_t nimcp_get_resource_lock(const char* resource_id, nimcp_mutex_t** mutex);
 
 /**
  * @brief Release a resource lock (decrement refcount)
@@ -258,4 +250,4 @@ void nimcp_thread_clear_error(void);
  */
 void nimcp_thread_cleanup(void);
 
-#endif // NIMCP_THREAD_H
+#endif  // NIMCP_THREAD_H

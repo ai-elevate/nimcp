@@ -7,23 +7,25 @@
  */
 
 #include <gtest/gtest.h>
-#include <thread>
 #include <chrono>
+#include <thread>
 extern "C" {
-    #include "utils/nimcp_queue_manager.h"
-    #include "utils/nimcp_memory.h"
+#include "utils/nimcp_memory.h"
+#include "utils/nimcp_queue_manager.h"
 }
 
 // Test fixture for queue manager operations
 class QueueManagerTest : public ::testing::Test {
-protected:
+   protected:
     nimcp_queue_manager_handle_t manager = nullptr;
 
-    void SetUp() override {
+    void SetUp() override
+    {
         nimcp_memory_init();
     }
 
-    void TearDown() override {
+    void TearDown() override
+    {
         if (manager) {
             nimcp_queue_manager_destroy(manager);
             manager = nullptr;
@@ -32,7 +34,8 @@ protected:
     }
 
     // Helper to create default configuration
-    nimcp_queue_manager_config_t GetDefaultConfig() {
+    nimcp_queue_manager_config_t GetDefaultConfig()
+    {
         nimcp_queue_manager_config_t config;
         config.queue_sizes.high = 100;
         config.queue_sizes.normal = 500;
@@ -45,9 +48,9 @@ protected:
     }
 
     // Helper to create test message
-    nimcp_message_t* CreateTestMessage(uint32_t type, uint32_t flags, int value) {
-        nimcp_message_t* msg = static_cast<nimcp_message_t*>(
-            nimcp_malloc(sizeof(nimcp_message_t)));
+    nimcp_message_t* CreateTestMessage(uint32_t type, uint32_t flags, int value)
+    {
+        nimcp_message_t* msg = static_cast<nimcp_message_t*>(nimcp_malloc(sizeof(nimcp_message_t)));
         msg->type = type;
         msg->flags = flags;
         msg->size = sizeof(int);
@@ -57,7 +60,8 @@ protected:
     }
 
     // Helper to destroy message
-    void DestroyMessage(nimcp_message_t* msg) {
+    void DestroyMessage(nimcp_message_t* msg)
+    {
         if (msg) {
             if (msg->data) {
                 nimcp_free(msg->data);
@@ -75,7 +79,8 @@ protected:
  * WHAT: Test queue manager creation with valid config
  * WHY: Verify basic initialization
  */
-TEST_F(QueueManagerTest, Create_ValidConfig) {
+TEST_F(QueueManagerTest, Create_ValidConfig)
+{
     auto config = GetDefaultConfig();
 
     nimcp_result_t result = nimcp_queue_manager_create(&config, &manager);
@@ -87,7 +92,8 @@ TEST_F(QueueManagerTest, Create_ValidConfig) {
  * WHAT: Test queue manager creation with null config
  * WHY: Verify null config is rejected
  */
-TEST_F(QueueManagerTest, Create_NullConfig) {
+TEST_F(QueueManagerTest, Create_NullConfig)
+{
     nimcp_result_t result = nimcp_queue_manager_create(nullptr, &manager);
     EXPECT_NE(result, NIMCP_SUCCESS);
 }
@@ -96,7 +102,8 @@ TEST_F(QueueManagerTest, Create_NullConfig) {
  * WHAT: Test queue manager creation with null output pointer
  * WHY: Verify null safety
  */
-TEST_F(QueueManagerTest, Create_NullOutput) {
+TEST_F(QueueManagerTest, Create_NullOutput)
+{
     auto config = GetDefaultConfig();
     nimcp_result_t result = nimcp_queue_manager_create(&config, nullptr);
     EXPECT_NE(result, NIMCP_SUCCESS);
@@ -106,7 +113,8 @@ TEST_F(QueueManagerTest, Create_NullOutput) {
  * WHAT: Test queue manager creation with invalid config
  * WHY: Verify configuration validation
  */
-TEST_F(QueueManagerTest, Create_InvalidConfig) {
+TEST_F(QueueManagerTest, Create_InvalidConfig)
+{
     auto config = GetDefaultConfig();
     config.max_channels = 0;  // Invalid
 
@@ -118,7 +126,8 @@ TEST_F(QueueManagerTest, Create_InvalidConfig) {
  * WHAT: Test queue manager destruction
  * WHY: Verify cleanup works
  */
-TEST_F(QueueManagerTest, Destroy_ValidManager) {
+TEST_F(QueueManagerTest, Destroy_ValidManager)
+{
     auto config = GetDefaultConfig();
     ASSERT_EQ(nimcp_queue_manager_create(&config, &manager), NIMCP_SUCCESS);
 
@@ -131,7 +140,8 @@ TEST_F(QueueManagerTest, Destroy_ValidManager) {
  * WHAT: Test destroying null manager
  * WHY: Verify null safety
  */
-TEST_F(QueueManagerTest, Destroy_Null) {
+TEST_F(QueueManagerTest, Destroy_Null)
+{
     nimcp_result_t result = nimcp_queue_manager_destroy(nullptr);
     EXPECT_NE(result, NIMCP_SUCCESS);
 }
@@ -144,7 +154,8 @@ TEST_F(QueueManagerTest, Destroy_Null) {
  * WHAT: Test basic enqueue operation
  * WHY: Verify messages can be queued
  */
-TEST_F(QueueManagerTest, Enqueue_Basic) {
+TEST_F(QueueManagerTest, Enqueue_Basic)
+{
     auto config = GetDefaultConfig();
     ASSERT_EQ(nimcp_queue_manager_create(&config, &manager), NIMCP_SUCCESS);
 
@@ -160,7 +171,8 @@ TEST_F(QueueManagerTest, Enqueue_Basic) {
  * WHAT: Test enqueue with high priority
  * WHY: Verify priority flags are respected
  */
-TEST_F(QueueManagerTest, Enqueue_HighPriority) {
+TEST_F(QueueManagerTest, Enqueue_HighPriority)
+{
     auto config = GetDefaultConfig();
     ASSERT_EQ(nimcp_queue_manager_create(&config, &manager), NIMCP_SUCCESS);
 
@@ -176,7 +188,8 @@ TEST_F(QueueManagerTest, Enqueue_HighPriority) {
  * WHAT: Test enqueue with low priority
  * WHY: Verify low priority handling
  */
-TEST_F(QueueManagerTest, Enqueue_LowPriority) {
+TEST_F(QueueManagerTest, Enqueue_LowPriority)
+{
     auto config = GetDefaultConfig();
     ASSERT_EQ(nimcp_queue_manager_create(&config, &manager), NIMCP_SUCCESS);
 
@@ -192,7 +205,8 @@ TEST_F(QueueManagerTest, Enqueue_LowPriority) {
  * WHAT: Test enqueue with null message
  * WHY: Verify null safety
  */
-TEST_F(QueueManagerTest, Enqueue_NullMessage) {
+TEST_F(QueueManagerTest, Enqueue_NullMessage)
+{
     auto config = GetDefaultConfig();
     ASSERT_EQ(nimcp_queue_manager_create(&config, &manager), NIMCP_SUCCESS);
 
@@ -204,7 +218,8 @@ TEST_F(QueueManagerTest, Enqueue_NullMessage) {
  * WHAT: Test enqueue with invalid channel
  * WHY: Verify channel validation
  */
-TEST_F(QueueManagerTest, Enqueue_InvalidChannel) {
+TEST_F(QueueManagerTest, Enqueue_InvalidChannel)
+{
     auto config = GetDefaultConfig();
     ASSERT_EQ(nimcp_queue_manager_create(&config, &manager), NIMCP_SUCCESS);
 
@@ -220,7 +235,8 @@ TEST_F(QueueManagerTest, Enqueue_InvalidChannel) {
  * WHAT: Test enqueue to multiple channels
  * WHY: Verify multi-channel support
  */
-TEST_F(QueueManagerTest, Enqueue_MultipleChannels) {
+TEST_F(QueueManagerTest, Enqueue_MultipleChannels)
+{
     auto config = GetDefaultConfig();
     ASSERT_EQ(nimcp_queue_manager_create(&config, &manager), NIMCP_SUCCESS);
 
@@ -240,7 +256,8 @@ TEST_F(QueueManagerTest, Enqueue_MultipleChannels) {
  * WHAT: Test basic dequeue operation
  * WHY: Verify messages can be retrieved
  */
-TEST_F(QueueManagerTest, Dequeue_Basic) {
+TEST_F(QueueManagerTest, Dequeue_Basic)
+{
     auto config = GetDefaultConfig();
     ASSERT_EQ(nimcp_queue_manager_create(&config, &manager), NIMCP_SUCCESS);
 
@@ -268,7 +285,8 @@ TEST_F(QueueManagerTest, Dequeue_Basic) {
  * WHAT: Test dequeue from empty queue
  * WHY: Verify empty queue handling
  */
-TEST_F(QueueManagerTest, Dequeue_EmptyQueue) {
+TEST_F(QueueManagerTest, Dequeue_EmptyQueue)
+{
     auto config = GetDefaultConfig();
     config.blocking_mode = false;
     ASSERT_EQ(nimcp_queue_manager_create(&config, &manager), NIMCP_SUCCESS);
@@ -285,7 +303,8 @@ TEST_F(QueueManagerTest, Dequeue_EmptyQueue) {
  * WHAT: Test dequeue with null output pointer
  * WHY: Verify null safety
  */
-TEST_F(QueueManagerTest, Dequeue_NullOutput) {
+TEST_F(QueueManagerTest, Dequeue_NullOutput)
+{
     auto config = GetDefaultConfig();
     ASSERT_EQ(nimcp_queue_manager_create(&config, &manager), NIMCP_SUCCESS);
 
@@ -297,7 +316,8 @@ TEST_F(QueueManagerTest, Dequeue_NullOutput) {
  * WHAT: Test priority ordering in dequeue
  * WHY: Verify high priority messages are dequeued first
  */
-TEST_F(QueueManagerTest, Dequeue_PriorityOrder) {
+TEST_F(QueueManagerTest, Dequeue_PriorityOrder)
+{
     auto config = GetDefaultConfig();
     ASSERT_EQ(nimcp_queue_manager_create(&config, &manager), NIMCP_SUCCESS);
 
@@ -334,7 +354,8 @@ TEST_F(QueueManagerTest, Dequeue_PriorityOrder) {
  * WHAT: Test is_empty check
  * WHY: Verify queue state can be queried
  */
-TEST_F(QueueManagerTest, IsEmpty_NewQueue) {
+TEST_F(QueueManagerTest, IsEmpty_NewQueue)
+{
     auto config = GetDefaultConfig();
     ASSERT_EQ(nimcp_queue_manager_create(&config, &manager), NIMCP_SUCCESS);
 
@@ -346,7 +367,8 @@ TEST_F(QueueManagerTest, IsEmpty_NewQueue) {
  * WHAT: Test is_full check
  * WHY: Verify queue full detection
  */
-TEST_F(QueueManagerTest, IsFull_NewQueue) {
+TEST_F(QueueManagerTest, IsFull_NewQueue)
+{
     auto config = GetDefaultConfig();
     ASSERT_EQ(nimcp_queue_manager_create(&config, &manager), NIMCP_SUCCESS);
 
@@ -358,7 +380,8 @@ TEST_F(QueueManagerTest, IsFull_NewQueue) {
  * WHAT: Test get_size query
  * WHY: Verify queue size can be retrieved
  */
-TEST_F(QueueManagerTest, GetSize_EmptyQueue) {
+TEST_F(QueueManagerTest, GetSize_EmptyQueue)
+{
     auto config = GetDefaultConfig();
     ASSERT_EQ(nimcp_queue_manager_create(&config, &manager), NIMCP_SUCCESS);
 
@@ -370,7 +393,8 @@ TEST_F(QueueManagerTest, GetSize_EmptyQueue) {
  * WHAT: Test query with invalid channel
  * WHY: Verify validation of channel parameter
  */
-TEST_F(QueueManagerTest, Query_InvalidChannel) {
+TEST_F(QueueManagerTest, Query_InvalidChannel)
+{
     auto config = GetDefaultConfig();
     ASSERT_EQ(nimcp_queue_manager_create(&config, &manager), NIMCP_SUCCESS);
 
@@ -389,7 +413,8 @@ TEST_F(QueueManagerTest, Query_InvalidChannel) {
  * WHAT: Test clearing a channel
  * WHY: Verify clear operation works
  */
-TEST_F(QueueManagerTest, Clear_Channel) {
+TEST_F(QueueManagerTest, Clear_Channel)
+{
     auto config = GetDefaultConfig();
     ASSERT_EQ(nimcp_queue_manager_create(&config, &manager), NIMCP_SUCCESS);
 
@@ -412,7 +437,8 @@ TEST_F(QueueManagerTest, Clear_Channel) {
  * WHAT: Test clearing empty channel
  * WHY: Verify clear handles empty channel
  */
-TEST_F(QueueManagerTest, Clear_EmptyChannel) {
+TEST_F(QueueManagerTest, Clear_EmptyChannel)
+{
     auto config = GetDefaultConfig();
     ASSERT_EQ(nimcp_queue_manager_create(&config, &manager), NIMCP_SUCCESS);
 
@@ -424,7 +450,8 @@ TEST_F(QueueManagerTest, Clear_EmptyChannel) {
  * WHAT: Test clear with invalid channel
  * WHY: Verify channel validation
  */
-TEST_F(QueueManagerTest, Clear_InvalidChannel) {
+TEST_F(QueueManagerTest, Clear_InvalidChannel)
+{
     auto config = GetDefaultConfig();
     ASSERT_EQ(nimcp_queue_manager_create(&config, &manager), NIMCP_SUCCESS);
 
@@ -440,7 +467,8 @@ TEST_F(QueueManagerTest, Clear_InvalidChannel) {
  * WHAT: Test getting statistics
  * WHY: Verify stats collection works
  */
-TEST_F(QueueManagerTest, GetStats_EmptyChannel) {
+TEST_F(QueueManagerTest, GetStats_EmptyChannel)
+{
     auto config = GetDefaultConfig();
     ASSERT_EQ(nimcp_queue_manager_create(&config, &manager), NIMCP_SUCCESS);
 
@@ -456,7 +484,8 @@ TEST_F(QueueManagerTest, GetStats_EmptyChannel) {
  * WHAT: Test stats with null output
  * WHY: Verify null safety
  */
-TEST_F(QueueManagerTest, GetStats_NullOutput) {
+TEST_F(QueueManagerTest, GetStats_NullOutput)
+{
     auto config = GetDefaultConfig();
     ASSERT_EQ(nimcp_queue_manager_create(&config, &manager), NIMCP_SUCCESS);
 
@@ -472,7 +501,8 @@ TEST_F(QueueManagerTest, GetStats_NullOutput) {
  * WHAT: Test setting default timeout
  * WHY: Verify timeout can be updated
  */
-TEST_F(QueueManagerTest, SetTimeout_Valid) {
+TEST_F(QueueManagerTest, SetTimeout_Valid)
+{
     auto config = GetDefaultConfig();
     ASSERT_EQ(nimcp_queue_manager_create(&config, &manager), NIMCP_SUCCESS);
 
@@ -484,7 +514,8 @@ TEST_F(QueueManagerTest, SetTimeout_Valid) {
  * WHAT: Test setting timeout with null manager
  * WHY: Verify null safety
  */
-TEST_F(QueueManagerTest, SetTimeout_NullManager) {
+TEST_F(QueueManagerTest, SetTimeout_NullManager)
+{
     nimcp_result_t result = nimcp_queue_manager_set_timeout(nullptr, 1000);
     EXPECT_NE(result, NIMCP_SUCCESS);
 }
@@ -497,7 +528,8 @@ TEST_F(QueueManagerTest, SetTimeout_NullManager) {
  * WHAT: Test operations on multiple channels independently
  * WHY: Verify channel isolation
  */
-TEST_F(QueueManagerTest, MultiChannel_Independence) {
+TEST_F(QueueManagerTest, MultiChannel_Independence)
+{
     auto config = GetDefaultConfig();
     ASSERT_EQ(nimcp_queue_manager_create(&config, &manager), NIMCP_SUCCESS);
 
@@ -540,7 +572,8 @@ TEST_F(QueueManagerTest, MultiChannel_Independence) {
  * WHAT: Test with many messages
  * WHY: Verify performance under load
  */
-TEST_F(QueueManagerTest, Stress_ManyMessages) {
+TEST_F(QueueManagerTest, Stress_ManyMessages)
+{
     auto config = GetDefaultConfig();
     config.queue_sizes.normal = 1000;
     ASSERT_EQ(nimcp_queue_manager_create(&config, &manager), NIMCP_SUCCESS);
@@ -574,7 +607,8 @@ TEST_F(QueueManagerTest, Stress_ManyMessages) {
  * WHAT: Test mixed priority operations
  * WHY: Verify priority handling under load
  */
-TEST_F(QueueManagerTest, Stress_MixedPriorities) {
+TEST_F(QueueManagerTest, Stress_MixedPriorities)
+{
     auto config = GetDefaultConfig();
     ASSERT_EQ(nimcp_queue_manager_create(&config, &manager), NIMCP_SUCCESS);
 
@@ -614,7 +648,8 @@ TEST_F(QueueManagerTest, Stress_MixedPriorities) {
  * WHAT: Test with minimum configuration
  * WHY: Verify minimum viable config works
  */
-TEST_F(QueueManagerTest, EdgeCase_MinimumConfig) {
+TEST_F(QueueManagerTest, EdgeCase_MinimumConfig)
+{
     nimcp_queue_manager_config_t config;
     config.queue_sizes.high = NIMCP_QUEUE_MIN_SIZE;
     config.queue_sizes.normal = NIMCP_QUEUE_MIN_SIZE;
@@ -632,7 +667,8 @@ TEST_F(QueueManagerTest, EdgeCase_MinimumConfig) {
  * WHAT: Test rapid enqueue/dequeue cycles
  * WHY: Verify stability under rapid operations
  */
-TEST_F(QueueManagerTest, EdgeCase_RapidCycles) {
+TEST_F(QueueManagerTest, EdgeCase_RapidCycles)
+{
     auto config = GetDefaultConfig();
     ASSERT_EQ(nimcp_queue_manager_create(&config, &manager), NIMCP_SUCCESS);
 

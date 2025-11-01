@@ -23,13 +23,13 @@
  */
 
 #include "nimcp_stream.h"
-#include "utils/nimcp_thread.h"
-#include "utils/nimcp_memory.h"
-#include "utils/nimcp_time.h"
+#include <stdatomic.h>
 #include <stdio.h>
 #include <string.h>
 #include <unistd.h>
-#include <stdatomic.h>
+#include "utils/nimcp_memory.h"
+#include "utils/nimcp_thread.h"
+#include "utils/nimcp_time.h"
 
 //=============================================================================
 // Thread-Local Error Handling
@@ -42,14 +42,16 @@
  */
 static __thread char g_stream_error[512] = {0};
 
-static void stream_set_error(const char* format, ...) {
+static void stream_set_error(const char* format, ...)
+{
     va_list args;
     va_start(args, format);
     vsnprintf(g_stream_error, sizeof(g_stream_error), format, args);
     va_end(args);
 }
 
-const char* brain_stream_get_last_error(void) {
+const char* brain_stream_get_last_error(void)
+{
     return g_stream_error;
 }
 
@@ -77,12 +79,12 @@ typedef struct {
  * COMPLEXITY: O(1) for enqueue/dequeue
  */
 typedef struct {
-    stream_input_t* buffer;      // Circular buffer
-    uint32_t capacity;           // Buffer size (power of 2)
-    uint32_t mask;               // capacity - 1 (for fast modulo)
+    stream_input_t* buffer;  // Circular buffer
+    uint32_t capacity;       // Buffer size (power of 2)
+    uint32_t mask;           // capacity - 1 (for fast modulo)
 
-    atomic_uint_fast32_t head;   // Producer writes here
-    atomic_uint_fast32_t tail;   // Consumer reads here
+    atomic_uint_fast32_t head;  // Producer writes here
+    atomic_uint_fast32_t tail;  // Consumer reads here
 
     atomic_uint_fast64_t enqueued;  // Total enqueued (stats)
     atomic_uint_fast64_t dequeued;  // Total dequeued (stats)
@@ -97,7 +99,8 @@ typedef struct {
  * @param capacity Buffer size (will be rounded up to power of 2)
  * @return Ring buffer or NULL on error
  */
-static ring_buffer_t* ring_buffer_create(uint32_t capacity) {
+static ring_buffer_t* ring_buffer_create(uint32_t capacity)
+{
     /**
      * WHAT: Round up to next power of 2
      * WHY: Allows fast modulo with bitwise AND instead of division
@@ -112,7 +115,8 @@ static ring_buffer_t* ring_buffer_create(uint32_t capacity) {
     capacity++;
 
     ring_buffer_t* rb = nimcp_calloc(1, sizeof(ring_buffer_t));
-    if (!rb) return NULL;
+    if (!rb)
+        return NULL;
 
     rb->buffer = nimcp_calloc(capacity, sizeof(stream_input_t));
     if (!rb->buffer) {
@@ -136,8 +140,10 @@ static ring_buffer_t* ring_buffer_create(uint32_t capacity) {
  * WHY: Free all resources
  * HOW: Frees remaining entries, then buffer, then structure
  */
-static void ring_buffer_destroy(ring_buffer_t* rb) {
-    if (!rb) return;
+static void ring_buffer_destroy(ring_buffer_t* rb)
+{
+    if (!rb)
+        return;
 
     /**
      * WHAT: Free any remaining entries
@@ -171,11 +177,9 @@ static void ring_buffer_destroy(ring_buffer_t* rb) {
  * @param drop_on_full Drop oldest if full?
  * @return true if enqueued, false if full
  */
-static bool ring_buffer_enqueue(ring_buffer_t* rb,
-                               const float* features,
-                               uint32_t num_features,
-                               uint64_t timestamp,
-                               bool drop_on_full) {
+static bool ring_buffer_enqueue(ring_buffer_t* rb, const float* features, uint32_t num_features,
+                                uint64_t timestamp, bool drop_on_full)
+{
     /**
      * WHAT: Get current head position atomically
      * WHY: Multiple producers might be enqueueing simultaneously
@@ -255,10 +259,9 @@ static bool ring_buffer_enqueue(ring_buffer_t* rb,
  * @param timestamp Output parameter for timestamp
  * @return true if dequeued, false if empty
  */
-static bool ring_buffer_dequeue(ring_buffer_t* rb,
-                               float** features,
-                               uint32_t* num_features,
-                               uint64_t* timestamp) {
+static bool ring_buffer_dequeue(ring_buffer_t* rb, float** features, uint32_t* num_features,
+                                uint64_t* timestamp)
+{
     uint32_t tail = atomic_load(&rb->tail);
     uint32_t head = atomic_load(&rb->head);
 
@@ -301,7 +304,8 @@ static bool ring_buffer_dequeue(ring_buffer_t* rb,
  * WHY: Monitoring and backpressure detection
  * HOW: Calculate head - tail (with wrap-around)
  */
-static uint32_t ring_buffer_size(ring_buffer_t* rb) {
+static uint32_t ring_buffer_size(ring_buffer_t* rb)
+{
     uint32_t head = atomic_load(&rb->head);
     uint32_t tail = atomic_load(&rb->tail);
     return (head - tail) & rb->mask;
@@ -318,7 +322,7 @@ static uint32_t ring_buffer_size(ring_buffer_t* rb) {
  */
 struct brain_stream_struct {
     // Brain association
-    brain_t brain;                      // Brain being streamed to
+    brain_t brain;  // Brain being streamed to
 
     // Configuration (copied from user)
     stream_config_t config;
@@ -335,7 +339,7 @@ struct brain_stream_struct {
     nimcp_thread_t processing_thread;
     bool thread_running;
     bool thread_should_stop;
-    nimcp_mutex_t control_lock;       // For pause/resume
+    nimcp_mutex_t control_lock;  // For pause/resume
 
     // State flags
     bool paused;
@@ -356,10 +360,8 @@ struct brain_stream_struct {
 //=============================================================================
 
 static void* stream_processing_thread(void* arg);
-static void stream_process_single_input(brain_stream_t stream,
-                                       const float* features,
-                                       uint32_t num_features,
-                                       uint64_t timestamp);
+static void stream_process_single_input(brain_stream_t stream, const float* features,
+                                        uint32_t num_features, uint64_t timestamp);
 
 //=============================================================================
 // Stream Creation and Destruction (Factory Pattern)
@@ -373,7 +375,8 @@ static void stream_process_single_input(brain_stream_t stream,
  * @param config Configuration to validate
  * @return true if valid, false otherwise
  */
-static bool validate_stream_config(const stream_config_t* config) {
+static bool validate_stream_config(const stream_config_t* config)
+{
     if (!config) {
         stream_set_error("NULL configuration");
         return false;
@@ -390,8 +393,7 @@ static bool validate_stream_config(const stream_config_t* config) {
     }
 
     // Mode-specific validation
-    if (config->mode == STREAM_MODE_BACKGROUND &&
-        config->processing_interval_ms == 0) {
+    if (config->mode == STREAM_MODE_BACKGROUND && config->processing_interval_ms == 0) {
         stream_set_error("Background mode requires non-zero processing interval");
         return false;
     }
@@ -421,39 +423,39 @@ static bool validate_stream_config(const stream_config_t* config) {
  *
  * @return Default configuration struct
  */
-stream_config_t stream_default_config(void) {
-    stream_config_t config = {
-        .mode = STREAM_MODE_SYNCHRONOUS,
+stream_config_t stream_default_config(void)
+{
+    stream_config_t config = {.mode = STREAM_MODE_SYNCHRONOUS,
 
-        // Buffer configuration
-        .buffer_size = 1024,
-        .drop_on_full = false,  // Block instead of dropping
+                              // Buffer configuration
+                              .buffer_size = 1024,
+                              .drop_on_full = false,  // Block instead of dropping
 
-        // Processing configuration
-        .processing_interval_ms = 100,  // 100ms for background mode
-        .batch_size = 10,               // 10 inputs per batch
+                              // Processing configuration
+                              .processing_interval_ms = 100,  // 100ms for background mode
+                              .batch_size = 10,               // 10 inputs per batch
 
-        // Thresholds for events
-        .high_salience_threshold = 0.8f,
-        .high_surprise_threshold = 0.8f,
+                              // Thresholds for events
+                              .high_salience_threshold = 0.8f,
+                              .high_surprise_threshold = 0.8f,
 
-        // Event callbacks (NULL = not used)
-        .on_high_salience = NULL,
-        .on_high_surprise = NULL,
-        .on_decision_ready = NULL,
-        .on_buffer_full = NULL,
-        .on_error = NULL,
-        .callback_context = NULL,
+                              // Event callbacks (NULL = not used)
+                              .on_high_salience = NULL,
+                              .on_high_surprise = NULL,
+                              .on_decision_ready = NULL,
+                              .on_buffer_full = NULL,
+                              .on_error = NULL,
+                              .callback_context = NULL,
 
-        // Performance tuning
-        .enable_decision_caching = true,
-        .enable_salience_evaluation = true
-    };
+                              // Performance tuning
+                              .enable_decision_caching = true,
+                              .enable_salience_evaluation = true};
 
     return config;
 }
 
-brain_stream_t brain_create_stream(brain_t brain, const stream_config_t* config) {
+brain_stream_t brain_create_stream(brain_t brain, const stream_config_t* config)
+{
     /**
      * WHAT: Validate parameters (Guard clauses)
      * WHY: Fail fast pattern - catch errors before allocation
@@ -518,17 +520,15 @@ brain_stream_t brain_create_stream(brain_t brain, const stream_config_t* config)
      * WHY: BACKGROUND and BATCHED modes require async processing
      * HOW: Create pthread with processing function
      */
-    if (config->mode == STREAM_MODE_BACKGROUND ||
-        config->mode == STREAM_MODE_BATCHED) {
-
+    if (config->mode == STREAM_MODE_BACKGROUND || config->mode == STREAM_MODE_BATCHED) {
         // Initialize threading subsystem if not already done
         nimcp_thread_init();
 
         stream->thread_running = false;
         stream->thread_should_stop = false;
 
-        if (nimcp_thread_create(&stream->processing_thread,
-                          stream_processing_thread, stream, NULL) != 0) {
+        if (nimcp_thread_create(&stream->processing_thread, stream_processing_thread, stream,
+                                NULL) != 0) {
             stream_set_error("Failed to create processing thread");
             ring_buffer_destroy(stream->input_queue);
             nimcp_mutex_destroy(&stream->decision_lock);
@@ -543,8 +543,10 @@ brain_stream_t brain_create_stream(brain_t brain, const stream_config_t* config)
     return stream;
 }
 
-void brain_destroy_stream(brain_stream_t stream) {
-    if (!stream) return;
+void brain_destroy_stream(brain_stream_t stream)
+{
+    if (!stream)
+        return;
 
     /**
      * WHAT: Stop background thread if running
@@ -576,10 +578,9 @@ void brain_destroy_stream(brain_stream_t stream) {
 // Stream Input Functions (Producer Side)
 //=============================================================================
 
-bool brain_stream_feed(brain_stream_t stream,
-                      const float* features,
-                      uint32_t num_features,
-                      uint64_t timestamp) {
+bool brain_stream_feed(brain_stream_t stream, const float* features, uint32_t num_features,
+                       uint64_t timestamp)
+{
     /**
      * WHAT: Validate parameters (Guard clauses)
      * WHY: Prevent invalid operations
@@ -615,17 +616,15 @@ bool brain_stream_feed(brain_stream_t stream,
          * WHY: Non-blocking for caller
          * HOW: Add to ring buffer, background thread will process
          */
-        return ring_buffer_enqueue(stream->input_queue,
-                                  features, num_features, timestamp,
-                                  stream->config.drop_on_full);
+        return ring_buffer_enqueue(stream->input_queue, features, num_features, timestamp,
+                                   stream->config.drop_on_full);
     }
 }
 
-uint32_t brain_stream_feed_batch(brain_stream_t stream,
-                                 const float** features,
-                                 uint32_t num_samples,
-                                 uint32_t num_features,
-                                 const uint64_t* timestamps) {
+uint32_t brain_stream_feed_batch(brain_stream_t stream, const float** features,
+                                 uint32_t num_samples, uint32_t num_features,
+                                 const uint64_t* timestamps)
+{
     if (!stream || !features || !timestamps) {
         return 0;
     }
@@ -644,7 +643,8 @@ uint32_t brain_stream_feed_batch(brain_stream_t stream,
 // Stream Output Functions (Consumer Side)
 //=============================================================================
 
-brain_decision_t* brain_stream_get_decision(brain_stream_t stream) {
+brain_decision_t* brain_stream_get_decision(brain_stream_t stream)
+{
     if (!stream) {
         stream_set_error("NULL stream");
         return NULL;
@@ -664,7 +664,8 @@ brain_decision_t* brain_stream_get_decision(brain_stream_t stream) {
     return NULL;
 }
 
-float brain_stream_get_salience(brain_stream_t stream) {
+float brain_stream_get_salience(brain_stream_t stream)
+{
     if (!stream) {
         return -1.0f;
     }
@@ -676,7 +677,8 @@ float brain_stream_get_salience(brain_stream_t stream) {
     return salience;
 }
 
-bool brain_stream_get_stats(brain_stream_t stream, stream_stats_t* stats) {
+bool brain_stream_get_stats(brain_stream_t stream, stream_stats_t* stats)
+{
     if (!stream || !stats) {
         return false;
     }
@@ -694,20 +696,20 @@ bool brain_stream_get_stats(brain_stream_t stream, stream_stats_t* stats) {
     // Calculate average processing time
     uint64_t total_time_ns = atomic_load(&stream->stats_processing_time_ns);
     uint64_t processed = stats->inputs_processed;
-    stats->avg_processing_time_ms = processed > 0 ?
-        (float)total_time_ns / processed / 1000000.0f : 0.0f;
+    stats->avg_processing_time_ms =
+        processed > 0 ? (float) total_time_ns / processed / 1000000.0f : 0.0f;
 
     // Calculate current throughput
     uint64_t elapsed_ns = nimcp_time_elapsed_ns(stream->last_stats_time);
     double elapsed = elapsed_ns / 1e9;
 
     uint64_t count_delta = stats->inputs_processed - stream->last_stats_count;
-    stats->current_throughput = elapsed > 0 ? (float)count_delta / elapsed : 0.0f;
+    stats->current_throughput = elapsed > 0 ? (float) count_delta / elapsed : 0.0f;
 
     // Queue stats
     stats->queue_size = ring_buffer_size(stream->input_queue);
     stats->queue_capacity = stream->input_queue->capacity;
-    stats->avg_queue_depth = (float)stats->queue_size / stats->queue_capacity;
+    stats->avg_queue_depth = (float) stats->queue_size / stats->queue_capacity;
 
     return true;
 }
@@ -722,7 +724,8 @@ bool brain_stream_get_stats(brain_stream_t stream, stream_stats_t* stats) {
  * @param stream Stream handle
  * @return true on success, false on error
  */
-bool brain_stream_reset_stats(brain_stream_t stream) {
+bool brain_stream_reset_stats(brain_stream_t stream)
+{
     if (!stream) {
         return false;
     }
@@ -771,10 +774,9 @@ bool brain_stream_reset_stats(brain_stream_t stream) {
  * @param num_features Size of feature vector
  * @param timestamp Input timestamp
  */
-static void stream_process_single_input(brain_stream_t stream,
-                                       const float* features,
-                                       uint32_t num_features,
-                                       uint64_t timestamp) {
+static void stream_process_single_input(brain_stream_t stream, const float* features,
+                                        uint32_t num_features, uint64_t timestamp)
+{
     uint64_t start_time = nimcp_time_monotonic_ns();
 
     /**
@@ -817,26 +819,21 @@ static void stream_process_single_input(brain_stream_t stream,
         if (stream->config.enable_salience_evaluation &&
             decision->confidence > stream->config.high_salience_threshold &&
             stream->config.on_high_salience) {
-
-            stream_event_t event = {
-                .type = STREAM_EVENT_HIGH_SALIENCE,
-                .timestamp = timestamp,
-                .magnitude = decision->confidence,
-                .decision = decision,
-                .message = "High salience detected"
-            };
+            stream_event_t event = {.type = STREAM_EVENT_HIGH_SALIENCE,
+                                    .timestamp = timestamp,
+                                    .magnitude = decision->confidence,
+                                    .decision = decision,
+                                    .message = "High salience detected"};
 
             stream->config.on_high_salience(&event, stream->config.callback_context);
         }
 
         if (stream->config.on_decision_ready) {
-            stream_event_t event = {
-                .type = STREAM_EVENT_DECISION_READY,
-                .timestamp = timestamp,
-                .magnitude = 1.0f,
-                .decision = decision,
-                .message = "Decision ready"
-            };
+            stream_event_t event = {.type = STREAM_EVENT_DECISION_READY,
+                                    .timestamp = timestamp,
+                                    .magnitude = 1.0f,
+                                    .decision = decision,
+                                    .message = "Decision ready"};
 
             stream->config.on_decision_ready(&event, stream->config.callback_context);
         }
@@ -862,8 +859,9 @@ static void stream_process_single_input(brain_stream_t stream,
  * @param arg Stream handle (cast from void*)
  * @return NULL (unused)
  */
-static void* stream_processing_thread(void* arg) {
-    brain_stream_t stream = (brain_stream_t)arg;
+static void* stream_processing_thread(void* arg)
+{
+    brain_stream_t stream = (brain_stream_t) arg;
 
     /**
      * WHAT: Main processing loop
@@ -892,16 +890,15 @@ static void* stream_processing_thread(void* arg) {
          */
         bool processed_any = false;
         uint32_t batch_count = 0;
-        uint32_t max_batch = stream->config.mode == STREAM_MODE_BATCHED ?
-                            stream->config.batch_size : 1;
+        uint32_t max_batch =
+            stream->config.mode == STREAM_MODE_BATCHED ? stream->config.batch_size : 1;
 
         while (batch_count < max_batch) {
             float* features;
             uint32_t num_features;
             uint64_t timestamp;
 
-            if (ring_buffer_dequeue(stream->input_queue,
-                                   &features, &num_features, &timestamp)) {
+            if (ring_buffer_dequeue(stream->input_queue, &features, &num_features, &timestamp)) {
                 stream_process_single_input(stream, features, num_features, timestamp);
                 nimcp_free(features);  // Free after processing
                 processed_any = true;
@@ -928,8 +925,10 @@ static void* stream_processing_thread(void* arg) {
 // Stream Control Functions
 //=============================================================================
 
-bool brain_stream_pause(brain_stream_t stream) {
-    if (!stream) return false;
+bool brain_stream_pause(brain_stream_t stream)
+{
+    if (!stream)
+        return false;
 
     nimcp_mutex_lock(&stream->control_lock);
     stream->paused = true;
@@ -938,8 +937,10 @@ bool brain_stream_pause(brain_stream_t stream) {
     return true;
 }
 
-bool brain_stream_resume(brain_stream_t stream) {
-    if (!stream) return false;
+bool brain_stream_resume(brain_stream_t stream)
+{
+    if (!stream)
+        return false;
 
     nimcp_mutex_lock(&stream->control_lock);
     stream->paused = false;
@@ -948,8 +949,10 @@ bool brain_stream_resume(brain_stream_t stream) {
     return true;
 }
 
-bool brain_stream_flush(brain_stream_t stream, uint32_t timeout_ms) {
-    if (!stream) return false;
+bool brain_stream_flush(brain_stream_t stream, uint32_t timeout_ms)
+{
+    if (!stream)
+        return false;
 
     /**
      * WHAT: Wait for queue to drain
@@ -971,8 +974,10 @@ bool brain_stream_flush(brain_stream_t stream, uint32_t timeout_ms) {
     return true;
 }
 
-bool brain_stream_clear(brain_stream_t stream) {
-    if (!stream) return false;
+bool brain_stream_clear(brain_stream_t stream)
+{
+    if (!stream)
+        return false;
 
     /**
      * WHAT: Drop all pending inputs
@@ -983,8 +988,7 @@ bool brain_stream_clear(brain_stream_t stream) {
     uint32_t num_features;
     uint64_t timestamp;
 
-    while (ring_buffer_dequeue(stream->input_queue,
-                              &features, &num_features, &timestamp)) {
+    while (ring_buffer_dequeue(stream->input_queue, &features, &num_features, &timestamp)) {
         nimcp_free(features);
     }
 

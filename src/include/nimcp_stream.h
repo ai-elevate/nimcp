@@ -59,9 +59,9 @@
 #ifndef NIMCP_STREAM_H
 #define NIMCP_STREAM_H
 
-#include "nimcp_brain.h"
-#include <stdint.h>
 #include <stdbool.h>
+#include <stdint.h>
+#include "nimcp_brain.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -116,11 +116,11 @@ typedef enum {
  * PATTERN: Observer pattern - publish-subscribe for events
  */
 typedef enum {
-    STREAM_EVENT_HIGH_SALIENCE,    /**< Input has high attention value */
-    STREAM_EVENT_HIGH_SURPRISE,    /**< Unexpected input (prediction error) */
-    STREAM_EVENT_DECISION_READY,   /**< New decision available */
-    STREAM_EVENT_BUFFER_FULL,      /**< Input buffer is full (backpressure) */
-    STREAM_EVENT_ERROR             /**< Processing error occurred */
+    STREAM_EVENT_HIGH_SALIENCE,  /**< Input has high attention value */
+    STREAM_EVENT_HIGH_SURPRISE,  /**< Unexpected input (prediction error) */
+    STREAM_EVENT_DECISION_READY, /**< New decision available */
+    STREAM_EVENT_BUFFER_FULL,    /**< Input buffer is full (backpressure) */
+    STREAM_EVENT_ERROR           /**< Processing error occurred */
 } stream_event_type_t;
 
 /**
@@ -128,11 +128,11 @@ typedef enum {
  * WHY: Provide context about event to callback
  */
 typedef struct {
-    stream_event_type_t type;      /**< Event type */
-    uint64_t timestamp;            /**< When event occurred */
-    float magnitude;               /**< Event strength (0.0-1.0) */
-    brain_decision_t* decision;    /**< Associated decision (if applicable) */
-    const char* message;           /**< Human-readable description */
+    stream_event_type_t type;   /**< Event type */
+    uint64_t timestamp;         /**< When event occurred */
+    float magnitude;            /**< Event strength (0.0-1.0) */
+    brain_decision_t* decision; /**< Associated decision (if applicable) */
+    const char* message;        /**< Human-readable description */
 } stream_event_t;
 
 /**
@@ -152,31 +152,31 @@ typedef void (*stream_event_callback_fn)(const stream_event_t* event, void* cont
  */
 typedef struct {
     // Mode configuration
-    stream_mode_t mode;                 /**< Processing mode */
+    stream_mode_t mode; /**< Processing mode */
 
     // Buffer configuration
-    uint32_t buffer_size;               /**< Input queue size (must be power of 2) */
-    bool drop_on_full;                  /**< Drop old inputs if buffer full? */
+    uint32_t buffer_size; /**< Input queue size (must be power of 2) */
+    bool drop_on_full;    /**< Drop old inputs if buffer full? */
 
     // Processing configuration
-    uint32_t processing_interval_ms;    /**< How often to process (background mode) */
-    uint32_t batch_size;                /**< Batch size (batched mode) */
+    uint32_t processing_interval_ms; /**< How often to process (background mode) */
+    uint32_t batch_size;             /**< Batch size (batched mode) */
 
     // Thresholds for events
-    float high_salience_threshold;      /**< Trigger callback above this salience */
-    float high_surprise_threshold;      /**< Trigger callback above this surprise */
+    float high_salience_threshold; /**< Trigger callback above this salience */
+    float high_surprise_threshold; /**< Trigger callback above this surprise */
 
     // Event callbacks (Observer pattern)
-    stream_event_callback_fn on_high_salience;   /**< Called on high attention */
-    stream_event_callback_fn on_high_surprise;   /**< Called on surprise */
-    stream_event_callback_fn on_decision_ready;  /**< Called when decision ready */
-    stream_event_callback_fn on_buffer_full;     /**< Called on backpressure */
-    stream_event_callback_fn on_error;           /**< Called on error */
-    void* callback_context;                      /**< User context for callbacks */
+    stream_event_callback_fn on_high_salience;  /**< Called on high attention */
+    stream_event_callback_fn on_high_surprise;  /**< Called on surprise */
+    stream_event_callback_fn on_decision_ready; /**< Called when decision ready */
+    stream_event_callback_fn on_buffer_full;    /**< Called on backpressure */
+    stream_event_callback_fn on_error;          /**< Called on error */
+    void* callback_context;                     /**< User context for callbacks */
 
     // Performance tuning
-    bool enable_decision_caching;       /**< Cache decisions for fast retrieval? */
-    bool enable_salience_evaluation;    /**< Compute salience scores? */
+    bool enable_decision_caching;    /**< Cache decisions for fast retrieval? */
+    bool enable_salience_evaluation; /**< Compute salience scores? */
 
 } stream_config_t;
 
@@ -269,12 +269,8 @@ void brain_destroy_stream(brain_stream_t stream);
  * - num_features mismatch: Returns false
  * - Buffer full: Returns false (or drops old input if drop_on_full)
  */
-bool brain_stream_feed(
-    brain_stream_t stream,
-    const float* features,
-    uint32_t num_features,
-    uint64_t timestamp
-);
+bool brain_stream_feed(brain_stream_t stream, const float* features, uint32_t num_features,
+                       uint64_t timestamp);
 
 /**
  * WHAT: Feed batch of inputs efficiently
@@ -291,13 +287,9 @@ bool brain_stream_feed(
  * @param timestamps Timestamp for each sample
  * @return Number of samples successfully enqueued
  */
-uint32_t brain_stream_feed_batch(
-    brain_stream_t stream,
-    const float** features,
-    uint32_t num_samples,
-    uint32_t num_features,
-    const uint64_t* timestamps
-);
+uint32_t brain_stream_feed_batch(brain_stream_t stream, const float** features,
+                                 uint32_t num_samples, uint32_t num_features,
+                                 const uint64_t* timestamps);
 
 //=============================================================================
 // Stream Output Functions (Consumer Side)
@@ -347,17 +339,17 @@ float brain_stream_get_salience(brain_stream_t stream);
  * @return true on success, false on error
  */
 typedef struct {
-    uint64_t inputs_fed;           /**< Total inputs fed to stream */
-    uint64_t inputs_processed;     /**< Total inputs processed */
-    uint64_t inputs_dropped;       /**< Inputs dropped due to backpressure */
-    uint64_t decisions_generated;  /**< Total decisions generated */
+    uint64_t inputs_fed;          /**< Total inputs fed to stream */
+    uint64_t inputs_processed;    /**< Total inputs processed */
+    uint64_t inputs_dropped;      /**< Inputs dropped due to backpressure */
+    uint64_t decisions_generated; /**< Total decisions generated */
 
-    float avg_processing_time_ms;  /**< Average processing time per input */
-    float avg_queue_depth;         /**< Average queue utilization */
-    float current_throughput;      /**< Inputs/second currently */
+    float avg_processing_time_ms; /**< Average processing time per input */
+    float avg_queue_depth;        /**< Average queue utilization */
+    float current_throughput;     /**< Inputs/second currently */
 
-    uint32_t queue_size;           /**< Current queue size */
-    uint32_t queue_capacity;       /**< Maximum queue capacity */
+    uint32_t queue_size;     /**< Current queue size */
+    uint32_t queue_capacity; /**< Maximum queue capacity */
 } stream_stats_t;
 
 bool brain_stream_get_stats(brain_stream_t stream, stream_stats_t* stats);
@@ -436,4 +428,4 @@ const char* brain_stream_get_last_error(void);
 }
 #endif
 
-#endif // NIMCP_STREAM_H
+#endif  // NIMCP_STREAM_H

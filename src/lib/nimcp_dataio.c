@@ -16,19 +16,19 @@
  */
 
 #include "nimcp_dataio.h"
+#include <errno.h>
+#include <math.h>
+#include <pthread.h>
+#include <stdarg.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <time.h>
+#include <unistd.h>
 #include "nimcp_brain.h"
 #include "utils/nimcp_memory.h"
 #include "utils/nimcp_queue.h"
 #include "utils/nimcp_validate.h"
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <pthread.h>
-#include <errno.h>
-#include <unistd.h>
-#include <time.h>
-#include <math.h>
-#include <stdarg.h>
 
 //=============================================================================
 // Thread-Local Error Handling (same pattern as replication)
@@ -41,14 +41,16 @@
  */
 static __thread char g_last_error[512] = {0};
 
-static void dataio_set_error(const char* format, ...) {
+static void dataio_set_error(const char* format, ...)
+{
     va_list args;
     va_start(args, format);
     vsnprintf(g_last_error, sizeof(g_last_error), format, args);
     va_end(args);
 }
 
-const char* dataio_get_last_error(void) {
+const char* dataio_get_last_error(void)
+{
     return g_last_error;
 }
 
@@ -113,11 +115,11 @@ struct dataset_struct {
  * WHY: Track CSV parsing state across batches
  */
 typedef struct {
-    FILE* file;                    // CSV file handle
-    char** column_names;           // Header column names
-    uint32_t num_columns;          // Total columns
-    uint64_t total_rows;           // Total rows (if known)
-    long file_start_offset;        // After header (for reset)
+    FILE* file;              // CSV file handle
+    char** column_names;     // Header column names
+    uint32_t num_columns;    // Total columns
+    uint64_t total_rows;     // Total rows (if known)
+    long file_start_offset;  // After header (for reset)
 } csv_context_t;
 
 /**
@@ -125,7 +127,8 @@ typedef struct {
  * WHY: Open file, parse header, prepare for reading
  * HOW: Open file, read header if present, store column names
  */
-static bool csv_initialize(void** context, const dataset_config_t* config) {
+static bool csv_initialize(void** context, const dataset_config_t* config)
+{
     // Guard clause: validate input
     if (!context || !config || !config->location[0]) {
         dataio_set_error("Invalid CSV configuration");
@@ -142,8 +145,7 @@ static bool csv_initialize(void** context, const dataset_config_t* config) {
     // Open CSV file
     csv_ctx->file = fopen(config->location, "r");
     if (!csv_ctx->file) {
-        dataio_set_error("Failed to open CSV file '%s': %s",
-                        config->location, strerror(errno));
+        dataio_set_error("Failed to open CSV file '%s': %s", config->location, strerror(errno));
         nimcp_free(csv_ctx);
         return false;
     }
@@ -184,10 +186,12 @@ static bool csv_initialize(void** context, const dataset_config_t* config) {
  * WHAT: Clean up CSV resources
  * WHY: Close file, free memory
  */
-static void csv_shutdown(void* context) {
-    if (!context) return;
+static void csv_shutdown(void* context)
+{
+    if (!context)
+        return;
 
-    csv_context_t* csv_ctx = (csv_context_t*)context;
+    csv_context_t* csv_ctx = (csv_context_t*) context;
 
     if (csv_ctx->file) {
         fclose(csv_ctx->file);
@@ -208,9 +212,9 @@ static void csv_shutdown(void* context) {
  * WHY: Convert text to float features and string label
  * HOW: Split by delimiter, parse floats, extract label
  */
-static bool csv_parse_line(const char* line, char delimiter,
-                          uint32_t num_features, uint32_t num_labels,
-                          float* features, char* label, size_t label_size) {
+static bool csv_parse_line(const char* line, char delimiter, uint32_t num_features,
+                           uint32_t num_labels, float* features, char* label, size_t label_size)
+{
     char line_copy[4096];
     strncpy(line_copy, line, sizeof(line_copy) - 1);
     line_copy[sizeof(line_copy) - 1] = '\0';
@@ -220,7 +224,8 @@ static bool csv_parse_line(const char* line, char delimiter,
 
     // Parse features
     for (uint32_t i = 0; i < num_features; i++) {
-        if (!token) return false;
+        if (!token)
+            return false;
 
         // Store token for error reporting before parsing
         char token_copy[256];
@@ -231,8 +236,8 @@ static bool csv_parse_line(const char* line, char delimiter,
 
         // Validate parsed float value
         if (!nimcp_validate_float_field(&features[i], sizeof(float))) {
-            fprintf(stderr, "[DataIO] Invalid feature value at index %u: %f from token '%s'\n",
-                    i, features[i], token_copy);
+            fprintf(stderr, "[DataIO] Invalid feature value at index %u: %f from token '%s'\n", i,
+                    features[i], token_copy);
             return false;
         }
 
@@ -240,13 +245,16 @@ static bool csv_parse_line(const char* line, char delimiter,
     }
 
     // Parse label (last column)
-    if (!token) return false;
+    if (!token)
+        return false;
 
     // Remove trailing newline/whitespace
     char* newline = strchr(token, '\n');
-    if (newline) *newline = '\0';
+    if (newline)
+        *newline = '\0';
     char* cr = strchr(token, '\r');
-    if (cr) *cr = '\0';
+    if (cr)
+        *cr = '\0';
 
     strncpy(label, token, label_size - 1);
     label[label_size - 1] = '\0';
@@ -259,10 +267,12 @@ static bool csv_parse_line(const char* line, char delimiter,
  * WHY: Support streaming large CSV files
  * HOW: Read batch_size rows, parse into features/labels
  */
-static bool csv_next_batch(void* context, data_batch_t* batch) {
-    if (!context || !batch) return false;
+static bool csv_next_batch(void* context, data_batch_t* batch)
+{
+    if (!context || !batch)
+        return false;
 
-    csv_context_t* csv_ctx = (csv_context_t*)context;
+    csv_context_t* csv_ctx = (csv_context_t*) context;
 
     // Read batch_size rows (or remaining rows)
     uint32_t batch_size = 1000;  // Default batch size
@@ -294,9 +304,8 @@ static bool csv_next_batch(void* context, data_batch_t* batch) {
         batch->labels[batch->num_samples] = nimcp_calloc(64, sizeof(char));
 
         // Parse line
-        if (!csv_parse_line(line, ',', num_features, 1,
-                           batch->features[batch->num_samples],
-                           batch->labels[batch->num_samples], 64)) {
+        if (!csv_parse_line(line, ',', num_features, 1, batch->features[batch->num_samples],
+                            batch->labels[batch->num_samples], 64)) {
             // Skip invalid lines - free immediately and don't increment
             nimcp_free(batch->features[batch->num_samples]);
             nimcp_free(batch->labels[batch->num_samples]);
@@ -323,10 +332,12 @@ static bool csv_next_batch(void* context, data_batch_t* batch) {
  * WHY: Support multiple training epochs
  * HOW: Seek to file_start_offset (after header)
  */
-static bool csv_reset(void* context) {
-    if (!context) return false;
+static bool csv_reset(void* context)
+{
+    if (!context)
+        return false;
 
-    csv_context_t* csv_ctx = (csv_context_t*)context;
+    csv_context_t* csv_ctx = (csv_context_t*) context;
 
     if (fseek(csv_ctx->file, csv_ctx->file_start_offset, SEEK_SET) != 0) {
         dataio_set_error("Failed to reset CSV file: %s", strerror(errno));
@@ -342,9 +353,11 @@ static bool csv_reset(void* context) {
  * WHY: Progress reporting
  * HOW: Return total_rows (counted as we read)
  */
-static uint64_t csv_get_size(void* context) {
-    if (!context) return 0;
-    csv_context_t* csv_ctx = (csv_context_t*)context;
+static uint64_t csv_get_size(void* context)
+{
+    if (!context)
+        return 0;
+    csv_context_t* csv_ctx = (csv_context_t*) context;
     return csv_ctx->total_rows;
 }
 
@@ -352,14 +365,12 @@ static uint64_t csv_get_size(void* context) {
  * WHAT: CSV backend strategy implementation
  * WHY: Pluggable backend for CSV files
  */
-static data_source_strategy_t g_csv_strategy = {
-    .source_type = DATA_SOURCE_FILE,
-    .initialize = csv_initialize,
-    .shutdown = csv_shutdown,
-    .next_batch = csv_next_batch,
-    .reset = csv_reset,
-    .get_size = csv_get_size
-};
+static data_source_strategy_t g_csv_strategy = {.source_type = DATA_SOURCE_FILE,
+                                                .initialize = csv_initialize,
+                                                .shutdown = csv_shutdown,
+                                                .next_batch = csv_next_batch,
+                                                .reset = csv_reset,
+                                                .get_size = csv_get_size};
 
 //=============================================================================
 // PostgreSQL Backend Implementation
@@ -387,7 +398,8 @@ typedef struct {
  * REASON: Full PostgreSQL support requires libpq dependency
  * TODO: Implement when libpq is available
  */
-static bool postgres_initialize(void** context, const dataset_config_t* config) {
+static bool postgres_initialize(void** context, const dataset_config_t* config)
+{
     dataio_set_error("PostgreSQL backend not yet implemented");
     return false;
 
@@ -398,21 +410,25 @@ static bool postgres_initialize(void** context, const dataset_config_t* config) 
     // 4. Return context
 }
 
-static void postgres_shutdown(void* context) {
+static void postgres_shutdown(void* context)
+{
     // TODO: PQfinish, PQclear
 }
 
-static bool postgres_next_batch(void* context, data_batch_t* batch) {
+static bool postgres_next_batch(void* context, data_batch_t* batch)
+{
     // TODO: Fetch next N rows from result
     return false;
 }
 
-static bool postgres_reset(void* context) {
+static bool postgres_reset(void* context)
+{
     // TODO: Re-execute query
     return false;
 }
 
-static uint64_t postgres_get_size(void* context) {
+static uint64_t postgres_get_size(void* context)
+{
     // TODO: PQntuples
     return 0;
 }
@@ -421,14 +437,12 @@ static uint64_t postgres_get_size(void* context) {
  * WHAT: PostgreSQL backend strategy (placeholder)
  * WHY: Future support for database training
  */
-static data_source_strategy_t g_postgres_strategy = {
-    .source_type = DATA_SOURCE_DATABASE,
-    .initialize = postgres_initialize,
-    .shutdown = postgres_shutdown,
-    .next_batch = postgres_next_batch,
-    .reset = postgres_reset,
-    .get_size = postgres_get_size
-};
+static data_source_strategy_t g_postgres_strategy = {.source_type = DATA_SOURCE_DATABASE,
+                                                     .initialize = postgres_initialize,
+                                                     .shutdown = postgres_shutdown,
+                                                     .next_batch = postgres_next_batch,
+                                                     .reset = postgres_reset,
+                                                     .get_size = postgres_get_size};
 
 //=============================================================================
 // Stream Backend Implementation
@@ -449,14 +463,17 @@ typedef struct {
  * WHAT: Initialize stream data source
  * WHY: Set up callback for online learning
  */
-static bool stream_initialize(void** context, const dataset_config_t* config) {
+static bool stream_initialize(void** context, const dataset_config_t* config)
+{
     dataio_set_error("Use dataset_create_stream() for streaming data");
     return false;
 }
 
-static void stream_shutdown(void* context) {
-    if (!context) return;
-    stream_context_t* stream_ctx = (stream_context_t*)context;
+static void stream_shutdown(void* context)
+{
+    if (!context)
+        return;
+    stream_context_t* stream_ctx = (stream_context_t*) context;
     stream_ctx->active = false;
     nimcp_free(stream_ctx);
 }
@@ -483,8 +500,8 @@ static data_source_strategy_t g_stream_strategy = {
  * WHY: Factory pattern - create correct backend for data source
  * HOW: Switch on source type, return strategy
  */
-static data_source_strategy_t* select_backend_strategy(data_source_t source,
-                                                       data_format_t format) {
+static data_source_strategy_t* select_backend_strategy(data_source_t source, data_format_t format)
+{
     switch (source) {
         case DATA_SOURCE_FILE:
             // WHAT: File-based sources
@@ -536,7 +553,8 @@ static data_source_strategy_t* select_backend_strategy(data_source_t source,
  * WHY: Initialize data source for reading
  * HOW: Select backend, initialize, create handle
  */
-dataset_t dataset_open(const dataset_config_t* config) {
+dataset_t dataset_open(const dataset_config_t* config)
+{
     // Guard clause: validate input
     if (!config) {
         dataio_set_error("NULL configuration");
@@ -544,8 +562,7 @@ dataset_t dataset_open(const dataset_config_t* config) {
     }
 
     // Select backend strategy
-    data_source_strategy_t* strategy = select_backend_strategy(
-        config->source, config->format);
+    data_source_strategy_t* strategy = select_backend_strategy(config->source, config->format);
 
     if (!strategy) {
         return NULL;  // Error already set
@@ -579,8 +596,10 @@ dataset_t dataset_open(const dataset_config_t* config) {
  * WHY: Clean up resources
  * HOW: Call backend shutdown, free memory
  */
-void dataset_close(dataset_t dataset) {
-    if (!dataset) return;
+void dataset_close(dataset_t dataset)
+{
+    if (!dataset)
+        return;
 
     // Shutdown backend
     if (dataset->strategy && dataset->strategy->shutdown) {
@@ -598,7 +617,8 @@ void dataset_close(dataset_t dataset) {
  * WHY: Support streaming large datasets
  * HOW: Thread-safe call to backend next_batch
  */
-bool dataset_next_batch(dataset_t dataset, data_batch_t* batch) {
+bool dataset_next_batch(dataset_t dataset, data_batch_t* batch)
+{
     // Guard clauses
     if (!dataset || !batch) {
         dataio_set_error("Invalid dataset or batch");
@@ -624,8 +644,10 @@ bool dataset_next_batch(dataset_t dataset, data_batch_t* batch) {
  * WHY: Prevent memory leaks
  * HOW: Free features, labels, and batch arrays
  */
-void dataset_free_batch(data_batch_t* batch) {
-    if (!batch) return;
+void dataset_free_batch(data_batch_t* batch)
+{
+    if (!batch)
+        return;
 
     if (batch->features) {
         for (uint32_t i = 0; i < batch->num_samples; i++) {
@@ -649,7 +671,8 @@ void dataset_free_batch(data_batch_t* batch) {
  * WHY: Support multiple training epochs
  * HOW: Call backend reset
  */
-bool dataset_reset(dataset_t dataset) {
+bool dataset_reset(dataset_t dataset)
+{
     if (!dataset || !dataset->strategy || !dataset->strategy->reset) {
         dataio_set_error("Invalid dataset or backend does not support reset");
         return false;
@@ -668,7 +691,8 @@ bool dataset_reset(dataset_t dataset) {
  * WHY: Progress reporting, memory allocation
  * HOW: Call backend get_size
  */
-uint64_t dataset_get_size(dataset_t dataset) {
+uint64_t dataset_get_size(dataset_t dataset)
+{
     if (!dataset || !dataset->strategy || !dataset->strategy->get_size) {
         return 0;
     }
@@ -749,18 +773,20 @@ typedef struct {
  * @param arg Pointer to training_context_t
  * @return NULL
  */
-static void* producer_thread_func(void* arg) {
-    training_context_t* ctx = (training_context_t*)arg;
+static void* producer_thread_func(void* arg)
+{
+    training_context_t* ctx = (training_context_t*) arg;
 
     for (uint32_t epoch = 0; epoch < ctx->total_epochs; epoch++) {
-        if (ctx->stop_requested) break;
+        if (ctx->stop_requested)
+            break;
 
         ctx->current_epoch = epoch;
 
         // Reset dataset to beginning for new epoch
         if (!dataset_reset(ctx->dataset)) {
             snprintf(ctx->error_message, sizeof(ctx->error_message),
-                    "Failed to reset dataset for epoch %u", epoch);
+                     "Failed to reset dataset for epoch %u", epoch);
             ctx->has_error = true;
             break;
         }
@@ -768,10 +794,10 @@ static void* producer_thread_func(void* arg) {
         // Read and enqueue batches for this epoch
         while (!ctx->stop_requested) {
             // Allocate batch structure
-            data_batch_t* batch = (data_batch_t*)nimcp_malloc(sizeof(data_batch_t));
+            data_batch_t* batch = (data_batch_t*) nimcp_malloc(sizeof(data_batch_t));
             if (!batch) {
                 snprintf(ctx->error_message, sizeof(ctx->error_message),
-                        "Failed to allocate batch memory");
+                         "Failed to allocate batch memory");
                 ctx->has_error = true;
                 break;
             }
@@ -790,8 +816,7 @@ static void* producer_thread_func(void* arg) {
                 // Enqueue failed (timeout or error)
                 dataset_free_batch(batch);
                 nimcp_free(batch);
-                snprintf(ctx->error_message, sizeof(ctx->error_message),
-                        "Failed to enqueue batch");
+                snprintf(ctx->error_message, sizeof(ctx->error_message), "Failed to enqueue batch");
                 ctx->has_error = true;
                 break;
             }
@@ -801,7 +826,8 @@ static void* producer_thread_func(void* arg) {
             }
         }
 
-        if (ctx->has_error) break;
+        if (ctx->has_error)
+            break;
     }
 
     // Signal producer completion
@@ -831,8 +857,9 @@ static void* producer_thread_func(void* arg) {
  * @param arg Pointer to training_context_t
  * @return NULL
  */
-static void* consumer_thread_func(void* arg) {
-    training_context_t* ctx = (training_context_t*)arg;
+static void* consumer_thread_func(void* arg)
+{
+    training_context_t* ctx = (training_context_t*) arg;
 
     while (!ctx->stop_requested) {
         // Check if producer done AND queue empty
@@ -855,10 +882,11 @@ static void* consumer_thread_func(void* arg) {
 
         // Train on each sample in batch
         for (uint32_t i = 0; i < batch->num_samples; i++) {
-            if (ctx->stop_requested) break;
+            if (ctx->stop_requested)
+                break;
 
             // Skip samples in validation set
-            float sample_rand = (float)rand() / RAND_MAX;
+            float sample_rand = (float) rand() / RAND_MAX;
             if (sample_rand < ctx->validation_split) {
                 pthread_mutex_lock(&ctx->stats_lock);
                 ctx->samples_validated++;
@@ -913,10 +941,9 @@ static void* consumer_thread_func(void* arg) {
  * @param validation_split Fraction for validation (0-1)
  * @return Final validation accuracy
  */
-float brain_train_from_dataset(brain_t brain,
-                               dataset_t dataset,
-                               uint32_t epochs,
-                               float validation_split) {
+float brain_train_from_dataset(brain_t brain, dataset_t dataset, uint32_t epochs,
+                               float validation_split)
+{
     // Guard clauses
     if (!brain || !dataset) {
         dataio_set_error("Invalid brain or dataset");
@@ -929,7 +956,7 @@ float brain_train_from_dataset(brain_t brain,
     }
 
     // Initialize training context
-    training_context_t* ctx = (training_context_t*)nimcp_calloc(1, sizeof(training_context_t));
+    training_context_t* ctx = (training_context_t*) nimcp_calloc(1, sizeof(training_context_t));
     if (!ctx) {
         dataio_set_error("Failed to allocate training context");
         return 0.0f;
@@ -947,12 +974,10 @@ float brain_train_from_dataset(brain_t brain,
     // Create batch queue
     // WHY 10 BATCHES: Balance between memory overhead and I/O hiding
     // WHY BLOCKING: Natural backpressure prevents memory exhaustion
-    nimcp_queue_config_t queue_config = {
-        .max_size = 10,
-        .item_size = sizeof(data_batch_t*),
-        .is_blocking = true,
-        .timeout_ms = 5000
-    };
+    nimcp_queue_config_t queue_config = {.max_size = 10,
+                                         .item_size = sizeof(data_batch_t*),
+                                         .is_blocking = true,
+                                         .timeout_ms = 5000};
 
     nimcp_result_t result = nimcp_queue_create(&queue_config, &ctx->batch_queue);
     if (result != NIMCP_SUCCESS) {
@@ -1016,9 +1041,8 @@ float brain_train_from_dataset(brain_t brain,
  * WHY: Handle datasets too large for memory
  * HOW: Process batches sequentially without reset
  */
-float brain_train_from_dataset_streaming(brain_t brain,
-                                         dataset_t dataset,
-                                         uint32_t max_batches) {
+float brain_train_from_dataset_streaming(brain_t brain, dataset_t dataset, uint32_t max_batches)
+{
     if (!brain || !dataset) {
         dataio_set_error("Invalid brain or dataset");
         return 0.0f;
@@ -1043,7 +1067,8 @@ float brain_train_from_dataset_streaming(brain_t brain,
         dataset_free_batch(&batch);
         batches_processed++;
 
-        if (batch.end_of_dataset) break;
+        if (batch.end_of_dataset)
+            break;
     }
 
     return avg_loss;
@@ -1058,10 +1083,9 @@ float brain_train_from_dataset_streaming(brain_t brain,
  * WHY: Analyze brain decisions, debugging, analytics
  * HOW: Run brain on dataset, write predictions to CSV
  */
-bool brain_export_predictions(brain_t brain,
-                              dataset_t input_dataset,
-                              const char* output_file,
-                              data_format_t format) {
+bool brain_export_predictions(brain_t brain, dataset_t input_dataset, const char* output_file,
+                              data_format_t format)
+{
     // Guard clauses
     if (!brain || !input_dataset || !output_file) {
         dataio_set_error("Invalid parameters");
@@ -1107,7 +1131,8 @@ bool brain_export_predictions(brain_t brain,
 
         dataset_free_batch(&batch);
 
-        if (batch.end_of_dataset) break;
+        if (batch.end_of_dataset)
+            break;
     }
 
     fclose(out);
@@ -1119,9 +1144,8 @@ bool brain_export_predictions(brain_t brain,
  * WHY: Inspect what brain has learned, debugging
  * HOW: Write internal training examples to file
  */
-bool brain_export_training_data(brain_t brain,
-                                const char* output_file,
-                                data_format_t format) {
+bool brain_export_training_data(brain_t brain, const char* output_file, data_format_t format)
+{
     if (!brain || !output_file) {
         dataio_set_error("Invalid parameters");
         return false;
@@ -1141,28 +1165,25 @@ bool brain_export_training_data(brain_t brain,
  * WHY: Simplify common case of loading CSV
  * HOW: Factory pattern - create config and call dataset_open
  */
-dataset_t dataset_load_csv(const char* filepath,
-                           uint32_t num_feature_columns,
-                           uint32_t num_label_columns,
-                           bool has_header) {
+dataset_t dataset_load_csv(const char* filepath, uint32_t num_feature_columns,
+                           uint32_t num_label_columns, bool has_header)
+{
     if (!filepath) {
         dataio_set_error("NULL filepath");
         return NULL;
     }
 
     // Create configuration
-    dataset_config_t config = {
-        .format = DATA_FORMAT_CSV,
-        .source = DATA_SOURCE_FILE,
-        .num_feature_columns = num_feature_columns,
-        .num_label_columns = num_label_columns,
-        .has_header = has_header,
-        .delimiter = ',',
-        .normalize_features = false,
-        .shuffle = false,
-        .batch_size = 1000,
-        .max_rows = 0
-    };
+    dataset_config_t config = {.format = DATA_FORMAT_CSV,
+                               .source = DATA_SOURCE_FILE,
+                               .num_feature_columns = num_feature_columns,
+                               .num_label_columns = num_label_columns,
+                               .has_header = has_header,
+                               .delimiter = ',',
+                               .normalize_features = false,
+                               .shuffle = false,
+                               .batch_size = 1000,
+                               .max_rows = 0};
 
     strncpy(config.location, filepath, sizeof(config.location) - 1);
 
@@ -1174,27 +1195,24 @@ dataset_t dataset_load_csv(const char* filepath,
  * WHY: Simplify database loading
  * HOW: Factory pattern - create config and call dataset_open
  */
-dataset_t dataset_load_postgres(const char* connection_string,
-                                const char* query,
-                                uint32_t num_feature_columns) {
+dataset_t dataset_load_postgres(const char* connection_string, const char* query,
+                                uint32_t num_feature_columns)
+{
     if (!connection_string || !query) {
         dataio_set_error("NULL connection_string or query");
         return NULL;
     }
 
-    dataset_config_t config = {
-        .format = DATA_FORMAT_POSTGRES,
-        .source = DATA_SOURCE_DATABASE,
-        .num_feature_columns = num_feature_columns,
-        .num_label_columns = 1,
-        .has_header = false,
-        .batch_size = 1000,
-        .max_rows = 0
-    };
+    dataset_config_t config = {.format = DATA_FORMAT_POSTGRES,
+                               .source = DATA_SOURCE_DATABASE,
+                               .num_feature_columns = num_feature_columns,
+                               .num_label_columns = 1,
+                               .has_header = false,
+                               .batch_size = 1000,
+                               .max_rows = 0};
 
     // Store connection string and query in location
-    snprintf(config.location, sizeof(config.location),
-             "%s|%s", connection_string, query);
+    snprintf(config.location, sizeof(config.location), "%s|%s", connection_string, query);
 
     return dataset_open(&config);
 }
@@ -1204,12 +1222,9 @@ dataset_t dataset_load_postgres(const char* connection_string,
  * WHY: Export training data for analysis
  * HOW: Write features and labels to CSV file
  */
-bool dataset_save_csv(float** features,
-                     char** labels,
-                     uint32_t num_samples,
-                     uint32_t num_features,
-                     const char* filepath,
-                     char** feature_names) {
+bool dataset_save_csv(float** features, char** labels, uint32_t num_samples, uint32_t num_features,
+                      const char* filepath, char** feature_names)
+{
     if (!features || !labels || !filepath) {
         dataio_set_error("Invalid parameters");
         return false;
@@ -1250,9 +1265,9 @@ bool dataset_save_csv(float** features,
  * WHY: Support online learning from live data
  * HOW: Store callback, create stream context
  */
-dataset_t dataset_create_stream(stream_callback_fn_t callback,
-                                void* user_data,
-                                uint32_t num_features) {
+dataset_t dataset_create_stream(stream_callback_fn_t callback, void* user_data,
+                                uint32_t num_features)
+{
     if (!callback) {
         dataio_set_error("NULL callback");
         return NULL;
@@ -1285,9 +1300,8 @@ dataset_t dataset_create_stream(stream_callback_fn_t callback,
  * WHY: Online learning from real-time data
  * HOW: Call callback repeatedly until duration expires
  */
-uint64_t brain_train_from_stream(brain_t brain,
-                                 dataset_t stream_dataset,
-                                 uint32_t duration_seconds) {
+uint64_t brain_train_from_stream(brain_t brain, dataset_t stream_dataset, uint32_t duration_seconds)
+{
     if (!brain || !stream_dataset) {
         dataio_set_error("Invalid parameters");
         return 0;
@@ -1298,7 +1312,7 @@ uint64_t brain_train_from_stream(brain_t brain,
         return 0;
     }
 
-    stream_context_t* stream_ctx = (stream_context_t*)stream_dataset->source_context;
+    stream_context_t* stream_ctx = (stream_context_t*) stream_dataset->source_context;
 
     time_t start_time = time(NULL);
     uint64_t samples_processed = 0;

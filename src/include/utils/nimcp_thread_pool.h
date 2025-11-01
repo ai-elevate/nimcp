@@ -5,9 +5,9 @@
 #ifndef NIMCP_THREAD_POOL_H
 #define NIMCP_THREAD_POOL_H
 
-#include "nimcp_thread.h"
-#include <stddef.h>
 #include <stdbool.h>
+#include <stddef.h>
+#include "nimcp_thread.h"
 
 /**
  * @file nimcp_thread_pool.h
@@ -33,7 +33,7 @@
 //=============================================================================
 
 #define NIMCP_POOL_MAX_THREADS 64
-#define NIMCP_POOL_MAX_QUEUE   1024
+#define NIMCP_POOL_MAX_QUEUE 1024
 
 //=============================================================================
 // Types
@@ -76,9 +76,7 @@ void nimcp_pool_destroy(nimcp_thread_pool_t* pool);
  *
  * Blocks if queue is full
  */
-nimcp_result_t nimcp_pool_submit(nimcp_thread_pool_t* pool,
-                                  nimcp_task_fn task,
-                                  void* arg);
+nimcp_result_t nimcp_pool_submit(nimcp_thread_pool_t* pool, nimcp_task_fn task, void* arg);
 
 /**
  * @brief Wait for all submitted tasks to complete
@@ -101,4 +99,4 @@ size_t nimcp_pool_pending(nimcp_thread_pool_t* pool);
  */
 size_t nimcp_pool_active(nimcp_thread_pool_t* pool);
 
-#endif // NIMCP_THREAD_POOL_H
+#endif  // NIMCP_THREAD_POOL_H

@@ -10,8 +10,8 @@
 #include "test_helpers.h"
 
 extern "C" {
-#include "../include/nimcp_stream.h"
 #include "../include/nimcp_brain.h"
+#include "../include/nimcp_stream.h"
 #include "../include/utils/nimcp_thread.h"
 }
 
@@ -19,8 +19,8 @@ extern "C" {
 #include <string.h>
 #include <unistd.h>
 #include <atomic>
-#include <thread>
 #include <chrono>
+#include <thread>
 
 //=============================================================================
 // Test Fixtures and Helpers
@@ -31,7 +31,7 @@ extern "C" {
  * WHY: Set up/tear down brain and stream for each test
  */
 class StreamTest : public ::testing::Test {
-protected:
+   protected:
     brain_t brain;
     brain_stream_t stream;
 
@@ -39,25 +39,27 @@ protected:
     static const uint32_t NUM_FEATURES = 13;
     float test_features[NUM_FEATURES];
 
-    void SetUp() override {
+    void SetUp() override
+    {
         // Initialize threading subsystem (required before creating streams)
         nimcp_result_t result = nimcp_thread_init();
         ASSERT_EQ(result, NIMCP_SUCCESS);
 
         // Create test brain
-        brain = brain_create("test_stream_brain", BRAIN_SIZE_SMALL,
-                            BRAIN_TASK_CLASSIFICATION, NUM_FEATURES, 3);
+        brain = brain_create("test_stream_brain", BRAIN_SIZE_SMALL, BRAIN_TASK_CLASSIFICATION,
+                             NUM_FEATURES, 3);
         ASSERT_NE(brain, nullptr);
 
         // Initialize test features
         for (uint32_t i = 0; i < NUM_FEATURES; i++) {
-            test_features[i] = (float)i / NUM_FEATURES;
+            test_features[i] = (float) i / NUM_FEATURES;
         }
 
         stream = nullptr;
     }
 
-    void TearDown() override {
+    void TearDown() override
+    {
         // Clean up stream
         if (stream) {
             brain_destroy_stream(stream);
@@ -76,15 +78,18 @@ static std::atomic<uint32_t> g_decision_ready_count{0};
 static std::atomic<uint32_t> g_error_count{0};
 
 // Callback functions
-static void high_salience_callback(const stream_event_t* event, void* context) {
+static void high_salience_callback(const stream_event_t* event, void* context)
+{
     g_high_salience_count++;
 }
 
-static void decision_ready_callback(const stream_event_t* event, void* context) {
+static void decision_ready_callback(const stream_event_t* event, void* context)
+{
     g_decision_ready_count++;
 }
 
-static void error_callback(const stream_event_t* event, void* context) {
+static void error_callback(const stream_event_t* event, void* context)
+{
     g_error_count++;
 }
 
@@ -96,7 +101,8 @@ static void error_callback(const stream_event_t* event, void* context) {
  * WHAT: Test default stream configuration
  * WHY: Verify sensible defaults are provided
  */
-TEST_F(StreamTest, DefaultConfig) {
+TEST_F(StreamTest, DefaultConfig)
+{
     stream_config_t config = stream_default_config();
 
     EXPECT_EQ(config.mode, STREAM_MODE_SYNCHRONOUS);
@@ -115,7 +121,8 @@ TEST_F(StreamTest, DefaultConfig) {
  * WHAT: Test synchronous stream creation
  * WHY: Verify basic stream initialization works
  */
-TEST_F(StreamTest, CreateSynchronousStream) {
+TEST_F(StreamTest, CreateSynchronousStream)
+{
     stream_config_t config = stream_default_config();
     config.mode = STREAM_MODE_SYNCHRONOUS;
 
@@ -128,7 +135,8 @@ TEST_F(StreamTest, CreateSynchronousStream) {
  * WHAT: Test background stream creation
  * WHY: Verify background thread mode works
  */
-TEST_F(StreamTest, CreateBackgroundStream) {
+TEST_F(StreamTest, CreateBackgroundStream)
+{
     stream_config_t config = stream_default_config();
     config.mode = STREAM_MODE_BACKGROUND;
 
@@ -144,7 +152,8 @@ TEST_F(StreamTest, CreateBackgroundStream) {
  * WHAT: Test batched stream creation
  * WHY: Verify batched mode works
  */
-TEST_F(StreamTest, CreateBatchedStream) {
+TEST_F(StreamTest, CreateBatchedStream)
+{
     stream_config_t config = stream_default_config();
     config.mode = STREAM_MODE_BATCHED;
     config.batch_size = 10;
@@ -158,7 +167,8 @@ TEST_F(StreamTest, CreateBatchedStream) {
  * WHAT: Test stream creation with NULL brain
  * WHY: Verify proper error handling
  */
-TEST_F(StreamTest, CreateStreamNullBrain) {
+TEST_F(StreamTest, CreateStreamNullBrain)
+{
     stream_config_t config = stream_default_config();
 
     stream = brain_create_stream(nullptr, &config);
@@ -170,12 +180,13 @@ TEST_F(StreamTest, CreateStreamNullBrain) {
  * WHAT: Test stream creation with callbacks
  * WHY: Verify callback registration works
  */
-TEST_F(StreamTest, CreateStreamWithCallbacks) {
+TEST_F(StreamTest, CreateStreamWithCallbacks)
+{
     stream_config_t config = stream_default_config();
     config.on_high_salience = high_salience_callback;
     config.on_decision_ready = decision_ready_callback;
     config.on_error = error_callback;
-    config.callback_context = (void*)0x12345678;
+    config.callback_context = (void*) 0x12345678;
 
     stream = brain_create_stream(brain, &config);
 
@@ -190,7 +201,8 @@ TEST_F(StreamTest, CreateStreamWithCallbacks) {
  * WHAT: Test feeding single input
  * WHY: Verify basic input feeding works
  */
-TEST_F(StreamTest, FeedSingleInput) {
+TEST_F(StreamTest, FeedSingleInput)
+{
     stream_config_t config = stream_default_config();
     stream = brain_create_stream(brain, &config);
     ASSERT_NE(stream, nullptr);
@@ -205,7 +217,8 @@ TEST_F(StreamTest, FeedSingleInput) {
  * WHAT: Test feeding multiple inputs
  * WHY: Verify stream can handle multiple inputs
  */
-TEST_F(StreamTest, FeedMultipleInputs) {
+TEST_F(StreamTest, FeedMultipleInputs)
+{
     stream_config_t config = stream_default_config();
     stream = brain_create_stream(brain, &config);
     ASSERT_NE(stream, nullptr);
@@ -227,7 +240,8 @@ TEST_F(StreamTest, FeedMultipleInputs) {
  * WHAT: Test feeding with NULL stream
  * WHY: Verify proper error handling
  */
-TEST_F(StreamTest, FeedNullStream) {
+TEST_F(StreamTest, FeedNullStream)
+{
     bool result = brain_stream_feed(nullptr, test_features, NUM_FEATURES, 1000);
 
     EXPECT_FALSE(result);
@@ -237,7 +251,8 @@ TEST_F(StreamTest, FeedNullStream) {
  * WHAT: Test feeding with NULL features
  * WHY: Verify proper error handling
  */
-TEST_F(StreamTest, FeedNullFeatures) {
+TEST_F(StreamTest, FeedNullFeatures)
+{
     stream_config_t config = stream_default_config();
     stream = brain_create_stream(brain, &config);
     ASSERT_NE(stream, nullptr);
@@ -251,7 +266,8 @@ TEST_F(StreamTest, FeedNullFeatures) {
  * WHAT: Test feeding until buffer full
  * WHY: Verify ring buffer overflow handling
  */
-TEST_F(StreamTest, FeedUntilBufferFull) {
+TEST_F(StreamTest, FeedUntilBufferFull)
+{
     stream_config_t config = stream_default_config();
     config.buffer_size = 10;  // Small buffer
     stream = brain_create_stream(brain, &config);
@@ -282,7 +298,8 @@ TEST_F(StreamTest, FeedUntilBufferFull) {
  * WHAT: Test getting decision from synchronous stream
  * WHY: Verify decision retrieval works
  */
-TEST_F(StreamTest, GetDecisionSynchronous) {
+TEST_F(StreamTest, GetDecisionSynchronous)
+{
     stream_config_t config = stream_default_config();
     config.mode = STREAM_MODE_SYNCHRONOUS;
     stream = brain_create_stream(brain, &config);
@@ -308,7 +325,8 @@ TEST_F(StreamTest, GetDecisionSynchronous) {
  * WHAT: Test getting decision from background stream
  * WHY: Verify async decision retrieval works
  */
-TEST_F(StreamTest, GetDecisionBackground) {
+TEST_F(StreamTest, GetDecisionBackground)
+{
     stream_config_t config = stream_default_config();
     config.mode = STREAM_MODE_BACKGROUND;
     stream = brain_create_stream(brain, &config);
@@ -337,7 +355,8 @@ TEST_F(StreamTest, GetDecisionBackground) {
  * WHAT: Test getting decision with NULL stream
  * WHY: Verify proper error handling
  */
-TEST_F(StreamTest, GetDecisionNullStream) {
+TEST_F(StreamTest, GetDecisionNullStream)
+{
     brain_decision_t* decision = brain_stream_get_decision(nullptr);
 
     EXPECT_EQ(decision, nullptr);
@@ -347,7 +366,8 @@ TEST_F(StreamTest, GetDecisionNullStream) {
  * WHAT: Test getting salience score
  * WHY: Verify fast salience retrieval works
  */
-TEST_F(StreamTest, GetSalience) {
+TEST_F(StreamTest, GetSalience)
+{
     stream_config_t config = stream_default_config();
     stream = brain_create_stream(brain, &config);
     ASSERT_NE(stream, nullptr);
@@ -371,7 +391,8 @@ TEST_F(StreamTest, GetSalience) {
  * WHAT: Test pausing stream
  * WHY: Verify pause functionality works
  */
-TEST_F(StreamTest, PauseStream) {
+TEST_F(StreamTest, PauseStream)
+{
     stream_config_t config = stream_default_config();
     config.mode = STREAM_MODE_BACKGROUND;
     stream = brain_create_stream(brain, &config);
@@ -389,7 +410,8 @@ TEST_F(StreamTest, PauseStream) {
  * WHAT: Test resuming stream
  * WHY: Verify resume functionality works
  */
-TEST_F(StreamTest, ResumeStream) {
+TEST_F(StreamTest, ResumeStream)
+{
     stream_config_t config = stream_default_config();
     config.mode = STREAM_MODE_BACKGROUND;
     stream = brain_create_stream(brain, &config);
@@ -408,7 +430,8 @@ TEST_F(StreamTest, ResumeStream) {
  * WHAT: Test flushing stream
  * WHY: Verify flush functionality works
  */
-TEST_F(StreamTest, FlushStream) {
+TEST_F(StreamTest, FlushStream)
+{
     stream_config_t config = stream_default_config();
     stream = brain_create_stream(brain, &config);
     ASSERT_NE(stream, nullptr);
@@ -427,7 +450,8 @@ TEST_F(StreamTest, FlushStream) {
  * WHAT: Test clearing stream
  * WHY: Verify clear functionality works
  */
-TEST_F(StreamTest, ClearStream) {
+TEST_F(StreamTest, ClearStream)
+{
     stream_config_t config = stream_default_config();
     stream = brain_create_stream(brain, &config);
     ASSERT_NE(stream, nullptr);
@@ -455,7 +479,8 @@ TEST_F(StreamTest, ClearStream) {
  * WHAT: Test getting stream statistics
  * WHY: Verify statistics tracking works
  */
-TEST_F(StreamTest, GetStatistics) {
+TEST_F(StreamTest, GetStatistics)
+{
     stream_config_t config = stream_default_config();
     stream = brain_create_stream(brain, &config);
     ASSERT_NE(stream, nullptr);
@@ -478,7 +503,8 @@ TEST_F(StreamTest, GetStatistics) {
  * WHAT: Test resetting statistics
  * WHY: Verify stats reset works
  */
-TEST_F(StreamTest, ResetStatistics) {
+TEST_F(StreamTest, ResetStatistics)
+{
     stream_config_t config = stream_default_config();
     stream = brain_create_stream(brain, &config);
     ASSERT_NE(stream, nullptr);
@@ -506,7 +532,8 @@ TEST_F(StreamTest, ResetStatistics) {
  * WHAT: Test concurrent feeding from multiple threads
  * WHY: Verify thread safety of ring buffer
  */
-TEST_F(StreamTest, ConcurrentFeeding) {
+TEST_F(StreamTest, ConcurrentFeeding)
+{
     stream_config_t config = stream_default_config();
     config.buffer_size = 1000;
     stream = brain_create_stream(brain, &config);
@@ -518,8 +545,8 @@ TEST_F(StreamTest, ConcurrentFeeding) {
 
     auto feeder_thread = [this](uint32_t thread_id) {
         for (uint32_t i = 0; i < INPUTS_PER_THREAD; i++) {
-            brain_stream_feed(this->stream, this->test_features,
-                            NUM_FEATURES, thread_id * 1000 + i);
+            brain_stream_feed(this->stream, this->test_features, NUM_FEATURES,
+                              thread_id * 1000 + i);
             usleep(100);  // Small delay
         }
     };
@@ -550,7 +577,8 @@ TEST_F(StreamTest, ConcurrentFeeding) {
  * WHAT: Test high salience callback
  * WHY: Verify callbacks are invoked correctly
  */
-TEST_F(StreamTest, HighSalienceCallback) {
+TEST_F(StreamTest, HighSalienceCallback)
+{
     g_high_salience_count = 0;
 
     stream_config_t config = stream_default_config();
@@ -579,7 +607,8 @@ TEST_F(StreamTest, HighSalienceCallback) {
  * WHAT: Test stream throughput
  * WHY: Verify performance is acceptable
  */
-TEST_F(StreamTest, Throughput) {
+TEST_F(StreamTest, Throughput)
+{
     stream_config_t config = stream_default_config();
     config.buffer_size = 10000;
     stream = brain_create_stream(brain, &config);
@@ -597,7 +626,7 @@ TEST_F(StreamTest, Throughput) {
     auto end = std::chrono::high_resolution_clock::now();
     auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
 
-    double avg_time_us = (double)duration.count() / NUM_INPUTS;
+    double avg_time_us = (double) duration.count() / NUM_INPUTS;
 
     // Each feed should be very fast (lock-free)
     // Target: < 10 microseconds per feed

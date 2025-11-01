@@ -5,9 +5,9 @@
 #ifndef NIMCP_EVENTS_H
 #define NIMCP_EVENTS_H
 
-#include "nimcp_protocol.h"
-#include "nimcp_neuralnet.h"
 #include "nimcp_export.h"
+#include "nimcp_neuralnet.h"
+#include "nimcp_protocol.h"
 
 /**
  * @file nimcp_events.h
@@ -31,21 +31,19 @@
  * @param payload_len Length of payload
  * @param context User-provided context
  */
-typedef void (*event_callback_t)(const event_packet_t* packet,
-                                const void* payload,
-                                uint32_t payload_len,
-                                void* context);
+typedef void (*event_callback_t)(const event_packet_t* packet, const void* payload,
+                                 uint32_t payload_len, void* context);
 
 /**
  * @brief Configuration for event generation
  */
 typedef struct {
-    uint32_t node_id;                /**< This node's ID */
+    uint32_t node_id;                 /**< This node's ID */
     feature_code_t base_feature_code; /**< Base feature code for this network */
-    uint8_t max_hop_count;           /**< Maximum hops for event packets */
-    bool enable_plasticity_triggers; /**< Include plasticity info in events */
-    event_callback_t callback;       /**< Callback for generated events */
-    void* callback_context;          /**< Context passed to callback */
+    uint8_t max_hop_count;            /**< Maximum hops for event packets */
+    bool enable_plasticity_triggers;  /**< Include plasticity info in events */
+    event_callback_t callback;        /**< Callback for generated events */
+    void* callback_context;           /**< Context passed to callback */
 } event_generator_config_t;
 
 /**
@@ -77,10 +75,8 @@ void event_generator_destroy(event_generator_t generator);
  * @param timestamp Spike timestamp
  * @return true if event was generated, false otherwise
  */
-bool event_generator_on_spike(event_generator_t generator,
-                             neural_network_t network,
-                             uint32_t neuron_id,
-                             uint64_t timestamp);
+bool event_generator_on_spike(event_generator_t generator, neural_network_t network,
+                              uint32_t neuron_id, uint64_t timestamp);
 
 /**
  * @brief Set feature code for a specific neuron
@@ -90,9 +86,8 @@ bool event_generator_on_spike(event_generator_t generator,
  * @param feature_code Feature code for this neuron's events
  * @return true on success
  */
-bool event_generator_set_neuron_feature(event_generator_t generator,
-                                       uint32_t neuron_id,
-                                       feature_code_t feature_code);
+bool event_generator_set_neuron_feature(event_generator_t generator, uint32_t neuron_id,
+                                        feature_code_t feature_code);
 
 //=============================================================================
 // Event Reception and Neural Input
@@ -102,8 +97,8 @@ bool event_generator_set_neuron_feature(event_generator_t generator,
  * @brief Event receiver configuration
  */
 typedef struct {
-    neural_network_t network;        /**< Target neural network */
-    subscription_filter_t* filters;  /**< Array of subscription filters */
+    neural_network_t network;       /**< Target neural network */
+    subscription_filter_t* filters; /**< Array of subscription filters */
     uint32_t num_filters;           /**< Number of filters */
     bool auto_create_neurons;       /**< Create neurons for unknown sources */
 } event_receiver_config_t;
@@ -138,11 +133,8 @@ void event_receiver_destroy(event_receiver_t receiver);
  * @param timestamp Current time
  * @return true if event was processed, false if filtered out
  */
-bool event_receiver_process_packet(event_receiver_t receiver,
-                                  const event_packet_t* packet,
-                                  const void* payload,
-                                  uint32_t payload_len,
-                                  uint64_t timestamp);
+bool event_receiver_process_packet(event_receiver_t receiver, const event_packet_t* packet,
+                                   const void* payload, uint32_t payload_len, uint64_t timestamp);
 
 /**
  * @brief Add subscription filter
@@ -151,8 +143,7 @@ bool event_receiver_process_packet(event_receiver_t receiver,
  * @param filter Subscription filter to add
  * @return true on success
  */
-bool event_receiver_add_filter(event_receiver_t receiver,
-                              const subscription_filter_t* filter);
+bool event_receiver_add_filter(event_receiver_t receiver, const subscription_filter_t* filter);
 
 /**
  * @brief Remove subscription filter
@@ -171,9 +162,8 @@ bool event_receiver_remove_filter(event_receiver_t receiver, uint32_t index);
  * @param neuron_id Target neuron ID
  * @return true on success
  */
-bool event_receiver_map_feature_to_neuron(event_receiver_t receiver,
-                                         feature_code_t feature_code,
-                                         uint32_t neuron_id);
+bool event_receiver_map_feature_to_neuron(event_receiver_t receiver, feature_code_t feature_code,
+                                          uint32_t neuron_id);
 
 //=============================================================================
 // Utility Functions
@@ -203,7 +193,6 @@ uint8_t event_flags_from_neuron_type(neuron_type_t type);
  * @param neuron_id Neuron ID
  * @return Feature code for this neuron
  */
-feature_code_t event_default_feature_code(feature_code_t base_code,
-                                         uint32_t neuron_id);
+feature_code_t event_default_feature_code(feature_code_t base_code, uint32_t neuron_id);
 
-#endif // NIMCP_EVENTS_H
+#endif  // NIMCP_EVENTS_H

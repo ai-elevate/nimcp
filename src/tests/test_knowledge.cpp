@@ -6,7 +6,7 @@
 #include "test_helpers.h"
 
 extern "C" {
-    #include "../include/nimcp_knowledge.h"
+#include "../include/nimcp_knowledge.h"
 }
 
 #include <cstring>
@@ -18,13 +18,15 @@ namespace {
 //=============================================================================
 
 class KnowledgeTest : public ::testing::Test {
-protected:
-    void SetUp() override {
+   protected:
+    void SetUp() override
+    {
         system = knowledge_system_create("test_learner");
         ASSERT_NE(system, nullptr);
     }
 
-    void TearDown() override {
+    void TearDown() override
+    {
         if (system) {
             knowledge_system_destroy(system);
             system = nullptr;
@@ -32,7 +34,8 @@ protected:
     }
 
     // Helper to create test narrative
-    narrative_knowledge_t create_test_narrative() {
+    narrative_knowledge_t create_test_narrative()
+    {
         narrative_knowledge_t story = {0};
         strncpy(story.title, "The Tortoise and the Hare", sizeof(story.title) - 1);
         strncpy(story.author, "Aesop", sizeof(story.author) - 1);
@@ -41,40 +44,39 @@ protected:
 
         // Allocate characters
         story.num_characters = 2;
-        story.characters = (char**)calloc(2, sizeof(char*));
+        story.characters = (char**) calloc(2, sizeof(char*));
         story.characters[0] = strdup("Tortoise");
         story.characters[1] = strdup("Hare");
 
         // Allocate themes
         story.num_themes = 2;
-        story.themes = (char**)calloc(2, sizeof(char*));
+        story.themes = (char**) calloc(2, sizeof(char*));
         story.themes[0] = strdup("perseverance");
         story.themes[1] = strdup("overconfidence");
 
         // Allocate moral lessons
         story.num_lessons = 1;
-        story.moral_lessons = (char**)calloc(1, sizeof(char*));
+        story.moral_lessons = (char**) calloc(1, sizeof(char*));
         story.moral_lessons[0] = strdup("Slow and steady wins the race");
 
         story.primary_domain = KNOWLEDGE_DOMAIN_LITERATURE;
-        strncpy(story.cultural_context, "Ancient Greece",
-                sizeof(story.cultural_context) - 1);
+        strncpy(story.cultural_context, "Ancient Greece", sizeof(story.cultural_context) - 1);
 
         return story;
     }
 
     // Helper to create test art
-    aesthetic_knowledge_t create_test_art() {
+    aesthetic_knowledge_t create_test_art()
+    {
         aesthetic_knowledge_t art = {0};
         strncpy(art.work_title, "Starry Night", sizeof(art.work_title) - 1);
         strncpy(art.creator, "Vincent van Gogh", sizeof(art.creator) - 1);
         strncpy(art.medium, "oil painting", sizeof(art.medium) - 1);
-        strncpy(art.description, "Swirling night sky over a village",
-                sizeof(art.description) - 1);
+        strncpy(art.description, "Swirling night sky over a village", sizeof(art.description) - 1);
 
         // Allocate aesthetic qualities
         art.num_qualities = 3;
-        art.aesthetic_qualities = (char**)calloc(3, sizeof(char*));
+        art.aesthetic_qualities = (char**) calloc(3, sizeof(char*));
         art.aesthetic_qualities[0] = strdup("dreamlike");
         art.aesthetic_qualities[1] = strdup("expressive");
         art.aesthetic_qualities[2] = strdup("turbulent");
@@ -88,14 +90,15 @@ protected:
     }
 
     // Helper to create test history
-    historical_knowledge_t create_test_history() {
+    historical_knowledge_t create_test_history()
+    {
         historical_knowledge_t event = {0};
         strncpy(event.event_name, "Moon Landing", sizeof(event.event_name) - 1);
         event.timestamp_year = 1969;
 
         // Allocate people
         event.num_people = 2;
-        event.key_people = (char**)calloc(2, sizeof(char*));
+        event.key_people = (char**) calloc(2, sizeof(char*));
         event.key_people[0] = strdup("Neil Armstrong");
         event.key_people[1] = strdup("Buzz Aldrin");
 
@@ -106,15 +109,17 @@ protected:
 
         // Allocate related events
         event.num_related_events = 1;
-        event.related_events = (char**)calloc(1, sizeof(char*));
+        event.related_events = (char**) calloc(1, sizeof(char*));
         event.related_events[0] = strdup("Apollo 11 mission");
 
         return event;
     }
 
     // Helper to free narrative
-    void free_narrative(narrative_knowledge_t* story) {
-        if (!story) return;
+    void free_narrative(narrative_knowledge_t* story)
+    {
+        if (!story)
+            return;
         if (story->characters) {
             for (uint32_t i = 0; i < story->num_characters; i++) {
                 free(story->characters[i]);
@@ -136,8 +141,10 @@ protected:
     }
 
     // Helper to free art
-    void free_art(aesthetic_knowledge_t* art) {
-        if (!art) return;
+    void free_art(aesthetic_knowledge_t* art)
+    {
+        if (!art)
+            return;
         if (art->aesthetic_qualities) {
             for (uint32_t i = 0; i < art->num_qualities; i++) {
                 free(art->aesthetic_qualities[i]);
@@ -147,8 +154,10 @@ protected:
     }
 
     // Helper to free history
-    void free_history(historical_knowledge_t* event) {
-        if (!event) return;
+    void free_history(historical_knowledge_t* event)
+    {
+        if (!event)
+            return;
         if (event->key_people) {
             for (uint32_t i = 0; i < event->num_people; i++) {
                 free(event->key_people[i]);
@@ -170,16 +179,19 @@ protected:
 // Creation/Destruction Tests
 //=============================================================================
 
-TEST_F(KnowledgeTest, SystemCreation) {
+TEST_F(KnowledgeTest, SystemCreation)
+{
     EXPECT_NE(system, nullptr);
 }
 
-TEST_F(KnowledgeTest, SystemCreationNullName) {
+TEST_F(KnowledgeTest, SystemCreationNullName)
+{
     knowledge_system_t null_system = knowledge_system_create(nullptr);
     EXPECT_EQ(null_system, nullptr);
 }
 
-TEST_F(KnowledgeTest, SystemDestructionNullSafe) {
+TEST_F(KnowledgeTest, SystemDestructionNullSafe)
+{
     knowledge_system_destroy(nullptr);
     // Should not crash
 }
@@ -188,13 +200,15 @@ TEST_F(KnowledgeTest, SystemDestructionNullSafe) {
 // Text Learning Tests
 //=============================================================================
 
-TEST_F(KnowledgeTest, LearnFromTextBasic) {
+TEST_F(KnowledgeTest, LearnFromTextBasic)
+{
     const char* text = "Democracy is a system of government by the people.";
     uint32_t learned = knowledge_learn_from_text(system, text, KNOWLEDGE_DOMAIN_GENERAL);
     EXPECT_GT(learned, 0);
 }
 
-TEST_F(KnowledgeTest, LearnFromTextNull) {
+TEST_F(KnowledgeTest, LearnFromTextNull)
+{
     uint32_t learned = knowledge_learn_from_text(nullptr, "test", KNOWLEDGE_DOMAIN_GENERAL);
     EXPECT_EQ(learned, 0);
 
@@ -202,14 +216,16 @@ TEST_F(KnowledgeTest, LearnFromTextNull) {
     EXPECT_EQ(learned, 0);
 }
 
-TEST_F(KnowledgeTest, LearnFromTextMultipleConcepts) {
+TEST_F(KnowledgeTest, LearnFromTextMultipleConcepts)
+{
     const char* text = "Science explores nature through observation and experiment. "
                        "Mathematics provides tools for logical reasoning.";
     uint32_t learned = knowledge_learn_from_text(system, text, KNOWLEDGE_DOMAIN_SCIENCE);
     EXPECT_GT(learned, 0);
 }
 
-TEST_F(KnowledgeTest, LearnFromTextReinforcementIncreasesConfidence) {
+TEST_F(KnowledgeTest, LearnFromTextReinforcementIncreasesConfidence)
+{
     const char* text = "Democracy is a form of government.";
 
     // Learn once
@@ -233,7 +249,8 @@ TEST_F(KnowledgeTest, LearnFromTextReinforcementIncreasesConfidence) {
 // Narrative Learning Tests
 //=============================================================================
 
-TEST_F(KnowledgeTest, LearnFromStory) {
+TEST_F(KnowledgeTest, LearnFromStory)
+{
     narrative_knowledge_t story = create_test_narrative();
 
     bool success = knowledge_learn_from_story(system, &story);
@@ -242,7 +259,8 @@ TEST_F(KnowledgeTest, LearnFromStory) {
     free_narrative(&story);
 }
 
-TEST_F(KnowledgeTest, LearnFromStoryNull) {
+TEST_F(KnowledgeTest, LearnFromStoryNull)
+{
     EXPECT_FALSE(knowledge_learn_from_story(nullptr, nullptr));
 
     narrative_knowledge_t story = create_test_narrative();
@@ -252,7 +270,8 @@ TEST_F(KnowledgeTest, LearnFromStoryNull) {
     free_narrative(&story);
 }
 
-TEST_F(KnowledgeTest, LearnFromStoryExtractsLessons) {
+TEST_F(KnowledgeTest, LearnFromStoryExtractsLessons)
+{
     narrative_knowledge_t story = create_test_narrative();
 
     knowledge_learn_from_story(system, &story);
@@ -269,7 +288,8 @@ TEST_F(KnowledgeTest, LearnFromStoryExtractsLessons) {
 // Art Learning Tests
 //=============================================================================
 
-TEST_F(KnowledgeTest, LearnFromArt) {
+TEST_F(KnowledgeTest, LearnFromArt)
+{
     aesthetic_knowledge_t art = create_test_art();
 
     bool success = knowledge_learn_from_art(system, &art);
@@ -278,7 +298,8 @@ TEST_F(KnowledgeTest, LearnFromArt) {
     free_art(&art);
 }
 
-TEST_F(KnowledgeTest, LearnFromArtNull) {
+TEST_F(KnowledgeTest, LearnFromArtNull)
+{
     EXPECT_FALSE(knowledge_learn_from_art(nullptr, nullptr));
 
     aesthetic_knowledge_t art = create_test_art();
@@ -292,7 +313,8 @@ TEST_F(KnowledgeTest, LearnFromArtNull) {
 // History Learning Tests
 //=============================================================================
 
-TEST_F(KnowledgeTest, LearnFromHistory) {
+TEST_F(KnowledgeTest, LearnFromHistory)
+{
     historical_knowledge_t event = create_test_history();
 
     bool success = knowledge_learn_from_history(system, &event);
@@ -301,7 +323,8 @@ TEST_F(KnowledgeTest, LearnFromHistory) {
     free_history(&event);
 }
 
-TEST_F(KnowledgeTest, LearnFromHistoryNull) {
+TEST_F(KnowledgeTest, LearnFromHistoryNull)
+{
     EXPECT_FALSE(knowledge_learn_from_history(nullptr, nullptr));
 
     historical_knowledge_t event = create_test_history();
@@ -315,7 +338,8 @@ TEST_F(KnowledgeTest, LearnFromHistoryNull) {
 // Conversation Learning Tests
 //=============================================================================
 
-TEST_F(KnowledgeTest, LearnFromConversation) {
+TEST_F(KnowledgeTest, LearnFromConversation)
+{
     const char* dialogue = "Hello! How are you? I'm learning about social interaction.";
     const char* participants[] = {"Alice", "Bob"};
 
@@ -323,7 +347,8 @@ TEST_F(KnowledgeTest, LearnFromConversation) {
     EXPECT_GT(learned, 0);
 }
 
-TEST_F(KnowledgeTest, LearnFromConversationNull) {
+TEST_F(KnowledgeTest, LearnFromConversationNull)
+{
     const char* participants[] = {"Alice", "Bob"};
 
     EXPECT_EQ(knowledge_learn_from_conversation(nullptr, "test", participants, 2), 0);
@@ -334,18 +359,17 @@ TEST_F(KnowledgeTest, LearnFromConversationNull) {
 // Demonstration Learning Tests
 //=============================================================================
 
-TEST_F(KnowledgeTest, LearnFromDemonstration) {
-    const char* steps[] = {
-        "Turn on the computer",
-        "Open the application",
-        "Click the start button"
-    };
+TEST_F(KnowledgeTest, LearnFromDemonstration)
+{
+    const char* steps[] = {"Turn on the computer", "Open the application",
+                           "Click the start button"};
 
     bool success = knowledge_learn_from_demonstration(system, "Starting software", steps, 3);
     EXPECT_TRUE(success);
 }
 
-TEST_F(KnowledgeTest, LearnFromDemonstrationNull) {
+TEST_F(KnowledgeTest, LearnFromDemonstrationNull)
+{
     const char* steps[] = {"Step 1", "Step 2"};
 
     EXPECT_FALSE(knowledge_learn_from_demonstration(nullptr, "test", steps, 2));
@@ -357,7 +381,8 @@ TEST_F(KnowledgeTest, LearnFromDemonstrationNull) {
 // Retrieval Tests
 //=============================================================================
 
-TEST_F(KnowledgeTest, RetrieveKnowledge) {
+TEST_F(KnowledgeTest, RetrieveKnowledge)
+{
     const char* text = "Democracy is government by the people.";
     knowledge_learn_from_text(system, text, KNOWLEDGE_DOMAIN_GENERAL);
 
@@ -372,13 +397,15 @@ TEST_F(KnowledgeTest, RetrieveKnowledge) {
     }
 }
 
-TEST_F(KnowledgeTest, RetrieveUnknownConcept) {
+TEST_F(KnowledgeTest, RetrieveUnknownConcept)
+{
     knowledge_item_t item;
     bool found = knowledge_retrieve(system, "nonexistent_concept_xyz", &item);
     EXPECT_FALSE(found);
 }
 
-TEST_F(KnowledgeTest, RetrieveNull) {
+TEST_F(KnowledgeTest, RetrieveNull)
+{
     knowledge_item_t item;
 
     EXPECT_FALSE(knowledge_retrieve(nullptr, "test", &item));
@@ -390,7 +417,8 @@ TEST_F(KnowledgeTest, RetrieveNull) {
 // Understanding Tests
 //=============================================================================
 
-TEST_F(KnowledgeTest, UnderstandConcept) {
+TEST_F(KnowledgeTest, UnderstandConcept)
+{
     const char* text = "Democracy is government by the people.";
     knowledge_learn_from_text(system, text, KNOWLEDGE_DOMAIN_GENERAL);
 
@@ -401,16 +429,19 @@ TEST_F(KnowledgeTest, UnderstandConcept) {
     EXPECT_LT(len, sizeof(explanation));
 }
 
-TEST_F(KnowledgeTest, UnderstandUnknownConcept) {
+TEST_F(KnowledgeTest, UnderstandUnknownConcept)
+{
     char explanation[512];
-    uint32_t len = knowledge_understand(system, "unknown_concept", "", explanation, sizeof(explanation));
+    uint32_t len =
+        knowledge_understand(system, "unknown_concept", "", explanation, sizeof(explanation));
 
     EXPECT_GT(len, 0);
     // Should contain message about not knowing
     EXPECT_NE(strstr(explanation, "don't know"), nullptr);
 }
 
-TEST_F(KnowledgeTest, UnderstandNull) {
+TEST_F(KnowledgeTest, UnderstandNull)
+{
     char explanation[512];
 
     EXPECT_EQ(knowledge_understand(nullptr, "test", "", explanation, sizeof(explanation)), 0);
@@ -422,28 +453,33 @@ TEST_F(KnowledgeTest, UnderstandNull) {
 // Simple Explanation Tests
 //=============================================================================
 
-TEST_F(KnowledgeTest, ExplainSimplyYoungAge) {
+TEST_F(KnowledgeTest, ExplainSimplyYoungAge)
+{
     const char* text = "Democracy is government by the people.";
     knowledge_learn_from_text(system, text, KNOWLEDGE_DOMAIN_GENERAL);
 
     char explanation[512];
-    uint32_t len = knowledge_explain_simply(system, "democracy", 5, explanation, sizeof(explanation));
+    uint32_t len =
+        knowledge_explain_simply(system, "democracy", 5, explanation, sizeof(explanation));
 
     EXPECT_GT(len, 0);
     // For age < 5, should be very simple
 }
 
-TEST_F(KnowledgeTest, ExplainSimplyOlderAge) {
+TEST_F(KnowledgeTest, ExplainSimplyOlderAge)
+{
     const char* text = "Democracy is government by the people.";
     knowledge_learn_from_text(system, text, KNOWLEDGE_DOMAIN_GENERAL);
 
     char explanation[512];
-    uint32_t len = knowledge_explain_simply(system, "democracy", 15, explanation, sizeof(explanation));
+    uint32_t len =
+        knowledge_explain_simply(system, "democracy", 15, explanation, sizeof(explanation));
 
     EXPECT_GT(len, 0);
 }
 
-TEST_F(KnowledgeTest, ExplainSimplyNull) {
+TEST_F(KnowledgeTest, ExplainSimplyNull)
+{
     char explanation[512];
 
     EXPECT_EQ(knowledge_explain_simply(nullptr, "test", 10, explanation, sizeof(explanation)), 0);
@@ -455,7 +491,8 @@ TEST_F(KnowledgeTest, ExplainSimplyNull) {
 // Connection Finding Tests
 //=============================================================================
 
-TEST_F(KnowledgeTest, FindConnections) {
+TEST_F(KnowledgeTest, FindConnections)
+{
     const char* text = "Democracy requires voting and representation.";
     knowledge_learn_from_text(system, text, KNOWLEDGE_DOMAIN_GENERAL);
 
@@ -467,7 +504,8 @@ TEST_F(KnowledgeTest, FindConnections) {
     EXPECT_LE(num_found, 10);
 }
 
-TEST_F(KnowledgeTest, FindConnectionsNull) {
+TEST_F(KnowledgeTest, FindConnectionsNull)
+{
     knowledge_item_t connections[10];
 
     EXPECT_EQ(knowledge_find_connections(nullptr, "test", connections, 10), 0);
@@ -479,42 +517,40 @@ TEST_F(KnowledgeTest, FindConnectionsNull) {
 // Transfer Learning Tests
 //=============================================================================
 
-TEST_F(KnowledgeTest, TransferLearning) {
+TEST_F(KnowledgeTest, TransferLearning)
+{
     char application[512];
-    bool success = knowledge_transfer_learning(
-        system,
-        KNOWLEDGE_DOMAIN_LITERATURE,
-        KNOWLEDGE_DOMAIN_SOCIAL,
-        "Making new friends",
-        application,
-        sizeof(application)
-    );
+    bool success =
+        knowledge_transfer_learning(system, KNOWLEDGE_DOMAIN_LITERATURE, KNOWLEDGE_DOMAIN_SOCIAL,
+                                    "Making new friends", application, sizeof(application));
 
     EXPECT_TRUE(success);
     EXPECT_GT(strlen(application), 0);
 }
 
-TEST_F(KnowledgeTest, TransferLearningNull) {
+TEST_F(KnowledgeTest, TransferLearningNull)
+{
     char application[512];
 
-    EXPECT_FALSE(knowledge_transfer_learning(
-        nullptr, KNOWLEDGE_DOMAIN_LITERATURE, KNOWLEDGE_DOMAIN_SOCIAL,
-        "test", application, sizeof(application)));
+    EXPECT_FALSE(knowledge_transfer_learning(nullptr, KNOWLEDGE_DOMAIN_LITERATURE,
+                                             KNOWLEDGE_DOMAIN_SOCIAL, "test", application,
+                                             sizeof(application)));
 
-    EXPECT_FALSE(knowledge_transfer_learning(
-        system, KNOWLEDGE_DOMAIN_LITERATURE, KNOWLEDGE_DOMAIN_SOCIAL,
-        nullptr, application, sizeof(application)));
+    EXPECT_FALSE(knowledge_transfer_learning(system, KNOWLEDGE_DOMAIN_LITERATURE,
+                                             KNOWLEDGE_DOMAIN_SOCIAL, nullptr, application,
+                                             sizeof(application)));
 
-    EXPECT_FALSE(knowledge_transfer_learning(
-        system, KNOWLEDGE_DOMAIN_LITERATURE, KNOWLEDGE_DOMAIN_SOCIAL,
-        "test", nullptr, sizeof(application)));
+    EXPECT_FALSE(knowledge_transfer_learning(system, KNOWLEDGE_DOMAIN_LITERATURE,
+                                             KNOWLEDGE_DOMAIN_SOCIAL, "test", nullptr,
+                                             sizeof(application)));
 }
 
 //=============================================================================
 // Building On Knowledge Tests
 //=============================================================================
 
-TEST_F(KnowledgeTest, BuildOnExistingKnowledge) {
+TEST_F(KnowledgeTest, BuildOnExistingKnowledge)
+{
     const char* text = "A dog is a domesticated animal.";
     knowledge_learn_from_text(system, text, KNOWLEDGE_DOMAIN_GENERAL);
 
@@ -522,12 +558,14 @@ TEST_F(KnowledgeTest, BuildOnExistingKnowledge) {
     EXPECT_TRUE(success);
 }
 
-TEST_F(KnowledgeTest, BuildOnNonexistentBase) {
+TEST_F(KnowledgeTest, BuildOnNonexistentBase)
+{
     bool success = knowledge_build_on(system, "new", "nonexistent_base", "different");
     EXPECT_FALSE(success);
 }
 
-TEST_F(KnowledgeTest, BuildOnNull) {
+TEST_F(KnowledgeTest, BuildOnNull)
+{
     EXPECT_FALSE(knowledge_build_on(nullptr, "new", "base", "diff"));
     EXPECT_FALSE(knowledge_build_on(system, nullptr, "base", "diff"));
     EXPECT_FALSE(knowledge_build_on(system, "new", nullptr, "diff"));
@@ -537,7 +575,8 @@ TEST_F(KnowledgeTest, BuildOnNull) {
 // Reinforcement Tests
 //=============================================================================
 
-TEST_F(KnowledgeTest, ReinforceKnowledge) {
+TEST_F(KnowledgeTest, ReinforceKnowledge)
+{
     const char* text = "Democracy is government by the people.";
     knowledge_learn_from_text(system, text, KNOWLEDGE_DOMAIN_GENERAL);
 
@@ -545,12 +584,14 @@ TEST_F(KnowledgeTest, ReinforceKnowledge) {
     EXPECT_TRUE(success);
 }
 
-TEST_F(KnowledgeTest, ReinforceUnknownConcept) {
+TEST_F(KnowledgeTest, ReinforceUnknownConcept)
+{
     bool success = knowledge_reinforce(system, "nonexistent", "example");
     EXPECT_FALSE(success);
 }
 
-TEST_F(KnowledgeTest, ReinforceNull) {
+TEST_F(KnowledgeTest, ReinforceNull)
+{
     EXPECT_FALSE(knowledge_reinforce(nullptr, "test", "example"));
     EXPECT_FALSE(knowledge_reinforce(system, nullptr, "example"));
 }
@@ -559,12 +600,14 @@ TEST_F(KnowledgeTest, ReinforceNull) {
 // Domain Organization Tests
 //=============================================================================
 
-TEST_F(KnowledgeTest, OrganizeDomain) {
+TEST_F(KnowledgeTest, OrganizeDomain)
+{
     bool success = knowledge_organize_domain(system, KNOWLEDGE_DOMAIN_SCIENCE);
     EXPECT_TRUE(success);
 }
 
-TEST_F(KnowledgeTest, OrganizeDomainNull) {
+TEST_F(KnowledgeTest, OrganizeDomainNull)
+{
     EXPECT_FALSE(knowledge_organize_domain(nullptr, KNOWLEDGE_DOMAIN_SCIENCE));
 }
 
@@ -572,7 +615,8 @@ TEST_F(KnowledgeTest, OrganizeDomainNull) {
 // Knowledge Map Tests
 //=============================================================================
 
-TEST_F(KnowledgeTest, GetKnowledgeMap) {
+TEST_F(KnowledgeTest, GetKnowledgeMap)
+{
     const char* text = "Science is the study of nature.";
     knowledge_learn_from_text(system, text, KNOWLEDGE_DOMAIN_SCIENCE);
 
@@ -580,7 +624,8 @@ TEST_F(KnowledgeTest, GetKnowledgeMap) {
     EXPECT_GT(num_nodes, 0);
 }
 
-TEST_F(KnowledgeTest, GetKnowledgeMapNull) {
+TEST_F(KnowledgeTest, GetKnowledgeMapNull)
+{
     EXPECT_EQ(knowledge_get_map(nullptr, KNOWLEDGE_DOMAIN_SCIENCE, nullptr, 100), 0);
 }
 
@@ -588,20 +633,23 @@ TEST_F(KnowledgeTest, GetKnowledgeMapNull) {
 // Reading Tests
 //=============================================================================
 
-TEST_F(KnowledgeTest, ReadBook) {
+TEST_F(KnowledgeTest, ReadBook)
+{
     const char* book_text = "Once upon a time, in a land far away, there lived a wise king.";
     uint32_t learned = knowledge_read_book(system, "The Wise King", book_text, 10);
 
     EXPECT_GT(learned, 0);
 }
 
-TEST_F(KnowledgeTest, ReadBookNull) {
+TEST_F(KnowledgeTest, ReadBookNull)
+{
     EXPECT_EQ(knowledge_read_book(nullptr, "Title", "text", 10), 0);
     EXPECT_EQ(knowledge_read_book(system, nullptr, "text", 10), 0);
     EXPECT_EQ(knowledge_read_book(system, "Title", nullptr, 10), 0);
 }
 
-TEST_F(KnowledgeTest, ContinueReading) {
+TEST_F(KnowledgeTest, ContinueReading)
+{
     const char* book_text = "A long story with many pages.";
     knowledge_read_book(system, "Long Story", book_text, 5);
 
@@ -610,7 +658,8 @@ TEST_F(KnowledgeTest, ContinueReading) {
     EXPECT_LE(progress, 100);
 }
 
-TEST_F(KnowledgeTest, ContinueReadingNull) {
+TEST_F(KnowledgeTest, ContinueReadingNull)
+{
     EXPECT_EQ(knowledge_continue_reading(nullptr, "Title", true), 0);
     EXPECT_EQ(knowledge_continue_reading(system, nullptr, true), 0);
 }
@@ -619,29 +668,31 @@ TEST_F(KnowledgeTest, ContinueReadingNull) {
 // Reading Recommendations Tests
 //=============================================================================
 
-TEST_F(KnowledgeTest, GetReadingList) {
+TEST_F(KnowledgeTest, GetReadingList)
+{
     char* recommendations[5];
-    uint32_t num_recs = knowledge_get_reading_list(
-        system, KNOWLEDGE_DOMAIN_LITERATURE, recommendations, 5);
+    uint32_t num_recs =
+        knowledge_get_reading_list(system, KNOWLEDGE_DOMAIN_LITERATURE, recommendations, 5);
 
     EXPECT_GT(num_recs, 0);
     EXPECT_LE(num_recs, 5);
 }
 
-TEST_F(KnowledgeTest, GetReadingListNull) {
+TEST_F(KnowledgeTest, GetReadingListNull)
+{
     char* recommendations[5];
 
-    EXPECT_EQ(knowledge_get_reading_list(nullptr, KNOWLEDGE_DOMAIN_LITERATURE,
-                                         recommendations, 5), 0);
-    EXPECT_EQ(knowledge_get_reading_list(system, KNOWLEDGE_DOMAIN_LITERATURE,
-                                         nullptr, 5), 0);
+    EXPECT_EQ(knowledge_get_reading_list(nullptr, KNOWLEDGE_DOMAIN_LITERATURE, recommendations, 5),
+              0);
+    EXPECT_EQ(knowledge_get_reading_list(system, KNOWLEDGE_DOMAIN_LITERATURE, nullptr, 5), 0);
 }
 
 //=============================================================================
 // Domain Assessment Tests
 //=============================================================================
 
-TEST_F(KnowledgeTest, AssessDomain) {
+TEST_F(KnowledgeTest, AssessDomain)
+{
     const char* text = "Science is the study of nature through observation.";
     knowledge_learn_from_text(system, text, KNOWLEDGE_DOMAIN_SCIENCE);
 
@@ -653,7 +704,8 @@ TEST_F(KnowledgeTest, AssessDomain) {
     EXPECT_GT(assessment.concepts_known, 0);
 }
 
-TEST_F(KnowledgeTest, AssessDomainNull) {
+TEST_F(KnowledgeTest, AssessDomainNull)
+{
     domain_knowledge_t assessment;
 
     EXPECT_FALSE(knowledge_assess_domain(nullptr, KNOWLEDGE_DOMAIN_SCIENCE, &assessment));
@@ -664,18 +716,20 @@ TEST_F(KnowledgeTest, AssessDomainNull) {
 // Summary Tests
 //=============================================================================
 
-TEST_F(KnowledgeTest, GetSummary) {
+TEST_F(KnowledgeTest, GetSummary)
+{
     domain_knowledge_t all_domains[11];
     uint32_t num_domains = knowledge_get_summary(system, all_domains, 11);
 
     EXPECT_EQ(num_domains, 11);
 
     for (uint32_t i = 0; i < num_domains; i++) {
-        EXPECT_EQ(all_domains[i].domain, (knowledge_domain_t)i);
+        EXPECT_EQ(all_domains[i].domain, (knowledge_domain_t) i);
     }
 }
 
-TEST_F(KnowledgeTest, GetSummaryNull) {
+TEST_F(KnowledgeTest, GetSummaryNull)
+{
     domain_knowledge_t all_domains[11];
 
     EXPECT_EQ(knowledge_get_summary(nullptr, all_domains, 11), 0);
@@ -686,7 +740,8 @@ TEST_F(KnowledgeTest, GetSummaryNull) {
 // Utility Function Tests
 //=============================================================================
 
-TEST_F(KnowledgeTest, DomainNames) {
+TEST_F(KnowledgeTest, DomainNames)
+{
     EXPECT_STREQ(knowledge_domain_name(KNOWLEDGE_DOMAIN_LANGUAGE), "Language");
     EXPECT_STREQ(knowledge_domain_name(KNOWLEDGE_DOMAIN_LITERATURE), "Literature");
     EXPECT_STREQ(knowledge_domain_name(KNOWLEDGE_DOMAIN_ART), "Art");
@@ -700,17 +755,20 @@ TEST_F(KnowledgeTest, DomainNames) {
     EXPECT_STREQ(knowledge_domain_name(KNOWLEDGE_DOMAIN_GENERAL), "General");
 }
 
-TEST_F(KnowledgeTest, DomainNameInvalid) {
-    const char* name = knowledge_domain_name((knowledge_domain_t)999);
+TEST_F(KnowledgeTest, DomainNameInvalid)
+{
+    const char* name = knowledge_domain_name((knowledge_domain_t) 999);
     EXPECT_STREQ(name, "Unknown");
 }
 
-TEST_F(KnowledgeTest, PrintItemNull) {
+TEST_F(KnowledgeTest, PrintItemNull)
+{
     knowledge_print_item(nullptr);
     // Should not crash
 }
 
-TEST_F(KnowledgeTest, PrintAssessmentNull) {
+TEST_F(KnowledgeTest, PrintAssessmentNull)
+{
     knowledge_print_assessment(nullptr);
     // Should not crash
 }
@@ -719,7 +777,8 @@ TEST_F(KnowledgeTest, PrintAssessmentNull) {
 // Save/Load Tests
 //=============================================================================
 
-TEST_F(KnowledgeTest, SaveKnowledge) {
+TEST_F(KnowledgeTest, SaveKnowledge)
+{
     const char* text = "Test knowledge for saving.";
     knowledge_learn_from_text(system, text, KNOWLEDGE_DOMAIN_GENERAL);
 
@@ -731,12 +790,14 @@ TEST_F(KnowledgeTest, SaveKnowledge) {
     unlink(filepath);
 }
 
-TEST_F(KnowledgeTest, SaveNull) {
+TEST_F(KnowledgeTest, SaveNull)
+{
     EXPECT_FALSE(knowledge_save(nullptr, "/tmp/test.dat"));
     EXPECT_FALSE(knowledge_save(system, nullptr));
 }
 
-TEST_F(KnowledgeTest, LoadKnowledge) {
+TEST_F(KnowledgeTest, LoadKnowledge)
+{
     // First save some knowledge
     const char* text = "Test knowledge for loading.";
     knowledge_learn_from_text(system, text, KNOWLEDGE_DOMAIN_GENERAL);
@@ -756,15 +817,16 @@ TEST_F(KnowledgeTest, LoadKnowledge) {
     unlink(filepath);
 }
 
-TEST_F(KnowledgeTest, LoadNull) {
+TEST_F(KnowledgeTest, LoadNull)
+{
     knowledge_system_t loaded = knowledge_load(nullptr);
     EXPECT_EQ(loaded, nullptr);
 }
 
-TEST_F(KnowledgeTest, LoadNonexistentFile) {
+TEST_F(KnowledgeTest, LoadNonexistentFile)
+{
     knowledge_system_t loaded = knowledge_load("/nonexistent/path/file.dat");
     EXPECT_EQ(loaded, nullptr);
 }
 
-} // anonymous namespace
-
+}  // anonymous namespace

@@ -19,14 +19,14 @@
  */
 
 #include "nimcp_salience.h"
-#include "utils/nimcp_thread.h"
-#include "utils/nimcp_thread_pool.h"
-#include "utils/nimcp_memory.h"
-#include "utils/nimcp_vector.h"
-#include "utils/nimcp_time.h"
+#include <math.h>
 #include <stdio.h>
 #include <string.h>
-#include <math.h>
+#include "utils/nimcp_memory.h"
+#include "utils/nimcp_thread.h"
+#include "utils/nimcp_thread_pool.h"
+#include "utils/nimcp_time.h"
+#include "utils/nimcp_vector.h"
 
 //=============================================================================
 // Thread-Local Error Handling
@@ -34,14 +34,16 @@
 
 static __thread char g_salience_error[512] = {0};
 
-static void salience_set_error(const char* format, ...) {
+static void salience_set_error(const char* format, ...)
+{
     va_list args;
     va_start(args, format);
     vsnprintf(g_salience_error, sizeof(g_salience_error), format, args);
     va_end(args);
 }
 
-const char* salience_get_last_error(void) {
+const char* salience_get_last_error(void)
+{
     return g_salience_error;
 }
 
@@ -81,7 +83,7 @@ typedef struct {
     uint32_t capacity;         // Buffer size
     uint32_t head;             // Next write position
     uint32_t count;            // Current entry count
-    nimcp_mutex_t lock;      // Thread safety
+    nimcp_mutex_t lock;        // Thread safety
 } history_buffer_t;
 
 /**
@@ -89,9 +91,11 @@ typedef struct {
  * WHY: Initialize novelty detection storage
  * HOW: Allocate circular buffer
  */
-static history_buffer_t* history_buffer_create(uint32_t capacity) {
+static history_buffer_t* history_buffer_create(uint32_t capacity)
+{
     history_buffer_t* hist = nimcp_calloc(1, sizeof(history_buffer_t));
-    if (!hist) return NULL;
+    if (!hist)
+        return NULL;
 
     hist->entries = nimcp_calloc(capacity, sizeof(history_entry_t));
     if (!hist->entries) {
@@ -112,8 +116,10 @@ static history_buffer_t* history_buffer_create(uint32_t capacity) {
  * WHY: Free all resources
  * HOW: Free entries array, then structure (features are stack-allocated in entries)
  */
-static void history_buffer_destroy(history_buffer_t* hist) {
-    if (!hist) return;
+static void history_buffer_destroy(history_buffer_t* hist)
+{
+    if (!hist)
+        return;
 
     /**
      * WHAT: Free entries array
@@ -133,10 +139,9 @@ static void history_buffer_destroy(history_buffer_t* hist) {
  * WHY: Update recent input history for novelty detection
  * HOW: Overwrite oldest entry (circular buffer) using fixed-size array
  */
-static void history_buffer_add(history_buffer_t* hist,
-                               const float* features,
-                               uint32_t num_features,
-                               uint64_t timestamp) {
+static void history_buffer_add(history_buffer_t* hist, const float* features, uint32_t num_features,
+                               uint64_t timestamp)
+{
     /**
      * WHAT: Validate feature count
      * WHY: Fixed-size array has maximum capacity
@@ -180,9 +185,9 @@ static void history_buffer_add(history_buffer_t* hist,
  *
  * @return Novelty score (0.0 = very familiar, 1.0 = completely novel)
  */
-static float history_buffer_compute_novelty(history_buffer_t* hist,
-                                            const float* features,
-                                            uint32_t num_features) {
+static float history_buffer_compute_novelty(history_buffer_t* hist, const float* features,
+                                            uint32_t num_features)
+{
     if (hist->count == 0) {
         /**
          * WHAT: No history yet
@@ -237,7 +242,8 @@ static float history_buffer_compute_novelty(history_buffer_t* hist,
  * WHY: Reset novelty detection
  * HOW: Simply mark all entries as invalid and reset counters
  */
-static void history_buffer_clear(history_buffer_t* hist) {
+static void history_buffer_clear(history_buffer_t* hist)
+{
     nimcp_mutex_lock(&hist->lock);
 
     /**
@@ -267,19 +273,21 @@ static void history_buffer_clear(history_buffer_t* hist) {
  * PATTERN: Memento pattern - maintains prediction state
  */
 typedef struct {
-    float* prediction;         // Predicted next input
-    uint32_t num_features;     // Feature dimension
-    float alpha;               // EMA smoothing factor (0-1)
-    bool initialized;          // Has seen at least one input?
-    nimcp_mutex_t lock;      // Thread safety
+    float* prediction;      // Predicted next input
+    uint32_t num_features;  // Feature dimension
+    float alpha;            // EMA smoothing factor (0-1)
+    bool initialized;       // Has seen at least one input?
+    nimcp_mutex_t lock;     // Thread safety
 } predictor_t;
 
 /**
  * WHAT: Create predictor
  */
-static predictor_t* predictor_create(uint32_t num_features) {
+static predictor_t* predictor_create(uint32_t num_features)
+{
     predictor_t* pred = nimcp_calloc(1, sizeof(predictor_t));
-    if (!pred) return NULL;
+    if (!pred)
+        return NULL;
 
     pred->prediction = nimcp_calloc(num_features, sizeof(float));
     if (!pred->prediction) {
@@ -298,8 +306,10 @@ static predictor_t* predictor_create(uint32_t num_features) {
 /**
  * WHAT: Destroy predictor
  */
-static void predictor_destroy(predictor_t* pred) {
-    if (!pred) return;
+static void predictor_destroy(predictor_t* pred)
+{
+    if (!pred)
+        return;
 
     if (pred->prediction) {
         nimcp_free(pred->prediction);
@@ -314,7 +324,8 @@ static void predictor_destroy(predictor_t* pred) {
  * WHY: Learn temporal patterns
  * HOW: Exponential moving average
  */
-static void predictor_update(predictor_t* pred, const float* features) {
+static void predictor_update(predictor_t* pred, const float* features)
+{
     nimcp_mutex_lock(&pred->lock);
 
     if (!pred->initialized) {
@@ -331,8 +342,8 @@ static void predictor_update(predictor_t* pred, const float* features) {
          * HOW: prediction = alpha * new + (1-alpha) * old
          */
         for (uint32_t i = 0; i < pred->num_features; i++) {
-            pred->prediction[i] = pred->alpha * features[i] +
-                                 (1.0f - pred->alpha) * pred->prediction[i];
+            pred->prediction[i] =
+                pred->alpha * features[i] + (1.0f - pred->alpha) * pred->prediction[i];
         }
     }
 
@@ -346,7 +357,8 @@ static void predictor_update(predictor_t* pred, const float* features) {
  *
  * @return Surprise score (0.0 = expected, 1.0 = totally unexpected)
  */
-static float predictor_compute_surprise(predictor_t* pred, const float* features) {
+static float predictor_compute_surprise(predictor_t* pred, const float* features)
+{
     if (!pred->initialized) {
         return 0.5f;  // Moderate surprise when no prediction exists
     }
@@ -433,12 +445,9 @@ struct salience_evaluator_struct {
  * WHY: Maximum speed for high-frequency input
  * HOW: Simplified calculations, approximations
  */
-static brain_salience_t compute_salience_fast(
-    salience_evaluator_t eval,
-    const float* features,
-    uint32_t num_features,
-    uint64_t timestamp) {
-
+static brain_salience_t compute_salience_fast(salience_evaluator_t eval, const float* features,
+                                              uint32_t num_features, uint64_t timestamp)
+{
     brain_salience_t salience = {0};
 
     /**
@@ -446,8 +455,7 @@ static brain_salience_t compute_salience_fast(
      * WHY: Full history scan is expensive
      */
     if (eval->config.enable_novelty) {
-        salience.novelty = history_buffer_compute_novelty(
-            eval->history, features, num_features);
+        salience.novelty = history_buffer_compute_novelty(eval->history, features, num_features);
     }
 
     /**
@@ -471,17 +479,17 @@ static brain_salience_t compute_salience_fast(
      * WHY: Different metrics have different importance
      * HOW: Weighted average
      */
-    float total_weight = eval->config.novelty_weight +
-                        eval->config.surprise_weight +
-                        eval->config.urgency_weight;
+    float total_weight =
+        eval->config.novelty_weight + eval->config.surprise_weight + eval->config.urgency_weight;
 
     if (total_weight > 0.0f) {
         salience.salience = (salience.novelty * eval->config.novelty_weight +
-                            salience.surprise * eval->config.surprise_weight +
-                            salience.urgency * eval->config.urgency_weight) / total_weight;
+                             salience.surprise * eval->config.surprise_weight +
+                             salience.urgency * eval->config.urgency_weight) /
+                            total_weight;
     }
 
-    salience.confidence = 0.7f;  // Lower confidence for fast mode
+    salience.confidence = 0.7f;      // Lower confidence for fast mode
     salience.estimated_cost = 0.1f;  // Low cost estimate
 
     return salience;
@@ -492,18 +500,14 @@ static brain_salience_t compute_salience_fast(
  * WHY: Good speed-accuracy tradeoff
  * HOW: Full novelty + surprise, simplified urgency
  */
-static brain_salience_t compute_salience_balanced(
-    salience_evaluator_t eval,
-    const float* features,
-    uint32_t num_features,
-    uint64_t timestamp) {
-
+static brain_salience_t compute_salience_balanced(salience_evaluator_t eval, const float* features,
+                                                  uint32_t num_features, uint64_t timestamp)
+{
     brain_salience_t salience = {0};
 
     // Full novelty computation
     if (eval->config.enable_novelty) {
-        salience.novelty = history_buffer_compute_novelty(
-            eval->history, features, num_features);
+        salience.novelty = history_buffer_compute_novelty(eval->history, features, num_features);
     }
 
     // Full surprise computation
@@ -529,14 +533,14 @@ static brain_salience_t compute_salience_balanced(
     }
 
     // Combine scores
-    float total_weight = eval->config.novelty_weight +
-                        eval->config.surprise_weight +
-                        eval->config.urgency_weight;
+    float total_weight =
+        eval->config.novelty_weight + eval->config.surprise_weight + eval->config.urgency_weight;
 
     if (total_weight > 0.0f) {
         salience.salience = (salience.novelty * eval->config.novelty_weight +
-                            salience.surprise * eval->config.surprise_weight +
-                            salience.urgency * eval->config.urgency_weight) / total_weight;
+                             salience.surprise * eval->config.surprise_weight +
+                             salience.urgency * eval->config.urgency_weight) /
+                            total_weight;
     }
 
     salience.confidence = 0.85f;
@@ -550,15 +554,11 @@ static brain_salience_t compute_salience_balanced(
  * WHY: Maximum accuracy for critical decisions
  * HOW: Full computation including partial brain activation
  */
-static brain_salience_t compute_salience_accurate(
-    salience_evaluator_t eval,
-    const float* features,
-    uint32_t num_features,
-    uint64_t timestamp) {
-
+static brain_salience_t compute_salience_accurate(salience_evaluator_t eval, const float* features,
+                                                  uint32_t num_features, uint64_t timestamp)
+{
     // For now, same as balanced (TODO: add partial brain activation)
-    brain_salience_t salience = compute_salience_balanced(
-        eval, features, num_features, timestamp);
+    brain_salience_t salience = compute_salience_balanced(eval, features, num_features, timestamp);
 
     salience.confidence = 0.95f;
     salience.estimated_cost = 0.9f;
@@ -574,7 +574,8 @@ static brain_salience_t compute_salience_accurate(
  * WHAT: Validate salience configuration
  * WHY: Guard clause pattern - fail fast on invalid config
  */
-static bool validate_salience_config(const salience_config_t* config) {
+static bool validate_salience_config(const salience_config_t* config)
+{
     if (!config) {
         salience_set_error("NULL configuration");
         return false;
@@ -593,10 +594,8 @@ static bool validate_salience_config(const salience_config_t* config) {
     return true;
 }
 
-salience_evaluator_t salience_evaluator_create(
-    brain_t brain,
-    const salience_config_t* config) {
-
+salience_evaluator_t salience_evaluator_create(brain_t brain, const salience_config_t* config)
+{
     // Guard clauses
     if (!brain) {
         salience_set_error("NULL brain");
@@ -634,7 +633,8 @@ salience_evaluator_t salience_evaluator_create(
         eval->predictor = predictor_create(num_features);
         if (!eval->predictor) {
             salience_set_error("Failed to create predictor");
-            if (eval->history) history_buffer_destroy(eval->history);
+            if (eval->history)
+                history_buffer_destroy(eval->history);
             nimcp_free(eval);
             return NULL;
         }
@@ -665,8 +665,10 @@ salience_evaluator_t salience_evaluator_create(
     eval->thread_pool = nimcp_pool_create(4);
     if (!eval->thread_pool) {
         salience_set_error("Failed to create thread pool");
-        if (eval->history) history_buffer_destroy(eval->history);
-        if (eval->predictor) predictor_destroy(eval->predictor);
+        if (eval->history)
+            history_buffer_destroy(eval->history);
+        if (eval->predictor)
+            predictor_destroy(eval->predictor);
         nimcp_mutex_destroy(&eval->eval_lock);
         nimcp_free(eval);
         return NULL;
@@ -675,8 +677,10 @@ salience_evaluator_t salience_evaluator_create(
     return eval;
 }
 
-void salience_evaluator_destroy(salience_evaluator_t eval) {
-    if (!eval) return;
+void salience_evaluator_destroy(salience_evaluator_t eval)
+{
+    if (!eval)
+        return;
 
     /**
      * WHAT: Destroy thread pool first
@@ -704,11 +708,9 @@ void salience_evaluator_destroy(salience_evaluator_t eval) {
 // Salience Evaluation Functions
 //=============================================================================
 
-brain_salience_t brain_evaluate_salience(
-    salience_evaluator_t eval,
-    const float* features,
-    uint32_t num_features) {
-
+brain_salience_t brain_evaluate_salience(salience_evaluator_t eval, const float* features,
+                                         uint32_t num_features)
+{
     return brain_evaluate_salience_temporal(eval, features, num_features, 0);
 }
 
@@ -718,10 +720,10 @@ brain_salience_t brain_evaluate_salience(
  * PATTERN: Command pattern - encapsulates evaluation request
  */
 typedef struct {
-    salience_evaluator_t eval;      /* Evaluator to use */
-    const float* features;           /* Input features for this sample */
-    uint32_t num_features;           /* Feature count */
-    brain_salience_t* output;        /* Where to store result */
+    salience_evaluator_t eval; /* Evaluator to use */
+    const float* features;     /* Input features for this sample */
+    uint32_t num_features;     /* Feature count */
+    brain_salience_t* output;  /* Where to store result */
 } batch_task_t;
 
 /**
@@ -731,8 +733,9 @@ typedef struct {
  *
  * NOTE: Does NOT update history/predictor to avoid lock contention
  */
-static void evaluate_single_task(void* arg) {
-    batch_task_t* task = (batch_task_t*)arg;
+static void evaluate_single_task(void* arg)
+{
+    batch_task_t* task = (batch_task_t*) arg;
     if (!task || !task->eval || !task->features || !task->output) {
         return;
     }
@@ -747,28 +750,22 @@ static void evaluate_single_task(void* arg) {
     /* WHAT: Use configured strategy for evaluation */
     switch (eval->config.strategy) {
         case SALIENCE_STRATEGY_FAST:
-            *task->output = compute_salience_fast(eval, task->features,
-                                                   task->num_features, 0);
+            *task->output = compute_salience_fast(eval, task->features, task->num_features, 0);
             break;
 
         case SALIENCE_STRATEGY_BALANCED:
-            *task->output = compute_salience_balanced(eval, task->features,
-                                                      task->num_features, 0);
+            *task->output = compute_salience_balanced(eval, task->features, task->num_features, 0);
             break;
 
         case SALIENCE_STRATEGY_ACCURATE:
-            *task->output = compute_salience_accurate(eval, task->features,
-                                                       task->num_features, 0);
+            *task->output = compute_salience_accurate(eval, task->features, task->num_features, 0);
             break;
     }
 }
 
-brain_salience_t brain_evaluate_salience_temporal(
-    salience_evaluator_t eval,
-    const float* features,
-    uint32_t num_features,
-    uint64_t timestamp) {
-
+brain_salience_t brain_evaluate_salience_temporal(salience_evaluator_t eval, const float* features,
+                                                  uint32_t num_features, uint64_t timestamp)
+{
     brain_salience_t salience = {0};
 
     if (!eval || !features) {
@@ -819,14 +816,14 @@ brain_salience_t brain_evaluate_salience_temporal(
 
     // Running averages (exponential moving average)
     float alpha = 0.1f;
-    eval->running_avg_salience = alpha * salience.salience +
-                                 (1.0f - alpha) * eval->running_avg_salience;
-    eval->running_avg_novelty = alpha * salience.novelty +
-                                (1.0f - alpha) * eval->running_avg_novelty;
-    eval->running_avg_surprise = alpha * salience.surprise +
-                                 (1.0f - alpha) * eval->running_avg_surprise;
-    eval->running_avg_urgency = alpha * salience.urgency +
-                                (1.0f - alpha) * eval->running_avg_urgency;
+    eval->running_avg_salience =
+        alpha * salience.salience + (1.0f - alpha) * eval->running_avg_salience;
+    eval->running_avg_novelty =
+        alpha * salience.novelty + (1.0f - alpha) * eval->running_avg_novelty;
+    eval->running_avg_surprise =
+        alpha * salience.surprise + (1.0f - alpha) * eval->running_avg_surprise;
+    eval->running_avg_urgency =
+        alpha * salience.urgency + (1.0f - alpha) * eval->running_avg_urgency;
 
     // Count high events
     if (salience.salience > eval->config.high_salience_threshold) {
@@ -850,14 +847,12 @@ brain_salience_t brain_evaluate_salience_temporal(
      */
     if (eval->callback) {
         if (salience.salience > eval->config.high_salience_threshold) {
-            salience_event_t event = {
-                .type = SALIENCE_EVENT_HIGH_SALIENCE,
-                .salience = salience,
-                .features = features,
-                .num_features = num_features,
-                .timestamp = timestamp,
-                .message = "High salience detected"
-            };
+            salience_event_t event = {.type = SALIENCE_EVENT_HIGH_SALIENCE,
+                                      .salience = salience,
+                                      .features = features,
+                                      .num_features = num_features,
+                                      .timestamp = timestamp,
+                                      .message = "High salience detected"};
             eval->callback(&event, eval->callback_context);
         }
     }
@@ -868,13 +863,10 @@ brain_salience_t brain_evaluate_salience_temporal(
     return salience;
 }
 
-uint32_t brain_evaluate_salience_batch(
-    salience_evaluator_t eval,
-    const float** features,
-    uint32_t num_samples,
-    uint32_t num_features,
-    brain_salience_t* salience_scores) {
-
+uint32_t brain_evaluate_salience_batch(salience_evaluator_t eval, const float** features,
+                                       uint32_t num_samples, uint32_t num_features,
+                                       brain_salience_t* salience_scores)
+{
     if (!eval || !features || !salience_scores) {
         return 0;
     }
@@ -895,8 +887,7 @@ uint32_t brain_evaluate_salience_batch(
          * HOW: Call evaluation function directly for each sample
          */
         for (uint32_t i = 0; i < num_samples; i++) {
-            salience_scores[i] = brain_evaluate_salience(
-                eval, features[i], num_features);
+            salience_scores[i] = brain_evaluate_salience(eval, features[i], num_features);
         }
         return num_samples;
     }
@@ -915,8 +906,7 @@ uint32_t brain_evaluate_salience_batch(
      * WHY: Each worker needs context for its sample
      * HOW: Heap allocation for safety across threads
      */
-    batch_task_t* tasks = (batch_task_t*)nimcp_malloc(
-        num_samples * sizeof(batch_task_t));
+    batch_task_t* tasks = (batch_task_t*) nimcp_malloc(num_samples * sizeof(batch_task_t));
     if (!tasks) {
         return 0;
     }
@@ -938,8 +928,8 @@ uint32_t brain_evaluate_salience_batch(
      * HOW: Pool distributes work across available threads
      */
     for (uint32_t i = 0; i < num_samples; i++) {
-        nimcp_result_t result = nimcp_pool_submit(
-            eval->thread_pool, evaluate_single_task, &tasks[i]);
+        nimcp_result_t result =
+            nimcp_pool_submit(eval->thread_pool, evaluate_single_task, &tasks[i]);
 
         if (result != NIMCP_SUCCESS) {
             /**
@@ -983,14 +973,14 @@ uint32_t brain_evaluate_salience_batch(
         eval->stats_evaluations++;
 
         float alpha = 0.1f;
-        eval->running_avg_salience = alpha * salience_scores[i].salience +
-                                     (1.0f - alpha) * eval->running_avg_salience;
-        eval->running_avg_novelty = alpha * salience_scores[i].novelty +
-                                    (1.0f - alpha) * eval->running_avg_novelty;
-        eval->running_avg_surprise = alpha * salience_scores[i].surprise +
-                                     (1.0f - alpha) * eval->running_avg_surprise;
-        eval->running_avg_urgency = alpha * salience_scores[i].urgency +
-                                    (1.0f - alpha) * eval->running_avg_urgency;
+        eval->running_avg_salience =
+            alpha * salience_scores[i].salience + (1.0f - alpha) * eval->running_avg_salience;
+        eval->running_avg_novelty =
+            alpha * salience_scores[i].novelty + (1.0f - alpha) * eval->running_avg_novelty;
+        eval->running_avg_surprise =
+            alpha * salience_scores[i].surprise + (1.0f - alpha) * eval->running_avg_surprise;
+        eval->running_avg_urgency =
+            alpha * salience_scores[i].urgency + (1.0f - alpha) * eval->running_avg_urgency;
 
         if (salience_scores[i].salience > eval->config.high_salience_threshold) {
             eval->stats_high_salience++;
@@ -1021,13 +1011,11 @@ uint32_t brain_evaluate_salience_batch(
 // Configuration and Control Functions
 //=============================================================================
 
-bool salience_set_weights(
-    salience_evaluator_t eval,
-    float novelty_weight,
-    float surprise_weight,
-    float urgency_weight) {
-
-    if (!eval) return false;
+bool salience_set_weights(salience_evaluator_t eval, float novelty_weight, float surprise_weight,
+                          float urgency_weight)
+{
+    if (!eval)
+        return false;
 
     nimcp_mutex_lock(&eval->eval_lock);
 
@@ -1040,14 +1028,12 @@ bool salience_set_weights(
     return true;
 }
 
-bool salience_set_thresholds(
-    salience_evaluator_t eval,
-    float high_salience_threshold,
-    float high_novelty_threshold,
-    float high_surprise_threshold,
-    float high_urgency_threshold) {
-
-    if (!eval) return false;
+bool salience_set_thresholds(salience_evaluator_t eval, float high_salience_threshold,
+                             float high_novelty_threshold, float high_surprise_threshold,
+                             float high_urgency_threshold)
+{
+    if (!eval)
+        return false;
 
     nimcp_mutex_lock(&eval->eval_lock);
 
@@ -1061,12 +1047,11 @@ bool salience_set_thresholds(
     return true;
 }
 
-bool salience_register_callback(
-    salience_evaluator_t eval,
-    salience_event_callback_fn callback,
-    void* context) {
-
-    if (!eval) return false;
+bool salience_register_callback(salience_evaluator_t eval, salience_event_callback_fn callback,
+                                void* context)
+{
+    if (!eval)
+        return false;
 
     nimcp_mutex_lock(&eval->eval_lock);
 
@@ -1078,16 +1063,20 @@ bool salience_register_callback(
     return true;
 }
 
-bool salience_clear_history(salience_evaluator_t eval) {
-    if (!eval || !eval->history) return false;
+bool salience_clear_history(salience_evaluator_t eval)
+{
+    if (!eval || !eval->history)
+        return false;
 
     history_buffer_clear(eval->history);
 
     return true;
 }
 
-bool salience_get_stats(salience_evaluator_t eval, salience_stats_t* stats) {
-    if (!eval || !stats) return false;
+bool salience_get_stats(salience_evaluator_t eval, salience_stats_t* stats)
+{
+    if (!eval || !stats)
+        return false;
 
     nimcp_mutex_lock(&eval->eval_lock);
 
@@ -1102,8 +1091,9 @@ bool salience_get_stats(salience_evaluator_t eval, salience_stats_t* stats) {
     stats->avg_surprise = eval->running_avg_surprise;
     stats->avg_urgency = eval->running_avg_urgency;
 
-    stats->avg_evaluation_time_us = eval->stats_evaluations > 0 ?
-        (float)eval->total_eval_time_us / eval->stats_evaluations : 0.0f;
+    stats->avg_evaluation_time_us = eval->stats_evaluations > 0
+                                        ? (float) eval->total_eval_time_us / eval->stats_evaluations
+                                        : 0.0f;
 
     stats->history_size = eval->history ? eval->history->count : 0;
     stats->cache_hit_rate = 0;  // TODO: Implement caching
@@ -1123,7 +1113,8 @@ bool salience_get_stats(salience_evaluator_t eval, salience_stats_t* stats) {
  * @param eval Evaluator handle
  * @return true on success, false on error
  */
-bool salience_reset_stats(salience_evaluator_t eval) {
+bool salience_reset_stats(salience_evaluator_t eval)
+{
     if (!eval) {
         return false;
     }
@@ -1157,34 +1148,31 @@ bool salience_reset_stats(salience_evaluator_t eval) {
 // Convenience Functions
 //=============================================================================
 
-salience_config_t salience_default_config(void) {
-    salience_config_t config = {
-        .strategy = SALIENCE_STRATEGY_BALANCED,
-        .history_size = 100,
-        .enable_novelty = true,
-        .enable_surprise = true,
-        .enable_urgency = true,
-        .enable_prediction = true,
-        .urgency_baseline = 0.3f,
-        .novelty_weight = 0.3f,
-        .surprise_weight = 0.4f,
-        .urgency_weight = 0.3f,
-        .high_salience_threshold = 0.7f,
-        .high_novelty_threshold = 0.8f,
-        .high_surprise_threshold = 0.8f,
-        .high_urgency_threshold = 0.9f,
-        .enable_caching = false,
-        .cache_size = 0
-    };
+salience_config_t salience_default_config(void)
+{
+    salience_config_t config = {.strategy = SALIENCE_STRATEGY_BALANCED,
+                                .history_size = 100,
+                                .enable_novelty = true,
+                                .enable_surprise = true,
+                                .enable_urgency = true,
+                                .enable_prediction = true,
+                                .urgency_baseline = 0.3f,
+                                .novelty_weight = 0.3f,
+                                .surprise_weight = 0.4f,
+                                .urgency_weight = 0.3f,
+                                .high_salience_threshold = 0.7f,
+                                .high_novelty_threshold = 0.8f,
+                                .high_surprise_threshold = 0.8f,
+                                .high_urgency_threshold = 0.9f,
+                                .enable_caching = false,
+                                .cache_size = 0};
 
     return config;
 }
 
-brain_salience_t salience_quick_evaluate(
-    brain_t brain,
-    const float* features,
-    uint32_t num_features) {
-
+brain_salience_t salience_quick_evaluate(brain_t brain, const float* features,
+                                         uint32_t num_features)
+{
     salience_config_t config = salience_default_config();
     config.history_size = 10;  // Small history for quick eval
 

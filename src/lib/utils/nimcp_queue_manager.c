@@ -151,11 +151,11 @@
 
 #define NIMCP_INTERNAL
 #include "utils/nimcp_queue_manager.h"
-#include "utils/nimcp_memory.h"
-#include "utils/nimcp_thread_pool.h"
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
+#include "utils/nimcp_memory.h"
+#include "utils/nimcp_thread_pool.h"
 
 // Default configuration values
 #define DEFAULT_WORKER_THREADS 4
@@ -202,12 +202,15 @@ static void nimcp_yield_thread(void);
  * @param dst Pointer to receive cloned message
  * @return NIMCP_SUCCESS or error code
  */
-static nimcp_result_t nimcp_msg_clone(const nimcp_message_t* src, nimcp_message_t** dst) {
-    if (!src || !dst) return NIMCP_INVALID_PARAM;
+static nimcp_result_t nimcp_msg_clone(const nimcp_message_t* src, nimcp_message_t** dst)
+{
+    if (!src || !dst)
+        return NIMCP_INVALID_PARAM;
 
     // Allocate message structure
     nimcp_message_t* msg = nimcp_malloc(sizeof(nimcp_message_t));
-    if (!msg) return NIMCP_NO_MEMORY;
+    if (!msg)
+        return NIMCP_NO_MEMORY;
 
     // Copy scalar fields
     msg->type = src->type;
@@ -244,7 +247,8 @@ static nimcp_result_t nimcp_msg_clone(const nimcp_message_t* src, nimcp_message_
  *
  * @param msg Message to destroy (can be NULL)
  */
-static void nimcp_msg_destroy(nimcp_message_t* msg) {
+static void nimcp_msg_destroy(nimcp_message_t* msg)
+{
     if (msg) {
         // Free payload first
         if (msg->data) {
@@ -282,8 +286,10 @@ static void nimcp_msg_destroy(nimcp_message_t* msg) {
  * @param config Configuration to validate
  * @return NIMCP_SUCCESS or NIMCP_INVALID_PARAM
  */
-static nimcp_result_t validate_config(const nimcp_queue_manager_config_t* config) {
-    if (!config) return NIMCP_INVALID_PARAM;
+static nimcp_result_t validate_config(const nimcp_queue_manager_config_t* config)
+{
+    if (!config)
+        return NIMCP_INVALID_PARAM;
 
     // Validate channel count
     if (config->max_channels == 0 || config->max_channels > NIMCP_QUEUE_MAX_CHANNELS) {
@@ -323,7 +329,8 @@ static nimcp_result_t validate_config(const nimcp_queue_manager_config_t* config
  * @return Queue size for that priority
  */
 static size_t get_queue_size_for_priority(const nimcp_queue_manager_config_t* config,
-                                        nimcp_queue_priority_t priority) {
+                                          nimcp_queue_priority_t priority)
+{
     switch (priority) {
         case NIMCP_QUEUE_PRIORITY_HIGH:
             return config->queue_sizes.high;
@@ -362,9 +369,9 @@ static size_t get_queue_size_for_priority(const nimcp_queue_manager_config_t* co
  * @param channel_id Channel to validate
  * @return true if valid, false otherwise
  */
-static bool is_valid_channel(nimcp_queue_manager_handle_t manager, uint32_t channel_id) {
-    return (manager && manager->initialized &&
-            !atomic_load(&manager->shutting_down) &&
+static bool is_valid_channel(nimcp_queue_manager_handle_t manager, uint32_t channel_id)
+{
+    return (manager && manager->initialized && !atomic_load(&manager->shutting_down) &&
             channel_id < manager->config.max_channels);
 }
 
@@ -407,7 +414,8 @@ static bool is_valid_channel(nimcp_queue_manager_handle_t manager, uint32_t chan
  * @return NIMCP_SUCCESS or error code
  */
 static nimcp_result_t init_channel(nimcp_queue_channel_t* channel,
-                                 const nimcp_queue_manager_config_t* config) {
+                                   const nimcp_queue_manager_config_t* config)
+{
     memset(channel, 0, sizeof(nimcp_queue_channel_t));
 
     // Create queue for each priority level
@@ -417,8 +425,7 @@ static nimcp_result_t init_channel(nimcp_queue_channel_t* channel,
             .max_size = get_queue_size_for_priority(config, pri),
             .item_size = sizeof(nimcp_message_t*),  // Store pointers, not messages
             .is_blocking = config->blocking_mode,
-            .timeout_ms = config->default_timeout
-        };
+            .timeout_ms = config->default_timeout};
 
         nimcp_result_t result = nimcp_queue_create(&queue_config, &channel->queues[pri]);
         if (result != NIMCP_SUCCESS) {
@@ -450,8 +457,10 @@ static nimcp_result_t init_channel(nimcp_queue_channel_t* channel,
  *
  * @param channel Channel to destroy (can be NULL)
  */
-static void destroy_channel(nimcp_queue_channel_t* channel) {
-    if (!channel) return;
+static void destroy_channel(nimcp_queue_channel_t* channel)
+{
+    if (!channel)
+        return;
 
     // Destroy all priority queues
     for (int pri = 0; pri < NIMCP_QUEUE_PRIORITY_COUNT; pri++) {
@@ -509,16 +518,18 @@ static void destroy_channel(nimcp_queue_channel_t* channel) {
  *
  * @param arg Pointer to nimcp_queue_operation_ctx_t
  */
-static void queue_operation_handler(void* arg) {
-    nimcp_queue_operation_ctx_t* ctx = (nimcp_queue_operation_ctx_t*)arg;
-    if (!ctx) return;
+static void queue_operation_handler(void* arg)
+{
+    nimcp_queue_operation_ctx_t* ctx = (nimcp_queue_operation_ctx_t*) arg;
+    if (!ctx)
+        return;
 
     // Record start time for latency tracking
     uint64_t start_time = nimcp_get_timestamp_ms();
 
     // Recover manager reference from context
     // WHY STORED: Handler needs manager to access channels
-    nimcp_queue_manager_handle_t manager = (nimcp_queue_manager_handle_t)ctx->manager_handle;
+    nimcp_queue_manager_handle_t manager = (nimcp_queue_manager_handle_t) ctx->manager_handle;
     nimcp_queue_channel_t* channel = &manager->channels[ctx->channel_id];
 
     // Dispatch based on operation type
@@ -530,11 +541,9 @@ static void queue_operation_handler(void* arg) {
             ctx->status = nimcp_msg_clone(ctx->message, &msg_copy);
             if (ctx->status == NIMCP_SUCCESS) {
                 // Enqueue the cloned message pointer
-                ctx->status = nimcp_queue_enqueue(
-                    channel->queues[ctx->priority],
-                    &msg_copy,  // Store pointer to message
-                    ctx->timeout_ms
-                );
+                ctx->status = nimcp_queue_enqueue(channel->queues[ctx->priority],
+                                                  &msg_copy,  // Store pointer to message
+                                                  ctx->timeout_ms);
 
                 if (ctx->status == NIMCP_SUCCESS) {
                     // Update success statistics
@@ -543,7 +552,8 @@ static void queue_operation_handler(void* arg) {
 
                     // Track peak size for capacity planning
                     // WHY TRACK PEAK: Helps tune queue sizes
-                    size_t current = atomic_load(&channel->stats.priorities[ctx->priority].current_size);
+                    size_t current =
+                        atomic_load(&channel->stats.priorities[ctx->priority].current_size);
                     size_t peak = atomic_load(&channel->stats.priorities[ctx->priority].peak_size);
 
                     if (current > peak) {
@@ -561,12 +571,10 @@ static void queue_operation_handler(void* arg) {
 
         case NIMCP_QUEUE_OP_DEQUEUE: {
             // Dequeue message pointer
-            nimcp_message_t** msg_ptr = (nimcp_message_t**)ctx->result;
-            ctx->status = nimcp_queue_dequeue(
-                channel->queues[ctx->priority],
-                msg_ptr,  // Receive pointer to message
-                ctx->timeout_ms
-            );
+            nimcp_message_t** msg_ptr = (nimcp_message_t**) ctx->result;
+            ctx->status = nimcp_queue_dequeue(channel->queues[ctx->priority],
+                                              msg_ptr,  // Receive pointer to message
+                                              ctx->timeout_ms);
 
             if (ctx->status == NIMCP_SUCCESS) {
                 // Update statistics
@@ -588,7 +596,7 @@ static void queue_operation_handler(void* arg) {
         case NIMCP_QUEUE_OP_GET_STATS: {
             // Copy statistics snapshot
             // WHY COPY: Atomic snapshot of counters
-            nimcp_queue_manager_stats_t* stats = (nimcp_queue_manager_stats_t*)ctx->result;
+            nimcp_queue_manager_stats_t* stats = (nimcp_queue_manager_stats_t*) ctx->result;
             memcpy(stats, &channel->stats, sizeof(nimcp_queue_manager_stats_t));
             ctx->status = NIMCP_SUCCESS;
             break;
@@ -641,11 +649,11 @@ static void queue_operation_handler(void* arg) {
  * @param op_ctx Operation context (in/out)
  * @return NIMCP_SUCCESS, NIMCP_TIMEOUT, or error code
  */
-static nimcp_result_t submit_queue_operation(
-    nimcp_queue_manager_handle_t manager,
-    nimcp_queue_operation_ctx_t* op_ctx
-) {
-    if (!manager || !op_ctx) return NIMCP_INVALID_PARAM;
+static nimcp_result_t submit_queue_operation(nimcp_queue_manager_handle_t manager,
+                                             nimcp_queue_operation_ctx_t* op_ctx)
+{
+    if (!manager || !op_ctx)
+        return NIMCP_INVALID_PARAM;
 
     // Store manager reference for handler access
     // WHY: Handler needs manager to access channels
@@ -653,11 +661,8 @@ static nimcp_result_t submit_queue_operation(
     atomic_store(&op_ctx->completed, false);
 
     // Submit to thread pool for async execution
-    nimcp_result_t result = nimcp_pool_submit(
-        manager->thread_pool,
-        queue_operation_handler,
-        op_ctx
-    );
+    nimcp_result_t result =
+        nimcp_pool_submit(manager->thread_pool, queue_operation_handler, op_ctx);
 
     if (result != NIMCP_SUCCESS) {
         return result;
@@ -721,20 +726,22 @@ static nimcp_result_t submit_queue_operation(
  * @param manager Output pointer to receive manager handle
  * @return NIMCP_SUCCESS or error code
  */
-nimcp_result_t nimcp_queue_manager_create(
-    const nimcp_queue_manager_config_t* config,
-    nimcp_queue_manager_handle_t* manager
-) {
-    if (!config || !manager) return NIMCP_INVALID_PARAM;
+nimcp_result_t nimcp_queue_manager_create(const nimcp_queue_manager_config_t* config,
+                                          nimcp_queue_manager_handle_t* manager)
+{
+    if (!config || !manager)
+        return NIMCP_INVALID_PARAM;
 
     // Validate configuration before allocating anything
     // WHY FIRST: Fail fast, no cleanup needed
     nimcp_result_t result = validate_config(config);
-    if (result != NIMCP_SUCCESS) return result;
+    if (result != NIMCP_SUCCESS)
+        return result;
 
     // Allocate manager structure
     nimcp_queue_manager_t* mgr = nimcp_calloc(1, sizeof(nimcp_queue_manager_t));
-    if (!mgr) return NIMCP_NO_MEMORY;
+    if (!mgr)
+        return NIMCP_NO_MEMORY;
 
     // Allocate channel array
     mgr->channels = nimcp_calloc(config->max_channels, sizeof(nimcp_queue_channel_t));
@@ -759,7 +766,8 @@ nimcp_result_t nimcp_queue_manager_create(
 
     // Create thread pool for async operations
     // WHY THREAD POOL: Parallel queue operations, thread reuse
-    mgr->thread_pool = nimcp_pool_create(config->worker_threads > 0 ? config->worker_threads : DEFAULT_WORKER_THREADS);
+    mgr->thread_pool = nimcp_pool_create(config->worker_threads > 0 ? config->worker_threads
+                                                                    : DEFAULT_WORKER_THREADS);
     if (!mgr->thread_pool) {
         // Cleanup on error
         for (size_t i = 0; i < config->max_channels; i++) {
@@ -809,8 +817,10 @@ nimcp_result_t nimcp_queue_manager_create(
  * @param manager Manager to destroy
  * @return NIMCP_SUCCESS or NIMCP_INVALID_PARAM
  */
-nimcp_result_t nimcp_queue_manager_destroy(nimcp_queue_manager_handle_t manager) {
-    if (!manager) return NIMCP_INVALID_PARAM;
+nimcp_result_t nimcp_queue_manager_destroy(nimcp_queue_manager_handle_t manager)
+{
+    if (!manager)
+        return NIMCP_INVALID_PARAM;
 
     // Signal shutdown to prevent new operations
     atomic_store(&manager->shutting_down, true);
@@ -873,12 +883,10 @@ nimcp_result_t nimcp_queue_manager_destroy(nimcp_queue_manager_handle_t manager)
  * @param timeout_ms Operation timeout (0 = use default)
  * @return NIMCP_SUCCESS, NIMCP_QUEUE_FULL, NIMCP_TIMEOUT, or error code
  */
-nimcp_result_t nimcp_queue_manager_enqueue(
-    nimcp_queue_manager_handle_t manager,
-    uint32_t channel_id,
-    const nimcp_message_t* message,
-    uint32_t timeout_ms
-) {
+nimcp_result_t nimcp_queue_manager_enqueue(nimcp_queue_manager_handle_t manager,
+                                           uint32_t channel_id, const nimcp_message_t* message,
+                                           uint32_t timeout_ms)
+{
     if (!is_valid_channel(manager, channel_id) || !message) {
         return NIMCP_INVALID_PARAM;
     }
@@ -899,9 +907,8 @@ nimcp_result_t nimcp_queue_manager_enqueue(
         .op_type = NIMCP_QUEUE_OP_ENQUEUE,
         .channel_id = channel_id,
         .priority = priority,
-        .message = (nimcp_message_t*)message,  // Cast away const (won't be modified)
-        .timeout_ms = timeout_ms ? timeout_ms : manager->config.default_timeout
-    };
+        .message = (nimcp_message_t*) message,  // Cast away const (won't be modified)
+        .timeout_ms = timeout_ms ? timeout_ms : manager->config.default_timeout};
 
     // Submit and wait for completion
     return submit_queue_operation(manager, &op_ctx);
@@ -951,12 +958,10 @@ nimcp_result_t nimcp_queue_manager_enqueue(
  * @param timeout_ms Timeout for LOW priority (ignored for HIGH/NORMAL)
  * @return NIMCP_SUCCESS, NIMCP_QUEUE_EMPTY, NIMCP_TIMEOUT, or error code
  */
-nimcp_result_t nimcp_queue_manager_dequeue(
-    nimcp_queue_manager_handle_t manager,
-    uint32_t channel_id,
-    nimcp_message_t** message,
-    uint32_t timeout_ms
-) {
+nimcp_result_t nimcp_queue_manager_dequeue(nimcp_queue_manager_handle_t manager,
+                                           uint32_t channel_id, nimcp_message_t** message,
+                                           uint32_t timeout_ms)
+{
     if (!is_valid_channel(manager, channel_id) || !message) {
         return NIMCP_INVALID_PARAM;
     }
@@ -971,9 +976,9 @@ nimcp_result_t nimcp_queue_manager_dequeue(
             .result = message,
             // Only wait on lowest priority, check others with zero timeout
             // WHY: Minimizes latency for high-priority messages
-            .timeout_ms = (pri == NIMCP_QUEUE_PRIORITY_LOW) ?
-                         (timeout_ms ? timeout_ms : manager->config.default_timeout) : 0
-        };
+            .timeout_ms = (pri == NIMCP_QUEUE_PRIORITY_LOW)
+                              ? (timeout_ms ? timeout_ms : manager->config.default_timeout)
+                              : 0};
 
         nimcp_result_t result = submit_queue_operation(manager, &op_ctx);
         if (result == NIMCP_SUCCESS) {
@@ -1021,21 +1026,18 @@ nimcp_result_t nimcp_queue_manager_dequeue(
  * @param stats Output structure to receive statistics
  * @return NIMCP_SUCCESS or error code
  */
-nimcp_result_t nimcp_queue_manager_get_stats(
-    nimcp_queue_manager_handle_t manager,
-    uint32_t channel_id,
-    nimcp_queue_manager_stats_t* stats
-) {
+nimcp_result_t nimcp_queue_manager_get_stats(nimcp_queue_manager_handle_t manager,
+                                             uint32_t channel_id,
+                                             nimcp_queue_manager_stats_t* stats)
+{
     if (!is_valid_channel(manager, channel_id) || !stats) {
         return NIMCP_INVALID_PARAM;
     }
 
-    nimcp_queue_operation_ctx_t op_ctx = {
-        .op_type = NIMCP_QUEUE_OP_GET_STATS,
-        .channel_id = channel_id,
-        .result = stats,
-        .timeout_ms = manager->config.default_timeout
-    };
+    nimcp_queue_operation_ctx_t op_ctx = {.op_type = NIMCP_QUEUE_OP_GET_STATS,
+                                          .channel_id = channel_id,
+                                          .result = stats,
+                                          .timeout_ms = manager->config.default_timeout};
 
     return submit_queue_operation(manager, &op_ctx);
 }
@@ -1067,10 +1069,8 @@ nimcp_result_t nimcp_queue_manager_get_stats(
  * @param channel_id Channel to clear
  * @return NIMCP_SUCCESS or error code
  */
-nimcp_result_t nimcp_queue_manager_clear(
-    nimcp_queue_manager_handle_t manager,
-    uint32_t channel_id
-) {
+nimcp_result_t nimcp_queue_manager_clear(nimcp_queue_manager_handle_t manager, uint32_t channel_id)
+{
     if (!is_valid_channel(manager, channel_id)) {
         return NIMCP_INVALID_PARAM;
     }
@@ -1079,12 +1079,10 @@ nimcp_result_t nimcp_queue_manager_clear(
 
     // Clear all priority queues
     for (int pri = 0; pri < NIMCP_QUEUE_PRIORITY_COUNT; pri++) {
-        nimcp_queue_operation_ctx_t op_ctx = {
-            .op_type = NIMCP_QUEUE_OP_CLEAR,
-            .channel_id = channel_id,
-            .priority = pri,
-            .timeout_ms = manager->config.default_timeout
-        };
+        nimcp_queue_operation_ctx_t op_ctx = {.op_type = NIMCP_QUEUE_OP_CLEAR,
+                                              .channel_id = channel_id,
+                                              .priority = pri,
+                                              .timeout_ms = manager->config.default_timeout};
 
         nimcp_result_t result = submit_queue_operation(manager, &op_ctx);
         if (result != NIMCP_SUCCESS) {
@@ -1118,10 +1116,9 @@ nimcp_result_t nimcp_queue_manager_clear(
  * @param timeout_ms New default timeout in milliseconds
  * @return NIMCP_SUCCESS or NIMCP_INVALID_PARAM
  */
-nimcp_result_t nimcp_queue_manager_set_timeout(
-    nimcp_queue_manager_handle_t manager,
-    uint32_t timeout_ms
-) {
+nimcp_result_t nimcp_queue_manager_set_timeout(nimcp_queue_manager_handle_t manager,
+                                               uint32_t timeout_ms)
+{
     if (!manager || !manager->initialized) {
         return NIMCP_INVALID_PARAM;
     }
@@ -1156,13 +1153,10 @@ nimcp_result_t nimcp_queue_manager_set_timeout(
  * @param priority Priority queue to check
  * @return true if empty (or invalid params), false otherwise
  */
-bool nimcp_queue_manager_is_empty(
-    nimcp_queue_manager_handle_t manager,
-    uint32_t channel_id,
-    nimcp_queue_priority_t priority
-) {
-    if (!is_valid_channel(manager, channel_id) ||
-        priority >= NIMCP_QUEUE_PRIORITY_COUNT) {
+bool nimcp_queue_manager_is_empty(nimcp_queue_manager_handle_t manager, uint32_t channel_id,
+                                  nimcp_queue_priority_t priority)
+{
+    if (!is_valid_channel(manager, channel_id) || priority >= NIMCP_QUEUE_PRIORITY_COUNT) {
         return true;  // Defensive: invalid params treated as empty
     }
 
@@ -1191,13 +1185,10 @@ bool nimcp_queue_manager_is_empty(
  * @param priority Priority queue to check
  * @return true if full (or invalid params), false otherwise
  */
-bool nimcp_queue_manager_is_full(
-    nimcp_queue_manager_handle_t manager,
-    uint32_t channel_id,
-    nimcp_queue_priority_t priority
-) {
-    if (!is_valid_channel(manager, channel_id) ||
-        priority >= NIMCP_QUEUE_PRIORITY_COUNT) {
+bool nimcp_queue_manager_is_full(nimcp_queue_manager_handle_t manager, uint32_t channel_id,
+                                 nimcp_queue_priority_t priority)
+{
+    if (!is_valid_channel(manager, channel_id) || priority >= NIMCP_QUEUE_PRIORITY_COUNT) {
         return true;  // Defensive: invalid params treated as full
     }
 
@@ -1227,13 +1218,10 @@ bool nimcp_queue_manager_is_full(
  * @param priority Priority queue to check
  * @return Current queue size (0 if invalid params)
  */
-size_t nimcp_queue_manager_get_size(
-    nimcp_queue_manager_handle_t manager,
-    uint32_t channel_id,
-    nimcp_queue_priority_t priority
-) {
-    if (!is_valid_channel(manager, channel_id) ||
-        priority >= NIMCP_QUEUE_PRIORITY_COUNT) {
+size_t nimcp_queue_manager_get_size(nimcp_queue_manager_handle_t manager, uint32_t channel_id,
+                                    nimcp_queue_priority_t priority)
+{
+    if (!is_valid_channel(manager, channel_id) || priority >= NIMCP_QUEUE_PRIORITY_COUNT) {
         return 0;  // Defensive: invalid params return 0
     }
 
@@ -1263,10 +1251,11 @@ size_t nimcp_queue_manager_get_size(
  *
  * @return Timestamp in milliseconds
  */
-static uint64_t nimcp_get_timestamp_ms(void) {
+static uint64_t nimcp_get_timestamp_ms(void)
+{
     struct timespec ts;
     clock_gettime(CLOCK_MONOTONIC, &ts);
-    return (uint64_t)(ts.tv_sec * 1000 + ts.tv_nsec / 1000000);
+    return (uint64_t) (ts.tv_sec * 1000 + ts.tv_nsec / 1000000);
 }
 
 /**
@@ -1290,7 +1279,8 @@ static uint64_t nimcp_get_timestamp_ms(void) {
  * COMPLEXITY: O(1) system call
  * THREAD SAFETY: Fully thread-safe
  */
-static void nimcp_yield_thread(void) {
-    struct timespec ts = {0, 100000}; // 100 microseconds
+static void nimcp_yield_thread(void)
+{
+    struct timespec ts = {0, 100000};  // 100 microseconds
     nanosleep(&ts, NULL);
 }

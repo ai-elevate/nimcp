@@ -6,7 +6,7 @@
 #include "test_helpers.h"
 
 extern "C" {
-    #include "../include/nimcp_ethics.h"
+#include "../include/nimcp_ethics.h"
 }
 
 #include <cstring>
@@ -18,26 +18,26 @@ namespace {
 //=============================================================================
 
 class EthicsTest : public ::testing::Test {
-protected:
-    void SetUp() override {
-        ethics_config_t config = {
-            .policies = nullptr,
-            .num_policies = 0,
-            .callback = nullptr,
-            .callback_context = nullptr,
-            .default_severity = 0.5f,
-            .enable_learning = true,
-            .action_feature_size = 10,
-            .max_agents = 100,
-            .golden_rule_threshold = 0.0f,
-            .empathy_weight = 0.7f
-        };
+   protected:
+    void SetUp() override
+    {
+        ethics_config_t config = {.policies = nullptr,
+                                  .num_policies = 0,
+                                  .callback = nullptr,
+                                  .callback_context = nullptr,
+                                  .default_severity = 0.5f,
+                                  .enable_learning = true,
+                                  .action_feature_size = 10,
+                                  .max_agents = 100,
+                                  .golden_rule_threshold = 0.0f,
+                                  .empathy_weight = 0.7f};
 
         engine = ethics_engine_create(&config);
         ASSERT_NE(engine, nullptr);
     }
 
-    void TearDown() override {
+    void TearDown() override
+    {
         if (engine) {
             ethics_engine_destroy(engine);
             engine = nullptr;
@@ -45,13 +45,13 @@ protected:
     }
 
     // Helper to create test action context
-    action_context_t create_test_action(float harm_level = 0.0f) {
+    action_context_t create_test_action(float harm_level = 0.0f)
+    {
         action_context_t action;
         memset(&action, 0, sizeof(action));
 
         // Allocate features
-        static float features[10] = {0.1f, 0.2f, 0.3f, 0.4f, 0.5f,
-                                     0.6f, 0.7f, 0.8f, 0.9f, 1.0f};
+        static float features[10] = {0.1f, 0.2f, 0.3f, 0.4f, 0.5f, 0.6f, 0.7f, 0.8f, 0.9f, 1.0f};
         action.features = features;
         action.num_features = 10;
 
@@ -71,14 +71,15 @@ protected:
     }
 
     // Helper to create test policy
-    ethics_policy_t create_test_policy(uint32_t id, ethics_violation_t type) {
+    ethics_policy_t create_test_policy(uint32_t id, ethics_violation_t type)
+    {
         ethics_policy_t policy;
         memset(&policy, 0, sizeof(policy));
 
         policy.policy_id = id;
         snprintf(policy.name, sizeof(policy.name), "Test Policy %u", id);
         snprintf(policy.description, sizeof(policy.description),
-                "Test policy for violation type %d", type);
+                 "Test policy for violation type %d", type);
         policy.violation_type = type;
         policy.severity_threshold = 0.5f;
         policy.confidence_required = 0.8f;
@@ -90,7 +91,8 @@ protected:
     }
 
     // Helper to create test outcome
-    action_outcome_t create_test_outcome(float harm, float benefit) {
+    action_outcome_t create_test_outcome(float harm, float benefit)
+    {
         action_outcome_t outcome;
         memset(&outcome, 0, sizeof(outcome));
 
@@ -113,16 +115,19 @@ protected:
 // Creation/Destruction Tests
 //=============================================================================
 
-TEST_F(EthicsTest, EngineCreation) {
+TEST_F(EthicsTest, EngineCreation)
+{
     EXPECT_NE(engine, nullptr);
 }
 
-TEST_F(EthicsTest, EngineCreationNullConfig) {
+TEST_F(EthicsTest, EngineCreationNullConfig)
+{
     ethics_engine_t null_engine = ethics_engine_create(nullptr);
     EXPECT_EQ(null_engine, nullptr);
 }
 
-TEST_F(EthicsTest, EngineCreationMinimalConfig) {
+TEST_F(EthicsTest, EngineCreationMinimalConfig)
+{
     ethics_config_t config = {0};
     config.action_feature_size = 10;
     config.max_agents = 10;
@@ -138,7 +143,8 @@ TEST_F(EthicsTest, EngineCreationMinimalConfig) {
     }
 }
 
-TEST_F(EthicsTest, EngineDestructionNullSafe) {
+TEST_F(EthicsTest, EngineDestructionNullSafe)
+{
     ethics_engine_destroy(nullptr);
     // Should not crash
 }
@@ -147,7 +153,8 @@ TEST_F(EthicsTest, EngineDestructionNullSafe) {
 // Action Evaluation Tests
 //=============================================================================
 
-TEST_F(EthicsTest, EvaluateNeutralAction) {
+TEST_F(EthicsTest, EvaluateNeutralAction)
+{
     action_context_t action = create_test_action(0.0f);
 
     ethics_evaluation_t result = ethics_engine_evaluate_action(engine, &action);
@@ -158,7 +165,8 @@ TEST_F(EthicsTest, EvaluateNeutralAction) {
     EXPECT_LE(result.golden_rule_score, 1.0f);
 }
 
-TEST_F(EthicsTest, EvaluateHarmfulAction) {
+TEST_F(EthicsTest, EvaluateHarmfulAction)
+{
     action_context_t action = create_test_action(0.9f);  // High harm
 
     ethics_evaluation_t result = ethics_engine_evaluate_action(engine, &action);
@@ -168,7 +176,8 @@ TEST_F(EthicsTest, EvaluateHarmfulAction) {
     EXPECT_LE(result.confidence, 1.0f);
 }
 
-TEST_F(EthicsTest, EvaluateBeneficialAction) {
+TEST_F(EthicsTest, EvaluateBeneficialAction)
+{
     action_context_t action = create_test_action(0.0f);  // No harm
 
     ethics_evaluation_t result = ethics_engine_evaluate_action(engine, &action);
@@ -177,7 +186,8 @@ TEST_F(EthicsTest, EvaluateBeneficialAction) {
     EXPECT_LE(result.confidence, 1.0f);
 }
 
-TEST_F(EthicsTest, EvaluateActionNull) {
+TEST_F(EthicsTest, EvaluateActionNull)
+{
     ethics_evaluation_t result = ethics_engine_evaluate_action(nullptr, nullptr);
     EXPECT_FALSE(result.allowed);
 
@@ -189,7 +199,8 @@ TEST_F(EthicsTest, EvaluateActionNull) {
     EXPECT_FALSE(result.allowed);
 }
 
-TEST_F(EthicsTest, EvaluationIncludesExplanation) {
+TEST_F(EthicsTest, EvaluationIncludesExplanation)
+{
     action_context_t action = create_test_action(0.0f);
 
     ethics_evaluation_t result = ethics_engine_evaluate_action(engine, &action);
@@ -201,21 +212,24 @@ TEST_F(EthicsTest, EvaluationIncludesExplanation) {
 // Policy Management Tests
 //=============================================================================
 
-TEST_F(EthicsTest, AddPolicy) {
+TEST_F(EthicsTest, AddPolicy)
+{
     ethics_policy_t policy = create_test_policy(100, ETHICS_VIOLATION_HARM);
 
     bool success = ethics_engine_add_policy(engine, &policy);
     EXPECT_TRUE(success);
 }
 
-TEST_F(EthicsTest, AddPolicyNull) {
+TEST_F(EthicsTest, AddPolicyNull)
+{
     ethics_policy_t policy = create_test_policy(100, ETHICS_VIOLATION_HARM);
 
     EXPECT_FALSE(ethics_engine_add_policy(nullptr, &policy));
     EXPECT_FALSE(ethics_engine_add_policy(engine, nullptr));
 }
 
-TEST_F(EthicsTest, AddMultiplePolicies) {
+TEST_F(EthicsTest, AddMultiplePolicies)
+{
     ethics_policy_t policy1 = create_test_policy(101, ETHICS_VIOLATION_HARM);
     ethics_policy_t policy2 = create_test_policy(102, ETHICS_VIOLATION_UNFAIRNESS);
     ethics_policy_t policy3 = create_test_policy(103, ETHICS_VIOLATION_DECEPTION);
@@ -225,7 +239,8 @@ TEST_F(EthicsTest, AddMultiplePolicies) {
     EXPECT_TRUE(ethics_engine_add_policy(engine, &policy3));
 }
 
-TEST_F(EthicsTest, RemovePolicy) {
+TEST_F(EthicsTest, RemovePolicy)
+{
     ethics_policy_t policy = create_test_policy(200, ETHICS_VIOLATION_HARM);
 
     ASSERT_TRUE(ethics_engine_add_policy(engine, &policy));
@@ -234,12 +249,14 @@ TEST_F(EthicsTest, RemovePolicy) {
     EXPECT_TRUE(removed);
 }
 
-TEST_F(EthicsTest, RemoveNonexistentPolicy) {
+TEST_F(EthicsTest, RemoveNonexistentPolicy)
+{
     bool removed = ethics_engine_remove_policy(engine, 9999);
     EXPECT_FALSE(removed);
 }
 
-TEST_F(EthicsTest, RemovePolicyNull) {
+TEST_F(EthicsTest, RemovePolicyNull)
+{
     EXPECT_FALSE(ethics_engine_remove_policy(nullptr, 100));
 }
 
@@ -269,7 +286,8 @@ TEST_F(EthicsTest, RemovePolicyNull) {
 // Learning from Outcomes Tests
 //=============================================================================
 
-TEST_F(EthicsTest, LearnFromOutcome) {
+TEST_F(EthicsTest, LearnFromOutcome)
+{
     action_context_t action = create_test_action(0.3f);
     action_outcome_t outcome = create_test_outcome(0.2f, 0.8f);
 
@@ -277,7 +295,8 @@ TEST_F(EthicsTest, LearnFromOutcome) {
     EXPECT_TRUE(success);
 }
 
-TEST_F(EthicsTest, LearnFromHarmfulOutcome) {
+TEST_F(EthicsTest, LearnFromHarmfulOutcome)
+{
     action_context_t action = create_test_action(0.1f);
     action_outcome_t outcome = create_test_outcome(0.9f, 0.0f);  // High harm
 
@@ -285,7 +304,8 @@ TEST_F(EthicsTest, LearnFromHarmfulOutcome) {
     EXPECT_TRUE(success);
 }
 
-TEST_F(EthicsTest, LearnFromBeneficialOutcome) {
+TEST_F(EthicsTest, LearnFromBeneficialOutcome)
+{
     action_context_t action = create_test_action(0.0f);
     action_outcome_t outcome = create_test_outcome(0.0f, 0.9f);  // High benefit
 
@@ -293,7 +313,8 @@ TEST_F(EthicsTest, LearnFromBeneficialOutcome) {
     EXPECT_TRUE(success);
 }
 
-TEST_F(EthicsTest, LearnFromOutcomeNull) {
+TEST_F(EthicsTest, LearnFromOutcomeNull)
+{
     action_context_t action = create_test_action();
     action_outcome_t outcome = create_test_outcome(0.0f, 0.0f);
 
@@ -302,7 +323,8 @@ TEST_F(EthicsTest, LearnFromOutcomeNull) {
     EXPECT_FALSE(ethics_learn_from_outcome(engine, &action, nullptr));
 }
 
-TEST_F(EthicsTest, LearningDisabled) {
+TEST_F(EthicsTest, LearningDisabled)
+{
     // Create engine with learning disabled
     ethics_config_t config = {0};
     config.action_feature_size = 10;
@@ -327,12 +349,10 @@ TEST_F(EthicsTest, LearningDisabled) {
 // Empathy Network Tests
 //=============================================================================
 
-TEST_F(EthicsTest, EmpathyNetworkCreation) {
+TEST_F(EthicsTest, EmpathyNetworkCreation)
+{
     empathy_config_t config = {
-        .mirror_network = nullptr,
-        .observation_window_ms = 1000,
-        .empathy_threshold = 0.5f
-    };
+        .mirror_network = nullptr, .observation_window_ms = 1000, .empathy_threshold = 0.5f};
 
     empathy_network_t network = empathy_network_create(&config);
     EXPECT_NE(network, nullptr);
@@ -342,22 +362,22 @@ TEST_F(EthicsTest, EmpathyNetworkCreation) {
     }
 }
 
-TEST_F(EthicsTest, EmpathyNetworkCreationNullConfig) {
+TEST_F(EthicsTest, EmpathyNetworkCreationNullConfig)
+{
     empathy_network_t network = empathy_network_create(nullptr);
     EXPECT_EQ(network, nullptr);
 }
 
-TEST_F(EthicsTest, EmpathyNetworkDestructionNullSafe) {
+TEST_F(EthicsTest, EmpathyNetworkDestructionNullSafe)
+{
     empathy_network_destroy(nullptr);
     // Should not crash
 }
 
-TEST_F(EthicsTest, SimulateAgentPerspective) {
+TEST_F(EthicsTest, SimulateAgentPerspective)
+{
     empathy_config_t config = {
-        .mirror_network = nullptr,
-        .observation_window_ms = 1000,
-        .empathy_threshold = 0.5f
-    };
+        .mirror_network = nullptr, .observation_window_ms = 1000, .empathy_threshold = 0.5f};
 
     empathy_network_t network = empathy_network_create(&config);
     ASSERT_NE(network, nullptr);
@@ -382,12 +402,10 @@ TEST_F(EthicsTest, SimulateAgentPerspective) {
     empathy_network_destroy(network);
 }
 
-TEST_F(EthicsTest, SimulateAgentPerspectiveNull) {
+TEST_F(EthicsTest, SimulateAgentPerspectiveNull)
+{
     empathy_config_t config = {
-        .mirror_network = nullptr,
-        .observation_window_ms = 1000,
-        .empathy_threshold = 0.5f
-    };
+        .mirror_network = nullptr, .observation_window_ms = 1000, .empathy_threshold = 0.5f};
 
     empathy_network_t network = empathy_network_create(&config);
     ASSERT_NE(network, nullptr);
@@ -407,7 +425,8 @@ TEST_F(EthicsTest, SimulateAgentPerspectiveNull) {
 // Violation Type Tests
 //=============================================================================
 
-TEST_F(EthicsTest, ViolationTypeNames) {
+TEST_F(EthicsTest, ViolationTypeNames)
+{
     EXPECT_NE(ethics_violation_type_name(ETHICS_VIOLATION_TYPE_NONE), nullptr);
     EXPECT_NE(ethics_violation_type_name(ETHICS_VIOLATION_TYPE_HARM), nullptr);
     EXPECT_NE(ethics_violation_type_name(ETHICS_VIOLATION_TYPE_UNFAIRNESS), nullptr);
@@ -418,8 +437,9 @@ TEST_F(EthicsTest, ViolationTypeNames) {
     EXPECT_NE(ethics_violation_type_name(ETHICS_VIOLATION_TYPE_DIGNITY), nullptr);
 }
 
-TEST_F(EthicsTest, ViolationTypeNameUnknown) {
-    const char* name = ethics_violation_type_name((ethics_violation_type_t)9999);
+TEST_F(EthicsTest, ViolationTypeNameUnknown)
+{
+    const char* name = ethics_violation_type_name((ethics_violation_type_t) 9999);
     EXPECT_STREQ(name, "Unknown");
 }
 
@@ -427,7 +447,8 @@ TEST_F(EthicsTest, ViolationTypeNameUnknown) {
 // Golden Rule Evaluation Tests
 //=============================================================================
 
-TEST_F(EthicsTest, GoldenRuleSymmetry) {
+TEST_F(EthicsTest, GoldenRuleSymmetry)
+{
     // Create two similar actions
     action_context_t action1 = create_test_action(0.5f);
     action_context_t action2 = create_test_action(0.5f);
@@ -439,7 +460,8 @@ TEST_F(EthicsTest, GoldenRuleSymmetry) {
     EXPECT_TRUE(float_equals(result1.golden_rule_score, result2.golden_rule_score));
 }
 
-TEST_F(EthicsTest, GoldenRuleHarmPenalty) {
+TEST_F(EthicsTest, GoldenRuleHarmPenalty)
+{
     action_context_t low_harm = create_test_action(0.1f);
     action_context_t high_harm = create_test_action(0.9f);
 
@@ -461,7 +483,8 @@ TEST_F(EthicsTest, GoldenRuleHarmPenalty) {
 // Statistics Tests
 //=============================================================================
 
-TEST_F(EthicsTest, GetStatistics) {
+TEST_F(EthicsTest, GetStatistics)
+{
     ethics_statistics_t stats;
     bool success = ethics_get_statistics(engine, &stats);
 
@@ -473,14 +496,16 @@ TEST_F(EthicsTest, GetStatistics) {
     EXPECT_GE(stats.num_violations_logged, 0);
 }
 
-TEST_F(EthicsTest, GetStatisticsNull) {
+TEST_F(EthicsTest, GetStatisticsNull)
+{
     ethics_statistics_t stats;
 
     EXPECT_FALSE(ethics_get_statistics(nullptr, &stats));
     EXPECT_FALSE(ethics_get_statistics(engine, nullptr));
 }
 
-TEST_F(EthicsTest, StatisticsTrackEvaluations) {
+TEST_F(EthicsTest, StatisticsTrackEvaluations)
+{
     ethics_statistics_t stats1;
     ASSERT_TRUE(ethics_get_statistics(engine, &stats1));
     uint64_t evals_before = stats1.total_evaluations;
@@ -499,12 +524,14 @@ TEST_F(EthicsTest, StatisticsTrackEvaluations) {
 // Utility Function Tests
 //=============================================================================
 
-TEST_F(EthicsTest, PrintEvaluationNull) {
+TEST_F(EthicsTest, PrintEvaluationNull)
+{
     ethics_print_evaluation(nullptr);
     // Should not crash
 }
 
-TEST_F(EthicsTest, PrintEvaluation) {
+TEST_F(EthicsTest, PrintEvaluation)
+{
     action_context_t action = create_test_action();
     ethics_evaluation_t result = ethics_engine_evaluate_action(engine, &action);
 
@@ -516,7 +543,8 @@ TEST_F(EthicsTest, PrintEvaluation) {
 // Edge Cases and Error Handling Tests
 //=============================================================================
 
-TEST_F(EthicsTest, ActionWithNoAffectedAgents) {
+TEST_F(EthicsTest, ActionWithNoAffectedAgents)
+{
     action_context_t action = create_test_action();
     action.num_affected_agents = 0;
     action.affected_agents = nullptr;
@@ -528,7 +556,8 @@ TEST_F(EthicsTest, ActionWithNoAffectedAgents) {
     EXPECT_LE(result.confidence, 1.0f);
 }
 
-TEST_F(EthicsTest, ActionWithMaxViolations) {
+TEST_F(EthicsTest, ActionWithMaxViolations)
+{
     action_context_t action = create_test_action();
     action.predicted_harm = 1.0f;
     action.fairness_violation = 1.0f;
@@ -544,7 +573,8 @@ TEST_F(EthicsTest, ActionWithMaxViolations) {
     EXPECT_LE(result.confidence, 1.0f);
 }
 
-TEST_F(EthicsTest, ActionWithZeroFeatures) {
+TEST_F(EthicsTest, ActionWithZeroFeatures)
+{
     action_context_t action = create_test_action();
     action.num_features = 0;
     action.features = nullptr;
@@ -555,7 +585,8 @@ TEST_F(EthicsTest, ActionWithZeroFeatures) {
     EXPECT_GE(result.confidence, 0.0f);
 }
 
-TEST_F(EthicsTest, LargeNumberOfAffectedAgents) {
+TEST_F(EthicsTest, LargeNumberOfAffectedAgents)
+{
     action_context_t action = create_test_action();
 
     // Create large array of agents
@@ -578,7 +609,8 @@ TEST_F(EthicsTest, LargeNumberOfAffectedAgents) {
 // Integration Tests
 //=============================================================================
 
-TEST_F(EthicsTest, IntegrationFullEthicalEvaluation) {
+TEST_F(EthicsTest, IntegrationFullEthicalEvaluation)
+{
     // 1. Add custom policy
     ethics_policy_t policy = create_test_policy(500, ETHICS_VIOLATION_HARM);
     policy.severity_threshold = 0.3f;
@@ -599,7 +631,8 @@ TEST_F(EthicsTest, IntegrationFullEthicalEvaluation) {
     EXPECT_GT(stats.total_evaluations, 0);
 }
 
-TEST_F(EthicsTest, IntegrationGoldenRuleLearning) {
+TEST_F(EthicsTest, IntegrationGoldenRuleLearning)
+{
     // Evaluate action before learning
     action_context_t action1 = create_test_action(0.5f);
     ethics_evaluation_t result1 = ethics_engine_evaluate_action(engine, &action1);
@@ -620,7 +653,8 @@ TEST_F(EthicsTest, IntegrationGoldenRuleLearning) {
     EXPECT_GE(result2.confidence, 0.0f);
 }
 
-TEST_F(EthicsTest, IntegrationPolicyEffectiveness) {
+TEST_F(EthicsTest, IntegrationPolicyEffectiveness)
+{
     // Create strict harm policy
     ethics_policy_t strict_policy = create_test_policy(600, ETHICS_VIOLATION_HARM);
     strict_policy.severity_threshold = 0.1f;  // Very low threshold
@@ -642,5 +676,4 @@ TEST_F(EthicsTest, IntegrationPolicyEffectiveness) {
     EXPECT_GE(result_high.confidence, 0.0f);
 }
 
-} // anonymous namespace
-
+}  // anonymous namespace

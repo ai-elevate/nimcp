@@ -24,16 +24,16 @@
  */
 
 #include "../include/nimcp_brain.h"
+#include <math.h>
+#include <stdarg.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 #include "../include/nimcp_adaptive.h"
 #include "../include/nimcp_neuralnet.h"
 #include "utils/nimcp_memory.h"
 #include "utils/nimcp_time.h"
 #include "utils/nimcp_validate.h"
-#include <stdlib.h>
-#include <string.h>
-#include <stdio.h>
-#include <stdarg.h>
-#include <math.h>
 
 //=============================================================================
 // Forward Declarations - Strategy Pattern
@@ -54,21 +54,21 @@ typedef struct task_strategy task_strategy_t;
  * COMPLEXITY: O(1) access to all members
  */
 struct brain_struct {
-    adaptive_network_t network;      // Underlying neural network
-    brain_config_t config;           // User configuration
-    task_strategy_t* strategy;       // Task-specific behavior strategy
+    adaptive_network_t network;  // Underlying neural network
+    brain_config_t config;       // User configuration
+    task_strategy_t* strategy;   // Task-specific behavior strategy
 
     // Label to output mapping
-    char** output_labels;            // Label strings
-    uint32_t num_output_labels;      // Current label count
+    char** output_labels;        // Label strings
+    uint32_t num_output_labels;  // Current label count
 
     // Statistics
-    brain_stats_t stats;             // Performance metrics
+    brain_stats_t stats;  // Performance metrics
 
     // Decision caching for optimization
-    float* last_input;               // Cached input vector
-    brain_decision_t* cached_decision; // Cached decision
-    uint32_t input_size;             // For cache validation
+    float* last_input;                  // Cached input vector
+    brain_decision_t* cached_decision;  // Cached decision
+    uint32_t input_size;                // For cache validation
 };
 
 //=============================================================================
@@ -118,13 +118,18 @@ struct task_strategy {
  * WHEN: Multi-class or binary classification tasks
  * COMPLEXITY: O(n) for softmax normalization
  */
-static float strategy_classification_lr(void) { return 0.01f; }
+static float strategy_classification_lr(void)
+{
+    return 0.01f;
+}
 
-static void strategy_classification_transform(float* output, uint32_t size) {
+static void strategy_classification_transform(float* output, uint32_t size)
+{
     // Softmax normalization for probability distribution
     float max_val = output[0];
     for (uint32_t i = 1; i < size; i++) {
-        if (output[i] > max_val) max_val = output[i];
+        if (output[i] > max_val)
+            max_val = output[i];
     }
 
     float sum = 0.0f;
@@ -138,7 +143,8 @@ static void strategy_classification_transform(float* output, uint32_t size) {
     }
 }
 
-static float strategy_classification_loss(const float* pred, const float* target, uint32_t size) {
+static float strategy_classification_loss(const float* pred, const float* target, uint32_t size)
+{
     // Cross-entropy loss
     float loss = 0.0f;
     for (uint32_t i = 0; i < size; i++) {
@@ -156,15 +162,20 @@ static float strategy_classification_loss(const float* pred, const float* target
  * WHEN: Predicting real-valued outputs
  * COMPLEXITY: O(n) for MSE calculation
  */
-static float strategy_regression_lr(void) { return 0.005f; }
-
-static void strategy_regression_transform(float* output, uint32_t size) {
-    // No transformation - use raw values
-    (void)output;
-    (void)size;
+static float strategy_regression_lr(void)
+{
+    return 0.005f;
 }
 
-static float strategy_regression_loss(const float* pred, const float* target, uint32_t size) {
+static void strategy_regression_transform(float* output, uint32_t size)
+{
+    // No transformation - use raw values
+    (void) output;
+    (void) size;
+}
+
+static float strategy_regression_loss(const float* pred, const float* target, uint32_t size)
+{
     // Mean squared error
     float loss = 0.0f;
     for (uint32_t i = 0; i < size; i++) {
@@ -181,16 +192,21 @@ static float strategy_regression_loss(const float* pred, const float* target, ui
  * WHEN: Recognizing specific patterns quickly
  * COMPLEXITY: O(n)
  */
-static float strategy_pattern_lr(void) { return 0.02f; }
+static float strategy_pattern_lr(void)
+{
+    return 0.02f;
+}
 
-static void strategy_pattern_transform(float* output, uint32_t size) {
+static void strategy_pattern_transform(float* output, uint32_t size)
+{
     // Threshold to binary
     for (uint32_t i = 0; i < size; i++) {
         output[i] = output[i] > 0.5f ? 1.0f : 0.0f;
     }
 }
 
-static float strategy_pattern_loss(const float* pred, const float* target, uint32_t size) {
+static float strategy_pattern_loss(const float* pred, const float* target, uint32_t size)
+{
     // Binary cross-entropy
     float loss = 0.0f;
     for (uint32_t i = 0; i < size; i++) {
@@ -207,13 +223,18 @@ static float strategy_pattern_loss(const float* pred, const float* target, uint3
  * WHEN: Building associative memories
  * COMPLEXITY: O(n)
  */
-static float strategy_association_lr(void) { return 0.05f; }
+static float strategy_association_lr(void)
+{
+    return 0.05f;
+}
 
-static void strategy_association_transform(float* output, uint32_t size) {
+static void strategy_association_transform(float* output, uint32_t size)
+{
     // Normalize to unit range
     float max_val = 0.0f;
     for (uint32_t i = 0; i < size; i++) {
-        if (fabsf(output[i]) > max_val) max_val = fabsf(output[i]);
+        if (fabsf(output[i]) > max_val)
+            max_val = fabsf(output[i]);
     }
 
     if (max_val > 0.0f) {
@@ -223,7 +244,8 @@ static void strategy_association_transform(float* output, uint32_t size) {
     }
 }
 
-static float strategy_association_loss(const float* pred, const float* target, uint32_t size) {
+static float strategy_association_loss(const float* pred, const float* target, uint32_t size)
+{
     // Cosine distance
     float dot = 0.0f, norm_p = 0.0f, norm_t = 0.0f;
     for (uint32_t i = 0; i < size; i++) {
@@ -250,9 +272,11 @@ static float strategy_association_loss(const float* pred, const float* target, u
  * @param task Task type
  * @return Strategy instance or NULL on error
  */
-static task_strategy_t* strategy_create(brain_task_t task) {
+static task_strategy_t* strategy_create(brain_task_t task)
+{
     task_strategy_t* strategy = calloc(1, sizeof(task_strategy_t));
-    if (!strategy) return NULL;
+    if (!strategy)
+        return NULL;
 
     strategy->task_type = task;
 
@@ -297,7 +321,8 @@ static task_strategy_t* strategy_create(brain_task_t task) {
  *
  * COMPLEXITY: O(1)
  */
-static void strategy_destroy(task_strategy_t* strategy) {
+static void strategy_destroy(task_strategy_t* strategy)
+{
     free(strategy);
 }
 
@@ -317,7 +342,8 @@ static __thread char last_error[256] = {0};
  *
  * @param format Printf-style format string
  */
-static void set_error(const char* format, ...) {
+static void set_error(const char* format, ...)
+{
     va_list args;
     va_start(args, format);
     vsnprintf(last_error, sizeof(last_error), format, args);
@@ -332,7 +358,8 @@ static void set_error(const char* format, ...) {
  *
  * @return Error string or NULL if no error
  */
-const char* brain_get_last_error(void) {
+const char* brain_get_last_error(void)
+{
     return last_error[0] != '\0' ? last_error : NULL;
 }
 
@@ -341,7 +368,8 @@ const char* brain_get_last_error(void) {
  *
  * COMPLEXITY: O(1)
  */
-void brain_clear_error(void) {
+void brain_clear_error(void)
+{
     last_error[0] = '\0';
 }
 
@@ -356,7 +384,8 @@ void brain_clear_error(void) {
  *
  * WARNING: Exposes internals - for consciousness subsystems only!
  */
-adaptive_network_t brain_get_network(brain_t brain) {
+adaptive_network_t brain_get_network(brain_t brain)
+{
     if (!brain) {
         set_error("NULL brain passed to brain_get_network");
         return NULL;
@@ -379,14 +408,21 @@ adaptive_network_t brain_get_network(brain_t brain) {
  * @param size Brain size preset
  * @return Neuron count for size
  */
-static uint32_t get_neuron_count(brain_size_t size) {
+static uint32_t get_neuron_count(brain_size_t size)
+{
     switch (size) {
-        case BRAIN_SIZE_TINY:   return 100;
-        case BRAIN_SIZE_SMALL:  return 1000;
-        case BRAIN_SIZE_MEDIUM: return 10000;
-        case BRAIN_SIZE_LARGE:  return 100000;
-        case BRAIN_SIZE_CUSTOM: return 1000;
-        default: return 1000;
+        case BRAIN_SIZE_TINY:
+            return 100;
+        case BRAIN_SIZE_SMALL:
+            return 1000;
+        case BRAIN_SIZE_MEDIUM:
+            return 10000;
+        case BRAIN_SIZE_LARGE:
+            return 100000;
+        case BRAIN_SIZE_CUSTOM:
+            return 1000;
+        default:
+            return 1000;
     }
 }
 
@@ -401,13 +437,19 @@ static uint32_t get_neuron_count(brain_size_t size) {
  * @param size Brain size preset
  * @return Sparsity target (0.0-1.0)
  */
-static float get_default_sparsity(brain_size_t size) {
+static float get_default_sparsity(brain_size_t size)
+{
     switch (size) {
-        case BRAIN_SIZE_TINY:   return 0.70f;
-        case BRAIN_SIZE_SMALL:  return 0.80f;
-        case BRAIN_SIZE_MEDIUM: return 0.85f;
-        case BRAIN_SIZE_LARGE:  return 0.90f;
-        default: return 0.80f;
+        case BRAIN_SIZE_TINY:
+            return 0.70f;
+        case BRAIN_SIZE_SMALL:
+            return 0.80f;
+        case BRAIN_SIZE_MEDIUM:
+            return 0.85f;
+        case BRAIN_SIZE_LARGE:
+            return 0.90f;
+        default:
+            return 0.80f;
     }
 }
 
@@ -426,7 +468,8 @@ static float get_default_sparsity(brain_size_t size) {
  * @param sparsity_target Target sparsity level
  * @return Spike parameters structure
  */
-static adaptive_spike_params_t build_spike_params(float sparsity_target) {
+static adaptive_spike_params_t build_spike_params(float sparsity_target)
+{
     adaptive_spike_params_t params = {0};
     params.k_factor = 0.5f;
     params.sparsity_target = sparsity_target;
@@ -452,11 +495,9 @@ static adaptive_spike_params_t build_spike_params(float sparsity_target) {
  * @param num_neurons Total neuron count
  * @return Base network config (caller must free layer_sizes)
  */
-static network_config_t build_base_network_config(
-    uint32_t num_inputs,
-    uint32_t num_outputs,
-    uint32_t num_neurons
-) {
+static network_config_t build_base_network_config(uint32_t num_inputs, uint32_t num_outputs,
+                                                  uint32_t num_neurons)
+{
     network_config_t config = {0};
     config.input_size = num_inputs;
     config.output_size = num_outputs;
@@ -490,17 +531,12 @@ static network_config_t build_base_network_config(
  * @param sparsity_target Target sparsity
  * @return Complete adaptive network config
  */
-static adaptive_network_config_t build_network_config(
-    uint32_t num_inputs,
-    uint32_t num_outputs,
-    uint32_t num_neurons,
-    float sparsity_target
-) {
+static adaptive_network_config_t build_network_config(uint32_t num_inputs, uint32_t num_outputs,
+                                                      uint32_t num_neurons, float sparsity_target)
+{
     adaptive_network_config_t config = {0};
 
-    config.base_config = build_base_network_config(
-        num_inputs, num_outputs, num_neurons
-    );
+    config.base_config = build_base_network_config(num_inputs, num_outputs, num_neurons);
 
     config.spike_params = build_spike_params(sparsity_target);
     config.enable_sparsity = true;
@@ -526,15 +562,10 @@ static adaptive_network_config_t build_network_config(
  * @param num_outputs Output dimension
  * @param strategy Task strategy for learning rate
  */
-static void init_brain_config(
-    brain_config_t* config,
-    const char* task_name,
-    brain_size_t size,
-    brain_task_t task,
-    uint32_t num_inputs,
-    uint32_t num_outputs,
-    task_strategy_t* strategy
-) {
+static void init_brain_config(brain_config_t* config, const char* task_name, brain_size_t size,
+                              brain_task_t task, uint32_t num_inputs, uint32_t num_outputs,
+                              task_strategy_t* strategy)
+{
     config->size = size;
     config->task = task;
     config->num_inputs = num_inputs;
@@ -559,13 +590,9 @@ static void init_brain_config(
  * @param num_inputs Input dimension
  * @param learning_rate Learning rate
  */
-static void init_brain_stats(
-    brain_stats_t* stats,
-    const char* task_name,
-    brain_size_t size,
-    uint32_t num_inputs,
-    float learning_rate
-) {
+static void init_brain_stats(brain_stats_t* stats, const char* task_name, brain_size_t size,
+                             uint32_t num_inputs, float learning_rate)
+{
     uint32_t num_neurons = get_neuron_count(size);
 
     stats->size = size;
@@ -594,9 +621,12 @@ static void init_brain_stats(
  * @param num_features Feature count
  * @return true if cached input matches
  */
-static bool is_cached_input(brain_t brain, const float* features, uint32_t num_features) {
-    if (!brain->last_input || !brain->cached_decision) return false;
-    if (brain->input_size != num_features) return false;
+static bool is_cached_input(brain_t brain, const float* features, uint32_t num_features)
+{
+    if (!brain->last_input || !brain->cached_decision)
+        return false;
+    if (brain->input_size != num_features)
+        return false;
 
     return memcmp(brain->last_input, features, num_features * sizeof(float)) == 0;
 }
@@ -614,12 +644,9 @@ static bool is_cached_input(brain_t brain, const float* features, uint32_t num_f
  * @param num_features Feature count
  * @param decision Decision to cache
  */
-static void cache_decision(
-    brain_t brain,
-    const float* features,
-    uint32_t num_features,
-    brain_decision_t* decision
-) {
+static void cache_decision(brain_t brain, const float* features, uint32_t num_features,
+                           brain_decision_t* decision)
+{
     if (!brain->last_input) {
         brain->last_input = malloc(num_features * sizeof(float));
         brain->input_size = num_features;
@@ -638,7 +665,8 @@ static void cache_decision(
  *
  * COMPLEXITY: O(1)
  */
-static void clear_cache(brain_t brain) {
+static void clear_cache(brain_t brain)
+{
     free(brain->last_input);
     brain->last_input = NULL;
 
@@ -665,11 +693,9 @@ static void clear_cache(brain_t brain) {
  * @param num_outputs Output dimension
  * @return true if valid
  */
-static bool validate_creation_params(
-    const char* task_name,
-    uint32_t num_inputs,
-    uint32_t num_outputs
-) {
+static bool validate_creation_params(const char* task_name, uint32_t num_inputs,
+                                     uint32_t num_outputs)
+{
     if (!task_name) {
         set_error("task_name cannot be NULL");
         return false;
@@ -698,7 +724,8 @@ static bool validate_creation_params(
  *
  * @return Allocated brain or NULL on error
  */
-static brain_t allocate_brain(void) {
+static brain_t allocate_brain(void)
+{
     brain_t brain = calloc(1, sizeof(struct brain_struct));
     if (!brain) {
         set_error("Failed to allocate brain structure");
@@ -726,15 +753,11 @@ static brain_t allocate_brain(void) {
  * @param sparsity_target Target sparsity
  * @return Network handle or NULL on error
  */
-static adaptive_network_t create_brain_network(
-    uint32_t num_inputs,
-    uint32_t num_outputs,
-    uint32_t num_neurons,
-    float sparsity_target
-) {
-    adaptive_network_config_t net_config = build_network_config(
-        num_inputs, num_outputs, num_neurons, sparsity_target
-    );
+static adaptive_network_t create_brain_network(uint32_t num_inputs, uint32_t num_outputs,
+                                               uint32_t num_neurons, float sparsity_target)
+{
+    adaptive_network_config_t net_config =
+        build_network_config(num_inputs, num_outputs, num_neurons, sparsity_target);
 
     adaptive_network_t network = adaptive_network_create(&net_config);
 
@@ -752,7 +775,8 @@ static adaptive_network_t create_brain_network(
  * @param num_outputs Number of output labels
  * @return true on success
  */
-static bool init_output_labels(brain_t brain, uint32_t num_outputs) {
+static bool init_output_labels(brain_t brain, uint32_t num_outputs)
+{
     brain->output_labels = calloc(num_outputs, sizeof(char*));
     if (!brain->output_labels) {
         set_error("Failed to allocate output labels");
@@ -780,13 +804,9 @@ static bool init_output_labels(brain_t brain, uint32_t num_outputs) {
  * @param num_outputs Output dimension
  * @return Brain handle or NULL on error
  */
-brain_t brain_create(
-    const char* task_name,
-    brain_size_t size,
-    brain_task_t task,
-    uint32_t num_inputs,
-    uint32_t num_outputs
-) {
+brain_t brain_create(const char* task_name, brain_size_t size, brain_task_t task,
+                     uint32_t num_inputs, uint32_t num_outputs)
+{
     // Guard: Validate parameters
     if (!validate_creation_params(task_name, num_inputs, num_outputs)) {
         return NULL;
@@ -794,7 +814,8 @@ brain_t brain_create(
 
     // Allocate brain structure
     brain_t brain = allocate_brain();
-    if (!brain) return NULL;
+    if (!brain)
+        return NULL;
 
     // Create strategy for task
     brain->strategy = strategy_create(task);
@@ -805,15 +826,13 @@ brain_t brain_create(
     }
 
     // Initialize configuration
-    init_brain_config(&brain->config, task_name, size, task,
-                     num_inputs, num_outputs, brain->strategy);
+    init_brain_config(&brain->config, task_name, size, task, num_inputs, num_outputs,
+                      brain->strategy);
 
     // Create network
     uint32_t num_neurons = get_neuron_count(size);
-    brain->network = create_brain_network(
-        num_inputs, num_outputs, num_neurons,
-        brain->config.sparsity_target
-    );
+    brain->network =
+        create_brain_network(num_inputs, num_outputs, num_neurons, brain->config.sparsity_target);
 
     if (!brain->network) {
         set_error("Failed to create adaptive network");
@@ -831,8 +850,7 @@ brain_t brain_create(
     }
 
     // Initialize statistics
-    init_brain_stats(&brain->stats, task_name, size, num_inputs,
-                    brain->config.learning_rate);
+    init_brain_stats(&brain->stats, task_name, size, num_inputs, brain->config.learning_rate);
 
     brain_clear_error();
     return brain;
@@ -849,7 +867,8 @@ brain_t brain_create(
  * @param config Custom configuration
  * @return Brain handle or NULL on error
  */
-brain_t brain_create_custom(const brain_config_t* config) {
+brain_t brain_create_custom(const brain_config_t* config)
+{
     if (!config) {
         set_error("Null config provided");
         return NULL;
@@ -894,13 +913,8 @@ brain_t brain_create_custom(const brain_config_t* config) {
         return NULL;
     }
 
-    return brain_create(
-        config->task_name,
-        config->size,
-        config->task,
-        config->num_inputs,
-        config->num_outputs
-    );
+    return brain_create(config->task_name, config->size, config->task, config->num_inputs,
+                        config->num_outputs);
 }
 
 /**
@@ -913,8 +927,10 @@ brain_t brain_create_custom(const brain_config_t* config) {
  *
  * @param brain Brain to destroy
  */
-void brain_destroy(brain_t brain) {
-    if (!brain) return;
+void brain_destroy(brain_t brain)
+{
+    if (!brain)
+        return;
 
     if (brain->network) {
         adaptive_network_destroy(brain->network);
@@ -952,7 +968,8 @@ void brain_destroy(brain_t brain) {
  * @param label Label string
  * @return Label index
  */
-static uint32_t get_or_create_label_index(brain_t brain, const char* label) {
+static uint32_t get_or_create_label_index(brain_t brain, const char* label)
+{
     // Search existing labels - O(k)
     for (uint32_t i = 0; i < brain->num_output_labels; i++) {
         if (strcmp(brain->output_labels[i], label) == 0) {
@@ -983,12 +1000,8 @@ static uint32_t get_or_create_label_index(brain_t brain, const char* label) {
  * @param output Output buffer
  * @param confidence Confidence value for label
  */
-static void label_to_output(
-    brain_t brain,
-    const char* label,
-    float* output,
-    float confidence
-) {
+static void label_to_output(brain_t brain, const char* label, float* output, float confidence)
+{
     uint32_t label_idx = get_or_create_label_index(brain, label);
 
     memset(output, 0, brain->config.num_outputs * sizeof(float));
@@ -1011,13 +1024,9 @@ static void label_to_output(
  * @param confidence Training weight
  * @return Loss value or -1 on error
  */
-float brain_learn_example(
-    brain_t brain,
-    const float* features,
-    uint32_t num_features,
-    const char* label,
-    float confidence
-) {
+float brain_learn_example(brain_t brain, const float* features, uint32_t num_features,
+                          const char* label, float confidence)
+{
     // Guard: Validate parameters
     if (!brain || !features || !label) {
         set_error("Invalid parameters to brain_learn_example");
@@ -1026,8 +1035,8 @@ float brain_learn_example(
 
     // Guard: Check feature dimension
     if (num_features != brain->config.num_inputs) {
-        set_error("Feature count mismatch: expected %u, got %u",
-                 brain->config.num_inputs, num_features);
+        set_error("Feature count mismatch: expected %u, got %u", brain->config.num_inputs,
+                  num_features);
         return -1.0f;
     }
 
@@ -1036,22 +1045,16 @@ float brain_learn_example(
     label_to_output(brain, label, target, confidence);
 
     // Create training example
-    training_example_t example = {
-        .input = (float*)features,
-        .input_size = num_features,
-        .target = target,
-        .target_size = brain->config.num_outputs,
-        .confidence = confidence
-    };
+    training_example_t example = {.input = (float*) features,
+                                  .input_size = num_features,
+                                  .target = target,
+                                  .target_size = brain->config.num_outputs,
+                                  .confidence = confidence};
     strncpy(example.label, label, sizeof(example.label) - 1);
 
     // Learn using adaptive network
-    float loss = adaptive_network_learn(
-        brain->network,
-        &example,
-        LEARN_MODE_SUPERVISED,
-        brain->config.learning_rate
-    );
+    float loss = adaptive_network_learn(brain->network, &example, LEARN_MODE_SUPERVISED,
+                                        brain->config.learning_rate);
 
     free(target);
 
@@ -1078,11 +1081,8 @@ float brain_learn_example(
  * @param num_examples Example count
  * @return Average loss or -1 on error
  */
-float brain_learn_batch(
-    brain_t brain,
-    const brain_example_t* examples,
-    uint32_t num_examples
-) {
+float brain_learn_batch(brain_t brain, const brain_example_t* examples, uint32_t num_examples)
+{
     // Guard: Validate parameters
     if (!brain || !examples || num_examples == 0) {
         set_error("Invalid parameters to brain_learn_batch");
@@ -1092,13 +1092,8 @@ float brain_learn_batch(
     float total_loss = 0.0f;
 
     for (uint32_t i = 0; i < num_examples; i++) {
-        float loss = brain_learn_example(
-            brain,
-            examples[i].features,
-            examples[i].num_features,
-            examples[i].label,
-            examples[i].confidence
-        );
+        float loss = brain_learn_example(brain, examples[i].features, examples[i].num_features,
+                                         examples[i].label, examples[i].confidence);
 
         if (loss < 0.0f) {
             return -1.0f;
@@ -1127,13 +1122,9 @@ float brain_learn_batch(
  * @param llm_context Context for teacher
  * @return Loss value or -1 on error
  */
-float brain_learn_from_llm(
-    brain_t brain,
-    const float* input,
-    uint32_t num_features,
-    llm_teacher_fn_t llm_fn,
-    void* llm_context
-) {
+float brain_learn_from_llm(brain_t brain, const float* input, uint32_t num_features,
+                           llm_teacher_fn_t llm_fn, void* llm_context)
+{
     // Guard: Validate parameters
     if (!brain || !input || !llm_fn) {
         set_error("Invalid parameters to brain_learn_from_llm");
@@ -1142,15 +1133,14 @@ float brain_learn_from_llm(
 
     // Guard: Check dimensions
     if (num_features != brain->config.num_inputs) {
-        set_error("Feature count mismatch: expected %u, got %u",
-                 brain->config.num_inputs, num_features);
+        set_error("Feature count mismatch: expected %u, got %u", brain->config.num_inputs,
+                  num_features);
         return -1.0f;
     }
 
     // Query LLM teacher
     char label[64] = {0};
-    float confidence = llm_fn(input, num_features, llm_context,
-                             label, sizeof(label));
+    float confidence = llm_fn(input, num_features, llm_context, label, sizeof(label));
 
     // Guard: Validate LLM response
     if (confidence <= 0.0f) {
@@ -1159,8 +1149,7 @@ float brain_learn_from_llm(
     }
 
     // Learn from LLM's decision
-    float loss = brain_learn_example(brain, input, num_features,
-                                     label, confidence);
+    float loss = brain_learn_example(brain, input, num_features, label, confidence);
 
     brain_clear_error();
     return loss;
@@ -1175,9 +1164,11 @@ float brain_learn_from_llm(
  *
  * COMPLEXITY: O(1)
  */
-static brain_decision_t* allocate_decision(uint32_t output_size) {
+static brain_decision_t* allocate_decision(uint32_t output_size)
+{
     brain_decision_t* decision = nimcp_calloc(1, sizeof(brain_decision_t));
-    if (!decision) return NULL;
+    if (!decision)
+        return NULL;
 
     decision->output_size = output_size;
     decision->output_vector = nimcp_malloc(output_size * sizeof(float));
@@ -1202,12 +1193,15 @@ static brain_decision_t* allocate_decision(uint32_t output_size) {
  * @param source Decision to copy
  * @return New decision copy, or NULL on allocation failure
  */
-static brain_decision_t* copy_decision(const brain_decision_t* source) {
-    if (!source) return NULL;
+static brain_decision_t* copy_decision(const brain_decision_t* source)
+{
+    if (!source)
+        return NULL;
 
     // Allocate new decision structure
     brain_decision_t* copy = nimcp_calloc(1, sizeof(brain_decision_t));
-    if (!copy) return NULL;
+    if (!copy)
+        return NULL;
 
     // Copy scalar fields
     memcpy(copy, source, sizeof(brain_decision_t));
@@ -1223,16 +1217,15 @@ static brain_decision_t* copy_decision(const brain_decision_t* source) {
             nimcp_free(copy);
             return NULL;
         }
-        memcpy(copy->output_vector, source->output_vector,
-               source->output_size * sizeof(float));
+        memcpy(copy->output_vector, source->output_vector, source->output_size * sizeof(float));
     }
 
     // Deep copy active_neuron_ids
     if (source->active_neuron_ids && source->num_active_neurons > 0) {
-        copy->active_neuron_ids = nimcp_malloc(
-            source->num_active_neurons * sizeof(uint32_t));
+        copy->active_neuron_ids = nimcp_malloc(source->num_active_neurons * sizeof(uint32_t));
         if (!copy->active_neuron_ids) {
-            if (copy->output_vector) nimcp_free(copy->output_vector);
+            if (copy->output_vector)
+                nimcp_free(copy->output_vector);
             nimcp_free(copy);
             return NULL;
         }
@@ -1254,22 +1247,13 @@ static brain_decision_t* copy_decision(const brain_decision_t* source) {
  * @param decision Decision to populate
  * @return Number of active neurons
  */
-static uint32_t perform_forward_pass(
-    brain_t brain,
-    const float* features,
-    uint32_t num_features,
-    brain_decision_t* decision
-) {
+static uint32_t perform_forward_pass(brain_t brain, const float* features, uint32_t num_features,
+                                     brain_decision_t* decision)
+{
     uint64_t start_time = nimcp_time_monotonic_us();
 
     uint32_t active_neurons = adaptive_network_forward(
-        brain->network,
-        features,
-        num_features,
-        decision->output_vector,
-        decision->output_size,
-        0
-    );
+        brain->network, features, num_features, decision->output_vector, decision->output_size, 0);
 
     decision->inference_time_us = nimcp_time_elapsed_us(start_time);
 
@@ -1281,7 +1265,8 @@ static uint32_t perform_forward_pass(
  *
  * COMPLEXITY: O(n) where n = num_outputs
  */
-static void determine_output_label(brain_t brain, brain_decision_t* decision) {
+static void determine_output_label(brain_t brain, brain_decision_t* decision)
+{
     uint32_t max_idx = 0;
     float max_value = decision->output_vector[0];
 
@@ -1294,11 +1279,9 @@ static void determine_output_label(brain_t brain, brain_decision_t* decision) {
 
     // Set label
     if (max_idx < brain->num_output_labels) {
-        strncpy(decision->label, brain->output_labels[max_idx],
-               sizeof(decision->label) - 1);
+        strncpy(decision->label, brain->output_labels[max_idx], sizeof(decision->label) - 1);
     } else {
-        snprintf(decision->label, sizeof(decision->label),
-                "output_%u", max_idx);
+        snprintf(decision->label, sizeof(decision->label), "output_%u", max_idx);
     }
 
     // Normalize confidence
@@ -1310,24 +1293,15 @@ static void determine_output_label(brain_t brain, brain_decision_t* decision) {
  *
  * COMPLEXITY: O(n)
  */
-static void populate_interpretability(
-    brain_t brain,
-    const float* features,
-    uint32_t num_features,
-    uint32_t active_neurons,
-    brain_decision_t* decision
-) {
+static void populate_interpretability(brain_t brain, const float* features, uint32_t num_features,
+                                      uint32_t active_neurons, brain_decision_t* decision)
+{
     decision->num_active_neurons = active_neurons;
     decision->sparsity = adaptive_network_get_sparsity(brain->network);
 
     if (brain->config.enable_explanations) {
-        adaptive_network_explain(
-            brain->network,
-            features,
-            num_features,
-            decision->explanation,
-            sizeof(decision->explanation)
-        );
+        adaptive_network_explain(brain->network, features, num_features, decision->explanation,
+                                 sizeof(decision->explanation));
     }
 
     // Populate active neuron IDs
@@ -1342,11 +1316,13 @@ static void populate_interpretability(
  *
  * COMPLEXITY: O(1)
  */
-static void update_inference_stats(brain_t brain, brain_decision_t* decision) {
+static void update_inference_stats(brain_t brain, brain_decision_t* decision)
+{
     brain->stats.total_inferences++;
     brain->stats.avg_inference_time_us =
         (brain->stats.avg_inference_time_us * (brain->stats.total_inferences - 1) +
-         decision->inference_time_us) / brain->stats.total_inferences;
+         decision->inference_time_us) /
+        brain->stats.total_inferences;
     brain->stats.avg_sparsity = decision->sparsity;
 }
 
@@ -1365,11 +1341,8 @@ static void update_inference_stats(brain_t brain, brain_decision_t* decision) {
  * @param num_features Feature count
  * @return Decision result (caller must free with brain_free_decision)
  */
-brain_decision_t* brain_decide(
-    brain_t brain,
-    const float* features,
-    uint32_t num_features
-) {
+brain_decision_t* brain_decide(brain_t brain, const float* features, uint32_t num_features)
+{
     // Guard: Validate parameters
     if (!brain || !features) {
         set_error("Invalid parameters to brain_decide");
@@ -1378,8 +1351,8 @@ brain_decision_t* brain_decide(
 
     // Guard: Check dimensions
     if (num_features != brain->config.num_inputs) {
-        set_error("Feature count mismatch: expected %u, got %u",
-                 brain->config.num_inputs, num_features);
+        set_error("Feature count mismatch: expected %u, got %u", brain->config.num_inputs,
+                  num_features);
         return NULL;
     }
 
@@ -1403,23 +1376,16 @@ brain_decision_t* brain_decide(
     }
 
     // Perform forward pass
-    uint32_t active_neurons = perform_forward_pass(
-        brain, features, num_features, decision
-    );
+    uint32_t active_neurons = perform_forward_pass(brain, features, num_features, decision);
 
     // Apply task-specific output transformation
-    brain->strategy->transform_output(
-        decision->output_vector,
-        decision->output_size
-    );
+    brain->strategy->transform_output(decision->output_vector, decision->output_size);
 
     // Determine output label and confidence
     determine_output_label(brain, decision);
 
     // Populate interpretability information
-    populate_interpretability(
-        brain, features, num_features, active_neurons, decision
-    );
+    populate_interpretability(brain, features, num_features, active_neurons, decision);
 
     // Update statistics
     update_inference_stats(brain, decision);
@@ -1456,8 +1422,10 @@ brain_decision_t* brain_decide(
  *
  * @param decision Decision to free
  */
-void brain_free_decision(brain_decision_t* decision) {
-    if (!decision) return;
+void brain_free_decision(brain_decision_t* decision)
+{
+    if (!decision)
+        return;
 
     /**
      * WHAT: Free decision structure and its allocated fields
@@ -1488,13 +1456,9 @@ void brain_free_decision(brain_decision_t* decision) {
  * @param decisions Output decisions array (allocated by caller)
  * @return true on success
  */
-bool brain_decide_batch(
-    brain_t brain,
-    const float** inputs,
-    uint32_t num_inputs,
-    uint32_t features_per_input,
-    brain_decision_t* decisions
-) {
+bool brain_decide_batch(brain_t brain, const float** inputs, uint32_t num_inputs,
+                        uint32_t features_per_input, brain_decision_t* decisions)
+{
     // Guard: Validate parameters
     if (!brain || !inputs || !decisions || num_inputs == 0) {
         set_error("Invalid parameters to brain_decide_batch");
@@ -1502,9 +1466,7 @@ bool brain_decide_batch(
     }
 
     for (uint32_t i = 0; i < num_inputs; i++) {
-        brain_decision_t* decision = brain_decide(
-            brain, inputs[i], features_per_input
-        );
+        brain_decision_t* decision = brain_decide(brain, inputs[i], features_per_input);
 
         if (!decision) {
             return false;
@@ -1527,12 +1489,14 @@ bool brain_decide_batch(
  *
  * COMPLEXITY: O(k) where k = num_labels
  */
-static bool save_metadata(brain_t brain, const char* filepath) {
+static bool save_metadata(brain_t brain, const char* filepath)
+{
     char meta_path[512];
     snprintf(meta_path, sizeof(meta_path), "%s.meta", filepath);
 
     FILE* meta_file = fopen(meta_path, "wb");
-    if (!meta_file) return false;
+    if (!meta_file)
+        return false;
 
     fwrite(&brain->config, sizeof(brain_config_t), 1, meta_file);
     fwrite(&brain->num_output_labels, sizeof(uint32_t), 1, meta_file);
@@ -1559,7 +1523,8 @@ static bool save_metadata(brain_t brain, const char* filepath) {
  * @param filepath Path to save to
  * @return true on success
  */
-bool brain_save(brain_t brain, const char* filepath) {
+bool brain_save(brain_t brain, const char* filepath)
+{
     // Guard: Validate parameters
     if (!brain || !filepath) {
         set_error("Invalid parameters to brain_save");
@@ -1567,11 +1532,7 @@ bool brain_save(brain_t brain, const char* filepath) {
     }
 
     // Save adaptive network
-    bool success = adaptive_network_save(
-        brain->network,
-        filepath,
-        SERIALIZE_FORMAT_BINARY
-    );
+    bool success = adaptive_network_save(brain->network, filepath, SERIALIZE_FORMAT_BINARY);
 
     if (!success) {
         set_error("Failed to save adaptive network to %s", filepath);
@@ -1593,32 +1554,37 @@ bool brain_save(brain_t brain, const char* filepath) {
  *
  * COMPLEXITY: O(k) where k = num_labels
  */
-static bool load_metadata(brain_t brain, const char* filepath) {
+static bool load_metadata(brain_t brain, const char* filepath)
+{
     char meta_path[512];
     snprintf(meta_path, sizeof(meta_path), "%s.meta", filepath);
 
     FILE* meta_file = fopen(meta_path, "rb");
-    if (!meta_file) return false;
+    if (!meta_file)
+        return false;
 
     fread(&brain->config, sizeof(brain_config_t), 1, meta_file);
 
     // Validate brain->config fields after reading
     // Validate learning_rate (float field - NaN/Inf check)
-    if (!nimcp_validate_float_field(&brain->config.learning_rate, sizeof(brain->config.learning_rate))) {
+    if (!nimcp_validate_float_field(&brain->config.learning_rate,
+                                    sizeof(brain->config.learning_rate))) {
         fprintf(stderr, "ERROR: Invalid learning_rate in loaded config (NaN or Inf)\n");
         fclose(meta_file);
         return false;
     }
 
     // Validate sparsity_target (float field - NaN/Inf check)
-    if (!nimcp_validate_float_field(&brain->config.sparsity_target, sizeof(brain->config.sparsity_target))) {
+    if (!nimcp_validate_float_field(&brain->config.sparsity_target,
+                                    sizeof(brain->config.sparsity_target))) {
         fprintf(stderr, "ERROR: Invalid sparsity_target in loaded config (NaN or Inf)\n");
         fclose(meta_file);
         return false;
     }
 
     // Validate num_inputs (integer field, range 1-10000)
-    if (!nimcp_validate_integer_field(&brain->config.num_inputs, sizeof(brain->config.num_inputs))) {
+    if (!nimcp_validate_integer_field(&brain->config.num_inputs,
+                                      sizeof(brain->config.num_inputs))) {
         fprintf(stderr, "ERROR: Invalid num_inputs in loaded config\n");
         fclose(meta_file);
         return false;
@@ -1630,13 +1596,15 @@ static bool load_metadata(brain_t brain, const char* filepath) {
     }
 
     // Validate num_outputs (integer field, range 1-10000)
-    if (!nimcp_validate_integer_field(&brain->config.num_outputs, sizeof(brain->config.num_outputs))) {
+    if (!nimcp_validate_integer_field(&brain->config.num_outputs,
+                                      sizeof(brain->config.num_outputs))) {
         fprintf(stderr, "ERROR: Invalid num_outputs in loaded config\n");
         fclose(meta_file);
         return false;
     }
     if (brain->config.num_outputs < 1 || brain->config.num_outputs > 10000) {
-        fprintf(stderr, "ERROR: num_outputs out of range (1-10000): %u\n", brain->config.num_outputs);
+        fprintf(stderr, "ERROR: num_outputs out of range (1-10000): %u\n",
+                brain->config.num_outputs);
         fclose(meta_file);
         return false;
     }
@@ -1644,13 +1612,15 @@ static bool load_metadata(brain_t brain, const char* filepath) {
     fread(&brain->num_output_labels, sizeof(uint32_t), 1, meta_file);
 
     // Validate num_output_labels (range 0-10000, 0 means no labels)
-    if (!nimcp_validate_integer_field(&brain->num_output_labels, sizeof(brain->num_output_labels))) {
+    if (!nimcp_validate_integer_field(&brain->num_output_labels,
+                                      sizeof(brain->num_output_labels))) {
         fprintf(stderr, "ERROR: Invalid num_output_labels in loaded metadata\n");
         fclose(meta_file);
         return false;
     }
     if (brain->num_output_labels > 10000) {
-        fprintf(stderr, "ERROR: num_output_labels out of range (0-10000): %u\n", brain->num_output_labels);
+        fprintf(stderr, "ERROR: num_output_labels out of range (0-10000): %u\n",
+                brain->num_output_labels);
         fclose(meta_file);
         return false;
     }
@@ -1718,7 +1688,8 @@ cleanup:
  * @param filepath Path to load from
  * @return Brain handle or NULL on error
  */
-brain_t brain_load(const char* filepath) {
+brain_t brain_load(const char* filepath)
+{
     // Guard: Validate filepath
     if (!filepath) {
         set_error("Null filepath provided to brain_load");
@@ -1766,13 +1737,8 @@ brain_t brain_load(const char* filepath) {
     }
 
     // Initialize statistics
-    init_brain_stats(
-        &brain->stats,
-        brain->config.task_name,
-        brain->config.size,
-        brain->config.num_inputs,
-        brain->config.learning_rate
-    );
+    init_brain_stats(&brain->stats, brain->config.task_name, brain->config.size,
+                     brain->config.num_inputs, brain->config.learning_rate);
 
     brain_clear_error();
     return brain;
@@ -1789,8 +1755,10 @@ brain_t brain_load(const char* filepath) {
  * @param brain Brain handle
  * @return Memory usage in bytes
  */
-size_t brain_get_memory_usage(brain_t brain) {
-    if (!brain) return 0;
+size_t brain_get_memory_usage(brain_t brain)
+{
+    if (!brain)
+        return 0;
 
     size_t size = sizeof(struct brain_struct);
     size += adaptive_network_get_size(brain->network);
@@ -1818,7 +1786,8 @@ size_t brain_get_memory_usage(brain_t brain) {
  * @param stats Output statistics
  * @return true on success
  */
-bool brain_get_stats(brain_t brain, brain_stats_t* stats) {
+bool brain_get_stats(brain_t brain, brain_stats_t* stats)
+{
     // Guard: Validate parameters
     if (!brain || !stats) {
         set_error("Invalid parameters to brain_get_stats");
@@ -1841,8 +1810,7 @@ bool brain_get_stats(brain_t brain, brain_stats_t* stats) {
     stats->current_learning_rate = brain->config.learning_rate;
     stats->accuracy = perf.accuracy;
     stats->memory_bytes = perf.memory_usage_bytes;
-    strncpy(stats->task_name, brain->config.task_name,
-           sizeof(stats->task_name) - 1);
+    strncpy(stats->task_name, brain->config.task_name, sizeof(stats->task_name) - 1);
 
     brain_clear_error();
     return true;
@@ -1858,22 +1826,21 @@ bool brain_get_stats(brain_t brain, brain_stats_t* stats) {
  *
  * @param brain Brain handle
  */
-void brain_print_info(brain_t brain) {
-    if (!brain) return;
+void brain_print_info(brain_t brain)
+{
+    if (!brain)
+        return;
 
     brain_stats_t stats;
     brain_get_stats(brain, &stats);
 
     printf("Brain: %s\n", stats.task_name);
-    printf("  Size: %u neurons, %u synapses\n",
-           stats.num_neurons, stats.num_synapses);
+    printf("  Size: %u neurons, %u synapses\n", stats.num_neurons, stats.num_synapses);
     printf("  Training: %lu learning steps\n", stats.total_learning_steps);
     printf("  Inferences: %lu\n", stats.total_inferences);
-    printf("  Avg inference time: %.3f ms\n",
-           stats.avg_inference_time_us / 1000.0);
+    printf("  Avg inference time: %.3f ms\n", stats.avg_inference_time_us / 1000.0);
     printf("  Avg sparsity: %.1f%%\n", stats.avg_sparsity * 100.0);
-    printf("  Memory usage: %.2f MB\n",
-           stats.memory_bytes / (1024.0 * 1024.0));
+    printf("  Memory usage: %.2f MB\n", stats.memory_bytes / (1024.0 * 1024.0));
     printf("  Learning rate: %.4f\n", stats.current_learning_rate);
 }
 
@@ -1891,12 +1858,9 @@ void brain_print_info(brain_t brain) {
  * @param importances Output array of importance scores
  * @return Number of neurons returned
  */
-uint32_t brain_get_top_neurons(
-    brain_t brain,
-    uint32_t top_n,
-    uint32_t* neuron_ids,
-    float* importances
-) {
+uint32_t brain_get_top_neurons(brain_t brain, uint32_t top_n, uint32_t* neuron_ids,
+                               float* importances)
+{
     // Guard: Validate parameters
     if (!brain || !neuron_ids || !importances) {
         set_error("Invalid parameters to brain_get_top_neurons");
@@ -1905,9 +1869,7 @@ uint32_t brain_get_top_neurons(
 
     // Get neuron rankings from adaptive network
     neuron_importance_t* rankings = malloc(top_n * sizeof(neuron_importance_t));
-    uint32_t count = adaptive_network_rank_neurons(
-        brain->network, rankings, top_n
-    );
+    uint32_t count = adaptive_network_rank_neurons(brain->network, rankings, top_n);
 
     // Extract IDs and importances
     for (uint32_t i = 0; i < count; i++) {
@@ -1936,26 +1898,17 @@ uint32_t brain_get_top_neurons(
  * @param max_length Max explanation length
  * @return true on success
  */
-bool brain_explain_decision(
-    brain_t brain,
-    const float* features,
-    uint32_t num_features,
-    char* explanation,
-    uint32_t max_length
-) {
+bool brain_explain_decision(brain_t brain, const float* features, uint32_t num_features,
+                            char* explanation, uint32_t max_length)
+{
     // Guard: Validate parameters
     if (!brain || !features || !explanation) {
         set_error("Invalid parameters to brain_explain_decision");
         return false;
     }
 
-    uint32_t written = adaptive_network_explain(
-        brain->network,
-        features,
-        num_features,
-        explanation,
-        max_length
-    );
+    uint32_t written =
+        adaptive_network_explain(brain->network, features, num_features, explanation, max_length);
 
     brain_clear_error();
     return written > 0;
@@ -1978,7 +1931,8 @@ bool brain_explain_decision(
  * @param threshold Prune synapses with weight < threshold
  * @return Number of synapses pruned
  */
-uint32_t brain_prune(brain_t brain, float threshold) {
+uint32_t brain_prune(brain_t brain, float threshold)
+{
     // Guard: Validate brain
     if (!brain) {
         set_error("Null brain provided to brain_prune");
@@ -2008,7 +1962,8 @@ uint32_t brain_prune(brain_t brain, float threshold) {
  * @param brain Brain handle
  * @return true on success
  */
-bool brain_optimize_for_inference(brain_t brain) {
+bool brain_optimize_for_inference(brain_t brain)
+{
     // Guard: Validate brain
     if (!brain) {
         set_error("Null brain provided to brain_optimize_for_inference");
@@ -2035,7 +1990,8 @@ bool brain_optimize_for_inference(brain_t brain) {
  * @param target_sparsity Desired sparsity (0-1)
  * @return Recommended threshold
  */
-float brain_recommend_pruning_threshold(brain_t brain, float target_sparsity) {
+float brain_recommend_pruning_threshold(brain_t brain, float target_sparsity)
+{
     // Guard: Validate brain
     if (!brain) {
         set_error("Null brain provided to brain_recommend_pruning_threshold");

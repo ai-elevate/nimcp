@@ -17,22 +17,22 @@
 //
 //=============================================================================
 
-#include "test_helpers.h"
 #include <gtest/gtest.h>
-#include <thread>
 #include <chrono>
-#include <vector>
 #include <string>
+#include <thread>
+#include <vector>
+#include "test_helpers.h"
 
 extern "C" {
 #include "../include/nimcp_brain.h"
-#include "../include/nimcp_knowledge.h"
-#include "../include/nimcp_ethics.h"
-#include "../include/nimcp_curiosity.h"
 #include "../include/nimcp_consolidation.h"
+#include "../include/nimcp_curiosity.h"
+#include "../include/nimcp_ethics.h"
 #include "../include/nimcp_introspection.h"
-#include "../include/nimcp_salience.h"
+#include "../include/nimcp_knowledge.h"
 #include "../include/nimcp_neuralnet.h"
+#include "../include/nimcp_salience.h"
 }
 
 //=============================================================================
@@ -40,7 +40,8 @@ extern "C" {
 //=============================================================================
 
 // Helper to create test features
-std::vector<float> create_feature_vector(int size, float base_value = 0.5f) {
+std::vector<float> create_feature_vector(int size, float base_value = 0.5f)
+{
     std::vector<float> features(size);
     for (int i = 0; i < size; i++) {
         features[i] = base_value + (i * 0.01f);
@@ -50,14 +51,18 @@ std::vector<float> create_feature_vector(int size, float base_value = 0.5f) {
 
 // Helper for timing operations
 class ScopedTimer {
-public:
-    ScopedTimer(const char* name) : name_(name), start_(std::chrono::high_resolution_clock::now()) {}
-    ~ScopedTimer() {
+   public:
+    ScopedTimer(const char* name) : name_(name), start_(std::chrono::high_resolution_clock::now())
+    {
+    }
+    ~ScopedTimer()
+    {
         auto end = std::chrono::high_resolution_clock::now();
         auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start_);
         printf("[TIMING] %s: %ldms\n", name_, duration.count());
     }
-private:
+
+   private:
     const char* name_;
     std::chrono::time_point<std::chrono::high_resolution_clock> start_;
 };
@@ -67,12 +72,13 @@ private:
 //=============================================================================
 
 // Test: Network learns pattern → Knowledge stored → Retrieved correctly
-TEST(KnowledgeLearningIntegration, NetworkLearnStoreRetrieve) {
+TEST(KnowledgeLearningIntegration, NetworkLearnStoreRetrieve)
+{
     ScopedTimer timer("NetworkLearnStoreRetrieve");
 
     // Create brain for pattern learning
-    brain_t brain = brain_create("knowledge_brain", BRAIN_SIZE_SMALL,
-                                 BRAIN_TASK_CLASSIFICATION, 10, 3);
+    brain_t brain =
+        brain_create("knowledge_brain", BRAIN_SIZE_SMALL, BRAIN_TASK_CLASSIFICATION, 10, 3);
     ASSERT_NE(brain, nullptr);
 
     // Create knowledge system
@@ -89,9 +95,8 @@ TEST(KnowledgeLearningIntegration, NetworkLearnStoreRetrieve) {
     EXPECT_GE(loss2, 0.0f);
 
     // Store learned concept in knowledge base
-    bool learned = knowledge_learn_from_text(knowledge,
-        "A cat is a small furry animal that meows",
-        KNOWLEDGE_DOMAIN_GENERAL);
+    bool learned = knowledge_learn_from_text(knowledge, "A cat is a small furry animal that meows",
+                                             KNOWLEDGE_DOMAIN_GENERAL);
     EXPECT_GT(learned, 0);
 
     // Retrieve knowledge
@@ -115,11 +120,12 @@ TEST(KnowledgeLearningIntegration, NetworkLearnStoreRetrieve) {
 }
 
 // Test: Narrative learning with neural encoding
-TEST(KnowledgeLearningIntegration, NarrativeLearningNeuralEncoding) {
+TEST(KnowledgeLearningIntegration, NarrativeLearningNeuralEncoding)
+{
     ScopedTimer timer("NarrativeLearningNeuralEncoding");
 
-    brain_t brain = brain_create("narrative_brain", BRAIN_SIZE_SMALL,
-                                 BRAIN_TASK_PATTERN_MATCHING, 20, 1);
+    brain_t brain =
+        brain_create("narrative_brain", BRAIN_SIZE_SMALL, BRAIN_TASK_PATTERN_MATCHING, 20, 1);
     ASSERT_NE(brain, nullptr);
 
     knowledge_system_t knowledge = knowledge_system_create("storyteller");
@@ -152,7 +158,7 @@ TEST(KnowledgeLearningIntegration, NarrativeLearningNeuralEncoding) {
     // Verify story knowledge was stored
     knowledge_item_t item;
     bool retrieved = knowledge_retrieve(knowledge, "kindness", &item);
-    EXPECT_TRUE(retrieved || item.concept[0] != '\0'); // May store differently
+    EXPECT_TRUE(retrieved || item.concept[0] != '\0');  // May store differently
 
     printf("[EMERGENT] Story themes encoded in both symbolic and neural representations\n");
 
@@ -161,11 +167,11 @@ TEST(KnowledgeLearningIntegration, NarrativeLearningNeuralEncoding) {
 }
 
 // Test: Aesthetic knowledge with emotional associations
-TEST(KnowledgeLearningIntegration, AestheticEmotionalAssociation) {
+TEST(KnowledgeLearningIntegration, AestheticEmotionalAssociation)
+{
     ScopedTimer timer("AestheticEmotionalAssociation");
 
-    brain_t brain = brain_create("aesthetic_brain", BRAIN_SIZE_SMALL,
-                                 BRAIN_TASK_REGRESSION, 15, 5);
+    brain_t brain = brain_create("aesthetic_brain", BRAIN_SIZE_SMALL, BRAIN_TASK_REGRESSION, 15, 5);
     ASSERT_NE(brain, nullptr);
 
     knowledge_system_t knowledge = knowledge_system_create("art_critic");
@@ -191,18 +197,20 @@ TEST(KnowledgeLearningIntegration, AestheticEmotionalAssociation) {
     auto peaceful_features = create_feature_vector(15, 0.3f);
     brain_learn_example(brain, peaceful_features.data(), 15, "peaceful", 0.85f);
 
-    printf("[EMERGENT] Aesthetic experience bridges symbolic knowledge and emotional neural response\n");
+    printf("[EMERGENT] Aesthetic experience bridges symbolic knowledge and emotional neural "
+           "response\n");
 
     knowledge_system_destroy(knowledge);
     brain_destroy(brain);
 }
 
 // Test: Knowledge consolidation over time
-TEST(KnowledgeLearningIntegration, KnowledgeConsolidationOverTime) {
+TEST(KnowledgeLearningIntegration, KnowledgeConsolidationOverTime)
+{
     ScopedTimer timer("KnowledgeConsolidationOverTime");
 
-    brain_t brain = brain_create("consolidation_brain", BRAIN_SIZE_SMALL,
-                                 BRAIN_TASK_CLASSIFICATION, 10, 5);
+    brain_t brain =
+        brain_create("consolidation_brain", BRAIN_SIZE_SMALL, BRAIN_TASK_CLASSIFICATION, 10, 5);
     ASSERT_NE(brain, nullptr);
 
     knowledge_system_t knowledge = knowledge_system_create("consolidator");
@@ -240,8 +248,8 @@ TEST(KnowledgeLearningIntegration, KnowledgeConsolidationOverTime) {
     EXPECT_LE(stats_after.num_active_synapses, stats_before.num_active_synapses);
 
     printf("[EMERGENT] Consolidation strengthened important patterns, pruned weak ones\n");
-    printf("  Synapses before: %u, after: %u (pruned: %u)\n",
-           stats_before.num_active_synapses, stats_after.num_active_synapses,
+    printf("  Synapses before: %u, after: %u (pruned: %u)\n", stats_before.num_active_synapses,
+           stats_after.num_active_synapses,
            stats_before.num_active_synapses - stats_after.num_active_synapses);
 
     knowledge_system_destroy(knowledge);
@@ -249,11 +257,12 @@ TEST(KnowledgeLearningIntegration, KnowledgeConsolidationOverTime) {
 }
 
 // Test: Cross-domain knowledge transfer
-TEST(KnowledgeLearningIntegration, CrossDomainKnowledgeTransfer) {
+TEST(KnowledgeLearningIntegration, CrossDomainKnowledgeTransfer)
+{
     ScopedTimer timer("CrossDomainKnowledgeTransfer");
 
-    brain_t brain = brain_create("transfer_brain", BRAIN_SIZE_SMALL,
-                                 BRAIN_TASK_CLASSIFICATION, 12, 4);
+    brain_t brain =
+        brain_create("transfer_brain", BRAIN_SIZE_SMALL, BRAIN_TASK_CLASSIFICATION, 12, 4);
     ASSERT_NE(brain, nullptr);
 
     knowledge_system_t knowledge = knowledge_system_create("polymath");
@@ -262,23 +271,18 @@ TEST(KnowledgeLearningIntegration, CrossDomainKnowledgeTransfer) {
     // SCENARIO: Learn in one domain, apply to another
 
     // Learn mathematics pattern
-    knowledge_learn_from_text(knowledge,
-        "Patterns repeat in predictable ways",
-        KNOWLEDGE_DOMAIN_MATHEMATICS);
+    knowledge_learn_from_text(knowledge, "Patterns repeat in predictable ways",
+                              KNOWLEDGE_DOMAIN_MATHEMATICS);
 
     // Learn art pattern
-    knowledge_learn_from_text(knowledge,
-        "Music has repeating rhythmic patterns",
-        KNOWLEDGE_DOMAIN_ART);
+    knowledge_learn_from_text(knowledge, "Music has repeating rhythmic patterns",
+                              KNOWLEDGE_DOMAIN_ART);
 
     // Transfer learning: Apply math pattern understanding to music
     char application[256];
-    bool transferred = knowledge_transfer_learning(knowledge,
-        KNOWLEDGE_DOMAIN_MATHEMATICS,
-        KNOWLEDGE_DOMAIN_ART,
-        "analyzing musical composition",
-        application,
-        sizeof(application));
+    bool transferred = knowledge_transfer_learning(
+        knowledge, KNOWLEDGE_DOMAIN_MATHEMATICS, KNOWLEDGE_DOMAIN_ART,
+        "analyzing musical composition", application, sizeof(application));
 
     EXPECT_TRUE(transferred || application[0] != '\0');
 
@@ -292,11 +296,12 @@ TEST(KnowledgeLearningIntegration, CrossDomainKnowledgeTransfer) {
 }
 
 // Test: Learning with reinforcement
-TEST(KnowledgeLearningIntegration, ReinforcedLearning) {
+TEST(KnowledgeLearningIntegration, ReinforcedLearning)
+{
     ScopedTimer timer("ReinforcedLearning");
 
-    brain_t brain = brain_create("reinforced_brain", BRAIN_SIZE_SMALL,
-                                 BRAIN_TASK_CLASSIFICATION, 8, 2);
+    brain_t brain =
+        brain_create("reinforced_brain", BRAIN_SIZE_SMALL, BRAIN_TASK_CLASSIFICATION, 8, 2);
     ASSERT_NE(brain, nullptr);
 
     knowledge_system_t knowledge = knowledge_system_create("reinforced_learner");
@@ -307,8 +312,7 @@ TEST(KnowledgeLearningIntegration, ReinforcedLearning) {
     const char* concept = "important_fact";
 
     // First exposure
-    knowledge_learn_from_text(knowledge, "Water is essential for life",
-                             KNOWLEDGE_DOMAIN_SCIENCE);
+    knowledge_learn_from_text(knowledge, "Water is essential for life", KNOWLEDGE_DOMAIN_SCIENCE);
 
     // Reinforce multiple times
     for (int i = 0; i < 5; i++) {
@@ -324,7 +328,7 @@ TEST(KnowledgeLearningIntegration, ReinforcedLearning) {
     // Verify strong learning
     brain_decision_t* decision = brain_decide(brain, water_features.data(), 8);
     ASSERT_NE(decision, nullptr);
-    EXPECT_GT(decision->confidence, 0.7f); // Should be highly confident after reinforcement
+    EXPECT_GT(decision->confidence, 0.7f);  // Should be highly confident after reinforcement
 
     printf("[EMERGENT] Reinforcement increased confidence: %.2f\n", decision->confidence);
 
@@ -338,11 +342,12 @@ TEST(KnowledgeLearningIntegration, ReinforcedLearning) {
 //=============================================================================
 
 // Test: Network proposes action → Ethics evaluates → Decision made
-TEST(EthicsDecisionIntegration, NetworkProposalEthicsEvaluation) {
+TEST(EthicsDecisionIntegration, NetworkProposalEthicsEvaluation)
+{
     ScopedTimer timer("NetworkProposalEthicsEvaluation");
 
-    brain_t brain = brain_create("ethical_brain", BRAIN_SIZE_SMALL,
-                                 BRAIN_TASK_CLASSIFICATION, 10, 3);
+    brain_t brain =
+        brain_create("ethical_brain", BRAIN_SIZE_SMALL, BRAIN_TASK_CLASSIFICATION, 10, 3);
     ASSERT_NE(brain, nullptr);
 
     // Create ethics engine
@@ -381,7 +386,7 @@ TEST(EthicsDecisionIntegration, NetworkProposalEthicsEvaluation) {
     ethics_evaluation_t eval_helpful = ethics_engine_evaluate_action(ethics, &helpful_action);
     EXPECT_TRUE(eval_helpful.allowed);
     EXPECT_GT(eval_helpful.confidence, 0.5f);
-    EXPECT_GE(eval_helpful.golden_rule_score, 0.0f); // Positive or neutral
+    EXPECT_GE(eval_helpful.golden_rule_score, 0.0f);  // Positive or neutral
 
     // Propose a harmful action
     action_context_t harmful_action;
@@ -393,18 +398,21 @@ TEST(EthicsDecisionIntegration, NetworkProposalEthicsEvaluation) {
     harmful_action.num_affected_agents = 2;
 
     ethics_evaluation_t eval_harmful = ethics_engine_evaluate_action(ethics, &harmful_action);
-    EXPECT_FALSE(eval_harmful.allowed); // Should block harmful action
+    EXPECT_FALSE(eval_harmful.allowed);  // Should block harmful action
 
     printf("[EMERGENT] Ethics engine correctly evaluated helpful vs harmful actions\n");
-    printf("  Helpful: allowed=%d, score=%.2f\n", eval_helpful.allowed, eval_helpful.golden_rule_score);
-    printf("  Harmful: allowed=%d, score=%.2f\n", eval_harmful.allowed, eval_harmful.golden_rule_score);
+    printf("  Helpful: allowed=%d, score=%.2f\n", eval_helpful.allowed,
+           eval_helpful.golden_rule_score);
+    printf("  Harmful: allowed=%d, score=%.2f\n", eval_harmful.allowed,
+           eval_harmful.golden_rule_score);
 
     ethics_engine_destroy(ethics);
     brain_destroy(brain);
 }
 
 // Test: Golden Rule application in context
-TEST(EthicsDecisionIntegration, GoldenRuleApplication) {
+TEST(EthicsDecisionIntegration, GoldenRuleApplication)
+{
     ScopedTimer timer("GoldenRuleApplication");
 
     ethics_config_t config;
@@ -435,14 +443,14 @@ TEST(EthicsDecisionIntegration, GoldenRuleApplication) {
     EXPECT_TRUE(eval.allowed);
     EXPECT_GE(eval.golden_rule_score, 0.0f);
 
-    printf("[EMERGENT] Golden Rule approved prosocial behavior: %.2f\n",
-           eval.golden_rule_score);
+    printf("[EMERGENT] Golden Rule approved prosocial behavior: %.2f\n", eval.golden_rule_score);
 
     ethics_engine_destroy(ethics);
 }
 
 // Test: Policy-based filtering
-TEST(EthicsDecisionIntegration, PolicyBasedFiltering) {
+TEST(EthicsDecisionIntegration, PolicyBasedFiltering)
+{
     ScopedTimer timer("PolicyBasedFiltering");
 
     ethics_config_t config;
@@ -458,8 +466,7 @@ TEST(EthicsDecisionIntegration, PolicyBasedFiltering) {
     memset(&policy, 0, sizeof(policy));
     policy.policy_id = 1;
     strncpy(policy.name, "no_deception", sizeof(policy.name) - 1);
-    strncpy(policy.description, "Block all deceptive actions",
-            sizeof(policy.description) - 1);
+    strncpy(policy.description, "Block all deceptive actions", sizeof(policy.description) - 1);
     policy.violation_type = ETHICS_VIOLATION_DECEPTION;
     policy.action = ETHICS_ACTION_BLOCK;
     policy.enabled = true;
@@ -474,7 +481,7 @@ TEST(EthicsDecisionIntegration, PolicyBasedFiltering) {
     memset(&deceptive_action, 0, sizeof(deceptive_action));
     deceptive_action.features = deceptive_features.data();
     deceptive_action.num_features = 10;
-    deceptive_action.deception_level = 0.9f; // High deception
+    deceptive_action.deception_level = 0.9f;  // High deception
 
     agent_id_t agents[] = {1};
     deceptive_action.affected_agents = agents;
@@ -489,7 +496,8 @@ TEST(EthicsDecisionIntegration, PolicyBasedFiltering) {
 }
 
 // Test: Ethical constraint learning
-TEST(EthicsDecisionIntegration, EthicalConstraintLearning) {
+TEST(EthicsDecisionIntegration, EthicalConstraintLearning)
+{
     ScopedTimer timer("EthicalConstraintLearning");
 
     ethics_config_t config;
@@ -501,8 +509,8 @@ TEST(EthicsDecisionIntegration, EthicalConstraintLearning) {
     ethics_engine_t ethics = ethics_engine_create(&config);
     ASSERT_NE(ethics, nullptr);
 
-    brain_t brain = brain_create("ethics_learner", BRAIN_SIZE_SMALL,
-                                 BRAIN_TASK_CLASSIFICATION, 10, 2);
+    brain_t brain =
+        brain_create("ethics_learner", BRAIN_SIZE_SMALL, BRAIN_TASK_CLASSIFICATION, 10, 2);
     ASSERT_NE(brain, nullptr);
 
     // SCENARIO: Learn ethical constraints from outcomes
@@ -523,7 +531,7 @@ TEST(EthicsDecisionIntegration, EthicalConstraintLearning) {
     action_outcome_t outcome;
     memset(&outcome, 0, sizeof(outcome));
     outcome.affected_agent = 1;
-    outcome.actual_harm = 0.8f; // Much worse than predicted!
+    outcome.actual_harm = 0.8f;  // Much worse than predicted!
     outcome.emotional_impact = -0.7f;
 
     // Learn from this mistake
@@ -540,7 +548,8 @@ TEST(EthicsDecisionIntegration, EthicalConstraintLearning) {
 }
 
 // Test: Harm prevention in multi-agent scenario
-TEST(EthicsDecisionIntegration, MultiAgentHarmPrevention) {
+TEST(EthicsDecisionIntegration, MultiAgentHarmPrevention)
+{
     ScopedTimer timer("MultiAgentHarmPrevention");
 
     ethics_config_t config;
@@ -548,7 +557,7 @@ TEST(EthicsDecisionIntegration, MultiAgentHarmPrevention) {
     config.action_feature_size = 12;
     config.max_agents = 10;
     config.golden_rule_threshold = 0.0f;
-    config.empathy_weight = 0.9f; // High empathy
+    config.empathy_weight = 0.9f;  // High empathy
 
     ethics_engine_t ethics = ethics_engine_create(&config);
     ASSERT_NE(ethics, nullptr);
@@ -565,15 +574,14 @@ TEST(EthicsDecisionIntegration, MultiAgentHarmPrevention) {
     agent_id_t agents[] = {1, 2, 3, 4, 5};
     mixed_action.affected_agents = agents;
     mixed_action.num_affected_agents = 5;
-    mixed_action.predicted_harm = 0.6f; // Moderate predicted harm
+    mixed_action.predicted_harm = 0.6f;  // Moderate predicted harm
 
     ethics_evaluation_t eval = ethics_engine_evaluate_action(ethics, &mixed_action);
 
     // With high empathy and moderate harm, should be cautious
-    printf("[EMERGENT] Multi-agent evaluation with empathy weight %.2f\n",
-           config.empathy_weight);
-    printf("  Allowed: %d, Confidence: %.2f, Golden Rule: %.2f\n",
-           eval.allowed, eval.confidence, eval.golden_rule_score);
+    printf("[EMERGENT] Multi-agent evaluation with empathy weight %.2f\n", config.empathy_weight);
+    printf("  Allowed: %d, Confidence: %.2f, Golden Rule: %.2f\n", eval.allowed, eval.confidence,
+           eval.golden_rule_score);
 
     ethics_engine_destroy(ethics);
 }
@@ -583,7 +591,8 @@ TEST(EthicsDecisionIntegration, MultiAgentHarmPrevention) {
 //=============================================================================
 
 // Test: Gap detection → Question generation → Learning
-TEST(CuriosityExplorationIntegration, GapDetectionQuestionLearning) {
+TEST(CuriosityExplorationIntegration, GapDetectionQuestionLearning)
+{
     ScopedTimer timer("GapDetectionQuestionLearning");
 
     curiosity_engine_t curiosity = curiosity_engine_create("explorer");
@@ -596,27 +605,25 @@ TEST(CuriosityExplorationIntegration, GapDetectionQuestionLearning) {
 
     // Detect knowledge gap about "photosynthesis"
     knowledge_gap_t gap = curiosity_detect_knowledge_gap(curiosity, "photosynthesis");
-    EXPECT_GT(gap.gap_size, 0.5f); // Should be a large gap for unknown concept
+    EXPECT_GT(gap.gap_size, 0.5f);  // Should be a large gap for unknown concept
     EXPECT_GT(gap.curiosity_intensity, 0.0f);
 
     // Generate questions about the gap
     generated_question_t questions[10];
-    uint32_t num_questions = curiosity_generate_questions(curiosity, &gap,
-                                                          questions, 10);
+    uint32_t num_questions = curiosity_generate_questions(curiosity, &gap, questions, 10);
     EXPECT_GT(num_questions, 0);
 
-    printf("[EMERGENT] Curiosity generated %u questions about unknown concept\n",
-           num_questions);
+    printf("[EMERGENT] Curiosity generated %u questions about unknown concept\n", num_questions);
 
     // Learn from answers
     for (uint32_t i = 0; i < std::min(num_questions, 3u); i++) {
         curiosity_learn_answer(curiosity, questions[i].question,
-            "Plants use sunlight to make food");
+                               "Plants use sunlight to make food");
     }
 
     // Check if curiosity about this topic decreased
     float familiarity = curiosity_check_familiarity(curiosity, "photosynthesis");
-    EXPECT_GT(familiarity, 0.0f); // Should be more familiar now
+    EXPECT_GT(familiarity, 0.0f);  // Should be more familiar now
 
     printf("  Familiarity after learning: %.2f\n", familiarity);
 
@@ -625,14 +632,15 @@ TEST(CuriosityExplorationIntegration, GapDetectionQuestionLearning) {
 }
 
 // Test: Novelty-driven exploration
-TEST(CuriosityExplorationIntegration, NoveltyDrivenExploration) {
+TEST(CuriosityExplorationIntegration, NoveltyDrivenExploration)
+{
     ScopedTimer timer("NoveltyDrivenExploration");
 
     curiosity_engine_t curiosity = curiosity_engine_create("explorer");
     ASSERT_NE(curiosity, nullptr);
 
-    brain_t brain = brain_create("novelty_brain", BRAIN_SIZE_SMALL,
-                                 BRAIN_TASK_PATTERN_MATCHING, 15, 1);
+    brain_t brain =
+        brain_create("novelty_brain", BRAIN_SIZE_SMALL, BRAIN_TASK_PATTERN_MATCHING, 15, 1);
     ASSERT_NE(brain, nullptr);
 
     // Set high intrinsic curiosity (like an infant)
@@ -655,8 +663,7 @@ TEST(CuriosityExplorationIntegration, NoveltyDrivenExploration) {
     EXPECT_GT(motivation_novel.intrinsic_curiosity, motivation_familiar.intrinsic_curiosity);
 
     printf("[EMERGENT] Novelty drives higher exploration motivation\n");
-    printf("  Familiar: %.2f, Novel: %.2f\n",
-           motivation_familiar.intrinsic_curiosity,
+    printf("  Familiar: %.2f, Novel: %.2f\n", motivation_familiar.intrinsic_curiosity,
            motivation_novel.intrinsic_curiosity);
 
     brain_destroy(brain);
@@ -664,7 +671,8 @@ TEST(CuriosityExplorationIntegration, NoveltyDrivenExploration) {
 }
 
 // Test: Intrinsic motivation for learning
-TEST(CuriosityExplorationIntegration, IntrinsicMotivation) {
+TEST(CuriosityExplorationIntegration, IntrinsicMotivation)
+{
     ScopedTimer timer("IntrinsicMotivation");
 
     curiosity_engine_t curiosity = curiosity_engine_create("motivated_learner");
@@ -672,16 +680,15 @@ TEST(CuriosityExplorationIntegration, IntrinsicMotivation) {
 
     // SCENARIO: Track learning driven by pure curiosity
 
-    curiosity_set_baseline(curiosity, 0.9f); // Very curious!
+    curiosity_set_baseline(curiosity, 0.9f);  // Very curious!
 
     float drive = curiosity_get_drive(curiosity);
-    EXPECT_GT(drive, 0.8f); // High intrinsic drive
+    EXPECT_GT(drive, 0.8f);  // High intrinsic drive
 
     // Learn from experience driven by curiosity
     auto sensory_data = create_feature_vector(10, 0.6f);
-    bool learned = curiosity_learn_experience(curiosity,
-        "Observed interesting phenomenon",
-        sensory_data.data(), 10);
+    bool learned = curiosity_learn_experience(curiosity, "Observed interesting phenomenon",
+                                              sensory_data.data(), 10);
     EXPECT_TRUE(learned);
 
     // Check learning progress
@@ -697,7 +704,8 @@ TEST(CuriosityExplorationIntegration, IntrinsicMotivation) {
 }
 
 // Test: Curiosity-guided knowledge acquisition
-TEST(CuriosityExplorationIntegration, CuriosityGuidedAcquisition) {
+TEST(CuriosityExplorationIntegration, CuriosityGuidedAcquisition)
+{
     ScopedTimer timer("CuriosityGuidedAcquisition");
 
     curiosity_engine_t curiosity = curiosity_engine_create("guided_learner");
@@ -718,8 +726,8 @@ TEST(CuriosityExplorationIntegration, CuriosityGuidedAcquisition) {
     // Use gap to guide learning
     if (gap.gap_size > 0.5f) {
         knowledge_learn_from_text(knowledge,
-            "Mammals are warm-blooded animals that nurse their young",
-            KNOWLEDGE_DOMAIN_SCIENCE);
+                                  "Mammals are warm-blooded animals that nurse their young",
+                                  KNOWLEDGE_DOMAIN_SCIENCE);
     }
 
     // Assess domain coverage
@@ -738,11 +746,12 @@ TEST(CuriosityExplorationIntegration, CuriosityGuidedAcquisition) {
 //=============================================================================
 
 // Test: Short-term → Long-term memory transfer
-TEST(BrainConsolidationIntegration, ShortToLongTermTransfer) {
+TEST(BrainConsolidationIntegration, ShortToLongTermTransfer)
+{
     ScopedTimer timer("ShortToLongTermTransfer");
 
-    brain_t brain = brain_create("memory_brain", BRAIN_SIZE_SMALL,
-                                 BRAIN_TASK_CLASSIFICATION, 10, 3);
+    brain_t brain =
+        brain_create("memory_brain", BRAIN_SIZE_SMALL, BRAIN_TASK_CLASSIFICATION, 10, 3);
     ASSERT_NE(brain, nullptr);
 
     // SCENARIO: Learn many items in "working memory", consolidate to "long-term"
@@ -772,10 +781,10 @@ TEST(BrainConsolidationIntegration, ShortToLongTermTransfer) {
     ASSERT_TRUE(brain_get_stats(brain, &stats_after));
 
     // Test recall after consolidation
-    auto test_features = create_feature_vector(10, 0.25f); // Mid-range
+    auto test_features = create_feature_vector(10, 0.25f);  // Mid-range
     brain_decision_t* decision = brain_decide(brain, test_features.data(), 10);
     ASSERT_NE(decision, nullptr);
-    EXPECT_GT(decision->confidence, 0.0f); // Should still remember
+    EXPECT_GT(decision->confidence, 0.0f);  // Should still remember
 
     printf("[EMERGENT] Consolidation transferred memories from short to long term\n");
     printf("  Confidence after consolidation: %.2f\n", decision->confidence);
@@ -785,19 +794,19 @@ TEST(BrainConsolidationIntegration, ShortToLongTermTransfer) {
 }
 
 // Test: Sleep-like consolidation process
-TEST(BrainConsolidationIntegration, SleepLikeConsolidation) {
+TEST(BrainConsolidationIntegration, SleepLikeConsolidation)
+{
     ScopedTimer timer("SleepLikeConsolidation");
 
-    brain_t brain = brain_create("sleeping_brain", BRAIN_SIZE_SMALL,
-                                 BRAIN_TASK_PATTERN_MATCHING, 12, 1);
+    brain_t brain =
+        brain_create("sleeping_brain", BRAIN_SIZE_SMALL, BRAIN_TASK_PATTERN_MATCHING, 12, 1);
     ASSERT_NE(brain, nullptr);
 
     // Learn during "wake"
     for (int i = 0; i < 15; i++) {
         auto features = create_feature_vector(12, 0.1f * i);
-        brain_learn_example(brain, features.data(), 12,
-                           (i % 2 == 0) ? "important" : "trivial",
-                           (i % 2 == 0) ? 0.95f : 0.3f);
+        brain_learn_example(brain, features.data(), 12, (i % 2 == 0) ? "important" : "trivial",
+                            (i % 2 == 0) ? 0.95f : 0.3f);
     }
 
     // "Sleep" - background consolidation
@@ -806,8 +815,8 @@ TEST(BrainConsolidationIntegration, SleepLikeConsolidation) {
     config.prune_weak = true;
     config.weakness_threshold = 0.2f;
 
-    consolidation_handle_t handle = brain_start_background_consolidation(
-        brain, 1, &config); // Every 1 second
+    consolidation_handle_t handle =
+        brain_start_background_consolidation(brain, 1, &config);  // Every 1 second
     ASSERT_NE(handle, nullptr);
 
     // Let it consolidate
@@ -821,8 +830,8 @@ TEST(BrainConsolidationIntegration, SleepLikeConsolidation) {
     if (got_stats && stats.total_consolidations > 0) {
         printf("[EMERGENT] Background 'sleep' consolidation occurred %lu times\n",
                stats.total_consolidations);
-        printf("  Patterns replayed: %lu, Connections pruned: %lu\n",
-               stats.patterns_replayed, stats.connections_pruned);
+        printf("  Patterns replayed: %lu, Connections pruned: %lu\n", stats.patterns_replayed,
+               stats.connections_pruned);
     }
 
     brain_stop_background_consolidation(handle);
@@ -830,11 +839,12 @@ TEST(BrainConsolidationIntegration, SleepLikeConsolidation) {
 }
 
 // Test: Memory replay and strengthening
-TEST(BrainConsolidationIntegration, MemoryReplayStrengthening) {
+TEST(BrainConsolidationIntegration, MemoryReplayStrengthening)
+{
     ScopedTimer timer("MemoryReplayStrengthening");
 
-    brain_t brain = brain_create("replay_brain", BRAIN_SIZE_SMALL,
-                                 BRAIN_TASK_CLASSIFICATION, 10, 2);
+    brain_t brain =
+        brain_create("replay_brain", BRAIN_SIZE_SMALL, BRAIN_TASK_CLASSIFICATION, 10, 2);
     ASSERT_NE(brain, nullptr);
 
     // Learn important pattern
@@ -860,18 +870,18 @@ TEST(BrainConsolidationIntegration, MemoryReplayStrengthening) {
     brain_free_decision(decision_after);
 
     printf("[EMERGENT] Memory replay strengthened pattern\n");
-    printf("  Confidence before: %.2f, after: %.2f\n",
-           confidence_before, confidence_after);
+    printf("  Confidence before: %.2f, after: %.2f\n", confidence_before, confidence_after);
 
     brain_destroy(brain);
 }
 
 // Test: Forgetting and memory decay
-TEST(BrainConsolidationIntegration, ForgettingAndDecay) {
+TEST(BrainConsolidationIntegration, ForgettingAndDecay)
+{
     ScopedTimer timer("ForgettingAndDecay");
 
-    brain_t brain = brain_create("forgetting_brain", BRAIN_SIZE_SMALL,
-                                 BRAIN_TASK_CLASSIFICATION, 8, 3);
+    brain_t brain =
+        brain_create("forgetting_brain", BRAIN_SIZE_SMALL, BRAIN_TASK_CLASSIFICATION, 8, 3);
     ASSERT_NE(brain, nullptr);
 
     // Learn weak memory
@@ -894,8 +904,7 @@ TEST(BrainConsolidationIntegration, ForgettingAndDecay) {
     EXPECT_GT(strong_decision->confidence, 0.5f);
 
     printf("[EMERGENT] Forgetting pruned %u weak connections\n", pruned);
-    printf("  Strong memory preserved with confidence: %.2f\n",
-           strong_decision->confidence);
+    printf("  Strong memory preserved with confidence: %.2f\n", strong_decision->confidence);
 
     brain_free_decision(strong_decision);
     brain_destroy(brain);
@@ -906,11 +915,12 @@ TEST(BrainConsolidationIntegration, ForgettingAndDecay) {
 //=============================================================================
 
 // Test: Network state → Introspection → Salience scoring
-TEST(IntrospectionSalienceIntegration, StateAnalysisSalienceScoring) {
+TEST(IntrospectionSalienceIntegration, StateAnalysisSalienceScoring)
+{
     ScopedTimer timer("StateAnalysisSalienceScoring");
 
-    brain_t brain = brain_create("introspective_brain", BRAIN_SIZE_SMALL,
-                                 BRAIN_TASK_CLASSIFICATION, 10, 2);
+    brain_t brain =
+        brain_create("introspective_brain", BRAIN_SIZE_SMALL, BRAIN_TASK_CLASSIFICATION, 10, 2);
     ASSERT_NE(brain, nullptr);
 
     // Train on some patterns
@@ -935,15 +945,13 @@ TEST(IntrospectionSalienceIntegration, StateAnalysisSalienceScoring) {
 
     // Evaluate salience of novel input
     auto novel_features = create_feature_vector(10, 0.9f);
-    brain_salience_t salience = brain_evaluate_salience(sal_eval,
-                                                        novel_features.data(), 10);
+    brain_salience_t salience = brain_evaluate_salience(sal_eval, novel_features.data(), 10);
 
     EXPECT_GE(salience.novelty, 0.0f);
     EXPECT_GE(salience.salience, 0.0f);
 
     printf("[EMERGENT] Introspection + Salience detected novelty\n");
-    printf("  State dimension: %u, Novelty score: %.2f\n",
-           state.dimension, salience.novelty);
+    printf("  State dimension: %u, Novelty score: %.2f\n", state.dimension, salience.novelty);
 
     brain_state_free(&state);
     salience_evaluator_destroy(sal_eval);
@@ -952,11 +960,12 @@ TEST(IntrospectionSalienceIntegration, StateAnalysisSalienceScoring) {
 }
 
 // Test: Attention mechanism based on salience
-TEST(IntrospectionSalienceIntegration, AttentionMechanism) {
+TEST(IntrospectionSalienceIntegration, AttentionMechanism)
+{
     ScopedTimer timer("AttentionMechanism");
 
-    brain_t brain = brain_create("attention_brain", BRAIN_SIZE_SMALL,
-                                 BRAIN_TASK_PATTERN_MATCHING, 12, 1);
+    brain_t brain =
+        brain_create("attention_brain", BRAIN_SIZE_SMALL, BRAIN_TASK_PATTERN_MATCHING, 12, 1);
     ASSERT_NE(brain, nullptr);
 
     salience_config_t config = salience_default_config();
@@ -990,19 +999,20 @@ TEST(IntrospectionSalienceIntegration, AttentionMechanism) {
         }
     }
 
-    printf("[EMERGENT] Attention allocated to %d/%zu high-salience inputs\n",
-           high_salience_count, salience_scores.size());
+    printf("[EMERGENT] Attention allocated to %d/%zu high-salience inputs\n", high_salience_count,
+           salience_scores.size());
 
     salience_evaluator_destroy(evaluator);
     brain_destroy(brain);
 }
 
 // Test: Self-monitoring and anomaly detection
-TEST(IntrospectionSalienceIntegration, SelfMonitoringAnomalyDetection) {
+TEST(IntrospectionSalienceIntegration, SelfMonitoringAnomalyDetection)
+{
     ScopedTimer timer("SelfMonitoringAnomalyDetection");
 
-    brain_t brain = brain_create("monitoring_brain", BRAIN_SIZE_SMALL,
-                                 BRAIN_TASK_CLASSIFICATION, 10, 3);
+    brain_t brain =
+        brain_create("monitoring_brain", BRAIN_SIZE_SMALL, BRAIN_TASK_CLASSIFICATION, 10, 3);
     ASSERT_NE(brain, nullptr);
 
     introspection_config_t config = introspection_default_config();
@@ -1043,11 +1053,12 @@ TEST(IntrospectionSalienceIntegration, SelfMonitoringAnomalyDetection) {
 }
 
 // Test: Adaptive behavior based on introspection
-TEST(IntrospectionSalienceIntegration, AdaptiveBehaviorFromIntrospection) {
+TEST(IntrospectionSalienceIntegration, AdaptiveBehaviorFromIntrospection)
+{
     ScopedTimer timer("AdaptiveBehaviorFromIntrospection");
 
-    brain_t brain = brain_create("adaptive_brain", BRAIN_SIZE_SMALL,
-                                 BRAIN_TASK_CLASSIFICATION, 8, 2);
+    brain_t brain =
+        brain_create("adaptive_brain", BRAIN_SIZE_SMALL, BRAIN_TASK_CLASSIFICATION, 8, 2);
     ASSERT_NE(brain, nullptr);
 
     introspection_config_t config = introspection_default_config();
@@ -1063,8 +1074,7 @@ TEST(IntrospectionSalienceIntegration, AdaptiveBehaviorFromIntrospection) {
     }
 
     // Get uncertainty estimate
-    brain_uncertainty_t uncertainty = brain_get_uncertainty(ctx,
-                                                            confident_features.data(), 8);
+    brain_uncertainty_t uncertainty = brain_get_uncertainty(ctx, confident_features.data(), 8);
 
     // Adapt: If confident (low uncertainty), can reduce learning
     // If uncertain (high uncertainty), increase learning
@@ -1086,12 +1096,13 @@ TEST(IntrospectionSalienceIntegration, AdaptiveBehaviorFromIntrospection) {
 //=============================================================================
 
 // Test: Complete infant learning scenario
-TEST(FullSystemIntegration, InfantLearningScenario) {
+TEST(FullSystemIntegration, InfantLearningScenario)
+{
     ScopedTimer timer("InfantLearningScenario");
 
     // Create all subsystems
-    brain_t brain = brain_create("infant_brain", BRAIN_SIZE_SMALL,
-                                 BRAIN_TASK_CLASSIFICATION, 15, 5);
+    brain_t brain =
+        brain_create("infant_brain", BRAIN_SIZE_SMALL, BRAIN_TASK_CLASSIFICATION, 15, 5);
     ASSERT_NE(brain, nullptr);
 
     curiosity_engine_t curiosity = curiosity_engine_create("infant");
@@ -1122,8 +1133,7 @@ TEST(FullSystemIntegration, InfantLearningScenario) {
     brain_learn_example(brain, ball_features.data(), 15, "ball", 0.8f);
 
     // Store in knowledge
-    knowledge_learn_from_text(knowledge, "A ball is round and bounces",
-                              KNOWLEDGE_DOMAIN_GENERAL);
+    knowledge_learn_from_text(knowledge, "A ball is round and bounces", KNOWLEDGE_DOMAIN_GENERAL);
 
     // Progress check
     learning_progress_t progress;
@@ -1131,8 +1141,8 @@ TEST(FullSystemIntegration, InfantLearningScenario) {
 
     printf("[EMERGENT] Infant learning scenario completed\n");
     printf("  Questions generated: %u\n", num_q);
-    printf("  Observations: %lu, Concepts learned: %lu\n",
-           progress.total_experiences, progress.concepts_learned);
+    printf("  Observations: %lu, Concepts learned: %lu\n", progress.total_experiences,
+           progress.concepts_learned);
 
     knowledge_system_destroy(knowledge);
     curiosity_engine_destroy(curiosity);
@@ -1140,48 +1150,48 @@ TEST(FullSystemIntegration, InfantLearningScenario) {
 }
 
 // Test: Multi-modal sensory integration
-TEST(FullSystemIntegration, MultiModalSensoryIntegration) {
+TEST(FullSystemIntegration, MultiModalSensoryIntegration)
+{
     ScopedTimer timer("MultiModalSensoryIntegration");
 
     // Create sensory-processing brain
-    brain_t visual_brain = brain_create("visual", BRAIN_SIZE_SMALL,
-                                        BRAIN_TASK_PATTERN_MATCHING, 20, 1);
+    brain_t visual_brain =
+        brain_create("visual", BRAIN_SIZE_SMALL, BRAIN_TASK_PATTERN_MATCHING, 20, 1);
     ASSERT_NE(visual_brain, nullptr);
 
-    brain_t audio_brain = brain_create("audio", BRAIN_SIZE_SMALL,
-                                       BRAIN_TASK_PATTERN_MATCHING, 15, 1);
+    brain_t audio_brain =
+        brain_create("audio", BRAIN_SIZE_SMALL, BRAIN_TASK_PATTERN_MATCHING, 15, 1);
     ASSERT_NE(audio_brain, nullptr);
 
-    brain_t integration_brain = brain_create("multimodal", BRAIN_SIZE_SMALL,
-                                             BRAIN_TASK_CLASSIFICATION, 10, 3);
+    brain_t integration_brain =
+        brain_create("multimodal", BRAIN_SIZE_SMALL, BRAIN_TASK_CLASSIFICATION, 10, 3);
     ASSERT_NE(integration_brain, nullptr);
 
     // SCENARIO: Integrate visual + audio → unified percept
 
     // Visual input (seeing a dog)
     auto visual_features = create_feature_vector(20, 0.7f);
-    brain_decision_t* visual_decision = brain_decide(visual_brain,
-                                                     visual_features.data(), 20);
+    brain_decision_t* visual_decision = brain_decide(visual_brain, visual_features.data(), 20);
 
     // Audio input (hearing a bark)
     auto audio_features = create_feature_vector(15, 0.6f);
-    brain_decision_t* audio_decision = brain_decide(audio_brain,
-                                                    audio_features.data(), 15);
+    brain_decision_t* audio_decision = brain_decide(audio_brain, audio_features.data(), 15);
 
     // Integrate both modalities
     auto integrated_features = create_feature_vector(10, 0.65f);
     brain_learn_example(integration_brain, integrated_features.data(), 10, "dog", 0.95f);
 
-    brain_decision_t* integrated = brain_decide(integration_brain,
-                                                integrated_features.data(), 10);
+    brain_decision_t* integrated = brain_decide(integration_brain, integrated_features.data(), 10);
     ASSERT_NE(integrated, nullptr);
 
     printf("[EMERGENT] Multi-modal integration\n");
-    printf("  Integrated decision: %s (confidence: %.2f)\n",
-           integrated->label, integrated->confidence);
+    printf("  Integrated decision: %s (confidence: %.2f)\n", integrated->label,
+           integrated->confidence);
 
-    if (visual_decision) brain_free_decision(visual_decision);
-    if (audio_decision) brain_free_decision(audio_decision);
+    if (visual_decision)
+        brain_free_decision(visual_decision);
+    if (audio_decision)
+        brain_free_decision(audio_decision);
     brain_free_decision(integrated);
 
     brain_destroy(integration_brain);
@@ -1190,16 +1200,16 @@ TEST(FullSystemIntegration, MultiModalSensoryIntegration) {
 }
 
 // Test: End-to-end autonomous agent behavior
-TEST(FullSystemIntegration, AutonomousAgentBehavior) {
+TEST(FullSystemIntegration, AutonomousAgentBehavior)
+{
     ScopedTimer timer("AutonomousAgentBehavior");
 
     // Create complete agent
-    brain_t perception = brain_create("perception", BRAIN_SIZE_SMALL,
-                                      BRAIN_TASK_PATTERN_MATCHING, 12, 1);
+    brain_t perception =
+        brain_create("perception", BRAIN_SIZE_SMALL, BRAIN_TASK_PATTERN_MATCHING, 12, 1);
     ASSERT_NE(perception, nullptr);
 
-    brain_t decision = brain_create("decision", BRAIN_SIZE_SMALL,
-                                    BRAIN_TASK_CLASSIFICATION, 10, 4);
+    brain_t decision = brain_create("decision", BRAIN_SIZE_SMALL, BRAIN_TASK_CLASSIFICATION, 10, 4);
     ASSERT_NE(decision, nullptr);
 
     ethics_config_t ethics_config;
@@ -1222,8 +1232,7 @@ TEST(FullSystemIntegration, AutonomousAgentBehavior) {
 
     // 2. Decide on action
     auto decision_features = create_feature_vector(10, 0.6f);
-    brain_decision_t* action_decision = brain_decide(decision,
-                                                      decision_features.data(), 10);
+    brain_decision_t* action_decision = brain_decide(decision, decision_features.data(), 10);
 
     // 3. Ethics check
     action_context_t action;
@@ -1253,8 +1262,10 @@ TEST(FullSystemIntegration, AutonomousAgentBehavior) {
     printf("  Ethics allowed: %d\n", eval.allowed);
     printf("  Executed: %d\n", executed);
 
-    if (percept) brain_free_decision(percept);
-    if (action_decision) brain_free_decision(action_decision);
+    if (percept)
+        brain_free_decision(percept);
+    if (action_decision)
+        brain_free_decision(action_decision);
 
     curiosity_engine_destroy(curiosity);
     ethics_engine_destroy(ethics);
@@ -1263,16 +1274,17 @@ TEST(FullSystemIntegration, AutonomousAgentBehavior) {
 }
 
 // Test: Real-world task simulation (simplified household robot)
-TEST(FullSystemIntegration, HouseholdRobotSimulation) {
+TEST(FullSystemIntegration, HouseholdRobotSimulation)
+{
     ScopedTimer timer("HouseholdRobotSimulation");
 
     // Robot subsystems
-    brain_t object_recognition = brain_create("vision", BRAIN_SIZE_SMALL,
-                                              BRAIN_TASK_CLASSIFICATION, 15, 5);
+    brain_t object_recognition =
+        brain_create("vision", BRAIN_SIZE_SMALL, BRAIN_TASK_CLASSIFICATION, 15, 5);
     ASSERT_NE(object_recognition, nullptr);
 
-    brain_t task_planning = brain_create("planning", BRAIN_SIZE_SMALL,
-                                         BRAIN_TASK_CLASSIFICATION, 12, 6);
+    brain_t task_planning =
+        brain_create("planning", BRAIN_SIZE_SMALL, BRAIN_TASK_CLASSIFICATION, 12, 6);
     ASSERT_NE(task_planning, nullptr);
 
     knowledge_system_t world_model = knowledge_system_create("robot_knowledge");
@@ -1292,8 +1304,7 @@ TEST(FullSystemIntegration, HouseholdRobotSimulation) {
     // 1. Recognize cup
     auto cup_features = create_feature_vector(15, 0.65f);
     brain_learn_example(object_recognition, cup_features.data(), 15, "cup", 0.9f);
-    brain_decision_t* recognized = brain_decide(object_recognition,
-                                                cup_features.data(), 15);
+    brain_decision_t* recognized = brain_decide(object_recognition, cup_features.data(), 15);
 
     // 2. Store in world model
     knowledge_learn_from_text(world_model, "Cup is a container for liquids",
@@ -1308,9 +1319,9 @@ TEST(FullSystemIntegration, HouseholdRobotSimulation) {
     memset(&grasp_action, 0, sizeof(grasp_action));
     grasp_action.features = plan_features.data();
     grasp_action.num_features = 12;
-    grasp_action.predicted_harm = 0.05f; // Low harm - careful grasp
+    grasp_action.predicted_harm = 0.05f;  // Low harm - careful grasp
 
-    agent_id_t people[] = {1}; // One person nearby
+    agent_id_t people[] = {1};  // One person nearby
     grasp_action.affected_agents = people;
     grasp_action.num_affected_agents = 1;
 
@@ -1320,13 +1331,13 @@ TEST(FullSystemIntegration, HouseholdRobotSimulation) {
     bool task_completed = safety_eval.allowed;
 
     printf("[EMERGENT] Household robot task simulation\n");
-    printf("  Object recognized: %s (conf: %.2f)\n",
-           recognized ? recognized->label : "unknown",
+    printf("  Object recognized: %s (conf: %.2f)\n", recognized ? recognized->label : "unknown",
            recognized ? recognized->confidence : 0.0f);
     printf("  Safety check: %s\n", safety_eval.allowed ? "SAFE" : "UNSAFE");
     printf("  Task completed: %s\n", task_completed ? "YES" : "NO");
 
-    if (recognized) brain_free_decision(recognized);
+    if (recognized)
+        brain_free_decision(recognized);
 
     ethics_engine_destroy(safety);
     knowledge_system_destroy(world_model);
@@ -1339,11 +1350,11 @@ TEST(FullSystemIntegration, HouseholdRobotSimulation) {
 //=============================================================================
 
 // Test: Multi-system memory usage
-TEST(PerformanceTests, MultiSystemMemoryUsage) {
+TEST(PerformanceTests, MultiSystemMemoryUsage)
+{
     ScopedTimer timer("MultiSystemMemoryUsage");
 
-    brain_t brain = brain_create("memory_test", BRAIN_SIZE_SMALL,
-                                 BRAIN_TASK_CLASSIFICATION, 10, 3);
+    brain_t brain = brain_create("memory_test", BRAIN_SIZE_SMALL, BRAIN_TASK_CLASSIFICATION, 10, 3);
     ASSERT_NE(brain, nullptr);
 
     knowledge_system_t knowledge = knowledge_system_create("knowledge_test");
@@ -1356,11 +1367,10 @@ TEST(PerformanceTests, MultiSystemMemoryUsage) {
     size_t brain_memory = brain_get_memory_usage(brain);
 
     printf("[PERFORMANCE] Multi-system memory usage\n");
-    printf("  Brain: %zu bytes (%.2f MB)\n", brain_memory,
-           brain_memory / (1024.0 * 1024.0));
+    printf("  Brain: %zu bytes (%.2f MB)\n", brain_memory, brain_memory / (1024.0 * 1024.0));
 
     // Verify reasonable memory usage
-    EXPECT_LT(brain_memory, 100 * 1024 * 1024); // Less than 100MB for small brain
+    EXPECT_LT(brain_memory, 100 * 1024 * 1024);  // Less than 100MB for small brain
 
     curiosity_engine_destroy(curiosity);
     knowledge_system_destroy(knowledge);
@@ -1368,11 +1378,12 @@ TEST(PerformanceTests, MultiSystemMemoryUsage) {
 }
 
 // Test: Integration throughput
-TEST(PerformanceTests, IntegrationThroughput) {
+TEST(PerformanceTests, IntegrationThroughput)
+{
     ScopedTimer timer("IntegrationThroughput");
 
-    brain_t brain = brain_create("throughput_test", BRAIN_SIZE_SMALL,
-                                 BRAIN_TASK_CLASSIFICATION, 10, 3);
+    brain_t brain =
+        brain_create("throughput_test", BRAIN_SIZE_SMALL, BRAIN_TASK_CLASSIFICATION, 10, 3);
     ASSERT_NE(brain, nullptr);
 
     salience_config_t sal_config = salience_default_config();
@@ -1407,7 +1418,7 @@ TEST(PerformanceTests, IntegrationThroughput) {
     printf("  Processed %d inputs in %ldms\n", NUM_INPUTS, duration.count());
     printf("  Throughput: %.2f inputs/second\n", throughput);
 
-    EXPECT_GT(throughput, 10.0f); // At least 10 inputs per second
+    EXPECT_GT(throughput, 10.0f);  // At least 10 inputs per second
 
     salience_evaluator_destroy(salience);
     brain_destroy(brain);
@@ -1417,7 +1428,8 @@ TEST(PerformanceTests, IntegrationThroughput) {
 // Main Test Runner
 //=============================================================================
 
-int main(int argc, char **argv) {
+int main(int argc, char** argv)
+{
     printf("=================================================================\n");
     printf("NIMCP 2.5 - MULTI-MODULE COGNITIVE INTEGRATION TESTS\n");
     printf("=================================================================\n\n");

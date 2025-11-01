@@ -6,13 +6,13 @@
 #ifndef NIMCP_VALIDATE_H
 #define NIMCP_VALIDATE_H
 
-#include <stddef.h>
 #include <stdbool.h>
+#include <stddef.h>
 #include "nimcp_common.h"
 
 /**
  * @brief Validate integer field data
- * 
+ *
  * @param field_data Pointer to field data
  * @param size Size of field in bytes
  * @return true if valid, false if invalid

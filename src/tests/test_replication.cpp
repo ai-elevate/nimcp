@@ -10,15 +10,15 @@
 #include "test_helpers.h"
 
 extern "C" {
-#include "../include/nimcp_replication.h"
 #include "../include/nimcp_brain.h"
+#include "../include/nimcp_replication.h"
 }
 
 #include <gtest/gtest.h>
 #include <string.h>
-#include <unistd.h>
 #include <sys/stat.h>
 #include <sys/types.h>
+#include <unistd.h>
 
 //=============================================================================
 // Test Fixtures and Helpers
@@ -29,26 +29,27 @@ extern "C" {
  * WHY: Set up/tear down shared directory and cluster
  */
 class ReplicationTest : public ::testing::Test {
-protected:
+   protected:
     const char* test_dir = "/tmp/nimcp_replication_test";
     replication_cluster_t cluster;
     brain_t brain;
     bool brain_registered;  // Track if brain was registered with cluster
 
-    void SetUp() override {
+    void SetUp() override
+    {
         // Create test directory
         mkdir(test_dir, 0755);
 
         // Create test brain
-        brain = brain_create("test_brain", BRAIN_SIZE_SMALL,
-                            BRAIN_TASK_CLASSIFICATION, 13, 3);
+        brain = brain_create("test_brain", BRAIN_SIZE_SMALL, BRAIN_TASK_CLASSIFICATION, 13, 3);
         ASSERT_NE(brain, nullptr);
 
         cluster = nullptr;
         brain_registered = false;
     }
 
-    void TearDown() override {
+    void TearDown() override
+    {
         // Clean up cluster (this will destroy registered brains)
         if (cluster) {
             replication_destroy_cluster(cluster);
@@ -75,12 +76,10 @@ protected:
  * WHAT: Test filesystem cluster creation
  * WHY: Verify basic cluster initialization works
  */
-TEST_F(ReplicationTest, CreateFilesystemCluster) {
+TEST_F(ReplicationTest, CreateFilesystemCluster)
+{
     // Create cluster
-    cluster = replication_create_filesystem_cluster(
-        test_dir,
-        "node_1"
-    );
+    cluster = replication_create_filesystem_cluster(test_dir, "node_1");
 
     ASSERT_NE(cluster, nullptr);
 
@@ -97,11 +96,10 @@ TEST_F(ReplicationTest, CreateFilesystemCluster) {
  * WHAT: Test cluster creation with NULL parameters
  * WHY: Verify proper error handling
  */
-TEST_F(ReplicationTest, CreateClusterNullParams) {
-    cluster = replication_create_filesystem_cluster(
-        nullptr,  // NULL directory
-        "node_1"
-    );
+TEST_F(ReplicationTest, CreateClusterNullParams)
+{
+    cluster = replication_create_filesystem_cluster(nullptr,  // NULL directory
+                                                    "node_1");
 
     ASSERT_EQ(cluster, nullptr);
 }
@@ -110,11 +108,10 @@ TEST_F(ReplicationTest, CreateClusterNullParams) {
  * WHAT: Test cluster creation with invalid directory
  * WHY: Verify error handling for filesystem issues
  */
-TEST_F(ReplicationTest, CreateClusterInvalidDirectory) {
-    cluster = replication_create_filesystem_cluster(
-        "/nonexistent/path/that/does/not/exist",
-        "node_1"
-    );
+TEST_F(ReplicationTest, CreateClusterInvalidDirectory)
+{
+    cluster =
+        replication_create_filesystem_cluster("/nonexistent/path/that/does/not/exist", "node_1");
 
     // Should fail gracefully
     ASSERT_EQ(cluster, nullptr);
@@ -128,9 +125,9 @@ TEST_F(ReplicationTest, CreateClusterInvalidDirectory) {
  * WHAT: Test brain registration with cluster
  * WHY: Verify brains can be registered for replication
  */
-TEST_F(ReplicationTest, RegisterBrain) {
-    cluster = replication_create_filesystem_cluster(
-        test_dir, "node_1");
+TEST_F(ReplicationTest, RegisterBrain)
+{
+    cluster = replication_create_filesystem_cluster(test_dir, "node_1");
     ASSERT_NE(cluster, nullptr);
 
     // Register brain
@@ -143,7 +140,8 @@ TEST_F(ReplicationTest, RegisterBrain) {
  * WHAT: Test brain registration with NULL cluster
  * WHY: Verify parameter validation
  */
-TEST_F(ReplicationTest, RegisterBrainNullCluster) {
+TEST_F(ReplicationTest, RegisterBrainNullCluster)
+{
     bool result = replication_register_brain(nullptr, brain, "test_brain");
     ASSERT_FALSE(result);
 }
@@ -152,9 +150,9 @@ TEST_F(ReplicationTest, RegisterBrainNullCluster) {
  * WHAT: Test brain registration with NULL brain
  * WHY: Verify parameter validation
  */
-TEST_F(ReplicationTest, RegisterBrainNullBrain) {
-    cluster = replication_create_filesystem_cluster(
-        test_dir, "node_1");
+TEST_F(ReplicationTest, RegisterBrainNullBrain)
+{
+    cluster = replication_create_filesystem_cluster(test_dir, "node_1");
     ASSERT_NE(cluster, nullptr);
 
     bool result = replication_register_brain(cluster, nullptr, "test_brain");
@@ -165,9 +163,9 @@ TEST_F(ReplicationTest, RegisterBrainNullBrain) {
  * WHAT: Test brain registration with NULL name
  * WHY: Verify parameter validation
  */
-TEST_F(ReplicationTest, RegisterBrainNullName) {
-    cluster = replication_create_filesystem_cluster(
-        test_dir, "node_1");
+TEST_F(ReplicationTest, RegisterBrainNullName)
+{
+    cluster = replication_create_filesystem_cluster(test_dir, "node_1");
     ASSERT_NE(cluster, nullptr);
 
     bool result = replication_register_brain(cluster, brain, nullptr);
@@ -182,17 +180,16 @@ TEST_F(ReplicationTest, RegisterBrainNullName) {
  * WHAT: Test pushing brain state to cluster
  * WHY: Verify brain serialization and storage works
  */
-TEST_F(ReplicationTest, SyncPush) {
-    cluster = replication_create_filesystem_cluster(
-        test_dir, "node_1");
+TEST_F(ReplicationTest, SyncPush)
+{
+    cluster = replication_create_filesystem_cluster(test_dir, "node_1");
     ASSERT_NE(cluster, nullptr);
 
     replication_register_brain(cluster, brain, "test_brain");
     brain_registered = true;  // Mark as registered to prevent double-free
 
     // Train brain a bit
-    float features[13] = {0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5,
-                         0.5, 0.5, 0.5, 0.5, 0.5, 0.5};
+    float features[13] = {0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5};
     brain_learn_example(brain, features, 13, "allow", 0.9);
 
     // Push to cluster
@@ -201,8 +198,7 @@ TEST_F(ReplicationTest, SyncPush) {
 
     // Verify file was created
     char brain_path[512];
-    snprintf(brain_path, sizeof(brain_path),
-             "%s/brains/test_brain.nimcp", test_dir);
+    snprintf(brain_path, sizeof(brain_path), "%s/brains/test_brain.nimcp", test_dir);
 
     struct stat st;
     ASSERT_EQ(stat(brain_path, &st), 0);
@@ -213,25 +209,23 @@ TEST_F(ReplicationTest, SyncPush) {
  * WHAT: Test pulling brain state from cluster
  * WHY: Verify brain deserialization and loading works
  */
-TEST_F(ReplicationTest, SyncPull) {
+TEST_F(ReplicationTest, SyncPull)
+{
     // Create and push brain from first cluster
-    cluster = replication_create_filesystem_cluster(
-        test_dir, "node_1");
+    cluster = replication_create_filesystem_cluster(test_dir, "node_1");
     ASSERT_NE(cluster, nullptr);
 
     replication_register_brain(cluster, brain, "test_brain");
     brain_registered = true;  // Mark as registered to prevent double-free
 
-    float features[13] = {0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5,
-                         0.5, 0.5, 0.5, 0.5, 0.5, 0.5};
+    float features[13] = {0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5};
     brain_learn_example(brain, features, 13, "allow", 0.9);
 
     bool pushed = replication_sync_push(cluster, "test_brain");
     ASSERT_TRUE(pushed);
 
     // Create second cluster (same shared dir)
-    replication_cluster_t cluster2 = replication_create_filesystem_cluster(
-        test_dir, "node_2");
+    replication_cluster_t cluster2 = replication_create_filesystem_cluster(test_dir, "node_2");
     ASSERT_NE(cluster2, nullptr);
 
     // Pull from cluster WITHOUT pre-registering a brain
@@ -247,7 +241,8 @@ TEST_F(ReplicationTest, SyncPull) {
  * WHAT: Test sync push with NULL cluster
  * WHY: Verify parameter validation
  */
-TEST_F(ReplicationTest, SyncPushNullCluster) {
+TEST_F(ReplicationTest, SyncPushNullCluster)
+{
     bool result = replication_sync_push(nullptr, "test_brain");
     ASSERT_FALSE(result);
 }
@@ -256,7 +251,8 @@ TEST_F(ReplicationTest, SyncPushNullCluster) {
  * WHAT: Test sync pull with NULL cluster
  * WHY: Verify parameter validation
  */
-TEST_F(ReplicationTest, SyncPullNullCluster) {
+TEST_F(ReplicationTest, SyncPullNullCluster)
+{
     bool result = replication_sync_pull(nullptr, "test_brain");
     ASSERT_FALSE(result);
 }
@@ -265,9 +261,9 @@ TEST_F(ReplicationTest, SyncPullNullCluster) {
  * WHAT: Test sync push with unregistered brain
  * WHY: Verify error handling
  */
-TEST_F(ReplicationTest, SyncPushUnregisteredBrain) {
-    cluster = replication_create_filesystem_cluster(
-        test_dir, "node_1");
+TEST_F(ReplicationTest, SyncPushUnregisteredBrain)
+{
+    cluster = replication_create_filesystem_cluster(test_dir, "node_1");
     ASSERT_NE(cluster, nullptr);
 
     // Don't register brain
@@ -283,9 +279,9 @@ TEST_F(ReplicationTest, SyncPushUnregisteredBrain) {
  * WHAT: Test enabling auto-sync
  * WHY: Verify auto-sync configuration works
  */
-TEST_F(ReplicationTest, SetAutosync) {
-    cluster = replication_create_filesystem_cluster(
-        test_dir, "node_1");
+TEST_F(ReplicationTest, SetAutosync)
+{
+    cluster = replication_create_filesystem_cluster(test_dir, "node_1");
     ASSERT_NE(cluster, nullptr);
 
     replication_register_brain(cluster, brain, "test_brain");
@@ -304,7 +300,8 @@ TEST_F(ReplicationTest, SetAutosync) {
  * WHAT: Test auto-sync with NULL cluster
  * WHY: Verify parameter validation
  */
-TEST_F(ReplicationTest, SetAutosyncNullCluster) {
+TEST_F(ReplicationTest, SetAutosyncNullCluster)
+{
     bool result = replication_set_autosync(nullptr, "test_brain", true);
     ASSERT_FALSE(result);
 }
@@ -317,9 +314,9 @@ TEST_F(ReplicationTest, SetAutosyncNullCluster) {
  * WHAT: Test getting cluster status
  * WHY: Verify node discovery works
  */
-TEST_F(ReplicationTest, GetClusterStatus) {
-    cluster = replication_create_filesystem_cluster(
-        test_dir, "node_1");
+TEST_F(ReplicationTest, GetClusterStatus)
+{
+    cluster = replication_create_filesystem_cluster(test_dir, "node_1");
     ASSERT_NE(cluster, nullptr);
 
     // Wait a bit for heartbeat to register
@@ -347,9 +344,9 @@ TEST_F(ReplicationTest, GetClusterStatus) {
  * WHAT: Test cluster health check
  * WHY: Verify health monitoring works
  */
-TEST_F(ReplicationTest, IsHealthy) {
-    cluster = replication_create_filesystem_cluster(
-        test_dir, "node_1");
+TEST_F(ReplicationTest, IsHealthy)
+{
+    cluster = replication_create_filesystem_cluster(test_dir, "node_1");
     ASSERT_NE(cluster, nullptr);
 
     // Cluster should be healthy immediately after creation
@@ -362,7 +359,8 @@ TEST_F(ReplicationTest, IsHealthy) {
  * WHAT: Test health check with NULL cluster
  * WHY: Verify parameter validation
  */
-TEST_F(ReplicationTest, IsHealthyNullCluster) {
+TEST_F(ReplicationTest, IsHealthyNullCluster)
+{
     bool healthy = replication_is_healthy(nullptr);
     ASSERT_FALSE(healthy);
 }
@@ -375,9 +373,9 @@ TEST_F(ReplicationTest, IsHealthyNullCluster) {
  * WHAT: Test unregistering brain from cluster
  * WHY: Verify cleanup works correctly
  */
-TEST_F(ReplicationTest, UnregisterBrain) {
-    cluster = replication_create_filesystem_cluster(
-        test_dir, "node_1");
+TEST_F(ReplicationTest, UnregisterBrain)
+{
+    cluster = replication_create_filesystem_cluster(test_dir, "node_1");
     ASSERT_NE(cluster, nullptr);
 
     replication_register_brain(cluster, brain, "test_brain");
@@ -399,7 +397,8 @@ TEST_F(ReplicationTest, UnregisterBrain) {
  * WHAT: Test unregister with NULL cluster
  * WHY: Verify parameter validation
  */
-TEST_F(ReplicationTest, UnregisterBrainNullCluster) {
+TEST_F(ReplicationTest, UnregisterBrainNullCluster)
+{
     bool result = replication_unregister_brain(nullptr, "test_brain");
     ASSERT_FALSE(result);
 }
@@ -412,26 +411,24 @@ TEST_F(ReplicationTest, UnregisterBrainNullCluster) {
  * WHAT: Test multiple nodes sharing same cluster
  * WHY: Verify actual distributed replication works
  */
-TEST_F(ReplicationTest, MultiNodeReplication) {
+TEST_F(ReplicationTest, MultiNodeReplication)
+{
     // Create first node
-    cluster = replication_create_filesystem_cluster(
-        test_dir, "node_1");
+    cluster = replication_create_filesystem_cluster(test_dir, "node_1");
     ASSERT_NE(cluster, nullptr);
 
     replication_register_brain(cluster, brain, "shared_brain");
     brain_registered = true;  // Mark as registered to prevent double-free
 
     // Train brain
-    float features[13] = {0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5,
-                         0.5, 0.5, 0.5, 0.5, 0.5, 0.5};
+    float features[13] = {0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5};
     brain_learn_example(brain, features, 13, "allow", 0.9);
 
     // Push to cluster
     replication_sync_push(cluster, "shared_brain");
 
     // Create second node and pull brain from cluster
-    replication_cluster_t cluster2 = replication_create_filesystem_cluster(
-        test_dir, "node_2");
+    replication_cluster_t cluster2 = replication_create_filesystem_cluster(test_dir, "node_2");
     ASSERT_NE(cluster2, nullptr);
 
     // Pull from cluster (this will create and register the brain)

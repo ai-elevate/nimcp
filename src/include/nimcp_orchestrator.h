@@ -5,10 +5,10 @@
 #ifndef NIMCP_ORCHESTRATOR_H
 #define NIMCP_ORCHESTRATOR_H
 
-#include "nimcp_protocol.h"
+#include "nimcp_export.h"
 #include "nimcp_neuralnet.h"
 #include "nimcp_p2pnode.h"
-#include "nimcp_export.h"
+#include "nimcp_protocol.h"
 
 /**
  * @file nimcp_orchestrator.h
@@ -30,48 +30,48 @@
  * @brief Orchestration modes
  */
 typedef enum {
-    ORCHESTRATION_MODE_AUTONOMOUS,    /**< Fully autonomous, no orchestrator */
-    ORCHESTRATION_MODE_GUIDED,        /**< Orchestrator provides hints */
-    ORCHESTRATION_MODE_MANAGED        /**< Orchestrator actively controls */
+    ORCHESTRATION_MODE_AUTONOMOUS, /**< Fully autonomous, no orchestrator */
+    ORCHESTRATION_MODE_GUIDED,     /**< Orchestrator provides hints */
+    ORCHESTRATION_MODE_MANAGED     /**< Orchestrator actively controls */
 } orchestration_mode_t;
 
 /**
  * @brief Cluster information
  */
 typedef struct {
-    uint32_t cluster_id;              /**< Unique cluster identifier */
-    feature_code_t specialization;    /**< Primary feature specialization */
-    uint32_t* member_nodes;          /**< Array of member node IDs */
-    uint32_t num_members;            /**< Number of members */
-    uint32_t* hub_nodes;             /**< Array of hub node IDs */
-    uint32_t num_hubs;               /**< Number of hubs */
-    float density;                    /**< Internal connectivity (0.0-1.0) */
-    float mean_spike_rate;           /**< Average spike rate */
-    float synchrony_index;           /**< Synchronization measure */
+    uint32_t cluster_id;           /**< Unique cluster identifier */
+    feature_code_t specialization; /**< Primary feature specialization */
+    uint32_t* member_nodes;        /**< Array of member node IDs */
+    uint32_t num_members;          /**< Number of members */
+    uint32_t* hub_nodes;           /**< Array of hub node IDs */
+    uint32_t num_hubs;             /**< Number of hubs */
+    float density;                 /**< Internal connectivity (0.0-1.0) */
+    float mean_spike_rate;         /**< Average spike rate */
+    float synchrony_index;         /**< Synchronization measure */
 } cluster_info_t;
 
 /**
  * @brief Network topology statistics
  */
 typedef struct {
-    uint32_t total_nodes;            /**< Total nodes in network */
-    uint32_t total_links;            /**< Total synaptic connections */
-    uint32_t num_clusters;           /**< Number of detected clusters */
-    float avg_path_length;           /**< Average path length */
-    float clustering_coefficient;     /**< Network clustering */
-    float network_efficiency;        /**< Communication efficiency */
-    uint64_t observation_time;       /**< When stats were collected */
+    uint32_t total_nodes;         /**< Total nodes in network */
+    uint32_t total_links;         /**< Total synaptic connections */
+    uint32_t num_clusters;        /**< Number of detected clusters */
+    float avg_path_length;        /**< Average path length */
+    float clustering_coefficient; /**< Network clustering */
+    float network_efficiency;     /**< Communication efficiency */
+    uint64_t observation_time;    /**< When stats were collected */
 } topology_stats_t;
 
 /**
  * @brief Learning rate policy
  */
 typedef struct {
-    uint32_t target_spec;            /**< Target (node ID, cluster ID, or 0xFFFFFFFF for global) */
-    float learning_rate;             /**< Learning rate value */
-    uint64_t effective_time;         /**< When to apply */
-    uint32_t duration_ms;            /**< How long to apply (0 = permanent) */
-    bool adaptive;                   /**< Adjust based on performance */
+    uint32_t target_spec;    /**< Target (node ID, cluster ID, or 0xFFFFFFFF for global) */
+    float learning_rate;     /**< Learning rate value */
+    uint64_t effective_time; /**< When to apply */
+    uint32_t duration_ms;    /**< How long to apply (0 = permanent) */
+    bool adaptive;           /**< Adjust based on performance */
 } learning_rate_policy_t;
 
 //=============================================================================
@@ -88,22 +88,20 @@ typedef struct {
  * @param num_clusters Number of clusters
  * @param context User context
  */
-typedef void (*orchestrator_callback_t)(
-    const topology_stats_t* stats,
-    const cluster_info_t* clusters,
-    uint32_t num_clusters,
-    void* context);
+typedef void (*orchestrator_callback_t)(const topology_stats_t* stats,
+                                        const cluster_info_t* clusters, uint32_t num_clusters,
+                                        void* context);
 
 /**
  * @brief Orchestrator configuration
  */
 typedef struct {
     orchestration_mode_t mode;        /**< Orchestration mode */
-    uint32_t update_interval_ms;     /**< How often to run orchestrator */
+    uint32_t update_interval_ms;      /**< How often to run orchestrator */
     float optimization_threshold;     /**< Min improvement to apply changes */
     orchestrator_callback_t callback; /**< Decision callback */
-    void* callback_context;          /**< Callback context */
-    bool enable_llm_integration;     /**< Enable LLM for semantic tasks */
+    void* callback_context;           /**< Callback context */
+    bool enable_llm_integration;      /**< Enable LLM for semantic tasks */
 } orchestrator_config_t;
 
 /**
@@ -134,9 +132,7 @@ void orchestrator_destroy(orchestrator_t orch);
  * @param network Neural network for this node
  * @return true on success
  */
-bool orchestrator_register_node(orchestrator_t orch,
-                               uint32_t node_id,
-                               neural_network_t network);
+bool orchestrator_register_node(orchestrator_t orch, uint32_t node_id, neural_network_t network);
 
 /**
  * @brief Unregister a node from the orchestrator
@@ -165,8 +161,7 @@ bool orchestrator_update(orchestrator_t orch, uint64_t timestamp);
  * @param stats Output: topology statistics
  * @return true on success
  */
-bool orchestrator_get_topology_stats(orchestrator_t orch,
-                                    topology_stats_t* stats);
+bool orchestrator_get_topology_stats(orchestrator_t orch, topology_stats_t* stats);
 
 /**
  * @brief Get detected clusters
@@ -176,9 +171,8 @@ bool orchestrator_get_topology_stats(orchestrator_t orch,
  * @param max_clusters Maximum clusters to return
  * @return Number of clusters returned
  */
-uint32_t orchestrator_get_clusters(orchestrator_t orch,
-                                  cluster_info_t* clusters,
-                                  uint32_t max_clusters);
+uint32_t orchestrator_get_clusters(orchestrator_t orch, cluster_info_t* clusters,
+                                   uint32_t max_clusters);
 
 //=============================================================================
 // Learning Rate Management
@@ -192,9 +186,8 @@ uint32_t orchestrator_get_clusters(orchestrator_t orch,
  * @param duration_ms How long to apply (0 = permanent)
  * @return true on success
  */
-bool orchestrator_set_global_learning_rate(orchestrator_t orch,
-                                          float learning_rate,
-                                          uint32_t duration_ms);
+bool orchestrator_set_global_learning_rate(orchestrator_t orch, float learning_rate,
+                                           uint32_t duration_ms);
 
 /**
  * @brief Set learning rate for specific cluster
@@ -205,10 +198,8 @@ bool orchestrator_set_global_learning_rate(orchestrator_t orch,
  * @param duration_ms How long to apply
  * @return true on success
  */
-bool orchestrator_set_cluster_learning_rate(orchestrator_t orch,
-                                           uint32_t cluster_id,
-                                           float learning_rate,
-                                           uint32_t duration_ms);
+bool orchestrator_set_cluster_learning_rate(orchestrator_t orch, uint32_t cluster_id,
+                                            float learning_rate, uint32_t duration_ms);
 
 /**
  * @brief Apply learning rate policy
@@ -217,8 +208,7 @@ bool orchestrator_set_cluster_learning_rate(orchestrator_t orch,
  * @param policy Policy to apply
  * @return true on success
  */
-bool orchestrator_apply_learning_policy(orchestrator_t orch,
-                                       const learning_rate_policy_t* policy);
+bool orchestrator_apply_learning_policy(orchestrator_t orch, const learning_rate_policy_t* policy);
 
 //=============================================================================
 // Topology Optimization
@@ -233,10 +223,8 @@ bool orchestrator_apply_learning_policy(orchestrator_t orch,
  * @param weight Suggested weight
  * @return true if connection should be added
  */
-bool orchestrator_suggest_connection(orchestrator_t orch,
-                                    uint32_t from_node,
-                                    uint32_t to_node,
-                                    float* weight);
+bool orchestrator_suggest_connection(orchestrator_t orch, uint32_t from_node, uint32_t to_node,
+                                     float* weight);
 
 /**
  * @brief Optimize network topology
@@ -247,8 +235,7 @@ bool orchestrator_suggest_connection(orchestrator_t orch,
  * @param max_changes Maximum changes to suggest
  * @return Number of changes suggested
  */
-uint32_t orchestrator_optimize_topology(orchestrator_t orch,
-                                       uint32_t max_changes);
+uint32_t orchestrator_optimize_topology(orchestrator_t orch, uint32_t max_changes);
 
 //=============================================================================
 // Feature Namespace Management
@@ -258,11 +245,11 @@ uint32_t orchestrator_optimize_topology(orchestrator_t orch,
  * @brief Feature namespace definition
  */
 typedef struct {
-    uint8_t domain;                  /**< Domain code */
-    char name[64];                   /**< Domain name */
-    feature_code_t range_start;      /**< Start of range */
-    feature_code_t range_end;        /**< End of range */
-    char description[256];           /**< Description */
+    uint8_t domain;             /**< Domain code */
+    char name[64];              /**< Domain name */
+    feature_code_t range_start; /**< Start of range */
+    feature_code_t range_end;   /**< End of range */
+    char description[256];      /**< Description */
 } feature_namespace_t;
 
 /**
@@ -272,8 +259,7 @@ typedef struct {
  * @param ns Namespace definition
  * @return true on success
  */
-bool orchestrator_define_namespace(orchestrator_t orch,
-                                  const feature_namespace_t* ns);
+bool orchestrator_define_namespace(orchestrator_t orch, const feature_namespace_t* ns);
 
 /**
  * @brief Get feature namespace by domain
@@ -283,9 +269,7 @@ bool orchestrator_define_namespace(orchestrator_t orch,
  * @param ns Output: namespace definition
  * @return true if found
  */
-bool orchestrator_get_namespace(orchestrator_t orch,
-                               uint8_t domain,
-                               feature_namespace_t* ns);
+bool orchestrator_get_namespace(orchestrator_t orch, uint8_t domain, feature_namespace_t* ns);
 
 //=============================================================================
 // LLM Integration
@@ -295,20 +279,20 @@ bool orchestrator_get_namespace(orchestrator_t orch,
  * @brief LLM query type
  */
 typedef enum {
-    LLM_QUERY_SEMANTIC_GROUNDING,    /**< Ground feature codes in semantics */
-    LLM_QUERY_TOPOLOGY_ADVICE,       /**< Get topology suggestions */
-    LLM_QUERY_POLICY_GENERATION,     /**< Generate ethical policies */
-    LLM_QUERY_EXPLANATION            /**< Explain network behavior */
+    LLM_QUERY_SEMANTIC_GROUNDING, /**< Ground feature codes in semantics */
+    LLM_QUERY_TOPOLOGY_ADVICE,    /**< Get topology suggestions */
+    LLM_QUERY_POLICY_GENERATION,  /**< Generate ethical policies */
+    LLM_QUERY_EXPLANATION         /**< Explain network behavior */
 } llm_query_type_t;
 
 /**
  * @brief LLM query result
  */
 typedef struct {
-    llm_query_type_t query_type;     /**< Type of query */
-    char response[4096];             /**< LLM response text */
-    float confidence;                /**< Confidence in response */
-    uint64_t timestamp;             /**< When response was generated */
+    llm_query_type_t query_type; /**< Type of query */
+    char response[4096];         /**< LLM response text */
+    float confidence;            /**< Confidence in response */
+    uint64_t timestamp;          /**< When response was generated */
 } llm_result_t;
 
 /**
@@ -320,10 +304,8 @@ typedef struct {
  * @param result Output: LLM result
  * @return true on success
  */
-bool orchestrator_llm_query(orchestrator_t orch,
-                           llm_query_type_t query_type,
-                           const void* query_data,
-                           llm_result_t* result);
+bool orchestrator_llm_query(orchestrator_t orch, llm_query_type_t query_type,
+                            const void* query_data, llm_result_t* result);
 
 //=============================================================================
 // Utility Functions
@@ -337,8 +319,7 @@ bool orchestrator_llm_query(orchestrator_t orch,
  * @param buffer_size Buffer size
  * @return Bytes written, or -1 on error
  */
-int orchestrator_create_learning_rate_message(const learning_rate_policy_t* policy,
-                                              uint8_t* buffer,
+int orchestrator_create_learning_rate_message(const learning_rate_policy_t* policy, uint8_t* buffer,
                                               uint32_t buffer_size);
 
 /**
@@ -349,9 +330,8 @@ int orchestrator_create_learning_rate_message(const learning_rate_policy_t* poli
  * @param buffer_size Buffer size
  * @return Bytes written, or -1 on error
  */
-int orchestrator_create_cluster_announce(const cluster_info_t* cluster,
-                                        uint8_t* buffer,
-                                        uint32_t buffer_size);
+int orchestrator_create_cluster_announce(const cluster_info_t* cluster, uint8_t* buffer,
+                                         uint32_t buffer_size);
 
 /**
  * @brief Get human-readable name for orchestration mode
@@ -361,4 +341,4 @@ int orchestrator_create_cluster_announce(const cluster_info_t* cluster,
  */
 const char* orchestrator_mode_name(orchestration_mode_t mode);
 
-#endif // NIMCP_ORCHESTRATOR_H
+#endif  // NIMCP_ORCHESTRATOR_H

@@ -20,7 +20,7 @@ extern "C" {
 //=============================================================================
 
 class WallClockTimeTest : public ::testing::Test {
-protected:
+   protected:
     void SetUp() override {}
     void TearDown() override {}
 };
@@ -29,7 +29,8 @@ protected:
  * WHAT: Test wall clock time returns reasonable values
  * WHY: Verify basic functionality of time retrieval
  */
-TEST_F(WallClockTimeTest, GetMicrosecondsReturnsNonZero) {
+TEST_F(WallClockTimeTest, GetMicrosecondsReturnsNonZero)
+{
     uint64_t time_us = nimcp_time_get_us();
     EXPECT_GT(time_us, 0);
 
@@ -43,20 +44,22 @@ TEST_F(WallClockTimeTest, GetMicrosecondsReturnsNonZero) {
  * WHAT: Test wall clock time increases
  * WHY: Time should always move forward
  */
-TEST_F(WallClockTimeTest, GetMicrosecondsIncreases) {
+TEST_F(WallClockTimeTest, GetMicrosecondsIncreases)
+{
     uint64_t time1 = nimcp_time_get_us();
     std::this_thread::sleep_for(std::chrono::microseconds(1000));
     uint64_t time2 = nimcp_time_get_us();
 
     EXPECT_GT(time2, time1);
-    EXPECT_GE(time2 - time1, 1000); // At least 1ms elapsed
+    EXPECT_GE(time2 - time1, 1000);  // At least 1ms elapsed
 }
 
 /**
  * WHAT: Test millisecond precision wall clock
  * WHY: Verify conversion from microseconds works correctly
  */
-TEST_F(WallClockTimeTest, GetMillisecondsMatchesMicroseconds) {
+TEST_F(WallClockTimeTest, GetMillisecondsMatchesMicroseconds)
+{
     uint64_t time_us = nimcp_time_get_us();
     uint64_t time_ms = nimcp_time_get_ms();
 
@@ -69,7 +72,8 @@ TEST_F(WallClockTimeTest, GetMillisecondsMatchesMicroseconds) {
  * WHAT: Test second precision wall clock
  * WHY: Verify conversion to seconds works correctly
  */
-TEST_F(WallClockTimeTest, GetSecondsMatchesMicroseconds) {
+TEST_F(WallClockTimeTest, GetSecondsMatchesMicroseconds)
+{
     uint64_t time_us = nimcp_time_get_us();
     uint64_t time_sec = nimcp_time_get_sec();
 
@@ -83,7 +87,7 @@ TEST_F(WallClockTimeTest, GetSecondsMatchesMicroseconds) {
 //=============================================================================
 
 class MonotonicTimeTest : public ::testing::Test {
-protected:
+   protected:
     void SetUp() override {}
     void TearDown() override {}
 };
@@ -92,7 +96,8 @@ protected:
  * WHAT: Test monotonic time returns non-zero values
  * WHY: Verify basic functionality
  */
-TEST_F(MonotonicTimeTest, GetNanosecondsReturnsNonZero) {
+TEST_F(MonotonicTimeTest, GetNanosecondsReturnsNonZero)
+{
     uint64_t time_ns = nimcp_time_monotonic_ns();
     EXPECT_GT(time_ns, 0);
 }
@@ -101,7 +106,8 @@ TEST_F(MonotonicTimeTest, GetNanosecondsReturnsNonZero) {
  * WHAT: Test monotonic time increases
  * WHY: Monotonic time should never go backwards
  */
-TEST_F(MonotonicTimeTest, MonotonicTimeNeverGoesBackward) {
+TEST_F(MonotonicTimeTest, MonotonicTimeNeverGoesBackward)
+{
     uint64_t time1 = nimcp_time_monotonic_ns();
     std::this_thread::sleep_for(std::chrono::microseconds(100));
     uint64_t time2 = nimcp_time_monotonic_ns();
@@ -117,28 +123,30 @@ TEST_F(MonotonicTimeTest, MonotonicTimeNeverGoesBackward) {
  * WHAT: Test microsecond monotonic time
  * WHY: Verify precision conversion
  */
-TEST_F(MonotonicTimeTest, MonotonicMicrosecondsMatchesNanoseconds) {
+TEST_F(MonotonicTimeTest, MonotonicMicrosecondsMatchesNanoseconds)
+{
     uint64_t time_ns = nimcp_time_monotonic_ns();
     uint64_t time_us = nimcp_time_monotonic_us();
 
     // Should be within reasonable range (1ms tolerance for timing variations)
     uint64_t converted_us = time_ns / 1000;
     uint64_t diff = converted_us > time_us ? converted_us - time_us : time_us - converted_us;
-    EXPECT_LT(diff, 1000); // Within 1ms
+    EXPECT_LT(diff, 1000);  // Within 1ms
 }
 
 /**
  * WHAT: Test millisecond monotonic time
  * WHY: Verify precision conversion
  */
-TEST_F(MonotonicTimeTest, MonotonicMillisecondsMatchesNanoseconds) {
+TEST_F(MonotonicTimeTest, MonotonicMillisecondsMatchesNanoseconds)
+{
     uint64_t time_ns = nimcp_time_monotonic_ns();
     uint64_t time_ms = nimcp_time_monotonic_ms();
 
     // Should be within reasonable range (10ms tolerance)
     uint64_t converted_ms = time_ns / 1000000;
     uint64_t diff = converted_ms > time_ms ? converted_ms - time_ms : time_ms - converted_ms;
-    EXPECT_LT(diff, 10); // Within 10ms
+    EXPECT_LT(diff, 10);  // Within 10ms
 }
 
 //=============================================================================
@@ -146,7 +154,7 @@ TEST_F(MonotonicTimeTest, MonotonicMillisecondsMatchesNanoseconds) {
 //=============================================================================
 
 class ElapsedTimeTest : public ::testing::Test {
-protected:
+   protected:
     void SetUp() override {}
     void TearDown() override {}
 };
@@ -155,7 +163,8 @@ protected:
  * WHAT: Test elapsed microseconds calculation
  * WHY: Verify duration measurement works correctly
  */
-TEST_F(ElapsedTimeTest, ElapsedMicrosecondsAccurate) {
+TEST_F(ElapsedTimeTest, ElapsedMicrosecondsAccurate)
+{
     uint64_t start = nimcp_time_monotonic_us();
 
     // Sleep for approximately 5ms
@@ -172,7 +181,8 @@ TEST_F(ElapsedTimeTest, ElapsedMicrosecondsAccurate) {
  * WHAT: Test elapsed milliseconds calculation
  * WHY: Verify duration measurement in milliseconds
  */
-TEST_F(ElapsedTimeTest, ElapsedMillisecondsAccurate) {
+TEST_F(ElapsedTimeTest, ElapsedMillisecondsAccurate)
+{
     uint64_t start = nimcp_time_monotonic_ms();
 
     // Sleep for approximately 10ms
@@ -189,7 +199,8 @@ TEST_F(ElapsedTimeTest, ElapsedMillisecondsAccurate) {
  * WHAT: Test elapsed nanoseconds calculation
  * WHY: Verify high-precision duration measurement
  */
-TEST_F(ElapsedTimeTest, ElapsedNanosecondsAccurate) {
+TEST_F(ElapsedTimeTest, ElapsedNanosecondsAccurate)
+{
     uint64_t start = nimcp_time_monotonic_ns();
 
     // Sleep for approximately 2ms
@@ -206,7 +217,8 @@ TEST_F(ElapsedTimeTest, ElapsedNanosecondsAccurate) {
  * WHAT: Test elapsed time with zero start (edge case)
  * WHY: Verify handling of wraparound scenario
  */
-TEST_F(ElapsedTimeTest, ElapsedFromZeroStart) {
+TEST_F(ElapsedTimeTest, ElapsedFromZeroStart)
+{
     uint64_t elapsed_us = nimcp_time_elapsed_us(0);
     uint64_t elapsed_ms = nimcp_time_elapsed_ms(0);
     uint64_t elapsed_ns = nimcp_time_elapsed_ns(0);
@@ -221,7 +233,8 @@ TEST_F(ElapsedTimeTest, ElapsedFromZeroStart) {
  * WHAT: Test multiple consecutive elapsed time measurements
  * WHY: Ensure repeated measurements are consistent
  */
-TEST_F(ElapsedTimeTest, ConsecutiveElapsedMeasurements) {
+TEST_F(ElapsedTimeTest, ConsecutiveElapsedMeasurements)
+{
     uint64_t start = nimcp_time_monotonic_us();
 
     std::this_thread::sleep_for(std::chrono::milliseconds(1));
@@ -235,8 +248,8 @@ TEST_F(ElapsedTimeTest, ConsecutiveElapsedMeasurements) {
 
     // Difference should be approximately 1ms
     uint64_t diff = elapsed2 - elapsed1;
-    EXPECT_GE(diff, 1000); // At least 1ms
-    EXPECT_LT(diff, 10000); // Less than 10ms
+    EXPECT_GE(diff, 1000);   // At least 1ms
+    EXPECT_LT(diff, 10000);  // Less than 10ms
 }
 
 //=============================================================================
@@ -244,7 +257,7 @@ TEST_F(ElapsedTimeTest, ConsecutiveElapsedMeasurements) {
 //=============================================================================
 
 class TimeConversionTest : public ::testing::Test {
-protected:
+   protected:
     void SetUp() override {}
     void TearDown() override {}
 };
@@ -253,7 +266,8 @@ protected:
  * WHAT: Test microseconds to milliseconds conversion
  * WHY: Verify conversion accuracy
  */
-TEST_F(TimeConversionTest, MicrosecondsToMilliseconds) {
+TEST_F(TimeConversionTest, MicrosecondsToMilliseconds)
+{
     EXPECT_EQ(nimcp_time_us_to_ms(1000), 1);
     EXPECT_EQ(nimcp_time_us_to_ms(5000), 5);
     EXPECT_EQ(nimcp_time_us_to_ms(1000000), 1000);
@@ -264,7 +278,8 @@ TEST_F(TimeConversionTest, MicrosecondsToMilliseconds) {
  * WHAT: Test microseconds to seconds conversion
  * WHY: Verify conversion accuracy
  */
-TEST_F(TimeConversionTest, MicrosecondsToSeconds) {
+TEST_F(TimeConversionTest, MicrosecondsToSeconds)
+{
     EXPECT_EQ(nimcp_time_us_to_sec(1000000), 1);
     EXPECT_EQ(nimcp_time_us_to_sec(5000000), 5);
     EXPECT_EQ(nimcp_time_us_to_sec(60000000), 60);
@@ -275,7 +290,8 @@ TEST_F(TimeConversionTest, MicrosecondsToSeconds) {
  * WHAT: Test milliseconds to microseconds conversion
  * WHY: Verify conversion accuracy
  */
-TEST_F(TimeConversionTest, MillisecondsToMicroseconds) {
+TEST_F(TimeConversionTest, MillisecondsToMicroseconds)
+{
     EXPECT_EQ(nimcp_time_ms_to_us(1), 1000);
     EXPECT_EQ(nimcp_time_ms_to_us(5), 5000);
     EXPECT_EQ(nimcp_time_ms_to_us(1000), 1000000);
@@ -286,7 +302,8 @@ TEST_F(TimeConversionTest, MillisecondsToMicroseconds) {
  * WHAT: Test seconds to microseconds conversion
  * WHY: Verify conversion accuracy
  */
-TEST_F(TimeConversionTest, SecondsToMicroseconds) {
+TEST_F(TimeConversionTest, SecondsToMicroseconds)
+{
     EXPECT_EQ(nimcp_time_sec_to_us(1), 1000000);
     EXPECT_EQ(nimcp_time_sec_to_us(5), 5000000);
     EXPECT_EQ(nimcp_time_sec_to_us(60), 60000000);
@@ -297,7 +314,8 @@ TEST_F(TimeConversionTest, SecondsToMicroseconds) {
  * WHAT: Test nanoseconds to microseconds conversion
  * WHY: Verify conversion accuracy
  */
-TEST_F(TimeConversionTest, NanosecondsToMicroseconds) {
+TEST_F(TimeConversionTest, NanosecondsToMicroseconds)
+{
     EXPECT_EQ(nimcp_time_ns_to_us(1000), 1);
     EXPECT_EQ(nimcp_time_ns_to_us(5000), 5);
     EXPECT_EQ(nimcp_time_ns_to_us(1000000), 1000);
@@ -308,7 +326,8 @@ TEST_F(TimeConversionTest, NanosecondsToMicroseconds) {
  * WHAT: Test microseconds to nanoseconds conversion
  * WHY: Verify conversion accuracy
  */
-TEST_F(TimeConversionTest, MicrosecondsToNanoseconds) {
+TEST_F(TimeConversionTest, MicrosecondsToNanoseconds)
+{
     EXPECT_EQ(nimcp_time_us_to_ns(1), 1000);
     EXPECT_EQ(nimcp_time_us_to_ns(5), 5000);
     EXPECT_EQ(nimcp_time_us_to_ns(1000), 1000000);
@@ -319,7 +338,8 @@ TEST_F(TimeConversionTest, MicrosecondsToNanoseconds) {
  * WHAT: Test conversion round-trip accuracy
  * WHY: Ensure conversions are reversible
  */
-TEST_F(TimeConversionTest, ConversionRoundTrip) {
+TEST_F(TimeConversionTest, ConversionRoundTrip)
+{
     uint64_t original_us = 123456;
 
     // us -> ms -> us
@@ -340,7 +360,7 @@ TEST_F(TimeConversionTest, ConversionRoundTrip) {
 //=============================================================================
 
 class SleepTest : public ::testing::Test {
-protected:
+   protected:
     void SetUp() override {}
     void TearDown() override {}
 };
@@ -349,7 +369,8 @@ protected:
  * WHAT: Test microsecond sleep function
  * WHY: Verify sleep duration is accurate
  */
-TEST_F(SleepTest, SleepMicrosecondsAccurate) {
+TEST_F(SleepTest, SleepMicrosecondsAccurate)
+{
     uint64_t start = nimcp_time_monotonic_us();
 
     // Sleep for 5ms = 5000us
@@ -366,7 +387,8 @@ TEST_F(SleepTest, SleepMicrosecondsAccurate) {
  * WHAT: Test millisecond sleep function
  * WHY: Verify sleep duration is accurate
  */
-TEST_F(SleepTest, SleepMillisecondsAccurate) {
+TEST_F(SleepTest, SleepMillisecondsAccurate)
+{
     uint64_t start = nimcp_time_monotonic_ms();
 
     // Sleep for 10ms
@@ -383,7 +405,8 @@ TEST_F(SleepTest, SleepMillisecondsAccurate) {
  * WHAT: Test zero sleep duration
  * WHY: Verify edge case handling
  */
-TEST_F(SleepTest, SleepZeroDuration) {
+TEST_F(SleepTest, SleepZeroDuration)
+{
     uint64_t start = nimcp_time_monotonic_us();
 
     nimcp_time_sleep_us(0);
@@ -398,7 +421,8 @@ TEST_F(SleepTest, SleepZeroDuration) {
  * WHAT: Test very short sleep duration
  * WHY: Verify handling of sub-millisecond sleeps
  */
-TEST_F(SleepTest, SleepShortDuration) {
+TEST_F(SleepTest, SleepShortDuration)
+{
     uint64_t start = nimcp_time_monotonic_us();
 
     // Sleep for 100 microseconds
@@ -414,7 +438,8 @@ TEST_F(SleepTest, SleepShortDuration) {
  * WHAT: Test multiple consecutive sleeps
  * WHY: Ensure sleep function works repeatedly
  */
-TEST_F(SleepTest, MultipleSleeps) {
+TEST_F(SleepTest, MultipleSleeps)
+{
     uint64_t start = nimcp_time_monotonic_ms();
 
     // Three 2ms sleeps = ~6ms total
@@ -434,7 +459,7 @@ TEST_F(SleepTest, MultipleSleeps) {
 //=============================================================================
 
 class TimeIntegrationTest : public ::testing::Test {
-protected:
+   protected:
     void SetUp() override {}
     void TearDown() override {}
 };
@@ -443,7 +468,8 @@ protected:
  * WHAT: Test timing a real operation
  * WHY: Verify time functions work in real-world scenario
  */
-TEST_F(TimeIntegrationTest, TimingRealOperation) {
+TEST_F(TimeIntegrationTest, TimingRealOperation)
+{
     uint64_t start = nimcp_time_monotonic_us();
 
     // Simulate some work
@@ -456,14 +482,15 @@ TEST_F(TimeIntegrationTest, TimingRealOperation) {
 
     // Should take some measurable time but not too long
     EXPECT_GT(elapsed, 0);
-    EXPECT_LT(elapsed, 1000000); // Less than 1 second
+    EXPECT_LT(elapsed, 1000000);  // Less than 1 second
 }
 
 /**
  * WHAT: Test all time functions are consistent
  * WHY: Ensure different precision levels are synchronized
  */
-TEST_F(TimeIntegrationTest, AllTimeFunctionsConsistent) {
+TEST_F(TimeIntegrationTest, AllTimeFunctionsConsistent)
+{
     uint64_t wall_us = nimcp_time_get_us();
     uint64_t wall_ms = nimcp_time_get_ms();
     uint64_t wall_sec = nimcp_time_get_sec();
@@ -477,15 +504,16 @@ TEST_F(TimeIntegrationTest, AllTimeFunctionsConsistent) {
     EXPECT_LE(wall_sec, wall_us / 1000000 + 1);
 
     // Monotonic times should be consistent
-    EXPECT_LE(mono_us, mono_ns / 1000 + 1000); // Allow 1ms tolerance
-    EXPECT_LE(mono_ms, mono_ns / 1000000 + 10); // Allow 10ms tolerance
+    EXPECT_LE(mono_us, mono_ns / 1000 + 1000);   // Allow 1ms tolerance
+    EXPECT_LE(mono_ms, mono_ns / 1000000 + 10);  // Allow 10ms tolerance
 }
 
 /**
  * WHAT: Test performance profiling use case
  * WHY: Verify typical profiling scenario works
  */
-TEST_F(TimeIntegrationTest, PerformanceProfiling) {
+TEST_F(TimeIntegrationTest, PerformanceProfiling)
+{
     // Profile multiple operations
     std::vector<uint64_t> durations;
 
@@ -498,7 +526,7 @@ TEST_F(TimeIntegrationTest, PerformanceProfiling) {
 
     // All measurements should be reasonable
     for (uint64_t duration : durations) {
-        EXPECT_GE(duration, 1000);  // At least 1ms
-        EXPECT_LT(duration, 10000); // Less than 10ms
+        EXPECT_GE(duration, 1000);   // At least 1ms
+        EXPECT_LT(duration, 10000);  // Less than 10ms
     }
 }

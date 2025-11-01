@@ -37,9 +37,9 @@
 #ifndef NIMCP_HASH_TABLE_H
 #define NIMCP_HASH_TABLE_H
 
-#include <stdint.h>
 #include <stdbool.h>
 #include <stddef.h>
+#include <stdint.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -62,10 +62,10 @@ typedef struct hash_table_t hash_table_t;
  * HOW: Tag in config determines key handling
  */
 typedef enum {
-    HASH_KEY_STRING,    // Null-terminated string keys
-    HASH_KEY_UINT32,    // 32-bit unsigned integer keys
-    HASH_KEY_UINT64,    // 64-bit unsigned integer keys
-    HASH_KEY_CUSTOM     // Custom key type with user-provided hash/compare
+    HASH_KEY_STRING,  // Null-terminated string keys
+    HASH_KEY_UINT32,  // 32-bit unsigned integer keys
+    HASH_KEY_UINT64,  // 64-bit unsigned integer keys
+    HASH_KEY_CUSTOM   // Custom key type with user-provided hash/compare
 } hash_key_type_t;
 
 /**
@@ -74,10 +74,10 @@ typedef enum {
  * HOW: FNV-1a (strings), djb2 (strings), MurmurHash3 (integers)
  */
 typedef enum {
-    HASH_ALG_FNV1A,     // Fast, good distribution for strings
-    HASH_ALG_DJB2,      // Simple, fast for strings
-    HASH_ALG_MURMUR3,   // Excellent distribution for integers
-    HASH_ALG_CUSTOM     // User-provided hash function
+    HASH_ALG_FNV1A,    // Fast, good distribution for strings
+    HASH_ALG_DJB2,     // Simple, fast for strings
+    HASH_ALG_MURMUR3,  // Excellent distribution for integers
+    HASH_ALG_CUSTOM    // User-provided hash function
 } hash_algorithm_t;
 
 /**
@@ -102,8 +102,8 @@ typedef uint32_t (*hash_function_t)(const void* key, size_t key_size);
  * @param key2_size Size of second key
  * @return true if keys are equal, false otherwise
  */
-typedef bool (*key_compare_fn_t)(const void* key1, size_t key1_size,
-                                  const void* key2, size_t key2_size);
+typedef bool (*key_compare_fn_t)(const void* key1, size_t key1_size, const void* key2,
+                                 size_t key2_size);
 
 /**
  * WHAT: Value destructor function pointer
@@ -168,9 +168,8 @@ typedef struct {
  * @param user_data User-provided context pointer
  * @return true to continue iteration, false to stop
  */
-typedef bool (*hash_table_iterator_fn_t)(const void* key, size_t key_size,
-                                          void* value, size_t value_size,
-                                          void* user_data);
+typedef bool (*hash_table_iterator_fn_t)(const void* key, size_t key_size, void* value,
+                                         size_t value_size, void* user_data);
 
 //=============================================================================
 // Core Operations
@@ -253,8 +252,8 @@ void hash_table_clear(hash_table_t* table);
  * NOTE: If key exists, old value is replaced (destructor called if configured)
  * NOTE: Value data is copied, so caller retains ownership of input
  */
-bool hash_table_insert_string(hash_table_t* table, const char* key,
-                               const void* value, size_t value_size);
+bool hash_table_insert_string(hash_table_t* table, const char* key, const void* value,
+                              size_t value_size);
 
 /**
  * WHAT: Lookup value by string key
@@ -297,8 +296,8 @@ bool hash_table_remove_string(hash_table_t* table, const char* key);
  * @param value_size Size of value in bytes
  * @return true on success, false on allocation failure
  */
-bool hash_table_insert_uint32(hash_table_t* table, uint32_t key,
-                               const void* value, size_t value_size);
+bool hash_table_insert_uint32(hash_table_t* table, uint32_t key, const void* value,
+                              size_t value_size);
 
 /**
  * WHAT: Lookup value by uint32_t key
@@ -338,9 +337,7 @@ bool hash_table_remove_uint32(hash_table_t* table, uint32_t key);
  * NOTE: Order is not guaranteed (depends on hash values)
  * NOTE: Do not modify table structure during iteration
  */
-void hash_table_iterate(hash_table_t* table,
-                        hash_table_iterator_fn_t callback,
-                        void* user_data);
+void hash_table_iterate(hash_table_t* table, hash_table_iterator_fn_t callback, void* user_data);
 
 //=============================================================================
 // Statistics and Debugging
@@ -356,9 +353,7 @@ void hash_table_iterate(hash_table_t* table,
  * @param avg_chain_length [OUT] Average chain length (only non-empty buckets)
  * @param empty_buckets [OUT] Number of empty buckets
  */
-void hash_table_stats(const hash_table_t* table,
-                      size_t* max_chain_length,
-                      float* avg_chain_length,
+void hash_table_stats(const hash_table_t* table, size_t* max_chain_length, float* avg_chain_length,
                       size_t* empty_buckets);
 
 #ifdef __cplusplus

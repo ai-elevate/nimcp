@@ -15,4 +15,4 @@
     #endif
 #endif
 
-#endif // NIMCP_EXPORT_H
+#endif  // NIMCP_EXPORT_H

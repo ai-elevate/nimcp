@@ -8,9 +8,9 @@
  */
 
 #include "utils/nimcp_time.h"
-#include <time.h>
-#include <sys/time.h>
 #include <errno.h>
+#include <sys/time.h>
+#include <time.h>
 
 //=============================================================================
 // Platform Detection
@@ -26,7 +26,8 @@
 // Wall Clock Time
 //=============================================================================
 
-uint64_t nimcp_time_get_us(void) {
+uint64_t nimcp_time_get_us(void)
+{
 #if NIMCP_POSIX
     /**
      * WHAT: Use clock_gettime for better precision if available
@@ -35,7 +36,7 @@ uint64_t nimcp_time_get_us(void) {
      */
     struct timespec ts;
     if (clock_gettime(CLOCK_REALTIME, &ts) == 0) {
-        return (uint64_t)ts.tv_sec * 1000000ULL + (uint64_t)ts.tv_nsec / 1000ULL;
+        return (uint64_t) ts.tv_sec * 1000000ULL + (uint64_t) ts.tv_nsec / 1000ULL;
     }
 
     /**
@@ -44,7 +45,7 @@ uint64_t nimcp_time_get_us(void) {
      */
     struct timeval tv;
     gettimeofday(&tv, NULL);
-    return (uint64_t)tv.tv_sec * 1000000ULL + (uint64_t)tv.tv_usec;
+    return (uint64_t) tv.tv_sec * 1000000ULL + (uint64_t) tv.tv_usec;
 #else
     /**
      * WHAT: Windows fallback (if needed in future)
@@ -54,11 +55,13 @@ uint64_t nimcp_time_get_us(void) {
 #endif
 }
 
-uint64_t nimcp_time_get_ms(void) {
+uint64_t nimcp_time_get_ms(void)
+{
     return nimcp_time_get_us() / 1000;
 }
 
-uint64_t nimcp_time_get_sec(void) {
+uint64_t nimcp_time_get_sec(void)
+{
     return nimcp_time_get_us() / 1000000;
 }
 
@@ -66,7 +69,8 @@ uint64_t nimcp_time_get_sec(void) {
 // Monotonic Time
 //=============================================================================
 
-uint64_t nimcp_time_monotonic_ns(void) {
+uint64_t nimcp_time_monotonic_ns(void)
+{
 #if NIMCP_POSIX
     /**
      * WHAT: Use CLOCK_MONOTONIC for steady, non-adjustable time
@@ -83,17 +87,19 @@ uint64_t nimcp_time_monotonic_ns(void) {
         clock_gettime(CLOCK_REALTIME, &ts);
     }
 
-    return (uint64_t)ts.tv_sec * 1000000000ULL + (uint64_t)ts.tv_nsec;
+    return (uint64_t) ts.tv_sec * 1000000000ULL + (uint64_t) ts.tv_nsec;
 #else
     #error "Platform not supported - implement monotonic time for this platform"
 #endif
 }
 
-uint64_t nimcp_time_monotonic_us(void) {
+uint64_t nimcp_time_monotonic_us(void)
+{
     return nimcp_time_monotonic_ns() / 1000;
 }
 
-uint64_t nimcp_time_monotonic_ms(void) {
+uint64_t nimcp_time_monotonic_ms(void)
+{
     return nimcp_time_monotonic_ns() / 1000000;
 }
 
@@ -101,7 +107,8 @@ uint64_t nimcp_time_monotonic_ms(void) {
 // Duration and Elapsed Time Calculations
 //=============================================================================
 
-uint64_t nimcp_time_elapsed_us(uint64_t start_us) {
+uint64_t nimcp_time_elapsed_us(uint64_t start_us)
+{
     uint64_t now = nimcp_time_monotonic_us();
 
     /**
@@ -121,7 +128,8 @@ uint64_t nimcp_time_elapsed_us(uint64_t start_us) {
     return now - start_us;
 }
 
-uint64_t nimcp_time_elapsed_ms(uint64_t start_ms) {
+uint64_t nimcp_time_elapsed_ms(uint64_t start_ms)
+{
     uint64_t now = nimcp_time_monotonic_ms();
 
     if (now < start_ms) {
@@ -131,7 +139,8 @@ uint64_t nimcp_time_elapsed_ms(uint64_t start_ms) {
     return now - start_ms;
 }
 
-uint64_t nimcp_time_elapsed_ns(uint64_t start_ns) {
+uint64_t nimcp_time_elapsed_ns(uint64_t start_ns)
+{
     uint64_t now = nimcp_time_monotonic_ns();
 
     if (now < start_ns) {
@@ -145,7 +154,8 @@ uint64_t nimcp_time_elapsed_ns(uint64_t start_ns) {
 // Sleep and Delay Functions
 //=============================================================================
 
-void nimcp_time_sleep_us(uint64_t us) {
+void nimcp_time_sleep_us(uint64_t us)
+{
 #if NIMCP_POSIX
     /**
      * WHAT: Use nanosleep for portable microsecond sleep
@@ -184,6 +194,7 @@ void nimcp_time_sleep_us(uint64_t us) {
 #endif
 }
 
-void nimcp_time_sleep_ms(uint64_t ms) {
+void nimcp_time_sleep_ms(uint64_t ms)
+{
     nimcp_time_sleep_us(ms * 1000);
 }

@@ -28,9 +28,9 @@
 #ifndef NIMCP_MEMORY_H
 #define NIMCP_MEMORY_H
 
+#include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
-#include <stdbool.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -45,12 +45,12 @@ extern "C" {
  * WHY: Monitor memory consumption and allocation patterns
  */
 typedef struct {
-    size_t total_allocated;      /**< Total bytes ever allocated */
-    size_t current_allocated;    /**< Current bytes in use */
-    size_t peak_allocated;       /**< Peak memory usage */
-    size_t allocation_count;     /**< Number of allocations */
-    size_t free_count;           /**< Number of frees */
-    size_t failed_allocations;   /**< Failed allocation attempts */
+    size_t total_allocated;    /**< Total bytes ever allocated */
+    size_t current_allocated;  /**< Current bytes in use */
+    size_t peak_allocated;     /**< Peak memory usage */
+    size_t allocation_count;   /**< Number of allocations */
+    size_t free_count;         /**< Number of frees */
+    size_t failed_allocations; /**< Failed allocation attempts */
 } nimcp_memory_stats_t;
 
 //=============================================================================
@@ -229,15 +229,15 @@ void nimcp_memory_analyze_patterns(void);
  * Define NIMCP_OVERRIDE_MALLOC to enable this behavior
  */
 #ifdef NIMCP_OVERRIDE_MALLOC
-    #define malloc(s)       nimcp_malloc(s)
-    #define calloc(c,s)     nimcp_calloc(c,s)
-    #define realloc(p,s)    nimcp_realloc(p,s)
-    #define free(p)         nimcp_free(p)
-    #define strdup(s)       nimcp_strdup(s)
+    #define malloc(s) nimcp_malloc(s)
+    #define calloc(c, s) nimcp_calloc(c, s)
+    #define realloc(p, s) nimcp_realloc(p, s)
+    #define free(p) nimcp_free(p)
+    #define strdup(s) nimcp_strdup(s)
 #endif
 
 #ifdef __cplusplus
 }
 #endif
 
-#endif // NIMCP_MEMORY_H
+#endif  // NIMCP_MEMORY_H

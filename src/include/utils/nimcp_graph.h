@@ -28,7 +28,7 @@
  * Maximum number of edges (connections) supported in the graph
  * This provides an upper bound on memory usage
  */
-#define NIMCP_MAX_EDGES   1024
+#define NIMCP_MAX_EDGES 1024
 
 /**
  * Special value indicating an invalid vertex index
@@ -46,7 +46,7 @@ typedef float nimcp_weight_t;
 
 /**
  * @brief Edge node in adjacency list
- * 
+ *
  * Represents a connection between peers in the network topology.
  * Forms a singly-linked list of edges for each vertex.
  */
@@ -60,18 +60,18 @@ typedef struct NimcpEdgeNode {
 
 /**
  * @brief Vertex properties
- * 
+ *
  * Represents a peer in the network with its properties and connections.
  * Maintains the head of an adjacency list for efficient neighbor access.
  */
 typedef struct {
-    uint64_t peer_id;          /**< Unique identifier of the peer */
-    float x, y, z;             /**< Logical network coordinates for topology mapping */
-    uint32_t capabilities;      /**< Bitmap of peer capabilities (routing, storage, etc.) */
-    uint32_t state;            /**< Current state flags (active, inactive, etc.) */
-    uint64_t last_updated;     /**< Timestamp of last vertex state update */
-    NimcpEdgeNode* edges;      /**< Head of the adjacency list for this vertex */
-    uint32_t edge_count;       /**< Number of edges connected to this vertex */
+    uint64_t peer_id;      /**< Unique identifier of the peer */
+    float x, y, z;         /**< Logical network coordinates for topology mapping */
+    uint32_t capabilities; /**< Bitmap of peer capabilities (routing, storage, etc.) */
+    uint32_t state;        /**< Current state flags (active, inactive, etc.) */
+    uint64_t last_updated; /**< Timestamp of last vertex state update */
+    NimcpEdgeNode* edges;  /**< Head of the adjacency list for this vertex */
+    uint32_t edge_count;   /**< Number of edges connected to this vertex */
 } NimcpVertex;
 
 /**
@@ -84,23 +84,23 @@ typedef struct {
  * All public API functions acquire lock before modifying graph state.
  */
 typedef struct {
-    uint32_t vertex_count;     /**< Current number of vertices in the graph */
-    uint32_t edge_count;       /**< Current total number of edges in the graph */
-    NimcpVertex* vertices;     /**< Array of vertices representing peers */
-    uint32_t* components;      /**< Array tracking connected components */
-    uint32_t component_count;  /**< Number of distinct connected components */
-    nimcp_mutex_t lock;        /**< Mutex for thread-safe operations */
+    uint32_t vertex_count;    /**< Current number of vertices in the graph */
+    uint32_t edge_count;      /**< Current total number of edges in the graph */
+    NimcpVertex* vertices;    /**< Array of vertices representing peers */
+    uint32_t* components;     /**< Array tracking connected components */
+    uint32_t component_count; /**< Number of distinct connected components */
+    nimcp_mutex_t lock;       /**< Mutex for thread-safe operations */
 } NimcpGraph;
 
 /**
  * @brief Path in the graph
- * 
+ *
  * Represents a route between two peers in the network.
  * Used for routing and topology analysis.
  */
 typedef struct {
-    uint32_t* vertices;        /**< Array of vertex indices forming the path */
-    uint32_t length;          /**< Number of vertices in the path */
+    uint32_t* vertices;          /**< Array of vertex indices forming the path */
+    uint32_t length;             /**< Number of vertices in the path */
     nimcp_weight_t total_weight; /**< Aggregate weight of all edges in the path */
 } NimcpPath;
 
@@ -108,30 +108,30 @@ typedef struct {
 
 /**
  * @brief Create a new empty graph
- * 
+ *
  * Allocates and initializes a new graph structure.
  * Sets up internal data structures for vertex and edge storage.
- * 
+ *
  * @return Pointer to new graph or NULL on allocation failure
  */
 NimcpGraph* nimcp_graph_create(void);
 
 /**
  * @brief Destroy a graph and free all resources
- * 
+ *
  * Cleans up all allocated memory including vertices, edges,
  * and component tracking arrays.
- * 
+ *
  * @param graph Pointer to graph to destroy
  */
 void nimcp_graph_destroy(NimcpGraph* graph);
 
 /**
  * @brief Add a new vertex to the graph
- * 
+ *
  * Creates a new vertex representing a peer in the network.
  * Initializes the vertex with provided coordinates and capabilities.
- * 
+ *
  * @param graph Target graph
  * @param peer_id Unique identifier for the peer
  * @param x X coordinate in network space
@@ -140,20 +140,15 @@ void nimcp_graph_destroy(NimcpGraph* graph);
  * @param capabilities Bitmap of peer capabilities
  * @return Index of new vertex or NIMCP_INVALID_VERTEX on failure
  */
-uint32_t nimcp_graph_add_vertex(
-    NimcpGraph* graph,
-    uint64_t peer_id,
-    float x,
-    float y,
-    float z,
-    uint32_t capabilities);
+uint32_t nimcp_graph_add_vertex(NimcpGraph* graph, uint64_t peer_id, float x, float y, float z,
+                                uint32_t capabilities);
 
 /**
  * @brief Remove a vertex from the graph
- * 
+ *
  * Removes a peer and all its connections from the network topology.
  * Updates connected components after removal.
- * 
+ *
  * @param graph Target graph
  * @param vertex_idx Index of vertex to remove
  * @return true on success, false on invalid index or graph
@@ -162,60 +157,50 @@ bool nimcp_graph_remove_vertex(NimcpGraph* graph, uint32_t vertex_idx);
 
 /**
  * @brief Add an edge between vertices
- * 
+ *
  * Creates a new connection between two peers in the network.
  * Updates adjacency lists for both vertices.
- * 
+ *
  * @param graph Target graph
  * @param from Source vertex index
  * @param to Destination vertex index
  * @param weight Edge weight/cost metric
  * @return true on success, false on invalid indices or full graph
  */
-bool nimcp_graph_add_edge(
-    NimcpGraph* graph,
-    uint32_t from,
-    uint32_t to,
-    nimcp_weight_t weight);
+bool nimcp_graph_add_edge(NimcpGraph* graph, uint32_t from, uint32_t to, nimcp_weight_t weight);
 
 /**
  * @brief Remove an edge from the graph
- * 
+ *
  * Removes a connection between two peers.
  * Updates adjacency lists and connected components.
- * 
+ *
  * @param graph Target graph
  * @param from Source vertex index
  * @param to Destination vertex index
  * @return true on success, false if edge doesn't exist
  */
-bool nimcp_graph_remove_edge(
-    NimcpGraph* graph,
-    uint32_t from,
-    uint32_t to);
+bool nimcp_graph_remove_edge(NimcpGraph* graph, uint32_t from, uint32_t to);
 
 /**
  * @brief Find shortest path between vertices
- * 
+ *
  * Implements Dijkstra's algorithm to find optimal route between peers.
  * Considers edge weights in path calculation.
- * 
+ *
  * @param graph Source graph
  * @param from Start vertex index
  * @param to End vertex index
  * @return Path object or NULL if no path exists
  */
-NimcpPath* nimcp_graph_shortest_path(
-    const NimcpGraph* graph,
-    uint32_t from,
-    uint32_t to);
+NimcpPath* nimcp_graph_shortest_path(const NimcpGraph* graph, uint32_t from, uint32_t to);
 
 /**
  * @brief Update vertex coordinates
- * 
+ *
  * Updates the logical network position of a peer.
  * Used for topology optimization and visualization.
- * 
+ *
  * @param graph Target graph
  * @param vertex_idx Vertex to update
  * @param x New X coordinate
@@ -223,32 +208,26 @@ NimcpPath* nimcp_graph_shortest_path(
  * @param z New Z coordinate
  * @return true on success, false on invalid index
  */
-bool nimcp_graph_update_coordinates(
-    NimcpGraph* graph,
-    uint32_t vertex_idx,
-    float x,
-    float y,
-    float z);
+bool nimcp_graph_update_coordinates(NimcpGraph* graph, uint32_t vertex_idx, float x, float y,
+                                    float z);
 
 /**
  * @brief Find vertex by peer ID
- * 
+ *
  * Locates a peer's vertex in the graph by its unique identifier.
- * 
+ *
  * @param graph Target graph
  * @param peer_id Peer ID to find
  * @return Vertex index or NIMCP_INVALID_VERTEX if not found
  */
-uint32_t nimcp_graph_find_vertex(
-    const NimcpGraph* graph,
-    uint64_t peer_id);
+uint32_t nimcp_graph_find_vertex(const NimcpGraph* graph, uint64_t peer_id);
 
 /**
  * @brief Update connected components
- * 
+ *
  * Identifies and labels connected subgraphs in the network.
  * Uses depth-first search for component discovery.
- * 
+ *
  * @param graph Target graph
  * @return Number of distinct components found
  */
@@ -256,38 +235,32 @@ uint32_t nimcp_graph_update_components(NimcpGraph* graph);
 
 /**
  * @brief Get neighbors of a vertex
- * 
+ *
  * Retrieves all directly connected peers of a given vertex.
  * Traverses adjacency list to build neighbor array.
- * 
+ *
  * @param graph Source graph
  * @param vertex_idx Vertex index
  * @param neighbors Array to store neighbor indices
  * @param max_neighbors Size of neighbors array
  * @return Number of neighbors written to array
  */
-uint32_t nimcp_graph_get_neighbors(
-    const NimcpGraph* graph,
-    uint32_t vertex_idx,
-    uint32_t* neighbors,
-    uint32_t max_neighbors);
+uint32_t nimcp_graph_get_neighbors(const NimcpGraph* graph, uint32_t vertex_idx,
+                                   uint32_t* neighbors, uint32_t max_neighbors);
 
 /**
  * @brief Get edge weight between vertices
- * 
+ *
  * Retrieves the weight/cost metric for a connection between peers.
  * Searches adjacency list for the specified edge.
- * 
+ *
  * @param graph Source graph
  * @param from Source vertex
  * @param to Destination vertex
  * @param weight Pointer to store retrieved weight
  * @return true if edge exists, false otherwise
  */
-bool nimcp_graph_get_edge_weight(
-    const NimcpGraph* graph,
-    uint32_t from,
-    uint32_t to,
-    nimcp_weight_t* weight);
+bool nimcp_graph_get_edge_weight(const NimcpGraph* graph, uint32_t from, uint32_t to,
+                                 nimcp_weight_t* weight);
 
 #endif /* NIMCP_GRAPH_H */

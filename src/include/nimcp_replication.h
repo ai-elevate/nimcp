@@ -10,10 +10,10 @@
 #ifndef NIMCP_REPLICATION_H
 #define NIMCP_REPLICATION_H
 
+#include <stdbool.h>
+#include <stdint.h>
 #include "nimcp_brain.h"
 #include "nimcp_export.h"
-#include <stdint.h>
-#include <stdbool.h>
 
 /**
  * @brief Replication backend types
@@ -29,9 +29,9 @@ typedef enum {
  * @brief Replication strategy
  */
 typedef enum {
-    REPLICATION_STRATEGY_LEADER_FOLLOWER,  /**< One writer, many readers */
-    REPLICATION_STRATEGY_MULTI_MASTER,     /**< All nodes can write (CRDT) */
-    REPLICATION_STRATEGY_EVENTUAL          /**< Eventual consistency */
+    REPLICATION_STRATEGY_LEADER_FOLLOWER, /**< One writer, many readers */
+    REPLICATION_STRATEGY_MULTI_MASTER,    /**< All nodes can write (CRDT) */
+    REPLICATION_STRATEGY_EVENTUAL         /**< Eventual consistency */
 } replication_strategy_t;
 
 /**
@@ -42,9 +42,9 @@ typedef struct {
     replication_strategy_t strategy;
 
     // Connection settings
-    char connection_string[256];    /**< Backend connection (e.g., "redis://localhost:6379") */
-    char cluster_name[64];          /**< Cluster identifier */
-    char node_id[64];               /**< This node's unique ID */
+    char connection_string[256]; /**< Backend connection (e.g., "redis://localhost:6379") */
+    char cluster_name[64];       /**< Cluster identifier */
+    char node_id[64];            /**< This node's unique ID */
 
     // Timing
     uint32_t sync_interval_ms;      /**< How often to sync (0 = on every update) */
@@ -52,8 +52,8 @@ typedef struct {
     uint32_t node_timeout_ms;       /**< Consider node dead after this */
 
     // Conflict resolution
-    bool enable_vector_clock;       /**< Use vector clocks for causality */
-    bool enable_crdt;               /**< Use CRDTs for conflict-free merging */
+    bool enable_vector_clock; /**< Use vector clocks for causality */
+    bool enable_crdt;         /**< Use CRDTs for conflict-free merging */
 } replication_config_t;
 
 /**
@@ -65,10 +65,10 @@ typedef struct replication_cluster_struct* replication_cluster_t;
  * @brief Node status in cluster
  */
 typedef enum {
-    NODE_STATUS_LEADER,     /**< Leader node (can write) */
-    NODE_STATUS_FOLLOWER,   /**< Follower node (read-only) */
-    NODE_STATUS_CANDIDATE,  /**< Candidate for leadership */
-    NODE_STATUS_DEAD        /**< Node failed/unreachable */
+    NODE_STATUS_LEADER,    /**< Leader node (can write) */
+    NODE_STATUS_FOLLOWER,  /**< Follower node (read-only) */
+    NODE_STATUS_CANDIDATE, /**< Candidate for leadership */
+    NODE_STATUS_DEAD       /**< Node failed/unreachable */
 } replication_node_status_t;
 
 /**
@@ -78,8 +78,8 @@ typedef struct {
     char node_id[64];
     replication_node_status_t status;
     uint64_t last_heartbeat;
-    uint32_t lag_ms;            /**< Replication lag */
-    uint64_t version;           /**< State version */
+    uint32_t lag_ms;  /**< Replication lag */
+    uint64_t version; /**< State version */
 } cluster_node_t;
 
 //=============================================================================
@@ -111,8 +111,7 @@ void replication_destroy_cluster(replication_cluster_t cluster);
  * @param brain_name Unique name for this brain in cluster
  * @return true on success
  */
-bool replication_register_brain(replication_cluster_t cluster,
-                                brain_t brain,
+bool replication_register_brain(replication_cluster_t cluster, brain_t brain,
                                 const char* brain_name);
 
 /**
@@ -122,8 +121,7 @@ bool replication_register_brain(replication_cluster_t cluster,
  * @param brain_name Brain name
  * @return true on success
  */
-bool replication_unregister_brain(replication_cluster_t cluster,
-                                  const char* brain_name);
+bool replication_unregister_brain(replication_cluster_t cluster, const char* brain_name);
 
 //=============================================================================
 // Synchronization API
@@ -138,8 +136,7 @@ bool replication_unregister_brain(replication_cluster_t cluster,
  * @param brain_name Brain to sync
  * @return true on success
  */
-bool replication_sync_push(replication_cluster_t cluster,
-                           const char* brain_name);
+bool replication_sync_push(replication_cluster_t cluster, const char* brain_name);
 
 /**
  * @brief Sync brain state from cluster
@@ -150,8 +147,7 @@ bool replication_sync_push(replication_cluster_t cluster,
  * @param brain_name Brain to sync
  * @return true on success
  */
-bool replication_sync_pull(replication_cluster_t cluster,
-                           const char* brain_name);
+bool replication_sync_pull(replication_cluster_t cluster, const char* brain_name);
 
 /**
  * @brief Get brain from cluster
@@ -162,8 +158,7 @@ bool replication_sync_pull(replication_cluster_t cluster,
  * @param brain_name Brain name
  * @return Brain handle or NULL if not found
  */
-brain_t replication_get_brain(replication_cluster_t cluster,
-                              const char* brain_name);
+brain_t replication_get_brain(replication_cluster_t cluster, const char* brain_name);
 
 /**
  * @brief Auto-sync brain on every update
@@ -175,9 +170,7 @@ brain_t replication_get_brain(replication_cluster_t cluster,
  * @param enabled Enable/disable auto-sync
  * @return true on success
  */
-bool replication_set_autosync(replication_cluster_t cluster,
-                              const char* brain_name,
-                              bool enabled);
+bool replication_set_autosync(replication_cluster_t cluster, const char* brain_name, bool enabled);
 
 //=============================================================================
 // Cluster Monitoring API
@@ -191,8 +184,7 @@ bool replication_set_autosync(replication_cluster_t cluster,
  * @param max_nodes Size of nodes array
  * @return Number of nodes in cluster
  */
-uint32_t replication_get_cluster_status(replication_cluster_t cluster,
-                                        cluster_node_t* nodes,
+uint32_t replication_get_cluster_status(replication_cluster_t cluster, cluster_node_t* nodes,
                                         uint32_t max_nodes);
 
 /**
@@ -210,8 +202,7 @@ replication_node_status_t replication_get_node_status(replication_cluster_t clus
  * @param brain_name Brain name
  * @return Lag in milliseconds
  */
-uint32_t replication_get_lag(replication_cluster_t cluster,
-                             const char* brain_name);
+uint32_t replication_get_lag(replication_cluster_t cluster, const char* brain_name);
 
 /**
  * @brief Check if cluster is healthy
@@ -233,11 +224,9 @@ bool replication_is_healthy(replication_cluster_t cluster);
  * @param node_id This node's ID
  * @return Cluster handle or NULL on error
  */
-replication_cluster_t replication_create_redis_cluster(
-    const char* redis_url,
-    const char* cluster_name,
-    const char* node_id
-);
+replication_cluster_t replication_create_redis_cluster(const char* redis_url,
+                                                       const char* cluster_name,
+                                                       const char* node_id);
 
 /**
  * @brief Create filesystem-based replication
@@ -248,9 +237,7 @@ replication_cluster_t replication_create_redis_cluster(
  * @param node_id This node's ID
  * @return Cluster handle or NULL on error
  */
-replication_cluster_t replication_create_filesystem_cluster(
-    const char* shared_dir,
-    const char* node_id
-);
+replication_cluster_t replication_create_filesystem_cluster(const char* shared_dir,
+                                                            const char* node_id);
 
-#endif // NIMCP_REPLICATION_H
+#endif  // NIMCP_REPLICATION_H

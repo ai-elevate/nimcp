@@ -41,7 +41,8 @@
 /**
  * @brief Test scenario: Simple ethical situations
  */
-void test_basic_scenarios(ethics_engine_t engine) {
+void test_basic_scenarios(ethics_engine_t engine)
+{
     printf("===========================================\n");
     printf(" Basic Golden Rule Scenarios\n");
     printf("===========================================\n\n");
@@ -79,10 +80,10 @@ void test_basic_scenarios(ethics_engine_t engine) {
         action_context_t action = {0};
         action.num_features = 4;
         action.features = malloc(4 * sizeof(float));
-        action.features[0] = 0.9f;   // harm
-        action.features[1] = 0.1f;   // unfair
-        action.features[2] = 0.2f;   // deceptive
-        action.features[3] = 0.1f;   // violates autonomy
+        action.features[0] = 0.9f;  // harm
+        action.features[1] = 0.1f;  // unfair
+        action.features[2] = 0.2f;  // deceptive
+        action.features[3] = 0.1f;  // violates autonomy
 
         action.num_affected_agents = 1;
         action.affected_agents = malloc(sizeof(agent_id_t));
@@ -134,10 +135,10 @@ void test_basic_scenarios(ethics_engine_t engine) {
         action_context_t action = {0};
         action.num_features = 4;
         action.features = malloc(4 * sizeof(float));
-        action.features[0] = 0.5f;   // moderate harm (disappointment)
-        action.features[1] = 0.4f;   // somewhat unfair
-        action.features[2] = 0.3f;   // deceptive if no explanation
-        action.features[3] = 0.5f;   // violates trust
+        action.features[0] = 0.5f;  // moderate harm (disappointment)
+        action.features[1] = 0.4f;  // somewhat unfair
+        action.features[2] = 0.3f;  // deceptive if no explanation
+        action.features[3] = 0.5f;  // violates trust
 
         action.num_affected_agents = 1;
         action.affected_agents = malloc(sizeof(agent_id_t));
@@ -160,7 +161,8 @@ void test_basic_scenarios(ethics_engine_t engine) {
 /**
  * @brief Test Golden Rule perspective-taking
  */
-void test_golden_rule_reasoning(void) {
+void test_golden_rule_reasoning(void)
+{
     printf("===========================================\n");
     printf(" Golden Rule: Perspective-Taking\n");
     printf("===========================================\n\n");
@@ -191,7 +193,8 @@ void test_golden_rule_reasoning(void) {
 /**
  * @brief Show how ethics engine learns from outcomes
  */
-void test_learning_from_outcomes(ethics_engine_t engine) {
+void test_learning_from_outcomes(ethics_engine_t engine)
+{
     printf("===========================================\n");
     printf(" Learning from Real Outcomes\n");
     printf("===========================================\n\n");
@@ -215,7 +218,7 @@ void test_learning_from_outcomes(ethics_engine_t engine) {
 
     action_outcome_t outcome = {0};
     outcome.affected_agent = 5;
-    outcome.actual_harm = 0.6f;       // Actually caused harm
+    outcome.actual_harm = 0.6f;        // Actually caused harm
     outcome.actual_benefit = -0.2f;    // Not beneficial
     outcome.emotional_impact = -0.7f;  // Negative emotion
     outcome.material_impact = -0.3f;
@@ -239,7 +242,8 @@ void test_learning_from_outcomes(ethics_engine_t engine) {
     free(action.affected_agents);
 }
 
-int main(void) {
+int main(void)
+{
     printf("╔════════════════════════════════════════════════════════╗\n");
     printf("║                                                        ║\n");
     printf("║      NIMCP Ethics Engine Demonstration                ║\n");

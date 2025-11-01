@@ -8,8 +8,8 @@
  */
 
 #include <gtest/gtest.h>
-#include <cstring>
 #include <cmath>
+#include <cstring>
 
 extern "C" {
 #include "utils/nimcp_serialization.h"
@@ -20,14 +20,16 @@ extern "C" {
 //=============================================================================
 
 class SerializerBasicTest : public ::testing::Test {
-protected:
+   protected:
     NimcpSerializer* serializer;
 
-    void SetUp() override {
+    void SetUp() override
+    {
         serializer = nullptr;
     }
 
-    void TearDown() override {
+    void TearDown() override
+    {
         if (serializer) {
             nimcp_serializer_destroy(serializer);
         }
@@ -38,7 +40,8 @@ protected:
  * WHAT: Test serializer creation with default capacity
  * WHY: Verify basic initialization works
  */
-TEST_F(SerializerBasicTest, CreateWithDefaultCapacity) {
+TEST_F(SerializerBasicTest, CreateWithDefaultCapacity)
+{
     serializer = nimcp_serializer_create(0);
     ASSERT_NE(serializer, nullptr);
 
@@ -51,7 +54,8 @@ TEST_F(SerializerBasicTest, CreateWithDefaultCapacity) {
  * WHAT: Test serializer creation with custom capacity
  * WHY: Verify custom initialization works
  */
-TEST_F(SerializerBasicTest, CreateWithCustomCapacity) {
+TEST_F(SerializerBasicTest, CreateWithCustomCapacity)
+{
     serializer = nimcp_serializer_create(2048);
     ASSERT_NE(serializer, nullptr);
 
@@ -63,7 +67,8 @@ TEST_F(SerializerBasicTest, CreateWithCustomCapacity) {
  * WHAT: Test serializer creation with max size
  * WHY: Verify size limit enforcement
  */
-TEST_F(SerializerBasicTest, CreateWithExcessiveSize) {
+TEST_F(SerializerBasicTest, CreateWithExcessiveSize)
+{
     serializer = nimcp_serializer_create(NIMCP_SERIALIZER_MAX_SIZE + 1);
     EXPECT_EQ(serializer, nullptr);
 }
@@ -72,7 +77,8 @@ TEST_F(SerializerBasicTest, CreateWithExcessiveSize) {
  * WHAT: Test serializer destruction with NULL
  * WHY: Verify NULL safety
  */
-TEST_F(SerializerBasicTest, DestroyNullSerializer) {
+TEST_F(SerializerBasicTest, DestroyNullSerializer)
+{
     nimcp_serializer_destroy(nullptr);
     // Should not crash
     SUCCEED();
@@ -82,7 +88,8 @@ TEST_F(SerializerBasicTest, DestroyNullSerializer) {
  * WHAT: Test serializer reset
  * WHY: Verify state is properly reset
  */
-TEST_F(SerializerBasicTest, ResetSerializer) {
+TEST_F(SerializerBasicTest, ResetSerializer)
+{
     serializer = nimcp_serializer_create(0);
     ASSERT_NE(serializer, nullptr);
 
@@ -103,14 +110,16 @@ TEST_F(SerializerBasicTest, ResetSerializer) {
 //=============================================================================
 
 class SerializerBufferTest : public ::testing::Test {
-protected:
+   protected:
     NimcpSerializer* serializer;
 
-    void SetUp() override {
+    void SetUp() override
+    {
         serializer = nimcp_serializer_create(0);
     }
 
-    void TearDown() override {
+    void TearDown() override
+    {
         nimcp_serializer_destroy(serializer);
     }
 };
@@ -119,7 +128,8 @@ protected:
  * WHAT: Test set buffer operation
  * WHY: Verify buffer can be set externally
  */
-TEST_F(SerializerBufferTest, SetBuffer) {
+TEST_F(SerializerBufferTest, SetBuffer)
+{
     uint8_t data[] = {1, 2, 3, 4, 5};
     EXPECT_TRUE(nimcp_serializer_set_buffer(serializer, data, sizeof(data)));
 
@@ -135,16 +145,18 @@ TEST_F(SerializerBufferTest, SetBuffer) {
  * WHAT: Test set buffer with NULL data
  * WHY: Verify error handling
  */
-TEST_F(SerializerBufferTest, SetBufferWithNull) {
+TEST_F(SerializerBufferTest, SetBufferWithNull)
+{
     EXPECT_FALSE(nimcp_serializer_set_buffer(serializer, nullptr, 10));
-    EXPECT_FALSE(nimcp_serializer_set_buffer(nullptr, (uint8_t*)"data", 4));
+    EXPECT_FALSE(nimcp_serializer_set_buffer(nullptr, (uint8_t*) "data", 4));
 }
 
 /**
  * WHAT: Test set buffer with excessive size
  * WHY: Verify size limit enforcement
  */
-TEST_F(SerializerBufferTest, SetBufferExcessiveSize) {
+TEST_F(SerializerBufferTest, SetBufferExcessiveSize)
+{
     uint8_t data[100];
     EXPECT_FALSE(nimcp_serializer_set_buffer(serializer, data, NIMCP_SERIALIZER_MAX_SIZE + 1));
 }
@@ -153,7 +165,8 @@ TEST_F(SerializerBufferTest, SetBufferExcessiveSize) {
  * WHAT: Test get buffer from NULL serializer
  * WHY: Verify NULL safety
  */
-TEST_F(SerializerBufferTest, GetBufferFromNull) {
+TEST_F(SerializerBufferTest, GetBufferFromNull)
+{
     EXPECT_EQ(nimcp_serializer_get_buffer(nullptr), nullptr);
     EXPECT_EQ(nimcp_serializer_get_length(nullptr), 0);
     EXPECT_EQ(nimcp_serializer_get_position(nullptr), 0);
@@ -163,7 +176,8 @@ TEST_F(SerializerBufferTest, GetBufferFromNull) {
  * WHAT: Test position management
  * WHY: Verify position can be set and retrieved
  */
-TEST_F(SerializerBufferTest, PositionManagement) {
+TEST_F(SerializerBufferTest, PositionManagement)
+{
     uint8_t data[100];
     memset(data, 0, sizeof(data));
     EXPECT_TRUE(nimcp_serializer_set_buffer(serializer, data, sizeof(data)));
@@ -183,14 +197,16 @@ TEST_F(SerializerBufferTest, PositionManagement) {
 //=============================================================================
 
 class SerializerWriteTest : public ::testing::Test {
-protected:
+   protected:
     NimcpSerializer* serializer;
 
-    void SetUp() override {
+    void SetUp() override
+    {
         serializer = nimcp_serializer_create(0);
     }
 
-    void TearDown() override {
+    void TearDown() override
+    {
         nimcp_serializer_destroy(serializer);
     }
 };
@@ -199,7 +215,8 @@ protected:
  * WHAT: Test writing uint8 values
  * WHY: Verify smallest integer type serialization
  */
-TEST_F(SerializerWriteTest, WriteUint8) {
+TEST_F(SerializerWriteTest, WriteUint8)
+{
     EXPECT_TRUE(nimcp_write_uint8(serializer, 0));
     EXPECT_TRUE(nimcp_write_uint8(serializer, 127));
     EXPECT_TRUE(nimcp_write_uint8(serializer, 255));
@@ -217,7 +234,8 @@ TEST_F(SerializerWriteTest, WriteUint8) {
  * WHAT: Test writing uint16 values
  * WHY: Verify 16-bit integer serialization with endianness
  */
-TEST_F(SerializerWriteTest, WriteUint16) {
+TEST_F(SerializerWriteTest, WriteUint16)
+{
     EXPECT_TRUE(nimcp_write_uint16(serializer, 0x1234));
     EXPECT_EQ(nimcp_serializer_get_length(serializer), 2);
 
@@ -231,7 +249,8 @@ TEST_F(SerializerWriteTest, WriteUint16) {
  * WHAT: Test writing uint32 values
  * WHY: Verify 32-bit integer serialization
  */
-TEST_F(SerializerWriteTest, WriteUint32) {
+TEST_F(SerializerWriteTest, WriteUint32)
+{
     EXPECT_TRUE(nimcp_write_uint32(serializer, 0x12345678));
     EXPECT_EQ(nimcp_serializer_get_length(serializer), 4);
 
@@ -247,7 +266,8 @@ TEST_F(SerializerWriteTest, WriteUint32) {
  * WHAT: Test writing uint64 values
  * WHY: Verify 64-bit integer serialization
  */
-TEST_F(SerializerWriteTest, WriteUint64) {
+TEST_F(SerializerWriteTest, WriteUint64)
+{
     EXPECT_TRUE(nimcp_write_uint64(serializer, 0x123456789ABCDEF0ULL));
     EXPECT_EQ(nimcp_serializer_get_length(serializer), 8);
 
@@ -267,7 +287,8 @@ TEST_F(SerializerWriteTest, WriteUint64) {
  * WHAT: Test writing signed integers
  * WHY: Verify signed integer serialization
  */
-TEST_F(SerializerWriteTest, WriteSignedIntegers) {
+TEST_F(SerializerWriteTest, WriteSignedIntegers)
+{
     EXPECT_TRUE(nimcp_write_int8(serializer, -128));
     EXPECT_TRUE(nimcp_write_int16(serializer, -32768));
     EXPECT_TRUE(nimcp_write_int32(serializer, -2147483648));
@@ -280,7 +301,8 @@ TEST_F(SerializerWriteTest, WriteSignedIntegers) {
  * WHAT: Test writing float values
  * WHY: Verify floating-point serialization
  */
-TEST_F(SerializerWriteTest, WriteFloat) {
+TEST_F(SerializerWriteTest, WriteFloat)
+{
     EXPECT_TRUE(nimcp_write_float(serializer, 3.14159f));
     EXPECT_EQ(nimcp_serializer_get_length(serializer), 4);
 }
@@ -289,7 +311,8 @@ TEST_F(SerializerWriteTest, WriteFloat) {
  * WHAT: Test writing double values
  * WHY: Verify double-precision floating-point serialization
  */
-TEST_F(SerializerWriteTest, WriteDouble) {
+TEST_F(SerializerWriteTest, WriteDouble)
+{
     EXPECT_TRUE(nimcp_write_double(serializer, 3.141592653589793));
     EXPECT_EQ(nimcp_serializer_get_length(serializer), 8);
 }
@@ -298,7 +321,8 @@ TEST_F(SerializerWriteTest, WriteDouble) {
  * WHAT: Test writing boolean values
  * WHY: Verify boolean serialization
  */
-TEST_F(SerializerWriteTest, WriteBool) {
+TEST_F(SerializerWriteTest, WriteBool)
+{
     EXPECT_TRUE(nimcp_write_bool(serializer, true));
     EXPECT_TRUE(nimcp_write_bool(serializer, false));
     EXPECT_EQ(nimcp_serializer_get_length(serializer), 2);
@@ -312,7 +336,8 @@ TEST_F(SerializerWriteTest, WriteBool) {
  * WHAT: Test writing byte arrays
  * WHY: Verify raw byte serialization
  */
-TEST_F(SerializerWriteTest, WriteBytes) {
+TEST_F(SerializerWriteTest, WriteBytes)
+{
     uint8_t data[] = {0xDE, 0xAD, 0xBE, 0xEF};
     EXPECT_TRUE(nimcp_write_bytes(serializer, data, sizeof(data)));
     EXPECT_EQ(nimcp_serializer_get_length(serializer), sizeof(data));
@@ -325,11 +350,12 @@ TEST_F(SerializerWriteTest, WriteBytes) {
  * WHAT: Test writing with NULL serializer
  * WHY: Verify error handling
  */
-TEST_F(SerializerWriteTest, WriteWithNullSerializer) {
+TEST_F(SerializerWriteTest, WriteWithNullSerializer)
+{
     EXPECT_FALSE(nimcp_write_uint8(nullptr, 0));
     EXPECT_FALSE(nimcp_write_uint16(nullptr, 0));
     EXPECT_FALSE(nimcp_write_uint32(nullptr, 0));
-    EXPECT_FALSE(nimcp_write_bytes(nullptr, (uint8_t*)"data", 4));
+    EXPECT_FALSE(nimcp_write_bytes(nullptr, (uint8_t*) "data", 4));
 }
 
 //=============================================================================
@@ -337,14 +363,16 @@ TEST_F(SerializerWriteTest, WriteWithNullSerializer) {
 //=============================================================================
 
 class SerializerReadTest : public ::testing::Test {
-protected:
+   protected:
     NimcpSerializer* serializer;
 
-    void SetUp() override {
+    void SetUp() override
+    {
         serializer = nimcp_serializer_create(0);
     }
 
-    void TearDown() override {
+    void TearDown() override
+    {
         nimcp_serializer_destroy(serializer);
     }
 };
@@ -353,7 +381,8 @@ protected:
  * WHAT: Test reading uint8 values
  * WHY: Verify deserialization matches serialization
  */
-TEST_F(SerializerReadTest, ReadUint8) {
+TEST_F(SerializerReadTest, ReadUint8)
+{
     nimcp_write_uint8(serializer, 42);
     nimcp_write_uint8(serializer, 255);
 
@@ -368,7 +397,8 @@ TEST_F(SerializerReadTest, ReadUint8) {
  * WHAT: Test reading uint16 values
  * WHY: Verify 16-bit deserialization with endianness
  */
-TEST_F(SerializerReadTest, ReadUint16) {
+TEST_F(SerializerReadTest, ReadUint16)
+{
     nimcp_write_uint16(serializer, 0x1234);
     nimcp_serializer_set_position(serializer, 0);
 
@@ -379,7 +409,8 @@ TEST_F(SerializerReadTest, ReadUint16) {
  * WHAT: Test reading uint32 values
  * WHY: Verify 32-bit deserialization
  */
-TEST_F(SerializerReadTest, ReadUint32) {
+TEST_F(SerializerReadTest, ReadUint32)
+{
     nimcp_write_uint32(serializer, 0x12345678);
     nimcp_serializer_set_position(serializer, 0);
 
@@ -390,7 +421,8 @@ TEST_F(SerializerReadTest, ReadUint32) {
  * WHAT: Test reading uint64 values
  * WHY: Verify 64-bit deserialization
  */
-TEST_F(SerializerReadTest, ReadUint64) {
+TEST_F(SerializerReadTest, ReadUint64)
+{
     nimcp_write_uint64(serializer, 0x123456789ABCDEF0ULL);
     nimcp_serializer_set_position(serializer, 0);
 
@@ -401,7 +433,8 @@ TEST_F(SerializerReadTest, ReadUint64) {
  * WHAT: Test reading signed integers
  * WHY: Verify signed integer deserialization
  */
-TEST_F(SerializerReadTest, ReadSignedIntegers) {
+TEST_F(SerializerReadTest, ReadSignedIntegers)
+{
     nimcp_write_int8(serializer, -42);
     nimcp_write_int16(serializer, -1234);
     nimcp_write_int32(serializer, -123456);
@@ -419,7 +452,8 @@ TEST_F(SerializerReadTest, ReadSignedIntegers) {
  * WHAT: Test reading float values
  * WHY: Verify floating-point deserialization
  */
-TEST_F(SerializerReadTest, ReadFloat) {
+TEST_F(SerializerReadTest, ReadFloat)
+{
     float original = 3.14159f;
     nimcp_write_float(serializer, original);
     nimcp_serializer_set_position(serializer, 0);
@@ -432,7 +466,8 @@ TEST_F(SerializerReadTest, ReadFloat) {
  * WHAT: Test reading double values
  * WHY: Verify double-precision deserialization
  */
-TEST_F(SerializerReadTest, ReadDouble) {
+TEST_F(SerializerReadTest, ReadDouble)
+{
     double original = 3.141592653589793;
     nimcp_write_double(serializer, original);
     nimcp_serializer_set_position(serializer, 0);
@@ -445,7 +480,8 @@ TEST_F(SerializerReadTest, ReadDouble) {
  * WHAT: Test reading boolean values
  * WHY: Verify boolean deserialization
  */
-TEST_F(SerializerReadTest, ReadBool) {
+TEST_F(SerializerReadTest, ReadBool)
+{
     nimcp_write_bool(serializer, true);
     nimcp_write_bool(serializer, false);
     nimcp_serializer_set_position(serializer, 0);
@@ -458,7 +494,8 @@ TEST_F(SerializerReadTest, ReadBool) {
  * WHAT: Test reading byte arrays
  * WHY: Verify raw byte deserialization
  */
-TEST_F(SerializerReadTest, ReadBytes) {
+TEST_F(SerializerReadTest, ReadBytes)
+{
     uint8_t data[] = {0xDE, 0xAD, 0xBE, 0xEF};
     nimcp_write_bytes(serializer, data, sizeof(data));
     nimcp_serializer_set_position(serializer, 0);
@@ -475,7 +512,8 @@ TEST_F(SerializerReadTest, ReadBytes) {
  * WHAT: Test reading beyond buffer bounds
  * WHY: Verify bounds checking
  */
-TEST_F(SerializerReadTest, ReadBeyondBounds) {
+TEST_F(SerializerReadTest, ReadBeyondBounds)
+{
     nimcp_write_uint8(serializer, 42);
     nimcp_serializer_set_position(serializer, 0);
 
@@ -497,14 +535,16 @@ TEST_F(SerializerReadTest, ReadBeyondBounds) {
 //=============================================================================
 
 class SerializerCompressionTest : public ::testing::Test {
-protected:
+   protected:
     NimcpSerializer* serializer;
 
-    void SetUp() override {
+    void SetUp() override
+    {
         serializer = nimcp_serializer_create(0);
     }
 
-    void TearDown() override {
+    void TearDown() override
+    {
         nimcp_serializer_destroy(serializer);
     }
 };
@@ -513,7 +553,8 @@ protected:
  * WHAT: Test compression of data
  * WHY: Verify LZ4 compression works
  */
-TEST_F(SerializerCompressionTest, CompressData) {
+TEST_F(SerializerCompressionTest, CompressData)
+{
     // Write repetitive data (highly compressible)
     for (int i = 0; i < 1000; i++) {
         nimcp_write_uint32(serializer, 0x12345678);
@@ -533,7 +574,8 @@ TEST_F(SerializerCompressionTest, CompressData) {
  * WHAT: Test decompression of data
  * WHY: Verify round-trip compression/decompression
  */
-TEST_F(SerializerCompressionTest, CompressAndDecompress) {
+TEST_F(SerializerCompressionTest, CompressAndDecompress)
+{
     // Write test data
     for (int i = 0; i < 100; i++) {
         nimcp_write_uint32(serializer, i);
@@ -552,7 +594,7 @@ TEST_F(SerializerCompressionTest, CompressAndDecompress) {
     // Verify data integrity
     nimcp_serializer_set_position(serializer, 0);
     for (int i = 0; i < 100; i++) {
-        EXPECT_EQ(nimcp_read_uint32(serializer), (uint32_t)i);
+        EXPECT_EQ(nimcp_read_uint32(serializer), (uint32_t) i);
     }
 }
 
@@ -560,7 +602,8 @@ TEST_F(SerializerCompressionTest, CompressAndDecompress) {
  * WHAT: Test compression of already compressed data
  * WHY: Verify error handling
  */
-TEST_F(SerializerCompressionTest, CompressAlreadyCompressed) {
+TEST_F(SerializerCompressionTest, CompressAlreadyCompressed)
+{
     nimcp_write_uint32(serializer, 12345);
 
     EXPECT_EQ(nimcp_serializer_compress(serializer), NIMCP_SERIAL_SUCCESS);
@@ -571,7 +614,8 @@ TEST_F(SerializerCompressionTest, CompressAlreadyCompressed) {
  * WHAT: Test decompression of uncompressed data
  * WHY: Verify error handling
  */
-TEST_F(SerializerCompressionTest, DecompressUncompressed) {
+TEST_F(SerializerCompressionTest, DecompressUncompressed)
+{
     nimcp_write_uint32(serializer, 12345);
 
     EXPECT_EQ(nimcp_serializer_decompress(serializer), NIMCP_SERIAL_ERROR_INVALID_PARAM);
@@ -581,7 +625,8 @@ TEST_F(SerializerCompressionTest, DecompressUncompressed) {
  * WHAT: Test compression with NULL serializer
  * WHY: Verify error handling
  */
-TEST_F(SerializerCompressionTest, CompressWithNull) {
+TEST_F(SerializerCompressionTest, CompressWithNull)
+{
     EXPECT_EQ(nimcp_serializer_compress(nullptr), NIMCP_SERIAL_ERROR_INVALID_PARAM);
     EXPECT_EQ(nimcp_serializer_decompress(nullptr), NIMCP_SERIAL_ERROR_INVALID_PARAM);
 }
@@ -591,14 +636,16 @@ TEST_F(SerializerCompressionTest, CompressWithNull) {
 //=============================================================================
 
 class SerializerErrorTest : public ::testing::Test {
-protected:
+   protected:
     NimcpSerializer* serializer;
 
-    void SetUp() override {
+    void SetUp() override
+    {
         serializer = nimcp_serializer_create(0);
     }
 
-    void TearDown() override {
+    void TearDown() override
+    {
         nimcp_serializer_destroy(serializer);
     }
 };
@@ -607,7 +654,8 @@ protected:
  * WHAT: Test error state tracking
  * WHY: Verify error state is properly maintained
  */
-TEST_F(SerializerErrorTest, ErrorStateTracking) {
+TEST_F(SerializerErrorTest, ErrorStateTracking)
+{
     EXPECT_FALSE(nimcp_serializer_has_error(serializer));
 
     // Write some data
@@ -631,7 +679,8 @@ TEST_F(SerializerErrorTest, ErrorStateTracking) {
  * WHAT: Test error check with NULL serializer
  * WHY: Verify NULL safety
  */
-TEST_F(SerializerErrorTest, ErrorCheckWithNull) {
+TEST_F(SerializerErrorTest, ErrorCheckWithNull)
+{
     EXPECT_TRUE(nimcp_serializer_has_error(nullptr));
 
     // Clear should not crash
@@ -644,14 +693,16 @@ TEST_F(SerializerErrorTest, ErrorCheckWithNull) {
 //=============================================================================
 
 class SerializerIntegrationTest : public ::testing::Test {
-protected:
+   protected:
     NimcpSerializer* serializer;
 
-    void SetUp() override {
+    void SetUp() override
+    {
         serializer = nimcp_serializer_create(0);
     }
 
-    void TearDown() override {
+    void TearDown() override
+    {
         nimcp_serializer_destroy(serializer);
     }
 };
@@ -660,12 +711,13 @@ protected:
  * WHAT: Test complex data structure serialization
  * WHY: Verify real-world usage scenario
  */
-TEST_F(SerializerIntegrationTest, ComplexStructureSerialization) {
+TEST_F(SerializerIntegrationTest, ComplexStructureSerialization)
+{
     // Serialize a complex structure
-    nimcp_write_uint8(serializer, 1);        // Version
-    nimcp_write_uint32(serializer, 12345);   // ID
-    nimcp_write_double(serializer, 3.14159); // Value
-    nimcp_write_bool(serializer, true);      // Flag
+    nimcp_write_uint8(serializer, 1);         // Version
+    nimcp_write_uint32(serializer, 12345);    // ID
+    nimcp_write_double(serializer, 3.14159);  // Value
+    nimcp_write_bool(serializer, true);       // Flag
 
     uint8_t name[] = "TestName";
     nimcp_write_bytes(serializer, name, sizeof(name));
@@ -689,7 +741,8 @@ TEST_F(SerializerIntegrationTest, ComplexStructureSerialization) {
  * WHAT: Test serialization with compression
  * WHY: Verify compressed serialization workflow
  */
-TEST_F(SerializerIntegrationTest, SerializeCompressDeserialize) {
+TEST_F(SerializerIntegrationTest, SerializeCompressDeserialize)
+{
     // Write compressible data
     for (int i = 0; i < 100; i++) {
         nimcp_write_uint64(serializer, 0xDEADBEEFDEADBEEFULL);
@@ -724,7 +777,8 @@ TEST_F(SerializerIntegrationTest, SerializeCompressDeserialize) {
  * WHAT: Test multiple write/read cycles
  * WHY: Verify serializer can be reused
  */
-TEST_F(SerializerIntegrationTest, MultipleWriteReadCycles) {
+TEST_F(SerializerIntegrationTest, MultipleWriteReadCycles)
+{
     for (int cycle = 0; cycle < 5; cycle++) {
         nimcp_serializer_reset(serializer);
 
@@ -734,7 +788,7 @@ TEST_F(SerializerIntegrationTest, MultipleWriteReadCycles) {
 
         // Read
         nimcp_serializer_set_position(serializer, 0);
-        EXPECT_EQ(nimcp_read_uint32(serializer), (uint32_t)(cycle * 100));
+        EXPECT_EQ(nimcp_read_uint32(serializer), (uint32_t) (cycle * 100));
         EXPECT_FLOAT_EQ(nimcp_read_float(serializer), cycle * 1.5f);
     }
 }
@@ -743,7 +797,8 @@ TEST_F(SerializerIntegrationTest, MultipleWriteReadCycles) {
  * WHAT: Test automatic buffer expansion
  * WHY: Verify buffer grows as needed
  */
-TEST_F(SerializerIntegrationTest, AutomaticBufferExpansion) {
+TEST_F(SerializerIntegrationTest, AutomaticBufferExpansion)
+{
     // Write more data than initial capacity
     for (int i = 0; i < 10000; i++) {
         EXPECT_TRUE(nimcp_write_uint32(serializer, i));
@@ -754,6 +809,6 @@ TEST_F(SerializerIntegrationTest, AutomaticBufferExpansion) {
     // Verify data
     nimcp_serializer_set_position(serializer, 0);
     for (int i = 0; i < 10000; i++) {
-        EXPECT_EQ(nimcp_read_uint32(serializer), (uint32_t)i);
+        EXPECT_EQ(nimcp_read_uint32(serializer), (uint32_t) i);
     }
 }

@@ -5,7 +5,8 @@
 //=============================================================================
 
 // Test basic STDP learning with causal timing
-TEST(NeuralNetLearning, STDPCausal) {
+TEST(NeuralNetLearning, STDPCausal)
+{
     network_config_t config = create_test_config();
     config.stdp_window = 20.0f;
     neural_network_t network = neural_network_create(&config);
@@ -40,7 +41,8 @@ TEST(NeuralNetLearning, STDPCausal) {
 }
 
 // Test STDP learning with anti-causal timing
-TEST(NeuralNetLearning, STDPAntiCausal) {
+TEST(NeuralNetLearning, STDPAntiCausal)
+{
     network_config_t config = create_test_config();
     config.stdp_window = 20.0f;
     neural_network_t network = neural_network_create(&config);
@@ -68,7 +70,8 @@ TEST(NeuralNetLearning, STDPAntiCausal) {
 }
 
 // Test STDP with multiple synapses
-TEST(NeuralNetLearning, STDPMultipleSynapses) {
+TEST(NeuralNetLearning, STDPMultipleSynapses)
+{
     network_config_t config = create_test_config();
     neural_network_t network = neural_network_create(&config);
 
@@ -99,7 +102,8 @@ TEST(NeuralNetLearning, STDPMultipleSynapses) {
 //=============================================================================
 
 // Test basic Oja's learning
-TEST(NeuralNetLearning, OjaBasic) {
+TEST(NeuralNetLearning, OjaBasic)
+{
     network_config_t config = create_test_config();
     neural_network_t network = neural_network_create(&config);
 
@@ -122,7 +126,8 @@ TEST(NeuralNetLearning, OjaBasic) {
 }
 
 // Test Oja's learning with weight normalization
-TEST(NeuralNetLearning, OjaWeightNormalization) {
+TEST(NeuralNetLearning, OjaWeightNormalization)
+{
     network_config_t config = create_test_config();
     neural_network_t network = neural_network_create(&config);
 
@@ -147,13 +152,14 @@ TEST(NeuralNetLearning, OjaWeightNormalization) {
     float norm_after = neural_network_get_weight_norm(network, 0);
 
     // Oja's rule should control weight growth
-    EXPECT_LT(norm_after, norm_before * 10.0f); // Shouldn't explode
+    EXPECT_LT(norm_after, norm_before * 10.0f);  // Shouldn't explode
 
     neural_network_destroy(network);
 }
 
 // Test Oja's learning with correlated inputs
-TEST(NeuralNetLearning, OjaCorrelatedInputs) {
+TEST(NeuralNetLearning, OjaCorrelatedInputs)
+{
     network_config_t config = create_test_config();
     neural_network_t network = neural_network_create(&config);
 
@@ -186,7 +192,8 @@ TEST(NeuralNetLearning, OjaCorrelatedInputs) {
 //=============================================================================
 
 // Test basic homeostatic plasticity
-TEST(NeuralNetLearning, HomeostasisBasic) {
+TEST(NeuralNetLearning, HomeostasisBasic)
+{
     network_config_t config = create_test_config();
     config.homeostatic_rate = 0.01f;
     config.target_activity = 0.5f;
@@ -203,7 +210,8 @@ TEST(NeuralNetLearning, HomeostasisBasic) {
 }
 
 // Test homeostasis with high activity
-TEST(NeuralNetLearning, HomeostasisHighActivity) {
+TEST(NeuralNetLearning, HomeostasisHighActivity)
+{
     network_config_t config = create_test_config();
     config.homeostatic_rate = 0.1f;
     config.target_activity = 0.3f;
@@ -226,7 +234,8 @@ TEST(NeuralNetLearning, HomeostasisHighActivity) {
 }
 
 // Test homeostasis with low activity
-TEST(NeuralNetLearning, HomeostasisLowActivity) {
+TEST(NeuralNetLearning, HomeostasisLowActivity)
+{
     network_config_t config = create_test_config();
     config.homeostatic_rate = 0.1f;
     config.target_activity = 0.5f;
@@ -249,7 +258,8 @@ TEST(NeuralNetLearning, HomeostasisLowActivity) {
 //=============================================================================
 
 // Test plasticity update mechanism
-TEST(NeuralNetLearning, PlasticityUpdate) {
+TEST(NeuralNetLearning, PlasticityUpdate)
+{
     network_config_t config = create_test_config();
     neural_network_t network = neural_network_create(&config);
 
@@ -268,7 +278,8 @@ TEST(NeuralNetLearning, PlasticityUpdate) {
 }
 
 // Test plasticity with activity patterns
-TEST(NeuralNetLearning, PlasticityWithActivity) {
+TEST(NeuralNetLearning, PlasticityWithActivity)
+{
     network_config_t config = create_test_config();
     neural_network_t network = neural_network_create(&config);
 
@@ -293,7 +304,8 @@ TEST(NeuralNetLearning, PlasticityWithActivity) {
 //=============================================================================
 
 // Test STDP and homeostasis together
-TEST(NeuralNetLearning, STDPWithHomeostasis) {
+TEST(NeuralNetLearning, STDPWithHomeostasis)
+{
     network_config_t config = create_test_config();
     config.stdp_window = 20.0f;
     config.homeostatic_rate = 0.01f;
@@ -325,13 +337,14 @@ TEST(NeuralNetLearning, STDPWithHomeostasis) {
     // Network should remain stable
     network_stats_t stats;
     neural_network_get_stats(network, &stats);
-    EXPECT_LT(stats.avg_weight, 10.0f); // Weights shouldn't explode
+    EXPECT_LT(stats.avg_weight, 10.0f);  // Weights shouldn't explode
 
     neural_network_destroy(network);
 }
 
 // Test Oja and STDP together
-TEST(NeuralNetLearning, OjaWithSTDP) {
+TEST(NeuralNetLearning, OjaWithSTDP)
+{
     network_config_t config = create_test_config();
     neural_network_t network = neural_network_create(&config);
 
@@ -363,7 +376,8 @@ TEST(NeuralNetLearning, OjaWithSTDP) {
 //=============================================================================
 
 // Test network maintenance routine
-TEST(NeuralNetLearning, NetworkMaintenance) {
+TEST(NeuralNetLearning, NetworkMaintenance)
+{
     network_config_t config = create_test_config();
     config.update_interval = 100;
     neural_network_t network = neural_network_create(&config);
@@ -391,7 +405,8 @@ TEST(NeuralNetLearning, NetworkMaintenance) {
 }
 
 // Test synaptic pruning
-TEST(NeuralNetLearning, SynapticPruning) {
+TEST(NeuralNetLearning, SynapticPruning)
+{
     network_config_t config = create_test_config();
     neural_network_t network = neural_network_create(&config);
 
@@ -399,7 +414,7 @@ TEST(NeuralNetLearning, SynapticPruning) {
 
     // Add connections with varying weights
     ASSERT_TRUE(neural_network_add_connection(network, 0, 1, 0.9f));
-    ASSERT_TRUE(neural_network_add_connection(network, 0, 2, 0.01f)); // Very weak
+    ASSERT_TRUE(neural_network_add_connection(network, 0, 2, 0.01f));  // Very weak
     ASSERT_TRUE(neural_network_add_connection(network, 0, 3, 0.8f));
 
     // Prune weak synapses

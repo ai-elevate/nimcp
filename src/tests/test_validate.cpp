@@ -9,12 +9,12 @@
 
 #include <gtest/gtest.h>
 #include <cmath>
-#include <limits>
 #include <cstring>
+#include <limits>
 
 extern "C" {
-    #include "utils/nimcp_validate.h"
-    #include "utils/nimcp_common.h"
+#include "utils/nimcp_common.h"
+#include "utils/nimcp_validate.h"
 }
 
 //=============================================================================
@@ -22,7 +22,7 @@ extern "C" {
 //=============================================================================
 
 class IntegerFieldTest : public ::testing::Test {
-protected:
+   protected:
     void SetUp() override {}
     void TearDown() override {}
 };
@@ -31,7 +31,8 @@ protected:
  * WHAT: Test NULL pointer handling
  * WHY: Verify proper error handling for NULL input
  */
-TEST_F(IntegerFieldTest, NullPointer) {
+TEST_F(IntegerFieldTest, NullPointer)
+{
     EXPECT_FALSE(nimcp_validate_integer_field(nullptr, sizeof(int32_t)));
 }
 
@@ -39,7 +40,8 @@ TEST_F(IntegerFieldTest, NullPointer) {
  * WHAT: Test invalid size handling
  * WHY: Ensure only standard integer sizes are accepted
  */
-TEST_F(IntegerFieldTest, InvalidSize) {
+TEST_F(IntegerFieldTest, InvalidSize)
+{
     int32_t value = 42;
     EXPECT_FALSE(nimcp_validate_integer_field(&value, 3));  // Not a standard size
     EXPECT_FALSE(nimcp_validate_integer_field(&value, 5));
@@ -50,7 +52,8 @@ TEST_F(IntegerFieldTest, InvalidSize) {
  * WHAT: Test valid 8-bit integer
  * WHY: Verify int8_t/uint8_t validation works
  */
-TEST_F(IntegerFieldTest, Valid8Bit) {
+TEST_F(IntegerFieldTest, Valid8Bit)
+{
     int8_t value = 42;
     EXPECT_TRUE(nimcp_validate_integer_field(&value, sizeof(int8_t)));
 
@@ -65,7 +68,8 @@ TEST_F(IntegerFieldTest, Valid8Bit) {
  * WHAT: Test valid 16-bit integer
  * WHY: Verify int16_t/uint16_t validation works
  */
-TEST_F(IntegerFieldTest, Valid16Bit) {
+TEST_F(IntegerFieldTest, Valid16Bit)
+{
     int16_t value = 1000;
     EXPECT_TRUE(nimcp_validate_integer_field(&value, sizeof(int16_t)));
 
@@ -80,7 +84,8 @@ TEST_F(IntegerFieldTest, Valid16Bit) {
  * WHAT: Test valid 32-bit integer within range
  * WHY: Verify int32_t validation with range checking
  */
-TEST_F(IntegerFieldTest, Valid32Bit) {
+TEST_F(IntegerFieldTest, Valid32Bit)
+{
     int32_t value = 42;
     EXPECT_TRUE(nimcp_validate_integer_field(&value, sizeof(int32_t)));
 
@@ -98,7 +103,8 @@ TEST_F(IntegerFieldTest, Valid32Bit) {
  * WHAT: Test valid 64-bit integer within range
  * WHY: Verify int64_t validation with range checking
  */
-TEST_F(IntegerFieldTest, Valid64Bit) {
+TEST_F(IntegerFieldTest, Valid64Bit)
+{
     int64_t value = 42;
     EXPECT_TRUE(nimcp_validate_integer_field(&value, sizeof(int64_t)));
 
@@ -116,7 +122,8 @@ TEST_F(IntegerFieldTest, Valid64Bit) {
  * WHAT: Test alignment requirements
  * WHY: Ensure misaligned data is rejected
  */
-TEST_F(IntegerFieldTest, Alignment) {
+TEST_F(IntegerFieldTest, Alignment)
+{
     // Allocate aligned buffer
     alignas(8) uint8_t buffer[16];
 
@@ -146,7 +153,7 @@ TEST_F(IntegerFieldTest, Alignment) {
 //=============================================================================
 
 class FloatFieldTest : public ::testing::Test {
-protected:
+   protected:
     void SetUp() override {}
     void TearDown() override {}
 };
@@ -155,7 +162,8 @@ protected:
  * WHAT: Test NULL pointer handling
  * WHY: Verify proper error handling for NULL input
  */
-TEST_F(FloatFieldTest, NullPointer) {
+TEST_F(FloatFieldTest, NullPointer)
+{
     EXPECT_FALSE(nimcp_validate_float_field(nullptr, sizeof(float)));
 }
 
@@ -163,7 +171,8 @@ TEST_F(FloatFieldTest, NullPointer) {
  * WHAT: Test invalid size handling
  * WHY: Ensure only float and double sizes are accepted
  */
-TEST_F(FloatFieldTest, InvalidSize) {
+TEST_F(FloatFieldTest, InvalidSize)
+{
     float value = 3.14f;
     EXPECT_FALSE(nimcp_validate_float_field(&value, 2));  // Not float or double
     EXPECT_FALSE(nimcp_validate_float_field(&value, 3));
@@ -174,7 +183,8 @@ TEST_F(FloatFieldTest, InvalidSize) {
  * WHAT: Test valid float values
  * WHY: Verify float validation accepts normal values
  */
-TEST_F(FloatFieldTest, ValidFloat) {
+TEST_F(FloatFieldTest, ValidFloat)
+{
     float value = 3.14f;
     EXPECT_TRUE(nimcp_validate_float_field(&value, sizeof(float)));
 
@@ -195,7 +205,8 @@ TEST_F(FloatFieldTest, ValidFloat) {
  * WHAT: Test valid double values
  * WHY: Verify double validation accepts normal values
  */
-TEST_F(FloatFieldTest, ValidDouble) {
+TEST_F(FloatFieldTest, ValidDouble)
+{
     double value = 3.14159265358979;
     EXPECT_TRUE(nimcp_validate_float_field(&value, sizeof(double)));
 
@@ -216,7 +227,8 @@ TEST_F(FloatFieldTest, ValidDouble) {
  * WHAT: Test NaN rejection for float
  * WHY: Ensure NaN values are properly rejected
  */
-TEST_F(FloatFieldTest, FloatNaN) {
+TEST_F(FloatFieldTest, FloatNaN)
+{
     float value = std::nanf("");
     EXPECT_FALSE(nimcp_validate_float_field(&value, sizeof(float)));
 
@@ -228,7 +240,8 @@ TEST_F(FloatFieldTest, FloatNaN) {
  * WHAT: Test NaN rejection for double
  * WHY: Ensure NaN values are properly rejected
  */
-TEST_F(FloatFieldTest, DoubleNaN) {
+TEST_F(FloatFieldTest, DoubleNaN)
+{
     double value = std::nan("");
     EXPECT_FALSE(nimcp_validate_float_field(&value, sizeof(double)));
 
@@ -240,7 +253,8 @@ TEST_F(FloatFieldTest, DoubleNaN) {
  * WHAT: Test infinity rejection for float
  * WHY: Ensure infinity values are properly rejected
  */
-TEST_F(FloatFieldTest, FloatInfinity) {
+TEST_F(FloatFieldTest, FloatInfinity)
+{
     float value = std::numeric_limits<float>::infinity();
     EXPECT_FALSE(nimcp_validate_float_field(&value, sizeof(float)));
 
@@ -252,7 +266,8 @@ TEST_F(FloatFieldTest, FloatInfinity) {
  * WHAT: Test infinity rejection for double
  * WHY: Ensure infinity values are properly rejected
  */
-TEST_F(FloatFieldTest, DoubleInfinity) {
+TEST_F(FloatFieldTest, DoubleInfinity)
+{
     double value = std::numeric_limits<double>::infinity();
     EXPECT_FALSE(nimcp_validate_float_field(&value, sizeof(double)));
 
@@ -264,7 +279,8 @@ TEST_F(FloatFieldTest, DoubleInfinity) {
  * WHAT: Test out-of-range float values
  * WHY: Ensure values exceeding NIMCP_FLOAT_MAX are rejected
  */
-TEST_F(FloatFieldTest, FloatOutOfRange) {
+TEST_F(FloatFieldTest, FloatOutOfRange)
+{
     float value = NIMCP_FLOAT_MAX * 2.0f;
     EXPECT_FALSE(nimcp_validate_float_field(&value, sizeof(float)));
 
@@ -276,7 +292,8 @@ TEST_F(FloatFieldTest, FloatOutOfRange) {
  * WHAT: Test out-of-range double values
  * WHY: Ensure values exceeding NIMCP_DOUBLE_MAX are rejected
  */
-TEST_F(FloatFieldTest, DoubleOutOfRange) {
+TEST_F(FloatFieldTest, DoubleOutOfRange)
+{
     double value = NIMCP_DOUBLE_MAX * 2.0;
     EXPECT_FALSE(nimcp_validate_float_field(&value, sizeof(double)));
 
@@ -288,7 +305,8 @@ TEST_F(FloatFieldTest, DoubleOutOfRange) {
  * WHAT: Test alignment requirements for float
  * WHY: Ensure misaligned data is rejected
  */
-TEST_F(FloatFieldTest, FloatAlignment) {
+TEST_F(FloatFieldTest, FloatAlignment)
+{
     alignas(8) uint8_t buffer[16];
 
     // Aligned float
@@ -306,7 +324,8 @@ TEST_F(FloatFieldTest, FloatAlignment) {
  * WHAT: Test alignment requirements for double
  * WHY: Ensure misaligned data is rejected
  */
-TEST_F(FloatFieldTest, DoubleAlignment) {
+TEST_F(FloatFieldTest, DoubleAlignment)
+{
     alignas(8) uint8_t buffer[16];
 
     // Aligned double
@@ -325,7 +344,7 @@ TEST_F(FloatFieldTest, DoubleAlignment) {
 //=============================================================================
 
 class StringFieldTest : public ::testing::Test {
-protected:
+   protected:
     void SetUp() override {}
     void TearDown() override {}
 };
@@ -334,7 +353,8 @@ protected:
  * WHAT: Test NULL pointer handling
  * WHY: Verify proper error handling for NULL input
  */
-TEST_F(StringFieldTest, NullPointer) {
+TEST_F(StringFieldTest, NullPointer)
+{
     EXPECT_FALSE(nimcp_validate_string_field(nullptr, 10));
 }
 
@@ -342,7 +362,8 @@ TEST_F(StringFieldTest, NullPointer) {
  * WHAT: Test zero size handling
  * WHY: Verify proper error handling for zero size
  */
-TEST_F(StringFieldTest, ZeroSize) {
+TEST_F(StringFieldTest, ZeroSize)
+{
     char buffer[10] = "test";
     EXPECT_FALSE(nimcp_validate_string_field(buffer, 0));
 }
@@ -351,7 +372,8 @@ TEST_F(StringFieldTest, ZeroSize) {
  * WHAT: Test valid ASCII string
  * WHY: Verify basic string validation works
  */
-TEST_F(StringFieldTest, ValidAsciiString) {
+TEST_F(StringFieldTest, ValidAsciiString)
+{
     char buffer[32] = "Hello, World!";
     EXPECT_TRUE(nimcp_validate_string_field(buffer, sizeof(buffer)));
 
@@ -366,7 +388,8 @@ TEST_F(StringFieldTest, ValidAsciiString) {
  * WHAT: Test NULL termination requirement
  * WHY: Ensure strings must be NULL-terminated
  */
-TEST_F(StringFieldTest, NullTermination) {
+TEST_F(StringFieldTest, NullTermination)
+{
     char buffer[10];
     memset(buffer, 'A', sizeof(buffer));  // No NULL terminator
     EXPECT_FALSE(nimcp_validate_string_field(buffer, sizeof(buffer)));
@@ -380,7 +403,8 @@ TEST_F(StringFieldTest, NullTermination) {
  * WHAT: Test allowed control characters
  * WHY: Verify newline and tab are accepted
  */
-TEST_F(StringFieldTest, AllowedControlCharacters) {
+TEST_F(StringFieldTest, AllowedControlCharacters)
+{
     char buffer[32] = "Line1\nLine2";
     EXPECT_TRUE(nimcp_validate_string_field(buffer, sizeof(buffer)));
 
@@ -395,7 +419,8 @@ TEST_F(StringFieldTest, AllowedControlCharacters) {
  * WHAT: Test rejected control characters
  * WHY: Ensure dangerous control characters are rejected
  */
-TEST_F(StringFieldTest, RejectedControlCharacters) {
+TEST_F(StringFieldTest, RejectedControlCharacters)
+{
     char buffer[32];
 
     // Bell character
@@ -418,7 +443,8 @@ TEST_F(StringFieldTest, RejectedControlCharacters) {
  * WHAT: Test valid UTF-8 sequences
  * WHY: Verify UTF-8 validation accepts valid encodings
  */
-TEST_F(StringFieldTest, ValidUtf8) {
+TEST_F(StringFieldTest, ValidUtf8)
+{
     // 2-byte UTF-8 (é = 0xC3 0xA9)
     char buffer[32] = "Caf\xC3\xA9";
     EXPECT_TRUE(nimcp_validate_string_field(buffer, sizeof(buffer)));
@@ -436,7 +462,8 @@ TEST_F(StringFieldTest, ValidUtf8) {
  * WHAT: Test invalid UTF-8 sequences
  * WHY: Ensure malformed UTF-8 is rejected
  */
-TEST_F(StringFieldTest, InvalidUtf8) {
+TEST_F(StringFieldTest, InvalidUtf8)
+{
     // Invalid continuation byte
     char buffer[32] = "Test";
     buffer[2] = '\xC0';  // Start of 2-byte sequence
@@ -455,7 +482,8 @@ TEST_F(StringFieldTest, InvalidUtf8) {
  * WHAT: Test maximum string length
  * WHY: Ensure strings exceeding max length are rejected
  */
-TEST_F(StringFieldTest, MaximumLength) {
+TEST_F(StringFieldTest, MaximumLength)
+{
     // Create a string at the limit
     size_t len = NIMCP_STRING_MAX_LENGTH;
     char* buffer = new char[len + 2];  // +1 for null, +1 extra
@@ -477,7 +505,7 @@ TEST_F(StringFieldTest, MaximumLength) {
 //=============================================================================
 
 class ArrayFieldTest : public ::testing::Test {
-protected:
+   protected:
     void SetUp() override {}
     void TearDown() override {}
 };
@@ -486,7 +514,8 @@ protected:
  * WHAT: Test NULL pointer handling
  * WHY: Verify proper error handling for NULL input
  */
-TEST_F(ArrayFieldTest, NullPointer) {
+TEST_F(ArrayFieldTest, NullPointer)
+{
     EXPECT_FALSE(nimcp_validate_array_field(nullptr, 100));
 }
 
@@ -494,7 +523,8 @@ TEST_F(ArrayFieldTest, NullPointer) {
  * WHAT: Test size too small for header
  * WHY: Ensure size must accommodate header
  */
-TEST_F(ArrayFieldTest, SizeTooSmall) {
+TEST_F(ArrayFieldTest, SizeTooSmall)
+{
     uint8_t buffer[4];
     EXPECT_FALSE(nimcp_validate_array_field(buffer, sizeof(buffer)));
 }
@@ -503,7 +533,8 @@ TEST_F(ArrayFieldTest, SizeTooSmall) {
  * WHAT: Test valid integer array
  * WHY: Verify integer array validation works
  */
-TEST_F(ArrayFieldTest, ValidIntegerArray) {
+TEST_F(ArrayFieldTest, ValidIntegerArray)
+{
     alignas(8) uint8_t buffer[128];
     NimcpArrayHeader* header = reinterpret_cast<NimcpArrayHeader*>(buffer);
 
@@ -525,7 +556,8 @@ TEST_F(ArrayFieldTest, ValidIntegerArray) {
  * WHAT: Test valid float array
  * WHY: Verify float array validation works
  */
-TEST_F(ArrayFieldTest, ValidFloatArray) {
+TEST_F(ArrayFieldTest, ValidFloatArray)
+{
     alignas(8) uint8_t buffer[128];
     NimcpArrayHeader* header = reinterpret_cast<NimcpArrayHeader*>(buffer);
 
@@ -547,7 +579,8 @@ TEST_F(ArrayFieldTest, ValidFloatArray) {
  * WHAT: Test valid string array
  * WHY: Verify string array validation works
  */
-TEST_F(ArrayFieldTest, ValidStringArray) {
+TEST_F(ArrayFieldTest, ValidStringArray)
+{
     alignas(8) uint8_t buffer[256];
     NimcpArrayHeader* header = reinterpret_cast<NimcpArrayHeader*>(buffer);
 
@@ -569,7 +602,8 @@ TEST_F(ArrayFieldTest, ValidStringArray) {
  * WHAT: Test zero element count
  * WHY: Ensure empty arrays are rejected
  */
-TEST_F(ArrayFieldTest, ZeroElementCount) {
+TEST_F(ArrayFieldTest, ZeroElementCount)
+{
     alignas(8) uint8_t buffer[128];
     NimcpArrayHeader* header = reinterpret_cast<NimcpArrayHeader*>(buffer);
 
@@ -584,7 +618,8 @@ TEST_F(ArrayFieldTest, ZeroElementCount) {
  * WHAT: Test zero element size
  * WHY: Ensure zero-size elements are rejected
  */
-TEST_F(ArrayFieldTest, ZeroElementSize) {
+TEST_F(ArrayFieldTest, ZeroElementSize)
+{
     alignas(8) uint8_t buffer[128];
     NimcpArrayHeader* header = reinterpret_cast<NimcpArrayHeader*>(buffer);
 
@@ -599,7 +634,8 @@ TEST_F(ArrayFieldTest, ZeroElementSize) {
  * WHAT: Test element count exceeds maximum
  * WHY: Ensure arrays with too many elements are rejected
  */
-TEST_F(ArrayFieldTest, TooManyElements) {
+TEST_F(ArrayFieldTest, TooManyElements)
+{
     alignas(8) uint8_t buffer[128];
     NimcpArrayHeader* header = reinterpret_cast<NimcpArrayHeader*>(buffer);
 
@@ -614,7 +650,8 @@ TEST_F(ArrayFieldTest, TooManyElements) {
  * WHAT: Test array size exceeds field size
  * WHY: Ensure calculated size fits within provided buffer
  */
-TEST_F(ArrayFieldTest, ArraySizeExceedsFieldSize) {
+TEST_F(ArrayFieldTest, ArraySizeExceedsFieldSize)
+{
     alignas(8) uint8_t buffer[128];
     NimcpArrayHeader* header = reinterpret_cast<NimcpArrayHeader*>(buffer);
 
@@ -629,7 +666,8 @@ TEST_F(ArrayFieldTest, ArraySizeExceedsFieldSize) {
  * WHAT: Test invalid element type
  * WHY: Ensure unknown element types are rejected
  */
-TEST_F(ArrayFieldTest, InvalidElementType) {
+TEST_F(ArrayFieldTest, InvalidElementType)
+{
     alignas(8) uint8_t buffer[128];
     NimcpArrayHeader* header = reinterpret_cast<NimcpArrayHeader*>(buffer);
 
@@ -645,7 +683,8 @@ TEST_F(ArrayFieldTest, InvalidElementType) {
  * WHAT: Test array with invalid element (NaN in float array)
  * WHY: Ensure element validation catches invalid values
  */
-TEST_F(ArrayFieldTest, InvalidFloatElement) {
+TEST_F(ArrayFieldTest, InvalidFloatElement)
+{
     alignas(8) uint8_t buffer[128];
     NimcpArrayHeader* header = reinterpret_cast<NimcpArrayHeader*>(buffer);
 
@@ -667,7 +706,7 @@ TEST_F(ArrayFieldTest, InvalidFloatElement) {
 //=============================================================================
 
 class StateFieldTest : public ::testing::Test {
-protected:
+   protected:
     void SetUp() override {}
     void TearDown() override {}
 };
@@ -676,7 +715,8 @@ protected:
  * WHAT: Test NULL pointer handling
  * WHY: Verify proper error handling for NULL input
  */
-TEST_F(StateFieldTest, NullPointer) {
+TEST_F(StateFieldTest, NullPointer)
+{
     EXPECT_FALSE(nimcp_validate_state_fields(nullptr, 100));
 }
 
@@ -684,7 +724,8 @@ TEST_F(StateFieldTest, NullPointer) {
  * WHAT: Test size too small for header
  * WHY: Ensure size must accommodate header
  */
-TEST_F(StateFieldTest, SizeTooSmall) {
+TEST_F(StateFieldTest, SizeTooSmall)
+{
     uint8_t buffer[4];
     EXPECT_FALSE(nimcp_validate_state_fields(buffer, sizeof(buffer)));
 }
@@ -693,7 +734,8 @@ TEST_F(StateFieldTest, SizeTooSmall) {
  * WHAT: Test invalid magic number
  * WHY: Ensure magic number validation works
  */
-TEST_F(StateFieldTest, InvalidMagic) {
+TEST_F(StateFieldTest, InvalidMagic)
+{
     uint8_t buffer[256];
     NimcpStateHeader* header = reinterpret_cast<NimcpStateHeader*>(buffer);
 
@@ -707,7 +749,8 @@ TEST_F(StateFieldTest, InvalidMagic) {
  * WHAT: Test zero field count
  * WHY: Ensure states must have at least one field
  */
-TEST_F(StateFieldTest, ZeroFieldCount) {
+TEST_F(StateFieldTest, ZeroFieldCount)
+{
     uint8_t buffer[256];
     NimcpStateHeader* header = reinterpret_cast<NimcpStateHeader*>(buffer);
 
@@ -721,7 +764,8 @@ TEST_F(StateFieldTest, ZeroFieldCount) {
  * WHAT: Test field count exceeds maximum
  * WHY: Ensure states with too many fields are rejected
  */
-TEST_F(StateFieldTest, TooManyFields) {
+TEST_F(StateFieldTest, TooManyFields)
+{
     uint8_t buffer[256];
     NimcpStateHeader* header = reinterpret_cast<NimcpStateHeader*>(buffer);
 
@@ -735,7 +779,8 @@ TEST_F(StateFieldTest, TooManyFields) {
  * WHAT: Test valid single integer field state
  * WHY: Verify basic state validation works
  */
-TEST_F(StateFieldTest, ValidSingleIntegerField) {
+TEST_F(StateFieldTest, ValidSingleIntegerField)
+{
     uint8_t buffer[256];
     memset(buffer, 0, sizeof(buffer));
 
@@ -762,7 +807,8 @@ TEST_F(StateFieldTest, ValidSingleIntegerField) {
  * WHAT: Test valid multiple fields state
  * WHY: Verify state with multiple fields validates correctly
  */
-TEST_F(StateFieldTest, ValidMultipleFields) {
+TEST_F(StateFieldTest, ValidMultipleFields)
+{
     uint8_t buffer[512];
     memset(buffer, 0, sizeof(buffer));
 
@@ -799,7 +845,8 @@ TEST_F(StateFieldTest, ValidMultipleFields) {
  * WHAT: Test field exceeds state boundaries
  * WHY: Ensure out-of-bounds fields are rejected
  */
-TEST_F(StateFieldTest, FieldExceedsBoundaries) {
+TEST_F(StateFieldTest, FieldExceedsBoundaries)
+{
     uint8_t buffer[256];
     memset(buffer, 0, sizeof(buffer));
 
@@ -821,7 +868,8 @@ TEST_F(StateFieldTest, FieldExceedsBoundaries) {
  * WHAT: Test overlapping fields
  * WHY: Ensure overlapping fields are detected and rejected
  */
-TEST_F(StateFieldTest, OverlappingFields) {
+TEST_F(StateFieldTest, OverlappingFields)
+{
     uint8_t buffer[512];
     memset(buffer, 0, sizeof(buffer));
 
@@ -849,7 +897,8 @@ TEST_F(StateFieldTest, OverlappingFields) {
  * WHAT: Test invalid field type
  * WHY: Ensure unknown field types are rejected
  */
-TEST_F(StateFieldTest, InvalidFieldType) {
+TEST_F(StateFieldTest, InvalidFieldType)
+{
     uint8_t buffer[256];
     memset(buffer, 0, sizeof(buffer));
 

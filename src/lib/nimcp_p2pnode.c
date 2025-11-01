@@ -33,19 +33,19 @@
 //=============================================================================
 
 #include "../include/nimcp_p2pnode.h"
-#include "utils/nimcp_memory.h"
-#include "utils/nimcp_thread.h"
-#include "utils/nimcp_graph.h"
-#include "utils/nimcp_validate.h"
+#include <arpa/inet.h>
+#include <errno.h>
+#include <fcntl.h>
+#include <netinet/in.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <stdio.h>
-#include <errno.h>
 #include <sys/socket.h>
-#include <netinet/in.h>
-#include <arpa/inet.h>
 #include <unistd.h>
-#include <fcntl.h>
+#include "utils/nimcp_graph.h"
+#include "utils/nimcp_memory.h"
+#include "utils/nimcp_thread.h"
+#include "utils/nimcp_validate.h"
 
 //=============================================================================
 // Constants and Configuration
@@ -77,9 +77,11 @@
  * @param ip IP address string (must be NULL-terminated)
  * @return true if valid, false otherwise
  */
-static bool validate_ip_address(const char* ip) {
+static bool validate_ip_address(const char* ip)
+{
     // Guard clause: NULL check
-    if (!ip) return false;
+    if (!ip)
+        return false;
 
     // Validate as string field (NULL termination, UTF-8, control chars)
     if (!nimcp_validate_string_field(ip, strnlen(ip, MAX_IP_LENGTH) + 1)) {
@@ -119,7 +121,8 @@ static bool validate_ip_address(const char* ip) {
  * @param binding true if port will be bound (listen), false if connecting
  * @return true if valid, false otherwise
  */
-static bool validate_port_number(uint16_t port, bool binding) {
+static bool validate_port_number(uint16_t port, bool binding)
+{
     // Guard clause: Zero port (invalid)
     if (port == 0) {
         return false;
@@ -151,9 +154,9 @@ static bool validate_port_number(uint16_t port, bool binding) {
  * average case lookup for peer resolution, critical for routing performance.
  */
 typedef struct peer_hash_entry {
-    char peer_key[32];                    /**< "IP:PORT" string key */
-    peer_info_t* peer;                    /**< Pointer to peer info */
-    struct peer_hash_entry* next;         /**< Collision chain */
+    char peer_key[32];            /**< "IP:PORT" string key */
+    peer_info_t* peer;            /**< Pointer to peer info */
+    struct peer_hash_entry* next; /**< Collision chain */
 } peer_hash_entry_t;
 
 /**
@@ -245,10 +248,11 @@ struct p2p_node_struct {
  *
  * COMPLEXITY: O(1)
  */
-static void generate_peer_key(char* key, size_t key_size,
-                              const char* ip, uint16_t port) {
+static void generate_peer_key(char* key, size_t key_size, const char* ip, uint16_t port)
+{
     // Guard clause: Validate inputs
-    if (!key || !ip) return;
+    if (!key || !ip)
+        return;
 
     snprintf(key, key_size, "%s:%u", ip, port);
 }
@@ -261,9 +265,11 @@ static void generate_peer_key(char* key, size_t key_size,
  *
  * COMPLEXITY: O(n) where n = key length (typically small ~20 chars)
  */
-static uint32_t hash_peer_key(const char* key) {
+static uint32_t hash_peer_key(const char* key)
+{
     // Guard clause: Validate input
-    if (!key) return 0;
+    if (!key)
+        return 0;
 
     uint32_t hash = 5381;
     int c;
@@ -283,9 +289,11 @@ static uint32_t hash_peer_key(const char* key) {
  *
  * COMPLEXITY: O(1)
  */
-static void init_peer_hash_table(peer_hash_table_t* table) {
+static void init_peer_hash_table(peer_hash_table_t* table)
+{
     // Guard clause: Validate input
-    if (!table) return;
+    if (!table)
+        return;
 
     memset(table->buckets, 0, sizeof(table->buckets));
     table->num_entries = 0;
@@ -301,16 +309,18 @@ static void init_peer_hash_table(peer_hash_table_t* table) {
  *
  * @return true if inserted, false on failure
  */
-static bool hash_table_insert_peer(peer_hash_table_t* table,
-                                   const char* key, peer_info_t* peer) {
+static bool hash_table_insert_peer(peer_hash_table_t* table, const char* key, peer_info_t* peer)
+{
     // Guard clause: Validate inputs
-    if (!table || !key || !peer) return false;
+    if (!table || !key || !peer)
+        return false;
 
     uint32_t bucket = hash_peer_key(key);
 
     peer_hash_entry_t* entry = nimcp_malloc(sizeof(peer_hash_entry_t));
     // Guard clause: Check allocation
-    if (!entry) return false;
+    if (!entry)
+        return false;
 
     strncpy(entry->peer_key, key, sizeof(entry->peer_key) - 1);
     entry->peer_key[sizeof(entry->peer_key) - 1] = '\0';
@@ -332,10 +342,11 @@ static bool hash_table_insert_peer(peer_hash_table_t* table,
  *
  * @return Pointer to peer or NULL if not found
  */
-static peer_info_t* hash_table_lookup_peer(peer_hash_table_t* table,
-                                           const char* key) {
+static peer_info_t* hash_table_lookup_peer(peer_hash_table_t* table, const char* key)
+{
     // Guard clause: Validate inputs
-    if (!table || !key) return NULL;
+    if (!table || !key)
+        return NULL;
 
     uint32_t bucket = hash_peer_key(key);
     peer_hash_entry_t* entry = table->buckets[bucket];
@@ -357,9 +368,11 @@ static peer_info_t* hash_table_lookup_peer(peer_hash_table_t* table,
  *
  * COMPLEXITY: O(1) average case
  */
-static bool hash_table_remove_peer(peer_hash_table_t* table, const char* key) {
+static bool hash_table_remove_peer(peer_hash_table_t* table, const char* key)
+{
     // Guard clause: Validate inputs
-    if (!table || !key) return false;
+    if (!table || !key)
+        return false;
 
     uint32_t bucket = hash_peer_key(key);
     peer_hash_entry_t** entry_ptr = &table->buckets[bucket];
@@ -385,9 +398,11 @@ static bool hash_table_remove_peer(peer_hash_table_t* table, const char* key) {
  *
  * COMPLEXITY: O(n) where n = number of entries
  */
-static void destroy_peer_hash_table(peer_hash_table_t* table) {
+static void destroy_peer_hash_table(peer_hash_table_t* table)
+{
     // Guard clause: Validate input
-    if (!table) return;
+    if (!table)
+        return;
 
     for (uint32_t i = 0; i < HASH_TABLE_SIZE; i++) {
         peer_hash_entry_t* entry = table->buckets[i];
@@ -412,10 +427,12 @@ static void destroy_peer_hash_table(peer_hash_table_t* table) {
  *
  * @return Socket file descriptor or -1 on failure
  */
-static int create_tcp_socket(void) {
+static int create_tcp_socket(void)
+{
     int sock = socket(AF_INET, SOCK_STREAM, 0);
     // Guard clause: Check creation
-    if (sock < 0) return -1;
+    if (sock < 0)
+        return -1;
 
     return sock;
 }
@@ -429,13 +446,16 @@ static int create_tcp_socket(void) {
  *
  * @return true on success, false on failure
  */
-static bool set_socket_nonblocking(int sock) {
+static bool set_socket_nonblocking(int sock)
+{
     // Guard clause: Validate socket
-    if (sock < 0) return false;
+    if (sock < 0)
+        return false;
 
     int flags = fcntl(sock, F_GETFL, 0);
     // Guard clause: Check fcntl
-    if (flags < 0) return false;
+    if (flags < 0)
+        return false;
 
     return fcntl(sock, F_SETFL, flags | O_NONBLOCK) >= 0;
 }
@@ -450,13 +470,14 @@ static bool set_socket_nonblocking(int sock) {
  *
  * @return true on success, false on failure
  */
-static bool enable_socket_reuse(int sock) {
+static bool enable_socket_reuse(int sock)
+{
     // Guard clause: Validate socket
-    if (sock < 0) return false;
+    if (sock < 0)
+        return false;
 
     int opt = SOCKET_REUSE_ENABLED;
-    return setsockopt(sock, SOL_SOCKET, SO_REUSEADDR,
-                     &opt, sizeof(opt)) >= 0;
+    return setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt)) >= 0;
 }
 
 /**
@@ -469,9 +490,11 @@ static bool enable_socket_reuse(int sock) {
  *
  * @return true on success, false on failure
  */
-static bool bind_socket(int sock, uint16_t port) {
+static bool bind_socket(int sock, uint16_t port)
+{
     // Guard clause: Validate socket
-    if (sock < 0) return false;
+    if (sock < 0)
+        return false;
 
     struct sockaddr_in addr;
     memset(&addr, 0, sizeof(addr));
@@ -479,7 +502,7 @@ static bool bind_socket(int sock, uint16_t port) {
     addr.sin_addr.s_addr = INADDR_ANY;
     addr.sin_port = htons(port);
 
-    return bind(sock, (struct sockaddr*)&addr, sizeof(addr)) >= 0;
+    return bind(sock, (struct sockaddr*) &addr, sizeof(addr)) >= 0;
 }
 
 /**
@@ -491,9 +514,11 @@ static bool bind_socket(int sock, uint16_t port) {
  *
  * @return true on success, false on failure
  */
-static bool start_listening(int sock) {
+static bool start_listening(int sock)
+{
     // Guard clause: Validate socket
-    if (sock < 0) return false;
+    if (sock < 0)
+        return false;
 
     return listen(sock, LISTEN_BACKLOG) >= 0;
 }
@@ -516,14 +541,17 @@ static bool start_listening(int sock) {
  * @param node Pointer to node structure
  * @return true if setup successful, false otherwise
  */
-static bool setup_listen_socket(p2p_node_t node) {
+static bool setup_listen_socket(p2p_node_t node)
+{
     // Guard clause: Validate input
-    if (!node) return false;
+    if (!node)
+        return false;
 
     // Step 1: Create socket
     node->listen_socket = create_tcp_socket();
     // Guard clause: Check creation
-    if (node->listen_socket < 0) return false;
+    if (node->listen_socket < 0)
+        return false;
 
     // Step 2: Set non-blocking
     if (!set_socket_nonblocking(node->listen_socket)) {
@@ -576,9 +604,11 @@ static bool setup_listen_socket(p2p_node_t node) {
  * @param config Configuration to validate
  * @return true if valid, false otherwise
  */
-static bool validate_config(const node_config_t* config) {
+static bool validate_config(const node_config_t* config)
+{
     // Guard clause: Check null
-    if (!config) return false;
+    if (!config)
+        return false;
 
     // Validate listen_port using nimcp_validate
     // WHY: Ensure port is valid and bindable
@@ -620,9 +650,11 @@ static bool validate_config(const node_config_t* config) {
  *
  * @return true on success, false on failure
  */
-static bool allocate_peer_storage(p2p_node_t node) {
+static bool allocate_peer_storage(p2p_node_t node)
+{
     // Guard clause: Validate input
-    if (!node) return false;
+    if (!node)
+        return false;
 
     node->peers = nimcp_calloc(node->config.max_peers, sizeof(peer_info_t));
     return node->peers != NULL;
@@ -635,9 +667,11 @@ static bool allocate_peer_storage(p2p_node_t node) {
  *
  * COMPLEXITY: O(1)
  */
-static void initialize_node_state(p2p_node_t node) {
+static void initialize_node_state(p2p_node_t node)
+{
     // Guard clause: Validate input
-    if (!node) return;
+    if (!node)
+        return;
 
     node->status = NODE_STATUS_INIT;
     node->running = false;
@@ -670,14 +704,17 @@ static void initialize_node_state(p2p_node_t node) {
  * @param config Pointer to configuration structure
  * @return Handle to the created node, NULL if creation fails
  */
-p2p_node_t p2p_node_create(const node_config_t* config) {
+p2p_node_t p2p_node_create(const node_config_t* config)
+{
     // Guard clause: Validate configuration
-    if (!validate_config(config)) return NULL;
+    if (!validate_config(config))
+        return NULL;
 
     // Allocate node structure
     p2p_node_t node = nimcp_calloc(1, sizeof(struct p2p_node_struct));
     // Guard clause: Check allocation
-    if (!node) return NULL;
+    if (!node)
+        return NULL;
 
     // Copy configuration
     memcpy(&node->config, config, sizeof(node_config_t));
@@ -721,9 +758,11 @@ p2p_node_t p2p_node_create(const node_config_t* config) {
  *
  * COMPLEXITY: O(1)
  */
-static void close_listen_socket(p2p_node_t node) {
+static void close_listen_socket(p2p_node_t node)
+{
     // Guard clause: Validate input
-    if (!node) return;
+    if (!node)
+        return;
 
     // Guard clause: Check if socket is open
     if (node->listen_socket >= 0) {
@@ -750,9 +789,11 @@ static void close_listen_socket(p2p_node_t node) {
  *
  * @param node Handle to the node to destroy
  */
-void p2p_node_destroy(p2p_node_t node) {
+void p2p_node_destroy(p2p_node_t node)
+{
     // Guard clause: Validate input
-    if (!node) return;
+    if (!node)
+        return;
 
     // Stop if running
     if (node->running) {
@@ -795,9 +836,11 @@ void p2p_node_destroy(p2p_node_t node) {
  * @param node Handle to the node
  * @return Pointer to topology graph, or NULL if node is invalid
  */
-struct NimcpGraph* p2p_node_get_topology_graph(p2p_node_t node) {
+struct NimcpGraph* p2p_node_get_topology_graph(p2p_node_t node)
+{
     // Guard clause: Validate input
-    if (!node) return NULL;
+    if (!node)
+        return NULL;
 
     return node->topology_graph;
 }
@@ -812,7 +855,8 @@ struct NimcpGraph* p2p_node_get_topology_graph(p2p_node_t node) {
  * @param node Handle to the node
  * @return Current node status
  */
-node_status_t p2p_node_get_status(p2p_node_t node) {
+node_status_t p2p_node_get_status(p2p_node_t node)
+{
     return node ? node->status : NODE_STATUS_ERROR;
 }
 
@@ -829,9 +873,11 @@ node_status_t p2p_node_get_status(p2p_node_t node) {
  * @param peer_port Port number of peer
  * @return true if peer is connected, false otherwise
  */
-bool p2p_node_is_peer_connected(p2p_node_t node, const char* peer_ip, uint16_t peer_port) {
+bool p2p_node_is_peer_connected(p2p_node_t node, const char* peer_ip, uint16_t peer_port)
+{
     // Guard clause: Validate inputs
-    if (!node || !peer_ip) return false;
+    if (!node || !peer_ip)
+        return false;
 
     // Lock for thread safety
     nimcp_mutex_lock(&node->lock);
@@ -868,9 +914,11 @@ bool p2p_node_is_peer_connected(p2p_node_t node, const char* peer_ip, uint16_t p
  *
  * @return true if peer exists, false otherwise
  */
-static bool peer_already_exists(p2p_node_t node, const char* key) {
+static bool peer_already_exists(p2p_node_t node, const char* key)
+{
     // Guard clause: Validate inputs
-    if (!node || !key) return false;
+    if (!node || !key)
+        return false;
 
     return hash_table_lookup_peer(&node->peer_table, key) != NULL;
 }
@@ -885,9 +933,11 @@ static bool peer_already_exists(p2p_node_t node, const char* key) {
  *
  * @return true on success, false on failure
  */
-static bool create_sockaddr(struct sockaddr_in* addr, const char* ip, uint16_t port) {
+static bool create_sockaddr(struct sockaddr_in* addr, const char* ip, uint16_t port)
+{
     // Guard clause: Validate inputs
-    if (!addr || !ip) return false;
+    if (!addr || !ip)
+        return false;
 
     memset(addr, 0, sizeof(*addr));
     addr->sin_family = AF_INET;
@@ -906,11 +956,13 @@ static bool create_sockaddr(struct sockaddr_in* addr, const char* ip, uint16_t p
  *
  * @return true if connection initiated, false on error
  */
-static bool attempt_connection(int sock, const struct sockaddr_in* addr) {
+static bool attempt_connection(int sock, const struct sockaddr_in* addr)
+{
     // Guard clause: Validate inputs
-    if (sock < 0 || !addr) return false;
+    if (sock < 0 || !addr)
+        return false;
 
-    int result = connect(sock, (struct sockaddr*)addr, sizeof(*addr));
+    int result = connect(sock, (struct sockaddr*) addr, sizeof(*addr));
 
     // Connection is non-blocking, EINPROGRESS means in progress (success)
     if (result < 0 && errno != EINPROGRESS) {
@@ -927,10 +979,11 @@ static bool attempt_connection(int sock, const struct sockaddr_in* addr) {
  *
  * COMPLEXITY: O(1)
  */
-static void initialize_peer_info(peer_info_t* peer, const char* ip,
-                                 uint16_t port, int socket_fd) {
+static void initialize_peer_info(peer_info_t* peer, const char* ip, uint16_t port, int socket_fd)
+{
     // Guard clause: Validate inputs
-    if (!peer || !ip) return;
+    if (!peer || !ip)
+        return;
 
     strncpy(peer->ip, ip, sizeof(peer->ip) - 1);
     peer->ip[sizeof(peer->ip) - 1] = '\0';
@@ -949,13 +1002,15 @@ static void initialize_peer_info(peer_info_t* peer, const char* ip,
  *
  * @return true on success, false on failure
  */
-static bool add_peer_to_node(p2p_node_t node, const char* ip,
-                             uint16_t port, int socket_fd) {
+static bool add_peer_to_node(p2p_node_t node, const char* ip, uint16_t port, int socket_fd)
+{
     // Guard clause: Validate inputs
-    if (!node || !ip) return false;
+    if (!node || !ip)
+        return false;
 
     // Guard clause: Check capacity
-    if (node->peer_count >= node->config.max_peers) return false;
+    if (node->peer_count >= node->config.max_peers)
+        return false;
 
     // Initialize peer info in array
     peer_info_t* peer = &node->peers[node->peer_count];
@@ -998,9 +1053,11 @@ static bool add_peer_to_node(p2p_node_t node, const char* ip,
  * @param peer_port Port number of peer
  * @return true if connection initiated successfully, false otherwise
  */
-bool p2p_node_connect_peer(p2p_node_t node, const char* peer_ip, uint16_t peer_port) {
+bool p2p_node_connect_peer(p2p_node_t node, const char* peer_ip, uint16_t peer_port)
+{
     // Guard clause: Validate inputs
-    if (!node || !peer_ip) return false;
+    if (!node || !peer_ip)
+        return false;
 
     // Validate IP address format
     // WHY: Prevent malformed addresses from causing crashes or errors
@@ -1074,13 +1131,12 @@ bool p2p_node_connect_peer(p2p_node_t node, const char* peer_ip, uint16_t peer_p
     // Add vertex to topology graph
     // WHY: Track network structure for introspection and routing
     // Use peer_ip:peer_port as unique peer ID (hashed to uint64_t)
-    uint64_t peer_id = ((uint64_t)inet_addr(peer_ip) << 32) | peer_port;
-    uint32_t vertex_idx = nimcp_graph_add_vertex(
-        node->topology_graph,
-        peer_id,
-        0.0f, 0.0f, 0.0f,  // Coordinates (TODO: calculate from network metrics)
-        0                   // Capabilities (TODO: exchange in handshake)
-    );
+    uint64_t peer_id = ((uint64_t) inet_addr(peer_ip) << 32) | peer_port;
+    uint32_t vertex_idx =
+        nimcp_graph_add_vertex(node->topology_graph, peer_id, 0.0f, 0.0f,
+                               0.0f,  // Coordinates (TODO: calculate from network metrics)
+                               0      // Capabilities (TODO: exchange in handshake)
+        );
 
     // If vertex creation fails, log but don't fail connection
     // WHY: Graph is for analytics; connection is the primary goal
@@ -1099,9 +1155,11 @@ bool p2p_node_connect_peer(p2p_node_t node, const char* peer_ip, uint16_t peer_p
  *
  * COMPLEXITY: O(1)
  */
-static void close_peer_socket(peer_info_t* peer) {
+static void close_peer_socket(peer_info_t* peer)
+{
     // Guard clause: Validate input
-    if (!peer) return;
+    if (!peer)
+        return;
 
     // Guard clause: Check if socket is open
     if (peer->socket_fd >= 0) {
@@ -1122,14 +1180,15 @@ static void close_peer_socket(peer_info_t* peer) {
  *
  * @return Peer index or -1 if not found
  */
-static int find_peer_index(p2p_node_t node, const char* ip, uint16_t port) {
+static int find_peer_index(p2p_node_t node, const char* ip, uint16_t port)
+{
     // Guard clause: Validate inputs
-    if (!node || !ip) return -1;
+    if (!node || !ip)
+        return -1;
 
     for (uint32_t i = 0; i < node->peer_count; i++) {
-        if (strcmp(node->peers[i].ip, ip) == 0 &&
-            node->peers[i].port == port) {
-            return (int)i;
+        if (strcmp(node->peers[i].ip, ip) == 0 && node->peers[i].port == port) {
+            return (int) i;
         }
     }
 
@@ -1144,9 +1203,11 @@ static int find_peer_index(p2p_node_t node, const char* ip, uint16_t port) {
  *
  * COMPLEXITY: O(1)
  */
-static void compact_peer_array(p2p_node_t node, uint32_t index) {
+static void compact_peer_array(p2p_node_t node, uint32_t index)
+{
     // Guard clause: Validate inputs
-    if (!node || index >= node->peer_count) return;
+    if (!node || index >= node->peer_count)
+        return;
 
     // Move last peer to this slot (O(1) removal)
     if (index < node->peer_count - 1) {
@@ -1177,9 +1238,11 @@ static void compact_peer_array(p2p_node_t node, uint32_t index) {
  * @param peer_port Port number of peer
  * @return true if disconnection successful, false otherwise
  */
-bool p2p_node_disconnect_peer(p2p_node_t node, const char* peer_ip, uint16_t peer_port) {
+bool p2p_node_disconnect_peer(p2p_node_t node, const char* peer_ip, uint16_t peer_port)
+{
     // Guard clause: Validate inputs
-    if (!node || !peer_ip) return false;
+    if (!node || !peer_ip)
+        return false;
 
     // Validate IP address format
     // WHY: Ensure we're disconnecting with valid address
@@ -1226,7 +1289,7 @@ bool p2p_node_disconnect_peer(p2p_node_t node, const char* peer_ip, uint16_t pee
 
     // Remove vertex from topology graph
     // WHY: Keep graph synchronized with peer list
-    uint64_t peer_id = ((uint64_t)inet_addr(peer_ip) << 32) | peer_port;
+    uint64_t peer_id = ((uint64_t) inet_addr(peer_ip) << 32) | peer_port;
     uint32_t vertex_idx = nimcp_graph_find_vertex(node->topology_graph, peer_id);
     if (vertex_idx != NIMCP_INVALID_VERTEX) {
         nimcp_graph_remove_vertex(node->topology_graph, vertex_idx);
@@ -1235,7 +1298,7 @@ bool p2p_node_disconnect_peer(p2p_node_t node, const char* peer_ip, uint16_t pee
     }
 
     // Compact peer array
-    compact_peer_array(node, (uint32_t)index);
+    compact_peer_array(node, (uint32_t) index);
 
     nimcp_mutex_unlock(&node->lock);
     return true;
@@ -1252,9 +1315,11 @@ bool p2p_node_disconnect_peer(p2p_node_t node, const char* peer_ip, uint16_t pee
  *
  * COMPLEXITY: O(1)
  */
-static void update_node_status(p2p_node_t node, node_status_t status, bool running) {
+static void update_node_status(p2p_node_t node, node_status_t status, bool running)
+{
     // Guard clause: Validate input
-    if (!node) return;
+    if (!node)
+        return;
 
     node->status = status;
     node->running = running;
@@ -1276,9 +1341,11 @@ static void update_node_status(p2p_node_t node, node_status_t status, bool runni
  * @param node Handle to the node
  * @return true if startup successful, false otherwise
  */
-bool p2p_node_start(p2p_node_t node) {
+bool p2p_node_start(p2p_node_t node)
+{
     // Guard clause: Validate input
-    if (!node) return false;
+    if (!node)
+        return false;
 
     // Lock for thread safety
     nimcp_mutex_lock(&node->lock);
@@ -1310,9 +1377,11 @@ bool p2p_node_start(p2p_node_t node) {
  *
  * COMPLEXITY: O(1)
  */
-static void disconnect_peer_during_shutdown(peer_info_t* peer) {
+static void disconnect_peer_during_shutdown(peer_info_t* peer)
+{
     // Guard clause: Validate input
-    if (!peer) return;
+    if (!peer)
+        return;
 
     // Close socket if open
     if (peer->socket_fd >= 0) {
@@ -1330,9 +1399,11 @@ static void disconnect_peer_during_shutdown(peer_info_t* peer) {
  *
  * COMPLEXITY: O(n) where n = peer count
  */
-static void disconnect_all_peers(p2p_node_t node) {
+static void disconnect_all_peers(p2p_node_t node)
+{
     // Guard clause: Validate input
-    if (!node) return;
+    if (!node)
+        return;
 
     // Disconnect each peer
     for (uint32_t i = 0; i < node->peer_count; i++) {
@@ -1359,9 +1430,11 @@ static void disconnect_all_peers(p2p_node_t node) {
  * @param node Handle to the node
  * @return true if shutdown successful, false otherwise
  */
-bool p2p_node_stop(p2p_node_t node) {
+bool p2p_node_stop(p2p_node_t node)
+{
     // Guard clause: Validate input
-    if (!node) return false;
+    if (!node)
+        return false;
 
     // Lock for thread safety
     nimcp_mutex_lock(&node->lock);

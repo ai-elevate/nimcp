@@ -3,9 +3,9 @@
 
 #define PY_SSIZE_T_CLEAN
 #include "/usr/include/python3.10/Python.h"
-#include "nimcp_protocol.h"
-#include "nimcp_p2pnode.h"
 #include "nimcp_neuralnet.h"
+#include "nimcp_p2pnode.h"
+#include "nimcp_protocol.h"
 
 // Exception types
 extern PyObject* NIMCPError;
@@ -21,26 +21,22 @@ extern PyTypeObject NodeConfigType;
 
 // Custom types definitions
 typedef struct {
-    PyObject_HEAD
-    neural_network_t network;
+    PyObject_HEAD neural_network_t network;
 } NeuralNetworkObject;
 
 typedef struct {
-    PyObject_HEAD
-    p2p_node_t node;
+    PyObject_HEAD p2p_node_t node;
 } P2PNodeObject;
 
 typedef struct {
-    PyObject_HEAD
-    network_config_t config;
+    PyObject_HEAD network_config_t config;
 } NetworkConfigObject;
 
 typedef struct {
-    PyObject_HEAD
-    node_config_t config;
+    PyObject_HEAD node_config_t config;
 } NodeConfigObject;
 
 // Module initialization function
 PyMODINIT_FUNC PyInit_nimcp(void);
 
-#endif // NIMCP_MODULE_H
+#endif  // NIMCP_MODULE_H

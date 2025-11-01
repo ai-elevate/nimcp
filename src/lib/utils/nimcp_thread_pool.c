@@ -450,9 +450,9 @@
  */
 
 #include "utils/nimcp_thread_pool.h"
-#include "utils/nimcp_memory.h"
 #include <stdlib.h>
 #include <string.h>
+#include "utils/nimcp_memory.h"
 
 //=============================================================================
 // Internal Structures
@@ -529,12 +529,12 @@ struct nimcp_thread_pool {
 
     /* Synchronization primitives */
     nimcp_mutex_t lock;
-    nimcp_cond_t task_available;  /* Signal when task added */
-    nimcp_cond_t task_complete;   /* Signal when task done */
+    nimcp_cond_t task_available; /* Signal when task added */
+    nimcp_cond_t task_complete;  /* Signal when task done */
 
     /* State tracking */
-    size_t active_threads;  /* Threads currently executing tasks */
-    bool shutdown;          /* Pool is shutting down */
+    size_t active_threads; /* Threads currently executing tasks */
+    bool shutdown;         /* Pool is shutting down */
 };
 
 //=============================================================================
@@ -593,8 +593,9 @@ struct nimcp_thread_pool {
  * @param arg Thread pool pointer (cast from void*)
  * @return NULL (unused)
  */
-static void* worker_thread(void* arg) {
-    nimcp_thread_pool_t* pool = (nimcp_thread_pool_t*)arg;
+static void* worker_thread(void* arg)
+{
+    nimcp_thread_pool_t* pool = (nimcp_thread_pool_t*) arg;
 
     while (1) {
         nimcp_mutex_lock(&pool->lock);
@@ -697,7 +698,8 @@ static void* worker_thread(void* arg) {
  * @param num_threads Number of worker threads (1 to MAX_THREADS)
  * @return Pool handle or NULL on error
  */
-nimcp_thread_pool_t* nimcp_pool_create(size_t num_threads) {
+nimcp_thread_pool_t* nimcp_pool_create(size_t num_threads)
+{
     // Validate parameters
     // WHY CHECK 0: Pool with no threads can't do work
     // WHY CHECK MAX: Prevent array overflow
@@ -707,8 +709,7 @@ nimcp_thread_pool_t* nimcp_pool_create(size_t num_threads) {
 
     // Allocate pool structure
     // WHY CALLOC: Zeros all fields (safe initial state)
-    nimcp_thread_pool_t* pool = (nimcp_thread_pool_t*)nimcp_calloc(
-        1, sizeof(nimcp_thread_pool_t));
+    nimcp_thread_pool_t* pool = (nimcp_thread_pool_t*) nimcp_calloc(1, sizeof(nimcp_thread_pool_t));
     if (!pool) {
         return NULL;
     }
@@ -749,8 +750,7 @@ nimcp_thread_pool_t* nimcp_pool_create(size_t num_threads) {
     // WHY LOOP: Create num_threads workers
     // WHY PASS pool: Each worker needs pool state
     for (size_t i = 0; i < num_threads; i++) {
-        if (nimcp_thread_create(&pool->threads[i], worker_thread, pool, NULL)
-            != NIMCP_SUCCESS) {
+        if (nimcp_thread_create(&pool->threads[i], worker_thread, pool, NULL) != NIMCP_SUCCESS) {
             // Cleanup on failure
             // WHY SET shutdown: Signal already-created workers to exit
             pool->shutdown = true;
@@ -813,7 +813,8 @@ nimcp_thread_pool_t* nimcp_pool_create(size_t num_threads) {
  *
  * @param pool Pool to destroy (NULL is safe)
  */
-void nimcp_pool_destroy(nimcp_thread_pool_t* pool) {
+void nimcp_pool_destroy(nimcp_thread_pool_t* pool)
+{
     if (!pool) {
         return;
     }
@@ -898,9 +899,8 @@ void nimcp_pool_destroy(nimcp_thread_pool_t* pool) {
  * @param arg Argument passed to task function
  * @return NIMCP_SUCCESS or error code
  */
-nimcp_result_t nimcp_pool_submit(nimcp_thread_pool_t* pool,
-                                  nimcp_task_fn task,
-                                  void* arg) {
+nimcp_result_t nimcp_pool_submit(nimcp_thread_pool_t* pool, nimcp_task_fn task, void* arg)
+{
     if (!pool || !task) {
         return NIMCP_ERROR_INVALID_PARAM;
     }
@@ -990,7 +990,8 @@ nimcp_result_t nimcp_pool_submit(nimcp_thread_pool_t* pool,
  * @param pool Pool handle
  * @return NIMCP_SUCCESS or NIMCP_ERROR_SYSTEM if shutdown
  */
-nimcp_result_t nimcp_pool_wait(nimcp_thread_pool_t* pool) {
+nimcp_result_t nimcp_pool_wait(nimcp_thread_pool_t* pool)
+{
     if (!pool) {
         return NIMCP_ERROR_INVALID_PARAM;
     }
@@ -1000,8 +1001,7 @@ nimcp_result_t nimcp_pool_wait(nimcp_thread_pool_t* pool) {
     // Wait until queue is empty and no active threads
     // WHY BOTH CONDITIONS: See function comment above
     // WHY CHECK shutdown: Exit wait if pool shutting down
-    while ((pool->queue_count > 0 || pool->active_threads > 0)
-           && !pool->shutdown) {
+    while ((pool->queue_count > 0 || pool->active_threads > 0) && !pool->shutdown) {
         nimcp_cond_wait(&pool->task_complete, &pool->lock);
     }
 
@@ -1034,7 +1034,8 @@ nimcp_result_t nimcp_pool_wait(nimcp_thread_pool_t* pool) {
  * @param pool Pool handle
  * @return Number of queued tasks (0 if pool NULL)
  */
-size_t nimcp_pool_pending(nimcp_thread_pool_t* pool) {
+size_t nimcp_pool_pending(nimcp_thread_pool_t* pool)
+{
     if (!pool) {
         return 0;
     }
@@ -1072,7 +1073,8 @@ size_t nimcp_pool_pending(nimcp_thread_pool_t* pool) {
  * @param pool Pool handle
  * @return Number of active threads (0 if pool NULL)
  */
-size_t nimcp_pool_active(nimcp_thread_pool_t* pool) {
+size_t nimcp_pool_active(nimcp_thread_pool_t* pool)
+{
     if (!pool) {
         return 0;
     }

@@ -1,7 +1,7 @@
 #include "utils/nimcp_btree.h"
-#include "utils/nimcp_memory.h"
-#include "logging/nimcp_logging.h"
 #include <string.h>
+#include "logging/nimcp_logging.h"
+#include "utils/nimcp_memory.h"
 
 #define MAX_LOCK_RETRIES 3
 #define LOCK_TIMEOUT_MS 1000
@@ -36,28 +36,32 @@ struct btree_iterator_t {
 };
 
 // Lock acquisition with timeout
-static int acquire_write_lock(pthread_rwlock_t* lock, unsigned long timeout_ms) {
+static int acquire_write_lock(pthread_rwlock_t* lock, unsigned long timeout_ms)
+{
     struct timespec ts;
     clock_gettime(CLOCK_REALTIME, &ts);
     ts.tv_sec += timeout_ms / 1000;
     ts.tv_nsec += (timeout_ms % 1000) * 1000000;
-    
+
     return pthread_rwlock_timedwrlock(lock, &ts);
 }
 
-static int acquire_read_lock(pthread_rwlock_t* lock, unsigned long timeout_ms) {
+static int acquire_read_lock(pthread_rwlock_t* lock, unsigned long timeout_ms)
+{
     struct timespec ts;
     clock_gettime(CLOCK_REALTIME, &ts);
     ts.tv_sec += timeout_ms / 1000;
     ts.tv_nsec += (timeout_ms % 1000) * 1000000;
-    
+
     return pthread_rwlock_timedrdlock(lock, &ts);
 }
 
 // Node creation and destruction
-static btree_node_t* create_node(bool leaf) {
+static btree_node_t* create_node(bool leaf)
+{
     btree_node_t* node = nimcp_calloc(1, sizeof(btree_node_t));
-    if (!node) return NULL;
+    if (!node)
+        return NULL;
 
     node->leaf = leaf;
     node->n = 0;
@@ -70,8 +74,10 @@ static btree_node_t* create_node(bool leaf) {
     return node;
 }
 
-static void destroy_node(btree_node_t* node, btree_free_func free_func) {
-    if (!node) return;
+static void destroy_node(btree_node_t* node, btree_free_func free_func)
+{
+    if (!node)
+        return;
 
     if (free_func) {
         for (int i = 0; i < node->n; i++) {
@@ -84,15 +90,16 @@ static void destroy_node(btree_node_t* node, btree_free_func free_func) {
 }
 
 // B-tree creation and destruction
-btree_t* btree_create(btree_compare_func compare,
-                      btree_key_func key_func,
-                      btree_free_func free_func) {
+btree_t* btree_create(btree_compare_func compare, btree_key_func key_func,
+                      btree_free_func free_func)
+{
     if (!compare || !key_func) {
         return NULL;
     }
 
     btree_t* tree = nimcp_calloc(1, sizeof(btree_t));
-    if (!tree) return NULL;
+    if (!tree)
+        return NULL;
 
     tree->root = create_node(true);
     if (!tree->root) {
@@ -114,8 +121,10 @@ btree_t* btree_create(btree_compare_func compare,
     return tree;
 }
 
-static void destroy_subtree(btree_node_t* node, btree_free_func free_func) {
-    if (!node) return;
+static void destroy_subtree(btree_node_t* node, btree_free_func free_func)
+{
+    if (!node)
+        return;
 
     pthread_rwlock_wrlock(&node->lock);
 
@@ -128,8 +137,10 @@ static void destroy_subtree(btree_node_t* node, btree_free_func free_func) {
     destroy_node(node, free_func);
 }
 
-void btree_destroy(btree_t* tree) {
-    if (!tree) return;
+void btree_destroy(btree_t* tree)
+{
+    if (!tree)
+        return;
 
     pthread_mutex_lock(&tree->structural_lock);
     destroy_subtree(tree->root, tree->free_func);
@@ -139,10 +150,12 @@ void btree_destroy(btree_t* tree) {
 }
 
 // Node splitting
-static void split_child(btree_t* tree, btree_node_t* parent, int index) {
+static void split_child(btree_t* tree, btree_node_t* parent, int index)
+{
     btree_node_t* child = parent->children[index];
     btree_node_t* new_node = create_node(child->leaf);
-    if (!new_node) return;
+    if (!new_node)
+        return;
 
     // Initialize new node
     new_node->n = BTREE_ORDER - 1;
@@ -177,7 +190,8 @@ static void split_child(btree_t* tree, btree_node_t* parent, int index) {
 }
 
 // Insertion
-static void insert_nonfull(btree_t* tree, btree_node_t* node, void* data) {
+static void insert_nonfull(btree_t* tree, btree_node_t* node, void* data)
+{
     int i = node->n - 1;
     const char* key = tree->key_func(data);
 
@@ -215,8 +229,10 @@ static void insert_nonfull(btree_t* tree, btree_node_t* node, void* data) {
     }
 }
 
-int btree_insert(btree_t* tree, void* data) {
-    if (!tree || !data) return BTREE_ERROR;
+int btree_insert(btree_t* tree, void* data)
+{
+    if (!tree || !data)
+        return BTREE_ERROR;
 
     pthread_mutex_lock(&tree->structural_lock);
 
@@ -248,9 +264,8 @@ int btree_insert(btree_t* tree, void* data) {
 }
 
 // Search
-static void* search_node(const btree_t* tree,
-                        btree_node_t* node,
-                        const char* key) {
+static void* search_node(const btree_t* tree, btree_node_t* node, const char* key)
+{
     int i = 0;
     while (i < node->n && tree->compare(tree->key_func(node->keys[i]), key) < 0) {
         i++;
@@ -273,8 +288,10 @@ static void* search_node(const btree_t* tree,
     return result;
 }
 
-void* btree_find(const btree_t* tree, const char* key) {
-    if (!tree || !key) return NULL;
+void* btree_find(const btree_t* tree, const char* key)
+{
+    if (!tree || !key)
+        return NULL;
 
     if (acquire_read_lock(&tree->root->lock, LOCK_TIMEOUT_MS) != 0) {
         return NULL;
@@ -286,11 +303,9 @@ void* btree_find(const btree_t* tree, const char* key) {
 }
 
 // Removal helper functions
-static void merge_nodes(btree_t* tree,
-                       btree_node_t* parent,
-                       int index,
-                       btree_node_t* left,
-                       btree_node_t* right) {
+static void merge_nodes(btree_t* tree, btree_node_t* parent, int index, btree_node_t* left,
+                        btree_node_t* right)
+{
     // Copy key from parent
     left->keys[left->n] = parent->keys[index];
     left->n++;
@@ -318,9 +333,8 @@ static void merge_nodes(btree_t* tree,
     destroy_node(right, NULL);
 }
 
-static void remove_from_node(btree_t* tree,
-                           btree_node_t* node,
-                           const char* key) {
+static void remove_from_node(btree_t* tree, btree_node_t* node, const char* key)
+{
     int i = 0;
     while (i < node->n && tree->compare(tree->key_func(node->keys[i]), key) < 0) {
         i++;
@@ -421,8 +435,10 @@ static void remove_from_node(btree_t* tree,
     }
 }
 
-int btree_remove(btree_t* tree, const char* key) {
-    if (!tree || !key) return BTREE_ERROR;
+int btree_remove(btree_t* tree, const char* key)
+{
+    if (!tree || !key)
+        return BTREE_ERROR;
 
     pthread_mutex_lock(&tree->structural_lock);
 
@@ -445,19 +461,23 @@ int btree_remove(btree_t* tree, const char* key) {
     return BTREE_SUCCESS;
 }
 
-size_t btree_count(const btree_t* tree) {
+size_t btree_count(const btree_t* tree)
+{
     return tree ? atomic_load(&tree->count) : 0;
 }
 
 // Iterator implementation
-btree_iterator_t* btree_iterator_create(btree_t* tree) {
-    if (!tree) return NULL;
+btree_iterator_t* btree_iterator_create(btree_t* tree)
+{
+    if (!tree)
+        return NULL;
 
     btree_iterator_t* iterator = nimcp_calloc(1, sizeof(btree_iterator_t));
-    if (!iterator) return NULL;
+    if (!iterator)
+        return NULL;
 
     iterator->tree = tree;
-    iterator->stack_capacity = 32; // Initial capacity
+    iterator->stack_capacity = 32;  // Initial capacity
     iterator->stack = nimcp_calloc(iterator->stack_capacity, sizeof(btree_node_t*));
     iterator->index_stack = nimcp_calloc(iterator->stack_capacity, sizeof(int));
 
@@ -478,16 +498,20 @@ btree_iterator_t* btree_iterator_create(btree_t* tree) {
     return iterator;
 }
 
-void btree_iterator_destroy(btree_iterator_t* iterator) {
-    if (!iterator) return;
+void btree_iterator_destroy(btree_iterator_t* iterator)
+{
+    if (!iterator)
+        return;
     pthread_mutex_destroy(&iterator->lock);
     nimcp_free(iterator->stack);
     nimcp_free(iterator->index_stack);
     nimcp_free(iterator);
 }
 
-bool btree_iterator_next(btree_iterator_t* iterator, void** data) {
-    if (!iterator || !data) return false;
+bool btree_iterator_next(btree_iterator_t* iterator, void** data)
+{
+    if (!iterator || !data)
+        return false;
 
     pthread_mutex_lock(&iterator->lock);
 
@@ -499,12 +523,13 @@ bool btree_iterator_next(btree_iterator_t* iterator, void** data) {
                 pthread_mutex_unlock(&iterator->lock);
                 return false;
             }
-            
+
             iterator->stack[iterator->stack_size] = node;
             iterator->index_stack[iterator->stack_size] = 0;
             iterator->stack_size++;
 
-            if (node->leaf) break;
+            if (node->leaf)
+                break;
             node = node->children[0];
         }
     }
@@ -533,10 +558,10 @@ bool btree_iterator_next(btree_iterator_t* iterator, void** data) {
                 if (iterator->stack_size >= iterator->stack_capacity) {
                     // Resize stacks if needed
                     size_t new_capacity = iterator->stack_capacity * 2;
-                    btree_node_t** new_stack = nimcp_realloc(iterator->stack,
-                                                           new_capacity * sizeof(btree_node_t*));
-                    int* new_index_stack = nimcp_realloc(iterator->index_stack,
-                                                       new_capacity * sizeof(int));
+                    btree_node_t** new_stack =
+                        nimcp_realloc(iterator->stack, new_capacity * sizeof(btree_node_t*));
+                    int* new_index_stack =
+                        nimcp_realloc(iterator->index_stack, new_capacity * sizeof(int));
 
                     if (!new_stack || !new_index_stack) {
                         pthread_rwlock_unlock(&node->lock);
@@ -553,7 +578,8 @@ bool btree_iterator_next(btree_iterator_t* iterator, void** data) {
                 iterator->index_stack[iterator->stack_size] = 0;
                 iterator->stack_size++;
 
-                if (node->leaf) break;
+                if (node->leaf)
+                    break;
                 node = node->children[0];
             }
         }
@@ -567,10 +593,10 @@ bool btree_iterator_next(btree_iterator_t* iterator, void** data) {
 }
 
 // Traversal
-static void traverse_node(const btree_node_t* node,
-                         btree_traverse_func callback,
-                         void* user_data) {
-    if (!node) return;
+static void traverse_node(const btree_node_t* node, btree_traverse_func callback, void* user_data)
+{
+    if (!node)
+        return;
 
     int i;
     for (i = 0; i < node->n; i++) {
@@ -585,10 +611,10 @@ static void traverse_node(const btree_node_t* node,
     }
 }
 
-void btree_foreach(const btree_t* tree,
-                   btree_traverse_func callback,
-                   void* user_data) {
-    if (!tree || !callback) return;
+void btree_foreach(const btree_t* tree, btree_traverse_func callback, void* user_data)
+{
+    if (!tree || !callback)
+        return;
 
     if (acquire_read_lock(&tree->root->lock, LOCK_TIMEOUT_MS) != 0) {
         return;

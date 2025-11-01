@@ -5,20 +5,22 @@
 
 #include <gtest/gtest.h>
 extern "C" {
-    #include "utils/nimcp_queue.h"
-    #include "utils/nimcp_memory.h"
+#include "utils/nimcp_memory.h"
+#include "utils/nimcp_queue.h"
 }
 
 // Note: queue_manager tests are skipped due to C++/C11 atomics incompatibility
 // The queue_manager uses atomic types in its public API which don't work with C++
 
 class QueueTest : public ::testing::Test {
-protected:
-    void SetUp() override {
+   protected:
+    void SetUp() override
+    {
         nimcp_memory_init();
     }
 
-    void TearDown() override {
+    void TearDown() override
+    {
         nimcp_memory_cleanup();
     }
 };
@@ -27,7 +29,8 @@ protected:
  * WHAT: Test basic queue creation and destruction
  * WHY: Verify queue can be created with valid configuration
  */
-TEST_F(QueueTest, CreateDestroy) {
+TEST_F(QueueTest, CreateDestroy)
+{
     nimcp_queue_config_t config;
     config.max_size = 100;
     config.item_size = sizeof(int);
@@ -45,7 +48,8 @@ TEST_F(QueueTest, CreateDestroy) {
  * WHAT: Test enqueue and dequeue operations
  * WHY: Verify basic queue functionality
  */
-TEST_F(QueueTest, EnqueueDequeue) {
+TEST_F(QueueTest, EnqueueDequeue)
+{
     nimcp_queue_config_t config;
     config.max_size = 10;
     config.item_size = sizeof(int);
@@ -82,7 +86,8 @@ TEST_F(QueueTest, EnqueueDequeue) {
  * WHY: Verify queue properly handles overflow
  * NOTE: Circular buffer keeps one slot empty, so max_size=4 holds 3 items
  */
-TEST_F(QueueTest, QueueFull) {
+TEST_F(QueueTest, QueueFull)
+{
     nimcp_queue_config_t config;
     config.max_size = 4;  // Holds 3 items (circular buffer uses 1 slot for empty detection)
     config.item_size = sizeof(int);
@@ -110,7 +115,8 @@ TEST_F(QueueTest, QueueFull) {
  * WHAT: Test queue peek operation
  * WHY: Verify we can look at front item without dequeuing
  */
-TEST_F(QueueTest, Peek) {
+TEST_F(QueueTest, Peek)
+{
     nimcp_queue_config_t config;
     config.max_size = 10;
     config.item_size = sizeof(int);
@@ -138,7 +144,8 @@ TEST_F(QueueTest, Peek) {
  * WHAT: Test queue clear operation
  * WHY: Verify we can empty a queue at once
  */
-TEST_F(QueueTest, Clear) {
+TEST_F(QueueTest, Clear)
+{
     nimcp_queue_config_t config;
     config.max_size = 10;
     config.item_size = sizeof(int);
@@ -169,7 +176,8 @@ TEST_F(QueueTest, Clear) {
  * WHAT: Test queue status reporting
  * WHY: Verify statistics are tracked correctly
  */
-TEST_F(QueueTest, Status) {
+TEST_F(QueueTest, Status)
+{
     nimcp_queue_config_t config;
     config.max_size = 10;
     config.item_size = sizeof(int);

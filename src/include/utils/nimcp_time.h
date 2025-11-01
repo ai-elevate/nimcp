@@ -22,8 +22,8 @@
 #ifndef NIMCP_TIME_H
 #define NIMCP_TIME_H
 
-#include <stdint.h>
 #include <stdbool.h>
+#include <stdint.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -153,7 +153,8 @@ uint64_t nimcp_time_elapsed_ns(uint64_t start_ns);
  * @param us Microseconds
  * @return Milliseconds
  */
-static inline uint64_t nimcp_time_us_to_ms(uint64_t us) {
+static inline uint64_t nimcp_time_us_to_ms(uint64_t us)
+{
     return us / 1000;
 }
 
@@ -165,7 +166,8 @@ static inline uint64_t nimcp_time_us_to_ms(uint64_t us) {
  * @param us Microseconds
  * @return Seconds
  */
-static inline uint64_t nimcp_time_us_to_sec(uint64_t us) {
+static inline uint64_t nimcp_time_us_to_sec(uint64_t us)
+{
     return us / 1000000;
 }
 
@@ -177,7 +179,8 @@ static inline uint64_t nimcp_time_us_to_sec(uint64_t us) {
  * @param ms Milliseconds
  * @return Microseconds
  */
-static inline uint64_t nimcp_time_ms_to_us(uint64_t ms) {
+static inline uint64_t nimcp_time_ms_to_us(uint64_t ms)
+{
     return ms * 1000;
 }
 
@@ -189,7 +192,8 @@ static inline uint64_t nimcp_time_ms_to_us(uint64_t ms) {
  * @param sec Seconds
  * @return Microseconds
  */
-static inline uint64_t nimcp_time_sec_to_us(uint64_t sec) {
+static inline uint64_t nimcp_time_sec_to_us(uint64_t sec)
+{
     return sec * 1000000;
 }
 
@@ -201,7 +205,8 @@ static inline uint64_t nimcp_time_sec_to_us(uint64_t sec) {
  * @param ns Nanoseconds
  * @return Microseconds
  */
-static inline uint64_t nimcp_time_ns_to_us(uint64_t ns) {
+static inline uint64_t nimcp_time_ns_to_us(uint64_t ns)
+{
     return ns / 1000;
 }
 
@@ -213,7 +218,8 @@ static inline uint64_t nimcp_time_ns_to_us(uint64_t ns) {
  * @param us Microseconds
  * @return Nanoseconds
  */
-static inline uint64_t nimcp_time_us_to_ns(uint64_t us) {
+static inline uint64_t nimcp_time_us_to_ns(uint64_t us)
+{
     return us * 1000;
 }
 

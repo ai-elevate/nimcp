@@ -9,7 +9,8 @@ extern "C" {
 //=============================================================================
 
 // Helper to create default adaptive network configuration
-static adaptive_network_config_t create_test_adaptive_config() {
+static adaptive_network_config_t create_test_adaptive_config()
+{
     adaptive_network_config_t config;
     memset(&config, 0, sizeof(config));
 
@@ -42,7 +43,8 @@ static adaptive_network_config_t create_test_adaptive_config() {
 //=============================================================================
 
 // Test adaptive network creation with valid config
-TEST(AdaptiveNetwork, CreateValid) {
+TEST(AdaptiveNetwork, CreateValid)
+{
     adaptive_network_config_t config = create_test_adaptive_config();
     adaptive_network_t network = adaptive_network_create(&config);
 
@@ -52,25 +54,28 @@ TEST(AdaptiveNetwork, CreateValid) {
 }
 
 // Test adaptive network creation with null config
-TEST(AdaptiveNetwork, CreateNullConfig) {
+TEST(AdaptiveNetwork, CreateNullConfig)
+{
     adaptive_network_t network = adaptive_network_create(nullptr);
     ASSERT_EQ(network, nullptr);
 }
 
 // Test adaptive network creation with invalid k_factor
-TEST(AdaptiveNetwork, CreateInvalidKFactor) {
+TEST(AdaptiveNetwork, CreateInvalidKFactor)
+{
     adaptive_network_config_t config = create_test_adaptive_config();
-    config.spike_params.k_factor = 0.0f; // Invalid
+    config.spike_params.k_factor = 0.0f;  // Invalid
 
     adaptive_network_t network = adaptive_network_create(&config);
     ASSERT_EQ(network, nullptr);
 }
 
 // Test adaptive network creation with invalid threshold range
-TEST(AdaptiveNetwork, CreateInvalidThresholds) {
+TEST(AdaptiveNetwork, CreateInvalidThresholds)
+{
     adaptive_network_config_t config = create_test_adaptive_config();
     config.spike_params.min_threshold = 10.0f;
-    config.spike_params.max_threshold = 1.0f; // max < min
+    config.spike_params.max_threshold = 1.0f;  // max < min
 
     adaptive_network_t network = adaptive_network_create(&config);
     ASSERT_EQ(network, nullptr);
@@ -81,7 +86,8 @@ TEST(AdaptiveNetwork, CreateInvalidThresholds) {
 //=============================================================================
 
 // Test adaptive threshold computation
-TEST(AdaptiveThreshold, ComputeThreshold) {
+TEST(AdaptiveThreshold, ComputeThreshold)
+{
     float input[] = {1.0f, 2.0f, 3.0f, 4.0f, 5.0f};
     float k_factor = 0.5f;
 
@@ -96,7 +102,8 @@ TEST(AdaptiveThreshold, ComputeThreshold) {
 }
 
 // Test adaptive threshold with negative values
-TEST(AdaptiveThreshold, ComputeThresholdNegative) {
+TEST(AdaptiveThreshold, ComputeThresholdNegative)
+{
     float input[] = {-1.0f, -2.0f, -3.0f};
     float k_factor = 1.0f;
 
@@ -104,11 +111,12 @@ TEST(AdaptiveThreshold, ComputeThresholdNegative) {
 
     // Should use absolute values
     EXPECT_GT(threshold, 0.0f);
-    EXPECT_TRUE(float_equals(threshold, 2.0f)); // mean(|x|) = 2.0
+    EXPECT_TRUE(float_equals(threshold, 2.0f));  // mean(|x|) = 2.0
 }
 
 // Test adaptive threshold with zero k_factor
-TEST(AdaptiveThreshold, ComputeThresholdZeroK) {
+TEST(AdaptiveThreshold, ComputeThresholdZeroK)
+{
     float input[] = {1.0f, 2.0f, 3.0f};
     float k_factor = 0.0f;
 
@@ -119,7 +127,8 @@ TEST(AdaptiveThreshold, ComputeThresholdZeroK) {
 }
 
 // Test adaptive threshold with null input
-TEST(AdaptiveThreshold, ComputeThresholdNull) {
+TEST(AdaptiveThreshold, ComputeThresholdNull)
+{
     float threshold = adaptive_compute_threshold(nullptr, 5, 0.5f);
 
     // Should return default threshold
@@ -131,15 +140,12 @@ TEST(AdaptiveThreshold, ComputeThresholdNull) {
 //=============================================================================
 
 // Test integer spike encoding
-TEST(SpikeEncoding, EncodeInteger) {
+TEST(SpikeEncoding, EncodeInteger)
+{
     int32_t spike_count = 42;
     uint8_t spike_train[256];
 
-    uint32_t length = adaptive_encode_spikes(
-        spike_count,
-        SPIKE_ENCODING_INTEGER,
-        spike_train,
-        256);
+    uint32_t length = adaptive_encode_spikes(spike_count, SPIKE_ENCODING_INTEGER, spike_train, 256);
 
     ASSERT_GT(length, 0);
     ASSERT_EQ(length, sizeof(int32_t));
@@ -151,17 +157,14 @@ TEST(SpikeEncoding, EncodeInteger) {
 }
 
 // Test binary spike encoding
-TEST(SpikeEncoding, EncodeBinary) {
+TEST(SpikeEncoding, EncodeBinary)
+{
     int32_t spike_count = 5;
     uint8_t spike_train[256];
 
-    uint32_t length = adaptive_encode_spikes(
-        spike_count,
-        SPIKE_ENCODING_BINARY,
-        spike_train,
-        256);
+    uint32_t length = adaptive_encode_spikes(spike_count, SPIKE_ENCODING_BINARY, spike_train, 256);
 
-    ASSERT_EQ(length, 5); // Binary encoding creates length = spike_count
+    ASSERT_EQ(length, 5);  // Binary encoding creates length = spike_count
 
     // Decode
     float threshold = 1.0f;
@@ -170,7 +173,8 @@ TEST(SpikeEncoding, EncodeBinary) {
 }
 
 // Test ternary spike encoding
-TEST(SpikeEncoding, EncodeTernary) {
+TEST(SpikeEncoding, EncodeTernary)
+{
     uint8_t spike_train[256];
 
     // Positive spike count
@@ -190,7 +194,8 @@ TEST(SpikeEncoding, EncodeTernary) {
 }
 
 // Test value to spike conversion
-TEST(SpikeEncoding, ValueToSpikes) {
+TEST(SpikeEncoding, ValueToSpikes)
+{
     float value = 5.0f;
     float threshold = 1.0f;
 
@@ -211,7 +216,8 @@ TEST(SpikeEncoding, ValueToSpikes) {
 //=============================================================================
 
 // Test forward pass with basic input
-TEST(AdaptiveNetwork, ForwardPassBasic) {
+TEST(AdaptiveNetwork, ForwardPassBasic)
+{
     adaptive_network_config_t config = create_test_adaptive_config();
     adaptive_network_t network = adaptive_network_create(&config);
     ASSERT_NE(network, nullptr);
@@ -231,7 +237,8 @@ TEST(AdaptiveNetwork, ForwardPassBasic) {
 }
 
 // Test forward pass with null inputs
-TEST(AdaptiveNetwork, ForwardPassNullInput) {
+TEST(AdaptiveNetwork, ForwardPassNullInput)
+{
     adaptive_network_config_t config = create_test_adaptive_config();
     adaptive_network_t network = adaptive_network_create(&config);
     ASSERT_NE(network, nullptr);
@@ -245,7 +252,8 @@ TEST(AdaptiveNetwork, ForwardPassNullInput) {
 }
 
 // Test forward pass with multiple iterations
-TEST(AdaptiveNetwork, ForwardPassMultiple) {
+TEST(AdaptiveNetwork, ForwardPassMultiple)
+{
     adaptive_network_config_t config = create_test_adaptive_config();
     adaptive_network_t network = adaptive_network_create(&config);
     ASSERT_NE(network, nullptr);
@@ -268,7 +276,8 @@ TEST(AdaptiveNetwork, ForwardPassMultiple) {
 //=============================================================================
 
 // Test sparsity measurement
-TEST(AdaptiveNetwork, GetSparsity) {
+TEST(AdaptiveNetwork, GetSparsity)
+{
     adaptive_network_config_t config = create_test_adaptive_config();
     config.spike_params.sparsity_target = 0.7f;
     adaptive_network_t network = adaptive_network_create(&config);
@@ -296,14 +305,15 @@ TEST(AdaptiveNetwork, GetSparsity) {
 }
 
 // Test sparsity adaptation
-TEST(AdaptiveNetwork, SparsityAdaptation) {
+TEST(AdaptiveNetwork, SparsityAdaptation)
+{
     adaptive_network_config_t config = create_test_adaptive_config();
     config.spike_params.enable_adaptation = true;
-    config.spike_params.sparsity_target = 0.8f; // High sparsity target
+    config.spike_params.sparsity_target = 0.8f;  // High sparsity target
     adaptive_network_t network = adaptive_network_create(&config);
     ASSERT_NE(network, nullptr);
 
-    float input[5] = {5.0f, 5.0f, 5.0f, 5.0f, 5.0f}; // High input
+    float input[5] = {5.0f, 5.0f, 5.0f, 5.0f, 5.0f};  // High input
     float output[3];
 
     // Run forward passes to allow adaptation
@@ -313,7 +323,7 @@ TEST(AdaptiveNetwork, SparsityAdaptation) {
 
     // Sparsity should approach target
     float sparsity = adaptive_network_get_sparsity(network);
-    EXPECT_GT(sparsity, 0.5f); // Should be reasonably sparse
+    EXPECT_GT(sparsity, 0.5f);  // Should be reasonably sparse
 
     adaptive_network_destroy(network);
 }
@@ -323,7 +333,8 @@ TEST(AdaptiveNetwork, SparsityAdaptation) {
 //=============================================================================
 
 // Test synaptic pruning
-TEST(AdaptiveNetwork, Pruning) {
+TEST(AdaptiveNetwork, Pruning)
+{
     adaptive_network_config_t config = create_test_adaptive_config();
     adaptive_network_t network = adaptive_network_create(&config);
     ASSERT_NE(network, nullptr);
@@ -342,7 +353,8 @@ TEST(AdaptiveNetwork, Pruning) {
 //=============================================================================
 
 // Test complete inference pipeline
-TEST(AdaptiveNetwork, InferencePipeline) {
+TEST(AdaptiveNetwork, InferencePipeline)
+{
     adaptive_network_config_t config = create_test_adaptive_config();
     adaptive_network_t network = adaptive_network_create(&config);
     ASSERT_NE(network, nullptr);
@@ -366,13 +378,10 @@ TEST(AdaptiveNetwork, InferencePipeline) {
 }
 
 // Test different encoding schemes
-TEST(AdaptiveNetwork, EncodingSchemes) {
-    spike_encoding_t encodings[] = {
-        SPIKE_ENCODING_INTEGER,
-        SPIKE_ENCODING_BINARY,
-        SPIKE_ENCODING_TERNARY,
-        SPIKE_ENCODING_BITWISE
-    };
+TEST(AdaptiveNetwork, EncodingSchemes)
+{
+    spike_encoding_t encodings[] = {SPIKE_ENCODING_INTEGER, SPIKE_ENCODING_BINARY,
+                                    SPIKE_ENCODING_TERNARY, SPIKE_ENCODING_BITWISE};
 
     for (int i = 0; i < 4; i++) {
         adaptive_network_config_t config = create_test_adaptive_config();
@@ -391,7 +400,8 @@ TEST(AdaptiveNetwork, EncodingSchemes) {
 }
 
 // Test network with sparsity disabled
-TEST(AdaptiveNetwork, NoSparsity) {
+TEST(AdaptiveNetwork, NoSparsity)
+{
     adaptive_network_config_t config = create_test_adaptive_config();
     config.enable_sparsity = false;
     adaptive_network_t network = adaptive_network_create(&config);
@@ -409,7 +419,8 @@ TEST(AdaptiveNetwork, NoSparsity) {
 }
 
 // Test threshold adaptation over time
-TEST(AdaptiveNetwork, ThresholdAdaptation) {
+TEST(AdaptiveNetwork, ThresholdAdaptation)
+{
     adaptive_network_config_t config = create_test_adaptive_config();
     config.spike_params.enable_adaptation = true;
     adaptive_network_t network = adaptive_network_create(&config);
@@ -434,7 +445,8 @@ TEST(AdaptiveNetwork, ThresholdAdaptation) {
 //=============================================================================
 
 // Test supervised learning
-TEST(AdaptiveLearning, SupervisedLearning) {
+TEST(AdaptiveLearning, SupervisedLearning)
+{
     adaptive_network_config_t config = create_test_adaptive_config();
     adaptive_network_t network = adaptive_network_create(&config);
     ASSERT_NE(network, nullptr);
@@ -461,7 +473,8 @@ TEST(AdaptiveLearning, SupervisedLearning) {
 }
 
 // Test unsupervised learning
-TEST(AdaptiveLearning, UnsupervisedLearning) {
+TEST(AdaptiveLearning, UnsupervisedLearning)
+{
     adaptive_network_config_t config = create_test_adaptive_config();
     adaptive_network_t network = adaptive_network_create(&config);
     ASSERT_NE(network, nullptr);
@@ -470,35 +483,30 @@ TEST(AdaptiveLearning, UnsupervisedLearning) {
     float input[5] = {0.5f, 0.7f, 0.3f, 0.9f, 0.1f};
     example.input = input;
     example.input_size = 5;
-    example.target = nullptr; // No target for unsupervised
+    example.target = nullptr;  // No target for unsupervised
     example.target_size = 0;
     example.confidence = 1.0f;
     example.label[0] = '\0';
 
     float loss = adaptive_network_learn(network, &example, LEARN_MODE_UNSUPERVISED, 0.01f);
-    EXPECT_EQ(loss, 0.0f); // Unsupervised returns 0 loss
+    EXPECT_EQ(loss, 0.0f);  // Unsupervised returns 0 loss
 
     adaptive_network_destroy(network);
 }
 
 // Test batch learning
-TEST(AdaptiveLearning, BatchLearning) {
+TEST(AdaptiveLearning, BatchLearning)
+{
     adaptive_network_config_t config = create_test_adaptive_config();
     adaptive_network_t network = adaptive_network_create(&config);
     ASSERT_NE(network, nullptr);
 
     // Create batch of examples
     training_example_t examples[3];
-    float inputs[3][5] = {
-        {1.0f, 0.0f, 0.5f, 0.2f, 0.8f},
-        {0.5f, 0.5f, 0.5f, 0.5f, 0.5f},
-        {0.0f, 1.0f, 0.3f, 0.7f, 0.4f}
-    };
-    float targets[3][3] = {
-        {1.0f, 0.0f, 0.0f},
-        {0.0f, 1.0f, 0.0f},
-        {0.0f, 0.0f, 1.0f}
-    };
+    float inputs[3][5] = {{1.0f, 0.0f, 0.5f, 0.2f, 0.8f},
+                          {0.5f, 0.5f, 0.5f, 0.5f, 0.5f},
+                          {0.0f, 1.0f, 0.3f, 0.7f, 0.4f}};
+    float targets[3][3] = {{1.0f, 0.0f, 0.0f}, {0.0f, 1.0f, 0.0f}, {0.0f, 0.0f, 1.0f}};
 
     for (int i = 0; i < 3; i++) {
         examples[i].input = inputs[i];
@@ -510,21 +518,23 @@ TEST(AdaptiveLearning, BatchLearning) {
     }
 
     // Learn from batch
-    float avg_loss = adaptive_network_learn_batch(network, examples, 3, LEARN_MODE_SUPERVISED, 0.01f);
+    float avg_loss =
+        adaptive_network_learn_batch(network, examples, 3, LEARN_MODE_SUPERVISED, 0.01f);
     EXPECT_GE(avg_loss, 0.0f);
 
     adaptive_network_destroy(network);
 }
 
 // Test distillation from teacher
-TEST(AdaptiveLearning, Distillation) {
+TEST(AdaptiveLearning, Distillation)
+{
     adaptive_network_config_t config = create_test_adaptive_config();
     adaptive_network_t network = adaptive_network_create(&config);
     ASSERT_NE(network, nullptr);
 
     // Simple teacher function
     auto teacher = [](const float* input, uint32_t input_size, void* context) -> float* {
-        float* output = (float*)malloc(3 * sizeof(float));
+        float* output = (float*) malloc(3 * sizeof(float));
         output[0] = input[0] + input[1];
         output[1] = input[2] * 2.0f;
         output[2] = input[3] - input[4];
@@ -544,7 +554,8 @@ TEST(AdaptiveLearning, Distillation) {
 //=============================================================================
 
 // Test network save and load
-TEST(AdaptivePersistence, SaveLoad) {
+TEST(AdaptivePersistence, SaveLoad)
+{
     adaptive_network_config_t config = create_test_adaptive_config();
     adaptive_network_t network = adaptive_network_create(&config);
     ASSERT_NE(network, nullptr);
@@ -571,7 +582,8 @@ TEST(AdaptivePersistence, SaveLoad) {
 }
 
 // Test network size calculation
-TEST(AdaptivePersistence, GetSize) {
+TEST(AdaptivePersistence, GetSize)
+{
     adaptive_network_config_t config = create_test_adaptive_config();
     adaptive_network_t network = adaptive_network_create(&config);
     ASSERT_NE(network, nullptr);
@@ -587,7 +599,8 @@ TEST(AdaptivePersistence, GetSize) {
 //=============================================================================
 
 // Test activation analysis
-TEST(AdaptiveInterpret, ActivationAnalysis) {
+TEST(AdaptiveInterpret, ActivationAnalysis)
+{
     adaptive_network_config_t config = create_test_adaptive_config();
     adaptive_network_t network = adaptive_network_create(&config);
     ASSERT_NE(network, nullptr);
@@ -608,14 +621,17 @@ TEST(AdaptiveInterpret, ActivationAnalysis) {
     EXPECT_LE(analysis.confidence, 1.0f);
 
     // Free allocated arrays
-    if (analysis.active_neuron_ids) free(analysis.active_neuron_ids);
-    if (analysis.activation_strengths) free(analysis.activation_strengths);
+    if (analysis.active_neuron_ids)
+        free(analysis.active_neuron_ids);
+    if (analysis.activation_strengths)
+        free(analysis.activation_strengths);
 
     adaptive_network_destroy(network);
 }
 
 // Test neuron importance ranking
-TEST(AdaptiveInterpret, NeuronRanking) {
+TEST(AdaptiveInterpret, NeuronRanking)
+{
     adaptive_network_config_t config = create_test_adaptive_config();
     adaptive_network_t network = adaptive_network_create(&config);
     ASSERT_NE(network, nullptr);
@@ -636,14 +652,15 @@ TEST(AdaptiveInterpret, NeuronRanking) {
 
     // Rankings should be sorted by importance
     for (uint32_t i = 1; i < num_ranked; i++) {
-        EXPECT_LE(rankings[i].importance, rankings[i-1].importance);
+        EXPECT_LE(rankings[i].importance, rankings[i - 1].importance);
     }
 
     adaptive_network_destroy(network);
 }
 
 // Test decision explanation
-TEST(AdaptiveInterpret, Explanation) {
+TEST(AdaptiveInterpret, Explanation)
+{
     adaptive_network_config_t config = create_test_adaptive_config();
     adaptive_network_t network = adaptive_network_create(&config);
     ASSERT_NE(network, nullptr);
@@ -663,7 +680,8 @@ TEST(AdaptiveInterpret, Explanation) {
 //=============================================================================
 
 // Test performance statistics retrieval
-TEST(AdaptivePerformance, GetPerformance) {
+TEST(AdaptivePerformance, GetPerformance)
+{
     adaptive_network_config_t config = create_test_adaptive_config();
     adaptive_network_t network = adaptive_network_create(&config);
     ASSERT_NE(network, nullptr);
@@ -687,7 +705,8 @@ TEST(AdaptivePerformance, GetPerformance) {
 }
 
 // Test performance statistics reset
-TEST(AdaptivePerformance, ResetStats) {
+TEST(AdaptivePerformance, ResetStats)
+{
     adaptive_network_config_t config = create_test_adaptive_config();
     adaptive_network_t network = adaptive_network_create(&config);
     ASSERT_NE(network, nullptr);
@@ -715,7 +734,8 @@ TEST(AdaptivePerformance, ResetStats) {
 //=============================================================================
 
 // Test get neuron count
-TEST(AdaptiveIntrospection, GetNeuronCount) {
+TEST(AdaptiveIntrospection, GetNeuronCount)
+{
     adaptive_network_config_t config = create_test_adaptive_config();
     adaptive_network_t network = adaptive_network_create(&config);
     ASSERT_NE(network, nullptr);
@@ -727,7 +747,8 @@ TEST(AdaptiveIntrospection, GetNeuronCount) {
 }
 
 // Test get neuron activation
-TEST(AdaptiveIntrospection, GetNeuronActivation) {
+TEST(AdaptiveIntrospection, GetNeuronActivation)
+{
     adaptive_network_config_t config = create_test_adaptive_config();
     adaptive_network_t network = adaptive_network_create(&config);
     ASSERT_NE(network, nullptr);
@@ -748,7 +769,8 @@ TEST(AdaptiveIntrospection, GetNeuronActivation) {
 }
 
 // Test get active neurons
-TEST(AdaptiveIntrospection, GetActiveNeurons) {
+TEST(AdaptiveIntrospection, GetActiveNeurons)
+{
     adaptive_network_config_t config = create_test_adaptive_config();
     adaptive_network_t network = adaptive_network_create(&config);
     ASSERT_NE(network, nullptr);
@@ -761,7 +783,8 @@ TEST(AdaptiveIntrospection, GetActiveNeurons) {
     // Get active neurons
     uint32_t neuron_ids[20];
     float activations[20];
-    uint32_t count = adaptive_network_get_active_neurons(network, 0.1f, neuron_ids, activations, 20);
+    uint32_t count =
+        adaptive_network_get_active_neurons(network, 0.1f, neuron_ids, activations, 20);
 
     EXPECT_GE(count, 0);
     EXPECT_LE(count, 20);
@@ -770,7 +793,8 @@ TEST(AdaptiveIntrospection, GetActiveNeurons) {
 }
 
 // Test get connection count
-TEST(AdaptiveIntrospection, GetConnectionCount) {
+TEST(AdaptiveIntrospection, GetConnectionCount)
+{
     adaptive_network_config_t config = create_test_adaptive_config();
     adaptive_network_t network = adaptive_network_create(&config);
     ASSERT_NE(network, nullptr);
@@ -783,7 +807,8 @@ TEST(AdaptiveIntrospection, GetConnectionCount) {
 }
 
 // Test get total weight
-TEST(AdaptiveIntrospection, GetTotalWeight) {
+TEST(AdaptiveIntrospection, GetTotalWeight)
+{
     adaptive_network_config_t config = create_test_adaptive_config();
     adaptive_network_t network = adaptive_network_create(&config);
     ASSERT_NE(network, nullptr);
@@ -801,7 +826,8 @@ TEST(AdaptiveIntrospection, GetTotalWeight) {
 }
 
 // Test get base network handle
-TEST(AdaptiveIntrospection, GetBaseNetwork) {
+TEST(AdaptiveIntrospection, GetBaseNetwork)
+{
     adaptive_network_config_t config = create_test_adaptive_config();
     adaptive_network_t network = adaptive_network_create(&config);
     ASSERT_NE(network, nullptr);

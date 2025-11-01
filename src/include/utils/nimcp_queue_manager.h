@@ -50,26 +50,28 @@ typedef struct {
 // Queue manager configuration
 typedef struct {
     struct {
-        size_t high;            // Size of high priority queue
-        size_t normal;          // Size of normal priority queue
-        size_t low;             // Size of low priority queue
+        size_t high;    // Size of high priority queue
+        size_t normal;  // Size of normal priority queue
+        size_t low;     // Size of low priority queue
     } queue_sizes;
-    uint32_t default_timeout;   // Default operation timeout in ms
-    bool blocking_mode;         // Whether queues should block when full/empty
-    size_t max_channels;        // Maximum number of channels supported
-    size_t worker_threads;      // Number of worker threads for queue operations
+    uint32_t default_timeout;  // Default operation timeout in ms
+    bool blocking_mode;        // Whether queues should block when full/empty
+    size_t max_channels;       // Maximum number of channels supported
+    size_t worker_threads;     // Number of worker threads for queue operations
 } nimcp_queue_manager_config_t;
 
 // Queue statistics
 typedef struct {
     struct {
-        uint_least64_t enqueued;   // Total messages enqueued (accessed atomically in implementation)
-        uint_least64_t dequeued;   // Total messages dequeued (accessed atomically in implementation)
-        uint_least64_t dropped;    // Messages dropped due to overflow (accessed atomically in implementation)
-        size_t current_size;       // Current number of messages (accessed atomically in implementation)
-        size_t peak_size;          // Maximum size reached (accessed atomically in implementation)
-        uint_least64_t op_latency_sum; // Sum of operation latencies (accessed atomically in implementation)
-        uint_least64_t op_count;   // Total operation count (accessed atomically in implementation)
+        uint_least64_t enqueued;  // Total messages enqueued (accessed atomically in implementation)
+        uint_least64_t dequeued;  // Total messages dequeued (accessed atomically in implementation)
+        uint_least64_t
+            dropped;  // Messages dropped due to overflow (accessed atomically in implementation)
+        size_t current_size;  // Current number of messages (accessed atomically in implementation)
+        size_t peak_size;     // Maximum size reached (accessed atomically in implementation)
+        uint_least64_t
+            op_latency_sum;  // Sum of operation latencies (accessed atomically in implementation)
+        uint_least64_t op_count;  // Total operation count (accessed atomically in implementation)
     } priorities[NIMCP_QUEUE_PRIORITY_COUNT];
 } nimcp_queue_manager_stats_t;
 
@@ -79,62 +81,36 @@ typedef struct nimcp_queue_manager nimcp_queue_manager_t;
 typedef nimcp_queue_manager_t* nimcp_queue_manager_handle_t;
 
 // Public API
-nimcp_result_t nimcp_queue_manager_create(
-    const nimcp_queue_manager_config_t* config,
-    nimcp_queue_manager_handle_t* manager
-);
+nimcp_result_t nimcp_queue_manager_create(const nimcp_queue_manager_config_t* config,
+                                          nimcp_queue_manager_handle_t* manager);
 
-nimcp_result_t nimcp_queue_manager_destroy(
-    nimcp_queue_manager_handle_t manager
-);
+nimcp_result_t nimcp_queue_manager_destroy(nimcp_queue_manager_handle_t manager);
 
-nimcp_result_t nimcp_queue_manager_enqueue(
-    nimcp_queue_manager_handle_t manager,
-    uint32_t channel_id,
-    const nimcp_message_t* message,
-    uint32_t timeout_ms
-);
+nimcp_result_t nimcp_queue_manager_enqueue(nimcp_queue_manager_handle_t manager,
+                                           uint32_t channel_id, const nimcp_message_t* message,
+                                           uint32_t timeout_ms);
 
-nimcp_result_t nimcp_queue_manager_dequeue(
-    nimcp_queue_manager_handle_t manager,
-    uint32_t channel_id,
-    nimcp_message_t** message,
-    uint32_t timeout_ms
-);
+nimcp_result_t nimcp_queue_manager_dequeue(nimcp_queue_manager_handle_t manager,
+                                           uint32_t channel_id, nimcp_message_t** message,
+                                           uint32_t timeout_ms);
 
-nimcp_result_t nimcp_queue_manager_get_stats(
-    nimcp_queue_manager_handle_t manager,
-    uint32_t channel_id,
-    nimcp_queue_manager_stats_t* stats
-);
+nimcp_result_t nimcp_queue_manager_get_stats(nimcp_queue_manager_handle_t manager,
+                                             uint32_t channel_id,
+                                             nimcp_queue_manager_stats_t* stats);
 
-nimcp_result_t nimcp_queue_manager_clear(
-    nimcp_queue_manager_handle_t manager,
-    uint32_t channel_id
-);
+nimcp_result_t nimcp_queue_manager_clear(nimcp_queue_manager_handle_t manager, uint32_t channel_id);
 
-nimcp_result_t nimcp_queue_manager_set_timeout(
-    nimcp_queue_manager_handle_t manager,
-    uint32_t timeout_ms
-);
+nimcp_result_t nimcp_queue_manager_set_timeout(nimcp_queue_manager_handle_t manager,
+                                               uint32_t timeout_ms);
 
-bool nimcp_queue_manager_is_empty(
-    nimcp_queue_manager_handle_t manager,
-    uint32_t channel_id,
-    nimcp_queue_priority_t priority
-);
+bool nimcp_queue_manager_is_empty(nimcp_queue_manager_handle_t manager, uint32_t channel_id,
+                                  nimcp_queue_priority_t priority);
 
-bool nimcp_queue_manager_is_full(
-    nimcp_queue_manager_handle_t manager,
-    uint32_t channel_id,
-    nimcp_queue_priority_t priority
-);
+bool nimcp_queue_manager_is_full(nimcp_queue_manager_handle_t manager, uint32_t channel_id,
+                                 nimcp_queue_priority_t priority);
 
-size_t nimcp_queue_manager_get_size(
-    nimcp_queue_manager_handle_t manager,
-    uint32_t channel_id,
-    nimcp_queue_priority_t priority
-);
+size_t nimcp_queue_manager_get_size(nimcp_queue_manager_handle_t manager, uint32_t channel_id,
+                                    nimcp_queue_priority_t priority);
 
 // Internal structures and functions
 #ifdef NIMCP_INTERNAL
@@ -156,18 +132,16 @@ struct nimcp_queue_manager {
 
 // Internal helper function declarations
 static bool is_valid_channel(nimcp_queue_manager_handle_t manager, uint32_t channel_id);
-static size_t get_queue_size_for_priority(const nimcp_queue_manager_config_t* config, 
-                                        nimcp_queue_priority_t priority);
-static nimcp_result_t init_channel(nimcp_queue_channel_t* channel, 
-                                 const nimcp_queue_manager_config_t* config);
+static size_t get_queue_size_for_priority(const nimcp_queue_manager_config_t* config,
+                                          nimcp_queue_priority_t priority);
+static nimcp_result_t init_channel(nimcp_queue_channel_t* channel,
+                                   const nimcp_queue_manager_config_t* config);
 static void destroy_channel(nimcp_queue_channel_t* channel);
 static nimcp_result_t validate_config(const nimcp_queue_manager_config_t* config);
 static void queue_operation_handler(void* arg);
-static nimcp_result_t submit_queue_operation(
-    nimcp_queue_manager_handle_t manager,
-    nimcp_queue_operation_ctx_t* op_ctx
-);
+static nimcp_result_t submit_queue_operation(nimcp_queue_manager_handle_t manager,
+                                             nimcp_queue_operation_ctx_t* op_ctx);
 
-#endif // NIMCP_INTERNAL
+#endif  // NIMCP_INTERNAL
 
-#endif // NIMCP_QUEUE_MANAGER_H
+#endif  // NIMCP_QUEUE_MANAGER_H

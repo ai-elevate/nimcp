@@ -1,10 +1,10 @@
 #ifndef NIMCP_BTREE_H
 #define NIMCP_BTREE_H
 
-#include <stddef.h>
 #include <stdbool.h>
+#include <stddef.h>
 #ifndef __cplusplus
-#include <stdatomic.h>
+    #include <stdatomic.h>
 #endif
 #include <pthread.h>
 
@@ -23,13 +23,13 @@ typedef void (*btree_traverse_func)(void* data, void* user_data);
 #define BTREE_ORDER 3
 
 // Error codes
-#define BTREE_SUCCESS           0
-#define BTREE_ERROR           (-1)
-#define BTREE_NOT_FOUND      (-2)
-#define BTREE_DUPLICATE      (-3)
-#define BTREE_NO_MEMORY     (-4)
-#define BTREE_LOCKED        (-5)
-#define BTREE_TIMEOUT       (-6)
+#define BTREE_SUCCESS 0
+#define BTREE_ERROR (-1)
+#define BTREE_NOT_FOUND (-2)
+#define BTREE_DUPLICATE (-3)
+#define BTREE_NO_MEMORY (-4)
+#define BTREE_LOCKED (-5)
+#define BTREE_TIMEOUT (-6)
 
 /**
  * Creates a new thread-safe B-tree
@@ -39,8 +39,7 @@ typedef void (*btree_traverse_func)(void* data, void* user_data);
  * @return New B-tree instance or NULL on failure
  * @thread_safety Thread-safe
  */
-btree_t* btree_create(btree_compare_func compare,
-                      btree_key_func key_func,
+btree_t* btree_create(btree_compare_func compare, btree_key_func key_func,
                       btree_free_func free_func);
 
 /**
@@ -92,9 +91,7 @@ size_t btree_count(const btree_t* tree);
  * @param user_data User data passed to callback
  * @thread_safety Thread-safe
  */
-void btree_foreach(const btree_t* tree,
-                   btree_traverse_func callback,
-                   void* user_data);
+void btree_foreach(const btree_t* tree, btree_traverse_func callback, void* user_data);
 
 /**
  * Creates an iterator for the B-tree
@@ -119,4 +116,4 @@ bool btree_iterator_next(btree_iterator_t* iterator, void** data);
  */
 void btree_iterator_destroy(btree_iterator_t* iterator);
 
-#endif // NIMCP_BTREE_H
+#endif  // NIMCP_BTREE_H

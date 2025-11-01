@@ -10,40 +10,40 @@
 extern NIMCP_EXPORT PyTypeObject NeuralNetworkType;
 
 
-#include <stdint.h>
 #include <stdbool.h>
+#include <stdint.h>
 
 /**
  * @brief Enumeration of possible node states
  */
 typedef enum {
-    NODE_STATUS_INIT,     /**< Node is initializing */
-    NODE_STATUS_RUNNING,  /**< Node is operational */
-    NODE_STATUS_ERROR,    /**< Node has encountered an error */
-    NODE_STATUS_SHUTDOWN  /**< Node is shutting down */
+    NODE_STATUS_INIT,    /**< Node is initializing */
+    NODE_STATUS_RUNNING, /**< Node is operational */
+    NODE_STATUS_ERROR,   /**< Node has encountered an error */
+    NODE_STATUS_SHUTDOWN /**< Node is shutting down */
 } node_status_t;
 
 /**
  * @brief Structure containing peer connection information
  */
 typedef struct {
-    char ip[16];          /**< IPv4 address as string */
-    uint16_t port;        /**< Port number */
-    int socket_fd;        /** Stores the socket file descrptor */
-    bool connected;       /**< Connection status */
+    char ip[16];    /**< IPv4 address as string */
+    uint16_t port;  /**< Port number */
+    int socket_fd;  /** Stores the socket file descrptor */
+    bool connected; /**< Connection status */
 } peer_info_t;
 
 /**
  * @brief Configuration structure for node initialization
  */
 typedef struct {
-    uint16_t listen_port;     /**< Port to listen on */
-    uint32_t max_peers;       /**< Maximum number of peer connections */
+    uint16_t listen_port;         /**< Port to listen on */
+    uint32_t max_peers;           /**< Maximum number of peer connections */
     uint32_t keepalive_interval;  // Add this field
     uint32_t discovery_interval;
     uint32_t reconnect_interval;
     uint32_t max_retries;
-    uint32_t ping_interval;   /**< Health check interval in milliseconds */
+    uint32_t ping_interval; /**< Health check interval in milliseconds */
 } node_config_t;
 
 /**
@@ -127,4 +127,4 @@ bool p2p_node_stop(p2p_node_t node);
  */
 struct NimcpGraph* p2p_node_get_topology_graph(p2p_node_t node);
 
-#endif // NIMCP_P2PNODE_H
+#endif  // NIMCP_P2PNODE_H

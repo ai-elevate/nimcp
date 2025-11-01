@@ -483,10 +483,10 @@
  */
 
 #include "utils/nimcp_thread.h"
-#include <stdlib.h>
-#include <string.h>
 #include <errno.h>
 #include <stdarg.h>
+#include <stdlib.h>
+#include <string.h>
 
 //=============================================================================
 // Thread-Local Error Storage
@@ -562,12 +562,12 @@ static nimcp_once_t init_once = NIMCP_ONCE_INIT;
  * @param format Printf-style format string
  * @param ... Variable arguments for format
  */
-static void set_thread_error(int error_code, const char* format, ...) {
+static void set_thread_error(int error_code, const char* format, ...)
+{
     va_list args;
     va_start(args, format);
     thread_error.error_code = error_code;
-    vsnprintf(thread_error.error_message, sizeof(thread_error.error_message),
-              format, args);
+    vsnprintf(thread_error.error_message, sizeof(thread_error.error_message), format, args);
     va_end(args);
 }
 
@@ -589,7 +589,8 @@ static void set_thread_error(int error_code, const char* format, ...) {
  *
  * @return Pointer to error message string (thread-local, valid until next error)
  */
-const char* nimcp_thread_get_error(void) {
+const char* nimcp_thread_get_error(void)
+{
     return thread_error.error_message;
 }
 
@@ -608,7 +609,8 @@ const char* nimcp_thread_get_error(void) {
  * COMPLEXITY: O(1)
  * THREAD SAFETY: Fully safe (thread-local storage)
  */
-void nimcp_thread_clear_error(void) {
+void nimcp_thread_clear_error(void)
+{
     thread_error.error_code = 0;
     thread_error.error_message[0] = '\0';
 }
@@ -641,7 +643,8 @@ void nimcp_thread_clear_error(void) {
  * THREAD SAFETY: Called via pthread_once (guaranteed single execution)
  * CALLED BY: pthread_once in nimcp_thread_init
  */
-static void thread_init_routine(void) {
+static void thread_init_routine(void)
+{
     // Global mutex protects table-level operations (future use)
     pthread_mutex_init(&resource_table.global_mutex, NULL);
 
@@ -686,11 +689,11 @@ static void thread_init_routine(void) {
  *
  * @return NIMCP_SUCCESS on success, NIMCP_ERROR_SYSTEM on failure
  */
-nimcp_result_t nimcp_thread_init(void) {
+nimcp_result_t nimcp_thread_init(void)
+{
     // pthread_once returns 0 on success
     // WHY CHECK: pthread_once can fail (rare: invalid once_control)
-    return pthread_once(&init_once, thread_init_routine) == 0 ?
-           NIMCP_SUCCESS : NIMCP_ERROR_SYSTEM;
+    return pthread_once(&init_once, thread_init_routine) == 0 ? NIMCP_SUCCESS : NIMCP_ERROR_SYSTEM;
 }
 
 //=============================================================================
@@ -746,10 +749,9 @@ nimcp_result_t nimcp_thread_init(void) {
  * @param attr Thread attributes (NULL for defaults)
  * @return NIMCP_SUCCESS or NIMCP_ERROR_INVALID_PARAM or NIMCP_ERROR_SYSTEM
  */
-nimcp_result_t nimcp_thread_create(nimcp_thread_t* thread,
-                                   void* (*start_routine)(void*),
-                                   void* arg,
-                                   const thread_attr_t* attr) {
+nimcp_result_t nimcp_thread_create(nimcp_thread_t* thread, void* (*start_routine)(void*), void* arg,
+                                   const thread_attr_t* attr)
+{
     // Validate required parameters
     // WHY CHECK: pthread_create with NULL thread or start_routine is UB
     if (!thread || !start_routine) {
@@ -774,14 +776,14 @@ nimcp_result_t nimcp_thread_create(nimcp_thread_t* thread,
             pthread_attr_setdetachstate(&pthread_attr, PTHREAD_CREATE_DETACHED);
         }
 
-        // Priority: Real-time or background priority (if supported)
-        #ifdef _POSIX_PRIORITY_SCHEDULING
+// Priority: Real-time or background priority (if supported)
+#ifdef _POSIX_PRIORITY_SCHEDULING
         if (attr->priority > 0) {
             struct sched_param param;
             param.sched_priority = attr->priority;
             pthread_attr_setschedparam(&pthread_attr, &param);
         }
-        #endif
+#endif
     }
 
     // Create thread with configured attributes
@@ -793,8 +795,7 @@ nimcp_result_t nimcp_thread_create(nimcp_thread_t* thread,
 
     // Check result and set error if failed
     if (result != 0) {
-        set_thread_error(NIMCP_ERROR_SYSTEM, "Thread creation failed: %s",
-                        strerror(result));
+        set_thread_error(NIMCP_ERROR_SYSTEM, "Thread creation failed: %s", strerror(result));
         return NIMCP_ERROR_SYSTEM;
     }
 
@@ -826,11 +827,11 @@ nimcp_result_t nimcp_thread_create(nimcp_thread_t* thread,
  * @param retval Output parameter for thread return value (NULL if not needed)
  * @return NIMCP_SUCCESS or NIMCP_ERROR_SYSTEM
  */
-nimcp_result_t nimcp_thread_join(nimcp_thread_t thread, void** retval) {
+nimcp_result_t nimcp_thread_join(nimcp_thread_t thread, void** retval)
+{
     int result = pthread_join(thread, retval);
     if (result != 0) {
-        set_thread_error(NIMCP_ERROR_SYSTEM, "Thread join failed: %s",
-                        strerror(result));
+        set_thread_error(NIMCP_ERROR_SYSTEM, "Thread join failed: %s", strerror(result));
         return NIMCP_ERROR_SYSTEM;
     }
     return NIMCP_SUCCESS;
@@ -859,11 +860,11 @@ nimcp_result_t nimcp_thread_join(nimcp_thread_t thread, void** retval) {
  * @param thread Thread handle to detach
  * @return NIMCP_SUCCESS or NIMCP_ERROR_SYSTEM
  */
-nimcp_result_t nimcp_thread_detach(nimcp_thread_t thread) {
+nimcp_result_t nimcp_thread_detach(nimcp_thread_t thread)
+{
     int result = pthread_detach(thread);
     if (result != 0) {
-        set_thread_error(NIMCP_ERROR_SYSTEM, "Thread detach failed: %s",
-                        strerror(result));
+        set_thread_error(NIMCP_ERROR_SYSTEM, "Thread detach failed: %s", strerror(result));
         return NIMCP_ERROR_SYSTEM;
     }
     return NIMCP_SUCCESS;
@@ -891,7 +892,8 @@ nimcp_result_t nimcp_thread_detach(nimcp_thread_t thread) {
  *
  * @param retval Return value for pthread_join
  */
-void nimcp_thread_exit(void* retval) {
+void nimcp_thread_exit(void* retval)
+{
     pthread_exit(retval);
 }
 
@@ -908,7 +910,8 @@ void nimcp_thread_exit(void* retval) {
  *
  * @return Current thread handle
  */
-nimcp_thread_t nimcp_thread_self(void) {
+nimcp_thread_t nimcp_thread_self(void)
+{
     return pthread_self();
 }
 
@@ -927,7 +930,8 @@ nimcp_thread_t nimcp_thread_self(void) {
  * @param t2 Second thread ID
  * @return true if equal, false otherwise
  */
-bool nimcp_thread_equal(nimcp_thread_t t1, nimcp_thread_t t2) {
+bool nimcp_thread_equal(nimcp_thread_t t1, nimcp_thread_t t2)
+{
     return pthread_equal(t1, t2);
 }
 
@@ -965,7 +969,8 @@ bool nimcp_thread_equal(nimcp_thread_t t1, nimcp_thread_t t2) {
  * @param init_routine Function to call exactly once
  * @return NIMCP_SUCCESS or NIMCP_ERROR_INVALID_PARAM or NIMCP_ERROR_SYSTEM
  */
-nimcp_result_t nimcp_once(nimcp_once_t* once_control, void (*init_routine)(void)) {
+nimcp_result_t nimcp_once(nimcp_once_t* once_control, void (*init_routine)(void))
+{
     // Validate parameters
     if (!once_control || !init_routine) {
         set_thread_error(NIMCP_ERROR_INVALID_PARAM, "Invalid once parameters");
@@ -974,8 +979,7 @@ nimcp_result_t nimcp_once(nimcp_once_t* once_control, void (*init_routine)(void)
 
     int result = pthread_once(once_control, init_routine);
     if (result != 0) {
-        set_thread_error(NIMCP_ERROR_SYSTEM, "pthread_once failed: %s",
-                        strerror(result));
+        set_thread_error(NIMCP_ERROR_SYSTEM, "pthread_once failed: %s", strerror(result));
         return NIMCP_ERROR_SYSTEM;
     }
 
@@ -1024,7 +1028,8 @@ nimcp_result_t nimcp_once(nimcp_once_t* once_control, void (*init_routine)(void)
  * @param attr Mutex attributes (NULL for default NORMAL type)
  * @return NIMCP_SUCCESS or NIMCP_ERROR_INVALID_PARAM or NIMCP_ERROR_SYSTEM
  */
-nimcp_result_t nimcp_mutex_init(nimcp_mutex_t* mutex, const mutex_attr_t* attr) {
+nimcp_result_t nimcp_mutex_init(nimcp_mutex_t* mutex, const mutex_attr_t* attr)
+{
     if (!mutex) {
         set_thread_error(NIMCP_ERROR_INVALID_PARAM, "Invalid mutex pointer");
         return NIMCP_ERROR_INVALID_PARAM;
@@ -1056,8 +1061,7 @@ nimcp_result_t nimcp_mutex_init(nimcp_mutex_t* mutex, const mutex_attr_t* attr) 
     pthread_mutexattr_destroy(&mutex_attr);
 
     if (result != 0) {
-        set_thread_error(NIMCP_ERROR_SYSTEM, "Mutex initialization failed: %s",
-                        strerror(result));
+        set_thread_error(NIMCP_ERROR_SYSTEM, "Mutex initialization failed: %s", strerror(result));
         return NIMCP_ERROR_SYSTEM;
     }
 
@@ -1086,15 +1090,15 @@ nimcp_result_t nimcp_mutex_init(nimcp_mutex_t* mutex, const mutex_attr_t* attr) 
  * @param mutex Mutex to destroy
  * @return NIMCP_SUCCESS or NIMCP_ERROR_INVALID_PARAM or NIMCP_ERROR_SYSTEM
  */
-nimcp_result_t nimcp_mutex_destroy(nimcp_mutex_t* mutex) {
+nimcp_result_t nimcp_mutex_destroy(nimcp_mutex_t* mutex)
+{
     if (!mutex) {
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
     int result = pthread_mutex_destroy(mutex);
     if (result != 0) {
-        set_thread_error(NIMCP_ERROR_SYSTEM, "Mutex destruction failed: %s",
-                        strerror(result));
+        set_thread_error(NIMCP_ERROR_SYSTEM, "Mutex destruction failed: %s", strerror(result));
         return NIMCP_ERROR_SYSTEM;
     }
 
@@ -1129,15 +1133,15 @@ nimcp_result_t nimcp_mutex_destroy(nimcp_mutex_t* mutex) {
  * @param mutex Mutex to lock
  * @return NIMCP_SUCCESS or NIMCP_ERROR_INVALID_PARAM or NIMCP_ERROR_SYSTEM
  */
-nimcp_result_t nimcp_mutex_lock(nimcp_mutex_t* mutex) {
+nimcp_result_t nimcp_mutex_lock(nimcp_mutex_t* mutex)
+{
     if (!mutex) {
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
     int result = pthread_mutex_lock(mutex);
     if (result != 0) {
-        set_thread_error(NIMCP_ERROR_SYSTEM, "Mutex lock failed: %s",
-                        strerror(result));
+        set_thread_error(NIMCP_ERROR_SYSTEM, "Mutex lock failed: %s", strerror(result));
         return NIMCP_ERROR_SYSTEM;
     }
 
@@ -1178,7 +1182,8 @@ nimcp_result_t nimcp_mutex_lock(nimcp_mutex_t* mutex) {
  * @param mutex Mutex to try locking
  * @return NIMCP_SUCCESS if locked, NIMCP_BUSY if already locked, NIMCP_ERROR_* on error
  */
-nimcp_result_t nimcp_mutex_trylock(nimcp_mutex_t* mutex) {
+nimcp_result_t nimcp_mutex_trylock(nimcp_mutex_t* mutex)
+{
     if (!mutex) {
         return NIMCP_ERROR_INVALID_PARAM;
     }
@@ -1189,8 +1194,7 @@ nimcp_result_t nimcp_mutex_trylock(nimcp_mutex_t* mutex) {
     if (result == EBUSY) {
         return NIMCP_BUSY;
     } else if (result != 0) {
-        set_thread_error(NIMCP_ERROR_SYSTEM, "Mutex trylock failed: %s",
-                        strerror(result));
+        set_thread_error(NIMCP_ERROR_SYSTEM, "Mutex trylock failed: %s", strerror(result));
         return NIMCP_ERROR_SYSTEM;
     }
 
@@ -1220,15 +1224,15 @@ nimcp_result_t nimcp_mutex_trylock(nimcp_mutex_t* mutex) {
  * @param mutex Mutex to unlock
  * @return NIMCP_SUCCESS or NIMCP_ERROR_INVALID_PARAM or NIMCP_ERROR_SYSTEM
  */
-nimcp_result_t nimcp_mutex_unlock(nimcp_mutex_t* mutex) {
+nimcp_result_t nimcp_mutex_unlock(nimcp_mutex_t* mutex)
+{
     if (!mutex) {
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
     int result = pthread_mutex_unlock(mutex);
     if (result != 0) {
-        set_thread_error(NIMCP_ERROR_SYSTEM, "Mutex unlock failed: %s",
-                        strerror(result));
+        set_thread_error(NIMCP_ERROR_SYSTEM, "Mutex unlock failed: %s", strerror(result));
         return NIMCP_ERROR_SYSTEM;
     }
 
@@ -1254,7 +1258,8 @@ nimcp_result_t nimcp_mutex_unlock(nimcp_mutex_t* mutex) {
  * @param cond Condition variable to initialize
  * @return NIMCP_SUCCESS or NIMCP_ERROR_INVALID_PARAM or NIMCP_ERROR_SYSTEM
  */
-nimcp_result_t nimcp_cond_init(nimcp_cond_t* cond) {
+nimcp_result_t nimcp_cond_init(nimcp_cond_t* cond)
+{
     if (!cond) {
         set_thread_error(NIMCP_ERROR_INVALID_PARAM, "Invalid cond pointer");
         return NIMCP_ERROR_INVALID_PARAM;
@@ -1262,8 +1267,7 @@ nimcp_result_t nimcp_cond_init(nimcp_cond_t* cond) {
 
     int result = pthread_cond_init(cond, NULL);
     if (result != 0) {
-        set_thread_error(NIMCP_ERROR_SYSTEM, "Cond initialization failed: %s",
-                        strerror(result));
+        set_thread_error(NIMCP_ERROR_SYSTEM, "Cond initialization failed: %s", strerror(result));
         return NIMCP_ERROR_SYSTEM;
     }
 
@@ -1286,15 +1290,15 @@ nimcp_result_t nimcp_cond_init(nimcp_cond_t* cond) {
  * @param cond Condition variable to destroy
  * @return NIMCP_SUCCESS or NIMCP_ERROR_INVALID_PARAM or NIMCP_ERROR_SYSTEM
  */
-nimcp_result_t nimcp_cond_destroy(nimcp_cond_t* cond) {
+nimcp_result_t nimcp_cond_destroy(nimcp_cond_t* cond)
+{
     if (!cond) {
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
     int result = pthread_cond_destroy(cond);
     if (result != 0) {
-        set_thread_error(NIMCP_ERROR_SYSTEM, "Cond destruction failed: %s",
-                        strerror(result));
+        set_thread_error(NIMCP_ERROR_SYSTEM, "Cond destruction failed: %s", strerror(result));
         return NIMCP_ERROR_SYSTEM;
     }
 
@@ -1341,15 +1345,15 @@ nimcp_result_t nimcp_cond_destroy(nimcp_cond_t* cond) {
  * @param mutex Mutex that must be locked by caller (will be released during wait)
  * @return NIMCP_SUCCESS or NIMCP_ERROR_INVALID_PARAM or NIMCP_ERROR_SYSTEM
  */
-nimcp_result_t nimcp_cond_wait(nimcp_cond_t* cond, nimcp_mutex_t* mutex) {
+nimcp_result_t nimcp_cond_wait(nimcp_cond_t* cond, nimcp_mutex_t* mutex)
+{
     if (!cond || !mutex) {
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
     int result = pthread_cond_wait(cond, mutex);
     if (result != 0) {
-        set_thread_error(NIMCP_ERROR_SYSTEM, "Cond wait failed: %s",
-                        strerror(result));
+        set_thread_error(NIMCP_ERROR_SYSTEM, "Cond wait failed: %s", strerror(result));
         return NIMCP_ERROR_SYSTEM;
     }
 
@@ -1406,8 +1410,8 @@ nimcp_result_t nimcp_cond_wait(nimcp_cond_t* cond, nimcp_mutex_t* mutex) {
  * @param timeout_ms Timeout in milliseconds
  * @return NIMCP_SUCCESS if signaled, NIMCP_BUSY if timeout, NIMCP_ERROR_* on error
  */
-nimcp_result_t nimcp_cond_timedwait(nimcp_cond_t* cond, nimcp_mutex_t* mutex,
-                                     uint32_t timeout_ms) {
+nimcp_result_t nimcp_cond_timedwait(nimcp_cond_t* cond, nimcp_mutex_t* mutex, uint32_t timeout_ms)
+{
     if (!cond || !mutex) {
         return NIMCP_ERROR_INVALID_PARAM;
     }
@@ -1417,14 +1421,14 @@ nimcp_result_t nimcp_cond_timedwait(nimcp_cond_t* cond, nimcp_mutex_t* mutex,
     clock_gettime(CLOCK_REALTIME, &ts);
 
     // Add timeout (convert milliseconds to seconds and nanoseconds)
-    ts.tv_sec += timeout_ms / 1000;           // Add seconds
+    ts.tv_sec += timeout_ms / 1000;               // Add seconds
     ts.tv_nsec += (timeout_ms % 1000) * 1000000;  // Add nanoseconds
 
     // Handle nanosecond overflow
     // WHY NEEDED: tv_nsec must be in [0, 999999999]
     if (ts.tv_nsec >= 1000000000) {
-        ts.tv_sec += 1;                       // Carry to seconds
-        ts.tv_nsec -= 1000000000;             // Normalize nanoseconds
+        ts.tv_sec += 1;            // Carry to seconds
+        ts.tv_nsec -= 1000000000;  // Normalize nanoseconds
     }
 
     int result = pthread_cond_timedwait(cond, mutex, &ts);
@@ -1433,8 +1437,7 @@ nimcp_result_t nimcp_cond_timedwait(nimcp_cond_t* cond, nimcp_mutex_t* mutex,
     if (result == ETIMEDOUT) {
         return NIMCP_BUSY;  // Consistent with trylock semantics
     } else if (result != 0) {
-        set_thread_error(NIMCP_ERROR_SYSTEM, "Cond timedwait failed: %s",
-                        strerror(result));
+        set_thread_error(NIMCP_ERROR_SYSTEM, "Cond timedwait failed: %s", strerror(result));
         return NIMCP_ERROR_SYSTEM;
     }
 
@@ -1476,15 +1479,15 @@ nimcp_result_t nimcp_cond_timedwait(nimcp_cond_t* cond, nimcp_mutex_t* mutex,
  * @param cond Condition variable to signal
  * @return NIMCP_SUCCESS or NIMCP_ERROR_INVALID_PARAM or NIMCP_ERROR_SYSTEM
  */
-nimcp_result_t nimcp_cond_signal(nimcp_cond_t* cond) {
+nimcp_result_t nimcp_cond_signal(nimcp_cond_t* cond)
+{
     if (!cond) {
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
     int result = pthread_cond_signal(cond);
     if (result != 0) {
-        set_thread_error(NIMCP_ERROR_SYSTEM, "Cond signal failed: %s",
-                        strerror(result));
+        set_thread_error(NIMCP_ERROR_SYSTEM, "Cond signal failed: %s", strerror(result));
         return NIMCP_ERROR_SYSTEM;
     }
 
@@ -1527,15 +1530,15 @@ nimcp_result_t nimcp_cond_signal(nimcp_cond_t* cond) {
  * @param cond Condition variable to broadcast
  * @return NIMCP_SUCCESS or NIMCP_ERROR_INVALID_PARAM or NIMCP_ERROR_SYSTEM
  */
-nimcp_result_t nimcp_cond_broadcast(nimcp_cond_t* cond) {
+nimcp_result_t nimcp_cond_broadcast(nimcp_cond_t* cond)
+{
     if (!cond) {
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
     int result = pthread_cond_broadcast(cond);
     if (result != 0) {
-        set_thread_error(NIMCP_ERROR_SYSTEM, "Cond broadcast failed: %s",
-                        strerror(result));
+        set_thread_error(NIMCP_ERROR_SYSTEM, "Cond broadcast failed: %s", strerror(result));
         return NIMCP_ERROR_SYSTEM;
     }
 
@@ -1593,7 +1596,8 @@ nimcp_result_t nimcp_cond_broadcast(nimcp_cond_t* cond) {
  * @param str String to hash
  * @return Bucket index in [0, 255]
  */
-static unsigned int hash_string(const char* str) {
+static unsigned int hash_string(const char* str)
+{
     unsigned int hash = 5381;  // Prime seed
     int c;
 
@@ -1670,8 +1674,8 @@ static unsigned int hash_string(const char* str) {
  * @param mutex Output parameter for mutex pointer
  * @return NIMCP_SUCCESS or NIMCP_ERROR_*
  */
-nimcp_result_t nimcp_get_resource_lock(const char* resource_id,
-                                       nimcp_mutex_t** mutex) {
+nimcp_result_t nimcp_get_resource_lock(const char* resource_id, nimcp_mutex_t** mutex)
+{
     // Validate parameters
     if (!resource_id || !mutex) {
         set_thread_error(NIMCP_ERROR_INVALID_PARAM, "Invalid resource lock parameters");
@@ -1808,7 +1812,8 @@ nimcp_result_t nimcp_get_resource_lock(const char* resource_id,
  * @param resource_id String identifier for resource
  * @return NIMCP_SUCCESS or NIMCP_ERROR_INVALID_PARAM or NIMCP_ERROR_NOT_FOUND
  */
-nimcp_result_t nimcp_release_resource_lock(const char* resource_id) {
+nimcp_result_t nimcp_release_resource_lock(const char* resource_id)
+{
     if (!resource_id) {
         return NIMCP_ERROR_INVALID_PARAM;
     }
@@ -1909,7 +1914,8 @@ nimcp_result_t nimcp_release_resource_lock(const char* resource_id) {
  * COMPLEXITY: O(n) where n = total number of named locks
  * THREAD SAFETY: NOT safe if threads still active (caller must ensure)
  */
-void nimcp_thread_cleanup(void) {
+void nimcp_thread_cleanup(void)
+{
     if (!resource_table.initialized) {
         return;  // Nothing to clean up
     }

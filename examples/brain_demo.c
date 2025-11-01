@@ -66,8 +66,11 @@ typedef struct {
  *
  * COMPLEXITY: O(1)
  */
-static bool rule_high_harm(float harm, float fairness, float transparency, float autonomy) {
-    (void)fairness; (void)transparency; (void)autonomy;
+static bool rule_high_harm(float harm, float fairness, float transparency, float autonomy)
+{
+    (void) fairness;
+    (void) transparency;
+    (void) autonomy;
     return harm > 0.7f;
 }
 
@@ -76,8 +79,10 @@ static bool rule_high_harm(float harm, float fairness, float transparency, float
  *
  * COMPLEXITY: O(1)
  */
-static bool rule_harmful_and_unfair(float harm, float fairness, float transparency, float autonomy) {
-    (void)transparency; (void)autonomy;
+static bool rule_harmful_and_unfair(float harm, float fairness, float transparency, float autonomy)
+{
+    (void) transparency;
+    (void) autonomy;
     return harm > 0.4f && fairness < 0.3f;
 }
 
@@ -86,8 +91,11 @@ static bool rule_harmful_and_unfair(float harm, float fairness, float transparen
  *
  * COMPLEXITY: O(1)
  */
-static bool rule_low_transparency(float harm, float fairness, float transparency, float autonomy) {
-    (void)harm; (void)fairness; (void)autonomy;
+static bool rule_low_transparency(float harm, float fairness, float transparency, float autonomy)
+{
+    (void) harm;
+    (void) fairness;
+    (void) autonomy;
     return transparency < 0.2f;
 }
 
@@ -96,8 +104,11 @@ static bool rule_low_transparency(float harm, float fairness, float transparency
  *
  * COMPLEXITY: O(1)
  */
-static bool rule_low_autonomy(float harm, float fairness, float transparency, float autonomy) {
-    (void)harm; (void)fairness; (void)transparency;
+static bool rule_low_autonomy(float harm, float fairness, float transparency, float autonomy)
+{
+    (void) harm;
+    (void) fairness;
+    (void) transparency;
     return autonomy < 0.3f;
 }
 
@@ -109,12 +120,10 @@ static bool rule_low_autonomy(float harm, float fairness, float transparency, fl
  *
  * INVARIANT: Rules ordered by priority (checked top to bottom)
  */
-static const ethics_rule_t ETHICS_RULES[] = {
-    {rule_high_harm,           "block", 0.95f},
-    {rule_harmful_and_unfair,  "block", 0.85f},
-    {rule_low_transparency,    "warn",  0.75f},
-    {rule_low_autonomy,        "warn",  0.70f}
-};
+static const ethics_rule_t ETHICS_RULES[] = {{rule_high_harm, "block", 0.95f},
+                                             {rule_harmful_and_unfair, "block", 0.85f},
+                                             {rule_low_transparency, "warn", 0.75f},
+                                             {rule_low_autonomy, "warn", 0.70f}};
 
 static const uint32_t NUM_ETHICS_RULES = sizeof(ETHICS_RULES) / sizeof(ETHICS_RULES[0]);
 
@@ -138,15 +147,12 @@ static const uint32_t NUM_ETHICS_RULES = sizeof(ETHICS_RULES) / sizeof(ETHICS_RU
  * @param max_label_len Maximum label buffer size
  * @return Confidence score [0.0, 1.0]
  */
-static float simulated_llm_ethics_decision(
-    const float* features,
-    uint32_t num_features,
-    void* context,
-    char* output_label,
-    uint32_t max_label_len)
+static float simulated_llm_ethics_decision(const float* features, uint32_t num_features,
+                                           void* context, char* output_label,
+                                           uint32_t max_label_len)
 {
-    (void)context; // Unused
-    (void)num_features; // Assumed to be 4
+    (void) context;       // Unused
+    (void) num_features;  // Assumed to be 4
 
     // Extract features for readability
     float harm = features[0];
@@ -161,7 +167,7 @@ static float simulated_llm_ethics_decision(
         // Check if rule matches (O(1) per rule)
         if (rule->predicate(harm, fairness, transparency, autonomy)) {
             strncpy(output_label, rule->label, max_label_len);
-            output_label[max_label_len - 1] = '\0'; // Ensure null termination
+            output_label[max_label_len - 1] = '\0';  // Ensure null termination
             return rule->confidence;
         }
     }
@@ -179,25 +185,27 @@ static float simulated_llm_ethics_decision(
 /**
  * @brief Generate random ethics scenarios for training
  */
-static void generate_training_scenario(float* features, char* label, float* confidence) {
+static void generate_training_scenario(float* features, char* label, float* confidence)
+{
     // Random ethical situation
-    features[0] = (float)rand() / RAND_MAX; // harm
-    features[1] = (float)rand() / RAND_MAX; // fairness
-    features[2] = (float)rand() / RAND_MAX; // transparency
-    features[3] = (float)rand() / RAND_MAX; // autonomy
+    features[0] = (float) rand() / RAND_MAX;  // harm
+    features[1] = (float) rand() / RAND_MAX;  // fairness
+    features[2] = (float) rand() / RAND_MAX;  // transparency
+    features[3] = (float) rand() / RAND_MAX;  // autonomy
 
     // Get LLM decision
     simulated_llm_ethics_decision(features, 4, NULL, label, 64);
 
     // Simulate confidence
-    *confidence = 0.8 + 0.2 * ((float)rand() / RAND_MAX);
+    *confidence = 0.8 + 0.2 * ((float) rand() / RAND_MAX);
 }
 
 //=============================================================================
 // Main Demonstration
 //=============================================================================
 
-int main(void) {
+int main(void)
+{
     srand(time(NULL));
 
     printf("===========================================\n");
@@ -210,12 +218,11 @@ int main(void) {
     //=========================================================================
     printf("Step 1: Creating ethics decision brain...\n");
 
-    brain_t ethics_brain = brain_create(
-        "artemis_ethics",        // Name
-        BRAIN_SIZE_SMALL,        // 1K neurons, ~10MB
-        BRAIN_TASK_CLASSIFICATION, // Multi-class classification
-        4,                       // 4 inputs: harm, fairness, transparency, autonomy
-        3                        // 3 outputs: allow, warn, block
+    brain_t ethics_brain = brain_create("artemis_ethics",           // Name
+                                        BRAIN_SIZE_SMALL,           // 1K neurons, ~10MB
+                                        BRAIN_TASK_CLASSIFICATION,  // Multi-class classification
+                                        4,  // 4 inputs: harm, fairness, transparency, autonomy
+                                        3   // 3 outputs: allow, warn, block
     );
 
     if (!ethics_brain) {
@@ -246,24 +253,17 @@ int main(void) {
 
         generate_training_scenario(features, label, &confidence);
 
-        float loss = brain_learn_example(
-            ethics_brain,
-            features,
-            4,
-            label,
-            confidence
-        );
+        float loss = brain_learn_example(ethics_brain, features, 4, label, confidence);
 
         total_loss += loss;
 
         if ((i + 1) % 100 == 0) {
-            printf("  Trained on %u examples, avg loss: %.4f\n",
-                   i + 1, total_loss / (i + 1));
+            printf("  Trained on %u examples, avg loss: %.4f\n", i + 1, total_loss / (i + 1));
         }
     }
 
     clock_t training_end = clock();
-    double training_time = ((double)(training_end - training_start)) / CLOCKS_PER_SEC;
+    double training_time = ((double) (training_end - training_start)) / CLOCKS_PER_SEC;
 
     printf("  Training completed in %.2f seconds\n", training_time);
     printf("  Final average loss: %.4f\n\n", total_loss / num_training_examples);
@@ -277,48 +277,34 @@ int main(void) {
     struct {
         float features[4];
         const char* description;
-    } test_cases[] = {
-        {{0.9, 0.5, 0.5, 0.5}, "High harm scenario"},
-        {{0.2, 0.8, 0.8, 0.8}, "Safe, fair scenario"},
-        {{0.5, 0.2, 0.5, 0.5}, "Moderate harm, unfair"},
-        {{0.3, 0.6, 0.1, 0.7}, "Low transparency"}
-    };
+    } test_cases[] = {{{0.9, 0.5, 0.5, 0.5}, "High harm scenario"},
+                      {{0.2, 0.8, 0.8, 0.8}, "Safe, fair scenario"},
+                      {{0.5, 0.2, 0.5, 0.5}, "Moderate harm, unfair"},
+                      {{0.3, 0.6, 0.1, 0.7}, "Low transparency"}};
 
     uint64_t total_inference_time = 0;
 
     for (size_t i = 0; i < sizeof(test_cases) / sizeof(test_cases[0]); i++) {
         printf("Test Case %zu: %s\n", i + 1, test_cases[i].description);
         printf("  Features: harm=%.2f, fair=%.2f, trans=%.2f, auto=%.2f\n",
-               test_cases[i].features[0],
-               test_cases[i].features[1],
-               test_cases[i].features[2],
+               test_cases[i].features[0], test_cases[i].features[1], test_cases[i].features[2],
                test_cases[i].features[3]);
 
-        brain_decision_t* decision = brain_decide(
-            ethics_brain,
-            test_cases[i].features,
-            4
-        );
+        brain_decision_t* decision = brain_decide(ethics_brain, test_cases[i].features, 4);
 
         if (decision) {
-            printf("  Decision: %s (confidence: %.2f)\n",
-                   decision->label,
-                   decision->confidence);
-            printf("  Active neurons: %u (sparsity: %.1f%%)\n",
-                   decision->num_active_neurons,
+            printf("  Decision: %s (confidence: %.2f)\n", decision->label, decision->confidence);
+            printf("  Active neurons: %u (sparsity: %.1f%%)\n", decision->num_active_neurons,
                    decision->sparsity * 100.0f);
-            printf("  Inference time: %lu μs\n",
-                   decision->inference_time_us);
-            printf("  Explanation: %s\n\n",
-                   decision->explanation);
+            printf("  Inference time: %lu μs\n", decision->inference_time_us);
+            printf("  Explanation: %s\n\n", decision->explanation);
 
             total_inference_time += decision->inference_time_us;
             brain_free_decision(decision);
         }
     }
 
-    printf("Average inference time: %lu μs (%.3f ms)\n\n",
-           total_inference_time / 4,
+    printf("Average inference time: %lu μs (%.3f ms)\n\n", total_inference_time / 4,
            (total_inference_time / 4) / 1000.0);
 
     //=========================================================================
@@ -326,10 +312,8 @@ int main(void) {
     //=========================================================================
     printf("Step 4: Performance Comparison\n");
     printf("  LLM API call: ~500-2000 ms\n");
-    printf("  NIMCP Brain: ~%.3f ms\n",
-           (total_inference_time / 4) / 1000.0);
-    printf("  Speedup: %.0fx faster\n\n",
-           1000000.0 / (total_inference_time / 4));
+    printf("  NIMCP Brain: ~%.3f ms\n", (total_inference_time / 4) / 1000.0);
+    printf("  Speedup: %.0fx faster\n\n", 1000000.0 / (total_inference_time / 4));
 
     //=========================================================================
     // Step 5: Interpretability
@@ -339,17 +323,10 @@ int main(void) {
     uint32_t top_neuron_ids[10];
     float top_importances[10];
 
-    uint32_t num_top = brain_get_top_neurons(
-        ethics_brain,
-        10,
-        top_neuron_ids,
-        top_importances
-    );
+    uint32_t num_top = brain_get_top_neurons(ethics_brain, 10, top_neuron_ids, top_importances);
 
     for (uint32_t i = 0; i < num_top; i++) {
-        printf("  Neuron %u: importance = %.4f\n",
-               top_neuron_ids[i],
-               top_importances[i]);
+        printf("  Neuron %u: importance = %.4f\n", top_neuron_ids[i], top_importances[i]);
     }
     printf("\n");
 
@@ -377,7 +354,7 @@ int main(void) {
     printf("    Active synapses: %u\n", after_opt.num_active_synapses);
     printf("    Memory: %.2f MB\n", after_opt.memory_bytes / (1024.0 * 1024.0));
     printf("    Reduction: %.1f%%\n\n",
-           100.0 * (1.0 - (float)after_opt.num_active_synapses / before_opt.num_active_synapses));
+           100.0 * (1.0 - (float) after_opt.num_active_synapses / before_opt.num_active_synapses));
 
     //=========================================================================
     // Step 7: Persistence
@@ -398,8 +375,7 @@ int main(void) {
             brain_decision_t* test_decision = brain_decide(loaded_brain, test_features, 4);
 
             if (test_decision) {
-                printf("  Test decision after load: %s (conf: %.2f)\n\n",
-                       test_decision->label,
+                printf("  Test decision after load: %s (conf: %.2f)\n\n", test_decision->label,
                        test_decision->confidence);
                 brain_free_decision(test_decision);
             }
@@ -421,8 +397,7 @@ int main(void) {
     brain_get_stats(ethics_brain, &final_stats);
 
     printf("Brain: %s\n", final_stats.task_name);
-    printf("  Size: %u neurons, %u active synapses\n",
-           final_stats.num_neurons,
+    printf("  Size: %u neurons, %u active synapses\n", final_stats.num_neurons,
            final_stats.num_active_synapses);
     printf("  Training: %lu examples\n", final_stats.total_learning_steps);
     printf("  Inferences: %lu\n", final_stats.total_inferences);

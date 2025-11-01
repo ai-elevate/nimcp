@@ -17,16 +17,16 @@ struct CallbackTracker {
     uint32_t last_payload_len;
 };
 
-static void test_event_callback(const event_packet_t* packet,
-                                const void* payload,
-                                uint32_t payload_len,
-                                void* context) {
-    if (!context || !packet) return;
+static void test_event_callback(const event_packet_t* packet, const void* payload,
+                                uint32_t payload_len, void* context)
+{
+    if (!context || !packet)
+        return;
 
-    CallbackTracker* tracker = (CallbackTracker*)context;
+    CallbackTracker* tracker = (CallbackTracker*) context;
     tracker->call_count++;
     memcpy(&tracker->last_packet, packet, sizeof(event_packet_t));
-    tracker->last_payload = (void*)payload;
+    tracker->last_payload = (void*) payload;
     tracker->last_payload_len = payload_len;
 }
 
@@ -35,7 +35,8 @@ static void test_event_callback(const event_packet_t* packet,
 //=============================================================================
 
 // Test event generator creation
-TEST(EventGenerator, CreateValid) {
+TEST(EventGenerator, CreateValid)
+{
     CallbackTracker tracker = {0};
 
     event_generator_config_t config;
@@ -53,13 +54,15 @@ TEST(EventGenerator, CreateValid) {
 }
 
 // Test event generator creation with null config
-TEST(EventGenerator, CreateNullConfig) {
+TEST(EventGenerator, CreateNullConfig)
+{
     event_generator_t generator = event_generator_create(nullptr);
     ASSERT_EQ(generator, nullptr);
 }
 
 // Test event generator creation with null callback
-TEST(EventGenerator, CreateNullCallback) {
+TEST(EventGenerator, CreateNullCallback)
+{
     event_generator_config_t config;
     config.node_id = 1;
     config.base_feature_code = 0x01000000;
@@ -73,7 +76,8 @@ TEST(EventGenerator, CreateNullCallback) {
 }
 
 // Test spike event generation
-TEST(EventGenerator, OnSpike) {
+TEST(EventGenerator, OnSpike)
+{
     CallbackTracker tracker = {0};
 
     event_generator_config_t config;
@@ -97,7 +101,7 @@ TEST(EventGenerator, OnSpike) {
     bool generated = event_generator_on_spike(generator, network, 0, 1);
 
     // Event generation is async, so we need to wait briefly
-    usleep(10000); // 10ms
+    usleep(10000);  // 10ms
 
     // Callback should have been invoked (possibly async)
     // Note: Exact count depends on async queue timing
@@ -108,7 +112,8 @@ TEST(EventGenerator, OnSpike) {
 }
 
 // Test spike event with invalid neuron ID
-TEST(EventGenerator, OnSpikeInvalidNeuron) {
+TEST(EventGenerator, OnSpikeInvalidNeuron)
+{
     CallbackTracker tracker = {0};
 
     event_generator_config_t config;
@@ -135,7 +140,8 @@ TEST(EventGenerator, OnSpikeInvalidNeuron) {
 }
 
 // Test custom neuron feature mapping
-TEST(EventGenerator, SetNeuronFeature) {
+TEST(EventGenerator, SetNeuronFeature)
+{
     CallbackTracker tracker = {0};
 
     event_generator_config_t config;
@@ -164,7 +170,8 @@ TEST(EventGenerator, SetNeuronFeature) {
 //=============================================================================
 
 // Test event receiver creation
-TEST(EventReceiver, CreateValid) {
+TEST(EventReceiver, CreateValid)
+{
     network_config_t net_config = create_test_config();
     neural_network_t network = neural_network_create(&net_config);
     ASSERT_NE(network, nullptr);
@@ -183,13 +190,15 @@ TEST(EventReceiver, CreateValid) {
 }
 
 // Test event receiver creation with null config
-TEST(EventReceiver, CreateNullConfig) {
+TEST(EventReceiver, CreateNullConfig)
+{
     event_receiver_t receiver = event_receiver_create(nullptr);
     ASSERT_EQ(receiver, nullptr);
 }
 
 // Test event receiver creation with null network
-TEST(EventReceiver, CreateNullNetwork) {
+TEST(EventReceiver, CreateNullNetwork)
+{
     event_receiver_config_t config;
     config.network = nullptr;
     config.filters = nullptr;
@@ -201,7 +210,8 @@ TEST(EventReceiver, CreateNullNetwork) {
 }
 
 // Test event packet processing
-TEST(EventReceiver, ProcessPacket) {
+TEST(EventReceiver, ProcessPacket)
+{
     network_config_t net_config = create_test_config();
     neural_network_t network = neural_network_create(&net_config);
     ASSERT_NE(network, nullptr);
@@ -238,7 +248,8 @@ TEST(EventReceiver, ProcessPacket) {
 }
 
 // Test event packet processing with invalid packet
-TEST(EventReceiver, ProcessInvalidPacket) {
+TEST(EventReceiver, ProcessInvalidPacket)
+{
     network_config_t net_config = create_test_config();
     neural_network_t network = neural_network_create(&net_config);
     ASSERT_NE(network, nullptr);
@@ -261,7 +272,8 @@ TEST(EventReceiver, ProcessInvalidPacket) {
 }
 
 // Test feature-to-neuron mapping
-TEST(EventReceiver, FeatureMapping) {
+TEST(EventReceiver, FeatureMapping)
+{
     network_config_t net_config = create_test_config();
     neural_network_t network = neural_network_create(&net_config);
     ASSERT_NE(network, nullptr);
@@ -288,7 +300,8 @@ TEST(EventReceiver, FeatureMapping) {
 }
 
 // Test subscription filter addition
-TEST(EventReceiver, AddFilter) {
+TEST(EventReceiver, AddFilter)
+{
     network_config_t net_config = create_test_config();
     neural_network_t network = neural_network_create(&net_config);
     ASSERT_NE(network, nullptr);
@@ -306,7 +319,7 @@ TEST(EventReceiver, AddFilter) {
     subscription_filter_t filter;
     memset(&filter, 0, sizeof(subscription_filter_t));
     filter.feature_code = 0x01000000;  // Domain 0x01
-    filter.feature_mask = 0xFF000000;   // Match domain only
+    filter.feature_mask = 0xFF000000;  // Match domain only
     filter.confidence_threshold = 0.0f;
     filter.max_rate_hz = 0;
 
@@ -318,7 +331,8 @@ TEST(EventReceiver, AddFilter) {
 }
 
 // Test subscription filter removal
-TEST(EventReceiver, RemoveFilter) {
+TEST(EventReceiver, RemoveFilter)
+{
     network_config_t net_config = create_test_config();
     neural_network_t network = neural_network_create(&net_config);
     ASSERT_NE(network, nullptr);
@@ -336,7 +350,7 @@ TEST(EventReceiver, RemoveFilter) {
     subscription_filter_t filter;
     memset(&filter, 0, sizeof(subscription_filter_t));
     filter.feature_code = 0x01000000;  // Domain 0x01
-    filter.feature_mask = 0xFF000000;   // Match domain only
+    filter.feature_mask = 0xFF000000;  // Match domain only
     filter.confidence_threshold = 0.0f;
     filter.max_rate_hz = 0;
 
@@ -354,7 +368,8 @@ TEST(EventReceiver, RemoveFilter) {
 }
 
 // Test auto-neuron creation
-TEST(EventReceiver, AutoCreateNeurons) {
+TEST(EventReceiver, AutoCreateNeurons)
+{
     network_config_t net_config = create_test_config();
     neural_network_t network = neural_network_create(&net_config);
     ASSERT_NE(network, nullptr);
@@ -363,7 +378,7 @@ TEST(EventReceiver, AutoCreateNeurons) {
     config.network = network;
     config.filters = nullptr;
     config.num_filters = 0;
-    config.auto_create_neurons = true; // Enable auto-creation
+    config.auto_create_neurons = true;  // Enable auto-creation
 
     event_receiver_t receiver = event_receiver_create(&config);
     ASSERT_NE(receiver, nullptr);
@@ -372,7 +387,7 @@ TEST(EventReceiver, AutoCreateNeurons) {
     event_packet_t packet;
     memset(&packet, 0, sizeof(event_packet_t));
     EVENT_SET_VERSION(&packet, PROTOCOL_VERSION);
-    EVENT_SET_FEATURE_CODE(&packet, 0x0F000099); // Unmapped feature
+    EVENT_SET_FEATURE_CODE(&packet, 0x0F000099);  // Unmapped feature
     EVENT_SET_FLAGS(&packet, EVENT_FLAG_EXCITATORY);
     packet.confidence = EVENT_FLOAT_TO_CONFIDENCE(0.5f);
     packet.source_node_id = 2;
@@ -393,7 +408,8 @@ TEST(EventReceiver, AutoCreateNeurons) {
 //=============================================================================
 
 // Test confidence calculation
-TEST(EventUtils, CalculateConfidence) {
+TEST(EventUtils, CalculateConfidence)
+{
     // Test with state above threshold
     float confidence = event_calculate_confidence(1.0f, 0.5f);
     EXPECT_GT(confidence, 0.5f);
@@ -411,7 +427,8 @@ TEST(EventUtils, CalculateConfidence) {
 }
 
 // Test event flags conversion
-TEST(EventUtils, FlagsFromNeuronType) {
+TEST(EventUtils, FlagsFromNeuronType)
+{
     uint8_t flags = event_flags_from_neuron_type(NEURON_EXCITATORY);
     EXPECT_EQ(flags, EVENT_FLAG_EXCITATORY);
 
@@ -420,7 +437,8 @@ TEST(EventUtils, FlagsFromNeuronType) {
 }
 
 // Test default feature code generation
-TEST(EventUtils, DefaultFeatureCode) {
+TEST(EventUtils, DefaultFeatureCode)
+{
     feature_code_t base = 0x01000000;
     feature_code_t neuron0 = event_default_feature_code(base, 0);
     feature_code_t neuron1 = event_default_feature_code(base, 1);
@@ -437,7 +455,8 @@ TEST(EventUtils, DefaultFeatureCode) {
 //=============================================================================
 
 // Test full event pipeline: generator -> receiver
-TEST(EventIntegration, GeneratorToReceiver) {
+TEST(EventIntegration, GeneratorToReceiver)
+{
     // Create source network and generator
     network_config_t src_config = create_test_config();
     neural_network_t src_network = neural_network_create(&src_config);
@@ -478,7 +497,7 @@ TEST(EventIntegration, GeneratorToReceiver) {
     event_generator_on_spike(generator, src_network, 0, 1);
 
     // Wait for async event processing
-    usleep(20000); // 20ms
+    usleep(20000);  // 20ms
 
     // In real scenario, callback would send packet to receiver
     // For this test, we manually process if callback was invoked
@@ -494,7 +513,8 @@ TEST(EventIntegration, GeneratorToReceiver) {
 }
 
 // Test event filtering
-TEST(EventIntegration, EventFiltering) {
+TEST(EventIntegration, EventFiltering)
+{
     network_config_t net_config = create_test_config();
     neural_network_t network = neural_network_create(&net_config);
     ASSERT_NE(network, nullptr);
@@ -512,7 +532,7 @@ TEST(EventIntegration, EventFiltering) {
     subscription_filter_t filter;
     memset(&filter, 0, sizeof(subscription_filter_t));
     filter.feature_code = 0x01000000;  // Domain 0x01
-    filter.feature_mask = 0xFF000000;   // Match domain only
+    filter.feature_mask = 0xFF000000;  // Match domain only
     filter.confidence_threshold = 0.0f;
     filter.max_rate_hz = 0;  // Unlimited
     ASSERT_TRUE(event_receiver_add_filter(receiver, &filter));
@@ -536,7 +556,7 @@ TEST(EventIntegration, EventFiltering) {
     event_packet_t nonmatching_packet;
     memset(&nonmatching_packet, 0, sizeof(event_packet_t));
     EVENT_SET_VERSION(&nonmatching_packet, PROTOCOL_VERSION);
-    EVENT_SET_FEATURE_CODE(&nonmatching_packet, 0x02000001); // Different domain
+    EVENT_SET_FEATURE_CODE(&nonmatching_packet, 0x02000001);  // Different domain
     EVENT_SET_FLAGS(&nonmatching_packet, EVENT_FLAG_EXCITATORY);
     nonmatching_packet.confidence = EVENT_FLOAT_TO_CONFIDENCE(0.7f);
 

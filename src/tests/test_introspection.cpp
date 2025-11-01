@@ -10,8 +10,8 @@
 #include "test_helpers.h"
 
 extern "C" {
-#include "../include/nimcp_introspection.h"
 #include "../include/nimcp_brain.h"
+#include "../include/nimcp_introspection.h"
 }
 
 #include <gtest/gtest.h>
@@ -27,7 +27,7 @@ extern "C" {
  * WHY: Set up/tear down brain and context for each test
  */
 class IntrospectionTest : public ::testing::Test {
-protected:
+   protected:
     brain_t brain;
     introspection_context_t context;
 
@@ -35,21 +35,23 @@ protected:
     static const uint32_t NUM_FEATURES = 13;
     float test_features[NUM_FEATURES];
 
-    void SetUp() override {
+    void SetUp() override
+    {
         // Create test brain
-        brain = brain_create("test_intro_brain", BRAIN_SIZE_SMALL,
-                            BRAIN_TASK_CLASSIFICATION, NUM_FEATURES, 3);
+        brain = brain_create("test_intro_brain", BRAIN_SIZE_SMALL, BRAIN_TASK_CLASSIFICATION,
+                             NUM_FEATURES, 3);
         ASSERT_NE(brain, nullptr);
 
         // Initialize test features
         for (uint32_t i = 0; i < NUM_FEATURES; i++) {
-            test_features[i] = (float)i / NUM_FEATURES;
+            test_features[i] = (float) i / NUM_FEATURES;
         }
 
         context = nullptr;
     }
 
-    void TearDown() override {
+    void TearDown() override
+    {
         // Clean up context
         if (context) {
             introspection_context_destroy(context);
@@ -65,7 +67,8 @@ protected:
 // Global callback counter
 static std::atomic<uint32_t> g_state_change_count{0};
 
-static void state_change_callback(brain_state_t* state, void* ctx) {
+static void state_change_callback(brain_state_t* state, void* ctx)
+{
     g_state_change_count++;
 }
 
@@ -77,7 +80,8 @@ static void state_change_callback(brain_state_t* state, void* ctx) {
  * WHAT: Test default introspection configuration
  * WHY: Verify sensible defaults are provided
  */
-TEST_F(IntrospectionTest, DefaultConfig) {
+TEST_F(IntrospectionTest, DefaultConfig)
+{
     introspection_config_t config = introspection_default_config();
 
     EXPECT_EQ(config.default_strategy, STATE_STRATEGY_BALANCED);
@@ -95,7 +99,8 @@ TEST_F(IntrospectionTest, DefaultConfig) {
  * WHAT: Test context creation with default config
  * WHY: Verify basic initialization works
  */
-TEST_F(IntrospectionTest, CreateContextDefault) {
+TEST_F(IntrospectionTest, CreateContextDefault)
+{
     introspection_config_t config = introspection_default_config();
     context = introspection_context_create(brain, &config);
 
@@ -106,7 +111,8 @@ TEST_F(IntrospectionTest, CreateContextDefault) {
  * WHAT: Test context creation with NULL brain
  * WHY: Verify proper error handling
  */
-TEST_F(IntrospectionTest, CreateContextNullBrain) {
+TEST_F(IntrospectionTest, CreateContextNullBrain)
+{
     introspection_config_t config = introspection_default_config();
     context = introspection_context_create(nullptr, &config);
 
@@ -117,7 +123,8 @@ TEST_F(IntrospectionTest, CreateContextNullBrain) {
  * WHAT: Test context creation with NULL config (uses defaults)
  * WHY: Verify NULL config handling
  */
-TEST_F(IntrospectionTest, CreateContextNullConfig) {
+TEST_F(IntrospectionTest, CreateContextNullConfig)
+{
     context = introspection_context_create(brain, nullptr);
 
     ASSERT_NE(context, nullptr);
@@ -127,10 +134,11 @@ TEST_F(IntrospectionTest, CreateContextNullConfig) {
  * WHAT: Test context creation with callback
  * WHY: Verify callback registration works
  */
-TEST_F(IntrospectionTest, CreateContextWithCallback) {
+TEST_F(IntrospectionTest, CreateContextWithCallback)
+{
     introspection_config_t config = introspection_default_config();
     config.on_state_change = state_change_callback;
-    config.callback_context = (void*)0x12345678;
+    config.callback_context = (void*) 0x12345678;
     context = introspection_context_create(brain, &config);
 
     ASSERT_NE(context, nullptr);
@@ -144,7 +152,8 @@ TEST_F(IntrospectionTest, CreateContextWithCallback) {
  * WHAT: Test getting active neuron population
  * WHY: Verify population query works
  */
-TEST_F(IntrospectionTest, GetActivePopulation) {
+TEST_F(IntrospectionTest, GetActivePopulation)
+{
     introspection_config_t config = introspection_default_config();
     context = introspection_context_create(brain, &config);
     ASSERT_NE(context, nullptr);
@@ -163,7 +172,8 @@ TEST_F(IntrospectionTest, GetActivePopulation) {
  * WHAT: Test getting population with different thresholds
  * WHY: Verify threshold affects results
  */
-TEST_F(IntrospectionTest, GetPopulationDifferentThresholds) {
+TEST_F(IntrospectionTest, GetPopulationDifferentThresholds)
+{
     introspection_config_t config = introspection_default_config();
     context = introspection_context_create(brain, &config);
     ASSERT_NE(context, nullptr);
@@ -182,7 +192,8 @@ TEST_F(IntrospectionTest, GetPopulationDifferentThresholds) {
  * WHAT: Test getting population with NULL context
  * WHY: Verify proper error handling
  */
-TEST_F(IntrospectionTest, GetPopulationNullContext) {
+TEST_F(IntrospectionTest, GetPopulationNullContext)
+{
     neuron_population_t population = brain_get_active_population(nullptr, 0.5f);
 
     EXPECT_EQ(population.num_active, 0u);
@@ -193,7 +204,8 @@ TEST_F(IntrospectionTest, GetPopulationNullContext) {
  * WHAT: Test getting individual neuron activity
  * WHY: Verify neuron-level queries work
  */
-TEST_F(IntrospectionTest, GetNeuronActivity) {
+TEST_F(IntrospectionTest, GetNeuronActivity)
+{
     introspection_config_t config = introspection_default_config();
     context = introspection_context_create(brain, &config);
     ASSERT_NE(context, nullptr);
@@ -214,7 +226,8 @@ TEST_F(IntrospectionTest, GetNeuronActivity) {
  * WHAT: Test getting internal state with fast strategy
  * WHY: Verify fast state extraction works
  */
-TEST_F(IntrospectionTest, GetInternalStateFast) {
+TEST_F(IntrospectionTest, GetInternalStateFast)
+{
     introspection_config_t config = introspection_default_config();
     context = introspection_context_create(brain, &config);
     ASSERT_NE(context, nullptr);
@@ -233,7 +246,8 @@ TEST_F(IntrospectionTest, GetInternalStateFast) {
  * WHAT: Test getting internal state with balanced strategy
  * WHY: Verify balanced state extraction works
  */
-TEST_F(IntrospectionTest, GetInternalStateBalanced) {
+TEST_F(IntrospectionTest, GetInternalStateBalanced)
+{
     introspection_config_t config = introspection_default_config();
     context = introspection_context_create(brain, &config);
     ASSERT_NE(context, nullptr);
@@ -251,7 +265,8 @@ TEST_F(IntrospectionTest, GetInternalStateBalanced) {
  * WHAT: Test getting internal state with detailed strategy
  * WHY: Verify detailed state extraction works
  */
-TEST_F(IntrospectionTest, GetInternalStateDetailed) {
+TEST_F(IntrospectionTest, GetInternalStateDetailed)
+{
     introspection_config_t config = introspection_default_config();
     context = introspection_context_create(brain, &config);
     ASSERT_NE(context, nullptr);
@@ -268,7 +283,8 @@ TEST_F(IntrospectionTest, GetInternalStateDetailed) {
  * WHAT: Test getting state with NULL context
  * WHY: Verify proper error handling
  */
-TEST_F(IntrospectionTest, GetStateNullContext) {
+TEST_F(IntrospectionTest, GetStateNullContext)
+{
     brain_state_t state = brain_get_internal_state(nullptr, STATE_STRATEGY_BALANCED);
 
     EXPECT_EQ(state.dimension, 0u);
@@ -279,7 +295,8 @@ TEST_F(IntrospectionTest, GetStateNullContext) {
  * WHAT: Test comparing two brain states
  * WHY: Verify state similarity computation works
  */
-TEST_F(IntrospectionTest, CompareBrainStates) {
+TEST_F(IntrospectionTest, CompareBrainStates)
+{
     introspection_config_t config = introspection_default_config();
     context = introspection_context_create(brain, &config);
     ASSERT_NE(context, nullptr);
@@ -305,7 +322,8 @@ TEST_F(IntrospectionTest, CompareBrainStates) {
  * WHAT: Test state dimensionality across strategies
  * WHY: Verify strategies produce different compression ratios
  */
-TEST_F(IntrospectionTest, StateDimensionality) {
+TEST_F(IntrospectionTest, StateDimensionality)
+{
     introspection_config_t config = introspection_default_config();
     context = introspection_context_create(brain, &config);
     ASSERT_NE(context, nullptr);
@@ -335,13 +353,13 @@ TEST_F(IntrospectionTest, StateDimensionality) {
  * WHAT: Test uncertainty estimation
  * WHY: Verify uncertainty queries work
  */
-TEST_F(IntrospectionTest, GetUncertainty) {
+TEST_F(IntrospectionTest, GetUncertainty)
+{
     introspection_config_t config = introspection_default_config();
     context = introspection_context_create(brain, &config);
     ASSERT_NE(context, nullptr);
 
-    brain_uncertainty_t uncertainty = brain_get_uncertainty(
-        context, test_features, NUM_FEATURES);
+    brain_uncertainty_t uncertainty = brain_get_uncertainty(context, test_features, NUM_FEATURES);
 
     EXPECT_GE(uncertainty.epistemic, 0.0f);
     EXPECT_LE(uncertainty.epistemic, 1.0f);
@@ -353,9 +371,7 @@ TEST_F(IntrospectionTest, GetUncertainty) {
     EXPECT_LE(uncertainty.confidence, 1.0f);
 
     // Total should be epistemic + aleatoric (approximately)
-    EXPECT_NEAR(uncertainty.total,
-                uncertainty.epistemic + uncertainty.aleatoric,
-                0.1f);
+    EXPECT_NEAR(uncertainty.total, uncertainty.epistemic + uncertainty.aleatoric, 0.1f);
 
     // Confidence should be 1.0 - total
     EXPECT_NEAR(uncertainty.confidence, 1.0f - uncertainty.total, 0.01f);
@@ -367,9 +383,9 @@ TEST_F(IntrospectionTest, GetUncertainty) {
  * WHAT: Test uncertainty with NULL context
  * WHY: Verify proper error handling
  */
-TEST_F(IntrospectionTest, GetUncertaintyNullContext) {
-    brain_uncertainty_t uncertainty = brain_get_uncertainty(
-        nullptr, test_features, NUM_FEATURES);
+TEST_F(IntrospectionTest, GetUncertaintyNullContext)
+{
+    brain_uncertainty_t uncertainty = brain_get_uncertainty(nullptr, test_features, NUM_FEATURES);
 
     EXPECT_EQ(uncertainty.epistemic, 0.0f);
     EXPECT_EQ(uncertainty.total, 0.0f);
@@ -379,14 +395,14 @@ TEST_F(IntrospectionTest, GetUncertaintyNullContext) {
  * WHAT: Test uncertainty with disabled estimation
  * WHY: Verify config flag is respected
  */
-TEST_F(IntrospectionTest, UncertaintyDisabled) {
+TEST_F(IntrospectionTest, UncertaintyDisabled)
+{
     introspection_config_t config = introspection_default_config();
     config.enable_uncertainty_estimation = false;
     context = introspection_context_create(brain, &config);
     ASSERT_NE(context, nullptr);
 
-    brain_uncertainty_t uncertainty = brain_get_uncertainty(
-        context, test_features, NUM_FEATURES);
+    brain_uncertainty_t uncertainty = brain_get_uncertainty(context, test_features, NUM_FEATURES);
 
     // Should return zeroed struct when disabled
     EXPECT_EQ(uncertainty.total, 0.0f);
@@ -400,7 +416,8 @@ TEST_F(IntrospectionTest, UncertaintyDisabled) {
  * WHAT: Test checking if pattern is active
  * WHY: Verify pattern query works
  */
-TEST_F(IntrospectionTest, IsPatternActive) {
+TEST_F(IntrospectionTest, IsPatternActive)
+{
     introspection_config_t config = introspection_default_config();
     context = introspection_context_create(brain, &config);
     ASSERT_NE(context, nullptr);
@@ -415,7 +432,8 @@ TEST_F(IntrospectionTest, IsPatternActive) {
  * WHAT: Test getting pattern info
  * WHY: Verify pattern metadata retrieval works
  */
-TEST_F(IntrospectionTest, GetPatternInfo) {
+TEST_F(IntrospectionTest, GetPatternInfo)
+{
     introspection_config_t config = introspection_default_config();
     context = introspection_context_create(brain, &config);
     ASSERT_NE(context, nullptr);
@@ -430,7 +448,8 @@ TEST_F(IntrospectionTest, GetPatternInfo) {
  * WHAT: Test listing all patterns
  * WHY: Verify pattern enumeration works
  */
-TEST_F(IntrospectionTest, ListPatterns) {
+TEST_F(IntrospectionTest, ListPatterns)
+{
     introspection_config_t config = introspection_default_config();
     context = introspection_context_create(brain, &config);
     ASSERT_NE(context, nullptr);
@@ -449,7 +468,8 @@ TEST_F(IntrospectionTest, ListPatterns) {
  * WHAT: Test pattern tracking disabled
  * WHY: Verify config flag is respected
  */
-TEST_F(IntrospectionTest, PatternTrackingDisabled) {
+TEST_F(IntrospectionTest, PatternTrackingDisabled)
+{
     introspection_config_t config = introspection_default_config();
     config.enable_pattern_tracking = false;
     context = introspection_context_create(brain, &config);
@@ -469,7 +489,8 @@ TEST_F(IntrospectionTest, PatternTrackingDisabled) {
  * WHAT: Test getting network topology
  * WHY: Verify topology query works
  */
-TEST_F(IntrospectionTest, GetTopology) {
+TEST_F(IntrospectionTest, GetTopology)
+{
     introspection_config_t config = introspection_default_config();
     context = introspection_context_create(brain, &config);
     ASSERT_NE(context, nullptr);
@@ -490,7 +511,8 @@ TEST_F(IntrospectionTest, GetTopology) {
  * WHAT: Test topology caching
  * WHY: Verify topology is cached for efficiency
  */
-TEST_F(IntrospectionTest, TopologyCaching) {
+TEST_F(IntrospectionTest, TopologyCaching)
+{
     introspection_config_t config = introspection_default_config();
     context = introspection_context_create(brain, &config);
     ASSERT_NE(context, nullptr);
@@ -517,15 +539,15 @@ TEST_F(IntrospectionTest, TopologyCaching) {
  * WHAT: Test getting activity history
  * WHY: Verify history tracking works
  */
-TEST_F(IntrospectionTest, GetActivityHistory) {
+TEST_F(IntrospectionTest, GetActivityHistory)
+{
     introspection_config_t config = introspection_default_config();
     config.history_size = 10;
     context = introspection_context_create(brain, &config);
     ASSERT_NE(context, nullptr);
 
     uint32_t num_entries = 0;
-    activity_history_entry_t* history = brain_get_activity_history(
-        context, &num_entries);
+    activity_history_entry_t* history = brain_get_activity_history(context, &num_entries);
 
     // May be NULL if no history yet
     // Just verify it doesn't crash
@@ -543,7 +565,8 @@ TEST_F(IntrospectionTest, GetActivityHistory) {
  * WHAT: Test getting introspection statistics
  * WHY: Verify statistics tracking works
  */
-TEST_F(IntrospectionTest, GetStatistics) {
+TEST_F(IntrospectionTest, GetStatistics)
+{
     introspection_config_t config = introspection_default_config();
     context = introspection_context_create(brain, &config);
     ASSERT_NE(context, nullptr);
@@ -565,7 +588,8 @@ TEST_F(IntrospectionTest, GetStatistics) {
  * WHAT: Test resetting statistics
  * WHY: Verify stats reset works
  */
-TEST_F(IntrospectionTest, ResetStatistics) {
+TEST_F(IntrospectionTest, ResetStatistics)
+{
     introspection_config_t config = introspection_default_config();
     context = introspection_context_create(brain, &config);
     ASSERT_NE(context, nullptr);
@@ -592,7 +616,8 @@ TEST_F(IntrospectionTest, ResetStatistics) {
  * WHAT: Test state extraction performance
  * WHY: Verify performance targets are met
  */
-TEST_F(IntrospectionTest, StateExtractionPerformance) {
+TEST_F(IntrospectionTest, StateExtractionPerformance)
+{
     introspection_config_t config = introspection_default_config();
     context = introspection_context_create(brain, &config);
     ASSERT_NE(context, nullptr);
@@ -609,7 +634,7 @@ TEST_F(IntrospectionTest, StateExtractionPerformance) {
     auto end = std::chrono::high_resolution_clock::now();
     auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
 
-    double avg_time_ms = (double)duration.count() / NUM_EXTRACTIONS;
+    double avg_time_ms = (double) duration.count() / NUM_EXTRACTIONS;
 
     printf("Average state extraction time (fast): %.2f ms\n", avg_time_ms);
 

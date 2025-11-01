@@ -2,21 +2,21 @@
 #define TEST_HELPERS_H
 
 #ifdef __cplusplus
-// C++ includes
-#include <gtest/gtest.h>
+    // C++ includes
+    #include <gtest/gtest.h>
 #endif
 
 // test_helpers.h
 #include <gtest/gtest.h>
+#include <stddef.h>
 #include <string.h>
 #include <unistd.h>
-#include <stddef.h>
 #include <cmath>
 
 extern "C" {
 #include "../include/nimcp_neuralnet.h"
-#include "../include/nimcp_protocol.h"
 #include "../include/nimcp_p2pnode.h"
+#include "../include/nimcp_protocol.h"
 }
 
 //-----------------------------------------------------------------------------
@@ -37,9 +37,9 @@ extern "C" {
 #define TEST_IP_INVALID "256.256.256.256"
 
 // Test timeout values (in microseconds)
-#define TEST_SHORT_TIMEOUT 10000   // 10ms
-#define TEST_MEDIUM_TIMEOUT 100000 // 100ms
-#define TEST_LONG_TIMEOUT 500000   // 500ms
+#define TEST_SHORT_TIMEOUT 10000    // 10ms
+#define TEST_MEDIUM_TIMEOUT 100000  // 100ms
+#define TEST_LONG_TIMEOUT 500000    // 500ms
 
 // Test data sizes
 #define TEST_SMALL_PAYLOAD 64
@@ -51,26 +51,26 @@ extern "C" {
 //-----------------------------------------------------------------------------
 
 // Helper function to create a default network configuration
-static network_config_t create_test_network_config(void) {
-    network_config_t config = {
-        .num_neurons = 10,
-        .ei_ratio = 0.8f,
-        .learning_rate = 0.01f,
-        .hebbian_rate = 0.1f,
-        .stdp_window = 20.0f,
-        .homeostatic_rate = 0.001f,
-        .target_activity = 0.1f,
-        .adaptation_rate = 0.1f,
-        .refractory_period = 5.0f,
-        .min_weight = -1.0f,
-        .max_weight = 1.0f,
-        .update_interval = 1000
-    };
+static network_config_t create_test_network_config(void)
+{
+    network_config_t config = {.num_neurons = 10,
+                               .ei_ratio = 0.8f,
+                               .learning_rate = 0.01f,
+                               .hebbian_rate = 0.1f,
+                               .stdp_window = 20.0f,
+                               .homeostatic_rate = 0.001f,
+                               .target_activity = 0.1f,
+                               .adaptation_rate = 0.1f,
+                               .refractory_period = 5.0f,
+                               .min_weight = -1.0f,
+                               .max_weight = 1.0f,
+                               .update_interval = 1000};
     return config;
 }
 
 // Helper function to compare floating point values
-static bool float_equals(float a, float b) {
+static bool float_equals(float a, float b)
+{
     return fabsf(a - b) < FLOAT_TOLERANCE;
 }
 
@@ -79,10 +79,12 @@ static bool float_equals(float a, float b) {
 //-----------------------------------------------------------------------------
 
 // Helper function to create a test protocol message
-static void create_test_message(msg_header_t* header, msg_type_t type, 
-                              const void* payload, uint32_t payload_len) {
-    if (!header) return;
-    
+static void create_test_message(msg_header_t* header, msg_type_t type, const void* payload,
+                                uint32_t payload_len)
+{
+    if (!header)
+        return;
+
     header->magic = PROTOCOL_MAGIC;
     header->version = PROTOCOL_VERSION;
     header->type = type;
@@ -92,32 +94,35 @@ static void create_test_message(msg_header_t* header, msg_type_t type,
 }
 
 // Helper function to verify protocol message fields
-static bool verify_message_header(const msg_header_t* header, 
-                                msg_type_t expected_type,
-                                uint32_t expected_length) {
-    if (!header) return false;
-    
-    return (header->magic == PROTOCOL_MAGIC &&
-            header->version == PROTOCOL_VERSION &&
-            header->type == expected_type &&
-            header->length == expected_length);
+static bool verify_message_header(const msg_header_t* header, msg_type_t expected_type,
+                                  uint32_t expected_length)
+{
+    if (!header)
+        return false;
+
+    return (header->magic == PROTOCOL_MAGIC && header->version == PROTOCOL_VERSION &&
+            header->type == expected_type && header->length == expected_length);
 }
 
 // Helper function to generate test payload
-static void generate_test_payload(uint8_t* buffer, size_t size) {
-    if (!buffer) return;
-    
+static void generate_test_payload(uint8_t* buffer, size_t size)
+{
+    if (!buffer)
+        return;
+
     for (size_t i = 0; i < size; i++) {
-        buffer[i] = (uint8_t)(i & 0xFF);
+        buffer[i] = (uint8_t) (i & 0xFF);
     }
 }
 
 // Helper function to verify test payload
-static bool verify_test_payload(const uint8_t* buffer, size_t size) {
-    if (!buffer) return false;
-    
+static bool verify_test_payload(const uint8_t* buffer, size_t size)
+{
+    if (!buffer)
+        return false;
+
     for (size_t i = 0; i < size; i++) {
-        if (buffer[i] != (uint8_t)(i & 0xFF)) {
+        if (buffer[i] != (uint8_t) (i & 0xFF)) {
             return false;
         }
     }
@@ -129,64 +134,66 @@ static bool verify_test_payload(const uint8_t* buffer, size_t size) {
 //-----------------------------------------------------------------------------
 
 // Helper function to create a default P2P node configuration
-static node_config_t create_test_node_config(uint16_t port) {
-    node_config_t config = {
-        .listen_port = port,
-        .max_peers = 10,
-        .keepalive_interval = 1000,
-        .discovery_interval = 5000,
-        .reconnect_interval = 3000,
-        .max_retries = 3,
-        .ping_interval = 2000
-    };
+static node_config_t create_test_node_config(uint16_t port)
+{
+    node_config_t config = {.listen_port = port,
+                            .max_peers = 10,
+                            .keepalive_interval = 1000,
+                            .discovery_interval = 5000,
+                            .reconnect_interval = 3000,
+                            .max_retries = 3,
+                            .ping_interval = 2000};
     return config;
 }
 
 // Helper function to create a test peer info structure
-static peer_info_t create_test_peer(const char* ip, uint16_t port) {
+static peer_info_t create_test_peer(const char* ip, uint16_t port)
+{
     peer_info_t peer;
     memset(&peer, 0, sizeof(peer_info_t));
-    
+
     if (ip) {
         strncpy(peer.ip, ip, sizeof(peer.ip) - 1);
         peer.ip[sizeof(peer.ip) - 1] = '\0';
     }
-    
+
     peer.port = port;
     peer.connected = false;
-/*    peer.last_seen = 0;
-    peer.retry_count = 0;
-*/
-    
+    /*    peer.last_seen = 0;
+        peer.retry_count = 0;
+    */
+
     return peer;
 }
 
 // Helper function to compare peer info structures
-static bool compare_peers(const peer_info_t* p1, const peer_info_t* p2) {
-    if (!p1 || !p2) return false;
-    
-    return (strcmp(p1->ip, p2->ip) == 0 &&
-            p1->port == p2->port &&
-            p1->connected == p2->connected);
+static bool compare_peers(const peer_info_t* p1, const peer_info_t* p2)
+{
+    if (!p1 || !p2)
+        return false;
+
+    return (strcmp(p1->ip, p2->ip) == 0 && p1->port == p2->port && p1->connected == p2->connected);
 }
 
 // Helper function to wait for node connection
-static bool wait_for_connection(p2p_node_t node, const char* peer_ip, 
-                              uint16_t peer_port, uint32_t timeout_us) {
-    if (!node || !peer_ip) return false;
-    
+static bool wait_for_connection(p2p_node_t node, const char* peer_ip, uint16_t peer_port,
+                                uint32_t timeout_us)
+{
+    if (!node || !peer_ip)
+        return false;
+
     uint32_t elapsed = 0;
-    uint32_t step = 1000; // 1ms steps
-    
+    uint32_t step = 1000;  // 1ms steps
+
     while (elapsed < timeout_us) {
         if (p2p_node_is_peer_connected(node, peer_ip, peer_port)) {
             return true;
         }
-        
+
         usleep(step);
         elapsed += step;
     }
-    
+
     return false;
 }
 
@@ -194,7 +201,8 @@ static bool wait_for_connection(p2p_node_t node, const char* peer_ip,
 // Test Classes
 //-----------------------------------------------------------------------------
 
-static network_config_t create_test_config(void) {
+static network_config_t create_test_config(void)
+{
     network_config_t config;
     memset(&config, 0, sizeof(config));
 
@@ -217,36 +225,42 @@ static network_config_t create_test_config(void) {
 
 // Helper class for managing test node lifecycle
 class TestNode {
-public:
-    TestNode(uint16_t port) {
+   public:
+    TestNode(uint16_t port)
+    {
         config = create_test_node_config(port);
         node = p2p_node_create(&config);
     }
-    
-    ~TestNode() {
+
+    ~TestNode()
+    {
         if (node) {
             p2p_node_stop(node);
             p2p_node_destroy(node);
         }
     }
-    
-    bool start() {
+
+    bool start()
+    {
         return node && p2p_node_start(node);
     }
-    
-    bool stop() {
+
+    bool stop()
+    {
         return node && p2p_node_stop(node);
     }
-    
-    p2p_node_t get() {
+
+    p2p_node_t get()
+    {
         return node;
     }
-    
-    uint16_t port() const {
+
+    uint16_t port() const
+    {
         return config.listen_port;
     }
-    
-private:
+
+   private:
     node_config_t config;
     p2p_node_t node;
 };
@@ -269,16 +283,16 @@ private:
 
 // Setup test nodes
 #define SETUP_TEST_NODES(node1, node2) \
-    TestNode node1(TEST_PORT_1); \
-    TestNode node2(TEST_PORT_2); \
-    ASSERT_NE(node1.get(), nullptr); \
-    ASSERT_NE(node2.get(), nullptr); \
-    ASSERT_TRUE(node1.start()); \
-    ASSERT_TRUE(node2.start()); \
+    TestNode node1(TEST_PORT_1);       \
+    TestNode node2(TEST_PORT_2);       \
+    ASSERT_NE(node1.get(), nullptr);   \
+    ASSERT_NE(node2.get(), nullptr);   \
+    ASSERT_TRUE(node1.start());        \
+    ASSERT_TRUE(node2.start());        \
     usleep(TEST_SHORT_TIMEOUT)
 
 // Verify test payload
 #define ASSERT_VALID_TEST_PAYLOAD(buffer, size) \
-    ASSERT_TRUE(verify_test_payload((const uint8_t*)buffer, size))
+    ASSERT_TRUE(verify_test_payload((const uint8_t*) buffer, size))
 
-#endif // TEST_HELPERS_H
+#endif  // TEST_HELPERS_H

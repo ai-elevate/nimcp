@@ -1,10 +1,10 @@
 // src/lib/utils/nimcp_serialization.c
 #include "utils/nimcp_serialization.h"
-#include "utils/nimcp_common.h"
-#include "utils/nimcp_thread.h"
-#include "utils/nimcp_memory.h"
 #include <stdlib.h>
 #include <string.h>
+#include "utils/nimcp_common.h"
+#include "utils/nimcp_memory.h"
+#include "utils/nimcp_thread.h"
 
 /**
  * @brief Checks if a read operation can be performed safely
@@ -13,7 +13,8 @@
  * @return true if read is safe to perform, false if error occurred
  * @note Sets error state if bounds check fails
  */
-static bool nimcp_check_read(NimcpSerializer* serializer, size_t bytes_needed) {
+static bool nimcp_check_read(NimcpSerializer* serializer, size_t bytes_needed)
+{
     if (!serializer) {
         return false;
     }
@@ -24,7 +25,8 @@ static bool nimcp_check_read(NimcpSerializer* serializer, size_t bytes_needed) {
     return true;
 }
 
-static bool ensure_capacity(NimcpSerializer* serializer, size_t additional_size) {
+static bool ensure_capacity(NimcpSerializer* serializer, size_t additional_size)
+{
     if (!serializer || additional_size > NIMCP_SERIALIZER_MAX_SIZE) {
         return false;
     }
@@ -53,11 +55,12 @@ static bool ensure_capacity(NimcpSerializer* serializer, size_t additional_size)
     return true;
 }
 
-NimcpSerializer* nimcp_serializer_create(size_t initial_capacity) {
+NimcpSerializer* nimcp_serializer_create(size_t initial_capacity)
+{
     if (initial_capacity == 0) {
         initial_capacity = NIMCP_SERIALIZER_INITIAL_SIZE;
     }
-    
+
     if (initial_capacity > NIMCP_SERIALIZER_MAX_SIZE) {
         return NULL;
     }
@@ -77,28 +80,30 @@ NimcpSerializer* nimcp_serializer_create(size_t initial_capacity) {
     serializer->position = 0;
     serializer->length = 0;
     serializer->is_compressed = false;
-    
+
     return serializer;
 }
 
-void nimcp_serializer_destroy(NimcpSerializer* serializer) {
+void nimcp_serializer_destroy(NimcpSerializer* serializer)
+{
     if (serializer) {
         nimcp_free(serializer->buffer);
         nimcp_free(serializer);
     }
 }
 
-void nimcp_serializer_reset(NimcpSerializer* serializer) {
+void nimcp_serializer_reset(NimcpSerializer* serializer)
+{
     if (serializer) {
         serializer->position = 0;
         serializer->length = 0;
         serializer->is_compressed = false;
         serializer->has_error = false;
-
     }
 }
 
-bool nimcp_serializer_set_buffer(NimcpSerializer* serializer, const uint8_t* data, size_t length) {
+bool nimcp_serializer_set_buffer(NimcpSerializer* serializer, const uint8_t* data, size_t length)
+{
     if (!serializer || !data || length > NIMCP_SERIALIZER_MAX_SIZE) {
         return false;
     }
@@ -113,19 +118,23 @@ bool nimcp_serializer_set_buffer(NimcpSerializer* serializer, const uint8_t* dat
     return true;
 }
 
-uint8_t* nimcp_serializer_get_buffer(NimcpSerializer* serializer) {
+uint8_t* nimcp_serializer_get_buffer(NimcpSerializer* serializer)
+{
     return serializer ? serializer->buffer : NULL;
 }
 
-size_t nimcp_serializer_get_length(NimcpSerializer* serializer) {
+size_t nimcp_serializer_get_length(NimcpSerializer* serializer)
+{
     return serializer ? serializer->length : 0;
 }
 
-size_t nimcp_serializer_get_position(NimcpSerializer* serializer) {
+size_t nimcp_serializer_get_position(NimcpSerializer* serializer)
+{
     return serializer ? serializer->position : 0;
 }
 
-bool nimcp_serializer_set_position(NimcpSerializer* serializer, size_t position) {
+bool nimcp_serializer_set_position(NimcpSerializer* serializer, size_t position)
+{
     if (!serializer || position > serializer->length) {
         return false;
     }
@@ -133,7 +142,8 @@ bool nimcp_serializer_set_position(NimcpSerializer* serializer, size_t position)
     return true;
 }
 
-NimcpSerialResult nimcp_serializer_compress(NimcpSerializer* serializer) {
+NimcpSerialResult nimcp_serializer_compress(NimcpSerializer* serializer)
+{
     if (!serializer || serializer->is_compressed) {
         return NIMCP_SERIAL_ERROR_INVALID_PARAM;
     }
@@ -144,12 +154,9 @@ NimcpSerialResult nimcp_serializer_compress(NimcpSerializer* serializer) {
         return NIMCP_SERIAL_ERROR_MEMORY;
     }
 
-    int compressed_size = LZ4_compress_default(
-        (const char*)serializer->buffer,
-        (char*)compressed_buffer,
-        serializer->length,
-        max_dst_size
-    );
+    int compressed_size =
+        LZ4_compress_default((const char*) serializer->buffer, (char*) compressed_buffer,
+                             serializer->length, max_dst_size);
 
     if (compressed_size <= 0) {
         nimcp_free(compressed_buffer);
@@ -162,7 +169,7 @@ NimcpSerialResult nimcp_serializer_compress(NimcpSerializer* serializer) {
         return NIMCP_SERIAL_ERROR_MEMORY;
     }
 
-    *(uint32_t*)final_buffer = (uint32_t)serializer->length;
+    *(uint32_t*) final_buffer = (uint32_t) serializer->length;
     memcpy(final_buffer + sizeof(uint32_t), compressed_buffer, compressed_size);
 
     nimcp_free(compressed_buffer);
@@ -177,7 +184,8 @@ NimcpSerialResult nimcp_serializer_compress(NimcpSerializer* serializer) {
     return NIMCP_SERIAL_SUCCESS;
 }
 
-NimcpSerialResult nimcp_serializer_decompress(NimcpSerializer* serializer) {
+NimcpSerialResult nimcp_serializer_decompress(NimcpSerializer* serializer)
+{
     if (!serializer || !serializer->is_compressed) {
         return NIMCP_SERIAL_ERROR_INVALID_PARAM;
     }
@@ -186,20 +194,17 @@ NimcpSerialResult nimcp_serializer_decompress(NimcpSerializer* serializer) {
         return NIMCP_SERIAL_ERROR_BOUNDS;
     }
 
-    uint32_t original_size = *(uint32_t*)serializer->buffer;
+    uint32_t original_size = *(uint32_t*) serializer->buffer;
     uint8_t* decompressed_buffer = nimcp_malloc(original_size);
     if (!decompressed_buffer) {
         return NIMCP_SERIAL_ERROR_MEMORY;
     }
 
     int decompressed_size = LZ4_decompress_safe(
-        (const char*)(serializer->buffer + sizeof(uint32_t)),
-        (char*)decompressed_buffer,
-        serializer->length - sizeof(uint32_t),
-        original_size
-    );
+        (const char*) (serializer->buffer + sizeof(uint32_t)), (char*) decompressed_buffer,
+        serializer->length - sizeof(uint32_t), original_size);
 
-    if (decompressed_size < 0 || (uint32_t)decompressed_size != original_size) {
+    if (decompressed_size < 0 || (uint32_t) decompressed_size != original_size) {
         nimcp_free(decompressed_buffer);
         return NIMCP_SERIAL_ERROR_COMPRESSION;
     }
@@ -215,24 +220,26 @@ NimcpSerialResult nimcp_serializer_decompress(NimcpSerializer* serializer) {
 }
 
 // Write operations
-bool nimcp_write_uint8(NimcpSerializer* serializer, uint8_t value) {
+bool nimcp_write_uint8(NimcpSerializer* serializer, uint8_t value)
+{
     if (!ensure_capacity(serializer, sizeof(uint8_t))) {
         return false;
     }
     serializer->buffer[serializer->position++] = value;
-    serializer->length = serializer->position > serializer->length ? 
-                        serializer->position : serializer->length;
+    serializer->length =
+        serializer->position > serializer->length ? serializer->position : serializer->length;
     return true;
 }
 
-bool nimcp_write_uint16(NimcpSerializer* serializer, uint16_t value) {
+bool nimcp_write_uint16(NimcpSerializer* serializer, uint16_t value)
+{
     if (!ensure_capacity(serializer, sizeof(uint16_t))) {
         return false;
     }
     serializer->buffer[serializer->position++] = (value >> 8) & 0xFF;
     serializer->buffer[serializer->position++] = value & 0xFF;
-    serializer->length = serializer->position > serializer->length ? 
-                        serializer->position : serializer->length;
+    serializer->length =
+        serializer->position > serializer->length ? serializer->position : serializer->length;
     return true;
 }
 
@@ -246,30 +253,34 @@ bool nimcp_write_uint16(NimcpSerializer* serializer, uint16_t value) {
  * @return The read value, or 0 if an error occurred
  * @note Reads in big-endian format
  */
-uint16_t nimcp_read_uint16(NimcpSerializer* serializer) {
+uint16_t nimcp_read_uint16(NimcpSerializer* serializer)
+{
     if (!nimcp_check_read(serializer, 2)) {
         return 0;
     }
-    uint16_t value = ((uint16_t)serializer->buffer[serializer->position] << 8) |
+    uint16_t value = ((uint16_t) serializer->buffer[serializer->position] << 8) |
                      serializer->buffer[serializer->position + 1];
     serializer->position += 2;
     return value;
 }
 
-bool nimcp_write_bytes(NimcpSerializer* serializer, const uint8_t* data, size_t length) {
+bool nimcp_write_bytes(NimcpSerializer* serializer, const uint8_t* data, size_t length)
+{
     if (!serializer || !data || !ensure_capacity(serializer, length)) {
         return false;
     }
     memcpy(serializer->buffer + serializer->position, data, length);
     serializer->position += length;
-    serializer->length = serializer->position > serializer->length ? 
-                        serializer->position : serializer->length;
+    serializer->length =
+        serializer->position > serializer->length ? serializer->position : serializer->length;
     return true;
 }
 
-const uint8_t* nimcp_read_bytes(NimcpSerializer* serializer, size_t* length) {
+const uint8_t* nimcp_read_bytes(NimcpSerializer* serializer, size_t* length)
+{
     if (!serializer || !length || serializer->position >= serializer->length) {
-        if (length) *length = 0;
+        if (length)
+            *length = 0;
         return NULL;
     }
     *length = serializer->length - serializer->position;
@@ -278,7 +289,8 @@ const uint8_t* nimcp_read_bytes(NimcpSerializer* serializer, size_t* length) {
     return data;
 }
 
-bool nimcp_write_uint32(NimcpSerializer* serializer, uint32_t value) {
+bool nimcp_write_uint32(NimcpSerializer* serializer, uint32_t value)
+{
     if (!ensure_capacity(serializer, sizeof(uint32_t))) {
         return false;
     }
@@ -286,12 +298,13 @@ bool nimcp_write_uint32(NimcpSerializer* serializer, uint32_t value) {
     serializer->buffer[serializer->position++] = (value >> 16) & 0xFF;
     serializer->buffer[serializer->position++] = (value >> 8) & 0xFF;
     serializer->buffer[serializer->position++] = value & 0xFF;
-    serializer->length = serializer->position > serializer->length ? 
-                        serializer->position : serializer->length;
+    serializer->length =
+        serializer->position > serializer->length ? serializer->position : serializer->length;
     return true;
 }
 
-bool nimcp_write_uint64(NimcpSerializer* serializer, uint64_t value) {
+bool nimcp_write_uint64(NimcpSerializer* serializer, uint64_t value)
+{
     if (!ensure_capacity(serializer, sizeof(uint64_t))) {
         return false;
     }
@@ -303,28 +316,33 @@ bool nimcp_write_uint64(NimcpSerializer* serializer, uint64_t value) {
     serializer->buffer[serializer->position++] = (value >> 16) & 0xFF;
     serializer->buffer[serializer->position++] = (value >> 8) & 0xFF;
     serializer->buffer[serializer->position++] = value & 0xFF;
-    serializer->length = serializer->position > serializer->length ? 
-                        serializer->position : serializer->length;
+    serializer->length =
+        serializer->position > serializer->length ? serializer->position : serializer->length;
     return true;
 }
 
-bool nimcp_write_int8(NimcpSerializer* serializer, int8_t value) {
-    return nimcp_write_uint8(serializer, (uint8_t)value);
+bool nimcp_write_int8(NimcpSerializer* serializer, int8_t value)
+{
+    return nimcp_write_uint8(serializer, (uint8_t) value);
 }
 
-bool nimcp_write_int16(NimcpSerializer* serializer, int16_t value) {
-    return nimcp_write_uint16(serializer, (uint16_t)value);
+bool nimcp_write_int16(NimcpSerializer* serializer, int16_t value)
+{
+    return nimcp_write_uint16(serializer, (uint16_t) value);
 }
 
-bool nimcp_write_int32(NimcpSerializer* serializer, int32_t value) {
-    return nimcp_write_uint32(serializer, (uint32_t)value);
+bool nimcp_write_int32(NimcpSerializer* serializer, int32_t value)
+{
+    return nimcp_write_uint32(serializer, (uint32_t) value);
 }
 
-bool nimcp_write_int64(NimcpSerializer* serializer, int64_t value) {
-    return nimcp_write_uint64(serializer, (uint64_t)value);
+bool nimcp_write_int64(NimcpSerializer* serializer, int64_t value)
+{
+    return nimcp_write_uint64(serializer, (uint64_t) value);
 }
 
-bool nimcp_write_float(NimcpSerializer* serializer, float value) {
+bool nimcp_write_float(NimcpSerializer* serializer, float value)
+{
     union {
         float f;
         uint32_t i;
@@ -333,7 +351,8 @@ bool nimcp_write_float(NimcpSerializer* serializer, float value) {
     return nimcp_write_uint32(serializer, converter.i);
 }
 
-bool nimcp_write_double(NimcpSerializer* serializer, double value) {
+bool nimcp_write_double(NimcpSerializer* serializer, double value)
+{
     union {
         double d;
         uint64_t i;
@@ -342,17 +361,19 @@ bool nimcp_write_double(NimcpSerializer* serializer, double value) {
     return nimcp_write_uint64(serializer, converter.i);
 }
 
-bool nimcp_write_bool(NimcpSerializer* serializer, bool value) {
+bool nimcp_write_bool(NimcpSerializer* serializer, bool value)
+{
     return nimcp_write_uint8(serializer, value ? 1 : 0);
 }
 
-uint32_t nimcp_read_uint32(NimcpSerializer* serializer) {
+uint32_t nimcp_read_uint32(NimcpSerializer* serializer)
+{
     if (!nimcp_check_read(serializer, 4)) {
         return 0;
     }
-    uint32_t value = ((uint32_t)serializer->buffer[serializer->position] << 24) |
-                     ((uint32_t)serializer->buffer[serializer->position + 1] << 16) |
-                     ((uint32_t)serializer->buffer[serializer->position + 2] << 8) |
+    uint32_t value = ((uint32_t) serializer->buffer[serializer->position] << 24) |
+                     ((uint32_t) serializer->buffer[serializer->position + 1] << 16) |
+                     ((uint32_t) serializer->buffer[serializer->position + 2] << 8) |
                      serializer->buffer[serializer->position + 3];
     serializer->position += 4;
     return value;
@@ -363,7 +384,8 @@ uint32_t nimcp_read_uint32(NimcpSerializer* serializer) {
  * @param serializer The serializer instance
  * @return The read value, or 0 if an error occurred
  */
-uint8_t nimcp_read_uint8(NimcpSerializer* serializer) {
+uint8_t nimcp_read_uint8(NimcpSerializer* serializer)
+{
     if (!nimcp_check_read(serializer, 1)) {
         return 0;
     }
@@ -376,39 +398,45 @@ uint8_t nimcp_read_uint8(NimcpSerializer* serializer) {
  * @return The read value, or 0 if an error occurred
  * @note Reads in big-endian format
  */
-uint64_t nimcp_read_uint64(NimcpSerializer* serializer) {
+uint64_t nimcp_read_uint64(NimcpSerializer* serializer)
+{
     if (!nimcp_check_read(serializer, 8)) {
         return 0;
     }
-    uint64_t value = ((uint64_t)serializer->buffer[serializer->position] << 56) |
-                     ((uint64_t)serializer->buffer[serializer->position + 1] << 48) |
-                     ((uint64_t)serializer->buffer[serializer->position + 2] << 40) |
-                     ((uint64_t)serializer->buffer[serializer->position + 3] << 32) |
-                     ((uint64_t)serializer->buffer[serializer->position + 4] << 24) |
-                     ((uint64_t)serializer->buffer[serializer->position + 5] << 16) |
-                     ((uint64_t)serializer->buffer[serializer->position + 6] << 8) |
+    uint64_t value = ((uint64_t) serializer->buffer[serializer->position] << 56) |
+                     ((uint64_t) serializer->buffer[serializer->position + 1] << 48) |
+                     ((uint64_t) serializer->buffer[serializer->position + 2] << 40) |
+                     ((uint64_t) serializer->buffer[serializer->position + 3] << 32) |
+                     ((uint64_t) serializer->buffer[serializer->position + 4] << 24) |
+                     ((uint64_t) serializer->buffer[serializer->position + 5] << 16) |
+                     ((uint64_t) serializer->buffer[serializer->position + 6] << 8) |
                      serializer->buffer[serializer->position + 7];
     serializer->position += 8;
     return value;
 }
 
-int8_t nimcp_read_int8(NimcpSerializer* serializer) {
-    return (int8_t)nimcp_read_uint8(serializer);
+int8_t nimcp_read_int8(NimcpSerializer* serializer)
+{
+    return (int8_t) nimcp_read_uint8(serializer);
 }
 
-int16_t nimcp_read_int16(NimcpSerializer* serializer) {
-    return (int16_t)nimcp_read_uint16(serializer);
+int16_t nimcp_read_int16(NimcpSerializer* serializer)
+{
+    return (int16_t) nimcp_read_uint16(serializer);
 }
 
-int32_t nimcp_read_int32(NimcpSerializer* serializer) {
-    return (int32_t)nimcp_read_uint32(serializer);
+int32_t nimcp_read_int32(NimcpSerializer* serializer)
+{
+    return (int32_t) nimcp_read_uint32(serializer);
 }
 
-int64_t nimcp_read_int64(NimcpSerializer* serializer) {
-    return (int64_t)nimcp_read_uint64(serializer);
+int64_t nimcp_read_int64(NimcpSerializer* serializer)
+{
+    return (int64_t) nimcp_read_uint64(serializer);
 }
 
-float nimcp_read_float(NimcpSerializer* serializer) {
+float nimcp_read_float(NimcpSerializer* serializer)
+{
     union {
         uint32_t i;
         float f;
@@ -418,7 +446,8 @@ float nimcp_read_float(NimcpSerializer* serializer) {
 }
 
 
-double nimcp_read_double(NimcpSerializer* serializer) {
+double nimcp_read_double(NimcpSerializer* serializer)
+{
     union {
         uint64_t i;
         double d;
@@ -427,17 +456,19 @@ double nimcp_read_double(NimcpSerializer* serializer) {
     return converter.d;
 }
 
-bool nimcp_read_bool(NimcpSerializer* serializer) {
+bool nimcp_read_bool(NimcpSerializer* serializer)
+{
     return nimcp_read_uint8(serializer) != 0;
 }
 
-bool nimcp_serializer_has_error(const NimcpSerializer* serializer) {
+bool nimcp_serializer_has_error(const NimcpSerializer* serializer)
+{
     return serializer ? serializer->has_error : true;
 }
 
-void nimcp_serializer_clear_error(NimcpSerializer* serializer) {
+void nimcp_serializer_clear_error(NimcpSerializer* serializer)
+{
     if (serializer) {
         serializer->has_error = false;
     }
 }
-

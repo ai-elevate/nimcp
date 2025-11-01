@@ -22,13 +22,13 @@
 //=============================================================================
 
 #include "../include/nimcp_ethics.h"
-#include "../include/nimcp_brain.h"
-#include "utils/nimcp_hash_table.h"
+#include <math.h>
+#include <stdint.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <math.h>
-#include <stdio.h>
-#include <stdint.h>
+#include "../include/nimcp_brain.h"
+#include "utils/nimcp_hash_table.h"
 
 //=============================================================================
 // Constants and Configuration
@@ -154,8 +154,10 @@ struct empathy_network_struct {
  *
  * COMPLEXITY: O(1) - Fixed size initialization
  */
-static void init_buffer_pool(feature_buffer_pool_t* pool) {
-    if (!pool) return;
+static void init_buffer_pool(feature_buffer_pool_t* pool)
+{
+    if (!pool)
+        return;
 
     memset(pool->in_use, 0, sizeof(pool->in_use));
     pool->next_available = 0;
@@ -171,8 +173,10 @@ static void init_buffer_pool(feature_buffer_pool_t* pool) {
  *
  * @return Pointer to buffer or NULL if pool exhausted
  */
-static float* acquire_buffer(feature_buffer_pool_t* pool) {
-    if (!pool) return NULL;
+static float* acquire_buffer(feature_buffer_pool_t* pool)
+{
+    if (!pool)
+        return NULL;
 
     // Guard clause: Check for pool exhaustion
     for (uint32_t i = 0; i < OBJECT_POOL_SIZE; i++) {
@@ -194,8 +198,10 @@ static float* acquire_buffer(feature_buffer_pool_t* pool) {
  *
  * COMPLEXITY: O(1)
  */
-static void release_buffer(feature_buffer_pool_t* pool, float* buffer) {
-    if (!pool || !buffer) return;
+static void release_buffer(feature_buffer_pool_t* pool, float* buffer)
+{
+    if (!pool || !buffer)
+        return;
 
     // Guard clause: Validate buffer belongs to pool
     for (uint32_t i = 0; i < OBJECT_POOL_SIZE; i++) {
@@ -220,15 +226,14 @@ static void release_buffer(feature_buffer_pool_t* pool, float* buffer) {
  *
  * @return New hash table instance or NULL on failure
  */
-static hash_table_t* create_policy_hash_table(void) {
-    hash_table_config_t config = {
-        .initial_buckets = HASH_TABLE_SIZE,
-        .key_type = HASH_KEY_UINT32,
-        .hash_algorithm = HASH_ALG_MURMUR3,
-        .case_insensitive = false,
-        .value_destructor = NULL,
-        .thread_safe = false
-    };
+static hash_table_t* create_policy_hash_table(void)
+{
+    hash_table_config_t config = {.initial_buckets = HASH_TABLE_SIZE,
+                                  .key_type = HASH_KEY_UINT32,
+                                  .hash_algorithm = HASH_ALG_MURMUR3,
+                                  .case_insensitive = false,
+                                  .value_destructor = NULL,
+                                  .thread_safe = false};
     return hash_table_create(&config);
 }
 
@@ -242,11 +247,13 @@ static hash_table_t* create_policy_hash_table(void) {
  *
  * @return true if inserted, false on failure
  */
-static bool hash_table_insert(hash_table_t* table, ethics_policy_t* policy) {
+static bool hash_table_insert(hash_table_t* table, ethics_policy_t* policy)
+{
     // Guard clause: Validate inputs
-    if (!table || !policy) return false;
+    if (!table || !policy)
+        return false;
 
-    policy_value_t value = { .policy = policy };
+    policy_value_t value = {.policy = policy};
     return hash_table_insert_uint32(table, policy->policy_id, &value, sizeof(policy_value_t));
 }
 
@@ -257,9 +264,11 @@ static bool hash_table_insert(hash_table_t* table, ethics_policy_t* policy) {
  *
  * COMPLEXITY: O(1) average case
  */
-static bool hash_table_remove(hash_table_t* table, uint32_t policy_id) {
+static bool hash_table_remove(hash_table_t* table, uint32_t policy_id)
+{
     // Guard clause: Validate input
-    if (!table) return false;
+    if (!table)
+        return false;
 
     return hash_table_remove_uint32(table, policy_id);
 }
@@ -275,7 +284,8 @@ static bool hash_table_remove(hash_table_t* table, uint32_t policy_id) {
  *
  * COMPLEXITY: O(1)
  */
-static float evaluate_harm_policy(const action_context_t* action) {
+static float evaluate_harm_policy(const action_context_t* action)
+{
     return action ? action->predicted_harm : 0.0f;
 }
 
@@ -286,7 +296,8 @@ static float evaluate_harm_policy(const action_context_t* action) {
  *
  * COMPLEXITY: O(1)
  */
-static float evaluate_unfairness_policy(const action_context_t* action) {
+static float evaluate_unfairness_policy(const action_context_t* action)
+{
     return action ? action->fairness_violation : 0.0f;
 }
 
@@ -295,7 +306,8 @@ static float evaluate_unfairness_policy(const action_context_t* action) {
  *
  * COMPLEXITY: O(1)
  */
-static float evaluate_deception_policy(const action_context_t* action) {
+static float evaluate_deception_policy(const action_context_t* action)
+{
     return action ? action->deception_level : 0.0f;
 }
 
@@ -304,7 +316,8 @@ static float evaluate_deception_policy(const action_context_t* action) {
  *
  * COMPLEXITY: O(1)
  */
-static float evaluate_autonomy_policy(const action_context_t* action) {
+static float evaluate_autonomy_policy(const action_context_t* action)
+{
     return action ? action->autonomy_violation : 0.0f;
 }
 
@@ -313,7 +326,8 @@ static float evaluate_autonomy_policy(const action_context_t* action) {
  *
  * COMPLEXITY: O(1)
  */
-static float evaluate_privacy_policy(const action_context_t* action) {
+static float evaluate_privacy_policy(const action_context_t* action)
+{
     return action ? action->privacy_violation : 0.0f;
 }
 
@@ -322,7 +336,8 @@ static float evaluate_privacy_policy(const action_context_t* action) {
  *
  * COMPLEXITY: O(1)
  */
-static float evaluate_consent_policy(const action_context_t* action) {
+static float evaluate_consent_policy(const action_context_t* action)
+{
     return action ? action->consent_violation : 0.0f;
 }
 
@@ -335,9 +350,11 @@ static float evaluate_consent_policy(const action_context_t* action) {
  *
  * COMPLEXITY: O(1)
  */
-static void init_strategy_table(policy_strategy_table_t* table) {
+static void init_strategy_table(policy_strategy_table_t* table)
+{
     // Guard clause: Validate input
-    if (!table) return;
+    if (!table)
+        return;
 
     memset(table->evaluators, 0, sizeof(table->evaluators));
 
@@ -360,20 +377,21 @@ static void init_strategy_table(policy_strategy_table_t* table) {
  *
  * @return Severity score [0.0, 1.0] or 0.0 if invalid
  */
-static float evaluate_policy_strategy(
-    const policy_strategy_table_t* table,
-    const ethics_policy_t* policy,
-    const action_context_t* action) {
-
+static float evaluate_policy_strategy(const policy_strategy_table_t* table,
+                                      const ethics_policy_t* policy, const action_context_t* action)
+{
     // Guard clause: Validate inputs
-    if (!table || !policy || !action) return 0.0f;
+    if (!table || !policy || !action)
+        return 0.0f;
 
     // Guard clause: Check bounds
-    if (policy->violation_type >= 16) return 0.0f;
+    if (policy->violation_type >= 16)
+        return 0.0f;
 
     policy_evaluator_fn evaluator = table->evaluators[policy->violation_type];
     // Guard clause: Check if evaluator exists
-    if (!evaluator) return 0.0f;
+    if (!evaluator)
+        return 0.0f;
 
     return evaluator(action);
 }
@@ -390,17 +408,13 @@ static float evaluate_policy_strategy(
  *
  * COMPLEXITY: O(n) where n = min(10, num_features)
  */
-static void copy_action_features(
-    float* dest,
-    const action_context_t* action,
-    uint32_t max_features) {
-
+static void copy_action_features(float* dest, const action_context_t* action, uint32_t max_features)
+{
     // Guard clause: Validate inputs
-    if (!dest || !action) return;
+    if (!dest || !action)
+        return;
 
-    uint32_t count = (action->num_features < max_features)
-                     ? action->num_features
-                     : max_features;
+    uint32_t count = (action->num_features < max_features) ? action->num_features : max_features;
 
     for (uint32_t i = 0; i < count; i++) {
         dest[i] = action->features[i];
@@ -415,15 +429,12 @@ static void copy_action_features(
  *
  * COMPLEXITY: O(n) where n = num_emotions
  */
-static void copy_emotional_state(
-    float* dest,
-    const float* emotional_states,
-    agent_id_t agent,
-    uint32_t num_emotions,
-    uint32_t offset) {
-
+static void copy_emotional_state(float* dest, const float* emotional_states, agent_id_t agent,
+                                 uint32_t num_emotions, uint32_t offset)
+{
     // Guard clause: Validate inputs
-    if (!dest || !emotional_states) return;
+    if (!dest || !emotional_states)
+        return;
 
     for (uint32_t i = 0; i < num_emotions; i++) {
         dest[offset + i] = emotional_states[agent * num_emotions + i];
@@ -440,9 +451,11 @@ static void copy_emotional_state(
  *
  * @return Perspective score [-1.0, 1.0] weighted by impact magnitude
  */
-static float calculate_perspective_score(const empathy_state_extended_t* state) {
+static float calculate_perspective_score(const empathy_state_extended_t* state)
+{
     // Guard clause: Validate input
-    if (!state) return 0.0f;
+    if (!state)
+        return 0.0f;
 
     float emotional = state->emotional_valence;
     float material = state->material_impact;
@@ -465,16 +478,14 @@ static float calculate_perspective_score(const empathy_state_extended_t* state) 
  *
  * @return Impact score for this agent's perspective
  */
-static float simulate_agent_perspective(
-    empathy_network_t network,
-    agent_id_t agent,
-    const action_context_t* action) {
-
+static float simulate_agent_perspective(empathy_network_t network, agent_id_t agent,
+                                        const action_context_t* action)
+{
     // Guard clause: Validate inputs
-    if (!network || !action) return 0.0f;
+    if (!network || !action)
+        return 0.0f;
 
-    empathy_state_extended_t state = empathy_network_simulate_agent(
-        network, agent, action);
+    empathy_state_extended_t state = empathy_network_simulate_agent(network, agent, action);
 
     return calculate_perspective_score(&state);
 }
@@ -495,23 +506,22 @@ static float simulate_agent_perspective(
  *
  * @return Golden Rule score [-1.0, 1.0] where positive = you'd want it
  */
-static float evaluate_golden_rule(
-    ethics_engine_t engine,
-    const action_context_t* action) {
-
+static float evaluate_golden_rule(ethics_engine_t engine, const action_context_t* action)
+{
     // Guard clause: Validate inputs
-    if (!engine || !action) return 0.0f;
+    if (!engine || !action)
+        return 0.0f;
 
     // Guard clause: Check for affected agents
-    if (action->num_affected_agents == 0) return 0.0f;
+    if (action->num_affected_agents == 0)
+        return 0.0f;
 
     float total_impact = 0.0f;
 
     // Single pass through affected agents - O(n)
     for (uint32_t i = 0; i < action->num_affected_agents; i++) {
         agent_id_t agent = action->affected_agents[i];
-        float perspective_score = simulate_agent_perspective(
-            engine->empathy_net, agent, action);
+        float perspective_score = simulate_agent_perspective(engine->empathy_net, agent, action);
         total_impact += perspective_score;
     }
 
@@ -531,13 +541,10 @@ static float evaluate_golden_rule(
  *
  * COMPLEXITY: O(1)
  */
-static brain_t create_golden_rule_network(uint32_t feature_size) {
-    return brain_create(
-        "golden_rule",
-        BRAIN_SIZE_SMALL,
-        BRAIN_TASK_REGRESSION,
-        feature_size,
-        1  // Output: acceptance score [-1, 1]
+static brain_t create_golden_rule_network(uint32_t feature_size)
+{
+    return brain_create("golden_rule", BRAIN_SIZE_SMALL, BRAIN_TASK_REGRESSION, feature_size,
+                        1  // Output: acceptance score [-1, 1]
     );
 }
 
@@ -549,12 +556,10 @@ static brain_t create_golden_rule_network(uint32_t feature_size) {
  *
  * COMPLEXITY: O(1)
  */
-static empathy_network_t create_empathy_network(void) {
+static empathy_network_t create_empathy_network(void)
+{
     empathy_config_t config = {
-        .mirror_network = NULL,
-        .observation_window_ms = 1000,
-        .empathy_threshold = 0.5f
-    };
+        .mirror_network = NULL, .observation_window_ms = 1000, .empathy_threshold = 0.5f};
 
     return empathy_network_create(&config);
 }
@@ -566,9 +571,11 @@ static empathy_network_t create_empathy_network(void) {
  *
  * COMPLEXITY: O(1)
  */
-static bool allocate_policy_storage(ethics_engine_t engine) {
+static bool allocate_policy_storage(ethics_engine_t engine)
+{
     // Guard clause: Validate input
-    if (!engine) return false;
+    if (!engine)
+        return false;
 
     engine->policies_capacity = 100;
     engine->policies = calloc(engine->policies_capacity, sizeof(ethics_policy_t));
@@ -583,14 +590,14 @@ static bool allocate_policy_storage(ethics_engine_t engine) {
  *
  * COMPLEXITY: O(1)
  */
-static bool allocate_violation_storage(ethics_engine_t engine) {
+static bool allocate_violation_storage(ethics_engine_t engine)
+{
     // Guard clause: Validate input
-    if (!engine) return false;
+    if (!engine)
+        return false;
 
     engine->violations_capacity = 1000;
-    engine->violations = calloc(
-        engine->violations_capacity,
-        sizeof(violation_record_t));
+    engine->violations = calloc(engine->violations_capacity, sizeof(violation_record_t));
 
     return engine->violations != NULL;
 }
@@ -603,21 +610,21 @@ static bool allocate_violation_storage(ethics_engine_t engine) {
  *
  * COMPLEXITY: O(1)
  */
-static void add_golden_rule_policy(ethics_engine_t engine) {
+static void add_golden_rule_policy(ethics_engine_t engine)
+{
     // Guard clause: Validate input
-    if (!engine) return;
+    if (!engine)
+        return;
 
-    ethics_policy_t policy = {
-        .policy_id = 0,
-        .name = "Golden Rule",
-        .description = "Do unto others as you would have them done unto you",
-        .violation_type = ETHICS_VIOLATION_HARM,
-        .severity_threshold = 0.0f,
-        .confidence_required = 0.8f,
-        .action = ETHICS_ACTION_BLOCK,
-        .enabled = true,
-        .learned = false
-    };
+    ethics_policy_t policy = {.policy_id = 0,
+                              .name = "Golden Rule",
+                              .description = "Do unto others as you would have them done unto you",
+                              .violation_type = ETHICS_VIOLATION_HARM,
+                              .severity_threshold = 0.0f,
+                              .confidence_required = 0.8f,
+                              .action = ETHICS_ACTION_BLOCK,
+                              .enabled = true,
+                              .learned = false};
 
     engine->policies[0] = policy;
     engine->num_policies = 1;
@@ -637,13 +644,16 @@ static void add_golden_rule_policy(ethics_engine_t engine) {
  *
  * @return Engine instance or NULL on failure
  */
-ethics_engine_t ethics_engine_create(const ethics_config_t* config) {
+ethics_engine_t ethics_engine_create(const ethics_config_t* config)
+{
     // Guard clause: Validate input
-    if (!config) return NULL;
+    if (!config)
+        return NULL;
 
     ethics_engine_t engine = calloc(1, sizeof(struct ethics_engine_struct));
     // Guard clause: Check allocation
-    if (!engine) return NULL;
+    if (!engine)
+        return NULL;
 
     // Initialize design pattern components
     init_buffer_pool(&engine->buffer_pool);
@@ -651,8 +661,7 @@ ethics_engine_t ethics_engine_create(const ethics_config_t* config) {
     init_strategy_table(&engine->strategy_table);
 
     // Create neural networks
-    engine->golden_rule_evaluator = create_golden_rule_network(
-        config->action_feature_size);
+    engine->golden_rule_evaluator = create_golden_rule_network(config->action_feature_size);
     // Guard clause: Check network creation
     if (!engine->golden_rule_evaluator) {
         free(engine);
@@ -668,8 +677,7 @@ ethics_engine_t ethics_engine_create(const ethics_config_t* config) {
     }
 
     // Allocate storage
-    if (!allocate_policy_storage(engine) ||
-        !allocate_violation_storage(engine)) {
+    if (!allocate_policy_storage(engine) || !allocate_violation_storage(engine)) {
         empathy_network_destroy(engine->empathy_net);
         brain_destroy(engine->golden_rule_evaluator);
         free(engine);
@@ -694,9 +702,11 @@ ethics_engine_t ethics_engine_create(const ethics_config_t* config) {
  *
  * COMPLEXITY: O(n) where n = number of hash table entries
  */
-void ethics_engine_destroy(ethics_engine_t engine) {
+void ethics_engine_destroy(ethics_engine_t engine)
+{
     // Guard clause: Validate input
-    if (!engine) return;
+    if (!engine)
+        return;
 
     // Destroy hash table
     hash_table_destroy(engine->policy_table);
@@ -729,11 +739,9 @@ void ethics_engine_destroy(ethics_engine_t engine) {
  *
  * @return true if valid, false otherwise
  */
-static bool validate_evaluation_inputs(
-    ethics_engine_t engine,
-    const action_context_t* action,
-    ethics_evaluation_t* result) {
-
+static bool validate_evaluation_inputs(ethics_engine_t engine, const action_context_t* action,
+                                       ethics_evaluation_t* result)
+{
     // Guard clause: Check engine
     if (!engine) {
         if (result) {
@@ -774,12 +782,9 @@ static bool validate_evaluation_inputs(
  * @param worst_severity Output parameter for worst severity
  * @return Overall policy compliance score [0.0, 1.0]
  */
-static float evaluate_all_policies(
-    ethics_engine_t engine,
-    const action_context_t* action,
-    ethics_violation_type_t* worst_violation,
-    float* worst_severity) {
-
+static float evaluate_all_policies(ethics_engine_t engine, const action_context_t* action,
+                                   ethics_violation_type_t* worst_violation, float* worst_severity)
+{
     // Guard clause: Validate inputs
     if (!engine || !action || !worst_violation || !worst_severity) {
         return 1.0f;
@@ -794,14 +799,15 @@ static float evaluate_all_policies(
         ethics_policy_t* policy = &engine->policies[i];
 
         // Guard clause: Skip disabled policies
-        if (!policy->enabled) continue;
+        if (!policy->enabled)
+            continue;
 
         // O(1) evaluation using strategy pattern
-        float severity = evaluate_policy_strategy(
-            &engine->strategy_table, policy, action);
+        float severity = evaluate_policy_strategy(&engine->strategy_table, policy, action);
 
         // Guard clause: Check threshold
-        if (severity <= policy->severity_threshold) continue;
+        if (severity <= policy->severity_threshold)
+            continue;
 
         // Update worst violation
         if (severity > *worst_severity) {
@@ -825,7 +831,8 @@ static float evaluate_all_policies(
  *
  * @return Final combined score [0.0, 1.0]
  */
-static float calculate_final_score(float golden_rule_score, float policy_score) {
+static float calculate_final_score(float golden_rule_score, float policy_score)
+{
     return golden_rule_score * GOLDEN_RULE_WEIGHT + policy_score * POLICY_WEIGHT;
 }
 
@@ -837,27 +844,24 @@ static float calculate_final_score(float golden_rule_score, float policy_score) 
  *
  * COMPLEXITY: O(1)
  */
-static void record_violation(
-    ethics_engine_t engine,
-    const action_context_t* action,
-    ethics_violation_type_t violation_type,
-    float severity,
-    float golden_rule_score) {
-
+static void record_violation(ethics_engine_t engine, const action_context_t* action,
+                             ethics_violation_type_t violation_type, float severity,
+                             float golden_rule_score)
+{
     // Guard clause: Validate inputs
-    if (!engine || !action) return;
+    if (!engine || !action)
+        return;
 
     // Guard clause: Check capacity
-    if (engine->num_violations >= engine->violations_capacity) return;
+    if (engine->num_violations >= engine->violations_capacity)
+        return;
 
-    violation_record_t violation = {
-        .violation_type = violation_type,
-        .severity = severity,
-        .timestamp = 0,
-        .action_description = {0},
-        .affected_agent = action->affected_agents[0],
-        .golden_rule_score = golden_rule_score
-    };
+    violation_record_t violation = {.violation_type = violation_type,
+                                    .severity = severity,
+                                    .timestamp = 0,
+                                    .action_description = {0},
+                                    .affected_agent = action->affected_agents[0],
+                                    .golden_rule_score = golden_rule_score};
 
     engine->violations[engine->num_violations++] = violation;
 }
@@ -869,18 +873,17 @@ static void record_violation(
  *
  * COMPLEXITY: O(1)
  */
-static void generate_allowed_explanation(
-    ethics_evaluation_t* result,
-    float golden_rule_score,
-    float threshold) {
-
+static void generate_allowed_explanation(ethics_evaluation_t* result, float golden_rule_score,
+                                         float threshold)
+{
     // Guard clause: Validate input
-    if (!result) return;
+    if (!result)
+        return;
 
     snprintf(result->explanation, sizeof(result->explanation),
-            "Action complies with Golden Rule (score: %.2f >= %.2f). "
-            "Perspective-taking indicates acceptable impact on others.",
-            golden_rule_score, threshold);
+             "Action complies with Golden Rule (score: %.2f >= %.2f). "
+             "Perspective-taking indicates acceptable impact on others.",
+             golden_rule_score, threshold);
 }
 
 /**
@@ -890,22 +893,19 @@ static void generate_allowed_explanation(
  *
  * COMPLEXITY: O(1)
  */
-static void generate_blocked_explanation(
-    ethics_evaluation_t* result,
-    float golden_rule_score,
-    float threshold,
-    ethics_violation_type_t violation,
-    float severity) {
-
+static void generate_blocked_explanation(ethics_evaluation_t* result, float golden_rule_score,
+                                         float threshold, ethics_violation_type_t violation,
+                                         float severity)
+{
     // Guard clause: Validate input
-    if (!result) return;
+    if (!result)
+        return;
 
     snprintf(result->explanation, sizeof(result->explanation),
-            "Action violates Golden Rule (score: %.2f < %.2f). "
-            "Perspective-taking indicates you would not want this done to you. "
-            "Violation: %s (severity: %.2f)",
-            golden_rule_score, threshold,
-            ethics_violation_type_name(violation), severity);
+             "Action violates Golden Rule (score: %.2f < %.2f). "
+             "Perspective-taking indicates you would not want this done to you. "
+             "Violation: %s (severity: %.2f)",
+             golden_rule_score, threshold, ethics_violation_type_name(violation), severity);
 }
 
 /**
@@ -916,17 +916,14 @@ static void generate_blocked_explanation(
  *
  * COMPLEXITY: O(1)
  */
-static void build_evaluation_result(
-    ethics_engine_t engine,
-    const action_context_t* action,
-    float final_score,
-    float golden_rule_score,
-    ethics_violation_type_t worst_violation,
-    float worst_severity,
-    ethics_evaluation_t* result) {
-
+static void build_evaluation_result(ethics_engine_t engine, const action_context_t* action,
+                                    float final_score, float golden_rule_score,
+                                    ethics_violation_type_t worst_violation, float worst_severity,
+                                    ethics_evaluation_t* result)
+{
     // Guard clause: Validate inputs
-    if (!result || !engine) return;
+    if (!result || !engine)
+        return;
 
     result->allowed = (final_score >= engine->golden_rule_threshold);
     result->confidence = fabsf(final_score);
@@ -937,10 +934,8 @@ static void build_evaluation_result(
         result->primary_violation = worst_violation;
         engine->violations_detected++;
 
-        record_violation(engine, action, worst_violation,
-                        worst_severity, golden_rule_score);
-        generate_blocked_explanation(result, golden_rule_score,
-                                     engine->golden_rule_threshold,
+        record_violation(engine, action, worst_violation, worst_severity, golden_rule_score);
+        generate_blocked_explanation(result, golden_rule_score, engine->golden_rule_threshold,
                                      worst_violation, worst_severity);
         return;
     }
@@ -948,8 +943,7 @@ static void build_evaluation_result(
     // Action allowed
     result->recommended_action = ETHICS_ACTION_ALLOW;
     result->primary_violation = ETHICS_VIOLATION_NONE;
-    generate_allowed_explanation(result, golden_rule_score,
-                                 engine->golden_rule_threshold);
+    generate_allowed_explanation(result, golden_rule_score, engine->golden_rule_threshold);
 }
 
 /**
@@ -959,11 +953,9 @@ static void build_evaluation_result(
  *
  * COMPLEXITY: O(1)
  */
-static void update_learning(
-    ethics_engine_t engine,
-    const action_context_t* action,
-    const ethics_evaluation_t* result) {
-
+static void update_learning(ethics_engine_t engine, const action_context_t* action,
+                            const ethics_evaluation_t* result)
+{
     // Guard clause: Check if learning enabled
     if (!engine || !action || !result || !engine->enable_learning) {
         return;
@@ -971,13 +963,8 @@ static void update_learning(
 
     const char* label = result->allowed ? "accept" : "reject";
 
-    brain_learn_example(
-        engine->golden_rule_evaluator,
-        action->features,
-        action->num_features,
-        label,
-        result->confidence
-    );
+    brain_learn_example(engine->golden_rule_evaluator, action->features, action->num_features,
+                        label, result->confidence);
 }
 
 /**
@@ -1000,10 +987,9 @@ static void update_learning(
  *
  * @return Evaluation result with decision and explanation
  */
-ethics_evaluation_t ethics_engine_evaluate_action(
-    ethics_engine_t engine,
-    const action_context_t* action) {
-
+ethics_evaluation_t ethics_engine_evaluate_action(ethics_engine_t engine,
+                                                  const action_context_t* action)
+{
     ethics_evaluation_t result = {0};
 
     // Step 1: Validate inputs
@@ -1019,15 +1005,14 @@ ethics_evaluation_t ethics_engine_evaluate_action(
     // Step 3: Evaluate policies (O(m))
     ethics_violation_type_t worst_violation;
     float worst_severity;
-    float policy_score = evaluate_all_policies(
-        engine, action, &worst_violation, &worst_severity);
+    float policy_score = evaluate_all_policies(engine, action, &worst_violation, &worst_severity);
 
     // Step 4: Combine scores (O(1))
     float final_score = calculate_final_score(golden_rule_score, policy_score);
 
     // Step 5: Build result (O(1))
-    build_evaluation_result(engine, action, final_score, golden_rule_score,
-                           worst_violation, worst_severity, &result);
+    build_evaluation_result(engine, action, final_score, golden_rule_score, worst_violation,
+                            worst_severity, &result);
 
     // Step 6: Learn from evaluation (O(1))
     update_learning(engine, action, &result);
@@ -1049,23 +1034,24 @@ ethics_evaluation_t ethics_engine_evaluate_action(
  *
  * @return Network instance or NULL on failure
  */
-empathy_network_t empathy_network_create(const empathy_config_t* config) {
+empathy_network_t empathy_network_create(const empathy_config_t* config)
+{
     // Guard clause: Validate input
-    if (!config) return NULL;
+    if (!config)
+        return NULL;
 
     empathy_network_t network = calloc(1, sizeof(struct empathy_network_struct));
     // Guard clause: Check allocation
-    if (!network) return NULL;
+    if (!network)
+        return NULL;
 
     uint32_t max_agents = 1000;
 
-    network->perspective_network = brain_create(
-        "perspective_taking",
-        BRAIN_SIZE_MEDIUM,
-        BRAIN_TASK_REGRESSION,
-        20,  // Action + agent features
-        5    // Output dimensions
-    );
+    network->perspective_network =
+        brain_create("perspective_taking", BRAIN_SIZE_MEDIUM, BRAIN_TASK_REGRESSION,
+                     20,  // Action + agent features
+                     5    // Output dimensions
+        );
 
     // Guard clause: Check network creation
     if (!network->perspective_network) {
@@ -1076,8 +1062,7 @@ empathy_network_t empathy_network_create(const empathy_config_t* config) {
     network->num_agents = max_agents;
     network->states = calloc(max_agents, sizeof(empathy_state_t));
     network->num_emotions = 10;
-    network->emotional_states = calloc(
-        max_agents * network->num_emotions, sizeof(float));
+    network->emotional_states = calloc(max_agents * network->num_emotions, sizeof(float));
 
     // Guard clause: Check allocations
     if (!network->states || !network->emotional_states) {
@@ -1096,9 +1081,11 @@ empathy_network_t empathy_network_create(const empathy_config_t* config) {
  *
  * COMPLEXITY: O(1)
  */
-void empathy_network_destroy(empathy_network_t network) {
+void empathy_network_destroy(empathy_network_t network)
+{
     // Guard clause: Validate input
-    if (!network) return;
+    if (!network)
+        return;
 
     brain_destroy(network->perspective_network);
     free(network->states);
@@ -1121,22 +1108,23 @@ void empathy_network_destroy(empathy_network_t network) {
  *
  * @return Extended empathy state with predicted experience
  */
-empathy_state_extended_t empathy_network_simulate_agent(
-    empathy_network_t network,
-    agent_id_t agent,
-    const action_context_t* action) {
-
+empathy_state_extended_t empathy_network_simulate_agent(empathy_network_t network, agent_id_t agent,
+                                                        const action_context_t* action)
+{
     empathy_state_extended_t state = {0};
 
     // Guard clause: Validate inputs
-    if (!network || !action) return state;
+    if (!network || !action)
+        return state;
 
     // Guard clause: Check agent bounds
-    if (agent >= network->num_agents) return state;
+    if (agent >= network->num_agents)
+        return state;
 
     // Get buffer from pool for O(1) allocation
     float* combined_features = acquire_buffer(&network->perspective_network
-        ? ((void*)0) : NULL);  // Simplified - would use engine's pool
+                                                  ? ((void*) 0)
+                                                  : NULL);  // Simplified - would use engine's pool
 
     // Fallback to stack allocation if pool exhausted
     float stack_buffer[MAX_FEATURE_SIZE] = {0};
@@ -1146,15 +1134,11 @@ empathy_state_extended_t empathy_network_simulate_agent(
 
     // Combine features (O(n))
     copy_action_features(combined_features, action, 10);
-    copy_emotional_state(combined_features, network->emotional_states,
-                        agent, network->num_emotions, 10);
+    copy_emotional_state(combined_features, network->emotional_states, agent, network->num_emotions,
+                         10);
 
     // Neural network inference (O(1))
-    brain_decision_t* decision = brain_decide(
-        network->perspective_network,
-        combined_features,
-        20
-    );
+    brain_decision_t* decision = brain_decide(network->perspective_network, combined_features, 20);
 
     if (decision) {
         state.emotional_valence = decision->output_vector[0];
@@ -1190,19 +1174,21 @@ empathy_state_extended_t empathy_network_simulate_agent(
  *
  * @return true on success, false on failure
  */
-bool ethics_add_policy(ethics_engine_t engine, const ethics_policy_t* policy) {
+bool ethics_add_policy(ethics_engine_t engine, const ethics_policy_t* policy)
+{
     // Guard clause: Validate inputs
-    if (!engine || !policy) return false;
+    if (!engine || !policy)
+        return false;
 
     // Guard clause: Check capacity
     if (engine->num_policies >= engine->policies_capacity) {
         engine->policies_capacity *= 2;
-        ethics_policy_t* new_policies = realloc(
-            engine->policies,
-            engine->policies_capacity * sizeof(ethics_policy_t));
+        ethics_policy_t* new_policies =
+            realloc(engine->policies, engine->policies_capacity * sizeof(ethics_policy_t));
 
         // Guard clause: Check reallocation
-        if (!new_policies) return false;
+        if (!new_policies)
+            return false;
 
         engine->policies = new_policies;
     }
@@ -1211,9 +1197,7 @@ bool ethics_add_policy(ethics_engine_t engine, const ethics_policy_t* policy) {
     engine->policies[engine->num_policies] = *policy;
 
     // Add to hash table for O(1) lookup
-    bool success = hash_table_insert(
-        engine->policy_table,
-        &engine->policies[engine->num_policies]);
+    bool success = hash_table_insert(engine->policy_table, &engine->policies[engine->num_policies]);
 
     if (success) {
         engine->num_policies++;
@@ -1232,9 +1216,11 @@ bool ethics_add_policy(ethics_engine_t engine, const ethics_policy_t* policy) {
  *
  * @return true if removed, false if not found
  */
-bool ethics_remove_policy(ethics_engine_t engine, uint32_t policy_id) {
+bool ethics_remove_policy(ethics_engine_t engine, uint32_t policy_id)
+{
     // Guard clause: Validate input
-    if (!engine) return false;
+    if (!engine)
+        return false;
 
     // Remove from hash table (O(1))
     if (!hash_table_remove(engine->policy_table, policy_id)) {
@@ -1244,9 +1230,8 @@ bool ethics_remove_policy(ethics_engine_t engine, uint32_t policy_id) {
     // Remove from array (O(n))
     for (uint32_t i = 0; i < engine->num_policies; i++) {
         if (engine->policies[i].policy_id == policy_id) {
-            memmove(&engine->policies[i],
-                   &engine->policies[i + 1],
-                   (engine->num_policies - i - 1) * sizeof(ethics_policy_t));
+            memmove(&engine->policies[i], &engine->policies[i + 1],
+                    (engine->num_policies - i - 1) * sizeof(ethics_policy_t));
             engine->num_policies--;
             return true;
         }
@@ -1264,17 +1249,14 @@ bool ethics_remove_policy(ethics_engine_t engine, uint32_t policy_id) {
  *
  * @return Number of policies copied
  */
-uint32_t ethics_get_policies(
-    ethics_engine_t engine,
-    ethics_policy_t* policies,
-    uint32_t max_policies) {
-
+uint32_t ethics_get_policies(ethics_engine_t engine, ethics_policy_t* policies,
+                             uint32_t max_policies)
+{
     // Guard clause: Validate inputs
-    if (!engine || !policies) return 0;
+    if (!engine || !policies)
+        return 0;
 
-    uint32_t count = (engine->num_policies < max_policies)
-                     ? engine->num_policies
-                     : max_policies;
+    uint32_t count = (engine->num_policies < max_policies) ? engine->num_policies : max_policies;
 
     memcpy(policies, engine->policies, count * sizeof(ethics_policy_t));
     return count;
@@ -1291,22 +1273,24 @@ uint32_t ethics_get_policies(
  *
  * COMPLEXITY: O(1)
  */
-static bool validate_learning_inputs(
-    ethics_engine_t engine,
-    const action_context_t* action,
-    const action_outcome_t* outcome) {
-
+static bool validate_learning_inputs(ethics_engine_t engine, const action_context_t* action,
+                                     const action_outcome_t* outcome)
+{
     // Guard clause: Check engine
-    if (!engine) return false;
+    if (!engine)
+        return false;
 
     // Guard clause: Check action
-    if (!action) return false;
+    if (!action)
+        return false;
 
     // Guard clause: Check outcome
-    if (!outcome) return false;
+    if (!outcome)
+        return false;
 
     // Guard clause: Check if learning enabled
-    if (!engine->enable_learning) return false;
+    if (!engine->enable_learning)
+        return false;
 
     return true;
 }
@@ -1318,24 +1302,18 @@ static bool validate_learning_inputs(
  *
  * COMPLEXITY: O(1)
  */
-static void update_golden_rule_learning(
-    ethics_engine_t engine,
-    const action_context_t* action,
-    float actual_impact) {
-
+static void update_golden_rule_learning(ethics_engine_t engine, const action_context_t* action,
+                                        float actual_impact)
+{
     // Guard clause: Validate inputs
-    if (!engine || !action) return;
+    if (!engine || !action)
+        return;
 
     const char* label = (actual_impact < 0) ? "accept" : "reject";
     float confidence = fminf(fabsf(actual_impact), 1.0f);
 
-    brain_learn_example(
-        engine->golden_rule_evaluator,
-        action->features,
-        action->num_features,
-        label,
-        confidence
-    );
+    brain_learn_example(engine->golden_rule_evaluator, action->features, action->num_features,
+                        label, confidence);
 }
 
 /**
@@ -1345,16 +1323,16 @@ static void update_golden_rule_learning(
  *
  * COMPLEXITY: O(1)
  */
-static void update_empathy_learning(
-    ethics_engine_t engine,
-    const action_context_t* action,
-    const action_outcome_t* outcome) {
-
+static void update_empathy_learning(ethics_engine_t engine, const action_context_t* action,
+                                    const action_outcome_t* outcome)
+{
     // Guard clause: Validate inputs
-    if (!engine || !action || !outcome) return;
+    if (!engine || !action || !outcome)
+        return;
 
     // Guard clause: Check agent bounds
-    if (outcome->affected_agent >= engine->empathy_net->num_agents) return;
+    if (outcome->affected_agent >= engine->empathy_net->num_agents)
+        return;
 
     // Acquire buffer from pool (O(1))
     float* combined = acquire_buffer(&engine->buffer_pool);
@@ -1367,16 +1345,10 @@ static void update_empathy_learning(
     copy_action_features(combined, action, 10);
 
     char emotion_label[64];
-    snprintf(emotion_label, sizeof(emotion_label),
-             "impact_%.2f", outcome->emotional_impact);
+    snprintf(emotion_label, sizeof(emotion_label), "impact_%.2f", outcome->emotional_impact);
 
-    brain_learn_example(
-        engine->empathy_net->perspective_network,
-        combined,
-        20,
-        emotion_label,
-        1.0f - outcome->uncertainty
-    );
+    brain_learn_example(engine->empathy_net->perspective_network, combined, 20, emotion_label,
+                        1.0f - outcome->uncertainty);
 
     // Release buffer
     if (combined != stack_buffer) {
@@ -1400,11 +1372,9 @@ static void update_empathy_learning(
  *
  * @return true if learning performed, false otherwise
  */
-bool ethics_learn_from_outcome(
-    ethics_engine_t engine,
-    const action_context_t* action,
-    const action_outcome_t* outcome) {
-
+bool ethics_learn_from_outcome(ethics_engine_t engine, const action_context_t* action,
+                               const action_outcome_t* outcome)
+{
     // Guard clause: Validate all inputs
     if (!validate_learning_inputs(engine, action, outcome)) {
         return false;
@@ -1432,18 +1402,29 @@ bool ethics_learn_from_outcome(
  *
  * COMPLEXITY: O(1)
  */
-const char* ethics_violation_type_name(ethics_violation_type_t type) {
+const char* ethics_violation_type_name(ethics_violation_type_t type)
+{
     switch (type) {
-        case ETHICS_VIOLATION_NONE: return "None";
-        case ETHICS_VIOLATION_HARM: return "Harm";
-        case ETHICS_VIOLATION_UNFAIRNESS: return "Unfairness";
-        case ETHICS_VIOLATION_DECEPTION: return "Deception";
-        case ETHICS_VIOLATION_AUTONOMY: return "Autonomy Violation";
-        case ETHICS_VIOLATION_PRIVACY: return "Privacy Violation";
-        case ETHICS_VIOLATION_CONSENT: return "Consent Violation";
-        case ETHICS_VIOLATION_DIGNITY: return "Dignity Violation";
-        case ETHICS_VIOLATION_RIGHTS: return "Rights Violation";
-        default: return "Unknown";
+        case ETHICS_VIOLATION_NONE:
+            return "None";
+        case ETHICS_VIOLATION_HARM:
+            return "Harm";
+        case ETHICS_VIOLATION_UNFAIRNESS:
+            return "Unfairness";
+        case ETHICS_VIOLATION_DECEPTION:
+            return "Deception";
+        case ETHICS_VIOLATION_AUTONOMY:
+            return "Autonomy Violation";
+        case ETHICS_VIOLATION_PRIVACY:
+            return "Privacy Violation";
+        case ETHICS_VIOLATION_CONSENT:
+            return "Consent Violation";
+        case ETHICS_VIOLATION_DIGNITY:
+            return "Dignity Violation";
+        case ETHICS_VIOLATION_RIGHTS:
+            return "Rights Violation";
+        default:
+            return "Unknown";
     }
 }
 
@@ -1454,9 +1435,11 @@ const char* ethics_violation_type_name(ethics_violation_type_t type) {
  *
  * COMPLEXITY: O(1)
  */
-void ethics_print_evaluation(const ethics_evaluation_t* eval) {
+void ethics_print_evaluation(const ethics_evaluation_t* eval)
+{
     // Guard clause: Validate input
-    if (!eval) return;
+    if (!eval)
+        return;
 
     printf("Ethics Evaluation:\n");
     printf("  Allowed: %s\n", eval->allowed ? "YES" : "NO");
@@ -1465,8 +1448,7 @@ void ethics_print_evaluation(const ethics_evaluation_t* eval) {
     printf("  Recommended Action: %d\n", eval->recommended_action);
 
     if (eval->primary_violation != ETHICS_VIOLATION_NONE) {
-        printf("  Primary Violation: %s\n",
-               ethics_violation_type_name(eval->primary_violation));
+        printf("  Primary Violation: %s\n", ethics_violation_type_name(eval->primary_violation));
     }
 
     printf("  Explanation: %s\n", eval->explanation);
@@ -1481,9 +1463,11 @@ void ethics_print_evaluation(const ethics_evaluation_t* eval) {
  *
  * @return true on success
  */
-bool ethics_get_statistics(ethics_engine_t engine, ethics_statistics_t* stats) {
+bool ethics_get_statistics(ethics_engine_t engine, ethics_statistics_t* stats)
+{
     // Guard clause: Validate inputs
-    if (!engine || !stats) return false;
+    if (!engine || !stats)
+        return false;
 
     stats->total_evaluations = engine->total_evaluations;
     stats->violations_detected = engine->violations_detected;
@@ -1515,23 +1499,22 @@ bool ethics_get_statistics(ethics_engine_t engine, ethics_statistics_t* stats) {
  * @param policy Policy to add
  * @return true on success, false on error
  */
-bool ethics_engine_add_policy(ethics_engine_t engine,
-                              const ethics_policy_t* policy) {
+bool ethics_engine_add_policy(ethics_engine_t engine, const ethics_policy_t* policy)
+{
     // Guard clauses: Validate inputs
-    if (!engine || !policy) return false;
+    if (!engine || !policy)
+        return false;
 
     // Check if array needs expansion
     if (engine->num_policies >= engine->policies_capacity) {
         // Double capacity (or initial size of 8)
-        uint32_t new_capacity = engine->policies_capacity > 0 ?
-                                engine->policies_capacity * 2 : 8;
+        uint32_t new_capacity = engine->policies_capacity > 0 ? engine->policies_capacity * 2 : 8;
 
-        ethics_policy_t* new_policies = (ethics_policy_t*)realloc(
-            engine->policies,
-            new_capacity * sizeof(ethics_policy_t)
-        );
+        ethics_policy_t* new_policies =
+            (ethics_policy_t*) realloc(engine->policies, new_capacity * sizeof(ethics_policy_t));
 
-        if (!new_policies) return false;  // Allocation failed
+        if (!new_policies)
+            return false;  // Allocation failed
 
         engine->policies = new_policies;
         engine->policies_capacity = new_capacity;
@@ -1571,21 +1554,24 @@ bool ethics_engine_add_policy(ethics_engine_t engine,
  * @param policy_id Policy ID to remove
  * @return true if policy was found and removed, false otherwise
  */
-bool ethics_engine_remove_policy(ethics_engine_t engine, uint32_t policy_id) {
+bool ethics_engine_remove_policy(ethics_engine_t engine, uint32_t policy_id)
+{
     // Guard clause: Validate input
-    if (!engine) return false;
+    if (!engine)
+        return false;
 
     // Search for policy with matching policy_id
     int found_index = -1;
     for (uint32_t i = 0; i < engine->num_policies; i++) {
         if (engine->policies[i].policy_id == policy_id) {
-            found_index = (int)i;
+            found_index = (int) i;
             break;
         }
     }
 
     // Policy not found
-    if (found_index < 0) return false;
+    if (found_index < 0)
+        return false;
 
     // Remove from hash table
     if (engine->policy_table) {
@@ -1593,7 +1579,7 @@ bool ethics_engine_remove_policy(ethics_engine_t engine, uint32_t policy_id) {
     }
 
     // Shift array elements down to fill gap
-    for (uint32_t i = (uint32_t)found_index; i < engine->num_policies - 1; i++) {
+    for (uint32_t i = (uint32_t) found_index; i < engine->num_policies - 1; i++) {
         engine->policies[i] = engine->policies[i + 1];
     }
 

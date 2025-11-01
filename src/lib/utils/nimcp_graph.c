@@ -7,11 +7,11 @@
  */
 
 #include "utils/nimcp_graph.h"
-#include "utils/nimcp_memory.h"
-#include "utils/nimcp_validate.h"
+#include <float.h>
 #include <stdlib.h>
 #include <string.h>
-#include <float.h>
+#include "utils/nimcp_memory.h"
+#include "utils/nimcp_validate.h"
 
 /* Internal helper functions */
 
@@ -22,14 +22,15 @@
  * WHY: Use nimcp_malloc for memory tracking
  * PATTERN: Factory Method - centralized edge creation
  */
-static NimcpEdgeNode* create_edge_node(uint32_t dest, nimcp_weight_t weight) {
+static NimcpEdgeNode* create_edge_node(uint32_t dest, nimcp_weight_t weight)
+{
     // Validate edge weight
     // WHY: Ensure weight is valid float (no NaN/Inf, within range)
     if (!nimcp_validate_float_field(&weight, sizeof(nimcp_weight_t))) {
         return NULL;
     }
 
-    NimcpEdgeNode* node = (NimcpEdgeNode*)nimcp_malloc(sizeof(NimcpEdgeNode));
+    NimcpEdgeNode* node = (NimcpEdgeNode*) nimcp_malloc(sizeof(NimcpEdgeNode));
     if (node) {
         node->dest = dest;
         node->weight = weight;
@@ -47,7 +48,8 @@ static NimcpEdgeNode* create_edge_node(uint32_t dest, nimcp_weight_t weight) {
  * WHY: Use nimcp_free for memory tracking
  * PATTERN: Chain of Responsibility - traverse and free linked list
  */
-static void free_edge_list(NimcpEdgeNode* head) {
+static void free_edge_list(NimcpEdgeNode* head)
+{
     while (head) {
         NimcpEdgeNode* next = head->next;
         nimcp_free(head);
@@ -58,12 +60,9 @@ static void free_edge_list(NimcpEdgeNode* head) {
 /**
  * @brief Depth-first search for component labeling
  */
-static void dfs_component(
-    const NimcpGraph* graph,
-    uint32_t vertex,
-    uint32_t component,
-    bool* visited) {
-    
+static void dfs_component(const NimcpGraph* graph, uint32_t vertex, uint32_t component,
+                          bool* visited)
+{
     visited[vertex] = true;
     graph->components[vertex] = component;
 
@@ -79,11 +78,8 @@ static void dfs_component(
 /**
  * @brief Find minimum distance vertex for Dijkstra's algorithm
  */
-static uint32_t find_min_distance(
-    nimcp_weight_t* distances,
-    bool* visited,
-    uint32_t vertex_count) {
-    
+static uint32_t find_min_distance(nimcp_weight_t* distances, bool* visited, uint32_t vertex_count)
+{
     nimcp_weight_t min = FLT_MAX;
     uint32_t min_vertex = NIMCP_INVALID_VERTEX;
 
@@ -104,9 +100,11 @@ static uint32_t find_min_distance(
  * WHY: Use nimcp_* memory functions for leak detection
  * PATTERN: Builder - step-by-step construction with error handling
  */
-NimcpGraph* nimcp_graph_create(void) {
-    NimcpGraph* graph = (NimcpGraph*)nimcp_malloc(sizeof(NimcpGraph));
-    if (!graph) return NULL;
+NimcpGraph* nimcp_graph_create(void)
+{
+    NimcpGraph* graph = (NimcpGraph*) nimcp_malloc(sizeof(NimcpGraph));
+    if (!graph)
+        return NULL;
 
     // Initialize graph structure
     graph->vertex_count = 0;
@@ -120,7 +118,7 @@ NimcpGraph* nimcp_graph_create(void) {
     }
 
     // Allocate vertex array (zero-initialized for clean state)
-    graph->vertices = (NimcpVertex*)nimcp_calloc(NIMCP_MAX_VERTICES, sizeof(NimcpVertex));
+    graph->vertices = (NimcpVertex*) nimcp_calloc(NIMCP_MAX_VERTICES, sizeof(NimcpVertex));
     if (!graph->vertices) {
         nimcp_mutex_destroy(&graph->lock);
         nimcp_free(graph);
@@ -128,7 +126,7 @@ NimcpGraph* nimcp_graph_create(void) {
     }
 
     // Allocate component tracking array
-    graph->components = (uint32_t*)nimcp_malloc(NIMCP_MAX_VERTICES * sizeof(uint32_t));
+    graph->components = (uint32_t*) nimcp_malloc(NIMCP_MAX_VERTICES * sizeof(uint32_t));
     if (!graph->components) {
         nimcp_free(graph->vertices);
         nimcp_mutex_destroy(&graph->lock);
@@ -144,8 +142,10 @@ NimcpGraph* nimcp_graph_create(void) {
  * WHY: Proper cleanup with nimcp_free for memory tracking
  * PATTERN: Destructor - systematic resource release
  */
-void nimcp_graph_destroy(NimcpGraph* graph) {
-    if (!graph) return;
+void nimcp_graph_destroy(NimcpGraph* graph)
+{
+    if (!graph)
+        return;
 
     // Free all edge lists (uses nimcp_free internally)
     for (uint32_t i = 0; i < graph->vertex_count; i++) {
@@ -167,16 +167,12 @@ void nimcp_graph_destroy(NimcpGraph* graph) {
  * WHY: Track new peers joining the network
  * PATTERN: Monitor - thread-safe with guard clauses
  */
-uint32_t nimcp_graph_add_vertex(
-    NimcpGraph* graph,
-    uint64_t peer_id,
-    float x,
-    float y,
-    float z,
-    uint32_t capabilities) {
-
+uint32_t nimcp_graph_add_vertex(NimcpGraph* graph, uint64_t peer_id, float x, float y, float z,
+                                uint32_t capabilities)
+{
     // Guard clause: validate parameters before locking
-    if (!graph) return NIMCP_INVALID_VERTEX;
+    if (!graph)
+        return NIMCP_INVALID_VERTEX;
 
     nimcp_mutex_lock(&graph->lock);
 
@@ -217,8 +213,10 @@ uint32_t nimcp_graph_add_vertex(
  * WHY: Maintains graph consistency when peer disconnects
  * PATTERN: Cascade Delete - removes vertex and dependent edges
  */
-bool nimcp_graph_remove_vertex(NimcpGraph* graph, uint32_t vertex_idx) {
-    if (!graph) return false;
+bool nimcp_graph_remove_vertex(NimcpGraph* graph, uint32_t vertex_idx)
+{
+    if (!graph)
+        return false;
 
     nimcp_mutex_lock(&graph->lock);
 
@@ -234,7 +232,8 @@ bool nimcp_graph_remove_vertex(NimcpGraph* graph, uint32_t vertex_idx) {
     // Remove incoming edges from other vertices
     // WHY: Maintain graph integrity - no dangling edge references
     for (uint32_t i = 0; i < graph->vertex_count; i++) {
-        if (i == vertex_idx) continue;
+        if (i == vertex_idx)
+            continue;
 
         NimcpEdgeNode** edge = &graph->vertices[i].edges;
         while (*edge) {
@@ -252,8 +251,7 @@ bool nimcp_graph_remove_vertex(NimcpGraph* graph, uint32_t vertex_idx) {
 
     // Shift remaining vertices to compact array
     if (vertex_idx < graph->vertex_count - 1) {
-        memmove(&graph->vertices[vertex_idx],
-                &graph->vertices[vertex_idx + 1],
+        memmove(&graph->vertices[vertex_idx], &graph->vertices[vertex_idx + 1],
                 (graph->vertex_count - vertex_idx - 1) * sizeof(NimcpVertex));
 
         // Update destination indices in remaining edges
@@ -278,19 +276,16 @@ bool nimcp_graph_remove_vertex(NimcpGraph* graph, uint32_t vertex_idx) {
  * WHY: Track connection establishment with quality metric
  * PATTERN: Monitor with early validation
  */
-bool nimcp_graph_add_edge(
-    NimcpGraph* graph,
-    uint32_t from,
-    uint32_t to,
-    nimcp_weight_t weight) {
-
-    if (!graph) return false;
+bool nimcp_graph_add_edge(NimcpGraph* graph, uint32_t from, uint32_t to, nimcp_weight_t weight)
+{
+    if (!graph)
+        return false;
 
     nimcp_mutex_lock(&graph->lock);
 
     // Guard clauses: validate parameters
-    if (from >= graph->vertex_count || to >= graph->vertex_count ||
-        from == to || graph->edge_count >= NIMCP_MAX_EDGES) {
+    if (from >= graph->vertex_count || to >= graph->vertex_count || from == to ||
+        graph->edge_count >= NIMCP_MAX_EDGES) {
         nimcp_mutex_unlock(&graph->lock);
         return false;
     }
@@ -328,12 +323,10 @@ bool nimcp_graph_add_edge(
  * WHY: Update topology when peer connection is lost
  * PATTERN: Linked List Remove - find and unlink node
  */
-bool nimcp_graph_remove_edge(
-    NimcpGraph* graph,
-    uint32_t from,
-    uint32_t to) {
-
-    if (!graph) return false;
+bool nimcp_graph_remove_edge(NimcpGraph* graph, uint32_t from, uint32_t to)
+{
+    if (!graph)
+        return false;
 
     nimcp_mutex_lock(&graph->lock);
 
@@ -368,15 +361,13 @@ bool nimcp_graph_remove_edge(
  * PATTERN: Algorithm Strategy - pluggable pathfinding
  * NOTE: Read-only but needs lock for consistent snapshot
  */
-NimcpPath* nimcp_graph_shortest_path(
-    const NimcpGraph* graph,
-    uint32_t from,
-    uint32_t to) {
-
-    if (!graph) return NULL;
+NimcpPath* nimcp_graph_shortest_path(const NimcpGraph* graph, uint32_t from, uint32_t to)
+{
+    if (!graph)
+        return NULL;
 
     // Cast away const to lock (graph isn't modified, just protected)
-    NimcpGraph* g = (NimcpGraph*)graph;
+    NimcpGraph* g = (NimcpGraph*) graph;
     nimcp_mutex_lock(&g->lock);
 
     // Guard clauses: validate indices
@@ -386,11 +377,10 @@ NimcpPath* nimcp_graph_shortest_path(
     }
 
     // Allocate Dijkstra's algorithm working arrays
-    nimcp_weight_t* distances = (nimcp_weight_t*)nimcp_malloc(
-        graph->vertex_count * sizeof(nimcp_weight_t));
-    uint32_t* previous = (uint32_t*)nimcp_malloc(
-        graph->vertex_count * sizeof(uint32_t));
-    bool* visited = (bool*)nimcp_calloc(graph->vertex_count, sizeof(bool));
+    nimcp_weight_t* distances =
+        (nimcp_weight_t*) nimcp_malloc(graph->vertex_count * sizeof(nimcp_weight_t));
+    uint32_t* previous = (uint32_t*) nimcp_malloc(graph->vertex_count * sizeof(uint32_t));
+    bool* visited = (bool*) nimcp_calloc(graph->vertex_count, sizeof(bool));
 
     if (!distances || !previous || !visited) {
         nimcp_free(distances);
@@ -409,15 +399,15 @@ NimcpPath* nimcp_graph_shortest_path(
     // Find shortest path
     for (uint32_t count = 0; count < graph->vertex_count - 1; count++) {
         uint32_t u = find_min_distance(distances, visited, graph->vertex_count);
-        if (u == NIMCP_INVALID_VERTEX) break;
+        if (u == NIMCP_INVALID_VERTEX)
+            break;
 
         visited[u] = true;
 
         NimcpEdgeNode* edge = graph->vertices[u].edges;
         while (edge) {
             uint32_t v = edge->dest;
-            if (!visited[v] && 
-                distances[u] != FLT_MAX &&
+            if (!visited[v] && distances[u] != FLT_MAX &&
                 distances[u] + edge->weight < distances[v]) {
                 distances[v] = distances[u] + edge->weight;
                 previous[v] = u;
@@ -429,7 +419,7 @@ NimcpPath* nimcp_graph_shortest_path(
     // Build path if destination was reached
     NimcpPath* path = NULL;
     if (distances[to] != FLT_MAX) {
-        path = (NimcpPath*)nimcp_malloc(sizeof(NimcpPath));
+        path = (NimcpPath*) nimcp_malloc(sizeof(NimcpPath));
         if (path) {
             // Count path length by traversing previous array
             uint32_t length = 0;
@@ -439,7 +429,7 @@ NimcpPath* nimcp_graph_shortest_path(
                 curr = previous[curr];
             }
 
-            path->vertices = (uint32_t*)nimcp_malloc(length * sizeof(uint32_t));
+            path->vertices = (uint32_t*) nimcp_malloc(length * sizeof(uint32_t));
             if (path->vertices) {
                 path->length = length;
                 path->total_weight = distances[to];
@@ -471,14 +461,11 @@ NimcpPath* nimcp_graph_shortest_path(
  * WHY: Track topology changes for optimization
  * PATTERN: Monitor with simple update
  */
-bool nimcp_graph_update_coordinates(
-    NimcpGraph* graph,
-    uint32_t vertex_idx,
-    float x,
-    float y,
-    float z) {
-
-    if (!graph) return false;
+bool nimcp_graph_update_coordinates(NimcpGraph* graph, uint32_t vertex_idx, float x, float y,
+                                    float z)
+{
+    if (!graph)
+        return false;
 
     // Validate coordinates before locking
     // WHY: Ensure coordinates are valid floats (no NaN/Inf, within range)
@@ -499,7 +486,7 @@ bool nimcp_graph_update_coordinates(
     graph->vertices[vertex_idx].x = x;
     graph->vertices[vertex_idx].y = y;
     graph->vertices[vertex_idx].z = z;
-    graph->vertices[vertex_idx].last_updated = 0; // TODO: Add timestamp
+    graph->vertices[vertex_idx].last_updated = 0;  // TODO: Add timestamp
 
     nimcp_mutex_unlock(&graph->lock);
     return true;
@@ -510,14 +497,13 @@ bool nimcp_graph_update_coordinates(
  * WHY: Translate peer ID to graph index for operations
  * PATTERN: Linear search (could optimize with hash map)
  */
-uint32_t nimcp_graph_find_vertex(
-    const NimcpGraph* graph,
-    uint64_t peer_id) {
-
-    if (!graph) return NIMCP_INVALID_VERTEX;
+uint32_t nimcp_graph_find_vertex(const NimcpGraph* graph, uint64_t peer_id)
+{
+    if (!graph)
+        return NIMCP_INVALID_VERTEX;
 
     // Cast away const to lock (read-only operation)
-    NimcpGraph* g = (NimcpGraph*)graph;
+    NimcpGraph* g = (NimcpGraph*) graph;
     nimcp_mutex_lock(&g->lock);
 
     for (uint32_t i = 0; i < graph->vertex_count; i++) {
@@ -536,12 +522,14 @@ uint32_t nimcp_graph_find_vertex(
  * WHY: Detect network partitions and isolated subgraphs
  * PATTERN: Depth-First Search - component discovery algorithm
  */
-uint32_t nimcp_graph_update_components(NimcpGraph* graph) {
-    if (!graph) return 0;
+uint32_t nimcp_graph_update_components(NimcpGraph* graph)
+{
+    if (!graph)
+        return 0;
 
     nimcp_mutex_lock(&graph->lock);
 
-    bool* visited = (bool*)nimcp_calloc(graph->vertex_count, sizeof(bool));
+    bool* visited = (bool*) nimcp_calloc(graph->vertex_count, sizeof(bool));
     if (!visited) {
         nimcp_mutex_unlock(&graph->lock);
         return 0;
@@ -568,16 +556,14 @@ uint32_t nimcp_graph_update_components(NimcpGraph* graph) {
  * WHY: Get list of directly connected peers
  * PATTERN: Iterator - traverse adjacency list
  */
-uint32_t nimcp_graph_get_neighbors(
-    const NimcpGraph* graph,
-    uint32_t vertex_idx,
-    uint32_t* neighbors,
-    uint32_t max_neighbors) {
-
-    if (!graph || !neighbors) return 0;
+uint32_t nimcp_graph_get_neighbors(const NimcpGraph* graph, uint32_t vertex_idx,
+                                   uint32_t* neighbors, uint32_t max_neighbors)
+{
+    if (!graph || !neighbors)
+        return 0;
 
     // Cast away const to lock (read-only operation)
-    NimcpGraph* g = (NimcpGraph*)graph;
+    NimcpGraph* g = (NimcpGraph*) graph;
     nimcp_mutex_lock(&g->lock);
 
     // Guard clause: validate vertex index
@@ -604,16 +590,14 @@ uint32_t nimcp_graph_get_neighbors(
  * WHY: Get connection quality metric for routing decisions
  * PATTERN: Search - traverse adjacency list for specific edge
  */
-bool nimcp_graph_get_edge_weight(
-    const NimcpGraph* graph,
-    uint32_t from,
-    uint32_t to,
-    nimcp_weight_t* weight) {
-
-    if (!graph || !weight) return false;
+bool nimcp_graph_get_edge_weight(const NimcpGraph* graph, uint32_t from, uint32_t to,
+                                 nimcp_weight_t* weight)
+{
+    if (!graph || !weight)
+        return false;
 
     // Cast away const to lock (read-only operation)
-    NimcpGraph* g = (NimcpGraph*)graph;
+    NimcpGraph* g = (NimcpGraph*) graph;
     nimcp_mutex_lock(&g->lock);
 
     // Guard clauses: validate indices

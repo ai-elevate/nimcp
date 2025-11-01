@@ -13,21 +13,21 @@
  * @date 2025-11-01
  */
 
-#include "test_helpers.h"
-#include <thread>
 #include <atomic>
-#include <vector>
 #include <chrono>
-#include <unordered_set>
 #include <mutex>
+#include <thread>
+#include <unordered_set>
+#include <vector>
+#include "test_helpers.h"
 
 extern "C" {
+#include "../include/nimcp_brain.h"
+#include "../include/nimcp_neuralnet.h"
 #include "../include/nimcp_p2pnode.h"
 #include "../include/nimcp_protocol.h"
 #include "../include/nimcp_replication.h"
 #include "../include/nimcp_stream.h"
-#include "../include/nimcp_neuralnet.h"
-#include "../include/nimcp_brain.h"
 }
 
 using namespace std::chrono_literals;
@@ -40,20 +40,22 @@ using namespace std::chrono_literals;
  * @brief Multi-node test fixture for P2P integration tests
  */
 class P2PNetworkIntegrationTest : public ::testing::Test {
-protected:
+   protected:
     static constexpr int MAX_TEST_NODES = 6;
     static constexpr int BASE_TEST_PORT = 9000;
 
     std::vector<p2p_node_t> nodes;
     std::vector<node_config_t> configs;
 
-    void SetUp() override {
+    void SetUp() override
+    {
         // Pre-allocate vectors
         nodes.reserve(MAX_TEST_NODES);
         configs.reserve(MAX_TEST_NODES);
     }
 
-    void TearDown() override {
+    void TearDown() override
+    {
         // Clean up all nodes
         for (auto node : nodes) {
             if (node) {
@@ -68,7 +70,8 @@ protected:
     /**
      * @brief Create and start a test node
      */
-    p2p_node_t CreateNode(int index) {
+    p2p_node_t CreateNode(int index)
+    {
         node_config_t config;
         config.listen_port = BASE_TEST_PORT + index;
         config.max_peers = 10;
@@ -92,21 +95,21 @@ protected:
     /**
      * @brief Connect two nodes
      */
-    bool ConnectNodes(p2p_node_t from, int to_index) {
-        return p2p_node_connect_peer(from, TEST_IP_LOCALHOST,
-                                      BASE_TEST_PORT + to_index);
+    bool ConnectNodes(p2p_node_t from, int to_index)
+    {
+        return p2p_node_connect_peer(from, TEST_IP_LOCALHOST, BASE_TEST_PORT + to_index);
     }
 
     /**
      * @brief Wait for node connection with timeout
      */
-    bool WaitForConnection(p2p_node_t node, int peer_index,
-                          int timeout_ms = 1000) {
+    bool WaitForConnection(p2p_node_t node, int peer_index, int timeout_ms = 1000)
+    {
         auto start = std::chrono::steady_clock::now();
         while (std::chrono::duration_cast<std::chrono::milliseconds>(
-                std::chrono::steady_clock::now() - start).count() < timeout_ms) {
-            if (p2p_node_is_peer_connected(node, TEST_IP_LOCALHOST,
-                                           BASE_TEST_PORT + peer_index)) {
+                   std::chrono::steady_clock::now() - start)
+                   .count() < timeout_ms) {
+            if (p2p_node_is_peer_connected(node, TEST_IP_LOCALHOST, BASE_TEST_PORT + peer_index)) {
                 return true;
             }
             std::this_thread::sleep_for(20ms);
@@ -117,7 +120,8 @@ protected:
     /**
      * @brief Create a star topology (node 0 at center)
      */
-    void CreateStarTopology(int num_nodes) {
+    void CreateStarTopology(int num_nodes)
+    {
         ASSERT_GE(num_nodes, 2);
         ASSERT_LE(num_nodes, MAX_TEST_NODES);
 
@@ -140,7 +144,8 @@ protected:
     /**
      * @brief Create a line topology
      */
-    void CreateLineTopology(int num_nodes) {
+    void CreateLineTopology(int num_nodes)
+    {
         ASSERT_GE(num_nodes, 2);
         ASSERT_LE(num_nodes, MAX_TEST_NODES);
 
@@ -162,7 +167,8 @@ protected:
     /**
      * @brief Create a mesh topology (fully connected)
      */
-    void CreateMeshTopology(int num_nodes) {
+    void CreateMeshTopology(int num_nodes)
+    {
         ASSERT_GE(num_nodes, 2);
         ASSERT_LE(num_nodes, MAX_TEST_NODES);
 
@@ -191,7 +197,8 @@ protected:
 /**
  * @brief Test basic node discovery and connection establishment
  */
-TEST_F(P2PNetworkIntegrationTest, BasicNodeDiscoveryAndConnection) {
+TEST_F(P2PNetworkIntegrationTest, BasicNodeDiscoveryAndConnection)
+{
     // Create two nodes
     p2p_node_t node1 = CreateNode(0);
     p2p_node_t node2 = CreateNode(1);
@@ -209,14 +216,14 @@ TEST_F(P2PNetworkIntegrationTest, BasicNodeDiscoveryAndConnection) {
     ASSERT_TRUE(WaitForConnection(node1, 1));
 
     // Verify connection is active
-    ASSERT_TRUE(p2p_node_is_peer_connected(node1, TEST_IP_LOCALHOST,
-                                           BASE_TEST_PORT + 1));
+    ASSERT_TRUE(p2p_node_is_peer_connected(node1, TEST_IP_LOCALHOST, BASE_TEST_PORT + 1));
 }
 
 /**
  * @brief Test star topology formation (hub-and-spoke)
  */
-TEST_F(P2PNetworkIntegrationTest, StarTopologyFormation) {
+TEST_F(P2PNetworkIntegrationTest, StarTopologyFormation)
+{
     const int NUM_NODES = 5;
     CreateStarTopology(NUM_NODES);
 
@@ -241,7 +248,8 @@ TEST_F(P2PNetworkIntegrationTest, StarTopologyFormation) {
 /**
  * @brief Test line topology formation (daisy-chain)
  */
-TEST_F(P2PNetworkIntegrationTest, LineTopologyFormation) {
+TEST_F(P2PNetworkIntegrationTest, LineTopologyFormation)
+{
     const int NUM_NODES = 4;
     CreateLineTopology(NUM_NODES);
 
@@ -254,7 +262,8 @@ TEST_F(P2PNetworkIntegrationTest, LineTopologyFormation) {
 /**
  * @brief Test mesh topology formation (fully connected)
  */
-TEST_F(P2PNetworkIntegrationTest, MeshTopologyFormation) {
+TEST_F(P2PNetworkIntegrationTest, MeshTopologyFormation)
+{
     const int NUM_NODES = 4;
     CreateMeshTopology(NUM_NODES);
 
@@ -269,7 +278,8 @@ TEST_F(P2PNetworkIntegrationTest, MeshTopologyFormation) {
 /**
  * @brief Test peer connection and disconnection handling
  */
-TEST_F(P2PNetworkIntegrationTest, PeerConnectionDisconnection) {
+TEST_F(P2PNetworkIntegrationTest, PeerConnectionDisconnection)
+{
     p2p_node_t node1 = CreateNode(0);
     p2p_node_t node2 = CreateNode(1);
 
@@ -281,14 +291,12 @@ TEST_F(P2PNetworkIntegrationTest, PeerConnectionDisconnection) {
     ASSERT_TRUE(WaitForConnection(node1, 1));
 
     // Disconnect
-    ASSERT_TRUE(p2p_node_disconnect_peer(node1, TEST_IP_LOCALHOST,
-                                         BASE_TEST_PORT + 1));
+    ASSERT_TRUE(p2p_node_disconnect_peer(node1, TEST_IP_LOCALHOST, BASE_TEST_PORT + 1));
 
     std::this_thread::sleep_for(100ms);
 
     // Verify disconnection
-    ASSERT_FALSE(p2p_node_is_peer_connected(node1, TEST_IP_LOCALHOST,
-                                            BASE_TEST_PORT + 1));
+    ASSERT_FALSE(p2p_node_is_peer_connected(node1, TEST_IP_LOCALHOST, BASE_TEST_PORT + 1));
 
     // Reconnect
     ASSERT_TRUE(ConnectNodes(node1, 1));
@@ -298,7 +306,8 @@ TEST_F(P2PNetworkIntegrationTest, PeerConnectionDisconnection) {
 /**
  * @brief Test network resilience with node failure
  */
-TEST_F(P2PNetworkIntegrationTest, NetworkResilienceNodeFailure) {
+TEST_F(P2PNetworkIntegrationTest, NetworkResilienceNodeFailure)
+{
     const int NUM_NODES = 4;
     CreateStarTopology(NUM_NODES);
 
@@ -317,10 +326,8 @@ TEST_F(P2PNetworkIntegrationTest, NetworkResilienceNodeFailure) {
 
     // Other leaf nodes should still be connected to center
     // Check from leaf perspective
-    ASSERT_TRUE(p2p_node_is_peer_connected(nodes[1], TEST_IP_LOCALHOST,
-                                           BASE_TEST_PORT + 0));
-    ASSERT_TRUE(p2p_node_is_peer_connected(nodes[3], TEST_IP_LOCALHOST,
-                                           BASE_TEST_PORT + 0));
+    ASSERT_TRUE(p2p_node_is_peer_connected(nodes[1], TEST_IP_LOCALHOST, BASE_TEST_PORT + 0));
+    ASSERT_TRUE(p2p_node_is_peer_connected(nodes[3], TEST_IP_LOCALHOST, BASE_TEST_PORT + 0));
 
     // Center node should still be operational
     ASSERT_EQ(p2p_node_get_status(nodes[0]), NODE_STATUS_RUNNING);
@@ -329,7 +336,8 @@ TEST_F(P2PNetworkIntegrationTest, NetworkResilienceNodeFailure) {
 /**
  * @brief Test network recovery after partition
  */
-TEST_F(P2PNetworkIntegrationTest, NetworkPartitionRecovery) {
+TEST_F(P2PNetworkIntegrationTest, NetworkPartitionRecovery)
+{
     const int NUM_NODES = 3;
     CreateLineTopology(NUM_NODES);
 
@@ -369,17 +377,20 @@ struct MessageTracker {
     std::vector<event_packet_t> received_events;
     std::atomic<int> event_count{0};
 
-    void RecordEvent(const event_packet_t& event) {
+    void RecordEvent(const event_packet_t& event)
+    {
         std::lock_guard<std::mutex> lock(mutex);
         received_events.push_back(event);
         event_count++;
     }
 
-    int GetEventCount() const {
+    int GetEventCount() const
+    {
         return event_count.load();
     }
 
-    void Clear() {
+    void Clear()
+    {
         std::lock_guard<std::mutex> lock(mutex);
         received_events.clear();
         event_count = 0;
@@ -389,7 +400,8 @@ struct MessageTracker {
 /**
  * @brief Test direct peer-to-peer event packet transmission
  */
-TEST_F(P2PNetworkIntegrationTest, DirectP2PEventTransmission) {
+TEST_F(P2PNetworkIntegrationTest, DirectP2PEventTransmission)
+{
     p2p_node_t node1 = CreateNode(0);
     p2p_node_t node2 = CreateNode(1);
 
@@ -418,8 +430,8 @@ TEST_F(P2PNetworkIntegrationTest, DirectP2PEventTransmission) {
 
     // Validate serialized event
     event_packet_t deserialized_event;
-    int deserialized_len = event_packet_deserialize(buffer, serialized_len,
-                                                     &deserialized_event, nullptr, 0);
+    int deserialized_len =
+        event_packet_deserialize(buffer, serialized_len, &deserialized_event, nullptr, 0);
     ASSERT_GT(deserialized_len, 0);
     ASSERT_TRUE(event_packet_validate(&deserialized_event));
 
@@ -433,7 +445,8 @@ TEST_F(P2PNetworkIntegrationTest, DirectP2PEventTransmission) {
 /**
  * @brief Test protocol message serialization and validation
  */
-TEST_F(P2PNetworkIntegrationTest, ProtocolMessageHandling) {
+TEST_F(P2PNetworkIntegrationTest, ProtocolMessageHandling)
+{
     // Test handshake message
     handshake_payload_t handshake;
     handshake.node_id = 12345;
@@ -441,15 +454,15 @@ TEST_F(P2PNetworkIntegrationTest, ProtocolMessageHandling) {
     handshake.capabilities = 0xFF;
 
     uint8_t buffer[1024];
-    int msg_len = protocol_serialize_message(MSG_TYPE_HANDSHAKE, &handshake,
-                                             sizeof(handshake), buffer, sizeof(buffer));
+    int msg_len = protocol_serialize_message(MSG_TYPE_HANDSHAKE, &handshake, sizeof(handshake),
+                                             buffer, sizeof(buffer));
     ASSERT_GT(msg_len, 0);
 
     // Deserialize and validate
     msg_header_t header;
     handshake_payload_t received_handshake;
-    int recv_len = protocol_deserialize_message(buffer, msg_len, &header,
-                                                &received_handshake, sizeof(received_handshake));
+    int recv_len = protocol_deserialize_message(buffer, msg_len, &header, &received_handshake,
+                                                sizeof(received_handshake));
     ASSERT_GT(recv_len, 0);
     ASSERT_TRUE(protocol_validate_header(&header));
 
@@ -462,7 +475,8 @@ TEST_F(P2PNetworkIntegrationTest, ProtocolMessageHandling) {
 /**
  * @brief Test state update message propagation
  */
-TEST_F(P2PNetworkIntegrationTest, StateUpdatePropagation) {
+TEST_F(P2PNetworkIntegrationTest, StateUpdatePropagation)
+{
     const int NUM_NODES = 3;
     CreateLineTopology(NUM_NODES);
 
@@ -473,15 +487,15 @@ TEST_F(P2PNetworkIntegrationTest, StateUpdatePropagation) {
     update.timestamp = 5000;
 
     uint8_t buffer[1024];
-    int msg_len = protocol_serialize_message(MSG_TYPE_STATE_UPDATE, &update,
-                                             sizeof(update), buffer, sizeof(buffer));
+    int msg_len = protocol_serialize_message(MSG_TYPE_STATE_UPDATE, &update, sizeof(update), buffer,
+                                             sizeof(buffer));
     ASSERT_GT(msg_len, 0);
 
     // Deserialize and validate
     msg_header_t header;
     state_update_payload_t received_update;
-    int recv_len = protocol_deserialize_message(buffer, msg_len, &header,
-                                                &received_update, sizeof(received_update));
+    int recv_len = protocol_deserialize_message(buffer, msg_len, &header, &received_update,
+                                                sizeof(received_update));
     ASSERT_GT(recv_len, 0);
     ASSERT_TRUE(protocol_validate_header(&header));
 
@@ -494,7 +508,8 @@ TEST_F(P2PNetworkIntegrationTest, StateUpdatePropagation) {
 /**
  * @brief Test ping-pong health check mechanism
  */
-TEST_F(P2PNetworkIntegrationTest, PingPongHealthCheck) {
+TEST_F(P2PNetworkIntegrationTest, PingPongHealthCheck)
+{
     p2p_node_t node1 = CreateNode(0);
     p2p_node_t node2 = CreateNode(1);
 
@@ -506,20 +521,17 @@ TEST_F(P2PNetworkIntegrationTest, PingPongHealthCheck) {
 
     // Create ping message
     uint8_t buffer[1024];
-    int ping_len = protocol_serialize_message(MSG_TYPE_PING, nullptr, 0,
-                                              buffer, sizeof(buffer));
+    int ping_len = protocol_serialize_message(MSG_TYPE_PING, nullptr, 0, buffer, sizeof(buffer));
     ASSERT_GT(ping_len, 0);
 
     // Validate ping
     msg_header_t header;
-    int recv_len = protocol_deserialize_message(buffer, ping_len, &header,
-                                                nullptr, 0);
+    int recv_len = protocol_deserialize_message(buffer, ping_len, &header, nullptr, 0);
     ASSERT_GT(recv_len, 0);
     ASSERT_EQ(header.type, MSG_TYPE_PING);
 
     // Create pong response
-    int pong_len = protocol_serialize_message(MSG_TYPE_PONG, nullptr, 0,
-                                              buffer, sizeof(buffer));
+    int pong_len = protocol_serialize_message(MSG_TYPE_PONG, nullptr, 0, buffer, sizeof(buffer));
     ASSERT_GT(pong_len, 0);
 
     // Validate pong
@@ -531,13 +543,14 @@ TEST_F(P2PNetworkIntegrationTest, PingPongHealthCheck) {
 /**
  * @brief Test feature code routing and filtering
  */
-TEST_F(P2PNetworkIntegrationTest, FeatureCodeRoutingAndFiltering) {
+TEST_F(P2PNetworkIntegrationTest, FeatureCodeRoutingAndFiltering)
+{
     // Create subscription filter for vision domain
     subscription_filter_t vision_filter;
     vision_filter.feature_code = MAKE_FEATURE_CODE(FEATURE_DOMAIN_VISION, 0);
-    vision_filter.feature_mask = 0xFF000000; // Match domain only
+    vision_filter.feature_mask = 0xFF000000;  // Match domain only
     vision_filter.confidence_threshold = 0.5f;
-    vision_filter.max_rate_hz = 0; // Unlimited
+    vision_filter.max_rate_hz = 0;  // Unlimited
 
     // Create event packets with different domains
     event_packet_t vision_event, audio_event;
@@ -545,13 +558,11 @@ TEST_F(P2PNetworkIntegrationTest, FeatureCodeRoutingAndFiltering) {
     memset(&audio_event, 0, sizeof(audio_event));
 
     EVENT_SET_VERSION(&vision_event, PROTOCOL_VERSION);
-    EVENT_SET_FEATURE_CODE(&vision_event,
-                          MAKE_FEATURE_CODE(FEATURE_DOMAIN_VISION, 0x100));
+    EVENT_SET_FEATURE_CODE(&vision_event, MAKE_FEATURE_CODE(FEATURE_DOMAIN_VISION, 0x100));
     vision_event.confidence = EVENT_FLOAT_TO_CONFIDENCE(0.8f);
 
     EVENT_SET_VERSION(&audio_event, PROTOCOL_VERSION);
-    EVENT_SET_FEATURE_CODE(&audio_event,
-                          MAKE_FEATURE_CODE(FEATURE_DOMAIN_AUDITORY, 0x200));
+    EVENT_SET_FEATURE_CODE(&audio_event, MAKE_FEATURE_CODE(FEATURE_DOMAIN_AUDITORY, 0x200));
     audio_event.confidence = EVENT_FLOAT_TO_CONFIDENCE(0.9f);
 
     // Test subscription matching
@@ -562,41 +573,42 @@ TEST_F(P2PNetworkIntegrationTest, FeatureCodeRoutingAndFiltering) {
 /**
  * @brief Test message checksum validation
  */
-TEST_F(P2PNetworkIntegrationTest, MessageChecksumValidation) {
+TEST_F(P2PNetworkIntegrationTest, MessageChecksumValidation)
+{
     handshake_payload_t handshake;
     handshake.node_id = 999;
     handshake.listen_port = BASE_TEST_PORT;
     handshake.capabilities = 0x0F;
 
     uint8_t buffer[1024];
-    int msg_len = protocol_serialize_message(MSG_TYPE_HANDSHAKE, &handshake,
-                                             sizeof(handshake), buffer, sizeof(buffer));
+    int msg_len = protocol_serialize_message(MSG_TYPE_HANDSHAKE, &handshake, sizeof(handshake),
+                                             buffer, sizeof(buffer));
     ASSERT_GT(msg_len, 0);
 
     // Deserialize and validate checksum
     msg_header_t header;
     handshake_payload_t received;
-    int recv_len = protocol_deserialize_message(buffer, msg_len, &header,
-                                                &received, sizeof(received));
+    int recv_len =
+        protocol_deserialize_message(buffer, msg_len, &header, &received, sizeof(received));
     ASSERT_GT(recv_len, 0);
     ASSERT_TRUE(protocol_validate_header(&header));
 
     // Calculate and verify checksum
-    uint32_t calculated_checksum = protocol_calculate_checksum(&header, &received,
-                                                                sizeof(received));
+    uint32_t calculated_checksum =
+        protocol_calculate_checksum(&header, &received, sizeof(received));
     ASSERT_EQ(calculated_checksum, header.checksum);
 
     // Corrupt message and verify checksum fails
-    buffer[10] ^= 0xFF; // Flip bits
-    recv_len = protocol_deserialize_message(buffer, msg_len, &header,
-                                            &received, sizeof(received));
+    buffer[10] ^= 0xFF;  // Flip bits
+    recv_len = protocol_deserialize_message(buffer, msg_len, &header, &received, sizeof(received));
     // Note: Implementation may detect corruption via checksum
 }
 
 /**
  * @brief Test control message serialization
  */
-TEST_F(P2PNetworkIntegrationTest, ControlMessageHandling) {
+TEST_F(P2PNetworkIntegrationTest, ControlMessageHandling)
+{
     control_message_t ctrl_msg;
     memset(&ctrl_msg, 0, sizeof(ctrl_msg));
 
@@ -604,7 +616,7 @@ TEST_F(P2PNetworkIntegrationTest, ControlMessageHandling) {
     ctrl_msg.msg_type = CTRL_MSG_HEARTBEAT;
     ctrl_msg.flags = CTRL_FLAG_ACK_REQUIRED;
     ctrl_msg.source_node_id = 1001;
-    ctrl_msg.target_specifier = 0xFFFFFFFF; // Broadcast
+    ctrl_msg.target_specifier = 0xFFFFFFFF;  // Broadcast
     ctrl_msg.sequence_number = 42;
     ctrl_msg.param_count = 0;
     ctrl_msg.message_length = sizeof(control_message_t);
@@ -615,8 +627,7 @@ TEST_F(P2PNetworkIntegrationTest, ControlMessageHandling) {
 
     // Deserialize and validate
     control_message_t received_ctrl;
-    int recv_len = control_message_deserialize(buffer, msg_len, &received_ctrl,
-                                                nullptr, 0);
+    int recv_len = control_message_deserialize(buffer, msg_len, &received_ctrl, nullptr, 0);
     ASSERT_GT(recv_len, 0);
     ASSERT_TRUE(control_message_validate(&received_ctrl));
 
@@ -633,7 +644,8 @@ TEST_F(P2PNetworkIntegrationTest, ControlMessageHandling) {
 /**
  * @brief Test neural network creation and basic operation
  */
-TEST_F(P2PNetworkIntegrationTest, NeuralNetworkBasicOperation) {
+TEST_F(P2PNetworkIntegrationTest, NeuralNetworkBasicOperation)
+{
     network_config_t config = create_test_network_config();
     config.input_size = 5;
     config.output_size = 3;
@@ -665,7 +677,8 @@ TEST_F(P2PNetworkIntegrationTest, NeuralNetworkBasicOperation) {
 /**
  * @brief Test distributed pattern recognition across nodes
  */
-TEST_F(P2PNetworkIntegrationTest, DistributedPatternRecognition) {
+TEST_F(P2PNetworkIntegrationTest, DistributedPatternRecognition)
+{
     const int NUM_NODES = 3;
     CreateStarTopology(NUM_NODES);
 
@@ -700,7 +713,8 @@ TEST_F(P2PNetworkIntegrationTest, DistributedPatternRecognition) {
 /**
  * @brief Test synaptic weight synchronization across network
  */
-TEST_F(P2PNetworkIntegrationTest, SynapticWeightSynchronization) {
+TEST_F(P2PNetworkIntegrationTest, SynapticWeightSynchronization)
+{
     p2p_node_t node1 = CreateNode(0);
     p2p_node_t node2 = CreateNode(1);
 
@@ -735,7 +749,8 @@ TEST_F(P2PNetworkIntegrationTest, SynapticWeightSynchronization) {
 /**
  * @brief Test STDP learning across distributed nodes
  */
-TEST_F(P2PNetworkIntegrationTest, DistributedSTDPLearning) {
+TEST_F(P2PNetworkIntegrationTest, DistributedSTDPLearning)
+{
     network_config_t config = create_test_network_config();
     config.enable_stdp = true;
     config.stdp_window = 20.0f;
@@ -766,7 +781,8 @@ TEST_F(P2PNetworkIntegrationTest, DistributedSTDPLearning) {
 /**
  * @brief Test homeostatic plasticity in distributed network
  */
-TEST_F(P2PNetworkIntegrationTest, DistributedHomeostaticPlasticity) {
+TEST_F(P2PNetworkIntegrationTest, DistributedHomeostaticPlasticity)
+{
     network_config_t config = create_test_network_config();
     config.enable_homeostasis = true;
     config.target_activity = 0.1f;
@@ -782,15 +798,16 @@ TEST_F(P2PNetworkIntegrationTest, DistributedHomeostaticPlasticity) {
     // Update neuron state multiple times
     uint64_t timestamp = 1000;
     for (int i = 0; i < 10; i++) {
-        ASSERT_TRUE(neural_network_update_neuron(network, neuron_id,
-                                                  0.5f + i * 0.05f, timestamp + i * 100));
+        ASSERT_TRUE(neural_network_update_neuron(network, neuron_id, 0.5f + i * 0.05f,
+                                                 timestamp + i * 100));
     }
 
     // Apply homeostasis (may not be implemented or may require specific conditions)
     // Note: Some neural network implementations may not support this directly
-    bool homeostasis_result = neural_network_apply_homeostasis(network, neuron_id, timestamp + 1000);
+    bool homeostasis_result =
+        neural_network_apply_homeostasis(network, neuron_id, timestamp + 1000);
     // Test passes if either it works or if the API is not yet fully implemented
-    (void)homeostasis_result; // Suppress unused warning
+    (void) homeostasis_result;  // Suppress unused warning
 
     neural_network_destroy(network);
 }
@@ -798,7 +815,8 @@ TEST_F(P2PNetworkIntegrationTest, DistributedHomeostaticPlasticity) {
 /**
  * @brief Test activity-dependent weight scaling across network
  */
-TEST_F(P2PNetworkIntegrationTest, ActivityDependentWeightScaling) {
+TEST_F(P2PNetworkIntegrationTest, ActivityDependentWeightScaling)
+{
     network_config_t config = create_test_network_config();
     neural_network_t network = neural_network_create(&config);
     ASSERT_NE(network, nullptr);
@@ -833,7 +851,8 @@ TEST_F(P2PNetworkIntegrationTest, ActivityDependentWeightScaling) {
 /**
  * @brief Test event packet transmission over P2P network
  */
-TEST_F(P2PNetworkIntegrationTest, EventPacketP2PTransmission) {
+TEST_F(P2PNetworkIntegrationTest, EventPacketP2PTransmission)
+{
     p2p_node_t node1 = CreateNode(0);
     p2p_node_t node2 = CreateNode(1);
 
@@ -855,7 +874,8 @@ TEST_F(P2PNetworkIntegrationTest, EventPacketP2PTransmission) {
     event.hop_count = 1;
 
     uint8_t payload[32];
-    for (int i = 0; i < 32; i++) payload[i] = i;
+    for (int i = 0; i < 32; i++)
+        payload[i] = i;
     event.payload_length = sizeof(payload);
 
     // Serialize with payload
@@ -866,8 +886,8 @@ TEST_F(P2PNetworkIntegrationTest, EventPacketP2PTransmission) {
     // Deserialize and validate
     event_packet_t recv_event;
     uint8_t recv_payload[32];
-    int recv_len = event_packet_deserialize(buffer, msg_len, &recv_event,
-                                            recv_payload, sizeof(recv_payload));
+    int recv_len =
+        event_packet_deserialize(buffer, msg_len, &recv_event, recv_payload, sizeof(recv_payload));
     ASSERT_GT(recv_len, 0);
     ASSERT_TRUE(event_packet_validate(&recv_event));
 
@@ -881,7 +901,8 @@ TEST_F(P2PNetworkIntegrationTest, EventPacketP2PTransmission) {
 /**
  * @brief Test protocol version negotiation
  */
-TEST_F(P2PNetworkIntegrationTest, ProtocolVersionNegotiation) {
+TEST_F(P2PNetworkIntegrationTest, ProtocolVersionNegotiation)
+{
     control_message_t ctrl_msg;
     memset(&ctrl_msg, 0, sizeof(ctrl_msg));
 
@@ -910,7 +931,8 @@ TEST_F(P2PNetworkIntegrationTest, ProtocolVersionNegotiation) {
 /**
  * @brief Test multi-hop event routing with hop count
  */
-TEST_F(P2PNetworkIntegrationTest, MultiHopEventRouting) {
+TEST_F(P2PNetworkIntegrationTest, MultiHopEventRouting)
+{
     const int NUM_NODES = 4;
     CreateLineTopology(NUM_NODES);
 
@@ -943,7 +965,8 @@ TEST_F(P2PNetworkIntegrationTest, MultiHopEventRouting) {
 /**
  * @brief Test subscription-based event filtering
  */
-TEST_F(P2PNetworkIntegrationTest, SubscriptionBasedFiltering) {
+TEST_F(P2PNetworkIntegrationTest, SubscriptionBasedFiltering)
+{
     // Create filter for high-confidence emotion events
     subscription_filter_t emotion_filter;
     emotion_filter.feature_code = MAKE_FEATURE_CODE(FEATURE_DOMAIN_EMOTION, 0);
@@ -958,18 +981,15 @@ TEST_F(P2PNetworkIntegrationTest, SubscriptionBasedFiltering) {
     memset(&vision_event, 0, sizeof(event_packet_t));
 
     EVENT_SET_VERSION(&high_conf_emotion, PROTOCOL_VERSION);
-    EVENT_SET_FEATURE_CODE(&high_conf_emotion,
-                          MAKE_FEATURE_CODE(FEATURE_DOMAIN_EMOTION, 0x100));
+    EVENT_SET_FEATURE_CODE(&high_conf_emotion, MAKE_FEATURE_CODE(FEATURE_DOMAIN_EMOTION, 0x100));
     high_conf_emotion.confidence = EVENT_FLOAT_TO_CONFIDENCE(0.9f);
 
     EVENT_SET_VERSION(&low_conf_emotion, PROTOCOL_VERSION);
-    EVENT_SET_FEATURE_CODE(&low_conf_emotion,
-                          MAKE_FEATURE_CODE(FEATURE_DOMAIN_EMOTION, 0x200));
+    EVENT_SET_FEATURE_CODE(&low_conf_emotion, MAKE_FEATURE_CODE(FEATURE_DOMAIN_EMOTION, 0x200));
     low_conf_emotion.confidence = EVENT_FLOAT_TO_CONFIDENCE(0.5f);
 
     EVENT_SET_VERSION(&vision_event, PROTOCOL_VERSION);
-    EVENT_SET_FEATURE_CODE(&vision_event,
-                          MAKE_FEATURE_CODE(FEATURE_DOMAIN_VISION, 0x300));
+    EVENT_SET_FEATURE_CODE(&vision_event, MAKE_FEATURE_CODE(FEATURE_DOMAIN_VISION, 0x300));
     vision_event.confidence = EVENT_FLOAT_TO_CONFIDENCE(0.95f);
 
     // Test filtering
@@ -981,11 +1001,12 @@ TEST_F(P2PNetworkIntegrationTest, SubscriptionBasedFiltering) {
 /**
  * @brief Test error handling in message transmission
  */
-TEST_F(P2PNetworkIntegrationTest, MessageTransmissionErrorHandling) {
+TEST_F(P2PNetworkIntegrationTest, MessageTransmissionErrorHandling)
+{
     // Test invalid magic number
     msg_header_t bad_header;
     memset(&bad_header, 0, sizeof(bad_header));
-    bad_header.magic = 0xDEADBEEF; // Invalid
+    bad_header.magic = 0xDEADBEEF;  // Invalid
     bad_header.version = PROTOCOL_VERSION;
     bad_header.type = MSG_TYPE_PING;
 
@@ -993,7 +1014,7 @@ TEST_F(P2PNetworkIntegrationTest, MessageTransmissionErrorHandling) {
 
     // Test invalid version
     bad_header.magic = PROTOCOL_MAGIC;
-    bad_header.version = 99; // Invalid version
+    bad_header.version = 99;  // Invalid version
     ASSERT_FALSE(protocol_validate_header(&bad_header));
 
     // Test valid header
@@ -1004,7 +1025,8 @@ TEST_F(P2PNetworkIntegrationTest, MessageTransmissionErrorHandling) {
 /**
  * @brief Test graceful disconnect notification
  */
-TEST_F(P2PNetworkIntegrationTest, GracefulDisconnectNotification) {
+TEST_F(P2PNetworkIntegrationTest, GracefulDisconnectNotification)
+{
     p2p_node_t node1 = CreateNode(0);
     p2p_node_t node2 = CreateNode(1);
 
@@ -1016,8 +1038,8 @@ TEST_F(P2PNetworkIntegrationTest, GracefulDisconnectNotification) {
 
     // Create disconnect message
     uint8_t buffer[1024];
-    int msg_len = protocol_serialize_message(MSG_TYPE_DISCONNECT, nullptr, 0,
-                                             buffer, sizeof(buffer));
+    int msg_len =
+        protocol_serialize_message(MSG_TYPE_DISCONNECT, nullptr, 0, buffer, sizeof(buffer));
     ASSERT_GT(msg_len, 0);
 
     // Validate disconnect message
@@ -1037,7 +1059,8 @@ TEST_F(P2PNetworkIntegrationTest, GracefulDisconnectNotification) {
 /**
  * @brief Test high message volume throughput
  */
-TEST_F(P2PNetworkIntegrationTest, HighMessageVolumeThroughput) {
+TEST_F(P2PNetworkIntegrationTest, HighMessageVolumeThroughput)
+{
     p2p_node_t node1 = CreateNode(0);
     p2p_node_t node2 = CreateNode(1);
 
@@ -1074,17 +1097,18 @@ TEST_F(P2PNetworkIntegrationTest, HighMessageVolumeThroughput) {
     auto end = std::chrono::steady_clock::now();
     auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
 
-    ASSERT_GT(successful_sends, NUM_MESSAGES * 0.95); // At least 95% success
+    ASSERT_GT(successful_sends, NUM_MESSAGES * 0.95);  // At least 95% success
 
     // Calculate throughput
     double throughput = (successful_sends * 1000.0) / duration.count();
-    ASSERT_GT(throughput, 100.0); // At least 100 messages/second
+    ASSERT_GT(throughput, 100.0);  // At least 100 messages/second
 }
 
 /**
  * @brief Test concurrent connection handling
  */
-TEST_F(P2PNetworkIntegrationTest, ConcurrentConnectionHandling) {
+TEST_F(P2PNetworkIntegrationTest, ConcurrentConnectionHandling)
+{
     const int NUM_NODES = 6;
 
     // Create all nodes
@@ -1112,13 +1136,14 @@ TEST_F(P2PNetworkIntegrationTest, ConcurrentConnectionHandling) {
         thread.join();
     }
 
-    ASSERT_GE(successful_connections.load(), NUM_NODES - 2); // Allow 1 failure
+    ASSERT_GE(successful_connections.load(), NUM_NODES - 2);  // Allow 1 failure
 }
 
 /**
  * @brief Test network partitioning and healing
  */
-TEST_F(P2PNetworkIntegrationTest, NetworkPartitioningAndHealing) {
+TEST_F(P2PNetworkIntegrationTest, NetworkPartitioningAndHealing)
+{
     const int NUM_NODES = 4;
     CreateMeshTopology(NUM_NODES);
 
@@ -1141,8 +1166,8 @@ TEST_F(P2PNetworkIntegrationTest, NetworkPartitioningAndHealing) {
     // Verify partition
     for (int i = 0; i < NUM_NODES; i++) {
         if (i != 2) {
-            ASSERT_FALSE(p2p_node_is_peer_connected(nodes[2], TEST_IP_LOCALHOST,
-                                                    BASE_TEST_PORT + i));
+            ASSERT_FALSE(
+                p2p_node_is_peer_connected(nodes[2], TEST_IP_LOCALHOST, BASE_TEST_PORT + i));
         }
     }
 
@@ -1166,7 +1191,8 @@ TEST_F(P2PNetworkIntegrationTest, NetworkPartitioningAndHealing) {
 /**
  * @brief Test rapid topology changes
  */
-TEST_F(P2PNetworkIntegrationTest, RapidTopologyChanges) {
+TEST_F(P2PNetworkIntegrationTest, RapidTopologyChanges)
+{
     const int NUM_NODES = 4;
 
     // Create nodes
@@ -1203,7 +1229,8 @@ TEST_F(P2PNetworkIntegrationTest, RapidTopologyChanges) {
 /**
  * @brief Test memory stability under sustained load
  */
-TEST_F(P2PNetworkIntegrationTest, MemoryStabilityUnderLoad) {
+TEST_F(P2PNetworkIntegrationTest, MemoryStabilityUnderLoad)
+{
     p2p_node_t node1 = CreateNode(0);
     p2p_node_t node2 = CreateNode(1);
 
@@ -1257,7 +1284,8 @@ TEST_F(P2PNetworkIntegrationTest, MemoryStabilityUnderLoad) {
  * - Protocol compliance
  * - Stress handling
  */
-TEST_F(P2PNetworkIntegrationTest, ComprehensiveEndToEndIntegration) {
+TEST_F(P2PNetworkIntegrationTest, ComprehensiveEndToEndIntegration)
+{
     const int NUM_NODES = 4;
     CreateMeshTopology(NUM_NODES);
 
@@ -1284,8 +1312,7 @@ TEST_F(P2PNetworkIntegrationTest, ComprehensiveEndToEndIntegration) {
         event_packet_t event;
         memset(&event, 0, sizeof(event));
         EVENT_SET_VERSION(&event, PROTOCOL_VERSION);
-        EVENT_SET_FEATURE_CODE(&event,
-                              MAKE_FEATURE_CODE(FEATURE_DOMAIN_VISION, i % 256));
+        EVENT_SET_FEATURE_CODE(&event, MAKE_FEATURE_CODE(FEATURE_DOMAIN_VISION, i % 256));
         event.source_node_id = i % NUM_NODES;
         event.timestamp = i * 100;
         event.confidence = EVENT_FLOAT_TO_CONFIDENCE(0.8f);

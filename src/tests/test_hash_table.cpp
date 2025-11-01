@@ -6,15 +6,16 @@
 #include <gtest/gtest.h>
 #include <cstring>
 extern "C" {
-    #include "utils/nimcp_hash_table.h"
+#include "utils/nimcp_hash_table.h"
 }
 
 // Test fixture for hash table operations
 class HashTableTest : public ::testing::Test {
-protected:
+   protected:
     hash_table_t* table = nullptr;
 
-    void TearDown() override {
+    void TearDown() override
+    {
         if (table) {
             hash_table_destroy(table);
             table = nullptr;
@@ -22,32 +23,30 @@ protected:
     }
 
     // Helper to create string table with default config
-    void CreateDefaultStringTable() {
-        hash_table_config_t config = {
-            .initial_buckets = 16,
-            .key_type = HASH_KEY_STRING,
-            .hash_algorithm = HASH_ALG_FNV1A,
-            .custom_hash_fn = nullptr,
-            .custom_compare_fn = nullptr,
-            .value_destructor = nullptr,
-            .case_insensitive = false,
-            .thread_safe = false
-        };
+    void CreateDefaultStringTable()
+    {
+        hash_table_config_t config = {.initial_buckets = 16,
+                                      .key_type = HASH_KEY_STRING,
+                                      .hash_algorithm = HASH_ALG_FNV1A,
+                                      .custom_hash_fn = nullptr,
+                                      .custom_compare_fn = nullptr,
+                                      .value_destructor = nullptr,
+                                      .case_insensitive = false,
+                                      .thread_safe = false};
         table = hash_table_create(&config);
     }
 
     // Helper to create integer table
-    void CreateIntegerTable() {
-        hash_table_config_t config = {
-            .initial_buckets = 16,
-            .key_type = HASH_KEY_UINT32,
-            .hash_algorithm = HASH_ALG_MURMUR3,
-            .custom_hash_fn = nullptr,
-            .custom_compare_fn = nullptr,
-            .value_destructor = nullptr,
-            .case_insensitive = false,
-            .thread_safe = false
-        };
+    void CreateIntegerTable()
+    {
+        hash_table_config_t config = {.initial_buckets = 16,
+                                      .key_type = HASH_KEY_UINT32,
+                                      .hash_algorithm = HASH_ALG_MURMUR3,
+                                      .custom_hash_fn = nullptr,
+                                      .custom_compare_fn = nullptr,
+                                      .value_destructor = nullptr,
+                                      .case_insensitive = false,
+                                      .thread_safe = false};
         table = hash_table_create(&config);
     }
 };
@@ -60,7 +59,8 @@ protected:
  * WHAT: Test hash table creation with default config
  * WHY: Verify table can be created with NULL config
  */
-TEST_F(HashTableTest, Create_DefaultConfig) {
+TEST_F(HashTableTest, Create_DefaultConfig)
+{
     table = hash_table_create(nullptr);
     ASSERT_NE(table, nullptr);
     EXPECT_EQ(hash_table_size(table), 0);
@@ -70,17 +70,16 @@ TEST_F(HashTableTest, Create_DefaultConfig) {
  * WHAT: Test hash table creation with custom config
  * WHY: Verify configuration is respected
  */
-TEST_F(HashTableTest, Create_CustomConfig) {
-    hash_table_config_t config = {
-        .initial_buckets = 256,
-        .key_type = HASH_KEY_STRING,
-        .hash_algorithm = HASH_ALG_MURMUR3,
-        .custom_hash_fn = nullptr,
-        .custom_compare_fn = nullptr,
-        .value_destructor = nullptr,
-        .case_insensitive = false,
-        .thread_safe = false
-    };
+TEST_F(HashTableTest, Create_CustomConfig)
+{
+    hash_table_config_t config = {.initial_buckets = 256,
+                                  .key_type = HASH_KEY_STRING,
+                                  .hash_algorithm = HASH_ALG_MURMUR3,
+                                  .custom_hash_fn = nullptr,
+                                  .custom_compare_fn = nullptr,
+                                  .value_destructor = nullptr,
+                                  .case_insensitive = false,
+                                  .thread_safe = false};
 
     table = hash_table_create(&config);
     ASSERT_NE(table, nullptr);
@@ -91,7 +90,8 @@ TEST_F(HashTableTest, Create_CustomConfig) {
  * WHAT: Test hash table destroy with null
  * WHY: Verify null safety (should not crash)
  */
-TEST_F(HashTableTest, Destroy_Null) {
+TEST_F(HashTableTest, Destroy_Null)
+{
     hash_table_destroy(nullptr);  // Should not crash
 }
 
@@ -99,7 +99,8 @@ TEST_F(HashTableTest, Destroy_Null) {
  * WHAT: Test hash table destroy with entries
  * WHY: Verify all memory is freed
  */
-TEST_F(HashTableTest, Destroy_WithEntries) {
+TEST_F(HashTableTest, Destroy_WithEntries)
+{
     CreateDefaultStringTable();
 
     int values[] = {1, 2, 3};
@@ -120,7 +121,8 @@ TEST_F(HashTableTest, Destroy_WithEntries) {
  * WHAT: Test basic string insert and lookup
  * WHY: Verify fundamental hash table operations
  */
-TEST_F(HashTableTest, StringKey_InsertLookup) {
+TEST_F(HashTableTest, StringKey_InsertLookup)
+{
     CreateDefaultStringTable();
 
     int value = 42;
@@ -135,7 +137,8 @@ TEST_F(HashTableTest, StringKey_InsertLookup) {
  * WHAT: Test string key not found
  * WHY: Verify lookup returns null for missing keys
  */
-TEST_F(HashTableTest, StringKey_NotFound) {
+TEST_F(HashTableTest, StringKey_NotFound)
+{
     CreateDefaultStringTable();
 
     void* result = hash_table_lookup_string(table, "nonexistent");
@@ -146,7 +149,8 @@ TEST_F(HashTableTest, StringKey_NotFound) {
  * WHAT: Test string key update
  * WHY: Verify inserting with same key updates value
  */
-TEST_F(HashTableTest, StringKey_Update) {
+TEST_F(HashTableTest, StringKey_Update)
+{
     CreateDefaultStringTable();
 
     int value1 = 100;
@@ -168,7 +172,8 @@ TEST_F(HashTableTest, StringKey_Update) {
  * WHAT: Test string key removal
  * WHY: Verify entries can be deleted
  */
-TEST_F(HashTableTest, StringKey_Remove) {
+TEST_F(HashTableTest, StringKey_Remove)
+{
     CreateDefaultStringTable();
 
     int value = 42;
@@ -186,7 +191,8 @@ TEST_F(HashTableTest, StringKey_Remove) {
  * WHAT: Test removing nonexistent key
  * WHY: Verify remove returns false for missing keys
  */
-TEST_F(HashTableTest, StringKey_RemoveNonexistent) {
+TEST_F(HashTableTest, StringKey_RemoveNonexistent)
+{
     CreateDefaultStringTable();
 
     EXPECT_FALSE(hash_table_remove_string(table, "nonexistent"));
@@ -196,7 +202,8 @@ TEST_F(HashTableTest, StringKey_RemoveNonexistent) {
  * WHAT: Test multiple string insertions
  * WHY: Verify table can handle multiple entries
  */
-TEST_F(HashTableTest, StringKey_MultipleInserts) {
+TEST_F(HashTableTest, StringKey_MultipleInserts)
+{
     CreateDefaultStringTable();
 
     const int count = 100;
@@ -222,17 +229,16 @@ TEST_F(HashTableTest, StringKey_MultipleInserts) {
  * WHAT: Test case-insensitive string keys
  * WHY: Verify case-insensitive mode works
  */
-TEST_F(HashTableTest, StringKey_CaseInsensitive) {
-    hash_table_config_t config = {
-        .initial_buckets = 16,
-        .key_type = HASH_KEY_STRING,
-        .hash_algorithm = HASH_ALG_FNV1A,
-        .custom_hash_fn = nullptr,
-        .custom_compare_fn = nullptr,
-        .value_destructor = nullptr,
-        .case_insensitive = true,
-        .thread_safe = false
-    };
+TEST_F(HashTableTest, StringKey_CaseInsensitive)
+{
+    hash_table_config_t config = {.initial_buckets = 16,
+                                  .key_type = HASH_KEY_STRING,
+                                  .hash_algorithm = HASH_ALG_FNV1A,
+                                  .custom_hash_fn = nullptr,
+                                  .custom_compare_fn = nullptr,
+                                  .value_destructor = nullptr,
+                                  .case_insensitive = true,
+                                  .thread_safe = false};
     table = hash_table_create(&config);
 
     int value = 42;
@@ -252,7 +258,8 @@ TEST_F(HashTableTest, StringKey_CaseInsensitive) {
  * WHAT: Test null string key handling
  * WHY: Verify null safety
  */
-TEST_F(HashTableTest, StringKey_NullKey) {
+TEST_F(HashTableTest, StringKey_NullKey)
+{
     CreateDefaultStringTable();
 
     int value = 42;
@@ -265,7 +272,8 @@ TEST_F(HashTableTest, StringKey_NullKey) {
  * WHAT: Test null value handling
  * WHY: Verify null value pointer is rejected
  */
-TEST_F(HashTableTest, StringKey_NullValue) {
+TEST_F(HashTableTest, StringKey_NullValue)
+{
     CreateDefaultStringTable();
 
     EXPECT_FALSE(hash_table_insert_string(table, "key", nullptr, sizeof(int)));
@@ -279,7 +287,8 @@ TEST_F(HashTableTest, StringKey_NullValue) {
  * WHAT: Test uint32_t key insert and lookup
  * WHY: Verify integer key operations
  */
-TEST_F(HashTableTest, IntegerKey_InsertLookup) {
+TEST_F(HashTableTest, IntegerKey_InsertLookup)
+{
     CreateIntegerTable();
 
     int value = 42;
@@ -294,7 +303,8 @@ TEST_F(HashTableTest, IntegerKey_InsertLookup) {
  * WHAT: Test integer key not found
  * WHY: Verify lookup returns null for missing keys
  */
-TEST_F(HashTableTest, IntegerKey_NotFound) {
+TEST_F(HashTableTest, IntegerKey_NotFound)
+{
     CreateIntegerTable();
 
     void* result = hash_table_lookup_uint32(table, 99999);
@@ -305,7 +315,8 @@ TEST_F(HashTableTest, IntegerKey_NotFound) {
  * WHAT: Test integer key removal
  * WHY: Verify integer key deletion
  */
-TEST_F(HashTableTest, IntegerKey_Remove) {
+TEST_F(HashTableTest, IntegerKey_Remove)
+{
     CreateIntegerTable();
 
     int value = 42;
@@ -323,7 +334,8 @@ TEST_F(HashTableTest, IntegerKey_Remove) {
  * WHAT: Test multiple integer insertions
  * WHY: Verify table handles many integer keys
  */
-TEST_F(HashTableTest, IntegerKey_MultipleInserts) {
+TEST_F(HashTableTest, IntegerKey_MultipleInserts)
+{
     CreateIntegerTable();
 
     const int count = 100;
@@ -345,7 +357,8 @@ TEST_F(HashTableTest, IntegerKey_MultipleInserts) {
  * WHAT: Test integer key edge cases
  * WHY: Verify handling of 0 and max values
  */
-TEST_F(HashTableTest, IntegerKey_EdgeCases) {
+TEST_F(HashTableTest, IntegerKey_EdgeCases)
+{
     CreateIntegerTable();
 
     int val1 = 1, val2 = 2;
@@ -369,17 +382,16 @@ TEST_F(HashTableTest, IntegerKey_EdgeCases) {
  * WHAT: Test FNV1A hash algorithm
  * WHY: Verify different hash algorithms work
  */
-TEST_F(HashTableTest, HashAlgorithm_FNV1A) {
-    hash_table_config_t config = {
-        .initial_buckets = 16,
-        .key_type = HASH_KEY_STRING,
-        .hash_algorithm = HASH_ALG_FNV1A,
-        .custom_hash_fn = nullptr,
-        .custom_compare_fn = nullptr,
-        .value_destructor = nullptr,
-        .case_insensitive = false,
-        .thread_safe = false
-    };
+TEST_F(HashTableTest, HashAlgorithm_FNV1A)
+{
+    hash_table_config_t config = {.initial_buckets = 16,
+                                  .key_type = HASH_KEY_STRING,
+                                  .hash_algorithm = HASH_ALG_FNV1A,
+                                  .custom_hash_fn = nullptr,
+                                  .custom_compare_fn = nullptr,
+                                  .value_destructor = nullptr,
+                                  .case_insensitive = false,
+                                  .thread_safe = false};
     table = hash_table_create(&config);
 
     int value = 42;
@@ -393,17 +405,16 @@ TEST_F(HashTableTest, HashAlgorithm_FNV1A) {
  * WHAT: Test DJB2 hash algorithm
  * WHY: Verify alternative hash algorithm
  */
-TEST_F(HashTableTest, HashAlgorithm_DJB2) {
-    hash_table_config_t config = {
-        .initial_buckets = 16,
-        .key_type = HASH_KEY_STRING,
-        .hash_algorithm = HASH_ALG_DJB2,
-        .custom_hash_fn = nullptr,
-        .custom_compare_fn = nullptr,
-        .value_destructor = nullptr,
-        .case_insensitive = false,
-        .thread_safe = false
-    };
+TEST_F(HashTableTest, HashAlgorithm_DJB2)
+{
+    hash_table_config_t config = {.initial_buckets = 16,
+                                  .key_type = HASH_KEY_STRING,
+                                  .hash_algorithm = HASH_ALG_DJB2,
+                                  .custom_hash_fn = nullptr,
+                                  .custom_compare_fn = nullptr,
+                                  .value_destructor = nullptr,
+                                  .case_insensitive = false,
+                                  .thread_safe = false};
     table = hash_table_create(&config);
 
     int value = 42;
@@ -417,17 +428,16 @@ TEST_F(HashTableTest, HashAlgorithm_DJB2) {
  * WHAT: Test MurmurHash3 algorithm
  * WHY: Verify MurmurHash3 for better distribution
  */
-TEST_F(HashTableTest, HashAlgorithm_Murmur3) {
-    hash_table_config_t config = {
-        .initial_buckets = 16,
-        .key_type = HASH_KEY_STRING,
-        .hash_algorithm = HASH_ALG_MURMUR3,
-        .custom_hash_fn = nullptr,
-        .custom_compare_fn = nullptr,
-        .value_destructor = nullptr,
-        .case_insensitive = false,
-        .thread_safe = false
-    };
+TEST_F(HashTableTest, HashAlgorithm_Murmur3)
+{
+    hash_table_config_t config = {.initial_buckets = 16,
+                                  .key_type = HASH_KEY_STRING,
+                                  .hash_algorithm = HASH_ALG_MURMUR3,
+                                  .custom_hash_fn = nullptr,
+                                  .custom_compare_fn = nullptr,
+                                  .value_destructor = nullptr,
+                                  .case_insensitive = false,
+                                  .thread_safe = false};
     table = hash_table_create(&config);
 
     int value = 42;
@@ -445,7 +455,8 @@ TEST_F(HashTableTest, HashAlgorithm_Murmur3) {
  * WHAT: Test clear operation
  * WHY: Verify table can be emptied
  */
-TEST_F(HashTableTest, Clear_RemovesAllEntries) {
+TEST_F(HashTableTest, Clear_RemovesAllEntries)
+{
     CreateDefaultStringTable();
 
     // Insert multiple entries
@@ -474,7 +485,8 @@ TEST_F(HashTableTest, Clear_RemovesAllEntries) {
  * WHAT: Test clear on empty table
  * WHY: Verify clear handles empty table
  */
-TEST_F(HashTableTest, Clear_EmptyTable) {
+TEST_F(HashTableTest, Clear_EmptyTable)
+{
     CreateDefaultStringTable();
 
     hash_table_clear(table);  // Should not crash
@@ -485,7 +497,8 @@ TEST_F(HashTableTest, Clear_EmptyTable) {
  * WHAT: Test size tracking
  * WHY: Verify size is accurate through operations
  */
-TEST_F(HashTableTest, Size_Tracking) {
+TEST_F(HashTableTest, Size_Tracking)
+{
     CreateDefaultStringTable();
 
     EXPECT_EQ(hash_table_size(table), 0);
@@ -508,7 +521,8 @@ TEST_F(HashTableTest, Size_Tracking) {
  * WHAT: Test size with null table
  * WHY: Verify null safety
  */
-TEST_F(HashTableTest, Size_NullTable) {
+TEST_F(HashTableTest, Size_NullTable)
+{
     EXPECT_EQ(hash_table_size(nullptr), 0);
     EXPECT_EQ(hash_table_bucket_count(nullptr), 0);
 }
@@ -523,12 +537,12 @@ struct IterationContext {
     int sum = 0;
 };
 
-static bool iteration_callback(const void* key, size_t key_size,
-                               void* value, size_t value_size,
-                               void* user_data) {
-    (void)key;
-    (void)key_size;
-    (void)value_size;
+static bool iteration_callback(const void* key, size_t key_size, void* value, size_t value_size,
+                               void* user_data)
+{
+    (void) key;
+    (void) key_size;
+    (void) value_size;
 
     IterationContext* ctx = static_cast<IterationContext*>(user_data);
     ctx->count++;
@@ -540,7 +554,8 @@ static bool iteration_callback(const void* key, size_t key_size,
  * WHAT: Test iteration over all entries
  * WHY: Verify callback is called for each entry
  */
-TEST_F(HashTableTest, Iterate_AllEntries) {
+TEST_F(HashTableTest, Iterate_AllEntries)
+{
     CreateDefaultStringTable();
 
     // Insert entries with known sum
@@ -563,7 +578,8 @@ TEST_F(HashTableTest, Iterate_AllEntries) {
  * WHAT: Test iteration early termination
  * WHY: Verify iteration can be stopped
  */
-TEST_F(HashTableTest, Iterate_EarlyStop) {
+TEST_F(HashTableTest, Iterate_EarlyStop)
+{
     CreateDefaultStringTable();
 
     for (int i = 0; i < 10; i++) {
@@ -574,10 +590,12 @@ TEST_F(HashTableTest, Iterate_EarlyStop) {
 
     // Callback that stops after 5 entries
     int count = 0;
-    auto stop_callback = [](const void* key, size_t key_size,
-                           void* value, size_t value_size,
-                           void* user_data) -> bool {
-        (void)key; (void)key_size; (void)value; (void)value_size;
+    auto stop_callback = [](const void* key, size_t key_size, void* value, size_t value_size,
+                            void* user_data) -> bool {
+        (void) key;
+        (void) key_size;
+        (void) value;
+        (void) value_size;
         int* count_ptr = static_cast<int*>(user_data);
         (*count_ptr)++;
         return *count_ptr < 5;  // Stop after 5
@@ -591,7 +609,8 @@ TEST_F(HashTableTest, Iterate_EarlyStop) {
  * WHAT: Test iteration on empty table
  * WHY: Verify iteration handles empty table
  */
-TEST_F(HashTableTest, Iterate_EmptyTable) {
+TEST_F(HashTableTest, Iterate_EmptyTable)
+{
     CreateDefaultStringTable();
 
     IterationContext ctx;
@@ -608,7 +627,8 @@ TEST_F(HashTableTest, Iterate_EmptyTable) {
  * WHAT: Test collision statistics
  * WHY: Verify stats are calculated correctly
  */
-TEST_F(HashTableTest, Stats_CollisionMetrics) {
+TEST_F(HashTableTest, Stats_CollisionMetrics)
+{
     CreateDefaultStringTable();
 
     // Insert entries
@@ -632,7 +652,8 @@ TEST_F(HashTableTest, Stats_CollisionMetrics) {
  * WHAT: Test stats on empty table
  * WHY: Verify stats handle empty table
  */
-TEST_F(HashTableTest, Stats_EmptyTable) {
+TEST_F(HashTableTest, Stats_EmptyTable)
+{
     CreateDefaultStringTable();
 
     size_t max_chain, empty_buckets;
@@ -648,7 +669,8 @@ TEST_F(HashTableTest, Stats_EmptyTable) {
  * WHAT: Test stats with null table
  * WHY: Verify null safety
  */
-TEST_F(HashTableTest, Stats_NullTable) {
+TEST_F(HashTableTest, Stats_NullTable)
+{
     size_t max_chain, empty_buckets;
     float avg_chain;
 
@@ -668,8 +690,9 @@ struct DestructorContext {
     int call_count = 0;
 };
 
-static void test_destructor(void* value, size_t value_size) {
-    (void)value_size;
+static void test_destructor(void* value, size_t value_size)
+{
+    (void) value_size;
     DestructorContext* ctx = static_cast<DestructorContext*>(value);
     ctx->call_count++;
 }
@@ -678,17 +701,16 @@ static void test_destructor(void* value, size_t value_size) {
  * WHAT: Test value destructor is called on remove
  * WHY: Verify custom cleanup works
  */
-TEST_F(HashTableTest, Destructor_OnRemove) {
-    hash_table_config_t config = {
-        .initial_buckets = 16,
-        .key_type = HASH_KEY_STRING,
-        .hash_algorithm = HASH_ALG_FNV1A,
-        .custom_hash_fn = nullptr,
-        .custom_compare_fn = nullptr,
-        .value_destructor = test_destructor,
-        .case_insensitive = false,
-        .thread_safe = false
-    };
+TEST_F(HashTableTest, Destructor_OnRemove)
+{
+    hash_table_config_t config = {.initial_buckets = 16,
+                                  .key_type = HASH_KEY_STRING,
+                                  .hash_algorithm = HASH_ALG_FNV1A,
+                                  .custom_hash_fn = nullptr,
+                                  .custom_compare_fn = nullptr,
+                                  .value_destructor = test_destructor,
+                                  .case_insensitive = false,
+                                  .thread_safe = false};
     table = hash_table_create(&config);
 
     DestructorContext ctx;
@@ -708,18 +730,17 @@ TEST_F(HashTableTest, Destructor_OnRemove) {
  * WHAT: Test handling of hash collisions
  * WHY: Verify chaining works correctly
  */
-TEST_F(HashTableTest, Collisions_MultipleValues) {
+TEST_F(HashTableTest, Collisions_MultipleValues)
+{
     // Create small table to force collisions
-    hash_table_config_t config = {
-        .initial_buckets = 4,  // Small to force collisions
-        .key_type = HASH_KEY_STRING,
-        .hash_algorithm = HASH_ALG_FNV1A,
-        .custom_hash_fn = nullptr,
-        .custom_compare_fn = nullptr,
-        .value_destructor = nullptr,
-        .case_insensitive = false,
-        .thread_safe = false
-    };
+    hash_table_config_t config = {.initial_buckets = 4,  // Small to force collisions
+                                  .key_type = HASH_KEY_STRING,
+                                  .hash_algorithm = HASH_ALG_FNV1A,
+                                  .custom_hash_fn = nullptr,
+                                  .custom_compare_fn = nullptr,
+                                  .value_destructor = nullptr,
+                                  .case_insensitive = false,
+                                  .thread_safe = false};
     table = hash_table_create(&config);
 
     // Insert many entries
@@ -750,17 +771,16 @@ TEST_F(HashTableTest, Collisions_MultipleValues) {
  * WHAT: Test with large number of entries
  * WHY: Verify performance and correctness at scale
  */
-TEST_F(HashTableTest, Stress_LargeTable) {
-    hash_table_config_t config = {
-        .initial_buckets = 256,
-        .key_type = HASH_KEY_STRING,
-        .hash_algorithm = HASH_ALG_MURMUR3,
-        .custom_hash_fn = nullptr,
-        .custom_compare_fn = nullptr,
-        .value_destructor = nullptr,
-        .case_insensitive = false,
-        .thread_safe = false
-    };
+TEST_F(HashTableTest, Stress_LargeTable)
+{
+    hash_table_config_t config = {.initial_buckets = 256,
+                                  .key_type = HASH_KEY_STRING,
+                                  .hash_algorithm = HASH_ALG_MURMUR3,
+                                  .custom_hash_fn = nullptr,
+                                  .custom_compare_fn = nullptr,
+                                  .value_destructor = nullptr,
+                                  .case_insensitive = false,
+                                  .thread_safe = false};
     table = hash_table_create(&config);
 
     const int count = 1000;

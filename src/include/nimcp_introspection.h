@@ -44,8 +44,8 @@
 #ifndef NIMCP_INTROSPECTION_H
 #define NIMCP_INTROSPECTION_H
 
-#include <stdint.h>
 #include <stdbool.h>
+#include <stdint.h>
 #include "nimcp_brain.h"
 
 #ifdef __cplusplus
@@ -69,9 +69,9 @@ typedef struct introspection_context_struct* introspection_context_t;
  * HOW: Fast (~0.5ms) uses sampling, Detailed (~2ms) uses full scan
  */
 typedef enum {
-    STATE_STRATEGY_FAST,      /* Sample 10% of neurons, ~0.5ms */
-    STATE_STRATEGY_BALANCED,  /* Sample 30% of neurons, ~1ms */
-    STATE_STRATEGY_DETAILED   /* Full scan all neurons, ~2ms */
+    STATE_STRATEGY_FAST,     /* Sample 10% of neurons, ~0.5ms */
+    STATE_STRATEGY_BALANCED, /* Sample 30% of neurons, ~1ms */
+    STATE_STRATEGY_DETAILED  /* Full scan all neurons, ~2ms */
 } state_extraction_strategy_t;
 
 /**
@@ -80,9 +80,9 @@ typedef enum {
  * HOW: Epistemic = model uncertainty, Aleatoric = data uncertainty
  */
 typedef enum {
-    UNCERTAINTY_TYPE_EPISTEMIC,  /* Model doesn't know (lack of data) */
-    UNCERTAINTY_TYPE_ALEATORIC,  /* Inherent randomness in data */
-    UNCERTAINTY_TYPE_TOTAL       /* Combined uncertainty */
+    UNCERTAINTY_TYPE_EPISTEMIC, /* Model doesn't know (lack of data) */
+    UNCERTAINTY_TYPE_ALEATORIC, /* Inherent randomness in data */
+    UNCERTAINTY_TYPE_TOTAL      /* Combined uncertainty */
 } uncertainty_type_t;
 
 /**
@@ -93,12 +93,12 @@ typedef enum {
  * MEMORY: Caller must free neuron_ids and activation_levels arrays
  */
 typedef struct {
-    uint32_t* neuron_ids;           /* Array of active neuron IDs */
-    float* activation_levels;        /* Array of activation values (0-1) */
-    uint32_t num_active;             /* Number of active neurons */
-    uint32_t total_neurons;          /* Total network size */
-    float activity_threshold;        /* Threshold used for "active" */
-    uint64_t timestamp;              /* When this was captured */
+    uint32_t* neuron_ids;     /* Array of active neuron IDs */
+    float* activation_levels; /* Array of activation values (0-1) */
+    uint32_t num_active;      /* Number of active neurons */
+    uint32_t total_neurons;   /* Total network size */
+    float activity_threshold; /* Threshold used for "active" */
+    uint64_t timestamp;       /* When this was captured */
 } neuron_population_t;
 
 /**
@@ -109,12 +109,12 @@ typedef struct {
  * MEMORY: Caller must free state_vector and interpretation strings
  */
 typedef struct {
-    float* state_vector;             /* Compressed state representation */
-    uint32_t dimension;              /* Dimensionality of state vector */
-    char* interpretation;            /* Human-readable description */
-    float compression_ratio;         /* Original size / compressed size */
-    float information_content;       /* Entropy of state (bits) */
-    uint64_t timestamp;              /* When this was captured */
+    float* state_vector;       /* Compressed state representation */
+    uint32_t dimension;        /* Dimensionality of state vector */
+    char* interpretation;      /* Human-readable description */
+    float compression_ratio;   /* Original size / compressed size */
+    float information_content; /* Entropy of state (bits) */
+    uint64_t timestamp;        /* When this was captured */
 } brain_state_t;
 
 /**
@@ -128,12 +128,12 @@ typedef struct {
  * - Low total → Confident decision
  */
 typedef struct {
-    float epistemic;                 /* Model uncertainty (0-1) */
-    float aleatoric;                 /* Data uncertainty (0-1) */
-    float total;                     /* Combined uncertainty (0-1) */
-    float confidence;                /* 1.0 - total uncertainty */
-    uint32_t ensemble_size;          /* Number of models used */
-    float* ensemble_predictions;     /* Individual predictions (optional) */
+    float epistemic;             /* Model uncertainty (0-1) */
+    float aleatoric;             /* Data uncertainty (0-1) */
+    float total;                 /* Combined uncertainty (0-1) */
+    float confidence;            /* 1.0 - total uncertainty */
+    uint32_t ensemble_size;      /* Number of models used */
+    float* ensemble_predictions; /* Individual predictions (optional) */
 } brain_uncertainty_t;
 
 /**
@@ -142,13 +142,13 @@ typedef struct {
  * HOW: Metadata about pattern including activity, strength, age
  */
 typedef struct {
-    char* pattern_name;              /* Unique pattern identifier */
-    float current_activity;          /* Current activation (0-1) */
-    float average_activity;          /* Historical average */
-    float pattern_strength;          /* How well learned (0-1) */
-    uint32_t activation_count;       /* Times this pattern activated */
-    uint64_t first_learned;          /* Timestamp first learned */
-    uint64_t last_activated;         /* Timestamp last activated */
+    char* pattern_name;        /* Unique pattern identifier */
+    float current_activity;    /* Current activation (0-1) */
+    float average_activity;    /* Historical average */
+    float pattern_strength;    /* How well learned (0-1) */
+    uint32_t activation_count; /* Times this pattern activated */
+    uint64_t first_learned;    /* Timestamp first learned */
+    uint64_t last_activated;   /* Timestamp last activated */
 } pattern_info_t;
 
 /**
@@ -157,13 +157,13 @@ typedef struct {
  * HOW: Activation, gradient, connections, contribution to decision
  */
 typedef struct {
-    uint32_t neuron_id;              /* Neuron identifier */
-    float activation;                /* Current activation (0-1) */
-    float gradient;                  /* Current gradient (backprop) */
-    uint32_t num_connections;        /* Number of synapses */
-    float total_weight;              /* Sum of connection weights */
-    float decision_contribution;     /* Contribution to last decision */
-    bool is_active;                  /* Above activity threshold? */
+    uint32_t neuron_id;          /* Neuron identifier */
+    float activation;            /* Current activation (0-1) */
+    float gradient;              /* Current gradient (backprop) */
+    uint32_t num_connections;    /* Number of synapses */
+    float total_weight;          /* Sum of connection weights */
+    float decision_contribution; /* Contribution to last decision */
+    bool is_active;              /* Above activity threshold? */
 } neuron_activity_t;
 
 /**
@@ -172,13 +172,13 @@ typedef struct {
  * HOW: Connection counts, sparsity, clustering coefficient, etc.
  */
 typedef struct {
-    uint32_t total_neurons;          /* Total neuron count */
-    uint32_t total_connections;      /* Total synapse count */
+    uint32_t total_neurons;           /* Total neuron count */
+    uint32_t total_connections;       /* Total synapse count */
     float avg_connections_per_neuron; /* Average degree */
-    float connection_sparsity;       /* 1.0 - (actual / possible) */
-    float clustering_coefficient;    /* Local clustering measure */
-    uint32_t num_layers;             /* Network depth */
-    uint32_t* neurons_per_layer;     /* Neurons in each layer */
+    float connection_sparsity;        /* 1.0 - (actual / possible) */
+    float clustering_coefficient;     /* Local clustering measure */
+    uint32_t num_layers;              /* Network depth */
+    uint32_t* neurons_per_layer;      /* Neurons in each layer */
 } network_topology_t;
 
 /**
@@ -187,11 +187,11 @@ typedef struct {
  * HOW: Sliding window of recent activity snapshots
  */
 typedef struct {
-    uint64_t timestamp;              /* When this was recorded */
-    float avg_activation;            /* Average neuron activation */
-    float max_activation;            /* Maximum neuron activation */
-    uint32_t num_active;             /* Count above threshold */
-    float energy_consumption;        /* Computational energy estimate */
+    uint64_t timestamp;       /* When this was recorded */
+    float avg_activation;     /* Average neuron activation */
+    float max_activation;     /* Maximum neuron activation */
+    uint32_t num_active;      /* Count above threshold */
+    float energy_consumption; /* Computational energy estimate */
 } activity_history_entry_t;
 
 /**
@@ -200,13 +200,13 @@ typedef struct {
  * HOW: Counters for API calls, timing, memory usage
  */
 typedef struct {
-    uint64_t queries_total;          /* Total introspection queries */
+    uint64_t queries_total;             /* Total introspection queries */
     uint64_t queries_active_population; /* Active population queries */
-    uint64_t queries_internal_state; /* Internal state queries */
-    uint64_t queries_uncertainty;    /* Uncertainty queries */
-    uint64_t queries_pattern;        /* Pattern queries */
-    float avg_query_time_ms;         /* Average query time */
-    size_t memory_used_bytes;        /* Memory used by introspection */
+    uint64_t queries_internal_state;    /* Internal state queries */
+    uint64_t queries_uncertainty;       /* Uncertainty queries */
+    uint64_t queries_pattern;           /* Pattern queries */
+    float avg_query_time_ms;            /* Average query time */
+    size_t memory_used_bytes;           /* Memory used by introspection */
 } introspection_stats_t;
 
 /**
@@ -216,13 +216,13 @@ typedef struct {
  */
 typedef struct {
     state_extraction_strategy_t default_strategy; /* Default state strategy */
-    float activity_threshold;        /* Threshold for "active" neuron */
-    uint32_t history_size;           /* Activity history buffer size */
-    bool enable_pattern_tracking;    /* Track learned patterns? */
-    bool enable_uncertainty_estimation; /* Enable uncertainty? */
-    uint32_t uncertainty_ensemble_size; /* Models for uncertainty */
+    float activity_threshold;                     /* Threshold for "active" neuron */
+    uint32_t history_size;                        /* Activity history buffer size */
+    bool enable_pattern_tracking;                 /* Track learned patterns? */
+    bool enable_uncertainty_estimation;           /* Enable uncertainty? */
+    uint32_t uncertainty_ensemble_size;           /* Models for uncertainty */
     void (*on_state_change)(brain_state_t* state, void* context); /* Observer */
-    void* callback_context;          /* Context for callbacks */
+    void* callback_context;                                       /* Context for callbacks */
 } introspection_config_t;
 
 /* ========================================================================
@@ -269,10 +269,8 @@ introspection_config_t introspection_default_config(void);
  * COMPLEXITY: O(n) where n = network size (for topology analysis)
  * THREAD-SAFE: Yes
  */
-introspection_context_t introspection_context_create(
-    brain_t brain,
-    const introspection_config_t* config
-);
+introspection_context_t introspection_context_create(brain_t brain,
+                                                     const introspection_config_t* config);
 
 /**
  * WHAT: Destroy introspection context and free resources
@@ -319,10 +317,7 @@ void introspection_context_destroy(introspection_context_t context);
  * COMPLEXITY: O(n) where n = network size
  * THREAD-SAFE: Yes
  */
-neuron_population_t brain_get_active_population(
-    introspection_context_t context,
-    float threshold
-);
+neuron_population_t brain_get_active_population(introspection_context_t context, float threshold);
 
 /**
  * WHAT: Free neuron population structure
@@ -352,10 +347,7 @@ void neuron_population_free(neuron_population_t* population);
  * COMPLEXITY: O(1)
  * THREAD-SAFE: Yes
  */
-neuron_activity_t brain_get_neuron_activity(
-    introspection_context_t context,
-    uint32_t neuron_id
-);
+neuron_activity_t brain_get_neuron_activity(introspection_context_t context, uint32_t neuron_id);
 
 /* ========================================================================
  * INTERNAL STATE QUERIES
@@ -391,10 +383,8 @@ neuron_activity_t brain_get_neuron_activity(
  * COMPLEXITY: O(n*s) where n=network size, s=sampling rate
  * THREAD-SAFE: Yes
  */
-brain_state_t brain_get_internal_state(
-    introspection_context_t context,
-    state_extraction_strategy_t strategy
-);
+brain_state_t brain_get_internal_state(introspection_context_t context,
+                                       state_extraction_strategy_t strategy);
 
 /**
  * WHAT: Free brain state structure
@@ -424,10 +414,7 @@ void brain_state_free(brain_state_t* state);
  * COMPLEXITY: O(d) where d = state dimension
  * THREAD-SAFE: Yes
  */
-float brain_state_similarity(
-    const brain_state_t* state1,
-    const brain_state_t* state2
-);
+float brain_state_similarity(const brain_state_t* state1, const brain_state_t* state2);
 
 /* ========================================================================
  * UNCERTAINTY ESTIMATION
@@ -474,11 +461,8 @@ float brain_state_similarity(
  * TIME: ~1-5ms depending on ensemble size
  * THREAD-SAFE: Yes
  */
-brain_uncertainty_t brain_get_uncertainty(
-    introspection_context_t context,
-    const float* features,
-    uint32_t num_features
-);
+brain_uncertainty_t brain_get_uncertainty(introspection_context_t context, const float* features,
+                                          uint32_t num_features);
 
 /**
  * WHAT: Free uncertainty structure
@@ -522,10 +506,7 @@ void brain_uncertainty_free(brain_uncertainty_t* uncertainty);
  * COMPLEXITY: O(1) - hash lookup
  * THREAD-SAFE: Yes
  */
-bool brain_is_pattern_active(
-    introspection_context_t context,
-    const char* pattern_name
-);
+bool brain_is_pattern_active(introspection_context_t context, const char* pattern_name);
 
 /**
  * WHAT: Get detailed information about a pattern
@@ -541,10 +522,7 @@ bool brain_is_pattern_active(
  * COMPLEXITY: O(1)
  * THREAD-SAFE: Yes
  */
-pattern_info_t* brain_get_pattern_info(
-    introspection_context_t context,
-    const char* pattern_name
-);
+pattern_info_t* brain_get_pattern_info(introspection_context_t context, const char* pattern_name);
 
 /**
  * WHAT: Free pattern info structure
@@ -574,10 +552,7 @@ void pattern_info_free(pattern_info_t* info);
  * COMPLEXITY: O(p) where p = number of patterns
  * THREAD-SAFE: Yes
  */
-char** brain_list_patterns(
-    introspection_context_t context,
-    uint32_t* num_patterns
-);
+char** brain_list_patterns(introspection_context_t context, uint32_t* num_patterns);
 
 /**
  * WHAT: Free pattern list
@@ -645,10 +620,8 @@ void network_topology_free(network_topology_t* topology);
  * COMPLEXITY: O(h) where h = history size
  * THREAD-SAFE: Yes
  */
-activity_history_entry_t* brain_get_activity_history(
-    introspection_context_t context,
-    uint32_t* num_entries
-);
+activity_history_entry_t* brain_get_activity_history(introspection_context_t context,
+                                                     uint32_t* num_entries);
 
 /* ========================================================================
  * STATISTICS AND MONITORING
@@ -666,10 +639,7 @@ activity_history_entry_t* brain_get_activity_history(
  * COMPLEXITY: O(1)
  * THREAD-SAFE: Yes
  */
-bool introspection_get_stats(
-    introspection_context_t context,
-    introspection_stats_t* stats
-);
+bool introspection_get_stats(introspection_context_t context, introspection_stats_t* stats);
 
 /**
  * WHAT: Reset introspection statistics

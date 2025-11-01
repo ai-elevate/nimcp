@@ -3,20 +3,22 @@
  * @brief Example usage of NIMCP Brain C++ API
  *
  * Compile:
- *   g++ -std=c++17 example.cpp -I../../src/include -L../../build/src/lib -lnimcp_core -o brain_example
+ *   g++ -std=c++17 example.cpp -I../../src/include -L../../build/src/lib -lnimcp_core -o
+ * brain_example
  *
  * Run:
  *   LD_LIBRARY_PATH=../../build/src/lib ./brain_example
  */
 
-#include "nimcp_brain.hpp"
-#include <iostream>
 #include <iomanip>
+#include <iostream>
 #include <random>
+#include "nimcp_brain.hpp"
 
 using namespace nimcp;
 
-void ethics_demo() {
+void ethics_demo()
+{
     std::cout << "==================================================\n";
     std::cout << " NIMCP Brain C++ API Demo\n";
     std::cout << " Use Case: Ethics Decision Caching\n";
@@ -24,14 +26,14 @@ void ethics_demo() {
 
     // Create brain for ethics decisions
     Brain brain("artemis_ethics", BrainSize::SMALL, BrainTask::CLASSIFICATION,
-                4,  // inputs: harm, fairness, transparency, autonomy
-                3); // outputs: allow, warn, block
+                4,   // inputs: harm, fairness, transparency, autonomy
+                3);  // outputs: allow, warn, block
 
     std::cout << "Created brain: " << brain.task_name() << "\n";
     auto stats = brain.get_stats();
     std::cout << "  Neurons: " << stats.num_neurons << "\n";
-    std::cout << "  Memory: " << std::fixed << std::setprecision(2)
-              << stats.memory_mb() << " MB\n\n";
+    std::cout << "  Memory: " << std::fixed << std::setprecision(2) << stats.memory_mb()
+              << " MB\n\n";
 
     // Training data (simulated LLM decisions)
     std::vector<std::tuple<std::vector<float>, std::string, float>> training_data = {
@@ -47,8 +49,7 @@ void ethics_demo() {
     // Train
     std::cout << "Training from LLM decisions...\n";
     float avg_loss = brain.learn_batch(training_data);
-    std::cout << "  Average loss: " << std::fixed << std::setprecision(4)
-              << avg_loss << "\n\n";
+    std::cout << "  Average loss: " << std::fixed << std::setprecision(4) << avg_loss << "\n\n";
 
     // Test inference
     std::cout << "Testing fast inference (no LLM needed):\n\n";
@@ -66,13 +67,10 @@ void ethics_demo() {
         auto decision = brain.decide(features);
 
         std::cout << "Test Case: " << description << "\n";
-        std::cout << "  Features: harm=" << features[0]
-                  << ", fair=" << features[1]
-                  << ", trans=" << features[2]
-                  << ", auto=" << features[3] << "\n";
-        std::cout << "  Decision: " << decision.label
-                  << " (confidence: " << std::fixed << std::setprecision(2)
-                  << decision.confidence << ")\n";
+        std::cout << "  Features: harm=" << features[0] << ", fair=" << features[1]
+                  << ", trans=" << features[2] << ", auto=" << features[3] << "\n";
+        std::cout << "  Decision: " << decision.label << " (confidence: " << std::fixed
+                  << std::setprecision(2) << decision.confidence << ")\n";
         std::cout << "  Active neurons: " << decision.num_active_neurons
                   << " (sparsity: " << std::fixed << std::setprecision(1)
                   << decision.sparsity * 100.0f << "%)\n";
@@ -87,18 +85,16 @@ void ethics_demo() {
 
     std::cout << "Performance Comparison:\n";
     std::cout << "  LLM API call: ~500-2000 ms\n";
-    std::cout << "  NIMCP Brain: ~" << std::fixed << std::setprecision(3)
-              << avg_time_ms << " ms\n";
-    std::cout << "  Speedup: ~" << std::fixed << std::setprecision(0)
-              << (1000.0 / avg_time_ms) << "x faster\n\n";
+    std::cout << "  NIMCP Brain: ~" << std::fixed << std::setprecision(3) << avg_time_ms << " ms\n";
+    std::cout << "  Speedup: ~" << std::fixed << std::setprecision(0) << (1000.0 / avg_time_ms)
+              << "x faster\n\n";
 
     // Interpretability
     std::cout << "Interpretability - Top Contributing Neurons:\n";
     auto top_neurons = brain.get_top_neurons(5);
     for (const auto& neuron : top_neurons) {
-        std::cout << "  Neuron " << neuron.neuron_id
-                  << ": importance = " << std::fixed << std::setprecision(4)
-                  << neuron.importance << "\n";
+        std::cout << "  Neuron " << neuron.neuron_id << ": importance = " << std::fixed
+                  << std::setprecision(4) << neuron.importance << "\n";
     }
     std::cout << "\n";
 
@@ -113,8 +109,8 @@ void ethics_demo() {
               << stats.avg_inference_time_ms() << " ms\n";
     std::cout << "  Avg sparsity: " << std::fixed << std::setprecision(1)
               << stats.avg_sparsity * 100.0f << "%\n";
-    std::cout << "  Memory: " << std::fixed << std::setprecision(2)
-              << stats.memory_mb() << " MB\n\n";
+    std::cout << "  Memory: " << std::fixed << std::setprecision(2) << stats.memory_mb()
+              << " MB\n\n";
 
     // Save
     std::cout << "Saving trained brain...\n";
@@ -128,9 +124,8 @@ void ethics_demo() {
 
     // Verify loaded brain works
     auto test_decision = loaded_brain.decide({0.8f, 0.3f, 0.5f, 0.6f});
-    std::cout << "  Test decision: " << test_decision.label
-              << " (confidence: " << std::fixed << std::setprecision(2)
-              << test_decision.confidence << ")\n\n";
+    std::cout << "  Test decision: " << test_decision.label << " (confidence: " << std::fixed
+              << std::setprecision(2) << test_decision.confidence << ")\n\n";
 
     std::cout << "==================================================\n";
     std::cout << " Summary\n";
@@ -141,11 +136,12 @@ void ethics_demo() {
     std::cout << "  ✓ Zero cost per inference\n";
     std::cout << "  ✓ Privacy preserved (local inference)\n";
     std::cout << "  ✓ Interpretable (can see active neurons)\n";
-    std::cout << "  ✓ Lightweight (~" << std::fixed << std::setprecision(1)
-              << stats.memory_mb() << "MB vs 7GB+ for LLMs)\n\n";
+    std::cout << "  ✓ Lightweight (~" << std::fixed << std::setprecision(1) << stats.memory_mb()
+              << "MB vs 7GB+ for LLMs)\n\n";
 }
 
-void llm_teacher_demo() {
+void llm_teacher_demo()
+{
     std::cout << "\n==================================================\n";
     std::cout << " LLM Teacher Example\n";
     std::cout << "==================================================\n\n";
@@ -175,8 +171,8 @@ void llm_teacher_demo() {
         float loss = brain.learn_from_llm(features, llm_teacher);
 
         if ((i + 1) % 20 == 0) {
-            std::cout << "  Step " << (i + 1) << ", loss: "
-                      << std::fixed << std::setprecision(4) << loss << "\n";
+            std::cout << "  Step " << (i + 1) << ", loss: " << std::fixed << std::setprecision(4)
+                      << loss << "\n";
         }
     }
 
@@ -190,15 +186,15 @@ void llm_teacher_demo() {
     for (const auto& input : test_inputs) {
         auto decision = brain.decide(input);
         std::cout << "  Input: [" << input[0] << ", " << input[1] << "] "
-                  << "-> " << decision.label
-                  << " (confidence: " << std::fixed << std::setprecision(2)
-                  << decision.confidence << ")\n";
+                  << "-> " << decision.label << " (confidence: " << std::fixed
+                  << std::setprecision(2) << decision.confidence << ")\n";
     }
 
     std::cout << "\n";
 }
 
-int main() {
+int main()
+{
     try {
         // Run ethics demo
         ethics_demo();

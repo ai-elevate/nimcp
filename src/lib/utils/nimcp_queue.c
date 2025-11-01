@@ -104,9 +104,9 @@
 //=============================================================================
 
 #include "utils/nimcp_queue.h"
-#include "utils/nimcp_thread.h"
-#include "utils/nimcp_memory.h"
 #include <string.h>
+#include "utils/nimcp_memory.h"
+#include "utils/nimcp_thread.h"
 
 //=============================================================================
 // Internal Structure Definition
@@ -166,7 +166,8 @@ struct nimcp_queue {
  * @param q Queue instance (must be non-null)
  * @return true if full (cannot enqueue), false otherwise
  */
-static bool is_queue_full(struct nimcp_queue* q) {
+static bool is_queue_full(struct nimcp_queue* q)
+{
     return ((q->tail + 1) % q->config.max_size) == q->head;
 }
 
@@ -183,7 +184,8 @@ static bool is_queue_full(struct nimcp_queue* q) {
  * @param q Queue instance (must be non-null)
  * @return true if empty (cannot dequeue), false otherwise
  */
-static bool is_queue_empty(struct nimcp_queue* q) {
+static bool is_queue_empty(struct nimcp_queue* q)
+{
     return q->head == q->tail;
 }
 
@@ -220,10 +222,11 @@ static bool is_queue_empty(struct nimcp_queue* q) {
  * @param queue Output handle (receives created queue on success)
  * @return NIMCP_SUCCESS, NIMCP_INVALID_PARAM, NIMCP_NO_MEMORY, NIMCP_INIT_FAILED
  */
-nimcp_result_t nimcp_queue_create(const nimcp_queue_config_t* config,
-                                 nimcp_queue_handle_t* queue) {
+nimcp_result_t nimcp_queue_create(const nimcp_queue_config_t* config, nimcp_queue_handle_t* queue)
+{
     // Guard clause: Validate pointers
-    if (!config || !queue) return NIMCP_INVALID_PARAM;
+    if (!config || !queue)
+        return NIMCP_INVALID_PARAM;
 
     // Guard clause: Validate configuration values
     // WHY: Zero size would cause division by zero in modulo operations
@@ -234,7 +237,8 @@ nimcp_result_t nimcp_queue_create(const nimcp_queue_config_t* config,
     // Allocate queue structure
     // WHY calloc: Zero-initializes statistics
     struct nimcp_queue* q = nimcp_calloc(1, sizeof(struct nimcp_queue));
-    if (!q) return NIMCP_NO_MEMORY;
+    if (!q)
+        return NIMCP_NO_MEMORY;
 
     // Allocate circular buffer
     // WHY malloc: Buffer content doesn't need initialization (will be overwritten)
@@ -293,9 +297,11 @@ nimcp_result_t nimcp_queue_create(const nimcp_queue_config_t* config,
  * @param queue Queue to destroy
  * @return NIMCP_SUCCESS or NIMCP_INVALID_PARAM
  */
-nimcp_result_t nimcp_queue_destroy(nimcp_queue_handle_t queue) {
+nimcp_result_t nimcp_queue_destroy(nimcp_queue_handle_t queue)
+{
     // Guard clause: Handle NULL gracefully
-    if (!queue) return NIMCP_INVALID_PARAM;
+    if (!queue)
+        return NIMCP_INVALID_PARAM;
 
     // Destroy synchronization primitives
     // WHY first: Prevents new lock/wait operations
@@ -349,11 +355,12 @@ nimcp_result_t nimcp_queue_destroy(nimcp_queue_handle_t queue) {
  * @param timeout_ms Timeout in milliseconds (0 = infinite, ignored if non-blocking)
  * @return NIMCP_SUCCESS, NIMCP_INVALID_PARAM, NIMCP_QUEUE_FULL, NIMCP_TIMEOUT
  */
-nimcp_result_t nimcp_queue_enqueue(nimcp_queue_handle_t queue,
-                                  const void* item,
-                                  uint32_t timeout_ms) {
+nimcp_result_t nimcp_queue_enqueue(nimcp_queue_handle_t queue, const void* item,
+                                   uint32_t timeout_ms)
+{
     // Guard clause: Validate inputs
-    if (!queue || !item) return NIMCP_INVALID_PARAM;
+    if (!queue || !item)
+        return NIMCP_INVALID_PARAM;
 
     // Acquire exclusive access
     nimcp_mutex_lock(&queue->mutex);
@@ -376,9 +383,8 @@ nimcp_result_t nimcp_queue_enqueue(nimcp_queue_handle_t queue,
             }
         } else {
             // Timed wait
-            nimcp_result_t result = nimcp_cond_timedwait(&queue->not_full,
-                                                        &queue->mutex,
-                                                        timeout_ms);
+            nimcp_result_t result =
+                nimcp_cond_timedwait(&queue->not_full, &queue->mutex, timeout_ms);
             if (result != NIMCP_SUCCESS) {
                 nimcp_mutex_unlock(&queue->mutex);
                 return result;  // NIMCP_TIMEOUT or other error
@@ -388,9 +394,7 @@ nimcp_result_t nimcp_queue_enqueue(nimcp_queue_handle_t queue,
 
     // Copy item into circular buffer at tail position
     // WHY memcpy: Generic, works for any type
-    memcpy(queue->buffer + (queue->tail * queue->config.item_size),
-           item,
-           queue->config.item_size);
+    memcpy(queue->buffer + (queue->tail * queue->config.item_size), item, queue->config.item_size);
 
     // Advance tail with wrap-around
     // WHY modulo: Implements circular behavior
@@ -446,11 +450,11 @@ nimcp_result_t nimcp_queue_enqueue(nimcp_queue_handle_t queue,
  * @param timeout_ms Timeout in milliseconds (0 = infinite, ignored if non-blocking)
  * @return NIMCP_SUCCESS, NIMCP_INVALID_PARAM, NIMCP_QUEUE_EMPTY, NIMCP_TIMEOUT
  */
-nimcp_result_t nimcp_queue_dequeue(nimcp_queue_handle_t queue,
-                                  void* item,
-                                  uint32_t timeout_ms) {
+nimcp_result_t nimcp_queue_dequeue(nimcp_queue_handle_t queue, void* item, uint32_t timeout_ms)
+{
     // Guard clause: Validate inputs
-    if (!queue || !item) return NIMCP_INVALID_PARAM;
+    if (!queue || !item)
+        return NIMCP_INVALID_PARAM;
 
     // Acquire exclusive access
     nimcp_mutex_lock(&queue->mutex);
@@ -472,9 +476,8 @@ nimcp_result_t nimcp_queue_dequeue(nimcp_queue_handle_t queue,
             }
         } else {
             // Timed wait
-            nimcp_result_t result = nimcp_cond_timedwait(&queue->not_empty,
-                                                        &queue->mutex,
-                                                        timeout_ms);
+            nimcp_result_t result =
+                nimcp_cond_timedwait(&queue->not_empty, &queue->mutex, timeout_ms);
             if (result != NIMCP_SUCCESS) {
                 nimcp_mutex_unlock(&queue->mutex);
                 return result;  // NIMCP_TIMEOUT or other error
@@ -483,9 +486,7 @@ nimcp_result_t nimcp_queue_dequeue(nimcp_queue_handle_t queue,
     }
 
     // Copy item from circular buffer at head position
-    memcpy(item,
-           queue->buffer + (queue->head * queue->config.item_size),
-           queue->config.item_size);
+    memcpy(item, queue->buffer + (queue->head * queue->config.item_size), queue->config.item_size);
 
     // Advance head with wrap-around
     queue->head = (queue->head + 1) % queue->config.max_size;
@@ -522,9 +523,11 @@ nimcp_result_t nimcp_queue_dequeue(nimcp_queue_handle_t queue,
  * @param item Buffer to receive copy of front item
  * @return NIMCP_SUCCESS, NIMCP_INVALID_PARAM, NIMCP_QUEUE_EMPTY
  */
-nimcp_result_t nimcp_queue_peek(nimcp_queue_handle_t queue, void* item) {
+nimcp_result_t nimcp_queue_peek(nimcp_queue_handle_t queue, void* item)
+{
     // Guard clause: Validate inputs
-    if (!queue || !item) return NIMCP_INVALID_PARAM;
+    if (!queue || !item)
+        return NIMCP_INVALID_PARAM;
 
     nimcp_mutex_lock(&queue->mutex);
 
@@ -536,9 +539,7 @@ nimcp_result_t nimcp_queue_peek(nimcp_queue_handle_t queue, void* item) {
 
     // Copy front item without removing
     // WHY: Head position unchanged, size unchanged
-    memcpy(item,
-           queue->buffer + (queue->head * queue->config.item_size),
-           queue->config.item_size);
+    memcpy(item, queue->buffer + (queue->head * queue->config.item_size), queue->config.item_size);
 
     nimcp_mutex_unlock(&queue->mutex);
     return NIMCP_SUCCESS;
@@ -568,9 +569,11 @@ nimcp_result_t nimcp_queue_peek(nimcp_queue_handle_t queue, void* item) {
  * @param queue Queue handle
  * @return NIMCP_SUCCESS or NIMCP_INVALID_PARAM
  */
-nimcp_result_t nimcp_queue_clear(nimcp_queue_handle_t queue) {
+nimcp_result_t nimcp_queue_clear(nimcp_queue_handle_t queue)
+{
     // Guard clause: Validate input
-    if (!queue) return NIMCP_INVALID_PARAM;
+    if (!queue)
+        return NIMCP_INVALID_PARAM;
 
     nimcp_mutex_lock(&queue->mutex);
 
@@ -615,10 +618,11 @@ nimcp_result_t nimcp_queue_clear(nimcp_queue_handle_t queue) {
  * @param status Output structure for statistics
  * @return NIMCP_SUCCESS or NIMCP_INVALID_PARAM
  */
-nimcp_result_t nimcp_queue_get_status(nimcp_queue_handle_t queue,
-                                     nimcp_queue_status_t* status) {
+nimcp_result_t nimcp_queue_get_status(nimcp_queue_handle_t queue, nimcp_queue_status_t* status)
+{
     // Guard clause: Validate inputs
-    if (!queue || !status) return NIMCP_INVALID_PARAM;
+    if (!queue || !status)
+        return NIMCP_INVALID_PARAM;
 
     nimcp_mutex_lock(&queue->mutex);
 
@@ -649,9 +653,11 @@ nimcp_result_t nimcp_queue_get_status(nimcp_queue_handle_t queue,
  * @param queue Queue handle
  * @return true if empty (or NULL), false otherwise
  */
-bool nimcp_queue_is_empty(nimcp_queue_handle_t queue) {
+bool nimcp_queue_is_empty(nimcp_queue_handle_t queue)
+{
     // Guard clause: NULL is "empty"
-    if (!queue) return true;
+    if (!queue)
+        return true;
 
     nimcp_mutex_lock(&queue->mutex);
     bool empty = is_queue_empty(queue);
@@ -673,9 +679,11 @@ bool nimcp_queue_is_empty(nimcp_queue_handle_t queue) {
  * @param queue Queue handle
  * @return true if full (or NULL), false otherwise
  */
-bool nimcp_queue_is_full(nimcp_queue_handle_t queue) {
+bool nimcp_queue_is_full(nimcp_queue_handle_t queue)
+{
     // Guard clause: NULL is "full" (can't add)
-    if (!queue) return true;
+    if (!queue)
+        return true;
 
     nimcp_mutex_lock(&queue->mutex);
     bool full = is_queue_full(queue);
@@ -702,9 +710,11 @@ bool nimcp_queue_is_full(nimcp_queue_handle_t queue) {
  * @param queue Queue handle
  * @return Current size (0 if NULL)
  */
-size_t nimcp_queue_get_size(nimcp_queue_handle_t queue) {
+size_t nimcp_queue_get_size(nimcp_queue_handle_t queue)
+{
     // Guard clause: NULL has size 0
-    if (!queue) return 0;
+    if (!queue)
+        return 0;
 
     nimcp_mutex_lock(&queue->mutex);
     size_t size = queue->status.current_size;

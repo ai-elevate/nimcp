@@ -15,14 +15,14 @@
 //==============================================================================
 
 #include <gtest/gtest.h>
-#include <cstdlib>
-#include <cstdio>
-#include <string>
-#include <vector>
-#include <fstream>
-#include <sstream>
 #include <sys/stat.h>
 #include <unistd.h>
+#include <cstdio>
+#include <cstdlib>
+#include <fstream>
+#include <sstream>
+#include <string>
+#include <vector>
 
 namespace {
 
@@ -33,7 +33,8 @@ namespace {
 /**
  * Check if a command exists on the system
  */
-bool command_exists(const std::string& command) {
+bool command_exists(const std::string& command)
+{
     std::string check_cmd = "command -v " + command + " > /dev/null 2>&1";
     return (system(check_cmd.c_str()) == 0);
 }
@@ -46,7 +47,8 @@ struct CommandResult {
     std::string output;
 };
 
-CommandResult execute_command(const std::string& command) {
+CommandResult execute_command(const std::string& command)
+{
     CommandResult result;
     char buffer[128];
     std::stringstream output;
@@ -76,7 +78,8 @@ CommandResult execute_command(const std::string& command) {
 /**
  * Get project root directory
  */
-std::string get_project_root() {
+std::string get_project_root()
+{
     // Try to find project root by looking for CMakeLists.txt
     char cwd[1024];
     if (getcwd(cwd, sizeof(cwd)) == nullptr) {
@@ -91,17 +94,19 @@ std::string get_project_root() {
             return path;
         }
         size_t pos = path.find_last_of('/');
-        if (pos == std::string::npos) break;
+        if (pos == std::string::npos)
+            break;
         path = path.substr(0, pos);
     }
 
-    return cwd; // Fallback to current directory
+    return cwd;  // Fallback to current directory
 }
 
 /**
  * Count lines in a file
  */
-int count_file_lines(const std::string& filepath) {
+int count_file_lines(const std::string& filepath)
+{
     std::ifstream file(filepath);
     if (!file.is_open()) {
         return -1;
@@ -121,10 +126,11 @@ int count_file_lines(const std::string& filepath) {
 //==============================================================================
 
 class LintTest : public ::testing::Test {
-protected:
+   protected:
     std::string project_root;
 
-    void SetUp() override {
+    void SetUp() override
+    {
         project_root = get_project_root();
         ASSERT_FALSE(project_root.empty()) << "Failed to find project root";
     }
@@ -137,23 +143,23 @@ protected:
 /**
  * Test that the lint script exists and is executable
  */
-TEST_F(LintTest, LintScriptExists) {
+TEST_F(LintTest, LintScriptExists)
+{
     std::string script_path = project_root + "/scripts/lint.sh";
 
     struct stat buffer;
-    ASSERT_EQ(stat(script_path.c_str(), &buffer), 0)
-        << "Lint script not found at: " << script_path;
+    ASSERT_EQ(stat(script_path.c_str(), &buffer), 0) << "Lint script not found at: " << script_path;
 
     // Check if executable
-    EXPECT_TRUE(buffer.st_mode & S_IXUSR)
-        << "Lint script is not executable";
+    EXPECT_TRUE(buffer.st_mode & S_IXUSR) << "Lint script is not executable";
 }
 
 /**
  * Test lint script execution
  * Note: This test may fail if code has linting issues, which is expected
  */
-TEST_F(LintTest, LintScriptExecutes) {
+TEST_F(LintTest, LintScriptExecutes)
+{
     if (!command_exists("bash")) {
         GTEST_SKIP() << "bash not available";
     }
@@ -177,8 +183,8 @@ TEST_F(LintTest, LintScriptExecutes) {
 
     // Note: We don't ASSERT exit code 0 because the code may have linting issues
     if (result.exit_code != 0) {
-        std::cout << "WARNING: Lint script found issues (exit code: "
-                  << result.exit_code << ")" << std::endl;
+        std::cout << "WARNING: Lint script found issues (exit code: " << result.exit_code << ")"
+                  << std::endl;
     }
 }
 
@@ -189,7 +195,8 @@ TEST_F(LintTest, LintScriptExecutes) {
 /**
  * Test that clang-format is available (optional)
  */
-TEST_F(LintTest, ClangFormatAvailable) {
+TEST_F(LintTest, ClangFormatAvailable)
+{
     if (!command_exists("clang-format")) {
         GTEST_SKIP() << "clang-format not installed";
     }
@@ -204,7 +211,8 @@ TEST_F(LintTest, ClangFormatAvailable) {
 /**
  * Test a sample file for formatting compliance (if clang-format available)
  */
-TEST_F(LintTest, SampleFileFormatting) {
+TEST_F(LintTest, SampleFileFormatting)
+{
     if (!command_exists("clang-format")) {
         GTEST_SKIP() << "clang-format not installed";
     }
@@ -241,7 +249,8 @@ TEST_F(LintTest, SampleFileFormatting) {
 /**
  * Test that no source files exceed reasonable size limits
  */
-TEST_F(LintTest, FileSizeLimits) {
+TEST_F(LintTest, FileSizeLimits)
+{
     const int MAX_LINES = 2000;
     std::vector<std::string> oversized_files;
 
@@ -256,7 +265,8 @@ TEST_F(LintTest, FileSizeLimits) {
     std::string filepath;
 
     while (std::getline(iss, filepath)) {
-        if (filepath.empty()) continue;
+        if (filepath.empty())
+            continue;
 
         int lines = count_file_lines(filepath);
         if (lines > MAX_LINES) {
@@ -283,7 +293,8 @@ TEST_F(LintTest, FileSizeLimits) {
 /**
  * Test that cppcheck is available and can run (optional)
  */
-TEST_F(LintTest, CppCheckAvailable) {
+TEST_F(LintTest, CppCheckAvailable)
+{
     if (!command_exists("cppcheck")) {
         GTEST_SKIP() << "cppcheck not installed";
     }
@@ -297,7 +308,8 @@ TEST_F(LintTest, CppCheckAvailable) {
 /**
  * Run basic cppcheck on a sample file
  */
-TEST_F(LintTest, CppCheckSample) {
+TEST_F(LintTest, CppCheckSample)
+{
     if (!command_exists("cppcheck")) {
         GTEST_SKIP() << "cppcheck not installed";
     }
@@ -314,9 +326,9 @@ TEST_F(LintTest, CppCheckSample) {
     sample_file.erase(sample_file.find_last_not_of("\n\r") + 1);
 
     std::string check_cmd = "cppcheck --enable=warning --quiet "
-                           "--suppress=missingIncludeSystem "
-                           "-I" + project_root + "/src/include "
-                           + sample_file + " 2>&1";
+                            "--suppress=missingIncludeSystem "
+                            "-I" +
+                            project_root + "/src/include " + sample_file + " 2>&1";
 
     CommandResult check_result = execute_command(check_cmd);
 
@@ -336,7 +348,8 @@ TEST_F(LintTest, CppCheckSample) {
 /**
  * Check for FIXME/XXX comments that need attention
  */
-TEST_F(LintTest, CheckForFIXME) {
+TEST_F(LintTest, CheckForFIXME)
+{
     std::string grep_cmd = "grep -r 'FIXME\\|XXX' " + project_root + "/src/ 2>/dev/null || true";
     CommandResult result = execute_command(grep_cmd);
 
@@ -353,7 +366,8 @@ TEST_F(LintTest, CheckForFIXME) {
 /**
  * Count TODO comments (informational)
  */
-TEST_F(LintTest, CheckForTODO) {
+TEST_F(LintTest, CheckForTODO)
+{
     std::string grep_cmd = "grep -rc 'TODO' " + project_root + "/src/ 2>/dev/null || echo '0'";
     CommandResult result = execute_command(grep_cmd);
 
@@ -370,7 +384,8 @@ TEST_F(LintTest, CheckForTODO) {
 /**
  * Test code complexity using lizard if available
  */
-TEST_F(LintTest, CodeComplexity) {
+TEST_F(LintTest, CodeComplexity)
+{
     if (!command_exists("lizard")) {
         GTEST_SKIP() << "lizard not installed (optional)";
     }
@@ -393,17 +408,19 @@ TEST_F(LintTest, CodeComplexity) {
 /**
  * Check for common memory issues in test code
  */
-TEST_F(LintTest, MemorySafetyPatterns) {
+TEST_F(LintTest, MemorySafetyPatterns)
+{
     // Look for common patterns that might indicate memory issues
     std::vector<std::string> patterns = {
         "malloc.*without.*free",
-        "strcpy",  // Prefer strncpy
-        "sprintf", // Prefer snprintf
-        "gets"     // Unsafe function
+        "strcpy",   // Prefer strncpy
+        "sprintf",  // Prefer snprintf
+        "gets"      // Unsafe function
     };
 
     for (const auto& pattern : patterns) {
-        std::string grep_cmd = "grep -rn '" + pattern + "' " + project_root + "/src/lib/ 2>/dev/null || true";
+        std::string grep_cmd =
+            "grep -rn '" + pattern + "' " + project_root + "/src/lib/ 2>/dev/null || true";
         CommandResult result = execute_command(grep_cmd);
 
         if (!result.output.empty()) {
@@ -415,7 +432,7 @@ TEST_F(LintTest, MemorySafetyPatterns) {
     // Don't fail test, just informational
 }
 
-} // anonymous namespace
+}  // anonymous namespace
 
 //==============================================================================
 // Main

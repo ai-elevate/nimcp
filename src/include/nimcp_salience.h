@@ -58,9 +58,9 @@
 #ifndef NIMCP_SALIENCE_H
 #define NIMCP_SALIENCE_H
 
-#include "nimcp_brain.h"
-#include <stdint.h>
 #include <stdbool.h>
+#include <stdint.h>
+#include "nimcp_brain.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -192,34 +192,34 @@ typedef enum {
  */
 typedef struct {
     // Strategy selection
-    salience_strategy_t strategy;      /**< Computation strategy */
+    salience_strategy_t strategy; /**< Computation strategy */
 
     // History for novelty detection
-    uint32_t history_size;             /**< How many recent inputs to remember */
-    bool enable_novelty;               /**< Compute novelty scores? */
+    uint32_t history_size; /**< How many recent inputs to remember */
+    bool enable_novelty;   /**< Compute novelty scores? */
 
     // Prediction for surprise detection
-    bool enable_surprise;              /**< Compute surprise scores? */
-    bool enable_prediction;            /**< Maintain predictive model? */
+    bool enable_surprise;   /**< Compute surprise scores? */
+    bool enable_prediction; /**< Maintain predictive model? */
 
     // Urgency detection
-    bool enable_urgency;               /**< Compute urgency scores? */
-    float urgency_baseline;            /**< Baseline urgency (0-1) */
+    bool enable_urgency;    /**< Compute urgency scores? */
+    float urgency_baseline; /**< Baseline urgency (0-1) */
 
     // Weighting for combined salience
-    float novelty_weight;              /**< Weight for novelty (default: 0.3) */
-    float surprise_weight;             /**< Weight for surprise (default: 0.4) */
-    float urgency_weight;              /**< Weight for urgency (default: 0.3) */
+    float novelty_weight;  /**< Weight for novelty (default: 0.3) */
+    float surprise_weight; /**< Weight for surprise (default: 0.4) */
+    float urgency_weight;  /**< Weight for urgency (default: 0.3) */
 
     // Attention thresholds (for callbacks)
-    float high_salience_threshold;     /**< Trigger callback above this */
-    float high_novelty_threshold;      /**< Trigger callback for novel */
-    float high_surprise_threshold;     /**< Trigger callback for surprising */
-    float high_urgency_threshold;      /**< Trigger callback for urgent */
+    float high_salience_threshold; /**< Trigger callback above this */
+    float high_novelty_threshold;  /**< Trigger callback for novel */
+    float high_surprise_threshold; /**< Trigger callback for surprising */
+    float high_urgency_threshold;  /**< Trigger callback for urgent */
 
     // Performance tuning
-    bool enable_caching;               /**< Cache recent evaluations? */
-    uint32_t cache_size;               /**< Cache size if enabled */
+    bool enable_caching; /**< Cache recent evaluations? */
+    uint32_t cache_size; /**< Cache size if enabled */
 
 } salience_config_t;
 
@@ -229,10 +229,10 @@ typedef struct {
  * PATTERN: Observer pattern
  */
 typedef enum {
-    SALIENCE_EVENT_HIGH_SALIENCE,      /**< Overall salience high */
-    SALIENCE_EVENT_HIGH_NOVELTY,       /**< Novel input detected */
-    SALIENCE_EVENT_HIGH_SURPRISE,      /**< Surprising input detected */
-    SALIENCE_EVENT_HIGH_URGENCY        /**< Urgent input detected */
+    SALIENCE_EVENT_HIGH_SALIENCE, /**< Overall salience high */
+    SALIENCE_EVENT_HIGH_NOVELTY,  /**< Novel input detected */
+    SALIENCE_EVENT_HIGH_SURPRISE, /**< Surprising input detected */
+    SALIENCE_EVENT_HIGH_URGENCY   /**< Urgent input detected */
 } salience_event_type_t;
 
 /**
@@ -240,12 +240,12 @@ typedef enum {
  * WHY: Provide context about attention event
  */
 typedef struct {
-    salience_event_type_t type;        /**< Event type */
-    brain_salience_t salience;         /**< Salience scores */
-    const float* features;             /**< Input features (read-only) */
-    uint32_t num_features;             /**< Feature count */
-    uint64_t timestamp;                /**< When event occurred */
-    const char* message;               /**< Human-readable description */
+    salience_event_type_t type; /**< Event type */
+    brain_salience_t salience;  /**< Salience scores */
+    const float* features;      /**< Input features (read-only) */
+    uint32_t num_features;      /**< Feature count */
+    uint64_t timestamp;         /**< When event occurred */
+    const char* message;        /**< Human-readable description */
 } salience_event_t;
 
 /**
@@ -280,10 +280,7 @@ typedef void (*salience_event_callback_fn)(const salience_event_t* event, void* 
  * - NULL config: Returns NULL, sets error "Invalid config"
  * - Invalid history_size: Returns NULL, sets error "History size too large"
  */
-salience_evaluator_t salience_evaluator_create(
-    brain_t brain,
-    const salience_config_t* config
-);
+salience_evaluator_t salience_evaluator_create(brain_t brain, const salience_config_t* config);
 
 /**
  * WHAT: Destroy salience evaluator and free resources
@@ -341,11 +338,8 @@ void salience_evaluator_destroy(salience_evaluator_t evaluator);
  *   }
  * @endcode
  */
-brain_salience_t brain_evaluate_salience(
-    salience_evaluator_t evaluator,
-    const float* features,
-    uint32_t num_features
-);
+brain_salience_t brain_evaluate_salience(salience_evaluator_t evaluator, const float* features,
+                                         uint32_t num_features);
 
 /**
  * WHAT: Evaluate salience for batch of inputs (efficient)
@@ -377,13 +371,9 @@ brain_salience_t brain_evaluate_salience(
  *   }
  * @endcode
  */
-uint32_t brain_evaluate_salience_batch(
-    salience_evaluator_t evaluator,
-    const float** features,
-    uint32_t num_samples,
-    uint32_t num_features,
-    brain_salience_t* salience_scores
-);
+uint32_t brain_evaluate_salience_batch(salience_evaluator_t evaluator, const float** features,
+                                       uint32_t num_samples, uint32_t num_features,
+                                       brain_salience_t* salience_scores);
 
 /**
  * WHAT: Evaluate salience with explicit timestamp
@@ -396,12 +386,9 @@ uint32_t brain_evaluate_salience_batch(
  * @param timestamp Input timestamp (milliseconds)
  * @return Salience scores
  */
-brain_salience_t brain_evaluate_salience_temporal(
-    salience_evaluator_t evaluator,
-    const float* features,
-    uint32_t num_features,
-    uint64_t timestamp
-);
+brain_salience_t brain_evaluate_salience_temporal(salience_evaluator_t evaluator,
+                                                  const float* features, uint32_t num_features,
+                                                  uint64_t timestamp);
 
 //=============================================================================
 // Salience Configuration and Control
@@ -420,12 +407,8 @@ brain_salience_t brain_evaluate_salience_temporal(
  *
  * NOTE: Weights will be normalized to sum to 1.0
  */
-bool salience_set_weights(
-    salience_evaluator_t evaluator,
-    float novelty_weight,
-    float surprise_weight,
-    float urgency_weight
-);
+bool salience_set_weights(salience_evaluator_t evaluator, float novelty_weight,
+                          float surprise_weight, float urgency_weight);
 
 /**
  * WHAT: Set attention thresholds for callbacks
@@ -439,13 +422,9 @@ bool salience_set_weights(
  * @param high_urgency_threshold Urgency threshold (0-1)
  * @return true on success
  */
-bool salience_set_thresholds(
-    salience_evaluator_t evaluator,
-    float high_salience_threshold,
-    float high_novelty_threshold,
-    float high_surprise_threshold,
-    float high_urgency_threshold
-);
+bool salience_set_thresholds(salience_evaluator_t evaluator, float high_salience_threshold,
+                             float high_novelty_threshold, float high_surprise_threshold,
+                             float high_urgency_threshold);
 
 /**
  * WHAT: Register callback for attention events
@@ -457,11 +436,8 @@ bool salience_set_thresholds(
  * @param context User context passed to callback
  * @return true on success
  */
-bool salience_register_callback(
-    salience_evaluator_t evaluator,
-    salience_event_callback_fn callback,
-    void* context
-);
+bool salience_register_callback(salience_evaluator_t evaluator, salience_event_callback_fn callback,
+                                void* context);
 
 //=============================================================================
 // Salience History and State Management
@@ -489,21 +465,21 @@ bool salience_clear_history(salience_evaluator_t evaluator);
  * @return true on success
  */
 typedef struct {
-    uint64_t evaluations_performed;      /**< Total evaluations */
-    uint64_t high_salience_count;        /**< High salience detections */
-    uint64_t high_novelty_count;         /**< High novelty detections */
-    uint64_t high_surprise_count;        /**< High surprise detections */
-    uint64_t high_urgency_count;         /**< High urgency detections */
+    uint64_t evaluations_performed; /**< Total evaluations */
+    uint64_t high_salience_count;   /**< High salience detections */
+    uint64_t high_novelty_count;    /**< High novelty detections */
+    uint64_t high_surprise_count;   /**< High surprise detections */
+    uint64_t high_urgency_count;    /**< High urgency detections */
 
-    float avg_salience;                  /**< Average overall salience */
-    float avg_novelty;                   /**< Average novelty */
-    float avg_surprise;                  /**< Average surprise */
-    float avg_urgency;                   /**< Average urgency */
+    float avg_salience; /**< Average overall salience */
+    float avg_novelty;  /**< Average novelty */
+    float avg_surprise; /**< Average surprise */
+    float avg_urgency;  /**< Average urgency */
 
-    float avg_evaluation_time_us;        /**< Average time per evaluation (microseconds) */
+    float avg_evaluation_time_us; /**< Average time per evaluation (microseconds) */
 
-    uint32_t history_size;               /**< Current history depth */
-    uint32_t cache_hit_rate;             /**< Cache hits (if enabled) */
+    uint32_t history_size;   /**< Current history depth */
+    uint32_t cache_hit_rate; /**< Cache hits (if enabled) */
 } salience_stats_t;
 
 bool salience_get_stats(salience_evaluator_t evaluator, salience_stats_t* stats);
@@ -544,11 +520,8 @@ salience_config_t salience_default_config(void);
  * @param num_features Feature count
  * @return Salience scores
  */
-brain_salience_t salience_quick_evaluate(
-    brain_t brain,
-    const float* features,
-    uint32_t num_features
-);
+brain_salience_t salience_quick_evaluate(brain_t brain, const float* features,
+                                         uint32_t num_features);
 
 //=============================================================================
 // Error Handling
@@ -567,4 +540,4 @@ const char* salience_get_last_error(void);
 }
 #endif
 
-#endif // NIMCP_SALIENCE_H
+#endif  // NIMCP_SALIENCE_H

@@ -4,13 +4,13 @@
 //=============================================================================
 
 #include "../include/nimcp_knowledge.h"
-#include "../include/nimcp_brain.h"
-#include "../include/nimcp_curiosity.h"
-#include <stdlib.h>
-#include <string.h>
-#include <stdio.h>
 #include <ctype.h>
 #include <math.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include "../include/nimcp_brain.h"
+#include "../include/nimcp_curiosity.h"
 
 //=============================================================================
 // Constants
@@ -151,7 +151,8 @@ struct knowledge_system_struct {
  * Why: Replaces O(n) linear search with O(1) average case lookup.
  * Algorithm: DJB2 provides good distribution with minimal collisions.
  */
-static uint32_t hash_concept(const char* concept) {
+static uint32_t hash_concept(const char* concept)
+{
     uint32_t hash = 5381;
     int c;
 
@@ -172,9 +173,11 @@ static uint32_t hash_concept(const char* concept) {
  * Why: Enables O(1) average case lookups instead of O(n) linear scans.
  * Memory: Allocates HASH_TABLE_SIZE pointers initially.
  */
-static hash_table_t* hash_table_create(void) {
+static hash_table_t* hash_table_create(void)
+{
     hash_table_t* table = calloc(1, sizeof(hash_table_t));
-    if (!table) return NULL;
+    if (!table)
+        return NULL;
 
     table->entries = calloc(HASH_TABLE_SIZE, sizeof(hash_entry_t*));
     if (!table->entries) {
@@ -199,13 +202,16 @@ static hash_table_t* hash_table_create(void) {
  * Why: Maintains search index for O(1) concept lookup.
  * Complexity: O(1) average case, O(n) worst case with many collisions.
  */
-static bool hash_table_insert(hash_table_t* table, const char* concept, uint32_t index) {
-    if (!table || !concept) return false;
+static bool hash_table_insert(hash_table_t* table, const char* concept, uint32_t index)
+{
+    if (!table || !concept)
+        return false;
 
     uint32_t hash = hash_concept(concept);
 
     hash_entry_t* entry = malloc(sizeof(hash_entry_t));
-    if (!entry) return false;
+    if (!entry)
+        return false;
 
     entry->concept = strdup(concept);
     if (!entry->concept) {
@@ -232,15 +238,17 @@ static bool hash_table_insert(hash_table_t* table, const char* concept, uint32_t
  * Why: O(1) average case lookup vs O(n) linear search.
  * Example: Finding "democracy" in 10000 items takes ~1 comparison vs 5000 average.
  */
-static int32_t hash_table_find(hash_table_t* table, const char* concept) {
-    if (!table || !concept) return -1;
+static int32_t hash_table_find(hash_table_t* table, const char* concept)
+{
+    if (!table || !concept)
+        return -1;
 
     uint32_t hash = hash_concept(concept);
     hash_entry_t* entry = table->entries[hash];
 
     while (entry) {
         if (strcasecmp(entry->concept, concept) == 0) {
-            return (int32_t)entry->index;
+            return (int32_t) entry->index;
         }
         entry = entry->next;
     }
@@ -258,8 +266,10 @@ static int32_t hash_table_find(hash_table_t* table, const char* concept) {
  * Why: Prevents memory leaks from hash table chains.
  * Complexity: O(n) where n is total number of entries.
  */
-static void hash_table_destroy(hash_table_t* table) {
-    if (!table) return;
+static void hash_table_destroy(hash_table_t* table)
+{
+    if (!table)
+        return;
 
     if (table->entries) {
         for (uint32_t i = 0; i < table->size; i++) {
@@ -292,9 +302,11 @@ static void hash_table_destroy(hash_table_t* table) {
  * Why: Separates storage concerns from business logic (Repository Pattern).
  * Provides abstraction layer that can be swapped with different storage backends.
  */
-static knowledge_repository_t* repository_create(uint32_t initial_capacity) {
+static knowledge_repository_t* repository_create(uint32_t initial_capacity)
+{
     knowledge_repository_t* repo = calloc(1, sizeof(knowledge_repository_t));
-    if (!repo) return NULL;
+    if (!repo)
+        return NULL;
 
     repo->items = calloc(initial_capacity, sizeof(knowledge_item_t));
     if (!repo->items) {
@@ -327,8 +339,10 @@ static knowledge_repository_t* repository_create(uint32_t initial_capacity) {
  * Why: Fast retrieval is critical for knowledge queries and learning.
  * Optimization: Hash table provides dramatic speedup over linear search.
  */
-static int32_t repository_find(knowledge_repository_t* repo, const char* concept) {
-    if (!repo || !concept) return -1;
+static int32_t repository_find(knowledge_repository_t* repo, const char* concept)
+{
+    if (!repo || !concept)
+        return -1;
     return hash_table_find(repo->index, concept);
 }
 
@@ -344,9 +358,12 @@ static int32_t repository_find(knowledge_repository_t* repo, const char* concept
  * Why: Ensures index stays synchronized with items array.
  * Invariant: After successful add, repository_find() returns this index.
  */
-static int32_t repository_add(knowledge_repository_t* repo, const knowledge_item_t* item) {
-    if (!repo || !item) return -1;
-    if (repo->num_items >= repo->capacity) return -1;
+static int32_t repository_add(knowledge_repository_t* repo, const knowledge_item_t* item)
+{
+    if (!repo || !item)
+        return -1;
+    if (repo->num_items >= repo->capacity)
+        return -1;
 
     uint32_t index = repo->num_items;
     repo->items[index] = *item;
@@ -357,7 +374,7 @@ static int32_t repository_add(knowledge_repository_t* repo, const knowledge_item
         return -1;
     }
 
-    return (int32_t)index;
+    return (int32_t) index;
 }
 
 /**
@@ -369,8 +386,10 @@ static int32_t repository_add(knowledge_repository_t* repo, const knowledge_item
  *
  * Why: Safe accessor that validates index bounds.
  */
-static knowledge_item_t* repository_get(knowledge_repository_t* repo, uint32_t index) {
-    if (!repo || index >= repo->num_items) return NULL;
+static knowledge_item_t* repository_get(knowledge_repository_t* repo, uint32_t index)
+{
+    if (!repo || index >= repo->num_items)
+        return NULL;
     return &repo->items[index];
 }
 
@@ -382,8 +401,10 @@ static knowledge_item_t* repository_get(knowledge_repository_t* repo, uint32_t i
  * Why: Centralized cleanup ensures no memory leaks.
  * Frees: Items array, hash table, and all string arrays in items.
  */
-static void repository_destroy(knowledge_repository_t* repo) {
-    if (!repo) return;
+static void repository_destroy(knowledge_repository_t* repo)
+{
+    if (!repo)
+        return;
 
     if (repo->items) {
         for (uint32_t i = 0; i < repo->num_items; i++) {
@@ -422,16 +443,18 @@ static void repository_destroy(knowledge_repository_t* repo) {
  * Why: Reduces noise in concept extraction, focusing on meaningful terms.
  * Could be extended with proper stop word list.
  */
-static bool should_skip_word(const char* word) {
-    if (!word || strlen(word) <= 3) return true;
+static bool should_skip_word(const char* word)
+{
+    if (!word || strlen(word) <= 3)
+        return true;
 
-    static const char* stopwords[] = {
-        "the", "and", "that", "this", "with", "from", "have", "been",
-        "they", "their", "about", "would", "there", "which", NULL
-    };
+    static const char* stopwords[] = {"the",   "and",   "that",  "this",  "with",
+                                      "from",  "have",  "been",  "they",  "their",
+                                      "about", "would", "there", "which", NULL};
 
     for (int i = 0; stopwords[i]; i++) {
-        if (strcasecmp(word, stopwords[i]) == 0) return true;
+        if (strcasecmp(word, stopwords[i]) == 0)
+            return true;
     }
 
     return false;
@@ -457,11 +480,14 @@ static bool should_skip_word(const char* word) {
  *   Output: ["quick", "brown", "jumps", "lazy"] (filtered stopwords)
  */
 static uint32_t extract_concepts_optimized(const char* text, char concepts[][256],
-                                          uint32_t max_concepts) {
-    if (!text || !concepts) return 0;
+                                           uint32_t max_concepts)
+{
+    if (!text || !concepts)
+        return 0;
 
     char* text_copy = strdup(text);
-    if (!text_copy) return 0;
+    if (!text_copy)
+        return 0;
 
     const char* delimiters = " .,;:!?\n\t\"'()[]{}";
     uint32_t num_concepts = 0;
@@ -492,8 +518,10 @@ static uint32_t extract_concepts_optimized(const char* text, char concepts[][256
  * Why: Provides meaningful context without excessive memory usage.
  * Better than simple truncation by respecting word boundaries.
  */
-static void create_context_string(const char* text, char* output, uint32_t max_length) {
-    if (!text || !output || max_length == 0) return;
+static void create_context_string(const char* text, char* output, uint32_t max_length)
+{
+    if (!text || !output || max_length == 0)
+        return;
 
     uint32_t len = strlen(text);
     uint32_t copy_len = (len < max_length - 4) ? len : max_length - 4;
@@ -522,12 +550,15 @@ static void create_context_string(const char* text, char* output, uint32_t max_l
  * Why: Strategy pattern allows different learning approaches per domain.
  * Stories require extracting themes, characters, and moral lessons.
  */
-static bool strategy_learn_narrative(void* system, const void* data) {
-    knowledge_system_t sys = (knowledge_system_t)system;
-    const narrative_knowledge_t* story = (const narrative_knowledge_t*)data;
+static bool strategy_learn_narrative(void* system, const void* data)
+{
+    knowledge_system_t sys = (knowledge_system_t) system;
+    const narrative_knowledge_t* story = (const narrative_knowledge_t*) data;
 
-    if (!sys || !story) return false;
-    if (sys->num_narratives >= sys->narratives_capacity) return false;
+    if (!sys || !story)
+        return false;
+    if (sys->num_narratives >= sys->narratives_capacity)
+        return false;
 
     narrative_knowledge_t* new_story = &sys->narratives[sys->num_narratives++];
     memcpy(new_story, story, sizeof(narrative_knowledge_t));
@@ -560,12 +591,15 @@ static bool strategy_learn_narrative(void* system, const void* data) {
  * Why: Art requires extracting aesthetic qualities and emotional impact.
  * Different processing than factual or narrative content.
  */
-static bool strategy_learn_aesthetic(void* system, const void* data) {
-    knowledge_system_t sys = (knowledge_system_t)system;
-    const aesthetic_knowledge_t* art = (const aesthetic_knowledge_t*)data;
+static bool strategy_learn_aesthetic(void* system, const void* data)
+{
+    knowledge_system_t sys = (knowledge_system_t) system;
+    const aesthetic_knowledge_t* art = (const aesthetic_knowledge_t*) data;
 
-    if (!sys || !art) return false;
-    if (sys->num_artworks >= sys->artworks_capacity) return false;
+    if (!sys || !art)
+        return false;
+    if (sys->num_artworks >= sys->artworks_capacity)
+        return false;
 
     aesthetic_knowledge_t* new_art = &sys->artworks[sys->num_artworks++];
     memcpy(new_art, art, sizeof(aesthetic_knowledge_t));
@@ -574,8 +608,8 @@ static bool strategy_learn_aesthetic(void* system, const void* data) {
         knowledge_item_t item = {0};
         strncpy(item.concept, art->aesthetic_qualities[i], sizeof(item.concept) - 1);
         item.domain = KNOWLEDGE_DOMAIN_ART;
-        snprintf(item.definition, sizeof(item.definition),
-                "Quality in %s by %s", art->work_title, art->creator);
+        snprintf(item.definition, sizeof(item.definition), "Quality in %s by %s", art->work_title,
+                 art->creator);
         item.confidence = 0.6f;
         item.reinforcement_count = 1;
 
@@ -598,12 +632,15 @@ static bool strategy_learn_aesthetic(void* system, const void* data) {
  * Why: History requires tracking causality, people, and significance.
  * Different structure than other knowledge types.
  */
-static bool strategy_learn_historical(void* system, const void* data) {
-    knowledge_system_t sys = (knowledge_system_t)system;
-    const historical_knowledge_t* event = (const historical_knowledge_t*)data;
+static bool strategy_learn_historical(void* system, const void* data)
+{
+    knowledge_system_t sys = (knowledge_system_t) system;
+    const historical_knowledge_t* event = (const historical_knowledge_t*) data;
 
-    if (!sys || !event) return false;
-    if (sys->num_history >= sys->history_capacity) return false;
+    if (!sys || !event)
+        return false;
+    if (sys->num_history >= sys->history_capacity)
+        return false;
 
     historical_knowledge_t* new_event = &sys->history[sys->num_history++];
     memcpy(new_event, event, sizeof(historical_knowledge_t));
@@ -640,8 +677,10 @@ static bool strategy_learn_historical(void* system, const void* data) {
  * Why: Provides measure of understanding quality vs just quantity.
  * Single pass O(n) algorithm with early termination opportunity.
  */
-static float calculate_domain_confidence(knowledge_system_t system, knowledge_domain_t domain) {
-    if (!system || !system->repository) return 0.0f;
+static float calculate_domain_confidence(knowledge_system_t system, knowledge_domain_t domain)
+{
+    if (!system || !system->repository)
+        return 0.0f;
 
     float total_confidence = 0.0f;
     uint32_t count = 0;
@@ -667,13 +706,14 @@ static float calculate_domain_confidence(knowledge_system_t system, knowledge_do
  * Why: Incremental update is O(1) vs O(n) full recalculation.
  * Maintains statistics efficiently as knowledge grows.
  */
-static void update_domain_stats(knowledge_system_t system, knowledge_domain_t domain) {
-    if (!system) return;
+static void update_domain_stats(knowledge_system_t system, knowledge_domain_t domain)
+{
+    if (!system)
+        return;
 
     domain_knowledge_t* stats = &system->domain_stats[domain];
     stats->avg_confidence = calculate_domain_confidence(system, domain);
-    stats->coverage_percentage =
-        (float)stats->concepts_known / stats->estimated_total * 100.0f;
+    stats->coverage_percentage = (float) stats->concepts_known / stats->estimated_total * 100.0f;
 }
 
 //=============================================================================
@@ -691,16 +731,12 @@ static void update_domain_stats(knowledge_system_t system, knowledge_domain_t do
  * Why: Each domain may have different learning characteristics.
  * Separated for clarity and single responsibility.
  */
-static brain_t create_domain_brain(const char* domain_name) {
-    if (!domain_name) return NULL;
+static brain_t create_domain_brain(const char* domain_name)
+{
+    if (!domain_name)
+        return NULL;
 
-    return brain_create(
-        domain_name,
-        BRAIN_SIZE_SMALL,
-        BRAIN_TASK_CLASSIFICATION,
-        20,
-        10
-    );
+    return brain_create(domain_name, BRAIN_SIZE_SMALL, BRAIN_TASK_CLASSIFICATION, 20, 10);
 }
 
 /**
@@ -714,8 +750,10 @@ static brain_t create_domain_brain(const char* domain_name) {
  * Why: Centralized initialization ensures consistent state.
  * Provides reasonable defaults for tracking.
  */
-static void initialize_domain_stats(domain_knowledge_t* stats, knowledge_domain_t domain) {
-    if (!stats) return;
+static void initialize_domain_stats(domain_knowledge_t* stats, knowledge_domain_t domain)
+{
+    if (!stats)
+        return;
 
     stats->domain = domain;
     stats->concepts_known = 0;
@@ -741,11 +779,14 @@ static void initialize_domain_stats(domain_knowledge_t* stats, knowledge_domain_
  *   knowledge_system_t sys = knowledge_system_create("Alice");
  *   // System ready with all domains initialized
  */
-knowledge_system_t knowledge_system_create(const char* learner_name) {
-    if (!learner_name) return NULL;
+knowledge_system_t knowledge_system_create(const char* learner_name)
+{
+    if (!learner_name)
+        return NULL;
 
     knowledge_system_t system = calloc(1, sizeof(struct knowledge_system_struct));
-    if (!system) return NULL;
+    if (!system)
+        return NULL;
 
     strncpy(system->learner_name, learner_name, sizeof(system->learner_name) - 1);
 
@@ -767,14 +808,13 @@ knowledge_system_t knowledge_system_create(const char* learner_name) {
     system->reading_list = calloc(100, sizeof(reading_progress_t));
     system->reading_capacity = 100;
 
-    const char* domain_names[] = {
-        "language", "literature", "art", "ethics", "history",
-        "science", "mathematics", "social", "technical", "philosophy", "general"
-    };
+    const char* domain_names[] = {"language",  "literature", "art",         "ethics",
+                                  "history",   "science",    "mathematics", "social",
+                                  "technical", "philosophy", "general"};
 
     for (int i = 0; i < 11; i++) {
         system->domain_brains[i] = create_domain_brain(domain_names[i]);
-        initialize_domain_stats(&system->domain_stats[i], (knowledge_domain_t)i);
+        initialize_domain_stats(&system->domain_stats[i], (knowledge_domain_t) i);
     }
 
     system->curiosity = curiosity_engine_create(learner_name);
@@ -791,8 +831,10 @@ knowledge_system_t knowledge_system_create(const char* learner_name) {
  * Why: Extracted to reduce complexity and improve maintainability.
  * Single responsibility: free one type of resource.
  */
-static void free_narratives(narrative_knowledge_t* narratives, uint32_t num_narratives) {
-    if (!narratives) return;
+static void free_narratives(narrative_knowledge_t* narratives, uint32_t num_narratives)
+{
+    if (!narratives)
+        return;
 
     for (uint32_t i = 0; i < num_narratives; i++) {
         if (narratives[i].characters) {
@@ -825,8 +867,10 @@ static void free_narratives(narrative_knowledge_t* narratives, uint32_t num_narr
  *
  * Why: Separated for clarity and single responsibility.
  */
-static void free_artworks(aesthetic_knowledge_t* artworks, uint32_t num_artworks) {
-    if (!artworks) return;
+static void free_artworks(aesthetic_knowledge_t* artworks, uint32_t num_artworks)
+{
+    if (!artworks)
+        return;
 
     for (uint32_t i = 0; i < num_artworks; i++) {
         if (artworks[i].aesthetic_qualities) {
@@ -847,8 +891,10 @@ static void free_artworks(aesthetic_knowledge_t* artworks, uint32_t num_artworks
  *
  * Why: Extracted for maintainability and single responsibility.
  */
-static void free_history(historical_knowledge_t* history, uint32_t num_history) {
-    if (!history) return;
+static void free_history(historical_knowledge_t* history, uint32_t num_history)
+{
+    if (!history)
+        return;
 
     for (uint32_t i = 0; i < num_history; i++) {
         if (history[i].key_people) {
@@ -875,8 +921,10 @@ static void free_history(historical_knowledge_t* history, uint32_t num_history) 
  *
  * Why: Single responsibility for freeing neural network resources.
  */
-static void free_domain_brains(brain_t* brains, int count) {
-    if (!brains) return;
+static void free_domain_brains(brain_t* brains, int count)
+{
+    if (!brains)
+        return;
 
     for (int i = 0; i < count; i++) {
         if (brains[i]) {
@@ -895,8 +943,10 @@ static void free_domain_brains(brain_t* brains, int count) {
  * Why: Complete cleanup prevents memory leaks.
  * Guard clauses and helpers reduce nesting and improve clarity.
  */
-void knowledge_system_destroy(knowledge_system_t system) {
-    if (!system) return;
+void knowledge_system_destroy(knowledge_system_t system)
+{
+    if (!system)
+        return;
 
     repository_destroy(system->repository);
     free_narratives(system->narratives, system->num_narratives);
@@ -930,9 +980,11 @@ void knowledge_system_destroy(knowledge_system_t system) {
  * Why: Extracted from main loop to reduce complexity.
  * Single responsibility: process one concept.
  */
-static bool process_concept(knowledge_system_t system, const char* concept,
-                          const char* text, knowledge_domain_t domain) {
-    if (!system || !concept) return false;
+static bool process_concept(knowledge_system_t system, const char* concept, const char* text,
+                            knowledge_domain_t domain)
+{
+    if (!system || !concept)
+        return false;
 
     int32_t idx = repository_find(system->repository, concept);
 
@@ -981,8 +1033,10 @@ static bool process_concept(knowledge_system_t system, const char* concept,
  *   Second occurrence of "citizens" reinforces instead of duplicating.
  */
 uint32_t knowledge_learn_from_text(knowledge_system_t system, const char* text,
-                                  knowledge_domain_t domain) {
-    if (!system || !text) return 0;
+                                   knowledge_domain_t domain)
+{
+    if (!system || !text)
+        return 0;
 
     char concepts[100][256];
     uint32_t num_concepts = extract_concepts_optimized(text, concepts, 100);
@@ -1012,9 +1066,10 @@ uint32_t knowledge_learn_from_text(knowledge_system_t system, const char* text,
  * Why: Stories are key to human learning of values and social behavior.
  * Strategy pattern allows domain-specific processing.
  */
-bool knowledge_learn_from_story(knowledge_system_t system,
-                               const narrative_knowledge_t* story) {
-    if (!system || !story) return false;
+bool knowledge_learn_from_story(knowledge_system_t system, const narrative_knowledge_t* story)
+{
+    if (!system || !story)
+        return false;
     return strategy_learn_narrative(system, story);
 }
 
@@ -1028,9 +1083,10 @@ bool knowledge_learn_from_story(knowledge_system_t system,
  * Why: Art learning requires different processing than factual knowledge.
  * Focuses on aesthetic qualities and emotional impact.
  */
-bool knowledge_learn_from_art(knowledge_system_t system,
-                             const aesthetic_knowledge_t* art_piece) {
-    if (!system || !art_piece) return false;
+bool knowledge_learn_from_art(knowledge_system_t system, const aesthetic_knowledge_t* art_piece)
+{
+    if (!system || !art_piece)
+        return false;
     return strategy_learn_aesthetic(system, art_piece);
 }
 
@@ -1044,9 +1100,10 @@ bool knowledge_learn_from_art(knowledge_system_t system,
  * Why: History requires tracking causality and significance.
  * Different structure than narrative or factual knowledge.
  */
-bool knowledge_learn_from_history(knowledge_system_t system,
-                                 const historical_knowledge_t* event) {
-    if (!system || !event) return false;
+bool knowledge_learn_from_history(knowledge_system_t system, const historical_knowledge_t* event)
+{
+    if (!system || !event)
+        return false;
     return strategy_learn_historical(system, event);
 }
 
@@ -1064,11 +1121,11 @@ bool knowledge_learn_from_history(knowledge_system_t system,
  * Why: Social interaction is primary human learning method.
  * Reuses text learning with social domain context.
  */
-uint32_t knowledge_learn_from_conversation(knowledge_system_t system,
-                                          const char* dialogue,
-                                          const char** participants,
-                                          uint32_t num_participants) {
-    if (!system || !dialogue) return 0;
+uint32_t knowledge_learn_from_conversation(knowledge_system_t system, const char* dialogue,
+                                           const char** participants, uint32_t num_participants)
+{
+    if (!system || !dialogue)
+        return 0;
     return knowledge_learn_from_text(system, dialogue, KNOWLEDGE_DOMAIN_SOCIAL);
 }
 
@@ -1086,11 +1143,11 @@ uint32_t knowledge_learn_from_conversation(knowledge_system_t system,
  * Why: Procedural knowledge requires step-by-step encoding.
  * Different from declarative knowledge (facts) or narrative knowledge.
  */
-bool knowledge_learn_from_demonstration(knowledge_system_t system,
-                                       const char* what_demonstrated,
-                                       const char** steps,
-                                       uint32_t num_steps) {
-    if (!system || !what_demonstrated || !steps) return false;
+bool knowledge_learn_from_demonstration(knowledge_system_t system, const char* what_demonstrated,
+                                        const char** steps, uint32_t num_steps)
+{
+    if (!system || !what_demonstrated || !steps)
+        return false;
 
     knowledge_item_t item = {0};
     strncpy(item.concept, what_demonstrated, sizeof(item.concept) - 1);
@@ -1133,15 +1190,18 @@ bool knowledge_learn_from_demonstration(knowledge_system_t system,
  * Why: Fast retrieval enables responsive knowledge queries.
  * O(1) hash lookup vs O(n) linear search.
  */
-bool knowledge_retrieve(knowledge_system_t system, const char* concept,
-                       knowledge_item_t* item) {
-    if (!system || !concept || !item) return false;
+bool knowledge_retrieve(knowledge_system_t system, const char* concept, knowledge_item_t* item)
+{
+    if (!system || !concept || !item)
+        return false;
 
     int32_t idx = repository_find(system->repository, concept);
-    if (idx < 0) return false;
+    if (idx < 0)
+        return false;
 
     knowledge_item_t* found = repository_get(system->repository, idx);
-    if (!found) return false;
+    if (!found)
+        return false;
 
     *item = *found;
     return true;
@@ -1162,10 +1222,11 @@ bool knowledge_retrieve(knowledge_system_t system, const char* concept,
  * Why: Human-readable explanations are key to usable knowledge system.
  * Includes confidence and reinforcement for transparency.
  */
-uint32_t knowledge_understand(knowledge_system_t system, const char* concept,
-                             const char* context, char* explanation,
-                             uint32_t max_length) {
-    if (!system || !concept || !explanation) return 0;
+uint32_t knowledge_understand(knowledge_system_t system, const char* concept, const char* context,
+                              char* explanation, uint32_t max_length)
+{
+    if (!system || !concept || !explanation)
+        return 0;
 
     knowledge_item_t item;
     if (!knowledge_retrieve(system, concept, &item)) {
@@ -1174,10 +1235,10 @@ uint32_t knowledge_understand(knowledge_system_t system, const char* concept,
     }
 
     snprintf(explanation, max_length,
-            "'%s' means: %s. Context: %s. I've encountered this %u times "
-            "and understand it with %.0f%% confidence.",
-            concept, item.definition, item.context,
-            item.reinforcement_count, item.confidence * 100.0f);
+             "'%s' means: %s. Context: %s. I've encountered this %u times "
+             "and understand it with %.0f%% confidence.",
+             concept, item.definition, item.context, item.reinforcement_count,
+             item.confidence * 100.0f);
 
     return strlen(explanation);
 }
@@ -1198,9 +1259,10 @@ uint32_t knowledge_understand(knowledge_system_t system, const char* concept,
  * Uses guard clauses for clarity vs nested ifs.
  */
 uint32_t knowledge_explain_simply(knowledge_system_t system, const char* concept,
-                                 uint32_t target_age, char* explanation,
-                                 uint32_t max_length) {
-    if (!system || !concept || !explanation) return 0;
+                                  uint32_t target_age, char* explanation, uint32_t max_length)
+{
+    if (!system || !concept || !explanation)
+        return 0;
 
     knowledge_item_t item;
     if (!knowledge_retrieve(system, concept, &item)) {
@@ -1236,11 +1298,13 @@ uint32_t knowledge_explain_simply(knowledge_system_t system, const char* concept
  * Why: Extracted to avoid nested conditions in main loop.
  * Single responsibility: determine relationship.
  */
-static bool is_cross_domain_related(const knowledge_item_t* item1,
-                                   const knowledge_item_t* item2,
-                                   const char* target_concept) {
-    if (!item1 || !item2 || !target_concept) return false;
-    if (item1->domain == item2->domain) return false;
+static bool is_cross_domain_related(const knowledge_item_t* item1, const knowledge_item_t* item2,
+                                    const char* target_concept)
+{
+    if (!item1 || !item2 || !target_concept)
+        return false;
+    if (item1->domain == item2->domain)
+        return false;
 
     return true;
 }
@@ -1265,23 +1329,28 @@ static bool is_cross_domain_related(const knowledge_item_t* item1,
  *           social (civic participation)
  */
 uint32_t knowledge_find_connections(knowledge_system_t system, const char* concept,
-                                   knowledge_item_t* connections,
-                                   uint32_t max_connections) {
-    if (!system || !concept || !connections) return 0;
+                                    knowledge_item_t* connections, uint32_t max_connections)
+{
+    if (!system || !concept || !connections)
+        return 0;
 
     int32_t idx = repository_find(system->repository, concept);
-    if (idx < 0) return 0;
+    if (idx < 0)
+        return 0;
 
     knowledge_item_t* target = repository_get(system->repository, idx);
-    if (!target) return 0;
+    if (!target)
+        return 0;
 
     uint32_t num_found = 0;
 
     for (uint32_t i = 0; i < system->repository->num_items && num_found < max_connections; i++) {
-        if (i == (uint32_t)idx) continue;
+        if (i == (uint32_t) idx)
+            continue;
 
         knowledge_item_t* item = repository_get(system->repository, i);
-        if (!item) continue;
+        if (!item)
+            continue;
 
         if (is_cross_domain_related(target, item, concept)) {
             connections[num_found++] = *item;
@@ -1307,19 +1376,15 @@ uint32_t knowledge_find_connections(knowledge_system_t system, const char* conce
  * Why: Transfer learning is key to human intelligence.
  * Example: Apply story lesson (narrative domain) to real situation (social domain).
  */
-bool knowledge_transfer_learning(knowledge_system_t system,
-                                knowledge_domain_t source_domain,
-                                knowledge_domain_t target_domain,
-                                const char* situation,
-                                char* application,
-                                uint32_t max_length) {
-    if (!system || !situation || !application) return false;
+bool knowledge_transfer_learning(knowledge_system_t system, knowledge_domain_t source_domain,
+                                 knowledge_domain_t target_domain, const char* situation,
+                                 char* application, uint32_t max_length)
+{
+    if (!system || !situation || !application)
+        return false;
 
-    snprintf(application, max_length,
-            "Applying knowledge from %s to %s domain for situation: %s",
-            knowledge_domain_name(source_domain),
-            knowledge_domain_name(target_domain),
-            situation);
+    snprintf(application, max_length, "Applying knowledge from %s to %s domain for situation: %s",
+             knowledge_domain_name(source_domain), knowledge_domain_name(target_domain), situation);
 
     return true;
 }
@@ -1343,21 +1408,25 @@ bool knowledge_transfer_learning(knowledge_system_t system,
  * Example: Learn "republic" by comparing to "democracy".
  */
 bool knowledge_build_on(knowledge_system_t system, const char* new_concept,
-                       const char* based_on_concept, const char* differences) {
-    if (!system || !new_concept || !based_on_concept) return false;
+                        const char* based_on_concept, const char* differences)
+{
+    if (!system || !new_concept || !based_on_concept)
+        return false;
 
     int32_t base_idx = repository_find(system->repository, based_on_concept);
-    if (base_idx < 0) return false;
+    if (base_idx < 0)
+        return false;
 
     knowledge_item_t* base = repository_get(system->repository, base_idx);
-    if (!base) return false;
+    if (!base)
+        return false;
 
     knowledge_item_t new_item = *base;
     strncpy(new_item.concept, new_concept, sizeof(new_item.concept) - 1);
 
     if (differences) {
-        snprintf(new_item.definition, sizeof(new_item.definition),
-                "Like %s, but: %s", based_on_concept, differences);
+        snprintf(new_item.definition, sizeof(new_item.definition), "Like %s, but: %s",
+                 based_on_concept, differences);
     }
 
     new_item.confidence = base->confidence * 0.7f;
@@ -1379,15 +1448,18 @@ bool knowledge_build_on(knowledge_system_t system, const char* new_concept,
  * Why: Reinforcement is critical for retention and deeper understanding.
  * Each exposure increases confidence and strengthens memory.
  */
-bool knowledge_reinforce(knowledge_system_t system, const char* concept,
-                        const char* new_example) {
-    if (!system || !concept) return false;
+bool knowledge_reinforce(knowledge_system_t system, const char* concept, const char* new_example)
+{
+    if (!system || !concept)
+        return false;
 
     int32_t idx = repository_find(system->repository, concept);
-    if (idx < 0) return false;
+    if (idx < 0)
+        return false;
 
     knowledge_item_t* item = repository_get(system->repository, idx);
-    if (!item) return false;
+    if (!item)
+        return false;
 
     item->reinforcement_count++;
     item->confidence = fminf(item->confidence + 0.05f, CONFIDENCE_MAX);
@@ -1395,7 +1467,8 @@ bool knowledge_reinforce(knowledge_system_t system, const char* concept,
     if (new_example && item->num_examples < 10) {
         if (!item->examples) {
             item->examples = malloc(10 * sizeof(char*));
-            if (!item->examples) return false;
+            if (!item->examples)
+                return false;
         }
         item->examples[item->num_examples] = strdup(new_example);
         if (item->examples[item->num_examples]) {
@@ -1420,8 +1493,10 @@ bool knowledge_reinforce(knowledge_system_t system, const char* concept,
  * Why: Organization improves retrieval and understanding.
  * Future: Could create hierarchies, clusters, concept maps.
  */
-bool knowledge_organize_domain(knowledge_system_t system, knowledge_domain_t domain) {
-    if (!system) return false;
+bool knowledge_organize_domain(knowledge_system_t system, knowledge_domain_t domain)
+{
+    if (!system)
+        return false;
     update_domain_stats(system, domain);
     return true;
 }
@@ -1440,15 +1515,18 @@ bool knowledge_organize_domain(knowledge_system_t system, knowledge_domain_t dom
  * Why: Visual knowledge maps aid learning and gap identification.
  * Optimized to single pass with early termination.
  */
-uint32_t knowledge_get_map(knowledge_system_t system, knowledge_domain_t domain,
-                          void* map_data, uint32_t max_nodes) {
-    if (!system) return 0;
+uint32_t knowledge_get_map(knowledge_system_t system, knowledge_domain_t domain, void* map_data,
+                           uint32_t max_nodes)
+{
+    if (!system)
+        return 0;
 
     uint32_t count = 0;
 
     for (uint32_t i = 0; i < system->repository->num_items && count < max_nodes; i++) {
         knowledge_item_t* item = repository_get(system->repository, i);
-        if (!item) continue;
+        if (!item)
+            continue;
 
         if (item->domain == domain || domain == KNOWLEDGE_DOMAIN_GENERAL) {
             count++;
@@ -1475,9 +1553,12 @@ uint32_t knowledge_get_map(knowledge_system_t system, knowledge_domain_t domain,
  * Simulates gradual learning process.
  */
 uint32_t knowledge_read_book(knowledge_system_t system, const char* book_title,
-                            const char* book_text, uint32_t reading_speed) {
-    if (!system || !book_title || !book_text) return 0;
-    if (system->num_reading >= system->reading_capacity) return 0;
+                             const char* book_text, uint32_t reading_speed)
+{
+    if (!system || !book_title || !book_text)
+        return 0;
+    if (system->num_reading >= system->reading_capacity)
+        return 0;
 
     reading_progress_t* reading = &system->reading_list[system->num_reading++];
     strncpy(reading->book_title, book_title, sizeof(reading->book_title) - 1);
@@ -1489,8 +1570,7 @@ uint32_t knowledge_read_book(knowledge_system_t system, const char* book_title,
     strncpy(excerpt, book_text, sizeof(excerpt) - 1);
     excerpt[sizeof(excerpt) - 1] = '\0';
 
-    uint32_t learned = knowledge_learn_from_text(system, excerpt,
-                                                KNOWLEDGE_DOMAIN_LITERATURE);
+    uint32_t learned = knowledge_learn_from_text(system, excerpt, KNOWLEDGE_DOMAIN_LITERATURE);
 
     reading->current_page = reading_speed;
     return learned;
@@ -1508,8 +1588,10 @@ uint32_t knowledge_read_book(knowledge_system_t system, const char* book_title,
  * Single-pass search with early return.
  */
 uint32_t knowledge_continue_reading(knowledge_system_t system, const char* book_title,
-                                   bool continue_reading) {
-    if (!system || !book_title) return 0;
+                                    bool continue_reading)
+{
+    if (!system || !book_title)
+        return 0;
 
     for (uint32_t i = 0; i < system->num_reading; i++) {
         if (strcmp(system->reading_list[i].book_title, book_title) == 0) {
@@ -1533,26 +1615,22 @@ uint32_t knowledge_continue_reading(knowledge_system_t system, const char* book_
  * Why: Targeted recommendations fill knowledge gaps efficiently.
  * Future: Could analyze actual gaps and recommend accordingly.
  */
-uint32_t knowledge_get_reading_list(knowledge_system_t system,
-                                   knowledge_domain_t domain,
-                                   char** recommendations,
-                                   uint32_t max_recommendations) {
-    if (!system || !recommendations) return 0;
+uint32_t knowledge_get_reading_list(knowledge_system_t system, knowledge_domain_t domain,
+                                    char** recommendations, uint32_t max_recommendations)
+{
+    if (!system || !recommendations)
+        return 0;
 
-    static const char* suggestions[] = {
-        "The Very Hungry Caterpillar",
-        "Where the Wild Things Are",
-        "Charlotte's Web",
-        "The Little Prince",
-        "A Wrinkle in Time"
-    };
+    static const char* suggestions[] = {"The Very Hungry Caterpillar", "Where the Wild Things Are",
+                                        "Charlotte's Web", "The Little Prince",
+                                        "A Wrinkle in Time"};
 
     uint32_t num_suggestions = 5;
-    uint32_t count = (num_suggestions < max_recommendations) ?
-                     num_suggestions : max_recommendations;
+    uint32_t count =
+        (num_suggestions < max_recommendations) ? num_suggestions : max_recommendations;
 
     for (uint32_t i = 0; i < count; i++) {
-        recommendations[i] = (char*)suggestions[i];
+        recommendations[i] = (char*) suggestions[i];
     }
 
     return count;
@@ -1574,13 +1652,15 @@ uint32_t knowledge_get_reading_list(knowledge_system_t system,
  * Provides quantitative measures of understanding.
  */
 bool knowledge_assess_domain(knowledge_system_t system, knowledge_domain_t domain,
-                            domain_knowledge_t* assessment) {
-    if (!system || !assessment) return false;
+                             domain_knowledge_t* assessment)
+{
+    if (!system || !assessment)
+        return false;
 
     *assessment = system->domain_stats[domain];
 
     assessment->coverage_percentage =
-        (float)assessment->concepts_known / assessment->estimated_total * 100.0f;
+        (float) assessment->concepts_known / assessment->estimated_total * 100.0f;
 
     assessment->avg_confidence = calculate_domain_confidence(system, domain);
 
@@ -1600,15 +1680,16 @@ bool knowledge_assess_domain(knowledge_system_t system, knowledge_domain_t domai
  * Why: Overall summary shows learning progress across all areas.
  * Helps identify which domains need more attention.
  */
-uint32_t knowledge_get_summary(knowledge_system_t system,
-                              domain_knowledge_t* all_domains,
-                              uint32_t max_domains) {
-    if (!system || !all_domains) return 0;
+uint32_t knowledge_get_summary(knowledge_system_t system, domain_knowledge_t* all_domains,
+                               uint32_t max_domains)
+{
+    if (!system || !all_domains)
+        return 0;
 
     uint32_t count = (11 < max_domains) ? 11 : max_domains;
 
     for (uint32_t i = 0; i < count; i++) {
-        knowledge_assess_domain(system, (knowledge_domain_t)i, &all_domains[i]);
+        knowledge_assess_domain(system, (knowledge_domain_t) i, &all_domains[i]);
     }
 
     return count;
@@ -1626,13 +1707,14 @@ uint32_t knowledge_get_summary(knowledge_system_t system,
  *
  * Why: Human-readable domain names for output and debugging.
  */
-const char* knowledge_domain_name(knowledge_domain_t domain) {
-    static const char* names[] = {
-        "Language", "Literature", "Art", "Ethics", "History",
-        "Science", "Mathematics", "Social", "Technical", "Philosophy", "General"
-    };
+const char* knowledge_domain_name(knowledge_domain_t domain)
+{
+    static const char* names[] = {"Language",  "Literature", "Art",         "Ethics",
+                                  "History",   "Science",    "Mathematics", "Social",
+                                  "Technical", "Philosophy", "General"};
 
-    if (domain < 0 || domain > 10) return "Unknown";
+    if (domain < 0 || domain > 10)
+        return "Unknown";
     return names[domain];
 }
 
@@ -1643,8 +1725,10 @@ const char* knowledge_domain_name(knowledge_domain_t domain) {
  *
  * Why: Debugging and inspection of learned knowledge.
  */
-void knowledge_print_item(const knowledge_item_t* item) {
-    if (!item) return;
+void knowledge_print_item(const knowledge_item_t* item)
+{
+    if (!item)
+        return;
 
     printf("Concept: %s\n", item->concept);
     printf("  Domain: %s\n", knowledge_domain_name(item->domain));
@@ -1661,14 +1745,14 @@ void knowledge_print_item(const knowledge_item_t* item) {
  *
  * Why: Shows learning progress and coverage in domain.
  */
-void knowledge_print_assessment(const domain_knowledge_t* assessment) {
-    if (!assessment) return;
+void knowledge_print_assessment(const domain_knowledge_t* assessment)
+{
+    if (!assessment)
+        return;
 
     printf("Domain: %s\n", knowledge_domain_name(assessment->domain));
-    printf("  Concepts known: %u / %u (%.1f%%)\n",
-           assessment->concepts_known,
-           assessment->estimated_total,
-           assessment->coverage_percentage);
+    printf("  Concepts known: %u / %u (%.1f%%)\n", assessment->concepts_known,
+           assessment->estimated_total, assessment->coverage_percentage);
     printf("  Average confidence: %.2f\n", assessment->avg_confidence);
     printf("  Knowledge gaps: %u\n", assessment->num_gaps);
 }
@@ -1685,11 +1769,14 @@ void knowledge_print_assessment(const domain_knowledge_t* assessment) {
  * Why: Long-term memory requires persistent storage.
  * Simplified version saves main items only.
  */
-bool knowledge_save(knowledge_system_t system, const char* filepath) {
-    if (!system || !filepath) return false;
+bool knowledge_save(knowledge_system_t system, const char* filepath)
+{
+    if (!system || !filepath)
+        return false;
 
     FILE* file = fopen(filepath, "wb");
-    if (!file) return false;
+    if (!file)
+        return false;
 
     uint32_t magic = 0x4B4E4F57;
     uint32_t version = 0x00020500;
@@ -1720,11 +1807,14 @@ bool knowledge_save(knowledge_system_t system, const char* filepath) {
  * Why: Enables cumulative learning across sessions.
  * Rebuilds hash index after loading.
  */
-knowledge_system_t knowledge_load(const char* filepath) {
-    if (!filepath) return NULL;
+knowledge_system_t knowledge_load(const char* filepath)
+{
+    if (!filepath)
+        return NULL;
 
     FILE* file = fopen(filepath, "rb");
-    if (!file) return NULL;
+    if (!file)
+        return NULL;
 
     uint32_t magic, version;
     fread(&magic, sizeof(uint32_t), 1, file);
@@ -1748,8 +1838,7 @@ knowledge_system_t knowledge_load(const char* filepath) {
 
     for (uint32_t i = 0; i < system->repository->num_items; i++) {
         fread(&system->repository->items[i], sizeof(knowledge_item_t), 1, file);
-        hash_table_insert(system->repository->index,
-                         system->repository->items[i].concept, i);
+        hash_table_insert(system->repository->index, system->repository->items[i].concept, i);
     }
 
     fclose(file);

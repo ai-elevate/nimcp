@@ -6,7 +6,7 @@
 #include "test_helpers.h"
 
 extern "C" {
-    #include "../include/nimcp_curiosity.h"
+#include "../include/nimcp_curiosity.h"
 }
 
 #include <cstring>
@@ -18,13 +18,15 @@ namespace {
 //=============================================================================
 
 class CuriosityTest : public ::testing::Test {
-protected:
-    void SetUp() override {
+   protected:
+    void SetUp() override
+    {
         engine = curiosity_engine_create("test_learner");
         ASSERT_NE(engine, nullptr);
     }
 
-    void TearDown() override {
+    void TearDown() override
+    {
         if (engine) {
             curiosity_engine_destroy(engine);
             engine = nullptr;
@@ -32,7 +34,8 @@ protected:
     }
 
     // Helper to create test knowledge gap
-    knowledge_gap_t create_test_gap(const char* topic) {
+    knowledge_gap_t create_test_gap(const char* topic)
+    {
         knowledge_gap_t gap;
         memset(&gap, 0, sizeof(gap));
         strncpy(gap.topic, topic, sizeof(gap.topic) - 1);
@@ -52,16 +55,19 @@ protected:
 // Creation/Destruction Tests
 //=============================================================================
 
-TEST_F(CuriosityTest, EngineCreation) {
+TEST_F(CuriosityTest, EngineCreation)
+{
     EXPECT_NE(engine, nullptr);
 }
 
-TEST_F(CuriosityTest, EngineCreationNullName) {
+TEST_F(CuriosityTest, EngineCreationNullName)
+{
     curiosity_engine_t null_engine = curiosity_engine_create(nullptr);
     EXPECT_EQ(null_engine, nullptr);
 }
 
-TEST_F(CuriosityTest, EngineDestructionNullSafe) {
+TEST_F(CuriosityTest, EngineDestructionNullSafe)
+{
     curiosity_engine_destroy(nullptr);
     // Should not crash
 }
@@ -70,7 +76,8 @@ TEST_F(CuriosityTest, EngineDestructionNullSafe) {
 // Knowledge Gap Detection Tests
 //=============================================================================
 
-TEST_F(CuriosityTest, DetectKnowledgeGap) {
+TEST_F(CuriosityTest, DetectKnowledgeGap)
+{
     knowledge_gap_t gap = curiosity_detect_knowledge_gap(engine, "astronomy");
 
     EXPECT_STREQ(gap.topic, "astronomy");
@@ -82,7 +89,8 @@ TEST_F(CuriosityTest, DetectKnowledgeGap) {
     EXPECT_LE(gap.learning_potential, 1.0f);
 }
 
-TEST_F(CuriosityTest, DetectKnowledgeGapNull) {
+TEST_F(CuriosityTest, DetectKnowledgeGapNull)
+{
     knowledge_gap_t gap = curiosity_detect_knowledge_gap(nullptr, "test");
     EXPECT_EQ(gap.topic[0], '\0');
 
@@ -90,14 +98,15 @@ TEST_F(CuriosityTest, DetectKnowledgeGapNull) {
     EXPECT_EQ(gap.topic[0], '\0');
 }
 
-TEST_F(CuriosityTest, DetectKnowledgeGapUnknownConcept) {
+TEST_F(CuriosityTest, DetectKnowledgeGapUnknownConcept)
+{
     // First check: should be unknown
     knowledge_gap_t gap1 = curiosity_detect_knowledge_gap(engine, "quantum_physics");
     float gap_size1 = gap1.gap_size;
 
     // Learn about it
     curiosity_learn_answer(engine, "What is quantum physics?",
-                          "Quantum physics is the study of matter at atomic scales.");
+                           "Quantum physics is the study of matter at atomic scales.");
 
     // Second check: gap should be smaller
     knowledge_gap_t gap2 = curiosity_detect_knowledge_gap(engine, "quantum_physics");
@@ -110,12 +119,14 @@ TEST_F(CuriosityTest, DetectKnowledgeGapUnknownConcept) {
 // Familiarity Check Tests
 //=============================================================================
 
-TEST_F(CuriosityTest, CheckFamiliarityUnknown) {
+TEST_F(CuriosityTest, CheckFamiliarityUnknown)
+{
     float familiarity = curiosity_check_familiarity(engine, "unknown_concept_xyz");
     EXPECT_EQ(familiarity, 0.0f);
 }
 
-TEST_F(CuriosityTest, CheckFamiliarityNull) {
+TEST_F(CuriosityTest, CheckFamiliarityNull)
+{
     EXPECT_EQ(curiosity_check_familiarity(nullptr, "test"), 0.0f);
     EXPECT_EQ(curiosity_check_familiarity(engine, nullptr), 0.0f);
 }
@@ -124,7 +135,8 @@ TEST_F(CuriosityTest, CheckFamiliarityNull) {
 // Related Concepts Tests
 //=============================================================================
 
-TEST_F(CuriosityTest, GetRelatedConcepts) {
+TEST_F(CuriosityTest, GetRelatedConcepts)
+{
     char* related[10];
     uint32_t num_related = curiosity_get_related_concepts(engine, "science", related, 10);
 
@@ -132,14 +144,16 @@ TEST_F(CuriosityTest, GetRelatedConcepts) {
     EXPECT_LE(num_related, 10);
 }
 
-TEST_F(CuriosityTest, GetRelatedConceptsNull) {
+TEST_F(CuriosityTest, GetRelatedConceptsNull)
+{
     char* related[10];
 
     EXPECT_EQ(curiosity_get_related_concepts(nullptr, "test", related, 10), 0);
     EXPECT_EQ(curiosity_get_related_concepts(engine, nullptr, related, 10), 0);
 }
 
-TEST_F(CuriosityTest, GetRelatedConceptsCountOnly) {
+TEST_F(CuriosityTest, GetRelatedConceptsCountOnly)
+{
     // Passing NULL for related array should return count only
     uint32_t count = curiosity_get_related_concepts(engine, "science", nullptr, 10);
     EXPECT_GE(count, 0);
@@ -149,7 +163,8 @@ TEST_F(CuriosityTest, GetRelatedConceptsCountOnly) {
 // Question Generation Tests
 //=============================================================================
 
-TEST_F(CuriosityTest, GenerateQuestions) {
+TEST_F(CuriosityTest, GenerateQuestions)
+{
     knowledge_gap_t gap = create_test_gap("planets");
     generated_question_t questions[10];
 
@@ -168,7 +183,8 @@ TEST_F(CuriosityTest, GenerateQuestions) {
     }
 }
 
-TEST_F(CuriosityTest, GenerateQuestionsNull) {
+TEST_F(CuriosityTest, GenerateQuestionsNull)
+{
     knowledge_gap_t gap = create_test_gap("test");
     generated_question_t questions[10];
 
@@ -178,7 +194,8 @@ TEST_F(CuriosityTest, GenerateQuestionsNull) {
     EXPECT_EQ(curiosity_generate_questions(engine, &gap, questions, 0), 0);
 }
 
-TEST_F(CuriosityTest, GenerateQuestionsTypes) {
+TEST_F(CuriosityTest, GenerateQuestionsTypes)
+{
     knowledge_gap_t gap = create_test_gap("universe");
     generated_question_t questions[10];
 
@@ -191,9 +208,12 @@ TEST_F(CuriosityTest, GenerateQuestionsTypes) {
     bool has_how = false;
 
     for (uint32_t i = 0; i < num_generated; i++) {
-        if (questions[i].type == QUESTION_WHAT) has_what = true;
-        if (questions[i].type == QUESTION_WHY) has_why = true;
-        if (questions[i].type == QUESTION_HOW) has_how = true;
+        if (questions[i].type == QUESTION_WHAT)
+            has_what = true;
+        if (questions[i].type == QUESTION_WHY)
+            has_why = true;
+        if (questions[i].type == QUESTION_HOW)
+            has_how = true;
     }
 
     // At least one question type should be generated
@@ -204,7 +224,8 @@ TEST_F(CuriosityTest, GenerateQuestionsTypes) {
 // Follow-up Question Tests
 //=============================================================================
 
-TEST_F(CuriosityTest, GenerateFollowup) {
+TEST_F(CuriosityTest, GenerateFollowup)
+{
     const char* answer = "Stars are giant balls of hot gas.";
     const char* followup = curiosity_generate_followup(engine, answer);
 
@@ -214,7 +235,8 @@ TEST_F(CuriosityTest, GenerateFollowup) {
     }
 }
 
-TEST_F(CuriosityTest, GenerateFollowupNull) {
+TEST_F(CuriosityTest, GenerateFollowupNull)
+{
     EXPECT_EQ(curiosity_generate_followup(nullptr, "answer"), nullptr);
     EXPECT_EQ(curiosity_generate_followup(engine, nullptr), nullptr);
 }
@@ -223,7 +245,8 @@ TEST_F(CuriosityTest, GenerateFollowupNull) {
 // Motivation Assessment Tests
 //=============================================================================
 
-TEST_F(CuriosityTest, AssessMotivation) {
+TEST_F(CuriosityTest, AssessMotivation)
+{
     motivation_state_t state = curiosity_assess_motivation(engine, "learning");
 
     EXPECT_GE(state.intrinsic_curiosity, 0.0f);
@@ -240,7 +263,8 @@ TEST_F(CuriosityTest, AssessMotivation) {
     EXPECT_LE(state.overall_motivation, 1.0f);
 }
 
-TEST_F(CuriosityTest, AssessMotivationNull) {
+TEST_F(CuriosityTest, AssessMotivationNull)
+{
     motivation_state_t state = curiosity_assess_motivation(nullptr, "test");
     EXPECT_EQ(state.overall_motivation, 0.0f);
 
@@ -252,14 +276,16 @@ TEST_F(CuriosityTest, AssessMotivationNull) {
 // Baseline Curiosity Tests
 //=============================================================================
 
-TEST_F(CuriosityTest, SetBaseline) {
+TEST_F(CuriosityTest, SetBaseline)
+{
     curiosity_set_baseline(engine, 0.8f);
     float drive = curiosity_get_drive(engine);
 
     EXPECT_TRUE(float_equals(drive, 0.8f));
 }
 
-TEST_F(CuriosityTest, SetBaselineClampedToRange) {
+TEST_F(CuriosityTest, SetBaselineClampedToRange)
+{
     // Test upper bound
     curiosity_set_baseline(engine, 1.5f);
     float drive1 = curiosity_get_drive(engine);
@@ -271,12 +297,14 @@ TEST_F(CuriosityTest, SetBaselineClampedToRange) {
     EXPECT_GE(drive2, 0.0f);
 }
 
-TEST_F(CuriosityTest, SetBaselineNull) {
+TEST_F(CuriosityTest, SetBaselineNull)
+{
     curiosity_set_baseline(nullptr, 0.5f);
     // Should not crash
 }
 
-TEST_F(CuriosityTest, GetDriveNull) {
+TEST_F(CuriosityTest, GetDriveNull)
+{
     EXPECT_EQ(curiosity_get_drive(nullptr), 0.0f);
 }
 
@@ -284,7 +312,8 @@ TEST_F(CuriosityTest, GetDriveNull) {
 // Learning from Answers Tests
 //=============================================================================
 
-TEST_F(CuriosityTest, LearnAnswer) {
+TEST_F(CuriosityTest, LearnAnswer)
+{
     const char* question = "What is photosynthesis?";
     const char* answer = "Photosynthesis is how plants convert sunlight into energy.";
 
@@ -292,13 +321,15 @@ TEST_F(CuriosityTest, LearnAnswer) {
     EXPECT_TRUE(success);
 }
 
-TEST_F(CuriosityTest, LearnAnswerNull) {
+TEST_F(CuriosityTest, LearnAnswerNull)
+{
     EXPECT_FALSE(curiosity_learn_answer(nullptr, "Q", "A"));
     EXPECT_FALSE(curiosity_learn_answer(engine, nullptr, "A"));
     EXPECT_FALSE(curiosity_learn_answer(engine, "Q", nullptr));
 }
 
-TEST_F(CuriosityTest, LearnAnswerUpdatesProgress) {
+TEST_F(CuriosityTest, LearnAnswerUpdatesProgress)
+{
     learning_progress_t progress1;
     ASSERT_TRUE(curiosity_get_progress(engine, &progress1));
     uint64_t answers_before = progress1.total_answers_learned;
@@ -316,7 +347,8 @@ TEST_F(CuriosityTest, LearnAnswerUpdatesProgress) {
 // Learning from Experience Tests
 //=============================================================================
 
-TEST_F(CuriosityTest, LearnExperience) {
+TEST_F(CuriosityTest, LearnExperience)
+{
     const char* description = "Saw a bird flying in the sky.";
     float sensory_data[] = {0.1f, 0.2f, 0.3f};
 
@@ -324,14 +356,16 @@ TEST_F(CuriosityTest, LearnExperience) {
     EXPECT_TRUE(success);
 }
 
-TEST_F(CuriosityTest, LearnExperienceNoSensoryData) {
+TEST_F(CuriosityTest, LearnExperienceNoSensoryData)
+{
     const char* description = "Heard a sound.";
 
     bool success = curiosity_learn_experience(engine, description, nullptr, 0);
     EXPECT_TRUE(success);
 }
 
-TEST_F(CuriosityTest, LearnExperienceNull) {
+TEST_F(CuriosityTest, LearnExperienceNull)
+{
     float sensory_data[] = {0.1f, 0.2f};
 
     EXPECT_FALSE(curiosity_learn_experience(nullptr, "test", sensory_data, 2));
@@ -342,7 +376,8 @@ TEST_F(CuriosityTest, LearnExperienceNull) {
 // Learning from Observation Tests
 //=============================================================================
 
-TEST_F(CuriosityTest, LearnObservation) {
+TEST_F(CuriosityTest, LearnObservation)
+{
     const char* observed = "People greeting each other with handshakes.";
     const char* context = "Social interaction";
 
@@ -350,7 +385,8 @@ TEST_F(CuriosityTest, LearnObservation) {
     EXPECT_TRUE(success);
 }
 
-TEST_F(CuriosityTest, LearnObservationNull) {
+TEST_F(CuriosityTest, LearnObservationNull)
+{
     EXPECT_FALSE(curiosity_learn_observation(nullptr, "observed", "context"));
     EXPECT_FALSE(curiosity_learn_observation(engine, nullptr, "context"));
 }
@@ -360,19 +396,22 @@ TEST_F(CuriosityTest, LearnObservationNull) {
 //=============================================================================
 
 // Mock search function for testing
-static char** mock_search_fn(const char* query, void* context,
-                             uint32_t max_results, uint32_t* num_results) {
+static char** mock_search_fn(const char* query, void* context, uint32_t max_results,
+                             uint32_t* num_results)
+{
     *num_results = 0;
     return nullptr;
 }
 
-TEST_F(CuriosityTest, RegisterKnowledgeSource) {
-    bool success = curiosity_register_knowledge_source(
-        engine, "test_source", mock_search_fn, nullptr);
+TEST_F(CuriosityTest, RegisterKnowledgeSource)
+{
+    bool success =
+        curiosity_register_knowledge_source(engine, "test_source", mock_search_fn, nullptr);
     EXPECT_TRUE(success);
 }
 
-TEST_F(CuriosityTest, RegisterKnowledgeSourceNull) {
+TEST_F(CuriosityTest, RegisterKnowledgeSourceNull)
+{
     EXPECT_FALSE(curiosity_register_knowledge_source(nullptr, "source", mock_search_fn, nullptr));
     EXPECT_FALSE(curiosity_register_knowledge_source(engine, nullptr, mock_search_fn, nullptr));
     EXPECT_FALSE(curiosity_register_knowledge_source(engine, "source", nullptr, nullptr));
@@ -382,7 +421,8 @@ TEST_F(CuriosityTest, RegisterKnowledgeSourceNull) {
 // Knowledge Seeking Tests
 //=============================================================================
 
-TEST_F(CuriosityTest, SeekKnowledge) {
+TEST_F(CuriosityTest, SeekKnowledge)
+{
     // Register a source first
     curiosity_register_knowledge_source(engine, "test_source", mock_search_fn, nullptr);
 
@@ -395,7 +435,8 @@ TEST_F(CuriosityTest, SeekKnowledge) {
     EXPECT_EQ(num_results, 0);
 }
 
-TEST_F(CuriosityTest, SeekKnowledgeNull) {
+TEST_F(CuriosityTest, SeekKnowledgeNull)
+{
     knowledge_gap_t gap = create_test_gap("test");
     char* results[10];
 
@@ -408,7 +449,8 @@ TEST_F(CuriosityTest, SeekKnowledgeNull) {
 // Learning Progress Tests
 //=============================================================================
 
-TEST_F(CuriosityTest, GetProgress) {
+TEST_F(CuriosityTest, GetProgress)
+{
     learning_progress_t progress;
     bool success = curiosity_get_progress(engine, &progress);
 
@@ -421,14 +463,16 @@ TEST_F(CuriosityTest, GetProgress) {
     EXPECT_LE(progress.avg_curiosity, 1.0f);
 }
 
-TEST_F(CuriosityTest, GetProgressNull) {
+TEST_F(CuriosityTest, GetProgressNull)
+{
     learning_progress_t progress;
 
     EXPECT_FALSE(curiosity_get_progress(nullptr, &progress));
     EXPECT_FALSE(curiosity_get_progress(engine, nullptr));
 }
 
-TEST_F(CuriosityTest, GetProgressTracksLearning) {
+TEST_F(CuriosityTest, GetProgressTracksLearning)
+{
     learning_progress_t progress1;
     ASSERT_TRUE(curiosity_get_progress(engine, &progress1));
 
@@ -445,14 +489,16 @@ TEST_F(CuriosityTest, GetProgressTracksLearning) {
 // Domain Coverage Tests
 //=============================================================================
 
-TEST_F(CuriosityTest, GetDomainCoverage) {
+TEST_F(CuriosityTest, GetDomainCoverage)
+{
     float coverage = curiosity_get_domain_coverage(engine, "science");
 
     EXPECT_GE(coverage, 0.0f);
     EXPECT_LE(coverage, 1.0f);
 }
 
-TEST_F(CuriosityTest, GetDomainCoverageNull) {
+TEST_F(CuriosityTest, GetDomainCoverageNull)
+{
     EXPECT_EQ(curiosity_get_domain_coverage(nullptr, "science"), 0.0f);
     EXPECT_EQ(curiosity_get_domain_coverage(engine, nullptr), 0.0f);
 }
@@ -461,18 +507,21 @@ TEST_F(CuriosityTest, GetDomainCoverageNull) {
 // Learning Stage Tests
 //=============================================================================
 
-TEST_F(CuriosityTest, GetStageDefault) {
+TEST_F(CuriosityTest, GetStageDefault)
+{
     learning_stage_t stage = curiosity_get_stage(engine);
     EXPECT_EQ(stage, STAGE_INFANT);
 }
 
-TEST_F(CuriosityTest, SetStage) {
+TEST_F(CuriosityTest, SetStage)
+{
     curiosity_set_stage(engine, STAGE_CHILD);
     learning_stage_t stage = curiosity_get_stage(engine);
     EXPECT_EQ(stage, STAGE_CHILD);
 }
 
-TEST_F(CuriosityTest, SetStageChangesBaseline) {
+TEST_F(CuriosityTest, SetStageChangesBaseline)
+{
     curiosity_set_stage(engine, STAGE_INFANT);
     float infant_baseline = curiosity_get_drive(engine);
 
@@ -483,17 +532,20 @@ TEST_F(CuriosityTest, SetStageChangesBaseline) {
     EXPECT_LT(adult_baseline, infant_baseline);
 }
 
-TEST_F(CuriosityTest, SetStageNull) {
+TEST_F(CuriosityTest, SetStageNull)
+{
     curiosity_set_stage(nullptr, STAGE_CHILD);
     // Should not crash
 }
 
-TEST_F(CuriosityTest, GetStageNull) {
+TEST_F(CuriosityTest, GetStageNull)
+{
     learning_stage_t stage = curiosity_get_stage(nullptr);
     EXPECT_EQ(stage, STAGE_INFANT);
 }
 
-TEST_F(CuriosityTest, SetStageAffectsQuestionGeneration) {
+TEST_F(CuriosityTest, SetStageAffectsQuestionGeneration)
+{
     knowledge_gap_t gap = create_test_gap("physics");
     generated_question_t questions_infant[10];
     generated_question_t questions_expert[10];
@@ -518,17 +570,20 @@ TEST_F(CuriosityTest, SetStageAffectsQuestionGeneration) {
 // Utility Function Tests
 //=============================================================================
 
-TEST_F(CuriosityTest, PrintGapNull) {
+TEST_F(CuriosityTest, PrintGapNull)
+{
     curiosity_print_gap(nullptr);
     // Should not crash
 }
 
-TEST_F(CuriosityTest, PrintQuestionNull) {
+TEST_F(CuriosityTest, PrintQuestionNull)
+{
     curiosity_print_question(nullptr);
     // Should not crash
 }
 
-TEST_F(CuriosityTest, PrintProgressNull) {
+TEST_F(CuriosityTest, PrintProgressNull)
+{
     curiosity_print_progress(nullptr);
     // Should not crash
 }
@@ -537,7 +592,8 @@ TEST_F(CuriosityTest, PrintProgressNull) {
 // Integration Tests
 //=============================================================================
 
-TEST_F(CuriosityTest, IntegrationFullLearningCycle) {
+TEST_F(CuriosityTest, IntegrationFullLearningCycle)
+{
     // 1. Detect knowledge gap
     knowledge_gap_t gap = curiosity_detect_knowledge_gap(engine, "stars");
     EXPECT_GT(gap.gap_size, 0.0f);
@@ -558,7 +614,8 @@ TEST_F(CuriosityTest, IntegrationFullLearningCycle) {
     EXPECT_GT(progress.total_answers_learned, 0);
 }
 
-TEST_F(CuriosityTest, IntegrationCuriosityDrivenExploration) {
+TEST_F(CuriosityTest, IntegrationCuriosityDrivenExploration)
+{
     // Set high baseline curiosity
     curiosity_set_baseline(engine, 0.9f);
 
@@ -573,7 +630,8 @@ TEST_F(CuriosityTest, IntegrationCuriosityDrivenExploration) {
     EXPECT_GT(m3.intrinsic_curiosity, 0.8f);
 }
 
-TEST_F(CuriosityTest, IntegrationProgressionThroughStages) {
+TEST_F(CuriosityTest, IntegrationProgressionThroughStages)
+{
     // Start as infant
     curiosity_set_stage(engine, STAGE_INFANT);
     EXPECT_EQ(curiosity_get_stage(engine), STAGE_INFANT);
@@ -591,5 +649,4 @@ TEST_F(CuriosityTest, IntegrationProgressionThroughStages) {
     EXPECT_TRUE(curiosity_get_progress(engine, &progress));
 }
 
-} // anonymous namespace
-
+}  // anonymous namespace

@@ -8,13 +8,13 @@
  */
 
 #include <gtest/gtest.h>
+#include <algorithm>
 #include <cmath>
 #include <vector>
-#include <algorithm>
 
 extern "C" {
-    #include "utils/nimcp_graph.h"
-    #include "utils/nimcp_memory.h"
+#include "utils/nimcp_graph.h"
+#include "utils/nimcp_memory.h"
 }
 
 //=============================================================================
@@ -22,13 +22,15 @@ extern "C" {
 //=============================================================================
 
 class GraphTest : public ::testing::Test {
-protected:
-    void SetUp() override {
+   protected:
+    void SetUp() override
+    {
         nimcp_memory_init();
         graph = nullptr;
     }
 
-    void TearDown() override {
+    void TearDown() override
+    {
         if (graph) {
             nimcp_graph_destroy(graph);
         }
@@ -42,7 +44,8 @@ protected:
  * WHAT: Test basic graph creation
  * WHY: Verify graph can be created successfully
  */
-TEST_F(GraphTest, CreateGraph) {
+TEST_F(GraphTest, CreateGraph)
+{
     graph = nimcp_graph_create();
     ASSERT_NE(graph, nullptr);
     EXPECT_EQ(graph->vertex_count, 0);
@@ -54,7 +57,8 @@ TEST_F(GraphTest, CreateGraph) {
  * WHAT: Test graph destruction with NULL
  * WHY: Verify safe handling of NULL pointer
  */
-TEST_F(GraphTest, DestroyNullGraph) {
+TEST_F(GraphTest, DestroyNullGraph)
+{
     nimcp_graph_destroy(nullptr);  // Should not crash
 }
 
@@ -62,7 +66,8 @@ TEST_F(GraphTest, DestroyNullGraph) {
  * WHAT: Test graph destruction with vertices and edges
  * WHY: Verify proper cleanup of allocated memory
  */
-TEST_F(GraphTest, DestroyGraphWithData) {
+TEST_F(GraphTest, DestroyGraphWithData)
+{
     graph = nimcp_graph_create();
     ASSERT_NE(graph, nullptr);
 
@@ -82,14 +87,16 @@ TEST_F(GraphTest, DestroyGraphWithData) {
 //=============================================================================
 
 class VertexTest : public ::testing::Test {
-protected:
-    void SetUp() override {
+   protected:
+    void SetUp() override
+    {
         nimcp_memory_init();
         graph = nimcp_graph_create();
         ASSERT_NE(graph, nullptr);
     }
 
-    void TearDown() override {
+    void TearDown() override
+    {
         if (graph) {
             nimcp_graph_destroy(graph);
         }
@@ -103,7 +110,8 @@ protected:
  * WHAT: Test adding single vertex
  * WHY: Verify basic vertex addition works
  */
-TEST_F(VertexTest, AddSingleVertex) {
+TEST_F(VertexTest, AddSingleVertex)
+{
     uint32_t idx = nimcp_graph_add_vertex(graph, 100, 1.0f, 2.0f, 3.0f, 0xABCD);
     EXPECT_EQ(idx, 0);
     EXPECT_EQ(graph->vertex_count, 1);
@@ -118,7 +126,8 @@ TEST_F(VertexTest, AddSingleVertex) {
  * WHAT: Test adding multiple vertices
  * WHY: Verify multiple vertices can be added and indexed correctly
  */
-TEST_F(VertexTest, AddMultipleVertices) {
+TEST_F(VertexTest, AddMultipleVertices)
+{
     uint32_t idx1 = nimcp_graph_add_vertex(graph, 1, 0.0f, 0.0f, 0.0f, 0);
     uint32_t idx2 = nimcp_graph_add_vertex(graph, 2, 1.0f, 1.0f, 1.0f, 0);
     uint32_t idx3 = nimcp_graph_add_vertex(graph, 3, 2.0f, 2.0f, 2.0f, 0);
@@ -133,7 +142,8 @@ TEST_F(VertexTest, AddMultipleVertices) {
  * WHAT: Test adding vertex to NULL graph
  * WHY: Verify proper error handling
  */
-TEST_F(VertexTest, AddVertexToNullGraph) {
+TEST_F(VertexTest, AddVertexToNullGraph)
+{
     uint32_t idx = nimcp_graph_add_vertex(nullptr, 1, 0.0f, 0.0f, 0.0f, 0);
     EXPECT_EQ(idx, NIMCP_INVALID_VERTEX);
 }
@@ -142,7 +152,8 @@ TEST_F(VertexTest, AddVertexToNullGraph) {
  * WHAT: Test adding duplicate peer_id
  * WHY: Ensure duplicate peer IDs are rejected
  */
-TEST_F(VertexTest, AddDuplicatePeerId) {
+TEST_F(VertexTest, AddDuplicatePeerId)
+{
     uint32_t idx1 = nimcp_graph_add_vertex(graph, 100, 0.0f, 0.0f, 0.0f, 0);
     EXPECT_NE(idx1, NIMCP_INVALID_VERTEX);
 
@@ -156,7 +167,8 @@ TEST_F(VertexTest, AddDuplicatePeerId) {
  * WHAT: Test adding vertices up to maximum
  * WHY: Verify capacity limit is enforced
  */
-TEST_F(VertexTest, AddMaxVertices) {
+TEST_F(VertexTest, AddMaxVertices)
+{
     // Add vertices up to the limit
     for (uint32_t i = 0; i < NIMCP_MAX_VERTICES; i++) {
         uint32_t idx = nimcp_graph_add_vertex(graph, i, 0.0f, 0.0f, 0.0f, 0);
@@ -174,7 +186,8 @@ TEST_F(VertexTest, AddMaxVertices) {
  * WHAT: Test removing single vertex
  * WHY: Verify vertex removal works
  */
-TEST_F(VertexTest, RemoveSingleVertex) {
+TEST_F(VertexTest, RemoveSingleVertex)
+{
     uint32_t idx = nimcp_graph_add_vertex(graph, 1, 0.0f, 0.0f, 0.0f, 0);
     EXPECT_EQ(graph->vertex_count, 1);
 
@@ -187,7 +200,8 @@ TEST_F(VertexTest, RemoveSingleVertex) {
  * WHAT: Test removing vertex from NULL graph
  * WHY: Verify proper error handling
  */
-TEST_F(VertexTest, RemoveVertexFromNullGraph) {
+TEST_F(VertexTest, RemoveVertexFromNullGraph)
+{
     bool result = nimcp_graph_remove_vertex(nullptr, 0);
     EXPECT_FALSE(result);
 }
@@ -196,7 +210,8 @@ TEST_F(VertexTest, RemoveVertexFromNullGraph) {
  * WHAT: Test removing vertex with invalid index
  * WHY: Ensure invalid indices are rejected
  */
-TEST_F(VertexTest, RemoveInvalidVertex) {
+TEST_F(VertexTest, RemoveInvalidVertex)
+{
     nimcp_graph_add_vertex(graph, 1, 0.0f, 0.0f, 0.0f, 0);
 
     bool result = nimcp_graph_remove_vertex(graph, 999);
@@ -208,7 +223,8 @@ TEST_F(VertexTest, RemoveInvalidVertex) {
  * WHAT: Test removing vertex with edges
  * WHY: Verify edges are properly cleaned up
  */
-TEST_F(VertexTest, RemoveVertexWithEdges) {
+TEST_F(VertexTest, RemoveVertexWithEdges)
+{
     uint32_t v1 = nimcp_graph_add_vertex(graph, 1, 0.0f, 0.0f, 0.0f, 0);
     uint32_t v2 = nimcp_graph_add_vertex(graph, 2, 1.0f, 1.0f, 1.0f, 0);
     uint32_t v3 = nimcp_graph_add_vertex(graph, 3, 2.0f, 2.0f, 2.0f, 0);
@@ -228,7 +244,8 @@ TEST_F(VertexTest, RemoveVertexWithEdges) {
  * WHAT: Test updating vertex coordinates
  * WHY: Verify coordinate updates work correctly
  */
-TEST_F(VertexTest, UpdateCoordinates) {
+TEST_F(VertexTest, UpdateCoordinates)
+{
     uint32_t idx = nimcp_graph_add_vertex(graph, 1, 0.0f, 0.0f, 0.0f, 0);
 
     bool result = nimcp_graph_update_coordinates(graph, idx, 5.0f, 6.0f, 7.0f);
@@ -242,7 +259,8 @@ TEST_F(VertexTest, UpdateCoordinates) {
  * WHAT: Test updating coordinates with invalid values
  * WHY: Ensure NaN and infinity are rejected
  */
-TEST_F(VertexTest, UpdateCoordinatesWithInvalidValues) {
+TEST_F(VertexTest, UpdateCoordinatesWithInvalidValues)
+{
     uint32_t idx = nimcp_graph_add_vertex(graph, 1, 0.0f, 0.0f, 0.0f, 0);
 
     // Try with NaN
@@ -258,7 +276,8 @@ TEST_F(VertexTest, UpdateCoordinatesWithInvalidValues) {
  * WHAT: Test finding vertex by peer ID
  * WHY: Verify peer ID lookup works
  */
-TEST_F(VertexTest, FindVertex) {
+TEST_F(VertexTest, FindVertex)
+{
     nimcp_graph_add_vertex(graph, 100, 0.0f, 0.0f, 0.0f, 0);
     nimcp_graph_add_vertex(graph, 200, 1.0f, 1.0f, 1.0f, 0);
     nimcp_graph_add_vertex(graph, 300, 2.0f, 2.0f, 2.0f, 0);
@@ -272,7 +291,8 @@ TEST_F(VertexTest, FindVertex) {
  * WHAT: Test finding non-existent vertex
  * WHY: Verify proper handling when peer ID not found
  */
-TEST_F(VertexTest, FindNonExistentVertex) {
+TEST_F(VertexTest, FindNonExistentVertex)
+{
     nimcp_graph_add_vertex(graph, 100, 0.0f, 0.0f, 0.0f, 0);
 
     uint32_t idx = nimcp_graph_find_vertex(graph, 999);
@@ -284,8 +304,9 @@ TEST_F(VertexTest, FindNonExistentVertex) {
 //=============================================================================
 
 class EdgeTest : public ::testing::Test {
-protected:
-    void SetUp() override {
+   protected:
+    void SetUp() override
+    {
         nimcp_memory_init();
         graph = nimcp_graph_create();
         ASSERT_NE(graph, nullptr);
@@ -296,7 +317,8 @@ protected:
         v3 = nimcp_graph_add_vertex(graph, 3, 2.0f, 2.0f, 2.0f, 0);
     }
 
-    void TearDown() override {
+    void TearDown() override
+    {
         if (graph) {
             nimcp_graph_destroy(graph);
         }
@@ -311,7 +333,8 @@ protected:
  * WHAT: Test adding single edge
  * WHY: Verify basic edge addition works
  */
-TEST_F(EdgeTest, AddSingleEdge) {
+TEST_F(EdgeTest, AddSingleEdge)
+{
     bool result = nimcp_graph_add_edge(graph, v1, v2, 1.5f);
     EXPECT_TRUE(result);
     EXPECT_EQ(graph->edge_count, 1);
@@ -322,7 +345,8 @@ TEST_F(EdgeTest, AddSingleEdge) {
  * WHAT: Test adding edge to NULL graph
  * WHY: Verify proper error handling
  */
-TEST_F(EdgeTest, AddEdgeToNullGraph) {
+TEST_F(EdgeTest, AddEdgeToNullGraph)
+{
     bool result = nimcp_graph_add_edge(nullptr, 0, 1, 1.0f);
     EXPECT_FALSE(result);
 }
@@ -331,7 +355,8 @@ TEST_F(EdgeTest, AddEdgeToNullGraph) {
  * WHAT: Test adding edge with invalid indices
  * WHY: Ensure invalid vertex indices are rejected
  */
-TEST_F(EdgeTest, AddEdgeWithInvalidIndices) {
+TEST_F(EdgeTest, AddEdgeWithInvalidIndices)
+{
     bool result = nimcp_graph_add_edge(graph, 999, v2, 1.0f);
     EXPECT_FALSE(result);
 
@@ -343,7 +368,8 @@ TEST_F(EdgeTest, AddEdgeWithInvalidIndices) {
  * WHAT: Test adding self-loop
  * WHY: Ensure edges to same vertex are rejected
  */
-TEST_F(EdgeTest, AddSelfLoop) {
+TEST_F(EdgeTest, AddSelfLoop)
+{
     bool result = nimcp_graph_add_edge(graph, v1, v1, 1.0f);
     EXPECT_FALSE(result);
 }
@@ -352,7 +378,8 @@ TEST_F(EdgeTest, AddSelfLoop) {
  * WHAT: Test adding duplicate edge
  * WHY: Verify duplicate edges update weight instead of adding new edge
  */
-TEST_F(EdgeTest, AddDuplicateEdge) {
+TEST_F(EdgeTest, AddDuplicateEdge)
+{
     bool result1 = nimcp_graph_add_edge(graph, v1, v2, 1.0f);
     EXPECT_TRUE(result1);
     EXPECT_EQ(graph->edge_count, 1);
@@ -373,7 +400,8 @@ TEST_F(EdgeTest, AddDuplicateEdge) {
  * WHAT: Test adding edge with invalid weight
  * WHY: Ensure NaN and infinity weights are rejected
  */
-TEST_F(EdgeTest, AddEdgeWithInvalidWeight) {
+TEST_F(EdgeTest, AddEdgeWithInvalidWeight)
+{
     bool result = nimcp_graph_add_edge(graph, v1, v2, NAN);
     EXPECT_FALSE(result);
 
@@ -385,7 +413,8 @@ TEST_F(EdgeTest, AddEdgeWithInvalidWeight) {
  * WHAT: Test adding multiple edges
  * WHY: Verify graph can handle multiple edges correctly
  */
-TEST_F(EdgeTest, AddMultipleEdges) {
+TEST_F(EdgeTest, AddMultipleEdges)
+{
     bool r1 = nimcp_graph_add_edge(graph, v1, v2, 1.0f);
     bool r2 = nimcp_graph_add_edge(graph, v2, v3, 2.0f);
     bool r3 = nimcp_graph_add_edge(graph, v1, v3, 3.0f);
@@ -400,7 +429,8 @@ TEST_F(EdgeTest, AddMultipleEdges) {
  * WHAT: Test removing single edge
  * WHY: Verify edge removal works
  */
-TEST_F(EdgeTest, RemoveSingleEdge) {
+TEST_F(EdgeTest, RemoveSingleEdge)
+{
     nimcp_graph_add_edge(graph, v1, v2, 1.0f);
     EXPECT_EQ(graph->edge_count, 1);
 
@@ -414,7 +444,8 @@ TEST_F(EdgeTest, RemoveSingleEdge) {
  * WHAT: Test removing non-existent edge
  * WHY: Verify proper handling when edge doesn't exist
  */
-TEST_F(EdgeTest, RemoveNonExistentEdge) {
+TEST_F(EdgeTest, RemoveNonExistentEdge)
+{
     bool result = nimcp_graph_remove_edge(graph, v1, v2);
     EXPECT_FALSE(result);
 }
@@ -423,7 +454,8 @@ TEST_F(EdgeTest, RemoveNonExistentEdge) {
  * WHAT: Test removing edge from NULL graph
  * WHY: Verify proper error handling
  */
-TEST_F(EdgeTest, RemoveEdgeFromNullGraph) {
+TEST_F(EdgeTest, RemoveEdgeFromNullGraph)
+{
     bool result = nimcp_graph_remove_edge(nullptr, 0, 1);
     EXPECT_FALSE(result);
 }
@@ -432,7 +464,8 @@ TEST_F(EdgeTest, RemoveEdgeFromNullGraph) {
  * WHAT: Test removing edge with invalid indices
  * WHY: Ensure invalid vertex indices are rejected
  */
-TEST_F(EdgeTest, RemoveEdgeWithInvalidIndices) {
+TEST_F(EdgeTest, RemoveEdgeWithInvalidIndices)
+{
     bool result = nimcp_graph_remove_edge(graph, 999, v2);
     EXPECT_FALSE(result);
 
@@ -444,7 +477,8 @@ TEST_F(EdgeTest, RemoveEdgeWithInvalidIndices) {
  * WHAT: Test getting edge weight
  * WHY: Verify edge weight retrieval works
  */
-TEST_F(EdgeTest, GetEdgeWeight) {
+TEST_F(EdgeTest, GetEdgeWeight)
+{
     nimcp_graph_add_edge(graph, v1, v2, 2.5f);
 
     nimcp_weight_t weight;
@@ -457,7 +491,8 @@ TEST_F(EdgeTest, GetEdgeWeight) {
  * WHAT: Test getting weight of non-existent edge
  * WHY: Verify proper handling when edge doesn't exist
  */
-TEST_F(EdgeTest, GetNonExistentEdgeWeight) {
+TEST_F(EdgeTest, GetNonExistentEdgeWeight)
+{
     nimcp_weight_t weight;
     bool result = nimcp_graph_get_edge_weight(graph, v1, v2, &weight);
     EXPECT_FALSE(result);
@@ -467,7 +502,8 @@ TEST_F(EdgeTest, GetNonExistentEdgeWeight) {
  * WHAT: Test getting neighbors
  * WHY: Verify neighbor retrieval works correctly
  */
-TEST_F(EdgeTest, GetNeighbors) {
+TEST_F(EdgeTest, GetNeighbors)
+{
     nimcp_graph_add_edge(graph, v1, v2, 1.0f);
     nimcp_graph_add_edge(graph, v1, v3, 2.0f);
 
@@ -485,7 +521,8 @@ TEST_F(EdgeTest, GetNeighbors) {
  * WHAT: Test getting neighbors with limited buffer
  * WHY: Verify function respects max_neighbors limit
  */
-TEST_F(EdgeTest, GetNeighborsLimitedBuffer) {
+TEST_F(EdgeTest, GetNeighborsLimitedBuffer)
+{
     nimcp_graph_add_edge(graph, v1, v2, 1.0f);
     nimcp_graph_add_edge(graph, v1, v3, 2.0f);
 
@@ -498,7 +535,8 @@ TEST_F(EdgeTest, GetNeighborsLimitedBuffer) {
  * WHAT: Test getting neighbors with NULL buffer
  * WHY: Verify proper error handling
  */
-TEST_F(EdgeTest, GetNeighborsNullBuffer) {
+TEST_F(EdgeTest, GetNeighborsNullBuffer)
+{
     nimcp_graph_add_edge(graph, v1, v2, 1.0f);
 
     uint32_t count = nimcp_graph_get_neighbors(graph, v1, nullptr, 10);
@@ -510,14 +548,16 @@ TEST_F(EdgeTest, GetNeighborsNullBuffer) {
 //=============================================================================
 
 class PathFindingTest : public ::testing::Test {
-protected:
-    void SetUp() override {
+   protected:
+    void SetUp() override
+    {
         nimcp_memory_init();
         graph = nimcp_graph_create();
         ASSERT_NE(graph, nullptr);
     }
 
-    void TearDown() override {
+    void TearDown() override
+    {
         if (graph) {
             nimcp_graph_destroy(graph);
         }
@@ -531,7 +571,8 @@ protected:
  * WHAT: Test shortest path in simple graph
  * WHY: Verify Dijkstra's algorithm works for basic case
  */
-TEST_F(PathFindingTest, SimpleShortestPath) {
+TEST_F(PathFindingTest, SimpleShortestPath)
+{
     // Create simple 3-node path: 0 -> 1 -> 2
     uint32_t v0 = nimcp_graph_add_vertex(graph, 0, 0.0f, 0.0f, 0.0f, 0);
     uint32_t v1 = nimcp_graph_add_vertex(graph, 1, 1.0f, 0.0f, 0.0f, 0);
@@ -556,7 +597,8 @@ TEST_F(PathFindingTest, SimpleShortestPath) {
  * WHAT: Test shortest path with multiple routes
  * WHY: Verify algorithm selects optimal path
  */
-TEST_F(PathFindingTest, MultipleRoutes) {
+TEST_F(PathFindingTest, MultipleRoutes)
+{
     // Create diamond graph:
     //   0 -> 1 -> 3
     //   |         ^
@@ -573,7 +615,7 @@ TEST_F(PathFindingTest, MultipleRoutes) {
 
     NimcpPath* path = nimcp_graph_shortest_path(graph, v0, v3);
     ASSERT_NE(path, nullptr);
-    EXPECT_EQ(path->length, 3);  // 0 -> 2 -> 3
+    EXPECT_EQ(path->length, 3);                 // 0 -> 2 -> 3
     EXPECT_FLOAT_EQ(path->total_weight, 2.0f);  // Shorter than 0->1->3 (weight 4)
 
     nimcp_free(path->vertices);
@@ -584,7 +626,8 @@ TEST_F(PathFindingTest, MultipleRoutes) {
  * WHAT: Test path to unreachable vertex
  * WHY: Verify handling when no path exists
  */
-TEST_F(PathFindingTest, NoPath) {
+TEST_F(PathFindingTest, NoPath)
+{
     // Create two disconnected vertices
     uint32_t v0 = nimcp_graph_add_vertex(graph, 0, 0.0f, 0.0f, 0.0f, 0);
     uint32_t v1 = nimcp_graph_add_vertex(graph, 1, 1.0f, 0.0f, 0.0f, 0);
@@ -597,7 +640,8 @@ TEST_F(PathFindingTest, NoPath) {
  * WHAT: Test shortest path with invalid indices
  * WHY: Verify proper error handling
  */
-TEST_F(PathFindingTest, InvalidIndices) {
+TEST_F(PathFindingTest, InvalidIndices)
+{
     uint32_t v0 = nimcp_graph_add_vertex(graph, 0, 0.0f, 0.0f, 0.0f, 0);
 
     NimcpPath* path = nimcp_graph_shortest_path(graph, v0, 999);
@@ -611,7 +655,8 @@ TEST_F(PathFindingTest, InvalidIndices) {
  * WHAT: Test shortest path from vertex to itself
  * WHY: Verify self-path handling
  */
-TEST_F(PathFindingTest, SelfPath) {
+TEST_F(PathFindingTest, SelfPath)
+{
     uint32_t v0 = nimcp_graph_add_vertex(graph, 0, 0.0f, 0.0f, 0.0f, 0);
 
     NimcpPath* path = nimcp_graph_shortest_path(graph, v0, v0);
@@ -628,7 +673,8 @@ TEST_F(PathFindingTest, SelfPath) {
  * WHAT: Test shortest path on NULL graph
  * WHY: Verify proper error handling
  */
-TEST_F(PathFindingTest, NullGraph) {
+TEST_F(PathFindingTest, NullGraph)
+{
     NimcpPath* path = nimcp_graph_shortest_path(nullptr, 0, 1);
     EXPECT_EQ(path, nullptr);
 }
@@ -638,14 +684,16 @@ TEST_F(PathFindingTest, NullGraph) {
 //=============================================================================
 
 class ComponentTest : public ::testing::Test {
-protected:
-    void SetUp() override {
+   protected:
+    void SetUp() override
+    {
         nimcp_memory_init();
         graph = nimcp_graph_create();
         ASSERT_NE(graph, nullptr);
     }
 
-    void TearDown() override {
+    void TearDown() override
+    {
         if (graph) {
             nimcp_graph_destroy(graph);
         }
@@ -659,7 +707,8 @@ protected:
  * WHAT: Test single connected component
  * WHY: Verify component detection for fully connected graph
  */
-TEST_F(ComponentTest, SingleComponent) {
+TEST_F(ComponentTest, SingleComponent)
+{
     uint32_t v0 = nimcp_graph_add_vertex(graph, 0, 0.0f, 0.0f, 0.0f, 0);
     uint32_t v1 = nimcp_graph_add_vertex(graph, 1, 1.0f, 0.0f, 0.0f, 0);
     uint32_t v2 = nimcp_graph_add_vertex(graph, 2, 2.0f, 0.0f, 0.0f, 0);
@@ -678,7 +727,8 @@ TEST_F(ComponentTest, SingleComponent) {
  * WHAT: Test multiple disconnected components
  * WHY: Verify component detection for disconnected graph
  */
-TEST_F(ComponentTest, MultipleComponents) {
+TEST_F(ComponentTest, MultipleComponents)
+{
     // Component 1: v0 - v1
     uint32_t v0 = nimcp_graph_add_vertex(graph, 0, 0.0f, 0.0f, 0.0f, 0);
     uint32_t v1 = nimcp_graph_add_vertex(graph, 1, 1.0f, 0.0f, 0.0f, 0);
@@ -701,7 +751,8 @@ TEST_F(ComponentTest, MultipleComponents) {
  * WHAT: Test isolated vertices
  * WHY: Verify each isolated vertex forms its own component
  */
-TEST_F(ComponentTest, IsolatedVertices) {
+TEST_F(ComponentTest, IsolatedVertices)
+{
     uint32_t v0 = nimcp_graph_add_vertex(graph, 0, 0.0f, 0.0f, 0.0f, 0);
     uint32_t v1 = nimcp_graph_add_vertex(graph, 1, 1.0f, 0.0f, 0.0f, 0);
     uint32_t v2 = nimcp_graph_add_vertex(graph, 2, 2.0f, 0.0f, 0.0f, 0);
@@ -719,7 +770,8 @@ TEST_F(ComponentTest, IsolatedVertices) {
  * WHAT: Test component update on NULL graph
  * WHY: Verify proper error handling
  */
-TEST_F(ComponentTest, NullGraph) {
+TEST_F(ComponentTest, NullGraph)
+{
     uint32_t components = nimcp_graph_update_components(nullptr);
     EXPECT_EQ(components, 0);
 }
@@ -728,7 +780,8 @@ TEST_F(ComponentTest, NullGraph) {
  * WHAT: Test component update on empty graph
  * WHY: Verify handling of graph with no vertices
  */
-TEST_F(ComponentTest, EmptyGraph) {
+TEST_F(ComponentTest, EmptyGraph)
+{
     uint32_t components = nimcp_graph_update_components(graph);
     EXPECT_EQ(components, 0);
 }
@@ -738,14 +791,16 @@ TEST_F(ComponentTest, EmptyGraph) {
 //=============================================================================
 
 class ThreadSafetyTest : public ::testing::Test {
-protected:
-    void SetUp() override {
+   protected:
+    void SetUp() override
+    {
         nimcp_memory_init();
         graph = nimcp_graph_create();
         ASSERT_NE(graph, nullptr);
     }
 
-    void TearDown() override {
+    void TearDown() override
+    {
         if (graph) {
             nimcp_graph_destroy(graph);
         }
@@ -760,7 +815,8 @@ protected:
  * WHY: Verify thread safety of add_vertex operation
  * NOTE: Basic test - full thread safety testing would require threading
  */
-TEST_F(ThreadSafetyTest, ConcurrentVertexAdditions) {
+TEST_F(ThreadSafetyTest, ConcurrentVertexAdditions)
+{
     // Sequential additions (actual threading would require pthread or std::thread)
     // This tests that the mutex mechanism doesn't deadlock on sequential calls
     for (int i = 0; i < 10; i++) {
@@ -774,7 +830,8 @@ TEST_F(ThreadSafetyTest, ConcurrentVertexAdditions) {
  * WHAT: Test concurrent edge operations
  * WHY: Verify thread safety of edge add/remove operations
  */
-TEST_F(ThreadSafetyTest, ConcurrentEdgeOperations) {
+TEST_F(ThreadSafetyTest, ConcurrentEdgeOperations)
+{
     // Add vertices first
     uint32_t v0 = nimcp_graph_add_vertex(graph, 0, 0.0f, 0.0f, 0.0f, 0);
     uint32_t v1 = nimcp_graph_add_vertex(graph, 1, 1.0f, 0.0f, 0.0f, 0);
@@ -795,14 +852,16 @@ TEST_F(ThreadSafetyTest, ConcurrentEdgeOperations) {
 //=============================================================================
 
 class ComplexGraphTest : public ::testing::Test {
-protected:
-    void SetUp() override {
+   protected:
+    void SetUp() override
+    {
         nimcp_memory_init();
         graph = nimcp_graph_create();
         ASSERT_NE(graph, nullptr);
     }
 
-    void TearDown() override {
+    void TearDown() override
+    {
         if (graph) {
             nimcp_graph_destroy(graph);
         }
@@ -816,7 +875,8 @@ protected:
  * WHAT: Test cyclic graph
  * WHY: Verify graph handles cycles correctly
  */
-TEST_F(ComplexGraphTest, CyclicGraph) {
+TEST_F(ComplexGraphTest, CyclicGraph)
+{
     // Create cycle: 0 -> 1 -> 2 -> 0
     uint32_t v0 = nimcp_graph_add_vertex(graph, 0, 0.0f, 0.0f, 0.0f, 0);
     uint32_t v1 = nimcp_graph_add_vertex(graph, 1, 1.0f, 0.0f, 0.0f, 0);
@@ -839,7 +899,8 @@ TEST_F(ComplexGraphTest, CyclicGraph) {
  * WHAT: Test dense graph
  * WHY: Verify performance with many edges
  */
-TEST_F(ComplexGraphTest, DenseGraph) {
+TEST_F(ComplexGraphTest, DenseGraph)
+{
     // Create complete graph of 10 vertices
     const int n = 10;
     std::vector<uint32_t> vertices;
@@ -868,7 +929,8 @@ TEST_F(ComplexGraphTest, DenseGraph) {
  * WHAT: Test graph modification during traversal
  * WHY: Verify robust handling of graph changes
  */
-TEST_F(ComplexGraphTest, ModifyDuringTraversal) {
+TEST_F(ComplexGraphTest, ModifyDuringTraversal)
+{
     uint32_t v0 = nimcp_graph_add_vertex(graph, 0, 0.0f, 0.0f, 0.0f, 0);
     uint32_t v1 = nimcp_graph_add_vertex(graph, 1, 1.0f, 0.0f, 0.0f, 0);
     uint32_t v2 = nimcp_graph_add_vertex(graph, 2, 2.0f, 0.0f, 0.0f, 0);

@@ -30,14 +30,14 @@
 #ifndef NIMCP_BRAIN_HPP
 #define NIMCP_BRAIN_HPP
 
-#include <string>
-#include <vector>
+#include <functional>
 #include <memory>
 #include <stdexcept>
-#include <functional>
+#include <string>
+#include <vector>
 
 extern "C" {
-    #include "../../src/include/nimcp_brain.h"
+#include "../../src/include/nimcp_brain.h"
 }
 
 namespace nimcp {
@@ -81,7 +81,8 @@ struct Decision {
     uint64_t inference_time_us;
 
     /** Get inference time in milliseconds */
-    double inference_time_ms() const {
+    double inference_time_ms() const
+    {
         return inference_time_us / 1000.0;
     }
 };
@@ -104,12 +105,14 @@ struct Stats {
     size_t memory_bytes;
 
     /** Get average inference time in milliseconds */
-    double avg_inference_time_ms() const {
+    double avg_inference_time_ms() const
+    {
         return avg_inference_time_us / 1000.0;
     }
 
     /** Get memory usage in megabytes */
-    double memory_mb() const {
+    double memory_mb() const
+    {
         return memory_bytes / (1024.0 * 1024.0);
     }
 };
@@ -127,9 +130,8 @@ struct NeuronImportance {
 //=============================================================================
 
 class BrainException : public std::runtime_error {
-public:
-    explicit BrainException(const std::string& msg)
-        : std::runtime_error(msg) {}
+   public:
+    explicit BrainException(const std::string& msg) : std::runtime_error(msg) {}
 };
 
 //=============================================================================
@@ -142,7 +144,7 @@ public:
  * RAII wrapper around brain_t with modern C++ conveniences.
  */
 class Brain {
-public:
+   public:
     /**
      * @brief Create a new brain
      *
@@ -154,21 +156,15 @@ public:
      *
      * @throws BrainException if creation fails
      */
-    Brain(const std::string& task_name,
-          BrainSize size,
-          BrainTask task,
-          uint32_t num_inputs,
+    Brain(const std::string& task_name, BrainSize size, BrainTask task, uint32_t num_inputs,
           uint32_t num_outputs)
-        : handle_(brain_create(task_name.c_str(),
-                              static_cast<brain_size_t>(size),
-                              static_cast<brain_task_t>(task),
-                              num_inputs,
-                              num_outputs))
-        , task_name_(task_name)
-        , size_(size)
-        , task_(task)
-        , num_inputs_(num_inputs)
-        , num_outputs_(num_outputs)
+        : handle_(brain_create(task_name.c_str(), static_cast<brain_size_t>(size),
+                               static_cast<brain_task_t>(task), num_inputs, num_outputs)),
+          task_name_(task_name),
+          size_(size),
+          task_(task),
+          num_inputs_(num_inputs),
+          num_outputs_(num_outputs)
     {
         if (!handle_) {
             const char* error = brain_get_last_error();
@@ -183,7 +179,8 @@ public:
      * @return Loaded Brain instance
      * @throws BrainException if loading fails
      */
-    static Brain load(const std::string& filepath) {
+    static Brain load(const std::string& filepath)
+    {
         brain_t handle = brain_load(filepath.c_str());
         if (!handle) {
             const char* error = brain_get_last_error();
@@ -206,17 +203,18 @@ public:
     Brain& operator=(const Brain&) = delete;
 
     Brain(Brain&& other) noexcept
-        : handle_(other.handle_)
-        , task_name_(std::move(other.task_name_))
-        , size_(other.size_)
-        , task_(other.task_)
-        , num_inputs_(other.num_inputs_)
-        , num_outputs_(other.num_outputs_)
+        : handle_(other.handle_),
+          task_name_(std::move(other.task_name_)),
+          size_(other.size_),
+          task_(other.task_),
+          num_inputs_(other.num_inputs_),
+          num_outputs_(other.num_outputs_)
     {
         other.handle_ = nullptr;
     }
 
-    Brain& operator=(Brain&& other) noexcept {
+    Brain& operator=(Brain&& other) noexcept
+    {
         if (this != &other) {
             if (handle_) {
                 brain_destroy(handle_);
@@ -234,7 +232,8 @@ public:
         return *this;
     }
 
-    ~Brain() {
+    ~Brain()
+    {
         if (handle_) {
             brain_destroy(handle_);
         }
@@ -249,17 +248,14 @@ public:
      * @return Loss value
      * @throws BrainException if learning fails
      */
-    float learn_example(const std::vector<float>& features,
-                       const std::string& label,
-                       float confidence = 1.0f) {
+    float learn_example(const std::vector<float>& features, const std::string& label,
+                        float confidence = 1.0f)
+    {
         if (features.size() != num_inputs_) {
             throw BrainException("Feature count mismatch");
         }
 
-        float loss = brain_learn_example(handle_,
-                                         features.data(),
-                                         features.size(),
-                                         label.c_str(),
+        float loss = brain_learn_example(handle_, features.data(), features.size(), label.c_str(),
                                          confidence);
 
         if (loss < 0) {
@@ -276,7 +272,9 @@ public:
      * @param examples Vector of (features, label, confidence) tuples
      * @return Average loss
      */
-    float learn_batch(const std::vector<std::tuple<std::vector<float>, std::string, float>>& examples) {
+    float
+    learn_batch(const std::vector<std::tuple<std::vector<float>, std::string, float>>& examples)
+    {
         float total_loss = 0.0f;
 
         for (const auto& [features, label, confidence] : examples) {
@@ -295,15 +293,15 @@ public:
      */
     using TeacherFunction = std::function<std::pair<std::string, float>(const std::vector<float>&)>;
 
-    float learn_from_llm(const std::vector<float>& features,
-                        TeacherFunction teacher_fn) {
+    float learn_from_llm(const std::vector<float>& features, TeacherFunction teacher_fn)
+    {
         // Wrapper to convert C++ function to C callback
         static TeacherFunction* current_teacher = nullptr;
         current_teacher = &teacher_fn;
 
-        auto c_wrapper = [](const float* input, uint32_t num_features,
-                           void* context, char* output_label, uint32_t max_label_len) -> float {
-            (void)context;
+        auto c_wrapper = [](const float* input, uint32_t num_features, void* context,
+                            char* output_label, uint32_t max_label_len) -> float {
+            (void) context;
 
             std::vector<float> features(input, input + num_features);
             auto [label, confidence] = (*current_teacher)(features);
@@ -314,11 +312,8 @@ public:
             return confidence;
         };
 
-        float loss = brain_learn_from_llm(handle_,
-                                         features.data(),
-                                         features.size(),
-                                         c_wrapper,
-                                         nullptr);
+        float loss =
+            brain_learn_from_llm(handle_, features.data(), features.size(), c_wrapper, nullptr);
 
         if (loss < 0) {
             const char* error = brain_get_last_error();
@@ -335,14 +330,13 @@ public:
      * @return Decision result
      * @throws BrainException if inference fails
      */
-    Decision decide(const std::vector<float>& features) {
+    Decision decide(const std::vector<float>& features)
+    {
         if (features.size() != num_inputs_) {
             throw BrainException("Feature count mismatch");
         }
 
-        brain_decision_t* c_decision = brain_decide(handle_,
-                                                    features.data(),
-                                                    features.size());
+        brain_decision_t* c_decision = brain_decide(handle_, features.data(), features.size());
 
         if (!c_decision) {
             const char* error = brain_get_last_error();
@@ -354,10 +348,11 @@ public:
         decision.label = c_decision->label;
         decision.confidence = c_decision->confidence;
         decision.output_vector.assign(c_decision->output_vector,
-                                     c_decision->output_vector + c_decision->output_size);
+                                      c_decision->output_vector + c_decision->output_size);
         decision.num_active_neurons = c_decision->num_active_neurons;
         decision.active_neuron_ids.assign(c_decision->active_neuron_ids,
-                                         c_decision->active_neuron_ids + c_decision->num_active_neurons);
+                                          c_decision->active_neuron_ids +
+                                              c_decision->num_active_neurons);
         decision.sparsity = c_decision->sparsity;
         decision.explanation = c_decision->explanation;
         decision.inference_time_us = c_decision->inference_time_us;
@@ -373,7 +368,8 @@ public:
      * @param filepath Path to save to
      * @throws BrainException if save fails
      */
-    void save(const std::string& filepath) {
+    void save(const std::string& filepath)
+    {
         if (!brain_save(handle_, filepath.c_str())) {
             const char* error = brain_get_last_error();
             throw BrainException(error ? error : "Save failed");
@@ -385,7 +381,8 @@ public:
      *
      * @return Stats object
      */
-    Stats get_stats() const {
+    Stats get_stats() const
+    {
         brain_stats_t c_stats;
         if (!brain_get_stats(handle_, &c_stats)) {
             const char* error = brain_get_last_error();
@@ -415,13 +412,13 @@ public:
      * @param top_n Number of top neurons to return
      * @return Vector of (neuron_id, importance) pairs
      */
-    std::vector<NeuronImportance> get_top_neurons(uint32_t top_n = 10) {
+    std::vector<NeuronImportance> get_top_neurons(uint32_t top_n = 10)
+    {
         std::vector<uint32_t> neuron_ids(top_n);
         std::vector<float> importances(top_n);
 
-        uint32_t count = brain_get_top_neurons(handle_, top_n,
-                                               neuron_ids.data(),
-                                               importances.data());
+        uint32_t count =
+            brain_get_top_neurons(handle_, top_n, neuron_ids.data(), importances.data());
 
         std::vector<NeuronImportance> result;
         result.reserve(count);
@@ -439,14 +436,16 @@ public:
      * @param threshold Prune synapses with weight < threshold
      * @return Number of synapses pruned
      */
-    uint32_t prune(float threshold = 0.01f) {
+    uint32_t prune(float threshold = 0.01f)
+    {
         return brain_prune(handle_, threshold);
     }
 
     /**
      * @brief Optimize brain for inference
      */
-    void optimize_for_inference() {
+    void optimize_for_inference()
+    {
         if (!brain_optimize_for_inference(handle_)) {
             const char* error = brain_get_last_error();
             throw BrainException(error ? error : "Optimization failed");
@@ -454,13 +453,28 @@ public:
     }
 
     // Getters
-    const std::string& task_name() const { return task_name_; }
-    BrainSize size() const { return size_; }
-    BrainTask task() const { return task_; }
-    uint32_t num_inputs() const { return num_inputs_; }
-    uint32_t num_outputs() const { return num_outputs_; }
+    const std::string& task_name() const
+    {
+        return task_name_;
+    }
+    BrainSize size() const
+    {
+        return size_;
+    }
+    BrainTask task() const
+    {
+        return task_;
+    }
+    uint32_t num_inputs() const
+    {
+        return num_inputs_;
+    }
+    uint32_t num_outputs() const
+    {
+        return num_outputs_;
+    }
 
-private:
+   private:
     // Private constructor for load()
     Brain() : handle_(nullptr) {}
 
@@ -479,22 +493,21 @@ private:
 /**
  * @brief Create a classification brain with sensible defaults
  */
-inline Brain create_classifier(const std::string& name,
-                              uint32_t num_inputs,
-                              uint32_t num_outputs,
-                              BrainSize size = BrainSize::SMALL) {
+inline Brain create_classifier(const std::string& name, uint32_t num_inputs, uint32_t num_outputs,
+                               BrainSize size = BrainSize::SMALL)
+{
     return Brain(name, size, BrainTask::CLASSIFICATION, num_inputs, num_outputs);
 }
 
 /**
  * @brief Create a pattern matching brain
  */
-inline Brain create_pattern_matcher(const std::string& name,
-                                   uint32_t num_inputs,
-                                   BrainSize size = BrainSize::SMALL) {
+inline Brain create_pattern_matcher(const std::string& name, uint32_t num_inputs,
+                                    BrainSize size = BrainSize::SMALL)
+{
     return Brain(name, size, BrainTask::PATTERN_MATCHING, num_inputs, 1);
 }
 
-} // namespace nimcp
+}  // namespace nimcp
 
-#endif // NIMCP_BRAIN_HPP
+#endif  // NIMCP_BRAIN_HPP

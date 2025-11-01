@@ -10,13 +10,13 @@
 #include "test_helpers.h"
 
 extern "C" {
-#include "../include/nimcp_dataio.h"
 #include "../include/nimcp_brain.h"
+#include "../include/nimcp_dataio.h"
 }
 
 #include <gtest/gtest.h>
-#include <string.h>
 #include <stdio.h>
+#include <string.h>
 #include <unistd.h>
 
 //=============================================================================
@@ -28,17 +28,17 @@ extern "C" {
  * WHY: Set up/tear down test CSV files and brains
  */
 class DataIOTest : public ::testing::Test {
-protected:
+   protected:
     const char* test_csv = "/tmp/nimcp_test_data.csv";
     const char* test_csv_no_header = "/tmp/nimcp_test_data_no_header.csv";
     const char* test_output = "/tmp/nimcp_test_output.csv";
     brain_t brain;
     dataset_t dataset;
 
-    void SetUp() override {
+    void SetUp() override
+    {
         // Create test brain
-        brain = brain_create("test_brain", BRAIN_SIZE_SMALL,
-                            BRAIN_TASK_CLASSIFICATION, 13, 3);
+        brain = brain_create("test_brain", BRAIN_SIZE_SMALL, BRAIN_TASK_CLASSIFICATION, 13, 3);
         ASSERT_NE(brain, nullptr);
 
         dataset = nullptr;
@@ -48,7 +48,8 @@ protected:
         create_test_csv_no_header();
     }
 
-    void TearDown() override {
+    void TearDown() override
+    {
         // Clean up dataset
         if (dataset) {
             dataset_close(dataset);
@@ -69,7 +70,8 @@ protected:
      * WHAT: Create test CSV with header
      * WHY: Provide test data for CSV loading tests
      */
-    void create_test_csv_with_header() {
+    void create_test_csv_with_header()
+    {
         FILE* f = fopen(test_csv, "w");
         ASSERT_NE(f, nullptr);
 
@@ -78,9 +80,8 @@ protected:
 
         // Write 10 rows of data
         for (int i = 0; i < 10; i++) {
-            fprintf(f, "0.%d,0.%d,0.%d,0.%d,0.%d,0.%d,0.%d,0.%d,0.%d,0.%d,0.%d,0.%d,0.%d,%s\n",
-                   i, i, i, i, i, i, i, i, i, i, i, i, i,
-                   (i % 2 == 0) ? "allow" : "deny");
+            fprintf(f, "0.%d,0.%d,0.%d,0.%d,0.%d,0.%d,0.%d,0.%d,0.%d,0.%d,0.%d,0.%d,0.%d,%s\n", i,
+                    i, i, i, i, i, i, i, i, i, i, i, i, (i % 2 == 0) ? "allow" : "deny");
         }
 
         fclose(f);
@@ -90,15 +91,15 @@ protected:
      * WHAT: Create test CSV without header
      * WHY: Test CSV loading without header row
      */
-    void create_test_csv_no_header() {
+    void create_test_csv_no_header()
+    {
         FILE* f = fopen(test_csv_no_header, "w");
         ASSERT_NE(f, nullptr);
 
         // Write 10 rows of data (no header)
         for (int i = 0; i < 10; i++) {
-            fprintf(f, "0.%d,0.%d,0.%d,0.%d,0.%d,0.%d,0.%d,0.%d,0.%d,0.%d,0.%d,0.%d,0.%d,%s\n",
-                   i, i, i, i, i, i, i, i, i, i, i, i, i,
-                   (i % 2 == 0) ? "allow" : "deny");
+            fprintf(f, "0.%d,0.%d,0.%d,0.%d,0.%d,0.%d,0.%d,0.%d,0.%d,0.%d,0.%d,0.%d,0.%d,%s\n", i,
+                    i, i, i, i, i, i, i, i, i, i, i, i, (i % 2 == 0) ? "allow" : "deny");
         }
 
         fclose(f);
@@ -113,7 +114,8 @@ protected:
  * WHAT: Test loading CSV with header
  * WHY: Verify basic CSV loading works
  */
-TEST_F(DataIOTest, LoadCSVWithHeader) {
+TEST_F(DataIOTest, LoadCSVWithHeader)
+{
     dataset = dataset_load_csv(test_csv, 13, 1, true);
     ASSERT_NE(dataset, nullptr);
 }
@@ -122,7 +124,8 @@ TEST_F(DataIOTest, LoadCSVWithHeader) {
  * WHAT: Test loading CSV without header
  * WHY: Verify header-less CSV loading works
  */
-TEST_F(DataIOTest, LoadCSVWithoutHeader) {
+TEST_F(DataIOTest, LoadCSVWithoutHeader)
+{
     dataset = dataset_load_csv(test_csv_no_header, 13, 1, false);
     ASSERT_NE(dataset, nullptr);
 }
@@ -131,7 +134,8 @@ TEST_F(DataIOTest, LoadCSVWithoutHeader) {
  * WHAT: Test loading CSV with NULL filepath
  * WHY: Verify parameter validation
  */
-TEST_F(DataIOTest, LoadCSVNullPath) {
+TEST_F(DataIOTest, LoadCSVNullPath)
+{
     dataset = dataset_load_csv(nullptr, 13, 1, true);
     ASSERT_EQ(dataset, nullptr);
 }
@@ -140,7 +144,8 @@ TEST_F(DataIOTest, LoadCSVNullPath) {
  * WHAT: Test loading non-existent CSV
  * WHY: Verify error handling for missing files
  */
-TEST_F(DataIOTest, LoadCSVNonExistent) {
+TEST_F(DataIOTest, LoadCSVNonExistent)
+{
     dataset = dataset_load_csv("/tmp/nonexistent_file.csv", 13, 1, true);
     ASSERT_EQ(dataset, nullptr);
 }
@@ -153,7 +158,8 @@ TEST_F(DataIOTest, LoadCSVNonExistent) {
  * WHAT: Test reading batch from CSV
  * WHY: Verify batch reading works correctly
  */
-TEST_F(DataIOTest, ReadBatch) {
+TEST_F(DataIOTest, ReadBatch)
+{
     dataset = dataset_load_csv(test_csv, 13, 1, true);
     ASSERT_NE(dataset, nullptr);
 
@@ -178,7 +184,8 @@ TEST_F(DataIOTest, ReadBatch) {
  * WHAT: Test reading multiple batches
  * WHY: Verify streaming works for large datasets
  */
-TEST_F(DataIOTest, ReadMultipleBatches) {
+TEST_F(DataIOTest, ReadMultipleBatches)
+{
     dataset = dataset_load_csv(test_csv, 13, 1, true);
     ASSERT_NE(dataset, nullptr);
 
@@ -196,7 +203,8 @@ TEST_F(DataIOTest, ReadMultipleBatches) {
         total_samples += batch.num_samples;
         dataset_free_batch(&batch);
 
-        if (batch.end_of_dataset) break;
+        if (batch.end_of_dataset)
+            break;
     }
 
     // Should have read all 10 rows
@@ -207,7 +215,8 @@ TEST_F(DataIOTest, ReadMultipleBatches) {
  * WHAT: Test batch reading with NULL dataset
  * WHY: Verify parameter validation
  */
-TEST_F(DataIOTest, ReadBatchNullDataset) {
+TEST_F(DataIOTest, ReadBatchNullDataset)
+{
     data_batch_t batch;
     bool result = dataset_next_batch(nullptr, &batch);
     ASSERT_FALSE(result);
@@ -217,7 +226,8 @@ TEST_F(DataIOTest, ReadBatchNullDataset) {
  * WHAT: Test batch reading with NULL batch
  * WHY: Verify parameter validation
  */
-TEST_F(DataIOTest, ReadBatchNullBatch) {
+TEST_F(DataIOTest, ReadBatchNullBatch)
+{
     dataset = dataset_load_csv(test_csv, 13, 1, true);
     ASSERT_NE(dataset, nullptr);
 
@@ -233,7 +243,8 @@ TEST_F(DataIOTest, ReadBatchNullBatch) {
  * WHAT: Test resetting dataset to beginning
  * WHY: Verify multiple epochs work correctly
  */
-TEST_F(DataIOTest, ResetDataset) {
+TEST_F(DataIOTest, ResetDataset)
+{
     dataset = dataset_load_csv(test_csv, 13, 1, true);
     ASSERT_NE(dataset, nullptr);
 
@@ -248,7 +259,8 @@ TEST_F(DataIOTest, ResetDataset) {
 
         dataset_free_batch(&batch);
 
-        if (batch.end_of_dataset) break;
+        if (batch.end_of_dataset)
+            break;
     }
 
     // Reset
@@ -270,7 +282,8 @@ TEST_F(DataIOTest, ResetDataset) {
  * WHAT: Test reset with NULL dataset
  * WHY: Verify parameter validation
  */
-TEST_F(DataIOTest, ResetNullDataset) {
+TEST_F(DataIOTest, ResetNullDataset)
+{
     bool result = dataset_reset(nullptr);
     ASSERT_FALSE(result);
 }
@@ -283,7 +296,8 @@ TEST_F(DataIOTest, ResetNullDataset) {
  * WHAT: Test getting dataset size
  * WHY: Verify size reporting works
  */
-TEST_F(DataIOTest, GetDatasetSize) {
+TEST_F(DataIOTest, GetDatasetSize)
+{
     dataset = dataset_load_csv(test_csv, 13, 1, true);
     ASSERT_NE(dataset, nullptr);
 
@@ -298,7 +312,8 @@ TEST_F(DataIOTest, GetDatasetSize) {
 
         dataset_free_batch(&batch);
 
-        if (batch.end_of_dataset) break;
+        if (batch.end_of_dataset)
+            break;
     }
 
     // Get size
@@ -310,7 +325,8 @@ TEST_F(DataIOTest, GetDatasetSize) {
  * WHAT: Test get size with NULL dataset
  * WHY: Verify parameter validation
  */
-TEST_F(DataIOTest, GetSizeNullDataset) {
+TEST_F(DataIOTest, GetSizeNullDataset)
+{
     uint64_t size = dataset_get_size(nullptr);
     ASSERT_EQ(size, 0);
 }
@@ -323,7 +339,8 @@ TEST_F(DataIOTest, GetSizeNullDataset) {
  * WHAT: Test training brain from dataset
  * WHY: Verify end-to-end training works
  */
-TEST_F(DataIOTest, TrainFromDataset) {
+TEST_F(DataIOTest, TrainFromDataset)
+{
     dataset = dataset_load_csv(test_csv, 13, 1, true);
     ASSERT_NE(dataset, nullptr);
 
@@ -339,7 +356,8 @@ TEST_F(DataIOTest, TrainFromDataset) {
  * WHAT: Test training with multiple epochs
  * WHY: Verify epoch iteration works
  */
-TEST_F(DataIOTest, TrainMultipleEpochs) {
+TEST_F(DataIOTest, TrainMultipleEpochs)
+{
     dataset = dataset_load_csv(test_csv, 13, 1, true);
     ASSERT_NE(dataset, nullptr);
 
@@ -353,7 +371,8 @@ TEST_F(DataIOTest, TrainMultipleEpochs) {
  * WHAT: Test training with validation split
  * WHY: Verify validation split works
  */
-TEST_F(DataIOTest, TrainWithValidation) {
+TEST_F(DataIOTest, TrainWithValidation)
+{
     dataset = dataset_load_csv(test_csv, 13, 1, true);
     ASSERT_NE(dataset, nullptr);
 
@@ -367,7 +386,8 @@ TEST_F(DataIOTest, TrainWithValidation) {
  * WHAT: Test training with NULL brain
  * WHY: Verify parameter validation
  */
-TEST_F(DataIOTest, TrainNullBrain) {
+TEST_F(DataIOTest, TrainNullBrain)
+{
     dataset = dataset_load_csv(test_csv, 13, 1, true);
     ASSERT_NE(dataset, nullptr);
 
@@ -379,7 +399,8 @@ TEST_F(DataIOTest, TrainNullBrain) {
  * WHAT: Test training with NULL dataset
  * WHY: Verify parameter validation
  */
-TEST_F(DataIOTest, TrainNullDataset) {
+TEST_F(DataIOTest, TrainNullDataset)
+{
     float accuracy = brain_train_from_dataset(brain, nullptr, 1, 0.0f);
     ASSERT_EQ(accuracy, 0.0f);
 }
@@ -388,7 +409,8 @@ TEST_F(DataIOTest, TrainNullDataset) {
  * WHAT: Test training with invalid validation split
  * WHY: Verify parameter validation
  */
-TEST_F(DataIOTest, TrainInvalidValidationSplit) {
+TEST_F(DataIOTest, TrainInvalidValidationSplit)
+{
     dataset = dataset_load_csv(test_csv, 13, 1, true);
     ASSERT_NE(dataset, nullptr);
 
@@ -409,7 +431,8 @@ TEST_F(DataIOTest, TrainInvalidValidationSplit) {
  * WHAT: Test streaming training
  * WHY: Verify streaming API works for large datasets
  */
-TEST_F(DataIOTest, TrainStreaming) {
+TEST_F(DataIOTest, TrainStreaming)
+{
     dataset = dataset_load_csv(test_csv, 13, 1, true);
     ASSERT_NE(dataset, nullptr);
 
@@ -423,7 +446,8 @@ TEST_F(DataIOTest, TrainStreaming) {
  * WHAT: Test streaming with unlimited batches
  * WHY: Verify processing entire dataset works
  */
-TEST_F(DataIOTest, TrainStreamingUnlimited) {
+TEST_F(DataIOTest, TrainStreamingUnlimited)
+{
     dataset = dataset_load_csv(test_csv, 13, 1, true);
     ASSERT_NE(dataset, nullptr);
 
@@ -441,7 +465,8 @@ TEST_F(DataIOTest, TrainStreamingUnlimited) {
  * WHAT: Test exporting predictions to CSV
  * WHY: Verify export functionality works
  */
-TEST_F(DataIOTest, ExportPredictions) {
+TEST_F(DataIOTest, ExportPredictions)
+{
     dataset = dataset_load_csv(test_csv, 13, 1, true);
     ASSERT_NE(dataset, nullptr);
 
@@ -452,8 +477,7 @@ TEST_F(DataIOTest, ExportPredictions) {
     dataset_reset(dataset);
 
     // Export predictions
-    bool result = brain_export_predictions(
-        brain, dataset, test_output, DATA_FORMAT_CSV);
+    bool result = brain_export_predictions(brain, dataset, test_output, DATA_FORMAT_CSV);
 
     ASSERT_TRUE(result);
 
@@ -472,12 +496,12 @@ TEST_F(DataIOTest, ExportPredictions) {
  * WHAT: Test export with NULL brain
  * WHY: Verify parameter validation
  */
-TEST_F(DataIOTest, ExportNullBrain) {
+TEST_F(DataIOTest, ExportNullBrain)
+{
     dataset = dataset_load_csv(test_csv, 13, 1, true);
     ASSERT_NE(dataset, nullptr);
 
-    bool result = brain_export_predictions(
-        nullptr, dataset, test_output, DATA_FORMAT_CSV);
+    bool result = brain_export_predictions(nullptr, dataset, test_output, DATA_FORMAT_CSV);
 
     ASSERT_FALSE(result);
 }
@@ -486,9 +510,9 @@ TEST_F(DataIOTest, ExportNullBrain) {
  * WHAT: Test export with NULL dataset
  * WHY: Verify parameter validation
  */
-TEST_F(DataIOTest, ExportNullDataset) {
-    bool result = brain_export_predictions(
-        brain, nullptr, test_output, DATA_FORMAT_CSV);
+TEST_F(DataIOTest, ExportNullDataset)
+{
+    bool result = brain_export_predictions(brain, nullptr, test_output, DATA_FORMAT_CSV);
 
     ASSERT_FALSE(result);
 }
@@ -497,12 +521,12 @@ TEST_F(DataIOTest, ExportNullDataset) {
  * WHAT: Test export with NULL output file
  * WHY: Verify parameter validation
  */
-TEST_F(DataIOTest, ExportNullOutput) {
+TEST_F(DataIOTest, ExportNullOutput)
+{
     dataset = dataset_load_csv(test_csv, 13, 1, true);
     ASSERT_NE(dataset, nullptr);
 
-    bool result = brain_export_predictions(
-        brain, dataset, nullptr, DATA_FORMAT_CSV);
+    bool result = brain_export_predictions(brain, dataset, nullptr, DATA_FORMAT_CSV);
 
     ASSERT_FALSE(result);
 }
@@ -515,13 +539,14 @@ TEST_F(DataIOTest, ExportNullOutput) {
  * WHAT: Test saving dataset to CSV
  * WHY: Verify CSV writing works
  */
-TEST_F(DataIOTest, SaveCSV) {
+TEST_F(DataIOTest, SaveCSV)
+{
     // Create test data
     float* features[3];
     char* labels[3];
 
     for (int i = 0; i < 3; i++) {
-        features[i] = (float*)malloc(13 * sizeof(float));
+        features[i] = (float*) malloc(13 * sizeof(float));
         for (int j = 0; j < 13; j++) {
             features[i][j] = 0.5f;
         }
@@ -529,8 +554,7 @@ TEST_F(DataIOTest, SaveCSV) {
     }
 
     // Save to CSV
-    bool result = dataset_save_csv(
-        features, labels, 3, 13, test_output, nullptr);
+    bool result = dataset_save_csv(features, labels, 3, 13, test_output, nullptr);
 
     ASSERT_TRUE(result);
 
@@ -560,14 +584,15 @@ TEST_F(DataIOTest, SaveCSV) {
  * WHAT: Test save with feature names
  * WHY: Verify header writing works
  */
-TEST_F(DataIOTest, SaveCSVWithHeader) {
+TEST_F(DataIOTest, SaveCSVWithHeader)
+{
     // Create test data
     float* features[2];
     char* labels[2];
     char* feature_names[13];
 
     for (int i = 0; i < 2; i++) {
-        features[i] = (float*)malloc(13 * sizeof(float));
+        features[i] = (float*) malloc(13 * sizeof(float));
         for (int j = 0; j < 13; j++) {
             features[i][j] = 0.5f;
         }
@@ -575,13 +600,12 @@ TEST_F(DataIOTest, SaveCSVWithHeader) {
     }
 
     for (int i = 0; i < 13; i++) {
-        feature_names[i] = (char*)malloc(16);
+        feature_names[i] = (char*) malloc(16);
         snprintf(feature_names[i], 16, "feature_%d", i);
     }
 
     // Save with header
-    bool result = dataset_save_csv(
-        features, labels, 2, 13, test_output, feature_names);
+    bool result = dataset_save_csv(features, labels, 2, 13, test_output, feature_names);
 
     ASSERT_TRUE(result);
 
@@ -615,7 +639,8 @@ TEST_F(DataIOTest, SaveCSVWithHeader) {
  * WHAT: Test error message retrieval
  * WHY: Verify error reporting works
  */
-TEST_F(DataIOTest, GetLastError) {
+TEST_F(DataIOTest, GetLastError)
+{
     // Trigger an error
     dataset = dataset_load_csv(nullptr, 13, 1, true);
     ASSERT_EQ(dataset, nullptr);

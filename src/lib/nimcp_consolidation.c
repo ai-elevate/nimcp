@@ -31,13 +31,13 @@
  */
 
 #include "nimcp_consolidation.h"
+#include <math.h>
+#include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
 #include "utils/nimcp_memory.h"
 #include "utils/nimcp_thread.h"
 #include "utils/nimcp_time.h"
-#include <stdlib.h>
-#include <string.h>
-#include <math.h>
-#include <unistd.h>
 
 /* ========================================================================
  * INTERNAL STRUCTURES
@@ -49,24 +49,24 @@
  * HOW: Opaque pointer pattern
  */
 struct consolidation_handle_struct {
-    brain_t brain;                       /* Associated brain */
-    consolidation_config_t config;       /* Configuration */
+    brain_t brain;                 /* Associated brain */
+    consolidation_config_t config; /* Configuration */
 
-    nimcp_thread_t thread;               /* Background thread */
-    bool thread_running;                 /* Is thread active? */
-    bool thread_should_stop;             /* Stop signal */
-    bool paused;                         /* Is consolidation paused? */
-    bool trigger_now;                    /* Immediate trigger */
+    nimcp_thread_t thread;   /* Background thread */
+    bool thread_running;     /* Is thread active? */
+    bool thread_should_stop; /* Stop signal */
+    bool paused;             /* Is consolidation paused? */
+    bool trigger_now;        /* Immediate trigger */
 
-    uint32_t interval_seconds;           /* Consolidation interval */
+    uint32_t interval_seconds; /* Consolidation interval */
 
-    consolidation_stats_t stats;         /* Statistics */
+    consolidation_stats_t stats; /* Statistics */
 
-    float current_progress;              /* Current progress (0-1) */
-    bool is_consolidating;               /* Is consolidation running? */
+    float current_progress; /* Current progress (0-1) */
+    bool is_consolidating;  /* Is consolidation running? */
 
-    nimcp_mutex_t lock;                  /* Protects handle state */
-    nimcp_cond_t trigger_cond;           /* Condition for triggering */
+    nimcp_mutex_t lock;        /* Protects handle state */
+    nimcp_cond_t trigger_cond; /* Condition for triggering */
 };
 
 /**
@@ -78,11 +78,13 @@ static consolidation_stats_t g_sync_stats = {0};
 static nimcp_mutex_t g_sync_stats_lock;
 static nimcp_once_t g_sync_stats_init = NIMCP_ONCE_INIT;
 
-static void init_sync_stats_lock(void) {
+static void init_sync_stats_lock(void)
+{
     nimcp_mutex_init(&g_sync_stats_lock, NULL);
 }
 
-static void ensure_sync_stats_init(void) {
+static void ensure_sync_stats_init(void)
+{
     nimcp_once(&g_sync_stats_init, init_sync_stats_lock);
 }
 
@@ -91,18 +93,13 @@ static void ensure_sync_stats_init(void) {
  * ======================================================================== */
 
 static void* consolidation_thread_fn(void* arg);
-static bool perform_consolidation(brain_t brain,
-                                   const consolidation_config_t* config,
-                                   consolidation_stats_t* stats,
-                                   float* progress);
-static bool consolidate_replay(brain_t brain,
-                               const consolidation_config_t* config,
+static bool perform_consolidation(brain_t brain, const consolidation_config_t* config,
+                                  consolidation_stats_t* stats, float* progress);
+static bool consolidate_replay(brain_t brain, const consolidation_config_t* config,
                                consolidation_stats_t* stats);
-static bool consolidate_scaling(brain_t brain,
-                                const consolidation_config_t* config,
+static bool consolidate_scaling(brain_t brain, const consolidation_config_t* config,
                                 consolidation_stats_t* stats);
-static bool consolidate_pruning(brain_t brain,
-                                const consolidation_config_t* config,
+static bool consolidate_pruning(brain_t brain, const consolidation_config_t* config,
                                 consolidation_stats_t* stats);
 
 /* ========================================================================
@@ -114,34 +111,33 @@ static bool consolidate_pruning(brain_t brain,
  * WHY: Sensible defaults for most use cases
  * HOW: Return pre-configured struct
  */
-consolidation_config_t consolidation_default_config(void) {
-    consolidation_config_t config = {
-        .strategy = CONSOLIDATION_STRATEGY_FULL,
-        .priority = CONSOLIDATION_PRIORITY_IMPORTANT,
+consolidation_config_t consolidation_default_config(void)
+{
+    consolidation_config_t config = {.strategy = CONSOLIDATION_STRATEGY_FULL,
+                                     .priority = CONSOLIDATION_PRIORITY_IMPORTANT,
 
-        .consolidation_cycles = 10,
-        .consolidation_strength = 0.1f,
+                                     .consolidation_cycles = 10,
+                                     .consolidation_strength = 0.1f,
 
-        .enable_replay = true,
-        .replay_count = 100,
+                                     .enable_replay = true,
+                                     .replay_count = 100,
 
-        .enable_pruning = true,
-        .pruning_threshold = 0.01f,
+                                     .enable_pruning = true,
+                                     .pruning_threshold = 0.01f,
 
-        .enable_scaling = true,
-        .scaling_target = 0.5f,
+                                     .enable_scaling = true,
+                                     .scaling_target = 0.5f,
 
-        .prioritize_novel = true,
-        .novelty_boost = 1.5f,
+                                     .prioritize_novel = true,
+                                     .novelty_boost = 1.5f,
 
-        .prune_weak = true,
-        .weakness_threshold = 0.1f,
+                                     .prune_weak = true,
+                                     .weakness_threshold = 0.1f,
 
-        .on_consolidation_start = NULL,
-        .on_consolidation_progress = NULL,
-        .on_consolidation_complete = NULL,
-        .callback_context = NULL
-    };
+                                     .on_consolidation_start = NULL,
+                                     .on_consolidation_progress = NULL,
+                                     .on_consolidation_complete = NULL,
+                                     .callback_context = NULL};
     return config;
 }
 
@@ -156,10 +152,8 @@ consolidation_config_t consolidation_default_config(void) {
  *
  * COMPLEXITY: O(n*c) where n=network size, c=cycles
  */
-bool brain_consolidate_memory(
-    brain_t brain,
-    const consolidation_config_t* config
-) {
+bool brain_consolidate_memory(brain_t brain, const consolidation_config_t* config)
+{
     if (brain == NULL) {
         return false;
     }
@@ -184,22 +178,21 @@ bool brain_consolidate_memory(
     /* WHAT: Update statistics */
     if (success) {
         uint64_t end_time = nimcp_time_monotonic_ms();
-        float duration_ms = (float)(end_time - start_time);
+        float duration_ms = (float) (end_time - start_time);
 
         /* WHAT: Ensure non-zero duration for fast consolidations */
         /* WHY: Placeholder consolidation completes in < 1ms */
         if (duration_ms < 0.001f) {
-            duration_ms = 0.001f;  /* Minimum 1 microsecond */
+            duration_ms = 0.001f; /* Minimum 1 microsecond */
         }
 
         g_sync_stats.total_consolidations++;
         g_sync_stats.last_consolidation_time_ms = duration_ms;
 
         /* Update running average */
-        float alpha = 0.1f;  /* EMA smoothing */
+        float alpha = 0.1f; /* EMA smoothing */
         g_sync_stats.avg_consolidation_time_ms =
-            alpha * duration_ms +
-            (1.0f - alpha) * g_sync_stats.avg_consolidation_time_ms;
+            alpha * duration_ms + (1.0f - alpha) * g_sync_stats.avg_consolidation_time_ms;
 
         g_sync_stats.last_consolidation_timestamp = end_time;
     }
@@ -218,12 +211,9 @@ bool brain_consolidate_memory(
  * WHY: Shared between synchronous and background consolidation
  * HOW: Execute consolidation strategy
  */
-static bool perform_consolidation(
-    brain_t brain,
-    const consolidation_config_t* config,
-    consolidation_stats_t* stats,
-    float* progress
-) {
+static bool perform_consolidation(brain_t brain, const consolidation_config_t* config,
+                                  consolidation_stats_t* stats, float* progress)
+{
     if (brain == NULL || config == NULL || stats == NULL) {
         return false;
     }
@@ -232,7 +222,7 @@ static bool perform_consolidation(
     for (uint32_t cycle = 0; cycle < config->consolidation_cycles; cycle++) {
         /* WHAT: Update progress */
         if (progress) {
-            *progress = (float)cycle / (float)config->consolidation_cycles;
+            *progress = (float) cycle / (float) config->consolidation_cycles;
         }
 
         /* WHAT: Invoke progress callback if provided */
@@ -245,25 +235,22 @@ static bool perform_consolidation(
 
         /* STRATEGY 1: Pattern Replay */
         /* WHY: Strengthen important patterns through reactivation */
-        if (config->enable_replay &&
-            (config->strategy == CONSOLIDATION_STRATEGY_REPLAY ||
-             config->strategy == CONSOLIDATION_STRATEGY_FULL)) {
+        if (config->enable_replay && (config->strategy == CONSOLIDATION_STRATEGY_REPLAY ||
+                                      config->strategy == CONSOLIDATION_STRATEGY_FULL)) {
             consolidate_replay(brain, config, stats);
         }
 
         /* STRATEGY 2: Synaptic Scaling */
         /* WHY: Maintain homeostasis, prevent runaway activation */
-        if (config->enable_scaling &&
-            (config->strategy == CONSOLIDATION_STRATEGY_SCALING ||
-             config->strategy == CONSOLIDATION_STRATEGY_FULL)) {
+        if (config->enable_scaling && (config->strategy == CONSOLIDATION_STRATEGY_SCALING ||
+                                       config->strategy == CONSOLIDATION_STRATEGY_FULL)) {
             consolidate_scaling(brain, config, stats);
         }
 
         /* STRATEGY 3: Connection Pruning */
         /* WHY: Remove noise, improve efficiency */
-        if (config->enable_pruning &&
-            (config->strategy == CONSOLIDATION_STRATEGY_PRUNING ||
-             config->strategy == CONSOLIDATION_STRATEGY_FULL)) {
+        if (config->enable_pruning && (config->strategy == CONSOLIDATION_STRATEGY_PRUNING ||
+                                       config->strategy == CONSOLIDATION_STRATEGY_FULL)) {
             consolidate_pruning(brain, config, stats);
         }
     }
@@ -283,11 +270,9 @@ static bool perform_consolidation(
  *
  * DESIGN PATTERN: Strategy (replay-based consolidation)
  */
-static bool consolidate_replay(
-    brain_t brain,
-    const consolidation_config_t* config,
-    consolidation_stats_t* stats
-) {
+static bool consolidate_replay(brain_t brain, const consolidation_config_t* config,
+                               consolidation_stats_t* stats)
+{
     /* TODO: In real implementation, this would:
      * 1. Get list of important patterns
      * 2. For each pattern:
@@ -304,12 +289,12 @@ static bool consolidate_replay(
     /* WHAT: Apply novelty boost if enabled */
     if (config->prioritize_novel) {
         /* Prioritize novel patterns with boost */
-        patterns_replayed = (uint32_t)(patterns_replayed * config->novelty_boost);
+        patterns_replayed = (uint32_t) (patterns_replayed * config->novelty_boost);
     }
 
     /* WHAT: Update statistics */
     stats->patterns_replayed += patterns_replayed;
-    stats->connections_strengthened += patterns_replayed * 50;  /* ~50 connections per pattern */
+    stats->connections_strengthened += patterns_replayed * 50; /* ~50 connections per pattern */
     stats->patterns_strengthened += patterns_replayed;
 
     return true;
@@ -322,11 +307,9 @@ static bool consolidate_replay(
  *
  * DESIGN PATTERN: Strategy (scaling-based consolidation)
  */
-static bool consolidate_scaling(
-    brain_t brain,
-    const consolidation_config_t* config,
-    consolidation_stats_t* stats
-) {
+static bool consolidate_scaling(brain_t brain, const consolidation_config_t* config,
+                                consolidation_stats_t* stats)
+{
     /* TODO: In real implementation, this would:
      * 1. Calculate current average activation
      * 2. Compute scaling factor = target / current
@@ -338,15 +321,15 @@ static bool consolidate_scaling(
 
     /* WHAT: Simulate synaptic scaling */
     /* Assume we're scaling to target activation */
-    float current_avg = 0.4f;  /* Simulated current average */
+    float current_avg = 0.4f; /* Simulated current average */
     float scale_factor = config->scaling_target / current_avg;
 
     /* WHAT: Update statistics */
     /* Scaling both strengthens and weakens different connections */
     if (scale_factor > 1.0f) {
-        stats->connections_strengthened += 5000;  /* Simulated */
+        stats->connections_strengthened += 5000; /* Simulated */
     } else {
-        stats->connections_weakened += 5000;  /* Simulated */
+        stats->connections_weakened += 5000; /* Simulated */
     }
 
     return true;
@@ -359,11 +342,9 @@ static bool consolidate_scaling(
  *
  * DESIGN PATTERN: Strategy (pruning-based consolidation)
  */
-static bool consolidate_pruning(
-    brain_t brain,
-    const consolidation_config_t* config,
-    consolidation_stats_t* stats
-) {
+static bool consolidate_pruning(brain_t brain, const consolidation_config_t* config,
+                                consolidation_stats_t* stats)
+{
     /* TODO: In real implementation, this would:
      * 1. Iterate through all connections
      * 2. If connection strength < threshold, remove it
@@ -374,14 +355,14 @@ static bool consolidate_pruning(
      */
 
     /* WHAT: Simulate connection pruning */
-    uint32_t pruned = 1000;  /* Simulated */
+    uint32_t pruned = 1000; /* Simulated */
 
     /* WHAT: Update statistics */
     stats->connections_pruned += pruned;
 
     /* WHAT: If pruning weak patterns, remove them */
     if (config->prune_weak) {
-        uint32_t patterns_removed = 10;  /* Simulated */
+        uint32_t patterns_removed = 10; /* Simulated */
         stats->patterns_removed += patterns_removed;
     }
 
@@ -397,8 +378,9 @@ static bool consolidate_pruning(
  * WHY: Periodic automatic consolidation
  * HOW: Sleep for interval, then consolidate, repeat
  */
-static void* consolidation_thread_fn(void* arg) {
-    consolidation_handle_t handle = (consolidation_handle_t)arg;
+static void* consolidation_thread_fn(void* arg)
+{
+    consolidation_handle_t handle = (consolidation_handle_t) arg;
 
     while (!handle->thread_should_stop) {
         /* WHAT: Wait for interval or trigger signal */
@@ -434,20 +416,18 @@ static void* consolidation_thread_fn(void* arg) {
         /* WHAT: Perform consolidation */
         uint64_t start_time = nimcp_time_monotonic_ms();
 
-        perform_consolidation(handle->brain,
-                            &handle->config,
-                            &handle->stats,
-                            &handle->current_progress);
+        perform_consolidation(handle->brain, &handle->config, &handle->stats,
+                              &handle->current_progress);
 
         uint64_t end_time = nimcp_time_monotonic_ms();
 
         /* WHAT: Update statistics */
         nimcp_mutex_lock(&handle->lock);
 
-        float duration_ms = (float)(end_time - start_time);
+        float duration_ms = (float) (end_time - start_time);
         /* WHAT: Ensure non-zero duration for fast consolidations */
         if (duration_ms < 0.001f) {
-            duration_ms = 0.001f;  /* Minimum 1 microsecond */
+            duration_ms = 0.001f; /* Minimum 1 microsecond */
         }
 
         handle->stats.total_consolidations++;
@@ -456,8 +436,7 @@ static void* consolidation_thread_fn(void* arg) {
         /* Update running average */
         float alpha = 0.1f;
         handle->stats.avg_consolidation_time_ms =
-            alpha * duration_ms +
-            (1.0f - alpha) * handle->stats.avg_consolidation_time_ms;
+            alpha * duration_ms + (1.0f - alpha) * handle->stats.avg_consolidation_time_ms;
 
         handle->stats.last_consolidation_timestamp = end_time;
 
@@ -477,18 +456,17 @@ static void* consolidation_thread_fn(void* arg) {
  *
  * COMPLEXITY: O(1) for thread creation
  */
-consolidation_handle_t brain_start_background_consolidation(
-    brain_t brain,
-    uint32_t interval_seconds,
-    const consolidation_config_t* config
-) {
+consolidation_handle_t brain_start_background_consolidation(brain_t brain,
+                                                            uint32_t interval_seconds,
+                                                            const consolidation_config_t* config)
+{
     if (brain == NULL) {
         return NULL;
     }
 
     /* WHAT: Allocate handle */
-    consolidation_handle_t handle = (consolidation_handle_t)
-        nimcp_calloc(1, sizeof(struct consolidation_handle_struct));
+    consolidation_handle_t handle =
+        (consolidation_handle_t) nimcp_calloc(1, sizeof(struct consolidation_handle_struct));
     if (handle == NULL) {
         return NULL;
     }
@@ -510,9 +488,8 @@ consolidation_handle_t brain_start_background_consolidation(
     memset(&handle->stats, 0, sizeof(consolidation_stats_t));
 
     /* WHAT: Create background thread */
-    nimcp_result_t result = nimcp_thread_create(&handle->thread,
-                                                 consolidation_thread_fn,
-                                                 handle, NULL);
+    nimcp_result_t result =
+        nimcp_thread_create(&handle->thread, consolidation_thread_fn, handle, NULL);
     if (result != NIMCP_SUCCESS) {
         nimcp_mutex_destroy(&handle->lock);
         nimcp_cond_destroy(&handle->trigger_cond);
@@ -530,7 +507,8 @@ consolidation_handle_t brain_start_background_consolidation(
  * WHY: Graceful shutdown
  * HOW: Signal stop, wait for thread, free resources
  */
-void brain_stop_background_consolidation(consolidation_handle_t handle) {
+void brain_stop_background_consolidation(consolidation_handle_t handle)
+{
     if (handle == NULL) {
         return;
     }
@@ -538,7 +516,7 @@ void brain_stop_background_consolidation(consolidation_handle_t handle) {
     /* WHAT: Signal thread to stop */
     nimcp_mutex_lock(&handle->lock);
     handle->thread_should_stop = true;
-    nimcp_cond_signal(&handle->trigger_cond);  /* Wake thread if sleeping */
+    nimcp_cond_signal(&handle->trigger_cond); /* Wake thread if sleeping */
     nimcp_mutex_unlock(&handle->lock);
 
     /* WHAT: Wait for thread to finish */
@@ -559,7 +537,8 @@ void brain_stop_background_consolidation(consolidation_handle_t handle) {
  * WHY: Temporarily disable without stopping thread
  * HOW: Set pause flag
  */
-void brain_pause_consolidation(consolidation_handle_t handle) {
+void brain_pause_consolidation(consolidation_handle_t handle)
+{
     if (handle == NULL) {
         return;
     }
@@ -574,14 +553,15 @@ void brain_pause_consolidation(consolidation_handle_t handle) {
  * WHY: Re-enable after pause
  * HOW: Clear pause flag
  */
-void brain_resume_consolidation(consolidation_handle_t handle) {
+void brain_resume_consolidation(consolidation_handle_t handle)
+{
     if (handle == NULL) {
         return;
     }
 
     nimcp_mutex_lock(&handle->lock);
     handle->paused = false;
-    nimcp_cond_signal(&handle->trigger_cond);  /* Wake thread */
+    nimcp_cond_signal(&handle->trigger_cond); /* Wake thread */
     nimcp_mutex_unlock(&handle->lock);
 }
 
@@ -590,14 +570,15 @@ void brain_resume_consolidation(consolidation_handle_t handle) {
  * WHY: Force consolidation now
  * HOW: Signal background thread
  */
-bool brain_trigger_consolidation(consolidation_handle_t handle) {
+bool brain_trigger_consolidation(consolidation_handle_t handle)
+{
     if (handle == NULL) {
         return false;
     }
 
     nimcp_mutex_lock(&handle->lock);
     handle->trigger_now = true;
-    nimcp_cond_signal(&handle->trigger_cond);  /* Wake thread */
+    nimcp_cond_signal(&handle->trigger_cond); /* Wake thread */
     nimcp_mutex_unlock(&handle->lock);
 
     return true;
@@ -614,10 +595,8 @@ bool brain_trigger_consolidation(consolidation_handle_t handle) {
  *
  * COMPLEXITY: O(p) where p = number of patterns
  */
-pattern_importance_t* brain_get_important_patterns(
-    brain_t brain,
-    uint32_t* num_patterns
-) {
+pattern_importance_t* brain_get_important_patterns(brain_t brain, uint32_t* num_patterns)
+{
     if (brain == NULL || num_patterns == NULL) {
         return NULL;
     }
@@ -637,8 +616,8 @@ pattern_importance_t* brain_get_important_patterns(
 
     /* WHAT: Simulate 10 important patterns */
     *num_patterns = 10;
-    pattern_importance_t* patterns = (pattern_importance_t*)
-        nimcp_malloc(*num_patterns * sizeof(pattern_importance_t));
+    pattern_importance_t* patterns =
+        (pattern_importance_t*) nimcp_malloc(*num_patterns * sizeof(pattern_importance_t));
 
     if (patterns == NULL) {
         *num_patterns = 0;
@@ -657,7 +636,7 @@ pattern_importance_t* brain_get_important_patterns(
         patterns[i].novelty_score = 0.5f + (i * 0.02f);
         patterns[i].strength = 0.8f - (i * 0.04f);
         patterns[i].activation_count = 1000 - (i * 50);
-        patterns[i].last_activated = nimcp_time_monotonic_ms() - (i * 60000);  /* Recent */
+        patterns[i].last_activated = nimcp_time_monotonic_ms() - (i * 60000); /* Recent */
     }
 
     return patterns;
@@ -668,7 +647,8 @@ pattern_importance_t* brain_get_important_patterns(
  * WHY: Release memory
  * HOW: Free each name, free array
  */
-void pattern_importance_free(pattern_importance_t* patterns, uint32_t num_patterns) {
+void pattern_importance_free(pattern_importance_t* patterns, uint32_t num_patterns)
+{
     if (patterns == NULL) {
         return;
     }
@@ -686,11 +666,8 @@ void pattern_importance_free(pattern_importance_t* patterns, uint32_t num_patter
  *
  * COMPLEXITY: O(1) - hash lookup
  */
-bool brain_mark_pattern_important(
-    brain_t brain,
-    const char* pattern_name,
-    float importance_score
-) {
+bool brain_mark_pattern_important(brain_t brain, const char* pattern_name, float importance_score)
+{
     if (brain == NULL || pattern_name == NULL) {
         return false;
     }
@@ -710,10 +687,8 @@ bool brain_mark_pattern_important(
  * WHY: Monitor effectiveness
  * HOW: Return stats structure
  */
-bool consolidation_get_stats(
-    consolidation_handle_t handle,
-    consolidation_stats_t* stats
-) {
+bool consolidation_get_stats(consolidation_handle_t handle, consolidation_stats_t* stats)
+{
     if (stats == NULL) {
         return false;
     }
@@ -738,7 +713,8 @@ bool consolidation_get_stats(
  * WHY: Clear counters
  * HOW: Zero all counters
  */
-void consolidation_reset_stats(consolidation_handle_t handle) {
+void consolidation_reset_stats(consolidation_handle_t handle)
+{
     if (handle == NULL) {
         /* WHAT: Reset synchronous stats */
         nimcp_mutex_lock(&g_sync_stats_lock);
@@ -757,7 +733,8 @@ void consolidation_reset_stats(consolidation_handle_t handle) {
  * WHY: Avoid concurrent consolidations
  * HOW: Check running flag
  */
-bool consolidation_is_running(consolidation_handle_t handle) {
+bool consolidation_is_running(consolidation_handle_t handle)
+{
     if (handle == NULL) {
         return false;
     }
@@ -774,7 +751,8 @@ bool consolidation_is_running(consolidation_handle_t handle) {
  * WHY: Monitor long-running consolidation
  * HOW: Return progress
  */
-float consolidation_get_progress(consolidation_handle_t handle) {
+float consolidation_get_progress(consolidation_handle_t handle)
+{
     if (handle == NULL) {
         return -1.0f;
     }
@@ -797,12 +775,9 @@ float consolidation_get_progress(consolidation_handle_t handle) {
  *
  * COMPLEXITY: O(replay_count * pattern_size)
  */
-bool brain_replay_pattern(
-    brain_t brain,
-    const char* pattern_name,
-    uint32_t replay_count,
-    float strength
-) {
+bool brain_replay_pattern(brain_t brain, const char* pattern_name, uint32_t replay_count,
+                          float strength)
+{
     if (brain == NULL || pattern_name == NULL) {
         return false;
     }
@@ -825,10 +800,8 @@ bool brain_replay_pattern(
  *
  * COMPLEXITY: O(n + e) where n=neurons, e=edges
  */
-bool brain_apply_synaptic_scaling(
-    brain_t brain,
-    float target_activation
-) {
+bool brain_apply_synaptic_scaling(brain_t brain, float target_activation)
+{
     if (brain == NULL) {
         return false;
     }
@@ -850,10 +823,8 @@ bool brain_apply_synaptic_scaling(
  *
  * COMPLEXITY: O(e) where e = edges
  */
-uint32_t brain_prune_weak_connections(
-    brain_t brain,
-    float threshold
-) {
+uint32_t brain_prune_weak_connections(brain_t brain, float threshold)
+{
     if (brain == NULL) {
         return 0;
     }
@@ -871,4 +842,3 @@ uint32_t brain_prune_weak_connections(
 /* ========================================================================
  * HELPER FUNCTIONS
  * ======================================================================== */
-

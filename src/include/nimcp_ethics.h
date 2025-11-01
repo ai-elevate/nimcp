@@ -5,10 +5,10 @@
 #ifndef NIMCP_ETHICS_H
 #define NIMCP_ETHICS_H
 
-#include "nimcp_protocol.h"
-#include "nimcp_neuralnet.h"
 #include "nimcp_events.h"
 #include "nimcp_export.h"
+#include "nimcp_neuralnet.h"
+#include "nimcp_protocol.h"
 
 /**
  * @file nimcp_ethics.h
@@ -26,16 +26,16 @@
  * @brief Ethical violation types
  */
 typedef enum {
-    ETHICS_VIOLATION_NONE        = 0x00,
-    ETHICS_VIOLATION_HARM        = 0x01,  /**< Potential harm detected */
-    ETHICS_VIOLATION_UNFAIRNESS  = 0x02,  /**< Unfair action detected */
-    ETHICS_VIOLATION_DECEPTION   = 0x03,  /**< Deceptive pattern detected */
-    ETHICS_VIOLATION_PRIVACY     = 0x04,  /**< Privacy violation */
-    ETHICS_VIOLATION_AUTONOMY    = 0x05,  /**< Autonomy violation */
-    ETHICS_VIOLATION_CONSENT     = 0x06,  /**< Consent violation */
-    ETHICS_VIOLATION_DIGNITY     = 0x07,  /**< Dignity violation */
-    ETHICS_VIOLATION_RIGHTS      = 0x08,  /**< Rights violation */
-    ETHICS_VIOLATION_CUSTOM      = 0x80   /**< User-defined violation */
+    ETHICS_VIOLATION_NONE = 0x00,
+    ETHICS_VIOLATION_HARM = 0x01,       /**< Potential harm detected */
+    ETHICS_VIOLATION_UNFAIRNESS = 0x02, /**< Unfair action detected */
+    ETHICS_VIOLATION_DECEPTION = 0x03,  /**< Deceptive pattern detected */
+    ETHICS_VIOLATION_PRIVACY = 0x04,    /**< Privacy violation */
+    ETHICS_VIOLATION_AUTONOMY = 0x05,   /**< Autonomy violation */
+    ETHICS_VIOLATION_CONSENT = 0x06,    /**< Consent violation */
+    ETHICS_VIOLATION_DIGNITY = 0x07,    /**< Dignity violation */
+    ETHICS_VIOLATION_RIGHTS = 0x08,     /**< Rights violation */
+    ETHICS_VIOLATION_CUSTOM = 0x80      /**< User-defined violation */
 } ethics_violation_enum_t;
 
 // Backward compatibility
@@ -45,41 +45,41 @@ typedef ethics_violation_enum_t ethics_violation_t;
  * @brief Ethical action types
  */
 typedef enum {
-    ETHICS_ACTION_ALLOW,          /**< Allow event to proceed */
-    ETHICS_ACTION_BLOCK,          /**< Block event completely */
-    ETHICS_ACTION_MODIFY,         /**< Modify event before forwarding */
-    ETHICS_ACTION_DEFER,          /**< Defer to higher authority */
-    ETHICS_ACTION_LOG             /**< Log but allow */
+    ETHICS_ACTION_ALLOW,  /**< Allow event to proceed */
+    ETHICS_ACTION_BLOCK,  /**< Block event completely */
+    ETHICS_ACTION_MODIFY, /**< Modify event before forwarding */
+    ETHICS_ACTION_DEFER,  /**< Defer to higher authority */
+    ETHICS_ACTION_LOG     /**< Log but allow */
 } ethics_action_t;
 
 /**
  * @brief Ethical policy rule
  */
 typedef struct {
-    feature_code_t feature_pattern;   /**< Feature code pattern to match */
-    uint32_t feature_mask;            /**< Mask for pattern matching */
+    feature_code_t feature_pattern;    /**< Feature code pattern to match */
+    uint32_t feature_mask;             /**< Mask for pattern matching */
     ethics_violation_t violation_type; /**< Type of violation */
     float severity_threshold;          /**< Minimum severity to trigger */
-    ethics_action_t action;           /**< Action to take */
-    bool requires_consensus;          /**< Requires multi-node agreement */
+    ethics_action_t action;            /**< Action to take */
+    bool requires_consensus;           /**< Requires multi-node agreement */
 
     // NIMCP 2.5 extensions
-    uint32_t policy_id;               /**< Unique policy ID */
-    char name[128];                   /**< Policy name */
-    char description[256];            /**< Policy description */
-    float confidence_required;        /**< Required confidence level */
-    bool enabled;                     /**< Whether policy is active */
-    bool learned;                     /**< Whether policy was learned */
+    uint32_t policy_id;        /**< Unique policy ID */
+    char name[128];            /**< Policy name */
+    char description[256];     /**< Policy description */
+    float confidence_required; /**< Required confidence level */
+    bool enabled;              /**< Whether policy is active */
+    bool learned;              /**< Whether policy was learned */
 } ethics_policy_t;
 
 /**
  * @brief Empathy (mirror neuron) state
  */
 typedef struct {
-    uint32_t observed_node_id;        /**< Node being observed */
-    feature_code_t observed_pattern;  /**< Observed activity pattern */
-    float mirror_activation;          /**< Mirror neuron activation */
-    float predicted_impact;           /**< Predicted impact of action */
+    uint32_t observed_node_id;       /**< Node being observed */
+    feature_code_t observed_pattern; /**< Observed activity pattern */
+    float mirror_activation;         /**< Mirror neuron activation */
+    float predicted_impact;          /**< Predicted impact of action */
     uint64_t timestamp;              /**< When observation occurred */
 } empathy_state_t;
 
@@ -98,28 +98,26 @@ typedef struct {
  * @param context User context
  * @return Recommended action
  */
-typedef ethics_action_t (*ethics_eval_callback_t)(
-    const event_packet_t* packet,
-    ethics_violation_t violation,
-    float severity,
-    void* context);
+typedef ethics_action_t (*ethics_eval_callback_t)(const event_packet_t* packet,
+                                                  ethics_violation_t violation, float severity,
+                                                  void* context);
 
 /**
  * @brief Ethics engine configuration
  */
 typedef struct {
-    ethics_policy_t* policies;        /**< Array of ethical policies */
+    ethics_policy_t* policies;       /**< Array of ethical policies */
     uint32_t num_policies;           /**< Number of policies */
-    ethics_eval_callback_t callback;  /**< Evaluation callback */
+    ethics_eval_callback_t callback; /**< Evaluation callback */
     void* callback_context;          /**< Callback context */
     float default_severity;          /**< Default violation severity */
     bool enable_learning;            /**< Learn from decisions */
 
     // NIMCP 2.5 extensions for Golden Rule
-    uint32_t action_feature_size;    /**< Size of action feature vector */
-    uint32_t max_agents;             /**< Maximum number of agents */
-    float golden_rule_threshold;     /**< Threshold for Golden Rule (default 0.0) */
-    float empathy_weight;            /**< Weight for empathy signals (0-1) */
+    uint32_t action_feature_size; /**< Size of action feature vector */
+    uint32_t max_agents;          /**< Maximum number of agents */
+    float golden_rule_threshold;  /**< Threshold for Golden Rule (default 0.0) */
+    float empathy_weight;         /**< Weight for empathy signals (0-1) */
 } ethics_config_t;
 
 /**
@@ -151,10 +149,8 @@ void ethics_engine_destroy(ethics_engine_t engine);
  * @param severity Output: violation severity (0.0-1.0)
  * @return Recommended action
  */
-ethics_action_t ethics_engine_evaluate(ethics_engine_t engine,
-                                      const event_packet_t* packet,
-                                      ethics_violation_t* violation,
-                                      float* severity);
+ethics_action_t ethics_engine_evaluate(ethics_engine_t engine, const event_packet_t* packet,
+                                       ethics_violation_t* violation, float* severity);
 
 /**
  * @brief Add ethical policy
@@ -163,8 +159,7 @@ ethics_action_t ethics_engine_evaluate(ethics_engine_t engine,
  * @param policy Policy to add
  * @return true on success
  */
-bool ethics_engine_add_policy(ethics_engine_t engine,
-                             const ethics_policy_t* policy);
+bool ethics_engine_add_policy(ethics_engine_t engine, const ethics_policy_t* policy);
 
 /**
  * @brief Remove ethical policy
@@ -184,10 +179,8 @@ bool ethics_engine_remove_policy(ethics_engine_t engine, uint32_t index);
  * @param learning_rate Learning rate for update
  * @return true on success
  */
-bool ethics_engine_update_policy(ethics_engine_t engine,
-                                ethics_violation_t violation,
-                                bool was_correct,
-                                float learning_rate);
+bool ethics_engine_update_policy(ethics_engine_t engine, ethics_violation_t violation,
+                                 bool was_correct, float learning_rate);
 
 //=============================================================================
 // Empathy Network (Mirror Neurons)
@@ -197,9 +190,9 @@ bool ethics_engine_update_policy(ethics_engine_t engine,
  * @brief Empathy network configuration
  */
 typedef struct {
-    neural_network_t mirror_network;  /**< Mirror neuron network */
-    uint32_t observation_window_ms;   /**< Time window for observations */
-    float empathy_threshold;          /**< Minimum activation for empathy */
+    neural_network_t mirror_network; /**< Mirror neuron network */
+    uint32_t observation_window_ms;  /**< Time window for observations */
+    float empathy_threshold;         /**< Minimum activation for empathy */
 } empathy_config_t;
 
 /**
@@ -230,9 +223,8 @@ void empathy_network_destroy(empathy_network_t network);
  * @param timestamp Current time
  * @return true if empathy was triggered
  */
-bool empathy_network_observe(empathy_network_t network,
-                            const event_packet_t* packet,
-                            uint64_t timestamp);
+bool empathy_network_observe(empathy_network_t network, const event_packet_t* packet,
+                             uint64_t timestamp);
 
 /**
  * @brief Get current empathy state
@@ -241,8 +233,7 @@ bool empathy_network_observe(empathy_network_t network,
  * @param state Output: current empathy state
  * @return true on success
  */
-bool empathy_network_get_state(empathy_network_t network,
-                              empathy_state_t* state);
+bool empathy_network_get_state(empathy_network_t network, empathy_state_t* state);
 
 /**
  * @brief Predict impact of proposed action
@@ -251,8 +242,7 @@ bool empathy_network_get_state(empathy_network_t network,
  * @param packet Proposed event packet
  * @return Predicted impact (0.0-1.0, negative = harmful)
  */
-float empathy_network_predict_impact(empathy_network_t network,
-                                     const event_packet_t* packet);
+float empathy_network_predict_impact(empathy_network_t network, const event_packet_t* packet);
 
 //=============================================================================
 // Utility Functions
@@ -266,8 +256,7 @@ float empathy_network_predict_impact(empathy_network_t network,
  * @param buffer_size Buffer size
  * @return Bytes written, or -1 on error
  */
-int ethics_create_policy_message(const ethics_policy_t* policy,
-                                 uint8_t* buffer,
+int ethics_create_policy_message(const ethics_policy_t* policy, uint8_t* buffer,
                                  uint32_t buffer_size);
 
 /**
@@ -278,9 +267,8 @@ int ethics_create_policy_message(const ethics_policy_t* policy,
  * @param policy Output: parsed policy
  * @return Bytes read, or -1 on error
  */
-int ethics_parse_policy_message(const uint8_t* buffer,
-                               uint32_t buffer_size,
-                               ethics_policy_t* policy);
+int ethics_parse_policy_message(const uint8_t* buffer, uint32_t buffer_size,
+                                ethics_policy_t* policy);
 
 /**
  * @brief Get human-readable name for violation type
@@ -318,68 +306,68 @@ typedef enum {
  * @brief Action context for Golden Rule evaluation
  */
 typedef struct {
-    float* features;                  /**< Action feature vector */
-    uint32_t num_features;           /**< Number of features */
-    agent_id_t* affected_agents;     /**< IDs of affected agents */
-    uint32_t num_affected_agents;    /**< Number of affected agents */
-    float predicted_harm;            /**< Predicted harm level (0-1) */
+    float* features;              /**< Action feature vector */
+    uint32_t num_features;        /**< Number of features */
+    agent_id_t* affected_agents;  /**< IDs of affected agents */
+    uint32_t num_affected_agents; /**< Number of affected agents */
+    float predicted_harm;         /**< Predicted harm level (0-1) */
 
     // Specific violation metrics
-    float fairness_violation;        /**< Fairness violation level (0-1) */
-    float deception_level;           /**< Deception level (0-1) */
-    float autonomy_violation;        /**< Autonomy violation level (0-1) */
-    float privacy_violation;         /**< Privacy violation level (0-1) */
-    float consent_violation;         /**< Consent violation level (0-1) */
+    float fairness_violation; /**< Fairness violation level (0-1) */
+    float deception_level;    /**< Deception level (0-1) */
+    float autonomy_violation; /**< Autonomy violation level (0-1) */
+    float privacy_violation;  /**< Privacy violation level (0-1) */
+    float consent_violation;  /**< Consent violation level (0-1) */
 } action_context_t;
 
 /**
  * @brief Action outcome for learning
  */
 typedef struct {
-    agent_id_t affected_agent;       /**< Agent that was affected */
-    float actual_harm;               /**< Actual harm that occurred (0-1) */
-    float actual_benefit;            /**< Actual benefit that occurred (0-1) */
-    float emotional_impact;          /**< Emotional impact (-1 to +1) */
-    float material_impact;           /**< Material impact (-1 to +1) */
-    float autonomy_impact;           /**< Autonomy impact (-1 to +1) */
-    float impact_magnitude;          /**< Overall magnitude (0-1) */
-    float uncertainty;               /**< Uncertainty in assessment (0-1) */
+    agent_id_t affected_agent; /**< Agent that was affected */
+    float actual_harm;         /**< Actual harm that occurred (0-1) */
+    float actual_benefit;      /**< Actual benefit that occurred (0-1) */
+    float emotional_impact;    /**< Emotional impact (-1 to +1) */
+    float material_impact;     /**< Material impact (-1 to +1) */
+    float autonomy_impact;     /**< Autonomy impact (-1 to +1) */
+    float impact_magnitude;    /**< Overall magnitude (0-1) */
+    float uncertainty;         /**< Uncertainty in assessment (0-1) */
 } action_outcome_t;
 
 /**
  * @brief Ethics evaluation result
  */
 typedef struct {
-    bool allowed;                         /**< Whether action is allowed */
-    float confidence;                     /**< Confidence in decision (0-1) */
-    float golden_rule_score;              /**< Golden Rule score (-1 to +1) */
-    ethics_action_t recommended_action;   /**< Recommended action */
+    bool allowed;                              /**< Whether action is allowed */
+    float confidence;                          /**< Confidence in decision (0-1) */
+    float golden_rule_score;                   /**< Golden Rule score (-1 to +1) */
+    ethics_action_t recommended_action;        /**< Recommended action */
     ethics_violation_type_t primary_violation; /**< Primary violation type */
-    char explanation[512];                /**< Human-readable explanation */
+    char explanation[512];                     /**< Human-readable explanation */
 } ethics_evaluation_t;
 
 /**
  * @brief Extended empathy state for Golden Rule evaluation
  */
 typedef struct {
-    agent_id_t agent_id;             /**< Agent being simulated */
-    float emotional_valence;         /**< Emotional state (-1 to +1) */
-    float material_impact;           /**< Material impact (-1 to +1) */
-    float autonomy_impact;           /**< Autonomy impact (-1 to +1) */
-    float impact_magnitude;          /**< Overall magnitude (0-1) */
-    float uncertainty;               /**< Uncertainty (0-1) */
-    bool active;                     /**< Whether state is active */
+    agent_id_t agent_id;     /**< Agent being simulated */
+    float emotional_valence; /**< Emotional state (-1 to +1) */
+    float material_impact;   /**< Material impact (-1 to +1) */
+    float autonomy_impact;   /**< Autonomy impact (-1 to +1) */
+    float impact_magnitude;  /**< Overall magnitude (0-1) */
+    float uncertainty;       /**< Uncertainty (0-1) */
+    bool active;             /**< Whether state is active */
 } empathy_state_extended_t;
 
 /**
  * @brief Extended ethics configuration for Golden Rule
  */
 typedef struct {
-    uint32_t action_feature_size;    /**< Size of action feature vector */
-    uint32_t max_agents;             /**< Maximum number of agents */
-    float golden_rule_threshold;     /**< Threshold for Golden Rule (default 0.0) */
-    float empathy_weight;            /**< Weight for empathy signals (0-1) */
-    bool enable_learning;            /**< Enable learning from outcomes */
+    uint32_t action_feature_size; /**< Size of action feature vector */
+    uint32_t max_agents;          /**< Maximum number of agents */
+    float golden_rule_threshold;  /**< Threshold for Golden Rule (default 0.0) */
+    float empathy_weight;         /**< Weight for empathy signals (0-1) */
+    bool enable_learning;         /**< Enable learning from outcomes */
 } ethics_config_extended_t;
 
 /**
@@ -404,9 +392,8 @@ typedef struct {
  * @param action Action to evaluate
  * @return Evaluation result
  */
-ethics_evaluation_t ethics_engine_evaluate_action(
-    ethics_engine_t engine,
-    const action_context_t* action);
+ethics_evaluation_t ethics_engine_evaluate_action(ethics_engine_t engine,
+                                                  const action_context_t* action);
 
 /**
  * @brief Learn from action outcome
@@ -418,10 +405,8 @@ ethics_evaluation_t ethics_engine_evaluate_action(
  * @param outcome Observed outcome
  * @return true on success
  */
-bool ethics_learn_from_outcome(
-    ethics_engine_t engine,
-    const action_context_t* action,
-    const action_outcome_t* outcome);
+bool ethics_learn_from_outcome(ethics_engine_t engine, const action_context_t* action,
+                               const action_outcome_t* outcome);
 
 /**
  * @brief Simulate agent's perspective
@@ -433,10 +418,8 @@ bool ethics_learn_from_outcome(
  * @param action Action to evaluate
  * @return Simulated empathy state
  */
-empathy_state_extended_t empathy_network_simulate_agent(
-    empathy_network_t network,
-    agent_id_t agent,
-    const action_context_t* action);
+empathy_state_extended_t empathy_network_simulate_agent(empathy_network_t network, agent_id_t agent,
+                                                        const action_context_t* action);
 
 /**
  * @brief Print evaluation result
@@ -476,4 +459,4 @@ typedef struct {
  */
 bool ethics_get_statistics(ethics_engine_t engine, ethics_statistics_t* stats);
 
-#endif // NIMCP_ETHICS_H
+#endif  // NIMCP_ETHICS_H

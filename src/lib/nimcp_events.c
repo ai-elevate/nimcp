@@ -72,16 +72,16 @@
 //=============================================================================
 
 #include "../include/nimcp_events.h"
-#include "utils/nimcp_hash_table.h"
-#include "utils/nimcp_time.h"
-#include "utils/nimcp_queue_manager.h"
-#include "utils/nimcp_thread.h"
-#include "utils/nimcp_memory.h"
-#include "utils/nimcp_validate.h"
-#include "logging/nimcp_logging.h"
+#include <math.h>
 #include <stdlib.h>
 #include <string.h>
-#include <math.h>
+#include "logging/nimcp_logging.h"
+#include "utils/nimcp_hash_table.h"
+#include "utils/nimcp_memory.h"
+#include "utils/nimcp_queue_manager.h"
+#include "utils/nimcp_thread.h"
+#include "utils/nimcp_time.h"
+#include "utils/nimcp_validate.h"
 
 //=============================================================================
 // Constants and Configuration
@@ -91,14 +91,14 @@
 #define FEATURE_MAP_INITIAL_CAPACITY 256
 
 // Event queue configuration
-#define EVENT_QUEUE_HIGH_SIZE    1000  // High-confidence events (>0.8)
-#define EVENT_QUEUE_NORMAL_SIZE  5000  // Normal events (0.3-0.8)
-#define EVENT_QUEUE_LOW_SIZE     500   // Low-confidence events (<0.3)
-#define EVENT_QUEUE_CHANNEL      0     // Single channel for all events
+#define EVENT_QUEUE_HIGH_SIZE 1000    // High-confidence events (>0.8)
+#define EVENT_QUEUE_NORMAL_SIZE 5000  // Normal events (0.3-0.8)
+#define EVENT_QUEUE_LOW_SIZE 500      // Low-confidence events (<0.3)
+#define EVENT_QUEUE_CHANNEL 0         // Single channel for all events
 
 // Confidence thresholds for priority mapping
-#define HIGH_CONFIDENCE_THRESHOLD   0.8f
-#define LOW_CONFIDENCE_THRESHOLD    0.3f
+#define HIGH_CONFIDENCE_THRESHOLD 0.8f
+#define LOW_CONFIDENCE_THRESHOLD 0.3f
 
 //=============================================================================
 // Hash Table Implementation for Feature Mappings (Repository Pattern)
@@ -127,9 +127,9 @@ typedef struct {
  * SIZE: 40 bytes (optimized for cache line efficiency)
  */
 typedef struct {
-    event_packet_t packet;           // 24 bytes: Event packet data
-    event_callback_t callback;       // 8 bytes: Callback function pointer
-    void* callback_context;          // 8 bytes: User context
+    event_packet_t packet;      // 24 bytes: Event packet data
+    event_callback_t callback;  // 8 bytes: Callback function pointer
+    void* callback_context;     // 8 bytes: User context
     // Total: 40 bytes - fits nicely in cache line
 } queued_event_t;
 
@@ -195,15 +195,15 @@ struct event_receiver_struct {
  *
  * COMPLEXITY: O(1)
  */
-static hash_table_t* create_feature_hash_table(void) {
-    hash_table_config_t config = {
-        .initial_buckets = HASH_TABLE_SIZE,
-        .key_type = HASH_KEY_UINT32,
-        .hash_algorithm = HASH_ALG_MURMUR3,
-        .case_insensitive = false,
-        .value_destructor = NULL,  // neuron_id_value_t doesn't need cleanup
-        .thread_safe = false
-    };
+static hash_table_t* create_feature_hash_table(void)
+{
+    hash_table_config_t config = {.initial_buckets = HASH_TABLE_SIZE,
+                                  .key_type = HASH_KEY_UINT32,
+                                  .hash_algorithm = HASH_ALG_MURMUR3,
+                                  .case_insensitive = false,
+                                  .value_destructor =
+                                      NULL,  // neuron_id_value_t doesn't need cleanup
+                                  .thread_safe = false};
     return hash_table_create(&config);
 }
 
@@ -217,14 +217,13 @@ static hash_table_t* create_feature_hash_table(void) {
  *
  * @return true if inserted/updated, false on failure
  */
-static bool hash_table_insert_feature(
-    hash_table_t* table,
-    feature_code_t feature_code,
-    uint32_t neuron_id) {
+static bool hash_table_insert_feature(hash_table_t* table, feature_code_t feature_code,
+                                      uint32_t neuron_id)
+{
+    if (!table)
+        return false;
 
-    if (!table) return false;
-
-    neuron_id_value_t value = { .neuron_id = neuron_id };
+    neuron_id_value_t value = {.neuron_id = neuron_id};
     return hash_table_insert_uint32(table, feature_code, &value, sizeof(neuron_id_value_t));
 }
 
@@ -239,15 +238,14 @@ static bool hash_table_insert_feature(
  * @param neuron_id Output parameter for neuron ID
  * @return true if found, false if not found
  */
-static bool hash_table_lookup_feature(
-    hash_table_t* table,
-    feature_code_t feature_code,
-    uint32_t* neuron_id) {
-
+static bool hash_table_lookup_feature(hash_table_t* table, feature_code_t feature_code,
+                                      uint32_t* neuron_id)
+{
     // Guard clause: Validate inputs
-    if (!table || !neuron_id) return false;
+    if (!table || !neuron_id)
+        return false;
 
-    neuron_id_value_t* entry = (neuron_id_value_t*)hash_table_lookup_uint32(table, feature_code);
+    neuron_id_value_t* entry = (neuron_id_value_t*) hash_table_lookup_uint32(table, feature_code);
     if (entry) {
         *neuron_id = entry->neuron_id;
         return true;
@@ -269,9 +267,11 @@ static bool hash_table_lookup_feature(
  *
  * @return true on success, false on allocation failure
  */
-static bool allocate_feature_storage(event_generator_t gen) {
+static bool allocate_feature_storage(event_generator_t gen)
+{
     // Guard clause: Validate input
-    if (!gen) return false;
+    if (!gen)
+        return false;
 
     gen->neuron_features = nimcp_calloc(MAX_NEURONS, sizeof(feature_code_t));
     return gen->neuron_features != NULL;
@@ -285,12 +285,11 @@ static bool allocate_feature_storage(event_generator_t gen) {
  *
  * COMPLEXITY: O(n) where n = MAX_NEURONS (linear, single-pass)
  */
-static void initialize_feature_codes(
-    event_generator_t gen,
-    feature_code_t base_code) {
-
+static void initialize_feature_codes(event_generator_t gen, feature_code_t base_code)
+{
     // Guard clause: Validate input
-    if (!gen || !gen->neuron_features) return;
+    if (!gen || !gen->neuron_features)
+        return;
 
     for (uint32_t i = 0; i < MAX_NEURONS; i++) {
         gen->neuron_features[i] = event_default_feature_code(base_code, i);
@@ -316,7 +315,8 @@ static void initialize_feature_codes(
  * @param confidence Event confidence (0.0-1.0)
  * @return Priority level for queue
  */
-static nimcp_queue_priority_t map_confidence_to_priority(float confidence) {
+static nimcp_queue_priority_t map_confidence_to_priority(float confidence)
+{
     if (confidence >= HIGH_CONFIDENCE_THRESHOLD) {
         return NIMCP_QUEUE_PRIORITY_HIGH;
     } else if (confidence >= LOW_CONFIDENCE_THRESHOLD) {
@@ -353,22 +353,22 @@ static nimcp_queue_priority_t map_confidence_to_priority(float confidence) {
  * @param arg event_generator_t cast to void*
  * @return NULL (standard thread return)
  */
-static void* event_worker_thread(void* arg) {
-    event_generator_t gen = (event_generator_t)arg;
+static void* event_worker_thread(void* arg)
+{
+    event_generator_t gen = (event_generator_t) arg;
 
     // Guard clause: Validate generator
-    if (!gen || !gen->queue_manager) return NULL;
+    if (!gen || !gen->queue_manager)
+        return NULL;
 
     // Main processing loop
     while (!gen->shutdown) {
         // Dequeue event with timeout (non-blocking check every 100ms)
         nimcp_message_t* msg = NULL;
-        nimcp_result_t result = nimcp_queue_manager_dequeue(
-            gen->queue_manager,
-            EVENT_QUEUE_CHANNEL,
-            &msg,
-            100  // 100ms timeout
-        );
+        nimcp_result_t result =
+            nimcp_queue_manager_dequeue(gen->queue_manager, EVENT_QUEUE_CHANNEL, &msg,
+                                        100  // 100ms timeout
+            );
 
         // Handle timeout (no events available) - continue loop
         if (result != NIMCP_SUCCESS || !msg) {
@@ -378,16 +378,13 @@ static void* event_worker_thread(void* arg) {
         // Extract queued event from message payload
         // SAFETY: We know the message contains queued_event_t because we put it there
         if (msg->data && msg->size == sizeof(queued_event_t)) {
-            queued_event_t* queued = (queued_event_t*)msg->data;
+            queued_event_t* queued = (queued_event_t*) msg->data;
 
             // Invoke callback (Observer pattern) - this is where async happens!
             if (queued->callback) {
-                queued->callback(
-                    &queued->packet,
-                    NULL,  // No additional payload
-                    0,
-                    queued->callback_context
-                );
+                queued->callback(&queued->packet,
+                                 NULL,  // No additional payload
+                                 0, queued->callback_context);
             }
         }
 
@@ -432,12 +429,15 @@ static void* event_worker_thread(void* arg) {
  * @param config - Generator configuration (callback must be non-null)
  * @return Generator instance or NULL on failure
  */
-event_generator_t event_generator_create(const event_generator_config_t* config) {
+event_generator_t event_generator_create(const event_generator_config_t* config)
+{
     // Guard clause: Validate config
-    if (!config) return NULL;
+    if (!config)
+        return NULL;
 
     // Guard clause: Check required callback
-    if (!config->callback) return NULL;
+    if (!config->callback)
+        return NULL;
 
     // MEDIUM PRIORITY VALIDATION: Validate configuration parameters
     // Validate node_id (uint32_t field)
@@ -447,7 +447,8 @@ event_generator_t event_generator_create(const event_generator_config_t* config)
     }
 
     // Validate base_feature_code (feature_code_t is uint32_t)
-    if (!nimcp_validate_integer_field(&config->base_feature_code, sizeof(config->base_feature_code))) {
+    if (!nimcp_validate_integer_field(&config->base_feature_code,
+                                      sizeof(config->base_feature_code))) {
         NIMCP_LOGGING_ERROR("Invalid base_feature_code in event generator config");
         return NULL;
     }
@@ -460,7 +461,8 @@ event_generator_t event_generator_create(const event_generator_config_t* config)
 
     event_generator_t gen = nimcp_malloc(sizeof(struct event_generator_struct));
     // Guard clause: Check allocation
-    if (!gen) return NULL;
+    if (!gen)
+        return NULL;
 
     // Initialize basic fields
     memset(gen, 0, sizeof(struct event_generator_struct));
@@ -479,11 +481,9 @@ event_generator_t event_generator_create(const event_generator_config_t* config)
 
     // Create priority queue manager for async event processing
     nimcp_queue_manager_config_t queue_config = {
-        .queue_sizes = {
-            .high = EVENT_QUEUE_HIGH_SIZE,
-            .normal = EVENT_QUEUE_NORMAL_SIZE,
-            .low = EVENT_QUEUE_LOW_SIZE
-        },
+        .queue_sizes = {.high = EVENT_QUEUE_HIGH_SIZE,
+                        .normal = EVENT_QUEUE_NORMAL_SIZE,
+                        .low = EVENT_QUEUE_LOW_SIZE},
         .default_timeout = 100,
         .blocking_mode = false,  // Drop on full (backpressure)
         .max_channels = 1,       // Single channel for all events
@@ -527,9 +527,11 @@ event_generator_t event_generator_create(const event_generator_config_t* config)
  *
  * COMPLEXITY: O(1) plus wait for thread termination
  */
-void event_generator_destroy(event_generator_t generator) {
+void event_generator_destroy(event_generator_t generator)
+{
     // Guard clause: Validate input
-    if (!generator) return;
+    if (!generator)
+        return;
 
     // Signal worker thread to shutdown
     if (generator->use_async_queue) {
@@ -564,19 +566,20 @@ void event_generator_destroy(event_generator_t generator) {
  *
  * @return true if valid, false otherwise
  */
-static bool validate_spike_inputs(
-    event_generator_t generator,
-    neural_network_t network,
-    uint32_t neuron_id) {
-
+static bool validate_spike_inputs(event_generator_t generator, neural_network_t network,
+                                  uint32_t neuron_id)
+{
     // Guard clause: Check generator
-    if (!generator) return false;
+    if (!generator)
+        return false;
 
     // Guard clause: Check network
-    if (!network) return false;
+    if (!network)
+        return false;
 
     // Guard clause: Check neuron ID bounds
-    if (neuron_id >= generator->max_neurons) return false;
+    if (neuron_id >= generator->max_neurons)
+        return false;
 
     return true;
 }
@@ -588,9 +591,11 @@ static bool validate_spike_inputs(
  *
  * COMPLEXITY: O(1)
  */
-static void initialize_event_packet(event_packet_t* packet) {
+static void initialize_event_packet(event_packet_t* packet)
+{
     // Guard clause: Validate input
-    if (!packet) return;
+    if (!packet)
+        return;
 
     memset(packet, 0, sizeof(event_packet_t));
     EVENT_SET_VERSION(packet, PROTOCOL_VERSION);
@@ -606,9 +611,11 @@ static void initialize_event_packet(event_packet_t* packet) {
  *
  * @return Event flags byte
  */
-static uint8_t calculate_event_flags(const event_generator_config_t* config) {
+static uint8_t calculate_event_flags(const event_generator_config_t* config)
+{
     // Guard clause: Validate input
-    if (!config) return EVENT_FLAG_EXCITATORY;
+    if (!config)
+        return EVENT_FLAG_EXCITATORY;
 
     uint8_t flags = EVENT_FLAG_EXCITATORY;  // Default to excitatory
 
@@ -627,15 +634,12 @@ static uint8_t calculate_event_flags(const event_generator_config_t* config) {
  *
  * COMPLEXITY: O(1)
  */
-static void populate_event_packet(
-    event_packet_t* packet,
-    event_generator_t generator,
-    uint32_t neuron_id,
-    float neuron_state,
-    uint64_t timestamp) {
-
+static void populate_event_packet(event_packet_t* packet, event_generator_t generator,
+                                  uint32_t neuron_id, float neuron_state, uint64_t timestamp)
+{
     // Guard clause: Validate inputs
-    if (!packet || !generator) return;
+    if (!packet || !generator)
+        return;
 
     // Set feature code from neuron mapping
     feature_code_t feature = generator->neuron_features[neuron_id];
@@ -699,12 +703,9 @@ static void populate_event_packet(
  * @param timestamp - Spike timestamp (0 = use current time)
  * @return true if event enqueued, false on error
  */
-bool event_generator_on_spike(
-    event_generator_t generator,
-    neural_network_t network,
-    uint32_t neuron_id,
-    uint64_t timestamp) {
-
+bool event_generator_on_spike(event_generator_t generator, neural_network_t network,
+                              uint32_t neuron_id, uint64_t timestamp)
+{
     // Guard clause: Validate all inputs
     if (!validate_spike_inputs(generator, network, neuron_id)) {
         return false;
@@ -729,8 +730,7 @@ bool event_generator_on_spike(
         queued_event_t* queued = nimcp_malloc(sizeof(queued_event_t));
         if (!queued) {
             // Allocation failed - fall back to direct callback
-            generator->config.callback(&packet, NULL, 0,
-                                      generator->config.callback_context);
+            generator->config.callback(&packet, NULL, 0, generator->config.callback_context);
             return true;
         }
 
@@ -747,17 +747,15 @@ bool event_generator_on_spike(
         nimcp_message_t msg;
         msg.data = queued;
         msg.size = sizeof(queued_event_t);
-        msg.type = 0;  // Event type
+        msg.type = 0;          // Event type
         msg.flags = priority;  // Priority in flags
 
         // Enqueue event (non-blocking)
         // If queue full, this drops the event (backpressure)
-        nimcp_result_t result = nimcp_queue_manager_enqueue(
-            generator->queue_manager,
-            EVENT_QUEUE_CHANNEL,
-            &msg,
-            0  // No timeout - drop if full
-        );
+        nimcp_result_t result =
+            nimcp_queue_manager_enqueue(generator->queue_manager, EVENT_QUEUE_CHANNEL, &msg,
+                                        0  // No timeout - drop if full
+            );
 
         if (result != NIMCP_SUCCESS) {
             // Queue full - free the event and drop
@@ -772,11 +770,7 @@ bool event_generator_on_spike(
     } else {
         // SYNC PATH: Direct callback (legacy behavior or fallback)
         // Used when async queue disabled or not initialized
-        generator->config.callback(
-            &packet,
-            NULL,
-            0,
-            generator->config.callback_context);
+        generator->config.callback(&packet, NULL, 0, generator->config.callback_context);
 
         return true;
     }
@@ -793,16 +787,16 @@ bool event_generator_on_spike(
  *
  * @return true on success, false on invalid inputs
  */
-bool event_generator_set_neuron_feature(
-    event_generator_t generator,
-    uint32_t neuron_id,
-    feature_code_t feature_code) {
-
+bool event_generator_set_neuron_feature(event_generator_t generator, uint32_t neuron_id,
+                                        feature_code_t feature_code)
+{
     // Guard clause: Validate generator
-    if (!generator) return false;
+    if (!generator)
+        return false;
 
     // Guard clause: Check neuron ID bounds
-    if (neuron_id >= generator->max_neurons) return false;
+    if (neuron_id >= generator->max_neurons)
+        return false;
 
     generator->neuron_features[neuron_id] = feature_code;
     return true;
@@ -821,13 +815,13 @@ bool event_generator_set_neuron_feature(
  *
  * @return true on success, false on allocation failure
  */
-static bool allocate_filter_storage(event_receiver_t receiver) {
+static bool allocate_filter_storage(event_receiver_t receiver)
+{
     // Guard clause: Validate input
-    if (!receiver) return false;
+    if (!receiver)
+        return false;
 
-    receiver->filters = nimcp_calloc(
-        receiver->max_filters,
-        sizeof(subscription_filter_t));
+    receiver->filters = nimcp_calloc(receiver->max_filters, sizeof(subscription_filter_t));
 
     return receiver->filters != NULL;
 }
@@ -840,22 +834,20 @@ static bool allocate_filter_storage(event_receiver_t receiver) {
  *
  * COMPLEXITY: O(n) where n = number of filters to copy
  */
-static void copy_initial_filters(
-    event_receiver_t receiver,
-    const event_receiver_config_t* config) {
-
+static void copy_initial_filters(event_receiver_t receiver, const event_receiver_config_t* config)
+{
     // Guard clause: Validate inputs
-    if (!receiver || !config) return;
+    if (!receiver || !config)
+        return;
 
     // Guard clause: Check if filters provided
-    if (!config->filters || config->num_filters == 0) return;
+    if (!config->filters || config->num_filters == 0)
+        return;
 
-    uint32_t copy_count = (config->num_filters < receiver->max_filters)
-                          ? config->num_filters
-                          : receiver->max_filters;
+    uint32_t copy_count =
+        (config->num_filters < receiver->max_filters) ? config->num_filters : receiver->max_filters;
 
-    memcpy(receiver->filters, config->filters,
-           copy_count * sizeof(subscription_filter_t));
+    memcpy(receiver->filters, config->filters, copy_count * sizeof(subscription_filter_t));
     receiver->num_filters = copy_count;
 }
 
@@ -878,16 +870,20 @@ static void copy_initial_filters(
  * @param config - Receiver configuration (network must be non-null)
  * @return Receiver instance or NULL on failure
  */
-event_receiver_t event_receiver_create(const event_receiver_config_t* config) {
+event_receiver_t event_receiver_create(const event_receiver_config_t* config)
+{
     // Guard clause: Validate config
-    if (!config) return NULL;
+    if (!config)
+        return NULL;
 
     // Guard clause: Check required network
-    if (!config->network) return NULL;
+    if (!config->network)
+        return NULL;
 
     event_receiver_t receiver = nimcp_malloc(sizeof(struct event_receiver_struct));
     // Guard clause: Check allocation
-    if (!receiver) return NULL;
+    if (!receiver)
+        return NULL;
 
     // Initialize basic fields
     receiver->network = config->network;
@@ -918,9 +914,11 @@ event_receiver_t event_receiver_create(const event_receiver_config_t* config) {
  *
  * COMPLEXITY: O(n) where n = number of hash table entries
  */
-void event_receiver_destroy(event_receiver_t receiver) {
+void event_receiver_destroy(event_receiver_t receiver)
+{
     // Guard clause: Validate input
-    if (!receiver) return;
+    if (!receiver)
+        return;
 
     // Destroy hash table
     hash_table_destroy(receiver->feature_table);
@@ -940,18 +938,19 @@ void event_receiver_destroy(event_receiver_t receiver) {
  *
  * @return true if valid, false otherwise
  */
-static bool validate_packet_inputs(
-    event_receiver_t receiver,
-    const event_packet_t* packet) {
-
+static bool validate_packet_inputs(event_receiver_t receiver, const event_packet_t* packet)
+{
     // Guard clause: Check receiver
-    if (!receiver) return false;
+    if (!receiver)
+        return false;
 
     // Guard clause: Check packet
-    if (!packet) return false;
+    if (!packet)
+        return false;
 
     // Guard clause: Validate packet structure
-    if (!event_packet_validate(packet)) return false;
+    if (!event_packet_validate(packet))
+        return false;
 
     return true;
 }
@@ -966,15 +965,15 @@ static bool validate_packet_inputs(
  *
  * @return true if matches or no filters active, false if filtered out
  */
-static bool check_subscription_filters(
-    event_receiver_t receiver,
-    const event_packet_t* packet) {
-
+static bool check_subscription_filters(event_receiver_t receiver, const event_packet_t* packet)
+{
     // Guard clause: Validate inputs
-    if (!receiver || !packet) return false;
+    if (!receiver || !packet)
+        return false;
 
     // If no filters, accept all packets
-    if (receiver->num_filters == 0) return true;
+    if (receiver->num_filters == 0)
+        return true;
 
     // Check if packet matches any filter
     for (uint32_t i = 0; i < receiver->num_filters; i++) {
@@ -997,21 +996,19 @@ static bool check_subscription_filters(
  * @param target_neuron Output parameter for new neuron ID
  * @return true if created, false on failure
  */
-static bool create_neuron_for_feature(
-    event_receiver_t receiver,
-    feature_code_t feature_code,
-    uint32_t* target_neuron) {
-
+static bool create_neuron_for_feature(event_receiver_t receiver, feature_code_t feature_code,
+                                      uint32_t* target_neuron)
+{
     // Guard clause: Validate inputs
-    if (!receiver || !target_neuron) return false;
+    if (!receiver || !target_neuron)
+        return false;
 
     // Create new neuron
-    uint32_t neuron_id = neural_network_add_neuron(
-        receiver->network,
-        ACTIVATION_ADAPTIVE);
+    uint32_t neuron_id = neural_network_add_neuron(receiver->network, ACTIVATION_ADAPTIVE);
 
     // Guard clause: Check creation success
-    if (neuron_id == UINT32_MAX) return false;
+    if (neuron_id == UINT32_MAX)
+        return false;
 
     // Map feature to new neuron
     event_receiver_map_feature_to_neuron(receiver, feature_code, neuron_id);
@@ -1031,23 +1028,21 @@ static bool create_neuron_for_feature(
  * @param target_neuron Output parameter for neuron ID
  * @return true if found/created, false on failure
  */
-static bool resolve_target_neuron(
-    event_receiver_t receiver,
-    feature_code_t feature_code,
-    uint32_t* target_neuron) {
-
+static bool resolve_target_neuron(event_receiver_t receiver, feature_code_t feature_code,
+                                  uint32_t* target_neuron)
+{
     // Guard clause: Validate inputs
-    if (!receiver || !target_neuron) return false;
+    if (!receiver || !target_neuron)
+        return false;
 
     // Try to find existing mapping (O(1) hash lookup)
-    if (hash_table_lookup_feature(receiver->feature_table,
-                                   feature_code,
-                                   target_neuron)) {
+    if (hash_table_lookup_feature(receiver->feature_table, feature_code, target_neuron)) {
         return true;
     }
 
     // No mapping exists - check if auto-creation enabled
-    if (!receiver->auto_create_neurons) return false;
+    if (!receiver->auto_create_neurons)
+        return false;
 
     // Create new neuron for this feature
     return create_neuron_for_feature(receiver, feature_code, target_neuron);
@@ -1063,9 +1058,11 @@ static bool resolve_target_neuron(
  *
  * @return Neural input value (positive for excitatory, negative for inhibitory)
  */
-static float calculate_neural_input(const event_packet_t* packet) {
+static float calculate_neural_input(const event_packet_t* packet)
+{
     // Guard clause: Validate input
-    if (!packet) return 0.0f;
+    if (!packet)
+        return 0.0f;
 
     float confidence = EVENT_CONFIDENCE_TO_FLOAT(packet->confidence);
     uint8_t flags = EVENT_GET_FLAGS(packet);
@@ -1102,13 +1099,9 @@ static float calculate_neural_input(const event_packet_t* packet) {
  * @param timestamp - Current timestamp (0 = use packet timestamp)
  * @return true if processed successfully, false if filtered out or error
  */
-bool event_receiver_process_packet(
-    event_receiver_t receiver,
-    const event_packet_t* packet,
-    const void* payload,
-    uint32_t payload_len,
-    uint64_t timestamp) {
-
+bool event_receiver_process_packet(event_receiver_t receiver, const event_packet_t* packet,
+                                   const void* payload, uint32_t payload_len, uint64_t timestamp)
+{
     // Step 1: Validate inputs
     if (!validate_packet_inputs(receiver, packet)) {
         return false;
@@ -1131,11 +1124,7 @@ bool event_receiver_process_packet(
 
     // Step 5: Apply input to neuron
     uint64_t ts = (timestamp > 0) ? timestamp : packet->timestamp;
-    return neural_network_update_neuron(
-        receiver->network,
-        target_neuron,
-        input,
-        ts);
+    return neural_network_update_neuron(receiver->network, target_neuron, input, ts);
 }
 
 /**
@@ -1148,22 +1137,21 @@ bool event_receiver_process_packet(
  *
  * @return true on success, false if full or invalid inputs
  */
-bool event_receiver_add_filter(
-    event_receiver_t receiver,
-    const subscription_filter_t* filter) {
-
+bool event_receiver_add_filter(event_receiver_t receiver, const subscription_filter_t* filter)
+{
     // Guard clause: Validate receiver
-    if (!receiver) return false;
+    if (!receiver)
+        return false;
 
     // Guard clause: Validate filter
-    if (!filter) return false;
+    if (!filter)
+        return false;
 
     // Guard clause: Check capacity
-    if (receiver->num_filters >= receiver->max_filters) return false;
+    if (receiver->num_filters >= receiver->max_filters)
+        return false;
 
-    memcpy(&receiver->filters[receiver->num_filters],
-           filter,
-           sizeof(subscription_filter_t));
+    memcpy(&receiver->filters[receiver->num_filters], filter, sizeof(subscription_filter_t));
     receiver->num_filters++;
 
     return true;
@@ -1179,12 +1167,15 @@ bool event_receiver_add_filter(
  *
  * @return true on success, false on invalid index
  */
-bool event_receiver_remove_filter(event_receiver_t receiver, uint32_t index) {
+bool event_receiver_remove_filter(event_receiver_t receiver, uint32_t index)
+{
     // Guard clause: Validate receiver
-    if (!receiver) return false;
+    if (!receiver)
+        return false;
 
     // Guard clause: Check index bounds
-    if (index >= receiver->num_filters) return false;
+    if (index >= receiver->num_filters)
+        return false;
 
     // Shift filters down to fill gap (single pass)
     for (uint32_t i = index; i < receiver->num_filters - 1; i++) {
@@ -1206,19 +1197,15 @@ bool event_receiver_remove_filter(event_receiver_t receiver, uint32_t index) {
  *
  * @return true on success, false on invalid inputs
  */
-bool event_receiver_map_feature_to_neuron(
-    event_receiver_t receiver,
-    feature_code_t feature_code,
-    uint32_t neuron_id) {
-
+bool event_receiver_map_feature_to_neuron(event_receiver_t receiver, feature_code_t feature_code,
+                                          uint32_t neuron_id)
+{
     // Guard clause: Validate receiver
-    if (!receiver) return false;
+    if (!receiver)
+        return false;
 
     // Insert/update mapping in hash table (O(1))
-    return hash_table_insert_feature(
-        receiver->feature_table,
-        feature_code,
-        neuron_id);
+    return hash_table_insert_feature(receiver->feature_table, feature_code, neuron_id);
 }
 
 //=============================================================================
@@ -1233,7 +1220,8 @@ bool event_receiver_map_feature_to_neuron(
  *
  * COMPLEXITY: O(1)
  */
-static float normalize_state(float state, float threshold) {
+static float normalize_state(float state, float threshold)
+{
     return (state - threshold) / (1.0f + fabsf(threshold));
 }
 
@@ -1245,7 +1233,8 @@ static float normalize_state(float state, float threshold) {
  *
  * COMPLEXITY: O(1)
  */
-static float apply_sigmoid(float normalized) {
+static float apply_sigmoid(float normalized)
+{
     return 1.0f / (1.0f + expf(-5.0f * normalized));
 }
 
@@ -1257,7 +1246,8 @@ static float apply_sigmoid(float normalized) {
  *
  * COMPLEXITY: O(1)
  */
-static float clamp_confidence(float value) {
+static float clamp_confidence(float value)
+{
     return (value < 0.0f) ? 0.0f : ((value > 1.0f) ? 1.0f : value);
 }
 
@@ -1279,7 +1269,8 @@ static float clamp_confidence(float value) {
  * @param threshold - Firing threshold
  * @return Confidence value in range [0.0, 1.0]
  */
-float event_calculate_confidence(float state, float threshold) {
+float event_calculate_confidence(float state, float threshold)
+{
     float normalized = normalize_state(state, threshold);
     float confidence = apply_sigmoid(normalized);
     return clamp_confidence(confidence);
@@ -1295,7 +1286,8 @@ float event_calculate_confidence(float state, float threshold) {
  *
  * @return Event flags byte
  */
-uint8_t event_flags_from_neuron_type(neuron_type_t type) {
+uint8_t event_flags_from_neuron_type(neuron_type_t type)
+{
     switch (type) {
         case NEURON_EXCITATORY:
             return EVENT_FLAG_EXCITATORY;
@@ -1318,10 +1310,8 @@ uint8_t event_flags_from_neuron_type(neuron_type_t type) {
  * @param neuron_id - Unique neuron identifier
  * @return Feature code combining domain and neuron ID
  */
-feature_code_t event_default_feature_code(
-    feature_code_t base_code,
-    uint32_t neuron_id) {
-
+feature_code_t event_default_feature_code(feature_code_t base_code, uint32_t neuron_id)
+{
     // Extract base domain from feature code
     uint8_t domain = GET_FEATURE_DOMAIN(base_code);
 

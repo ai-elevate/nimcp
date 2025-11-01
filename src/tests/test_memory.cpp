@@ -20,15 +20,17 @@ extern "C" {
 //=============================================================================
 
 class MemoryBasicTest : public ::testing::Test {
-protected:
-    void SetUp() override {
+   protected:
+    void SetUp() override
+    {
         nimcp_memory_init();
         nimcp_memory_enable_tracking(true);
         nimcp_memory_enable_debug_output(false);
         nimcp_memory_clear_stats();
     }
 
-    void TearDown() override {
+    void TearDown() override
+    {
         nimcp_memory_enable_tracking(false);
     }
 };
@@ -37,7 +39,8 @@ protected:
  * WHAT: Test basic malloc functionality
  * WHY: Verify allocation works
  */
-TEST_F(MemoryBasicTest, BasicMalloc) {
+TEST_F(MemoryBasicTest, BasicMalloc)
+{
     void* ptr = nimcp_malloc(100);
     ASSERT_NE(ptr, nullptr);
 
@@ -51,7 +54,8 @@ TEST_F(MemoryBasicTest, BasicMalloc) {
  * WHAT: Test calloc zero-initialization
  * WHY: Verify calloc returns zeroed memory
  */
-TEST_F(MemoryBasicTest, CallocZeroInitialized) {
+TEST_F(MemoryBasicTest, CallocZeroInitialized)
+{
     size_t count = 50;
     size_t size = sizeof(int);
     int* ptr = static_cast<int*>(nimcp_calloc(count, size));
@@ -69,7 +73,8 @@ TEST_F(MemoryBasicTest, CallocZeroInitialized) {
  * WHAT: Test realloc functionality
  * WHY: Verify realloc preserves data and resizes
  */
-TEST_F(MemoryBasicTest, ReallocPreservesData) {
+TEST_F(MemoryBasicTest, ReallocPreservesData)
+{
     int* ptr = static_cast<int*>(nimcp_malloc(10 * sizeof(int)));
     ASSERT_NE(ptr, nullptr);
 
@@ -94,7 +99,8 @@ TEST_F(MemoryBasicTest, ReallocPreservesData) {
  * WHAT: Test realloc with NULL pointer
  * WHY: Verify realloc(NULL, size) behaves like malloc
  */
-TEST_F(MemoryBasicTest, ReallocWithNull) {
+TEST_F(MemoryBasicTest, ReallocWithNull)
+{
     void* ptr = nimcp_realloc(nullptr, 100);
     ASSERT_NE(ptr, nullptr);
 
@@ -105,13 +111,14 @@ TEST_F(MemoryBasicTest, ReallocWithNull) {
  * WHAT: Test strdup functionality
  * WHY: Verify string duplication works
  */
-TEST_F(MemoryBasicTest, StrdupCopiesString) {
+TEST_F(MemoryBasicTest, StrdupCopiesString)
+{
     const char* original = "Test String";
     char* duplicate = nimcp_strdup(original);
     ASSERT_NE(duplicate, nullptr);
 
     EXPECT_STREQ(duplicate, original);
-    EXPECT_NE(duplicate, original); // Different addresses
+    EXPECT_NE(duplicate, original);  // Different addresses
 
     nimcp_free(duplicate);
 }
@@ -120,7 +127,8 @@ TEST_F(MemoryBasicTest, StrdupCopiesString) {
  * WHAT: Test strdup with NULL
  * WHY: Verify NULL safety
  */
-TEST_F(MemoryBasicTest, StrdupWithNull) {
+TEST_F(MemoryBasicTest, StrdupWithNull)
+{
     char* duplicate = nimcp_strdup(nullptr);
     EXPECT_EQ(duplicate, nullptr);
 }
@@ -129,7 +137,8 @@ TEST_F(MemoryBasicTest, StrdupWithNull) {
  * WHAT: Test free with NULL
  * WHY: Verify NULL safety (free(NULL) is valid in C)
  */
-TEST_F(MemoryBasicTest, FreeWithNull) {
+TEST_F(MemoryBasicTest, FreeWithNull)
+{
     nimcp_free(nullptr);
     // Should not crash
     SUCCEED();
@@ -140,14 +149,16 @@ TEST_F(MemoryBasicTest, FreeWithNull) {
 //=============================================================================
 
 class MemoryAlignedTest : public ::testing::Test {
-protected:
-    void SetUp() override {
+   protected:
+    void SetUp() override
+    {
         nimcp_memory_init();
         nimcp_memory_enable_tracking(true);
         nimcp_memory_enable_debug_output(false);
     }
 
-    void TearDown() override {
+    void TearDown() override
+    {
         nimcp_memory_enable_tracking(false);
     }
 };
@@ -156,7 +167,8 @@ protected:
  * WHAT: Test aligned allocation
  * WHY: Verify alignment is correct
  */
-TEST_F(MemoryAlignedTest, AlignedAllocation) {
+TEST_F(MemoryAlignedTest, AlignedAllocation)
+{
     void* ptr = nimcp_aligned_malloc(1024, 64);
     ASSERT_NE(ptr, nullptr);
 
@@ -170,7 +182,8 @@ TEST_F(MemoryAlignedTest, AlignedAllocation) {
  * WHAT: Test various alignment values
  * WHY: Verify different alignments work
  */
-TEST_F(MemoryAlignedTest, VariousAlignments) {
+TEST_F(MemoryAlignedTest, VariousAlignments)
+{
     size_t alignments[] = {8, 16, 32, 64, 128, 256};
 
     for (size_t alignment : alignments) {
@@ -187,7 +200,8 @@ TEST_F(MemoryAlignedTest, VariousAlignments) {
  * WHAT: Test aligned free with NULL
  * WHY: Verify NULL safety
  */
-TEST_F(MemoryAlignedTest, AlignedFreeWithNull) {
+TEST_F(MemoryAlignedTest, AlignedFreeWithNull)
+{
     nimcp_aligned_free(nullptr);
     SUCCEED();
 }
@@ -197,15 +211,17 @@ TEST_F(MemoryAlignedTest, AlignedFreeWithNull) {
 //=============================================================================
 
 class MemoryStatsTest : public ::testing::Test {
-protected:
-    void SetUp() override {
+   protected:
+    void SetUp() override
+    {
         nimcp_memory_init();
         nimcp_memory_enable_tracking(true);
         nimcp_memory_enable_debug_output(false);
         nimcp_memory_clear_stats();
     }
 
-    void TearDown() override {
+    void TearDown() override
+    {
         nimcp_memory_enable_tracking(false);
     }
 };
@@ -214,7 +230,8 @@ protected:
  * WHAT: Test allocation counting
  * WHY: Verify statistics are tracked correctly
  */
-TEST_F(MemoryStatsTest, AllocationCounting) {
+TEST_F(MemoryStatsTest, AllocationCounting)
+{
     nimcp_memory_stats_t stats;
 
     void* ptr1 = nimcp_malloc(100);
@@ -237,7 +254,8 @@ TEST_F(MemoryStatsTest, AllocationCounting) {
  * WHAT: Test peak allocation tracking
  * WHY: Verify peak usage is recorded
  */
-TEST_F(MemoryStatsTest, PeakAllocationTracking) {
+TEST_F(MemoryStatsTest, PeakAllocationTracking)
+{
     nimcp_memory_stats_t stats;
 
     void* ptr1 = nimcp_malloc(500);
@@ -249,12 +267,12 @@ TEST_F(MemoryStatsTest, PeakAllocationTracking) {
     nimcp_free(ptr1);
 
     EXPECT_TRUE(nimcp_memory_get_stats(&stats));
-    EXPECT_EQ(stats.peak_allocated, 800); // Peak should remain
+    EXPECT_EQ(stats.peak_allocated, 800);  // Peak should remain
 
     void* ptr3 = nimcp_malloc(1000);
 
     EXPECT_TRUE(nimcp_memory_get_stats(&stats));
-    EXPECT_EQ(stats.peak_allocated, 1300); // New peak
+    EXPECT_EQ(stats.peak_allocated, 1300);  // New peak
 
     nimcp_free(ptr2);
     nimcp_free(ptr3);
@@ -264,7 +282,8 @@ TEST_F(MemoryStatsTest, PeakAllocationTracking) {
  * WHAT: Test statistics clearing
  * WHY: Verify clear resets counters
  */
-TEST_F(MemoryStatsTest, ClearStatistics) {
+TEST_F(MemoryStatsTest, ClearStatistics)
+{
     void* ptr = nimcp_malloc(100);
 
     nimcp_memory_stats_t stats;
@@ -286,7 +305,8 @@ TEST_F(MemoryStatsTest, ClearStatistics) {
  * WHAT: Test get_stats with NULL
  * WHY: Verify error handling
  */
-TEST_F(MemoryStatsTest, GetStatsWithNull) {
+TEST_F(MemoryStatsTest, GetStatsWithNull)
+{
     EXPECT_FALSE(nimcp_memory_get_stats(nullptr));
 }
 
@@ -295,15 +315,17 @@ TEST_F(MemoryStatsTest, GetStatsWithNull) {
 //=============================================================================
 
 class MemoryLeakTest : public ::testing::Test {
-protected:
-    void SetUp() override {
+   protected:
+    void SetUp() override
+    {
         nimcp_memory_init();
         nimcp_memory_enable_tracking(true);
         nimcp_memory_enable_debug_output(false);
         nimcp_memory_clear_stats();
     }
 
-    void TearDown() override {
+    void TearDown() override
+    {
         nimcp_memory_enable_tracking(false);
     }
 };
@@ -313,10 +335,11 @@ protected:
  * WHY: Verify leaks are reported
  * NOTE: This test intentionally leaks memory to test detection
  */
-TEST_F(MemoryLeakTest, DetectSimpleLeak) {
+TEST_F(MemoryLeakTest, DetectSimpleLeak)
+{
     // Intentionally leak memory
     void* leaked = nimcp_malloc(100);
-    (void)leaked; // Suppress unused variable warning
+    (void) leaked;  // Suppress unused variable warning
 
     nimcp_memory_stats_t stats;
     EXPECT_TRUE(nimcp_memory_get_stats(&stats));
@@ -330,7 +353,8 @@ TEST_F(MemoryLeakTest, DetectSimpleLeak) {
  * WHAT: Test no leak scenario
  * WHY: Verify proper cleanup is recognized
  */
-TEST_F(MemoryLeakTest, NoLeakWithProperFree) {
+TEST_F(MemoryLeakTest, NoLeakWithProperFree)
+{
     void* ptr = nimcp_malloc(100);
     nimcp_free(ptr);
 
@@ -343,7 +367,8 @@ TEST_F(MemoryLeakTest, NoLeakWithProperFree) {
  * WHAT: Test multiple allocations with partial leaks
  * WHY: Verify leak detection with mixed scenarios
  */
-TEST_F(MemoryLeakTest, PartialLeaks) {
+TEST_F(MemoryLeakTest, PartialLeaks)
+{
     void* ptr1 = nimcp_malloc(100);
     void* ptr2 = nimcp_malloc(200);
     void* leaked = nimcp_malloc(300);
@@ -356,7 +381,7 @@ TEST_F(MemoryLeakTest, PartialLeaks) {
     EXPECT_TRUE(nimcp_memory_get_stats(&stats));
     EXPECT_EQ(stats.current_allocated, 300);
 
-    (void)leaked;
+    (void) leaked;
 }
 
 //=============================================================================
@@ -364,14 +389,16 @@ TEST_F(MemoryLeakTest, PartialLeaks) {
 //=============================================================================
 
 class MemoryOverflowTest : public ::testing::Test {
-protected:
-    void SetUp() override {
+   protected:
+    void SetUp() override
+    {
         nimcp_memory_init();
         nimcp_memory_enable_tracking(true);
         nimcp_memory_enable_debug_output(false);
     }
 
-    void TearDown() override {
+    void TearDown() override
+    {
         nimcp_memory_enable_tracking(false);
     }
 };
@@ -381,7 +408,8 @@ protected:
  * WHY: Verify overflow detection mechanism exists
  * NOTE: This test verifies the guards exist, not that they catch all overflows
  */
-TEST_F(MemoryOverflowTest, CanaryGuardsPresent) {
+TEST_F(MemoryOverflowTest, CanaryGuardsPresent)
+{
     void* ptr = nimcp_malloc(100);
     ASSERT_NE(ptr, nullptr);
 
@@ -398,14 +426,16 @@ TEST_F(MemoryOverflowTest, CanaryGuardsPresent) {
 //=============================================================================
 
 class MemoryDoubleFreeTest : public ::testing::Test {
-protected:
-    void SetUp() override {
+   protected:
+    void SetUp() override
+    {
         nimcp_memory_init();
         nimcp_memory_enable_tracking(true);
         nimcp_memory_enable_debug_output(false);
     }
 
-    void TearDown() override {
+    void TearDown() override
+    {
         nimcp_memory_enable_tracking(false);
     }
 };
@@ -414,7 +444,8 @@ protected:
  * WHAT: Test double-free detection
  * WHY: Verify double-free is caught
  */
-TEST_F(MemoryDoubleFreeTest, DetectDoubleFree) {
+TEST_F(MemoryDoubleFreeTest, DetectDoubleFree)
+{
     void* ptr = nimcp_malloc(100);
     ASSERT_NE(ptr, nullptr);
 
@@ -424,7 +455,7 @@ TEST_F(MemoryDoubleFreeTest, DetectDoubleFree) {
     // Note: The implementation prints an error but doesn't crash
     nimcp_free(ptr);
 
-    SUCCEED(); // If we get here, double-free was handled safely
+    SUCCEED();  // If we get here, double-free was handled safely
 }
 
 //=============================================================================
@@ -432,15 +463,17 @@ TEST_F(MemoryDoubleFreeTest, DetectDoubleFree) {
 //=============================================================================
 
 class MemoryPatternTest : public ::testing::Test {
-protected:
-    void SetUp() override {
+   protected:
+    void SetUp() override
+    {
         nimcp_memory_init();
         nimcp_memory_enable_tracking(true);
         nimcp_memory_enable_debug_output(false);
         nimcp_memory_clear_stats();
     }
 
-    void TearDown() override {
+    void TearDown() override
+    {
         nimcp_memory_enable_tracking(false);
     }
 };
@@ -449,7 +482,8 @@ protected:
  * WHAT: Test allocation pattern tracking
  * WHY: Verify pattern analysis works
  */
-TEST_F(MemoryPatternTest, TrackAllocationPatterns) {
+TEST_F(MemoryPatternTest, TrackAllocationPatterns)
+{
     std::vector<void*> ptrs;
 
     // Allocate various sizes
@@ -479,13 +513,15 @@ TEST_F(MemoryPatternTest, TrackAllocationPatterns) {
 //=============================================================================
 
 class MemoryTrackingTest : public ::testing::Test {
-protected:
-    void SetUp() override {
+   protected:
+    void SetUp() override
+    {
         nimcp_memory_init();
         nimcp_memory_enable_debug_output(false);
     }
 
-    void TearDown() override {
+    void TearDown() override
+    {
         nimcp_memory_enable_tracking(false);
     }
 };
@@ -494,7 +530,8 @@ protected:
  * WHAT: Test disabling tracking
  * WHY: Verify tracking can be turned off
  */
-TEST_F(MemoryTrackingTest, DisableTracking) {
+TEST_F(MemoryTrackingTest, DisableTracking)
+{
     nimcp_memory_enable_tracking(false);
     nimcp_memory_clear_stats();
 
@@ -514,7 +551,8 @@ TEST_F(MemoryTrackingTest, DisableTracking) {
  * WHAT: Test enabling tracking
  * WHY: Verify tracking can be turned on
  */
-TEST_F(MemoryTrackingTest, EnableTracking) {
+TEST_F(MemoryTrackingTest, EnableTracking)
+{
     nimcp_memory_enable_tracking(true);
     nimcp_memory_clear_stats();
 
@@ -533,15 +571,17 @@ TEST_F(MemoryTrackingTest, EnableTracking) {
 //=============================================================================
 
 class MemoryStressTest : public ::testing::Test {
-protected:
-    void SetUp() override {
+   protected:
+    void SetUp() override
+    {
         nimcp_memory_init();
         nimcp_memory_enable_tracking(true);
         nimcp_memory_enable_debug_output(false);
         nimcp_memory_clear_stats();
     }
 
-    void TearDown() override {
+    void TearDown() override
+    {
         nimcp_memory_enable_tracking(false);
     }
 };
@@ -550,7 +590,8 @@ protected:
  * WHAT: Test many small allocations
  * WHY: Verify system handles many allocations
  */
-TEST_F(MemoryStressTest, ManySmallAllocations) {
+TEST_F(MemoryStressTest, ManySmallAllocations)
+{
     const int count = 1000;
     std::vector<void*> ptrs;
 
@@ -579,7 +620,8 @@ TEST_F(MemoryStressTest, ManySmallAllocations) {
  * WHAT: Test mixed allocation sizes
  * WHY: Verify system handles varying sizes
  */
-TEST_F(MemoryStressTest, MixedSizes) {
+TEST_F(MemoryStressTest, MixedSizes)
+{
     std::vector<void*> ptrs;
     size_t sizes[] = {8, 16, 32, 64, 128, 256, 512, 1024, 2048, 4096};
 
@@ -605,7 +647,8 @@ TEST_F(MemoryStressTest, MixedSizes) {
  * WHAT: Test realloc stress
  * WHY: Verify realloc works under stress
  */
-TEST_F(MemoryStressTest, ReallocStress) {
+TEST_F(MemoryStressTest, ReallocStress)
+{
     void* ptr = nimcp_malloc(16);
     ASSERT_NE(ptr, nullptr);
 
@@ -630,15 +673,17 @@ TEST_F(MemoryStressTest, ReallocStress) {
 //=============================================================================
 
 class MemoryIntegrationTest : public ::testing::Test {
-protected:
-    void SetUp() override {
+   protected:
+    void SetUp() override
+    {
         nimcp_memory_init();
         nimcp_memory_enable_tracking(true);
         nimcp_memory_enable_debug_output(false);
         nimcp_memory_clear_stats();
     }
 
-    void TearDown() override {
+    void TearDown() override
+    {
         nimcp_memory_enable_tracking(false);
     }
 };
@@ -647,7 +692,8 @@ protected:
  * WHAT: Test complete workflow
  * WHY: Verify realistic usage scenario
  */
-TEST_F(MemoryIntegrationTest, CompleteWorkflow) {
+TEST_F(MemoryIntegrationTest, CompleteWorkflow)
+{
     // Simulate application startup
     std::vector<void*> permanent_allocations;
     for (int i = 0; i < 5; i++) {
@@ -671,9 +717,9 @@ TEST_F(MemoryIntegrationTest, CompleteWorkflow) {
     // Check statistics
     nimcp_memory_stats_t stats;
     EXPECT_TRUE(nimcp_memory_get_stats(&stats));
-    EXPECT_EQ(stats.allocation_count, 5 + (10 * 20)); // Permanent + temp
-    EXPECT_EQ(stats.free_count, 10 * 20); // Only temp freed
-    EXPECT_EQ(stats.current_allocated, 5 * 1024); // Only permanent remains
+    EXPECT_EQ(stats.allocation_count, 5 + (10 * 20));  // Permanent + temp
+    EXPECT_EQ(stats.free_count, 10 * 20);              // Only temp freed
+    EXPECT_EQ(stats.current_allocated, 5 * 1024);      // Only permanent remains
 
     // Cleanup permanent allocations
     for (void* ptr : permanent_allocations) {
@@ -688,7 +734,8 @@ TEST_F(MemoryIntegrationTest, CompleteWorkflow) {
  * WHAT: Test memory-intensive operation
  * WHY: Verify system handles large data structures
  */
-TEST_F(MemoryIntegrationTest, LargeDataStructure) {
+TEST_F(MemoryIntegrationTest, LargeDataStructure)
+{
     struct Node {
         int value;
         Node* next;

@@ -45,11 +45,11 @@
  * @brief Pre-configured brain sizes
  */
 typedef enum {
-    BRAIN_SIZE_TINY,      /**< 100 neurons, <1MB,  ~0.1ms inference */
-    BRAIN_SIZE_SMALL,     /**< 1K neurons,  ~10MB, ~0.5ms inference */
-    BRAIN_SIZE_MEDIUM,    /**< 10K neurons, ~50MB, ~5ms inference */
-    BRAIN_SIZE_LARGE,     /**< 100K neurons, ~500MB, ~50ms inference */
-    BRAIN_SIZE_CUSTOM     /**< User-defined size */
+    BRAIN_SIZE_TINY,   /**< 100 neurons, <1MB,  ~0.1ms inference */
+    BRAIN_SIZE_SMALL,  /**< 1K neurons,  ~10MB, ~0.5ms inference */
+    BRAIN_SIZE_MEDIUM, /**< 10K neurons, ~50MB, ~5ms inference */
+    BRAIN_SIZE_LARGE,  /**< 100K neurons, ~500MB, ~50ms inference */
+    BRAIN_SIZE_CUSTOM  /**< User-defined size */
 } brain_size_t;
 
 /**
@@ -57,11 +57,11 @@ typedef enum {
  */
 typedef enum {
     BRAIN_TASK_CLASSIFICATION,   /**< Multi-class classification */
-    BRAIN_TASK_REGRESSION,        /**< Continuous value prediction */
-    BRAIN_TASK_PATTERN_MATCHING,  /**< Pattern recognition */
-    BRAIN_TASK_SEQUENCE,          /**< Temporal sequence learning */
-    BRAIN_TASK_ASSOCIATION,       /**< Association learning (Hebbian) */
-    BRAIN_TASK_CUSTOM             /**< Custom task */
+    BRAIN_TASK_REGRESSION,       /**< Continuous value prediction */
+    BRAIN_TASK_PATTERN_MATCHING, /**< Pattern recognition */
+    BRAIN_TASK_SEQUENCE,         /**< Temporal sequence learning */
+    BRAIN_TASK_ASSOCIATION,      /**< Association learning (Hebbian) */
+    BRAIN_TASK_CUSTOM            /**< Custom task */
 } brain_task_t;
 
 //=============================================================================
@@ -77,14 +77,14 @@ typedef struct brain_struct* brain_t;
  * @brief Simple brain configuration
  */
 typedef struct {
-    brain_size_t size;           /**< Brain size preset */
-    brain_task_t task;           /**< Task template */
-    uint32_t num_inputs;         /**< Input dimension */
-    uint32_t num_outputs;        /**< Output dimension */
-    float learning_rate;         /**< Learning rate (0.001-0.1) */
-    float sparsity_target;       /**< Target sparsity (0.7-0.95) */
-    bool enable_explanations;    /**< Enable interpretability */
-    char task_name[64];          /**< Name for this brain */
+    brain_size_t size;        /**< Brain size preset */
+    brain_task_t task;        /**< Task template */
+    uint32_t num_inputs;      /**< Input dimension */
+    uint32_t num_outputs;     /**< Output dimension */
+    float learning_rate;      /**< Learning rate (0.001-0.1) */
+    float sparsity_target;    /**< Target sparsity (0.7-0.95) */
+    bool enable_explanations; /**< Enable interpretability */
+    char task_name[64];       /**< Name for this brain */
 } brain_config_t;
 
 /**
@@ -97,11 +97,8 @@ typedef struct {
  * @param num_outputs Output dimension
  * @return Brain handle or NULL on error
  */
-brain_t brain_create(const char* task_name,
-                     brain_size_t size,
-                     brain_task_t task,
-                     uint32_t num_inputs,
-                     uint32_t num_outputs);
+brain_t brain_create(const char* task_name, brain_size_t size, brain_task_t task,
+                     uint32_t num_inputs, uint32_t num_outputs);
 
 /**
  * @brief Create brain with custom configuration
@@ -126,10 +123,10 @@ void brain_destroy(brain_t brain);
  * @brief Simple feature vector for learning
  */
 typedef struct {
-    float* features;             /**< Feature values */
-    uint32_t num_features;       /**< Number of features */
-    char label[64];              /**< Semantic label */
-    float confidence;            /**< Training confidence (0-1) */
+    float* features;       /**< Feature values */
+    uint32_t num_features; /**< Number of features */
+    char label[64];        /**< Semantic label */
+    float confidence;      /**< Training confidence (0-1) */
 } brain_example_t;
 
 /**
@@ -142,11 +139,8 @@ typedef struct {
  * @param confidence Training weight (0-1)
  * @return Loss value
  */
-float brain_learn_example(brain_t brain,
-                         const float* features,
-                         uint32_t num_features,
-                         const char* label,
-                         float confidence);
+float brain_learn_example(brain_t brain, const float* features, uint32_t num_features,
+                          const char* label, float confidence);
 
 /**
  * @brief Learn from batch of examples
@@ -156,9 +150,7 @@ float brain_learn_example(brain_t brain,
  * @param num_examples Example count
  * @return Average loss
  */
-float brain_learn_batch(brain_t brain,
-                       const brain_example_t* examples,
-                       uint32_t num_examples);
+float brain_learn_batch(brain_t brain, const brain_example_t* examples, uint32_t num_examples);
 
 /**
  * @brief LLM teacher function signature
@@ -170,13 +162,8 @@ float brain_learn_batch(brain_t brain,
  * @param max_label_len Maximum label length
  * @return Confidence in decision (0-1)
  */
-typedef float (*llm_teacher_fn_t)(
-    const float* input,
-    uint32_t num_features,
-    void* context,
-    char* output_label,
-    uint32_t max_label_len
-);
+typedef float (*llm_teacher_fn_t)(const float* input, uint32_t num_features, void* context,
+                                  char* output_label, uint32_t max_label_len);
 
 /**
  * @brief Learn by querying an LLM
@@ -194,11 +181,8 @@ typedef float (*llm_teacher_fn_t)(
  * @param llm_context Context for teacher
  * @return Loss value
  */
-float brain_learn_from_llm(brain_t brain,
-                          const float* input,
-                          uint32_t num_features,
-                          llm_teacher_fn_t llm_fn,
-                          void* llm_context);
+float brain_learn_from_llm(brain_t brain, const float* input, uint32_t num_features,
+                           llm_teacher_fn_t llm_fn, void* llm_context);
 
 //=============================================================================
 // Inference API
@@ -208,10 +192,10 @@ float brain_learn_from_llm(brain_t brain,
  * @brief Decision result
  */
 typedef struct {
-    char label[64];              /**< Decision label */
-    float confidence;            /**< Confidence (0-1) */
-    float* output_vector;        /**< Raw output vector */
-    uint32_t output_size;        /**< Output vector size */
+    char label[64];       /**< Decision label */
+    float confidence;     /**< Confidence (0-1) */
+    float* output_vector; /**< Raw output vector */
+    uint32_t output_size; /**< Output vector size */
 
     // Interpretability (if enabled)
     uint32_t num_active_neurons; /**< Active neuron count */
@@ -219,7 +203,7 @@ typedef struct {
     float sparsity;              /**< Actual sparsity */
     char explanation[256];       /**< Human-readable explanation */
 
-    uint64_t inference_time_us;  /**< Inference time (microseconds) */
+    uint64_t inference_time_us; /**< Inference time (microseconds) */
 } brain_decision_t;
 
 /**
@@ -230,9 +214,7 @@ typedef struct {
  * @param num_features Feature count
  * @return Decision result (caller must free with brain_free_decision)
  */
-brain_decision_t* brain_decide(brain_t brain,
-                              const float* features,
-                              uint32_t num_features);
+brain_decision_t* brain_decide(brain_t brain, const float* features, uint32_t num_features);
 
 /**
  * @brief Free decision result
@@ -251,11 +233,8 @@ void brain_free_decision(brain_decision_t* decision);
  * @param decisions Output decisions array (allocated by caller)
  * @return true on success
  */
-bool brain_decide_batch(brain_t brain,
-                       const float** inputs,
-                       uint32_t num_inputs,
-                       uint32_t features_per_input,
-                       brain_decision_t* decisions);
+bool brain_decide_batch(brain_t brain, const float** inputs, uint32_t num_inputs,
+                        uint32_t features_per_input, brain_decision_t* decisions);
 
 //=============================================================================
 // Persistence API
@@ -294,21 +273,21 @@ size_t brain_get_memory_usage(brain_t brain);
  * @brief Brain statistics
  */
 typedef struct {
-    char task_name[64];          /**< Brain name */
-    brain_size_t size;           /**< Size preset */
-    uint32_t num_neurons;        /**< Total neurons */
-    uint32_t num_synapses;       /**< Total synapses */
+    char task_name[64];           /**< Brain name */
+    brain_size_t size;            /**< Size preset */
+    uint32_t num_neurons;         /**< Total neurons */
+    uint32_t num_synapses;        /**< Total synapses */
     uint32_t num_active_synapses; /**< Non-pruned synapses */
 
-    uint64_t total_inferences;   /**< Inference count */
+    uint64_t total_inferences;     /**< Inference count */
     uint64_t total_learning_steps; /**< Learning steps */
 
     float avg_sparsity;          /**< Average sparsity */
     float avg_inference_time_us; /**< Avg inference (μs) */
     float current_learning_rate; /**< Current learning rate */
 
-    float accuracy;              /**< Validation accuracy */
-    size_t memory_bytes;         /**< Memory usage */
+    float accuracy;      /**< Validation accuracy */
+    size_t memory_bytes; /**< Memory usage */
 } brain_stats_t;
 
 /**
@@ -336,9 +315,7 @@ void brain_print_info(brain_t brain);
  * @param importances Output array of importance scores
  * @return Number of neurons returned
  */
-uint32_t brain_get_top_neurons(brain_t brain,
-                               uint32_t top_n,
-                               uint32_t* neuron_ids,
+uint32_t brain_get_top_neurons(brain_t brain, uint32_t top_n, uint32_t* neuron_ids,
                                float* importances);
 
 /**
@@ -351,11 +328,8 @@ uint32_t brain_get_top_neurons(brain_t brain,
  * @param max_length Max explanation length
  * @return true on success
  */
-bool brain_explain_decision(brain_t brain,
-                           const float* features,
-                           uint32_t num_features,
-                           char* explanation,
-                           uint32_t max_length);
+bool brain_explain_decision(brain_t brain, const float* features, uint32_t num_features,
+                            char* explanation, uint32_t max_length);
 
 //=============================================================================
 // Optimization API
@@ -445,4 +419,4 @@ void brain_clear_error(void);
  */
 adaptive_network_t brain_get_network(brain_t brain);
 
-#endif // NIMCP_BRAIN_H
+#endif  // NIMCP_BRAIN_H

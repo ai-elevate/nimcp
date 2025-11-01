@@ -61,7 +61,8 @@
  *
  * Like an infant's first experiences: mother, food, comfort
  */
-void day_1_basic_concepts(void) {
+void day_1_basic_concepts(void)
+{
     printf("===========================================\n");
     printf(" Day 1: First Experiences\n");
     printf("===========================================\n\n");
@@ -105,7 +106,8 @@ void day_1_basic_concepts(void) {
 /**
  * @brief Week 1 - Language Acquisition Begins
  */
-void week_1_language_learning(void) {
+void week_1_language_learning(void)
+{
     printf("===========================================\n");
     printf(" Week 1: First Words\n");
     printf("===========================================\n\n");
@@ -148,7 +150,8 @@ void week_1_language_learning(void) {
 /**
  * @brief Month 6 - Abstract Concepts Emerge
  */
-void month_6_abstract_learning(void) {
+void month_6_abstract_learning(void)
+{
     printf("===========================================\n");
     printf(" Month 6: Abstract Thinking\n");
     printf("===========================================\n\n");
@@ -196,7 +199,8 @@ void month_6_abstract_learning(void) {
 /**
  * @brief Year 3 - Rich Understanding
  */
-void year_3_complex_learning(void) {
+void year_3_complex_learning(void)
+{
     printf("===========================================\n");
     printf(" Year 3: Complex Understanding\n");
     printf("===========================================\n\n");
@@ -264,7 +268,8 @@ void year_3_complex_learning(void) {
 /**
  * @brief Demonstrate knowledge search (curiosity-driven)
  */
-void demonstrate_knowledge_seeking(void) {
+void demonstrate_knowledge_seeking(void)
+{
     printf("===========================================\n");
     printf(" Knowledge Seeking in Action\n");
     printf("===========================================\n\n");
@@ -316,7 +321,8 @@ void demonstrate_knowledge_seeking(void) {
 /**
  * @brief Compare with traditional pre-training approach
  */
-void compare_approaches(void) {
+void compare_approaches(void)
+{
     printf("===========================================\n");
     printf(" NIMCP vs Traditional AI Learning\n");
     printf("===========================================\n\n");
@@ -367,7 +373,8 @@ void compare_approaches(void) {
 // Main Demonstration
 //=============================================================================
 
-int main(void) {
+int main(void)
+{
     printf("╔════════════════════════════════════════════════════════╗\n");
     printf("║                                                        ║\n");
     printf("║     NIMCP: Infant-Like Learning Demonstration         ║\n");

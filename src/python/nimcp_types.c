@@ -17,7 +17,8 @@
  *
  * SIGNATURE: NeuralNetwork(num_neurons)
  */
-static int NeuralNetwork_init(NeuralNetworkObject* self, PyObject* args, PyObject* kwds) {
+static int NeuralNetwork_init(NeuralNetworkObject* self, PyObject* args, PyObject* kwds)
+{
     int num_neurons;
 
     // Parse constructor arguments
@@ -26,28 +27,26 @@ static int NeuralNetwork_init(NeuralNetworkObject* self, PyObject* args, PyObjec
     }
 
     // Create default configuration
-    network_config_t config = {
-        .num_neurons = num_neurons,
-        .ei_ratio = 0.8f,
-        .learning_rate = 0.01f,
-        .hebbian_rate = 0.1f,
-        .stdp_window = 20.0f,
-        .homeostatic_rate = 0.001f,
-        .target_activity = 0.1f,
-        .adaptation_rate = 0.1f,
-        .refractory_period = 5.0f,
-        .min_weight = -1.0f,
-        .max_weight = 1.0f,
-        .update_interval = 1000,
-        .input_size = 0,
-        .output_size = 0,
-        .num_layers = 0,
-        .layer_sizes = NULL,
-        .enable_stdp = true,
-        .enable_hebbian = true,
-        .enable_oja = true,
-        .enable_homeostasis = true
-    };
+    network_config_t config = {.num_neurons = num_neurons,
+                               .ei_ratio = 0.8f,
+                               .learning_rate = 0.01f,
+                               .hebbian_rate = 0.1f,
+                               .stdp_window = 20.0f,
+                               .homeostatic_rate = 0.001f,
+                               .target_activity = 0.1f,
+                               .adaptation_rate = 0.1f,
+                               .refractory_period = 5.0f,
+                               .min_weight = -1.0f,
+                               .max_weight = 1.0f,
+                               .update_interval = 1000,
+                               .input_size = 0,
+                               .output_size = 0,
+                               .num_layers = 0,
+                               .layer_sizes = NULL,
+                               .enable_stdp = true,
+                               .enable_hebbian = true,
+                               .enable_oja = true,
+                               .enable_homeostasis = true};
 
     // Create the neural network
     self->network = neural_network_create(&config);
@@ -59,31 +58,32 @@ static int NeuralNetwork_init(NeuralNetworkObject* self, PyObject* args, PyObjec
     return 0;
 }
 
-static void NeuralNetwork_dealloc(NeuralNetworkObject* self) {
+static void NeuralNetwork_dealloc(NeuralNetworkObject* self)
+{
     if (self->network) {
         neural_network_destroy(self->network);
     }
-    Py_TYPE(self)->tp_free((PyObject*)self);
+    Py_TYPE(self)->tp_free((PyObject*) self);
 }
 
-static PyObject* NeuralNetwork_new(PyTypeObject* type, PyObject* args, PyObject* kwds) {
-    NeuralNetworkObject* self = (NeuralNetworkObject*)type->tp_alloc(type, 0);
+static PyObject* NeuralNetwork_new(PyTypeObject* type, PyObject* args, PyObject* kwds)
+{
+    NeuralNetworkObject* self = (NeuralNetworkObject*) type->tp_alloc(type, 0);
     if (self != NULL) {
         self->network = NULL;
     }
-    return (PyObject*)self;
+    return (PyObject*) self;
 }
 
 PyTypeObject NeuralNetworkType = {
-    PyVarObject_HEAD_INIT(NULL, 0)
-    .tp_name = "nimcp.NeuralNetwork",
+    PyVarObject_HEAD_INIT(NULL, 0).tp_name = "nimcp.NeuralNetwork",
     .tp_doc = "NIMCP Neural Network",
     .tp_basicsize = sizeof(NeuralNetworkObject),
     .tp_itemsize = 0,
     .tp_flags = Py_TPFLAGS_DEFAULT,
     .tp_new = NeuralNetwork_new,
-    .tp_init = (initproc)NeuralNetwork_init,
-    .tp_dealloc = (destructor)NeuralNetwork_dealloc,
+    .tp_init = (initproc) NeuralNetwork_init,
+    .tp_dealloc = (destructor) NeuralNetwork_dealloc,
 };
 
 //=============================================================================
@@ -97,7 +97,8 @@ PyTypeObject NeuralNetworkType = {
  *
  * SIGNATURE: P2PNode(listen_port)
  */
-static int P2PNode_init(P2PNodeObject* self, PyObject* args, PyObject* kwds) {
+static int P2PNode_init(P2PNodeObject* self, PyObject* args, PyObject* kwds)
+{
     unsigned short listen_port;
 
     // Parse constructor arguments
@@ -106,15 +107,13 @@ static int P2PNode_init(P2PNodeObject* self, PyObject* args, PyObject* kwds) {
     }
 
     // Create default node configuration
-    node_config_t config = {
-        .listen_port = listen_port,
-        .max_peers = 10,
-        .keepalive_interval = 1000,
-        .discovery_interval = 5000,
-        .reconnect_interval = 3000,
-        .max_retries = 3,
-        .ping_interval = 2000
-    };
+    node_config_t config = {.listen_port = listen_port,
+                            .max_peers = 10,
+                            .keepalive_interval = 1000,
+                            .discovery_interval = 5000,
+                            .reconnect_interval = 3000,
+                            .max_retries = 3,
+                            .ping_interval = 2000};
 
     // Create the P2P node
     self->node = p2p_node_create(&config);
@@ -126,31 +125,32 @@ static int P2PNode_init(P2PNodeObject* self, PyObject* args, PyObject* kwds) {
     return 0;
 }
 
-static void P2PNode_dealloc(P2PNodeObject* self) {
+static void P2PNode_dealloc(P2PNodeObject* self)
+{
     if (self->node) {
         p2p_node_destroy(self->node);
     }
-    Py_TYPE(self)->tp_free((PyObject*)self);
+    Py_TYPE(self)->tp_free((PyObject*) self);
 }
 
-static PyObject* P2PNode_new(PyTypeObject* type, PyObject* args, PyObject* kwds) {
-    P2PNodeObject* self = (P2PNodeObject*)type->tp_alloc(type, 0);
+static PyObject* P2PNode_new(PyTypeObject* type, PyObject* args, PyObject* kwds)
+{
+    P2PNodeObject* self = (P2PNodeObject*) type->tp_alloc(type, 0);
     if (self != NULL) {
         self->node = NULL;
     }
-    return (PyObject*)self;
+    return (PyObject*) self;
 }
 
 PyTypeObject P2PNodeType = {
-    PyVarObject_HEAD_INIT(NULL, 0)
-    .tp_name = "nimcp.P2PNode",
+    PyVarObject_HEAD_INIT(NULL, 0).tp_name = "nimcp.P2PNode",
     .tp_doc = "NIMCP P2P Node",
     .tp_basicsize = sizeof(P2PNodeObject),
     .tp_itemsize = 0,
     .tp_flags = Py_TPFLAGS_DEFAULT,
     .tp_new = P2PNode_new,
-    .tp_init = (initproc)P2PNode_init,
-    .tp_dealloc = (destructor)P2PNode_dealloc,
+    .tp_init = (initproc) P2PNode_init,
+    .tp_dealloc = (destructor) P2PNode_dealloc,
 };
 
 //=============================================================================
@@ -165,15 +165,15 @@ PyTypeObject P2PNodeType = {
  * SIGNATURE: NetworkConfig(num_neurons, ei_ratio, learning_rate, hebbian_rate,
  *                          stdp_window, homeostatic_rate, target_activity, adaptation_rate)
  */
-static int NetworkConfig_init(NetworkConfigObject* self, PyObject* args, PyObject* kwds) {
+static int NetworkConfig_init(NetworkConfigObject* self, PyObject* args, PyObject* kwds)
+{
     int num_neurons;
     float ei_ratio, learning_rate, hebbian_rate, stdp_window;
     float homeostatic_rate, target_activity, adaptation_rate;
 
     // Parse constructor arguments
-    if (!PyArg_ParseTuple(args, "ifffffff",
-                         &num_neurons, &ei_ratio, &learning_rate, &hebbian_rate,
-                         &stdp_window, &homeostatic_rate, &target_activity, &adaptation_rate)) {
+    if (!PyArg_ParseTuple(args, "ifffffff", &num_neurons, &ei_ratio, &learning_rate, &hebbian_rate,
+                          &stdp_window, &homeostatic_rate, &target_activity, &adaptation_rate)) {
         return -1;
     }
 
@@ -204,29 +204,30 @@ static int NetworkConfig_init(NetworkConfigObject* self, PyObject* args, PyObjec
     return 0;
 }
 
-static void NetworkConfig_dealloc(NetworkConfigObject* self) {
+static void NetworkConfig_dealloc(NetworkConfigObject* self)
+{
     // Config cleanup if needed
-    Py_TYPE(self)->tp_free((PyObject*)self);
+    Py_TYPE(self)->tp_free((PyObject*) self);
 }
 
-static PyObject* NetworkConfig_new(PyTypeObject* type, PyObject* args, PyObject* kwds) {
-    NetworkConfigObject* self = (NetworkConfigObject*)type->tp_alloc(type, 0);
+static PyObject* NetworkConfig_new(PyTypeObject* type, PyObject* args, PyObject* kwds)
+{
+    NetworkConfigObject* self = (NetworkConfigObject*) type->tp_alloc(type, 0);
     if (self != NULL) {
         memset(&self->config, 0, sizeof(network_config_t));
     }
-    return (PyObject*)self;
+    return (PyObject*) self;
 }
 
 PyTypeObject NetworkConfigType = {
-    PyVarObject_HEAD_INIT(NULL, 0)
-    .tp_name = "nimcp.NetworkConfig",
+    PyVarObject_HEAD_INIT(NULL, 0).tp_name = "nimcp.NetworkConfig",
     .tp_doc = "NIMCP Network Configuration",
     .tp_basicsize = sizeof(NetworkConfigObject),
     .tp_itemsize = 0,
     .tp_flags = Py_TPFLAGS_DEFAULT,
     .tp_new = NetworkConfig_new,
-    .tp_init = (initproc)NetworkConfig_init,
-    .tp_dealloc = (destructor)NetworkConfig_dealloc,
+    .tp_init = (initproc) NetworkConfig_init,
+    .tp_dealloc = (destructor) NetworkConfig_dealloc,
 };
 
 //=============================================================================
@@ -241,15 +242,15 @@ PyTypeObject NetworkConfigType = {
  * SIGNATURE: NodeConfig(listen_port, max_peers, keepalive_interval,
  *                       discovery_interval, reconnect_interval, max_retries)
  */
-static int NodeConfig_init(NodeConfigObject* self, PyObject* args, PyObject* kwds) {
+static int NodeConfig_init(NodeConfigObject* self, PyObject* args, PyObject* kwds)
+{
     unsigned short listen_port;
     int max_peers, keepalive_interval, discovery_interval;
     int reconnect_interval, max_retries;
 
     // Parse constructor arguments
-    if (!PyArg_ParseTuple(args, "Hiiiii",
-                         &listen_port, &max_peers, &keepalive_interval,
-                         &discovery_interval, &reconnect_interval, &max_retries)) {
+    if (!PyArg_ParseTuple(args, "Hiiiii", &listen_port, &max_peers, &keepalive_interval,
+                          &discovery_interval, &reconnect_interval, &max_retries)) {
         return -1;
     }
 
@@ -267,27 +268,28 @@ static int NodeConfig_init(NodeConfigObject* self, PyObject* args, PyObject* kwd
     return 0;
 }
 
-static void NodeConfig_dealloc(NodeConfigObject* self) {
+static void NodeConfig_dealloc(NodeConfigObject* self)
+{
     // Config cleanup if needed
-    Py_TYPE(self)->tp_free((PyObject*)self);
+    Py_TYPE(self)->tp_free((PyObject*) self);
 }
 
-static PyObject* NodeConfig_new(PyTypeObject* type, PyObject* args, PyObject* kwds) {
-    NodeConfigObject* self = (NodeConfigObject*)type->tp_alloc(type, 0);
+static PyObject* NodeConfig_new(PyTypeObject* type, PyObject* args, PyObject* kwds)
+{
+    NodeConfigObject* self = (NodeConfigObject*) type->tp_alloc(type, 0);
     if (self != NULL) {
         memset(&self->config, 0, sizeof(node_config_t));
     }
-    return (PyObject*)self;
+    return (PyObject*) self;
 }
 
 PyTypeObject NodeConfigType = {
-    PyVarObject_HEAD_INIT(NULL, 0)
-    .tp_name = "nimcp.NodeConfig",
+    PyVarObject_HEAD_INIT(NULL, 0).tp_name = "nimcp.NodeConfig",
     .tp_doc = "NIMCP Node Configuration",
     .tp_basicsize = sizeof(NodeConfigObject),
     .tp_itemsize = 0,
     .tp_flags = Py_TPFLAGS_DEFAULT,
     .tp_new = NodeConfig_new,
-    .tp_init = (initproc)NodeConfig_init,
-    .tp_dealloc = (destructor)NodeConfig_dealloc,
+    .tp_init = (initproc) NodeConfig_init,
+    .tp_dealloc = (destructor) NodeConfig_dealloc,
 };

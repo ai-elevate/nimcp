@@ -4,19 +4,19 @@
 //=============================================================================
 
 #include "../include/nimcp_curiosity.h"
-#include "../include/nimcp_brain.h"
-#include "utils/nimcp_hash_table.h"
+#include <ctype.h>
+#include <math.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <stdio.h>
-#include <math.h>
-#include <ctype.h>
+#include "../include/nimcp_brain.h"
+#include "utils/nimcp_hash_table.h"
 
 //=============================================================================
 // Hash Table Configuration for O(1) Concept Lookup
 //=============================================================================
 
-#define HASH_TABLE_SIZE 4096        // Power of 2 for fast modulo via bitwise AND
+#define HASH_TABLE_SIZE 4096  // Power of 2 for fast modulo via bitwise AND
 
 //=============================================================================
 // Internal Structures
@@ -44,11 +44,13 @@ typedef struct concept_bucket_struct {
  * WHY: Called by hash table when entry is removed or table destroyed
  * HOW: Free related_concepts array and strings
  */
-static void concept_bucket_destructor(void* value, size_t value_size) {
-    (void)value_size;  // Unused parameter
-    if (!value) return;
+static void concept_bucket_destructor(void* value, size_t value_size)
+{
+    (void) value_size;  // Unused parameter
+    if (!value)
+        return;
 
-    concept_bucket_t* bucket = (concept_bucket_t*)value;
+    concept_bucket_t* bucket = (concept_bucket_t*) value;
 
     // Free related concepts
     if (bucket->related_concepts) {
@@ -110,13 +112,8 @@ static const learning_stage_strategy_t* get_stage_strategy(learning_stage_t stag
  * Each question type has its own generation strategy.
  * Eliminates switch statements and enables extensible question types.
  */
-typedef void (*question_generator_fn_t)(
-    const char* topic,
-    char* question,
-    size_t max_len,
-    float* priority_multiplier,
-    float* difficulty
-);
+typedef void (*question_generator_fn_t)(const char* topic, char* question, size_t max_len,
+                                        float* priority_multiplier, float* difficulty);
 
 /**
  * @brief Question generation strategy entry
@@ -180,23 +177,25 @@ struct curiosity_engine_struct {
  *
  * Complexity: O(1)
  */
-static float infant_learning_potential(const char* concept, float gap_size) {
+static float infant_learning_potential(const char* concept, float gap_size)
+{
     return 0.9f;  // Everything is exciting and worth learning
 }
 
-static float infant_baseline_curiosity(void) {
+static float infant_baseline_curiosity(void)
+{
     return 0.95f;
 }
 
-static uint32_t infant_question_types_count(void) {
+static uint32_t infant_question_types_count(void)
+{
     return 3;  // WHAT, WHY, HOW only
 }
 
-static const question_type_t infant_question_types[] = {
-    QUESTION_WHAT, QUESTION_WHY, QUESTION_HOW
-};
+static const question_type_t infant_question_types[] = {QUESTION_WHAT, QUESTION_WHY, QUESTION_HOW};
 
-static const question_type_t* infant_get_question_types(void) {
+static const question_type_t* infant_get_question_types(void)
+{
     return infant_question_types;
 }
 
@@ -204,8 +203,7 @@ static const learning_stage_strategy_t infant_strategy = {
     .calculate_learning_potential = infant_learning_potential,
     .get_baseline_curiosity = infant_baseline_curiosity,
     .get_question_types_count = infant_question_types_count,
-    .get_question_types = infant_get_question_types
-};
+    .get_question_types = infant_get_question_types};
 
 //=============================================================================
 // Stage Pattern Implementation - Toddler Stage
@@ -219,26 +217,28 @@ static const learning_stage_strategy_t infant_strategy = {
  *
  * Complexity: O(1) - strlen is O(n) but concept length bounded
  */
-static float toddler_learning_potential(const char* concept, float gap_size) {
+static float toddler_learning_potential(const char* concept, float gap_size)
+{
     size_t len = strlen(concept);
     float simplicity_bonus = (len < 15) ? 1.0f : 0.5f;
     return 0.8f * simplicity_bonus;
 }
 
-static float toddler_baseline_curiosity(void) {
+static float toddler_baseline_curiosity(void)
+{
     return 0.90f;
 }
 
-static uint32_t toddler_question_types_count(void) {
+static uint32_t toddler_question_types_count(void)
+{
     return 5;  // Add WHERE and WHEN
 }
 
-static const question_type_t toddler_question_types[] = {
-    QUESTION_WHAT, QUESTION_WHY, QUESTION_HOW,
-    QUESTION_WHERE, QUESTION_WHEN
-};
+static const question_type_t toddler_question_types[] = {QUESTION_WHAT, QUESTION_WHY, QUESTION_HOW,
+                                                         QUESTION_WHERE, QUESTION_WHEN};
 
-static const question_type_t* toddler_get_question_types(void) {
+static const question_type_t* toddler_get_question_types(void)
+{
     return toddler_question_types;
 }
 
@@ -246,8 +246,7 @@ static const learning_stage_strategy_t toddler_strategy = {
     .calculate_learning_potential = toddler_learning_potential,
     .get_baseline_curiosity = toddler_baseline_curiosity,
     .get_question_types_count = toddler_question_types_count,
-    .get_question_types = toddler_get_question_types
-};
+    .get_question_types = toddler_get_question_types};
 
 //=============================================================================
 // Stage Pattern Implementation - Child Stage
@@ -261,25 +260,27 @@ static const learning_stage_strategy_t toddler_strategy = {
  *
  * Complexity: O(1)
  */
-static float child_learning_potential(const char* concept, float gap_size) {
+static float child_learning_potential(const char* concept, float gap_size)
+{
     return 0.7f + 0.3f * gap_size;  // Scales with gap/curiosity
 }
 
-static float child_baseline_curiosity(void) {
+static float child_baseline_curiosity(void)
+{
     return 0.80f;
 }
 
-static uint32_t child_question_types_count(void) {
+static uint32_t child_question_types_count(void)
+{
     return 7;  // All question types
 }
 
-static const question_type_t child_question_types[] = {
-    QUESTION_WHAT, QUESTION_WHY, QUESTION_HOW,
-    QUESTION_WHERE, QUESTION_WHEN, QUESTION_WHO,
-    QUESTION_WHICH
-};
+static const question_type_t child_question_types[] = {QUESTION_WHAT,  QUESTION_WHY,  QUESTION_HOW,
+                                                       QUESTION_WHERE, QUESTION_WHEN, QUESTION_WHO,
+                                                       QUESTION_WHICH};
 
-static const question_type_t* child_get_question_types(void) {
+static const question_type_t* child_get_question_types(void)
+{
     return child_question_types;
 }
 
@@ -287,26 +288,29 @@ static const learning_stage_strategy_t child_strategy = {
     .calculate_learning_potential = child_learning_potential,
     .get_baseline_curiosity = child_baseline_curiosity,
     .get_question_types_count = child_question_types_count,
-    .get_question_types = child_get_question_types
-};
+    .get_question_types = child_get_question_types};
 
 //=============================================================================
 // Stage Pattern Implementation - Adolescent Stage
 //=============================================================================
 
-static float adolescent_learning_potential(const char* concept, float gap_size) {
+static float adolescent_learning_potential(const char* concept, float gap_size)
+{
     return 0.6f + 0.4f * gap_size;
 }
 
-static float adolescent_baseline_curiosity(void) {
+static float adolescent_baseline_curiosity(void)
+{
     return 0.70f;
 }
 
-static uint32_t adolescent_question_types_count(void) {
+static uint32_t adolescent_question_types_count(void)
+{
     return 7;
 }
 
-static const question_type_t* adolescent_get_question_types(void) {
+static const question_type_t* adolescent_get_question_types(void)
+{
     return child_question_types;  // Same as child
 }
 
@@ -314,26 +318,29 @@ static const learning_stage_strategy_t adolescent_strategy = {
     .calculate_learning_potential = adolescent_learning_potential,
     .get_baseline_curiosity = adolescent_baseline_curiosity,
     .get_question_types_count = adolescent_question_types_count,
-    .get_question_types = adolescent_get_question_types
-};
+    .get_question_types = adolescent_get_question_types};
 
 //=============================================================================
 // Stage Pattern Implementation - Adult Stage
 //=============================================================================
 
-static float adult_learning_potential(const char* concept, float gap_size) {
+static float adult_learning_potential(const char* concept, float gap_size)
+{
     return 0.5f + 0.5f * gap_size;  // More selective
 }
 
-static float adult_baseline_curiosity(void) {
+static float adult_baseline_curiosity(void)
+{
     return 0.60f;
 }
 
-static uint32_t adult_question_types_count(void) {
+static uint32_t adult_question_types_count(void)
+{
     return 7;
 }
 
-static const question_type_t* adult_get_question_types(void) {
+static const question_type_t* adult_get_question_types(void)
+{
     return child_question_types;
 }
 
@@ -341,26 +348,29 @@ static const learning_stage_strategy_t adult_strategy = {
     .calculate_learning_potential = adult_learning_potential,
     .get_baseline_curiosity = adult_baseline_curiosity,
     .get_question_types_count = adult_question_types_count,
-    .get_question_types = adult_get_question_types
-};
+    .get_question_types = adult_get_question_types};
 
 //=============================================================================
 // Stage Pattern Implementation - Expert Stage
 //=============================================================================
 
-static float expert_learning_potential(const char* concept, float gap_size) {
+static float expert_learning_potential(const char* concept, float gap_size)
+{
     return 0.4f + 0.6f * gap_size;  // Only interested in significant gaps
 }
 
-static float expert_baseline_curiosity(void) {
+static float expert_baseline_curiosity(void)
+{
     return 0.50f;
 }
 
-static uint32_t expert_question_types_count(void) {
+static uint32_t expert_question_types_count(void)
+{
     return 7;
 }
 
-static const question_type_t* expert_get_question_types(void) {
+static const question_type_t* expert_get_question_types(void)
+{
     return child_question_types;
 }
 
@@ -368,8 +378,7 @@ static const learning_stage_strategy_t expert_strategy = {
     .calculate_learning_potential = expert_learning_potential,
     .get_baseline_curiosity = expert_baseline_curiosity,
     .get_question_types_count = expert_question_types_count,
-    .get_question_types = expert_get_question_types
-};
+    .get_question_types = expert_get_question_types};
 
 //=============================================================================
 // Stage Strategy Dispatch Table
@@ -383,15 +392,11 @@ static const learning_stage_strategy_t expert_strategy = {
  *
  * Complexity: O(1) - array lookup
  */
-static const learning_stage_strategy_t* get_stage_strategy(learning_stage_t stage) {
-    static const learning_stage_strategy_t* strategies[] = {
-        &infant_strategy,
-        &toddler_strategy,
-        &child_strategy,
-        &adolescent_strategy,
-        &adult_strategy,
-        &expert_strategy
-    };
+static const learning_stage_strategy_t* get_stage_strategy(learning_stage_t stage)
+{
+    static const learning_stage_strategy_t* strategies[] = {&infant_strategy, &toddler_strategy,
+                                                            &child_strategy,  &adolescent_strategy,
+                                                            &adult_strategy,  &expert_strategy};
 
     if (stage < 0 || stage >= 6) {
         return &infant_strategy;  // Safe default
@@ -412,12 +417,8 @@ static const learning_stage_strategy_t* get_stage_strategy(learning_stage_t stag
  *
  * Complexity: O(n) where n is topic length (due to snprintf)
  */
-static void generate_what_question(
-    const char* topic,
-    char* question,
-    size_t max_len,
-    float* priority_multiplier,
-    float* difficulty)
+static void generate_what_question(const char* topic, char* question, size_t max_len,
+                                   float* priority_multiplier, float* difficulty)
 {
     snprintf(question, max_len, "What is %s?", topic);
     *priority_multiplier = 1.0f;
@@ -432,12 +433,8 @@ static void generate_what_question(
  *
  * Complexity: O(n)
  */
-static void generate_why_question(
-    const char* topic,
-    char* question,
-    size_t max_len,
-    float* priority_multiplier,
-    float* difficulty)
+static void generate_why_question(const char* topic, char* question, size_t max_len,
+                                  float* priority_multiplier, float* difficulty)
 {
     snprintf(question, max_len, "Why does %s happen?", topic);
     *priority_multiplier = 0.9f;
@@ -452,12 +449,8 @@ static void generate_why_question(
  *
  * Complexity: O(n)
  */
-static void generate_how_question(
-    const char* topic,
-    char* question,
-    size_t max_len,
-    float* priority_multiplier,
-    float* difficulty)
+static void generate_how_question(const char* topic, char* question, size_t max_len,
+                                  float* priority_multiplier, float* difficulty)
 {
     snprintf(question, max_len, "How does %s work?", topic);
     *priority_multiplier = 0.8f;
@@ -471,12 +464,8 @@ static void generate_how_question(
  *
  * Complexity: O(n)
  */
-static void generate_where_question(
-    const char* topic,
-    char* question,
-    size_t max_len,
-    float* priority_multiplier,
-    float* difficulty)
+static void generate_where_question(const char* topic, char* question, size_t max_len,
+                                    float* priority_multiplier, float* difficulty)
 {
     snprintf(question, max_len, "Where is %s?", topic);
     *priority_multiplier = 0.6f;
@@ -490,12 +479,8 @@ static void generate_where_question(
  *
  * Complexity: O(n)
  */
-static void generate_when_question(
-    const char* topic,
-    char* question,
-    size_t max_len,
-    float* priority_multiplier,
-    float* difficulty)
+static void generate_when_question(const char* topic, char* question, size_t max_len,
+                                   float* priority_multiplier, float* difficulty)
 {
     snprintf(question, max_len, "When did %s happen?", topic);
     *priority_multiplier = 0.7f;
@@ -509,12 +494,8 @@ static void generate_when_question(
  *
  * Complexity: O(n)
  */
-static void generate_who_question(
-    const char* topic,
-    char* question,
-    size_t max_len,
-    float* priority_multiplier,
-    float* difficulty)
+static void generate_who_question(const char* topic, char* question, size_t max_len,
+                                  float* priority_multiplier, float* difficulty)
 {
     snprintf(question, max_len, "Who is involved with %s?", topic);
     *priority_multiplier = 0.7f;
@@ -529,12 +510,8 @@ static void generate_who_question(
  *
  * Complexity: O(n)
  */
-static void generate_which_question(
-    const char* topic,
-    char* question,
-    size_t max_len,
-    float* priority_multiplier,
-    float* difficulty)
+static void generate_which_question(const char* topic, char* question, size_t max_len,
+                                    float* priority_multiplier, float* difficulty)
 {
     snprintf(question, max_len, "Which type of %s?", topic);
     *priority_multiplier = 0.5f;
@@ -554,14 +531,13 @@ static void generate_which_question(
  * Complexity: O(1) lookup
  */
 static const question_strategy_t question_strategies[] = {
-    { QUESTION_WHAT,  generate_what_question,  1.0f, 0.3f },
-    { QUESTION_WHY,   generate_why_question,   0.9f, 0.6f },
-    { QUESTION_HOW,   generate_how_question,   0.8f, 0.7f },
-    { QUESTION_WHERE, generate_where_question, 0.6f, 0.4f },
-    { QUESTION_WHEN,  generate_when_question,  0.7f, 0.5f },
-    { QUESTION_WHO,   generate_who_question,   0.7f, 0.5f },
-    { QUESTION_WHICH, generate_which_question, 0.5f, 0.6f }
-};
+    {QUESTION_WHAT, generate_what_question, 1.0f, 0.3f},
+    {QUESTION_WHY, generate_why_question, 0.9f, 0.6f},
+    {QUESTION_HOW, generate_how_question, 0.8f, 0.7f},
+    {QUESTION_WHERE, generate_where_question, 0.6f, 0.4f},
+    {QUESTION_WHEN, generate_when_question, 0.7f, 0.5f},
+    {QUESTION_WHO, generate_who_question, 0.7f, 0.5f},
+    {QUESTION_WHICH, generate_which_question, 0.5f, 0.6f}};
 
 static const size_t num_question_strategies =
     sizeof(question_strategies) / sizeof(question_strategies[0]);
@@ -573,8 +549,9 @@ static const size_t num_question_strategies =
  *
  * Complexity: O(1) - fixed-size array lookup
  */
-static const question_strategy_t* get_question_strategy(question_type_t type) {
-    if (type < 0 || (size_t)type >= num_question_strategies) {
+static const question_strategy_t* get_question_strategy(question_type_t type)
+{
+    if (type < 0 || (size_t) type >= num_question_strategies) {
         return NULL;
     }
     return &question_strategies[type];
@@ -592,7 +569,8 @@ static const question_strategy_t* get_question_strategy(question_type_t type) {
  *
  * Complexity: O(n) where n is input length
  */
-static void normalize_string(const char* input, char* output, size_t max_len) {
+static void normalize_string(const char* input, char* output, size_t max_len)
+{
     if (!input || !output || max_len == 0) {
         return;
     }
@@ -622,15 +600,13 @@ static void normalize_string(const char* input, char* output, size_t max_len) {
  * @param concept Concept to find
  * @return Pointer to concept bucket, or NULL if not found
  */
-static concept_bucket_t* find_concept_bucket(
-    curiosity_engine_t engine,
-    const char* concept)
+static concept_bucket_t* find_concept_bucket(curiosity_engine_t engine, const char* concept)
 {
     if (!engine || !concept || !engine->concept_hash_table) {
         return NULL;
     }
 
-    return (concept_bucket_t*)hash_table_lookup_string(engine->concept_hash_table, concept);
+    return (concept_bucket_t*) hash_table_lookup_string(engine->concept_hash_table, concept);
 }
 
 /**
@@ -646,9 +622,7 @@ static concept_bucket_t* find_concept_bucket(
  * @param concept Concept to add
  * @return Pointer to new or existing concept bucket
  */
-static concept_bucket_t* add_concept_to_hash_table(
-    curiosity_engine_t engine,
-    const char* concept)
+static concept_bucket_t* add_concept_to_hash_table(curiosity_engine_t engine, const char* concept)
 {
     if (!engine || !concept) {
         return NULL;
@@ -670,8 +644,8 @@ static concept_bucket_t* add_concept_to_hash_table(
     new_bucket.num_related = 0;
 
     // Insert into hash table
-    if (!hash_table_insert_string(engine->concept_hash_table, concept,
-                                   &new_bucket, sizeof(concept_bucket_t))) {
+    if (!hash_table_insert_string(engine->concept_hash_table, concept, &new_bucket,
+                                  sizeof(concept_bucket_t))) {
         return NULL;
     }
 
@@ -690,7 +664,8 @@ static concept_bucket_t* add_concept_to_hash_table(
  *
  * Complexity: O(n) where n is total concepts
  */
-static void free_hash_table(curiosity_engine_t engine) {
+static void free_hash_table(curiosity_engine_t engine)
+{
     if (!engine || !engine->concept_hash_table) {
         return;
     }
@@ -718,7 +693,8 @@ static void free_hash_table(curiosity_engine_t engine) {
  * @param learner_name Name identifier for this learner
  * @return New engine instance, or NULL on failure
  */
-curiosity_engine_t curiosity_engine_create(const char* learner_name) {
+curiosity_engine_t curiosity_engine_create(const char* learner_name)
+{
     if (!learner_name) {
         return NULL;
     }
@@ -731,14 +707,12 @@ curiosity_engine_t curiosity_engine_create(const char* learner_name) {
     strncpy(engine->learner_name, learner_name, sizeof(engine->learner_name) - 1);
 
     // Initialize hash table with nimcp_hash_table utility
-    hash_table_config_t ht_config = {
-        .initial_buckets = HASH_TABLE_SIZE,
-        .key_type = HASH_KEY_STRING,
-        .hash_algorithm = HASH_ALG_FNV1A,
-        .case_insensitive = true,
-        .value_destructor = concept_bucket_destructor,
-        .thread_safe = false
-    };
+    hash_table_config_t ht_config = {.initial_buckets = HASH_TABLE_SIZE,
+                                     .key_type = HASH_KEY_STRING,
+                                     .hash_algorithm = HASH_ALG_FNV1A,
+                                     .case_insensitive = true,
+                                     .value_destructor = concept_bucket_destructor,
+                                     .thread_safe = false};
     engine->concept_hash_table = hash_table_create(&ht_config);
     if (!engine->concept_hash_table) {
         free(engine);
@@ -764,19 +738,11 @@ curiosity_engine_t curiosity_engine_create(const char* learner_name) {
     }
 
     // Create neural networks
-    engine->gap_detector = brain_create(
-        "gap_detector",
-        BRAIN_SIZE_SMALL,
-        BRAIN_TASK_REGRESSION,
-        10, 1
-    );
+    engine->gap_detector =
+        brain_create("gap_detector", BRAIN_SIZE_SMALL, BRAIN_TASK_REGRESSION, 10, 1);
 
-    engine->question_prioritizer = brain_create(
-        "question_priority",
-        BRAIN_SIZE_SMALL,
-        BRAIN_TASK_REGRESSION,
-        15, 1
-    );
+    engine->question_prioritizer =
+        brain_create("question_priority", BRAIN_SIZE_SMALL, BRAIN_TASK_REGRESSION, 15, 1);
 
     // Initialize with infant stage
     engine->stage = STAGE_INFANT;
@@ -802,7 +768,8 @@ curiosity_engine_t curiosity_engine_create(const char* learner_name) {
  *
  * Complexity: O(n) where n is total concepts
  */
-void curiosity_engine_destroy(curiosity_engine_t engine) {
+void curiosity_engine_destroy(curiosity_engine_t engine)
+{
     if (!engine) {
         return;
     }
@@ -830,9 +797,7 @@ void curiosity_engine_destroy(curiosity_engine_t engine) {
  *
  * Complexity: O(1)
  */
-static float calculate_curiosity_intensity(
-    const curiosity_engine_t engine,
-    float gap_size)
+static float calculate_curiosity_intensity(const curiosity_engine_t engine, float gap_size)
 {
     return gap_size * engine->baseline_curiosity;
 }
@@ -849,9 +814,7 @@ static float calculate_curiosity_intensity(
  * @param concept Concept to check
  * @return Familiarity score [0.0-1.0]
  */
-float curiosity_check_familiarity(
-    curiosity_engine_t engine,
-    const char* concept)
+float curiosity_check_familiarity(curiosity_engine_t engine, const char* concept)
 {
     if (!engine || !concept) {
         return 0.0f;
@@ -872,9 +835,7 @@ float curiosity_check_familiarity(
  *
  * Complexity: O(1) average case
  */
-static uint32_t count_related_concepts(
-    curiosity_engine_t engine,
-    const char* concept)
+static uint32_t count_related_concepts(curiosity_engine_t engine, const char* concept)
 {
     concept_bucket_t* bucket = find_concept_bucket(engine, concept);
     if (!bucket) {
@@ -896,9 +857,7 @@ static uint32_t count_related_concepts(
  * @param concept Concept to analyze
  * @return Knowledge gap analysis
  */
-knowledge_gap_t curiosity_detect_knowledge_gap(
-    curiosity_engine_t engine,
-    const char* concept)
+knowledge_gap_t curiosity_detect_knowledge_gap(curiosity_engine_t engine, const char* concept)
 {
     knowledge_gap_t gap = {0};
 
@@ -913,10 +872,8 @@ knowledge_gap_t curiosity_detect_knowledge_gap(
     gap.curiosity_intensity = calculate_curiosity_intensity(engine, gap.gap_size);
 
     // Use stage strategy for learning potential
-    gap.learning_potential = engine->stage_strategy->calculate_learning_potential(
-        concept,
-        gap.gap_size
-    );
+    gap.learning_potential =
+        engine->stage_strategy->calculate_learning_potential(concept, gap.gap_size);
 
     gap.related_concepts = count_related_concepts(engine, concept);
 
@@ -937,11 +894,8 @@ knowledge_gap_t curiosity_detect_knowledge_gap(
  * @param max_related Maximum concepts to return
  * @return Number of related concepts found
  */
-uint32_t curiosity_get_related_concepts(
-    curiosity_engine_t engine,
-    const char* concept,
-    char** related,
-    uint32_t max_related)
+uint32_t curiosity_get_related_concepts(curiosity_engine_t engine, const char* concept,
+                                        char** related, uint32_t max_related)
 {
     if (!engine || !concept) {
         return 0;
@@ -956,9 +910,7 @@ uint32_t curiosity_get_related_concepts(
         return bucket->num_related;
     }
 
-    uint32_t count = (bucket->num_related < max_related)
-        ? bucket->num_related
-        : max_related;
+    uint32_t count = (bucket->num_related < max_related) ? bucket->num_related : max_related;
 
     for (uint32_t i = 0; i < count; i++) {
         related[i] = bucket->related_concepts[i];
@@ -979,10 +931,8 @@ uint32_t curiosity_get_related_concepts(
  *
  * Complexity: O(1) strategy lookup + O(n) string formatting
  */
-static bool generate_single_question(
-    const knowledge_gap_t* gap,
-    question_type_t type,
-    generated_question_t* output)
+static bool generate_single_question(const knowledge_gap_t* gap, question_type_t type,
+                                     generated_question_t* output)
 {
     if (!gap || !output) {
         return false;
@@ -999,13 +949,8 @@ static bool generate_single_question(
     float priority_mult = 0.0f;
     float difficulty = 0.0f;
 
-    strategy->generator(
-        gap->topic,
-        output->question,
-        sizeof(output->question),
-        &priority_mult,
-        &difficulty
-    );
+    strategy->generator(gap->topic, output->question, sizeof(output->question), &priority_mult,
+                        &difficulty);
 
     output->priority = gap->curiosity_intensity * priority_mult;
     output->difficulty = difficulty;
@@ -1028,11 +973,8 @@ static bool generate_single_question(
  * @param max_questions Maximum questions to generate
  * @return Number of questions generated
  */
-uint32_t curiosity_generate_questions(
-    curiosity_engine_t engine,
-    const knowledge_gap_t* gap,
-    generated_question_t* questions,
-    uint32_t max_questions)
+uint32_t curiosity_generate_questions(curiosity_engine_t engine, const knowledge_gap_t* gap,
+                                      generated_question_t* questions, uint32_t max_questions)
 {
     if (!engine || !gap || !questions || max_questions == 0) {
         return 0;
@@ -1063,9 +1005,7 @@ uint32_t curiosity_generate_questions(
  * @param previous_answer Answer to follow up on
  * @return Follow-up question string
  */
-const char* curiosity_generate_followup(
-    curiosity_engine_t engine,
-    const char* previous_answer)
+const char* curiosity_generate_followup(curiosity_engine_t engine, const char* previous_answer)
 {
     if (!engine || !previous_answer) {
         return NULL;
@@ -1088,11 +1028,10 @@ const char* curiosity_generate_followup(
  *
  * Complexity: O(1)
  */
-static float calculate_overall_motivation(const motivation_state_t* state) {
-    return (state->intrinsic_curiosity * 0.4f +
-            state->goal_relevance * 0.2f +
-            state->social_importance * 0.1f +
-            state->survival_value * 0.2f +
+static float calculate_overall_motivation(const motivation_state_t* state)
+{
+    return (state->intrinsic_curiosity * 0.4f + state->goal_relevance * 0.2f +
+            state->social_importance * 0.1f + state->survival_value * 0.2f +
             state->aesthetic_appeal * 0.1f);
 }
 
@@ -1103,7 +1042,8 @@ static float calculate_overall_motivation(const motivation_state_t* state) {
  *
  * Complexity: O(1)
  */
-static float calculate_aesthetic_appeal(float familiarity) {
+static float calculate_aesthetic_appeal(float familiarity)
+{
     return (1.0f - familiarity) * 0.8f;
 }
 
@@ -1123,9 +1063,7 @@ static float calculate_aesthetic_appeal(float familiarity) {
  * @param concept Concept to assess
  * @return Motivation state breakdown
  */
-motivation_state_t curiosity_assess_motivation(
-    curiosity_engine_t engine,
-    const char* concept)
+motivation_state_t curiosity_assess_motivation(curiosity_engine_t engine, const char* concept)
 {
     motivation_state_t state = {0};
 
@@ -1134,9 +1072,9 @@ motivation_state_t curiosity_assess_motivation(
     }
 
     state.intrinsic_curiosity = engine->baseline_curiosity;
-    state.goal_relevance = 0.3f;        // Simplified - would check actual goals
-    state.social_importance = 0.4f;     // Simplified - would check social context
-    state.survival_value = 0.1f;        // Most concepts have low survival value
+    state.goal_relevance = 0.3f;     // Simplified - would check actual goals
+    state.social_importance = 0.4f;  // Simplified - would check social context
+    state.survival_value = 0.1f;     // Most concepts have low survival value
 
     float familiarity = curiosity_check_familiarity(engine, concept);
     state.aesthetic_appeal = calculate_aesthetic_appeal(familiarity);
@@ -1152,7 +1090,8 @@ motivation_state_t curiosity_assess_motivation(
  *
  * Complexity: O(1)
  */
-void curiosity_set_baseline(curiosity_engine_t engine, float level) {
+void curiosity_set_baseline(curiosity_engine_t engine, float level)
+{
     if (!engine) {
         return;
     }
@@ -1168,7 +1107,8 @@ void curiosity_set_baseline(curiosity_engine_t engine, float level) {
  *
  * Complexity: O(1)
  */
-float curiosity_get_drive(curiosity_engine_t engine) {
+float curiosity_get_drive(curiosity_engine_t engine)
+{
     if (!engine) {
         return 0.0f;
     }
@@ -1187,10 +1127,8 @@ float curiosity_get_drive(curiosity_engine_t engine) {
  *
  * Complexity: O(1) assuming capacity available
  */
-static bool record_question_history(
-    curiosity_engine_t engine,
-    const char* question,
-    const char* answer)
+static bool record_question_history(curiosity_engine_t engine, const char* question,
+                                    const char* answer)
 {
     if (engine->num_questions >= engine->questions_capacity) {
         return false;
@@ -1219,10 +1157,7 @@ static bool record_question_history(
  * @param answer Answer received
  * @return true on success
  */
-bool curiosity_learn_answer(
-    curiosity_engine_t engine,
-    const char* question,
-    const char* answer)
+bool curiosity_learn_answer(curiosity_engine_t engine, const char* question, const char* answer)
 {
     if (!engine || !question || !answer) {
         return false;
@@ -1250,11 +1185,8 @@ bool curiosity_learn_answer(
  * @param num_features Size of feature vector
  * @return true on success
  */
-bool curiosity_learn_experience(
-    curiosity_engine_t engine,
-    const char* experience_description,
-    const float* sensory_data,
-    uint32_t num_features)
+bool curiosity_learn_experience(curiosity_engine_t engine, const char* experience_description,
+                                const float* sensory_data, uint32_t num_features)
 {
     if (!engine || !experience_description) {
         return false;
@@ -1277,10 +1209,8 @@ bool curiosity_learn_experience(
  * @param context Context of observation
  * @return true on success
  */
-bool curiosity_learn_observation(
-    curiosity_engine_t engine,
-    const char* what_observed,
-    const char* context)
+bool curiosity_learn_observation(curiosity_engine_t engine, const char* what_observed,
+                                 const char* context)
 {
     if (!engine || !what_observed) {
         return false;
@@ -1301,16 +1231,15 @@ bool curiosity_learn_observation(
  *
  * Complexity: O(n) when resizing, amortized O(1)
  */
-static bool ensure_source_capacity(curiosity_engine_t engine) {
+static bool ensure_source_capacity(curiosity_engine_t engine)
+{
     if (engine->num_sources < engine->sources_capacity) {
         return true;
     }
 
     engine->sources_capacity *= 2;
-    knowledge_source_t* new_sources = realloc(
-        engine->sources,
-        engine->sources_capacity * sizeof(knowledge_source_t)
-    );
+    knowledge_source_t* new_sources =
+        realloc(engine->sources, engine->sources_capacity * sizeof(knowledge_source_t));
 
     if (!new_sources) {
         return false;
@@ -1334,11 +1263,8 @@ static bool ensure_source_capacity(curiosity_engine_t engine) {
  * @param context Opaque context for search function
  * @return true on success
  */
-bool curiosity_register_knowledge_source(
-    curiosity_engine_t engine,
-    const char* source_name,
-    knowledge_search_fn_t search_fn,
-    void* context)
+bool curiosity_register_knowledge_source(curiosity_engine_t engine, const char* source_name,
+                                         knowledge_search_fn_t search_fn, void* context)
 {
     if (!engine || !source_name || !search_fn) {
         return false;
@@ -1364,24 +1290,16 @@ bool curiosity_register_knowledge_source(
  *
  * Complexity: O(k) where k is results from this source
  */
-static uint32_t query_knowledge_source(
-    const knowledge_source_t* source,
-    const char* topic,
-    char** results,
-    uint32_t max_results,
-    uint32_t current_count)
+static uint32_t query_knowledge_source(const knowledge_source_t* source, const char* topic,
+                                       char** results, uint32_t max_results, uint32_t current_count)
 {
     if (!source->active) {
         return 0;
     }
 
     uint32_t num_found = 0;
-    char** source_results = source->search_fn(
-        topic,
-        source->context,
-        max_results - current_count,
-        &num_found
-    );
+    char** source_results =
+        source->search_fn(topic, source->context, max_results - current_count, &num_found);
 
     if (!source_results) {
         return 0;
@@ -1410,11 +1328,8 @@ static uint32_t query_knowledge_source(
  * @param max_results Maximum results to return
  * @return Number of results found
  */
-uint32_t curiosity_seek_knowledge(
-    curiosity_engine_t engine,
-    const knowledge_gap_t* gap,
-    char** results,
-    uint32_t max_results)
+uint32_t curiosity_seek_knowledge(curiosity_engine_t engine, const knowledge_gap_t* gap,
+                                  char** results, uint32_t max_results)
 {
     if (!engine || !gap || !results) {
         return 0;
@@ -1423,13 +1338,8 @@ uint32_t curiosity_seek_knowledge(
     uint32_t total_results = 0;
 
     for (uint32_t i = 0; i < engine->num_sources && total_results < max_results; i++) {
-        uint32_t found = query_knowledge_source(
-            &engine->sources[i],
-            gap->topic,
-            results,
-            max_results,
-            total_results
-        );
+        uint32_t found = query_knowledge_source(&engine->sources[i], gap->topic, results,
+                                                max_results, total_results);
         total_results += found;
     }
 
@@ -1447,9 +1357,7 @@ uint32_t curiosity_seek_knowledge(
  *
  * Complexity: O(1)
  */
-static void update_progress_statistics(
-    curiosity_engine_t engine,
-    learning_progress_t* progress)
+static void update_progress_statistics(curiosity_engine_t engine, learning_progress_t* progress)
 {
     progress->concepts_learned = engine->total_concepts;
     progress->avg_curiosity = engine->baseline_curiosity;
@@ -1466,9 +1374,7 @@ static void update_progress_statistics(
  * @param progress Output structure for progress data
  * @return true on success
  */
-bool curiosity_get_progress(
-    curiosity_engine_t engine,
-    learning_progress_t* progress)
+bool curiosity_get_progress(curiosity_engine_t engine, learning_progress_t* progress)
 {
     if (!engine || !progress) {
         return false;
@@ -1488,7 +1394,8 @@ bool curiosity_get_progress(
  *
  * Complexity: O(n * m) where n is concept length, m is domain length
  */
-static bool concept_in_domain(const char* concept, const char* domain) {
+static bool concept_in_domain(const char* concept, const char* domain)
+{
     return strstr(concept, domain) != NULL;
 }
 
@@ -1510,11 +1417,11 @@ typedef struct {
 /**
  * @brief Iterator callback for counting domain concepts
  */
-static bool count_domain_callback(const void* key, size_t key_size,
-                                   void* value, size_t value_size,
-                                   void* user_data) {
-    concept_bucket_t* bucket = (concept_bucket_t*)value;
-    count_domain_context_t* ctx = (count_domain_context_t*)user_data;
+static bool count_domain_callback(const void* key, size_t key_size, void* value, size_t value_size,
+                                  void* user_data)
+{
+    concept_bucket_t* bucket = (concept_bucket_t*) value;
+    count_domain_context_t* ctx = (count_domain_context_t*) user_data;
 
     if (concept_in_domain(bucket->concept, ctx->domain)) {
         ctx->count++;
@@ -1523,18 +1430,13 @@ static bool count_domain_callback(const void* key, size_t key_size,
     return true;  // Continue iteration
 }
 
-static uint32_t count_domain_concepts(
-    curiosity_engine_t engine,
-    const char* domain)
+static uint32_t count_domain_concepts(curiosity_engine_t engine, const char* domain)
 {
     if (!engine || !engine->concept_hash_table) {
         return 0;
     }
 
-    count_domain_context_t ctx = {
-        .domain = domain,
-        .count = 0
-    };
+    count_domain_context_t ctx = {.domain = domain, .count = 0};
 
     hash_table_iterate(engine->concept_hash_table, count_domain_callback, &ctx);
 
@@ -1553,16 +1455,14 @@ static uint32_t count_domain_concepts(
  * @param domain Domain to assess
  * @return Coverage fraction [0.0-1.0]
  */
-float curiosity_get_domain_coverage(
-    curiosity_engine_t engine,
-    const char* domain)
+float curiosity_get_domain_coverage(curiosity_engine_t engine, const char* domain)
 {
     if (!engine || !domain) {
         return 0.0f;
     }
 
     uint32_t domain_concepts = count_domain_concepts(engine, domain);
-    return fminf((float)domain_concepts / 100.0f, 1.0f);
+    return fminf((float) domain_concepts / 100.0f, 1.0f);
 }
 
 //=============================================================================
@@ -1576,7 +1476,8 @@ float curiosity_get_domain_coverage(
  *
  * Complexity: O(1)
  */
-learning_stage_t curiosity_get_stage(curiosity_engine_t engine) {
+learning_stage_t curiosity_get_stage(curiosity_engine_t engine)
+{
     if (!engine) {
         return STAGE_INFANT;
     }
@@ -1595,7 +1496,8 @@ learning_stage_t curiosity_get_stage(curiosity_engine_t engine) {
  * @param engine Curiosity engine
  * @param stage New learning stage
  */
-void curiosity_set_stage(curiosity_engine_t engine, learning_stage_t stage) {
+void curiosity_set_stage(curiosity_engine_t engine, learning_stage_t stage)
+{
     if (!engine) {
         return;
     }
@@ -1617,7 +1519,8 @@ void curiosity_set_stage(curiosity_engine_t engine, learning_stage_t stage) {
  *
  * Complexity: O(1)
  */
-void curiosity_print_gap(const knowledge_gap_t* gap) {
+void curiosity_print_gap(const knowledge_gap_t* gap)
+{
     if (!gap) {
         return;
     }
@@ -1637,7 +1540,8 @@ void curiosity_print_gap(const knowledge_gap_t* gap) {
  *
  * Complexity: O(1)
  */
-void curiosity_print_question(const generated_question_t* question) {
+void curiosity_print_question(const generated_question_t* question)
+{
     if (!question) {
         return;
     }
@@ -1656,7 +1560,8 @@ void curiosity_print_question(const generated_question_t* question) {
  *
  * Complexity: O(1)
  */
-void curiosity_print_progress(const learning_progress_t* progress) {
+void curiosity_print_progress(const learning_progress_t* progress)
+{
     if (!progress) {
         return;
     }

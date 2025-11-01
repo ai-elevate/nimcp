@@ -214,11 +214,11 @@
 #undef realloc
 #undef free
 
+#include <stdarg.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <stdio.h>
 #include <time.h>
-#include <stdarg.h>
 
 //=============================================================================
 // Internal Structures
@@ -346,12 +346,10 @@ typedef struct {
  * - Unlikely to occur naturally
  * - Standard debug pattern
  */
-static memory_state_t g_memory_state = {
-    .CANARY_VALUE = 0xDEADBEEF,
-    .initialized = false,
-    .tracking_enabled = false,
-    .debug_output = false
-};
+static memory_state_t g_memory_state = {.CANARY_VALUE = 0xDEADBEEF,
+                                        .initialized = false,
+                                        .tracking_enabled = false,
+                                        .debug_output = false};
 
 //=============================================================================
 // Internal Helper Functions
@@ -374,7 +372,8 @@ static memory_state_t g_memory_state = {
  *
  * @param ts Output parameter for timestamp
  */
-static void get_current_time(timespec_internal_t* ts) {
+static void get_current_time(timespec_internal_t* ts)
+{
     struct timespec now;
     clock_gettime(CLOCK_MONOTONIC, &now);
     ts->sec = now.tv_sec;
@@ -405,8 +404,8 @@ static void get_current_time(timespec_internal_t* ts) {
  * @param start Start timestamp
  * @return Difference in milliseconds
  */
-static uint64_t timespec_diff_ms(const timespec_internal_t* end,
-                                 const timespec_internal_t* start) {
+static uint64_t timespec_diff_ms(const timespec_internal_t* end, const timespec_internal_t* start)
+{
     uint64_t sec_diff = end->sec - start->sec;
     int64_t nsec_diff = end->nsec - start->nsec;
     return (sec_diff * 1000) + (nsec_diff / 1000000);
@@ -436,7 +435,8 @@ static uint64_t timespec_diff_ms(const timespec_internal_t* end,
  * - Typically called once at startup
  * - Or called with lock held
  */
-static void init_if_needed(void) {
+static void init_if_needed(void)
+{
     if (!g_memory_state.initialized) {
         nimcp_mutex_init(&g_memory_state.lock, NULL);
         memset(&g_memory_state.stats, 0, sizeof(nimcp_memory_stats_t));
@@ -476,20 +476,22 @@ static void init_if_needed(void) {
  * @param size Total size (including guards)
  * @return User pointer (after head guard)
  */
-static void* add_memory_guards(void* ptr, size_t size) {
-    if (!ptr) return NULL;
+static void* add_memory_guards(void* ptr, size_t size)
+{
+    if (!ptr)
+        return NULL;
 
     // Write head canary
-    uint32_t* guard_ptr = (uint32_t*)ptr;
+    uint32_t* guard_ptr = (uint32_t*) ptr;
     *guard_ptr = g_memory_state.CANARY_VALUE;
 
     // Write tail canary
-    guard_ptr = (uint32_t*)((char*)ptr + size - sizeof(uint32_t));
+    guard_ptr = (uint32_t*) ((char*) ptr + size - sizeof(uint32_t));
     *guard_ptr = g_memory_state.CANARY_VALUE;
 
     // Return pointer after head guard
     // WHY: User data starts here, head guard before, tail guard after
-    return (char*)ptr + sizeof(uint32_t);
+    return (char*) ptr + sizeof(uint32_t);
 }
 
 /**
@@ -526,14 +528,15 @@ static void* add_memory_guards(void* ptr, size_t size) {
  * @param size User size
  * @return true if guards intact, false if corrupted
  */
-static bool check_memory_guards(void* ptr, size_t size) {
-    if (!ptr) return false;
+static bool check_memory_guards(void* ptr, size_t size)
+{
+    if (!ptr)
+        return false;
 
-    uint32_t* head_guard = (uint32_t*)((char*)ptr - sizeof(uint32_t));
-    uint32_t* tail_guard = (uint32_t*)((char*)ptr + size - sizeof(uint32_t));
+    uint32_t* head_guard = (uint32_t*) ((char*) ptr - sizeof(uint32_t));
+    uint32_t* tail_guard = (uint32_t*) ((char*) ptr + size - sizeof(uint32_t));
 
-    if (*head_guard != g_memory_state.CANARY_VALUE ||
-        *tail_guard != g_memory_state.CANARY_VALUE) {
+    if (*head_guard != g_memory_state.CANARY_VALUE || *tail_guard != g_memory_state.CANARY_VALUE) {
         fprintf(stderr, "[MEMORY] Buffer overflow detected at %p\n", ptr);
         return false;
     }
@@ -565,8 +568,10 @@ static bool check_memory_guards(void* ptr, size_t size) {
  * @param ptr User pointer
  * @return Allocation size or 0 if not tracked
  */
-static size_t get_allocation_size(void* ptr) {
-    if (!ptr || !g_memory_state.tracking_enabled) return 0;
+static size_t get_allocation_size(void* ptr)
+{
+    if (!ptr || !g_memory_state.tracking_enabled)
+        return 0;
 
     nimcp_mutex_lock(&g_memory_state.lock);
     memory_block_t* current = g_memory_state.blocks;
@@ -605,8 +610,10 @@ static size_t get_allocation_size(void* ptr) {
  * @param ptr User pointer
  * @return Lifetime in milliseconds or 0 if not tracked
  */
-static uint64_t get_allocation_lifetime_ms(void* ptr) {
-    if (!ptr || !g_memory_state.tracking_enabled) return 0;
+static uint64_t get_allocation_lifetime_ms(void* ptr)
+{
+    if (!ptr || !g_memory_state.tracking_enabled)
+        return 0;
 
     nimcp_mutex_lock(&g_memory_state.lock);
     memory_block_t* current = g_memory_state.blocks;
@@ -654,8 +661,10 @@ static uint64_t get_allocation_lifetime_ms(void* ptr) {
  * @param size Size being allocated/freed
  * @param is_alloc true for allocation, false for free
  */
-static void update_memory_patterns(void* ptr, size_t size, bool is_alloc) {
-    if (!g_memory_state.tracking_enabled) return;
+static void update_memory_patterns(void* ptr, size_t size, bool is_alloc)
+{
+    if (!g_memory_state.tracking_enabled)
+        return;
 
     // Search for existing pattern
     size_pattern_t* pattern = g_memory_state.patterns;
@@ -674,7 +683,7 @@ static void update_memory_patterns(void* ptr, size_t size, bool is_alloc) {
 
     // New pattern (only create on allocation)
     if (is_alloc) {
-        pattern = (size_pattern_t*)malloc(sizeof(size_pattern_t));
+        pattern = (size_pattern_t*) malloc(sizeof(size_pattern_t));
         if (pattern) {
             pattern->allocation_size = size;
             pattern->allocation_count = 1;
@@ -724,14 +733,17 @@ static void update_memory_patterns(void* ptr, size_t size, bool is_alloc) {
  * @param line Source line (__LINE__)
  * @param function Source function (__func__)
  */
-static void track_allocation(void* ptr, size_t size,
-                           const char* file, int line, const char* function) {
-    if (!g_memory_state.tracking_enabled || !ptr) return;
+static void track_allocation(void* ptr, size_t size, const char* file, int line,
+                             const char* function)
+{
+    if (!g_memory_state.tracking_enabled || !ptr)
+        return;
 
     // Allocate tracking structure using real malloc
     // WHY REAL MALLOC: Avoid infinite recursion (this IS the wrapper)
-    memory_block_t* block = (memory_block_t*)malloc(sizeof(memory_block_t));
-    if (!block) return;  // Out of memory, can't track
+    memory_block_t* block = (memory_block_t*) malloc(sizeof(memory_block_t));
+    if (!block)
+        return;  // Out of memory, can't track
 
     // Fill metadata
     block->ptr = ptr;
@@ -791,8 +803,10 @@ static void track_allocation(void* ptr, size_t size,
  *
  * @param ptr User pointer to untrack
  */
-static void untrack_allocation(void* ptr) {
-    if (!g_memory_state.tracking_enabled || !ptr) return;
+static void untrack_allocation(void* ptr)
+{
+    if (!g_memory_state.tracking_enabled || !ptr)
+        return;
 
     nimcp_mutex_lock(&g_memory_state.lock);
 
@@ -855,8 +869,10 @@ static void untrack_allocation(void* ptr) {
  * @param ptr Pointer being freed
  * @return true if double-free detected, false if valid
  */
-static bool check_double_free(void* ptr) {
-    if (!ptr) return false;
+static bool check_double_free(void* ptr)
+{
+    if (!ptr)
+        return false;
 
     // WHY: Only check when tracking is enabled
     // If tracking is disabled, nothing is in the tracking list,
@@ -924,7 +940,8 @@ static bool check_double_free(void* ptr) {
  * @param size Bytes to allocate
  * @return Pointer to allocated memory or NULL on failure
  */
-void* nimcp_malloc(size_t size) {
+void* nimcp_malloc(size_t size)
+{
     init_if_needed();
 
     // Compute total size including guards
@@ -971,7 +988,8 @@ void* nimcp_malloc(size_t size) {
  * @param size Size of each element
  * @return Pointer to zeroed memory or NULL on failure
  */
-void* nimcp_calloc(size_t count, size_t size) {
+void* nimcp_calloc(size_t count, size_t size)
+{
     init_if_needed();
 
     size_t total_size = (count * size) + (2 * sizeof(uint32_t));
@@ -982,8 +1000,7 @@ void* nimcp_calloc(size_t count, size_t size) {
         track_allocation(ptr, count * size, __FILE__, __LINE__, __func__);
 
         if (g_memory_state.debug_output) {
-            printf("[MEMORY] Allocated (calloc): %zu bytes at %p\n",
-                   count * size, ptr);
+            printf("[MEMORY] Allocated (calloc): %zu bytes at %p\n", count * size, ptr);
         }
     } else {
         nimcp_mutex_lock(&g_memory_state.lock);
@@ -991,8 +1008,7 @@ void* nimcp_calloc(size_t count, size_t size) {
         nimcp_mutex_unlock(&g_memory_state.lock);
 
         if (g_memory_state.debug_output) {
-            fprintf(stderr, "[MEMORY] Allocation failed (calloc): %zu bytes\n",
-                   count * size);
+            fprintf(stderr, "[MEMORY] Allocation failed (calloc): %zu bytes\n", count * size);
         }
     }
 
@@ -1032,16 +1048,17 @@ void* nimcp_calloc(size_t count, size_t size) {
  * @param new_size New size in bytes
  * @return Pointer to resized memory or NULL on failure
  */
-void* nimcp_realloc(void* ptr, size_t new_size) {
+void* nimcp_realloc(void* ptr, size_t new_size)
+{
     init_if_needed();
 
     // Special case: realloc(NULL, size) == malloc(size)
-    if (!ptr) return nimcp_malloc(new_size);
+    if (!ptr)
+        return nimcp_malloc(new_size);
 
     size_t old_size = get_allocation_size(ptr);
     if (new_size < old_size && g_memory_state.debug_output) {
-        printf("[MEMORY] Realloc reducing size from %zu to %zu at %p\n",
-               old_size, new_size, ptr);
+        printf("[MEMORY] Realloc reducing size from %zu to %zu at %p\n", old_size, new_size, ptr);
     }
 
     // Untrack old pointer (realloc may move it)
@@ -1049,7 +1066,7 @@ void* nimcp_realloc(void* ptr, size_t new_size) {
 
     // Compute total size and real pointer
     size_t total_size = new_size + (2 * sizeof(uint32_t));
-    void* real_ptr = (char*)ptr - sizeof(uint32_t);
+    void* real_ptr = (char*) ptr - sizeof(uint32_t);
 
     // Realloc with real pointer
     void* new_ptr = realloc(real_ptr, total_size);
@@ -1060,8 +1077,7 @@ void* nimcp_realloc(void* ptr, size_t new_size) {
         track_allocation(new_ptr, new_size, __FILE__, __LINE__, __func__);
 
         if (g_memory_state.debug_output) {
-            printf("[MEMORY] Reallocated: %zu bytes at %p (old: %p)\n",
-                   new_size, new_ptr, ptr);
+            printf("[MEMORY] Reallocated: %zu bytes at %p (old: %p)\n", new_size, new_ptr, ptr);
         }
     } else {
         // Failure: increment stat
@@ -1096,12 +1112,15 @@ void* nimcp_realloc(void* ptr, size_t new_size) {
  * @param str String to duplicate
  * @return Pointer to duplicated string or NULL
  */
-char* nimcp_strdup(const char* str) {
-    if (!str) return NULL;
+char* nimcp_strdup(const char* str)
+{
+    if (!str)
+        return NULL;
 
     size_t len = strlen(str) + 1;  // Include null terminator
-    char* new_str = (char*)nimcp_malloc(len);
-    if (!new_str) return NULL;
+    char* new_str = (char*) nimcp_malloc(len);
+    if (!new_str)
+        return NULL;
 
     memcpy(new_str, str, len);
     return new_str;
@@ -1133,8 +1152,10 @@ char* nimcp_strdup(const char* str) {
  *
  * @param ptr Pointer to free (NULL is safe)
  */
-void nimcp_free(void* ptr) {
-    if (!ptr) return;
+void nimcp_free(void* ptr)
+{
+    if (!ptr)
+        return;
     init_if_needed();
 
     // Detect double-free
@@ -1154,7 +1175,7 @@ void nimcp_free(void* ptr) {
     }
 
     // Compute real pointer and free
-    void* real_ptr = (char*)ptr - sizeof(uint32_t);
+    void* real_ptr = (char*) ptr - sizeof(uint32_t);
     untrack_allocation(ptr);
     free(real_ptr);
 }
@@ -1184,7 +1205,8 @@ void nimcp_free(void* ptr) {
  * @param alignment Alignment boundary (must be power of 2)
  * @return Aligned pointer or NULL on failure
  */
-void* nimcp_aligned_malloc(size_t size, size_t alignment) {
+void* nimcp_aligned_malloc(size_t size, size_t alignment)
+{
     init_if_needed();
 
     void* ptr;
@@ -1208,8 +1230,10 @@ void* nimcp_aligned_malloc(size_t size, size_t alignment) {
  *
  * @param ptr Pointer to free
  */
-void nimcp_aligned_free(void* ptr) {
-    if (!ptr) return;
+void nimcp_aligned_free(void* ptr)
+{
+    if (!ptr)
+        return;
     untrack_allocation(ptr);
     free(ptr);
 }
@@ -1225,7 +1249,8 @@ void nimcp_aligned_free(void* ptr) {
  * - Call at application startup
  * - Or rely on lazy initialization in first allocation
  */
-void nimcp_memory_init(void) {
+void nimcp_memory_init(void)
+{
     init_if_needed();
 }
 
@@ -1255,8 +1280,10 @@ void nimcp_memory_init(void) {
  * THREAD SAFETY: Assumes no concurrent allocations
  * - Call at shutdown after all threads stopped
  */
-void nimcp_memory_cleanup(void) {
-    if (!g_memory_state.initialized) return;
+void nimcp_memory_cleanup(void)
+{
+    if (!g_memory_state.initialized)
+        return;
 
     nimcp_mutex_lock(&g_memory_state.lock);
 
@@ -1265,11 +1292,11 @@ void nimcp_memory_cleanup(void) {
     while (current) {
         memory_block_t* next = current->next;
         if (g_memory_state.debug_output) {
-            fprintf(stderr, "[MEMORY] Leak detected: %zu bytes at %p\n",
-                   current->size, current->ptr);
+            fprintf(stderr, "[MEMORY] Leak detected: %zu bytes at %p\n", current->size,
+                    current->ptr);
         }
         // Free user allocation
-        free((char*)current->ptr - sizeof(uint32_t));
+        free((char*) current->ptr - sizeof(uint32_t));
         // Free tracking structure
         free(current);
         current = next;
@@ -1306,8 +1333,10 @@ void nimcp_memory_cleanup(void) {
  * @param stats Output parameter
  * @return true on success
  */
-bool nimcp_memory_get_stats(nimcp_memory_stats_t* stats) {
-    if (!stats) return false;
+bool nimcp_memory_get_stats(nimcp_memory_stats_t* stats)
+{
+    if (!stats)
+        return false;
 
     nimcp_mutex_lock(&g_memory_state.lock);
     memcpy(stats, &g_memory_state.stats, sizeof(nimcp_memory_stats_t));
@@ -1323,7 +1352,8 @@ bool nimcp_memory_get_stats(nimcp_memory_stats_t* stats) {
  * - Profile specific code sections
  * - Reset counters between test runs
  */
-void nimcp_memory_clear_stats(void) {
+void nimcp_memory_clear_stats(void)
+{
     nimcp_mutex_lock(&g_memory_state.lock);
     memset(&g_memory_state.stats, 0, sizeof(nimcp_memory_stats_t));
     nimcp_mutex_unlock(&g_memory_state.lock);
@@ -1336,7 +1366,8 @@ void nimcp_memory_clear_stats(void) {
  * - Disable in production (no overhead)
  * - Enable in debug/test (find bugs)
  */
-void nimcp_memory_enable_tracking(bool enable) {
+void nimcp_memory_enable_tracking(bool enable)
+{
     init_if_needed();
     g_memory_state.tracking_enabled = enable;
 }
@@ -1348,7 +1379,8 @@ void nimcp_memory_enable_tracking(bool enable) {
  * - Too verbose for normal use
  * - Helpful for specific debugging
  */
-void nimcp_memory_enable_debug_output(bool enable) {
+void nimcp_memory_enable_debug_output(bool enable)
+{
     init_if_needed();
     g_memory_state.debug_output = enable;
 }
@@ -1365,7 +1397,8 @@ void nimcp_memory_enable_debug_output(bool enable) {
  * - Summary: Total, current, peak, counts
  * - Per-allocation: Address, size, location
  */
-void nimcp_memory_dump_allocations(void) {
+void nimcp_memory_dump_allocations(void)
+{
     if (!g_memory_state.tracking_enabled) {
         fprintf(stderr, "[MEMORY] Tracking is not enabled\n");
         return;
@@ -1385,8 +1418,7 @@ void nimcp_memory_dump_allocations(void) {
     memory_block_t* current = g_memory_state.blocks;
     uint32_t count = 0;
     while (current) {
-        printf("  [%u] %p: %zu bytes (from %s:%d in %s())\n",
-               count++, current->ptr, current->size,
+        printf("  [%u] %p: %zu bytes (from %s:%d in %s())\n", count++, current->ptr, current->size,
                current->file, current->line, current->function);
         current = current->next;
     }
@@ -1407,7 +1439,8 @@ void nimcp_memory_dump_allocations(void) {
  * - Per-leak: Address, size, function, location, lifetime
  * - Summary: Total blocks and bytes leaked
  */
-void nimcp_memory_check_leaks(void) {
+void nimcp_memory_check_leaks(void)
+{
     if (!g_memory_state.tracking_enabled) {
         fprintf(stderr, "[MEMORY] Tracking is not enabled\n");
         return;
@@ -1458,7 +1491,8 @@ void nimcp_memory_check_leaks(void) {
  * - Per-size: Allocation count, free count, avg lifetime
  * - Warning if allocation/free imbalance
  */
-void nimcp_memory_analyze_patterns(void) {
+void nimcp_memory_analyze_patterns(void)
+{
     if (!g_memory_state.tracking_enabled) {
         fprintf(stderr, "[MEMORY] Tracking is not enabled\n");
         return;
@@ -1476,8 +1510,8 @@ void nimcp_memory_analyze_patterns(void) {
     }
 
     while (pattern) {
-        double avg_lifetime = pattern->free_count > 0 ?
-            (double)pattern->total_lifetime_ms / pattern->free_count : 0;
+        double avg_lifetime =
+            pattern->free_count > 0 ? (double) pattern->total_lifetime_ms / pattern->free_count : 0;
 
         printf("Size: %zu bytes\n", pattern->allocation_size);
         printf("  Allocations: %lu\n", pattern->allocation_count);

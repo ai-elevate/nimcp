@@ -31,11 +31,11 @@
 //=============================================================================
 
 #include "../include/nimcp_adaptive.h"
-#include "../include/nimcp_neuralnet.h"
-#include "utils/nimcp_hash_table.h"
+#include <math.h>
 #include <stdlib.h>
 #include <string.h>
-#include <math.h>
+#include "../include/nimcp_neuralnet.h"
+#include "utils/nimcp_hash_table.h"
 
 //=============================================================================
 // Constants and Configuration
@@ -93,7 +93,8 @@ typedef struct {
  * @param max_length - Buffer capacity
  * @return Actual spike train length
  */
-typedef uint32_t (*spike_encoder_fn)(int32_t spike_count, uint8_t* spike_train, uint32_t max_length);
+typedef uint32_t (*spike_encoder_fn)(int32_t spike_count, uint8_t* spike_train,
+                                     uint32_t max_length);
 
 /**
  * @brief Strategy Pattern - Spike decoding function pointer
@@ -173,9 +174,11 @@ struct adaptive_network_struct {
  *
  * COMPLEXITY: O(1) - Fixed size initialization
  */
-static void init_spike_buffer_pool(spike_buffer_pool_t* pool) {
+static void init_spike_buffer_pool(spike_buffer_pool_t* pool)
+{
     // Guard clause: Validate input
-    if (!pool) return;
+    if (!pool)
+        return;
 
     memset(pool->in_use, 0, sizeof(pool->in_use));
     pool->next_available = 0;
@@ -191,9 +194,11 @@ static void init_spike_buffer_pool(spike_buffer_pool_t* pool) {
  *
  * @return Pointer to buffer or NULL if pool exhausted
  */
-static uint8_t* acquire_spike_buffer(spike_buffer_pool_t* pool) {
+static uint8_t* acquire_spike_buffer(spike_buffer_pool_t* pool)
+{
     // Guard clause: Validate input
-    if (!pool) return NULL;
+    if (!pool)
+        return NULL;
 
     // Find available buffer starting from next_available
     for (uint32_t i = 0; i < MAX_POOL_BUFFERS; i++) {
@@ -215,9 +220,11 @@ static uint8_t* acquire_spike_buffer(spike_buffer_pool_t* pool) {
  *
  * COMPLEXITY: O(1)
  */
-static void release_spike_buffer(spike_buffer_pool_t* pool, uint8_t* buffer) {
+static void release_spike_buffer(spike_buffer_pool_t* pool, uint8_t* buffer)
+{
     // Guard clause: Validate inputs
-    if (!pool || !buffer) return;
+    if (!pool || !buffer)
+        return;
 
     // Find and release the buffer
     for (uint32_t i = 0; i < MAX_POOL_BUFFERS; i++) {
@@ -240,15 +247,14 @@ static void release_spike_buffer(spike_buffer_pool_t* pool, uint8_t* buffer) {
  *
  * COMPLEXITY: O(1)
  */
-static hash_table_t* create_label_hash_table(void) {
-    hash_table_config_t config = {
-        .initial_buckets = HASH_TABLE_SIZE,
-        .key_type = HASH_KEY_STRING,
-        .hash_algorithm = HASH_ALG_DJB2,
-        .case_insensitive = false,
-        .value_destructor = NULL,  // label_index_t doesn't need cleanup
-        .thread_safe = false
-    };
+static hash_table_t* create_label_hash_table(void)
+{
+    hash_table_config_t config = {.initial_buckets = HASH_TABLE_SIZE,
+                                  .key_type = HASH_KEY_STRING,
+                                  .hash_algorithm = HASH_ALG_DJB2,
+                                  .case_insensitive = false,
+                                  .value_destructor = NULL,  // label_index_t doesn't need cleanup
+                                  .thread_safe = false};
     return hash_table_create(&config);
 }
 
@@ -262,10 +268,12 @@ static hash_table_t* create_label_hash_table(void) {
  *
  * @return Label index or UINT32_MAX if not found
  */
-static uint32_t hash_table_lookup_label(hash_table_t* table, const char* label) {
-    if (!table || !label) return UINT32_MAX;
+static uint32_t hash_table_lookup_label(hash_table_t* table, const char* label)
+{
+    if (!table || !label)
+        return UINT32_MAX;
 
-    label_index_t* entry = (label_index_t*)hash_table_lookup_string(table, label);
+    label_index_t* entry = (label_index_t*) hash_table_lookup_string(table, label);
     return entry ? entry->index : UINT32_MAX;
 }
 
@@ -279,10 +287,12 @@ static uint32_t hash_table_lookup_label(hash_table_t* table, const char* label) 
  *
  * @return true if inserted, false on failure
  */
-static bool hash_table_insert_label(hash_table_t* table, const char* label, uint32_t index) {
-    if (!table || !label) return false;
+static bool hash_table_insert_label(hash_table_t* table, const char* label, uint32_t index)
+{
+    if (!table || !label)
+        return false;
 
-    label_index_t value = { .index = index };
+    label_index_t value = {.index = index};
     return hash_table_insert_string(table, label, &value, sizeof(label_index_t));
 }
 
@@ -301,9 +311,11 @@ static bool hash_table_insert_label(hash_table_t* table, const char* label, uint
  *
  * @return Mean absolute value or 0.0f if invalid input
  */
-static float compute_mean_abs(const float* input, uint32_t size) {
+static float compute_mean_abs(const float* input, uint32_t size)
+{
     // Guard clause: Validate inputs
-    if (!input || size == 0) return 0.0f;
+    if (!input || size == 0)
+        return 0.0f;
 
     float sum = 0.0f;
     for (uint32_t i = 0; i < size; i++) {
@@ -323,9 +335,11 @@ static float compute_mean_abs(const float* input, uint32_t size) {
  * @param state - Neuron state to update
  * @param activation - New activation value
  */
-static void update_statistics(adaptive_neuron_state_t* state, float activation) {
+static void update_statistics(adaptive_neuron_state_t* state, float activation)
+{
     // Guard clause: Validate input
-    if (!state) return;
+    if (!state)
+        return;
 
     // Welford's online algorithm for mean and variance
     state->sample_count++;
@@ -345,29 +359,31 @@ static void update_statistics(adaptive_neuron_state_t* state, float activation) 
  *
  * @return Label index in label_map array
  */
-static uint32_t get_label_index(adaptive_network_t network, const char* label) {
+static uint32_t get_label_index(adaptive_network_t network, const char* label)
+{
     // Guard clause: Validate inputs
-    if (!network || !label) return 0;
+    if (!network || !label)
+        return 0;
 
     // O(1) hash table lookup
     uint32_t index = hash_table_lookup_label(&network->label_table, label);
 
     // Guard clause: Return if found
-    if (index != UINT32_MAX) return index;
+    if (index != UINT32_MAX)
+        return index;
 
     // Add new label
-    char** new_map = realloc(network->label_map,
-                             (network->num_labels + 1) * sizeof(char*));
+    char** new_map = realloc(network->label_map, (network->num_labels + 1) * sizeof(char*));
     // Guard clause: Check allocation
-    if (!new_map) return 0;
+    if (!new_map)
+        return 0;
 
     network->label_map = new_map;
     network->label_map[network->num_labels] = strdup(label);
 
     // Insert into hash table for future O(1) lookups
-    hash_table_insert_label(&network->label_table,
-                           network->label_map[network->num_labels],
-                           network->num_labels);
+    hash_table_insert_label(&network->label_table, network->label_map[network->num_labels],
+                            network->num_labels);
 
     return network->num_labels++;
 }
@@ -384,9 +400,11 @@ static uint32_t get_label_index(adaptive_network_t network, const char* label) {
  *
  * COMPLEXITY: O(1) - Constant time copy
  */
-static uint32_t encode_integer(int32_t spike_count, uint8_t* spike_train, uint32_t max_length) {
+static uint32_t encode_integer(int32_t spike_count, uint8_t* spike_train, uint32_t max_length)
+{
     // Guard clause: Check buffer size
-    if (max_length < sizeof(int32_t)) return 0;
+    if (max_length < sizeof(int32_t))
+        return 0;
 
     memcpy(spike_train, &spike_count, sizeof(int32_t));
     return sizeof(int32_t);
@@ -400,8 +418,9 @@ static uint32_t encode_integer(int32_t spike_count, uint8_t* spike_train, uint32
  *
  * COMPLEXITY: O(n) where n = |spike_count|
  */
-static uint32_t encode_binary(int32_t spike_count, uint8_t* spike_train, uint32_t max_length) {
-    uint32_t abs_count = (uint32_t)abs(spike_count);
+static uint32_t encode_binary(int32_t spike_count, uint8_t* spike_train, uint32_t max_length)
+{
+    uint32_t abs_count = (uint32_t) abs(spike_count);
     uint32_t length = (abs_count < max_length) ? abs_count : max_length;
     memset(spike_train, 1, length);
     return length;
@@ -415,9 +434,11 @@ static uint32_t encode_binary(int32_t spike_count, uint8_t* spike_train, uint32_
  *
  * COMPLEXITY: O(1) - Single byte encoding
  */
-static uint32_t encode_ternary(int32_t spike_count, uint8_t* spike_train, uint32_t max_length) {
+static uint32_t encode_ternary(int32_t spike_count, uint8_t* spike_train, uint32_t max_length)
+{
     // Guard clause: Check buffer
-    if (max_length < 1) return 0;
+    if (max_length < 1)
+        return 0;
 
     spike_train[0] = (spike_count > 0) ? 1 : ((spike_count < 0) ? 255 : 0);
     return 1;
@@ -431,12 +452,14 @@ static uint32_t encode_ternary(int32_t spike_count, uint8_t* spike_train, uint32
  *
  * COMPLEXITY: O(log n) where n = spike_count
  */
-static uint32_t encode_bitwise(int32_t spike_count, uint8_t* spike_train, uint32_t max_length) {
-    uint32_t abs_count = (uint32_t)abs(spike_count);
+static uint32_t encode_bitwise(int32_t spike_count, uint8_t* spike_train, uint32_t max_length)
+{
+    uint32_t abs_count = (uint32_t) abs(spike_count);
     uint32_t bytes_needed = (abs_count + 7) / 8;
 
     // Guard clause: Check capacity
-    if (bytes_needed > max_length) bytes_needed = max_length;
+    if (bytes_needed > max_length)
+        bytes_needed = max_length;
 
     for (uint32_t i = 0; i < bytes_needed; i++) {
         spike_train[i] = (abs_count >> (i * 8)) & 0xFF;
@@ -449,9 +472,11 @@ static uint32_t encode_bitwise(int32_t spike_count, uint8_t* spike_train, uint32
  *
  * COMPLEXITY: O(1)
  */
-static int32_t decode_integer(const uint8_t* spike_train, uint32_t length) {
+static int32_t decode_integer(const uint8_t* spike_train, uint32_t length)
+{
     // Guard clause: Check minimum length
-    if (length < sizeof(int32_t)) return 0;
+    if (length < sizeof(int32_t))
+        return 0;
 
     int32_t spike_count;
     memcpy(&spike_count, spike_train, sizeof(int32_t));
@@ -463,7 +488,8 @@ static int32_t decode_integer(const uint8_t* spike_train, uint32_t length) {
  *
  * COMPLEXITY: O(n) where n = length
  */
-static int32_t decode_binary(const uint8_t* spike_train, uint32_t length) {
+static int32_t decode_binary(const uint8_t* spike_train, uint32_t length)
+{
     int32_t spike_count = 0;
     for (uint32_t i = 0; i < length; i++) {
         spike_count += spike_train[i];
@@ -476,9 +502,11 @@ static int32_t decode_binary(const uint8_t* spike_train, uint32_t length) {
  *
  * COMPLEXITY: O(1)
  */
-static int32_t decode_ternary(const uint8_t* spike_train, uint32_t length) {
+static int32_t decode_ternary(const uint8_t* spike_train, uint32_t length)
+{
     // Guard clause: Check length
-    if (length < 1) return 0;
+    if (length < 1)
+        return 0;
 
     return (spike_train[0] == 1) ? 1 : ((spike_train[0] == 255) ? -1 : 0);
 }
@@ -488,7 +516,8 @@ static int32_t decode_ternary(const uint8_t* spike_train, uint32_t length) {
  *
  * COMPLEXITY: O(log n) where n = spike_count
  */
-static int32_t decode_bitwise(const uint8_t* spike_train, uint32_t length) {
+static int32_t decode_bitwise(const uint8_t* spike_train, uint32_t length)
+{
     int32_t spike_count = 0;
     for (uint32_t i = 0; i < length; i++) {
         spike_count |= (spike_train[i] << (i * 8));
@@ -505,9 +534,11 @@ static int32_t decode_bitwise(const uint8_t* spike_train, uint32_t length) {
  *
  * COMPLEXITY: O(1)
  */
-static void init_spike_strategy_table(spike_strategy_table_t* table) {
+static void init_spike_strategy_table(spike_strategy_table_t* table)
+{
     // Guard clause: Validate input
-    if (!table) return;
+    if (!table)
+        return;
 
     // Register encoding strategies
     table->encoders[SPIKE_ENCODING_INTEGER] = encode_integer;
@@ -539,12 +570,15 @@ static void init_spike_strategy_table(spike_strategy_table_t* table) {
  * @param k_factor - Firing rate control (higher = more sparsity)
  * @return Adaptive threshold value
  */
-float adaptive_compute_threshold(const float* input, uint32_t size, float k_factor) {
+float adaptive_compute_threshold(const float* input, uint32_t size, float k_factor)
+{
     // Guard clause: Validate inputs
-    if (!input || size == 0) return 1.0f;
+    if (!input || size == 0)
+        return 1.0f;
 
     // Guard clause: Validate k_factor
-    if (k_factor <= 0.0f) return 1.0f;
+    if (k_factor <= 0.0f)
+        return 1.0f;
 
     float mean_abs = compute_mean_abs(input, size);
     return mean_abs / k_factor;
@@ -562,11 +596,13 @@ float adaptive_compute_threshold(const float* input, uint32_t size, float k_fact
  * @param threshold - Adaptive threshold
  * @return Integer spike count
  */
-int32_t adaptive_value_to_spikes(float value, float threshold) {
+int32_t adaptive_value_to_spikes(float value, float threshold)
+{
     // Guard clause: Ensure valid threshold
-    if (threshold <= 0.0f) threshold = 1.0f;
+    if (threshold <= 0.0f)
+        threshold = 1.0f;
 
-    return (int32_t)roundf(value / threshold);
+    return (int32_t) roundf(value / threshold);
 }
 
 /**
@@ -579,15 +615,16 @@ int32_t adaptive_value_to_spikes(float value, float threshold) {
  *
  * @return Actual spike train length or 0 on error
  */
-uint32_t adaptive_encode_spikes(int32_t spike_count,
-                               spike_encoding_t encoding,
-                               uint8_t* spike_train,
-                               uint32_t max_length) {
+uint32_t adaptive_encode_spikes(int32_t spike_count, spike_encoding_t encoding,
+                                uint8_t* spike_train, uint32_t max_length)
+{
     // Guard clause: Validate inputs
-    if (!spike_train || max_length == 0) return 0;
+    if (!spike_train || max_length == 0)
+        return 0;
 
     // Guard clause: Validate encoding type
-    if (encoding >= 4) return 0;
+    if (encoding >= 4)
+        return 0;
 
     // Create temporary strategy table (should be passed in production code)
     spike_strategy_table_t table;
@@ -597,7 +634,8 @@ uint32_t adaptive_encode_spikes(int32_t spike_count,
     spike_encoder_fn encoder = table.encoders[encoding];
 
     // Guard clause: Check encoder exists
-    if (!encoder) return 0;
+    if (!encoder)
+        return 0;
 
     return encoder(spike_count, spike_train, max_length);
 }
@@ -612,15 +650,16 @@ uint32_t adaptive_encode_spikes(int32_t spike_count,
  *
  * @return Decoded value or 0.0f on error
  */
-float adaptive_decode_spikes(const uint8_t* spike_train,
-                            uint32_t length,
-                            spike_encoding_t encoding,
-                            float threshold) {
+float adaptive_decode_spikes(const uint8_t* spike_train, uint32_t length, spike_encoding_t encoding,
+                             float threshold)
+{
     // Guard clause: Validate inputs
-    if (!spike_train || length == 0) return 0.0f;
+    if (!spike_train || length == 0)
+        return 0.0f;
 
     // Guard clause: Validate encoding type
-    if (encoding >= 4) return 0.0f;
+    if (encoding >= 4)
+        return 0.0f;
 
     // Create temporary strategy table
     spike_strategy_table_t table;
@@ -630,7 +669,8 @@ float adaptive_decode_spikes(const uint8_t* spike_train,
     spike_decoder_fn decoder = table.decoders[encoding];
 
     // Guard clause: Check decoder exists
-    if (!decoder) return 0.0f;
+    if (!decoder)
+        return 0.0f;
 
     int32_t spike_count = decoder(spike_train, length);
     return spike_count * threshold;
@@ -650,15 +690,21 @@ float adaptive_decode_spikes(const uint8_t* spike_train,
  *
  * @return true if valid, false otherwise
  */
-static bool validate_network_config(const adaptive_network_config_t* config) {
+static bool validate_network_config(const adaptive_network_config_t* config)
+{
     // Guard clause: Check config pointer
-    if (!config) return false;
+    if (!config)
+        return false;
 
     // Guard clause: Validate spike parameters
-    if (config->spike_params.k_factor <= 0.0f) return false;
-    if (config->spike_params.min_threshold <= 0.0f) return false;
-    if (config->spike_params.max_threshold <= config->spike_params.min_threshold) return false;
-    if (config->spike_params.sparsity_target < 0.0f || config->spike_params.sparsity_target > 1.0f) return false;
+    if (config->spike_params.k_factor <= 0.0f)
+        return false;
+    if (config->spike_params.min_threshold <= 0.0f)
+        return false;
+    if (config->spike_params.max_threshold <= config->spike_params.min_threshold)
+        return false;
+    if (config->spike_params.sparsity_target < 0.0f || config->spike_params.sparsity_target > 1.0f)
+        return false;
 
     return true;
 }
@@ -670,9 +716,12 @@ static bool validate_network_config(const adaptive_network_config_t* config) {
  *
  * COMPLEXITY: O(n) where n = num_neurons
  */
-static void initialize_neuron_states(adaptive_neuron_state_t* states, uint32_t num_neurons, float default_threshold) {
+static void initialize_neuron_states(adaptive_neuron_state_t* states, uint32_t num_neurons,
+                                     float default_threshold)
+{
     // Guard clause: Validate input
-    if (!states) return;
+    if (!states)
+        return;
 
     for (uint32_t i = 0; i < num_neurons; i++) {
         states[i].adaptive_threshold = default_threshold;
@@ -693,11 +742,14 @@ static void initialize_neuron_states(adaptive_neuron_state_t* states, uint32_t n
  *
  * COMPLEXITY: O(1) allocation + O(n) initialization
  */
-static adaptive_neuron_state_t* allocate_neuron_states(uint32_t num_neurons, float default_threshold) {
+static adaptive_neuron_state_t* allocate_neuron_states(uint32_t num_neurons,
+                                                       float default_threshold)
+{
     adaptive_neuron_state_t* states = calloc(num_neurons, sizeof(adaptive_neuron_state_t));
 
     // Guard clause: Check allocation
-    if (!states) return NULL;
+    if (!states)
+        return NULL;
 
     initialize_neuron_states(states, num_neurons, default_threshold);
     return states;
@@ -711,9 +763,11 @@ static adaptive_neuron_state_t* allocate_neuron_states(uint32_t num_neurons, flo
  *
  * COMPLEXITY: O(1)
  */
-static void initialize_design_patterns(adaptive_network_t network) {
+static void initialize_design_patterns(adaptive_network_t network)
+{
     // Guard clause: Validate input
-    if (!network) return;
+    if (!network)
+        return;
 
     init_spike_buffer_pool(&network->buffer_pool);
     network->label_table = create_label_hash_table();
@@ -736,13 +790,16 @@ static void initialize_design_patterns(adaptive_network_t network) {
  * @param config - Network configuration
  * @return Network handle or NULL on error
  */
-adaptive_network_t adaptive_network_create(const adaptive_network_config_t* config) {
+adaptive_network_t adaptive_network_create(const adaptive_network_config_t* config)
+{
     // Guard clause: Validate configuration
-    if (!validate_network_config(config)) return NULL;
+    if (!validate_network_config(config))
+        return NULL;
 
     adaptive_network_t network = calloc(1, sizeof(struct adaptive_network_struct));
     // Guard clause: Check allocation
-    if (!network) return NULL;
+    if (!network)
+        return NULL;
 
     // Copy configuration
     memcpy(&network->config, config, sizeof(adaptive_network_config_t));
@@ -795,9 +852,11 @@ adaptive_network_t adaptive_network_create(const adaptive_network_config_t* conf
  *
  * COMPLEXITY: O(n) where n = num_neurons
  */
-static void free_neuron_spike_trains(adaptive_neuron_state_t* states, uint32_t num_neurons) {
+static void free_neuron_spike_trains(adaptive_neuron_state_t* states, uint32_t num_neurons)
+{
     // Guard clause: Validate input
-    if (!states) return;
+    if (!states)
+        return;
 
     for (uint32_t i = 0; i < num_neurons; i++) {
         if (states[i].spike_train) {
@@ -814,9 +873,11 @@ static void free_neuron_spike_trains(adaptive_neuron_state_t* states, uint32_t n
  *
  * COMPLEXITY: O(n) where n = num_labels
  */
-static void free_label_map(char** label_map, uint32_t num_labels) {
+static void free_label_map(char** label_map, uint32_t num_labels)
+{
     // Guard clause: Validate input
-    if (!label_map) return;
+    if (!label_map)
+        return;
 
     for (uint32_t i = 0; i < num_labels; i++) {
         free(label_map[i]);
@@ -833,9 +894,11 @@ static void free_label_map(char** label_map, uint32_t num_labels) {
  *
  * @param network - Network to destroy
  */
-void adaptive_network_destroy(adaptive_network_t network) {
+void adaptive_network_destroy(adaptive_network_t network)
+{
     // Guard clause: Validate input
-    if (!network) return;
+    if (!network)
+        return;
 
     // Destroy base network
     if (network->base_network) {
@@ -877,11 +940,13 @@ void adaptive_network_destroy(adaptive_network_t network) {
  *
  * @return Spike-encoded input (caller must free)
  */
-static float* convert_input_to_spikes(const float* input, uint32_t input_size,
-                                     float threshold, spike_encoding_t encoding) {
+static float* convert_input_to_spikes(const float* input, uint32_t input_size, float threshold,
+                                      spike_encoding_t encoding)
+{
     float* spike_input = malloc(input_size * sizeof(float));
     // Guard clause: Check allocation
-    if (!spike_input) return NULL;
+    if (!spike_input)
+        return NULL;
 
     // Guard clause: Use integer encoding only
     if (encoding == SPIKE_ENCODING_INTEGER) {
@@ -905,9 +970,12 @@ static float* convert_input_to_spikes(const float* input, uint32_t input_size,
  *
  * @return Clamped threshold value
  */
-static float clamp_threshold(float threshold, float min_threshold, float max_threshold) {
-    if (threshold < min_threshold) return min_threshold;
-    if (threshold > max_threshold) return max_threshold;
+static float clamp_threshold(float threshold, float min_threshold, float max_threshold)
+{
+    if (threshold < min_threshold)
+        return min_threshold;
+    if (threshold > max_threshold)
+        return max_threshold;
     return threshold;
 }
 
@@ -924,13 +992,12 @@ static float clamp_threshold(float threshold, float min_threshold, float max_thr
  * @param min_threshold - Minimum allowed threshold
  * @param max_threshold - Maximum allowed threshold
  */
-static void adapt_neuron_threshold(adaptive_neuron_state_t* state,
-                                  float current_sparsity,
-                                  float target_sparsity,
-                                  float min_threshold,
-                                  float max_threshold) {
+static void adapt_neuron_threshold(adaptive_neuron_state_t* state, float current_sparsity,
+                                   float target_sparsity, float min_threshold, float max_threshold)
+{
     // Guard clause: Validate state
-    if (!state) return;
+    if (!state)
+        return;
 
     // Adjust threshold based on sparsity
     if (current_sparsity < target_sparsity) {
@@ -942,8 +1009,8 @@ static void adapt_neuron_threshold(adaptive_neuron_state_t* state,
     }
 
     // Clamp to valid range
-    state->adaptive_threshold = clamp_threshold(state->adaptive_threshold,
-                                               min_threshold, max_threshold);
+    state->adaptive_threshold =
+        clamp_threshold(state->adaptive_threshold, min_threshold, max_threshold);
 }
 
 /**
@@ -959,11 +1026,12 @@ static void adapt_neuron_threshold(adaptive_neuron_state_t* state,
  * @param enable_sparsity - Whether to enforce sparsity
  * @return true if neuron is active, false otherwise
  */
-static bool process_neuron_output(adaptive_neuron_state_t* state,
-                                 float* output_value,
-                                 bool enable_sparsity) {
+static bool process_neuron_output(adaptive_neuron_state_t* state, float* output_value,
+                                  bool enable_sparsity)
+{
     // Guard clause: Validate inputs
-    if (!state || !output_value) return false;
+    if (!state || !output_value)
+        return false;
 
     bool is_active = (fabsf(*output_value) > state->adaptive_threshold);
 
@@ -989,17 +1057,19 @@ static bool process_neuron_output(adaptive_neuron_state_t* state,
  *
  * @return Number of active neurons
  */
-static uint32_t process_network_outputs(adaptive_network_t network,
-                                        float* output,
-                                        uint32_t output_size) {
+static uint32_t process_network_outputs(adaptive_network_t network, float* output,
+                                        uint32_t output_size)
+{
     // Guard clause: Validate inputs
-    if (!network || !output) return 0;
+    if (!network || !output)
+        return 0;
 
     uint32_t active_count = 0;
     const adaptive_spike_params_t* params = &network->config.spike_params;
 
     // Single pass through neurons - O(n)
-    uint32_t num_to_process = (output_size < network->num_neurons) ? output_size : network->num_neurons;
+    uint32_t num_to_process =
+        (output_size < network->num_neurons) ? output_size : network->num_neurons;
 
     for (uint32_t i = 0; i < num_to_process; i++) {
         adaptive_neuron_state_t* state = &network->neuron_states[i];
@@ -1009,11 +1079,8 @@ static uint32_t process_network_outputs(adaptive_network_t network,
 
         // Adapt threshold if enabled (O(1))
         if (params->enable_adaptation) {
-            adapt_neuron_threshold(state,
-                                  network->running_sparsity,
-                                  params->sparsity_target,
-                                  params->min_threshold,
-                                  params->max_threshold);
+            adapt_neuron_threshold(state, network->running_sparsity, params->sparsity_target,
+                                   params->min_threshold, params->max_threshold);
         }
 
         // Process neuron output (O(1))
@@ -1034,13 +1101,14 @@ static uint32_t process_network_outputs(adaptive_network_t network,
  *
  * COMPLEXITY: O(1)
  */
-static void update_running_sparsity(adaptive_network_t network,
-                                   uint32_t active_count,
-                                   uint32_t output_size) {
+static void update_running_sparsity(adaptive_network_t network, uint32_t active_count,
+                                    uint32_t output_size)
+{
     // Guard clause: Validate inputs
-    if (!network || output_size == 0) return;
+    if (!network || output_size == 0)
+        return;
 
-    float current_sparsity = 1.0f - ((float)active_count / output_size);
+    float current_sparsity = 1.0f - ((float) active_count / output_size);
     network->running_sparsity = (1.0f - SPARSITY_EMA_WEIGHT) * network->running_sparsity +
                                 SPARSITY_EMA_WEIGHT * current_sparsity;
 }
@@ -1069,29 +1137,28 @@ static void update_running_sparsity(adaptive_network_t network,
  *
  * @return Number of active neurons (for sparsity tracking)
  */
-uint32_t adaptive_network_forward(adaptive_network_t network,
-                                  const float* input,
-                                  uint32_t input_size,
-                                  float* output,
-                                  uint32_t output_size,
-                                  uint64_t timestamp) {
+uint32_t adaptive_network_forward(adaptive_network_t network, const float* input,
+                                  uint32_t input_size, float* output, uint32_t output_size,
+                                  uint64_t timestamp)
+{
     // Guard clause: Validate inputs
-    if (!network || !input || !output) return 0;
+    if (!network || !input || !output)
+        return 0;
 
     // Step 1: Compute adaptive threshold for input
-    float input_threshold = adaptive_compute_threshold(
-        input, input_size, network->config.spike_params.k_factor);
+    float input_threshold =
+        adaptive_compute_threshold(input, input_size, network->config.spike_params.k_factor);
 
     // Step 2: Convert input to spikes if needed
-    float* spike_input = convert_input_to_spikes(
-        input, input_size, input_threshold, network->config.spike_params.encoding);
+    float* spike_input = convert_input_to_spikes(input, input_size, input_threshold,
+                                                 network->config.spike_params.encoding);
 
     // Guard clause: Check spike input allocation
-    if (!spike_input) return 0;
+    if (!spike_input)
+        return 0;
 
     // Step 3: Forward pass through base network
-    neural_network_forward(network->base_network, spike_input, input_size,
-                          output, output_size);
+    neural_network_forward(network->base_network, spike_input, input_size, output, output_size);
 
     free(spike_input);
 
@@ -1111,13 +1178,17 @@ uint32_t adaptive_network_forward(adaptive_network_t network,
 // Sparsity and Pruning
 //=============================================================================
 
-float adaptive_network_get_sparsity(adaptive_network_t network) {
-    if (!network) return 0.0f;
+float adaptive_network_get_sparsity(adaptive_network_t network)
+{
+    if (!network)
+        return 0.0f;
     return network->running_sparsity;
 }
 
-uint32_t adaptive_network_prune(adaptive_network_t network, float threshold) {
-    if (!network) return 0;
+uint32_t adaptive_network_prune(adaptive_network_t network, float threshold)
+{
+    if (!network)
+        return 0;
 
     // Prune weak connections in base network
     // This would require exposing weight pruning in neural_network API
@@ -1131,16 +1202,16 @@ uint32_t adaptive_network_prune(adaptive_network_t network, float threshold) {
 // Pattern Learning
 //=============================================================================
 
-float adaptive_network_learn(adaptive_network_t network,
-                            const training_example_t* example,
-                            learning_mode_t mode,
-                            float learning_rate) {
-    if (!network || !example) return -1.0f;
+float adaptive_network_learn(adaptive_network_t network, const training_example_t* example,
+                             learning_mode_t mode, float learning_rate)
+{
+    if (!network || !example)
+        return -1.0f;
 
     // Forward pass to get current output
     float* output = malloc(example->target_size * sizeof(float));
-    adaptive_network_forward(network, example->input, example->input_size,
-                            output, example->target_size, 0);
+    adaptive_network_forward(network, example->input, example->input_size, output,
+                             example->target_size, 0);
 
     // Compute loss based on mode
     float loss = 0.0f;
@@ -1182,12 +1253,11 @@ float adaptive_network_learn(adaptive_network_t network,
     return loss;
 }
 
-float adaptive_network_learn_batch(adaptive_network_t network,
-                                  const training_example_t* examples,
-                                  uint32_t num_examples,
-                                  learning_mode_t mode,
-                                  float learning_rate) {
-    if (!network || !examples || num_examples == 0) return -1.0f;
+float adaptive_network_learn_batch(adaptive_network_t network, const training_example_t* examples,
+                                   uint32_t num_examples, learning_mode_t mode, float learning_rate)
+{
+    if (!network || !examples || num_examples == 0)
+        return -1.0f;
 
     float total_loss = 0.0f;
 
@@ -1199,30 +1269,27 @@ float adaptive_network_learn_batch(adaptive_network_t network,
     return total_loss / num_examples;
 }
 
-float adaptive_network_distill(adaptive_network_t network,
-                              const float* input,
-                              uint32_t input_size,
-                              teacher_function_t teacher_fn,
-                              void* teacher_context,
-                              float learning_rate) {
-    if (!network || !input || !teacher_fn) return -1.0f;
+float adaptive_network_distill(adaptive_network_t network, const float* input, uint32_t input_size,
+                               teacher_function_t teacher_fn, void* teacher_context,
+                               float learning_rate)
+{
+    if (!network || !input || !teacher_fn)
+        return -1.0f;
 
     // Query teacher for target
     float* teacher_output = teacher_fn(input, input_size, teacher_context);
-    if (!teacher_output) return -1.0f;
+    if (!teacher_output)
+        return -1.0f;
 
     // Create training example from teacher's output
-    training_example_t example = {
-        .input = (float*)input,
-        .input_size = input_size,
-        .target = teacher_output,
-        .target_size = network->config.base_config.output_size,
-        .confidence = 1.0f,  // Assume high confidence in teacher
-        .label = {0}
-    };
+    training_example_t example = {.input = (float*) input,
+                                  .input_size = input_size,
+                                  .target = teacher_output,
+                                  .target_size = network->config.base_config.output_size,
+                                  .confidence = 1.0f,  // Assume high confidence in teacher
+                                  .label = {0}};
 
-    float loss = adaptive_network_learn(network, &example,
-                                       LEARN_MODE_DISTILLATION, learning_rate);
+    float loss = adaptive_network_learn(network, &example, LEARN_MODE_DISTILLATION, learning_rate);
 
     // Teacher is responsible for freeing output if needed
 
@@ -1233,21 +1300,23 @@ float adaptive_network_distill(adaptive_network_t network,
 // Model Persistence
 //=============================================================================
 
-bool adaptive_network_save(adaptive_network_t network,
-                          const char* filepath,
-                          serialize_format_t format) {
-    if (!network || !filepath) return false;
+bool adaptive_network_save(adaptive_network_t network, const char* filepath,
+                           serialize_format_t format)
+{
+    if (!network || !filepath)
+        return false;
 
     // Open file for writing
     FILE* file = fopen(filepath, "wb");
-    if (!file) return false;
+    if (!file)
+        return false;
 
     bool success = true;
 
     switch (format) {
         case SERIALIZE_FORMAT_BINARY:
             // Write magic header
-            uint32_t magic = 0x4E494D43;  // "NIMC"
+            uint32_t magic = 0x4E494D43;    // "NIMC"
             uint32_t version = 0x00020500;  // v2.5.0
 
             fwrite(&magic, sizeof(uint32_t), 1, file);
@@ -1290,11 +1359,14 @@ bool adaptive_network_save(adaptive_network_t network,
     return success;
 }
 
-adaptive_network_t adaptive_network_load(const char* filepath) {
-    if (!filepath) return NULL;
+adaptive_network_t adaptive_network_load(const char* filepath)
+{
+    if (!filepath)
+        return NULL;
 
     FILE* file = fopen(filepath, "rb");
-    if (!file) return NULL;
+    if (!file)
+        return NULL;
 
     // Read magic header
     uint32_t magic, version;
@@ -1375,8 +1447,10 @@ adaptive_network_t adaptive_network_load(const char* filepath) {
     return network;
 }
 
-size_t adaptive_network_get_size(adaptive_network_t network) {
-    if (!network) return 0;
+size_t adaptive_network_get_size(adaptive_network_t network)
+{
+    if (!network)
+        return 0;
 
     size_t size = sizeof(struct adaptive_network_struct);
     size += network->num_neurons * sizeof(adaptive_neuron_state_t);
@@ -1397,16 +1471,16 @@ size_t adaptive_network_get_size(adaptive_network_t network) {
 // Interpretability & Analysis
 //=============================================================================
 
-bool adaptive_network_analyze_activation(adaptive_network_t network,
-                                        const float* input,
-                                        uint32_t input_size,
-                                        activation_analysis_t* analysis) {
-    if (!network || !input || !analysis) return false;
+bool adaptive_network_analyze_activation(adaptive_network_t network, const float* input,
+                                         uint32_t input_size, activation_analysis_t* analysis)
+{
+    if (!network || !input || !analysis)
+        return false;
 
     // Forward pass
     float* output = malloc(network->config.base_config.output_size * sizeof(float));
-    uint32_t active_count = adaptive_network_forward(network, input, input_size,
-                                                     output, network->config.base_config.output_size, 0);
+    uint32_t active_count = adaptive_network_forward(network, input, input_size, output,
+                                                     network->config.base_config.output_size, 0);
 
     analysis->num_active_neurons = active_count;
     analysis->sparsity = network->running_sparsity;
@@ -1438,12 +1512,14 @@ bool adaptive_network_analyze_activation(adaptive_network_t network,
     return true;
 }
 
-uint32_t adaptive_network_rank_neurons(adaptive_network_t network,
-                                      neuron_importance_t* rankings,
-                                      uint32_t max_rankings) {
-    if (!network || !rankings) return 0;
+uint32_t adaptive_network_rank_neurons(adaptive_network_t network, neuron_importance_t* rankings,
+                                       uint32_t max_rankings)
+{
+    if (!network || !rankings)
+        return 0;
 
-    uint32_t num_to_rank = (max_rankings < network->num_neurons) ? max_rankings : network->num_neurons;
+    uint32_t num_to_rank =
+        (max_rankings < network->num_neurons) ? max_rankings : network->num_neurons;
 
     // Compute importance based on activation statistics
     for (uint32_t i = 0; i < num_to_rank; i++) {
@@ -1452,12 +1528,13 @@ uint32_t adaptive_network_rank_neurons(adaptive_network_t network,
         rankings[i].activation_count = network->neuron_states[i].sample_count;
 
         // Importance = activation_mean * sqrt(activation_count) / variance
-        float variance = (network->neuron_states[i].sample_count > 1) ?
-            network->neuron_states[i].activation_variance / (network->neuron_states[i].sample_count - 1) : 1.0f;
+        float variance = (network->neuron_states[i].sample_count > 1)
+                             ? network->neuron_states[i].activation_variance /
+                                   (network->neuron_states[i].sample_count - 1)
+                             : 1.0f;
 
         rankings[i].importance = rankings[i].avg_activation *
-                                sqrtf((float)rankings[i].activation_count) /
-                                (variance + 1e-6f);
+                                 sqrtf((float) rankings[i].activation_count) / (variance + 1e-6f);
 
         rankings[i].most_active_for = NULL;  // TODO: Track pattern associations
     }
@@ -1476,12 +1553,11 @@ uint32_t adaptive_network_rank_neurons(adaptive_network_t network,
     return num_to_rank;
 }
 
-uint32_t adaptive_network_explain(adaptive_network_t network,
-                                 const float* input,
-                                 uint32_t input_size,
-                                 char* explanation,
-                                 uint32_t max_length) {
-    if (!network || !input || !explanation || max_length == 0) return 0;
+uint32_t adaptive_network_explain(adaptive_network_t network, const float* input,
+                                  uint32_t input_size, char* explanation, uint32_t max_length)
+{
+    if (!network || !input || !explanation || max_length == 0)
+        return 0;
 
     // Analyze activation
     activation_analysis_t analysis;
@@ -1491,21 +1567,17 @@ uint32_t adaptive_network_explain(adaptive_network_t network,
 
     // Generate explanation
     int written = snprintf(explanation, max_length,
-                          "Activated %u/%u neurons (%.1f%% sparse). "
-                          "Confidence: %.2f. "
-                          "Top contributors: ",
-                          analysis.num_active_neurons,
-                          network->config.base_config.output_size,
-                          analysis.sparsity * 100.0f,
-                          analysis.confidence);
+                           "Activated %u/%u neurons (%.1f%% sparse). "
+                           "Confidence: %.2f. "
+                           "Top contributors: ",
+                           analysis.num_active_neurons, network->config.base_config.output_size,
+                           analysis.sparsity * 100.0f, analysis.confidence);
 
     // Add top 3 neurons
     uint32_t top_count = (analysis.num_active_neurons < 3) ? analysis.num_active_neurons : 3;
     for (uint32_t i = 0; i < top_count; i++) {
-        written += snprintf(explanation + written, max_length - written,
-                           "N%u(%.2f) ",
-                           analysis.active_neuron_ids[i],
-                           analysis.activation_strengths[i]);
+        written += snprintf(explanation + written, max_length - written, "N%u(%.2f) ",
+                            analysis.active_neuron_ids[i], analysis.activation_strengths[i]);
     }
 
     // Free analysis arrays
@@ -1519,9 +1591,10 @@ uint32_t adaptive_network_explain(adaptive_network_t network,
 // Performance Statistics
 //=============================================================================
 
-bool adaptive_network_get_performance(adaptive_network_t network,
-                                     network_performance_t* stats) {
-    if (!network || !stats) return false;
+bool adaptive_network_get_performance(adaptive_network_t network, network_performance_t* stats)
+{
+    if (!network || !stats)
+        return false;
 
     stats->total_inferences = network->total_inferences;
     stats->total_learning_steps = network->total_learning_steps;
@@ -1535,8 +1608,10 @@ bool adaptive_network_get_performance(adaptive_network_t network,
     return true;
 }
 
-void adaptive_network_reset_stats(adaptive_network_t network) {
-    if (!network) return;
+void adaptive_network_reset_stats(adaptive_network_t network)
+{
+    if (!network)
+        return;
 
     network->total_inferences = 0;
     network->total_learning_steps = 0;
@@ -1554,8 +1629,10 @@ void adaptive_network_reset_stats(adaptive_network_t network) {
  * WHY: Introspection needs to know network size
  * HOW: Return cached neuron count
  */
-uint32_t adaptive_network_get_neuron_count(adaptive_network_t network) {
-    if (!network) return 0;
+uint32_t adaptive_network_get_neuron_count(adaptive_network_t network)
+{
+    if (!network)
+        return 0;
     return network->num_neurons;
 }
 
@@ -1564,16 +1641,15 @@ uint32_t adaptive_network_get_neuron_count(adaptive_network_t network) {
  * WHY: Introspection needs to query individual neuron states
  * HOW: Access base network neuron state
  */
-bool adaptive_network_get_neuron_activation(adaptive_network_t network,
-                                            uint32_t neuron_id,
-                                            float* activation) {
+bool adaptive_network_get_neuron_activation(adaptive_network_t network, uint32_t neuron_id,
+                                            float* activation)
+{
     if (!network || !activation || neuron_id >= network->num_neurons) {
         return false;
     }
 
     /* WHAT: Get neuron state from base network */
-    return neural_network_get_neuron_state(network->base_network,
-                                          neuron_id, activation);
+    return neural_network_get_neuron_state(network->base_network, neuron_id, activation);
 }
 
 /**
@@ -1583,11 +1659,10 @@ bool adaptive_network_get_neuron_activation(adaptive_network_t network,
  *
  * COMPLEXITY: O(n) where n = num_neurons
  */
-uint32_t adaptive_network_get_active_neurons(adaptive_network_t network,
-                                             float threshold,
-                                             uint32_t* neuron_ids,
-                                             float* activations,
-                                             uint32_t max_neurons) {
+uint32_t adaptive_network_get_active_neurons(adaptive_network_t network, float threshold,
+                                             uint32_t* neuron_ids, float* activations,
+                                             uint32_t max_neurons)
+{
     if (!network || !neuron_ids || !activations || max_neurons == 0) {
         return 0;
     }
@@ -1602,9 +1677,12 @@ uint32_t adaptive_network_get_active_neurons(adaptive_network_t network,
         float raw_activation;
         if (neural_network_get_neuron_state(network->base_network, i, &raw_activation)) {
             /* WHAT: Normalize to 0-1 range */
-            float normalized = (raw_activation - REST_POTENTIAL) / (PEAK_POTENTIAL - REST_POTENTIAL);
-            if (normalized < 0.0f) normalized = 0.0f;
-            if (normalized > 1.0f) normalized = 1.0f;
+            float normalized =
+                (raw_activation - REST_POTENTIAL) / (PEAK_POTENTIAL - REST_POTENTIAL);
+            if (normalized < 0.0f)
+                normalized = 0.0f;
+            if (normalized > 1.0f)
+                normalized = 1.0f;
 
             if (normalized >= threshold) {
                 neuron_ids[count] = i;
@@ -1622,9 +1700,9 @@ uint32_t adaptive_network_get_active_neurons(adaptive_network_t network,
  * WHY: Introspection needs neuron topology info
  * HOW: Access base network neuron synapse count
  */
-bool adaptive_network_get_connection_count(adaptive_network_t network,
-                                           uint32_t neuron_id,
-                                           uint32_t* num_connections) {
+bool adaptive_network_get_connection_count(adaptive_network_t network, uint32_t neuron_id,
+                                           uint32_t* num_connections)
+{
     if (!network || !num_connections || neuron_id >= network->num_neurons) {
         return false;
     }
@@ -1636,8 +1714,8 @@ bool adaptive_network_get_connection_count(adaptive_network_t network,
 
     /* TODO: Add neural_network_get_neuron_info() API */
     /* For now, return average connections based on sparsity */
-    uint32_t avg_connections = (uint32_t)(network->num_neurons *
-                                         (1.0f - network->config.spike_params.sparsity_target));
+    uint32_t avg_connections =
+        (uint32_t) (network->num_neurons * (1.0f - network->config.spike_params.sparsity_target));
     *num_connections = avg_connections;
 
     return true;
@@ -1648,9 +1726,9 @@ bool adaptive_network_get_connection_count(adaptive_network_t network,
  * WHY: Introspection needs neuron importance metrics
  * HOW: Sum absolute values of connection weights
  */
-bool adaptive_network_get_total_weight(adaptive_network_t network,
-                                       uint32_t neuron_id,
-                                       float* total_weight) {
+bool adaptive_network_get_total_weight(adaptive_network_t network, uint32_t neuron_id,
+                                       float* total_weight)
+{
     if (!network || !total_weight || neuron_id >= network->num_neurons) {
         return false;
     }
@@ -1660,7 +1738,7 @@ bool adaptive_network_get_total_weight(adaptive_network_t network,
     float activation;
     if (neural_network_get_neuron_state(network->base_network, neuron_id, &activation)) {
         /* Estimate: active neurons have higher total weights */
-        *total_weight = activation * 10.0f;  /* Rough estimate */
+        *total_weight = activation * 10.0f; /* Rough estimate */
         return true;
     }
 
@@ -1674,7 +1752,9 @@ bool adaptive_network_get_total_weight(adaptive_network_t network,
  *
  * WARNING: This exposes internals - use carefully!
  */
-neural_network_t adaptive_network_get_base_network(adaptive_network_t network) {
-    if (!network) return NULL;
+neural_network_t adaptive_network_get_base_network(adaptive_network_t network)
+{
+    if (!network)
+        return NULL;
     return network->base_network;
 }

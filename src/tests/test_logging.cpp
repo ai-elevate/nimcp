@@ -8,18 +8,18 @@
  * HOW: Use GoogleTest framework with fixtures and output verification
  */
 
+#include <fcntl.h>
 #include <gtest/gtest.h>
-#include <fstream>
-#include <sstream>
-#include <string>
-#include <vector>
-#include <thread>
-#include <chrono>
-#include <regex>
-#include <atomic>
 #include <sys/stat.h>
 #include <unistd.h>
-#include <fcntl.h>
+#include <atomic>
+#include <chrono>
+#include <fstream>
+#include <regex>
+#include <sstream>
+#include <string>
+#include <thread>
+#include <vector>
 
 extern "C" {
 #include "logging/nimcp_logging.h"
@@ -40,7 +40,8 @@ static const char* TEST_LOG_FILE = "/tmp/nimcp_test_logs/nimcp.log";
  * WHAT: Read contents of log file
  * WHY: Verify log messages were written correctly
  */
-static std::string read_log_file(const char* path) {
+static std::string read_log_file(const char* path)
+{
     std::ifstream file(path);
     if (!file.is_open()) {
         return "";
@@ -55,7 +56,8 @@ static std::string read_log_file(const char* path) {
  * WHAT: Count lines in log file
  * WHY: Verify expected number of log messages
  */
-static int count_log_lines(const char* path) {
+static int count_log_lines(const char* path)
+{
     std::ifstream file(path);
     if (!file.is_open()) {
         return -1;
@@ -75,7 +77,8 @@ static int count_log_lines(const char* path) {
  * WHAT: Get last line from log file
  * WHY: Verify most recent log message
  */
-static std::string get_last_log_line(const char* path) {
+static std::string get_last_log_line(const char* path)
+{
     std::ifstream file(path);
     if (!file.is_open()) {
         return "";
@@ -95,7 +98,8 @@ static std::string get_last_log_line(const char* path) {
  * WHAT: Check if log file exists
  * WHY: Verify file creation and deletion
  */
-static bool log_file_exists(const char* path) {
+static bool log_file_exists(const char* path)
+{
     struct stat buffer;
     return (stat(path, &buffer) == 0);
 }
@@ -104,7 +108,8 @@ static bool log_file_exists(const char* path) {
  * WHAT: Clean up test log directory
  * WHY: Ensure clean state for tests
  */
-static void cleanup_test_logs() {
+static void cleanup_test_logs()
+{
     // Close any open log file first
     log_close();
 
@@ -119,7 +124,8 @@ static void cleanup_test_logs() {
  * WHAT: Create test log directory (currently unused but kept for future use)
  * WHY: Ensure directory exists for tests
  */
-[[maybe_unused]] static void create_test_log_dir() {
+[[maybe_unused]] static void create_test_log_dir()
+{
     mkdir(TEST_LOG_DIR, 0755);
 }
 
@@ -127,7 +133,8 @@ static void cleanup_test_logs() {
  * WHAT: Extract timestamp from log line
  * WHY: Verify log format and timestamp validity
  */
-static std::string extract_timestamp(const std::string& log_line) {
+static std::string extract_timestamp(const std::string& log_line)
+{
     // Format: [YYYY-MM-DD HH:MM:SS] [LEVEL] message
     std::regex timestamp_regex(R"(\[(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2})\])");
     std::smatch match;
@@ -142,7 +149,8 @@ static std::string extract_timestamp(const std::string& log_line) {
  * WHAT: Extract log level from log line
  * WHY: Verify correct log level is written
  */
-static std::string extract_log_level(const std::string& log_line) {
+static std::string extract_log_level(const std::string& log_line)
+{
     // Format: [YYYY-MM-DD HH:MM:SS] [LEVEL] message
     std::regex level_regex(R"(\[([A-Z]+)\])");
     std::smatch match;
@@ -165,13 +173,14 @@ static std::string extract_log_level(const std::string& log_line) {
  * WHAT: Extract message from log line
  * WHY: Verify actual log message content
  */
-static std::string extract_message(const std::string& log_line) {
+static std::string extract_message(const std::string& log_line)
+{
     // Find the position after the second ']'
     size_t pos = log_line.find(']');
     if (pos != std::string::npos) {
         pos = log_line.find(']', pos + 1);
         if (pos != std::string::npos && pos + 2 < log_line.length()) {
-            return log_line.substr(pos + 2); // Skip "] "
+            return log_line.substr(pos + 2);  // Skip "] "
         }
     }
     return "";
@@ -182,15 +191,17 @@ static std::string extract_message(const std::string& log_line) {
 //=============================================================================
 
 class LoggingTest : public ::testing::Test {
-protected:
-    void SetUp() override {
+   protected:
+    void SetUp() override
+    {
         // Clean up any existing test logs
         cleanup_test_logs();
 
         // Note: We don't call log_init here to test initialization in each test
     }
 
-    void TearDown() override {
+    void TearDown() override
+    {
         // Clean up after test
         cleanup_test_logs();
     }
@@ -199,7 +210,8 @@ protected:
      * WHAT: Initialize logging for test with custom directory
      * WHY: Allow tests to control when logging is initialized
      */
-    void init_test_logging() {
+    void init_test_logging()
+    {
         // The log_init function creates /var/log/nimcp directory and file
         // We can't easily redirect it to /tmp, so we'll work with the default path
         log_init(nullptr);
@@ -214,7 +226,8 @@ protected:
  * WHAT: Test basic log initialization
  * WHY: Verify logging system can be initialized without errors
  */
-TEST_F(LoggingTest, InitializeLogging) {
+TEST_F(LoggingTest, InitializeLogging)
+{
     // The logging system creates /var/log/nimcp directory
     // We need to check if we have permissions
     init_test_logging();
@@ -228,7 +241,8 @@ TEST_F(LoggingTest, InitializeLogging) {
  * WHAT: Test reinitialization of logging
  * WHY: Verify we can reinitialize logging without issues
  */
-TEST_F(LoggingTest, ReinitializeLogging) {
+TEST_F(LoggingTest, ReinitializeLogging)
+{
     init_test_logging();
 
     // Log a message
@@ -248,7 +262,8 @@ TEST_F(LoggingTest, ReinitializeLogging) {
  * WHAT: Test log initialization with NULL parameter
  * WHY: Verify NULL parameter is handled correctly (uses default path)
  */
-TEST_F(LoggingTest, InitializeWithNullPath) {
+TEST_F(LoggingTest, InitializeWithNullPath)
+{
     log_init(nullptr);
 
     // Should create default log file
@@ -264,7 +279,8 @@ TEST_F(LoggingTest, InitializeWithNullPath) {
  * WHAT: Test DEBUG level logging
  * WHY: Verify DEBUG messages are logged correctly
  */
-TEST_F(LoggingTest, LogDebugLevel) {
+TEST_F(LoggingTest, LogDebugLevel)
+{
     init_test_logging();
 
     const char* test_message = "Debug test message";
@@ -286,7 +302,8 @@ TEST_F(LoggingTest, LogDebugLevel) {
  * WHAT: Test INFO level logging
  * WHY: Verify INFO messages are logged correctly
  */
-TEST_F(LoggingTest, LogInfoLevel) {
+TEST_F(LoggingTest, LogInfoLevel)
+{
     init_test_logging();
 
     const char* test_message = "Info test message";
@@ -308,7 +325,8 @@ TEST_F(LoggingTest, LogInfoLevel) {
  * WHAT: Test WARNING level logging
  * WHY: Verify WARNING messages are logged correctly
  */
-TEST_F(LoggingTest, LogWarningLevel) {
+TEST_F(LoggingTest, LogWarningLevel)
+{
     init_test_logging();
 
     const char* test_message = "Warning test message";
@@ -330,7 +348,8 @@ TEST_F(LoggingTest, LogWarningLevel) {
  * WHAT: Test ERROR level logging
  * WHY: Verify ERROR messages are logged correctly
  */
-TEST_F(LoggingTest, LogErrorLevel) {
+TEST_F(LoggingTest, LogErrorLevel)
+{
     init_test_logging();
 
     const char* test_message = "Error test message";
@@ -352,7 +371,8 @@ TEST_F(LoggingTest, LogErrorLevel) {
  * WHAT: Test FATAL level logging
  * WHY: Verify FATAL messages are logged correctly
  */
-TEST_F(LoggingTest, LogFatalLevel) {
+TEST_F(LoggingTest, LogFatalLevel)
+{
     init_test_logging();
 
     const char* test_message = "Fatal test message";
@@ -374,7 +394,8 @@ TEST_F(LoggingTest, LogFatalLevel) {
  * WHAT: Test all log levels in sequence
  * WHY: Verify all levels work together
  */
-TEST_F(LoggingTest, LogAllLevels) {
+TEST_F(LoggingTest, LogAllLevels)
+{
     init_test_logging();
 
     NIMCP_LOGGING_DEBUG("Debug message");
@@ -397,7 +418,8 @@ TEST_F(LoggingTest, LogAllLevels) {
  * WHAT: Test timestamp format in log messages
  * WHY: Verify timestamps are properly formatted
  */
-TEST_F(LoggingTest, TimestampFormat) {
+TEST_F(LoggingTest, TimestampFormat)
+{
     init_test_logging();
 
     NIMCP_LOGGING_INFO("Test message");
@@ -416,7 +438,8 @@ TEST_F(LoggingTest, TimestampFormat) {
  * WHAT: Test log message with format specifiers
  * WHY: Verify printf-style formatting works
  */
-TEST_F(LoggingTest, FormattedMessage) {
+TEST_F(LoggingTest, FormattedMessage)
+{
     init_test_logging();
 
     int value = 42;
@@ -439,7 +462,8 @@ TEST_F(LoggingTest, FormattedMessage) {
  * WHAT: Test long log messages
  * WHY: Verify system handles long messages correctly
  */
-TEST_F(LoggingTest, LongMessage) {
+TEST_F(LoggingTest, LongMessage)
+{
     init_test_logging();
 
     std::string long_msg(1000, 'A');
@@ -458,7 +482,8 @@ TEST_F(LoggingTest, LongMessage) {
  * WHAT: Test log message with special characters
  * WHY: Verify special characters are handled correctly
  */
-TEST_F(LoggingTest, SpecialCharacters) {
+TEST_F(LoggingTest, SpecialCharacters)
+{
     init_test_logging();
 
     const char* special_msg = "Test!@#$%^&*()_+-=[]{}|;':\",./<>?";
@@ -481,34 +506,33 @@ TEST_F(LoggingTest, SpecialCharacters) {
  * WHAT: Test logging before initialization
  * WHY: Verify system handles uninitialized state gracefully
  */
-TEST_F(LoggingTest, LogBeforeInit) {
+TEST_F(LoggingTest, LogBeforeInit)
+{
     // Don't call init_test_logging()
 
     // This should not crash, just do nothing
-    EXPECT_NO_THROW({
-        log_message(LOG_LEVEL_INFO, "This should be ignored");
-    });
+    EXPECT_NO_THROW({ log_message(LOG_LEVEL_INFO, "This should be ignored"); });
 }
 
 /**
  * WHAT: Test logging after close
  * WHY: Verify system handles closed state gracefully
  */
-TEST_F(LoggingTest, LogAfterClose) {
+TEST_F(LoggingTest, LogAfterClose)
+{
     init_test_logging();
     log_close();
 
     // This should not crash
-    EXPECT_NO_THROW({
-        log_message(LOG_LEVEL_INFO, "This should be ignored");
-    });
+    EXPECT_NO_THROW({ log_message(LOG_LEVEL_INFO, "This should be ignored"); });
 }
 
 /**
  * WHAT: Test NULL format string
  * WHY: Verify NULL parameter is handled (may crash or be handled)
  */
-TEST_F(LoggingTest, NullFormatString) {
+TEST_F(LoggingTest, NullFormatString)
+{
     init_test_logging();
 
     // Note: This may cause issues, but we test for robustness
@@ -522,7 +546,8 @@ TEST_F(LoggingTest, NullFormatString) {
  * WHAT: Test multiple close calls
  * WHY: Verify closing multiple times is safe
  */
-TEST_F(LoggingTest, MultipleClose) {
+TEST_F(LoggingTest, MultipleClose)
+{
     init_test_logging();
 
     EXPECT_NO_THROW({
@@ -540,7 +565,8 @@ TEST_F(LoggingTest, MultipleClose) {
  * WHAT: Test concurrent logging from multiple threads
  * WHY: Verify logging is thread-safe
  */
-TEST_F(LoggingTest, ConcurrentLogging) {
+TEST_F(LoggingTest, ConcurrentLogging)
+{
     init_test_logging();
 
     const int NUM_THREADS = 10;
@@ -577,7 +603,8 @@ TEST_F(LoggingTest, ConcurrentLogging) {
  * WHAT: Test concurrent logging with different log levels
  * WHY: Verify thread safety across different log levels
  */
-TEST_F(LoggingTest, ConcurrentMixedLevels) {
+TEST_F(LoggingTest, ConcurrentMixedLevels)
+{
     init_test_logging();
 
     const int NUM_THREADS = 8;
@@ -610,7 +637,8 @@ TEST_F(LoggingTest, ConcurrentMixedLevels) {
  * WHAT: Test logging performance (should not block significantly)
  * WHY: Verify logging is fast enough for production use
  */
-TEST_F(LoggingTest, LoggingPerformance) {
+TEST_F(LoggingTest, LoggingPerformance)
+{
     init_test_logging();
 
     const int NUM_LOGS = 1000;
@@ -638,7 +666,8 @@ TEST_F(LoggingTest, LoggingPerformance) {
  * WHAT: Test logging doesn't block for too long
  * WHY: Verify fflush doesn't cause excessive blocking
  */
-TEST_F(LoggingTest, NonBlockingBehavior) {
+TEST_F(LoggingTest, NonBlockingBehavior)
+{
     init_test_logging();
 
     // Log a message and measure time
@@ -662,7 +691,8 @@ TEST_F(LoggingTest, NonBlockingBehavior) {
  * WHAT: Test log file is created
  * WHY: Verify file creation works
  */
-TEST_F(LoggingTest, LogFileCreated) {
+TEST_F(LoggingTest, LogFileCreated)
+{
     init_test_logging();
 
     EXPECT_TRUE(log_file_exists("/var/log/nimcp/nimcp.log"));
@@ -674,7 +704,8 @@ TEST_F(LoggingTest, LogFileCreated) {
  * WHAT: Test log file is writable
  * WHY: Verify we can write to the log file
  */
-TEST_F(LoggingTest, LogFileWritable) {
+TEST_F(LoggingTest, LogFileWritable)
+{
     init_test_logging();
 
     NIMCP_LOGGING_INFO("Test write");
@@ -689,7 +720,8 @@ TEST_F(LoggingTest, LogFileWritable) {
  * WHAT: Test log messages are immediately flushed
  * WHY: Verify fflush ensures messages are written
  */
-TEST_F(LoggingTest, ImmediateFlush) {
+TEST_F(LoggingTest, ImmediateFlush)
+{
     init_test_logging();
 
     NIMCP_LOGGING_INFO("Flush test message");
@@ -708,7 +740,8 @@ TEST_F(LoggingTest, ImmediateFlush) {
  * WHAT: Test append mode for log file
  * WHY: Verify logs are appended, not overwritten
  */
-TEST_F(LoggingTest, AppendMode) {
+TEST_F(LoggingTest, AppendMode)
+{
     // First session
     init_test_logging();
     NIMCP_LOGGING_INFO("First message");
@@ -735,7 +768,8 @@ TEST_F(LoggingTest, AppendMode) {
  * WHAT: Test complete logging workflow
  * WHY: Verify end-to-end functionality
  */
-TEST_F(LoggingTest, CompleteWorkflow) {
+TEST_F(LoggingTest, CompleteWorkflow)
+{
     // Initialize
     init_test_logging();
 
@@ -762,7 +796,8 @@ TEST_F(LoggingTest, CompleteWorkflow) {
  * WHAT: Test logging system cleanup
  * WHY: Verify proper cleanup and resource release
  */
-TEST_F(LoggingTest, ProperCleanup) {
+TEST_F(LoggingTest, ProperCleanup)
+{
     for (int i = 0; i < 3; i++) {
         init_test_logging();
         NIMCP_LOGGING_INFO("Iteration %d", i);

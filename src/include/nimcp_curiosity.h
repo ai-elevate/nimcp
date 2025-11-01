@@ -5,10 +5,10 @@
 #ifndef NIMCP_CURIOSITY_H
 #define NIMCP_CURIOSITY_H
 
+#include <stdbool.h>
+#include <stdint.h>
 #include "nimcp_brain.h"
 #include "nimcp_export.h"
-#include <stdint.h>
-#include <stdbool.h>
 
 /**
  * @file nimcp_curiosity.h
@@ -56,12 +56,12 @@ typedef struct curiosity_engine_struct* curiosity_engine_t;
  * @brief Knowledge gap detection
  */
 typedef struct {
-    char topic[256];                /**< What we don't know about */
-    float gap_size;                 /**< How much we don't know (0-1) */
-    float curiosity_intensity;      /**< How curious we are about it (0-1) */
-    float learning_potential;       /**< Expected learning value (0-1) */
-    uint32_t related_concepts;      /**< Number of related known concepts */
-    char** prerequisites;           /**< What we need to know first */
+    char topic[256];           /**< What we don't know about */
+    float gap_size;            /**< How much we don't know (0-1) */
+    float curiosity_intensity; /**< How curious we are about it (0-1) */
+    float learning_potential;  /**< Expected learning value (0-1) */
+    uint32_t related_concepts; /**< Number of related known concepts */
+    char** prerequisites;      /**< What we need to know first */
     uint32_t num_prerequisites;
 } knowledge_gap_t;
 
@@ -69,24 +69,24 @@ typedef struct {
  * @brief Question types for knowledge seeking
  */
 typedef enum {
-    QUESTION_WHAT,      /**< "What is X?" - definitional */
-    QUESTION_WHY,       /**< "Why does X happen?" - causal */
-    QUESTION_HOW,       /**< "How does X work?" - mechanistic */
-    QUESTION_WHEN,      /**< "When did X happen?" - temporal */
-    QUESTION_WHERE,     /**< "Where is X?" - spatial */
-    QUESTION_WHO,       /**< "Who did X?" - agentive */
-    QUESTION_WHICH      /**< "Which X?" - discriminative */
+    QUESTION_WHAT,  /**< "What is X?" - definitional */
+    QUESTION_WHY,   /**< "Why does X happen?" - causal */
+    QUESTION_HOW,   /**< "How does X work?" - mechanistic */
+    QUESTION_WHEN,  /**< "When did X happen?" - temporal */
+    QUESTION_WHERE, /**< "Where is X?" - spatial */
+    QUESTION_WHO,   /**< "Who did X?" - agentive */
+    QUESTION_WHICH  /**< "Which X?" - discriminative */
 } question_type_t;
 
 /**
  * @brief Generated question for knowledge seeking
  */
 typedef struct {
-    char question[512];             /**< The question text */
-    question_type_t type;           /**< Question type */
-    float priority;                 /**< How important to answer (0-1) */
-    float difficulty;               /**< Expected difficulty (0-1) */
-    char** search_terms;            /**< Suggested search terms */
+    char question[512];   /**< The question text */
+    question_type_t type; /**< Question type */
+    float priority;       /**< How important to answer (0-1) */
+    float difficulty;     /**< Expected difficulty (0-1) */
+    char** search_terms;  /**< Suggested search terms */
     uint32_t num_search_terms;
 } generated_question_t;
 
@@ -94,23 +94,23 @@ typedef struct {
  * @brief Learning motivation sources
  */
 typedef enum {
-    MOTIVATION_INTRINSIC,   /**< Pure curiosity */
-    MOTIVATION_GOAL,        /**< Needed for a goal */
-    MOTIVATION_SOCIAL,      /**< Others find it important */
-    MOTIVATION_SURVIVAL,    /**< Needed for safety/wellbeing */
-    MOTIVATION_AESTHETIC    /**< Beautiful/interesting */
+    MOTIVATION_INTRINSIC, /**< Pure curiosity */
+    MOTIVATION_GOAL,      /**< Needed for a goal */
+    MOTIVATION_SOCIAL,    /**< Others find it important */
+    MOTIVATION_SURVIVAL,  /**< Needed for safety/wellbeing */
+    MOTIVATION_AESTHETIC  /**< Beautiful/interesting */
 } motivation_source_t;
 
 /**
  * @brief Learning motivation state
  */
 typedef struct {
-    float intrinsic_curiosity;      /**< Pure desire to know (0-1) */
-    float goal_relevance;           /**< Helps achieve goals (0-1) */
-    float social_importance;        /**< Others value it (0-1) */
-    float survival_value;           /**< Survival/safety importance (0-1) */
-    float aesthetic_appeal;         /**< Beauty/interest (0-1) */
-    float overall_motivation;       /**< Combined motivation (0-1) */
+    float intrinsic_curiosity; /**< Pure desire to know (0-1) */
+    float goal_relevance;      /**< Helps achieve goals (0-1) */
+    float social_importance;   /**< Others value it (0-1) */
+    float survival_value;      /**< Survival/safety importance (0-1) */
+    float aesthetic_appeal;    /**< Beauty/interest (0-1) */
+    float overall_motivation;  /**< Combined motivation (0-1) */
 } motivation_state_t;
 
 //=============================================================================
@@ -145,10 +145,7 @@ void curiosity_engine_destroy(curiosity_engine_t engine);
  * @param concept Concept or topic encountered
  * @return Knowledge gap assessment
  */
-knowledge_gap_t curiosity_detect_knowledge_gap(
-    curiosity_engine_t engine,
-    const char* concept
-);
+knowledge_gap_t curiosity_detect_knowledge_gap(curiosity_engine_t engine, const char* concept);
 
 /**
  * @brief Check if concept is known
@@ -157,10 +154,7 @@ knowledge_gap_t curiosity_detect_knowledge_gap(
  * @param concept Concept to check
  * @return Familiarity score (0=unknown, 1=fully known)
  */
-float curiosity_check_familiarity(
-    curiosity_engine_t engine,
-    const char* concept
-);
+float curiosity_check_familiarity(curiosity_engine_t engine, const char* concept);
 
 /**
  * @brief Get related concepts
@@ -173,12 +167,8 @@ float curiosity_check_familiarity(
  * @param max_related Maximum concepts to return
  * @return Number of related concepts found
  */
-uint32_t curiosity_get_related_concepts(
-    curiosity_engine_t engine,
-    const char* concept,
-    char** related,
-    uint32_t max_related
-);
+uint32_t curiosity_get_related_concepts(curiosity_engine_t engine, const char* concept,
+                                        char** related, uint32_t max_related);
 
 //=============================================================================
 // Question Generation
@@ -195,12 +185,8 @@ uint32_t curiosity_get_related_concepts(
  * @param max_questions Maximum questions to generate
  * @return Number of questions generated
  */
-uint32_t curiosity_generate_questions(
-    curiosity_engine_t engine,
-    const knowledge_gap_t* gap,
-    generated_question_t* questions,
-    uint32_t max_questions
-);
+uint32_t curiosity_generate_questions(curiosity_engine_t engine, const knowledge_gap_t* gap,
+                                      generated_question_t* questions, uint32_t max_questions);
 
 /**
  * @brief Generate follow-up question
@@ -211,10 +197,7 @@ uint32_t curiosity_generate_questions(
  * @param previous_answer Previous answer learned
  * @return Follow-up question or NULL
  */
-const char* curiosity_generate_followup(
-    curiosity_engine_t engine,
-    const char* previous_answer
-);
+const char* curiosity_generate_followup(curiosity_engine_t engine, const char* previous_answer);
 
 //=============================================================================
 // Motivation & Drive
@@ -229,10 +212,7 @@ const char* curiosity_generate_followup(
  * @param concept Concept to learn
  * @return Motivation state
  */
-motivation_state_t curiosity_assess_motivation(
-    curiosity_engine_t engine,
-    const char* concept
-);
+motivation_state_t curiosity_assess_motivation(curiosity_engine_t engine, const char* concept);
 
 /**
  * @brief Set intrinsic curiosity level
@@ -266,11 +246,7 @@ float curiosity_get_drive(curiosity_engine_t engine);
  * @param answer Answer received
  * @return true on success
  */
-bool curiosity_learn_answer(
-    curiosity_engine_t engine,
-    const char* question,
-    const char* answer
-);
+bool curiosity_learn_answer(curiosity_engine_t engine, const char* question, const char* answer);
 
 /**
  * @brief Learn from experience
@@ -283,12 +259,8 @@ bool curiosity_learn_answer(
  * @param num_features Number of features
  * @return true on success
  */
-bool curiosity_learn_experience(
-    curiosity_engine_t engine,
-    const char* experience_description,
-    const float* sensory_data,
-    uint32_t num_features
-);
+bool curiosity_learn_experience(curiosity_engine_t engine, const char* experience_description,
+                                const float* sensory_data, uint32_t num_features);
 
 /**
  * @brief Learn from observation
@@ -300,11 +272,8 @@ bool curiosity_learn_experience(
  * @param context Context of observation
  * @return true on success
  */
-bool curiosity_learn_observation(
-    curiosity_engine_t engine,
-    const char* what_observed,
-    const char* context
-);
+bool curiosity_learn_observation(curiosity_engine_t engine, const char* what_observed,
+                                 const char* context);
 
 //=============================================================================
 // Knowledge Search & Acquisition
@@ -315,12 +284,8 @@ bool curiosity_learn_observation(
  *
  * Function signature for searching external sources (web, books, etc.)
  */
-typedef char** (*knowledge_search_fn_t)(
-    const char* query,
-    void* context,
-    uint32_t max_results,
-    uint32_t* num_results
-);
+typedef char** (*knowledge_search_fn_t)(const char* query, void* context, uint32_t max_results,
+                                        uint32_t* num_results);
 
 /**
  * @brief Register knowledge source
@@ -333,12 +298,8 @@ typedef char** (*knowledge_search_fn_t)(
  * @param context Context for search function
  * @return true on success
  */
-bool curiosity_register_knowledge_source(
-    curiosity_engine_t engine,
-    const char* source_name,
-    knowledge_search_fn_t search_fn,
-    void* context
-);
+bool curiosity_register_knowledge_source(curiosity_engine_t engine, const char* source_name,
+                                         knowledge_search_fn_t search_fn, void* context);
 
 /**
  * @brief Seek knowledge actively
@@ -351,12 +312,8 @@ bool curiosity_register_knowledge_source(
  * @param max_results Maximum results
  * @return Number of results found
  */
-uint32_t curiosity_seek_knowledge(
-    curiosity_engine_t engine,
-    const knowledge_gap_t* gap,
-    char** results,
-    uint32_t max_results
-);
+uint32_t curiosity_seek_knowledge(curiosity_engine_t engine, const knowledge_gap_t* gap,
+                                  char** results, uint32_t max_results);
 
 //=============================================================================
 // Learning Progress
@@ -370,9 +327,9 @@ typedef struct {
     uint64_t total_answers_learned;
     uint64_t total_experiences;
     uint64_t concepts_learned;
-    float knowledge_growth_rate;     /**< Recent learning rate */
-    float avg_curiosity;             /**< Average curiosity level */
-    char current_focus[256];         /**< Current learning focus */
+    float knowledge_growth_rate; /**< Recent learning rate */
+    float avg_curiosity;         /**< Average curiosity level */
+    char current_focus[256];     /**< Current learning focus */
 } learning_progress_t;
 
 /**
@@ -384,10 +341,7 @@ typedef struct {
  * @param progress Output progress structure
  * @return true on success
  */
-bool curiosity_get_progress(
-    curiosity_engine_t engine,
-    learning_progress_t* progress
-);
+bool curiosity_get_progress(curiosity_engine_t engine, learning_progress_t* progress);
 
 /**
  * @brief Get knowledge domain coverage
@@ -398,10 +352,7 @@ bool curiosity_get_progress(
  * @param domain Domain name (e.g., "literature", "science", "ethics")
  * @return Coverage percentage (0-1)
  */
-float curiosity_get_domain_coverage(
-    curiosity_engine_t engine,
-    const char* domain
-);
+float curiosity_get_domain_coverage(curiosity_engine_t engine, const char* domain);
 
 //=============================================================================
 // Developmental Stages
@@ -411,12 +362,12 @@ float curiosity_get_domain_coverage(
  * @brief Learning stage (like human development)
  */
 typedef enum {
-    STAGE_INFANT,       /**< Basic concepts, sensory learning */
-    STAGE_TODDLER,      /**< Language acquisition, basic reasoning */
-    STAGE_CHILD,        /**< Structured learning, reading, writing */
-    STAGE_ADOLESCENT,   /**< Abstract reasoning, complex domains */
-    STAGE_ADULT,        /**< Specialized knowledge, expertise */
-    STAGE_EXPERT        /**< Deep expertise in domains */
+    STAGE_INFANT,     /**< Basic concepts, sensory learning */
+    STAGE_TODDLER,    /**< Language acquisition, basic reasoning */
+    STAGE_CHILD,      /**< Structured learning, reading, writing */
+    STAGE_ADOLESCENT, /**< Abstract reasoning, complex domains */
+    STAGE_ADULT,      /**< Specialized knowledge, expertise */
+    STAGE_EXPERT      /**< Deep expertise in domains */
 } learning_stage_t;
 
 /**
@@ -456,4 +407,4 @@ void curiosity_print_question(const generated_question_t* question);
  */
 void curiosity_print_progress(const learning_progress_t* progress);
 
-#endif // NIMCP_CURIOSITY_H
+#endif  // NIMCP_CURIOSITY_H

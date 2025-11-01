@@ -46,8 +46,8 @@
 #ifndef NIMCP_CONSOLIDATION_H
 #define NIMCP_CONSOLIDATION_H
 
-#include <stdint.h>
 #include <stdbool.h>
+#include <stdint.h>
 #include "nimcp_brain.h"
 
 #ifdef __cplusplus
@@ -78,11 +78,11 @@ typedef struct consolidation_handle_struct* consolidation_handle_t;
  * - FULL: All of the above (most comprehensive)
  */
 typedef enum {
-    CONSOLIDATION_STRATEGY_REPLAY,       /* Replay important patterns */
-    CONSOLIDATION_STRATEGY_SCALING,      /* Synaptic scaling */
-    CONSOLIDATION_STRATEGY_PRUNING,      /* Prune weak connections */
-    CONSOLIDATION_STRATEGY_INTEGRATION,  /* Integrate new + old */
-    CONSOLIDATION_STRATEGY_FULL          /* All strategies */
+    CONSOLIDATION_STRATEGY_REPLAY,      /* Replay important patterns */
+    CONSOLIDATION_STRATEGY_SCALING,     /* Synaptic scaling */
+    CONSOLIDATION_STRATEGY_PRUNING,     /* Prune weak connections */
+    CONSOLIDATION_STRATEGY_INTEGRATION, /* Integrate new + old */
+    CONSOLIDATION_STRATEGY_FULL         /* All strategies */
 } consolidation_strategy_t;
 
 /**
@@ -91,11 +91,11 @@ typedef enum {
  * HOW: Prioritize by recency, frequency, or importance
  */
 typedef enum {
-    CONSOLIDATION_PRIORITY_RECENT,       /* Recent patterns */
-    CONSOLIDATION_PRIORITY_FREQUENT,     /* Frequently activated */
-    CONSOLIDATION_PRIORITY_IMPORTANT,    /* High-value patterns */
-    CONSOLIDATION_PRIORITY_NOVEL,        /* Novel patterns */
-    CONSOLIDATION_PRIORITY_ALL           /* All patterns equally */
+    CONSOLIDATION_PRIORITY_RECENT,    /* Recent patterns */
+    CONSOLIDATION_PRIORITY_FREQUENT,  /* Frequently activated */
+    CONSOLIDATION_PRIORITY_IMPORTANT, /* High-value patterns */
+    CONSOLIDATION_PRIORITY_NOVEL,     /* Novel patterns */
+    CONSOLIDATION_PRIORITY_ALL        /* All patterns equally */
 } consolidation_priority_t;
 
 /**
@@ -104,31 +104,31 @@ typedef enum {
  * HOW: Struct with all consolidation parameters
  */
 typedef struct {
-    consolidation_strategy_t strategy;   /* Consolidation strategy */
-    consolidation_priority_t priority;   /* Pattern priority */
+    consolidation_strategy_t strategy; /* Consolidation strategy */
+    consolidation_priority_t priority; /* Pattern priority */
 
-    uint32_t consolidation_cycles;       /* Number of cycles (iterations) */
-    float consolidation_strength;        /* Learning rate (0-1) */
+    uint32_t consolidation_cycles; /* Number of cycles (iterations) */
+    float consolidation_strength;  /* Learning rate (0-1) */
 
-    bool enable_replay;                  /* Enable pattern replay? */
-    uint32_t replay_count;               /* Patterns to replay per cycle */
+    bool enable_replay;    /* Enable pattern replay? */
+    uint32_t replay_count; /* Patterns to replay per cycle */
 
-    bool enable_pruning;                 /* Enable connection pruning? */
-    float pruning_threshold;             /* Prune connections below this */
+    bool enable_pruning;     /* Enable connection pruning? */
+    float pruning_threshold; /* Prune connections below this */
 
-    bool enable_scaling;                 /* Enable synaptic scaling? */
-    float scaling_target;                /* Target average activation */
+    bool enable_scaling;  /* Enable synaptic scaling? */
+    float scaling_target; /* Target average activation */
 
-    bool prioritize_novel;               /* Prioritize novel patterns? */
-    float novelty_boost;                 /* Boost for novel patterns */
+    bool prioritize_novel; /* Prioritize novel patterns? */
+    float novelty_boost;   /* Boost for novel patterns */
 
-    bool prune_weak;                     /* Prune weak patterns? */
-    float weakness_threshold;            /* Pattern strength threshold */
+    bool prune_weak;          /* Prune weak patterns? */
+    float weakness_threshold; /* Pattern strength threshold */
 
-    void (*on_consolidation_start)(void* context);  /* Callback: start */
+    void (*on_consolidation_start)(void* context);                    /* Callback: start */
     void (*on_consolidation_progress)(float progress, void* context); /* Progress */
-    void (*on_consolidation_complete)(void* context); /* Callback: done */
-    void* callback_context;              /* Context for callbacks */
+    void (*on_consolidation_complete)(void* context);                 /* Callback: done */
+    void* callback_context;                                           /* Context for callbacks */
 } consolidation_config_t;
 
 /**
@@ -137,24 +137,24 @@ typedef struct {
  * HOW: Counters and metrics collected during consolidation
  */
 typedef struct {
-    uint64_t total_consolidations;       /* Total consolidation runs */
-    uint64_t patterns_replayed;          /* Patterns replayed */
-    uint64_t connections_pruned;         /* Connections removed */
-    uint64_t connections_strengthened;   /* Connections increased */
-    uint64_t connections_weakened;       /* Connections decreased */
+    uint64_t total_consolidations;     /* Total consolidation runs */
+    uint64_t patterns_replayed;        /* Patterns replayed */
+    uint64_t connections_pruned;       /* Connections removed */
+    uint64_t connections_strengthened; /* Connections increased */
+    uint64_t connections_weakened;     /* Connections decreased */
 
-    float avg_consolidation_time_ms;     /* Average time per run */
-    float last_consolidation_time_ms;    /* Last run time */
+    float avg_consolidation_time_ms;  /* Average time per run */
+    float last_consolidation_time_ms; /* Last run time */
 
-    float network_sparsity_before;       /* Sparsity before last run */
-    float network_sparsity_after;        /* Sparsity after last run */
+    float network_sparsity_before; /* Sparsity before last run */
+    float network_sparsity_after;  /* Sparsity after last run */
 
     float avg_connection_strength_before; /* Avg strength before */
     float avg_connection_strength_after;  /* Avg strength after */
 
-    uint32_t patterns_strengthened;      /* Patterns made stronger */
-    uint32_t patterns_weakened;          /* Patterns made weaker */
-    uint32_t patterns_removed;           /* Patterns pruned */
+    uint32_t patterns_strengthened; /* Patterns made stronger */
+    uint32_t patterns_weakened;     /* Patterns made weaker */
+    uint32_t patterns_removed;      /* Patterns pruned */
 
     uint64_t last_consolidation_timestamp; /* Timestamp of last run */
 } consolidation_stats_t;
@@ -165,14 +165,14 @@ typedef struct {
  * HOW: Metadata about pattern usage and value
  */
 typedef struct {
-    char* pattern_name;                  /* Pattern identifier */
-    float importance_score;              /* Overall importance (0-1) */
-    float recency_score;                 /* How recent (0-1) */
-    float frequency_score;               /* How frequent (0-1) */
-    float novelty_score;                 /* How novel (0-1) */
-    float strength;                      /* Current strength (0-1) */
-    uint32_t activation_count;           /* Times activated */
-    uint64_t last_activated;             /* Last activation time */
+    char* pattern_name;        /* Pattern identifier */
+    float importance_score;    /* Overall importance (0-1) */
+    float recency_score;       /* How recent (0-1) */
+    float frequency_score;     /* How frequent (0-1) */
+    float novelty_score;       /* How novel (0-1) */
+    float strength;            /* Current strength (0-1) */
+    uint32_t activation_count; /* Times activated */
+    uint64_t last_activated;   /* Last activation time */
 } pattern_importance_t;
 
 /**
@@ -181,13 +181,13 @@ typedef struct {
  * HOW: Enum for event type discrimination
  */
 typedef enum {
-    CONSOLIDATION_EVENT_STARTED,         /* Consolidation started */
-    CONSOLIDATION_EVENT_CYCLE_COMPLETE,  /* One cycle finished */
-    CONSOLIDATION_EVENT_PATTERN_REPLAYED, /* Pattern was replayed */
+    CONSOLIDATION_EVENT_STARTED,           /* Consolidation started */
+    CONSOLIDATION_EVENT_CYCLE_COMPLETE,    /* One cycle finished */
+    CONSOLIDATION_EVENT_PATTERN_REPLAYED,  /* Pattern was replayed */
     CONSOLIDATION_EVENT_CONNECTION_PRUNED, /* Connection was pruned */
-    CONSOLIDATION_EVENT_SCALING_APPLIED, /* Scaling was applied */
-    CONSOLIDATION_EVENT_COMPLETED,       /* Consolidation finished */
-    CONSOLIDATION_EVENT_ERROR            /* Error occurred */
+    CONSOLIDATION_EVENT_SCALING_APPLIED,   /* Scaling was applied */
+    CONSOLIDATION_EVENT_COMPLETED,         /* Consolidation finished */
+    CONSOLIDATION_EVENT_ERROR              /* Error occurred */
 } consolidation_event_type_t;
 
 /**
@@ -196,12 +196,12 @@ typedef enum {
  * HOW: Event type + relevant data
  */
 typedef struct {
-    consolidation_event_type_t type;     /* Event type */
-    uint64_t timestamp;                  /* When event occurred */
-    float progress;                      /* Progress (0-1) */
-    uint32_t cycle_number;               /* Current cycle */
-    char* pattern_name;                  /* Pattern involved (if any) */
-    char* message;                       /* Human-readable message */
+    consolidation_event_type_t type; /* Event type */
+    uint64_t timestamp;              /* When event occurred */
+    float progress;                  /* Progress (0-1) */
+    uint32_t cycle_number;           /* Current cycle */
+    char* pattern_name;              /* Pattern involved (if any) */
+    char* message;                   /* Human-readable message */
 } consolidation_event_t;
 
 /* ========================================================================
@@ -274,10 +274,7 @@ consolidation_config_t consolidation_default_config(void);
  * COMPLEXITY: O(n*c) where n=network size, c=cycles
  * THREAD-SAFE: Yes (acquires brain lock)
  */
-bool brain_consolidate_memory(
-    brain_t brain,
-    const consolidation_config_t* config
-);
+bool brain_consolidate_memory(brain_t brain, const consolidation_config_t* config);
 
 /**
  * WHAT: Start background consolidation thread
@@ -316,11 +313,9 @@ bool brain_consolidate_memory(
  * COMPLEXITY: O(1) for thread creation
  * THREAD-SAFE: Yes
  */
-consolidation_handle_t brain_start_background_consolidation(
-    brain_t brain,
-    uint32_t interval_seconds,
-    const consolidation_config_t* config
-);
+consolidation_handle_t brain_start_background_consolidation(brain_t brain,
+                                                            uint32_t interval_seconds,
+                                                            const consolidation_config_t* config);
 
 /**
  * WHAT: Stop background consolidation thread
@@ -409,10 +404,7 @@ bool brain_trigger_consolidation(consolidation_handle_t handle);
  * COMPLEXITY: O(p) where p = number of patterns
  * THREAD-SAFE: Yes
  */
-pattern_importance_t* brain_get_important_patterns(
-    brain_t brain,
-    uint32_t* num_patterns
-);
+pattern_importance_t* brain_get_important_patterns(brain_t brain, uint32_t* num_patterns);
 
 /**
  * WHAT: Free pattern importance array
@@ -444,11 +436,7 @@ void pattern_importance_free(pattern_importance_t* patterns, uint32_t num_patter
  * COMPLEXITY: O(1) - hash lookup
  * THREAD-SAFE: Yes
  */
-bool brain_mark_pattern_important(
-    brain_t brain,
-    const char* pattern_name,
-    float importance_score
-);
+bool brain_mark_pattern_important(brain_t brain, const char* pattern_name, float importance_score);
 
 /* ========================================================================
  * STATISTICS AND MONITORING
@@ -466,10 +454,7 @@ bool brain_mark_pattern_important(
  * COMPLEXITY: O(1)
  * THREAD-SAFE: Yes
  */
-bool consolidation_get_stats(
-    consolidation_handle_t handle,
-    consolidation_stats_t* stats
-);
+bool consolidation_get_stats(consolidation_handle_t handle, consolidation_stats_t* stats);
 
 /**
  * WHAT: Reset consolidation statistics
@@ -529,12 +514,8 @@ float consolidation_get_progress(consolidation_handle_t handle);
  * COMPLEXITY: O(replay_count * pattern_size)
  * THREAD-SAFE: Yes
  */
-bool brain_replay_pattern(
-    brain_t brain,
-    const char* pattern_name,
-    uint32_t replay_count,
-    float strength
-);
+bool brain_replay_pattern(brain_t brain, const char* pattern_name, uint32_t replay_count,
+                          float strength);
 
 /**
  * WHAT: Apply synaptic scaling to normalize connections
@@ -553,10 +534,7 @@ bool brain_replay_pattern(
  * COMPLEXITY: O(n + e) where n=neurons, e=edges
  * THREAD-SAFE: Yes
  */
-bool brain_apply_synaptic_scaling(
-    brain_t brain,
-    float target_activation
-);
+bool brain_apply_synaptic_scaling(brain_t brain, float target_activation);
 
 /**
  * WHAT: Prune weak connections below threshold
@@ -570,10 +548,7 @@ bool brain_apply_synaptic_scaling(
  * COMPLEXITY: O(e) where e = number of edges
  * THREAD-SAFE: Yes
  */
-uint32_t brain_prune_weak_connections(
-    brain_t brain,
-    float threshold
-);
+uint32_t brain_prune_weak_connections(brain_t brain, float threshold);
 
 #ifdef __cplusplus
 }

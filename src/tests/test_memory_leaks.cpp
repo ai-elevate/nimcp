@@ -15,12 +15,12 @@
 //==============================================================================
 
 #include <gtest/gtest.h>
-#include <cstdlib>
-#include <cstdio>
-#include <string>
-#include <sstream>
 #include <sys/stat.h>
 #include <unistd.h>
+#include <cstdio>
+#include <cstdlib>
+#include <sstream>
+#include <string>
 
 // Include NIMCP headers for basic allocation tests
 extern "C" {
@@ -38,7 +38,8 @@ namespace {
 /**
  * Check if a command exists on the system
  */
-bool command_exists(const std::string& command) {
+bool command_exists(const std::string& command)
+{
     std::string check_cmd = "command -v " + command + " > /dev/null 2>&1";
     return (system(check_cmd.c_str()) == 0);
 }
@@ -51,7 +52,8 @@ struct CommandResult {
     std::string output;
 };
 
-CommandResult execute_command(const std::string& command) {
+CommandResult execute_command(const std::string& command)
+{
     CommandResult result;
     char buffer[256];
     std::stringstream output;
@@ -88,7 +90,8 @@ struct ValgrindResult {
     std::string summary;
 };
 
-ValgrindResult parse_valgrind_output(const std::string& output) {
+ValgrindResult parse_valgrind_output(const std::string& output)
+{
     ValgrindResult result = {false, 0, 0, 0, ""};
 
     // Look for leak summary
@@ -123,7 +126,8 @@ ValgrindResult parse_valgrind_output(const std::string& output) {
 /**
  * Get test executable path
  */
-std::string get_test_executable() {
+std::string get_test_executable()
+{
     char exe_path[1024];
     ssize_t len = readlink("/proc/self/exe", exe_path, sizeof(exe_path) - 1);
     if (len != -1) {
@@ -138,11 +142,12 @@ std::string get_test_executable() {
 //==============================================================================
 
 class MemoryLeakTest : public ::testing::Test {
-protected:
+   protected:
     std::string test_exe;
     bool valgrind_available;
 
-    void SetUp() override {
+    void SetUp() override
+    {
         test_exe = get_test_executable();
         valgrind_available = command_exists("valgrind");
 
@@ -154,17 +159,21 @@ protected:
     /**
      * Run a specific test under valgrind
      */
-    ValgrindResult run_test_under_valgrind(const std::string& test_filter, int timeout_sec = 30) {
-        std::string valgrind_cmd =
-            "timeout " + std::to_string(timeout_sec) + " "
-            "valgrind "
-            "--leak-check=full "
-            "--show-leak-kinds=all "
-            "--track-origins=yes "
-            "--error-exitcode=99 "
-            + test_exe + " "
-            "--gtest_filter=" + test_filter + " "
-            "2>&1";
+    ValgrindResult run_test_under_valgrind(const std::string& test_filter, int timeout_sec = 30)
+    {
+        std::string valgrind_cmd = "timeout " + std::to_string(timeout_sec) +
+                                   " "
+                                   "valgrind "
+                                   "--leak-check=full "
+                                   "--show-leak-kinds=all "
+                                   "--track-origins=yes "
+                                   "--error-exitcode=99 " +
+                                   test_exe +
+                                   " "
+                                   "--gtest_filter=" +
+                                   test_filter +
+                                   " "
+                                   "2>&1";
 
         CommandResult cmd_result = execute_command(valgrind_cmd);
         return parse_valgrind_output(cmd_result.output);
@@ -178,9 +187,9 @@ protected:
 /**
  * Test that valgrind is available
  */
-TEST_F(MemoryLeakTest, ValgrindAvailable) {
-    ASSERT_TRUE(valgrind_available)
-        << "valgrind is required for memory leak tests";
+TEST_F(MemoryLeakTest, ValgrindAvailable)
+{
+    ASSERT_TRUE(valgrind_available) << "valgrind is required for memory leak tests";
 
     CommandResult result = execute_command("valgrind --version");
     EXPECT_EQ(result.exit_code, 0);
@@ -195,7 +204,8 @@ TEST_F(MemoryLeakTest, ValgrindAvailable) {
 /**
  * Test simple allocation and deallocation (no leaks expected)
  */
-TEST_F(MemoryLeakTest, SimpleAllocation) {
+TEST_F(MemoryLeakTest, SimpleAllocation)
+{
     // Simple test that shouldn't leak
     void* ptr = malloc(100);
     ASSERT_NE(ptr, nullptr);
@@ -208,7 +218,8 @@ TEST_F(MemoryLeakTest, SimpleAllocation) {
 /**
  * Test neural network creation and destruction for leaks
  */
-TEST_F(MemoryLeakTest, NeuralNetworkCreationDestruction) {
+TEST_F(MemoryLeakTest, NeuralNetworkCreationDestruction)
+{
     const int input_size = 10;
     const int hidden_size = 5;
     const int output_size = 3;
@@ -223,13 +234,15 @@ TEST_F(MemoryLeakTest, NeuralNetworkCreationDestruction) {
         GTEST_SKIP() << "valgrind not available for leak detection";
     }
 
-    std::cout << "Neural network creation/destruction completed - run under valgrind for leak check" << std::endl;
+    std::cout << "Neural network creation/destruction completed - run under valgrind for leak check"
+              << std::endl;
 }
 
 /**
  * Test queue allocation and deallocation
  */
-TEST_F(MemoryLeakTest, QueueAllocationDeallocation) {
+TEST_F(MemoryLeakTest, QueueAllocationDeallocation)
+{
     const size_t queue_size = 100;
 
     nimcp_queue* queue = nimcp_queue_create(queue_size);
@@ -237,7 +250,8 @@ TEST_F(MemoryLeakTest, QueueAllocationDeallocation) {
 
     nimcp_queue_destroy(queue);
 
-    std::cout << "Queue creation/destruction completed - run under valgrind for leak check" << std::endl;
+    std::cout << "Queue creation/destruction completed - run under valgrind for leak check"
+              << std::endl;
 }
 
 //==============================================================================
@@ -247,7 +261,8 @@ TEST_F(MemoryLeakTest, QueueAllocationDeallocation) {
 /**
  * Run neural network tests under valgrind
  */
-TEST_F(MemoryLeakTest, DISABLED_ValgrindNeuralNetworkTests) {
+TEST_F(MemoryLeakTest, DISABLED_ValgrindNeuralNetworkTests)
+{
     if (!valgrind_available) {
         GTEST_SKIP() << "valgrind not available";
     }
@@ -260,10 +275,10 @@ TEST_F(MemoryLeakTest, DISABLED_ValgrindNeuralNetworkTests) {
 
     // Report results
     if (result.has_leaks) {
-        std::cout << "WARNING: Detected " << result.definite_leaks
-                  << " bytes definitely lost" << std::endl;
-        std::cout << "WARNING: Detected " << result.possible_leaks
-                  << " bytes possibly lost" << std::endl;
+        std::cout << "WARNING: Detected " << result.definite_leaks << " bytes definitely lost"
+                  << std::endl;
+        std::cout << "WARNING: Detected " << result.possible_leaks << " bytes possibly lost"
+                  << std::endl;
     }
 
     EXPECT_EQ(result.errors, 0) << "Valgrind detected memory errors";
@@ -273,7 +288,8 @@ TEST_F(MemoryLeakTest, DISABLED_ValgrindNeuralNetworkTests) {
 /**
  * Run queue tests under valgrind
  */
-TEST_F(MemoryLeakTest, DISABLED_ValgrindQueueTests) {
+TEST_F(MemoryLeakTest, DISABLED_ValgrindQueueTests)
+{
     if (!valgrind_available) {
         GTEST_SKIP() << "valgrind not available";
     }
@@ -290,7 +306,8 @@ TEST_F(MemoryLeakTest, DISABLED_ValgrindQueueTests) {
 /**
  * Run thread utilities tests under valgrind
  */
-TEST_F(MemoryLeakTest, DISABLED_ValgrindThreadTests) {
+TEST_F(MemoryLeakTest, DISABLED_ValgrindThreadTests)
+{
     if (!valgrind_available) {
         GTEST_SKIP() << "valgrind not available";
     }
@@ -308,7 +325,8 @@ TEST_F(MemoryLeakTest, DISABLED_ValgrindThreadTests) {
  * Run all tests under valgrind (comprehensive but slow)
  * Disabled by default - enable manually for full leak checking
  */
-TEST_F(MemoryLeakTest, DISABLED_ValgrindAllTests) {
+TEST_F(MemoryLeakTest, DISABLED_ValgrindAllTests)
+{
     if (!valgrind_available) {
         GTEST_SKIP() << "valgrind not available";
     }
@@ -322,10 +340,10 @@ TEST_F(MemoryLeakTest, DISABLED_ValgrindAllTests) {
 
     // Report but don't fail on possible leaks (might be Python-related)
     if (result.has_leaks) {
-        std::cout << "WARNING: Detected " << result.definite_leaks
-                  << " bytes definitely lost" << std::endl;
-        std::cout << "WARNING: Detected " << result.possible_leaks
-                  << " bytes possibly lost" << std::endl;
+        std::cout << "WARNING: Detected " << result.definite_leaks << " bytes definitely lost"
+                  << std::endl;
+        std::cout << "WARNING: Detected " << result.possible_leaks << " bytes possibly lost"
+                  << std::endl;
     }
 
     EXPECT_EQ(result.errors, 0) << "Valgrind detected memory errors";
@@ -338,7 +356,8 @@ TEST_F(MemoryLeakTest, DISABLED_ValgrindAllTests) {
 /**
  * Test for use-after-free detection (should detect with valgrind)
  */
-TEST_F(MemoryLeakTest, DISABLED_UseAfterFreeDetection) {
+TEST_F(MemoryLeakTest, DISABLED_UseAfterFreeDetection)
+{
     // This test intentionally creates a use-after-free for valgrind to detect
     // ONLY RUN UNDER VALGRIND
 
@@ -357,7 +376,8 @@ TEST_F(MemoryLeakTest, DISABLED_UseAfterFreeDetection) {
 /**
  * Test for double-free detection (should detect with valgrind)
  */
-TEST_F(MemoryLeakTest, DISABLED_DoubleFreeDetection) {
+TEST_F(MemoryLeakTest, DISABLED_DoubleFreeDetection)
+{
     if (!valgrind_available) {
         GTEST_SKIP() << "This test must be run under valgrind";
     }
@@ -377,7 +397,8 @@ TEST_F(MemoryLeakTest, DISABLED_DoubleFreeDetection) {
 /**
  * Instructions for manual valgrind testing
  */
-TEST_F(MemoryLeakTest, ManualValgrindInstructions) {
+TEST_F(MemoryLeakTest, ManualValgrindInstructions)
+{
     std::cout << "\n" << std::string(70, '=') << std::endl;
     std::cout << "Manual Valgrind Testing Instructions" << std::endl;
     std::cout << std::string(70, '=') << std::endl;
@@ -400,7 +421,7 @@ TEST_F(MemoryLeakTest, ManualValgrindInstructions) {
     std::cout << "\n" << std::string(70, '=') << std::endl;
 }
 
-} // anonymous namespace
+}  // anonymous namespace
 
 //==============================================================================
 // Main

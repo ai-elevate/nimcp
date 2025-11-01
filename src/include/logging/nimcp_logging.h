@@ -31,4 +31,4 @@ void log_close();
 #define NIMCP_LOGGING_ERROR(...) log_message(LOG_LEVEL_ERROR, __VA_ARGS__)
 #define NIMCP_LOGGING_FATAL(...) log_message(LOG_LEVEL_FATAL, __VA_ARGS__)
 
-#endif // LOGGING_H
+#endif  // LOGGING_H

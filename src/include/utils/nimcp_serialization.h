@@ -2,11 +2,11 @@
 #ifndef NIMCP_SERIALIZATION_H
 #define NIMCP_SERIALIZATION_H
 
-#include <stdint.h>
+#include <lz4.h>
 #include <stdbool.h>
 #include <stddef.h>
+#include <stdint.h>
 #include "../utils/nimcp_common.h"
-#include <lz4.h>
 
 // Error codes for serialization operations
 typedef enum {
@@ -24,12 +24,12 @@ typedef struct {
     size_t position;
     size_t length;
     bool is_compressed;
-    bool has_error;  
+    bool has_error;
 } NimcpSerializer;
 
 // Constants
 #define NIMCP_SERIALIZER_INITIAL_SIZE 1024
-#define NIMCP_SERIALIZER_MAX_SIZE (1024 * 1024 * 64) // 64MB limit
+#define NIMCP_SERIALIZER_MAX_SIZE (1024 * 1024 * 64)  // 64MB limit
 #define NIMCP_SERIALIZER_VERSION 1
 
 // Core API
@@ -92,4 +92,4 @@ bool nimcp_serializer_has_error(const NimcpSerializer* serializer);
  */
 void nimcp_serializer_clear_error(NimcpSerializer* serializer);
 
-#endif // NIMCP_SERIALIZATION_H
+#endif  // NIMCP_SERIALIZATION_H

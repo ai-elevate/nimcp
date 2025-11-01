@@ -41,23 +41,25 @@
  * - Memory: O(n+c) where n=neurons, c=concepts
  *
  * Compile:
- *   gcc integrated_learning_demo.c -I../src/include -L../build/src/lib -lnimcp_core -lm -o integrated_demo
+ *   gcc integrated_learning_demo.c -I../src/include -L../build/src/lib -lnimcp_core -lm -o
+ * integrated_demo
  */
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include "nimcp_ethics.h"
-#include "nimcp_curiosity.h"
-#include "nimcp_knowledge.h"
 #include "nimcp_brain.h"
+#include "nimcp_curiosity.h"
+#include "nimcp_ethics.h"
+#include "nimcp_knowledge.h"
 
 //=============================================================================
 // Demonstration: Day 1 - First Learning Experience
 //=============================================================================
 
 void demo_first_day(knowledge_system_t knowledge, curiosity_engine_t curiosity,
-                   ethics_engine_t ethics) {
+                    ethics_engine_t ethics)
+{
     printf("╔════════════════════════════════════════════════════════╗\n");
     printf("║                  Day 1: Birth                          ║\n");
     printf("╚════════════════════════════════════════════════════════╝\n\n");
@@ -88,16 +90,14 @@ void demo_first_day(knowledge_system_t knowledge, curiosity_engine_t curiosity,
 
     printf("Questions generated (infant curiosity):\n");
     for (uint32_t i = 0; i < num_q; i++) {
-        printf("  %u. %s (priority: %.2f)\n",
-               i + 1, questions[i].question, questions[i].priority);
+        printf("  %u. %s (priority: %.2f)\n", i + 1, questions[i].question, questions[i].priority);
     }
     printf("\n");
 
     // Learn from experience
     printf("Learning from experience...\n");
-    uint32_t concepts_learned = knowledge_learn_from_text(
-        knowledge, experience, KNOWLEDGE_DOMAIN_GENERAL
-    );
+    uint32_t concepts_learned =
+        knowledge_learn_from_text(knowledge, experience, KNOWLEDGE_DOMAIN_GENERAL);
     printf("  Learned %u new concepts\n\n", concepts_learned);
 
     // Check understanding
@@ -111,7 +111,8 @@ void demo_first_day(knowledge_system_t knowledge, curiosity_engine_t curiosity,
 //=============================================================================
 
 void demo_ethics_learning(knowledge_system_t knowledge, curiosity_engine_t curiosity,
-                         ethics_engine_t ethics) {
+                          ethics_engine_t ethics)
+{
     printf("╔════════════════════════════════════════════════════════╗\n");
     printf("║         Learning Ethics: The Golden Rule              ║\n");
     printf("╚════════════════════════════════════════════════════════╝\n\n");
@@ -153,7 +154,7 @@ void demo_ethics_learning(knowledge_system_t knowledge, curiosity_engine_t curio
 
     action_outcome_t outcome = {0};
     outcome.affected_agent = 100;
-    outcome.actual_harm = 0.8f;     // Cat was hurt
+    outcome.actual_harm = 0.8f;        // Cat was hurt
     outcome.emotional_impact = -0.9f;  // Cat felt bad
     outcome.material_impact = 0.0f;
     outcome.autonomy_impact = -0.7f;
@@ -167,7 +168,8 @@ void demo_ethics_learning(knowledge_system_t knowledge, curiosity_engine_t curio
     printf("  ✓ Confidence in this rule: HIGH\n\n");
 
     // Store as knowledge
-    const char* lesson = "Pulling tails hurts animals. They don't like it. This violates the Golden Rule.";
+    const char* lesson =
+        "Pulling tails hurts animals. They don't like it. This violates the Golden Rule.";
     knowledge_learn_from_text(knowledge, lesson, KNOWLEDGE_DOMAIN_ETHICS);
 
     printf("Ethical knowledge acquired:\n");
@@ -183,7 +185,8 @@ void demo_ethics_learning(knowledge_system_t knowledge, curiosity_engine_t curio
 // Demonstration: Story-Based Learning
 //=============================================================================
 
-void demo_story_learning(knowledge_system_t knowledge, curiosity_engine_t curiosity) {
+void demo_story_learning(knowledge_system_t knowledge, curiosity_engine_t curiosity)
+{
     printf("╔════════════════════════════════════════════════════════╗\n");
     printf("║        Learning from Stories (Literature)             ║\n");
     printf("╚════════════════════════════════════════════════════════╝\n\n");
@@ -257,11 +260,14 @@ void demo_story_learning(knowledge_system_t knowledge, curiosity_engine_t curios
     printf("  NO → Therefore, don't do it to others\n\n");
 
     // Cleanup
-    for (uint32_t i = 0; i < story.num_characters; i++) free(story.characters[i]);
+    for (uint32_t i = 0; i < story.num_characters; i++)
+        free(story.characters[i]);
     free(story.characters);
-    for (uint32_t i = 0; i < story.num_themes; i++) free(story.themes[i]);
+    for (uint32_t i = 0; i < story.num_themes; i++)
+        free(story.themes[i]);
     free(story.themes);
-    for (uint32_t i = 0; i < story.num_lessons; i++) free(story.moral_lessons[i]);
+    for (uint32_t i = 0; i < story.num_lessons; i++)
+        free(story.moral_lessons[i]);
     free(story.moral_lessons);
 }
 
@@ -269,7 +275,8 @@ void demo_story_learning(knowledge_system_t knowledge, curiosity_engine_t curios
 // Demonstration: Knowledge Growth Over Time
 //=============================================================================
 
-void demo_knowledge_growth(knowledge_system_t knowledge, curiosity_engine_t curiosity) {
+void demo_knowledge_growth(knowledge_system_t knowledge, curiosity_engine_t curiosity)
+{
     printf("╔════════════════════════════════════════════════════════╗\n");
     printf("║         Knowledge Growth (Month 6 Progress)           ║\n");
     printf("╚════════════════════════════════════════════════════════╝\n\n");
@@ -287,9 +294,8 @@ void demo_knowledge_growth(knowledge_system_t knowledge, curiosity_engine_t curi
 
     for (int i = 0; i < 5; i++) {
         printf("Experience %d: \"%s\"\n", i + 1, experiences[i]);
-        uint32_t learned = knowledge_learn_from_text(
-            knowledge, experiences[i], KNOWLEDGE_DOMAIN_GENERAL
-        );
+        uint32_t learned =
+            knowledge_learn_from_text(knowledge, experiences[i], KNOWLEDGE_DOMAIN_GENERAL);
         printf("  Learned %u concepts\n\n", learned);
     }
 
@@ -319,8 +325,7 @@ void demo_knowledge_growth(knowledge_system_t knowledge, curiosity_engine_t curi
     const char* test_concepts[] = {"sky", "water", "cat", "hug", "book"};
     for (int i = 0; i < 5; i++) {
         char explanation[512];
-        knowledge_understand(knowledge, test_concepts[i], "",
-                           explanation, sizeof(explanation));
+        knowledge_understand(knowledge, test_concepts[i], "", explanation, sizeof(explanation));
         printf("  %s\n", explanation);
     }
     printf("\n");
@@ -330,7 +335,8 @@ void demo_knowledge_growth(knowledge_system_t knowledge, curiosity_engine_t curi
 // Main Demonstration
 //=============================================================================
 
-int main(void) {
+int main(void)
+{
     printf("╔════════════════════════════════════════════════════════╗\n");
     printf("║                                                        ║\n");
     printf("║    NIMCP 2.5: Integrated Human-Like Learning          ║\n");

@@ -5,7 +5,8 @@
 //=============================================================================
 
 // Test network creation with valid configuration
-TEST(NeuralNetCreate, ValidConfig) {
+TEST(NeuralNetCreate, ValidConfig)
+{
     network_config_t config = create_test_config();
     neural_network_t network = neural_network_create(&config);
 
@@ -14,19 +15,21 @@ TEST(NeuralNetCreate, ValidConfig) {
     // Verify initial network state
     float state;
     ASSERT_TRUE(neural_network_get_neuron_state(network, 0, &state));
-    ASSERT_TRUE(float_equals(state, -65.0f)); // Default rest potential
+    ASSERT_TRUE(float_equals(state, -65.0f));  // Default rest potential
 
     neural_network_destroy(network);
 }
 
 // Test network creation with nullptr configuration
-TEST(NeuralNetCreate, NullConfig) {
+TEST(NeuralNetCreate, NullConfig)
+{
     neural_network_t network = neural_network_create(nullptr);
     ASSERT_EQ(network, nullptr);
 }
 
 // Test network creation with invalid neuron count
-TEST(NeuralNetCreate, InvalidNeuronCount) {
+TEST(NeuralNetCreate, InvalidNeuronCount)
+{
     network_config_t config = create_test_config();
     config.num_neurons = MAX_NEURONS + 1;
 
@@ -35,7 +38,8 @@ TEST(NeuralNetCreate, InvalidNeuronCount) {
 }
 
 // Test network creation with zero neurons
-TEST(NeuralNetCreate, ZeroNeurons) {
+TEST(NeuralNetCreate, ZeroNeurons)
+{
     network_config_t config = create_test_config();
     config.num_neurons = 0;
 
@@ -44,7 +48,8 @@ TEST(NeuralNetCreate, ZeroNeurons) {
 }
 
 // Test proper initialization of neuron parameters
-TEST(NeuralNetCreate, NeuronInitialization) {
+TEST(NeuralNetCreate, NeuronInitialization)
+{
     network_config_t config = create_test_config();
     neural_network_t network = neural_network_create(&config);
 
@@ -61,7 +66,7 @@ TEST(NeuralNetCreate, NeuronInitialization) {
     ASSERT_EQ(stats.num_neurons, config.num_neurons);
 
     // Verify E/I ratio
-    uint32_t expected_inhibitory = (uint32_t)(config.num_neurons * (1.0f - config.ei_ratio));
+    uint32_t expected_inhibitory = (uint32_t) (config.num_neurons * (1.0f - config.ei_ratio));
     ASSERT_EQ(stats.num_inhibitory, expected_inhibitory);
 
     neural_network_destroy(network);
@@ -72,7 +77,8 @@ TEST(NeuralNetCreate, NeuronInitialization) {
 //=============================================================================
 
 // Test neuron activation computation with different activation types
-TEST(NeuralNetNeuron, ActivationFunctions) {
+TEST(NeuralNetNeuron, ActivationFunctions)
+{
     network_config_t config = create_test_config();
     neural_network_t network = neural_network_create(&config);
     ASSERT_NE(network, nullptr);
@@ -115,7 +121,8 @@ TEST(NeuralNetNeuron, ActivationFunctions) {
 }
 
 // Test neuron state update and retrieval
-TEST(NeuralNetNeuron, StateUpdate) {
+TEST(NeuralNetNeuron, StateUpdate)
+{
     network_config_t config = create_test_config();
     neural_network_t network = neural_network_create(&config);
     ASSERT_NE(network, nullptr);
@@ -126,7 +133,7 @@ TEST(NeuralNetNeuron, StateUpdate) {
     // Verify state was updated
     float state;
     ASSERT_TRUE(neural_network_get_neuron_state(network, 0, &state));
-    EXPECT_NE(state, -65.0f); // Should not be rest potential anymore
+    EXPECT_NE(state, -65.0f);  // Should not be rest potential anymore
 
     // Test invalid neuron ID
     ASSERT_FALSE(neural_network_get_neuron_state(network, MAX_NEURONS + 1, &state));
@@ -135,7 +142,8 @@ TEST(NeuralNetNeuron, StateUpdate) {
 }
 
 // Test neuron refractory period
-TEST(NeuralNetNeuron, RefractoryPeriod) {
+TEST(NeuralNetNeuron, RefractoryPeriod)
+{
     network_config_t config = create_test_config();
     config.refractory_period = 5.0f;
     neural_network_t network = neural_network_create(&config);
@@ -154,7 +162,8 @@ TEST(NeuralNetNeuron, RefractoryPeriod) {
 }
 
 // Test synaptic connection creation
-TEST(NeuralNetNeuron, SynapticConnections) {
+TEST(NeuralNetNeuron, SynapticConnections)
+{
     network_config_t config = create_test_config();
     neural_network_t network = neural_network_create(&config);
     ASSERT_NE(network, nullptr);
@@ -178,7 +187,8 @@ TEST(NeuralNetNeuron, SynapticConnections) {
 }
 
 // Test weight normalization
-TEST(NeuralNetNeuron, WeightNormalization) {
+TEST(NeuralNetNeuron, WeightNormalization)
+{
     network_config_t config = create_test_config();
     neural_network_t network = neural_network_create(&config);
     ASSERT_NE(network, nullptr);
@@ -205,7 +215,8 @@ TEST(NeuralNetNeuron, WeightNormalization) {
 }
 
 // Test weight statistics computation
-TEST(NeuralNetNeuron, WeightStatistics) {
+TEST(NeuralNetNeuron, WeightStatistics)
+{
     network_config_t config = create_test_config();
     neural_network_t network = neural_network_create(&config);
     ASSERT_NE(network, nullptr);
@@ -229,7 +240,8 @@ TEST(NeuralNetNeuron, WeightStatistics) {
 }
 
 // Test average activity computation
-TEST(NeuralNetNeuron, AverageActivity) {
+TEST(NeuralNetNeuron, AverageActivity)
+{
     network_config_t config = create_test_config();
     neural_network_t network = neural_network_create(&config);
     ASSERT_NE(network, nullptr);
@@ -251,7 +263,8 @@ TEST(NeuralNetNeuron, AverageActivity) {
 }
 
 // Test threshold adaptation
-TEST(NeuralNetNeuron, ThresholdAdaptation) {
+TEST(NeuralNetNeuron, ThresholdAdaptation)
+{
     network_config_t config = create_test_config();
     config.adaptation_rate = 0.1f;
     neural_network_t network = neural_network_create(&config);
@@ -267,7 +280,8 @@ TEST(NeuralNetNeuron, ThresholdAdaptation) {
 }
 
 // Test synaptic trace updates
-TEST(NeuralNetNeuron, SynapticTraces) {
+TEST(NeuralNetNeuron, SynapticTraces)
+{
     network_config_t config = create_test_config();
     neural_network_t network = neural_network_create(&config);
     ASSERT_NE(network, nullptr);
@@ -290,9 +304,10 @@ TEST(NeuralNetNeuron, SynapticTraces) {
 }
 
 // Test dynamic neuron addition
-TEST(NeuralNetNeuron, DynamicNeuronAddition) {
+TEST(NeuralNetNeuron, DynamicNeuronAddition)
+{
     network_config_t config = create_test_config();
-    config.num_neurons = 5; // Start with small network
+    config.num_neurons = 5;  // Start with small network
     neural_network_t network = neural_network_create(&config);
     ASSERT_NE(network, nullptr);
 
@@ -320,7 +335,8 @@ TEST(NeuralNetNeuron, DynamicNeuronAddition) {
 }
 
 // Test network reset functionality
-TEST(NeuralNetNeuron, NetworkReset) {
+TEST(NeuralNetNeuron, NetworkReset)
+{
     network_config_t config = create_test_config();
     neural_network_t network = neural_network_create(&config);
     ASSERT_NE(network, nullptr);
@@ -346,7 +362,8 @@ TEST(NeuralNetNeuron, NetworkReset) {
 }
 
 // Test compute step functionality
-TEST(NeuralNetNeuron, ComputeStep) {
+TEST(NeuralNetNeuron, ComputeStep)
+{
     network_config_t config = create_test_config();
     neural_network_t network = neural_network_create(&config);
     ASSERT_NE(network, nullptr);
@@ -368,7 +385,8 @@ TEST(NeuralNetNeuron, ComputeStep) {
 }
 
 // Test forward pass functionality (NIMCP 2.5)
-TEST(NeuralNetNeuron, ForwardPass) {
+TEST(NeuralNetNeuron, ForwardPass)
+{
     network_config_t config = create_test_config();
     config.num_neurons = 10;
     config.input_size = 3;
@@ -395,7 +413,8 @@ TEST(NeuralNetNeuron, ForwardPass) {
 //=============================================================================
 
 // Test membrane potential computation with synaptic inputs
-TEST(NeuralNetLowLevel, MembranePotential) {
+TEST(NeuralNetLowLevel, MembranePotential)
+{
     network_config_t config = create_test_config();
     neural_network_t network = neural_network_create(&config);
     ASSERT_NE(network, nullptr);
@@ -414,13 +433,14 @@ TEST(NeuralNetLowLevel, MembranePotential) {
     // Verify neuron state was affected by synaptic inputs
     float state;
     ASSERT_TRUE(neural_network_get_neuron_state(network, 0, &state));
-    EXPECT_NE(state, -65.0f); // Should not be at rest potential
+    EXPECT_NE(state, -65.0f);  // Should not be at rest potential
 
     neural_network_destroy(network);
 }
 
 // Test calcium dynamics
-TEST(NeuralNetLowLevel, CalciumDynamics) {
+TEST(NeuralNetLowLevel, CalciumDynamics)
+{
     network_config_t config = create_test_config();
     neural_network_t network = neural_network_create(&config);
     ASSERT_NE(network, nullptr);
@@ -440,7 +460,8 @@ TEST(NeuralNetLowLevel, CalciumDynamics) {
 }
 
 // Test spike propagation through synapses
-TEST(NeuralNetLowLevel, SpikePropagation) {
+TEST(NeuralNetLowLevel, SpikePropagation)
+{
     network_config_t config = create_test_config();
     neural_network_t network = neural_network_create(&config);
     ASSERT_NE(network, nullptr);
@@ -468,10 +489,11 @@ TEST(NeuralNetLowLevel, SpikePropagation) {
 }
 
 // Test excitatory vs inhibitory neuron behavior
-TEST(NeuralNetLowLevel, ExcitatoryInhibitory) {
+TEST(NeuralNetLowLevel, ExcitatoryInhibitory)
+{
     network_config_t config = create_test_config();
     config.num_neurons = 10;
-    config.ei_ratio = 0.8f; // 80% excitatory, 20% inhibitory
+    config.ei_ratio = 0.8f;  // 80% excitatory, 20% inhibitory
     neural_network_t network = neural_network_create(&config);
     ASSERT_NE(network, nullptr);
 
@@ -479,7 +501,7 @@ TEST(NeuralNetLowLevel, ExcitatoryInhibitory) {
     network_stats_t stats;
     neural_network_get_stats(network, &stats);
 
-    uint32_t expected_inhibitory = (uint32_t)(config.num_neurons * (1.0f - config.ei_ratio));
+    uint32_t expected_inhibitory = (uint32_t) (config.num_neurons * (1.0f - config.ei_ratio));
     uint32_t expected_excitatory = config.num_neurons - expected_inhibitory;
 
     EXPECT_EQ(stats.num_inhibitory, expected_inhibitory);
@@ -489,7 +511,8 @@ TEST(NeuralNetLowLevel, ExcitatoryInhibitory) {
 }
 
 // Test synaptic strength modulation
-TEST(NeuralNetLowLevel, SynapticStrength) {
+TEST(NeuralNetLowLevel, SynapticStrength)
+{
     network_config_t config = create_test_config();
     neural_network_t network = neural_network_create(&config);
     ASSERT_NE(network, nullptr);
@@ -510,7 +533,8 @@ TEST(NeuralNetLowLevel, SynapticStrength) {
 }
 
 // Test meta-plasticity computation
-TEST(NeuralNetLowLevel, MetaPlasticity) {
+TEST(NeuralNetLowLevel, MetaPlasticity)
+{
     network_config_t config = create_test_config();
     neural_network_t network = neural_network_create(&config);
     ASSERT_NE(network, nullptr);
@@ -520,7 +544,7 @@ TEST(NeuralNetLowLevel, MetaPlasticity) {
 
     // Create activity pattern with variance
     for (uint64_t t = 1; t <= 50; t++) {
-        float input = (t % 2 == 0) ? 1.0f : 0.1f; // Alternating activity
+        float input = (t % 2 == 0) ? 1.0f : 0.1f;  // Alternating activity
         neural_network_update_neuron(network, 0, input, t);
         neural_network_update_plasticity(network, 0, t);
     }
@@ -532,7 +556,8 @@ TEST(NeuralNetLowLevel, MetaPlasticity) {
 }
 
 // Test spike history recording
-TEST(NeuralNetLowLevel, SpikeHistory) {
+TEST(NeuralNetLowLevel, SpikeHistory)
+{
     network_config_t config = create_test_config();
     neural_network_t network = neural_network_create(&config);
     ASSERT_NE(network, nullptr);
@@ -550,19 +575,15 @@ TEST(NeuralNetLowLevel, SpikeHistory) {
 }
 
 // Test activation function strategy dispatch
-TEST(NeuralNetLowLevel, ActivationStrategyDispatch) {
+TEST(NeuralNetLowLevel, ActivationStrategyDispatch)
+{
     network_config_t config = create_test_config();
     neural_network_t network = neural_network_create(&config);
     ASSERT_NE(network, nullptr);
 
     // Test all activation types
-    activation_type_t types[] = {
-        ACTIVATION_SIGMOID,
-        ACTIVATION_TANH,
-        ACTIVATION_RELU,
-        ACTIVATION_LEAKY_RELU,
-        ACTIVATION_ADAPTIVE
-    };
+    activation_type_t types[] = {ACTIVATION_SIGMOID, ACTIVATION_TANH, ACTIVATION_RELU,
+                                 ACTIVATION_LEAKY_RELU, ACTIVATION_ADAPTIVE};
 
     for (int i = 0; i < 5; i++) {
         uint32_t neuron_id = neural_network_add_neuron(network, types[i]);
@@ -580,15 +601,16 @@ TEST(NeuralNetLowLevel, ActivationStrategyDispatch) {
 }
 
 // Test network maintenance routine
-TEST(NeuralNetLowLevel, MaintenanceRoutine) {
+TEST(NeuralNetLowLevel, MaintenanceRoutine)
+{
     network_config_t config = create_test_config();
     config.update_interval = 50;
     neural_network_t network = neural_network_create(&config);
     ASSERT_NE(network, nullptr);
 
     // Add connections
-    ASSERT_TRUE(neural_network_add_connection(network, 0, 1, 0.05f)); // Weak
-    ASSERT_TRUE(neural_network_add_connection(network, 0, 2, 0.8f));  // Strong
+    ASSERT_TRUE(neural_network_add_connection(network, 0, 1, 0.05f));  // Weak
+    ASSERT_TRUE(neural_network_add_connection(network, 0, 2, 0.8f));   // Strong
 
     // Run some activity
     for (uint64_t t = 1; t <= 30; t++) {
@@ -607,7 +629,8 @@ TEST(NeuralNetLowLevel, MaintenanceRoutine) {
 }
 
 // Test homeostasis maintenance
-TEST(NeuralNetLowLevel, HomeostasisMaintenance) {
+TEST(NeuralNetLowLevel, HomeostasisMaintenance)
+{
     network_config_t config = create_test_config();
     config.homeostatic_rate = 0.1f;
     config.target_activity = 0.5f;
@@ -635,25 +658,27 @@ TEST(NeuralNetLowLevel, HomeostasisMaintenance) {
 }
 
 // Test synaptic pruning with threshold
-TEST(NeuralNetLowLevel, SynapticPruningThreshold) {
+TEST(NeuralNetLowLevel, SynapticPruningThreshold)
+{
     network_config_t config = create_test_config();
     neural_network_t network = neural_network_create(&config);
     ASSERT_NE(network, nullptr);
 
     // Add connections with varying weights
-    ASSERT_TRUE(neural_network_add_connection(network, 0, 1, 0.001f)); // Very weak
-    ASSERT_TRUE(neural_network_add_connection(network, 0, 2, 0.005f)); // Weak
-    ASSERT_TRUE(neural_network_add_connection(network, 0, 3, 0.5f));   // Strong
+    ASSERT_TRUE(neural_network_add_connection(network, 0, 1, 0.001f));  // Very weak
+    ASSERT_TRUE(neural_network_add_connection(network, 0, 2, 0.005f));  // Weak
+    ASSERT_TRUE(neural_network_add_connection(network, 0, 3, 0.5f));    // Strong
 
     // Prune with threshold that should remove first two
     uint32_t pruned = neural_network_prune_synapses(network, 0.01f);
-    EXPECT_GE(pruned, 1); // At least one should be pruned
+    EXPECT_GE(pruned, 1);  // At least one should be pruned
 
     neural_network_destroy(network);
 }
 
 // Test neuron dump function (debug utility)
-TEST(NeuralNetLowLevel, NeuronDump) {
+TEST(NeuralNetLowLevel, NeuronDump)
+{
     network_config_t config = create_test_config();
     neural_network_t network = neural_network_create(&config);
     ASSERT_NE(network, nullptr);

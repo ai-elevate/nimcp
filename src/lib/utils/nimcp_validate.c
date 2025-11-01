@@ -457,12 +457,12 @@
  */
 
 #include "utils/nimcp_validate.h"
-#include "logging/nimcp_logging.h"
-#include <stdlib.h>
-#include <string.h>
 #include <ctype.h>
 #include <math.h>
 #include <stdint.h>
+#include <stdlib.h>
+#include <string.h>
+#include "logging/nimcp_logging.h"
 
 //=============================================================================
 // Internal Helper Function Prototypes
@@ -527,7 +527,8 @@ static bool is_valid_utf8_char(const char* str, size_t len);
  * - field_data is misaligned for its size
  * - value is outside protocol-defined range
  */
-bool nimcp_validate_integer_field(const void* field_data, size_t size) {
+bool nimcp_validate_integer_field(const void* field_data, size_t size)
+{
     // STEP 1: NULL check (prevent segfault)
     if (!field_data) {
         return false;
@@ -551,7 +552,7 @@ bool nimcp_validate_integer_field(const void* field_data, size_t size) {
     // WHY: CPU requires aligned access for performance and correctness
     // HOW: Pointer address must be multiple of size
     // EXAMPLE: int32_t at 0x1000 ✓, int32_t at 0x1002 ✗
-    if (((uintptr_t)field_data) % size != 0) {
+    if (((uintptr_t) field_data) % size != 0) {
         NIMCP_LOGGING_ERROR("Integer field misaligned");
         return false;
     }
@@ -561,7 +562,7 @@ bool nimcp_validate_integer_field(const void* field_data, size_t size) {
     // WHY NOT 8/16: All values fit in type by definition
     switch (size) {
         case sizeof(int32_t): {
-            const int32_t value = *(const int32_t*)field_data;
+            const int32_t value = *(const int32_t*) field_data;
             // WHY CHECK: Ensure value fits in protocol-defined range
             // WHEN FAILS: Value corrupt or from different protocol version
             if (value < NIMCP_INT32_MIN || value > NIMCP_INT32_MAX) {
@@ -571,14 +572,14 @@ bool nimcp_validate_integer_field(const void* field_data, size_t size) {
             break;
         }
         case sizeof(int64_t): {
-            const int64_t value = *(const int64_t*)field_data;
+            const int64_t value = *(const int64_t*) field_data;
             if (value < NIMCP_INT64_MIN || value > NIMCP_INT64_MAX) {
                 NIMCP_LOGGING_ERROR("Integer value out of range: %ld", value);
                 return false;
             }
             break;
         }
-        // 8-bit and 16-bit: No range check needed (all values valid)
+            // 8-bit and 16-bit: No range check needed (all values valid)
     }
 
     return true;
@@ -647,7 +648,8 @@ bool nimcp_validate_integer_field(const void* field_data, size_t size) {
  * - value is Infinity
  * - value exceeds representable range
  */
-bool nimcp_validate_float_field(const void* field_data, size_t size) {
+bool nimcp_validate_float_field(const void* field_data, size_t size)
+{
     // STEP 1: NULL check
     if (!field_data) {
         return false;
@@ -666,7 +668,7 @@ bool nimcp_validate_float_field(const void* field_data, size_t size) {
     // STEP 3: Alignment check
     // WHY: Floating point operations require alignment
     // EXAMPLE: float at 0x1000 ✓, float at 0x1001 ✗
-    if (((uintptr_t)field_data) % size != 0) {
+    if (((uintptr_t) field_data) % size != 0) {
         NIMCP_LOGGING_ERROR("Float field misaligned");
         return false;
     }
@@ -674,7 +676,7 @@ bool nimcp_validate_float_field(const void* field_data, size_t size) {
     // STEP 4-6: Value validation (NaN, Inf, Range)
     // WHY SEPARATE FLOAT/DOUBLE: Different types, different functions
     if (size == sizeof(float)) {
-        const float value = *(const float*)field_data;
+        const float value = *(const float*) field_data;
 
         // NaN check
         // WHY REJECT: NaN is never equal to itself, breaks comparisons
@@ -698,7 +700,7 @@ bool nimcp_validate_float_field(const void* field_data, size_t size) {
             return false;
         }
     } else {
-        const double value = *(const double*)field_data;
+        const double value = *(const double*) field_data;
 
         // Same checks for double
         if (isnan(value)) {
@@ -794,13 +796,14 @@ bool nimcp_validate_float_field(const void* field_data, size_t size) {
  * - String contains invalid control characters
  * - String contains invalid UTF-8 sequences
  */
-bool nimcp_validate_string_field(const void* field_data, size_t size) {
+bool nimcp_validate_string_field(const void* field_data, size_t size)
+{
     // STEP 1: NULL/size check
     if (!field_data || size == 0) {
         return false;
     }
 
-    const char* str = (const char*)field_data;
+    const char* str = (const char*) field_data;
 
     // STEP 2: NULL termination check
     // WHY: C strings must be NULL-terminated
@@ -938,20 +941,20 @@ bool nimcp_validate_string_field(const void* field_data, size_t size) {
  * - any element is invalid
  * - element_type is unknown
  */
-bool nimcp_validate_array_field(const void* field_data, size_t size) {
+bool nimcp_validate_array_field(const void* field_data, size_t size)
+{
     // STEP 1: NULL/size check
     // WHY: Prevent invalid access to header
     if (!field_data || size < sizeof(NimcpArrayHeader)) {
         return false;
     }
 
-    const NimcpArrayHeader* header = (const NimcpArrayHeader*)field_data;
+    const NimcpArrayHeader* header = (const NimcpArrayHeader*) field_data;
 
     // STEP 2: Header validation
     // WHY: Ensure sensible values before calculations
     // CHECK: Non-zero counts, within limits
-    if (header->element_count == 0 ||
-        header->element_size == 0 ||
+    if (header->element_count == 0 || header->element_size == 0 ||
         header->element_count > NIMCP_ARRAY_MAX_ELEMENTS) {
         NIMCP_LOGGING_ERROR("Invalid array header values");
         return false;
@@ -961,20 +964,20 @@ bool nimcp_validate_array_field(const void* field_data, size_t size) {
     // WHY: Ensure all elements fit in field
     // CALCULATION: header + (count × size)
     // OVERFLOW: Would result in required_size wrapping or > size
-    size_t required_size = sizeof(NimcpArrayHeader) +
-                          (header->element_count * header->element_size);
+    size_t required_size =
+        sizeof(NimcpArrayHeader) + (header->element_count * header->element_size);
     if (required_size > size) {
         NIMCP_LOGGING_ERROR("Array size exceeds field size");
         return false;
     }
 
     // Get pointer to array data (after header)
-    const uint8_t* array_data = (const uint8_t*)field_data + sizeof(NimcpArrayHeader);
+    const uint8_t* array_data = (const uint8_t*) field_data + sizeof(NimcpArrayHeader);
 
     // STEP 4: Alignment check
     // WHY: Performance and platform requirements
     // ALIGNMENT: Platform-specific (typically 8 bytes)
-    if (((uintptr_t)array_data) % NIMCP_ARRAY_ALIGNMENT != 0) {
+    if (((uintptr_t) array_data) % NIMCP_ARRAY_ALIGNMENT != 0) {
         NIMCP_LOGGING_ERROR("Array data misaligned");
         return false;
     }
@@ -1014,8 +1017,7 @@ bool nimcp_validate_array_field(const void* field_data, size_t size) {
             default:
                 // Unknown element type
                 // WHY REJECT: Cannot validate unknown types
-                NIMCP_LOGGING_ERROR("Unknown array element type: %d",
-                              header->element_type);
+                NIMCP_LOGGING_ERROR("Unknown array element type: %d", header->element_type);
                 return false;
         }
     }
@@ -1137,14 +1139,15 @@ bool nimcp_validate_array_field(const void* field_data, size_t size) {
  * - any field is invalid
  * - unknown field type
  */
-bool nimcp_validate_state_fields(const void* state_data, size_t size) {
+bool nimcp_validate_state_fields(const void* state_data, size_t size)
+{
     // STEP 1: NULL/size check
     if (!state_data || size < sizeof(NimcpStateHeader)) {
         NIMCP_LOGGING_ERROR("Invalid state data pointer or size");
         return false;
     }
 
-    const NimcpStateHeader* header = (const NimcpStateHeader*)state_data;
+    const NimcpStateHeader* header = (const NimcpStateHeader*) state_data;
 
     // STEP 2: Magic number validation
     // WHY: Protocol handshake, ensures this is a state structure
@@ -1164,7 +1167,7 @@ bool nimcp_validate_state_fields(const void* state_data, size_t size) {
     // Get field table
     // LOCATION: Immediately after header
     const NimcpStateField* fields =
-        (const NimcpStateField*)((const uint8_t*)state_data + sizeof(NimcpStateHeader));
+        (const NimcpStateField*) ((const uint8_t*) state_data + sizeof(NimcpStateHeader));
 
     // STEP 4: Overlap detection using usage map
     // WHY: Detect overlapping fields (corruption indicator)
@@ -1181,8 +1184,7 @@ bool nimcp_validate_state_fields(const void* state_data, size_t size) {
     // Mark header region as used
     // WHY: Header + field table are always used
     // RANGE: [0, sizeof(header) + field_count × sizeof(field))
-    memset(usage_map, 1, sizeof(NimcpStateHeader) +
-           header->field_count * sizeof(NimcpStateField));
+    memset(usage_map, 1, sizeof(NimcpStateHeader) + header->field_count * sizeof(NimcpStateField));
 
     // STEP 5: Validate each field
     // WHY: Ensure all fields are valid and non-overlapping
@@ -1215,7 +1217,7 @@ bool nimcp_validate_state_fields(const void* state_data, size_t size) {
         // Validate field data based on type
         // WHY: Ensure field contents are valid
         // LOCATION: state_data + field offset
-        const void* field_data = (const uint8_t*)state_data + field->offset;
+        const void* field_data = (const uint8_t*) state_data + field->offset;
         bool valid = false;
 
         // Type dispatch
@@ -1240,8 +1242,7 @@ bool nimcp_validate_state_fields(const void* state_data, size_t size) {
             default:
                 // Unknown field type
                 // WHY REJECT: Cannot validate unknown types
-                NIMCP_LOGGING_ERROR("Unknown field type %d for field %u",
-                              field->type, i);
+                NIMCP_LOGGING_ERROR("Unknown field type %d for field %u", field->type, i);
                 free(usage_map);
                 return false;
         }
@@ -1342,14 +1343,15 @@ bool nimcp_validate_state_fields(const void* state_data, size_t size) {
  * - Invalid: 0xC0 0x41 (continuation byte is wrong)
  * - Invalid: 0xE0 0x80 (insufficient bytes)
  */
-static bool is_valid_utf8_char(const char* str, size_t len) {
+static bool is_valid_utf8_char(const char* str, size_t len)
+{
     // NULL/empty check
     if (!str || len == 0) {
         return false;
     }
 
     // Examine first byte to determine sequence length
-    uint8_t first = (uint8_t)str[0];
+    uint8_t first = (uint8_t) str[0];
     size_t seq_len;
 
     if ((first & 0x80) == 0) {

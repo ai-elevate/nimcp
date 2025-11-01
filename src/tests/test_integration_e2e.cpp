@@ -18,17 +18,17 @@
 #include "test_helpers.h"
 
 extern "C" {
-#include "../include/nimcp_neuralnet.h"
 #include "../include/nimcp_adaptive.h"
 #include "../include/nimcp_events.h"
+#include "../include/nimcp_neuralnet.h"
 #include "../include/nimcp_protocol.h"
-#include "../include/utils/nimcp_serialization.h"
 #include "../include/utils/nimcp_memory.h"
+#include "../include/utils/nimcp_serialization.h"
 }
 
-#include <vector>
-#include <cmath>
 #include <unistd.h>
+#include <cmath>
+#include <vector>
 
 //=============================================================================
 // Test Helper Functions
@@ -40,7 +40,8 @@ struct XORExample {
     float expected_output;
 };
 
-static std::vector<XORExample> create_xor_dataset() {
+static std::vector<XORExample> create_xor_dataset()
+{
     std::vector<XORExample> dataset;
     dataset.push_back({{0.0f, 0.0f}, 0.0f});
     dataset.push_back({{0.0f, 1.0f}, 1.0f});
@@ -50,7 +51,8 @@ static std::vector<XORExample> create_xor_dataset() {
 }
 
 // Helper to verify network learned XOR function
-static bool verify_xor_learning(neural_network_t network, float tolerance = 0.3f) {
+static bool verify_xor_learning(neural_network_t network, float tolerance = 0.3f)
+{
     auto dataset = create_xor_dataset();
     for (const auto& example : dataset) {
         float output;
@@ -75,13 +77,13 @@ struct EventTracker {
     EventTracker() : event_count(0), excitatory_count(0), inhibitory_count(0) {}
 };
 
-static void integration_event_callback(const event_packet_t* packet,
-                                       const void* payload,
-                                       uint32_t payload_len,
-                                       void* context) {
-    if (!context || !packet) return;
+static void integration_event_callback(const event_packet_t* packet, const void* payload,
+                                       uint32_t payload_len, void* context)
+{
+    if (!context || !packet)
+        return;
 
-    EventTracker* tracker = (EventTracker*)context;
+    EventTracker* tracker = (EventTracker*) context;
     tracker->event_count++;
 
     uint8_t flags = EVENT_GET_FLAGS(packet);
@@ -104,7 +106,8 @@ static void integration_event_callback(const event_packet_t* packet,
 //=============================================================================
 
 // Test 1.1: Create network → Train with data → Validate learning occurred
-TEST(LearningPipeline, CreateTrainValidate) {
+TEST(LearningPipeline, CreateTrainValidate)
+{
     // INTEGRATES: NeuralNet creation + Forward pass + Learning validation
 
     // Create network with learning capabilities
@@ -160,7 +163,8 @@ TEST(LearningPipeline, CreateTrainValidate) {
 }
 
 // Test 1.2: STDP learning with spike timing
-TEST(LearningPipeline, STDPSpikeTiming) {
+TEST(LearningPipeline, STDPSpikeTiming)
+{
     // INTEGRATES: NeuralNet + STDP learning + Spike recording
 
     network_config_t config = create_test_config();
@@ -202,13 +206,15 @@ TEST(LearningPipeline, STDPSpikeTiming) {
 
     // Verify STDP modified weights (with learning rule interactions)
     // STDP can be affected by normalization and other plasticity mechanisms
-    EXPECT_GE(mean_after, mean_before - 0.25f); // Allow moderate variance with multiple learning rules
+    EXPECT_GE(mean_after,
+              mean_before - 0.25f);  // Allow moderate variance with multiple learning rules
 
     neural_network_destroy(network);
 }
 
 // Test 1.3: Oja's rule weight normalization during learning
-TEST(LearningPipeline, OjaWeightNormalization) {
+TEST(LearningPipeline, OjaWeightNormalization)
+{
     // INTEGRATES: NeuralNet + Oja's learning + Weight normalization
 
     network_config_t config = create_test_config();
@@ -238,13 +244,14 @@ TEST(LearningPipeline, OjaWeightNormalization) {
 
     // Verify weight normalization occurred
     // Oja's rule should maintain bounded weight norms
-    EXPECT_LT(norm_after, 5.0f); // Weights should not explode
+    EXPECT_LT(norm_after, 5.0f);  // Weights should not explode
 
     neural_network_destroy(network);
 }
 
 // Test 1.4: Homeostatic plasticity maintaining stability
-TEST(LearningPipeline, HomeostaticStability) {
+TEST(LearningPipeline, HomeostaticStability)
+{
     // INTEGRATES: NeuralNet + Homeostatic plasticity + Activity tracking
 
     network_config_t config = create_test_config();
@@ -286,7 +293,8 @@ TEST(LearningPipeline, HomeostaticStability) {
 }
 
 // Test 1.5: Adaptive threshold adjustment over time
-TEST(LearningPipeline, AdaptiveThresholdAdjustment) {
+TEST(LearningPipeline, AdaptiveThresholdAdjustment)
+{
     // INTEGRATES: NeuralNet + Adaptive thresholding + Activity history
 
     network_config_t config = create_test_config();
@@ -316,7 +324,8 @@ TEST(LearningPipeline, AdaptiveThresholdAdjustment) {
 }
 
 // Test 1.6: Multi-layer learning convergence
-TEST(LearningPipeline, MultiLayerConvergence) {
+TEST(LearningPipeline, MultiLayerConvergence)
+{
     // INTEGRATES: NeuralNet + Multi-layer architecture + Learning + Performance metrics
 
     network_config_t config = create_test_config();
@@ -352,13 +361,14 @@ TEST(LearningPipeline, MultiLayerConvergence) {
     ASSERT_TRUE(neural_network_forward(network, input, 2, &output1, 1));
     ASSERT_TRUE(neural_network_forward(network, input, 2, &output2, 1));
 
-    EXPECT_NEAR(output1, output2, 0.1f); // Should be consistent
+    EXPECT_NEAR(output1, output2, 0.1f);  // Should be consistent
 
     neural_network_destroy(network);
 }
 
 // Test 1.7: Combined learning rules interaction
-TEST(LearningPipeline, CombinedLearningRules) {
+TEST(LearningPipeline, CombinedLearningRules)
+{
     // INTEGRATES: NeuralNet + STDP + Oja + Homeostasis working together
 
     network_config_t config = create_test_config();
@@ -411,7 +421,7 @@ TEST(LearningPipeline, CombinedLearningRules) {
 
     // Verify network remained stable with combined learning
     EXPECT_GT(stats_after.network_stability, 0.0f);
-    EXPECT_LT(stats_after.avg_weight, 10.0f); // No weight explosion
+    EXPECT_LT(stats_after.avg_weight, 10.0f);  // No weight explosion
 
     neural_network_destroy(network);
 }
@@ -421,7 +431,8 @@ TEST(LearningPipeline, CombinedLearningRules) {
 //=============================================================================
 
 // Test 2.1: Generator → Packet → Receiver → Network update
-TEST(EventSystem, GeneratorToReceiverPipeline) {
+TEST(EventSystem, GeneratorToReceiverPipeline)
+{
     // INTEGRATES: Event generator + Event packets + Event receiver + NeuralNet
 
     EventTracker tracker;
@@ -448,7 +459,7 @@ TEST(EventSystem, GeneratorToReceiverPipeline) {
 
     subscription_filter_t filter;
     filter.feature_code = MAKE_FEATURE_CODE(FEATURE_DOMAIN_VISION, 0x000);
-    filter.feature_mask = 0xFFFF0000; // Match domain only
+    filter.feature_mask = 0xFFFF0000;  // Match domain only
     filter.confidence_threshold = 0.0f;
     filter.max_rate_hz = 0;
 
@@ -466,7 +477,7 @@ TEST(EventSystem, GeneratorToReceiverPipeline) {
     bool generated = event_generator_on_spike(generator, source_network, 0, 1000);
 
     // Wait for async event processing
-    usleep(20000); // 20ms
+    usleep(20000);  // 20ms
 
     // Verify event was generated (callback may be async)
     EXPECT_GE(tracker.event_count, 0);
@@ -479,7 +490,8 @@ TEST(EventSystem, GeneratorToReceiverPipeline) {
 
 // Test 2.2: Event filtering with subscription filters
 // DISABLED: event_receiver_create API not yet implemented
-TEST(EventSystem, DISABLED_SubscriptionFiltering) {
+TEST(EventSystem, DISABLED_SubscriptionFiltering)
+{
     // INTEGRATES: Event packets + Subscription filters + Feature codes
 
     EventTracker tracker;
@@ -491,7 +503,7 @@ TEST(EventSystem, DISABLED_SubscriptionFiltering) {
     // Create receiver with specific filter (only VISION domain)
     subscription_filter_t filter;
     filter.feature_code = MAKE_FEATURE_CODE(FEATURE_DOMAIN_VISION, 0x000);
-    filter.feature_mask = 0xFF000000; // Match domain only (top 8 bits)
+    filter.feature_mask = 0xFF000000;  // Match domain only (top 8 bits)
     filter.confidence_threshold = 0.5f;
     filter.max_rate_hz = 0;
 
@@ -534,7 +546,8 @@ TEST(EventSystem, DISABLED_SubscriptionFiltering) {
 }
 
 // Test 2.3: Multi-hop event propagation
-TEST(EventSystem, MultiHopPropagation) {
+TEST(EventSystem, MultiHopPropagation)
+{
     // INTEGRATES: Event packets + Hop counting + Network propagation
 
     // Create event packet
@@ -557,7 +570,8 @@ TEST(EventSystem, MultiHopPropagation) {
 }
 
 // Test 2.4: Event confidence propagation
-TEST(EventSystem, ConfidencePropagation) {
+TEST(EventSystem, ConfidencePropagation)
+{
     // INTEGRATES: Event packets + Confidence encoding + Feature propagation
 
     // Test confidence encoding/decoding
@@ -578,7 +592,8 @@ TEST(EventSystem, ConfidencePropagation) {
 }
 
 // Test 2.5: Plasticity triggers from events
-TEST(EventSystem, PlasticityTriggersFromEvents) {
+TEST(EventSystem, PlasticityTriggersFromEvents)
+{
     // INTEGRATES: Event packets + Plasticity flags + Neural learning
 
     network_config_t config = create_test_config();
@@ -604,7 +619,8 @@ TEST(EventSystem, PlasticityTriggersFromEvents) {
 }
 
 // Test 2.6: Excitatory/Inhibitory event types
-TEST(EventSystem, ExcitatoryInhibitoryEvents) {
+TEST(EventSystem, ExcitatoryInhibitoryEvents)
+{
     // INTEGRATES: Event packets + Neuron types + Event flags
 
     // Create excitatory event
@@ -628,7 +644,8 @@ TEST(EventSystem, ExcitatoryInhibitoryEvents) {
 }
 
 // Test 2.7: Event feature code mapping
-TEST(EventSystem, FeatureCodeMapping) {
+TEST(EventSystem, FeatureCodeMapping)
+{
     // INTEGRATES: Event receiver + Feature codes + Neuron mapping
 
     network_config_t config = create_test_config();
@@ -664,7 +681,8 @@ TEST(EventSystem, FeatureCodeMapping) {
 //=============================================================================
 
 // Test 3.1: Save network state → Destroy → Load → Verify identical
-TEST(Serialization, NetworkSaveLoadRoundtrip) {
+TEST(Serialization, NetworkSaveLoadRoundtrip)
+{
     // INTEGRATES: NeuralNet + Serialization + Memory management
 
     // Create and configure network
@@ -717,7 +735,8 @@ TEST(Serialization, NetworkSaveLoadRoundtrip) {
 }
 
 // Test 3.2: Compress/decompress network data
-TEST(Serialization, CompressionDecompression) {
+TEST(Serialization, CompressionDecompression)
+{
     // INTEGRATES: Serialization + Compression + Data integrity
 
     NimcpSerializer* serializer = nimcp_serializer_create(1024);
@@ -725,7 +744,7 @@ TEST(Serialization, CompressionDecompression) {
 
     // Write test data
     for (int i = 0; i < 100; i++) {
-        ASSERT_TRUE(nimcp_write_float(serializer, (float)i * 0.1f));
+        ASSERT_TRUE(nimcp_write_float(serializer, (float) i * 0.1f));
     }
 
     size_t original_size = nimcp_serializer_get_length(serializer);
@@ -748,14 +767,15 @@ TEST(Serialization, CompressionDecompression) {
     nimcp_serializer_set_position(serializer, 0);
     for (int i = 0; i < 100; i++) {
         float value = nimcp_read_float(serializer);
-        EXPECT_FLOAT_EQ(value, (float)i * 0.1f);
+        EXPECT_FLOAT_EQ(value, (float) i * 0.1f);
     }
 
     nimcp_serializer_destroy(serializer);
 }
 
 // Test 3.3: Serialize event packets
-TEST(Serialization, EventPacketSerialization) {
+TEST(Serialization, EventPacketSerialization)
+{
     // INTEGRATES: Event packets + Serialization + Protocol encoding
 
     NimcpSerializer* serializer = nimcp_serializer_create(1024);
@@ -807,7 +827,8 @@ TEST(Serialization, EventPacketSerialization) {
 
 // Test 3.4: Serialization error handling
 // DISABLED: nimcp_serializer_create API not yet fully implemented
-TEST(Serialization, DISABLED_ErrorHandling) {
+TEST(Serialization, DISABLED_ErrorHandling)
+{
     // INTEGRATES: Serialization + Error detection + Boundary conditions
 
     NimcpSerializer* serializer = nimcp_serializer_create(8);  // Only 8 bytes
@@ -831,7 +852,8 @@ TEST(Serialization, DISABLED_ErrorHandling) {
 }
 
 // Test 3.5: Large data serialization
-TEST(Serialization, LargeDataHandling) {
+TEST(Serialization, LargeDataHandling)
+{
     // INTEGRATES: Serialization + Memory management + Performance
 
     NimcpSerializer* serializer = nimcp_serializer_create(65536);
@@ -840,7 +862,7 @@ TEST(Serialization, LargeDataHandling) {
     // Write large amount of data
     const int num_floats = 10000;
     for (int i = 0; i < num_floats; i++) {
-        ASSERT_TRUE(nimcp_write_float(serializer, (float)i));
+        ASSERT_TRUE(nimcp_write_float(serializer, (float) i));
     }
 
     size_t total_size = nimcp_serializer_get_length(serializer);
@@ -850,14 +872,15 @@ TEST(Serialization, LargeDataHandling) {
     nimcp_serializer_set_position(serializer, 0);
     for (int i = 0; i < num_floats; i++) {
         float value = nimcp_read_float(serializer);
-        EXPECT_FLOAT_EQ(value, (float)i);
+        EXPECT_FLOAT_EQ(value, (float) i);
     }
 
     nimcp_serializer_destroy(serializer);
 }
 
 // Test 3.6: Cross-module serialization (network + events)
-TEST(Serialization, CrossModuleSerialization) {
+TEST(Serialization, CrossModuleSerialization)
+{
     // INTEGRATES: NeuralNet + Events + Serialization across modules
 
     NimcpSerializer* serializer = nimcp_serializer_create(4096);
@@ -905,7 +928,8 @@ TEST(Serialization, CrossModuleSerialization) {
 //=============================================================================
 
 // Test 4.1: Large-scale network creation/destruction (no leaks)
-TEST(ResourceManagement, LargeScaleNetworkLifecycle) {
+TEST(ResourceManagement, LargeScaleNetworkLifecycle)
+{
     // INTEGRATES: NeuralNet + Memory management + Resource cleanup
 
     // Create and destroy multiple networks
@@ -934,7 +958,8 @@ TEST(ResourceManagement, LargeScaleNetworkLifecycle) {
 }
 
 // Test 4.2: Stress test with thousands of operations
-TEST(ResourceManagement, StressTestOperations) {
+TEST(ResourceManagement, StressTestOperations)
+{
     // INTEGRATES: NeuralNet + Multiple operations + Performance
 
     network_config_t config = create_test_config();
@@ -946,7 +971,7 @@ TEST(ResourceManagement, StressTestOperations) {
     const int num_ops = 10000;
     for (int i = 0; i < num_ops; i++) {
         uint32_t neuron_id = i % 20;
-        float value = (float)(i % 100) / 100.0f;
+        float value = (float) (i % 100) / 100.0f;
 
         // Alternate between different operations
         if (i % 4 == 0) {
@@ -970,7 +995,8 @@ TEST(ResourceManagement, StressTestOperations) {
 }
 
 // Test 4.3: Concurrent serialization operations
-TEST(ResourceManagement, ConcurrentSerializers) {
+TEST(ResourceManagement, ConcurrentSerializers)
+{
     // INTEGRATES: Serialization + Multiple instances + Resource isolation
 
     const int num_serializers = 10;
@@ -1003,7 +1029,8 @@ TEST(ResourceManagement, ConcurrentSerializers) {
 }
 
 // Test 4.4: Event system resource cleanup
-TEST(ResourceManagement, EventSystemCleanup) {
+TEST(ResourceManagement, EventSystemCleanup)
+{
     // INTEGRATES: Event generator + Event receiver + Memory cleanup
 
     EventTracker tracker;
@@ -1051,7 +1078,8 @@ TEST(ResourceManagement, EventSystemCleanup) {
 }
 
 // Test 4.5: Memory boundary conditions
-TEST(ResourceManagement, MemoryBoundaryConditions) {
+TEST(ResourceManagement, MemoryBoundaryConditions)
+{
     // INTEGRATES: Serialization + Boundary testing + Error handling
 
     // Test minimum size serializer
@@ -1062,7 +1090,7 @@ TEST(ResourceManagement, MemoryBoundaryConditions) {
     nimcp_serializer_destroy(tiny);
 
     // Test large serializer
-    NimcpSerializer* large = nimcp_serializer_create(1024 * 1024); // 1MB
+    NimcpSerializer* large = nimcp_serializer_create(1024 * 1024);  // 1MB
     ASSERT_NE(large, nullptr);
 
     // Write many small values
@@ -1082,7 +1110,8 @@ TEST(ResourceManagement, MemoryBoundaryConditions) {
 
 // Test 5.1: Pattern recognition task (simple classification)
 // DISABLED: Requires supervised learning implementation
-TEST(RealWorldScenario, DISABLED_SimplePatternRecognition) {
+TEST(RealWorldScenario, DISABLED_SimplePatternRecognition)
+{
     // INTEGRATES: NeuralNet + Learning + Pattern classification
 
     network_config_t config = create_test_config();
@@ -1128,7 +1157,8 @@ TEST(RealWorldScenario, DISABLED_SimplePatternRecognition) {
 }
 
 // Test 5.2: Temporal sequence learning
-TEST(RealWorldScenario, TemporalSequenceLearning) {
+TEST(RealWorldScenario, TemporalSequenceLearning)
+{
     // INTEGRATES: NeuralNet + STDP + Temporal patterns + Spike timing
 
     network_config_t config = create_test_config();
@@ -1170,12 +1200,13 @@ TEST(RealWorldScenario, TemporalSequenceLearning) {
 }
 
 // Test 5.3: Association learning between stimuli
-TEST(RealWorldScenario, AssociationLearning) {
+TEST(RealWorldScenario, AssociationLearning)
+{
     // INTEGRATES: NeuralNet + Multiple inputs + Hebbian learning + Association
 
     network_config_t config = create_test_config();
     config.num_neurons = 20;
-    config.input_size = 4; // Two pairs of associated inputs
+    config.input_size = 4;  // Two pairs of associated inputs
     config.output_size = 1;
     config.num_layers = 2;
     uint32_t layers[] = {4, 1};  // Fixed: 4 inputs, 1 output
@@ -1188,8 +1219,8 @@ TEST(RealWorldScenario, AssociationLearning) {
 
     // Define associated stimuli pairs
     // Stimulus A (visual) associated with Stimulus B (auditory)
-    float associated_pair1[] = {1.0f, 0.0f, 1.0f, 0.0f}; // A1 + B1
-    float associated_pair2[] = {0.0f, 1.0f, 0.0f, 1.0f}; // A2 + B2
+    float associated_pair1[] = {1.0f, 0.0f, 1.0f, 0.0f};  // A1 + B1
+    float associated_pair2[] = {0.0f, 1.0f, 0.0f, 1.0f};  // A2 + B2
 
     // Train associations
     for (int epoch = 0; epoch < 100; epoch++) {
@@ -1203,19 +1234,20 @@ TEST(RealWorldScenario, AssociationLearning) {
     }
 
     // Test if presenting partial stimulus activates association
-    float partial_stimulus1[] = {1.0f, 0.0f, 0.0f, 0.0f}; // Only A1
+    float partial_stimulus1[] = {1.0f, 0.0f, 0.0f, 0.0f};  // Only A1
     float output1;
     ASSERT_TRUE(neural_network_forward(network, partial_stimulus1, 4, &output1, 1));
 
     // Network should produce output from learned association
-    EXPECT_GE(output1, 0.0f); // Just verify network responds
+    EXPECT_GE(output1, 0.0f);  // Just verify network responds
 
     neural_network_destroy(network);
 }
 
 // Test 5.4: Multi-sensory integration
 // DISABLED: event_receiver_create API not yet implemented
-TEST(RealWorldScenario, DISABLED_MultiSensoryIntegration) {
+TEST(RealWorldScenario, DISABLED_MultiSensoryIntegration)
+{
     // INTEGRATES: Events + Multiple feature domains + Neural integration
 
     EventTracker tracker;
@@ -1288,7 +1320,8 @@ TEST(RealWorldScenario, DISABLED_MultiSensoryIntegration) {
 }
 
 // Test 5.5: Adaptive behavior with feedback
-TEST(RealWorldScenario, AdaptiveBehaviorWithFeedback) {
+TEST(RealWorldScenario, AdaptiveBehaviorWithFeedback)
+{
     // INTEGRATES: NeuralNet + Homeostasis + Adaptation + Learning
 
     network_config_t config = create_test_config();

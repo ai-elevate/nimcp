@@ -30,10 +30,10 @@
 //=============================================================================
 
 #include "../include/nimcp_protocol.h"
-#include "utils/nimcp_validate.h"
-#include <string.h>
-#include <stdio.h>
 #include <arpa/inet.h>
+#include <stdio.h>
+#include <string.h>
+#include "utils/nimcp_validate.h"
 
 //=============================================================================
 // Constants and Configuration
@@ -90,8 +90,7 @@ static const uint32_t crc32_table[256] = {
     0xA00AE278, 0xD70DD2EE, 0x4E048354, 0x3903B3C2, 0xA7672661, 0xD06016F7, 0x4969474D, 0x3E6E77DB,
     0xAED16A4A, 0xD9D65ADC, 0x40DF0B66, 0x37D83BF0, 0xA9BCAE53, 0xDEBB9EC5, 0x47B2CF7F, 0x30B5FFE9,
     0xBDBDF21C, 0xCABAC28A, 0x53B39330, 0x24B4A3A6, 0xBAD03605, 0xCDD70693, 0x54DE5729, 0x23D967BF,
-    0xB3667A2E, 0xC4614AB8, 0x5D681B02, 0x2A6F2B94, 0xB40BBE37, 0xC30C8EA1, 0x5A05DF1B, 0x2D02EF8D
-};
+    0xB3667A2E, 0xC4614AB8, 0x5D681B02, 0x2A6F2B94, 0xB40BBE37, 0xC30C8EA1, 0x5A05DF1B, 0x2D02EF8D};
 //=============================================================================
 // Message Header Factory - Builder Pattern
 //=============================================================================
@@ -112,14 +111,12 @@ static const uint32_t crc32_table[256] = {
  * @param payload_len Size of payload in bytes
  * @param sequence Message sequence number for ordering
  */
-static void init_header(
-    msg_header_t* header,
-    msg_type_t type,
-    uint32_t payload_len,
-    uint32_t sequence) {
-
+static void init_header(msg_header_t* header, msg_type_t type, uint32_t payload_len,
+                        uint32_t sequence)
+{
     // Guard clause: Validate header pointer
-    if (!header) return;
+    if (!header)
+        return;
 
     header->magic = PROTOCOL_MAGIC;
     header->version = PROTOCOL_VERSION;
@@ -143,17 +140,17 @@ static void init_header(
  *
  * @return true if inputs valid, false otherwise
  */
-static bool validate_serialize_inputs(
-    const uint8_t* buffer,
-    uint32_t buffer_size,
-    uint32_t payload_len) {
-
+static bool validate_serialize_inputs(const uint8_t* buffer, uint32_t buffer_size,
+                                      uint32_t payload_len)
+{
     // Guard clause: Check buffer pointer
-    if (!buffer) return false;
+    if (!buffer)
+        return false;
 
     // Guard clause: Check buffer size
     uint32_t required_size = sizeof(msg_header_t) + payload_len;
-    if (buffer_size < required_size) return false;
+    if (buffer_size < required_size)
+        return false;
 
     return true;
 }
@@ -166,16 +163,15 @@ static bool validate_serialize_inputs(
  *
  * COMPLEXITY: O(n) where n = payload_len
  */
-static void copy_payload_to_buffer(
-    uint8_t* buffer,
-    const void* payload,
-    uint32_t payload_len) {
-
+static void copy_payload_to_buffer(uint8_t* buffer, const void* payload, uint32_t payload_len)
+{
     // Guard clause: Check if payload exists
-    if (!payload || payload_len == 0) return;
+    if (!payload || payload_len == 0)
+        return;
 
     // Guard clause: Check buffer
-    if (!buffer) return;
+    if (!buffer)
+        return;
 
     memcpy(buffer + sizeof(msg_header_t), payload, payload_len);
 }
@@ -204,13 +200,9 @@ static void copy_payload_to_buffer(
  * @param buffer_size Size of output buffer
  * @return Bytes written on success, -1 on error
  */
-int protocol_serialize_message(
-    msg_type_t type,
-    const void* payload,
-    uint32_t payload_len,
-    uint8_t* buffer,
-    uint32_t buffer_size) {
-
+int protocol_serialize_message(msg_type_t type, const void* payload, uint32_t payload_len,
+                               uint8_t* buffer, uint32_t buffer_size)
+{
     // Step 1: Validate inputs
     if (!validate_serialize_inputs(buffer, buffer_size, payload_len)) {
         return -1;
@@ -245,19 +237,20 @@ int protocol_serialize_message(
  *
  * @return true if inputs valid, false otherwise
  */
-static bool validate_deserialize_inputs(
-    const uint8_t* buffer,
-    uint32_t buffer_size,
-    const msg_header_t* header) {
-
+static bool validate_deserialize_inputs(const uint8_t* buffer, uint32_t buffer_size,
+                                        const msg_header_t* header)
+{
     // Guard clause: Check buffer
-    if (!buffer) return false;
+    if (!buffer)
+        return false;
 
     // Guard clause: Check header
-    if (!header) return false;
+    if (!header)
+        return false;
 
     // Guard clause: Check minimum buffer size
-    if (buffer_size < sizeof(msg_header_t)) return false;
+    if (buffer_size < sizeof(msg_header_t))
+        return false;
 
     return true;
 }
@@ -271,12 +264,11 @@ static bool validate_deserialize_inputs(
  *
  * @return true if header valid, false otherwise
  */
-static bool extract_and_validate_header(
-    const uint8_t* buffer,
-    msg_header_t* header) {
-
+static bool extract_and_validate_header(const uint8_t* buffer, msg_header_t* header)
+{
     // Guard clause: Validate inputs
-    if (!buffer || !header) return false;
+    if (!buffer || !header)
+        return false;
 
     // Copy header from buffer
     memcpy(header, buffer, sizeof(msg_header_t));
@@ -292,16 +284,15 @@ static bool extract_and_validate_header(
  *
  * COMPLEXITY: O(n) where n = payload length
  */
-static void extract_payload_from_buffer(
-    const uint8_t* buffer,
-    void* payload,
-    uint32_t payload_len) {
-
+static void extract_payload_from_buffer(const uint8_t* buffer, void* payload, uint32_t payload_len)
+{
     // Guard clause: Check if payload needed
-    if (!payload || payload_len == 0) return;
+    if (!payload || payload_len == 0)
+        return;
 
     // Guard clause: Check buffer
-    if (!buffer) return;
+    if (!buffer)
+        return;
 
     memcpy(payload, buffer + sizeof(msg_header_t), payload_len);
 }
@@ -316,15 +307,13 @@ static void extract_payload_from_buffer(
  *
  * @return true if checksum valid, false otherwise
  */
-static bool verify_message_checksum(
-    const msg_header_t* header,
-    const void* payload) {
-
+static bool verify_message_checksum(const msg_header_t* header, const void* payload)
+{
     // Guard clause: Validate header
-    if (!header) return false;
+    if (!header)
+        return false;
 
-    uint32_t calculated = protocol_calculate_checksum(
-        header, payload, header->length);
+    uint32_t calculated = protocol_calculate_checksum(header, payload, header->length);
 
     return calculated == header->checksum;
 }
@@ -353,13 +342,9 @@ static bool verify_message_checksum(
  * @param payload_size Size of payload buffer
  * @return Bytes read on success, -1 on error
  */
-int protocol_deserialize_message(
-    const uint8_t* buffer,
-    uint32_t buffer_size,
-    msg_header_t* header,
-    void* payload,
-    uint32_t payload_size) {
-
+int protocol_deserialize_message(const uint8_t* buffer, uint32_t buffer_size, msg_header_t* header,
+                                 void* payload, uint32_t payload_size)
+{
     // Step 1: Validate inputs
     if (!validate_deserialize_inputs(buffer, buffer_size, header)) {
         return -1;
@@ -397,7 +382,8 @@ int protocol_deserialize_message(
  *
  * COMPLEXITY: O(1)
  */
-static bool is_magic_valid(uint32_t magic) {
+static bool is_magic_valid(uint32_t magic)
+{
     return magic == PROTOCOL_MAGIC;
 }
 
@@ -408,7 +394,8 @@ static bool is_magic_valid(uint32_t magic) {
  *
  * COMPLEXITY: O(1)
  */
-static bool is_version_valid(uint8_t version) {
+static bool is_version_valid(uint8_t version)
+{
     return version == PROTOCOL_VERSION;
 }
 
@@ -419,7 +406,8 @@ static bool is_version_valid(uint8_t version) {
  *
  * COMPLEXITY: O(1)
  */
-static bool is_type_valid(msg_type_t type) {
+static bool is_type_valid(msg_type_t type)
+{
     return type < MSG_TYPE_MAX;
 }
 
@@ -430,7 +418,8 @@ static bool is_type_valid(msg_type_t type) {
  *
  * COMPLEXITY: O(1)
  */
-static bool is_payload_length_valid(uint32_t length) {
+static bool is_payload_length_valid(uint32_t length)
+{
     return length <= MAX_PAYLOAD_SIZE;
 }
 
@@ -454,9 +443,11 @@ static bool is_payload_length_valid(uint32_t length) {
  * @param header Pointer to header structure to validate
  * @return true if header valid, false otherwise
  */
-bool protocol_validate_header(const msg_header_t* header) {
+bool protocol_validate_header(const msg_header_t* header)
+{
     // Guard clause: Check pointer
-    if (!header) return false;
+    if (!header)
+        return false;
 
     // Guard clause: Validate magic field using nimcp_validate
     if (!nimcp_validate_integer_field(&header->magic, sizeof(uint32_t))) {
@@ -464,7 +455,8 @@ bool protocol_validate_header(const msg_header_t* header) {
     }
 
     // Guard clause: Check magic number
-    if (!is_magic_valid(header->magic)) return false;
+    if (!is_magic_valid(header->magic))
+        return false;
 
     // Guard clause: Validate version field using nimcp_validate
     if (!nimcp_validate_integer_field(&header->version, sizeof(uint8_t))) {
@@ -472,7 +464,8 @@ bool protocol_validate_header(const msg_header_t* header) {
     }
 
     // Guard clause: Check version
-    if (!is_version_valid(header->version)) return false;
+    if (!is_version_valid(header->version))
+        return false;
 
     // Guard clause: Validate message type field using nimcp_validate
     if (!nimcp_validate_integer_field(&header->type, sizeof(msg_type_t))) {
@@ -480,7 +473,8 @@ bool protocol_validate_header(const msg_header_t* header) {
     }
 
     // Guard clause: Check message type
-    if (!is_type_valid(header->type)) return false;
+    if (!is_type_valid(header->type))
+        return false;
 
     // Guard clause: Validate length field using nimcp_validate
     if (!nimcp_validate_integer_field(&header->length, sizeof(uint32_t))) {
@@ -488,7 +482,8 @@ bool protocol_validate_header(const msg_header_t* header) {
     }
 
     // Guard clause: Check payload length
-    if (!is_payload_length_valid(header->length)) return false;
+    if (!is_payload_length_valid(header->length))
+        return false;
 
     // Guard clause: Validate sequence field using nimcp_validate
     if (!nimcp_validate_integer_field(&header->sequence, sizeof(uint32_t))) {
@@ -520,13 +515,11 @@ bool protocol_validate_header(const msg_header_t* header) {
  * @param length Number of bytes to process
  * @return Updated CRC value
  */
-static uint32_t calculate_crc32_bytes(
-    uint32_t crc,
-    const uint8_t* data,
-    size_t length) {
-
+static uint32_t calculate_crc32_bytes(uint32_t crc, const uint8_t* data, size_t length)
+{
     // Guard clause: Check data pointer
-    if (!data || length == 0) return crc;
+    if (!data || length == 0)
+        return crc;
 
     // Single pass through data - O(n)
     for (size_t i = 0; i < length; i++) {
@@ -549,20 +542,18 @@ static uint32_t calculate_crc32_bytes(
  * @param saved_checksum Temporary storage for original checksum
  * @return Updated CRC value
  */
-static uint32_t calculate_header_crc(
-    uint32_t crc,
-    msg_header_t* header,
-    uint32_t* saved_checksum) {
-
+static uint32_t calculate_header_crc(uint32_t crc, msg_header_t* header, uint32_t* saved_checksum)
+{
     // Guard clause: Validate inputs
-    if (!header || !saved_checksum) return crc;
+    if (!header || !saved_checksum)
+        return crc;
 
     // Save and clear checksum field
     *saved_checksum = header->checksum;
     header->checksum = 0;
 
     // Calculate CRC over header
-    const uint8_t* data = (const uint8_t*)header;
+    const uint8_t* data = (const uint8_t*) header;
     crc = calculate_crc32_bytes(crc, data, sizeof(msg_header_t));
 
     return crc;
@@ -575,12 +566,11 @@ static uint32_t calculate_header_crc(
  *
  * COMPLEXITY: O(1)
  */
-static void restore_checksum_field(
-    msg_header_t* header,
-    uint32_t saved_checksum) {
-
+static void restore_checksum_field(msg_header_t* header, uint32_t saved_checksum)
+{
     // Guard clause: Validate header
-    if (!header) return;
+    if (!header)
+        return;
 
     header->checksum = saved_checksum;
 }
@@ -609,27 +599,26 @@ static void restore_checksum_field(
  * @param payload_len Size of payload in bytes
  * @return Calculated CRC32 checksum
  */
-uint32_t protocol_calculate_checksum(
-    const msg_header_t* header,
-    const void* payload,
-    uint32_t payload_len) {
-
+uint32_t protocol_calculate_checksum(const msg_header_t* header, const void* payload,
+                                     uint32_t payload_len)
+{
     // Guard clause: Validate header
-    if (!header) return 0;
+    if (!header)
+        return 0;
 
     uint32_t crc = 0xFFFFFFFF;
     uint32_t saved_checksum;
 
     // Calculate CRC over header
-    crc = calculate_header_crc(crc, (msg_header_t*)header, &saved_checksum);
+    crc = calculate_header_crc(crc, (msg_header_t*) header, &saved_checksum);
 
     // Calculate CRC over payload if present
     if (payload && payload_len > 0) {
-        crc = calculate_crc32_bytes(crc, (const uint8_t*)payload, payload_len);
+        crc = calculate_crc32_bytes(crc, (const uint8_t*) payload, payload_len);
     }
 
     // Restore header checksum field
-    restore_checksum_field((msg_header_t*)header, saved_checksum);
+    restore_checksum_field((msg_header_t*) header, saved_checksum);
 
     return ~crc;
 }
@@ -645,20 +634,21 @@ uint32_t protocol_calculate_checksum(
  *
  * COMPLEXITY: O(1)
  */
-static bool validate_event_serialize_inputs(
-    const event_packet_t* packet,
-    const uint8_t* buffer,
-    uint32_t buffer_size) {
-
+static bool validate_event_serialize_inputs(const event_packet_t* packet, const uint8_t* buffer,
+                                            uint32_t buffer_size)
+{
     // Guard clause: Check packet
-    if (!packet) return false;
+    if (!packet)
+        return false;
 
     // Guard clause: Check buffer
-    if (!buffer) return false;
+    if (!buffer)
+        return false;
 
     // Guard clause: Check buffer size
     uint32_t required = sizeof(event_packet_t) + packet->payload_length;
-    if (buffer_size < required) return false;
+    if (buffer_size < required)
+        return false;
 
     return true;
 }
@@ -670,16 +660,15 @@ static bool validate_event_serialize_inputs(
  *
  * COMPLEXITY: O(n) where n = payload_length
  */
-static void copy_event_payload(
-    uint8_t* buffer,
-    const void* payload,
-    uint32_t payload_length) {
-
+static void copy_event_payload(uint8_t* buffer, const void* payload, uint32_t payload_length)
+{
     // Guard clause: Check if payload present
-    if (!payload || payload_length == 0) return;
+    if (!payload || payload_length == 0)
+        return;
 
     // Guard clause: Check buffer
-    if (!buffer) return;
+    if (!buffer)
+        return;
 
     memcpy(buffer + sizeof(event_packet_t), payload, payload_length);
 }
@@ -705,12 +694,9 @@ static void copy_event_payload(
  * @param buffer_size Size of output buffer
  * @return Bytes written on success, -1 on error
  */
-int event_packet_serialize(
-    const event_packet_t* packet,
-    const void* payload,
-    uint8_t* buffer,
-    uint32_t buffer_size) {
-
+int event_packet_serialize(const event_packet_t* packet, const void* payload, uint8_t* buffer,
+                           uint32_t buffer_size)
+{
     // Step 1: Validate inputs
     if (!validate_event_serialize_inputs(packet, buffer, buffer_size)) {
         return -1;
@@ -732,19 +718,20 @@ int event_packet_serialize(
  *
  * COMPLEXITY: O(1)
  */
-static bool validate_event_deserialize_inputs(
-    const uint8_t* buffer,
-    uint32_t buffer_size,
-    const event_packet_t* packet) {
-
+static bool validate_event_deserialize_inputs(const uint8_t* buffer, uint32_t buffer_size,
+                                              const event_packet_t* packet)
+{
     // Guard clause: Check buffer
-    if (!buffer) return false;
+    if (!buffer)
+        return false;
 
     // Guard clause: Check packet
-    if (!packet) return false;
+    if (!packet)
+        return false;
 
     // Guard clause: Check buffer size
-    if (buffer_size < sizeof(event_packet_t)) return false;
+    if (buffer_size < sizeof(event_packet_t))
+        return false;
 
     return true;
 }
@@ -758,20 +745,20 @@ static bool validate_event_deserialize_inputs(
  *
  * @return true on success, false on error
  */
-static bool extract_event_payload(
-    const uint8_t* buffer,
-    void* payload,
-    uint32_t payload_size,
-    uint32_t payload_length) {
-
+static bool extract_event_payload(const uint8_t* buffer, void* payload, uint32_t payload_size,
+                                  uint32_t payload_length)
+{
     // Guard clause: Check if payload needed
-    if (payload_length == 0) return true;
+    if (payload_length == 0)
+        return true;
 
     // Guard clause: Check payload buffer
-    if (!payload) return false;
+    if (!payload)
+        return false;
 
     // Guard clause: Check payload size
-    if (payload_size < payload_length) return false;
+    if (payload_size < payload_length)
+        return false;
 
     memcpy(payload, buffer + sizeof(event_packet_t), payload_length);
     return true;
@@ -800,13 +787,9 @@ static bool extract_event_payload(
  * @param payload_size Size of payload buffer
  * @return Bytes read on success, -1 on error
  */
-int event_packet_deserialize(
-    const uint8_t* buffer,
-    uint32_t buffer_size,
-    event_packet_t* packet,
-    void* payload,
-    uint32_t payload_size) {
-
+int event_packet_deserialize(const uint8_t* buffer, uint32_t buffer_size, event_packet_t* packet,
+                             void* payload, uint32_t payload_size)
+{
     // Step 1: Validate inputs
     if (!validate_event_deserialize_inputs(buffer, buffer_size, packet)) {
         return -1;
@@ -821,8 +804,7 @@ int event_packet_deserialize(
     }
 
     // Step 4: Extract payload if present
-    if (!extract_event_payload(buffer, payload, payload_size,
-                               packet->payload_length)) {
+    if (!extract_event_payload(buffer, payload, payload_size, packet->payload_length)) {
         return -1;
     }
 
@@ -836,8 +818,10 @@ int event_packet_deserialize(
  *
  * COMPLEXITY: O(1)
  */
-static bool is_event_version_valid(const event_packet_t* packet) {
-    if (!packet) return false;
+static bool is_event_version_valid(const event_packet_t* packet)
+{
+    if (!packet)
+        return false;
     return EVENT_GET_VERSION(packet) == PROTOCOL_VERSION;
 }
 
@@ -848,7 +832,8 @@ static bool is_event_version_valid(const event_packet_t* packet) {
  *
  * COMPLEXITY: O(1)
  */
-static bool has_required_event_flags(uint8_t flags) {
+static bool has_required_event_flags(uint8_t flags)
+{
     return (flags & (EVENT_FLAG_EXCITATORY | EVENT_FLAG_INHIBITORY)) != 0;
 }
 
@@ -859,7 +844,8 @@ static bool has_required_event_flags(uint8_t flags) {
  *
  * COMPLEXITY: O(1)
  */
-static bool are_event_flags_exclusive(uint8_t flags) {
+static bool are_event_flags_exclusive(uint8_t flags)
+{
     bool is_excitatory = (flags & EVENT_FLAG_EXCITATORY) != 0;
     bool is_inhibitory = (flags & EVENT_FLAG_INHIBITORY) != 0;
     return !(is_excitatory && is_inhibitory);
@@ -885,23 +871,29 @@ static bool are_event_flags_exclusive(uint8_t flags) {
  * @param packet Event packet to validate
  * @return true if valid, false otherwise
  */
-bool event_packet_validate(const event_packet_t* packet) {
+bool event_packet_validate(const event_packet_t* packet)
+{
     // Guard clause: Check pointer
-    if (!packet) return false;
+    if (!packet)
+        return false;
 
     // Guard clause: Check version
-    if (!is_event_version_valid(packet)) return false;
+    if (!is_event_version_valid(packet))
+        return false;
 
     uint8_t flags = EVENT_GET_FLAGS(packet);
 
     // Guard clause: Check required flags present
-    if (!has_required_event_flags(flags)) return false;
+    if (!has_required_event_flags(flags))
+        return false;
 
     // Guard clause: Check flags mutually exclusive
-    if (!are_event_flags_exclusive(flags)) return false;
+    if (!are_event_flags_exclusive(flags))
+        return false;
 
     // Guard clause: Check payload length
-    if (packet->payload_length > MAX_PAYLOAD_SIZE) return false;
+    if (packet->payload_length > MAX_PAYLOAD_SIZE)
+        return false;
 
     return true;
 }
@@ -917,9 +909,12 @@ bool event_packet_validate(const event_packet_t* packet) {
  *
  * COMPLEXITY: O(1)
  */
-static uint32_t calculate_param_size(const control_message_t* msg) {
-    if (!msg) return 0;
-    if (msg->message_length < sizeof(control_message_t)) return 0;
+static uint32_t calculate_param_size(const control_message_t* msg)
+{
+    if (!msg)
+        return 0;
+    if (msg->message_length < sizeof(control_message_t))
+        return 0;
     return msg->message_length - sizeof(control_message_t);
 }
 
@@ -930,20 +925,20 @@ static uint32_t calculate_param_size(const control_message_t* msg) {
  *
  * COMPLEXITY: O(1)
  */
-static bool validate_control_serialize_inputs(
-    const control_message_t* msg,
-    const uint8_t* buffer,
-    uint32_t buffer_size,
-    uint32_t required_size) {
-
+static bool validate_control_serialize_inputs(const control_message_t* msg, const uint8_t* buffer,
+                                              uint32_t buffer_size, uint32_t required_size)
+{
     // Guard clause: Check message
-    if (!msg) return false;
+    if (!msg)
+        return false;
 
     // Guard clause: Check buffer
-    if (!buffer) return false;
+    if (!buffer)
+        return false;
 
     // Guard clause: Check buffer size
-    if (buffer_size < required_size) return false;
+    if (buffer_size < required_size)
+        return false;
 
     return true;
 }
@@ -955,16 +950,15 @@ static bool validate_control_serialize_inputs(
  *
  * COMPLEXITY: O(n) where n = param_size
  */
-static void copy_control_params(
-    uint8_t* buffer,
-    const void* params,
-    uint32_t param_size) {
-
+static void copy_control_params(uint8_t* buffer, const void* params, uint32_t param_size)
+{
     // Guard clause: Check if params present
-    if (!params || param_size == 0) return;
+    if (!params || param_size == 0)
+        return;
 
     // Guard clause: Check buffer
-    if (!buffer) return;
+    if (!buffer)
+        return;
 
     memcpy(buffer + sizeof(control_message_t), params, param_size);
 }
@@ -991,19 +985,15 @@ static void copy_control_params(
  * @param buffer_size Size of output buffer
  * @return Bytes written on success, -1 on error
  */
-int control_message_serialize(
-    const control_message_t* msg,
-    const void* params,
-    uint8_t* buffer,
-    uint32_t buffer_size) {
-
+int control_message_serialize(const control_message_t* msg, const void* params, uint8_t* buffer,
+                              uint32_t buffer_size)
+{
     // Step 1: Calculate sizes
     uint32_t param_size = calculate_param_size(msg);
     uint32_t required_size = sizeof(control_message_t) + param_size;
 
     // Step 2: Validate inputs
-    if (!validate_control_serialize_inputs(msg, buffer, buffer_size,
-                                           required_size)) {
+    if (!validate_control_serialize_inputs(msg, buffer, buffer_size, required_size)) {
         return -1;
     }
 
@@ -1023,19 +1013,20 @@ int control_message_serialize(
  *
  * COMPLEXITY: O(1)
  */
-static bool validate_control_deserialize_inputs(
-    const uint8_t* buffer,
-    uint32_t buffer_size,
-    const control_message_t* msg) {
-
+static bool validate_control_deserialize_inputs(const uint8_t* buffer, uint32_t buffer_size,
+                                                const control_message_t* msg)
+{
     // Guard clause: Check buffer
-    if (!buffer) return false;
+    if (!buffer)
+        return false;
 
     // Guard clause: Check message
-    if (!msg) return false;
+    if (!msg)
+        return false;
 
     // Guard clause: Check buffer size
-    if (buffer_size < sizeof(control_message_t)) return false;
+    if (buffer_size < sizeof(control_message_t))
+        return false;
 
     return true;
 }
@@ -1049,20 +1040,20 @@ static bool validate_control_deserialize_inputs(
  *
  * @return true on success, false on error
  */
-static bool extract_control_params(
-    const uint8_t* buffer,
-    void* params,
-    uint32_t param_size,
-    uint32_t actual_param_size) {
-
+static bool extract_control_params(const uint8_t* buffer, void* params, uint32_t param_size,
+                                   uint32_t actual_param_size)
+{
     // Guard clause: Check if params needed
-    if (actual_param_size == 0) return true;
+    if (actual_param_size == 0)
+        return true;
 
     // Guard clause: Check params buffer
-    if (!params) return false;
+    if (!params)
+        return false;
 
     // Guard clause: Check param size
-    if (param_size < actual_param_size) return false;
+    if (param_size < actual_param_size)
+        return false;
 
     memcpy(params, buffer + sizeof(control_message_t), actual_param_size);
     return true;
@@ -1092,13 +1083,9 @@ static bool extract_control_params(
  * @param param_size Size of params buffer
  * @return Bytes read on success, -1 on error
  */
-int control_message_deserialize(
-    const uint8_t* buffer,
-    uint32_t buffer_size,
-    control_message_t* msg,
-    void* params,
-    uint32_t param_size) {
-
+int control_message_deserialize(const uint8_t* buffer, uint32_t buffer_size, control_message_t* msg,
+                                void* params, uint32_t param_size)
+{
     // Step 1: Validate inputs
     if (!validate_control_deserialize_inputs(buffer, buffer_size, msg)) {
         return -1;
@@ -1116,8 +1103,7 @@ int control_message_deserialize(
     uint32_t actual_param_size = calculate_param_size(msg);
 
     // Step 5: Extract parameters if present
-    if (!extract_control_params(buffer, params, param_size,
-                                actual_param_size)) {
+    if (!extract_control_params(buffer, params, param_size, actual_param_size)) {
         return -1;
     }
 
@@ -1131,7 +1117,8 @@ int control_message_deserialize(
  *
  * COMPLEXITY: O(1)
  */
-static bool is_control_type_valid(uint8_t msg_type) {
+static bool is_control_type_valid(uint8_t msg_type)
+{
     return msg_type < CTRL_MSG_MAX;
 }
 
@@ -1142,9 +1129,12 @@ static bool is_control_type_valid(uint8_t msg_type) {
  *
  * COMPLEXITY: O(1)
  */
-static bool is_control_length_valid(uint32_t length) {
-    if (length < sizeof(control_message_t)) return false;
-    if (length > MAX_PAYLOAD_SIZE) return false;
+static bool is_control_length_valid(uint32_t length)
+{
+    if (length < sizeof(control_message_t))
+        return false;
+    if (length > MAX_PAYLOAD_SIZE)
+        return false;
     return true;
 }
 
@@ -1166,18 +1156,23 @@ static bool is_control_length_valid(uint32_t length) {
  * @param msg Control message to validate
  * @return true if valid, false otherwise
  */
-bool control_message_validate(const control_message_t* msg) {
+bool control_message_validate(const control_message_t* msg)
+{
     // Guard clause: Check pointer
-    if (!msg) return false;
+    if (!msg)
+        return false;
 
     // Guard clause: Check version
-    if (msg->version != PROTOCOL_VERSION) return false;
+    if (msg->version != PROTOCOL_VERSION)
+        return false;
 
     // Guard clause: Check message type
-    if (!is_control_type_valid(msg->msg_type)) return false;
+    if (!is_control_type_valid(msg->msg_type))
+        return false;
 
     // Guard clause: Check message length
-    if (!is_control_length_valid(msg->message_length)) return false;
+    if (!is_control_length_valid(msg->message_length))
+        return false;
 
     return true;
 }
@@ -1189,16 +1184,25 @@ bool control_message_validate(const control_message_t* msg) {
 /**
  * @brief Get name of feature domain
  */
-const char* feature_domain_name(feature_domain_t domain) {
+const char* feature_domain_name(feature_domain_t domain)
+{
     switch (domain) {
-        case FEATURE_DOMAIN_SYSTEM:   return "System";
-        case FEATURE_DOMAIN_VISION:   return "Vision";
-        case FEATURE_DOMAIN_AUDITORY: return "Auditory";
-        case FEATURE_DOMAIN_LANGUAGE: return "Language";
-        case FEATURE_DOMAIN_MOTOR:    return "Motor";
-        case FEATURE_DOMAIN_MEMORY:   return "Memory";
-        case FEATURE_DOMAIN_EMOTION:  return "Emotion";
-        case FEATURE_DOMAIN_ETHICS:   return "Ethics";
+        case FEATURE_DOMAIN_SYSTEM:
+            return "System";
+        case FEATURE_DOMAIN_VISION:
+            return "Vision";
+        case FEATURE_DOMAIN_AUDITORY:
+            return "Auditory";
+        case FEATURE_DOMAIN_LANGUAGE:
+            return "Language";
+        case FEATURE_DOMAIN_MOTOR:
+            return "Motor";
+        case FEATURE_DOMAIN_MEMORY:
+            return "Memory";
+        case FEATURE_DOMAIN_EMOTION:
+            return "Emotion";
+        case FEATURE_DOMAIN_ETHICS:
+            return "Ethics";
         default:
             if (domain >= FEATURE_DOMAIN_USER_MIN && domain <= FEATURE_DOMAIN_USER_MAX) {
                 return "User-Defined";
@@ -1210,7 +1214,8 @@ const char* feature_domain_name(feature_domain_t domain) {
 /**
  * @brief Check if a feature code matches a filter with mask
  */
-bool feature_code_matches(feature_code_t code, feature_code_t filter, uint32_t mask) {
+bool feature_code_matches(feature_code_t code, feature_code_t filter, uint32_t mask)
+{
     return (code & mask) == (filter & mask);
 }
 
@@ -1221,8 +1226,8 @@ bool feature_code_matches(feature_code_t code, feature_code_t filter, uint32_t m
 /**
  * @brief Check if an event packet matches a subscription filter
  */
-bool subscription_matches(const subscription_filter_t* filter,
-                        const event_packet_t* packet) {
+bool subscription_matches(const subscription_filter_t* filter, const event_packet_t* packet)
+{
     if (!filter || !packet) {
         return false;
     }

@@ -6,13 +6,13 @@
 #ifndef NIMCP_JSON_H
 #define NIMCP_JSON_H
 
-#include "nimcp_common.h"
-#include "nimcp_memory.h"
-#include "nimcp_thread.h"
-#include "logging/nimcp_logging.h"
 #include <jansson.h>
 #include <stdbool.h>
 #include <stdint.h>
+#include "logging/nimcp_logging.h"
+#include "nimcp_common.h"
+#include "nimcp_memory.h"
+#include "nimcp_thread.h"
 
 // JSON operation result codes
 typedef enum {
@@ -36,7 +36,7 @@ struct JsonContext {
     nimcp_mutex_t mutex;
     json_t* root;
 };
-#endif // NIMCP_INTERNAL
+#endif  // NIMCP_INTERNAL
 
 // Context management
 JsonResult nimcp_json_create_context(JsonContext** ctx);
@@ -54,7 +54,8 @@ JsonResult nimcp_json_set_value(JsonContext* ctx, const char* path, json_t* valu
 JsonResult nimcp_json_delete_value(JsonContext* ctx, const char* path);
 
 // Convenience functions for common operations
-JsonResult nimcp_json_get_string_value(JsonContext* ctx, const char* path, char* buffer, size_t size);
+JsonResult nimcp_json_get_string_value(JsonContext* ctx, const char* path, char* buffer,
+                                       size_t size);
 JsonResult nimcp_json_get_integer_value(JsonContext* ctx, const char* path, int64_t* value);
 JsonResult nimcp_json_get_boolean_value(JsonContext* ctx, const char* path, bool* value);
 JsonResult nimcp_json_get_number_value(JsonContext* ctx, const char* path, double* value);
@@ -71,4 +72,4 @@ JsonResult nimcp_json_set_null_value(JsonContext* ctx, const char* path);
 // Error handling
 const char* nimcp_json_get_error(JsonResult result);
 
-#endif // NIMCP_JSON_H
+#endif  // NIMCP_JSON_H

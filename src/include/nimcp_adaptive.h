@@ -5,10 +5,10 @@
 #ifndef NIMCP_ADAPTIVE_H
 #define NIMCP_ADAPTIVE_H
 
-#include "nimcp_neuralnet.h"
-#include "nimcp_export.h"
-#include <stdint.h>
 #include <stdbool.h>
+#include <stdint.h>
+#include "nimcp_export.h"
+#include "nimcp_neuralnet.h"
 
 /**
  * @file nimcp_adaptive.h
@@ -33,40 +33,40 @@
  * @brief Spike encoding schemes
  */
 typedef enum {
-    SPIKE_ENCODING_INTEGER,    /**< Direct integer counts (fastest) */
-    SPIKE_ENCODING_BINARY,     /**< Binary {0,1} expansion */
-    SPIKE_ENCODING_TERNARY,    /**< Ternary {-1,0,1} with E/I */
-    SPIKE_ENCODING_BITWISE     /**< Bitwise binary encoding (most sparse) */
+    SPIKE_ENCODING_INTEGER, /**< Direct integer counts (fastest) */
+    SPIKE_ENCODING_BINARY,  /**< Binary {0,1} expansion */
+    SPIKE_ENCODING_TERNARY, /**< Ternary {-1,0,1} with E/I */
+    SPIKE_ENCODING_BITWISE  /**< Bitwise binary encoding (most sparse) */
 } spike_encoding_t;
 
 /**
  * @brief Adaptive spiking parameters
  */
 typedef struct {
-    float k_factor;                /**< Firing rate control (default: 0.5) */
-    float sparsity_target;         /**< Target sparsity 0-1 (default: 0.7) */
-    spike_encoding_t encoding;     /**< Spike encoding scheme */
-    bool enable_soft_reset;        /**< Use soft reset dynamics */
-    bool enable_adaptation;        /**< Enable threshold adaptation */
-    uint32_t adaptation_window;    /**< Window for statistics (timesteps) */
-    float min_threshold;           /**< Minimum threshold value */
-    float max_threshold;           /**< Maximum threshold value */
+    float k_factor;             /**< Firing rate control (default: 0.5) */
+    float sparsity_target;      /**< Target sparsity 0-1 (default: 0.7) */
+    spike_encoding_t encoding;  /**< Spike encoding scheme */
+    bool enable_soft_reset;     /**< Use soft reset dynamics */
+    bool enable_adaptation;     /**< Enable threshold adaptation */
+    uint32_t adaptation_window; /**< Window for statistics (timesteps) */
+    float min_threshold;        /**< Minimum threshold value */
+    float max_threshold;        /**< Maximum threshold value */
 } adaptive_spike_params_t;
 
 /**
  * @brief Adaptive neuron state
  */
 typedef struct {
-    float membrane_potential;      /**< Current potential */
-    float adaptive_threshold;      /**< Dynamic threshold */
-    int32_t spike_count;          /**< Integer spike count */
-    uint32_t* spike_train;        /**< Optional sparse spike train */
-    uint32_t spike_train_length;  /**< Length of spike train */
+    float membrane_potential;    /**< Current potential */
+    float adaptive_threshold;    /**< Dynamic threshold */
+    int32_t spike_count;         /**< Integer spike count */
+    uint32_t* spike_train;       /**< Optional sparse spike train */
+    uint32_t spike_train_length; /**< Length of spike train */
 
     // Statistics for adaptation
-    float activation_mean;         /**< Running mean of inputs */
-    float activation_variance;     /**< Running variance */
-    uint32_t sample_count;        /**< Number of samples seen */
+    float activation_mean;     /**< Running mean of inputs */
+    float activation_variance; /**< Running variance */
+    uint32_t sample_count;     /**< Number of samples seen */
 } adaptive_neuron_state_t;
 
 //=============================================================================
@@ -77,11 +77,11 @@ typedef struct {
  * @brief Adaptive neural network configuration
  */
 typedef struct {
-    network_config_t base_config;      /**< Base network configuration */
+    network_config_t base_config;         /**< Base network configuration */
     adaptive_spike_params_t spike_params; /**< Adaptive spiking parameters */
-    bool enable_sparsity;              /**< Enable sparse activation */
-    float pruning_threshold;           /**< Prune weights below this */
-    uint32_t update_frequency;         /**< How often to adapt thresholds */
+    bool enable_sparsity;                 /**< Enable sparse activation */
+    float pruning_threshold;              /**< Prune weights below this */
+    uint32_t update_frequency;            /**< How often to adapt thresholds */
 } adaptive_network_config_t;
 
 /**
@@ -115,11 +115,8 @@ void adaptive_network_destroy(adaptive_network_t network);
  * @param timestamp Current time
  * @return Number of active neurons (for sparsity tracking)
  */
-uint32_t adaptive_network_forward(adaptive_network_t network,
-                                  const float* input,
-                                  uint32_t input_size,
-                                  float* output,
-                                  uint32_t output_size,
+uint32_t adaptive_network_forward(adaptive_network_t network, const float* input,
+                                  uint32_t input_size, float* output, uint32_t output_size,
                                   uint64_t timestamp);
 
 /**
@@ -175,10 +172,8 @@ int32_t adaptive_value_to_spikes(float value, float threshold);
  * @param max_length Maximum spike train length
  * @return Actual spike train length
  */
-uint32_t adaptive_encode_spikes(int32_t spike_count,
-                               spike_encoding_t encoding,
-                               uint8_t* spike_train,
-                               uint32_t max_length);
+uint32_t adaptive_encode_spikes(int32_t spike_count, spike_encoding_t encoding,
+                                uint8_t* spike_train, uint32_t max_length);
 
 /**
  * @brief Decode spike train back to value
@@ -189,10 +184,8 @@ uint32_t adaptive_encode_spikes(int32_t spike_count,
  * @param threshold Threshold used for encoding
  * @return Decoded value
  */
-float adaptive_decode_spikes(const uint8_t* spike_train,
-                            uint32_t length,
-                            spike_encoding_t encoding,
-                            float threshold);
+float adaptive_decode_spikes(const uint8_t* spike_train, uint32_t length, spike_encoding_t encoding,
+                             float threshold);
 
 //=============================================================================
 // Pattern Learning & Distillation
@@ -202,22 +195,22 @@ float adaptive_decode_spikes(const uint8_t* spike_train,
  * @brief Learning mode for pattern distillation
  */
 typedef enum {
-    LEARN_MODE_SUPERVISED,     /**< Supervised learning with labels */
-    LEARN_MODE_UNSUPERVISED,   /**< Unsupervised pattern extraction */
-    LEARN_MODE_DISTILLATION,   /**< Distill from teacher model/LLM */
-    LEARN_MODE_REINFORCEMENT   /**< Reinforcement from rewards */
+    LEARN_MODE_SUPERVISED,   /**< Supervised learning with labels */
+    LEARN_MODE_UNSUPERVISED, /**< Unsupervised pattern extraction */
+    LEARN_MODE_DISTILLATION, /**< Distill from teacher model/LLM */
+    LEARN_MODE_REINFORCEMENT /**< Reinforcement from rewards */
 } learning_mode_t;
 
 /**
  * @brief Training example for pattern learning
  */
 typedef struct {
-    float* input;              /**< Input features */
-    uint32_t input_size;       /**< Input vector size */
-    float* target;             /**< Target output (supervised) */
-    uint32_t target_size;      /**< Target vector size */
-    float confidence;          /**< Confidence/importance weight */
-    char label[64];            /**< Optional semantic label */
+    float* input;         /**< Input features */
+    uint32_t input_size;  /**< Input vector size */
+    float* target;        /**< Target output (supervised) */
+    uint32_t target_size; /**< Target vector size */
+    float confidence;     /**< Confidence/importance weight */
+    char label[64];       /**< Optional semantic label */
 } training_example_t;
 
 /**
@@ -229,10 +222,8 @@ typedef struct {
  * @param learning_rate Learning rate for this update
  * @return Loss/error value
  */
-float adaptive_network_learn(adaptive_network_t network,
-                            const training_example_t* example,
-                            learning_mode_t mode,
-                            float learning_rate);
+float adaptive_network_learn(adaptive_network_t network, const training_example_t* example,
+                             learning_mode_t mode, float learning_rate);
 
 /**
  * @brief Learn from batch of examples
@@ -244,11 +235,9 @@ float adaptive_network_learn(adaptive_network_t network,
  * @param learning_rate Learning rate
  * @return Average loss over batch
  */
-float adaptive_network_learn_batch(adaptive_network_t network,
-                                  const training_example_t* examples,
-                                  uint32_t num_examples,
-                                  learning_mode_t mode,
-                                  float learning_rate);
+float adaptive_network_learn_batch(adaptive_network_t network, const training_example_t* examples,
+                                   uint32_t num_examples, learning_mode_t mode,
+                                   float learning_rate);
 
 /**
  * @brief Distill patterns from teacher function
@@ -265,12 +254,9 @@ float adaptive_network_learn_batch(adaptive_network_t network,
  */
 typedef float* (*teacher_function_t)(const float* input, uint32_t input_size, void* context);
 
-float adaptive_network_distill(adaptive_network_t network,
-                              const float* input,
-                              uint32_t input_size,
-                              teacher_function_t teacher_fn,
-                              void* teacher_context,
-                              float learning_rate);
+float adaptive_network_distill(adaptive_network_t network, const float* input, uint32_t input_size,
+                               teacher_function_t teacher_fn, void* teacher_context,
+                               float learning_rate);
 
 //=============================================================================
 // Model Persistence
@@ -280,8 +266,8 @@ float adaptive_network_distill(adaptive_network_t network,
  * @brief Serialization format
  */
 typedef enum {
-    SERIALIZE_FORMAT_BINARY,    /**< Compact binary format */
-    SERIALIZE_FORMAT_JSON,      /**< Human-readable JSON */
+    SERIALIZE_FORMAT_BINARY,     /**< Compact binary format */
+    SERIALIZE_FORMAT_JSON,       /**< Human-readable JSON */
     SERIALIZE_FORMAT_SAFETENSORS /**< SafeTensors format */
 } serialize_format_t;
 
@@ -293,9 +279,8 @@ typedef enum {
  * @param format Serialization format
  * @return true on success
  */
-bool adaptive_network_save(adaptive_network_t network,
-                          const char* filepath,
-                          serialize_format_t format);
+bool adaptive_network_save(adaptive_network_t network, const char* filepath,
+                           serialize_format_t format);
 
 /**
  * @brief Load network from file
@@ -332,11 +317,11 @@ typedef struct {
  * @brief Pattern activation analysis
  */
 typedef struct {
-    uint32_t num_active_neurons;   /**< Active neuron count */
-    float sparsity;                 /**< Current sparsity */
-    float confidence;               /**< Prediction confidence */
-    uint32_t* active_neuron_ids;   /**< IDs of active neurons */
-    float* activation_strengths;    /**< Activation magnitudes */
+    uint32_t num_active_neurons; /**< Active neuron count */
+    float sparsity;              /**< Current sparsity */
+    float confidence;            /**< Prediction confidence */
+    uint32_t* active_neuron_ids; /**< IDs of active neurons */
+    float* activation_strengths; /**< Activation magnitudes */
 } activation_analysis_t;
 
 /**
@@ -348,10 +333,8 @@ typedef struct {
  * @param analysis Output analysis (allocated by caller)
  * @return true on success
  */
-bool adaptive_network_analyze_activation(adaptive_network_t network,
-                                        const float* input,
-                                        uint32_t input_size,
-                                        activation_analysis_t* analysis);
+bool adaptive_network_analyze_activation(adaptive_network_t network, const float* input,
+                                         uint32_t input_size, activation_analysis_t* analysis);
 
 /**
  * @brief Rank neurons by importance
@@ -361,9 +344,8 @@ bool adaptive_network_analyze_activation(adaptive_network_t network,
  * @param max_rankings Maximum rankings to return
  * @return Number of rankings returned
  */
-uint32_t adaptive_network_rank_neurons(adaptive_network_t network,
-                                      neuron_importance_t* rankings,
-                                      uint32_t max_rankings);
+uint32_t adaptive_network_rank_neurons(adaptive_network_t network, neuron_importance_t* rankings,
+                                       uint32_t max_rankings);
 
 /**
  * @brief Get explanation for decision
@@ -375,11 +357,8 @@ uint32_t adaptive_network_rank_neurons(adaptive_network_t network,
  * @param max_length Maximum explanation length
  * @return Length of explanation
  */
-uint32_t adaptive_network_explain(adaptive_network_t network,
-                                 const float* input,
-                                 uint32_t input_size,
-                                 char* explanation,
-                                 uint32_t max_length);
+uint32_t adaptive_network_explain(adaptive_network_t network, const float* input,
+                                  uint32_t input_size, char* explanation, uint32_t max_length);
 
 //=============================================================================
 // Performance Statistics
@@ -406,8 +385,7 @@ typedef struct {
  * @param stats Output statistics structure
  * @return true on success
  */
-bool adaptive_network_get_performance(adaptive_network_t network,
-                                     network_performance_t* stats);
+bool adaptive_network_get_performance(adaptive_network_t network, network_performance_t* stats);
 
 /**
  * @brief Reset performance counters
@@ -436,8 +414,7 @@ uint32_t adaptive_network_get_neuron_count(adaptive_network_t network);
  * @param activation Output: neuron activation value
  * @return true on success, false if neuron_id invalid
  */
-bool adaptive_network_get_neuron_activation(adaptive_network_t network,
-                                            uint32_t neuron_id,
+bool adaptive_network_get_neuron_activation(adaptive_network_t network, uint32_t neuron_id,
                                             float* activation);
 
 /**
@@ -450,10 +427,8 @@ bool adaptive_network_get_neuron_activation(adaptive_network_t network,
  * @param max_neurons Maximum neurons to return
  * @return Number of active neurons found
  */
-uint32_t adaptive_network_get_active_neurons(adaptive_network_t network,
-                                             float threshold,
-                                             uint32_t* neuron_ids,
-                                             float* activations,
+uint32_t adaptive_network_get_active_neurons(adaptive_network_t network, float threshold,
+                                             uint32_t* neuron_ids, float* activations,
                                              uint32_t max_neurons);
 
 /**
@@ -464,8 +439,7 @@ uint32_t adaptive_network_get_active_neurons(adaptive_network_t network,
  * @param num_connections Output: number of connections
  * @return true on success
  */
-bool adaptive_network_get_connection_count(adaptive_network_t network,
-                                           uint32_t neuron_id,
+bool adaptive_network_get_connection_count(adaptive_network_t network, uint32_t neuron_id,
                                            uint32_t* num_connections);
 
 /**
@@ -476,8 +450,7 @@ bool adaptive_network_get_connection_count(adaptive_network_t network,
  * @param total_weight Output: sum of absolute weights
  * @return true on success
  */
-bool adaptive_network_get_total_weight(adaptive_network_t network,
-                                       uint32_t neuron_id,
+bool adaptive_network_get_total_weight(adaptive_network_t network, uint32_t neuron_id,
                                        float* total_weight);
 
 /**
@@ -489,4 +462,4 @@ bool adaptive_network_get_total_weight(adaptive_network_t network,
  */
 neural_network_t adaptive_network_get_base_network(adaptive_network_t network);
 
-#endif // NIMCP_ADAPTIVE_H
+#endif  // NIMCP_ADAPTIVE_H

@@ -27,17 +27,17 @@
  */
 
 #include "../include/nimcp_replication.h"
+#include <dirent.h>
+#include <errno.h>
+#include <pthread.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <sys/stat.h>
+#include <time.h>
 #include "../include/nimcp_brain.h"
 #include "utils/nimcp_memory.h"
 #include "utils/nimcp_time.h"
-#include <stdlib.h>
-#include <string.h>
-#include <stdio.h>
-#include <time.h>
-#include <pthread.h>
-#include <sys/stat.h>
-#include <errno.h>
-#include <dirent.h>
 
 //=============================================================================
 // Thread-Local Error Handling (Pattern: Thread-Safe Singleton)
@@ -54,7 +54,8 @@ static __thread char g_replication_error[512] = {0};
  * @brief Set error message (thread-safe)
  * COMPLEXITY: O(1)
  */
-static void set_replication_error(const char* format, ...) {
+static void set_replication_error(const char* format, ...)
+{
     va_list args;
     va_start(args, format);
     vsnprintf(g_replication_error, sizeof(g_replication_error), format, args);
@@ -65,7 +66,8 @@ static void set_replication_error(const char* format, ...) {
  * @brief Get last error message
  * COMPLEXITY: O(1)
  */
-const char* replication_get_last_error(void) {
+const char* replication_get_last_error(void)
+{
     return g_replication_error[0] ? g_replication_error : NULL;
 }
 
@@ -88,12 +90,12 @@ typedef struct replication_backend_strategy replication_backend_strategy_t;
  * COMPLEXITY: O(1) access to all fields
  */
 typedef struct registered_brain {
-    brain_t brain;                    // Brain handle
-    char brain_name[64];              // Unique name in cluster
-    bool autosync_enabled;            // Auto-sync on updates
-    uint64_t version;                 // Local version counter
-    uint64_t last_sync_version;       // Last synced version
-    struct registered_brain* next;    // Linked list next
+    brain_t brain;                  // Brain handle
+    char brain_name[64];            // Unique name in cluster
+    bool autosync_enabled;          // Auto-sync on updates
+    uint64_t version;               // Local version counter
+    uint64_t last_sync_version;     // Last synced version
+    struct registered_brain* next;  // Linked list next
 } registered_brain_t;
 
 /**
@@ -105,23 +107,23 @@ typedef struct registered_brain {
  * COMPLEXITY: O(1) access to all members
  */
 struct replication_cluster_struct {
-    replication_config_t config;           // Configuration
-    replication_backend_strategy_t* strategy; // Backend strategy
-    void* backend_context;                 // Backend-specific state
+    replication_config_t config;               // Configuration
+    replication_backend_strategy_t* strategy;  // Backend strategy
+    void* backend_context;                     // Backend-specific state
 
     // Registered brains (linked list)
-    registered_brain_t* brains;            // Linked list head
-    pthread_mutex_t brains_lock;           // Thread-safe brain list
+    registered_brain_t* brains;   // Linked list head
+    pthread_mutex_t brains_lock;  // Thread-safe brain list
 
     // Node tracking
-    replication_node_status_t node_status;             // This node's status
-    cluster_node_t* known_nodes;           // Array of known nodes
-    uint32_t num_known_nodes;              // Number of nodes
-    pthread_mutex_t nodes_lock;            // Thread-safe node list
+    replication_node_status_t node_status;  // This node's status
+    cluster_node_t* known_nodes;            // Array of known nodes
+    uint32_t num_known_nodes;               // Number of nodes
+    pthread_mutex_t nodes_lock;             // Thread-safe node list
 
     // Heartbeat thread
-    pthread_t heartbeat_thread;            // Background heartbeat
-    bool heartbeat_running;                // Heartbeat active flag
+    pthread_t heartbeat_thread;  // Background heartbeat
+    bool heartbeat_running;      // Heartbeat active flag
 };
 
 //=============================================================================
@@ -162,8 +164,7 @@ struct replication_backend_strategy {
      * WHY: Make brain available to other nodes
      * COMPLEXITY: O(s) where s = serialized size
      */
-    bool (*store_brain)(void* context, const char* brain_name,
-                       const void* data, size_t data_size);
+    bool (*store_brain)(void* context, const char* brain_name, const void* data, size_t data_size);
 
     /**
      * @brief Retrieve brain state
@@ -171,8 +172,7 @@ struct replication_backend_strategy {
      * WHY: Get latest state from cluster
      * COMPLEXITY: O(s) where s = serialized size
      */
-    bool (*retrieve_brain)(void* context, const char* brain_name,
-                          void** data, size_t* data_size);
+    bool (*retrieve_brain)(void* context, const char* brain_name, void** data, size_t* data_size);
 
     /**
      * @brief Get cluster nodes
@@ -203,8 +203,8 @@ struct replication_backend_strategy {
  * HOW: NFS/GlusterFS shared filesystem
  */
 typedef struct {
-    char shared_dir[512];     // Shared directory path
-    char node_id[64];         // This node's ID
+    char shared_dir[512];  // Shared directory path
+    char node_id[64];      // This node's ID
 } filesystem_context_t;
 
 /**
@@ -216,8 +216,8 @@ typedef struct {
  *
  * COMPLEXITY: O(1) - just directory operations
  */
-static bool filesystem_initialize(void** context,
-                                 const replication_config_t* config) {
+static bool filesystem_initialize(void** context, const replication_config_t* config)
+{
     // Guard: Validate parameters
     if (!context || !config) {
         set_replication_error("Invalid parameters to filesystem_initialize");
@@ -244,8 +244,8 @@ static bool filesystem_initialize(void** context,
     struct stat st = {0};
     if (stat(fs_ctx->shared_dir, &st) == -1) {
         if (mkdir(fs_ctx->shared_dir, 0755) != 0) {
-            set_replication_error("Failed to create directory %s: %s",
-                                fs_ctx->shared_dir, strerror(errno));
+            set_replication_error("Failed to create directory %s: %s", fs_ctx->shared_dir,
+                                  strerror(errno));
             nimcp_free(fs_ctx);
             return false;
         }
@@ -278,15 +278,17 @@ static bool filesystem_initialize(void** context,
  *
  * COMPLEXITY: O(1)
  */
-static void filesystem_shutdown(void* context) {
-    if (!context) return;
+static void filesystem_shutdown(void* context)
+{
+    if (!context)
+        return;
 
-    filesystem_context_t* fs_ctx = (filesystem_context_t*)context;
+    filesystem_context_t* fs_ctx = (filesystem_context_t*) context;
 
     // Remove heartbeat file
     char heartbeat_path[512];
-    snprintf(heartbeat_path, sizeof(heartbeat_path),
-             "%s/nodes/%s.heartbeat", fs_ctx->shared_dir, fs_ctx->node_id);
+    snprintf(heartbeat_path, sizeof(heartbeat_path), "%s/nodes/%s.heartbeat", fs_ctx->shared_dir,
+             fs_ctx->node_id);
     remove(heartbeat_path);
 
     nimcp_free(fs_ctx);
@@ -301,20 +303,20 @@ static void filesystem_shutdown(void* context) {
  *
  * COMPLEXITY: O(s) where s = data size
  */
-static bool filesystem_store_brain(void* context, const char* brain_name,
-                                   const void* data, size_t data_size) {
+static bool filesystem_store_brain(void* context, const char* brain_name, const void* data,
+                                   size_t data_size)
+{
     // Guard: Validate parameters
     if (!context || !brain_name || !data || data_size == 0) {
         set_replication_error("Invalid parameters to filesystem_store_brain");
         return false;
     }
 
-    filesystem_context_t* fs_ctx = (filesystem_context_t*)context;
+    filesystem_context_t* fs_ctx = (filesystem_context_t*) context;
 
     // Create brain file path
     char brain_path[512];
-    snprintf(brain_path, sizeof(brain_path),
-             "%s/brains/%s.nimcp", fs_ctx->shared_dir, brain_name);
+    snprintf(brain_path, sizeof(brain_path), "%s/brains/%s.nimcp", fs_ctx->shared_dir, brain_name);
 
     // Write to temporary file first (atomic operation)
     char tmp_path[512];
@@ -331,16 +333,16 @@ static bool filesystem_store_brain(void* context, const char* brain_name,
     fclose(f);
 
     if (written != data_size) {
-        set_replication_error("Failed to write brain data: only %zu/%zu bytes written",
-                            written, data_size);
+        set_replication_error("Failed to write brain data: only %zu/%zu bytes written", written,
+                              data_size);
         remove(tmp_path);
         return false;
     }
 
     // Atomic rename
     if (rename(tmp_path, brain_path) != 0) {
-        set_replication_error("Failed to rename %s to %s: %s",
-                            tmp_path, brain_path, strerror(errno));
+        set_replication_error("Failed to rename %s to %s: %s", tmp_path, brain_path,
+                              strerror(errno));
         remove(tmp_path);
         return false;
     }
@@ -357,20 +359,20 @@ static bool filesystem_store_brain(void* context, const char* brain_name,
  *
  * COMPLEXITY: O(s) where s = file size
  */
-static bool filesystem_retrieve_brain(void* context, const char* brain_name,
-                                     void** data, size_t* data_size) {
+static bool filesystem_retrieve_brain(void* context, const char* brain_name, void** data,
+                                      size_t* data_size)
+{
     // Guard: Validate parameters
     if (!context || !brain_name || !data || !data_size) {
         set_replication_error("Invalid parameters to filesystem_retrieve_brain");
         return false;
     }
 
-    filesystem_context_t* fs_ctx = (filesystem_context_t*)context;
+    filesystem_context_t* fs_ctx = (filesystem_context_t*) context;
 
     // Create brain file path
     char brain_path[512];
-    snprintf(brain_path, sizeof(brain_path),
-             "%s/brains/%s.nimcp", fs_ctx->shared_dir, brain_name);
+    snprintf(brain_path, sizeof(brain_path), "%s/brains/%s.nimcp", fs_ctx->shared_dir, brain_name);
 
     // Open file
     FILE* f = fopen(brain_path, "rb");
@@ -402,9 +404,9 @@ static bool filesystem_retrieve_brain(void* context, const char* brain_name,
     size_t bytes_read = fread(buffer, 1, file_size, f);
     fclose(f);
 
-    if (bytes_read != (size_t)file_size) {
-        set_replication_error("Failed to read brain: only %zu/%ld bytes read",
-                            bytes_read, file_size);
+    if (bytes_read != (size_t) file_size) {
+        set_replication_error("Failed to read brain: only %zu/%ld bytes read", bytes_read,
+                              file_size);
         nimcp_free(buffer);
         return false;
     }
@@ -423,19 +425,20 @@ static bool filesystem_retrieve_brain(void* context, const char* brain_name,
  *
  * COMPLEXITY: O(n) where n = number of nodes
  */
-static uint32_t filesystem_get_nodes(void* context,
-                                    cluster_node_t* nodes,
-                                    uint32_t max_nodes) {
-    if (!context || !nodes || max_nodes == 0) return 0;
+static uint32_t filesystem_get_nodes(void* context, cluster_node_t* nodes, uint32_t max_nodes)
+{
+    if (!context || !nodes || max_nodes == 0)
+        return 0;
 
-    filesystem_context_t* fs_ctx = (filesystem_context_t*)context;
+    filesystem_context_t* fs_ctx = (filesystem_context_t*) context;
 
     char nodes_dir[512];
     snprintf(nodes_dir, sizeof(nodes_dir), "%s/nodes", fs_ctx->shared_dir);
 
     // Open directory
     DIR* dir = opendir(nodes_dir);
-    if (!dir) return 0;
+    if (!dir)
+        return 0;
 
     uint32_t count = 0;
     struct dirent* entry;
@@ -444,21 +447,23 @@ static uint32_t filesystem_get_nodes(void* context,
     // Scan for .heartbeat files
     while ((entry = readdir(dir)) != NULL && count < max_nodes) {
         // Skip non-heartbeat files
-        if (!strstr(entry->d_name, ".heartbeat")) continue;
+        if (!strstr(entry->d_name, ".heartbeat"))
+            continue;
 
         // Get file stats
         char heartbeat_path[512];
-        snprintf(heartbeat_path, sizeof(heartbeat_path),
-                "%s/%s", nodes_dir, entry->d_name);
+        snprintf(heartbeat_path, sizeof(heartbeat_path), "%s/%s", nodes_dir, entry->d_name);
 
         struct stat st;
-        if (stat(heartbeat_path, &st) != 0) continue;
+        if (stat(heartbeat_path, &st) != 0)
+            continue;
 
         // Extract node ID from filename (remove .heartbeat suffix)
         char node_id[64];
         strncpy(node_id, entry->d_name, sizeof(node_id) - 1);
         char* dot = strstr(node_id, ".heartbeat");
-        if (dot) *dot = '\0';
+        if (dot)
+            *dot = '\0';
 
         // Check if node is alive (heartbeat within timeout)
         time_t age = now - st.st_mtime;
@@ -469,7 +474,7 @@ static uint32_t filesystem_get_nodes(void* context,
         nodes[count].status = is_alive ? NODE_STATUS_FOLLOWER : NODE_STATUS_DEAD;
         nodes[count].last_heartbeat = st.st_mtime;
         nodes[count].lag_ms = age * 1000;  // Convert to ms
-        nodes[count].version = 0;  // Filesystem doesn't track versions
+        nodes[count].version = 0;          // Filesystem doesn't track versions
 
         count++;
     }
@@ -487,20 +492,23 @@ static uint32_t filesystem_get_nodes(void* context,
  *
  * COMPLEXITY: O(1)
  */
-static bool filesystem_heartbeat(void* context, const char* node_id) {
-    if (!context || !node_id) return false;
+static bool filesystem_heartbeat(void* context, const char* node_id)
+{
+    if (!context || !node_id)
+        return false;
 
-    filesystem_context_t* fs_ctx = (filesystem_context_t*)context;
+    filesystem_context_t* fs_ctx = (filesystem_context_t*) context;
 
     char heartbeat_path[512];
-    snprintf(heartbeat_path, sizeof(heartbeat_path),
-             "%s/nodes/%s.heartbeat", fs_ctx->shared_dir, node_id);
+    snprintf(heartbeat_path, sizeof(heartbeat_path), "%s/nodes/%s.heartbeat", fs_ctx->shared_dir,
+             node_id);
 
     // Touch file (create or update timestamp)
     FILE* f = fopen(heartbeat_path, "w");
-    if (!f) return false;
+    if (!f)
+        return false;
 
-    fprintf(f, "%ld\n", (long)nimcp_time_get_sec());
+    fprintf(f, "%ld\n", (long) nimcp_time_get_sec());
     fclose(f);
 
     return true;
@@ -520,8 +528,7 @@ static replication_backend_strategy_t g_filesystem_strategy = {
     .store_brain = filesystem_store_brain,
     .retrieve_brain = filesystem_retrieve_brain,
     .get_nodes = filesystem_get_nodes,
-    .heartbeat = filesystem_heartbeat
-};
+    .heartbeat = filesystem_heartbeat};
 
 //=============================================================================
 // Helper Functions
@@ -536,9 +543,10 @@ static replication_backend_strategy_t g_filesystem_strategy = {
  *
  * COMPLEXITY: O(n) where n = number of registered brains
  */
-static registered_brain_t* find_brain(replication_cluster_t cluster,
-                                     const char* brain_name) {
-    if (!cluster || !brain_name) return NULL;
+static registered_brain_t* find_brain(replication_cluster_t cluster, const char* brain_name)
+{
+    if (!cluster || !brain_name)
+        return NULL;
 
     pthread_mutex_lock(&cluster->brains_lock);
 
@@ -564,13 +572,13 @@ static registered_brain_t* find_brain(replication_cluster_t cluster,
  *
  * COMPLEXITY: O(1) per iteration
  */
-static void* heartbeat_thread_fn(void* arg) {
-    replication_cluster_t cluster = (replication_cluster_t)arg;
+static void* heartbeat_thread_fn(void* arg)
+{
+    replication_cluster_t cluster = (replication_cluster_t) arg;
 
     while (cluster->heartbeat_running) {
         // Send heartbeat
-        cluster->strategy->heartbeat(cluster->backend_context,
-                                    cluster->config.node_id);
+        cluster->strategy->heartbeat(cluster->backend_context, cluster->config.node_id);
 
         // Sleep for heartbeat interval
         usleep(cluster->config.heartbeat_interval_ms * 1000);
@@ -593,7 +601,8 @@ static void* heartbeat_thread_fn(void* arg) {
  * PATTERN: Factory pattern for backend creation
  * COMPLEXITY: O(1) plus backend initialization
  */
-replication_cluster_t replication_create_cluster(const replication_config_t* config) {
+replication_cluster_t replication_create_cluster(const replication_config_t* config)
+{
     // Guard: Validate config
     if (!config) {
         set_replication_error("Null configuration provided");
@@ -661,7 +670,8 @@ replication_cluster_t replication_create_cluster(const replication_config_t* con
 
     // Start heartbeat thread
     cluster->heartbeat_running = true;
-    int thread_result = pthread_create(&cluster->heartbeat_thread, NULL, heartbeat_thread_fn, cluster);
+    int thread_result =
+        pthread_create(&cluster->heartbeat_thread, NULL, heartbeat_thread_fn, cluster);
     if (thread_result != 0) {
         set_replication_error("Failed to create heartbeat thread: %d", thread_result);
         cluster->heartbeat_running = false;
@@ -686,8 +696,10 @@ replication_cluster_t replication_create_cluster(const replication_config_t* con
  *
  * COMPLEXITY: O(n) where n = number of registered brains
  */
-void replication_destroy_cluster(replication_cluster_t cluster) {
-    if (!cluster) return;
+void replication_destroy_cluster(replication_cluster_t cluster)
+{
+    if (!cluster)
+        return;
 
     // Stop heartbeat thread
     cluster->heartbeat_running = false;
@@ -730,9 +742,9 @@ void replication_destroy_cluster(replication_cluster_t cluster) {
  *
  * COMPLEXITY: O(1)
  */
-bool replication_register_brain(replication_cluster_t cluster,
-                                brain_t brain,
-                                const char* brain_name) {
+bool replication_register_brain(replication_cluster_t cluster, brain_t brain,
+                                const char* brain_name)
+{
     // Guard: Validate parameters
     if (!cluster || !brain || !brain_name) {
         set_replication_error("Invalid parameters to replication_register_brain");
@@ -776,9 +788,10 @@ bool replication_register_brain(replication_cluster_t cluster,
  *
  * COMPLEXITY: O(n) where n = number of registered brains
  */
-bool replication_unregister_brain(replication_cluster_t cluster,
-                                  const char* brain_name) {
-    if (!cluster || !brain_name) return false;
+bool replication_unregister_brain(replication_cluster_t cluster, const char* brain_name)
+{
+    if (!cluster || !brain_name)
+        return false;
 
     pthread_mutex_lock(&cluster->brains_lock);
 
@@ -822,8 +835,8 @@ bool replication_unregister_brain(replication_cluster_t cluster,
  *
  * COMPLEXITY: O(s) where s = serialized brain size
  */
-bool replication_sync_push(replication_cluster_t cluster,
-                           const char* brain_name) {
+bool replication_sync_push(replication_cluster_t cluster, const char* brain_name)
+{
     // Guard: Validate parameters
     if (!cluster || !brain_name) {
         set_replication_error("Invalid parameters to replication_sync_push");
@@ -839,8 +852,8 @@ bool replication_sync_push(replication_cluster_t cluster,
 
     // Save brain to temporary file
     char tmp_path[512];
-    snprintf(tmp_path, sizeof(tmp_path), "/tmp/nimcp_sync_%s_%ld.tmp",
-             brain_name, (long)nimcp_time_get_sec());
+    snprintf(tmp_path, sizeof(tmp_path), "/tmp/nimcp_sync_%s_%ld.tmp", brain_name,
+             (long) nimcp_time_get_sec());
 
     if (!brain_save(brain_entry->brain, tmp_path)) {
         set_replication_error("Failed to serialize brain '%s'", brain_name);
@@ -871,8 +884,7 @@ bool replication_sync_push(replication_cluster_t cluster,
     remove(tmp_path);
 
     // Store via backend
-    bool success = cluster->strategy->store_brain(cluster->backend_context,
-                                                  brain_name, data, size);
+    bool success = cluster->strategy->store_brain(cluster->backend_context, brain_name, data, size);
     nimcp_free(data);
 
     if (success) {
@@ -892,8 +904,8 @@ bool replication_sync_push(replication_cluster_t cluster,
  *
  * COMPLEXITY: O(s) where s = serialized brain size
  */
-bool replication_sync_pull(replication_cluster_t cluster,
-                           const char* brain_name) {
+bool replication_sync_pull(replication_cluster_t cluster, const char* brain_name)
+{
     // Guard: Validate parameters
     if (!cluster || !brain_name) {
         set_replication_error("Invalid parameters to replication_sync_pull");
@@ -904,15 +916,15 @@ bool replication_sync_pull(replication_cluster_t cluster,
     void* data = NULL;
     size_t data_size = 0;
 
-    if (!cluster->strategy->retrieve_brain(cluster->backend_context,
-                                          brain_name, &data, &data_size)) {
+    if (!cluster->strategy->retrieve_brain(cluster->backend_context, brain_name, &data,
+                                           &data_size)) {
         return false;
     }
 
     // Write to temporary file
     char tmp_path[512];
-    snprintf(tmp_path, sizeof(tmp_path), "/tmp/nimcp_pull_%s_%ld.tmp",
-             brain_name, (long)nimcp_time_get_sec());
+    snprintf(tmp_path, sizeof(tmp_path), "/tmp/nimcp_pull_%s_%ld.tmp", brain_name,
+             (long) nimcp_time_get_sec());
 
     FILE* f = fopen(tmp_path, "wb");
     if (!f) {
@@ -960,9 +972,10 @@ bool replication_sync_pull(replication_cluster_t cluster,
  *
  * COMPLEXITY: O(s) where s = serialized size
  */
-brain_t replication_get_brain(replication_cluster_t cluster,
-                              const char* brain_name) {
-    if (!cluster || !brain_name) return NULL;
+brain_t replication_get_brain(replication_cluster_t cluster, const char* brain_name)
+{
+    if (!cluster || !brain_name)
+        return NULL;
 
     // Try pulling from cluster
     if (!replication_sync_pull(cluster, brain_name)) {
@@ -983,9 +996,8 @@ brain_t replication_get_brain(replication_cluster_t cluster,
  *
  * COMPLEXITY: O(n) to find brain
  */
-bool replication_set_autosync(replication_cluster_t cluster,
-                              const char* brain_name,
-                              bool enabled) {
+bool replication_set_autosync(replication_cluster_t cluster, const char* brain_name, bool enabled)
+{
     registered_brain_t* brain_entry = find_brain(cluster, brain_name);
     if (!brain_entry) {
         set_replication_error("Brain '%s' not registered", brain_name);
@@ -1005,10 +1017,11 @@ bool replication_set_autosync(replication_cluster_t cluster,
  *
  * COMPLEXITY: O(n) where n = number of nodes
  */
-uint32_t replication_get_cluster_status(replication_cluster_t cluster,
-                                        cluster_node_t* nodes,
-                                        uint32_t max_nodes) {
-    if (!cluster || !nodes || max_nodes == 0) return 0;
+uint32_t replication_get_cluster_status(replication_cluster_t cluster, cluster_node_t* nodes,
+                                        uint32_t max_nodes)
+{
+    if (!cluster || !nodes || max_nodes == 0)
+        return 0;
 
     return cluster->strategy->get_nodes(cluster->backend_context, nodes, max_nodes);
 }
@@ -1018,7 +1031,8 @@ uint32_t replication_get_cluster_status(replication_cluster_t cluster,
  *
  * COMPLEXITY: O(1)
  */
-replication_node_status_t replication_get_node_status(replication_cluster_t cluster) {
+replication_node_status_t replication_get_node_status(replication_cluster_t cluster)
+{
     return cluster ? cluster->node_status : NODE_STATUS_DEAD;
 }
 
@@ -1031,13 +1045,14 @@ replication_node_status_t replication_get_node_status(replication_cluster_t clus
  *
  * COMPLEXITY: O(1)
  */
-uint32_t replication_get_lag(replication_cluster_t cluster,
-                             const char* brain_name) {
+uint32_t replication_get_lag(replication_cluster_t cluster, const char* brain_name)
+{
     registered_brain_t* brain_entry = find_brain(cluster, brain_name);
-    if (!brain_entry) return 0;
+    if (!brain_entry)
+        return 0;
 
     uint64_t lag = brain_entry->version - brain_entry->last_sync_version;
-    return (uint32_t)(lag * 100);  // Rough estimate in ms
+    return (uint32_t) (lag * 100);  // Rough estimate in ms
 }
 
 /**
@@ -1049,13 +1064,16 @@ uint32_t replication_get_lag(replication_cluster_t cluster,
  *
  * COMPLEXITY: O(n) where n = number of nodes
  */
-bool replication_is_healthy(replication_cluster_t cluster) {
-    if (!cluster) return false;
+bool replication_is_healthy(replication_cluster_t cluster)
+{
+    if (!cluster)
+        return false;
 
     cluster_node_t nodes[32];
     uint32_t num_nodes = replication_get_cluster_status(cluster, nodes, 32);
 
-    if (num_nodes == 0) return false;
+    if (num_nodes == 0)
+        return false;
 
     uint32_t alive_count = 0;
     for (uint32_t i = 0; i < num_nodes; i++) {
@@ -1078,20 +1096,17 @@ bool replication_is_healthy(replication_cluster_t cluster) {
  * PATTERN: Factory method for Redis backend
  * COMPLEXITY: O(1) plus backend initialization
  */
-replication_cluster_t replication_create_redis_cluster(
-    const char* redis_url,
-    const char* cluster_name,
-    const char* node_id)
+replication_cluster_t replication_create_redis_cluster(const char* redis_url,
+                                                       const char* cluster_name,
+                                                       const char* node_id)
 {
-    replication_config_t config = {
-        .backend = REPLICATION_BACKEND_REDIS,
-        .strategy = REPLICATION_STRATEGY_LEADER_FOLLOWER,
-        .sync_interval_ms = 1000,
-        .heartbeat_interval_ms = 5000,
-        .node_timeout_ms = 15000,
-        .enable_vector_clock = false,
-        .enable_crdt = false
-    };
+    replication_config_t config = {.backend = REPLICATION_BACKEND_REDIS,
+                                   .strategy = REPLICATION_STRATEGY_LEADER_FOLLOWER,
+                                   .sync_interval_ms = 1000,
+                                   .heartbeat_interval_ms = 5000,
+                                   .node_timeout_ms = 15000,
+                                   .enable_vector_clock = false,
+                                   .enable_crdt = false};
 
     strncpy(config.connection_string, redis_url, sizeof(config.connection_string) - 1);
     strncpy(config.cluster_name, cluster_name, sizeof(config.cluster_name) - 1);
@@ -1106,9 +1121,8 @@ replication_cluster_t replication_create_redis_cluster(
  * PATTERN: Factory method for filesystem backend
  * COMPLEXITY: O(1) plus backend initialization
  */
-replication_cluster_t replication_create_filesystem_cluster(
-    const char* shared_dir,
-    const char* node_id)
+replication_cluster_t replication_create_filesystem_cluster(const char* shared_dir,
+                                                            const char* node_id)
 {
     // Guard: Validate parameters
     if (!shared_dir || !node_id) {
@@ -1116,18 +1130,15 @@ replication_cluster_t replication_create_filesystem_cluster(
         return NULL;
     }
 
-    replication_config_t config = {
-        .backend = REPLICATION_BACKEND_FILESYSTEM,
-        .strategy = REPLICATION_STRATEGY_EVENTUAL,
-        .sync_interval_ms = 5000,
-        .heartbeat_interval_ms = 10000,
-        .node_timeout_ms = 30000,
-        .enable_vector_clock = false,
-        .enable_crdt = false
-    };
+    replication_config_t config = {.backend = REPLICATION_BACKEND_FILESYSTEM,
+                                   .strategy = REPLICATION_STRATEGY_EVENTUAL,
+                                   .sync_interval_ms = 5000,
+                                   .heartbeat_interval_ms = 10000,
+                                   .node_timeout_ms = 30000,
+                                   .enable_vector_clock = false,
+                                   .enable_crdt = false};
 
-    snprintf(config.connection_string, sizeof(config.connection_string),
-             "file://%s", shared_dir);
+    snprintf(config.connection_string, sizeof(config.connection_string), "file://%s", shared_dir);
     strncpy(config.cluster_name, "default", sizeof(config.cluster_name) - 1);
     strncpy(config.node_id, node_id, sizeof(config.node_id) - 1);
 

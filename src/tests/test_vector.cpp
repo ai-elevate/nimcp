@@ -6,16 +6,17 @@
 #include <gtest/gtest.h>
 #include <cmath>
 extern "C" {
-    #include "utils/nimcp_vector.h"
+#include "utils/nimcp_vector.h"
 }
 
 // Test fixture for vector operations
 class VectorTest : public ::testing::Test {
-protected:
+   protected:
     static constexpr float FLOAT_TOLERANCE = 1e-5f;
 
     // Helper to compare floats with tolerance
-    bool FloatEquals(float a, float b, float tolerance = FLOAT_TOLERANCE) {
+    bool FloatEquals(float a, float b, float tolerance = FLOAT_TOLERANCE)
+    {
         return std::fabs(a - b) < tolerance;
     }
 };
@@ -28,7 +29,8 @@ protected:
  * WHAT: Test dot product with simple vectors
  * WHY: Verify basic dot product calculation
  */
-TEST_F(VectorTest, DotProduct_Simple) {
+TEST_F(VectorTest, DotProduct_Simple)
+{
     float a[] = {1.0f, 2.0f, 3.0f};
     float b[] = {4.0f, 5.0f, 6.0f};
 
@@ -41,7 +43,8 @@ TEST_F(VectorTest, DotProduct_Simple) {
  * WHAT: Test dot product with zero vector
  * WHY: Verify edge case handling
  */
-TEST_F(VectorTest, DotProduct_ZeroVector) {
+TEST_F(VectorTest, DotProduct_ZeroVector)
+{
     float a[] = {1.0f, 2.0f, 3.0f};
     float b[] = {0.0f, 0.0f, 0.0f};
 
@@ -53,7 +56,8 @@ TEST_F(VectorTest, DotProduct_ZeroVector) {
  * WHAT: Test dot product with null inputs
  * WHY: Verify null safety
  */
-TEST_F(VectorTest, DotProduct_NullInputs) {
+TEST_F(VectorTest, DotProduct_NullInputs)
+{
     float a[] = {1.0f, 2.0f, 3.0f};
 
     EXPECT_TRUE(FloatEquals(nimcp_vector_dot_product(nullptr, a, 3), 0.0f));
@@ -65,7 +69,8 @@ TEST_F(VectorTest, DotProduct_NullInputs) {
  * WHAT: Test dot product with zero size
  * WHY: Verify size validation
  */
-TEST_F(VectorTest, DotProduct_ZeroSize) {
+TEST_F(VectorTest, DotProduct_ZeroSize)
+{
     float a[] = {1.0f, 2.0f, 3.0f};
     float b[] = {4.0f, 5.0f, 6.0f};
 
@@ -77,7 +82,8 @@ TEST_F(VectorTest, DotProduct_ZeroSize) {
  * WHAT: Test L2 norm calculation
  * WHY: Verify Euclidean norm computation
  */
-TEST_F(VectorTest, NormL2_Simple) {
+TEST_F(VectorTest, NormL2_Simple)
+{
     float vec[] = {3.0f, 4.0f};
 
     // Expected: sqrt(3^2 + 4^2) = sqrt(9 + 16) = sqrt(25) = 5
@@ -89,7 +95,8 @@ TEST_F(VectorTest, NormL2_Simple) {
  * WHAT: Test L2 norm with negative values
  * WHY: Verify norm handles negative values correctly
  */
-TEST_F(VectorTest, NormL2_NegativeValues) {
+TEST_F(VectorTest, NormL2_NegativeValues)
+{
     float vec[] = {-3.0f, -4.0f};
 
     // Expected: sqrt((-3)^2 + (-4)^2) = sqrt(9 + 16) = 5
@@ -101,7 +108,8 @@ TEST_F(VectorTest, NormL2_NegativeValues) {
  * WHAT: Test L2 norm with zero vector
  * WHY: Verify edge case
  */
-TEST_F(VectorTest, NormL2_ZeroVector) {
+TEST_F(VectorTest, NormL2_ZeroVector)
+{
     float vec[] = {0.0f, 0.0f, 0.0f};
 
     float result = nimcp_vector_norm_l2(vec, 3);
@@ -112,7 +120,8 @@ TEST_F(VectorTest, NormL2_ZeroVector) {
  * WHAT: Test L2 norm with null input
  * WHY: Verify null safety
  */
-TEST_F(VectorTest, NormL2_NullInput) {
+TEST_F(VectorTest, NormL2_NullInput)
+{
     EXPECT_TRUE(FloatEquals(nimcp_vector_norm_l2(nullptr, 3), 0.0f));
 }
 
@@ -120,7 +129,8 @@ TEST_F(VectorTest, NormL2_NullInput) {
  * WHAT: Test L1 norm calculation
  * WHY: Verify Manhattan norm computation
  */
-TEST_F(VectorTest, NormL1_Simple) {
+TEST_F(VectorTest, NormL1_Simple)
+{
     float vec[] = {1.0f, 2.0f, 3.0f};
 
     // Expected: |1| + |2| + |3| = 6
@@ -132,7 +142,8 @@ TEST_F(VectorTest, NormL1_Simple) {
  * WHAT: Test L1 norm with negative values
  * WHY: Verify absolute value handling
  */
-TEST_F(VectorTest, NormL1_NegativeValues) {
+TEST_F(VectorTest, NormL1_NegativeValues)
+{
     float vec[] = {-1.0f, -2.0f, 3.0f};
 
     // Expected: |-1| + |-2| + |3| = 1 + 2 + 3 = 6
@@ -144,7 +155,8 @@ TEST_F(VectorTest, NormL1_NegativeValues) {
  * WHAT: Test vector copy operation
  * WHY: Verify data is copied correctly
  */
-TEST_F(VectorTest, Copy_Simple) {
+TEST_F(VectorTest, Copy_Simple)
+{
     float src[] = {1.0f, 2.0f, 3.0f, 4.0f};
     float dst[4] = {0.0f};
 
@@ -159,7 +171,8 @@ TEST_F(VectorTest, Copy_Simple) {
  * WHAT: Test vector copy with null inputs
  * WHY: Verify null safety (should not crash)
  */
-TEST_F(VectorTest, Copy_NullInputs) {
+TEST_F(VectorTest, Copy_NullInputs)
+{
     float vec[4] = {1.0f, 2.0f, 3.0f, 4.0f};
 
     // These should not crash
@@ -176,7 +189,8 @@ TEST_F(VectorTest, Copy_NullInputs) {
  * WHAT: Test cosine similarity with identical vectors
  * WHY: Verify result is 1.0 for identical directions
  */
-TEST_F(VectorTest, CosineSimilarity_Identical) {
+TEST_F(VectorTest, CosineSimilarity_Identical)
+{
     float a[] = {1.0f, 2.0f, 3.0f};
     float b[] = {1.0f, 2.0f, 3.0f};
 
@@ -188,7 +202,8 @@ TEST_F(VectorTest, CosineSimilarity_Identical) {
  * WHAT: Test cosine similarity with scaled vectors
  * WHY: Verify scale invariance (scaled vectors should have same similarity)
  */
-TEST_F(VectorTest, CosineSimilarity_Scaled) {
+TEST_F(VectorTest, CosineSimilarity_Scaled)
+{
     float a[] = {1.0f, 2.0f, 3.0f};
     float b[] = {2.0f, 4.0f, 6.0f};  // 2x scaled
 
@@ -200,7 +215,8 @@ TEST_F(VectorTest, CosineSimilarity_Scaled) {
  * WHAT: Test cosine similarity with orthogonal vectors
  * WHY: Verify result is 0.0 for perpendicular vectors
  */
-TEST_F(VectorTest, CosineSimilarity_Orthogonal) {
+TEST_F(VectorTest, CosineSimilarity_Orthogonal)
+{
     float a[] = {1.0f, 0.0f};
     float b[] = {0.0f, 1.0f};
 
@@ -212,7 +228,8 @@ TEST_F(VectorTest, CosineSimilarity_Orthogonal) {
  * WHAT: Test cosine similarity with opposite vectors
  * WHY: Verify result is -1.0 for opposite directions
  */
-TEST_F(VectorTest, CosineSimilarity_Opposite) {
+TEST_F(VectorTest, CosineSimilarity_Opposite)
+{
     float a[] = {1.0f, 2.0f, 3.0f};
     float b[] = {-1.0f, -2.0f, -3.0f};
 
@@ -224,7 +241,8 @@ TEST_F(VectorTest, CosineSimilarity_Opposite) {
  * WHAT: Test cosine similarity with both zero vectors
  * WHY: Verify special case returns 1.0 (perfect match)
  */
-TEST_F(VectorTest, CosineSimilarity_BothZero) {
+TEST_F(VectorTest, CosineSimilarity_BothZero)
+{
     float a[] = {0.0f, 0.0f, 0.0f};
     float b[] = {0.0f, 0.0f, 0.0f};
 
@@ -236,7 +254,8 @@ TEST_F(VectorTest, CosineSimilarity_BothZero) {
  * WHAT: Test cosine similarity with one zero vector
  * WHY: Verify special case returns 0.0 (no similarity)
  */
-TEST_F(VectorTest, CosineSimilarity_OneZero) {
+TEST_F(VectorTest, CosineSimilarity_OneZero)
+{
     float a[] = {1.0f, 2.0f, 3.0f};
     float b[] = {0.0f, 0.0f, 0.0f};
 
@@ -248,7 +267,8 @@ TEST_F(VectorTest, CosineSimilarity_OneZero) {
  * WHAT: Test cosine distance with identical vectors
  * WHY: Verify distance is 0 for identical directions
  */
-TEST_F(VectorTest, CosineDistance_Identical) {
+TEST_F(VectorTest, CosineDistance_Identical)
+{
     float a[] = {1.0f, 2.0f, 3.0f};
     float b[] = {1.0f, 2.0f, 3.0f};
 
@@ -260,7 +280,8 @@ TEST_F(VectorTest, CosineDistance_Identical) {
  * WHAT: Test cosine distance with orthogonal vectors
  * WHY: Verify distance is 1.0 for perpendicular vectors
  */
-TEST_F(VectorTest, CosineDistance_Orthogonal) {
+TEST_F(VectorTest, CosineDistance_Orthogonal)
+{
     float a[] = {1.0f, 0.0f};
     float b[] = {0.0f, 1.0f};
 
@@ -272,7 +293,8 @@ TEST_F(VectorTest, CosineDistance_Orthogonal) {
  * WHAT: Test cosine distance with opposite vectors
  * WHY: Verify distance is 2.0 for opposite directions
  */
-TEST_F(VectorTest, CosineDistance_Opposite) {
+TEST_F(VectorTest, CosineDistance_Opposite)
+{
     float a[] = {1.0f, 2.0f, 3.0f};
     float b[] = {-1.0f, -2.0f, -3.0f};
 
@@ -284,7 +306,8 @@ TEST_F(VectorTest, CosineDistance_Opposite) {
  * WHAT: Test Euclidean distance calculation
  * WHY: Verify standard distance metric
  */
-TEST_F(VectorTest, EuclideanDistance_Simple) {
+TEST_F(VectorTest, EuclideanDistance_Simple)
+{
     float a[] = {0.0f, 0.0f};
     float b[] = {3.0f, 4.0f};
 
@@ -297,7 +320,8 @@ TEST_F(VectorTest, EuclideanDistance_Simple) {
  * WHAT: Test Euclidean distance with identical vectors
  * WHY: Verify distance is 0 for same point
  */
-TEST_F(VectorTest, EuclideanDistance_Identical) {
+TEST_F(VectorTest, EuclideanDistance_Identical)
+{
     float a[] = {1.0f, 2.0f, 3.0f};
     float b[] = {1.0f, 2.0f, 3.0f};
 
@@ -309,7 +333,8 @@ TEST_F(VectorTest, EuclideanDistance_Identical) {
  * WHAT: Test Euclidean distance with null inputs
  * WHY: Verify null safety
  */
-TEST_F(VectorTest, EuclideanDistance_NullInputs) {
+TEST_F(VectorTest, EuclideanDistance_NullInputs)
+{
     float a[] = {1.0f, 2.0f};
 
     EXPECT_TRUE(FloatEquals(nimcp_vector_euclidean_distance(nullptr, a, 2), 0.0f));
@@ -324,7 +349,8 @@ TEST_F(VectorTest, EuclideanDistance_NullInputs) {
  * WHAT: Test L2 normalization to unit vector
  * WHY: Verify vector is scaled to target norm
  */
-TEST_F(VectorTest, NormalizeL2_ToUnit) {
+TEST_F(VectorTest, NormalizeL2_ToUnit)
+{
     float vec[] = {3.0f, 4.0f};
 
     float original_norm = nimcp_vector_normalize_l2(vec, 2, 1.0f);
@@ -345,7 +371,8 @@ TEST_F(VectorTest, NormalizeL2_ToUnit) {
  * WHAT: Test L2 normalization to custom target
  * WHY: Verify normalization to arbitrary target norm
  */
-TEST_F(VectorTest, NormalizeL2_CustomTarget) {
+TEST_F(VectorTest, NormalizeL2_CustomTarget)
+{
     float vec[] = {1.0f, 1.0f};
 
     float original_norm = nimcp_vector_normalize_l2(vec, 2, 10.0f);
@@ -362,7 +389,8 @@ TEST_F(VectorTest, NormalizeL2_CustomTarget) {
  * WHAT: Test L2 normalization of zero vector
  * WHY: Verify zero vector is not modified
  */
-TEST_F(VectorTest, NormalizeL2_ZeroVector) {
+TEST_F(VectorTest, NormalizeL2_ZeroVector)
+{
     float vec[] = {0.0f, 0.0f, 0.0f};
 
     float original_norm = nimcp_vector_normalize_l2(vec, 3, 1.0f);
@@ -378,7 +406,8 @@ TEST_F(VectorTest, NormalizeL2_ZeroVector) {
  * WHAT: Test L2 normalization with null input
  * WHY: Verify null safety
  */
-TEST_F(VectorTest, NormalizeL2_NullInput) {
+TEST_F(VectorTest, NormalizeL2_NullInput)
+{
     float result = nimcp_vector_normalize_l2(nullptr, 3, 1.0f);
     EXPECT_TRUE(FloatEquals(result, 0.0f));
 }
@@ -387,7 +416,8 @@ TEST_F(VectorTest, NormalizeL2_NullInput) {
  * WHAT: Test L1 normalization
  * WHY: Verify L1 norm scaling
  */
-TEST_F(VectorTest, NormalizeL1_Simple) {
+TEST_F(VectorTest, NormalizeL1_Simple)
+{
     float vec[] = {1.0f, 2.0f, 3.0f};
 
     float original_norm = nimcp_vector_normalize_l1(vec, 3, 1.0f);
@@ -400,16 +430,17 @@ TEST_F(VectorTest, NormalizeL1_Simple) {
     EXPECT_TRUE(FloatEquals(new_norm, 1.0f));
 
     // Values should be scaled by 1/6
-    EXPECT_TRUE(FloatEquals(vec[0], 1.0f/6.0f));
-    EXPECT_TRUE(FloatEquals(vec[1], 2.0f/6.0f));
-    EXPECT_TRUE(FloatEquals(vec[2], 3.0f/6.0f));
+    EXPECT_TRUE(FloatEquals(vec[0], 1.0f / 6.0f));
+    EXPECT_TRUE(FloatEquals(vec[1], 2.0f / 6.0f));
+    EXPECT_TRUE(FloatEquals(vec[2], 3.0f / 6.0f));
 }
 
 /**
  * WHAT: Test L1 normalization with negative values
  * WHY: Verify signs are preserved during normalization
  */
-TEST_F(VectorTest, NormalizeL1_NegativeValues) {
+TEST_F(VectorTest, NormalizeL1_NegativeValues)
+{
     float vec[] = {-1.0f, 2.0f, -3.0f};
 
     float original_norm = nimcp_vector_normalize_l1(vec, 3, 1.0f);
@@ -427,7 +458,8 @@ TEST_F(VectorTest, NormalizeL1_NegativeValues) {
  * WHAT: Test L1 normalization of zero vector
  * WHY: Verify zero vector is not modified
  */
-TEST_F(VectorTest, NormalizeL1_ZeroVector) {
+TEST_F(VectorTest, NormalizeL1_ZeroVector)
+{
     float vec[] = {0.0f, 0.0f, 0.0f};
 
     float original_norm = nimcp_vector_normalize_l1(vec, 3, 1.0f);
@@ -447,7 +479,8 @@ TEST_F(VectorTest, NormalizeL1_ZeroVector) {
  * WHAT: Test operations with very small values
  * WHY: Verify numerical stability with values near epsilon
  */
-TEST_F(VectorTest, NumericalStability_SmallValues) {
+TEST_F(VectorTest, NumericalStability_SmallValues)
+{
     float vec[] = {1e-11f, 1e-11f, 1e-11f};
 
     // This should be treated as zero and not normalized
@@ -459,7 +492,8 @@ TEST_F(VectorTest, NumericalStability_SmallValues) {
  * WHAT: Test operations with large vectors
  * WHY: Verify performance with realistic vector sizes
  */
-TEST_F(VectorTest, Performance_LargeVector) {
+TEST_F(VectorTest, Performance_LargeVector)
+{
     const int size = 1024;
     float a[size], b[size];
 
@@ -479,7 +513,8 @@ TEST_F(VectorTest, Performance_LargeVector) {
  * WHAT: Test vector with mixed positive and negative values
  * WHY: Verify operations handle sign correctly
  */
-TEST_F(VectorTest, MixedSigns_Operations) {
+TEST_F(VectorTest, MixedSigns_Operations)
+{
     float a[] = {1.0f, -2.0f, 3.0f, -4.0f};
     float b[] = {-1.0f, 2.0f, -3.0f, 4.0f};
 

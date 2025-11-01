@@ -37,11 +37,11 @@
  */
 
 #include "../include/nimcp_neuralnet.h"
+#include <math.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <math.h>
 #include <time.h>
-#include <stdio.h>
 
 //=============================================================================
 // Constants and Configuration
@@ -136,8 +136,8 @@ static void update_meta_plasticity(neuron_t* neuron, uint64_t timestamp);
 static void normalize_synaptic_weights(neuron_t* neuron);
 
 // Neuron initialization helpers
-static void init_neuron_basic_properties(neuron_t* neuron, uint32_t id,
-                                         neuron_type_t type, uint64_t creation_time);
+static void init_neuron_basic_properties(neuron_t* neuron, uint32_t id, neuron_type_t type,
+                                         uint64_t creation_time);
 static void init_neuron_learning_params(neuron_t* neuron, const network_config_t* config);
 static void init_neuron_homeostatic_params(neuron_t* neuron, const network_config_t* config);
 static void init_neuron_activity_tracking(neuron_t* neuron);
@@ -157,8 +157,9 @@ static void init_neuron_activity_tracking(neuron_t* neuron);
  * @param threshold Unused for sigmoid
  * @return Activated value in [0,1]
  */
-static float activate_sigmoid(float input, float threshold) {
-    (void)threshold;  // Unused
+static float activate_sigmoid(float input, float threshold)
+{
+    (void) threshold;  // Unused
     return sigmoid(input);
 }
 
@@ -170,8 +171,9 @@ static float activate_sigmoid(float input, float threshold) {
  *
  * COMPLEXITY: O(1)
  */
-static float activate_tanh(float input, float threshold) {
-    (void)threshold;
+static float activate_tanh(float input, float threshold)
+{
+    (void) threshold;
     return fast_tanh(input);
 }
 
@@ -183,8 +185,9 @@ static float activate_tanh(float input, float threshold) {
  *
  * COMPLEXITY: O(1)
  */
-static float activate_relu(float input, float threshold) {
-    (void)threshold;
+static float activate_relu(float input, float threshold)
+{
+    (void) threshold;
     return (input > 0.0f) ? input : 0.0f;
 }
 
@@ -196,8 +199,9 @@ static float activate_relu(float input, float threshold) {
  *
  * COMPLEXITY: O(1)
  */
-static float activate_leaky_relu(float input, float threshold) {
-    (void)threshold;
+static float activate_leaky_relu(float input, float threshold)
+{
+    (void) threshold;
     return (input > 0.0f) ? input : 0.01f * input;
 }
 
@@ -213,7 +217,8 @@ static float activate_leaky_relu(float input, float threshold) {
  *
  * COMPLEXITY: O(1)
  */
-static float activate_adaptive(float input, float threshold) {
+static float activate_adaptive(float input, float threshold)
+{
     // Guard: Protect against invalid threshold
     if (threshold < -100.0f || threshold > 100.0f) {
         threshold = -55.0f;  // Default biological threshold
@@ -237,9 +242,11 @@ static float activate_adaptive(float input, float threshold) {
  *
  * @param table Strategy table to initialize
  */
-static void init_activation_strategies(activation_strategy_table_t* table) {
+static void init_activation_strategies(activation_strategy_table_t* table)
+{
     // Guard clause: Validate input
-    if (!table) return;
+    if (!table)
+        return;
 
     table->functions[ACTIVATION_SIGMOID] = activate_sigmoid;
     table->functions[ACTIVATION_TANH] = activate_tanh;
@@ -265,23 +272,21 @@ static void init_activation_strategies(activation_strategy_table_t* table) {
  * @param type EXCITATORY or INHIBITORY
  * @param creation_time Network timestamp of creation
  */
-static void init_neuron_basic_properties(
-    neuron_t* neuron,
-    uint32_t id,
-    neuron_type_t type,
-    uint64_t creation_time
-) {
+static void init_neuron_basic_properties(neuron_t* neuron, uint32_t id, neuron_type_t type,
+                                         uint64_t creation_time)
+{
     // Guard clause: Validate input
-    if (!neuron) return;
+    if (!neuron)
+        return;
 
     neuron->id = id;
     neuron->type = type;
     neuron->rest_potential = -65.0f;  // Biological resting potential (mV)
     neuron->threshold = -55.0f;       // Spike threshold (mV)
     neuron->adaptation = 0.0f;
-    neuron->refractory_period = 2;    // Milliseconds
+    neuron->refractory_period = 2;  // Milliseconds
     neuron->state = neuron->rest_potential;
-    neuron->bias = (float)rand() / (float)RAND_MAX * 0.1f - 0.05f;
+    neuron->bias = (float) rand() / (float) RAND_MAX * 0.1f - 0.05f;
     neuron->creation_time = creation_time;
     neuron->last_update = creation_time;
     neuron->last_spike = 0;
@@ -293,12 +298,11 @@ static void init_neuron_basic_properties(
  * WHY: Separates learning config from basic properties
  * COMPLEXITY: O(1)
  */
-static void init_neuron_learning_params(
-    neuron_t* neuron,
-    const network_config_t* config
-) {
+static void init_neuron_learning_params(neuron_t* neuron, const network_config_t* config)
+{
     // Guard clause: Validate inputs
-    if (!neuron || !config) return;
+    if (!neuron || !config)
+        return;
 
     neuron->learning_rule = LEARNING_HYBRID;
     neuron->activation_type = ACTIVATION_ADAPTIVE;
@@ -324,12 +328,11 @@ static void init_neuron_learning_params(
  * WHY: Separates homeostasis config from other initialization
  * COMPLEXITY: O(1)
  */
-static void init_neuron_homeostatic_params(
-    neuron_t* neuron,
-    const network_config_t* config
-) {
+static void init_neuron_homeostatic_params(neuron_t* neuron, const network_config_t* config)
+{
     // Guard clause: Validate inputs
-    if (!neuron || !config) return;
+    if (!neuron || !config)
+        return;
 
     neuron->homeostatic.target_activity = config->target_activity;
     neuron->homeostatic.time_scale = 1000.0f;  // ms
@@ -345,9 +348,11 @@ static void init_neuron_homeostatic_params(
  * WHY: Separates memory initialization from parameter setting
  * COMPLEXITY: O(1) - fixed-size arrays
  */
-static void init_neuron_activity_tracking(neuron_t* neuron) {
+static void init_neuron_activity_tracking(neuron_t* neuron)
+{
     // Guard clause: Validate input
-    if (!neuron) return;
+    if (!neuron)
+        return;
 
     neuron->spike_history_index = 0;
     neuron->avg_activity = 0.0f;
@@ -372,9 +377,11 @@ static void init_neuron_activity_tracking(neuron_t* neuron) {
  * @param config Configuration to validate
  * @return true if valid, false otherwise
  */
-static bool validate_network_config(const network_config_t* config) {
+static bool validate_network_config(const network_config_t* config)
+{
     // Guard: Check null pointer
-    if (!config) return false;
+    if (!config)
+        return false;
 
     // Guard: Check neuron count
     if (config->num_neurons == 0 || config->num_neurons > MAX_NEURONS) {
@@ -404,16 +411,18 @@ static bool validate_network_config(const network_config_t* config) {
  * @param config Network configuration
  * @return Network handle or NULL on failure
  */
-neural_network_t neural_network_create(const network_config_t* config) {
+neural_network_t neural_network_create(const network_config_t* config)
+{
     // Guard clause: Validate configuration
     if (!validate_network_config(config)) {
         return NULL;
     }
     // Allocate network structure
-    neural_network_t network = (neural_network_t)malloc(sizeof(struct neural_network_struct));
+    neural_network_t network = (neural_network_t) malloc(sizeof(struct neural_network_struct));
 
     // Guard clause: Check allocation
-    if (!network) return NULL;
+    if (!network)
+        return NULL;
 
     // Initialize network state
     memset(network, 0, sizeof(struct neural_network_struct));
@@ -421,7 +430,7 @@ neural_network_t neural_network_create(const network_config_t* config) {
 
     // Deep copy layer_sizes array if present (NIMCP 2.5 layered networks)
     if (config->num_layers > 0 && config->layer_sizes) {
-        uint32_t* layer_sizes_copy = (uint32_t*)malloc(config->num_layers * sizeof(uint32_t));
+        uint32_t* layer_sizes_copy = (uint32_t*) malloc(config->num_layers * sizeof(uint32_t));
         if (!layer_sizes_copy) {
             free(network);
             return NULL;
@@ -444,7 +453,7 @@ neural_network_t neural_network_create(const network_config_t* config) {
     init_activation_strategies(&network->activation_strategies);
 
     // Determine excitatory/inhibitory split
-    uint32_t num_inhibitory = (uint32_t)(config->num_neurons * (1.0f - config->ei_ratio));
+    uint32_t num_inhibitory = (uint32_t) (config->num_neurons * (1.0f - config->ei_ratio));
 
     // Create neurons using builder pattern
     for (uint32_t i = 0; i < config->num_neurons; i++) {
@@ -471,10 +480,12 @@ neural_network_t neural_network_create(const network_config_t* config) {
 
             // Connect each neuron in current layer to each neuron in next layer
             for (uint32_t i = 0; i < curr_layer_size && offset + i < network->num_neurons; i++) {
-                for (uint32_t j = 0; j < next_layer_size && next_layer_offset + j < network->num_neurons; j++) {
+                for (uint32_t j = 0;
+                     j < next_layer_size && next_layer_offset + j < network->num_neurons; j++) {
                     // Random initial weight between -0.5 and 0.5
-                    float weight = ((float)rand() / RAND_MAX) - 0.5f;
-                    neural_network_add_connection(network, offset + i, next_layer_offset + j, weight);
+                    float weight = ((float) rand() / RAND_MAX) - 0.5f;
+                    neural_network_add_connection(network, offset + i, next_layer_offset + j,
+                                                  weight);
                 }
             }
 
@@ -493,13 +504,15 @@ neural_network_t neural_network_create(const network_config_t* config) {
  *
  * @param network Network to destroy (can be NULL)
  */
-void neural_network_destroy(neural_network_t network) {
+void neural_network_destroy(neural_network_t network)
+{
     // Guard clause: Handle NULL input
-    if (!network) return;
+    if (!network)
+        return;
 
     // Free layer_sizes array if allocated (NIMCP 2.5 layered networks)
     if (network->config.layer_sizes) {
-        free((void*)network->config.layer_sizes);
+        free((void*) network->config.layer_sizes);
     }
 
     // In future: Free any dynamically allocated synapses, etc.
@@ -522,7 +535,8 @@ void neural_network_destroy(neural_network_t network) {
  * @param x Input value
  * @return tanh(x) approximation
  */
-static float fast_tanh(float x) {
+static float fast_tanh(float x)
+{
     float x2 = x * x;
     float a = x * (135135.0f + x2 * (17325.0f + x2 * (378.0f + x2)));
     float b = 135135.0f + x2 * (62370.0f + x2 * (3150.0f + x2 * 28.0f));
@@ -538,7 +552,8 @@ static float fast_tanh(float x) {
  * @param x Input value
  * @return Sigmoid output in (0,1)
  */
-static float sigmoid(float x) {
+static float sigmoid(float x)
+{
     return 1.0f / (1.0f + expf(-x));
 }
 
@@ -551,7 +566,8 @@ static float sigmoid(float x) {
  * @param value Value to clamp
  * @return Clamped value in [MIN_ACTIVATION, MAX_ACTIVATION]
  */
-static float clamp_activation(float value) {
+static float clamp_activation(float value)
+{
     return fmaxf(MIN_ACTIVATION, fminf(MAX_ACTIVATION, value));
 }
 
@@ -577,9 +593,11 @@ static float clamp_activation(float value) {
  * @param input Raw input to activate
  * @return Activated output, clamped to valid range
  */
-float neural_network_compute_activation(neuron_t* neuron, float input) {
+float neural_network_compute_activation(neuron_t* neuron, float input)
+{
     // Guard clause: Validate neuron
-    if (!neuron) return 0.0f;
+    if (!neuron)
+        return 0.0f;
 
     // Temporary: Get network context for strategy table
     // In production, would pass network or use global table
@@ -607,10 +625,8 @@ float neural_network_compute_activation(neuron_t* neuron, float input) {
         if (input > neuron->threshold) {
             neuron->threshold += neuron->adaptation;
         } else {
-            neuron->threshold = fmaxf(
-                neuron->threshold - neuron->adaptation * 0.1f,
-                neuron->rest_potential + 10.0f
-            );
+            neuron->threshold = fmaxf(neuron->threshold - neuron->adaptation * 0.1f,
+                                      neuron->rest_potential + 10.0f);
         }
     }
 
@@ -633,9 +649,11 @@ float neural_network_compute_activation(neuron_t* neuron, float input) {
  * @param network Network containing pre-synaptic neurons
  * @return Summed synaptic input
  */
-static float sum_synaptic_inputs(neuron_t* neuron, neural_network_t network) {
+static float sum_synaptic_inputs(neuron_t* neuron, neural_network_t network)
+{
     // Guard clause: Validate inputs
-    if (!neuron || !network) return 0.0f;
+    if (!neuron || !network)
+        return 0.0f;
 
     float total_input = 0.0f;
 
@@ -653,7 +671,8 @@ static float sum_synaptic_inputs(neuron_t* neuron, neural_network_t network) {
             if (syn->target_id == neuron->id) {
                 // Only transmit if presynaptic neuron is active (not at rest)
                 // For spiking neurons, we use state > threshold as activity indicator
-                float pre_activity = (src_neuron->state > src_neuron->threshold) ? src_neuron->state : 0.0f;
+                float pre_activity =
+                    (src_neuron->state > src_neuron->threshold) ? src_neuron->state : 0.0f;
                 total_input += pre_activity * syn->weight * syn->strength;
             }
         }
@@ -682,9 +701,11 @@ static float sum_synaptic_inputs(neuron_t* neuron, neural_network_t network) {
  * @param network Network containing all neurons
  * @return Membrane potential (mV in biological terms)
  */
-static float compute_membrane_potential(neuron_t* neuron, neural_network_t network) {
+static float compute_membrane_potential(neuron_t* neuron, neural_network_t network)
+{
     // Guard clause: Validate inputs
-    if (!neuron || !network) return 0.0f;
+    if (!neuron || !network)
+        return 0.0f;
 
     // Start with intrinsic bias
     float potential = neuron->bias;
@@ -711,9 +732,11 @@ static float compute_membrane_potential(neuron_t* neuron, neural_network_t netwo
  *
  * @return true if in refractory period (cannot spike)
  */
-static bool is_in_refractory_period(neuron_t* neuron, uint64_t timestamp) {
+static bool is_in_refractory_period(neuron_t* neuron, uint64_t timestamp)
+{
     // If neuron has never spiked (last_spike == 0), not in refractory period
-    if (neuron->last_spike == 0) return false;
+    if (neuron->last_spike == 0)
+        return false;
     return (timestamp - neuron->last_spike) < neuron->refractory_period;
 }
 
@@ -725,7 +748,8 @@ static bool is_in_refractory_period(neuron_t* neuron, uint64_t timestamp) {
  *
  * @return true if spike occurred
  */
-static bool detected_spike(float old_state, float new_state, float threshold) {
+static bool detected_spike(float old_state, float new_state, float threshold)
+{
     return (old_state <= threshold) && (new_state > threshold);
 }
 
@@ -737,12 +761,9 @@ static bool detected_spike(float old_state, float new_state, float threshold) {
  *
  * COMPLEXITY: O(s) where s = num_synapses
  */
-static void apply_learning_rules(
-    neural_network_t network,
-    uint32_t neuron_id,
-    neuron_t* neuron,
-    uint64_t timestamp
-) {
+static void apply_learning_rules(neural_network_t network, uint32_t neuron_id, neuron_t* neuron,
+                                 uint64_t timestamp)
+{
     // Guard clause: Check if Oja's rule enabled
     if (neuron->learning_rule & LEARNING_OJA) {
         neural_network_apply_oja(network, neuron_id, timestamp);
@@ -760,9 +781,11 @@ static void apply_learning_rules(
  * WHY: Extracted activity tracking for single responsibility
  * COMPLEXITY: O(w) where w = HISTORY_WINDOW
  */
-static void update_activity_history(neuron_t* neuron, float new_state, uint64_t timestamp) {
+static void update_activity_history(neuron_t* neuron, float new_state, uint64_t timestamp)
+{
     // Guard clause: Validate input
-    if (!neuron) return;
+    if (!neuron)
+        return;
 
     // Record current activity
     uint32_t history_idx = timestamp % HISTORY_WINDOW;
@@ -782,9 +805,11 @@ static void update_activity_history(neuron_t* neuron, float new_state, uint64_t 
  * WHY: Extracted dynamics updates for clarity
  * COMPLEXITY: O(s) where s = num_synapses
  */
-static void update_neuron_dynamics(neuron_t* neuron, uint64_t timestamp) {
+static void update_neuron_dynamics(neuron_t* neuron, uint64_t timestamp)
+{
     // Guard clause: Validate input
-    if (!neuron) return;
+    if (!neuron)
+        return;
 
     update_calcium_dynamics(neuron, timestamp);
     update_synaptic_traces(neuron, timestamp);
@@ -798,13 +823,9 @@ static void update_neuron_dynamics(neuron_t* neuron, uint64_t timestamp) {
  *
  * COMPLEXITY: O(s) where s = num_synapses
  */
-static void handle_spike_event(
-    neural_network_t network,
-    uint32_t neuron_id,
-    neuron_t* neuron,
-    float new_state,
-    uint64_t timestamp
-) {
+static void handle_spike_event(neural_network_t network, uint32_t neuron_id, neuron_t* neuron,
+                               float new_state, uint64_t timestamp)
+{
     // Record the spike
     neural_network_record_spike(network, neuron_id, new_state, timestamp);
 
@@ -840,17 +861,16 @@ static void handle_spike_event(
  * @param timestamp Current simulation time
  * @return true if neuron updated successfully, false if in refractory period
  */
-bool neural_network_update_neuron(
-    neural_network_t network,
-    uint32_t neuron_id,
-    float input_current,
-    uint64_t timestamp
-) {
+bool neural_network_update_neuron(neural_network_t network, uint32_t neuron_id, float input_current,
+                                  uint64_t timestamp)
+{
     // Guard clause: Validate network
-    if (!network) return false;
+    if (!network)
+        return false;
 
     // Guard clause: Validate neuron ID
-    if (neuron_id >= network->num_neurons) return false;
+    if (neuron_id >= network->num_neurons)
+        return false;
 
     neuron_t* neuron = &network->neurons[neuron_id];
 
@@ -885,11 +905,12 @@ bool neural_network_update_neuron(
 /**
  * @brief Apply Oja's learning rule
  */
-uint32_t neural_network_apply_oja(neural_network_t network, uint32_t neuron_id, uint64_t timestamp) {
+uint32_t neural_network_apply_oja(neural_network_t network, uint32_t neuron_id, uint64_t timestamp)
+{
     neuron_t* neuron = &network->neurons[neuron_id];
     uint32_t modified = 0;
-    float y = neuron->state; // Post-synaptic activity
-//    float y_squared = y * y;
+    float y = neuron->state;  // Post-synaptic activity
+                              //    float y_squared = y * y;
 
     // Skip update if neuron is not active enough
     if (fabs(y) < ACTIVITY_THRESHOLD) {
@@ -910,8 +931,8 @@ uint32_t neural_network_apply_oja(neural_network_t network, uint32_t neuron_id, 
         float new_weight = syn->weight + delta_w * syn->meta_plasticity;
 
         // Apply weight constraints
-        new_weight = fmaxf(network->config.min_weight,
-                          fminf(network->config.max_weight, new_weight));
+        new_weight =
+            fmaxf(network->config.min_weight, fminf(network->config.max_weight, new_weight));
 
         // Update weight if change is significant
         if (fabs(new_weight - syn->weight) > WEIGHT_UPDATE_THRESHOLD) {
@@ -935,7 +956,8 @@ uint32_t neural_network_apply_oja(neural_network_t network, uint32_t neuron_id, 
  * @brief Compute weight update using Oja's rule
  */
 static float compute_oja_weight_update(float pre_activity, float post_activity,
-                                     float current_weight, oja_params_t* params) {
+                                       float current_weight, oja_params_t* params)
+{
     float hebbian_term = post_activity * pre_activity;
     float normalization_term = post_activity * post_activity * current_weight;
     float stabilization_term = params->stabilization * (params->target_norm - current_weight);
@@ -946,7 +968,8 @@ static float compute_oja_weight_update(float pre_activity, float post_activity,
 /**
  * @brief Apply STDP learning rule
  */
-uint32_t neural_network_apply_stdp(neural_network_t network, uint32_t neuron_id, uint64_t timestamp) {
+uint32_t neural_network_apply_stdp(neural_network_t network, uint32_t neuron_id, uint64_t timestamp)
+{
     neuron_t* neuron = &network->neurons[neuron_id];
     uint32_t modified = 0;
 
@@ -955,21 +978,22 @@ uint32_t neural_network_apply_stdp(neural_network_t network, uint32_t neuron_id,
         neuron_t* pre_neuron = &network->neurons[syn->target_id];
 
         // Compute time difference between pre and post spikes
-        int64_t dt = (int64_t)(timestamp - pre_neuron->last_spike);
+        int64_t dt = (int64_t) (timestamp - pre_neuron->last_spike);
 
         // Skip if time difference is too large
-        if (fabsf((float)dt) > neuron->stdp_params.time_window) continue;
+        if (fabsf((float) dt) > neuron->stdp_params.time_window)
+            continue;
 
         // Compute STDP update
-        float stdp_factor = compute_stdp_update((float)dt, &neuron->stdp_params);
+        float stdp_factor = compute_stdp_update((float) dt, &neuron->stdp_params);
         float delta_w = neuron->stdp_params.learning_rate * stdp_factor * syn->trace;
 
         // Apply weight update with meta-plasticity
         float new_weight = syn->weight + delta_w * syn->meta_plasticity;
 
         // Apply weight constraints
-        new_weight = fmaxf(network->config.min_weight,
-                          fminf(network->config.max_weight, new_weight));
+        new_weight =
+            fmaxf(network->config.min_weight, fminf(network->config.max_weight, new_weight));
 
         // Update weight if change is significant
         if (fabs(new_weight - syn->weight) > WEIGHT_UPDATE_THRESHOLD) {
@@ -984,7 +1008,8 @@ uint32_t neural_network_apply_stdp(neural_network_t network, uint32_t neuron_id,
 /**
  * @brief Compute STDP update factor
  */
-static float compute_stdp_update(float dt, stdp_params_t* params) {
+static float compute_stdp_update(float dt, stdp_params_t* params)
+{
     float time_factor = expf(-fabsf(dt) / params->time_window);
 
     if (dt > 0) {
@@ -998,7 +1023,9 @@ static float compute_stdp_update(float dt, stdp_params_t* params) {
 /**
  * @brief Apply homeostatic plasticity to maintain target activity
  */
-bool neural_network_apply_homeostasis(neural_network_t network, uint32_t neuron_id, uint64_t timestamp) {
+bool neural_network_apply_homeostasis(neural_network_t network, uint32_t neuron_id,
+                                      uint64_t timestamp)
+{
     neuron_t* neuron = &network->neurons[neuron_id];
 
     // Skip if too soon since last update
@@ -1033,9 +1060,8 @@ bool neural_network_apply_homeostasis(neural_network_t network, uint32_t neuron_
         synapse_t* syn = &neuron->synapses[i];
 
         // Scale synaptic strength based on activity error
-        float strength_adjustment = neuron->homeostatic.strength *
-                                  activity_error *
-                                  neuron->homeostatic_factor;
+        float strength_adjustment =
+            neuron->homeostatic.strength * activity_error * neuron->homeostatic_factor;
 
         syn->strength *= (1.0f + strength_adjustment);
 
@@ -1044,8 +1070,8 @@ bool neural_network_apply_homeostasis(neural_network_t network, uint32_t neuron_
     }
 
     // Update adaptation based on activity
-    neuron->adaptation = fmaxf(0.0f, neuron->adaptation +
-                              neuron->homeostatic.strength * activity_error);
+    neuron->adaptation =
+        fmaxf(0.0f, neuron->adaptation + neuron->homeostatic.strength * activity_error);
 
     return true;
 }
@@ -1053,7 +1079,8 @@ bool neural_network_apply_homeostasis(neural_network_t network, uint32_t neuron_
 /**
  * @brief Compute homeostatic scaling factor
  */
-static float compute_homeostatic_factor(neuron_t* neuron, float current_activity) {
+static float compute_homeostatic_factor(neuron_t* neuron, float current_activity)
+{
     float activity_ratio = current_activity / neuron->homeostatic.target_activity;
     float time_scale = neuron->homeostatic.time_scale;
 
@@ -1073,7 +1100,8 @@ static float compute_homeostatic_factor(neuron_t* neuron, float current_activity
 /**
  * @brief Update meta-plasticity based on activity patterns
  */
-static void update_meta_plasticity(neuron_t* neuron, uint64_t timestamp) {
+static void update_meta_plasticity(neuron_t* neuron, uint64_t timestamp)
+{
     // Compute activity variance over history window
     float mean_activity = neuron->avg_activity;
     float variance = 0.0f;
@@ -1092,8 +1120,8 @@ static void update_meta_plasticity(neuron_t* neuron, uint64_t timestamp) {
         float stability = expf(-variance * META_PLASTICITY_RATE);
 
         // Update meta-plasticity factor
-        syn->meta_plasticity = syn->meta_plasticity * (1.0f - META_PLASTICITY_RATE) +
-                              stability * META_PLASTICITY_RATE;
+        syn->meta_plasticity =
+            syn->meta_plasticity * (1.0f - META_PLASTICITY_RATE) + stability * META_PLASTICITY_RATE;
 
         // Ensure meta-plasticity stays in valid range
         syn->meta_plasticity = fmaxf(0.1f, fminf(1.0f, syn->meta_plasticity));
@@ -1103,7 +1131,8 @@ static void update_meta_plasticity(neuron_t* neuron, uint64_t timestamp) {
 /**
  * @brief Periodic maintenance of homeostatic mechanisms
  */
-void neural_network_maintain_homeostasis(neural_network_t network, uint64_t timestamp) {
+void neural_network_maintain_homeostasis(neural_network_t network, uint64_t timestamp)
+{
     // Skip if too soon since last maintenance
     if (timestamp - network->last_maintenance < network->config.update_interval) {
         return;
@@ -1134,9 +1163,11 @@ void neural_network_maintain_homeostasis(neural_network_t network, uint64_t time
 /**
  * @brief Record a spike event for a neuron
  */
-bool neural_network_record_spike(neural_network_t network, uint32_t neuron_id,
-                               float magnitude, uint64_t timestamp) {
-    if (neuron_id >= network->num_neurons) return false;
+bool neural_network_record_spike(neural_network_t network, uint32_t neuron_id, float magnitude,
+                                 uint64_t timestamp)
+{
+    if (neuron_id >= network->num_neurons)
+        return false;
 
     neuron_t* neuron = &network->neurons[neuron_id];
 
@@ -1179,12 +1210,13 @@ bool neural_network_record_spike(neural_network_t network, uint32_t neuron_id,
 /**
  * @brief Update synaptic traces for STDP
  */
-static void update_synaptic_traces(neuron_t* neuron, uint64_t timestamp) {
+static void update_synaptic_traces(neuron_t* neuron, uint64_t timestamp)
+{
     for (uint32_t i = 0; i < neuron->num_synapses; i++) {
         synapse_t* syn = &neuron->synapses[i];
 
         // Compute time since last update
-        float dt = (float)(timestamp - syn->last_active);
+        float dt = (float) (timestamp - syn->last_active);
 
         // Exponential decay of trace
         if (dt > 0) {
@@ -1198,9 +1230,10 @@ static void update_synaptic_traces(neuron_t* neuron, uint64_t timestamp) {
 /**
  * @brief Update calcium dynamics
  */
-static void update_calcium_dynamics(neuron_t* neuron, uint64_t timestamp) {
+static void update_calcium_dynamics(neuron_t* neuron, uint64_t timestamp)
+{
     // Compute time since last update
-    float dt = (float)(timestamp - neuron->last_update);
+    float dt = (float) (timestamp - neuron->last_update);
 
     // Exponential decay of calcium concentration
     if (dt > 0) {
@@ -1208,15 +1241,16 @@ static void update_calcium_dynamics(neuron_t* neuron, uint64_t timestamp) {
     }
 
     // Ensure calcium concentration stays in valid range
-    neuron->calcium_concentration = fmaxf(0.0f,
-                                        fminf(10.0f, neuron->calcium_concentration));
+    neuron->calcium_concentration = fmaxf(0.0f, fminf(10.0f, neuron->calcium_concentration));
 }
 
 /**
  * @brief Get average activity over time window
  */
-float neural_network_get_average_activity(neural_network_t network, uint32_t neuron_id) {
-    if (neuron_id >= network->num_neurons) return 0.0f;
+float neural_network_get_average_activity(neural_network_t network, uint32_t neuron_id)
+{
+    if (neuron_id >= network->num_neurons)
+        return 0.0f;
 
     neuron_t* neuron = &network->neurons[neuron_id];
 
@@ -1225,8 +1259,7 @@ float neural_network_get_average_activity(neural_network_t network, uint32_t neu
     uint64_t current_time = network->network_time;
 
     // Handle underflow: if current_time < HISTORY_WINDOW, start from 0
-    uint64_t window_start = (current_time >= HISTORY_WINDOW) ?
-                            (current_time - HISTORY_WINDOW) : 0;
+    uint64_t window_start = (current_time >= HISTORY_WINDOW) ? (current_time - HISTORY_WINDOW) : 0;
 
     for (uint32_t i = 0; i < SPIKE_HISTORY_LENGTH; i++) {
         if (neuron->spike_history[i].timestamp > window_start &&
@@ -1235,13 +1268,14 @@ float neural_network_get_average_activity(neural_network_t network, uint32_t neu
         }
     }
 
-    return (float)spike_count / HISTORY_WINDOW;
+    return (float) spike_count / HISTORY_WINDOW;
 }
 
 /**
  * @brief Compute network step
  */
-uint32_t neural_network_compute_step(neural_network_t network, uint64_t timestamp) {
+uint32_t neural_network_compute_step(neural_network_t network, uint64_t timestamp)
+{
     uint32_t active_neurons = 0;
 
     // Update all neurons
@@ -1272,15 +1306,16 @@ uint32_t neural_network_compute_step(neural_network_t network, uint64_t timestam
     }
 
     network->network_time = timestamp;
-    network->current_time = timestamp;  
+    network->current_time = timestamp;
     return active_neurons;
 }
 
 /**
  * @brief Add a new synaptic connection
  */
-bool neural_network_add_connection(neural_network_t network, uint32_t from_id,
-                                 uint32_t to_id, float weight) {
+bool neural_network_add_connection(neural_network_t network, uint32_t from_id, uint32_t to_id,
+                                   float weight)
+{
     if (from_id >= network->num_neurons || to_id >= network->num_neurons) {
         return false;
     }
@@ -1295,8 +1330,7 @@ bool neural_network_add_connection(neural_network_t network, uint32_t from_id,
     // Initialize new synapse
     synapse_t* syn = &from_neuron->synapses[from_neuron->num_synapses];
     syn->target_id = to_id;
-    syn->weight = fmaxf(network->config.min_weight,
-                       fminf(network->config.max_weight, weight));
+    syn->weight = fmaxf(network->config.min_weight, fminf(network->config.max_weight, weight));
     syn->plasticity = 1.0f;
     syn->last_change = 0.0f;
     syn->last_active = network->network_time;
@@ -1319,7 +1353,8 @@ bool neural_network_add_connection(neural_network_t network, uint32_t from_id,
 /**
  * @brief Normalize synaptic weights for a neuron
  */
-static void normalize_synaptic_weights(neuron_t* neuron) {
+static void normalize_synaptic_weights(neuron_t* neuron)
+{
     float sum_weights = 0.0f;
     float max_weight = 0.0f;
 
@@ -1351,7 +1386,8 @@ static void normalize_synaptic_weights(neuron_t* neuron) {
 /**
  * @brief Prune weak synapses
  */
-uint32_t neural_network_prune_synapses(neural_network_t network, float threshold) {
+uint32_t neural_network_prune_synapses(neural_network_t network, float threshold)
+{
     uint32_t pruned_count = 0;
 
     for (uint32_t i = 0; i < network->num_neurons; i++) {
@@ -1381,7 +1417,8 @@ uint32_t neural_network_prune_synapses(neural_network_t network, float threshold
 /**
  * @brief Network maintenance routine
  */
-void neural_network_maintain(neural_network_t network, uint64_t timestamp) {
+void neural_network_maintain(neural_network_t network, uint64_t timestamp)
+{
     // Skip if too soon since last maintenance
     if (timestamp - network->last_maintenance < network->config.update_interval) {
         return;
@@ -1405,8 +1442,10 @@ void neural_network_maintain(neural_network_t network, uint64_t timestamp) {
 /**
  * @brief Debug function to dump neuron state
  */
-void neural_network_dump_neuron(neural_network_t network, uint32_t neuron_id) {
-    if (neuron_id >= network->num_neurons) return;
+void neural_network_dump_neuron(neural_network_t network, uint32_t neuron_id)
+{
+    if (neuron_id >= network->num_neurons)
+        return;
 
     neuron_t* neuron = &network->neurons[neuron_id];
 
@@ -1420,15 +1459,16 @@ void neural_network_dump_neuron(neural_network_t network, uint32_t neuron_id) {
 
     for (uint32_t i = 0; i < neuron->num_synapses; i++) {
         synapse_t* syn = &neuron->synapses[i];
-        printf("    Synapse %u -> %u: w=%.3f, s=%.3f\n",
-               neuron_id, syn->target_id, syn->weight, syn->strength);
+        printf("    Synapse %u -> %u: w=%.3f, s=%.3f\n", neuron_id, syn->target_id, syn->weight,
+               syn->strength);
     }
 }
 
 /**
  * @brief Reset network state
  */
-void neural_network_reset(neural_network_t network) {
+void neural_network_reset(neural_network_t network)
+{
     for (uint32_t i = 0; i < network->num_neurons; i++) {
         neuron_t* neuron = &network->neurons[i];
 
@@ -1461,8 +1501,9 @@ void neural_network_reset(neural_network_t network) {
 /*
  * @brief Get neuron state
  */
-bool neural_network_get_neuron_state(neural_network_t network, uint32_t neuron_id, float* state) {
-    if (!network || neuron_id >= network->num_neurons || !state)  {
+bool neural_network_get_neuron_state(neural_network_t network, uint32_t neuron_id, float* state)
+{
+    if (!network || neuron_id >= network->num_neurons || !state) {
         return false;
     }
 
@@ -1473,8 +1514,10 @@ bool neural_network_get_neuron_state(neural_network_t network, uint32_t neuron_i
 /**
  * @brief Add a new neuron to the network
  */
-uint32_t neural_network_add_neuron(neural_network_t network, activation_type_t activation) {
-    if (!network || network->num_neurons >= MAX_NEURONS) return UINT32_MAX;
+uint32_t neural_network_add_neuron(neural_network_t network, activation_type_t activation)
+{
+    if (!network || network->num_neurons >= MAX_NEURONS)
+        return UINT32_MAX;
 
     uint32_t new_id = network->num_neurons;
     neuron_t* neuron = &network->neurons[new_id];
@@ -1495,7 +1538,9 @@ uint32_t neural_network_add_neuron(neural_network_t network, activation_type_t a
 /**
  * @brief Apply generalized Oja's rule
  */
-uint32_t neural_network_apply_generalized_oja(neural_network_t network, uint32_t neuron_id, uint64_t timestamp) {
+uint32_t neural_network_apply_generalized_oja(neural_network_t network, uint32_t neuron_id,
+                                              uint64_t timestamp)
+{
     // Implementation similar to neural_network_apply_oja but with generalized rule
     // This is a placeholder - implement the actual generalized Oja rule as needed
     return 0;
@@ -1504,8 +1549,11 @@ uint32_t neural_network_apply_generalized_oja(neural_network_t network, uint32_t
 /**
  * @brief Update plasticity for a neuron
  */
-uint32_t neural_network_update_plasticity(neural_network_t network, uint32_t neuron_id, uint64_t timestamp) {
-    if (!network || neuron_id >= network->num_neurons) return 0;
+uint32_t neural_network_update_plasticity(neural_network_t network, uint32_t neuron_id,
+                                          uint64_t timestamp)
+{
+    if (!network || neuron_id >= network->num_neurons)
+        return 0;
 
     neuron_t* neuron = &network->neurons[neuron_id];
     update_meta_plasticity(neuron, timestamp);
@@ -1515,8 +1563,10 @@ uint32_t neural_network_update_plasticity(neural_network_t network, uint32_t neu
 /**
  * @brief Normalize weights for a specific neuron
  */
-bool neural_network_normalize_weights(neural_network_t network, uint32_t neuron_id) {
-    if (!network || neuron_id >= network->num_neurons) return false;
+bool neural_network_normalize_weights(neural_network_t network, uint32_t neuron_id)
+{
+    if (!network || neuron_id >= network->num_neurons)
+        return false;
 
     normalize_synaptic_weights(&network->neurons[neuron_id]);
     return true;
@@ -1525,14 +1575,18 @@ bool neural_network_normalize_weights(neural_network_t network, uint32_t neuron_
 /**
  * @brief Adapt neuron threshold
  */
-bool neural_network_adapt_threshold(neural_network_t network, uint32_t neuron_id, uint64_t timestamp) {
-    if (!network || neuron_id >= network->num_neurons) return false;
+bool neural_network_adapt_threshold(neural_network_t network, uint32_t neuron_id,
+                                    uint64_t timestamp)
+{
+    if (!network || neuron_id >= network->num_neurons)
+        return false;
 
     neuron_t* neuron = &network->neurons[neuron_id];
     float activity = neural_network_get_average_activity(network, neuron_id);
 
     // Adjust threshold based on recent activity
-    float threshold_adjustment = neuron->adaptation * (activity - neuron->homeostatic.target_activity);
+    float threshold_adjustment =
+        neuron->adaptation * (activity - neuron->homeostatic.target_activity);
     neuron->threshold += threshold_adjustment;
 
     return true;
@@ -1541,8 +1595,10 @@ bool neural_network_adapt_threshold(neural_network_t network, uint32_t neuron_id
 /**
  * @brief Update synaptic traces
  */
-void neural_network_update_traces(neural_network_t network, uint32_t neuron_id, uint64_t timestamp) {
-    if (!network || neuron_id >= network->num_neurons) return;
+void neural_network_update_traces(neural_network_t network, uint32_t neuron_id, uint64_t timestamp)
+{
+    if (!network || neuron_id >= network->num_neurons)
+        return;
 
     update_synaptic_traces(&network->neurons[neuron_id], timestamp);
 }
@@ -1550,19 +1606,24 @@ void neural_network_update_traces(neural_network_t network, uint32_t neuron_id, 
 /**
  * @brief Get weight norm for a neuron
  */
-float neural_network_get_weight_norm(neural_network_t network, uint32_t neuron_id) {
-    if (!network || neuron_id >= network->num_neurons) return 0.0f;
+float neural_network_get_weight_norm(neural_network_t network, uint32_t neuron_id)
+{
+    if (!network || neuron_id >= network->num_neurons)
+        return 0.0f;
     return network->neurons[neuron_id].weight_norm;
 }
 
 /**
  * @brief Get weight statistics for a neuron
  */
-void neural_network_get_weight_statistics(neural_network_t network, uint32_t neuron_id,
-                                        float* mean, float* std_dev) {
+void neural_network_get_weight_statistics(neural_network_t network, uint32_t neuron_id, float* mean,
+                                          float* std_dev)
+{
     if (!network || neuron_id >= network->num_neurons || !mean || !std_dev) {
-        if (mean) *mean = 0.0f;
-        if (std_dev) *std_dev = 0.0f;
+        if (mean)
+            *mean = 0.0f;
+        if (std_dev)
+            *std_dev = 0.0f;
         return;
     }
 
@@ -1585,7 +1646,8 @@ void neural_network_get_weight_statistics(neural_network_t network, uint32_t neu
     }
 }
 
-bool neural_network_get_stats(neural_network_t network, network_stats_t* stats) {
+bool neural_network_get_stats(neural_network_t network, network_stats_t* stats)
+{
     if (!network || !stats) {
         return false;
     }
@@ -1603,7 +1665,7 @@ bool neural_network_get_stats(neural_network_t network, network_stats_t* stats) 
 
     for (uint32_t i = 0; i < network->num_neurons; i++) {
         neuron_t* neuron = &network->neurons[i];
-        
+
         // Count by neuron type
         if (neuron->type == NEURON_INHIBITORY) {
             stats->num_inhibitory++;
@@ -1643,7 +1705,8 @@ bool neural_network_get_stats(neural_network_t network, network_stats_t* stats) 
     // Calculate network stability (based on weight change rate)
     // Stability = 1 - normalized_change, clamped to [0, 1]
     float weight_change = fabs(stats->avg_weight - network->last_avg_weight);
-    float normalized_change = weight_change / (fmaxf(fabs(stats->avg_weight), fabs(network->last_avg_weight)) + 1e-6f);
+    float normalized_change =
+        weight_change / (fmaxf(fabs(stats->avg_weight), fabs(network->last_avg_weight)) + 1e-6f);
     stats->network_stability = fmaxf(0.0f, fminf(1.0f, 1.0f - normalized_change));
     network->last_avg_weight = stats->avg_weight;
 
@@ -1664,7 +1727,8 @@ bool neural_network_get_stats(neural_network_t network, network_stats_t* stats) 
  * For NIMCP 2.5 Brain API compatibility.
  */
 bool neural_network_forward(neural_network_t network, const float* inputs, uint32_t input_size,
-                            float* outputs, uint32_t output_size) {
+                            float* outputs, uint32_t output_size)
+{
     if (!network || !inputs || !outputs) {
         return false;
     }
@@ -1764,8 +1828,8 @@ bool neural_network_forward(neural_network_t network, const float* inputs, uint3
     neural_network_compute_step(network, network->current_time);
 
     // Extract outputs from last N neurons
-    uint32_t output_start = (network->num_neurons > output_size) ?
-                           (network->num_neurons - output_size) : 0;
+    uint32_t output_start =
+        (network->num_neurons > output_size) ? (network->num_neurons - output_size) : 0;
     for (uint32_t i = 0; i < output_size; i++) {
         uint32_t neuron_id = output_start + i;
         if (neuron_id < network->num_neurons) {
