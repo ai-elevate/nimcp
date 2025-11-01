@@ -57,6 +57,7 @@
 #include "utils/nimcp_common.h"
 #include "nimcp_neuralnet.h"
 #include "nimcp_glial_integration.h"
+#include "nimcp_neuron_types.h"
 #include <stdint.h>
 #include <stdbool.h>
 
@@ -163,6 +164,10 @@ typedef struct {
     // Neuron organization
     neural_network_t network;           /**< Underlying neural network */
     uint32_t total_neurons;             /**< Total neurons in region */
+
+    // Extended neuron types (for specialized processing)
+    neuron_type_extended_t* neuron_extended_types;  /**< Extended type for each neuron */
+    neuron_type_params_t* neuron_type_params;       /**< Type-specific parameters */
 
     // Spatial organization
     brain_minicolumn_t** minicolumns;   /**< Array of minicolumns */

@@ -68,7 +68,8 @@ static float apply_bandpass_filter(const auditory_frequency_params_t* params,
     // Adaptation
     float adapted = response * (1.0f - params->adaptation_rate * 0.1f);
 
-    return adapted;
+    // Half-wave rectification (neurons only respond to positive phases)
+    return fmaxf(0.0f, adapted);
 }
 
 /**

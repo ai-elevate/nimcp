@@ -288,6 +288,34 @@ brain_region_t* brain_region_create(brain_region_type_t type, uint32_t num_neuro
         region->layer_sizes[LAYER_4] += (num_neurons - allocated);
     }
 
+    // Allocate extended neuron type arrays
+    region->neuron_extended_types = (neuron_type_extended_t*)nimcp_calloc(num_neurons, sizeof(neuron_type_extended_t));
+    region->neuron_type_params = (neuron_type_params_t*)nimcp_calloc(num_neurons, sizeof(neuron_type_params_t));
+    if (!region->neuron_extended_types || !region->neuron_type_params) {
+        nimcp_free(region->neuron_extended_types);
+        nimcp_free(region->neuron_type_params);
+        neural_network_destroy(region->network);
+        free(region);
+        return NULL;
+    }
+
+    // Assign neuron types based on region and layer
+    uint32_t neuron_idx = 0;
+    for (int layer = 0; layer < LAYER_COUNT; layer++) {
+        for (uint32_t i = 0; i < region->layer_sizes[layer]; i++) {
+            if (neuron_idx < num_neurons) {
+                // Get specialized type for this layer
+                neuron_type_extended_t ext_type = get_layer_neuron_type(type, (cortical_layer_t)layer);
+                region->neuron_extended_types[neuron_idx] = ext_type;
+
+                // Get default parameters for this type
+                neuron_type_get_default_params(ext_type, &region->neuron_type_params[neuron_idx]);
+
+                neuron_idx++;
+            }
+        }
+    }
+
     region->minicolumns = NULL;
     region->num_minicolumns = 0;
 
@@ -314,6 +342,10 @@ void brain_region_destroy(brain_region_t* region) {
         }
         free(region->minicolumns);
     }
+
+    // Free extended neuron types
+    nimcp_free(region->neuron_extended_types);
+    nimcp_free(region->neuron_type_params);
 
     // Destroy glial integration
     if (region->glial) {

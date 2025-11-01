@@ -553,3 +553,144 @@ TEST_F(BrainRegionsTest, LargeRegion) {
 
     brain_region_destroy(large);
 }
+
+// ============================================================================
+// SPECIALIZED NEURON TYPE TESTS
+// ============================================================================
+
+TEST_F(BrainRegionsTest, VisualRegionNeuronTypes) {
+    // Visual cortex should have specialized visual neurons
+    brain_region_t* v1 = brain_region_create(REGION_VISUAL_V1, 200);
+
+    ASSERT_NE(v1, nullptr);
+    ASSERT_NE(v1->neuron_extended_types, nullptr);
+    ASSERT_NE(v1->neuron_type_params, nullptr);
+
+    // Check that visual neurons are present
+    bool has_edge_detectors = false;
+    bool has_orientation = false;
+
+    for (uint32_t i = 0; i < v1->total_neurons; i++) {
+        neuron_type_extended_t type = v1->neuron_extended_types[i];
+
+        if (type == NEURON_VISUAL_EDGE) {
+            has_edge_detectors = true;
+            // Verify params were initialized
+            EXPECT_GT(v1->neuron_type_params[i].visual_edge.receptive_field_size, 0.0f);
+        }
+        if (type == NEURON_VISUAL_ORIENTATION) {
+            has_orientation = true;
+            EXPECT_GE(v1->neuron_type_params[i].visual_orientation.preferred_orientation, 0.0f);
+            EXPECT_LE(v1->neuron_type_params[i].visual_orientation.preferred_orientation, 180.0f);
+        }
+    }
+
+    EXPECT_TRUE(has_edge_detectors) << "V1 should have edge detector neurons";
+    EXPECT_TRUE(has_orientation) << "V1 should have orientation-selective neurons";
+
+    brain_region_destroy(v1);
+}
+
+TEST_F(BrainRegionsTest, AuditoryRegionNeuronTypes) {
+    // Auditory cortex should have specialized auditory neurons
+    brain_region_t* a1 = brain_region_create(REGION_AUDITORY_A1, 150);
+
+    ASSERT_NE(a1, nullptr);
+    ASSERT_NE(a1->neuron_extended_types, nullptr);
+
+    // Check that auditory neurons are present
+    bool has_frequency_tuned = false;
+    bool has_onset_detectors = false;
+
+    for (uint32_t i = 0; i < a1->total_neurons; i++) {
+        neuron_type_extended_t type = a1->neuron_extended_types[i];
+
+        if (type == NEURON_AUDITORY_FREQUENCY) {
+            has_frequency_tuned = true;
+            EXPECT_GT(a1->neuron_type_params[i].auditory_frequency.center_frequency, 0.0f);
+        }
+        if (type == NEURON_AUDITORY_ONSET) {
+            has_onset_detectors = true;
+            EXPECT_GT(a1->neuron_type_params[i].auditory_onset.refractory_duration, 0.0f);
+        }
+    }
+
+    EXPECT_TRUE(has_frequency_tuned) << "A1 should have frequency-tuned neurons";
+    EXPECT_TRUE(has_onset_detectors) << "A1 should have onset detector neurons";
+
+    brain_region_destroy(a1);
+}
+
+TEST_F(BrainRegionsTest, MotorRegionNeuronTypes) {
+    // Motor cortex should have specialized motor neurons
+    brain_region_t* m1 = brain_region_create(REGION_MOTOR_M1, 100);
+
+    ASSERT_NE(m1, nullptr);
+    ASSERT_NE(m1->neuron_extended_types, nullptr);
+
+    // Check that motor neurons are present
+    bool has_motoneurons = false;
+    bool has_pattern_generators = false;
+
+    for (uint32_t i = 0; i < m1->total_neurons; i++) {
+        neuron_type_extended_t type = m1->neuron_extended_types[i];
+
+        if (type == NEURON_MOTOR_ALPHA) {
+            has_motoneurons = true;
+        }
+        if (type == NEURON_MOTOR_PATTERN_GEN) {
+            has_pattern_generators = true;
+            EXPECT_GT(m1->neuron_type_params[i].motor_pattern.rhythm_frequency, 0.0f);
+        }
+    }
+
+    EXPECT_TRUE(has_motoneurons) << "M1 should have motoneurons";
+    EXPECT_TRUE(has_pattern_generators) << "M1 should have pattern generators";
+
+    brain_region_destroy(m1);
+}
+
+TEST_F(BrainRegionsTest, LayerSpecificNeuronTypes) {
+    // Layer 4 should have input-specialized neurons
+    brain_region_t* v1 = brain_region_create(REGION_VISUAL_V1, 200);
+
+    ASSERT_NE(v1, nullptr);
+
+    // Calculate which neurons are in Layer 4
+    uint32_t layer4_start = 0;
+    for (int layer = 0; layer < LAYER_4; layer++) {
+        layer4_start += v1->layer_sizes[layer];
+    }
+    uint32_t layer4_end = layer4_start + v1->layer_sizes[LAYER_4];
+
+    // Verify Layer 4 has edge detectors (input processing)
+    bool layer4_has_edge_detectors = false;
+    for (uint32_t i = layer4_start; i < layer4_end && i < v1->total_neurons; i++) {
+        if (v1->neuron_extended_types[i] == NEURON_VISUAL_EDGE) {
+            layer4_has_edge_detectors = true;
+            break;
+        }
+    }
+
+    EXPECT_TRUE(layer4_has_edge_detectors) << "Layer 4 should have edge detector neurons for input processing";
+
+    brain_region_destroy(v1);
+}
+
+TEST_F(BrainRegionsTest, NeuronTypeParameterValidity) {
+    // Ensure all neuron type parameters are valid
+    brain_region_t* v1 = brain_region_create(REGION_VISUAL_V1, 100);
+
+    ASSERT_NE(v1, nullptr);
+
+    // Validate all neuron type parameters
+    for (uint32_t i = 0; i < v1->total_neurons; i++) {
+        neuron_type_extended_t type = v1->neuron_extended_types[i];
+        nimcp_result_t result = neuron_type_validate_params(type, &v1->neuron_type_params[i]);
+
+        EXPECT_EQ(result, NIMCP_SUCCESS)
+            << "Neuron " << i << " (type " << type << ") has invalid parameters";
+    }
+
+    brain_region_destroy(v1);
+}
