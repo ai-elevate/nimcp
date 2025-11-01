@@ -1,17 +1,21 @@
 /**
  * @file nimcp_graph.h
  * @brief Network topology graph data structure using adjacency lists
- * 
+ *
  * This module implements a graph structure optimized for P2P network topology
  * representation. It uses adjacency lists instead of matrices to efficiently
  * handle sparse connections typical in P2P networks. The implementation
  * supports dynamic topology changes, path finding, and component analysis.
+ *
+ * THREAD SAFETY: All public APIs are thread-safe via internal mutex
+ * MEMORY MANAGEMENT: Uses nimcp_malloc/free for leak detection
  */
 
 #ifndef NIMCP_GRAPH_H
 #define NIMCP_GRAPH_H
 
 #include "nimcp_common.h"
+#include "nimcp_thread.h"
 
 /* Constants */
 /**
@@ -72,9 +76,12 @@ typedef struct {
 
 /**
  * @brief Graph structure
- * 
+ *
  * Main container for the network topology representation.
  * Uses adjacency lists for memory-efficient sparse graph storage.
+ *
+ * THREAD SAFETY: Protected by internal mutex (Monitor Pattern)
+ * All public API functions acquire lock before modifying graph state.
  */
 typedef struct {
     uint32_t vertex_count;     /**< Current number of vertices in the graph */
@@ -82,6 +89,7 @@ typedef struct {
     NimcpVertex* vertices;     /**< Array of vertices representing peers */
     uint32_t* components;      /**< Array tracking connected components */
     uint32_t component_count;  /**< Number of distinct connected components */
+    nimcp_mutex_t lock;        /**< Mutex for thread-safe operations */
 } NimcpGraph;
 
 /**
