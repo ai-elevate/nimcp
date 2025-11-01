@@ -21,6 +21,7 @@ option(ENABLE_ASAN "Enable AddressSanitizer for memory error detection" OFF)
 option(ENABLE_UBSAN "Enable UndefinedBehaviorSanitizer" OFF)
 option(ENABLE_TSAN "Enable ThreadSanitizer for race condition detection" OFF)
 option(ENABLE_HARDENING "Enable security hardening compiler flags" ON)
+option(ENABLE_FUZZING "Enable fuzzing targets (requires libFuzzer)" OFF)
 
 # Validate sanitizer options (ASAN and TSAN are mutually exclusive)
 if(ENABLE_ASAN AND ENABLE_TSAN)
@@ -115,6 +116,11 @@ set(NIMCP_TEST_DIR ${CMAKE_CURRENT_SOURCE_DIR}/src/tests)
 add_subdirectory(src)
 add_subdirectory(examples)
 
+# Add fuzzing targets if enabled
+if(ENABLE_FUZZING)
+    add_subdirectory(src/fuzz)
+endif()
+
 # Install rules for headers
 include(GNUInstallDirs)
 install(DIRECTORY ${NIMCP_INCLUDE_DIR}/
@@ -167,6 +173,7 @@ message(STATUS "  AddressSanitizer (ASAN): ${ENABLE_ASAN}")
 message(STATUS "  UndefinedBehaviorSanitizer (UBSAN): ${ENABLE_UBSAN}")
 message(STATUS "  ThreadSanitizer (TSAN): ${ENABLE_TSAN}")
 message(STATUS "  Security Hardening: ${ENABLE_HARDENING}")
+message(STATUS "  Fuzzing Targets: ${ENABLE_FUZZING}")
 message(STATUS "")
 message(STATUS "Installation:")
 message(STATUS "  Install prefix: ${CMAKE_INSTALL_PREFIX}")
