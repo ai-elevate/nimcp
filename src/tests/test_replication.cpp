@@ -33,6 +33,7 @@ protected:
     const char* test_dir = "/tmp/nimcp_replication_test";
     replication_cluster_t cluster;
     brain_t brain;
+    bool brain_registered;  // Track if brain was registered with cluster
 
     void SetUp() override {
         // Create test directory
@@ -44,16 +45,18 @@ protected:
         ASSERT_NE(brain, nullptr);
 
         cluster = nullptr;
+        brain_registered = false;
     }
 
     void TearDown() override {
-        // Clean up cluster
+        // Clean up cluster (this will destroy registered brains)
         if (cluster) {
             replication_destroy_cluster(cluster);
         }
 
-        // Clean up brain
-        if (brain) {
+        // Clean up brain only if it wasn't registered
+        // (registered brains are destroyed by the cluster)
+        if (brain && !brain_registered) {
             brain_destroy(brain);
         }
 
@@ -133,6 +136,7 @@ TEST_F(ReplicationTest, RegisterBrain) {
     // Register brain
     bool result = replication_register_brain(cluster, brain, "test_brain");
     ASSERT_TRUE(result);
+    brain_registered = true;  // Mark as registered to prevent double-free
 }
 
 /**
@@ -184,6 +188,7 @@ TEST_F(ReplicationTest, SyncPush) {
     ASSERT_NE(cluster, nullptr);
 
     replication_register_brain(cluster, brain, "test_brain");
+    brain_registered = true;  // Mark as registered to prevent double-free
 
     // Train brain a bit
     float features[13] = {0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5,
@@ -215,6 +220,7 @@ TEST_F(ReplicationTest, SyncPull) {
     ASSERT_NE(cluster, nullptr);
 
     replication_register_brain(cluster, brain, "test_brain");
+    brain_registered = true;  // Mark as registered to prevent double-free
 
     float features[13] = {0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5,
                          0.5, 0.5, 0.5, 0.5, 0.5, 0.5};
@@ -223,25 +229,18 @@ TEST_F(ReplicationTest, SyncPull) {
     bool pushed = replication_sync_push(cluster, "test_brain");
     ASSERT_TRUE(pushed);
 
-    // Create second brain to pull into
-    brain_t brain2 = brain_create("test_brain2", BRAIN_SIZE_SMALL,
-                                  BRAIN_TASK_CLASSIFICATION, 13, 3);
-    ASSERT_NE(brain2, nullptr);
-
     // Create second cluster (same shared dir)
     replication_cluster_t cluster2 = replication_create_filesystem_cluster(
         test_dir, "node_2");
     ASSERT_NE(cluster2, nullptr);
 
-    replication_register_brain(cluster2, brain2, "test_brain");
-
-    // Pull from cluster
+    // Pull from cluster WITHOUT pre-registering a brain
+    // This will create and register a new brain from the pulled data
     bool pulled = replication_sync_pull(cluster2, "test_brain");
     ASSERT_TRUE(pulled);
 
-    // Clean up
+    // Clean up cluster (this will destroy the pulled brain automatically)
     replication_destroy_cluster(cluster2);
-    brain_destroy(brain2);
 }
 
 /**
@@ -290,6 +289,7 @@ TEST_F(ReplicationTest, SetAutosync) {
     ASSERT_NE(cluster, nullptr);
 
     replication_register_brain(cluster, brain, "test_brain");
+    brain_registered = true;  // Mark as registered to prevent double-free
 
     // Enable auto-sync
     bool result = replication_set_autosync(cluster, "test_brain", true);
@@ -352,7 +352,8 @@ TEST_F(ReplicationTest, IsHealthy) {
         test_dir, "node_1");
     ASSERT_NE(cluster, nullptr);
 
-    // Cluster should be healthy after creation
+    // Cluster should be healthy immediately after creation
+    // (initial heartbeat is sent synchronously during cluster creation)
     bool healthy = replication_is_healthy(cluster);
     ASSERT_TRUE(healthy);
 }
@@ -380,10 +381,14 @@ TEST_F(ReplicationTest, UnregisterBrain) {
     ASSERT_NE(cluster, nullptr);
 
     replication_register_brain(cluster, brain, "test_brain");
+    brain_registered = true;  // Mark as registered
 
-    // Unregister
+    // Unregister (this will destroy the brain object)
     bool result = replication_unregister_brain(cluster, "test_brain");
     ASSERT_TRUE(result);
+
+    // Brain was destroyed by unregister, so set to NULL to prevent double-free in TearDown
+    brain = nullptr;
 
     // Should not be able to sync after unregistering
     result = replication_sync_push(cluster, "test_brain");
@@ -414,6 +419,7 @@ TEST_F(ReplicationTest, MultiNodeReplication) {
     ASSERT_NE(cluster, nullptr);
 
     replication_register_brain(cluster, brain, "shared_brain");
+    brain_registered = true;  // Mark as registered to prevent double-free
 
     // Train brain
     float features[13] = {0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5,
@@ -423,18 +429,12 @@ TEST_F(ReplicationTest, MultiNodeReplication) {
     // Push to cluster
     replication_sync_push(cluster, "shared_brain");
 
-    // Create second node
-    brain_t brain2 = brain_create("brain2", BRAIN_SIZE_SMALL,
-                                  BRAIN_TASK_CLASSIFICATION, 13, 3);
-    ASSERT_NE(brain2, nullptr);
-
+    // Create second node and pull brain from cluster
     replication_cluster_t cluster2 = replication_create_filesystem_cluster(
         test_dir, "node_2");
     ASSERT_NE(cluster2, nullptr);
 
-    replication_register_brain(cluster2, brain2, "shared_brain");
-
-    // Pull from cluster
+    // Pull from cluster (this will create and register the brain)
     bool pulled = replication_sync_pull(cluster2, "shared_brain");
     ASSERT_TRUE(pulled);
 
@@ -448,9 +448,8 @@ TEST_F(ReplicationTest, MultiNodeReplication) {
     // Should see both nodes
     ASSERT_GE(num_nodes, 2);
 
-    // Clean up
+    // Clean up (cluster2 will destroy the pulled brain automatically)
     replication_destroy_cluster(cluster2);
-    brain_destroy(brain2);
 }
 
 // Note: main() is defined in test_module.cpp - all test files share one main()

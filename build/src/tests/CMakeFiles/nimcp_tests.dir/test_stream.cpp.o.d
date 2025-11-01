@@ -389,6 +389,7 @@ src/tests/CMakeFiles/nimcp_tests.dir/test_stream.cpp.o: \
  /home/bbrelin/src/repos/nimcp/src/tests/../include/nimcp_adaptive.h \
  /home/bbrelin/src/repos/nimcp/src/tests/../include/nimcp_neuralnet.h \
  /home/bbrelin/src/repos/nimcp/src/tests/../include/nimcp_brain.h \
+ /home/bbrelin/src/repos/nimcp/src/tests/../include/utils/nimcp_thread.h \
  /usr/include/c++/11/thread /usr/include/c++/11/bits/std_thread.h \
  /usr/include/c++/11/bits/this_thread_sleep.h /usr/include/c++/11/chrono \
  /usr/include/c++/11/ratio

@@ -12,6 +12,7 @@
 extern "C" {
 #include "../include/nimcp_stream.h"
 #include "../include/nimcp_brain.h"
+#include "../include/utils/nimcp_thread.h"
 }
 
 #include <gtest/gtest.h>
@@ -39,6 +40,10 @@ protected:
     float test_features[NUM_FEATURES];
 
     void SetUp() override {
+        // Initialize threading subsystem (required before creating streams)
+        nimcp_result_t result = nimcp_thread_init();
+        ASSERT_EQ(result, NIMCP_SUCCESS);
+
         // Create test brain
         brain = brain_create("test_stream_brain", BRAIN_SIZE_SMALL,
                             BRAIN_TASK_CLASSIFICATION, NUM_FEATURES, 3);
@@ -286,16 +291,17 @@ TEST_F(StreamTest, GetDecisionSynchronous) {
     // Feed input
     brain_stream_feed(stream, test_features, NUM_FEATURES, 1000);
 
-    // Get decision
+    /**
+     * WHAT: Test deprecated brain_stream_get_decision() function
+     * WHY: Verify it returns NULL as per deprecation
+     * HOW: Function was deprecated to fix double-free bugs
+     *
+     * NOTE: Applications should use callbacks or call brain_decide() directly
+     */
     brain_decision_t* decision = brain_stream_get_decision(stream);
 
-    // Decision might be NULL if processing hasn't completed
-    // In synchronous mode, it should be available immediately after feed
-    EXPECT_NE(decision, nullptr);
-
-    if (decision) {
-        brain_free_decision(decision);
-    }
+    // Deprecated function now always returns NULL
+    EXPECT_EQ(decision, nullptr);
 }
 
 /**
@@ -314,15 +320,17 @@ TEST_F(StreamTest, GetDecisionBackground) {
     // Wait for processing
     usleep(200000);  // 200ms
 
-    // Get decision
+    /**
+     * WHAT: Test deprecated brain_stream_get_decision() function
+     * WHY: Verify it returns NULL as per deprecation
+     * HOW: Function was deprecated to fix double-free bugs
+     *
+     * NOTE: Applications should use callbacks or call brain_decide() directly
+     */
     brain_decision_t* decision = brain_stream_get_decision(stream);
 
-    // Should have decision after wait
-    EXPECT_NE(decision, nullptr);
-
-    if (decision) {
-        brain_free_decision(decision);
-    }
+    // Deprecated function now always returns NULL
+    EXPECT_EQ(decision, nullptr);
 }
 
 /**

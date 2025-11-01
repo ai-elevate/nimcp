@@ -1191,6 +1191,59 @@ static brain_decision_t* allocate_decision(uint32_t output_size) {
 }
 
 /**
+ * @brief Deep copy a decision structure
+ *
+ * WHAT: Creates an independent copy of a decision
+ * WHY: Cached decisions must not be freed by caller - return copies instead
+ * HOW: Allocates new decision and copies all fields including dynamically allocated arrays
+ *
+ * COMPLEXITY: O(n) where n = output_size + num_active_neurons
+ *
+ * @param source Decision to copy
+ * @return New decision copy, or NULL on allocation failure
+ */
+static brain_decision_t* copy_decision(const brain_decision_t* source) {
+    if (!source) return NULL;
+
+    // Allocate new decision structure
+    brain_decision_t* copy = nimcp_calloc(1, sizeof(brain_decision_t));
+    if (!copy) return NULL;
+
+    // Copy scalar fields
+    memcpy(copy, source, sizeof(brain_decision_t));
+
+    // NULL out pointer fields to prevent accidental sharing
+    copy->output_vector = NULL;
+    copy->active_neuron_ids = NULL;
+
+    // Deep copy output_vector
+    if (source->output_vector && source->output_size > 0) {
+        copy->output_vector = nimcp_malloc(source->output_size * sizeof(float));
+        if (!copy->output_vector) {
+            nimcp_free(copy);
+            return NULL;
+        }
+        memcpy(copy->output_vector, source->output_vector,
+               source->output_size * sizeof(float));
+    }
+
+    // Deep copy active_neuron_ids
+    if (source->active_neuron_ids && source->num_active_neurons > 0) {
+        copy->active_neuron_ids = nimcp_malloc(
+            source->num_active_neurons * sizeof(uint32_t));
+        if (!copy->active_neuron_ids) {
+            if (copy->output_vector) nimcp_free(copy->output_vector);
+            nimcp_free(copy);
+            return NULL;
+        }
+        memcpy(copy->active_neuron_ids, source->active_neuron_ids,
+               source->num_active_neurons * sizeof(uint32_t));
+    }
+
+    return copy;
+}
+
+/**
  * @brief Perform forward pass through network
  *
  * COMPLEXITY: O(s*n) where s = sparsity
@@ -1330,9 +1383,16 @@ brain_decision_t* brain_decide(
         return NULL;
     }
 
-    // Optimization: Check cache
+    /**
+     * WHAT: Check cache and return a COPY of cached decision
+     * WHY: Cached decision is owned by brain, caller expects to own returned decision
+     * HOW: Deep copy the cached decision to give caller an independent copy
+     *
+     * BUG FIX: Previously returned cached pointer directly, causing double-free
+     * when caller freed it and then brain_destroy tried to free cached_decision
+     */
     if (is_cached_input(brain, features, num_features)) {
-        return brain->cached_decision;
+        return copy_decision(brain->cached_decision);
     }
 
     // Allocate decision structure
@@ -1367,8 +1427,23 @@ brain_decision_t* brain_decide(
     // Cache decision for potential reuse
     cache_decision(brain, features, num_features, decision);
 
+    /**
+     * WHAT: Return a copy of the decision, not the original
+     * WHY: We cached the original, so brain owns it. Caller needs own copy.
+     * HOW: Deep copy before returning
+     *
+     * BUG FIX: Previously returned cached decision directly, causing double-free
+     * when both caller and brain_destroy tried to free it.
+     */
+    brain_decision_t* decision_copy = copy_decision(decision);
+    if (!decision_copy) {
+        // Copy failed - this is bad, but at least don't leak the original
+        set_error("Failed to copy decision");
+        return NULL;
+    }
+
     brain_clear_error();
-    return decision;
+    return decision_copy;
 }
 
 /**

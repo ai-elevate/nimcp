@@ -1051,7 +1051,17 @@ src/lib/CMakeFiles/nimcp_core.dir/nimcp_brain.c.o: ../src/lib/nimcp_brain.c \
   ../src/include/nimcp_adaptive.h \
   ../src/include/nimcp_neuralnet.h \
   ../src/include/utils/nimcp_memory.h \
-  ../src/include/utils/nimcp_time.h
+  ../src/include/utils/nimcp_time.h \
+  ../src/include/utils/nimcp_validate.h \
+  ../src/include/utils/nimcp_common.h \
+  /usr/lib/gcc/x86_64-linux-gnu/11/include/stdatomic.h \
+  /usr/include/dirent.h \
+  /usr/include/x86_64-linux-gnu/bits/dirent.h \
+  /usr/include/x86_64-linux-gnu/bits/dirent_ext.h \
+  /usr/include/dlfcn.h \
+  /usr/include/x86_64-linux-gnu/bits/dlfcn.h \
+  /usr/include/x86_64-linux-gnu/bits/dl_find_object.h \
+  /usr/include/lz4.h
 
 src/lib/CMakeFiles/nimcp_core.dir/nimcp_consolidation.c.o: ../src/lib/nimcp_consolidation.c \
   /usr/include/stdc-predef.h \
@@ -1771,7 +1781,8 @@ src/lib/CMakeFiles/nimcp_core.dir/nimcp_dataio.c.o: ../src/lib/nimcp_dataio.c \
   /usr/include/dlfcn.h \
   /usr/include/x86_64-linux-gnu/bits/dlfcn.h \
   /usr/include/x86_64-linux-gnu/bits/dl_find_object.h \
-  /usr/include/lz4.h
+  /usr/include/lz4.h \
+  ../src/include/utils/nimcp_validate.h
 
 src/lib/CMakeFiles/nimcp_core.dir/nimcp_ethics.c.o: ../src/lib/nimcp_ethics.c \
   /usr/include/stdc-predef.h \
@@ -2274,7 +2285,9 @@ src/lib/CMakeFiles/nimcp_core.dir/nimcp_events.c.o: ../src/lib/nimcp_events.c \
   ../src/include/utils/nimcp_thread_pool.h \
   ../src/include/utils/nimcp_thread.h \
   ../src/include/utils/nimcp_thread.h \
-  ../src/include/utils/nimcp_memory.h
+  ../src/include/utils/nimcp_memory.h \
+  ../src/include/utils/nimcp_validate.h \
+  ../src/include/logging/nimcp_logging.h
 
 src/lib/CMakeFiles/nimcp_core.dir/nimcp_introspection.c.o: ../src/lib/nimcp_introspection.c \
   /usr/include/stdc-predef.h \
@@ -3502,6 +3515,16 @@ src/lib/CMakeFiles/nimcp_core.dir/nimcp_protocol.c.o: ../src/lib/nimcp_protocol.
   /usr/include/python3.10/tracemalloc.h \
   ../src/include/nimcp_export.h \
   /usr/lib/gcc/x86_64-linux-gnu/11/include/stdbool.h \
+  ../src/include/utils/nimcp_validate.h \
+  ../src/include/utils/nimcp_common.h \
+  /usr/lib/gcc/x86_64-linux-gnu/11/include/stdatomic.h \
+  /usr/include/dirent.h \
+  /usr/include/x86_64-linux-gnu/bits/dirent.h \
+  /usr/include/x86_64-linux-gnu/bits/dirent_ext.h \
+  /usr/include/dlfcn.h \
+  /usr/include/x86_64-linux-gnu/bits/dlfcn.h \
+  /usr/include/x86_64-linux-gnu/bits/dl_find_object.h \
+  /usr/include/lz4.h \
   /usr/include/arpa/inet.h \
   /usr/include/netinet/in.h \
   /usr/include/x86_64-linux-gnu/sys/socket.h \
@@ -5324,8 +5347,6 @@ src/lib/CMakeFiles/nimcp_core.dir/utils/nimcp_vector.c.o: ../src/lib/utils/nimcp
 
 /usr/include/x86_64-linux-gnu/sys/socket.h:
 
-../src/include/utils/nimcp_validate.h:
-
 ../src/include/utils/nimcp_graph.h:
 
 ../src/lib/nimcp_p2pnode.c:
@@ -5344,23 +5365,23 @@ src/lib/CMakeFiles/nimcp_core.dir/utils/nimcp_vector.c.o: ../src/lib/utils/nimcp
 
 ../src/include/nimcp_events.h:
 
+../src/lib/nimcp_dataio.c:
+
+../src/lib/nimcp_curiosity.c:
+
+../src/include/nimcp_consolidation.h:
+
+../src/lib/nimcp_consolidation.c:
+
 /usr/include/x86_64-linux-gnu/bits/dl_find_object.h:
 
 /usr/include/dlfcn.h:
 
-/usr/include/x86_64-linux-gnu/bits/dirent.h:
-
-/usr/include/dirent.h:
-
-/usr/lib/gcc/x86_64-linux-gnu/11/include/stdatomic.h:
+/usr/include/linux/stddef.h:
 
 /usr/include/lz4.h:
 
 ../src/include/utils/nimcp_common.h:
-
-../src/lib/nimcp_dataio.c:
-
-/usr/include/linux/stddef.h:
 
 /usr/include/linux/posix_types.h:
 
@@ -5371,8 +5392,6 @@ src/lib/CMakeFiles/nimcp_core.dir/utils/nimcp_vector.c.o: ../src/lib/utils/nimcp
 /usr/include/x86_64-linux-gnu/asm/bitsperlong.h:
 
 /usr/include/x86_64-linux-gnu/bits/pthreadtypes-arch.h:
-
-../src/lib/nimcp_curiosity.c:
 
 /usr/include/asm-generic/errno-base.h:
 
@@ -5470,8 +5489,6 @@ src/lib/CMakeFiles/nimcp_core.dir/utils/nimcp_vector.c.o: ../src/lib/utils/nimcp
 
 /usr/include/x86_64-linux-gnu/bits/stdlib-float.h:
 
-../src/include/nimcp_consolidation.h:
-
 /usr/include/x86_64-linux-gnu/bits/endianness.h:
 
 /usr/include/python3.10/cpython/objimpl.h:
@@ -5485,6 +5502,8 @@ src/lib/CMakeFiles/nimcp_core.dir/utils/nimcp_vector.c.o: ../src/lib/utils/nimcp
 /usr/include/x86_64-linux-gnu/bits/struct_rwlock.h:
 
 /usr/include/python3.10/boolobject.h:
+
+../src/include/utils/nimcp_validate.h:
 
 ../src/lib/nimcp_introspection.c:
 
@@ -5599,6 +5618,10 @@ src/lib/CMakeFiles/nimcp_core.dir/utils/nimcp_vector.c.o: ../src/lib/utils/nimcp
 /usr/include/x86_64-linux-gnu/gnu/stubs-64.h:
 
 /usr/include/python3.10/longintrepr.h:
+
+../src/include/nimcp_curiosity.h:
+
+/usr/include/x86_64-linux-gnu/bits/types/__mbstate_t.h:
 
 /usr/include/python3.10/cpython/pymem.h:
 
@@ -5796,6 +5819,8 @@ src/lib/CMakeFiles/nimcp_core.dir/utils/nimcp_vector.c.o: ../src/lib/utils/nimcp
 
 /usr/include/python3.10/cpython/pylifecycle.h:
 
+/usr/include/x86_64-linux-gnu/bits/dirent.h:
+
 /usr/include/python3.10/floatobject.h:
 
 /usr/include/python3.10/pythonrun.h:
@@ -5831,6 +5856,14 @@ src/lib/CMakeFiles/nimcp_core.dir/utils/nimcp_vector.c.o: ../src/lib/utils/nimcp
 /usr/include/asm-generic/errno.h:
 
 /usr/include/x86_64-linux-gnu/bits/types/struct_sched_param.h:
+
+../src/include/utils/nimcp_thread.h:
+
+/usr/include/x86_64-linux-gnu/asm/posix_types_64.h:
+
+/usr/include/python3.10/cpython/tupleobject.h:
+
+/usr/include/x86_64-linux-gnu/bits/cpu-set.h:
 
 /usr/include/x86_64-linux-gnu/bits/types/clockid_t.h:
 
@@ -5900,16 +5933,6 @@ src/lib/CMakeFiles/nimcp_core.dir/utils/nimcp_vector.c.o: ../src/lib/utils/nimcp
 
 ../src/include/utils/nimcp_memory.h:
 
-../src/lib/nimcp_consolidation.c:
+/usr/lib/gcc/x86_64-linux-gnu/11/include/stdatomic.h:
 
-/usr/include/x86_64-linux-gnu/asm/posix_types_64.h:
-
-/usr/include/python3.10/cpython/tupleobject.h:
-
-/usr/include/x86_64-linux-gnu/bits/cpu-set.h:
-
-../src/include/utils/nimcp_thread.h:
-
-/usr/include/x86_64-linux-gnu/bits/types/__mbstate_t.h:
-
-../src/include/nimcp_curiosity.h:
+/usr/include/dirent.h:

@@ -521,11 +521,14 @@ brain_stream_t brain_create_stream(brain_t brain, const stream_config_t* config)
     if (config->mode == STREAM_MODE_BACKGROUND ||
         config->mode == STREAM_MODE_BATCHED) {
 
+        // Initialize threading subsystem if not already done
+        nimcp_thread_init();
+
         stream->thread_running = false;
         stream->thread_should_stop = false;
 
-        if (nimcp_thread_create(&stream->processing_thread, NULL,
-                          stream_processing_thread, stream) != 0) {
+        if (nimcp_thread_create(&stream->processing_thread,
+                          stream_processing_thread, stream, NULL) != 0) {
             stream_set_error("Failed to create processing thread");
             ring_buffer_destroy(stream->input_queue);
             nimcp_mutex_destroy(&stream->decision_lock);
@@ -648,43 +651,17 @@ brain_decision_t* brain_stream_get_decision(brain_stream_t stream) {
     }
 
     /**
-     * WHAT: Return copy of cached decision
-     * WHY: Cache is shared, caller needs own copy
-     * HOW: Mutex-protected read and deep copy
+     * WHAT: Deprecated - streams no longer cache decisions
+     * WHY: Brain already caches decisions efficiently
+     * HOW: Return NULL
+     *
+     * BUG FIX: Stream decision caching caused double-free bugs.
+     * Removed caching to fix. Applications should call brain_decide()
+     * directly if they need the decision, or use stream callbacks.
+     *
+     * @deprecated This function now always returns NULL. Use callbacks instead.
      */
-    nimcp_mutex_lock(&stream->decision_lock);
-
-    brain_decision_t* decision_copy = NULL;
-    if (stream->cached_decision) {
-        /**
-         * WHAT: Deep copy decision structure
-         * WHY: Caller owns returned decision
-         * HOW: Allocate new structure, copy all fields
-         */
-        decision_copy = nimcp_calloc(1, sizeof(brain_decision_t));
-        if (decision_copy) {
-            memcpy(decision_copy, stream->cached_decision, sizeof(brain_decision_t));
-
-            // Deep copy arrays
-            if (stream->cached_decision->output_vector) {
-                size_t output_size = stream->cached_decision->output_size;
-                decision_copy->output_vector = nimcp_malloc(output_size * sizeof(float));
-                memcpy(decision_copy->output_vector,
-                      stream->cached_decision->output_vector,
-                      output_size * sizeof(float));
-            }
-
-            if (stream->cached_decision->label[0] != '\0') {
-                strncpy(decision_copy->label, stream->cached_decision->label,
-                       sizeof(decision_copy->label) - 1);
-                decision_copy->label[sizeof(decision_copy->label) - 1] = '\0';
-            }
-        }
-    }
-
-    nimcp_mutex_unlock(&stream->decision_lock);
-
-    return decision_copy;
+    return NULL;
 }
 
 float brain_stream_get_salience(brain_stream_t stream) {
@@ -809,21 +786,24 @@ static void stream_process_single_input(brain_stream_t stream,
 
     if (decision) {
         /**
-         * WHAT: Cache decision for fast retrieval
-         * WHY: brain_stream_get_decision() needs non-blocking access
-         * HOW: Mutex-protected cache update
+         * WHAT: Update stream state with decision info (but don't cache decision pointer)
+         * WHY: brain_decide() returns a decision that caller owns. If we cache it here,
+         *      we risk double-free when both stream_destroy and caller try to free it.
+         *      Instead, just track salience and let brain handle decision caching.
+         * HOW: Extract info we need, then free the decision
+         *
+         * BUG FIX: Previously cached decision pointer, causing double-free with brain's cache
          */
         nimcp_mutex_lock(&stream->decision_lock);
+
+        // Update salience (simplified: use confidence as proxy)
+        stream->cached_salience = decision->confidence;
 
         // Free old cached decision
         if (stream->cached_decision) {
             brain_free_decision(stream->cached_decision);
         }
-
-        stream->cached_decision = decision;
-
-        // Update salience (simplified: use confidence as proxy)
-        stream->cached_salience = decision->confidence;
+        stream->cached_decision = NULL;  // Don't cache - brain already does
 
         nimcp_mutex_unlock(&stream->decision_lock);
 
@@ -860,6 +840,9 @@ static void stream_process_single_input(brain_stream_t stream,
 
             stream->config.on_decision_ready(&event, stream->config.callback_context);
         }
+
+        // Free the decision since we own it and don't need to cache it
+        brain_free_decision(decision);
     }
 
     atomic_fetch_add(&stream->stats_inputs_processed, 1);

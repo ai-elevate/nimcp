@@ -655,6 +655,10 @@ replication_cluster_t replication_create_cluster(const replication_config_t* con
     // Set initial node status
     cluster->node_status = NODE_STATUS_FOLLOWER;
 
+    // Send initial heartbeat synchronously to register this node immediately
+    // This ensures the node is discoverable right after cluster creation
+    cluster->strategy->heartbeat(cluster->backend_context, cluster->config.node_id);
+
     // Start heartbeat thread
     cluster->heartbeat_running = true;
     int thread_result = pthread_create(&cluster->heartbeat_thread, NULL, heartbeat_thread_fn, cluster);
@@ -694,6 +698,10 @@ void replication_destroy_cluster(replication_cluster_t cluster) {
     registered_brain_t* current = cluster->brains;
     while (current) {
         registered_brain_t* next = current->next;
+        // Destroy the brain object itself (not just the registration entry)
+        if (current->brain) {
+            brain_destroy(current->brain);
+        }
         nimcp_free(current);
         current = next;
     }
@@ -784,6 +792,11 @@ bool replication_unregister_brain(replication_cluster_t cluster,
                 prev->next = current->next;
             } else {
                 cluster->brains = current->next;
+            }
+
+            // Destroy the brain object (cluster owns registered brains)
+            if (current->brain) {
+                brain_destroy(current->brain);
             }
 
             nimcp_free(current);
@@ -923,7 +936,8 @@ bool replication_sync_pull(replication_cluster_t cluster,
     // Find and update registered brain
     registered_brain_t* brain_entry = find_brain(cluster, brain_name);
     if (brain_entry) {
-        // Destroy old brain
+        // Destroy old brain and replace with loaded brain
+        // NOTE: This changes the brain pointer! Caller should not hold references to the old brain.
         brain_destroy(brain_entry->brain);
 
         // Replace with loaded brain

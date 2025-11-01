@@ -5861,6 +5861,7 @@ src/tests/CMakeFiles/nimcp_tests.dir/test_stream.cpp.o: ../src/tests/test_stream
   ../src/include/nimcp_adaptive.h \
   ../src/include/nimcp_neuralnet.h \
   ../src/include/nimcp_brain.h \
+  ../src/include/utils/nimcp_thread.h \
   /usr/include/c++/11/thread \
   /usr/include/c++/11/bits/std_thread.h \
   /usr/include/c++/11/bits/this_thread_sleep.h \
