@@ -9,6 +9,10 @@
 #include <stdbool.h>
 #include <stdint.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /**
  * @brief Enumeration of possible node states
  */
@@ -122,5 +126,9 @@ bool p2p_node_stop(p2p_node_t node);
  * @note Use nimcp_graph.h API functions to query the graph
  */
 struct NimcpGraph* p2p_node_get_topology_graph(p2p_node_t node);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif  // NIMCP_P2PNODE_H

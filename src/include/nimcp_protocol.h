@@ -25,6 +25,10 @@
 #include <stdbool.h>
 #include <stdint.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 //=============================================================================
 // NIMCP 2.0 Protocol Constants
 //=============================================================================
@@ -369,5 +373,9 @@ bool feature_code_matches(feature_code_t code, feature_code_t filter, uint32_t m
 
 // Subscription Functions
 bool subscription_matches(const subscription_filter_t* filter, const event_packet_t* packet);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif  // NIMCP_PROTOCOL_H

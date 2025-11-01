@@ -26,6 +26,9 @@
 #include <stdbool.h>
 #include <stdint.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /**
  * @brief Network size and capacity constants
@@ -267,5 +270,9 @@ void neural_network_maintain_homeostasis(neural_network_t network, uint64_t time
 void neural_network_reset(neural_network_t network);
 uint32_t neural_network_prune_synapses(neural_network_t network, float threshold);
 void neural_network_dump_neuron(neural_network_t network, uint32_t neuron_id);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif  // NIMCP_NEURALNET_H
