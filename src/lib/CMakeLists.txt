@@ -19,6 +19,7 @@ set(NIMCP_CORE_SOURCES
     nimcp_security.c                                 # Security framework (directives, encryption, validation)
     nimcp_neuromodulators.c                          # Neuromodulator system (dopamine, serotonin, ACh, NE)
     nimcp_bcm.c                                      # BCM (Bienenstock-Cooper-Munro) sliding threshold plasticity
+    nimcp_astrocytes.c                               # Astrocyte glial cells (calcium dynamics, synaptic modulation, homeostasis)
     utils/nimcp_memory.c                             # Memory tracking and allocation
     utils/nimcp_thread.c                             # Thread utilities and wrappers
     utils/nimcp_thread_pool.c                        # Thread pool for batch processing
