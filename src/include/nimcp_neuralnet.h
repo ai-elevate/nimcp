@@ -160,9 +160,15 @@ typedef struct {
     stdp_params_t stdp_params;         /**< STDP parameters */
     homeostatic_params_t homeostatic;  /**< Homeostatic parameters */
 
-    // Synaptic connections
+    // Synaptic connections (outgoing edges)
     synapse_t synapses[MAX_SYNAPSES_PER_NEURON];
     uint32_t num_synapses;
+
+    // Bidirectional tracking: incoming synapses (OPTIMIZATION for O(S) input summation)
+    // DESIGN PATTERN: Bidirectional Association
+    // WHY: Eliminates O(N×S) scan in sum_synaptic_inputs, now O(S)
+    synapse_t incoming_synapses[MAX_SYNAPSES_PER_NEURON];
+    uint32_t num_incoming;
 
     // Plasticity parameters
     float plasticity_rate;       /**< Learning rate for plasticity */
@@ -270,6 +276,33 @@ void neural_network_maintain_homeostasis(neural_network_t network, uint64_t time
 void neural_network_reset(neural_network_t network);
 uint32_t neural_network_prune_synapses(neural_network_t network, float threshold);
 void neural_network_dump_neuron(neural_network_t network, uint32_t neuron_id);
+
+// Bidirectional synapse access (OPTIMIZATION API)
+/**
+ * @brief Get count of incoming synapses to a neuron
+ *
+ * DESIGN PATTERN: Iterator Pattern - access to reverse edges
+ * COMPLEXITY: O(1)
+ *
+ * @param network Neural network
+ * @param neuron_id Target neuron
+ * @return Number of incoming synapses (0 if invalid neuron or NULL network)
+ */
+uint32_t neural_network_get_incoming_synapse_count(neural_network_t network, uint32_t neuron_id);
+
+/**
+ * @brief Get array of incoming synapses
+ *
+ * DESIGN PATTERN: Iterator Pattern - provides direct access for O(S) iteration
+ * COMPLEXITY: O(1) to get pointer, O(S) to iterate
+ *
+ * @param network Neural network
+ * @param neuron_id Target neuron
+ * @param out_synapses Pointer to receive synapse array (read-only)
+ * @return Number of incoming synapses (0 if invalid)
+ */
+uint32_t neural_network_get_incoming_synapses(neural_network_t network, uint32_t neuron_id,
+                                               const synapse_t** out_synapses);
 
 #ifdef __cplusplus
 }

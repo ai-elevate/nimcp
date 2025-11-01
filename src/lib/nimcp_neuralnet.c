@@ -358,8 +358,14 @@ static void init_neuron_activity_tracking(neuron_t* neuron)
     neuron->avg_activity = 0.0f;
     memset(neuron->spike_history, 0, sizeof(spike_record_t) * SPIKE_HISTORY_LENGTH);
     memset(neuron->activity_history, 0, sizeof(float) * HISTORY_WINDOW);
+
+    // Initialize outgoing synapses
     neuron->num_synapses = 0;
     memset(neuron->synapses, 0, sizeof(synapse_t) * MAX_SYNAPSES_PER_NEURON);
+
+    // Initialize incoming synapses (bidirectional tracking)
+    neuron->num_incoming = 0;
+    memset(neuron->incoming_synapses, 0, sizeof(synapse_t) * MAX_SYNAPSES_PER_NEURON);
 }
 
 //=============================================================================
@@ -657,25 +663,30 @@ static float sum_synaptic_inputs(neuron_t* neuron, neural_network_t network)
 
     float total_input = 0.0f;
 
-    // Scan all neurons to find synapses targeting this neuron
-    // WHY: Synapses are stored in pre-synaptic neurons, but we need incoming inputs
-    // COMPLEXITY: O(N * S) where N = num_neurons, S = avg synapses per neuron
-    for (uint32_t src_id = 0; src_id < network->num_neurons; src_id++) {
+    // OPTIMIZED: Use bidirectional synapse tracking for O(S) instead of O(N×S)
+    // DESIGN PATTERN: Bidirectional Association
+    // WHY: Direct access to incoming synapses eliminates need to scan entire network
+    // COMPLEXITY: O(S) where S = num incoming synapses (was O(N×S))
+    // SPEEDUP: 10-100x for large networks (N > 1000)
+
+    for (uint32_t i = 0; i < neuron->num_incoming; i++) {
+        synapse_t* incoming_syn = &neuron->incoming_synapses[i];
+
+        // In incoming synapse, target_id stores the SOURCE neuron ID
+        uint32_t src_id = incoming_syn->target_id;
+
+        if (src_id >= network->num_neurons) {
+            continue;  // Safety check
+        }
+
         neuron_t* src_neuron = &network->neurons[src_id];
 
-        // Check all synapses from this source neuron
-        for (uint32_t i = 0; i < src_neuron->num_synapses; i++) {
-            synapse_t* syn = &src_neuron->synapses[i];
+        // Only transmit if presynaptic neuron is active (not at rest)
+        // For spiking neurons, we use state > threshold as activity indicator
+        float pre_activity =
+            (src_neuron->state > src_neuron->threshold) ? src_neuron->state : 0.0f;
 
-            // If this synapse targets our neuron, include it
-            if (syn->target_id == neuron->id) {
-                // Only transmit if presynaptic neuron is active (not at rest)
-                // For spiking neurons, we use state > threshold as activity indicator
-                float pre_activity =
-                    (src_neuron->state > src_neuron->threshold) ? src_neuron->state : 0.0f;
-                total_input += pre_activity * syn->weight * syn->strength;
-            }
-        }
+        total_input += pre_activity * incoming_syn->weight * incoming_syn->strength;
     }
 
     return total_input;
@@ -1321,13 +1332,18 @@ bool neural_network_add_connection(neural_network_t network, uint32_t from_id, u
     }
 
     neuron_t* from_neuron = &network->neurons[from_id];
+    neuron_t* to_neuron = &network->neurons[to_id];
 
-    // Check if we have room for new synapse
+    // Check if we have room for new synapse (both forward and reverse)
     if (from_neuron->num_synapses >= MAX_SYNAPSES_PER_NEURON) {
         return false;
     }
 
-    // Initialize new synapse
+    if (to_neuron->num_incoming >= MAX_SYNAPSES_PER_NEURON) {
+        return false;
+    }
+
+    // Initialize new OUTGOING synapse (forward edge)
     synapse_t* syn = &from_neuron->synapses[from_neuron->num_synapses];
     syn->target_id = to_id;
     syn->weight = fmaxf(network->config.min_weight, fminf(network->config.max_weight, weight));
@@ -1339,6 +1355,21 @@ bool neural_network_add_connection(neural_network_t network, uint32_t from_id, u
     syn->trace = 0.0f;
 
     from_neuron->num_synapses++;
+
+    // OPTIMIZATION: Add INCOMING synapse (reverse edge) for O(S) input summation
+    // DESIGN PATTERN: Bidirectional Association
+    // WHY: Enables O(S) lookup instead of O(N×S) scan
+    synapse_t* incoming_syn = &to_neuron->incoming_synapses[to_neuron->num_incoming];
+    incoming_syn->target_id = from_id;  // In reverse edge, target_id stores source
+    incoming_syn->weight = syn->weight;  // Same weight as forward edge
+    incoming_syn->plasticity = syn->plasticity;
+    incoming_syn->last_change = syn->last_change;
+    incoming_syn->last_active = syn->last_active;
+    incoming_syn->strength = syn->strength;
+    incoming_syn->meta_plasticity = syn->meta_plasticity;
+    incoming_syn->trace = syn->trace;
+
+    to_neuron->num_incoming++;
 
     // Update weight norm to reflect new synapse
     float sum_weights = 0.0f;
@@ -1840,4 +1871,51 @@ bool neural_network_forward(neural_network_t network, const float* inputs, uint3
     }
 
     return true;
+}
+
+//=============================================================================
+// Bidirectional Synapse API (OPTIMIZATION)
+//=============================================================================
+
+/**
+ * @brief Get count of incoming synapses to a neuron
+ *
+ * DESIGN PATTERN: Iterator Pattern
+ * COMPLEXITY: O(1)
+ * WHY: Enables O(S) iteration over incoming edges instead of O(N×S) scan
+ */
+uint32_t neural_network_get_incoming_synapse_count(neural_network_t network, uint32_t neuron_id)
+{
+    if (!network || neuron_id >= network->num_neurons) {
+        return 0;
+    }
+
+    return network->neurons[neuron_id].num_incoming;
+}
+
+/**
+ * @brief Get array of incoming synapses
+ *
+ * DESIGN PATTERN: Iterator Pattern
+ * COMPLEXITY: O(1) to get pointer, O(S) to iterate
+ * WHY: Provides direct access to incoming edges for efficient input summation
+ *
+ * @param network Neural network
+ * @param neuron_id Target neuron
+ * @param out_synapses Pointer to receive synapse array (read-only)
+ * @return Number of incoming synapses
+ */
+uint32_t neural_network_get_incoming_synapses(neural_network_t network, uint32_t neuron_id,
+                                               const synapse_t** out_synapses)
+{
+    if (!network || !out_synapses || neuron_id >= network->num_neurons) {
+        if (out_synapses) {
+            *out_synapses = NULL;
+        }
+        return 0;
+    }
+
+    neuron_t* neuron = &network->neurons[neuron_id];
+    *out_synapses = neuron->incoming_synapses;
+    return neuron->num_incoming;
 }

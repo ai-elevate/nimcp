@@ -4,6 +4,9 @@
  *
  * REFACTORED: Added memory tracking, thread safety, and validation
  * WHY: Prevent memory leaks, ensure thread-safe topology updates, validate inputs
+ *
+ * OPTIMIZED: Dijkstra's algorithm now uses min-heap for O((V+E) log V) instead of O(V²)
+ * WHY: Improves performance for large graphs (>100 vertices)
  */
 
 #include "utils/nimcp_graph.h"
@@ -12,6 +15,7 @@
 #include <string.h>
 #include "utils/nimcp_memory.h"
 #include "utils/nimcp_validate.h"
+#include "utils/nimcp_min_heap.h"
 
 /* Internal helper functions */
 
@@ -76,9 +80,15 @@ static void dfs_component(const NimcpGraph* graph, uint32_t vertex, uint32_t com
 }
 
 /**
- * @brief Find minimum distance vertex for Dijkstra's algorithm
+ * @brief Find minimum distance vertex for Dijkstra's algorithm (DEPRECATED)
+ *
+ * DEPRECATED: Old O(V) linear search
+ * REPLACED BY: Min-heap for O(log V) extract-minimum
+ *
+ * This function is kept for reference but is no longer used.
  */
-static uint32_t find_min_distance(nimcp_weight_t* distances, bool* visited, uint32_t vertex_count)
+static uint32_t find_min_distance_DEPRECATED(nimcp_weight_t* distances, bool* visited,
+                                             uint32_t vertex_count)
 {
     nimcp_weight_t min = FLT_MAX;
     uint32_t min_vertex = NIMCP_INVALID_VERTEX;
@@ -396,25 +406,75 @@ NimcpPath* nimcp_graph_shortest_path(const NimcpGraph* graph, uint32_t from, uin
     }
     distances[from] = 0;
 
-    // Find shortest path
-    for (uint32_t count = 0; count < graph->vertex_count - 1; count++) {
-        uint32_t u = find_min_distance(distances, visited, graph->vertex_count);
-        if (u == NIMCP_INVALID_VERTEX)
+    // Create min-heap for O((V+E) log V) Dijkstra
+    // DESIGN PATTERN: Strategy Pattern - same algorithm, different data structure
+    nimcp_min_heap_t* heap = nimcp_min_heap_create(graph->vertex_count);
+    if (!heap) {
+        // Fallback: if heap creation fails, still need to clean up
+        nimcp_free(distances);
+        nimcp_free(previous);
+        nimcp_free(visited);
+        nimcp_mutex_unlock(&g->lock);
+        return NULL;
+    }
+
+    // Insert source vertex into heap
+    nimcp_heap_element_t start_elem = {from, 0.0f};
+    nimcp_min_heap_insert(heap, &start_elem);
+
+    // Dijkstra's algorithm with min-heap
+    // COMPLEXITY: O((V+E) log V) vs old O(V²)
+    while (!nimcp_min_heap_is_empty(heap)) {
+        // Extract vertex with minimum distance - O(log V)
+        nimcp_heap_element_t u_elem;
+        if (!nimcp_min_heap_extract_min(heap, &u_elem)) {
             break;
+        }
+
+        uint32_t u = u_elem.vertex_id;
+
+        // Skip if already visited (can happen with decrease-key)
+        if (visited[u]) {
+            continue;
+        }
 
         visited[u] = true;
 
+        // Early termination: if we reached destination, we're done
+        if (u == to) {
+            break;
+        }
+
+        // Relax all edges from u
         NimcpEdgeNode* edge = graph->vertices[u].edges;
         while (edge) {
             uint32_t v = edge->dest;
-            if (!visited[v] && distances[u] != FLT_MAX &&
-                distances[u] + edge->weight < distances[v]) {
-                distances[v] = distances[u] + edge->weight;
-                previous[v] = u;
+
+            if (!visited[v] && distances[u] != FLT_MAX) {
+                float new_dist = distances[u] + edge->weight;
+
+                if (new_dist < distances[v]) {
+                    float old_dist = distances[v];
+                    distances[v] = new_dist;
+                    previous[v] = u;
+
+                    if (old_dist == FLT_MAX) {
+                        // First time seeing this vertex - insert into heap
+                        nimcp_heap_element_t v_elem = {v, new_dist};
+                        nimcp_min_heap_insert(heap, &v_elem);
+                    } else {
+                        // Update existing vertex - decrease key
+                        nimcp_min_heap_decrease_key(heap, v, new_dist);
+                    }
+                }
             }
+
             edge = edge->next;
         }
     }
+
+    // Clean up heap
+    nimcp_min_heap_destroy(heap);
 
     // Build path if destination was reached
     NimcpPath* path = NULL;

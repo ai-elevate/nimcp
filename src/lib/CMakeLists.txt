@@ -25,6 +25,7 @@ set(NIMCP_CORE_SOURCES
     utils/nimcp_btree.c                              # B-tree implementation
     utils/nimcp_queue.c                              # Queue implementation
     utils/nimcp_graph.c                              # Graph data structure
+    utils/nimcp_min_heap.c                           # Min-heap for O(log n) priority queue operations
     utils/nimcp_serialization.c                      # Serialization utilities
     utils/nimcp_validate.c                           # Input validation
     utils/nimcp_queue_manager.c                      # Queue manager with thread pool
