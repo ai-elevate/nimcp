@@ -56,11 +56,9 @@ extern "C" {
  * - New types start at 100+ to avoid conflicts
  */
 typedef enum {
-    // ========== BASIC TYPES (existing, DO NOT CHANGE) ==========
-    NEURON_EXCITATORY = 0,        /**< Standard excitatory neuron */
-    NEURON_INHIBITORY = 1,        /**< Standard inhibitory neuron */
-
     // ========== VISUAL CORTEX NEURONS (100-199) ==========
+    // Note: Values 0-1 (NEURON_EXCITATORY/INHIBITORY) defined in nimcp_neuralnet.h
+    // Extended types start at 100 to avoid conflicts
     NEURON_VISUAL_EDGE = 100,     /**< Edge detector (V1 simple cell) */
     NEURON_VISUAL_ORIENTATION,    /**< Orientation-selective (V1 complex) */
     NEURON_VISUAL_DIRECTION,      /**< Direction-selective (MT/V5) */

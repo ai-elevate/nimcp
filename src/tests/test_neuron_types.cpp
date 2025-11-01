@@ -18,6 +18,7 @@
 #include <gtest/gtest.h>
 
 extern "C" {
+#include "nimcp_neuralnet.h"
 #include "nimcp_neuron_types.h"
 #include "utils/nimcp_time.h"
 }
@@ -45,8 +46,8 @@ protected:
 
 TEST_F(NeuronTypesTest, ExcitatoryInhibitoryClassification) {
     // Basic types
-    EXPECT_TRUE(neuron_type_is_excitatory(NEURON_EXCITATORY));
-    EXPECT_FALSE(neuron_type_is_excitatory(NEURON_INHIBITORY));
+    EXPECT_TRUE(neuron_type_is_excitatory(static_cast<neuron_type_extended_t>(NEURON_EXCITATORY)));
+    EXPECT_FALSE(neuron_type_is_excitatory(static_cast<neuron_type_extended_t>(NEURON_INHIBITORY)));
 
     // Visual neurons (excitatory)
     EXPECT_TRUE(neuron_type_is_excitatory(NEURON_VISUAL_EDGE));
@@ -246,10 +247,10 @@ TEST_F(NeuronTypesTest, GetThreshold_BasicTypes) {
     float base_threshold = 1.0f;
 
     // Basic types should return base threshold unchanged
-    float threshold_exc = neuron_type_get_threshold(NEURON_EXCITATORY, &params, base_threshold);
+    float threshold_exc = neuron_type_get_threshold(static_cast<neuron_type_extended_t>(NEURON_EXCITATORY), &params, base_threshold);
     EXPECT_FLOAT_EQ(threshold_exc, base_threshold);
 
-    float threshold_inh = neuron_type_get_threshold(NEURON_INHIBITORY, &params, base_threshold);
+    float threshold_inh = neuron_type_get_threshold(static_cast<neuron_type_extended_t>(NEURON_INHIBITORY), &params, base_threshold);
     EXPECT_FLOAT_EQ(threshold_inh, base_threshold);
 }
 

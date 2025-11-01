@@ -11,6 +11,7 @@
  */
 
 #include "nimcp_neuron_types.h"
+#include "nimcp_neuralnet.h"
 #include "utils/nimcp_time.h"
 #include "utils/nimcp_validate.h"
 #include <string.h>

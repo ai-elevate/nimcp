@@ -78,6 +78,7 @@ add_nimcp_test_binary(core_tests
     test_neuralnet_learning.cpp
     test_adaptive.cpp
     test_neuron_types.cpp
+    test_brain_regions.cpp
 )
 
 # ============================================================================
