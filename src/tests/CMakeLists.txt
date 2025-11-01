@@ -1,101 +1,209 @@
-# Define test sources
-set(NIMCP_TEST_SOURCES
+# ============================================================================
+# NIMCP Parallel Test Suite
+# ============================================================================
+# Tests are organized into separate binaries for parallel execution via ctest
+# Run with: ctest -j$(nproc) for maximum parallelism
+#
+# Test Categories (10 binaries):
+# 1. core_tests: Core neural network and neuron types
+# 2. glial_tests: Astrocytes, oligodendrocytes, microglia, integration
+# 3. plasticity_tests: Neuromodulators, BCM, attention
+# 4. cognitive_tests: Knowledge, curiosity, ethics, salience, consolidation
+# 5. networking_tests: P2P, protocol, events, replication
+# 6. io_tests: Data I/O, streaming, serialization, JSON
+# 7. utility_tests: Data structures, time, memory, validation
+# 8. security_tests: Security, performance, error injection
+# 9. integration_tests: Networking, cognitive, end-to-end integration
+# 10. quality_tests: Stress, memory leaks, lint, regression, logging
+# ============================================================================
+
+# Common test setup (shared across all test binaries)
+set(COMMON_TEST_INCLUDES
+    ${NIMCP_INCLUDE_DIR}
+    ${NIMCP_TEST_DIR}
+    ${NIMCP_LIB_DIR}
+    ${GTEST_INCLUDE_DIRS}
+    ${Python3_INCLUDE_DIRS}
+)
+
+set(COMMON_TEST_LIBS
+    nimcp_core
+    GTest::GTest
+    GTest::Main
+    Python3::Python
+    pthread
+)
+
+# Helper function to create a test binary
+function(add_nimcp_test_binary TARGET_NAME)
+    add_executable(${TARGET_NAME} ${ARGN})
+
+    target_include_directories(${TARGET_NAME} PRIVATE ${COMMON_TEST_INCLUDES})
+
+    # Add Python module source
+    target_sources(${TARGET_NAME} PRIVATE
+        ${CMAKE_SOURCE_DIR}/src/python/nimcp_module.c
+    )
+
+    target_link_libraries(${TARGET_NAME} PRIVATE ${COMMON_TEST_LIBS})
+
+    set_target_properties(${TARGET_NAME} PROPERTIES
+        POSITION_INDEPENDENT_CODE ON
+    )
+
+    # Enable coverage for Debug builds
+    if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+        if(CMAKE_COMPILER_IS_GNUCXX)
+            target_compile_options(${TARGET_NAME} PRIVATE --coverage)
+            target_link_options(${TARGET_NAME} PRIVATE --coverage)
+        endif()
+    endif()
+
+    # Register with ctest
+    add_test(NAME ${TARGET_NAME}
+             COMMAND ${TARGET_NAME}
+             WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
+
+    set_tests_properties(${TARGET_NAME} PROPERTIES
+        ENVIRONMENT "PYTHONPATH=${CMAKE_BINARY_DIR}/lib/python"
+    )
+endfunction()
+
+# ============================================================================
+# TEST BINARY 1: Core Neural Network Tests (fast, foundational)
+# ============================================================================
+add_nimcp_test_binary(core_tests
     test_module.cpp
     test_neuralnet_create.cpp
     test_neuralnet_learning.cpp
-    test_adaptive.cpp           # Adaptive threshold spiking tests
-    test_events.cpp             # Event packet integration tests
+    test_adaptive.cpp
+    test_neuron_types.cpp
+)
+
+# ============================================================================
+# TEST BINARY 2: Glial Cell Tests (medium speed, related)
+# ============================================================================
+add_nimcp_test_binary(glial_tests
+    test_astrocytes.cpp
+    test_oligodendrocytes.cpp
+    test_microglia.cpp
+    test_glial_integration.cpp
+)
+
+# ============================================================================
+# TEST BINARY 3: Plasticity & Neuromodulation Tests (medium speed)
+# ============================================================================
+add_nimcp_test_binary(plasticity_tests
+    test_neuromodulators.cpp
+    test_bcm.cpp
+    test_attention.cpp
+)
+
+# ============================================================================
+# TEST BINARY 4: Cognitive & Higher-Level Tests (medium speed)
+# ============================================================================
+add_nimcp_test_binary(cognitive_tests
+    test_knowledge.cpp
+    test_curiosity.cpp
+    test_ethics.cpp
+    test_salience.cpp
+    test_consolidation.cpp
+    test_introspection.cpp
+)
+
+# ============================================================================
+# TEST BINARY 5: Networking & P2P Tests (medium-slow)
+# ============================================================================
+add_nimcp_test_binary(networking_tests
     test_p2pnode.cpp
     test_protocol.cpp
-    test_replication.cpp        # Brain replication tests
-    test_dataio.cpp             # Data I/O tests
-    test_stream.cpp             # Streaming API tests
-    test_salience.cpp           # Salience/attention tests
-    test_introspection.cpp      # Introspection API tests
-    test_consolidation.cpp      # Memory consolidation tests
-    test_attention.cpp          # Biology-based multihead attention tests (cortical columns + thalamic gating)
-    test_thread_utils.cpp       # Thread utilities and pool tests
-    test_queue_utils.cpp        # Queue and queue manager tests
-    test_queue_manager.cpp      # Queue manager tests
-    test_logging.cpp            # Logging infrastructure tests
-    test_knowledge.cpp          # Knowledge acquisition system tests
-    test_curiosity.cpp          # Curiosity-driven learning tests
-    test_ethics.cpp             # Ethics and Golden Rule tests
-    test_time.cpp               # Time utilities tests
-    test_serialization.cpp      # Binary serialization tests
-    test_json.cpp               # JSON wrapper tests
-    test_memory.cpp             # Memory tracking tests
-    test_vector.cpp             # Vector math utilities tests
-    test_hash_table.cpp         # Hash table data structure tests
-    test_btree.cpp              # B-tree data structure tests
-    test_validate.cpp           # Input validation utilities tests
-    test_graph.cpp              # Graph data structure tests
-    test_security.cpp           # Security framework tests (directives, encryption, validation)
-    test_neuromodulators.cpp    # Neuromodulator system tests (dopamine, serotonin, ACh, NE)
-    test_bcm.cpp                # BCM sliding threshold plasticity tests
-    test_astrocytes.cpp         # Astrocyte glial cell tests (calcium, glutamate, homeostasis)
-    test_oligodendrocytes.cpp   # Oligodendrocyte glial cell tests (myelination, conduction velocity)
-    test_microglia.cpp          # Microglia glial cell tests (synaptic surveillance, pruning)
-    test_glial_integration.cpp  # Glial-neuron integration tests (tripartite synapses, myelination, pruning)
-    test_neuron_types.cpp       # Extended neuron type specialization tests (visual, auditory, motor, interneurons)
-    test_error_injection.cpp    # Error injection and failure path testing
-    test_stress.cpp             # Stress and load testing
-    test_performance_optimizations.cpp  # TDD tests for algorithmic optimizations (bidirectional synapses, min-heap)
-
-    test_integration_networking.cpp  # P2P networking integration tests
-    test_integration_cognitive.cpp   # Multi-module cognitive integration tests
-    test_integration_e2e.cpp    # End-to-end integration tests across modules
-    test_lint.cpp               # Lint and code quality tests
-    test_memory_leaks.cpp       # Memory leak detection tests
-    test_regression.cpp         # Comprehensive regression tests for all 34 modules
+    test_events.cpp
+    test_replication.cpp
 )
 
-# Create test executable
-add_executable(nimcp_tests ${NIMCP_TEST_SOURCES})
-
-target_include_directories(nimcp_tests
-    PRIVATE
-        ${NIMCP_INCLUDE_DIR}
-        ${NIMCP_TEST_DIR}
-        ${NIMCP_LIB_DIR}
-        ${GTEST_INCLUDE_DIRS}
-        ${Python3_INCLUDE_DIRS}
+# ============================================================================
+# TEST BINARY 6: Data & I/O Tests (fast)
+# ============================================================================
+add_nimcp_test_binary(io_tests
+    test_dataio.cpp
+    test_stream.cpp
+    test_serialization.cpp
+    test_json.cpp
 )
 
-# Add the Python module source directly to the test executable
-target_sources(nimcp_tests PRIVATE
-    ${CMAKE_SOURCE_DIR}/src/python/nimcp_module.c
+# ============================================================================
+# TEST BINARY 7: Utility & Data Structure Tests (fast)
+# ============================================================================
+add_nimcp_test_binary(utility_tests
+    test_time.cpp
+    test_memory.cpp
+    test_vector.cpp
+    test_hash_table.cpp
+    test_btree.cpp
+    test_graph.cpp
+    test_validate.cpp
+    test_queue_utils.cpp
+    test_queue_manager.cpp
+    test_thread_utils.cpp
 )
 
-target_link_libraries(nimcp_tests
-    PRIVATE
-        nimcp_core
-        GTest::GTest
-        GTest::Main
-        Python3::Python
-        pthread
+# ============================================================================
+# TEST BINARY 8: Security & Performance Tests (medium)
+# ============================================================================
+add_nimcp_test_binary(security_tests
+    test_security.cpp
+    test_performance_optimizations.cpp
+    test_error_injection.cpp
 )
 
-# Enable Position Independent Code
-set_target_properties(nimcp_tests PROPERTIES
-    POSITION_INDEPENDENT_CODE ON
+# ============================================================================
+# TEST BINARY 9: Integration Tests (slow)
+# ============================================================================
+add_nimcp_test_binary(integration_tests
+    test_integration_networking.cpp
+    test_integration_cognitive.cpp
+    test_integration_e2e.cpp
 )
 
+# ============================================================================
+# TEST BINARY 10: Quality & Stress Tests (very slow)
+# ============================================================================
+add_nimcp_test_binary(quality_tests
+    test_stress.cpp
+    test_memory_leaks.cpp
+    test_lint.cpp
+    test_regression.cpp
+    test_logging.cpp
+)
+
+# ============================================================================
 # Enable testing
+# ============================================================================
 enable_testing()
 
-# Add test
-add_test(NAME nimcp_unit_tests 
-         COMMAND nimcp_tests)
-
-set_tests_properties(nimcp_unit_tests PROPERTIES
-    ENVIRONMENT "PYTHONPATH=${CMAKE_BINARY_DIR}/lib/python"
-)
-
-# Coverage configuration for Debug builds
-if(CMAKE_BUILD_TYPE STREQUAL "Debug")
-    if(CMAKE_COMPILER_IS_GNUCXX)
-        target_compile_options(nimcp_tests PRIVATE --coverage)
-        target_link_options(nimcp_tests PRIVATE --coverage)
-    endif()
-endif()
+# ============================================================================
+# Summary
+# ============================================================================
+message(STATUS "")
+message(STATUS "===============================================================================")
+message(STATUS "NIMCP Parallel Test Suite Configured")
+message(STATUS "===============================================================================")
+message(STATUS "Test Binaries: 10 (can run in parallel)")
+message(STATUS "  1. core_tests          - Core neural network & neuron types (5 test files)")
+message(STATUS "  2. glial_tests         - Glial cells & integration (4 test files)")
+message(STATUS "  3. plasticity_tests    - Neuromodulators, BCM, attention (3 test files)")
+message(STATUS "  4. cognitive_tests     - Higher-level cognition (6 test files)")
+message(STATUS "  5. networking_tests    - P2P & networking (4 test files)")
+message(STATUS "  6. io_tests            - Data I/O & serialization (4 test files)")
+message(STATUS "  7. utility_tests       - Data structures & utilities (10 test files)")
+message(STATUS "  8. security_tests      - Security & performance (3 test files)")
+message(STATUS "  9. integration_tests   - Cross-module integration (3 test files)")
+message(STATUS " 10. quality_tests       - Stress, leaks, lint, regression (5 test files)")
+message(STATUS "")
+message(STATUS "Parallel Execution:")
+message(STATUS "  Run all:  ctest -j\$(nproc)")
+message(STATUS "  Run fast: ctest -j\$(nproc) -E 'integration|quality'")
+message(STATUS "  Run one:  ctest -R core_tests")
+message(STATUS "  Verbose:  ctest -j\$(nproc) -V")
+message(STATUS "===============================================================================")
+message(STATUS "")
