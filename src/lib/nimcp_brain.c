@@ -1720,7 +1720,7 @@ brain_t brain_load(const char* filepath)
         brain->config.learning_rate = 0.01f;
         brain->config.sparsity_target = 0.8f;
         brain->config.enable_explanations = true;
-        strcpy(brain->config.task_name, "loaded_brain");
+        snprintf(brain->config.task_name, sizeof(brain->config.task_name), "loaded_brain");
 
         // Set placeholder dimensions (actual dimensions are in the network)
         // TODO: Add adaptive_network getter functions to retrieve actual values

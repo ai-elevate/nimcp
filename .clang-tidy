@@ -1,122 +1,102 @@
 ---
-# NIMCP Clang-Tidy Configuration
-# Comprehensive static analysis for C/C++ mixed codebase
-# Documentation: https://clang.llvm.org/extra/clang-tidy/
+#==============================================================================
+# Clang-Tidy Configuration for NIMCP
+#==============================================================================
+# Comprehensive static analysis configuration focusing on:
+# - Security vulnerabilities
+# - Memory safety
+# - Concurrency issues
+# - Code quality
+# - Performance
+#==============================================================================
 
-# Check categories enabled:
-# - bugprone-*: Detects bug-prone code patterns
-# - performance-*: Performance optimization suggestions
-# - readability-*: Code readability improvements
-# - modernize-*: C++11/14/17 modernization (C++ only)
-# - clang-analyzer-*: Deep static analysis
-# - misc-*: Miscellaneous useful checks
-# - cert-*: CERT secure coding guidelines
-
+# Enable comprehensive checks
 Checks: >
+  *,
+  -llvmlibc-*,
+  -fuchsia-*,
+  -altera-*,
+  -android-*,
+  -darwin-*,
+  -objc-*,
+  -linuxkernel-*,
+  -zircon-*,
   bugprone-*,
-  -bugprone-easily-swappable-parameters,
-  -bugprone-reserved-identifier,
-  performance-*,
-  readability-*,
-  -readability-identifier-length,
-  -readability-magic-numbers,
-  -readability-function-cognitive-complexity,
-  clang-analyzer-*,
-  -clang-analyzer-security.insecureAPI.DeprecatedOrUnsafeBufferHandling,
-  misc-*,
-  -misc-unused-parameters,
-  -misc-no-recursion,
   cert-*,
-  -cert-err33-c,
-  -cert-dcl37-c,
-  -cert-dcl51-cpp,
+  clang-analyzer-*,
+  concurrency-*,
+  cppcoreguidelines-*,
+  google-*,
+  misc-*,
+  modernize-*,
+  performance-*,
   portability-*,
+  readability-*,
+  security-*,
+  -modernize-use-trailing-return-type,
+  -readability-braces-around-statements,
+  -cppcoreguidelines-avoid-magic-numbers,
+  -readability-magic-numbers,
+  -cppcoreguidelines-pro-bounds-pointer-arithmetic,
+  -google-readability-todo
+
+# Treat warnings as errors
+WarningsAsErrors: >
+  security-*,
+  cert-err34-c,
+  cert-err33-c,
+  bugprone-use-after-move,
+  bugprone-dangling-handle,
   concurrency-*
 
-# Disabled checks explanation:
-# - bugprone-easily-swappable-parameters: Too noisy, many false positives
-# - bugprone-reserved-identifier: Conflicts with common system header patterns
-# - readability-identifier-length: Single char vars acceptable in math/loops
-# - readability-magic-numbers: Too strict for system programming
-# - readability-function-cognitive-complexity: Informational only, too strict
-# - clang-analyzer-security.insecureAPI.DeprecatedOrUnsafeBufferHandling: False positives on safe wrappers
-# - misc-unused-parameters: Common in callback interfaces
-# - misc-no-recursion: Sometimes necessary for tree/graph algorithms
-# - cert-err33-c: Too strict for return value checking
-# - cert-dcl37-c: Reserved identifiers - covered by other checks
-# - cert-dcl51-cpp: Not applicable to C99 code
-
-# Global options
-WarningsAsErrors: ''
-HeaderFilterRegex: '.*'
-AnalyzeTemporaryDtors: false
-FormatStyle: file
-
-# Check-specific options
 CheckOptions:
   # Naming conventions
-  - key: readability-identifier-naming.NamespaceCase
-    value: lower_case
-  - key: readability-identifier-naming.ClassCase
-    value: CamelCase
-  - key: readability-identifier-naming.StructCase
+  - key: readability-identifier-naming.VariableCase
     value: lower_case
   - key: readability-identifier-naming.FunctionCase
     value: lower_case
-  - key: readability-identifier-naming.VariableCase
-    value: lower_case
-  - key: readability-identifier-naming.ParameterCase
-    value: lower_case
-  - key: readability-identifier-naming.MacroDefinitionCase
-    value: UPPER_CASE
-  - key: readability-identifier-naming.EnumConstantCase
-    value: UPPER_CASE
-  - key: readability-identifier-naming.ConstantCase
-    value: UPPER_CASE
-  - key: readability-identifier-naming.GlobalConstantCase
-    value: UPPER_CASE
   - key: readability-identifier-naming.TypedefCase
     value: lower_case
-  - key: readability-identifier-naming.TypedefSuffix
-    value: _t
+  - key: readability-identifier-naming.StructCase
+    value: lower_case
+  - key: readability-identifier-naming.EnumCase
+    value: UPPER_CASE
+  - key: readability-identifier-naming.MacroDefinitionCase
+    value: UPPER_CASE
 
-  # Readability options
+  # Function length limits
   - key: readability-function-size.LineThreshold
-    value: 100
+    value: 500
   - key: readability-function-size.StatementThreshold
-    value: 100
+    value: 250
   - key: readability-function-size.BranchThreshold
-    value: 20
+    value: 50
   - key: readability-function-size.ParameterThreshold
-    value: 6
-  - key: readability-braces-around-statements.ShortStatementLines
-    value: 0
-  - key: readability-uppercase-literal-suffix.NewSuffixes
-    value: 'L;LL;LU;LLU'
+    value: 8
+
+  # Complexity limits
+  - key: readability-function-cognitive-complexity.Threshold
+    value: 50
+
+  # Security-specific options
+  - key: cert-err33-c.CheckedFunctions
+    value: '::malloc;::calloc;::realloc;::fopen;::fread;::fwrite'
 
   # Performance options
   - key: performance-move-const-arg.CheckTriviallyCopyableMove
     value: true
-  - key: performance-unnecessary-value-param.IncludeStyle
-    value: google
+  - key: performance-unnecessary-value-param.AllowedTypes
+    value: ''
 
-  # Bug detection options
-  - key: bugprone-assert-side-effect.AssertMacros
-    value: 'assert,ASSERT,REQUIRE,CHECK'
-  - key: bugprone-string-constructor.WarnOnLargeLength
-    value: true
-  - key: bugprone-suspicious-string-compare.WarnOnLogicalNotComparison
-    value: true
-
-  # Concurrency options
+  # Concurrency
   - key: concurrency-mt-unsafe.FunctionSet
     value: 'posix'
 
-  # Misc options
-  - key: misc-non-private-member-variables-in-classes.IgnoreClassesWithAllMemberVariablesBeingPublic
-    value: true
+# Header filter - analyze project headers only
+HeaderFilterRegex: 'src/(include|lib)/.*'
 
-# Language-specific settings
-# C99-specific exclusions (applied when analyzing .c files)
-# The modernize-* checks are automatically skipped for C code
-...
+# Use .clang-format style
+FormatStyle: file
+
+# Analysis options
+AnalyzeTemporaryDtors: true

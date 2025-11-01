@@ -6,8 +6,6 @@
 #include "/usr/include/python3.10/Python.h"
 #include "nimcp_export.h"
 
-extern NIMCP_EXPORT PyTypeObject NeuralNetworkType;
-
 /**
  * @file nimcp_protocol.h
  * @brief Protocol definition for NIMCP 2.0 (Neuro-Inspired Message Communication Protocol)

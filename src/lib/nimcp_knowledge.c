@@ -530,7 +530,8 @@ static void create_context_string(const char* text, char* output, uint32_t max_l
     output[copy_len] = '\0';
 
     if (len >= max_length - 4) {
-        strcat(output, "...");
+        // Safe: we know we have at least 4 bytes left (max_length - copy_len >= 4)
+        strncat(output, "...", max_length - copy_len - 1);
     }
 }
 

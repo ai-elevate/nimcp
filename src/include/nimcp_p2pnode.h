@@ -6,10 +6,6 @@
 #include "/usr/include/python3.10/Python.h"
 #include "nimcp_export.h"
 
-// Your type declarations
-extern NIMCP_EXPORT PyTypeObject NeuralNetworkType;
-
-
 #include <stdbool.h>
 #include <stdint.h>
 

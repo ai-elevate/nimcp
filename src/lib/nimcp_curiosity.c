@@ -755,7 +755,8 @@ curiosity_engine_t curiosity_engine_create(const char* learner_name)
     engine->progress.total_answers_learned = 0;
     engine->progress.concepts_learned = 0;
     engine->progress.avg_curiosity = engine->baseline_curiosity;
-    strcpy(engine->progress.current_focus, "exploring world");
+    snprintf(engine->progress.current_focus, sizeof(engine->progress.current_focus),
+             "exploring world");
 
     return engine;
 }

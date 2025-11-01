@@ -748,7 +748,7 @@ static bool validate_evaluation_inputs(ethics_engine_t engine, const action_cont
             result->allowed = false;
             result->confidence = 1.0f;
             result->primary_violation = ETHICS_VIOLATION_HARM;
-            strcpy(result->explanation, "Null engine");
+            snprintf(result->explanation, sizeof(result->explanation), "Null engine");
         }
         return false;
     }
@@ -758,7 +758,7 @@ static bool validate_evaluation_inputs(ethics_engine_t engine, const action_cont
         result->allowed = false;
         result->confidence = 1.0f;
         result->primary_violation = ETHICS_VIOLATION_HARM;
-        strcpy(result->explanation, "Null action");
+        snprintf(result->explanation, sizeof(result->explanation), "Null action");
         return false;
     }
 

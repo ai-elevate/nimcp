@@ -5,7 +5,6 @@
 
 #include "/usr/include/python3.10/Python.h"
 #include "nimcp_export.h"
-extern NIMCP_EXPORT PyTypeObject NeuralNetworkType;
 
 /**
  * @file nimcp_neuralnet.h

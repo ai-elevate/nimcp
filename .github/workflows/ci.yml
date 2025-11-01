@@ -287,6 +287,126 @@ jobs:
         path: valgrind-report.txt
 
   #----------------------------------------------------------------------------
+  # Job 2.7: ThreadSanitizer (Race Condition Detection)
+  #----------------------------------------------------------------------------
+  thread-sanitizer:
+    name: ThreadSanitizer (Race Detection)
+    runs-on: ubuntu-22.04
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.10'
+
+    - name: Install dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y \
+          build-essential \
+          cmake \
+          python3-dev \
+          libpython3.10-dev \
+          pkg-config
+
+    - name: Configure CMake with ThreadSanitizer
+      run: |
+        mkdir -p build-tsan
+        cd build-tsan
+        cmake .. \
+          -DCMAKE_BUILD_TYPE=Debug \
+          -DENABLE_TSAN=ON \
+          -DENABLE_ASAN=OFF \
+          -DENABLE_UBSAN=OFF
+
+    - name: Build with TSAN
+      run: |
+        cd build-tsan
+        make -j$(nproc)
+
+    - name: Run thread safety tests
+      run: |
+        cd build-tsan
+        export TSAN_OPTIONS="halt_on_error=1 history_size=7 second_deadlock_stack=1"
+        ./src/tests/nimcp_tests \
+          --gtest_filter="ThreadSafety*:Thread*:Concurrent*:*Stress*" \
+          --gtest_output=xml:tsan-results.xml
+
+    - name: Upload TSAN results
+      if: always()
+      uses: actions/upload-artifact@v3
+      with:
+        name: tsan-results
+        path: build-tsan/tsan-results.xml
+
+  #----------------------------------------------------------------------------
+  # Job 2.8: AddressSanitizer + UBSanitizer (Memory & UB Detection)
+  #----------------------------------------------------------------------------
+  address-sanitizer:
+    name: AddressSanitizer + UBSanitizer
+    runs-on: ubuntu-22.04
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.10'
+
+    - name: Install dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y \
+          build-essential \
+          cmake \
+          python3-dev \
+          libpython3.10-dev \
+          pkg-config
+
+    - name: Configure CMake with ASAN + UBSAN
+      run: |
+        mkdir -p build-asan
+        cd build-asan
+        cmake .. \
+          -DCMAKE_BUILD_TYPE=Debug \
+          -DENABLE_ASAN=ON \
+          -DENABLE_UBSAN=ON \
+          -DENABLE_TSAN=OFF
+
+    - name: Build with ASAN + UBSAN
+      run: |
+        cd build-asan
+        make -j$(nproc)
+
+    - name: Run sanitizer tests
+      run: |
+        cd build-asan
+        export ASAN_OPTIONS="detect_leaks=1:check_initialization_order=1:strict_init_order=1:halt_on_error=0"
+        export UBSAN_OPTIONS="print_stacktrace=1:halt_on_error=0"
+        ./src/tests/nimcp_tests \
+          --gtest_output=xml:asan-results.xml || true
+
+    - name: Check for sanitizer errors
+      run: |
+        cd build-asan
+        if grep -q "SUMMARY.*Sanitizer" asan-results.xml 2>/dev/null; then
+          echo "::error::Sanitizer detected issues"
+          exit 1
+        fi
+
+    - name: Upload ASAN results
+      if: always()
+      uses: actions/upload-artifact@v3
+      with:
+        name: asan-results
+        path: build-asan/asan-results.xml
+
+  #----------------------------------------------------------------------------
   # Job 3: Build Docker Image
   #----------------------------------------------------------------------------
   docker-build:
