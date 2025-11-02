@@ -463,6 +463,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include "logging/nimcp_logging.h"
+#include "utils/nimcp_memory.h"  // CRITICAL: Declares nimcp_calloc/nimcp_free return types
 
 //=============================================================================
 // Internal Helper Function Prototypes

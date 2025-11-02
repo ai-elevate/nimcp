@@ -487,6 +487,7 @@
 #include <stdarg.h>
 #include <stdlib.h>
 #include <string.h>
+#include "utils/nimcp_memory.h"  // CRITICAL: Declares nimcp_calloc/nimcp_free return types
 
 //=============================================================================
 // Thread-Local Error Storage

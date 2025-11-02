@@ -36,6 +36,7 @@
 #include <string.h>
 #include "../include/nimcp_neuralnet.h"
 #include "utils/nimcp_hash_table.h"
+#include "utils/nimcp_memory.h"  // CRITICAL: Declares nimcp_calloc/nimcp_free return types
 
 //=============================================================================
 // Constants and Configuration
@@ -696,6 +697,11 @@ static bool validate_network_config(const adaptive_network_config_t* config)
     if (!config)
         return false;
 
+    // Guard clause: Validate base config layer_sizes
+    // WHY: NULL layer_sizes will cause crash during memcpy or neural_network_create
+    if (config->base_config.num_layers > 0 && !config->base_config.layer_sizes)
+        return false;
+
     // Guard clause: Validate spike parameters
     if (config->spike_params.k_factor <= 0.0f)
         return false;
@@ -792,17 +798,40 @@ static void initialize_design_patterns(adaptive_network_t network)
  */
 adaptive_network_t adaptive_network_create(const adaptive_network_config_t* config)
 {
-    // Guard clause: Validate configuration
-    if (!validate_network_config(config))
-        return NULL;
+    fprintf(stderr, "[DEBUG adaptive_network_create] START config=%p\n", (void*)config); fflush(stderr);
 
-    adaptive_network_t network = nimcp_calloc(1, sizeof(struct adaptive_network_struct));
-    // Guard clause: Check allocation
-    if (!network)
+    // Guard clause: Validate configuration
+    fprintf(stderr, "[DEBUG adaptive_network_create] Validating config...\n"); fflush(stderr);
+    if (!validate_network_config(config)) {
+        fprintf(stderr, "[DEBUG adaptive_network_create] Validation FAILED\n"); fflush(stderr);
         return NULL;
+    }
+    fprintf(stderr, "[DEBUG adaptive_network_create] Validation passed\n"); fflush(stderr);
+
+    fprintf(stderr, "[DEBUG adaptive_network_create] Allocating network struct...\n"); fflush(stderr);
+    fprintf(stderr, "[DEBUG adaptive_network_create] sizeof(struct adaptive_network_struct)=%zu\n", sizeof(struct adaptive_network_struct)); fflush(stderr);
+
+    // Store pointer as uintptr_t to see if there's truncation
+    adaptive_network_t network = nimcp_calloc(1, sizeof(struct adaptive_network_struct));
+    uintptr_t addr = (uintptr_t)network;
+
+    // Guard clause: Check allocation
+    fprintf(stderr, "[DEBUG adaptive_network_create] nimcp_calloc returned:\n"); fflush(stderr);
+    fprintf(stderr, "  - as pointer:     %p\n", (void*)network); fflush(stderr);
+    fprintf(stderr, "  - as uintptr_t:   0x%016lx\n", (unsigned long)addr); fflush(stderr);
+    fprintf(stderr, "  - is NULL?:       %s\n", network == NULL ? "YES" : "NO"); fflush(stderr);
+
+    if (!network) {
+        fprintf(stderr, "[DEBUG adaptive_network_create] Network allocation FAILED (NULL returned)\n"); fflush(stderr);
+        return NULL;
+    }
+    fprintf(stderr, "[DEBUG adaptive_network_create] Network allocated successfully\n"); fflush(stderr);
 
     // Copy configuration (shallow copy first)
+    fprintf(stderr, "[DEBUG adaptive_network_create] About to memcpy config...\n"); fflush(stderr);
+    fprintf(stderr, "[DEBUG adaptive_network_create] sizeof(adaptive_network_config_t)=%zu\n", sizeof(adaptive_network_config_t)); fflush(stderr);
     memcpy(&network->config, config, sizeof(adaptive_network_config_t));
+    fprintf(stderr, "[DEBUG adaptive_network_create] memcpy completed\n"); fflush(stderr);
 
     // Deep copy layer_sizes array to avoid dangling pointer
     // WHY: Config may be stack-allocated by caller, so we need our own copy

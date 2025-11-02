@@ -11,6 +11,7 @@
 #include <string.h>
 #include "../include/nimcp_brain.h"
 #include "../include/nimcp_curiosity.h"
+#include "utils/nimcp_memory.h"  // CRITICAL: Declares nimcp_calloc/nimcp_free return types
 
 //=============================================================================
 // Constants
