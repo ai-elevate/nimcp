@@ -475,7 +475,12 @@ static json_t* resolve_json_path(json_t* root, const char* path, json_t** parent
 
     json_t* current = root;
     json_t* prev = NULL;
-    char* path_copy = strdup(path);  // strtok_r modifies string
+    // Use nimcp_malloc instead of strdup to match nimcp_free below
+    size_t path_len = strlen(path);
+    char* path_copy = nimcp_malloc(path_len + 1);
+    if (!path_copy)
+        return NULL;
+    strcpy(path_copy, path);
     char* saveptr = NULL;
     char* token = strtok_r(path_copy, "/", &saveptr);
     char* last_token = NULL;
@@ -511,8 +516,14 @@ static json_t* resolve_json_path(json_t* root, const char* path, json_t** parent
     // Fill output parameters if requested
     if (parent)
         *parent = prev;
-    if (last_key && last_token)
-        *last_key = strdup(last_token);
+    if (last_key && last_token) {
+        // Use nimcp_malloc for consistency (caller should use nimcp_free)
+        size_t token_len = strlen(last_token);
+        *last_key = nimcp_malloc(token_len + 1);
+        if (*last_key) {
+            strcpy(*last_key, last_token);
+        }
+    }
     nimcp_free(path_copy);
 
     return current;

@@ -1478,8 +1478,11 @@ bool knowledge_reinforce(knowledge_system_t system, const char* concept, const c
             if (!item->examples)
                 return false;
         }
-        item->examples[item->num_examples] = strdup(new_example);
+        // Use nimcp_malloc instead of strdup to match nimcp_free in destroy
+        size_t example_len = strlen(new_example);
+        item->examples[item->num_examples] = nimcp_malloc(example_len + 1);
         if (item->examples[item->num_examples]) {
+            strcpy(item->examples[item->num_examples], new_example);
             item->num_examples++;
         }
     }

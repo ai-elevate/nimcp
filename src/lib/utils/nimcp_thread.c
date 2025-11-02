@@ -2023,8 +2023,12 @@ nimcp_result_t nimcp_get_resource_lock(const char* resource_id, nimcp_mutex_t** 
         return NIMCP_ERROR_MEMORY;
     }
 
-    // Duplicate resource_id string (caller's string may be temporary)
-    entry->resource_id = strdup(resource_id);
+    // Duplicate resource_id string (use nimcp_malloc to match nimcp_free below)
+    size_t id_len = strlen(resource_id);
+    entry->resource_id = nimcp_malloc(id_len + 1);
+    if (entry->resource_id) {
+        strcpy(entry->resource_id, resource_id);
+    }
 
     // Allocate mutex structure
     entry->lock = nimcp_malloc(sizeof(nimcp_mutex_t));

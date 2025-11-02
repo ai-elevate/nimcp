@@ -1026,8 +1026,12 @@ static uint32_t get_or_create_label_index(brain_t brain, const char* label)
         return 0;
     }
 
-    // Create new label
-    brain->output_labels[brain->num_output_labels] = strdup(label);
+    // Create new label (use nimcp_malloc to match nimcp_free in brain_destroy)
+    size_t label_len = strlen(label);
+    brain->output_labels[brain->num_output_labels] = nimcp_malloc(label_len + 1);
+    if (!brain->output_labels[brain->num_output_labels])
+        return 0;
+    strcpy(brain->output_labels[brain->num_output_labels], label);
     return brain->num_output_labels++;
 }
 

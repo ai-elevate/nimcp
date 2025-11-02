@@ -380,7 +380,12 @@ static uint32_t get_label_index(adaptive_network_t network, const char* label)
         return 0;
 
     network->label_map = new_map;
-    network->label_map[network->num_labels] = strdup(label);
+    // Use nimcp_malloc instead of strdup to match nimcp_free in free_label_map
+    size_t label_len = strlen(label);
+    network->label_map[network->num_labels] = nimcp_malloc(label_len + 1);
+    if (!network->label_map[network->num_labels])
+        return 0;
+    strcpy(network->label_map[network->num_labels], label);
 
     // Insert into hash table for future O(1) lookups
     hash_table_insert_label(&network->label_table, network->label_map[network->num_labels],
