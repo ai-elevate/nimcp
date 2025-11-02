@@ -67,7 +67,7 @@ typedef struct hash_entry_struct {
 typedef struct {
     hash_entry_t** entries;
     uint32_t size;
-} hash_table_t;
+} knowledge_hash_table_t;
 
 /**
  * @brief Strategy interface for domain-specific learning
@@ -94,7 +94,7 @@ typedef struct {
     knowledge_item_t* items;
     uint32_t num_items;
     uint32_t capacity;
-    hash_table_t* index;
+    knowledge_hash_table_t* index;
 } knowledge_repository_t;
 
 /**
@@ -173,9 +173,9 @@ static uint32_t hash_concept(const char* concept)
  * Why: Enables O(1) average case lookups instead of O(n) linear scans.
  * Memory: Allocates HASH_TABLE_SIZE pointers initially.
  */
-static hash_table_t* hash_table_create(void)
+static knowledge_hash_table_t* knowledge_hash_table_create(void)
 {
-    hash_table_t* table = nimcp_calloc(1, sizeof(hash_table_t));
+    knowledge_hash_table_t* table = nimcp_calloc(1, sizeof(knowledge_hash_table_t));
     if (!table)
         return NULL;
 
@@ -202,7 +202,7 @@ static hash_table_t* hash_table_create(void)
  * Why: Maintains search index for O(1) concept lookup.
  * Complexity: O(1) average case, O(n) worst case with many collisions.
  */
-static bool hash_table_insert(hash_table_t* table, const char* concept, uint32_t index)
+static bool knowledge_hash_table_insert(knowledge_hash_table_t* table, const char* concept, uint32_t index)
 {
     if (!table || !concept)
         return false;
@@ -238,7 +238,7 @@ static bool hash_table_insert(hash_table_t* table, const char* concept, uint32_t
  * Why: O(1) average case lookup vs O(n) linear search.
  * Example: Finding "democracy" in 10000 items takes ~1 comparison vs 5000 average.
  */
-static int32_t hash_table_find(hash_table_t* table, const char* concept)
+static int32_t knowledge_hash_table_find(knowledge_hash_table_t* table, const char* concept)
 {
     if (!table || !concept)
         return -1;
@@ -266,7 +266,7 @@ static int32_t hash_table_find(hash_table_t* table, const char* concept)
  * Why: Prevents memory leaks from hash table chains.
  * Complexity: O(n) where n is total number of entries.
  */
-static void hash_table_destroy(hash_table_t* table)
+static void knowledge_hash_table_destroy(knowledge_hash_table_t* table)
 {
     if (!table)
         return;
@@ -314,7 +314,7 @@ static knowledge_repository_t* repository_create(uint32_t initial_capacity)
         return NULL;
     }
 
-    repo->index = hash_table_create();
+    repo->index = knowledge_hash_table_create();
     if (!repo->index) {
         nimcp_free(repo->items);
         nimcp_free(repo);
@@ -343,7 +343,7 @@ static int32_t repository_find(knowledge_repository_t* repo, const char* concept
 {
     if (!repo || !concept)
         return -1;
-    return hash_table_find(repo->index, concept);
+    return knowledge_hash_table_find(repo->index, concept);
 }
 
 /**
@@ -369,7 +369,7 @@ static int32_t repository_add(knowledge_repository_t* repo, const knowledge_item
     repo->items[index] = *item;
     repo->num_items++;
 
-    if (!hash_table_insert(repo->index, item->concept, index)) {
+    if (!knowledge_hash_table_insert(repo->index, item->concept, index)) {
         repo->num_items--;
         return -1;
     }
@@ -424,7 +424,7 @@ static void repository_destroy(knowledge_repository_t* repo)
         nimcp_free(repo->items);
     }
 
-    hash_table_destroy(repo->index);
+    knowledge_hash_table_destroy(repo->index);
     nimcp_free(repo);
 }
 
@@ -1839,7 +1839,7 @@ knowledge_system_t knowledge_load(const char* filepath)
 
     for (uint32_t i = 0; i < system->repository->num_items; i++) {
         fread(&system->repository->items[i], sizeof(knowledge_item_t), 1, file);
-        hash_table_insert(system->repository->index, system->repository->items[i].concept, i);
+        knowledge_hash_table_insert(system->repository->index, system->repository->items[i].concept, i);
     }
 
     fclose(file);

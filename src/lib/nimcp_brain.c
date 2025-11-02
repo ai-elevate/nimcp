@@ -69,6 +69,9 @@ struct brain_struct {
     float* last_input;                  // Cached input vector
     brain_decision_t* cached_decision;  // Cached decision
     uint32_t input_size;                // For cache validation
+
+    // Phase 3: Distributed cognition coordinator
+    distrib_cognition_t distributed;  // P2P cognitive coordination (NULL if standalone)
 };
 
 //=============================================================================
@@ -735,6 +738,7 @@ static brain_t allocate_brain(void)
     brain->last_input = NULL;
     brain->cached_decision = NULL;
     brain->input_size = 0;
+    brain->distributed = NULL;  // Initialize as standalone brain
 
     return brain;
 }
@@ -761,7 +765,9 @@ static adaptive_network_t create_brain_network(uint32_t num_inputs, uint32_t num
 
     adaptive_network_t network = adaptive_network_create(&net_config);
 
-    nimcp_free(net_config.base_config.layer_sizes);
+    // NOTE: Do NOT free layer_sizes here - adaptive_network_create stores the pointer
+    // The adaptive network will free it when destroyed
+    // nimcp_free(net_config.base_config.layer_sizes);
 
     return network;
 }
@@ -945,6 +951,11 @@ void brain_destroy(brain_t brain)
             nimcp_free(brain->output_labels[i]);
         }
         nimcp_free(brain->output_labels);
+    }
+
+    // Phase 3: Cleanup distributed cognition coordinator
+    if (brain->distributed) {
+        distrib_cognition_destroy(brain->distributed);
     }
 
     clear_cache(brain);
@@ -2003,4 +2014,198 @@ float brain_recommend_pruning_threshold(brain_t brain, float target_sparsity)
 
     brain_clear_error();
     return threshold;
+}
+
+//=============================================================================
+// Phase 3: Distributed Brain API Implementation
+//=============================================================================
+
+/**
+ * WHAT: Create distributed brain with P2P coordination
+ * WHY:  Enable multi-brain collaborative learning and shared chemical signals
+ * HOW:  Create standard brain, then attach distributed cognition coordinator
+ *
+ * THREAD SAFETY: Thread-safe creation
+ * PERFORMANCE: O(n) where n = num_neurons + network initialization
+ */
+brain_t brain_create_distributed(
+    const char* task_name,
+    brain_size_t size,
+    brain_task_t task,
+    uint32_t num_inputs,
+    uint32_t num_outputs,
+    p2p_node_t p2p_node
+)
+{
+    // Guard: Validate P2P node
+    if (!p2p_node) {
+        set_error("NULL p2p_node provided to brain_create_distributed");
+        return NULL;
+    }
+
+    // Create standard brain first
+    brain_t brain = brain_create(task_name, size, task, num_inputs, num_outputs);
+    if (!brain) {
+        return NULL;
+    }
+
+    // Enable distributed coordination
+    if (!brain_enable_distributed(brain, p2p_node)) {
+        brain_destroy(brain);
+        return NULL;
+    }
+
+    brain_clear_error();
+    return brain;
+}
+
+/**
+ * WHAT: Enable distributed coordination on existing brain
+ * WHY:  Allow conversion of standalone brain to distributed mode
+ * HOW:  Creates distrib_cognition coordinator and starts sync threads
+ *
+ * THREAD SAFETY: Thread-safe if brain not actively processing
+ */
+bool brain_enable_distributed(brain_t brain, p2p_node_t p2p_node)
+{
+    // Guard: Validate parameters
+    if (!brain) {
+        set_error("NULL brain provided to brain_enable_distributed");
+        return false;
+    }
+
+    if (!p2p_node) {
+        set_error("NULL p2p_node provided to brain_enable_distributed");
+        return false;
+    }
+
+    // Guard: Check if already distributed
+    if (brain->distributed) {
+        set_error("Brain is already distributed");
+        return false;
+    }
+
+    // Create distributed cognition configuration
+    distrib_cognition_config_t config;
+    config.enable_neuromod_sync = true;
+    config.neuromod_broadcast_interval_ms = 100;
+    config.neuromod_diffusion_rate = 0.5f;
+    config.enable_glial_sync = true;
+    config.glial_sync_interval_ms = 100;
+    config.enable_region_sync = true;
+    config.region_sync_interval_ms = 100;
+    config.sync_mode = SYNC_MODE_BIDIRECTIONAL;
+    config.max_message_queue = 1000;
+
+    // Create distributed cognition coordinator
+    brain->distributed = distrib_cognition_create(&config, p2p_node);
+    if (!brain->distributed) {
+        set_error("Failed to create distributed cognition coordinator");
+        return false;
+    }
+
+    // Start distributed coordination
+    if (!distrib_cognition_start(brain->distributed)) {
+        set_error("Failed to start distributed cognition");
+        distrib_cognition_destroy(brain->distributed);
+        brain->distributed = NULL;
+        return false;
+    }
+
+    // Update brain config
+    brain->config.enable_distributed = true;
+    brain->config.p2p_node = p2p_node;
+
+    brain_clear_error();
+    return true;
+}
+
+/**
+ * WHAT: Synchronize neuromodulators with peer brains
+ * WHY:  Allow explicit control of sync timing for performance tuning
+ * HOW:  Calls distrib_cognition_broadcast_neuromod for all neuromod types
+ *
+ * THREAD SAFETY: Thread-safe
+ * PERFORMANCE: O(P × N) where P=peers, N=neuromod types
+ */
+bool brain_sync_neuromodulators(brain_t brain)
+{
+    // Guard: Validate brain
+    if (!brain) {
+        set_error("NULL brain provided to brain_sync_neuromodulators");
+        return false;
+    }
+
+    // Guard: Check if distributed
+    if (!brain->distributed) {
+        set_error("Brain is not distributed - cannot sync neuromodulators");
+        return false;
+    }
+
+    // Broadcast all neuromodulator types with default concentrations
+    // In a full implementation, these would be read from the brain's neuromodulator pool
+    bool success = true;
+    success &= distrib_cognition_broadcast_neuromod(brain->distributed, NEUROMOD_DOPAMINE, 0.5f);
+    success &= distrib_cognition_broadcast_neuromod(brain->distributed, NEUROMOD_SEROTONIN, 0.5f);
+    success &= distrib_cognition_broadcast_neuromod(brain->distributed, NEUROMOD_NOREPINEPHRINE, 0.5f);
+    success &= distrib_cognition_broadcast_neuromod(brain->distributed, NEUROMOD_ACETYLCHOLINE, 0.5f);
+
+    if (!success) {
+        set_error("Failed to broadcast some neuromodulators");
+        return false;
+    }
+
+    brain_clear_error();
+    return true;
+}
+
+/**
+ * WHAT: Get distributed cognition statistics
+ * WHY:  Monitor distributed brain performance and health
+ * HOW:  Forwards query to underlying distrib_cognition coordinator
+ */
+bool brain_get_distributed_stats(
+    brain_t brain,
+    distrib_cognition_stats_t* stats
+)
+{
+    // Guard: Validate parameters
+    if (!brain) {
+        set_error("NULL brain provided to brain_get_distributed_stats");
+        return false;
+    }
+
+    if (!stats) {
+        set_error("NULL stats provided to brain_get_distributed_stats");
+        return false;
+    }
+
+    // Guard: Check if distributed
+    if (!brain->distributed) {
+        set_error("Brain is not distributed - no stats available");
+        return false;
+    }
+
+    // Forward to distributed cognition
+    if (!distrib_cognition_get_stats(brain->distributed, stats)) {
+        set_error("Failed to get distributed cognition stats");
+        return false;
+    }
+
+    brain_clear_error();
+    return true;
+}
+
+/**
+ * WHAT: Check if brain is distributed
+ * WHY:  Allow callers to query brain mode before calling distributed APIs
+ * HOW:  Return true if distributed coordinator exists
+ */
+bool brain_is_distributed(brain_t brain)
+{
+    if (!brain) {
+        return false;
+    }
+
+    return brain->distributed != NULL;
 }

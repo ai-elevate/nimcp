@@ -6,6 +6,7 @@
 #define NIMCP_BRAIN_H
 
 #include "nimcp_adaptive.h"
+#include "nimcp_distributed_cognition.h"
 #include "nimcp_export.h"
 
 /**
@@ -85,6 +86,10 @@ typedef struct {
     float sparsity_target;    /**< Target sparsity (0.7-0.95) */
     bool enable_explanations; /**< Enable interpretability */
     char task_name[64];       /**< Name for this brain */
+
+    // Phase 3: Distributed cognition integration
+    bool enable_distributed;  /**< Enable P2P cognitive coordination */
+    p2p_node_t p2p_node;      /**< P2P network node (if distributed) */
 } brain_config_t;
 
 /**
@@ -114,6 +119,91 @@ brain_t brain_create_custom(const brain_config_t* config);
  * @param brain Brain to destroy
  */
 void brain_destroy(brain_t brain);
+
+//=============================================================================
+// Phase 3: Distributed Brain API
+//=============================================================================
+
+/**
+ * @brief Create distributed brain with P2P coordination
+ *
+ * WHAT: Creates a brain that can coordinate with peer brains over network
+ * WHY:  Enable multi-brain collaborative learning and shared chemical signals
+ * HOW:  Integrates distributed cognition coordinator for neuromod/glial sync
+ *
+ * @param task_name Human-readable name
+ * @param size Brain size preset
+ * @param task Task template
+ * @param num_inputs Input dimension
+ * @param num_outputs Output dimension
+ * @param p2p_node P2P network node for coordination
+ * @return Distributed brain handle or NULL on error
+ *
+ * THREAD SAFETY: Thread-safe creation
+ * PERFORMANCE: O(n) where n = num_neurons + network initialization
+ */
+NIMCP_EXPORT brain_t brain_create_distributed(
+    const char* task_name,
+    brain_size_t size,
+    brain_task_t task,
+    uint32_t num_inputs,
+    uint32_t num_outputs,
+    p2p_node_t p2p_node
+);
+
+/**
+ * @brief Enable distributed coordination on existing brain
+ *
+ * WHAT: Retrofits an existing brain with distributed cognition
+ * WHY:  Allow conversion of standalone brain to distributed mode
+ * HOW:  Creates distrib_cognition coordinator and starts sync threads
+ *
+ * @param brain Brain handle
+ * @param p2p_node P2P network node
+ * @return true on success, false on failure
+ *
+ * THREAD SAFETY: Thread-safe if brain not actively processing
+ */
+NIMCP_EXPORT bool brain_enable_distributed(brain_t brain, p2p_node_t p2p_node);
+
+/**
+ * @brief Synchronize neuromodulators with peer brains
+ *
+ * WHAT: Manually trigger neuromodulator broadcast to network
+ * WHY:  Allow explicit control of sync timing for performance tuning
+ * HOW:  Calls distrib_cognition_broadcast_neuromod for all neuromod types
+ *
+ * @param brain Distributed brain handle
+ * @return true on success, false if not distributed or error
+ *
+ * THREAD SAFETY: Thread-safe
+ * PERFORMANCE: O(P × N) where P=peers, N=neuromod types
+ */
+NIMCP_EXPORT bool brain_sync_neuromodulators(brain_t brain);
+
+/**
+ * @brief Get distributed cognition statistics
+ *
+ * WHAT: Query network sync stats (broadcasts, latency, peer count)
+ * WHY:  Monitor distributed brain performance and health
+ * HOW:  Forwards query to underlying distrib_cognition coordinator
+ *
+ * @param brain Distributed brain handle
+ * @param stats Output statistics structure
+ * @return true on success, false if not distributed
+ */
+NIMCP_EXPORT bool brain_get_distributed_stats(
+    brain_t brain,
+    distrib_cognition_stats_t* stats
+);
+
+/**
+ * @brief Check if brain is distributed
+ *
+ * @param brain Brain handle
+ * @return true if distributed coordination enabled, false otherwise
+ */
+NIMCP_EXPORT bool brain_is_distributed(brain_t brain);
 
 //=============================================================================
 // Learning API

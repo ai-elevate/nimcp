@@ -166,6 +166,7 @@ add_nimcp_test_binary(integration_tests
     test_integration_e2e.cpp
     test_distributed_cognition.cpp
     test_distributed_advanced.cpp
+    test_brain_integration.cpp
 )
 
 # ============================================================================
@@ -200,7 +201,7 @@ message(STATUS "  5. networking_tests    - P2P & networking (4 test files)")
 message(STATUS "  6. io_tests            - Data I/O & serialization (4 test files)")
 message(STATUS "  7. utility_tests       - Data structures & utilities (10 test files)")
 message(STATUS "  8. security_tests      - Security & performance (3 test files)")
-message(STATUS "  9. integration_tests   - Cross-module integration (5 test files)")
+message(STATUS "  9. integration_tests   - Cross-module integration (6 test files)")
 message(STATUS " 10. quality_tests       - Stress, leaks, lint, regression (5 test files)")
 message(STATUS "")
 message(STATUS "Parallel Execution:")
