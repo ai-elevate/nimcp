@@ -344,26 +344,17 @@ typedef struct __attribute__((packed)) {
 //=============================================================================
 
 /**
- * @brief Neuromodulator types for cross-node diffusion
- */
-typedef enum {
-    NEUROMOD_DOPAMINE = 0x01,      /**< Dopamine (reward, motivation) */
-    NEUROMOD_SEROTONIN = 0x02,     /**< Serotonin (mood, well-being) */
-    NEUROMOD_ACETYLCHOLINE = 0x03, /**< Acetylcholine (attention, learning) */
-    NEUROMOD_NOREPINEPHRINE = 0x04,/**< Norepinephrine (arousal, alertness) */
-    NEUROMOD_GABA = 0x05,          /**< GABA (inhibition) */
-    NEUROMOD_GLUTAMATE = 0x06,     /**< Glutamate (excitation) */
-    NEUROMOD_MAX
-} neuromod_type_t;
-
-/**
  * @brief Neuromodulator level message payload
  *
  * Used with CTRL_MSG_NEUROMOD_LEVEL to synchronize neuromodulator
  * concentrations across distributed brain regions.
+ *
+ * NOTE: neuromod_type values map to neuromodulator_type_t enum from nimcp_neuromodulators.h:
+ *       0 = NEUROMOD_DOPAMINE, 1 = NEUROMOD_SEROTONIN, 2 = NEUROMOD_ACETYLCHOLINE,
+ *       3 = NEUROMOD_NOREPINEPHRINE, 4 = NEUROMOD_GABA, 5 = NEUROMOD_GLUTAMATE
  */
 typedef struct __attribute__((packed)) {
-    uint8_t neuromod_type;      /**< Neuromodulator type (neuromod_type_t) */
+    uint8_t neuromod_type;      /**< Neuromodulator type (0-5, maps to neuromodulator_type_t) */
     uint8_t reserved;           /**< Reserved for alignment */
     uint16_t region_id;         /**< Brain region ID */
     float concentration;        /**< Concentration level (0.0-1.0) */
