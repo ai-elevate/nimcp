@@ -671,7 +671,7 @@ replication_cluster_t replication_create_cluster(const replication_config_t* con
     // Start heartbeat thread
     cluster->heartbeat_running = true;
     int thread_result =
-        nimcp_thread_create(&cluster->heartbeat_thread, NULL, heartbeat_thread_fn, cluster);
+        nimcp_thread_create(&cluster->heartbeat_thread, heartbeat_thread_fn, cluster, NULL);
     if (thread_result != 0) {
         set_replication_error("Failed to create heartbeat thread: %d", thread_result);
         cluster->heartbeat_running = false;

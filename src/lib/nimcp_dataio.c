@@ -988,7 +988,7 @@ float brain_train_from_dataset(brain_t brain, dataset_t dataset, uint32_t epochs
     }
 
     // Start producer thread (reads batches from dataset)
-    if (nimcp_thread_create(&ctx->producer_thread, NULL, producer_thread_func, ctx) != 0) {
+    if (nimcp_thread_create(&ctx->producer_thread, producer_thread_func, ctx, NULL) != 0) {
         dataio_set_error("Failed to create producer thread");
         nimcp_queue_destroy(ctx->batch_queue);
         nimcp_mutex_destroy(&ctx->stats_lock);
@@ -997,7 +997,7 @@ float brain_train_from_dataset(brain_t brain, dataset_t dataset, uint32_t epochs
     }
 
     // Start consumer thread (trains brain on batches)
-    if (nimcp_thread_create(&ctx->consumer_thread, NULL, consumer_thread_func, ctx) != 0) {
+    if (nimcp_thread_create(&ctx->consumer_thread, consumer_thread_func, ctx, NULL) != 0) {
         dataio_set_error("Failed to create consumer thread");
         ctx->stop_requested = true;
         nimcp_thread_join(ctx->producer_thread, NULL);
