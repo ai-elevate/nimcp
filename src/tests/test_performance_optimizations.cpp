@@ -19,6 +19,7 @@
 #include <vector>
 #include "../include/nimcp_neuralnet.h"
 #include "../include/utils/nimcp_graph.h"
+#include "../include/utils/nimcp_min_heap.h"
 
 //==============================================================================
 // Test Fixture
@@ -189,9 +190,6 @@ TEST_F(PerformanceOptimizationTest, DISABLED_BidirectionalSynapse_ConsistencyOnM
  */
 TEST_F(PerformanceOptimizationTest, DISABLED_MinHeap_CreateDestroy)
 {
-    // TDD: Define the heap API we want
-    typedef struct nimcp_min_heap_t nimcp_min_heap_t;
-
     nimcp_min_heap_t* heap = nimcp_min_heap_create(100);  // capacity = 100
     ASSERT_NE(heap, nullptr);
 
@@ -209,20 +207,14 @@ TEST_F(PerformanceOptimizationTest, DISABLED_MinHeap_CreateDestroy)
  */
 TEST_F(PerformanceOptimizationTest, DISABLED_MinHeap_InsertExtract)
 {
-    typedef struct nimcp_min_heap_t nimcp_min_heap_t;
-    typedef struct {
-        uint32_t vertex_id;
-        float priority;
-    } heap_element_t;
-
     nimcp_min_heap_t* heap = nimcp_min_heap_create(10);
     ASSERT_NE(heap, nullptr);
 
     // Insert elements with different priorities
-    heap_element_t elem1 = {1, 5.0f};
-    heap_element_t elem2 = {2, 2.0f};
-    heap_element_t elem3 = {3, 8.0f};
-    heap_element_t elem4 = {4, 1.0f};
+    nimcp_heap_element_t elem1 = {1, 5.0f};
+    nimcp_heap_element_t elem2 = {2, 2.0f};
+    nimcp_heap_element_t elem3 = {3, 8.0f};
+    nimcp_heap_element_t elem4 = {4, 1.0f};
 
     EXPECT_TRUE(nimcp_min_heap_insert(heap, &elem1));
     EXPECT_TRUE(nimcp_min_heap_insert(heap, &elem2));
@@ -232,7 +224,7 @@ TEST_F(PerformanceOptimizationTest, DISABLED_MinHeap_InsertExtract)
     EXPECT_EQ(nimcp_min_heap_size(heap), 4);
 
     // Extract minimum (should be elem4 with priority 1.0)
-    heap_element_t min_elem;
+    nimcp_heap_element_t min_elem;
     EXPECT_TRUE(nimcp_min_heap_extract_min(heap, &min_elem));
     EXPECT_EQ(min_elem.vertex_id, 4);
     EXPECT_FLOAT_EQ(min_elem.priority, 1.0f);
@@ -254,17 +246,11 @@ TEST_F(PerformanceOptimizationTest, DISABLED_MinHeap_InsertExtract)
  */
 TEST_F(PerformanceOptimizationTest, DISABLED_MinHeap_DecreaseKey)
 {
-    typedef struct nimcp_min_heap_t nimcp_min_heap_t;
-    typedef struct {
-        uint32_t vertex_id;
-        float priority;
-    } heap_element_t;
-
     nimcp_min_heap_t* heap = nimcp_min_heap_create(10);
     ASSERT_NE(heap, nullptr);
 
-    heap_element_t elem1 = {1, 10.0f};
-    heap_element_t elem2 = {2, 5.0f};
+    nimcp_heap_element_t elem1 = {1, 10.0f};
+    nimcp_heap_element_t elem2 = {2, 5.0f};
 
     nimcp_min_heap_insert(heap, &elem1);
     nimcp_min_heap_insert(heap, &elem2);
@@ -273,7 +259,7 @@ TEST_F(PerformanceOptimizationTest, DISABLED_MinHeap_DecreaseKey)
     EXPECT_TRUE(nimcp_min_heap_decrease_key(heap, 1, 3.0f));
 
     // Now minimum should be vertex 1
-    heap_element_t min_elem;
+    nimcp_heap_element_t min_elem;
     EXPECT_TRUE(nimcp_min_heap_extract_min(heap, &min_elem));
     EXPECT_EQ(min_elem.vertex_id, 1);
     EXPECT_FLOAT_EQ(min_elem.priority, 3.0f);
@@ -288,12 +274,6 @@ TEST_F(PerformanceOptimizationTest, DISABLED_MinHeap_DecreaseKey)
  */
 TEST_F(PerformanceOptimizationTest, DISABLED_MinHeap_LogarithmicPerformance)
 {
-    typedef struct nimcp_min_heap_t nimcp_min_heap_t;
-    typedef struct {
-        uint32_t vertex_id;
-        float priority;
-    } heap_element_t;
-
     const int N = 10000;
     nimcp_min_heap_t* heap = nimcp_min_heap_create(N);
     ASSERT_NE(heap, nullptr);
@@ -301,14 +281,14 @@ TEST_F(PerformanceOptimizationTest, DISABLED_MinHeap_LogarithmicPerformance)
     // Insert N elements - should be O(N log N) total
     long long insert_time = measure_time_us([&]() {
         for (int i = 0; i < N; i++) {
-            heap_element_t elem = {(uint32_t)i, (float)(N - i)};
+            nimcp_heap_element_t elem = {(uint32_t)i, (float)(N - i)};
             nimcp_min_heap_insert(heap, &elem);
         }
     });
 
     // Extract all elements - should be O(N log N) total
     long long extract_time = measure_time_us([&]() {
-        heap_element_t elem;
+        nimcp_heap_element_t elem;
         for (int i = 0; i < N; i++) {
             nimcp_min_heap_extract_min(heap, &elem);
         }

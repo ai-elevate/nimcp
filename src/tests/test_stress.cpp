@@ -80,28 +80,27 @@ class StressTest : public ::testing::Test {
  */
 TEST_F(StressTest, NeuralNetwork_MassCreationDestruction)
 {
-    nimcp_neuralnet_config_t config = {.num_inputs = 10,
-                                       .num_outputs = 5,
-                                       .num_hidden = 20,
-                                       .learning_rate = 0.01f,
-                                       .stdp_a_plus = 0.01f,
-                                       .stdp_a_minus = 0.01f,
-                                       .tau_plus = 20.0f,
-                                       .tau_minus = 20.0f};
+    network_config_t config = {.num_neurons = 20,
+                               .ei_ratio = 0.8f,
+                               .learning_rate = 0.01f,
+                               .input_size = 10,
+                               .output_size = 5,
+                               .enable_stdp = true,
+                               .enable_hebbian = false};
 
-    std::vector<nimcp_neuralnet_t*> networks;
+    std::vector<neural_network_t> networks;
     networks.reserve(STRESS_ITERATIONS);
 
     // Rapid creation
     for (int i = 0; i < STRESS_ITERATIONS; i++) {
-        nimcp_neuralnet_t* net = nimcp_neuralnet_create(&config);
+        neural_network_t net = neural_network_create(&config);
         ASSERT_NE(net, nullptr) << "Failed to create network " << i;
         networks.push_back(net);
     }
 
     // Rapid destruction
-    for (auto* net : networks) {
-        nimcp_neuralnet_destroy(net);
+    for (auto net : networks) {
+        neural_network_destroy(net);
     }
 }
 
@@ -110,14 +109,13 @@ TEST_F(StressTest, NeuralNetwork_MassCreationDestruction)
  */
 TEST_F(StressTest, NeuralNetwork_ConcurrentOperations)
 {
-    nimcp_neuralnet_config_t config = {.num_inputs = 10,
-                                       .num_outputs = 5,
-                                       .num_hidden = 20,
-                                       .learning_rate = 0.01f,
-                                       .stdp_a_plus = 0.01f,
-                                       .stdp_a_minus = 0.01f,
-                                       .tau_plus = 20.0f,
-                                       .tau_minus = 20.0f};
+    network_config_t config = {.num_neurons = 20,
+                               .ei_ratio = 0.8f,
+                               .learning_rate = 0.01f,
+                               .input_size = 10,
+                               .output_size = 5,
+                               .enable_stdp = true,
+                               .enable_hebbian = false};
 
     std::atomic<int> error_count{0};
     std::vector<std::thread> threads;
@@ -126,7 +124,7 @@ TEST_F(StressTest, NeuralNetwork_ConcurrentOperations)
     for (int t = 0; t < CONCURRENT_THREADS; t++) {
         threads.emplace_back([&config, &error_count]() {
             // Each thread creates network and performs operations
-            nimcp_neuralnet_t* net = nimcp_neuralnet_create(&config);
+            neural_network_t net = neural_network_create(&config);
             if (!net) {
                 error_count++;
                 return;
@@ -137,7 +135,7 @@ TEST_F(StressTest, NeuralNetwork_ConcurrentOperations)
 
             // Perform many forward passes
             for (int i = 0; i < 100; i++) {
-                nimcp_neuralnet_forward(net, inputs, outputs);
+                neural_network_forward(net, inputs, 10, outputs, 5);
 
                 // Verify outputs are in valid range
                 for (int j = 0; j < 5; j++) {
@@ -147,7 +145,7 @@ TEST_F(StressTest, NeuralNetwork_ConcurrentOperations)
                 }
             }
 
-            nimcp_neuralnet_destroy(net);
+            neural_network_destroy(net);
         });
     }
 
@@ -164,16 +162,15 @@ TEST_F(StressTest, NeuralNetwork_ConcurrentOperations)
  */
 TEST_F(StressTest, DISABLED_NeuralNetwork_LongRunningStability)
 {
-    nimcp_neuralnet_config_t config = {.num_inputs = 10,
-                                       .num_outputs = 5,
-                                       .num_hidden = 20,
-                                       .learning_rate = 0.01f,
-                                       .stdp_a_plus = 0.01f,
-                                       .stdp_a_minus = 0.01f,
-                                       .tau_plus = 20.0f,
-                                       .tau_minus = 20.0f};
+    network_config_t config = {.num_neurons = 20,
+                               .ei_ratio = 0.8f,
+                               .learning_rate = 0.01f,
+                               .input_size = 10,
+                               .output_size = 5,
+                               .enable_stdp = true,
+                               .enable_hebbian = false};
 
-    nimcp_neuralnet_t* net = nimcp_neuralnet_create(&config);
+    neural_network_t net = neural_network_create(&config);
     ASSERT_NE(net, nullptr);
 
     float inputs[10] = {0.1f, 0.2f, 0.3f, 0.4f, 0.5f, 0.6f, 0.7f, 0.8f, 0.9f, 1.0f};
@@ -184,7 +181,7 @@ TEST_F(StressTest, DISABLED_NeuralNetwork_LongRunningStability)
 
     int iteration_count = 0;
     while (std::chrono::steady_clock::now() < end) {
-        nimcp_neuralnet_forward(net, inputs, outputs);
+        neural_network_forward(net, inputs, 10, outputs, 5);
 
         // Verify outputs remain stable
         for (int j = 0; j < 5; j++) {
@@ -195,7 +192,7 @@ TEST_F(StressTest, DISABLED_NeuralNetwork_LongRunningStability)
         iteration_count++;
     }
 
-    nimcp_neuralnet_destroy(net);
+    neural_network_destroy(net);
 
     // Should complete thousands of iterations
     EXPECT_GT(iteration_count, 1000) << "Unexpectedly low iteration count";
@@ -389,35 +386,28 @@ TEST_F(StressTest, Brain_ConcurrentLifecycle)
     std::vector<std::thread> threads;
 
     for (int t = 0; t < CONCURRENT_THREADS; t++) {
-        threads.emplace_back([&success_count, &error_count]() {
-            nimcp_brain_config_t config = {
-                .num_inputs = 10,
-                .num_outputs = 5,
-                .hidden_layers = {20, 15},
-                .num_hidden_layers = 2,
-                .consolidation_interval = 100,
-                .salience_threshold = 0.5f,
-            };
+        threads.emplace_back([&success_count, &error_count, t]() {
             // Generate unique task name
-            static std::atomic<int> thread_counter{0};
-            snprintf(config.task_name, sizeof(config.task_name), "stress_test_%d",
-                     thread_counter.fetch_add(1));
+            char task_name[64];
+            snprintf(task_name, sizeof(task_name), "stress_test_%d", t);
 
-            nimcp_brain_t* brain = nimcp_brain_create(&config);
+            brain_t brain = brain_create(task_name, BRAIN_SIZE_TINY, BRAIN_TASK_CLASSIFICATION, 10, 5);
             if (brain == nullptr) {
                 error_count++;
                 return;
             }
 
-            // Perform some operations
+            // Perform some decision operations
             float inputs[10] = {0};
-            float outputs[5] = {0};
 
             for (int i = 0; i < 10; i++) {
-                nimcp_brain_process(brain, inputs, outputs);
+                brain_decision_t* decision = brain_decide(brain, inputs, 10);
+                if (decision) {
+                    brain_free_decision(decision);
+                }
             }
 
-            nimcp_brain_destroy(brain);
+            brain_destroy(brain);
             success_count++;
         });
     }
@@ -674,16 +664,15 @@ TEST_F(StressTest, DistributedCognition_RapidStartStopCycles)
  */
 TEST_F(StressTest, Performance_OperationLatency)
 {
-    nimcp_neuralnet_config_t config = {.num_inputs = 10,
-                                       .num_outputs = 5,
-                                       .num_hidden = 20,
-                                       .learning_rate = 0.01f,
-                                       .stdp_a_plus = 0.01f,
-                                       .stdp_a_minus = 0.01f,
-                                       .tau_plus = 20.0f,
-                                       .tau_minus = 20.0f};
+    network_config_t config = {.num_neurons = 20,
+                               .ei_ratio = 0.8f,
+                               .learning_rate = 0.01f,
+                               .input_size = 10,
+                               .output_size = 5,
+                               .enable_stdp = true,
+                               .enable_hebbian = false};
 
-    nimcp_neuralnet_t* net = nimcp_neuralnet_create(&config);
+    neural_network_t net = neural_network_create(&config);
     ASSERT_NE(net, nullptr);
 
     float inputs[10] = {0.1f, 0.2f, 0.3f, 0.4f, 0.5f, 0.6f, 0.7f, 0.8f, 0.9f, 1.0f};
@@ -693,13 +682,13 @@ TEST_F(StressTest, Performance_OperationLatency)
     auto start = std::chrono::high_resolution_clock::now();
 
     for (int i = 0; i < 1000; i++) {
-        nimcp_neuralnet_forward(net, inputs, outputs);
+        neural_network_forward(net, inputs, 10, outputs, 5);
     }
 
     auto end = std::chrono::high_resolution_clock::now();
     auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
 
-    nimcp_neuralnet_destroy(net);
+    neural_network_destroy(net);
 
     // Should complete in reasonable time (< 100ms for 1000 iterations)
     EXPECT_LT(duration.count(), 100000) << "Operations too slow: " << duration.count() << " us";

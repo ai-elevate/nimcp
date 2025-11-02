@@ -90,19 +90,17 @@ class ErrorInjectionTest : public ::testing::Test {
 TEST_F(ErrorInjectionTest, NeuralNetworkCreation_MallocFailure)
 {
 #ifdef ENABLE_MALLOC_INJECTION
-    nimcp_neuralnet_config_t config = {.num_inputs = 10,
-                                       .num_outputs = 5,
-                                       .num_hidden = 20,
-                                       .learning_rate = 0.01f,
-                                       .stdp_a_plus = 0.01f,
-                                       .stdp_a_minus = 0.01f,
-                                       .tau_plus = 20.0f,
-                                       .tau_minus = 20.0f};
+    network_config_t config = {.num_neurons = 20,
+                               .ei_ratio = 0.8f,
+                               .learning_rate = 0.01f,
+                               .input_size = 10,
+                               .output_size = 5,
+                               .enable_stdp = true};
 
     // Simulate malloc failure
     EnableMallocFailure();
 
-    nimcp_neuralnet_t* net = nimcp_neuralnet_create(&config);
+    neural_network_t net = neural_network_create(&config);
 
     // Should return NULL on allocation failure
     EXPECT_EQ(net, nullptr);
@@ -110,11 +108,11 @@ TEST_F(ErrorInjectionTest, NeuralNetworkCreation_MallocFailure)
     DisableMallocFailure();
 
     // Verify normal allocation still works
-    net = nimcp_neuralnet_create(&config);
+    net = neural_network_create(&config);
     EXPECT_NE(net, nullptr);
 
     if (net) {
-        nimcp_neuralnet_destroy(net);
+        neural_network_destroy(net);
     }
 #else
     GTEST_SKIP() << "ENABLE_MALLOC_INJECTION not defined, skipping test";
@@ -153,14 +151,14 @@ TEST_F(ErrorInjectionTest, QueueManager_MallocFailure)
 TEST_F(ErrorInjectionTest, NullPointerHandling_NeuralNetwork)
 {
     // All these should handle NULL gracefully (not crash)
-    EXPECT_NO_FATAL_FAILURE(nimcp_neuralnet_destroy(nullptr));
+    EXPECT_NO_FATAL_FAILURE(neural_network_destroy(nullptr));
 
     float inputs[10] = {0};
     float outputs[5] = {0};
-    EXPECT_NO_FATAL_FAILURE(nimcp_neuralnet_forward(nullptr, inputs, outputs));
+    EXPECT_NO_FATAL_FAILURE(neural_network_forward(nullptr, inputs, 10, outputs, 5));
 
     network_stats_t stats;
-    EXPECT_NO_FATAL_FAILURE(nimcp_neuralnet_get_stats(nullptr, &stats));
+    EXPECT_NO_FATAL_FAILURE(neural_network_get_stats(nullptr, &stats));
 }
 
 /**
@@ -190,41 +188,41 @@ TEST_F(ErrorInjectionTest, InvalidConfig_NeuralNetwork)
 {
     // Test with zero neurons
     {
-        nimcp_neuralnet_config_t config = {.num_inputs = 0,  // Invalid
-                                           .num_outputs = 5,
-                                           .num_hidden = 20};
+        network_config_t config = {.num_neurons = 20,
+                                   .input_size = 0,  // Invalid
+                                   .output_size = 5};
 
-        nimcp_neuralnet_t* net = nimcp_neuralnet_create(&config);
+        neural_network_t net = neural_network_create(&config);
         EXPECT_EQ(net, nullptr);
     }
 
     // Test with negative learning rate
     {
-        nimcp_neuralnet_config_t config = {
-            .num_inputs = 10,
-            .num_outputs = 5,
-            .num_hidden = 20,
-            .learning_rate = -0.5f  // Invalid
+        network_config_t config = {
+            .num_neurons = 20,
+            .learning_rate = -0.5f,  // Invalid
+            .input_size = 10,
+            .output_size = 5
         };
 
-        nimcp_neuralnet_t* net = nimcp_neuralnet_create(&config);
+        neural_network_t net = neural_network_create(&config);
         // May return NULL or clamp to valid range - either is acceptable
         if (net) {
-            nimcp_neuralnet_destroy(net);
+            neural_network_destroy(net);
         }
     }
 
     // Test with excessive neurons
     {
-        nimcp_neuralnet_config_t config = {.num_inputs = 1000000,  // Too large
-                                           .num_outputs = 1000000,
-                                           .num_hidden = 1000000};
+        network_config_t config = {.num_neurons = 1000000,  // Too large
+                                   .input_size = 1000000,
+                                   .output_size = 1000000};
 
-        nimcp_neuralnet_t* net = nimcp_neuralnet_create(&config);
+        neural_network_t net = neural_network_create(&config);
         // Should fail due to excessive memory requirements
         if (net) {
             // If it somehow succeeds, clean up
-            nimcp_neuralnet_destroy(net);
+            neural_network_destroy(net);
         }
     }
 }
