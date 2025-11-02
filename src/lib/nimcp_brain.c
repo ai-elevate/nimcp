@@ -765,9 +765,12 @@ static adaptive_network_t create_brain_network(uint32_t num_inputs, uint32_t num
 
     adaptive_network_t network = adaptive_network_create(&net_config);
 
-    // NOTE: Do NOT free layer_sizes here - adaptive_network_create stores the pointer
-    // The adaptive network will free it when destroyed
-    // nimcp_free(net_config.base_config.layer_sizes);
+    // Free our copy of layer_sizes - adaptive_network_create makes its own deep copy
+    // WHY: Avoid memory leak - we allocated this in build_base_network_config
+    // WHAT: Safe to free because adaptive_network now owns its own copy
+    if (net_config.base_config.layer_sizes) {
+        nimcp_free(net_config.base_config.layer_sizes);
+    }
 
     return network;
 }

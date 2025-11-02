@@ -801,16 +801,39 @@ adaptive_network_t adaptive_network_create(const adaptive_network_config_t* conf
     if (!network)
         return NULL;
 
-    // Copy configuration
+    // Copy configuration (shallow copy first)
     memcpy(&network->config, config, sizeof(adaptive_network_config_t));
+
+    // Deep copy layer_sizes array to avoid dangling pointer
+    // WHY: Config may be stack-allocated by caller, so we need our own copy
+    // WHAT: Allocate and copy the layer_sizes array if present
+    if (config->base_config.num_layers > 0 && config->base_config.layer_sizes) {
+        uint32_t* layer_sizes_copy =
+            nimcp_calloc(config->base_config.num_layers, sizeof(uint32_t));
+        // Guard clause: Check allocation
+        if (!layer_sizes_copy) {
+            nimcp_free(network);
+            return NULL;
+        }
+        memcpy(layer_sizes_copy, config->base_config.layer_sizes,
+               config->base_config.num_layers * sizeof(uint32_t));
+        network->config.base_config.layer_sizes = layer_sizes_copy;
+    } else {
+        network->config.base_config.layer_sizes = NULL;
+    }
 
     // Initialize design pattern components
     initialize_design_patterns(network);
 
-    // Create base neural network
-    network->base_network = neural_network_create(&config->base_config);
+    // Create base neural network using our deep-copied config
+    // WHY: Use network->config not original config, since we deep-copied layer_sizes
+    // WHAT: Pass address of our config which has the corrected layer_sizes pointer
+    network->base_network = neural_network_create(&network->config.base_config);
     // Guard clause: Check base network creation
     if (!network->base_network) {
+        if (network->config.base_config.layer_sizes) {
+            nimcp_free((void*)network->config.base_config.layer_sizes);
+        }
         nimcp_free(network);
         return NULL;
     }
@@ -824,6 +847,9 @@ adaptive_network_t adaptive_network_create(const adaptive_network_config_t* conf
     // Guard clause: Check neuron states allocation
     if (!network->neuron_states) {
         neural_network_destroy(network->base_network);
+        if (network->config.base_config.layer_sizes) {
+            nimcp_free((void*)network->config.base_config.layer_sizes);
+        }
         nimcp_free(network);
         return NULL;
     }
@@ -834,6 +860,9 @@ adaptive_network_t adaptive_network_create(const adaptive_network_config_t* conf
     if (!network->input_statistics) {
         nimcp_free(network->neuron_states);
         neural_network_destroy(network->base_network);
+        if (network->config.base_config.layer_sizes) {
+            nimcp_free((void*)network->config.base_config.layer_sizes);
+        }
         nimcp_free(network);
         return NULL;
     }
@@ -922,6 +951,12 @@ void adaptive_network_destroy(adaptive_network_t network)
     // Destroy hash table
     if (network->label_table) {
         hash_table_destroy(network->label_table);
+    }
+
+    // Free layer_sizes array (deep copy allocated in create)
+    // WHY: We own this memory after deep copy in adaptive_network_create
+    if (network->config.base_config.layer_sizes) {
+        nimcp_free((void*)network->config.base_config.layer_sizes);
     }
 
     nimcp_free(network);
