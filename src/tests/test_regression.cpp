@@ -25,6 +25,7 @@ extern "C" {
 #include "nimcp_consolidation.h"
 #include "nimcp_curiosity.h"
 #include "nimcp_dataio.h"
+#include "nimcp_distributed_cognition.h"
 #include "nimcp_ethics.h"
 #include "nimcp_events.h"
 #include "nimcp_introspection.h"
@@ -71,6 +72,28 @@ protected:
         nimcp_memory_get_stats(&stats);
         // Allow small leaks for global state
         EXPECT_LT(stats.current_allocated, 4096);
+    }
+
+    /**
+     * WHAT: Helper to create distributed cognition coordinator for testing
+     * WHY:  Simplify test setup with consistent configuration
+     * HOW:  Mock P2P node, standard config
+     */
+    distrib_cognition_t create_test_coordinator() {
+        p2p_node_t p2p_node = (p2p_node_t)0x1234; // Mock P2P node
+
+        distrib_cognition_config_t config;
+        config.enable_neuromod_sync = true;
+        config.neuromod_broadcast_interval_ms = 100;
+        config.neuromod_diffusion_rate = 0.5f;
+        config.enable_glial_sync = true;
+        config.glial_sync_interval_ms = 100;
+        config.enable_region_sync = true;
+        config.region_sync_interval_ms = 100;
+        config.sync_mode = SYNC_MODE_BIDIRECTIONAL;
+        config.max_message_queue = 100;
+
+        return distrib_cognition_create(&config, p2p_node);
     }
 };
 
@@ -212,6 +235,82 @@ TEST_F(RegressionTest, Attention_ConfigValidate) {
 
     bool valid = attention_validate_config(&config);
     EXPECT_TRUE(valid);
+}
+
+//=============================================================================
+// Phase 3: Distributed Cognition Regression Tests
+//=============================================================================
+
+/**
+ * WHAT: Test distributed cognition coordinator creation and destruction
+ * WHY:  Verify basic lifecycle operations don't crash
+ * HOW:  Create with default config, verify non-null, destroy
+ */
+TEST_F(RegressionTest, DistributedCognition_CreateDestroy) {
+    distrib_cognition_t dc = create_test_coordinator();
+    ASSERT_NE(dc, nullptr);
+    distrib_cognition_destroy(dc);
+}
+
+/**
+ * WHAT: Test start/stop lifecycle
+ * WHY:  Verify thread management works correctly
+ * HOW:  Create, start, stop, destroy in sequence
+ */
+TEST_F(RegressionTest, DistributedCognition_StartStop) {
+    distrib_cognition_t dc = create_test_coordinator();
+    ASSERT_NE(dc, nullptr);
+
+    EXPECT_TRUE(distrib_cognition_start(dc));
+    EXPECT_TRUE(distrib_cognition_stop(dc));
+
+    distrib_cognition_destroy(dc);
+}
+
+/**
+ * WHAT: Test statistics query
+ * WHY:  Verify stats API works without crashing
+ * HOW:  Get stats, verify zero initialization
+ */
+TEST_F(RegressionTest, DistributedCognition_GetStats) {
+    distrib_cognition_t dc = create_test_coordinator();
+    ASSERT_NE(dc, nullptr);
+
+    distrib_cognition_stats_t stats;
+    EXPECT_TRUE(distrib_cognition_get_stats(dc, &stats));
+    EXPECT_EQ(stats.neuromod_broadcasts, 0);
+    EXPECT_EQ(stats.glial_pruning_coordinations, 0);
+
+    distrib_cognition_destroy(dc);
+}
+
+/**
+ * WHAT: Test neuromodulator broadcast edge case (zero concentration)
+ * WHY:  Verify system handles edge values without errors
+ * HOW:  Broadcast zero and max concentration values
+ */
+TEST_F(RegressionTest, DistributedCognition_EdgeConcentrations) {
+    distrib_cognition_t dc = create_test_coordinator();
+    ASSERT_NE(dc, nullptr);
+
+    EXPECT_TRUE(distrib_cognition_broadcast_neuromod(dc, NEUROMOD_DOPAMINE, 0.0f));
+    EXPECT_TRUE(distrib_cognition_broadcast_neuromod(dc, NEUROMOD_SEROTONIN, 1.0f));
+
+    distrib_cognition_destroy(dc);
+}
+
+/**
+ * WHAT: Test pruning coordination basic operation
+ * WHY:  Verify consensus API doesn't crash with valid inputs
+ * HOW:  Coordinate single pruning decision
+ */
+TEST_F(RegressionTest, DistributedCognition_PruningCoordination) {
+    distrib_cognition_t dc = create_test_coordinator();
+    ASSERT_NE(dc, nullptr);
+
+    EXPECT_TRUE(distrib_cognition_coordinate_pruning(dc, 1, 2, 0.5f, 1));
+
+    distrib_cognition_destroy(dc);
 }
 
 //=============================================================================

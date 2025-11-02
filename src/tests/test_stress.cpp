@@ -17,7 +17,10 @@
 #include <thread>
 #include <vector>
 #include "../include/nimcp_brain.h"
+#include "../include/nimcp_distributed_cognition.h"
+#include "../include/nimcp_glial_integration.h"
 #include "../include/nimcp_neuralnet.h"
+#include "../include/nimcp_neuromodulators.h"
 #include "utils/nimcp_memory.h"
 #include "utils/nimcp_queue_manager.h"
 
@@ -43,6 +46,28 @@ class StressTest : public ::testing::Test {
     void TearDown() override
     {
         // Cleanup
+    }
+
+    /**
+     * WHAT: Helper to create distributed cognition coordinator for stress testing
+     * WHY:  Simplify test setup with fast sync intervals
+     * HOW:  Mock P2P node, aggressive config for load testing
+     */
+    distrib_cognition_t create_stress_coordinator() {
+        p2p_node_t p2p_node = (p2p_node_t)0x1234; // Mock P2P node
+
+        distrib_cognition_config_t config;
+        config.enable_neuromod_sync = true;
+        config.neuromod_broadcast_interval_ms = 10;
+        config.neuromod_diffusion_rate = 0.5f;
+        config.enable_glial_sync = true;
+        config.glial_sync_interval_ms = 10;
+        config.enable_region_sync = true;
+        config.region_sync_interval_ms = 10;
+        config.sync_mode = SYNC_MODE_BIDIRECTIONAL;
+        config.max_message_queue = 10000;
+
+        return distrib_cognition_create(&config, p2p_node);
     }
 };
 
@@ -403,6 +428,241 @@ TEST_F(StressTest, Brain_ConcurrentLifecycle)
 
     EXPECT_GT(success_count.load(), 0) << "No successful brain operations";
     EXPECT_EQ(error_count.load(), 0) << "Errors during concurrent brain operations";
+}
+
+//==============================================================================
+// Phase 3: Distributed Cognition Stress Tests
+//==============================================================================
+
+/**
+ * WHAT: Stress test with thousands of neuromodulator broadcasts
+ * WHY:  Verify system handles high-frequency broadcast load
+ * HOW:  Rapid-fire broadcasts across all neuromodulator types
+ */
+TEST_F(StressTest, DistributedCognition_MassNeuromodBroadcasts)
+{
+    distrib_cognition_t dc = create_stress_coordinator();
+    ASSERT_NE(dc, nullptr);
+
+    ASSERT_TRUE(distrib_cognition_start(dc));
+
+    // Broadcast 10,000 neuromodulator updates
+    const int broadcast_count = 10000;
+    for (int i = 0; i < broadcast_count; i++) {
+        neuromodulator_type_t type = static_cast<neuromodulator_type_t>(i % NEUROMOD_COUNT);
+        float concentration = (i % 100) / 100.0f;
+
+        ASSERT_TRUE(distrib_cognition_broadcast_neuromod(dc, type, concentration));
+    }
+
+    // Verify stats
+    distrib_cognition_stats_t stats;
+    ASSERT_TRUE(distrib_cognition_get_stats(dc, &stats));
+    EXPECT_EQ(stats.neuromod_broadcasts, broadcast_count);
+
+    ASSERT_TRUE(distrib_cognition_stop(dc));
+    distrib_cognition_destroy(dc);
+}
+
+/**
+ * WHAT: Concurrent neuromodulator broadcasts from multiple threads
+ * WHY:  Verify thread safety under concurrent load
+ * HOW:  8 threads each broadcasting 1000 times
+ */
+TEST_F(StressTest, DistributedCognition_ConcurrentBroadcasts)
+{
+    distrib_cognition_t dc = create_stress_coordinator();
+    ASSERT_NE(dc, nullptr);
+
+    ASSERT_TRUE(distrib_cognition_start(dc));
+
+    std::atomic<int> error_count{0};
+    std::atomic<int> success_count{0};
+    std::vector<std::thread> threads;
+
+    // Launch concurrent broadcasting threads
+    for (int t = 0; t < CONCURRENT_THREADS; t++) {
+        threads.emplace_back([dc, &error_count, &success_count, t]() {
+            for (int i = 0; i < STRESS_ITERATIONS; i++) {
+                neuromodulator_type_t type = static_cast<neuromodulator_type_t>((t + i) % NEUROMOD_COUNT);
+                float concentration = ((t * STRESS_ITERATIONS + i) % 100) / 100.0f;
+
+                if (distrib_cognition_broadcast_neuromod(dc, type, concentration)) {
+                    success_count++;
+                } else {
+                    error_count++;
+                }
+
+                std::this_thread::yield();
+            }
+        });
+    }
+
+    // Wait for all threads
+    for (auto& thread : threads) {
+        thread.join();
+    }
+
+    EXPECT_EQ(error_count.load(), 0) << "Errors during concurrent broadcasts";
+    EXPECT_EQ(success_count.load(), CONCURRENT_THREADS * STRESS_ITERATIONS);
+
+    distrib_cognition_stats_t stats;
+    ASSERT_TRUE(distrib_cognition_get_stats(dc, &stats));
+    EXPECT_EQ(stats.neuromod_broadcasts, CONCURRENT_THREADS * STRESS_ITERATIONS);
+
+    ASSERT_TRUE(distrib_cognition_stop(dc));
+    distrib_cognition_destroy(dc);
+}
+
+/**
+ * WHAT: Mass pruning consensus voting under load
+ * WHY:  Verify consensus mechanism handles high vote volume
+ * HOW:  Thousands of pruning votes for multiple synapses
+ */
+TEST_F(StressTest, DistributedCognition_MassConsensusSessions)
+{
+    distrib_cognition_t dc = create_stress_coordinator();
+    ASSERT_NE(dc, nullptr);
+
+    glial_integration_t glial;
+    ASSERT_TRUE(distrib_cognition_register_glial_system(dc, &glial));
+
+    ASSERT_TRUE(distrib_cognition_start(dc));
+
+    // Create 5000 pruning votes across 100 different synapses
+    const int vote_count = 5000;
+    const int synapse_count = 100;
+
+    for (int i = 0; i < vote_count; i++) {
+        uint32_t source = i % synapse_count;
+        uint32_t target = (i + 1) % synapse_count;
+        float confidence = (i % 100) / 100.0f;
+        uint8_t action = i % 3;  // 0=monitor, 1=prune, 2=preserve
+
+        ASSERT_TRUE(distrib_cognition_coordinate_pruning(dc, source, target, confidence, action));
+    }
+
+    // Verify stats
+    distrib_cognition_stats_t stats;
+    ASSERT_TRUE(distrib_cognition_get_stats(dc, &stats));
+    EXPECT_EQ(stats.glial_pruning_coordinations, vote_count);
+
+    ASSERT_TRUE(distrib_cognition_stop(dc));
+    distrib_cognition_destroy(dc);
+}
+
+/**
+ * WHAT: Concurrent consensus voting from multiple threads
+ * WHY:  Verify thread safety of pruning coordination
+ * HOW:  8 threads each submitting 1000 votes
+ */
+TEST_F(StressTest, DistributedCognition_ConcurrentConsensus)
+{
+    distrib_cognition_t dc = create_stress_coordinator();
+    ASSERT_NE(dc, nullptr);
+
+    glial_integration_t glial;
+    ASSERT_TRUE(distrib_cognition_register_glial_system(dc, &glial));
+
+    ASSERT_TRUE(distrib_cognition_start(dc));
+
+    std::atomic<int> error_count{0};
+    std::atomic<int> success_count{0};
+    std::vector<std::thread> threads;
+
+    // Launch concurrent voting threads
+    for (int t = 0; t < CONCURRENT_THREADS; t++) {
+        threads.emplace_back([dc, &error_count, &success_count, t]() {
+            for (int i = 0; i < STRESS_ITERATIONS; i++) {
+                uint32_t source = (t * STRESS_ITERATIONS + i) % 500;
+                uint32_t target = (source + 1) % 500;
+                float confidence = ((t + i) % 100) / 100.0f;
+                uint8_t action = (t + i) % 3;
+
+                if (distrib_cognition_coordinate_pruning(dc, source, target, confidence, action)) {
+                    success_count++;
+                } else {
+                    error_count++;
+                }
+
+                std::this_thread::yield();
+            }
+        });
+    }
+
+    // Wait for all threads
+    for (auto& thread : threads) {
+        thread.join();
+    }
+
+    EXPECT_EQ(error_count.load(), 0) << "Errors during concurrent consensus";
+    EXPECT_EQ(success_count.load(), CONCURRENT_THREADS * STRESS_ITERATIONS);
+
+    ASSERT_TRUE(distrib_cognition_stop(dc));
+    distrib_cognition_destroy(dc);
+}
+
+/**
+ * WHAT: Long-running stability test for distributed coordinator
+ * WHY:  Verify no memory leaks or degradation over time
+ * HOW:  Run for 5 seconds with continuous operations
+ */
+TEST_F(StressTest, DISABLED_DistributedCognition_LongRunningStability)
+{
+    distrib_cognition_t dc = create_stress_coordinator();
+    ASSERT_NE(dc, nullptr);
+
+    ASSERT_TRUE(distrib_cognition_start(dc));
+
+    auto start = std::chrono::steady_clock::now();
+    auto end = start + std::chrono::seconds(STRESS_DURATION_SECONDS);
+
+    int operation_count = 0;
+    while (std::chrono::steady_clock::now() < end) {
+        // Alternate between broadcasts and consensus
+        if (operation_count % 2 == 0) {
+            neuromodulator_type_t type = static_cast<neuromodulator_type_t>(operation_count % NEUROMOD_COUNT);
+            distrib_cognition_broadcast_neuromod(dc, type, 0.5f);
+        } else {
+            distrib_cognition_coordinate_pruning(dc, operation_count % 1000, (operation_count + 1) % 1000, 0.7f, 1);
+        }
+
+        operation_count++;
+        std::this_thread::yield();
+    }
+
+    // Should complete thousands of operations
+    EXPECT_GT(operation_count, 1000) << "Unexpectedly low operation count";
+
+    distrib_cognition_stats_t stats;
+    ASSERT_TRUE(distrib_cognition_get_stats(dc, &stats));
+    EXPECT_GT(stats.neuromod_broadcasts + stats.glial_pruning_coordinations, 1000);
+
+    ASSERT_TRUE(distrib_cognition_stop(dc));
+    distrib_cognition_destroy(dc);
+}
+
+/**
+ * WHAT: Rapid start/stop cycles stress test
+ * WHY:  Verify robust thread lifecycle management
+ * HOW:  100 cycles of start/stop operations
+ */
+TEST_F(StressTest, DistributedCognition_RapidStartStopCycles)
+{
+    distrib_cognition_t dc = create_stress_coordinator();
+    ASSERT_NE(dc, nullptr);
+
+    const int cycles = 100;
+    for (int i = 0; i < cycles; i++) {
+        ASSERT_TRUE(distrib_cognition_start(dc)) << "Failed to start at cycle " << i;
+
+        // Do a few operations
+        distrib_cognition_broadcast_neuromod(dc, NEUROMOD_DOPAMINE, 0.5f);
+
+        ASSERT_TRUE(distrib_cognition_stop(dc)) << "Failed to stop at cycle " << i;
+    }
+
+    distrib_cognition_destroy(dc);
 }
 
 //==============================================================================
