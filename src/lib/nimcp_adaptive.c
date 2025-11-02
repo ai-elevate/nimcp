@@ -798,21 +798,30 @@ static void initialize_design_patterns(adaptive_network_t network)
  */
 adaptive_network_t adaptive_network_create(const adaptive_network_config_t* config)
 {
+    fprintf(stderr, "[DEBUG adaptive_network_create] Entry, config=%p\n", (void*)config); fflush(stderr);
+
     // Guard clause: Validate configuration
     if (!validate_network_config(config)) {
+        fprintf(stderr, "[DEBUG adaptive_network_create] Validation failed\n"); fflush(stderr);
         return NULL;
     }
+    fprintf(stderr, "[DEBUG adaptive_network_create] Validation passed\n"); fflush(stderr);
 
     // Allocate network structure
+    fprintf(stderr, "[DEBUG adaptive_network_create] Allocating network...\n"); fflush(stderr);
     adaptive_network_t network = nimcp_calloc(1, sizeof(struct adaptive_network_struct));
 
     // Guard clause: Check allocation
     if (!network) {
+        fprintf(stderr, "[DEBUG adaptive_network_create] Allocation failed\n"); fflush(stderr);
         return NULL;
     }
+    fprintf(stderr, "[DEBUG adaptive_network_create] Network allocated at %p\n", (void*)network); fflush(stderr);
 
     // Copy configuration (shallow copy first)
+    fprintf(stderr, "[DEBUG adaptive_network_create] Copying config...\n"); fflush(stderr);
     memcpy(&network->config, config, sizeof(adaptive_network_config_t));
+    fprintf(stderr, "[DEBUG adaptive_network_create] Config copied\n"); fflush(stderr);
 
     // Deep copy layer_sizes array to avoid dangling pointer
     // WHY: Config may be stack-allocated by caller, so we need our own copy

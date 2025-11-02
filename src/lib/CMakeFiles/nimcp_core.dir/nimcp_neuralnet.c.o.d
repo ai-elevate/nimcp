@@ -198,4 +198,5 @@ src/lib/CMakeFiles/nimcp_core.dir/nimcp_neuralnet.c.o: \
  /usr/include/python3.10/cpython/pyfpe.h \
  /usr/include/python3.10/tracemalloc.h \
  /home/bbrelin/src/repos/nimcp/src/lib/../include/nimcp_export.h \
- /usr/lib/gcc/x86_64-linux-gnu/11/include/stdbool.h
+ /usr/lib/gcc/x86_64-linux-gnu/11/include/stdbool.h \
+ /home/bbrelin/src/repos/nimcp/src/include/utils/nimcp_memory.h

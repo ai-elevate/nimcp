@@ -223,4 +223,5 @@ src/lib/CMakeFiles/nimcp_core.dir/nimcp_ethics.c.o: \
  /home/bbrelin/src/repos/nimcp/src/lib/../include/nimcp_microglia.h \
  /home/bbrelin/src/repos/nimcp/src/lib/../include/nimcp_brain_regions.h \
  /home/bbrelin/src/repos/nimcp/src/lib/../include/nimcp_neuron_types.h \
- /home/bbrelin/src/repos/nimcp/src/include/utils/nimcp_hash_table.h
+ /home/bbrelin/src/repos/nimcp/src/include/utils/nimcp_hash_table.h \
+ /home/bbrelin/src/repos/nimcp/src/include/utils/nimcp_memory.h

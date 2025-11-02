@@ -797,6 +797,7 @@ src/lib/CMakeFiles/nimcp_core.dir/nimcp_adaptive.c.o
  /usr/include/python3.10/tracemalloc.h
  /home/bbrelin/src/repos/nimcp/src/include/nimcp_neuralnet.h
  /home/bbrelin/src/repos/nimcp/src/include/utils/nimcp_hash_table.h
+ /home/bbrelin/src/repos/nimcp/src/include/utils/nimcp_memory.h
 
 src/lib/CMakeFiles/nimcp_core.dir/nimcp_astrocytes.c.o
  /home/bbrelin/src/repos/nimcp/src/lib/nimcp_astrocytes.c
@@ -2163,6 +2164,7 @@ src/lib/CMakeFiles/nimcp_core.dir/nimcp_curiosity.c.o
  /home/bbrelin/src/repos/nimcp/src/include/nimcp_neuron_types.h
  /home/bbrelin/src/repos/nimcp/src/include/nimcp_brain.h
  /home/bbrelin/src/repos/nimcp/src/include/utils/nimcp_hash_table.h
+ /home/bbrelin/src/repos/nimcp/src/include/utils/nimcp_memory.h
 
 src/lib/CMakeFiles/nimcp_core.dir/nimcp_dataio.c.o
  /home/bbrelin/src/repos/nimcp/src/lib/nimcp_dataio.c
@@ -2923,6 +2925,7 @@ src/lib/CMakeFiles/nimcp_core.dir/nimcp_ethics.c.o
  /home/bbrelin/src/repos/nimcp/src/include/nimcp_brain_regions.h
  /home/bbrelin/src/repos/nimcp/src/include/nimcp_neuron_types.h
  /home/bbrelin/src/repos/nimcp/src/include/utils/nimcp_hash_table.h
+ /home/bbrelin/src/repos/nimcp/src/include/utils/nimcp_memory.h
 
 src/lib/CMakeFiles/nimcp_core.dir/nimcp_events.c.o
  /home/bbrelin/src/repos/nimcp/src/lib/nimcp_events.c
@@ -3913,6 +3916,7 @@ src/lib/CMakeFiles/nimcp_core.dir/nimcp_knowledge.c.o
  /home/bbrelin/src/repos/nimcp/src/include/nimcp_curiosity.h
  /home/bbrelin/src/repos/nimcp/src/include/nimcp_brain.h
  /home/bbrelin/src/repos/nimcp/src/include/nimcp_curiosity.h
+ /home/bbrelin/src/repos/nimcp/src/include/utils/nimcp_memory.h
 
 src/lib/CMakeFiles/nimcp_core.dir/nimcp_microglia.c.o
  /home/bbrelin/src/repos/nimcp/src/lib/nimcp_microglia.c
@@ -4237,6 +4241,7 @@ src/lib/CMakeFiles/nimcp_core.dir/nimcp_neuralnet.c.o
  /usr/include/python3.10/tracemalloc.h
  /home/bbrelin/src/repos/nimcp/src/include/nimcp_export.h
  /usr/lib/gcc/x86_64-linux-gnu/11/include/stdbool.h
+ /home/bbrelin/src/repos/nimcp/src/include/utils/nimcp_memory.h
 
 src/lib/CMakeFiles/nimcp_core.dir/nimcp_neuromodulators.c.o
  /home/bbrelin/src/repos/nimcp/src/lib/nimcp_neuromodulators.c
@@ -5910,6 +5915,7 @@ src/lib/CMakeFiles/nimcp_core.dir/nimcp_security.c.o
  /usr/include/x86_64-linux-gnu/bits/getopt_posix.h
  /usr/include/x86_64-linux-gnu/bits/getopt_core.h
  /usr/include/x86_64-linux-gnu/bits/unistd_ext.h
+ /home/bbrelin/src/repos/nimcp/src/include/utils/nimcp_memory.h
 
 src/lib/CMakeFiles/nimcp_core.dir/nimcp_stream.c.o
  /home/bbrelin/src/repos/nimcp/src/lib/nimcp_stream.c
@@ -6386,6 +6392,7 @@ src/lib/CMakeFiles/nimcp_core.dir/utils/nimcp_hash_table.c.o
  /usr/include/x86_64-linux-gnu/bits/stdlib-float.h
  /usr/include/string.h
  /usr/include/strings.h
+ /home/bbrelin/src/repos/nimcp/src/include/utils/nimcp_memory.h
 
 src/lib/CMakeFiles/nimcp_core.dir/utils/nimcp_json.c.o
  /home/bbrelin/src/repos/nimcp/src/lib/utils/nimcp_json.c
@@ -6984,6 +6991,7 @@ src/lib/CMakeFiles/nimcp_core.dir/utils/nimcp_thread.c.o
  /usr/include/x86_64-linux-gnu/bits/stdlib-float.h
  /usr/include/string.h
  /usr/include/strings.h
+ /home/bbrelin/src/repos/nimcp/src/include/utils/nimcp_memory.h
 
 src/lib/CMakeFiles/nimcp_core.dir/utils/nimcp_thread_pool.c.o
  /home/bbrelin/src/repos/nimcp/src/lib/utils/nimcp_thread_pool.c
@@ -7198,6 +7206,7 @@ src/lib/CMakeFiles/nimcp_core.dir/utils/nimcp_validate.c.o
  /usr/include/x86_64-linux-gnu/bits/types/FILE.h
  /usr/include/x86_64-linux-gnu/bits/types/struct_FILE.h
  /usr/include/x86_64-linux-gnu/bits/stdio_lim.h
+ /home/bbrelin/src/repos/nimcp/src/include/utils/nimcp_memory.h
 
 src/lib/CMakeFiles/nimcp_core.dir/utils/nimcp_vector.c.o
  /home/bbrelin/src/repos/nimcp/src/lib/utils/nimcp_vector.c

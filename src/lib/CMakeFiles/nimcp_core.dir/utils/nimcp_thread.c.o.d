@@ -62,4 +62,5 @@ src/lib/CMakeFiles/nimcp_core.dir/utils/nimcp_thread.c.o: \
  /usr/include/x86_64-linux-gnu/bits/types/sigset_t.h \
  /usr/include/x86_64-linux-gnu/bits/types/struct_timeval.h \
  /usr/include/alloca.h /usr/include/x86_64-linux-gnu/bits/stdlib-float.h \
- /usr/include/string.h /usr/include/strings.h
+ /usr/include/string.h /usr/include/strings.h \
+ /home/bbrelin/src/repos/nimcp/src/include/utils/nimcp_memory.h

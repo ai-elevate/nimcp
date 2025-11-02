@@ -792,7 +792,8 @@ src/lib/CMakeFiles/nimcp_core.dir/nimcp_adaptive.c.o: src/lib/nimcp_adaptive.c \
   /usr/include/python3.10/cpython/pyfpe.h \
   /usr/include/python3.10/tracemalloc.h \
   src/include/nimcp_neuralnet.h \
-  src/include/utils/nimcp_hash_table.h
+  src/include/utils/nimcp_hash_table.h \
+  src/include/utils/nimcp_memory.h
 
 src/lib/CMakeFiles/nimcp_core.dir/nimcp_astrocytes.c.o: src/lib/nimcp_astrocytes.c \
   /usr/include/stdc-predef.h \
@@ -2151,7 +2152,8 @@ src/lib/CMakeFiles/nimcp_core.dir/nimcp_curiosity.c.o: src/lib/nimcp_curiosity.c
   src/include/nimcp_brain_regions.h \
   src/include/nimcp_neuron_types.h \
   src/include/nimcp_brain.h \
-  src/include/utils/nimcp_hash_table.h
+  src/include/utils/nimcp_hash_table.h \
+  src/include/utils/nimcp_memory.h
 
 src/lib/CMakeFiles/nimcp_core.dir/nimcp_dataio.c.o: src/lib/nimcp_dataio.c \
   /usr/include/stdc-predef.h \
@@ -2908,7 +2910,8 @@ src/lib/CMakeFiles/nimcp_core.dir/nimcp_ethics.c.o: src/lib/nimcp_ethics.c \
   src/include/nimcp_microglia.h \
   src/include/nimcp_brain_regions.h \
   src/include/nimcp_neuron_types.h \
-  src/include/utils/nimcp_hash_table.h
+  src/include/utils/nimcp_hash_table.h \
+  src/include/utils/nimcp_memory.h
 
 src/lib/CMakeFiles/nimcp_core.dir/nimcp_events.c.o: src/lib/nimcp_events.c \
   /usr/include/stdc-predef.h \
@@ -3894,7 +3897,8 @@ src/lib/CMakeFiles/nimcp_core.dir/nimcp_knowledge.c.o: src/lib/nimcp_knowledge.c
   src/include/nimcp_neuron_types.h \
   src/include/nimcp_curiosity.h \
   src/include/nimcp_brain.h \
-  src/include/nimcp_curiosity.h
+  src/include/nimcp_curiosity.h \
+  src/include/utils/nimcp_memory.h
 
 src/lib/CMakeFiles/nimcp_core.dir/nimcp_microglia.c.o: src/lib/nimcp_microglia.c \
   /usr/include/stdc-predef.h \
@@ -4216,7 +4220,8 @@ src/lib/CMakeFiles/nimcp_core.dir/nimcp_neuralnet.c.o: src/lib/nimcp_neuralnet.c
   /usr/include/python3.10/cpython/pyfpe.h \
   /usr/include/python3.10/tracemalloc.h \
   src/include/nimcp_export.h \
-  /usr/lib/gcc/x86_64-linux-gnu/11/include/stdbool.h
+  /usr/lib/gcc/x86_64-linux-gnu/11/include/stdbool.h \
+  src/include/utils/nimcp_memory.h
 
 src/lib/CMakeFiles/nimcp_core.dir/nimcp_neuromodulators.c.o: src/lib/nimcp_neuromodulators.c \
   /usr/include/stdc-predef.h \
@@ -5881,7 +5886,8 @@ src/lib/CMakeFiles/nimcp_core.dir/nimcp_security.c.o: src/lib/nimcp_security.c \
   /usr/include/x86_64-linux-gnu/bits/confname.h \
   /usr/include/x86_64-linux-gnu/bits/getopt_posix.h \
   /usr/include/x86_64-linux-gnu/bits/getopt_core.h \
-  /usr/include/x86_64-linux-gnu/bits/unistd_ext.h
+  /usr/include/x86_64-linux-gnu/bits/unistd_ext.h \
+  src/include/utils/nimcp_memory.h
 
 src/lib/CMakeFiles/nimcp_core.dir/nimcp_stream.c.o: src/lib/nimcp_stream.c \
   /usr/include/stdc-predef.h \
@@ -6353,7 +6359,8 @@ src/lib/CMakeFiles/nimcp_core.dir/utils/nimcp_hash_table.c.o: src/lib/utils/nimc
   /usr/include/alloca.h \
   /usr/include/x86_64-linux-gnu/bits/stdlib-float.h \
   /usr/include/string.h \
-  /usr/include/strings.h
+  /usr/include/strings.h \
+  src/include/utils/nimcp_memory.h
 
 src/lib/CMakeFiles/nimcp_core.dir/utils/nimcp_json.c.o: src/lib/utils/nimcp_json.c \
   /usr/include/stdc-predef.h \
@@ -6944,7 +6951,8 @@ src/lib/CMakeFiles/nimcp_core.dir/utils/nimcp_thread.c.o: src/lib/utils/nimcp_th
   /usr/include/alloca.h \
   /usr/include/x86_64-linux-gnu/bits/stdlib-float.h \
   /usr/include/string.h \
-  /usr/include/strings.h
+  /usr/include/strings.h \
+  src/include/utils/nimcp_memory.h
 
 src/lib/CMakeFiles/nimcp_core.dir/utils/nimcp_thread_pool.c.o: src/lib/utils/nimcp_thread_pool.c \
   /usr/include/stdc-predef.h \
@@ -7155,7 +7163,8 @@ src/lib/CMakeFiles/nimcp_core.dir/utils/nimcp_validate.c.o: src/lib/utils/nimcp_
   /usr/include/x86_64-linux-gnu/bits/types/__FILE.h \
   /usr/include/x86_64-linux-gnu/bits/types/FILE.h \
   /usr/include/x86_64-linux-gnu/bits/types/struct_FILE.h \
-  /usr/include/x86_64-linux-gnu/bits/stdio_lim.h
+  /usr/include/x86_64-linux-gnu/bits/stdio_lim.h \
+  src/include/utils/nimcp_memory.h
 
 src/lib/CMakeFiles/nimcp_core.dir/utils/nimcp_vector.c.o: src/lib/utils/nimcp_vector.c \
   /usr/include/stdc-predef.h \
@@ -7324,6 +7333,8 @@ src/include/nimcp_brain_regions.h:
 src/include/utils/nimcp_thread.h:
 
 /usr/include/lz4.h:
+
+/usr/include/dlfcn.h:
 
 src/lib/nimcp_stream.c:
 
@@ -7514,12 +7525,6 @@ src/include/nimcp_distributed_cognition.h:
 /usr/include/x86_64-linux-gnu/bits/wordsize.h:
 
 /usr/include/x86_64-linux-gnu/bits/types/locale_t.h:
-
-src/include/nimcp_events.h:
-
-src/include/utils/nimcp_memory.h:
-
-/usr/include/stdlib.h:
 
 /usr/include/x86_64-linux-gnu/bits/types/time_t.h:
 
@@ -7751,6 +7756,12 @@ src/include/nimcp_adaptive.h:
 
 /usr/include/python3.10/cpython/listobject.h:
 
+src/include/nimcp_events.h:
+
+/usr/include/stdlib.h:
+
+src/include/utils/nimcp_memory.h:
+
 /usr/include/python3.10/dictobject.h:
 
 /usr/include/python3.10/moduleobject.h:
@@ -7906,5 +7917,3 @@ src/lib/utils/nimcp_thread.c:
 /usr/lib/gcc/x86_64-linux-gnu/11/include/stdbool.h:
 
 /usr/include/x86_64-linux-gnu/bits/dirent_ext.h:
-
-/usr/include/dlfcn.h:

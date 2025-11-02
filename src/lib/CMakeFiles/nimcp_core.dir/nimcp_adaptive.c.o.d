@@ -181,4 +181,5 @@ src/lib/CMakeFiles/nimcp_core.dir/nimcp_adaptive.c.o: \
  /usr/include/python3.10/cpython/pyfpe.h \
  /usr/include/python3.10/tracemalloc.h \
  /home/bbrelin/src/repos/nimcp/src/lib/../include/nimcp_neuralnet.h \
- /home/bbrelin/src/repos/nimcp/src/include/utils/nimcp_hash_table.h
+ /home/bbrelin/src/repos/nimcp/src/include/utils/nimcp_hash_table.h \
+ /home/bbrelin/src/repos/nimcp/src/include/utils/nimcp_memory.h

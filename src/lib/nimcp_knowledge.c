@@ -214,11 +214,14 @@ static bool knowledge_hash_table_insert(knowledge_hash_table_t* table, const cha
     if (!entry)
         return false;
 
-    entry->concept = strdup(concept);
+    // Use nimcp_malloc instead of strdup to match nimcp_free in destroy
+    size_t concept_len = strlen(concept);
+    entry->concept = nimcp_malloc(concept_len + 1);
     if (!entry->concept) {
         nimcp_free(entry);
         return false;
     }
+    strcpy(entry->concept, concept);
 
     entry->index = index;
     entry->next = table->entries[hash];
@@ -486,9 +489,12 @@ static uint32_t extract_concepts_optimized(const char* text, char concepts[][256
     if (!text || !concepts)
         return 0;
 
-    char* text_copy = strdup(text);
+    // Use nimcp_malloc instead of strdup to match nimcp_free below
+    size_t text_len = strlen(text);
+    char* text_copy = nimcp_malloc(text_len + 1);
     if (!text_copy)
         return 0;
+    strcpy(text_copy, text);
 
     const char* delimiters = " .,;:!?\n\t\"'()[]{}";
     uint32_t num_concepts = 0;

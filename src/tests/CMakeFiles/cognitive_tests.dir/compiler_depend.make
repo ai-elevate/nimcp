@@ -717,6 +717,28 @@ src/tests/CMakeFiles/cognitive_tests.dir/test_consolidation.cpp.o: src/tests/tes
   src/include/nimcp_brain.h \
   src/include/nimcp_adaptive.h \
   src/include/nimcp_neuralnet.h \
+  src/include/nimcp_distributed_cognition.h \
+  src/include/nimcp_protocol.h \
+  src/include/nimcp_p2pnode.h \
+  src/include/nimcp_neuromodulators.h \
+  src/include/nimcp_glial_integration.h \
+  src/include/utils/nimcp_common.h \
+  /usr/include/dirent.h \
+  /usr/include/x86_64-linux-gnu/bits/dirent.h \
+  /usr/include/x86_64-linux-gnu/bits/dirent_ext.h \
+  /usr/include/dlfcn.h \
+  /usr/include/x86_64-linux-gnu/bits/dlfcn.h \
+  /usr/include/x86_64-linux-gnu/bits/dl_find_object.h \
+  /usr/include/lz4.h \
+  src/include/utils/nimcp_hash_table.h \
+  src/include/nimcp_astrocytes.h \
+  src/include/utils/nimcp_thread.h \
+  src/include/nimcp_oligodendrocytes.h \
+  src/include/utils/nimcp_memory.h \
+  src/include/utils/nimcp_time.h \
+  src/include/nimcp_microglia.h \
+  src/include/nimcp_brain_regions.h \
+  src/include/nimcp_neuron_types.h \
   src/include/nimcp_consolidation.h \
   src/include/nimcp_brain.h \
   /usr/include/c++/11/chrono \
@@ -1197,6 +1219,28 @@ src/tests/CMakeFiles/cognitive_tests.dir/test_curiosity.cpp.o: src/tests/test_cu
   src/include/nimcp_brain.h \
   src/include/nimcp_adaptive.h \
   src/include/nimcp_neuralnet.h \
+  src/include/nimcp_distributed_cognition.h \
+  src/include/nimcp_protocol.h \
+  src/include/nimcp_p2pnode.h \
+  src/include/nimcp_neuromodulators.h \
+  src/include/nimcp_glial_integration.h \
+  src/include/utils/nimcp_common.h \
+  /usr/include/dirent.h \
+  /usr/include/x86_64-linux-gnu/bits/dirent.h \
+  /usr/include/x86_64-linux-gnu/bits/dirent_ext.h \
+  /usr/include/dlfcn.h \
+  /usr/include/x86_64-linux-gnu/bits/dlfcn.h \
+  /usr/include/x86_64-linux-gnu/bits/dl_find_object.h \
+  /usr/include/lz4.h \
+  src/include/utils/nimcp_hash_table.h \
+  src/include/nimcp_astrocytes.h \
+  src/include/utils/nimcp_thread.h \
+  src/include/nimcp_oligodendrocytes.h \
+  src/include/utils/nimcp_memory.h \
+  src/include/utils/nimcp_time.h \
+  src/include/nimcp_microglia.h \
+  src/include/nimcp_brain_regions.h \
+  src/include/nimcp_neuron_types.h \
   /usr/include/c++/11/cstring
 
 src/tests/CMakeFiles/cognitive_tests.dir/test_ethics.cpp.o: src/tests/test_ethics.cpp \
@@ -2150,6 +2194,28 @@ src/tests/CMakeFiles/cognitive_tests.dir/test_introspection.cpp.o: src/tests/tes
   src/include/nimcp_brain.h \
   src/include/nimcp_adaptive.h \
   src/include/nimcp_neuralnet.h \
+  src/include/nimcp_distributed_cognition.h \
+  src/include/nimcp_protocol.h \
+  src/include/nimcp_p2pnode.h \
+  src/include/nimcp_neuromodulators.h \
+  src/include/nimcp_glial_integration.h \
+  src/include/utils/nimcp_common.h \
+  /usr/include/dirent.h \
+  /usr/include/x86_64-linux-gnu/bits/dirent.h \
+  /usr/include/x86_64-linux-gnu/bits/dirent_ext.h \
+  /usr/include/dlfcn.h \
+  /usr/include/x86_64-linux-gnu/bits/dlfcn.h \
+  /usr/include/x86_64-linux-gnu/bits/dl_find_object.h \
+  /usr/include/lz4.h \
+  src/include/utils/nimcp_hash_table.h \
+  src/include/nimcp_astrocytes.h \
+  src/include/utils/nimcp_thread.h \
+  src/include/nimcp_oligodendrocytes.h \
+  src/include/utils/nimcp_memory.h \
+  src/include/utils/nimcp_time.h \
+  src/include/nimcp_microglia.h \
+  src/include/nimcp_brain_regions.h \
+  src/include/nimcp_neuron_types.h \
   src/include/nimcp_introspection.h \
   src/include/nimcp_brain.h \
   /usr/include/c++/11/chrono \
@@ -2630,6 +2696,28 @@ src/tests/CMakeFiles/cognitive_tests.dir/test_knowledge.cpp.o: src/tests/test_kn
   src/include/nimcp_brain.h \
   src/include/nimcp_adaptive.h \
   src/include/nimcp_neuralnet.h \
+  src/include/nimcp_distributed_cognition.h \
+  src/include/nimcp_protocol.h \
+  src/include/nimcp_p2pnode.h \
+  src/include/nimcp_neuromodulators.h \
+  src/include/nimcp_glial_integration.h \
+  src/include/utils/nimcp_common.h \
+  /usr/include/dirent.h \
+  /usr/include/x86_64-linux-gnu/bits/dirent.h \
+  /usr/include/x86_64-linux-gnu/bits/dirent_ext.h \
+  /usr/include/dlfcn.h \
+  /usr/include/x86_64-linux-gnu/bits/dlfcn.h \
+  /usr/include/x86_64-linux-gnu/bits/dl_find_object.h \
+  /usr/include/lz4.h \
+  src/include/utils/nimcp_hash_table.h \
+  src/include/nimcp_astrocytes.h \
+  src/include/utils/nimcp_thread.h \
+  src/include/nimcp_oligodendrocytes.h \
+  src/include/utils/nimcp_memory.h \
+  src/include/utils/nimcp_time.h \
+  src/include/nimcp_microglia.h \
+  src/include/nimcp_brain_regions.h \
+  src/include/nimcp_neuron_types.h \
   src/include/nimcp_curiosity.h \
   /usr/include/c++/11/cstring
 
@@ -3107,13 +3195,33 @@ src/tests/CMakeFiles/cognitive_tests.dir/test_salience.cpp.o: src/tests/test_sal
   src/include/nimcp_brain.h \
   src/include/nimcp_adaptive.h \
   src/include/nimcp_neuralnet.h \
+  src/include/nimcp_distributed_cognition.h \
+  src/include/nimcp_protocol.h \
+  src/include/nimcp_p2pnode.h \
+  src/include/nimcp_neuromodulators.h \
+  src/include/nimcp_glial_integration.h \
+  src/include/utils/nimcp_common.h \
+  /usr/include/dirent.h \
+  /usr/include/x86_64-linux-gnu/bits/dirent.h \
+  /usr/include/x86_64-linux-gnu/bits/dirent_ext.h \
+  /usr/include/dlfcn.h \
+  /usr/include/x86_64-linux-gnu/bits/dlfcn.h \
+  /usr/include/x86_64-linux-gnu/bits/dl_find_object.h \
+  /usr/include/lz4.h \
+  src/include/utils/nimcp_hash_table.h \
+  src/include/nimcp_astrocytes.h \
+  src/include/utils/nimcp_thread.h \
+  src/include/nimcp_oligodendrocytes.h \
+  src/include/utils/nimcp_memory.h \
+  src/include/utils/nimcp_time.h \
+  src/include/nimcp_microglia.h \
+  src/include/nimcp_brain_regions.h \
+  src/include/nimcp_neuron_types.h \
   src/include/nimcp_salience.h \
   src/include/nimcp_brain.h \
   /usr/include/c++/11/chrono \
   /usr/include/c++/11/ratio
 
-
-src/include/nimcp_salience.h:
 
 src/tests/test_salience.cpp:
 
@@ -3129,11 +3237,33 @@ src/tests/test_introspection.cpp:
 
 src/include/nimcp_consolidation.h:
 
+src/include/nimcp_microglia.h:
+
+src/include/utils/nimcp_time.h:
+
+src/include/nimcp_salience.h:
+
+src/include/utils/nimcp_hash_table.h:
+
+/usr/include/lz4.h:
+
+/usr/include/x86_64-linux-gnu/bits/dl_find_object.h:
+
+/usr/include/dlfcn.h:
+
+/usr/include/x86_64-linux-gnu/bits/dirent.h:
+
+src/include/nimcp_glial_integration.h:
+
 src/include/nimcp_adaptive.h:
 
 /usr/include/c++/11/math.h:
 
 /usr/include/c++/11/tr1/poly_laguerre.tcc:
+
+src/include/nimcp_brain_regions.h:
+
+src/include/utils/nimcp_thread.h:
 
 /usr/include/c++/11/tr1/poly_hermite.tcc:
 
@@ -3256,6 +3386,8 @@ src/include/nimcp_knowledge.h:
 /usr/include/c++/11/bits/ostream.tcc:
 
 /usr/include/c++/11/bits/streambuf_iterator.h:
+
+/usr/include/dirent.h:
 
 /usr/include/x86_64-linux-gnu/c++/11/bits/ctype_base.h:
 
@@ -3585,7 +3717,11 @@ src/include/nimcp_module.h:
 
 /usr/include/inttypes.h:
 
+src/include/nimcp_astrocytes.h:
+
 /usr/include/x86_64-linux-gnu/gnu/stubs.h:
+
+src/include/nimcp_distributed_cognition.h:
 
 /usr/include/x86_64-linux-gnu/bits/endian.h:
 
@@ -3619,6 +3755,8 @@ src/include/nimcp_module.h:
 
 src/include/nimcp_events.h:
 
+src/include/utils/nimcp_memory.h:
+
 /usr/include/stdlib.h:
 
 /usr/include/x86_64-linux-gnu/bits/types/time_t.h:
@@ -3630,6 +3768,8 @@ src/include/nimcp_events.h:
 src/python/nimcp_module.c:
 
 /usr/include/c++/11/pstl/pstl_config.h:
+
+src/include/nimcp_neuron_types.h:
 
 /usr/include/python3.10/pymacconfig.h:
 
@@ -3803,6 +3943,8 @@ src/include/nimcp_ethics.h:
 
 /usr/include/stdio.h:
 
+/usr/include/x86_64-linux-gnu/bits/dlfcn.h:
+
 /usr/include/c++/11/bits/atomic_lockfree_defines.h:
 
 /usr/include/python3.10/bltinmodule.h:
@@ -3915,6 +4057,8 @@ src/include/nimcp_ethics.h:
 
 /usr/include/python3.10/enumobject.h:
 
+/usr/include/x86_64-linux-gnu/bits/dirent_ext.h:
+
 /usr/include/gtest/internal/gtest-type-util.h:
 
 /usr/include/x86_64-linux-gnu/bits/local_lim.h:
@@ -3991,6 +4135,8 @@ src/include/nimcp_protocol.h:
 
 /usr/include/pthread.h:
 
+src/include/nimcp_oligodendrocytes.h:
+
 /usr/include/c++/11/bits/stl_iterator_base_funcs.h:
 
 /usr/include/c++/11/bits/cpp_type_traits.h:
@@ -4039,6 +4185,8 @@ src/include/nimcp_curiosity.h:
 
 /usr/include/python3.10/osmodule.h:
 
+src/include/nimcp_neuromodulators.h:
+
 /usr/include/python3.10/intrcheck.h:
 
 /usr/include/c++/11/bits/char_traits.h:
@@ -4080,6 +4228,8 @@ src/tests/test_helpers.h:
 /usr/include/c++/11/cstddef:
 
 /usr/include/c++/11/limits:
+
+src/include/utils/nimcp_common.h:
 
 /usr/include/c++/11/memory:
 
