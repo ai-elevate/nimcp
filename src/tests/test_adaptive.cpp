@@ -2,6 +2,7 @@
 
 extern "C" {
 #include "../include/nimcp_adaptive.h"
+#include "utils/nimcp_memory.h"
 }
 
 //=============================================================================
@@ -620,11 +621,11 @@ TEST(AdaptiveInterpret, ActivationAnalysis)
     EXPECT_GE(analysis.confidence, 0.0f);
     EXPECT_LE(analysis.confidence, 1.0f);
 
-    // Free allocated arrays
+    // Free allocated arrays (must use nimcp_free since allocated with nimcp_malloc)
     if (analysis.active_neuron_ids)
-        free(analysis.active_neuron_ids);
+        nimcp_free(analysis.active_neuron_ids);
     if (analysis.activation_strengths)
-        free(analysis.activation_strengths);
+        nimcp_free(analysis.activation_strengths);
 
     adaptive_network_destroy(network);
 }

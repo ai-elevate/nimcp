@@ -2,6 +2,7 @@ src/lib/CMakeFiles/nimcp_core.dir/nimcp_consolidation.c.o: \
  /home/bbrelin/src/repos/nimcp/src/lib/nimcp_consolidation.c \
  /usr/include/stdc-predef.h \
  /home/bbrelin/src/repos/nimcp/src/include/nimcp_consolidation.h \
+ /usr/lib/gcc/x86_64-linux-gnu/11/include/stdbool.h \
  /usr/lib/gcc/x86_64-linux-gnu/11/include/stdint.h /usr/include/stdint.h \
  /usr/include/x86_64-linux-gnu/bits/libc-header-start.h \
  /usr/include/features.h /usr/include/features-time64.h \
@@ -17,11 +18,10 @@ src/lib/CMakeFiles/nimcp_core.dir/nimcp_consolidation.c.o: \
  /usr/include/x86_64-linux-gnu/bits/wchar.h \
  /usr/include/x86_64-linux-gnu/bits/stdint-intn.h \
  /usr/include/x86_64-linux-gnu/bits/stdint-uintn.h \
- /usr/lib/gcc/x86_64-linux-gnu/11/include/stdbool.h \
  /home/bbrelin/src/repos/nimcp/src/include/nimcp_brain.h \
  /home/bbrelin/src/repos/nimcp/src/include/nimcp_adaptive.h \
- /home/bbrelin/src/repos/nimcp/src/include/nimcp_neuralnet.h \
  /home/bbrelin/src/repos/nimcp/src/include/nimcp_export.h \
+ /home/bbrelin/src/repos/nimcp/src/include/nimcp_neuralnet.h \
  /usr/include/python3.10/Python.h /usr/include/python3.10/patchlevel.h \
  /usr/include/python3.10/pyconfig.h \
  /usr/include/x86_64-linux-gnu/python3.10/pyconfig.h \
@@ -182,6 +182,25 @@ src/lib/CMakeFiles/nimcp_core.dir/nimcp_consolidation.c.o: \
  /usr/include/python3.10/cpython/fileutils.h \
  /usr/include/python3.10/cpython/pyfpe.h \
  /usr/include/python3.10/tracemalloc.h \
+ /home/bbrelin/src/repos/nimcp/src/include/nimcp_distributed_cognition.h \
+ /home/bbrelin/src/repos/nimcp/src/include/nimcp_protocol.h \
+ /home/bbrelin/src/repos/nimcp/src/include/nimcp_p2pnode.h \
+ /home/bbrelin/src/repos/nimcp/src/include/nimcp_neuromodulators.h \
+ /home/bbrelin/src/repos/nimcp/src/include/nimcp_glial_integration.h \
+ /home/bbrelin/src/repos/nimcp/src/include/utils/nimcp_common.h \
+ /usr/lib/gcc/x86_64-linux-gnu/11/include/stdatomic.h \
+ /usr/include/dirent.h /usr/include/x86_64-linux-gnu/bits/dirent.h \
+ /usr/include/x86_64-linux-gnu/bits/dirent_ext.h /usr/include/dlfcn.h \
+ /usr/include/x86_64-linux-gnu/bits/dlfcn.h /usr/include/lz4.h \
+ /home/bbrelin/src/repos/nimcp/src/include/utils/nimcp_hash_table.h \
+ /home/bbrelin/src/repos/nimcp/src/include/nimcp_astrocytes.h \
+ /home/bbrelin/src/repos/nimcp/src/include/utils/nimcp_thread.h \
+ /home/bbrelin/src/repos/nimcp/src/include/nimcp_oligodendrocytes.h \
+ /home/bbrelin/src/repos/nimcp/src/include/utils/nimcp_memory.h \
+ /home/bbrelin/src/repos/nimcp/src/include/utils/nimcp_time.h \
+ /home/bbrelin/src/repos/nimcp/src/include/nimcp_microglia.h \
+ /home/bbrelin/src/repos/nimcp/src/include/nimcp_brain_regions.h \
+ /home/bbrelin/src/repos/nimcp/src/include/nimcp_neuron_types.h \
  /home/bbrelin/src/repos/nimcp/src/include/utils/nimcp_memory.h \
  /home/bbrelin/src/repos/nimcp/src/include/utils/nimcp_thread.h \
  /home/bbrelin/src/repos/nimcp/src/include/utils/nimcp_time.h

@@ -24,7 +24,16 @@
 /home/bbrelin/src/repos/nimcp/build/src/python/CMakeFiles/install.dir
 /home/bbrelin/src/repos/nimcp/build/src/python/CMakeFiles/install/local.dir
 /home/bbrelin/src/repos/nimcp/build/src/python/CMakeFiles/install/strip.dir
-/home/bbrelin/src/repos/nimcp/build/src/tests/CMakeFiles/nimcp_tests.dir
+/home/bbrelin/src/repos/nimcp/build/src/tests/CMakeFiles/core_tests.dir
+/home/bbrelin/src/repos/nimcp/build/src/tests/CMakeFiles/glial_tests.dir
+/home/bbrelin/src/repos/nimcp/build/src/tests/CMakeFiles/plasticity_tests.dir
+/home/bbrelin/src/repos/nimcp/build/src/tests/CMakeFiles/cognitive_tests.dir
+/home/bbrelin/src/repos/nimcp/build/src/tests/CMakeFiles/networking_tests.dir
+/home/bbrelin/src/repos/nimcp/build/src/tests/CMakeFiles/io_tests.dir
+/home/bbrelin/src/repos/nimcp/build/src/tests/CMakeFiles/utility_tests.dir
+/home/bbrelin/src/repos/nimcp/build/src/tests/CMakeFiles/security_tests.dir
+/home/bbrelin/src/repos/nimcp/build/src/tests/CMakeFiles/integration_tests.dir
+/home/bbrelin/src/repos/nimcp/build/src/tests/CMakeFiles/quality_tests.dir
 /home/bbrelin/src/repos/nimcp/build/src/tests/CMakeFiles/edit_cache.dir
 /home/bbrelin/src/repos/nimcp/build/src/tests/CMakeFiles/rebuild_cache.dir
 /home/bbrelin/src/repos/nimcp/build/src/tests/CMakeFiles/list_install_components.dir

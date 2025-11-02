@@ -188,17 +188,134 @@ nimcp_python/fast:
 .PHONY : nimcp_python/fast
 
 #=============================================================================
-# Target rules for targets named nimcp_tests
+# Target rules for targets named core_tests
 
 # Build rule for target.
-nimcp_tests: cmake_check_build_system
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 nimcp_tests
-.PHONY : nimcp_tests
+core_tests: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 core_tests
+.PHONY : core_tests
 
 # fast build rule for target.
-nimcp_tests/fast:
-	$(MAKE) $(MAKESILENT) -f src/tests/CMakeFiles/nimcp_tests.dir/build.make src/tests/CMakeFiles/nimcp_tests.dir/build
-.PHONY : nimcp_tests/fast
+core_tests/fast:
+	$(MAKE) $(MAKESILENT) -f src/tests/CMakeFiles/core_tests.dir/build.make src/tests/CMakeFiles/core_tests.dir/build
+.PHONY : core_tests/fast
+
+#=============================================================================
+# Target rules for targets named glial_tests
+
+# Build rule for target.
+glial_tests: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 glial_tests
+.PHONY : glial_tests
+
+# fast build rule for target.
+glial_tests/fast:
+	$(MAKE) $(MAKESILENT) -f src/tests/CMakeFiles/glial_tests.dir/build.make src/tests/CMakeFiles/glial_tests.dir/build
+.PHONY : glial_tests/fast
+
+#=============================================================================
+# Target rules for targets named plasticity_tests
+
+# Build rule for target.
+plasticity_tests: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 plasticity_tests
+.PHONY : plasticity_tests
+
+# fast build rule for target.
+plasticity_tests/fast:
+	$(MAKE) $(MAKESILENT) -f src/tests/CMakeFiles/plasticity_tests.dir/build.make src/tests/CMakeFiles/plasticity_tests.dir/build
+.PHONY : plasticity_tests/fast
+
+#=============================================================================
+# Target rules for targets named cognitive_tests
+
+# Build rule for target.
+cognitive_tests: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 cognitive_tests
+.PHONY : cognitive_tests
+
+# fast build rule for target.
+cognitive_tests/fast:
+	$(MAKE) $(MAKESILENT) -f src/tests/CMakeFiles/cognitive_tests.dir/build.make src/tests/CMakeFiles/cognitive_tests.dir/build
+.PHONY : cognitive_tests/fast
+
+#=============================================================================
+# Target rules for targets named networking_tests
+
+# Build rule for target.
+networking_tests: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 networking_tests
+.PHONY : networking_tests
+
+# fast build rule for target.
+networking_tests/fast:
+	$(MAKE) $(MAKESILENT) -f src/tests/CMakeFiles/networking_tests.dir/build.make src/tests/CMakeFiles/networking_tests.dir/build
+.PHONY : networking_tests/fast
+
+#=============================================================================
+# Target rules for targets named io_tests
+
+# Build rule for target.
+io_tests: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 io_tests
+.PHONY : io_tests
+
+# fast build rule for target.
+io_tests/fast:
+	$(MAKE) $(MAKESILENT) -f src/tests/CMakeFiles/io_tests.dir/build.make src/tests/CMakeFiles/io_tests.dir/build
+.PHONY : io_tests/fast
+
+#=============================================================================
+# Target rules for targets named utility_tests
+
+# Build rule for target.
+utility_tests: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 utility_tests
+.PHONY : utility_tests
+
+# fast build rule for target.
+utility_tests/fast:
+	$(MAKE) $(MAKESILENT) -f src/tests/CMakeFiles/utility_tests.dir/build.make src/tests/CMakeFiles/utility_tests.dir/build
+.PHONY : utility_tests/fast
+
+#=============================================================================
+# Target rules for targets named security_tests
+
+# Build rule for target.
+security_tests: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 security_tests
+.PHONY : security_tests
+
+# fast build rule for target.
+security_tests/fast:
+	$(MAKE) $(MAKESILENT) -f src/tests/CMakeFiles/security_tests.dir/build.make src/tests/CMakeFiles/security_tests.dir/build
+.PHONY : security_tests/fast
+
+#=============================================================================
+# Target rules for targets named integration_tests
+
+# Build rule for target.
+integration_tests: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_tests
+.PHONY : integration_tests
+
+# fast build rule for target.
+integration_tests/fast:
+	$(MAKE) $(MAKESILENT) -f src/tests/CMakeFiles/integration_tests.dir/build.make src/tests/CMakeFiles/integration_tests.dir/build
+.PHONY : integration_tests/fast
+
+#=============================================================================
+# Target rules for targets named quality_tests
+
+# Build rule for target.
+quality_tests: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 quality_tests
+.PHONY : quality_tests
+
+# fast build rule for target.
+quality_tests/fast:
+	$(MAKE) $(MAKESILENT) -f src/tests/CMakeFiles/quality_tests.dir/build.make src/tests/CMakeFiles/quality_tests.dir/build
+.PHONY : quality_tests/fast
 
 #=============================================================================
 # Target rules for targets named event_demo
@@ -278,13 +395,22 @@ help:
 	@echo "... list_install_components"
 	@echo "... rebuild_cache"
 	@echo "... brain_demo"
+	@echo "... cognitive_tests"
+	@echo "... core_tests"
 	@echo "... ethics_demo"
 	@echo "... event_demo"
+	@echo "... glial_tests"
 	@echo "... infant_demo"
 	@echo "... integrated_demo"
+	@echo "... integration_tests"
+	@echo "... io_tests"
+	@echo "... networking_tests"
 	@echo "... nimcp_core"
 	@echo "... nimcp_python"
-	@echo "... nimcp_tests"
+	@echo "... plasticity_tests"
+	@echo "... quality_tests"
+	@echo "... security_tests"
+	@echo "... utility_tests"
 .PHONY : help
 
 

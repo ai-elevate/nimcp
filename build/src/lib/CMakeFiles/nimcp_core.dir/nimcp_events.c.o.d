@@ -2,7 +2,8 @@ src/lib/CMakeFiles/nimcp_core.dir/nimcp_events.c.o: \
  /home/bbrelin/src/repos/nimcp/src/lib/nimcp_events.c \
  /usr/include/stdc-predef.h \
  /home/bbrelin/src/repos/nimcp/src/lib/../include/nimcp_events.h \
- /home/bbrelin/src/repos/nimcp/src/lib/../include/nimcp_protocol.h \
+ /home/bbrelin/src/repos/nimcp/src/lib/../include/nimcp_export.h \
+ /home/bbrelin/src/repos/nimcp/src/lib/../include/nimcp_neuralnet.h \
  /usr/include/python3.10/Python.h /usr/include/python3.10/patchlevel.h \
  /usr/include/python3.10/pyconfig.h \
  /usr/include/x86_64-linux-gnu/python3.10/pyconfig.h \
@@ -198,11 +199,11 @@ src/lib/CMakeFiles/nimcp_core.dir/nimcp_events.c.o: \
  /usr/include/python3.10/cpython/fileutils.h \
  /usr/include/python3.10/cpython/pyfpe.h \
  /usr/include/python3.10/tracemalloc.h \
- /home/bbrelin/src/repos/nimcp/src/lib/../include/nimcp_export.h \
  /usr/lib/gcc/x86_64-linux-gnu/11/include/stdbool.h \
- /home/bbrelin/src/repos/nimcp/src/lib/../include/nimcp_neuralnet.h \
+ /home/bbrelin/src/repos/nimcp/src/lib/../include/nimcp_protocol.h \
+ /home/bbrelin/src/repos/nimcp/src/include/logging/nimcp_logging.h \
  /home/bbrelin/src/repos/nimcp/src/include/utils/nimcp_hash_table.h \
- /home/bbrelin/src/repos/nimcp/src/include/utils/nimcp_time.h \
+ /home/bbrelin/src/repos/nimcp/src/include/utils/nimcp_memory.h \
  /home/bbrelin/src/repos/nimcp/src/include/utils/nimcp_queue_manager.h \
  /home/bbrelin/src/repos/nimcp/src/include/utils/nimcp_common.h \
  /usr/lib/gcc/x86_64-linux-gnu/11/include/stdatomic.h \
@@ -214,6 +215,5 @@ src/lib/CMakeFiles/nimcp_core.dir/nimcp_events.c.o: \
  /home/bbrelin/src/repos/nimcp/src/include/utils/nimcp_thread_pool.h \
  /home/bbrelin/src/repos/nimcp/src/include/utils/nimcp_thread.h \
  /home/bbrelin/src/repos/nimcp/src/include/utils/nimcp_thread.h \
- /home/bbrelin/src/repos/nimcp/src/include/utils/nimcp_memory.h \
- /home/bbrelin/src/repos/nimcp/src/include/utils/nimcp_validate.h \
- /home/bbrelin/src/repos/nimcp/src/include/logging/nimcp_logging.h
+ /home/bbrelin/src/repos/nimcp/src/include/utils/nimcp_time.h \
+ /home/bbrelin/src/repos/nimcp/src/include/utils/nimcp_validate.h

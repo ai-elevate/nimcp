@@ -197,8 +197,8 @@ src/lib/CMakeFiles/nimcp_core.dir/__/python/nimcp_types.c.o: \
  /usr/include/python3.10/cpython/fileutils.h \
  /usr/include/python3.10/cpython/pyfpe.h \
  /usr/include/python3.10/tracemalloc.h \
- /home/bbrelin/src/repos/nimcp/src/python/../include/nimcp_protocol.h \
+ /home/bbrelin/src/repos/nimcp/src/python/../include/nimcp_neuralnet.h \
  /home/bbrelin/src/repos/nimcp/src/python/../include/nimcp_export.h \
  /usr/lib/gcc/x86_64-linux-gnu/11/include/stdbool.h \
  /home/bbrelin/src/repos/nimcp/src/python/../include/nimcp_p2pnode.h \
- /home/bbrelin/src/repos/nimcp/src/python/../include/nimcp_neuralnet.h
+ /home/bbrelin/src/repos/nimcp/src/python/../include/nimcp_protocol.h

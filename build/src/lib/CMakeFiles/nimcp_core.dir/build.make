@@ -279,10 +279,164 @@ src/lib/CMakeFiles/nimcp_core.dir/nimcp_consolidation.c.s: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Compiling C source to assembly CMakeFiles/nimcp_core.dir/nimcp_consolidation.c.s"
 	cd /home/bbrelin/src/repos/nimcp/build/src/lib && /usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -S /home/bbrelin/src/repos/nimcp/src/lib/nimcp_consolidation.c -o CMakeFiles/nimcp_core.dir/nimcp_consolidation.c.s
 
+src/lib/CMakeFiles/nimcp_core.dir/nimcp_attention.c.o: src/lib/CMakeFiles/nimcp_core.dir/flags.make
+src/lib/CMakeFiles/nimcp_core.dir/nimcp_attention.c.o: ../src/lib/nimcp_attention.c
+src/lib/CMakeFiles/nimcp_core.dir/nimcp_attention.c.o: src/lib/CMakeFiles/nimcp_core.dir/compiler_depend.ts
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/bbrelin/src/repos/nimcp/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_16) "Building C object src/lib/CMakeFiles/nimcp_core.dir/nimcp_attention.c.o"
+	cd /home/bbrelin/src/repos/nimcp/build/src/lib && /usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -MD -MT src/lib/CMakeFiles/nimcp_core.dir/nimcp_attention.c.o -MF CMakeFiles/nimcp_core.dir/nimcp_attention.c.o.d -o CMakeFiles/nimcp_core.dir/nimcp_attention.c.o -c /home/bbrelin/src/repos/nimcp/src/lib/nimcp_attention.c
+
+src/lib/CMakeFiles/nimcp_core.dir/nimcp_attention.c.i: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Preprocessing C source to CMakeFiles/nimcp_core.dir/nimcp_attention.c.i"
+	cd /home/bbrelin/src/repos/nimcp/build/src/lib && /usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -E /home/bbrelin/src/repos/nimcp/src/lib/nimcp_attention.c > CMakeFiles/nimcp_core.dir/nimcp_attention.c.i
+
+src/lib/CMakeFiles/nimcp_core.dir/nimcp_attention.c.s: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Compiling C source to assembly CMakeFiles/nimcp_core.dir/nimcp_attention.c.s"
+	cd /home/bbrelin/src/repos/nimcp/build/src/lib && /usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -S /home/bbrelin/src/repos/nimcp/src/lib/nimcp_attention.c -o CMakeFiles/nimcp_core.dir/nimcp_attention.c.s
+
+src/lib/CMakeFiles/nimcp_core.dir/nimcp_security.c.o: src/lib/CMakeFiles/nimcp_core.dir/flags.make
+src/lib/CMakeFiles/nimcp_core.dir/nimcp_security.c.o: ../src/lib/nimcp_security.c
+src/lib/CMakeFiles/nimcp_core.dir/nimcp_security.c.o: src/lib/CMakeFiles/nimcp_core.dir/compiler_depend.ts
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/bbrelin/src/repos/nimcp/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_17) "Building C object src/lib/CMakeFiles/nimcp_core.dir/nimcp_security.c.o"
+	cd /home/bbrelin/src/repos/nimcp/build/src/lib && /usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -MD -MT src/lib/CMakeFiles/nimcp_core.dir/nimcp_security.c.o -MF CMakeFiles/nimcp_core.dir/nimcp_security.c.o.d -o CMakeFiles/nimcp_core.dir/nimcp_security.c.o -c /home/bbrelin/src/repos/nimcp/src/lib/nimcp_security.c
+
+src/lib/CMakeFiles/nimcp_core.dir/nimcp_security.c.i: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Preprocessing C source to CMakeFiles/nimcp_core.dir/nimcp_security.c.i"
+	cd /home/bbrelin/src/repos/nimcp/build/src/lib && /usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -E /home/bbrelin/src/repos/nimcp/src/lib/nimcp_security.c > CMakeFiles/nimcp_core.dir/nimcp_security.c.i
+
+src/lib/CMakeFiles/nimcp_core.dir/nimcp_security.c.s: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Compiling C source to assembly CMakeFiles/nimcp_core.dir/nimcp_security.c.s"
+	cd /home/bbrelin/src/repos/nimcp/build/src/lib && /usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -S /home/bbrelin/src/repos/nimcp/src/lib/nimcp_security.c -o CMakeFiles/nimcp_core.dir/nimcp_security.c.s
+
+src/lib/CMakeFiles/nimcp_core.dir/nimcp_neuromodulators.c.o: src/lib/CMakeFiles/nimcp_core.dir/flags.make
+src/lib/CMakeFiles/nimcp_core.dir/nimcp_neuromodulators.c.o: ../src/lib/nimcp_neuromodulators.c
+src/lib/CMakeFiles/nimcp_core.dir/nimcp_neuromodulators.c.o: src/lib/CMakeFiles/nimcp_core.dir/compiler_depend.ts
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/bbrelin/src/repos/nimcp/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_18) "Building C object src/lib/CMakeFiles/nimcp_core.dir/nimcp_neuromodulators.c.o"
+	cd /home/bbrelin/src/repos/nimcp/build/src/lib && /usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -MD -MT src/lib/CMakeFiles/nimcp_core.dir/nimcp_neuromodulators.c.o -MF CMakeFiles/nimcp_core.dir/nimcp_neuromodulators.c.o.d -o CMakeFiles/nimcp_core.dir/nimcp_neuromodulators.c.o -c /home/bbrelin/src/repos/nimcp/src/lib/nimcp_neuromodulators.c
+
+src/lib/CMakeFiles/nimcp_core.dir/nimcp_neuromodulators.c.i: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Preprocessing C source to CMakeFiles/nimcp_core.dir/nimcp_neuromodulators.c.i"
+	cd /home/bbrelin/src/repos/nimcp/build/src/lib && /usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -E /home/bbrelin/src/repos/nimcp/src/lib/nimcp_neuromodulators.c > CMakeFiles/nimcp_core.dir/nimcp_neuromodulators.c.i
+
+src/lib/CMakeFiles/nimcp_core.dir/nimcp_neuromodulators.c.s: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Compiling C source to assembly CMakeFiles/nimcp_core.dir/nimcp_neuromodulators.c.s"
+	cd /home/bbrelin/src/repos/nimcp/build/src/lib && /usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -S /home/bbrelin/src/repos/nimcp/src/lib/nimcp_neuromodulators.c -o CMakeFiles/nimcp_core.dir/nimcp_neuromodulators.c.s
+
+src/lib/CMakeFiles/nimcp_core.dir/nimcp_bcm.c.o: src/lib/CMakeFiles/nimcp_core.dir/flags.make
+src/lib/CMakeFiles/nimcp_core.dir/nimcp_bcm.c.o: ../src/lib/nimcp_bcm.c
+src/lib/CMakeFiles/nimcp_core.dir/nimcp_bcm.c.o: src/lib/CMakeFiles/nimcp_core.dir/compiler_depend.ts
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/bbrelin/src/repos/nimcp/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_19) "Building C object src/lib/CMakeFiles/nimcp_core.dir/nimcp_bcm.c.o"
+	cd /home/bbrelin/src/repos/nimcp/build/src/lib && /usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -MD -MT src/lib/CMakeFiles/nimcp_core.dir/nimcp_bcm.c.o -MF CMakeFiles/nimcp_core.dir/nimcp_bcm.c.o.d -o CMakeFiles/nimcp_core.dir/nimcp_bcm.c.o -c /home/bbrelin/src/repos/nimcp/src/lib/nimcp_bcm.c
+
+src/lib/CMakeFiles/nimcp_core.dir/nimcp_bcm.c.i: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Preprocessing C source to CMakeFiles/nimcp_core.dir/nimcp_bcm.c.i"
+	cd /home/bbrelin/src/repos/nimcp/build/src/lib && /usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -E /home/bbrelin/src/repos/nimcp/src/lib/nimcp_bcm.c > CMakeFiles/nimcp_core.dir/nimcp_bcm.c.i
+
+src/lib/CMakeFiles/nimcp_core.dir/nimcp_bcm.c.s: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Compiling C source to assembly CMakeFiles/nimcp_core.dir/nimcp_bcm.c.s"
+	cd /home/bbrelin/src/repos/nimcp/build/src/lib && /usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -S /home/bbrelin/src/repos/nimcp/src/lib/nimcp_bcm.c -o CMakeFiles/nimcp_core.dir/nimcp_bcm.c.s
+
+src/lib/CMakeFiles/nimcp_core.dir/nimcp_astrocytes.c.o: src/lib/CMakeFiles/nimcp_core.dir/flags.make
+src/lib/CMakeFiles/nimcp_core.dir/nimcp_astrocytes.c.o: ../src/lib/nimcp_astrocytes.c
+src/lib/CMakeFiles/nimcp_core.dir/nimcp_astrocytes.c.o: src/lib/CMakeFiles/nimcp_core.dir/compiler_depend.ts
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/bbrelin/src/repos/nimcp/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_20) "Building C object src/lib/CMakeFiles/nimcp_core.dir/nimcp_astrocytes.c.o"
+	cd /home/bbrelin/src/repos/nimcp/build/src/lib && /usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -MD -MT src/lib/CMakeFiles/nimcp_core.dir/nimcp_astrocytes.c.o -MF CMakeFiles/nimcp_core.dir/nimcp_astrocytes.c.o.d -o CMakeFiles/nimcp_core.dir/nimcp_astrocytes.c.o -c /home/bbrelin/src/repos/nimcp/src/lib/nimcp_astrocytes.c
+
+src/lib/CMakeFiles/nimcp_core.dir/nimcp_astrocytes.c.i: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Preprocessing C source to CMakeFiles/nimcp_core.dir/nimcp_astrocytes.c.i"
+	cd /home/bbrelin/src/repos/nimcp/build/src/lib && /usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -E /home/bbrelin/src/repos/nimcp/src/lib/nimcp_astrocytes.c > CMakeFiles/nimcp_core.dir/nimcp_astrocytes.c.i
+
+src/lib/CMakeFiles/nimcp_core.dir/nimcp_astrocytes.c.s: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Compiling C source to assembly CMakeFiles/nimcp_core.dir/nimcp_astrocytes.c.s"
+	cd /home/bbrelin/src/repos/nimcp/build/src/lib && /usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -S /home/bbrelin/src/repos/nimcp/src/lib/nimcp_astrocytes.c -o CMakeFiles/nimcp_core.dir/nimcp_astrocytes.c.s
+
+src/lib/CMakeFiles/nimcp_core.dir/nimcp_oligodendrocytes.c.o: src/lib/CMakeFiles/nimcp_core.dir/flags.make
+src/lib/CMakeFiles/nimcp_core.dir/nimcp_oligodendrocytes.c.o: ../src/lib/nimcp_oligodendrocytes.c
+src/lib/CMakeFiles/nimcp_core.dir/nimcp_oligodendrocytes.c.o: src/lib/CMakeFiles/nimcp_core.dir/compiler_depend.ts
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/bbrelin/src/repos/nimcp/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_21) "Building C object src/lib/CMakeFiles/nimcp_core.dir/nimcp_oligodendrocytes.c.o"
+	cd /home/bbrelin/src/repos/nimcp/build/src/lib && /usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -MD -MT src/lib/CMakeFiles/nimcp_core.dir/nimcp_oligodendrocytes.c.o -MF CMakeFiles/nimcp_core.dir/nimcp_oligodendrocytes.c.o.d -o CMakeFiles/nimcp_core.dir/nimcp_oligodendrocytes.c.o -c /home/bbrelin/src/repos/nimcp/src/lib/nimcp_oligodendrocytes.c
+
+src/lib/CMakeFiles/nimcp_core.dir/nimcp_oligodendrocytes.c.i: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Preprocessing C source to CMakeFiles/nimcp_core.dir/nimcp_oligodendrocytes.c.i"
+	cd /home/bbrelin/src/repos/nimcp/build/src/lib && /usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -E /home/bbrelin/src/repos/nimcp/src/lib/nimcp_oligodendrocytes.c > CMakeFiles/nimcp_core.dir/nimcp_oligodendrocytes.c.i
+
+src/lib/CMakeFiles/nimcp_core.dir/nimcp_oligodendrocytes.c.s: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Compiling C source to assembly CMakeFiles/nimcp_core.dir/nimcp_oligodendrocytes.c.s"
+	cd /home/bbrelin/src/repos/nimcp/build/src/lib && /usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -S /home/bbrelin/src/repos/nimcp/src/lib/nimcp_oligodendrocytes.c -o CMakeFiles/nimcp_core.dir/nimcp_oligodendrocytes.c.s
+
+src/lib/CMakeFiles/nimcp_core.dir/nimcp_microglia.c.o: src/lib/CMakeFiles/nimcp_core.dir/flags.make
+src/lib/CMakeFiles/nimcp_core.dir/nimcp_microglia.c.o: ../src/lib/nimcp_microglia.c
+src/lib/CMakeFiles/nimcp_core.dir/nimcp_microglia.c.o: src/lib/CMakeFiles/nimcp_core.dir/compiler_depend.ts
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/bbrelin/src/repos/nimcp/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_22) "Building C object src/lib/CMakeFiles/nimcp_core.dir/nimcp_microglia.c.o"
+	cd /home/bbrelin/src/repos/nimcp/build/src/lib && /usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -MD -MT src/lib/CMakeFiles/nimcp_core.dir/nimcp_microglia.c.o -MF CMakeFiles/nimcp_core.dir/nimcp_microglia.c.o.d -o CMakeFiles/nimcp_core.dir/nimcp_microglia.c.o -c /home/bbrelin/src/repos/nimcp/src/lib/nimcp_microglia.c
+
+src/lib/CMakeFiles/nimcp_core.dir/nimcp_microglia.c.i: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Preprocessing C source to CMakeFiles/nimcp_core.dir/nimcp_microglia.c.i"
+	cd /home/bbrelin/src/repos/nimcp/build/src/lib && /usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -E /home/bbrelin/src/repos/nimcp/src/lib/nimcp_microglia.c > CMakeFiles/nimcp_core.dir/nimcp_microglia.c.i
+
+src/lib/CMakeFiles/nimcp_core.dir/nimcp_microglia.c.s: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Compiling C source to assembly CMakeFiles/nimcp_core.dir/nimcp_microglia.c.s"
+	cd /home/bbrelin/src/repos/nimcp/build/src/lib && /usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -S /home/bbrelin/src/repos/nimcp/src/lib/nimcp_microglia.c -o CMakeFiles/nimcp_core.dir/nimcp_microglia.c.s
+
+src/lib/CMakeFiles/nimcp_core.dir/nimcp_glial_integration.c.o: src/lib/CMakeFiles/nimcp_core.dir/flags.make
+src/lib/CMakeFiles/nimcp_core.dir/nimcp_glial_integration.c.o: ../src/lib/nimcp_glial_integration.c
+src/lib/CMakeFiles/nimcp_core.dir/nimcp_glial_integration.c.o: src/lib/CMakeFiles/nimcp_core.dir/compiler_depend.ts
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/bbrelin/src/repos/nimcp/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_23) "Building C object src/lib/CMakeFiles/nimcp_core.dir/nimcp_glial_integration.c.o"
+	cd /home/bbrelin/src/repos/nimcp/build/src/lib && /usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -MD -MT src/lib/CMakeFiles/nimcp_core.dir/nimcp_glial_integration.c.o -MF CMakeFiles/nimcp_core.dir/nimcp_glial_integration.c.o.d -o CMakeFiles/nimcp_core.dir/nimcp_glial_integration.c.o -c /home/bbrelin/src/repos/nimcp/src/lib/nimcp_glial_integration.c
+
+src/lib/CMakeFiles/nimcp_core.dir/nimcp_glial_integration.c.i: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Preprocessing C source to CMakeFiles/nimcp_core.dir/nimcp_glial_integration.c.i"
+	cd /home/bbrelin/src/repos/nimcp/build/src/lib && /usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -E /home/bbrelin/src/repos/nimcp/src/lib/nimcp_glial_integration.c > CMakeFiles/nimcp_core.dir/nimcp_glial_integration.c.i
+
+src/lib/CMakeFiles/nimcp_core.dir/nimcp_glial_integration.c.s: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Compiling C source to assembly CMakeFiles/nimcp_core.dir/nimcp_glial_integration.c.s"
+	cd /home/bbrelin/src/repos/nimcp/build/src/lib && /usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -S /home/bbrelin/src/repos/nimcp/src/lib/nimcp_glial_integration.c -o CMakeFiles/nimcp_core.dir/nimcp_glial_integration.c.s
+
+src/lib/CMakeFiles/nimcp_core.dir/nimcp_neuron_types.c.o: src/lib/CMakeFiles/nimcp_core.dir/flags.make
+src/lib/CMakeFiles/nimcp_core.dir/nimcp_neuron_types.c.o: ../src/lib/nimcp_neuron_types.c
+src/lib/CMakeFiles/nimcp_core.dir/nimcp_neuron_types.c.o: src/lib/CMakeFiles/nimcp_core.dir/compiler_depend.ts
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/bbrelin/src/repos/nimcp/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_24) "Building C object src/lib/CMakeFiles/nimcp_core.dir/nimcp_neuron_types.c.o"
+	cd /home/bbrelin/src/repos/nimcp/build/src/lib && /usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -MD -MT src/lib/CMakeFiles/nimcp_core.dir/nimcp_neuron_types.c.o -MF CMakeFiles/nimcp_core.dir/nimcp_neuron_types.c.o.d -o CMakeFiles/nimcp_core.dir/nimcp_neuron_types.c.o -c /home/bbrelin/src/repos/nimcp/src/lib/nimcp_neuron_types.c
+
+src/lib/CMakeFiles/nimcp_core.dir/nimcp_neuron_types.c.i: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Preprocessing C source to CMakeFiles/nimcp_core.dir/nimcp_neuron_types.c.i"
+	cd /home/bbrelin/src/repos/nimcp/build/src/lib && /usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -E /home/bbrelin/src/repos/nimcp/src/lib/nimcp_neuron_types.c > CMakeFiles/nimcp_core.dir/nimcp_neuron_types.c.i
+
+src/lib/CMakeFiles/nimcp_core.dir/nimcp_neuron_types.c.s: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Compiling C source to assembly CMakeFiles/nimcp_core.dir/nimcp_neuron_types.c.s"
+	cd /home/bbrelin/src/repos/nimcp/build/src/lib && /usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -S /home/bbrelin/src/repos/nimcp/src/lib/nimcp_neuron_types.c -o CMakeFiles/nimcp_core.dir/nimcp_neuron_types.c.s
+
+src/lib/CMakeFiles/nimcp_core.dir/nimcp_brain_regions.c.o: src/lib/CMakeFiles/nimcp_core.dir/flags.make
+src/lib/CMakeFiles/nimcp_core.dir/nimcp_brain_regions.c.o: ../src/lib/nimcp_brain_regions.c
+src/lib/CMakeFiles/nimcp_core.dir/nimcp_brain_regions.c.o: src/lib/CMakeFiles/nimcp_core.dir/compiler_depend.ts
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/bbrelin/src/repos/nimcp/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_25) "Building C object src/lib/CMakeFiles/nimcp_core.dir/nimcp_brain_regions.c.o"
+	cd /home/bbrelin/src/repos/nimcp/build/src/lib && /usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -MD -MT src/lib/CMakeFiles/nimcp_core.dir/nimcp_brain_regions.c.o -MF CMakeFiles/nimcp_core.dir/nimcp_brain_regions.c.o.d -o CMakeFiles/nimcp_core.dir/nimcp_brain_regions.c.o -c /home/bbrelin/src/repos/nimcp/src/lib/nimcp_brain_regions.c
+
+src/lib/CMakeFiles/nimcp_core.dir/nimcp_brain_regions.c.i: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Preprocessing C source to CMakeFiles/nimcp_core.dir/nimcp_brain_regions.c.i"
+	cd /home/bbrelin/src/repos/nimcp/build/src/lib && /usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -E /home/bbrelin/src/repos/nimcp/src/lib/nimcp_brain_regions.c > CMakeFiles/nimcp_core.dir/nimcp_brain_regions.c.i
+
+src/lib/CMakeFiles/nimcp_core.dir/nimcp_brain_regions.c.s: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Compiling C source to assembly CMakeFiles/nimcp_core.dir/nimcp_brain_regions.c.s"
+	cd /home/bbrelin/src/repos/nimcp/build/src/lib && /usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -S /home/bbrelin/src/repos/nimcp/src/lib/nimcp_brain_regions.c -o CMakeFiles/nimcp_core.dir/nimcp_brain_regions.c.s
+
+src/lib/CMakeFiles/nimcp_core.dir/nimcp_distributed_cognition.c.o: src/lib/CMakeFiles/nimcp_core.dir/flags.make
+src/lib/CMakeFiles/nimcp_core.dir/nimcp_distributed_cognition.c.o: ../src/lib/nimcp_distributed_cognition.c
+src/lib/CMakeFiles/nimcp_core.dir/nimcp_distributed_cognition.c.o: src/lib/CMakeFiles/nimcp_core.dir/compiler_depend.ts
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/bbrelin/src/repos/nimcp/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_26) "Building C object src/lib/CMakeFiles/nimcp_core.dir/nimcp_distributed_cognition.c.o"
+	cd /home/bbrelin/src/repos/nimcp/build/src/lib && /usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -MD -MT src/lib/CMakeFiles/nimcp_core.dir/nimcp_distributed_cognition.c.o -MF CMakeFiles/nimcp_core.dir/nimcp_distributed_cognition.c.o.d -o CMakeFiles/nimcp_core.dir/nimcp_distributed_cognition.c.o -c /home/bbrelin/src/repos/nimcp/src/lib/nimcp_distributed_cognition.c
+
+src/lib/CMakeFiles/nimcp_core.dir/nimcp_distributed_cognition.c.i: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Preprocessing C source to CMakeFiles/nimcp_core.dir/nimcp_distributed_cognition.c.i"
+	cd /home/bbrelin/src/repos/nimcp/build/src/lib && /usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -E /home/bbrelin/src/repos/nimcp/src/lib/nimcp_distributed_cognition.c > CMakeFiles/nimcp_core.dir/nimcp_distributed_cognition.c.i
+
+src/lib/CMakeFiles/nimcp_core.dir/nimcp_distributed_cognition.c.s: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Compiling C source to assembly CMakeFiles/nimcp_core.dir/nimcp_distributed_cognition.c.s"
+	cd /home/bbrelin/src/repos/nimcp/build/src/lib && /usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -S /home/bbrelin/src/repos/nimcp/src/lib/nimcp_distributed_cognition.c -o CMakeFiles/nimcp_core.dir/nimcp_distributed_cognition.c.s
+
 src/lib/CMakeFiles/nimcp_core.dir/utils/nimcp_memory.c.o: src/lib/CMakeFiles/nimcp_core.dir/flags.make
 src/lib/CMakeFiles/nimcp_core.dir/utils/nimcp_memory.c.o: ../src/lib/utils/nimcp_memory.c
 src/lib/CMakeFiles/nimcp_core.dir/utils/nimcp_memory.c.o: src/lib/CMakeFiles/nimcp_core.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/bbrelin/src/repos/nimcp/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_16) "Building C object src/lib/CMakeFiles/nimcp_core.dir/utils/nimcp_memory.c.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/bbrelin/src/repos/nimcp/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_27) "Building C object src/lib/CMakeFiles/nimcp_core.dir/utils/nimcp_memory.c.o"
 	cd /home/bbrelin/src/repos/nimcp/build/src/lib && /usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -MD -MT src/lib/CMakeFiles/nimcp_core.dir/utils/nimcp_memory.c.o -MF CMakeFiles/nimcp_core.dir/utils/nimcp_memory.c.o.d -o CMakeFiles/nimcp_core.dir/utils/nimcp_memory.c.o -c /home/bbrelin/src/repos/nimcp/src/lib/utils/nimcp_memory.c
 
 src/lib/CMakeFiles/nimcp_core.dir/utils/nimcp_memory.c.i: cmake_force
@@ -296,7 +450,7 @@ src/lib/CMakeFiles/nimcp_core.dir/utils/nimcp_memory.c.s: cmake_force
 src/lib/CMakeFiles/nimcp_core.dir/utils/nimcp_thread.c.o: src/lib/CMakeFiles/nimcp_core.dir/flags.make
 src/lib/CMakeFiles/nimcp_core.dir/utils/nimcp_thread.c.o: ../src/lib/utils/nimcp_thread.c
 src/lib/CMakeFiles/nimcp_core.dir/utils/nimcp_thread.c.o: src/lib/CMakeFiles/nimcp_core.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/bbrelin/src/repos/nimcp/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_17) "Building C object src/lib/CMakeFiles/nimcp_core.dir/utils/nimcp_thread.c.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/bbrelin/src/repos/nimcp/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_28) "Building C object src/lib/CMakeFiles/nimcp_core.dir/utils/nimcp_thread.c.o"
 	cd /home/bbrelin/src/repos/nimcp/build/src/lib && /usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -MD -MT src/lib/CMakeFiles/nimcp_core.dir/utils/nimcp_thread.c.o -MF CMakeFiles/nimcp_core.dir/utils/nimcp_thread.c.o.d -o CMakeFiles/nimcp_core.dir/utils/nimcp_thread.c.o -c /home/bbrelin/src/repos/nimcp/src/lib/utils/nimcp_thread.c
 
 src/lib/CMakeFiles/nimcp_core.dir/utils/nimcp_thread.c.i: cmake_force
@@ -310,7 +464,7 @@ src/lib/CMakeFiles/nimcp_core.dir/utils/nimcp_thread.c.s: cmake_force
 src/lib/CMakeFiles/nimcp_core.dir/utils/nimcp_thread_pool.c.o: src/lib/CMakeFiles/nimcp_core.dir/flags.make
 src/lib/CMakeFiles/nimcp_core.dir/utils/nimcp_thread_pool.c.o: ../src/lib/utils/nimcp_thread_pool.c
 src/lib/CMakeFiles/nimcp_core.dir/utils/nimcp_thread_pool.c.o: src/lib/CMakeFiles/nimcp_core.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/bbrelin/src/repos/nimcp/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_18) "Building C object src/lib/CMakeFiles/nimcp_core.dir/utils/nimcp_thread_pool.c.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/bbrelin/src/repos/nimcp/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_29) "Building C object src/lib/CMakeFiles/nimcp_core.dir/utils/nimcp_thread_pool.c.o"
 	cd /home/bbrelin/src/repos/nimcp/build/src/lib && /usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -MD -MT src/lib/CMakeFiles/nimcp_core.dir/utils/nimcp_thread_pool.c.o -MF CMakeFiles/nimcp_core.dir/utils/nimcp_thread_pool.c.o.d -o CMakeFiles/nimcp_core.dir/utils/nimcp_thread_pool.c.o -c /home/bbrelin/src/repos/nimcp/src/lib/utils/nimcp_thread_pool.c
 
 src/lib/CMakeFiles/nimcp_core.dir/utils/nimcp_thread_pool.c.i: cmake_force
@@ -324,7 +478,7 @@ src/lib/CMakeFiles/nimcp_core.dir/utils/nimcp_thread_pool.c.s: cmake_force
 src/lib/CMakeFiles/nimcp_core.dir/utils/nimcp_vector.c.o: src/lib/CMakeFiles/nimcp_core.dir/flags.make
 src/lib/CMakeFiles/nimcp_core.dir/utils/nimcp_vector.c.o: ../src/lib/utils/nimcp_vector.c
 src/lib/CMakeFiles/nimcp_core.dir/utils/nimcp_vector.c.o: src/lib/CMakeFiles/nimcp_core.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/bbrelin/src/repos/nimcp/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_19) "Building C object src/lib/CMakeFiles/nimcp_core.dir/utils/nimcp_vector.c.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/bbrelin/src/repos/nimcp/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_30) "Building C object src/lib/CMakeFiles/nimcp_core.dir/utils/nimcp_vector.c.o"
 	cd /home/bbrelin/src/repos/nimcp/build/src/lib && /usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -MD -MT src/lib/CMakeFiles/nimcp_core.dir/utils/nimcp_vector.c.o -MF CMakeFiles/nimcp_core.dir/utils/nimcp_vector.c.o.d -o CMakeFiles/nimcp_core.dir/utils/nimcp_vector.c.o -c /home/bbrelin/src/repos/nimcp/src/lib/utils/nimcp_vector.c
 
 src/lib/CMakeFiles/nimcp_core.dir/utils/nimcp_vector.c.i: cmake_force
@@ -338,7 +492,7 @@ src/lib/CMakeFiles/nimcp_core.dir/utils/nimcp_vector.c.s: cmake_force
 src/lib/CMakeFiles/nimcp_core.dir/utils/nimcp_time.c.o: src/lib/CMakeFiles/nimcp_core.dir/flags.make
 src/lib/CMakeFiles/nimcp_core.dir/utils/nimcp_time.c.o: ../src/lib/utils/nimcp_time.c
 src/lib/CMakeFiles/nimcp_core.dir/utils/nimcp_time.c.o: src/lib/CMakeFiles/nimcp_core.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/bbrelin/src/repos/nimcp/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_20) "Building C object src/lib/CMakeFiles/nimcp_core.dir/utils/nimcp_time.c.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/bbrelin/src/repos/nimcp/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_31) "Building C object src/lib/CMakeFiles/nimcp_core.dir/utils/nimcp_time.c.o"
 	cd /home/bbrelin/src/repos/nimcp/build/src/lib && /usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -MD -MT src/lib/CMakeFiles/nimcp_core.dir/utils/nimcp_time.c.o -MF CMakeFiles/nimcp_core.dir/utils/nimcp_time.c.o.d -o CMakeFiles/nimcp_core.dir/utils/nimcp_time.c.o -c /home/bbrelin/src/repos/nimcp/src/lib/utils/nimcp_time.c
 
 src/lib/CMakeFiles/nimcp_core.dir/utils/nimcp_time.c.i: cmake_force
@@ -352,7 +506,7 @@ src/lib/CMakeFiles/nimcp_core.dir/utils/nimcp_time.c.s: cmake_force
 src/lib/CMakeFiles/nimcp_core.dir/utils/nimcp_hash_table.c.o: src/lib/CMakeFiles/nimcp_core.dir/flags.make
 src/lib/CMakeFiles/nimcp_core.dir/utils/nimcp_hash_table.c.o: ../src/lib/utils/nimcp_hash_table.c
 src/lib/CMakeFiles/nimcp_core.dir/utils/nimcp_hash_table.c.o: src/lib/CMakeFiles/nimcp_core.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/bbrelin/src/repos/nimcp/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_21) "Building C object src/lib/CMakeFiles/nimcp_core.dir/utils/nimcp_hash_table.c.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/bbrelin/src/repos/nimcp/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_32) "Building C object src/lib/CMakeFiles/nimcp_core.dir/utils/nimcp_hash_table.c.o"
 	cd /home/bbrelin/src/repos/nimcp/build/src/lib && /usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -MD -MT src/lib/CMakeFiles/nimcp_core.dir/utils/nimcp_hash_table.c.o -MF CMakeFiles/nimcp_core.dir/utils/nimcp_hash_table.c.o.d -o CMakeFiles/nimcp_core.dir/utils/nimcp_hash_table.c.o -c /home/bbrelin/src/repos/nimcp/src/lib/utils/nimcp_hash_table.c
 
 src/lib/CMakeFiles/nimcp_core.dir/utils/nimcp_hash_table.c.i: cmake_force
@@ -366,7 +520,7 @@ src/lib/CMakeFiles/nimcp_core.dir/utils/nimcp_hash_table.c.s: cmake_force
 src/lib/CMakeFiles/nimcp_core.dir/logging/nimcp_logging.c.o: src/lib/CMakeFiles/nimcp_core.dir/flags.make
 src/lib/CMakeFiles/nimcp_core.dir/logging/nimcp_logging.c.o: ../src/lib/logging/nimcp_logging.c
 src/lib/CMakeFiles/nimcp_core.dir/logging/nimcp_logging.c.o: src/lib/CMakeFiles/nimcp_core.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/bbrelin/src/repos/nimcp/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_22) "Building C object src/lib/CMakeFiles/nimcp_core.dir/logging/nimcp_logging.c.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/bbrelin/src/repos/nimcp/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_33) "Building C object src/lib/CMakeFiles/nimcp_core.dir/logging/nimcp_logging.c.o"
 	cd /home/bbrelin/src/repos/nimcp/build/src/lib && /usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -MD -MT src/lib/CMakeFiles/nimcp_core.dir/logging/nimcp_logging.c.o -MF CMakeFiles/nimcp_core.dir/logging/nimcp_logging.c.o.d -o CMakeFiles/nimcp_core.dir/logging/nimcp_logging.c.o -c /home/bbrelin/src/repos/nimcp/src/lib/logging/nimcp_logging.c
 
 src/lib/CMakeFiles/nimcp_core.dir/logging/nimcp_logging.c.i: cmake_force
@@ -380,7 +534,7 @@ src/lib/CMakeFiles/nimcp_core.dir/logging/nimcp_logging.c.s: cmake_force
 src/lib/CMakeFiles/nimcp_core.dir/utils/nimcp_btree.c.o: src/lib/CMakeFiles/nimcp_core.dir/flags.make
 src/lib/CMakeFiles/nimcp_core.dir/utils/nimcp_btree.c.o: ../src/lib/utils/nimcp_btree.c
 src/lib/CMakeFiles/nimcp_core.dir/utils/nimcp_btree.c.o: src/lib/CMakeFiles/nimcp_core.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/bbrelin/src/repos/nimcp/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_23) "Building C object src/lib/CMakeFiles/nimcp_core.dir/utils/nimcp_btree.c.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/bbrelin/src/repos/nimcp/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_34) "Building C object src/lib/CMakeFiles/nimcp_core.dir/utils/nimcp_btree.c.o"
 	cd /home/bbrelin/src/repos/nimcp/build/src/lib && /usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -MD -MT src/lib/CMakeFiles/nimcp_core.dir/utils/nimcp_btree.c.o -MF CMakeFiles/nimcp_core.dir/utils/nimcp_btree.c.o.d -o CMakeFiles/nimcp_core.dir/utils/nimcp_btree.c.o -c /home/bbrelin/src/repos/nimcp/src/lib/utils/nimcp_btree.c
 
 src/lib/CMakeFiles/nimcp_core.dir/utils/nimcp_btree.c.i: cmake_force
@@ -394,7 +548,7 @@ src/lib/CMakeFiles/nimcp_core.dir/utils/nimcp_btree.c.s: cmake_force
 src/lib/CMakeFiles/nimcp_core.dir/utils/nimcp_queue.c.o: src/lib/CMakeFiles/nimcp_core.dir/flags.make
 src/lib/CMakeFiles/nimcp_core.dir/utils/nimcp_queue.c.o: ../src/lib/utils/nimcp_queue.c
 src/lib/CMakeFiles/nimcp_core.dir/utils/nimcp_queue.c.o: src/lib/CMakeFiles/nimcp_core.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/bbrelin/src/repos/nimcp/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_24) "Building C object src/lib/CMakeFiles/nimcp_core.dir/utils/nimcp_queue.c.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/bbrelin/src/repos/nimcp/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_35) "Building C object src/lib/CMakeFiles/nimcp_core.dir/utils/nimcp_queue.c.o"
 	cd /home/bbrelin/src/repos/nimcp/build/src/lib && /usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -MD -MT src/lib/CMakeFiles/nimcp_core.dir/utils/nimcp_queue.c.o -MF CMakeFiles/nimcp_core.dir/utils/nimcp_queue.c.o.d -o CMakeFiles/nimcp_core.dir/utils/nimcp_queue.c.o -c /home/bbrelin/src/repos/nimcp/src/lib/utils/nimcp_queue.c
 
 src/lib/CMakeFiles/nimcp_core.dir/utils/nimcp_queue.c.i: cmake_force
@@ -408,7 +562,7 @@ src/lib/CMakeFiles/nimcp_core.dir/utils/nimcp_queue.c.s: cmake_force
 src/lib/CMakeFiles/nimcp_core.dir/utils/nimcp_graph.c.o: src/lib/CMakeFiles/nimcp_core.dir/flags.make
 src/lib/CMakeFiles/nimcp_core.dir/utils/nimcp_graph.c.o: ../src/lib/utils/nimcp_graph.c
 src/lib/CMakeFiles/nimcp_core.dir/utils/nimcp_graph.c.o: src/lib/CMakeFiles/nimcp_core.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/bbrelin/src/repos/nimcp/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_25) "Building C object src/lib/CMakeFiles/nimcp_core.dir/utils/nimcp_graph.c.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/bbrelin/src/repos/nimcp/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_36) "Building C object src/lib/CMakeFiles/nimcp_core.dir/utils/nimcp_graph.c.o"
 	cd /home/bbrelin/src/repos/nimcp/build/src/lib && /usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -MD -MT src/lib/CMakeFiles/nimcp_core.dir/utils/nimcp_graph.c.o -MF CMakeFiles/nimcp_core.dir/utils/nimcp_graph.c.o.d -o CMakeFiles/nimcp_core.dir/utils/nimcp_graph.c.o -c /home/bbrelin/src/repos/nimcp/src/lib/utils/nimcp_graph.c
 
 src/lib/CMakeFiles/nimcp_core.dir/utils/nimcp_graph.c.i: cmake_force
@@ -419,10 +573,24 @@ src/lib/CMakeFiles/nimcp_core.dir/utils/nimcp_graph.c.s: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Compiling C source to assembly CMakeFiles/nimcp_core.dir/utils/nimcp_graph.c.s"
 	cd /home/bbrelin/src/repos/nimcp/build/src/lib && /usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -S /home/bbrelin/src/repos/nimcp/src/lib/utils/nimcp_graph.c -o CMakeFiles/nimcp_core.dir/utils/nimcp_graph.c.s
 
+src/lib/CMakeFiles/nimcp_core.dir/utils/nimcp_min_heap.c.o: src/lib/CMakeFiles/nimcp_core.dir/flags.make
+src/lib/CMakeFiles/nimcp_core.dir/utils/nimcp_min_heap.c.o: ../src/lib/utils/nimcp_min_heap.c
+src/lib/CMakeFiles/nimcp_core.dir/utils/nimcp_min_heap.c.o: src/lib/CMakeFiles/nimcp_core.dir/compiler_depend.ts
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/bbrelin/src/repos/nimcp/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_37) "Building C object src/lib/CMakeFiles/nimcp_core.dir/utils/nimcp_min_heap.c.o"
+	cd /home/bbrelin/src/repos/nimcp/build/src/lib && /usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -MD -MT src/lib/CMakeFiles/nimcp_core.dir/utils/nimcp_min_heap.c.o -MF CMakeFiles/nimcp_core.dir/utils/nimcp_min_heap.c.o.d -o CMakeFiles/nimcp_core.dir/utils/nimcp_min_heap.c.o -c /home/bbrelin/src/repos/nimcp/src/lib/utils/nimcp_min_heap.c
+
+src/lib/CMakeFiles/nimcp_core.dir/utils/nimcp_min_heap.c.i: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Preprocessing C source to CMakeFiles/nimcp_core.dir/utils/nimcp_min_heap.c.i"
+	cd /home/bbrelin/src/repos/nimcp/build/src/lib && /usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -E /home/bbrelin/src/repos/nimcp/src/lib/utils/nimcp_min_heap.c > CMakeFiles/nimcp_core.dir/utils/nimcp_min_heap.c.i
+
+src/lib/CMakeFiles/nimcp_core.dir/utils/nimcp_min_heap.c.s: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Compiling C source to assembly CMakeFiles/nimcp_core.dir/utils/nimcp_min_heap.c.s"
+	cd /home/bbrelin/src/repos/nimcp/build/src/lib && /usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -S /home/bbrelin/src/repos/nimcp/src/lib/utils/nimcp_min_heap.c -o CMakeFiles/nimcp_core.dir/utils/nimcp_min_heap.c.s
+
 src/lib/CMakeFiles/nimcp_core.dir/utils/nimcp_serialization.c.o: src/lib/CMakeFiles/nimcp_core.dir/flags.make
 src/lib/CMakeFiles/nimcp_core.dir/utils/nimcp_serialization.c.o: ../src/lib/utils/nimcp_serialization.c
 src/lib/CMakeFiles/nimcp_core.dir/utils/nimcp_serialization.c.o: src/lib/CMakeFiles/nimcp_core.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/bbrelin/src/repos/nimcp/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_26) "Building C object src/lib/CMakeFiles/nimcp_core.dir/utils/nimcp_serialization.c.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/bbrelin/src/repos/nimcp/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_38) "Building C object src/lib/CMakeFiles/nimcp_core.dir/utils/nimcp_serialization.c.o"
 	cd /home/bbrelin/src/repos/nimcp/build/src/lib && /usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -MD -MT src/lib/CMakeFiles/nimcp_core.dir/utils/nimcp_serialization.c.o -MF CMakeFiles/nimcp_core.dir/utils/nimcp_serialization.c.o.d -o CMakeFiles/nimcp_core.dir/utils/nimcp_serialization.c.o -c /home/bbrelin/src/repos/nimcp/src/lib/utils/nimcp_serialization.c
 
 src/lib/CMakeFiles/nimcp_core.dir/utils/nimcp_serialization.c.i: cmake_force
@@ -436,7 +604,7 @@ src/lib/CMakeFiles/nimcp_core.dir/utils/nimcp_serialization.c.s: cmake_force
 src/lib/CMakeFiles/nimcp_core.dir/utils/nimcp_validate.c.o: src/lib/CMakeFiles/nimcp_core.dir/flags.make
 src/lib/CMakeFiles/nimcp_core.dir/utils/nimcp_validate.c.o: ../src/lib/utils/nimcp_validate.c
 src/lib/CMakeFiles/nimcp_core.dir/utils/nimcp_validate.c.o: src/lib/CMakeFiles/nimcp_core.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/bbrelin/src/repos/nimcp/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_27) "Building C object src/lib/CMakeFiles/nimcp_core.dir/utils/nimcp_validate.c.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/bbrelin/src/repos/nimcp/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_39) "Building C object src/lib/CMakeFiles/nimcp_core.dir/utils/nimcp_validate.c.o"
 	cd /home/bbrelin/src/repos/nimcp/build/src/lib && /usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -MD -MT src/lib/CMakeFiles/nimcp_core.dir/utils/nimcp_validate.c.o -MF CMakeFiles/nimcp_core.dir/utils/nimcp_validate.c.o.d -o CMakeFiles/nimcp_core.dir/utils/nimcp_validate.c.o -c /home/bbrelin/src/repos/nimcp/src/lib/utils/nimcp_validate.c
 
 src/lib/CMakeFiles/nimcp_core.dir/utils/nimcp_validate.c.i: cmake_force
@@ -450,7 +618,7 @@ src/lib/CMakeFiles/nimcp_core.dir/utils/nimcp_validate.c.s: cmake_force
 src/lib/CMakeFiles/nimcp_core.dir/utils/nimcp_queue_manager.c.o: src/lib/CMakeFiles/nimcp_core.dir/flags.make
 src/lib/CMakeFiles/nimcp_core.dir/utils/nimcp_queue_manager.c.o: ../src/lib/utils/nimcp_queue_manager.c
 src/lib/CMakeFiles/nimcp_core.dir/utils/nimcp_queue_manager.c.o: src/lib/CMakeFiles/nimcp_core.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/bbrelin/src/repos/nimcp/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_28) "Building C object src/lib/CMakeFiles/nimcp_core.dir/utils/nimcp_queue_manager.c.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/bbrelin/src/repos/nimcp/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_40) "Building C object src/lib/CMakeFiles/nimcp_core.dir/utils/nimcp_queue_manager.c.o"
 	cd /home/bbrelin/src/repos/nimcp/build/src/lib && /usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -MD -MT src/lib/CMakeFiles/nimcp_core.dir/utils/nimcp_queue_manager.c.o -MF CMakeFiles/nimcp_core.dir/utils/nimcp_queue_manager.c.o.d -o CMakeFiles/nimcp_core.dir/utils/nimcp_queue_manager.c.o -c /home/bbrelin/src/repos/nimcp/src/lib/utils/nimcp_queue_manager.c
 
 src/lib/CMakeFiles/nimcp_core.dir/utils/nimcp_queue_manager.c.i: cmake_force
@@ -464,7 +632,7 @@ src/lib/CMakeFiles/nimcp_core.dir/utils/nimcp_queue_manager.c.s: cmake_force
 src/lib/CMakeFiles/nimcp_core.dir/utils/nimcp_json.c.o: src/lib/CMakeFiles/nimcp_core.dir/flags.make
 src/lib/CMakeFiles/nimcp_core.dir/utils/nimcp_json.c.o: ../src/lib/utils/nimcp_json.c
 src/lib/CMakeFiles/nimcp_core.dir/utils/nimcp_json.c.o: src/lib/CMakeFiles/nimcp_core.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/bbrelin/src/repos/nimcp/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_29) "Building C object src/lib/CMakeFiles/nimcp_core.dir/utils/nimcp_json.c.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/bbrelin/src/repos/nimcp/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_41) "Building C object src/lib/CMakeFiles/nimcp_core.dir/utils/nimcp_json.c.o"
 	cd /home/bbrelin/src/repos/nimcp/build/src/lib && /usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -MD -MT src/lib/CMakeFiles/nimcp_core.dir/utils/nimcp_json.c.o -MF CMakeFiles/nimcp_core.dir/utils/nimcp_json.c.o.d -o CMakeFiles/nimcp_core.dir/utils/nimcp_json.c.o -c /home/bbrelin/src/repos/nimcp/src/lib/utils/nimcp_json.c
 
 src/lib/CMakeFiles/nimcp_core.dir/utils/nimcp_json.c.i: cmake_force
@@ -478,7 +646,7 @@ src/lib/CMakeFiles/nimcp_core.dir/utils/nimcp_json.c.s: cmake_force
 src/lib/CMakeFiles/nimcp_core.dir/__/python/nimcp_module.c.o: src/lib/CMakeFiles/nimcp_core.dir/flags.make
 src/lib/CMakeFiles/nimcp_core.dir/__/python/nimcp_module.c.o: ../src/python/nimcp_module.c
 src/lib/CMakeFiles/nimcp_core.dir/__/python/nimcp_module.c.o: src/lib/CMakeFiles/nimcp_core.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/bbrelin/src/repos/nimcp/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_30) "Building C object src/lib/CMakeFiles/nimcp_core.dir/__/python/nimcp_module.c.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/bbrelin/src/repos/nimcp/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_42) "Building C object src/lib/CMakeFiles/nimcp_core.dir/__/python/nimcp_module.c.o"
 	cd /home/bbrelin/src/repos/nimcp/build/src/lib && /usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -MD -MT src/lib/CMakeFiles/nimcp_core.dir/__/python/nimcp_module.c.o -MF CMakeFiles/nimcp_core.dir/__/python/nimcp_module.c.o.d -o CMakeFiles/nimcp_core.dir/__/python/nimcp_module.c.o -c /home/bbrelin/src/repos/nimcp/src/python/nimcp_module.c
 
 src/lib/CMakeFiles/nimcp_core.dir/__/python/nimcp_module.c.i: cmake_force
@@ -492,7 +660,7 @@ src/lib/CMakeFiles/nimcp_core.dir/__/python/nimcp_module.c.s: cmake_force
 src/lib/CMakeFiles/nimcp_core.dir/__/python/nimcp_types.c.o: src/lib/CMakeFiles/nimcp_core.dir/flags.make
 src/lib/CMakeFiles/nimcp_core.dir/__/python/nimcp_types.c.o: ../src/python/nimcp_types.c
 src/lib/CMakeFiles/nimcp_core.dir/__/python/nimcp_types.c.o: src/lib/CMakeFiles/nimcp_core.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/bbrelin/src/repos/nimcp/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_31) "Building C object src/lib/CMakeFiles/nimcp_core.dir/__/python/nimcp_types.c.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/bbrelin/src/repos/nimcp/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_43) "Building C object src/lib/CMakeFiles/nimcp_core.dir/__/python/nimcp_types.c.o"
 	cd /home/bbrelin/src/repos/nimcp/build/src/lib && /usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -MD -MT src/lib/CMakeFiles/nimcp_core.dir/__/python/nimcp_types.c.o -MF CMakeFiles/nimcp_core.dir/__/python/nimcp_types.c.o.d -o CMakeFiles/nimcp_core.dir/__/python/nimcp_types.c.o -c /home/bbrelin/src/repos/nimcp/src/python/nimcp_types.c
 
 src/lib/CMakeFiles/nimcp_core.dir/__/python/nimcp_types.c.i: cmake_force
@@ -520,6 +688,17 @@ nimcp_core_OBJECTS = \
 "CMakeFiles/nimcp_core.dir/nimcp_salience.c.o" \
 "CMakeFiles/nimcp_core.dir/nimcp_introspection.c.o" \
 "CMakeFiles/nimcp_core.dir/nimcp_consolidation.c.o" \
+"CMakeFiles/nimcp_core.dir/nimcp_attention.c.o" \
+"CMakeFiles/nimcp_core.dir/nimcp_security.c.o" \
+"CMakeFiles/nimcp_core.dir/nimcp_neuromodulators.c.o" \
+"CMakeFiles/nimcp_core.dir/nimcp_bcm.c.o" \
+"CMakeFiles/nimcp_core.dir/nimcp_astrocytes.c.o" \
+"CMakeFiles/nimcp_core.dir/nimcp_oligodendrocytes.c.o" \
+"CMakeFiles/nimcp_core.dir/nimcp_microglia.c.o" \
+"CMakeFiles/nimcp_core.dir/nimcp_glial_integration.c.o" \
+"CMakeFiles/nimcp_core.dir/nimcp_neuron_types.c.o" \
+"CMakeFiles/nimcp_core.dir/nimcp_brain_regions.c.o" \
+"CMakeFiles/nimcp_core.dir/nimcp_distributed_cognition.c.o" \
 "CMakeFiles/nimcp_core.dir/utils/nimcp_memory.c.o" \
 "CMakeFiles/nimcp_core.dir/utils/nimcp_thread.c.o" \
 "CMakeFiles/nimcp_core.dir/utils/nimcp_thread_pool.c.o" \
@@ -530,6 +709,7 @@ nimcp_core_OBJECTS = \
 "CMakeFiles/nimcp_core.dir/utils/nimcp_btree.c.o" \
 "CMakeFiles/nimcp_core.dir/utils/nimcp_queue.c.o" \
 "CMakeFiles/nimcp_core.dir/utils/nimcp_graph.c.o" \
+"CMakeFiles/nimcp_core.dir/utils/nimcp_min_heap.c.o" \
 "CMakeFiles/nimcp_core.dir/utils/nimcp_serialization.c.o" \
 "CMakeFiles/nimcp_core.dir/utils/nimcp_validate.c.o" \
 "CMakeFiles/nimcp_core.dir/utils/nimcp_queue_manager.c.o" \
@@ -555,6 +735,17 @@ src/lib/libnimcp_core.so.2.5.0: src/lib/CMakeFiles/nimcp_core.dir/nimcp_stream.c
 src/lib/libnimcp_core.so.2.5.0: src/lib/CMakeFiles/nimcp_core.dir/nimcp_salience.c.o
 src/lib/libnimcp_core.so.2.5.0: src/lib/CMakeFiles/nimcp_core.dir/nimcp_introspection.c.o
 src/lib/libnimcp_core.so.2.5.0: src/lib/CMakeFiles/nimcp_core.dir/nimcp_consolidation.c.o
+src/lib/libnimcp_core.so.2.5.0: src/lib/CMakeFiles/nimcp_core.dir/nimcp_attention.c.o
+src/lib/libnimcp_core.so.2.5.0: src/lib/CMakeFiles/nimcp_core.dir/nimcp_security.c.o
+src/lib/libnimcp_core.so.2.5.0: src/lib/CMakeFiles/nimcp_core.dir/nimcp_neuromodulators.c.o
+src/lib/libnimcp_core.so.2.5.0: src/lib/CMakeFiles/nimcp_core.dir/nimcp_bcm.c.o
+src/lib/libnimcp_core.so.2.5.0: src/lib/CMakeFiles/nimcp_core.dir/nimcp_astrocytes.c.o
+src/lib/libnimcp_core.so.2.5.0: src/lib/CMakeFiles/nimcp_core.dir/nimcp_oligodendrocytes.c.o
+src/lib/libnimcp_core.so.2.5.0: src/lib/CMakeFiles/nimcp_core.dir/nimcp_microglia.c.o
+src/lib/libnimcp_core.so.2.5.0: src/lib/CMakeFiles/nimcp_core.dir/nimcp_glial_integration.c.o
+src/lib/libnimcp_core.so.2.5.0: src/lib/CMakeFiles/nimcp_core.dir/nimcp_neuron_types.c.o
+src/lib/libnimcp_core.so.2.5.0: src/lib/CMakeFiles/nimcp_core.dir/nimcp_brain_regions.c.o
+src/lib/libnimcp_core.so.2.5.0: src/lib/CMakeFiles/nimcp_core.dir/nimcp_distributed_cognition.c.o
 src/lib/libnimcp_core.so.2.5.0: src/lib/CMakeFiles/nimcp_core.dir/utils/nimcp_memory.c.o
 src/lib/libnimcp_core.so.2.5.0: src/lib/CMakeFiles/nimcp_core.dir/utils/nimcp_thread.c.o
 src/lib/libnimcp_core.so.2.5.0: src/lib/CMakeFiles/nimcp_core.dir/utils/nimcp_thread_pool.c.o
@@ -565,6 +756,7 @@ src/lib/libnimcp_core.so.2.5.0: src/lib/CMakeFiles/nimcp_core.dir/logging/nimcp_
 src/lib/libnimcp_core.so.2.5.0: src/lib/CMakeFiles/nimcp_core.dir/utils/nimcp_btree.c.o
 src/lib/libnimcp_core.so.2.5.0: src/lib/CMakeFiles/nimcp_core.dir/utils/nimcp_queue.c.o
 src/lib/libnimcp_core.so.2.5.0: src/lib/CMakeFiles/nimcp_core.dir/utils/nimcp_graph.c.o
+src/lib/libnimcp_core.so.2.5.0: src/lib/CMakeFiles/nimcp_core.dir/utils/nimcp_min_heap.c.o
 src/lib/libnimcp_core.so.2.5.0: src/lib/CMakeFiles/nimcp_core.dir/utils/nimcp_serialization.c.o
 src/lib/libnimcp_core.so.2.5.0: src/lib/CMakeFiles/nimcp_core.dir/utils/nimcp_validate.c.o
 src/lib/libnimcp_core.so.2.5.0: src/lib/CMakeFiles/nimcp_core.dir/utils/nimcp_queue_manager.c.o
@@ -574,7 +766,7 @@ src/lib/libnimcp_core.so.2.5.0: src/lib/CMakeFiles/nimcp_core.dir/__/python/nimc
 src/lib/libnimcp_core.so.2.5.0: src/lib/CMakeFiles/nimcp_core.dir/build.make
 src/lib/libnimcp_core.so.2.5.0: /usr/lib/x86_64-linux-gnu/libpython3.10.so
 src/lib/libnimcp_core.so.2.5.0: src/lib/CMakeFiles/nimcp_core.dir/link.txt
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --bold --progress-dir=/home/bbrelin/src/repos/nimcp/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_32) "Linking C shared library libnimcp_core.so"
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --bold --progress-dir=/home/bbrelin/src/repos/nimcp/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_44) "Linking C shared library libnimcp_core.so"
 	cd /home/bbrelin/src/repos/nimcp/build/src/lib && $(CMAKE_COMMAND) -E cmake_link_script CMakeFiles/nimcp_core.dir/link.txt --verbose=$(VERBOSE)
 	cd /home/bbrelin/src/repos/nimcp/build/src/lib && $(CMAKE_COMMAND) -E cmake_symlink_library libnimcp_core.so.2.5.0 libnimcp_core.so.2 libnimcp_core.so
 

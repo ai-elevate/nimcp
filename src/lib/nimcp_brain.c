@@ -508,6 +508,13 @@ static network_config_t build_base_network_config(uint32_t num_inputs, uint32_t 
     config.num_layers = 3;
 
     config.layer_sizes = nimcp_calloc(3, sizeof(uint32_t));
+    // Guard: Check allocation
+    // WHY: If allocation fails, returning config with NULL layer_sizes will crash
+    if (!config.layer_sizes) {
+        set_error("Failed to allocate layer_sizes array");
+        return config;  // Return with layer_sizes = NULL to signal error
+    }
+
     config.layer_sizes[0] = num_inputs;
     config.layer_sizes[1] = num_neurons;
     config.layer_sizes[2] = num_outputs;
@@ -539,13 +546,19 @@ static adaptive_network_config_t build_network_config(uint32_t num_inputs, uint3
 {
     adaptive_network_config_t config = {0};
 
+    fprintf(stderr, "[DEBUG build_network_config] Building base config...\n"); fflush(stderr);
     config.base_config = build_base_network_config(num_inputs, num_outputs, num_neurons);
+    fprintf(stderr, "[DEBUG build_network_config] base_config.layer_sizes=%p\n", (void*)config.base_config.layer_sizes); fflush(stderr);
 
+    fprintf(stderr, "[DEBUG build_network_config] Building spike params...\n"); fflush(stderr);
     config.spike_params = build_spike_params(sparsity_target);
+    fprintf(stderr, "[DEBUG build_network_config] After spike_params, layer_sizes=%p\n", (void*)config.base_config.layer_sizes); fflush(stderr);
+
     config.enable_sparsity = true;
     config.pruning_threshold = 0.01f;
     config.update_frequency = 100;
 
+    fprintf(stderr, "[DEBUG build_network_config] Returning config with layer_sizes=%p\n", (void*)config.base_config.layer_sizes); fflush(stderr);
     return config;
 }
 
@@ -760,17 +773,26 @@ static brain_t allocate_brain(void)
 static adaptive_network_t create_brain_network(uint32_t num_inputs, uint32_t num_outputs,
                                                uint32_t num_neurons, float sparsity_target)
 {
+    fprintf(stderr, "[DEBUG create_brain_network] Building config...\n"); fflush(stderr);
     adaptive_network_config_t net_config =
         build_network_config(num_inputs, num_outputs, num_neurons, sparsity_target);
 
+    // Guard: Check if layer_sizes allocation failed in build_base_network_config
+    // WHY: NULL layer_sizes will cause crash in adaptive_network_create
+    fprintf(stderr, "[DEBUG create_brain_network] Checking layer_sizes=%p\n", (void*)net_config.base_config.layer_sizes); fflush(stderr);
+    if (!net_config.base_config.layer_sizes) {
+        // Error already set by build_base_network_config
+        fprintf(stderr, "[DEBUG create_brain_network] ERROR: layer_sizes is NULL\n"); fflush(stderr);
+        return NULL;
+    }
+
+    fprintf(stderr, "[DEBUG create_brain_network] Calling adaptive_network_create...\n"); fflush(stderr);
     adaptive_network_t network = adaptive_network_create(&net_config);
 
     // Free our copy of layer_sizes - adaptive_network_create makes its own deep copy
     // WHY: Avoid memory leak - we allocated this in build_base_network_config
     // WHAT: Safe to free because adaptive_network now owns its own copy
-    if (net_config.base_config.layer_sizes) {
-        nimcp_free(net_config.base_config.layer_sizes);
-    }
+    nimcp_free(net_config.base_config.layer_sizes);
 
     return network;
 }
@@ -817,16 +839,19 @@ brain_t brain_create(const char* task_name, brain_size_t size, brain_task_t task
                      uint32_t num_inputs, uint32_t num_outputs)
 {
     // Guard: Validate parameters
+    fprintf(stderr, "[DEBUG brain_create] Validating params...\n"); fflush(stderr);
     if (!validate_creation_params(task_name, num_inputs, num_outputs)) {
         return NULL;
     }
 
     // Allocate brain structure
+    fprintf(stderr, "[DEBUG brain_create] Allocating brain...\n"); fflush(stderr);
     brain_t brain = allocate_brain();
     if (!brain)
         return NULL;
 
     // Create strategy for task
+    fprintf(stderr, "[DEBUG brain_create] Creating strategy...\n"); fflush(stderr);
     brain->strategy = strategy_create(task);
     if (!brain->strategy) {
         set_error("Failed to create task strategy");
@@ -835,10 +860,12 @@ brain_t brain_create(const char* task_name, brain_size_t size, brain_task_t task
     }
 
     // Initialize configuration
+    fprintf(stderr, "[DEBUG brain_create] Initializing config...\n"); fflush(stderr);
     init_brain_config(&brain->config, task_name, size, task, num_inputs, num_outputs,
                       brain->strategy);
 
     // Create network
+    fprintf(stderr, "[DEBUG brain_create] Creating network...\n"); fflush(stderr);
     uint32_t num_neurons = get_neuron_count(size);
     brain->network =
         create_brain_network(num_inputs, num_outputs, num_neurons, brain->config.sparsity_target);

@@ -199,13 +199,6 @@ src/lib/CMakeFiles/nimcp_core.dir/nimcp_protocol.c.o: \
  /usr/include/python3.10/tracemalloc.h \
  /home/bbrelin/src/repos/nimcp/src/lib/../include/nimcp_export.h \
  /usr/lib/gcc/x86_64-linux-gnu/11/include/stdbool.h \
- /home/bbrelin/src/repos/nimcp/src/include/utils/nimcp_validate.h \
- /home/bbrelin/src/repos/nimcp/src/include/utils/nimcp_common.h \
- /usr/lib/gcc/x86_64-linux-gnu/11/include/stdatomic.h \
- /usr/include/dirent.h /usr/include/x86_64-linux-gnu/bits/dirent.h \
- /usr/include/x86_64-linux-gnu/bits/dirent_ext.h /usr/include/dlfcn.h \
- /usr/include/x86_64-linux-gnu/bits/dlfcn.h \
- /usr/include/x86_64-linux-gnu/bits/dl_find_object.h /usr/include/lz4.h \
  /usr/include/arpa/inet.h /usr/include/netinet/in.h \
  /usr/include/x86_64-linux-gnu/sys/socket.h \
  /usr/include/x86_64-linux-gnu/bits/types/struct_iovec.h \
@@ -217,4 +210,11 @@ src/lib/CMakeFiles/nimcp_core.dir/nimcp_protocol.c.o: \
  /usr/include/x86_64-linux-gnu/asm/sockios.h \
  /usr/include/asm-generic/sockios.h \
  /usr/include/x86_64-linux-gnu/bits/types/struct_osockaddr.h \
- /usr/include/x86_64-linux-gnu/bits/in.h
+ /usr/include/x86_64-linux-gnu/bits/in.h \
+ /home/bbrelin/src/repos/nimcp/src/include/utils/nimcp_validate.h \
+ /home/bbrelin/src/repos/nimcp/src/include/utils/nimcp_common.h \
+ /usr/lib/gcc/x86_64-linux-gnu/11/include/stdatomic.h \
+ /usr/include/dirent.h /usr/include/x86_64-linux-gnu/bits/dirent.h \
+ /usr/include/x86_64-linux-gnu/bits/dirent_ext.h /usr/include/dlfcn.h \
+ /usr/include/x86_64-linux-gnu/bits/dlfcn.h \
+ /usr/include/x86_64-linux-gnu/bits/dl_find_object.h /usr/include/lz4.h
