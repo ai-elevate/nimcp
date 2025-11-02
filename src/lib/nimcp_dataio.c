@@ -18,7 +18,6 @@
 #include "nimcp_dataio.h"
 #include <errno.h>
 #include <math.h>
-#include <pthread.h>
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -28,6 +27,7 @@
 #include "nimcp_brain.h"
 #include "utils/nimcp_memory.h"
 #include "utils/nimcp_queue.h"
+#include "utils/nimcp_thread.h"
 #include "utils/nimcp_validate.h"
 
 //=============================================================================
@@ -102,7 +102,7 @@ struct dataset_struct {
     dataset_config_t config;
     data_source_strategy_t* strategy;  // Strategy Pattern
     void* source_context;              // Backend-specific context
-    pthread_mutex_t read_lock;         // Thread-safe batch reads
+    nimcp_mutex_t read_lock;         // Thread-safe batch reads
     uint64_t rows_read;                // Current position
 };
 
@@ -586,7 +586,7 @@ dataset_t dataset_open(const dataset_config_t* config)
     }
 
     // Initialize mutex for thread-safe reads
-    pthread_mutex_init(&dataset->read_lock, NULL);
+    nimcp_mutex_init(&dataset->read_lock, NULL);
 
     return dataset;
 }
@@ -607,7 +607,7 @@ void dataset_close(dataset_t dataset)
     }
 
     // Destroy mutex
-    pthread_mutex_destroy(&dataset->read_lock);
+    nimcp_mutex_destroy(&dataset->read_lock);
 
     nimcp_free(dataset);
 }
@@ -631,10 +631,10 @@ bool dataset_next_batch(dataset_t dataset, data_batch_t* batch)
     }
 
     // Thread-safe batch read
-    pthread_mutex_lock(&dataset->read_lock);
+    nimcp_mutex_lock(&dataset->read_lock);
     bool result = dataset->strategy->next_batch(dataset->source_context, batch);
     dataset->rows_read += batch->num_samples;
-    pthread_mutex_unlock(&dataset->read_lock);
+    nimcp_mutex_unlock(&dataset->read_lock);
 
     return result;
 }
@@ -678,10 +678,10 @@ bool dataset_reset(dataset_t dataset)
         return false;
     }
 
-    pthread_mutex_lock(&dataset->read_lock);
+    nimcp_mutex_lock(&dataset->read_lock);
     bool result = dataset->strategy->reset(dataset->source_context);
     dataset->rows_read = 0;
-    pthread_mutex_unlock(&dataset->read_lock);
+    nimcp_mutex_unlock(&dataset->read_lock);
 
     return result;
 }
@@ -732,8 +732,8 @@ typedef struct {
     brain_t brain;
     dataset_t dataset;
     nimcp_queue_handle_t batch_queue;
-    pthread_t producer_thread;
-    pthread_t consumer_thread;
+    nimcp_thread_t producer_thread;
+    nimcp_thread_t consumer_thread;
     volatile bool stop_requested;
     volatile bool producer_done;
     uint32_t current_epoch;
@@ -741,7 +741,7 @@ typedef struct {
     float validation_split;
 
     // Training statistics (protected by stats_lock)
-    pthread_mutex_t stats_lock;
+    nimcp_mutex_t stats_lock;
     uint64_t samples_trained;
     uint64_t samples_validated;
     float total_accuracy;
@@ -888,9 +888,9 @@ static void* consumer_thread_func(void* arg)
             // Skip samples in validation set
             float sample_rand = (float) rand() / RAND_MAX;
             if (sample_rand < ctx->validation_split) {
-                pthread_mutex_lock(&ctx->stats_lock);
+                nimcp_mutex_lock(&ctx->stats_lock);
                 ctx->samples_validated++;
-                pthread_mutex_unlock(&ctx->stats_lock);
+                nimcp_mutex_unlock(&ctx->stats_lock);
                 continue;
             }
 
@@ -899,9 +899,9 @@ static void* consumer_thread_func(void* arg)
             // brain_learn_example(ctx->brain, batch->features[i],
             //                    num_features, batch->labels[i], 1.0);
 
-            pthread_mutex_lock(&ctx->stats_lock);
+            nimcp_mutex_lock(&ctx->stats_lock);
             ctx->samples_trained++;
-            pthread_mutex_unlock(&ctx->stats_lock);
+            nimcp_mutex_unlock(&ctx->stats_lock);
         }
 
         // Free batch memory
@@ -969,7 +969,7 @@ float brain_train_from_dataset(brain_t brain, dataset_t dataset, uint32_t epochs
     ctx->stop_requested = false;
     ctx->producer_done = false;
     ctx->has_error = false;
-    pthread_mutex_init(&ctx->stats_lock, NULL);
+    nimcp_mutex_init(&ctx->stats_lock, NULL);
 
     // Create batch queue
     // WHY 10 BATCHES: Balance between memory overhead and I/O hiding
@@ -982,34 +982,34 @@ float brain_train_from_dataset(brain_t brain, dataset_t dataset, uint32_t epochs
     nimcp_result_t result = nimcp_queue_create(&queue_config, &ctx->batch_queue);
     if (result != NIMCP_SUCCESS) {
         dataio_set_error("Failed to create batch queue");
-        pthread_mutex_destroy(&ctx->stats_lock);
+        nimcp_mutex_destroy(&ctx->stats_lock);
         nimcp_free(ctx);
         return 0.0f;
     }
 
     // Start producer thread (reads batches from dataset)
-    if (pthread_create(&ctx->producer_thread, NULL, producer_thread_func, ctx) != 0) {
+    if (nimcp_thread_create(&ctx->producer_thread, NULL, producer_thread_func, ctx) != 0) {
         dataio_set_error("Failed to create producer thread");
         nimcp_queue_destroy(ctx->batch_queue);
-        pthread_mutex_destroy(&ctx->stats_lock);
+        nimcp_mutex_destroy(&ctx->stats_lock);
         nimcp_free(ctx);
         return 0.0f;
     }
 
     // Start consumer thread (trains brain on batches)
-    if (pthread_create(&ctx->consumer_thread, NULL, consumer_thread_func, ctx) != 0) {
+    if (nimcp_thread_create(&ctx->consumer_thread, NULL, consumer_thread_func, ctx) != 0) {
         dataio_set_error("Failed to create consumer thread");
         ctx->stop_requested = true;
-        pthread_join(ctx->producer_thread, NULL);
+        nimcp_thread_join(ctx->producer_thread, NULL);
         nimcp_queue_destroy(ctx->batch_queue);
-        pthread_mutex_destroy(&ctx->stats_lock);
+        nimcp_mutex_destroy(&ctx->stats_lock);
         nimcp_free(ctx);
         return 0.0f;
     }
 
     // Wait for both threads to complete
-    pthread_join(ctx->producer_thread, NULL);
-    pthread_join(ctx->consumer_thread, NULL);
+    nimcp_thread_join(ctx->producer_thread, NULL);
+    nimcp_thread_join(ctx->consumer_thread, NULL);
 
     // Get final statistics
     float total_accuracy = ctx->total_accuracy;
@@ -1030,7 +1030,7 @@ float brain_train_from_dataset(brain_t brain, dataset_t dataset, uint32_t epochs
 
     // Cleanup
     nimcp_queue_destroy(ctx->batch_queue);
-    pthread_mutex_destroy(&ctx->stats_lock);
+    nimcp_mutex_destroy(&ctx->stats_lock);
     nimcp_free(ctx);
 
     return total_accuracy;
@@ -1290,7 +1290,7 @@ dataset_t dataset_create_stream(stream_callback_fn_t callback, void* user_data,
     stream_ctx->active = true;
 
     dataset->source_context = stream_ctx;
-    pthread_mutex_init(&dataset->read_lock, NULL);
+    nimcp_mutex_init(&dataset->read_lock, NULL);
 
     return dataset;
 }

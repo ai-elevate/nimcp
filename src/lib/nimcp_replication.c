@@ -29,7 +29,6 @@
 #include "../include/nimcp_replication.h"
 #include <dirent.h>
 #include <errno.h>
-#include <pthread.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -37,6 +36,7 @@
 #include <time.h>
 #include "../include/nimcp_brain.h"
 #include "utils/nimcp_memory.h"
+#include "utils/nimcp_thread.h"
 #include "utils/nimcp_time.h"
 
 //=============================================================================
@@ -113,16 +113,16 @@ struct replication_cluster_struct {
 
     // Registered brains (linked list)
     registered_brain_t* brains;   // Linked list head
-    pthread_mutex_t brains_lock;  // Thread-safe brain list
+    nimcp_mutex_t brains_lock;  // Thread-safe brain list
 
     // Node tracking
     replication_node_status_t node_status;  // This node's status
     cluster_node_t* known_nodes;            // Array of known nodes
     uint32_t num_known_nodes;               // Number of nodes
-    pthread_mutex_t nodes_lock;             // Thread-safe node list
+    nimcp_mutex_t nodes_lock;             // Thread-safe node list
 
     // Heartbeat thread
-    pthread_t heartbeat_thread;  // Background heartbeat
+    nimcp_thread_t heartbeat_thread;  // Background heartbeat
     bool heartbeat_running;      // Heartbeat active flag
 };
 
@@ -548,18 +548,18 @@ static registered_brain_t* find_brain(replication_cluster_t cluster, const char*
     if (!cluster || !brain_name)
         return NULL;
 
-    pthread_mutex_lock(&cluster->brains_lock);
+    nimcp_mutex_lock(&cluster->brains_lock);
 
     registered_brain_t* current = cluster->brains;
     while (current) {
         if (strcmp(current->brain_name, brain_name) == 0) {
-            pthread_mutex_unlock(&cluster->brains_lock);
+            nimcp_mutex_unlock(&cluster->brains_lock);
             return current;
         }
         current = current->next;
     }
 
-    pthread_mutex_unlock(&cluster->brains_lock);
+    nimcp_mutex_unlock(&cluster->brains_lock);
     return NULL;
 }
 
@@ -620,8 +620,8 @@ replication_cluster_t replication_create_cluster(const replication_config_t* con
     memcpy(&cluster->config, config, sizeof(replication_config_t));
 
     // Initialize mutexes
-    pthread_mutex_init(&cluster->brains_lock, NULL);
-    pthread_mutex_init(&cluster->nodes_lock, NULL);
+    nimcp_mutex_init(&cluster->brains_lock, NULL);
+    nimcp_mutex_init(&cluster->nodes_lock, NULL);
 
     // Select strategy based on backend type
     switch (config->backend) {
@@ -632,31 +632,31 @@ replication_cluster_t replication_create_cluster(const replication_config_t* con
         case REPLICATION_BACKEND_REDIS:
             // TODO: Implement Redis strategy
             set_replication_error("Redis backend not yet implemented");
-            pthread_mutex_destroy(&cluster->brains_lock);
-            pthread_mutex_destroy(&cluster->nodes_lock);
+            nimcp_mutex_destroy(&cluster->brains_lock);
+            nimcp_mutex_destroy(&cluster->nodes_lock);
             nimcp_free(cluster);
             return NULL;
 
         case REPLICATION_BACKEND_POSTGRES:
             // TODO: Implement PostgreSQL strategy
             set_replication_error("PostgreSQL backend not yet implemented");
-            pthread_mutex_destroy(&cluster->brains_lock);
-            pthread_mutex_destroy(&cluster->nodes_lock);
+            nimcp_mutex_destroy(&cluster->brains_lock);
+            nimcp_mutex_destroy(&cluster->nodes_lock);
             nimcp_free(cluster);
             return NULL;
 
         default:
             set_replication_error("Unknown backend type: %d", config->backend);
-            pthread_mutex_destroy(&cluster->brains_lock);
-            pthread_mutex_destroy(&cluster->nodes_lock);
+            nimcp_mutex_destroy(&cluster->brains_lock);
+            nimcp_mutex_destroy(&cluster->nodes_lock);
             nimcp_free(cluster);
             return NULL;
     }
 
     // Initialize backend
     if (!cluster->strategy->initialize(&cluster->backend_context, config)) {
-        pthread_mutex_destroy(&cluster->brains_lock);
-        pthread_mutex_destroy(&cluster->nodes_lock);
+        nimcp_mutex_destroy(&cluster->brains_lock);
+        nimcp_mutex_destroy(&cluster->nodes_lock);
         nimcp_free(cluster);
         return NULL;
     }
@@ -671,15 +671,15 @@ replication_cluster_t replication_create_cluster(const replication_config_t* con
     // Start heartbeat thread
     cluster->heartbeat_running = true;
     int thread_result =
-        pthread_create(&cluster->heartbeat_thread, NULL, heartbeat_thread_fn, cluster);
+        nimcp_thread_create(&cluster->heartbeat_thread, NULL, heartbeat_thread_fn, cluster);
     if (thread_result != 0) {
         set_replication_error("Failed to create heartbeat thread: %d", thread_result);
         cluster->heartbeat_running = false;
         if (cluster->strategy && cluster->strategy->shutdown) {
             cluster->strategy->shutdown(cluster->backend_context);
         }
-        pthread_mutex_destroy(&cluster->brains_lock);
-        pthread_mutex_destroy(&cluster->nodes_lock);
+        nimcp_mutex_destroy(&cluster->brains_lock);
+        nimcp_mutex_destroy(&cluster->nodes_lock);
         nimcp_free(cluster);
         return NULL;
     }
@@ -703,10 +703,10 @@ void replication_destroy_cluster(replication_cluster_t cluster)
 
     // Stop heartbeat thread
     cluster->heartbeat_running = false;
-    pthread_join(cluster->heartbeat_thread, NULL);
+    nimcp_thread_join(cluster->heartbeat_thread, NULL);
 
     // Free registered brains list
-    pthread_mutex_lock(&cluster->brains_lock);
+    nimcp_mutex_lock(&cluster->brains_lock);
     registered_brain_t* current = cluster->brains;
     while (current) {
         registered_brain_t* next = current->next;
@@ -717,7 +717,7 @@ void replication_destroy_cluster(replication_cluster_t cluster)
         nimcp_free(current);
         current = next;
     }
-    pthread_mutex_unlock(&cluster->brains_lock);
+    nimcp_mutex_unlock(&cluster->brains_lock);
 
     // Shutdown backend
     if (cluster->strategy && cluster->strategy->shutdown) {
@@ -726,8 +726,8 @@ void replication_destroy_cluster(replication_cluster_t cluster)
     }
 
     // Cleanup mutexes
-    pthread_mutex_destroy(&cluster->brains_lock);
-    pthread_mutex_destroy(&cluster->nodes_lock);
+    nimcp_mutex_destroy(&cluster->brains_lock);
+    nimcp_mutex_destroy(&cluster->nodes_lock);
 
     // Free cluster
     nimcp_free(cluster);
@@ -771,10 +771,10 @@ bool replication_register_brain(replication_cluster_t cluster, brain_t brain,
     brain_entry->last_sync_version = 0;
 
     // Add to linked list (prepend)
-    pthread_mutex_lock(&cluster->brains_lock);
+    nimcp_mutex_lock(&cluster->brains_lock);
     brain_entry->next = cluster->brains;
     cluster->brains = brain_entry;
-    pthread_mutex_unlock(&cluster->brains_lock);
+    nimcp_mutex_unlock(&cluster->brains_lock);
 
     return true;
 }
@@ -793,7 +793,7 @@ bool replication_unregister_brain(replication_cluster_t cluster, const char* bra
     if (!cluster || !brain_name)
         return false;
 
-    pthread_mutex_lock(&cluster->brains_lock);
+    nimcp_mutex_lock(&cluster->brains_lock);
 
     registered_brain_t* current = cluster->brains;
     registered_brain_t* prev = NULL;
@@ -813,7 +813,7 @@ bool replication_unregister_brain(replication_cluster_t cluster, const char* bra
             }
 
             nimcp_free(current);
-            pthread_mutex_unlock(&cluster->brains_lock);
+            nimcp_mutex_unlock(&cluster->brains_lock);
             return true;
         }
 
@@ -821,7 +821,7 @@ bool replication_unregister_brain(replication_cluster_t cluster, const char* bra
         current = current->next;
     }
 
-    pthread_mutex_unlock(&cluster->brains_lock);
+    nimcp_mutex_unlock(&cluster->brains_lock);
     set_replication_error("Brain '%s' not found", brain_name);
     return false;
 }
