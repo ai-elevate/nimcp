@@ -164,6 +164,7 @@ add_nimcp_test_binary(integration_tests
     test_integration_networking.cpp
     test_integration_cognitive.cpp
     test_integration_e2e.cpp
+    test_distributed_cognition.cpp
 )
 
 # ============================================================================
