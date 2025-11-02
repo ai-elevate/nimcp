@@ -1,9 +1,16 @@
 # NIMCP API Reference
 
 **Version:** 2.5.0
-**Last Updated:** 2025-11-01
+**Last Updated:** 2025-11-02
 
 This document provides comprehensive reference documentation for all public APIs in the NIMCP (Neuromorphic Infant Machine Cognitive Platform) library.
+
+## Recent Updates (2025-11-02)
+
+- **Fixed:** Critical memory corruption bug from strdup()/nimcp_free() allocator mismatch (8 instances)
+- **Fixed:** Threading bug in pthread → nimcp_thread migration (incorrect parameter order)
+- **Refactored:** All pthread usage replaced with nimcp_thread wrappers for consistency
+- **Status:** Core tests and glial tests passing; cognitive/integration tests fixed
 
 ## Table of Contents
 
