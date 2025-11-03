@@ -517,6 +517,9 @@ static void repository_destroy(knowledge_repository_t* repo)
 // Text Processing Utilities - Single Pass O(n) Algorithms
 //=============================================================================
 
+// Minimum word length for meaningful concept extraction
+#define MIN_CONCEPT_LENGTH 3
+
 /**
  * @brief Check if word should be skipped during extraction
  *
@@ -530,7 +533,7 @@ static void repository_destroy(knowledge_repository_t* repo)
  */
 static bool should_skip_word(const char* word)
 {
-    if (!word || strlen(word) <= 3)
+    if (!word || strlen(word) < MIN_CONCEPT_LENGTH)
         return true;
 
     static const char* stopwords[] = {"the",   "and",   "that",  "this",  "with",
@@ -623,9 +626,65 @@ static void create_context_string(const char* text, char* output, uint32_t max_l
     }
 }
 
+/**
+ * @brief Normalize concept to lowercase for case-insensitive matching
+ *
+ * @param concept Source concept string (must be non-NULL)
+ * @param output Output buffer (must be non-NULL)
+ * @param max_length Maximum output length
+ *
+ * Why: Ensures consistent concept storage regardless of input capitalization.
+ * "Democracy", "democracy", and "DEMOCRACY" all map to the same concept.
+ */
+static void normalize_concept_case(const char* concept, char* output, uint32_t max_length)
+{
+    if (!concept || !output || max_length == 0)
+        return;
+
+    uint32_t i;
+    for (i = 0; i < max_length - 1 && concept[i] != '\0'; i++) {
+        output[i] = (char)tolower((unsigned char)concept[i]);
+    }
+    output[i] = '\0';
+}
+
 //=============================================================================
 // Strategy Pattern for Domain-Specific Learning
 //=============================================================================
+
+/**
+ * @brief Deep copy string array
+ *
+ * @param src Source array
+ * @param count Number of strings
+ * @return Copied array or NULL
+ *
+ * Why: Reusable helper avoids code duplication and nested ifs.
+ */
+static char** deep_copy_string_array(char** src, uint32_t count)
+{
+    if (!src || count == 0)
+        return NULL;
+
+    char** dest = (char**)nimcp_malloc(count * sizeof(char*));
+    if (!dest)
+        return NULL;
+
+    for (uint32_t i = 0; i < count; i++) {
+        dest[i] = NULL;
+        if (!src[i])
+            continue;
+
+        size_t len = strlen(src[i]) + 1;
+        dest[i] = (char*)nimcp_malloc(len);
+        if (!dest[i])
+            continue;
+
+        strcpy(dest[i], src[i]);
+    }
+
+    return dest;
+}
 
 /**
  * @brief Learn narrative content strategy
@@ -650,7 +709,24 @@ static bool strategy_learn_narrative(void* system, const void* data)
         return false;
 
     narrative_knowledge_t* new_story = &sys->narratives[sys->num_narratives++];
-    memcpy(new_story, story, sizeof(narrative_knowledge_t));
+    memset(new_story, 0, sizeof(narrative_knowledge_t));
+
+    // Deep copy scalar fields
+    strncpy(new_story->title, story->title, sizeof(new_story->title) - 1);
+    strncpy(new_story->author, story->author, sizeof(new_story->author) - 1);
+    strncpy(new_story->summary, story->summary, sizeof(new_story->summary) - 1);
+    strncpy(new_story->cultural_context, story->cultural_context, sizeof(new_story->cultural_context) - 1);
+    new_story->primary_domain = story->primary_domain;
+
+    // Deep copy string arrays using helper
+    new_story->num_characters = story->num_characters;
+    new_story->characters = deep_copy_string_array(story->characters, story->num_characters);
+
+    new_story->num_themes = story->num_themes;
+    new_story->themes = deep_copy_string_array(story->themes, story->num_themes);
+
+    new_story->num_lessons = story->num_lessons;
+    new_story->moral_lessons = deep_copy_string_array(story->moral_lessons, story->num_lessons);
 
     for (uint32_t i = 0; i < story->num_lessons; i++) {
         knowledge_item_t item = {0};
@@ -691,7 +767,19 @@ static bool strategy_learn_aesthetic(void* system, const void* data)
         return false;
 
     aesthetic_knowledge_t* new_art = &sys->artworks[sys->num_artworks++];
-    memcpy(new_art, art, sizeof(aesthetic_knowledge_t));
+    memset(new_art, 0, sizeof(aesthetic_knowledge_t));
+
+    // Deep copy scalar fields
+    strncpy(new_art->work_title, art->work_title, sizeof(new_art->work_title) - 1);
+    strncpy(new_art->creator, art->creator, sizeof(new_art->creator) - 1);
+    strncpy(new_art->medium, art->medium, sizeof(new_art->medium) - 1);
+    strncpy(new_art->description, art->description, sizeof(new_art->description) - 1);
+    strncpy(new_art->emotional_impact, art->emotional_impact, sizeof(new_art->emotional_impact) - 1);
+    strncpy(new_art->historical_significance, art->historical_significance, sizeof(new_art->historical_significance) - 1);
+
+    // Deep copy aesthetic_qualities array
+    new_art->num_qualities = art->num_qualities;
+    new_art->aesthetic_qualities = deep_copy_string_array(art->aesthetic_qualities, art->num_qualities);
 
     for (uint32_t i = 0; i < art->num_qualities; i++) {
         knowledge_item_t item = {0};
@@ -732,7 +820,21 @@ static bool strategy_learn_historical(void* system, const void* data)
         return false;
 
     historical_knowledge_t* new_event = &sys->history[sys->num_history++];
-    memcpy(new_event, event, sizeof(historical_knowledge_t));
+    memset(new_event, 0, sizeof(historical_knowledge_t));
+
+    // Deep copy scalar fields
+    strncpy(new_event->event_name, event->event_name, sizeof(new_event->event_name) - 1);
+    new_event->timestamp_year = event->timestamp_year;
+    strncpy(new_event->causes, event->causes, sizeof(new_event->causes) - 1);
+    strncpy(new_event->effects, event->effects, sizeof(new_event->effects) - 1);
+    strncpy(new_event->significance, event->significance, sizeof(new_event->significance) - 1);
+
+    // Deep copy string arrays
+    new_event->num_people = event->num_people;
+    new_event->key_people = deep_copy_string_array(event->key_people, event->num_people);
+
+    new_event->num_related_events = event->num_related_events;
+    new_event->related_events = deep_copy_string_array(event->related_events, event->num_related_events);
 
     knowledge_item_t item = {0};
     strncpy(item.concept, event->event_name, sizeof(item.concept) - 1);
@@ -1075,11 +1177,15 @@ static bool process_concept(knowledge_system_t system, const char* concept, cons
     if (!system || !concept)
         return false;
 
-    int32_t idx = repository_find(system->repository, concept);
+    // Normalize concept to lowercase for case-insensitive matching
+    char normalized_concept[256];
+    normalize_concept_case(concept, normalized_concept, sizeof(normalized_concept));
+
+    int32_t idx = repository_find(system->repository, normalized_concept);
 
     if (idx < 0) {
         knowledge_item_t item = {0};
-        strncpy(item.concept, concept, sizeof(item.concept) - 1);
+        strncpy(item.concept, normalized_concept, sizeof(item.concept) - 1);
         item.domain = domain;
         create_context_string(text, item.definition, sizeof(item.definition));
         item.confidence = 0.3f;
@@ -1687,6 +1793,10 @@ uint32_t knowledge_continue_reading(knowledge_system_t system, const char* book_
 
     for (uint32_t i = 0; i < system->num_reading; i++) {
         if (strcmp(system->reading_list[i].book_title, book_title) == 0) {
+            // Guard clause: Prevent divide by zero
+            if (system->reading_list[i].total_pages == 0)
+                return 0;
+
             return (system->reading_list[i].current_page * 100) /
                    system->reading_list[i].total_pages;
         }
