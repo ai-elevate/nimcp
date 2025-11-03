@@ -1,0 +1,457 @@
+/**
+ * @file nimcp_spike_event.c
+ * @brief Implementation of spike event message-passing system
+ *
+ * WHAT: Implements biological spike communication between neurons
+ * WHY:  True P2P neuron architecture requires message-passing, not shared memory
+ * HOW:  Lock-free queues, circular buffers, atomic operations
+ *
+ * DESIGN PATTERNS:
+ * - Producer-Consumer: Spike queues
+ * - Circular Buffer: Spike trains
+ * - Lock-Free: Atomic operations for thread safety
+ *
+ * @author NIMCP Development Team
+ * @date 2025
+ * @version 2.6 (GPU P2P)
+ */
+
+#include "gpu/nimcp_spike_event.h"
+#include "utils/memory/nimcp_memory.h"
+#include "utils/time/nimcp_time.h"
+#include "utils/validation/nimcp_validate.h"
+#include <string.h>
+#include <math.h>
+
+// C11 atomics for lock-free operations
+#if __STDC_VERSION__ >= 201112L && !defined(__STDC_NO_ATOMICS__)
+#include <stdatomic.h>
+#define ATOMIC_UINT atomic_uint
+#define ATOMIC_LOAD(ptr) atomic_load(ptr)
+#define ATOMIC_STORE(ptr, val) atomic_store(ptr, val)
+#define ATOMIC_FETCH_ADD(ptr, val) atomic_fetch_add(ptr, val)
+#define ATOMIC_COMPARE_EXCHANGE(ptr, expected, desired) \
+    atomic_compare_exchange_weak(ptr, expected, desired)
+#else
+// Fallback: non-atomic (thread-unsafe)
+#define ATOMIC_UINT volatile uint32_t
+#define ATOMIC_LOAD(ptr) (*(ptr))
+#define ATOMIC_STORE(ptr, val) (*(ptr) = (val))
+#define ATOMIC_FETCH_ADD(ptr, val) ((*(ptr))++)
+#define ATOMIC_COMPARE_EXCHANGE(ptr, expected, desired) \
+    ((*(ptr) == *(expected)) ? (*(ptr) = (desired), true) : (*(expected) = *(ptr), false))
+#endif
+
+//=============================================================================
+// Internal Structures
+//=============================================================================
+
+/**
+ * @brief Internal spike train structure
+ */
+struct spike_train_struct {
+    spike_event_t* events;   /**< Circular buffer */
+    uint32_t capacity;
+    uint32_t count;
+    uint32_t head;           /**< Write position */
+    uint64_t last_spike;
+    float firing_rate;
+    uint64_t window_start;   /**< For rate calculation */
+};
+
+/**
+ * @brief Internal spike queue structure with atomics
+ */
+struct spike_queue_struct {
+    spike_event_t* events;
+    uint32_t capacity;
+    uint32_t mask;           /**< capacity - 1 (for fast modulo) */
+    ATOMIC_UINT head;
+    ATOMIC_UINT tail;
+    ATOMIC_UINT count;
+    bool gpu_enabled;
+    void* gpu_ptr;
+};
+
+//=============================================================================
+// Spike Train Implementation
+//=============================================================================
+
+/**
+ * @brief Create spike train
+ */
+spike_train_t* spike_train_create(uint32_t capacity)
+{
+    // Guard: Validate capacity
+    if (capacity == 0 || capacity > 1000000) {
+        return NULL;
+    }
+
+    spike_train_t* train = (spike_train_t*)nimcp_calloc(1, sizeof(spike_train_t));
+    if (!train) {
+        return NULL;
+    }
+
+    train->events = (spike_event_t*)nimcp_calloc(capacity, sizeof(spike_event_t));
+    if (!train->events) {
+        nimcp_free(train);
+        return NULL;
+    }
+
+    train->capacity = capacity;
+    train->count = 0;
+    train->head = 0;
+    train->last_spike = 0;
+    train->firing_rate = 0.0f;
+    train->window_start = 0;
+
+    return train;
+}
+
+/**
+ * @brief Destroy spike train
+ */
+void spike_train_destroy(spike_train_t* train)
+{
+    if (!train) {
+        return;
+    }
+
+    if (train->events) {
+        nimcp_free(train->events);
+    }
+
+    nimcp_free(train);
+}
+
+/**
+ * @brief Add spike to train
+ */
+bool spike_train_add(spike_train_t* train, uint64_t timestamp, float amplitude)
+{
+    // Guard: Validate inputs
+    if (!train || timestamp == 0) {
+        return false;
+    }
+
+    // Create spike event
+    spike_event_t event = {
+        .timestamp = timestamp,
+        .source_id = 0,  // Will be set by caller if needed
+        .target_id = 0,
+        .synapse_id = 0,
+        .amplitude = amplitude
+    };
+
+    // Add to circular buffer
+    train->events[train->head] = event;
+    train->head = (train->head + 1) % train->capacity;
+
+    // Update count (saturate at capacity)
+    if (train->count < train->capacity) {
+        train->count++;
+    }
+
+    // Update last spike time
+    train->last_spike = timestamp;
+
+    return true;
+}
+
+/**
+ * @brief Get last spike time
+ */
+uint64_t spike_train_get_last_spike(const spike_train_t* train)
+{
+    if (!train) {
+        return 0;
+    }
+
+    return train->last_spike;
+}
+
+/**
+ * @brief Get spike at index
+ */
+bool spike_train_get_spike(const spike_train_t* train, uint32_t index,
+                           spike_event_t* event)
+{
+    // Guard: Validate inputs
+    if (!train || !event || index >= train->count) {
+        return false;
+    }
+
+    // Calculate circular buffer index
+    // oldest = (head - count) % capacity
+    // index_pos = (oldest + index) % capacity
+    uint32_t oldest = (train->head + train->capacity - train->count) % train->capacity;
+    uint32_t pos = (oldest + index) % train->capacity;
+
+    *event = train->events[pos];
+    return true;
+}
+
+/**
+ * @brief Compute firing rate
+ */
+float spike_train_compute_rate(spike_train_t* train, uint64_t time_window)
+{
+    // Guard: Validate inputs
+    if (!train || time_window == 0) {
+        return 0.0f;
+    }
+
+    if (train->count == 0) {
+        train->firing_rate = 0.0f;
+        return 0.0f;
+    }
+
+    // Get current time
+    uint64_t current_time = nimcp_time_get_microseconds();
+
+    // Count spikes in time window
+    uint32_t spike_count = 0;
+    uint64_t window_start = current_time - time_window;
+
+    for (uint32_t i = 0; i < train->count; i++) {
+        spike_event_t event;
+        if (spike_train_get_spike(train, i, &event)) {
+            if (event.timestamp >= window_start) {
+                spike_count++;
+            }
+        }
+    }
+
+    // Convert to Hz (spikes per second)
+    float time_window_sec = time_window / 1000000.0f;
+    train->firing_rate = spike_count / time_window_sec;
+
+    return train->firing_rate;
+}
+
+/**
+ * @brief Clear spike train
+ */
+void spike_train_clear(spike_train_t* train)
+{
+    if (!train) {
+        return;
+    }
+
+    train->count = 0;
+    train->head = 0;
+    train->last_spike = 0;
+    train->firing_rate = 0.0f;
+}
+
+//=============================================================================
+// Spike Queue Implementation (Lock-Free)
+//=============================================================================
+
+/**
+ * @brief Round up to next power of 2
+ */
+static uint32_t next_power_of_2(uint32_t n)
+{
+    if (n == 0) {
+        return 1;
+    }
+
+    n--;
+    n |= n >> 1;
+    n |= n >> 2;
+    n |= n >> 4;
+    n |= n >> 8;
+    n |= n >> 16;
+    n++;
+
+    return n;
+}
+
+/**
+ * @brief Create spike queue
+ */
+spike_queue_t* spike_queue_create(uint32_t capacity, bool gpu_enabled)
+{
+    // Guard: Validate capacity
+    if (capacity == 0 || capacity > 10000000) {
+        return NULL;
+    }
+
+    // Round up to power of 2 for fast modulo
+    capacity = next_power_of_2(capacity);
+
+    spike_queue_t* queue = (spike_queue_t*)nimcp_calloc(1, sizeof(spike_queue_t));
+    if (!queue) {
+        return NULL;
+    }
+
+    queue->events = (spike_event_t*)nimcp_calloc(capacity, sizeof(spike_event_t));
+    if (!queue->events) {
+        nimcp_free(queue);
+        return NULL;
+    }
+
+    queue->capacity = capacity;
+    queue->mask = capacity - 1;  // For fast modulo
+    ATOMIC_STORE(&queue->head, 0);
+    ATOMIC_STORE(&queue->tail, 0);
+    ATOMIC_STORE(&queue->count, 0);
+    queue->gpu_enabled = gpu_enabled;
+    queue->gpu_ptr = NULL;
+
+    // GPU memory allocation would go here if CUDA enabled
+    #ifdef NIMCP_ENABLE_CUDA
+    if (gpu_enabled) {
+        // cudaMalloc(&queue->gpu_ptr, capacity * sizeof(spike_event_t));
+        // Not implemented yet - requires CUDA
+        queue->gpu_enabled = false;  // Disable for now
+    }
+    #else
+    queue->gpu_enabled = false;  // CUDA not available
+    #endif
+
+    return queue;
+}
+
+/**
+ * @brief Destroy spike queue
+ */
+void spike_queue_destroy(spike_queue_t* queue)
+{
+    if (!queue) {
+        return;
+    }
+
+    // Free GPU memory if allocated
+    #ifdef NIMCP_ENABLE_CUDA
+    if (queue->gpu_ptr) {
+        // cudaFree(queue->gpu_ptr);
+    }
+    #endif
+
+    if (queue->events) {
+        nimcp_free(queue->events);
+    }
+
+    nimcp_free(queue);
+}
+
+/**
+ * @brief Push spike to queue (lock-free)
+ */
+bool spike_queue_push(spike_queue_t* queue, const spike_event_t* event)
+{
+    // Guard: Validate inputs
+    if (!queue || !event) {
+        return false;
+    }
+
+    // Check if queue is full
+    uint32_t current_count = ATOMIC_LOAD(&queue->count);
+    if (current_count >= queue->capacity) {
+        return false;  // Queue full
+    }
+
+    // Get tail position and increment atomically
+    uint32_t tail_pos = ATOMIC_FETCH_ADD(&queue->tail, 1);
+    uint32_t index = tail_pos & queue->mask;
+
+    // Write event
+    queue->events[index] = *event;
+
+    // Increment count
+    ATOMIC_FETCH_ADD(&queue->count, 1);
+
+    return true;
+}
+
+/**
+ * @brief Pop spike from queue (lock-free)
+ */
+bool spike_queue_pop(spike_queue_t* queue, spike_event_t* event)
+{
+    // Guard: Validate inputs
+    if (!queue || !event) {
+        return false;
+    }
+
+    // Check if queue is empty
+    uint32_t current_count = ATOMIC_LOAD(&queue->count);
+    if (current_count == 0) {
+        return false;  // Queue empty
+    }
+
+    // Get head position and increment atomically
+    uint32_t head_pos = ATOMIC_FETCH_ADD(&queue->head, 1);
+    uint32_t index = head_pos & queue->mask;
+
+    // Read event
+    *event = queue->events[index];
+
+    // Decrement count (with protection)
+    uint32_t old_count;
+    do {
+        old_count = ATOMIC_LOAD(&queue->count);
+        if (old_count == 0) {
+            break;
+        }
+    } while (!ATOMIC_COMPARE_EXCHANGE(&queue->count, &old_count, old_count - 1));
+
+    return true;
+}
+
+/**
+ * @brief Get queue size
+ */
+uint32_t spike_queue_size(const spike_queue_t* queue)
+{
+    if (!queue) {
+        return 0;
+    }
+
+    return ATOMIC_LOAD(&queue->count);
+}
+
+/**
+ * @brief Check if queue is empty
+ */
+bool spike_queue_is_empty(const spike_queue_t* queue)
+{
+    return spike_queue_size(queue) == 0;
+}
+
+/**
+ * @brief Synchronize with GPU
+ */
+bool spike_queue_sync_gpu(spike_queue_t* queue, bool direction)
+{
+    // Guard: Validate queue
+    if (!queue) {
+        return false;
+    }
+
+    // Guard: Check if GPU enabled
+    if (!queue->gpu_enabled || !queue->gpu_ptr) {
+        return false;  // GPU not enabled/available
+    }
+
+    #ifdef NIMCP_ENABLE_CUDA
+    // TODO: Implement CUDA memory copy
+    // if (direction) {
+    //     // CPU -> GPU
+    //     cudaMemcpy(queue->gpu_ptr, queue->events,
+    //                queue->capacity * sizeof(spike_event_t),
+    //                cudaMemcpyHostToDevice);
+    // } else {
+    //     // GPU -> CPU
+    //     cudaMemcpy(queue->events, queue->gpu_ptr,
+    //                queue->capacity * sizeof(spike_event_t),
+    //                cudaMemcpyDeviceToHost);
+    // }
+    return true;
+    #else
+    (void)direction;  // Unused
+    return false;  // CUDA not available
+    #endif
+}
