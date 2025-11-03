@@ -1,16 +1,18 @@
 # NIMCP API Reference
 
-**Version:** 2.5.0
-**Last Updated:** 2025-11-02
+**Version:** 2.5.1
+**Last Updated:** 2025-11-03
 
 This document provides comprehensive reference documentation for all public APIs in the NIMCP (Neuromorphic Infant Machine Cognitive Platform) library.
 
-## Recent Updates (2025-11-02)
+## Recent Updates (2025-11-03)
 
-- **Fixed:** Critical memory corruption bug from strdup()/nimcp_free() allocator mismatch (8 instances)
-- **Fixed:** Threading bug in pthread → nimcp_thread migration (incorrect parameter order)
-- **Refactored:** All pthread usage replaced with nimcp_thread wrappers for consistency
-- **Status:** Core tests and glial tests passing; cognitive/integration tests fixed
+- **Added:** Knowledge B-tree indexing for efficient confidence-based queries (O(log n) range queries)
+- **Added:** `knowledge_get_by_confidence_range()` - Query knowledge items by confidence level
+- **Added:** `knowledge_get_all_ordered_by_confidence()` - Get all knowledge sorted by confidence
+- **Added:** `knowledge_add_item()` - Test helper API for direct knowledge insertion
+- **Fixed:** B-tree key extraction pattern using stable stored keys instead of thread-local buffers
+- **Status:** 600+ tests passing; 2/3 knowledge B-tree tests passing (1 performance issue under investigation)
 
 ## Table of Contents
 
@@ -711,33 +713,134 @@ typedef struct {
 ### Knowledge Acquisition
 **Header:** `nimcp_knowledge.h`
 
-Semantic knowledge representation and retrieval.
+Multi-domain knowledge acquisition system with B-tree indexed queries for efficient retrieval.
 
 #### Types
 ```c
-typedef struct knowledge_base_t knowledge_base_t;
+typedef struct knowledge_system_struct* knowledge_system_t;
+
+typedef enum {
+    KNOWLEDGE_DOMAIN_LANGUAGE,
+    KNOWLEDGE_DOMAIN_LITERATURE,
+    KNOWLEDGE_DOMAIN_ART,
+    KNOWLEDGE_DOMAIN_ETHICS,
+    KNOWLEDGE_DOMAIN_HISTORY,
+    KNOWLEDGE_DOMAIN_SCIENCE,
+    KNOWLEDGE_DOMAIN_MATHEMATICS,
+    KNOWLEDGE_DOMAIN_SOCIAL,
+    KNOWLEDGE_DOMAIN_TECHNICAL,
+    KNOWLEDGE_DOMAIN_PHILOSOPHY,
+    KNOWLEDGE_DOMAIN_GENERAL
+} knowledge_domain_t;
 
 typedef struct {
-    char concept[128];
-    float embedding[512];
-    char description[256];
-} concept_t;
+    char concept[256];
+    knowledge_domain_t domain;
+    char definition[1024];
+    char context[512];
+    char** examples;
+    uint32_t num_examples;
+    char** related_concepts;
+    uint32_t num_related;
+    float confidence;              // How well understood (0-1)
+    uint64_t learned_timestamp;
+    uint32_t reinforcement_count;
+    char confidence_key[16];       // B-tree key field
+} knowledge_item_t;
+
+typedef struct {
+    knowledge_domain_t domain;
+    uint32_t concepts_known;
+    uint32_t estimated_total;
+    float coverage_percentage;
+    float avg_confidence;
+    char gaps[5][256];
+    uint32_t num_gaps;
+} domain_knowledge_t;
 ```
 
-#### Functions
+#### System Management
 
-**`knowledge_base_t* knowledge_create(uint32_t embedding_dim)`**
-- **Description:** Create knowledge base
+**`knowledge_system_t knowledge_system_create(const char* learner_name)`**
+- **Description:** Create knowledge system
+- **Parameters:** `learner_name` - Name for the learner
+- **Returns:** Knowledge system handle or NULL on error
+- **Thread Safety:** Thread-safe
 
-**`int knowledge_add_concept(knowledge_base_t* kb, const concept_t* concept)`**
-- **Description:** Add semantic concept
+**`void knowledge_system_destroy(knowledge_system_t system)`**
+- **Description:** Destroy knowledge system and free resources
+- **Thread Safety:** Must not be called concurrently with same system
 
-**`int knowledge_query(knowledge_base_t* kb, const float* query_embedding, concept_t* results, uint32_t max_results)`**
-- **Description:** Query similar concepts
-- **Returns:** Number of results
+#### Learning Functions
 
-**`float knowledge_get_similarity(const concept_t* a, const concept_t* b)`**
-- **Description:** Compute semantic similarity
+**`uint32_t knowledge_learn_from_text(knowledge_system_t system, const char* text, knowledge_domain_t domain)`**
+- **Description:** Learn from text incrementally
+- **Returns:** Number of concepts learned
+
+**`bool knowledge_retrieve(knowledge_system_t system, const char* concept, knowledge_item_t* item)`**
+- **Description:** Retrieve knowledge about a concept
+- **Returns:** true if found
+
+**`bool knowledge_reinforce(knowledge_system_t system, const char* concept, const char* new_example)`**
+- **Description:** Strengthen understanding through repetition
+- **Returns:** true on success
+
+#### B-Tree Indexed Queries (New in v2.5.1)
+
+**`uint32_t knowledge_get_by_confidence_range(knowledge_system_t system, float min_confidence, float max_confidence, knowledge_item_t** results_out)`**
+- **Description:** Query knowledge items within confidence range using B-tree
+- **Parameters:**
+  - `system` - Knowledge system handle
+  - `min_confidence` - Minimum confidence threshold (0.0-1.0)
+  - `max_confidence` - Maximum confidence threshold (0.0-1.0)
+  - `results_out` - Output array (caller must free with nimcp_free)
+- **Returns:** Number of items in range
+- **Complexity:** O(log n + k) where k = results in range
+- **Thread Safety:** Thread-safe
+- **Use Cases:**
+  - Find well-understood concepts: `(0.8, 1.0)`
+  - Find weak knowledge needing reinforcement: `(0.0, 0.4)`
+  - Find moderately confident items: `(0.4, 0.7)`
+
+**`uint32_t knowledge_get_all_ordered_by_confidence(knowledge_system_t system, knowledge_item_t** results_out)`**
+- **Description:** Get all knowledge items sorted by confidence (low to high)
+- **Parameters:**
+  - `system` - Knowledge system handle
+  - `results_out` - Output array (caller must free with nimcp_free)
+- **Returns:** Number of items
+- **Complexity:** O(n) via B-tree in-order traversal
+- **Thread Safety:** Thread-safe
+- **Use Cases:** Review knowledge progression, identify learning gaps
+
+#### Testing API
+
+**`bool knowledge_add_item(knowledge_system_t system, const knowledge_item_t* item)`**
+- **Description:** Add knowledge item directly (for testing)
+- **Parameters:**
+  - `system` - Knowledge system handle
+  - `item` - Knowledge item to add
+- **Returns:** true on success
+- **Note:** Only available when NIMCP_TESTING is defined
+
+#### Assessment
+
+**`bool knowledge_assess_domain(knowledge_system_t system, knowledge_domain_t domain, domain_knowledge_t* assessment)`**
+- **Description:** Assess knowledge coverage in a domain
+- **Returns:** true on success
+
+**`uint32_t knowledge_get_summary(knowledge_system_t system, domain_knowledge_t* all_domains, uint32_t max_domains)`**
+- **Description:** Get overall knowledge summary across all domains
+- **Returns:** Number of domains assessed
+
+#### Persistence
+
+**`bool knowledge_save(knowledge_system_t system, const char* filepath)`**
+- **Description:** Save knowledge to file (persistent memory)
+- **Returns:** true on success
+
+**`knowledge_system_t knowledge_load(const char* filepath)`**
+- **Description:** Load knowledge from file
+- **Returns:** Knowledge system or NULL on error
 
 ### Ethical Reasoning
 **Header:** `nimcp_ethics.h`
