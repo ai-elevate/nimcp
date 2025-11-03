@@ -898,11 +898,8 @@ TEST_F(KnowledgeTest, GetKnowledgeByConfidenceRange_ReturnsFiltered)
  * WHAT: Test getting weakly-understood knowledge
  * WHY: Identify areas needing more learning/reinforcement
  * HOW: Query by confidence threshold
- *
- * NOTE: Currently disabled due to B-tree iterator hang issue
- * TODO: Investigate B-tree iterator deadlock with low confidence ranges
  */
-TEST_F(KnowledgeTest, DISABLED_GetWeakKnowledge_ReturnsLowConfidence)
+TEST_F(KnowledgeTest, GetWeakKnowledge_ReturnsLowConfidence)
 {
     // Add items with different confidence
     knowledge_item_t strong = {0};
