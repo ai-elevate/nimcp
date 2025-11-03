@@ -1978,49 +1978,58 @@ uint32_t knowledge_get_by_confidence_range(knowledge_system_t system,
         return 0;
     }
 
-    // Use B-tree iterator for efficient range query
-    btree_iterator_t* iter = btree_iterator_create(repo->confidence_btree);
-    if (!iter) {
+    // Allocate maximum possible size (will trim later)
+    knowledge_item_t* temp_results = nimcp_calloc(repo->num_items, sizeof(knowledge_item_t));
+    if (!temp_results) {
         *results_out = NULL;
         return 0;
     }
 
-    // Two-pass: count, then collect
+    // Single pass: collect matching items with early exit
+    btree_iterator_t* iter = btree_iterator_create(repo->confidence_btree);
+    if (!iter) {
+        nimcp_free(temp_results);
+        *results_out = NULL;
+        return 0;
+    }
+
     uint32_t count = 0;
     void* data = NULL;
 
     while (btree_iterator_next(iter, &data)) {
         knowledge_item_t* item = (knowledge_item_t*)data;
         if (item->confidence >= min_confidence && item->confidence <= max_confidence) {
-            count++;
+            temp_results[count++] = *item;
+        } else if (item->confidence > max_confidence) {
+            break; // B-tree is sorted, early exit
         }
     }
 
     btree_iterator_destroy(iter);
 
     if (count == 0) {
+        nimcp_free(temp_results);
         *results_out = NULL;
         return 0;
     }
 
-    // Allocate results
-    *results_out = nimcp_calloc(count, sizeof(knowledge_item_t));
-    if (!*results_out) {
-        return 0;
-    }
-
-    // Second pass: collect matching items
-    iter = btree_iterator_create(repo->confidence_btree);
-    uint32_t idx = 0;
-
-    while (btree_iterator_next(iter, &data) && idx < count) {
-        knowledge_item_t* item = (knowledge_item_t*)data;
-        if (item->confidence >= min_confidence && item->confidence <= max_confidence) {
-            (*results_out)[idx++] = *item;
+    // Trim to actual size (optional optimization)
+    if (count < repo->num_items) {
+        knowledge_item_t* final_results = nimcp_calloc(count, sizeof(knowledge_item_t));
+        if (final_results) {
+            for (uint32_t i = 0; i < count; i++) {
+                final_results[i] = temp_results[i];
+            }
+            nimcp_free(temp_results);
+            *results_out = final_results;
+        } else {
+            // If trim fails, return oversized array
+            *results_out = temp_results;
         }
+    } else {
+        *results_out = temp_results;
     }
 
-    btree_iterator_destroy(iter);
     return count;
 }
 
@@ -2085,6 +2094,11 @@ bool knowledge_add_item(knowledge_system_t system, const knowledge_item_t* item)
         return false;
     }
 
-    int32_t index = repository_add(system->repository, item);
+    // Create a copy with properly formatted confidence_key
+    knowledge_item_t item_copy = *item;
+    snprintf(item_copy.confidence_key, sizeof(item_copy.confidence_key),
+             "%08.6f", item_copy.confidence);
+
+    int32_t index = repository_add(system->repository, &item_copy);
     return index >= 0;
 }

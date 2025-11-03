@@ -1,48 +1,72 @@
-# Core library sources
+# Core library sources - New hierarchical structure
 set(NIMCP_CORE_SOURCES
-    nimcp_neuralnet.c
-    nimcp_p2pnode.c
-    nimcp_protocol.c
-    nimcp_events.c
-    nimcp_adaptive.c
-    nimcp_brain.c
-    nimcp_ethics.c
-    nimcp_curiosity.c
-    nimcp_knowledge.c
-    nimcp_replication.c                              # Distributed brain replication
-    nimcp_dataio.c                                   # External dataset I/O
-    nimcp_stream.c                                   # Continuous input streaming
-    nimcp_salience.c                                 # Attention/salience evaluation
-    nimcp_introspection.c                            # Brain state introspection
-    nimcp_consolidation.c                            # Memory consolidation (sleep)
-    nimcp_attention.c                                # Biology-based multihead attention (cortical columns + thalamic gating)
-    nimcp_security.c                                 # Security framework (directives, encryption, validation)
-    nimcp_neuromodulators.c                          # Neuromodulator system (dopamine, serotonin, ACh, NE)
-    nimcp_bcm.c                                      # BCM (Bienenstock-Cooper-Munro) sliding threshold plasticity
-    nimcp_astrocytes.c                               # Astrocyte glial cells (calcium dynamics, synaptic modulation, homeostasis)
-    nimcp_oligodendrocytes.c                         # Oligodendrocyte glial cells (axon myelination, conduction velocity)
-    nimcp_microglia.c                                # Microglia glial cells (synaptic surveillance, pruning)
-    nimcp_glial_integration.c                        # Glial-neuron integration layer (tripartite synapses, myelination, pruning)
-    nimcp_neuron_types.c                             # Extended neuron type specialization (visual, auditory, motor, interneurons)
-    nimcp_brain_regions.c                            # Modular brain architecture (regions, layers, minicolumns)
-    nimcp_distributed_cognition.c                    # Distributed cognitive integration (P2P neuromod/glial/region sync)
-    utils/nimcp_memory.c                             # Memory tracking and allocation
-    utils/nimcp_thread.c                             # Thread utilities and wrappers
-    utils/nimcp_thread_pool.c                        # Thread pool for batch processing
-    utils/nimcp_vector.c                             # Vector math operations
-    utils/nimcp_time.c                               # Time and timing utilities
-    utils/nimcp_hash_table.c                         # Generic hash table implementation
-    logging/nimcp_logging.c                          # Logging system
-    utils/nimcp_btree.c                              # B-tree implementation
-    utils/nimcp_queue.c                              # Queue implementation
-    utils/nimcp_graph.c                              # Graph data structure
-    utils/nimcp_min_heap.c                           # Min-heap for O(log n) priority queue operations
-    utils/nimcp_serialization.c                      # Serialization utilities
-    utils/nimcp_validate.c                           # Input validation
-    utils/nimcp_queue_manager.c                      # Queue manager with thread pool
-    utils/nimcp_json.c                               # JSON wrapper for jansson
-    ${CMAKE_SOURCE_DIR}/src/python/nimcp_module.c   # Add the Python module source
-    ${CMAKE_SOURCE_DIR}/src/python/nimcp_types.c    # Add the Python types
+    # Core brain components
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/nimcp_brain.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/neuralnet/nimcp_neuralnet.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/neuron_types/nimcp_neuron_types.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain_regions/nimcp_brain_regions.c
+
+    # Cognitive functions
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/ethics/nimcp_ethics.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/knowledge/nimcp_knowledge.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/curiosity/nimcp_curiosity.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/introspection/nimcp_introspection.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/wellbeing/nimcp_wellbeing.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/consolidation/nimcp_consolidation.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/salience/nimcp_salience.c
+
+    # Plasticity mechanisms
+    ${CMAKE_CURRENT_SOURCE_DIR}/../plasticity/adaptive/nimcp_adaptive.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../plasticity/bcm/nimcp_bcm.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../plasticity/neuromodulators/nimcp_neuromodulators.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../plasticity/attention/nimcp_attention.c
+
+    # Glial cells
+    ${CMAKE_CURRENT_SOURCE_DIR}/../glial/astrocytes/nimcp_astrocytes.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../glial/oligodendrocytes/nimcp_oligodendrocytes.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../glial/microglia/nimcp_microglia.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../glial/integration/nimcp_glial_integration.c
+
+    # Networking
+    ${CMAKE_CURRENT_SOURCE_DIR}/../networking/p2p/nimcp_p2pnode.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../networking/protocol/nimcp_protocol.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../networking/events/nimcp_events.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../networking/replication/nimcp_replication.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../networking/distributed/nimcp_distributed_cognition.c
+
+    # I/O
+    ${CMAKE_CURRENT_SOURCE_DIR}/../io/dataio/nimcp_dataio.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../io/stream/nimcp_stream.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../io/serialization/nimcp_serialization.c
+
+    # Security
+    ${CMAKE_CURRENT_SOURCE_DIR}/../security/nimcp_security.c
+
+    # Utils - Memory & Thread
+    ${CMAKE_CURRENT_SOURCE_DIR}/../utils/memory/nimcp_memory.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../utils/thread/nimcp_thread.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../utils/thread/nimcp_thread_pool.c
+
+    # Utils - Logging
+    ${CMAKE_CURRENT_SOURCE_DIR}/../utils/logging/nimcp_logging.c
+
+    # Utils - Containers
+    ${CMAKE_CURRENT_SOURCE_DIR}/../utils/containers/nimcp_vector.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../utils/containers/nimcp_hash_table.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../utils/containers/nimcp_btree.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../utils/containers/nimcp_queue.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../utils/containers/nimcp_graph.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../utils/containers/nimcp_min_heap.c
+
+    # Utils - Other
+    ${CMAKE_CURRENT_SOURCE_DIR}/../utils/time/nimcp_time.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../utils/validation/nimcp_validate.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../utils/queue_manager/nimcp_queue_manager.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../utils/json/nimcp_json.c
+
+    # Python bindings
+    ${CMAKE_SOURCE_DIR}/src/python/nimcp_module.c
+    ${CMAKE_SOURCE_DIR}/src/python/nimcp_types.c
 )
 
 # Core library
@@ -50,9 +74,10 @@ add_library(nimcp_core SHARED
     ${NIMCP_CORE_SOURCES}
 )
 
+# Update include directories to point to new structure
 target_include_directories(nimcp_core
     PUBLIC
-        $<BUILD_INTERFACE:${NIMCP_INCLUDE_DIR}>
+        $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}/src>
         $<INSTALL_INTERFACE:include/nimcp>
     PRIVATE
         ${NIMCP_LIB_DIR}
@@ -65,6 +90,9 @@ target_link_libraries(nimcp_core
         lz4
         jansson
 )
+
+# Add testing API support
+target_compile_definitions(nimcp_core PRIVATE NIMCP_TESTING)
 
 # Enable Position Independent Code and set library properties
 set_target_properties(nimcp_core PROPERTIES
