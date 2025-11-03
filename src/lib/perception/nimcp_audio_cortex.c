@@ -14,6 +14,7 @@
 #include "include/perception/nimcp_audio_cortex.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/validation/nimcp_validate.h"
+#include "utils/logging/nimcp_logging.h"
 #include <math.h>
 #include <stdlib.h>
 #include <string.h>
@@ -62,7 +63,7 @@ struct audio_cortex {
  */
 static void compute_hamming_window(float* window, uint32_t size)
 {
-    if (!window) return;
+    if (!nimcp_validate_pointer(window, "window")) return;
 
     for (uint32_t i = 0; i < size; i++) {
         window[i] = 0.54f - 0.46f * cosf(2.0f * M_PI * i / (size - 1));
@@ -90,7 +91,7 @@ static float mel_to_hz(float mel)
  */
 static bool init_mel_filterbank(audio_cortex_t* cortex)
 {
-    if (!cortex) return false;
+    if (!nimcp_validate_pointer(cortex, "cortex")) return false;
 
     uint32_t num_filters = cortex->config.num_mel_filters;
     uint32_t num_bins = cortex->config.num_freq_bins;
@@ -100,7 +101,10 @@ static bool init_mel_filterbank(audio_cortex_t* cortex)
     cortex->mel_filterbank = (float*)nimcp_calloc(
         num_filters * num_bins, sizeof(float)
     );
-    if (!cortex->mel_filterbank) return false;
+    if (!nimcp_validate_pointer(cortex->mel_filterbank, "mel_filterbank")) {
+        NIMCP_LOGGING_ERROR("Failed to allocate mel filterbank");
+        return false;
+    }
 
     // Compute mel-scale boundaries
     float mel_min = hz_to_mel(0.0f);
@@ -205,7 +209,7 @@ static void fft(float* real, float* imag, uint32_t n, bool inverse)
  */
 static void dct(const float* input, float* output, uint32_t n, uint32_t num_coeff)
 {
-    if (!input || !output) return;
+    if (!nimcp_validate_pointer(input, "input") || !nimcp_validate_pointer(output, "output")) return;
 
     for (uint32_t k = 0; k < num_coeff; k++) {
         float sum = 0.0f;
@@ -222,23 +226,26 @@ static void dct(const float* input, float* output, uint32_t n, uint32_t num_coef
 
 audio_cortex_t* audio_cortex_create(const audio_cortex_config_t* config)
 {
-    if (!config) {
+    if (!nimcp_validate_pointer(config, "config")) {
         return NULL;
     }
 
     // Validate configuration
     if (config->sample_rate < AUDIO_MIN_SAMPLE_RATE ||
         config->sample_rate > AUDIO_MAX_SAMPLE_RATE) {
+        NIMCP_LOGGING_ERROR("Invalid sample rate: %u", config->sample_rate);
         return NULL;
     }
 
     if (config->num_channels == 0 || config->num_channels > AUDIO_MAX_CHANNELS) {
+        NIMCP_LOGGING_ERROR("Invalid number of channels: %u", config->num_channels);
         return NULL;
     }
 
     // Allocate cortex structure
     audio_cortex_t* cortex = (audio_cortex_t*)nimcp_calloc(1, sizeof(audio_cortex_t));
     if (!cortex) {
+        NIMCP_LOGGING_ERROR("Failed to allocate audio cortex");
         return NULL;
     }
 
@@ -250,7 +257,10 @@ audio_cortex_t* audio_cortex_create(const audio_cortex_config_t* config)
     cortex->fft_imag = (float*)nimcp_calloc(config->frame_size, sizeof(float));
     cortex->fft_window = (float*)nimcp_calloc(config->frame_size, sizeof(float));
 
-    if (!cortex->fft_real || !cortex->fft_imag || !cortex->fft_window) {
+    if (!nimcp_validate_pointer(cortex->fft_real, "fft_real") ||
+        !nimcp_validate_pointer(cortex->fft_imag, "fft_imag") ||
+        !nimcp_validate_pointer(cortex->fft_window, "fft_window")) {
+        NIMCP_LOGGING_ERROR("Failed to allocate FFT buffers");
         audio_cortex_destroy(cortex);
         return NULL;
     }
@@ -266,7 +276,8 @@ audio_cortex_t* audio_cortex_create(const audio_cortex_config_t* config)
 
     // Allocate temporal processing buffers
     cortex->prev_frame = (float*)nimcp_calloc(config->frame_size, sizeof(float));
-    if (!cortex->prev_frame) {
+    if (!nimcp_validate_pointer(cortex->prev_frame, "prev_frame")) {
+        NIMCP_LOGGING_ERROR("Failed to allocate temporal processing buffer");
         audio_cortex_destroy(cortex);
         return NULL;
     }
@@ -277,7 +288,8 @@ audio_cortex_t* audio_cortex_create(const audio_cortex_config_t* config)
         cortex->memories = (auditory_memory_t**)nimcp_calloc(
             cortex->memory_capacity, sizeof(auditory_memory_t*)
         );
-        if (!cortex->memories) {
+        if (!nimcp_validate_pointer(cortex->memories, "memories")) {
+            NIMCP_LOGGING_ERROR("Failed to allocate auditory memory array");
             audio_cortex_destroy(cortex);
             return NULL;
         }
@@ -320,15 +332,19 @@ bool audio_cortex_process(
     uint8_t num_channels,
     float* features)
 {
-    if (!cortex || !audio_data || !features) {
+    if (!nimcp_validate_pointer(cortex, "cortex") ||
+        !nimcp_validate_pointer(audio_data, "audio_data") ||
+        !nimcp_validate_pointer(features, "features")) {
         return false;
     }
 
     if (num_samples != cortex->config.frame_size) {
+        NIMCP_LOGGING_ERROR("Invalid frame size: %u (expected %u)", num_samples, cortex->config.frame_size);
         return false;
     }
 
     if (num_channels != cortex->config.num_channels) {
+        NIMCP_LOGGING_ERROR("Invalid number of channels: %u (expected %u)", num_channels, cortex->config.num_channels);
         return false;
     }
 
@@ -338,7 +354,10 @@ bool audio_cortex_process(
 
     if (num_channels == 2) {
         temp_mono = (float*)nimcp_calloc(num_samples, sizeof(float));
-        if (!temp_mono) return false;
+        if (!nimcp_validate_pointer(temp_mono, "temp_mono")) {
+            NIMCP_LOGGING_ERROR("Failed to allocate mono conversion buffer");
+            return false;
+        }
 
         for (uint32_t i = 0; i < num_samples; i++) {
             temp_mono[i] = (audio_data[i * 2] + audio_data[i * 2 + 1]) * 0.5f;
@@ -348,7 +367,8 @@ bool audio_cortex_process(
 
     // Compute power spectrum
     float* spectrum = (float*)nimcp_calloc(cortex->config.num_freq_bins, sizeof(float));
-    if (!spectrum) {
+    if (!nimcp_validate_pointer(spectrum, "spectrum")) {
+        NIMCP_LOGGING_ERROR("Failed to allocate spectrum buffer");
         nimcp_free(temp_mono);
         return false;
     }
@@ -390,7 +410,8 @@ bool audio_cortex_get_stats(
     const audio_cortex_t* cortex,
     audio_cortex_stats_t* stats)
 {
-    if (!cortex || !stats) {
+    if (!nimcp_validate_pointer(cortex, "cortex") ||
+        !nimcp_validate_pointer(stats, "stats")) {
         return false;
     }
 
@@ -408,11 +429,14 @@ bool audio_cortex_compute_spectrum(
     uint32_t num_samples,
     float* spectrum)
 {
-    if (!cortex || !audio_data || !spectrum) {
+    if (!nimcp_validate_pointer(cortex, "cortex") ||
+        !nimcp_validate_pointer(audio_data, "audio_data") ||
+        !nimcp_validate_pointer(spectrum, "spectrum")) {
         return false;
     }
 
     if (num_samples != cortex->config.frame_size) {
+        NIMCP_LOGGING_ERROR("Invalid frame size: %u (expected %u)", num_samples, cortex->config.frame_size);
         return false;
     }
 
@@ -442,11 +466,14 @@ bool audio_cortex_compute_mel_features(
     uint32_t num_bins,
     float* mel_features)
 {
-    if (!cortex || !spectrum || !mel_features) {
+    if (!nimcp_validate_pointer(cortex, "cortex") ||
+        !nimcp_validate_pointer(spectrum, "spectrum") ||
+        !nimcp_validate_pointer(mel_features, "mel_features")) {
         return false;
     }
 
     if (num_bins != cortex->config.num_freq_bins) {
+        NIMCP_LOGGING_ERROR("Invalid number of bins: %u (expected %u)", num_bins, cortex->config.num_freq_bins);
         return false;
     }
 
@@ -471,11 +498,14 @@ bool audio_cortex_compute_mfcc(
     uint32_t num_mel,
     float* mfcc)
 {
-    if (!cortex || !mel_features || !mfcc) {
+    if (!nimcp_validate_pointer(cortex, "cortex") ||
+        !nimcp_validate_pointer(mel_features, "mel_features") ||
+        !nimcp_validate_pointer(mfcc, "mfcc")) {
         return false;
     }
 
     if (num_mel != cortex->config.num_mel_filters) {
+        NIMCP_LOGGING_ERROR("Invalid number of mel filters: %u (expected %u)", num_mel, cortex->config.num_mel_filters);
         return false;
     }
 
@@ -494,19 +524,24 @@ audio_attention_map_t* audio_attention_map_create(
     uint32_t num_time)
 {
     if (num_freq == 0 || num_time == 0) {
+        NIMCP_LOGGING_ERROR("Invalid audio attention map dimensions: %u x %u", num_freq, num_time);
         return NULL;
     }
 
     audio_attention_map_t* map = (audio_attention_map_t*)nimcp_calloc(
         1, sizeof(audio_attention_map_t)
     );
-    if (!map) return NULL;
+    if (!nimcp_validate_pointer(map, "map")) {
+        NIMCP_LOGGING_ERROR("Failed to allocate audio attention map");
+        return NULL;
+    }
 
     map->num_freq = num_freq;
     map->num_time = num_time;
     map->values = (float*)nimcp_calloc(num_freq * num_time, sizeof(float));
 
-    if (!map->values) {
+    if (!nimcp_validate_pointer(map->values, "map->values")) {
+        NIMCP_LOGGING_ERROR("Failed to allocate audio attention map values");
         nimcp_free(map);
         return NULL;
     }
@@ -528,13 +563,18 @@ bool audio_cortex_compute_attention(
     uint32_t num_samples,
     audio_attention_map_t* attn_map)
 {
-    if (!cortex || !audio_data || !attn_map) {
+    if (!nimcp_validate_pointer(cortex, "cortex") ||
+        !nimcp_validate_pointer(audio_data, "audio_data") ||
+        !nimcp_validate_pointer(attn_map, "attn_map")) {
         return false;
     }
 
     // Compute spectrum
     float* spectrum = (float*)nimcp_calloc(cortex->config.num_freq_bins, sizeof(float));
-    if (!spectrum) return false;
+    if (!nimcp_validate_pointer(spectrum, "spectrum")) {
+        NIMCP_LOGGING_ERROR("Failed to allocate spectrum buffer for attention");
+        return false;
+    }
 
     bool success = audio_cortex_compute_spectrum(cortex, audio_data, num_samples, spectrum);
 
@@ -566,7 +606,8 @@ bool audio_cortex_store_memory(
     const float* features,
     float salience)
 {
-    if (!cortex || !features) {
+    if (!nimcp_validate_pointer(cortex, "cortex") ||
+        !nimcp_validate_pointer(features, "features")) {
         return false;
     }
 
@@ -583,10 +624,14 @@ bool audio_cortex_store_memory(
     auditory_memory_t* memory = (auditory_memory_t*)nimcp_calloc(
         1, sizeof(auditory_memory_t)
     );
-    if (!memory) return false;
+    if (!nimcp_validate_pointer(memory, "memory")) {
+        NIMCP_LOGGING_ERROR("Failed to allocate auditory memory entry");
+        return false;
+    }
 
     memory->features = (float*)nimcp_calloc(cortex->config.feature_dim, sizeof(float));
-    if (!memory->features) {
+    if (!nimcp_validate_pointer(memory->features, "memory->features")) {
+        NIMCP_LOGGING_ERROR("Failed to allocate auditory memory features");
         nimcp_free(memory);
         return false;
     }
@@ -609,7 +654,10 @@ bool audio_cortex_recall_memory(
     auditory_memory_t*** memories,
     int* num_recalled)
 {
-    if (!cortex || !query_features || !memories || !num_recalled) {
+    if (!nimcp_validate_pointer(cortex, "cortex") ||
+        !nimcp_validate_pointer(query_features, "query_features") ||
+        !nimcp_validate_pointer(memories, "memories") ||
+        !nimcp_validate_pointer(num_recalled, "num_recalled")) {
         return false;
     }
 
@@ -629,7 +677,10 @@ bool audio_cortex_recall_memory(
     memory_score_t* scores = (memory_score_t*)nimcp_calloc(
         cortex->num_memories, sizeof(memory_score_t)
     );
-    if (!scores) return false;
+    if (!nimcp_validate_pointer(scores, "scores")) {
+        NIMCP_LOGGING_ERROR("Failed to allocate memory score buffer");
+        return false;
+    }
 
     for (uint32_t i = 0; i < cortex->num_memories; i++) {
         float dot_product = 0.0f;
@@ -654,7 +705,8 @@ bool audio_cortex_recall_memory(
     // Return top-k
     int k = (top_k < (int)cortex->num_memories) ? top_k : (int)cortex->num_memories;
     *memories = (auditory_memory_t**)nimcp_calloc(k, sizeof(auditory_memory_t*));
-    if (!*memories) {
+    if (!nimcp_validate_pointer(*memories, "result_memories")) {
+        NIMCP_LOGGING_ERROR("Failed to allocate memory results array");
         nimcp_free(scores);
         return false;
     }
@@ -676,7 +728,8 @@ float audio_cortex_compute_novelty(
     audio_cortex_t* cortex,
     const float* features)
 {
-    if (!cortex || !features) {
+    if (!nimcp_validate_pointer(cortex, "cortex") ||
+        !nimcp_validate_pointer(features, "features")) {
         return 0.0f;
     }
 
@@ -711,11 +764,15 @@ bool audio_cortex_get_attention_peak(
     uint32_t* max_time,
     float* max_value)
 {
-    if (!attn_map || !max_freq || !max_time || !max_value) {
+    if (!nimcp_validate_pointer(attn_map, "attn_map") ||
+        !nimcp_validate_pointer(max_freq, "max_freq") ||
+        !nimcp_validate_pointer(max_time, "max_time") ||
+        !nimcp_validate_pointer(max_value, "max_value")) {
         return false;
     }
 
-    if (!attn_map->values) {
+    if (!nimcp_validate_pointer(attn_map->values, "attn_map->values")) {
+        NIMCP_LOGGING_ERROR("Audio attention map has no values");
         return false;
     }
 
@@ -743,7 +800,8 @@ bool audio_cortex_consolidate_memory(
     float salience,
     const char* context)
 {
-    if (!cortex || !features) {
+    if (!nimcp_validate_pointer(cortex, "cortex") ||
+        !nimcp_validate_pointer(features, "features")) {
         return false;
     }
 
@@ -776,7 +834,10 @@ bool audio_cortex_detect_temporal_events(
     bool* onset_detected,
     bool* offset_detected)
 {
-    if (!cortex || !audio_data || !onset_detected || !offset_detected) {
+    if (!nimcp_validate_pointer(cortex, "cortex") ||
+        !nimcp_validate_pointer(audio_data, "audio_data") ||
+        !nimcp_validate_pointer(onset_detected, "onset_detected") ||
+        !nimcp_validate_pointer(offset_detected, "offset_detected")) {
         return false;
     }
 
@@ -815,7 +876,9 @@ bool audio_cortex_compute_envelope(
     uint32_t num_samples,
     float* envelope)
 {
-    if (!cortex || !audio_data || !envelope) {
+    if (!nimcp_validate_pointer(cortex, "cortex") ||
+        !nimcp_validate_pointer(audio_data, "audio_data") ||
+        !nimcp_validate_pointer(envelope, "envelope")) {
         return false;
     }
 

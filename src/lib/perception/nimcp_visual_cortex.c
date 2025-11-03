@@ -14,6 +14,7 @@
 #include "include/perception/nimcp_visual_cortex.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/validation/nimcp_validate.h"
+#include "utils/logging/nimcp_logging.h"
 #include <math.h>
 #include <stdlib.h>
 #include <string.h>
@@ -72,19 +73,21 @@ struct conv_layer_struct {
 conv_layer_t* conv_layer_create(const conv_layer_config_t* config)
 {
     // Guard: Validate inputs
-    if (!config) {
+    if (!nimcp_validate_pointer(config, "config")) {
         return NULL;
     }
 
     if (config->input_width == 0 || config->input_height == 0 ||
         config->input_channels == 0 || config->num_filters == 0 ||
         config->kernel_size == 0 || config->stride == 0) {
+        NIMCP_LOGGING_ERROR("Invalid convolution layer configuration parameters");
         return NULL;
     }
 
     // Allocate layer
     conv_layer_t* layer = (conv_layer_t*)nimcp_calloc(1, sizeof(conv_layer_t));
     if (!layer) {
+        NIMCP_LOGGING_ERROR("Failed to allocate convolution layer");
         return NULL;
     }
 
@@ -104,7 +107,8 @@ conv_layer_t* conv_layer_create(const conv_layer_config_t* config)
     // Allocate kernels
     uint32_t kernel_total_size = config->num_filters * config->kernel_size * config->kernel_size * config->input_channels;
     layer->kernels = (float*)nimcp_calloc(kernel_total_size, sizeof(float));
-    if (!layer->kernels) {
+    if (!nimcp_validate_pointer(layer->kernels, "kernels")) {
+        NIMCP_LOGGING_ERROR("Failed to allocate convolution kernels");
         conv_layer_destroy(layer);
         return NULL;
     }
@@ -116,7 +120,8 @@ conv_layer_t* conv_layer_create(const conv_layer_config_t* config)
 
     // Allocate bias
     layer->bias = (float*)nimcp_calloc(config->num_filters, sizeof(float));
-    if (!layer->bias) {
+    if (!nimcp_validate_pointer(layer->bias, "bias")) {
+        NIMCP_LOGGING_ERROR("Failed to allocate convolution bias");
         conv_layer_destroy(layer);
         return NULL;
     }
@@ -149,7 +154,12 @@ void conv_layer_destroy(conv_layer_t* layer)
 bool conv_layer_set_kernel(conv_layer_t* layer, uint32_t filter_idx, const float* kernel)
 {
     // Guard: Validate inputs
-    if (!layer || !kernel || filter_idx >= layer->num_filters) {
+    if (!nimcp_validate_pointer(layer, "layer") || !nimcp_validate_pointer(kernel, "kernel")) {
+        return false;
+    }
+
+    if (filter_idx >= layer->num_filters) {
+        NIMCP_LOGGING_ERROR("Invalid filter index: %u >= %u", filter_idx, layer->num_filters);
         return false;
     }
 
@@ -166,7 +176,9 @@ bool conv_layer_set_kernel(conv_layer_t* layer, uint32_t filter_idx, const float
 bool conv_layer_forward(conv_layer_t* layer, const float* input, float* output)
 {
     // Guard: Validate inputs
-    if (!layer || !input || !output) {
+    if (!nimcp_validate_pointer(layer, "layer") ||
+        !nimcp_validate_pointer(input, "input") ||
+        !nimcp_validate_pointer(output, "output")) {
         return false;
     }
 
@@ -251,13 +263,19 @@ struct pool_layer_struct {
 pool_layer_t* pool_layer_create(const pool_layer_config_t* config)
 {
     // Guard: Validate inputs
-    if (!config || config->input_width == 0 || config->input_height == 0 ||
+    if (!nimcp_validate_pointer(config, "config")) {
+        return NULL;
+    }
+
+    if (config->input_width == 0 || config->input_height == 0 ||
         config->input_channels == 0 || config->pool_size == 0 || config->stride == 0) {
+        NIMCP_LOGGING_ERROR("Invalid pooling layer configuration parameters");
         return NULL;
     }
 
     pool_layer_t* layer = (pool_layer_t*)nimcp_calloc(1, sizeof(pool_layer_t));
-    if (!layer) {
+    if (!nimcp_validate_pointer(layer, "layer")) {
+        NIMCP_LOGGING_ERROR("Failed to allocate pooling layer");
         return NULL;
     }
 
@@ -290,7 +308,9 @@ void pool_layer_destroy(pool_layer_t* layer)
 bool pool_layer_forward(pool_layer_t* layer, const float* input, float* output)
 {
     // Guard: Validate inputs
-    if (!layer || !input || !output) {
+    if (!nimcp_validate_pointer(layer, "layer") ||
+        !nimcp_validate_pointer(input, "input") ||
+        !nimcp_validate_pointer(output, "output")) {
         return false;
     }
 
@@ -352,12 +372,18 @@ bool pool_layer_forward(pool_layer_t* layer, const float* input, float* output)
 float* gabor_create_kernel(int kernel_size, const gabor_params_t* params)
 {
     // Guard: Validate inputs
-    if (kernel_size <= 0 || kernel_size % 2 == 0 || !params) {
+    if (!nimcp_validate_pointer(params, "params")) {
+        return NULL;
+    }
+
+    if (kernel_size <= 0 || kernel_size % 2 == 0) {
+        NIMCP_LOGGING_ERROR("Invalid kernel size: %d (must be positive and odd)", kernel_size);
         return NULL;
     }
 
     float* kernel = (float*)nimcp_calloc(kernel_size * kernel_size, sizeof(float));
-    if (!kernel) {
+    if (!nimcp_validate_pointer(kernel, "kernel")) {
+        NIMCP_LOGGING_ERROR("Failed to allocate Gabor kernel");
         return NULL;
     }
 
@@ -405,11 +431,13 @@ struct attention_map_struct {
 attention_map_t* attention_map_create(uint32_t width, uint32_t height)
 {
     if (width == 0 || height == 0) {
+        NIMCP_LOGGING_ERROR("Invalid attention map dimensions: %u x %u", width, height);
         return NULL;
     }
 
     attention_map_t* map = (attention_map_t*)nimcp_calloc(1, sizeof(attention_map_t));
-    if (!map) {
+    if (!nimcp_validate_pointer(map, "map")) {
+        NIMCP_LOGGING_ERROR("Failed to allocate attention map");
         return NULL;
     }
 
@@ -417,7 +445,8 @@ attention_map_t* attention_map_create(uint32_t width, uint32_t height)
     map->height = height;
     map->values = (float*)nimcp_calloc(width * height, sizeof(float));
 
-    if (!map->values) {
+    if (!nimcp_validate_pointer(map->values, "map->values")) {
+        NIMCP_LOGGING_ERROR("Failed to allocate attention map values");
         nimcp_free(map);
         return NULL;
     }
@@ -445,7 +474,12 @@ void attention_map_destroy(attention_map_t* map)
  */
 float attention_map_get(const attention_map_t* map, uint32_t x, uint32_t y)
 {
-    if (!map || x >= map->width || y >= map->height) {
+    if (!nimcp_validate_pointer(map, "map")) {
+        return -1.0f;
+    }
+
+    if (x >= map->width || y >= map->height) {
+        NIMCP_LOGGING_ERROR("Attention map coordinates out of bounds: (%u, %u) >= (%u, %u)", x, y, map->width, map->height);
         return -1.0f;
     }
 
@@ -457,7 +491,12 @@ float attention_map_get(const attention_map_t* map, uint32_t x, uint32_t y)
  */
 bool attention_map_set(attention_map_t* map, uint32_t x, uint32_t y, float value)
 {
-    if (!map || x >= map->width || y >= map->height) {
+    if (!nimcp_validate_pointer(map, "map")) {
+        return false;
+    }
+
+    if (x >= map->width || y >= map->height) {
+        NIMCP_LOGGING_ERROR("Attention map coordinates out of bounds: (%u, %u) >= (%u, %u)", x, y, map->width, map->height);
         return false;
     }
 
@@ -502,13 +541,19 @@ struct visual_cortex_struct {
 visual_cortex_t* visual_cortex_create(const visual_cortex_config_t* config)
 {
     // Guard: Validate inputs
-    if (!config || config->input_width == 0 || config->input_height == 0 ||
+    if (!nimcp_validate_pointer(config, "config")) {
+        return NULL;
+    }
+
+    if (config->input_width == 0 || config->input_height == 0 ||
         config->num_v1_filters == 0 || config->feature_dim == 0) {
+        NIMCP_LOGGING_ERROR("Invalid visual cortex configuration parameters");
         return NULL;
     }
 
     visual_cortex_t* cortex = (visual_cortex_t*)nimcp_calloc(1, sizeof(visual_cortex_t));
     if (!cortex) {
+        NIMCP_LOGGING_ERROR("Failed to allocate visual cortex");
         return NULL;
     }
 
@@ -532,7 +577,8 @@ visual_cortex_t* visual_cortex_create(const visual_cortex_config_t* config)
     };
 
     cortex->v1_layer = conv_layer_create(&conv_config);
-    if (!cortex->v1_layer) {
+    if (!nimcp_validate_pointer(cortex->v1_layer, "v1_layer")) {
+        NIMCP_LOGGING_ERROR("Failed to create V1 convolution layer");
         visual_cortex_destroy(cortex);
         return NULL;
     }
@@ -571,7 +617,8 @@ visual_cortex_t* visual_cortex_create(const visual_cortex_config_t* config)
     };
 
     cortex->pool_layer = pool_layer_create(&pool_config);
-    if (!cortex->pool_layer) {
+    if (!nimcp_validate_pointer(cortex->pool_layer, "pool_layer")) {
+        NIMCP_LOGGING_ERROR("Failed to create pooling layer");
         visual_cortex_destroy(cortex);
         return NULL;
     }
@@ -579,7 +626,8 @@ visual_cortex_t* visual_cortex_create(const visual_cortex_config_t* config)
     // Allocate feature weights (simplified feature extraction)
     uint32_t pooled_size = (v1_output_w / 2) * (v1_output_h / 2) * config->num_v1_filters;
     cortex->feature_weights = (float*)nimcp_calloc(pooled_size, sizeof(float));
-    if (!cortex->feature_weights) {
+    if (!nimcp_validate_pointer(cortex->feature_weights, "feature_weights")) {
+        NIMCP_LOGGING_ERROR("Failed to allocate feature weights");
         visual_cortex_destroy(cortex);
         return NULL;
     }
@@ -638,11 +686,15 @@ bool visual_cortex_process(
     float* features)
 {
     // Guard: Validate inputs
-    if (!cortex || !image || !features) {
+    if (!nimcp_validate_pointer(cortex, "cortex") ||
+        !nimcp_validate_pointer(image, "image") ||
+        !nimcp_validate_pointer(features, "features")) {
         return false;
     }
 
     if (width != cortex->input_width || height != cortex->input_height || channels == 0) {
+        NIMCP_LOGGING_ERROR("Invalid image dimensions: %ux%ux%u (expected %ux%ux>0)",
+                           width, height, channels, cortex->input_width, cortex->input_height);
         return false;
     }
 
@@ -651,7 +703,8 @@ bool visual_cortex_process(
     // Convert uint8 image to float (normalize to 0-1)
     uint32_t input_size = width * height;
     float* input_float = (float*)nimcp_calloc(input_size, sizeof(float));
-    if (!input_float) {
+    if (!nimcp_validate_pointer(input_float, "input_float")) {
+        NIMCP_LOGGING_ERROR("Failed to allocate input buffer");
         return false;
     }
 
@@ -670,7 +723,8 @@ bool visual_cortex_process(
     uint32_t v1_output_size = v1_output_w * v1_output_h * cortex->num_v1_filters;
 
     float* v1_output = (float*)nimcp_calloc(v1_output_size, sizeof(float));
-    if (!v1_output) {
+    if (!nimcp_validate_pointer(v1_output, "v1_output")) {
+        NIMCP_LOGGING_ERROR("Failed to allocate V1 output buffer");
         nimcp_free(input_float);
         return false;
     }
@@ -687,7 +741,8 @@ bool visual_cortex_process(
     uint32_t pooled_size = pooled_w * pooled_h * cortex->num_v1_filters;
 
     float* pooled_output = (float*)nimcp_calloc(pooled_size, sizeof(float));
-    if (!pooled_output) {
+    if (!nimcp_validate_pointer(pooled_output, "pooled_output")) {
+        NIMCP_LOGGING_ERROR("Failed to allocate pooled output buffer");
         nimcp_free(input_float);
         nimcp_free(v1_output);
         return false;
@@ -746,7 +801,9 @@ bool visual_cortex_compute_attention(
     attention_map_t* attn_map)
 {
     // Guard: Validate inputs
-    if (!cortex || !image || !attn_map) {
+    if (!nimcp_validate_pointer(cortex, "cortex") ||
+        !nimcp_validate_pointer(image, "image") ||
+        !nimcp_validate_pointer(attn_map, "attn_map")) {
         return false;
     }
 
@@ -777,7 +834,8 @@ bool visual_cortex_store_memory(
     float salience)
 {
     // Guard: Validate inputs
-    if (!cortex || !features) {
+    if (!nimcp_validate_pointer(cortex, "cortex") ||
+        !nimcp_validate_pointer(features, "features")) {
         return false;
     }
 
@@ -791,13 +849,15 @@ bool visual_cortex_store_memory(
 
     // Allocate memory entry
     visual_memory_t* memory = (visual_memory_t*)nimcp_calloc(1, sizeof(visual_memory_t));
-    if (!memory) {
+    if (!nimcp_validate_pointer(memory, "memory")) {
+        NIMCP_LOGGING_ERROR("Failed to allocate visual memory entry");
         return false;
     }
 
     memory->feature_dim = cortex->feature_dim;
     memory->features = (float*)nimcp_calloc(cortex->feature_dim, sizeof(float));
-    if (!memory->features) {
+    if (!nimcp_validate_pointer(memory->features, "memory->features")) {
+        NIMCP_LOGGING_ERROR("Failed to allocate visual memory features");
         nimcp_free(memory);
         return false;
     }
@@ -821,7 +881,10 @@ bool visual_cortex_recall_memory(
     int* num_memories)
 {
     // Guard: Validate inputs
-    if (!cortex || !query_features || !memories || !num_memories) {
+    if (!nimcp_validate_pointer(cortex, "cortex") ||
+        !nimcp_validate_pointer(query_features, "query_features") ||
+        !nimcp_validate_pointer(memories, "memories") ||
+        !nimcp_validate_pointer(num_memories, "num_memories")) {
         return false;
     }
 
@@ -839,7 +902,8 @@ bool visual_cortex_recall_memory(
 
     memory_similarity_t* similarities = (memory_similarity_t*)nimcp_calloc(
         cortex->num_memories, sizeof(memory_similarity_t));
-    if (!similarities) {
+    if (!nimcp_validate_pointer(similarities, "similarities")) {
+        NIMCP_LOGGING_ERROR("Failed to allocate similarity buffer");
         return false;
     }
 
@@ -868,7 +932,8 @@ bool visual_cortex_recall_memory(
     // Return top results
     int num_results = (max_results < (int)cortex->num_memories) ? max_results : (int)cortex->num_memories;
     *memories = (visual_memory_t**)nimcp_calloc(num_results, sizeof(visual_memory_t*));
-    if (!*memories) {
+    if (!nimcp_validate_pointer(*memories, "result_memories")) {
+        NIMCP_LOGGING_ERROR("Failed to allocate memory results array");
         nimcp_free(similarities);
         return false;
     }
@@ -887,7 +952,8 @@ bool visual_cortex_recall_memory(
  */
 bool visual_cortex_get_stats(const visual_cortex_t* cortex, visual_cortex_stats_t* stats)
 {
-    if (!cortex || !stats) {
+    if (!nimcp_validate_pointer(cortex, "cortex") ||
+        !nimcp_validate_pointer(stats, "stats")) {
         return false;
     }
 
@@ -919,7 +985,8 @@ bool visual_cortex_get_stats(const visual_cortex_t* cortex, visual_cortex_stats_
 float visual_cortex_compute_novelty(visual_cortex_t* cortex, const float* features)
 {
     // Guard: Validate inputs
-    if (!cortex || !features) {
+    if (!nimcp_validate_pointer(cortex, "cortex") ||
+        !nimcp_validate_pointer(features, "features")) {
         return 0.0f;
     }
 
@@ -968,11 +1035,15 @@ bool visual_cortex_get_attention_peak(
     float* max_value)
 {
     // Guard: Validate inputs
-    if (!attn_map || !max_x || !max_y || !max_value) {
+    if (!nimcp_validate_pointer(attn_map, "attn_map") ||
+        !nimcp_validate_pointer(max_x, "max_x") ||
+        !nimcp_validate_pointer(max_y, "max_y") ||
+        !nimcp_validate_pointer(max_value, "max_value")) {
         return false;
     }
 
-    if (!attn_map->values) {
+    if (!nimcp_validate_pointer(attn_map->values, "attn_map->values")) {
+        NIMCP_LOGGING_ERROR("Attention map has no values");
         return false;
     }
 
@@ -1015,7 +1086,8 @@ bool visual_cortex_consolidate_memory(
     const char* context)
 {
     // Guard: Validate inputs
-    if (!cortex || !features) {
+    if (!nimcp_validate_pointer(cortex, "cortex") ||
+        !nimcp_validate_pointer(features, "features")) {
         return false;
     }
 
