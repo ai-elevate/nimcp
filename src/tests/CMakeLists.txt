@@ -114,6 +114,7 @@ add_nimcp_test_binary(cognitive_tests
     test_consolidation.cpp
     test_introspection.cpp
     test_wellbeing.cpp
+    test_symbolic_logic.cpp
 )
 
 # ============================================================================
