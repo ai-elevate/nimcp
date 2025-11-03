@@ -1,0 +1,141 @@
+# Build directories
+build/
+Build/
+cmake-build-*/
+
+# CMake generated files
+CMakeCache.txt
+CMakeFiles/
+CMakeScripts/
+cmake_install.cmake
+compile_commands.json
+CTestTestfile.cmake
+Makefile
+*.cmake
+
+# Object files
+*.o
+*.obj
+*.lo
+*.slo
+*.ko
+
+# Shared objects (inc Windows DLLs)
+*.dll
+*.so
+*.so.*
+*.dylib
+
+# Static libraries
+*.a
+*.la
+*.lai
+*.lib
+
+# Executables
+*.exe
+*.out
+*.app
+*.i*86
+*.x86_64
+*.hex
+
+# Debug files
+*.dSYM/
+*.su
+*.idb
+*.pdb
+
+# Coverage files
+*.gcno
+*.gcda
+*.gcov
+coverage/
+*.info
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# IDE/Editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.cache/
+.clangd/
+compile_commands.json
+
+# Test artifacts
+Testing/
+*.test
+*.trs
+test-driver
+
+# Temporary files
+*.tmp
+*.bak
+*.log
+*.tlog
+.DS_Store
+
+# Documentation build
+docs/html/
+docs/latex/
+docs/xml/
+doxygen_warnings.txt
+
+# Package files
+*.tar.gz
+*.zip
+*.7z
+
+# Binaries (examples and tests from repo)
+# Allow these to be built but not tracked
+examples/brain_demo
+examples/ethics_demo
+examples/event_demo
+examples/infant_demo
+examples/integrated_demo
+src/tests/core_tests
+src/tests/cognitive_tests
+src/tests/glial_tests
+src/tests/integration_tests
+src/tests/io_tests
+src/tests/networking_tests
+src/tests/plasticity_tests
+src/tests/utility_tests
+src/tests/quality_tests
+src/tests/security_tests
+src/tests/nimcp_tests
+
+# Python bindings
+*.so
+build/lib/
+
+# Local configuration
+.env
+.env.local
+
+# clang-tidy
+.clang-tidy
+.clang-format
