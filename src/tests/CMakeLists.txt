@@ -152,6 +152,7 @@ add_nimcp_test_binary(utility_tests
     test_thread_utils.cpp
     test_fft.cpp
     test_visual_cortex.cpp
+    test_audio_cortex.cpp
 )
 
 # ============================================================================

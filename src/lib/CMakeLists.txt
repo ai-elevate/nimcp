@@ -64,6 +64,16 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../utils/queue_manager/nimcp_queue_manager.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../utils/json/nimcp_json.c
 
+    # Utils - Spectral Analysis
+    ${CMAKE_CURRENT_SOURCE_DIR}/../utils/spectral/nimcp_fft.c
+
+    # Brain Oscillations
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain_oscillations/nimcp_brain_oscillations.c
+
+    # Perception
+    ${CMAKE_CURRENT_SOURCE_DIR}/perception/nimcp_visual_cortex.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/perception/nimcp_audio_cortex.c
+
     # Python bindings
     ${CMAKE_SOURCE_DIR}/src/python/nimcp_module.c
     ${CMAKE_SOURCE_DIR}/src/python/nimcp_types.c
