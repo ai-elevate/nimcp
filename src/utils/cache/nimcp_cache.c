@@ -24,7 +24,7 @@
 //=============================================================================
 
 /** WHAT: Magic number for cache header validation */
-#define NIMCP_CACHE_MAGIC 0xCAC4EFEED
+#define NIMCP_CACHE_MAGIC 0xCAC4EFED
 
 /** WHAT: Canary value for corruption detection */
 #define NIMCP_CACHE_CANARY 0xDEADBEEF
@@ -58,7 +58,7 @@ typedef struct {
     bool initialized;              /**< Is system initialized? */
     nimcp_cache_config_t config;   /**< Configuration */
     nimcp_cache_stats_t stats;     /**< Statistics */
-    hash_table_t tracking_table;   /**< Allocation tracking (ptr -> header) */
+    hash_table_t* tracking_table;  /**< Allocation tracking (ptr -> header) */
     pthread_mutex_t mutex;         /**< Protects tracking table and stats */
 } nimcp_cache_state_t;
 
@@ -230,9 +230,9 @@ void nimcp_cache_init(void) {
     g_cache_state.config = nimcp_cache_get_default_config();
 
     // Create tracking table (if tracking enabled)
-    if (g_cache_state.config.enable_tracking) {
-        g_cache_state.tracking_table = hash_table_create(1024);
-    }
+    // TODO: Implement proper pointer-key hash table for tracking
+    // For Phase 1, tracking table is disabled
+    g_cache_state.tracking_table = NULL;
 
     // Clear statistics
     memset(&g_cache_state.stats, 0, sizeof(nimcp_cache_stats_t));
@@ -337,11 +337,9 @@ void* nimcp_cache_alloc(size_t size) {
     void* user_ptr = get_user_ptr(header);
 
     // Track allocation
-    if (g_cache_state.config.enable_tracking && g_cache_state.tracking_table) {
-        pthread_mutex_lock(&g_cache_state.mutex);
-        hash_table_set(g_cache_state.tracking_table, (uintptr_t)user_ptr, (uintptr_t)header);
-        pthread_mutex_unlock(&g_cache_state.mutex);
-    }
+    // TODO: Implement proper pointer-key hash table for tracking
+    // For Phase 1, tracking is disabled
+    (void)g_cache_state;  // Suppress unused variable warning
 
     // Update statistics
     update_stats_alloc(size);
@@ -444,11 +442,8 @@ void nimcp_cache_release(void* ptr) {
     // If last reference, free memory
     if (old_count == 1) {
         // Remove from tracking table
-        if (g_cache_state.config.enable_tracking && g_cache_state.tracking_table) {
-            pthread_mutex_lock(&g_cache_state.mutex);
-            hash_table_remove(g_cache_state.tracking_table, (uintptr_t)ptr);
-            pthread_mutex_unlock(&g_cache_state.mutex);
-        }
+        // TODO: Implement proper pointer-key hash table for tracking
+        // For Phase 1, tracking is disabled
 
         // Update statistics
         update_stats_release(header->size);

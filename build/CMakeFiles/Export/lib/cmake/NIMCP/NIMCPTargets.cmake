@@ -54,7 +54,7 @@ endif()
 add_library(NIMCP::nimcp SHARED IMPORTED)
 
 set_target_properties(NIMCP::nimcp PROPERTIES
-  INTERFACE_INCLUDE_DIRECTORIES "${_IMPORT_PREFIX}/include/nimcp"
+  INTERFACE_INCLUDE_DIRECTORIES "${_IMPORT_PREFIX}/include/nimcp;${_IMPORT_PREFIX}/include"
   INTERFACE_LINK_LIBRARIES "Python3::Python;lz4;jansson"
 )
 

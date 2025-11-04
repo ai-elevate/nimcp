@@ -70,6 +70,7 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../utils/json/nimcp_json.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../utils/config/nimcp_config.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../utils/metrics/nimcp_metrics.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../utils/cache/nimcp_cache.c
 
     # Utils - Spectral Analysis
     ${CMAKE_CURRENT_SOURCE_DIR}/../utils/spectral/nimcp_fft.c
