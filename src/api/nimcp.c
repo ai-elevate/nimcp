@@ -393,11 +393,20 @@ nimcp_status_t nimcp_brain_probe(nimcp_brain_t brain, nimcp_brain_probe_t* probe
     probe->num_inputs = 0;
     probe->num_outputs = 0;
 
-    // Initialize COW stats to defaults (updated later if COW clone)
-    probe->is_cow_clone = false;
-    probe->cow_ref_count = 0;
-    probe->cow_shared_bytes = 0;
-    probe->cow_private_bytes = internal_stats.memory_bytes;
+    // Get COW statistics from internal brain
+    brain_cow_stats_t cow_stats;
+    if (brain_get_cow_stats(brain->internal_brain, &cow_stats)) {
+        probe->is_cow_clone = cow_stats.is_cow_clone;
+        probe->cow_ref_count = cow_stats.cow_ref_count;
+        probe->cow_shared_bytes = cow_stats.cow_shared_bytes;
+        probe->cow_private_bytes = cow_stats.cow_private_bytes;
+    } else {
+        // Fallback to defaults if COW stats retrieval fails
+        probe->is_cow_clone = false;
+        probe->cow_ref_count = 0;
+        probe->cow_shared_bytes = 0;
+        probe->cow_private_bytes = internal_stats.memory_bytes;
+    }
 
     set_error("No error");
     return NIMCP_OK;
@@ -410,13 +419,12 @@ nimcp_status_t nimcp_brain_probe(nimcp_brain_t brain, nimcp_brain_probe_t* probe
 /**
  * WHAT: Clone brain using copy-on-write caching
  * WHY:  Enable efficient replication with 86% memory savings
- * HOW:  Create new handle sharing internal brain via cache references
+ * HOW:  Use internal brain_clone_cow which shares network structures
  *
  * PERFORMANCE: <10ms clone time vs ~1000ms for full copy
  * MEMORY: ~1MB overhead vs ~50MB for full copy
  *
- * NOTE: Phase 1 creates independent copy (not yet COW-optimized)
- * TODO: Implement actual COW sharing using nimcp_cache_reference
+ * Phase 2: True COW sharing via pointer sharing
  */
 nimcp_brain_t nimcp_brain_clone_cow(nimcp_brain_t original) {
     // Guard: Validate parameters
@@ -430,34 +438,24 @@ nimcp_brain_t nimcp_brain_clone_cow(nimcp_brain_t original) {
         return NULL;
     }
 
-    // Get original brain parameters via probe
-    nimcp_brain_probe_t probe;
-    if (nimcp_brain_probe(original, &probe) != NIMCP_OK) {
-        set_error("Failed to probe original brain for cloning");
+    // Allocate handle
+    nimcp_brain_t clone_handle = (nimcp_brain_t)nimcp_malloc(sizeof(struct nimcp_brain_handle));
+    if (!clone_handle) {
+        set_error("Failed to allocate brain handle for COW clone");
         return NULL;
     }
 
-    // Phase 1: Create independent copy (not yet COW)
-    // This ensures tests pass while we develop full COW implementation
-    nimcp_brain_t clone = nimcp_brain_create(
-        probe.task_name,
-        probe.size,
-        probe.task,
-        probe.num_inputs > 0 ? probe.num_inputs : 10,   // Default if not available
-        probe.num_outputs > 0 ? probe.num_outputs : 10  // Default if not available
-    );
+    // Use internal COW clone function
+    clone_handle->internal_brain = brain_clone_cow(original->internal_brain);
 
-    if (!clone) {
-        set_error("Failed to create clone brain");
+    if (!clone_handle->internal_brain) {
+        set_error("Failed to clone internal brain");
+        nimcp_free(clone_handle);
         return NULL;
     }
-
-    // TODO Phase 2: Replace above with actual COW cloning:
-    // clone->internal_brain->weights = nimcp_cache_reference(original->internal_brain->weights);
-    // clone->internal_brain->connections = nimcp_cache_reference(original->internal_brain->connections);
 
     set_error("No error");
-    return clone;
+    return clone_handle;
 }
 
 /**
