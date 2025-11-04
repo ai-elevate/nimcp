@@ -125,6 +125,27 @@ Location: `docs/design/`
 
 ---
 
+## 📊 Monitoring & Metrics
+
+Location: `docs/`
+
+- **[MEMORY.md](MEMORY.md)** - Memory management, tracking, and leak detection
+- **[BRAIN_PROBE.md](BRAIN_PROBE.md)** - Brain state monitoring and probing API
+- **[METRICS_IMPLEMENTATION.md](METRICS_IMPLEMENTATION.md)** - Metrics collection system implementation
+- **[METRICS_CATALOG.md](METRICS_CATALOG.md)** - Complete catalog of standard metrics
+- **[BRAIN_INSPIRED_MULTITASKING.md](BRAIN_INSPIRED_MULTITASKING.md)** - Hierarchical brain architecture
+
+---
+
+## 🧹 Repository Maintenance
+
+Location: `docs/`
+
+- **[CLEANUP_SUMMARY.md](CLEANUP_SUMMARY.md)** - Repository cleanup and organization summary
+- **[CONFIG_SYSTEM.md](CONFIG_SYSTEM.md)** - Configuration system documentation
+
+---
+
 ## 🔍 Quick Navigation
 
 ### By Topic
@@ -141,6 +162,12 @@ Location: `docs/design/`
 **System Design:**
 - [GPU P2P Architecture](architecture/GPU_P2P_ARCHITECTURE.md)
 - [Heartbeat Architecture](design/HEARTBEAT_ARCHITECTURE_DIAGRAM.md)
+
+**Monitoring & Debugging:**
+- [Memory Management](MEMORY.md)
+- [Brain Probe API](BRAIN_PROBE.md)
+- [Metrics System](METRICS_IMPLEMENTATION.md)
+- [Metrics Catalog](METRICS_CATALOG.md)
 
 **Status & Progress:**
 - [Implementation Status](implementation/IMPLEMENTATION_STATUS.md)
@@ -179,5 +206,5 @@ When adding or updating documentation:
 
 ---
 
-**Last Updated:** 2025-01-03
-**Version:** 2.6 (GPU P2P)
+**Last Updated:** 2025-11-04
+**Version:** 2.6.1
