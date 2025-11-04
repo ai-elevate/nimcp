@@ -175,3 +175,25 @@ vendor/
 # Rust
 target/
 Cargo.lock
+
+# Web Demo - React build
+src/bindings/web-demo/frontend/build/
+src/bindings/web-demo/frontend/.env.local
+src/bindings/web-demo/frontend/.env.development.local
+src/bindings/web-demo/frontend/.env.test.local
+src/bindings/web-demo/frontend/.env.production.local
+
+# Web Demo - Generated scripts
+setup_env.sh
+DEPLOYMENT.md
+systemd/
+
+# Web Demo - Logs
+src/bindings/web-demo/backend/*.log
+src/bindings/web-demo/frontend/*.log
+
+# Brain data
+*.nimcp
+*.brain
+checkpoints/
+/tmp/checkpoints/
