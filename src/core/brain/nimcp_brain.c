@@ -83,6 +83,13 @@ struct brain_struct {
 };
 
 //=============================================================================
+// Forward Declarations
+//=============================================================================
+
+// Phase 2: COW helper - must be declared before brain_get_network()
+static bool ensure_writable_network(brain_t brain);
+
+//=============================================================================
 // Strategy Pattern - Task-Specific Behaviors
 //=============================================================================
 
@@ -401,6 +408,14 @@ adaptive_network_t brain_get_network(brain_t brain)
         set_error("NULL brain passed to brain_get_network");
         return NULL;
     }
+
+    // Phase 2: CRITICAL - Ensure network is writable before exposing it
+    // WHY: External subsystems (introspection, salience, consolidation) may mutate the network
+    // RISK: Exposing shared network allows corruption from external modifications
+    if (!ensure_writable_network(brain)) {
+        return NULL;  // Error already set
+    }
+
     return brain->network;
 }
 
@@ -1562,6 +1577,14 @@ brain_decision_t* brain_decide(brain_t brain, const float* features, uint32_t nu
         return NULL;
     }
 
+    // Phase 2: CRITICAL - Ensure network is writable before inference
+    // WHY: adaptive_network_forward() modifies network statistics even during "read-only" inference
+    // RISK: Without this, shared network becomes corrupted by concurrent access
+    // IMPACT: First inference on COW clone triggers copy (~100ms), then all subsequent are fast
+    if (!ensure_writable_network(brain)) {
+        return NULL;  // Error already set by ensure_writable_network
+    }
+
     /**
      * WHAT: Check cache and return a COPY of cached decision
      * WHY: Cached decision is owned by brain, caller expects to own returned decision
@@ -2216,6 +2239,11 @@ uint32_t brain_prune(brain_t brain, float threshold)
     if (!brain) {
         set_error("Null brain provided to brain_prune");
         return 0;
+    }
+
+    // Phase 2: Ensure network is writable before pruning
+    if (!ensure_writable_network(brain)) {
+        return 0;  // Error already set
     }
 
     uint32_t pruned = adaptive_network_prune(brain->network, threshold);
