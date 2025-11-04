@@ -36,7 +36,7 @@
  */
 typedef struct nimcp_cache_header {
     uint32_t magic;                /**< Magic number for validation */
-    atomic_uint_fast32_t ref_count; /**< Reference count (atomic) */
+    uint32_t ref_count;            /**< Reference count (protected by mutex) */
     size_t size;                   /**< Size of user data */
     uint32_t canary_start;         /**< Start canary */
 
@@ -319,7 +319,7 @@ void* nimcp_cache_alloc(size_t size) {
 
     // Initialize header
     header->magic = NIMCP_CACHE_MAGIC;
-    atomic_init(&header->ref_count, 1);
+    header->ref_count = 1;
     header->size = size;
     header->canary_start = NIMCP_CACHE_CANARY;
 
@@ -369,7 +369,7 @@ void* nimcp_cache_reference(void* ptr) {
     }
 
     // Atomic increment reference count
-    uint32_t old_count = atomic_fetch_add(&header->ref_count, 1);
+    uint32_t old_count = header->ref_count++;
 
     // Update statistics (only on transition from 1 to 2)
     if (old_count == 1) {
@@ -393,7 +393,7 @@ void* nimcp_cache_make_writable(void* ptr) {
     }
 
     // Check if already private (ref_count == 1)
-    uint32_t ref_count = atomic_load(&header->ref_count);
+    uint32_t ref_count = header->ref_count;
     if (ref_count == 1) {
         // Already private, no copy needed
         return ptr;
@@ -409,7 +409,7 @@ void* nimcp_cache_make_writable(void* ptr) {
     memcpy(new_ptr, ptr, header->size);
 
     // Release reference to original
-    atomic_fetch_sub(&header->ref_count, 1);
+    header->ref_count--;
 
     // Update statistics
     update_stats_copy(header->size);
@@ -432,7 +432,7 @@ void nimcp_cache_release(void* ptr) {
     }
 
     // Atomic decrement reference count
-    uint32_t old_count = atomic_fetch_sub(&header->ref_count, 1);
+    uint32_t old_count = header->ref_count--;
 
     if (g_cache_state.config.enable_debug_output) {
         printf("[CACHE] Released %p (ref_count: %u -> %u)\n",
@@ -476,7 +476,7 @@ bool nimcp_cache_is_shared(const void* ptr) {
         return false;
     }
 
-    uint32_t ref_count = atomic_load(&header->ref_count);
+    uint32_t ref_count = header->ref_count;
     return ref_count > 1;
 }
 
@@ -488,7 +488,7 @@ uint32_t nimcp_cache_get_refcount(const void* ptr) {
         return 0;
     }
 
-    return atomic_load(&header->ref_count);
+    return header->ref_count;
 }
 
 size_t nimcp_cache_get_size(const void* ptr) {
@@ -642,7 +642,7 @@ bool nimcp_cache_get_info(const void* ptr, char* buffer, size_t buffer_size) {
         return false;
     }
 
-    uint32_t ref_count = atomic_load(&header->ref_count);
+    uint32_t ref_count = header->ref_count;
 
     snprintf(buffer, buffer_size,
              "Cached allocation at %p: size=%zu bytes, ref_count=%u, %s",

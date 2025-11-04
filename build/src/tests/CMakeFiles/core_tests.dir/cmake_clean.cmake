@@ -3,6 +3,8 @@ file(REMOVE_RECURSE
   "CMakeFiles/core_tests.dir/__/python/nimcp_module.c.o.d"
   "CMakeFiles/core_tests.dir/test_adaptive.cpp.o"
   "CMakeFiles/core_tests.dir/test_adaptive.cpp.o.d"
+  "CMakeFiles/core_tests.dir/test_brain_cow.cpp.o"
+  "CMakeFiles/core_tests.dir/test_brain_cow.cpp.o.d"
   "CMakeFiles/core_tests.dir/test_brain_regions.cpp.o"
   "CMakeFiles/core_tests.dir/test_brain_regions.cpp.o.d"
   "CMakeFiles/core_tests.dir/test_module.cpp.o"

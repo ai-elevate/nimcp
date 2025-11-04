@@ -246,8 +246,8 @@ TEST_F(BrainCOWTest, SnapshotCOWCreatesValidSnapshot) {
     ASSERT_NE(snapshot2, nullptr);
 
     // Cleanup
-    nimcp_brain_snapshot_release(snapshot2);
-    nimcp_brain_snapshot_release(snapshot);
+    nimcp_brain_snapshot_destroy(snapshot2);
+    nimcp_brain_snapshot_destroy(snapshot);
     nimcp_brain_destroy(brain);
 }
 
@@ -281,7 +281,7 @@ TEST_F(BrainCOWTest, SnapshotCOWSharesMemory) {
     EXPECT_GT(stats_after.references_created, stats_before.references_created);
 
     // Cleanup
-    nimcp_brain_snapshot_release(snapshot);
+    nimcp_brain_snapshot_destroy(snapshot);
     nimcp_brain_destroy(brain);
 }
 
@@ -329,7 +329,7 @@ TEST_F(BrainCOWTest, SnapshotCOWRestoresState) {
     EXPECT_EQ(probe_restored.total_learning_steps, learning_steps_initial);
 
     // Cleanup
-    nimcp_brain_snapshot_release(snapshot);
+    nimcp_brain_snapshot_destroy(snapshot);
     nimcp_brain_destroy(brain);
 }
 
@@ -366,7 +366,7 @@ TEST_F(BrainCOWTest, MultipleSnapshotsShareMemory) {
 
     // Cleanup
     for (int i = 0; i < num_snapshots; i++) {
-        nimcp_brain_snapshot_release(snapshots[i]);
+        nimcp_brain_snapshot_destroy(snapshots[i]);
     }
     nimcp_brain_destroy(brain);
 }
@@ -408,7 +408,7 @@ TEST_F(BrainCOWTest, CloneAndSnapshotTogether) {
     EXPECT_GT(stats.memory_saved, 0u);
 
     // Cleanup
-    nimcp_brain_snapshot_release(snapshot);
+    nimcp_brain_snapshot_destroy(snapshot);
     nimcp_brain_destroy(clone);
     nimcp_brain_destroy(original);
 }
@@ -505,6 +505,6 @@ TEST_F(BrainCOWTest, RestoreCOWHandlesNullInputs) {
     EXPECT_FALSE(nimcp_brain_restore_cow(brain, nullptr));
 
     // Cleanup
-    nimcp_brain_snapshot_release(snapshot);
+    nimcp_brain_snapshot_destroy(snapshot);
     nimcp_brain_destroy(brain);
 }

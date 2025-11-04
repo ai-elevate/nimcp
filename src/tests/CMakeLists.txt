@@ -82,6 +82,7 @@ add_nimcp_test_binary(core_tests
     test_adaptive.cpp
     test_neuron_types.cpp
     test_brain_regions.cpp
+    test_brain_cow.cpp
 )
 
 # ============================================================================

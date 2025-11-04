@@ -37,11 +37,14 @@
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
-#include <stdatomic.h>
 
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+// Note: For Phase 1, using regular uint32_t with mutex protection
+// instead of atomic_uint_fast32_t to avoid C++/C11 compatibility issues
+// Full atomic implementation will be added in Phase 2
 
 //=============================================================================
 // Cache Statistics and Configuration

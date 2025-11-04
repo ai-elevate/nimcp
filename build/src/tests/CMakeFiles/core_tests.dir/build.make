@@ -153,10 +153,24 @@ src/tests/CMakeFiles/core_tests.dir/test_brain_regions.cpp.s: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Compiling CXX source to assembly CMakeFiles/core_tests.dir/test_brain_regions.cpp.s"
 	cd /home/bbrelin/src/repos/nimcp/build/src/tests && /usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/bbrelin/src/repos/nimcp/src/tests/test_brain_regions.cpp -o CMakeFiles/core_tests.dir/test_brain_regions.cpp.s
 
+src/tests/CMakeFiles/core_tests.dir/test_brain_cow.cpp.o: src/tests/CMakeFiles/core_tests.dir/flags.make
+src/tests/CMakeFiles/core_tests.dir/test_brain_cow.cpp.o: ../src/tests/test_brain_cow.cpp
+src/tests/CMakeFiles/core_tests.dir/test_brain_cow.cpp.o: src/tests/CMakeFiles/core_tests.dir/compiler_depend.ts
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/bbrelin/src/repos/nimcp/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_7) "Building CXX object src/tests/CMakeFiles/core_tests.dir/test_brain_cow.cpp.o"
+	cd /home/bbrelin/src/repos/nimcp/build/src/tests && /usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT src/tests/CMakeFiles/core_tests.dir/test_brain_cow.cpp.o -MF CMakeFiles/core_tests.dir/test_brain_cow.cpp.o.d -o CMakeFiles/core_tests.dir/test_brain_cow.cpp.o -c /home/bbrelin/src/repos/nimcp/src/tests/test_brain_cow.cpp
+
+src/tests/CMakeFiles/core_tests.dir/test_brain_cow.cpp.i: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Preprocessing CXX source to CMakeFiles/core_tests.dir/test_brain_cow.cpp.i"
+	cd /home/bbrelin/src/repos/nimcp/build/src/tests && /usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /home/bbrelin/src/repos/nimcp/src/tests/test_brain_cow.cpp > CMakeFiles/core_tests.dir/test_brain_cow.cpp.i
+
+src/tests/CMakeFiles/core_tests.dir/test_brain_cow.cpp.s: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Compiling CXX source to assembly CMakeFiles/core_tests.dir/test_brain_cow.cpp.s"
+	cd /home/bbrelin/src/repos/nimcp/build/src/tests && /usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/bbrelin/src/repos/nimcp/src/tests/test_brain_cow.cpp -o CMakeFiles/core_tests.dir/test_brain_cow.cpp.s
+
 src/tests/CMakeFiles/core_tests.dir/__/python/nimcp_module.c.o: src/tests/CMakeFiles/core_tests.dir/flags.make
 src/tests/CMakeFiles/core_tests.dir/__/python/nimcp_module.c.o: ../src/python/nimcp_module.c
 src/tests/CMakeFiles/core_tests.dir/__/python/nimcp_module.c.o: src/tests/CMakeFiles/core_tests.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/bbrelin/src/repos/nimcp/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_7) "Building C object src/tests/CMakeFiles/core_tests.dir/__/python/nimcp_module.c.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/bbrelin/src/repos/nimcp/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_8) "Building C object src/tests/CMakeFiles/core_tests.dir/__/python/nimcp_module.c.o"
 	cd /home/bbrelin/src/repos/nimcp/build/src/tests && /usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -MD -MT src/tests/CMakeFiles/core_tests.dir/__/python/nimcp_module.c.o -MF CMakeFiles/core_tests.dir/__/python/nimcp_module.c.o.d -o CMakeFiles/core_tests.dir/__/python/nimcp_module.c.o -c /home/bbrelin/src/repos/nimcp/src/python/nimcp_module.c
 
 src/tests/CMakeFiles/core_tests.dir/__/python/nimcp_module.c.i: cmake_force
@@ -175,6 +189,7 @@ core_tests_OBJECTS = \
 "CMakeFiles/core_tests.dir/test_adaptive.cpp.o" \
 "CMakeFiles/core_tests.dir/test_neuron_types.cpp.o" \
 "CMakeFiles/core_tests.dir/test_brain_regions.cpp.o" \
+"CMakeFiles/core_tests.dir/test_brain_cow.cpp.o" \
 "CMakeFiles/core_tests.dir/__/python/nimcp_module.c.o"
 
 # External object files for target core_tests
@@ -186,6 +201,7 @@ src/tests/core_tests: src/tests/CMakeFiles/core_tests.dir/test_neuralnet_learnin
 src/tests/core_tests: src/tests/CMakeFiles/core_tests.dir/test_adaptive.cpp.o
 src/tests/core_tests: src/tests/CMakeFiles/core_tests.dir/test_neuron_types.cpp.o
 src/tests/core_tests: src/tests/CMakeFiles/core_tests.dir/test_brain_regions.cpp.o
+src/tests/core_tests: src/tests/CMakeFiles/core_tests.dir/test_brain_cow.cpp.o
 src/tests/core_tests: src/tests/CMakeFiles/core_tests.dir/__/python/nimcp_module.c.o
 src/tests/core_tests: src/tests/CMakeFiles/core_tests.dir/build.make
 src/tests/core_tests: ../bin/libnimcp.so.2.5.0
@@ -193,7 +209,7 @@ src/tests/core_tests: /usr/lib/x86_64-linux-gnu/libpython3.10.so
 src/tests/core_tests: /usr/lib/x86_64-linux-gnu/libgtest_main.a
 src/tests/core_tests: /usr/lib/x86_64-linux-gnu/libgtest.a
 src/tests/core_tests: src/tests/CMakeFiles/core_tests.dir/link.txt
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --bold --progress-dir=/home/bbrelin/src/repos/nimcp/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_8) "Linking CXX executable core_tests"
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --bold --progress-dir=/home/bbrelin/src/repos/nimcp/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_9) "Linking CXX executable core_tests"
 	cd /home/bbrelin/src/repos/nimcp/build/src/tests && $(CMAKE_COMMAND) -E cmake_link_script CMakeFiles/core_tests.dir/link.txt --verbose=$(VERBOSE)
 
 # Rule to build all files generated by this target.

@@ -10,6 +10,7 @@ set(CMAKE_DEPENDS_LANGUAGES
 set(CMAKE_DEPENDS_DEPENDENCY_FILES
   "/home/bbrelin/src/repos/nimcp/src/python/nimcp_module.c" "src/tests/CMakeFiles/core_tests.dir/__/python/nimcp_module.c.o" "gcc" "src/tests/CMakeFiles/core_tests.dir/__/python/nimcp_module.c.o.d"
   "/home/bbrelin/src/repos/nimcp/src/tests/test_adaptive.cpp" "src/tests/CMakeFiles/core_tests.dir/test_adaptive.cpp.o" "gcc" "src/tests/CMakeFiles/core_tests.dir/test_adaptive.cpp.o.d"
+  "/home/bbrelin/src/repos/nimcp/src/tests/test_brain_cow.cpp" "src/tests/CMakeFiles/core_tests.dir/test_brain_cow.cpp.o" "gcc" "src/tests/CMakeFiles/core_tests.dir/test_brain_cow.cpp.o.d"
   "/home/bbrelin/src/repos/nimcp/src/tests/test_brain_regions.cpp" "src/tests/CMakeFiles/core_tests.dir/test_brain_regions.cpp.o" "gcc" "src/tests/CMakeFiles/core_tests.dir/test_brain_regions.cpp.o.d"
   "/home/bbrelin/src/repos/nimcp/src/tests/test_module.cpp" "src/tests/CMakeFiles/core_tests.dir/test_module.cpp.o" "gcc" "src/tests/CMakeFiles/core_tests.dir/test_module.cpp.o.d"
   "/home/bbrelin/src/repos/nimcp/src/tests/test_neuralnet_create.cpp" "src/tests/CMakeFiles/core_tests.dir/test_neuralnet_create.cpp.o" "gcc" "src/tests/CMakeFiles/core_tests.dir/test_neuralnet_create.cpp.o.d"

@@ -448,6 +448,30 @@ test_bcm.cpp.s:
 	cd /home/bbrelin/src/repos/nimcp/build && $(MAKE) $(MAKESILENT) -f src/tests/CMakeFiles/plasticity_tests.dir/build.make src/tests/CMakeFiles/plasticity_tests.dir/test_bcm.cpp.s
 .PHONY : test_bcm.cpp.s
 
+test_brain_cow.o: test_brain_cow.cpp.o
+.PHONY : test_brain_cow.o
+
+# target to build an object file
+test_brain_cow.cpp.o:
+	cd /home/bbrelin/src/repos/nimcp/build && $(MAKE) $(MAKESILENT) -f src/tests/CMakeFiles/core_tests.dir/build.make src/tests/CMakeFiles/core_tests.dir/test_brain_cow.cpp.o
+.PHONY : test_brain_cow.cpp.o
+
+test_brain_cow.i: test_brain_cow.cpp.i
+.PHONY : test_brain_cow.i
+
+# target to preprocess a source file
+test_brain_cow.cpp.i:
+	cd /home/bbrelin/src/repos/nimcp/build && $(MAKE) $(MAKESILENT) -f src/tests/CMakeFiles/core_tests.dir/build.make src/tests/CMakeFiles/core_tests.dir/test_brain_cow.cpp.i
+.PHONY : test_brain_cow.cpp.i
+
+test_brain_cow.s: test_brain_cow.cpp.s
+.PHONY : test_brain_cow.s
+
+# target to generate assembly for a file
+test_brain_cow.cpp.s:
+	cd /home/bbrelin/src/repos/nimcp/build && $(MAKE) $(MAKESILENT) -f src/tests/CMakeFiles/core_tests.dir/build.make src/tests/CMakeFiles/core_tests.dir/test_brain_cow.cpp.s
+.PHONY : test_brain_cow.cpp.s
+
 test_brain_integration.o: test_brain_integration.cpp.o
 .PHONY : test_brain_integration.o
 
@@ -1639,6 +1663,9 @@ help:
 	@echo "... test_bcm.o"
 	@echo "... test_bcm.i"
 	@echo "... test_bcm.s"
+	@echo "... test_brain_cow.o"
+	@echo "... test_brain_cow.i"
+	@echo "... test_brain_cow.s"
 	@echo "... test_brain_integration.o"
 	@echo "... test_brain_integration.i"
 	@echo "... test_brain_integration.s"
