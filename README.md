@@ -1,6 +1,6 @@
-# NIMCP 2.5 - Neural Substrate for AI Consciousness
+# NIMCP 2.6 - Neural Substrate for AI Consciousness
 
-**Version 2.5** | **Production Ready** | **License: MIT**
+**Version 2.6.1** | **Production Ready** | **License: MIT**
 
 ## What is NIMCP?
 

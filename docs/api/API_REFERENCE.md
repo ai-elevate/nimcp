@@ -1,12 +1,40 @@
 # NIMCP API Reference
 
-**Version:** 2.5.1
-**Last Updated:** 2025-11-03
+**Version:** 2.6.1
+**Last Updated:** 2025-11-04
 
 This document provides comprehensive reference documentation for all public APIs in the NIMCP (Neuromorphic Infant Machine Cognitive Platform) library.
 
+## Recent Updates (2025-11-04)
+
+### Security Hardening (v2.6.1)
+- **Fixed:** Replaced all unsafe `strcpy()` calls with `strncpy()` + explicit null termination
+  - src/cognitive/knowledge/nimcp_knowledge.c:1675
+  - src/utils/thread/nimcp_thread.c:2030
+  - src/utils/json/nimcp_json.c:483,524
+- **Fixed:** Memory corruption bug in Knowledge module that caused test segfaults
+- **Fixed:** Knowledge.LearnFromStory test now passes (previously segfaulted)
+- **Security:** Defense-in-depth buffer overflow protection across codebase
+- **Testing:** All 287 cognitive tests passing, all 27 JSON tests passing
+- **Commit:** ea8d766
+
 ## Recent Updates (2025-11-03)
 
+### Spectral Analysis & Brain Oscillations (v2.6.0)
+- **Added:** FFT (Fast Fourier Transform) spectral analysis utilities (`utils/spectral/nimcp_fft.h`)
+  - Cooley-Tukey radix-2 FFT algorithm (O(N log N) complexity)
+  - Real-to-complex and complex-to-complex transforms
+  - Window functions (Hann, Hamming, Blackman) for spectral leakage reduction
+  - Power spectral density (PSD) computation
+  - Brain wave band power extraction (Delta, Theta, Alpha, Beta, Gamma)
+- **Added:** Brain oscillation analysis module (`core/brain_oscillations/nimcp_brain_oscillations.h`)
+  - Real-time neural oscillation detection
+  - Cognitive state inference from brain waves (sleep states, focus, attention)
+  - Phase-amplitude coupling (PAC) analysis
+  - Network synchrony computation
+- **Status:** 14/14 FFT tests passing; all spectral analysis functionality validated
+
+### Knowledge System (v2.5.1)
 - **Added:** Knowledge B-tree indexing for efficient confidence-based queries (O(log n) range queries)
 - **Added:** `knowledge_get_by_confidence_range()` - Query knowledge items by confidence level
 - **Added:** `knowledge_get_all_ordered_by_confidence()` - Get all knowledge sorted by confidence
@@ -18,6 +46,7 @@ This document provides comprehensive reference documentation for all public APIs
 
 1. [Core Neural Network APIs](#core-neural-network-apis)
 2. [Brain & Cognitive Systems](#brain--cognitive-systems)
+   - [Brain Oscillation Analysis](#brain-oscillation-analysis)
 3. [Learning Systems](#learning-systems)
    - [Adaptive Learning](#adaptive-learning)
    - [Neuromodulator System](#neuromodulator-system)
@@ -31,6 +60,7 @@ This document provides comprehensive reference documentation for all public APIs
 10. [Higher-Level Cognitive APIs](#higher-level-cognitive-apis)
 11. [Thread Safety & Synchronization](#thread-safety--synchronization)
 12. [Utility APIs](#utility-apis)
+   - [FFT Spectral Analysis](#fft-spectral-analysis)
 13. [Language Bindings](#language-bindings)
     - [Python Bindings](#python-bindings)
     - [C++ Bindings](#c-bindings)
@@ -173,6 +203,122 @@ typedef struct {
 
 **`nimcp_brain_t* nimcp_brain_load(const char* filename)`**
 - **Description:** Load brain from saved state
+
+---
+
+### Brain Oscillation Analysis
+**Header:** `core/brain_oscillations/nimcp_brain_oscillations.h`
+
+FFT-based spectral analysis of neural activity for detecting brain rhythms and inferring cognitive states.
+
+#### Types
+```c
+typedef struct brain_oscillation_analyzer_t brain_oscillation_analyzer_t;
+
+typedef enum {
+    BRAIN_WAVE_DELTA,   // 1-4 Hz: Deep sleep, unconscious
+    BRAIN_WAVE_THETA,   // 4-8 Hz: Memory consolidation, meditation
+    BRAIN_WAVE_ALPHA,   // 8-13 Hz: Relaxed wakefulness
+    BRAIN_WAVE_BETA,    // 13-30 Hz: Active thinking, focus
+    BRAIN_WAVE_GAMMA    // 30-100 Hz: Feature binding, attention
+} brain_wave_band_t;
+
+typedef struct {
+    float delta_power;
+    float theta_power;
+    float alpha_power;
+    float beta_power;
+    float gamma_power;
+    float total_power;
+    float dominant_freq;
+    brain_wave_band_t dominant_band;
+} brain_wave_power_t;
+
+typedef enum {
+    COGNITIVE_STATE_UNKNOWN,
+    COGNITIVE_STATE_DEEP_SLEEP,      // Delta dominance
+    COGNITIVE_STATE_LIGHT_SLEEP,     // Theta + delta
+    COGNITIVE_STATE_RELAXED,         // Alpha dominance
+    COGNITIVE_STATE_FOCUSED,         // Beta dominance
+    COGNITIVE_STATE_ATTENTIVE,       // Gamma + beta
+    COGNITIVE_STATE_CONSOLIDATING    // Theta dominance (memory)
+} cognitive_state_t;
+```
+
+#### Functions
+
+**`brain_oscillation_analyzer_t* brain_oscillation_create(brain_t brain, uint32_t window_size_ms, uint32_t sampling_rate_hz)`**
+- **Description:** Create oscillation analyzer with specified window size and sampling rate
+- **Parameters:**
+  - `brain`: Brain to analyze
+  - `window_size_ms`: Analysis window in milliseconds (100-10000ms)
+  - `sampling_rate_hz`: Sampling rate in Hz (10-10000Hz)
+- **Returns:** Analyzer handle or NULL on failure
+- **Complexity:** O(N) where N = window size in samples
+- **Recommended settings:**
+  - Short-term (attention): 250ms window, 500Hz sampling
+  - Medium-term (task): 500ms window, 250Hz sampling
+  - Long-term (sleep): 1000ms window, 100Hz sampling
+
+**`void brain_oscillation_destroy(brain_oscillation_analyzer_t* analyzer)`**
+- **Description:** Destroy oscillation analyzer and free resources
+
+**`bool brain_oscillation_record_activity(brain_oscillation_analyzer_t* analyzer)`**
+- **Description:** Record current brain activity snapshot (call at sampling rate)
+- **Complexity:** O(N) where N = number of neurons
+
+**`bool brain_oscillation_analyze(brain_oscillation_analyzer_t* analyzer, oscillation_analysis_t* results)`**
+- **Description:** Perform full spectral analysis (power, state, metrics)
+- **Complexity:** O(N log N) for FFT
+- **Requires:** Full activity buffer
+
+**`bool brain_oscillation_get_wave_power(brain_oscillation_analyzer_t* analyzer, brain_wave_power_t* wave_power)`**
+- **Description:** Get power in each brain wave band
+- **Complexity:** O(N log N)
+
+**`bool brain_oscillation_get_state(brain_oscillation_analyzer_t* analyzer, cognitive_state_t* state, float* confidence)`**
+- **Description:** Infer cognitive state from oscillation patterns
+- **State inference:**
+  - Delta > 60% total → DEEP_SLEEP
+  - Theta > 40% total → CONSOLIDATING or LIGHT_SLEEP
+  - Alpha > 40% total → RELAXED
+  - Beta > 40% total → FOCUSED
+  - Gamma > 30% total → ATTENTIVE
+
+**`const char* brain_oscillation_state_to_string(cognitive_state_t state)`**
+- **Description:** Convert cognitive state to human-readable string
+
+#### Example Usage
+```c
+// Create analyzer for 500ms window at 250Hz sampling
+brain_oscillation_analyzer_t* analyzer = brain_oscillation_create(
+    brain, 500, 250
+);
+
+// Record activity at 250Hz (every 4ms)
+for (int i = 0; i < 1000; i++) {
+    brain_oscillation_record_activity(analyzer);
+    usleep(4000);  // 4ms delay
+}
+
+// Analyze oscillations
+brain_wave_power_t power;
+if (brain_oscillation_get_wave_power(analyzer, &power)) {
+    printf("Delta: %.2f, Theta: %.2f, Alpha: %.2f\n",
+           power.delta_power, power.theta_power, power.alpha_power);
+    printf("Dominant frequency: %.2f Hz\n", power.dominant_freq);
+}
+
+// Get cognitive state
+cognitive_state_t state;
+float confidence;
+if (brain_oscillation_get_state(analyzer, &state, &confidence)) {
+    printf("State: %s (confidence: %.2f)\n",
+           brain_oscillation_state_to_string(state), confidence);
+}
+
+brain_oscillation_destroy(analyzer);
+```
 
 ---
 
@@ -1053,6 +1199,159 @@ atomic_fetch_add(&update_count, 1);
 ---
 
 ## Utility APIs
+
+### FFT Spectral Analysis
+**Header:** `utils/spectral/nimcp_fft.h`
+
+Fast Fourier Transform utilities for frequency-domain signal analysis. Implements Cooley-Tukey radix-2 FFT algorithm with O(N log N) complexity.
+
+#### Types
+```c
+typedef struct {
+    float real;
+    float imag;
+} fft_complex_t;
+
+typedef struct fft_plan_t fft_plan_t;
+
+typedef enum {
+    FFT_REAL,       // Real-to-complex FFT
+    FFT_COMPLEX,    // Complex-to-complex FFT
+    FFT_INVERSE     // Inverse FFT
+} fft_type_t;
+
+typedef enum {
+    FFT_WINDOW_NONE,
+    FFT_WINDOW_HANN,
+    FFT_WINDOW_HAMMING,
+    FFT_WINDOW_BLACKMAN
+} fft_window_type_t;
+
+typedef enum {
+    BRAIN_WAVE_DELTA,   // 1-4 Hz
+    BRAIN_WAVE_THETA,   // 4-8 Hz
+    BRAIN_WAVE_ALPHA,   // 8-13 Hz
+    BRAIN_WAVE_BETA,    // 13-30 Hz
+    BRAIN_WAVE_GAMMA    // 30-100 Hz
+} brain_wave_band_t;
+```
+
+#### FFT Planning
+
+**`fft_plan_t* fft_plan_create(uint32_t size, fft_type_t type)`**
+- **Description:** Create FFT plan with pre-computed twiddle factors
+- **Parameters:**
+  - `size`: FFT size (must be power of 2: 2, 4, 8, ..., 65536)
+  - `type`: Transform type (FFT_REAL, FFT_COMPLEX, FFT_INVERSE)
+- **Returns:** FFT plan or NULL on failure
+- **Complexity:** O(N) for twiddle factor computation
+
+**`void fft_plan_destroy(fft_plan_t* plan)`**
+- **Description:** Destroy FFT plan and free resources
+
+**`bool fft_plan_set_window(fft_plan_t* plan, fft_window_type_t window)`**
+- **Description:** Set window function to reduce spectral leakage
+- **Window types:**
+  - `FFT_WINDOW_NONE`: Rectangular (no windowing)
+  - `FFT_WINDOW_HANN`: Hann window (good general purpose)
+  - `FFT_WINDOW_HAMMING`: Hamming window (better side-lobe suppression)
+  - `FFT_WINDOW_BLACKMAN`: Blackman window (best side-lobe suppression)
+
+#### FFT Execution
+
+**`bool fft_execute_real(fft_plan_t* plan, const float* input, fft_complex_t* output)`**
+- **Description:** Execute real-to-complex FFT
+- **Parameters:**
+  - `plan`: FFT plan (must be FFT_REAL type)
+  - `input`: Real input signal [size]
+  - `output`: Complex output spectrum [size/2 + 1]
+- **Complexity:** O(N log N)
+- **Note:** Exploits Hermitian symmetry of real signals
+
+**`bool fft_execute_complex(fft_plan_t* plan, const fft_complex_t* input, fft_complex_t* output)`**
+- **Description:** Execute complex-to-complex FFT
+- **Complexity:** O(N log N)
+
+#### Power Spectral Density
+
+**`bool fft_power_spectrum(const fft_complex_t* spectrum, float* power, uint32_t size)`**
+- **Description:** Compute power spectrum (magnitude squared)
+- **Formula:** power[k] = real[k]² + imag[k]²
+- **Complexity:** O(N)
+
+**`bool fft_magnitude_spectrum(const fft_complex_t* spectrum, float* magnitude, uint32_t size)`**
+- **Description:** Compute magnitude spectrum
+- **Formula:** magnitude[k] = sqrt(real[k]² + imag[k]²)
+
+**`bool fft_power_spectrum_db(const fft_complex_t* spectrum, float* psd_db, uint32_t size)`**
+- **Description:** Compute power spectrum in decibels
+- **Formula:** psd_db[k] = 10 * log10(power[k])
+
+**`float fft_dominant_frequency(const float* power, uint32_t size, float sampling_rate)`**
+- **Description:** Find frequency with maximum power
+- **Returns:** Dominant frequency in Hz
+
+**`float fft_band_power(const float* power, uint32_t size, float sampling_rate, float freq_low, float freq_high)`**
+- **Description:** Sum power in frequency range
+- **Returns:** Total power in [freq_low, freq_high] band
+
+**`float fft_brain_wave_power(const float* power, uint32_t size, float sampling_rate, brain_wave_band_t band)`**
+- **Description:** Compute power in specific brain wave band
+- **Brain wave bands:**
+  - Delta (1-4 Hz): Deep sleep, unconscious processes
+  - Theta (4-8 Hz): Memory consolidation, meditation
+  - Alpha (8-13 Hz): Relaxed wakefulness, default mode
+  - Beta (13-30 Hz): Active thinking, motor control
+  - Gamma (30-100 Hz): Feature binding, attention
+
+#### Frequency Utilities
+
+**`float fft_bin_to_frequency(uint32_t bin, uint32_t fft_size, float sampling_rate)`**
+- **Description:** Convert FFT bin index to frequency (Hz)
+- **Formula:** freq = bin * (sampling_rate / fft_size)
+
+**`int32_t fft_frequency_to_bin(float frequency, uint32_t fft_size, float sampling_rate)`**
+- **Description:** Convert frequency (Hz) to nearest bin index
+
+**`bool fft_is_power_of_2(uint32_t n)`**
+- **Description:** Check if n is power of 2
+
+**`uint32_t fft_next_power_of_2(uint32_t n)`**
+- **Description:** Find next power of 2 >= n
+
+#### Example Usage
+```c
+// Create 1024-point real FFT plan
+fft_plan_t* plan = fft_plan_create(1024, FFT_REAL);
+fft_plan_set_window(plan, FFT_WINDOW_HANN);
+
+// Input signal (1024 samples)
+float signal[1024];
+// ... fill with data ...
+
+// Output spectrum (513 bins for real FFT)
+fft_complex_t spectrum[513];
+
+// Execute FFT
+fft_execute_real(plan, signal, spectrum);
+
+// Compute power spectrum
+float power[513];
+fft_power_spectrum(spectrum, power, 513);
+
+// Find dominant frequency
+float sampling_rate = 1000.0f;  // 1000 Hz
+float dominant = fft_dominant_frequency(power, 513, sampling_rate);
+
+// Get brain wave power
+float alpha_power = fft_brain_wave_power(
+    power, 513, sampling_rate, BRAIN_WAVE_ALPHA
+);
+
+fft_plan_destroy(plan);
+```
+
+---
 
 ### Queue Management
 **Header:** `utils/nimcp_queue_manager.h`
