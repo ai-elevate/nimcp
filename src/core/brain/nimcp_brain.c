@@ -25,6 +25,7 @@
 
 #include "nimcp_brain.h"
 #include <math.h>
+#include <pthread.h>
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -80,6 +81,11 @@ struct brain_struct {
     bool owns_network;                  // Does this brain own its network? (can destroy it)
     adaptive_network_t original_network; // Original network reference (if COW)
     bool network_is_cached;             // Is network allocated via nimcp_cache?
+
+    // Phase 3: Reference counting and read-only optimization
+    uint32_t* network_refcount;         // Pointer to shared refcount (NULL if not shared)
+    bool can_use_readonly;              // Can use read-only inference? (true for COW clones)
+    pthread_mutex_t* refcount_mutex;    // Mutex for refcount updates (shared among clones)
 };
 
 //=============================================================================
@@ -777,6 +783,11 @@ static brain_t allocate_brain(void)
     brain->original_network = NULL;
     brain->network_is_cached = false;
 
+    // Phase 3: Initialize reference counting fields
+    brain->network_refcount = NULL;
+    brain->can_use_readonly = false;
+    brain->refcount_mutex = NULL;
+
     return brain;
 }
 
@@ -986,9 +997,27 @@ void brain_destroy(brain_t brain)
     if (!brain)
         return;
 
-    // Phase 2: Destroy network only if we own it
-    if (brain->owns_network && brain->network) {
-        adaptive_network_destroy(brain->network);
+    // Phase 3: Handle network destruction with reference counting
+    if (brain->network) {
+        if (brain->owns_network) {
+            // Brain owns the network - destroy immediately
+            adaptive_network_destroy(brain->network);
+        } else if (brain->network_refcount && brain->refcount_mutex) {
+            // Brain shares network - decrement refcount
+            pthread_mutex_lock(brain->refcount_mutex);
+            (*brain->network_refcount)--;
+            uint32_t remaining_refs = *brain->network_refcount;
+            pthread_mutex_unlock(brain->refcount_mutex);
+
+            // If this was the last reference, destroy shared resources
+            if (remaining_refs == 0) {
+                adaptive_network_destroy(brain->network);
+                pthread_mutex_destroy(brain->refcount_mutex);
+                nimcp_free(brain->refcount_mutex);
+                nimcp_free(brain->network_refcount);
+            }
+        }
+        // else: Neither owns nor has refcount - strange but safe (network leaked)
     }
 
     // Strategies are shared (read-only), don't destroy
@@ -1137,6 +1166,27 @@ brain_t brain_clone_cow(brain_t original)
     clone->is_cow_clone = true;
     clone->owns_network = false;  // Doesn't own network - it's shared
     clone->network_is_cached = false;  // Not using nimcp_cache yet
+
+    // Phase 3: Set up reference counting for shared network
+    if (!original->network_refcount) {
+        // First clone - original needs to initialize shared refcount
+        original->network_refcount = nimcp_malloc(sizeof(uint32_t));
+        original->refcount_mutex = nimcp_malloc(sizeof(pthread_mutex_t));
+        if (original->network_refcount && original->refcount_mutex) {
+            *original->network_refcount = 2;  // Original + this clone
+            pthread_mutex_init(original->refcount_mutex, NULL);
+        }
+    } else {
+        // Additional clone - increment existing refcount
+        pthread_mutex_lock(original->refcount_mutex);
+        (*original->network_refcount)++;
+        pthread_mutex_unlock(original->refcount_mutex);
+    }
+
+    // Clone shares the refcount and mutex with original
+    clone->network_refcount = original->network_refcount;
+    clone->refcount_mutex = original->refcount_mutex;
+    clone->can_use_readonly = true;  // Can use read-only inference
 
     // Allocate output labels array (need space for max outputs, not just existing labels)
     clone->output_labels = nimcp_calloc(clone->config.num_outputs, sizeof(char*));
@@ -1473,8 +1523,18 @@ static uint32_t perform_forward_pass(brain_t brain, const float* features, uint3
 {
     uint64_t start_time = nimcp_time_monotonic_us();
 
-    uint32_t active_neurons = adaptive_network_forward(
-        brain->network, features, num_features, decision->output_vector, decision->output_size, 0);
+    uint32_t active_neurons;
+
+    // Phase 3: Use read-only inference for COW clones to avoid triggering copy
+    if (brain->can_use_readonly) {
+        // COW clone using shared network - read-only inference
+        active_neurons = adaptive_network_forward_readonly(
+            brain->network, features, num_features, decision->output_vector, decision->output_size, 0);
+    } else {
+        // Original brain or post-COW clone - normal inference with statistics
+        active_neurons = adaptive_network_forward(
+            brain->network, features, num_features, decision->output_vector, decision->output_size, 0);
+    }
 
     decision->inference_time_us = nimcp_time_elapsed_us(start_time);
 
@@ -1577,13 +1637,16 @@ brain_decision_t* brain_decide(brain_t brain, const float* features, uint32_t nu
         return NULL;
     }
 
-    // Phase 2: CRITICAL - Ensure network is writable before inference
-    // WHY: adaptive_network_forward() modifies network statistics even during "read-only" inference
-    // RISK: Without this, shared network becomes corrupted by concurrent access
-    // IMPACT: First inference on COW clone triggers copy (~100ms), then all subsequent are fast
-    if (!ensure_writable_network(brain)) {
-        return NULL;  // Error already set by ensure_writable_network
+    // Phase 3: Only trigger COW if not using read-only inference
+    // WHY: COW clones can use adaptive_network_forward_readonly() indefinitely
+    // WHEN: Trigger only for original brains or clones that already triggered COW
+    if (!brain->can_use_readonly) {
+        // Not using read-only mode - ensure network is writable
+        if (!ensure_writable_network(brain)) {
+            return NULL;  // Error already set
+        }
     }
+    // else: Using read-only inference - no COW trigger needed!
 
     /**
      * WHAT: Check cache and return a COPY of cached decision
@@ -2068,20 +2131,32 @@ bool brain_get_cow_stats(brain_t brain, brain_cow_stats_t* cow_stats)
     }
 
     if (brain->is_cow_clone && brain->network) {
-        // This is a COW clone - network is shared
+        // This is a COW clone
         cow_stats->is_cow_clone = true;
 
-        // In Phase 2, we use simple pointer sharing (no reference counting yet)
-        // Assume 2 references (original + this clone) as a placeholder
-        cow_stats->cow_ref_count = 2;
+        // Phase 3: Check if network is still shared or if COW was triggered
+        if (brain->owns_network) {
+            // COW was triggered - clone now owns private network copy
+            cow_stats->cow_ref_count = 1;  // Only this brain owns the network
+            cow_stats->cow_shared_bytes = 0;  // No longer sharing
 
-        // Calculate shared bytes (network size)
-        network_performance_t perf;
-        adaptive_network_get_performance(brain->network, &perf);
-        cow_stats->cow_shared_bytes = perf.memory_usage_bytes;
+            // All network memory is now private
+            network_performance_t perf;
+            adaptive_network_get_performance(brain->network, &perf);
+            cow_stats->cow_private_bytes = sizeof(struct brain_struct) + perf.memory_usage_bytes;
+        } else {
+            // Network is still shared (Phase 3 read-only inference)
+            // Use reference count if available, otherwise assume 2
+            cow_stats->cow_ref_count = brain->network_refcount ? *brain->network_refcount : 2;
 
-        // Calculate private bytes (brain struct + labels + caches)
-        cow_stats->cow_private_bytes = sizeof(struct brain_struct);
+            // Calculate shared bytes (network size)
+            network_performance_t perf;
+            adaptive_network_get_performance(brain->network, &perf);
+            cow_stats->cow_shared_bytes = perf.memory_usage_bytes;
+
+            // Calculate private bytes (brain struct + labels + caches)
+            cow_stats->cow_private_bytes = sizeof(struct brain_struct);
+        }
 
         // Add size of label strings
         for (uint32_t i = 0; i < brain->num_output_labels; i++) {

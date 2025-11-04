@@ -508,3 +508,272 @@ TEST_F(BrainCOWTest, RestoreCOWHandlesNullInputs) {
     nimcp_brain_snapshot_destroy(snapshot);
     nimcp_brain_destroy(brain);
 }
+
+//=============================================================================
+// Phase 3 COW Tests - Read-Only Inference & Reference Counting
+//=============================================================================
+
+TEST_F(BrainCOWTest, Phase3_ReadOnlyInferenceDoesNotTriggerCOW) {
+    // Create original brain
+    nimcp_brain_t original = nimcp_brain_create(
+        "original",
+        NIMCP_BRAIN_SMALL,
+        NIMCP_TASK_CLASSIFICATION,
+        10, 3
+    );
+    ASSERT_NE(original, nullptr);
+
+    // Clone with COW
+    nimcp_brain_t clone = nimcp_brain_clone_cow(original);
+    ASSERT_NE(clone, nullptr);
+
+    // Verify initial sharing
+    nimcp_brain_probe_t probe_before;
+    nimcp_brain_probe(clone, &probe_before);
+    EXPECT_TRUE(probe_before.is_cow_clone);
+    EXPECT_GT(probe_before.cow_shared_bytes, 0u);
+    EXPECT_GT(probe_before.cow_ref_count, 1u);
+
+    // Run multiple inferences (should NOT trigger COW in Phase 3)
+    float features[10] = {0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0};
+    char label[64];
+    float confidence;
+
+    for (int i = 0; i < 10; i++) {
+        nimcp_status_t status = nimcp_brain_predict(clone, features, 10, label, &confidence);
+        EXPECT_EQ(status, NIMCP_OK);
+    }
+
+    // Verify network is STILL shared after 10 inferences
+    nimcp_brain_probe_t probe_after;
+    nimcp_brain_probe(clone, &probe_after);
+    EXPECT_TRUE(probe_after.is_cow_clone);
+    EXPECT_GT(probe_after.cow_shared_bytes, 0u);  // Still sharing!
+    EXPECT_EQ(probe_after.cow_shared_bytes, probe_before.cow_shared_bytes);  // Same size
+
+    // Cleanup
+    nimcp_brain_destroy(clone);
+    nimcp_brain_destroy(original);
+}
+
+TEST_F(BrainCOWTest, Phase3_LearningTriggersCOW) {
+    // Create original brain
+    nimcp_brain_t original = nimcp_brain_create(
+        "original",
+        NIMCP_BRAIN_SMALL,
+        NIMCP_TASK_CLASSIFICATION,
+        10, 3
+    );
+    ASSERT_NE(original, nullptr);
+
+    // Clone with COW
+    nimcp_brain_t clone = nimcp_brain_clone_cow(original);
+    ASSERT_NE(clone, nullptr);
+
+    // Verify initial sharing
+    nimcp_brain_probe_t probe_before;
+    nimcp_brain_probe(clone, &probe_before);
+    EXPECT_TRUE(probe_before.is_cow_clone);
+    EXPECT_GT(probe_before.cow_shared_bytes, 0u);
+
+    // Trigger learning (should trigger COW)
+    float features[10] = {0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0};
+    nimcp_status_t status = nimcp_brain_learn_example(
+        clone, features, 10, "test_label", 0.9f
+    );
+    EXPECT_EQ(status, NIMCP_OK);
+
+    // Verify COW was triggered - network is now private
+    nimcp_brain_probe_t probe_after;
+    nimcp_brain_probe(clone, &probe_after);
+    EXPECT_TRUE(probe_after.is_cow_clone);  // Still marked as COW clone
+    EXPECT_EQ(probe_after.cow_shared_bytes, 0u);  // But no longer sharing!
+    EXPECT_EQ(probe_after.cow_ref_count, 1u);  // Only this brain owns network
+
+    // Cleanup
+    nimcp_brain_destroy(clone);
+    nimcp_brain_destroy(original);
+}
+
+TEST_F(BrainCOWTest, Phase3_ReferenceCountingTracksMultipleClones) {
+    // Create original brain
+    nimcp_brain_t original = nimcp_brain_create(
+        "original",
+        NIMCP_BRAIN_SMALL,
+        NIMCP_TASK_CLASSIFICATION,
+        10, 3
+    );
+    ASSERT_NE(original, nullptr);
+
+    // Create first clone
+    nimcp_brain_t clone1 = nimcp_brain_clone_cow(original);
+    ASSERT_NE(clone1, nullptr);
+
+    // Check refcount after first clone
+    nimcp_brain_probe_t probe1;
+    nimcp_brain_probe(clone1, &probe1);
+    EXPECT_EQ(probe1.cow_ref_count, 2u);  // Original + clone1
+
+    // Create second clone
+    nimcp_brain_t clone2 = nimcp_brain_clone_cow(original);
+    ASSERT_NE(clone2, nullptr);
+
+    // Check refcount after second clone
+    nimcp_brain_probe_t probe2;
+    nimcp_brain_probe(clone2, &probe2);
+    EXPECT_EQ(probe2.cow_ref_count, 3u);  // Original + clone1 + clone2
+
+    // Create third clone
+    nimcp_brain_t clone3 = nimcp_brain_clone_cow(original);
+    ASSERT_NE(clone3, nullptr);
+
+    // Check refcount after third clone
+    nimcp_brain_probe_t probe3;
+    nimcp_brain_probe(clone3, &probe3);
+    EXPECT_EQ(probe3.cow_ref_count, 4u);  // Original + clone1 + clone2 + clone3
+
+    // All should be sharing the same network
+    EXPECT_GT(probe1.cow_shared_bytes, 0u);
+    EXPECT_GT(probe2.cow_shared_bytes, 0u);
+    EXPECT_GT(probe3.cow_shared_bytes, 0u);
+
+    // Cleanup
+    nimcp_brain_destroy(clone3);
+    nimcp_brain_destroy(clone2);
+    nimcp_brain_destroy(clone1);
+    nimcp_brain_destroy(original);
+}
+
+TEST_F(BrainCOWTest, Phase3_ReferenceCountingDestroysNetworkWhenLastBrainDestroyed) {
+    // Create original brain
+    nimcp_brain_t original = nimcp_brain_create(
+        "original",
+        NIMCP_BRAIN_SMALL,
+        NIMCP_TASK_CLASSIFICATION,
+        10, 3
+    );
+    ASSERT_NE(original, nullptr);
+
+    // Create 3 clones
+    nimcp_brain_t clone1 = nimcp_brain_clone_cow(original);
+    nimcp_brain_t clone2 = nimcp_brain_clone_cow(original);
+    nimcp_brain_t clone3 = nimcp_brain_clone_cow(original);
+    ASSERT_NE(clone1, nullptr);
+    ASSERT_NE(clone2, nullptr);
+    ASSERT_NE(clone3, nullptr);
+
+    // Verify all sharing (refcount = 4)
+    nimcp_brain_probe_t probe;
+    nimcp_brain_probe(clone1, &probe);
+    EXPECT_EQ(probe.cow_ref_count, 4u);
+
+    // Destroy clones one by one
+    nimcp_brain_destroy(clone1);
+    nimcp_brain_destroy(clone2);
+    nimcp_brain_destroy(clone3);
+
+    // Original should still work (network not destroyed yet)
+    float features[10] = {0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0};
+    char label[64];
+    float confidence;
+    nimcp_status_t status = nimcp_brain_predict(original, features, 10, label, &confidence);
+    EXPECT_EQ(status, NIMCP_OK);
+
+    // Cleanup original (this should finally destroy the shared network)
+    nimcp_brain_destroy(original);
+
+    // Test passes if no segfault or memory leak
+}
+
+TEST_F(BrainCOWTest, Phase3_MixedInferenceAndLearning) {
+    // Create original brain
+    nimcp_brain_t original = nimcp_brain_create(
+        "original",
+        NIMCP_BRAIN_SMALL,
+        NIMCP_TASK_CLASSIFICATION,
+        10, 3
+    );
+    ASSERT_NE(original, nullptr);
+
+    // Create 3 clones
+    nimcp_brain_t clone1 = nimcp_brain_clone_cow(original);
+    nimcp_brain_t clone2 = nimcp_brain_clone_cow(original);
+    nimcp_brain_t clone3 = nimcp_brain_clone_cow(original);
+    ASSERT_NE(clone1, nullptr);
+    ASSERT_NE(clone2, nullptr);
+    ASSERT_NE(clone3, nullptr);
+
+    float features[10] = {0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0};
+    char label[64];
+    float confidence;
+
+    // Clone1: Only inference (should keep sharing)
+    for (int i = 0; i < 5; i++) {
+        nimcp_brain_predict(clone1, features, 10, label, &confidence);
+    }
+
+    // Clone2: Learning (should trigger COW)
+    nimcp_brain_learn_example(clone2, features, 10, "label_a", 0.9f);
+
+    // Clone3: Only inference (should keep sharing)
+    for (int i = 0; i < 5; i++) {
+        nimcp_brain_predict(clone3, features, 10, label, &confidence);
+    }
+
+    // Check states
+    nimcp_brain_probe_t probe1, probe2, probe3;
+    nimcp_brain_probe(clone1, &probe1);
+    nimcp_brain_probe(clone2, &probe2);
+    nimcp_brain_probe(clone3, &probe3);
+
+    // Clone1 should still share
+    EXPECT_GT(probe1.cow_shared_bytes, 0u);
+
+    // Clone2 should have triggered COW
+    EXPECT_EQ(probe2.cow_shared_bytes, 0u);
+    EXPECT_EQ(probe2.cow_ref_count, 1u);
+
+    // Clone3 should still share
+    EXPECT_GT(probe3.cow_shared_bytes, 0u);
+
+    // Cleanup
+    nimcp_brain_destroy(clone3);
+    nimcp_brain_destroy(clone2);
+    nimcp_brain_destroy(clone1);
+    nimcp_brain_destroy(original);
+}
+
+TEST_F(BrainCOWTest, Phase3_IndefiniteInferenceSharing) {
+    // Create original brain
+    nimcp_brain_t original = nimcp_brain_create(
+        "original",
+        NIMCP_BRAIN_SMALL,
+        NIMCP_TASK_CLASSIFICATION,
+        10, 3
+    );
+    ASSERT_NE(original, nullptr);
+
+    // Clone with COW
+    nimcp_brain_t clone = nimcp_brain_clone_cow(original);
+    ASSERT_NE(clone, nullptr);
+
+    float features[10] = {0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0};
+    char label[64];
+    float confidence;
+
+    // Run 100 inferences to verify indefinite sharing
+    for (int i = 0; i < 100; i++) {
+        nimcp_brain_predict(clone, features, 10, label, &confidence);
+    }
+
+    // After 100 inferences, network should STILL be shared
+    nimcp_brain_probe_t probe;
+    nimcp_brain_probe(clone, &probe);
+    EXPECT_TRUE(probe.is_cow_clone);
+    EXPECT_GT(probe.cow_shared_bytes, 0u);
+    EXPECT_GT(probe.cow_ref_count, 1u);
+
+    // Cleanup
+    nimcp_brain_destroy(clone);
+    nimcp_brain_destroy(original);
+}

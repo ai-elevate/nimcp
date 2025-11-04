@@ -1226,6 +1226,62 @@ uint32_t adaptive_network_forward(adaptive_network_t network, const float* input
     return active_count;
 }
 
+/**
+ * @brief Read-only forward pass (Phase 3: COW-safe inference)
+ *
+ * WHAT: Identical to adaptive_network_forward() but without statistics updates
+ * WHY:  Enables multiple brains to share network indefinitely during inference
+ * HOW:  Skips update_running_sparsity() and total_inferences++
+ *
+ * PERFORMANCE: Same as forward() - O(s*n) where s=sparsity, n=neurons
+ * THREAD SAFETY: Read-only - safe for concurrent access
+ *
+ * @param network Adaptive network (const - not modified)
+ * @param input Input vector
+ * @param input_size Input dimension
+ * @param output Output buffer
+ * @param output_size Output dimension
+ * @param timestamp Current time (unused in read-only mode)
+ * @return Number of active neurons
+ */
+uint32_t adaptive_network_forward_readonly(const adaptive_network_t network, const float* input,
+                                           uint32_t input_size, float* output, uint32_t output_size,
+                                           uint64_t timestamp)
+{
+    // Guard clause: Validate inputs
+    if (!network || !input || !output)
+        return 0;
+
+    // Step 1: Compute adaptive threshold for input
+    float input_threshold =
+        adaptive_compute_threshold(input, input_size, network->config.spike_params.k_factor);
+
+    // Step 2: Convert input to spikes if needed
+    float* spike_input = convert_input_to_spikes(input, input_size, input_threshold,
+                                                 network->config.spike_params.encoding);
+
+    // Guard clause: Check spike input allocation
+    if (!spike_input)
+        return 0;
+
+    // Step 3: Forward pass through base network
+    // Cast away const - neural_network_forward doesn't actually modify network
+    // (it only reads weights/structure, writes to output buffer)
+    neural_network_forward(network->base_network, spike_input, input_size, output, output_size);
+
+    nimcp_free(spike_input);
+
+    // Step 4: Process outputs with adaptive thresholding
+    // Cast away const - process_network_outputs only reads network config
+    uint32_t active_count = process_network_outputs((adaptive_network_t)network, output, output_size);
+
+    // Phase 3: SKIP statistics updates for read-only inference
+    // REMOVED: update_running_sparsity(network, active_count, output_size);
+    // REMOVED: network->total_inferences++;
+
+    return active_count;
+}
+
 //=============================================================================
 // Sparsity and Pruning
 //=============================================================================

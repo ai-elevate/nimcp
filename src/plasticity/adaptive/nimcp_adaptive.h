@@ -120,6 +120,25 @@ uint32_t adaptive_network_forward(adaptive_network_t network, const float* input
                                   uint64_t timestamp);
 
 /**
+ * @brief Read-only forward pass (does not update statistics)
+ *
+ * Phase 3: COW-safe inference - allows multiple brains to share network
+ * WHY: Enables indefinite sharing during inference-only workloads
+ * HOW: Performs computation without mutating network state
+ *
+ * @param network Adaptive network (not modified)
+ * @param input Input vector
+ * @param input_size Input dimension
+ * @param output Output buffer
+ * @param output_size Output dimension
+ * @param timestamp Current time (unused in read-only mode)
+ * @return Number of active neurons
+ */
+uint32_t adaptive_network_forward_readonly(const adaptive_network_t network, const float* input,
+                                           uint32_t input_size, float* output, uint32_t output_size,
+                                           uint64_t timestamp);
+
+/**
  * @brief Get network sparsity
  *
  * @param network Adaptive network
