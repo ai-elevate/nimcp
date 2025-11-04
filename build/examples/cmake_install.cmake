@@ -43,101 +43,169 @@ if(NOT DEFINED CMAKE_OBJDUMP)
 endif()
 
 if("x${CMAKE_INSTALL_COMPONENT}x" STREQUAL "xUnspecifiedx" OR NOT CMAKE_INSTALL_COMPONENT)
-  if(EXISTS "$ENV{DESTDIR}${CMAKE_INSTALL_PREFIX}/bin/examples/event_demo" AND
-     NOT IS_SYMLINK "$ENV{DESTDIR}${CMAKE_INSTALL_PREFIX}/bin/examples/event_demo")
+  if(EXISTS "$ENV{DESTDIR}/examples/event_demo" AND
+     NOT IS_SYMLINK "$ENV{DESTDIR}/examples/event_demo")
     file(RPATH_CHECK
-         FILE "$ENV{DESTDIR}${CMAKE_INSTALL_PREFIX}/bin/examples/event_demo"
+         FILE "$ENV{DESTDIR}/examples/event_demo"
          RPATH "")
   endif()
-  file(INSTALL DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/examples" TYPE EXECUTABLE FILES "/home/bbrelin/src/repos/nimcp/build/examples/event_demo")
-  if(EXISTS "$ENV{DESTDIR}${CMAKE_INSTALL_PREFIX}/bin/examples/event_demo" AND
-     NOT IS_SYMLINK "$ENV{DESTDIR}${CMAKE_INSTALL_PREFIX}/bin/examples/event_demo")
+  list(APPEND CMAKE_ABSOLUTE_DESTINATION_FILES
+   "/examples/event_demo")
+  if(CMAKE_WARN_ON_ABSOLUTE_INSTALL_DESTINATION)
+    message(WARNING "ABSOLUTE path INSTALL DESTINATION : ${CMAKE_ABSOLUTE_DESTINATION_FILES}")
+  endif()
+  if(CMAKE_ERROR_ON_ABSOLUTE_INSTALL_DESTINATION)
+    message(FATAL_ERROR "ABSOLUTE path INSTALL DESTINATION forbidden (by caller): ${CMAKE_ABSOLUTE_DESTINATION_FILES}")
+  endif()
+  file(INSTALL DESTINATION "/examples" TYPE EXECUTABLE FILES "/home/bbrelin/src/repos/nimcp/build/examples/event_demo")
+  if(EXISTS "$ENV{DESTDIR}/examples/event_demo" AND
+     NOT IS_SYMLINK "$ENV{DESTDIR}/examples/event_demo")
     file(RPATH_CHANGE
-         FILE "$ENV{DESTDIR}${CMAKE_INSTALL_PREFIX}/bin/examples/event_demo"
-         OLD_RPATH "/home/bbrelin/src/repos/nimcp/build/src/lib:"
+         FILE "$ENV{DESTDIR}/examples/event_demo"
+         OLD_RPATH "/home/bbrelin/src/repos/nimcp/bin:"
          NEW_RPATH "")
     if(CMAKE_INSTALL_DO_STRIP)
-      execute_process(COMMAND "/usr/bin/strip" "$ENV{DESTDIR}${CMAKE_INSTALL_PREFIX}/bin/examples/event_demo")
+      execute_process(COMMAND "/usr/bin/strip" "$ENV{DESTDIR}/examples/event_demo")
     endif()
   endif()
 endif()
 
 if("x${CMAKE_INSTALL_COMPONENT}x" STREQUAL "xUnspecifiedx" OR NOT CMAKE_INSTALL_COMPONENT)
-  if(EXISTS "$ENV{DESTDIR}${CMAKE_INSTALL_PREFIX}/bin/examples/brain_demo" AND
-     NOT IS_SYMLINK "$ENV{DESTDIR}${CMAKE_INSTALL_PREFIX}/bin/examples/brain_demo")
+  if(EXISTS "$ENV{DESTDIR}/examples/brain_demo" AND
+     NOT IS_SYMLINK "$ENV{DESTDIR}/examples/brain_demo")
     file(RPATH_CHECK
-         FILE "$ENV{DESTDIR}${CMAKE_INSTALL_PREFIX}/bin/examples/brain_demo"
+         FILE "$ENV{DESTDIR}/examples/brain_demo"
          RPATH "")
   endif()
-  file(INSTALL DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/examples" TYPE EXECUTABLE FILES "/home/bbrelin/src/repos/nimcp/build/examples/brain_demo")
-  if(EXISTS "$ENV{DESTDIR}${CMAKE_INSTALL_PREFIX}/bin/examples/brain_demo" AND
-     NOT IS_SYMLINK "$ENV{DESTDIR}${CMAKE_INSTALL_PREFIX}/bin/examples/brain_demo")
+  list(APPEND CMAKE_ABSOLUTE_DESTINATION_FILES
+   "/examples/brain_demo")
+  if(CMAKE_WARN_ON_ABSOLUTE_INSTALL_DESTINATION)
+    message(WARNING "ABSOLUTE path INSTALL DESTINATION : ${CMAKE_ABSOLUTE_DESTINATION_FILES}")
+  endif()
+  if(CMAKE_ERROR_ON_ABSOLUTE_INSTALL_DESTINATION)
+    message(FATAL_ERROR "ABSOLUTE path INSTALL DESTINATION forbidden (by caller): ${CMAKE_ABSOLUTE_DESTINATION_FILES}")
+  endif()
+  file(INSTALL DESTINATION "/examples" TYPE EXECUTABLE FILES "/home/bbrelin/src/repos/nimcp/build/examples/brain_demo")
+  if(EXISTS "$ENV{DESTDIR}/examples/brain_demo" AND
+     NOT IS_SYMLINK "$ENV{DESTDIR}/examples/brain_demo")
     file(RPATH_CHANGE
-         FILE "$ENV{DESTDIR}${CMAKE_INSTALL_PREFIX}/bin/examples/brain_demo"
-         OLD_RPATH "/home/bbrelin/src/repos/nimcp/build/src/lib:"
+         FILE "$ENV{DESTDIR}/examples/brain_demo"
+         OLD_RPATH "/home/bbrelin/src/repos/nimcp/bin:"
          NEW_RPATH "")
     if(CMAKE_INSTALL_DO_STRIP)
-      execute_process(COMMAND "/usr/bin/strip" "$ENV{DESTDIR}${CMAKE_INSTALL_PREFIX}/bin/examples/brain_demo")
+      execute_process(COMMAND "/usr/bin/strip" "$ENV{DESTDIR}/examples/brain_demo")
     endif()
   endif()
 endif()
 
 if("x${CMAKE_INSTALL_COMPONENT}x" STREQUAL "xUnspecifiedx" OR NOT CMAKE_INSTALL_COMPONENT)
-  if(EXISTS "$ENV{DESTDIR}${CMAKE_INSTALL_PREFIX}/bin/examples/ethics_demo" AND
-     NOT IS_SYMLINK "$ENV{DESTDIR}${CMAKE_INSTALL_PREFIX}/bin/examples/ethics_demo")
+  if(EXISTS "$ENV{DESTDIR}/examples/ethics_demo" AND
+     NOT IS_SYMLINK "$ENV{DESTDIR}/examples/ethics_demo")
     file(RPATH_CHECK
-         FILE "$ENV{DESTDIR}${CMAKE_INSTALL_PREFIX}/bin/examples/ethics_demo"
+         FILE "$ENV{DESTDIR}/examples/ethics_demo"
          RPATH "")
   endif()
-  file(INSTALL DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/examples" TYPE EXECUTABLE FILES "/home/bbrelin/src/repos/nimcp/build/examples/ethics_demo")
-  if(EXISTS "$ENV{DESTDIR}${CMAKE_INSTALL_PREFIX}/bin/examples/ethics_demo" AND
-     NOT IS_SYMLINK "$ENV{DESTDIR}${CMAKE_INSTALL_PREFIX}/bin/examples/ethics_demo")
+  list(APPEND CMAKE_ABSOLUTE_DESTINATION_FILES
+   "/examples/ethics_demo")
+  if(CMAKE_WARN_ON_ABSOLUTE_INSTALL_DESTINATION)
+    message(WARNING "ABSOLUTE path INSTALL DESTINATION : ${CMAKE_ABSOLUTE_DESTINATION_FILES}")
+  endif()
+  if(CMAKE_ERROR_ON_ABSOLUTE_INSTALL_DESTINATION)
+    message(FATAL_ERROR "ABSOLUTE path INSTALL DESTINATION forbidden (by caller): ${CMAKE_ABSOLUTE_DESTINATION_FILES}")
+  endif()
+  file(INSTALL DESTINATION "/examples" TYPE EXECUTABLE FILES "/home/bbrelin/src/repos/nimcp/build/examples/ethics_demo")
+  if(EXISTS "$ENV{DESTDIR}/examples/ethics_demo" AND
+     NOT IS_SYMLINK "$ENV{DESTDIR}/examples/ethics_demo")
     file(RPATH_CHANGE
-         FILE "$ENV{DESTDIR}${CMAKE_INSTALL_PREFIX}/bin/examples/ethics_demo"
-         OLD_RPATH "/home/bbrelin/src/repos/nimcp/build/src/lib:"
+         FILE "$ENV{DESTDIR}/examples/ethics_demo"
+         OLD_RPATH "/home/bbrelin/src/repos/nimcp/bin:"
          NEW_RPATH "")
     if(CMAKE_INSTALL_DO_STRIP)
-      execute_process(COMMAND "/usr/bin/strip" "$ENV{DESTDIR}${CMAKE_INSTALL_PREFIX}/bin/examples/ethics_demo")
+      execute_process(COMMAND "/usr/bin/strip" "$ENV{DESTDIR}/examples/ethics_demo")
     endif()
   endif()
 endif()
 
 if("x${CMAKE_INSTALL_COMPONENT}x" STREQUAL "xUnspecifiedx" OR NOT CMAKE_INSTALL_COMPONENT)
-  if(EXISTS "$ENV{DESTDIR}${CMAKE_INSTALL_PREFIX}/bin/examples/infant_demo" AND
-     NOT IS_SYMLINK "$ENV{DESTDIR}${CMAKE_INSTALL_PREFIX}/bin/examples/infant_demo")
+  if(EXISTS "$ENV{DESTDIR}/examples/infant_demo" AND
+     NOT IS_SYMLINK "$ENV{DESTDIR}/examples/infant_demo")
     file(RPATH_CHECK
-         FILE "$ENV{DESTDIR}${CMAKE_INSTALL_PREFIX}/bin/examples/infant_demo"
+         FILE "$ENV{DESTDIR}/examples/infant_demo"
          RPATH "")
   endif()
-  file(INSTALL DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/examples" TYPE EXECUTABLE FILES "/home/bbrelin/src/repos/nimcp/build/examples/infant_demo")
-  if(EXISTS "$ENV{DESTDIR}${CMAKE_INSTALL_PREFIX}/bin/examples/infant_demo" AND
-     NOT IS_SYMLINK "$ENV{DESTDIR}${CMAKE_INSTALL_PREFIX}/bin/examples/infant_demo")
+  list(APPEND CMAKE_ABSOLUTE_DESTINATION_FILES
+   "/examples/infant_demo")
+  if(CMAKE_WARN_ON_ABSOLUTE_INSTALL_DESTINATION)
+    message(WARNING "ABSOLUTE path INSTALL DESTINATION : ${CMAKE_ABSOLUTE_DESTINATION_FILES}")
+  endif()
+  if(CMAKE_ERROR_ON_ABSOLUTE_INSTALL_DESTINATION)
+    message(FATAL_ERROR "ABSOLUTE path INSTALL DESTINATION forbidden (by caller): ${CMAKE_ABSOLUTE_DESTINATION_FILES}")
+  endif()
+  file(INSTALL DESTINATION "/examples" TYPE EXECUTABLE FILES "/home/bbrelin/src/repos/nimcp/build/examples/infant_demo")
+  if(EXISTS "$ENV{DESTDIR}/examples/infant_demo" AND
+     NOT IS_SYMLINK "$ENV{DESTDIR}/examples/infant_demo")
     file(RPATH_CHANGE
-         FILE "$ENV{DESTDIR}${CMAKE_INSTALL_PREFIX}/bin/examples/infant_demo"
-         OLD_RPATH "/home/bbrelin/src/repos/nimcp/build/src/lib:"
+         FILE "$ENV{DESTDIR}/examples/infant_demo"
+         OLD_RPATH "/home/bbrelin/src/repos/nimcp/bin:"
          NEW_RPATH "")
     if(CMAKE_INSTALL_DO_STRIP)
-      execute_process(COMMAND "/usr/bin/strip" "$ENV{DESTDIR}${CMAKE_INSTALL_PREFIX}/bin/examples/infant_demo")
+      execute_process(COMMAND "/usr/bin/strip" "$ENV{DESTDIR}/examples/infant_demo")
     endif()
   endif()
 endif()
 
 if("x${CMAKE_INSTALL_COMPONENT}x" STREQUAL "xUnspecifiedx" OR NOT CMAKE_INSTALL_COMPONENT)
-  if(EXISTS "$ENV{DESTDIR}${CMAKE_INSTALL_PREFIX}/bin/examples/integrated_demo" AND
-     NOT IS_SYMLINK "$ENV{DESTDIR}${CMAKE_INSTALL_PREFIX}/bin/examples/integrated_demo")
+  if(EXISTS "$ENV{DESTDIR}/examples/integrated_demo" AND
+     NOT IS_SYMLINK "$ENV{DESTDIR}/examples/integrated_demo")
     file(RPATH_CHECK
-         FILE "$ENV{DESTDIR}${CMAKE_INSTALL_PREFIX}/bin/examples/integrated_demo"
+         FILE "$ENV{DESTDIR}/examples/integrated_demo"
          RPATH "")
   endif()
-  file(INSTALL DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/examples" TYPE EXECUTABLE FILES "/home/bbrelin/src/repos/nimcp/build/examples/integrated_demo")
-  if(EXISTS "$ENV{DESTDIR}${CMAKE_INSTALL_PREFIX}/bin/examples/integrated_demo" AND
-     NOT IS_SYMLINK "$ENV{DESTDIR}${CMAKE_INSTALL_PREFIX}/bin/examples/integrated_demo")
+  list(APPEND CMAKE_ABSOLUTE_DESTINATION_FILES
+   "/examples/integrated_demo")
+  if(CMAKE_WARN_ON_ABSOLUTE_INSTALL_DESTINATION)
+    message(WARNING "ABSOLUTE path INSTALL DESTINATION : ${CMAKE_ABSOLUTE_DESTINATION_FILES}")
+  endif()
+  if(CMAKE_ERROR_ON_ABSOLUTE_INSTALL_DESTINATION)
+    message(FATAL_ERROR "ABSOLUTE path INSTALL DESTINATION forbidden (by caller): ${CMAKE_ABSOLUTE_DESTINATION_FILES}")
+  endif()
+  file(INSTALL DESTINATION "/examples" TYPE EXECUTABLE FILES "/home/bbrelin/src/repos/nimcp/build/examples/integrated_demo")
+  if(EXISTS "$ENV{DESTDIR}/examples/integrated_demo" AND
+     NOT IS_SYMLINK "$ENV{DESTDIR}/examples/integrated_demo")
     file(RPATH_CHANGE
-         FILE "$ENV{DESTDIR}${CMAKE_INSTALL_PREFIX}/bin/examples/integrated_demo"
-         OLD_RPATH "/home/bbrelin/src/repos/nimcp/build/src/lib:"
+         FILE "$ENV{DESTDIR}/examples/integrated_demo"
+         OLD_RPATH "/home/bbrelin/src/repos/nimcp/bin:"
          NEW_RPATH "")
     if(CMAKE_INSTALL_DO_STRIP)
-      execute_process(COMMAND "/usr/bin/strip" "$ENV{DESTDIR}${CMAKE_INSTALL_PREFIX}/bin/examples/integrated_demo")
+      execute_process(COMMAND "/usr/bin/strip" "$ENV{DESTDIR}/examples/integrated_demo")
+    endif()
+  endif()
+endif()
+
+if("x${CMAKE_INSTALL_COMPONENT}x" STREQUAL "xUnspecifiedx" OR NOT CMAKE_INSTALL_COMPONENT)
+  if(EXISTS "$ENV{DESTDIR}/examples/brain_probe_demo" AND
+     NOT IS_SYMLINK "$ENV{DESTDIR}/examples/brain_probe_demo")
+    file(RPATH_CHECK
+         FILE "$ENV{DESTDIR}/examples/brain_probe_demo"
+         RPATH "")
+  endif()
+  list(APPEND CMAKE_ABSOLUTE_DESTINATION_FILES
+   "/examples/brain_probe_demo")
+  if(CMAKE_WARN_ON_ABSOLUTE_INSTALL_DESTINATION)
+    message(WARNING "ABSOLUTE path INSTALL DESTINATION : ${CMAKE_ABSOLUTE_DESTINATION_FILES}")
+  endif()
+  if(CMAKE_ERROR_ON_ABSOLUTE_INSTALL_DESTINATION)
+    message(FATAL_ERROR "ABSOLUTE path INSTALL DESTINATION forbidden (by caller): ${CMAKE_ABSOLUTE_DESTINATION_FILES}")
+  endif()
+  file(INSTALL DESTINATION "/examples" TYPE EXECUTABLE FILES "/home/bbrelin/src/repos/nimcp/build/examples/brain_probe_demo")
+  if(EXISTS "$ENV{DESTDIR}/examples/brain_probe_demo" AND
+     NOT IS_SYMLINK "$ENV{DESTDIR}/examples/brain_probe_demo")
+    file(RPATH_CHANGE
+         FILE "$ENV{DESTDIR}/examples/brain_probe_demo"
+         OLD_RPATH "/home/bbrelin/src/repos/nimcp/bin:"
+         NEW_RPATH "")
+    if(CMAKE_INSTALL_DO_STRIP)
+      execute_process(COMMAND "/usr/bin/strip" "$ENV{DESTDIR}/examples/brain_probe_demo")
     endif()
   endif()
 endif()

@@ -27,7 +27,7 @@ set(COMMON_TEST_INCLUDES
 )
 
 set(COMMON_TEST_LIBS
-    nimcp_core
+    nimcp
     GTest::GTest
     GTest::Main
     Python3::Python
@@ -115,6 +115,7 @@ add_nimcp_test_binary(cognitive_tests
     test_introspection.cpp
     test_wellbeing.cpp
     test_symbolic_logic.cpp
+    test_hierarchical.cpp
 )
 
 # ============================================================================

@@ -1,7 +1,7 @@
 src/tests/CMakeFiles/glial_tests.dir/__/python/nimcp_module.c.o: \
  /home/bbrelin/src/repos/nimcp/src/python/nimcp_module.c \
  /usr/include/stdc-predef.h \
- /home/bbrelin/src/repos/nimcp/src/python/../include/nimcp_module.h \
+ /home/bbrelin/src/repos/nimcp/src/common/nimcp_module.h \
  /usr/include/python3.10/Python.h /usr/include/python3.10/patchlevel.h \
  /usr/include/python3.10/pyconfig.h \
  /usr/include/x86_64-linux-gnu/python3.10/pyconfig.h \
@@ -197,8 +197,8 @@ src/tests/CMakeFiles/glial_tests.dir/__/python/nimcp_module.c.o: \
  /usr/include/python3.10/cpython/fileutils.h \
  /usr/include/python3.10/cpython/pyfpe.h \
  /usr/include/python3.10/tracemalloc.h \
- /home/bbrelin/src/repos/nimcp/src/python/../include/nimcp_neuralnet.h \
- /home/bbrelin/src/repos/nimcp/src/python/../include/nimcp_export.h \
+ /home/bbrelin/src/repos/nimcp/src/core/neuralnet/nimcp_neuralnet.h \
+ /home/bbrelin/src/repos/nimcp/src/common/nimcp_export.h \
  /usr/lib/gcc/x86_64-linux-gnu/11/include/stdbool.h \
- /home/bbrelin/src/repos/nimcp/src/python/../include/nimcp_p2pnode.h \
- /home/bbrelin/src/repos/nimcp/src/python/../include/nimcp_protocol.h
+ /home/bbrelin/src/repos/nimcp/src/networking/p2p/nimcp_p2pnode.h \
+ /home/bbrelin/src/repos/nimcp/src/networking/protocol/nimcp_protocol.h

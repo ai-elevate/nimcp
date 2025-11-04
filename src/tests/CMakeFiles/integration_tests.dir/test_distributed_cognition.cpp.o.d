@@ -265,10 +265,10 @@ src/tests/CMakeFiles/integration_tests.dir/test_distributed_cognition.cpp.o: \
  /usr/include/gtest/gtest-test-part.h /usr/include/gtest/gtest_prod.h \
  /usr/include/gtest/gtest-typed-test.h \
  /usr/include/gtest/gtest_pred_impl.h \
- /home/bbrelin/src/repos/nimcp/src/include/nimcp_distributed_cognition.h \
+ /home/bbrelin/src/repos/nimcp/src/networking/distributed/nimcp_distributed_cognition.h \
  /usr/lib/gcc/x86_64-linux-gnu/11/include/stdbool.h \
- /home/bbrelin/src/repos/nimcp/src/include/nimcp_export.h \
- /home/bbrelin/src/repos/nimcp/src/include/nimcp_protocol.h \
+ /home/bbrelin/src/repos/nimcp/src/common/nimcp_export.h \
+ /home/bbrelin/src/repos/nimcp/src/networking/protocol/nimcp_protocol.h \
  /usr/include/python3.10/Python.h /usr/include/python3.10/patchlevel.h \
  /usr/include/python3.10/pyconfig.h \
  /usr/include/x86_64-linux-gnu/python3.10/pyconfig.h \
@@ -383,24 +383,21 @@ src/tests/CMakeFiles/integration_tests.dir/test_distributed_cognition.cpp.o: \
  /usr/include/python3.10/cpython/fileutils.h \
  /usr/include/python3.10/cpython/pyfpe.h \
  /usr/include/python3.10/tracemalloc.h \
- /home/bbrelin/src/repos/nimcp/src/include/nimcp_p2pnode.h \
- /home/bbrelin/src/repos/nimcp/src/include/nimcp_neuromodulators.h \
- /home/bbrelin/src/repos/nimcp/src/include/nimcp_neuralnet.h \
- /home/bbrelin/src/repos/nimcp/src/include/nimcp_glial_integration.h \
- /home/bbrelin/src/repos/nimcp/src/include/utils/nimcp_common.h \
+ /home/bbrelin/src/repos/nimcp/src/networking/p2p/nimcp_p2pnode.h \
+ /home/bbrelin/src/repos/nimcp/src/plasticity/neuromodulators/nimcp_neuromodulators.h \
+ /home/bbrelin/src/repos/nimcp/src/core/neuralnet/nimcp_neuralnet.h \
+ /home/bbrelin/src/repos/nimcp/src/glial/integration/nimcp_glial_integration.h \
+ /home/bbrelin/src/repos/nimcp/src/utils/validation/nimcp_common.h \
  /usr/include/dirent.h /usr/include/x86_64-linux-gnu/bits/dirent.h \
  /usr/include/x86_64-linux-gnu/bits/dirent_ext.h /usr/include/dlfcn.h \
  /usr/include/x86_64-linux-gnu/bits/dlfcn.h \
  /usr/include/x86_64-linux-gnu/bits/dl_find_object.h /usr/include/lz4.h \
- /home/bbrelin/src/repos/nimcp/src/include/utils/nimcp_hash_table.h \
- /home/bbrelin/src/repos/nimcp/src/include/nimcp_astrocytes.h \
- /home/bbrelin/src/repos/nimcp/src/include/utils/nimcp_thread.h \
- /home/bbrelin/src/repos/nimcp/src/include/nimcp_oligodendrocytes.h \
- /home/bbrelin/src/repos/nimcp/src/include/utils/nimcp_memory.h \
- /home/bbrelin/src/repos/nimcp/src/include/utils/nimcp_time.h \
- /home/bbrelin/src/repos/nimcp/src/include/nimcp_microglia.h \
- /home/bbrelin/src/repos/nimcp/src/include/nimcp_brain_regions.h \
- /home/bbrelin/src/repos/nimcp/src/include/nimcp_neuron_types.h \
- /home/bbrelin/src/repos/nimcp/src/include/nimcp_p2pnode.h \
- /home/bbrelin/src/repos/nimcp/src/include/nimcp_neuromodulators.h \
- /home/bbrelin/src/repos/nimcp/src/include/utils/nimcp_memory.h
+ /home/bbrelin/src/repos/nimcp/src/utils/containers/nimcp_hash_table.h \
+ /home/bbrelin/src/repos/nimcp/src/glial/astrocytes/nimcp_astrocytes.h \
+ /home/bbrelin/src/repos/nimcp/src/utils/thread/nimcp_thread.h \
+ /home/bbrelin/src/repos/nimcp/src/glial/oligodendrocytes/nimcp_oligodendrocytes.h \
+ /home/bbrelin/src/repos/nimcp/src/utils/memory/nimcp_memory.h \
+ /home/bbrelin/src/repos/nimcp/src/utils/time/nimcp_time.h \
+ /home/bbrelin/src/repos/nimcp/src/glial/microglia/nimcp_microglia.h \
+ /home/bbrelin/src/repos/nimcp/src/core/brain_regions/nimcp_brain_regions.h \
+ /home/bbrelin/src/repos/nimcp/src/core/neuron_types/nimcp_neuron_types.h

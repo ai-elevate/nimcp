@@ -265,8 +265,8 @@ src/tests/CMakeFiles/glial_tests.dir/test_microglia.cpp.o: \
  /usr/include/gtest/gtest-test-part.h /usr/include/gtest/gtest_prod.h \
  /usr/include/gtest/gtest-typed-test.h \
  /usr/include/gtest/gtest_pred_impl.h \
- /home/bbrelin/src/repos/nimcp/src/include/nimcp_microglia.h \
- /home/bbrelin/src/repos/nimcp/src/include/utils/nimcp_common.h \
+ /home/bbrelin/src/repos/nimcp/src/glial/microglia/nimcp_microglia.h \
+ /home/bbrelin/src/repos/nimcp/src/utils/validation/nimcp_common.h \
  /usr/lib/gcc/x86_64-linux-gnu/11/include/stdbool.h \
  /usr/include/c++/11/math.h /usr/include/c++/11/cmath /usr/include/math.h \
  /usr/include/x86_64-linux-gnu/bits/math-vector.h \
@@ -297,8 +297,6 @@ src/tests/CMakeFiles/glial_tests.dir/test_microglia.cpp.o: \
  /usr/include/x86_64-linux-gnu/bits/dirent_ext.h /usr/include/dlfcn.h \
  /usr/include/x86_64-linux-gnu/bits/dlfcn.h \
  /usr/include/x86_64-linux-gnu/bits/dl_find_object.h /usr/include/lz4.h \
- /home/bbrelin/src/repos/nimcp/src/include/utils/nimcp_memory.h \
- /home/bbrelin/src/repos/nimcp/src/include/utils/nimcp_thread.h \
- /home/bbrelin/src/repos/nimcp/src/include/utils/nimcp_time.h \
- /home/bbrelin/src/repos/nimcp/src/include/utils/nimcp_memory.h \
- /home/bbrelin/src/repos/nimcp/src/include/utils/nimcp_time.h
+ /home/bbrelin/src/repos/nimcp/src/utils/memory/nimcp_memory.h \
+ /home/bbrelin/src/repos/nimcp/src/utils/thread/nimcp_thread.h \
+ /home/bbrelin/src/repos/nimcp/src/utils/time/nimcp_time.h

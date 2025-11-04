@@ -22,7 +22,7 @@
 #include <vector>
 
 extern "C" {
-#include "logging/nimcp_logging.h"
+#include "utils/logging/nimcp_logging.h"
 }
 
 //=============================================================================

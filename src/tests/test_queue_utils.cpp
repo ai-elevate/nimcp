@@ -5,8 +5,8 @@
 
 #include <gtest/gtest.h>
 extern "C" {
-#include "utils/nimcp_memory.h"
-#include "utils/nimcp_queue.h"
+#include "utils/memory/nimcp_memory.h"
+#include "utils/containers/nimcp_queue.h"
 }
 
 // Note: queue_manager tests are skipped due to C++/C11 atomics incompatibility

@@ -265,10 +265,10 @@ src/tests/CMakeFiles/utility_tests.dir/test_queue_utils.cpp.o: \
  /usr/include/gtest/gtest-test-part.h /usr/include/gtest/gtest_prod.h \
  /usr/include/gtest/gtest-typed-test.h \
  /usr/include/gtest/gtest_pred_impl.h \
- /home/bbrelin/src/repos/nimcp/src/include/utils/nimcp_memory.h \
+ /home/bbrelin/src/repos/nimcp/src/utils/memory/nimcp_memory.h \
  /usr/lib/gcc/x86_64-linux-gnu/11/include/stdbool.h \
- /home/bbrelin/src/repos/nimcp/src/include/utils/nimcp_queue.h \
- /home/bbrelin/src/repos/nimcp/src/include/utils/nimcp_common.h \
+ /home/bbrelin/src/repos/nimcp/src/utils/containers/nimcp_queue.h \
+ /home/bbrelin/src/repos/nimcp/src/utils/validation/nimcp_common.h \
  /usr/include/c++/11/math.h /usr/include/c++/11/cmath /usr/include/math.h \
  /usr/include/x86_64-linux-gnu/bits/math-vector.h \
  /usr/include/x86_64-linux-gnu/bits/libm-simd-decl-stubs.h \

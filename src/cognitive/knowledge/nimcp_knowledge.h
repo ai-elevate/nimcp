@@ -11,6 +11,10 @@
 #include "cognitive/curiosity/nimcp_curiosity.h"
 #include "common/nimcp_export.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /**
  * @file nimcp_knowledge.h
  * @brief Multi-domain knowledge acquisition like human learning
@@ -546,5 +550,9 @@ uint32_t knowledge_get_by_confidence_range(knowledge_system_t system,
  */
 uint32_t knowledge_get_all_ordered_by_confidence(knowledge_system_t system,
                                                    knowledge_item_t** results_out);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif  // NIMCP_KNOWLEDGE_H

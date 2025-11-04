@@ -698,3 +698,99 @@ TEST(NeuralNetLowLevel, NeuronDump)
 
     neural_network_destroy(network);
 }
+
+//=============================================================================
+// Dynamic Allocation Tests (TDD for large neuron counts)
+//=============================================================================
+
+/**
+ * WHAT: Test creation of network with 5000 neurons (exceeds old 1024 limit)
+ * WHY: Verify dynamic allocation supports BRAIN_SIZE_MEDIUM (10K neurons)
+ * HOW: Create network with 5000 neurons, verify all neurons accessible
+ */
+TEST(NeuralNetDynamicAlloc, LargeNeuronCount)
+{
+    network_config_t config = create_test_config();
+    config.num_neurons = 5000;  // Exceeds old MAX_NEURONS=1024
+    
+    neural_network_t network = neural_network_create(&config);
+    ASSERT_NE(network, nullptr) << "Should create network with 5000 neurons";
+    
+    // Verify all neurons are accessible
+    float state;
+    ASSERT_TRUE(neural_network_get_neuron_state(network, 0, &state));
+    ASSERT_TRUE(neural_network_get_neuron_state(network, 2500, &state));
+    ASSERT_TRUE(neural_network_get_neuron_state(network, 4999, &state));
+    
+    // Verify stats
+    network_stats_t stats;
+    neural_network_get_stats(network, &stats);
+    ASSERT_EQ(stats.num_neurons, 5000u);
+    
+    neural_network_destroy(network);
+}
+
+/**
+ * WHAT: Test creation of network with BRAIN_SIZE_MEDIUM (10K neurons)
+ * WHY: Verify we can create the sizes documented in brain.h
+ * HOW: Create 10K neuron network, verify basic operations
+ */
+TEST(NeuralNetDynamicAlloc, BrainSizeMedium)
+{
+    network_config_t config = create_test_config();
+    config.num_neurons = 10000;  // BRAIN_SIZE_MEDIUM
+    
+    neural_network_t network = neural_network_create(&config);
+    ASSERT_NE(network, nullptr) << "Should create BRAIN_SIZE_MEDIUM (10K neurons)";
+    
+    // Verify we can access neurons throughout the range
+    float state;
+    ASSERT_TRUE(neural_network_get_neuron_state(network, 0, &state));
+    ASSERT_TRUE(neural_network_get_neuron_state(network, 5000, &state));
+    ASSERT_TRUE(neural_network_get_neuron_state(network, 9999, &state));
+    
+    neural_network_destroy(network);
+}
+
+/**
+ * WHAT: Test allocation failure handling
+ * WHY: Ensure graceful failure when allocation fails (e.g., OOM)
+ * HOW: Mock allocation failure via excessive size request
+ */
+TEST(NeuralNetDynamicAlloc, AllocationFailureHandling)
+{
+    network_config_t config = create_test_config();
+    config.num_neurons = MAX_NEURONS + 1;  // Exceeds max limit
+    
+    neural_network_t network = neural_network_create(&config);
+    ASSERT_EQ(network, nullptr) << "Should return NULL when num_neurons exceeds MAX_NEURONS";
+}
+
+/**
+ * WHAT: Test memory efficiency - no wasted space for small networks
+ * WHY: Verify dynamic allocation only allocates what's needed
+ * HOW: Create small network, verify it doesn't allocate MAX_NEURONS worth of space
+ * NOTE: This is implicit - just verify small networks work correctly
+ */
+TEST(NeuralNetDynamicAlloc, SmallNetworkEfficiency)
+{
+    network_config_t config = create_test_config();
+    config.num_neurons = 10;  // Very small network
+    
+    neural_network_t network = neural_network_create(&config);
+    ASSERT_NE(network, nullptr);
+    
+    // Verify correct neuron count
+    network_stats_t stats;
+    neural_network_get_stats(network, &stats);
+    ASSERT_EQ(stats.num_neurons, 10u);
+    
+    // Verify all 10 neurons accessible
+    for (uint32_t i = 0; i < 10; i++) {
+        float state;
+        ASSERT_TRUE(neural_network_get_neuron_state(network, i, &state)) 
+            << "Neuron " << i << " should be accessible";
+    }
+    
+    neural_network_destroy(network);
+}

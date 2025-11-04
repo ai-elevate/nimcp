@@ -15,9 +15,9 @@
 
 #include <gtest/gtest.h>
 extern "C" {
-#include "nimcp_distributed_cognition.h"
-#include "nimcp_neuromodulators.h"
-#include "utils/nimcp_time.h"
+#include "networking/distributed/nimcp_distributed_cognition.h"
+#include "plasticity/neuromodulators/nimcp_neuromodulators.h"
+#include "utils/time/nimcp_time.h"
 #include <unistd.h>
 #include <math.h>
 }

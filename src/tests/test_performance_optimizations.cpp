@@ -17,7 +17,7 @@
 #include <gtest/gtest.h>
 #include <chrono>
 #include <vector>
-#include "../include/nimcp_neuralnet.h"
+#include "core/neuralnet/nimcp_neuralnet.h"
 #include "../include/utils/nimcp_graph.h"
 #include "../include/utils/nimcp_min_heap.h"
 

@@ -156,7 +156,7 @@ src/tests/io_tests: src/tests/CMakeFiles/io_tests.dir/test_serialization.cpp.o
 src/tests/io_tests: src/tests/CMakeFiles/io_tests.dir/test_json.cpp.o
 src/tests/io_tests: src/tests/CMakeFiles/io_tests.dir/__/python/nimcp_module.c.o
 src/tests/io_tests: src/tests/CMakeFiles/io_tests.dir/build.make
-src/tests/io_tests: src/lib/libnimcp_core.so.2.5.0
+src/tests/io_tests: bin/libnimcp.so.2.5.0
 src/tests/io_tests: /usr/lib/x86_64-linux-gnu/libpython3.10.so
 src/tests/io_tests: /usr/lib/x86_64-linux-gnu/libgtest_main.a
 src/tests/io_tests: /usr/lib/x86_64-linux-gnu/libgtest.a

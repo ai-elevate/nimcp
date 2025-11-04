@@ -1,8 +1,12 @@
 file(REMOVE_RECURSE
   "CMakeFiles/utility_tests.dir/__/python/nimcp_module.c.o"
   "CMakeFiles/utility_tests.dir/__/python/nimcp_module.c.o.d"
+  "CMakeFiles/utility_tests.dir/test_audio_cortex.cpp.o"
+  "CMakeFiles/utility_tests.dir/test_audio_cortex.cpp.o.d"
   "CMakeFiles/utility_tests.dir/test_btree.cpp.o"
   "CMakeFiles/utility_tests.dir/test_btree.cpp.o.d"
+  "CMakeFiles/utility_tests.dir/test_fft.cpp.o"
+  "CMakeFiles/utility_tests.dir/test_fft.cpp.o.d"
   "CMakeFiles/utility_tests.dir/test_graph.cpp.o"
   "CMakeFiles/utility_tests.dir/test_graph.cpp.o.d"
   "CMakeFiles/utility_tests.dir/test_hash_table.cpp.o"
@@ -21,6 +25,8 @@ file(REMOVE_RECURSE
   "CMakeFiles/utility_tests.dir/test_validate.cpp.o.d"
   "CMakeFiles/utility_tests.dir/test_vector.cpp.o"
   "CMakeFiles/utility_tests.dir/test_vector.cpp.o.d"
+  "CMakeFiles/utility_tests.dir/test_visual_cortex.cpp.o"
+  "CMakeFiles/utility_tests.dir/test_visual_cortex.cpp.o.d"
   "utility_tests"
   "utility_tests.pdb"
 )

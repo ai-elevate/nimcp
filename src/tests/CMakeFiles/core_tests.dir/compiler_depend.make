@@ -3,7 +3,7 @@
 
 src/tests/CMakeFiles/core_tests.dir/__/python/nimcp_module.c.o: src/python/nimcp_module.c \
   /usr/include/stdc-predef.h \
-  src/include/nimcp_module.h \
+  src/common/nimcp_module.h \
   /usr/include/python3.10/Python.h \
   /usr/include/python3.10/patchlevel.h \
   /usr/include/python3.10/pyconfig.h \
@@ -237,11 +237,11 @@ src/tests/CMakeFiles/core_tests.dir/__/python/nimcp_module.c.o: src/python/nimcp
   /usr/include/python3.10/cpython/fileutils.h \
   /usr/include/python3.10/cpython/pyfpe.h \
   /usr/include/python3.10/tracemalloc.h \
-  src/include/nimcp_neuralnet.h \
-  src/include/nimcp_export.h \
+  src/core/neuralnet/nimcp_neuralnet.h \
+  src/common/nimcp_export.h \
   /usr/lib/gcc/x86_64-linux-gnu/11/include/stdbool.h \
-  src/include/nimcp_p2pnode.h \
-  src/include/nimcp_protocol.h
+  src/networking/p2p/nimcp_p2pnode.h \
+  src/networking/protocol/nimcp_protocol.h
 
 src/tests/CMakeFiles/core_tests.dir/test_adaptive.cpp.o: src/tests/test_adaptive.cpp \
   /usr/include/stdc-predef.h \
@@ -598,7 +598,7 @@ src/tests/CMakeFiles/core_tests.dir/test_adaptive.cpp.o: src/tests/test_adaptive
   /usr/include/c++/11/tr1/poly_hermite.tcc \
   /usr/include/c++/11/tr1/poly_laguerre.tcc \
   /usr/include/c++/11/tr1/riemann_zeta.tcc \
-  src/include/nimcp_neuralnet.h \
+  src/core/neuralnet/nimcp_neuralnet.h \
   /usr/include/python3.10/Python.h \
   /usr/include/python3.10/patchlevel.h \
   /usr/include/python3.10/pyconfig.h \
@@ -710,12 +710,12 @@ src/tests/CMakeFiles/core_tests.dir/test_adaptive.cpp.o: src/tests/test_adaptive
   /usr/include/python3.10/cpython/fileutils.h \
   /usr/include/python3.10/cpython/pyfpe.h \
   /usr/include/python3.10/tracemalloc.h \
-  src/include/nimcp_export.h \
+  src/common/nimcp_export.h \
   /usr/lib/gcc/x86_64-linux-gnu/11/include/stdbool.h \
-  src/include/nimcp_p2pnode.h \
-  src/include/nimcp_protocol.h \
-  src/include/nimcp_adaptive.h \
-  src/include/nimcp_neuralnet.h
+  src/networking/p2p/nimcp_p2pnode.h \
+  src/networking/protocol/nimcp_protocol.h \
+  src/plasticity/adaptive/nimcp_adaptive.h \
+  src/utils/memory/nimcp_memory.h
 
 src/tests/CMakeFiles/core_tests.dir/test_brain_regions.cpp.o: src/tests/test_brain_regions.cpp \
   /usr/include/stdc-predef.h \
@@ -1047,8 +1047,8 @@ src/tests/CMakeFiles/core_tests.dir/test_brain_regions.cpp.o: src/tests/test_bra
   /usr/include/gtest/gtest_prod.h \
   /usr/include/gtest/gtest-typed-test.h \
   /usr/include/gtest/gtest_pred_impl.h \
-  src/include/nimcp_brain_regions.h \
-  src/include/utils/nimcp_common.h \
+  src/core/brain_regions/nimcp_brain_regions.h \
+  src/utils/validation/nimcp_common.h \
   /usr/lib/gcc/x86_64-linux-gnu/11/include/stdbool.h \
   /usr/include/c++/11/math.h \
   /usr/include/c++/11/cmath \
@@ -1085,7 +1085,7 @@ src/tests/CMakeFiles/core_tests.dir/test_brain_regions.cpp.o: src/tests/test_bra
   /usr/include/x86_64-linux-gnu/bits/dlfcn.h \
   /usr/include/x86_64-linux-gnu/bits/dl_find_object.h \
   /usr/include/lz4.h \
-  src/include/nimcp_neuralnet.h \
+  src/core/neuralnet/nimcp_neuralnet.h \
   /usr/include/python3.10/Python.h \
   /usr/include/python3.10/patchlevel.h \
   /usr/include/python3.10/pyconfig.h \
@@ -1193,22 +1193,20 @@ src/tests/CMakeFiles/core_tests.dir/test_brain_regions.cpp.o: src/tests/test_bra
   /usr/include/python3.10/cpython/fileutils.h \
   /usr/include/python3.10/cpython/pyfpe.h \
   /usr/include/python3.10/tracemalloc.h \
-  src/include/nimcp_export.h \
-  src/include/nimcp_glial_integration.h \
-  src/include/utils/nimcp_hash_table.h \
-  src/include/nimcp_astrocytes.h \
-  src/include/utils/nimcp_thread.h \
-  src/include/nimcp_oligodendrocytes.h \
-  src/include/utils/nimcp_memory.h \
-  src/include/utils/nimcp_time.h \
-  src/include/nimcp_microglia.h \
-  src/include/nimcp_neuron_types.h \
-  src/include/nimcp_neuron_types.h \
-  src/include/utils/nimcp_time.h
+  src/common/nimcp_export.h \
+  src/glial/integration/nimcp_glial_integration.h \
+  src/utils/containers/nimcp_hash_table.h \
+  src/glial/astrocytes/nimcp_astrocytes.h \
+  src/utils/thread/nimcp_thread.h \
+  src/glial/oligodendrocytes/nimcp_oligodendrocytes.h \
+  src/utils/memory/nimcp_memory.h \
+  src/utils/time/nimcp_time.h \
+  src/glial/microglia/nimcp_microglia.h \
+  src/core/neuron_types/nimcp_neuron_types.h
 
 src/tests/CMakeFiles/core_tests.dir/test_module.cpp.o: src/tests/test_module.cpp \
   /usr/include/stdc-predef.h \
-  src/include/nimcp_module.h \
+  src/common/nimcp_module.h \
   /usr/include/python3.10/Python.h \
   /usr/include/python3.10/patchlevel.h \
   /usr/include/python3.10/pyconfig.h \
@@ -1482,11 +1480,11 @@ src/tests/CMakeFiles/core_tests.dir/test_module.cpp.o: src/tests/test_module.cpp
   /usr/include/python3.10/cpython/fileutils.h \
   /usr/include/python3.10/cpython/pyfpe.h \
   /usr/include/python3.10/tracemalloc.h \
-  src/include/nimcp_neuralnet.h \
-  src/include/nimcp_export.h \
+  src/core/neuralnet/nimcp_neuralnet.h \
+  src/common/nimcp_export.h \
   /usr/lib/gcc/x86_64-linux-gnu/11/include/stdbool.h \
-  src/include/nimcp_p2pnode.h \
-  src/include/nimcp_protocol.h \
+  src/networking/p2p/nimcp_p2pnode.h \
+  src/networking/protocol/nimcp_protocol.h \
   src/tests/test_helpers.h \
   /usr/include/gtest/gtest.h \
   /usr/include/c++/11/cstddef \
@@ -1677,10 +1675,7 @@ src/tests/CMakeFiles/core_tests.dir/test_module.cpp.o: src/tests/test_module.cpp
   /usr/include/gtest/gtest-test-part.h \
   /usr/include/gtest/gtest_prod.h \
   /usr/include/gtest/gtest-typed-test.h \
-  /usr/include/gtest/gtest_pred_impl.h \
-  src/include/nimcp_neuralnet.h \
-  src/include/nimcp_p2pnode.h \
-  src/include/nimcp_protocol.h
+  /usr/include/gtest/gtest_pred_impl.h
 
 src/tests/CMakeFiles/core_tests.dir/test_neuralnet_create.cpp.o: src/tests/test_neuralnet_create.cpp \
   /usr/include/stdc-predef.h \
@@ -2037,7 +2032,7 @@ src/tests/CMakeFiles/core_tests.dir/test_neuralnet_create.cpp.o: src/tests/test_
   /usr/include/c++/11/tr1/poly_hermite.tcc \
   /usr/include/c++/11/tr1/poly_laguerre.tcc \
   /usr/include/c++/11/tr1/riemann_zeta.tcc \
-  src/include/nimcp_neuralnet.h \
+  src/core/neuralnet/nimcp_neuralnet.h \
   /usr/include/python3.10/Python.h \
   /usr/include/python3.10/patchlevel.h \
   /usr/include/python3.10/pyconfig.h \
@@ -2149,10 +2144,10 @@ src/tests/CMakeFiles/core_tests.dir/test_neuralnet_create.cpp.o: src/tests/test_
   /usr/include/python3.10/cpython/fileutils.h \
   /usr/include/python3.10/cpython/pyfpe.h \
   /usr/include/python3.10/tracemalloc.h \
-  src/include/nimcp_export.h \
+  src/common/nimcp_export.h \
   /usr/lib/gcc/x86_64-linux-gnu/11/include/stdbool.h \
-  src/include/nimcp_p2pnode.h \
-  src/include/nimcp_protocol.h
+  src/networking/p2p/nimcp_p2pnode.h \
+  src/networking/protocol/nimcp_protocol.h
 
 src/tests/CMakeFiles/core_tests.dir/test_neuralnet_learning.cpp.o: src/tests/test_neuralnet_learning.cpp \
   /usr/include/stdc-predef.h \
@@ -2509,7 +2504,7 @@ src/tests/CMakeFiles/core_tests.dir/test_neuralnet_learning.cpp.o: src/tests/tes
   /usr/include/c++/11/tr1/poly_hermite.tcc \
   /usr/include/c++/11/tr1/poly_laguerre.tcc \
   /usr/include/c++/11/tr1/riemann_zeta.tcc \
-  src/include/nimcp_neuralnet.h \
+  src/core/neuralnet/nimcp_neuralnet.h \
   /usr/include/python3.10/Python.h \
   /usr/include/python3.10/patchlevel.h \
   /usr/include/python3.10/pyconfig.h \
@@ -2621,10 +2616,10 @@ src/tests/CMakeFiles/core_tests.dir/test_neuralnet_learning.cpp.o: src/tests/tes
   /usr/include/python3.10/cpython/fileutils.h \
   /usr/include/python3.10/cpython/pyfpe.h \
   /usr/include/python3.10/tracemalloc.h \
-  src/include/nimcp_export.h \
+  src/common/nimcp_export.h \
   /usr/lib/gcc/x86_64-linux-gnu/11/include/stdbool.h \
-  src/include/nimcp_p2pnode.h \
-  src/include/nimcp_protocol.h
+  src/networking/p2p/nimcp_p2pnode.h \
+  src/networking/protocol/nimcp_protocol.h
 
 src/tests/CMakeFiles/core_tests.dir/test_neuron_types.cpp.o: src/tests/test_neuron_types.cpp \
   /usr/include/stdc-predef.h \
@@ -2956,7 +2951,7 @@ src/tests/CMakeFiles/core_tests.dir/test_neuron_types.cpp.o: src/tests/test_neur
   /usr/include/gtest/gtest_prod.h \
   /usr/include/gtest/gtest-typed-test.h \
   /usr/include/gtest/gtest_pred_impl.h \
-  src/include/nimcp_neuralnet.h \
+  src/core/neuralnet/nimcp_neuralnet.h \
   /usr/include/python3.10/Python.h \
   /usr/include/python3.10/patchlevel.h \
   /usr/include/python3.10/pyconfig.h \
@@ -3092,10 +3087,10 @@ src/tests/CMakeFiles/core_tests.dir/test_neuron_types.cpp.o: src/tests/test_neur
   /usr/include/python3.10/cpython/fileutils.h \
   /usr/include/python3.10/cpython/pyfpe.h \
   /usr/include/python3.10/tracemalloc.h \
-  src/include/nimcp_export.h \
+  src/common/nimcp_export.h \
   /usr/lib/gcc/x86_64-linux-gnu/11/include/stdbool.h \
-  src/include/nimcp_neuron_types.h \
-  src/include/utils/nimcp_common.h \
+  src/core/neuron_types/nimcp_neuron_types.h \
+  src/utils/validation/nimcp_common.h \
   /usr/include/dirent.h \
   /usr/include/x86_64-linux-gnu/bits/dirent.h \
   /usr/include/x86_64-linux-gnu/bits/dirent_ext.h \
@@ -3103,18 +3098,18 @@ src/tests/CMakeFiles/core_tests.dir/test_neuron_types.cpp.o: src/tests/test_neur
   /usr/include/x86_64-linux-gnu/bits/dlfcn.h \
   /usr/include/x86_64-linux-gnu/bits/dl_find_object.h \
   /usr/include/lz4.h \
-  src/include/utils/nimcp_time.h
+  src/utils/time/nimcp_time.h
 
 
 src/tests/test_neuralnet_learning.cpp:
 
-src/include/nimcp_microglia.h:
+src/utils/time/nimcp_time.h:
 
-src/include/utils/nimcp_time.h:
+src/glial/oligodendrocytes/nimcp_oligodendrocytes.h:
 
-src/include/utils/nimcp_hash_table.h:
+src/utils/containers/nimcp_hash_table.h:
 
-src/include/nimcp_glial_integration.h:
+src/glial/integration/nimcp_glial_integration.h:
 
 /usr/include/lz4.h:
 
@@ -3126,15 +3121,9 @@ src/include/nimcp_glial_integration.h:
 
 src/tests/test_brain_regions.cpp:
 
-src/include/nimcp_adaptive.h:
-
 /usr/include/c++/11/math.h:
 
 /usr/include/c++/11/tr1/poly_laguerre.tcc:
-
-src/include/utils/nimcp_thread.h:
-
-src/include/nimcp_brain_regions.h:
 
 /usr/include/c++/11/tr1/poly_hermite.tcc:
 
@@ -3163,6 +3152,10 @@ src/include/nimcp_brain_regions.h:
 /usr/include/c++/11/bits/hashtable.h:
 
 /usr/include/c++/11/unordered_map:
+
+/usr/include/gtest/gtest-printers.h:
+
+src/utils/memory/nimcp_memory.h:
 
 /usr/include/c++/11/atomic:
 
@@ -3203,6 +3196,8 @@ src/include/nimcp_brain_regions.h:
 /usr/include/c++/11/tr1/special_function_util.h:
 
 /usr/include/x86_64-linux-gnu/bits/siginfo-consts-arch.h:
+
+src/core/neuron_types/nimcp_neuron_types.h:
 
 /usr/include/x86_64-linux-gnu/bits/siginfo-consts.h:
 
@@ -3265,6 +3260,8 @@ src/tests/test_module.cpp:
 /usr/include/c++/11/stdexcept:
 
 /usr/include/c++/11/system_error:
+
+src/plasticity/adaptive/nimcp_adaptive.h:
 
 /usr/include/c++/11/bits/locale_classes.tcc:
 
@@ -3470,13 +3467,23 @@ src/tests/test_adaptive.cpp:
 
 /usr/include/python3.10/cpython/dictobject.h:
 
+/usr/include/x86_64-linux-gnu/bits/wchar.h:
+
+/usr/include/c++/11/cerrno:
+
+/usr/include/x86_64-linux-gnu/bits/types/cookie_io_functions_t.h:
+
 /usr/include/c++/11/bits/node_handle.h:
 
 /usr/include/c++/11/iostream:
 
 /usr/include/x86_64-linux-gnu/bits/fp-fast.h:
 
+src/utils/thread/nimcp_thread.h:
+
 /usr/include/x86_64-linux-gnu/bits/posix2_lim.h:
+
+src/glial/microglia/nimcp_microglia.h:
 
 /usr/include/c++/11/bits/basic_string.h:
 
@@ -3497,8 +3504,6 @@ src/tests/test_adaptive.cpp:
 /usr/include/linux/close_range.h:
 
 /usr/include/x86_64-linux-gnu/bits/unistd_ext.h:
-
-src/include/nimcp_p2pnode.h:
 
 /usr/include/x86_64-linux-gnu/bits/posix_opt.h:
 
@@ -3556,14 +3561,6 @@ src/include/nimcp_p2pnode.h:
 
 /usr/include/limits.h:
 
-/usr/include/x86_64-linux-gnu/bits/wchar.h:
-
-/usr/include/c++/11/cerrno:
-
-/usr/include/x86_64-linux-gnu/bits/types/cookie_io_functions_t.h:
-
-src/include/nimcp_module.h:
-
 /usr/include/x86_64-linux-gnu/bits/types/__sigval_t.h:
 
 /usr/include/c++/11/bits/functexcept.h:
@@ -3589,8 +3586,6 @@ src/include/nimcp_module.h:
 /usr/include/python3.10/weakrefobject.h:
 
 /usr/include/inttypes.h:
-
-src/include/nimcp_astrocytes.h:
 
 /usr/include/x86_64-linux-gnu/gnu/stubs.h:
 
@@ -3622,9 +3617,9 @@ src/include/nimcp_astrocytes.h:
 
 /usr/include/x86_64-linux-gnu/bits/types/locale_t.h:
 
-src/include/utils/nimcp_memory.h:
-
 /usr/include/stdlib.h:
+
+src/networking/p2p/nimcp_p2pnode.h:
 
 /usr/include/x86_64-linux-gnu/bits/types/time_t.h:
 
@@ -3635,8 +3630,6 @@ src/include/utils/nimcp_memory.h:
 src/python/nimcp_module.c:
 
 /usr/include/c++/11/pstl/pstl_config.h:
-
-src/include/nimcp_neuron_types.h:
 
 /usr/include/python3.10/pymacconfig.h:
 
@@ -3654,6 +3647,8 @@ src/include/nimcp_neuron_types.h:
 
 /usr/include/x86_64-linux-gnu/bits/types/clock_t.h:
 
+src/glial/astrocytes/nimcp_astrocytes.h:
+
 /usr/include/x86_64-linux-gnu/bits/sigcontext.h:
 
 /usr/include/python3.10/funcobject.h:
@@ -3666,8 +3661,6 @@ src/include/nimcp_neuron_types.h:
 
 /usr/include/x86_64-linux-gnu/bits/timesize.h:
 
-src/include/nimcp_export.h:
-
 /usr/include/x86_64-linux-gnu/c++/11/bits/cpu_defines.h:
 
 /usr/include/x86_64-linux-gnu/bits/types/struct_itimerspec.h:
@@ -3677,10 +3670,6 @@ src/include/nimcp_export.h:
 /usr/include/c++/11/bits/range_access.h:
 
 /usr/include/x86_64-linux-gnu/bits/floatn.h:
-
-/usr/include/c++/11/debug/assertions.h:
-
-/usr/lib/gcc/x86_64-linux-gnu/11/include/stdarg.h:
 
 /usr/include/python3.10/tupleobject.h:
 
@@ -3774,6 +3763,8 @@ src/include/nimcp_export.h:
 
 /usr/include/linux/types.h:
 
+src/utils/validation/nimcp_common.h:
+
 /usr/include/c++/11/bits/locale_facets.tcc:
 
 /usr/include/x86_64-linux-gnu/bits/types/struct_tm.h:
@@ -3819,10 +3810,6 @@ src/include/nimcp_export.h:
 /usr/include/x86_64-linux-gnu/bits/types/wint_t.h:
 
 /usr/include/errno.h:
-
-/usr/include/gtest/internal/custom/gtest-printers.h:
-
-/usr/include/python3.10/cpython/fileutils.h:
 
 /usr/include/c++/11/cstdint:
 
@@ -3928,6 +3915,8 @@ src/tests/test_neuralnet_create.cpp:
 
 /usr/lib/gcc/x86_64-linux-gnu/11/include/stdbool.h:
 
+src/common/nimcp_module.h:
+
 /usr/include/python3.10/cpython/listobject.h:
 
 /usr/include/python3.10/dictobject.h:
@@ -3976,10 +3965,6 @@ src/tests/test_neuralnet_create.cpp:
 
 /usr/include/python3.10/descrobject.h:
 
-/usr/include/gtest/gtest-printers.h:
-
-src/include/nimcp_protocol.h:
-
 /usr/include/c++/11/bits/stl_tree.h:
 
 /usr/include/python3.10/genericaliasobject.h:
@@ -3997,8 +3982,6 @@ src/include/nimcp_protocol.h:
 /usr/include/python3.10/pyerrors.h:
 
 /usr/include/pthread.h:
-
-src/include/nimcp_oligodendrocytes.h:
 
 /usr/include/c++/11/bits/stl_iterator_base_funcs.h:
 
@@ -4070,7 +4053,19 @@ src/include/nimcp_oligodendrocytes.h:
 
 /usr/include/python3.10/fileutils.h:
 
-src/include/nimcp_neuralnet.h:
+/usr/include/c++/11/debug/assertions.h:
+
+/usr/lib/gcc/x86_64-linux-gnu/11/include/stdarg.h:
+
+src/core/neuralnet/nimcp_neuralnet.h:
+
+src/common/nimcp_export.h:
+
+/usr/include/gtest/internal/custom/gtest-printers.h:
+
+/usr/include/python3.10/cpython/fileutils.h:
+
+src/networking/protocol/nimcp_protocol.h:
 
 /usr/include/python3.10/tracemalloc.h:
 
@@ -4084,8 +4079,6 @@ src/tests/test_helpers.h:
 
 /usr/include/c++/11/limits:
 
-src/include/utils/nimcp_common.h:
-
 /usr/include/c++/11/memory:
 
 /usr/include/x86_64-linux-gnu/c++/11/bits/os_defines.h:
@@ -4097,5 +4090,7 @@ src/include/utils/nimcp_common.h:
 /usr/include/c++/11/ext/type_traits.h:
 
 src/tests/test_neuron_types.cpp:
+
+src/core/brain_regions/nimcp_brain_regions.h:
 
 /usr/include/c++/11/ext/numeric_traits.h:

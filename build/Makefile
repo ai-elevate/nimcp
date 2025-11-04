@@ -65,6 +65,16 @@ CMAKE_BINARY_DIR = /home/bbrelin/src/repos/nimcp/build
 #=============================================================================
 # Targets provided globally by CMake.
 
+# Special rule for the target test
+test:
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --cyan "Running tests..."
+	/usr/bin/ctest --force-new-ctest-process $(ARGS)
+.PHONY : test
+
+# Special rule for the target test
+test/fast: test
+.PHONY : test/fast
+
 # Special rule for the target edit_cache
 edit_cache:
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --cyan "No interactive CMake dialog available..."
@@ -162,17 +172,17 @@ depend:
 .PHONY : depend
 
 #=============================================================================
-# Target rules for targets named nimcp_core
+# Target rules for targets named nimcp
 
 # Build rule for target.
-nimcp_core: cmake_check_build_system
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 nimcp_core
-.PHONY : nimcp_core
+nimcp: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 nimcp
+.PHONY : nimcp
 
 # fast build rule for target.
-nimcp_core/fast:
-	$(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp_core.dir/build.make src/lib/CMakeFiles/nimcp_core.dir/build
-.PHONY : nimcp_core/fast
+nimcp/fast:
+	$(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/build
+.PHONY : nimcp/fast
 
 #=============================================================================
 # Target rules for targets named nimcp_python
@@ -279,19 +289,6 @@ utility_tests/fast:
 .PHONY : utility_tests/fast
 
 #=============================================================================
-# Target rules for targets named security_tests
-
-# Build rule for target.
-security_tests: cmake_check_build_system
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 security_tests
-.PHONY : security_tests
-
-# fast build rule for target.
-security_tests/fast:
-	$(MAKE) $(MAKESILENT) -f src/tests/CMakeFiles/security_tests.dir/build.make src/tests/CMakeFiles/security_tests.dir/build
-.PHONY : security_tests/fast
-
-#=============================================================================
 # Target rules for targets named integration_tests
 
 # Build rule for target.
@@ -303,19 +300,6 @@ integration_tests: cmake_check_build_system
 integration_tests/fast:
 	$(MAKE) $(MAKESILENT) -f src/tests/CMakeFiles/integration_tests.dir/build.make src/tests/CMakeFiles/integration_tests.dir/build
 .PHONY : integration_tests/fast
-
-#=============================================================================
-# Target rules for targets named quality_tests
-
-# Build rule for target.
-quality_tests: cmake_check_build_system
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 quality_tests
-.PHONY : quality_tests
-
-# fast build rule for target.
-quality_tests/fast:
-	$(MAKE) $(MAKESILENT) -f src/tests/CMakeFiles/quality_tests.dir/build.make src/tests/CMakeFiles/quality_tests.dir/build
-.PHONY : quality_tests/fast
 
 #=============================================================================
 # Target rules for targets named event_demo
@@ -382,6 +366,19 @@ integrated_demo/fast:
 	$(MAKE) $(MAKESILENT) -f examples/CMakeFiles/integrated_demo.dir/build.make examples/CMakeFiles/integrated_demo.dir/build
 .PHONY : integrated_demo/fast
 
+#=============================================================================
+# Target rules for targets named brain_probe_demo
+
+# Build rule for target.
+brain_probe_demo: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 brain_probe_demo
+.PHONY : brain_probe_demo
+
+# fast build rule for target.
+brain_probe_demo/fast:
+	$(MAKE) $(MAKESILENT) -f examples/CMakeFiles/brain_probe_demo.dir/build.make examples/CMakeFiles/brain_probe_demo.dir/build
+.PHONY : brain_probe_demo/fast
+
 # Help Target
 help:
 	@echo "The following are some of the valid targets for this Makefile:"
@@ -394,7 +391,9 @@ help:
 	@echo "... install/strip"
 	@echo "... list_install_components"
 	@echo "... rebuild_cache"
+	@echo "... test"
 	@echo "... brain_demo"
+	@echo "... brain_probe_demo"
 	@echo "... cognitive_tests"
 	@echo "... core_tests"
 	@echo "... ethics_demo"
@@ -405,11 +404,9 @@ help:
 	@echo "... integration_tests"
 	@echo "... io_tests"
 	@echo "... networking_tests"
-	@echo "... nimcp_core"
+	@echo "... nimcp"
 	@echo "... nimcp_python"
 	@echo "... plasticity_tests"
-	@echo "... quality_tests"
-	@echo "... security_tests"
 	@echo "... utility_tests"
 .PHONY : help
 

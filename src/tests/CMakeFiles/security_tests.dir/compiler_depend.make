@@ -713,9 +713,11 @@ src/tests/CMakeFiles/security_tests.dir/test_error_injection.cpp.o: src/tests/te
   /usr/include/python3.10/cpython/fileutils.h \
   /usr/include/python3.10/cpython/pyfpe.h \
   /usr/include/python3.10/tracemalloc.h \
-  src/include/nimcp_neuralnet.h \
-  src/include/utils/nimcp_memory.h \
-  src/include/utils/nimcp_queue_manager.h \
+  src/include/nimcp_distributed_cognition.h \
+  src/include/nimcp_protocol.h \
+  src/include/nimcp_p2pnode.h \
+  src/include/nimcp_neuromodulators.h \
+  src/include/nimcp_glial_integration.h \
   src/include/utils/nimcp_common.h \
   /usr/include/dirent.h \
   /usr/include/x86_64-linux-gnu/bits/dirent.h \
@@ -724,6 +726,19 @@ src/tests/CMakeFiles/security_tests.dir/test_error_injection.cpp.o: src/tests/te
   /usr/include/x86_64-linux-gnu/bits/dlfcn.h \
   /usr/include/x86_64-linux-gnu/bits/dl_find_object.h \
   /usr/include/lz4.h \
+  src/include/utils/nimcp_hash_table.h \
+  src/include/nimcp_astrocytes.h \
+  src/include/utils/nimcp_thread.h \
+  src/include/nimcp_oligodendrocytes.h \
+  src/include/utils/nimcp_memory.h \
+  src/include/utils/nimcp_time.h \
+  src/include/nimcp_microglia.h \
+  src/include/nimcp_brain_regions.h \
+  src/include/nimcp_neuron_types.h \
+  src/include/nimcp_neuralnet.h \
+  src/include/utils/nimcp_memory.h \
+  src/include/utils/nimcp_queue_manager.h \
+  src/include/utils/nimcp_common.h \
   src/include/utils/nimcp_queue.h \
   src/include/utils/nimcp_thread_pool.h \
   src/include/utils/nimcp_thread.h
@@ -1207,7 +1222,8 @@ src/tests/CMakeFiles/security_tests.dir/test_performance_optimizations.cpp.o: sr
   /usr/include/x86_64-linux-gnu/bits/dlfcn.h \
   /usr/include/x86_64-linux-gnu/bits/dl_find_object.h \
   /usr/include/lz4.h \
-  src/include/utils/nimcp_thread.h
+  src/include/utils/nimcp_thread.h \
+  src/include/utils/nimcp_min_heap.h
 
 src/tests/CMakeFiles/security_tests.dir/test_security.cpp.o: src/tests/test_security.cpp \
   /usr/include/stdc-predef.h \
@@ -1581,6 +1597,8 @@ src/tests/CMakeFiles/security_tests.dir/test_security.cpp.o: src/tests/test_secu
 
 src/tests/test_security.cpp:
 
+src/include/utils/nimcp_min_heap.h:
+
 src/include/utils/nimcp_graph.h:
 
 /usr/include/c++/11/ratio:
@@ -1591,6 +1609,14 @@ src/include/utils/nimcp_thread_pool.h:
 
 src/include/utils/nimcp_queue.h:
 
+src/include/utils/nimcp_queue_manager.h:
+
+src/include/nimcp_microglia.h:
+
+src/include/utils/nimcp_time.h:
+
+src/include/utils/nimcp_hash_table.h:
+
 /usr/include/lz4.h:
 
 /usr/include/x86_64-linux-gnu/bits/dl_find_object.h:
@@ -1599,9 +1625,11 @@ src/include/utils/nimcp_queue.h:
 
 /usr/include/x86_64-linux-gnu/bits/dirent.h:
 
-src/include/utils/nimcp_queue_manager.h:
+src/include/nimcp_glial_integration.h:
 
 /usr/include/c++/11/tr1/poly_laguerre.tcc:
+
+src/include/nimcp_brain_regions.h:
 
 src/include/utils/nimcp_thread.h:
 
@@ -2059,7 +2087,11 @@ src/include/nimcp_module.h:
 
 /usr/include/inttypes.h:
 
+src/include/nimcp_astrocytes.h:
+
 /usr/include/x86_64-linux-gnu/gnu/stubs.h:
+
+src/include/nimcp_distributed_cognition.h:
 
 /usr/include/x86_64-linux-gnu/bits/endian.h:
 
@@ -2104,6 +2136,8 @@ src/include/utils/nimcp_memory.h:
 src/python/nimcp_module.c:
 
 /usr/include/c++/11/pstl/pstl_config.h:
+
+src/include/nimcp_neuron_types.h:
 
 /usr/include/python3.10/pymacconfig.h:
 
@@ -2469,6 +2503,8 @@ src/include/nimcp_protocol.h:
 
 /usr/include/pthread.h:
 
+src/include/nimcp_oligodendrocytes.h:
+
 /usr/include/c++/11/bits/stl_iterator_base_funcs.h:
 
 /usr/include/c++/11/bits/cpp_type_traits.h:
@@ -2516,6 +2552,8 @@ src/include/nimcp_protocol.h:
 /usr/include/c++/11/bits/stl_multiset.h:
 
 /usr/include/python3.10/osmodule.h:
+
+src/include/nimcp_neuromodulators.h:
 
 /usr/include/python3.10/intrcheck.h:
 

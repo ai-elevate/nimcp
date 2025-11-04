@@ -92,7 +92,7 @@ ethics_demo_EXTERNAL_OBJECTS =
 
 examples/ethics_demo: examples/CMakeFiles/ethics_demo.dir/ethics_demo.c.o
 examples/ethics_demo: examples/CMakeFiles/ethics_demo.dir/build.make
-examples/ethics_demo: src/lib/libnimcp_core.so.2.5.0
+examples/ethics_demo: bin/libnimcp.so.2.5.0
 examples/ethics_demo: /usr/lib/x86_64-linux-gnu/libpython3.10.so
 examples/ethics_demo: examples/CMakeFiles/ethics_demo.dir/link.txt
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --bold --progress-dir=/home/bbrelin/src/repos/nimcp/CMakeFiles --progress-num=$(CMAKE_PROGRESS_2) "Linking C executable ethics_demo"

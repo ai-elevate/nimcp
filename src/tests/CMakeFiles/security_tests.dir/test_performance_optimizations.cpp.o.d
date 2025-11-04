@@ -389,4 +389,5 @@ src/tests/CMakeFiles/security_tests.dir/test_performance_optimizations.cpp.o: \
  /usr/include/x86_64-linux-gnu/bits/dirent_ext.h /usr/include/dlfcn.h \
  /usr/include/x86_64-linux-gnu/bits/dlfcn.h \
  /usr/include/x86_64-linux-gnu/bits/dl_find_object.h /usr/include/lz4.h \
- /home/bbrelin/src/repos/nimcp/src/tests/../include/utils/nimcp_thread.h
+ /home/bbrelin/src/repos/nimcp/src/tests/../include/utils/nimcp_thread.h \
+ /home/bbrelin/src/repos/nimcp/src/tests/../include/utils/nimcp_min_heap.h

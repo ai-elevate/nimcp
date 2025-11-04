@@ -1,0 +1,162 @@
+# NIMCP Brain Configuration Template
+# Use Case: Recommendation System (E-commerce, Content, Music)
+# Description: Association learning brain for personalized recommendations
+# Applications: Product recommendations, content suggestions, playlist generation
+# Method: Learn user-item associations and predict preferences
+
+brain:
+  # Identity
+  name: "recommendation_engine"
+
+  # Brain size: medium for handling diverse user/item spaces
+  size: medium  # 10K neurons, ~50MB memory, ~5ms inference
+
+  # Task type: association learning (user ↔ item relationships)
+  task: association
+
+  # Network Architecture
+  architecture:
+    num_inputs: 200          # User features (100) + Item features (100)
+                             # User: demographics, history, preferences
+                             # Item: category, price, ratings, tags
+    num_outputs: 5           # Top-5 recommendation scores
+    num_hidden: 400          # Large hidden layer for complex associations
+    learning_rate: 0.003     # Moderate learning for stability
+
+  # Training Configuration
+  training:
+    max_epochs: 150          # Sufficient for convergence
+    batch_size: 128          # Large batches for efficiency
+    validation_split: 0.15   # Standard validation split
+    early_stopping: true     # Prevent overfitting
+    patience: 20             # Generous patience for association learning
+
+  # Synaptic Plasticity
+  plasticity:
+    enable_bcm: true         # Adapt to changing user preferences
+    bcm_tau: 3000.0          # Slow adaptation (preferences change slowly)
+    enable_stdp: false       # Not needed for static associations
+    stdp_window: 20.0        # Unused
+
+  # Ethics Configuration
+  ethics:
+    enabled: true            # IMPORTANT: Prevent harmful recommendations
+    golden_rule_threshold: 0.0  # Block recommendations that harm users
+    empathy_weight: 0.7      # High empathy for user well-being
+
+  # Model Persistence
+  model_path: "/tmp/models/recommendation_engine.brain"
+  checkpoint_interval: 15   # Regular checkpoints
+
+# Feature Engineering:
+# --------------------
+# User Features (0-99):
+#   [0-9]   One-hot encoded age group
+#   [10-19] One-hot encoded location
+#   [20-29] Purchase history embedding (avg of past items)
+#   [30-39] Category preferences (normalized frequencies)
+#   [40-49] Price sensitivity, brand loyalty, etc.
+#   [50-74] Collaborative features (similar users)
+#   [75-99] Temporal features (time of day, season, etc.)
+#
+# Item Features (100-199):
+#   [100-109] Category one-hot encoding
+#   [110-119] Price tier
+#   [120-139] Tag/attribute embedding
+#   [140-159] Popularity metrics
+#   [160-179] Quality indicators (ratings, reviews)
+#   [180-199] Collaborative features (similar items)
+
+# Training Data Format:
+# ---------------------
+# Each training example:
+#   Input: [user_features(100) + candidate_item_features(100)]
+#   Output: "purchased" or "not_purchased" (or rating 1-5)
+#   Confidence: Interaction strength (1.0 for purchase, 0.3 for view)
+
+# Usage Example (E-commerce):
+# ---------------------------
+# 1. Prepare data:
+#    - Extract user features from profile and history
+#    - Extract item features from product catalog
+#    - Create positive examples (purchases, clicks, ratings)
+#    - Create negative examples (impressions without clicks)
+#
+# 2. Create brain:
+#    brain = nimcp_brain_create_from_config("recommendation_system.yaml")
+#
+# 3. Train:
+#    for each interaction in training_data:
+#        combine_features(user_features, item_features, input_vector);
+#        label = interaction.purchased ? "recommend" : "not_recommend";
+#        confidence = interaction.rating / 5.0;  // Normalize rating
+#        nimcp_brain_learn_example(brain, input_vector, 200, label, confidence);
+#
+# 4. Generate recommendations:
+#    for each candidate_item in catalog:
+#        combine_features(current_user, candidate_item, input_vector);
+#        nimcp_brain_predict(brain, input_vector, 200, &label, &score);
+#        if (score > 0.75) {
+#            add_to_recommendations(candidate_item, score);
+#        }
+#
+#    sort_by_score(recommendations);
+#    return top_N(recommendations, 10);
+
+# Ethics Considerations:
+# ----------------------
+# The ethics module helps prevent:
+# - Filter bubbles: Diversify recommendations
+# - Addiction patterns: Limit engagement-maximizing content
+# - Harmful products: Block items that may harm users
+# - Bias amplification: Fair recommendations across demographics
+# - Privacy violations: Don't recommend based on sensitive data
+
+# Ethics in Practice:
+# -------------------
+# 1. Golden Rule: "Don't recommend to others what you wouldn't want recommended to you"
+# 2. Empathy: Consider long-term user well-being, not just short-term engagement
+# 3. Diversity: Include serendipitous recommendations
+# 4. Transparency: Allow users to understand why items are recommended
+# 5. Control: Let users adjust preferences and block categories
+
+# Performance Metrics:
+# --------------------
+# - Click-Through Rate (CTR): % of recommended items clicked
+# - Conversion Rate: % of recommendations leading to purchase
+# - Average Order Value (AOV): Revenue from recommendations
+# - Diversity: Coverage of item catalog
+# - Novelty: % of new items recommended
+# - User Satisfaction: Long-term engagement, retention
+
+# A/B Testing:
+# ------------
+# Compare NIMCP recommendations vs baseline:
+# - Random recommendations
+# - Popularity-based
+# - Collaborative filtering (matrix factorization)
+# - Content-based filtering
+# - Hybrid approaches
+
+# Production Deployment:
+# ----------------------
+# 1. Batch prediction: Pre-compute recommendations for all users
+# 2. Real-time updates: Retrain incrementally with new interactions
+# 3. Cold start: Use content-based features for new users/items
+# 4. Scaling: Distribute brain across multiple servers
+# 5. Monitoring: Track recommendation quality metrics
+
+# Advanced Features:
+# ------------------
+# - Multi-armed bandits: Exploration vs exploitation
+# - Contextual recommendations: Time, location, device
+# - Sequential recommendations: Consider order effects
+# - Bundle recommendations: Suggest item combinations
+# - Cross-domain: Transfer learning across product categories
+
+# Hyperparameter Tuning:
+# ----------------------
+# - Increase num_hidden (512, 1024) for complex catalogs
+# - Adjust empathy_weight (0.5-0.9) based on ethics priority
+# - Tune learning_rate (0.001-0.01) for convergence speed
+# - Modify bcm_tau for preference drift sensitivity

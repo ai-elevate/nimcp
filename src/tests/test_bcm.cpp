@@ -21,7 +21,7 @@
  */
 
 #include <gtest/gtest.h>
-#include "../include/nimcp_bcm.h"
+#include "plasticity/bcm/nimcp_bcm.h"
 #include <cmath>
 #include <chrono>
 
@@ -587,10 +587,12 @@ TEST_F(BCMTest, FactoryPresets_DifferentBehavior) {
 //=============================================================================
 
 TEST_F(BCMTest, StructSize_Compact) {
-    /* WHAT: Test BCM synapse struct is cache-friendly
-     * WHY:  Should fit in 16 bytes for performance
+    /* WHAT: Test BCM synapse struct size is reasonable
+     * WHY:  Monitor size to prevent bloat (currently 56 bytes with pthread_mutex_t)
+     * NOTE: 4 floats (16 bytes) + pthread_mutex_t (40 bytes) = 56 bytes
+     *       Original goal was 16 bytes, but thread safety via mutex increases size
      */
-    EXPECT_LE(sizeof(bcm_synapse_t), 16);
+    EXPECT_LE(sizeof(bcm_synapse_t), 64);  // Allow up to cache-line size
 }
 
 TEST_F(BCMTest, BatchUpdate_Performance) {

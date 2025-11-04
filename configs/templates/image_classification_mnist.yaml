@@ -1,0 +1,69 @@
+# NIMCP Brain Configuration Template
+# Use Case: Image Classification (MNIST Handwritten Digits)
+# Description: Medium-sized brain optimized for 28x28 grayscale image classification
+# Dataset: MNIST (60,000 training images, 10,000 test images)
+# Expected Accuracy: ~95-98% after training
+
+brain:
+  # Identity
+  name: "mnist_digit_classifier"
+
+  # Brain size: medium for good accuracy/speed balance
+  size: medium  # 10K neurons, ~50MB memory, ~5ms inference
+
+  # Task type: multi-class classification
+  task: classification
+
+  # Network Architecture
+  architecture:
+    num_inputs: 784          # 28x28 pixels = 784 features
+    num_outputs: 10          # 10 digit classes (0-9)
+    num_hidden: 512          # Hidden layer neurons
+    learning_rate: 0.001     # Conservative learning rate for stability
+
+  # Training Configuration
+  training:
+    max_epochs: 100          # Maximum training iterations
+    batch_size: 64           # Mini-batch size (good for GPUs)
+    validation_split: 0.15   # 15% of data for validation
+    early_stopping: true     # Stop if no improvement
+    patience: 15             # Wait 15 epochs before stopping
+
+  # Synaptic Plasticity
+  plasticity:
+    enable_bcm: true         # Bienenstock-Cooper-Munro rule
+    bcm_tau: 2000.0          # BCM time constant (stability)
+    enable_stdp: false       # STDP not needed for static images
+    stdp_window: 20.0        # STDP time window (unused)
+
+  # Ethics Configuration
+  ethics:
+    enabled: false           # Not needed for digit classification
+    golden_rule_threshold: 0.0
+    empathy_weight: 0.5
+
+  # Model Persistence
+  model_path: "/tmp/models/mnist_classifier.brain"
+  checkpoint_interval: 10   # Save every 10 epochs
+
+# Usage Example:
+# -------------
+# 1. Load MNIST dataset (normalize pixels to 0.0-1.0)
+# 2. Create brain: brain = nimcp_brain_create_from_config("image_classification_mnist.yaml")
+# 3. Train: For each image, call nimcp_brain_learn_example(brain, pixels, 784, label, 1.0)
+# 4. Test: nimcp_brain_predict(brain, test_image, 784, &label, &confidence)
+# 5. Save: nimcp_brain_save(brain, config.model_path)
+
+# Performance Notes:
+# ------------------
+# - Training time: ~10-30 minutes on modern CPU
+# - Inference: ~5ms per image
+# - Memory: ~50MB RAM
+# - Recommended minimum: 4GB RAM, dual-core CPU
+
+# Hyperparameter Tuning Tips:
+# ---------------------------
+# - Increase num_hidden (256, 512, 1024) for better accuracy
+# - Decrease learning_rate (0.0001) if training is unstable
+# - Increase batch_size (128, 256) if you have more memory
+# - Enable STDP if using temporal patterns

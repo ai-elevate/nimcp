@@ -1,0 +1,397 @@
+# NIMCP Hierarchical Brain Regions Configuration
+# Brain-Inspired Multi-Tasking Architecture
+# Models: Visual cortex hierarchy (V1 → V2 → V4 → IT → PFC)
+
+# ============================================================================
+# REGION 1: PRIMARY VISUAL CORTEX (V1) - Low-level features
+# ============================================================================
+region_v1:
+  name: "visual_cortex_v1"
+  size: small
+  task: pattern_matching
+
+  # Biological properties
+  role: "primary_sensory"
+  modality: "vision"
+  layer: 1  # Lowest hierarchical level
+
+  architecture:
+    num_inputs: 784       # 28x28 pixel image
+    num_outputs: 128      # Edge, orientation features
+    num_hidden: 256
+    learning_rate: 0.01   # Fast adaptation to input
+
+  # V1-specific processing
+  features:
+    - edge_detection
+    - orientation_tuning
+    - spatial_frequency
+    - local_contrast
+
+  plasticity:
+    enable_bcm: true
+    bcm_tau: 500.0        # Fast adaptation
+    enable_stdp: false    # Not needed for static images
+
+  # Receptive field properties
+  receptive_field:
+    size: 5x5             # Small, local
+    overlap: 0.5          # 50% overlap
+    topographic: true     # Retinotopic map
+
+  model_path: "/tmp/hierarchical/v1_cortex.brain"
+
+# ============================================================================
+# REGION 2: SECONDARY VISUAL (V2) - Intermediate features
+# ============================================================================
+region_v2:
+  name: "visual_cortex_v2"
+  size: small
+  task: pattern_matching
+
+  role: "secondary_sensory"
+  modality: "vision"
+  layer: 2
+
+  architecture:
+    num_inputs: 128       # From V1
+    num_outputs: 96       # Texture, contour features
+    num_hidden: 192
+    learning_rate: 0.008
+
+  features:
+    - texture_patterns
+    - contour_integration
+    - figure_ground_separation
+    - illusory_contours
+
+  plasticity:
+    enable_bcm: true
+    bcm_tau: 1000.0
+    enable_stdp: true     # Learn temporal sequences
+    stdp_window: 20.0
+
+  receptive_field:
+    size: 10x10           # Larger than V1
+    overlap: 0.6
+    topographic: true
+
+  # Connections
+  inputs_from: ["region_v1"]
+  feedback_from: ["region_v4"]  # Top-down modulation
+
+  model_path: "/tmp/hierarchical/v2_cortex.brain"
+
+# ============================================================================
+# REGION 3: V4 - Object features
+# ============================================================================
+region_v4:
+  name: "visual_cortex_v4"
+  size: medium
+  task: pattern_matching
+
+  role: "intermediate_visual"
+  modality: "vision"
+  layer: 3
+
+  architecture:
+    num_inputs: 96        # From V2
+    num_outputs: 64       # Object parts, complex shapes
+    num_hidden: 128
+    learning_rate: 0.005
+
+  features:
+    - object_parts
+    - complex_shapes
+    - color_constancy
+    - attention_modulation
+
+  plasticity:
+    enable_bcm: true
+    bcm_tau: 2000.0       # Slower, more stable
+    enable_stdp: true
+    stdp_window: 30.0
+
+  receptive_field:
+    size: 20x20           # Large receptive fields
+    overlap: 0.7
+    topographic: false    # Less retinotopic
+
+  inputs_from: ["region_v2"]
+  feedback_from: ["region_it", "region_pfc"]
+
+  # Attention gating
+  attention:
+    enabled: true
+    source: "region_pfc"  # Prefrontal control
+
+  model_path: "/tmp/hierarchical/v4_cortex.brain"
+
+# ============================================================================
+# REGION 4: INFEROTEMPORAL CORTEX (IT) - Object recognition
+# ============================================================================
+region_it:
+  name: "temporal_it"
+  size: medium
+  task: classification
+
+  role: "association"
+  modality: "vision"
+  layer: 4
+
+  architecture:
+    num_inputs: 64        # From V4
+    num_outputs: 32       # Object identity
+    num_hidden: 64
+    learning_rate: 0.003
+
+  features:
+    - object_recognition
+    - viewpoint_invariance
+    - size_invariance
+    - semantic_categories
+
+  plasticity:
+    enable_bcm: true
+    bcm_tau: 5000.0       # Very stable
+    enable_stdp: true
+    stdp_window: 50.0
+
+  # No topographic organization
+  receptive_field:
+    size: "whole_field"
+    topographic: false
+
+  inputs_from: ["region_v4"]
+  feedback_from: ["region_pfc"]
+
+  # Memory integration
+  memory:
+    hippocampal_input: true
+    episodic_memory: true
+
+  model_path: "/tmp/hierarchical/it_cortex.brain"
+
+# ============================================================================
+# REGION 5: PREFRONTAL CORTEX (PFC) - Executive control
+# ============================================================================
+region_pfc:
+  name: "prefrontal_cortex"
+  size: small
+  task: sequence
+
+  role: "executive"
+  modality: "multi_modal"
+  layer: 5
+
+  architecture:
+    num_inputs: 32        # From IT
+    num_outputs: 16       # Control signals
+    num_hidden: 32
+    learning_rate: 0.001  # Slow, deliberate
+
+  functions:
+    - task_selection
+    - working_memory
+    - goal_management
+    - attention_control
+    - decision_making
+
+  plasticity:
+    enable_bcm: true
+    bcm_tau: 10000.0      # Extremely stable
+    enable_stdp: true
+    stdp_window: 100.0    # Long temporal window
+
+  inputs_from: ["region_it"]
+
+  # Feedback to all regions
+  feedback_to:
+    - region_v1
+    - region_v2
+    - region_v4
+    - region_it
+
+  # Working memory
+  working_memory:
+    buffer_size: 16
+    decay_rate: 0.95      # 5% decay per step
+    maintenance: persistent_activity
+
+  model_path: "/tmp/hierarchical/pfc_cortex.brain"
+
+# ============================================================================
+# REGION 6: BASAL GANGLIA - Action selection
+# ============================================================================
+region_basal_ganglia:
+  name: "action_selector"
+  size: tiny
+  task: classification
+
+  role: "subcortical"
+  modality: "action_selection"
+  layer: 0  # Subcortical
+
+  architecture:
+    num_inputs: 16        # From PFC
+    num_outputs: 1        # Selected action
+    num_hidden: 8
+    learning_rate: 0.02   # Reinforcement-driven
+
+  functions:
+    - winner_take_all
+    - action_gating
+    - habit_formation
+    - reinforcement_learning
+
+  plasticity:
+    enable_bcm: false
+    enable_stdp: true
+    stdp_window: 10.0     # Fast action learning
+
+  # Dopamine modulation
+  neuromodulation:
+    dopamine: true
+    learning_signal: "reward_prediction_error"
+
+  inputs_from: ["region_pfc"]
+
+  model_path: "/tmp/hierarchical/basal_ganglia.brain"
+
+# ============================================================================
+# TASK OUTPUTS (Motor/Action regions)
+# ============================================================================
+
+# Task 1: Object Classification
+task_classification:
+  name: "motor_classify"
+  size: tiny
+  task: classification
+
+  role: "motor_output"
+  layer: 6
+
+  architecture:
+    num_inputs: 16        # From PFC
+    num_outputs: 10       # 10 object classes
+    num_hidden: 16
+    learning_rate: 0.01
+
+  inputs_from: ["region_pfc", "region_it"]
+  control_from: ["region_basal_ganglia"]
+
+  model_path: "/tmp/hierarchical/task_classify.brain"
+
+# Task 2: Object Localization
+task_localization:
+  name: "motor_locate"
+  size: tiny
+  task: regression
+
+  role: "motor_output"
+  layer: 6
+
+  architecture:
+    num_inputs: 16
+    num_outputs: 4        # Bounding box (x, y, w, h)
+    num_hidden: 16
+    learning_rate: 0.01
+
+  inputs_from: ["region_pfc", "region_v4"]
+  control_from: ["region_basal_ganglia"]
+
+  model_path: "/tmp/hierarchical/task_locate.brain"
+
+# Task 3: Attribute Detection
+task_attributes:
+  name: "motor_attributes"
+  size: tiny
+  task: pattern_matching
+
+  role: "motor_output"
+  layer: 6
+
+  architecture:
+    num_inputs: 16
+    num_outputs: 5        # 5 attributes
+    num_hidden: 16
+    learning_rate: 0.01
+
+  inputs_from: ["region_pfc"]
+  control_from: ["region_basal_ganglia"]
+
+  model_path: "/tmp/hierarchical/task_attributes.brain"
+
+# ============================================================================
+# GLOBAL SETTINGS
+# ============================================================================
+
+hierarchy:
+  num_layers: 6
+  num_regions: 9
+
+  # Information flow
+  feedforward: true       # Bottom-up processing
+  feedback: true          # Top-down modulation
+  lateral: true           # Horizontal connections
+
+  # Plasticity coordination
+  global_learning_rate: 1.0
+  layer_learning_rates:
+    layer1: 1.0           # V1 - fast
+    layer2: 0.8           # V2
+    layer3: 0.6           # V4
+    layer4: 0.4           # IT
+    layer5: 0.2           # PFC - slow
+    layer6: 1.0           # Motor - fast
+
+# Neuromodulation
+neuromodulation:
+  dopamine:
+    enabled: true
+    source: "ventral_tegmental_area"
+    targets: ["region_basal_ganglia", "region_pfc"]
+
+  acetylcholine:
+    enabled: true
+    source: "nucleus_basalis"
+    targets: ["region_v1", "region_v2", "region_v4"]
+    function: "attention_modulation"
+
+  serotonin:
+    enabled: false
+
+# Training strategy
+training:
+  # Train bottom-up first
+  phase1_layers: [1, 2]        # V1, V2
+  phase1_epochs: 20
+
+  # Then middle layers
+  phase2_layers: [3, 4]        # V4, IT
+  phase2_epochs: 30
+
+  # Finally top-down
+  phase3_layers: [5, 6]        # PFC, Motor
+  phase3_epochs: 40
+
+  # Fine-tune everything
+  phase4_layers: [1, 2, 3, 4, 5, 6]
+  phase4_epochs: 50
+
+# ============================================================================
+# USAGE NOTES
+# ============================================================================
+
+# This configuration defines a complete hierarchical brain system.
+# Each region is created as a separate nimcp_brain_t.
+# Information flows through the hierarchy.
+# See examples/hierarchical_multitask.c for implementation.
+
+# Key advantages:
+# 1. Biological plausibility
+# 2. Modular development
+# 3. Interpretable processing
+# 4. Robust to damage
+# 5. Transfer learning
+# 6. Multi-scale learning

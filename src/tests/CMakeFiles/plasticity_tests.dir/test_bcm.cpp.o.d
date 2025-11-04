@@ -265,9 +265,9 @@ src/tests/CMakeFiles/plasticity_tests.dir/test_bcm.cpp.o: \
  /usr/include/gtest/gtest-test-part.h /usr/include/gtest/gtest_prod.h \
  /usr/include/gtest/gtest-typed-test.h \
  /usr/include/gtest/gtest_pred_impl.h \
- /home/bbrelin/src/repos/nimcp/src/tests/../include/nimcp_bcm.h \
+ /home/bbrelin/src/repos/nimcp/src/plasticity/bcm/nimcp_bcm.h \
  /usr/lib/gcc/x86_64-linux-gnu/11/include/stdbool.h \
- /home/bbrelin/src/repos/nimcp/src/tests/../include/utils/nimcp_thread.h \
+ /home/bbrelin/src/repos/nimcp/src/utils/thread/nimcp_thread.h \
  /usr/include/c++/11/cmath /usr/include/math.h \
  /usr/include/x86_64-linux-gnu/bits/math-vector.h \
  /usr/include/x86_64-linux-gnu/bits/libm-simd-decl-stubs.h \

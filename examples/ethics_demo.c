@@ -36,7 +36,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include "../src/include/nimcp_ethics.h"
+#include "cognitive/ethics/nimcp_ethics.h"
 
 /**
  * @brief Test scenario: Simple ethical situations

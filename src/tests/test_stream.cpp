@@ -10,9 +10,9 @@
 #include "test_helpers.h"
 
 extern "C" {
-#include "../include/nimcp_brain.h"
-#include "../include/nimcp_stream.h"
-#include "../include/utils/nimcp_thread.h"
+#include "core/brain/nimcp_brain.h"
+#include "io/stream/nimcp_stream.h"
+#include "utils/thread/nimcp_thread.h"
 }
 
 #include <gtest/gtest.h>

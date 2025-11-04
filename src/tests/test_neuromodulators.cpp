@@ -10,7 +10,7 @@
  */
 
 #include <gtest/gtest.h>
-#include "../include/nimcp_neuromodulators.h"
+#include "plasticity/neuromodulators/nimcp_neuromodulators.h"
 #include <cmath>
 #include <chrono>
 

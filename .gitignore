@@ -116,6 +116,7 @@ examples/ethics_demo
 examples/event_demo
 examples/infant_demo
 examples/integrated_demo
+examples/brain_probe_demo
 src/tests/core_tests
 src/tests/cognitive_tests
 src/tests/glial_tests
@@ -136,6 +137,41 @@ build/lib/
 .env
 .env.local
 
-# clang-tidy
-.clang-tidy
-.clang-format
+# clang-tidy (keep these in repo, but listed here for reference)
+# .clang-tidy
+# .clang-format
+
+# Cache directories
+.cache/
+.clangd/
+.rbenv/
+
+# Strange directories
+(null)/
+
+# Metrics output
+*_metrics/
+*_metrics*.csv
+*_metrics*.json
+nimcp_metrics/
+ruby_metrics/
+ruby_metrics_alternate/
+nodejs_metrics/
+python_metrics/
+
+# Binary output
+bin/*.so*
+!bin/.gitkeep
+
+# Node.js
+node_modules/
+package-lock.json
+
+# Ruby
+.bundle/
+vendor/
+*.gem
+
+# Rust
+target/
+Cargo.lock

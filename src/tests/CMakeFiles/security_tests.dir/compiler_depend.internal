@@ -715,9 +715,11 @@ src/tests/CMakeFiles/security_tests.dir/test_error_injection.cpp.o
  /usr/include/python3.10/cpython/fileutils.h
  /usr/include/python3.10/cpython/pyfpe.h
  /usr/include/python3.10/tracemalloc.h
- /home/bbrelin/src/repos/nimcp/src/include/nimcp_neuralnet.h
- /home/bbrelin/src/repos/nimcp/src/include/utils/nimcp_memory.h
- /home/bbrelin/src/repos/nimcp/src/include/utils/nimcp_queue_manager.h
+ /home/bbrelin/src/repos/nimcp/src/include/nimcp_distributed_cognition.h
+ /home/bbrelin/src/repos/nimcp/src/include/nimcp_protocol.h
+ /home/bbrelin/src/repos/nimcp/src/include/nimcp_p2pnode.h
+ /home/bbrelin/src/repos/nimcp/src/include/nimcp_neuromodulators.h
+ /home/bbrelin/src/repos/nimcp/src/include/nimcp_glial_integration.h
  /home/bbrelin/src/repos/nimcp/src/include/utils/nimcp_common.h
  /usr/include/dirent.h
  /usr/include/x86_64-linux-gnu/bits/dirent.h
@@ -726,6 +728,19 @@ src/tests/CMakeFiles/security_tests.dir/test_error_injection.cpp.o
  /usr/include/x86_64-linux-gnu/bits/dlfcn.h
  /usr/include/x86_64-linux-gnu/bits/dl_find_object.h
  /usr/include/lz4.h
+ /home/bbrelin/src/repos/nimcp/src/include/utils/nimcp_hash_table.h
+ /home/bbrelin/src/repos/nimcp/src/include/nimcp_astrocytes.h
+ /home/bbrelin/src/repos/nimcp/src/include/utils/nimcp_thread.h
+ /home/bbrelin/src/repos/nimcp/src/include/nimcp_oligodendrocytes.h
+ /home/bbrelin/src/repos/nimcp/src/include/utils/nimcp_memory.h
+ /home/bbrelin/src/repos/nimcp/src/include/utils/nimcp_time.h
+ /home/bbrelin/src/repos/nimcp/src/include/nimcp_microglia.h
+ /home/bbrelin/src/repos/nimcp/src/include/nimcp_brain_regions.h
+ /home/bbrelin/src/repos/nimcp/src/include/nimcp_neuron_types.h
+ /home/bbrelin/src/repos/nimcp/src/include/nimcp_neuralnet.h
+ /home/bbrelin/src/repos/nimcp/src/include/utils/nimcp_memory.h
+ /home/bbrelin/src/repos/nimcp/src/include/utils/nimcp_queue_manager.h
+ /home/bbrelin/src/repos/nimcp/src/include/utils/nimcp_common.h
  /home/bbrelin/src/repos/nimcp/src/include/utils/nimcp_queue.h
  /home/bbrelin/src/repos/nimcp/src/include/utils/nimcp_thread_pool.h
  /home/bbrelin/src/repos/nimcp/src/include/utils/nimcp_thread.h
@@ -1211,6 +1226,7 @@ src/tests/CMakeFiles/security_tests.dir/test_performance_optimizations.cpp.o
  /usr/include/x86_64-linux-gnu/bits/dl_find_object.h
  /usr/include/lz4.h
  /home/bbrelin/src/repos/nimcp/src/include/utils/nimcp_thread.h
+ /home/bbrelin/src/repos/nimcp/src/include/utils/nimcp_min_heap.h
 
 src/tests/CMakeFiles/security_tests.dir/test_security.cpp.o
  /home/bbrelin/src/repos/nimcp/src/tests/test_security.cpp

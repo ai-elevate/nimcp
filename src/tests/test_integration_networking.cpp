@@ -22,12 +22,12 @@
 #include "test_helpers.h"
 
 extern "C" {
-#include "../include/nimcp_brain.h"
-#include "../include/nimcp_neuralnet.h"
-#include "../include/nimcp_p2pnode.h"
-#include "../include/nimcp_protocol.h"
-#include "../include/nimcp_replication.h"
-#include "../include/nimcp_stream.h"
+#include "core/brain/nimcp_brain.h"
+#include "core/neuralnet/nimcp_neuralnet.h"
+#include "networking/p2p/nimcp_p2pnode.h"
+#include "networking/protocol/nimcp_protocol.h"
+#include "networking/replication/nimcp_replication.h"
+#include "io/stream/nimcp_stream.h"
 }
 
 using namespace std::chrono_literals;

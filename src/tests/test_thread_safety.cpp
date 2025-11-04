@@ -21,8 +21,8 @@
  */
 
 #include <gtest/gtest.h>
-#include "../include/nimcp_neuromodulators.h"
-#include "../include/nimcp_bcm.h"
+#include "plasticity/neuromodulators/nimcp_neuromodulators.h"
+#include "plasticity/bcm/nimcp_bcm.h"
 #include <pthread.h>
 #include <vector>
 #include <atomic>

@@ -19,9 +19,9 @@
 #include <cmath>
 
 extern "C" {
-#include "nimcp_astrocytes.h"
-#include "utils/nimcp_memory.h"
-#include "utils/nimcp_time.h"
+#include "glial/astrocytes/nimcp_astrocytes.h"
+#include "utils/memory/nimcp_memory.h"
+#include "utils/time/nimcp_time.h"
 }
 
 //=============================================================================

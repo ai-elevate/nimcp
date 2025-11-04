@@ -65,6 +65,16 @@ CMAKE_BINARY_DIR = /home/bbrelin/src/repos/nimcp
 #=============================================================================
 # Targets provided globally by CMake.
 
+# Special rule for the target test
+test:
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --cyan "Running tests..."
+	/usr/bin/ctest --force-new-ctest-process $(ARGS)
+.PHONY : test
+
+# Special rule for the target test
+test/fast: test
+.PHONY : test/fast
+
 # Special rule for the target edit_cache
 edit_cache:
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --cyan "No interactive CMake dialog available..."
@@ -231,6 +241,20 @@ integrated_demo/fast:
 	cd /home/bbrelin/src/repos/nimcp && $(MAKE) $(MAKESILENT) -f examples/CMakeFiles/integrated_demo.dir/build.make examples/CMakeFiles/integrated_demo.dir/build
 .PHONY : integrated_demo/fast
 
+# Convenience name for target.
+examples/CMakeFiles/brain_probe_demo.dir/rule:
+	cd /home/bbrelin/src/repos/nimcp && $(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 examples/CMakeFiles/brain_probe_demo.dir/rule
+.PHONY : examples/CMakeFiles/brain_probe_demo.dir/rule
+
+# Convenience name for target.
+brain_probe_demo: examples/CMakeFiles/brain_probe_demo.dir/rule
+.PHONY : brain_probe_demo
+
+# fast build rule for target.
+brain_probe_demo/fast:
+	cd /home/bbrelin/src/repos/nimcp && $(MAKE) $(MAKESILENT) -f examples/CMakeFiles/brain_probe_demo.dir/build.make examples/CMakeFiles/brain_probe_demo.dir/build
+.PHONY : brain_probe_demo/fast
+
 brain_demo.o: brain_demo.c.o
 .PHONY : brain_demo.o
 
@@ -254,6 +278,30 @@ brain_demo.s: brain_demo.c.s
 brain_demo.c.s:
 	cd /home/bbrelin/src/repos/nimcp && $(MAKE) $(MAKESILENT) -f examples/CMakeFiles/brain_demo.dir/build.make examples/CMakeFiles/brain_demo.dir/brain_demo.c.s
 .PHONY : brain_demo.c.s
+
+brain_probe_demo.o: brain_probe_demo.c.o
+.PHONY : brain_probe_demo.o
+
+# target to build an object file
+brain_probe_demo.c.o:
+	cd /home/bbrelin/src/repos/nimcp && $(MAKE) $(MAKESILENT) -f examples/CMakeFiles/brain_probe_demo.dir/build.make examples/CMakeFiles/brain_probe_demo.dir/brain_probe_demo.c.o
+.PHONY : brain_probe_demo.c.o
+
+brain_probe_demo.i: brain_probe_demo.c.i
+.PHONY : brain_probe_demo.i
+
+# target to preprocess a source file
+brain_probe_demo.c.i:
+	cd /home/bbrelin/src/repos/nimcp && $(MAKE) $(MAKESILENT) -f examples/CMakeFiles/brain_probe_demo.dir/build.make examples/CMakeFiles/brain_probe_demo.dir/brain_probe_demo.c.i
+.PHONY : brain_probe_demo.c.i
+
+brain_probe_demo.s: brain_probe_demo.c.s
+.PHONY : brain_probe_demo.s
+
+# target to generate assembly for a file
+brain_probe_demo.c.s:
+	cd /home/bbrelin/src/repos/nimcp && $(MAKE) $(MAKESILENT) -f examples/CMakeFiles/brain_probe_demo.dir/build.make examples/CMakeFiles/brain_probe_demo.dir/brain_probe_demo.c.s
+.PHONY : brain_probe_demo.c.s
 
 ethics_demo.o: ethics_demo.c.o
 .PHONY : ethics_demo.o
@@ -363,7 +411,9 @@ help:
 	@echo "... install/strip"
 	@echo "... list_install_components"
 	@echo "... rebuild_cache"
+	@echo "... test"
 	@echo "... brain_demo"
+	@echo "... brain_probe_demo"
 	@echo "... ethics_demo"
 	@echo "... event_demo"
 	@echo "... infant_demo"
@@ -371,6 +421,9 @@ help:
 	@echo "... brain_demo.o"
 	@echo "... brain_demo.i"
 	@echo "... brain_demo.s"
+	@echo "... brain_probe_demo.o"
+	@echo "... brain_probe_demo.i"
+	@echo "... brain_probe_demo.s"
 	@echo "... ethics_demo.o"
 	@echo "... ethics_demo.i"
 	@echo "... ethics_demo.s"

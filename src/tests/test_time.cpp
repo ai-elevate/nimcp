@@ -12,7 +12,7 @@
 #include <thread>
 
 extern "C" {
-#include "utils/nimcp_time.h"
+#include "utils/time/nimcp_time.h"
 }
 
 //=============================================================================

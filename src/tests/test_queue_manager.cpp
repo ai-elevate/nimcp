@@ -10,8 +10,8 @@
 #include <chrono>
 #include <thread>
 extern "C" {
-#include "utils/nimcp_memory.h"
-#include "utils/nimcp_queue_manager.h"
+#include "utils/memory/nimcp_memory.h"
+#include "utils/queue_manager/nimcp_queue_manager.h"
 }
 
 // Test fixture for queue manager operations

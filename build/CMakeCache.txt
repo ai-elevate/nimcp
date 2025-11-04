@@ -296,11 +296,11 @@ nimcp_BINARY_DIR:STATIC=/home/bbrelin/src/repos/nimcp/build
 //Value Computed by CMake
 nimcp_IS_TOP_LEVEL:STATIC=ON
 
+//Dependencies for the target
+nimcp_LIB_DEPENDS:STATIC=general;Python3::Python;general;lz4;general;jansson;
+
 //Value Computed by CMake
 nimcp_SOURCE_DIR:STATIC=/home/bbrelin/src/repos/nimcp
-
-//Dependencies for the target
-nimcp_core_LIB_DEPENDS:STATIC=general;Python3::Python;general;lz4;general;jansson;
 
 //Dependencies for the target
 nimcp_python_LIB_DEPENDS:STATIC=general;nimcp_core;general;Python3::Python;

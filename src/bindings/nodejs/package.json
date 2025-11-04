@@ -1,0 +1,23 @@
+{
+  "name": "nimcp",
+  "version": "2.6.1",
+  "description": "Node.js bindings for NIMCP - Neural Inference for Massive Concurrent Processing",
+  "main": "index.js",
+  "scripts": {
+    "install": "node-gyp rebuild",
+    "test": "node test.js"
+  },
+  "keywords": [
+    "neural",
+    "network",
+    "ai",
+    "machine-learning",
+    "cognitive"
+  ],
+  "author": "NIMCP Contributors",
+  "license": "MIT",
+  "gypfile": true,
+  "dependencies": {
+    "node-gyp": "^10.0.0"
+  }
+}

@@ -126,7 +126,8 @@ static void destroy_subtree(btree_node_t* node, btree_free_func free_func)
     if (!node)
         return;
 
-    pthread_rwlock_wrlock(&node->lock);
+    // No locking needed during destruction - structural_lock is held
+    // and no concurrent operations should be happening
 
     if (!node->leaf) {
         for (int i = 0; i <= node->n; i++) {
@@ -150,12 +151,14 @@ void btree_destroy(btree_t* tree)
 }
 
 // Node splitting
-static void split_child(btree_t* tree, btree_node_t* parent, int index)
+static int split_child(btree_t* tree, btree_node_t* parent, int index)
 {
     btree_node_t* child = parent->children[index];
     btree_node_t* new_node = create_node(child->leaf);
-    if (!new_node)
-        return;
+    if (!new_node) {
+        // CRITICAL FIX: Return error instead of silently failing
+        return BTREE_NO_MEMORY;
+    }
 
     // Initialize new node
     new_node->n = BTREE_ORDER - 1;
@@ -187,10 +190,12 @@ static void split_child(btree_t* tree, btree_node_t* parent, int index)
 
     parent->keys[index] = child->keys[BTREE_ORDER - 1];
     parent->n++;
+
+    return BTREE_SUCCESS;
 }
 
 // Insertion
-static void insert_nonfull(btree_t* tree, btree_node_t* node, void* data)
+static int insert_nonfull(btree_t* tree, btree_node_t* node, void* data)
 {
     int i = node->n - 1;
     const char* key = tree->key_func(data);
@@ -205,6 +210,7 @@ static void insert_nonfull(btree_t* tree, btree_node_t* node, void* data)
         node->keys[i + 1] = data;
         node->n++;
         atomic_fetch_add(&tree->count, 1);
+        return BTREE_SUCCESS;
     } else {
         // Find child to recurse
         while (i >= 0 && tree->compare(tree->key_func(node->keys[i]), key) > 0) {
@@ -212,20 +218,39 @@ static void insert_nonfull(btree_t* tree, btree_node_t* node, void* data)
         }
         i++;
 
+        // Save original child index before potential split
+        int child_index = i;
+
         // Lock child
-        if (acquire_write_lock(&node->children[i]->lock, LOCK_TIMEOUT_MS) != 0) {
-            return;
+        if (acquire_write_lock(&node->children[child_index]->lock, LOCK_TIMEOUT_MS) != 0) {
+            return BTREE_LOCKED;
         }
 
-        if (node->children[i]->n == 2 * BTREE_ORDER - 1) {
-            split_child(tree, node, i);
-            if (tree->compare(key, tree->key_func(node->keys[i])) > 0) {
-                i++;
+        if (node->children[child_index]->n == 2 * BTREE_ORDER - 1) {
+            int result = split_child(tree, node, child_index);
+            if (result != BTREE_SUCCESS) {
+                pthread_rwlock_unlock(&node->children[child_index]->lock);
+                return result;
+            }
+            // Unlock the original child we locked
+            pthread_rwlock_unlock(&node->children[child_index]->lock);
+
+            // Determine which child to use after split
+            if (tree->compare(key, tree->key_func(node->keys[child_index])) > 0) {
+                i = child_index + 1;  // Use right child
+            } else {
+                i = child_index;  // Use left child
+            }
+
+            // Lock the chosen child for recursion
+            if (acquire_write_lock(&node->children[i]->lock, LOCK_TIMEOUT_MS) != 0) {
+                return BTREE_LOCKED;
             }
         }
 
-        insert_nonfull(tree, node->children[i], data);
+        int result = insert_nonfull(tree, node->children[i], data);
         pthread_rwlock_unlock(&node->children[i]->lock);
+        return result;
     }
 }
 
@@ -241,6 +266,8 @@ int btree_insert(btree_t* tree, void* data)
         return BTREE_LOCKED;
     }
 
+    int result = BTREE_SUCCESS;
+
     if (tree->root->n == 2 * BTREE_ORDER - 1) {
         btree_node_t* new_root = create_node(false);
         if (!new_root) {
@@ -249,18 +276,44 @@ int btree_insert(btree_t* tree, void* data)
             return BTREE_NO_MEMORY;
         }
 
-        new_root->children[0] = tree->root;
-        tree->root = new_root;
+        // CRITICAL FIX: Lock new_root immediately after creation
+        // insert_nonfull() assumes the node is locked by caller
+        if (acquire_write_lock(&new_root->lock, LOCK_TIMEOUT_MS) != 0) {
+            pthread_rwlock_destroy(&new_root->lock);
+            nimcp_free(new_root);
+            pthread_rwlock_unlock(&tree->root->lock);
+            pthread_mutex_unlock(&tree->structural_lock);
+            return BTREE_LOCKED;
+        }
 
-        split_child(tree, new_root, 0);
-        insert_nonfull(tree, new_root, data);
+        btree_node_t* old_root = tree->root;
+        new_root->children[0] = old_root;
+
+        result = split_child(tree, new_root, 0);
+        if (result == BTREE_SUCCESS) {
+            // CRITICAL: Unlock old root BEFORE updating tree->root
+            // Otherwise old_root's lock remains held forever!
+            pthread_rwlock_unlock(&old_root->lock);
+
+            // Only update root if split succeeded
+            tree->root = new_root;
+            // new_root is now locked - safe to call insert_nonfull
+            result = insert_nonfull(tree, new_root, data);
+        } else {
+            // Split failed - cleanup new_root and rollback
+            pthread_rwlock_unlock(&old_root->lock);
+            pthread_rwlock_unlock(&new_root->lock);
+            pthread_rwlock_destroy(&new_root->lock);
+            nimcp_free(new_root);
+            result = BTREE_NO_MEMORY;
+        }
     } else {
-        insert_nonfull(tree, tree->root, data);
+        result = insert_nonfull(tree, tree->root, data);
     }
 
     pthread_rwlock_unlock(&tree->root->lock);
     pthread_mutex_unlock(&tree->structural_lock);
-    return BTREE_SUCCESS;
+    return result;
 }
 
 // Search

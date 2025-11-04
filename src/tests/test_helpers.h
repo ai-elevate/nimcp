@@ -14,9 +14,9 @@
 #include <cmath>
 
 extern "C" {
-#include "../include/nimcp_neuralnet.h"
-#include "../include/nimcp_p2pnode.h"
-#include "../include/nimcp_protocol.h"
+#include "core/neuralnet/nimcp_neuralnet.h"
+#include "networking/p2p/nimcp_p2pnode.h"
+#include "networking/protocol/nimcp_protocol.h"
 }
 
 //-----------------------------------------------------------------------------

@@ -16,7 +16,7 @@ set(CMAKE_IMPORT_FILE_VERSION 1)
 set(_targetsDefined)
 set(_targetsNotDefined)
 set(_expectedTargets)
-foreach(_expectedTarget NIMCP::nimcp_core)
+foreach(_expectedTarget NIMCP::nimcp)
   list(APPEND _expectedTargets ${_expectedTarget})
   if(NOT TARGET ${_expectedTarget})
     list(APPEND _targetsNotDefined ${_expectedTarget})
@@ -50,11 +50,11 @@ if(_IMPORT_PREFIX STREQUAL "/")
   set(_IMPORT_PREFIX "")
 endif()
 
-# Create imported target NIMCP::nimcp_core
-add_library(NIMCP::nimcp_core SHARED IMPORTED)
+# Create imported target NIMCP::nimcp
+add_library(NIMCP::nimcp SHARED IMPORTED)
 
-set_target_properties(NIMCP::nimcp_core PROPERTIES
-  INTERFACE_INCLUDE_DIRECTORIES "${_IMPORT_PREFIX}/include/nimcp;${_IMPORT_PREFIX}/include"
+set_target_properties(NIMCP::nimcp PROPERTIES
+  INTERFACE_INCLUDE_DIRECTORIES "${_IMPORT_PREFIX}/include/nimcp"
   INTERFACE_LINK_LIBRARIES "Python3::Python;lz4;jansson"
 )
 

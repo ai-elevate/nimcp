@@ -3,7 +3,7 @@
  * @brief Python type definitions for NIMCP module
  */
 
-#include "../include/nimcp_module.h"
+#include "common/nimcp_module.h"
 
 //=============================================================================
 // NeuralNetwork Type

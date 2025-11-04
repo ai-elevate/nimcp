@@ -3,7 +3,7 @@
  * @brief Comprehensive security test suite for NIMCP
  */
 
-#include "nimcp_security.h"
+#include "security/nimcp_security.h"
 #include <gtest/gtest.h>
 #include <string.h>
 

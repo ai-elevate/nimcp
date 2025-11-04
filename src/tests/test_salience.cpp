@@ -10,8 +10,8 @@
 #include "test_helpers.h"
 
 extern "C" {
-#include "../include/nimcp_brain.h"
-#include "../include/nimcp_salience.h"
+#include "core/brain/nimcp_brain.h"
+#include "cognitive/salience/nimcp_salience.h"
 }
 
 #include <gtest/gtest.h>

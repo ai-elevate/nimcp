@@ -3,7 +3,7 @@
 
 src/python/CMakeFiles/nimcp_python.dir/nimcp_module.c.o: src/python/nimcp_module.c \
   /usr/include/stdc-predef.h \
-  src/include/nimcp_module.h \
+  src/common/nimcp_module.h \
   /usr/include/python3.10/Python.h \
   /usr/include/python3.10/patchlevel.h \
   /usr/include/python3.10/pyconfig.h \
@@ -237,14 +237,18 @@ src/python/CMakeFiles/nimcp_python.dir/nimcp_module.c.o: src/python/nimcp_module
   /usr/include/python3.10/cpython/fileutils.h \
   /usr/include/python3.10/cpython/pyfpe.h \
   /usr/include/python3.10/tracemalloc.h \
-  src/include/nimcp_neuralnet.h \
-  src/include/nimcp_export.h \
+  src/core/neuralnet/nimcp_neuralnet.h \
+  src/common/nimcp_export.h \
   /usr/lib/gcc/x86_64-linux-gnu/11/include/stdbool.h \
-  src/include/nimcp_p2pnode.h \
-  src/include/nimcp_protocol.h
+  src/networking/p2p/nimcp_p2pnode.h \
+  src/networking/protocol/nimcp_protocol.h
 
 
-src/include/nimcp_neuralnet.h:
+src/networking/protocol/nimcp_protocol.h:
+
+src/common/nimcp_export.h:
+
+src/core/neuralnet/nimcp_neuralnet.h:
 
 /usr/include/python3.10/fileutils.h:
 
@@ -287,8 +291,6 @@ src/include/nimcp_neuralnet.h:
 /usr/include/python3.10/cpython/ceval.h:
 
 /usr/include/python3.10/genericaliasobject.h:
-
-src/include/nimcp_protocol.h:
 
 /usr/include/python3.10/descrobject.h:
 
@@ -440,6 +442,8 @@ src/include/nimcp_protocol.h:
 
 /usr/include/x86_64-linux-gnu/bits/types/__mbstate_t.h:
 
+src/common/nimcp_module.h:
+
 /usr/include/python3.10/longintrepr.h:
 
 /usr/include/x86_64-linux-gnu/sys/stat.h:
@@ -480,8 +484,6 @@ src/include/nimcp_protocol.h:
 
 /usr/include/x86_64-linux-gnu/bits/types/struct_itimerspec.h:
 
-src/include/nimcp_export.h:
-
 /usr/include/x86_64-linux-gnu/bits/timesize.h:
 
 /usr/include/x86_64-linux-gnu/bits/getopt_core.h:
@@ -511,6 +513,8 @@ src/python/nimcp_module.c:
 /usr/include/python3.10/cpython/traceback.h:
 
 /usr/include/x86_64-linux-gnu/bits/errno.h:
+
+/usr/include/x86_64-linux-gnu/sys/cdefs.h:
 
 /usr/include/python3.10/pythread.h:
 
@@ -559,18 +563,6 @@ src/python/nimcp_module.c:
 /usr/include/x86_64-linux-gnu/bits/time64.h:
 
 /usr/include/x86_64-linux-gnu/bits/types/sigset_t.h:
-
-/usr/include/x86_64-linux-gnu/sys/cdefs.h:
-
-src/include/nimcp_module.h:
-
-/usr/include/python3.10/cpython/abstract.h:
-
-/usr/include/x86_64-linux-gnu/bits/types/cookie_io_functions_t.h:
-
-/usr/include/x86_64-linux-gnu/bits/wchar.h:
-
-/usr/include/x86_64-linux-gnu/bits/local_lim.h:
 
 /usr/include/python3.10/funcobject.h:
 
@@ -640,8 +632,6 @@ src/include/nimcp_module.h:
 
 /usr/include/x86_64-linux-gnu/bits/confname.h:
 
-src/include/nimcp_p2pnode.h:
-
 /usr/include/x86_64-linux-gnu/bits/unistd_ext.h:
 
 /usr/include/linux/close_range.h:
@@ -659,6 +649,14 @@ src/include/nimcp_p2pnode.h:
 /usr/include/stdint.h:
 
 /usr/include/x86_64-linux-gnu/bits/fp-fast.h:
+
+/usr/include/python3.10/cpython/abstract.h:
+
+/usr/include/x86_64-linux-gnu/bits/types/cookie_io_functions_t.h:
+
+/usr/include/x86_64-linux-gnu/bits/local_lim.h:
+
+/usr/include/x86_64-linux-gnu/bits/wchar.h:
 
 /usr/include/python3.10/cpython/dictobject.h:
 
@@ -683,6 +681,8 @@ src/include/nimcp_p2pnode.h:
 /usr/include/x86_64-linux-gnu/bits/mathcalls-helper-functions.h:
 
 /usr/include/x86_64-linux-gnu/bits/mathcalls-narrow.h:
+
+src/networking/p2p/nimcp_p2pnode.h:
 
 /usr/include/x86_64-linux-gnu/bits/iscanonical.h:
 

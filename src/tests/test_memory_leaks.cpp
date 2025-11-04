@@ -24,9 +24,9 @@
 
 // Include NIMCP headers for basic allocation tests
 extern "C" {
-#include "nimcp_neuralnet.h"
-#include "nimcp_queue_utils.h"
-#include "nimcp_thread_utils.h"
+#include "core/neuralnet/nimcp_neuralnet.h"
+#include "utils/containers/nimcp_queue.h"
+#include "utils/thread/nimcp_thread.h"
 }
 
 namespace {

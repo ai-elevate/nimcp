@@ -6,7 +6,7 @@
 #include "test_helpers.h"
 
 extern "C" {
-#include "../include/nimcp_curiosity.h"
+#include "cognitive/curiosity/nimcp_curiosity.h"
 }
 
 #include <cstring>

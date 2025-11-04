@@ -44,8 +44,8 @@ endif()
 
 if("x${CMAKE_INSTALL_COMPONENT}x" STREQUAL "xUnspecifiedx" OR NOT CMAKE_INSTALL_COMPONENT)
   foreach(file
-      "$ENV{DESTDIR}${CMAKE_INSTALL_PREFIX}/lib/libnimcp_core.so.2.5.0"
-      "$ENV{DESTDIR}${CMAKE_INSTALL_PREFIX}/lib/libnimcp_core.so.2"
+      "$ENV{DESTDIR}${CMAKE_INSTALL_PREFIX}/lib/libnimcp.so.2.5.0"
+      "$ENV{DESTDIR}${CMAKE_INSTALL_PREFIX}/lib/libnimcp.so.2"
       )
     if(EXISTS "${file}" AND
        NOT IS_SYMLINK "${file}")
@@ -55,12 +55,12 @@ if("x${CMAKE_INSTALL_COMPONENT}x" STREQUAL "xUnspecifiedx" OR NOT CMAKE_INSTALL_
     endif()
   endforeach()
   file(INSTALL DESTINATION "${CMAKE_INSTALL_PREFIX}/lib" TYPE SHARED_LIBRARY FILES
-    "/home/bbrelin/src/repos/nimcp/src/lib/libnimcp_core.so.2.5.0"
-    "/home/bbrelin/src/repos/nimcp/src/lib/libnimcp_core.so.2"
+    "/home/bbrelin/src/repos/nimcp/bin/libnimcp.so.2.5.0"
+    "/home/bbrelin/src/repos/nimcp/bin/libnimcp.so.2"
     )
   foreach(file
-      "$ENV{DESTDIR}${CMAKE_INSTALL_PREFIX}/lib/libnimcp_core.so.2.5.0"
-      "$ENV{DESTDIR}${CMAKE_INSTALL_PREFIX}/lib/libnimcp_core.so.2"
+      "$ENV{DESTDIR}${CMAKE_INSTALL_PREFIX}/lib/libnimcp.so.2.5.0"
+      "$ENV{DESTDIR}${CMAKE_INSTALL_PREFIX}/lib/libnimcp.so.2"
       )
     if(EXISTS "${file}" AND
        NOT IS_SYMLINK "${file}")
@@ -72,17 +72,17 @@ if("x${CMAKE_INSTALL_COMPONENT}x" STREQUAL "xUnspecifiedx" OR NOT CMAKE_INSTALL_
 endif()
 
 if("x${CMAKE_INSTALL_COMPONENT}x" STREQUAL "xUnspecifiedx" OR NOT CMAKE_INSTALL_COMPONENT)
-  if(EXISTS "$ENV{DESTDIR}${CMAKE_INSTALL_PREFIX}/lib/libnimcp_core.so" AND
-     NOT IS_SYMLINK "$ENV{DESTDIR}${CMAKE_INSTALL_PREFIX}/lib/libnimcp_core.so")
+  if(EXISTS "$ENV{DESTDIR}${CMAKE_INSTALL_PREFIX}/lib/libnimcp.so" AND
+     NOT IS_SYMLINK "$ENV{DESTDIR}${CMAKE_INSTALL_PREFIX}/lib/libnimcp.so")
     file(RPATH_CHECK
-         FILE "$ENV{DESTDIR}${CMAKE_INSTALL_PREFIX}/lib/libnimcp_core.so"
+         FILE "$ENV{DESTDIR}${CMAKE_INSTALL_PREFIX}/lib/libnimcp.so"
          RPATH "")
   endif()
-  file(INSTALL DESTINATION "${CMAKE_INSTALL_PREFIX}/lib" TYPE SHARED_LIBRARY FILES "/home/bbrelin/src/repos/nimcp/src/lib/libnimcp_core.so")
-  if(EXISTS "$ENV{DESTDIR}${CMAKE_INSTALL_PREFIX}/lib/libnimcp_core.so" AND
-     NOT IS_SYMLINK "$ENV{DESTDIR}${CMAKE_INSTALL_PREFIX}/lib/libnimcp_core.so")
+  file(INSTALL DESTINATION "${CMAKE_INSTALL_PREFIX}/lib" TYPE SHARED_LIBRARY FILES "/home/bbrelin/src/repos/nimcp/bin/libnimcp.so")
+  if(EXISTS "$ENV{DESTDIR}${CMAKE_INSTALL_PREFIX}/lib/libnimcp.so" AND
+     NOT IS_SYMLINK "$ENV{DESTDIR}${CMAKE_INSTALL_PREFIX}/lib/libnimcp.so")
     if(CMAKE_INSTALL_DO_STRIP)
-      execute_process(COMMAND "/usr/bin/strip" "$ENV{DESTDIR}${CMAKE_INSTALL_PREFIX}/lib/libnimcp_core.so")
+      execute_process(COMMAND "/usr/bin/strip" "$ENV{DESTDIR}${CMAKE_INSTALL_PREFIX}/lib/libnimcp.so")
     endif()
   endif()
 endif()

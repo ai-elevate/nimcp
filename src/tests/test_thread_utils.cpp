@@ -13,8 +13,8 @@
 #include <thread>
 
 extern "C" {
-#include "utils/nimcp_thread.h"
-#include "utils/nimcp_thread_pool.h"
+#include "utils/thread/nimcp_thread.h"
+#include "utils/thread/nimcp_thread_pool.h"
 }
 
 //=============================================================================

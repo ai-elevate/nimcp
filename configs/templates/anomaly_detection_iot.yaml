@@ -1,0 +1,127 @@
+# NIMCP Brain Configuration Template
+# Use Case: Anomaly Detection for IoT Sensors / Industrial Monitoring
+# Description: Pattern matching brain for detecting abnormal sensor readings
+# Applications: Predictive maintenance, security monitoring, quality control
+# Method: Learns normal patterns, flags deviations as anomalies
+
+brain:
+  # Identity
+  name: "iot_anomaly_detector"
+
+  # Brain size: tiny for edge deployment (IoT devices, microcontrollers)
+  size: tiny  # 100 neurons, <1MB memory, ~0.1ms inference
+
+  # Task type: pattern matching (normal vs abnormal)
+  task: pattern_matching
+
+  # Network Architecture
+  architecture:
+    num_inputs: 20           # 20 sensor features (temp, vibration, pressure, etc.)
+    num_outputs: 2           # Binary: normal (0) or anomaly (1)
+    num_hidden: 50           # Compact for edge devices
+    learning_rate: 0.02      # Higher learning for rapid adaptation
+
+  # Training Configuration
+  training:
+    max_epochs: 50           # Quick training for deployment
+    batch_size: 16           # Small batches for limited memory
+    validation_split: 0.10   # Small validation set
+    early_stopping: true     # Quick convergence
+    patience: 8              # Less patience for simple task
+
+  # Synaptic Plasticity
+  plasticity:
+    enable_bcm: true         # Adaptive thresholds for drift
+    bcm_tau: 500.0           # Fast adaptation to changing baselines
+    enable_stdp: false       # Not needed for static patterns
+    stdp_window: 20.0        # Unused
+
+  # Ethics Configuration
+  ethics:
+    enabled: false           # Not applicable for sensor data
+    golden_rule_threshold: 0.0
+    empathy_weight: 0.5
+
+  # Model Persistence
+  model_path: "/tmp/models/anomaly_detector.brain"
+  checkpoint_interval: 5    # Frequent saves for edge devices
+
+# Sensor Input Features (Example for Industrial Motor):
+# ------------------------------------------------------
+# Features[0-19]:
+#   [0] Motor temperature (°C)
+#   [1] Vibration amplitude (mm/s)
+#   [2] Vibration frequency (Hz)
+#   [3] Current draw (A)
+#   [4] Voltage (V)
+#   [5] RPM (rotations per minute)
+#   [6] Bearing temperature (°C)
+#   [7] Oil pressure (PSI)
+#   [8] Acoustic level (dB)
+#   [9] Power consumption (W)
+#   [10-14] FFT coefficients (frequency domain)
+#   [15-19] Statistical features (mean, std, skew, kurtosis, etc.)
+
+# Training Strategy:
+# ------------------
+# 1. Collect NORMAL operation data only (critical!)
+# 2. Normalize all features to [0, 1] range
+# 3. Train brain to recognize "normal" as class 0
+# 4. Any deviation from learned patterns → anomaly (class 1)
+# 5. Set confidence threshold (e.g., 0.85) for alerting
+
+# Usage Example:
+# --------------
+# 1. Create brain:
+#    brain = nimcp_brain_create_from_config("anomaly_detection_iot.yaml")
+#
+# 2. Train on normal data ONLY:
+#    for each normal_sample in training_data:
+#        nimcp_brain_learn_example(brain, sensor_readings, 20, "normal", 1.0)
+#
+# 3. Deploy and monitor:
+#    while (running) {
+#        read_sensors(current_readings);
+#        nimcp_brain_predict(brain, current_readings, 20, &label, &confidence);
+#
+#        if (strcmp(label, "anomaly") == 0 || confidence < 0.85) {
+#            trigger_alert("Anomaly detected!", confidence);
+#            log_data(current_readings);
+#        }
+#    }
+
+# Deployment Considerations:
+# --------------------------
+# - Edge Device: Tiny brain fits on Raspberry Pi, ESP32, Arduino
+# - Power: <1ms inference = battery-friendly
+# - Network: Local processing, no cloud dependency
+# - Latency: Real-time detection (<1ms)
+# - Updates: Retrain periodically with new normal data
+
+# Anomaly Types Detected:
+# ------------------------
+# - Point anomalies: Single unusual reading
+# - Contextual anomalies: Unusual in specific context
+# - Collective anomalies: Sequence of unusual patterns
+# - Drift: Gradual degradation over time
+
+# Alert Thresholds:
+# -----------------
+# confidence > 0.95 → Definitely normal (no alert)
+# 0.85 < confidence < 0.95 → Warning (log, monitor)
+# confidence < 0.85 → Alert (investigate immediately)
+# confidence < 0.70 → Critical (shutdown, safety protocol)
+
+# False Positive Reduction:
+# -------------------------
+# - Use voting: Require N consecutive anomalies before alerting
+# - Temporal smoothing: Moving average of confidence scores
+# - Multi-model: Combine with traditional methods (Isolation Forest, One-Class SVM)
+# - Human-in-loop: Review and label false positives for retraining
+
+# Maintenance:
+# ------------
+# - Retrain weekly/monthly with verified normal data
+# - Monitor BCM adaptation to detect concept drift
+# - Log all anomalies for post-analysis
+# - Update thresholds based on false positive rate

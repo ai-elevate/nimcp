@@ -3,7 +3,7 @@
  * @brief Unit tests for NIMCP Python module implementation
  */
 
-#include "../include/nimcp_module.h"
+#include "common/nimcp_module.h"
 #include "test_helpers.h"
 
 // Ensure we're using C linkage for the Python/NIMCP C headers

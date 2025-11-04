@@ -268,10 +268,10 @@ src/tests/CMakeFiles/utility_tests.dir/test_queue_manager.cpp.o: \
  /usr/include/c++/11/ratio /usr/include/c++/11/thread \
  /usr/include/c++/11/bits/std_thread.h \
  /usr/include/c++/11/bits/this_thread_sleep.h \
- /home/bbrelin/src/repos/nimcp/src/include/utils/nimcp_memory.h \
+ /home/bbrelin/src/repos/nimcp/src/utils/memory/nimcp_memory.h \
  /usr/lib/gcc/x86_64-linux-gnu/11/include/stdbool.h \
- /home/bbrelin/src/repos/nimcp/src/include/utils/nimcp_queue_manager.h \
- /home/bbrelin/src/repos/nimcp/src/include/utils/nimcp_common.h \
+ /home/bbrelin/src/repos/nimcp/src/utils/queue_manager/nimcp_queue_manager.h \
+ /home/bbrelin/src/repos/nimcp/src/utils/validation/nimcp_common.h \
  /usr/include/c++/11/math.h /usr/include/c++/11/cmath /usr/include/math.h \
  /usr/include/x86_64-linux-gnu/bits/math-vector.h \
  /usr/include/x86_64-linux-gnu/bits/libm-simd-decl-stubs.h \
@@ -301,6 +301,6 @@ src/tests/CMakeFiles/utility_tests.dir/test_queue_manager.cpp.o: \
  /usr/include/x86_64-linux-gnu/bits/dirent_ext.h /usr/include/dlfcn.h \
  /usr/include/x86_64-linux-gnu/bits/dlfcn.h \
  /usr/include/x86_64-linux-gnu/bits/dl_find_object.h /usr/include/lz4.h \
- /home/bbrelin/src/repos/nimcp/src/include/utils/nimcp_queue.h \
- /home/bbrelin/src/repos/nimcp/src/include/utils/nimcp_thread_pool.h \
- /home/bbrelin/src/repos/nimcp/src/include/utils/nimcp_thread.h
+ /home/bbrelin/src/repos/nimcp/src/utils/containers/nimcp_queue.h \
+ /home/bbrelin/src/repos/nimcp/src/utils/thread/nimcp_thread_pool.h \
+ /home/bbrelin/src/repos/nimcp/src/utils/thread/nimcp_thread.h

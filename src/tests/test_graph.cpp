@@ -13,8 +13,8 @@
 #include <vector>
 
 extern "C" {
-#include "utils/nimcp_graph.h"
-#include "utils/nimcp_memory.h"
+#include "utils/containers/nimcp_graph.h"
+#include "utils/memory/nimcp_memory.h"
 }
 
 //=============================================================================

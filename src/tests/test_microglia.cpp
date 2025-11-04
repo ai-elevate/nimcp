@@ -25,9 +25,9 @@
 #include <gtest/gtest.h>
 
 extern "C" {
-#include "nimcp_microglia.h"
-#include "utils/nimcp_memory.h"
-#include "utils/nimcp_time.h"
+#include "glial/microglia/nimcp_microglia.h"
+#include "utils/memory/nimcp_memory.h"
+#include "utils/time/nimcp_time.h"
 #include <math.h>
 }
 

@@ -1,0 +1,27 @@
+# NIMCP Brain Configuration
+# Regression brain with medium size preset
+
+brain:
+  name: "price_predictor"
+  size: medium
+  task: regression
+
+  architecture:
+    num_inputs: 50        # Feature dimensions
+    num_outputs: 1        # Single continuous value
+    num_hidden: 512
+    learning_rate: 0.001
+
+  training:
+    max_epochs: 200
+    batch_size: 64
+    validation_split: 0.15
+    early_stopping: true
+    patience: 20
+
+  plasticity:
+    enable_bcm: true
+    bcm_tau: 2000.0
+    enable_stdp: false
+
+  model_path: "/tmp/models/regression_medium.brain"

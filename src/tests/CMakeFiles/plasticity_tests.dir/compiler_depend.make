@@ -3,7 +3,7 @@
 
 src/tests/CMakeFiles/plasticity_tests.dir/__/python/nimcp_module.c.o: src/python/nimcp_module.c \
   /usr/include/stdc-predef.h \
-  src/include/nimcp_module.h \
+  src/common/nimcp_module.h \
   /usr/include/python3.10/Python.h \
   /usr/include/python3.10/patchlevel.h \
   /usr/include/python3.10/pyconfig.h \
@@ -237,11 +237,11 @@ src/tests/CMakeFiles/plasticity_tests.dir/__/python/nimcp_module.c.o: src/python
   /usr/include/python3.10/cpython/fileutils.h \
   /usr/include/python3.10/cpython/pyfpe.h \
   /usr/include/python3.10/tracemalloc.h \
-  src/include/nimcp_neuralnet.h \
-  src/include/nimcp_export.h \
+  src/core/neuralnet/nimcp_neuralnet.h \
+  src/common/nimcp_export.h \
   /usr/lib/gcc/x86_64-linux-gnu/11/include/stdbool.h \
-  src/include/nimcp_p2pnode.h \
-  src/include/nimcp_protocol.h
+  src/networking/p2p/nimcp_p2pnode.h \
+  src/networking/protocol/nimcp_protocol.h
 
 src/tests/CMakeFiles/plasticity_tests.dir/test_attention.cpp.o: src/tests/test_attention.cpp \
   /usr/include/stdc-predef.h \
@@ -602,7 +602,7 @@ src/tests/CMakeFiles/plasticity_tests.dir/test_attention.cpp.o: src/tests/test_a
   /usr/include/c++/11/pstl/glue_numeric_defs.h \
   /usr/include/c++/11/chrono \
   /usr/include/c++/11/ratio \
-  src/include/nimcp_attention.h \
+  src/plasticity/attention/nimcp_attention.h \
   /usr/lib/gcc/x86_64-linux-gnu/11/include/stdbool.h
 
 src/tests/CMakeFiles/plasticity_tests.dir/test_bcm.cpp.o: src/tests/test_bcm.cpp \
@@ -935,9 +935,9 @@ src/tests/CMakeFiles/plasticity_tests.dir/test_bcm.cpp.o: src/tests/test_bcm.cpp
   /usr/include/gtest/gtest_prod.h \
   /usr/include/gtest/gtest-typed-test.h \
   /usr/include/gtest/gtest_pred_impl.h \
-  src/include/nimcp_bcm.h \
+  src/plasticity/bcm/nimcp_bcm.h \
   /usr/lib/gcc/x86_64-linux-gnu/11/include/stdbool.h \
-  src/include/utils/nimcp_thread.h \
+  src/utils/thread/nimcp_thread.h \
   /usr/include/c++/11/cmath \
   /usr/include/math.h \
   /usr/include/x86_64-linux-gnu/bits/math-vector.h \
@@ -1295,10 +1295,10 @@ src/tests/CMakeFiles/plasticity_tests.dir/test_neuromodulators.cpp.o: src/tests/
   /usr/include/gtest/gtest_prod.h \
   /usr/include/gtest/gtest-typed-test.h \
   /usr/include/gtest/gtest_pred_impl.h \
-  src/include/nimcp_neuromodulators.h \
+  src/plasticity/neuromodulators/nimcp_neuromodulators.h \
   /usr/lib/gcc/x86_64-linux-gnu/11/include/stdbool.h \
-  src/include/nimcp_export.h \
-  src/include/nimcp_neuralnet.h \
+  src/common/nimcp_export.h \
+  src/core/neuralnet/nimcp_neuralnet.h \
   /usr/include/python3.10/Python.h \
   /usr/include/python3.10/patchlevel.h \
   /usr/include/python3.10/pyconfig.h \
@@ -1440,8 +1440,6 @@ src/tests/CMakeFiles/plasticity_tests.dir/test_neuromodulators.cpp.o: src/tests/
 
 /usr/include/c++/11/math.h:
 
-src/include/nimcp_bcm.h:
-
 /usr/include/c++/11/ratio:
 
 /usr/include/c++/11/bits/stl_numeric.h:
@@ -1449,8 +1447,6 @@ src/include/nimcp_bcm.h:
 /usr/include/c++/11/numeric:
 
 /usr/include/c++/11/tr1/poly_laguerre.tcc:
-
-src/include/utils/nimcp_thread.h:
 
 /usr/include/c++/11/tr1/poly_hermite.tcc:
 
@@ -1479,6 +1475,8 @@ src/include/utils/nimcp_thread.h:
 /usr/include/c++/11/bits/hashtable.h:
 
 /usr/include/c++/11/unordered_map:
+
+/usr/include/gtest/gtest-printers.h:
 
 /usr/include/c++/11/atomic:
 
@@ -1666,6 +1664,8 @@ src/tests/test_neuromodulators.cpp:
 
 /usr/include/c++/11/array:
 
+src/plasticity/attention/nimcp_attention.h:
+
 /usr/include/c++/11/tuple:
 
 /usr/include/c++/11/iosfwd:
@@ -1784,11 +1784,19 @@ src/tests/test_neuromodulators.cpp:
 
 /usr/include/python3.10/cpython/dictobject.h:
 
+/usr/include/x86_64-linux-gnu/bits/wchar.h:
+
+/usr/include/c++/11/cerrno:
+
+/usr/include/x86_64-linux-gnu/bits/types/cookie_io_functions_t.h:
+
 /usr/include/c++/11/bits/node_handle.h:
 
 /usr/include/c++/11/iostream:
 
 /usr/include/x86_64-linux-gnu/bits/fp-fast.h:
+
+src/utils/thread/nimcp_thread.h:
 
 /usr/include/x86_64-linux-gnu/bits/posix2_lim.h:
 
@@ -1812,8 +1820,6 @@ src/tests/test_neuromodulators.cpp:
 
 /usr/include/x86_64-linux-gnu/bits/unistd_ext.h:
 
-src/include/nimcp_p2pnode.h:
-
 /usr/include/x86_64-linux-gnu/bits/posix_opt.h:
 
 /usr/include/python3.10/pyport.h:
@@ -1825,6 +1831,8 @@ src/include/nimcp_p2pnode.h:
 /usr/include/signal.h:
 
 /usr/include/strings.h:
+
+src/plasticity/bcm/nimcp_bcm.h:
 
 /usr/include/python3.10/cpython/unicodeobject.h:
 
@@ -1845,8 +1853,6 @@ src/include/nimcp_p2pnode.h:
 /usr/include/x86_64-linux-gnu/bits/stdlib-float.h:
 
 /usr/include/x86_64-linux-gnu/bits/endianness.h:
-
-src/include/nimcp_attention.h:
 
 /usr/include/c++/11/optional:
 
@@ -1871,14 +1877,6 @@ src/include/nimcp_attention.h:
 /usr/include/c++/11/bits/stl_relops.h:
 
 /usr/include/limits.h:
-
-/usr/include/x86_64-linux-gnu/bits/wchar.h:
-
-/usr/include/c++/11/cerrno:
-
-/usr/include/x86_64-linux-gnu/bits/types/cookie_io_functions_t.h:
-
-src/include/nimcp_module.h:
 
 /usr/include/x86_64-linux-gnu/bits/types/__sigval_t.h:
 
@@ -1944,6 +1942,8 @@ src/tests/test_attention.cpp:
 
 /usr/include/stdlib.h:
 
+src/networking/p2p/nimcp_p2pnode.h:
+
 /usr/include/x86_64-linux-gnu/bits/types/time_t.h:
 
 /usr/include/x86_64-linux-gnu/bits/struct_rwlock.h:
@@ -1953,6 +1953,8 @@ src/tests/test_attention.cpp:
 src/python/nimcp_module.c:
 
 /usr/include/c++/11/pstl/pstl_config.h:
+
+src/plasticity/neuromodulators/nimcp_neuromodulators.h:
 
 /usr/include/python3.10/pymacconfig.h:
 
@@ -1982,8 +1984,6 @@ src/python/nimcp_module.c:
 
 /usr/include/x86_64-linux-gnu/bits/timesize.h:
 
-src/include/nimcp_export.h:
-
 /usr/include/x86_64-linux-gnu/c++/11/bits/cpu_defines.h:
 
 /usr/include/x86_64-linux-gnu/bits/types/struct_itimerspec.h:
@@ -1993,10 +1993,6 @@ src/include/nimcp_export.h:
 /usr/include/c++/11/bits/range_access.h:
 
 /usr/include/x86_64-linux-gnu/bits/floatn.h:
-
-/usr/include/c++/11/debug/assertions.h:
-
-/usr/lib/gcc/x86_64-linux-gnu/11/include/stdarg.h:
 
 /usr/include/python3.10/tupleobject.h:
 
@@ -2134,10 +2130,6 @@ src/include/nimcp_export.h:
 
 /usr/include/errno.h:
 
-/usr/include/gtest/internal/custom/gtest-printers.h:
-
-/usr/include/python3.10/cpython/fileutils.h:
-
 /usr/include/c++/11/cstdint:
 
 /usr/include/x86_64-linux-gnu/bits/waitstatus.h:
@@ -2238,6 +2230,8 @@ src/include/nimcp_export.h:
 
 /usr/lib/gcc/x86_64-linux-gnu/11/include/stdbool.h:
 
+src/common/nimcp_module.h:
+
 /usr/include/python3.10/cpython/listobject.h:
 
 /usr/include/python3.10/dictobject.h:
@@ -2285,10 +2279,6 @@ src/include/nimcp_export.h:
 /usr/include/python3.10/pythonrun.h:
 
 /usr/include/python3.10/descrobject.h:
-
-/usr/include/gtest/gtest-printers.h:
-
-src/include/nimcp_protocol.h:
 
 /usr/include/c++/11/bits/stl_tree.h:
 
@@ -2356,8 +2346,6 @@ src/include/nimcp_protocol.h:
 
 /usr/include/python3.10/osmodule.h:
 
-src/include/nimcp_neuromodulators.h:
-
 /usr/include/python3.10/intrcheck.h:
 
 /usr/include/c++/11/bits/char_traits.h:
@@ -2382,7 +2370,19 @@ src/include/nimcp_neuromodulators.h:
 
 /usr/include/python3.10/fileutils.h:
 
-src/include/nimcp_neuralnet.h:
+/usr/include/c++/11/debug/assertions.h:
+
+/usr/lib/gcc/x86_64-linux-gnu/11/include/stdarg.h:
+
+src/core/neuralnet/nimcp_neuralnet.h:
+
+src/common/nimcp_export.h:
+
+/usr/include/gtest/internal/custom/gtest-printers.h:
+
+/usr/include/python3.10/cpython/fileutils.h:
+
+src/networking/protocol/nimcp_protocol.h:
 
 /usr/include/c++/11/bits/stl_vector.h:
 

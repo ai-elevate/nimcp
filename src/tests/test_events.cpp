@@ -1,8 +1,8 @@
 #include "test_helpers.h"
 
 extern "C" {
-#include "../include/nimcp_events.h"
-#include "../include/nimcp_protocol.h"
+#include "networking/events/nimcp_events.h"
+#include "networking/protocol/nimcp_protocol.h"
 }
 
 //=============================================================================

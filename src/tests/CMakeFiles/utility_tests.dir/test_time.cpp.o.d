@@ -268,5 +268,5 @@ src/tests/CMakeFiles/utility_tests.dir/test_time.cpp.o: \
  /usr/include/c++/11/ratio /usr/include/c++/11/thread \
  /usr/include/c++/11/bits/std_thread.h \
  /usr/include/c++/11/bits/this_thread_sleep.h \
- /home/bbrelin/src/repos/nimcp/src/include/utils/nimcp_time.h \
+ /home/bbrelin/src/repos/nimcp/src/utils/time/nimcp_time.h \
  /usr/lib/gcc/x86_64-linux-gnu/11/include/stdbool.h

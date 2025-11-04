@@ -286,7 +286,7 @@ src/tests/CMakeFiles/utility_tests.dir/test_validate.cpp.o: \
  /usr/include/c++/11/tr1/poly_hermite.tcc \
  /usr/include/c++/11/tr1/poly_laguerre.tcc \
  /usr/include/c++/11/tr1/riemann_zeta.tcc /usr/include/c++/11/cstring \
- /home/bbrelin/src/repos/nimcp/src/include/utils/nimcp_common.h \
+ /home/bbrelin/src/repos/nimcp/src/utils/validation/nimcp_common.h \
  /usr/lib/gcc/x86_64-linux-gnu/11/include/stdbool.h \
  /usr/include/c++/11/math.h /usr/include/dirent.h \
  /usr/include/x86_64-linux-gnu/bits/dirent.h \
@@ -296,5 +296,4 @@ src/tests/CMakeFiles/utility_tests.dir/test_validate.cpp.o: \
  /usr/include/x86_64-linux-gnu/bits/dirent_ext.h /usr/include/dlfcn.h \
  /usr/include/x86_64-linux-gnu/bits/dlfcn.h \
  /usr/include/x86_64-linux-gnu/bits/dl_find_object.h /usr/include/lz4.h \
- /home/bbrelin/src/repos/nimcp/src/include/utils/nimcp_validate.h \
- /home/bbrelin/src/repos/nimcp/src/include/utils/nimcp_common.h
+ /home/bbrelin/src/repos/nimcp/src/utils/validation/nimcp_validate.h

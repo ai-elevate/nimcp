@@ -286,5 +286,5 @@ src/tests/CMakeFiles/utility_tests.dir/test_vector.cpp.o: \
  /usr/include/c++/11/tr1/poly_hermite.tcc \
  /usr/include/c++/11/tr1/poly_laguerre.tcc \
  /usr/include/c++/11/tr1/riemann_zeta.tcc \
- /home/bbrelin/src/repos/nimcp/src/include/utils/nimcp_vector.h \
+ /home/bbrelin/src/repos/nimcp/src/utils/containers/nimcp_vector.h \
  /usr/lib/gcc/x86_64-linux-gnu/11/include/stdbool.h

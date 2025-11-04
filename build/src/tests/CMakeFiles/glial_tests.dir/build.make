@@ -156,7 +156,7 @@ src/tests/glial_tests: src/tests/CMakeFiles/glial_tests.dir/test_microglia.cpp.o
 src/tests/glial_tests: src/tests/CMakeFiles/glial_tests.dir/test_glial_integration.cpp.o
 src/tests/glial_tests: src/tests/CMakeFiles/glial_tests.dir/__/python/nimcp_module.c.o
 src/tests/glial_tests: src/tests/CMakeFiles/glial_tests.dir/build.make
-src/tests/glial_tests: src/lib/libnimcp_core.so.2.5.0
+src/tests/glial_tests: ../bin/libnimcp.so.2.5.0
 src/tests/glial_tests: /usr/lib/x86_64-linux-gnu/libpython3.10.so
 src/tests/glial_tests: /usr/lib/x86_64-linux-gnu/libgtest_main.a
 src/tests/glial_tests: /usr/lib/x86_64-linux-gnu/libgtest.a

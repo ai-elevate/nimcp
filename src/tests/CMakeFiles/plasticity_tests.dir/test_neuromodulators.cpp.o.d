@@ -265,10 +265,10 @@ src/tests/CMakeFiles/plasticity_tests.dir/test_neuromodulators.cpp.o: \
  /usr/include/gtest/gtest-test-part.h /usr/include/gtest/gtest_prod.h \
  /usr/include/gtest/gtest-typed-test.h \
  /usr/include/gtest/gtest_pred_impl.h \
- /home/bbrelin/src/repos/nimcp/src/tests/../include/nimcp_neuromodulators.h \
+ /home/bbrelin/src/repos/nimcp/src/plasticity/neuromodulators/nimcp_neuromodulators.h \
  /usr/lib/gcc/x86_64-linux-gnu/11/include/stdbool.h \
- /home/bbrelin/src/repos/nimcp/src/tests/../include/nimcp_export.h \
- /home/bbrelin/src/repos/nimcp/src/tests/../include/nimcp_neuralnet.h \
+ /home/bbrelin/src/repos/nimcp/src/common/nimcp_export.h \
+ /home/bbrelin/src/repos/nimcp/src/core/neuralnet/nimcp_neuralnet.h \
  /usr/include/python3.10/Python.h /usr/include/python3.10/patchlevel.h \
  /usr/include/python3.10/pyconfig.h \
  /usr/include/x86_64-linux-gnu/python3.10/pyconfig.h \

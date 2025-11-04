@@ -15,9 +15,9 @@
  */
 
 #include <gtest/gtest.h>
-#include "nimcp_brain_regions.h"
-#include "nimcp_neuron_types.h"
-#include "utils/nimcp_time.h"
+#include "core/brain_regions/nimcp_brain_regions.h"
+#include "core/neuron_types/nimcp_neuron_types.h"
+#include "utils/time/nimcp_time.h"
 
 class BrainRegionsTest : public ::testing::Test {
 protected:

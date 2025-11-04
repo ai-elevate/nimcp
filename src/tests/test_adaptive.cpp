@@ -1,8 +1,8 @@
 #include "test_helpers.h"
 
 extern "C" {
-#include "../include/nimcp_adaptive.h"
-#include "utils/nimcp_memory.h"
+#include "plasticity/adaptive/nimcp_adaptive.h"
+#include "utils/memory/nimcp_memory.h"
 }
 
 //=============================================================================

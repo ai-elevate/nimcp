@@ -16,13 +16,13 @@
 #include <chrono>
 #include <thread>
 #include <vector>
-#include "../include/nimcp_brain.h"
-#include "../include/nimcp_distributed_cognition.h"
-#include "../include/nimcp_glial_integration.h"
-#include "../include/nimcp_neuralnet.h"
-#include "../include/nimcp_neuromodulators.h"
-#include "utils/nimcp_memory.h"
-#include "utils/nimcp_queue_manager.h"
+#include "core/brain/nimcp_brain.h"
+#include "networking/distributed/nimcp_distributed_cognition.h"
+#include "glial/integration/nimcp_glial_integration.h"
+#include "core/neuralnet/nimcp_neuralnet.h"
+#include "plasticity/neuromodulators/nimcp_neuromodulators.h"
+#include "utils/memory/nimcp_memory.h"
+#include "utils/queue_manager/nimcp_queue_manager.h"
 
 //==============================================================================
 // Test Configuration

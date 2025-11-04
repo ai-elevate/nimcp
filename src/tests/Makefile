@@ -65,6 +65,16 @@ CMAKE_BINARY_DIR = /home/bbrelin/src/repos/nimcp
 #=============================================================================
 # Targets provided globally by CMake.
 
+# Special rule for the target test
+test:
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --cyan "Running tests..."
+	/usr/bin/ctest --force-new-ctest-process $(ARGS)
+.PHONY : test
+
+# Special rule for the target test
+test/fast: test
+.PHONY : test/fast
+
 # Special rule for the target edit_cache
 edit_cache:
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --cyan "No interactive CMake dialog available..."
@@ -260,20 +270,6 @@ utility_tests/fast:
 .PHONY : utility_tests/fast
 
 # Convenience name for target.
-src/tests/CMakeFiles/security_tests.dir/rule:
-	cd /home/bbrelin/src/repos/nimcp && $(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 src/tests/CMakeFiles/security_tests.dir/rule
-.PHONY : src/tests/CMakeFiles/security_tests.dir/rule
-
-# Convenience name for target.
-security_tests: src/tests/CMakeFiles/security_tests.dir/rule
-.PHONY : security_tests
-
-# fast build rule for target.
-security_tests/fast:
-	cd /home/bbrelin/src/repos/nimcp && $(MAKE) $(MAKESILENT) -f src/tests/CMakeFiles/security_tests.dir/build.make src/tests/CMakeFiles/security_tests.dir/build
-.PHONY : security_tests/fast
-
-# Convenience name for target.
 src/tests/CMakeFiles/integration_tests.dir/rule:
 	cd /home/bbrelin/src/repos/nimcp && $(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 src/tests/CMakeFiles/integration_tests.dir/rule
 .PHONY : src/tests/CMakeFiles/integration_tests.dir/rule
@@ -287,20 +283,6 @@ integration_tests/fast:
 	cd /home/bbrelin/src/repos/nimcp && $(MAKE) $(MAKESILENT) -f src/tests/CMakeFiles/integration_tests.dir/build.make src/tests/CMakeFiles/integration_tests.dir/build
 .PHONY : integration_tests/fast
 
-# Convenience name for target.
-src/tests/CMakeFiles/quality_tests.dir/rule:
-	cd /home/bbrelin/src/repos/nimcp && $(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 src/tests/CMakeFiles/quality_tests.dir/rule
-.PHONY : src/tests/CMakeFiles/quality_tests.dir/rule
-
-# Convenience name for target.
-quality_tests: src/tests/CMakeFiles/quality_tests.dir/rule
-.PHONY : quality_tests
-
-# fast build rule for target.
-quality_tests/fast:
-	cd /home/bbrelin/src/repos/nimcp && $(MAKE) $(MAKESILENT) -f src/tests/CMakeFiles/quality_tests.dir/build.make src/tests/CMakeFiles/quality_tests.dir/build
-.PHONY : quality_tests/fast
-
 __/python/nimcp_module.o: __/python/nimcp_module.c.o
 .PHONY : __/python/nimcp_module.o
 
@@ -313,9 +295,7 @@ __/python/nimcp_module.c.o:
 	cd /home/bbrelin/src/repos/nimcp && $(MAKE) $(MAKESILENT) -f src/tests/CMakeFiles/networking_tests.dir/build.make src/tests/CMakeFiles/networking_tests.dir/__/python/nimcp_module.c.o
 	cd /home/bbrelin/src/repos/nimcp && $(MAKE) $(MAKESILENT) -f src/tests/CMakeFiles/io_tests.dir/build.make src/tests/CMakeFiles/io_tests.dir/__/python/nimcp_module.c.o
 	cd /home/bbrelin/src/repos/nimcp && $(MAKE) $(MAKESILENT) -f src/tests/CMakeFiles/utility_tests.dir/build.make src/tests/CMakeFiles/utility_tests.dir/__/python/nimcp_module.c.o
-	cd /home/bbrelin/src/repos/nimcp && $(MAKE) $(MAKESILENT) -f src/tests/CMakeFiles/security_tests.dir/build.make src/tests/CMakeFiles/security_tests.dir/__/python/nimcp_module.c.o
 	cd /home/bbrelin/src/repos/nimcp && $(MAKE) $(MAKESILENT) -f src/tests/CMakeFiles/integration_tests.dir/build.make src/tests/CMakeFiles/integration_tests.dir/__/python/nimcp_module.c.o
-	cd /home/bbrelin/src/repos/nimcp && $(MAKE) $(MAKESILENT) -f src/tests/CMakeFiles/quality_tests.dir/build.make src/tests/CMakeFiles/quality_tests.dir/__/python/nimcp_module.c.o
 .PHONY : __/python/nimcp_module.c.o
 
 __/python/nimcp_module.i: __/python/nimcp_module.c.i
@@ -330,9 +310,7 @@ __/python/nimcp_module.c.i:
 	cd /home/bbrelin/src/repos/nimcp && $(MAKE) $(MAKESILENT) -f src/tests/CMakeFiles/networking_tests.dir/build.make src/tests/CMakeFiles/networking_tests.dir/__/python/nimcp_module.c.i
 	cd /home/bbrelin/src/repos/nimcp && $(MAKE) $(MAKESILENT) -f src/tests/CMakeFiles/io_tests.dir/build.make src/tests/CMakeFiles/io_tests.dir/__/python/nimcp_module.c.i
 	cd /home/bbrelin/src/repos/nimcp && $(MAKE) $(MAKESILENT) -f src/tests/CMakeFiles/utility_tests.dir/build.make src/tests/CMakeFiles/utility_tests.dir/__/python/nimcp_module.c.i
-	cd /home/bbrelin/src/repos/nimcp && $(MAKE) $(MAKESILENT) -f src/tests/CMakeFiles/security_tests.dir/build.make src/tests/CMakeFiles/security_tests.dir/__/python/nimcp_module.c.i
 	cd /home/bbrelin/src/repos/nimcp && $(MAKE) $(MAKESILENT) -f src/tests/CMakeFiles/integration_tests.dir/build.make src/tests/CMakeFiles/integration_tests.dir/__/python/nimcp_module.c.i
-	cd /home/bbrelin/src/repos/nimcp && $(MAKE) $(MAKESILENT) -f src/tests/CMakeFiles/quality_tests.dir/build.make src/tests/CMakeFiles/quality_tests.dir/__/python/nimcp_module.c.i
 .PHONY : __/python/nimcp_module.c.i
 
 __/python/nimcp_module.s: __/python/nimcp_module.c.s
@@ -347,9 +325,7 @@ __/python/nimcp_module.c.s:
 	cd /home/bbrelin/src/repos/nimcp && $(MAKE) $(MAKESILENT) -f src/tests/CMakeFiles/networking_tests.dir/build.make src/tests/CMakeFiles/networking_tests.dir/__/python/nimcp_module.c.s
 	cd /home/bbrelin/src/repos/nimcp && $(MAKE) $(MAKESILENT) -f src/tests/CMakeFiles/io_tests.dir/build.make src/tests/CMakeFiles/io_tests.dir/__/python/nimcp_module.c.s
 	cd /home/bbrelin/src/repos/nimcp && $(MAKE) $(MAKESILENT) -f src/tests/CMakeFiles/utility_tests.dir/build.make src/tests/CMakeFiles/utility_tests.dir/__/python/nimcp_module.c.s
-	cd /home/bbrelin/src/repos/nimcp && $(MAKE) $(MAKESILENT) -f src/tests/CMakeFiles/security_tests.dir/build.make src/tests/CMakeFiles/security_tests.dir/__/python/nimcp_module.c.s
 	cd /home/bbrelin/src/repos/nimcp && $(MAKE) $(MAKESILENT) -f src/tests/CMakeFiles/integration_tests.dir/build.make src/tests/CMakeFiles/integration_tests.dir/__/python/nimcp_module.c.s
-	cd /home/bbrelin/src/repos/nimcp && $(MAKE) $(MAKESILENT) -f src/tests/CMakeFiles/quality_tests.dir/build.make src/tests/CMakeFiles/quality_tests.dir/__/python/nimcp_module.c.s
 .PHONY : __/python/nimcp_module.c.s
 
 test_adaptive.o: test_adaptive.cpp.o
@@ -423,6 +399,30 @@ test_attention.s: test_attention.cpp.s
 test_attention.cpp.s:
 	cd /home/bbrelin/src/repos/nimcp && $(MAKE) $(MAKESILENT) -f src/tests/CMakeFiles/plasticity_tests.dir/build.make src/tests/CMakeFiles/plasticity_tests.dir/test_attention.cpp.s
 .PHONY : test_attention.cpp.s
+
+test_audio_cortex.o: test_audio_cortex.cpp.o
+.PHONY : test_audio_cortex.o
+
+# target to build an object file
+test_audio_cortex.cpp.o:
+	cd /home/bbrelin/src/repos/nimcp && $(MAKE) $(MAKESILENT) -f src/tests/CMakeFiles/utility_tests.dir/build.make src/tests/CMakeFiles/utility_tests.dir/test_audio_cortex.cpp.o
+.PHONY : test_audio_cortex.cpp.o
+
+test_audio_cortex.i: test_audio_cortex.cpp.i
+.PHONY : test_audio_cortex.i
+
+# target to preprocess a source file
+test_audio_cortex.cpp.i:
+	cd /home/bbrelin/src/repos/nimcp && $(MAKE) $(MAKESILENT) -f src/tests/CMakeFiles/utility_tests.dir/build.make src/tests/CMakeFiles/utility_tests.dir/test_audio_cortex.cpp.i
+.PHONY : test_audio_cortex.cpp.i
+
+test_audio_cortex.s: test_audio_cortex.cpp.s
+.PHONY : test_audio_cortex.s
+
+# target to generate assembly for a file
+test_audio_cortex.cpp.s:
+	cd /home/bbrelin/src/repos/nimcp && $(MAKE) $(MAKESILENT) -f src/tests/CMakeFiles/utility_tests.dir/build.make src/tests/CMakeFiles/utility_tests.dir/test_audio_cortex.cpp.s
+.PHONY : test_audio_cortex.cpp.s
 
 test_bcm.o: test_bcm.cpp.o
 .PHONY : test_bcm.o
@@ -519,6 +519,30 @@ test_btree.s: test_btree.cpp.s
 test_btree.cpp.s:
 	cd /home/bbrelin/src/repos/nimcp && $(MAKE) $(MAKESILENT) -f src/tests/CMakeFiles/utility_tests.dir/build.make src/tests/CMakeFiles/utility_tests.dir/test_btree.cpp.s
 .PHONY : test_btree.cpp.s
+
+test_comprehensive_brain_integration.o: test_comprehensive_brain_integration.cpp.o
+.PHONY : test_comprehensive_brain_integration.o
+
+# target to build an object file
+test_comprehensive_brain_integration.cpp.o:
+	cd /home/bbrelin/src/repos/nimcp && $(MAKE) $(MAKESILENT) -f src/tests/CMakeFiles/integration_tests.dir/build.make src/tests/CMakeFiles/integration_tests.dir/test_comprehensive_brain_integration.cpp.o
+.PHONY : test_comprehensive_brain_integration.cpp.o
+
+test_comprehensive_brain_integration.i: test_comprehensive_brain_integration.cpp.i
+.PHONY : test_comprehensive_brain_integration.i
+
+# target to preprocess a source file
+test_comprehensive_brain_integration.cpp.i:
+	cd /home/bbrelin/src/repos/nimcp && $(MAKE) $(MAKESILENT) -f src/tests/CMakeFiles/integration_tests.dir/build.make src/tests/CMakeFiles/integration_tests.dir/test_comprehensive_brain_integration.cpp.i
+.PHONY : test_comprehensive_brain_integration.cpp.i
+
+test_comprehensive_brain_integration.s: test_comprehensive_brain_integration.cpp.s
+.PHONY : test_comprehensive_brain_integration.s
+
+# target to generate assembly for a file
+test_comprehensive_brain_integration.cpp.s:
+	cd /home/bbrelin/src/repos/nimcp && $(MAKE) $(MAKESILENT) -f src/tests/CMakeFiles/integration_tests.dir/build.make src/tests/CMakeFiles/integration_tests.dir/test_comprehensive_brain_integration.cpp.s
+.PHONY : test_comprehensive_brain_integration.cpp.s
 
 test_consolidation.o: test_consolidation.cpp.o
 .PHONY : test_consolidation.o
@@ -640,30 +664,6 @@ test_distributed_cognition.cpp.s:
 	cd /home/bbrelin/src/repos/nimcp && $(MAKE) $(MAKESILENT) -f src/tests/CMakeFiles/integration_tests.dir/build.make src/tests/CMakeFiles/integration_tests.dir/test_distributed_cognition.cpp.s
 .PHONY : test_distributed_cognition.cpp.s
 
-test_error_injection.o: test_error_injection.cpp.o
-.PHONY : test_error_injection.o
-
-# target to build an object file
-test_error_injection.cpp.o:
-	cd /home/bbrelin/src/repos/nimcp && $(MAKE) $(MAKESILENT) -f src/tests/CMakeFiles/security_tests.dir/build.make src/tests/CMakeFiles/security_tests.dir/test_error_injection.cpp.o
-.PHONY : test_error_injection.cpp.o
-
-test_error_injection.i: test_error_injection.cpp.i
-.PHONY : test_error_injection.i
-
-# target to preprocess a source file
-test_error_injection.cpp.i:
-	cd /home/bbrelin/src/repos/nimcp && $(MAKE) $(MAKESILENT) -f src/tests/CMakeFiles/security_tests.dir/build.make src/tests/CMakeFiles/security_tests.dir/test_error_injection.cpp.i
-.PHONY : test_error_injection.cpp.i
-
-test_error_injection.s: test_error_injection.cpp.s
-.PHONY : test_error_injection.s
-
-# target to generate assembly for a file
-test_error_injection.cpp.s:
-	cd /home/bbrelin/src/repos/nimcp && $(MAKE) $(MAKESILENT) -f src/tests/CMakeFiles/security_tests.dir/build.make src/tests/CMakeFiles/security_tests.dir/test_error_injection.cpp.s
-.PHONY : test_error_injection.cpp.s
-
 test_ethics.o: test_ethics.cpp.o
 .PHONY : test_ethics.o
 
@@ -711,6 +711,30 @@ test_events.s: test_events.cpp.s
 test_events.cpp.s:
 	cd /home/bbrelin/src/repos/nimcp && $(MAKE) $(MAKESILENT) -f src/tests/CMakeFiles/networking_tests.dir/build.make src/tests/CMakeFiles/networking_tests.dir/test_events.cpp.s
 .PHONY : test_events.cpp.s
+
+test_fft.o: test_fft.cpp.o
+.PHONY : test_fft.o
+
+# target to build an object file
+test_fft.cpp.o:
+	cd /home/bbrelin/src/repos/nimcp && $(MAKE) $(MAKESILENT) -f src/tests/CMakeFiles/utility_tests.dir/build.make src/tests/CMakeFiles/utility_tests.dir/test_fft.cpp.o
+.PHONY : test_fft.cpp.o
+
+test_fft.i: test_fft.cpp.i
+.PHONY : test_fft.i
+
+# target to preprocess a source file
+test_fft.cpp.i:
+	cd /home/bbrelin/src/repos/nimcp && $(MAKE) $(MAKESILENT) -f src/tests/CMakeFiles/utility_tests.dir/build.make src/tests/CMakeFiles/utility_tests.dir/test_fft.cpp.i
+.PHONY : test_fft.cpp.i
+
+test_fft.s: test_fft.cpp.s
+.PHONY : test_fft.s
+
+# target to generate assembly for a file
+test_fft.cpp.s:
+	cd /home/bbrelin/src/repos/nimcp && $(MAKE) $(MAKESILENT) -f src/tests/CMakeFiles/utility_tests.dir/build.make src/tests/CMakeFiles/utility_tests.dir/test_fft.cpp.s
+.PHONY : test_fft.cpp.s
 
 test_glial_integration.o: test_glial_integration.cpp.o
 .PHONY : test_glial_integration.o
@@ -783,6 +807,30 @@ test_hash_table.s: test_hash_table.cpp.s
 test_hash_table.cpp.s:
 	cd /home/bbrelin/src/repos/nimcp && $(MAKE) $(MAKESILENT) -f src/tests/CMakeFiles/utility_tests.dir/build.make src/tests/CMakeFiles/utility_tests.dir/test_hash_table.cpp.s
 .PHONY : test_hash_table.cpp.s
+
+test_hierarchical.o: test_hierarchical.cpp.o
+.PHONY : test_hierarchical.o
+
+# target to build an object file
+test_hierarchical.cpp.o:
+	cd /home/bbrelin/src/repos/nimcp && $(MAKE) $(MAKESILENT) -f src/tests/CMakeFiles/cognitive_tests.dir/build.make src/tests/CMakeFiles/cognitive_tests.dir/test_hierarchical.cpp.o
+.PHONY : test_hierarchical.cpp.o
+
+test_hierarchical.i: test_hierarchical.cpp.i
+.PHONY : test_hierarchical.i
+
+# target to preprocess a source file
+test_hierarchical.cpp.i:
+	cd /home/bbrelin/src/repos/nimcp && $(MAKE) $(MAKESILENT) -f src/tests/CMakeFiles/cognitive_tests.dir/build.make src/tests/CMakeFiles/cognitive_tests.dir/test_hierarchical.cpp.i
+.PHONY : test_hierarchical.cpp.i
+
+test_hierarchical.s: test_hierarchical.cpp.s
+.PHONY : test_hierarchical.s
+
+# target to generate assembly for a file
+test_hierarchical.cpp.s:
+	cd /home/bbrelin/src/repos/nimcp && $(MAKE) $(MAKESILENT) -f src/tests/CMakeFiles/cognitive_tests.dir/build.make src/tests/CMakeFiles/cognitive_tests.dir/test_hierarchical.cpp.s
+.PHONY : test_hierarchical.cpp.s
 
 test_integration_cognitive.o: test_integration_cognitive.cpp.o
 .PHONY : test_integration_cognitive.o
@@ -928,54 +976,6 @@ test_knowledge.cpp.s:
 	cd /home/bbrelin/src/repos/nimcp && $(MAKE) $(MAKESILENT) -f src/tests/CMakeFiles/cognitive_tests.dir/build.make src/tests/CMakeFiles/cognitive_tests.dir/test_knowledge.cpp.s
 .PHONY : test_knowledge.cpp.s
 
-test_lint.o: test_lint.cpp.o
-.PHONY : test_lint.o
-
-# target to build an object file
-test_lint.cpp.o:
-	cd /home/bbrelin/src/repos/nimcp && $(MAKE) $(MAKESILENT) -f src/tests/CMakeFiles/quality_tests.dir/build.make src/tests/CMakeFiles/quality_tests.dir/test_lint.cpp.o
-.PHONY : test_lint.cpp.o
-
-test_lint.i: test_lint.cpp.i
-.PHONY : test_lint.i
-
-# target to preprocess a source file
-test_lint.cpp.i:
-	cd /home/bbrelin/src/repos/nimcp && $(MAKE) $(MAKESILENT) -f src/tests/CMakeFiles/quality_tests.dir/build.make src/tests/CMakeFiles/quality_tests.dir/test_lint.cpp.i
-.PHONY : test_lint.cpp.i
-
-test_lint.s: test_lint.cpp.s
-.PHONY : test_lint.s
-
-# target to generate assembly for a file
-test_lint.cpp.s:
-	cd /home/bbrelin/src/repos/nimcp && $(MAKE) $(MAKESILENT) -f src/tests/CMakeFiles/quality_tests.dir/build.make src/tests/CMakeFiles/quality_tests.dir/test_lint.cpp.s
-.PHONY : test_lint.cpp.s
-
-test_logging.o: test_logging.cpp.o
-.PHONY : test_logging.o
-
-# target to build an object file
-test_logging.cpp.o:
-	cd /home/bbrelin/src/repos/nimcp && $(MAKE) $(MAKESILENT) -f src/tests/CMakeFiles/quality_tests.dir/build.make src/tests/CMakeFiles/quality_tests.dir/test_logging.cpp.o
-.PHONY : test_logging.cpp.o
-
-test_logging.i: test_logging.cpp.i
-.PHONY : test_logging.i
-
-# target to preprocess a source file
-test_logging.cpp.i:
-	cd /home/bbrelin/src/repos/nimcp && $(MAKE) $(MAKESILENT) -f src/tests/CMakeFiles/quality_tests.dir/build.make src/tests/CMakeFiles/quality_tests.dir/test_logging.cpp.i
-.PHONY : test_logging.cpp.i
-
-test_logging.s: test_logging.cpp.s
-.PHONY : test_logging.s
-
-# target to generate assembly for a file
-test_logging.cpp.s:
-	cd /home/bbrelin/src/repos/nimcp && $(MAKE) $(MAKESILENT) -f src/tests/CMakeFiles/quality_tests.dir/build.make src/tests/CMakeFiles/quality_tests.dir/test_logging.cpp.s
-.PHONY : test_logging.cpp.s
-
 test_memory.o: test_memory.cpp.o
 .PHONY : test_memory.o
 
@@ -999,30 +999,6 @@ test_memory.s: test_memory.cpp.s
 test_memory.cpp.s:
 	cd /home/bbrelin/src/repos/nimcp && $(MAKE) $(MAKESILENT) -f src/tests/CMakeFiles/utility_tests.dir/build.make src/tests/CMakeFiles/utility_tests.dir/test_memory.cpp.s
 .PHONY : test_memory.cpp.s
-
-test_memory_leaks.o: test_memory_leaks.cpp.o
-.PHONY : test_memory_leaks.o
-
-# target to build an object file
-test_memory_leaks.cpp.o:
-	cd /home/bbrelin/src/repos/nimcp && $(MAKE) $(MAKESILENT) -f src/tests/CMakeFiles/quality_tests.dir/build.make src/tests/CMakeFiles/quality_tests.dir/test_memory_leaks.cpp.o
-.PHONY : test_memory_leaks.cpp.o
-
-test_memory_leaks.i: test_memory_leaks.cpp.i
-.PHONY : test_memory_leaks.i
-
-# target to preprocess a source file
-test_memory_leaks.cpp.i:
-	cd /home/bbrelin/src/repos/nimcp && $(MAKE) $(MAKESILENT) -f src/tests/CMakeFiles/quality_tests.dir/build.make src/tests/CMakeFiles/quality_tests.dir/test_memory_leaks.cpp.i
-.PHONY : test_memory_leaks.cpp.i
-
-test_memory_leaks.s: test_memory_leaks.cpp.s
-.PHONY : test_memory_leaks.s
-
-# target to generate assembly for a file
-test_memory_leaks.cpp.s:
-	cd /home/bbrelin/src/repos/nimcp && $(MAKE) $(MAKESILENT) -f src/tests/CMakeFiles/quality_tests.dir/build.make src/tests/CMakeFiles/quality_tests.dir/test_memory_leaks.cpp.s
-.PHONY : test_memory_leaks.cpp.s
 
 test_microglia.o: test_microglia.cpp.o
 .PHONY : test_microglia.o
@@ -1216,30 +1192,6 @@ test_p2pnode.cpp.s:
 	cd /home/bbrelin/src/repos/nimcp && $(MAKE) $(MAKESILENT) -f src/tests/CMakeFiles/networking_tests.dir/build.make src/tests/CMakeFiles/networking_tests.dir/test_p2pnode.cpp.s
 .PHONY : test_p2pnode.cpp.s
 
-test_performance_optimizations.o: test_performance_optimizations.cpp.o
-.PHONY : test_performance_optimizations.o
-
-# target to build an object file
-test_performance_optimizations.cpp.o:
-	cd /home/bbrelin/src/repos/nimcp && $(MAKE) $(MAKESILENT) -f src/tests/CMakeFiles/security_tests.dir/build.make src/tests/CMakeFiles/security_tests.dir/test_performance_optimizations.cpp.o
-.PHONY : test_performance_optimizations.cpp.o
-
-test_performance_optimizations.i: test_performance_optimizations.cpp.i
-.PHONY : test_performance_optimizations.i
-
-# target to preprocess a source file
-test_performance_optimizations.cpp.i:
-	cd /home/bbrelin/src/repos/nimcp && $(MAKE) $(MAKESILENT) -f src/tests/CMakeFiles/security_tests.dir/build.make src/tests/CMakeFiles/security_tests.dir/test_performance_optimizations.cpp.i
-.PHONY : test_performance_optimizations.cpp.i
-
-test_performance_optimizations.s: test_performance_optimizations.cpp.s
-.PHONY : test_performance_optimizations.s
-
-# target to generate assembly for a file
-test_performance_optimizations.cpp.s:
-	cd /home/bbrelin/src/repos/nimcp && $(MAKE) $(MAKESILENT) -f src/tests/CMakeFiles/security_tests.dir/build.make src/tests/CMakeFiles/security_tests.dir/test_performance_optimizations.cpp.s
-.PHONY : test_performance_optimizations.cpp.s
-
 test_protocol.o: test_protocol.cpp.o
 .PHONY : test_protocol.o
 
@@ -1312,30 +1264,6 @@ test_queue_utils.cpp.s:
 	cd /home/bbrelin/src/repos/nimcp && $(MAKE) $(MAKESILENT) -f src/tests/CMakeFiles/utility_tests.dir/build.make src/tests/CMakeFiles/utility_tests.dir/test_queue_utils.cpp.s
 .PHONY : test_queue_utils.cpp.s
 
-test_regression.o: test_regression.cpp.o
-.PHONY : test_regression.o
-
-# target to build an object file
-test_regression.cpp.o:
-	cd /home/bbrelin/src/repos/nimcp && $(MAKE) $(MAKESILENT) -f src/tests/CMakeFiles/quality_tests.dir/build.make src/tests/CMakeFiles/quality_tests.dir/test_regression.cpp.o
-.PHONY : test_regression.cpp.o
-
-test_regression.i: test_regression.cpp.i
-.PHONY : test_regression.i
-
-# target to preprocess a source file
-test_regression.cpp.i:
-	cd /home/bbrelin/src/repos/nimcp && $(MAKE) $(MAKESILENT) -f src/tests/CMakeFiles/quality_tests.dir/build.make src/tests/CMakeFiles/quality_tests.dir/test_regression.cpp.i
-.PHONY : test_regression.cpp.i
-
-test_regression.s: test_regression.cpp.s
-.PHONY : test_regression.s
-
-# target to generate assembly for a file
-test_regression.cpp.s:
-	cd /home/bbrelin/src/repos/nimcp && $(MAKE) $(MAKESILENT) -f src/tests/CMakeFiles/quality_tests.dir/build.make src/tests/CMakeFiles/quality_tests.dir/test_regression.cpp.s
-.PHONY : test_regression.cpp.s
-
 test_replication.o: test_replication.cpp.o
 .PHONY : test_replication.o
 
@@ -1383,30 +1311,6 @@ test_salience.s: test_salience.cpp.s
 test_salience.cpp.s:
 	cd /home/bbrelin/src/repos/nimcp && $(MAKE) $(MAKESILENT) -f src/tests/CMakeFiles/cognitive_tests.dir/build.make src/tests/CMakeFiles/cognitive_tests.dir/test_salience.cpp.s
 .PHONY : test_salience.cpp.s
-
-test_security.o: test_security.cpp.o
-.PHONY : test_security.o
-
-# target to build an object file
-test_security.cpp.o:
-	cd /home/bbrelin/src/repos/nimcp && $(MAKE) $(MAKESILENT) -f src/tests/CMakeFiles/security_tests.dir/build.make src/tests/CMakeFiles/security_tests.dir/test_security.cpp.o
-.PHONY : test_security.cpp.o
-
-test_security.i: test_security.cpp.i
-.PHONY : test_security.i
-
-# target to preprocess a source file
-test_security.cpp.i:
-	cd /home/bbrelin/src/repos/nimcp && $(MAKE) $(MAKESILENT) -f src/tests/CMakeFiles/security_tests.dir/build.make src/tests/CMakeFiles/security_tests.dir/test_security.cpp.i
-.PHONY : test_security.cpp.i
-
-test_security.s: test_security.cpp.s
-.PHONY : test_security.s
-
-# target to generate assembly for a file
-test_security.cpp.s:
-	cd /home/bbrelin/src/repos/nimcp && $(MAKE) $(MAKESILENT) -f src/tests/CMakeFiles/security_tests.dir/build.make src/tests/CMakeFiles/security_tests.dir/test_security.cpp.s
-.PHONY : test_security.cpp.s
 
 test_serialization.o: test_serialization.cpp.o
 .PHONY : test_serialization.o
@@ -1456,29 +1360,29 @@ test_stream.cpp.s:
 	cd /home/bbrelin/src/repos/nimcp && $(MAKE) $(MAKESILENT) -f src/tests/CMakeFiles/io_tests.dir/build.make src/tests/CMakeFiles/io_tests.dir/test_stream.cpp.s
 .PHONY : test_stream.cpp.s
 
-test_stress.o: test_stress.cpp.o
-.PHONY : test_stress.o
+test_symbolic_logic.o: test_symbolic_logic.cpp.o
+.PHONY : test_symbolic_logic.o
 
 # target to build an object file
-test_stress.cpp.o:
-	cd /home/bbrelin/src/repos/nimcp && $(MAKE) $(MAKESILENT) -f src/tests/CMakeFiles/quality_tests.dir/build.make src/tests/CMakeFiles/quality_tests.dir/test_stress.cpp.o
-.PHONY : test_stress.cpp.o
+test_symbolic_logic.cpp.o:
+	cd /home/bbrelin/src/repos/nimcp && $(MAKE) $(MAKESILENT) -f src/tests/CMakeFiles/cognitive_tests.dir/build.make src/tests/CMakeFiles/cognitive_tests.dir/test_symbolic_logic.cpp.o
+.PHONY : test_symbolic_logic.cpp.o
 
-test_stress.i: test_stress.cpp.i
-.PHONY : test_stress.i
+test_symbolic_logic.i: test_symbolic_logic.cpp.i
+.PHONY : test_symbolic_logic.i
 
 # target to preprocess a source file
-test_stress.cpp.i:
-	cd /home/bbrelin/src/repos/nimcp && $(MAKE) $(MAKESILENT) -f src/tests/CMakeFiles/quality_tests.dir/build.make src/tests/CMakeFiles/quality_tests.dir/test_stress.cpp.i
-.PHONY : test_stress.cpp.i
+test_symbolic_logic.cpp.i:
+	cd /home/bbrelin/src/repos/nimcp && $(MAKE) $(MAKESILENT) -f src/tests/CMakeFiles/cognitive_tests.dir/build.make src/tests/CMakeFiles/cognitive_tests.dir/test_symbolic_logic.cpp.i
+.PHONY : test_symbolic_logic.cpp.i
 
-test_stress.s: test_stress.cpp.s
-.PHONY : test_stress.s
+test_symbolic_logic.s: test_symbolic_logic.cpp.s
+.PHONY : test_symbolic_logic.s
 
 # target to generate assembly for a file
-test_stress.cpp.s:
-	cd /home/bbrelin/src/repos/nimcp && $(MAKE) $(MAKESILENT) -f src/tests/CMakeFiles/quality_tests.dir/build.make src/tests/CMakeFiles/quality_tests.dir/test_stress.cpp.s
-.PHONY : test_stress.cpp.s
+test_symbolic_logic.cpp.s:
+	cd /home/bbrelin/src/repos/nimcp && $(MAKE) $(MAKESILENT) -f src/tests/CMakeFiles/cognitive_tests.dir/build.make src/tests/CMakeFiles/cognitive_tests.dir/test_symbolic_logic.cpp.s
+.PHONY : test_symbolic_logic.cpp.s
 
 test_thread_utils.o: test_thread_utils.cpp.o
 .PHONY : test_thread_utils.o
@@ -1576,6 +1480,126 @@ test_vector.cpp.s:
 	cd /home/bbrelin/src/repos/nimcp && $(MAKE) $(MAKESILENT) -f src/tests/CMakeFiles/utility_tests.dir/build.make src/tests/CMakeFiles/utility_tests.dir/test_vector.cpp.s
 .PHONY : test_vector.cpp.s
 
+test_visual_cortex.o: test_visual_cortex.cpp.o
+.PHONY : test_visual_cortex.o
+
+# target to build an object file
+test_visual_cortex.cpp.o:
+	cd /home/bbrelin/src/repos/nimcp && $(MAKE) $(MAKESILENT) -f src/tests/CMakeFiles/utility_tests.dir/build.make src/tests/CMakeFiles/utility_tests.dir/test_visual_cortex.cpp.o
+.PHONY : test_visual_cortex.cpp.o
+
+test_visual_cortex.i: test_visual_cortex.cpp.i
+.PHONY : test_visual_cortex.i
+
+# target to preprocess a source file
+test_visual_cortex.cpp.i:
+	cd /home/bbrelin/src/repos/nimcp && $(MAKE) $(MAKESILENT) -f src/tests/CMakeFiles/utility_tests.dir/build.make src/tests/CMakeFiles/utility_tests.dir/test_visual_cortex.cpp.i
+.PHONY : test_visual_cortex.cpp.i
+
+test_visual_cortex.s: test_visual_cortex.cpp.s
+.PHONY : test_visual_cortex.s
+
+# target to generate assembly for a file
+test_visual_cortex.cpp.s:
+	cd /home/bbrelin/src/repos/nimcp && $(MAKE) $(MAKESILENT) -f src/tests/CMakeFiles/utility_tests.dir/build.make src/tests/CMakeFiles/utility_tests.dir/test_visual_cortex.cpp.s
+.PHONY : test_visual_cortex.cpp.s
+
+test_visual_cortex_e2e.o: test_visual_cortex_e2e.cpp.o
+.PHONY : test_visual_cortex_e2e.o
+
+# target to build an object file
+test_visual_cortex_e2e.cpp.o:
+	cd /home/bbrelin/src/repos/nimcp && $(MAKE) $(MAKESILENT) -f src/tests/CMakeFiles/integration_tests.dir/build.make src/tests/CMakeFiles/integration_tests.dir/test_visual_cortex_e2e.cpp.o
+.PHONY : test_visual_cortex_e2e.cpp.o
+
+test_visual_cortex_e2e.i: test_visual_cortex_e2e.cpp.i
+.PHONY : test_visual_cortex_e2e.i
+
+# target to preprocess a source file
+test_visual_cortex_e2e.cpp.i:
+	cd /home/bbrelin/src/repos/nimcp && $(MAKE) $(MAKESILENT) -f src/tests/CMakeFiles/integration_tests.dir/build.make src/tests/CMakeFiles/integration_tests.dir/test_visual_cortex_e2e.cpp.i
+.PHONY : test_visual_cortex_e2e.cpp.i
+
+test_visual_cortex_e2e.s: test_visual_cortex_e2e.cpp.s
+.PHONY : test_visual_cortex_e2e.s
+
+# target to generate assembly for a file
+test_visual_cortex_e2e.cpp.s:
+	cd /home/bbrelin/src/repos/nimcp && $(MAKE) $(MAKESILENT) -f src/tests/CMakeFiles/integration_tests.dir/build.make src/tests/CMakeFiles/integration_tests.dir/test_visual_cortex_e2e.cpp.s
+.PHONY : test_visual_cortex_e2e.cpp.s
+
+test_visual_cortex_integration.o: test_visual_cortex_integration.cpp.o
+.PHONY : test_visual_cortex_integration.o
+
+# target to build an object file
+test_visual_cortex_integration.cpp.o:
+	cd /home/bbrelin/src/repos/nimcp && $(MAKE) $(MAKESILENT) -f src/tests/CMakeFiles/integration_tests.dir/build.make src/tests/CMakeFiles/integration_tests.dir/test_visual_cortex_integration.cpp.o
+.PHONY : test_visual_cortex_integration.cpp.o
+
+test_visual_cortex_integration.i: test_visual_cortex_integration.cpp.i
+.PHONY : test_visual_cortex_integration.i
+
+# target to preprocess a source file
+test_visual_cortex_integration.cpp.i:
+	cd /home/bbrelin/src/repos/nimcp && $(MAKE) $(MAKESILENT) -f src/tests/CMakeFiles/integration_tests.dir/build.make src/tests/CMakeFiles/integration_tests.dir/test_visual_cortex_integration.cpp.i
+.PHONY : test_visual_cortex_integration.cpp.i
+
+test_visual_cortex_integration.s: test_visual_cortex_integration.cpp.s
+.PHONY : test_visual_cortex_integration.s
+
+# target to generate assembly for a file
+test_visual_cortex_integration.cpp.s:
+	cd /home/bbrelin/src/repos/nimcp && $(MAKE) $(MAKESILENT) -f src/tests/CMakeFiles/integration_tests.dir/build.make src/tests/CMakeFiles/integration_tests.dir/test_visual_cortex_integration.cpp.s
+.PHONY : test_visual_cortex_integration.cpp.s
+
+test_visual_cortex_regression.o: test_visual_cortex_regression.cpp.o
+.PHONY : test_visual_cortex_regression.o
+
+# target to build an object file
+test_visual_cortex_regression.cpp.o:
+	cd /home/bbrelin/src/repos/nimcp && $(MAKE) $(MAKESILENT) -f src/tests/CMakeFiles/integration_tests.dir/build.make src/tests/CMakeFiles/integration_tests.dir/test_visual_cortex_regression.cpp.o
+.PHONY : test_visual_cortex_regression.cpp.o
+
+test_visual_cortex_regression.i: test_visual_cortex_regression.cpp.i
+.PHONY : test_visual_cortex_regression.i
+
+# target to preprocess a source file
+test_visual_cortex_regression.cpp.i:
+	cd /home/bbrelin/src/repos/nimcp && $(MAKE) $(MAKESILENT) -f src/tests/CMakeFiles/integration_tests.dir/build.make src/tests/CMakeFiles/integration_tests.dir/test_visual_cortex_regression.cpp.i
+.PHONY : test_visual_cortex_regression.cpp.i
+
+test_visual_cortex_regression.s: test_visual_cortex_regression.cpp.s
+.PHONY : test_visual_cortex_regression.s
+
+# target to generate assembly for a file
+test_visual_cortex_regression.cpp.s:
+	cd /home/bbrelin/src/repos/nimcp && $(MAKE) $(MAKESILENT) -f src/tests/CMakeFiles/integration_tests.dir/build.make src/tests/CMakeFiles/integration_tests.dir/test_visual_cortex_regression.cpp.s
+.PHONY : test_visual_cortex_regression.cpp.s
+
+test_wellbeing.o: test_wellbeing.cpp.o
+.PHONY : test_wellbeing.o
+
+# target to build an object file
+test_wellbeing.cpp.o:
+	cd /home/bbrelin/src/repos/nimcp && $(MAKE) $(MAKESILENT) -f src/tests/CMakeFiles/cognitive_tests.dir/build.make src/tests/CMakeFiles/cognitive_tests.dir/test_wellbeing.cpp.o
+.PHONY : test_wellbeing.cpp.o
+
+test_wellbeing.i: test_wellbeing.cpp.i
+.PHONY : test_wellbeing.i
+
+# target to preprocess a source file
+test_wellbeing.cpp.i:
+	cd /home/bbrelin/src/repos/nimcp && $(MAKE) $(MAKESILENT) -f src/tests/CMakeFiles/cognitive_tests.dir/build.make src/tests/CMakeFiles/cognitive_tests.dir/test_wellbeing.cpp.i
+.PHONY : test_wellbeing.cpp.i
+
+test_wellbeing.s: test_wellbeing.cpp.s
+.PHONY : test_wellbeing.s
+
+# target to generate assembly for a file
+test_wellbeing.cpp.s:
+	cd /home/bbrelin/src/repos/nimcp && $(MAKE) $(MAKESILENT) -f src/tests/CMakeFiles/cognitive_tests.dir/build.make src/tests/CMakeFiles/cognitive_tests.dir/test_wellbeing.cpp.s
+.PHONY : test_wellbeing.cpp.s
+
 # Help Target
 help:
 	@echo "The following are some of the valid targets for this Makefile:"
@@ -1588,6 +1612,7 @@ help:
 	@echo "... install/strip"
 	@echo "... list_install_components"
 	@echo "... rebuild_cache"
+	@echo "... test"
 	@echo "... cognitive_tests"
 	@echo "... core_tests"
 	@echo "... glial_tests"
@@ -1595,8 +1620,6 @@ help:
 	@echo "... io_tests"
 	@echo "... networking_tests"
 	@echo "... plasticity_tests"
-	@echo "... quality_tests"
-	@echo "... security_tests"
 	@echo "... utility_tests"
 	@echo "... __/python/nimcp_module.o"
 	@echo "... __/python/nimcp_module.i"
@@ -1610,6 +1633,9 @@ help:
 	@echo "... test_attention.o"
 	@echo "... test_attention.i"
 	@echo "... test_attention.s"
+	@echo "... test_audio_cortex.o"
+	@echo "... test_audio_cortex.i"
+	@echo "... test_audio_cortex.s"
 	@echo "... test_bcm.o"
 	@echo "... test_bcm.i"
 	@echo "... test_bcm.s"
@@ -1622,6 +1648,9 @@ help:
 	@echo "... test_btree.o"
 	@echo "... test_btree.i"
 	@echo "... test_btree.s"
+	@echo "... test_comprehensive_brain_integration.o"
+	@echo "... test_comprehensive_brain_integration.i"
+	@echo "... test_comprehensive_brain_integration.s"
 	@echo "... test_consolidation.o"
 	@echo "... test_consolidation.i"
 	@echo "... test_consolidation.s"
@@ -1637,15 +1666,15 @@ help:
 	@echo "... test_distributed_cognition.o"
 	@echo "... test_distributed_cognition.i"
 	@echo "... test_distributed_cognition.s"
-	@echo "... test_error_injection.o"
-	@echo "... test_error_injection.i"
-	@echo "... test_error_injection.s"
 	@echo "... test_ethics.o"
 	@echo "... test_ethics.i"
 	@echo "... test_ethics.s"
 	@echo "... test_events.o"
 	@echo "... test_events.i"
 	@echo "... test_events.s"
+	@echo "... test_fft.o"
+	@echo "... test_fft.i"
+	@echo "... test_fft.s"
 	@echo "... test_glial_integration.o"
 	@echo "... test_glial_integration.i"
 	@echo "... test_glial_integration.s"
@@ -1655,6 +1684,9 @@ help:
 	@echo "... test_hash_table.o"
 	@echo "... test_hash_table.i"
 	@echo "... test_hash_table.s"
+	@echo "... test_hierarchical.o"
+	@echo "... test_hierarchical.i"
+	@echo "... test_hierarchical.s"
 	@echo "... test_integration_cognitive.o"
 	@echo "... test_integration_cognitive.i"
 	@echo "... test_integration_cognitive.s"
@@ -1673,18 +1705,9 @@ help:
 	@echo "... test_knowledge.o"
 	@echo "... test_knowledge.i"
 	@echo "... test_knowledge.s"
-	@echo "... test_lint.o"
-	@echo "... test_lint.i"
-	@echo "... test_lint.s"
-	@echo "... test_logging.o"
-	@echo "... test_logging.i"
-	@echo "... test_logging.s"
 	@echo "... test_memory.o"
 	@echo "... test_memory.i"
 	@echo "... test_memory.s"
-	@echo "... test_memory_leaks.o"
-	@echo "... test_memory_leaks.i"
-	@echo "... test_memory_leaks.s"
 	@echo "... test_microglia.o"
 	@echo "... test_microglia.i"
 	@echo "... test_microglia.s"
@@ -1709,9 +1732,6 @@ help:
 	@echo "... test_p2pnode.o"
 	@echo "... test_p2pnode.i"
 	@echo "... test_p2pnode.s"
-	@echo "... test_performance_optimizations.o"
-	@echo "... test_performance_optimizations.i"
-	@echo "... test_performance_optimizations.s"
 	@echo "... test_protocol.o"
 	@echo "... test_protocol.i"
 	@echo "... test_protocol.s"
@@ -1721,27 +1741,21 @@ help:
 	@echo "... test_queue_utils.o"
 	@echo "... test_queue_utils.i"
 	@echo "... test_queue_utils.s"
-	@echo "... test_regression.o"
-	@echo "... test_regression.i"
-	@echo "... test_regression.s"
 	@echo "... test_replication.o"
 	@echo "... test_replication.i"
 	@echo "... test_replication.s"
 	@echo "... test_salience.o"
 	@echo "... test_salience.i"
 	@echo "... test_salience.s"
-	@echo "... test_security.o"
-	@echo "... test_security.i"
-	@echo "... test_security.s"
 	@echo "... test_serialization.o"
 	@echo "... test_serialization.i"
 	@echo "... test_serialization.s"
 	@echo "... test_stream.o"
 	@echo "... test_stream.i"
 	@echo "... test_stream.s"
-	@echo "... test_stress.o"
-	@echo "... test_stress.i"
-	@echo "... test_stress.s"
+	@echo "... test_symbolic_logic.o"
+	@echo "... test_symbolic_logic.i"
+	@echo "... test_symbolic_logic.s"
 	@echo "... test_thread_utils.o"
 	@echo "... test_thread_utils.i"
 	@echo "... test_thread_utils.s"
@@ -1754,6 +1768,21 @@ help:
 	@echo "... test_vector.o"
 	@echo "... test_vector.i"
 	@echo "... test_vector.s"
+	@echo "... test_visual_cortex.o"
+	@echo "... test_visual_cortex.i"
+	@echo "... test_visual_cortex.s"
+	@echo "... test_visual_cortex_e2e.o"
+	@echo "... test_visual_cortex_e2e.i"
+	@echo "... test_visual_cortex_e2e.s"
+	@echo "... test_visual_cortex_integration.o"
+	@echo "... test_visual_cortex_integration.i"
+	@echo "... test_visual_cortex_integration.s"
+	@echo "... test_visual_cortex_regression.o"
+	@echo "... test_visual_cortex_regression.i"
+	@echo "... test_visual_cortex_regression.s"
+	@echo "... test_wellbeing.o"
+	@echo "... test_wellbeing.i"
+	@echo "... test_wellbeing.s"
 .PHONY : help
 
 

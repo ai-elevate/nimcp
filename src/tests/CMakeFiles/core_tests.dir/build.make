@@ -188,7 +188,7 @@ src/tests/core_tests: src/tests/CMakeFiles/core_tests.dir/test_neuron_types.cpp.
 src/tests/core_tests: src/tests/CMakeFiles/core_tests.dir/test_brain_regions.cpp.o
 src/tests/core_tests: src/tests/CMakeFiles/core_tests.dir/__/python/nimcp_module.c.o
 src/tests/core_tests: src/tests/CMakeFiles/core_tests.dir/build.make
-src/tests/core_tests: src/lib/libnimcp_core.so.2.5.0
+src/tests/core_tests: bin/libnimcp.so.2.5.0
 src/tests/core_tests: /usr/lib/x86_64-linux-gnu/libpython3.10.so
 src/tests/core_tests: /usr/lib/x86_64-linux-gnu/libgtest_main.a
 src/tests/core_tests: /usr/lib/x86_64-linux-gnu/libgtest.a

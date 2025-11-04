@@ -1,7 +1,7 @@
 src/tests/CMakeFiles/core_tests.dir/test_module.cpp.o: \
  /home/bbrelin/src/repos/nimcp/src/tests/test_module.cpp \
  /usr/include/stdc-predef.h \
- /home/bbrelin/src/repos/nimcp/src/tests/../include/nimcp_module.h \
+ /home/bbrelin/src/repos/nimcp/src/common/nimcp_module.h \
  /usr/include/python3.10/Python.h /usr/include/python3.10/patchlevel.h \
  /usr/include/python3.10/pyconfig.h \
  /usr/include/x86_64-linux-gnu/python3.10/pyconfig.h \
@@ -232,11 +232,11 @@ src/tests/CMakeFiles/core_tests.dir/test_module.cpp.o: \
  /usr/include/python3.10/cpython/fileutils.h \
  /usr/include/python3.10/cpython/pyfpe.h \
  /usr/include/python3.10/tracemalloc.h \
- /home/bbrelin/src/repos/nimcp/src/tests/../include/nimcp_neuralnet.h \
- /home/bbrelin/src/repos/nimcp/src/tests/../include/nimcp_export.h \
+ /home/bbrelin/src/repos/nimcp/src/core/neuralnet/nimcp_neuralnet.h \
+ /home/bbrelin/src/repos/nimcp/src/common/nimcp_export.h \
  /usr/lib/gcc/x86_64-linux-gnu/11/include/stdbool.h \
- /home/bbrelin/src/repos/nimcp/src/tests/../include/nimcp_p2pnode.h \
- /home/bbrelin/src/repos/nimcp/src/tests/../include/nimcp_protocol.h \
+ /home/bbrelin/src/repos/nimcp/src/networking/p2p/nimcp_p2pnode.h \
+ /home/bbrelin/src/repos/nimcp/src/networking/protocol/nimcp_protocol.h \
  /home/bbrelin/src/repos/nimcp/src/tests/test_helpers.h \
  /usr/include/gtest/gtest.h /usr/include/c++/11/cstddef \
  /usr/include/c++/11/memory /usr/include/c++/11/bits/allocator.h \
@@ -384,7 +384,4 @@ src/tests/CMakeFiles/core_tests.dir/test_module.cpp.o: \
  /usr/include/gtest/internal/gtest-param-util.h \
  /usr/include/c++/11/cassert /usr/include/gtest/gtest-test-part.h \
  /usr/include/gtest/gtest_prod.h /usr/include/gtest/gtest-typed-test.h \
- /usr/include/gtest/gtest_pred_impl.h \
- /home/bbrelin/src/repos/nimcp/src/tests/../include/nimcp_neuralnet.h \
- /home/bbrelin/src/repos/nimcp/src/tests/../include/nimcp_p2pnode.h \
- /home/bbrelin/src/repos/nimcp/src/tests/../include/nimcp_protocol.h
+ /usr/include/gtest/gtest_pred_impl.h

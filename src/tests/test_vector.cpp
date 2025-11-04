@@ -6,7 +6,7 @@
 #include <gtest/gtest.h>
 #include <cmath>
 extern "C" {
-#include "utils/nimcp_vector.h"
+#include "utils/containers/nimcp_vector.h"
 }
 
 // Test fixture for vector operations

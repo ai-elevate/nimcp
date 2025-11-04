@@ -92,7 +92,6 @@ nimcp_python_EXTERNAL_OBJECTS =
 
 lib/python/nimcp.so: src/python/CMakeFiles/nimcp_python.dir/nimcp_module.c.o
 lib/python/nimcp.so: src/python/CMakeFiles/nimcp_python.dir/build.make
-lib/python/nimcp.so: src/lib/libnimcp_core.so.2.5.0
 lib/python/nimcp.so: /usr/lib/x86_64-linux-gnu/libpython3.10.so
 lib/python/nimcp.so: src/python/CMakeFiles/nimcp_python.dir/link.txt
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --bold --progress-dir=/home/bbrelin/src/repos/nimcp/CMakeFiles --progress-num=$(CMAKE_PROGRESS_2) "Linking C shared module ../../lib/python/nimcp.so"

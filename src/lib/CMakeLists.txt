@@ -1,5 +1,8 @@
 # Core library sources - New hierarchical structure
 set(NIMCP_CORE_SOURCES
+    # Public API facade (unified interface for all bindings)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../api/nimcp.c
+
     # Core brain components
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/nimcp_brain.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/neuralnet/nimcp_neuralnet.c
@@ -15,6 +18,7 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/consolidation/nimcp_consolidation.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/salience/nimcp_salience.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/logic/nimcp_symbolic_logic.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/cognitive/nimcp_hierarchical.c
 
     # Plasticity mechanisms
     ${CMAKE_CURRENT_SOURCE_DIR}/../plasticity/adaptive/nimcp_adaptive.c
@@ -64,6 +68,8 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../utils/validation/nimcp_validate.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../utils/queue_manager/nimcp_queue_manager.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../utils/json/nimcp_json.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../utils/config/nimcp_config.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../utils/metrics/nimcp_metrics.c
 
     # Utils - Spectral Analysis
     ${CMAKE_CURRENT_SOURCE_DIR}/../utils/spectral/nimcp_fft.c
@@ -78,15 +84,16 @@ set(NIMCP_CORE_SOURCES
     # Python bindings
     ${CMAKE_SOURCE_DIR}/src/python/nimcp_module.c
     ${CMAKE_SOURCE_DIR}/src/python/nimcp_types.c
+    ${CMAKE_SOURCE_DIR}/src/python/nimcp_metrics_py.c
 )
 
 # Core library
-add_library(nimcp_core SHARED
+add_library(nimcp SHARED
     ${NIMCP_CORE_SOURCES}
 )
 
 # Update include directories to point to new structure
-target_include_directories(nimcp_core
+target_include_directories(nimcp
     PUBLIC
         $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}/src>
         $<INSTALL_INTERFACE:include/nimcp>
@@ -95,7 +102,7 @@ target_include_directories(nimcp_core
         ${Python3_INCLUDE_DIRS}
 )
 
-target_link_libraries(nimcp_core
+target_link_libraries(nimcp
     PUBLIC
         Python3::Python
         lz4
@@ -103,19 +110,21 @@ target_link_libraries(nimcp_core
 )
 
 # Add testing API support
-target_compile_definitions(nimcp_core PRIVATE NIMCP_TESTING)
+target_compile_definitions(nimcp PRIVATE NIMCP_TESTING)
 
 # Enable Position Independent Code and set library properties
-set_target_properties(nimcp_core PROPERTIES
+set_target_properties(nimcp PROPERTIES
     POSITION_INDEPENDENT_CODE ON
     ENABLE_EXPORTS ON
     VERSION ${PROJECT_VERSION}
     SOVERSION 2
-    OUTPUT_NAME nimcp_core
+    OUTPUT_NAME nimcp
+    LIBRARY_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/bin
+    RUNTIME_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/bin
 )
 
 # Installation rules
-install(TARGETS nimcp_core
+install(TARGETS nimcp
     EXPORT nimcp-targets
     LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
     ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}

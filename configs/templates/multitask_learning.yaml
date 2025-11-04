@@ -1,0 +1,383 @@
+# NIMCP Multi-Task Learning Configuration
+# Use Case: Single brain performing multiple related tasks simultaneously
+# Architecture: Shared feature extraction + Task-specific output heads
+# Benefits: Transfer learning, shared representations, efficiency
+
+# NOTE: This is an ADVANCED configuration template
+# Requires modifications to support multiple output heads
+# See implementation notes at the bottom
+
+brain:
+  # Identity
+  name: "multitask_brain"
+
+  # Brain size: large for handling multiple tasks
+  size: large  # 100K neurons, ~500MB memory, ~50ms inference
+
+  # Primary task (for compatibility, will be extended)
+  task: classification  # Extended to multi-task below
+
+  # Shared Network Architecture
+  architecture:
+    # Shared feature extractor
+    num_inputs: 512          # Common input representation
+
+    # Multi-head outputs (PROPOSED EXTENSION)
+    # Task 1: Classification (e.g., image category)
+    num_outputs_task1: 10    # 10 classes
+
+    # Task 2: Regression (e.g., image quality score)
+    num_outputs_task2: 1     # Single continuous value
+
+    # Task 3: Segmentation (e.g., object detection)
+    num_outputs_task3: 100   # 100 bounding box coordinates
+
+    # Shared hidden layers (feature extraction)
+    num_hidden_shared: 1024  # Large shared representation
+
+    # Task-specific hidden layers
+    num_hidden_task1: 256    # Classification head
+    num_hidden_task2: 128    # Regression head
+    num_hidden_task3: 512    # Segmentation head
+
+    learning_rate: 0.0001    # Conservative for multi-task
+
+  # Multi-Task Training Configuration
+  training:
+    max_epochs: 300          # More epochs for complex learning
+    batch_size: 32           # Smaller batches for stability
+    validation_split: 0.20
+    early_stopping: true
+    patience: 30             # More patience for convergence
+
+    # Task weighting (PROPOSED)
+    task_weights:
+      task1: 1.0             # Equal weight to classification
+      task2: 0.5             # Lower weight to regression
+      task3: 1.5             # Higher weight to segmentation
+
+    # Gradient balancing
+    gradient_balancing: true # Balance gradients across tasks
+
+  # Plasticity (shared across tasks)
+  plasticity:
+    enable_bcm: true
+    bcm_tau: 5000.0          # Slower adaptation for stability
+    enable_stdp: false
+    stdp_window: 20.0
+
+  # Ethics
+  ethics:
+    enabled: true
+    golden_rule_threshold: 0.0
+    empathy_weight: 0.8      # High empathy for multi-task
+
+  # Model Persistence
+  model_path: "/tmp/models/multitask_brain.brain"
+  checkpoint_interval: 20
+
+# ============================================================================
+# MULTI-TASK LEARNING STRATEGIES
+# ============================================================================
+
+# Strategy 1: Hard Parameter Sharing
+# -----------------------------------
+# All tasks share the same feature extraction layers
+# Only final output heads are task-specific
+#
+# Architecture:
+#   Input (512)
+#      ↓
+#   Shared Hidden (1024) ← BCM plasticity, shared weights
+#      ↓
+#   ┌────────────┬────────────┬────────────┐
+#   ↓            ↓            ↓            ↓
+# Task1 Head  Task2 Head  Task3 Head  ...
+#  (256)       (128)       (512)
+#   ↓            ↓            ↓
+# Output1     Output2     Output3
+#  (10)        (1)         (100)
+
+# Strategy 2: Soft Parameter Sharing
+# -----------------------------------
+# Each task has its own network
+# Regularization encourages similar weights
+# More flexible but more parameters
+
+# Strategy 3: Cross-Stitch Networks
+# ----------------------------------
+# Multiple networks with learned connections
+# Dynamically shares information between tasks
+
+# Strategy 4: Attention-Based Task Routing
+# -----------------------------------------
+# Attention mechanism decides which features to use for each task
+
+# ============================================================================
+# IMPLEMENTATION NOTES
+# ============================================================================
+
+# Current Limitation:
+# The existing nimcp_brain_create() supports single output only
+#
+# To enable multi-tasking, you need ONE of these approaches:
+
+# Option A: Modify Brain API (Recommended for true multi-task)
+# -------------------------------------------------------------
+# Extend nimcp.h with:
+#   nimcp_brain_t nimcp_brain_create_multitask(
+#       const char* config_filepath,
+#       uint32_t num_tasks
+#   );
+#
+#   nimcp_status_t nimcp_brain_predict_multitask(
+#       nimcp_brain_t brain,
+#       const float* features,
+#       uint32_t num_features,
+#       float** outputs,        // Array of output arrays
+#       uint32_t* output_sizes  // Size of each output
+#   );
+
+# Option B: Use Multiple Brains (Works NOW - Ensemble Approach)
+# -------------------------------------------------------------
+# Create separate brains, share feature extractor
+# See example below
+
+# Option C: Flatten Outputs (Quick Hack)
+# --------------------------------------
+# Concatenate all task outputs into single vector
+# num_outputs = num_outputs_task1 + num_outputs_task2 + ...
+# Parse outputs after prediction
+
+# ============================================================================
+# USAGE EXAMPLE - ENSEMBLE APPROACH (Works with current API)
+# ============================================================================
+
+# This approach works RIGHT NOW without modifying NIMCP:
+
+# 1. Create separate brains for each task:
+#    brain_classify = nimcp_brain_create_from_config("task1_classify.yaml");
+#    brain_regress = nimcp_brain_create_from_config("task2_regress.yaml");
+#    brain_segment = nimcp_brain_create_from_config("task3_segment.yaml");
+
+# 2. Extract shared features ONCE:
+#    shared_features = extract_features(input_image);  // Your feature extractor
+
+# 3. Run all tasks in parallel:
+#    char class_label[64];
+#    float class_conf, quality_score;
+#    char segments[64];
+#    float segment_conf;
+#
+#    nimcp_brain_predict(brain_classify, shared_features, 512, &class_label, &class_conf);
+#    nimcp_brain_predict(brain_regress, shared_features, 512, &quality_score, &_);
+#    nimcp_brain_predict(brain_segment, shared_features, 512, &segments, &segment_conf);
+
+# 4. Combine results:
+#    results = {
+#        "category": class_label,
+#        "quality": quality_score,
+#        "objects": segments
+#    };
+
+# ============================================================================
+# ALGORITHMS THAT ENHANCE MULTITASKING
+# ============================================================================
+
+# 1. GRADIENT NORMALIZATION (GradNorm)
+# --------------------------------------
+# Balances gradient magnitudes across tasks
+# Prevents one task from dominating training
+#
+# Implementation:
+#   For each task i:
+#     gradient_weight[i] = average_loss[i] / sum(average_losses)
+#     Adjust learning rate per task dynamically
+
+# 2. UNCERTAINTY WEIGHTING
+# -------------------------
+# Weight tasks by prediction uncertainty
+# Confident tasks get lower weight, uncertain get higher
+#
+# Loss = sum(loss_i / (2 * sigma_i^2)) + sum(log(sigma_i))
+
+# 3. TASK PRIORITIZATION (Dynamic Task Weighting)
+# ------------------------------------------------
+# Adjust task importance based on performance
+# Poor-performing tasks get more attention
+
+# 4. PROGRESSIVE NEURAL NETWORKS
+# -------------------------------
+# Add new task columns without forgetting old tasks
+# Freeze previous task weights
+
+# 5. NEURAL ARCHITECTURE SEARCH (NAS)
+# ------------------------------------
+# Automatically find optimal multi-task architecture
+
+# 6. META-LEARNING
+# ----------------
+# Learn how to learn multiple tasks efficiently
+# MAML (Model-Agnostic Meta-Learning)
+
+# 7. ATTENTION MECHANISMS
+# ------------------------
+# Self-attention: Learn task-specific feature importance
+# Cross-attention: Share information between tasks
+
+# ============================================================================
+# NEUROSCIENCE-INSPIRED MULTITASKING
+# ============================================================================
+
+# NIMCP is brain-inspired, so consider these biological principles:
+
+# 1. CORTICAL COLUMNS
+# --------------------
+# Brain organizes into functional columns
+# Each column processes specific features
+# Columns communicate via lateral connections
+#
+# Implementation in NIMCP:
+#   Create mini-brains (modules) for each task
+#   Connect modules with cross-links
+#   Use BCM for within-module learning
+#   Use STDP for between-module communication
+
+# 2. PREFRONTAL CORTEX (PFC) - Task Switching
+# --------------------------------------------
+# PFC coordinates multiple tasks
+# Implements executive control
+#
+# Implementation:
+#   Add a "controller" brain that:
+#   - Decides which task to prioritize
+#   - Routes information to appropriate modules
+#   - Manages cognitive resources
+
+# 3. BASAL GANGLIA - Action Selection
+# ------------------------------------
+# Selects among competing actions
+# Winner-take-all dynamics
+#
+# Implementation:
+#   Use competitive inhibition between task outputs
+#   Strongest activation wins
+
+# 4. HIPPOCAMPUS - Memory and Context
+# ------------------------------------
+# Provides context for task selection
+# Rapid learning of task episodes
+#
+# Implementation:
+#   Store task-specific patterns
+#   Recall appropriate strategy based on input
+
+# 5. NEUROMODULATION
+# ------------------
+# Dopamine, serotonin, etc. modulate plasticity
+# Different tasks may need different modulation
+#
+# Implementation in NIMCP:
+#   Adjust learning rates per task
+#   Use neuromodulator signals to gate plasticity
+
+# ============================================================================
+# MULTITASK LEARNING BENEFITS
+# ============================================================================
+
+# 1. TRANSFER LEARNING
+#    - Features learned for one task help others
+#    - Example: Edge detection for both classification and segmentation
+
+# 2. REGULARIZATION
+#    - Shared representations prevent overfitting
+#    - Acts as implicit regularization
+
+# 3. EFFICIENCY
+#    - Single forward pass for multiple predictions
+#    - Shared computation across tasks
+
+# 4. DATA EFFICIENCY
+#    - Learn from multiple data sources
+#    - Auxiliary tasks provide additional supervision
+
+# 5. IMPROVED GENERALIZATION
+#    - Forced to learn robust features
+#    - Less task-specific overfitting
+
+# ============================================================================
+# PERFORMANCE EXPECTATIONS
+# ============================================================================
+
+# Compared to single-task brains:
+# - Training time: 2-3x longer (multiple tasks)
+# - Inference time: 1.5x (slight overhead)
+# - Memory: 1.5-2x (task-specific heads)
+# - Accuracy: Often BETTER (transfer learning)
+#   - Primary task: Similar or better
+#   - Auxiliary tasks: Better (shared features)
+
+# Example benchmark (ImageNet + Segmentation + Quality):
+# - Single-task classification: 85% accuracy
+# - Multi-task classification: 87% accuracy (transfer learning!)
+# - Segmentation: 75% IoU
+# - Quality prediction: MAE = 0.15
+
+# ============================================================================
+# RECOMMENDED APPROACH FOR NIMCP
+# ============================================================================
+
+# For immediate use (no code changes):
+# 1. Use ensemble approach (multiple brains)
+# 2. Share feature extraction pipeline
+# 3. Train brains on complementary tasks
+# 4. Combine predictions at application level
+
+# For optimal performance (requires extending NIMCP):
+# 1. Implement multi-head architecture
+# 2. Add task-specific heads to brain structure
+# 3. Implement gradient balancing
+# 4. Use attention for dynamic task weighting
+
+# ============================================================================
+# EXAMPLE MULTI-TASK CONFIGURATIONS
+# ============================================================================
+
+# Computer Vision Multi-Task:
+#   Task 1: Object classification (what)
+#   Task 2: Object detection (where)
+#   Task 3: Depth estimation (how far)
+#   Task 4: Semantic segmentation (which pixels)
+
+# NLP Multi-Task:
+#   Task 1: Sentiment analysis
+#   Task 2: Named entity recognition
+#   Task 3: Part-of-speech tagging
+#   Task 4: Language modeling
+
+# Recommendation Multi-Task:
+#   Task 1: Rating prediction
+#   Task 2: Click probability
+#   Task 3: Purchase probability
+#   Task 4: User satisfaction
+
+# Medical Diagnosis Multi-Task:
+#   Task 1: Disease classification
+#   Task 2: Severity regression
+#   Task 3: Treatment recommendation
+#   Task 4: Outcome prediction
+
+# ============================================================================
+# FURTHER READING
+# ============================================================================
+
+# Papers:
+# - "An Overview of Multi-Task Learning in Deep Neural Networks" (Ruder, 2017)
+# - "GradNorm: Gradient Normalization for Adaptive Loss Balancing" (Chen et al., 2018)
+# - "Multi-Task Learning Using Uncertainty to Weigh Losses" (Kendall et al., 2018)
+# - "Cross-stitch Networks for Multi-task Learning" (Misra et al., 2016)
+
+# Implementation examples:
+# - PyTorch Multi-Task Learning Library
+# - TensorFlow Multi-Task Learning
+# - Hugging Face Multitask Models

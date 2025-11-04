@@ -289,5 +289,5 @@ src/tests/CMakeFiles/plasticity_tests.dir/test_attention.cpp.o: \
  /usr/include/c++/11/bits/stl_numeric.h \
  /usr/include/c++/11/pstl/glue_numeric_defs.h /usr/include/c++/11/chrono \
  /usr/include/c++/11/ratio \
- /home/bbrelin/src/repos/nimcp/src/include/nimcp_attention.h \
+ /home/bbrelin/src/repos/nimcp/src/plasticity/attention/nimcp_attention.h \
  /usr/lib/gcc/x86_64-linux-gnu/11/include/stdbool.h

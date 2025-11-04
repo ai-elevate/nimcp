@@ -205,4 +205,5 @@ src/lib/CMakeFiles/nimcp_core.dir/nimcp_dataio.c.o: \
  /home/bbrelin/src/repos/nimcp/src/include/utils/nimcp_memory.h \
  /home/bbrelin/src/repos/nimcp/src/include/utils/nimcp_queue.h \
  /home/bbrelin/src/repos/nimcp/src/include/utils/nimcp_common.h \
+ /home/bbrelin/src/repos/nimcp/src/include/utils/nimcp_thread.h \
  /home/bbrelin/src/repos/nimcp/src/include/utils/nimcp_validate.h

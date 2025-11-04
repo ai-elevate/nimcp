@@ -1,4 +1,7 @@
-#include "../include/nimcp_module.h"
+#include "common/nimcp_module.h"
+
+// Forward declaration for metrics module
+extern int init_metrics_module(PyObject* module);
 
 // Initialize exception types
 PyObject* NIMCPError;
@@ -56,6 +59,12 @@ PyMODINIT_FUNC PyInit_nimcp(void)
     PyModule_AddObject(m, "NetworkError", NetworkError);
     PyModule_AddObject(m, "ProtocolError", ProtocolError);
     PyModule_AddObject(m, "NodeError", NodeError);
+
+    // Initialize metrics module
+    if (init_metrics_module(m) < 0) {
+        Py_DECREF(m);
+        return NULL;
+    }
 
     return m;
 }

@@ -13,10 +13,10 @@
  */
 
 #include <gtest/gtest.h>
-#include "../include/nimcp_brain.h"
-#include "../include/nimcp_neuralnet.h"
-#include "utils/nimcp_memory.h"
-#include "utils/nimcp_queue_manager.h"
+#include "core/brain/nimcp_brain.h"
+#include "core/neuralnet/nimcp_neuralnet.h"
+#include "utils/memory/nimcp_memory.h"
+#include "utils/queue_manager/nimcp_queue_manager.h"
 
 //==============================================================================
 // Error Injection Framework

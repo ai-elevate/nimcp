@@ -6,7 +6,7 @@
 #include "test_helpers.h"
 
 extern "C" {
-#include "../include/nimcp_ethics.h"
+#include "cognitive/ethics/nimcp_ethics.h"
 }
 
 #include <cstring>

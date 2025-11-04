@@ -3,15 +3,15 @@
 
 # compile C with /usr/bin/cc
 # compile CXX with /usr/bin/c++
-C_DEFINES = 
+C_DEFINES = -DNIMCP_TESTING
 
-C_INCLUDES = -I/home/bbrelin/src/repos/nimcp/src/include -I/home/bbrelin/src/repos/nimcp/src/tests -I/home/bbrelin/src/repos/nimcp/src/lib -isystem /usr/include/python3.10
+C_INCLUDES = -I/home/bbrelin/src/repos/nimcp/src -I/home/bbrelin/src/repos/nimcp/src/tests -I/home/bbrelin/src/repos/nimcp/src/lib -isystem /usr/include/python3.10
 
 C_FLAGS =  -Wall -Wextra -Wpedantic -g -fPIE --coverage -DGTEST_HAS_PTHREAD=1 -std=gnu11
 
-CXX_DEFINES = 
+CXX_DEFINES = -DNIMCP_TESTING
 
-CXX_INCLUDES = -I/home/bbrelin/src/repos/nimcp/src/include -I/home/bbrelin/src/repos/nimcp/src/tests -I/home/bbrelin/src/repos/nimcp/src/lib -isystem /usr/include/python3.10
+CXX_INCLUDES = -I/home/bbrelin/src/repos/nimcp/src -I/home/bbrelin/src/repos/nimcp/src/tests -I/home/bbrelin/src/repos/nimcp/src/lib -isystem /usr/include/python3.10
 
 CXX_FLAGS =  -Wall -Wextra -Wpedantic -g -fPIE --coverage -DGTEST_HAS_PTHREAD=1 -std=gnu++17
 

@@ -43,7 +43,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
-#include "../src/include/nimcp_brain.h"
+#include "core/brain/nimcp_brain.h"
 
 //=============================================================================
 // Simulated LLM Teacher - Strategy Pattern

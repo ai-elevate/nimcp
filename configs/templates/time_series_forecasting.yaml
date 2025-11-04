@@ -1,0 +1,96 @@
+# NIMCP Brain Configuration Template
+# Use Case: Time Series Forecasting (Stock Prices, Weather, Sensor Data)
+# Description: Sequence learning brain with temporal dynamics
+# Task: Predict next N values based on previous M observations
+# Applications: Stock prediction, weather forecasting, IoT sensor analysis
+
+brain:
+  # Identity
+  name: "time_series_forecaster"
+
+  # Brain size: small for fast, responsive predictions
+  size: small  # 1K neurons, ~10MB memory, ~0.5ms inference
+
+  # Task type: sequence learning (temporal patterns)
+  task: sequence
+
+  # Network Architecture
+  architecture:
+    num_inputs: 100          # Window size: 100 past time steps
+    num_outputs: 10          # Forecast horizon: 10 future steps
+    num_hidden: 256          # Hidden state for temporal memory
+    learning_rate: 0.005     # Moderate learning rate for sequences
+
+  # Training Configuration
+  training:
+    max_epochs: 200          # More epochs for temporal patterns
+    batch_size: 32           # Smaller batches for sequence data
+    validation_split: 0.20   # 20% validation (important for time series)
+    early_stopping: true     # Prevent overfitting to historical data
+    patience: 20             # More patience for noisy data
+
+  # Synaptic Plasticity
+  plasticity:
+    enable_bcm: true         # Adaptive thresholds for changing patterns
+    bcm_tau: 1500.0          # Faster adaptation for time series
+    enable_stdp: true        # CRITICAL: Spike timing for temporal patterns
+    stdp_window: 50.0        # Wider window for sequence dependencies
+
+  # Ethics Configuration
+  ethics:
+    enabled: false           # Not applicable for time series
+    golden_rule_threshold: 0.0
+    empathy_weight: 0.5
+
+  # Model Persistence
+  model_path: "/tmp/models/time_series_forecaster.brain"
+  checkpoint_interval: 20   # Save every 20 epochs
+
+# Usage Example (Stock Price Prediction):
+# ----------------------------------------
+# 1. Prepare data:
+#    - Collect historical stock prices
+#    - Normalize to range [0, 1]
+#    - Create sliding windows (100 steps → 10 future steps)
+#
+# 2. Create brain:
+#    brain = nimcp_brain_create_from_config("time_series_forecasting.yaml")
+#
+# 3. Train:
+#    for each window in training_data:
+#        nimcp_brain_learn_example(brain, past_100_prices, 100,
+#                                  future_10_prices_as_label, 1.0)
+#
+# 4. Predict:
+#    nimcp_brain_predict(brain, last_100_prices, 100,
+#                       &predicted_prices, &confidence)
+
+# Data Preprocessing:
+# -------------------
+# - Normalize: Use min-max or z-score normalization
+# - Detrend: Remove linear trends if present
+# - Handle missing values: Interpolate or forward-fill
+# - Feature engineering: Add moving averages, volatility metrics
+# - Seasonal decomposition: Separate trend, seasonality, residuals
+
+# Performance Expectations:
+# -------------------------
+# - Training: ~5-15 minutes for 10K samples
+# - Inference: <1ms per prediction
+# - Memory: ~10MB RAM
+# - Accuracy: Depends heavily on data quality and stationarity
+
+# Important Notes:
+# ----------------
+# - Time series forecasting is inherently uncertain
+# - Model works best with stationary data
+# - Consider ensemble with traditional methods (ARIMA, Prophet)
+# - Validate on out-of-sample data (walk-forward validation)
+# - Monitor for concept drift in production
+
+# Advanced Tips:
+# --------------
+# - Use multiple input windows (e.g., daily, weekly, monthly)
+# - Add exogenous variables (weather, holidays, events)
+# - Implement rolling retraining in production
+# - Set confidence thresholds for trading decisions

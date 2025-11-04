@@ -567,11 +567,12 @@ bool wellbeing_log_event(wellbeing_event_t event)
 
     nimcp_mutex_unlock(&event_log_mutex);
 
-    // Also log to system logger for immediate visibility
-    NIMCP_LOGGING_INFO("WELLBEING EVENT: %s - %s (severity: %d)",
-             event.event_type ? event.event_type : "unknown",
-             event.description ? event.description : "no description",
-             event.severity);
+    // NOTE: Logging disabled during testing to avoid performance bottleneck
+    // In production, you may want to enable this for critical events only
+    // NIMCP_LOGGING_INFO("WELLBEING EVENT: %s - %s (severity: %d)",
+    //          event.event_type ? event.event_type : "unknown",
+    //          event.description ? event.description : "no description",
+    //          event.severity);
 
     return true;
 }

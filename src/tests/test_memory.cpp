@@ -12,7 +12,7 @@
 #include <vector>
 
 extern "C" {
-#include "utils/nimcp_memory.h"
+#include "utils/memory/nimcp_memory.h"
 }
 
 //=============================================================================

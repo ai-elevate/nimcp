@@ -1,0 +1,229 @@
+# NIMCP Brain Configuration Template
+# Use Case: Sentiment Analysis / Text Classification (NLP)
+# Description: Classification brain for analyzing text sentiment and emotions
+# Applications: Customer reviews, social media monitoring, chatbot responses
+# Classes: Positive, Negative, Neutral (can extend to multiple emotions)
+
+brain:
+  # Identity
+  name: "sentiment_analyzer"
+
+  # Brain size: small for fast text processing
+  size: small  # 1K neurons, ~10MB memory, ~0.5ms inference
+
+  # Task type: multi-class classification (sentiment categories)
+  task: classification
+
+  # Network Architecture
+  architecture:
+    num_inputs: 300          # Text embedding dimension (e.g., GloVe, Word2Vec, BERT)
+                             # Alternative: Bag-of-words (vocab size)
+    num_outputs: 3           # 3 sentiment classes: positive, negative, neutral
+                             # Can extend to 7+ for emotions: joy, anger, sadness, fear, etc.
+    num_hidden: 200          # Hidden layer for learning text patterns
+    learning_rate: 0.01      # Higher learning rate for text data
+
+  # Training Configuration
+  training:
+    max_epochs: 80           # Moderate epochs for text classification
+    batch_size: 64           # Standard batch size for NLP
+    validation_split: 0.20   # 20% validation (important for generalization)
+    early_stopping: true     # Prevent overfitting to training vocabulary
+    patience: 12             # Patience for noisy text data
+
+  # Synaptic Plasticity
+  plasticity:
+    enable_bcm: true         # Adaptive thresholds for language patterns
+    bcm_tau: 1000.0          # Standard adaptation rate
+    enable_stdp: false       # Not needed for static text embeddings
+    stdp_window: 20.0        # Unused (use STDP=true for sequential text processing)
+
+  # Ethics Configuration
+  ethics:
+    enabled: true            # CRITICAL: Prevent biased sentiment analysis
+    golden_rule_threshold: 0.0  # Avoid amplifying harmful content
+    empathy_weight: 0.6      # Consider context and user impact
+
+  # Model Persistence
+  model_path: "/tmp/models/sentiment_analyzer.brain"
+  checkpoint_interval: 10   # Save every 10 epochs
+
+# Text Preprocessing Pipeline:
+# -----------------------------
+# 1. Tokenization: Split text into words/subwords
+# 2. Lowercasing: Convert to lowercase for consistency
+# 3. Remove stopwords: Optional (depends on embedding method)
+# 4. Lemmatization: Reduce words to base form
+# 5. Handle negation: "not good" ≠ "good"
+# 6. Emoji handling: Convert to text or use emoji embeddings
+# 7. Embedding: Convert to 300-dim vector using:
+#    - Pre-trained: GloVe, Word2Vec, FastText
+#    - Contextual: BERT, RoBERTa (sentence embeddings)
+#    - Custom: Train embedding layer
+
+# Input Representation Options:
+# ------------------------------
+# Option 1: Sentence Embeddings (Recommended)
+#   - Use BERT/RoBERTa to get 300-768 dim sentence vector
+#   - Handles context and semantic meaning
+#   - Best for accuracy
+#
+# Option 2: Average Word Embeddings
+#   - Average all word vectors in sentence
+#   - Fast, works well for many cases
+#   - num_inputs = embedding_dim (e.g., 300 for GloVe)
+#
+# Option 3: Bag-of-Words (BoW)
+#   - Binary or TF-IDF weighted word presence
+#   - num_inputs = vocabulary_size (e.g., 5000-10000)
+#   - Simple but less powerful
+
+# Training Data Format:
+# ---------------------
+# Dataset structure:
+#   Text                                    | Label      | Confidence
+#   ----------------------------------------|------------|------------
+#   "This product is amazing!"              | positive   | 1.0
+#   "Terrible service, very disappointed"   | negative   | 1.0
+#   "It's okay, nothing special"            | neutral    | 0.8
+#   "Love it! 😍"                           | positive   | 1.0
+#
+# Popular datasets:
+#   - IMDB Movie Reviews (50K reviews)
+#   - Twitter Sentiment140 (1.6M tweets)
+#   - Amazon Product Reviews (millions)
+#   - Yelp Reviews (6M reviews)
+
+# Usage Example (Customer Review Analysis):
+# ------------------------------------------
+# 1. Prepare embedding model:
+#    embedding_model = load_glove_embeddings("glove.6B.300d.txt");
+#
+# 2. Create brain:
+#    brain = nimcp_brain_create_from_config("sentiment_analysis_nlp.yaml");
+#
+# 3. Train:
+#    for each review in training_data:
+#        // Preprocess text
+#        tokens = tokenize(review.text);
+#        embedding = average_word_vectors(tokens, embedding_model);
+#
+#        // Train brain
+#        nimcp_brain_learn_example(brain, embedding, 300,
+#                                  review.label, review.confidence);
+#
+# 4. Analyze new reviews:
+#    new_review = "This restaurant was fantastic!";
+#    tokens = tokenize(new_review);
+#    embedding = average_word_vectors(tokens, embedding_model);
+#
+#    nimcp_brain_predict(brain, embedding, 300, &sentiment, &confidence);
+#
+#    printf("Sentiment: %s (confidence: %.2f%%)\n",
+#           sentiment, confidence * 100.0);
+
+# Output Labels:
+# --------------
+# Standard 3-class:
+#   - "positive": Favorable opinion (ratings 4-5)
+#   - "negative": Unfavorable opinion (ratings 1-2)
+#   - "neutral": Mixed or unclear sentiment (rating 3)
+#
+# Extended 5-class (change num_outputs to 5):
+#   - "very_positive": Extremely favorable
+#   - "positive": Favorable
+#   - "neutral": Neither positive nor negative
+#   - "negative": Unfavorable
+#   - "very_negative": Extremely unfavorable
+#
+# Emotion detection (change num_outputs to 7+):
+#   - "joy", "sadness", "anger", "fear", "surprise", "disgust", "neutral"
+
+# Ethics in Sentiment Analysis:
+# ------------------------------
+# 1. Bias detection:
+#    - Test for demographic bias (gender, race, age)
+#    - Avoid associating neutral terms with negative sentiment
+#    - Example: "She is assertive" should not be negative
+#
+# 2. Context awareness:
+#    - "This movie killed it" (positive) vs "The ending killed the movie" (negative)
+#    - Sarcasm detection: "Great, another bug" (actually negative)
+#    - Domain-specific language: Medical, legal, technical
+#
+# 3. Privacy:
+#    - Don't train on sensitive personal communications
+#    - Anonymize user data in training sets
+#    - Clear consent for analysis
+#
+# 4. Fairness:
+#    - Balanced training data across demographics
+#    - Test on diverse populations
+#    - Avoid amplifying harmful stereotypes
+
+# Performance Benchmarks:
+# -----------------------
+# Expected Accuracy:
+#   - Movie reviews (IMDB): 85-90%
+#   - Product reviews (Amazon): 80-85%
+#   - Twitter (short text): 75-80%
+#   - News articles: 85-90%
+#
+# Inference Speed:
+#   - With pre-computed embeddings: <1ms per text
+#   - With online embedding: 5-50ms (depends on text length)
+#
+# Memory:
+#   - Brain: ~10MB
+#   - Embedding model: 100MB-1GB (depending on vocabulary)
+
+# Common Challenges:
+# ------------------
+# 1. Sarcasm and irony: Difficult to detect
+#    - Solution: Add sarcasm-labeled examples, use contextual embeddings
+#
+# 2. Short text: Limited context
+#    - Solution: Use character n-grams, emoji features
+#
+# 3. Domain shift: Model trained on reviews fails on tweets
+#    - Solution: Fine-tune on target domain, use domain adaptation
+#
+# 4. Negation: "not good" vs "good"
+#    - Solution: Negation-aware preprocessing, contextual embeddings
+#
+# 5. Multi-lingual: Different languages
+#    - Solution: Use multilingual embeddings (mBERT, XLM-R)
+
+# Production Deployment:
+# ----------------------
+# 1. API endpoint: REST API for real-time sentiment analysis
+# 2. Batch processing: Analyze thousands of texts offline
+# 3. Streaming: Real-time social media monitoring
+# 4. Mobile: Deploy tiny brain on iOS/Android apps
+# 5. Caching: Cache embeddings for common phrases
+
+# Integration Examples:
+# ---------------------
+# - Customer support: Auto-route negative reviews to support team
+# - Social media: Monitor brand sentiment in real-time
+# - Content moderation: Flag toxic or harmful content
+# - Market research: Analyze customer feedback at scale
+# - Chatbots: Detect user frustration, adjust tone
+# - Email classification: Prioritize urgent/important emails
+
+# Hyperparameter Tuning:
+# ----------------------
+# For short text (tweets, comments):
+#   - num_hidden: 100-150
+#   - learning_rate: 0.02
+#   - batch_size: 32
+#
+# For long text (articles, reviews):
+#   - num_hidden: 200-300
+#   - learning_rate: 0.005
+#   - batch_size: 64
+#
+# For multi-lingual:
+#   - num_hidden: 300-400
+#   - Use multilingual embeddings
+#   - Larger training dataset

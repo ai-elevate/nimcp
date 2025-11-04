@@ -140,7 +140,7 @@ src/tests/plasticity_tests: src/tests/CMakeFiles/plasticity_tests.dir/test_bcm.c
 src/tests/plasticity_tests: src/tests/CMakeFiles/plasticity_tests.dir/test_attention.cpp.o
 src/tests/plasticity_tests: src/tests/CMakeFiles/plasticity_tests.dir/__/python/nimcp_module.c.o
 src/tests/plasticity_tests: src/tests/CMakeFiles/plasticity_tests.dir/build.make
-src/tests/plasticity_tests: src/lib/libnimcp_core.so.2.5.0
+src/tests/plasticity_tests: bin/libnimcp.so.2.5.0
 src/tests/plasticity_tests: /usr/lib/x86_64-linux-gnu/libpython3.10.so
 src/tests/plasticity_tests: /usr/lib/x86_64-linux-gnu/libgtest_main.a
 src/tests/plasticity_tests: /usr/lib/x86_64-linux-gnu/libgtest.a

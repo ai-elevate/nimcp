@@ -5,7 +5,7 @@
  */
 
 #include <string.h>
-#include "../include/nimcp_protocol.h"
+#include "networking/protocol/nimcp_protocol.h"
 #include "test_helpers.h"
 
 class ProtocolTest : public ::testing::Test {

@@ -92,7 +92,7 @@ event_demo_EXTERNAL_OBJECTS =
 
 examples/event_demo: examples/CMakeFiles/event_demo.dir/event_demo.c.o
 examples/event_demo: examples/CMakeFiles/event_demo.dir/build.make
-examples/event_demo: src/lib/libnimcp_core.so.2.5.0
+examples/event_demo: ../bin/libnimcp.so.2.5.0
 examples/event_demo: /usr/lib/x86_64-linux-gnu/libpython3.10.so
 examples/event_demo: examples/CMakeFiles/event_demo.dir/link.txt
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --bold --progress-dir=/home/bbrelin/src/repos/nimcp/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_2) "Linking C executable event_demo"

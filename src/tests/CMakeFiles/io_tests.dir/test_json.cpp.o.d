@@ -270,10 +270,10 @@ src/tests/CMakeFiles/io_tests.dir/test_json.cpp.o: \
  /usr/include/x86_64-linux-gnu/c++/11/bits/basic_file.h \
  /usr/include/x86_64-linux-gnu/c++/11/bits/c++io.h \
  /usr/include/c++/11/bits/fstream.tcc \
- /home/bbrelin/src/repos/nimcp/src/include/utils/nimcp_json.h \
+ /home/bbrelin/src/repos/nimcp/src/utils/json/nimcp_json.h \
  /usr/lib/gcc/x86_64-linux-gnu/11/include/stdbool.h \
- /home/bbrelin/src/repos/nimcp/src/include/logging/nimcp_logging.h \
- /home/bbrelin/src/repos/nimcp/src/include/utils/nimcp_common.h \
+ /home/bbrelin/src/repos/nimcp/src/utils/logging/nimcp_logging.h \
+ /home/bbrelin/src/repos/nimcp/src/utils/validation/nimcp_common.h \
  /usr/include/c++/11/math.h /usr/include/c++/11/cmath /usr/include/math.h \
  /usr/include/x86_64-linux-gnu/bits/math-vector.h \
  /usr/include/x86_64-linux-gnu/bits/libm-simd-decl-stubs.h \
@@ -303,6 +303,5 @@ src/tests/CMakeFiles/io_tests.dir/test_json.cpp.o: \
  /usr/include/x86_64-linux-gnu/bits/dirent_ext.h /usr/include/dlfcn.h \
  /usr/include/x86_64-linux-gnu/bits/dlfcn.h \
  /usr/include/x86_64-linux-gnu/bits/dl_find_object.h /usr/include/lz4.h \
- /home/bbrelin/src/repos/nimcp/src/include/utils/nimcp_memory.h \
- /home/bbrelin/src/repos/nimcp/src/include/utils/nimcp_thread.h \
- /home/bbrelin/src/repos/nimcp/src/include/utils/nimcp_memory.h
+ /home/bbrelin/src/repos/nimcp/src/utils/memory/nimcp_memory.h \
+ /home/bbrelin/src/repos/nimcp/src/utils/thread/nimcp_thread.h

@@ -10,8 +10,8 @@
 #include "test_helpers.h"
 
 extern "C" {
-#include "../include/nimcp_brain.h"
-#include "../include/nimcp_replication.h"
+#include "core/brain/nimcp_brain.h"
+#include "networking/replication/nimcp_replication.h"
 }
 
 #include <gtest/gtest.h>

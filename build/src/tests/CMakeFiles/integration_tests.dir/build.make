@@ -153,10 +153,66 @@ src/tests/CMakeFiles/integration_tests.dir/test_brain_integration.cpp.s: cmake_f
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Compiling CXX source to assembly CMakeFiles/integration_tests.dir/test_brain_integration.cpp.s"
 	cd /home/bbrelin/src/repos/nimcp/build/src/tests && /usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/bbrelin/src/repos/nimcp/src/tests/test_brain_integration.cpp -o CMakeFiles/integration_tests.dir/test_brain_integration.cpp.s
 
+src/tests/CMakeFiles/integration_tests.dir/test_comprehensive_brain_integration.cpp.o: src/tests/CMakeFiles/integration_tests.dir/flags.make
+src/tests/CMakeFiles/integration_tests.dir/test_comprehensive_brain_integration.cpp.o: ../src/tests/test_comprehensive_brain_integration.cpp
+src/tests/CMakeFiles/integration_tests.dir/test_comprehensive_brain_integration.cpp.o: src/tests/CMakeFiles/integration_tests.dir/compiler_depend.ts
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/bbrelin/src/repos/nimcp/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_7) "Building CXX object src/tests/CMakeFiles/integration_tests.dir/test_comprehensive_brain_integration.cpp.o"
+	cd /home/bbrelin/src/repos/nimcp/build/src/tests && /usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT src/tests/CMakeFiles/integration_tests.dir/test_comprehensive_brain_integration.cpp.o -MF CMakeFiles/integration_tests.dir/test_comprehensive_brain_integration.cpp.o.d -o CMakeFiles/integration_tests.dir/test_comprehensive_brain_integration.cpp.o -c /home/bbrelin/src/repos/nimcp/src/tests/test_comprehensive_brain_integration.cpp
+
+src/tests/CMakeFiles/integration_tests.dir/test_comprehensive_brain_integration.cpp.i: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Preprocessing CXX source to CMakeFiles/integration_tests.dir/test_comprehensive_brain_integration.cpp.i"
+	cd /home/bbrelin/src/repos/nimcp/build/src/tests && /usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /home/bbrelin/src/repos/nimcp/src/tests/test_comprehensive_brain_integration.cpp > CMakeFiles/integration_tests.dir/test_comprehensive_brain_integration.cpp.i
+
+src/tests/CMakeFiles/integration_tests.dir/test_comprehensive_brain_integration.cpp.s: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Compiling CXX source to assembly CMakeFiles/integration_tests.dir/test_comprehensive_brain_integration.cpp.s"
+	cd /home/bbrelin/src/repos/nimcp/build/src/tests && /usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/bbrelin/src/repos/nimcp/src/tests/test_comprehensive_brain_integration.cpp -o CMakeFiles/integration_tests.dir/test_comprehensive_brain_integration.cpp.s
+
+src/tests/CMakeFiles/integration_tests.dir/test_visual_cortex_integration.cpp.o: src/tests/CMakeFiles/integration_tests.dir/flags.make
+src/tests/CMakeFiles/integration_tests.dir/test_visual_cortex_integration.cpp.o: ../src/tests/test_visual_cortex_integration.cpp
+src/tests/CMakeFiles/integration_tests.dir/test_visual_cortex_integration.cpp.o: src/tests/CMakeFiles/integration_tests.dir/compiler_depend.ts
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/bbrelin/src/repos/nimcp/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_8) "Building CXX object src/tests/CMakeFiles/integration_tests.dir/test_visual_cortex_integration.cpp.o"
+	cd /home/bbrelin/src/repos/nimcp/build/src/tests && /usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT src/tests/CMakeFiles/integration_tests.dir/test_visual_cortex_integration.cpp.o -MF CMakeFiles/integration_tests.dir/test_visual_cortex_integration.cpp.o.d -o CMakeFiles/integration_tests.dir/test_visual_cortex_integration.cpp.o -c /home/bbrelin/src/repos/nimcp/src/tests/test_visual_cortex_integration.cpp
+
+src/tests/CMakeFiles/integration_tests.dir/test_visual_cortex_integration.cpp.i: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Preprocessing CXX source to CMakeFiles/integration_tests.dir/test_visual_cortex_integration.cpp.i"
+	cd /home/bbrelin/src/repos/nimcp/build/src/tests && /usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /home/bbrelin/src/repos/nimcp/src/tests/test_visual_cortex_integration.cpp > CMakeFiles/integration_tests.dir/test_visual_cortex_integration.cpp.i
+
+src/tests/CMakeFiles/integration_tests.dir/test_visual_cortex_integration.cpp.s: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Compiling CXX source to assembly CMakeFiles/integration_tests.dir/test_visual_cortex_integration.cpp.s"
+	cd /home/bbrelin/src/repos/nimcp/build/src/tests && /usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/bbrelin/src/repos/nimcp/src/tests/test_visual_cortex_integration.cpp -o CMakeFiles/integration_tests.dir/test_visual_cortex_integration.cpp.s
+
+src/tests/CMakeFiles/integration_tests.dir/test_visual_cortex_e2e.cpp.o: src/tests/CMakeFiles/integration_tests.dir/flags.make
+src/tests/CMakeFiles/integration_tests.dir/test_visual_cortex_e2e.cpp.o: ../src/tests/test_visual_cortex_e2e.cpp
+src/tests/CMakeFiles/integration_tests.dir/test_visual_cortex_e2e.cpp.o: src/tests/CMakeFiles/integration_tests.dir/compiler_depend.ts
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/bbrelin/src/repos/nimcp/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_9) "Building CXX object src/tests/CMakeFiles/integration_tests.dir/test_visual_cortex_e2e.cpp.o"
+	cd /home/bbrelin/src/repos/nimcp/build/src/tests && /usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT src/tests/CMakeFiles/integration_tests.dir/test_visual_cortex_e2e.cpp.o -MF CMakeFiles/integration_tests.dir/test_visual_cortex_e2e.cpp.o.d -o CMakeFiles/integration_tests.dir/test_visual_cortex_e2e.cpp.o -c /home/bbrelin/src/repos/nimcp/src/tests/test_visual_cortex_e2e.cpp
+
+src/tests/CMakeFiles/integration_tests.dir/test_visual_cortex_e2e.cpp.i: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Preprocessing CXX source to CMakeFiles/integration_tests.dir/test_visual_cortex_e2e.cpp.i"
+	cd /home/bbrelin/src/repos/nimcp/build/src/tests && /usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /home/bbrelin/src/repos/nimcp/src/tests/test_visual_cortex_e2e.cpp > CMakeFiles/integration_tests.dir/test_visual_cortex_e2e.cpp.i
+
+src/tests/CMakeFiles/integration_tests.dir/test_visual_cortex_e2e.cpp.s: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Compiling CXX source to assembly CMakeFiles/integration_tests.dir/test_visual_cortex_e2e.cpp.s"
+	cd /home/bbrelin/src/repos/nimcp/build/src/tests && /usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/bbrelin/src/repos/nimcp/src/tests/test_visual_cortex_e2e.cpp -o CMakeFiles/integration_tests.dir/test_visual_cortex_e2e.cpp.s
+
+src/tests/CMakeFiles/integration_tests.dir/test_visual_cortex_regression.cpp.o: src/tests/CMakeFiles/integration_tests.dir/flags.make
+src/tests/CMakeFiles/integration_tests.dir/test_visual_cortex_regression.cpp.o: ../src/tests/test_visual_cortex_regression.cpp
+src/tests/CMakeFiles/integration_tests.dir/test_visual_cortex_regression.cpp.o: src/tests/CMakeFiles/integration_tests.dir/compiler_depend.ts
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/bbrelin/src/repos/nimcp/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_10) "Building CXX object src/tests/CMakeFiles/integration_tests.dir/test_visual_cortex_regression.cpp.o"
+	cd /home/bbrelin/src/repos/nimcp/build/src/tests && /usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT src/tests/CMakeFiles/integration_tests.dir/test_visual_cortex_regression.cpp.o -MF CMakeFiles/integration_tests.dir/test_visual_cortex_regression.cpp.o.d -o CMakeFiles/integration_tests.dir/test_visual_cortex_regression.cpp.o -c /home/bbrelin/src/repos/nimcp/src/tests/test_visual_cortex_regression.cpp
+
+src/tests/CMakeFiles/integration_tests.dir/test_visual_cortex_regression.cpp.i: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Preprocessing CXX source to CMakeFiles/integration_tests.dir/test_visual_cortex_regression.cpp.i"
+	cd /home/bbrelin/src/repos/nimcp/build/src/tests && /usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /home/bbrelin/src/repos/nimcp/src/tests/test_visual_cortex_regression.cpp > CMakeFiles/integration_tests.dir/test_visual_cortex_regression.cpp.i
+
+src/tests/CMakeFiles/integration_tests.dir/test_visual_cortex_regression.cpp.s: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Compiling CXX source to assembly CMakeFiles/integration_tests.dir/test_visual_cortex_regression.cpp.s"
+	cd /home/bbrelin/src/repos/nimcp/build/src/tests && /usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/bbrelin/src/repos/nimcp/src/tests/test_visual_cortex_regression.cpp -o CMakeFiles/integration_tests.dir/test_visual_cortex_regression.cpp.s
+
 src/tests/CMakeFiles/integration_tests.dir/__/python/nimcp_module.c.o: src/tests/CMakeFiles/integration_tests.dir/flags.make
 src/tests/CMakeFiles/integration_tests.dir/__/python/nimcp_module.c.o: ../src/python/nimcp_module.c
 src/tests/CMakeFiles/integration_tests.dir/__/python/nimcp_module.c.o: src/tests/CMakeFiles/integration_tests.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/bbrelin/src/repos/nimcp/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_7) "Building C object src/tests/CMakeFiles/integration_tests.dir/__/python/nimcp_module.c.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/bbrelin/src/repos/nimcp/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_11) "Building C object src/tests/CMakeFiles/integration_tests.dir/__/python/nimcp_module.c.o"
 	cd /home/bbrelin/src/repos/nimcp/build/src/tests && /usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -MD -MT src/tests/CMakeFiles/integration_tests.dir/__/python/nimcp_module.c.o -MF CMakeFiles/integration_tests.dir/__/python/nimcp_module.c.o.d -o CMakeFiles/integration_tests.dir/__/python/nimcp_module.c.o -c /home/bbrelin/src/repos/nimcp/src/python/nimcp_module.c
 
 src/tests/CMakeFiles/integration_tests.dir/__/python/nimcp_module.c.i: cmake_force
@@ -175,6 +231,10 @@ integration_tests_OBJECTS = \
 "CMakeFiles/integration_tests.dir/test_distributed_cognition.cpp.o" \
 "CMakeFiles/integration_tests.dir/test_distributed_advanced.cpp.o" \
 "CMakeFiles/integration_tests.dir/test_brain_integration.cpp.o" \
+"CMakeFiles/integration_tests.dir/test_comprehensive_brain_integration.cpp.o" \
+"CMakeFiles/integration_tests.dir/test_visual_cortex_integration.cpp.o" \
+"CMakeFiles/integration_tests.dir/test_visual_cortex_e2e.cpp.o" \
+"CMakeFiles/integration_tests.dir/test_visual_cortex_regression.cpp.o" \
 "CMakeFiles/integration_tests.dir/__/python/nimcp_module.c.o"
 
 # External object files for target integration_tests
@@ -186,14 +246,18 @@ src/tests/integration_tests: src/tests/CMakeFiles/integration_tests.dir/test_int
 src/tests/integration_tests: src/tests/CMakeFiles/integration_tests.dir/test_distributed_cognition.cpp.o
 src/tests/integration_tests: src/tests/CMakeFiles/integration_tests.dir/test_distributed_advanced.cpp.o
 src/tests/integration_tests: src/tests/CMakeFiles/integration_tests.dir/test_brain_integration.cpp.o
+src/tests/integration_tests: src/tests/CMakeFiles/integration_tests.dir/test_comprehensive_brain_integration.cpp.o
+src/tests/integration_tests: src/tests/CMakeFiles/integration_tests.dir/test_visual_cortex_integration.cpp.o
+src/tests/integration_tests: src/tests/CMakeFiles/integration_tests.dir/test_visual_cortex_e2e.cpp.o
+src/tests/integration_tests: src/tests/CMakeFiles/integration_tests.dir/test_visual_cortex_regression.cpp.o
 src/tests/integration_tests: src/tests/CMakeFiles/integration_tests.dir/__/python/nimcp_module.c.o
 src/tests/integration_tests: src/tests/CMakeFiles/integration_tests.dir/build.make
-src/tests/integration_tests: src/lib/libnimcp_core.so.2.5.0
+src/tests/integration_tests: ../bin/libnimcp.so.2.5.0
 src/tests/integration_tests: /usr/lib/x86_64-linux-gnu/libpython3.10.so
 src/tests/integration_tests: /usr/lib/x86_64-linux-gnu/libgtest_main.a
 src/tests/integration_tests: /usr/lib/x86_64-linux-gnu/libgtest.a
 src/tests/integration_tests: src/tests/CMakeFiles/integration_tests.dir/link.txt
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --bold --progress-dir=/home/bbrelin/src/repos/nimcp/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_8) "Linking CXX executable integration_tests"
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --bold --progress-dir=/home/bbrelin/src/repos/nimcp/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_12) "Linking CXX executable integration_tests"
 	cd /home/bbrelin/src/repos/nimcp/build/src/tests && $(CMAKE_COMMAND) -E cmake_link_script CMakeFiles/integration_tests.dir/link.txt --verbose=$(VERBOSE)
 
 # Rule to build all files generated by this target.

@@ -203,4 +203,5 @@ src/lib/CMakeFiles/nimcp_core.dir/nimcp_replication.c.o: \
  /home/bbrelin/src/repos/nimcp/src/lib/../include/nimcp_neuron_types.h \
  /home/bbrelin/src/repos/nimcp/src/lib/../include/nimcp_brain.h \
  /home/bbrelin/src/repos/nimcp/src/include/utils/nimcp_memory.h \
+ /home/bbrelin/src/repos/nimcp/src/include/utils/nimcp_thread.h \
  /home/bbrelin/src/repos/nimcp/src/include/utils/nimcp_time.h

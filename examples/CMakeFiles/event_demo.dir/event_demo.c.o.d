@@ -51,9 +51,9 @@ examples/CMakeFiles/event_demo.dir/event_demo.c.o: \
  /usr/include/x86_64-linux-gnu/bits/types/locale_t.h \
  /usr/include/x86_64-linux-gnu/bits/types/__locale_t.h \
  /usr/include/strings.h \
- /home/bbrelin/src/repos/nimcp/examples/../src/include/nimcp_events.h \
- /home/bbrelin/src/repos/nimcp/examples/../src/include/nimcp_export.h \
- /home/bbrelin/src/repos/nimcp/examples/../src/include/nimcp_neuralnet.h \
+ /home/bbrelin/src/repos/nimcp/src/networking/events/nimcp_events.h \
+ /home/bbrelin/src/repos/nimcp/src/common/nimcp_export.h \
+ /home/bbrelin/src/repos/nimcp/src/core/neuralnet/nimcp_neuralnet.h \
  /usr/include/python3.10/Python.h /usr/include/python3.10/patchlevel.h \
  /usr/include/python3.10/pyconfig.h \
  /usr/include/x86_64-linux-gnu/python3.10/pyconfig.h \
@@ -180,6 +180,4 @@ examples/CMakeFiles/event_demo.dir/event_demo.c.o: \
  /usr/include/python3.10/cpython/pyfpe.h \
  /usr/include/python3.10/tracemalloc.h \
  /usr/lib/gcc/x86_64-linux-gnu/11/include/stdbool.h \
- /home/bbrelin/src/repos/nimcp/examples/../src/include/nimcp_protocol.h \
- /home/bbrelin/src/repos/nimcp/examples/../src/include/nimcp_neuralnet.h \
- /home/bbrelin/src/repos/nimcp/examples/../src/include/nimcp_protocol.h
+ /home/bbrelin/src/repos/nimcp/src/networking/protocol/nimcp_protocol.h

@@ -13,8 +13,8 @@
 #include <limits>
 
 extern "C" {
-#include "utils/nimcp_common.h"
-#include "utils/nimcp_validate.h"
+#include "utils/validation/nimcp_common.h"
+#include "utils/validation/nimcp_validate.h"
 }
 
 //=============================================================================

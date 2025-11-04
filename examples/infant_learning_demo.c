@@ -47,10 +47,10 @@
 #include <time.h>
 
 // Note: These headers would be included when implementations are complete
-// #include "../src/include/nimcp_ethics.h"
+// #include "cognitive/ethics/nimcp_ethics.h"
 // #include "../src/include/nimcp_curiosity.h"
 // #include "../src/include/nimcp_knowledge.h"
-#include "../src/include/nimcp_brain.h"
+#include "core/brain/nimcp_brain.h"
 
 //=============================================================================
 // Simulated Infant Learning Progression

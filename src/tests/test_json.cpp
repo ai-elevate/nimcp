@@ -14,8 +14,8 @@
 
 extern "C" {
 #define NIMCP_INTERNAL
-#include "utils/nimcp_json.h"
-#include "utils/nimcp_memory.h"
+#include "utils/json/nimcp_json.h"
+#include "utils/memory/nimcp_memory.h"
 }
 
 //=============================================================================

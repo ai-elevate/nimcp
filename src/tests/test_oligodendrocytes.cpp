@@ -27,9 +27,9 @@
 #include <gtest/gtest.h>
 
 extern "C" {
-#include "nimcp_oligodendrocytes.h"
-#include "utils/nimcp_memory.h"
-#include "utils/nimcp_time.h"
+#include "glial/oligodendrocytes/nimcp_oligodendrocytes.h"
+#include "utils/memory/nimcp_memory.h"
+#include "utils/time/nimcp_time.h"
 #include <math.h>
 }
 

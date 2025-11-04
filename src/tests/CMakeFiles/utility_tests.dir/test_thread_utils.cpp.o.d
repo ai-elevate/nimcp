@@ -268,7 +268,6 @@ src/tests/CMakeFiles/utility_tests.dir/test_thread_utils.cpp.o: \
  /usr/include/c++/11/ratio /usr/include/c++/11/thread \
  /usr/include/c++/11/bits/std_thread.h \
  /usr/include/c++/11/bits/this_thread_sleep.h \
- /home/bbrelin/src/repos/nimcp/src/include/utils/nimcp_thread.h \
+ /home/bbrelin/src/repos/nimcp/src/utils/thread/nimcp_thread.h \
  /usr/lib/gcc/x86_64-linux-gnu/11/include/stdbool.h \
- /home/bbrelin/src/repos/nimcp/src/include/utils/nimcp_thread_pool.h \
- /home/bbrelin/src/repos/nimcp/src/include/utils/nimcp_thread.h
+ /home/bbrelin/src/repos/nimcp/src/utils/thread/nimcp_thread_pool.h

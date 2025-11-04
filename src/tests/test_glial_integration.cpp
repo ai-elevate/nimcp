@@ -18,12 +18,12 @@
 #include <gtest/gtest.h>
 
 extern "C" {
-#include "nimcp_glial_integration.h"
-#include "nimcp_neuralnet.h"
-#include "nimcp_astrocytes.h"
-#include "nimcp_oligodendrocytes.h"
-#include "nimcp_microglia.h"
-#include "utils/nimcp_time.h"
+#include "glial/integration/nimcp_glial_integration.h"
+#include "core/neuralnet/nimcp_neuralnet.h"
+#include "glial/astrocytes/nimcp_astrocytes.h"
+#include "glial/oligodendrocytes/nimcp_oligodendrocytes.h"
+#include "glial/microglia/nimcp_microglia.h"
+#include "utils/time/nimcp_time.h"
 }
 
 class GlialIntegrationTest : public ::testing::Test {

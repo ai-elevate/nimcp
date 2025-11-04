@@ -107,10 +107,14 @@ find_package(Python3 COMPONENTS Development REQUIRED)
 find_package(GTest REQUIRED)
 
 # Define project-wide variables
-set(NIMCP_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/src/include)
+# With new hierarchical structure, headers are colocated with sources
+set(NIMCP_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/src)
 set(NIMCP_LIB_DIR ${CMAKE_CURRENT_SOURCE_DIR}/src/lib)
 set(NIMCP_PYTHON_DIR ${CMAKE_CURRENT_SOURCE_DIR}/src/python)
 set(NIMCP_TEST_DIR ${CMAKE_CURRENT_SOURCE_DIR}/src/tests)
+
+# Enable testing (must be in top-level CMakeLists.txt BEFORE add_subdirectory)
+enable_testing()
 
 # Add subdirectories
 add_subdirectory(src)
@@ -177,7 +181,7 @@ message(STATUS "  Fuzzing Targets: ${ENABLE_FUZZING}")
 message(STATUS "")
 message(STATUS "Installation:")
 message(STATUS "  Install prefix: ${CMAKE_INSTALL_PREFIX}")
-message(STATUS "  Library: ${CMAKE_INSTALL_LIBDIR}/libnimcp_core.so")
+message(STATUS "  Library: ${CMAKE_INSTALL_LIBDIR}/libnimcp.so")
 message(STATUS "  Headers: ${CMAKE_INSTALL_INCLUDEDIR}/nimcp/")
 message(STATUS "  Pkg-config: ${CMAKE_INSTALL_LIBDIR}/pkgconfig/nimcp.pc")
 message(STATUS "===============================================================================")

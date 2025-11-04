@@ -18,9 +18,9 @@
 #include <gtest/gtest.h>
 
 extern "C" {
-#include "nimcp_neuralnet.h"
-#include "nimcp_neuron_types.h"
-#include "utils/nimcp_time.h"
+#include "core/neuralnet/nimcp_neuralnet.h"
+#include "core/neuron_types/nimcp_neuron_types.h"
+#include "utils/time/nimcp_time.h"
 }
 
 #include <cmath>

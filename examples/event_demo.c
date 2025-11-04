@@ -32,9 +32,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include "../src/include/nimcp_events.h"
-#include "../src/include/nimcp_neuralnet.h"
-#include "../src/include/nimcp_protocol.h"
+#include "networking/events/nimcp_events.h"
+#include "core/neuralnet/nimcp_neuralnet.h"
+#include "networking/protocol/nimcp_protocol.h"
 
 // Global counter for received events
 static uint32_t events_received = 0;

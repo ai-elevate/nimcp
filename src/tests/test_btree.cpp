@@ -9,8 +9,8 @@
 #include <string>
 #include <vector>
 extern "C" {
-#include "utils/nimcp_btree.h"
-#include "utils/nimcp_memory.h"
+#include "utils/containers/nimcp_btree.h"
+#include "utils/memory/nimcp_memory.h"
 }
 
 // Test data structure

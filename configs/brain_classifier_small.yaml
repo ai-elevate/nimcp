@@ -1,0 +1,43 @@
+# NIMCP Brain Configuration
+# Classification brain with small size preset
+
+brain:
+  name: "image_classifier"
+
+  # Size preset: tiny, small, medium, large
+  size: small
+
+  # Task type: classification, regression, pattern_matching, sequence, association
+  task: classification
+
+  # Network architecture
+  architecture:
+    num_inputs: 784        # 28x28 image
+    num_outputs: 10        # 10 digit classes
+    num_hidden: 256        # Hidden layer neurons
+    learning_rate: 0.01
+
+  # Training parameters
+  training:
+    max_epochs: 100
+    batch_size: 32
+    validation_split: 0.2
+    early_stopping: true
+    patience: 10
+
+  # Plasticity settings
+  plasticity:
+    enable_bcm: true
+    bcm_tau: 1000.0
+    enable_stdp: true
+    stdp_window: 20.0
+
+  # Ethics configuration
+  ethics:
+    enabled: true
+    golden_rule_threshold: 0.0
+    empathy_weight: 0.5
+
+  # Save/Load
+  model_path: "/tmp/models/classifier_small.brain"
+  checkpoint_interval: 10  # Save every N epochs

@@ -4,7 +4,7 @@
 # compile C with /usr/bin/cc
 C_DEFINES = -Dnimcp_python_EXPORTS
 
-C_INCLUDES = -I/home/bbrelin/src/repos/nimcp/src/include -I/home/bbrelin/src/repos/nimcp/src/lib -isystem /usr/include/python3.10
+C_INCLUDES = -I/home/bbrelin/src/repos/nimcp/src -I/home/bbrelin/src/repos/nimcp/src/lib -isystem /usr/include/python3.10
 
 C_FLAGS =  -Wall -Wextra -Wpedantic -g -fPIC -std=gnu11
 

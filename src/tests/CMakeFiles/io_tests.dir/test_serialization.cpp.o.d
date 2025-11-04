@@ -286,9 +286,9 @@ src/tests/CMakeFiles/io_tests.dir/test_serialization.cpp.o: \
  /usr/include/c++/11/tr1/poly_hermite.tcc \
  /usr/include/c++/11/tr1/poly_laguerre.tcc \
  /usr/include/c++/11/tr1/riemann_zeta.tcc /usr/include/c++/11/cstring \
- /home/bbrelin/src/repos/nimcp/src/include/utils/nimcp_serialization.h \
+ /home/bbrelin/src/repos/nimcp/src/io/serialization/nimcp_serialization.h \
  /usr/include/lz4.h /usr/lib/gcc/x86_64-linux-gnu/11/include/stdbool.h \
- /home/bbrelin/src/repos/nimcp/src/include/utils/../utils/nimcp_common.h \
+ /home/bbrelin/src/repos/nimcp/src/utils/validation/nimcp_common.h \
  /usr/include/c++/11/math.h /usr/include/dirent.h \
  /usr/include/x86_64-linux-gnu/bits/dirent.h \
  /usr/include/x86_64-linux-gnu/bits/posix1_lim.h \

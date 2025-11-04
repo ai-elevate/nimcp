@@ -267,6 +267,6 @@ src/tests/CMakeFiles/utility_tests.dir/test_btree.cpp.o: \
  /usr/include/gtest/gtest_pred_impl.h /usr/include/c++/11/algorithm \
  /usr/include/c++/11/pstl/glue_algorithm_defs.h \
  /usr/include/c++/11/cstring \
- /home/bbrelin/src/repos/nimcp/src/include/utils/nimcp_btree.h \
+ /home/bbrelin/src/repos/nimcp/src/utils/containers/nimcp_btree.h \
  /usr/lib/gcc/x86_64-linux-gnu/11/include/stdbool.h \
- /home/bbrelin/src/repos/nimcp/src/include/utils/nimcp_memory.h
+ /home/bbrelin/src/repos/nimcp/src/utils/memory/nimcp_memory.h

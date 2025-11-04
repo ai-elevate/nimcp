@@ -48,10 +48,11 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include "nimcp_brain.h"
-#include "nimcp_curiosity.h"
-#include "nimcp_ethics.h"
-#include "nimcp_knowledge.h"
+#include "core/brain/nimcp_brain.h"
+#include "cognitive/curiosity/nimcp_curiosity.h"
+#include "cognitive/ethics/nimcp_ethics.h"
+#include "cognitive/knowledge/nimcp_knowledge.h"
+#include "utils/memory/nimcp_memory.h"
 
 //=============================================================================
 // Demonstration: Day 1 - First Learning Experience
@@ -122,14 +123,14 @@ void demo_ethics_learning(knowledge_system_t knowledge, curiosity_engine_t curio
     // Create action context
     action_context_t action = {0};
     action.num_features = 4;
-    action.features = malloc(4 * sizeof(float));
+    action.features = nimcp_malloc(4 * sizeof(float));
     action.features[0] = 0.7f;  // harm to cat
     action.features[1] = 0.2f;  // unfair
     action.features[2] = 0.5f;  // no deception
     action.features[3] = 0.3f;  // violates cat's autonomy
 
     action.num_affected_agents = 1;
-    action.affected_agents = malloc(sizeof(agent_id_t));
+    action.affected_agents = nimcp_malloc(sizeof(agent_id_t));
     action.affected_agents[0] = 100;  // Cat
 
     action.predicted_harm = 0.7f;
@@ -177,8 +178,8 @@ void demo_ethics_learning(knowledge_system_t knowledge, curiosity_engine_t curio
     knowledge_understand(knowledge, "hurt", "animals", explanation, sizeof(explanation));
     printf("  %s\n\n", explanation);
 
-    free(action.features);
-    free(action.affected_agents);
+    nimcp_free(action.features);
+    nimcp_free(action.affected_agents);
 }
 
 //=============================================================================
@@ -202,24 +203,24 @@ void demo_story_learning(knowledge_system_t knowledge, curiosity_engine_t curios
 
     // Characters
     story.num_characters = 4;
-    story.characters = malloc(4 * sizeof(char*));
-    story.characters[0] = strdup("Goldilocks");
-    story.characters[1] = strdup("Papa Bear");
-    story.characters[2] = strdup("Mama Bear");
-    story.characters[3] = strdup("Baby Bear");
+    story.characters = nimcp_malloc(4 * sizeof(char*));
+    story.characters[0] = nimcp_strdup("Goldilocks");
+    story.characters[1] = nimcp_strdup("Papa Bear");
+    story.characters[2] = nimcp_strdup("Mama Bear");
+    story.characters[3] = nimcp_strdup("Baby Bear");
 
     // Themes
     story.num_themes = 3;
-    story.themes = malloc(3 * sizeof(char*));
-    story.themes[0] = strdup("respect");
-    story.themes[1] = strdup("consequences");
-    story.themes[2] = strdup("property");
+    story.themes = nimcp_malloc(3 * sizeof(char*));
+    story.themes[0] = nimcp_strdup("respect");
+    story.themes[1] = nimcp_strdup("consequences");
+    story.themes[2] = nimcp_strdup("property");
 
     // Moral lessons
     story.num_lessons = 2;
-    story.moral_lessons = malloc(2 * sizeof(char*));
-    story.moral_lessons[0] = strdup("Don't enter someone else's house without permission");
-    story.moral_lessons[1] = strdup("Respect other people's property");
+    story.moral_lessons = nimcp_malloc(2 * sizeof(char*));
+    story.moral_lessons[0] = nimcp_strdup("Don't enter someone else's house without permission");
+    story.moral_lessons[1] = nimcp_strdup("Respect other people's property");
 
     story.primary_domain = KNOWLEDGE_DOMAIN_LITERATURE;
 
@@ -261,14 +262,14 @@ void demo_story_learning(knowledge_system_t knowledge, curiosity_engine_t curios
 
     // Cleanup
     for (uint32_t i = 0; i < story.num_characters; i++)
-        free(story.characters[i]);
-    free(story.characters);
+        nimcp_free(story.characters[i]);
+    nimcp_free(story.characters);
     for (uint32_t i = 0; i < story.num_themes; i++)
-        free(story.themes[i]);
-    free(story.themes);
+        nimcp_free(story.themes[i]);
+    nimcp_free(story.themes);
     for (uint32_t i = 0; i < story.num_lessons; i++)
-        free(story.moral_lessons[i]);
-    free(story.moral_lessons);
+        nimcp_free(story.moral_lessons[i]);
+    nimcp_free(story.moral_lessons);
 }
 
 //=============================================================================

@@ -12,7 +12,7 @@
 #include <cstring>
 
 extern "C" {
-#include "utils/nimcp_serialization.h"
+#include "io/serialization/nimcp_serialization.h"
 }
 
 //=============================================================================
@@ -759,6 +759,7 @@ TEST_F(SerializerIntegrationTest, SerializeCompressDeserialize)
     // Create new serializer for "receiving" end
     NimcpSerializer* recv_serializer = nimcp_serializer_create(0);
     nimcp_serializer_set_buffer(recv_serializer, compressed_data, compressed_size);
+    nimcp_serializer_mark_compressed(recv_serializer);  // Mark as compressed before decompression
 
     // Decompress
     EXPECT_EQ(nimcp_serializer_decompress(recv_serializer), NIMCP_SERIAL_SUCCESS);
