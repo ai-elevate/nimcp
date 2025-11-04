@@ -273,7 +273,8 @@ static bool knowledge_hash_table_insert(knowledge_hash_table_t* table, const cha
         nimcp_free(entry);
         return false;
     }
-    strcpy(entry->concept, concept);
+    strncpy(entry->concept, concept, concept_len + 1);
+    entry->concept[concept_len] = '\0';
 
     entry->index = index;
     entry->next = table->entries[hash];
@@ -578,7 +579,8 @@ static uint32_t extract_concepts_optimized(const char* text, char concepts[][256
     char* text_copy = nimcp_malloc(text_len + 1);
     if (!text_copy)
         return 0;
-    strcpy(text_copy, text);
+    strncpy(text_copy, text, text_len + 1);
+    text_copy[text_len] = '\0';
 
     const char* delimiters = " .,;:!?\n\t\"'()[]{}";
     uint32_t num_concepts = 0;
@@ -680,7 +682,8 @@ static char** deep_copy_string_array(char** src, uint32_t count)
         if (!dest[i])
             continue;
 
-        strcpy(dest[i], src[i]);
+        strncpy(dest[i], src[i], len);
+        dest[i][len - 1] = '\0';
     }
 
     return dest;
@@ -1669,7 +1672,8 @@ bool knowledge_reinforce(knowledge_system_t system, const char* concept, const c
         size_t example_len = strlen(new_example);
         item->examples[item->num_examples] = nimcp_malloc(example_len + 1);
         if (item->examples[item->num_examples]) {
-            strcpy(item->examples[item->num_examples], new_example);
+            strncpy(item->examples[item->num_examples], new_example, example_len);
+            item->examples[item->num_examples][example_len] = '\0';
             item->num_examples++;
         }
     }
