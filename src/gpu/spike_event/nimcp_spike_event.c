@@ -207,7 +207,7 @@ float spike_train_compute_rate(spike_train_t* train, uint64_t time_window)
     }
 
     // Get current time
-    uint64_t current_time = nimcp_time_get_microseconds();
+    uint64_t current_time = nimcp_time_get_us();
 
     // Count spikes in time window
     uint32_t spike_count = 0;

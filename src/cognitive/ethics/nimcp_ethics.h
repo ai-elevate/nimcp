@@ -459,4 +459,156 @@ typedef struct {
  */
 bool ethics_get_statistics(ethics_engine_t engine, ethics_statistics_t* stats);
 
+//=============================================================================
+// Ethics Incident Logging API (NIMCP 2.5.1)
+//=============================================================================
+
+/**
+ * @brief Ethics incident record for comprehensive logging
+ *
+ * This structure extends violation_record_t with additional context
+ * for complete audit trails and ethical review.
+ */
+typedef struct {
+    uint64_t incident_id;                   /**< Unique incident identifier */
+    uint64_t timestamp;                     /**< When incident occurred */
+    char timestamp_key[32];                 /**< String key for B-tree indexing */
+    ethics_violation_type_t violation_type; /**< Type of violation */
+    float severity;                         /**< Violation severity (0-1) */
+    ethics_action_t action_taken;           /**< Action taken by engine */
+    uint32_t policy_id;                     /**< Policy that triggered */
+    char policy_name[128];                  /**< Name of policy */
+    char description[512];                  /**< Detailed description */
+    float golden_rule_score;                /**< Golden Rule evaluation score */
+    agent_id_t acting_agent;                /**< Agent performing action */
+    agent_id_t affected_agent;              /**< Agent affected by action */
+    char context_info[256];                 /**< Additional context */
+} ethics_incident_t;
+
+/**
+ * @brief Log an ethics incident
+ *
+ * Records an incident to persistent storage and in-memory history.
+ *
+ * @param engine Ethics engine
+ * @param incident Incident to log
+ * @return true if successfully logged
+ *
+ * COMPLEXITY: O(log n) for B-tree insertion
+ * THREAD-SAFE: Yes (uses internal mutex)
+ */
+bool ethics_log_incident(ethics_engine_t engine, const ethics_incident_t* incident);
+
+/**
+ * @brief Get recent ethics incidents
+ *
+ * Retrieves the most recent incidents from memory.
+ *
+ * @param engine Ethics engine
+ * @param max_incidents Maximum incidents to return
+ * @param incidents_out Output array (caller must free)
+ * @return Number of incidents returned
+ *
+ * COMPLEXITY: O(n) where n = max_incidents
+ * THREAD-SAFE: Yes
+ */
+uint32_t ethics_get_recent_incidents(ethics_engine_t engine, uint32_t max_incidents,
+                                     ethics_incident_t** incidents_out);
+
+/**
+ * @brief Query incidents by time range
+ *
+ * Uses B-tree indexing for efficient temporal queries.
+ *
+ * @param engine Ethics engine
+ * @param start_time Start of time range (inclusive)
+ * @param end_time End of time range (inclusive)
+ * @param incidents_out Output array (caller must free)
+ * @return Number of incidents in range
+ *
+ * COMPLEXITY: O(log n + k) where k = incidents in range
+ * THREAD-SAFE: Yes
+ */
+uint32_t ethics_get_incidents_by_time_range(ethics_engine_t engine, uint64_t start_time,
+                                            uint64_t end_time,
+                                            ethics_incident_t** incidents_out);
+
+/**
+ * @brief Query incidents by violation type
+ *
+ * Finds all incidents of a specific violation type.
+ *
+ * @param engine Ethics engine
+ * @param violation_type Type of violation to find
+ * @param incidents_out Output array (caller must free)
+ * @return Number of matching incidents
+ *
+ * COMPLEXITY: O(n) with filtering
+ * THREAD-SAFE: Yes
+ */
+uint32_t ethics_get_incidents_by_violation_type(ethics_engine_t engine,
+                                                ethics_violation_type_t violation_type,
+                                                ethics_incident_t** incidents_out);
+
+/**
+ * @brief Query incidents by minimum severity
+ *
+ * Finds all incidents above a severity threshold.
+ *
+ * @param engine Ethics engine
+ * @param min_severity Minimum severity threshold (0.0-1.0)
+ * @param incidents_out Output array (caller must free)
+ * @return Number of matching incidents
+ *
+ * COMPLEXITY: O(n) with filtering
+ * THREAD-SAFE: Yes
+ */
+uint32_t ethics_get_incidents_by_severity(ethics_engine_t engine, float min_severity,
+                                          ethics_incident_t** incidents_out);
+
+/**
+ * @brief Query incidents by action taken
+ *
+ * Finds all incidents where a specific action was taken.
+ *
+ * @param engine Ethics engine
+ * @param action Action type to find
+ * @param incidents_out Output array (caller must free)
+ * @return Number of matching incidents
+ *
+ * COMPLEXITY: O(n) with filtering
+ * THREAD-SAFE: Yes
+ */
+uint32_t ethics_get_incidents_by_action(ethics_engine_t engine, ethics_action_t action,
+                                        ethics_incident_t** incidents_out);
+
+/**
+ * @brief Get all incidents in chronological order
+ *
+ * Returns complete incident history sorted by timestamp.
+ *
+ * @param engine Ethics engine
+ * @param incidents_out Output array (caller must free)
+ * @return Total number of incidents
+ *
+ * COMPLEXITY: O(n) where n = total incidents
+ * THREAD-SAFE: Yes
+ */
+uint32_t ethics_get_all_incidents(ethics_engine_t engine, ethics_incident_t** incidents_out);
+
+/**
+ * @brief Export incidents to file
+ *
+ * Exports incident history to a JSON or CSV file for external analysis.
+ *
+ * @param engine Ethics engine
+ * @param filepath Path to output file
+ * @param format "json" or "csv"
+ * @return true if export successful
+ *
+ * COMPLEXITY: O(n) where n = total incidents
+ * THREAD-SAFE: Yes
+ */
+bool ethics_export_incidents(ethics_engine_t engine, const char* filepath, const char* format);
+
 #endif  // NIMCP_ETHICS_H

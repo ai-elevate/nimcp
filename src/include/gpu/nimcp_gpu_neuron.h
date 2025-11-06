@@ -54,8 +54,8 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include "common/nimcp_export.h"
-#include "gpu/nimcp_spike_event.h"
-#include "gpu/nimcp_execution_mode.h"
+#include "include/gpu/nimcp_spike_event.h"
+#include "include/gpu/nimcp_execution_mode.h"
 
 // Conditional CUDA support
 #ifdef NIMCP_ENABLE_CUDA

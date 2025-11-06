@@ -3,7 +3,7 @@
 #ifndef NIMCP_P2PNODE_H
 #define NIMCP_P2PNODE_H
 
-#include "/usr/include/python3.10/Python.h"
+#include <Python.h>  // Use CMake-provided Python includes
 #include "common/nimcp_export.h"
 
 #include <stdbool.h>
@@ -27,10 +27,16 @@ typedef enum {
  * @brief Structure containing peer connection information
  */
 typedef struct {
-    char ip[16];    /**< IPv4 address as string */
-    uint16_t port;  /**< Port number */
-    int socket_fd;  /** Stores the socket file descrptor */
-    bool connected; /**< Connection status */
+    char ip[16];        /**< IPv4 address as string */
+    uint16_t port;      /**< Port number */
+    int socket_fd;      /**< Stores the socket file descriptor */
+    bool connected;     /**< Connection status */
+
+    // Heartbeat tracking
+    uint64_t last_ping_sent;     /**< Timestamp of last ping sent (microseconds) */
+    uint64_t last_pong_received; /**< Timestamp of last pong received (microseconds) */
+    uint32_t missed_pings;       /**< Number of consecutive missed pongs */
+    bool healthy;                /**< Health status (true if responding to pings) */
 } peer_info_t;
 
 /**
@@ -126,6 +132,91 @@ bool p2p_node_stop(p2p_node_t node);
  * @note Use nimcp_graph.h API functions to query the graph
  */
 struct NimcpGraph* p2p_node_get_topology_graph(p2p_node_t node);
+
+//=============================================================================
+// Heartbeat System API
+//=============================================================================
+
+/**
+ * @brief Send heartbeat pings to all connected peers
+ *
+ * Sends PING messages to all connected peers and updates last_ping_sent timestamp.
+ * Should be called periodically based on node_config_t.ping_interval.
+ *
+ * @param node Handle to the node
+ * @return Number of pings sent, or 0 on error
+ *
+ * ALGORITHM:
+ * - O(n) where n = number of connected peers
+ * - Each ping is a lightweight MSG_TYPE_PING message
+ * - Non-blocking operation
+ */
+uint32_t p2p_node_send_heartbeats(p2p_node_t node);
+
+/**
+ * @brief Process heartbeat pong response from peer
+ *
+ * Updates peer health status and resets missed ping counter.
+ *
+ * @param node Handle to the node
+ * @param peer_ip IP address of peer
+ * @param peer_port Port of peer
+ * @return true if pong processed successfully
+ *
+ * ALGORITHM:
+ * - O(1) hash table lookup
+ * - Updates last_pong_received timestamp
+ * - Resets missed_pings counter
+ * - Marks peer as healthy
+ */
+bool p2p_node_process_pong(p2p_node_t node, const char* peer_ip, uint16_t peer_port);
+
+/**
+ * @brief Check peer health and mark unhealthy peers
+ *
+ * Checks all peers for missed pongs and marks unhealthy peers.
+ * Should be called after expected pong timeout period.
+ *
+ * @param node Handle to the node
+ * @param timeout_ms Maximum time to wait for pong (milliseconds)
+ * @return Number of unhealthy peers detected
+ *
+ * ALGORITHM:
+ * - O(n) where n = number of peers
+ * - Compares current time to last_pong_received + timeout
+ * - Increments missed_pings counter
+ * - Marks peer unhealthy after max_retries consecutive misses
+ */
+uint32_t p2p_node_check_peer_health(p2p_node_t node, uint32_t timeout_ms);
+
+/**
+ * @brief Reconnect to unhealthy peers
+ *
+ * Attempts to reconnect to peers marked as unhealthy.
+ *
+ * @param node Handle to the node
+ * @return Number of reconnection attempts made
+ *
+ * ALGORITHM:
+ * - O(n) where n = number of unhealthy peers
+ * - Attempts reconnection to unhealthy peers
+ * - Resets health status on successful reconnection
+ */
+uint32_t p2p_node_reconnect_unhealthy(p2p_node_t node);
+
+/**
+ * @brief Get peer health status
+ *
+ * Returns health status of specific peer.
+ *
+ * @param node Handle to the node
+ * @param peer_ip IP address of peer
+ * @param peer_port Port of peer
+ * @param out_health Output: peer health status
+ * @return true if peer found, false otherwise
+ */
+bool p2p_node_get_peer_health(p2p_node_t node, const char* peer_ip, uint16_t peer_port,
+                                bool* out_health);
 
 #ifdef __cplusplus
 }

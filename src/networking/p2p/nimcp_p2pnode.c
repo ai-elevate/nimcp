@@ -43,9 +43,13 @@
 #include <sys/socket.h>
 #include <unistd.h>
 #include "utils/containers/nimcp_graph.h"
+#include "utils/containers/nimcp_hash_table.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/thread/nimcp_thread.h"
 #include "utils/validation/nimcp_validate.h"
+#include "utils/time/nimcp_time.h"
+#include "utils/logging/nimcp_logging.h"
+#include "../protocol/nimcp_protocol.h"
 
 //=============================================================================
 // Constants and Configuration
@@ -144,32 +148,6 @@ static bool validate_port_number(uint16_t port, bool binding)
 }
 
 //=============================================================================
-// Hash Table Implementation (Repository Pattern)
-//=============================================================================
-
-/**
- * @brief Hash table entry for O(1) peer lookup
- *
- * WHY: Linear search through peer array is O(n). Hash table provides O(1)
- * average case lookup for peer resolution, critical for routing performance.
- */
-typedef struct peer_hash_entry {
-    char peer_key[32];            /**< "IP:PORT" string key */
-    peer_info_t* peer;            /**< Pointer to peer info */
-    struct peer_hash_entry* next; /**< Collision chain */
-} peer_hash_entry_t;
-
-/**
- * @brief Hash table for peer storage
- *
- * COMPLEXITY: O(1) average case for insert, lookup, delete
- */
-typedef struct {
-    peer_hash_entry_t* buckets[HASH_TABLE_SIZE];
-    uint32_t num_entries;
-} peer_hash_table_t;
-
-//=============================================================================
 // State Pattern - Connection State Management
 //=============================================================================
 
@@ -218,8 +196,11 @@ struct p2p_node_struct {
     // Network
     int listen_socket;
 
-    // Repository Pattern: Hash-indexed peer storage
-    peer_hash_table_t peer_table;
+    // Repository Pattern: Hash-indexed peer storage using NIMCP hash table utility
+    // WHY: Consolidated hash table implementation with better features
+    // KEYS: "IP:PORT" strings (e.g., "192.168.1.1:8080")
+    // VALUES: Pointers to peer_info_t structures
+    hash_table_t* peer_table;
 
     // Legacy array storage (for iteration)
     peer_info_t* peers;
@@ -237,7 +218,7 @@ struct p2p_node_struct {
 };
 
 //=============================================================================
-// Hash Table Functions
+// Peer Key Generation
 //=============================================================================
 
 /**
@@ -255,163 +236,6 @@ static void generate_peer_key(char* key, size_t key_size, const char* ip, uint16
         return;
 
     snprintf(key, key_size, "%s:%u", ip, port);
-}
-
-/**
- * @brief Hash function for peer keys
- *
- * WHY: Distributes peer keys uniformly across hash table buckets,
- * minimizing collisions for O(1) average lookup time.
- *
- * COMPLEXITY: O(n) where n = key length (typically small ~20 chars)
- */
-static uint32_t hash_peer_key(const char* key)
-{
-    // Guard clause: Validate input
-    if (!key)
-        return 0;
-
-    uint32_t hash = 5381;
-    int c;
-
-    while ((c = *key++)) {
-        hash = ((hash << 5) + hash) + c;
-    }
-
-    return hash % HASH_TABLE_SIZE;
-}
-
-/**
- * @brief Initializes peer hash table
- *
- * WHY: Provides O(1) peer lookup vs O(n) linear search through array.
- * Essential for routing performance with many peers.
- *
- * COMPLEXITY: O(1)
- */
-static void init_peer_hash_table(peer_hash_table_t* table)
-{
-    // Guard clause: Validate input
-    if (!table)
-        return;
-
-    memset(table->buckets, 0, sizeof(table->buckets));
-    table->num_entries = 0;
-}
-
-/**
- * @brief Inserts peer into hash table
- *
- * WHY: O(1) insertion enables fast peer registration without degrading
- * lookup performance as peer count grows.
- *
- * COMPLEXITY: O(1) average case
- *
- * @return true if inserted, false on failure
- */
-static bool hash_table_insert_peer(peer_hash_table_t* table, const char* key, peer_info_t* peer)
-{
-    // Guard clause: Validate inputs
-    if (!table || !key || !peer)
-        return false;
-
-    uint32_t bucket = hash_peer_key(key);
-
-    peer_hash_entry_t* entry = nimcp_malloc(sizeof(peer_hash_entry_t));
-    // Guard clause: Check allocation
-    if (!entry)
-        return false;
-
-    strncpy(entry->peer_key, key, sizeof(entry->peer_key) - 1);
-    entry->peer_key[sizeof(entry->peer_key) - 1] = '\0';
-    entry->peer = peer;
-    entry->next = table->buckets[bucket];
-    table->buckets[bucket] = entry;
-    table->num_entries++;
-
-    return true;
-}
-
-/**
- * @brief Looks up peer by key in hash table
- *
- * WHY: O(1) average case lookup is critical for message routing.
- * Replaces O(n) linear search through peer array.
- *
- * COMPLEXITY: O(1) average, O(k) worst case where k = collision chain length
- *
- * @return Pointer to peer or NULL if not found
- */
-static peer_info_t* hash_table_lookup_peer(peer_hash_table_t* table, const char* key)
-{
-    // Guard clause: Validate inputs
-    if (!table || !key)
-        return NULL;
-
-    uint32_t bucket = hash_peer_key(key);
-    peer_hash_entry_t* entry = table->buckets[bucket];
-
-    while (entry) {
-        if (strcmp(entry->peer_key, key) == 0) {
-            return entry->peer;
-        }
-        entry = entry->next;
-    }
-
-    return NULL;
-}
-
-/**
- * @brief Removes peer from hash table
- *
- * WHY: O(1) deletion maintains performance consistency across all operations.
- *
- * COMPLEXITY: O(1) average case
- */
-static bool hash_table_remove_peer(peer_hash_table_t* table, const char* key)
-{
-    // Guard clause: Validate inputs
-    if (!table || !key)
-        return false;
-
-    uint32_t bucket = hash_peer_key(key);
-    peer_hash_entry_t** entry_ptr = &table->buckets[bucket];
-
-    while (*entry_ptr) {
-        peer_hash_entry_t* entry = *entry_ptr;
-        if (strcmp(entry->peer_key, key) == 0) {
-            *entry_ptr = entry->next;
-            nimcp_free(entry);
-            table->num_entries--;
-            return true;
-        }
-        entry_ptr = &entry->next;
-    }
-
-    return false;
-}
-
-/**
- * @brief Destroys hash table and frees all entries
- *
- * WHY: Prevents memory leaks by cleaning up all allocated hash entries.
- *
- * COMPLEXITY: O(n) where n = number of entries
- */
-static void destroy_peer_hash_table(peer_hash_table_t* table)
-{
-    // Guard clause: Validate input
-    if (!table)
-        return;
-
-    for (uint32_t i = 0; i < HASH_TABLE_SIZE; i++) {
-        peer_hash_entry_t* entry = table->buckets[i];
-        while (entry) {
-            peer_hash_entry_t* next = entry->next;
-            nimcp_free(entry);
-            entry = next;
-        }
-    }
 }
 
 //=============================================================================
@@ -707,8 +531,13 @@ static void initialize_node_state(p2p_node_t node)
 p2p_node_t p2p_node_create(const node_config_t* config)
 {
     // Guard clause: Validate configuration
-    if (!validate_config(config))
+    if (!validate_config(config)) {
+        NIMCP_LOGGING_ERROR("[P2P] Node creation failed: invalid configuration");
         return NULL;
+    }
+
+    NIMCP_LOGGING_DEBUG("[P2P] Creating node on port %u with max_peers=%u",
+                        config->listen_port, config->max_peers);
 
     // Allocate node structure
     p2p_node_t node = nimcp_calloc(1, sizeof(struct p2p_node_struct));
@@ -719,11 +548,28 @@ p2p_node_t p2p_node_create(const node_config_t* config)
     // Copy configuration
     memcpy(&node->config, config, sizeof(node_config_t));
 
-    // Initialize hash table for O(1) peer lookups
-    init_peer_hash_table(&node->peer_table);
+    // Initialize hash table for O(1) peer lookups using NIMCP hash table utility
+    // WHY: Standard hash table provides better features and consistency
+    hash_table_config_t hash_config = {
+        .initial_buckets = HASH_TABLE_SIZE,
+        .key_type = HASH_KEY_STRING,
+        .hash_algorithm = HASH_ALG_DJB2,
+        .case_insensitive = false,
+        .value_destructor = NULL,  // We manage peer_info_t separately
+        .thread_safe = false       // We use our own mutex
+    };
+    node->peer_table = hash_table_create(&hash_config);
+
+    // Guard clause: Check hash table creation
+    if (!node->peer_table) {
+        NIMCP_LOGGING_ERROR("[P2P] Failed to create peer hash table");
+        nimcp_free(node);
+        return NULL;
+    }
 
     // Allocate peer storage
     if (!allocate_peer_storage(node)) {
+        hash_table_destroy(node->peer_table);
         nimcp_free(node);
         return NULL;
     }
@@ -742,11 +588,16 @@ p2p_node_t p2p_node_create(const node_config_t* config)
     // WHY: Enables introspection, pathfinding, and component analysis
     node->topology_graph = nimcp_graph_create();
     if (!node->topology_graph) {
+        NIMCP_LOGGING_ERROR("[P2P] Failed to create topology graph for node on port %u",
+                            config->listen_port);
         nimcp_mutex_destroy(&node->lock);
         nimcp_free(node->peers);
         nimcp_free(node);
         return NULL;
     }
+
+    NIMCP_LOGGING_INFO("[P2P] Node created successfully: port=%u, max_peers=%u, ping_interval=%ums",
+                       config->listen_port, config->max_peers, config->ping_interval);
 
     return node;
 }
@@ -800,8 +651,8 @@ void p2p_node_destroy(p2p_node_t node)
         p2p_node_stop(node);
     }
 
-    // Destroy hash table
-    destroy_peer_hash_table(&node->peer_table);
+    // Destroy hash table (NIMCP utility handles cleanup)
+    hash_table_destroy(node->peer_table);
 
     // Free peer array
     nimcp_free(node->peers);
@@ -886,8 +737,9 @@ bool p2p_node_is_peer_connected(p2p_node_t node, const char* peer_ip, uint16_t p
     char key[32];
     generate_peer_key(key, sizeof(key), peer_ip, peer_port);
 
-    // O(1) hash table lookup
-    peer_info_t* peer = hash_table_lookup_peer(&node->peer_table, key);
+    // O(1) hash table lookup using NIMCP utility
+    // NOTE: We store peer_info_t* pointers in the hash table
+    peer_info_t* peer = (peer_info_t*)hash_table_lookup_string(node->peer_table, key);
 
     // Guard clause: Check if peer found
     if (!peer) {
@@ -920,7 +772,7 @@ static bool peer_already_exists(p2p_node_t node, const char* key)
     if (!node || !key)
         return false;
 
-    return hash_table_lookup_peer(&node->peer_table, key) != NULL;
+    return hash_table_lookup_string(node->peer_table, key) != NULL;
 }
 
 /**
@@ -1020,8 +872,10 @@ static bool add_peer_to_node(p2p_node_t node, const char* ip, uint16_t port, int
     char key[32];
     generate_peer_key(key, sizeof(key), ip, port);
 
-    // Add to hash table for O(1) lookups
-    if (!hash_table_insert_peer(&node->peer_table, key, peer)) {
+    // Add to hash table for O(1) lookups using NIMCP utility
+    // NOTE: We store the peer_info_t* pointer itself (not a copy)
+    if (!hash_table_insert_string(node->peer_table, key, &peer, sizeof(peer_info_t*))) {
+        NIMCP_LOGGING_ERROR("[P2P] Failed to insert peer %s into hash table", key);
         return false;
     }
 
@@ -1088,7 +942,7 @@ bool p2p_node_connect_peer(p2p_node_t node, const char* peer_ip, uint16_t peer_p
 
     // Check if peer already exists (O(1) via hash table)
     if (peer_already_exists(node, key)) {
-        peer_info_t* existing = hash_table_lookup_peer(&node->peer_table, key);
+        peer_info_t* existing = (peer_info_t*)hash_table_lookup_string(node->peer_table, key);
         bool result = existing ? existing->connected : false;
         nimcp_mutex_unlock(&node->lock);
         return result;
@@ -1266,7 +1120,7 @@ bool p2p_node_disconnect_peer(p2p_node_t node, const char* peer_ip, uint16_t pee
     generate_peer_key(key, sizeof(key), peer_ip, peer_port);
 
     // Lookup peer in hash table (O(1))
-    peer_info_t* peer = hash_table_lookup_peer(&node->peer_table, key);
+    peer_info_t* peer = (peer_info_t*)hash_table_lookup_string(node->peer_table, key);
     // Guard clause: Check if peer exists
     if (!peer) {
         nimcp_mutex_unlock(&node->lock);
@@ -1276,8 +1130,8 @@ bool p2p_node_disconnect_peer(p2p_node_t node, const char* peer_ip, uint16_t pee
     // Close peer socket
     close_peer_socket(peer);
 
-    // Remove from hash table (O(1))
-    hash_table_remove_peer(&node->peer_table, key);
+    // Remove from hash table (O(1)) using NIMCP utility
+    hash_table_remove_string(node->peer_table, key);
 
     // Find peer index in array
     int index = find_peer_index(node, peer_ip, peer_port);
@@ -1453,6 +1307,429 @@ bool p2p_node_stop(p2p_node_t node)
 
     // Update node status
     update_node_status(node, NODE_STATUS_SHUTDOWN, false);
+
+    nimcp_mutex_unlock(&node->lock);
+    return true;
+}
+
+//=============================================================================
+// Heartbeat System Implementation
+//=============================================================================
+
+/**
+ * @brief Sends a PING message to specific peer
+ *
+ * WHAT: Sends lightweight PING message via socket
+ * WHY: Check if peer is alive and responding
+ * HOW: Serialize MSG_TYPE_PING and send via socket
+ *
+ * @param peer Peer to ping (must be non-NULL and connected)
+ * @return true on successful send
+ *
+ * COMPLEXITY: O(1)
+ */
+static bool send_ping_to_peer(peer_info_t* peer)
+{
+    // Guard clause: Validate input
+    if (!peer || !peer->connected || peer->socket_fd < 0)
+        return false;
+
+    // Create PING message using protocol
+    uint8_t buffer[sizeof(msg_header_t)];
+    int bytes = protocol_serialize_message(MSG_TYPE_PING, NULL, 0, buffer, sizeof(buffer));
+
+    // Guard clause: Check serialization
+    if (bytes <= 0)
+        return false;
+
+    // Send PING message
+    ssize_t sent = send(peer->socket_fd, buffer, bytes, MSG_NOSIGNAL);
+
+    // Update timestamp on successful send
+    if (sent == bytes) {
+        peer->last_ping_sent = nimcp_time_get_us();
+        NIMCP_LOGGING_DEBUG("[P2P] PING sent to %s:%u", peer->ip, peer->port);
+        return true;
+    }
+
+    NIMCP_LOGGING_WARN("[P2P] Failed to send PING to %s:%u (sent %zd/%d bytes)",
+                       peer->ip, peer->port, sent, bytes);
+    return false;
+}
+
+/**
+ * @brief Send heartbeat pings to all connected peers
+ *
+ * WHAT: Iterates through all peers and sends PING messages
+ * WHY: Periodic health check to detect disconnections
+ * HOW: Single-pass iteration with guard clauses
+ *
+ * @param node Handle to the node
+ * @return Number of pings sent, or 0 on error
+ *
+ * ALGORITHM:
+ * 1. Validate input (O(1))
+ * 2. Lock node (O(1))
+ * 3. Iterate peers and send pings (O(n))
+ * 4. Unlock node (O(1))
+ *
+ * COMPLEXITY: O(n) where n = number of connected peers
+ */
+uint32_t p2p_node_send_heartbeats(p2p_node_t node)
+{
+    // Guard clause: Validate input
+    if (!node)
+        return 0;
+
+    nimcp_mutex_lock(&node->lock);
+
+    // Guard clause: Check if running
+    if (!node->running) {
+        nimcp_mutex_unlock(&node->lock);
+        return 0;
+    }
+
+    uint32_t pings_sent = 0;
+
+    // Single-pass iteration through peers
+    for (uint32_t i = 0; i < node->peer_count; i++) {
+        peer_info_t* peer = &node->peers[i];
+
+        // Guard clause: Skip disconnected peers
+        if (!peer->connected)
+            continue;
+
+        // Send ping and count successes
+        if (send_ping_to_peer(peer)) {
+            pings_sent++;
+        }
+    }
+
+    nimcp_mutex_unlock(&node->lock);
+
+    if (pings_sent > 0) {
+        NIMCP_LOGGING_DEBUG("[P2P] Heartbeat cycle: sent %u pings to connected peers", pings_sent);
+    }
+
+    return pings_sent;
+}
+
+/**
+ * @brief Process heartbeat pong response from peer
+ *
+ * WHAT: Updates peer health metrics on PONG receipt
+ * WHY: Track peer responsiveness and health
+ * HOW: O(1) hash table lookup + status update
+ *
+ * @param node Handle to the node
+ * @param peer_ip IP address of peer
+ * @param peer_port Port of peer
+ * @return true if pong processed successfully
+ *
+ * ALGORITHM:
+ * 1. Validate inputs (O(1))
+ * 2. Generate peer key (O(1))
+ * 3. Hash table lookup (O(1) average)
+ * 4. Update health metrics (O(1))
+ *
+ * COMPLEXITY: O(1) average case
+ */
+bool p2p_node_process_pong(p2p_node_t node, const char* peer_ip, uint16_t peer_port)
+{
+    // Guard clause: Validate inputs
+    if (!node || !peer_ip)
+        return false;
+
+    nimcp_mutex_lock(&node->lock);
+
+    // Generate peer key for hash lookup
+    char peer_key[32];
+    generate_peer_key(peer_key, sizeof(peer_key), peer_ip, peer_port);
+
+    // O(1) hash table lookup using NIMCP utility
+    peer_info_t* peer = (peer_info_t*)hash_table_lookup_string(node->peer_table, peer_key);
+
+    // Guard clause: Peer not found
+    if (!peer) {
+        nimcp_mutex_unlock(&node->lock);
+        return false;
+    }
+
+    // Update health metrics (O(1) operations)
+    peer->last_pong_received = nimcp_time_get_us();
+    peer->missed_pings = 0;
+    peer->healthy = true;
+
+    NIMCP_LOGGING_DEBUG("[P2P] PONG received from %s:%u (peer healthy)", peer_ip, peer_port);
+
+    nimcp_mutex_unlock(&node->lock);
+    return true;
+}
+
+/**
+ * @brief Checks if peer has timed out waiting for pong
+ *
+ * WHAT: Determines if peer exceeded timeout threshold
+ * WHY: Extracted from loop to eliminate nesting
+ * HOW: Compare current time to last_pong + timeout
+ *
+ * @param peer Peer to check (must be non-NULL)
+ * @param timeout_us Timeout in microseconds
+ * @param current_time_us Current timestamp in microseconds
+ * @return true if peer has timed out
+ *
+ * COMPLEXITY: O(1)
+ */
+static bool peer_has_timed_out(const peer_info_t* peer, uint64_t timeout_us,
+                                uint64_t current_time_us)
+{
+    // Guard clause: Validate input
+    if (!peer || !peer->connected)
+        return false;
+
+    // Guard clause: Never received a pong (initial state)
+    if (peer->last_pong_received == 0)
+        return false;
+
+    // Calculate elapsed time since last pong
+    uint64_t elapsed_us = current_time_us - peer->last_pong_received;
+
+    return elapsed_us > timeout_us;
+}
+
+/**
+ * @brief Marks peer as unhealthy and increments missed ping counter
+ *
+ * WHAT: Updates peer health status after timeout
+ * WHY: Single responsibility - health status update
+ * HOW: Increment counter and update flag
+ *
+ * @param peer Peer to mark (must be non-NULL)
+ * @param max_retries Maximum retries before marking unhealthy
+ *
+ * COMPLEXITY: O(1)
+ */
+static void mark_peer_unhealthy(peer_info_t* peer, uint32_t max_retries)
+{
+    // Guard clause: Validate input
+    if (!peer)
+        return;
+
+    peer->missed_pings++;
+
+    // Mark unhealthy after exceeding max retries
+    if (peer->missed_pings >= max_retries) {
+        peer->healthy = false;
+        NIMCP_LOGGING_WARN("[P2P] Peer %s:%u marked UNHEALTHY (missed %u pings)",
+                           peer->ip, peer->port, peer->missed_pings);
+    } else {
+        NIMCP_LOGGING_DEBUG("[P2P] Peer %s:%u missed ping (%u/%u)",
+                            peer->ip, peer->port, peer->missed_pings, max_retries);
+    }
+}
+
+/**
+ * @brief Check peer health and mark unhealthy peers
+ *
+ * WHAT: Scans all peers for timeouts and updates health status
+ * WHY: Detect unresponsive peers for reconnection
+ * HOW: Single-pass iteration with guard clauses
+ *
+ * @param node Handle to the node
+ * @param timeout_ms Maximum time to wait for pong (milliseconds)
+ * @return Number of unhealthy peers detected
+ *
+ * ALGORITHM:
+ * 1. Validate input (O(1))
+ * 2. Get current time (O(1))
+ * 3. Convert timeout to microseconds (O(1))
+ * 4. Iterate peers and check timeouts (O(n))
+ * 5. Mark unhealthy peers (O(1) per peer)
+ *
+ * COMPLEXITY: O(n) where n = number of peers
+ */
+uint32_t p2p_node_check_peer_health(p2p_node_t node, uint32_t timeout_ms)
+{
+    // Guard clause: Validate input
+    if (!node)
+        return 0;
+
+    nimcp_mutex_lock(&node->lock);
+
+    // Guard clause: Check if running
+    if (!node->running) {
+        nimcp_mutex_unlock(&node->lock);
+        return 0;
+    }
+
+    // Get current time once for all comparisons
+    uint64_t current_time_us = nimcp_time_get_us();
+    uint64_t timeout_us = (uint64_t)timeout_ms * 1000;
+    uint32_t unhealthy_count = 0;
+
+    // Single-pass iteration through peers
+    for (uint32_t i = 0; i < node->peer_count; i++) {
+        peer_info_t* peer = &node->peers[i];
+
+        // Guard clause: Skip disconnected peers
+        if (!peer->connected)
+            continue;
+
+        // Check timeout
+        if (peer_has_timed_out(peer, timeout_us, current_time_us)) {
+            mark_peer_unhealthy(peer, node->config.max_retries);
+
+            if (!peer->healthy) {
+                unhealthy_count++;
+            }
+        }
+    }
+
+    nimcp_mutex_unlock(&node->lock);
+    return unhealthy_count;
+}
+
+/**
+ * @brief Attempts to reconnect to single unhealthy peer
+ *
+ * WHAT: Tries to re-establish connection to peer
+ * WHY: Single responsibility - one reconnection attempt
+ * HOW: Close old socket, create new, reset health metrics
+ *
+ * @param node Node handle (must be non-NULL)
+ * @param peer Peer to reconnect (must be non-NULL)
+ * @return true on successful reconnection
+ *
+ * COMPLEXITY: O(1)
+ */
+static bool attempt_peer_reconnect(p2p_node_t node, peer_info_t* peer)
+{
+    // Guard clause: Validate inputs
+    if (!node || !peer)
+        return false;
+
+    // Guard clause: Skip healthy peers
+    if (peer->healthy)
+        return false;
+
+    // Close old socket if open
+    if (peer->socket_fd >= 0) {
+        close(peer->socket_fd);
+        peer->socket_fd = -1;
+    }
+
+    // Attempt reconnection using existing connect function
+    NIMCP_LOGGING_INFO("[P2P] Attempting to reconnect to unhealthy peer %s:%u",
+                       peer->ip, peer->port);
+
+    bool reconnected = p2p_node_connect_peer(node, peer->ip, peer->port);
+
+    // Reset health metrics on successful reconnection
+    if (reconnected) {
+        uint64_t now = nimcp_time_get_us();
+        peer->last_ping_sent = now;
+        peer->last_pong_received = now;
+        peer->missed_pings = 0;
+        peer->healthy = true;
+        NIMCP_LOGGING_INFO("[P2P] Successfully reconnected to peer %s:%u",
+                           peer->ip, peer->port);
+    } else {
+        NIMCP_LOGGING_WARN("[P2P] Failed to reconnect to peer %s:%u",
+                           peer->ip, peer->port);
+    }
+
+    return reconnected;
+}
+
+/**
+ * @brief Reconnect to unhealthy peers
+ *
+ * WHAT: Scans for unhealthy peers and attempts reconnection
+ * WHY: Automatic recovery from network issues
+ * HOW: Single-pass iteration with guard clauses
+ *
+ * @param node Handle to the node
+ * @return Number of reconnection attempts made
+ *
+ * ALGORITHM:
+ * 1. Validate input (O(1))
+ * 2. Iterate peers (O(n))
+ * 3. Attempt reconnect for unhealthy peers (O(1) per peer)
+ *
+ * COMPLEXITY: O(n) where n = number of unhealthy peers
+ */
+uint32_t p2p_node_reconnect_unhealthy(p2p_node_t node)
+{
+    // Guard clause: Validate input
+    if (!node)
+        return 0;
+
+    nimcp_mutex_lock(&node->lock);
+
+    // Guard clause: Check if running
+    if (!node->running) {
+        nimcp_mutex_unlock(&node->lock);
+        return 0;
+    }
+
+    uint32_t reconnect_attempts = 0;
+
+    // Single-pass iteration through peers
+    for (uint32_t i = 0; i < node->peer_count; i++) {
+        peer_info_t* peer = &node->peers[i];
+
+        // Guard clause: Skip healthy/disconnected peers
+        if (!peer->connected || peer->healthy)
+            continue;
+
+        // Attempt reconnection
+        if (attempt_peer_reconnect(node, peer)) {
+            reconnect_attempts++;
+        }
+    }
+
+    nimcp_mutex_unlock(&node->lock);
+    return reconnect_attempts;
+}
+
+/**
+ * @brief Get peer health status
+ *
+ * WHAT: Returns health status of specific peer
+ * WHY: Allow external monitoring of peer health
+ * HOW: O(1) hash table lookup
+ *
+ * @param node Handle to the node
+ * @param peer_ip IP address of peer
+ * @param peer_port Port of peer
+ * @param out_health Output: peer health status
+ * @return true if peer found, false otherwise
+ *
+ * COMPLEXITY: O(1) average case
+ */
+bool p2p_node_get_peer_health(p2p_node_t node, const char* peer_ip, uint16_t peer_port,
+                                bool* out_health)
+{
+    // Guard clause: Validate inputs
+    if (!node || !peer_ip || !out_health)
+        return false;
+
+    nimcp_mutex_lock(&node->lock);
+
+    // Generate peer key for hash lookup
+    char peer_key[32];
+    generate_peer_key(peer_key, sizeof(peer_key), peer_ip, peer_port);
+
+    // O(1) hash table lookup using NIMCP utility
+    peer_info_t* peer = (peer_info_t*)hash_table_lookup_string(node->peer_table, peer_key);
+
+    // Guard clause: Peer not found
+    if (!peer) {
+        nimcp_mutex_unlock(&node->lock);
+        return false;
+    }
+
+    *out_health = peer->healthy;
 
     nimcp_mutex_unlock(&node->lock);
     return true;

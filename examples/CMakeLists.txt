@@ -30,7 +30,17 @@ add_executable(brain_probe_demo brain_probe_demo.c)
 target_link_libraries(brain_probe_demo nimcp)
 target_include_directories(brain_probe_demo PRIVATE ${NIMCP_INCLUDE_DIR})
 
+# NIMCP 2.6 Izhikevich Neuron Model Demo
+add_executable(izhikevich_demo izhikevich_demo.c)
+target_link_libraries(izhikevich_demo nimcp m)
+target_include_directories(izhikevich_demo PRIVATE ${NIMCP_INCLUDE_DIR})
+
+# GPU Integration Test - Requires GPU neuron API (coming in Phase 2.7)
+# add_executable(gpu_integration_test gpu_integration_test.c)
+# target_link_libraries(gpu_integration_test nimcp)
+# target_include_directories(gpu_integration_test PRIVATE ${NIMCP_INCLUDE_DIR})
+
 # Install examples
-install(TARGETS event_demo brain_demo ethics_demo infant_demo integrated_demo brain_probe_demo
+install(TARGETS event_demo brain_demo ethics_demo infant_demo integrated_demo brain_probe_demo izhikevich_demo
     RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}/examples
 )

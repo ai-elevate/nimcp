@@ -57,7 +57,7 @@ target_link_options(fuzz_neuralnet PRIVATE ${FUZZER_FLAGS})
 
 target_link_libraries(fuzz_neuralnet
     PRIVATE
-        nimcp_core
+        nimcp
 )
 
 #==============================================================================
@@ -77,7 +77,7 @@ target_link_options(fuzz_protocol PRIVATE ${FUZZER_FLAGS})
 
 target_link_libraries(fuzz_protocol
     PRIVATE
-        nimcp_core
+        nimcp
 )
 
 #==============================================================================
@@ -97,7 +97,7 @@ target_link_options(fuzz_queue_manager PRIVATE ${FUZZER_FLAGS})
 
 target_link_libraries(fuzz_queue_manager
     PRIVATE
-        nimcp_core
+        nimcp
 )
 
 #==============================================================================
@@ -117,7 +117,7 @@ target_link_options(fuzz_validate PRIVATE ${FUZZER_FLAGS})
 
 target_link_libraries(fuzz_validate
     PRIVATE
-        nimcp_core
+        nimcp
 )
 
 message(STATUS "Fuzzing targets:")

@@ -3,8 +3,10 @@
 #ifndef NIMCP_NEURALNET_H
 #define NIMCP_NEURALNET_H
 
-#include "/usr/include/python3.10/Python.h"
+#include <Python.h>  // Use CMake-provided Python includes
 #include "common/nimcp_export.h"
+#include "core/neuron_models/nimcp_neuron_model.h"
+#include "plasticity/stp/nimcp_stp.h"
 
 /**
  * @file nimcp_neuralnet.h
@@ -142,6 +144,10 @@ typedef struct {
     float strength;        /**< Synaptic strength (separate from weight) */
     float meta_plasticity; /**< Meta-plasticity factor */
     float trace;           /**< Synaptic trace for STDP */
+
+    // Short-term plasticity (NIMCP 2.6)
+    stp_state_t stp;       /**< Short-term plasticity state */
+    bool enable_stp;       /**< Enable STP for this synapse */
 } synapse_t;
 
 /**
@@ -188,6 +194,10 @@ typedef struct {
     uint64_t last_spike;    /**< Last spike timestamp */
     uint64_t last_update;   /**< Last state update timestamp */
     uint64_t creation_time; /**< Neuron creation timestamp */
+
+    // Neuron model - Plugin architecture for LIF/Izhikevich/etc
+    neuron_model_state_t model;  /**< Neuron dynamics model (NULL = legacy LIF) */
+    neuron_model_type_t model_type; /**< Type of model being used */
 } neuron_t;
 
 /**
@@ -217,6 +227,10 @@ typedef struct {
     bool enable_hebbian;     /**< Enable Hebbian learning */
     bool enable_oja;         /**< Enable Oja's rule */
     bool enable_homeostasis; /**< Enable homeostatic plasticity */
+
+    // NIMCP 2.6 Neuron Model Extensions
+    neuron_model_type_t neuron_model;  /**< Neuron dynamics model (LIF, Izhikevich, etc) */
+    const void* model_params;          /**< Model-specific parameters (izhikevich_params_t*, etc) */
 } network_config_t;
 
 /**
@@ -264,6 +278,25 @@ float neural_network_get_average_activity(neural_network_t network, uint32_t neu
 float neural_network_get_weight_norm(neural_network_t network, uint32_t neuron_id);
 void neural_network_get_weight_statistics(neural_network_t network, uint32_t neuron_id, float* mean,
                                           float* std_dev);
+
+// NIMCP 2.6: Neuron model configuration
+/**
+ * @brief Set neuron model type for a specific neuron
+ *
+ * WHAT: Changes the dynamics model of an existing neuron
+ * WHY: Enables heterogeneous networks with mixed neuron types
+ * HOW: Cleans up old model, creates new model with specified type
+ *
+ * COMPLEXITY: O(1)
+ *
+ * @param network Neural network
+ * @param neuron_id Neuron to modify
+ * @param model_type Desired model type (NEURON_MODEL_LIF, NEURON_MODEL_IZHIKEVICH, etc)
+ * @param params Model-specific parameters (NULL = use defaults for that model)
+ * @return true if successful, false on error
+ */
+bool neural_network_set_neuron_model(neural_network_t network, uint32_t neuron_id,
+                                     neuron_model_type_t model_type, const void* params);
 
 /**
  * @brief Get current network statistics

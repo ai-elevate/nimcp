@@ -174,7 +174,7 @@ src/bindings/cpp/
 cd src/bindings/cpp
 g++ -std=c++17 -I../include -I../../include \
     -L../../build/src/lib example.cpp \
-    -lnimcp_core -o nimcp_example
+    -lnimcp -o nimcp_example
 ```
 
 ### Quick Start Example
@@ -282,7 +282,7 @@ src/bindings/java/
 cd src/bindings/java
 gcc -I$JAVA_HOME/include -I$JAVA_HOME/include/linux \
     -I../../include -shared -fPIC nimcp_jni.c \
-    -L../../build/src/lib -lnimcp_core -o libnimcp_jni.so
+    -L../../build/src/lib -lnimcp -o libnimcp_jni.so
 
 # Compile Java code
 javac -cp . com/nimcp/NIMCP.java Example.java

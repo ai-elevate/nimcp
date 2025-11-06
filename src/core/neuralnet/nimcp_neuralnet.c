@@ -37,6 +37,9 @@
  */
 
 #include "nimcp_neuralnet.h"
+#include "core/neuron_models/nimcp_neuron_model.h"
+#include "core/neuron_models/nimcp_izhikevich.h"
+#include "plasticity/stp/nimcp_stp.h"
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -149,6 +152,7 @@ static void init_neuron_basic_properties(neuron_t* neuron, uint32_t id, neuron_t
 static void init_neuron_learning_params(neuron_t* neuron, const network_config_t* config);
 static void init_neuron_homeostatic_params(neuron_t* neuron, const network_config_t* config);
 static void init_neuron_activity_tracking(neuron_t* neuron);
+static void init_neuron_model(neuron_t* neuron, const network_config_t* config);
 
 //=============================================================================
 // Activation Function Implementations - Strategy Pattern
@@ -376,6 +380,74 @@ static void init_neuron_activity_tracking(neuron_t* neuron)
     memset(neuron->incoming_synapses, 0, sizeof(synapse_t) * MAX_SYNAPSES_PER_NEURON);
 }
 
+/**
+ * @brief Initialize neuron model (Izhikevich, LIF, etc.)
+ *
+ * WHAT: Creates neuron dynamics model based on config
+ * WHY: Enables rich firing patterns beyond simple LIF
+ * HOW: Uses plugin architecture with vtable dispatch
+ *
+ * PATTERN: Strategy Pattern - model selected at runtime
+ * COMPLEXITY: O(1)
+ *
+ * @param neuron Neuron to initialize
+ * @param config Network configuration with model type
+ */
+static void init_neuron_model(neuron_t* neuron, const network_config_t* config)
+{
+    // Guard: Validate inputs
+    if (!neuron || !config) {
+        return;
+    }
+
+    // Default: No model (legacy LIF behavior)
+    neuron->model = NULL;
+    neuron->model_type = NEURON_MODEL_LIF;
+
+    // Guard: Check if specific model requested
+    if (config->neuron_model == NEURON_MODEL_LIF) {
+        return;  // Use legacy LIF, no plugin model needed
+    }
+
+    // Get vtable for requested model
+    const neuron_model_vtable_t* vtable = NULL;
+    const void* params = config->model_params;
+
+    switch (config->neuron_model) {
+        case NEURON_MODEL_IZHIKEVICH:
+            vtable = izhikevich_get_vtable();
+            // If no params provided, use default RS (Regular Spiking)
+            if (!params) {
+                static izhikevich_params_t default_params;
+                default_params = izhikevich_get_preset_params(IZHI_PRESET_REGULAR_SPIKING);
+                params = &default_params;
+            }
+            break;
+
+        case NEURON_MODEL_LIF:
+            // Already handled above
+            return;
+
+        default:
+            // Unknown model, fall back to legacy LIF
+            return;
+    }
+
+    // Guard: Check vtable valid
+    if (!vtable) {
+        return;
+    }
+
+    // Create model state
+    neuron->model = neuron_model_create(vtable, params);
+    neuron->model_type = config->neuron_model;
+
+    // Guard: Check creation succeeded
+    if (!neuron->model) {
+        neuron->model_type = NEURON_MODEL_LIF;
+    }
+}
+
 //=============================================================================
 // Network Creation - Factory Pattern
 //=============================================================================
@@ -510,6 +582,7 @@ neural_network_t neural_network_create(const network_config_t* config)
         init_neuron_learning_params(neuron, config);
         init_neuron_homeostatic_params(neuron, config);
         init_neuron_activity_tracking(neuron);
+        init_neuron_model(neuron, config);  // NIMCP 2.6: Initialize neuron model plugin
     }
 
     network->num_neurons = config->num_neurons;
@@ -559,6 +632,20 @@ void neural_network_destroy(neural_network_t network)
     // Guard clause: Handle NULL input
     if (!network)
         return;
+
+    /**
+     * WHAT: Cleanup neuron models (NIMCP 2.6)
+     * WHY: Plugin models allocate their own state
+     * HOW: Call neuron_model_destroy for each model
+     */
+    if (network->neurons) {
+        for (uint32_t i = 0; i < network->num_neurons; i++) {
+            if (network->neurons[i].model) {
+                neuron_model_destroy(network->neurons[i].model);
+                network->neurons[i].model = NULL;
+            }
+        }
+    }
 
     /**
      * WHAT: Free dynamically allocated neurons array
@@ -747,7 +834,22 @@ static float sum_synaptic_inputs(neuron_t* neuron, neural_network_t network)
         float pre_activity =
             (src_neuron->state > src_neuron->threshold) ? src_neuron->state : 0.0f;
 
-        total_input += pre_activity * incoming_syn->weight * incoming_syn->strength;
+        // NIMCP 2.6: Apply STP modulation if enabled
+        float stp_modulation = 1.0f;
+        if (incoming_syn->enable_stp) {
+            // Update STP continuous decay
+            stp_update(&incoming_syn->stp, network->network_time);
+
+            // Get modulation factor (u × x)
+            stp_modulation = stp_get_modulation(&incoming_syn->stp);
+
+            // Process spike if presynaptic neuron is firing
+            if (pre_activity > 0.0f) {
+                stp_process_spike(&incoming_syn->stp, network->network_time);
+            }
+        }
+
+        total_input += pre_activity * incoming_syn->weight * incoming_syn->strength * stp_modulation;
     }
 
     return total_input;
@@ -952,18 +1054,44 @@ bool neural_network_update_neuron(neural_network_t network, uint32_t neuron_id, 
         return false;
     }
 
-    // Compute new state
-    float membrane_potential = compute_membrane_potential(neuron, network);
-    float total_input = membrane_potential + input_current;
-    float new_state = neural_network_compute_activation(neuron, total_input);
+    // Declare new_state before branches for use in activity tracking
+    float new_state;
 
-    // Capture old state for spike detection
-    float old_state = neuron->state;
-    neuron->state = new_state;
+    // NIMCP 2.6: Use neuron model plugin if available
+    if (neuron->model != NULL) {
+        // Calculate timestep (assume 1ms if timestamps match)
+        float dt = (timestamp > neuron->last_update) ? (float)(timestamp - neuron->last_update) : 1.0f;
 
-    // Handle spike if detected
-    if (detected_spike(old_state, new_state, neuron->threshold)) {
-        handle_spike_event(network, neuron_id, neuron, new_state, timestamp);
+        // Compute synaptic input for model
+        float membrane_potential = compute_membrane_potential(neuron, network);
+        float total_input = membrane_potential + input_current;
+
+        // Update model dynamics
+        neuron_model_update(neuron->model, dt, total_input);
+
+        // Get new voltage from model
+        new_state = neuron_model_get_voltage(neuron->model);
+        neuron->state = new_state;
+
+        // Check for spike using model's spike detection
+        if (neuron_model_check_spike(neuron->model)) {
+            handle_spike_event(network, neuron_id, neuron, new_state, timestamp);
+            neuron_model_post_spike(neuron->model);  // Reset model after spike
+        }
+    } else {
+        // Legacy LIF behavior
+        float membrane_potential = compute_membrane_potential(neuron, network);
+        float total_input = membrane_potential + input_current;
+        new_state = neural_network_compute_activation(neuron, total_input);
+
+        // Capture old state for spike detection
+        float old_state = neuron->state;
+        neuron->state = new_state;
+
+        // Handle spike if detected
+        if (detected_spike(old_state, new_state, neuron->threshold)) {
+            handle_spike_event(network, neuron_id, neuron, new_state, timestamp);
+        }
     }
 
     // Update activity tracking and dynamics (always happens)
@@ -1415,6 +1543,15 @@ bool neural_network_add_connection(neural_network_t network, uint32_t from_id, u
     syn->meta_plasticity = 1.0f;
     syn->trace = 0.0f;
 
+    // NIMCP 2.6: Initialize STP (Short-Term Plasticity)
+    // Default: Depressing synapse for excitatory connections
+    stp_preset_t preset = (from_neuron->type == NEURON_EXCITATORY)
+                        ? STP_PRESET_DEPRESSING
+                        : STP_PRESET_FACILITATING;
+    stp_params_t stp_params = stp_get_preset_params(preset);
+    stp_init(&syn->stp, &stp_params, network->network_time);
+    syn->enable_stp = true;  // Enable STP by default
+
     from_neuron->num_synapses++;
 
     // OPTIMIZATION: Add INCOMING synapse (reverse edge) for O(S) input summation
@@ -1429,6 +1566,10 @@ bool neural_network_add_connection(neural_network_t network, uint32_t from_id, u
     incoming_syn->strength = syn->strength;
     incoming_syn->meta_plasticity = syn->meta_plasticity;
     incoming_syn->trace = syn->trace;
+
+    // NIMCP 2.6: Copy STP state to incoming synapse
+    incoming_syn->stp = syn->stp;
+    incoming_syn->enable_stp = syn->enable_stp;
 
     to_neuron->num_incoming++;
 
@@ -1634,6 +1775,9 @@ uint32_t neural_network_add_neuron(neural_network_t network, activation_type_t a
     neuron->threshold = -55.0f;
     neuron->creation_time = network->network_time;
 
+    // NIMCP 2.6: Initialize neuron model (uses network config)
+    init_neuron_model(neuron, &network->config);
+
     network->num_neurons++;
     return new_id;
 }
@@ -1704,6 +1848,92 @@ void neural_network_update_traces(neural_network_t network, uint32_t neuron_id, 
         return;
 
     update_synaptic_traces(&network->neurons[neuron_id], timestamp);
+}
+
+/**
+ * @brief Set neuron model type for a specific neuron
+ *
+ * WHAT: Dynamically changes neuron dynamics model
+ * WHY: Enables heterogeneous networks (mixed LIF/Izhikevich/etc)
+ * HOW: Cleans up old model, initializes new model
+ *
+ * PATTERN: Strategy Pattern - swap behavior at runtime
+ * COMPLEXITY: O(1)
+ *
+ * @param network Neural network
+ * @param neuron_id Neuron to modify
+ * @param model_type Desired model type
+ * @param params Model-specific parameters (NULL = use defaults)
+ * @return true if successful, false on error
+ */
+bool neural_network_set_neuron_model(neural_network_t network, uint32_t neuron_id,
+                                     neuron_model_type_t model_type, const void* params)
+{
+    // Guard: Validate network
+    if (!network) {
+        return false;
+    }
+
+    // Guard: Validate neuron ID
+    if (neuron_id >= network->num_neurons) {
+        return false;
+    }
+
+    neuron_t* neuron = &network->neurons[neuron_id];
+
+    // Cleanup existing model if present
+    if (neuron->model) {
+        neuron_model_destroy(neuron->model);
+        neuron->model = NULL;
+    }
+
+    // Set to LIF (no plugin model)
+    if (model_type == NEURON_MODEL_LIF) {
+        neuron->model_type = NEURON_MODEL_LIF;
+        return true;
+    }
+
+    // Get vtable for requested model
+    const neuron_model_vtable_t* vtable = NULL;
+
+    switch (model_type) {
+        case NEURON_MODEL_IZHIKEVICH:
+            vtable = izhikevich_get_vtable();
+            // If no params provided, use default RS (Regular Spiking)
+            if (!params) {
+                static izhikevich_params_t default_params;
+                default_params = izhikevich_get_preset_params(IZHI_PRESET_REGULAR_SPIKING);
+                params = &default_params;
+            }
+            break;
+
+        case NEURON_MODEL_LIF:
+            // Already handled above
+            return true;
+
+        default:
+            // Unknown model type, fall back to LIF
+            neuron->model_type = NEURON_MODEL_LIF;
+            return false;
+    }
+
+    // Guard: Check vtable valid
+    if (!vtable) {
+        neuron->model_type = NEURON_MODEL_LIF;
+        return false;
+    }
+
+    // Create new model state
+    neuron->model = neuron_model_create(vtable, params);
+
+    // Guard: Check creation succeeded
+    if (!neuron->model) {
+        neuron->model_type = NEURON_MODEL_LIF;
+        return false;
+    }
+
+    neuron->model_type = model_type;
+    return true;
 }
 
 /**

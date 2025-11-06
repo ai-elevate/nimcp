@@ -17,6 +17,12 @@
 # 10. quality_tests: Stress, memory leaks, lint, regression, logging
 # ============================================================================
 
+# Check if GTest is available - skip all tests if not found
+if(NOT GTest_FOUND)
+    message(STATUS "GTest not found - skipping entire test suite")
+    return()
+endif()
+
 # Common test setup (shared across all test binaries)
 set(COMMON_TEST_INCLUDES
     ${NIMCP_INCLUDE_DIR}

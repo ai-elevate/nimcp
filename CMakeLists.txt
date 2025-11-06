@@ -64,10 +64,9 @@ if(ENABLE_HARDENING)
         # Fortify source - compile-time and runtime buffer overflow detection
         add_definitions(-D_FORTIFY_SOURCE=2)
 
-        # Stack protection
+        # Stack protection - NOTE: -fPIC for shared libs, -fPIE for executables
         set(HARDENING_FLAGS
             -fstack-protector-strong      # Stack canary protection
-            -fPIE                          # Position independent executable
             -Wformat                       # Format string vulnerability detection
             -Wformat-security              # Additional format string checks
             -Werror=format-security        # Make format violations errors
@@ -76,10 +75,9 @@ if(ENABLE_HARDENING)
 
         add_compile_options(${HARDENING_FLAGS})
 
-        # Link-time hardening
+        # Link-time hardening (executables only)
         if(NOT APPLE)  # Linux-specific hardening
             add_link_options(
-                -pie                       # Enable PIE
                 -Wl,-z,relro               # Read-only relocations
                 -Wl,-z,now                 # Immediate binding (full RELRO)
                 -Wl,-z,noexecstack         # Non-executable stack
@@ -89,7 +87,7 @@ if(ENABLE_HARDENING)
         message(STATUS "Security hardening: ENABLED")
         message(STATUS "  - FORTIFY_SOURCE=2 (buffer overflow detection)")
         message(STATUS "  - Stack protector strong")
-        message(STATUS "  - Position Independent Executable (PIE)")
+        message(STATUS "  - Position Independent Code (PIC/PIE)")
         message(STATUS "  - Full RELRO (Read-only relocations)")
     else()
         message(STATUS "Security hardening: PARTIAL (Debug build)")
@@ -104,7 +102,19 @@ endif()
 
 # Find required packages
 find_package(Python3 COMPONENTS Development REQUIRED)
-find_package(GTest REQUIRED)
+find_package(GTest QUIET)  # Optional - tests will be skipped if not found
+
+# Find CUDA (optional for GPU support)
+find_package(CUDAToolkit QUIET)
+if(CUDAToolkit_FOUND)
+    enable_language(CUDA)
+    add_definitions(-DNIMCP_ENABLE_CUDA)
+    message(STATUS "CUDA Toolkit found: ${CUDAToolkit_VERSION}")
+    message(STATUS "  CUDA Include: ${CUDAToolkit_INCLUDE_DIRS}")
+    message(STATUS "  CUDA Libraries: ${CUDAToolkit_LIBRARY_DIR}")
+else()
+    message(STATUS "CUDA Toolkit not found - GPU support disabled")
+endif()
 
 # Define project-wide variables
 # With new hierarchical structure, headers are colocated with sources

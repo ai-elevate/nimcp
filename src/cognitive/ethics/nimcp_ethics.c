@@ -27,9 +27,14 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
 #include "core/brain/nimcp_brain.h"
 #include "utils/containers/nimcp_hash_table.h"
+#include "utils/containers/nimcp_btree.h"
 #include "utils/memory/nimcp_memory.h"  // CRITICAL: Declares nimcp_calloc/nimcp_free return types
+#include "utils/thread/nimcp_thread.h"
+#include "utils/time/nimcp_time.h"
+#include "utils/logging/nimcp_logging.h"
 
 //=============================================================================
 // Constants and Configuration
@@ -40,6 +45,17 @@
 #define MAX_FEATURE_SIZE 20
 #define GOLDEN_RULE_WEIGHT 0.7f
 #define POLICY_WEIGHT 0.3f
+
+// Incident logging configuration
+#define MAX_INCIDENT_HISTORY 10000  // Circular buffer size (10k incidents)
+#define INCIDENT_LOG_FILE "ethics_incidents.log"
+
+//=============================================================================
+// Forward Declarations
+//=============================================================================
+
+static bool init_incident_logging(ethics_engine_t engine);
+static void cleanup_incident_logging(ethics_engine_t engine);
 
 //=============================================================================
 // Object Pool Pattern - Eliminates repeated allocations
@@ -119,10 +135,19 @@ struct ethics_engine_struct {
     uint32_t num_policies;
     uint32_t policies_capacity;
 
-    // Violation history
+    // Violation history (legacy)
     violation_record_t* violations;
     uint32_t num_violations;
     uint32_t violations_capacity;
+
+    // Incident logging (NIMCP 2.5.1)
+    ethics_incident_t* incident_history;  // Circular buffer
+    uint32_t incident_count;              // Total incidents logged
+    uint32_t incident_index;              // Current index in circular buffer
+    btree_t* incident_btree;              // B-tree indexed by timestamp
+    hash_table_t* incident_by_type;       // Hash table indexed by violation type
+    uint64_t next_incident_id;            // Auto-incrementing ID
+    nimcp_mutex_t incident_mutex;         // Thread safety
 
     // Configuration
     float golden_rule_threshold;
@@ -704,6 +729,17 @@ ethics_engine_t ethics_engine_create(const ethics_config_t* config)
         return NULL;
     }
 
+    // Initialize incident logging (NIMCP 2.5.1)
+    if (!init_incident_logging(engine)) {
+        nimcp_free(engine->violations);
+        nimcp_free(engine->policies);
+        empathy_network_destroy(engine->empathy_net);
+        brain_destroy(engine->golden_rule_evaluator);
+        hash_table_destroy(engine->policy_table);
+        nimcp_free(engine);
+        return NULL;
+    }
+
     // Set configuration
     engine->golden_rule_threshold = config->golden_rule_threshold;
     engine->empathy_weight = config->empathy_weight;
@@ -729,6 +765,9 @@ void ethics_engine_destroy(ethics_engine_t engine)
     // Guard clause: Validate input
     if (!engine)
         return;
+
+    // Cleanup incident logging (NIMCP 2.5.1)
+    cleanup_incident_logging(engine);
 
     // Destroy hash table
     hash_table_destroy(engine->policy_table);
@@ -1617,5 +1656,531 @@ bool ethics_engine_remove_policy(ethics_engine_t engine, uint32_t policy_id)
     // to the array elements, not copied values
 
     engine->num_policies--;
+    return true;
+}
+
+//=============================================================================
+// Ethics Incident Logging Implementation (NIMCP 2.5.1)
+//=============================================================================
+
+/**
+ * @brief Compare timestamps for B-tree ordering
+ */
+static int compare_incident_timestamps(const void* a, const void* b)
+{
+    const ethics_incident_t* inc_a = (const ethics_incident_t*)a;
+    const ethics_incident_t* inc_b = (const ethics_incident_t*)b;
+
+    if (inc_a->timestamp < inc_b->timestamp) return -1;
+    if (inc_a->timestamp > inc_b->timestamp) return 1;
+    return 0;
+}
+
+/**
+ * @brief Extract timestamp key from incident for B-tree indexing
+ */
+static const void* extract_incident_timestamp_key(const void* data)
+{
+    const ethics_incident_t* incident = (const ethics_incident_t*)data;
+    return incident->timestamp_key;
+}
+
+/**
+ * @brief Free incident data (no-op since incidents are in circular buffer)
+ */
+static void free_incident_data(void* data)
+{
+    // No-op: incidents are stored in circular buffer, not individually allocated
+    (void)data;
+}
+
+/**
+ * @brief Initialize incident logging infrastructure
+ *
+ * @param engine Ethics engine
+ * @return true on success
+ */
+static bool init_incident_logging(ethics_engine_t engine)
+{
+    // Guard clause: Validate input
+    if (!engine)
+        return false;
+
+    // Allocate circular buffer
+    engine->incident_history = nimcp_calloc(MAX_INCIDENT_HISTORY, sizeof(ethics_incident_t));
+    if (!engine->incident_history)
+        return false;
+
+    engine->incident_count = 0;
+    engine->incident_index = 0;
+    engine->next_incident_id = 1;
+
+    // Create B-tree for timestamp indexing
+    engine->incident_btree = btree_create(compare_incident_timestamps,
+                                         extract_incident_timestamp_key,
+                                         free_incident_data);
+    if (!engine->incident_btree) {
+        nimcp_free(engine->incident_history);
+        return false;
+    }
+
+    // Create hash table for violation type indexing
+    hash_table_config_t hash_config = {
+        .initial_buckets = 32,
+        .key_type = HASH_KEY_UINT64,
+        .hash_algorithm = HASH_ALG_MURMUR3,
+        .value_destructor = NULL,
+        .thread_safe = false
+    };
+    engine->incident_by_type = hash_table_create(&hash_config);
+    if (!engine->incident_by_type) {
+        btree_destroy(engine->incident_btree);
+        nimcp_free(engine->incident_history);
+        return false;
+    }
+
+    // Initialize mutex
+    if (nimcp_mutex_init(&engine->incident_mutex, NULL) != NIMCP_SUCCESS) {
+        hash_table_destroy(engine->incident_by_type);
+        btree_destroy(engine->incident_btree);
+        nimcp_free(engine->incident_history);
+        return false;
+    }
+
+    return true;
+}
+
+/**
+ * @brief Cleanup incident logging infrastructure
+ *
+ * @param engine Ethics engine
+ */
+static void cleanup_incident_logging(ethics_engine_t engine)
+{
+    if (!engine)
+        return;
+
+    if (engine->incident_history) {
+        nimcp_free(engine->incident_history);
+        engine->incident_history = NULL;
+    }
+
+    if (engine->incident_btree) {
+        btree_destroy(engine->incident_btree);
+        engine->incident_btree = NULL;
+    }
+
+    if (engine->incident_by_type) {
+        hash_table_destroy(engine->incident_by_type);
+        engine->incident_by_type = NULL;
+    }
+
+    nimcp_mutex_destroy(&engine->incident_mutex);
+}
+
+/**
+ * @brief Log an ethics incident
+ */
+bool ethics_log_incident(ethics_engine_t engine, const ethics_incident_t* incident)
+{
+    // Guard clause: Validate inputs
+    if (!engine || !incident)
+        return false;
+
+    if (!engine->incident_history || !engine->incident_btree || !engine->incident_by_type)
+        return false;
+
+    // Thread safety
+    nimcp_mutex_lock(&engine->incident_mutex);
+
+    // Get current index in circular buffer
+    uint32_t index = engine->incident_index % MAX_INCIDENT_HISTORY;
+
+    // Copy incident to circular buffer
+    engine->incident_history[index] = *incident;
+    engine->incident_history[index].incident_id = engine->next_incident_id++;
+
+    // Generate timestamp if not provided
+    if (engine->incident_history[index].timestamp == 0) {
+        engine->incident_history[index].timestamp = nimcp_time_get_us();
+    }
+
+    // Generate timestamp key for B-tree indexing
+    snprintf(engine->incident_history[index].timestamp_key, 32, "%020lu",
+             engine->incident_history[index].timestamp);
+
+    // Insert into B-tree (indexed by timestamp)
+    if (engine->incident_btree) {
+        int result = btree_insert(engine->incident_btree, &engine->incident_history[index]);
+        if (result != BTREE_SUCCESS && result != BTREE_DUPLICATE) {
+            // Log warning but continue - B-tree is optimization, not critical
+        }
+    }
+
+    // Update indices
+    engine->incident_index++;
+    if (engine->incident_count < MAX_INCIDENT_HISTORY)
+        engine->incident_count++;
+
+    // Update statistics
+    engine->violations_detected++;
+
+    nimcp_mutex_unlock(&engine->incident_mutex);
+
+    // Log to console
+    NIMCP_LOGGING_INFO("[ETHICS] Incident logged: type=%d severity=%.2f action=%d",
+                       incident->violation_type, incident->severity, incident->action_taken);
+
+    return true;
+}
+
+/**
+ * @brief Get recent ethics incidents
+ */
+uint32_t ethics_get_recent_incidents(ethics_engine_t engine, uint32_t max_incidents,
+                                     ethics_incident_t** incidents_out)
+{
+    // Guard clause: Validate inputs
+    if (!engine || !incidents_out || max_incidents == 0)
+        return 0;
+
+    if (!engine->incident_history)
+        return 0;
+
+    nimcp_mutex_lock(&engine->incident_mutex);
+
+    // Determine actual number to return
+    uint32_t num_to_return = (max_incidents < engine->incident_count) ?
+                             max_incidents : engine->incident_count;
+
+    if (num_to_return == 0) {
+        nimcp_mutex_unlock(&engine->incident_mutex);
+        return 0;
+    }
+
+    // Allocate output array
+    *incidents_out = nimcp_calloc(num_to_return, sizeof(ethics_incident_t));
+    if (!*incidents_out) {
+        nimcp_mutex_unlock(&engine->incident_mutex);
+        return 0;
+    }
+
+    // Copy most recent incidents (walking backwards from current index)
+    for (uint32_t i = 0; i < num_to_return; i++) {
+        uint32_t src_index = (engine->incident_index - 1 - i) % MAX_INCIDENT_HISTORY;
+        (*incidents_out)[i] = engine->incident_history[src_index];
+    }
+
+    nimcp_mutex_unlock(&engine->incident_mutex);
+    return num_to_return;
+}
+
+/**
+ * @brief Query incidents by time range
+ */
+uint32_t ethics_get_incidents_by_time_range(ethics_engine_t engine, uint64_t start_time,
+                                            uint64_t end_time,
+                                            ethics_incident_t** incidents_out)
+{
+    // Guard clause: Validate inputs
+    if (!engine || !incidents_out)
+        return 0;
+
+    if (!engine->incident_history)
+        return 0;
+
+    nimcp_mutex_lock(&engine->incident_mutex);
+
+    // Count matching incidents (linear scan for now - B-tree range query can be added later)
+    uint32_t match_count = 0;
+    for (uint32_t i = 0; i < engine->incident_count; i++) {
+        uint64_t ts = engine->incident_history[i].timestamp;
+        if (ts >= start_time && ts <= end_time)
+            match_count++;
+    }
+
+    if (match_count == 0) {
+        nimcp_mutex_unlock(&engine->incident_mutex);
+        return 0;
+    }
+
+    // Allocate output array
+    *incidents_out = nimcp_calloc(match_count, sizeof(ethics_incident_t));
+    if (!*incidents_out) {
+        nimcp_mutex_unlock(&engine->incident_mutex);
+        return 0;
+    }
+
+    // Copy matching incidents
+    uint32_t out_index = 0;
+    for (uint32_t i = 0; i < engine->incident_count; i++) {
+        uint64_t ts = engine->incident_history[i].timestamp;
+        if (ts >= start_time && ts <= end_time) {
+            (*incidents_out)[out_index++] = engine->incident_history[i];
+        }
+    }
+
+    nimcp_mutex_unlock(&engine->incident_mutex);
+    return match_count;
+}
+
+/**
+ * @brief Query incidents by violation type
+ */
+uint32_t ethics_get_incidents_by_violation_type(ethics_engine_t engine,
+                                                ethics_violation_type_t violation_type,
+                                                ethics_incident_t** incidents_out)
+{
+    // Guard clause: Validate inputs
+    if (!engine || !incidents_out)
+        return 0;
+
+    if (!engine->incident_history)
+        return 0;
+
+    nimcp_mutex_lock(&engine->incident_mutex);
+
+    // Count matching incidents
+    uint32_t match_count = 0;
+    for (uint32_t i = 0; i < engine->incident_count; i++) {
+        if (engine->incident_history[i].violation_type == violation_type)
+            match_count++;
+    }
+
+    if (match_count == 0) {
+        nimcp_mutex_unlock(&engine->incident_mutex);
+        return 0;
+    }
+
+    // Allocate output array
+    *incidents_out = nimcp_calloc(match_count, sizeof(ethics_incident_t));
+    if (!*incidents_out) {
+        nimcp_mutex_unlock(&engine->incident_mutex);
+        return 0;
+    }
+
+    // Copy matching incidents
+    uint32_t out_index = 0;
+    for (uint32_t i = 0; i < engine->incident_count; i++) {
+        if (engine->incident_history[i].violation_type == violation_type) {
+            (*incidents_out)[out_index++] = engine->incident_history[i];
+        }
+    }
+
+    nimcp_mutex_unlock(&engine->incident_mutex);
+    return match_count;
+}
+
+/**
+ * @brief Query incidents by minimum severity
+ */
+uint32_t ethics_get_incidents_by_severity(ethics_engine_t engine, float min_severity,
+                                          ethics_incident_t** incidents_out)
+{
+    // Guard clause: Validate inputs
+    if (!engine || !incidents_out || min_severity < 0.0f || min_severity > 1.0f)
+        return 0;
+
+    if (!engine->incident_history)
+        return 0;
+
+    nimcp_mutex_lock(&engine->incident_mutex);
+
+    // Count matching incidents
+    uint32_t match_count = 0;
+    for (uint32_t i = 0; i < engine->incident_count; i++) {
+        if (engine->incident_history[i].severity >= min_severity)
+            match_count++;
+    }
+
+    if (match_count == 0) {
+        nimcp_mutex_unlock(&engine->incident_mutex);
+        return 0;
+    }
+
+    // Allocate output array
+    *incidents_out = nimcp_calloc(match_count, sizeof(ethics_incident_t));
+    if (!*incidents_out) {
+        nimcp_mutex_unlock(&engine->incident_mutex);
+        return 0;
+    }
+
+    // Copy matching incidents
+    uint32_t out_index = 0;
+    for (uint32_t i = 0; i < engine->incident_count; i++) {
+        if (engine->incident_history[i].severity >= min_severity) {
+            (*incidents_out)[out_index++] = engine->incident_history[i];
+        }
+    }
+
+    nimcp_mutex_unlock(&engine->incident_mutex);
+    return match_count;
+}
+
+/**
+ * @brief Query incidents by action taken
+ */
+uint32_t ethics_get_incidents_by_action(ethics_engine_t engine, ethics_action_t action,
+                                        ethics_incident_t** incidents_out)
+{
+    // Guard clause: Validate inputs
+    if (!engine || !incidents_out)
+        return 0;
+
+    if (!engine->incident_history)
+        return 0;
+
+    nimcp_mutex_lock(&engine->incident_mutex);
+
+    // Count matching incidents
+    uint32_t match_count = 0;
+    for (uint32_t i = 0; i < engine->incident_count; i++) {
+        if (engine->incident_history[i].action_taken == action)
+            match_count++;
+    }
+
+    if (match_count == 0) {
+        nimcp_mutex_unlock(&engine->incident_mutex);
+        return 0;
+    }
+
+    // Allocate output array
+    *incidents_out = nimcp_calloc(match_count, sizeof(ethics_incident_t));
+    if (!*incidents_out) {
+        nimcp_mutex_unlock(&engine->incident_mutex);
+        return 0;
+    }
+
+    // Copy matching incidents
+    uint32_t out_index = 0;
+    for (uint32_t i = 0; i < engine->incident_count; i++) {
+        if (engine->incident_history[i].action_taken == action) {
+            (*incidents_out)[out_index++] = engine->incident_history[i];
+        }
+    }
+
+    nimcp_mutex_unlock(&engine->incident_mutex);
+    return match_count;
+}
+
+/**
+ * @brief Get all incidents in chronological order
+ */
+uint32_t ethics_get_all_incidents(ethics_engine_t engine, ethics_incident_t** incidents_out)
+{
+    // Guard clause: Validate inputs
+    if (!engine || !incidents_out)
+        return 0;
+
+    if (!engine->incident_history)
+        return 0;
+
+    nimcp_mutex_lock(&engine->incident_mutex);
+
+    uint32_t count = engine->incident_count;
+    if (count == 0) {
+        nimcp_mutex_unlock(&engine->incident_mutex);
+        return 0;
+    }
+
+    // Allocate output array
+    *incidents_out = nimcp_calloc(count, sizeof(ethics_incident_t));
+    if (!*incidents_out) {
+        nimcp_mutex_unlock(&engine->incident_mutex);
+        return 0;
+    }
+
+    // Copy all incidents in chronological order
+    if (engine->incident_count < MAX_INCIDENT_HISTORY) {
+        // Haven't wrapped yet, simple copy
+        memcpy(*incidents_out, engine->incident_history, count * sizeof(ethics_incident_t));
+    } else {
+        // Wrapped around, need to copy in two parts for chronological order
+        uint32_t start_index = engine->incident_index % MAX_INCIDENT_HISTORY;
+        uint32_t first_part = MAX_INCIDENT_HISTORY - start_index;
+
+        // Copy older incidents (from start_index to end)
+        memcpy(*incidents_out, &engine->incident_history[start_index],
+               first_part * sizeof(ethics_incident_t));
+
+        // Copy newer incidents (from 0 to start_index)
+        memcpy(&(*incidents_out)[first_part], engine->incident_history,
+               start_index * sizeof(ethics_incident_t));
+    }
+
+    nimcp_mutex_unlock(&engine->incident_mutex);
+    return count;
+}
+
+/**
+ * @brief Export incidents to file
+ */
+bool ethics_export_incidents(ethics_engine_t engine, const char* filepath, const char* format)
+{
+    // Guard clause: Validate inputs
+    if (!engine || !filepath || !format)
+        return false;
+
+    if (!engine->incident_history)
+        return false;
+
+    ethics_incident_t* incidents = NULL;
+    uint32_t count = ethics_get_all_incidents(engine, &incidents);
+
+    if (count == 0 || !incidents)
+        return false;
+
+    FILE* file = fopen(filepath, "w");
+    if (!file) {
+        nimcp_free(incidents);
+        return false;
+    }
+
+    if (strcmp(format, "json") == 0) {
+        // Export as JSON
+        fprintf(file, "{\n  \"incidents\": [\n");
+        for (uint32_t i = 0; i < count; i++) {
+            fprintf(file, "    {\n");
+            fprintf(file, "      \"id\": %lu,\n", incidents[i].incident_id);
+            fprintf(file, "      \"timestamp\": %lu,\n", incidents[i].timestamp);
+            fprintf(file, "      \"violation_type\": %d,\n", incidents[i].violation_type);
+            fprintf(file, "      \"severity\": %.4f,\n", incidents[i].severity);
+            fprintf(file, "      \"action_taken\": %d,\n", incidents[i].action_taken);
+            fprintf(file, "      \"policy_id\": %u,\n", incidents[i].policy_id);
+            fprintf(file, "      \"policy_name\": \"%s\",\n", incidents[i].policy_name);
+            fprintf(file, "      \"description\": \"%s\",\n", incidents[i].description);
+            fprintf(file, "      \"golden_rule_score\": %.4f,\n", incidents[i].golden_rule_score);
+            fprintf(file, "      \"acting_agent\": %u,\n", incidents[i].acting_agent);
+            fprintf(file, "      \"affected_agent\": %u\n", incidents[i].affected_agent);
+            fprintf(file, "    }%s\n", (i < count - 1) ? "," : "");
+        }
+        fprintf(file, "  ]\n}\n");
+    } else if (strcmp(format, "csv") == 0) {
+        // Export as CSV
+        fprintf(file, "id,timestamp,violation_type,severity,action_taken,policy_id,policy_name,description,golden_rule_score,acting_agent,affected_agent\n");
+        for (uint32_t i = 0; i < count; i++) {
+            fprintf(file, "%lu,%lu,%d,%.4f,%d,%u,\"%s\",\"%s\",%.4f,%u,%u\n",
+                    incidents[i].incident_id,
+                    incidents[i].timestamp,
+                    incidents[i].violation_type,
+                    incidents[i].severity,
+                    incidents[i].action_taken,
+                    incidents[i].policy_id,
+                    incidents[i].policy_name,
+                    incidents[i].description,
+                    incidents[i].golden_rule_score,
+                    incidents[i].acting_agent,
+                    incidents[i].affected_agent);
+        }
+    } else {
+        fclose(file);
+        nimcp_free(incidents);
+        return false;
+    }
+
+    fclose(file);
+    nimcp_free(incidents);
+
+    NIMCP_LOGGING_INFO("[ETHICS] Exported %u incidents to %s", count, filepath);
     return true;
 }

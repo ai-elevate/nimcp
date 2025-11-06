@@ -1514,7 +1514,7 @@ Python bindings release GIL for compute-intensive operations:
 
 **Directory:** `src/bindings/cpp/`
 **Namespace:** `nimcp`
-**Build:** `g++ -std=c++17 -lnimcp_core -lnimcp_cpp`
+**Build:** `g++ -std=c++17 -lnimcp -lnimcp_cpp`
 
 C++ bindings provide RAII wrappers, exceptions, and modern C++ idioms.
 

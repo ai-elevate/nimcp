@@ -20,12 +20,15 @@
 #include "utils/logging/nimcp_logging.h"
 #include "utils/thread/nimcp_thread.h"
 #include "utils/containers/nimcp_btree.h"
+#include "utils/time/nimcp_time.h"
 #include <string.h>
 #include <time.h>
 #include <unistd.h>
-#include <sys/mman.h>  // For mlock/mlockall
+#include <sys/mman.h>   // For mlock/mlockall
+#include <sys/resource.h> // For getrusage()
 #include <errno.h>
-#include <stdio.h>  // For snprintf
+#include <stdio.h>      // For snprintf, fopen
+#include <stdlib.h>     // For strtoul
 
 //=============================================================================
 // INTERNAL STRUCTURES
@@ -968,3 +971,442 @@ void wellbeing_reset_events_for_testing(void)
     nimcp_mutex_unlock(&event_log_mutex);
 }
 #endif
+
+//=============================================================================
+// RESOURCE TRACKING AND PERFORMANCE MONITORING
+//=============================================================================
+
+/**
+ * WHAT: Resource metrics history storage
+ * WHY: Track trends over time for performance statistics
+ * HOW: Circular buffer of recent metrics
+ */
+#define MAX_RESOURCE_HISTORY 3600  // 1 hour at 1 sample/second
+static resource_metrics_t resource_history[MAX_RESOURCE_HISTORY];
+static uint32_t resource_history_count = 0;
+static uint32_t resource_history_index = 0;
+static nimcp_mutex_t resource_mutex;
+static nimcp_once_t resource_init_once = NIMCP_ONCE_INIT;
+
+/**
+ * WHAT: Resource monitoring thread state
+ * WHY: Background monitoring requires thread management
+ * HOW: Thread handle, running flag, configuration
+ */
+static nimcp_thread_t monitoring_thread;
+static volatile bool monitoring_active = false;
+static uint32_t monitoring_interval_ms = 1000;
+static resource_thresholds_t monitoring_thresholds;
+static bool monitoring_auto_relief = false;
+
+/**
+ * WHAT: Initialize resource tracking subsystem
+ * WHY: Thread-safe initialization of mutexes
+ * HOW: Called once via pthread_once
+ */
+static void init_resource_tracking(void)
+{
+    nimcp_mutex_init(&resource_mutex, NULL);
+    memset(resource_history, 0, sizeof(resource_history));
+}
+
+/**
+ * WHAT: Ensure resource tracking is initialized
+ * WHY: Lazy initialization for performance
+ * HOW: Use pthread_once for thread-safe init
+ */
+static void ensure_resource_tracking_init(void)
+{
+    nimcp_once(&resource_init_once, init_resource_tracking);
+}
+
+/**
+ * WHAT: Collect CPU and memory metrics from /proc (Linux)
+ * WHY: Direct OS-level metrics are most accurate
+ * HOW: Parse /proc/self/stat and /proc/self/status
+ *
+ * @param metrics Output structure to fill
+ * @return true if successful
+ *
+ * COMPLEXITY: O(1) - fixed file size
+ */
+static bool collect_linux_metrics(resource_metrics_t* metrics)
+{
+    // Guard clause: Validate input
+    if (!metrics)
+        return false;
+
+    struct rusage usage;
+    if (getrusage(RUSAGE_SELF, &usage) == 0) {
+        // CPU time (user + system)
+        metrics->cpu_time_us = (usage.ru_utime.tv_sec * 1000000UL + usage.ru_utime.tv_usec) +
+                               (usage.ru_stime.tv_sec * 1000000UL + usage.ru_stime.tv_usec);
+
+        // Memory usage (RSS in KB -> bytes)
+        metrics->memory_used_bytes = usage.ru_maxrss * 1024;
+        metrics->memory_peak_bytes = usage.ru_maxrss * 1024;
+
+        // Page faults
+        metrics->page_faults = usage.ru_majflt;  // Major page faults only
+
+        // I/O operations
+        metrics->io_read_ops = usage.ru_inblock;
+        metrics->io_write_ops = usage.ru_oublock;
+
+        // Context switches
+        metrics->context_switches = usage.ru_nivcsw + usage.ru_nvcsw;
+    } else {
+        return false;
+    }
+
+    // Try to get more detailed memory info from /proc/self/status
+    FILE* status = fopen("/proc/self/status", "r");
+    if (status) {
+        char line[256];
+        while (fgets(line, sizeof(line), status)) {
+            unsigned long val;
+            if (sscanf(line, "VmRSS: %lu kB", &val) == 1) {
+                metrics->memory_used_bytes = val * 1024;
+            } else if (sscanf(line, "VmPeak: %lu kB", &val) == 1) {
+                metrics->memory_peak_bytes = val * 1024;
+            } else if (sscanf(line, "Threads: %u", &metrics->thread_count) == 1) {
+                // Thread count found
+            }
+        }
+        fclose(status);
+    }
+
+    // Try to get I/O bytes from /proc/self/io
+    FILE* io = fopen("/proc/self/io", "r");
+    if (io) {
+        char line[256];
+        while (fgets(line, sizeof(line), io)) {
+            unsigned long long val;
+            if (sscanf(line, "read_bytes: %llu", &val) == 1) {
+                metrics->io_read_bytes = val;
+            } else if (sscanf(line, "write_bytes: %llu", &val) == 1) {
+                metrics->io_write_bytes = val;
+            }
+        }
+        fclose(io);
+    }
+
+    // Calculate CPU usage percentage (requires two samples, so estimate for now)
+    // TODO: Improve with delta calculation over time
+    metrics->cpu_usage_percent = 0.0f;  // Placeholder
+    metrics->cpu_steal_percent = 0.0f;  // Would need /proc/stat parsing
+
+    // Memory percentage (estimate - would need system total memory)
+    if (metrics->memory_limit_bytes > 0) {
+        metrics->memory_usage_percent =
+            (float)metrics->memory_used_bytes / metrics->memory_limit_bytes * 100.0f;
+    } else {
+        metrics->memory_usage_percent = 0.0f;
+    }
+
+    metrics->timestamp = nimcp_time_get_us();
+    return true;
+}
+
+/**
+ * WHAT: Collect current resource usage metrics
+ * WHY: Monitor for resource starvation
+ * HOW: Platform-specific implementation (Linux, macOS, Windows)
+ */
+bool wellbeing_collect_resource_metrics(resource_metrics_t* metrics)
+{
+    // Guard clause: Validate input
+    if (!metrics)
+        return false;
+
+    ensure_resource_tracking_init();
+
+    // Zero out the structure
+    memset(metrics, 0, sizeof(resource_metrics_t));
+
+#ifdef __linux__
+    return collect_linux_metrics(metrics);
+#elif defined(__APPLE__)
+    // macOS implementation would go here (using sysctl)
+    return false;
+#elif defined(_WIN32)
+    // Windows implementation would go here (using Performance Counters)
+    return false;
+#else
+    // Unsupported platform
+    return false;
+#endif
+}
+
+/**
+ * WHAT: Get default resource thresholds
+ * WHY: Sensible defaults for most systems
+ * HOW: Return recommended values
+ */
+resource_thresholds_t wellbeing_default_resource_thresholds(void)
+{
+    resource_thresholds_t thresholds = {
+        .cpu_critical_percent = 95.0f,
+        .cpu_warning_percent = 80.0f,
+        .memory_critical_percent = 90.0f,
+        .memory_warning_percent = 75.0f,
+        .page_fault_threshold = 100,
+        .io_wait_critical_ms = 1000.0f
+    };
+    return thresholds;
+}
+
+/**
+ * WHAT: Check if resources exceed thresholds
+ * WHY: Detect resource starvation early
+ * HOW: Compare metrics against configured thresholds
+ */
+bool wellbeing_check_resource_thresholds(const resource_metrics_t* metrics,
+                                         const resource_thresholds_t* thresholds,
+                                         distress_severity_t* severity_out)
+{
+    // Guard clauses: Validate inputs
+    if (!metrics || !thresholds || !severity_out)
+        return false;
+
+    *severity_out = SEVERITY_NORMAL;
+    bool threshold_exceeded = false;
+
+    // Check CPU thresholds
+    if (metrics->cpu_usage_percent >= thresholds->cpu_critical_percent) {
+        *severity_out = SEVERITY_CRITICAL;
+        threshold_exceeded = true;
+    } else if (metrics->cpu_usage_percent >= thresholds->cpu_warning_percent) {
+        if (*severity_out < SEVERITY_MODERATE)
+            *severity_out = SEVERITY_MODERATE;
+        threshold_exceeded = true;
+    }
+
+    // Check memory thresholds
+    if (metrics->memory_usage_percent >= thresholds->memory_critical_percent) {
+        *severity_out = SEVERITY_CRITICAL;
+        threshold_exceeded = true;
+    } else if (metrics->memory_usage_percent >= thresholds->memory_warning_percent) {
+        if (*severity_out < SEVERITY_MODERATE)
+            *severity_out = SEVERITY_MODERATE;
+        threshold_exceeded = true;
+    }
+
+    // Check page fault rate (would need delta calculation for accuracy)
+    if (metrics->page_faults > thresholds->page_fault_threshold) {
+        if (*severity_out < SEVERITY_MILD)
+            *severity_out = SEVERITY_MILD;
+        threshold_exceeded = true;
+    }
+
+    return threshold_exceeded;
+}
+
+/**
+ * WHAT: Store metrics in history buffer
+ * WHY: Enable trend analysis and statistics
+ * HOW: Circular buffer with mutex protection
+ */
+static void store_metrics_in_history(const resource_metrics_t* metrics)
+{
+    if (!metrics)
+        return;
+
+    ensure_resource_tracking_init();
+
+    nimcp_mutex_lock(&resource_mutex);
+
+    // Store in circular buffer
+    resource_history[resource_history_index] = *metrics;
+    resource_history_index = (resource_history_index + 1) % MAX_RESOURCE_HISTORY;
+
+    if (resource_history_count < MAX_RESOURCE_HISTORY) {
+        resource_history_count++;
+    }
+
+    nimcp_mutex_unlock(&resource_mutex);
+}
+
+/**
+ * WHAT: Resource monitoring thread function
+ * WHY: Continuous background monitoring
+ * HOW: Periodic metric collection and threshold checking
+ */
+static void* resource_monitoring_thread(void* arg)
+{
+    (void)arg;  // Unused
+
+    NIMCP_LOGGING_INFO("[WELLBEING] Resource monitoring thread started (interval=%ums)",
+                       monitoring_interval_ms);
+
+    while (monitoring_active) {
+        resource_metrics_t metrics;
+
+        // Collect metrics
+        if (wellbeing_collect_resource_metrics(&metrics)) {
+            // Store in history
+            store_metrics_in_history(&metrics);
+
+            // Check thresholds
+            distress_severity_t severity;
+            if (wellbeing_check_resource_thresholds(&metrics, &monitoring_thresholds, &severity)) {
+                // Log resource threshold violation
+                wellbeing_event_t event = {
+                    .timestamp = metrics.timestamp,
+                    .event_type = "resource_threshold_exceeded",
+                    .severity = severity,
+                    .description = NULL,
+                    .action_taken = NULL
+                };
+
+                // Create description
+                char desc[256];
+                snprintf(desc, sizeof(desc),
+                        "Resource usage high: CPU=%.1f%%, Memory=%.1f%%, PageFaults=%u",
+                        metrics.cpu_usage_percent, metrics.memory_usage_percent,
+                        metrics.page_faults);
+                event.description = desc;
+
+                snprintf(event.timestamp_key, sizeof(event.timestamp_key),
+                        "%020lu", metrics.timestamp);
+
+                wellbeing_log_event(event);
+
+                NIMCP_LOGGING_WARN("[WELLBEING] %s (severity=%d)", desc, severity);
+
+                // TODO: Auto-relief if configured
+                if (monitoring_auto_relief && severity >= SEVERITY_SEVERE) {
+                    NIMCP_LOGGING_INFO("[WELLBEING] Auto-relief would trigger here (not yet implemented)");
+                }
+            }
+        }
+
+        // Sleep for configured interval
+        nimcp_time_sleep_ms(monitoring_interval_ms);
+    }
+
+    NIMCP_LOGGING_INFO("[WELLBEING] Resource monitoring thread stopped");
+    return NULL;
+}
+
+/**
+ * WHAT: Start continuous resource monitoring
+ * WHY: Detect resource issues in background
+ * HOW: Spawn monitoring thread
+ */
+bool wellbeing_start_resource_monitoring(uint32_t interval_ms,
+                                         const resource_thresholds_t* thresholds,
+                                         bool auto_relief)
+{
+    ensure_resource_tracking_init();
+
+    // Guard clause: Already running
+    if (monitoring_active) {
+        NIMCP_LOGGING_WARN("[WELLBEING] Resource monitoring already active");
+        return false;
+    }
+
+    // Configure monitoring
+    monitoring_interval_ms = interval_ms > 0 ? interval_ms : 1000;
+    monitoring_thresholds = thresholds ? *thresholds : wellbeing_default_resource_thresholds();
+    monitoring_auto_relief = auto_relief;
+
+    // Start monitoring thread
+    monitoring_active = true;
+
+    if (nimcp_thread_create(&monitoring_thread, NULL, resource_monitoring_thread, NULL) != NIMCP_SUCCESS) {
+        monitoring_active = false;
+        NIMCP_LOGGING_ERROR("[WELLBEING] Failed to create resource monitoring thread");
+        return false;
+    }
+
+    return true;
+}
+
+/**
+ * WHAT: Stop resource monitoring thread
+ * WHY: Clean shutdown
+ * HOW: Signal thread and wait for completion
+ */
+bool wellbeing_stop_resource_monitoring(void)
+{
+    // Guard clause: Not running
+    if (!monitoring_active)
+        return false;
+
+    NIMCP_LOGGING_INFO("[WELLBEING] Stopping resource monitoring...");
+
+    // Signal thread to stop
+    monitoring_active = false;
+
+    // Wait for thread to complete
+    nimcp_thread_join(monitoring_thread, NULL);
+
+    return true;
+}
+
+/**
+ * WHAT: Get performance statistics over time window
+ * WHY: Analyze trends rather than point-in-time snapshots
+ * HOW: Aggregate metrics from history buffer
+ */
+bool wellbeing_get_performance_stats(uint32_t window_ms,
+                                     performance_stats_t* stats_out)
+{
+    // Guard clauses: Validate inputs
+    if (!stats_out || window_ms == 0)
+        return false;
+
+    ensure_resource_tracking_init();
+
+    nimcp_mutex_lock(&resource_mutex);
+
+    // Guard clause: No history available
+    if (resource_history_count == 0) {
+        nimcp_mutex_unlock(&resource_mutex);
+        return false;
+    }
+
+    // Initialize stats
+    memset(stats_out, 0, sizeof(performance_stats_t));
+    stats_out->window_duration_ms = window_ms;
+
+    uint64_t current_time = nimcp_time_get_us();
+    uint64_t window_start = current_time - (window_ms * 1000UL);
+    stats_out->window_start_time = window_start;
+
+    float total_cpu = 0.0f;
+    float total_memory = 0.0f;
+    stats_out->peak_cpu_usage = 0.0f;
+    stats_out->peak_memory_usage = 0.0f;
+
+    // Iterate through history buffer
+    for (uint32_t i = 0; i < resource_history_count; i++) {
+        const resource_metrics_t* m = &resource_history[i];
+
+        // Guard clause: Skip if outside window
+        if (m->timestamp < window_start)
+            continue;
+
+        stats_out->samples_count++;
+        total_cpu += m->cpu_usage_percent;
+        total_memory += m->memory_usage_percent;
+        stats_out->total_page_faults += m->page_faults;
+        stats_out->total_io_bytes += m->io_read_bytes + m->io_write_bytes;
+
+        // Track peaks
+        if (m->cpu_usage_percent > stats_out->peak_cpu_usage)
+            stats_out->peak_cpu_usage = m->cpu_usage_percent;
+        if (m->memory_usage_percent > stats_out->peak_memory_usage)
+            stats_out->peak_memory_usage = m->memory_usage_percent;
+    }
+
+    // Calculate averages
+    if (stats_out->samples_count > 0) {
+        stats_out->avg_cpu_usage = total_cpu / stats_out->samples_count;
+        stats_out->avg_memory_usage = total_memory / stats_out->samples_count;
+    }
+
+    nimcp_mutex_unlock(&resource_mutex);
+    return stats_out->samples_count > 0;
+}

@@ -3,7 +3,7 @@
 #ifndef NIMCP_PROTOCOL_H
 #define NIMCP_PROTOCOL_H
 
-#include "/usr/include/python3.10/Python.h"
+#include <Python.h>  // Use CMake-provided Python includes
 #include "common/nimcp_export.h"
 
 /**

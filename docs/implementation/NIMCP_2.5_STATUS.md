@@ -208,7 +208,7 @@ set(NIMCP_CORE_SOURCES
 ```cmake
 # examples/CMakeLists.txt needs:
 add_executable(infant_demo infant_learning_demo.c)
-target_link_libraries(infant_demo nimcp_core)
+target_link_libraries(infant_demo nimcp)
 ```
 
 ## File Count Summary

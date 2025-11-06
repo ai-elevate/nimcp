@@ -42,6 +42,7 @@
 #ifndef NIMCP_EXECUTION_MODE_H
 #define NIMCP_EXECUTION_MODE_H
 
+#include <stddef.h>
 #include <stdint.h>
 #include <stdbool.h>
 #include "common/nimcp_export.h"

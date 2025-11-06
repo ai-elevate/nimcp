@@ -2,7 +2,7 @@
 #define NIMCP_MODULE_H
 
 #define PY_SSIZE_T_CLEAN
-#include "/usr/include/python3.10/Python.h"
+#include <Python.h>  // Use CMake-provided Python includes
 #include "core/neuralnet/nimcp_neuralnet.h"
 #include "networking/p2p/nimcp_p2pnode.h"
 #include "networking/protocol/nimcp_protocol.h"

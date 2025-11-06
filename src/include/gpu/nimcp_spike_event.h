@@ -91,15 +91,10 @@ typedef struct {
  * - STDP: Compare pre/post spike times
  * - Temporal coding: Pattern recognition in spike sequences
  * - Burst detection: Identify rapid spike clusters
+ *
+ * NOTE: Opaque pointer - implementation details hidden in .c file
  */
-typedef struct {
-    spike_event_t* events;   /**< Circular buffer of spike events */
-    uint32_t capacity;       /**< Buffer capacity */
-    uint32_t count;          /**< Current number of spikes */
-    uint32_t head;           /**< Write pointer (circular) */
-    uint64_t last_spike;     /**< Timestamp of most recent spike */
-    float firing_rate;       /**< Instantaneous firing rate (Hz) */
-} spike_train_t;
+typedef struct spike_train_struct spike_train_t;
 
 //=============================================================================
 // Spike Event Queue (Lock-Free for GPU)
@@ -111,16 +106,10 @@ typedef struct {
  * DESIGN: Multiple-producer, multiple-consumer queue
  * THREAD SAFETY: Lock-free atomic operations
  * GPU COMPATIBLE: Can be accessed from CUDA kernels
+ *
+ * NOTE: Opaque pointer - implementation details hidden in .c file
  */
-typedef struct {
-    spike_event_t* events;   /**< Event buffer */
-    uint32_t capacity;       /**< Queue capacity (power of 2) */
-    volatile uint32_t head;  /**< Read position (atomic) */
-    volatile uint32_t tail;  /**< Write position (atomic) */
-    volatile uint32_t count; /**< Number of events (atomic) */
-    bool gpu_enabled;        /**< Whether GPU access is enabled */
-    void* gpu_ptr;           /**< GPU device pointer (if enabled) */
-} spike_queue_t;
+typedef struct spike_queue_struct spike_queue_t;
 
 //=============================================================================
 // Spike Train Operations

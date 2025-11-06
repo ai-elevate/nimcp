@@ -130,7 +130,7 @@ static bool detect_cuda_capabilities(hardware_capabilities_t* caps)
     caps->gpu_count = (uint32_t)device_count;
 
     // Get properties of first GPU
-    cudaDeviceProp prop;
+    struct cudaDeviceProp prop;
     err = cudaGetDeviceProperties(&prop, 0);
 
     if (err == cudaSuccess) {
@@ -432,7 +432,7 @@ void* execution_alloc(execution_context_t ctx, size_t size)
             #ifdef NIMCP_ENABLE_CUDA
             if (ctx->config.use_unified_memory) {
                 void* ptr = NULL;
-                cudaMallocManaged(&ptr, size);
+                cudaMallocManaged(&ptr, size, cudaMemAttachGlobal);
                 return ptr;
             } else {
                 void* ptr = NULL;
@@ -487,10 +487,12 @@ bool execution_memcpy(execution_context_t ctx, void* dst, const void* src,
     switch (ctx->active_mode) {
         case EXEC_MODE_GPU_CUDA:
             #ifdef NIMCP_ENABLE_CUDA
-            cudaMemcpyKind kind = host_to_device ?
-                cudaMemcpyHostToDevice : cudaMemcpyDeviceToHost;
-            cudaError_t err = cudaMemcpy(dst, src, size, kind);
-            return (err == cudaSuccess);
+            {
+                enum cudaMemcpyKind kind = host_to_device ?
+                    cudaMemcpyHostToDevice : cudaMemcpyDeviceToHost;
+                cudaError_t err = cudaMemcpy(dst, src, size, kind);
+                return (err == cudaSuccess);
+            }
             #else
             // Fallback to CPU
             memcpy(dst, src, size);

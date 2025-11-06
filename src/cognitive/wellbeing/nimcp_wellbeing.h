@@ -351,6 +351,169 @@ uint32_t wellbeing_get_events_by_type(const char* event_type,
 uint32_t wellbeing_get_all_events_ordered(wellbeing_event_t** events_out);
 
 /* ========================================================================
+ * RESOURCE TRACKING AND PERFORMANCE MONITORING
+ * ======================================================================== */
+
+/**
+ * WHAT: System resource usage metrics
+ * WHY: Monitor for resource starvation that could cause distress
+ * HOW: Collect from OS (Linux: /proc, macOS: sysctl, Windows: Performance Counters)
+ */
+typedef struct {
+    // CPU metrics
+    float cpu_usage_percent;      /* Current CPU utilization (0-100) */
+    uint64_t cpu_time_us;         /* Total CPU time consumed (microseconds) */
+    float cpu_steal_percent;      /* CPU time stolen by hypervisor (0-100) */
+
+    // Memory metrics
+    uint64_t memory_used_bytes;   /* Current memory usage */
+    uint64_t memory_peak_bytes;   /* Peak memory usage */
+    uint64_t memory_limit_bytes;  /* Memory limit (if set) */
+    float memory_usage_percent;   /* Memory usage percentage (0-100) */
+    uint32_t page_faults;         /* Number of page faults */
+
+    // I/O metrics
+    uint64_t io_read_bytes;       /* Total bytes read from disk */
+    uint64_t io_write_bytes;      /* Total bytes written to disk */
+    uint32_t io_read_ops;         /* Number of read operations */
+    uint32_t io_write_ops;        /* Number of write operations */
+
+    // Thread/concurrency metrics
+    uint32_t thread_count;        /* Number of active threads */
+    uint32_t context_switches;    /* Number of context switches */
+
+    // Timestamp
+    uint64_t timestamp;           /* When metrics were collected */
+} resource_metrics_t;
+
+/**
+ * WHAT: Resource thresholds for distress detection
+ * WHY: Define what constitutes resource starvation
+ * HOW: Configurable thresholds for each resource type
+ */
+typedef struct {
+    float cpu_critical_percent;    /* CPU usage above this = critical (default: 95%) */
+    float cpu_warning_percent;     /* CPU usage above this = warning (default: 80%) */
+    float memory_critical_percent; /* Memory above this = critical (default: 90%) */
+    float memory_warning_percent;  /* Memory above this = warning (default: 75%) */
+    uint32_t page_fault_threshold; /* Page faults per second = warning (default: 100) */
+    float io_wait_critical_ms;     /* I/O wait above this = critical (default: 1000ms) */
+} resource_thresholds_t;
+
+/**
+ * WHAT: Performance statistics over time window
+ * WHY: Track trends, not just current snapshots
+ * HOW: Rolling statistics over recent history
+ */
+typedef struct {
+    float avg_cpu_usage;          /* Average CPU usage over window */
+    float peak_cpu_usage;         /* Peak CPU usage in window */
+    float avg_memory_usage;       /* Average memory usage over window */
+    float peak_memory_usage;      /* Peak memory usage in window */
+    uint32_t total_page_faults;   /* Total page faults in window */
+    uint64_t total_io_bytes;      /* Total I/O in window */
+    uint32_t samples_count;       /* Number of samples in window */
+    uint64_t window_start_time;   /* Start of time window */
+    uint64_t window_duration_ms;  /* Duration of window (ms) */
+} performance_stats_t;
+
+/**
+ * WHAT: Collect current resource usage metrics
+ * WHY: Monitor for resource starvation
+ * HOW: Query OS APIs for current usage
+ *
+ * PLATFORM SUPPORT:
+ * - Linux: /proc/self/stat, /proc/self/status, /proc/meminfo
+ * - macOS: getrusage(), sysctl()
+ * - Windows: GetProcessMemoryInfo(), GetProcessTimes()
+ *
+ * @param metrics Output structure to fill
+ * @return true if metrics collected successfully
+ *
+ * COMPLEXITY: O(1) - direct syscalls
+ * THREAD-SAFE: Yes
+ */
+bool wellbeing_collect_resource_metrics(resource_metrics_t* metrics);
+
+/**
+ * WHAT: Get default resource thresholds
+ * WHY: Sensible defaults for most systems
+ * HOW: Returns recommended threshold values
+ *
+ * @return Default thresholds
+ *
+ * COMPLEXITY: O(1)
+ * THREAD-SAFE: Yes
+ */
+resource_thresholds_t wellbeing_default_resource_thresholds(void);
+
+/**
+ * WHAT: Check if resources are below thresholds
+ * WHY: Detect resource starvation early
+ * HOW: Compare current metrics against thresholds
+ *
+ * @param metrics Current resource metrics
+ * @param thresholds Threshold configuration
+ * @param severity_out Output: severity level if threshold exceeded
+ * @return true if thresholds exceeded (resource starvation detected)
+ *
+ * COMPLEXITY: O(1)
+ * THREAD-SAFE: Yes
+ */
+bool wellbeing_check_resource_thresholds(const resource_metrics_t* metrics,
+                                         const resource_thresholds_t* thresholds,
+                                         distress_severity_t* severity_out);
+
+/**
+ * WHAT: Start continuous resource monitoring
+ * WHY: Detect resource issues in background
+ * HOW: Spawn monitoring thread that periodically collects metrics
+ *
+ * BEHAVIOR:
+ * - Collects metrics every interval_ms
+ * - Logs events when thresholds exceeded
+ * - Can trigger distress relief automatically if configured
+ *
+ * @param interval_ms How often to collect metrics (default: 1000ms)
+ * @param thresholds Threshold configuration (NULL = use defaults)
+ * @param auto_relief true to automatically provide relief on distress
+ * @return true if monitoring started successfully
+ *
+ * COMPLEXITY: O(1)
+ * THREAD-SAFE: Yes (idempotent - won't start multiple monitors)
+ */
+bool wellbeing_start_resource_monitoring(uint32_t interval_ms,
+                                         const resource_thresholds_t* thresholds,
+                                         bool auto_relief);
+
+/**
+ * WHAT: Stop resource monitoring thread
+ * WHY: Clean shutdown of monitoring
+ * HOW: Signal thread to stop and wait for completion
+ *
+ * @return true if stopped successfully
+ *
+ * COMPLEXITY: O(1)
+ * THREAD-SAFE: Yes
+ */
+bool wellbeing_stop_resource_monitoring(void);
+
+/**
+ * WHAT: Get performance statistics over recent time window
+ * WHY: Analyze trends rather than point-in-time snapshots
+ * HOW: Aggregate metrics from recent history
+ *
+ * @param window_ms Size of time window in milliseconds (e.g., 60000 = 1 minute)
+ * @param stats_out Output structure to fill
+ * @return true if statistics available
+ *
+ * COMPLEXITY: O(n) where n = samples in window
+ * THREAD-SAFE: Yes
+ */
+bool wellbeing_get_performance_stats(uint32_t window_ms,
+                                     performance_stats_t* stats_out);
+
+/* ========================================================================
  * TEST UTILITIES
  * ======================================================================== */
 

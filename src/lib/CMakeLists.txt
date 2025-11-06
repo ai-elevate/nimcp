@@ -9,6 +9,10 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/neuron_types/nimcp_neuron_types.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain_regions/nimcp_brain_regions.c
 
+    # Neuron models - Plugin architecture
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/neuron_models/nimcp_neuron_model.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/neuron_models/nimcp_izhikevich.c
+
     # Cognitive functions
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/ethics/nimcp_ethics.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/knowledge/nimcp_knowledge.c
@@ -25,6 +29,7 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../plasticity/bcm/nimcp_bcm.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../plasticity/neuromodulators/nimcp_neuromodulators.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../plasticity/attention/nimcp_attention.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../plasticity/stp/nimcp_stp.c
 
     # Glial cells
     ${CMAKE_CURRENT_SOURCE_DIR}/../glial/astrocytes/nimcp_astrocytes.c
@@ -82,6 +87,10 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/perception/nimcp_visual_cortex.c
     ${CMAKE_CURRENT_SOURCE_DIR}/perception/nimcp_audio_cortex.c
 
+    # GPU Support (CPU fallback when CUDA unavailable)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../gpu/execution/nimcp_execution_mode.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../gpu/spike_event/nimcp_spike_event.c
+
     # Python bindings
     ${CMAKE_SOURCE_DIR}/src/python/nimcp_module.c
     ${CMAKE_SOURCE_DIR}/src/python/nimcp_types.c
@@ -97,11 +106,18 @@ add_library(nimcp SHARED
 target_include_directories(nimcp
     PUBLIC
         $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}/src>
+        $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}/src/include>
         $<INSTALL_INTERFACE:include/nimcp>
     PRIVATE
         ${NIMCP_LIB_DIR}
         ${Python3_INCLUDE_DIRS}
+        ${CMAKE_SOURCE_DIR}/src/gpu
 )
+
+# Add CUDA include directories if available
+if(CUDAToolkit_FOUND)
+    target_include_directories(nimcp PRIVATE ${CUDAToolkit_INCLUDE_DIRS})
+endif()
 
 target_link_libraries(nimcp
     PUBLIC
@@ -110,8 +126,16 @@ target_link_libraries(nimcp
         jansson
 )
 
+# Add CUDA libraries if available
+if(CUDAToolkit_FOUND)
+    target_link_libraries(nimcp PUBLIC CUDA::cudart)
+endif()
+
 # Add testing API support
 target_compile_definitions(nimcp PRIVATE NIMCP_TESTING)
+
+# Explicitly add -fPIC for shared library with thread-local storage
+target_compile_options(nimcp PRIVATE -fPIC)
 
 # Enable Position Independent Code and set library properties
 set_target_properties(nimcp PROPERTIES

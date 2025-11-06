@@ -1,6 +1,6 @@
 # NIMCP 2.6 - Neural Substrate for AI Consciousness
 
-**Version 2.6.1** | **Production Ready** | **License: MIT**
+**Version 2.6.2** | **Production Ready** | **License: MIT**
 
 ## What is NIMCP?
 
@@ -106,7 +106,7 @@ sudo make install
 ```
 
 This installs:
-- `/usr/local/lib/libnimcp_core.so` - Shared library (312KB)
+- `/usr/local/lib/libnimcp.so` - Shared library (312KB)
 - `/usr/local/include/nimcp/*.h` - API headers
 - `/usr/local/lib/pkgconfig/nimcp.pc` - pkg-config support
 
@@ -403,10 +403,49 @@ ROI: $48/month savings
 
 ---
 
+## Interactive Web Demo
+
+**🎮 Try NIMCP in your browser!** We've built a full-featured web demo with multitenant support.
+
+### Features
+
+- **Real-time neural network visualization** - Watch neurons fire and synapses adapt
+- **Pattern recognition** - Train the network on visual patterns (vertical, horizontal, diagonal)
+- **Multiple neuron models** - Switch between LIF, Izhikevich, AdEx, Hodgkin-Huxley
+- **Plasticity controls** - Apply STDP, Oja's rule, homeostasis
+- **Live metrics** - Network activity, weight statistics, spike patterns
+- **Multitenant support** - Multiple users can use the demo simultaneously with isolated networks
+
+### Quick Start
+
+```bash
+cd examples/web_demo
+
+# Install frontend dependencies
+cd frontend && npm install && cd ..
+
+# Start the server (runs both backend and frontend)
+python3 app.py
+
+# Open browser to http://localhost:5000
+```
+
+The demo features:
+- **React frontend** with real-time WebSocket updates
+- **Flask backend** with REST API + SocketIO
+- **Automatic tenant management** - Each browser session gets its own isolated network
+- **Pattern training** - Teach the network to recognize patterns
+- **Interactive controls** - Start/stop simulation, add connections, prune weak synapses
+
+**See full documentation:** [examples/web_demo/README.md](examples/web_demo/README.md)
+
+---
+
 ## Documentation
 
 - **[Library Integration Guide](LIBRARY_INTEGRATION.md)** - Integrate NIMCP into your app
 - **[Artemis Integration Guide](ARTEMIS_INTEGRATION.md)** - Neural consciousness substrate
+- **[Web Demo Guide](examples/web_demo/)** - Interactive multitenant demo
 - **[API Reference](docs/)** - Complete API documentation
 - **[Examples](examples/)** - Working code examples
 - **[RFC](docs/rfc/)** - Protocol specification
@@ -415,16 +454,19 @@ ROI: $48/month savings
 
 ## Development Status
 
-### ✅ Complete (v2.5)
+### ✅ Complete (v2.6)
 
 - [x] Brain API (high-level learning)
 - [x] Ethics Engine (Golden Rule)
 - [x] Curiosity System (exploration)
 - [x] Knowledge Base (multi-domain)
 - [x] Neural Networks (spiking + plasticity)
+- [x] Multiple neuron models (LIF, Izhikevich, AdEx, Hodgkin-Huxley)
+- [x] Short-term plasticity (STP)
 - [x] Python bindings
 - [x] Library packaging (pkg-config, CMake)
 - [x] Production infrastructure (Docker, CI/CD, monitoring)
+- [x] Interactive web demo (React + Flask with multitenant support)
 
 ### 🚧 In Progress
 

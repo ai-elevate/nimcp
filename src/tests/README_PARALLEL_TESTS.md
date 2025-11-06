@@ -136,7 +136,7 @@ add_nimcp_test_binary(core_tests
 
 This function automatically:
 - Creates the test executable
-- Links with `nimcp_core`, GTest, and Python
+- Links with `nimcp`, GTest, and Python
 - Registers with CTest
 - Configures Python path
 - Enables code coverage (Debug builds)
