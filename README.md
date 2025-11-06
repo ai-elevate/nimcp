@@ -418,17 +418,30 @@ ROI: $48/month savings
 
 ### Quick Start
 
+**Single command launch:**
+
 ```bash
-cd examples/web_demo
-
-# Install frontend dependencies
-cd frontend && npm install && cd ..
-
-# Start the server (runs both backend and frontend)
-python3 app.py
+cd examples
+python3 start_demo.py
 
 # Open browser to http://localhost:5000
 ```
+
+**Advanced options:**
+
+```bash
+# HTTPS mode with auto-generated self-signed certificate
+python3 start_demo.py --https
+
+# Backend only (if frontend is already running)
+python3 start_demo.py --no-frontend
+```
+
+The launcher automatically:
+- Installs frontend dependencies if needed
+- Starts both React frontend (port 5000) and Flask backend (port 5001)
+- Manages process lifecycle with graceful shutdown
+- Generates SSL certificates for HTTPS mode
 
 The demo features:
 - **React frontend** with real-time WebSocket updates
