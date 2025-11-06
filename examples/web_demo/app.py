@@ -702,13 +702,26 @@ if __name__ == '__main__':
     sim_thread.start()
     print("✓ Simulation thread started")
 
+    # Check for HTTPS configuration
+    use_https = os.environ.get('USE_HTTPS') == '1'
+    ssl_cert = os.environ.get('SSL_CERT')
+    ssl_key = os.environ.get('SSL_KEY')
+
+    protocol = "https" if use_https else "http"
     print("\n" + "=" * 70)
-    print("Backend API running at: http://localhost:5001")
+    print(f"Backend API running at: {protocol}://localhost:5001")
+    if use_https:
+        print("✓ HTTPS enabled with self-signed certificate")
     print("React app running at: http://localhost:5000")
     print("=" * 70)
 
     try:
-        socketio.run(app, host='0.0.0.0', port=5001, debug=False, allow_unsafe_werkzeug=True)
+        if use_https and ssl_cert and ssl_key:
+            ssl_context = (ssl_cert, ssl_key)
+            socketio.run(app, host='0.0.0.0', port=5001, debug=False,
+                        allow_unsafe_werkzeug=True, ssl_context=ssl_context)
+        else:
+            socketio.run(app, host='0.0.0.0', port=5001, debug=False, allow_unsafe_werkzeug=True)
     finally:
         print("\nShutting down tenant manager...")
         tenant_manager.shutdown()
