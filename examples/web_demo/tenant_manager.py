@@ -135,10 +135,11 @@ class TenantManager:
             network = nimcp.NeuralNetwork(63)
 
             # Initialize network with connections
-            self._initialize_network(network)
+            connections = self._initialize_network(network)
 
             # Create tenant wrapper
             tenant_net = TenantNetwork(tenant_id, network)
+            tenant_net.connections = connections  # Assign tracked connections for visualization
             self.tenants[tenant_id] = tenant_net
 
             print(f"[TenantManager] Created tenant: {tenant_id} (total: {len(self.tenants)})")
@@ -215,16 +216,20 @@ class TenantManager:
             for tenant_id in tenant_ids:
                 self._destroy_tenant_unsafe(tenant_id)
 
-    @staticmethod
-    def _initialize_network(network: nimcp.NeuralNetwork):
+    def _initialize_network(self, network: nimcp.NeuralNetwork):
         """
         Initialize network with standard connections
 
         WHAT: Set up input→hidden and hidden→output connections
         WHY: Provide a functional network for pattern recognition
         HOW: Random connections with moderate weights
+
+        Returns:
+            list: Connection list for visualization tracking
         """
         import random
+
+        connections = []  # Track connections for visualization
 
         # Input layer (0-8) → Hidden layer (9-58)
         for input_id in range(9):
@@ -233,6 +238,11 @@ class TenantManager:
             for hidden_id in hidden_targets:
                 weight = random.uniform(0.3, 0.7)
                 network.add_connection(input_id, hidden_id, weight)
+                connections.append({
+                    'source': input_id,
+                    'target': hidden_id,
+                    'weight': weight
+                })
 
         # Hidden layer (9-58) → Output layer (59-62)
         for hidden_id in range(9, 59):
@@ -241,3 +251,10 @@ class TenantManager:
             for output_id in output_targets:
                 weight = random.uniform(0.4, 0.8)
                 network.add_connection(hidden_id, output_id, weight)
+                connections.append({
+                    'source': hidden_id,
+                    'target': output_id,
+                    'weight': weight
+                })
+
+        return connections

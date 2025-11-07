@@ -10,6 +10,7 @@ import PatternInput from './components/PatternInput'
 import OutputVisualization from './components/OutputVisualization'
 import NIMCPExplainer from './components/NIMCPExplainer'
 import LiveExplainer from './components/LiveExplainer'
+import DatasetTrainer from './components/DatasetTrainer'
 
 // Use relative path so Socket.IO connects through Vite proxy
 // This works both locally and remotely
@@ -26,6 +27,9 @@ function App() {
   const [showConnections, setShowConnections] = useState('all') // 'none', 'selected', 'all' - default to 'all' to show network activity
   const [outputActivations, setOutputActivations] = useState([0, 0, 0, 0])
   const [activeTab, setActiveTab] = useState('demo') // 'demo' or 'about'
+  const [sidebarTab, setSidebarTab] = useState('controls') // 'controls', 'patterns', 'datasets', 'output'
+  const [bottomTab, setBottomTab] = useState('metrics') // 'metrics', 'stats', 'logs'
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
 
   // Metrics state
   const [metricsData, setMetricsData] = useState({
@@ -320,40 +324,105 @@ function App() {
         ) : (
         <>
         <div className="dashboard">
-          <div className="left-sidebar">
-            <ControlPanel
-              simulationRunning={simulationRunning}
-              onStart={startSimulation}
-              onStop={stopSimulation}
-              onReset={resetSimulation}
-              onAddConnection={addConnection}
-              onApplyPlasticity={applyPlasticity}
-              onPrune={pruneNetwork}
-              onSetNeuronModel={setNeuronModel}
-              selectedNeuron={selectedNeuron}
-            />
+          {!sidebarCollapsed && (
+            <div className="left-sidebar">
+              <div className="sidebar-header">
+                <div className="sidebar-tabs">
+                  <button
+                    className={`sidebar-tab ${sidebarTab === 'controls' ? 'active' : ''}`}
+                    onClick={() => setSidebarTab('controls')}
+                    title="Simulation Controls"
+                  >
+                    🎮
+                  </button>
+                  <button
+                    className={`sidebar-tab ${sidebarTab === 'patterns' ? 'active' : ''}`}
+                    onClick={() => setSidebarTab('patterns')}
+                    title="Pattern Recognition"
+                  >
+                    🔲
+                  </button>
+                  <button
+                    className={`sidebar-tab ${sidebarTab === 'datasets' ? 'active' : ''}`}
+                    onClick={() => setSidebarTab('datasets')}
+                    title="Dataset Training"
+                  >
+                    📊
+                  </button>
+                  <button
+                    className={`sidebar-tab ${sidebarTab === 'output' ? 'active' : ''}`}
+                    onClick={() => setSidebarTab('output')}
+                    title="Output & Feedback"
+                  >
+                    📈
+                  </button>
+                </div>
+                <button
+                  className="collapse-btn"
+                  onClick={() => setSidebarCollapsed(true)}
+                  title="Collapse sidebar"
+                >
+                  ◀
+                </button>
+              </div>
 
-            <NeuronDetails neuronId={selectedNeuron} />
+              <div className="sidebar-content">
+                {sidebarTab === 'controls' && (
+                  <>
+                    <ControlPanel
+                      simulationRunning={simulationRunning}
+                      onStart={startSimulation}
+                      onStop={stopSimulation}
+                      onReset={resetSimulation}
+                      onAddConnection={addConnection}
+                      onApplyPlasticity={applyPlasticity}
+                      onPrune={pruneNetwork}
+                      onSetNeuronModel={setNeuronModel}
+                      selectedNeuron={selectedNeuron}
+                    />
+                    <NeuronDetails neuronId={selectedNeuron} />
+                  </>
+                )}
 
-            <PatternInput
-              onPresentPattern={presentPattern}
-              onTrainPattern={trainPattern}
-            />
+                {sidebarTab === 'patterns' && (
+                  <PatternInput
+                    onPresentPattern={presentPattern}
+                    onTrainPattern={trainPattern}
+                  />
+                )}
 
-            <OutputVisualization outputActivations={outputActivations} />
-          </div>
+                {sidebarTab === 'datasets' && (
+                  <DatasetTrainer />
+                )}
 
-          <div className="main-panel">
+                {sidebarTab === 'output' && (
+                  <OutputVisualization outputActivations={outputActivations} />
+                )}
+              </div>
+            </div>
+          )}
+
+          {sidebarCollapsed && (
+            <button
+              className="expand-btn"
+              onClick={() => setSidebarCollapsed(false)}
+              title="Expand sidebar"
+            >
+              ▶
+            </button>
+          )}
+
+          <div className={`main-panel ${sidebarCollapsed ? 'expanded' : ''}`}>
             <div className="viz-controls">
-              <label>Show Connections:</label>
+              <label>Connections:</label>
               <select
                 value={showConnections}
                 onChange={(e) => setShowConnections(e.target.value)}
                 className="connection-toggle"
               >
-                <option value="none">None</option>
-                <option value="selected">Selected Neuron Only</option>
-                <option value="all">All Connections</option>
+                <option value="none">Hidden</option>
+                <option value="selected">Selected Only</option>
+                <option value="all">All</option>
               </select>
             </div>
 
@@ -374,16 +443,43 @@ function App() {
           </div>
         </div>
 
-        <StatsCards
-          neuronCount={networkTopology.nodes.length}
-          timestamp={timestamp}
-          activityLevel={metricsData.activity[metricsData.activity.length - 1] || 0}
-          avgWeight={metricsData.weight[metricsData.weight.length - 1] || 0}
-        />
+        <div className="bottom-panel">
+          <div className="bottom-tabs">
+            <button
+              className={`bottom-tab ${bottomTab === 'metrics' ? 'active' : ''}`}
+              onClick={() => setBottomTab('metrics')}
+            >
+              📊 Metrics
+            </button>
+            <button
+              className={`bottom-tab ${bottomTab === 'stats' ? 'active' : ''}`}
+              onClick={() => setBottomTab('stats')}
+            >
+              📈 Statistics
+            </button>
+            <button
+              className={`bottom-tab ${bottomTab === 'logs' ? 'active' : ''}`}
+              onClick={() => setBottomTab('logs')}
+            >
+              📝 Activity Log
+            </button>
+          </div>
 
-        <MetricsCharts metricsData={metricsData} />
+          <div className="bottom-content">
+            {bottomTab === 'metrics' && <MetricsCharts metricsData={metricsData} />}
 
-        <ActivityLog logs={logs} />
+            {bottomTab === 'stats' && (
+              <StatsCards
+                neuronCount={networkTopology.nodes.length}
+                timestamp={timestamp}
+                activityLevel={metricsData.activity[metricsData.activity.length - 1] || 0}
+                avgWeight={metricsData.weight[metricsData.weight.length - 1] || 0}
+              />
+            )}
+
+            {bottomTab === 'logs' && <ActivityLog logs={logs} />}
+          </div>
+        </div>
         </>
         )}
       </div>

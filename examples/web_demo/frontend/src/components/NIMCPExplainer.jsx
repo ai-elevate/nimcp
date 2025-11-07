@@ -211,14 +211,14 @@ function NIMCPExplainer() {
       <div className="learn-more">
         <h3>📚 Learn More</h3>
         <div className="resources">
-          <a href="https://github.com/your-repo/nimcp" className="resource-link" target="_blank" rel="noopener noreferrer">
-            📖 Documentation
+          <a href="/api/docs" className="resource-link" target="_blank" rel="noopener noreferrer">
+            📖 API Documentation
           </a>
-          <a href="https://github.com/your-repo/nimcp/examples" className="resource-link" target="_blank" rel="noopener noreferrer">
-            💻 More Examples
+          <a href="/api/examples" className="resource-link" target="_blank" rel="noopener noreferrer">
+            💻 Code Examples
           </a>
-          <a href="https://github.com/your-repo/nimcp" className="resource-link" target="_blank" rel="noopener noreferrer">
-            ⭐ GitHub Repository
+          <a href="../../README.md" className="resource-link" download>
+            📄 Project README
           </a>
         </div>
       </div>

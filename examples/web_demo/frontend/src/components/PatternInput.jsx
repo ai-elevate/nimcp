@@ -7,6 +7,33 @@ const PRESET_PATTERNS = {
   diagonal_up: [0, 0, 1, 0, 1, 0, 1, 0, 0]
 }
 
+const PATTERN_EXPLANATIONS = {
+  vertical: {
+    name: 'Vertical Line',
+    goal: 'Recognize vertical patterns',
+    description: 'The network learns to identify a vertical line in a 3x3 grid. This tests basic spatial pattern recognition.',
+    output: 'Output neuron 0 should activate strongly when this pattern is presented.'
+  },
+  horizontal: {
+    name: 'Horizontal Line',
+    goal: 'Recognize horizontal patterns',
+    description: 'The network learns to identify a horizontal line. This is distinct from vertical and tests if the network can differentiate orientations.',
+    output: 'Output neuron 1 should activate strongly for horizontal patterns.'
+  },
+  diagonal_down: {
+    name: 'Diagonal \\ Pattern',
+    goal: 'Recognize diagonal patterns (top-left to bottom-right)',
+    description: 'Tests the network\'s ability to recognize diagonal relationships. This is more complex than straight lines.',
+    output: 'Output neuron 2 should activate for this diagonal orientation.'
+  },
+  diagonal_up: {
+    name: 'Diagonal / Pattern',
+    goal: 'Recognize diagonal patterns (bottom-left to top-right)',
+    description: 'The opposite diagonal tests if the network can learn directional differences in diagonal patterns.',
+    output: 'Output neuron 3 should respond to this diagonal direction.'
+  }
+}
+
 function PatternInput({ onPresentPattern, onTrainPattern }) {
   const [pattern, setPattern] = useState(Array(9).fill(0))
   const [selectedPreset, setSelectedPreset] = useState('vertical')
@@ -36,9 +63,22 @@ function PatternInput({ onPresentPattern, onTrainPattern }) {
     onTrainPattern(selectedPreset, trainingLabel, trainingIterations)
   }
 
+  const currentExplanation = PATTERN_EXPLANATIONS[selectedPreset]
+
   return (
     <div className="pattern-input-panel">
-      <h3>🎨 Pattern Input</h3>
+      <h3>🎨 Pattern Recognition Test</h3>
+
+      <div className="test-explanation">
+        <div className="explanation-header">
+          <strong>{currentExplanation.name}</strong>
+        </div>
+        <div className="explanation-content">
+          <p><strong>🎯 Goal:</strong> {currentExplanation.goal}</p>
+          <p><strong>📝 What it tests:</strong> {currentExplanation.description}</p>
+          <p><strong>✅ Success criteria:</strong> {currentExplanation.output}</p>
+        </div>
+      </div>
 
       {/* 3x3 Grid */}
       <div className="pattern-grid">
@@ -47,6 +87,7 @@ function PatternInput({ onPresentPattern, onTrainPattern }) {
             key={index}
             className={`pattern-cell ${cell === 1 ? 'active' : ''}`}
             onClick={() => toggleCell(index)}
+            title={`Cell ${index + 1} - Click to toggle`}
           >
             {cell === 1 && '●'}
           </div>

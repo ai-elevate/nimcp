@@ -18,6 +18,7 @@ from functools import wraps
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '../../build/lib/python'))
 import nimcp
 from tenant_manager import TenantManager
+from training_datasets import library as dataset_library
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'nimcp-demo-secret'
@@ -196,8 +197,164 @@ def collect_metrics_for_tenant(tenant_net, timestamp):
 # REST API Routes
 @app.route('/')
 def index():
-    """Main dashboard"""
-    return render_template('index.html')
+    """
+    Root endpoint - provides info about the API
+    The actual frontend runs on Vite dev server (port 5000 or 5002)
+    """
+    return jsonify({
+        'service': 'NIMCP Web Demo API',
+        'version': '1.0.0',
+        'status': 'running',
+        'frontend_url': 'http://localhost:5000',
+        'message': 'This is the API server. Please access the frontend at http://localhost:5000',
+        'tenants': {
+            'active': tenant_manager.get_tenant_count(),
+            'max': tenant_manager.max_tenants
+        },
+        'endpoints': {
+            'api': '/api/*',
+            'websocket': '/socket.io',
+            'health': '/api/health'
+        }
+    })
+
+@app.route('/api/docs')
+def api_docs():
+    """
+    API documentation endpoint
+    """
+    return jsonify({
+        'title': 'NIMCP Web Demo API Documentation',
+        'description': 'Interactive Neural Network Showcase with multitenant support',
+        'version': '1.0.0',
+        'acronym': 'NIMCP = Neural Inspired Model Control Protocol',
+        'features': [
+            'Real-time spiking neural network simulation',
+            'Multi-tenant isolation (up to 100 concurrent users)',
+            'Pattern recognition and training',
+            'Dataset training library (7 datasets)',
+            'Reinforcement learning with confidence thresholds',
+            'STDP (Spike-Timing-Dependent Plasticity)',
+            'WebSocket real-time updates',
+            'Network visualization',
+        ],
+        'endpoints': {
+            'simulation': {
+                'POST /api/simulation/start': 'Start simulation',
+                'POST /api/simulation/stop': 'Stop simulation',
+                'POST /api/simulation/reset': 'Reset simulation'
+            },
+            'network': {
+                'GET /api/network/topology': 'Get network structure',
+                'GET /api/network/info': 'Get network information',
+                'POST /api/network/prune': 'Prune weak connections'
+            },
+            'pattern': {
+                'POST /api/pattern/present': 'Present input pattern',
+                'POST /api/pattern/train': 'Train on pattern with STDP'
+            },
+            'datasets': {
+                'GET /api/datasets': 'List available datasets',
+                'POST /api/dataset/train': 'Train on dataset samples'
+            },
+            'reinforcement': {
+                'POST /api/reinforcement/feedback': 'Apply reinforcement learning'
+            },
+            'output': {
+                'GET /api/output': 'Get current output activations'
+            }
+        },
+        'datasets': [
+            'Basic Patterns - Simple 3x3 grid patterns',
+            'Complex Patterns - Advanced visual patterns',
+            'Temporal Sequences - Time-based patterns',
+            'Logic Gates - Boolean operations',
+            'Arithmetic - Basic math operations',
+            'Symbolic Logic - First-order logic reasoning',
+            'Sequential Reasoning - Multi-step causal chains'
+        ]
+    })
+
+@app.route('/api/examples')
+def api_examples():
+    """
+    Example usage patterns
+    """
+    return jsonify({
+        'title': 'NIMCP Usage Examples',
+        'examples': {
+            'basic_training': {
+                'description': 'Train the network on a simple pattern',
+                'steps': [
+                    '1. Start simulation: POST /api/simulation/start',
+                    '2. Present pattern: POST /api/pattern/present with pattern data',
+                    '3. Train: POST /api/pattern/train with same pattern',
+                    '4. Check output: GET /api/output'
+                ],
+                'code': '''
+// JavaScript example
+const pattern = [1, 0, 1, 0, 1, 0, 1, 0, 1]; // 3x3 grid
+
+// Start simulation
+await fetch('/api/simulation/start', { method: 'POST' });
+
+// Train on pattern
+await fetch('/api/pattern/train', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({
+    pattern: pattern,
+    label: 'diagonal'
+  })
+});
+
+// Check output
+const output = await fetch('/api/output').then(r => r.json());
+console.log(output.activations);
+'''
+            },
+            'dataset_training': {
+                'description': 'Train on a complete dataset',
+                'code': '''
+// Get available datasets
+const datasets = await fetch('/api/datasets').then(r => r.json());
+
+// Train on logic gates dataset
+await fetch('/api/dataset/train', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({
+    dataset_name: 'logic_gates',
+    num_samples: 50,
+    iterations: 5
+  })
+});
+'''
+            },
+            'reinforcement_learning': {
+                'description': 'Apply reinforcement learning based on correctness',
+                'code': '''
+// Get output prediction
+const output = await fetch('/api/output').then(r => r.json());
+const maxActivation = Math.max(...output.activations);
+const predicted = output.activations.indexOf(maxActivation);
+
+// User evaluates if prediction is correct
+const isCorrect = (predicted === expectedOutput);
+
+// Apply feedback
+await fetch('/api/reinforcement/feedback', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({
+    correct: isCorrect,
+    confidence_threshold: 0.7
+  })
+});
+'''
+            }
+        }
+    })
 
 
 @app.route('/api/network/info', methods=['GET'])
@@ -593,6 +750,268 @@ def get_output(tenant_net):
         })
     except Exception as e:
         return jsonify({'error': f'Error getting output: {str(e)}'}), 500
+
+
+# ============================================================================
+# Training Dataset API
+# ============================================================================
+
+@app.route('/api/datasets', methods=['GET'])
+def list_datasets():
+    """List all available training datasets"""
+    try:
+        return jsonify({
+            'datasets': dataset_library.list_datasets(),
+            'categories': ['visual', 'temporal', 'logic', 'symbolic', 'arithmetic'],
+            'difficulties': ['easy', 'medium', 'hard', 'expert']
+        })
+    except Exception as e:
+        return jsonify({'error': f'Error listing datasets: {str(e)}'}), 500
+
+
+@app.route('/api/dataset/<name>', methods=['GET'])
+def get_dataset_info(name):
+    """Get information about a specific dataset"""
+    try:
+        dataset = dataset_library.get_dataset(name)
+        if not dataset:
+            return jsonify({'error': 'Dataset not found'}), 404
+
+        return jsonify({
+            'name': dataset.name,
+            'description': dataset.description,
+            'difficulty': dataset.difficulty,
+            'category': dataset.category
+        })
+    except Exception as e:
+        return jsonify({'error': f'Error getting dataset: {str(e)}'}), 500
+
+
+@app.route('/api/dataset/generate/<name>', methods=['GET'])
+def generate_dataset_samples(name):
+    """Generate sample data from a dataset"""
+    try:
+        dataset = dataset_library.get_dataset(name)
+        if not dataset:
+            return jsonify({'error': 'Dataset not found'}), 404
+
+        count = request.args.get('count', 10, type=int)
+        count = min(count, 100)  # Limit to 100 samples at a time
+
+        samples = dataset.generate_samples(count)
+
+        return jsonify({
+            'dataset': name,
+            'samples': samples[:10],  # Return first 10 for preview
+            'total_generated': len(samples)
+        })
+    except Exception as e:
+        return jsonify({'error': f'Error generating samples: {str(e)}'}), 500
+
+
+@app.route('/api/dataset/train', methods=['POST'])
+@require_tenant
+def train_on_dataset(tenant_net):
+    """Train network on samples from a dataset"""
+    try:
+        data = request.json
+        dataset_name = data.get('dataset')
+        sample_count = data.get('samples', 50)
+        iterations_per_sample = data.get('iterations', 5)
+
+        if not dataset_name:
+            return jsonify({'error': 'Dataset name required'}), 400
+
+        dataset = dataset_library.get_dataset(dataset_name)
+        if not dataset:
+            return jsonify({'error': 'Dataset not found'}), 404
+
+        # Generate samples
+        samples = dataset.generate_samples(sample_count)
+        network = tenant_net.network
+        timestamp = tenant_net.config['current_time']
+
+        trained_count = 0
+
+        # Train on each sample
+        for sample in samples:
+            input_data = sample['input']
+            output_data = sample['output']
+
+            # Ensure input matches network input size
+            if len(input_data) > len(tenant_net.config['input_neurons']):
+                continue
+
+            # Train on this sample multiple times
+            for _ in range(iterations_per_sample):
+                # Inject input pattern
+                for i, value in enumerate(input_data):
+                    if i < len(tenant_net.config['input_neurons']):
+                        input_neuron_id = tenant_net.config['input_neurons'][i]
+                        try:
+                            network.update_neuron(input_neuron_id, float(value), timestamp)
+                        except:
+                            pass
+
+                # Propagate through network
+                network.compute_step(timestamp)
+
+                # Apply STDP to hidden layers
+                for neuron_id in tenant_net.config['hidden_neurons'][:20]:
+                    try:
+                        network.apply_stdp(neuron_id, timestamp)
+                    except:
+                        pass
+
+                # For output neurons, determine target activation
+                # Use the output_data to guide which neurons should be active
+                if len(output_data) <= len(tenant_net.config['output_neurons']):
+                    for i, target_value in enumerate(output_data):
+                        if target_value > 0.5:  # If this output should be active
+                            output_neuron_id = tenant_net.config['output_neurons'][i]
+                            try:
+                                network.apply_stdp(output_neuron_id, timestamp)
+                            except:
+                                pass
+
+                timestamp += 1
+
+            trained_count += 1
+
+        tenant_net.config['current_time'] = timestamp
+
+        return jsonify({
+            'success': True,
+            'dataset': dataset_name,
+            'samples_trained': trained_count,
+            'total_iterations': trained_count * iterations_per_sample
+        })
+
+    except Exception as e:
+        return jsonify({'error': f'Error training on dataset: {str(e)}'}), 500
+
+
+@app.route('/api/reinforcement/feedback', methods=['POST'])
+@require_tenant
+def apply_reinforcement_feedback(tenant_net):
+    """Apply reinforcement learning based on confidence threshold and correctness"""
+    try:
+        data = request.json
+        confidence_threshold = data.get('confidence_threshold', 0.7)
+        correct_output = data.get('correct_output')  # Index of correct output neuron
+        is_correct = data.get('is_correct', None)  # Manual override: True/False
+
+        network = tenant_net.network
+        timestamp = tenant_net.config['current_time']
+
+        # Get current output activations
+        output_activations = []
+        for output_id in tenant_net.config['output_neurons']:
+            try:
+                activity = network.get_average_activity(output_id)
+                output_activations.append(float(activity))
+            except:
+                output_activations.append(0.0)
+
+        # Determine predicted output
+        max_activation = max(output_activations) if output_activations else 0.0
+        predicted_output = output_activations.index(max_activation) if output_activations else -1
+        confidence = max_activation
+
+        # Check if confidence meets threshold
+        meets_threshold = confidence >= confidence_threshold
+
+        # Determine if prediction is correct
+        if is_correct is not None:
+            # Manual feedback provided
+            prediction_correct = is_correct
+        elif correct_output is not None:
+            # Compare with expected output
+            prediction_correct = (predicted_output == correct_output)
+        else:
+            return jsonify({'error': 'Must provide either correct_output or is_correct'}), 400
+
+        # Apply reinforcement learning
+        reward_signal = 0.0
+
+        if prediction_correct and meets_threshold:
+            # Reward: Strengthen connections that led to correct, confident answer
+            reward_signal = 1.0
+            action = 'reward_strong'
+
+            # Strengthen connections to correct output neuron
+            correct_neuron = tenant_net.config['output_neurons'][correct_output if correct_output is not None else predicted_output]
+            for _ in range(5):  # Multiple STDP applications for reinforcement
+                try:
+                    network.apply_stdp(correct_neuron, timestamp)
+                except:
+                    pass
+                timestamp += 1
+
+        elif prediction_correct and not meets_threshold:
+            # Partial reward: Correct but not confident enough
+            reward_signal = 0.5
+            action = 'reward_weak'
+
+            # Moderate strengthening
+            correct_neuron = tenant_net.config['output_neurons'][correct_output if correct_output is not None else predicted_output]
+            for _ in range(3):
+                try:
+                    network.apply_stdp(correct_neuron, timestamp)
+                except:
+                    pass
+                timestamp += 1
+
+        elif not prediction_correct and meets_threshold:
+            # Strong punishment: Wrong but confident (worst case)
+            reward_signal = -1.0
+            action = 'punish_strong'
+
+            # Weaken connections to incorrect output
+            incorrect_neuron = tenant_net.config['output_neurons'][predicted_output]
+
+            # Apply negative reinforcement by reducing weights
+            # (In a full implementation, this would use anti-STDP or weight decay)
+            # For now, we'll strengthen the correct output instead
+            if correct_output is not None:
+                correct_neuron = tenant_net.config['output_neurons'][correct_output]
+                for _ in range(7):
+                    try:
+                        network.apply_stdp(correct_neuron, timestamp)
+                    except:
+                        pass
+                    timestamp += 1
+
+        else:
+            # Weak punishment: Wrong and not confident
+            reward_signal = -0.5
+            action = 'punish_weak'
+
+            # Mild correction
+            if correct_output is not None:
+                correct_neuron = tenant_net.config['output_neurons'][correct_output]
+                for _ in range(2):
+                    try:
+                        network.apply_stdp(correct_neuron, timestamp)
+                    except:
+                        pass
+                    timestamp += 1
+
+        tenant_net.config['current_time'] = timestamp
+
+        return jsonify({
+            'success': True,
+            'action': action,
+            'reward_signal': reward_signal,
+            'prediction_correct': prediction_correct,
+            'meets_threshold': meets_threshold,
+            'confidence': confidence,
+            'predicted_output': predicted_output,
+            'threshold': confidence_threshold
+        })
+
+    except Exception as e:
+        return jsonify({'error': f'Error applying reinforcement: {str(e)}'}), 500
 
 
 # Tenant Management API
