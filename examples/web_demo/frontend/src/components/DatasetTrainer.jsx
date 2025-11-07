@@ -228,6 +228,7 @@ function DatasetTrainer() {
           >
             {training ? '⏳ Training...' : '🎓 Train Network'}
           </button>
+          </div>
 
           {training && (
             <div className="training-progress">
@@ -251,7 +252,6 @@ function DatasetTrainer() {
               {trainingResult.success ? '✓' : '✗'} {trainingResult.message}
             </div>
           )}
-        </div>
         </>
       )}
     </div>

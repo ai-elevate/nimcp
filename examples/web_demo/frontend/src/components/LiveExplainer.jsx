@@ -98,7 +98,7 @@ function LiveExplainer({ simulationRunning, activeNeurons, outputActivations, ti
           <div className="feature-status">
             <span className="feature-icon">⚡</span>
             <span className="feature-name">Spiking Dynamics</span>
-            <span className={`status-indicator ${activeNeurons.length > 0 ? 'active' : 'inactive'}`}>
+            <span className={`feature-badge ${activeNeurons.length > 0 ? 'active' : 'inactive'}`}>
               {activeNeurons.length > 0 ? 'Active' : 'Idle'}
             </span>
           </div>
@@ -106,7 +106,7 @@ function LiveExplainer({ simulationRunning, activeNeurons, outputActivations, ti
           <div className="feature-status">
             <span className="feature-icon">🧠</span>
             <span className="feature-name">STDP Learning</span>
-            <span className={`status-indicator ${simulationRunning ? 'active' : 'inactive'}`}>
+            <span className={`feature-badge ${simulationRunning ? 'active' : 'inactive'}`}>
               {simulationRunning ? 'Active' : 'Idle'}
             </span>
           </div>
@@ -114,13 +114,13 @@ function LiveExplainer({ simulationRunning, activeNeurons, outputActivations, ti
           <div className="feature-status">
             <span className="feature-icon">⚖️</span>
             <span className="feature-name">Homeostasis</span>
-            <span className="status-indicator active">Monitoring</span>
+            <span className="feature-badge active">Monitoring</span>
           </div>
 
           <div className="feature-status">
             <span className="feature-icon">🔗</span>
             <span className="feature-name">Synaptic Plasticity</span>
-            <span className={`status-indicator ${simulationRunning ? 'active' : 'inactive'}`}>
+            <span className={`feature-badge ${simulationRunning ? 'active' : 'inactive'}`}>
               {simulationRunning ? 'Updating' : 'Idle'}
             </span>
           </div>

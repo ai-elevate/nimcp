@@ -44,6 +44,7 @@ size_t nimcp_serializer_get_length(NimcpSerializer* serializer);
 size_t nimcp_serializer_get_position(NimcpSerializer* serializer);
 bool nimcp_serializer_set_position(NimcpSerializer* serializer, size_t position);
 void nimcp_serializer_mark_compressed(NimcpSerializer* serializer);
+bool nimcp_serializer_is_compressed(const NimcpSerializer* serializer);
 
 // Compression operations
 NimcpSerialResult nimcp_serializer_compress(NimcpSerializer* serializer);

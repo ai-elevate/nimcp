@@ -1,15 +1,27 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 
 const PATTERN_NAMES = ['Vertical |', 'Horizontal ─', 'Diagonal \\', 'Diagonal /']
 const PATTERN_COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444']
 
-function OutputVisualization({ outputActivations }) {
+// Map backend pattern names to expected output indices
+const PATTERN_MAP = {
+  'vertical': 0,
+  'horizontal': 1,
+  'diagonal_down': 2,
+  'diagonal_up': 3
+}
+
+function OutputVisualization({ outputActivations, currentPattern }) {
   const [predictedPattern, setPredictedPattern] = useState('none')
   const [maxActivation, setMaxActivation] = useState(0)
   const [confidenceThreshold, setConfidenceThreshold] = useState(0.7)
   const [feedbackResult, setFeedbackResult] = useState(null)
   const [predictedIndex, setPredictedIndex] = useState(-1)
+  const [expectedIndex, setExpectedIndex] = useState(null)
+  const [isCorrect, setIsCorrect] = useState(null)
+  const lastFeedbackRef = useRef(null)
 
+  // Update predicted pattern from output activations
   useEffect(() => {
     if (outputActivations && outputActivations.length === 4) {
       const max = Math.max(...outputActivations)
@@ -25,17 +37,46 @@ function OutputVisualization({ outputActivations }) {
     }
   }, [outputActivations])
 
+  // Update expected pattern from currentPattern
+  useEffect(() => {
+    if (currentPattern && PATTERN_MAP.hasOwnProperty(currentPattern)) {
+      const expected = PATTERN_MAP[currentPattern]
+      setExpectedIndex(expected)
+    } else {
+      setExpectedIndex(null)
+    }
+  }, [currentPattern])
+
+  // Auto-check correctness and apply feedback
+  useEffect(() => {
+    if (predictedIndex >= 0 && expectedIndex !== null) {
+      const correct = predictedIndex === expectedIndex
+      setIsCorrect(correct)
+
+      // Automatically apply feedback after a short delay (avoid rapid re-application)
+      const feedbackKey = `${predictedIndex}-${expectedIndex}-${maxActivation.toFixed(2)}`
+      if (lastFeedbackRef.current !== feedbackKey) {
+        lastFeedbackRef.current = feedbackKey
+        setTimeout(() => {
+          applyAutomaticFeedback(correct, expectedIndex)
+        }, 500)
+      }
+    } else {
+      setIsCorrect(null)
+    }
+  }, [predictedIndex, expectedIndex, maxActivation])
+
   const meetsThreshold = maxActivation >= confidenceThreshold
 
-  const applyFeedback = async (isCorrect) => {
+  const applyAutomaticFeedback = async (correct, correctOutput) => {
     try {
       const response = await fetch('/api/reinforcement/feedback', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           confidence_threshold: confidenceThreshold,
-          correct_output: predictedIndex, // Using predicted index for simplicity
-          is_correct: isCorrect
+          correct_output: correctOutput,
+          is_correct: correct
         })
       })
 
@@ -46,14 +87,15 @@ function OutputVisualization({ outputActivations }) {
           action: result.action,
           reward: result.reward_signal,
           confidence: result.confidence,
-          meetsThreshold: result.meets_threshold
+          meetsThreshold: result.meets_threshold,
+          isCorrect: correct
         })
 
-        // Clear feedback after 3 seconds
-        setTimeout(() => setFeedbackResult(null), 3000)
+        // Clear feedback after 5 seconds
+        setTimeout(() => setFeedbackResult(null), 5000)
       }
     } catch (error) {
-      console.error('Error applying feedback:', error)
+      console.error('Error applying automatic feedback:', error)
     }
   }
 
@@ -77,6 +119,29 @@ function OutputVisualization({ outputActivations }) {
           )}
         </div>
       </div>
+
+      {/* Auto-Feedback Status */}
+      {expectedIndex !== null && predictedIndex >= 0 && (
+        <div className={`auto-feedback-status ${isCorrect ? 'correct' : 'incorrect'}`}>
+          <div className="status-header">
+            {isCorrect ? (
+              <>
+                <span className="status-icon">✓</span>
+                <span className="status-text">Correct Prediction!</span>
+              </>
+            ) : (
+              <>
+                <span className="status-icon">✗</span>
+                <span className="status-text">Incorrect - Training</span>
+              </>
+            )}
+          </div>
+          <div className="status-details">
+            Expected: {PATTERN_NAMES[expectedIndex]} |
+            Predicted: {PATTERN_NAMES[predictedIndex]}
+          </div>
+        </div>
+      )}
 
       {/* Confidence Threshold Control */}
       <div className="confidence-threshold-control">
@@ -102,16 +167,18 @@ function OutputVisualization({ outputActivations }) {
         {outputActivations && outputActivations.map((activation, index) => {
           const percentage = getActivationPercentage(activation)
           const isMax = activation === maxActivation && maxActivation > 0.1
+          const isExpected = index === expectedIndex
 
           return (
             <div key={index} className="output-neuron-container">
               <div className="output-neuron-label">
                 {PATTERN_NAMES[index]}
+                {isExpected && <span className="expected-marker"> (Expected)</span>}
               </div>
 
               <div className="output-neuron-bar-container">
                 <div
-                  className={`output-neuron-bar ${isMax ? 'predicted' : ''}`}
+                  className={`output-neuron-bar ${isMax ? 'predicted' : ''} ${isExpected ? 'expected' : ''}`}
                   style={{
                     width: `${percentage}%`,
                     backgroundColor: PATTERN_COLORS[index],
@@ -131,33 +198,12 @@ function OutputVisualization({ outputActivations }) {
         })}
       </div>
 
-      {/* Reinforcement Learning Feedback */}
-      {predictedIndex >= 0 && (
-        <div className="feedback-controls">
-          <h4>Provide Feedback:</h4>
-          <div className="feedback-buttons">
-            <button
-              className="btn btn-success btn-sm"
-              onClick={() => applyFeedback(true)}
-            >
-              ✓ Correct
-            </button>
-            <button
-              className="btn btn-danger btn-sm"
-              onClick={() => applyFeedback(false)}
-            >
-              ✗ Incorrect
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* Feedback Result */}
+      {/* Automatic Feedback Result */}
       {feedbackResult && (
-        <div className={`feedback-result ${feedbackResult.reward > 0 ? 'reward' : 'punish'}`}>
+        <div className={`feedback-result ${feedbackResult.isCorrect ? 'reward' : 'punish'}`}>
           <strong>
-            {feedbackResult.action === 'reward_strong' && '🎉 Strong Reward Applied'}
-            {feedbackResult.action === 'reward_weak' && '👍 Weak Reward Applied'}
+            {feedbackResult.action === 'reward_strong' && '🎉 Strong Reinforcement Applied'}
+            {feedbackResult.action === 'reward_weak' && '👍 Weak Reinforcement Applied'}
             {feedbackResult.action === 'punish_strong' && '⚠️ Strong Correction Applied'}
             {feedbackResult.action === 'punish_weak' && '📝 Weak Correction Applied'}
           </strong>

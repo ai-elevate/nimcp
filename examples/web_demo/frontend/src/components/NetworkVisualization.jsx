@@ -102,7 +102,8 @@ function NetworkVisualization({ topology, activeNeurons, onNodeSelect, selectedN
           background: '#6ee7b7',
           highlight: { border: '#059669', background: '#34d399' }
         } : getNodeColor(node.activity || 0.05),
-        shadow: isActive ? { enabled: true, color: '#10b981', size: 10 } : false
+        shadow: isActive ? { enabled: true, color: '#10b981', size: 10 } : false,
+        title: `Neuron ${node.id}\nActivity: ${(node.activity || 0).toFixed(3)}\nState: ${(node.state || 0).toFixed(3)}`
       })
     })
 

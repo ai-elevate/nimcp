@@ -11,6 +11,9 @@ import OutputVisualization from './components/OutputVisualization'
 import NIMCPExplainer from './components/NIMCPExplainer'
 import LiveExplainer from './components/LiveExplainer'
 import DatasetTrainer from './components/DatasetTrainer'
+import CheckpointManager from './components/CheckpointManager'
+import GlialControls from './components/GlialControls'
+import GlialCellsExplainer from './components/GlialCellsExplainer'
 
 // Use relative path so Socket.IO connects through Vite proxy
 // This works both locally and remotely
@@ -26,10 +29,19 @@ function App() {
   const [logs, setLogs] = useState([])
   const [showConnections, setShowConnections] = useState('all') // 'none', 'selected', 'all' - default to 'all' to show network activity
   const [outputActivations, setOutputActivations] = useState([0, 0, 0, 0])
+  const [currentPattern, setCurrentPattern] = useState(null)
   const [activeTab, setActiveTab] = useState('demo') // 'demo' or 'about'
-  const [sidebarTab, setSidebarTab] = useState('controls') // 'controls', 'patterns', 'datasets', 'output'
+  const [sidebarTab, setSidebarTab] = useState('controls') // 'controls', 'patterns', 'datasets', 'output', 'glial'
   const [bottomTab, setBottomTab] = useState('metrics') // 'metrics', 'stats', 'logs'
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
+
+  // Glial cell state
+  const [glialEnabled, setGlialEnabled] = useState({
+    astrocytes: false,
+    oligodendrocytes: false,
+    microglia: false
+  })
+  const [glialStats, setGlialStats] = useState(null)
 
   // Metrics state
   const [metricsData, setMetricsData] = useState({
@@ -277,6 +289,70 @@ function App() {
     }
   }
 
+  // Glial cell functions
+  const toggleGlialCell = async (type) => {
+    const newEnabled = !glialEnabled[type]
+    try {
+      const response = await fetch('/api/glial/toggle', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ type, enabled: newEnabled })
+      })
+      const data = await response.json()
+      if (data.success) {
+        setGlialEnabled(prev => ({ ...prev, [type]: newEnabled }))
+        const cellNames = {
+          astrocytes: 'Astrocytes',
+          oligodendrocytes: 'Oligodendrocytes',
+          microglia: 'Microglia'
+        }
+        addLog('Glial', `${cellNames[type]} ${newEnabled ? 'enabled' : 'disabled'}`)
+      } else {
+        addLog('Error', data.error || 'Failed to toggle glial cells')
+      }
+    } catch (error) {
+      addLog('Error', 'Failed to toggle glial cells')
+    }
+  }
+
+  const loadGlialInfo = async () => {
+    try {
+      const response = await fetch('/api/glial/info')
+      const data = await response.json()
+      if (data.success && data.enabled) {
+        setGlialEnabled(data.enabled)
+      }
+    } catch (error) {
+      console.error('Error loading glial info:', error)
+    }
+  }
+
+  const loadGlialStats = async () => {
+    try {
+      const response = await fetch('/api/glial/stats')
+      const data = await response.json()
+      if (data.success && data.stats) {
+        setGlialStats(data.stats)
+      }
+    } catch (error) {
+      console.error('Error loading glial stats:', error)
+    }
+  }
+
+  // Load glial info on mount
+  useEffect(() => {
+    loadGlialInfo()
+  }, [])
+
+  // Poll glial stats when glial tab is active
+  useEffect(() => {
+    if (sidebarTab === 'glial') {
+      loadGlialStats()
+      const interval = setInterval(loadGlialStats, 1000) // Poll every second
+      return () => clearInterval(interval)
+    }
+  }, [sidebarTab])
+
   // Poll output activations periodically when simulation is running
   useEffect(() => {
     if (simulationRunning) {
@@ -286,6 +362,9 @@ function App() {
           const data = await response.json()
           if (data.activations) {
             setOutputActivations(data.activations)
+          }
+          if (data.current_pattern) {
+            setCurrentPattern(data.current_pattern)
           }
         } catch (error) {
           console.error('Error fetching output activations:', error)
@@ -356,6 +435,20 @@ function App() {
                   >
                     📈
                   </button>
+                  <button
+                    className={`sidebar-tab ${sidebarTab === 'checkpoint' ? 'active' : ''}`}
+                    onClick={() => setSidebarTab('checkpoint')}
+                    title="Checkpoints"
+                  >
+                    💾
+                  </button>
+                  <button
+                    className={`sidebar-tab ${sidebarTab === 'glial' ? 'active' : ''}`}
+                    onClick={() => setSidebarTab('glial')}
+                    title="Glial Cells"
+                  >
+                    🌟
+                  </button>
                 </div>
                 <button
                   className="collapse-btn"
@@ -396,7 +489,22 @@ function App() {
                 )}
 
                 {sidebarTab === 'output' && (
-                  <OutputVisualization outputActivations={outputActivations} />
+                  <OutputVisualization
+                    outputActivations={outputActivations}
+                    currentPattern={currentPattern}
+                  />
+                )}
+
+                {sidebarTab === 'checkpoint' && (
+                  <CheckpointManager onLog={addLog} />
+                )}
+
+                {sidebarTab === 'glial' && (
+                  <GlialControls
+                    glialEnabled={glialEnabled}
+                    onToggleGlial={toggleGlialCell}
+                    glialStats={glialStats}
+                  />
                 )}
               </div>
             </div>

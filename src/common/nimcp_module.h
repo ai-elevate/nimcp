@@ -6,6 +6,7 @@
 #include "core/neuralnet/nimcp_neuralnet.h"
 #include "networking/p2p/nimcp_p2pnode.h"
 #include "networking/protocol/nimcp_protocol.h"
+#include "glial/integration/nimcp_glial_integration.h"
 
 // Exception types
 extern PyObject* NIMCPError;
@@ -18,6 +19,7 @@ extern PyTypeObject NeuralNetworkType;
 extern PyTypeObject P2PNodeType;
 extern PyTypeObject NetworkConfigType;
 extern PyTypeObject NodeConfigType;
+extern PyTypeObject GlialIntegrationType;
 
 // Custom types definitions
 typedef struct {
@@ -35,6 +37,12 @@ typedef struct {
 typedef struct {
     PyObject_HEAD node_config_t config;
 } NodeConfigObject;
+
+typedef struct {
+    PyObject_HEAD
+    glial_integration_t* integration;
+    PyObject* network;  // Reference to owning network
+} GlialIntegrationObject;
 
 // Module initialization function
 PyMODINIT_FUNC PyInit_nimcp(void);

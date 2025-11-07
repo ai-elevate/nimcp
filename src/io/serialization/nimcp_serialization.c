@@ -162,6 +162,11 @@ void nimcp_serializer_mark_compressed(NimcpSerializer* serializer)
     }
 }
 
+bool nimcp_serializer_is_compressed(const NimcpSerializer* serializer)
+{
+    return serializer ? serializer->is_compressed : false;
+}
+
 NimcpSerialResult nimcp_serializer_compress(NimcpSerializer* serializer)
 {
     if (!serializer || serializer->is_compressed) {

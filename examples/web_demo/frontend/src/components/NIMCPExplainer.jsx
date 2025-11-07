@@ -1,4 +1,5 @@
 import React, { useState } from 'react'
+import GlialCellsExplainer from './GlialCellsExplainer'
 
 const NIMCP_FEATURES = [
   {
@@ -94,6 +95,7 @@ const USE_CASES = [
 function NIMCPExplainer() {
   const [activeFeature, setActiveFeature] = useState(null)
   const [showUseCases, setShowUseCases] = useState(false)
+  const [showGlialDocs, setShowGlialDocs] = useState(false)
 
   return (
     <div className="nimcp-explainer-panel">
@@ -184,6 +186,23 @@ function NIMCPExplainer() {
             ))}
           </div>
         )}
+      </div>
+
+      <div className="glial-cells-section">
+        <div className="glial-card-header">
+          <h3>⭐ NIMCP's Secret Weapon: Glial Cells</h3>
+          <button
+            className="btn btn-primary"
+            onClick={() => setShowGlialDocs(!showGlialDocs)}
+          >
+            {showGlialDocs ? '▲ Hide' : '📖 Learn More'}
+          </button>
+        </div>
+        <p className="glial-intro">
+          While neurons get all the glory, glial cells do 50% of the brain's computational work!
+          NIMCP is one of the only neural network frameworks to model glial cells computationally.
+        </p>
+        {showGlialDocs && <GlialCellsExplainer />}
       </div>
 
       <div className="technical-details">

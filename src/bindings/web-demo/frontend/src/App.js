@@ -235,10 +235,10 @@ function App() {
 
       <footer className="App-footer">
         <p>
-          NIMCP v2.7.0 - Neural Interface Message Communication Protocol
+          NIMCP v2.7.0 - Neural Inspired Model Control Protocol
         </p>
         <p>
-          <a href="https://github.com/youruser/nimcp" target="_blank" rel="noopener noreferrer">
+          <a href="https://github.com/bbrelin/nimcp" target="_blank" rel="noopener noreferrer">
             GitHub
           </a>
           {' · '}

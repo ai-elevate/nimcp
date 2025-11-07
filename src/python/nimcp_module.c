@@ -33,6 +33,8 @@ PyMODINIT_FUNC PyInit_nimcp(void)
         return NULL;
     if (PyType_Ready(&NodeConfigType) < 0)
         return NULL;
+    if (PyType_Ready(&GlialIntegrationType) < 0)
+        return NULL;
 
     m = PyModule_Create(&nimcp_module);
     if (m == NULL)
@@ -53,6 +55,8 @@ PyMODINIT_FUNC PyInit_nimcp(void)
     PyModule_AddObject(m, "NetworkConfig", (PyObject*) &NetworkConfigType);
     Py_INCREF(&NodeConfigType);
     PyModule_AddObject(m, "NodeConfig", (PyObject*) &NodeConfigType);
+    Py_INCREF(&GlialIntegrationType);
+    PyModule_AddObject(m, "GlialIntegration", (PyObject*) &GlialIntegrationType);
 
     // Add exceptions to module
     PyModule_AddObject(m, "NIMCPError", NIMCPError);

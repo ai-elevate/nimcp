@@ -224,23 +224,20 @@ static float activate_leaky_relu(float input, float threshold)
  * WHEN: Spiking neural networks with homeostasis
  *
  * ALGORITHM:
- * - If input > threshold: neuron spikes, threshold increases
- * - Else: threshold gradually decreases back to baseline
+ * - Pass through input for membrane potential accumulation
+ * - Spike detection happens separately in detected_spike()
+ *
+ * FIXED: Removed hardcoded -65.0 return that prevented membrane accumulation
  *
  * COMPLEXITY: O(1)
  */
 static float activate_adaptive(float input, float threshold)
 {
-    // Guard: Protect against invalid threshold
-    if (threshold < -100.0f || threshold > 100.0f) {
-        threshold = -55.0f;  // Default biological threshold
-    }
+    (void)threshold;  // Threshold handled by spike detection logic
 
-    if (input > threshold) {
-        return input;  // Spike!
-    }
-
-    return -65.0f;  // Resting potential
+    // Pass through input to allow membrane potential accumulation
+    // This lets the neuron integrate current over time
+    return input;
 }
 
 /**
@@ -293,8 +290,8 @@ static void init_neuron_basic_properties(neuron_t* neuron, uint32_t id, neuron_t
 
     neuron->id = id;
     neuron->type = type;
-    neuron->rest_potential = -65.0f;  // Biological resting potential (mV)
-    neuron->threshold = -55.0f;       // Spike threshold (mV)
+    neuron->rest_potential = 0.0f;    // Normalized resting potential
+    neuron->threshold = 0.5f;         // Spike threshold (normalized, reachable in [-1,1] range)
     neuron->adaptation = 0.0f;
     neuron->refractory_period = 2;  // Milliseconds
     neuron->state = neuron->rest_potential;
@@ -1462,8 +1459,12 @@ float neural_network_get_average_activity(neural_network_t network, uint32_t neu
     uint64_t window_start = (current_time >= HISTORY_WINDOW) ? (current_time - HISTORY_WINDOW) : 0;
 
     for (uint32_t i = 0; i < SPIKE_HISTORY_LENGTH; i++) {
-        if (neuron->spike_history[i].timestamp > window_start &&
-            neuron->spike_history[i].timestamp > 0) {  // Ignore uninitialized (0) timestamps
+        // Check if spike is within window (use >= to include boundary)
+        bool in_window = (neuron->spike_history[i].timestamp >= window_start);
+        // Check if this is a real spike (not uninitialized): magnitude must be non-zero
+        bool is_real_spike = (neuron->spike_history[i].magnitude != 0.0f);
+
+        if (in_window && is_real_spike) {
             spike_count++;
         }
     }
@@ -1771,8 +1772,8 @@ uint32_t neural_network_add_neuron(neural_network_t network, activation_type_t a
     neuron->id = new_id;
     neuron->activation_type = activation;
     neuron->type = NEURON_EXCITATORY;  // Default to excitatory
-    neuron->rest_potential = -65.0f;
-    neuron->threshold = -55.0f;
+    neuron->rest_potential = 0.0f;   // Normalized resting potential
+    neuron->threshold = 0.5f;        // Normalized spike threshold
     neuron->creation_time = network->network_time;
 
     // NIMCP 2.6: Initialize neuron model (uses network config)

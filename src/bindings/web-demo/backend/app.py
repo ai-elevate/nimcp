@@ -13,13 +13,14 @@ Features:
 - Iris flower classification demo
 """
 
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, send_file, redirect
 from flask_cors import CORS
 import nimcp
 import time
 import threading
 import queue
 from datetime import datetime
+import os
 
 app = Flask(__name__)
 CORS(app)  # Enable CORS for React frontend
@@ -396,6 +397,182 @@ def reset_brain():
         'message': 'Brain reset successfully'
     })
 
+@app.route('/docs')
+def documentation():
+    """
+    WHAT: Serve documentation page
+    WHY:  Provide access to README and documentation
+    HOW:  Render simple HTML page with links to docs
+    """
+    docs_html = """
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>NIMCP Web Demo - Documentation</title>
+        <style>
+            body {
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif;
+                max-width: 900px;
+                margin: 50px auto;
+                padding: 20px;
+                line-height: 1.6;
+                background: #0a0a0a;
+                color: #e0e0e0;
+            }
+            h1 { color: #61dafb; border-bottom: 2px solid #61dafb; padding-bottom: 10px; }
+            h2 { color: #61dafb; margin-top: 30px; }
+            a { color: #61dafb; text-decoration: none; }
+            a:hover { text-decoration: underline; }
+            .section {
+                background: #1a1a1a;
+                padding: 20px;
+                margin: 20px 0;
+                border-radius: 8px;
+                border-left: 4px solid #61dafb;
+            }
+            code {
+                background: #2a2a2a;
+                padding: 2px 6px;
+                border-radius: 3px;
+                color: #ffa500;
+            }
+            pre {
+                background: #2a2a2a;
+                padding: 15px;
+                border-radius: 5px;
+                overflow-x: auto;
+            }
+            .back-link {
+                display: inline-block;
+                margin: 20px 0;
+                padding: 10px 20px;
+                background: #61dafb;
+                color: #0a0a0a;
+                border-radius: 5px;
+                font-weight: bold;
+            }
+            .back-link:hover {
+                background: #4fa8c5;
+                text-decoration: none;
+            }
+        </style>
+    </head>
+    <body>
+        <h1>🧠 NIMCP Web Demo Documentation</h1>
+
+        <a href="/" class="back-link">← Back to Demo</a>
+
+        <div class="section">
+            <h2>What is NIMCP?</h2>
+            <p><strong>NIMCP (Neural Inspired Model Control Protocol)</strong> is a biologically-inspired spiking neural network library that provides temporal pattern recognition and adaptive learning capabilities.</p>
+        </div>
+
+        <div class="section">
+            <h2>📖 Quick Start</h2>
+            <p>This demo showcases NIMCP's capabilities through an interactive Iris flower classification task.</p>
+            <ol>
+                <li>Click <strong>"Initialize Brain"</strong> to create a new neural network</li>
+                <li>Use <strong>"Train on Dataset"</strong> to train the brain on iris flower samples</li>
+                <li>Enter custom features or use presets to <strong>make predictions</strong></li>
+                <li>Monitor real-time <strong>metrics and visualizations</strong> as the brain learns</li>
+            </ol>
+        </div>
+
+        <div class="section">
+            <h2>🔧 API Endpoints</h2>
+            <pre><code>POST /api/init           - Initialize brain
+POST /api/train          - Train on single example
+POST /api/train-batch    - Train on multiple examples
+POST /api/predict        - Make prediction
+GET  /api/metrics        - Get metrics and history
+GET  /api/status         - Get brain status
+GET  /api/dataset        - Get iris dataset
+POST /api/reset          - Reset brain</code></pre>
+        </div>
+
+        <div class="section">
+            <h2>📊 Features</h2>
+            <ul>
+                <li><strong>Real-time Visualization</strong> - Watch loss decrease as the brain learns</li>
+                <li><strong>Interactive Predictions</strong> - Test the trained brain with custom inputs</li>
+                <li><strong>Metrics Dashboard</strong> - Monitor accuracy, performance, and statistics</li>
+                <li><strong>Biologically Inspired</strong> - Spiking neural networks with STDP learning</li>
+            </ul>
+        </div>
+
+        <div class="section">
+            <h2>🔗 Additional Resources</h2>
+            <ul>
+                <li><a href="/api/docs/readme" target="_blank">Full README</a></li>
+                <li><a href="/api/docs/quick-start" target="_blank">Quick Start Guide</a></li>
+                <li><a href="https://github.com/bbrelin/nimcp" target="_blank">GitHub Repository</a></li>
+            </ul>
+        </div>
+
+        <div class="section">
+            <h2>💡 Example Usage</h2>
+            <pre><code>// Initialize brain
+fetch('/api/init', { method: 'POST' })
+
+// Train on example
+fetch('/api/train', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({
+    features: [5.1, 3.5, 1.4, 0.2],
+    label: 'setosa',
+    confidence: 1.0
+  })
+})
+
+// Make prediction
+fetch('/api/predict', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({
+    features: [6.3, 3.3, 6.0, 2.5]
+  })
+})</code></pre>
+        </div>
+
+        <a href="/" class="back-link">← Back to Demo</a>
+
+        <p style="text-align: center; margin-top: 50px; color: #666;">
+            NIMCP v2.7.0 - Neural Inspired Model Control Protocol
+        </p>
+    </body>
+    </html>
+    """
+    return docs_html
+
+@app.route('/api/docs/readme')
+def serve_readme():
+    """
+    WHAT: Serve README.md file
+    WHY:  Provide detailed documentation
+    HOW:  Send README.md from parent directory
+    """
+    readme_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'README.md')
+    if os.path.exists(readme_path):
+        return send_file(readme_path, mimetype='text/markdown', download_name='NIMCP-README.md')
+    else:
+        return jsonify({'success': False, 'error': 'README not found'}), 404
+
+@app.route('/api/docs/quick-start')
+def serve_quickstart():
+    """
+    WHAT: Serve QUICK_START.md file
+    WHY:  Provide quick start guide
+    HOW:  Send QUICK_START.md from parent directory
+    """
+    quickstart_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'QUICK_START.md')
+    if os.path.exists(quickstart_path):
+        return send_file(quickstart_path, mimetype='text/markdown', download_name='NIMCP-QUICK_START.md')
+    else:
+        return jsonify({'success': False, 'error': 'Quick Start guide not found'}), 404
+
 #=============================================================================
 # Main
 #=============================================================================
@@ -414,6 +591,11 @@ if __name__ == '__main__':
     print("  GET  /api/status         - Get brain status")
     print("  GET  /api/dataset        - Get iris dataset")
     print("  POST /api/reset          - Reset brain")
+    print("")
+    print("Documentation:")
+    print("  GET  /docs               - Interactive documentation page")
+    print("  GET  /api/docs/readme    - Download README.md")
+    print("  GET  /api/docs/quick-start - Download QUICK_START.md")
     print("="*70)
 
     app.run(debug=True, host='0.0.0.0', port=5000)

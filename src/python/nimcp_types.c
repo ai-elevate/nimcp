@@ -4,6 +4,7 @@
  */
 
 #include "common/nimcp_module.h"
+#include "io/serialization/nimcp_network_serialization.h"
 
 //=============================================================================
 // NeuralNetwork Type
@@ -457,6 +458,115 @@ static PyObject* NeuralNetwork_set_neuron_model(NeuralNetworkObject* self, PyObj
     }
 }
 
+// NeuralNetwork.serialize(compress=True, password=None) -> bytes
+static PyObject* NeuralNetwork_serialize(NeuralNetworkObject* self, PyObject* args, PyObject* kwargs)
+{
+    int compress = 1;  // Default to compressed
+    const char* password = NULL;
+    Py_ssize_t password_len = 0;
+    static char* kwlist[] = {"compress", "password", NULL};
+
+    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "|pz#", kwlist, &compress, &password, &password_len)) {
+        return NULL;
+    }
+
+    // Create serializer
+    NimcpSerializer* serializer = nimcp_serializer_create(0);
+    if (!serializer) {
+        PyErr_SetString(PyExc_MemoryError, "Failed to create serializer");
+        return NULL;
+    }
+
+    // Serialize network
+    nimcp_serial_stats_t stats;
+    nimcp_network_serial_result_t result = nimcp_network_serialize(
+        self->network,
+        serializer,
+        compress,
+        password,
+        password ? (size_t)password_len : 0,
+        &stats
+    );
+
+    if (result != NIMCP_NETWORK_SERIAL_SUCCESS) {
+        nimcp_serializer_destroy(serializer);
+        PyErr_Format(NetworkError, "Serialization failed: %s",
+                     nimcp_network_serial_strerror(result));
+        return NULL;
+    }
+
+    // Get serialized data
+    size_t data_length = nimcp_serializer_get_length(serializer);
+    const uint8_t* data = nimcp_serializer_get_buffer(serializer);
+
+    // Create Python bytes object
+    PyObject* bytes_obj = PyBytes_FromStringAndSize((const char*)data, data_length);
+
+    nimcp_serializer_destroy(serializer);
+
+    return bytes_obj;
+}
+
+// NeuralNetwork.deserialize(data, password=None) -> NeuralNetwork (classmethod)
+static PyObject* NeuralNetwork_deserialize(PyObject* cls, PyObject* args, PyObject* kwargs)
+{
+    const char* data;
+    Py_ssize_t data_length;
+    const char* password = NULL;
+    Py_ssize_t password_len = 0;
+    static char* kwlist[] = {"data", "password", NULL};
+
+    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "y#|z#", kwlist, &data, &data_length, &password, &password_len)) {
+        return NULL;
+    }
+
+    // Create serializer and load data
+    NimcpSerializer* serializer = nimcp_serializer_create(data_length);
+    if (!serializer) {
+        PyErr_SetString(PyExc_MemoryError, "Failed to create serializer");
+        return NULL;
+    }
+
+    if (!nimcp_serializer_set_buffer(serializer, (uint8_t*)data, data_length)) {
+        nimcp_serializer_destroy(serializer);
+        PyErr_SetString(PyExc_ValueError, "Failed to set serializer buffer");
+        return NULL;
+    }
+
+    // Deserialize network
+    neural_network_t network = NULL;
+    nimcp_serial_stats_t stats;
+    nimcp_network_serial_result_t result = nimcp_network_deserialize(
+        serializer,
+        &network,
+        password,
+        password ? (size_t)password_len : 0,
+        &stats
+    );
+
+    nimcp_serializer_destroy(serializer);
+
+    if (result != NIMCP_NETWORK_SERIAL_SUCCESS) {
+        PyErr_Format(NetworkError, "Deserialization failed: %s",
+                     nimcp_network_serial_strerror(result));
+        return NULL;
+    }
+
+    // Create Python NeuralNetwork object WITHOUT calling __init__
+    // Use tp_alloc directly to avoid __init__ validation
+    PyTypeObject* type = (PyTypeObject*)cls;
+    NeuralNetworkObject* py_network = (NeuralNetworkObject*)type->tp_alloc(type, 0);
+    if (!py_network) {
+        neural_network_destroy(network);
+        return NULL;
+    }
+
+    // Assign the deserialized network
+    py_network->network = network;
+
+    return (PyObject*)py_network;
+}
+
 static PyMethodDef NeuralNetwork_methods[] = {
     {"forward", (PyCFunction)NeuralNetwork_forward, METH_VARARGS,
      "Perform forward pass through the network\n\n"
@@ -614,6 +724,32 @@ static PyMethodDef NeuralNetwork_methods[] = {
      "Example:\n"
      "    # Switch neuron 5 to Izhikevich model\n"
      "    network.set_neuron_model(5, 1)"},
+
+    {"serialize", (PyCFunction)NeuralNetwork_serialize, METH_VARARGS | METH_KEYWORDS,
+     "Serialize network to binary format\n\n"
+     "Args:\n"
+     "    compress (bool): Enable LZ4 compression (default: True)\n"
+     "    password (str, optional): Password for encryption (default: None)\n"
+     "Returns:\n"
+     "    bytes: Serialized network data\n\n"
+     "Example:\n"
+     "    # Save network to file\n"
+     "    data = network.serialize()\n"
+     "    with open('checkpoint.nimcp', 'wb') as f:\n"
+     "        f.write(data)"},
+
+    {"deserialize", (PyCFunction)NeuralNetwork_deserialize, METH_CLASS | METH_VARARGS | METH_KEYWORDS,
+     "Deserialize network from binary format (classmethod)\n\n"
+     "Args:\n"
+     "    data (bytes): Serialized network data\n"
+     "    password (str, optional): Password for decryption (if encrypted)\n"
+     "Returns:\n"
+     "    NeuralNetwork: Restored network instance\n\n"
+     "Example:\n"
+     "    # Load network from file\n"
+     "    with open('checkpoint.nimcp', 'rb') as f:\n"
+     "        data = f.read()\n"
+     "    network = NeuralNetwork.deserialize(data)"},
 
     {NULL, NULL, 0, NULL}
 };
@@ -1031,4 +1167,198 @@ PyTypeObject NodeConfigType = {
     .tp_new = NodeConfig_new,
     .tp_init = (initproc) NodeConfig_init,
     .tp_dealloc = (destructor) NodeConfig_dealloc,
+};
+
+//=============================================================================
+// GlialIntegration Type
+//=============================================================================
+
+/**
+ * @brief Initialize GlialIntegration object
+ *
+ * SIGNATURE: GlialIntegration(network, max_mappings=1000)
+ */
+static int GlialIntegration_init(GlialIntegrationObject* self, PyObject* args, PyObject* kwds)
+{
+    PyObject* network_obj;
+    uint32_t max_mappings = 1000;
+    static char* kwlist[] = {"network", "max_mappings", NULL};
+
+    if (!PyArg_ParseTupleAndKeywords(args, kwds, "O|I", kwlist, &network_obj, &max_mappings)) {
+        return -1;
+    }
+
+    // Verify it's a NeuralNetwork object
+    if (!PyObject_IsInstance(network_obj, (PyObject*)&NeuralNetworkType)) {
+        PyErr_SetString(PyExc_TypeError, "First argument must be a NeuralNetwork");
+        return -1;
+    }
+
+    NeuralNetworkObject* network = (NeuralNetworkObject*)network_obj;
+
+    // Create glial integration system
+    self->integration = glial_integration_create(network->network, max_mappings);
+    if (!self->integration) {
+        PyErr_SetString(NIMCPError, "Failed to create glial integration system");
+        return -1;
+    }
+
+    // Keep reference to network
+    Py_INCREF(network_obj);
+    self->network = network_obj;
+
+    return 0;
+}
+
+static void GlialIntegration_dealloc(GlialIntegrationObject* self)
+{
+    if (self->integration) {
+        glial_integration_destroy(self->integration);
+    }
+    Py_XDECREF(self->network);
+    Py_TYPE(self)->tp_free((PyObject*) self);
+}
+
+static PyObject* GlialIntegration_new(PyTypeObject* type, PyObject* args, PyObject* kwds)
+{
+    GlialIntegrationObject* self = (GlialIntegrationObject*) type->tp_alloc(type, 0);
+    if (self != NULL) {
+        self->integration = NULL;
+        self->network = NULL;
+    }
+    return (PyObject*) self;
+}
+
+// GlialIntegration.enable_astrocytes(enable) -> bool
+static PyObject* GlialIntegration_enable_astrocytes(GlialIntegrationObject* self, PyObject* args)
+{
+    int enable;
+
+    if (!PyArg_ParseTuple(args, "p", &enable)) {
+        return NULL;
+    }
+
+    if (!self->integration) {
+        PyErr_SetString(NIMCPError, "Glial integration not initialized");
+        return NULL;
+    }
+
+    self->integration->enable_astrocyte_modulation = enable ? true : false;
+
+    Py_RETURN_NONE;
+}
+
+// GlialIntegration.enable_oligodendrocytes(enable) -> bool
+static PyObject* GlialIntegration_enable_oligodendrocytes(GlialIntegrationObject* self, PyObject* args)
+{
+    int enable;
+
+    if (!PyArg_ParseTuple(args, "p", &enable)) {
+        return NULL;
+    }
+
+    if (!self->integration) {
+        PyErr_SetString(NIMCPError, "Glial integration not initialized");
+        return NULL;
+    }
+
+    self->integration->enable_oligodendrocyte_myelination = enable ? true : false;
+
+    Py_RETURN_NONE;
+}
+
+// GlialIntegration.enable_microglia(enable) -> bool
+static PyObject* GlialIntegration_enable_microglia(GlialIntegrationObject* self, PyObject* args)
+{
+    int enable;
+
+    if (!PyArg_ParseTuple(args, "p", &enable)) {
+        return NULL;
+    }
+
+    if (!self->integration) {
+        PyErr_SetString(NIMCPError, "Glial integration not initialized");
+        return NULL;
+    }
+
+    self->integration->enable_microglia_pruning = enable ? true : false;
+
+    Py_RETURN_NONE;
+}
+
+// GlialIntegration.get_stats() -> dict
+static PyObject* GlialIntegration_get_stats(GlialIntegrationObject* self, PyObject* Py_UNUSED(ignored))
+{
+    if (!self->integration) {
+        PyErr_SetString(NIMCPError, "Glial integration not initialized");
+        return NULL;
+    }
+
+    glial_integration_stats_t stats;
+    nimcp_result_t result = glial_integration_get_stats(self->integration, &stats);
+
+    if (result != NIMCP_SUCCESS) {
+        PyErr_SetString(NIMCPError, "Failed to get glial statistics");
+        return NULL;
+    }
+
+    PyObject* dict = PyDict_New();
+    if (!dict) return NULL;
+
+    PyDict_SetItemString(dict, "num_astrocytes", PyLong_FromUnsignedLong(stats.num_astrocytes));
+    PyDict_SetItemString(dict, "num_oligodendrocytes", PyLong_FromUnsignedLong(stats.num_oligodendrocytes));
+    PyDict_SetItemString(dict, "num_microglia", PyLong_FromUnsignedLong(stats.num_microglia));
+
+    PyDict_SetItemString(dict, "num_tripartite_synapses", PyLong_FromUnsignedLong(stats.num_tripartite_synapses));
+    PyDict_SetItemString(dict, "num_myelinated_neurons", PyLong_FromUnsignedLong(stats.num_myelinated_neurons));
+    PyDict_SetItemString(dict, "num_monitored_synapses", PyLong_FromUnsignedLong(stats.num_monitored_synapses));
+
+    PyDict_SetItemString(dict, "total_modulations", PyLong_FromUnsignedLongLong(stats.total_modulations));
+    PyDict_SetItemString(dict, "total_myelinations", PyLong_FromUnsignedLongLong(stats.total_myelinations));
+    PyDict_SetItemString(dict, "total_prunings", PyLong_FromUnsignedLongLong(stats.total_prunings));
+
+    PyDict_SetItemString(dict, "avg_synaptic_modulation", PyFloat_FromDouble(stats.avg_synaptic_modulation));
+    PyDict_SetItemString(dict, "avg_myelination_factor", PyFloat_FromDouble(stats.avg_myelination_factor));
+    PyDict_SetItemString(dict, "avg_pruning_rate", PyFloat_FromDouble(stats.avg_pruning_rate));
+
+    return dict;
+}
+
+static PyMethodDef GlialIntegration_methods[] = {
+    {"enable_astrocytes", (PyCFunction)GlialIntegration_enable_astrocytes, METH_VARARGS,
+     "Enable or disable astrocyte modulation\n\n"
+     "Args:\n"
+     "    enable (bool): True to enable, False to disable\n"},
+
+    {"enable_oligodendrocytes", (PyCFunction)GlialIntegration_enable_oligodendrocytes, METH_VARARGS,
+     "Enable or disable oligodendrocyte myelination\n\n"
+     "Args:\n"
+     "    enable (bool): True to enable, False to disable\n"},
+
+    {"enable_microglia", (PyCFunction)GlialIntegration_enable_microglia, METH_VARARGS,
+     "Enable or disable microglia pruning\n\n"
+     "Args:\n"
+     "    enable (bool): True to enable, False to disable\n"},
+
+    {"get_stats", (PyCFunction)GlialIntegration_get_stats, METH_NOARGS,
+     "Get glial cell statistics\n\n"
+     "Returns:\n"
+     "    dict: Statistics including cell counts, modulations, myelinations, and prunings"},
+
+    {NULL}
+};
+
+PyTypeObject GlialIntegrationType = {
+    PyVarObject_HEAD_INIT(NULL, 0)
+    .tp_name = "nimcp.GlialIntegration",
+    .tp_doc = "NIMCP Glial Cell Integration System\n\n"
+              "Manages astrocytes, oligodendrocytes, and microglia for\n"
+              "biologically-realistic neural network modulation.",
+    .tp_basicsize = sizeof(GlialIntegrationObject),
+    .tp_itemsize = 0,
+    .tp_flags = Py_TPFLAGS_DEFAULT,
+    .tp_new = GlialIntegration_new,
+    .tp_init = (initproc) GlialIntegration_init,
+    .tp_dealloc = (destructor) GlialIntegration_dealloc,
+    .tp_methods = GlialIntegration_methods,
 };

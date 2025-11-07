@@ -1,4 +1,5 @@
 import React, { useState } from 'react'
+import './GlialCellsExplainer.css'
 
 const GLIAL_CELL_TYPES = [
   {

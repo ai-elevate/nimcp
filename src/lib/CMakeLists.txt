@@ -48,6 +48,8 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../io/dataio/nimcp_dataio.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../io/stream/nimcp_stream.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../io/serialization/nimcp_serialization.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../io/serialization/nimcp_network_serialization.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../io/serialization/nimcp_encryption.c
 
     # Security
     ${CMAKE_CURRENT_SOURCE_DIR}/../security/nimcp_security.c
@@ -119,6 +121,11 @@ if(CUDAToolkit_FOUND)
     target_include_directories(nimcp PRIVATE ${CUDAToolkit_INCLUDE_DIRS})
 endif()
 
+# Add libsodium include directories if available
+if(SODIUM_FOUND)
+    target_include_directories(nimcp PRIVATE ${SODIUM_INCLUDE_DIR})
+endif()
+
 target_link_libraries(nimcp
     PUBLIC
         Python3::Python
@@ -129,6 +136,11 @@ target_link_libraries(nimcp
 # Add CUDA libraries if available
 if(CUDAToolkit_FOUND)
     target_link_libraries(nimcp PUBLIC CUDA::cudart)
+endif()
+
+# Add libsodium library if available
+if(SODIUM_FOUND)
+    target_link_libraries(nimcp PUBLIC ${SODIUM_LIBRARY})
 endif()
 
 # Add testing API support

@@ -1,0 +1,744 @@
+// nimcp_network_serialization.c
+
+#include "io/serialization/nimcp_network_serialization.h"
+#include "io/serialization/nimcp_encryption.h"
+#include "core/neuralnet/nimcp_neuralnet.h"
+#include "utils/memory/nimcp_memory.h"
+#include <string.h>
+#include <time.h>
+
+// Access to internal network structure (defined in neuralnet.c)
+// NOTE: This mirrors the internal structure for serialization access
+typedef struct activation_strategy_table {
+    void* functions[8];
+} activation_strategy_table_t;
+
+struct neural_network_struct {
+    neuron_t* neurons;
+    uint32_t num_neurons;
+    uint32_t capacity;
+    uint64_t current_time;
+    network_config_t config;
+    uint64_t network_time;
+    float global_activity;
+    float network_stability;
+    float learning_momentum;
+    float last_avg_weight;
+    uint64_t last_maintenance;
+    activation_strategy_table_t activation_strategies;
+};
+
+//=============================================================================
+// Forward Declarations
+//=============================================================================
+
+static bool write_network_header(NimcpSerializer* serializer, bool compress);
+static bool write_network_metadata(NimcpSerializer* serializer, neural_network_t network);
+static bool write_network_config(NimcpSerializer* serializer, const network_config_t* config);
+static bool write_neuron(NimcpSerializer* serializer, const neuron_t* neuron);
+static bool write_synapse(NimcpSerializer* serializer, const synapse_t* synapse);
+static uint32_t calculate_checksum(const uint8_t* data, size_t length);
+
+static bool read_network_header(NimcpSerializer* serializer, uint8_t* version, uint8_t* flags);
+static bool read_network_metadata(NimcpSerializer* serializer, neural_network_t network);
+static bool read_network_config(NimcpSerializer* serializer, network_config_t* config);
+static bool read_neuron(NimcpSerializer* serializer, neuron_t* neuron);
+static bool read_synapse(NimcpSerializer* serializer, synapse_t* synapse);
+
+//=============================================================================
+// Error Messages
+//=============================================================================
+
+const char* nimcp_network_serial_strerror(nimcp_network_serial_result_t result)
+{
+    switch (result) {
+        case NIMCP_NETWORK_SERIAL_SUCCESS:
+            return "Success";
+        case NIMCP_NETWORK_SERIAL_ERROR_NULL_NETWORK:
+            return "NULL network pointer";
+        case NIMCP_NETWORK_SERIAL_ERROR_NULL_SERIALIZER:
+            return "NULL serializer pointer";
+        case NIMCP_NETWORK_SERIAL_ERROR_WRITE_FAILED:
+            return "Write operation failed";
+        case NIMCP_NETWORK_SERIAL_ERROR_READ_FAILED:
+            return "Read operation failed";
+        case NIMCP_NETWORK_SERIAL_ERROR_INVALID_MAGIC:
+            return "Invalid magic number";
+        case NIMCP_NETWORK_SERIAL_ERROR_UNSUPPORTED_VERSION:
+            return "Unsupported serialization version";
+        case NIMCP_NETWORK_SERIAL_ERROR_CHECKSUM_MISMATCH:
+            return "Checksum mismatch - data corrupted";
+        case NIMCP_NETWORK_SERIAL_ERROR_ALLOCATION_FAILED:
+            return "Memory allocation failed";
+        case NIMCP_NETWORK_SERIAL_ERROR_CORRUPT_DATA:
+            return "Corrupt or invalid data";
+        case NIMCP_NETWORK_SERIAL_ERROR_ENCRYPTION_NOT_AVAILABLE:
+            return "Encryption not available - library not compiled with libsodium";
+        case NIMCP_NETWORK_SERIAL_ERROR_ENCRYPTION_FAILED:
+            return "Encryption operation failed";
+        case NIMCP_NETWORK_SERIAL_ERROR_DECRYPTION_FAILED:
+            return "Decryption operation failed";
+        case NIMCP_NETWORK_SERIAL_ERROR_INVALID_PASSWORD:
+            return "Invalid password or tampered data";
+        default:
+            return "Unknown error";
+    }
+}
+
+//=============================================================================
+// Serialization Implementation
+//=============================================================================
+
+nimcp_network_serial_result_t nimcp_network_serialize(
+    neural_network_t network,
+    NimcpSerializer* serializer,
+    bool compress,
+    const char* password,
+    size_t password_len,
+    nimcp_serial_stats_t* stats
+)
+{
+    if (!network) {
+        return NIMCP_NETWORK_SERIAL_ERROR_NULL_NETWORK;
+    }
+    if (!serializer) {
+        return NIMCP_NETWORK_SERIAL_ERROR_NULL_SERIALIZER;
+    }
+
+    // Check if encryption requested but not available
+    bool encrypt = (password != NULL && password_len > 0);
+    if (encrypt && !nimcp_encryption_available()) {
+        return NIMCP_NETWORK_SERIAL_ERROR_ENCRYPTION_NOT_AVAILABLE;
+    }
+
+    // Reset serializer
+    nimcp_serializer_reset(serializer);
+
+    // Write header (encryption flag will be set later if needed)
+    if (!write_network_header(serializer, compress)) {
+        return NIMCP_NETWORK_SERIAL_ERROR_WRITE_FAILED;
+    }
+
+    // Write network metadata
+    if (!write_network_metadata(serializer, network)) {
+        return NIMCP_NETWORK_SERIAL_ERROR_WRITE_FAILED;
+    }
+
+    // Write configuration
+    if (!write_network_config(serializer, &network->config)) {
+        return NIMCP_NETWORK_SERIAL_ERROR_WRITE_FAILED;
+    }
+
+    // Write neuron count
+    if (!nimcp_write_uint32(serializer, network->num_neurons)) {
+        return NIMCP_NETWORK_SERIAL_ERROR_WRITE_FAILED;
+    }
+
+    // Write each neuron (including synapses)
+    uint32_t total_synapses = 0;
+    for (uint32_t i = 0; i < network->num_neurons; i++) {
+        if (!write_neuron(serializer, &network->neurons[i])) {
+            return NIMCP_NETWORK_SERIAL_ERROR_WRITE_FAILED;
+        }
+        total_synapses += network->neurons[i].num_synapses;
+    }
+
+    // Calculate and write checksum
+    size_t data_length = nimcp_serializer_get_length(serializer);
+    uint32_t checksum = calculate_checksum(
+        nimcp_serializer_get_buffer(serializer) + 6,  // Skip magic + version + flags
+        data_length - 6
+    );
+    if (!nimcp_write_uint32(serializer, checksum)) {
+        return NIMCP_NETWORK_SERIAL_ERROR_WRITE_FAILED;
+    }
+
+    size_t uncompressed_size = nimcp_serializer_get_length(serializer);
+
+    // Compress if requested
+    // Strategy: Keep first 6 bytes (magic + version + flags) uncompressed
+    // so we can read the compression flag during deserialization
+    if (compress) {
+        // Get the full data
+        uint8_t* full_data = nimcp_serializer_get_buffer(serializer);
+        size_t full_length = nimcp_serializer_get_length(serializer);
+
+        // Save the header (first 6 bytes)
+        uint8_t header[6];
+        memcpy(header, full_data, 6);
+
+        // Create a temporary serializer for the data after header
+        NimcpSerializer* data_serializer = nimcp_serializer_create(full_length - 6);
+        if (!data_serializer) {
+            return NIMCP_NETWORK_SERIAL_ERROR_WRITE_FAILED;
+        }
+
+        // Copy data after header to temp serializer
+        nimcp_write_bytes(data_serializer, full_data + 6, full_length - 6);
+
+        // Compress the data portion
+        NimcpSerialResult result = nimcp_serializer_compress(data_serializer);
+        if (result != NIMCP_SERIAL_SUCCESS) {
+            nimcp_serializer_destroy(data_serializer);
+            return NIMCP_NETWORK_SERIAL_ERROR_WRITE_FAILED;
+        }
+
+        // Get compressed data
+        size_t compressed_length = nimcp_serializer_get_length(data_serializer);
+        uint8_t* compressed_data = nimcp_serializer_get_buffer(data_serializer);
+
+        // Reset main serializer and write header + compressed data
+        nimcp_serializer_reset(serializer);
+        nimcp_write_bytes(serializer, header, 6);
+        nimcp_write_bytes(serializer, compressed_data, compressed_length);
+
+        nimcp_serializer_destroy(data_serializer);
+    }
+
+    // Encrypt if requested
+    // Strategy: Keep first 6 bytes (magic + version + flags) unencrypted
+    // so we can read the encrypted flag during deserialization
+    if (encrypt) {
+        // Get the full data
+        uint8_t* full_data = nimcp_serializer_get_buffer(serializer);
+        size_t full_length = nimcp_serializer_get_length(serializer);
+
+        // Save the header (first 6 bytes) and update encrypted flag
+        uint8_t header[6];
+        memcpy(header, full_data, 6);
+        header[5] |= NIMCP_FLAG_ENCRYPTED;  // Set encrypted flag
+
+        // Calculate encrypted size
+        size_t plaintext_len = full_length - 6;
+        size_t encrypted_len = nimcp_encrypted_size(plaintext_len);
+
+        // Allocate buffer for encrypted data
+        uint8_t* encrypted_buffer = (uint8_t*)nimcp_malloc(encrypted_len);
+        if (!encrypted_buffer) {
+            return NIMCP_NETWORK_SERIAL_ERROR_ALLOCATION_FAILED;
+        }
+
+        // Encrypt data after header
+        size_t actual_encrypted_len = encrypted_len;
+        if (!nimcp_encrypt_with_password(
+                full_data + 6,           // Plaintext (data after header)
+                plaintext_len,
+                password,
+                password_len,
+                encrypted_buffer,
+                &actual_encrypted_len
+            )) {
+            nimcp_free(encrypted_buffer);
+            return NIMCP_NETWORK_SERIAL_ERROR_ENCRYPTION_FAILED;
+        }
+
+        // Reset main serializer and write header + encrypted data
+        nimcp_serializer_reset(serializer);
+        nimcp_write_bytes(serializer, header, 6);
+        nimcp_write_bytes(serializer, encrypted_buffer, actual_encrypted_len);
+
+        nimcp_free(encrypted_buffer);
+    }
+
+    // Fill statistics if requested
+    if (stats) {
+        stats->total_bytes = uncompressed_size;
+        stats->compressed_bytes = nimcp_serializer_get_length(serializer);
+        stats->num_neurons_serialized = network->num_neurons;
+        stats->num_synapses_serialized = total_synapses;
+        stats->timestamp = (uint64_t)time(NULL);
+        stats->compression_ratio = compress ?
+            (float)uncompressed_size / (float)stats->compressed_bytes : 1.0f;
+    }
+
+    return NIMCP_NETWORK_SERIAL_SUCCESS;
+}
+
+//=============================================================================
+// Deserialization Implementation
+//=============================================================================
+
+nimcp_network_serial_result_t nimcp_network_deserialize(
+    NimcpSerializer* serializer,
+    neural_network_t* network_out,
+    const char* password,
+    size_t password_len,
+    nimcp_serial_stats_t* stats
+)
+{
+    if (!serializer) {
+        return NIMCP_NETWORK_SERIAL_ERROR_NULL_SERIALIZER;
+    }
+    if (!network_out) {
+        return NIMCP_NETWORK_SERIAL_ERROR_NULL_NETWORK;
+    }
+
+    // Read header first (always unencrypted/uncompressed)
+    uint8_t version, flags;
+    if (!read_network_header(serializer, &version, &flags)) {
+        return NIMCP_NETWORK_SERIAL_ERROR_INVALID_MAGIC;
+    }
+
+    if (version != NIMCP_SERIALIZATION_VERSION) {
+        return NIMCP_NETWORK_SERIAL_ERROR_UNSUPPORTED_VERSION;
+    }
+
+    // Check if data is encrypted and handle decryption first
+    NimcpSerializer* working_serializer = serializer;
+    NimcpSerializer* decrypted_serializer = NULL;
+
+    if (flags & NIMCP_FLAG_ENCRYPTED) {
+        // Check if password provided
+        if (!password || password_len == 0) {
+            return NIMCP_NETWORK_SERIAL_ERROR_INVALID_PASSWORD;
+        }
+
+        // Check if decryption is available
+        if (!nimcp_encryption_available()) {
+            return NIMCP_NETWORK_SERIAL_ERROR_ENCRYPTION_NOT_AVAILABLE;
+        }
+
+        // Get the encrypted data (everything after the 6-byte header)
+        size_t current_pos = nimcp_serializer_get_position(serializer);
+        size_t total_length = nimcp_serializer_get_length(serializer);
+        size_t encrypted_length = total_length - current_pos;
+
+        uint8_t* full_buffer = nimcp_serializer_get_buffer(serializer);
+        uint8_t* encrypted_data = full_buffer + current_pos;
+
+        // Save header (without encrypted flag)
+        uint8_t header[6];
+        memcpy(header, full_buffer, 6);
+        header[5] &= ~NIMCP_FLAG_ENCRYPTED;  // Clear encrypted flag
+
+        // Estimate decrypted size (will be smaller than encrypted)
+        size_t decrypted_len = encrypted_length;  // Upper bound
+        uint8_t* decrypted_buffer = (uint8_t*)nimcp_malloc(decrypted_len);
+        if (!decrypted_buffer) {
+            return NIMCP_NETWORK_SERIAL_ERROR_ALLOCATION_FAILED;
+        }
+
+        // Decrypt data
+        if (!nimcp_decrypt_with_password(
+                encrypted_data,
+                encrypted_length,
+                password,
+                password_len,
+                decrypted_buffer,
+                &decrypted_len
+            )) {
+            nimcp_free(decrypted_buffer);
+            return NIMCP_NETWORK_SERIAL_ERROR_INVALID_PASSWORD;
+        }
+
+        // Create new serializer with full decrypted buffer
+        decrypted_serializer = nimcp_serializer_create(6 + decrypted_len);
+        if (!decrypted_serializer) {
+            nimcp_free(decrypted_buffer);
+            return NIMCP_NETWORK_SERIAL_ERROR_ALLOCATION_FAILED;
+        }
+
+        // Write header + decrypted data
+        nimcp_write_bytes(decrypted_serializer, header, 6);
+        nimcp_write_bytes(decrypted_serializer, decrypted_buffer, decrypted_len);
+
+        nimcp_free(decrypted_buffer);
+
+        // Use the decrypted serializer for the rest of deserialization
+        working_serializer = decrypted_serializer;
+
+        // Re-read header from decrypted data
+        nimcp_serializer_set_position(working_serializer, 0);
+        read_network_header(working_serializer, &version, &flags);
+    }
+
+    // If data is compressed, we need to decompress and use a new serializer
+    NimcpSerializer* decompressed_serializer = NULL;
+
+    if (flags & NIMCP_FLAG_COMPRESSED) {
+        // Get the compressed data (everything after the 6-byte header)
+        size_t current_pos = nimcp_serializer_get_position(working_serializer);
+        size_t total_length = nimcp_serializer_get_length(working_serializer);
+        size_t compressed_length = total_length - current_pos;
+
+        uint8_t* full_buffer = nimcp_serializer_get_buffer(working_serializer);
+        uint8_t* compressed_data = full_buffer + current_pos;
+
+        // Save header (without compressed flag)
+        uint8_t header[6];
+        memcpy(header, full_buffer, 6);
+        header[5] = 0;  // Clear compressed flag
+
+        // Create temp serializer with compressed data
+        NimcpSerializer* compressed_serializer = nimcp_serializer_create(compressed_length);
+        if (!compressed_serializer) {
+            if (decrypted_serializer) nimcp_serializer_destroy(decrypted_serializer);
+            return NIMCP_NETWORK_SERIAL_ERROR_READ_FAILED;
+        }
+
+        nimcp_serializer_set_buffer(compressed_serializer, compressed_data, compressed_length);
+        nimcp_serializer_mark_compressed(compressed_serializer);
+
+        // Decompress
+        NimcpSerialResult result = nimcp_serializer_decompress(compressed_serializer);
+        if (result != NIMCP_SERIAL_SUCCESS) {
+            nimcp_serializer_destroy(compressed_serializer);
+            if (decrypted_serializer) nimcp_serializer_destroy(decrypted_serializer);
+            return NIMCP_NETWORK_SERIAL_ERROR_READ_FAILED;
+        }
+
+        // Get decompressed data
+        size_t decompressed_length = nimcp_serializer_get_length(compressed_serializer);
+        uint8_t* decompressed_data = nimcp_serializer_get_buffer(compressed_serializer);
+
+        // Create new serializer with full decompressed buffer
+        decompressed_serializer = nimcp_serializer_create(6 + decompressed_length);
+        if (!decompressed_serializer) {
+            nimcp_serializer_destroy(compressed_serializer);
+            if (decrypted_serializer) nimcp_serializer_destroy(decrypted_serializer);
+            return NIMCP_NETWORK_SERIAL_ERROR_ALLOCATION_FAILED;
+        }
+
+        // Write header + decompressed data
+        nimcp_write_bytes(decompressed_serializer, header, 6);
+        nimcp_write_bytes(decompressed_serializer, decompressed_data, decompressed_length);
+
+        nimcp_serializer_destroy(compressed_serializer);
+
+        // Use the decompressed serializer for the rest of deserialization
+        working_serializer = decompressed_serializer;
+
+        // Re-read header from decompressed data
+        nimcp_serializer_set_position(working_serializer, 0);
+        read_network_header(working_serializer, &version, &flags);
+    }
+
+    // Read configuration to create network
+    network_config_t config;
+
+    // First need to read metadata to skip it
+    uint64_t current_time = nimcp_read_uint64(working_serializer);
+    uint64_t network_time = nimcp_read_uint64(working_serializer);
+    float global_activity = nimcp_read_float(working_serializer);
+    float network_stability = nimcp_read_float(working_serializer);
+    float learning_momentum = nimcp_read_float(working_serializer);
+    float last_avg_weight = nimcp_read_float(working_serializer);
+    uint64_t last_maintenance = nimcp_read_uint64(working_serializer);
+
+    if (!read_network_config(working_serializer, &config)) {
+        if (decrypted_serializer) nimcp_serializer_destroy(decrypted_serializer);
+        if (decompressed_serializer) nimcp_serializer_destroy(decompressed_serializer);
+        return NIMCP_NETWORK_SERIAL_ERROR_READ_FAILED;
+    }
+
+    // Create network with configuration
+    neural_network_t network = neural_network_create(&config);
+    if (!network) {
+        if (decrypted_serializer) nimcp_serializer_destroy(decrypted_serializer);
+        if (decompressed_serializer) nimcp_serializer_destroy(decompressed_serializer);
+        return NIMCP_NETWORK_SERIAL_ERROR_ALLOCATION_FAILED;
+    }
+
+    // Restore metadata
+    network->current_time = current_time;
+    network->network_time = network_time;
+    network->global_activity = global_activity;
+    network->network_stability = network_stability;
+    network->learning_momentum = learning_momentum;
+    network->last_avg_weight = last_avg_weight;
+    network->last_maintenance = last_maintenance;
+
+    // Read neuron count
+    uint32_t num_neurons = nimcp_read_uint32(working_serializer);
+    if (nimcp_serializer_has_error(working_serializer)) {
+        neural_network_destroy(network);
+        if (decrypted_serializer) nimcp_serializer_destroy(decrypted_serializer);
+        if (decompressed_serializer) nimcp_serializer_destroy(decompressed_serializer);
+        return NIMCP_NETWORK_SERIAL_ERROR_READ_FAILED;
+    }
+
+    // Read each neuron
+    uint32_t total_synapses = 0;
+    for (uint32_t i = 0; i < num_neurons; i++) {
+        if (!read_neuron(working_serializer, &network->neurons[i])) {
+            neural_network_destroy(network);
+            if (decrypted_serializer) nimcp_serializer_destroy(decrypted_serializer);
+            if (decompressed_serializer) nimcp_serializer_destroy(decompressed_serializer);
+            return NIMCP_NETWORK_SERIAL_ERROR_READ_FAILED;
+        }
+        total_synapses += network->neurons[i].num_synapses;
+    }
+    network->num_neurons = num_neurons;
+
+    // Verify checksum
+    uint32_t stored_checksum = nimcp_read_uint32(working_serializer);
+
+    // Clean up temporary serializers if we created them
+    if (decrypted_serializer) {
+        nimcp_serializer_destroy(decrypted_serializer);
+    }
+    if (decompressed_serializer) {
+        nimcp_serializer_destroy(decompressed_serializer);
+    }
+    // TODO: Recalculate and verify checksum
+
+    // Fill statistics if requested
+    if (stats) {
+        stats->total_bytes = nimcp_serializer_get_length(serializer);
+        stats->compressed_bytes = 0;
+        stats->num_neurons_serialized = num_neurons;
+        stats->num_synapses_serialized = total_synapses;
+        stats->timestamp = (uint64_t)time(NULL);
+        stats->compression_ratio = 1.0f;
+    }
+
+    *network_out = network;
+    return NIMCP_NETWORK_SERIAL_SUCCESS;
+}
+
+//=============================================================================
+// Validation
+//=============================================================================
+
+bool nimcp_network_validate_serialized(NimcpSerializer* serializer)
+{
+    if (!serializer) {
+        return false;
+    }
+
+    size_t original_position = nimcp_serializer_get_position(serializer);
+    nimcp_serializer_set_position(serializer, 0);
+
+    // Check magic number
+    uint32_t magic = nimcp_read_uint32(serializer);
+    if (magic != NIMCP_SERIALIZATION_MAGIC) {
+        nimcp_serializer_set_position(serializer, original_position);
+        return false;
+    }
+
+    // Check version
+    uint8_t version = nimcp_read_uint8(serializer);
+    if (version != NIMCP_SERIALIZATION_VERSION) {
+        nimcp_serializer_set_position(serializer, original_position);
+        return false;
+    }
+
+    // Restore position
+    nimcp_serializer_set_position(serializer, original_position);
+    return true;
+}
+
+//=============================================================================
+// Helper Functions - Write Operations
+//=============================================================================
+
+static bool write_network_header(NimcpSerializer* serializer, bool compress)
+{
+    if (!nimcp_write_uint32(serializer, NIMCP_SERIALIZATION_MAGIC)) return false;
+    if (!nimcp_write_uint8(serializer, NIMCP_SERIALIZATION_VERSION)) return false;
+
+    uint8_t flags = compress ? NIMCP_FLAG_COMPRESSED : 0;
+    if (!nimcp_write_uint8(serializer, flags)) return false;
+
+    return true;
+}
+
+static bool write_network_metadata(NimcpSerializer* serializer, neural_network_t network)
+{
+    if (!nimcp_write_uint64(serializer, network->current_time)) return false;
+    if (!nimcp_write_uint64(serializer, network->network_time)) return false;
+    if (!nimcp_write_float(serializer, network->global_activity)) return false;
+    if (!nimcp_write_float(serializer, network->network_stability)) return false;
+    if (!nimcp_write_float(serializer, network->learning_momentum)) return false;
+    if (!nimcp_write_float(serializer, network->last_avg_weight)) return false;
+    if (!nimcp_write_uint64(serializer, network->last_maintenance)) return false;
+    return true;
+}
+
+static bool write_network_config(NimcpSerializer* serializer, const network_config_t* config)
+{
+    if (!nimcp_write_uint32(serializer, config->num_neurons)) return false;
+    if (!nimcp_write_float(serializer, config->ei_ratio)) return false;
+    if (!nimcp_write_float(serializer, config->learning_rate)) return false;
+    if (!nimcp_write_float(serializer, config->hebbian_rate)) return false;
+    if (!nimcp_write_float(serializer, config->stdp_window)) return false;
+    if (!nimcp_write_float(serializer, config->homeostatic_rate)) return false;
+    if (!nimcp_write_float(serializer, config->target_activity)) return false;
+    if (!nimcp_write_float(serializer, config->adaptation_rate)) return false;
+    if (!nimcp_write_float(serializer, config->refractory_period)) return false;
+    if (!nimcp_write_float(serializer, config->min_weight)) return false;
+    if (!nimcp_write_float(serializer, config->max_weight)) return false;
+    if (!nimcp_write_uint32(serializer, config->update_interval)) return false;
+    if (!nimcp_write_uint32(serializer, config->input_size)) return false;
+    if (!nimcp_write_uint32(serializer, config->output_size)) return false;
+    if (!nimcp_write_uint32(serializer, config->num_layers)) return false;
+    if (!nimcp_write_bool(serializer, config->enable_stdp)) return false;
+    if (!nimcp_write_bool(serializer, config->enable_hebbian)) return false;
+    if (!nimcp_write_bool(serializer, config->enable_oja)) return false;
+    if (!nimcp_write_bool(serializer, config->enable_homeostasis)) return false;
+    // Note: layer_sizes array and neuron_model/model_params are not serialized in v1
+    return true;
+}
+
+static bool write_neuron(NimcpSerializer* serializer, const neuron_t* neuron)
+{
+    // Write neuron basic properties
+    if (!nimcp_write_uint32(serializer, neuron->id)) return false;
+    if (!nimcp_write_uint8(serializer, (uint8_t)neuron->type)) return false;
+    if (!nimcp_write_float(serializer, neuron->state)) return false;
+    if (!nimcp_write_float(serializer, neuron->rest_potential)) return false;
+    if (!nimcp_write_float(serializer, neuron->threshold)) return false;
+    if (!nimcp_write_float(serializer, neuron->adaptation)) return false;
+    if (!nimcp_write_float(serializer, neuron->refractory_period)) return false;
+    if (!nimcp_write_float(serializer, neuron->bias)) return false;
+
+    // Write learning parameters (simplified - just key values)
+    if (!nimcp_write_float(serializer, neuron->plasticity_rate)) return false;
+    if (!nimcp_write_float(serializer, neuron->homeostatic_factor)) return false;
+    if (!nimcp_write_float(serializer, neuron->calcium_concentration)) return false;
+    if (!nimcp_write_float(serializer, neuron->weight_norm)) return false;
+    if (!nimcp_write_float(serializer, neuron->avg_activity)) return false;
+    if (!nimcp_write_uint64(serializer, neuron->last_spike)) return false;
+    if (!nimcp_write_uint64(serializer, neuron->last_update)) return false;
+    if (!nimcp_write_uint64(serializer, neuron->creation_time)) return false;
+
+    // Write synapses
+    if (!nimcp_write_uint32(serializer, neuron->num_synapses)) return false;
+    for (uint32_t i = 0; i < neuron->num_synapses; i++) {
+        if (!write_synapse(serializer, &neuron->synapses[i])) return false;
+    }
+
+    // Note: spike_history, activity_history, and neuron model not serialized in v1
+    return true;
+}
+
+static bool write_synapse(NimcpSerializer* serializer, const synapse_t* synapse)
+{
+    if (!nimcp_write_uint32(serializer, synapse->target_id)) return false;
+    if (!nimcp_write_float(serializer, synapse->weight)) return false;
+    if (!nimcp_write_float(serializer, synapse->plasticity)) return false;
+    if (!nimcp_write_float(serializer, synapse->last_change)) return false;
+    if (!nimcp_write_uint64(serializer, synapse->last_active)) return false;
+    if (!nimcp_write_float(serializer, synapse->strength)) return false;
+    if (!nimcp_write_float(serializer, synapse->meta_plasticity)) return false;
+    if (!nimcp_write_float(serializer, synapse->trace)) return false;
+    // Note: STP state not serialized in v1
+    return true;
+}
+
+//=============================================================================
+// Helper Functions - Read Operations
+//=============================================================================
+
+static bool read_network_header(NimcpSerializer* serializer, uint8_t* version, uint8_t* flags)
+{
+    uint32_t magic = nimcp_read_uint32(serializer);
+    if (magic != NIMCP_SERIALIZATION_MAGIC) {
+        return false;
+    }
+
+    *version = nimcp_read_uint8(serializer);
+    *flags = nimcp_read_uint8(serializer);
+
+    return !nimcp_serializer_has_error(serializer);
+}
+
+static bool read_network_config(NimcpSerializer* serializer, network_config_t* config)
+{
+    config->num_neurons = nimcp_read_uint32(serializer);
+    config->ei_ratio = nimcp_read_float(serializer);
+    config->learning_rate = nimcp_read_float(serializer);
+    config->hebbian_rate = nimcp_read_float(serializer);
+    config->stdp_window = nimcp_read_float(serializer);
+    config->homeostatic_rate = nimcp_read_float(serializer);
+    config->target_activity = nimcp_read_float(serializer);
+    config->adaptation_rate = nimcp_read_float(serializer);
+    config->refractory_period = nimcp_read_float(serializer);
+    config->min_weight = nimcp_read_float(serializer);
+    config->max_weight = nimcp_read_float(serializer);
+    config->update_interval = nimcp_read_uint32(serializer);
+    config->input_size = nimcp_read_uint32(serializer);
+    config->output_size = nimcp_read_uint32(serializer);
+    config->num_layers = nimcp_read_uint32(serializer);
+    config->enable_stdp = nimcp_read_bool(serializer);
+    config->enable_hebbian = nimcp_read_bool(serializer);
+    config->enable_oja = nimcp_read_bool(serializer);
+    config->enable_homeostasis = nimcp_read_bool(serializer);
+
+    // Set defaults for non-serialized fields
+    config->layer_sizes = NULL;
+    config->neuron_model = NEURON_MODEL_LIF;
+    config->model_params = NULL;
+
+    return !nimcp_serializer_has_error(serializer);
+}
+
+static bool read_neuron(NimcpSerializer* serializer, neuron_t* neuron)
+{
+    neuron->id = nimcp_read_uint32(serializer);
+    neuron->type = (neuron_type_t)nimcp_read_uint8(serializer);
+    neuron->state = nimcp_read_float(serializer);
+    neuron->rest_potential = nimcp_read_float(serializer);
+    neuron->threshold = nimcp_read_float(serializer);
+    neuron->adaptation = nimcp_read_float(serializer);
+    neuron->refractory_period = nimcp_read_float(serializer);
+    neuron->bias = nimcp_read_float(serializer);
+
+    neuron->plasticity_rate = nimcp_read_float(serializer);
+    neuron->homeostatic_factor = nimcp_read_float(serializer);
+    neuron->calcium_concentration = nimcp_read_float(serializer);
+    neuron->weight_norm = nimcp_read_float(serializer);
+    neuron->avg_activity = nimcp_read_float(serializer);
+    neuron->last_spike = nimcp_read_uint64(serializer);
+    neuron->last_update = nimcp_read_uint64(serializer);
+    neuron->creation_time = nimcp_read_uint64(serializer);
+
+    uint32_t num_synapses = nimcp_read_uint32(serializer);
+    neuron->num_synapses = num_synapses;
+
+    for (uint32_t i = 0; i < num_synapses; i++) {
+        if (!read_synapse(serializer, &neuron->synapses[i])) return false;
+    }
+
+    // Initialize non-serialized fields to defaults
+    neuron->num_incoming = 0;
+    neuron->spike_history_index = 0;
+
+    return !nimcp_serializer_has_error(serializer);
+}
+
+static bool read_synapse(NimcpSerializer* serializer, synapse_t* synapse)
+{
+    synapse->target_id = nimcp_read_uint32(serializer);
+    synapse->weight = nimcp_read_float(serializer);
+    synapse->plasticity = nimcp_read_float(serializer);
+    synapse->last_change = nimcp_read_float(serializer);
+    synapse->last_active = nimcp_read_uint64(serializer);
+    synapse->strength = nimcp_read_float(serializer);
+    synapse->meta_plasticity = nimcp_read_float(serializer);
+    synapse->trace = nimcp_read_float(serializer);
+
+    // Initialize STP to disabled
+    synapse->enable_stp = false;
+
+    return !nimcp_serializer_has_error(serializer);
+}
+
+//=============================================================================
+// Checksum
+//=============================================================================
+
+static uint32_t calculate_checksum(const uint8_t* data, size_t length)
+{
+    // Simple CRC32 implementation
+    uint32_t crc = 0xFFFFFFFF;
+
+    for (size_t i = 0; i < length; i++) {
+        crc ^= data[i];
+        for (int j = 0; j < 8; j++) {
+            crc = (crc >> 1) ^ (0xEDB88320 & -(crc & 1));
+        }
+    }
+
+    return ~crc;
+}
