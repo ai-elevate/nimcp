@@ -110,6 +110,7 @@ typedef struct {
     // === PHASE 5.3: SENSORY PROCESSING ===
     bool enable_visual_cortex; /**< Enable visual cortex (V1) for image processing */
     bool enable_audio_cortex;  /**< Enable audio cortex (A1) for sound processing */
+    bool enable_speech_cortex; /**< Enable speech cortex (STG/Wernicke) for language processing */
 
     // === CONSCIOUSNESS & COGNITION ===
     bool enable_introspection; /**< Enable self-awareness and uncertainty estimation */
@@ -130,6 +131,7 @@ typedef struct {
     bool enable_multimodal_integration; /**< Enable multi-modal sensory integration */
     uint32_t visual_feature_dim;  /**< Visual feature dimension (0 = no visual) */
     uint32_t audio_feature_dim;   /**< Audio feature dimension (0 = no audio) */
+    uint32_t speech_feature_dim;  /**< Speech feature dimension (0 = no speech) */
 } brain_config_t;
 
 /**
@@ -640,6 +642,7 @@ typedef struct {
     // Attention breakdown
     float visual_attention;      /**< Visual modality weight [0,1] */
     float audio_attention;       /**< Audio modality weight [0,1] */
+    float speech_attention;      /**< Speech modality weight [0,1] - Phase 8.8 */
     float direct_attention;      /**< Direct input weight [0,1] */
 
     // Explanation

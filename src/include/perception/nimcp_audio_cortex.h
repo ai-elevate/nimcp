@@ -53,6 +53,12 @@ typedef struct {
     uint32_t feature_dim;        ///< Feature vector dimension
     bool enable_attention;       ///< Enable attention mechanisms
     bool enable_memory;          ///< Enable auditory memory
+
+    // NIMCP 2.7 Phase 8.5: Fractal Topology Integration
+    bool enable_fractal_topology;  /**< Enable scale-free topology within A1 */
+    float hub_ratio;               /**< Fraction of hub neurons (0.1-0.2), default: 0.15 */
+    float power_law_gamma;         /**< Power-law exponent (-2 to -3), default: -2.1 */
+    uint32_t internal_neurons;     /**< Number of internal A1 neurons, default: num_mel_filters * 10 */
 } audio_cortex_config_t;
 
 /**

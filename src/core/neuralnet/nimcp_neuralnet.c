@@ -38,6 +38,7 @@
 
 #include "nimcp_neuralnet.h"
 #include "core/synapse_compute/nimcp_synapse_compute.h"  // NIMCP 2.7: Programmable synapses
+#include "core/synapse_types/nimcp_synapse_types.h"      // NIMCP 2.8.7: Synapse type system
 #include "core/neuron_models/nimcp_neuron_model.h"
 #include "core/neuron_models/nimcp_izhikevich.h"
 #include "plasticity/stp/nimcp_stp.h"
@@ -2500,4 +2501,107 @@ float neural_network_get_neuromodulation(neural_network_t network)
     //   return dopamine;
 
     return 0.0f;  // Placeholder
+}
+
+//=============================================================================
+// PHASE 8.7: Synapse Type System - Typed Connections
+//=============================================================================
+
+/**
+ * @brief Add connection with specific synapse type (Phase 8.7)
+ *
+ * WHAT: Create synapse with biological type (AMPA, NMDA, GABA-A, etc)
+ * WHY: Enable biologically realistic synapse diversity
+ * HOW: Initialize synapse with type-specific parameters
+ *
+ * ALGORITHM:
+ * 1. Call standard neural_network_add_connection
+ * 2. Set synapse type field
+ * 3. Initialize type-specific state (AMPA/NMDA/GABA/etc parameters)
+ * 4. Copy type info to incoming synapse (bidirectional)
+ *
+ * COMPLEXITY: O(1)
+ *
+ * BIOLOGICAL MOTIVATION:
+ * Real synapses differ by neurotransmitter type:
+ * - Excitatory: AMPA (fast), NMDA (slow + Ca2+)
+ * - Inhibitory: GABA-A (fast), GABA-B (slow)
+ * - Modulatory: Dopamine, Serotonin, Acetylcholine
+ * - Electrical: Gap junctions
+ *
+ * @param network Neural network
+ * @param from_id Source neuron ID
+ * @param to_id Target neuron ID
+ * @param weight Initial synaptic weight
+ * @param type Synapse type (SYNAPSE_AMPA, SYNAPSE_NMDA, etc)
+ * @return true if successful, false on error
+ */
+bool neural_network_add_connection_typed(neural_network_t network, uint32_t from_id, uint32_t to_id,
+                                          float weight, synapse_type_t type)
+{
+    // 1. Create standard connection (handles all base initialization)
+    if (!neural_network_add_connection(network, from_id, to_id, weight)) {
+        return false;
+    }
+
+    // 2. Get the newly created synapse (last one added)
+    neuron_t* from_neuron = &network->neurons[from_id];
+    neuron_t* to_neuron = &network->neurons[to_id];
+
+    synapse_t* syn = &from_neuron->synapses[from_neuron->num_synapses - 1];
+    synapse_t* incoming_syn = &to_neuron->incoming_synapses[to_neuron->num_incoming - 1];
+
+    // 3. Set synapse type
+    syn->type = type;
+    incoming_syn->type = type;
+
+    // 4. Initialize type-specific state based on type
+    switch (type) {
+        case SYNAPSE_AMPA:
+            synapse_init_ampa(&syn->type_state.ampa);
+            synapse_init_ampa(&incoming_syn->type_state.ampa);
+            break;
+
+        case SYNAPSE_NMDA:
+            synapse_init_nmda(&syn->type_state.nmda);
+            synapse_init_nmda(&incoming_syn->type_state.nmda);
+            break;
+
+        case SYNAPSE_GABA_A:
+            synapse_init_gaba_a(&syn->type_state.gaba_a);
+            synapse_init_gaba_a(&incoming_syn->type_state.gaba_a);
+            break;
+
+        case SYNAPSE_GABA_B:
+            synapse_init_gaba_b(&syn->type_state.gaba_b);
+            synapse_init_gaba_b(&incoming_syn->type_state.gaba_b);
+            break;
+
+        case SYNAPSE_DOPAMINE:
+            synapse_init_dopamine(&syn->type_state.dopamine);
+            synapse_init_dopamine(&incoming_syn->type_state.dopamine);
+            break;
+
+        case SYNAPSE_SEROTONIN:
+            synapse_init_serotonin(&syn->type_state.serotonin);
+            synapse_init_serotonin(&incoming_syn->type_state.serotonin);
+            break;
+
+        case SYNAPSE_ACETYLCHOLINE:
+            synapse_init_acetylcholine(&syn->type_state.acetylcholine);
+            synapse_init_acetylcholine(&incoming_syn->type_state.acetylcholine);
+            break;
+
+        case SYNAPSE_ELECTRICAL:
+            synapse_init_electrical(&syn->type_state.electrical);
+            synapse_init_electrical(&incoming_syn->type_state.electrical);
+            break;
+
+        case SYNAPSE_GENERIC:
+        default:
+            // Generic synapse has no special state to initialize
+            break;
+    }
+
+    return true;
 }

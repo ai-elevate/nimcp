@@ -17,7 +17,7 @@
 // Creation and Destruction
 //=============================================================================
 
-astrocyte_t* astrocyte_create(uint32_t id, float x, float y, float z, float coverage_radius)
+astrocyte_t* astrocyte_create(uint32_t id, astrocyte_type_t type, float x, float y, float z, float coverage_radius)
 {
     if (coverage_radius < 0.0f) {
         return NULL;
@@ -32,6 +32,7 @@ astrocyte_t* astrocyte_create(uint32_t id, float x, float y, float z, float cove
 
     // Identity
     astro->id = id;
+    astro->type = type;
 
     // Calcium dynamics - initialize to resting baseline
     astro->calcium_concentration = ASTROCYTE_BASELINE_CALCIUM_UM;

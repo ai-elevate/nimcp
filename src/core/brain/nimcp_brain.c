@@ -49,11 +49,13 @@
 #include "cognitive/curiosity/nimcp_curiosity.h"
 #include "cognitive/knowledge/nimcp_knowledge.h"
 #include "plasticity/neuromodulators/nimcp_neuromod_pink_noise.h"
+#include "include/cognitive/nimcp_symbolic_logic.h"
 
 // Phase 8: Multi-Modal Integration
 #include "core/integration/nimcp_multimodal_integration.h"
 #include "include/perception/nimcp_visual_cortex.h"
 #include "include/perception/nimcp_audio_cortex.h"
+#include "include/perception/nimcp_speech_cortex.h"
 
 //=============================================================================
 // Forward Declarations - Strategy Pattern
@@ -121,6 +123,7 @@ struct brain_struct {
     consolidation_handle_t consolidation;        // Memory consolidation (already pointer type*)
     curiosity_engine_t curiosity;                // Exploration (already pointer type*)
     knowledge_system_t knowledge;                // Multi-domain knowledge (already pointer type*)
+    symbolic_logic_t* logic;                     // Phase 8.9: Symbolic reasoning and logical inference
 
     // Advanced Plasticity
     neuromod_pink_noise_t* pink_noise;           // Pink noise neuromodulation (struct type, needs *)
@@ -129,6 +132,7 @@ struct brain_struct {
     // Sensory Cortices (specialized feature extractors)
     visual_cortex_t* visual_cortex;              // V1 visual processing (CNN-based)
     audio_cortex_t* audio_cortex;                // A1 auditory processing (FFT-based)
+    speech_cortex_t* speech_cortex;              // STG/Wernicke speech processing (Phase 8.8)
 
     // Multi-Modal Integration Layer
     multimodal_integration_t multimodal;         // Integrates sensory features into unified representation
@@ -136,6 +140,7 @@ struct brain_struct {
     // Feature buffers (reusable to avoid allocation per frame)
     float* visual_feature_buffer;                // Pre-allocated visual features
     float* audio_feature_buffer;                 // Pre-allocated audio features
+    float* speech_feature_buffer;                // Pre-allocated speech features (Phase 8.8)
     float* integrated_feature_buffer;            // Pre-allocated integrated features
 };
 
@@ -936,7 +941,7 @@ static bool init_multimodal_subsystems(brain_t brain)
     }
 
     // Check if already initialized (prevent double initialization)
-    if (brain->multimodal || brain->visual_cortex || brain->audio_cortex) {
+    if (brain->multimodal || brain->visual_cortex || brain->audio_cortex || brain->speech_cortex) {
         return true;  // Already initialized
     }
 
@@ -954,7 +959,13 @@ static bool init_multimodal_subsystems(brain_t brain)
             .num_v1_filters = 32,      // 32 orientation-selective filters
             .feature_dim = brain->config.visual_feature_dim,
             .enable_attention = true,
-            .enable_memory = true
+            .enable_memory = true,
+
+            // NIMCP 2.7 Phase 8.5: Fractal Topology Integration
+            .enable_fractal_topology = brain->config.enable_fractal_topology,
+            .hub_ratio = 0.15f,        // 15% hub neurons (biological cortex ratio)
+            .power_law_gamma = -2.1f,  // Cortical power-law exponent
+            .internal_neurons = 32 * 10 // 10 neurons per filter (V1 columnar structure)
         };
 
         brain->visual_cortex = visual_cortex_create(&visual_config);
@@ -984,7 +995,13 @@ static bool init_multimodal_subsystems(brain_t brain)
             .num_channels = 1,         // Mono by default
             .feature_dim = brain->config.audio_feature_dim,
             .enable_attention = true,
-            .enable_memory = true
+            .enable_memory = true,
+
+            // NIMCP 2.7 Phase 8.5: Fractal Topology Integration
+            .enable_fractal_topology = brain->config.enable_fractal_topology,
+            .hub_ratio = 0.15f,        // 15% hub neurons (biological A1 ratio)
+            .power_law_gamma = -2.1f,  // Tonotopic power-law exponent
+            .internal_neurons = 40 * 10 // 10 neurons per mel filter (A1 tonotopic structure)
         };
 
         brain->audio_cortex = audio_cortex_create(&audio_config);
@@ -1003,17 +1020,54 @@ static bool init_multimodal_subsystems(brain_t brain)
         }
     }
 
+    // Initialize speech cortex (Phase 8.8)
+    if (brain->config.enable_speech_cortex && brain->config.speech_feature_dim > 0) {
+        speech_cortex_config_t speech_config = speech_cortex_default_config();
+
+        // Override defaults with brain config
+        speech_config.sample_rate = 16000;        // Standard speech rate
+        speech_config.frame_size_ms = 20;         // 20ms frames for phoneme analysis
+        speech_config.num_phonemes = SPEECH_NUM_PHONEMES; // 44 phonemes (English)
+        speech_config.feature_dim = brain->config.speech_feature_dim;
+        speech_config.enable_wernicke = true;     // Enable word recognition
+        speech_config.enable_prosody = true;      // Enable pitch/stress analysis
+        speech_config.enable_memory = true;       // Enable phonological working memory
+
+        // NIMCP 2.7 Phase 8.5: Fractal Topology Integration
+        speech_config.enable_fractal_topology = brain->config.enable_fractal_topology;
+        speech_config.hub_ratio = 0.15f;          // 15% hub neurons (biological STG ratio)
+        speech_config.power_law_gamma = -2.1f;    // Speech network power-law exponent
+        speech_config.internal_neurons = SPEECH_NUM_PHONEMES * 10; // 10 neurons per phoneme
+
+        brain->speech_cortex = speech_cortex_create(&speech_config);
+        if (!brain->speech_cortex) {
+            set_error("Failed to create speech cortex");
+            return false;
+        }
+
+        // Allocate speech feature buffer
+        brain->speech_feature_buffer = nimcp_calloc(brain->config.speech_feature_dim, sizeof(float));
+        if (!brain->speech_feature_buffer) {
+            set_error("Failed to allocate speech feature buffer");
+            speech_cortex_destroy(brain->speech_cortex);
+            brain->speech_cortex = NULL;
+            return false;
+        }
+    }
+
     // Initialize multi-modal integration layer
     uint32_t visual_dim = brain->config.enable_visual_cortex ? brain->config.visual_feature_dim : 0;
     uint32_t audio_dim = brain->config.enable_audio_cortex ? brain->config.audio_feature_dim : 0;
-    // Direct dimension: Remaining space after visual and audio features
+    uint32_t speech_dim = brain->config.enable_speech_cortex ? brain->config.speech_feature_dim : 0;
+    // Direct dimension: Remaining space after visual, audio, and speech features
     uint32_t direct_dim = 0;
-    if (brain->config.num_inputs > (visual_dim + audio_dim)) {
-        direct_dim = brain->config.num_inputs - visual_dim - audio_dim;
+    if (brain->config.num_inputs > (visual_dim + audio_dim + speech_dim)) {
+        direct_dim = brain->config.num_inputs - visual_dim - audio_dim - speech_dim;
     }
 
-    if (visual_dim > 0 || audio_dim > 0 || direct_dim > 0) {
-        multimodal_config_t mm_config = multimodal_default_config(visual_dim, audio_dim, direct_dim);
+    if (visual_dim > 0 || audio_dim > 0 || speech_dim > 0 || direct_dim > 0) {
+        // Phase 8.8: Speech is now a dedicated modality
+        multimodal_config_t mm_config = multimodal_default_config(visual_dim, audio_dim, speech_dim, direct_dim);
 
         // Output dimension should match network input size
         mm_config.output_dim = brain->config.num_inputs;
@@ -1032,6 +1086,129 @@ static bool init_multimodal_subsystems(brain_t brain)
             brain->multimodal = NULL;
             return false;
         }
+    }
+
+    return true;
+}
+
+/**
+ * WHAT: Initialize pink noise neuromodulation subsystem
+ * WHY:  Enable 1/f noise-modulated dopamine/serotonin for exploration-exploitation balance
+ * HOW:  Create pink noise neuromodulator if config flag is set
+ *
+ * BIOLOGICAL MOTIVATION:
+ * - Dopamine neurons exhibit 1/f noise in firing patterns (Montague et al., 2004)
+ * - Serotonin fluctuations follow pink spectrum (Cools et al., 2008)
+ * - Multi-timescale correlations enable context-dependent learning
+ *
+ * INTEGRATION:
+ * - Modulates learning rates via dopamine
+ * - Scales attention via acetylcholine
+ * - Enables exploration via pink noise
+ *
+ * @param brain Brain instance to initialize
+ * @return true on success, false on failure
+ *
+ * @version 2.7.0 Phase 8.6
+ * @author NIMCP Development Team
+ * @date 2025-11-08
+ */
+static bool init_pink_noise_subsystem(brain_t brain)
+{
+    if (!brain) {
+        return false;
+    }
+
+    // Check if already initialized
+    if (brain->pink_noise) {
+        return true;  // Already initialized
+    }
+
+    // Check if pink noise is enabled
+    if (!brain->config.enable_pink_noise) {
+        return true;  // Not enabled, not an error
+    }
+
+    // Create pink noise neuromodulator with default configuration
+    neuromod_pink_config_t pink_config = neuromod_pink_default_config();
+
+    // Adjust baselines for brain-level processing
+    pink_config.dopamine_baseline = 0.3f;      // Moderate baseline for learning
+    pink_config.serotonin_baseline = 0.4f;     // Moderate baseline for stability
+    pink_config.acetylcholine_baseline = 0.5f; // Moderate baseline for attention
+    pink_config.norepinephrine_baseline = 0.2f;// Lower baseline for arousal
+
+    // Configure noise amplitudes for exploration-exploitation balance
+    pink_config.dopamine_noise_amplitude = 0.15f;      // 15% noise for exploration
+    pink_config.serotonin_noise_amplitude = 0.08f;     // 8% noise for stability modulation
+    pink_config.acetylcholine_noise_amplitude = 0.20f; // 20% noise for dynamic attention
+    pink_config.norepinephrine_noise_amplitude = 0.10f;// 10% noise for arousal variation
+
+    brain->pink_noise = neuromod_pink_create(&pink_config);
+    if (!brain->pink_noise) {
+        set_error("Failed to create pink noise neuromodulator");
+        return false;
+    }
+
+    return true;
+}
+
+/**
+ * WHAT: Initialize symbolic logic reasoning subsystem
+ * WHY:  Enable logical inference, knowledge representation, and abstract reasoning
+ * HOW:  Create symbolic logic engine if config enables it
+ *
+ * BIOLOGICAL MOTIVATION:
+ * - Prefrontal cortex performs abstract logical reasoning
+ * - Hippocampus stores declarative knowledge (facts)
+ * - Working memory maintains active inferences
+ *
+ * INTEGRATION WITH BRAIN:
+ * - Stores facts learned during experience
+ * - Performs deductive/inductive reasoning
+ * - Validates decisions against logical constraints
+ * - Enables explanation generation ("because X implies Y")
+ *
+ * @param brain Brain instance to initialize
+ * @return true on success, false on failure
+ *
+ * @version 2.7.0 Phase 8.9
+ * @author NIMCP Development Team
+ * @date 2025-11-08
+ */
+static bool init_symbolic_logic_subsystem(brain_t brain)
+{
+    if (!brain) {
+        return false;
+    }
+
+    // Check if already initialized
+    if (brain->logic) {
+        return true;  // Already initialized
+    }
+
+    // Check if symbolic logic is enabled via knowledge system or explicit flag
+    // The knowledge system uses logic internally, so enable if knowledge is enabled
+    if (!brain->config.enable_knowledge) {
+        return true;  // Not enabled, not an error
+    }
+
+    // Create symbolic logic engine with configuration
+    logic_config_t logic_config = {
+        .max_predicates = 500,
+        .max_rules = 200,
+        .max_kb_size = 1000,
+        .max_inference_depth = 10,
+        .enable_forward_chaining = true,
+        .enable_backward_chaining = true,
+        .enable_resolution = true,
+        .enable_memory_consolidation = true
+    };
+
+    brain->logic = symbolic_logic_create(&logic_config);
+    if (!brain->logic) {
+        set_error("Failed to create symbolic logic engine");
+        return false;
     }
 
     return true;
@@ -1120,6 +1297,20 @@ brain_t brain_create(const char* task_name, brain_size_t size, brain_task_t task
         return NULL;
     }
 
+    // Phase 8.6: Initialize pink noise neuromodulation (if configured)
+    if (!init_pink_noise_subsystem(brain)) {
+        // Cleanup on failure
+        brain_destroy(brain);  // Use full destroy to cleanup multimodal too
+        return NULL;
+    }
+
+    // Phase 8.9: Initialize symbolic logic reasoning (if configured)
+    if (!init_symbolic_logic_subsystem(brain)) {
+        // Cleanup on failure
+        brain_destroy(brain);
+        return NULL;
+    }
+
     brain_clear_error();
     return brain;
 }
@@ -1197,6 +1388,18 @@ brain_t brain_create_custom(const brain_config_t* config)
         return NULL;
     }
 
+    // Phase 8.6: Initialize pink noise neuromodulation (now that config is properly set)
+    if (!init_pink_noise_subsystem(brain)) {
+        brain_destroy(brain);
+        return NULL;
+    }
+
+    // Phase 8.9: Initialize symbolic logic reasoning (now that config is properly set)
+    if (!init_symbolic_logic_subsystem(brain)) {
+        brain_destroy(brain);
+        return NULL;
+    }
+
     return brain;
 }
 
@@ -1265,12 +1468,26 @@ void brain_destroy(brain_t brain)
     if (brain->audio_cortex) {
         audio_cortex_destroy(brain->audio_cortex);
     }
+    if (brain->speech_cortex) {
+        speech_cortex_destroy(brain->speech_cortex);
+    }
     if (brain->multimodal) {
         multimodal_integration_destroy(brain->multimodal);
     }
     nimcp_free(brain->visual_feature_buffer);
     nimcp_free(brain->audio_feature_buffer);
+    nimcp_free(brain->speech_feature_buffer);
     nimcp_free(brain->integrated_feature_buffer);
+
+    // Phase 8.6: Cleanup pink noise neuromodulation
+    if (brain->pink_noise) {
+        neuromod_pink_destroy(brain->pink_noise);
+    }
+
+    // Phase 8.9: Cleanup symbolic logic reasoning
+    if (brain->logic) {
+        symbolic_logic_destroy(brain->logic);
+    }
 
     clear_cache(brain);
     nimcp_free(brain);
@@ -2942,6 +3159,7 @@ bool brain_process_multimodal(
     output->novelty_score = 0.0f;
     output->visual_attention = 0.0f;
     output->audio_attention = 0.0f;
+    output->speech_attention = 0.0f;
     output->direct_attention = 0.0f;
 
     // =========================================================================
@@ -2956,6 +3174,7 @@ bool brain_process_multimodal(
 
     float* audio_features = NULL;
     uint32_t audio_dim = 0;
+    bool audio_success = false;
 
     float* direct_features = (float*)input->direct_data;
     uint32_t direct_dim = input->direct_dim;
@@ -2979,7 +3198,7 @@ bool brain_process_multimodal(
 
     // Process audio input through A1 auditory cortex
     if (has_audio && brain->audio_cortex && brain->audio_feature_buffer) {
-        bool audio_success = audio_cortex_process(
+        audio_success = audio_cortex_process(
             brain->audio_cortex,
             input->audio_data,
             input->audio_samples,
@@ -2990,6 +3209,25 @@ bool brain_process_multimodal(
         if (audio_success) {
             audio_features = brain->audio_feature_buffer;
             audio_dim = brain->config.audio_feature_dim;
+        }
+    }
+
+    // Process speech from audio (hierarchical: A1 → STG/Wernicke) - Phase 8.8
+    float* speech_features = NULL;
+    uint32_t speech_dim = 0;
+
+    if (has_audio && audio_success && brain->speech_cortex && brain->speech_feature_buffer) {
+        // Speech cortex processes audio cortex output (hierarchical pipeline)
+        bool speech_success = speech_cortex_process(
+            brain->speech_cortex,
+            input->audio_data,
+            input->audio_samples,
+            brain->speech_feature_buffer
+        );
+
+        if (speech_success) {
+            speech_features = brain->speech_feature_buffer;
+            speech_dim = brain->config.speech_feature_dim;
         }
     }
 
@@ -3005,6 +3243,8 @@ bool brain_process_multimodal(
         .visual_dim = visual_dim,
         .audio_features = audio_features,
         .audio_dim = audio_dim,
+        .speech_features = speech_features,
+        .speech_dim = speech_dim,
         .direct_features = direct_features,
         .direct_dim = direct_dim,
         .timestamp = input->timestamp_ms
@@ -3027,6 +3267,7 @@ bool brain_process_multimodal(
             brain->multimodal,
             &output->visual_attention,
             &output->audio_attention,
+            &output->speech_attention,
             &output->direct_attention
         );
     } else {
@@ -3077,10 +3318,20 @@ bool brain_process_multimodal(
     // WHY:  Ensure ethical, confident, salient decisions
     // HOW:  Introspection, ethics, salience, curiosity modules
 
-    // Introspection: Assess confidence based on network activity
+    // Introspection: Assess confidence and uncertainty based on network activity
     if (brain->introspection) {
-        // Compute confidence based on output variance and spike counts
-        // Higher spike counts and lower output variance = higher confidence
+        // Use introspection module to compute epistemic uncertainty
+        // This gives a more sophisticated confidence estimate
+        brain_uncertainty_t uncertainty = brain_get_uncertainty(
+            brain->introspection,
+            brain->integrated_feature_buffer,
+            brain->config.num_inputs
+        );
+
+        output->introspection_uncertainty = uncertainty.total;
+        output->confidence = 1.0f - output->introspection_uncertainty;
+    } else {
+        // Fallback: Compute confidence from output variance and spike counts
         float output_variance = 0.0f;
         float output_mean = 0.0f;
         for (uint32_t i = 0; i < network_output_size; i++) {
@@ -3097,10 +3348,6 @@ bool brain_process_multimodal(
         // Higher activity, lower variance → higher confidence
         output->confidence = fminf(1.0f, (float)spikes_generated / (brain->config.num_inputs * 2.0f));
         output->confidence *= (1.0f - fminf(1.0f, output_variance));
-        output->introspection_uncertainty = 1.0f - output->confidence;
-    } else {
-        // Default confidence based on network activity
-        output->confidence = fminf(1.0f, (float)spikes_generated / (brain->config.num_inputs * 2.0f));
         output->introspection_uncertainty = 1.0f - output->confidence;
     }
 
@@ -3119,8 +3366,21 @@ bool brain_process_multimodal(
         output->ethical_approved = true;
     }
 
-    // Salience: Identify importance based on max output activation
+    // Salience: Evaluate input importance (novelty, surprise, urgency)
     if (brain->salience) {
+        // Use salience module for sophisticated importance evaluation
+        brain_salience_t salience = brain_evaluate_salience_temporal(
+            brain->salience,
+            brain->integrated_feature_buffer,
+            brain->config.num_inputs,
+            input->timestamp_ms
+        );
+
+        output->salience_score = salience.salience;
+        output->novelty_score = salience.novelty;
+        // Also store surprise and urgency (future: add to output structure)
+    } else {
+        // Fallback: Max output activation as salience
         float max_activation = 0.0f;
         for (uint32_t i = 0; i < network_output_size; i++) {
             if (network_output[i] > max_activation) {
@@ -3128,18 +3388,33 @@ bool brain_process_multimodal(
             }
         }
         output->salience_score = fminf(1.0f, max_activation);
-    } else {
-        output->salience_score = 0.5f;  // Default medium salience
     }
 
-    // Curiosity: Detect novelty based on low prior activation
+    // Curiosity: Learn from novel experiences
     if (brain->curiosity) {
-        // Low spike count or unusual output pattern = high novelty
-        float expected_spikes = brain->config.num_inputs * 0.5f;
-        float spike_diff = fabsf((float)spikes_generated - expected_spikes);
-        output->novelty_score = fminf(1.0f, spike_diff / expected_spikes);
+        // If novelty is high and curiosity engine exists, this could trigger
+        // exploratory learning or question generation (future enhancement)
+        // For now, novelty is already computed by salience module above
+
+        // Fallback if salience didn't compute novelty
+        if (!brain->salience) {
+            float expected_spikes = brain->config.num_inputs * 0.5f;
+            float spike_diff = fabsf((float)spikes_generated - expected_spikes);
+            output->novelty_score = fminf(1.0f, spike_diff / expected_spikes);
+        }
     } else {
-        output->novelty_score = 0.3f;  // Default low novelty
+        // Fallback novelty if no cognitive modules
+        if (!brain->salience) {
+            output->novelty_score = 0.3f;
+        }
+    }
+
+    // Symbolic Logic: Apply logical reasoning if enabled
+    if (brain->logic) {
+        // Symbolic reasoning can enhance neural outputs with logical constraints
+        // For example: ensure output consistency with known facts/rules
+        // This is a future enhancement area for neuro-symbolic integration
+        // Currently placeholder - symbolic logic operates independently
     }
 
     // =========================================================================
@@ -3185,19 +3460,42 @@ bool brain_process_multimodal(
                  "output_%u", max_idx);
     }
 
-    // Generate comprehensive explanation
-    char modality_str[128] = {0};
-    if (has_visual && has_audio) {
-        snprintf(modality_str, sizeof(modality_str),
-                 "visual=%.0f%% audio=%.0f%%",
-                 output->visual_attention * 100.0f,
-                 output->audio_attention * 100.0f);
-    } else if (has_visual) {
-        snprintf(modality_str, sizeof(modality_str), "visual=100%%");
-    } else if (has_audio) {
-        snprintf(modality_str, sizeof(modality_str), "audio=100%%");
-    } else if (has_direct) {
-        snprintf(modality_str, sizeof(modality_str), "direct=100%%");
+    // Generate comprehensive explanation with all 4 modalities
+    char modality_str[256] = {0};
+    bool has_speech = (speech_features != NULL && speech_dim > 0);
+
+    // Build modality attention string
+    char* pos = modality_str;
+    int remaining = sizeof(modality_str);
+    bool first = true;
+
+    if (has_visual || output->visual_attention > 0.01f) {
+        int written = snprintf(pos, remaining, "%svisual=%.0f%%", first ? "" : " ",
+                              output->visual_attention * 100.0f);
+        pos += written;
+        remaining -= written;
+        first = false;
+    }
+    if (has_audio || output->audio_attention > 0.01f) {
+        int written = snprintf(pos, remaining, "%saudio=%.0f%%", first ? "" : " ",
+                              output->audio_attention * 100.0f);
+        pos += written;
+        remaining -= written;
+        first = false;
+    }
+    if (has_speech || output->speech_attention > 0.01f) {
+        int written = snprintf(pos, remaining, "%sspeech=%.0f%%", first ? "" : " ",
+                              output->speech_attention * 100.0f);
+        pos += written;
+        remaining -= written;
+        first = false;
+    }
+    if (has_direct || output->direct_attention > 0.01f) {
+        int written = snprintf(pos, remaining, "%sdirect=%.0f%%", first ? "" : " ",
+                              output->direct_attention * 100.0f);
+        pos += written;
+        remaining -= written;
+        first = false;
     }
 
     snprintf(output->explanation, sizeof(output->explanation),

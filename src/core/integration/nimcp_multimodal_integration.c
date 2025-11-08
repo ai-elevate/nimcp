@@ -19,11 +19,13 @@ struct multimodal_integration_struct {
     // Integration weights (for LEARNED method)
     float* visual_weights;   // [visual_dim × output_dim]
     float* audio_weights;    // [audio_dim × output_dim]
+    float* speech_weights;   // [speech_dim × output_dim] - Phase 8.8
     float* direct_weights;   // [direct_dim × output_dim]
 
     // Attention weights (dynamic)
     float visual_attention;
     float audio_attention;
+    float speech_attention;  // Phase 8.8
     float direct_attention;
 
     // Output buffer
@@ -54,13 +56,16 @@ multimodal_integration_t multimodal_integration_create(const multimodal_config_t
     // Initialize attention weights
     integration->visual_attention = config->visual_weight;
     integration->audio_attention = config->audio_weight;
+    integration->speech_attention = config->speech_weight;  // Phase 8.8
     integration->direct_attention = config->direct_weight;
 
     // Normalize attention weights
-    float total = integration->visual_attention + integration->audio_attention + integration->direct_attention;
+    float total = integration->visual_attention + integration->audio_attention +
+                  integration->speech_attention + integration->direct_attention;
     if (total > 0.0f) {
         integration->visual_attention /= total;
         integration->audio_attention /= total;
+        integration->speech_attention /= total;
         integration->direct_attention /= total;
     }
 
@@ -90,6 +95,14 @@ multimodal_integration_t multimodal_integration_create(const multimodal_config_t
             }
         }
 
+        if (config->speech_dim > 0) {
+            integration->speech_weights = nimcp_calloc(config->speech_dim * config->output_dim, sizeof(float));
+            float scale = sqrtf(2.0f / (config->speech_dim + config->output_dim));
+            for (uint32_t i = 0; i < config->speech_dim * config->output_dim; i++) {
+                integration->speech_weights[i] = ((float)rand() / RAND_MAX - 0.5f) * 2.0f * scale;
+            }
+        }
+
         if (config->direct_dim > 0) {
             integration->direct_weights = nimcp_calloc(config->direct_dim * config->output_dim, sizeof(float));
             float scale = sqrtf(2.0f / (config->direct_dim + config->output_dim));
@@ -109,6 +122,7 @@ void multimodal_integration_destroy(multimodal_integration_t integration)
     nimcp_free(integration->output_buffer);
     nimcp_free(integration->visual_weights);
     nimcp_free(integration->audio_weights);
+    nimcp_free(integration->speech_weights);
     nimcp_free(integration->direct_weights);
     nimcp_free(integration);
 }
@@ -134,6 +148,12 @@ static bool integrate_concatenate(
     if (input->audio_features && input->audio_dim > 0) {
         memcpy(output + offset, input->audio_features, input->audio_dim * sizeof(float));
         offset += input->audio_dim;
+    }
+
+    // Copy speech features (Phase 8.8)
+    if (input->speech_features && input->speech_dim > 0) {
+        memcpy(output + offset, input->speech_features, input->speech_dim * sizeof(float));
+        offset += input->speech_dim;
     }
 
     // Copy direct features
@@ -171,6 +191,13 @@ static bool integrate_attention(
     if (input->audio_features && input->audio_dim > 0) {
         for (uint32_t i = 0; i < input->audio_dim && offset < integration->config.output_dim; i++) {
             output[offset++] = input->audio_features[i] * integration->audio_attention;
+        }
+    }
+
+    // Add weighted speech features (Phase 8.8)
+    if (input->speech_features && input->speech_dim > 0) {
+        for (uint32_t i = 0; i < input->speech_dim && offset < integration->config.output_dim; i++) {
+            output[offset++] = input->speech_features[i] * integration->speech_attention;
         }
     }
 
@@ -212,6 +239,18 @@ static bool integrate_learned(
                        input->audio_features[j];
             }
             output[i] += sum * integration->audio_attention;
+        }
+    }
+
+    // Phase 8.8: Speech learned projection
+    if (input->speech_features && input->speech_dim > 0 && integration->speech_weights) {
+        for (uint32_t i = 0; i < integration->config.output_dim; i++) {
+            float sum = 0.0f;
+            for (uint32_t j = 0; j < input->speech_dim; j++) {
+                sum += integration->speech_weights[j * integration->config.output_dim + i] *
+                       input->speech_features[j];
+            }
+            output[i] += sum * integration->speech_attention;
         }
     }
 
@@ -269,12 +308,14 @@ bool multimodal_get_attention(
     const multimodal_integration_t integration,
     float* visual_attn,
     float* audio_attn,
+    float* speech_attn,
     float* direct_attn)
 {
     if (!integration) return false;
 
     if (visual_attn) *visual_attn = integration->visual_attention;
     if (audio_attn) *audio_attn = integration->audio_attention;
+    if (speech_attn) *speech_attn = integration->speech_attention;
     if (direct_attn) *direct_attn = integration->direct_attention;
 
     return true;
@@ -291,23 +332,28 @@ bool multimodal_update_weights(
     // Increase weight of modalities that led to good outcomes
     float visual_grad = reward * learning_rate;
     float audio_grad = reward * learning_rate;
+    float speech_grad = reward * learning_rate;
     float direct_grad = reward * learning_rate;
 
     integration->visual_attention += visual_grad;
     integration->audio_attention += audio_grad;
+    integration->speech_attention += speech_grad;
     integration->direct_attention += direct_grad;
 
     // Re-normalize
-    float total = integration->visual_attention + integration->audio_attention + integration->direct_attention;
+    float total = integration->visual_attention + integration->audio_attention +
+                  integration->speech_attention + integration->direct_attention;
     if (total > 0.0f) {
         integration->visual_attention /= total;
         integration->audio_attention /= total;
+        integration->speech_attention /= total;
         integration->direct_attention /= total;
     }
 
     // Clamp to [0, 1]
     integration->visual_attention = fmaxf(0.0f, fminf(1.0f, integration->visual_attention));
     integration->audio_attention = fmaxf(0.0f, fminf(1.0f, integration->audio_attention));
+    integration->speech_attention = fmaxf(0.0f, fminf(1.0f, integration->speech_attention));
     integration->direct_attention = fmaxf(0.0f, fminf(1.0f, integration->direct_attention));
 
     return true;
@@ -320,16 +366,19 @@ bool multimodal_update_weights(
 multimodal_config_t multimodal_default_config(
     uint32_t visual_dim,
     uint32_t audio_dim,
+    uint32_t speech_dim,
     uint32_t direct_dim)
 {
     multimodal_config_t config = {
         .visual_dim = visual_dim,
         .audio_dim = audio_dim,
+        .speech_dim = speech_dim,
         .direct_dim = direct_dim,
-        .output_dim = visual_dim + audio_dim + direct_dim,
+        .output_dim = visual_dim + audio_dim + speech_dim + direct_dim,
         .method = INTEGRATION_ATTENTION,
-        .visual_weight = 0.4f,
-        .audio_weight = 0.4f,
+        .visual_weight = 0.3f,      // Reduced from 0.4 to accommodate speech
+        .audio_weight = 0.3f,       // Reduced from 0.4 to accommodate speech
+        .speech_weight = 0.2f,      // Phase 8.8: Speech modality
         .direct_weight = 0.2f
     };
     return config;
@@ -344,10 +393,12 @@ bool multimodal_validate_input(
     // Check dimensions match
     if (input->visual_dim > 0 && input->visual_dim != integration->config.visual_dim) return false;
     if (input->audio_dim > 0 && input->audio_dim != integration->config.audio_dim) return false;
+    if (input->speech_dim > 0 && input->speech_dim != integration->config.speech_dim) return false;
     if (input->direct_dim > 0 && input->direct_dim != integration->config.direct_dim) return false;
 
     // Check at least one input is present
-    if (!input->visual_features && !input->audio_features && !input->direct_features) return false;
+    if (!input->visual_features && !input->audio_features &&
+        !input->speech_features && !input->direct_features) return false;
 
     return true;
 }

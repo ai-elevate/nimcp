@@ -1,35 +1,26 @@
 /**
  * @file nimcp_neuron_types.h
- * @brief Extended neuron type specialization system
+ * @brief Phase 8.7: Specialized neuron type system with biological diversity
  *
  * DESIGN PHILOSOPHY:
- * - Backward compatible: Existing E/I types continue to work
- * - Non-invasive: Optional type-specific parameters via union
- * - Performance: Type-specific optimized dynamics
- * - Biological realism: Models real neuron diversity
+ * This system models the rich diversity of neuron types found in biological neural
+ * circuits. Each type has specialized computation matched to its biological role.
  *
- * NEURON TYPE HIERARCHY:
- * 1. Basic: EXCITATORY, INHIBITORY (existing)
- * 2. Visual: Edge detectors, orientation-selective, color-opponent
- * 3. Auditory: Frequency-tuned, onset detectors, ITD-sensitive
- * 4. Motor: Pattern generators, motoneurons, Renshaw cells
- * 5. Interneuron: Fast-spiking, adaptive, chandelier
+ * BIOLOGICAL MOTIVATION:
+ * Real brains aren't uniform - they contain dozens of distinct neuron types:
+ * - V1 simple/complex cells for visual processing (Hubel & Wiesel, 1962)
+ * - A1 frequency-tuned neurons for auditory processing (Schreiner et al., 2000)
+ * - Metacognitive neurons for uncertainty estimation (Fleming & Dolan, 2012)
+ * - Executive control neurons for goal-directed behavior (Miller & Cohen, 2001)
  *
- * USAGE EXAMPLE:
- * ```c
- * // Create visual edge detector neuron
- * neuron_type_params_t params = {
- *     .visual_edge = {
- *         .orientation = 45.0f,      // 45-degree edge
- *         .spatial_frequency = 2.0f,  // cycles per degree
- *         .on_center = true
- *     }
- * };
+ * REFERENCES:
+ * [1] Hubel & Wiesel (1962) "Receptive fields in cat striate cortex"
+ * [2] Izhikevich (2003) "Simple model of spiking neurons"
+ * [3] Schreiner et al. (2000) "Functional architecture of auditory cortex"
+ * [4] Fleming & Dolan (2012) "The neural basis of metacognitive ability"
  *
- * neuron_t* n = neuron_create_specialized(id, NEURON_VISUAL_EDGE, &params);
- * ```
- *
- * TDD STATUS: Header-first design, tests to be written
+ * @author NIMCP Phase 8.7
+ * @date 2025-11-08
  */
 
 #ifndef NIMCP_NEURON_TYPES_H
@@ -40,214 +31,478 @@
 #include <stdbool.h>
 #include <math.h>
 
+// Forward declarations to avoid circular dependencies
+struct izhikevich_params_t_forward;  // Will use existing definition from nimcp_izhikevich.h
+
 #ifdef __cplusplus
 extern "C" {
 #endif
 
 // ============================================================================
-// EXTENDED NEURON TYPES (Backward compatible with existing E/I)
+// NEURON TYPE ENUMERATION - Phase 8.7
 // ============================================================================
 
 /**
- * @brief Extended neuron types for task-specific processing
+ * @brief Specialized neuron types for task-specific processing
  *
- * BACKWARD COMPATIBILITY:
- * - Values 0-1 match existing NEURON_EXCITATORY/INHIBITORY
- * - New types start at 100+ to avoid conflicts
+ * DESIGN: Each type implements biologically-motivated computation:
+ * - Generic types: Standard neuron models (LIF, Izhikevich)
+ * - Sensory types: Specialized receptive fields and tuning
+ * - Cognitive types: High-level processing (metacognition, executive control)
  */
 typedef enum {
-    // ========== VISUAL CORTEX NEURONS (100-199) ==========
-    // Note: Values 0-1 (NEURON_EXCITATORY/INHIBITORY) defined in nimcp_neuralnet.h
-    // Extended types start at 100 to avoid conflicts
-    NEURON_VISUAL_EDGE = 100,     /**< Edge detector (V1 simple cell) */
-    NEURON_VISUAL_ORIENTATION,    /**< Orientation-selective (V1 complex) */
-    NEURON_VISUAL_DIRECTION,      /**< Direction-selective (MT/V5) */
-    NEURON_VISUAL_COLOR_OPPONENT, /**< Color-opponent cell (V4) */
-    NEURON_VISUAL_RECEPTIVE_FIELD,/**< Gabor filter receptive field */
+    // ========== BACKWARD COMPATIBILITY (0-1) ==========
+    NEURON_EXCITATORY = 0,           /**< Generic excitatory neuron (backward compat) */
+    NEURON_INHIBITORY = 1,           /**< Generic inhibitory neuron (backward compat) */
 
-    // ========== AUDITORY CORTEX NEURONS (200-299) ==========
-    NEURON_AUDITORY_FREQUENCY = 200,  /**< Frequency-tuned (A1) */
-    NEURON_AUDITORY_ONSET,            /**< Onset detector */
-    NEURON_AUDITORY_ITD,              /**< Interaural time difference */
-    NEURON_AUDITORY_ILD,              /**< Interaural level difference */
-    NEURON_AUDITORY_COMPLEX,          /**< Complex spectrotemporal */
+    // ========== GENERIC NEURON MODELS (2-99) ==========
+    NEURON_GENERIC_LIF = 2,          /**< Leaky Integrate-and-Fire neuron */
+    NEURON_GENERIC_IZHIKEVICH = 3,   /**< Izhikevich neuron model */
 
-    // ========== MOTOR NEURONS (300-399) ==========
-    NEURON_MOTOR_ALPHA = 300,     /**< Alpha motoneuron */
-    NEURON_MOTOR_GAMMA,           /**< Gamma motoneuron */
-    NEURON_MOTOR_PATTERN_GEN,     /**< Central pattern generator */
-    NEURON_MOTOR_RENSHAW,         /**< Renshaw inhibitory cell */
-    NEURON_MOTOR_PROPRIOCEPTIVE,  /**< Proprioceptive feedback */
+    // ========== VISUAL CORTEX (V1) NEURONS (100-199) ==========
+    /**
+     * V1 Simple Cell: Oriented edge detector with Gabor-like receptive field
+     *
+     * BIOLOGICAL MOTIVATION:
+     * Simple cells in primary visual cortex (V1) respond to edges at specific
+     * orientations and positions. They have phase-dependent responses.
+     *
+     * COMPUTATION:
+     * - Gabor filter convolution over input
+     * - Orientation selectivity via cosine tuning
+     * - Spatial frequency selectivity
+     *
+     * REFERENCE: Hubel & Wiesel (1962)
+     */
+    NEURON_V1_SIMPLE_CELL = 100,
+    NEURON_VISUAL_EDGE = 100,  /**< Alias for V1_SIMPLE_CELL (backward compat) */
 
-    // ========== INTERNEURONS (400-499) ==========
-    NEURON_FAST_SPIKING = 400,    /**< Fast-spiking interneuron (PV+) */
-    NEURON_ADAPTIVE_SPIKING,      /**< Adaptive spiking interneuron */
-    NEURON_BURST_SPIKING,         /**< Bursting neuron */
-    NEURON_CHANDELIER,            /**< Chandelier cell (axo-axonic) */
-    NEURON_BASKET,                /**< Basket cell (soma-targeting) */
+    /**
+     * V1 Complex Cell: Phase-invariant edge detector
+     *
+     * BIOLOGICAL MOTIVATION:
+     * Complex cells pool over multiple simple cells with different phases,
+     * giving position-invariant edge detection.
+     *
+     * COMPUTATION:
+     * - Pool over simple cell responses
+     * - Energy model: sqrt(even^2 + odd^2)
+     * - Directional selectivity
+     *
+     * REFERENCE: Hubel & Wiesel (1962)
+     */
+    NEURON_V1_COMPLEX_CELL = 101,
+    NEURON_VISUAL_ORIENTATION = 102,  /**< Orientation-selective neuron */
+    NEURON_VISUAL_DIRECTION = 103,    /**< Direction-selective neuron (MT/V5) */
 
-    // ========== CORTICAL PYRAMIDAL (500-599) ==========
-    NEURON_PYRAMIDAL_L23 = 500,   /**< Layer 2/3 pyramidal */
-    NEURON_PYRAMIDAL_L5_THICK,    /**< Layer 5 thick-tufted */
-    NEURON_PYRAMIDAL_L5_THIN,     /**< Layer 5 thin-tufted */
-    NEURON_PYRAMIDAL_L6,          /**< Layer 6 corticothalamic */
+    // Pyramidal neuron types
+    NEURON_PYRAMIDAL_L23 = 150,       /**< Layer 2/3 pyramidal neuron */
+    NEURON_PYRAMIDAL_L5_THICK = 151,  /**< Layer 5 thick-tufted pyramidal */
+    NEURON_PYRAMIDAL_L6 = 152,        /**< Layer 6 pyramidal neuron */
 
-    // ========== SENSORY NEURONS (600-699) ==========
-    NEURON_SENSORY_MECHANORECEPTOR = 600, /**< Touch receptor */
-    NEURON_SENSORY_NOCICEPTOR,            /**< Pain receptor */
-    NEURON_SENSORY_THERMORECEPTOR,        /**< Temperature receptor */
-    NEURON_SENSORY_PHOTORECEPTOR,         /**< Light receptor (rod/cone) */
+    // ========== AUDITORY CORTEX (A1) NEURONS (200-299) ==========
+    /**
+     * A1 Frequency-Tuned Neuron: Tonotopically organized spectral filter
+     *
+     * BIOLOGICAL MOTIVATION:
+     * A1 neurons are organized tonotopically - each responds to a specific
+     * frequency band, creating a spatial frequency map.
+     *
+     * COMPUTATION:
+     * - Bandpass filtering centered at preferred frequency
+     * - Quality factor (Q) determines tuning sharpness
+     * - Temporal integration window
+     *
+     * REFERENCE: Schreiner et al. (2000)
+     */
+    NEURON_A1_FREQUENCY_TUNED = 200,
+    NEURON_AUDITORY_FREQUENCY = 200,  /**< Alias (backward compat) */
+
+    /**
+     * A1 Coincidence Detector: Temporal integration for binaural processing
+     *
+     * BIOLOGICAL MOTIVATION:
+     * Coincidence detection neurons in auditory brainstem and cortex compute
+     * interaural time differences for sound localization.
+     *
+     * COMPUTATION:
+     * - Short integration window (~1ms)
+     * - High temporal precision
+     * - Cross-correlation of binaural inputs
+     *
+     * REFERENCE: Jeffress (1948) place theory
+     */
+    NEURON_A1_COINCIDENCE_DETECTOR = 201,
+    NEURON_AUDITORY_ONSET = 202,      /**< Onset detector neuron */
+
+    // ========== MOTOR NEURONS (250-299) ==========
+    NEURON_MOTOR_ALPHA = 250,         /**< Alpha motoneuron */
+    NEURON_MOTOR_PATTERN_GEN = 251,   /**< Central pattern generator */
+
+    // ========== COGNITIVE/METACOGNITIVE NEURONS (300-399) ==========
+    /**
+     * Metacognitive Neuron: Uncertainty estimation and confidence monitoring
+     *
+     * BIOLOGICAL MOTIVATION:
+     * Prefrontal cortex contains neurons that track decision confidence and
+     * uncertainty, enabling metacognitive awareness.
+     *
+     * COMPUTATION:
+     * - Estimate uncertainty via input variance
+     * - Confidence = 1 / (1 + uncertainty)
+     * - Second-order monitoring of first-order processing
+     *
+     * REFERENCE: Fleming & Dolan (2012)
+     * COMPLEXITY: O(n) where n = number of inputs
+     */
+    NEURON_METACOGNITIVE = 300,
+
+    /**
+     * Executive Control Neuron: Goal-directed activity with top-down modulation
+     *
+     * BIOLOGICAL MOTIVATION:
+     * Dorsolateral prefrontal cortex contains neurons that maintain goal
+     * representations and modulate processing in other areas.
+     *
+     * COMPUTATION:
+     * - Maintain activity during delay periods
+     * - Modulate gain of target neurons
+     * - Working memory via sustained firing
+     *
+     * REFERENCE: Miller & Cohen (2001)
+     * COMPLEXITY: O(1) for self-maintenance, O(n) for modulation
+     */
+    NEURON_EXECUTIVE_CONTROL = 301,
 
     NEURON_TYPE_COUNT  /**< Total number of neuron types */
-} neuron_type_extended_t;
+} neuron_type_t;
+
+// Backward compatibility alias
+typedef neuron_type_t neuron_type_extended_t;
 
 // ============================================================================
 // TYPE-SPECIFIC PARAMETER STRUCTURES
 // ============================================================================
 
 /**
- * @brief Visual edge detector parameters (Gabor filter)
+ * @brief Parameters for V1 simple cell (Gabor filter)
  */
 typedef struct {
-    float orientation;        /**< Preferred orientation (degrees, 0-180) */
-    float spatial_frequency;  /**< Spatial frequency (cycles per degree) */
-    float phase;             /**< Phase offset (0-2π) */
-    float aspect_ratio;      /**< Aspect ratio of Gabor (typically 0.5) */
-    bool on_center;          /**< ON-center vs OFF-center */
-    float receptive_field_size; /**< Size of receptive field (degrees) */
-} visual_edge_params_t;
+    float orientation;          /**< Preferred orientation in degrees [0, 180] */
+    float spatial_frequency;    /**< Spatial frequency in cycles/degree */
+    float phase;                /**< Phase offset in radians [0, 2π] */
+    float aspect_ratio;         /**< Aspect ratio of Gabor envelope (typically 0.5) */
+    float sigma;                /**< Gaussian envelope width */
+    bool on_center;             /**< ON-center vs OFF-center cell */
+} v1_simple_cell_params_t;
 
 /**
- * @brief Orientation-selective neuron parameters
+ * @brief Parameters for V1 complex cell
  */
 typedef struct {
-    float preferred_orientation; /**< Preferred orientation (degrees) */
-    float orientation_bandwidth; /**< Tuning bandwidth (degrees) */
-    float direction_selectivity; /**< 0=non-directional, 1=fully directional */
-    float surround_suppression;  /**< Surround suppression strength */
-} visual_orientation_params_t;
+    float orientation;          /**< Preferred orientation in degrees [0, 180] */
+    float direction_selectivity;/**< Direction selectivity index [0, 1] */
+    float surround_suppression; /**< Strength of surround suppression [0, 1] */
+    float pooling_size;         /**< Spatial pooling size in degrees */
+} v1_complex_cell_params_t;
 
 /**
- * @brief Auditory frequency-tuned neuron parameters
+ * @brief Parameters for A1 frequency-tuned neuron
  */
 typedef struct {
-    float center_frequency;      /**< Center frequency (Hz) */
-    float bandwidth;             /**< Frequency bandwidth (octaves) */
-    float q_factor;              /**< Quality factor (sharpness) */
-    float temporal_integration;  /**< Integration window (ms) */
-    float adaptation_rate;       /**< Adaptation to sustained input */
-} auditory_frequency_params_t;
+    float center_frequency;     /**< Center frequency in Hz */
+    float q_factor;             /**< Quality factor (center_freq / bandwidth) */
+    float bandwidth;            /**< Bandwidth in Hz (derived from Q) */
+    float integration_window;   /**< Temporal integration window in ms */
+    float adaptation_rate;      /**< Rate of adaptation to sustained input */
+} a1_frequency_params_t;
 
 /**
- * @brief Onset detector parameters
+ * @brief Parameters for A1 coincidence detector
  */
 typedef struct {
-    float onset_threshold;       /**< Threshold for onset detection */
-    float refractory_duration;   /**< Refractory after onset (ms) */
-    float decay_time_constant;   /**< Decay after onset (ms) */
-    bool offset_sensitive;       /**< Also detect offsets */
-} auditory_onset_params_t;
+    float integration_window;   /**< Integration time constant in ms (~1ms) */
+    float temporal_precision;   /**< Temporal precision in µs (~100µs) */
+    float threshold;            /**< Coincidence threshold */
+    float decay_rate;           /**< Decay rate of integration */
+} a1_coincidence_params_t;
 
 /**
- * @brief Motor pattern generator parameters
+ * @brief Parameters for metacognitive neuron
  */
 typedef struct {
-    float rhythm_frequency;      /**< Intrinsic rhythm (Hz) */
-    float burst_duration;        /**< Burst duration (ms) */
-    float interburst_interval;   /**< Time between bursts (ms) */
-    float phase_offset;          /**< Phase relative to other CPGs */
-    bool pacemaker;              /**< Is this a pacemaker neuron? */
-} motor_pattern_params_t;
+    float confidence_threshold; /**< Minimum confidence for high-confidence output */
+    float uncertainty_window;   /**< Time window for uncertainty estimation (ms) */
+    float uncertainty_beta;     /**< Beta parameter for uncertainty calculation */
+    uint32_t history_size;      /**< Number of inputs to track for variance */
+} metacognitive_params_t;
 
 /**
- * @brief Fast-spiking interneuron parameters
+ * @brief Parameters for executive control neuron
  */
 typedef struct {
-    float max_firing_rate;       /**< Maximum sustained rate (Hz) */
-    float membrane_time_constant;/**< Fast membrane dynamics (ms) */
-    float spike_width;           /**< Narrow spike width (ms) */
-    float afterhyperpolarization;/**< AHP amplitude (mV) */
-} fast_spiking_params_t;
+    float goal_maintenance;     /**< Strength of goal maintenance [0, 1] */
+    float modulation_strength;  /**< Strength of top-down modulation */
+    float decay_rate;           /**< Decay rate during maintenance */
+    float threshold_boost;      /**< Threshold boost during goal-directed state */
+    bool delay_activity;        /**< Maintain activity during delays */
+} executive_control_params_t;
 
 /**
- * @brief Bursting neuron parameters
+ * @brief Generic LIF parameters
  */
 typedef struct {
-    float burst_threshold;       /**< Threshold for burst initiation */
-    float burst_duration;        /**< Duration of burst (ms) */
-    float spikes_per_burst;      /**< Number of spikes in burst */
-    float interburst_interval;   /**< Minimum time between bursts (ms) */
-    float calcium_decay;         /**< Ca2+ decay time constant (ms) */
-} burst_params_t;
+    float tau_membrane;         /**< Membrane time constant (ms) */
+    float rest_potential;       /**< Resting potential (mV) */
+    float threshold;            /**< Spike threshold (mV) */
+    float reset_potential;      /**< Reset potential after spike (mV) */
+    float refractory_period;    /**< Refractory period (ms) */
+} lif_params_t;
+
+/**
+ * @brief Izhikevich neuron parameters (Phase 8.7)
+ *
+ * NOTE: This is a local definition for the neuron_type_params_t union.
+ * The neuron_models system has its own izhikevich_params_t which is identical.
+ * We define it here too to avoid circular dependencies.
+ */
+typedef struct {
+    float a;  /**< Recovery time scale parameter */
+    float b;  /**< Sensitivity of recovery to subthreshold fluctuations */
+    float c;  /**< After-spike reset value of membrane potential (mV) */
+    float d;  /**< After-spike reset of recovery variable */
+} izh_params_t;
 
 // ============================================================================
-// UNIFIED TYPE PARAMETER UNION
+// UNIFIED PARAMETER UNION
 // ============================================================================
 
 /**
  * @brief Union of all type-specific parameters
  *
- * USAGE: Store in extended_params field of neuron
- * SIZE: Largest member determines size (~40 bytes)
+ * DESIGN: Store in neuron structure's type_params field
+ * SIZE: Largest member determines size (~64 bytes)
  */
 typedef union {
-    visual_edge_params_t visual_edge;
-    visual_orientation_params_t visual_orientation;
-    auditory_frequency_params_t auditory_frequency;
-    auditory_onset_params_t auditory_onset;
-    motor_pattern_params_t motor_pattern;
-    fast_spiking_params_t fast_spiking;
-    burst_params_t burst;
+    lif_params_t lif;
+    izh_params_t izhikevich;  // Local definition, compatible with neuron_models/izhikevich_params_t
+    v1_simple_cell_params_t v1_simple;
+    v1_complex_cell_params_t v1_complex;
+    a1_frequency_params_t a1_frequency;
+    a1_coincidence_params_t a1_coincidence;
+    metacognitive_params_t metacognitive;
+    executive_control_params_t executive;
 } neuron_type_params_t;
 
 // ============================================================================
-// TYPE-SPECIFIC DYNAMICS FUNCTIONS
+// TYPE-SPECIFIC COMPUTE FUNCTIONS
 // ============================================================================
 
 /**
- * @brief Compute type-specific input transformation
+ * @brief Compute output for generic LIF neuron
  *
- * @param type Neuron type
- * @param params Type-specific parameters
- * @param input Raw synaptic input
- * @param timestamp Current time (µs)
+ * WHAT: Implements leaky integrate-and-fire dynamics
+ * WHY: Most common computational neuron model
+ * HOW: dV/dt = (E_L - V + I)/tau_m
  *
- * @return Transformed input value
+ * @param params LIF parameters
+ * @param input Input current
+ * @param state Current membrane potential
+ * @param dt Time step in ms
+ * @return New membrane potential
  *
- * DESIGN: Each type processes input differently:
- * - Visual edge: Apply Gabor filter
- * - Auditory frequency: Apply bandpass filter
- * - Motor pattern: Add intrinsic rhythm
- * - Fast-spiking: Fast dynamics
+ * COMPLEXITY: O(1)
  */
-float neuron_type_process_input(neuron_type_extended_t type,
-                                const neuron_type_params_t* params,
-                                float input,
-                                uint64_t timestamp);
+float compute_lif_neuron(const lif_params_t* params, float input,
+                         float state, float dt);
 
 /**
- * @brief Get type-specific firing threshold adjustment
+ * @brief Compute output for Izhikevich neuron
  *
- * @param type Neuron type
- * @param params Type-specific parameters
- * @param base_threshold Base threshold
+ * WHAT: Implements Izhikevich simple neuron model
+ * WHY: Reproduces 20+ cortical neuron firing patterns
+ * HOW: dv/dt = 0.04v^2 + 5v + 140 - u + I; du/dt = a(bv - u)
  *
- * @return Adjusted threshold
+ * @param params Izhikevich parameters
+ * @param input Input current
+ * @param v Membrane potential
+ * @param u Recovery variable
+ * @param dt Time step in ms
+ * @param out_v Output membrane potential
+ * @param out_u Output recovery variable
+ *
+ * REFERENCE: Izhikevich (2003)
+ * COMPLEXITY: O(1)
  */
-float neuron_type_get_threshold(neuron_type_extended_t type,
-                                 const neuron_type_params_t* params,
-                                 float base_threshold);
+void compute_izhikevich_neuron(const izh_params_t* params, float input,
+                               float v, float u, float dt,
+                               float* out_v, float* out_u);
 
 /**
- * @brief Get type-specific refractory period
+ * @brief Compute V1 simple cell response (Gabor filter)
+ *
+ * WHAT: Oriented edge detection with spatial frequency selectivity
+ * WHY: Models V1 simple cells (Hubel & Wiesel, 1962)
+ * HOW: Gabor filter = Gaussian envelope × sinusoidal carrier
+ *      G(x,y) = exp(-(x'^2 + γ^2*y'^2)/(2σ^2)) * cos(2πf*x' + φ)
+ *      where (x',y') are rotated coordinates
+ *
+ * @param params Simple cell parameters
+ * @param inputs 2D input array (flattened)
+ * @param input_width Width of input
+ * @param input_height Height of input
+ * @param center_x Receptive field center x
+ * @param center_y Receptive field center y
+ * @return Gabor filter response
+ *
+ * COMPLEXITY: O(w*h) where w,h are receptive field size
+ */
+float compute_v1_simple_cell(const v1_simple_cell_params_t* params,
+                             const float* inputs,
+                             uint32_t input_width, uint32_t input_height,
+                             float center_x, float center_y);
+
+/**
+ * @brief Compute V1 complex cell response (energy model)
+ *
+ * WHAT: Phase-invariant edge detection via pooling over simple cells
+ * WHY: Models V1 complex cells (Hubel & Wiesel, 1962)
+ * HOW: Energy model: sqrt(even^2 + odd^2) where even/odd are 90° phase shifted
+ *
+ * @param params Complex cell parameters
+ * @param simple_cell_responses Array of simple cell responses (different phases)
+ * @param num_simple_cells Number of simple cells to pool
+ * @return Complex cell response
+ *
+ * COMPLEXITY: O(n) where n = num_simple_cells
+ */
+float compute_v1_complex_cell(const v1_complex_cell_params_t* params,
+                              const float* simple_cell_responses,
+                              uint32_t num_simple_cells);
+
+/**
+ * @brief Compute A1 frequency-tuned neuron response
+ *
+ * WHAT: Bandpass filtering for tonotopic organization
+ * WHY: Models A1 frequency-selective neurons
+ * HOW: Apply bandpass filter centered at preferred frequency
+ *      Q = center_freq / bandwidth (quality factor)
+ *      Higher Q = sharper tuning
+ *
+ * @param params Frequency tuning parameters
+ * @param audio_input Audio input signal
+ * @param signal_length Length of audio signal
+ * @param sample_rate Sample rate in Hz
+ * @param timestamp Current time in µs
+ * @return Filtered audio response
+ *
+ * COMPLEXITY: O(n) where n = signal_length
+ */
+float compute_a1_frequency_tuned(const a1_frequency_params_t* params,
+                                 const float* audio_input,
+                                 uint32_t signal_length,
+                                 float sample_rate,
+                                 uint64_t timestamp);
+
+/**
+ * @brief Compute A1 coincidence detector response
+ *
+ * WHAT: Temporal integration for binaural processing
+ * WHY: Sound localization via interaural time difference
+ * HOW: Cross-correlate left/right inputs with high temporal precision
+ *
+ * @param params Coincidence detector parameters
+ * @param left_input Left ear input
+ * @param right_input Right ear input
+ * @param num_samples Number of samples
+ * @param timestamp Current time in µs
+ * @return Coincidence detection strength
+ *
+ * COMPLEXITY: O(n) where n = num_samples in integration window
+ */
+float compute_a1_coincidence_detector(const a1_coincidence_params_t* params,
+                                      const float* left_input,
+                                      const float* right_input,
+                                      uint32_t num_samples,
+                                      uint64_t timestamp);
+
+/**
+ * @brief Compute metacognitive neuron output (uncertainty estimation)
+ *
+ * WHAT: Estimate confidence/uncertainty of network state
+ * WHY: Enable metacognitive awareness and adaptive behavior
+ * HOW: Compute variance of inputs over time window
+ *      Uncertainty = variance, Confidence = 1 / (1 + uncertainty)
+ *
+ * @param params Metacognitive parameters
+ * @param inputs Array of input values
+ * @param num_inputs Number of inputs
+ * @param input_history Historical inputs for variance
+ * @param history_size Size of history buffer
+ * @param out_confidence Output confidence value [0, 1]
+ * @param out_uncertainty Output uncertainty value
+ * @return Metacognitive activation
+ *
+ * COMPLEXITY: O(n) where n = history_size
+ */
+float compute_metacognitive(const metacognitive_params_t* params,
+                            const float* inputs, uint32_t num_inputs,
+                            const float* input_history, uint32_t history_size,
+                            float* out_confidence, float* out_uncertainty);
+
+/**
+ * @brief Compute executive control neuron output
+ *
+ * WHAT: Goal-directed activity with sustained firing and top-down modulation
+ * WHY: Models prefrontal executive control
+ * HOW: Maintain activity during delays, modulate gain of targets
+ *
+ * @param params Executive control parameters
+ * @param goal_input Goal/context input
+ * @param current_state Current neuron state
+ * @param dt Time step in ms
+ * @param is_delay_period Whether in delay period (maintain activity)
+ * @return New activation state
+ *
+ * COMPLEXITY: O(1)
+ */
+float compute_executive_control(const executive_control_params_t* params,
+                                float goal_input,
+                                float current_state,
+                                float dt,
+                                bool is_delay_period);
+
+// ============================================================================
+// UTILITY FUNCTIONS
+// ============================================================================
+
+/**
+ * @brief Get default parameters for a neuron type
  *
  * @param type Neuron type
- * @param params Type-specific parameters
- *
- * @return Refractory period (ms)
+ * @param out_params Output parameter structure (must be pre-allocated)
+ * @return NIMCP_SUCCESS on success
  */
-float neuron_type_get_refractory_period(neuron_type_extended_t type,
-                                         const neuron_type_params_t* params);
+nimcp_result_t neuron_type_get_default_params(neuron_type_t type,
+                                               neuron_type_params_t* out_params);
+
+/**
+ * @brief Validate type-specific parameters
+ *
+ * @param type Neuron type
+ * @param params Parameters to validate
+ * @return NIMCP_SUCCESS if valid, error code otherwise
+ */
+nimcp_result_t neuron_type_validate_params(neuron_type_t type,
+                                            const neuron_type_params_t* params);
+
+/**
+ * @brief Get human-readable name for neuron type
+ *
+ * @param type Neuron type
+ * @return String name (e.g., "V1 Simple Cell")
+ */
+const char* neuron_type_get_name(neuron_type_t type);
 
 /**
  * @brief Check if neuron type is excitatory
@@ -255,50 +510,10 @@ float neuron_type_get_refractory_period(neuron_type_extended_t type,
  * @param type Neuron type
  * @return true if excitatory, false if inhibitory
  *
- * DESIGN: Maps specialized types to E/I:
- * - Most specialized types are excitatory
- * - Interneurons (400-499) are inhibitory
- * - Motor Renshaw cells are inhibitory
+ * NOTE: Most specialized types are excitatory by default.
+ * Type-specific E/I balance can be configured per-neuron.
  */
-bool neuron_type_is_excitatory(neuron_type_extended_t type);
-
-/**
- * @brief Get human-readable type name
- *
- * @param type Neuron type
- * @return String name (e.g., "Visual Edge Detector")
- */
-const char* neuron_type_get_name(neuron_type_extended_t type);
-
-// ============================================================================
-// DEFAULT PARAMETERS
-// ============================================================================
-
-/**
- * @brief Get default parameters for a neuron type
- *
- * @param type Neuron type
- * @param out_params Output parameter structure
- *
- * @return NIMCP_SUCCESS on success
- */
-nimcp_result_t neuron_type_get_default_params(neuron_type_extended_t type,
-                                               neuron_type_params_t* out_params);
-
-// ============================================================================
-// VALIDATION
-// ============================================================================
-
-/**
- * @brief Validate type-specific parameters
- *
- * @param type Neuron type
- * @param params Parameters to validate
- *
- * @return NIMCP_SUCCESS if valid
- */
-nimcp_result_t neuron_type_validate_params(neuron_type_extended_t type,
-                                            const neuron_type_params_t* params);
+bool neuron_type_is_excitatory(neuron_type_t type);
 
 #ifdef __cplusplus
 }

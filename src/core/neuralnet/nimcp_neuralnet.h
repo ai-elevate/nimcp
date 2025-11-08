@@ -6,7 +6,12 @@
 #include <Python.h>  // Use CMake-provided Python includes
 #include "common/nimcp_export.h"
 #include "core/neuron_models/nimcp_neuron_model.h"
+#include "core/neuron_types/nimcp_neuron_types.h"  // Phase 8.7: Specialized neuron types
 #include "plasticity/stp/nimcp_stp.h"
+
+// Forward declare neuron_t so we can use it in function pointers before it's fully defined
+// NOTE: neuron_t is defined below as typedef struct { ... } neuron_t;
+typedef struct neuron_struct neuron_t;
 
 // Forward declarations for programmable synapse types (NIMCP 2.7)
 // WHY: Avoid circular dependency with synapse_compute.h
@@ -15,9 +20,9 @@
 struct synapse_compute_context_t;
 struct synapse_compute_state_t;
 
-// Forward declare neuron_t so we can use it in function pointers before it's fully defined
-// NOTE: neuron_t is defined below as typedef struct { ... } neuron_t;
-typedef struct neuron_struct neuron_t;
+// Phase 8.7: Include synapse type system
+// CRITICAL: Must come AFTER neuron_t forward declaration
+#include "core/synapse_types/nimcp_synapse_types.h"
 
 // Function pointer types for synapse computation (NIMCP 2.7)
 // DESIGN: Define types here so synapse_t can use them without including synapse_compute.h
@@ -79,13 +84,9 @@ extern "C" {
 #define NORM_THRESHOLD 1e-7f
 #define NORMALIZATION_INTERVAL 1000  // ms
 
-/**
- * @brief Neuron types for E/I balance
- */
-typedef enum {
-    NEURON_EXCITATORY, /**< Excitatory neuron */
-    NEURON_INHIBITORY  /**< Inhibitory neuron */
-} neuron_type_t;
+// Phase 8.7: neuron_type_t now defined in nimcp_neuron_types.h
+// This provides backward compatibility with NEURON_EXCITATORY/INHIBITORY
+// plus new specialized types (V1 simple/complex, A1 frequency-tuned, etc.)
 
 /**
  * @brief Learning rule types
@@ -170,8 +171,9 @@ typedef struct {
  * - NIMCP 2.0-2.5: Synapse = weight
  * - NIMCP 2.6: Synapse = weight + STP state
  * - NIMCP 2.7: Synapse = weight + STP + COMPUTATION
+ * - NIMCP 2.8.7 (Phase 8.7): Synapse = weight + STP + COMPUTATION + TYPE
  *
- * This makes synapses first-class computational units, not just connections.
+ * This makes synapses first-class computational units with biological type diversity.
  */
 typedef struct synapse_t {
     uint32_t target_id;    /**< Target neuron ID */
@@ -192,8 +194,14 @@ typedef struct synapse_t {
     synapse_learn_fn learn_function;      /**< Custom learning (NULL = default) */
     struct synapse_compute_state_t* compute_state; /**< Function-specific state (NULL = none) */
 
+    // Synapse type system (NIMCP 2.8.7 / Phase 8.7) - BIOLOGICAL DIVERSITY
+    synapse_type_t type;           /**< Synapse type (AMPA, NMDA, GABA-A, etc) */
+    synapse_type_state_t type_state; /**< Type-specific state (conductance, modulation, etc) */
+
     // PERFORMANCE NOTE: Function pointers add 24 bytes per synapse (on 64-bit)
-    // For 100K synapses: 2.4 MB overhead. Acceptable for the added power.
+    // Type system adds ~40 bytes per synapse (type enum + union state)
+    // For 100K synapses: 2.4 MB (functions) + 4.0 MB (types) = 6.4 MB overhead
+    // Total synapse size: ~150 bytes/synapse. Acceptable for biological realism.
 } synapse_t;
 
 /**
@@ -248,6 +256,10 @@ typedef struct neuron_struct {
     // Neuron model - Plugin architecture for LIF/Izhikevich/etc
     neuron_model_state_t model;  /**< Neuron dynamics model (NULL = legacy LIF) */
     neuron_model_type_t model_type; /**< Type of model being used */
+
+    // Phase 8.7: Type-specific parameters for specialized neurons
+    // Forward declaration from nimcp_neuron_types.h
+    void* type_params;  /**< Type-specific parameters (neuron_type_params_t*) */
 } neuron_t;
 
 /**
@@ -301,6 +313,25 @@ bool neural_network_forward(neural_network_t network, const float* inputs, uint3
 uint32_t neural_network_add_neuron(neural_network_t network, activation_type_t activation);
 bool neural_network_add_connection(neural_network_t network, uint32_t from_id, uint32_t to_id,
                                    float weight);
+
+/**
+ * @brief Add connection with specific synapse type (Phase 8.7)
+ *
+ * WHAT: Create synapse with biological type (AMPA, NMDA, GABA-A, etc)
+ * WHY: Enable biologically realistic synapse diversity
+ * HOW: Initialize synapse with type-specific parameters
+ *
+ * COMPLEXITY: O(1)
+ *
+ * @param network Neural network
+ * @param from_id Source neuron ID
+ * @param to_id Target neuron ID
+ * @param weight Initial synaptic weight
+ * @param type Synapse type (SYNAPSE_AMPA, SYNAPSE_NMDA, etc)
+ * @return true if successful, false on error
+ */
+bool neural_network_add_connection_typed(neural_network_t network, uint32_t from_id, uint32_t to_id,
+                                          float weight, synapse_type_t type);
 uint32_t neural_network_compute_step(neural_network_t network, uint64_t timestamp);
 
 // Learning and plasticity functions

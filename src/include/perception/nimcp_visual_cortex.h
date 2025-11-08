@@ -316,6 +316,12 @@ typedef struct {
     uint32_t feature_dim;       /**< Output feature dimensionality */
     bool enable_attention;      /**< Enable visual attention system */
     bool enable_memory;         /**< Enable visual memory storage */
+
+    // NIMCP 2.7 Phase 8.5: Fractal Topology Integration
+    bool enable_fractal_topology;  /**< Enable scale-free topology within V1 */
+    float hub_ratio;               /**< Fraction of hub neurons (0.1-0.2), default: 0.15 */
+    float power_law_gamma;         /**< Power-law exponent (-2 to -3), default: -2.1 */
+    uint32_t internal_neurons;     /**< Number of internal V1 neurons, default: num_v1_filters * 10 */
 } visual_cortex_config_t;
 
 /**

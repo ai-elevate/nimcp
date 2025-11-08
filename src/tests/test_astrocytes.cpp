@@ -48,7 +48,7 @@ protected:
 //=============================================================================
 
 TEST_F(AstrocyteTest, CreateDestroy) {
-    astrocyte_t* astro = astrocyte_create(0, 0.0f, 0.0f, 0.0f, 50.0f);
+    astrocyte_t* astro = astrocyte_create(0, ASTROCYTE_TYPE_GENERIC, 0.0f, 0.0f, 0.0f, 50.0f);
 
     ASSERT_NE(astro, nullptr);
     EXPECT_EQ(astro->id, 0);
@@ -61,7 +61,7 @@ TEST_F(AstrocyteTest, CreateDestroy) {
 }
 
 TEST_F(AstrocyteTest, CreateWithNullID) {
-    astrocyte_t* astro = astrocyte_create(42, 10.0f, 20.0f, 30.0f, 75.0f);
+    astrocyte_t* astro = astrocyte_create(42, ASTROCYTE_TYPE_GENERIC, 10.0f, 20.0f, 30.0f, 75.0f);
 
     ASSERT_NE(astro, nullptr);
     EXPECT_EQ(astro->id, 42);
@@ -89,7 +89,7 @@ TEST_F(AstrocyteTest, MultipleCreateDestroy) {
 //=============================================================================
 
 TEST_F(AstrocyteTest, CalciumDynamics_InitialState) {
-    astrocyte_t* astro = astrocyte_create(0, 0.0f, 0.0f, 0.0f, 50.0f);
+    astrocyte_t* astro = astrocyte_create(0, ASTROCYTE_TYPE_GENERIC, 0.0f, 0.0f, 0.0f, 50.0f);
 
     // Initial calcium should be at resting baseline (~0.1 µM)
     EXPECT_NEAR(astro->calcium_concentration, 0.1f, 0.05f);
@@ -100,7 +100,7 @@ TEST_F(AstrocyteTest, CalciumDynamics_InitialState) {
 }
 
 TEST_F(AstrocyteTest, CalciumDynamics_SpontaneousDecay) {
-    astrocyte_t* astro = astrocyte_create(0, 0.0f, 0.0f, 0.0f, 50.0f);
+    astrocyte_t* astro = astrocyte_create(0, ASTROCYTE_TYPE_GENERIC, 0.0f, 0.0f, 0.0f, 50.0f);
 
     // Elevate calcium
     astro->calcium_concentration = 5.0f;
@@ -119,7 +119,7 @@ TEST_F(AstrocyteTest, CalciumDynamics_SpontaneousDecay) {
 }
 
 TEST_F(AstrocyteTest, CalciumDynamics_ExternalStimulus) {
-    astrocyte_t* astro = astrocyte_create(0, 0.0f, 0.0f, 0.0f, 50.0f);
+    astrocyte_t* astro = astrocyte_create(0, ASTROCYTE_TYPE_GENERIC, 0.0f, 0.0f, 0.0f, 50.0f);
 
     float initial_ca = astro->calcium_concentration;
 
@@ -134,7 +134,7 @@ TEST_F(AstrocyteTest, CalciumDynamics_ExternalStimulus) {
 }
 
 TEST_F(AstrocyteTest, CalciumDynamics_IP3Production) {
-    astrocyte_t* astro = astrocyte_create(0, 0.0f, 0.0f, 0.0f, 50.0f);
+    astrocyte_t* astro = astrocyte_create(0, ASTROCYTE_TYPE_GENERIC, 0.0f, 0.0f, 0.0f, 50.0f);
 
     // Strong stimulus should generate IP3
     float dt = 0.001f;
@@ -146,7 +146,7 @@ TEST_F(AstrocyteTest, CalciumDynamics_IP3Production) {
 }
 
 TEST_F(AstrocyteTest, CalciumDynamics_SpikeDetection) {
-    astrocyte_t* astro = astrocyte_create(0, 0.0f, 0.0f, 0.0f, 50.0f);
+    astrocyte_t* astro = astrocyte_create(0, ASTROCYTE_TYPE_GENERIC, 0.0f, 0.0f, 0.0f, 50.0f);
 
     uint64_t initial_spike_time = astro->last_calcium_spike;
 
@@ -169,7 +169,7 @@ TEST_F(AstrocyteTest, CalciumDynamics_SpikeDetection) {
 //=============================================================================
 
 TEST_F(AstrocyteTest, CalciumWave_NoPropagationWithoutNetwork) {
-    astrocyte_t* astro = astrocyte_create(0, 0.0f, 0.0f, 0.0f, 50.0f);
+    astrocyte_t* astro = astrocyte_create(0, ASTROCYTE_TYPE_GENERIC, 0.0f, 0.0f, 0.0f, 50.0f);
 
     // Elevate calcium
     astro->calcium_concentration = 8.0f;
@@ -186,9 +186,9 @@ TEST_F(AstrocyteTest, CalciumWave_PropagationToNeighbors) {
     ASSERT_NE(network, nullptr);
 
     // Create 3 astrocytes in a line
-    astrocyte_t* astro0 = astrocyte_create(0, 0.0f, 0.0f, 0.0f, 50.0f);
-    astrocyte_t* astro1 = astrocyte_create(1, 100.0f, 0.0f, 0.0f, 50.0f);
-    astrocyte_t* astro2 = astrocyte_create(2, 200.0f, 0.0f, 0.0f, 50.0f);
+    astrocyte_t* astro0 = astrocyte_create(0, ASTROCYTE_TYPE_GENERIC, 0.0f, 0.0f, 0.0f, 50.0f);
+    astrocyte_t* astro1 = astrocyte_create(1, ASTROCYTE_TYPE_GENERIC, 100.0f, 0.0f, 0.0f, 50.0f);
+    astrocyte_t* astro2 = astrocyte_create(2, ASTROCYTE_TYPE_GENERIC, 200.0f, 0.0f, 0.0f, 50.0f);
 
     // Add to network
     astrocyte_network_add(network, astro0);
@@ -223,8 +223,8 @@ TEST_F(AstrocyteTest, CalciumWave_PropagationSpeed) {
     astrocyte_network_t* network = astrocyte_network_create(2);
 
     // Place astrocytes 50µm apart
-    astrocyte_t* astro0 = astrocyte_create(0, 0.0f, 0.0f, 0.0f, 50.0f);
-    astrocyte_t* astro1 = astrocyte_create(1, 50.0f, 0.0f, 0.0f, 50.0f);
+    astrocyte_t* astro0 = astrocyte_create(0, ASTROCYTE_TYPE_GENERIC, 0.0f, 0.0f, 0.0f, 50.0f);
+    astrocyte_t* astro1 = astrocyte_create(1, ASTROCYTE_TYPE_GENERIC, 50.0f, 0.0f, 0.0f, 50.0f);
 
     astrocyte_network_add(network, astro0);
     astrocyte_network_add(network, astro1);
@@ -258,7 +258,7 @@ TEST_F(AstrocyteTest, CalciumWave_PropagationSpeed) {
 //=============================================================================
 
 TEST_F(AstrocyteTest, GlutamateRelease_RestingState) {
-    astrocyte_t* astro = astrocyte_create(0, 0.0f, 0.0f, 0.0f, 50.0f);
+    astrocyte_t* astro = astrocyte_create(0, ASTROCYTE_TYPE_GENERIC, 0.0f, 0.0f, 0.0f, 50.0f);
 
     // Add a synapse
     astrocyte_assign_synapse(astro, 123);
@@ -273,7 +273,7 @@ TEST_F(AstrocyteTest, GlutamateRelease_RestingState) {
 }
 
 TEST_F(AstrocyteTest, GlutamateRelease_ElevatedCalcium) {
-    astrocyte_t* astro = astrocyte_create(0, 0.0f, 0.0f, 0.0f, 50.0f);
+    astrocyte_t* astro = astrocyte_create(0, ASTROCYTE_TYPE_GENERIC, 0.0f, 0.0f, 0.0f, 50.0f);
 
     astrocyte_assign_synapse(astro, 123);
 
@@ -289,7 +289,7 @@ TEST_F(AstrocyteTest, GlutamateRelease_ElevatedCalcium) {
 }
 
 TEST_F(AstrocyteTest, GlutamateRelease_DepletePool) {
-    astrocyte_t* astro = astrocyte_create(0, 0.0f, 0.0f, 0.0f, 50.0f);
+    astrocyte_t* astro = astrocyte_create(0, ASTROCYTE_TYPE_GENERIC, 0.0f, 0.0f, 0.0f, 50.0f);
 
     astrocyte_assign_synapse(astro, 123);
 
@@ -310,7 +310,7 @@ TEST_F(AstrocyteTest, GlutamateRelease_DepletePool) {
 }
 
 TEST_F(AstrocyteTest, DSerineRelease_CalciumDependent) {
-    astrocyte_t* astro = astrocyte_create(0, 0.0f, 0.0f, 0.0f, 50.0f);
+    astrocyte_t* astro = astrocyte_create(0, ASTROCYTE_TYPE_GENERIC, 0.0f, 0.0f, 0.0f, 50.0f);
 
     astrocyte_assign_synapse(astro, 123);
 
@@ -332,7 +332,7 @@ TEST_F(AstrocyteTest, DSerineRelease_CalciumDependent) {
 //=============================================================================
 
 TEST_F(AstrocyteTest, SynapticModulation_GlutamateEnhancement) {
-    astrocyte_t* astro = astrocyte_create(0, 0.0f, 0.0f, 0.0f, 50.0f);
+    astrocyte_t* astro = astrocyte_create(0, ASTROCYTE_TYPE_GENERIC, 0.0f, 0.0f, 0.0f, 50.0f);
 
     // Create mock synapse
     synapse_t synapse = {0};
@@ -356,7 +356,7 @@ TEST_F(AstrocyteTest, SynapticModulation_GlutamateEnhancement) {
 }
 
 TEST_F(AstrocyteTest, SynapticModulation_LocalCalciumMicrodomains) {
-    astrocyte_t* astro = astrocyte_create(0, 0.0f, 0.0f, 0.0f, 50.0f);
+    astrocyte_t* astro = astrocyte_create(0, ASTROCYTE_TYPE_GENERIC, 0.0f, 0.0f, 0.0f, 50.0f);
 
     // Assign multiple synapses
     for (uint32_t i = 0; i < 10; i++) {
@@ -378,7 +378,7 @@ TEST_F(AstrocyteTest, SynapticModulation_LocalCalciumMicrodomains) {
 //=============================================================================
 
 TEST_F(AstrocyteTest, HomeostaticScaling_BalancedActivity) {
-    astrocyte_t* astro = astrocyte_create(0, 0.0f, 0.0f, 0.0f, 50.0f);
+    astrocyte_t* astro = astrocyte_create(0, ASTROCYTE_TYPE_GENERIC, 0.0f, 0.0f, 0.0f, 50.0f);
 
     // Set target activity
     astro->target_activity_level = 0.5f;
@@ -394,7 +394,7 @@ TEST_F(AstrocyteTest, HomeostaticScaling_BalancedActivity) {
 }
 
 TEST_F(AstrocyteTest, HomeostaticScaling_HighActivity) {
-    astrocyte_t* astro = astrocyte_create(0, 0.0f, 0.0f, 0.0f, 50.0f);
+    astrocyte_t* astro = astrocyte_create(0, ASTROCYTE_TYPE_GENERIC, 0.0f, 0.0f, 0.0f, 50.0f);
 
     astro->target_activity_level = 0.3f;
 
@@ -410,7 +410,7 @@ TEST_F(AstrocyteTest, HomeostaticScaling_HighActivity) {
 }
 
 TEST_F(AstrocyteTest, HomeostaticScaling_LowActivity) {
-    astrocyte_t* astro = astrocyte_create(0, 0.0f, 0.0f, 0.0f, 50.0f);
+    astrocyte_t* astro = astrocyte_create(0, ASTROCYTE_TYPE_GENERIC, 0.0f, 0.0f, 0.0f, 50.0f);
 
     astro->target_activity_level = 0.5f;
 
@@ -430,7 +430,7 @@ TEST_F(AstrocyteTest, HomeostaticScaling_LowActivity) {
 //=============================================================================
 
 TEST_F(AstrocyteTest, BCMThresholdModulation_RestingCalcium) {
-    astrocyte_t* astro = astrocyte_create(0, 0.0f, 0.0f, 0.0f, 50.0f);
+    astrocyte_t* astro = astrocyte_create(0, ASTROCYTE_TYPE_GENERIC, 0.0f, 0.0f, 0.0f, 50.0f);
 
     float default_threshold = 0.5f;
     float modulated_threshold = astrocyte_compute_bcm_threshold_shift(astro, default_threshold);
@@ -442,7 +442,7 @@ TEST_F(AstrocyteTest, BCMThresholdModulation_RestingCalcium) {
 }
 
 TEST_F(AstrocyteTest, BCMThresholdModulation_ElevatedCalcium) {
-    astrocyte_t* astro = astrocyte_create(0, 0.0f, 0.0f, 0.0f, 50.0f);
+    astrocyte_t* astro = astrocyte_create(0, ASTROCYTE_TYPE_GENERIC, 0.0f, 0.0f, 0.0f, 50.0f);
 
     // Elevate calcium significantly
     astro->calcium_concentration = 7.0f;
@@ -461,7 +461,7 @@ TEST_F(AstrocyteTest, BCMThresholdModulation_ElevatedCalcium) {
 //=============================================================================
 
 TEST_F(AstrocyteTest, MetabolicSupport_ATPDepletion) {
-    astrocyte_t* astro = astrocyte_create(0, 0.0f, 0.0f, 0.0f, 50.0f);
+    astrocyte_t* astro = astrocyte_create(0, ASTROCYTE_TYPE_GENERIC, 0.0f, 0.0f, 0.0f, 50.0f);
 
     float initial_atp = astro->atp_level;
 
@@ -479,7 +479,7 @@ TEST_F(AstrocyteTest, MetabolicSupport_ATPDepletion) {
 }
 
 TEST_F(AstrocyteTest, MetabolicSupport_ATPRegeneration) {
-    astrocyte_t* astro = astrocyte_create(0, 0.0f, 0.0f, 0.0f, 50.0f);
+    astrocyte_t* astro = astrocyte_create(0, ASTROCYTE_TYPE_GENERIC, 0.0f, 0.0f, 0.0f, 50.0f);
 
     // Deplete ATP
     astro->atp_level = 0.2f;
@@ -558,9 +558,9 @@ TEST_F(AstrocyteTest, Network_SpatialIndexing) {
 TEST_F(AstrocyteTest, Network_GapJunctionCoupling) {
     astrocyte_network_t* network = astrocyte_network_create(3);
 
-    astrocyte_t* astro0 = astrocyte_create(0, 0.0f, 0.0f, 0.0f, 50.0f);
-    astrocyte_t* astro1 = astrocyte_create(1, 60.0f, 0.0f, 0.0f, 50.0f); // Within range
-    astrocyte_t* astro2 = astrocyte_create(2, 200.0f, 0.0f, 0.0f, 50.0f); // Far away
+    astrocyte_t* astro0 = astrocyte_create(0, ASTROCYTE_TYPE_GENERIC, 0.0f, 0.0f, 0.0f, 50.0f);
+    astrocyte_t* astro1 = astrocyte_create(1, ASTROCYTE_TYPE_GENERIC, 60.0f, 0.0f, 0.0f, 50.0f); // Within range
+    astrocyte_t* astro2 = astrocyte_create(2, ASTROCYTE_TYPE_GENERIC, 200.0f, 0.0f, 0.0f, 50.0f); // Far away
 
     astrocyte_network_add(network, astro0);
     astrocyte_network_add(network, astro1);
@@ -589,7 +589,7 @@ TEST_F(AstrocyteTest, Network_GapJunctionCoupling) {
 //=============================================================================
 
 TEST_F(AstrocyteTest, Performance_CalciumIntegration) {
-    astrocyte_t* astro = astrocyte_create(0, 0.0f, 0.0f, 0.0f, 50.0f);
+    astrocyte_t* astro = astrocyte_create(0, ASTROCYTE_TYPE_GENERIC, 0.0f, 0.0f, 0.0f, 50.0f);
 
     uint64_t start = nimcp_time_monotonic_us();
 
@@ -643,7 +643,7 @@ TEST_F(AstrocyteTest, Performance_NetworkStep) {
 //=============================================================================
 
 TEST_F(AstrocyteTest, ThreadSafety_ConcurrentCalciumUpdates) {
-    astrocyte_t* astro = astrocyte_create(0, 0.0f, 0.0f, 0.0f, 50.0f);
+    astrocyte_t* astro = astrocyte_create(0, ASTROCYTE_TYPE_GENERIC, 0.0f, 0.0f, 0.0f, 50.0f);
 
     // Concurrent updates from multiple threads
     // (Full implementation would use pthread or C++11 threads)
@@ -668,7 +668,7 @@ TEST_F(AstrocyteTest, EdgeCase_NullPointerHandling) {
 }
 
 TEST_F(AstrocyteTest, EdgeCase_ZeroCoverageRadius) {
-    astrocyte_t* astro = astrocyte_create(0, 0.0f, 0.0f, 0.0f, 0.0f);
+    astrocyte_t* astro = astrocyte_create(0, ASTROCYTE_TYPE_GENERIC, 0.0f, 0.0f, 0.0f, 0.0f);
 
     ASSERT_NE(astro, nullptr);
     // Should handle zero radius gracefully
@@ -678,7 +678,7 @@ TEST_F(AstrocyteTest, EdgeCase_ZeroCoverageRadius) {
 }
 
 TEST_F(AstrocyteTest, EdgeCase_NegativeTimestep) {
-    astrocyte_t* astro = astrocyte_create(0, 0.0f, 0.0f, 0.0f, 50.0f);
+    astrocyte_t* astro = astrocyte_create(0, ASTROCYTE_TYPE_GENERIC, 0.0f, 0.0f, 0.0f, 50.0f);
 
     float initial_ca = astro->calcium_concentration;
 
@@ -693,7 +693,7 @@ TEST_F(AstrocyteTest, EdgeCase_NegativeTimestep) {
 }
 
 TEST_F(AstrocyteTest, EdgeCase_ExtremeCalciumLevels) {
-    astrocyte_t* astro = astrocyte_create(0, 0.0f, 0.0f, 0.0f, 50.0f);
+    astrocyte_t* astro = astrocyte_create(0, ASTROCYTE_TYPE_GENERIC, 0.0f, 0.0f, 0.0f, 50.0f);
 
     // Set extreme calcium
     astro->calcium_concentration = 1000.0f;

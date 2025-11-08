@@ -637,6 +637,46 @@ visual_cortex_t* visual_cortex_create(const visual_cortex_config_t* config)
         cortex->feature_weights[i] = ((float)rand() / RAND_MAX - 0.5f) * 0.01f;
     }
 
+    // NIMCP 2.7 Phase 8.5: Fractal Topology Integration (Future Enhancement)
+    // TODO: Add internal recurrent network with scale-free topology
+    //
+    // WHAT: Internal spiking network for recurrent V1 processing
+    // WHY:  Enable temporal integration, feedback, and attention modulation
+    // HOW:  Create neural_network with config->internal_neurons neurons,
+    //       apply topology_generate_scale_free() with configured parameters
+    //
+    // BIOLOGICAL MOTIVATION:
+    // While V1's feedforward structure (CNN) is innate, recurrent connections
+    // within V1 (horizontal connections, feedback from V2/V4) are extensive and
+    // exhibit scale-free properties. This internal network would model:
+    // - Horizontal connections for contour integration
+    // - Feedback modulation for attention and expectation
+    // - Temporal integration for motion processing
+    //
+    // IMPLEMENTATION PLAN:
+    // if (config->enable_fractal_topology && config->internal_neurons > 0) {
+    //     // Create internal recurrent network
+    //     cortex->internal_network = neural_network_create(config->internal_neurons);
+    //
+    //     // Generate scale-free topology
+    //     scale_free_config_t topo_config = {
+    //         .power_law_gamma = config->power_law_gamma,
+    //         .hub_ratio = config->hub_ratio,
+    //         .min_degree = 2,
+    //         .max_degree = config->internal_neurons / 10,
+    //         .spatial_constraint = 0.5f,  // V1 has spatial organization
+    //         .bidirectional = false
+    //     };
+    //     topology_stats_t stats;
+    //     topology_generate_scale_free(cortex->internal_network, &topo_config, &stats);
+    //
+    //     NIMCP_LOGGING_INFO("V1 internal network: %u neurons, %u synapses, %.2f avg degree",
+    //                        stats.num_neurons, stats.num_synapses, stats.avg_degree);
+    // }
+    //
+    // This enhancement deferred to Phase 8.7 (Specialized Neuron Types) to avoid
+    // scope creep. Configuration is in place and ready for future implementation.
+
     return cortex;
 }
 

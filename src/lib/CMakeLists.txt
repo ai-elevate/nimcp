@@ -19,6 +19,9 @@ set(NIMCP_CORE_SOURCES
     # Synapse computation - NIMCP 2.7 MAJOR FEATURE
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/synapse_compute/nimcp_synapse_compute.c
 
+    # Synapse type system - NIMCP 2.8.7 (Phase 8.7) - BIOLOGICAL DIVERSITY
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/synapse_types/nimcp_synapse_types.c
+
     # Fractal Topology - NIMCP 2.7 (scale-free networks)
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/topology/nimcp_fractal_topology.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/topology/nimcp_network_builder.c
@@ -51,6 +54,7 @@ set(NIMCP_CORE_SOURCES
 
     # Glial cells
     ${CMAKE_CURRENT_SOURCE_DIR}/../glial/astrocytes/nimcp_astrocytes.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../glial/astrocyte_types/nimcp_astrocyte_types.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../glial/oligodendrocytes/nimcp_oligodendrocytes.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../glial/microglia/nimcp_microglia.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../glial/integration/nimcp_glial_integration.c
@@ -106,6 +110,7 @@ set(NIMCP_CORE_SOURCES
     # Perception
     ${CMAKE_CURRENT_SOURCE_DIR}/perception/nimcp_visual_cortex.c
     ${CMAKE_CURRENT_SOURCE_DIR}/perception/nimcp_audio_cortex.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/perception/nimcp_speech_cortex.c
 
     # GPU Support (CPU fallback when CUDA unavailable)
     ${CMAKE_CURRENT_SOURCE_DIR}/../gpu/execution/nimcp_execution_mode.c

@@ -55,11 +55,13 @@ typedef enum {
 typedef struct {
     uint32_t visual_dim;      /**< Visual feature dimension (0 = disabled) */
     uint32_t audio_dim;       /**< Audio feature dimension (0 = disabled) */
+    uint32_t speech_dim;      /**< Speech feature dimension (0 = disabled) - Phase 8.8 */
     uint32_t direct_dim;      /**< Direct input dimension (0 = disabled) */
     uint32_t output_dim;      /**< Output dimension (network input size) */
     integration_method_t method; /**< Integration method */
     float visual_weight;      /**< Visual modality weight (0-1) */
     float audio_weight;       /**< Audio modality weight (0-1) */
+    float speech_weight;      /**< Speech modality weight (0-1) - Phase 8.8 */
     float direct_weight;      /**< Direct input weight (0-1) */
 } multimodal_config_t;
 
@@ -75,6 +77,8 @@ typedef struct {
     uint32_t visual_dim;      /**< Visual dimension */
     float* audio_features;    /**< Audio features (can be NULL) */
     uint32_t audio_dim;       /**< Audio dimension */
+    float* speech_features;   /**< Speech features (can be NULL) - Phase 8.8 */
+    uint32_t speech_dim;      /**< Speech dimension */
     float* direct_features;   /**< Direct features (can be NULL) */
     uint32_t direct_dim;      /**< Direct dimension */
     uint64_t timestamp;       /**< Timestamp for temporal alignment */
@@ -88,6 +92,7 @@ typedef struct {
     uint32_t integrated_dim;    /**< Output dimension */
     float visual_attention;     /**< Learned visual attention weight */
     float audio_attention;      /**< Learned audio attention weight */
+    float speech_attention;     /**< Learned speech attention weight - Phase 8.8 */
     float direct_attention;     /**< Learned direct attention weight */
 } multimodal_output_t;
 
@@ -168,6 +173,7 @@ bool multimodal_integrate(
  * @param integration Integration handle
  * @param visual_attn Output: visual attention weight
  * @param audio_attn Output: audio attention weight
+ * @param speech_attn Output: speech attention weight (Phase 8.8)
  * @param direct_attn Output: direct attention weight
  * @return true on success
  */
@@ -175,6 +181,7 @@ bool multimodal_get_attention(
     const multimodal_integration_t integration,
     float* visual_attn,
     float* audio_attn,
+    float* speech_attn,
     float* direct_attn
 );
 
@@ -204,12 +211,14 @@ bool multimodal_update_weights(
  *
  * @param visual_dim Visual dimension
  * @param audio_dim Audio dimension
+ * @param speech_dim Speech dimension (Phase 8.8)
  * @param direct_dim Direct dimension
  * @return Default configuration
  */
 multimodal_config_t multimodal_default_config(
     uint32_t visual_dim,
     uint32_t audio_dim,
+    uint32_t speech_dim,
     uint32_t direct_dim
 );
 

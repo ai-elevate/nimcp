@@ -37,6 +37,7 @@ extern "C" {
 #include "utils/validation/nimcp_common.h"
 #include "core/neuralnet/nimcp_neuralnet.h"
 #include "utils/thread/nimcp_thread.h"
+#include "glial/astrocyte_types/nimcp_astrocyte_types.h"
 
 //=============================================================================
 // Constants
@@ -76,9 +77,10 @@ typedef struct astrocyte_network_t astrocyte_network_t;
  * - Warm path: glutamate_pool, d_serine_pool, atp_level
  * - Cold path: position, coupling data (infrequently accessed)
  */
-typedef struct {
+typedef struct astrocyte_t {
     // === IDENTITY ===
     uint32_t id;                        /**< Unique astrocyte identifier */
+    astrocyte_type_t type;              /**< Astrocyte type (Phase 8.7) */
 
     // === CALCIUM DYNAMICS (HOT PATH) ===
     float calcium_concentration;        /**< [Ca2+]i in µM (0.1-10.0) */
@@ -148,11 +150,12 @@ struct astrocyte_network_t {
 /**
  * @brief Create an astrocyte
  *
- * WHAT: Allocates and initializes an astrocyte with given spatial location
+ * WHAT: Allocates and initializes an astrocyte with given spatial location and type
  * WHY:  Astrocytes need spatial positioning for coverage and coupling
- * HOW:  Allocates memory, sets position, initializes calcium to baseline
+ * HOW:  Allocates memory, sets position, type, initializes calcium to baseline
  *
  * @param id Unique astrocyte identifier
+ * @param type Astrocyte type (Phase 8.7: regional specialization)
  * @param x X position in µm
  * @param y Y position in µm
  * @param z Z position in µm
@@ -162,7 +165,7 @@ struct astrocyte_network_t {
  * COMPLEXITY: O(1)
  * THREAD-SAFE: Yes (allocates independent memory)
  */
-astrocyte_t* astrocyte_create(uint32_t id, float x, float y, float z, float coverage_radius);
+astrocyte_t* astrocyte_create(uint32_t id, astrocyte_type_t type, float x, float y, float z, float coverage_radius);
 
 /**
  * @brief Destroy an astrocyte

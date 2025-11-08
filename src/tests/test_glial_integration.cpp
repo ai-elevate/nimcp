@@ -51,7 +51,7 @@ protected:
 
         // Add some glial cells
         for (uint32_t i = 0; i < 3; i++) {
-            astrocyte_t* ast = astrocyte_create(i, i * 100.0f, 0.0f, 0.0f, 50.0f);
+            astrocyte_t* ast = astrocyte_create(i, ASTROCYTE_TYPE_GENERIC, i * 100.0f, 0.0f, 0.0f, 50.0f);
             ASSERT_NE(ast, nullptr);
             astrocyte_network_add(astrocyte_net, ast);
 

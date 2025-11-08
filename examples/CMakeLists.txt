@@ -80,6 +80,16 @@ add_executable(multimodal_integration_demo multimodal_integration_demo.c)
 target_link_libraries(multimodal_integration_demo nimcp m)
 target_include_directories(multimodal_integration_demo PRIVATE ${NIMCP_INCLUDE_DIR})
 
+# NIMCP 2.7 Phase 8.8 - Speech Cortex Demo (phoneme recognition, prosody, lexical access)
+add_executable(speech_cortex_demo speech_cortex_demo.c)
+target_link_libraries(speech_cortex_demo nimcp m)
+target_include_directories(speech_cortex_demo PRIVATE ${NIMCP_INCLUDE_DIR})
+
+# NIMCP 2.7 Phase 8.8 - Comprehensive Demo (ALL features: visual+audio+speech+direct+fractal+pink noise)
+add_executable(phase8_comprehensive_demo phase8_comprehensive_demo.c)
+target_link_libraries(phase8_comprehensive_demo nimcp m)
+target_include_directories(phase8_comprehensive_demo PRIVATE ${NIMCP_INCLUDE_DIR})
+
 # GPU Integration Test - GPU neuron API with CPU fallback
 add_executable(gpu_integration_test gpu_integration_test.c)
 target_link_libraries(gpu_integration_test nimcp m)
