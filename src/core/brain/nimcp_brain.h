@@ -769,6 +769,15 @@ typedef struct {
     bool ethical_approved;       /**< Passed ethical review */
     float novelty_score;         /**< Input novelty [0,1] */
 
+    // Epistemic filtering (Phase 9.2: Bias Prevention)
+    float epistemic_quality;     /**< Evidence quality [0,1] */
+    float skepticism_score;      /**< Applied skepticism [0,1] */
+    float credibility_score;     /**< Claim credibility [0,1] */
+    float conspiracy_score;      /**< Conspiracy pattern detection [0,1] */
+    bool bias_detected;          /**< Cognitive bias detected */
+    bool requires_verification;  /**< Needs further verification */
+    char epistemic_reasoning[256]; /**< Explanation of epistemic assessment */
+
     // Attention breakdown
     float visual_attention;      /**< Visual modality weight [0,1] */
     float audio_attention;       /**< Audio modality weight [0,1] */

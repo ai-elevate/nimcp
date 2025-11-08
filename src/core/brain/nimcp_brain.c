@@ -48,6 +48,7 @@
 #include "cognitive/consolidation/nimcp_consolidation.h"
 #include "cognitive/curiosity/nimcp_curiosity.h"
 #include "cognitive/knowledge/nimcp_knowledge.h"
+#include "cognitive/epistemic/nimcp_epistemic_filter.h"  // Phase 9.2: Bias prevention
 #include "plasticity/neuromodulators/nimcp_neuromod_pink_noise.h"
 #include "core/neuron_types/nimcp_neural_logic.h"
 
@@ -124,6 +125,7 @@ struct brain_struct {
     curiosity_engine_t curiosity;                // Exploration (already pointer type*)
     knowledge_system_t knowledge;                // Multi-domain knowledge (already pointer type*)
     neural_logic_network_t logic;                // Phase 9.0: Neural logic gates (spiking logic, GPU-accelerated)
+    epistemic_filter_t epistemic;                // Phase 9.2: Epistemic filtering (bias prevention, skepticism)
 
     // Advanced Plasticity
     neuromod_pink_noise_t* pink_noise;           // Pink noise neuromodulation (struct type, needs *)
@@ -1209,6 +1211,48 @@ static bool init_symbolic_logic_subsystem(brain_t brain)
 }
 
 /**
+ * @brief Initialize epistemic filtering subsystem (Phase 9.2)
+ *
+ * WHAT: Creates epistemic filter for cognitive bias prevention
+ * WHY:  Prevents conspiracy-theory thinking and cognitive biases
+ * HOW:  Applies skepticism, evidence evaluation, bias detection
+ *
+ * @param brain Brain to initialize
+ * @return true on success, false on error
+ */
+static bool init_epistemic_subsystem(brain_t brain)
+{
+    if (!brain) {
+        return false;
+    }
+
+    // Check if already initialized
+    if (brain->epistemic) {
+        return true;  // Already initialized
+    }
+
+    // Epistemic filtering is recommended for all brains to prevent
+    // accepting unproven information or developing biased reasoning
+
+    // Skepticism level:
+    // 0.0 = credulous (accepts most claims)
+    // 0.5 = balanced (reasonable skepticism)
+    // 0.7 = cautious (requires strong evidence)
+    // 1.0 = extreme skeptic (rejects almost everything)
+    //
+    // We default to 0.6 (cautious but not paranoid)
+    float skepticism_level = 0.6f;
+
+    brain->epistemic = epistemic_filter_create(skepticism_level);
+    if (!brain->epistemic) {
+        set_error("Failed to create epistemic filter");
+        return false;
+    }
+
+    return true;
+}
+
+/**
  * @brief Create brain with preset size and task
  *
  * WHY: Factory pattern - single creation entry point
@@ -1394,6 +1438,12 @@ brain_t brain_create_custom(const brain_config_t* config)
         return NULL;
     }
 
+    // Phase 9.2: Initialize epistemic filtering (bias prevention and skepticism)
+    if (!init_epistemic_subsystem(brain)) {
+        brain_destroy(brain);
+        return NULL;
+    }
+
     return brain;
 }
 
@@ -1481,6 +1531,11 @@ void brain_destroy(brain_t brain)
     // Phase 9.0: Cleanup neural logic network
     if (brain->logic) {
         neural_logic_destroy(brain->logic);
+    }
+
+    // Phase 9.2: Cleanup epistemic filter
+    if (brain->epistemic) {
+        epistemic_filter_destroy(brain->epistemic);
     }
 
     clear_cache(brain);

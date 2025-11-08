@@ -46,6 +46,7 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/consolidation/nimcp_consolidation.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/salience/nimcp_salience.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/logic/nimcp_symbolic_logic.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/epistemic/nimcp_epistemic_filter.c  # Phase 9.2: Bias prevention
     ${CMAKE_CURRENT_SOURCE_DIR}/cognitive/nimcp_hierarchical.c
 
     # Plasticity mechanisms
