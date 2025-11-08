@@ -135,6 +135,13 @@ add_nimcp_test_binary(pink_noise_tests
 )
 
 # ============================================================================
+# TEST BINARY 3.8: Epistemic Filter Tests (fast) - Phase 9.2
+# ============================================================================
+add_nimcp_test_binary(epistemic_filter_tests
+    epistemic_filter_tests.cpp
+)
+
+# ============================================================================
 # TEST BINARY 4: Cognitive & Higher-Level Tests (medium speed)
 # ============================================================================
 add_nimcp_test_binary(cognitive_tests
@@ -147,6 +154,7 @@ add_nimcp_test_binary(cognitive_tests
     test_wellbeing.cpp
     test_symbolic_logic.cpp
     test_hierarchical.cpp
+    epistemic_filter_tests.cpp  # Phase 9.2: Bias prevention tests
 )
 
 # ============================================================================

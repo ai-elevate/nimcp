@@ -10,11 +10,41 @@
 #include <ctype.h>
 
 //=============================================================================
-// Internal Structures
+// Configuration Constants
 //=============================================================================
 
 #define MAX_SOURCES 256
 #define MAX_CLAIM_PATTERNS 32
+#define MAX_TEXT_LENGTH 100000  // Maximum text length to analyze (100KB)
+
+// Skepticism thresholds
+#define SKEPTICISM_DEFAULT 0.6f
+#define SKEPTICISM_MIN 0.0f
+#define SKEPTICISM_MAX 1.0f
+
+// Conspiracy pattern weights
+#define CONSPIRACY_WEIGHT_NARRATIVE 0.25f
+#define CONSPIRACY_WEIGHT_UNFALSIFIABLE 0.3f
+#define CONSPIRACY_WEIGHT_PATTERN_SEEKING 0.2f
+#define CONSPIRACY_WEIGHT_MAINSTREAM_REJECTION 0.25f
+#define CONSPIRACY_WEIGHT_AD_HOC 0.15f
+#define CONSPIRACY_WEIGHT_CERTAINTY 0.1f
+
+// Bias detection thresholds
+#define BIAS_THRESHOLD_DUNNING_KRUGER 0.5f
+#define BIAS_THRESHOLD_CONFIRMATION 0.5f
+#define BIAS_THRESHOLD_BANDWAGON 0.5f
+
+// Evidence weights
+#define EVIDENCE_WEIGHT_SAGAN 0.35f
+#define EVIDENCE_WEIGHT_SOURCE 0.25f
+#define EVIDENCE_WEIGHT_CONSENSUS 0.25f
+#define EVIDENCE_WEIGHT_LOGIC 0.25f
+
+// Acceptance thresholds
+#define ACCEPTANCE_THRESHOLD_DEFAULT 0.6f
+#define ACCEPTANCE_THRESHOLD_EXTRAORDINARY 0.8f
+#define ACCEPTANCE_THRESHOLD_IMPOSSIBLE 0.85f
 
 /**
  * @brief Epistemic filter engine structure
@@ -46,16 +76,23 @@ struct epistemic_filter_struct {
 static float detect_conspiracy_patterns(const char* text) {
     if (!text) return 0.0f;
 
+    // Validate text length
+    size_t text_len = strnlen(text, MAX_TEXT_LENGTH + 1);
+    if (text_len > MAX_TEXT_LENGTH) {
+        return 0.0f;  // Reject suspiciously long text
+    }
+
     float conspiracy_score = 0.0f;
     uint32_t pattern_count = 0;
 
-    // Convert to lowercase for pattern matching
-    char* lower_text = strdup(text);
+    // Convert to lowercase for pattern matching (bounded)
+    char* lower_text = malloc(text_len + 1);
     if (!lower_text) return 0.0f;
 
-    for (size_t i = 0; lower_text[i]; i++) {
-        lower_text[i] = tolower(lower_text[i]);
+    for (size_t i = 0; i < text_len; i++) {
+        lower_text[i] = tolower((unsigned char)text[i]);
     }
+    lower_text[text_len] = '\0';
 
     // Pattern 1: "They don't want you to know" narratives
     if (strstr(lower_text, "they don't want") ||
@@ -63,7 +100,7 @@ static float detect_conspiracy_patterns(const char* text) {
         strstr(lower_text, "cover up") ||
         strstr(lower_text, "wake up") ||
         strstr(lower_text, "do your own research")) {
-        conspiracy_score += 0.25f;
+        conspiracy_score += CONSPIRACY_WEIGHT_NARRATIVE;
         pattern_count++;
     }
 
@@ -71,7 +108,7 @@ static float detect_conspiracy_patterns(const char* text) {
     if (strstr(lower_text, "can't prove it didn't") ||
         strstr(lower_text, "absence of evidence") ||
         strstr(lower_text, "you can't disprove")) {
-        conspiracy_score += 0.2f;
+        conspiracy_score += CONSPIRACY_WEIGHT_PATTERN_SEEKING;
         pattern_count++;
     }
 
@@ -79,7 +116,7 @@ static float detect_conspiracy_patterns(const char* text) {
     if (strstr(lower_text, "it's all connected") ||
         strstr(lower_text, "no coincidence") ||
         strstr(lower_text, "connect the dots")) {
-        conspiracy_score += 0.2f;
+        conspiracy_score += CONSPIRACY_WEIGHT_PATTERN_SEEKING;
         pattern_count++;
     }
 
@@ -88,7 +125,7 @@ static float detect_conspiracy_patterns(const char* text) {
         strstr(lower_text, "msm lies") ||
         strstr(lower_text, "fake news") ||
         strstr(lower_text, "sheeple")) {
-        conspiracy_score += 0.25f;
+        conspiracy_score += CONSPIRACY_WEIGHT_MAINSTREAM_REJECTION;
         pattern_count++;
     }
 
@@ -96,7 +133,7 @@ static float detect_conspiracy_patterns(const char* text) {
     if (strstr(lower_text, "actually means") ||
         strstr(lower_text, "real reason") ||
         strstr(lower_text, "what they're really")) {
-        conspiracy_score += 0.15f;
+        conspiracy_score += CONSPIRACY_WEIGHT_AD_HOC;
         pattern_count++;
     }
 
@@ -104,7 +141,7 @@ static float detect_conspiracy_patterns(const char* text) {
     if (strstr(lower_text, "obviously") ||
         strstr(lower_text, "clearly") ||
         strstr(lower_text, "everyone knows")) {
-        conspiracy_score += 0.1f;
+        conspiracy_score += CONSPIRACY_WEIGHT_CERTAINTY;
         pattern_count++;
     }
 
@@ -344,6 +381,19 @@ uint32_t epistemic_detect_biases(
         float evidence_quality = reasoning_features[1];
         float prior_belief = reasoning_features[2];
 
+        // Build temporary evidence structure for bias detection
+        claim_evidence_t temp_evidence;
+        epistemic_evidence_init(&temp_evidence);
+        temp_evidence.evidence_quality = (evidence_quality_t)(int)(evidence_quality * (EVIDENCE_CONSENSUS + 1));
+
+        if (num_features >= 4) {
+            temp_evidence.num_sources = (uint32_t)reasoning_features[3];
+        }
+        if (num_features >= 5) {
+            temp_evidence.public_consensus = reasoning_features[4];
+        }
+        temp_evidence.evidence_strength = evidence_quality;
+
         // Detect Dunning-Kruger
         float dk_score = detect_dunning_kruger(confidence, evidence_quality);
         if (dk_score > 0.5f && bias_count < max_biases) {
@@ -355,6 +405,34 @@ uint32_t epistemic_detect_biases(
                      confidence * 100.0f, evidence_quality * 100.0f);
             bias_count++;
             filter->biases_detected++;
+        }
+
+        // Detect Confirmation Bias
+        float conf_bias_score = detect_confirmation_bias(&temp_evidence, prior_belief);
+        if (conf_bias_score > 0.4f && bias_count < max_biases) {
+            biases[bias_count].bias_type = BIAS_CONFIRMATION;
+            biases[bias_count].confidence = conf_bias_score;
+            biases[bias_count].severity = conf_bias_score;
+            snprintf(biases[bias_count].description, sizeof(biases[bias_count].description),
+                     "High prior belief (%.0f%%) with limited sources (%d) suggests confirmation bias",
+                     prior_belief * 100.0f, temp_evidence.num_sources);
+            bias_count++;
+            filter->biases_detected++;
+        }
+
+        // Detect Bandwagon Effect
+        if (num_features >= 5) {
+            float bandwagon_score = detect_bandwagon_effect(&temp_evidence);
+            if (bandwagon_score > 0.4f && bias_count < max_biases) {
+                biases[bias_count].bias_type = BIAS_BANDWAGON;
+                biases[bias_count].confidence = bandwagon_score;
+                biases[bias_count].severity = bandwagon_score;
+                snprintf(biases[bias_count].description, sizeof(biases[bias_count].description),
+                         "High public consensus (%.0f%%) with low evidence quality suggests bandwagon effect",
+                         temp_evidence.public_consensus * 100.0f);
+                bias_count++;
+                filter->biases_detected++;
+            }
         }
     }
 
