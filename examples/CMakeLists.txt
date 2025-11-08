@@ -35,12 +35,22 @@ add_executable(izhikevich_demo izhikevich_demo.c)
 target_link_libraries(izhikevich_demo nimcp m)
 target_include_directories(izhikevich_demo PRIVATE ${NIMCP_INCLUDE_DIR})
 
+# NIMCP 2.7 Programmable Synapses Demo (MAJOR FEATURE)
+add_executable(programmable_synapses_demo programmable_synapses_demo.c)
+target_link_libraries(programmable_synapses_demo nimcp m)
+target_include_directories(programmable_synapses_demo PRIVATE ${NIMCP_INCLUDE_DIR})
+
+# NIMCP 2.7 NLP Integration Test (Synapses + Attention + Neuromodulation)
+add_executable(nlp_integration_test nlp_integration_test.c)
+target_link_libraries(nlp_integration_test nimcp m)
+target_include_directories(nlp_integration_test PRIVATE ${NIMCP_INCLUDE_DIR})
+
 # GPU Integration Test - Requires GPU neuron API (coming in Phase 2.7)
 # add_executable(gpu_integration_test gpu_integration_test.c)
 # target_link_libraries(gpu_integration_test nimcp)
 # target_include_directories(gpu_integration_test PRIVATE ${NIMCP_INCLUDE_DIR})
 
 # Install examples
-install(TARGETS event_demo brain_demo ethics_demo infant_demo integrated_demo brain_probe_demo izhikevich_demo
+install(TARGETS event_demo brain_demo ethics_demo infant_demo integrated_demo brain_probe_demo izhikevich_demo programmable_synapses_demo nlp_integration_test
     RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}/examples
 )

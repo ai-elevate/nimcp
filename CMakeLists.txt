@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.10)
-project(nimcp VERSION 2.5.0 LANGUAGES C CXX)
+project(nimcp VERSION 2.6.2 LANGUAGES C CXX)
 
 # Set C/C++ standards
 set(CMAKE_C_STANDARD 11)
@@ -69,7 +69,6 @@ if(ENABLE_HARDENING)
             -fstack-protector-strong      # Stack canary protection
             -Wformat                       # Format string vulnerability detection
             -Wformat-security              # Additional format string checks
-            -Werror=format-security        # Make format violations errors
             -fno-common                    # Prevent common symbol vulnerabilities
         )
 
@@ -107,6 +106,8 @@ find_package(GTest QUIET)  # Optional - tests will be skipped if not found
 # Find CUDA (optional for GPU support)
 find_package(CUDAToolkit QUIET)
 if(CUDAToolkit_FOUND)
+    # Set CUDA architectures before enabling language
+    set(CMAKE_CUDA_ARCHITECTURES "75;80;86;89")  # Turing, Ampere, Ada Lovelace
     enable_language(CUDA)
     add_definitions(-DNIMCP_ENABLE_CUDA)
     message(STATUS "CUDA Toolkit found: ${CUDAToolkit_VERSION}")

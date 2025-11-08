@@ -13,6 +13,12 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/neuron_models/nimcp_neuron_model.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/neuron_models/nimcp_izhikevich.c
 
+    # Synapse computation - NIMCP 2.7 MAJOR FEATURE
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/synapse_compute/nimcp_synapse_compute.c
+
+    # NLP Integration - NIMCP 2.7 (combines synapses + attention + neuromodulation)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../nlp/nimcp_nlp.c
+
     # Cognitive functions
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/ethics/nimcp_ethics.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/knowledge/nimcp_knowledge.c
@@ -93,6 +99,12 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../gpu/execution/nimcp_execution_mode.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../gpu/spike_event/nimcp_spike_event.c
 
+    # GPU CUDA kernels (only compiled if CUDA is available)
+    $<$<BOOL:${CUDAToolkit_FOUND}>:${CMAKE_CURRENT_SOURCE_DIR}/../gpu/neuron/nimcp_gpu_kernels.cu>
+    $<$<BOOL:${CUDAToolkit_FOUND}>:${CMAKE_CURRENT_SOURCE_DIR}/../gpu/synapse_compute/nimcp_synapse_compute_gpu.cu>
+
+    # Note: CUDA compile flags set below per-file
+
     # Python bindings
     ${CMAKE_SOURCE_DIR}/src/python/nimcp_module.c
     ${CMAKE_SOURCE_DIR}/src/python/nimcp_types.c
@@ -119,6 +131,23 @@ target_include_directories(nimcp
 # Add CUDA include directories if available
 if(CUDAToolkit_FOUND)
     target_include_directories(nimcp PRIVATE ${CUDAToolkit_INCLUDE_DIRS})
+
+    # Set CUDA properties
+    set_target_properties(nimcp PROPERTIES
+        CUDA_SEPARABLE_COMPILATION ON
+        CUDA_STANDARD 14
+        CUDA_ARCHITECTURES "75;80;86;89"  # Turing, Ampere, Ada Lovelace
+    )
+
+    # NVCC doesn't support some GCC flags - set per-file compile options
+    # Reset incompatible flags and add only nvcc-compatible ones
+    set_source_files_properties(
+        ${CMAKE_CURRENT_SOURCE_DIR}/../gpu/neuron/nimcp_gpu_kernels.cu
+        ${CMAKE_CURRENT_SOURCE_DIR}/../gpu/synapse_compute/nimcp_synapse_compute_gpu.cu
+        PROPERTIES
+        COMPILE_OPTIONS "--expt-relaxed-constexpr;-Xcompiler=-fPIC,-fstack-protector-strong,-Wformat,-Wformat-security,-fno-common"
+        COMPILE_FLAGS ""
+    )
 endif()
 
 # Add libsodium include directories if available
