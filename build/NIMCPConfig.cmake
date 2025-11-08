@@ -26,7 +26,7 @@ endmacro()
 
 ####################################################################################
 
-set(NIMCP_VERSION "2.5.0")
+set(NIMCP_VERSION "2.6.2")
 
 # Import targets
 include("${CMAKE_CURRENT_LIST_DIR}/NIMCPTargets.cmake")

@@ -1,22 +1,28 @@
 # CMake generated Testfile for 
-# Source directory: /home/bbrelin/src/repos/nimcp/src/tests
-# Build directory: /home/bbrelin/src/repos/nimcp/build/src/tests
+# Source directory: /home/bbrelin/nimcp/src/tests
+# Build directory: /home/bbrelin/nimcp/build/src/tests
 # 
 # This file includes the relevant testing commands required for 
 # testing this directory and lists subdirectories to be tested as well.
-add_test(core_tests "/home/bbrelin/src/repos/nimcp/build/src/tests/core_tests")
-set_tests_properties(core_tests PROPERTIES  ENVIRONMENT "PYTHONPATH=/home/bbrelin/src/repos/nimcp/build/lib/python" WORKING_DIRECTORY "/home/bbrelin/src/repos/nimcp/build" _BACKTRACE_TRIPLES "/home/bbrelin/src/repos/nimcp/src/tests/CMakeLists.txt;66;add_test;/home/bbrelin/src/repos/nimcp/src/tests/CMakeLists.txt;78;add_nimcp_test_binary;/home/bbrelin/src/repos/nimcp/src/tests/CMakeLists.txt;0;")
-add_test(glial_tests "/home/bbrelin/src/repos/nimcp/build/src/tests/glial_tests")
-set_tests_properties(glial_tests PROPERTIES  ENVIRONMENT "PYTHONPATH=/home/bbrelin/src/repos/nimcp/build/lib/python" WORKING_DIRECTORY "/home/bbrelin/src/repos/nimcp/build" _BACKTRACE_TRIPLES "/home/bbrelin/src/repos/nimcp/src/tests/CMakeLists.txt;66;add_test;/home/bbrelin/src/repos/nimcp/src/tests/CMakeLists.txt;91;add_nimcp_test_binary;/home/bbrelin/src/repos/nimcp/src/tests/CMakeLists.txt;0;")
-add_test(plasticity_tests "/home/bbrelin/src/repos/nimcp/build/src/tests/plasticity_tests")
-set_tests_properties(plasticity_tests PROPERTIES  ENVIRONMENT "PYTHONPATH=/home/bbrelin/src/repos/nimcp/build/lib/python" WORKING_DIRECTORY "/home/bbrelin/src/repos/nimcp/build" _BACKTRACE_TRIPLES "/home/bbrelin/src/repos/nimcp/src/tests/CMakeLists.txt;66;add_test;/home/bbrelin/src/repos/nimcp/src/tests/CMakeLists.txt;101;add_nimcp_test_binary;/home/bbrelin/src/repos/nimcp/src/tests/CMakeLists.txt;0;")
-add_test(cognitive_tests "/home/bbrelin/src/repos/nimcp/build/src/tests/cognitive_tests")
-set_tests_properties(cognitive_tests PROPERTIES  ENVIRONMENT "PYTHONPATH=/home/bbrelin/src/repos/nimcp/build/lib/python" WORKING_DIRECTORY "/home/bbrelin/src/repos/nimcp/build" _BACKTRACE_TRIPLES "/home/bbrelin/src/repos/nimcp/src/tests/CMakeLists.txt;66;add_test;/home/bbrelin/src/repos/nimcp/src/tests/CMakeLists.txt;110;add_nimcp_test_binary;/home/bbrelin/src/repos/nimcp/src/tests/CMakeLists.txt;0;")
-add_test(networking_tests "/home/bbrelin/src/repos/nimcp/build/src/tests/networking_tests")
-set_tests_properties(networking_tests PROPERTIES  ENVIRONMENT "PYTHONPATH=/home/bbrelin/src/repos/nimcp/build/lib/python" WORKING_DIRECTORY "/home/bbrelin/src/repos/nimcp/build" _BACKTRACE_TRIPLES "/home/bbrelin/src/repos/nimcp/src/tests/CMakeLists.txt;66;add_test;/home/bbrelin/src/repos/nimcp/src/tests/CMakeLists.txt;125;add_nimcp_test_binary;/home/bbrelin/src/repos/nimcp/src/tests/CMakeLists.txt;0;")
-add_test(io_tests "/home/bbrelin/src/repos/nimcp/build/src/tests/io_tests")
-set_tests_properties(io_tests PROPERTIES  ENVIRONMENT "PYTHONPATH=/home/bbrelin/src/repos/nimcp/build/lib/python" WORKING_DIRECTORY "/home/bbrelin/src/repos/nimcp/build" _BACKTRACE_TRIPLES "/home/bbrelin/src/repos/nimcp/src/tests/CMakeLists.txt;66;add_test;/home/bbrelin/src/repos/nimcp/src/tests/CMakeLists.txt;135;add_nimcp_test_binary;/home/bbrelin/src/repos/nimcp/src/tests/CMakeLists.txt;0;")
-add_test(utility_tests "/home/bbrelin/src/repos/nimcp/build/src/tests/utility_tests")
-set_tests_properties(utility_tests PROPERTIES  ENVIRONMENT "PYTHONPATH=/home/bbrelin/src/repos/nimcp/build/lib/python" WORKING_DIRECTORY "/home/bbrelin/src/repos/nimcp/build" _BACKTRACE_TRIPLES "/home/bbrelin/src/repos/nimcp/src/tests/CMakeLists.txt;66;add_test;/home/bbrelin/src/repos/nimcp/src/tests/CMakeLists.txt;145;add_nimcp_test_binary;/home/bbrelin/src/repos/nimcp/src/tests/CMakeLists.txt;0;")
-add_test(integration_tests "/home/bbrelin/src/repos/nimcp/build/src/tests/integration_tests")
-set_tests_properties(integration_tests PROPERTIES  ENVIRONMENT "PYTHONPATH=/home/bbrelin/src/repos/nimcp/build/lib/python" WORKING_DIRECTORY "/home/bbrelin/src/repos/nimcp/build" _BACKTRACE_TRIPLES "/home/bbrelin/src/repos/nimcp/src/tests/CMakeLists.txt;66;add_test;/home/bbrelin/src/repos/nimcp/src/tests/CMakeLists.txt;174;add_nimcp_test_binary;/home/bbrelin/src/repos/nimcp/src/tests/CMakeLists.txt;0;")
+add_test(core_tests "/home/bbrelin/nimcp/build/src/tests/core_tests")
+set_tests_properties(core_tests PROPERTIES  ENVIRONMENT "PYTHONPATH=/home/bbrelin/nimcp/build/lib/python" WORKING_DIRECTORY "/home/bbrelin/nimcp/build" _BACKTRACE_TRIPLES "/home/bbrelin/nimcp/src/tests/CMakeLists.txt;75;add_test;/home/bbrelin/nimcp/src/tests/CMakeLists.txt;87;add_nimcp_test_binary;/home/bbrelin/nimcp/src/tests/CMakeLists.txt;0;")
+add_test(glial_tests "/home/bbrelin/nimcp/build/src/tests/glial_tests")
+set_tests_properties(glial_tests PROPERTIES  ENVIRONMENT "PYTHONPATH=/home/bbrelin/nimcp/build/lib/python" WORKING_DIRECTORY "/home/bbrelin/nimcp/build" _BACKTRACE_TRIPLES "/home/bbrelin/nimcp/src/tests/CMakeLists.txt;75;add_test;/home/bbrelin/nimcp/src/tests/CMakeLists.txt;100;add_nimcp_test_binary;/home/bbrelin/nimcp/src/tests/CMakeLists.txt;0;")
+add_test(plasticity_tests "/home/bbrelin/nimcp/build/src/tests/plasticity_tests")
+set_tests_properties(plasticity_tests PROPERTIES  ENVIRONMENT "PYTHONPATH=/home/bbrelin/nimcp/build/lib/python" WORKING_DIRECTORY "/home/bbrelin/nimcp/build" _BACKTRACE_TRIPLES "/home/bbrelin/nimcp/src/tests/CMakeLists.txt;75;add_test;/home/bbrelin/nimcp/src/tests/CMakeLists.txt;110;add_nimcp_test_binary;/home/bbrelin/nimcp/src/tests/CMakeLists.txt;0;")
+add_test(topology_tests "/home/bbrelin/nimcp/build/src/tests/topology_tests")
+set_tests_properties(topology_tests PROPERTIES  ENVIRONMENT "PYTHONPATH=/home/bbrelin/nimcp/build/lib/python" WORKING_DIRECTORY "/home/bbrelin/nimcp/build" _BACKTRACE_TRIPLES "/home/bbrelin/nimcp/src/tests/CMakeLists.txt;75;add_test;/home/bbrelin/nimcp/src/tests/CMakeLists.txt;119;add_nimcp_test_binary;/home/bbrelin/nimcp/src/tests/CMakeLists.txt;0;")
+add_test(topology_integration_tests "/home/bbrelin/nimcp/build/src/tests/topology_integration_tests")
+set_tests_properties(topology_integration_tests PROPERTIES  ENVIRONMENT "PYTHONPATH=/home/bbrelin/nimcp/build/lib/python" WORKING_DIRECTORY "/home/bbrelin/nimcp/build" _BACKTRACE_TRIPLES "/home/bbrelin/nimcp/src/tests/CMakeLists.txt;75;add_test;/home/bbrelin/nimcp/src/tests/CMakeLists.txt;126;add_nimcp_test_binary;/home/bbrelin/nimcp/src/tests/CMakeLists.txt;0;")
+add_test(pink_noise_tests "/home/bbrelin/nimcp/build/src/tests/pink_noise_tests")
+set_tests_properties(pink_noise_tests PROPERTIES  ENVIRONMENT "PYTHONPATH=/home/bbrelin/nimcp/build/lib/python" WORKING_DIRECTORY "/home/bbrelin/nimcp/build" _BACKTRACE_TRIPLES "/home/bbrelin/nimcp/src/tests/CMakeLists.txt;75;add_test;/home/bbrelin/nimcp/src/tests/CMakeLists.txt;133;add_nimcp_test_binary;/home/bbrelin/nimcp/src/tests/CMakeLists.txt;0;")
+add_test(cognitive_tests "/home/bbrelin/nimcp/build/src/tests/cognitive_tests")
+set_tests_properties(cognitive_tests PROPERTIES  ENVIRONMENT "PYTHONPATH=/home/bbrelin/nimcp/build/lib/python" WORKING_DIRECTORY "/home/bbrelin/nimcp/build" _BACKTRACE_TRIPLES "/home/bbrelin/nimcp/src/tests/CMakeLists.txt;75;add_test;/home/bbrelin/nimcp/src/tests/CMakeLists.txt;140;add_nimcp_test_binary;/home/bbrelin/nimcp/src/tests/CMakeLists.txt;0;")
+add_test(networking_tests "/home/bbrelin/nimcp/build/src/tests/networking_tests")
+set_tests_properties(networking_tests PROPERTIES  ENVIRONMENT "PYTHONPATH=/home/bbrelin/nimcp/build/lib/python" WORKING_DIRECTORY "/home/bbrelin/nimcp/build" _BACKTRACE_TRIPLES "/home/bbrelin/nimcp/src/tests/CMakeLists.txt;75;add_test;/home/bbrelin/nimcp/src/tests/CMakeLists.txt;155;add_nimcp_test_binary;/home/bbrelin/nimcp/src/tests/CMakeLists.txt;0;")
+add_test(io_tests "/home/bbrelin/nimcp/build/src/tests/io_tests")
+set_tests_properties(io_tests PROPERTIES  ENVIRONMENT "PYTHONPATH=/home/bbrelin/nimcp/build/lib/python" WORKING_DIRECTORY "/home/bbrelin/nimcp/build" _BACKTRACE_TRIPLES "/home/bbrelin/nimcp/src/tests/CMakeLists.txt;75;add_test;/home/bbrelin/nimcp/src/tests/CMakeLists.txt;165;add_nimcp_test_binary;/home/bbrelin/nimcp/src/tests/CMakeLists.txt;0;")
+add_test(utility_tests "/home/bbrelin/nimcp/build/src/tests/utility_tests")
+set_tests_properties(utility_tests PROPERTIES  ENVIRONMENT "PYTHONPATH=/home/bbrelin/nimcp/build/lib/python" WORKING_DIRECTORY "/home/bbrelin/nimcp/build" _BACKTRACE_TRIPLES "/home/bbrelin/nimcp/src/tests/CMakeLists.txt;75;add_test;/home/bbrelin/nimcp/src/tests/CMakeLists.txt;175;add_nimcp_test_binary;/home/bbrelin/nimcp/src/tests/CMakeLists.txt;0;")
+add_test(integration_tests "/home/bbrelin/nimcp/build/src/tests/integration_tests")
+set_tests_properties(integration_tests PROPERTIES  ENVIRONMENT "PYTHONPATH=/home/bbrelin/nimcp/build/lib/python" WORKING_DIRECTORY "/home/bbrelin/nimcp/build" _BACKTRACE_TRIPLES "/home/bbrelin/nimcp/src/tests/CMakeLists.txt;75;add_test;/home/bbrelin/nimcp/src/tests/CMakeLists.txt;204;add_nimcp_test_binary;/home/bbrelin/nimcp/src/tests/CMakeLists.txt;0;")

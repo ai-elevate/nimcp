@@ -45,12 +45,42 @@ add_executable(nlp_integration_test nlp_integration_test.c)
 target_link_libraries(nlp_integration_test nimcp m)
 target_include_directories(nlp_integration_test PRIVATE ${NIMCP_INCLUDE_DIR})
 
+# NIMCP 2.7 Fractal Network Demo (Scale-Free Topology + Pink Noise)
+add_executable(fractal_network_demo fractal_network_demo.c)
+target_link_libraries(fractal_network_demo nimcp m)
+target_include_directories(fractal_network_demo PRIVATE ${NIMCP_INCLUDE_DIR})
+
+# NIMCP 2.7 Phase 2 - NLP with Fractal Networks
+add_executable(nlp_integration_demo nlp_integration_demo.c)
+target_link_libraries(nlp_integration_demo nimcp m)
+target_include_directories(nlp_integration_demo PRIVATE ${NIMCP_INCLUDE_DIR})
+
+# NIMCP 2.7 Phase 2 - Pink Noise Weight Initialization Test
+add_executable(test_pink_weights test_pink_weights.c)
+target_link_libraries(test_pink_weights nimcp m)
+target_include_directories(test_pink_weights PRIVATE ${NIMCP_INCLUDE_DIR})
+
+# NIMCP 2.7 Phase 3 - Integration Test
+add_executable(test_phase3 test_phase3.c)
+target_link_libraries(test_phase3 nimcp m)
+target_include_directories(test_phase3 PRIVATE ${NIMCP_INCLUDE_DIR})
+
+# NIMCP 2.7 Phase 4 - STDP + Eligibility Traces Test (Simplified)
+add_executable(test_phase4 test_phase4_simple.c)
+target_link_libraries(test_phase4 nimcp m)
+target_include_directories(test_phase4 PRIVATE ${NIMCP_INCLUDE_DIR})
+
+# NIMCP 2.7 Phase 4 - Full System Integration Test (ALL subsystems)
+add_executable(full_system_integration_test full_system_integration_test.c)
+target_link_libraries(full_system_integration_test nimcp m)
+target_include_directories(full_system_integration_test PRIVATE ${NIMCP_INCLUDE_DIR})
+
 # GPU Integration Test - Requires GPU neuron API (coming in Phase 2.7)
 # add_executable(gpu_integration_test gpu_integration_test.c)
 # target_link_libraries(gpu_integration_test nimcp)
 # target_include_directories(gpu_integration_test PRIVATE ${NIMCP_INCLUDE_DIR})
 
 # Install examples
-install(TARGETS event_demo brain_demo ethics_demo infant_demo integrated_demo brain_probe_demo izhikevich_demo programmable_synapses_demo nlp_integration_test
+install(TARGETS event_demo brain_demo ethics_demo infant_demo integrated_demo brain_probe_demo izhikevich_demo programmable_synapses_demo nlp_integration_test fractal_network_demo nlp_integration_demo
     RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}/examples
 )

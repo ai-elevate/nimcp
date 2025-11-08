@@ -70,5 +70,17 @@ PyMODINIT_FUNC PyInit_nimcp(void)
         return NULL;
     }
 
+    // Initialize topology module
+    if (init_topology_module(m) < 0) {
+        Py_DECREF(m);
+        return NULL;
+    }
+
+    // Initialize pink noise module
+    if (init_pink_noise_module(m) < 0) {
+        Py_DECREF(m);
+        return NULL;
+    }
+
     return m;
 }

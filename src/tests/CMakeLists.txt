@@ -46,6 +46,9 @@ function(add_nimcp_test_binary TARGET_NAME)
 
     target_include_directories(${TARGET_NAME} PRIVATE ${COMMON_TEST_INCLUDES})
 
+    # Enable C++20 for designated initializers
+    target_compile_features(${TARGET_NAME} PRIVATE cxx_std_20)
+
     # Enable test-only APIs
     target_compile_definitions(${TARGET_NAME} PRIVATE NIMCP_TESTING)
 
@@ -108,6 +111,27 @@ add_nimcp_test_binary(plasticity_tests
     test_neuromodulators.cpp
     test_bcm.cpp
     test_attention.cpp
+)
+
+# ============================================================================
+# TEST BINARY 3.5: Fractal Topology Tests (fast)
+# ============================================================================
+add_nimcp_test_binary(topology_tests
+    topology_tests.cpp
+)
+
+# ============================================================================
+# TEST BINARY 3.6: Topology Integration Tests (medium)
+# ============================================================================
+add_nimcp_test_binary(topology_integration_tests
+    topology_integration_tests.cpp
+)
+
+# ============================================================================
+# TEST BINARY 3.7: Pink Noise Generator Tests (fast)
+# ============================================================================
+add_nimcp_test_binary(pink_noise_tests
+    pink_noise_tests.cpp
 )
 
 # ============================================================================

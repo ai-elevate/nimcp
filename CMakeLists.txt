@@ -101,20 +101,48 @@ endif()
 
 # Find required packages
 find_package(Python3 COMPONENTS Development REQUIRED)
-find_package(GTest QUIET)  # Optional - tests will be skipped if not found
+
+# Find or fetch GTest for testing
+find_package(GTest QUIET)
+if(NOT GTest_FOUND)
+    message(STATUS "GTest not found on system - fetching from GitHub")
+    include(FetchContent)
+    FetchContent_Declare(
+        googletest
+        GIT_REPOSITORY https://github.com/google/googletest.git
+        GIT_TAG v1.14.0
+        GIT_SHALLOW TRUE
+    )
+    # For Windows: Prevent overriding the parent project's compiler/linker settings
+    set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
+    FetchContent_MakeAvailable(googletest)
+    # Create GTest::GTest and GTest::Main aliases
+    add_library(GTest::GTest ALIAS gtest)
+    add_library(GTest::Main ALIAS gtest_main)
+    set(GTest_FOUND TRUE)
+    message(STATUS "GTest fetched and configured successfully")
+endif()
 
 # Find CUDA (optional for GPU support)
-find_package(CUDAToolkit QUIET)
-if(CUDAToolkit_FOUND)
+include(CheckLanguage)
+check_language(CUDA)
+if(CMAKE_CUDA_COMPILER)
     # Set CUDA architectures before enabling language
     set(CMAKE_CUDA_ARCHITECTURES "75;80;86;89")  # Turing, Ampere, Ada Lovelace
     enable_language(CUDA)
-    add_definitions(-DNIMCP_ENABLE_CUDA)
-    message(STATUS "CUDA Toolkit found: ${CUDAToolkit_VERSION}")
-    message(STATUS "  CUDA Include: ${CUDAToolkit_INCLUDE_DIRS}")
-    message(STATUS "  CUDA Libraries: ${CUDAToolkit_LIBRARY_DIR}")
+    find_package(CUDAToolkit QUIET)
+    if(CUDAToolkit_FOUND)
+        add_definitions(-DNIMCP_ENABLE_CUDA)
+        message(STATUS "CUDA support ENABLED")
+        message(STATUS "  CUDA Toolkit: ${CUDAToolkit_VERSION}")
+        message(STATUS "  CUDA Include: ${CUDAToolkit_INCLUDE_DIRS}")
+        message(STATUS "  CUDA Libraries: ${CUDAToolkit_LIBRARY_DIR}")
+        message(STATUS "  CUDA Compiler: ${CMAKE_CUDA_COMPILER}")
+    else()
+        message(STATUS "CUDA compiler found but toolkit incomplete - GPU support disabled")
+    endif()
 else()
-    message(STATUS "CUDA Toolkit not found - GPU support disabled")
+    message(STATUS "CUDA not available - GPU support disabled")
 endif()
 
 # Find libsodium (optional for encryption support)

@@ -16,8 +16,13 @@ set(NIMCP_CORE_SOURCES
     # Synapse computation - NIMCP 2.7 MAJOR FEATURE
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/synapse_compute/nimcp_synapse_compute.c
 
+    # Fractal Topology - NIMCP 2.7 (scale-free networks)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/topology/nimcp_fractal_topology.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/topology/nimcp_network_builder.c
+
     # NLP Integration - NIMCP 2.7 (combines synapses + attention + neuromodulation)
     ${CMAKE_CURRENT_SOURCE_DIR}/../nlp/nimcp_nlp.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../nlp/nimcp_spike_nlp.c
 
     # Cognitive functions
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/ethics/nimcp_ethics.c
@@ -34,8 +39,12 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../plasticity/adaptive/nimcp_adaptive.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../plasticity/bcm/nimcp_bcm.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../plasticity/neuromodulators/nimcp_neuromodulators.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../plasticity/neuromodulators/nimcp_neuromod_pink_noise.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../plasticity/attention/nimcp_attention.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../plasticity/stp/nimcp_stp.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../plasticity/noise/nimcp_pink_noise.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../plasticity/stdp/nimcp_stdp.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../plasticity/eligibility/nimcp_eligibility_trace.c
 
     # Glial cells
     ${CMAKE_CURRENT_SOURCE_DIR}/../glial/astrocytes/nimcp_astrocytes.c
@@ -109,6 +118,8 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_SOURCE_DIR}/src/python/nimcp_module.c
     ${CMAKE_SOURCE_DIR}/src/python/nimcp_types.c
     ${CMAKE_SOURCE_DIR}/src/python/nimcp_metrics_py.c
+    ${CMAKE_SOURCE_DIR}/src/python/nimcp_topology_py.c
+    ${CMAKE_SOURCE_DIR}/src/python/nimcp_pink_noise_py.c
 )
 
 # Core library

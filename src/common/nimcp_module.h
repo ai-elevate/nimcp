@@ -44,7 +44,9 @@ typedef struct {
     PyObject* network;  // Reference to owning network
 } GlialIntegrationObject;
 
-// Module initialization function
+// Module initialization functions
 PyMODINIT_FUNC PyInit_nimcp(void);
+extern int init_topology_module(PyObject* module);
+extern int init_pink_noise_module(PyObject* module);
 
 #endif  // NIMCP_MODULE_H

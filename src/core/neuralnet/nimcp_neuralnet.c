@@ -37,6 +37,7 @@
  */
 
 #include "nimcp_neuralnet.h"
+#include "core/synapse_compute/nimcp_synapse_compute.h"  // NIMCP 2.7: Programmable synapses
 #include "core/neuron_models/nimcp_neuron_model.h"
 #include "core/neuron_models/nimcp_izhikevich.h"
 #include "plasticity/stp/nimcp_stp.h"
@@ -120,6 +121,11 @@ struct neural_network_struct {
     float last_avg_weight;
     uint64_t last_maintenance;
     activation_strategy_table_t activation_strategies;
+
+    // NIMCP 2.7: NLP Integration - Subsystems for synapse compute context
+    void* neuromodulator_system;  /**< Neuromodulator system (opaque pointer) */
+    float* global_state;          /**< Global state for synapse computation (attention output, etc) */
+    uint32_t global_state_size;   /**< Size of global state buffer */
 };
 
 //=============================================================================
@@ -137,9 +143,9 @@ static void update_calcium_dynamics(neuron_t* neuron, uint64_t timestamp);
 static void update_synaptic_traces(neuron_t* neuron, uint64_t timestamp);
 
 // Learning rules
-static float compute_stdp_update(float dt, stdp_params_t* params);
+static float compute_stdp_update(float dt, const stdp_params_t* params);
 static float compute_oja_weight_update(float pre_activity, float post_activity,
-                                       float current_weight, oja_params_t* params);
+                                       float current_weight, const oja_params_t* params);
 
 // Homeostasis
 static float compute_homeostatic_factor(neuron_t* neuron, float current_activity);
@@ -296,6 +302,7 @@ static void init_neuron_basic_properties(neuron_t* neuron, uint32_t id, neuron_t
     neuron->refractory_period = 2;  // Milliseconds
     neuron->state = neuron->rest_potential;
     neuron->bias = (float) rand() / (float) RAND_MAX * 0.1f - 0.05f;
+    neuron->external_current = 0.0f;  // No external input by default
     neuron->creation_time = creation_time;
     neuron->last_update = creation_time;
     neuron->last_spike = 0;
@@ -846,7 +853,39 @@ static float sum_synaptic_inputs(neuron_t* neuron, neural_network_t network)
             }
         }
 
-        total_input += pre_activity * incoming_syn->weight * incoming_syn->strength * stp_modulation;
+        // NIMCP 2.7: Programmable synapse computation (MAJOR FEATURE!)
+        // If synapse has custom compute function, use it; otherwise default computation
+        float synaptic_transmission;
+        if (incoming_syn->compute_function != NULL) {
+            // Custom computation - synapse decides how to compute transmission
+            // This enables attention, semantic similarity, gating, etc.
+
+            // NIMCP 2.7: Wire up neuromodulator levels if system is attached
+            float neuromod_level = neural_network_get_neuromodulation(network);
+
+            synapse_compute_context_t context = {
+                .global_state = network->global_state,  // Attention output, etc.
+                .global_state_size = network->global_state_size,
+                .neuromodulation = neuromod_level,  // Dopamine/ACh/etc levels
+                .current_time = network->network_time,
+                .custom_data = NULL,
+                .custom_data_size = 0
+            };
+
+            synaptic_transmission = incoming_syn->compute_function(
+                incoming_syn,
+                src_neuron,
+                neuron,
+                pre_activity,
+                &context
+            );
+        } else {
+            // Default computation (backward compatible with NIMCP 2.0-2.6)
+            synaptic_transmission = pre_activity * incoming_syn->weight *
+                                   incoming_syn->strength * stp_modulation;
+        }
+
+        total_input += synaptic_transmission;
     }
 
     return total_input;
@@ -886,6 +925,13 @@ static float compute_membrane_potential(neuron_t* neuron, neural_network_t netwo
 
     // Apply calcium-mediated modulation (activity-dependent amplification)
     potential *= (1.0f + neuron->calcium_concentration);
+
+    // Add external input current (e.g., from spike encoding)
+    // WHAT: Include external current in membrane potential
+    // WHY: Allows external stimulation (sensors, embeddings) to drive spikes
+    // HOW: Direct addition after synaptic integration
+    // NOTE: Reset after compute_step() to avoid accumulation
+    potential += neuron->external_current;
 
     return potential;
 }
@@ -1088,6 +1134,12 @@ bool neural_network_update_neuron(neural_network_t network, uint32_t neuron_id, 
         // Handle spike if detected
         if (detected_spike(old_state, new_state, neuron->threshold)) {
             handle_spike_event(network, neuron_id, neuron, new_state, timestamp);
+
+            // WHAT: Reset neuron state after spike (LIF dynamics)
+            // WHY: Spiking neurons must reset to allow future spikes
+            // HOW: Set to rest potential, like neuron_model_post_spike() does for models
+            // FIX (Phase 5.1): Without this, neuron stays above threshold forever
+            neuron->state = neuron->rest_potential;
         }
     }
 
@@ -1153,8 +1205,12 @@ uint32_t neural_network_apply_oja(neural_network_t network, uint32_t neuron_id, 
  * @brief Compute weight update using Oja's rule
  */
 static float compute_oja_weight_update(float pre_activity, float post_activity,
-                                       float current_weight, oja_params_t* params)
+                                       float current_weight, const oja_params_t* params)
 {
+    // WHAT: Compute Oja's learning rule weight update
+    // WHY: PCA-like learning with weight normalization
+    // HOW: Hebbian term - normalization + stabilization
+    // CONST: params is read-only configuration
     float hebbian_term = post_activity * pre_activity;
     float normalization_term = post_activity * post_activity * current_weight;
     float stabilization_term = params->stabilization * (params->target_norm - current_weight);
@@ -1164,35 +1220,85 @@ static float compute_oja_weight_update(float pre_activity, float post_activity,
 
 /**
  * @brief Apply STDP learning rule
+ *
+ * WHAT: Update synaptic weights based on spike timing
+ * WHY: STDP implements causality-based learning (Hebbian principle)
+ * HOW: For each outgoing synapse, compute Δt and apply STDP rule
+ *
+ * ALGORITHM:
+ * - For outgoing synapse: current neuron = PRE, target = POST
+ * - Δt = t_post - t_pre
+ * - If Δt > 0 (pre before post): LTP (strengthen)
+ * - If Δt < 0 (post before pre): LTD (weaken)
+ *
+ * BUG FIX (Phase 5 - 2025-11-08):
+ * - Previous code had pre/post neurons REVERSED
+ * - Was using target_id as pre_neuron (wrong!)
+ * - Now correctly: neuron_id = pre, target_id = post
  */
 uint32_t neural_network_apply_stdp(neural_network_t network, uint32_t neuron_id, uint64_t timestamp)
 {
-    neuron_t* neuron = &network->neurons[neuron_id];
+    // WHAT: Get presynaptic neuron (current neuron with outgoing synapses)
+    // WHY: We're iterating over this neuron's outgoing connections
+    // HOW: Direct array access using neuron_id
+    neuron_t* pre_neuron = &network->neurons[neuron_id];
     uint32_t modified = 0;
 
-    for (uint32_t i = 0; i < neuron->num_synapses; i++) {
-        synapse_t* syn = &neuron->synapses[i];
-        neuron_t* pre_neuron = &network->neurons[syn->target_id];
+    // WHAT: Iterate over all outgoing synapses from this neuron
+    // WHY: Apply STDP to each connection based on spike timing
+    // HOW: Loop through synapse array, compute STDP for each
+    for (uint32_t i = 0; i < pre_neuron->num_synapses; i++) {
+        synapse_t* syn = &pre_neuron->synapses[i];
 
-        // Compute time difference between pre and post spikes
-        int64_t dt = (int64_t) (timestamp - pre_neuron->last_spike);
+        // WHAT: Get postsynaptic neuron (target of this synapse)
+        // WHY: Need post-spike time for STDP calculation
+        // HOW: Access target neuron using target_id from synapse
+        // FIX: This was previously assigned to pre_neuron (bug!)
+        // CONST: post_neuron is read-only (only access last_spike)
+        const neuron_t* post_neuron = &network->neurons[syn->target_id];
 
-        // Skip if time difference is too large
-        if (fabsf((float) dt) > neuron->stdp_params.time_window)
+        // Guard: Skip if either neuron never spiked
+        if (pre_neuron->last_spike == 0 || post_neuron->last_spike == 0) {
+            continue;
+        }
+
+        // WHAT: Compute spike time difference (Δt = t_post - t_pre)
+        // WHY: STDP depends on causality (which spike came first)
+        // HOW: Subtract pre-spike time from post-spike time
+        // RESULT: Δt > 0 means pre→post (causal, LTP)
+        //         Δt < 0 means post→pre (anti-causal, LTD)
+        int64_t dt = (int64_t)(post_neuron->last_spike) - (int64_t)(pre_neuron->last_spike);
+
+        // Guard: Skip if time difference exceeds STDP window
+        // WHY: STDP only affects spikes within ~20-50ms window
+        // HOW: Check absolute time difference against configured window
+        if (fabsf((float) dt) > pre_neuron->stdp_params.time_window)
             continue;
 
-        // Compute STDP update
-        float stdp_factor = compute_stdp_update((float) dt, &neuron->stdp_params);
-        float delta_w = neuron->stdp_params.learning_rate * stdp_factor * syn->trace;
+        // WHAT: Compute STDP weight change factor
+        // WHY: Weight change decays exponentially with |Δt|
+        // HOW: Call helper function with time difference and parameters
+        float stdp_factor = compute_stdp_update((float) dt, &pre_neuron->stdp_params);
 
-        // Apply weight update with meta-plasticity
+        // WHAT: Scale STDP by learning rate, trace, and meta-plasticity
+        // WHY: Modulate learning based on recent activity and neuron state
+        // HOW: Multiply factors together to get final Δw
+        float delta_w = pre_neuron->stdp_params.learning_rate * stdp_factor * syn->trace;
+
+        // WHAT: Apply weight update with meta-plasticity modulation
+        // WHY: Meta-plasticity prevents runaway learning
+        // HOW: Add weighted delta to current weight
         float new_weight = syn->weight + delta_w * syn->meta_plasticity;
 
-        // Apply weight constraints
+        // WHAT: Clamp weight to configured bounds
+        // WHY: Prevent weights from growing unbounded
+        // HOW: Apply min/max constraints from network config
         new_weight =
             fmaxf(network->config.min_weight, fminf(network->config.max_weight, new_weight));
 
-        // Update weight if change is significant
+        // WHAT: Update weight if change is significant
+        // WHY: Avoid tiny updates that don't affect computation
+        // HOW: Check if |Δw| exceeds threshold before applying
         if (fabs(new_weight - syn->weight) > WEIGHT_UPDATE_THRESHOLD) {
             syn->weight = new_weight;
             modified++;
@@ -1204,9 +1310,20 @@ uint32_t neural_network_apply_stdp(neural_network_t network, uint32_t neuron_id,
 
 /**
  * @brief Compute STDP update factor
+ *
+ * WHAT: Calculate weight change factor based on spike timing
+ * WHY: Core STDP computation - exponential decay with time difference
+ * HOW: Apply asymmetric time window (LTP vs LTD)
+ *
+ * @param dt Spike time difference (t_post - t_pre)
+ * @param params STDP parameters (read-only)
+ * @return STDP update factor
  */
-static float compute_stdp_update(float dt, stdp_params_t* params)
+static float compute_stdp_update(float dt, const stdp_params_t* params)
 {
+    // WHAT: Compute exponential decay based on time difference
+    // WHY: STDP strength decays with |Δt|
+    // HOW: exp(-|Δt| / τ)
     float time_factor = expf(-fabsf(dt) / params->time_window);
 
     if (dt > 0) {
@@ -1499,6 +1616,12 @@ uint32_t neural_network_compute_step(neural_network_t network, uint64_t timestam
         // Update traces and dynamics
         update_synaptic_traces(neuron, timestamp);
         update_calcium_dynamics(neuron, timestamp);
+
+        // WHAT: Reset external current after processing
+        // WHY: External current is per-timestep stimulation, not persistent state
+        // HOW: Set to 0 after neuron update completes
+        // NOTE: Spike encoding sets this before compute_step()
+        neuron->external_current = 0.0f;
     }
 
     // Periodic network maintenance
@@ -1998,7 +2121,8 @@ bool neural_network_get_stats(neural_network_t network, network_stats_t* stats)
     uint32_t total_synapses = 0;
 
     for (uint32_t i = 0; i < network->num_neurons; i++) {
-        neuron_t* neuron = &network->neurons[i];
+        // CONST: neuron is read-only in statistics calculation
+        const neuron_t* neuron = &network->neurons[i];
 
         // Count by neuron type
         if (neuron->type == NEURON_INHIBITORY) {
@@ -2221,4 +2345,103 @@ uint32_t neural_network_get_incoming_synapses(neural_network_t network, uint32_t
     neuron_t* neuron = &network->neurons[neuron_id];
     *out_synapses = neuron->incoming_synapses;
     return neuron->num_incoming;
+}
+
+//=============================================================================
+// NIMCP 2.7: NLP Integration - Accessor Functions
+//=============================================================================
+
+/**
+ * @brief Set global state for synapse computation
+ *
+ * WHAT: Inject global state buffer (e.g., attention output) into network
+ * WHY: Enable synapses to access shared context for attention-modulation
+ * HOW: Stores pointer and size, passed via synapse_compute_context_t
+ * WHEN: Called by NLP layer after attention forward pass
+ *
+ * DESIGN PATTERN: Dependency Injection
+ * COMPLEXITY: O(1)
+ *
+ * @param network Neural network
+ * @param global_state Pointer to global state buffer
+ * @param size Size of buffer (floats)
+ * @return true on success
+ */
+bool neural_network_set_global_state(neural_network_t network, float* global_state, uint32_t size)
+{
+    // Guard: Validate input
+    if (!network) {
+        return false;
+    }
+
+    // Store global state reference
+    network->global_state = global_state;
+    network->global_state_size = size;
+
+    return true;
+}
+
+/**
+ * @brief Set neuromodulator system for synapse computation
+ *
+ * WHAT: Inject neuromodulator system into network
+ * WHY: Enable synapses to access neuromodulator levels (dopamine, ACh, etc)
+ * HOW: Stores opaque pointer, queried during synapse computation
+ * WHEN: Called by NLP layer during network creation
+ *
+ * DESIGN PATTERN: Dependency Injection
+ * COMPLEXITY: O(1)
+ *
+ * @param network Neural network
+ * @param neuromod_system Opaque pointer to neuromodulator system
+ * @return true on success
+ */
+bool neural_network_set_neuromodulator_system(neural_network_t network, void* neuromod_system)
+{
+    // Guard: Validate input
+    if (!network) {
+        return false;
+    }
+
+    // Store neuromodulator system reference
+    network->neuromodulator_system = neuromod_system;
+
+    return true;
+}
+
+/**
+ * @brief Get neuromodulation level for synapse computation
+ *
+ * WHAT: Query current neuromodulation level from attached system
+ * WHY: Synapses need to know dopamine/ACh levels for modulation
+ * HOW: Queries neuromodulator system via opaque pointer
+ * WHEN: Called during synapse computation in sum_synaptic_inputs
+ *
+ * DESIGN PATTERN: Adapter Pattern - wraps neuromodulator system access
+ * COMPLEXITY: O(1)
+ *
+ * NOTE: Currently returns 0.0 as placeholder. Full implementation would:
+ * 1. Cast neuromodulator_system to proper type
+ * 2. Call neuromodulator_get_dopamine() or similar
+ * 3. Return normalized level [0,1]
+ *
+ * @param network Neural network
+ * @return Current neuromodulation level [0,1]
+ */
+float neural_network_get_neuromodulation(neural_network_t network)
+{
+    // Guard: Validate input
+    if (!network || !network->neuromodulator_system) {
+        return 0.0f;
+    }
+
+    // TODO: Query neuromodulator system for dopamine level
+    // This requires including neuromodulators.h and casting the opaque pointer
+    // For now, return placeholder value
+    // Example implementation would be:
+    //   neuromodulator_system_t system = (neuromodulator_system_t)network->neuromodulator_system;
+    //   float dopamine = neuromodulator_get_dopamine(system);
+    //   return dopamine;
+
+    return 0.0f;  // Placeholder
 }

@@ -11,6 +11,8 @@ import React, { useState, useEffect } from 'react';
 import TrainingPanel from './components/TrainingPanel';
 import PredictionPanel from './components/PredictionPanel';
 import MetricsDashboard from './components/MetricsDashboard';
+import BenchmarkPanel from './components/BenchmarkPanel';
+import NetworkVisualization from './components/NetworkVisualization';
 import axios from 'axios';
 import './App.css';
 
@@ -24,6 +26,7 @@ function App() {
   const [dataset, setDataset] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [activeTab, setActiveTab] = useState('demo'); // 'demo', 'benchmark', 'visualization'
 
   // Poll metrics every 2 seconds
   useEffect(() => {
@@ -149,7 +152,7 @@ function App() {
     <div className="App">
       <header className="App-header">
         <h1>🧠 NIMCP Web Demo v2.7.0</h1>
-        <p>Interactive Neural Brain Visualization</p>
+        <p>Interactive Neural Brain Visualization with GPU Acceleration</p>
       </header>
 
       {error && (
@@ -159,78 +162,107 @@ function App() {
         </div>
       )}
 
+      <nav className="tab-navigation">
+        <button
+          className={`tab-button ${activeTab === 'demo' ? 'active' : ''}`}
+          onClick={() => setActiveTab('demo')}
+        >
+          🎓 Interactive Demo
+        </button>
+        <button
+          className={`tab-button ${activeTab === 'benchmark' ? 'active' : ''}`}
+          onClick={() => setActiveTab('benchmark')}
+        >
+          🎯 MNIST Benchmark
+        </button>
+        <button
+          className={`tab-button ${activeTab === 'visualization' ? 'active' : ''}`}
+          onClick={() => setActiveTab('visualization')}
+        >
+          🌐 Network Visualization
+        </button>
+      </nav>
+
       <div className="container">
-        {!brainInitialized ? (
-          <div className="init-panel">
-            <h2>Initialize NIMCP Brain</h2>
-            <p>Create a brain instance for Iris flower classification</p>
-            <ul>
-              <li>4 input features (sepal length/width, petal length/width)</li>
-              <li>3 output classes (Setosa, Versicolor, Virginica)</li>
-              <li>Small brain size with adaptive learning</li>
-            </ul>
-            <button
-              className="btn btn-primary btn-large"
-              onClick={initializeBrain}
-              disabled={loading}
-            >
-              {loading ? 'Initializing...' : '🚀 Initialize Brain'}
-            </button>
-          </div>
-        ) : (
+        {activeTab === 'demo' && (
           <>
-            <div className="status-bar">
-              <div className="status-item">
-                <span className="status-label">Status:</span>
-                <span className="status-value status-active">
-                  {metrics?.status || 'Active'}
-                </span>
+            {!brainInitialized ? (
+              <div className="init-panel">
+                <h2>Initialize NIMCP Brain</h2>
+                <p>Create a brain instance for Iris flower classification</p>
+                <ul>
+                  <li>4 input features (sepal length/width, petal length/width)</li>
+                  <li>3 output classes (Setosa, Versicolor, Virginica)</li>
+                  <li>Small brain size with adaptive learning</li>
+                </ul>
+                <button
+                  className="btn btn-primary btn-large"
+                  onClick={initializeBrain}
+                  disabled={loading}
+                >
+                  {loading ? 'Initializing...' : '🚀 Initialize Brain'}
+                </button>
               </div>
-              <div className="status-item">
-                <span className="status-label">Trained:</span>
-                <span className="status-value">{metrics?.total_trained || 0}</span>
-              </div>
-              <div className="status-item">
-                <span className="status-label">Predictions:</span>
-                <span className="status-value">{metrics?.total_predictions || 0}</span>
-              </div>
-              <div className="status-item">
-                <span className="status-label">Accuracy:</span>
-                <span className="status-value">
-                  {metrics?.accuracy_estimate?.toFixed(1) || 0}%
-                </span>
-              </div>
-              <button
-                className="btn btn-danger btn-small"
-                onClick={resetBrain}
-                disabled={loading}
-              >
-                Reset
-              </button>
-            </div>
+            ) : (
+              <>
+                <div className="status-bar">
+                  <div className="status-item">
+                    <span className="status-label">Status:</span>
+                    <span className="status-value status-active">
+                      {metrics?.status || 'Active'}
+                    </span>
+                  </div>
+                  <div className="status-item">
+                    <span className="status-label">Trained:</span>
+                    <span className="status-value">{metrics?.total_trained || 0}</span>
+                  </div>
+                  <div className="status-item">
+                    <span className="status-label">Predictions:</span>
+                    <span className="status-value">{metrics?.total_predictions || 0}</span>
+                  </div>
+                  <div className="status-item">
+                    <span className="status-label">Accuracy:</span>
+                    <span className="status-value">
+                      {metrics?.accuracy_estimate?.toFixed(1) || 0}%
+                    </span>
+                  </div>
+                  <button
+                    className="btn btn-danger btn-small"
+                    onClick={resetBrain}
+                    disabled={loading}
+                  >
+                    Reset
+                  </button>
+                </div>
 
-            <div className="panels-grid">
-              <TrainingPanel
-                onTrain={trainExample}
-                onTrainBatch={trainBatch}
-                dataset={dataset}
-                loading={loading}
-              />
+                <div className="panels-grid">
+                  <TrainingPanel
+                    onTrain={trainExample}
+                    onTrainBatch={trainBatch}
+                    dataset={dataset}
+                    loading={loading}
+                  />
 
-              <PredictionPanel
-                onPredict={makePrediction}
-                dataset={dataset}
-                loading={loading}
-              />
-            </div>
+                  <PredictionPanel
+                    onPredict={makePrediction}
+                    dataset={dataset}
+                    loading={loading}
+                  />
+                </div>
 
-            <MetricsDashboard
-              metrics={metrics}
-              trainingHistory={trainingHistory}
-              predictionHistory={predictionHistory}
-            />
+                <MetricsDashboard
+                  metrics={metrics}
+                  trainingHistory={trainingHistory}
+                  predictionHistory={predictionHistory}
+                />
+              </>
+            )}
           </>
         )}
+
+        {activeTab === 'benchmark' && <BenchmarkPanel />}
+
+        {activeTab === 'visualization' && <NetworkVisualization />}
       </div>
 
       <footer className="App-footer">

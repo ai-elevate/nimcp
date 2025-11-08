@@ -21,6 +21,7 @@ import threading
 import queue
 from datetime import datetime
 import os
+from benchmarks import NIMCPBenchmark, MNISTLoader, ComparativeBenchmark
 
 app = Flask(__name__)
 CORS(app)  # Enable CORS for React frontend
@@ -40,6 +41,12 @@ brain_metrics = {
     'created_at': None,
     'status': 'not_initialized'
 }
+
+# Benchmark state
+benchmark_runner = None
+benchmark_lock = threading.Lock()
+benchmark_in_progress = False
+benchmark_results = {}
 
 # Iris dataset for demo
 IRIS_DATA = {
@@ -396,6 +403,217 @@ def reset_brain():
         'success': True,
         'message': 'Brain reset successfully'
     })
+
+@app.route('/api/benchmark/mnist/start', methods=['POST'])
+def start_mnist_benchmark():
+    """
+    WHAT: Start MNIST benchmark with 100K neurons
+    WHY:  Demonstrate competitive performance on standard benchmark
+    HOW:  Run benchmark in background thread, stream progress
+    """
+    global benchmark_runner, benchmark_in_progress, benchmark_results
+
+    if benchmark_in_progress:
+        return jsonify({
+            'success': False,
+            'error': 'Benchmark already in progress'
+        }), 400
+
+    try:
+        data = request.json or {}
+        num_neurons = data.get('num_neurons', 100000)
+        n_epochs = data.get('epochs', 10)
+        batch_size = data.get('batch_size', 64)
+        use_gpu = data.get('use_gpu', True)
+
+        with benchmark_lock:
+            benchmark_in_progress = True
+            benchmark_results = {
+                'status': 'starting',
+                'progress': 0,
+                'current_epoch': 0,
+                'total_epochs': n_epochs
+            }
+
+            benchmark_runner = NIMCPBenchmark(
+                dataset_name="mnist",
+                num_neurons=num_neurons,
+                use_gpu=use_gpu
+            )
+
+        # Run benchmark in background thread
+        def run_benchmark():
+            global benchmark_in_progress, benchmark_results
+            try:
+                metrics = benchmark_runner.run_mnist(n_epochs=n_epochs, batch_size=batch_size)
+                with benchmark_lock:
+                    benchmark_results = {
+                        'status': 'completed',
+                        'metrics': metrics,
+                        'progress': 100
+                    }
+            except Exception as e:
+                with benchmark_lock:
+                    benchmark_results = {
+                        'status': 'failed',
+                        'error': str(e)
+                    }
+            finally:
+                benchmark_in_progress = False
+
+        thread = threading.Thread(target=run_benchmark, daemon=True)
+        thread.start()
+
+        return jsonify({
+            'success': True,
+            'message': f'MNIST benchmark started with {num_neurons:,} neurons',
+            'config': {
+                'num_neurons': num_neurons,
+                'epochs': n_epochs,
+                'batch_size': batch_size,
+                'use_gpu': use_gpu
+            }
+        })
+
+    except Exception as e:
+        benchmark_in_progress = False
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/benchmark/status', methods=['GET'])
+def get_benchmark_status():
+    """
+    WHAT: Get current benchmark status and progress
+    WHY:  Allow frontend to poll for progress updates
+    HOW:  Return current benchmark_results dict
+    """
+    with benchmark_lock:
+        return jsonify({
+            'success': True,
+            'in_progress': benchmark_in_progress,
+            'results': benchmark_results
+        })
+
+
+@app.route('/api/benchmark/results', methods=['GET'])
+def get_benchmark_results():
+    """
+    WHAT: Get completed benchmark results
+    WHY:  Display final metrics and comparisons
+    HOW:  Return full benchmark metrics and comparison table
+    """
+    with benchmark_lock:
+        if not benchmark_results or benchmark_results.get('status') != 'completed':
+            return jsonify({
+                'success': False,
+                'error': 'No completed benchmark results available'
+            }), 404
+
+        metrics = benchmark_results.get('metrics', {})
+        comparison = ComparativeBenchmark.compare(metrics)
+
+        return jsonify({
+            'success': True,
+            'metrics': metrics,
+            'comparison': comparison
+        })
+
+
+@app.route('/api/init-large', methods=['POST'])
+def init_large_brain():
+    """
+    WHAT: Initialize NIMCP brain with 100K neurons
+    WHY:  Scale to competitive size for benchmarking
+    HOW:  Create BRAIN_SIZE_LARGE with GPU support
+    """
+    global brain, brain_metrics
+
+    try:
+        data = request.json or {}
+        num_inputs = data.get('num_inputs', 784)  # Default: MNIST
+        num_outputs = data.get('num_outputs', 10)
+        num_neurons = data.get('num_neurons', 100000)
+
+        with brain_lock:
+            # Create large brain for benchmarking
+            brain = nimcp.Brain(
+                name=f"large_brain_{num_neurons}",
+                size=nimcp.BRAIN_SIZE_LARGE,
+                task=nimcp.TASK_CLASSIFICATION,
+                num_inputs=num_inputs,
+                num_outputs=num_outputs
+            )
+
+            brain_metrics['created_at'] = datetime.now().isoformat()
+            brain_metrics['status'] = 'initialized'
+            brain_metrics['num_neurons'] = num_neurons
+            brain_metrics['total_trained'] = 0
+            brain_metrics['total_predictions'] = 0
+
+        return jsonify({
+            'success': True,
+            'message': f'Large brain initialized with ~{num_neurons:,} neurons',
+            'config': {
+                'num_neurons': num_neurons,
+                'num_inputs': num_inputs,
+                'num_outputs': num_outputs
+            },
+            'metrics': brain_metrics
+        })
+
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/network/visualize', methods=['GET'])
+def visualize_network():
+    """
+    WHAT: Get network structure for visualization
+    WHY:  Enable frontend to render neural network graph
+    HOW:  Return neuron positions, connections, activity levels
+
+    RETURNS: {
+        'neurons': [{'id': int, 'x': float, 'y': float, 'z': float, 'activity': float, 'type': str}],
+        'connections': [{'from': int, 'to': int, 'weight': float}],
+        'stats': {...}
+    }
+    """
+    if brain is None:
+        return jsonify({'success': False, 'error': 'Brain not initialized'}), 400
+
+    try:
+        # Get brain statistics
+        stats = brain.get_stats()
+
+        # For visualization, sample subset of neurons (max 1000 for performance)
+        # Position neurons in 3D space based on layer structure
+        neurons_data = []
+        connections_data = []
+
+        # TODO: Implement actual neuron/synapse extraction from brain
+        # For now, return mock data for visualization
+        num_neurons = min(stats.get('num_neurons', 0), 1000)
+
+        for i in range(num_neurons):
+            neurons_data.append({
+                'id': i,
+                'x': (i % 10) * 10,  # Grid layout
+                'y': (i // 10) % 10 * 10,
+                'z': (i // 100) * 10,
+                'activity': 0.5,  # TODO: Get actual activity
+                'type': 'excitatory' if i % 5 != 0 else 'inhibitory'
+            })
+
+        return jsonify({
+            'success': True,
+            'neurons': neurons_data,
+            'connections': connections_data,
+            'stats': stats
+        })
+
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
 
 @app.route('/docs')
 def documentation():

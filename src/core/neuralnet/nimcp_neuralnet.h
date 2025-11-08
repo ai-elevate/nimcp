@@ -8,6 +8,37 @@
 #include "core/neuron_models/nimcp_neuron_model.h"
 #include "plasticity/stp/nimcp_stp.h"
 
+// Forward declarations for programmable synapse types (NIMCP 2.7)
+// WHY: Avoid circular dependency with synapse_compute.h
+// PATTERN: Use incomplete types, full definitions in synapse_compute.h
+// HOW: Pointers to these types are valid, but struct contents are opaque here
+struct synapse_compute_context_t;
+struct synapse_compute_state_t;
+
+// Forward declare neuron_t so we can use it in function pointers before it's fully defined
+// NOTE: neuron_t is defined below as typedef struct { ... } neuron_t;
+typedef struct neuron_struct neuron_t;
+
+// Function pointer types for synapse computation (NIMCP 2.7)
+// DESIGN: Define types here so synapse_t can use them without including synapse_compute.h
+// NOTE: We use neuron_t* (typedef) not struct neuron_t* (which doesn't exist yet)
+typedef float (*synapse_compute_fn)(
+    struct synapse_t* syn,
+    const neuron_t* pre_neuron,
+    const neuron_t* post_neuron,
+    float pre_activity,
+    struct synapse_compute_context_t* context
+);
+typedef void (*synapse_learn_fn)(
+    struct synapse_t* syn,
+    const neuron_t* pre_neuron,
+    const neuron_t* post_neuron,
+    float pre_spike_time,
+    float post_spike_time,
+    float reward_signal,
+    struct synapse_compute_context_t* context
+);
+
 /**
  * @file nimcp_neuralnet.h
  * @brief Neural network implementation with biological learning mechanisms
@@ -133,9 +164,16 @@ typedef struct {
 } homeostatic_params_t;
 
 /**
- * @brief Synapse structure
+ * @brief Synapse structure (NIMCP 2.7: Now with programmable computation!)
+ *
+ * DESIGN EVOLUTION:
+ * - NIMCP 2.0-2.5: Synapse = weight
+ * - NIMCP 2.6: Synapse = weight + STP state
+ * - NIMCP 2.7: Synapse = weight + STP + COMPUTATION
+ *
+ * This makes synapses first-class computational units, not just connections.
  */
-typedef struct {
+typedef struct synapse_t {
     uint32_t target_id;    /**< Target neuron ID */
     float weight;          /**< Synaptic weight */
     float plasticity;      /**< Plasticity coefficient */
@@ -148,12 +186,23 @@ typedef struct {
     // Short-term plasticity (NIMCP 2.6)
     stp_state_t stp;       /**< Short-term plasticity state */
     bool enable_stp;       /**< Enable STP for this synapse */
+
+    // Programmable computation (NIMCP 2.7) - MAJOR FEATURE
+    synapse_compute_fn compute_function;  /**< Custom computation (NULL = default) */
+    synapse_learn_fn learn_function;      /**< Custom learning (NULL = default) */
+    struct synapse_compute_state_t* compute_state; /**< Function-specific state (NULL = none) */
+
+    // PERFORMANCE NOTE: Function pointers add 24 bytes per synapse (on 64-bit)
+    // For 100K synapses: 2.4 MB overhead. Acceptable for the added power.
 } synapse_t;
 
 /**
  * @brief Neuron structure
+ *
+ * NIMCP 2.7: Changed from anonymous struct to named struct (neuron_struct)
+ * WHY: Enables forward declaration for use in synapse compute function pointers
  */
-typedef struct {
+typedef struct neuron_struct {
     uint32_t id;             /**< Unique neuron identifier */
     neuron_type_t type;      /**< Excitatory or Inhibitory */
     float state;             /**< Current activation state */
@@ -162,6 +211,7 @@ typedef struct {
     float adaptation;        /**< Adaptive threshold parameter */
     float refractory_period; /**< Refractory period (ms) */
     float bias;              /**< Neuron bias value */
+    float external_current;  /**< External input current (e.g., from spike encoding) */
 
     // Learning parameters
     learning_rule_t learning_rule;     /**< Active learning rule */
@@ -241,7 +291,7 @@ typedef struct neural_network_struct* neural_network_t;
 // Core network functions
 neural_network_t neural_network_create(const network_config_t* config);
 void neural_network_destroy(neural_network_t network);
-bool neural_network_update_neuron(neural_network_t network, uint32_t neuron_id, float new_state,
+bool neural_network_update_neuron(neural_network_t network, uint32_t neuron_id, float input_current,
                                   uint64_t timestamp);
 bool neural_network_get_neuron_state(neural_network_t network, uint32_t neuron_id, float* state);
 
@@ -313,6 +363,57 @@ void neural_network_maintain_homeostasis(neural_network_t network, uint64_t time
 void neural_network_reset(neural_network_t network);
 uint32_t neural_network_prune_synapses(neural_network_t network, float threshold);
 void neural_network_dump_neuron(neural_network_t network, uint32_t neuron_id);
+
+// NIMCP 2.7: NLP Integration - Accessor functions for synapse compute context
+/**
+ * @brief Set global state for synapse computation (e.g., attention output)
+ *
+ * WHAT: Attach global state buffer to network for synapse compute functions
+ * WHY: Enable synapses to access shared context (attention, etc)
+ * HOW: Stores pointer and size, passed to synapses via compute context
+ * WHEN: Called by NLP layer after attention computation
+ *
+ * DESIGN PATTERN: Dependency Injection - external state injected into network
+ * COMPLEXITY: O(1)
+ *
+ * @param network Neural network
+ * @param global_state Pointer to global state buffer (e.g., attention output)
+ * @param size Size of global state buffer (floats)
+ * @return true on success
+ */
+bool neural_network_set_global_state(neural_network_t network, float* global_state, uint32_t size);
+
+/**
+ * @brief Set neuromodulator system for synapse computation
+ *
+ * WHAT: Attach neuromodulator system to network
+ * WHY: Enable synapses to access neuromodulator levels (dopamine, etc)
+ * HOW: Stores opaque pointer, queried during synapse computation
+ * WHEN: Called by NLP layer during initialization
+ *
+ * DESIGN PATTERN: Dependency Injection - external system injected
+ * COMPLEXITY: O(1)
+ *
+ * @param network Neural network
+ * @param neuromod_system Opaque pointer to neuromodulator system
+ * @return true on success
+ */
+bool neural_network_set_neuromodulator_system(neural_network_t network, void* neuromod_system);
+
+/**
+ * @brief Get neuromodulation level for synapse computation
+ *
+ * WHAT: Query current neuromodulation level (dopamine, primarily)
+ * WHY: Used by synapse compute context to modulate transmission
+ * HOW: Queries attached neuromodulator system
+ * WHEN: Called during synapse computation in sum_synaptic_inputs
+ *
+ * COMPLEXITY: O(1)
+ *
+ * @param network Neural network
+ * @return Current neuromodulation level [0,1] (0 if no system attached)
+ */
+float neural_network_get_neuromodulation(neural_network_t network);
 
 // Bidirectional synapse access (OPTIMIZATION API)
 /**
