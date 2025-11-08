@@ -401,6 +401,23 @@ bool neural_network_set_global_state(neural_network_t network, float* global_sta
 bool neural_network_set_neuromodulator_system(neural_network_t network, void* neuromod_system);
 
 /**
+ * @brief Set glial integration system for neuro-glial signaling (Phase 6)
+ *
+ * WHAT: Attach glial integration system to network
+ * WHY: Enable bidirectional neuro-glial communication
+ * HOW: Stores opaque pointer, notified on neuron/synapse events
+ * WHEN: Called after glial cells are assigned to neurons/synapses
+ *
+ * DESIGN PATTERN: Observer - glial system observes neural events
+ * COMPLEXITY: O(1)
+ *
+ * @param network Neural network
+ * @param glial_system Opaque pointer to glial integration system
+ * @return true on success
+ */
+bool neural_network_set_glial_integration(neural_network_t network, void* glial_system);
+
+/**
  * @brief Get neuromodulation level for synapse computation
  *
  * WHAT: Query current neuromodulation level (dopamine, primarily)

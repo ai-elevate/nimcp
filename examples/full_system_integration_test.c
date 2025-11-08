@@ -281,7 +281,29 @@ int main(void) {
         neural_network_destroy(network);
         return 1;
     }
-    printf("      ✓ Astrocyte network created (%u astrocytes)\n", NUM_ASTROCYTES);
+    printf("      ✓ Astrocyte network created (%u capacity)\n", NUM_ASTROCYTES);
+
+    // Populate astrocyte network with individual cells (Phase 6)
+    for (uint32_t i = 0; i < NUM_ASTROCYTES; i++) {
+        // Spatial distribution: Place astrocytes in 3D grid
+        float x = (i % 5) * 50.0f;        // 5x4 grid
+        float y = ((i / 5) % 4) * 50.0f;
+        float z = (i / 20) * 50.0f;
+        float coverage_radius = 30.0f;    // Each astrocyte covers ~30µm radius
+
+        astrocyte_t* astro = astrocyte_create(i, x, y, z, coverage_radius);
+        if (!astro) {
+            fprintf(stderr, "ERROR: Failed to create astrocyte %u\n", i);
+            astrocyte_network_destroy(astro_network);
+            neuromod_pink_destroy(neuromod);
+            stdp_destroy(stdp);
+            neural_network_destroy(network);
+            return 1;
+        }
+
+        astrocyte_network_add(astro_network, astro);
+    }
+    printf("      ✓ Populated with %u active astrocyte cells\n", NUM_ASTROCYTES);
 
     // Oligodendrocytes: Myelinate neuron axons
     oligodendrocyte_network_t* oligo_network = oligodendrocyte_network_create(NUM_OLIGODENDROCYTES);
@@ -293,7 +315,26 @@ int main(void) {
         neural_network_destroy(network);
         return 1;
     }
-    printf("      ✓ Oligodendrocyte network created (%u oligodendrocytes)\n", NUM_OLIGODENDROCYTES);
+    printf("      ✓ Oligodendrocyte network created (%u capacity)\n", NUM_OLIGODENDROCYTES);
+
+    // Populate oligodendrocyte network with individual cells (Phase 6)
+    for (uint32_t i = 0; i < NUM_OLIGODENDROCYTES; i++) {
+        uint32_t max_axons = 7;  // Each oligodendrocyte can myelinate ~7 axons
+
+        oligodendrocyte_t* oligo = oligodendrocyte_create(i, max_axons);
+        if (!oligo) {
+            fprintf(stderr, "ERROR: Failed to create oligodendrocyte %u\n", i);
+            oligodendrocyte_network_destroy(oligo_network);
+            astrocyte_network_destroy(astro_network);
+            neuromod_pink_destroy(neuromod);
+            stdp_destroy(stdp);
+            neural_network_destroy(network);
+            return 1;
+        }
+
+        oligodendrocyte_network_add(oligo_network, oligo);
+    }
+    printf("      ✓ Populated with %u active oligodendrocyte cells\n", NUM_OLIGODENDROCYTES);
 
     // Microglia: Monitor and prune synapses
     microglia_network_t* microglia_network = microglia_network_create(NUM_MICROGLIA);
@@ -306,9 +347,33 @@ int main(void) {
         neural_network_destroy(network);
         return 1;
     }
-    printf("      ✓ Microglia network created (%u microglia)\n", NUM_MICROGLIA);
+    printf("      ✓ Microglia network created (%u capacity)\n", NUM_MICROGLIA);
 
-    // 1.8: Create glial integration system (Phase 5.2, 5.4)
+    // Populate microglia network with individual cells (Phase 6)
+    for (uint32_t i = 0; i < NUM_MICROGLIA; i++) {
+        // Spatial distribution: Place microglia throughout the tissue
+        float x = (i % 3) * 70.0f;        // 3x3 grid (sparser than astrocytes)
+        float y = ((i / 3) % 3) * 70.0f;
+        float z = (i / 9) * 70.0f;
+        float surveillance_radius = 40.0f;  // Each microglia surveys ~40µm radius
+
+        microglia_t* micro = microglia_create(i, x, y, z, surveillance_radius);
+        if (!micro) {
+            fprintf(stderr, "ERROR: Failed to create microglia %u\n", i);
+            microglia_network_destroy(microglia_network);
+            oligodendrocyte_network_destroy(oligo_network);
+            astrocyte_network_destroy(astro_network);
+            neuromod_pink_destroy(neuromod);
+            stdp_destroy(stdp);
+            neural_network_destroy(network);
+            return 1;
+        }
+
+        microglia_network_add(microglia_network, micro);
+    }
+    printf("      ✓ Populated with %u active microglia cells\n", NUM_MICROGLIA);
+
+    // 1.8: Create glial integration system (Phase 5.2, 5.4, 6)
     printf("[8/8] Initializing glial integration & assignment...\n");
     glial_integration_t* glial = glial_integration_create(network, NUM_NEURONS * 10);
     if (!glial) {
@@ -340,6 +405,13 @@ int main(void) {
 
     printf("      ✓ Glial integration complete: %u total assignments\n", total_assignments);
     printf("      ✓ Tripartite synapses, myelination, and synaptic surveillance active\n");
+
+    // NIMCP Phase 6: Attach glial system to network for bidirectional signaling
+    // WHAT: Enable neuro-glial notification system
+    // WHY: Allows glial cells to respond to neural activity in real-time
+    // HOW: Network will now notify glial system on synapse firing and neuron spiking
+    neural_network_set_glial_integration(network, glial);
+    printf("      ✓ Phase 6: Neuro-glial bidirectional signaling enabled\n");
 
     // 1.9 & 1.10: Note visual and audio cortex availability (Phase 5.3)
     printf("[9/10] Sensory cortex systems available...\n");

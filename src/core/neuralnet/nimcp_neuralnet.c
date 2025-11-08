@@ -41,6 +41,7 @@
 #include "core/neuron_models/nimcp_neuron_model.h"
 #include "core/neuron_models/nimcp_izhikevich.h"
 #include "plasticity/stp/nimcp_stp.h"
+#include "glial/integration/nimcp_glial_integration.h"   // NIMCP Phase 6: Glial notifications
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -126,6 +127,9 @@ struct neural_network_struct {
     void* neuromodulator_system;  /**< Neuromodulator system (opaque pointer) */
     float* global_state;          /**< Global state for synapse computation (attention output, etc) */
     uint32_t global_state_size;   /**< Size of global state buffer */
+
+    // NIMCP Phase 6: Glial Integration - Neuro-glial signaling
+    void* glial_integration;      /**< Glial integration system (opaque pointer) */
 };
 
 //=============================================================================
@@ -886,6 +890,21 @@ static float sum_synaptic_inputs(neuron_t* neuron, neural_network_t network)
         }
 
         total_input += synaptic_transmission;
+
+        // NIMCP Phase 6: Notify glial system of synapse firing
+        // WHAT: Inform astrocytes about synaptic transmission events
+        // WHY: Enables calcium-mediated tripartite synapse modulation
+        // HOW: Observer pattern - glial system observes neural events
+        // WHEN: Only if glial system attached and synapse actually fired
+        if (network->glial_integration && synaptic_transmission > 0.0f) {
+            glial_integration_on_synapse_fired(
+                (glial_integration_t*)network->glial_integration,
+                src_id,                    // Presynaptic neuron ID
+                neuron->id,                // Postsynaptic neuron ID
+                incoming_syn->weight,      // Synaptic weight
+                network->network_time      // Timestamp
+            );
+        }
     }
 
     return total_input;
@@ -1045,6 +1064,19 @@ static void handle_spike_event(neural_network_t network, uint32_t neuron_id, neu
 {
     // Record the spike
     neural_network_record_spike(network, neuron_id, new_state, timestamp);
+
+    // NIMCP Phase 6: Notify glial system of neuron firing
+    // WHAT: Inform oligodendrocytes and microglia about neuronal spiking
+    // WHY: Enables adaptive myelination and synaptic pruning
+    // HOW: Observer pattern - glial system observes neural spike events
+    // WHEN: Only if glial system attached
+    if (network->glial_integration) {
+        glial_integration_on_neuron_fired(
+            (glial_integration_t*)network->glial_integration,
+            neuron_id,         // ID of neuron that fired
+            timestamp          // Time of spike
+        );
+    }
 
     // Apply learning rules
     apply_learning_rules(network, neuron_id, neuron, timestamp);
@@ -2405,6 +2437,30 @@ bool neural_network_set_neuromodulator_system(neural_network_t network, void* ne
 
     // Store neuromodulator system reference
     network->neuromodulator_system = neuromod_system;
+
+    return true;
+}
+
+/**
+ * @brief Set glial integration system for neuro-glial signaling (Phase 6)
+ *
+ * WHAT: Attach glial integration system to network
+ * WHY: Enable bidirectional neuro-glial communication
+ * HOW: Stores opaque pointer, notified on neuron/synapse events
+ * WHEN: Called after glial cells are assigned
+ *
+ * DESIGN PATTERN: Observer - glial system observes neural events
+ * COMPLEXITY: O(1)
+ */
+bool neural_network_set_glial_integration(neural_network_t network, void* glial_system)
+{
+    // Guard: Validate input
+    if (!network) {
+        return false;
+    }
+
+    // Store glial integration system reference
+    network->glial_integration = glial_system;
 
     return true;
 }
