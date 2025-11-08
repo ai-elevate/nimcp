@@ -609,6 +609,7 @@ The demo features:
 
 ## Documentation
 
+- **[Training Regimen](docs/TRAINING_REGIMEN.md)** - Complete 10-stage progressive training pipeline 🆕
 - **[Library Integration Guide](LIBRARY_INTEGRATION.md)** - Integrate NIMCP into your app
 - **[Artemis Integration Guide](ARTEMIS_INTEGRATION.md)** - Neural consciousness substrate
 - **[Web Demo Guide](examples/web_demo/)** - Interactive multitenant demo
