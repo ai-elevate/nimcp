@@ -1,6 +1,6 @@
-# NIMCP 2.6 - Neural Substrate for AI Consciousness
+# NIMCP 2.7 - Neural Substrate for AI Consciousness
 
-**Version 2.6.2** | **Production Ready** | **License: MIT**
+**Version 2.7.0 Phase 8.8** | **Production Ready** | **License: MIT**
 
 ## What is NIMCP?
 
@@ -306,6 +306,71 @@ for t in range(simulation_steps):
 - **Robust learning**: More stable than white noise
 - **Homeostatic regulation**: Prevents runaway dynamics
 
+### 7. Multimodal Integration & Speech Cortex (2.7 Phase 8.8)
+
+```python
+# Create brain with full multimodal integration
+brain = nimcp.Brain.create_multimodal(
+    enable_visual_cortex=True,     # V1: Gabor filters
+    enable_audio_cortex=True,      # A1: FFT + MFCC
+    enable_speech_cortex=True,     # STG: Phoneme recognition (NEW!)
+    enable_introspection=True,     # Epistemic uncertainty
+    enable_ethics=True,            # Ethical validation
+    enable_salience=True,          # Novelty/surprise detection
+    enable_curiosity=True          # Exploration drive
+)
+
+# Process multimodal input with hierarchical pipeline
+output = brain.process_multimodal({
+    'visual_data': image_frame,      # 640x480 grayscale
+    'audio_data': audio_samples,     # 16kHz audio → A1
+    # Speech automatically derived from audio (A1 → STG)
+    'direct_data': feature_vector    # Additional features
+})
+
+# 4-way attention-weighted output
+print(f"Visual attention: {output.visual_attention * 100:.1f}%")
+print(f"Audio attention: {output.audio_attention * 100:.1f}%")
+print(f"Speech attention: {output.speech_attention * 100:.1f}%")  # NEW!
+print(f"Direct attention: {output.direct_attention * 100:.1f}%")
+print(f"Confidence: {output.confidence * 100:.1f}%")
+print(f"Detected phoneme: {output.phoneme}")  # IPA phonetic inventory
+```
+
+**Features:**
+- **Visual Cortex (V1)**: Gabor filters for oriented edge detection
+- **Audio Cortex (A1)**: FFT + MFCC spectral features
+- **Speech Cortex (STG/Wernicke)**: 44 phoneme recognition, formant analysis (F1-F4)
+- **Hierarchical Processing**: Audio → Speech (A1 → STG)
+- **4-Way Attention**: Automatic modality fusion with learned attention weights
+- **Cognitive Integration**: Introspection, ethics, salience, curiosity all active
+
+### 8. Specialized Neurons (2.7 Phase 8.8)
+
+```python
+# 21 specialized neuron types available
+neuron = nimcp.Neuron.create_specialized(
+    type=nimcp.NEURON_V1_SIMPLE_CELL,  # Gabor filter neuron
+    params={
+        'orientation': 45.0,      # Preferred orientation (degrees)
+        'spatial_freq': 0.1,      # Cycles per pixel
+        'phase': 0.0,             # Gabor phase offset
+        'aspect_ratio': 1.5       # Ellipse aspect ratio
+    }
+)
+
+# Available types:
+# - Visual (100-199): Simple/complex cells, orientation/direction selective
+# - Auditory (200-299): Frequency-tuned, coincidence detector, onset detector
+# - Motor (250-299): Alpha motoneuron, pattern generator
+# - Cognitive (300-399): Metacognitive, executive control
+# - Speech (400-499): Phoneme detector, prosody, lexical (proposed)
+# - Ethics (500-549): Mirror neurons, Theory of Mind (proposed)
+# - Salience (550-599): Surprise, novelty, attention (proposed)
+```
+
+**Documentation:** [docs/SPECIALIZED_NEURONS.md](docs/SPECIALIZED_NEURONS.md)
+
 **[See Full Documentation →](docs/features/FRACTAL_ARCHITECTURE.md)**
 
 ---
@@ -516,7 +581,7 @@ The demo features:
 
 ## Development Status
 
-### ✅ Complete (v2.6)
+### ✅ Complete (v2.7 Phase 8.8)
 
 - [x] Brain API (high-level learning)
 - [x] Ethics Engine (Golden Rule)
@@ -524,7 +589,17 @@ The demo features:
 - [x] Knowledge Base (multi-domain)
 - [x] Neural Networks (spiking + plasticity)
 - [x] Multiple neuron models (LIF, Izhikevich, AdEx, Hodgkin-Huxley)
-- [x] Short-term plasticity (STP)
+- [x] 21 specialized neuron types (visual, auditory, motor, cognitive)
+- [x] 15 specialized synapse types (excitatory, inhibitory, modulatory, plastic)
+- [x] 12 specialized astrocyte types (glial modulation)
+- [x] Short-term plasticity (STP) + STDP + eligibility traces
+- [x] Fractal network topology (scale-free, small-world)
+- [x] Pink noise (1/f) neuromodulation
+- [x] Visual cortex (V1): Gabor filters + pooling
+- [x] Audio cortex (A1): FFT + MFCC features
+- [x] Speech cortex (STG): 44 phoneme recognition + formant analysis
+- [x] 4-way multimodal integration with attention mechanism
+- [x] Full cognitive module integration (introspection, ethics, salience, curiosity)
 - [x] Python bindings
 - [x] Library packaging (pkg-config, CMake)
 - [x] Production infrastructure (Docker, CI/CD, monitoring)
@@ -539,11 +614,14 @@ The demo features:
 
 ### 📋 Roadmap
 
-- [ ] GPU acceleration (CUDA)
+- [ ] Implement proposed specialized neurons (speech/ethics/salience/curiosity/logic/memory)
+- [ ] Expand symbolic logic integration (neuro-symbolic reasoning)
+- [ ] Memory consolidation neurons (place/grid/time cells)
+- [ ] Enhanced GPU acceleration (CUDA optimization)
 - [ ] WebAssembly bindings
 - [ ] Rust bindings
-- [ ] Visualization tools
-- [ ] Pre-trained models
+- [ ] Advanced visualization tools (neuron activity, topology)
+- [ ] Pre-trained models for common tasks
 
 ---
 
@@ -570,7 +648,7 @@ If you use NIMCP in research, please cite:
   title = {NIMCP: Neural Substrate for AI Consciousness},
   author = {Brelin, Braun},
   year = {2025},
-  version = {2.5.0},
+  version = {2.7.0},
   url = {https://github.com/redmage123/nimcp}
 }
 ```
@@ -593,4 +671,4 @@ See [LICENSE](LICENSE) for details.
 
 ---
 
-**🧠 NIMCP 2.5 - Enabling AI systems to learn from experience and understand themselves**
+**🧠 NIMCP 2.7 Phase 8.8 - Multimodal AI with visual, audio, speech cortices and full cognitive integration**
