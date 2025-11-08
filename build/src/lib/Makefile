@@ -785,6 +785,30 @@ __/gpu/execution/nimcp_execution_mode.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/gpu/execution/nimcp_execution_mode.c.s
 .PHONY : __/gpu/execution/nimcp_execution_mode.c.s
 
+__/gpu/neuron/nimcp_gpu_neuron.o: __/gpu/neuron/nimcp_gpu_neuron.c.o
+.PHONY : __/gpu/neuron/nimcp_gpu_neuron.o
+
+# target to build an object file
+__/gpu/neuron/nimcp_gpu_neuron.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/gpu/neuron/nimcp_gpu_neuron.c.o
+.PHONY : __/gpu/neuron/nimcp_gpu_neuron.c.o
+
+__/gpu/neuron/nimcp_gpu_neuron.i: __/gpu/neuron/nimcp_gpu_neuron.c.i
+.PHONY : __/gpu/neuron/nimcp_gpu_neuron.i
+
+# target to preprocess a source file
+__/gpu/neuron/nimcp_gpu_neuron.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/gpu/neuron/nimcp_gpu_neuron.c.i
+.PHONY : __/gpu/neuron/nimcp_gpu_neuron.c.i
+
+__/gpu/neuron/nimcp_gpu_neuron.s: __/gpu/neuron/nimcp_gpu_neuron.c.s
+.PHONY : __/gpu/neuron/nimcp_gpu_neuron.s
+
+# target to generate assembly for a file
+__/gpu/neuron/nimcp_gpu_neuron.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/gpu/neuron/nimcp_gpu_neuron.c.s
+.PHONY : __/gpu/neuron/nimcp_gpu_neuron.c.s
+
 __/gpu/spike_event/nimcp_spike_event.o: __/gpu/spike_event/nimcp_spike_event.c.o
 .PHONY : __/gpu/spike_event/nimcp_spike_event.o
 
@@ -2050,6 +2074,9 @@ help:
 	@echo "... __/gpu/execution/nimcp_execution_mode.o"
 	@echo "... __/gpu/execution/nimcp_execution_mode.i"
 	@echo "... __/gpu/execution/nimcp_execution_mode.s"
+	@echo "... __/gpu/neuron/nimcp_gpu_neuron.o"
+	@echo "... __/gpu/neuron/nimcp_gpu_neuron.i"
+	@echo "... __/gpu/neuron/nimcp_gpu_neuron.s"
 	@echo "... __/gpu/spike_event/nimcp_spike_event.o"
 	@echo "... __/gpu/spike_event/nimcp_spike_event.i"
 	@echo "... __/gpu/spike_event/nimcp_spike_event.s"

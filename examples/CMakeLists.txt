@@ -80,10 +80,10 @@ add_executable(multimodal_integration_demo multimodal_integration_demo.c)
 target_link_libraries(multimodal_integration_demo nimcp m)
 target_include_directories(multimodal_integration_demo PRIVATE ${NIMCP_INCLUDE_DIR})
 
-# GPU Integration Test - Requires GPU neuron API (coming in Phase 2.7)
-# add_executable(gpu_integration_test gpu_integration_test.c)
-# target_link_libraries(gpu_integration_test nimcp)
-# target_include_directories(gpu_integration_test PRIVATE ${NIMCP_INCLUDE_DIR})
+# GPU Integration Test - GPU neuron API with CPU fallback
+add_executable(gpu_integration_test gpu_integration_test.c)
+target_link_libraries(gpu_integration_test nimcp m)
+target_include_directories(gpu_integration_test PRIVATE ${NIMCP_INCLUDE_DIR})
 
 # Install examples
 install(TARGETS event_demo brain_demo ethics_demo infant_demo integrated_demo brain_probe_demo izhikevich_demo programmable_synapses_demo nlp_integration_test fractal_network_demo nlp_integration_demo

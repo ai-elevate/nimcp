@@ -395,6 +395,20 @@ multimodal_integration_demo/fast:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f examples/CMakeFiles/multimodal_integration_demo.dir/build.make examples/CMakeFiles/multimodal_integration_demo.dir/build
 .PHONY : multimodal_integration_demo/fast
 
+# Convenience name for target.
+examples/CMakeFiles/gpu_integration_test.dir/rule:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 examples/CMakeFiles/gpu_integration_test.dir/rule
+.PHONY : examples/CMakeFiles/gpu_integration_test.dir/rule
+
+# Convenience name for target.
+gpu_integration_test: examples/CMakeFiles/gpu_integration_test.dir/rule
+.PHONY : gpu_integration_test
+
+# fast build rule for target.
+gpu_integration_test/fast:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f examples/CMakeFiles/gpu_integration_test.dir/build.make examples/CMakeFiles/gpu_integration_test.dir/build
+.PHONY : gpu_integration_test/fast
+
 brain_demo.o: brain_demo.c.o
 .PHONY : brain_demo.o
 
@@ -538,6 +552,30 @@ full_system_integration_test.s: full_system_integration_test.c.s
 full_system_integration_test.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f examples/CMakeFiles/full_system_integration_test.dir/build.make examples/CMakeFiles/full_system_integration_test.dir/full_system_integration_test.c.s
 .PHONY : full_system_integration_test.c.s
+
+gpu_integration_test.o: gpu_integration_test.c.o
+.PHONY : gpu_integration_test.o
+
+# target to build an object file
+gpu_integration_test.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f examples/CMakeFiles/gpu_integration_test.dir/build.make examples/CMakeFiles/gpu_integration_test.dir/gpu_integration_test.c.o
+.PHONY : gpu_integration_test.c.o
+
+gpu_integration_test.i: gpu_integration_test.c.i
+.PHONY : gpu_integration_test.i
+
+# target to preprocess a source file
+gpu_integration_test.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f examples/CMakeFiles/gpu_integration_test.dir/build.make examples/CMakeFiles/gpu_integration_test.dir/gpu_integration_test.c.i
+.PHONY : gpu_integration_test.c.i
+
+gpu_integration_test.s: gpu_integration_test.c.s
+.PHONY : gpu_integration_test.s
+
+# target to generate assembly for a file
+gpu_integration_test.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f examples/CMakeFiles/gpu_integration_test.dir/build.make examples/CMakeFiles/gpu_integration_test.dir/gpu_integration_test.c.s
+.PHONY : gpu_integration_test.c.s
 
 infant_learning_demo.o: infant_learning_demo.c.o
 .PHONY : infant_learning_demo.o
@@ -798,6 +836,7 @@ help:
 	@echo "... event_demo"
 	@echo "... fractal_network_demo"
 	@echo "... full_system_integration_test"
+	@echo "... gpu_integration_test"
 	@echo "... infant_demo"
 	@echo "... integrated_demo"
 	@echo "... izhikevich_demo"
@@ -826,6 +865,9 @@ help:
 	@echo "... full_system_integration_test.o"
 	@echo "... full_system_integration_test.i"
 	@echo "... full_system_integration_test.s"
+	@echo "... gpu_integration_test.o"
+	@echo "... gpu_integration_test.i"
+	@echo "... gpu_integration_test.s"
 	@echo "... infant_learning_demo.o"
 	@echo "... infant_learning_demo.i"
 	@echo "... infant_learning_demo.s"

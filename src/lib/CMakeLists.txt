@@ -110,6 +110,7 @@ set(NIMCP_CORE_SOURCES
     # GPU Support (CPU fallback when CUDA unavailable)
     ${CMAKE_CURRENT_SOURCE_DIR}/../gpu/execution/nimcp_execution_mode.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../gpu/spike_event/nimcp_spike_event.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../gpu/neuron/nimcp_gpu_neuron.c
 
     # GPU CUDA kernels (only compiled if CUDA is available)
     $<$<BOOL:${CUDAToolkit_FOUND}>:${CMAKE_CURRENT_SOURCE_DIR}/../gpu/neuron/nimcp_gpu_kernels.cu>

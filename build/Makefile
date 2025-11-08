@@ -600,6 +600,19 @@ multimodal_integration_demo/fast:
 	$(MAKE) $(MAKESILENT) -f examples/CMakeFiles/multimodal_integration_demo.dir/build.make examples/CMakeFiles/multimodal_integration_demo.dir/build
 .PHONY : multimodal_integration_demo/fast
 
+#=============================================================================
+# Target rules for targets named gpu_integration_test
+
+# Build rule for target.
+gpu_integration_test: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 gpu_integration_test
+.PHONY : gpu_integration_test
+
+# fast build rule for target.
+gpu_integration_test/fast:
+	$(MAKE) $(MAKESILENT) -f examples/CMakeFiles/gpu_integration_test.dir/build.make examples/CMakeFiles/gpu_integration_test.dir/build
+.PHONY : gpu_integration_test/fast
+
 # Help Target
 help:
 	@echo "The following are some of the valid targets for this Makefile:"
@@ -624,6 +637,7 @@ help:
 	@echo "... glial_tests"
 	@echo "... gmock"
 	@echo "... gmock_main"
+	@echo "... gpu_integration_test"
 	@echo "... gtest"
 	@echo "... gtest_main"
 	@echo "... infant_demo"
