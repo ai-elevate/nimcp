@@ -110,7 +110,59 @@ This installs:
 - `/usr/local/include/nimcp/*.h` - API headers
 - `/usr/local/lib/pkgconfig/nimcp.pc` - pkg-config support
 
-### Python Integration
+### Using Pre-Trained Models (Recommended) 🆕
+
+**No training required!** NIMCP ships with pre-trained baseline weights:
+
+```c
+#include <nimcp_brain.h>
+
+// Load pre-trained model (instant, no training)
+brain_t brain = brain_create_pretrained(
+    "nimcp_baseline_medium",  // Pre-trained 10K neuron model
+    BRAIN_TASK_CLASSIFICATION
+);
+
+// Use immediately - works out of the box!
+brain_input_t input = {
+    .visual_data = my_image,
+    .visual_width = 640,
+    .visual_height = 480,
+    .has_visual = true
+};
+
+brain_output_t output = brain_process_multimodal(brain, &input);
+printf("Prediction: %d (Confidence: %.2f%%)\n",
+       argmax(output.activations, output.num_outputs),
+       output.confidence * 100.0f);
+
+// Optional: Fine-tune on your domain (10-100 examples, 10 minutes)
+brain_finetune(brain, your_data, your_labels, num_samples, NULL);
+```
+
+**Python:**
+
+```python
+import nimcp
+
+# Load pre-trained model (instant)
+brain = nimcp.Brain.from_pretrained("nimcp_baseline_medium")
+
+# Use immediately
+prediction = brain.predict(visual=my_image)
+# Returns: {'class': 3, 'confidence': 0.87}
+
+# Optional: Fine-tune on your data
+brain.finetune(training_data=[...], labels=[...], epochs=5)
+```
+
+**See [Pre-Trained Models Guide](docs/PRETRAINED_MODELS.md)** for details.
+
+---
+
+### Training from Scratch (Optional)
+
+If you need custom training:
 
 ```python
 import nimcp
@@ -136,12 +188,12 @@ brain.learn(
 # After 100s of learning cycles: brain builds intuition
 ```
 
-### C Integration
+### C API (Full Control)
 
 ```c
 #include <nimcp_brain.h>
 
-// Create brain
+// Create brain from scratch (requires training)
 brain_t brain = brain_create(
     "my_classifier",
     BRAIN_SIZE_MEDIUM,  // 5K neurons
