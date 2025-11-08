@@ -86,6 +86,7 @@
 /home/bbrelin/nimcp/build/examples/CMakeFiles/test_phase3.dir
 /home/bbrelin/nimcp/build/examples/CMakeFiles/test_phase4.dir
 /home/bbrelin/nimcp/build/examples/CMakeFiles/full_system_integration_test.dir
+/home/bbrelin/nimcp/build/examples/CMakeFiles/multimodal_integration_demo.dir
 /home/bbrelin/nimcp/build/examples/CMakeFiles/test.dir
 /home/bbrelin/nimcp/build/examples/CMakeFiles/edit_cache.dir
 /home/bbrelin/nimcp/build/examples/CMakeFiles/rebuild_cache.dir

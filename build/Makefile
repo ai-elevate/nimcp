@@ -587,6 +587,19 @@ full_system_integration_test/fast:
 	$(MAKE) $(MAKESILENT) -f examples/CMakeFiles/full_system_integration_test.dir/build.make examples/CMakeFiles/full_system_integration_test.dir/build
 .PHONY : full_system_integration_test/fast
 
+#=============================================================================
+# Target rules for targets named multimodal_integration_demo
+
+# Build rule for target.
+multimodal_integration_demo: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 multimodal_integration_demo
+.PHONY : multimodal_integration_demo
+
+# fast build rule for target.
+multimodal_integration_demo/fast:
+	$(MAKE) $(MAKESILENT) -f examples/CMakeFiles/multimodal_integration_demo.dir/build.make examples/CMakeFiles/multimodal_integration_demo.dir/build
+.PHONY : multimodal_integration_demo/fast
+
 # Help Target
 help:
 	@echo "The following are some of the valid targets for this Makefile:"
@@ -618,6 +631,7 @@ help:
 	@echo "... integration_tests"
 	@echo "... io_tests"
 	@echo "... izhikevich_demo"
+	@echo "... multimodal_integration_demo"
 	@echo "... networking_tests"
 	@echo "... nimcp"
 	@echo "... nimcp_python"

@@ -75,6 +75,11 @@ add_executable(full_system_integration_test full_system_integration_test.c)
 target_link_libraries(full_system_integration_test nimcp m)
 target_include_directories(full_system_integration_test PRIVATE ${NIMCP_INCLUDE_DIR})
 
+# NIMCP 2.7 Phase 8 - Multi-Modal Integration Demo (unified architecture)
+add_executable(multimodal_integration_demo multimodal_integration_demo.c)
+target_link_libraries(multimodal_integration_demo nimcp m)
+target_include_directories(multimodal_integration_demo PRIVATE ${NIMCP_INCLUDE_DIR})
+
 # GPU Integration Test - Requires GPU neuron API (coming in Phase 2.7)
 # add_executable(gpu_integration_test gpu_integration_test.c)
 # target_link_libraries(gpu_integration_test nimcp)

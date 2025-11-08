@@ -132,4 +132,5 @@ set(CMAKE_DEPEND_INFO_FILES
   "examples/CMakeFiles/test_phase3.dir/DependInfo.cmake"
   "examples/CMakeFiles/test_phase4.dir/DependInfo.cmake"
   "examples/CMakeFiles/full_system_integration_test.dir/DependInfo.cmake"
+  "examples/CMakeFiles/multimodal_integration_demo.dir/DependInfo.cmake"
   )

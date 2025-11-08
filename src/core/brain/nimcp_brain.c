@@ -903,6 +903,141 @@ static bool init_output_labels(brain_t brain, uint32_t num_outputs)
 }
 
 /**
+ * @brief Initialize multi-modal subsystems (Phase 8)
+ *
+ * WHAT: Create visual cortex, audio cortex, and integration layer
+ * WHY:  Enable unified multi-modal processing
+ * HOW:  Check config flags, create modules, allocate feature buffers
+ *
+ * DESIGN:
+ * - Only creates modules if config flags are enabled
+ * - Allocates reusable feature buffers (no per-frame allocation)
+ * - Gracefully handles partial initialization
+ *
+ * @param brain Brain structure with configuration set
+ * @return true on success, false on failure
+ *
+ * COMPLEXITY: O(1) - just allocation
+ * MEMORY: O(D_v + D_a + D_integrated) for feature buffers
+ *
+ * ERROR HANDLING:
+ * - Returns true if multi-modal disabled (not an error)
+ * - Returns false only on allocation failure
+ * - Partial cleanup handled by brain_destroy()
+ *
+ * @version 2.7.0 Phase 8.1
+ * @author NIMCP Development Team
+ * @date 2025-11-08
+ */
+static bool init_multimodal_subsystems(brain_t brain)
+{
+    if (!brain) {
+        return false;
+    }
+
+    // Check if already initialized (prevent double initialization)
+    if (brain->multimodal || brain->visual_cortex || brain->audio_cortex) {
+        return true;  // Already initialized
+    }
+
+    // Check if multi-modal processing is enabled
+    if (!brain->config.enable_multimodal_integration) {
+        // Not enabled, not an error
+        return true;
+    }
+
+    // Initialize visual cortex (if enabled)
+    if (brain->config.enable_visual_cortex && brain->config.visual_feature_dim > 0) {
+        visual_cortex_config_t visual_config = {
+            .input_width = 640,        // Default camera resolution
+            .input_height = 480,
+            .num_v1_filters = 32,      // 32 orientation-selective filters
+            .feature_dim = brain->config.visual_feature_dim,
+            .enable_attention = true,
+            .enable_memory = true
+        };
+
+        brain->visual_cortex = visual_cortex_create(&visual_config);
+        if (!brain->visual_cortex) {
+            set_error("Failed to create visual cortex");
+            return false;
+        }
+
+        // Allocate visual feature buffer
+        brain->visual_feature_buffer = nimcp_calloc(brain->config.visual_feature_dim, sizeof(float));
+        if (!brain->visual_feature_buffer) {
+            set_error("Failed to allocate visual feature buffer");
+            visual_cortex_destroy(brain->visual_cortex);
+            brain->visual_cortex = NULL;
+            return false;
+        }
+    }
+
+    // Initialize audio cortex (if enabled)
+    if (brain->config.enable_audio_cortex && brain->config.audio_feature_dim > 0) {
+        audio_cortex_config_t audio_config = {
+            .sample_rate = 16000,      // Default 16kHz audio
+            .frame_size = 512,         // 32ms frames at 16kHz
+            .num_freq_bins = 256,
+            .num_mel_filters = 40,     // Standard for speech
+            .num_mfcc = brain->config.audio_feature_dim,
+            .num_channels = 1,         // Mono by default
+            .feature_dim = brain->config.audio_feature_dim,
+            .enable_attention = true,
+            .enable_memory = true
+        };
+
+        brain->audio_cortex = audio_cortex_create(&audio_config);
+        if (!brain->audio_cortex) {
+            set_error("Failed to create audio cortex");
+            return false;
+        }
+
+        // Allocate audio feature buffer
+        brain->audio_feature_buffer = nimcp_calloc(brain->config.audio_feature_dim, sizeof(float));
+        if (!brain->audio_feature_buffer) {
+            set_error("Failed to allocate audio feature buffer");
+            audio_cortex_destroy(brain->audio_cortex);
+            brain->audio_cortex = NULL;
+            return false;
+        }
+    }
+
+    // Initialize multi-modal integration layer
+    uint32_t visual_dim = brain->config.enable_visual_cortex ? brain->config.visual_feature_dim : 0;
+    uint32_t audio_dim = brain->config.enable_audio_cortex ? brain->config.audio_feature_dim : 0;
+    // Direct dimension: Remaining space after visual and audio features
+    uint32_t direct_dim = 0;
+    if (brain->config.num_inputs > (visual_dim + audio_dim)) {
+        direct_dim = brain->config.num_inputs - visual_dim - audio_dim;
+    }
+
+    if (visual_dim > 0 || audio_dim > 0 || direct_dim > 0) {
+        multimodal_config_t mm_config = multimodal_default_config(visual_dim, audio_dim, direct_dim);
+
+        // Output dimension should match network input size
+        mm_config.output_dim = brain->config.num_inputs;
+
+        brain->multimodal = multimodal_integration_create(&mm_config);
+        if (!brain->multimodal) {
+            set_error("Failed to create multimodal integration layer");
+            return false;
+        }
+
+        // Allocate integrated feature buffer
+        brain->integrated_feature_buffer = nimcp_calloc(mm_config.output_dim, sizeof(float));
+        if (!brain->integrated_feature_buffer) {
+            set_error("Failed to allocate integrated feature buffer");
+            multimodal_integration_destroy(brain->multimodal);
+            brain->multimodal = NULL;
+            return false;
+        }
+    }
+
+    return true;
+}
+
+/**
  * @brief Create brain with preset size and task
  *
  * WHY: Factory pattern - single creation entry point
@@ -968,6 +1103,23 @@ brain_t brain_create(const char* task_name, brain_size_t size, brain_task_t task
     // Initialize statistics
     init_brain_stats(&brain->stats, task_name, size, num_inputs, brain->config.learning_rate);
 
+    // Phase 8: Initialize multi-modal subsystems (if configured)
+    if (!init_multimodal_subsystems(brain)) {
+        // Cleanup on failure
+        adaptive_network_destroy(brain->network);
+        strategy_destroy(brain->strategy);
+        if (brain->output_labels) {
+            for (uint32_t i = 0; i < brain->config.num_outputs; i++) {
+                if (brain->output_labels[i]) {
+                    nimcp_free(brain->output_labels[i]);
+                }
+            }
+            nimcp_free(brain->output_labels);
+        }
+        nimcp_free(brain);
+        return NULL;
+    }
+
     brain_clear_error();
     return brain;
 }
@@ -1029,8 +1181,23 @@ brain_t brain_create_custom(const brain_config_t* config)
         return NULL;
     }
 
-    return brain_create(config->task_name, config->size, config->task, config->num_inputs,
-                        config->num_outputs);
+    // Create brain with basic parameters
+    brain_t brain = brain_create(config->task_name, config->size, config->task, config->num_inputs,
+                                  config->num_outputs);
+    if (!brain) {
+        return NULL;
+    }
+
+    // Copy full configuration (including multimodal flags)
+    brain->config = *config;
+
+    // Initialize multimodal subsystems (now that config is properly set)
+    if (!init_multimodal_subsystems(brain)) {
+        brain_destroy(brain);
+        return NULL;
+    }
+
+    return brain;
 }
 
 /**
@@ -1090,6 +1257,20 @@ void brain_destroy(brain_t brain)
     if (brain->distributed) {
         distrib_cognition_destroy(brain->distributed);
     }
+
+    // Phase 8: Cleanup multi-modal subsystems
+    if (brain->visual_cortex) {
+        visual_cortex_destroy(brain->visual_cortex);
+    }
+    if (brain->audio_cortex) {
+        audio_cortex_destroy(brain->audio_cortex);
+    }
+    if (brain->multimodal) {
+        multimodal_integration_destroy(brain->multimodal);
+    }
+    nimcp_free(brain->visual_feature_buffer);
+    nimcp_free(brain->audio_feature_buffer);
+    nimcp_free(brain->integrated_feature_buffer);
 
     clear_cache(brain);
     nimcp_free(brain);
@@ -2731,6 +2912,7 @@ bool brain_process_multimodal(
 
     // Guard clause: Validate inputs
     if (!brain || !input || !output) {
+        set_error("Invalid parameters: brain, input, or output is NULL");
         return false;
     }
 
@@ -2740,12 +2922,14 @@ bool brain_process_multimodal(
     bool has_direct = (input->direct_data != NULL && input->direct_dim > 0);
 
     if (!has_visual && !has_audio && !has_direct) {
-        return false;  // No input provided
+        set_error("No input modality provided");
+        return false;
     }
 
     // Check brain is configured for multi-modal processing
     if (!brain->config.enable_multimodal_integration) {
-        return false;  // Brain not configured for this mode
+        set_error("Brain not configured for multimodal processing");
+        return false;
     }
 
     // Initialize output
@@ -2856,30 +3040,35 @@ bool brain_process_multimodal(
     // WHY:  Learn patterns, make associations, generate output
     // HOW:  Feed to network, apply STDP, glial modulation, oscillations
 
-    // Feed integrated features to network input neurons
-    // TODO: Map integrated_feature_buffer to network inputs
-    // For now, this is a placeholder - actual implementation depends on
-    // how input neurons are designated in the network
+    // Feed integrated features to network and get output
+    // This automatically applies:
+    // - STDP learning (if enabled)
+    // - Glial modulation (if glial_integration attached)
+    // - Brain oscillations (analyzed during step)
+    // - Pink noise neuromodulation (via neuromod system)
 
-    // Apply biological learning mechanisms
-    if (brain->glial) {
-        // Glial cells modulate synaptic transmission
-        // Already integrated via neural_network_set_glial_integration()
+    uint32_t network_output_size = brain->config.num_outputs;
+    float* network_output = nimcp_calloc(network_output_size, sizeof(float));
+    if (!network_output) {
+        return false;
     }
 
-    if (brain->oscillations) {
-        // Brain oscillations coordinate neural activity
-        // Analysis happens during network step
-    }
+    // Forward pass through adaptive network
+    uint32_t spikes_generated = adaptive_network_forward(
+        brain->network,
+        brain->integrated_feature_buffer,  // Input: integrated features
+        brain->config.num_inputs,          // Input size
+        network_output,                     // Output buffer
+        network_output_size,                // Output size
+        input->timestamp_ms                 // Timestamp for temporal processing
+    );
 
-    if (brain->pink_noise) {
-        // Pink noise modulates neuromodulators for exploration
-        // Applied during synaptic updates
+    // Copy network output to user's output buffer
+    if (output->output_vector && output->output_dim > 0) {
+        uint32_t copy_size = (output->output_dim < network_output_size) ?
+                             output->output_dim : network_output_size;
+        memcpy(output->output_vector, network_output, copy_size * sizeof(float));
     }
-
-    // Step the neural network (this triggers STDP, glial, oscillations)
-    // TODO: Actual network step implementation
-    // float* network_output = neural_network_step(brain->network, ...);
 
     // =========================================================================
     // STAGE 4: COGNITIVE PROCESSING
@@ -2888,34 +3077,69 @@ bool brain_process_multimodal(
     // WHY:  Ensure ethical, confident, salient decisions
     // HOW:  Introspection, ethics, salience, curiosity modules
 
-    // Introspection: Assess confidence and uncertainty
+    // Introspection: Assess confidence based on network activity
     if (brain->introspection) {
-        // TODO: Implement introspection_assess_confidence()
-        // output->confidence = introspection_assess_confidence(brain->introspection, brain->network);
-        // output->introspection_uncertainty = 1.0f - output->confidence;
-        output->confidence = 0.8f;  // Placeholder
-        output->introspection_uncertainty = 0.2f;
+        // Compute confidence based on output variance and spike counts
+        // Higher spike counts and lower output variance = higher confidence
+        float output_variance = 0.0f;
+        float output_mean = 0.0f;
+        for (uint32_t i = 0; i < network_output_size; i++) {
+            output_mean += network_output[i];
+        }
+        output_mean /= network_output_size;
+
+        for (uint32_t i = 0; i < network_output_size; i++) {
+            float diff = network_output[i] - output_mean;
+            output_variance += diff * diff;
+        }
+        output_variance /= network_output_size;
+
+        // Higher activity, lower variance → higher confidence
+        output->confidence = fminf(1.0f, (float)spikes_generated / (brain->config.num_inputs * 2.0f));
+        output->confidence *= (1.0f - fminf(1.0f, output_variance));
+        output->introspection_uncertainty = 1.0f - output->confidence;
+    } else {
+        // Default confidence based on network activity
+        output->confidence = fminf(1.0f, (float)spikes_generated / (brain->config.num_inputs * 2.0f));
+        output->introspection_uncertainty = 1.0f - output->confidence;
     }
 
-    // Ethics: Validate output against Golden Rule
+    // Ethics: Validate output (placeholder - checks for NaN/extreme values)
     if (brain->ethics) {
-        // TODO: Implement ethics_validate_network_output()
-        // output->ethical_approved = ethics_validate_network_output(brain->ethics, brain->network);
-        output->ethical_approved = true;  // Placeholder
+        // Check for ethical violations (NaN, inf, or extreme values)
+        output->ethical_approved = true;
+        for (uint32_t i = 0; i < network_output_size; i++) {
+            if (isnan(network_output[i]) || isinf(network_output[i]) ||
+                fabsf(network_output[i]) > 1000.0f) {
+                output->ethical_approved = false;
+                break;
+            }
+        }
+    } else {
+        output->ethical_approved = true;
     }
 
-    // Salience: Identify important patterns
+    // Salience: Identify importance based on max output activation
     if (brain->salience) {
-        // TODO: Implement salience_compute_network()
-        // output->salience_score = salience_compute_network(brain->salience, brain->network);
-        output->salience_score = 0.7f;  // Placeholder
+        float max_activation = 0.0f;
+        for (uint32_t i = 0; i < network_output_size; i++) {
+            if (network_output[i] > max_activation) {
+                max_activation = network_output[i];
+            }
+        }
+        output->salience_score = fminf(1.0f, max_activation);
+    } else {
+        output->salience_score = 0.5f;  // Default medium salience
     }
 
-    // Curiosity: Detect novelty
+    // Curiosity: Detect novelty based on low prior activation
     if (brain->curiosity) {
-        // TODO: Implement curiosity_compute_novelty()
-        // output->novelty_score = curiosity_compute_novelty(brain->curiosity, integrated_features);
-        output->novelty_score = 0.3f;  // Placeholder
+        // Low spike count or unusual output pattern = high novelty
+        float expected_spikes = brain->config.num_inputs * 0.5f;
+        float spike_diff = fabsf((float)spikes_generated - expected_spikes);
+        output->novelty_score = fminf(1.0f, spike_diff / expected_spikes);
+    } else {
+        output->novelty_score = 0.3f;  // Default low novelty
     }
 
     // =========================================================================
@@ -2926,35 +3150,66 @@ bool brain_process_multimodal(
     // HOW:  Map network output to decision, generate explanation
 
     // Consolidation: Strengthen important memories
-    if (brain->consolidation) {
-        // TODO: Consolidate if novel or high salience
+    if (brain->consolidation && (output->novelty_score > 0.7f || output->salience_score > 0.7f)) {
+        // High novelty or salience → trigger consolidation
+        // TODO: Implement consolidation_strengthen() when module is ready
     }
 
     // Ethical filtering: Block harmful outputs
     if (!output->ethical_approved) {
         snprintf(output->explanation, sizeof(output->explanation),
-                 "Output blocked: Failed ethical validation");
+                 "Output blocked: Failed ethical validation (NaN/Inf/extreme values detected)");
+        nimcp_free(network_output);
         return false;
     }
 
-    // Extract output vector
-    // TODO: Map network output neurons to output->output_vector
-    // For now, placeholder
-    if (output->output_vector && output->output_dim > 0) {
-        for (uint32_t i = 0; i < output->output_dim; i++) {
-            output->output_vector[i] = 0.0f;  // Placeholder
+    // Output vector already copied above (line 3033-3037)
+    // Network output is in output->output_vector
+
+    // Find decision label based on max output activation
+    uint32_t max_idx = 0;
+    float max_val = -INFINITY;
+    for (uint32_t i = 0; i < network_output_size; i++) {
+        if (network_output[i] > max_val) {
+            max_val = network_output[i];
+            max_idx = i;
         }
     }
 
-    // Generate explanation
-    snprintf(output->explanation, sizeof(output->explanation),
-             "Multi-modal decision: visual=%.1f%%, audio=%.1f%%, direct=%.1f%%, confidence=%.0f%%",
-             output->visual_attention * 100.0f,
-             output->audio_attention * 100.0f,
-             output->direct_attention * 100.0f,
-             output->confidence * 100.0f);
+    // Generate decision label
+    if (brain->output_labels && max_idx < brain->num_output_labels && brain->output_labels[max_idx]) {
+        strncpy(output->decision_label, brain->output_labels[max_idx],
+                sizeof(output->decision_label) - 1);
+    } else {
+        snprintf(output->decision_label, sizeof(output->decision_label),
+                 "output_%u", max_idx);
+    }
 
-    strncpy(output->decision_label, "placeholder", sizeof(output->decision_label) - 1);
+    // Generate comprehensive explanation
+    char modality_str[128] = {0};
+    if (has_visual && has_audio) {
+        snprintf(modality_str, sizeof(modality_str),
+                 "visual=%.0f%% audio=%.0f%%",
+                 output->visual_attention * 100.0f,
+                 output->audio_attention * 100.0f);
+    } else if (has_visual) {
+        snprintf(modality_str, sizeof(modality_str), "visual=100%%");
+    } else if (has_audio) {
+        snprintf(modality_str, sizeof(modality_str), "audio=100%%");
+    } else if (has_direct) {
+        snprintf(modality_str, sizeof(modality_str), "direct=100%%");
+    }
+
+    snprintf(output->explanation, sizeof(output->explanation),
+             "%s | %u spikes | conf=%.0f%% salience=%.0f%% novelty=%.0f%%",
+             modality_str,
+             spikes_generated,
+             output->confidence * 100.0f,
+             output->salience_score * 100.0f,
+             output->novelty_score * 100.0f);
+
+    // Cleanup
+    nimcp_free(network_output);
 
     return true;
 }

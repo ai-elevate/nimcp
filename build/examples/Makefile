@@ -381,6 +381,20 @@ full_system_integration_test/fast:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f examples/CMakeFiles/full_system_integration_test.dir/build.make examples/CMakeFiles/full_system_integration_test.dir/build
 .PHONY : full_system_integration_test/fast
 
+# Convenience name for target.
+examples/CMakeFiles/multimodal_integration_demo.dir/rule:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 examples/CMakeFiles/multimodal_integration_demo.dir/rule
+.PHONY : examples/CMakeFiles/multimodal_integration_demo.dir/rule
+
+# Convenience name for target.
+multimodal_integration_demo: examples/CMakeFiles/multimodal_integration_demo.dir/rule
+.PHONY : multimodal_integration_demo
+
+# fast build rule for target.
+multimodal_integration_demo/fast:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f examples/CMakeFiles/multimodal_integration_demo.dir/build.make examples/CMakeFiles/multimodal_integration_demo.dir/build
+.PHONY : multimodal_integration_demo/fast
+
 brain_demo.o: brain_demo.c.o
 .PHONY : brain_demo.o
 
@@ -597,6 +611,30 @@ izhikevich_demo.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f examples/CMakeFiles/izhikevich_demo.dir/build.make examples/CMakeFiles/izhikevich_demo.dir/izhikevich_demo.c.s
 .PHONY : izhikevich_demo.c.s
 
+multimodal_integration_demo.o: multimodal_integration_demo.c.o
+.PHONY : multimodal_integration_demo.o
+
+# target to build an object file
+multimodal_integration_demo.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f examples/CMakeFiles/multimodal_integration_demo.dir/build.make examples/CMakeFiles/multimodal_integration_demo.dir/multimodal_integration_demo.c.o
+.PHONY : multimodal_integration_demo.c.o
+
+multimodal_integration_demo.i: multimodal_integration_demo.c.i
+.PHONY : multimodal_integration_demo.i
+
+# target to preprocess a source file
+multimodal_integration_demo.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f examples/CMakeFiles/multimodal_integration_demo.dir/build.make examples/CMakeFiles/multimodal_integration_demo.dir/multimodal_integration_demo.c.i
+.PHONY : multimodal_integration_demo.c.i
+
+multimodal_integration_demo.s: multimodal_integration_demo.c.s
+.PHONY : multimodal_integration_demo.s
+
+# target to generate assembly for a file
+multimodal_integration_demo.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f examples/CMakeFiles/multimodal_integration_demo.dir/build.make examples/CMakeFiles/multimodal_integration_demo.dir/multimodal_integration_demo.c.s
+.PHONY : multimodal_integration_demo.c.s
+
 nlp_integration_demo.o: nlp_integration_demo.c.o
 .PHONY : nlp_integration_demo.o
 
@@ -763,6 +801,7 @@ help:
 	@echo "... infant_demo"
 	@echo "... integrated_demo"
 	@echo "... izhikevich_demo"
+	@echo "... multimodal_integration_demo"
 	@echo "... nlp_integration_demo"
 	@echo "... nlp_integration_test"
 	@echo "... programmable_synapses_demo"
@@ -796,6 +835,9 @@ help:
 	@echo "... izhikevich_demo.o"
 	@echo "... izhikevich_demo.i"
 	@echo "... izhikevich_demo.s"
+	@echo "... multimodal_integration_demo.o"
+	@echo "... multimodal_integration_demo.i"
+	@echo "... multimodal_integration_demo.s"
 	@echo "... nlp_integration_demo.o"
 	@echo "... nlp_integration_demo.i"
 	@echo "... nlp_integration_demo.s"
