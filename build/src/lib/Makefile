@@ -473,6 +473,30 @@ __/core/brain_regions/nimcp_brain_regions.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain_regions/nimcp_brain_regions.c.s
 .PHONY : __/core/brain_regions/nimcp_brain_regions.c.s
 
+__/core/integration/nimcp_multimodal_integration.o: __/core/integration/nimcp_multimodal_integration.c.o
+.PHONY : __/core/integration/nimcp_multimodal_integration.o
+
+# target to build an object file
+__/core/integration/nimcp_multimodal_integration.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/integration/nimcp_multimodal_integration.c.o
+.PHONY : __/core/integration/nimcp_multimodal_integration.c.o
+
+__/core/integration/nimcp_multimodal_integration.i: __/core/integration/nimcp_multimodal_integration.c.i
+.PHONY : __/core/integration/nimcp_multimodal_integration.i
+
+# target to preprocess a source file
+__/core/integration/nimcp_multimodal_integration.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/integration/nimcp_multimodal_integration.c.i
+.PHONY : __/core/integration/nimcp_multimodal_integration.c.i
+
+__/core/integration/nimcp_multimodal_integration.s: __/core/integration/nimcp_multimodal_integration.c.s
+.PHONY : __/core/integration/nimcp_multimodal_integration.s
+
+# target to generate assembly for a file
+__/core/integration/nimcp_multimodal_integration.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/integration/nimcp_multimodal_integration.c.s
+.PHONY : __/core/integration/nimcp_multimodal_integration.c.s
+
 __/core/neuralnet/nimcp_neuralnet.o: __/core/neuralnet/nimcp_neuralnet.c.o
 .PHONY : __/core/neuralnet/nimcp_neuralnet.o
 
@@ -1987,6 +2011,9 @@ help:
 	@echo "... __/core/brain_regions/nimcp_brain_regions.o"
 	@echo "... __/core/brain_regions/nimcp_brain_regions.i"
 	@echo "... __/core/brain_regions/nimcp_brain_regions.s"
+	@echo "... __/core/integration/nimcp_multimodal_integration.o"
+	@echo "... __/core/integration/nimcp_multimodal_integration.i"
+	@echo "... __/core/integration/nimcp_multimodal_integration.s"
 	@echo "... __/core/neuralnet/nimcp_neuralnet.o"
 	@echo "... __/core/neuralnet/nimcp_neuralnet.i"
 	@echo "... __/core/neuralnet/nimcp_neuralnet.s"

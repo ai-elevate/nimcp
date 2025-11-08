@@ -70,11 +70,11 @@ extern "C" {
  * @brief Activation function types
  */
 typedef enum {
-    ACTIVATION_NONE,      /**< Linear (no activation) */
-    ACTIVATION_RELU,      /**< Rectified Linear Unit */
-    ACTIVATION_SIGMOID,   /**< Sigmoid (0-1) */
-    ACTIVATION_TANH       /**< Hyperbolic tangent (-1 to 1) */
-} activation_type_t;
+    VISUAL_ACTIVATION_NONE,      /**< Linear (no activation) */
+    VISUAL_ACTIVATION_RELU,      /**< Rectified Linear Unit */
+    VISUAL_ACTIVATION_SIGMOID,   /**< Sigmoid (0-1) */
+    VISUAL_ACTIVATION_TANH       /**< Hyperbolic tangent (-1 to 1) */
+} visual_activation_type_t;
 
 //=============================================================================
 // Convolution Layer
@@ -96,7 +96,7 @@ typedef struct {
     uint32_t kernel_size;       /**< Kernel size (typically 3, 5, or 7) */
     uint32_t stride;            /**< Stride (typically 1 or 2) */
     uint32_t padding;           /**< Padding (0 for valid, kernel_size/2 for same) */
-    activation_type_t activation; /**< Activation function */
+    visual_activation_type_t activation; /**< Activation function */
 } conv_layer_config_t;
 
 /**

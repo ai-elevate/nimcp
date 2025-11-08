@@ -482,12 +482,12 @@ src/tests/CMakeFiles/plasticity_tests.dir/all: _deps/googletest-build/googletest
 src/tests/CMakeFiles/plasticity_tests.dir/all: src/lib/CMakeFiles/nimcp.dir/all
 	$(MAKE) $(MAKESILENT) -f src/tests/CMakeFiles/plasticity_tests.dir/build.make src/tests/CMakeFiles/plasticity_tests.dir/depend
 	$(MAKE) $(MAKESILENT) -f src/tests/CMakeFiles/plasticity_tests.dir/build.make src/tests/CMakeFiles/plasticity_tests.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/bbrelin/nimcp/build/CMakeFiles --progress-num=83,84 "Built target plasticity_tests"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/bbrelin/nimcp/build/CMakeFiles --progress-num=83,84,85 "Built target plasticity_tests"
 .PHONY : src/tests/CMakeFiles/plasticity_tests.dir/all
 
 # Build rule for subdir invocation for target.
 src/tests/CMakeFiles/plasticity_tests.dir/rule: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 42
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 43
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 src/tests/CMakeFiles/plasticity_tests.dir/all
 	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 0
 .PHONY : src/tests/CMakeFiles/plasticity_tests.dir/rule
@@ -650,12 +650,12 @@ src/tests/CMakeFiles/io_tests.dir/all: _deps/googletest-build/googletest/CMakeFi
 src/tests/CMakeFiles/io_tests.dir/all: src/lib/CMakeFiles/nimcp.dir/all
 	$(MAKE) $(MAKESILENT) -f src/tests/CMakeFiles/io_tests.dir/build.make src/tests/CMakeFiles/io_tests.dir/depend
 	$(MAKE) $(MAKESILENT) -f src/tests/CMakeFiles/io_tests.dir/build.make src/tests/CMakeFiles/io_tests.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/bbrelin/nimcp/build/CMakeFiles --progress-num=33,34,35 "Built target io_tests"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/bbrelin/nimcp/build/CMakeFiles --progress-num=32,33,34,35 "Built target io_tests"
 .PHONY : src/tests/CMakeFiles/io_tests.dir/all
 
 # Build rule for subdir invocation for target.
 src/tests/CMakeFiles/io_tests.dir/rule: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 43
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 44
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 src/tests/CMakeFiles/io_tests.dir/all
 	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 0
 .PHONY : src/tests/CMakeFiles/io_tests.dir/rule
@@ -706,12 +706,12 @@ src/tests/CMakeFiles/integration_tests.dir/all: _deps/googletest-build/googletes
 src/tests/CMakeFiles/integration_tests.dir/all: src/lib/CMakeFiles/nimcp.dir/all
 	$(MAKE) $(MAKESILENT) -f src/tests/CMakeFiles/integration_tests.dir/build.make src/tests/CMakeFiles/integration_tests.dir/depend
 	$(MAKE) $(MAKESILENT) -f src/tests/CMakeFiles/integration_tests.dir/build.make src/tests/CMakeFiles/integration_tests.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/bbrelin/nimcp/build/CMakeFiles --progress-num=26,27,28,29,30,31,32 "Built target integration_tests"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/bbrelin/nimcp/build/CMakeFiles --progress-num=26,27,28,29,30,31 "Built target integration_tests"
 .PHONY : src/tests/CMakeFiles/integration_tests.dir/all
 
 # Build rule for subdir invocation for target.
 src/tests/CMakeFiles/integration_tests.dir/rule: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 47
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 46
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 src/tests/CMakeFiles/integration_tests.dir/all
 	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 0
 .PHONY : src/tests/CMakeFiles/integration_tests.dir/rule
@@ -914,12 +914,12 @@ examples/CMakeFiles/izhikevich_demo.dir/clean:
 examples/CMakeFiles/programmable_synapses_demo.dir/all: src/lib/CMakeFiles/nimcp.dir/all
 	$(MAKE) $(MAKESILENT) -f examples/CMakeFiles/programmable_synapses_demo.dir/build.make examples/CMakeFiles/programmable_synapses_demo.dir/depend
 	$(MAKE) $(MAKESILENT) -f examples/CMakeFiles/programmable_synapses_demo.dir/build.make examples/CMakeFiles/programmable_synapses_demo.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/bbrelin/nimcp/build/CMakeFiles --progress-num=85,86 "Built target programmable_synapses_demo"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/bbrelin/nimcp/build/CMakeFiles --progress-num=86 "Built target programmable_synapses_demo"
 .PHONY : examples/CMakeFiles/programmable_synapses_demo.dir/all
 
 # Build rule for subdir invocation for target.
 examples/CMakeFiles/programmable_synapses_demo.dir/rule: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 40
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 39
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 examples/CMakeFiles/programmable_synapses_demo.dir/all
 	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 0
 .PHONY : examples/CMakeFiles/programmable_synapses_demo.dir/rule

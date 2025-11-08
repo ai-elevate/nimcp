@@ -125,6 +125,11 @@ typedef struct {
     bool enable_pink_noise;    /**< Enable pink noise neuromodulation (Phase 4) */
     bool enable_spike_nlp;     /**< Enable NLP via spike encoding (Phase 5.1) */
     bool enable_fractal_topology; /**< Enable scale-free network topology (Phase 2) */
+
+    // === PHASE 8: UNIFIED MULTI-MODAL PROCESSING ===
+    bool enable_multimodal_integration; /**< Enable multi-modal sensory integration */
+    uint32_t visual_feature_dim;  /**< Visual feature dimension (0 = no visual) */
+    uint32_t audio_feature_dim;   /**< Audio feature dimension (0 = no audio) */
 } brain_config_t;
 
 /**
@@ -578,6 +583,185 @@ void brain_clear_error(void);
  * @return Adaptive network handle (do not free!)
  */
 adaptive_network_t brain_get_network(brain_t brain);
+
+//=============================================================================
+// Phase 8: Unified Multi-Modal Processing API
+//=============================================================================
+
+/**
+ * @brief Multi-modal processing input bundle
+ *
+ * WHAT: Container for all possible input modalities
+ * WHY:  Enable unified processing of visual, audio, and direct inputs
+ * HOW:  Pass NULL for unused modalities
+ *
+ * DESIGN: Flexible multi-modal input - any combination of modalities allowed
+ */
+typedef struct {
+    // Visual input (optional)
+    const uint8_t* visual_data;  /**< Raw image data (grayscale or RGB) */
+    uint32_t visual_width;       /**< Image width in pixels */
+    uint32_t visual_height;      /**< Image height in pixels */
+    uint32_t visual_channels;    /**< 1=grayscale, 3=RGB */
+
+    // Audio input (optional)
+    const float* audio_data;     /**< Audio samples (normalized -1 to 1) */
+    uint32_t audio_samples;      /**< Number of audio samples */
+    uint8_t audio_channels;      /**< 1=mono, 2=stereo */
+
+    // Direct input (optional)
+    const float* direct_data;    /**< Direct feature vector */
+    uint32_t direct_dim;         /**< Direct feature dimension */
+
+    // Temporal information
+    uint64_t timestamp_ms;       /**< Timestamp for temporal alignment */
+} brain_multimodal_input_t;
+
+/**
+ * @brief Unified multi-modal processing result
+ *
+ * WHAT: Comprehensive output with confidence and explanations
+ * WHY:  Provide full cognitive state after processing
+ * HOW:  Populated by cognitive modules during integration
+ */
+typedef struct {
+    // Core decision
+    float* output_vector;        /**< Output feature vector */
+    uint32_t output_dim;         /**< Output dimension */
+    char decision_label[64];     /**< Human-readable decision label */
+    float confidence;            /**< Overall confidence [0,1] */
+
+    // Cognitive assessments
+    float introspection_uncertainty; /**< Epistemic uncertainty [0,1] */
+    float salience_score;        /**< Output salience [0,1] */
+    bool ethical_approved;       /**< Passed ethical review */
+    float novelty_score;         /**< Input novelty [0,1] */
+
+    // Attention breakdown
+    float visual_attention;      /**< Visual modality weight [0,1] */
+    float audio_attention;       /**< Audio modality weight [0,1] */
+    float direct_attention;      /**< Direct input weight [0,1] */
+
+    // Explanation
+    char explanation[256];       /**< Human-readable explanation */
+} brain_multimodal_output_t;
+
+/**
+ * @brief Process multi-modal input through unified cognitive architecture
+ *
+ * WHAT: Unified processing pipeline integrating all sensory and cognitive modules
+ * WHY:  Enable coordinated multi-modal perception and cognition
+ * HOW:  Sensory extraction → Integration → Neural processing → Cognitive checks → Output
+ *
+ * ARCHITECTURE:
+ * 1. SENSORY STAGE:
+ *    - Visual cortex extracts CNN features (if visual_data present)
+ *    - Audio cortex extracts FFT features (if audio_data present)
+ *    - Direct features passed through (if direct_data present)
+ *
+ * 2. INTEGRATION STAGE:
+ *    - Multi-modal integration layer combines features
+ *    - Attention weighting by modality
+ *    - Unified representation → network input
+ *
+ * 3. NEURAL PROCESSING:
+ *    - Feed integrated features to neural network
+ *    - STDP learning updates synapses
+ *    - Glial modulation affects transmission
+ *    - Brain oscillations coordinate activity
+ *    - Pink noise adds exploration
+ *
+ * 4. COGNITIVE PROCESSING:
+ *    - Introspection assesses confidence
+ *    - Salience identifies important patterns
+ *    - Ethics validates output
+ *    - Curiosity detects novelty
+ *    - Knowledge applies constraints
+ *
+ * 5. OUTPUT INTEGRATION:
+ *    - Consolidation strengthens memories
+ *    - Ethical filtering blocks harmful outputs
+ *    - Salience weighting prioritizes relevant outputs
+ *    - Extract final decision with explanations
+ *
+ * @param brain Brain handle
+ * @param input Multi-modal input bundle
+ * @param output Output structure (pre-allocated)
+ * @return true on success, false on failure
+ *
+ * USAGE:
+ * ```c
+ * // Create brain with multi-modal support
+ * brain_config_t config = brain_default_config("perception", BRAIN_SIZE_MEDIUM,
+ *                                               BRAIN_TASK_CLASSIFICATION, 256, 10);
+ * config.enable_visual_cortex = true;
+ * config.enable_audio_cortex = true;
+ * config.enable_ethics = true;
+ * config.enable_introspection = true;
+ * config.enable_multimodal_integration = true;
+ * config.visual_feature_dim = 128;
+ * config.audio_feature_dim = 64;
+ *
+ * brain_t brain = brain_create_custom(&config);
+ *
+ * // Process camera + microphone input
+ * uint8_t camera_frame[640 * 480];  // Grayscale
+ * float microphone_samples[1024];    // Audio
+ *
+ * brain_multimodal_input_t input = {
+ *     .visual_data = camera_frame,
+ *     .visual_width = 640,
+ *     .visual_height = 480,
+ *     .visual_channels = 1,
+ *     .audio_data = microphone_samples,
+ *     .audio_samples = 1024,
+ *     .audio_channels = 1,
+ *     .direct_data = NULL,
+ *     .direct_dim = 0,
+ *     .timestamp_ms = nimcp_time_ms()
+ * };
+ *
+ * brain_multimodal_output_t output = {0};
+ * output.output_vector = nimcp_malloc(10 * sizeof(float));
+ * output.output_dim = 10;
+ *
+ * brain_process_multimodal(brain, &input, &output);
+ *
+ * printf("Decision: %s (confidence: %.2f)\n", output.decision_label, output.confidence);
+ * printf("Ethical: %s, Novelty: %.2f\n",
+ *        output.ethical_approved ? "YES" : "NO", output.novelty_score);
+ * printf("Visual attention: %.2f, Audio attention: %.2f\n",
+ *        output.visual_attention, output.audio_attention);
+ * printf("Explanation: %s\n", output.explanation);
+ * ```
+ *
+ * COMPLEXITY:
+ * - Visual processing: O(W·H·K²·F) where K=kernel, F=filters
+ * - Audio processing: O(N·log(N)) FFT
+ * - Integration: O(D_v + D_a + D_d)
+ * - Neural step: O(N·S) where N=neurons, S=avg synapses
+ * - Overall: O(sensory + neural + cognitive)
+ *
+ * PERFORMANCE: ~10-50ms typical for medium brain with camera+audio
+ *
+ * THREAD SAFETY: Not thread-safe (brain state modified)
+ *
+ * ERROR HANDLING:
+ * - Returns false if brain NULL or not configured for multi-modal
+ * - Returns false if all input modalities are NULL
+ * - Gracefully handles missing optional modalities
+ *
+ * MEMORY: No allocation (uses pre-allocated output buffer)
+ *
+ * @version 2.7.0 Phase 8 - Unified Multi-Modal Architecture
+ * @author NIMCP Development Team
+ * @date 2025-11-08
+ */
+bool brain_process_multimodal(
+    brain_t brain,
+    const brain_multimodal_input_t* input,
+    brain_multimodal_output_t* output
+);
 
 //=============================================================================
 // Comprehensive Module Access API

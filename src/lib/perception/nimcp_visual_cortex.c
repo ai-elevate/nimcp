@@ -31,16 +31,16 @@
 /**
  * @brief Apply activation function
  */
-static inline float apply_activation(float x, activation_type_t activation)
+static inline float apply_activation(float x, visual_activation_type_t activation)
 {
     switch (activation) {
-        case ACTIVATION_RELU:
+        case VISUAL_ACTIVATION_RELU:
             return (x > 0.0f) ? x : 0.0f;
-        case ACTIVATION_SIGMOID:
+        case VISUAL_ACTIVATION_SIGMOID:
             return 1.0f / (1.0f + expf(-x));
-        case ACTIVATION_TANH:
+        case VISUAL_ACTIVATION_TANH:
             return tanhf(x);
-        case ACTIVATION_NONE:
+        case VISUAL_ACTIVATION_NONE:
         default:
             return x;
     }
@@ -58,7 +58,7 @@ struct conv_layer_struct {
     uint32_t kernel_size;
     uint32_t stride;
     uint32_t padding;
-    activation_type_t activation;
+    visual_activation_type_t activation;
 
     uint32_t output_width;
     uint32_t output_height;
@@ -573,7 +573,7 @@ visual_cortex_t* visual_cortex_create(const visual_cortex_config_t* config)
         .kernel_size = 7,
         .stride = 2,
         .padding = 3,
-        .activation = ACTIVATION_RELU
+        .activation = VISUAL_ACTIVATION_RELU
     };
 
     cortex->v1_layer = conv_layer_create(&conv_config);
