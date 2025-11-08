@@ -429,27 +429,72 @@ Knowledge gap detection, exploration drive, learning prioritization
 #### Function
 Logical reasoning, constraint propagation, neuro-symbolic integration
 
-#### Cellular Composition
+#### Current Implementation (Phase 8.8)
 
-**Proposed Specialized Neurons** (Roadmap):
+**Architecture Type**: Symbolic (not yet neural)
+
+The symbolic logic engine is currently a **traditional first-order logic system** implemented as data structures and algorithms, NOT as spiking neurons. It operates in parallel with the neural substrate via bridge functions.
+
+**Components**:
+- **Knowledge Base**: Facts + Rules (stored symbolically)
+- **Inference Engine**: Forward/backward chaining, resolution theorem proving
+- **Unification**: Variable substitution (Robinson's algorithm)
+- **Working Memory**: Active clauses during inference
+
+**Integration Method**: Bridge functions connect neural and symbolic systems:
+```
+Neural Network Activity
+    ↓ (encode as logical facts)
+Symbolic Logic Engine
+    ↓ (query KB, perform inference)
+Logical Verification / Constraints
+    ↓ (modulate neural activity)
+Neural Network Outputs
+```
+
+**Bridge Functions**:
+- `symbolic_logic_compute_novelty()`: Neural patterns → Symbolic novelty scores
+- `symbolic_logic_get_salient_facts()`: Neural attention → Symbolic fact retrieval
+- `symbolic_logic_explore()`: Symbolic gaps → Neural curiosity
+- `symbolic_logic_consolidate_memory()`: Combined neural/symbolic memory
+
+**See detailed documentation**: [docs/NEURO_SYMBOLIC_INTEGRATION.md](NEURO_SYMBOLIC_INTEGRATION.md)
+
+#### Proposed Neural Implementation (Phase 9 Roadmap)
+
+**Vision**: Replace symbolic engine with spiking neural circuits that perform logical operations
+
+**Proposed Specialized Neurons**:
 
 - **Logical Operator Neurons** (`NEURON_LOGIC_AND/OR/NOT` = 650-652) [PROPOSED]
-  - **Function**: Implement Boolean operations
+  - **Function**: Implement Boolean operations as neural circuits
   - **Parameters**:
-    - `operator_type`: AND, OR, NOT, XOR, etc.
-    - `threshold`: Activation threshold
+    - `operator_type`: AND, OR, NOT, XOR, IMPLIES, IFF
+    - `threshold`: Activation threshold (e.g., AND requires both inputs)
+  - **Biological Basis**: Coincidence detector neurons (requires simultaneous inputs)
   - **Count**: 50-100 neurons (logic gates)
+  - **Benefits**: Fast (0.1ms vs. seconds for symbolic), differentiable, energy-efficient
 
 - **Variable Binding Neurons** (`NEURON_LOGIC_VARIABLE` = 653) [PROPOSED]
-  - **Function**: Bind symbols to neural patterns
+  - **Function**: Bind symbolic variables to neural activation patterns
   - **Parameters**:
     - `symbol_id`: Unique variable identifier
-    - `binding_strength`: Confidence
+    - `binding_strength`: Confidence [0,1]
+  - **Biological Basis**: Pointer neurons (Eliasmith, 2013)
   - **Count**: 100-500 neurons (variable pool)
 
-**Current Implementation**:
-- Placeholder only
-- Future: Full neuro-symbolic integration with neural logic gates
+**Example Neural Logic Circuit**:
+```
+[Neuron A] ──┐
+             ├──→ [AND Gate Neuron] → Output: A ∧ B
+[Neuron B] ──┘
+             threshold = 2.0
+             weights = [1.0, 1.0]
+```
+
+**Current Status**:
+- Phase 8.8: Traditional symbolic engine (works, but slow for complex reasoning)
+- Phase 9: Migrate to neural logic gates for speed and integration
 
 ---
 
