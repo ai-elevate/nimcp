@@ -9,6 +9,10 @@
 #include "networking/distributed/nimcp_distributed_cognition.h"
 #include "common/nimcp_export.h"
 
+// Forward declarations for opaque types (full headers only in .c file)
+// Using void* to avoid typedef conflicts between modules
+// The .c file will include headers and cast appropriately
+
 /**
  * @file nimcp_brain.h
  * @brief Simple, high-level API for creating lightweight learning systems
@@ -75,9 +79,14 @@ typedef enum {
 typedef struct brain_struct* brain_t;
 
 /**
- * @brief Simple brain configuration
+ * @brief Comprehensive brain configuration
+ *
+ * WHAT: Extended configuration for all advanced subsystems
+ * WHY:  Enable full integration of consciousness, glial, sensory, and cognitive modules
+ * HOW:  Optional flags allow selective feature activation
  */
 typedef struct {
+    // === CORE CONFIGURATION ===
     brain_size_t size;        /**< Brain size preset */
     brain_task_t task;        /**< Task template */
     uint32_t num_inputs;      /**< Input dimension */
@@ -87,9 +96,35 @@ typedef struct {
     bool enable_explanations; /**< Enable interpretability */
     char task_name[64];       /**< Name for this brain */
 
-    // Phase 3: Distributed cognition integration
+    // === PHASE 3: DISTRIBUTED COGNITION ===
     bool enable_distributed;  /**< Enable P2P cognitive coordination */
     p2p_node_t p2p_node;      /**< P2P network node (if distributed) */
+
+    // === PHASE 5/6: BIOLOGICAL REALISM ===
+    bool enable_glial;        /**< Enable glial integration (astrocytes, oligodendrocytes, microglia) */
+    bool enable_oscillations; /**< Enable brain wave analysis (delta, theta, alpha, beta, gamma) */
+    uint32_t num_astrocytes;  /**< Number of astrocytes (default: neurons/5) */
+    uint32_t num_oligodendrocytes; /**< Number of oligodendrocytes (default: neurons/7) */
+    uint32_t num_microglia;   /**< Number of microglia (default: neurons/10) */
+
+    // === PHASE 5.3: SENSORY PROCESSING ===
+    bool enable_visual_cortex; /**< Enable visual cortex (V1) for image processing */
+    bool enable_audio_cortex;  /**< Enable audio cortex (A1) for sound processing */
+
+    // === CONSCIOUSNESS & COGNITION ===
+    bool enable_introspection; /**< Enable self-awareness and uncertainty estimation */
+    bool enable_ethics;        /**< Enable ethical reasoning (Golden Rule, empathy) */
+    bool enable_salience;      /**< Enable fast attention/relevance evaluation */
+    bool enable_consolidation; /**< Enable memory consolidation (sleep-like learning) */
+    bool enable_curiosity;     /**< Enable exploration and knowledge gap detection */
+    bool enable_knowledge;     /**< Enable multi-domain knowledge acquisition */
+    bool enable_wellbeing;     /**< Enable distress detection and ethical safeguards */
+
+    // === ADVANCED PLASTICITY ===
+    bool enable_eligibility_traces; /**< Enable temporal credit assignment (Phase 5.1) */
+    bool enable_pink_noise;    /**< Enable pink noise neuromodulation (Phase 4) */
+    bool enable_spike_nlp;     /**< Enable NLP via spike encoding (Phase 5.1) */
+    bool enable_fractal_topology; /**< Enable scale-free network topology (Phase 2) */
 } brain_config_t;
 
 /**
@@ -543,5 +578,31 @@ void brain_clear_error(void);
  * @return Adaptive network handle (do not free!)
  */
 adaptive_network_t brain_get_network(brain_t brain);
+
+//=============================================================================
+// Comprehensive Module Access API
+// NOTE: Module accessors will be added incrementally as modules are initialized
+// For now, modules are accessible via void* cast from brain internals
+//=============================================================================
+
+/*
+ * Future accessor functions (to be implemented with proper initialization):
+ * - glial_integration_t* brain_get_glial(brain_t brain);
+ * - brain_oscillation_analyzer_t* brain_get_oscillations(brain_t brain);
+ * - visual_cortex_t* brain_get_visual_cortex(brain_t brain);
+ * - audio_cortex_t* brain_get_audio_cortex(brain_t brain);
+ * - introspection_context_t* brain_get_introspection(brain_t brain);
+ * - ethics_engine_t* brain_get_ethics(brain_t brain);
+ * - salience_evaluator_t* brain_get_salience(brain_t brain);
+ * - consolidation_handle_t brain_get_consolidation(brain_t brain);
+ * - curiosity_engine_t brain_get_curiosity(brain_t brain);
+ * - knowledge_system_t brain_get_knowledge(brain_t brain);
+ * - wellbeing_monitor_t brain_get_wellbeing(brain_t brain);
+ * - eligibility_trace_system_t* brain_get_eligibility_traces(brain_t brain);
+ * - neuromod_pink_t* brain_get_pink_noise(brain_t brain);
+ * - spike_nlp_t* brain_get_spike_nlp(brain_t brain);
+ *
+ * These will be uncommented and implemented once module initialization is complete.
+ */
 
 #endif  // NIMCP_BRAIN_H

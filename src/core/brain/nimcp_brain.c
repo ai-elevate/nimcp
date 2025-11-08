@@ -38,6 +38,18 @@
 #include "utils/time/nimcp_time.h"
 #include "utils/validation/nimcp_validate.h"
 
+// Comprehensive Integration: All Advanced Subsystems
+// NOTE: Only including modules that currently exist
+#include "glial/integration/nimcp_glial_integration.h"
+#include "core/brain_oscillations/nimcp_brain_oscillations.h"
+#include "cognitive/introspection/nimcp_introspection.h"
+#include "cognitive/ethics/nimcp_ethics.h"
+#include "cognitive/salience/nimcp_salience.h"
+#include "cognitive/consolidation/nimcp_consolidation.h"
+#include "cognitive/curiosity/nimcp_curiosity.h"
+#include "cognitive/knowledge/nimcp_knowledge.h"
+#include "plasticity/neuromodulators/nimcp_neuromod_pink_noise.h"
+
 //=============================================================================
 // Forward Declarations - Strategy Pattern
 //=============================================================================
@@ -57,6 +69,7 @@ typedef struct task_strategy task_strategy_t;
  * COMPLEXITY: O(1) access to all members
  */
 struct brain_struct {
+    // === CORE COMPONENTS ===
     adaptive_network_t network;  // Underlying neural network
     brain_config_t config;       // User configuration
     task_strategy_t* strategy;   // Task-specific behavior strategy
@@ -86,6 +99,26 @@ struct brain_struct {
     uint32_t* network_refcount;         // Pointer to shared refcount (NULL if not shared)
     bool can_use_readonly;              // Can use read-only inference? (true for COW clones)
     pthread_mutex_t* refcount_mutex;    // Mutex for refcount updates (shared among clones)
+
+    // === COMPREHENSIVE INTEGRATION: ADVANCED SUBSYSTEMS ===
+    // NOTE: Only modules that currently exist are integrated
+    // Types marked with * are already pointer types in their typedef
+    // Types without * are struct types and need pointer declaration here
+
+    // Phase 5/6: Biological Realism
+    glial_integration_t* glial;                  // Glial cells (struct type, needs *)
+    brain_oscillation_analyzer_t* oscillations;  // Brain wave analysis (struct type, needs *)
+
+    // Consciousness & Cognition (most use pointer typedefs)
+    introspection_context_t introspection;       // Self-awareness (already pointer type*)
+    ethics_engine_t ethics;                      // Golden Rule, empathy (already pointer type*)
+    salience_evaluator_t salience;               // Fast attention (already pointer type*)
+    consolidation_handle_t consolidation;        // Memory consolidation (already pointer type*)
+    curiosity_engine_t curiosity;                // Exploration (already pointer type*)
+    knowledge_system_t knowledge;                // Multi-domain knowledge (already pointer type*)
+
+    // Advanced Plasticity
+    neuromod_pink_noise_t* pink_noise;           // Pink noise neuromodulation (struct type, needs *)
 };
 
 //=============================================================================
@@ -2579,4 +2612,48 @@ bool brain_is_distributed(brain_t brain)
     }
 
     return brain->distributed != NULL;
+}
+
+//=============================================================================
+// Comprehensive Module Access API - Stub Implementations
+//=============================================================================
+
+// ============================================================================
+// Phase 7: Advanced Subsystem Accessor Functions
+// ============================================================================
+
+glial_integration_t* brain_get_glial(brain_t brain) {
+    return brain ? brain->glial : NULL;
+}
+
+brain_oscillation_analyzer_t* brain_get_oscillations(brain_t brain) {
+    return brain ? brain->oscillations : NULL;
+}
+
+introspection_context_t brain_get_introspection(brain_t brain) {
+    return brain ? brain->introspection : NULL;
+}
+
+ethics_engine_t brain_get_ethics(brain_t brain) {
+    return brain ? brain->ethics : NULL;
+}
+
+salience_evaluator_t brain_get_salience(brain_t brain) {
+    return brain ? brain->salience : NULL;
+}
+
+consolidation_handle_t brain_get_consolidation(brain_t brain) {
+    return brain ? brain->consolidation : NULL;
+}
+
+curiosity_engine_t brain_get_curiosity(brain_t brain) {
+    return brain ? brain->curiosity : NULL;
+}
+
+knowledge_system_t brain_get_knowledge(brain_t brain) {
+    return brain ? brain->knowledge : NULL;
+}
+
+neuromod_pink_noise_t* brain_get_pink_noise(brain_t brain) {
+    return brain ? brain->pink_noise : NULL;
 }
