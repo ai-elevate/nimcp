@@ -99,3 +99,8 @@ target_include_directories(gpu_integration_test PRIVATE ${NIMCP_INCLUDE_DIR})
 install(TARGETS event_demo brain_demo ethics_demo infant_demo integrated_demo brain_probe_demo izhikevich_demo programmable_synapses_demo nlp_integration_test fractal_network_demo nlp_integration_demo
     RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}/examples
 )
+
+# NIMCP 2.7.0 Phase 9.0 - Neural Logic Gate Test
+add_executable(test_neural_logic test_neural_logic.c)
+target_link_libraries(test_neural_logic nimcp m)
+target_include_directories(test_neural_logic PRIVATE ${NIMCP_INCLUDE_DIR})

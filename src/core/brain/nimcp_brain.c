@@ -49,7 +49,7 @@
 #include "cognitive/curiosity/nimcp_curiosity.h"
 #include "cognitive/knowledge/nimcp_knowledge.h"
 #include "plasticity/neuromodulators/nimcp_neuromod_pink_noise.h"
-#include "include/cognitive/nimcp_symbolic_logic.h"
+#include "core/neuron_types/nimcp_neural_logic.h"
 
 // Phase 8: Multi-Modal Integration
 #include "core/integration/nimcp_multimodal_integration.h"
@@ -123,7 +123,7 @@ struct brain_struct {
     consolidation_handle_t consolidation;        // Memory consolidation (already pointer type*)
     curiosity_engine_t curiosity;                // Exploration (already pointer type*)
     knowledge_system_t knowledge;                // Multi-domain knowledge (already pointer type*)
-    symbolic_logic_t* logic;                     // Phase 8.9: Symbolic reasoning and logical inference
+    neural_logic_network_t logic;                // Phase 9.0: Neural logic gates (spiking logic, GPU-accelerated)
 
     // Advanced Plasticity
     neuromod_pink_noise_t* pink_noise;           // Pink noise neuromodulation (struct type, needs *)
@@ -1193,21 +1193,15 @@ static bool init_symbolic_logic_subsystem(brain_t brain)
         return true;  // Not enabled, not an error
     }
 
-    // Create symbolic logic engine with configuration
-    logic_config_t logic_config = {
-        .max_predicates = 500,
-        .max_rules = 200,
-        .max_kb_size = 1000,
-        .max_inference_depth = 10,
-        .enable_forward_chaining = true,
-        .enable_backward_chaining = true,
-        .enable_resolution = true,
-        .enable_memory_consolidation = true
-    };
+    // Create neural logic network with spiking logic gates (Phase 9.0)
+    neural_logic_config_t logic_config = neural_logic_default_config(1000);
+    logic_config.use_gpu = neural_logic_gpu_available();
+    logic_config.integration_window_ms = 5.0f;
+    logic_config.enable_learning = false;  // Combinational logic (no plasticity)
 
-    brain->logic = symbolic_logic_create(&logic_config);
+    brain->logic = neural_logic_create(&logic_config);
     if (!brain->logic) {
-        set_error("Failed to create symbolic logic engine");
+        set_error("Failed to create neural logic network");
         return false;
     }
 
@@ -1484,9 +1478,9 @@ void brain_destroy(brain_t brain)
         neuromod_pink_destroy(brain->pink_noise);
     }
 
-    // Phase 8.9: Cleanup symbolic logic reasoning
+    // Phase 9.0: Cleanup neural logic network
     if (brain->logic) {
-        symbolic_logic_destroy(brain->logic);
+        neural_logic_destroy(brain->logic);
     }
 
     clear_cache(brain);
@@ -3409,12 +3403,13 @@ bool brain_process_multimodal(
         }
     }
 
-    // Symbolic Logic: Apply logical reasoning if enabled
+    // Neural Logic (Phase 9.0): Apply spiking logic gates if enabled
     if (brain->logic) {
-        // Symbolic reasoning can enhance neural outputs with logical constraints
-        // For example: ensure output consistency with known facts/rules
-        // This is a future enhancement area for neuro-symbolic integration
-        // Currently placeholder - symbolic logic operates independently
+        // Neural logic gates provide fast, GPU-accelerated logical reasoning
+        // Can be used for constraint checking, logical inference, etc.
+        // Logic gates integrate with neural processing pipeline
+        // TODO: Add specific logic gate circuits for cognitive tasks
+        // For now, neural logic is available for explicit reasoning calls
     }
 
     // =========================================================================

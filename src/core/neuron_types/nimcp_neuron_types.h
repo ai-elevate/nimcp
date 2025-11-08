@@ -174,6 +174,130 @@ typedef enum {
      */
     NEURON_EXECUTIVE_CONTROL = 301,
 
+    // ========== NEURAL LOGIC GATES (650-699) ==========
+    /**
+     * Logic AND Gate Neuron: Conjunction operation (∧)
+     *
+     * BIOLOGICAL MOTIVATION:
+     * Coincidence detector neurons in auditory brainstem and cortex fire only
+     * when multiple inputs arrive simultaneously. This implements AND logic.
+     *
+     * COMPUTATION:
+     * - Fires only if ALL inputs exceed threshold
+     * - Threshold = sum of expected input weights
+     * - Integration window: ~1-5ms
+     *
+     * EXAMPLE:
+     * Input A=1, B=1 → Output=1
+     * Input A=1, B=0 → Output=0
+     *
+     * REFERENCE: Coincidence detection (Jeffress, 1948)
+     * COMPLEXITY: O(n) where n = number of inputs
+     */
+    NEURON_LOGIC_AND = 650,
+
+    /**
+     * Logic OR Gate Neuron: Disjunction operation (∨)
+     *
+     * BIOLOGICAL MOTIVATION:
+     * Neurons that respond to any of multiple stimuli implement OR logic.
+     * Common in sensory integration pathways.
+     *
+     * COMPUTATION:
+     * - Fires if ANY input exceeds threshold
+     * - Low threshold relative to input weights
+     * - Fast response (~1ms)
+     *
+     * EXAMPLE:
+     * Input A=1, B=0 → Output=1
+     * Input A=0, B=0 → Output=0
+     *
+     * COMPLEXITY: O(n) where n = number of inputs
+     */
+    NEURON_LOGIC_OR = 651,
+
+    /**
+     * Logic NOT Gate Neuron: Negation operation (¬)
+     *
+     * BIOLOGICAL MOTIVATION:
+     * Inhibitory neurons implement NOT logic by suppressing their targets.
+     * Fundamental for contrast enhancement and normalization.
+     *
+     * COMPUTATION:
+     * - Baseline firing rate when no input
+     * - Suppressed (output=0) when input present
+     * - Fast inhibition (~1ms)
+     *
+     * EXAMPLE:
+     * Input A=1 → Output=0
+     * Input A=0 → Output=1
+     *
+     * COMPLEXITY: O(1)
+     */
+    NEURON_LOGIC_NOT = 652,
+
+    /**
+     * Logic XOR Gate Neuron: Exclusive OR operation (⊕)
+     *
+     * BIOLOGICAL MOTIVATION:
+     * Neurons with balanced excitation/inhibition can detect pattern differences.
+     * Used in change detection and novelty circuits.
+     *
+     * COMPUTATION:
+     * - Fires if inputs differ (one high, one low)
+     * - Inhibited if both inputs same
+     * - Requires excitatory + inhibitory integration
+     *
+     * EXAMPLE:
+     * Input A=1, B=0 → Output=1
+     * Input A=1, B=1 → Output=0
+     *
+     * COMPLEXITY: O(n) where n = number of inputs
+     */
+    NEURON_LOGIC_XOR = 653,
+
+    /**
+     * Variable Binding Neuron: Symbolic variable pointer
+     *
+     * BIOLOGICAL MOTIVATION:
+     * Pointer neurons (Eliasmith, 2013) bind symbolic variables to neural
+     * activation patterns, enabling compositional reasoning.
+     *
+     * COMPUTATION:
+     * - Associates variable ID with activation pattern
+     * - Binding strength = confidence [0,1]
+     * - Supports unification (pattern matching)
+     *
+     * EXAMPLE:
+     * Bind "X" to pattern [0.8, 0.2, 0.5, ...]
+     * Query "X" → Returns bound pattern
+     *
+     * REFERENCE: Eliasmith (2013) "How to build a brain"
+     * COMPLEXITY: O(d) where d = pattern dimensionality
+     */
+    NEURON_LOGIC_VARIABLE = 654,
+
+    /**
+     * Logic IMPLIES Gate Neuron: Implication operation (→)
+     *
+     * BIOLOGICAL MOTIVATION:
+     * Conditional responses: neuron fires if consequent follows antecedent.
+     * Models if-then reasoning in prefrontal circuits.
+     *
+     * COMPUTATION:
+     * - Fires if: A=0 OR (A=1 AND B=1)
+     * - Implements ¬A ∨ B (material implication)
+     * - Forward inference: A → B
+     *
+     * EXAMPLE:
+     * A=1, B=1 → Output=1 (true)
+     * A=1, B=0 → Output=0 (false)
+     * A=0, B=* → Output=1 (vacuously true)
+     *
+     * COMPLEXITY: O(1)
+     */
+    NEURON_LOGIC_IMPLIES = 655,
+
     NEURON_TYPE_COUNT  /**< Total number of neuron types */
 } neuron_type_t;
 
@@ -247,6 +371,86 @@ typedef struct {
     float threshold_boost;      /**< Threshold boost during goal-directed state */
     bool delay_activity;        /**< Maintain activity during delays */
 } executive_control_params_t;
+
+// ============================================================================
+// NEURAL LOGIC GATE PARAMETERS
+// ============================================================================
+
+/**
+ * @brief Parameters for logic AND gate neuron
+ *
+ * AND gate fires only if ALL inputs are active (coincidence detection).
+ */
+typedef struct {
+    uint32_t num_inputs;        /**< Number of input connections (typically 2-4) */
+    float threshold;            /**< Firing threshold (typically num_inputs * 0.9) */
+    float integration_window;   /**< Temporal integration window in ms (1-5ms) */
+    float input_weight;         /**< Expected weight per input (default 1.0) */
+    bool require_simultaneous;  /**< Require inputs within integration window */
+} logic_and_params_t;
+
+/**
+ * @brief Parameters for logic OR gate neuron
+ *
+ * OR gate fires if ANY input is active (low threshold).
+ */
+typedef struct {
+    uint32_t num_inputs;        /**< Number of input connections (typically 2-4) */
+    float threshold;            /**< Firing threshold (typically 0.5 * input_weight) */
+    float input_weight;         /**< Expected weight per input (default 1.0) */
+    float refractory_period;    /**< Refractory period in ms (0.5-2ms) */
+} logic_or_params_t;
+
+/**
+ * @brief Parameters for logic NOT gate neuron
+ *
+ * NOT gate fires when input is ABSENT (inhibitory logic).
+ */
+typedef struct {
+    float baseline_rate;        /**< Baseline firing rate when no input (Hz, default 10) */
+    float inhibition_strength;  /**< Strength of inhibition [0,1] (default 1.0) */
+    float recovery_time;        /**< Time to recover from inhibition (ms, default 5) */
+    float threshold;            /**< Threshold for baseline firing (default 0.1) */
+} logic_not_params_t;
+
+/**
+ * @brief Parameters for logic XOR gate neuron
+ *
+ * XOR gate fires if inputs DIFFER (one high, one low).
+ */
+typedef struct {
+    uint32_t num_inputs;        /**< Number of inputs (must be 2 for XOR) */
+    float excitatory_weight;    /**< Weight for excitatory inputs (default 1.0) */
+    float inhibitory_weight;    /**< Weight for inhibitory inputs (default -1.0) */
+    float threshold;            /**< Firing threshold (default 0.5) */
+    float balance_tolerance;    /**< Tolerance for balanced inputs (default 0.1) */
+} logic_xor_params_t;
+
+/**
+ * @brief Parameters for variable binding neuron
+ *
+ * Binds symbolic variables to neural activation patterns.
+ */
+typedef struct {
+    uint32_t variable_id;       /**< Unique variable identifier (e.g., hash of "X") */
+    uint32_t pattern_dim;       /**< Dimensionality of bound pattern (default 64) */
+    float binding_strength;     /**< Binding confidence [0,1] (default 1.0) */
+    float decay_rate;           /**< Binding decay rate (default 0.001/ms) */
+    float* bound_pattern;       /**< Current bound activation pattern (heap allocated) */
+    bool is_bound;              /**< Whether variable is currently bound */
+} logic_variable_params_t;
+
+/**
+ * @brief Parameters for logic IMPLIES gate neuron
+ *
+ * IMPLIES gate fires if antecedent implies consequent (A → B).
+ */
+typedef struct {
+    float antecedent_threshold; /**< Threshold for antecedent activation (default 0.8) */
+    float consequent_threshold; /**< Threshold for consequent activation (default 0.8) */
+    float vacuous_truth_rate;   /**< Firing rate when antecedent false (default 0.1) */
+    float implication_window;   /**< Temporal window for A→B (ms, default 10) */
+} logic_implies_params_t;
 
 /**
  * @brief Generic LIF parameters
