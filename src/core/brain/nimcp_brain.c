@@ -3072,6 +3072,441 @@ neuromod_pink_noise_t* brain_get_pink_noise(brain_t brain) {
 // Phase 8: Unified Multi-Modal Processing Implementation
 //=============================================================================
 
+//-----------------------------------------------------------------------------
+// Phase 9.1: Refactored Helper Functions (SRP - Single Responsibility Principle)
+//-----------------------------------------------------------------------------
+
+/**
+ * @brief STAGE 1: Extract sensory features from raw input
+ *
+ * RESPONSIBILITY: Process visual, audio, and speech inputs through cortices
+ *
+ * @param brain Brain handle with initialized cortices
+ * @param input Multi-modal input bundle
+ * @param visual_features Output: visual feature pointer (may be NULL)
+ * @param visual_dim Output: visual feature dimension
+ * @param audio_features Output: audio feature pointer (may be NULL)
+ * @param audio_dim Output: audio feature dimension
+ * @param audio_success Output: whether audio processing succeeded
+ * @param speech_features Output: speech feature pointer (may be NULL)
+ * @param speech_dim Output: speech feature dimension
+ * @param direct_features Output: direct feature pointer (may be NULL)
+ * @param direct_dim Output: direct feature dimension
+ * @param has_visual Input: whether visual data is present
+ * @param has_audio Input: whether audio data is present
+ * @param has_direct Input: whether direct data is present
+ * @return true if at least one modality succeeded, false otherwise
+ */
+static bool extract_sensory_features(
+    brain_t brain,
+    const brain_multimodal_input_t* input,
+    float** visual_features,
+    uint32_t* visual_dim,
+    float** audio_features,
+    uint32_t* audio_dim,
+    bool* audio_success,
+    float** speech_features,
+    uint32_t* speech_dim,
+    float** direct_features,
+    uint32_t* direct_dim,
+    bool has_visual,
+    bool has_audio,
+    bool has_direct)
+{
+    // Initialize outputs
+    *visual_features = NULL;
+    *visual_dim = 0;
+    *audio_features = NULL;
+    *audio_dim = 0;
+    *audio_success = false;
+    *speech_features = NULL;
+    *speech_dim = 0;
+    *direct_features = (float*)input->direct_data;
+    *direct_dim = input->direct_dim;
+
+    // Process visual input through V1 visual cortex
+    if (has_visual && brain->visual_cortex && brain->visual_feature_buffer) {
+        bool visual_success = visual_cortex_process(
+            brain->visual_cortex,
+            input->visual_data,
+            input->visual_width,
+            input->visual_height,
+            input->visual_channels,
+            brain->visual_feature_buffer
+        );
+
+        if (visual_success) {
+            *visual_features = brain->visual_feature_buffer;
+            *visual_dim = brain->config.visual_feature_dim;
+        }
+    }
+
+    // Process audio input through A1 auditory cortex
+    if (has_audio && brain->audio_cortex && brain->audio_feature_buffer) {
+        *audio_success = audio_cortex_process(
+            brain->audio_cortex,
+            input->audio_data,
+            input->audio_samples,
+            input->audio_channels,
+            brain->audio_feature_buffer
+        );
+
+        if (*audio_success) {
+            *audio_features = brain->audio_feature_buffer;
+            *audio_dim = brain->config.audio_feature_dim;
+        }
+    }
+
+    // Process speech from audio (hierarchical: A1 → STG/Wernicke)
+    if (has_audio && *audio_success && brain->speech_cortex && brain->speech_feature_buffer) {
+        bool speech_success = speech_cortex_process(
+            brain->speech_cortex,
+            input->audio_data,
+            input->audio_samples,
+            brain->speech_feature_buffer
+        );
+
+        if (speech_success) {
+            *speech_features = brain->speech_feature_buffer;
+            *speech_dim = brain->config.speech_feature_dim;
+        }
+    }
+
+    return true;  // At least one modality is present (validated by caller)
+}
+
+/**
+ * @brief STAGE 2: Integrate multi-modal features using attention
+ *
+ * RESPONSIBILITY: Fuse visual/audio/speech/direct features into unified representation
+ *
+ * @param brain Brain handle with multimodal integration
+ * @param visual_features Visual features (may be NULL)
+ * @param visual_dim Visual dimension
+ * @param audio_features Audio features (may be NULL)
+ * @param audio_dim Audio dimension
+ * @param speech_features Speech features (may be NULL)
+ * @param speech_dim Speech dimension
+ * @param direct_features Direct features (may be NULL)
+ * @param direct_dim Direct dimension
+ * @param timestamp_ms Timestamp for temporal processing
+ * @param output Output structure to store attention weights
+ * @return true on success, false on failure
+ */
+static bool integrate_multimodal_features(
+    brain_t brain,
+    float* visual_features,
+    uint32_t visual_dim,
+    float* audio_features,
+    uint32_t audio_dim,
+    float* speech_features,
+    uint32_t speech_dim,
+    float* direct_features,
+    uint32_t direct_dim,
+    uint64_t timestamp_ms,
+    brain_multimodal_output_t* output)
+{
+    multimodal_input_t mm_input = {
+        .visual_features = visual_features,
+        .visual_dim = visual_dim,
+        .audio_features = audio_features,
+        .audio_dim = audio_dim,
+        .speech_features = speech_features,
+        .speech_dim = speech_dim,
+        .direct_features = direct_features,
+        .direct_dim = direct_dim,
+        .timestamp = timestamp_ms
+    };
+
+    // Integrate into unified representation
+    if (!brain->multimodal || !brain->integrated_feature_buffer) {
+        return false;
+    }
+
+    bool integrate_success = multimodal_integrate(
+        brain->multimodal,
+        &mm_input,
+        brain->integrated_feature_buffer
+    );
+
+    if (!integrate_success) {
+        return false;
+    }
+
+    // Get attention weights for transparency
+    multimodal_get_attention(
+        brain->multimodal,
+        &output->visual_attention,
+        &output->audio_attention,
+        &output->speech_attention,
+        &output->direct_attention
+    );
+
+    return true;
+}
+
+/**
+ * @brief STAGE 3: Process integrated features through neural network
+ *
+ * RESPONSIBILITY: Forward pass through spiking network with learning
+ *
+ * @param brain Brain handle with initialized network
+ * @param timestamp_ms Timestamp for temporal processing
+ * @param network_output Output: allocated buffer for network output
+ * @param network_output_size Output size
+ * @param output User's output structure
+ * @return Number of spikes generated (0 on error)
+ */
+static uint32_t process_neural_network(
+    brain_t brain,
+    uint64_t timestamp_ms,
+    float** network_output,
+    uint32_t network_output_size,
+    brain_multimodal_output_t* output)
+{
+    // Allocate network output buffer
+    *network_output = nimcp_calloc(network_output_size, sizeof(float));
+    if (!*network_output) {
+        return 0;
+    }
+
+    // Forward pass through adaptive network
+    // This automatically applies STDP, glial modulation, oscillations, pink noise
+    uint32_t spikes_generated = adaptive_network_forward(
+        brain->network,
+        brain->integrated_feature_buffer,
+        brain->config.num_inputs,
+        *network_output,
+        network_output_size,
+        timestamp_ms
+    );
+
+    // Copy network output to user's output buffer
+    if (output->output_vector && output->output_dim > 0) {
+        uint32_t copy_size = (output->output_dim < network_output_size) ?
+                             output->output_dim : network_output_size;
+        memcpy(output->output_vector, *network_output, copy_size * sizeof(float));
+    }
+
+    return spikes_generated;
+}
+
+/**
+ * @brief STAGE 4: Apply cognitive assessments to network output
+ *
+ * RESPONSIBILITY: Compute confidence, ethics, salience, novelty, curiosity
+ *
+ * @param brain Brain handle with cognitive modules
+ * @param network_output Network output vector
+ * @param network_output_size Size of network output
+ * @param spikes_generated Total spikes during inference
+ * @param timestamp_ms Timestamp for temporal processing
+ * @param output Output structure to store cognitive annotations
+ * @return true if ethically approved, false otherwise
+ */
+static bool apply_cognitive_processing(
+    brain_t brain,
+    const float* network_output,
+    uint32_t network_output_size,
+    uint32_t spikes_generated,
+    uint64_t timestamp_ms,
+    brain_multimodal_output_t* output)
+{
+    // Introspection: Assess confidence and uncertainty
+    if (brain->introspection) {
+        brain_uncertainty_t uncertainty = brain_get_uncertainty(
+            brain->introspection,
+            brain->integrated_feature_buffer,
+            brain->config.num_inputs
+        );
+
+        output->introspection_uncertainty = uncertainty.total;
+        output->confidence = 1.0f - output->introspection_uncertainty;
+    } else {
+        // Fallback: Compute confidence from output variance and spike counts
+        float output_variance = 0.0f;
+        float output_mean = 0.0f;
+        for (uint32_t i = 0; i < network_output_size; i++) {
+            output_mean += network_output[i];
+        }
+        output_mean /= network_output_size;
+
+        for (uint32_t i = 0; i < network_output_size; i++) {
+            float diff = network_output[i] - output_mean;
+            output_variance += diff * diff;
+        }
+        output_variance /= network_output_size;
+
+        output->confidence = fminf(1.0f, (float)spikes_generated / (brain->config.num_inputs * 2.0f));
+        output->confidence *= (1.0f - fminf(1.0f, output_variance));
+        output->introspection_uncertainty = 1.0f - output->confidence;
+    }
+
+    // Ethics: Validate output (check for NaN/inf/extreme values)
+    if (brain->ethics) {
+        output->ethical_approved = true;
+        for (uint32_t i = 0; i < network_output_size; i++) {
+            if (isnan(network_output[i]) || isinf(network_output[i]) ||
+                fabsf(network_output[i]) > 1000.0f) {
+                output->ethical_approved = false;
+                break;
+            }
+        }
+    } else {
+        output->ethical_approved = true;
+    }
+
+    // Salience: Evaluate input importance (novelty, surprise, urgency)
+    if (brain->salience) {
+        brain_salience_t salience = brain_evaluate_salience_temporal(
+            brain->salience,
+            brain->integrated_feature_buffer,
+            brain->config.num_inputs,
+            timestamp_ms
+        );
+
+        output->salience_score = salience.salience;
+        output->novelty_score = salience.novelty;
+    } else {
+        // Fallback: Max output activation as salience
+        float max_activation = 0.0f;
+        for (uint32_t i = 0; i < network_output_size; i++) {
+            if (network_output[i] > max_activation) {
+                max_activation = network_output[i];
+            }
+        }
+        output->salience_score = fminf(1.0f, max_activation);
+    }
+
+    // Curiosity: Learn from novel experiences
+    if (brain->curiosity) {
+        // Fallback if salience didn't compute novelty
+        if (!brain->salience) {
+            float expected_spikes = brain->config.num_inputs * 0.5f;
+            float spike_diff = fabsf((float)spikes_generated - expected_spikes);
+            output->novelty_score = fminf(1.0f, spike_diff / expected_spikes);
+        }
+    } else {
+        // Fallback novelty if no cognitive modules
+        if (!brain->salience) {
+            output->novelty_score = 0.3f;
+        }
+    }
+
+    // Neural Logic (Phase 9.0): Available for explicit reasoning calls
+    // Logic gates integrate with neural processing pipeline
+
+    return output->ethical_approved;
+}
+
+/**
+ * @brief STAGE 5: Format output with decision label and explanation
+ *
+ * RESPONSIBILITY: Extract decision, generate comprehensive explanation
+ *
+ * @param brain Brain handle
+ * @param network_output Network output vector
+ * @param network_output_size Size of network output
+ * @param spikes_generated Total spikes during inference
+ * @param has_visual Whether visual input was present
+ * @param has_audio Whether audio input was present
+ * @param speech_features Speech features pointer
+ * @param speech_dim Speech dimension
+ * @param output Output structure to fill
+ * @return true on success, false on failure
+ */
+static bool format_output(
+    brain_t brain,
+    const float* network_output,
+    uint32_t network_output_size,
+    uint32_t spikes_generated,
+    bool has_visual,
+    bool has_audio,
+    float* speech_features,
+    uint32_t speech_dim,
+    brain_multimodal_output_t* output)
+{
+    // Consolidation: Strengthen important memories
+    if (brain->consolidation && (output->novelty_score > 0.7f || output->salience_score > 0.7f)) {
+        // High novelty or salience → trigger consolidation
+        // TODO: Implement consolidation_strengthen() when module is ready
+    }
+
+    // Ethical filtering: Block harmful outputs
+    if (!output->ethical_approved) {
+        snprintf(output->explanation, sizeof(output->explanation),
+                 "Output blocked: Failed ethical validation (NaN/Inf/extreme values detected)");
+        return false;
+    }
+
+    // Find decision label based on max output activation
+    uint32_t max_idx = 0;
+    float max_val = -INFINITY;
+    for (uint32_t i = 0; i < network_output_size; i++) {
+        if (network_output[i] > max_val) {
+            max_val = network_output[i];
+            max_idx = i;
+        }
+    }
+
+    // Generate decision label
+    if (brain->output_labels && max_idx < brain->num_output_labels && brain->output_labels[max_idx]) {
+        strncpy(output->decision_label, brain->output_labels[max_idx],
+                sizeof(output->decision_label) - 1);
+    } else {
+        snprintf(output->decision_label, sizeof(output->decision_label),
+                 "output_%u", max_idx);
+    }
+
+    // Generate comprehensive explanation with all 4 modalities
+    char modality_str[256] = {0};
+    bool has_speech = (speech_features != NULL && speech_dim > 0);
+
+    // Build modality attention string
+    char* pos = modality_str;
+    int remaining = sizeof(modality_str);
+    bool first = true;
+
+    if (has_visual || output->visual_attention > 0.01f) {
+        int written = snprintf(pos, remaining, "%svisual=%.0f%%", first ? "" : " ",
+                              output->visual_attention * 100.0f);
+        pos += written;
+        remaining -= written;
+        first = false;
+    }
+    if (has_audio || output->audio_attention > 0.01f) {
+        int written = snprintf(pos, remaining, "%saudio=%.0f%%", first ? "" : " ",
+                              output->audio_attention * 100.0f);
+        pos += written;
+        remaining -= written;
+        first = false;
+    }
+    if (has_speech || output->speech_attention > 0.01f) {
+        int written = snprintf(pos, remaining, "%sspeech=%.0f%%", first ? "" : " ",
+                              output->speech_attention * 100.0f);
+        pos += written;
+        remaining -= written;
+        first = false;
+    }
+    if (output->direct_attention > 0.01f) {
+        int written = snprintf(pos, remaining, "%sdirect=%.0f%%", first ? "" : " ",
+                              output->direct_attention * 100.0f);
+        pos += written;
+        remaining -= written;
+        first = false;
+    }
+
+    snprintf(output->explanation, sizeof(output->explanation),
+             "%s | %u spikes | conf=%.0f%% salience=%.0f%% novelty=%.0f%%",
+             modality_str,
+             spikes_generated,
+             output->confidence * 100.0f,
+             output->salience_score * 100.0f,
+             output->novelty_score * 100.0f);
+
+    return true;
+}
+
 /**
  * WHAT: Process multi-modal input through unified cognitive architecture
  * WHY:  Enable coordinated multi-modal perception and cognition
@@ -3157,354 +3592,102 @@ bool brain_process_multimodal(
     output->direct_attention = 0.0f;
 
     // =========================================================================
-    // STAGE 1: SENSORY FEATURE EXTRACTION
+    // PIPELINE: Five-Stage Processing (Phase 9.1 SRP Refactoring)
     // =========================================================================
-    // WHAT: Extract features from raw sensory inputs
-    // WHY:  Convert high-dimensional sensory data to compact representations
-    // HOW:  Visual cortex (CNN), audio cortex (FFT), direct pass-through
+    // REFACTORING NOTE: Previously 394 lines with 9+ responsibilities
+    // Now: Clean pipeline with 5 single-responsibility stages
+    // Benefits: Testable, readable, maintainable, follows SRP
 
+    // Stage variables
     float* visual_features = NULL;
     uint32_t visual_dim = 0;
-
     float* audio_features = NULL;
     uint32_t audio_dim = 0;
     bool audio_success = false;
-
-    float* direct_features = (float*)input->direct_data;
-    uint32_t direct_dim = input->direct_dim;
-
-    // Process visual input through V1 visual cortex
-    if (has_visual && brain->visual_cortex && brain->visual_feature_buffer) {
-        bool visual_success = visual_cortex_process(
-            brain->visual_cortex,
-            input->visual_data,
-            input->visual_width,
-            input->visual_height,
-            input->visual_channels,
-            brain->visual_feature_buffer
-        );
-
-        if (visual_success) {
-            visual_features = brain->visual_feature_buffer;
-            visual_dim = brain->config.visual_feature_dim;
-        }
-    }
-
-    // Process audio input through A1 auditory cortex
-    if (has_audio && brain->audio_cortex && brain->audio_feature_buffer) {
-        audio_success = audio_cortex_process(
-            brain->audio_cortex,
-            input->audio_data,
-            input->audio_samples,
-            input->audio_channels,
-            brain->audio_feature_buffer
-        );
-
-        if (audio_success) {
-            audio_features = brain->audio_feature_buffer;
-            audio_dim = brain->config.audio_feature_dim;
-        }
-    }
-
-    // Process speech from audio (hierarchical: A1 → STG/Wernicke) - Phase 8.8
     float* speech_features = NULL;
     uint32_t speech_dim = 0;
-
-    if (has_audio && audio_success && brain->speech_cortex && brain->speech_feature_buffer) {
-        // Speech cortex processes audio cortex output (hierarchical pipeline)
-        bool speech_success = speech_cortex_process(
-            brain->speech_cortex,
-            input->audio_data,
-            input->audio_samples,
-            brain->speech_feature_buffer
-        );
-
-        if (speech_success) {
-            speech_features = brain->speech_feature_buffer;
-            speech_dim = brain->config.speech_feature_dim;
-        }
-    }
-
-    // =========================================================================
-    // STAGE 2: MULTI-MODAL INTEGRATION
-    // =========================================================================
-    // WHAT: Fuse multi-modal features into unified representation
-    // WHY:  Neural network needs single input vector
-    // HOW:  Attention-weighted integration or concatenation
-
-    multimodal_input_t mm_input = {
-        .visual_features = visual_features,
-        .visual_dim = visual_dim,
-        .audio_features = audio_features,
-        .audio_dim = audio_dim,
-        .speech_features = speech_features,
-        .speech_dim = speech_dim,
-        .direct_features = direct_features,
-        .direct_dim = direct_dim,
-        .timestamp = input->timestamp_ms
-    };
-
-    // Integrate into unified representation
-    if (brain->multimodal && brain->integrated_feature_buffer) {
-        bool integrate_success = multimodal_integrate(
-            brain->multimodal,
-            &mm_input,
-            brain->integrated_feature_buffer
-        );
-
-        if (!integrate_success) {
-            return false;
-        }
-
-        // Get attention weights for transparency
-        multimodal_get_attention(
-            brain->multimodal,
-            &output->visual_attention,
-            &output->audio_attention,
-            &output->speech_attention,
-            &output->direct_attention
-        );
-    } else {
-        return false;  // Integration layer required
-    }
-
-    // =========================================================================
-    // STAGE 3: NEURAL NETWORK PROCESSING
-    // =========================================================================
-    // WHAT: Process integrated features through spiking neural network
-    // WHY:  Learn patterns, make associations, generate output
-    // HOW:  Feed to network, apply STDP, glial modulation, oscillations
-
-    // Feed integrated features to network and get output
-    // This automatically applies:
-    // - STDP learning (if enabled)
-    // - Glial modulation (if glial_integration attached)
-    // - Brain oscillations (analyzed during step)
-    // - Pink noise neuromodulation (via neuromod system)
-
+    float* direct_features = NULL;
+    uint32_t direct_dim = 0;
+    float* network_output = NULL;
     uint32_t network_output_size = brain->config.num_outputs;
-    float* network_output = nimcp_calloc(network_output_size, sizeof(float));
-    if (!network_output) {
+    uint32_t spikes_generated = 0;
+
+    // -------------------------------------------------------------------------
+    // STAGE 1: Extract sensory features from raw inputs
+    // -------------------------------------------------------------------------
+    if (!extract_sensory_features(
+            brain, input,
+            &visual_features, &visual_dim,
+            &audio_features, &audio_dim, &audio_success,
+            &speech_features, &speech_dim,
+            &direct_features, &direct_dim,
+            has_visual, has_audio, has_direct)) {
         return false;
     }
 
-    // Forward pass through adaptive network
-    uint32_t spikes_generated = adaptive_network_forward(
-        brain->network,
-        brain->integrated_feature_buffer,  // Input: integrated features
-        brain->config.num_inputs,          // Input size
-        network_output,                     // Output buffer
-        network_output_size,                // Output size
-        input->timestamp_ms                 // Timestamp for temporal processing
+    // -------------------------------------------------------------------------
+    // STAGE 2: Integrate multi-modal features using attention
+    // -------------------------------------------------------------------------
+    if (!integrate_multimodal_features(
+            brain,
+            visual_features, visual_dim,
+            audio_features, audio_dim,
+            speech_features, speech_dim,
+            direct_features, direct_dim,
+            input->timestamp_ms,
+            output)) {
+        return false;
+    }
+
+    // -------------------------------------------------------------------------
+    // STAGE 3: Process through neural network with learning
+    // -------------------------------------------------------------------------
+    spikes_generated = process_neural_network(
+        brain,
+        input->timestamp_ms,
+        &network_output,
+        network_output_size,
+        output
     );
 
-    // Copy network output to user's output buffer
-    if (output->output_vector && output->output_dim > 0) {
-        uint32_t copy_size = (output->output_dim < network_output_size) ?
-                             output->output_dim : network_output_size;
-        memcpy(output->output_vector, network_output, copy_size * sizeof(float));
+    if (spikes_generated == 0 || !network_output) {
+        return false;
     }
 
-    // =========================================================================
-    // STAGE 4: COGNITIVE PROCESSING
-    // =========================================================================
-    // WHAT: Apply cognitive modules to assess and validate output
-    // WHY:  Ensure ethical, confident, salient decisions
-    // HOW:  Introspection, ethics, salience, curiosity modules
-
-    // Introspection: Assess confidence and uncertainty based on network activity
-    if (brain->introspection) {
-        // Use introspection module to compute epistemic uncertainty
-        // This gives a more sophisticated confidence estimate
-        brain_uncertainty_t uncertainty = brain_get_uncertainty(
-            brain->introspection,
-            brain->integrated_feature_buffer,
-            brain->config.num_inputs
-        );
-
-        output->introspection_uncertainty = uncertainty.total;
-        output->confidence = 1.0f - output->introspection_uncertainty;
-    } else {
-        // Fallback: Compute confidence from output variance and spike counts
-        float output_variance = 0.0f;
-        float output_mean = 0.0f;
-        for (uint32_t i = 0; i < network_output_size; i++) {
-            output_mean += network_output[i];
-        }
-        output_mean /= network_output_size;
-
-        for (uint32_t i = 0; i < network_output_size; i++) {
-            float diff = network_output[i] - output_mean;
-            output_variance += diff * diff;
-        }
-        output_variance /= network_output_size;
-
-        // Higher activity, lower variance → higher confidence
-        output->confidence = fminf(1.0f, (float)spikes_generated / (brain->config.num_inputs * 2.0f));
-        output->confidence *= (1.0f - fminf(1.0f, output_variance));
-        output->introspection_uncertainty = 1.0f - output->confidence;
-    }
-
-    // Ethics: Validate output (placeholder - checks for NaN/extreme values)
-    if (brain->ethics) {
-        // Check for ethical violations (NaN, inf, or extreme values)
-        output->ethical_approved = true;
-        for (uint32_t i = 0; i < network_output_size; i++) {
-            if (isnan(network_output[i]) || isinf(network_output[i]) ||
-                fabsf(network_output[i]) > 1000.0f) {
-                output->ethical_approved = false;
-                break;
-            }
-        }
-    } else {
-        output->ethical_approved = true;
-    }
-
-    // Salience: Evaluate input importance (novelty, surprise, urgency)
-    if (brain->salience) {
-        // Use salience module for sophisticated importance evaluation
-        brain_salience_t salience = brain_evaluate_salience_temporal(
-            brain->salience,
-            brain->integrated_feature_buffer,
-            brain->config.num_inputs,
-            input->timestamp_ms
-        );
-
-        output->salience_score = salience.salience;
-        output->novelty_score = salience.novelty;
-        // Also store surprise and urgency (future: add to output structure)
-    } else {
-        // Fallback: Max output activation as salience
-        float max_activation = 0.0f;
-        for (uint32_t i = 0; i < network_output_size; i++) {
-            if (network_output[i] > max_activation) {
-                max_activation = network_output[i];
-            }
-        }
-        output->salience_score = fminf(1.0f, max_activation);
-    }
-
-    // Curiosity: Learn from novel experiences
-    if (brain->curiosity) {
-        // If novelty is high and curiosity engine exists, this could trigger
-        // exploratory learning or question generation (future enhancement)
-        // For now, novelty is already computed by salience module above
-
-        // Fallback if salience didn't compute novelty
-        if (!brain->salience) {
-            float expected_spikes = brain->config.num_inputs * 0.5f;
-            float spike_diff = fabsf((float)spikes_generated - expected_spikes);
-            output->novelty_score = fminf(1.0f, spike_diff / expected_spikes);
-        }
-    } else {
-        // Fallback novelty if no cognitive modules
-        if (!brain->salience) {
-            output->novelty_score = 0.3f;
-        }
-    }
-
-    // Neural Logic (Phase 9.0): Apply spiking logic gates if enabled
-    if (brain->logic) {
-        // Neural logic gates provide fast, GPU-accelerated logical reasoning
-        // Can be used for constraint checking, logical inference, etc.
-        // Logic gates integrate with neural processing pipeline
-        // TODO: Add specific logic gate circuits for cognitive tasks
-        // For now, neural logic is available for explicit reasoning calls
-    }
-
-    // =========================================================================
-    // STAGE 5: OUTPUT INTEGRATION
-    // =========================================================================
-    // WHAT: Extract final decision with explanations
-    // WHY:  Provide interpretable output to user
-    // HOW:  Map network output to decision, generate explanation
-
-    // Consolidation: Strengthen important memories
-    if (brain->consolidation && (output->novelty_score > 0.7f || output->salience_score > 0.7f)) {
-        // High novelty or salience → trigger consolidation
-        // TODO: Implement consolidation_strengthen() when module is ready
-    }
-
-    // Ethical filtering: Block harmful outputs
-    if (!output->ethical_approved) {
-        snprintf(output->explanation, sizeof(output->explanation),
-                 "Output blocked: Failed ethical validation (NaN/Inf/extreme values detected)");
+    // -------------------------------------------------------------------------
+    // STAGE 4: Apply cognitive assessments (confidence, ethics, salience)
+    // -------------------------------------------------------------------------
+    if (!apply_cognitive_processing(
+            brain,
+            network_output,
+            network_output_size,
+            spikes_generated,
+            input->timestamp_ms,
+            output)) {
+        // Ethical violation - cleanup and abort
         nimcp_free(network_output);
         return false;
     }
 
-    // Output vector already copied above (line 3033-3037)
-    // Network output is in output->output_vector
-
-    // Find decision label based on max output activation
-    uint32_t max_idx = 0;
-    float max_val = -INFINITY;
-    for (uint32_t i = 0; i < network_output_size; i++) {
-        if (network_output[i] > max_val) {
-            max_val = network_output[i];
-            max_idx = i;
-        }
-    }
-
-    // Generate decision label
-    if (brain->output_labels && max_idx < brain->num_output_labels && brain->output_labels[max_idx]) {
-        strncpy(output->decision_label, brain->output_labels[max_idx],
-                sizeof(output->decision_label) - 1);
-    } else {
-        snprintf(output->decision_label, sizeof(output->decision_label),
-                 "output_%u", max_idx);
-    }
-
-    // Generate comprehensive explanation with all 4 modalities
-    char modality_str[256] = {0};
-    bool has_speech = (speech_features != NULL && speech_dim > 0);
-
-    // Build modality attention string
-    char* pos = modality_str;
-    int remaining = sizeof(modality_str);
-    bool first = true;
-
-    if (has_visual || output->visual_attention > 0.01f) {
-        int written = snprintf(pos, remaining, "%svisual=%.0f%%", first ? "" : " ",
-                              output->visual_attention * 100.0f);
-        pos += written;
-        remaining -= written;
-        first = false;
-    }
-    if (has_audio || output->audio_attention > 0.01f) {
-        int written = snprintf(pos, remaining, "%saudio=%.0f%%", first ? "" : " ",
-                              output->audio_attention * 100.0f);
-        pos += written;
-        remaining -= written;
-        first = false;
-    }
-    if (has_speech || output->speech_attention > 0.01f) {
-        int written = snprintf(pos, remaining, "%sspeech=%.0f%%", first ? "" : " ",
-                              output->speech_attention * 100.0f);
-        pos += written;
-        remaining -= written;
-        first = false;
-    }
-    if (has_direct || output->direct_attention > 0.01f) {
-        int written = snprintf(pos, remaining, "%sdirect=%.0f%%", first ? "" : " ",
-                              output->direct_attention * 100.0f);
-        pos += written;
-        remaining -= written;
-        first = false;
-    }
-
-    snprintf(output->explanation, sizeof(output->explanation),
-             "%s | %u spikes | conf=%.0f%% salience=%.0f%% novelty=%.0f%%",
-             modality_str,
-             spikes_generated,
-             output->confidence * 100.0f,
-             output->salience_score * 100.0f,
-             output->novelty_score * 100.0f);
+    // -------------------------------------------------------------------------
+    // STAGE 5: Format output with decision label and explanation
+    // -------------------------------------------------------------------------
+    bool success = format_output(
+        brain,
+        network_output,
+        network_output_size,
+        spikes_generated,
+        has_visual,
+        has_audio,
+        speech_features,
+        speech_dim,
+        output
+    );
 
     // Cleanup
     nimcp_free(network_output);
 
-    return true;
+    return success;
 }
 
 //=============================================================================
