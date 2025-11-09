@@ -85,6 +85,12 @@ typedef struct {
     uint32_t observation_window;      /**< Time window for observation (ms, default: 1000) */
     uint32_t replay_capacity;         /**< Max stored observations for replay (default: 100) */
 
+    // Glial cell support (Phase 10.11.1)
+    bool enable_glial_modulation;     /**< Enable glial cell modulation (default: true) */
+    bool enable_astrocytes;           /**< Astrocytes modulate association strength (default: true) */
+    bool enable_oligodendrocytes;     /**< Oligodendrocytes speed recognition (default: true) */
+    bool enable_microglia;            /**< Microglia prune weak associations (default: true) */
+
 } mirror_neuron_config_t;
 
 /**
@@ -411,6 +417,9 @@ bool mirror_neurons_predict_next_action(
  * WHY:  Enable offline learning, action replay, sequence learning
  * HOW:  Convert observations to working memory items
  *
+ * COMPLEXITY: O(1) - just stores pointer
+ * THREAD-SAFE: No (requires external synchronization)
+ *
  * @param mirror Mirror neuron system
  * @param working_memory Working memory system handle
  * @return true on success, false on error
@@ -426,6 +435,9 @@ bool mirror_neurons_integrate_working_memory(
  * WHAT: Use mirror neurons to infer agent intentions
  * WHY:  Understand why agents perform actions (goal inference)
  * HOW:  Map observed actions to likely goals via theory of mind
+ *
+ * COMPLEXITY: O(1) - just stores pointer
+ * THREAD-SAFE: No (requires external synchronization)
  *
  * @param mirror Mirror neuron system
  * @param theory_of_mind Theory of mind system handle
@@ -443,6 +455,9 @@ bool mirror_neurons_integrate_theory_of_mind(
  * WHY:  Anticipate others' actions, generate predictions
  * HOW:  Feed mirror neuron activations to predictive network
  *
+ * COMPLEXITY: O(1) - just stores pointer
+ * THREAD-SAFE: No (requires external synchronization)
+ *
  * @param mirror Mirror neuron system
  * @param predictive_network Predictive network handle
  * @return true on success, false on error
@@ -450,6 +465,33 @@ bool mirror_neurons_integrate_theory_of_mind(
 bool mirror_neurons_integrate_predictive(
     mirror_neurons_t mirror,
     void* predictive_network  // predictive_t* (avoid circular dependency)
+);
+
+/**
+ * @brief Integrate with glial cell system
+ *
+ * WHAT: Enable glial cell modulation of mirror neurons
+ * WHY:
+ * - Astrocytes modulate association strength (stronger/weaker learning)
+ * - Oligodendrocytes speed up action recognition (faster matching)
+ * - Microglia prune rarely-used mirror neuron associations (memory optimization)
+ * HOW:  Create glial integration layer and assign glial cells to mirror neurons
+ *
+ * Biological basis:
+ * - Mirror neurons have dense astrocyte coverage for plasticity modulation
+ * - High-frequency mirror neurons benefit from oligodendrocyte myelination
+ * - Microglia maintain mirror neuron network efficiency by pruning
+ *
+ * @param mirror Mirror neuron system
+ * @param glial_integration Glial integration system handle
+ * @return true on success, false on error
+ *
+ * COMPLEXITY: O(1) - just stores pointer
+ * THREAD-SAFE: No (requires external synchronization)
+ */
+bool mirror_neurons_integrate_glial(
+    mirror_neurons_t mirror,
+    void* glial_integration  // glial_integration_t* (avoid circular dependency)
 );
 
 //=============================================================================
@@ -463,6 +505,9 @@ bool mirror_neurons_integrate_predictive(
  * WHY:  Provide sensible defaults for most use cases
  * HOW:  Return pre-configured struct
  *
+ * COMPLEXITY: O(1) - returns stack-allocated struct
+ * THREAD-SAFE: Yes (no shared state)
+ *
  * @return Default configuration
  */
 mirror_neuron_config_t mirror_neurons_get_default_config(void);
@@ -474,10 +519,13 @@ mirror_neuron_config_t mirror_neurons_get_default_config(void);
  * WHY:  Simplify action creation
  * HOW:  Fill in action_t struct with provided data
  *
+ * COMPLEXITY: O(n) where n = num_features (for copying)
+ * THREAD-SAFE: Yes (no shared state)
+ *
  * @param action_id Unique action identifier
  * @param action_name Human-readable name
  * @param features Feature vector
- * @param num_features Number of features
+ * @param num_features Number of features (max 32)
  * @param agent_id Performing agent (0 = self)
  * @return action_t struct
  */

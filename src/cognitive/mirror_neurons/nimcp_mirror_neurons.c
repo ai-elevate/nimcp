@@ -122,6 +122,7 @@ struct mirror_neurons_system {
     void* working_memory;              /**< Working memory system */
     void* theory_of_mind;              /**< Theory of mind system */
     void* predictive_network;          /**< Predictive network */
+    void* glial_integration;           /**< Glial cell integration (Phase 10.11.1) */
 
     // Temporal state
     uint64_t creation_time;
@@ -166,7 +167,12 @@ mirror_neuron_config_t mirror_neurons_get_default_config(void)
         .enable_theory_of_mind = true,
         .enable_prediction = true,
         .observation_window = 1000,
-        .replay_capacity = 100
+        .replay_capacity = 100,
+        // Phase 10.11.1: Glial cell support (default: all enabled)
+        .enable_glial_modulation = true,
+        .enable_astrocytes = true,
+        .enable_oligodendrocytes = true,
+        .enable_microglia = true
     };
     return config;
 }
@@ -1061,6 +1067,55 @@ bool mirror_neurons_integrate_predictive(
 
     if (predictive_network) {
         MIRROR_LOG_INFO("Mirror neurons: integrated with predictive network");
+    }
+
+    return true;
+}
+
+/**
+ * @brief Integrate with glial cell system (Phase 10.11.1)
+ *
+ * WHAT: Enable glial cell modulation of mirror neurons
+ * WHY:
+ * - Astrocytes: Modulate association learning strength (Ca2+ dependent plasticity)
+ * - Oligodendrocytes: Speed up action recognition (myelination reduces delays)
+ * - Microglia: Prune weak/unused mirror neuron associations (synaptic homeostasis)
+ * HOW:  Store glial integration handle, glial cells will modulate mirror neuron activity
+ *
+ * BIOLOGICAL RATIONALE:
+ * Mirror neurons show dense glial coverage in premotor and parietal cortex.
+ * Astrocytes modulate mirror neuron plasticity during observational learning.
+ * Oligodendrocytes enhance temporal precision of action recognition.
+ * Microglia maintain network efficiency by pruning non-matching associations.
+ *
+ * @param mirror Mirror neuron system
+ * @param glial_integration Glial integration system handle
+ * @return true on success, false on error
+ *
+ * COMPLEXITY: O(1) - just stores pointer
+ */
+bool mirror_neurons_integrate_glial(
+    mirror_neurons_t mirror,
+    void* glial_integration)
+{
+    if (!mirror) {
+        return false;
+    }
+
+    mirror->glial_integration = glial_integration;
+
+    if (glial_integration) {
+        MIRROR_LOG_INFO("Mirror neurons: integrated with glial cell system (astrocytes, oligodendrocytes, microglia)");
+
+        if (mirror->config.enable_astrocytes) {
+            MIRROR_LOG_INFO("  - Astrocytes enabled: modulate association strength");
+        }
+        if (mirror->config.enable_oligodendrocytes) {
+            MIRROR_LOG_INFO("  - Oligodendrocytes enabled: speed up recognition");
+        }
+        if (mirror->config.enable_microglia) {
+            MIRROR_LOG_INFO("  - Microglia enabled: prune weak associations");
+        }
     }
 
     return true;

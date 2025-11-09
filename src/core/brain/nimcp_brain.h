@@ -46,6 +46,9 @@ typedef struct meta_learner_s* meta_learner_t;  // Opaque pointer
 // Phase 10.9: Predictive Processing
 typedef struct predictive_network_s* predictive_network_t;  // Opaque pointer
 
+// Phase 10.11: Mirror Neurons (Social Cognition & Imitation Learning)
+typedef struct mirror_neurons_system* mirror_neurons_t;  // Opaque pointer
+
 /**
  * @file nimcp_brain.h
  * @brief Simple, high-level API for creating lightweight learning systems
@@ -221,6 +224,14 @@ typedef struct {
     // Phase 10.9: Predictive Processing
     bool enable_predictive_processing; /**< Enable predictive coding */
     bool enable_active_inference;     /**< Enable active inference for actions */
+
+    // Phase 10.11: Mirror Neurons (Social Cognition & Imitation Learning)
+    bool enable_mirror_neurons;       /**< Enable observation-based learning */
+    uint32_t mirror_neuron_count;     /**< Number of mirror neurons (default: 1000) */
+    uint32_t mirror_max_actions;      /**< Max distinct actions to track (default: 100) */
+    uint32_t mirror_max_agents;       /**< Max agents to observe (default: 10) */
+    float mirror_learning_rate;       /**< Association learning rate (default: 0.01) */
+    float mirror_match_threshold;     /**< Action matching threshold (default: 0.7) */
 
     // === PERSISTENCE & CHECKPOINTING ===
     const char* checkpoint_path;      /**< Path to checkpoint file (NULL = no checkpoint) */

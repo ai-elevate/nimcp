@@ -71,6 +71,7 @@
 #include "cognitive/nimcp_explanations.h"      // Phase 10.7: Natural Explanations (interpretability)
 #include "cognitive/nimcp_meta_learning.h"     // Phase 10.8: Meta-Learning (MAML, few-shot learning)
 #include "cognitive/nimcp_predictive.h"        // Phase 10.9: Predictive Processing (free energy minimization)
+#include "cognitive/nimcp_mirror_neurons.h"    // Phase 10.11: Mirror Neurons (social cognition, imitation)
 
 //=============================================================================
 // Forward Declarations - Strategy Pattern
@@ -176,6 +177,9 @@ struct brain_struct {
 
     // Phase 10.9: Predictive Processing (free energy minimization)
     predictive_network_t predictive_network;     // Hierarchical predictive coding (opaque pointer)
+
+    // Phase 10.11: Mirror Neurons (social cognition, imitation learning)
+    mirror_neurons_t mirror_neurons;             // Observation-action learning system (opaque pointer)
 
     // Advanced Plasticity
     neuromod_pink_noise_t* pink_noise;           // Pink noise neuromodulation (struct type, needs *)
@@ -727,6 +731,14 @@ static void init_brain_config(brain_config_t* config, const char* task_name, bra
     config->enable_working_memory = true;           // Enable by default
     config->working_memory_capacity = 7;            // Miller's magic number
     config->working_memory_decay_tau_ms = 1000.0f;  // 1 second decay
+
+    // Phase 10.11: Mirror Neurons defaults (observation-based learning)
+    config->enable_mirror_neurons = false;          // Disable by default (opt-in)
+    config->mirror_neuron_count = 1000;             // Standard population size
+    config->mirror_max_actions = 100;               // Diverse action repertoire
+    config->mirror_max_agents = 10;                 // Multi-agent social learning
+    config->mirror_learning_rate = 0.01f;           // Hebbian association rate
+    config->mirror_match_threshold = 0.7f;          // Action recognition threshold
 }
 
 /**
@@ -1667,6 +1679,68 @@ static bool init_predictive_subsystem(brain_t brain)
 }
 
 /**
+ * @brief Initialize mirror neuron system for brain
+ *
+ * WHAT: Create and configure mirror neuron system for observation-based learning
+ * WHY:  Enable social cognition, imitation learning, and action understanding
+ * HOW:  Create mirror_neurons_t with config-specified parameters
+ *
+ * @param brain Brain to initialize mirror neurons for
+ * @return true on success, false on error
+ */
+static bool init_mirror_neurons(brain_t brain)
+{
+    if (!brain) {
+        return false;
+    }
+
+    // Don't re-initialize
+    if (brain->mirror_neurons) {
+        return true;  // Already initialized
+    }
+
+    // Only create if enabled in config
+    if (!brain->config.enable_mirror_neurons) {
+        return true;  // Not enabled, but not an error
+    }
+
+    // Create mirror neuron config from brain config
+    mirror_neuron_config_t mirror_config = mirror_neurons_get_default_config();
+    mirror_config.num_mirror_neurons = brain->config.mirror_neuron_count;
+    mirror_config.max_actions = brain->config.mirror_max_actions;
+    mirror_config.max_agents = brain->config.mirror_max_agents;
+    mirror_config.learning_rate = brain->config.mirror_learning_rate;
+    mirror_config.match_threshold = brain->config.mirror_match_threshold;
+
+    // Enable integration with other cognitive systems
+    mirror_config.enable_working_memory = brain->config.enable_working_memory;
+    mirror_config.enable_theory_of_mind = brain->config.enable_theory_of_mind;
+    mirror_config.enable_prediction = brain->config.enable_predictive_processing;
+
+    // Create mirror neuron system
+    brain->mirror_neurons = mirror_neurons_create(&mirror_config);
+    if (!brain->mirror_neurons) {
+        set_error("Failed to create mirror neuron system");
+        return false;
+    }
+
+    // Integrate with other cognitive systems if they exist
+    if (brain->working_memory && mirror_config.enable_working_memory) {
+        mirror_neurons_integrate_working_memory(brain->mirror_neurons, brain->working_memory);
+    }
+
+    if (brain->theory_of_mind && mirror_config.enable_theory_of_mind) {
+        mirror_neurons_integrate_theory_of_mind(brain->mirror_neurons, brain->theory_of_mind);
+    }
+
+    if (brain->predictive_network && mirror_config.enable_prediction) {
+        mirror_neurons_integrate_predictive(brain->mirror_neurons, brain->predictive_network);
+    }
+
+    return true;
+}
+
+/**
  * @brief Create brain with preset size and task
  *
  * WHY: Factory pattern - single creation entry point
@@ -1945,6 +2019,12 @@ brain_t brain_create_custom(const brain_config_t* config)
         return NULL;
     }
 
+    // Phase 10.11: Initialize Mirror Neurons (social cognition, imitation learning)
+    if (!init_mirror_neurons(brain)) {
+        brain_destroy(brain);
+        return NULL;
+    }
+
     // Save initial snapshot if configured
     if (config->snapshot_dir && config->save_initial_snapshot) {
         brain_save_snapshot(brain, "initial", "Snapshot at brain creation");
@@ -2094,6 +2174,11 @@ void brain_destroy(brain_t brain)
     // Phase 10.9: Cleanup Predictive Processing
     if (brain->predictive_network) {
         predictive_destroy(brain->predictive_network);
+    }
+
+    // Phase 10.11: Cleanup Mirror Neurons
+    if (brain->mirror_neurons) {
+        mirror_neurons_destroy(brain->mirror_neurons);
     }
 
     clear_cache(brain);
@@ -3227,6 +3312,14 @@ static bool save_metadata(brain_t brain, const char* filepath)
         // TODO: Implement pink_noise_save when API available
     }
 
+    // Save mirror neurons state (Phase 10.11 - if exists)
+    bool has_mirror_neurons = (brain->mirror_neurons != NULL);
+    fwrite(&has_mirror_neurons, sizeof(bool), 1, meta_file);
+    if (has_mirror_neurons) {
+        // TODO: Implement mirror_neurons_save when API available
+        // For now, save placeholder to maintain format consistency
+    }
+
     fclose(meta_file);
     return true;
 }
@@ -3553,6 +3646,14 @@ static bool load_metadata(brain_t brain, const char* filepath)
     if (fread(&has_pink_noise, sizeof(bool), 1, meta_file) == 1 && has_pink_noise) {
         // TODO: Implement pink_noise_load when API available
         // For now, pink_noise will be NULL (backward compatible)
+    }
+
+    // Load mirror neurons state (Phase 10.11 - if exists)
+    bool has_mirror_neurons = false;
+    if (fread(&has_mirror_neurons, sizeof(bool), 1, meta_file) == 1 && has_mirror_neurons) {
+        // TODO: Implement mirror_neurons_load when API available
+        // For now, mirror neurons will be NULL (backward compatible)
+        // Will be re-initialized if enabled in config via init_mirror_neurons()
     }
 
     fclose(meta_file);
