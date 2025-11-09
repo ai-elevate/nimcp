@@ -5,10 +5,12 @@
 #ifndef NIMCP_THREAD_H
 #define NIMCP_THREAD_H
 
-#include <pthread.h>
 #include <stdbool.h>
 #include <stdint.h>
 #include <time.h>
+#include "utils/platform/nimcp_platform_thread.h"
+#include "utils/platform/nimcp_platform_mutex.h"
+#include "utils/platform/nimcp_platform_cond.h"
 
 /**
  * @file nimcp_thread.h
@@ -32,7 +34,9 @@ typedef int32_t nimcp_result_t;
 #define NIMCP_SUCCESS 0               // Operation successful
 #define NIMCP_ERROR_INVALID_PARAM -1  // Invalid parameter
 #define NIMCP_ERROR_SYSTEM -2         // System error (check errno)
-#define NIMCP_ERROR_MEMORY -3         // Memory allocation failed
+#ifndef NIMCP_ERROR_MEMORY
+#define NIMCP_ERROR_MEMORY -3         // Memory allocation failed (use nimcp_common.h if available)
+#endif
 #define NIMCP_ERROR_NOT_FOUND -4      // Resource not found
 #define NIMCP_BUSY -5                 // Resource busy (trylock)
 
@@ -40,11 +44,14 @@ typedef int32_t nimcp_result_t;
 // Type Definitions
 //=============================================================================
 
-typedef pthread_t nimcp_thread_t;
-typedef pthread_mutex_t nimcp_mutex_t;
-typedef pthread_cond_t nimcp_cond_t;
+typedef nimcp_platform_thread_t nimcp_thread_t;
+typedef nimcp_platform_mutex_t nimcp_mutex_t;
+typedef nimcp_platform_cond_t nimcp_cond_t;
+typedef nimcp_platform_mutex_t nimcp_spinlock_t;  // Using mutex for portability
+
+// Note: rwlock and once are not yet in platform layer, keeping pthread for now
+#include <pthread.h>
 typedef pthread_once_t nimcp_once_t;
-typedef pthread_mutex_t nimcp_spinlock_t;  // Using mutex for portability
 typedef pthread_rwlock_t nimcp_rwlock_t;   // Read-write lock
 
 // Thread error information
@@ -85,6 +92,7 @@ typedef struct {
 // Constants
 //=============================================================================
 
+// Note: pthread_once is not yet in platform layer
 #define NIMCP_ONCE_INIT PTHREAD_ONCE_INIT
 #define NIMCP_THREAD_DEFAULT_STACK_SIZE (2 * 1024 * 1024)
 #define RESOURCE_LOCK_BUCKETS 256

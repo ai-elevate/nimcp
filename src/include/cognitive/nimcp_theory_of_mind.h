@@ -1,0 +1,410 @@
+/**
+ * @file nimcp_theory_of_mind.h
+ * @brief Theory of Mind (ToM) module - inferring mental states of others
+ *
+ * WHAT: Belief-Desire-Intention (BDI) model for social cognition
+ * WHY:  Enable understanding of others' beliefs, goals, emotions, and intentions
+ * HOW:  Simulate other agents' mental states through perspective-taking
+ *
+ * BIOLOGICAL BASIS:
+ * - Temporoparietal junction (TPJ) supports perspective-taking
+ * - Medial prefrontal cortex (mPFC) models others' mental states
+ * - Mirror neuron system enables empathy and action understanding
+ * - False belief task: Understanding that others can hold incorrect beliefs
+ *
+ * CAPABILITIES:
+ * - Emotion inference: Infer others' emotional states from behavior
+ * - Goal inference: Deduce intentions and desires from actions
+ * - Belief tracking: Model what others know vs. what actually is true
+ * - Action prediction: Anticipate what others will do next
+ * - Empathy: Mirror and respond to others' emotional states
+ * - False belief understanding: Recognize belief-reality mismatches
+ *
+ * PHASE: 10.6 (Theory of Mind)
+ * DEPENDENCIES: Emotional Tagging (Phase 10.3), Executive Functions (Phase 10.3)
+ * TRAINING_IMPACT: None (inference-only, meta-cognitive reasoning)
+ *
+ * @author NIMCP Development Team - Phase 10.6
+ * @date 2025-11-09
+ * @version 2.7.0 Phase 10.6
+ */
+
+#ifndef NIMCP_THEORY_OF_MIND_H
+#define NIMCP_THEORY_OF_MIND_H
+
+#include <stdint.h>
+#include <stdbool.h>
+#include <stddef.h>  // for size_t
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+//=============================================================================
+// Forward Declarations
+//=============================================================================
+
+// Forward declare brain struct to avoid circular dependency
+// NOTE: brain.h defines: typedef struct brain_struct* brain_t;
+// We only forward-declare the struct here
+struct brain_struct;
+
+// If brain_t hasn't been typedef'd yet (e.g., brain.h not included),
+// create a compatible typedef. This allows theory_of_mind.h to be
+// included standalone while remaining compatible with brain.h.
+#ifndef NIMCP_BRAIN_H
+typedef struct brain_struct* brain_t;
+#endif
+
+//=============================================================================
+// Emotion Types (Simplified for Theory of Mind)
+//=============================================================================
+
+/**
+ * @brief Basic emotional states for Theory of Mind inference
+ *
+ * Based on Ekman's basic emotions + social emotions
+ */
+typedef enum {
+    TOM_EMOTION_UNKNOWN,     /**< Cannot infer emotion */
+    TOM_EMOTION_NEUTRAL,     /**< No strong emotion detected */
+    TOM_EMOTION_JOY,         /**< Positive, high arousal */
+    TOM_EMOTION_SADNESS,     /**< Negative, low arousal */
+    TOM_EMOTION_ANGER,       /**< Negative, high arousal */
+    TOM_EMOTION_FEAR,        /**< Negative, high arousal, threat-focused */
+    TOM_EMOTION_SURPRISE,    /**< Neutral/positive, high arousal, unexpected */
+    TOM_EMOTION_DISGUST,     /**< Negative, moderate arousal, aversion */
+    TOM_EMOTION_ANXIETY,     /**< Negative, moderate arousal, anticipatory */
+    TOM_EMOTION_PRIDE,       /**< Positive, moderate arousal, self-focused */
+    TOM_EMOTION_SHAME,       /**< Negative, moderate arousal, self-focused */
+    TOM_EMOTION_CALM,        /**< Positive, low arousal, peaceful/relaxed */
+    TOM_EMOTION_COUNT
+} tom_emotion_t;
+
+//=============================================================================
+// Belief-Desire-Intention (BDI) Model
+//=============================================================================
+
+/**
+ * @brief Belief state (what the other agent believes)
+ *
+ * WHAT: Representation of another agent's beliefs about the world
+ * WHY:  Others' beliefs may differ from reality (false beliefs)
+ * HOW:  Track observed beliefs vs. actual world state
+ */
+typedef struct {
+    char belief_content[256];    /**< What they believe ("the box contains candy") */
+    float confidence;            /**< Confidence in this belief [0.0, 1.0] */
+    bool is_false_belief;        /**< Does this belief contradict reality? */
+    uint64_t last_updated_ms;    /**< When this belief was last observed */
+} tom_belief_t;
+
+/**
+ * @brief Desire state (what the other agent wants)
+ *
+ * WHAT: Goals and preferences of another agent
+ * WHY:  Understanding desires helps predict actions
+ * HOW:  Infer from observed goal-directed behavior
+ */
+typedef struct {
+    char goal_description[256];  /**< What they want ("get the candy") */
+    float intensity;             /**< How badly they want it [0.0, 1.0] */
+    float satisfaction;          /**< How satisfied is this desire [0.0, 1.0] */
+} tom_desire_t;
+
+/**
+ * @brief Intention state (what the other agent plans to do)
+ *
+ * WHAT: Planned actions of another agent
+ * WHY:  Intentions bridge beliefs/desires and actions
+ * HOW:  Infer from current context and observed preparations
+ */
+typedef struct {
+    char action_description[256]; /**< What they plan to do ("open the box") */
+    float likelihood;             /**< Probability of executing [0.0, 1.0] */
+    bool action_in_progress;      /**< Are they currently doing this? */
+} tom_intention_t;
+
+//=============================================================================
+// Theory of Mind State
+//=============================================================================
+
+/**
+ * @brief Complete Theory of Mind model of another agent
+ *
+ * WHAT: Mental state representation (BDI + emotion + knowledge)
+ * WHY:  Unified model for social reasoning
+ * HOW:  Maintain beliefs, desires, intentions, emotions, and knowledge state
+ *
+ * DESIGN: Opaque handle for encapsulation
+ */
+typedef struct theory_of_mind_s* theory_of_mind_t;
+
+/**
+ * @brief Observable behavior input for ToM inference
+ *
+ * WHAT: Behavioral cues that reveal mental states
+ * WHY:  ToM infers from observable actions and context
+ * HOW:  Package multiple behavioral signals
+ */
+typedef struct {
+    const float* action_vector;   /**< Action representation (e.g., from motor cortex) */
+    uint32_t action_dim;           /**< Dimension of action vector */
+    const char* verbal_context;    /**< Spoken words or dialogue context */
+    tom_emotion_t observed_emotion; /**< Emotion displayed (if observable) */
+    const float* situational_context; /**< Environmental/social context */
+    uint32_t context_dim;          /**< Dimension of context vector */
+} tom_observation_t;
+
+//=============================================================================
+// Core API
+//=============================================================================
+
+/**
+ * @brief Create Theory of Mind module
+ *
+ * WHAT: Initialize ToM with reference to self brain
+ * WHY:  ToM simulates others using self-model as template
+ * HOW:  Allocate structures, copy self-brain parameters
+ *
+ * @param self_brain Brain instance of self (for simulation template)
+ * @return ToM handle, or NULL on error
+ *
+ * SIDE EFFECTS:
+ * - Allocates memory
+ * - May create internal brain simulation
+ *
+ * COMPLEXITY: O(1)
+ */
+theory_of_mind_t tom_create(brain_t self_brain);
+
+/**
+ * @brief Destroy Theory of Mind module
+ *
+ * WHAT: Free all ToM resources
+ * WHY:  Clean memory management
+ * HOW:  Free beliefs, desires, intentions, and simulated brain
+ *
+ * @param tom ToM handle to destroy
+ *
+ * SIDE EFFECTS:
+ * - Frees memory
+ * - Invalidates handle
+ *
+ * COMPLEXITY: O(1)
+ */
+void tom_destroy(theory_of_mind_t tom);
+
+/**
+ * @brief Observe another agent's behavior
+ *
+ * WHAT: Update ToM model based on observed behavior
+ * WHY:  New observations refine mental state estimates
+ * HOW:  Process behavior → update beliefs/desires/intentions
+ *
+ * @param tom ToM handle
+ * @param observation Behavioral observation
+ * @return true if observation processed successfully
+ *
+ * SIDE EFFECTS:
+ * - Updates internal belief/desire/intention state
+ * - May trigger empathy response
+ *
+ * COMPLEXITY: O(1) for behavior encoding
+ */
+bool tom_observe(theory_of_mind_t tom, const tom_observation_t* observation);
+
+/**
+ * @brief Infer other agent's emotional state
+ *
+ * WHAT: Estimate current emotion from observed behavior
+ * WHY:  Emotions guide social interaction
+ * HOW:  Analyze behavior patterns → map to emotion categories
+ *
+ * @param tom ToM handle
+ * @param confidence Output: confidence in inference [0.0, 1.0]
+ * @return Inferred emotion category
+ *
+ * COMPLEXITY: O(1)
+ */
+tom_emotion_t tom_infer_emotion(theory_of_mind_t tom, float* confidence);
+
+/**
+ * @brief Infer other agent's goal/desire
+ *
+ * WHAT: Deduce what the other agent wants to achieve
+ * WHY:  Goals explain and predict behavior
+ * HOW:  Analyze action patterns → infer desired end state
+ *
+ * @param tom ToM handle
+ * @param goal_buffer Output: string description of goal (min 256 bytes)
+ * @param buffer_size Size of goal_buffer
+ * @param confidence Output: confidence in inference [0.0, 1.0]
+ * @return true if goal inferred successfully
+ *
+ * COMPLEXITY: O(1)
+ */
+bool tom_infer_goal(theory_of_mind_t tom, char* goal_buffer, size_t buffer_size, float* confidence);
+
+/**
+ * @brief Predict other agent's next action
+ *
+ * WHAT: Forecast what they will do next
+ * WHY:  Enables proactive social coordination
+ * HOW:  BDI model + current context → likely action
+ *
+ * @param tom ToM handle
+ * @param predicted_action Output: action descriptor
+ * @param action_buffer_size Size of action descriptor buffer
+ * @param likelihood Output: probability of this action [0.0, 1.0]
+ * @return true if prediction generated
+ *
+ * COMPLEXITY: O(1)
+ */
+bool tom_predict_action(theory_of_mind_t tom, char* predicted_action, size_t action_buffer_size, float* likelihood);
+
+/**
+ * @brief Generate empathetic response to observed emotion
+ *
+ * WHAT: Mirror and respond to other's emotional state
+ * WHY:  Empathy builds social rapport
+ * HOW:  Observe emotion → generate appropriate emotional response
+ *
+ * @param tom ToM handle
+ * @param observed_emotion Emotion detected in other agent
+ * @param empathy_response Output: recommended empathetic response emotion
+ * @return true if empathy generated
+ *
+ * SIDE EFFECTS:
+ * - May update self-brain's emotional state
+ *
+ * COMPLEXITY: O(1)
+ */
+bool tom_empathize(theory_of_mind_t tom, tom_emotion_t observed_emotion, tom_emotion_t* empathy_response);
+
+/**
+ * @brief Test for false belief understanding
+ *
+ * WHAT: Check if ToM recognizes belief-reality mismatch
+ * WHY:  False belief is hallmark of mature Theory of Mind
+ * HOW:  Compare agent's believed state vs. actual state
+ *
+ * @param tom ToM handle
+ * @param reality_state What actually is true
+ * @param believed_state What the other agent believes
+ * @param is_false_belief Output: does belief contradict reality?
+ * @return true if false belief test completed
+ *
+ * EXAMPLE:
+ * - Reality: Box contains pencils
+ * - Belief: Box contains candy (false belief)
+ *
+ * COMPLEXITY: O(1)
+ */
+bool tom_detect_false_belief(theory_of_mind_t tom,
+                             const char* reality_state,
+                             const char* believed_state,
+                             bool* is_false_belief);
+
+/**
+ * @brief Get current BDI state
+ *
+ * WHAT: Retrieve belief, desire, and intention state
+ * WHY:  External systems may need complete mental model
+ * HOW:  Copy internal state to output structs
+ *
+ * @param tom ToM handle
+ * @param belief Output: current belief (NULL to skip)
+ * @param desire Output: current desire (NULL to skip)
+ * @param intention Output: current intention (NULL to skip)
+ * @return true if state retrieved
+ *
+ * COMPLEXITY: O(1)
+ */
+bool tom_get_bdi_state(theory_of_mind_t tom,
+                       tom_belief_t* belief,
+                       tom_desire_t* desire,
+                       tom_intention_t* intention);
+
+/**
+ * @brief Get perspective-taking capacity
+ *
+ * WHAT: Check if ToM can distinguish self vs. other perspectives
+ * WHY:  Perspective confusion indicates ToM failure
+ * HOW:  Test if other's beliefs are tracked separately from reality
+ *
+ * @param tom ToM handle
+ * @return Perspective-taking score [0.0, 1.0], 1.0 = perfect separation
+ *
+ * COMPLEXITY: O(1)
+ */
+float tom_get_perspective_score(theory_of_mind_t tom);
+
+//=============================================================================
+// Statistics & Diagnostics
+//=============================================================================
+
+/**
+ * @brief Theory of Mind statistics
+ */
+typedef struct {
+    uint32_t total_observations;      /**< Total behavior observations processed */
+    uint32_t emotion_inferences;       /**< Number of emotion inferences made */
+    uint32_t goal_inferences;          /**< Number of goal inferences made */
+    uint32_t action_predictions;       /**< Number of action predictions made */
+    uint32_t empathy_responses;        /**< Number of empathetic responses generated */
+    uint32_t false_beliefs_detected;   /**< Number of false beliefs recognized */
+    float average_inference_confidence; /**< Mean confidence across inferences */
+    float perspective_taking_score;    /**< Current perspective-taking ability [0,1] */
+} tom_statistics_t;
+
+/**
+ * @brief Get Theory of Mind statistics
+ *
+ * WHAT: Retrieve diagnostic information
+ * WHY:  Monitor ToM performance
+ * HOW:  Copy internal counters
+ *
+ * @param tom ToM handle
+ * @param stats Output: statistics structure
+ * @return true if stats retrieved
+ *
+ * COMPLEXITY: O(1)
+ */
+bool tom_get_statistics(theory_of_mind_t tom, tom_statistics_t* stats);
+
+/**
+ * @brief Reset Theory of Mind state
+ *
+ * WHAT: Clear all BDI state and start fresh
+ * WHY:  New agent requires new model
+ * HOW:  Reset beliefs, desires, intentions to defaults
+ *
+ * @param tom ToM handle
+ * @return true if reset successful
+ *
+ * SIDE EFFECTS:
+ * - Clears BDI state
+ * - Preserves statistics (unless requested to clear)
+ *
+ * COMPLEXITY: O(1)
+ */
+bool tom_reset(theory_of_mind_t tom);
+
+/**
+ * @brief Convert ToM emotion to string
+ *
+ * WHAT: Get human-readable emotion name
+ * WHY:  Logging and debugging
+ * HOW:  Lookup table
+ *
+ * @param emotion Emotion type
+ * @return String name (never NULL)
+ */
+const char* tom_emotion_to_string(tom_emotion_t emotion);
+
+#ifdef __cplusplus
+}
+#endif
+
+#endif // NIMCP_THEORY_OF_MIND_H

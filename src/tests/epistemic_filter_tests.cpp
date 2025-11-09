@@ -482,11 +482,3 @@ TEST_F(EpistemicFilterTest, PerformanceUnder1ms) {
     EXPECT_LT(duration.count(), 10000);  // 10ms for 1000 iterations = 10μs each
 }
 
-//=============================================================================
-// Main
-//=============================================================================
-
-int main(int argc, char** argv) {
-    ::testing::InitGoogleTest(&argc, argv);
-    return RUN_ALL_TESTS();
-}

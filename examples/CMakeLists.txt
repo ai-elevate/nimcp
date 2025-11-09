@@ -1,5 +1,35 @@
 # Example programs
 
+# ============================================================================
+# NIMCP Simple Demo - PRIMARY REFERENCE IMPLEMENTATION (Phase 9)
+# ============================================================================
+# Clean, simple, easy-to-understand demo showcasing all Phase 9 features:
+# - Brain API (high-level)
+# - Multi-modal processing
+# - Epistemic filtering (bias prevention)
+# - Ethical reasoning
+# START HERE if you're new to NIMCP!
+add_executable(simple_demo simple_demo.c)
+target_link_libraries(simple_demo nimcp m)
+target_include_directories(simple_demo PRIVATE ${NIMCP_INCLUDE_DIR})
+
+# ============================================================================
+# Phase 10.2: Working Memory Integration Demo
+# ============================================================================
+# Demonstrates:
+# - Miller's 7±2 working memory buffer
+# - COW snapshot/restore with working memory
+# - Temporal decay and attention refresh
+# - Zero training impact (inference only)
+add_executable(working_memory_integration_demo working_memory_integration_demo.c)
+target_link_libraries(working_memory_integration_demo nimcp m)
+target_include_directories(working_memory_integration_demo PRIVATE ${NIMCP_INCLUDE_DIR})
+
+# Phase 10.2: Working Memory Public API Demo (End-to-End Test)
+add_executable(working_memory_public_api_demo working_memory_public_api_demo.c)
+target_link_libraries(working_memory_public_api_demo nimcp m)
+target_include_directories(working_memory_public_api_demo PRIVATE ${NIMCP_INCLUDE_DIR})
+
 # NIMCP 2.0 Example
 add_executable(event_demo event_demo.c)
 target_link_libraries(event_demo nimcp)
@@ -104,3 +134,35 @@ install(TARGETS event_demo brain_demo ethics_demo infant_demo integrated_demo br
 add_executable(test_neural_logic test_neural_logic.c)
 target_link_libraries(test_neural_logic nimcp m)
 target_include_directories(test_neural_logic PRIVATE ${NIMCP_INCLUDE_DIR})
+
+# ============================================================================
+# NIMCP 2.6 Copy-on-Write (COW) Examples - Memory Efficient Brain Cloning
+# ============================================================================
+
+# COW Example 1: Multi-Tenant Inference Server
+# Demonstrates efficient model sharing across multiple tenants (86% memory savings)
+add_executable(cow_inference_server cow_inference_server.c)
+target_link_libraries(cow_inference_server nimcp m)
+target_include_directories(cow_inference_server PRIVATE ${NIMCP_INCLUDE_DIR})
+
+# COW Example 2: Snapshot Before Training
+# Demonstrates instant checkpointing and rollback (99% memory savings)
+add_executable(cow_snapshot_learning cow_snapshot_learning.c)
+target_link_libraries(cow_snapshot_learning nimcp m)
+target_include_directories(cow_snapshot_learning PRIVATE ${NIMCP_INCLUDE_DIR})
+
+# COW Example 3: A/B Testing Training Strategies
+# Demonstrates parallel strategy comparison (64% memory savings)
+add_executable(cow_ab_testing cow_ab_testing.c)
+target_link_libraries(cow_ab_testing nimcp m)
+target_include_directories(cow_ab_testing PRIVATE ${NIMCP_INCLUDE_DIR})
+
+# ============================================================================
+# NIMCP 2.8 Distributed COW Examples - Network-Wide Brain Cloning
+# ============================================================================
+
+# Distributed COW Example: Cross-Node Brain Sharing
+# Demonstrates distributed COW cloning with lazy network loading (76% cluster memory savings)
+add_executable(distributed_cow_demo distributed_cow_demo.c)
+target_link_libraries(distributed_cow_demo nimcp m pthread z)
+target_include_directories(distributed_cow_demo PRIVATE ${NIMCP_INCLUDE_DIR})

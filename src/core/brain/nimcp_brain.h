@@ -227,6 +227,16 @@ typedef struct {
     bool auto_load;                   /**< Auto-load from checkpoint on create (default: true) */
     bool auto_save;                   /**< Auto-save to checkpoint periodically (default: false) */
     uint32_t auto_save_interval;      /**< Auto-save every N decisions (0 = disabled) */
+
+    // === SNAPSHOTS ===
+    const char* snapshot_dir;         /**< Directory for snapshots (default: "./snapshots") */
+    bool enable_auto_snapshots;       /**< Enable automatic snapshots (default: false) */
+    uint32_t auto_snapshot_interval;  /**< Auto-snapshot every N decisions (0 = disabled) */
+    bool compress_snapshots;          /**< Compress snapshots (default: true) */
+    bool encrypt_snapshots;           /**< Encrypt snapshots (default: true) */
+    const char* encryption_key;       /**< Encryption key (32 bytes hex, NULL = derive from system) */
+    bool save_initial_snapshot;       /**< Save snapshot at creation (default: true) */
+    bool save_final_snapshot;         /**< Save snapshot at destruction (default: true) */
 } brain_config_t;
 
 /**
@@ -620,6 +630,79 @@ bool brain_save(brain_t brain, const char* filepath);
  * @return Brain handle or NULL on error
  */
 brain_t brain_load(const char* filepath);
+
+//=============================================================================
+// Snapshot API - Compressed & Encrypted State Snapshots
+//=============================================================================
+
+/**
+ * @brief Snapshot metadata
+ */
+typedef struct {
+    char name[128];              /**< Snapshot name */
+    char description[512];       /**< Human-readable description */
+    uint64_t timestamp;          /**< Creation timestamp (Unix epoch) */
+    uint32_t file_size;          /**< Compressed size in bytes */
+    bool is_compressed;          /**< Compression enabled */
+    bool is_encrypted;           /**< Encryption enabled */
+} brain_snapshot_info_t;
+
+/**
+ * @brief Save brain snapshot with compression and encryption
+ *
+ * WHAT: Creates a named, timestamped snapshot of complete brain state
+ * WHY:  Enable backups, A/B testing, version control, disaster recovery
+ * HOW:  Saves to snapshot_dir with compression and encryption by default
+ *
+ * Snapshots are saved as: snapshot_dir/name_timestamp.snapshot
+ * - Compressed with zlib (default)
+ * - Encrypted with AES-256 (default)
+ * - Include full brain state (network, subsystems, knowledge)
+ *
+ * @param brain Brain instance
+ * @param name Snapshot name (e.g., "before_experiment", "v1.0")
+ * @param description Optional description (can be NULL)
+ * @return true on success, false on error
+ */
+bool brain_save_snapshot(brain_t brain, const char* name, const char* description);
+
+/**
+ * @brief Restore brain from snapshot
+ *
+ * WHAT: Loads brain state from named snapshot
+ * WHY:  Restore previous state, rollback changes, A/B testing
+ * HOW:  Decompresses and decrypts snapshot, restores all state
+ *
+ * @param brain Brain instance to restore into (or NULL to create new)
+ * @param name Snapshot name
+ * @return Brain instance (restored if provided, new if NULL), or NULL on error
+ */
+brain_t brain_restore_snapshot(brain_t brain, const char* name);
+
+/**
+ * @brief List available snapshots
+ *
+ * WHAT: Enumerate all snapshots for this brain
+ * WHY:  Allow users to see available restore points
+ * HOW:  Scans snapshot_dir, parses metadata
+ *
+ * @param brain Brain instance (for snapshot_dir config)
+ * @param infos Output array of snapshot info (allocated by caller)
+ * @param max_count Maximum number of snapshots to return
+ * @param out_count Output: actual number of snapshots found
+ * @return true on success, false on error
+ */
+bool brain_list_snapshots(brain_t brain, brain_snapshot_info_t* infos,
+                         uint32_t max_count, uint32_t* out_count);
+
+/**
+ * @brief Delete snapshot
+ *
+ * @param brain Brain instance (for snapshot_dir config)
+ * @param name Snapshot name to delete
+ * @return true on success, false on error
+ */
+bool brain_delete_snapshot(brain_t brain, const char* name);
 
 //=============================================================================
 // Phase 9.0: Pre-Trained Models API

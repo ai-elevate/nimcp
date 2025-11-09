@@ -21,7 +21,7 @@
  * - Reader-Writer Lock: Multiple concurrent readers, exclusive writers
  * - Atomic Operations: Lock-free statistics counters
  * - Thread-Local Storage: Per-thread effect pools (zero contention)
- * - pthread_once: Safe lazy initialization
+ * - Platform once: Safe lazy initialization
  *
  * PERFORMANCE CHARACTERISTICS:
  * - Concentration update: O(1) - fixed number of neurotransmitters
@@ -50,6 +50,7 @@
 #include "utils/memory/nimcp_memory.h"
 #include "utils/validation/nimcp_validate.h"
 #include "utils/thread/nimcp_thread.h"
+#include "utils/platform/nimcp_platform_rwlock.h"
 #include <math.h>
 #include <string.h>
 #include <stdatomic.h>
@@ -150,9 +151,9 @@ struct neuromodulator_system_struct {
      * WHY:  Allow multiple concurrent readers (common case), exclusive writers
      * PERFORMANCE: ~10x faster than mutex for read-heavy workloads
      * PATTERN: Monitor Pattern (synchronized shared state)
-     * USES: NIMCP threading utilities for consistent error handling
+     * USES: NIMCP platform abstraction for cross-platform compatibility
      */
-    nimcp_rwlock_t rwlock;
+    nimcp_platform_rwlock_t rwlock;
 
     /* WHAT: Current global concentrations (volume transmission)
      * WHY:  Models cerebrospinal fluid / extracellular space
@@ -298,14 +299,14 @@ neuromodulator_system_t neuromodulator_system_create(const neuromodulator_config
      */
     if (!system) return NULL;
 
-    /* WHAT: Initialize reader-writer lock using NIMCP threading utils
+    /* WHAT: Initialize reader-writer lock using NIMCP platform abstraction
      * WHY:  Enable thread-safe concurrent access to concentrations
      * PATTERN: Monitor Pattern (synchronized access to shared state)
      * ERROR HANDLING: If initialization fails, clean up and return NULL
-     * USES: NIMCP nimcp_rwlock_init for consistent error handling
+     * USES: NIMCP platform rwlock for cross-platform compatibility
      */
-    nimcp_result_t rwlock_result = nimcp_rwlock_init(&system->rwlock);
-    if (rwlock_result != NIMCP_SUCCESS) {
+    int rwlock_result = nimcp_platform_rwlock_init(&system->rwlock);
+    if (rwlock_result != 0) {
         nimcp_free(system);
         return NULL;
     }
@@ -410,13 +411,13 @@ void neuromodulator_system_destroy(neuromodulator_system_t system) {
      */
     if (!system) return;
 
-    /* WHAT: Destroy reader-writer lock using NIMCP threading utils
+    /* WHAT: Destroy reader-writer lock using NIMCP platform abstraction
      * WHY:  Release OS resources (lock handle, kernel data structures)
      * CORRECTNESS: Must be done before freeing memory
      * ERROR HANDLING: Ignore errors (best effort cleanup)
-     * USES: NIMCP nimcp_rwlock_destroy for consistent cleanup
+     * USES: NIMCP platform rwlock for cross-platform compatibility
      */
-    nimcp_rwlock_destroy(&system->rwlock);
+    nimcp_platform_rwlock_destroy(&system->rwlock);
 
     /* WHAT: Zero out memory before free
      * WHY:  Security - prevent use-after-free exploits
@@ -439,13 +440,13 @@ bool neuromodulator_get_levels(neuromodulator_system_t system, neuromodulator_po
      */
     if (!system || !pool) return false;
 
-    /* WHAT: Acquire read lock for consistent snapshot using NIMCP utils
+    /* WHAT: Acquire read lock for consistent snapshot using NIMCP platform
      * WHY:  Prevent reading while update() is modifying concentrations
      * PERFORMANCE: Read lock allows multiple concurrent readers
      * PATTERN: RAII-style (lock, copy, unlock)
-     * USES: NIMCP nimcp_rwlock_rdlock for error handling
+     * USES: NIMCP platform rwlock for cross-platform compatibility
      */
-    nimcp_rwlock_rdlock(&system->rwlock);
+    nimcp_platform_rwlock_rdlock(&system->rwlock);
 
     /* WHAT: Copy concentrations to output struct
      * WHY:  Prevents direct manipulation of internal state
@@ -465,12 +466,12 @@ bool neuromodulator_get_levels(neuromodulator_system_t system, neuromodulator_po
     memcpy(pool->decay_rates, system->decay_times, sizeof(pool->decay_rates));
     pool->last_update = system->last_update_time;
 
-    /* WHAT: Release read lock using NIMCP utils
+    /* WHAT: Release read lock using NIMCP platform
      * WHY:  Allow other threads to access
      * CORRECTNESS: Always unlock before return
-     * USES: NIMCP nimcp_rwlock_unlock
+     * USES: NIMCP platform rwlock for cross-platform compatibility
      */
-    nimcp_rwlock_unlock(&system->rwlock);
+    nimcp_platform_rwlock_rdunlock(&system->rwlock);
 
     return true;
 }
@@ -540,7 +541,7 @@ bool neuromodulator_update(neuromodulator_system_t system, float dt) {
      * PATTERN: RAII-style (lock, modify, unlock)
      * PERFORMANCE: Blocks all readers during update (brief critical section)
      */
-    nimcp_rwlock_wrlock(&system->rwlock);
+    nimcp_platform_rwlock_wrlock(&system->rwlock);
 
     /* WHAT: Apply exponential decay to each neuromodulator
      * WHY:  Different neurotransmitters have different clearance rates
@@ -587,7 +588,7 @@ bool neuromodulator_update(neuromodulator_system_t system, float dt) {
      * WHY:  Atomic counter doesn't need lock protection
      * PERFORMANCE: Minimize critical section duration
      */
-    nimcp_rwlock_unlock(&system->rwlock);
+    nimcp_platform_rwlock_wrunlock(&system->rwlock);
 
     /* WHAT: Atomically increment update counter
      * WHY:  Track update frequency without lock overhead
@@ -630,7 +631,7 @@ float neuromodulator_release_dopamine(neuromodulator_system_t system, float rewa
      * WHY:  Prevent race conditions when reading and updating concentration
      * PATTERN: Brief critical section (read-modify-write)
      */
-    nimcp_rwlock_wrlock(&system->rwlock);
+    nimcp_platform_rwlock_wrlock(&system->rwlock);
 
     /* WHAT: Convert RPE to dopamine concentration change
      * WHY:  Scale RPE to match biological response magnitude
@@ -657,7 +658,7 @@ float neuromodulator_release_dopamine(neuromodulator_system_t system, float rewa
      * WHY:  Atomic operations don't need lock protection
      * PERFORMANCE: Minimize critical section duration
      */
-    nimcp_rwlock_unlock(&system->rwlock);
+    nimcp_platform_rwlock_wrunlock(&system->rwlock);
 
     /* WHAT: Atomically increment counters (lock-free)
      * WHY:  Track release frequency and RPE count without lock overhead
@@ -684,7 +685,7 @@ float neuromodulator_release_serotonin(neuromodulator_system_t system, float pun
     /* WHAT: Acquire write lock for concentration modification
      * WHY:  Prevent race conditions on read-modify-write
      */
-    nimcp_rwlock_wrlock(&system->rwlock);
+    nimcp_platform_rwlock_wrlock(&system->rwlock);
 
     float serotonin_release = system->punishment_serotonin_gain * punishment_magnitude;
 
@@ -696,7 +697,7 @@ float neuromodulator_release_serotonin(neuromodulator_system_t system, float pun
     /* WHAT: Release write lock before atomic increment
      * WHY:  Minimize critical section duration
      */
-    nimcp_rwlock_unlock(&system->rwlock);
+    nimcp_platform_rwlock_wrunlock(&system->rwlock);
 
     /* WHAT: Atomically increment release counter
      * WHY:  Lock-free statistics tracking
@@ -721,7 +722,7 @@ float neuromodulator_release_acetylcholine(neuromodulator_system_t system, float
     /* WHAT: Acquire write lock for concentration modification
      * WHY:  Prevent race conditions on read-modify-write
      */
-    nimcp_rwlock_wrlock(&system->rwlock);
+    nimcp_platform_rwlock_wrlock(&system->rwlock);
 
     float ach_release = system->salience_acetylcholine_gain * salience;
 
@@ -733,7 +734,7 @@ float neuromodulator_release_acetylcholine(neuromodulator_system_t system, float
     /* WHAT: Release write lock before atomic increment
      * WHY:  Minimize critical section duration
      */
-    nimcp_rwlock_unlock(&system->rwlock);
+    nimcp_platform_rwlock_wrunlock(&system->rwlock);
 
     /* WHAT: Atomically increment release counter
      * WHY:  Lock-free statistics tracking
@@ -765,7 +766,7 @@ float neuromodulator_release_norepinephrine(neuromodulator_system_t system, floa
     /* WHAT: Acquire write lock for concentration modification
      * WHY:  Prevent race conditions on read-modify-write
      */
-    nimcp_rwlock_wrlock(&system->rwlock);
+    nimcp_platform_rwlock_wrlock(&system->rwlock);
 
     float ne_release = system->threat_norepinephrine_gain * arousal_signal;
 
@@ -777,7 +778,7 @@ float neuromodulator_release_norepinephrine(neuromodulator_system_t system, floa
     /* WHAT: Release write lock before atomic increment
      * WHY:  Minimize critical section duration
      */
-    nimcp_rwlock_unlock(&system->rwlock);
+    nimcp_platform_rwlock_wrunlock(&system->rwlock);
 
     /* WHAT: Atomically increment release counter
      * WHY:  Lock-free statistics tracking

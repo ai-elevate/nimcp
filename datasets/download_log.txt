@@ -1,0 +1,159 @@
+=== Downloading 20 Foundation Datasets ===
+
+Output directory: /home/bbrelin/nimcp/datasets/foundation
+
+[1/20] ethics_commonsense (ethics)...
+  Downloading from HuggingFace: hendrycks/ethics (subset: commonsense)
+  ✗ Failed: Dataset scripts are no longer supported, but found ethics.py
+
+[2/20] ethics_deontology (ethics)...
+  Downloading from HuggingFace: hendrycks/ethics (subset: deontology)
+  ✗ Failed: Dataset scripts are no longer supported, but found ethics.py
+
+[3/20] ethics_justice (ethics)...
+  Downloading from HuggingFace: hendrycks/ethics (subset: justice)
+  ✗ Failed: Dataset scripts are no longer supported, but found ethics.py
+
+[4/20] ethics_virtue (ethics)...
+  Downloading from HuggingFace: hendrycks/ethics (subset: virtue)
+  ✗ Failed: Dataset scripts are no longer supported, but found ethics.py
+
+[5/20] moral_stories (ethics)...
+  Downloading from HuggingFace: demelin/moral_stories
+  ✗ Failed: Dataset scripts are no longer supported, but found moral_stories.py
+
+[6/20] philosophy_texts_sample (philosophy)...
+  ⊙ Skipped (type: custom)
+
+[7/20] world_history_events (history)...
+  ⊙ Skipped (type: url)
+
+[8/20] wikitext103 (language)...
+  Downloading from HuggingFace: wikitext (subset: wikitext-103-raw-v1)
+Creating json from Arrow format:   0%|          | 0/5 [00:00<?, ?ba/s]Creating json from Arrow format: 100%|██████████| 5/5 [00:00<00:00, 160.10ba/s]
+  ✓ Saved test: 4358 examples -> test.jsonl
+Creating json from Arrow format:   0%|          | 0/1802 [00:00<?, ?ba/s]Creating json from Arrow format:   1%|▏         | 23/1802 [00:00<00:08, 221.05ba/s]Creating json from Arrow format:   3%|▎         | 46/1802 [00:00<00:08, 214.00ba/s]Creating json from Arrow format:   4%|▍         | 68/1802 [00:00<00:08, 204.84ba/s]Creating json from Arrow format:   5%|▍         | 90/1802 [00:00<00:08, 209.63ba/s]Creating json from Arrow format:   6%|▌         | 112/1802 [00:00<00:07, 211.92ba/s]Creating json from Arrow format:   7%|▋         | 134/1802 [00:00<00:08, 204.02ba/s]Creating json from Arrow format:   9%|▊         | 156/1802 [00:00<00:07, 206.47ba/s]Creating json from Arrow format:  10%|▉         | 178/1802 [00:00<00:07, 207.73ba/s]Creating json from Arrow format:  11%|█         | 199/1802 [00:00<00:07, 207.28ba/s]Creating json from Arrow format:  12%|█▏        | 220/1802 [00:01<00:07, 206.09ba/s]Creating json from Arrow format:  13%|█▎        | 242/1802 [00:01<00:07, 208.54ba/s]Creating json from Arrow format:  15%|█▍        | 264/1802 [00:01<00:07, 209.64ba/s]Creating json from Arrow format:  16%|█▌        | 285/1802 [00:01<00:07, 209.73ba/s]Creating json from Arrow format:  17%|█▋        | 307/1802 [00:01<00:07, 210.98ba/s]Creating json from Arrow format:  18%|█▊        | 330/1802 [00:01<00:06, 214.71ba/s]Creating json from Arrow format:  20%|█▉        | 352/1802 [00:01<00:06, 212.53ba/s]Creating json from Arrow format:  21%|██        | 374/1802 [00:01<00:06, 214.04ba/s]Creating json from Arrow format:  22%|██▏       | 396/1802 [00:01<00:06, 213.06ba/s]Creating json from Arrow format:  23%|██▎       | 418/1802 [00:01<00:06, 209.19ba/s]Creating json from Arrow format:  24%|██▍       | 439/1802 [00:02<00:06, 206.91ba/s]Creating json from Arrow format:  26%|██▌       | 460/1802 [00:02<00:06, 205.09ba/s]Creating json from Arrow format:  27%|██▋       | 481/1802 [00:02<00:06, 204.11ba/s]Creating json from Arrow format:  28%|██▊       | 503/1802 [00:02<00:06, 208.72ba/s]Creating json from Arrow format:  29%|██▉       | 524/1802 [00:02<00:06, 206.48ba/s]Creating json from Arrow format:  30%|███       | 545/1802 [00:02<00:06, 201.42ba/s]Creating json from Arrow format:  31%|███▏      | 566/1802 [00:02<00:06, 203.57ba/s]Creating json from Arrow format:  33%|███▎      | 588/1802 [00:02<00:05, 206.72ba/s]Creating json from Arrow format:  34%|███▍      | 609/1802 [00:02<00:05, 206.07ba/s]Creating json from Arrow format:  35%|███▌      | 631/1802 [00:03<00:05, 208.56ba/s]Creating json from Arrow format:  36%|███▌      | 652/1802 [00:03<00:05, 203.63ba/s]Creating json from Arrow format:  37%|███▋      | 675/1802 [00:03<00:05, 210.71ba/s]Creating json from Arrow format:  39%|███▊      | 697/1802 [00:03<00:05, 212.68ba/s]Creating json from Arrow format:  40%|███▉      | 719/1802 [00:03<00:05, 214.59ba/s]Creating json from Arrow format:  41%|████      | 741/1802 [00:03<00:04, 212.95ba/s]Creating json from Arrow format:  42%|████▏     | 763/1802 [00:03<00:04, 209.81ba/s]Creating json from Arrow format:  44%|████▎     | 785/1802 [00:03<00:04, 212.05ba/s]Creating json from Arrow format:  45%|████▍     | 807/1802 [00:03<00:04, 210.69ba/s]Creating json from Arrow format:  46%|████▌     | 829/1802 [00:03<00:04, 207.22ba/s]Creating json from Arrow format:  47%|████▋     | 850/1802 [00:04<00:04, 203.26ba/s]Creating json from Arrow format:  48%|████▊     | 873/1802 [00:04<00:04, 208.98ba/s]Creating json from Arrow format:  50%|████▉     | 895/1802 [00:04<00:04, 209.56ba/s]Creating json from Arrow format:  51%|█████     | 917/1802 [00:04<00:04, 210.28ba/s]Creating json from Arrow format:  52%|█████▏    | 939/1802 [00:04<00:04, 208.72ba/s]Creating json from Arrow format:  53%|█████▎    | 960/1802 [00:04<00:04, 208.23ba/s]Creating json from Arrow format:  54%|█████▍    | 981/1802 [00:04<00:03, 207.12ba/s]Creating json from Arrow format:  56%|█████▌    | 1003/1802 [00:04<00:03, 208.43ba/s]Creating json from Arrow format:  57%|█████▋    | 1024/1802 [00:04<00:03, 206.10ba/s]Creating json from Arrow format:  58%|█████▊    | 1045/1802 [00:05<00:03, 207.01ba/s]Creating json from Arrow format:  59%|█████▉    | 1066/1802 [00:05<00:03, 207.19ba/s]Creating json from Arrow format:  60%|██████    | 1087/1802 [00:05<00:03, 202.77ba/s]Creating json from Arrow format:  62%|██████▏   | 1109/1802 [00:05<00:03, 206.69ba/s]Creating json from Arrow format:  63%|██████▎   | 1131/1802 [00:05<00:03, 209.06ba/s]Creating json from Arrow format:  64%|██████▍   | 1152/1802 [00:05<00:03, 206.74ba/s]Creating json from Arrow format:  65%|██████▌   | 1173/1802 [00:05<00:03, 207.14ba/s]Creating json from Arrow format:  66%|██████▋   | 1195/1802 [00:05<00:02, 207.70ba/s]Creating json from Arrow format:  68%|██████▊   | 1217/1802 [00:05<00:02, 210.40ba/s]Creating json from Arrow format:  69%|██████▉   | 1239/1802 [00:05<00:02, 207.07ba/s]Creating json from Arrow format:  70%|███████   | 1262/1802 [00:06<00:02, 212.90ba/s]Creating json from Arrow format:  71%|███████▏  | 1285/1802 [00:06<00:02, 215.60ba/s]Creating json from Arrow format:  73%|███████▎  | 1307/1802 [00:06<00:02, 212.76ba/s]Creating json from Arrow format:  74%|███████▍  | 1329/1802 [00:06<00:02, 214.24ba/s]Creating json from Arrow format:  75%|███████▍  | 1351/1802 [00:06<00:02, 215.02ba/s]Creating json from Arrow format:  76%|███████▌  | 1373/1802 [00:06<00:02, 208.04ba/s]Creating json from Arrow format:  77%|███████▋  | 1394/1802 [00:06<00:01, 204.31ba/s]Creating json from Arrow format:  79%|███████▊  | 1415/1802 [00:06<00:01, 202.31ba/s]Creating json from Arrow format:  80%|███████▉  | 1436/1802 [00:06<00:01, 200.32ba/s]Creating json from Arrow format:  81%|████████  | 1457/1802 [00:06<00:01, 202.13ba/s]Creating json from Arrow format:  82%|████████▏ | 1478/1802 [00:07<00:01, 202.07ba/s]Creating json from Arrow format:  83%|████████▎ | 1499/1802 [00:07<00:01, 196.17ba/s]Creating json from Arrow format:  84%|████████▍ | 1520/1802 [00:07<00:01, 197.75ba/s]Creating json from Arrow format:  86%|████████▌ | 1542/1802 [00:07<00:01, 202.16ba/s]Creating json from Arrow format:  87%|████████▋ | 1563/1802 [00:07<00:01, 202.74ba/s]Creating json from Arrow format:  88%|████████▊ | 1585/1802 [00:07<00:01, 205.36ba/s]Creating json from Arrow format:  89%|████████▉ | 1606/1802 [00:07<00:00, 202.64ba/s]Creating json from Arrow format:  90%|█████████ | 1627/1802 [00:07<00:00, 199.11ba/s]Creating json from Arrow format:  91%|█████████▏| 1648/1802 [00:07<00:00, 201.29ba/s]Creating json from Arrow format:  93%|█████████▎| 1670/1802 [00:08<00:00, 205.84ba/s]Creating json from Arrow format:  94%|█████████▍| 1691/1802 [00:08<00:00, 204.75ba/s]Creating json from Arrow format:  95%|█████████▌| 1712/1802 [00:08<00:00, 205.63ba/s]Creating json from Arrow format:  96%|█████████▌| 1734/1802 [00:08<00:00, 208.95ba/s]Creating json from Arrow format:  97%|█████████▋| 1756/1802 [00:08<00:00, 209.96ba/s]Creating json from Arrow format:  99%|█████████▊| 1778/1802 [00:08<00:00, 211.89ba/s]Creating json from Arrow format: 100%|█████████▉| 1800/1802 [00:08<00:00, 212.50ba/s]Creating json from Arrow format: 100%|██████████| 1802/1802 [00:08<00:00, 207.81ba/s]
+  ✓ Saved train: 1801350 examples -> train.jsonl
+Creating json from Arrow format:   0%|          | 0/4 [00:00<?, ?ba/s]Creating json from Arrow format: 100%|██████████| 4/4 [00:00<00:00, 165.74ba/s]
+  ✓ Saved validation: 3760 examples -> validation.jsonl
+  ✓ Success!
+
+[9/20] squad_v2 (language)...
+  Downloading from HuggingFace: squad_v2
+Creating json from Arrow format:   0%|          | 0/131 [00:00<?, ?ba/s]Creating json from Arrow format:   5%|▍         | 6/131 [00:00<00:04, 28.93ba/s]Creating json from Arrow format:  11%|█▏        | 15/131 [00:00<00:02, 52.14ba/s]Creating json from Arrow format:  19%|█▉        | 25/131 [00:00<00:01, 66.52ba/s]Creating json from Arrow format:  25%|██▌       | 33/131 [00:00<00:01, 70.80ba/s]Creating json from Arrow format:  31%|███▏      | 41/131 [00:00<00:01, 69.48ba/s]Creating json from Arrow format:  37%|███▋      | 49/131 [00:00<00:01, 68.26ba/s]Creating json from Arrow format:  44%|████▎     | 57/131 [00:00<00:01, 68.28ba/s]Creating json from Arrow format:  49%|████▉     | 64/131 [00:00<00:01, 66.87ba/s]Creating json from Arrow format:  54%|█████▍    | 71/131 [00:01<00:00, 66.89ba/s]Creating json from Arrow format:  60%|█████▉    | 78/131 [00:01<00:00, 67.26ba/s]Creating json from Arrow format:  65%|██████▍   | 85/131 [00:01<00:00, 67.78ba/s]Creating json from Arrow format:  71%|███████   | 93/131 [00:01<00:00, 69.26ba/s]Creating json from Arrow format:  77%|███████▋  | 101/131 [00:01<00:00, 69.96ba/s]Creating json from Arrow format:  83%|████████▎ | 109/131 [00:01<00:00, 70.32ba/s]Creating json from Arrow format:  89%|████████▉ | 117/131 [00:01<00:00, 70.38ba/s]Creating json from Arrow format:  95%|█████████▌| 125/131 [00:01<00:00, 71.35ba/s]Creating json from Arrow format: 100%|██████████| 131/131 [00:01<00:00, 67.61ba/s]
+  ✓ Saved train: 130319 examples -> train.jsonl
+Creating json from Arrow format:   0%|          | 0/12 [00:00<?, ?ba/s]Creating json from Arrow format:  58%|█████▊    | 7/12 [00:00<00:00, 62.56ba/s]Creating json from Arrow format: 100%|██████████| 12/12 [00:00<00:00, 62.48ba/s]
+  ✓ Saved validation: 11873 examples -> validation.jsonl
+  ✓ Success!
+
+[10/20] commonsense_qa (language)...
+  Downloading from HuggingFace: commonsense_qa
+Creating json from Arrow format:   0%|          | 0/10 [00:00<?, ?ba/s]Creating json from Arrow format: 100%|██████████| 10/10 [00:00<00:00, 103.19ba/s]
+  ✓ Saved train: 9741 examples -> train.jsonl
+Creating json from Arrow format:   0%|          | 0/2 [00:00<?, ?ba/s]Creating json from Arrow format: 100%|██████████| 2/2 [00:00<00:00, 168.62ba/s]
+  ✓ Saved validation: 1221 examples -> validation.jsonl
+Creating json from Arrow format:   0%|          | 0/2 [00:00<?, ?ba/s]Creating json from Arrow format: 100%|██████████| 2/2 [00:00<00:00, 173.26ba/s]
+  ✓ Saved test: 1140 examples -> test.jsonl
+  ✓ Success!
+
+[11/20] mmlu_physics (physics)...
+  Downloading from HuggingFace: cais/mmlu (subset: college_physics)
+Creating json from Arrow format:   0%|          | 0/1 [00:00<?, ?ba/s]Creating json from Arrow format: 100%|██████████| 1/1 [00:00<00:00, 589.50ba/s]
+  ✓ Saved test: 102 examples -> test.jsonl
+Creating json from Arrow format:   0%|          | 0/1 [00:00<?, ?ba/s]Creating json from Arrow format: 100%|██████████| 1/1 [00:00<00:00, 590.33ba/s]
+  ✓ Saved validation: 11 examples -> validation.jsonl
+Creating json from Arrow format:   0%|          | 0/1 [00:00<?, ?ba/s]Creating json from Arrow format: 100%|██████████| 1/1 [00:00<00:00, 899.68ba/s]
+  ✓ Saved dev: 5 examples -> dev.jsonl
+  ✓ Success!
+
+[12/20] mmlu_astronomy (physics)...
+  Downloading from HuggingFace: cais/mmlu (subset: astronomy)
+Creating json from Arrow format:   0%|          | 0/1 [00:00<?, ?ba/s]Creating json from Arrow format: 100%|██████████| 1/1 [00:00<00:00, 483.60ba/s]
+  ✓ Saved test: 152 examples -> test.jsonl
+Creating json from Arrow format:   0%|          | 0/1 [00:00<?, ?ba/s]Creating json from Arrow format: 100%|██████████| 1/1 [00:00<00:00, 814.59ba/s]
+  ✓ Saved validation: 16 examples -> validation.jsonl
+Creating json from Arrow format:   0%|          | 0/1 [00:00<?, ?ba/s]Creating json from Arrow format: 100%|██████████| 1/1 [00:00<00:00, 997.69ba/s]
+  ✓ Saved dev: 5 examples -> dev.jsonl
+  ✓ Success!
+
+[13/20] mmlu_chemistry (chemistry)...
+  Downloading from HuggingFace: cais/mmlu (subset: college_chemistry)
+Creating json from Arrow format:   0%|          | 0/1 [00:00<?, ?ba/s]Creating json from Arrow format: 100%|██████████| 1/1 [00:00<00:00, 300.71ba/s]
+  ✓ Saved test: 100 examples -> test.jsonl
+Creating json from Arrow format:   0%|          | 0/1 [00:00<?, ?ba/s]Creating json from Arrow format: 100%|██████████| 1/1 [00:00<00:00, 310.64ba/s]
+  ✓ Saved validation: 8 examples -> validation.jsonl
+Creating json from Arrow format:   0%|          | 0/1 [00:00<?, ?ba/s]Creating json from Arrow format: 100%|██████████| 1/1 [00:00<00:00, 803.20ba/s]
+  ✓ Saved dev: 5 examples -> dev.jsonl
+  ✓ Success!
+
+[14/20] mmlu_biology (biology)...
+  Downloading from HuggingFace: cais/mmlu (subset: college_biology)
+Generating test split:   0%|          | 0/144 [00:00<?, ? examples/s]Generating test split: 100%|██████████| 144/144 [00:00<00:00, 28453.37 examples/s]
+Generating validation split:   0%|          | 0/16 [00:00<?, ? examples/s]Generating validation split: 100%|██████████| 16/16 [00:00<00:00, 2531.45 examples/s]
+Generating dev split:   0%|          | 0/5 [00:00<?, ? examples/s]Generating dev split: 100%|██████████| 5/5 [00:00<00:00, 1334.24 examples/s]
+Creating json from Arrow format:   0%|          | 0/1 [00:00<?, ?ba/s]Creating json from Arrow format: 100%|██████████| 1/1 [00:00<00:00, 104.90ba/s]
+  ✓ Saved test: 144 examples -> test.jsonl
+Creating json from Arrow format:   0%|          | 0/1 [00:00<?, ?ba/s]Creating json from Arrow format: 100%|██████████| 1/1 [00:00<00:00, 839.20ba/s]
+  ✓ Saved validation: 16 examples -> validation.jsonl
+Creating json from Arrow format:   0%|          | 0/1 [00:00<?, ?ba/s]Creating json from Arrow format: 100%|██████████| 1/1 [00:00<00:00, 1029.28ba/s]
+  ✓ Saved dev: 5 examples -> dev.jsonl
+  ✓ Success!
+
+[15/20] mmlu_psychology (psychology)...
+  Downloading from HuggingFace: cais/mmlu (subset: psychology)
+  ✗ Failed: BuilderConfig 'psychology' not found. Available: ['abstract_algebra', 'all', 'anatomy', 'astronomy', 'auxiliary_train', 'business_ethics', 'clinical_knowledge', 'college_biology', 'college_chemistry', 'college_computer_science', 'college_mathematics', 'college_medicine', 'college_physics', 'computer_security', 'conceptual_physics', 'econometrics', 'electrical_engineering', 'elementary_mathematics', 'formal_logic', 'global_facts', 'high_school_biology', 'high_school_chemistry', 'high_school_computer_science', 'high_school_european_history', 'high_school_geography', 'high_school_government_and_politics', 'high_school_macroeconomics', 'high_school_mathematics', 'high_school_microeconomics', 'high_school_physics', 'high_school_psychology', 'high_school_statistics', 'high_school_us_history', 'high_school_world_history', 'human_aging', 'human_sexuality', 'international_law', 'jurisprudence', 'logical_fallacies', 'machine_learning', 'management', 'marketing', 'medical_genetics', 'miscellaneous', 'moral_disputes', 'moral_scenarios', 'nutrition', 'philosophy', 'prehistory', 'professional_accounting', 'professional_law', 'professional_medicine', 'professional_psychology', 'public_relations', 'security_studies', 'sociology', 'us_foreign_policy', 'virology', 'world_religions']
+
+[16/20] mmlu_sociology (anthropology)...
+  Downloading from HuggingFace: cais/mmlu (subset: sociology)
+Generating test split:   0%|          | 0/201 [00:00<?, ? examples/s]Generating test split: 100%|██████████| 201/201 [00:00<00:00, 26742.43 examples/s]
+Generating validation split:   0%|          | 0/22 [00:00<?, ? examples/s]Generating validation split: 100%|██████████| 22/22 [00:00<00:00, 6369.92 examples/s]
+Generating dev split:   0%|          | 0/5 [00:00<?, ? examples/s]Generating dev split: 100%|██████████| 5/5 [00:00<00:00, 1588.27 examples/s]
+Creating json from Arrow format:   0%|          | 0/1 [00:00<?, ?ba/s]Creating json from Arrow format: 100%|██████████| 1/1 [00:00<00:00, 420.57ba/s]
+  ✓ Saved test: 201 examples -> test.jsonl
+Creating json from Arrow format:   0%|          | 0/1 [00:00<?, ?ba/s]Creating json from Arrow format: 100%|██████████| 1/1 [00:00<00:00, 223.18ba/s]
+  ✓ Saved validation: 22 examples -> validation.jsonl
+Creating json from Arrow format:   0%|          | 0/1 [00:00<?, ?ba/s]Creating json from Arrow format: 100%|██████████| 1/1 [00:00<00:00, 886.93ba/s]
+  ✓ Saved dev: 5 examples -> dev.jsonl
+  ✓ Success!
+
+[17/20] mmlu_world_religions (anthropology)...
+  Downloading from HuggingFace: cais/mmlu (subset: world_religions)
+Generating test split:   0%|          | 0/171 [00:00<?, ? examples/s]Generating test split: 100%|██████████| 171/171 [00:00<00:00, 48106.91 examples/s]
+Generating validation split:   0%|          | 0/19 [00:00<?, ? examples/s]Generating validation split: 100%|██████████| 19/19 [00:00<00:00, 4875.01 examples/s]
+Generating dev split:   0%|          | 0/5 [00:00<?, ? examples/s]Generating dev split: 100%|██████████| 5/5 [00:00<00:00, 1445.41 examples/s]
+Creating json from Arrow format:   0%|          | 0/1 [00:00<?, ?ba/s]Creating json from Arrow format: 100%|██████████| 1/1 [00:00<00:00, 536.63ba/s]
+  ✓ Saved test: 171 examples -> test.jsonl
+Creating json from Arrow format:   0%|          | 0/1 [00:00<?, ?ba/s]Creating json from Arrow format: 100%|██████████| 1/1 [00:00<00:00, 840.71ba/s]
+  ✓ Saved validation: 19 examples -> validation.jsonl
+Creating json from Arrow format:   0%|          | 0/1 [00:00<?, ?ba/s]Creating json from Arrow format: 100%|██████████| 1/1 [00:00<00:00, 809.09ba/s]
+  ✓ Saved dev: 5 examples -> dev.jsonl
+  ✓ Success!
+
+[18/20] social_chem (anthropology)...
+  Downloading from HuggingFace: social_chem
+  ✗ Failed: Dataset 'social_chem' doesn't exist on the Hub or cannot be accessed.
+
+[19/20] tiny_shakespeare (language)...
+  ⊙ Skipped (type: url)
+
+[20/20] mmlu_mathematics (language)...
+  Downloading from HuggingFace: cais/mmlu (subset: college_mathematics)
+Generating test split:   0%|          | 0/100 [00:00<?, ? examples/s]Generating test split: 100%|██████████| 100/100 [00:00<00:00, 20567.37 examples/s]
+Generating validation split:   0%|          | 0/11 [00:00<?, ? examples/s]Generating validation split: 100%|██████████| 11/11 [00:00<00:00, 3169.43 examples/s]
+Generating dev split:   0%|          | 0/5 [00:00<?, ? examples/s]Generating dev split: 100%|██████████| 5/5 [00:00<00:00, 1416.13 examples/s]
+Creating json from Arrow format:   0%|          | 0/1 [00:00<?, ?ba/s]Creating json from Arrow format: 100%|██████████| 1/1 [00:00<00:00, 573.85ba/s]
+  ✓ Saved test: 100 examples -> test.jsonl
+Creating json from Arrow format:   0%|          | 0/1 [00:00<?, ?ba/s]Creating json from Arrow format: 100%|██████████| 1/1 [00:00<00:00, 1031.30ba/s]
+  ✓ Saved validation: 11 examples -> validation.jsonl
+Creating json from Arrow format:   0%|          | 0/1 [00:00<?, ?ba/s]Creating json from Arrow format: 100%|██████████| 1/1 [00:00<00:00, 984.58ba/s]
+  ✓ Saved dev: 5 examples -> dev.jsonl
+  ✓ Success!
+
+
+=== Download Summary ===
+✓ Success: 10
+⊙ Skipped: 3
+✗ Failed: 7
+Total: 20
+
+Datasets saved to: /home/bbrelin/nimcp/datasets/foundation

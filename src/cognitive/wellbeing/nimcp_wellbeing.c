@@ -21,6 +21,8 @@
 #include "utils/thread/nimcp_thread.h"
 #include "utils/containers/nimcp_btree.h"
 #include "utils/time/nimcp_time.h"
+#include "utils/platform/nimcp_platform_mutex.h"
+#include "utils/platform/nimcp_platform_once.h"
 #include <string.h>
 #include <time.h>
 #include <unistd.h>
@@ -43,8 +45,8 @@
 static wellbeing_event_t event_log[MAX_EVENT_LOG];
 static uint32_t event_count = 0;
 static uint32_t event_write_index = 0;
-static nimcp_mutex_t event_log_mutex;
-static nimcp_once_t event_log_init_once = NIMCP_ONCE_INIT;
+static nimcp_platform_mutex_t event_log_mutex;
+static nimcp_platform_once_t event_log_init_once = NIMCP_PLATFORM_ONCE_INIT;
 static bool memory_locked = false;
 
 /**
@@ -155,7 +157,7 @@ static bool lock_wellbeing_memory(void)
  */
 static void init_event_log_mutex(void)
 {
-    nimcp_mutex_init(&event_log_mutex, NULL);
+    nimcp_platform_mutex_init(&event_log_mutex, false);
 
     // Create B-tree for timestamp-indexed queries
     event_btree = btree_create(compare_timestamps, extract_timestamp_key, free_event);
@@ -174,7 +176,7 @@ static void init_event_log_mutex(void)
  */
 static void ensure_event_log_init(void)
 {
-    nimcp_once(&event_log_init_once, init_event_log_mutex);
+    nimcp_platform_once(&event_log_init_once, init_event_log_mutex);
 }
 
 //=============================================================================
@@ -538,7 +540,7 @@ bool wellbeing_log_event(wellbeing_event_t event)
              (unsigned long long)event.timestamp);
 
     // Thread safety
-    nimcp_mutex_lock(&event_log_mutex);
+    nimcp_platform_mutex_lock(&event_log_mutex);
 
     // If buffer is full, remove the event we're about to overwrite from B-tree
     if (event_count >= MAX_EVENT_LOG && event_btree) {
@@ -568,7 +570,7 @@ bool wellbeing_log_event(wellbeing_event_t event)
         event_count++;
     }
 
-    nimcp_mutex_unlock(&event_log_mutex);
+    nimcp_platform_mutex_unlock(&event_log_mutex);
 
     // NOTE: Logging disabled during testing to avoid performance bottleneck
     // In production, you may want to enable this for critical events only
@@ -601,21 +603,21 @@ uint32_t wellbeing_get_recent_events(uint32_t max_events,
     ensure_event_log_init();
 
     // Thread safety
-    nimcp_mutex_lock(&event_log_mutex);
+    nimcp_platform_mutex_lock(&event_log_mutex);
 
     // Determine how many events to return
     uint32_t return_count = (max_events < event_count) ? max_events : event_count;
 
     if (return_count == 0) {
         *events_out = NULL;
-        nimcp_mutex_unlock(&event_log_mutex);
+        nimcp_platform_mutex_unlock(&event_log_mutex);
         return 0;
     }
 
     // Allocate output array
     *events_out = nimcp_calloc(return_count, sizeof(wellbeing_event_t));
     if (!*events_out) {
-        nimcp_mutex_unlock(&event_log_mutex);
+        nimcp_platform_mutex_unlock(&event_log_mutex);
         return 0;
     }
 
@@ -628,7 +630,7 @@ uint32_t wellbeing_get_recent_events(uint32_t max_events,
         (*events_out)[i] = event_log[index];
     }
 
-    nimcp_mutex_unlock(&event_log_mutex);
+    nimcp_platform_mutex_unlock(&event_log_mutex);
 
     return return_count;
 }
@@ -664,7 +666,7 @@ uint32_t wellbeing_get_events_by_time_range(uint64_t start_time,
     if (!event_btree) {
         NIMCP_LOGGING_WARN("B-tree not available, using linear scan");
         // Fall back to scanning circular buffer
-        nimcp_mutex_lock(&event_log_mutex);
+        nimcp_platform_mutex_lock(&event_log_mutex);
         uint32_t count = 0;
 
         // Count matching events
@@ -677,14 +679,14 @@ uint32_t wellbeing_get_events_by_time_range(uint64_t start_time,
 
         if (count == 0) {
             *events_out = NULL;
-            nimcp_mutex_unlock(&event_log_mutex);
+            nimcp_platform_mutex_unlock(&event_log_mutex);
             return 0;
         }
 
         // Allocate and copy
         *events_out = nimcp_calloc(count, sizeof(wellbeing_event_t));
         if (!*events_out) {
-            nimcp_mutex_unlock(&event_log_mutex);
+            nimcp_platform_mutex_unlock(&event_log_mutex);
             return 0;
         }
 
@@ -696,17 +698,17 @@ uint32_t wellbeing_get_events_by_time_range(uint64_t start_time,
             }
         }
 
-        nimcp_mutex_unlock(&event_log_mutex);
+        nimcp_platform_mutex_unlock(&event_log_mutex);
         return count;
     }
 
     // Use B-tree for efficient range query
-    nimcp_mutex_lock(&event_log_mutex);
+    nimcp_platform_mutex_lock(&event_log_mutex);
 
     // Create iterator and collect matching events
     btree_iterator_t* iter = btree_iterator_create(event_btree);
     if (!iter) {
-        nimcp_mutex_unlock(&event_log_mutex);
+        nimcp_platform_mutex_unlock(&event_log_mutex);
         *events_out = NULL;
         return 0;
     }
@@ -716,7 +718,7 @@ uint32_t wellbeing_get_events_by_time_range(uint64_t start_time,
     wellbeing_event_t* temp_results = nimcp_calloc(event_count, sizeof(wellbeing_event_t));
     if (!temp_results) {
         btree_iterator_destroy(iter);
-        nimcp_mutex_unlock(&event_log_mutex);
+        nimcp_platform_mutex_unlock(&event_log_mutex);
         *events_out = NULL;
         return 0;
     }
@@ -737,7 +739,7 @@ uint32_t wellbeing_get_events_by_time_range(uint64_t start_time,
 
     if (count == 0) {
         nimcp_free(temp_results);
-        nimcp_mutex_unlock(&event_log_mutex);
+        nimcp_platform_mutex_unlock(&event_log_mutex);
         *events_out = NULL;
         return 0;
     }
@@ -756,7 +758,7 @@ uint32_t wellbeing_get_events_by_time_range(uint64_t start_time,
         *events_out = temp_results;
     }
 
-    nimcp_mutex_unlock(&event_log_mutex);
+    nimcp_platform_mutex_unlock(&event_log_mutex);
 
     return count;
 }
@@ -777,7 +779,7 @@ uint32_t wellbeing_get_events_by_severity(distress_severity_t min_severity,
     // Ensure initialization
     ensure_event_log_init();
 
-    nimcp_mutex_lock(&event_log_mutex);
+    nimcp_platform_mutex_lock(&event_log_mutex);
 
     // Count matching events
     uint32_t count = 0;
@@ -789,14 +791,14 @@ uint32_t wellbeing_get_events_by_severity(distress_severity_t min_severity,
 
     if (count == 0) {
         *events_out = NULL;
-        nimcp_mutex_unlock(&event_log_mutex);
+        nimcp_platform_mutex_unlock(&event_log_mutex);
         return 0;
     }
 
     // Allocate output
     *events_out = nimcp_calloc(count, sizeof(wellbeing_event_t));
     if (!*events_out) {
-        nimcp_mutex_unlock(&event_log_mutex);
+        nimcp_platform_mutex_unlock(&event_log_mutex);
         return 0;
     }
 
@@ -824,7 +826,7 @@ uint32_t wellbeing_get_events_by_severity(distress_severity_t min_severity,
         }
     }
 
-    nimcp_mutex_unlock(&event_log_mutex);
+    nimcp_platform_mutex_unlock(&event_log_mutex);
     return count;
 }
 
@@ -847,7 +849,7 @@ uint32_t wellbeing_get_events_by_type(const char* event_type,
     // Ensure initialization
     ensure_event_log_init();
 
-    nimcp_mutex_lock(&event_log_mutex);
+    nimcp_platform_mutex_lock(&event_log_mutex);
 
     // Count matching events
     uint32_t count = 0;
@@ -860,14 +862,14 @@ uint32_t wellbeing_get_events_by_type(const char* event_type,
 
     if (count == 0) {
         *events_out = NULL;
-        nimcp_mutex_unlock(&event_log_mutex);
+        nimcp_platform_mutex_unlock(&event_log_mutex);
         return 0;
     }
 
     // Allocate output
     *events_out = nimcp_calloc(count, sizeof(wellbeing_event_t));
     if (!*events_out) {
-        nimcp_mutex_unlock(&event_log_mutex);
+        nimcp_platform_mutex_unlock(&event_log_mutex);
         return 0;
     }
 
@@ -880,7 +882,7 @@ uint32_t wellbeing_get_events_by_type(const char* event_type,
         }
     }
 
-    nimcp_mutex_unlock(&event_log_mutex);
+    nimcp_platform_mutex_unlock(&event_log_mutex);
     return count;
 }
 
@@ -899,18 +901,18 @@ uint32_t wellbeing_get_all_events_ordered(wellbeing_event_t** events_out)
     // Ensure initialization
     ensure_event_log_init();
 
-    nimcp_mutex_lock(&event_log_mutex);
+    nimcp_platform_mutex_lock(&event_log_mutex);
 
     if (event_count == 0) {
         *events_out = NULL;
-        nimcp_mutex_unlock(&event_log_mutex);
+        nimcp_platform_mutex_unlock(&event_log_mutex);
         return 0;
     }
 
     // Allocate output
     *events_out = nimcp_calloc(event_count, sizeof(wellbeing_event_t));
     if (!*events_out) {
-        nimcp_mutex_unlock(&event_log_mutex);
+        nimcp_platform_mutex_unlock(&event_log_mutex);
         return 0;
     }
 
@@ -925,7 +927,7 @@ uint32_t wellbeing_get_all_events_ordered(wellbeing_event_t** events_out)
                 (*events_out)[idx++] = *event;
             }
             btree_iterator_destroy(iter);
-            nimcp_mutex_unlock(&event_log_mutex);
+            nimcp_platform_mutex_unlock(&event_log_mutex);
             return idx;
         }
     }
@@ -935,7 +937,7 @@ uint32_t wellbeing_get_all_events_ordered(wellbeing_event_t** events_out)
         (*events_out)[i] = event_log[i];
     }
 
-    nimcp_mutex_unlock(&event_log_mutex);
+    nimcp_platform_mutex_unlock(&event_log_mutex);
     return event_count;
 }
 
@@ -953,7 +955,7 @@ void wellbeing_reset_events_for_testing(void)
 {
     ensure_event_log_init();
 
-    nimcp_mutex_lock(&event_log_mutex);
+    nimcp_platform_mutex_lock(&event_log_mutex);
 
     // Destroy and recreate B-tree
     if (event_btree) {
@@ -968,7 +970,7 @@ void wellbeing_reset_events_for_testing(void)
     // Zero out the buffer
     memset(event_log, 0, sizeof(event_log));
 
-    nimcp_mutex_unlock(&event_log_mutex);
+    nimcp_platform_mutex_unlock(&event_log_mutex);
 }
 #endif
 
@@ -985,8 +987,8 @@ void wellbeing_reset_events_for_testing(void)
 static resource_metrics_t resource_history[MAX_RESOURCE_HISTORY];
 static uint32_t resource_history_count = 0;
 static uint32_t resource_history_index = 0;
-static nimcp_mutex_t resource_mutex;
-static nimcp_once_t resource_init_once = NIMCP_ONCE_INIT;
+static nimcp_platform_mutex_t resource_mutex;
+static nimcp_platform_once_t resource_init_once = NIMCP_PLATFORM_ONCE_INIT;
 
 /**
  * WHAT: Resource monitoring thread state
@@ -1006,7 +1008,7 @@ static bool monitoring_auto_relief = false;
  */
 static void init_resource_tracking(void)
 {
-    nimcp_mutex_init(&resource_mutex, NULL);
+    nimcp_platform_mutex_init(&resource_mutex, false);
     memset(resource_history, 0, sizeof(resource_history));
 }
 
@@ -1017,7 +1019,7 @@ static void init_resource_tracking(void)
  */
 static void ensure_resource_tracking_init(void)
 {
-    nimcp_once(&resource_init_once, init_resource_tracking);
+    nimcp_platform_once(&resource_init_once, init_resource_tracking);
 }
 
 /**
@@ -1214,7 +1216,7 @@ static void store_metrics_in_history(const resource_metrics_t* metrics)
 
     ensure_resource_tracking_init();
 
-    nimcp_mutex_lock(&resource_mutex);
+    nimcp_platform_mutex_lock(&resource_mutex);
 
     // Store in circular buffer
     resource_history[resource_history_index] = *metrics;
@@ -1224,7 +1226,7 @@ static void store_metrics_in_history(const resource_metrics_t* metrics)
         resource_history_count++;
     }
 
-    nimcp_mutex_unlock(&resource_mutex);
+    nimcp_platform_mutex_unlock(&resource_mutex);
 }
 
 /**
@@ -1359,11 +1361,11 @@ bool wellbeing_get_performance_stats(uint32_t window_ms,
 
     ensure_resource_tracking_init();
 
-    nimcp_mutex_lock(&resource_mutex);
+    nimcp_platform_mutex_lock(&resource_mutex);
 
     // Guard clause: No history available
     if (resource_history_count == 0) {
-        nimcp_mutex_unlock(&resource_mutex);
+        nimcp_platform_mutex_unlock(&resource_mutex);
         return false;
     }
 
@@ -1407,6 +1409,6 @@ bool wellbeing_get_performance_stats(uint32_t window_ms,
         stats_out->avg_memory_usage = total_memory / stats_out->samples_count;
     }
 
-    nimcp_mutex_unlock(&resource_mutex);
+    nimcp_platform_mutex_unlock(&resource_mutex);
     return stats_out->samples_count > 0;
 }

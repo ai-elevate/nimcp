@@ -391,7 +391,7 @@ TEST_F(KnowledgeTest, RetrieveKnowledge)
     EXPECT_TRUE(found);
 
     if (found) {
-        EXPECT_STREQ(item.concept, "democracy");
+        EXPECT_STREQ(item.concept_name, "democracy");
         EXPECT_GT(item.confidence, 0.0f);
         EXPECT_LE(item.confidence, 1.0f);
     }
@@ -844,25 +844,25 @@ TEST_F(KnowledgeTest, GetKnowledgeByConfidenceRange_ReturnsFiltered)
 {
     // Add knowledge items with varying confidence levels
     knowledge_item_t item1 = {0};
-    strncpy(item1.concept, "well_understood", sizeof(item1.concept) - 1);
+    strncpy(item1.concept_name, "well_understood", sizeof(item1.concept_name) - 1);
     item1.confidence = 0.95f;
     item1.domain = KNOWLEDGE_DOMAIN_GENERAL;
     knowledge_add_item(system, &item1);
 
     knowledge_item_t item2 = {0};
-    strncpy(item2.concept, "somewhat_known", sizeof(item2.concept) - 1);
+    strncpy(item2.concept_name, "somewhat_known", sizeof(item2.concept_name) - 1);
     item2.confidence = 0.5f;
     item2.domain = KNOWLEDGE_DOMAIN_GENERAL;
     knowledge_add_item(system, &item2);
 
     knowledge_item_t item3 = {0};
-    strncpy(item3.concept, "very_confident", sizeof(item3.concept) - 1);
+    strncpy(item3.concept_name, "very_confident", sizeof(item3.concept_name) - 1);
     item3.confidence = 0.85f;
     item3.domain = KNOWLEDGE_DOMAIN_GENERAL;
     knowledge_add_item(system, &item3);
 
     knowledge_item_t item4 = {0};
-    strncpy(item4.concept, "uncertain", sizeof(item4.concept) - 1);
+    strncpy(item4.concept_name, "uncertain", sizeof(item4.concept_name) - 1);
     item4.confidence = 0.2f;
     item4.domain = KNOWLEDGE_DOMAIN_GENERAL;
     knowledge_add_item(system, &item4);
@@ -878,11 +878,11 @@ TEST_F(KnowledgeTest, GetKnowledgeByConfidenceRange_ReturnsFiltered)
     bool found_well_understood = false;
     bool found_very_confident = false;
     for (uint32_t i = 0; i < count; i++) {
-        if (strcmp(results[i].concept, "well_understood") == 0) {
+        if (strcmp(results[i].concept_name, "well_understood") == 0) {
             found_well_understood = true;
             EXPECT_FLOAT_EQ(results[i].confidence, 0.95f);
         }
-        if (strcmp(results[i].concept, "very_confident") == 0) {
+        if (strcmp(results[i].concept_name, "very_confident") == 0) {
             found_very_confident = true;
             EXPECT_FLOAT_EQ(results[i].confidence, 0.85f);
         }
@@ -903,19 +903,19 @@ TEST_F(KnowledgeTest, GetWeakKnowledge_ReturnsLowConfidence)
 {
     // Add items with different confidence
     knowledge_item_t strong = {0};
-    strncpy(strong.concept, "strong_concept", sizeof(strong.concept) - 1);
+    strncpy(strong.concept_name, "strong_concept", sizeof(strong.concept_name) - 1);
     strong.confidence = 0.9f;
     strong.domain = KNOWLEDGE_DOMAIN_SCIENCE;
     knowledge_add_item(system, &strong);
 
     knowledge_item_t weak1 = {0};
-    strncpy(weak1.concept, "weak_concept_1", sizeof(weak1.concept) - 1);
+    strncpy(weak1.concept_name, "weak_concept_1", sizeof(weak1.concept_name) - 1);
     weak1.confidence = 0.3f;
     weak1.domain = KNOWLEDGE_DOMAIN_SCIENCE;
     knowledge_add_item(system, &weak1);
 
     knowledge_item_t weak2 = {0};
-    strncpy(weak2.concept, "weak_concept_2", sizeof(weak2.concept) - 1);
+    strncpy(weak2.concept_name, "weak_concept_2", sizeof(weak2.concept_name) - 1);
     weak2.confidence = 0.15f;
     weak2.domain = KNOWLEDGE_DOMAIN_SCIENCE;
     knowledge_add_item(system, &weak2);
@@ -929,7 +929,7 @@ TEST_F(KnowledgeTest, GetWeakKnowledge_ReturnsLowConfidence)
 
     // Verify all returned items have low confidence
     for (uint32_t i = 0; i < count; i++) {
-        EXPECT_LE(results[i].confidence, 0.5f) << "Item " << results[i].concept << " should have low confidence";
+        EXPECT_LE(results[i].confidence, 0.5f) << "Item " << results[i].concept_name << " should have low confidence";
     }
 
     nimcp_free(results);
@@ -944,19 +944,19 @@ TEST_F(KnowledgeTest, GetAllKnowledgeOrderedByConfidence_ReturnsSorted)
 {
     // Add items OUT OF ORDER by confidence
     knowledge_item_t mid = {0};
-    strncpy(mid.concept, "mid_confidence", sizeof(mid.concept) - 1);
+    strncpy(mid.concept_name, "mid_confidence", sizeof(mid.concept_name) - 1);
     mid.confidence = 0.5f;
     mid.domain = KNOWLEDGE_DOMAIN_GENERAL;
     knowledge_add_item(system, &mid);
 
     knowledge_item_t high = {0};
-    strncpy(high.concept, "high_confidence", sizeof(high.concept) - 1);
+    strncpy(high.concept_name, "high_confidence", sizeof(high.concept_name) - 1);
     high.confidence = 0.95f;
     high.domain = KNOWLEDGE_DOMAIN_GENERAL;
     knowledge_add_item(system, &high);
 
     knowledge_item_t low = {0};
-    strncpy(low.concept, "low_confidence", sizeof(low.concept) - 1);
+    strncpy(low.concept_name, "low_confidence", sizeof(low.concept_name) - 1);
     low.confidence = 0.1f;
     low.domain = KNOWLEDGE_DOMAIN_GENERAL;
     knowledge_add_item(system, &low);
@@ -971,9 +971,9 @@ TEST_F(KnowledgeTest, GetAllKnowledgeOrderedByConfidence_ReturnsSorted)
     // Find our test items and verify order
     int low_idx = -1, mid_idx = -1, high_idx = -1;
     for (uint32_t i = 0; i < count; i++) {
-        if (strcmp(results[i].concept, "low_confidence") == 0) low_idx = i;
-        if (strcmp(results[i].concept, "mid_confidence") == 0) mid_idx = i;
-        if (strcmp(results[i].concept, "high_confidence") == 0) high_idx = i;
+        if (strcmp(results[i].concept_name, "low_confidence") == 0) low_idx = i;
+        if (strcmp(results[i].concept_name, "mid_confidence") == 0) mid_idx = i;
+        if (strcmp(results[i].concept_name, "high_confidence") == 0) high_idx = i;
     }
 
     ASSERT_NE(low_idx, -1);

@@ -45,7 +45,7 @@ typedef struct {
 } reading_progress_t;
 
 /**
- * @brief Hash table entry for O(log n) concept lookup
+ * @brief Hash table entry for O(log n) concept_str lookup
  *
  * Implements chaining for collision resolution.
  * Invariants:
@@ -59,7 +59,7 @@ typedef struct hash_entry_struct {
 } hash_entry_t;
 
 /**
- * @brief Hash table for fast concept lookup
+ * @brief Hash table for fast concept_str lookup
  *
  * Provides O(1) average case lookup instead of O(n) linear search.
  * Invariants:
@@ -97,7 +97,7 @@ typedef struct {
     knowledge_item_t* items;
     uint32_t num_items;
     uint32_t capacity;
-    knowledge_hash_table_t* index;       /* O(1) lookup by concept name */
+    knowledge_hash_table_t* index;       /* O(1) lookup by concept_str name */
     btree_t* confidence_btree;            /* O(log n) range queries by confidence */
 } knowledge_repository_t;
 
@@ -196,20 +196,20 @@ static void free_knowledge_item(void* data)
 /**
  * @brief Hash function using DJB2 algorithm
  *
- * Computes hash value for concept string to enable fast lookup.
+ * Computes hash value for concept_str string to enable fast lookup.
  *
- * @param concept The concept string to hash (must be non-NULL)
+ * @param concept_str The concept_str string to hash (must be non-NULL)
  * @return Hash value in range [0, HASH_TABLE_SIZE-1]
  *
  * Why: Replaces O(n) linear search with O(1) average case lookup.
  * Algorithm: DJB2 provides good distribution with minimal collisions.
  */
-static uint32_t hash_concept(const char* concept)
+static uint32_t hash_concept(const char* concept_str)
 {
     uint32_t hash = 5381;
     int c;
 
-    while ((c = *concept++)) {
+    while ((c = *concept_str++)) {
         hash = ((hash << 5) + hash) + tolower(c);
     }
 
@@ -217,7 +217,7 @@ static uint32_t hash_concept(const char* concept)
 }
 
 /**
- * @brief Create hash table for concept indexing
+ * @brief Create hash table for concept_str indexing
  *
  * Creates empty hash table with chaining for collision resolution.
  *
@@ -243,37 +243,37 @@ static knowledge_hash_table_t* knowledge_hash_table_create(void)
 }
 
 /**
- * @brief Insert concept into hash table
+ * @brief Insert concept_str into hash table
  *
- * Adds concept-to-index mapping using chaining for collisions.
+ * Adds concept_str-to-index mapping using chaining for collisions.
  *
  * @param table Hash table to insert into (must be non-NULL)
- * @param concept Concept name (must be non-NULL)
+ * @param concept_str Concept name (must be non-NULL)
  * @param index Index in items array
  * @return true on success, false on allocation failure
  *
- * Why: Maintains search index for O(1) concept lookup.
+ * Why: Maintains search index for O(1) concept_str lookup.
  * Complexity: O(1) average case, O(n) worst case with many collisions.
  */
-static bool knowledge_hash_table_insert(knowledge_hash_table_t* table, const char* concept, uint32_t index)
+static bool knowledge_hash_table_insert(knowledge_hash_table_t* table, const char* concept_str, uint32_t index)
 {
-    if (!table || !concept)
+    if (!table || !concept_str)
         return false;
 
-    uint32_t hash = hash_concept(concept);
+    uint32_t hash = hash_concept(concept_str);
 
     hash_entry_t* entry = nimcp_malloc(sizeof(hash_entry_t));
     if (!entry)
         return false;
 
     // Use nimcp_malloc instead of strdup to match nimcp_free in destroy
-    size_t concept_len = strlen(concept);
+    size_t concept_len = strlen(concept_str);
     entry->concept = nimcp_malloc(concept_len + 1);
     if (!entry->concept) {
         nimcp_free(entry);
         return false;
     }
-    strncpy(entry->concept, concept, concept_len + 1);
+    strncpy(entry->concept, concept_str, concept_len + 1);
     entry->concept[concept_len] = '\0';
 
     entry->index = index;
@@ -284,27 +284,27 @@ static bool knowledge_hash_table_insert(knowledge_hash_table_t* table, const cha
 }
 
 /**
- * @brief Find concept in hash table
+ * @brief Find concept_str in hash table
  *
- * Searches hash table for concept and returns index if found.
+ * Searches hash table for concept_str and returns index if found.
  *
  * @param table Hash table to search (must be non-NULL)
- * @param concept Concept to find (must be non-NULL)
+ * @param concept_str Concept to find (must be non-NULL)
  * @return Index in items array or -1 if not found
  *
  * Why: O(1) average case lookup vs O(n) linear search.
  * Example: Finding "democracy" in 10000 items takes ~1 comparison vs 5000 average.
  */
-static int32_t knowledge_hash_table_find(knowledge_hash_table_t* table, const char* concept)
+static int32_t knowledge_hash_table_find(knowledge_hash_table_t* table, const char* concept_str)
 {
-    if (!table || !concept)
+    if (!table || !concept_str)
         return -1;
 
-    uint32_t hash = hash_concept(concept);
+    uint32_t hash = hash_concept(concept_str);
     hash_entry_t* entry = table->entries[hash];
 
     while (entry) {
-        if (strcasecmp(entry->concept, concept) == 0) {
+        if (strcasecmp(entry->concept, concept_str) == 0) {
             return (int32_t) entry->index;
         }
         entry = entry->next;
@@ -394,22 +394,22 @@ static knowledge_repository_t* repository_create(uint32_t initial_capacity)
 }
 
 /**
- * @brief Find item in repository by concept
+ * @brief Find item in repository by concept_str
  *
  * Uses hash table for O(1) average case lookup.
  *
  * @param repo Repository to search (must be non-NULL)
- * @param concept Concept to find (must be non-NULL)
+ * @param concept_str Concept to find (must be non-NULL)
  * @return Index or -1 if not found
  *
  * Why: Fast retrieval is critical for knowledge queries and learning.
  * Optimization: Hash table provides dramatic speedup over linear search.
  */
-static int32_t repository_find(knowledge_repository_t* repo, const char* concept)
+static int32_t repository_find(knowledge_repository_t* repo, const char* concept_str)
 {
-    if (!repo || !concept)
+    if (!repo || !concept_str)
         return -1;
-    return knowledge_hash_table_find(repo->index, concept);
+    return knowledge_hash_table_find(repo->index, concept_str);
 }
 
 /**
@@ -440,7 +440,7 @@ static int32_t repository_add(knowledge_repository_t* repo, const knowledge_item
 
     repo->num_items++;
 
-    if (!knowledge_hash_table_insert(repo->index, item->concept, index)) {
+    if (!knowledge_hash_table_insert(repo->index, item->concept_name, index)) {
         repo->num_items--;
         return -1;
     }
@@ -518,7 +518,7 @@ static void repository_destroy(knowledge_repository_t* repo)
 // Text Processing Utilities - Single Pass O(n) Algorithms
 //=============================================================================
 
-// Minimum word length for meaningful concept extraction
+// Minimum word length for meaningful concept_str extraction
 #define MIN_CONCEPT_LENGTH 3
 
 /**
@@ -529,7 +529,7 @@ static void repository_destroy(knowledge_repository_t* repo)
  * @param word Word to check (must be non-NULL)
  * @return true if word should be skipped
  *
- * Why: Reduces noise in concept extraction, focusing on meaningful terms.
+ * Why: Reduces noise in concept_str extraction, focusing on meaningful terms.
  * Could be extended with proper stop word list.
  */
 static bool should_skip_word(const char* word)
@@ -629,23 +629,23 @@ static void create_context_string(const char* text, char* output, uint32_t max_l
 }
 
 /**
- * @brief Normalize concept to lowercase for case-insensitive matching
+ * @brief Normalize concept_str to lowercase for case-insensitive matching
  *
- * @param concept Source concept string (must be non-NULL)
+ * @param concept_str Source concept_str string (must be non-NULL)
  * @param output Output buffer (must be non-NULL)
  * @param max_length Maximum output length
  *
- * Why: Ensures consistent concept storage regardless of input capitalization.
- * "Democracy", "democracy", and "DEMOCRACY" all map to the same concept.
+ * Why: Ensures consistent concept_str storage regardless of input capitalization.
+ * "Democracy", "democracy", and "DEMOCRACY" all map to the same concept_str.
  */
-static void normalize_concept_case(const char* concept, char* output, uint32_t max_length)
+static void normalize_concept_case(const char* concept_str, char* output, uint32_t max_length)
 {
-    if (!concept || !output || max_length == 0)
+    if (!concept_str || !output || max_length == 0)
         return;
 
     uint32_t i;
-    for (i = 0; i < max_length - 1 && concept[i] != '\0'; i++) {
-        output[i] = (char)tolower((unsigned char)concept[i]);
+    for (i = 0; i < max_length - 1 && concept_str[i] != '\0'; i++) {
+        output[i] = (char)tolower((unsigned char)concept_str[i]);
     }
     output[i] = '\0';
 }
@@ -733,7 +733,7 @@ static bool strategy_learn_narrative(void* system, const void* data)
 
     for (uint32_t i = 0; i < story->num_lessons; i++) {
         knowledge_item_t item = {0};
-        snprintf(item.concept, sizeof(item.concept), "lesson_from_%s_%u", story->title, i);
+        snprintf(item.concept_name, sizeof(item.concept_name), "lesson_from_%s_%u", story->title, i);
         item.domain = KNOWLEDGE_DOMAIN_ETHICS;
         strncpy(item.definition, story->moral_lessons[i], sizeof(item.definition) - 1);
         snprintf(item.context, sizeof(item.context), "From story: %s", story->title);
@@ -786,7 +786,7 @@ static bool strategy_learn_aesthetic(void* system, const void* data)
 
     for (uint32_t i = 0; i < art->num_qualities; i++) {
         knowledge_item_t item = {0};
-        strncpy(item.concept, art->aesthetic_qualities[i], sizeof(item.concept) - 1);
+        strncpy(item.concept_name, art->aesthetic_qualities[i], sizeof(item.concept_name) - 1);
         item.domain = KNOWLEDGE_DOMAIN_ART;
         snprintf(item.definition, sizeof(item.definition), "Quality in %s by %s", art->work_title,
                  art->creator);
@@ -840,7 +840,7 @@ static bool strategy_learn_historical(void* system, const void* data)
     new_event->related_events = deep_copy_string_array(event->related_events, event->num_related_events);
 
     knowledge_item_t item = {0};
-    strncpy(item.concept, event->event_name, sizeof(item.concept) - 1);
+    strncpy(item.concept_name, event->event_name, sizeof(item.concept_name) - 1);
     item.domain = KNOWLEDGE_DOMAIN_HISTORY;
     strncpy(item.definition, event->significance, sizeof(item.definition) - 1);
     snprintf(item.context, sizeof(item.context), "Year %lu", event->timestamp_year);
@@ -1161,34 +1161,34 @@ void knowledge_system_destroy(knowledge_system_t system)
 //=============================================================================
 
 /**
- * @brief Process single concept during learning
+ * @brief Process single concept_str during learning
  *
- * Handles both new concept learning and reinforcement.
+ * Handles both new concept_str learning and reinforcement.
  *
  * @param system Knowledge system (must be non-NULL)
- * @param concept Concept to process (must be non-NULL)
+ * @param concept_str Concept to process (must be non-NULL)
  * @param text Source text for context
  * @param domain Knowledge domain
- * @return true if new concept learned
+ * @return true if new concept_str learned
  *
  * Why: Extracted from main loop to reduce complexity.
- * Single responsibility: process one concept.
+ * Single responsibility: process one concept_str.
  */
-static bool process_concept(knowledge_system_t system, const char* concept, const char* text,
+static bool process_concept(knowledge_system_t system, const char* concept_str, const char* text,
                             knowledge_domain_t domain)
 {
-    if (!system || !concept)
+    if (!system || !concept_str)
         return false;
 
-    // Normalize concept to lowercase for case-insensitive matching
+    // Normalize concept_str to lowercase for case-insensitive matching
     char normalized_concept[256];
-    normalize_concept_case(concept, normalized_concept, sizeof(normalized_concept));
+    normalize_concept_case(concept_str, normalized_concept, sizeof(normalized_concept));
 
     int32_t idx = repository_find(system->repository, normalized_concept);
 
     if (idx < 0) {
         knowledge_item_t item = {0};
-        strncpy(item.concept, normalized_concept, sizeof(item.concept) - 1);
+        strncpy(item.concept_name, normalized_concept, sizeof(item.concept_name) - 1);
         item.domain = domain;
         create_context_string(text, item.definition, sizeof(item.definition));
         item.confidence = 0.3f;
@@ -1348,7 +1348,7 @@ bool knowledge_learn_from_demonstration(knowledge_system_t system, const char* w
         return false;
 
     knowledge_item_t item = {0};
-    strncpy(item.concept, what_demonstrated, sizeof(item.concept) - 1);
+    strncpy(item.concept_name, what_demonstrated, sizeof(item.concept_name) - 1);
     item.domain = KNOWLEDGE_DOMAIN_TECHNICAL;
 
     char definition[1024] = "Steps: ";
@@ -1376,24 +1376,24 @@ bool knowledge_learn_from_demonstration(knowledge_system_t system, const char* w
 //=============================================================================
 
 /**
- * @brief Retrieve knowledge about concept
+ * @brief Retrieve knowledge about concept_str
  *
  * Uses hash table for O(1) average case lookup.
  *
  * @param system Knowledge system (must be non-NULL)
- * @param concept Concept to retrieve (must be non-NULL)
+ * @param concept_str Concept to retrieve (must be non-NULL)
  * @param item Output item (must be non-NULL)
  * @return true if found
  *
  * Why: Fast retrieval enables responsive knowledge queries.
  * O(1) hash lookup vs O(n) linear search.
  */
-bool knowledge_retrieve(knowledge_system_t system, const char* concept, knowledge_item_t* item)
+bool knowledge_retrieve(knowledge_system_t system, const char* concept_str, knowledge_item_t* item)
 {
-    if (!system || !concept || !item)
+    if (!system || !concept_str || !item)
         return false;
 
-    int32_t idx = repository_find(system->repository, concept);
+    int32_t idx = repository_find(system->repository, concept_str);
     if (idx < 0)
         return false;
 
@@ -1408,10 +1408,10 @@ bool knowledge_retrieve(knowledge_system_t system, const char* concept, knowledg
 /**
  * @brief Generate understanding explanation
  *
- * Creates detailed explanation of concept with context and confidence.
+ * Creates detailed explanation of concept_str with context and confidence.
  *
  * @param system Knowledge system (must be non-NULL)
- * @param concept Concept to explain (must be non-NULL)
+ * @param concept_str Concept to explain (must be non-NULL)
  * @param context Additional context
  * @param explanation Output buffer (must be non-NULL)
  * @param max_length Buffer size
@@ -1420,22 +1420,22 @@ bool knowledge_retrieve(knowledge_system_t system, const char* concept, knowledg
  * Why: Human-readable explanations are key to usable knowledge system.
  * Includes confidence and reinforcement for transparency.
  */
-uint32_t knowledge_understand(knowledge_system_t system, const char* concept, const char* context,
+uint32_t knowledge_understand(knowledge_system_t system, const char* concept_str, const char* context,
                               char* explanation, uint32_t max_length)
 {
-    if (!system || !concept || !explanation)
+    if (!system || !concept_str || !explanation)
         return 0;
 
     knowledge_item_t item;
-    if (!knowledge_retrieve(system, concept, &item)) {
-        snprintf(explanation, max_length, "I don't know about '%s' yet.", concept);
+    if (!knowledge_retrieve(system, concept_str, &item)) {
+        snprintf(explanation, max_length, "I don't know about '%s' yet.", concept_str);
         return strlen(explanation);
     }
 
     snprintf(explanation, max_length,
              "'%s' means: %s. Context: %s. I've encountered this %u times "
              "and understand it with %.0f%% confidence.",
-             concept, item.definition, item.context, item.reinforcement_count,
+             concept_str, item.definition, item.context, item.reinforcement_count,
              item.confidence * 100.0f);
 
     return strlen(explanation);
@@ -1447,7 +1447,7 @@ uint32_t knowledge_understand(knowledge_system_t system, const char* concept, co
  * Simplifies explanation based on target age.
  *
  * @param system Knowledge system (must be non-NULL)
- * @param concept Concept to explain (must be non-NULL)
+ * @param concept_str Concept to explain (must be non-NULL)
  * @param target_age Target age (3-18)
  * @param explanation Output buffer (must be non-NULL)
  * @param max_length Buffer size
@@ -1456,29 +1456,29 @@ uint32_t knowledge_understand(knowledge_system_t system, const char* concept, co
  * Why: Educational systems need age-appropriate communication.
  * Uses guard clauses for clarity vs nested ifs.
  */
-uint32_t knowledge_explain_simply(knowledge_system_t system, const char* concept,
+uint32_t knowledge_explain_simply(knowledge_system_t system, const char* concept_str,
                                   uint32_t target_age, char* explanation, uint32_t max_length)
 {
-    if (!system || !concept || !explanation)
+    if (!system || !concept_str || !explanation)
         return 0;
 
     knowledge_item_t item;
-    if (!knowledge_retrieve(system, concept, &item)) {
+    if (!knowledge_retrieve(system, concept_str, &item)) {
         snprintf(explanation, max_length, "I haven't learned about that yet.");
         return strlen(explanation);
     }
 
     if (target_age < 5) {
-        snprintf(explanation, max_length, "%s is something you see/do/learn about.", concept);
+        snprintf(explanation, max_length, "%s is something you see/do/learn about.", concept_str);
         return strlen(explanation);
     }
 
     if (target_age < 10) {
-        snprintf(explanation, max_length, "%s: %s", concept, item.definition);
+        snprintf(explanation, max_length, "%s: %s", concept_str, item.definition);
         return strlen(explanation);
     }
 
-    return knowledge_understand(system, concept, "", explanation, max_length);
+    return knowledge_understand(system, concept_str, "", explanation, max_length);
 }
 
 //=============================================================================
@@ -1490,7 +1490,7 @@ uint32_t knowledge_explain_simply(knowledge_system_t system, const char* concept
  *
  * @param item1 First item (must be non-NULL)
  * @param item2 Second item (must be non-NULL)
- * @param target_concept Target concept name
+ * @param target_concept Target concept_str name
  * @return true if related
  *
  * Why: Extracted to avoid nested conditions in main loop.
@@ -1513,7 +1513,7 @@ static bool is_cross_domain_related(const knowledge_item_t* item1, const knowled
  * Single-pass algorithm without nested loops.
  *
  * @param system Knowledge system (must be non-NULL)
- * @param concept Central concept (must be non-NULL)
+ * @param concept_str Central concept_str (must be non-NULL)
  * @param connections Output array (must be non-NULL)
  * @param max_connections Maximum to return
  * @return Number of connections found
@@ -1526,13 +1526,13 @@ static bool is_cross_domain_related(const knowledge_item_t* item1, const knowled
  *   Output: Connections to history (Greek democracy), ethics (voting rights),
  *           social (civic participation)
  */
-uint32_t knowledge_find_connections(knowledge_system_t system, const char* concept,
+uint32_t knowledge_find_connections(knowledge_system_t system, const char* concept_str,
                                     knowledge_item_t* connections, uint32_t max_connections)
 {
-    if (!system || !concept || !connections)
+    if (!system || !concept_str || !connections)
         return 0;
 
-    int32_t idx = repository_find(system->repository, concept);
+    int32_t idx = repository_find(system->repository, concept_str);
     if (idx < 0)
         return 0;
 
@@ -1550,7 +1550,7 @@ uint32_t knowledge_find_connections(knowledge_system_t system, const char* conce
         if (!item)
             continue;
 
-        if (is_cross_domain_related(target, item, concept)) {
+        if (is_cross_domain_related(target, item, concept_str)) {
             connections[num_found++] = *item;
         }
     }
@@ -1592,13 +1592,13 @@ bool knowledge_transfer_learning(knowledge_system_t system, knowledge_domain_t s
 //=============================================================================
 
 /**
- * @brief Build new knowledge on existing concept
+ * @brief Build new knowledge on existing concept_str
  *
- * Analogical learning: learn by similarity to known concept.
+ * Analogical learning: learn by similarity to known concept_str.
  *
  * @param system Knowledge system (must be non-NULL)
- * @param new_concept New concept to learn (must be non-NULL)
- * @param based_on_concept Base concept (must be non-NULL)
+ * @param new_concept New concept_str to learn (must be non-NULL)
+ * @param based_on_concept Base concept_str (must be non-NULL)
  * @param differences How new differs from base
  * @return true on success
  *
@@ -1620,7 +1620,7 @@ bool knowledge_build_on(knowledge_system_t system, const char* new_concept,
         return false;
 
     knowledge_item_t new_item = *base;
-    strncpy(new_item.concept, new_concept, sizeof(new_item.concept) - 1);
+    strncpy(new_item.concept_name, new_concept, sizeof(new_item.concept_name) - 1);
 
     if (differences) {
         snprintf(new_item.definition, sizeof(new_item.definition), "Like %s, but: %s",
@@ -1639,19 +1639,19 @@ bool knowledge_build_on(knowledge_system_t system, const char* new_concept,
  * Spaced repetition and reinforcement strengthen understanding.
  *
  * @param system Knowledge system (must be non-NULL)
- * @param concept Concept to reinforce (must be non-NULL)
+ * @param concept_str Concept to reinforce (must be non-NULL)
  * @param new_example New example instance
  * @return true on success
  *
  * Why: Reinforcement is critical for retention and deeper understanding.
  * Each exposure increases confidence and strengthens memory.
  */
-bool knowledge_reinforce(knowledge_system_t system, const char* concept, const char* new_example)
+bool knowledge_reinforce(knowledge_system_t system, const char* concept_str, const char* new_example)
 {
-    if (!system || !concept)
+    if (!system || !concept_str)
         return false;
 
-    int32_t idx = repository_find(system->repository, concept);
+    int32_t idx = repository_find(system->repository, concept_str);
     if (idx < 0)
         return false;
 
@@ -1693,7 +1693,7 @@ bool knowledge_reinforce(knowledge_system_t system, const char* concept, const c
  * @return true on success
  *
  * Why: Organization improves retrieval and understanding.
- * Future: Could create hierarchies, clusters, concept maps.
+ * Future: Could create hierarchies, clusters, concept_str maps.
  */
 bool knowledge_organize_domain(knowledge_system_t system, knowledge_domain_t domain)
 {
@@ -1936,7 +1936,7 @@ void knowledge_print_item(const knowledge_item_t* item)
     if (!item)
         return;
 
-    printf("Concept: %s\n", item->concept);
+    printf("Concept: %s\n", item->concept_name);
     printf("  Domain: %s\n", knowledge_domain_name(item->domain));
     printf("  Definition: %s\n", item->definition);
     printf("  Context: %s\n", item->context);
@@ -2050,7 +2050,7 @@ knowledge_system_t knowledge_load(const char* filepath)
                  sizeof(system->repository->items[i].confidence_key),
                  "%08.6f", system->repository->items[i].confidence);
 
-        knowledge_hash_table_insert(system->repository->index, system->repository->items[i].concept, i);
+        knowledge_hash_table_insert(system->repository->index, system->repository->items[i].concept_name, i);
 
         // Rebuild B-tree index
         if (system->repository->confidence_btree) {

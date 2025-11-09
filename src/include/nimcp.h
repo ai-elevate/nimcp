@@ -99,6 +99,14 @@ typedef enum {
 /**
  * @brief Return codes for all NIMCP functions
  */
+// Undefine macros that conflict with enum values
+#ifdef NIMCP_ERROR
+#undef NIMCP_ERROR
+#endif
+#ifdef NIMCP_ERROR_MEMORY
+#undef NIMCP_ERROR_MEMORY
+#endif
+
 typedef enum {
     NIMCP_OK = 0,              /**< Success */
     NIMCP_ERROR = -1,          /**< Generic error */
@@ -189,6 +197,91 @@ nimcp_status_t nimcp_brain_save(nimcp_brain_t brain, const char* filepath);
  * @return Brain handle or NULL on error
  */
 nimcp_brain_t nimcp_brain_load(const char* filepath);
+
+//=============================================================================
+// Brain Snapshots - Named, timestamped backups for versioning & A/B testing
+//=============================================================================
+
+/**
+ * @brief Snapshot metadata information
+ */
+typedef struct {
+    char name[128];           /**< Snapshot name */
+    char description[512];    /**< User description */
+    uint64_t timestamp;       /**< Unix timestamp when snapshot was created */
+    uint32_t file_size;       /**< Size of snapshot file in bytes */
+    bool is_compressed;       /**< Whether snapshot is compressed */
+    bool is_encrypted;        /**< Whether snapshot is encrypted */
+} nimcp_brain_snapshot_info_t;
+
+/**
+ * @brief Save a named snapshot of the brain state
+ *
+ * Snapshots are different from checkpoints:
+ * - Checkpoints: Auto-saved to a single file for resumption
+ * - Snapshots: Named, timestamped backups for versioning/backup/A/B testing
+ *
+ * Example usage:
+ * ```c
+ * nimcp_brain_snapshot_save(brain, "before_training", "Baseline state");
+ * // Train the model...
+ * nimcp_brain_snapshot_save(brain, "after_epoch_1", "After 1 epoch");
+ * // More training...
+ * nimcp_brain_snapshot_save(brain, "final", "Production model");
+ * ```
+ *
+ * Snapshots are saved to: {snapshot_dir}/{name}_{timestamp}.snapshot
+ *
+ * @param brain Brain to snapshot
+ * @param name Snapshot name (no path, just name)
+ * @param description Optional description (can be NULL)
+ * @return NIMCP_SUCCESS on success, error code otherwise
+ */
+nimcp_status_t nimcp_brain_snapshot_save(
+    nimcp_brain_t brain,
+    const char* name,
+    const char* description
+);
+
+/**
+ * @brief Restore brain from a named snapshot
+ *
+ * @param brain Current brain (can be NULL to create new brain from snapshot)
+ * @param name Snapshot name or full path to snapshot file
+ * @return New brain instance restored from snapshot, or NULL on error
+ */
+nimcp_brain_t nimcp_brain_snapshot_restore(
+    nimcp_brain_t brain,
+    const char* name
+);
+
+/**
+ * @brief List all available snapshots
+ *
+ * @param brain Brain instance (to get snapshot directory)
+ * @param infos Array to store snapshot information
+ * @param max_count Maximum number of snapshots to list
+ * @param out_count Pointer to store actual count (can be NULL)
+ * @return NIMCP_SUCCESS on success, error code otherwise
+ */
+nimcp_status_t nimcp_brain_snapshot_list(
+    nimcp_brain_t brain,
+    nimcp_brain_snapshot_info_t* infos,
+    uint32_t max_count,
+    uint32_t* out_count
+);
+
+/**
+ * @brief Delete a named snapshot
+ *
+ * @param brain Brain instance (to get snapshot directory)
+ * @param name Snapshot name to delete
+ * @return NIMCP_SUCCESS on success, error code otherwise
+ */
+nimcp_status_t nimcp_brain_snapshot_delete(
+    nimcp_brain_t brain,
+    const char* name
+);
 
 /**
  * @brief Create brain from YAML or JSON configuration file
@@ -359,6 +452,115 @@ nimcp_status_t nimcp_brain_restore_cow(nimcp_brain_t brain, nimcp_brain_snapshot
  * @param snapshot Snapshot handle
  */
 void nimcp_brain_snapshot_destroy(nimcp_brain_snapshot_t snapshot);
+
+//=============================================================================
+// Phase 10.2: Working Memory API - Active Representation Buffer
+//=============================================================================
+
+/**
+ * @brief Add item to working memory for reasoning
+ *
+ * Adds a feature vector to the brain's working memory buffer (Miller's 7±2).
+ * Items are stored with salience-based priority. When capacity is reached,
+ * lowest-salience items are evicted. Items decay over time unless refreshed.
+ *
+ * WHAT: Store active representation in working memory
+ * WHY:  Enable reasoning, planning, and cognitive processing over recent inputs
+ * HOW:  Priority queue based on salience, automatic decay, capacity-limited
+ *
+ * @param brain Brain instance
+ * @param data Item data (feature vector)
+ * @param size Item size (number of floats)
+ * @param salience Initial salience (0.0-1.0, higher = more important)
+ * @return NIMCP_OK on success, error code otherwise
+ *
+ * @note Requires enable_working_memory=true in brain config
+ * @note Items with salience < 0.01 are automatically removed during decay
+ *
+ * Example:
+ * ```c
+ * float features[64] = {...};
+ * nimcp_brain_working_memory_add(brain, features, 64, 0.8);  // High salience
+ * ```
+ */
+nimcp_status_t nimcp_brain_working_memory_add(
+    nimcp_brain_t brain,
+    const float* data,
+    uint32_t size,
+    float salience
+);
+
+/**
+ * @brief Get item from working memory by index
+ *
+ * Retrieves an item from working memory. Items are ordered by salience
+ * (index 0 = highest salience). The returned pointer is valid until
+ * the next working memory operation.
+ *
+ * @param brain Brain instance
+ * @param index Item index (0 = highest salience)
+ * @param size_out Output: item size (number of floats)
+ * @return Item data pointer or NULL if index invalid or working memory disabled
+ *
+ * Example:
+ * ```c
+ * uint32_t size;
+ * const float* item = nimcp_brain_working_memory_get(brain, 0, &size);
+ * if (item) {
+ *     // Process highest-salience item
+ * }
+ * ```
+ */
+const float* nimcp_brain_working_memory_get(
+    nimcp_brain_t brain,
+    uint32_t index,
+    uint32_t* size_out
+);
+
+/**
+ * @brief Get working memory statistics
+ *
+ * Returns current size and capacity of working memory buffer.
+ *
+ * @param brain Brain instance
+ * @param current_size_out Output: current number of items
+ * @param capacity_out Output: maximum capacity (typically 7)
+ * @return NIMCP_OK on success, error code otherwise
+ *
+ * Example:
+ * ```c
+ * uint32_t size, capacity;
+ * nimcp_brain_working_memory_stats(brain, &size, &capacity);
+ * printf("Working memory: %u/%u items\n", size, capacity);
+ * ```
+ */
+nimcp_status_t nimcp_brain_working_memory_stats(
+    nimcp_brain_t brain,
+    uint32_t* current_size_out,
+    uint32_t* capacity_out
+);
+
+/**
+ * @brief Refresh item in working memory (prevent decay)
+ *
+ * Resets the timestamp of an item, preventing temporal decay.
+ * This simulates attention/rehearsal in biological working memory
+ * (frontal-parietal loop).
+ *
+ * @param brain Brain instance
+ * @param index Item index to refresh
+ * @return NIMCP_OK on success, error code otherwise
+ *
+ * Example:
+ * ```c
+ * // Keep important item in memory by refreshing it
+ * nimcp_brain_working_memory_refresh(brain, 0);  // Refresh highest-salience
+ * ```
+ */
+nimcp_status_t nimcp_brain_working_memory_refresh(
+    nimcp_brain_t brain,
+    uint32_t index
+);
 
 //=============================================================================
 // Neural Network API - Low-Level Interface (Advanced Users)

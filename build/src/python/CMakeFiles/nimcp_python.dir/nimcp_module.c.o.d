@@ -39,17 +39,13 @@ src/python/CMakeFiles/nimcp_python.dir/nimcp_module.c.o: \
  /usr/include/x86_64-linux-gnu/bits/types/__sigset_t.h \
  /usr/include/x86_64-linux-gnu/bits/types/struct_timeval.h \
  /usr/include/x86_64-linux-gnu/bits/types/struct_timespec.h \
- /usr/include/x86_64-linux-gnu/bits/select2.h \
- /usr/include/x86_64-linux-gnu/bits/select-decl.h \
  /usr/include/x86_64-linux-gnu/bits/pthreadtypes.h \
  /usr/include/x86_64-linux-gnu/bits/thread-shared-types.h \
  /usr/include/x86_64-linux-gnu/bits/pthreadtypes-arch.h \
  /usr/include/x86_64-linux-gnu/bits/atomic_wide_counter.h \
  /usr/include/x86_64-linux-gnu/bits/struct_mutex.h \
  /usr/include/x86_64-linux-gnu/bits/struct_rwlock.h /usr/include/alloca.h \
- /usr/include/x86_64-linux-gnu/bits/stdlib-bsearch.h \
- /usr/include/x86_64-linux-gnu/bits/stdlib-float.h \
- /usr/include/x86_64-linux-gnu/bits/stdlib.h /usr/include/stdio.h \
+ /usr/include/x86_64-linux-gnu/bits/stdlib-float.h /usr/include/stdio.h \
  /usr/lib/gcc/x86_64-linux-gnu/13/include/stdarg.h \
  /usr/include/x86_64-linux-gnu/bits/types/__fpos_t.h \
  /usr/include/x86_64-linux-gnu/bits/types/__mbstate_t.h \
@@ -58,31 +54,22 @@ src/python/CMakeFiles/nimcp_python.dir/nimcp_module.c.o: \
  /usr/include/x86_64-linux-gnu/bits/types/FILE.h \
  /usr/include/x86_64-linux-gnu/bits/types/struct_FILE.h \
  /usr/include/x86_64-linux-gnu/bits/types/cookie_io_functions_t.h \
- /usr/include/x86_64-linux-gnu/bits/stdio_lim.h \
- /usr/include/x86_64-linux-gnu/bits/stdio2-decl.h \
- /usr/include/x86_64-linux-gnu/bits/stdio.h \
- /usr/include/x86_64-linux-gnu/bits/stdio2.h /usr/include/errno.h \
+ /usr/include/x86_64-linux-gnu/bits/stdio_lim.h /usr/include/errno.h \
  /usr/include/x86_64-linux-gnu/bits/errno.h /usr/include/linux/errno.h \
  /usr/include/x86_64-linux-gnu/asm/errno.h \
  /usr/include/asm-generic/errno.h /usr/include/asm-generic/errno-base.h \
  /usr/include/x86_64-linux-gnu/bits/types/error_t.h /usr/include/string.h \
- /usr/include/strings.h \
- /usr/include/x86_64-linux-gnu/bits/strings_fortified.h \
- /usr/include/x86_64-linux-gnu/bits/string_fortified.h \
- /usr/include/unistd.h /usr/include/x86_64-linux-gnu/bits/posix_opt.h \
+ /usr/include/strings.h /usr/include/unistd.h \
+ /usr/include/x86_64-linux-gnu/bits/posix_opt.h \
  /usr/include/x86_64-linux-gnu/bits/environments.h \
  /usr/include/x86_64-linux-gnu/bits/confname.h \
  /usr/include/x86_64-linux-gnu/bits/getopt_posix.h \
  /usr/include/x86_64-linux-gnu/bits/getopt_core.h \
- /usr/include/x86_64-linux-gnu/bits/unistd.h \
- /usr/include/x86_64-linux-gnu/bits/unistd-decl.h \
  /usr/include/x86_64-linux-gnu/bits/unistd_ext.h \
  /usr/include/linux/close_range.h /usr/include/assert.h \
  /usr/include/wchar.h /usr/include/x86_64-linux-gnu/bits/wchar.h \
  /usr/include/x86_64-linux-gnu/bits/types/wint_t.h \
  /usr/include/x86_64-linux-gnu/bits/types/mbstate_t.h \
- /usr/include/x86_64-linux-gnu/bits/wchar2-decl.h \
- /usr/include/x86_64-linux-gnu/bits/wchar2.h \
  /usr/include/python3.12/pyport.h /usr/include/inttypes.h \
  /usr/lib/gcc/x86_64-linux-gnu/13/include/stdint.h /usr/include/stdint.h \
  /usr/include/x86_64-linux-gnu/bits/stdint-uintn.h \
@@ -227,20 +214,29 @@ src/python/CMakeFiles/nimcp_python.dir/nimcp_module.c.o: \
  /home/bbrelin/nimcp/src/common/nimcp_export.h \
  /home/bbrelin/nimcp/src/core/neuron_models/nimcp_neuron_model.h \
  /usr/lib/gcc/x86_64-linux-gnu/13/include/stdbool.h \
- /home/bbrelin/nimcp/src/plasticity/stp/nimcp_stp.h \
- /home/bbrelin/nimcp/src/networking/p2p/nimcp_p2pnode.h \
- /home/bbrelin/nimcp/src/networking/protocol/nimcp_protocol.h \
- /home/bbrelin/nimcp/src/glial/integration/nimcp_glial_integration.h \
+ /home/bbrelin/nimcp/src/core/neuron_types/nimcp_neuron_types.h \
  /home/bbrelin/nimcp/src/utils/validation/nimcp_common.h \
  /usr/lib/gcc/x86_64-linux-gnu/13/include/stdatomic.h \
  /usr/include/dirent.h /usr/include/x86_64-linux-gnu/bits/dirent.h \
  /usr/include/x86_64-linux-gnu/bits/dirent_ext.h /usr/include/dlfcn.h \
  /usr/include/x86_64-linux-gnu/bits/dlfcn.h \
  /usr/include/x86_64-linux-gnu/bits/dl_find_object.h /usr/include/lz4.h \
+ /home/bbrelin/nimcp/src/plasticity/stp/nimcp_stp.h \
+ /home/bbrelin/nimcp/src/core/synapse_types/nimcp_synapse_types.h \
+ /home/bbrelin/nimcp/src/networking/p2p/nimcp_p2pnode.h \
+ /home/bbrelin/nimcp/src/networking/protocol/nimcp_protocol.h \
+ /home/bbrelin/nimcp/src/glial/integration/nimcp_glial_integration.h \
  /home/bbrelin/nimcp/src/utils/containers/nimcp_hash_table.h \
  /home/bbrelin/nimcp/src/glial/astrocytes/nimcp_astrocytes.h \
  /home/bbrelin/nimcp/src/utils/thread/nimcp_thread.h \
+ /home/bbrelin/nimcp/src/utils/platform/nimcp_platform_thread.h \
+ /home/bbrelin/nimcp/src/utils/platform/nimcp_platform.h \
+ /home/bbrelin/nimcp/src/utils/platform/nimcp_platform_mutex.h \
+ /home/bbrelin/nimcp/src/utils/platform/nimcp_platform_cond.h \
+ /home/bbrelin/nimcp/src/utils/platform/nimcp_platform_mutex.h \
+ /home/bbrelin/nimcp/src/glial/astrocyte_types/nimcp_astrocyte_types.h \
  /home/bbrelin/nimcp/src/glial/oligodendrocytes/nimcp_oligodendrocytes.h \
  /home/bbrelin/nimcp/src/utils/memory/nimcp_memory.h \
  /home/bbrelin/nimcp/src/utils/time/nimcp_time.h \
- /home/bbrelin/nimcp/src/glial/microglia/nimcp_microglia.h
+ /home/bbrelin/nimcp/src/glial/microglia/nimcp_microglia.h \
+ /home/bbrelin/nimcp/src/include/nimcp.h

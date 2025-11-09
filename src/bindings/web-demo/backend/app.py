@@ -1,19 +1,22 @@
 """
-NIMCP Web Demo - Flask Backend v2.7.0
+NIMCP Web Demo - Flask Backend v2.8.0
 ======================================
 
-WHAT: REST API backend demonstrating NIMCP brain with real-time metrics
-WHY:  Show NIMCP capabilities through interactive web interface
-HOW:  Flask server exposing brain training/prediction endpoints with metrics
+WHAT: REST API backend demonstrating NIMCP brain with COW cloning
+WHY:  Show NIMCP capabilities including memory-efficient brain cloning
+HOW:  Flask server exposing brain training/prediction/cloning endpoints
 
 Features:
 - Real-time training with progress tracking
 - Interactive predictions
 - Brain metrics and statistics
+- Copy-on-Write brain cloning
+- Multi-brain management
+- Memory savings visualization
 - Iris flower classification demo
 """
 
-from flask import Flask, request, jsonify, send_file, redirect
+from flask import Flask, request, jsonify, send_file, redirect, send_from_directory
 from flask_cors import CORS
 import nimcp
 import time
@@ -22,13 +25,22 @@ import queue
 from datetime import datetime
 import os
 from benchmarks import NIMCPBenchmark, MNISTLoader, ComparativeBenchmark
+from datasets import get_dataset, list_datasets
 
-app = Flask(__name__)
+app = Flask(__name__,
+            static_folder='../frontend/build',
+            static_url_path='')
 CORS(app)  # Enable CORS for React frontend
 
-# Global brain instance and metrics
-brain = None
+# Global brain instances and metrics (support for multiple brains + COW clones)
+brains = {}  # Dict of brain_id -> brain instance
+brain_metadata = {}  # Dict of brain_id -> metadata (parent_id, is_cow_clone, created_at, etc.)
 brain_lock = threading.Lock()
+next_brain_id = 0
+primary_brain_id = None  # Track the main brain for backward compatibility
+
+# Legacy single-brain support
+brain = None
 training_history = []
 prediction_history = []
 brain_metrics = {
@@ -41,6 +53,10 @@ brain_metrics = {
     'created_at': None,
     'status': 'not_initialized'
 }
+
+# Current dataset selection
+current_dataset = None
+current_dataset_name = 'iris'  # Default to Iris
 
 # Benchmark state
 benchmark_runner = None
@@ -81,15 +97,16 @@ def normalize_features(features):
     """
     WHAT: Normalize features to 0-1 range
     WHY:  Improve training stability and convergence
-    HOW:  Min-max normalization based on typical iris ranges
+    HOW:  Use dataset-specific normalization from current_dataset
     """
-    # Typical ranges: sepal_length: 4-8, sepal_width: 2-5, petal_length: 1-7, petal_width: 0-3
-    ranges = [(4.0, 8.0), (2.0, 5.0), (1.0, 7.0), (0.0, 3.0)]
-    normalized = []
-    for i, val in enumerate(features):
-        min_val, max_val = ranges[i]
-        normalized.append((val - min_val) / (max_val - min_val))
-    return normalized
+    global current_dataset
+
+    # If dataset has a normalize method, use it
+    if current_dataset and hasattr(current_dataset, 'normalize'):
+        return current_dataset.normalize(features)
+
+    # Otherwise, assume features are already normalized (0-1 range) or apply simple clipping
+    return [max(0.0, min(1.0, float(f))) for f in features]
 
 def calculate_accuracy():
     """
@@ -108,38 +125,94 @@ def calculate_accuracy():
 # API Endpoints
 #=============================================================================
 
+@app.route('/')
+def index():
+    """Serve React App"""
+    return send_from_directory(app.static_folder, 'index.html')
+
+# Catch all routes for React Router
+@app.route('/<path:path>')
+def serve_react_app(path):
+    """Serve static files or index.html for React Router"""
+    file_path = os.path.join(app.static_folder, path)
+    if os.path.exists(file_path):
+        return send_from_directory(app.static_folder, path)
+    else:
+        return send_from_directory(app.static_folder, 'index.html')
+
 @app.route('/api/init', methods=['POST'])
 def init_brain():
     """
     WHAT: Initialize NIMCP brain
     WHY:  Create brain instance for training/prediction
-    HOW:  Call nimcp.Brain with iris classification config
+    HOW:  Call nimcp.Brain with config based on selected dataset
     """
-    global brain, brain_metrics
+    global brain, brain_metrics, brains, brain_metadata, next_brain_id, primary_brain_id
+    global current_dataset, current_dataset_name
 
     try:
+        # Get dataset selection from request (default to 'iris')
+        # Use get_json(silent=True) to handle invalid JSON gracefully
+        data = request.get_json(silent=True) or {}
+        dataset_name = data.get('dataset', 'iris')
+
+        # Load the selected dataset
+        current_dataset_name = dataset_name
+        current_dataset = get_dataset(dataset_name)
+        config = current_dataset.get_config()
+
         with brain_lock:
-            # Create brain for iris classification (4 inputs, 3 outputs)
+            # Create brain with dataset-specific configuration
             brain = nimcp.Brain(
-                name="iris_classifier",
-                size=nimcp.BRAIN_SMALL,
-                task=nimcp.TASK_CLASSIFICATION,
-                num_inputs=4,
-                num_outputs=3
+                name=f"{dataset_name}_brain",
+                size=1,  # BRAIN_SMALL
+                task=0,  # TASK_CLASSIFICATION
+                num_inputs=config['num_inputs'],
+                num_outputs=config['num_outputs']
             )
 
             brain_metrics['created_at'] = datetime.now().isoformat()
             brain_metrics['status'] = 'initialized'
             brain_metrics['total_trained'] = 0
             brain_metrics['total_predictions'] = 0
+            brain_metrics['dataset'] = dataset_name
+
+            # Store in new brain management system
+            brain_id = next_brain_id
+            next_brain_id += 1
+            brains[brain_id] = brain
+            brain_metadata[brain_id] = {
+                'id': brain_id,
+                'name': f"{dataset_name}_brain",
+                'parent_id': None,
+                'is_cow_clone': False,
+                'created_at': datetime.now().isoformat(),
+                'clone_count': 0,
+                'total_trained': 0,
+                'total_predictions': 0,
+                'dataset': dataset_name
+            }
+            primary_brain_id = brain_id
 
         return jsonify({
             'success': True,
-            'message': 'Brain initialized successfully',
+            'message': f'Brain initialized for {current_dataset.name}',
+            'brain_id': brain_id,
+            'dataset': dataset_name,
+            'dataset_info': {
+                'name': current_dataset.name,
+                'description': current_dataset.description,
+                'num_inputs': config['num_inputs'],
+                'num_outputs': config['num_outputs'],
+                'classes': config['classes'],
+                'input_type': config['input_type']
+            },
             'metrics': brain_metrics
         })
 
     except Exception as e:
+        import traceback
+        traceback.print_exc()
         return jsonify({'success': False, 'error': str(e)}), 500
 
 @app.route('/api/train', methods=['POST'])
@@ -155,7 +228,7 @@ def train_brain():
         return jsonify({'success': False, 'error': 'Brain not initialized'}), 400
 
     try:
-        data = request.json
+        data = request.get_json(silent=True)
         features = data.get('features')  # [sepal_length, sepal_width, petal_length, petal_width]
         label = data.get('label')        # 'setosa', 'versicolor', or 'virginica'
         confidence = data.get('confidence', 1.0)
@@ -211,13 +284,13 @@ def train_batch():
     WHY:  Quickly initialize brain with dataset
     HOW:  Iterate through examples, train on each
     """
-    global brain
+    global brain, brain_metrics, training_history
 
     if brain is None:
         return jsonify({'success': False, 'error': 'Brain not initialized'}), 400
 
     try:
-        data = request.json
+        data = request.get_json(silent=True)
         examples = data.get('examples', [])
 
         if not examples:
@@ -261,6 +334,9 @@ def train_batch():
         })
 
     except Exception as e:
+        print(f"ERROR in train-batch: {str(e)}")
+        import traceback
+        traceback.print_exc()
         return jsonify({'success': False, 'error': str(e)}), 500
 
 @app.route('/api/predict', methods=['POST'])
@@ -276,7 +352,7 @@ def predict():
         return jsonify({'success': False, 'error': 'Brain not initialized'}), 400
 
     try:
-        data = request.json
+        data = request.get_json(silent=True)
         features = data.get('features')
         true_label = data.get('true_label')  # Optional, for accuracy tracking
 
@@ -361,19 +437,68 @@ def get_status():
         'metrics': brain_metrics
     })
 
+@app.route('/api/datasets', methods=['GET'])
+def get_available_datasets():
+    """
+    WHAT: List all available datasets
+    WHY:  Allow frontend to show dataset selection
+    HOW:  Return list of dataset metadata
+    """
+    try:
+        datasets_list = list_datasets()
+        return jsonify({
+            'success': True,
+            'datasets': datasets_list
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
 @app.route('/api/dataset', methods=['GET'])
-def get_dataset():
+def get_current_dataset_data():
     """
-    WHAT: Get iris dataset for training
+    WHAT: Get current dataset examples for training
     WHY:  Provide demo data to frontend
-    HOW:  Return IRIS_DATA dictionary
+    HOW:  Return examples from selected dataset
     """
-    return jsonify({
-        'success': True,
-        'dataset': IRIS_DATA,
-        'feature_names': ['sepal_length', 'sepal_width', 'petal_length', 'petal_width'],
-        'classes': list(IRIS_DATA.keys())
-    })
+    global current_dataset, current_dataset_name
+
+    try:
+        # Initialize default dataset if not set
+        if current_dataset is None:
+            current_dataset = get_dataset('iris')
+            current_dataset_name = 'iris'
+
+        # Get sample examples from dataset
+        examples_count = 30
+        examples = current_dataset.get_examples(count=examples_count)
+
+        # Convert to format expected by frontend (organize by class)
+        dataset_by_class = {}
+        for features, label in examples:
+            if label not in dataset_by_class:
+                dataset_by_class[label] = []
+            dataset_by_class[label].append(features)
+
+        config = current_dataset.get_config()
+
+        return jsonify({
+            'success': True,
+            'dataset': dataset_by_class,
+            'dataset_name': current_dataset_name,
+            'dataset_info': {
+                'name': current_dataset.name,
+                'description': current_dataset.description,
+                'num_inputs': config['num_inputs'],
+                'num_outputs': config['num_outputs'],
+                'input_type': config['input_type']
+            },
+            'feature_names': config['feature_names'],
+            'classes': config['classes']
+        })
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return jsonify({'success': False, 'error': str(e)}), 500
 
 @app.route('/api/reset', methods=['POST'])
 def reset_brain():
@@ -404,6 +529,195 @@ def reset_brain():
         'message': 'Brain reset successfully'
     })
 
+#=============================================================================
+# Copy-on-Write (COW) Cloning Endpoints
+#=============================================================================
+
+@app.route('/api/brain/<int:brain_id>/clone_cow', methods=['POST'])
+def clone_brain_cow(brain_id):
+    """
+    WHAT: Create COW clone of specified brain
+    WHY:  Enable efficient memory sharing for parallel inference
+    HOW:  Call brain.clone_cow(), track relationships and memory savings
+    """
+    global brains, brain_metadata, next_brain_id
+
+    if brain_id not in brains:
+        return jsonify({'success': False, 'error': f'Brain {brain_id} not found'}), 404
+
+    try:
+        with brain_lock:
+            # Get parent brain
+            parent_brain = brains[brain_id]
+
+            # Create COW clone
+            start_time = time.time()
+            clone = parent_brain.clone_cow()
+            clone_time = time.time() - start_time
+
+            # Assign new brain ID
+            clone_id = next_brain_id
+            next_brain_id += 1
+
+            # Store clone
+            brains[clone_id] = clone
+            brain_metadata[clone_id] = {
+                'id': clone_id,
+                'name': f"{brain_metadata[brain_id]['name']}_clone_{clone_id}",
+                'parent_id': brain_id,
+                'is_cow_clone': True,
+                'created_at': datetime.now().isoformat(),
+                'clone_time': clone_time,
+                'clone_count': 0,
+                'total_trained': 0,
+                'total_predictions': 0
+            }
+
+            # Update parent clone count
+            brain_metadata[brain_id]['clone_count'] += 1
+
+            # Get COW statistics
+            stats = clone.probe()
+
+        return jsonify({
+            'success': True,
+            'message': f'COW clone created in {clone_time*1000:.2f}ms',
+            'clone_id': clone_id,
+            'parent_id': brain_id,
+            'clone_time': clone_time,
+            'cow_stats': {
+                'is_cow_clone': stats.get('is_cow_clone', True),
+                'shared_bytes': stats.get('cow_shared_bytes', 0),
+                'private_bytes': stats.get('cow_private_bytes', 0),
+                'ref_count': stats.get('cow_ref_count', 0),
+                'memory_savings_pct': (stats.get('cow_shared_bytes', 0) / max(stats.get('memory_bytes', 1), 1)) * 100
+            },
+            'metadata': brain_metadata[clone_id]
+        })
+
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/brain/<int:brain_id>/cow_stats', methods=['GET'])
+def get_cow_stats(brain_id):
+    """
+    WHAT: Get COW statistics for specified brain
+    WHY:  Monitor memory sharing and efficiency
+    HOW:  Call brain.probe(), extract COW metrics
+    """
+    if brain_id not in brains:
+        return jsonify({'success': False, 'error': f'Brain {brain_id} not found'}), 404
+
+    try:
+        with brain_lock:
+            brain_instance = brains[brain_id]
+            stats = brain_instance.probe()
+            metadata = brain_metadata[brain_id]
+
+        return jsonify({
+            'success': True,
+            'brain_id': brain_id,
+            'metadata': metadata,
+            'cow_stats': {
+                'is_cow_clone': stats.get('is_cow_clone', False),
+                'shared_bytes': stats.get('cow_shared_bytes', 0),
+                'private_bytes': stats.get('cow_private_bytes', 0),
+                'total_bytes': stats.get('memory_bytes', 0),
+                'ref_count': stats.get('cow_ref_count', 0),
+                'memory_savings_pct': (stats.get('cow_shared_bytes', 0) / max(stats.get('memory_bytes', 1), 1)) * 100
+            },
+            'architecture': {
+                'num_neurons': stats.get('num_neurons', 0),
+                'num_synapses': stats.get('num_synapses', 0),
+                'num_inputs': stats.get('num_inputs', 0),
+                'num_outputs': stats.get('num_outputs', 0)
+            }
+        })
+
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/brains', methods=['GET'])
+def list_brains():
+    """
+    WHAT: List all brain instances (originals + clones)
+    WHY:  Provide overview of brain hierarchy
+    HOW:  Return all brains with metadata and relationships
+    """
+    brain_list = []
+
+    with brain_lock:
+        for brain_id, metadata in brain_metadata.items():
+            # Get quick stats
+            try:
+                brain_instance = brains[brain_id]
+                stats = brain_instance.probe()
+
+                brain_info = {
+                    **metadata,
+                    'memory_bytes': stats.get('memory_bytes', 0),
+                    'cow_shared_bytes': stats.get('cow_shared_bytes', 0),
+                    'cow_private_bytes': stats.get('cow_private_bytes', 0),
+                    'is_cow_clone': stats.get('is_cow_clone', False)
+                }
+                brain_list.append(brain_info)
+            except Exception as e:
+                # Skip if brain stats unavailable
+                brain_list.append({**metadata, 'error': str(e)})
+
+    return jsonify({
+        'success': True,
+        'brains': brain_list,
+        'total_count': len(brain_list)
+    })
+
+
+@app.route('/api/brain/<int:brain_id>/delete', methods=['DELETE'])
+def delete_brain(brain_id):
+    """
+    WHAT: Delete a brain instance
+    WHY:  Clean up clones or reset state
+    HOW:  Remove from brains dict, update parent clone count
+    """
+    global brains, brain_metadata, primary_brain_id
+
+    if brain_id not in brains:
+        return jsonify({'success': False, 'error': f'Brain {brain_id} not found'}), 404
+
+    # Prevent deleting primary brain if it has clones
+    metadata = brain_metadata[brain_id]
+    if metadata['clone_count'] > 0:
+        return jsonify({
+            'success': False,
+            'error': f'Cannot delete brain with {metadata["clone_count"]} active clones'
+        }), 400
+
+    try:
+        with brain_lock:
+            # Update parent's clone count if this is a clone
+            parent_id = metadata['parent_id']
+            if parent_id is not None and parent_id in brain_metadata:
+                brain_metadata[parent_id]['clone_count'] -= 1
+
+            # Delete brain
+            del brains[brain_id]
+            del brain_metadata[brain_id]
+
+            # Clear primary_brain_id if deleting primary
+            if primary_brain_id == brain_id:
+                primary_brain_id = None
+
+        return jsonify({
+            'success': True,
+            'message': f'Brain {brain_id} deleted successfully'
+        })
+
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
 @app.route('/api/benchmark/mnist/start', methods=['POST'])
 def start_mnist_benchmark():
     """
@@ -420,7 +734,7 @@ def start_mnist_benchmark():
         }), 400
 
     try:
-        data = request.json or {}
+        data = request.get_json(silent=True) or {}
         num_neurons = data.get('num_neurons', 100000)
         n_epochs = data.get('epochs', 10)
         batch_size = data.get('batch_size', 64)
@@ -529,7 +843,7 @@ def init_large_brain():
     global brain, brain_metrics
 
     try:
-        data = request.json or {}
+        data = request.get_json(silent=True) or {}
         num_inputs = data.get('num_inputs', 784)  # Default: MNIST
         num_outputs = data.get('num_outputs', 10)
         num_neurons = data.get('num_neurons', 100000)
@@ -583,7 +897,14 @@ def visualize_network():
 
     try:
         # Get brain statistics
-        stats = brain.get_stats()
+        try:
+            stats = brain.get_stats()
+        except AttributeError:
+            # Brain might not have get_stats method, create minimal stats
+            stats = {
+                'num_neurons': 100,
+                'num_synapses': 0
+            }
 
         # For visualization, sample subset of neurons (max 1000 for performance)
         # Position neurons in 3D space based on layer structure
@@ -606,12 +927,17 @@ def visualize_network():
 
         return jsonify({
             'success': True,
-            'neurons': neurons_data,
-            'connections': connections_data,
-            'stats': stats
+            'network': {
+                'neurons': neurons_data,
+                'connections': connections_data,
+                'total_neurons': stats.get('num_neurons', 0)
+            }
         })
 
     except Exception as e:
+        print(f"ERROR in network visualization: {str(e)}")
+        import traceback
+        traceback.print_exc()
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
@@ -797,10 +1123,11 @@ def serve_quickstart():
 
 if __name__ == '__main__':
     print("="*70)
-    print("NIMCP Web Demo - Backend Server")
+    print("NIMCP Web Demo - Backend Server v2.8.0")
     print("="*70)
     print("Starting Flask server on http://localhost:5000")
-    print("API Endpoints:")
+    print("")
+    print("Core Endpoints:")
     print("  POST /api/init           - Initialize brain")
     print("  POST /api/train          - Train on single example")
     print("  POST /api/train-batch    - Train on multiple examples")
@@ -810,10 +1137,18 @@ if __name__ == '__main__':
     print("  GET  /api/dataset        - Get iris dataset")
     print("  POST /api/reset          - Reset brain")
     print("")
+    print("COW Cloning Endpoints:")
+    print("  POST /api/brain/<id>/clone_cow  - Create COW clone")
+    print("  GET  /api/brain/<id>/cow_stats  - Get COW statistics")
+    print("  GET  /api/brains                - List all brains")
+    print("  DELETE /api/brain/<id>/delete   - Delete brain instance")
+    print("")
     print("Documentation:")
     print("  GET  /docs               - Interactive documentation page")
     print("  GET  /api/docs/readme    - Download README.md")
     print("  GET  /api/docs/quick-start - Download QUICK_START.md")
+    print("")
+    print("Frontend: http://localhost:3000")
     print("="*70)
 
-    app.run(debug=True, host='0.0.0.0', port=5000)
+    app.run(debug=True, host='0.0.0.0', port=5001)

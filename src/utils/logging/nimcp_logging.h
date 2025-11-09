@@ -5,7 +5,9 @@
 #include <stdio.h>
 #include <time.h>
 
-#define PATH_MAX 256
+#ifndef PATH_MAX
+#define PATH_MAX 256  // Fallback if system doesn't define PATH_MAX
+#endif
 typedef enum {
     LOG_LEVEL_DEBUG,
     LOG_LEVEL_INFO,

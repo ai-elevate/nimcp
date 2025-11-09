@@ -97,17 +97,26 @@ typedef int32_t nimcp_result_t;
 #define NIMCP_ERROR_VERIFICATION_FAILED -10 /**< Signature verification failed */
 #define NIMCP_ERROR_SERIALIZER -11          /**< Serializer operation failed */
 #define NIMCP_ERROR_NOT_IMPLEMENTED -13     /**< Feature not implemented */
-/* Version Information */
-#define NIMCP_VERSION_MAJOR 1
-#define NIMCP_VERSION_MINOR 0
-#define NIMCP_VERSION_PATCH 0
-#define NIMCP_VERSION_STRING "1.0.0"
+/* Version Information - Use nimcp.h version if already defined */
+#ifndef NIMCP_VERSION_MAJOR
+#define NIMCP_VERSION_MAJOR 2
+#endif
+#ifndef NIMCP_VERSION_MINOR
+#define NIMCP_VERSION_MINOR 6
+#endif
+#ifndef NIMCP_VERSION_PATCH
+#define NIMCP_VERSION_PATCH 1
+#endif
+#ifndef NIMCP_VERSION_STRING
+#define NIMCP_VERSION_STRING "2.6.1"
+#endif
 
 #define MIN(a, b) ((a) < (b) ? (a) : (b))
 #define MAX(a, b) ((a) > (b) ? (a) : (b))
 #define NIMCP_ALIGN(x, a) (((x) + ((a) -1)) & ~((a) -1))
 
-/* Platform Detection */
+/* Platform Detection - Use nimcp_platform.h if already defined */
+#ifndef NIMCP_PLATFORM_LINUX
 #if defined(_WIN32) || defined(_WIN64)
     #define NIMCP_PLATFORM_WINDOWS
 #elif defined(__linux__)
@@ -116,6 +125,7 @@ typedef int32_t nimcp_result_t;
     #define NIMCP_PLATFORM_MACOS
 #else
     #error "Unsupported platform"
+#endif
 #endif
 
 

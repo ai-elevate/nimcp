@@ -94,6 +94,186 @@
   margin: 0.5rem 0;
 }
 
+/* Dataset Selector */
+.dataset-selector {
+  margin: 1.5rem 0;
+  text-align: left;
+}
+
+.dataset-selector label {
+  display: block;
+  margin-bottom: 0.75rem;
+  color: var(--text-white);
+  font-size: 1.1rem;
+}
+
+.dataset-dropdown {
+  width: 100%;
+  padding: 0.75rem;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text-white);
+  font-size: 1rem;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.dataset-dropdown:hover {
+  background: rgba(255, 255, 255, 0.12);
+  border-color: var(--primary);
+}
+
+.dataset-dropdown:focus {
+  outline: none;
+  border-color: var(--primary);
+  background: rgba(255, 255, 255, 0.12);
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.2);
+}
+
+.dataset-dropdown option {
+  background: var(--bg-dark);
+  color: var(--text-white);
+  padding: 0.5rem;
+}
+
+.status-dataset {
+  color: var(--primary);
+  text-transform: capitalize;
+}
+
+/* Dataset Badge */
+.dataset-badge {
+  background: rgba(102, 126, 234, 0.15);
+  border: 1px solid var(--primary);
+  border-radius: 8px;
+  padding: 0.75rem 1rem;
+  margin-bottom: 1.5rem;
+  text-align: center;
+  color: var(--text-white);
+}
+
+.dataset-badge strong {
+  color: var(--primary);
+  margin-right: 0.5rem;
+}
+
+/* Documentation Panel */
+.documentation-panel {
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.documentation-panel h2 {
+  text-align: center;
+  font-size: 2.5rem;
+  margin-bottom: 2rem;
+  color: var(--text-white);
+}
+
+.doc-cards-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+  gap: 1.5rem;
+  margin-bottom: 2rem;
+}
+
+.doc-card {
+  background: var(--bg-card);
+  backdrop-filter: blur(10px);
+  border-radius: 12px;
+  padding: 2rem;
+  border: 1px solid var(--border);
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.doc-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 24px rgba(102, 126, 234, 0.2);
+}
+
+.doc-card h3 {
+  color: var(--primary);
+  margin-top: 0;
+  font-size: 1.5rem;
+  margin-bottom: 1rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.doc-card-icon {
+  font-size: 1.8rem;
+}
+
+.doc-card p {
+  margin: 0.75rem 0;
+  line-height: 1.6;
+}
+
+.doc-card ul {
+  margin: 1rem 0;
+  padding-left: 1.5rem;
+}
+
+.doc-card li {
+  margin: 0.5rem 0;
+  line-height: 1.5;
+}
+
+.doc-card strong {
+  color: var(--primary);
+}
+
+.doc-card-full {
+  grid-column: 1 / -1;
+}
+
+.api-endpoints {
+  display: grid;
+  gap: 0.75rem;
+  margin-top: 1rem;
+}
+
+.api-endpoint {
+  background: rgba(0, 0, 0, 0.3);
+  padding: 1rem;
+  border-radius: 8px;
+  border-left: 3px solid var(--primary);
+}
+
+.api-endpoint code {
+  color: var(--primary);
+  font-weight: bold;
+  font-size: 1.1rem;
+}
+
+.api-endpoint p {
+  margin: 0.5rem 0 0 0;
+  opacity: 0.9;
+}
+
+.doc-footer {
+  text-align: center;
+  padding: 2rem;
+  margin-top: 2rem;
+  background: var(--bg-card);
+  backdrop-filter: blur(10px);
+  border-radius: 12px;
+  border: 1px solid var(--border);
+}
+
+.doc-footer a {
+  color: var(--primary);
+  text-decoration: none;
+  font-weight: bold;
+  font-size: 1.1rem;
+}
+
+.doc-footer a:hover {
+  text-decoration: underline;
+}
+
 /* Status Bar */
 .status-bar {
   display: flex;

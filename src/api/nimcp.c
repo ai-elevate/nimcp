@@ -304,6 +304,134 @@ nimcp_brain_t nimcp_brain_load(const char* filepath) {
     return handle;
 }
 
+//=============================================================================
+// Brain Snapshot API Implementation
+//=============================================================================
+
+nimcp_status_t nimcp_brain_snapshot_save(
+    nimcp_brain_t brain,
+    const char* name,
+    const char* description)
+{
+    if (!brain) {
+        set_error("Brain handle is NULL");
+        return NIMCP_ERROR_NULL_ARG;
+    }
+
+    if (!name) {
+        set_error("Snapshot name is NULL");
+        return NIMCP_ERROR_NULL_ARG;
+    }
+
+    // Call internal brain snapshot API
+    bool success = brain_save_snapshot(
+        brain->internal_brain,
+        name,
+        description ? description : ""
+    );
+
+    if (!success) {
+        set_error("Failed to save snapshot");
+        return NIMCP_ERROR;
+    }
+
+    set_error("No error");
+    return NIMCP_SUCCESS;
+}
+
+nimcp_brain_t nimcp_brain_snapshot_restore(
+    nimcp_brain_t brain,
+    const char* name)
+{
+    if (!name) {
+        set_error("Snapshot name is NULL");
+        return NULL;
+    }
+
+    // Load from snapshot
+    brain_t restored_brain = brain_restore_snapshot(
+        brain ? brain->internal_brain : NULL,
+        name
+    );
+
+    if (!restored_brain) {
+        set_error("Failed to restore from snapshot");
+        return NULL;
+    }
+
+    // Allocate new handle
+    nimcp_brain_t handle = (nimcp_brain_t)nimcp_malloc(sizeof(struct nimcp_brain_handle));
+    if (!handle) {
+        set_error("Failed to allocate brain handle");
+        brain_destroy(restored_brain);
+        return NULL;
+    }
+
+    handle->internal_brain = restored_brain;
+    set_error("No error");
+    return handle;
+}
+
+nimcp_status_t nimcp_brain_snapshot_list(
+    nimcp_brain_t brain,
+    nimcp_brain_snapshot_info_t* infos,
+    uint32_t max_count,
+    uint32_t* out_count)
+{
+    if (!brain) {
+        set_error("Brain handle is NULL");
+        return NIMCP_ERROR_NULL_ARG;
+    }
+
+    if (!infos) {
+        set_error("Infos array is NULL");
+        return NIMCP_ERROR_NULL_ARG;
+    }
+
+    // Call internal brain list API
+    // Note: brain_snapshot_info_t and nimcp_brain_snapshot_info_t have same layout
+    bool success = brain_list_snapshots(
+        brain->internal_brain,
+        (brain_snapshot_info_t*)infos,
+        max_count,
+        out_count
+    );
+
+    if (!success) {
+        set_error("Failed to list snapshots");
+        return NIMCP_ERROR;
+    }
+
+    set_error("No error");
+    return NIMCP_SUCCESS;
+}
+
+nimcp_status_t nimcp_brain_snapshot_delete(
+    nimcp_brain_t brain,
+    const char* name)
+{
+    if (!brain) {
+        set_error("Brain handle is NULL");
+        return NIMCP_ERROR_NULL_ARG;
+    }
+
+    if (!name) {
+        set_error("Snapshot name is NULL");
+        return NIMCP_ERROR_NULL_ARG;
+    }
+
+    // Call internal brain delete API
+    bool success = brain_delete_snapshot(brain->internal_brain, name);
+
+    if (!success) {
+        set_error("Failed to delete snapshot");
+        return NIMCP_ERROR;
+    }
+
+    set_error("No error");
+    return NIMCP_SUCCESS;
+}
+
 nimcp_brain_t nimcp_brain_create_from_config(const char* config_filepath) {
     if (!config_filepath) {
         set_error("Config filepath is NULL");

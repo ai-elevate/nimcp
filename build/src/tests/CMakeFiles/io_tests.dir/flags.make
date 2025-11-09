@@ -3,15 +3,15 @@
 
 # compile C with /usr/bin/cc
 # compile CXX with /usr/bin/c++
-C_DEFINES = -DNIMCP_ENABLE_ENCRYPTION -DNIMCP_TESTING -D_FORTIFY_SOURCE=2
+C_DEFINES = -DNIMCP_ENABLE_ENCRYPTION -DNIMCP_TESTING
 
 C_INCLUDES = -I/home/bbrelin/nimcp/src -I/home/bbrelin/nimcp/src/tests -I/home/bbrelin/nimcp/src/lib -I/home/bbrelin/nimcp/src/include -isystem /usr/include/python3.12 -isystem /home/bbrelin/nimcp/build/_deps/googletest-src/googletest/include -isystem /home/bbrelin/nimcp/build/_deps/googletest-src/googletest
 
-C_FLAGS =  -Wall -Wextra -Wpedantic -O3 -DNDEBUG -std=gnu11 -fPIE -fstack-protector-strong -Wformat -Wformat-security -fno-common
+C_FLAGS =  -Wall -Wextra -Wpedantic -g -std=gnu11 -fPIE --coverage
 
-CXX_DEFINES = -DNIMCP_ENABLE_ENCRYPTION -DNIMCP_TESTING -D_FORTIFY_SOURCE=2
+CXX_DEFINES = -DNIMCP_ENABLE_ENCRYPTION -DNIMCP_TESTING
 
 CXX_INCLUDES = -I/home/bbrelin/nimcp/src -I/home/bbrelin/nimcp/src/tests -I/home/bbrelin/nimcp/src/lib -I/home/bbrelin/nimcp/src/include -isystem /usr/include/python3.12 -isystem /home/bbrelin/nimcp/build/_deps/googletest-src/googletest/include -isystem /home/bbrelin/nimcp/build/_deps/googletest-src/googletest
 
-CXX_FLAGS =  -Wall -Wextra -Wpedantic -O3 -DNDEBUG -std=gnu++20 -fPIE -fstack-protector-strong -Wformat -Wformat-security -fno-common
+CXX_FLAGS =  -Wall -Wextra -Wpedantic -g -std=gnu++20 -fPIE --coverage
 

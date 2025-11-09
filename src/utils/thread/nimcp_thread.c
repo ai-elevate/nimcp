@@ -477,17 +477,21 @@
  * @file nimcp_thread.c
  * @brief Thread abstraction layer implementation
  *
- * WHAT: POSIX thread wrapper with error handling and resource management
+ * WHAT: Platform-independent thread wrapper with error handling and resource management
  * WHY: Simplify threading, enable portability, provide named locks
- * HOW: Adapter pattern + bucketed hash table for named resources
+ * HOW: Adapter pattern + bucketed hash table for named resources + platform abstraction layer
  */
 
 #include "utils/thread/nimcp_thread.h"
 #include <errno.h>
 #include <stdarg.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include "utils/memory/nimcp_memory.h"  // CRITICAL: Declares nimcp_calloc/nimcp_free return types
+
+// Keep pthread.h for rwlock and once operations that aren't in platform layer yet
+#include <pthread.h>
 
 //=============================================================================
 // Thread-Local Error Storage
@@ -647,12 +651,12 @@ void nimcp_thread_clear_error(void)
 static void thread_init_routine(void)
 {
     // Global mutex protects table-level operations (future use)
-    pthread_mutex_init(&resource_table.global_mutex, NULL);
+    nimcp_platform_mutex_init(&resource_table.global_mutex, false);
 
     // Initialize all buckets
     // WHY LOOP: Each bucket needs its own mutex and empty entry list
     for (int i = 0; i < RESOURCE_LOCK_BUCKETS; i++) {
-        pthread_mutex_init(&resource_table.buckets[i].bucket_mutex, NULL);
+        nimcp_platform_mutex_init(&resource_table.buckets[i].bucket_mutex, false);
         resource_table.buckets[i].entries = NULL;  // Empty list
     }
 
@@ -754,45 +758,22 @@ nimcp_result_t nimcp_thread_create(nimcp_thread_t* thread, void* (*start_routine
                                    const thread_attr_t* attr)
 {
     // Validate required parameters
-    // WHY CHECK: pthread_create with NULL thread or start_routine is UB
+    // WHY CHECK: thread_create with NULL thread or start_routine is UB
     if (!thread || !start_routine) {
         set_thread_error(NIMCP_ERROR_INVALID_PARAM, "Invalid thread parameters");
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
-    // Initialize pthread attributes
-    // WHY LOCAL: Attribute object only needed during pthread_create
-    pthread_attr_t pthread_attr;
-    pthread_attr_init(&pthread_attr);
-
-    // Configure attributes if provided
+    // Note: Platform layer doesn't support attributes yet, so we use basic creation
+    // TODO: Add attribute support to platform layer
     if (attr) {
-        // Stack size: Custom size for deep recursion or memory constraints
-        if (attr->stack_size > 0) {
-            pthread_attr_setstacksize(&pthread_attr, attr->stack_size);
-        }
-
-        // Detached: Thread cleans up automatically on exit (no join needed)
-        if (attr->detached) {
-            pthread_attr_setdetachstate(&pthread_attr, PTHREAD_CREATE_DETACHED);
-        }
-
-// Priority: Real-time or background priority (if supported)
-#ifdef _POSIX_PRIORITY_SCHEDULING
-        if (attr->priority > 0) {
-            struct sched_param param;
-            param.sched_priority = attr->priority;
-            pthread_attr_setschedparam(&pthread_attr, &param);
-        }
-#endif
+        // For now, we can only handle basic creation
+        // Stack size, priority, and detached state are not yet supported in platform layer
+        // This is a temporary limitation
     }
 
-    // Create thread with configured attributes
-    int result = pthread_create(thread, &pthread_attr, start_routine, arg);
-
-    // Clean up attribute object (no longer needed after pthread_create)
-    // WHY DESTROY: Free any internal resources allocated by pthread_attr_*
-    pthread_attr_destroy(&pthread_attr);
+    // Create thread using platform abstraction
+    int result = nimcp_platform_thread_create(thread, start_routine, arg);
 
     // Check result and set error if failed
     if (result != 0) {
@@ -830,7 +811,7 @@ nimcp_result_t nimcp_thread_create(nimcp_thread_t* thread, void* (*start_routine
  */
 nimcp_result_t nimcp_thread_join(nimcp_thread_t thread, void** retval)
 {
-    int result = pthread_join(thread, retval);
+    int result = nimcp_platform_thread_join(thread, retval);
     if (result != 0) {
         set_thread_error(NIMCP_ERROR_SYSTEM, "Thread join failed: %s", strerror(result));
         return NIMCP_ERROR_SYSTEM;
@@ -863,7 +844,7 @@ nimcp_result_t nimcp_thread_join(nimcp_thread_t thread, void** retval)
  */
 nimcp_result_t nimcp_thread_detach(nimcp_thread_t thread)
 {
-    int result = pthread_detach(thread);
+    int result = nimcp_platform_thread_detach(thread);
     if (result != 0) {
         set_thread_error(NIMCP_ERROR_SYSTEM, "Thread detach failed: %s", strerror(result));
         return NIMCP_ERROR_SYSTEM;
@@ -913,7 +894,7 @@ void nimcp_thread_exit(void* retval)
  */
 nimcp_thread_t nimcp_thread_self(void)
 {
-    return pthread_self();
+    return nimcp_platform_thread_self();
 }
 
 /**
@@ -1036,30 +1017,26 @@ nimcp_result_t nimcp_mutex_init(nimcp_mutex_t* mutex, const mutex_attr_t* attr)
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
-    pthread_mutexattr_t mutex_attr;
-    pthread_mutexattr_init(&mutex_attr);
-
-    // Translate NIMCP mutex types to pthread types
+    // Translate NIMCP mutex types to platform layer
+    bool recursive = false;
     if (attr) {
-        int type;
+        // Platform layer currently only supports normal and recursive mutexes
+        // ERRORCHECK type falls back to normal
         switch (attr->type) {
             case MUTEX_TYPE_RECURSIVE:
-                type = PTHREAD_MUTEX_RECURSIVE;
+                recursive = true;
                 break;
             case MUTEX_TYPE_ERRORCHECK:
-                type = PTHREAD_MUTEX_ERRORCHECK;
+                // Fall back to normal for now (platform layer doesn't support errorcheck yet)
+                recursive = false;
                 break;
             default:
-                type = PTHREAD_MUTEX_NORMAL;
+                recursive = false;
         }
-        pthread_mutexattr_settype(&mutex_attr, type);
     }
 
-    // Initialize mutex with attributes
-    int result = pthread_mutex_init(mutex, &mutex_attr);
-
-    // Clean up attribute object
-    pthread_mutexattr_destroy(&mutex_attr);
+    // Initialize mutex using platform abstraction
+    int result = nimcp_platform_mutex_init(mutex, recursive);
 
     if (result != 0) {
         set_thread_error(NIMCP_ERROR_SYSTEM, "Mutex initialization failed: %s", strerror(result));
@@ -1097,7 +1074,7 @@ nimcp_result_t nimcp_mutex_destroy(nimcp_mutex_t* mutex)
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
-    int result = pthread_mutex_destroy(mutex);
+    int result = nimcp_platform_mutex_destroy(mutex);
     if (result != 0) {
         set_thread_error(NIMCP_ERROR_SYSTEM, "Mutex destruction failed: %s", strerror(result));
         return NIMCP_ERROR_SYSTEM;
@@ -1140,7 +1117,7 @@ nimcp_result_t nimcp_mutex_lock(nimcp_mutex_t* mutex)
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
-    int result = pthread_mutex_lock(mutex);
+    int result = nimcp_platform_mutex_lock(mutex);
     if (result != 0) {
         set_thread_error(NIMCP_ERROR_SYSTEM, "Mutex lock failed: %s", strerror(result));
         return NIMCP_ERROR_SYSTEM;
@@ -1189,7 +1166,7 @@ nimcp_result_t nimcp_mutex_trylock(nimcp_mutex_t* mutex)
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
-    int result = pthread_mutex_trylock(mutex);
+    int result = nimcp_platform_mutex_trylock(mutex);
 
     // EBUSY means mutex is locked (expected, not error)
     if (result == EBUSY) {
@@ -1231,7 +1208,7 @@ nimcp_result_t nimcp_mutex_unlock(nimcp_mutex_t* mutex)
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
-    int result = pthread_mutex_unlock(mutex);
+    int result = nimcp_platform_mutex_unlock(mutex);
     if (result != 0) {
         set_thread_error(NIMCP_ERROR_SYSTEM, "Mutex unlock failed: %s", strerror(result));
         return NIMCP_ERROR_SYSTEM;
@@ -1271,7 +1248,7 @@ nimcp_result_t nimcp_spinlock_init(nimcp_spinlock_t* lock)
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
-    int result = pthread_mutex_init(lock, NULL);
+    int result = nimcp_platform_mutex_init(lock, false);
     if (result != 0) {
         set_thread_error(NIMCP_ERROR_SYSTEM, "Spinlock initialization failed: %s", strerror(result));
         return NIMCP_ERROR_SYSTEM;
@@ -1304,7 +1281,7 @@ nimcp_result_t nimcp_spinlock_destroy(nimcp_spinlock_t* lock)
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
-    int result = pthread_mutex_destroy(lock);
+    int result = nimcp_platform_mutex_destroy(lock);
     if (result != 0) {
         set_thread_error(NIMCP_ERROR_SYSTEM, "Spinlock destruction failed: %s", strerror(result));
         return NIMCP_ERROR_SYSTEM;
@@ -1343,7 +1320,7 @@ nimcp_result_t nimcp_spinlock_lock(nimcp_spinlock_t* lock)
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
-    int result = pthread_mutex_lock(lock);
+    int result = nimcp_platform_mutex_lock(lock);
     if (result != 0) {
         set_thread_error(NIMCP_ERROR_SYSTEM, "Spinlock lock failed: %s", strerror(result));
         return NIMCP_ERROR_SYSTEM;
@@ -1376,7 +1353,7 @@ nimcp_result_t nimcp_spinlock_unlock(nimcp_spinlock_t* lock)
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
-    int result = pthread_mutex_unlock(lock);
+    int result = nimcp_platform_mutex_unlock(lock);
     if (result != 0) {
         set_thread_error(NIMCP_ERROR_SYSTEM, "Spinlock unlock failed: %s", strerror(result));
         return NIMCP_ERROR_SYSTEM;
@@ -1570,7 +1547,7 @@ nimcp_result_t nimcp_cond_init(nimcp_cond_t* cond)
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
-    int result = pthread_cond_init(cond, NULL);
+    int result = nimcp_platform_cond_init(cond);
     if (result != 0) {
         set_thread_error(NIMCP_ERROR_SYSTEM, "Cond initialization failed: %s", strerror(result));
         return NIMCP_ERROR_SYSTEM;
@@ -1601,7 +1578,7 @@ nimcp_result_t nimcp_cond_destroy(nimcp_cond_t* cond)
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
-    int result = pthread_cond_destroy(cond);
+    int result = nimcp_platform_cond_destroy(cond);
     if (result != 0) {
         set_thread_error(NIMCP_ERROR_SYSTEM, "Cond destruction failed: %s", strerror(result));
         return NIMCP_ERROR_SYSTEM;
@@ -1656,7 +1633,7 @@ nimcp_result_t nimcp_cond_wait(nimcp_cond_t* cond, nimcp_mutex_t* mutex)
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
-    int result = pthread_cond_wait(cond, mutex);
+    int result = nimcp_platform_cond_wait(cond, mutex);
     if (result != 0) {
         set_thread_error(NIMCP_ERROR_SYSTEM, "Cond wait failed: %s", strerror(result));
         return NIMCP_ERROR_SYSTEM;
@@ -1721,22 +1698,8 @@ nimcp_result_t nimcp_cond_timedwait(nimcp_cond_t* cond, nimcp_mutex_t* mutex, ui
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
-    // Get current absolute time
-    struct timespec ts;
-    clock_gettime(CLOCK_REALTIME, &ts);
-
-    // Add timeout (convert milliseconds to seconds and nanoseconds)
-    ts.tv_sec += timeout_ms / 1000;               // Add seconds
-    ts.tv_nsec += (timeout_ms % 1000) * 1000000;  // Add nanoseconds
-
-    // Handle nanosecond overflow
-    // WHY NEEDED: tv_nsec must be in [0, 999999999]
-    if (ts.tv_nsec >= 1000000000) {
-        ts.tv_sec += 1;            // Carry to seconds
-        ts.tv_nsec -= 1000000000;  // Normalize nanoseconds
-    }
-
-    int result = pthread_cond_timedwait(cond, mutex, &ts);
+    // Use platform abstraction for timed wait
+    int result = nimcp_platform_cond_timedwait(cond, mutex, timeout_ms);
 
     // ETIMEDOUT is expected outcome (not error)
     if (result == ETIMEDOUT) {
@@ -1790,7 +1753,7 @@ nimcp_result_t nimcp_cond_signal(nimcp_cond_t* cond)
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
-    int result = pthread_cond_signal(cond);
+    int result = nimcp_platform_cond_signal(cond);
     if (result != 0) {
         set_thread_error(NIMCP_ERROR_SYSTEM, "Cond signal failed: %s", strerror(result));
         return NIMCP_ERROR_SYSTEM;
@@ -1841,7 +1804,7 @@ nimcp_result_t nimcp_cond_broadcast(nimcp_cond_t* cond)
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
-    int result = pthread_cond_broadcast(cond);
+    int result = nimcp_platform_cond_broadcast(cond);
     if (result != 0) {
         set_thread_error(NIMCP_ERROR_SYSTEM, "Cond broadcast failed: %s", strerror(result));
         return NIMCP_ERROR_SYSTEM;
@@ -1997,7 +1960,7 @@ nimcp_result_t nimcp_get_resource_lock(const char* resource_id, nimcp_mutex_t** 
 
     // Acquire bucket mutex (fine-grained lock)
     // WHY BUCKET LOCK: Only blocks threads accessing this specific bucket
-    pthread_mutex_lock(&resource_table.buckets[bucket].bucket_mutex);
+    nimcp_platform_mutex_lock(&resource_table.buckets[bucket].bucket_mutex);
 
     // Search bucket's entry list for resource_id
     resource_entry_t* entry = resource_table.buckets[bucket].entries;
@@ -2006,7 +1969,7 @@ nimcp_result_t nimcp_get_resource_lock(const char* resource_id, nimcp_mutex_t** 
             // FOUND: Resource already exists, increment reference count
             entry->ref_count++;
             *mutex = entry->lock;
-            pthread_mutex_unlock(&resource_table.buckets[bucket].bucket_mutex);
+            nimcp_platform_mutex_unlock(&resource_table.buckets[bucket].bucket_mutex);
             return NIMCP_SUCCESS;
         }
         entry = entry->next;
@@ -2018,7 +1981,7 @@ nimcp_result_t nimcp_get_resource_lock(const char* resource_id, nimcp_mutex_t** 
     // WHY MALLOC: Dynamic number of locks (not known at compile time)
     entry = nimcp_malloc(sizeof(resource_entry_t));
     if (!entry) {
-        pthread_mutex_unlock(&resource_table.buckets[bucket].bucket_mutex);
+        nimcp_platform_mutex_unlock(&resource_table.buckets[bucket].bucket_mutex);
         set_thread_error(NIMCP_ERROR_MEMORY, "Failed to allocate resource entry");
         return NIMCP_ERROR_MEMORY;
     }
@@ -2040,18 +2003,18 @@ nimcp_result_t nimcp_get_resource_lock(const char* resource_id, nimcp_mutex_t** 
         nimcp_free(entry->resource_id);
         nimcp_free(entry->lock);
         nimcp_free(entry);
-        pthread_mutex_unlock(&resource_table.buckets[bucket].bucket_mutex);
+        nimcp_platform_mutex_unlock(&resource_table.buckets[bucket].bucket_mutex);
         set_thread_error(NIMCP_ERROR_MEMORY, "Failed to allocate resource lock");
         return NIMCP_ERROR_MEMORY;
     }
 
-    // Initialize mutex
-    if (pthread_mutex_init(entry->lock, NULL) != 0) {
+    // Initialize mutex using platform abstraction
+    if (nimcp_platform_mutex_init(entry->lock, false) != 0) {
         // Cleanup on init failure
         nimcp_free(entry->resource_id);
         nimcp_free(entry->lock);
         nimcp_free(entry);
-        pthread_mutex_unlock(&resource_table.buckets[bucket].bucket_mutex);
+        nimcp_platform_mutex_unlock(&resource_table.buckets[bucket].bucket_mutex);
         set_thread_error(NIMCP_ERROR_SYSTEM, "Failed to initialize resource mutex");
         return NIMCP_ERROR_SYSTEM;
     }
@@ -2066,7 +2029,7 @@ nimcp_result_t nimcp_get_resource_lock(const char* resource_id, nimcp_mutex_t** 
     // Return mutex to caller
     *mutex = entry->lock;
 
-    pthread_mutex_unlock(&resource_table.buckets[bucket].bucket_mutex);
+    nimcp_platform_mutex_unlock(&resource_table.buckets[bucket].bucket_mutex);
     return NIMCP_SUCCESS;
 }
 
@@ -2132,7 +2095,7 @@ nimcp_result_t nimcp_release_resource_lock(const char* resource_id)
     unsigned int bucket = hash_string(resource_id);
 
     // Acquire bucket mutex
-    pthread_mutex_lock(&resource_table.buckets[bucket].bucket_mutex);
+    nimcp_platform_mutex_lock(&resource_table.buckets[bucket].bucket_mutex);
 
     // Search bucket's entry list for resource_id
     resource_entry_t* entry = resource_table.buckets[bucket].entries;
@@ -2155,8 +2118,8 @@ nimcp_result_t nimcp_release_resource_lock(const char* resource_id)
                     resource_table.buckets[bucket].entries = entry->next;
                 }
 
-                // Destroy mutex (free kernel resources)
-                pthread_mutex_destroy(entry->lock);
+                // Destroy mutex using platform abstraction (free kernel resources)
+                nimcp_platform_mutex_destroy(entry->lock);
 
                 // Free allocated memory
                 nimcp_free(entry->lock);
@@ -2164,7 +2127,7 @@ nimcp_result_t nimcp_release_resource_lock(const char* resource_id)
                 nimcp_free(entry);               // Free entry structure
             }
 
-            pthread_mutex_unlock(&resource_table.buckets[bucket].bucket_mutex);
+            nimcp_platform_mutex_unlock(&resource_table.buckets[bucket].bucket_mutex);
             return NIMCP_SUCCESS;
         }
 
@@ -2174,7 +2137,7 @@ nimcp_result_t nimcp_release_resource_lock(const char* resource_id)
     }
 
     // NOT FOUND: Resource doesn't exist
-    pthread_mutex_unlock(&resource_table.buckets[bucket].bucket_mutex);
+    nimcp_platform_mutex_unlock(&resource_table.buckets[bucket].bucket_mutex);
     return NIMCP_ERROR_NOT_FOUND;
 }
 
@@ -2231,20 +2194,20 @@ void nimcp_thread_cleanup(void)
     }
 
     // Acquire global mutex (table-level protection)
-    pthread_mutex_lock(&resource_table.global_mutex);
+    nimcp_platform_mutex_lock(&resource_table.global_mutex);
 
     // Clean up all buckets
     for (int i = 0; i < RESOURCE_LOCK_BUCKETS; i++) {
         // Acquire bucket mutex
-        pthread_mutex_lock(&resource_table.buckets[i].bucket_mutex);
+        nimcp_platform_mutex_lock(&resource_table.buckets[i].bucket_mutex);
 
         // Free all entries in this bucket
         resource_entry_t* entry = resource_table.buckets[i].entries;
         while (entry) {
             resource_entry_t* next = entry->next;
 
-            // Destroy mutex and free memory
-            pthread_mutex_destroy(entry->lock);
+            // Destroy mutex using platform abstraction and free memory
+            nimcp_platform_mutex_destroy(entry->lock);
             nimcp_free(entry->lock);
             nimcp_free(entry->resource_id);
             nimcp_free(entry);
@@ -2253,13 +2216,13 @@ void nimcp_thread_cleanup(void)
         }
 
         // Release and destroy bucket mutex
-        pthread_mutex_unlock(&resource_table.buckets[i].bucket_mutex);
-        pthread_mutex_destroy(&resource_table.buckets[i].bucket_mutex);
+        nimcp_platform_mutex_unlock(&resource_table.buckets[i].bucket_mutex);
+        nimcp_platform_mutex_destroy(&resource_table.buckets[i].bucket_mutex);
     }
 
     // Release and destroy global mutex
-    pthread_mutex_unlock(&resource_table.global_mutex);
-    pthread_mutex_destroy(&resource_table.global_mutex);
+    nimcp_platform_mutex_unlock(&resource_table.global_mutex);
+    nimcp_platform_mutex_destroy(&resource_table.global_mutex);
 
     // Mark as uninitialized
     resource_table.initialized = false;

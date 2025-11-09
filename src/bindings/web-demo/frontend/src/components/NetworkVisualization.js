@@ -10,9 +10,9 @@
 import React, { useEffect, useRef, useState } from 'react';
 import axios from 'axios';
 
-const API_URL = 'http://localhost:5000/api';
+const API_URL = '/api';
 
-function NetworkVisualization() {
+function NetworkVisualization({ brainInitialized }) {
   const canvasRef = useRef(null);
   const [networkData, setNetworkData] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -26,6 +26,11 @@ function NetworkVisualization() {
   const sceneRef = useRef(null);
 
   useEffect(() => {
+    // Only load Three.js and fetch data if brain is initialized
+    if (!brainInitialized) {
+      return;
+    }
+
     // Load Three.js dynamically
     const script = document.createElement('script');
     script.src = 'https://cdn.jsdelivr.net/npm/three@0.150.0/build/three.min.js';
@@ -40,9 +45,11 @@ function NetworkVisualization() {
       if (animationRef.current) {
         cancelAnimationFrame(animationRef.current);
       }
-      document.body.removeChild(script);
+      if (document.body.contains(script)) {
+        document.body.removeChild(script);
+      }
     };
-  }, []);
+  }, [brainInitialized]);
 
   const fetchNetworkData = async () => {
     setLoading(true);
@@ -317,7 +324,7 @@ function NetworkVisualization() {
           <button
             className="btn btn-small"
             onClick={fetchNetworkData}
-            disabled={loading}
+            disabled={loading || !brainInitialized}
           >
             {loading ? 'Loading...' : '🔄 Refresh'}
           </button>
@@ -330,13 +337,29 @@ function NetworkVisualization() {
                 setShowConnections(e.target.checked);
                 if (networkData) initializeVisualization(networkData);
               }}
+              disabled={!brainInitialized}
             />
             Show Connections
           </label>
         </div>
       </div>
 
-      {error && (
+      {!brainInitialized && (
+        <div className="info-message" style={{
+          background: 'rgba(102, 126, 234, 0.1)',
+          border: '1px solid var(--primary)',
+          borderRadius: '8px',
+          padding: '2rem',
+          margin: '2rem 0',
+          textAlign: 'center'
+        }}>
+          <h3>Brain Not Initialized</h3>
+          <p>Please go to the <strong>Interactive Demo</strong> tab and initialize a brain first.</p>
+          <p>Once initialized, return here to visualize the neural network structure.</p>
+        </div>
+      )}
+
+      {error && brainInitialized && (
         <div className="error-message">
           <span>⚠️ {error}</span>
         </div>

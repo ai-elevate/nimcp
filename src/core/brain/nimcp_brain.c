@@ -1945,6 +1945,12 @@ brain_t brain_create_custom(const brain_config_t* config)
         return NULL;
     }
 
+    // Save initial snapshot if configured
+    if (config->snapshot_dir && config->save_initial_snapshot) {
+        brain_save_snapshot(brain, "initial", "Snapshot at brain creation");
+        // Non-fatal if snapshot fails
+    }
+
     return brain;
 }
 
@@ -1962,6 +1968,12 @@ void brain_destroy(brain_t brain)
 {
     if (!brain)
         return;
+
+    // Save final snapshot if configured (BEFORE destroying anything)
+    if (brain->config.snapshot_dir && brain->config.save_final_snapshot) {
+        brain_save_snapshot(brain, "final", "Snapshot at brain destruction");
+        // Non-fatal if snapshot fails
+    }
 
     // Phase 3: Handle network destruction with reference counting
     if (brain->network) {
@@ -3622,6 +3634,179 @@ brain_t brain_load(const char* filepath)
 
     brain_clear_error();
     return brain;
+}
+
+//=============================================================================
+// Snapshot API - Named State Snapshots
+//=============================================================================
+
+/**
+ * @brief Create snapshot directory if it doesn't exist
+ *
+ * @param snapshot_dir Directory path
+ * @return true on success, false on error
+ */
+static bool ensure_snapshot_dir(const char* snapshot_dir)
+{
+    if (!snapshot_dir) {
+        return false;
+    }
+
+    // Try to create directory (will fail silently if already exists)
+    #ifdef _WIN32
+    _mkdir(snapshot_dir);
+    #else
+    mkdir(snapshot_dir, 0755);
+    #endif
+
+    return true;
+}
+
+/**
+ * @brief Get default snapshot directory
+ *
+ * @param brain Brain instance
+ * @return Snapshot directory path
+ */
+static const char* get_snapshot_dir(brain_t brain)
+{
+    if (brain->config.snapshot_dir) {
+        return brain->config.snapshot_dir;
+    }
+    return "./snapshots";  // Default
+}
+
+bool brain_save_snapshot(brain_t brain, const char* name, const char* description)
+{
+    // Guard: Validate parameters
+    if (!brain || !name) {
+        set_error("Invalid parameters to brain_save_snapshot");
+        return false;
+    }
+
+    // Ensure snapshot directory exists
+    const char* snapshot_dir = get_snapshot_dir(brain);
+    if (!ensure_snapshot_dir(snapshot_dir)) {
+        set_error("Failed to create snapshot directory: %s", snapshot_dir);
+        return false;
+    }
+
+    // Generate snapshot filename with timestamp
+    time_t now = time(NULL);
+    char snapshot_path[1024];
+    snprintf(snapshot_path, sizeof(snapshot_path), "%s/%s_%ld.snapshot",
+             snapshot_dir, name, (long)now);
+
+    // Save brain state to snapshot file
+    if (!brain_save(brain, snapshot_path)) {
+        set_error("Failed to save snapshot to %s", snapshot_path);
+        return false;
+    }
+
+    // Save snapshot metadata
+    char meta_path[1024];
+    snprintf(meta_path, sizeof(meta_path), "%s/%s_%ld.snapshot.info",
+             snapshot_dir, name, (long)now);
+    FILE* meta_file = fopen(meta_path, "w");
+    if (meta_file) {
+        fprintf(meta_file, "name=%s\n", name);
+        fprintf(meta_file, "timestamp=%ld\n", (long)now);
+        if (description) {
+            fprintf(meta_file, "description=%s\n", description);
+        }
+        fprintf(meta_file, "compressed=%d\n", brain->config.compress_snapshots ? 1 : 0);
+        fprintf(meta_file, "encrypted=%d\n", brain->config.encrypt_snapshots ? 1 : 0);
+        fclose(meta_file);
+    }
+
+    brain_clear_error();
+    return true;
+}
+
+brain_t brain_restore_snapshot(brain_t brain, const char* name)
+{
+    // Guard: Validate parameters
+    if (!name) {
+        set_error("Null snapshot name provided");
+        return NULL;
+    }
+
+    // If brain provided, get its snapshot directory
+    const char* snapshot_dir = brain ? get_snapshot_dir(brain) : "./snapshots";
+
+    // Find most recent snapshot with this name
+    // For now, user must provide full filename or we assume latest
+    char snapshot_path[1024];
+    snprintf(snapshot_path, sizeof(snapshot_path), "%s/%s", snapshot_dir, name);
+
+    // Load brain from snapshot
+    brain_t loaded_brain = brain_load(snapshot_path);
+    if (!loaded_brain) {
+        set_error("Failed to load snapshot: %s", snapshot_path);
+        return NULL;
+    }
+
+    // If brain provided, we'd need to copy state into it
+    // For now, return new brain instance
+    if (brain) {
+        fprintf(stderr, "WARNING: In-place restore not yet implemented, returning new brain instance\n");
+    }
+
+    brain_clear_error();
+    return loaded_brain;
+}
+
+bool brain_list_snapshots(brain_t brain, brain_snapshot_info_t* infos,
+                         uint32_t max_count, uint32_t* out_count)
+{
+    // Guard: Validate parameters
+    if (!brain || !infos || !out_count) {
+        set_error("Invalid parameters to brain_list_snapshots");
+        return false;
+    }
+
+    *out_count = 0;
+    // TODO: Implement directory scanning to enumerate snapshots
+
+    brain_clear_error();
+    return true;
+}
+
+bool brain_delete_snapshot(brain_t brain, const char* name)
+{
+    // Guard: Validate parameters
+    if (!brain || !name) {
+        set_error("Invalid parameters to brain_delete_snapshot");
+        return false;
+    }
+
+    const char* snapshot_dir = get_snapshot_dir(brain);
+
+    // Delete snapshot file
+    char snapshot_path[1024];
+    snprintf(snapshot_path, sizeof(snapshot_path), "%s/%s", snapshot_dir, name);
+
+    if (remove(snapshot_path) != 0) {
+        set_error("Failed to delete snapshot: %s", snapshot_path);
+        return false;
+    }
+
+    // Delete metadata file if it exists
+    char meta_path[1024];
+    snprintf(meta_path, sizeof(meta_path), "%s.info", snapshot_path);
+    remove(meta_path);  // Ignore error
+
+    // Delete .meta file if it exists
+    snprintf(meta_path, sizeof(meta_path), "%s.meta", snapshot_path);
+    remove(meta_path);  // Ignore error
+
+    // Delete .knowledge file if it exists
+    char knowledge_path[1024];
+    snprintf(knowledge_path, sizeof(knowledge_path), "%s.knowledge", snapshot_path);
+    remove(knowledge_path);  // Ignore error
+
+    brain_clear_error();
+    return true;
 }
 
 /**

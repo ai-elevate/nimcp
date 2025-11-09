@@ -459,11 +459,59 @@
 #include "utils/validation/nimcp_validate.h"
 #include <ctype.h>
 #include <math.h>
+#include <stdarg.h>
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
 #include "utils/logging/nimcp_logging.h"
 #include "utils/memory/nimcp_memory.h"  // CRITICAL: Declares nimcp_calloc/nimcp_free return types
+
+//=============================================================================
+// Global Error Tracking
+//=============================================================================
+
+// Thread-local error information (global for now, could be made thread-local later)
+static nimcp_error_info_t g_last_error = {
+    .code = NIMCP_SUCCESS,
+    .message = {0}
+};
+
+/**
+ * @brief Get last error information
+ * @param info Pointer to error info structure to fill
+ */
+void nimcp_get_error_info(nimcp_error_info_t* info) {
+    if (info) {
+        *info = g_last_error;
+    }
+}
+
+/**
+ * @brief Set error information with printf-style formatting
+ * @param code Error code
+ * @param format Printf-style format string
+ * @param ... Variable arguments for format string
+ */
+void nimcp_set_error_info(nimcp_result_t code, const char* format, ...) {
+    g_last_error.code = code;
+    if (format) {
+        va_list args;
+        va_start(args, format);
+        vsnprintf(g_last_error.message, NIMCP_MAX_ERROR_LENGTH, format, args);
+        va_end(args);
+        g_last_error.message[NIMCP_MAX_ERROR_LENGTH - 1] = '\0';
+    } else {
+        g_last_error.message[0] = '\0';
+    }
+}
+
+/**
+ * @brief Clear current error state
+ */
+void nimcp_clear_error(void) {
+    g_last_error.code = NIMCP_SUCCESS;
+    g_last_error.message[0] = '\0';
+}
 
 //=============================================================================
 // Internal Helper Function Prototypes

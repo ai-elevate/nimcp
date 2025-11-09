@@ -1,7 +1,6 @@
 #ifndef NIMCP_QUEUE_H
 #define NIMCP_QUEUE_H
 
-#include <pthread.h>
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>

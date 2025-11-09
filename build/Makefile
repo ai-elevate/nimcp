@@ -328,6 +328,19 @@ pink_noise_tests/fast:
 .PHONY : pink_noise_tests/fast
 
 #=============================================================================
+# Target rules for targets named epistemic_filter_tests
+
+# Build rule for target.
+epistemic_filter_tests: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 epistemic_filter_tests
+.PHONY : epistemic_filter_tests
+
+# fast build rule for target.
+epistemic_filter_tests/fast:
+	$(MAKE) $(MAKESILENT) -f src/tests/CMakeFiles/epistemic_filter_tests.dir/build.make src/tests/CMakeFiles/epistemic_filter_tests.dir/build
+.PHONY : epistemic_filter_tests/fast
+
+#=============================================================================
 # Target rules for targets named cognitive_tests
 
 # Build rule for target.
@@ -391,6 +404,45 @@ integration_tests: cmake_check_build_system
 integration_tests/fast:
 	$(MAKE) $(MAKESILENT) -f src/tests/CMakeFiles/integration_tests.dir/build.make src/tests/CMakeFiles/integration_tests.dir/build
 .PHONY : integration_tests/fast
+
+#=============================================================================
+# Target rules for targets named simple_demo
+
+# Build rule for target.
+simple_demo: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 simple_demo
+.PHONY : simple_demo
+
+# fast build rule for target.
+simple_demo/fast:
+	$(MAKE) $(MAKESILENT) -f examples/CMakeFiles/simple_demo.dir/build.make examples/CMakeFiles/simple_demo.dir/build
+.PHONY : simple_demo/fast
+
+#=============================================================================
+# Target rules for targets named working_memory_integration_demo
+
+# Build rule for target.
+working_memory_integration_demo: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 working_memory_integration_demo
+.PHONY : working_memory_integration_demo
+
+# fast build rule for target.
+working_memory_integration_demo/fast:
+	$(MAKE) $(MAKESILENT) -f examples/CMakeFiles/working_memory_integration_demo.dir/build.make examples/CMakeFiles/working_memory_integration_demo.dir/build
+.PHONY : working_memory_integration_demo/fast
+
+#=============================================================================
+# Target rules for targets named working_memory_public_api_demo
+
+# Build rule for target.
+working_memory_public_api_demo: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 working_memory_public_api_demo
+.PHONY : working_memory_public_api_demo
+
+# fast build rule for target.
+working_memory_public_api_demo/fast:
+	$(MAKE) $(MAKESILENT) -f examples/CMakeFiles/working_memory_public_api_demo.dir/build.make examples/CMakeFiles/working_memory_public_api_demo.dir/build
+.PHONY : working_memory_public_api_demo/fast
 
 #=============================================================================
 # Target rules for targets named event_demo
@@ -601,6 +653,32 @@ multimodal_integration_demo/fast:
 .PHONY : multimodal_integration_demo/fast
 
 #=============================================================================
+# Target rules for targets named speech_cortex_demo
+
+# Build rule for target.
+speech_cortex_demo: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 speech_cortex_demo
+.PHONY : speech_cortex_demo
+
+# fast build rule for target.
+speech_cortex_demo/fast:
+	$(MAKE) $(MAKESILENT) -f examples/CMakeFiles/speech_cortex_demo.dir/build.make examples/CMakeFiles/speech_cortex_demo.dir/build
+.PHONY : speech_cortex_demo/fast
+
+#=============================================================================
+# Target rules for targets named phase8_comprehensive_demo
+
+# Build rule for target.
+phase8_comprehensive_demo: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 phase8_comprehensive_demo
+.PHONY : phase8_comprehensive_demo
+
+# fast build rule for target.
+phase8_comprehensive_demo/fast:
+	$(MAKE) $(MAKESILENT) -f examples/CMakeFiles/phase8_comprehensive_demo.dir/build.make examples/CMakeFiles/phase8_comprehensive_demo.dir/build
+.PHONY : phase8_comprehensive_demo/fast
+
+#=============================================================================
 # Target rules for targets named gpu_integration_test
 
 # Build rule for target.
@@ -612,6 +690,71 @@ gpu_integration_test: cmake_check_build_system
 gpu_integration_test/fast:
 	$(MAKE) $(MAKESILENT) -f examples/CMakeFiles/gpu_integration_test.dir/build.make examples/CMakeFiles/gpu_integration_test.dir/build
 .PHONY : gpu_integration_test/fast
+
+#=============================================================================
+# Target rules for targets named test_neural_logic
+
+# Build rule for target.
+test_neural_logic: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test_neural_logic
+.PHONY : test_neural_logic
+
+# fast build rule for target.
+test_neural_logic/fast:
+	$(MAKE) $(MAKESILENT) -f examples/CMakeFiles/test_neural_logic.dir/build.make examples/CMakeFiles/test_neural_logic.dir/build
+.PHONY : test_neural_logic/fast
+
+#=============================================================================
+# Target rules for targets named cow_inference_server
+
+# Build rule for target.
+cow_inference_server: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 cow_inference_server
+.PHONY : cow_inference_server
+
+# fast build rule for target.
+cow_inference_server/fast:
+	$(MAKE) $(MAKESILENT) -f examples/CMakeFiles/cow_inference_server.dir/build.make examples/CMakeFiles/cow_inference_server.dir/build
+.PHONY : cow_inference_server/fast
+
+#=============================================================================
+# Target rules for targets named cow_snapshot_learning
+
+# Build rule for target.
+cow_snapshot_learning: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 cow_snapshot_learning
+.PHONY : cow_snapshot_learning
+
+# fast build rule for target.
+cow_snapshot_learning/fast:
+	$(MAKE) $(MAKESILENT) -f examples/CMakeFiles/cow_snapshot_learning.dir/build.make examples/CMakeFiles/cow_snapshot_learning.dir/build
+.PHONY : cow_snapshot_learning/fast
+
+#=============================================================================
+# Target rules for targets named cow_ab_testing
+
+# Build rule for target.
+cow_ab_testing: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 cow_ab_testing
+.PHONY : cow_ab_testing
+
+# fast build rule for target.
+cow_ab_testing/fast:
+	$(MAKE) $(MAKESILENT) -f examples/CMakeFiles/cow_ab_testing.dir/build.make examples/CMakeFiles/cow_ab_testing.dir/build
+.PHONY : cow_ab_testing/fast
+
+#=============================================================================
+# Target rules for targets named distributed_cow_demo
+
+# Build rule for target.
+distributed_cow_demo: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 distributed_cow_demo
+.PHONY : distributed_cow_demo
+
+# fast build rule for target.
+distributed_cow_demo/fast:
+	$(MAKE) $(MAKESILENT) -f examples/CMakeFiles/distributed_cow_demo.dir/build.make examples/CMakeFiles/distributed_cow_demo.dir/build
+.PHONY : distributed_cow_demo/fast
 
 # Help Target
 help:
@@ -630,6 +773,11 @@ help:
 	@echo "... brain_probe_demo"
 	@echo "... cognitive_tests"
 	@echo "... core_tests"
+	@echo "... cow_ab_testing"
+	@echo "... cow_inference_server"
+	@echo "... cow_snapshot_learning"
+	@echo "... distributed_cow_demo"
+	@echo "... epistemic_filter_tests"
 	@echo "... ethics_demo"
 	@echo "... event_demo"
 	@echo "... fractal_network_demo"
@@ -651,15 +799,21 @@ help:
 	@echo "... nimcp_python"
 	@echo "... nlp_integration_demo"
 	@echo "... nlp_integration_test"
+	@echo "... phase8_comprehensive_demo"
 	@echo "... pink_noise_tests"
 	@echo "... plasticity_tests"
 	@echo "... programmable_synapses_demo"
+	@echo "... simple_demo"
+	@echo "... speech_cortex_demo"
+	@echo "... test_neural_logic"
 	@echo "... test_phase3"
 	@echo "... test_phase4"
 	@echo "... test_pink_weights"
 	@echo "... topology_integration_tests"
 	@echo "... topology_tests"
 	@echo "... utility_tests"
+	@echo "... working_memory_integration_demo"
+	@echo "... working_memory_public_api_demo"
 .PHONY : help
 
 

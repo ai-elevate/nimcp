@@ -104,7 +104,7 @@ TEST(KnowledgeLearningIntegration, NetworkLearnStoreRetrieve)
     bool retrieved = knowledge_retrieve(knowledge, "cat", &item);
     EXPECT_TRUE(retrieved);
     if (retrieved) {
-        EXPECT_STREQ(item.concept, "cat");
+        EXPECT_STREQ(item.concept_name, "cat");
     }
     EXPECT_GT(item.confidence, 0.0f);
 
@@ -312,7 +312,7 @@ TEST(KnowledgeLearningIntegration, ReinforcedLearning)
 
     // SCENARIO: Repeated exposure strengthens learning
 
-    const char* concept = "important_fact";
+    const char* concept_name = "important_fact";
 
     // First exposure
     knowledge_learn_from_text(knowledge, "Water is essential for life", KNOWLEDGE_DOMAIN_SCIENCE);

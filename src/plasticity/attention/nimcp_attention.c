@@ -116,37 +116,6 @@ static void matmul_mv(const float* matrix, const float* vector,
 }
 
 /**
- * WHAT: Compute dot product of two vectors
- * WHY:  Needed for attention score computation
- * @param a First vector [n]
- * @param b Second vector [n]
- * @param n Vector length
- * @return Dot product value
- * PERFORMANCE: ~O(n), SIMD-friendly
- * SRP: Only computes dot product
- */
-static float dot_product(const float* a, const float* b, uint32_t n)
-{
-    /* WHAT: Guard clause for NULL
-     * WHY:  Early return prevents nested if
-     */
-    if (!a || !b) {
-        return 0.0f;
-    }
-
-    float sum = 0.0f;
-
-    /* WHAT: Accumulate products
-     * WHY:  dot(a,b) = sum(a[i] * b[i])
-     */
-    for (uint32_t i = 0; i < n; i++) {
-        sum += a[i] * b[i];
-    }
-
-    return sum;
-}
-
-/**
  * WHAT: Apply softmax to vector in-place
  * WHY:  Convert attention scores to probability distribution
  * @param vector Vector to softmax [n]
@@ -332,7 +301,7 @@ static void compute_attention_scores(const float* query,
 
     for (uint32_t i = 0; i < seq_len; i++) {
         const float* key = keys + (i * key_dim);
-        scores[i] = dot_product(query, key, key_dim) * scale;
+        scores[i] = nimcp_vector_dot_product(query, key, key_dim) * scale;
     }
 }
 

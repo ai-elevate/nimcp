@@ -30,7 +30,7 @@ TEST(ConvolutionTest, CreateConvLayer) {
         .kernel_size = 3,
         .stride = 1,
         .padding = 1,
-        .activation = ACTIVATION_RELU
+        .activation = VISUAL_ACTIVATION_RELU
     };
 
     conv_layer_t* layer = conv_layer_create(&config);
@@ -52,7 +52,7 @@ TEST(ConvolutionTest, InvalidConfig) {
         .kernel_size = 3,
         .stride = 1,
         .padding = 1,
-        .activation = ACTIVATION_RELU
+        .activation = VISUAL_ACTIVATION_RELU
     };
 
     conv_layer_t* layer = conv_layer_create(&config);
@@ -69,7 +69,7 @@ TEST(ConvolutionTest, SimpleConvolution) {
         .kernel_size = 2,
         .stride = 1,
         .padding = 0,
-        .activation = ACTIVATION_NONE
+        .activation = VISUAL_ACTIVATION_NONE
     };
 
     conv_layer_t* layer = conv_layer_create(&config);
@@ -109,7 +109,7 @@ TEST(ConvolutionTest, ReLUActivation) {
         .kernel_size = 2,
         .stride = 1,
         .padding = 0,
-        .activation = ACTIVATION_RELU
+        .activation = VISUAL_ACTIVATION_RELU
     };
 
     conv_layer_t* layer = conv_layer_create(&config);
@@ -202,7 +202,11 @@ TEST(VisualCortexTest, CreateDestroy) {
         .num_v1_filters = 16,
         .feature_dim = 128,
         .enable_attention = true,
-        .enable_memory = true
+        .enable_memory = true,
+        .enable_fractal_topology = false,
+        .hub_ratio = 0.15f,
+        .power_law_gamma = -2.1f,
+        .internal_neurons = 160
     };
 
     visual_cortex_t* cortex = visual_cortex_create(&config);
@@ -218,7 +222,11 @@ TEST(VisualCortexTest, ProcessGrayscaleImage) {
         .num_v1_filters = 8,
         .feature_dim = 64,
         .enable_attention = false,
-        .enable_memory = false
+        .enable_memory = false,
+        .enable_fractal_topology = false,
+        .hub_ratio = 0.15f,
+        .power_law_gamma = -2.1f,
+        .internal_neurons = 80
     };
 
     visual_cortex_t* cortex = visual_cortex_create(&config);
@@ -257,7 +265,11 @@ TEST(VisualCortexTest, EdgeDetection) {
         .num_v1_filters = 8,
         .feature_dim = 32,
         .enable_attention = false,
-        .enable_memory = false
+        .enable_memory = false,
+        .enable_fractal_topology = false,
+        .hub_ratio = 0.15f,
+        .power_law_gamma = -2.1f,
+        .internal_neurons = 80
     };
 
     visual_cortex_t* cortex = visual_cortex_create(&config);
@@ -349,7 +361,11 @@ TEST(VisualAttentionTest, SalienceMap) {
         .num_v1_filters = 8,
         .feature_dim = 64,
         .enable_attention = true,
-        .enable_memory = false
+        .enable_memory = false,
+        .enable_fractal_topology = false,
+        .hub_ratio = 0.15f,
+        .power_law_gamma = -2.1f,
+        .internal_neurons = 80
     };
 
     visual_cortex_t* cortex = visual_cortex_create(&config);
@@ -393,7 +409,11 @@ TEST(VisualMemoryTest, StoreAndRecall) {
         .num_v1_filters = 4,
         .feature_dim = 32,
         .enable_attention = false,
-        .enable_memory = true
+        .enable_memory = true,
+        .enable_fractal_topology = false,
+        .hub_ratio = 0.15f,
+        .power_law_gamma = -2.1f,
+        .internal_neurons = 40
     };
 
     visual_cortex_t* cortex = visual_cortex_create(&config);
@@ -439,7 +459,11 @@ TEST(VisualCortexIntegration, FullPipeline) {
         .num_v1_filters = 16,
         .feature_dim = 128,
         .enable_attention = true,
-        .enable_memory = true
+        .enable_memory = true,
+        .enable_fractal_topology = false,
+        .hub_ratio = 0.15f,
+        .power_law_gamma = -2.1f,
+        .internal_neurons = 160
     };
 
     visual_cortex_t* cortex = visual_cortex_create(&config);
@@ -484,7 +508,11 @@ TEST(VisualCortexPerformance, ProcessingSpeed) {
         .num_v1_filters = 32,
         .feature_dim = 256,
         .enable_attention = false,
-        .enable_memory = false
+        .enable_memory = false,
+        .enable_fractal_topology = false,
+        .hub_ratio = 0.15f,
+        .power_law_gamma = -2.1f,
+        .internal_neurons = 320
     };
 
     visual_cortex_t* cortex = visual_cortex_create(&config);
@@ -536,7 +564,11 @@ TEST(VisualCortexValidation, InvalidDimensions) {
         .num_v1_filters = 8,
         .feature_dim = 64,
         .enable_attention = false,
-        .enable_memory = false
+        .enable_memory = false,
+        .enable_fractal_topology = false,
+        .hub_ratio = 0.15f,
+        .power_law_gamma = -2.1f,
+        .internal_neurons = 80
     };
 
     visual_cortex_t* cortex = visual_cortex_create(&config);

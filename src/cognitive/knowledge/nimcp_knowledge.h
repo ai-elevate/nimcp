@@ -71,7 +71,7 @@ typedef struct knowledge_system_struct* knowledge_system_t;
  * @brief A piece of knowledge
  */
 typedef struct {
-    char concept[256];         /**< Main concept */
+    char concept_name[256];    /**< Main concept (renamed from 'concept' for C++20 compatibility) */
     knowledge_domain_t domain; /**< Which domain */
     char definition[1024];     /**< What it means */
     char context[512];         /**< When/where/why relevant */
@@ -240,7 +240,7 @@ bool knowledge_learn_from_demonstration(knowledge_system_t system, const char* w
  * @param item Output knowledge item
  * @return true if found
  */
-bool knowledge_retrieve(knowledge_system_t system, const char* concept, knowledge_item_t* item);
+bool knowledge_retrieve(knowledge_system_t system, const char* concept_str, knowledge_item_t* item);
 
 /**
  * @brief Understand concept in context
@@ -254,7 +254,7 @@ bool knowledge_retrieve(knowledge_system_t system, const char* concept, knowledg
  * @param max_length Max explanation length
  * @return Length of explanation
  */
-uint32_t knowledge_understand(knowledge_system_t system, const char* concept, const char* context,
+uint32_t knowledge_understand(knowledge_system_t system, const char* concept_str, const char* context,
                               char* explanation, uint32_t max_length);
 
 /**
@@ -269,7 +269,7 @@ uint32_t knowledge_understand(knowledge_system_t system, const char* concept, co
  * @param max_length Max length
  * @return Length of explanation
  */
-uint32_t knowledge_explain_simply(knowledge_system_t system, const char* concept,
+uint32_t knowledge_explain_simply(knowledge_system_t system, const char* concept_str,
                                   uint32_t target_age, char* explanation, uint32_t max_length);
 
 //=============================================================================
@@ -287,7 +287,7 @@ uint32_t knowledge_explain_simply(knowledge_system_t system, const char* concept
  * @param max_connections Maximum connections
  * @return Number of connections found
  */
-uint32_t knowledge_find_connections(knowledge_system_t system, const char* concept,
+uint32_t knowledge_find_connections(knowledge_system_t system, const char* concept_str,
                                     knowledge_item_t* connections, uint32_t max_connections);
 
 /**
@@ -335,7 +335,7 @@ bool knowledge_build_on(knowledge_system_t system, const char* new_concept,
  * @param new_example New example of concept
  * @return true on success
  */
-bool knowledge_reinforce(knowledge_system_t system, const char* concept, const char* new_example);
+bool knowledge_reinforce(knowledge_system_t system, const char* concept_str, const char* new_example);
 
 //=============================================================================
 // Knowledge Organization

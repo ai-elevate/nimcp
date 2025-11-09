@@ -59,6 +59,7 @@
 /home/bbrelin/nimcp/build/src/tests/CMakeFiles/topology_tests.dir
 /home/bbrelin/nimcp/build/src/tests/CMakeFiles/topology_integration_tests.dir
 /home/bbrelin/nimcp/build/src/tests/CMakeFiles/pink_noise_tests.dir
+/home/bbrelin/nimcp/build/src/tests/CMakeFiles/epistemic_filter_tests.dir
 /home/bbrelin/nimcp/build/src/tests/CMakeFiles/cognitive_tests.dir
 /home/bbrelin/nimcp/build/src/tests/CMakeFiles/networking_tests.dir
 /home/bbrelin/nimcp/build/src/tests/CMakeFiles/io_tests.dir
@@ -71,6 +72,9 @@
 /home/bbrelin/nimcp/build/src/tests/CMakeFiles/install.dir
 /home/bbrelin/nimcp/build/src/tests/CMakeFiles/install/local.dir
 /home/bbrelin/nimcp/build/src/tests/CMakeFiles/install/strip.dir
+/home/bbrelin/nimcp/build/examples/CMakeFiles/simple_demo.dir
+/home/bbrelin/nimcp/build/examples/CMakeFiles/working_memory_integration_demo.dir
+/home/bbrelin/nimcp/build/examples/CMakeFiles/working_memory_public_api_demo.dir
 /home/bbrelin/nimcp/build/examples/CMakeFiles/event_demo.dir
 /home/bbrelin/nimcp/build/examples/CMakeFiles/brain_demo.dir
 /home/bbrelin/nimcp/build/examples/CMakeFiles/ethics_demo.dir
@@ -87,7 +91,14 @@
 /home/bbrelin/nimcp/build/examples/CMakeFiles/test_phase4.dir
 /home/bbrelin/nimcp/build/examples/CMakeFiles/full_system_integration_test.dir
 /home/bbrelin/nimcp/build/examples/CMakeFiles/multimodal_integration_demo.dir
+/home/bbrelin/nimcp/build/examples/CMakeFiles/speech_cortex_demo.dir
+/home/bbrelin/nimcp/build/examples/CMakeFiles/phase8_comprehensive_demo.dir
 /home/bbrelin/nimcp/build/examples/CMakeFiles/gpu_integration_test.dir
+/home/bbrelin/nimcp/build/examples/CMakeFiles/test_neural_logic.dir
+/home/bbrelin/nimcp/build/examples/CMakeFiles/cow_inference_server.dir
+/home/bbrelin/nimcp/build/examples/CMakeFiles/cow_snapshot_learning.dir
+/home/bbrelin/nimcp/build/examples/CMakeFiles/cow_ab_testing.dir
+/home/bbrelin/nimcp/build/examples/CMakeFiles/distributed_cow_demo.dir
 /home/bbrelin/nimcp/build/examples/CMakeFiles/test.dir
 /home/bbrelin/nimcp/build/examples/CMakeFiles/edit_cache.dir
 /home/bbrelin/nimcp/build/examples/CMakeFiles/rebuild_cache.dir

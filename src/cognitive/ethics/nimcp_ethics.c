@@ -36,6 +36,10 @@
 #include "utils/time/nimcp_time.h"
 #include "utils/logging/nimcp_logging.h"
 
+// Phase 10.3: Emotional working memory integration
+#include "cognitive/nimcp_working_memory.h"
+#include "cognitive/nimcp_emotional_tagging.h"
+
 //=============================================================================
 // Constants and Configuration
 //=============================================================================
@@ -166,6 +170,9 @@ struct empathy_network_struct {
     uint32_t num_agents;
     float* emotional_states;
     uint32_t num_emotions;
+
+    // Phase 10.3: Reference to main brain for emotional working memory access
+    brain_t main_brain;  /**< Main brain instance for working memory access */
 };
 
 //=============================================================================
@@ -1216,6 +1223,76 @@ empathy_state_extended_t empathy_network_simulate_agent(empathy_network_t networ
         state.impact_magnitude = decision->output_vector[3];
         state.uncertainty = decision->output_vector[4];
         brain_free_decision(decision);
+    }
+
+    /* =========================================================================
+     * PHASE 10.3: Emotional working memory modulation of empathy
+     * =========================================================================
+     * WHAT: Retrieve emotional context from working memory to modulate empathy
+     * WHY:  Recent emotional experiences bias perspective-taking ability
+     * HOW:  High arousal → impaired empathy, emotional congruence → enhanced empathy
+     *
+     * BIOLOGICAL BASIS:
+     * - Emotional congruence: Same emotional state enhances empathy (Singer & Lamm, 2009)
+     * - Emotional flooding: High arousal impairs perspective-taking accuracy
+     * - Affective empathy vs cognitive empathy: Emotions modulate both pathways
+     */
+    if (network->main_brain) {
+        working_memory_t* wm = brain_get_working_memory(network->main_brain);
+
+        if (wm && working_memory_get_size(wm) > 0) {
+            /* WHAT: Extract emotional context from working memory */
+            float max_arousal = 0.0f;
+            float avg_valence = 0.0f;
+            uint32_t emotional_count = 0;
+            uint32_t wm_size = working_memory_get_size(wm);
+
+            /* WHAT: Aggregate recent emotional experiences */
+            for (uint32_t i = 0; i < wm_size && i < 7; i++) {  // Miller's 7±2 limit
+                emotional_tag_t emotion;
+                if (working_memory_get_emotion(wm, i, &emotion) && emotion.intensity > 0.3f) {
+                    if (emotion.arousal > max_arousal) {
+                        max_arousal = emotion.arousal;
+                    }
+                    avg_valence += emotion.valence;
+                    emotional_count++;
+                }
+            }
+
+            if (emotional_count > 0) {
+                avg_valence /= emotional_count;
+
+                /* WHAT: High arousal impairs empathetic accuracy */
+                /* WHY:  Emotional flooding reduces cognitive empathy (Decety & Cowell, 2014) */
+                /* HOW:  Increase uncertainty and reduce magnitude for high arousal */
+                if (max_arousal > 0.6f) {
+                    state.uncertainty += (max_arousal - 0.6f) * 0.5f;  // Up to +0.2 uncertainty
+                    if (state.uncertainty > 1.0f) state.uncertainty = 1.0f;
+
+                    // Emotional flooding reduces empathetic accuracy
+                    state.impact_magnitude *= (1.0f - (max_arousal - 0.6f) * 0.3f);  // Up to 12% reduction
+                }
+
+                /* WHAT: Emotional congruence enhances empathy */
+                /* WHY:  Similar emotional states increase affective empathy */
+                /* HOW:  If our emotional valence matches the predicted impact, boost confidence */
+                float emotional_congruence = 1.0f - fabsf(avg_valence - state.emotional_valence);
+                if (emotional_congruence > 0.7f) {
+                    // High congruence: reduce uncertainty, boost magnitude
+                    state.uncertainty *= 0.8f;  // 20% reduction in uncertainty
+                    state.impact_magnitude *= 1.1f;  // 10% boost to empathetic accuracy
+                    if (state.impact_magnitude > 1.0f) state.impact_magnitude = 1.0f;
+                }
+
+                /* WHAT: Emotional incongruence impairs empathy */
+                /* WHY:  Opposite emotional states reduce perspective-taking accuracy */
+                /* HOW:  If emotional states oppose, increase uncertainty */
+                if (emotional_congruence < 0.3f) {
+                    state.uncertainty += 0.1f;  // Increased uncertainty
+                    if (state.uncertainty > 1.0f) state.uncertainty = 1.0f;
+                }
+            }
+        }
     }
 
     state.agent_id = agent;

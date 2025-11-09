@@ -7,6 +7,7 @@
 #include "networking/p2p/nimcp_p2pnode.h"
 #include "networking/protocol/nimcp_protocol.h"
 #include "glial/integration/nimcp_glial_integration.h"
+#include "include/nimcp.h"
 
 // Exception types
 extern PyObject* NIMCPError;
@@ -15,6 +16,7 @@ extern PyObject* ProtocolError;
 extern PyObject* NodeError;
 
 // Type objects
+extern PyTypeObject BrainType;
 extern PyTypeObject NeuralNetworkType;
 extern PyTypeObject P2PNodeType;
 extern PyTypeObject NetworkConfigType;
@@ -22,6 +24,10 @@ extern PyTypeObject NodeConfigType;
 extern PyTypeObject GlialIntegrationType;
 
 // Custom types definitions
+typedef struct {
+    PyObject_HEAD nimcp_brain_t brain;
+} BrainObject;
+
 typedef struct {
     PyObject_HEAD neural_network_t network;
 } NeuralNetworkObject;

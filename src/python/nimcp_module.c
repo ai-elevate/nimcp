@@ -15,9 +15,14 @@ static PyMethodDef nimcp_methods[] = {
     {NULL, NULL, 0, NULL}};
 
 // Module definition
-static struct PyModuleDef nimcp_module = {PyModuleDef_HEAD_INIT, "nimcp",
-                                          "Neural Interface Message Communication Protocol", -1,
-                                          nimcp_methods};
+static struct PyModuleDef nimcp_module = {
+    PyModuleDef_HEAD_INIT,
+    .m_name = "nimcp",
+    .m_doc = "Neural Interface Message Communication Protocol",
+    .m_size = -1,
+    .m_methods = nimcp_methods,
+    .m_slots = NULL
+};
 
 // Module initialization
 PyMODINIT_FUNC PyInit_nimcp(void)
@@ -25,6 +30,8 @@ PyMODINIT_FUNC PyInit_nimcp(void)
     PyObject* m;
 
     // Initialize types
+    if (PyType_Ready(&BrainType) < 0)
+        return NULL;
     if (PyType_Ready(&NeuralNetworkType) < 0)
         return NULL;
     if (PyType_Ready(&P2PNodeType) < 0)
@@ -47,6 +54,8 @@ PyMODINIT_FUNC PyInit_nimcp(void)
     NodeError = PyErr_NewException("nimcp.NodeError", NIMCPError, NULL);
 
     // Add types to module
+    Py_INCREF(&BrainType);
+    PyModule_AddObject(m, "Brain", (PyObject*) &BrainType);
     Py_INCREF(&NeuralNetworkType);
     PyModule_AddObject(m, "NeuralNetwork", (PyObject*) &NeuralNetworkType);
     Py_INCREF(&P2PNodeType);

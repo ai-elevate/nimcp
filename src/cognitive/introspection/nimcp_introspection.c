@@ -39,6 +39,10 @@
 #include "utils/time/nimcp_time.h"
 #include "utils/containers/nimcp_vector.h"
 
+// Phase 10.3: Emotional working memory integration
+#include "cognitive/nimcp_working_memory.h"
+#include "cognitive/nimcp_emotional_tagging.h"
+
 /* ========================================================================
  * INTERNAL STRUCTURES
  * ======================================================================== */
@@ -584,17 +588,26 @@ float brain_state_similarity(const brain_state_t* state1, const brain_state_t* s
  * ======================================================================== */
 
 /**
- * WHAT: Estimate uncertainty for a decision
- * WHY: Metacognition requires knowing when uncertain
- * HOW: Ensemble method - variance = epistemic, entropy = aleatoric
+ * WHAT: Estimate uncertainty for a decision with emotional working memory context
+ * WHY: Metacognition requires knowing when uncertain, emotions modulate confidence
+ * HOW: Ensemble method + emotional context from working memory
  *
  * METHOD:
  * 1. Get predictions from ensemble of models
  * 2. Variance of predictions = epistemic uncertainty (model doesn't know)
  * 3. Entropy of each prediction = aleatoric uncertainty (data is noisy)
- * 4. Total = epistemic + aleatoric
+ * 4. Phase 10.3: Check emotional working memory for emotional context
+ * 5. High arousal emotions increase uncertainty (biological: stress affects judgment)
+ * 6. Negative valence increases epistemic uncertainty (doubt, fear)
+ * 7. Positive high-arousal increases aleatoric uncertainty (excitement, overconfidence)
  *
- * COMPLEXITY: O(k*m) where k=ensemble size, m=model complexity
+ * BIOLOGICAL BASIS:
+ * - High arousal states (stress, excitement) impair metacognitive accuracy
+ * - Negative emotions bias toward uncertainty and doubt
+ * - Positive emotions can lead to overconfidence
+ * - Amygdala activation during emotion processing interferes with uncertainty estimation
+ *
+ * COMPLEXITY: O(k*m + w) where k=ensemble size, m=model complexity, w=working memory size
  * TIME: ~1-5ms depending on ensemble size
  */
 brain_uncertainty_t brain_get_uncertainty(introspection_context_t context, const float* features,
@@ -658,7 +671,66 @@ brain_uncertainty_t brain_get_uncertainty(introspection_context_t context, const
         p = 1.0f - 1e-6f;
     uncertainty.aleatoric = -(p * log2f(p) + (1.0f - p) * log2f(1.0f - p));
 
-    /* WHAT: Combine uncertainties */
+    /* =========================================================================
+     * PHASE 10.3: Emotional working memory modulation of uncertainty
+     * =========================================================================
+     * WHAT: Retrieve emotional context from working memory to adjust uncertainty
+     * WHY:  Emotional state affects metacognitive accuracy and confidence
+     * HOW:  High arousal → increase uncertainty, negative valence → bias toward doubt
+     */
+    working_memory_t* wm = brain_get_working_memory(context->brain);
+
+    if (wm && working_memory_get_size(wm) > 0) {
+        /* WHAT: Scan working memory for high-intensity emotional items */
+        /* WHY:  Recent emotional experiences modulate current uncertainty perception */
+
+        float max_arousal = 0.0f;
+        float avg_valence = 0.0f;
+        uint32_t emotional_count = 0;
+        uint32_t wm_size = working_memory_get_size(wm);
+
+        /* WHAT: Aggregate emotional context from working memory items */
+        for (uint32_t i = 0; i < wm_size && i < 7; i++) {  // Miller's 7±2: check up to 7 items
+            emotional_tag_t emotion;
+            if (working_memory_get_emotion(wm, i, &emotion) && emotion.intensity > 0.3f) {
+                /* WHAT: Track highest arousal and average valence */
+                if (emotion.arousal > max_arousal) {
+                    max_arousal = emotion.arousal;
+                }
+                avg_valence += emotion.valence;
+                emotional_count++;
+            }
+        }
+
+        if (emotional_count > 0) {
+            avg_valence /= emotional_count;
+
+            /* WHAT: High arousal increases both epistemic and aleatoric uncertainty */
+            /* WHY:  Arousal impairs metacognitive accuracy (Bolte et al., 2003) */
+            /* HOW:  Multiply uncertainty by (1.0 + arousal * 0.5) */
+            if (max_arousal > 0.5f) {
+                float arousal_boost = 1.0f + (max_arousal - 0.5f) * 0.5f;  // Up to 1.25x at max arousal
+                uncertainty.epistemic *= arousal_boost;
+                uncertainty.aleatoric *= arousal_boost;
+            }
+
+            /* WHAT: Negative valence biases toward epistemic uncertainty (doubt) */
+            /* WHY:  Negative emotions increase self-doubt and model uncertainty */
+            /* HOW:  Boost epistemic uncertainty for negative valence */
+            if (avg_valence < -0.3f) {
+                uncertainty.epistemic *= (1.0f + fabsf(avg_valence) * 0.3f);  // Up to 1.3x
+            }
+
+            /* WHAT: Positive high-arousal increases aleatoric uncertainty */
+            /* WHY:  Excitement/joy can lead to overconfidence and noise */
+            /* HOW:  Boost aleatoric for positive + high arousal combination */
+            if (avg_valence > 0.3f && max_arousal > 0.6f) {
+                uncertainty.aleatoric *= 1.2f;  // 20% increase
+            }
+        }
+    }
+
+    /* WHAT: Combine uncertainties (now emotionally modulated) */
     /* WHY: Total uncertainty is sum of epistemic and aleatoric */
     uncertainty.total = uncertainty.epistemic + uncertainty.aleatoric;
     if (uncertainty.total > 1.0f)

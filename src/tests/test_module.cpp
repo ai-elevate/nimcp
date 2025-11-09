@@ -8,7 +8,8 @@
 
 // Ensure we're using C linkage for the Python/NIMCP C headers
 extern "C" {
-#include </usr/include/python3.10/Python.h>
+#define PY_SSIZE_T_CLEAN
+#include <Python.h>
 }
 
 namespace {

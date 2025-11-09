@@ -5,6 +5,8 @@ set(NIMCP_CORE_SOURCES
 
     # Core brain components
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/nimcp_brain.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/nimcp_distributed_cow.c
+    # ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/nimcp_pretrained.c  # TODO: Needs libcjson-dev
 
     # Brain processing modules (Phase 9.1: SRP Refactoring) - TODO: Enable when refactoring complete
     # ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/processing/sensory_extractor.c
@@ -47,6 +49,15 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/salience/nimcp_salience.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/logic/nimcp_symbolic_logic.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/epistemic/nimcp_epistemic_filter.c  # Phase 9.2: Bias prevention
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/working_memory/nimcp_working_memory.c  # Phase 10.1: Working Memory
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/emotional_tagging/nimcp_emotional_tagging.c  # Phase 10.2: Emotional Tagging
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/executive/nimcp_executive.c  # Phase 10.3: Executive Functions
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/sleep_wake/nimcp_sleep_wake.c  # Phase 10.4: Sleep/Wake Cycle
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/mental_health/nimcp_mental_health.c  # Phase 10.5: Mental Health Monitoring
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/theory_of_mind/nimcp_theory_of_mind.c  # Phase 10.6: Theory of Mind
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/explanations/nimcp_explanations.c  # Phase 10.7: Natural Explanations
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/meta_learning/nimcp_meta_learning.c  # Phase 10.8: Meta-Learning
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/predictive/nimcp_predictive.c  # Phase 10.9: Predictive Processing
     ${CMAKE_CURRENT_SOURCE_DIR}/cognitive/nimcp_hierarchical.c
 
     # Plasticity mechanisms
@@ -86,11 +97,31 @@ set(NIMCP_CORE_SOURCES
 
     # Utils - Memory & Thread
     ${CMAKE_CURRENT_SOURCE_DIR}/../utils/memory/nimcp_memory.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../utils/memory/nimcp_memory_guards.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../utils/thread/nimcp_thread.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../utils/thread/nimcp_thread_pool.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../utils/thread/nimcp_deadlock_detector.c
+
+    # Utils - Platform Abstraction (Phase 2: Cross-platform support, SRP-compliant)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../utils/platform/nimcp_platform.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../utils/platform/nimcp_platform_mutex.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../utils/platform/nimcp_platform_thread.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../utils/platform/nimcp_platform_cond.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../utils/platform/nimcp_platform_rwlock.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../utils/platform/nimcp_platform_once.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../utils/platform/nimcp_platform_time.c
 
     # Utils - Logging
     ${CMAKE_CURRENT_SOURCE_DIR}/../utils/logging/nimcp_logging.c
+
+    # Utils - Signal Handling (Runtime Safety)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../utils/signal/nimcp_signal_handler.c
+
+    # Utils - Error Codes (Structured Error System)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../utils/error/nimcp_error_codes.c
+
+    # Utils - Dynamic Configuration (Runtime Safety)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../utils/config/nimcp_dynamic_config.c
 
     # Utils - Containers
     ${CMAKE_CURRENT_SOURCE_DIR}/../utils/containers/nimcp_vector.c

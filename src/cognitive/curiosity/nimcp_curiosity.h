@@ -145,7 +145,7 @@ void curiosity_engine_destroy(curiosity_engine_t engine);
  * @param concept Concept or topic encountered
  * @return Knowledge gap assessment
  */
-knowledge_gap_t curiosity_detect_knowledge_gap(curiosity_engine_t engine, const char* concept);
+knowledge_gap_t curiosity_detect_knowledge_gap(curiosity_engine_t engine, const char* concept_str);
 
 /**
  * @brief Check if concept is known
@@ -154,7 +154,7 @@ knowledge_gap_t curiosity_detect_knowledge_gap(curiosity_engine_t engine, const 
  * @param concept Concept to check
  * @return Familiarity score (0=unknown, 1=fully known)
  */
-float curiosity_check_familiarity(curiosity_engine_t engine, const char* concept);
+float curiosity_check_familiarity(curiosity_engine_t engine, const char* concept_str);
 
 /**
  * @brief Get related concepts
@@ -167,7 +167,7 @@ float curiosity_check_familiarity(curiosity_engine_t engine, const char* concept
  * @param max_related Maximum concepts to return
  * @return Number of related concepts found
  */
-uint32_t curiosity_get_related_concepts(curiosity_engine_t engine, const char* concept,
+uint32_t curiosity_get_related_concepts(curiosity_engine_t engine, const char* concept_str,
                                         char** related, uint32_t max_related);
 
 //=============================================================================
@@ -212,7 +212,7 @@ const char* curiosity_generate_followup(curiosity_engine_t engine, const char* p
  * @param concept Concept to learn
  * @return Motivation state
  */
-motivation_state_t curiosity_assess_motivation(curiosity_engine_t engine, const char* concept);
+motivation_state_t curiosity_assess_motivation(curiosity_engine_t engine, const char* concept_str);
 
 /**
  * @brief Set intrinsic curiosity level

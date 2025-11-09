@@ -335,10 +335,14 @@ static PyObject* Brain_predict_batch(BrainObject* self, PyObject* args) {
     }
 
     // Call batch prediction
-    nimcp_status_t status = nimcp_brain_predict_batch(self->brain, features_ptrs,
-                                                       (uint32_t)num_features,
-                                                       (uint32_t)batch_size,
-                                                       labels, confidences);
+    // NOTE: nimcp_brain_predict_batch not yet implemented in C library
+    // Fallback to individual predictions for now
+    nimcp_status_t status = NIMCP_OK;
+    for (Py_ssize_t i = 0; i < batch_size; i++) {
+        status = nimcp_brain_predict(self->brain, features_ptrs[i], (uint32_t)num_features,
+                                      labels[i], &confidences[i]);
+        if (status != NIMCP_OK) break;
+    }
 
     // Build result
     PyObject* labels_list = NULL;

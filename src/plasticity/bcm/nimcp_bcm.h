@@ -42,6 +42,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include "utils/thread/nimcp_thread.h"
+#include "utils/platform/nimcp_platform_mutex.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -52,23 +53,23 @@ extern "C" {
 //=============================================================================
 
 /**
- * @brief BCM synapse state (thread-safe with spinlock)
+ * @brief BCM synapse state (thread-safe with mutex)
  *
  * WHAT: Per-synapse BCM learning variables with synchronization
  * WHY:  Track weight, threshold, and running averages with concurrent access protection
  *
  * THREAD SAFETY:
- * - Spinlock: Used when multiple threads may access the same synapse
- * - Spinlock chosen over mutex: Very short critical sections (<100ns)
+ * - Mutex: Used when multiple threads may access the same synapse
+ * - Platform mutex chosen for portability: Works on Windows, macOS, and Linux
  * - Cache-line padding: Prevents false sharing between synapses
  *
- * WHEN TO USE SPINLOCK:
+ * WHEN TO USE MUTEX:
  * - Multiple threads updating same synapse (rare in typical use)
  * - Each thread usually works on disjoint synapse sets (no contention)
- * - If no sharing: spinlock overhead is minimal (~4 bytes, no lock/unlock needed)
+ * - If no sharing: mutex overhead is minimal (no lock/unlock needed)
  *
- * MEMORY: 56 bytes per synapse (4 floats + pthread_mutex_t)
- * NOTE: pthread_mutex_t is 40 bytes on Linux, increasing size from ideal 16→56 bytes
+ * MEMORY: 56 bytes per synapse (4 floats + platform mutex)
+ * NOTE: Platform mutex size varies by OS (40 bytes on Linux with pthread_mutex_t)
  *       This is acceptable tradeoff for thread safety in concurrent scenarios
  */
 typedef struct {
@@ -77,7 +78,7 @@ typedef struct {
     float avg_post_activity;  /**< Running average of post-synaptic activity */
     float eligibility;        /**< Eligibility trace for delayed reward */
 
-    nimcp_spinlock_t lock;    /**< NIMCP spinlock for thread-safe updates (only if synapse is shared) */
+    nimcp_platform_mutex_t lock;    /**< Platform mutex for thread-safe updates (only if synapse is shared) */
 } bcm_synapse_t;
 
 /**

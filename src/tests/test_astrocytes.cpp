@@ -75,7 +75,9 @@ TEST_F(AstrocyteTest, MultipleCreateDestroy) {
     astrocyte_t* astros[count];
 
     for (int i = 0; i < count; i++) {
-        astros[i] = astrocyte_create(i, i * 10.0f, i * 20.0f, i * 30.0f, 50.0f);
+        // Cycle through astrocyte types
+        astrocyte_type_t type = (astrocyte_type_t)(i % ASTROCYTE_TYPE_COUNT);
+        astros[i] = astrocyte_create(i, type, i * 10.0f, i * 20.0f, i * 30.0f, 50.0f);
         ASSERT_NE(astros[i], nullptr);
     }
 
@@ -515,7 +517,8 @@ TEST_F(AstrocyteTest, Network_AddAstrocytes) {
     astrocyte_network_t* network = astrocyte_network_create(10);
 
     for (int i = 0; i < 10; i++) {
-        astrocyte_t* astro = astrocyte_create(i, i * 10.0f, 0.0f, 0.0f, 50.0f);
+        astrocyte_type_t type = (astrocyte_type_t)(i % ASTROCYTE_TYPE_COUNT);
+        astrocyte_t* astro = astrocyte_create(i, type, i * 10.0f, 0.0f, 0.0f, 50.0f);
         astrocyte_network_add(network, astro);
     }
 
@@ -530,7 +533,9 @@ TEST_F(AstrocyteTest, Network_SpatialIndexing) {
 
     // Add astrocytes in spatial pattern
     for (int i = 0; i < 100; i++) {
+        astrocyte_type_t type = (astrocyte_type_t)(i % ASTROCYTE_TYPE_COUNT);
         astrocyte_t* astro = astrocyte_create(i,
+                                              type,
                                               (i % 10) * 50.0f,
                                               (i / 10) * 50.0f,
                                               0.0f,
@@ -612,7 +617,9 @@ TEST_F(AstrocyteTest, Performance_NetworkStep) {
 
     // Create 100 astrocytes
     for (int i = 0; i < 100; i++) {
+        astrocyte_type_t type = (astrocyte_type_t)(i % ASTROCYTE_TYPE_COUNT);
         astrocyte_t* astro = astrocyte_create(i,
+                                              type,
                                               (i % 10) * 50.0f,
                                               (i / 10) * 50.0f,
                                               0.0f,

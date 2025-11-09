@@ -41,7 +41,7 @@ typedef struct concept_bucket_struct {
 /**
  * @brief Value destructor for concept_bucket_t
  *
- * WHAT: Clean up concept bucket and related concepts
+ * WHAT: Clean up concept_str bucket and related concepts
  * WHY: Called by hash table when entry is removed or table destroyed
  * HOW: Free related_concepts array and strings
  */
@@ -94,7 +94,7 @@ typedef struct {
  * This eliminates switch statements and enables polymorphic stage behavior.
  */
 typedef struct {
-    float (*calculate_learning_potential)(const char* concept, float gap_size);
+    float (*calculate_learning_potential)(const char* concept_str, float gap_size);
     float (*get_baseline_curiosity)(void);
     uint32_t (*get_question_types_count)(void);
     const question_type_t* (*get_question_types)(void);
@@ -136,7 +136,7 @@ static const question_strategy_t* get_question_strategy(question_type_t type);
 struct curiosity_engine_struct {
     char learner_name[128];
 
-    // Hash table for O(1) concept lookup (using nimcp_hash_table utility)
+    // Hash table for O(1) concept_str lookup (using nimcp_hash_table utility)
     hash_table_t* concept_hash_table;
     uint32_t total_concepts;
 
@@ -178,7 +178,7 @@ struct curiosity_engine_struct {
  *
  * Complexity: O(1)
  */
-static float infant_learning_potential(const char* concept, float gap_size)
+static float infant_learning_potential(const char* concept_str, float gap_size)
 {
     return 0.9f;  // Everything is exciting and worth learning
 }
@@ -216,11 +216,11 @@ static const learning_stage_strategy_t infant_strategy = {
  * Toddlers prefer concrete, simple concepts.
  * Penalizes complex or abstract concepts (approximated by length).
  *
- * Complexity: O(1) - strlen is O(n) but concept length bounded
+ * Complexity: O(1) - strlen is O(n) but concept_str length bounded
  */
-static float toddler_learning_potential(const char* concept, float gap_size)
+static float toddler_learning_potential(const char* concept_str, float gap_size)
 {
-    size_t len = strlen(concept);
+    size_t len = strlen(concept_str);
     float simplicity_bonus = (len < 15) ? 1.0f : 0.5f;
     return 0.8f * simplicity_bonus;
 }
@@ -261,7 +261,7 @@ static const learning_stage_strategy_t toddler_strategy = {
  *
  * Complexity: O(1)
  */
-static float child_learning_potential(const char* concept, float gap_size)
+static float child_learning_potential(const char* concept_str, float gap_size)
 {
     return 0.7f + 0.3f * gap_size;  // Scales with gap/curiosity
 }
@@ -295,7 +295,7 @@ static const learning_stage_strategy_t child_strategy = {
 // Stage Pattern Implementation - Adolescent Stage
 //=============================================================================
 
-static float adolescent_learning_potential(const char* concept, float gap_size)
+static float adolescent_learning_potential(const char* concept_str, float gap_size)
 {
     return 0.6f + 0.4f * gap_size;
 }
@@ -325,7 +325,7 @@ static const learning_stage_strategy_t adolescent_strategy = {
 // Stage Pattern Implementation - Adult Stage
 //=============================================================================
 
-static float adult_learning_potential(const char* concept, float gap_size)
+static float adult_learning_potential(const char* concept_str, float gap_size)
 {
     return 0.5f + 0.5f * gap_size;  // More selective
 }
@@ -355,7 +355,7 @@ static const learning_stage_strategy_t adult_strategy = {
 // Stage Pattern Implementation - Expert Stage
 //=============================================================================
 
-static float expert_learning_potential(const char* concept, float gap_size)
+static float expert_learning_potential(const char* concept_str, float gap_size)
 {
     return 0.4f + 0.6f * gap_size;  // Only interested in significant gaps
 }
@@ -414,7 +414,7 @@ static const learning_stage_strategy_t* get_stage_strategy(learning_stage_t stag
  * @brief Generate "What" question
  *
  * Fundamental definitional question. Highest priority as it establishes
- * basic understanding of a concept.
+ * basic understanding of a concept_str.
  *
  * Complexity: O(n) where n is topic length (due to snprintf)
  */
@@ -586,7 +586,7 @@ static void normalize_string(const char* input, char* output, size_t max_len)
 }
 
 /**
- * @brief Find concept in hash table
+ * @brief Find concept_str in hash table
  *
  * Uses hash table for O(1) average case lookup instead of O(n) linear search.
  * Handles collisions via chaining (linked list per bucket).
@@ -598,46 +598,46 @@ static void normalize_string(const char* input, char* output, size_t max_len)
  * Space Complexity: O(1)
  *
  * @param engine Curiosity engine
- * @param concept Concept to find
- * @return Pointer to concept bucket, or NULL if not found
+ * @param concept_str Concept to find
+ * @return Pointer to concept_str bucket, or NULL if not found
  */
-static concept_bucket_t* find_concept_bucket(curiosity_engine_t engine, const char* concept)
+static concept_bucket_t* find_concept_bucket(curiosity_engine_t engine, const char* concept_str)
 {
-    if (!engine || !concept || !engine->concept_hash_table) {
+    if (!engine || !concept_str || !engine->concept_hash_table) {
         return NULL;
     }
 
-    return (concept_bucket_t*) hash_table_lookup_string(engine->concept_hash_table, concept);
+    return (concept_bucket_t*) hash_table_lookup_string(engine->concept_hash_table, concept_str);
 }
 
 /**
- * @brief Add new concept to hash table
+ * @brief Add new concept_str to hash table
  *
  * Creates new bucket and inserts at head of chain for O(1) insertion.
  * Automatically handles collisions via chaining.
  *
  * Time Complexity: O(1) average case
- * Space Complexity: O(1) per concept
+ * Space Complexity: O(1) per concept_str
  *
  * @param engine Curiosity engine
- * @param concept Concept to add
- * @return Pointer to new or existing concept bucket
+ * @param concept_str Concept to add
+ * @return Pointer to new or existing concept_str bucket
  */
-static concept_bucket_t* add_concept_to_hash_table(curiosity_engine_t engine, const char* concept)
+static concept_bucket_t* add_concept_to_hash_table(curiosity_engine_t engine, const char* concept_str)
 {
-    if (!engine || !concept) {
+    if (!engine || !concept_str) {
         return NULL;
     }
 
     // Check if already exists
-    concept_bucket_t* existing = find_concept_bucket(engine, concept);
+    concept_bucket_t* existing = find_concept_bucket(engine, concept_str);
     if (existing) {
         return existing;
     }
 
     // Create new bucket
     concept_bucket_t new_bucket = {0};
-    strncpy(new_bucket.concept, concept, sizeof(new_bucket.concept) - 1);
+    strncpy(new_bucket.concept, concept_str, sizeof(new_bucket.concept) - 1);
     new_bucket.familiarity = 0.0f;
     new_bucket.exposure_count = 1;
     new_bucket.last_encountered = 0;
@@ -645,7 +645,7 @@ static concept_bucket_t* add_concept_to_hash_table(curiosity_engine_t engine, co
     new_bucket.num_related = 0;
 
     // Insert into hash table
-    if (!hash_table_insert_string(engine->concept_hash_table, concept, &new_bucket,
+    if (!hash_table_insert_string(engine->concept_hash_table, concept_str, &new_bucket,
                                   sizeof(concept_bucket_t))) {
         return NULL;
     }
@@ -653,7 +653,7 @@ static concept_bucket_t* add_concept_to_hash_table(curiosity_engine_t engine, co
     engine->total_concepts++;
 
     // Return pointer to the stored bucket
-    return find_concept_bucket(engine, concept);
+    return find_concept_bucket(engine, concept_str);
 }
 
 /**
@@ -683,7 +683,7 @@ static void free_hash_table(curiosity_engine_t engine)
  * @brief Create new curiosity engine
  *
  * Initializes all subsystems:
- * - Hash table for O(1) concept lookup
+ * - Hash table for O(1) concept_str lookup
  * - Neural networks for gap detection and question prioritization
  * - Learning stage strategy pattern
  * - Question and source storage
@@ -805,7 +805,7 @@ static float calculate_curiosity_intensity(const curiosity_engine_t engine, floa
 }
 
 /**
- * @brief Get familiarity with concept
+ * @brief Get familiarity with concept_str
  *
  * Uses hash table for O(1) average case lookup.
  * Returns 0.0 for unknown concepts.
@@ -813,16 +813,16 @@ static float calculate_curiosity_intensity(const curiosity_engine_t engine, floa
  * Time Complexity: O(1) average case
  *
  * @param engine Curiosity engine
- * @param concept Concept to check
+ * @param concept_str Concept to check
  * @return Familiarity score [0.0-1.0]
  */
-float curiosity_check_familiarity(curiosity_engine_t engine, const char* concept)
+float curiosity_check_familiarity(curiosity_engine_t engine, const char* concept_str)
 {
-    if (!engine || !concept) {
+    if (!engine || !concept_str) {
         return 0.0f;
     }
 
-    concept_bucket_t* bucket = find_concept_bucket(engine, concept);
+    concept_bucket_t* bucket = find_concept_bucket(engine, concept_str);
     if (!bucket) {
         return 0.0f;
     }
@@ -833,13 +833,13 @@ float curiosity_check_familiarity(curiosity_engine_t engine, const char* concept
 /**
  * @brief Count related concepts for a topic
  *
- * Uses hash table for O(1) concept lookup.
+ * Uses hash table for O(1) concept_str lookup.
  *
  * Complexity: O(1) average case
  */
-static uint32_t count_related_concepts(curiosity_engine_t engine, const char* concept)
+static uint32_t count_related_concepts(curiosity_engine_t engine, const char* concept_str)
 {
-    concept_bucket_t* bucket = find_concept_bucket(engine, concept);
+    concept_bucket_t* bucket = find_concept_bucket(engine, concept_str);
     if (!bucket) {
         return 0;
     }
@@ -847,37 +847,37 @@ static uint32_t count_related_concepts(curiosity_engine_t engine, const char* co
 }
 
 /**
- * @brief Detect knowledge gap for concept
+ * @brief Detect knowledge gap for concept_str
  *
- * Analyzes how much is unknown about a concept and how valuable
+ * Analyzes how much is unknown about a concept_str and how valuable
  * learning it would be. Uses stage strategy pattern to calculate
  * learning potential appropriate for developmental stage.
  *
  * Time Complexity: O(1) average case (hash lookup + strategy dispatch)
  *
  * @param engine Curiosity engine
- * @param concept Concept to analyze
+ * @param concept_str Concept to analyze
  * @return Knowledge gap analysis
  */
-knowledge_gap_t curiosity_detect_knowledge_gap(curiosity_engine_t engine, const char* concept)
+knowledge_gap_t curiosity_detect_knowledge_gap(curiosity_engine_t engine, const char* concept_str)
 {
     knowledge_gap_t gap = {0};
 
-    if (!engine || !concept) {
+    if (!engine || !concept_str) {
         return gap;
     }
 
-    strncpy(gap.topic, concept, sizeof(gap.topic) - 1);
+    strncpy(gap.topic, concept_str, sizeof(gap.topic) - 1);
 
-    float familiarity = curiosity_check_familiarity(engine, concept);
+    float familiarity = curiosity_check_familiarity(engine, concept_str);
     gap.gap_size = 1.0f - familiarity;
     gap.curiosity_intensity = calculate_curiosity_intensity(engine, gap.gap_size);
 
     // Use stage strategy for learning potential
     gap.learning_potential =
-        engine->stage_strategy->calculate_learning_potential(concept, gap.gap_size);
+        engine->stage_strategy->calculate_learning_potential(concept_str, gap.gap_size);
 
-    gap.related_concepts = count_related_concepts(engine, concept);
+    gap.related_concepts = count_related_concepts(engine, concept_str);
 
     return gap;
 }
@@ -885,25 +885,25 @@ knowledge_gap_t curiosity_detect_knowledge_gap(curiosity_engine_t engine, const 
 /**
  * @brief Get related concepts for a topic
  *
- * Retrieves concepts that are associated with the given concept.
- * Uses hash table for O(1) concept lookup.
+ * Retrieves concepts that are associated with the given concept_str.
+ * Uses hash table for O(1) concept_str lookup.
  *
  * Time Complexity: O(min(k, max_related)) where k is number of related concepts
  *
  * @param engine Curiosity engine
- * @param concept Concept to query
- * @param related Output array for related concept strings
+ * @param concept_str Concept to query
+ * @param related Output array for related concept_str strings
  * @param max_related Maximum concepts to return
  * @return Number of related concepts found
  */
-uint32_t curiosity_get_related_concepts(curiosity_engine_t engine, const char* concept,
+uint32_t curiosity_get_related_concepts(curiosity_engine_t engine, const char* concept_str,
                                         char** related, uint32_t max_related)
 {
-    if (!engine || !concept) {
+    if (!engine || !concept_str) {
         return 0;
     }
 
-    concept_bucket_t* bucket = find_concept_bucket(engine, concept);
+    concept_bucket_t* bucket = find_concept_bucket(engine, concept_str);
     if (!bucket) {
         return 0;
     }
@@ -1050,7 +1050,7 @@ static float calculate_aesthetic_appeal(float familiarity)
 }
 
 /**
- * @brief Assess motivation to learn concept
+ * @brief Assess motivation to learn concept_str
  *
  * Evaluates multiple factors that drive learning:
  * - Intrinsic curiosity (baseline trait)
@@ -1062,14 +1062,14 @@ static float calculate_aesthetic_appeal(float familiarity)
  * Time Complexity: O(1) average case (hash lookup)
  *
  * @param engine Curiosity engine
- * @param concept Concept to assess
+ * @param concept_str Concept to assess
  * @return Motivation state breakdown
  */
-motivation_state_t curiosity_assess_motivation(curiosity_engine_t engine, const char* concept)
+motivation_state_t curiosity_assess_motivation(curiosity_engine_t engine, const char* concept_str)
 {
     motivation_state_t state = {0};
 
-    if (!engine || !concept) {
+    if (!engine || !concept_str) {
         return state;
     }
 
@@ -1078,7 +1078,7 @@ motivation_state_t curiosity_assess_motivation(curiosity_engine_t engine, const 
     state.social_importance = 0.4f;  // Simplified - would check social context
     state.survival_value = 0.1f;     // Most concepts have low survival value
 
-    float familiarity = curiosity_check_familiarity(engine, concept);
+    float familiarity = curiosity_check_familiarity(engine, concept_str);
     state.aesthetic_appeal = calculate_aesthetic_appeal(familiarity);
     state.overall_motivation = calculate_overall_motivation(&state);
 
@@ -1202,7 +1202,7 @@ bool curiosity_learn_experience(curiosity_engine_t engine, const char* experienc
  * @brief Learn from observation
  *
  * Social learning from watching others.
- * Updates concept knowledge based on observed interactions.
+ * Updates concept_str knowledge based on observed interactions.
  *
  * Complexity: O(1)
  *
@@ -1218,7 +1218,7 @@ bool curiosity_learn_observation(curiosity_engine_t engine, const char* what_obs
         return false;
     }
 
-    // Would update concept familiarity and relationships
+    // Would update concept_str familiarity and relationships
     return true;
 }
 
@@ -1389,16 +1389,16 @@ bool curiosity_get_progress(curiosity_engine_t engine, learning_progress_t* prog
 }
 
 /**
- * @brief Check if concept belongs to domain
+ * @brief Check if concept_str belongs to domain
  *
  * Simplified domain matching via substring search.
  * Full implementation would use proper ontology/taxonomy.
  *
- * Complexity: O(n * m) where n is concept length, m is domain length
+ * Complexity: O(n * m) where n is concept_str length, m is domain length
  */
-static bool concept_in_domain(const char* concept, const char* domain)
+static bool concept_in_domain(const char* concept_str, const char* domain)
 {
-    return strstr(concept, domain) != NULL;
+    return strstr(concept_str, domain) != NULL;
 }
 
 /**

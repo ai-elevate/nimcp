@@ -172,6 +172,48 @@ depend:
 .PHONY : depend
 
 # Convenience name for target.
+examples/CMakeFiles/simple_demo.dir/rule:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 examples/CMakeFiles/simple_demo.dir/rule
+.PHONY : examples/CMakeFiles/simple_demo.dir/rule
+
+# Convenience name for target.
+simple_demo: examples/CMakeFiles/simple_demo.dir/rule
+.PHONY : simple_demo
+
+# fast build rule for target.
+simple_demo/fast:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f examples/CMakeFiles/simple_demo.dir/build.make examples/CMakeFiles/simple_demo.dir/build
+.PHONY : simple_demo/fast
+
+# Convenience name for target.
+examples/CMakeFiles/working_memory_integration_demo.dir/rule:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 examples/CMakeFiles/working_memory_integration_demo.dir/rule
+.PHONY : examples/CMakeFiles/working_memory_integration_demo.dir/rule
+
+# Convenience name for target.
+working_memory_integration_demo: examples/CMakeFiles/working_memory_integration_demo.dir/rule
+.PHONY : working_memory_integration_demo
+
+# fast build rule for target.
+working_memory_integration_demo/fast:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f examples/CMakeFiles/working_memory_integration_demo.dir/build.make examples/CMakeFiles/working_memory_integration_demo.dir/build
+.PHONY : working_memory_integration_demo/fast
+
+# Convenience name for target.
+examples/CMakeFiles/working_memory_public_api_demo.dir/rule:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 examples/CMakeFiles/working_memory_public_api_demo.dir/rule
+.PHONY : examples/CMakeFiles/working_memory_public_api_demo.dir/rule
+
+# Convenience name for target.
+working_memory_public_api_demo: examples/CMakeFiles/working_memory_public_api_demo.dir/rule
+.PHONY : working_memory_public_api_demo
+
+# fast build rule for target.
+working_memory_public_api_demo/fast:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f examples/CMakeFiles/working_memory_public_api_demo.dir/build.make examples/CMakeFiles/working_memory_public_api_demo.dir/build
+.PHONY : working_memory_public_api_demo/fast
+
+# Convenience name for target.
 examples/CMakeFiles/event_demo.dir/rule:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 examples/CMakeFiles/event_demo.dir/rule
 .PHONY : examples/CMakeFiles/event_demo.dir/rule
@@ -396,6 +438,34 @@ multimodal_integration_demo/fast:
 .PHONY : multimodal_integration_demo/fast
 
 # Convenience name for target.
+examples/CMakeFiles/speech_cortex_demo.dir/rule:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 examples/CMakeFiles/speech_cortex_demo.dir/rule
+.PHONY : examples/CMakeFiles/speech_cortex_demo.dir/rule
+
+# Convenience name for target.
+speech_cortex_demo: examples/CMakeFiles/speech_cortex_demo.dir/rule
+.PHONY : speech_cortex_demo
+
+# fast build rule for target.
+speech_cortex_demo/fast:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f examples/CMakeFiles/speech_cortex_demo.dir/build.make examples/CMakeFiles/speech_cortex_demo.dir/build
+.PHONY : speech_cortex_demo/fast
+
+# Convenience name for target.
+examples/CMakeFiles/phase8_comprehensive_demo.dir/rule:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 examples/CMakeFiles/phase8_comprehensive_demo.dir/rule
+.PHONY : examples/CMakeFiles/phase8_comprehensive_demo.dir/rule
+
+# Convenience name for target.
+phase8_comprehensive_demo: examples/CMakeFiles/phase8_comprehensive_demo.dir/rule
+.PHONY : phase8_comprehensive_demo
+
+# fast build rule for target.
+phase8_comprehensive_demo/fast:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f examples/CMakeFiles/phase8_comprehensive_demo.dir/build.make examples/CMakeFiles/phase8_comprehensive_demo.dir/build
+.PHONY : phase8_comprehensive_demo/fast
+
+# Convenience name for target.
 examples/CMakeFiles/gpu_integration_test.dir/rule:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 examples/CMakeFiles/gpu_integration_test.dir/rule
 .PHONY : examples/CMakeFiles/gpu_integration_test.dir/rule
@@ -408,6 +478,76 @@ gpu_integration_test: examples/CMakeFiles/gpu_integration_test.dir/rule
 gpu_integration_test/fast:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f examples/CMakeFiles/gpu_integration_test.dir/build.make examples/CMakeFiles/gpu_integration_test.dir/build
 .PHONY : gpu_integration_test/fast
+
+# Convenience name for target.
+examples/CMakeFiles/test_neural_logic.dir/rule:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 examples/CMakeFiles/test_neural_logic.dir/rule
+.PHONY : examples/CMakeFiles/test_neural_logic.dir/rule
+
+# Convenience name for target.
+test_neural_logic: examples/CMakeFiles/test_neural_logic.dir/rule
+.PHONY : test_neural_logic
+
+# fast build rule for target.
+test_neural_logic/fast:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f examples/CMakeFiles/test_neural_logic.dir/build.make examples/CMakeFiles/test_neural_logic.dir/build
+.PHONY : test_neural_logic/fast
+
+# Convenience name for target.
+examples/CMakeFiles/cow_inference_server.dir/rule:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 examples/CMakeFiles/cow_inference_server.dir/rule
+.PHONY : examples/CMakeFiles/cow_inference_server.dir/rule
+
+# Convenience name for target.
+cow_inference_server: examples/CMakeFiles/cow_inference_server.dir/rule
+.PHONY : cow_inference_server
+
+# fast build rule for target.
+cow_inference_server/fast:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f examples/CMakeFiles/cow_inference_server.dir/build.make examples/CMakeFiles/cow_inference_server.dir/build
+.PHONY : cow_inference_server/fast
+
+# Convenience name for target.
+examples/CMakeFiles/cow_snapshot_learning.dir/rule:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 examples/CMakeFiles/cow_snapshot_learning.dir/rule
+.PHONY : examples/CMakeFiles/cow_snapshot_learning.dir/rule
+
+# Convenience name for target.
+cow_snapshot_learning: examples/CMakeFiles/cow_snapshot_learning.dir/rule
+.PHONY : cow_snapshot_learning
+
+# fast build rule for target.
+cow_snapshot_learning/fast:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f examples/CMakeFiles/cow_snapshot_learning.dir/build.make examples/CMakeFiles/cow_snapshot_learning.dir/build
+.PHONY : cow_snapshot_learning/fast
+
+# Convenience name for target.
+examples/CMakeFiles/cow_ab_testing.dir/rule:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 examples/CMakeFiles/cow_ab_testing.dir/rule
+.PHONY : examples/CMakeFiles/cow_ab_testing.dir/rule
+
+# Convenience name for target.
+cow_ab_testing: examples/CMakeFiles/cow_ab_testing.dir/rule
+.PHONY : cow_ab_testing
+
+# fast build rule for target.
+cow_ab_testing/fast:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f examples/CMakeFiles/cow_ab_testing.dir/build.make examples/CMakeFiles/cow_ab_testing.dir/build
+.PHONY : cow_ab_testing/fast
+
+# Convenience name for target.
+examples/CMakeFiles/distributed_cow_demo.dir/rule:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 examples/CMakeFiles/distributed_cow_demo.dir/rule
+.PHONY : examples/CMakeFiles/distributed_cow_demo.dir/rule
+
+# Convenience name for target.
+distributed_cow_demo: examples/CMakeFiles/distributed_cow_demo.dir/rule
+.PHONY : distributed_cow_demo
+
+# fast build rule for target.
+distributed_cow_demo/fast:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f examples/CMakeFiles/distributed_cow_demo.dir/build.make examples/CMakeFiles/distributed_cow_demo.dir/build
+.PHONY : distributed_cow_demo/fast
 
 brain_demo.o: brain_demo.c.o
 .PHONY : brain_demo.o
@@ -456,6 +596,102 @@ brain_probe_demo.s: brain_probe_demo.c.s
 brain_probe_demo.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f examples/CMakeFiles/brain_probe_demo.dir/build.make examples/CMakeFiles/brain_probe_demo.dir/brain_probe_demo.c.s
 .PHONY : brain_probe_demo.c.s
+
+cow_ab_testing.o: cow_ab_testing.c.o
+.PHONY : cow_ab_testing.o
+
+# target to build an object file
+cow_ab_testing.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f examples/CMakeFiles/cow_ab_testing.dir/build.make examples/CMakeFiles/cow_ab_testing.dir/cow_ab_testing.c.o
+.PHONY : cow_ab_testing.c.o
+
+cow_ab_testing.i: cow_ab_testing.c.i
+.PHONY : cow_ab_testing.i
+
+# target to preprocess a source file
+cow_ab_testing.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f examples/CMakeFiles/cow_ab_testing.dir/build.make examples/CMakeFiles/cow_ab_testing.dir/cow_ab_testing.c.i
+.PHONY : cow_ab_testing.c.i
+
+cow_ab_testing.s: cow_ab_testing.c.s
+.PHONY : cow_ab_testing.s
+
+# target to generate assembly for a file
+cow_ab_testing.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f examples/CMakeFiles/cow_ab_testing.dir/build.make examples/CMakeFiles/cow_ab_testing.dir/cow_ab_testing.c.s
+.PHONY : cow_ab_testing.c.s
+
+cow_inference_server.o: cow_inference_server.c.o
+.PHONY : cow_inference_server.o
+
+# target to build an object file
+cow_inference_server.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f examples/CMakeFiles/cow_inference_server.dir/build.make examples/CMakeFiles/cow_inference_server.dir/cow_inference_server.c.o
+.PHONY : cow_inference_server.c.o
+
+cow_inference_server.i: cow_inference_server.c.i
+.PHONY : cow_inference_server.i
+
+# target to preprocess a source file
+cow_inference_server.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f examples/CMakeFiles/cow_inference_server.dir/build.make examples/CMakeFiles/cow_inference_server.dir/cow_inference_server.c.i
+.PHONY : cow_inference_server.c.i
+
+cow_inference_server.s: cow_inference_server.c.s
+.PHONY : cow_inference_server.s
+
+# target to generate assembly for a file
+cow_inference_server.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f examples/CMakeFiles/cow_inference_server.dir/build.make examples/CMakeFiles/cow_inference_server.dir/cow_inference_server.c.s
+.PHONY : cow_inference_server.c.s
+
+cow_snapshot_learning.o: cow_snapshot_learning.c.o
+.PHONY : cow_snapshot_learning.o
+
+# target to build an object file
+cow_snapshot_learning.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f examples/CMakeFiles/cow_snapshot_learning.dir/build.make examples/CMakeFiles/cow_snapshot_learning.dir/cow_snapshot_learning.c.o
+.PHONY : cow_snapshot_learning.c.o
+
+cow_snapshot_learning.i: cow_snapshot_learning.c.i
+.PHONY : cow_snapshot_learning.i
+
+# target to preprocess a source file
+cow_snapshot_learning.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f examples/CMakeFiles/cow_snapshot_learning.dir/build.make examples/CMakeFiles/cow_snapshot_learning.dir/cow_snapshot_learning.c.i
+.PHONY : cow_snapshot_learning.c.i
+
+cow_snapshot_learning.s: cow_snapshot_learning.c.s
+.PHONY : cow_snapshot_learning.s
+
+# target to generate assembly for a file
+cow_snapshot_learning.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f examples/CMakeFiles/cow_snapshot_learning.dir/build.make examples/CMakeFiles/cow_snapshot_learning.dir/cow_snapshot_learning.c.s
+.PHONY : cow_snapshot_learning.c.s
+
+distributed_cow_demo.o: distributed_cow_demo.c.o
+.PHONY : distributed_cow_demo.o
+
+# target to build an object file
+distributed_cow_demo.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f examples/CMakeFiles/distributed_cow_demo.dir/build.make examples/CMakeFiles/distributed_cow_demo.dir/distributed_cow_demo.c.o
+.PHONY : distributed_cow_demo.c.o
+
+distributed_cow_demo.i: distributed_cow_demo.c.i
+.PHONY : distributed_cow_demo.i
+
+# target to preprocess a source file
+distributed_cow_demo.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f examples/CMakeFiles/distributed_cow_demo.dir/build.make examples/CMakeFiles/distributed_cow_demo.dir/distributed_cow_demo.c.i
+.PHONY : distributed_cow_demo.c.i
+
+distributed_cow_demo.s: distributed_cow_demo.c.s
+.PHONY : distributed_cow_demo.s
+
+# target to generate assembly for a file
+distributed_cow_demo.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f examples/CMakeFiles/distributed_cow_demo.dir/build.make examples/CMakeFiles/distributed_cow_demo.dir/distributed_cow_demo.c.s
+.PHONY : distributed_cow_demo.c.s
 
 ethics_demo.o: ethics_demo.c.o
 .PHONY : ethics_demo.o
@@ -721,6 +957,30 @@ nlp_integration_test.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f examples/CMakeFiles/nlp_integration_test.dir/build.make examples/CMakeFiles/nlp_integration_test.dir/nlp_integration_test.c.s
 .PHONY : nlp_integration_test.c.s
 
+phase8_comprehensive_demo.o: phase8_comprehensive_demo.c.o
+.PHONY : phase8_comprehensive_demo.o
+
+# target to build an object file
+phase8_comprehensive_demo.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f examples/CMakeFiles/phase8_comprehensive_demo.dir/build.make examples/CMakeFiles/phase8_comprehensive_demo.dir/phase8_comprehensive_demo.c.o
+.PHONY : phase8_comprehensive_demo.c.o
+
+phase8_comprehensive_demo.i: phase8_comprehensive_demo.c.i
+.PHONY : phase8_comprehensive_demo.i
+
+# target to preprocess a source file
+phase8_comprehensive_demo.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f examples/CMakeFiles/phase8_comprehensive_demo.dir/build.make examples/CMakeFiles/phase8_comprehensive_demo.dir/phase8_comprehensive_demo.c.i
+.PHONY : phase8_comprehensive_demo.c.i
+
+phase8_comprehensive_demo.s: phase8_comprehensive_demo.c.s
+.PHONY : phase8_comprehensive_demo.s
+
+# target to generate assembly for a file
+phase8_comprehensive_demo.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f examples/CMakeFiles/phase8_comprehensive_demo.dir/build.make examples/CMakeFiles/phase8_comprehensive_demo.dir/phase8_comprehensive_demo.c.s
+.PHONY : phase8_comprehensive_demo.c.s
+
 programmable_synapses_demo.o: programmable_synapses_demo.c.o
 .PHONY : programmable_synapses_demo.o
 
@@ -744,6 +1004,78 @@ programmable_synapses_demo.s: programmable_synapses_demo.c.s
 programmable_synapses_demo.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f examples/CMakeFiles/programmable_synapses_demo.dir/build.make examples/CMakeFiles/programmable_synapses_demo.dir/programmable_synapses_demo.c.s
 .PHONY : programmable_synapses_demo.c.s
+
+simple_demo.o: simple_demo.c.o
+.PHONY : simple_demo.o
+
+# target to build an object file
+simple_demo.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f examples/CMakeFiles/simple_demo.dir/build.make examples/CMakeFiles/simple_demo.dir/simple_demo.c.o
+.PHONY : simple_demo.c.o
+
+simple_demo.i: simple_demo.c.i
+.PHONY : simple_demo.i
+
+# target to preprocess a source file
+simple_demo.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f examples/CMakeFiles/simple_demo.dir/build.make examples/CMakeFiles/simple_demo.dir/simple_demo.c.i
+.PHONY : simple_demo.c.i
+
+simple_demo.s: simple_demo.c.s
+.PHONY : simple_demo.s
+
+# target to generate assembly for a file
+simple_demo.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f examples/CMakeFiles/simple_demo.dir/build.make examples/CMakeFiles/simple_demo.dir/simple_demo.c.s
+.PHONY : simple_demo.c.s
+
+speech_cortex_demo.o: speech_cortex_demo.c.o
+.PHONY : speech_cortex_demo.o
+
+# target to build an object file
+speech_cortex_demo.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f examples/CMakeFiles/speech_cortex_demo.dir/build.make examples/CMakeFiles/speech_cortex_demo.dir/speech_cortex_demo.c.o
+.PHONY : speech_cortex_demo.c.o
+
+speech_cortex_demo.i: speech_cortex_demo.c.i
+.PHONY : speech_cortex_demo.i
+
+# target to preprocess a source file
+speech_cortex_demo.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f examples/CMakeFiles/speech_cortex_demo.dir/build.make examples/CMakeFiles/speech_cortex_demo.dir/speech_cortex_demo.c.i
+.PHONY : speech_cortex_demo.c.i
+
+speech_cortex_demo.s: speech_cortex_demo.c.s
+.PHONY : speech_cortex_demo.s
+
+# target to generate assembly for a file
+speech_cortex_demo.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f examples/CMakeFiles/speech_cortex_demo.dir/build.make examples/CMakeFiles/speech_cortex_demo.dir/speech_cortex_demo.c.s
+.PHONY : speech_cortex_demo.c.s
+
+test_neural_logic.o: test_neural_logic.c.o
+.PHONY : test_neural_logic.o
+
+# target to build an object file
+test_neural_logic.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f examples/CMakeFiles/test_neural_logic.dir/build.make examples/CMakeFiles/test_neural_logic.dir/test_neural_logic.c.o
+.PHONY : test_neural_logic.c.o
+
+test_neural_logic.i: test_neural_logic.c.i
+.PHONY : test_neural_logic.i
+
+# target to preprocess a source file
+test_neural_logic.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f examples/CMakeFiles/test_neural_logic.dir/build.make examples/CMakeFiles/test_neural_logic.dir/test_neural_logic.c.i
+.PHONY : test_neural_logic.c.i
+
+test_neural_logic.s: test_neural_logic.c.s
+.PHONY : test_neural_logic.s
+
+# target to generate assembly for a file
+test_neural_logic.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f examples/CMakeFiles/test_neural_logic.dir/build.make examples/CMakeFiles/test_neural_logic.dir/test_neural_logic.c.s
+.PHONY : test_neural_logic.c.s
 
 test_phase3.o: test_phase3.c.o
 .PHONY : test_phase3.o
@@ -817,6 +1149,54 @@ test_pink_weights.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f examples/CMakeFiles/test_pink_weights.dir/build.make examples/CMakeFiles/test_pink_weights.dir/test_pink_weights.c.s
 .PHONY : test_pink_weights.c.s
 
+working_memory_integration_demo.o: working_memory_integration_demo.c.o
+.PHONY : working_memory_integration_demo.o
+
+# target to build an object file
+working_memory_integration_demo.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f examples/CMakeFiles/working_memory_integration_demo.dir/build.make examples/CMakeFiles/working_memory_integration_demo.dir/working_memory_integration_demo.c.o
+.PHONY : working_memory_integration_demo.c.o
+
+working_memory_integration_demo.i: working_memory_integration_demo.c.i
+.PHONY : working_memory_integration_demo.i
+
+# target to preprocess a source file
+working_memory_integration_demo.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f examples/CMakeFiles/working_memory_integration_demo.dir/build.make examples/CMakeFiles/working_memory_integration_demo.dir/working_memory_integration_demo.c.i
+.PHONY : working_memory_integration_demo.c.i
+
+working_memory_integration_demo.s: working_memory_integration_demo.c.s
+.PHONY : working_memory_integration_demo.s
+
+# target to generate assembly for a file
+working_memory_integration_demo.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f examples/CMakeFiles/working_memory_integration_demo.dir/build.make examples/CMakeFiles/working_memory_integration_demo.dir/working_memory_integration_demo.c.s
+.PHONY : working_memory_integration_demo.c.s
+
+working_memory_public_api_demo.o: working_memory_public_api_demo.c.o
+.PHONY : working_memory_public_api_demo.o
+
+# target to build an object file
+working_memory_public_api_demo.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f examples/CMakeFiles/working_memory_public_api_demo.dir/build.make examples/CMakeFiles/working_memory_public_api_demo.dir/working_memory_public_api_demo.c.o
+.PHONY : working_memory_public_api_demo.c.o
+
+working_memory_public_api_demo.i: working_memory_public_api_demo.c.i
+.PHONY : working_memory_public_api_demo.i
+
+# target to preprocess a source file
+working_memory_public_api_demo.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f examples/CMakeFiles/working_memory_public_api_demo.dir/build.make examples/CMakeFiles/working_memory_public_api_demo.dir/working_memory_public_api_demo.c.i
+.PHONY : working_memory_public_api_demo.c.i
+
+working_memory_public_api_demo.s: working_memory_public_api_demo.c.s
+.PHONY : working_memory_public_api_demo.s
+
+# target to generate assembly for a file
+working_memory_public_api_demo.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f examples/CMakeFiles/working_memory_public_api_demo.dir/build.make examples/CMakeFiles/working_memory_public_api_demo.dir/working_memory_public_api_demo.c.s
+.PHONY : working_memory_public_api_demo.c.s
+
 # Help Target
 help:
 	@echo "The following are some of the valid targets for this Makefile:"
@@ -832,6 +1212,10 @@ help:
 	@echo "... test"
 	@echo "... brain_demo"
 	@echo "... brain_probe_demo"
+	@echo "... cow_ab_testing"
+	@echo "... cow_inference_server"
+	@echo "... cow_snapshot_learning"
+	@echo "... distributed_cow_demo"
 	@echo "... ethics_demo"
 	@echo "... event_demo"
 	@echo "... fractal_network_demo"
@@ -843,16 +1227,34 @@ help:
 	@echo "... multimodal_integration_demo"
 	@echo "... nlp_integration_demo"
 	@echo "... nlp_integration_test"
+	@echo "... phase8_comprehensive_demo"
 	@echo "... programmable_synapses_demo"
+	@echo "... simple_demo"
+	@echo "... speech_cortex_demo"
+	@echo "... test_neural_logic"
 	@echo "... test_phase3"
 	@echo "... test_phase4"
 	@echo "... test_pink_weights"
+	@echo "... working_memory_integration_demo"
+	@echo "... working_memory_public_api_demo"
 	@echo "... brain_demo.o"
 	@echo "... brain_demo.i"
 	@echo "... brain_demo.s"
 	@echo "... brain_probe_demo.o"
 	@echo "... brain_probe_demo.i"
 	@echo "... brain_probe_demo.s"
+	@echo "... cow_ab_testing.o"
+	@echo "... cow_ab_testing.i"
+	@echo "... cow_ab_testing.s"
+	@echo "... cow_inference_server.o"
+	@echo "... cow_inference_server.i"
+	@echo "... cow_inference_server.s"
+	@echo "... cow_snapshot_learning.o"
+	@echo "... cow_snapshot_learning.i"
+	@echo "... cow_snapshot_learning.s"
+	@echo "... distributed_cow_demo.o"
+	@echo "... distributed_cow_demo.i"
+	@echo "... distributed_cow_demo.s"
 	@echo "... ethics_demo.o"
 	@echo "... ethics_demo.i"
 	@echo "... ethics_demo.s"
@@ -886,9 +1288,21 @@ help:
 	@echo "... nlp_integration_test.o"
 	@echo "... nlp_integration_test.i"
 	@echo "... nlp_integration_test.s"
+	@echo "... phase8_comprehensive_demo.o"
+	@echo "... phase8_comprehensive_demo.i"
+	@echo "... phase8_comprehensive_demo.s"
 	@echo "... programmable_synapses_demo.o"
 	@echo "... programmable_synapses_demo.i"
 	@echo "... programmable_synapses_demo.s"
+	@echo "... simple_demo.o"
+	@echo "... simple_demo.i"
+	@echo "... simple_demo.s"
+	@echo "... speech_cortex_demo.o"
+	@echo "... speech_cortex_demo.i"
+	@echo "... speech_cortex_demo.s"
+	@echo "... test_neural_logic.o"
+	@echo "... test_neural_logic.i"
+	@echo "... test_neural_logic.s"
 	@echo "... test_phase3.o"
 	@echo "... test_phase3.i"
 	@echo "... test_phase3.s"
@@ -898,6 +1312,12 @@ help:
 	@echo "... test_pink_weights.o"
 	@echo "... test_pink_weights.i"
 	@echo "... test_pink_weights.s"
+	@echo "... working_memory_integration_demo.o"
+	@echo "... working_memory_integration_demo.i"
+	@echo "... working_memory_integration_demo.s"
+	@echo "... working_memory_public_api_demo.o"
+	@echo "... working_memory_public_api_demo.i"
+	@echo "... working_memory_public_api_demo.s"
 .PHONY : help
 
 
