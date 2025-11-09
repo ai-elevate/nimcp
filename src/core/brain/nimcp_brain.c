@@ -1807,6 +1807,29 @@ brain_t brain_create_custom(const brain_config_t* config)
         return NULL;
     }
 
+    // Auto-load from checkpoint if enabled (default behavior)
+    // WHY: Allow seamless continuation from saved brain state
+    // HOW: Check if checkpoint exists and auto_load is enabled, then load instead of creating fresh
+    if (config->checkpoint_path && config->auto_load) {
+        // Check if checkpoint file exists
+        FILE* test_file = fopen(config->checkpoint_path, "rb");
+        if (test_file) {
+            fclose(test_file);
+            // Checkpoint exists, load it
+            brain_t loaded_brain = brain_load(config->checkpoint_path);
+            if (loaded_brain) {
+                // Successfully loaded from checkpoint - update config to match requested config
+                // (in case user changed some settings)
+                memcpy(&loaded_brain->config, config, sizeof(brain_config_t));
+                return loaded_brain;
+            }
+            // If load failed, fall through to create fresh brain
+            fprintf(stderr, "WARNING: Failed to load checkpoint from '%s', creating fresh brain\n",
+                    config->checkpoint_path);
+        }
+        // Checkpoint doesn't exist yet, create fresh brain (will be saved later)
+    }
+
     // Validate task_name as string field (NULL termination, UTF-8)
     size_t task_name_size = sizeof(config->task_name);
     if (!nimcp_validate_string_field(config->task_name, task_name_size)) {
@@ -3141,9 +3164,59 @@ static bool save_metadata(brain_t brain, const char* filepath)
 
     // Phase 10.2: Save working memory state
     bool wm_success = save_working_memory_state(brain->working_memory, meta_file);
+    if (!wm_success) {
+        fclose(meta_file);
+        return false;
+    }
+
+    // Save brain statistics (performance metrics)
+    fwrite(&brain->stats, sizeof(brain_stats_t), 1, meta_file);
+
+    // Save wellbeing state (Phase 9.3)
+    fwrite(&brain->last_distress, sizeof(distress_assessment_t), 1, meta_file);
+    fwrite(&brain->wellbeing_monitoring_enabled, sizeof(bool), 1, meta_file);
+    fwrite(&brain->wellbeing_check_interval_ms, sizeof(uint64_t), 1, meta_file);
+    fwrite(&brain->last_wellbeing_check_time, sizeof(uint64_t), 1, meta_file);
+
+    // Save knowledge system state (if exists)
+    bool has_knowledge = (brain->knowledge != NULL);
+    fwrite(&has_knowledge, sizeof(bool), 1, meta_file);
+    if (has_knowledge) {
+        char knowledge_path[512];
+        snprintf(knowledge_path, sizeof(knowledge_path), "%s.knowledge", filepath);
+        knowledge_save(brain->knowledge, knowledge_path);
+    }
+
+    // Save emotional system state (Phase 10.2 - if exists)
+    bool has_emotional = (brain->emotional_system != NULL);
+    fwrite(&has_emotional, sizeof(bool), 1, meta_file);
+    if (has_emotional) {
+        // TODO: Implement emotional_system_save when API available
+        // For now, save placeholder to maintain format consistency
+    }
+
+    // Save executive controller state (Phase 10.3 - if exists)
+    bool has_executive = (brain->executive != NULL);
+    fwrite(&has_executive, sizeof(bool), 1, meta_file);
+    if (has_executive) {
+        // TODO: Implement executive_save when API available
+        // For now, save placeholder to maintain format consistency
+    }
+
+    // Save sleep system state (Phase 10.4)
+    // Sleep system is embedded struct, always save
+    // TODO: Add sleep_system_save API when available
+    // For now, skip to maintain backward compatibility
+
+    // Save pink noise neuromodulator state (if exists)
+    bool has_pink_noise = (brain->pink_noise != NULL);
+    fwrite(&has_pink_noise, sizeof(bool), 1, meta_file);
+    if (has_pink_noise) {
+        // TODO: Implement pink_noise_save when API available
+    }
 
     fclose(meta_file);
-    return wm_success;
+    return true;
 }
 
 /**
@@ -3424,6 +3497,51 @@ static bool load_metadata(brain_t brain, const char* filepath)
 
     // Phase 10.2: Load working memory state
     load_working_memory_state(brain, meta_file);
+
+    // Load brain statistics (performance metrics)
+    if (fread(&brain->stats, sizeof(brain_stats_t), 1, meta_file) != 1) {
+        // Non-fatal: use default stats if not available (backward compatibility)
+        init_brain_stats(&brain->stats, brain->config.task_name, brain->config.size,
+                        brain->config.num_inputs, brain->config.learning_rate);
+    }
+
+    // Load wellbeing state (Phase 9.3)
+    if (fread(&brain->last_distress, sizeof(distress_assessment_t), 1, meta_file) == 1 &&
+        fread(&brain->wellbeing_monitoring_enabled, sizeof(bool), 1, meta_file) == 1 &&
+        fread(&brain->wellbeing_check_interval_ms, sizeof(uint64_t), 1, meta_file) == 1 &&
+        fread(&brain->last_wellbeing_check_time, sizeof(uint64_t), 1, meta_file) == 1) {
+        // Successfully loaded wellbeing state
+    }
+
+    // Load knowledge system state (if exists)
+    bool has_knowledge = false;
+    if (fread(&has_knowledge, sizeof(bool), 1, meta_file) == 1 && has_knowledge) {
+        char knowledge_path[512];
+        snprintf(knowledge_path, sizeof(knowledge_path), "%s.knowledge", filepath);
+        brain->knowledge = knowledge_load(knowledge_path);
+        // Non-fatal if knowledge load fails
+    }
+
+    // Load emotional system state (Phase 10.2 - if exists)
+    bool has_emotional = false;
+    if (fread(&has_emotional, sizeof(bool), 1, meta_file) == 1 && has_emotional) {
+        // TODO: Implement emotional_system_load when API available
+        // For now, emotional system will be NULL (backward compatible)
+    }
+
+    // Load executive controller state (Phase 10.3 - if exists)
+    bool has_executive = false;
+    if (fread(&has_executive, sizeof(bool), 1, meta_file) == 1 && has_executive) {
+        // TODO: Implement executive_load when API available
+        // For now, executive will be NULL (backward compatible)
+    }
+
+    // Load pink noise neuromodulator state (if exists)
+    bool has_pink_noise = false;
+    if (fread(&has_pink_noise, sizeof(bool), 1, meta_file) == 1 && has_pink_noise) {
+        // TODO: Implement pink_noise_load when API available
+        // For now, pink_noise will be NULL (backward compatible)
+    }
 
     fclose(meta_file);
     return true;

@@ -13,6 +13,39 @@
 // Using void* to avoid typedef conflicts between modules
 // The .c file will include headers and cast appropriately
 
+// === PHASE 10: ADVANCED COGNITIVE SYSTEMS ===
+
+// Phase 10.1: Working Memory
+typedef struct working_memory working_memory_t;
+
+// Phase 10.2: Emotional Tagging
+typedef struct emotional_system emotional_system_t;
+typedef struct emotional_tag emotional_tag_t;
+typedef struct emotional_state emotional_state_t;
+
+// Phase 10.3: Executive Functions
+typedef struct executive_controller executive_controller_t;
+
+// Phase 10.4: Sleep-Wake Cycle
+typedef struct sleep_system_struct* sleep_system_t;
+
+// Phase 10.5: Mental Health Monitoring
+typedef struct mental_health_monitor mental_health_monitor_t;
+
+// Phase 10.6: Theory of Mind
+// Forward declare Theory of Mind (opaque pointer)
+typedef struct theory_of_mind_s* theory_of_mind_t;
+
+// Phase 10.7: Natural Explanations
+typedef struct explanation_generator_s* explanation_generator_t;  // Opaque pointer
+typedef struct natural_explanation natural_explanation_t;
+
+// Phase 10.8: Meta-Learning
+typedef struct meta_learner_s* meta_learner_t;  // Opaque pointer
+
+// Phase 10.9: Predictive Processing
+typedef struct predictive_network_s* predictive_network_t;  // Opaque pointer
+
 /**
  * @file nimcp_brain.h
  * @brief Simple, high-level API for creating lightweight learning systems
@@ -120,6 +153,7 @@ typedef struct {
     bool enable_curiosity;     /**< Enable exploration and knowledge gap detection */
     bool enable_knowledge;     /**< Enable multi-domain knowledge acquisition */
     bool enable_wellbeing;     /**< Enable distress detection and ethical safeguards */
+    bool enable_logic;         /**< Enable symbolic logic and reasoning (Phase 9.4) */
 
     // === ADVANCED PLASTICITY ===
     bool enable_eligibility_traces; /**< Enable temporal credit assignment (Phase 5.1) */
@@ -132,6 +166,67 @@ typedef struct {
     uint32_t visual_feature_dim;  /**< Visual feature dimension (0 = no visual) */
     uint32_t audio_feature_dim;   /**< Audio feature dimension (0 = no audio) */
     uint32_t speech_feature_dim;  /**< Speech feature dimension (0 = no speech) */
+    uint32_t language_feature_dim; /**< Language/text feature dimension (0 = no language, Phase 9.4) */
+
+    // === PHASE 9.2: EPISTEMIC FILTERING ===
+    bool enable_epistemic_filter; /**< Enable cognitive bias prevention */
+
+    // === PHASE 9.3: WELLBEING MONITORING ===
+    bool enable_wellbeing_monitoring; /**< Enable self-preservation and distress monitoring */
+    uint64_t wellbeing_check_interval_ms; /**< Interval between wellbeing checks (0 = always) */
+
+    // === PHASE 10: ADVANCED COGNITIVE SYSTEMS ===
+
+    // Phase 10.1: Working Memory
+    bool enable_working_memory;       /**< Enable Miller's 7±2 working memory buffer */
+    uint32_t working_memory_capacity; /**< Working memory capacity (default: 7) */
+    float working_memory_decay_tau_ms; /**< Decay time constant in ms (default: 1000) */
+
+    // Phase 10.2: Emotional Tagging
+    bool enable_emotional_tagging;    /**< Enable emotional context for memories */
+    bool enable_emotional_memories;   /**< Enable emotional encoding boost */
+
+    // Phase 10.3: Executive Functions
+    bool enable_executive_control;    /**< Enable task switching and planning */
+    bool enable_task_switching;       /**< Enable multi-task management */
+    bool enable_planning;             /**< Enable goal-directed planning */
+
+    // Phase 10.4: Sleep-Wake Cycle
+    bool enable_sleep_wake_cycle;     /**< Enable sleep/wake states and consolidation */
+    float sleep_pressure_threshold;   /**< Sleep needed threshold (default: 0.8) */
+    bool enable_memory_replay;        /**< Enable memory replay during sleep */
+    bool enable_synaptic_homeostasis; /**< Enable synaptic downscaling */
+    bool enable_rem_creativity;       /**< Enable REM creative recombination */
+
+    // Phase 10.5: Mental Health Monitoring
+    bool enable_mental_health_monitoring; /**< Enable disorder detection */
+    bool enable_auto_intervention;    /**< Enable automatic interventions */
+    bool shutdown_on_critical_disorder; /**< Shutdown if critical disorder detected */
+
+    // Phase 10.6: Theory of Mind
+    bool enable_theory_of_mind;       /**< Enable social cognition and empathy */
+    bool enable_empathy_responses;    /**< Enable empathetic emotional responses */
+    bool enable_false_belief_tracking; /**< Enable false belief understanding */
+
+    // Phase 10.7: Natural Explanations
+    bool enable_natural_explanations; /**< Enable human-readable explanations */
+    bool enable_causal_explanations;  /**< Enable causal chain generation */
+
+    // Phase 10.8: Meta-Learning
+    bool enable_meta_learning;        /**< Enable learning-to-learn */
+    bool enable_adaptive_meta_lr;     /**< Enable adaptive learning rates per region */
+    uint32_t meta_task_batch_size;    /**< Task batch size for meta-learning */
+    uint32_t meta_k_shot;             /**< K-shot learning parameter (1, 5, or 10) */
+
+    // Phase 10.9: Predictive Processing
+    bool enable_predictive_processing; /**< Enable predictive coding */
+    bool enable_active_inference;     /**< Enable active inference for actions */
+
+    // === PERSISTENCE & CHECKPOINTING ===
+    const char* checkpoint_path;      /**< Path to checkpoint file (NULL = no checkpoint) */
+    bool auto_load;                   /**< Auto-load from checkpoint on create (default: true) */
+    bool auto_save;                   /**< Auto-save to checkpoint periodically (default: false) */
+    uint32_t auto_save_interval;      /**< Auto-save every N decisions (0 = disabled) */
 } brain_config_t;
 
 /**
@@ -162,6 +257,46 @@ brain_t brain_create_custom(const brain_config_t* config);
  */
 void brain_destroy(brain_t brain);
 
+/**
+ * @brief Get working memory from brain (Phase 10.2 accessor)
+ *
+ * WHAT: Retrieve pointer to brain's working memory subsystem
+ * WHY:  Allow API wrapper functions to access working memory
+ * HOW:  Return brain->working_memory field
+ *
+ * @param brain Brain instance
+ * @return Working memory pointer or NULL if not enabled
+ */
+working_memory_t* brain_get_working_memory(brain_t brain);
+
+/**
+ * WHAT: Retrieve pointer to brain's sleep/wake subsystem (Phase 10.4)
+ * WHY:  Allow external control of sleep cycles and pressure monitoring
+ * HOW:  Return brain->sleep_system field
+ *
+ * @param brain Brain instance
+ * @return Sleep system pointer or NULL if invalid brain
+ */
+sleep_system_t brain_get_sleep_system(brain_t brain);
+
+/**
+ * WHAT: Retrieve pointer to brain's Theory of Mind subsystem (Phase 10.6)
+ * WHY:  Allow external access to social cognition and empathy functions
+ * HOW:  Return brain->theory_of_mind field
+ *
+ * @param brain Brain instance
+ * @return Theory of Mind pointer or NULL if not enabled/invalid brain
+ */
+theory_of_mind_t brain_get_theory_of_mind(brain_t brain);
+
+/**
+ * @brief Get explanation generator from brain (Phase 10.7)
+ *
+ * @param brain Brain instance
+ * @return Explanation generator pointer or NULL if not enabled/invalid brain
+ */
+explanation_generator_t brain_get_explanation_generator(brain_t brain);
+
 //=============================================================================
 // Phase 2: Copy-on-Write Brain Cloning
 //=============================================================================
@@ -177,6 +312,87 @@ void brain_destroy(brain_t brain);
  * @return Cloned brain or NULL on error
  */
 brain_t brain_clone_cow(brain_t original);
+
+//=============================================================================
+// Phase 2.8: Distributed Copy-on-Write Brain Cloning
+//=============================================================================
+
+// Forward declaration for distributed COW types
+typedef struct distributed_cow_config distributed_cow_config_t;
+typedef struct distributed_cow_stats distributed_cow_stats_t;
+
+/**
+ * @brief Create distributed COW clone on remote node
+ *
+ * WHAT: Creates a COW clone that fetches network data from remote master
+ * WHY:  Enable efficient distributed deployment without full network copy
+ * HOW:  Establishes P2P connection, initializes cache, registers with master
+ *
+ * @param original Brain to clone (must be on master node)
+ * @param remote_host Master node hostname/IP
+ * @param remote_port Master node port
+ * @param config Distributed COW configuration (NULL for defaults)
+ * @return Distributed COW clone or NULL on error
+ *
+ * MEMORY: ~1-10MB overhead (cache + metadata)
+ * LATENCY: ~10-100ms (connection + handshake)
+ * BANDWIDTH: Lazy loading - only fetches neurons needed for inference
+ *
+ * Example:
+ * ```c
+ * // On master node (192.168.1.100:5000)
+ * brain_t master = brain_create("model", BRAIN_SIZE_MEDIUM,
+ *                               BRAIN_TASK_CLASSIFICATION, 256, 10);
+ * brain_enable_distributed_cow_master(master, p2p_node);
+ *
+ * // On remote node (192.168.1.101)
+ * brain_t clone = brain_clone_cow_distributed(master, "192.168.1.100", 5000, NULL);
+ * // Clone shares network with master, fetches on demand
+ * brain_decision_t* decision = brain_decide(clone, input, 256);
+ * ```
+ */
+NIMCP_EXPORT brain_t brain_clone_cow_distributed(
+    brain_t original,
+    const char* remote_host,
+    uint16_t remote_port,
+    const distributed_cow_config_t* config
+);
+
+/**
+ * @brief Enable distributed COW serving on master node
+ *
+ * WHAT: Configures brain to serve network segments to remote clones
+ * WHY:  Allow brain to act as master for distributed COW
+ * HOW:  Registers network segment handlers, starts P2P listener
+ *
+ * @param brain Brain to enable as master
+ * @param p2p_node P2P node for serving (must be started)
+ * @return true on success, false on failure
+ */
+NIMCP_EXPORT bool brain_enable_distributed_cow_master(
+    brain_t brain,
+    p2p_node_t p2p_node
+);
+
+/**
+ * @brief Get distributed COW statistics
+ *
+ * @param brain Brain handle
+ * @param stats Output statistics structure
+ * @return true on success, false if not distributed COW
+ */
+NIMCP_EXPORT bool brain_get_distributed_cow_stats(
+    brain_t brain,
+    distributed_cow_stats_t* stats
+);
+
+/**
+ * @brief Check if brain is distributed COW clone
+ *
+ * @param brain Brain handle
+ * @return true if distributed COW clone, false otherwise
+ */
+NIMCP_EXPORT bool brain_is_distributed_cow(brain_t brain);
 
 //=============================================================================
 // Phase 3: Distributed Brain API
@@ -724,10 +940,26 @@ adaptive_network_t brain_get_network(brain_t brain);
  * @brief Multi-modal processing input bundle
  *
  * WHAT: Container for all possible input modalities
- * WHY:  Enable unified processing of visual, audio, and direct inputs
- * HOW:  Pass NULL for unused modalities
+ * WHY:  Enable unified processing of visual, audio, language, and direct inputs
+ * HOW:  Pass NULL for unused modalities, combine any subset of modalities
  *
  * DESIGN: Flexible multi-modal input - any combination of modalities allowed
+ *
+ * HUMAN COMMUNICATION USE CASE (Phase 9.4):
+ * When communicating with humans, the brain should process ALL available cues:
+ * - Visual: Facial expressions, gestures, body language, environmental context
+ * - Audio: Tone of voice, prosody, emotion, speech patterns, background sounds
+ * - Language: Spoken/written words, semantic meaning, intent, context
+ *
+ * EXAMPLE: Video call with human
+ * - visual_data: Camera frame showing face (expressions, gaze, gestures)
+ * - audio_data: Microphone capturing voice (tone, emotion, pitch)
+ * - language_text: Transcribed or typed text (semantic content)
+ *
+ * The brain integrates ALL modalities to understand:
+ * - WHAT is being said (language)
+ * - HOW it's being said (audio tone/emotion)
+ * - NON-VERBAL cues (visual expressions/gestures)
  */
 typedef struct {
     // Visual input (optional)
@@ -740,6 +972,12 @@ typedef struct {
     const float* audio_data;     /**< Audio samples (normalized -1 to 1) */
     uint32_t audio_samples;      /**< Number of audio samples */
     uint8_t audio_channels;      /**< 1=mono, 2=stereo */
+
+    // Language input (optional) - Phase 9.4: Human Communication
+    const char* language_text;   /**< Text input (UTF-8 string) */
+    uint32_t language_length;    /**< Text length in bytes */
+    const float* language_embeddings; /**< Pre-computed embeddings (optional) */
+    uint32_t language_embed_dim; /**< Embedding dimension (if pre-computed) */
 
     // Direct input (optional)
     const float* direct_data;    /**< Direct feature vector */
@@ -782,7 +1020,18 @@ typedef struct {
     float visual_attention;      /**< Visual modality weight [0,1] */
     float audio_attention;       /**< Audio modality weight [0,1] */
     float speech_attention;      /**< Speech modality weight [0,1] - Phase 8.8 */
+    float language_attention;    /**< Language modality weight [0,1] - Phase 9.4 */
     float direct_attention;      /**< Direct input weight [0,1] */
+
+    // Language output (Phase 9.4: Human Communication)
+    char* language_response;     /**< Generated text response (caller must free) */
+    uint32_t language_response_length; /**< Response length in bytes */
+    float language_confidence;   /**< Language generation confidence [0,1] */
+
+    // Logical reasoning output (Phase 9.4: Communication)
+    bool logical_consistency;    /**< Logical consistency check passed */
+    float reasoning_confidence;  /**< Confidence in logical inference [0,1] */
+    char logical_reasoning[256]; /**< Logical inference explanation */
 
     // Explanation
     char explanation[256];       /**< Human-readable explanation */
@@ -833,58 +1082,112 @@ typedef struct {
  *
  * USAGE:
  * ```c
- * // Create brain with multi-modal support
- * brain_config_t config = brain_default_config("perception", BRAIN_SIZE_MEDIUM,
- *                                               BRAIN_TASK_CLASSIFICATION, 256, 10);
- * config.enable_visual_cortex = true;
- * config.enable_audio_cortex = true;
- * config.enable_ethics = true;
- * config.enable_introspection = true;
+ * // EXAMPLE 1: Human Communication (Visual + Audio + Language)
+ * // Use case: Video call with human - process facial expressions, tone, and words
+ *
+ * brain_config_t config = brain_default_config("human_comm", BRAIN_SIZE_MEDIUM,
+ *                                               BRAIN_TASK_CLASSIFICATION, 512, 128);
+ * config.enable_visual_cortex = true;      // Facial expressions, gestures
+ * config.enable_audio_cortex = true;       // Tone, emotion, prosody
+ * config.enable_language_cortex = true;    // Semantic meaning (Phase 9.4)
+ * config.enable_ethics = true;             // Ethical communication
+ * config.enable_introspection = true;      // Uncertainty about interpretation
+ * config.enable_logic = true;              // Logical reasoning (Phase 9.4)
+ * config.enable_epistemic_filter = true;   // Detect bias, misinformation
+ * config.enable_wellbeing_monitoring = true; // Self-preservation
  * config.enable_multimodal_integration = true;
  * config.visual_feature_dim = 128;
  * config.audio_feature_dim = 64;
+ * config.language_feature_dim = 256;
  *
  * brain_t brain = brain_create_custom(&config);
  *
- * // Process camera + microphone input
- * uint8_t camera_frame[640 * 480];  // Grayscale
- * float microphone_samples[1024];    // Audio
+ * // Capture from video call: camera frame, microphone, transcribed text
+ * uint8_t camera_frame[640 * 480 * 3];  // RGB image of person
+ * float microphone_samples[1024];        // Audio of voice
+ * const char* spoken_text = "I'm feeling really stressed about this project";
  *
  * brain_multimodal_input_t input = {
+ *     // Visual cues: facial expression, body language
  *     .visual_data = camera_frame,
  *     .visual_width = 640,
  *     .visual_height = 480,
- *     .visual_channels = 1,
+ *     .visual_channels = 3,  // RGB
+ *
+ *     // Audio cues: tone, pitch, emotion in voice
  *     .audio_data = microphone_samples,
  *     .audio_samples = 1024,
  *     .audio_channels = 1,
+ *
+ *     // Language cues: semantic meaning of words
+ *     .language_text = spoken_text,
+ *     .language_length = strlen(spoken_text),
+ *     .language_embeddings = NULL,  // Brain will compute
+ *     .language_embed_dim = 0,
+ *
  *     .direct_data = NULL,
  *     .direct_dim = 0,
- *     .timestamp_ms = nimcp_time_ms()
+ *     .timestamp_ms = nimcp_time_get_ms()
  * };
  *
  * brain_multimodal_output_t output = {0};
- * output.output_vector = nimcp_malloc(10 * sizeof(float));
- * output.output_dim = 10;
+ * output.output_vector = malloc(128 * sizeof(float));
+ * output.output_dim = 128;
  *
+ * // Process through FULL 7-stage cognitive pipeline:
+ * // Stage 0: Wellbeing check (pre-processing)
+ * // Stage 1: Introspection
+ * // Stage 2: Ethics filtering
+ * // Stage 3: Salience detection
+ * // Stage 4: Knowledge integration
+ * // Stage 5: Curiosity-driven exploration
+ * // Stage 6: Wellbeing check (post-processing)
  * brain_process_multimodal(brain, &input, &output);
  *
+ * // Brain understood from ALL three modalities:
  * printf("Decision: %s (confidence: %.2f)\n", output.decision_label, output.confidence);
- * printf("Ethical: %s, Novelty: %.2f\n",
- *        output.ethical_approved ? "YES" : "NO", output.novelty_score);
- * printf("Visual attention: %.2f, Audio attention: %.2f\n",
- *        output.visual_attention, output.audio_attention);
+ * printf("Ethical: %s, Bias detected: %s\n",
+ *        output.ethical_approved ? "YES" : "NO",
+ *        output.bias_detected ? "YES" : "NO");
+ *
+ * // Attention breakdown shows which modality was most important
+ * printf("Attention: Visual=%.2f, Audio=%.2f, Language=%.2f\n",
+ *        output.visual_attention, output.audio_attention, output.language_attention);
+ *
+ * // Generated response (if language output enabled)
+ * if (output.language_response) {
+ *     printf("Brain response: %s (conf: %.2f)\n",
+ *            output.language_response, output.language_confidence);
+ *     free(output.language_response);  // Caller must free
+ * }
+ *
  * printf("Explanation: %s\n", output.explanation);
+ * printf("Epistemic: %s\n", output.epistemic_reasoning);
+ *
+ * // Logical reasoning
+ * printf("Logical consistency: %s (conf: %.2f)\n",
+ *        output.logical_consistency ? "YES" : "NO",
+ *        output.reasoning_confidence);
+ * printf("Logical inference: %s\n", output.logical_reasoning);
+ *
+ * // The brain processed:
+ * // - VISUAL: stressed facial expression, tense posture (30% attention)
+ * // - AUDIO: anxious tone, rapid speech (40% attention)
+ * // - LANGUAGE: words "stressed", "project" (30% attention)
+ * // - LOGIC: Inferred "person needs support" from combined cues
+ * // = Integrated understanding of human's emotional state + logical inference
  * ```
  *
  * COMPLEXITY:
  * - Visual processing: O(W·H·K²·F) where K=kernel, F=filters
  * - Audio processing: O(N·log(N)) FFT
- * - Integration: O(D_v + D_a + D_d)
+ * - Language processing: O(T·E) where T=tokens, E=embedding dim
+ * - Integration: O(D_v + D_a + D_l + D_d) where D_l=language features
  * - Neural step: O(N·S) where N=neurons, S=avg synapses
+ * - Cognitive pipeline (7 stages): O(N + K + C) where K=knowledge, C=cognitive checks
  * - Overall: O(sensory + neural + cognitive)
  *
- * PERFORMANCE: ~10-50ms typical for medium brain with camera+audio
+ * PERFORMANCE: ~10-50ms typical for medium brain with camera+audio+text
  *
  * THREAD SAFETY: Not thread-safe (brain state modified)
  *
