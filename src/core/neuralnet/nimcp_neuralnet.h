@@ -307,6 +307,33 @@ bool neural_network_update_neuron(neural_network_t network, uint32_t neuron_id, 
                                   uint64_t timestamp);
 bool neural_network_get_neuron_state(neural_network_t network, uint32_t neuron_id, float* state);
 
+/**
+ * @brief Get number of neurons in network
+ *
+ * WHAT: Return total neuron count
+ * WHY: Allow external code to iterate neurons without accessing internals
+ * HOW: Return num_neurons field
+ *
+ * @param network Network instance
+ * @return Number of neurons, or 0 if network is NULL
+ */
+uint32_t neural_network_get_num_neurons(neural_network_t network);
+
+/**
+ * @brief Get pointer to neuron structure
+ *
+ * WHAT: Access neuron internals for serialization/introspection
+ * WHY: Enable save/load of synaptic weights without duplicating access logic
+ * HOW: Return pointer to neuron in neurons array
+ *
+ * WARNING: Returns internal pointer - use carefully!
+ *
+ * @param network Network instance
+ * @param neuron_id Neuron ID
+ * @return Pointer to neuron, or NULL if invalid
+ */
+neuron_t* neural_network_get_neuron(neural_network_t network, uint32_t neuron_id);
+
 // NIMCP 2.5 - Forward pass for inference
 bool neural_network_forward(neural_network_t network, const float* inputs, uint32_t input_size,
                             float* outputs, uint32_t output_size);

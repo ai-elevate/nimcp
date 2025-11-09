@@ -1191,11 +1191,13 @@ uint32_t neural_network_apply_oja(neural_network_t network, uint32_t neuron_id, 
 {
     neuron_t* neuron = &network->neurons[neuron_id];
     uint32_t modified = 0;
-    float y = neuron->state;  // Post-synaptic activity
-                              //    float y_squared = y * y;
+
+    // FIX: Use avg_activity instead of current state (which may be 0 after spike reset)
+    // Synapse goes FROM neuron TO target, so neuron is presynaptic
+    float x = neuron->avg_activity;  // Pre-synaptic average activity
 
     // Skip update if neuron is not active enough
-    if (fabs(y) < ACTIVITY_THRESHOLD) {
+    if (fabs(x) < ACTIVITY_THRESHOLD) {
         return 0;
     }
 
@@ -1203,8 +1205,8 @@ uint32_t neural_network_apply_oja(neural_network_t network, uint32_t neuron_id, 
     for (uint32_t i = 0; i < neuron->num_synapses; i++) {
         synapse_t* syn = &neuron->synapses[i];
 
-        // Get pre-synaptic activity
-        float x = network->neurons[syn->target_id].state;
+        // Get post-synaptic average activity (target of synapse)
+        float y = network->neurons[syn->target_id].avg_activity;
 
         // Compute weight update using Oja's rule: Δw = α(y*x - y²*w)
         float delta_w = compute_oja_weight_update(x, y, syn->weight, &neuron->oja_params);
@@ -1359,12 +1361,16 @@ static float compute_stdp_update(float dt, const stdp_params_t* params)
     // HOW: exp(-|Δt| / τ)
     float time_factor = expf(-fabsf(dt) / params->time_window);
 
+    // FIX: Corrected STDP logic
+    // dt = t_post - t_pre
+    // dt > 0 means pre-before-post (causal) → LTP (strengthen weights)
+    // dt < 0 means post-before-pre (anti-causal) → LTD (weaken weights)
     if (dt > 0) {
-        // Post-before-pre: Long-term depression (LTD)
-        return -params->negative_factor * time_factor;
-    } else {
         // Pre-before-post: Long-term potentiation (LTP)
         return params->positive_factor * time_factor;
+    } else {
+        // Post-before-pre: Long-term depression (LTD)
+        return -params->negative_factor * time_factor;
     }
 }
 /**
@@ -1899,6 +1905,45 @@ bool neural_network_get_neuron_state(neural_network_t network, uint32_t neuron_i
 
     *state = network->neurons[neuron_id].state;
     return true;
+}
+
+/**
+ * @brief Get number of neurons in network
+ *
+ * WHAT: Return total neuron count
+ * WHY: Allow external code to iterate neurons without accessing internals
+ * HOW: Return num_neurons field
+ *
+ * @param network Network instance
+ * @return Number of neurons, or 0 if network is NULL
+ */
+uint32_t neural_network_get_num_neurons(neural_network_t network)
+{
+    if (!network) {
+        return 0;
+    }
+    return network->num_neurons;
+}
+
+/**
+ * @brief Get pointer to neuron structure
+ *
+ * WHAT: Access neuron internals for serialization/introspection
+ * WHY: Enable save/load of synaptic weights without duplicating access logic
+ * HOW: Return pointer to neuron in neurons array
+ *
+ * WARNING: Returns internal pointer - use carefully!
+ *
+ * @param network Network instance
+ * @param neuron_id Neuron ID
+ * @return Pointer to neuron, or NULL if invalid
+ */
+neuron_t* neural_network_get_neuron(neural_network_t network, uint32_t neuron_id)
+{
+    if (!network || neuron_id >= network->num_neurons) {
+        return NULL;
+    }
+    return &network->neurons[neuron_id];
 }
 
 /**

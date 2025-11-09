@@ -1454,6 +1454,41 @@ bool adaptive_network_save(adaptive_network_t network, const char* filepath,
             fwrite(&network->total_learning_steps, sizeof(uint64_t), 1, file);
             fwrite(&network->running_sparsity, sizeof(float), 1, file);
 
+            // Write synaptic weights from base_network (CRITICAL: enables weight persistence)
+            if (network->base_network) {
+                uint32_t base_num_neurons = neural_network_get_num_neurons(network->base_network);
+                fwrite(&base_num_neurons, sizeof(uint32_t), 1, file);
+
+                for (uint32_t i = 0; i < base_num_neurons; i++) {
+                    neuron_t* neuron = neural_network_get_neuron(network->base_network, i);
+                    if (!neuron) continue;
+
+                    // Write number of synapses for this neuron
+                    fwrite(&neuron->num_synapses, sizeof(uint32_t), 1, file);
+
+                    // Write each synapse (weight and key plasticity data)
+                    for (uint32_t j = 0; j < neuron->num_synapses; j++) {
+                        synapse_t* syn = &neuron->synapses[j];
+                        fwrite(&syn->target_id, sizeof(uint32_t), 1, file);
+                        fwrite(&syn->weight, sizeof(float), 1, file);
+                        fwrite(&syn->plasticity, sizeof(float), 1, file);
+                        fwrite(&syn->trace, sizeof(float), 1, file);
+                        fwrite(&syn->strength, sizeof(float), 1, file);
+                        fwrite(&syn->meta_plasticity, sizeof(float), 1, file);
+                        fwrite(&syn->last_change, sizeof(float), 1, file);
+                        fwrite(&syn->last_active, sizeof(uint64_t), 1, file);
+                        fwrite(&syn->enable_stp, sizeof(bool), 1, file);
+                        if (syn->enable_stp) {
+                            fwrite(&syn->stp, sizeof(stp_state_t), 1, file);
+                        }
+                    }
+                }
+            } else {
+                // No base network - write 0 neurons
+                uint32_t zero = 0;
+                fwrite(&zero, sizeof(uint32_t), 1, file);
+            }
+
             break;
 
         case SERIALIZE_FORMAT_JSON:
@@ -1550,6 +1585,78 @@ adaptive_network_t adaptive_network_load(const char* filepath)
     fread(&network->total_inferences, sizeof(uint64_t), 1, file);
     fread(&network->total_learning_steps, sizeof(uint64_t), 1, file);
     fread(&network->running_sparsity, sizeof(float), 1, file);
+
+    // Read synaptic weights from base_network (CRITICAL: restores learned weights)
+    uint32_t base_num_neurons = 0;
+    if (fread(&base_num_neurons, sizeof(uint32_t), 1, file) == 1 && base_num_neurons > 0) {
+        if (network->base_network) {
+            // Validate neuron count matches
+            uint32_t current_num_neurons = neural_network_get_num_neurons(network->base_network);
+            if (base_num_neurons != current_num_neurons) {
+                fprintf(stderr, "WARNING: Saved neuron count (%u) != current (%u), skipping weight load\n",
+                        base_num_neurons, current_num_neurons);
+                fclose(file);
+                return network;
+            }
+
+            for (uint32_t i = 0; i < base_num_neurons; i++) {
+                neuron_t* neuron = neural_network_get_neuron(network->base_network, i);
+                if (!neuron) {
+                    fprintf(stderr, "WARNING: Failed to get neuron %u\n", i);
+                    break;
+                }
+
+                // Read number of synapses
+                uint32_t num_synapses = 0;
+                if (fread(&num_synapses, sizeof(uint32_t), 1, file) != 1) {
+                    fprintf(stderr, "WARNING: Failed to read synapse count for neuron %u\n", i);
+                    break;
+                }
+
+                // Clear existing synapses and load from file
+                neuron->num_synapses = 0;
+
+                for (uint32_t j = 0; j < num_synapses; j++) {
+                    if (neuron->num_synapses >= MAX_SYNAPSES_PER_NEURON) {
+                        fprintf(stderr, "WARNING: Neuron %u has more synapses than MAX_SYNAPSES_PER_NEURON\n", i);
+                        // Skip remaining synapses for this neuron
+                        synapse_t dummy;
+                        fread(&dummy.target_id, sizeof(uint32_t), 1, file);
+                        fread(&dummy.weight, sizeof(float), 1, file);
+                        fread(&dummy.plasticity, sizeof(float), 1, file);
+                        fread(&dummy.trace, sizeof(float), 1, file);
+                        fread(&dummy.strength, sizeof(float), 1, file);
+                        fread(&dummy.meta_plasticity, sizeof(float), 1, file);
+                        fread(&dummy.last_change, sizeof(float), 1, file);
+                        fread(&dummy.last_active, sizeof(uint64_t), 1, file);
+                        bool enable_stp;
+                        fread(&enable_stp, sizeof(bool), 1, file);
+                        if (enable_stp) {
+                            stp_state_t stp_dummy;
+                            fread(&stp_dummy, sizeof(stp_state_t), 1, file);
+                        }
+                        continue;
+                    }
+
+                    synapse_t* syn = &neuron->synapses[neuron->num_synapses];
+                    if (fread(&syn->target_id, sizeof(uint32_t), 1, file) != 1) break;
+                    if (fread(&syn->weight, sizeof(float), 1, file) != 1) break;
+                    if (fread(&syn->plasticity, sizeof(float), 1, file) != 1) break;
+                    if (fread(&syn->trace, sizeof(float), 1, file) != 1) break;
+                    if (fread(&syn->strength, sizeof(float), 1, file) != 1) break;
+                    if (fread(&syn->meta_plasticity, sizeof(float), 1, file) != 1) break;
+                    if (fread(&syn->last_change, sizeof(float), 1, file) != 1) break;
+                    if (fread(&syn->last_active, sizeof(uint64_t), 1, file) != 1) break;
+                    if (fread(&syn->enable_stp, sizeof(bool), 1, file) != 1) break;
+                    if (syn->enable_stp) {
+                        if (fread(&syn->stp, sizeof(stp_state_t), 1, file) != 1) break;
+                    }
+
+                    neuron->num_synapses++;
+                }
+            }
+        }
+    }
 
     fclose(file);
     return network;
