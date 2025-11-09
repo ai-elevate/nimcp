@@ -32,6 +32,7 @@
 
 #include "nimcp_adaptive.h"
 #include <math.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include "core/neuralnet/nimcp_neuralnet.h"
@@ -810,6 +811,27 @@ adaptive_network_t adaptive_network_create(const adaptive_network_config_t* conf
         return NULL;
     }
 
+    // Auto-load from checkpoint if enabled (default behavior)
+    // WHY: Allow seamless continuation of training from saved state
+    // HOW: Check if checkpoint exists and auto_load is enabled, then load instead of creating fresh
+    if (config->checkpoint_path && config->auto_load) {
+        // Check if checkpoint file exists
+        FILE* test_file = fopen(config->checkpoint_path, "rb");
+        if (test_file) {
+            fclose(test_file);
+            // Checkpoint exists, load it
+            adaptive_network_t loaded_network = adaptive_network_load(config->checkpoint_path);
+            if (loaded_network) {
+                // Successfully loaded from checkpoint
+                return loaded_network;
+            }
+            // If load failed, fall through to create fresh network
+            fprintf(stderr, "WARNING: Failed to load checkpoint from '%s', creating fresh network\n",
+                    config->checkpoint_path);
+        }
+        // Checkpoint doesn't exist yet, create fresh network (will be saved later)
+    }
+
     // Allocate network structure
     adaptive_network_t network = nimcp_calloc(1, sizeof(struct adaptive_network_struct));
 
@@ -1482,6 +1504,27 @@ bool adaptive_network_save(adaptive_network_t network, const char* filepath,
                             fwrite(&syn->stp, sizeof(stp_state_t), 1, file);
                         }
                     }
+
+                    // Write full neuron state (CRITICAL: enables exact training resume)
+                    fwrite(&neuron->state, sizeof(float), 1, file);
+                    fwrite(&neuron->bias, sizeof(float), 1, file);
+                    fwrite(&neuron->threshold, sizeof(float), 1, file);
+                    fwrite(&neuron->adaptation, sizeof(float), 1, file);
+                    fwrite(&neuron->calcium_concentration, sizeof(float), 1, file);
+                    fwrite(&neuron->plasticity_rate, sizeof(float), 1, file);
+                    fwrite(&neuron->homeostatic_factor, sizeof(float), 1, file);
+                    fwrite(&neuron->avg_activity, sizeof(float), 1, file);
+                    fwrite(&neuron->weight_norm, sizeof(float), 1, file);
+                    fwrite(&neuron->learning_rule, sizeof(learning_rule_t), 1, file);
+                    fwrite(&neuron->activation_type, sizeof(activation_type_t), 1, file);
+                    fwrite(&neuron->oja_params, sizeof(oja_params_t), 1, file);
+                    fwrite(&neuron->stdp_params, sizeof(stdp_params_t), 1, file);
+                    fwrite(&neuron->homeostatic, sizeof(homeostatic_params_t), 1, file);
+                    fwrite(&neuron->last_spike, sizeof(uint64_t), 1, file);
+                    fwrite(&neuron->last_update, sizeof(uint64_t), 1, file);
+                    fwrite(&neuron->model_type, sizeof(neuron_model_type_t), 1, file);
+                    // Note: neuron.model (neuron_model_state_t) is a pointer to opaque state
+                    // TODO: If model is not NULL, need to serialize model-specific state
                 }
             } else {
                 // No base network - write 0 neurons
@@ -1654,6 +1697,27 @@ adaptive_network_t adaptive_network_load(const char* filepath)
 
                     neuron->num_synapses++;
                 }
+
+                // Restore full neuron state (CRITICAL: enables exact training resume)
+                if (fread(&neuron->state, sizeof(float), 1, file) != 1) break;
+                if (fread(&neuron->bias, sizeof(float), 1, file) != 1) break;
+                if (fread(&neuron->threshold, sizeof(float), 1, file) != 1) break;
+                if (fread(&neuron->adaptation, sizeof(float), 1, file) != 1) break;
+                if (fread(&neuron->calcium_concentration, sizeof(float), 1, file) != 1) break;
+                if (fread(&neuron->plasticity_rate, sizeof(float), 1, file) != 1) break;
+                if (fread(&neuron->homeostatic_factor, sizeof(float), 1, file) != 1) break;
+                if (fread(&neuron->avg_activity, sizeof(float), 1, file) != 1) break;
+                if (fread(&neuron->weight_norm, sizeof(float), 1, file) != 1) break;
+                if (fread(&neuron->learning_rule, sizeof(learning_rule_t), 1, file) != 1) break;
+                if (fread(&neuron->activation_type, sizeof(activation_type_t), 1, file) != 1) break;
+                if (fread(&neuron->oja_params, sizeof(oja_params_t), 1, file) != 1) break;
+                if (fread(&neuron->stdp_params, sizeof(stdp_params_t), 1, file) != 1) break;
+                if (fread(&neuron->homeostatic, sizeof(homeostatic_params_t), 1, file) != 1) break;
+                if (fread(&neuron->last_spike, sizeof(uint64_t), 1, file) != 1) break;
+                if (fread(&neuron->last_update, sizeof(uint64_t), 1, file) != 1) break;
+                if (fread(&neuron->model_type, sizeof(neuron_model_type_t), 1, file) != 1) break;
+                // Note: neuron.model (neuron_model_state_t) is opaque pointer, not restored here
+                // TODO: If model_type != NEURON_MODEL_NONE, deserialize model-specific state
             }
         }
     }

@@ -82,6 +82,12 @@ typedef struct {
     bool enable_sparsity;                 /**< Enable sparse activation */
     float pruning_threshold;              /**< Prune weights below this */
     uint32_t update_frequency;            /**< How often to adapt thresholds */
+
+    // Checkpoint/persistence configuration
+    const char* checkpoint_path;          /**< Path to checkpoint file (NULL = no checkpoint) */
+    bool auto_load;                       /**< Auto-load from checkpoint on create (default: true) */
+    bool auto_save;                       /**< Auto-save to checkpoint periodically (default: false) */
+    uint32_t auto_save_interval;          /**< Auto-save every N learning steps (0 = disabled) */
 } adaptive_network_config_t;
 
 /**
