@@ -609,6 +609,34 @@ brain_decision_t* brain_decide(brain_t brain, const float* features, uint32_t nu
 void brain_free_decision(brain_decision_t* decision);
 
 /**
+ * @brief Observe action performed by another agent (Phase 10.11)
+ *
+ * WHAT: Record observed action in mirror neuron system for observational learning
+ * WHY:  Enable learning from watching others (imitation, social cognition)
+ * HOW:  Convert input features to observed action and send to mirror neurons
+ *
+ * This is the OBSERVATION PATHWAY for mirror neurons. When the brain observes
+ * another agent performing an action, this function records it for learning.
+ *
+ * USE CASES:
+ * - Robot watching human demonstration
+ * - Agent observing another agent's behavior
+ * - Learning from video/sensor data of actions
+ * - Social learning and imitation
+ *
+ * COMPLEXITY: O(n) where n = num_features
+ * THREAD-SAFE: No (requires external synchronization)
+ *
+ * @param brain Brain handle
+ * @param features Observed action features (sensor data, visual features, etc.)
+ * @param num_features Number of features
+ * @param agent_id ID of agent being observed (must be > 0, as 0 = self)
+ * @return true on success, false on error
+ */
+bool brain_observe_action(brain_t brain, const float* features, uint32_t num_features,
+                          uint32_t agent_id);
+
+/**
  * @brief Batch inference
  *
  * @param brain Brain handle

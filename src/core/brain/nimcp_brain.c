@@ -2843,6 +2843,89 @@ static void update_inference_stats(brain_t brain, brain_decision_t* decision)
     brain->stats.avg_sparsity = decision->sparsity;
 }
 
+//=============================================================================
+// Mirror Neuron Integration Helpers (Phase 10.11)
+//=============================================================================
+
+/**
+ * @brief Convert brain decision to mirror neuron action
+ *
+ * WHAT: Transform brain decision into action_t for mirror neuron system
+ * WHY:  Enable mirror neurons to learn from brain's own decisions
+ * HOW:  Extract decision features, confidence, and output as action representation
+ *
+ * COMPLEXITY: O(n) where n = num_outputs (feature copying)
+ *
+ * @param decision Brain decision
+ * @param action_id Unique action identifier
+ * @param action_name Human-readable action name
+ * @return action_t struct for mirror neuron system
+ */
+static action_t brain_decision_to_action(const brain_decision_t* decision,
+                                         uint32_t action_id,
+                                         const char* action_name)
+{
+    action_t action;
+    memset(&action, 0, sizeof(action_t));
+
+    if (!decision || !action_name) {
+        return action;
+    }
+
+    action.action_id = action_id;
+    strncpy(action.action_name, action_name, sizeof(action.action_name) - 1);
+    action.agent_id = 0;  // 0 = self
+    action.timestamp = nimcp_time_get_ms();
+    action.confidence = decision->confidence;
+
+    // Use output activations as action features (up to 32)
+    action.num_features = (decision->output_size < 32) ? decision->output_size : 32;
+    for (uint32_t i = 0; i < action.num_features; i++) {
+        action.features[i] = decision->output_vector[i];
+    }
+
+    return action;
+}
+
+/**
+ * @brief Convert input features to observed action
+ *
+ * WHAT: Transform input features into action_t for observation pathway
+ * WHY:  Enable mirror neurons to learn from observed patterns
+ * HOW:  Treat input as observed action with features
+ *
+ * COMPLEXITY: O(n) where n = num_features (copying)
+ *
+ * @param features Input features
+ * @param num_features Number of features
+ * @param agent_id ID of agent performing action (0 = self, >0 = other)
+ * @return action_t struct for mirror neuron system
+ */
+static action_t features_to_action(const float* features, uint32_t num_features,
+                                   uint32_t agent_id)
+{
+    action_t action;
+    memset(&action, 0, sizeof(action_t));
+
+    if (!features) {
+        return action;
+    }
+
+    action.action_id = 0;  // Will be assigned by mirror neuron system
+    snprintf(action.action_name, sizeof(action.action_name), "observed_%u", agent_id);
+    action.agent_id = agent_id;
+    action.timestamp = nimcp_time_get_ms();
+    action.confidence = 1.0f;
+
+    // Copy features (up to 32)
+    action.num_features = (num_features < 32) ? num_features : 32;
+    for (uint32_t i = 0; i < action.num_features; i++) {
+        action.features[i] = features[i];
+    }
+
+    return action;
+}
+
 /**
  * @brief Make decision for input
  *
@@ -3091,8 +3174,111 @@ brain_decision_t* brain_decide(brain_t brain, const float* features, uint32_t nu
         }
     }
 
+    // ========================================================================
+    // STAGE 8: Mirror Neuron Integration (Phase 10.11) - Execute Action
+    // ========================================================================
+    // WHAT: Record brain's decision as executed action in mirror neuron system
+    // WHY:  Enable learning from own actions, build execution representation
+    // HOW:  Convert decision to action and send to mirror neurons
+    if (brain->mirror_neurons && brain->config.enable_mirror_neurons) {
+        // Convert decision to action
+        const char* action_name = decision_copy->label[0] ? decision_copy->label : "decision";
+        // Use hash of label as action_id for consistent tracking
+        uint32_t action_id = 0;
+        for (const char* p = action_name; *p; p++) {
+            action_id = action_id * 31 + (uint32_t)(*p);
+        }
+        action_t action = brain_decision_to_action(decision_copy, action_id, action_name);
+
+        // Record as executed action
+        mirror_neurons_execute_action(brain->mirror_neurons, &action);
+
+        // If predictive network predicted this, match observation with execution
+        // This strengthens mirror neuron associations (Hebbian learning)
+        if (brain->predictive_network && prediction) {
+            action_t predicted_action = features_to_action(prediction, num_features, 0);
+            float similarity = 0.0f;
+            mirror_neurons_match_actions(brain->mirror_neurons, &predicted_action,
+                                        &action, &similarity);
+            // High similarity → strong association between prediction and execution
+        }
+    }
+
     brain_clear_error();
     return decision_copy;
+}
+
+/**
+ * @brief Observe action performed by another agent (Phase 10.11)
+ *
+ * WHAT: Record observed action in mirror neuron system for observational learning
+ * WHY:  Enable learning from watching others (imitation, social cognition)
+ * HOW:  Convert input features to observed action and send to mirror neurons
+ *
+ * This is the OBSERVATION PATHWAY for mirror neurons. When the brain observes
+ * another agent performing an action, this function records it for learning.
+ *
+ * USE CASES:
+ * - Robot watching human demonstration
+ * - Agent observing another agent's behavior
+ * - Learning from video/sensor data of actions
+ * - Social learning and imitation
+ *
+ * COMPLEXITY: O(n) where n = num_features
+ * THREAD-SAFE: No (requires external synchronization)
+ *
+ * @param brain Brain handle
+ * @param features Observed action features (sensor data, visual features, etc.)
+ * @param num_features Number of features
+ * @param agent_id ID of agent being observed (must be > 0, as 0 = self)
+ * @return true on success, false on error
+ */
+bool brain_observe_action(brain_t brain, const float* features, uint32_t num_features,
+                          uint32_t agent_id)
+{
+    // Guard: Validate parameters
+    if (!brain || !features) {
+        set_error("Invalid parameters to brain_observe_action");
+        return false;
+    }
+
+    if (agent_id == 0) {
+        set_error("agent_id must be > 0 (0 is reserved for self)");
+        return false;
+    }
+
+    // Guard: Check if mirror neurons are enabled
+    if (!brain->mirror_neurons || !brain->config.enable_mirror_neurons) {
+        // Not an error, just not enabled
+        return true;
+    }
+
+    // Convert features to action
+    action_t action = features_to_action(features, num_features, agent_id);
+
+    // Record as observed action
+    bool success = mirror_neurons_observe_action(brain->mirror_neurons, &action);
+    if (!success) {
+        set_error("Failed to record observed action in mirror neurons");
+        return false;
+    }
+
+    // Store in working memory if enabled (for offline replay)
+    if (brain->working_memory && brain->config.enable_working_memory) {
+        // Store action features in working memory
+        // Note: This enables later replay and sequence learning
+        working_memory_add(brain->working_memory, features, num_features, 0.8f);
+    }
+
+    // Trigger theory of mind inference if enabled
+    if (brain->theory_of_mind && brain->config.enable_theory_of_mind) {
+        // Use mirror neuron activations to infer agent intentions
+        // Note: This requires getting current mirror neuron state
+        // TODO: Add API to get mirror neuron activations for ToM integration
+    }
+
+    brain_clear_error();
+    return true;
 }
 
 /**
