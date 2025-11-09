@@ -164,6 +164,7 @@ add_nimcp_test_binary(cognitive_tests
     test_explanations.cpp       # Phase 10.7: Natural Explanations (what/why/how, interpretability)
     test_meta_learning.cpp      # Phase 10.8: Meta-Learning (MAML, few-shot learning, adaptive LR)
     test_predictive.cpp         # Phase 10.9: Predictive Processing (free energy, active inference)
+    test_mirror_neurons.cpp     # Phase 10.11: Mirror Neurons (observation, imitation, social cognition)
 )
 
 # ============================================================================

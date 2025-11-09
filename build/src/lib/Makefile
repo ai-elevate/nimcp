@@ -497,6 +497,30 @@ __/cognitive/meta_learning/nimcp_meta_learning.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/meta_learning/nimcp_meta_learning.c.s
 .PHONY : __/cognitive/meta_learning/nimcp_meta_learning.c.s
 
+__/cognitive/mirror_neurons/nimcp_mirror_neurons.o: __/cognitive/mirror_neurons/nimcp_mirror_neurons.c.o
+.PHONY : __/cognitive/mirror_neurons/nimcp_mirror_neurons.o
+
+# target to build an object file
+__/cognitive/mirror_neurons/nimcp_mirror_neurons.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/mirror_neurons/nimcp_mirror_neurons.c.o
+.PHONY : __/cognitive/mirror_neurons/nimcp_mirror_neurons.c.o
+
+__/cognitive/mirror_neurons/nimcp_mirror_neurons.i: __/cognitive/mirror_neurons/nimcp_mirror_neurons.c.i
+.PHONY : __/cognitive/mirror_neurons/nimcp_mirror_neurons.i
+
+# target to preprocess a source file
+__/cognitive/mirror_neurons/nimcp_mirror_neurons.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/mirror_neurons/nimcp_mirror_neurons.c.i
+.PHONY : __/cognitive/mirror_neurons/nimcp_mirror_neurons.c.i
+
+__/cognitive/mirror_neurons/nimcp_mirror_neurons.s: __/cognitive/mirror_neurons/nimcp_mirror_neurons.c.s
+.PHONY : __/cognitive/mirror_neurons/nimcp_mirror_neurons.s
+
+# target to generate assembly for a file
+__/cognitive/mirror_neurons/nimcp_mirror_neurons.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/mirror_neurons/nimcp_mirror_neurons.c.s
+.PHONY : __/cognitive/mirror_neurons/nimcp_mirror_neurons.c.s
+
 __/cognitive/predictive/nimcp_predictive.o: __/cognitive/predictive/nimcp_predictive.c.o
 .PHONY : __/cognitive/predictive/nimcp_predictive.o
 
@@ -2686,6 +2710,9 @@ help:
 	@echo "... __/cognitive/meta_learning/nimcp_meta_learning.o"
 	@echo "... __/cognitive/meta_learning/nimcp_meta_learning.i"
 	@echo "... __/cognitive/meta_learning/nimcp_meta_learning.s"
+	@echo "... __/cognitive/mirror_neurons/nimcp_mirror_neurons.o"
+	@echo "... __/cognitive/mirror_neurons/nimcp_mirror_neurons.i"
+	@echo "... __/cognitive/mirror_neurons/nimcp_mirror_neurons.s"
 	@echo "... __/cognitive/predictive/nimcp_predictive.o"
 	@echo "... __/cognitive/predictive/nimcp_predictive.i"
 	@echo "... __/cognitive/predictive/nimcp_predictive.s"

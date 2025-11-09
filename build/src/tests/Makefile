@@ -1263,6 +1263,30 @@ test_microglia.cpp.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/tests/CMakeFiles/glial_tests.dir/build.make src/tests/CMakeFiles/glial_tests.dir/test_microglia.cpp.s
 .PHONY : test_microglia.cpp.s
 
+test_mirror_neurons.o: test_mirror_neurons.cpp.o
+.PHONY : test_mirror_neurons.o
+
+# target to build an object file
+test_mirror_neurons.cpp.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/tests/CMakeFiles/cognitive_tests.dir/build.make src/tests/CMakeFiles/cognitive_tests.dir/test_mirror_neurons.cpp.o
+.PHONY : test_mirror_neurons.cpp.o
+
+test_mirror_neurons.i: test_mirror_neurons.cpp.i
+.PHONY : test_mirror_neurons.i
+
+# target to preprocess a source file
+test_mirror_neurons.cpp.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/tests/CMakeFiles/cognitive_tests.dir/build.make src/tests/CMakeFiles/cognitive_tests.dir/test_mirror_neurons.cpp.i
+.PHONY : test_mirror_neurons.cpp.i
+
+test_mirror_neurons.s: test_mirror_neurons.cpp.s
+.PHONY : test_mirror_neurons.s
+
+# target to generate assembly for a file
+test_mirror_neurons.cpp.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/tests/CMakeFiles/cognitive_tests.dir/build.make src/tests/CMakeFiles/cognitive_tests.dir/test_mirror_neurons.cpp.s
+.PHONY : test_mirror_neurons.cpp.s
+
 test_module.o: test_module.cpp.o
 .PHONY : test_module.o
 
@@ -2239,6 +2263,9 @@ help:
 	@echo "... test_microglia.o"
 	@echo "... test_microglia.i"
 	@echo "... test_microglia.s"
+	@echo "... test_mirror_neurons.o"
+	@echo "... test_mirror_neurons.i"
+	@echo "... test_mirror_neurons.s"
 	@echo "... test_module.o"
 	@echo "... test_module.i"
 	@echo "... test_module.s"

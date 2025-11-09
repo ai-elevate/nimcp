@@ -25,6 +25,8 @@ file(REMOVE_RECURSE
   "CMakeFiles/cognitive_tests.dir/test_mental_health.cpp.o.d"
   "CMakeFiles/cognitive_tests.dir/test_meta_learning.cpp.o"
   "CMakeFiles/cognitive_tests.dir/test_meta_learning.cpp.o.d"
+  "CMakeFiles/cognitive_tests.dir/test_mirror_neurons.cpp.o"
+  "CMakeFiles/cognitive_tests.dir/test_mirror_neurons.cpp.o.d"
   "CMakeFiles/cognitive_tests.dir/test_predictive.cpp.o"
   "CMakeFiles/cognitive_tests.dir/test_predictive.cpp.o.d"
   "CMakeFiles/cognitive_tests.dir/test_salience.cpp.o"

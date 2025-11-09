@@ -335,10 +335,24 @@ src/tests/CMakeFiles/cognitive_tests.dir/test_predictive.cpp.s: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Compiling CXX source to assembly CMakeFiles/cognitive_tests.dir/test_predictive.cpp.s"
 	cd /home/bbrelin/nimcp/build/src/tests && /usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/bbrelin/nimcp/src/tests/test_predictive.cpp -o CMakeFiles/cognitive_tests.dir/test_predictive.cpp.s
 
+src/tests/CMakeFiles/cognitive_tests.dir/test_mirror_neurons.cpp.o: src/tests/CMakeFiles/cognitive_tests.dir/flags.make
+src/tests/CMakeFiles/cognitive_tests.dir/test_mirror_neurons.cpp.o: /home/bbrelin/nimcp/src/tests/test_mirror_neurons.cpp
+src/tests/CMakeFiles/cognitive_tests.dir/test_mirror_neurons.cpp.o: src/tests/CMakeFiles/cognitive_tests.dir/compiler_depend.ts
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/bbrelin/nimcp/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_20) "Building CXX object src/tests/CMakeFiles/cognitive_tests.dir/test_mirror_neurons.cpp.o"
+	cd /home/bbrelin/nimcp/build/src/tests && /usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT src/tests/CMakeFiles/cognitive_tests.dir/test_mirror_neurons.cpp.o -MF CMakeFiles/cognitive_tests.dir/test_mirror_neurons.cpp.o.d -o CMakeFiles/cognitive_tests.dir/test_mirror_neurons.cpp.o -c /home/bbrelin/nimcp/src/tests/test_mirror_neurons.cpp
+
+src/tests/CMakeFiles/cognitive_tests.dir/test_mirror_neurons.cpp.i: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Preprocessing CXX source to CMakeFiles/cognitive_tests.dir/test_mirror_neurons.cpp.i"
+	cd /home/bbrelin/nimcp/build/src/tests && /usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /home/bbrelin/nimcp/src/tests/test_mirror_neurons.cpp > CMakeFiles/cognitive_tests.dir/test_mirror_neurons.cpp.i
+
+src/tests/CMakeFiles/cognitive_tests.dir/test_mirror_neurons.cpp.s: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Compiling CXX source to assembly CMakeFiles/cognitive_tests.dir/test_mirror_neurons.cpp.s"
+	cd /home/bbrelin/nimcp/build/src/tests && /usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/bbrelin/nimcp/src/tests/test_mirror_neurons.cpp -o CMakeFiles/cognitive_tests.dir/test_mirror_neurons.cpp.s
+
 src/tests/CMakeFiles/cognitive_tests.dir/__/python/nimcp_module.c.o: src/tests/CMakeFiles/cognitive_tests.dir/flags.make
 src/tests/CMakeFiles/cognitive_tests.dir/__/python/nimcp_module.c.o: /home/bbrelin/nimcp/src/python/nimcp_module.c
 src/tests/CMakeFiles/cognitive_tests.dir/__/python/nimcp_module.c.o: src/tests/CMakeFiles/cognitive_tests.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/bbrelin/nimcp/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_20) "Building C object src/tests/CMakeFiles/cognitive_tests.dir/__/python/nimcp_module.c.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/bbrelin/nimcp/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_21) "Building C object src/tests/CMakeFiles/cognitive_tests.dir/__/python/nimcp_module.c.o"
 	cd /home/bbrelin/nimcp/build/src/tests && /usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -MD -MT src/tests/CMakeFiles/cognitive_tests.dir/__/python/nimcp_module.c.o -MF CMakeFiles/cognitive_tests.dir/__/python/nimcp_module.c.o.d -o CMakeFiles/cognitive_tests.dir/__/python/nimcp_module.c.o -c /home/bbrelin/nimcp/src/python/nimcp_module.c
 
 src/tests/CMakeFiles/cognitive_tests.dir/__/python/nimcp_module.c.i: cmake_force
@@ -370,6 +384,7 @@ cognitive_tests_OBJECTS = \
 "CMakeFiles/cognitive_tests.dir/test_explanations.cpp.o" \
 "CMakeFiles/cognitive_tests.dir/test_meta_learning.cpp.o" \
 "CMakeFiles/cognitive_tests.dir/test_predictive.cpp.o" \
+"CMakeFiles/cognitive_tests.dir/test_mirror_neurons.cpp.o" \
 "CMakeFiles/cognitive_tests.dir/__/python/nimcp_module.c.o"
 
 # External object files for target cognitive_tests
@@ -394,6 +409,7 @@ src/tests/cognitive_tests: src/tests/CMakeFiles/cognitive_tests.dir/test_theory_
 src/tests/cognitive_tests: src/tests/CMakeFiles/cognitive_tests.dir/test_explanations.cpp.o
 src/tests/cognitive_tests: src/tests/CMakeFiles/cognitive_tests.dir/test_meta_learning.cpp.o
 src/tests/cognitive_tests: src/tests/CMakeFiles/cognitive_tests.dir/test_predictive.cpp.o
+src/tests/cognitive_tests: src/tests/CMakeFiles/cognitive_tests.dir/test_mirror_neurons.cpp.o
 src/tests/cognitive_tests: src/tests/CMakeFiles/cognitive_tests.dir/__/python/nimcp_module.c.o
 src/tests/cognitive_tests: src/tests/CMakeFiles/cognitive_tests.dir/build.make
 src/tests/cognitive_tests: /home/bbrelin/nimcp/bin/libnimcp.so.2.6.2
@@ -403,7 +419,7 @@ src/tests/cognitive_tests: /usr/lib/x86_64-linux-gnu/libpython3.12.so
 src/tests/cognitive_tests: /usr/lib/x86_64-linux-gnu/libsodium.so
 src/tests/cognitive_tests: lib/libgtest.a
 src/tests/cognitive_tests: src/tests/CMakeFiles/cognitive_tests.dir/link.txt
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --bold --progress-dir=/home/bbrelin/nimcp/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_21) "Linking CXX executable cognitive_tests"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --bold --progress-dir=/home/bbrelin/nimcp/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_22) "Linking CXX executable cognitive_tests"
 	cd /home/bbrelin/nimcp/build/src/tests && $(CMAKE_COMMAND) -E cmake_link_script CMakeFiles/cognitive_tests.dir/link.txt --verbose=$(VERBOSE)
 
 # Rule to build all files generated by this target.

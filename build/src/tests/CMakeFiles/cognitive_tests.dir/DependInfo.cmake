@@ -21,6 +21,7 @@ set(CMAKE_DEPENDS_DEPENDENCY_FILES
   "/home/bbrelin/nimcp/src/tests/test_knowledge.cpp" "src/tests/CMakeFiles/cognitive_tests.dir/test_knowledge.cpp.o" "gcc" "src/tests/CMakeFiles/cognitive_tests.dir/test_knowledge.cpp.o.d"
   "/home/bbrelin/nimcp/src/tests/test_mental_health.cpp" "src/tests/CMakeFiles/cognitive_tests.dir/test_mental_health.cpp.o" "gcc" "src/tests/CMakeFiles/cognitive_tests.dir/test_mental_health.cpp.o.d"
   "/home/bbrelin/nimcp/src/tests/test_meta_learning.cpp" "src/tests/CMakeFiles/cognitive_tests.dir/test_meta_learning.cpp.o" "gcc" "src/tests/CMakeFiles/cognitive_tests.dir/test_meta_learning.cpp.o.d"
+  "/home/bbrelin/nimcp/src/tests/test_mirror_neurons.cpp" "src/tests/CMakeFiles/cognitive_tests.dir/test_mirror_neurons.cpp.o" "gcc" "src/tests/CMakeFiles/cognitive_tests.dir/test_mirror_neurons.cpp.o.d"
   "/home/bbrelin/nimcp/src/tests/test_predictive.cpp" "src/tests/CMakeFiles/cognitive_tests.dir/test_predictive.cpp.o" "gcc" "src/tests/CMakeFiles/cognitive_tests.dir/test_predictive.cpp.o.d"
   "/home/bbrelin/nimcp/src/tests/test_salience.cpp" "src/tests/CMakeFiles/cognitive_tests.dir/test_salience.cpp.o" "gcc" "src/tests/CMakeFiles/cognitive_tests.dir/test_salience.cpp.o.d"
   "/home/bbrelin/nimcp/src/tests/test_sleep_wake.cpp" "src/tests/CMakeFiles/cognitive_tests.dir/test_sleep_wake.cpp.o" "gcc" "src/tests/CMakeFiles/cognitive_tests.dir/test_sleep_wake.cpp.o.d"
