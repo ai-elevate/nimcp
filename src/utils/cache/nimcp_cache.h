@@ -249,6 +249,18 @@ bool nimcp_cache_get_stats(nimcp_cache_stats_t* stats);
 void nimcp_cache_clear_stats(void);
 
 /**
+ * WHAT: Record external COW reference creation
+ * WHY: Track COW statistics for non-cache COW implementations
+ * HOW: Updates references_created and memory_saved counters
+ *
+ * @param size Size of shared memory being referenced
+ *
+ * NOTE: Use this when implementing COW with manual reference counting
+ * instead of nimcp_cache functions, to maintain accurate statistics.
+ */
+void nimcp_cache_record_reference(size_t size);
+
+/**
  * WHAT: Dump all cached allocations
  * WHY: Debug memory usage
  * HOW: Walks tracking table and prints

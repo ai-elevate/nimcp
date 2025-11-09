@@ -11,6 +11,7 @@
 #include "../core/neuralnet/nimcp_neuralnet.h"
 #include "../cognitive/ethics/nimcp_ethics.h"
 #include "../cognitive/knowledge/nimcp_knowledge.h"
+#include "../include/cognitive/nimcp_working_memory.h"  // Phase 10.2: Working Memory API
 #include "../utils/memory/nimcp_memory.h"
 #include "../utils/config/nimcp_config.h"
 #include "../utils/cache/nimcp_cache.h"
@@ -18,6 +19,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdarg.h>
+#include <unistd.h>
 
 //=============================================================================
 // Internal Handle Structures
@@ -489,19 +491,36 @@ nimcp_brain_snapshot_t nimcp_brain_snapshot_cow(nimcp_brain_t brain) {
         return NULL;
     }
 
-    // Phase 1: Clone the brain (not yet zero-copy COW)
-    nimcp_brain_t brain_clone = nimcp_brain_clone_cow(brain);
-    if (!brain_clone) {
-        set_error("Failed to clone brain for snapshot");
+    // Create snapshot using save/load to ensure independent copy
+    // This guarantees the snapshot preserves exact state at snapshot time
+    // even if the original brain is subsequently modified
+
+    // Generate unique temporary filename
+    char temp_file[256];
+    snprintf(temp_file, sizeof(temp_file), "/tmp/nimcp_snapshot_temp_%p_%ld.bin",
+             (void*)brain, (long)nimcp_time_monotonic_us());
+
+    // Save current brain state to temp file
+    if (!brain_save(brain->internal_brain, temp_file)) {
+        set_error("Failed to save brain state for snapshot");
         nimcp_free(snapshot);
         return NULL;
     }
 
-    snapshot->internal_brain_snapshot = brain_clone->internal_brain;
-    snapshot->timestamp_us = nimcp_time_monotonic_us();
+    // Load into snapshot brain
+    brain_t snapshot_brain = brain_load(temp_file);
 
-    // Free the clone handle but keep the internal brain
-    nimcp_free(brain_clone);
+    // Clean up temp file
+    unlink(temp_file);
+
+    if (!snapshot_brain) {
+        set_error("Failed to load brain snapshot");
+        nimcp_free(snapshot);
+        return NULL;
+    }
+
+    snapshot->internal_brain_snapshot = snapshot_brain;
+    snapshot->timestamp_us = nimcp_time_monotonic_us();
 
     set_error("No error");
     return snapshot;
@@ -537,10 +556,26 @@ nimcp_status_t nimcp_brain_restore_cow(nimcp_brain_t brain, nimcp_brain_snapshot
         return NIMCP_ERROR_INVALID;
     }
 
-    // Restore brain state from snapshot
-    // TODO: Implement proper COW restore with cached structures
-    // This is a simplified implementation for Phase 1
-    brain->internal_brain = snapshot->internal_brain_snapshot;
+    // CRITICAL FIX: Use brain_clone_cow() which properly handles COW refcounting
+    // The snapshot was created via save/load, so it owns its network independently
+    // We can safely clone it, and the clone will share the snapshot's network
+
+    // Save the old brain pointer for cleanup
+    brain_t old_brain = brain->internal_brain;
+
+    // Clone the snapshot to create new brain state (creates COW reference)
+    brain_t new_brain = brain_clone_cow(snapshot->internal_brain_snapshot);
+
+    if (!new_brain) {
+        set_error("Failed to clone snapshot for restore");
+        return NIMCP_ERROR;
+    }
+
+    // Assign new brain (do this before destroying old brain to avoid use-after-free)
+    brain->internal_brain = new_brain;
+
+    // Now destroy the old brain (will decrement refcounts properly)
+    brain_destroy(old_brain);
 
     set_error("No error");
     return NIMCP_OK;
@@ -563,6 +598,186 @@ void nimcp_brain_snapshot_destroy(nimcp_brain_snapshot_t snapshot) {
 
     // Free snapshot handle
     nimcp_free(snapshot);
+}
+
+//=============================================================================
+// Phase 10.2: Working Memory API Implementation
+//=============================================================================
+
+/**
+ * @brief Add item to brain's working memory
+ *
+ * WHAT: Wrapper for working_memory_add() on brain's working memory
+ * WHY:  Provide public API for adding items to working memory
+ * HOW:  Validate brain → Get working memory → Call internal API
+ */
+nimcp_status_t nimcp_brain_working_memory_add(
+    nimcp_brain_t brain,
+    const float* data,
+    uint32_t size,
+    float salience)
+{
+    // Guard: Validate brain
+    if (!brain) {
+        set_error("NULL brain provided to working_memory_add");
+        return NIMCP_ERROR_NULL_ARG;
+    }
+
+    if (!brain->internal_brain) {
+        set_error("Brain has NULL internal_brain");
+        return NIMCP_ERROR_INVALID;
+    }
+
+    // Guard: Check if working memory enabled
+    working_memory_t* wm = brain_get_working_memory(brain->internal_brain);
+    if (!wm) {
+        set_error("Working memory not enabled in brain config");
+        return NIMCP_ERROR_INVALID;
+    }
+
+    // Guard: Validate parameters
+    if (!data) {
+        set_error("NULL data provided to working_memory_add");
+        return NIMCP_ERROR_NULL_ARG;
+    }
+
+    if (size == 0) {
+        set_error("Invalid size (0) provided to working_memory_add");
+        return NIMCP_ERROR_INVALID;
+    }
+
+    // Add to working memory
+    bool success = working_memory_add(wm, data, size, salience);
+    if (!success) {
+        set_error("Failed to add item to working memory");
+        return NIMCP_ERROR;
+    }
+
+    set_error("No error");
+    return NIMCP_OK;
+}
+
+/**
+ * @brief Get item from brain's working memory
+ *
+ * WHAT: Wrapper for working_memory_get() on brain's working memory
+ * WHY:  Provide public API for accessing working memory items
+ * HOW:  Validate brain → Get working memory → Call internal API
+ */
+const float* nimcp_brain_working_memory_get(
+    nimcp_brain_t brain,
+    uint32_t index,
+    uint32_t* size_out)
+{
+    // Guard: Validate brain
+    if (!brain || !brain->internal_brain) {
+        set_error("Invalid brain handle");
+        return NULL;
+    }
+
+    // Guard: Check if working memory enabled
+    working_memory_t* wm = brain_get_working_memory(brain->internal_brain);
+    if (!wm) {
+        set_error("Working memory not enabled");
+        return NULL;
+    }
+
+    // Get item
+    const float* item = working_memory_get(wm, index, size_out);
+    if (!item) {
+        set_error("Invalid index or empty working memory");
+        return NULL;
+    }
+
+    set_error("No error");
+    return item;
+}
+
+/**
+ * @brief Get brain's working memory statistics
+ *
+ * WHAT: Wrapper for working_memory_get_stats() on brain's working memory
+ * WHY:  Provide public API for monitoring working memory state
+ * HOW:  Validate brain → Get working memory → Extract size/capacity
+ */
+nimcp_status_t nimcp_brain_working_memory_stats(
+    nimcp_brain_t brain,
+    uint32_t* current_size_out,
+    uint32_t* capacity_out)
+{
+    // Guard: Validate brain
+    if (!brain) {
+        set_error("NULL brain provided");
+        return NIMCP_ERROR_NULL_ARG;
+    }
+
+    if (!brain->internal_brain) {
+        set_error("Brain has NULL internal_brain");
+        return NIMCP_ERROR_INVALID;
+    }
+
+    // Guard: Validate output parameters
+    if (!current_size_out || !capacity_out) {
+        set_error("NULL output parameters");
+        return NIMCP_ERROR_NULL_ARG;
+    }
+
+    // Guard: Check if working memory enabled
+    working_memory_t* wm = brain_get_working_memory(brain->internal_brain);
+    if (!wm) {
+        set_error("Working memory not enabled");
+        return NIMCP_ERROR_INVALID;
+    }
+
+    // Get stats
+    working_memory_stats_t stats;
+    working_memory_get_stats(wm, &stats);
+
+    *current_size_out = stats.current_size;
+    *capacity_out = stats.capacity;
+
+    set_error("No error");
+    return NIMCP_OK;
+}
+
+/**
+ * @brief Refresh item in brain's working memory
+ *
+ * WHAT: Wrapper for working_memory_refresh() on brain's working memory
+ * WHY:  Provide public API for preventing decay (rehearsal)
+ * HOW:  Validate brain → Get working memory → Call internal API
+ */
+nimcp_status_t nimcp_brain_working_memory_refresh(
+    nimcp_brain_t brain,
+    uint32_t index)
+{
+    // Guard: Validate brain
+    if (!brain) {
+        set_error("NULL brain provided");
+        return NIMCP_ERROR_NULL_ARG;
+    }
+
+    if (!brain->internal_brain) {
+        set_error("Brain has NULL internal_brain");
+        return NIMCP_ERROR_INVALID;
+    }
+
+    // Guard: Check if working memory enabled
+    working_memory_t* wm = brain_get_working_memory(brain->internal_brain);
+    if (!wm) {
+        set_error("Working memory not enabled");
+        return NIMCP_ERROR_INVALID;
+    }
+
+    // Refresh item
+    bool success = working_memory_refresh(wm, index);
+    if (!success) {
+        set_error("Invalid index for refresh");
+        return NIMCP_ERROR_INVALID;
+    }
+
+    set_error("No error");
+    return NIMCP_OK;
 }
 
 //=============================================================================
@@ -811,7 +1026,7 @@ nimcp_status_t nimcp_knowledge_add_fact(
     knowledge_item_t item = {0};
 
     // Use subject as concept
-    strncpy(item.concept, subject, sizeof(item.concept) - 1);
+    strncpy(item.concept_name, subject, sizeof(item.concept_name) - 1);
 
     // Create definition from predicate and object
     snprintf(item.definition, sizeof(item.definition), "%s %s", predicate, object);

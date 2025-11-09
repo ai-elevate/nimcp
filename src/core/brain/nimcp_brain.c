@@ -25,7 +25,6 @@
 
 #include "nimcp_brain.h"
 #include <math.h>
-#include <pthread.h>
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -35,8 +34,10 @@
 #include "plasticity/adaptive/nimcp_adaptive.h"
 #include "core/neuralnet/nimcp_neuralnet.h"
 #include "utils/memory/nimcp_memory.h"
+#include "utils/cache/nimcp_cache.h"
 #include "utils/time/nimcp_time.h"
 #include "utils/validation/nimcp_validate.h"
+#include "utils/platform/nimcp_platform_mutex.h"
 
 // Comprehensive Integration: All Advanced Subsystems
 // NOTE: Only including modules that currently exist
@@ -48,7 +49,9 @@
 #include "cognitive/consolidation/nimcp_consolidation.h"
 #include "cognitive/curiosity/nimcp_curiosity.h"
 #include "cognitive/knowledge/nimcp_knowledge.h"
+#include "cognitive/nimcp_symbolic_logic.h"              // Phase 9.4: Symbolic reasoning
 #include "cognitive/epistemic/nimcp_epistemic_filter.h"  // Phase 9.2: Bias prevention
+#include "cognitive/wellbeing/nimcp_wellbeing.h"        // Phase 9.3: Self-preservation
 #include "plasticity/neuromodulators/nimcp_neuromod_pink_noise.h"
 #include "core/neuron_types/nimcp_neural_logic.h"
 
@@ -57,6 +60,17 @@
 #include "include/perception/nimcp_visual_cortex.h"
 #include "include/perception/nimcp_audio_cortex.h"
 #include "include/perception/nimcp_speech_cortex.h"
+
+// Phase 10: Advanced Cognitive Architecture
+#include "cognitive/nimcp_working_memory.h"    // Phase 10.1: Miller's 7±2 working memory
+#include "cognitive/nimcp_emotional_tagging.h" // Phase 10.2: Emotional tagging (Russell's circumplex)
+#include "cognitive/nimcp_executive.h"         // Phase 10.3: Executive Functions (task switching, planning)
+#include "cognitive/nimcp_sleep_wake.h"        // Phase 10.4: Sleep/wake cycle (consolidation, homeostasis)
+#include "cognitive/nimcp_mental_health.h"     // Phase 10.5: Mental Health Monitoring (disorder detection)
+#include "cognitive/nimcp_theory_of_mind.h"    // Phase 10.6: Theory of Mind (BDI model, empathy)
+#include "cognitive/nimcp_explanations.h"      // Phase 10.7: Natural Explanations (interpretability)
+#include "cognitive/nimcp_meta_learning.h"     // Phase 10.8: Meta-Learning (MAML, few-shot learning)
+#include "cognitive/nimcp_predictive.h"        // Phase 10.9: Predictive Processing (free energy minimization)
 
 //=============================================================================
 // Forward Declarations - Strategy Pattern
@@ -106,7 +120,7 @@ struct brain_struct {
     // Phase 3: Reference counting and read-only optimization
     uint32_t* network_refcount;         // Pointer to shared refcount (NULL if not shared)
     bool can_use_readonly;              // Can use read-only inference? (true for COW clones)
-    pthread_mutex_t* refcount_mutex;    // Mutex for refcount updates (shared among clones)
+    nimcp_platform_mutex_t* refcount_mutex;    // Mutex for refcount updates (shared among clones)
 
     // === COMPREHENSIVE INTEGRATION: ADVANCED SUBSYSTEMS ===
     // NOTE: Only modules that currently exist are integrated
@@ -125,7 +139,43 @@ struct brain_struct {
     curiosity_engine_t curiosity;                // Exploration (already pointer type*)
     knowledge_system_t knowledge;                // Multi-domain knowledge (already pointer type*)
     neural_logic_network_t logic;                // Phase 9.0: Neural logic gates (spiking logic, GPU-accelerated)
+    symbolic_logic_t* symbolic_logic;            // Phase 9.4: Symbolic reasoning (first-order logic, inference)
     epistemic_filter_t epistemic;                // Phase 9.2: Epistemic filtering (bias prevention, skepticism)
+
+    // Phase 9.3: Wellbeing & Self-Preservation
+    distress_assessment_t last_distress;         // Most recent distress assessment
+    bool wellbeing_monitoring_enabled;           // Enable/disable wellbeing checks
+    uint64_t wellbeing_check_interval_ms;        // How often to check (0 = every decision)
+    uint64_t last_wellbeing_check_time;          // Timestamp of last check
+
+    // === PHASE 10: ADVANCED COGNITIVE SYSTEMS ===
+
+    // Phase 10.1: Working Memory (Miller's 7±2)
+    working_memory_t* working_memory;            // Active representation buffer (prefrontal cortex)
+
+    // Phase 10.2: Emotional Tagging (Russell's circumplex model)
+    emotional_system_t* emotional_system;        // Emotional state and memory tagging
+
+    // Phase 10.3: Executive Functions (task switching, planning, inhibition)
+    executive_controller_t* executive;           // Executive control center (DLPFC)
+
+    // Phase 10.4: Sleep/Wake Cycle (Memory consolidation & synaptic homeostasis)
+    sleep_system_t sleep_system;                 // Sleep/wake state machine, consolidation
+
+    // Phase 10.5: Mental Health Monitoring (disorder detection & intervention)
+    mental_health_monitor_t* mental_health_monitor; // Mental health tracking and safety
+
+    // Phase 10.6: Theory of Mind (mental state inference)
+    theory_of_mind_t theory_of_mind;             // Model other agents' beliefs, desires, goals (opaque pointer)
+
+    // Phase 10.7: Natural Explanations (interpretability)
+    explanation_generator_t explanation_gen;     // Generate human-readable explanations (opaque pointer)
+
+    // Phase 10.8: Meta-Learning (learning-to-learn)
+    meta_learner_t meta_learner;                // MAML-style meta-learning (opaque pointer)
+
+    // Phase 10.9: Predictive Processing (free energy minimization)
+    predictive_network_t predictive_network;     // Hierarchical predictive coding (opaque pointer)
 
     // Advanced Plasticity
     neuromod_pink_noise_t* pink_noise;           // Pink noise neuromodulation (struct type, needs *)
@@ -672,6 +722,11 @@ static void init_brain_config(brain_config_t* config, const char* task_name, bra
     config->sparsity_target = get_default_sparsity(size);
     config->enable_explanations = true;
     strncpy(config->task_name, task_name, sizeof(config->task_name) - 1);
+
+    // Phase 10.2: Working Memory defaults (Miller's 7±2)
+    config->enable_working_memory = true;           // Enable by default
+    config->working_memory_capacity = 7;            // Miller's magic number
+    config->working_memory_decay_tau_ms = 1000.0f;  // 1 second decay
 }
 
 /**
@@ -1211,6 +1266,54 @@ static bool init_symbolic_logic_subsystem(brain_t brain)
 }
 
 /**
+ * @brief Initialize symbolic reasoning subsystem (Phase 9.4)
+ *
+ * WHAT: Creates symbolic logic engine for first-order logic reasoning
+ * WHY:  Enable logical inference, consistency checking for communication
+ * HOW:  Allocate logic engine with inference and knowledge base capabilities
+ *
+ * @param brain Brain to initialize
+ * @return true on success, false on error
+ */
+static bool init_symbolic_reasoning_subsystem(brain_t brain)
+{
+    if (!brain) {
+        return false;
+    }
+
+    // Check if already initialized
+    if (brain->symbolic_logic) {
+        return true;  // Already initialized
+    }
+
+    // Only initialize if explicitly enabled
+    if (!brain->config.enable_logic) {
+        brain->symbolic_logic = NULL;
+        return true;  // Not enabled, not an error
+    }
+
+    // Create symbolic logic engine with default configuration
+    logic_config_t logic_config = {
+        .max_predicates = LOGIC_MAX_PREDICATES,
+        .max_rules = LOGIC_MAX_RULES,
+        .max_kb_size = 10000,           // 10K facts
+        .max_inference_depth = 10,       // Max 10 inference steps
+        .enable_forward_chaining = true,
+        .enable_backward_chaining = true,
+        .enable_resolution = true,
+        .enable_memory_consolidation = false  // Handled by brain->consolidation
+    };
+
+    brain->symbolic_logic = symbolic_logic_create(&logic_config);
+    if (!brain->symbolic_logic) {
+        set_error("Failed to create symbolic logic engine");
+        return false;
+    }
+
+    return true;
+}
+
+/**
  * @brief Initialize epistemic filtering subsystem (Phase 9.2)
  *
  * WHAT: Creates epistemic filter for cognitive bias prevention
@@ -1246,6 +1349,317 @@ static bool init_epistemic_subsystem(brain_t brain)
     brain->epistemic = epistemic_filter_create(skepticism_level);
     if (!brain->epistemic) {
         set_error("Failed to create epistemic filter");
+        return false;
+    }
+
+    return true;
+}
+
+/**
+ * @brief Initialize working memory subsystem (Phase 10.2)
+ *
+ * WHAT: Creates Miller's 7±2 working memory buffer with temporal decay
+ * WHY:  Provides active representation buffer for reasoning and planning
+ * HOW:  Uses config settings or defaults (capacity=7, tau=1000ms)
+ *
+ * @param brain Brain instance
+ * @return true on success, false on error
+ */
+static bool init_working_memory_subsystem(brain_t brain)
+{
+    if (!brain) {
+        return false;
+    }
+
+    // Check if already initialized
+    if (brain->working_memory) {
+        return true;  // Already initialized
+    }
+
+    // Only create if enabled in config
+    if (!brain->config.enable_working_memory) {
+        return true;  // Not enabled, but not an error
+    }
+
+    // Create custom config from brain config
+    working_memory_config_t wm_config = working_memory_default_config();
+
+    // Override defaults with brain config if specified
+    if (brain->config.working_memory_capacity > 0) {
+        wm_config.capacity = brain->config.working_memory_capacity;
+    }
+    if (brain->config.working_memory_decay_tau_ms > 0.0f) {
+        wm_config.decay_tau_ms = brain->config.working_memory_decay_tau_ms;
+    }
+
+    brain->working_memory = working_memory_create_custom(&wm_config);
+    if (!brain->working_memory) {
+        set_error("Failed to create working memory");
+        return false;
+    }
+
+    /* =========================================================================
+     * PHASE 10.1: Sleep/Wake Cycle Initialization
+     * =========================================================================
+     * WHAT: Create sleep system and connect to brain
+     * WHY:  Enable memory consolidation and synaptic homeostasis
+     * HOW:  Create with defaults, link brain reference for working memory access
+     */
+
+    // Create sleep system with default configuration
+    brain->sleep_system = sleep_system_create(NULL);  // NULL = use defaults
+    if (!brain->sleep_system) {
+        set_error("Failed to create sleep system");
+        return false;
+    }
+
+    // Connect brain reference for working memory access (Phase 10.3 integration)
+    sleep_set_brain_reference(brain->sleep_system, (void*)brain);
+
+    return true;
+}
+
+/**
+ * @brief Initialize executive functions subsystem (Phase 10.3)
+ *
+ * WHAT: Create executive controller for task management
+ * WHY:  Enable goal-directed behavior and multi-tasking
+ * HOW:  Create with defaults or custom config from brain
+ */
+static bool init_executive_subsystem(brain_t brain)
+{
+    if (!brain) {
+        return false;
+    }
+
+    // Check if already initialized
+    if (brain->executive) {
+        return true;  // Already initialized
+    }
+
+    // Only create if enabled in config
+    if (!brain->config.enable_executive_control) {
+        return true;  // Not enabled, but not an error
+    }
+
+    // Create executive controller
+    brain->executive = executive_create();
+    if (!brain->executive) {
+        set_error("Failed to create executive controller");
+        return false;
+    }
+
+    return true;
+}
+
+/**
+ * @brief Initialize Theory of Mind subsystem (Phase 10.6)
+ *
+ * WHAT: Create Theory of Mind module for social cognition
+ * WHY:  Enable understanding of others' beliefs, goals, and emotions
+ * HOW:  Create ToM with brain reference for self-model
+ *
+ * COMPLEXITY: O(1)
+ * MEMORY: O(1) - small fixed structures for BDI model
+ *
+ * @param brain Brain instance
+ * @return true on success, false on error
+ */
+static bool init_theory_of_mind_subsystem(brain_t brain)
+{
+    if (!brain) {
+        return false;
+    }
+
+    // Check if already initialized
+    if (brain->theory_of_mind) {
+        return true;  // Already initialized
+    }
+
+    // Only create if enabled in config
+    if (!brain->config.enable_theory_of_mind) {
+        return true;  // Not enabled, but not an error
+    }
+
+    // Create Theory of Mind module with brain reference for self-model
+    brain->theory_of_mind = tom_create(brain);
+    if (!brain->theory_of_mind) {
+        set_error("Failed to create Theory of Mind module");
+        return false;
+    }
+
+    return true;
+}
+
+/**
+ * @brief Initialize Natural Explanations subsystem (Phase 10.7)
+ *
+ * WHAT: Create explanation generator for human-readable AI interpretability
+ * WHY:  Enable "what-why-how" explanations of brain decisions
+ * HOW:  Create explanation_generator with config-driven generation
+ *
+ * COMPLEXITY: O(1)
+ * MEMORY: O(1) - small fixed structures for explanation templates
+ *
+ * @param brain Brain instance
+ * @return true on success, false on error
+ */
+static bool init_natural_explanations_subsystem(brain_t brain)
+{
+    if (!brain) {
+        return false;
+    }
+
+    // Check if already initialized
+    if (brain->explanation_gen) {
+        return true;  // Already initialized
+    }
+
+    // Only create if enabled in config
+    if (!brain->config.enable_natural_explanations) {
+        return true;  // Not enabled, but not an error
+    }
+
+    // Create explanation config from brain config flags
+    explanation_config_t exp_config = explanation_default_config();
+    exp_config.generate_what = brain->config.enable_natural_explanations;
+    exp_config.generate_why = brain->config.enable_natural_explanations;
+    exp_config.generate_how = brain->config.enable_natural_explanations;
+    exp_config.generate_confidence = brain->config.enable_natural_explanations;
+    exp_config.generate_alternatives = brain->config.enable_natural_explanations;
+    exp_config.generate_counterfactuals = brain->config.enable_causal_explanations;
+    exp_config.use_symbolic_logic = (brain->symbolic_logic != NULL);
+
+    // Create Natural Explanations module
+    brain->explanation_gen = explanation_generator_create(&exp_config);
+    if (!brain->explanation_gen) {
+        set_error("Failed to create Natural Explanations module");
+        return false;
+    }
+
+    return true;
+}
+
+/**
+ * @brief Initialize Meta-Learning subsystem (Phase 10.8)
+ *
+ * WHAT: Create MAML meta-learner for few-shot learning
+ * WHY:  Enable rapid adaptation from 1, 5, or 10 examples
+ * HOW:  Initialize meta-learner with adaptive learning rates per region
+ *
+ * COMPLEXITY: O(num_regions)
+ * MEMORY: O(1) - small fixed structures for MAML state
+ *
+ * @param brain Brain instance
+ * @return true on success, false on error
+ */
+static bool init_meta_learning_subsystem(brain_t brain)
+{
+    if (!brain) {
+        return false;
+    }
+
+    // Check if already initialized
+    if (brain->meta_learner) {
+        return true;  // Already initialized
+    }
+
+    // Only create if enabled in config
+    if (!brain->config.enable_meta_learning) {
+        return true;  // Not enabled, but not an error
+    }
+
+    // Create meta-learning config from brain config
+    meta_learning_config_t meta_config = meta_learning_default_config();
+    meta_config.few_shot_k = (few_shot_mode_t)brain->config.meta_k_shot;
+    meta_config.enable_adaptive_lr = brain->config.enable_adaptive_meta_lr;
+    meta_config.enable_task_similarity = true;
+
+    // Determine number of regions (simplified: 3 main regions)
+    uint32_t num_regions = 3;  // Sensory, Association, Prefrontal
+
+    // Create Meta-Learning module
+    brain->meta_learner = meta_learner_create(&meta_config, num_regions);
+    if (!brain->meta_learner) {
+        set_error("Failed to create Meta-Learning module");
+        return false;
+    }
+
+    return true;
+}
+
+/**
+ * @brief Initialize Mental Health subsystem (Phase 10.5)
+ *
+ * WHAT: Create mental health monitor for disorder detection
+ * WHY:  Track cognitive health and prevent harmful states
+ * HOW:  Initialize monitor with 9 disorder detectors
+ *
+ * COMPLEXITY: O(1)
+ * MEMORY: O(1) - fixed structures for monitoring state
+ *
+ * @param brain Brain instance
+ * @return true on success, false on error
+ */
+static bool init_mental_health_subsystem(brain_t brain)
+{
+    if (!brain) {
+        return false;
+    }
+
+    // Check if already initialized
+    if (brain->mental_health_monitor) {
+        return true;  // Already initialized
+    }
+
+    // Only create if enabled in config
+    if (!brain->config.enable_mental_health_monitoring) {
+        return true;  // Not enabled, but not an error
+    }
+
+    // Create Mental Health monitor with default config
+    brain->mental_health_monitor = mental_health_create_default();
+    if (!brain->mental_health_monitor) {
+        set_error("Failed to create Mental Health monitor");
+        return false;
+    }
+
+    return true;
+}
+
+/**
+ * @brief Initialize Predictive Processing subsystem (Phase 10.9)
+ *
+ * WHAT: Create hierarchical predictive coding network
+ * WHY:  Enable free energy minimization and active inference
+ * HOW:  Initialize multi-layer predictive network
+ *
+ * COMPLEXITY: O(sum(layer_sizes))
+ * MEMORY: O(sum(layer_sizes)) - hierarchical state space
+ *
+ * @param brain Brain instance
+ * @return true on success, false on error
+ */
+static bool init_predictive_subsystem(brain_t brain)
+{
+    if (!brain) {
+        return false;
+    }
+
+    // Check if already initialized
+    if (brain->predictive_network) {
+        return true;  // Already initialized
+    }
+
+    // Only create if enabled in config
+    if (!brain->config.enable_predictive_processing) {
+        return true;  // Not enabled, but not an error
+    }
+
+    // Create Predictive network with default config
+    brain->predictive_network = predictive_create(NULL);  // NULL = use defaults
+    if (!brain->predictive_network) {
+        set_error("Failed to create Predictive Processing network");
         return false;
     }
 
@@ -1342,8 +1756,30 @@ brain_t brain_create(const char* task_name, brain_size_t size, brain_task_t task
         return NULL;
     }
 
-    // Phase 8.9: Initialize symbolic logic reasoning (if configured)
+    // Phase 8.9: Initialize neural logic gates (if configured)
     if (!init_symbolic_logic_subsystem(brain)) {
+        // Cleanup on failure
+        brain_destroy(brain);
+        return NULL;
+    }
+
+    // Phase 9.4: Initialize symbolic reasoning (if configured)
+    if (!init_symbolic_reasoning_subsystem(brain)) {
+        // Cleanup on failure
+        brain_destroy(brain);
+        return NULL;
+    }
+
+    // Phase 9.3: Initialize wellbeing monitoring (enabled by default)
+    brain->wellbeing_monitoring_enabled = true;  // Enable by default for ethical protection
+    brain->wellbeing_check_interval_ms = 0;      // Check on every decision (0 = always)
+    brain->last_wellbeing_check_time = 0;        // Initialize timestamp
+    memset(&brain->last_distress, 0, sizeof(distress_assessment_t));  // Clear distress state
+    brain->last_distress.type = DISTRESS_NONE;
+    brain->last_distress.severity = SEVERITY_NORMAL;
+
+    // Phase 10.2: Initialize working memory (if enabled)
+    if (!init_working_memory_subsystem(brain)) {
         // Cleanup on failure
         brain_destroy(brain);
         return NULL;
@@ -1444,6 +1880,48 @@ brain_t brain_create_custom(const brain_config_t* config)
         return NULL;
     }
 
+    // Phase 10.1: Initialize working memory (Miller's 7±2 active buffer)
+    if (!init_working_memory_subsystem(brain)) {
+        brain_destroy(brain);
+        return NULL;
+    }
+
+    // Phase 10.3: Initialize executive functions (task management, planning)
+    if (!init_executive_subsystem(brain)) {
+        brain_destroy(brain);
+        return NULL;
+    }
+
+    // Phase 10.6: Initialize Theory of Mind (social cognition, empathy)
+    if (!init_theory_of_mind_subsystem(brain)) {
+        brain_destroy(brain);
+        return NULL;
+    }
+
+    // Phase 10.7: Initialize Natural Explanations (interpretability)
+    if (!init_natural_explanations_subsystem(brain)) {
+        brain_destroy(brain);
+        return NULL;
+    }
+
+    // Phase 10.8: Initialize Meta-Learning (MAML, few-shot learning)
+    if (!init_meta_learning_subsystem(brain)) {
+        brain_destroy(brain);
+        return NULL;
+    }
+
+    // Phase 10.5: Initialize Mental Health Monitoring (disorder detection)
+    if (!init_mental_health_subsystem(brain)) {
+        brain_destroy(brain);
+        return NULL;
+    }
+
+    // Phase 10.9: Initialize Predictive Processing (free energy minimization)
+    if (!init_predictive_subsystem(brain)) {
+        brain_destroy(brain);
+        return NULL;
+    }
+
     return brain;
 }
 
@@ -1469,15 +1947,15 @@ void brain_destroy(brain_t brain)
             adaptive_network_destroy(brain->network);
         } else if (brain->network_refcount && brain->refcount_mutex) {
             // Brain shares network - decrement refcount
-            pthread_mutex_lock(brain->refcount_mutex);
+            nimcp_platform_mutex_lock(brain->refcount_mutex);
             (*brain->network_refcount)--;
             uint32_t remaining_refs = *brain->network_refcount;
-            pthread_mutex_unlock(brain->refcount_mutex);
+            nimcp_platform_mutex_unlock(brain->refcount_mutex);
 
             // If this was the last reference, destroy shared resources
             if (remaining_refs == 0) {
                 adaptive_network_destroy(brain->network);
-                pthread_mutex_destroy(brain->refcount_mutex);
+                nimcp_platform_mutex_destroy(brain->refcount_mutex);
                 nimcp_free(brain->refcount_mutex);
                 nimcp_free(brain->network_refcount);
             }
@@ -1492,7 +1970,7 @@ void brain_destroy(brain_t brain)
     }
 
     if (brain->output_labels) {
-        for (uint32_t i = 0; i < brain->config.num_outputs; i++) {
+        for (uint32_t i = 0; i < brain->num_output_labels; i++) {
             if (brain->output_labels[i]) {
                 nimcp_free(brain->output_labels[i]);
             }
@@ -1538,8 +2016,140 @@ void brain_destroy(brain_t brain)
         epistemic_filter_destroy(brain->epistemic);
     }
 
+    // Phase 9.4: Cleanup symbolic logic engine
+    if (brain->symbolic_logic) {
+        symbolic_logic_destroy(brain->symbolic_logic);
+    }
+
+    // Phase 10.1: Cleanup working memory
+    if (brain->working_memory) {
+        working_memory_destroy(brain->working_memory);
+    }
+
+    // Phase 10.3: Cleanup executive functions
+    if (brain->executive) {
+        executive_destroy(brain->executive);
+    }
+
+    // Phase 10.4: Cleanup sleep/wake system
+    if (brain->sleep_system) {
+        sleep_system_destroy(brain->sleep_system);
+    }
+
+    // Phase 10.6: Cleanup Theory of Mind
+    if (brain->theory_of_mind) {
+        tom_destroy(brain->theory_of_mind);
+    }
+
+    // Phase 10.7: Cleanup Natural Explanations
+    if (brain->explanation_gen) {
+        explanation_generator_destroy(brain->explanation_gen);
+    }
+
+    // Phase 10.8: Cleanup Meta-Learning
+    if (brain->meta_learner) {
+        meta_learner_destroy(brain->meta_learner);
+    }
+
+    // Phase 10.5: Cleanup Mental Health
+    if (brain->mental_health_monitor) {
+        mental_health_destroy(brain->mental_health_monitor);
+    }
+
+    // Phase 10.9: Cleanup Predictive Processing
+    if (brain->predictive_network) {
+        predictive_destroy(brain->predictive_network);
+    }
+
     clear_cache(brain);
     nimcp_free(brain);
+}
+
+/**
+ * @brief Get working memory from brain (Phase 10.2 accessor)
+ *
+ * WHAT: Retrieve pointer to brain's working memory subsystem
+ * WHY:  Allow API wrapper functions to access working memory
+ * HOW:  Return brain->working_memory field (NULL if not enabled)
+ *
+ * @param brain Brain instance
+ * @return Working memory pointer or NULL if not enabled/invalid brain
+ */
+working_memory_t* brain_get_working_memory(brain_t brain)
+{
+    if (!brain) {
+        return NULL;
+    }
+    return brain->working_memory;
+}
+
+/**
+ * @brief Get sleep system from brain (Phase 10.1 accessor)
+ *
+ * WHAT: Retrieve pointer to brain's sleep/wake subsystem
+ * WHY:  Allow external control of sleep cycles and pressure monitoring
+ * HOW:  Return brain->sleep_system field (NULL if not enabled)
+ *
+ * @param brain Brain instance
+ * @return Sleep system pointer or NULL if invalid brain
+ *
+ * COMPLEXITY: O(1)
+ * THREAD-SAFE: Yes (read-only)
+ */
+sleep_system_t brain_get_sleep_system(brain_t brain)
+{
+    /* Guard clause: Validate input */
+    if (!brain) {
+        return NULL;
+    }
+
+    return brain->sleep_system;
+}
+
+/**
+ * @brief Get Theory of Mind from brain (Phase 10.6 accessor)
+ *
+ * WHAT: Retrieve pointer to brain's Theory of Mind subsystem
+ * WHY:  Allow external access to social cognition and empathy functions
+ * HOW:  Return brain->theory_of_mind field (NULL if not enabled)
+ *
+ * @param brain Brain instance
+ * @return Theory of Mind pointer or NULL if not enabled/invalid brain
+ *
+ * COMPLEXITY: O(1)
+ * THREAD-SAFE: Yes (read-only)
+ */
+theory_of_mind_t brain_get_theory_of_mind(brain_t brain)
+{
+    /* Guard clause: Validate input */
+    if (!brain) {
+        return NULL;
+    }
+
+    return brain->theory_of_mind;
+}
+
+/**
+ * @brief Get explanation generator from brain (Phase 10.7 accessor)
+ *
+ * WHAT: Retrieve pointer to brain's Natural Explanations generator
+ * WHY:  Allow external modules to generate explanations
+ * HOW:  Return brain->explanation_gen field (NULL if not enabled)
+ *
+ * @param brain Brain instance
+ * @return Explanation generator pointer or NULL if not enabled/invalid brain
+ *
+ * COMPLEXITY: O(1)
+ * THREAD-SAFE: Yes (read-only)
+ */
+explanation_generator_t brain_get_explanation_generator(brain_t brain)
+{
+    /* Guard clause: Validate input */
+    if (!brain) {
+        return NULL;
+    }
+
+    return brain->explanation_gen;
 }
 
 //=============================================================================
@@ -1669,16 +2279,18 @@ brain_t brain_clone_cow(brain_t original)
     if (!original->network_refcount) {
         // First clone - original needs to initialize shared refcount
         original->network_refcount = nimcp_malloc(sizeof(uint32_t));
-        original->refcount_mutex = nimcp_malloc(sizeof(pthread_mutex_t));
+        original->refcount_mutex = nimcp_malloc(sizeof(nimcp_platform_mutex_t));
         if (original->network_refcount && original->refcount_mutex) {
             *original->network_refcount = 2;  // Original + this clone
-            pthread_mutex_init(original->refcount_mutex, NULL);
+            nimcp_platform_mutex_init(original->refcount_mutex, false);
+            // CRITICAL: Original no longer exclusively owns network - it's now shared
+            original->owns_network = false;
         }
     } else {
         // Additional clone - increment existing refcount
-        pthread_mutex_lock(original->refcount_mutex);
+        nimcp_platform_mutex_lock(original->refcount_mutex);
         (*original->network_refcount)++;
-        pthread_mutex_unlock(original->refcount_mutex);
+        nimcp_platform_mutex_unlock(original->refcount_mutex);
     }
 
     // Clone shares the refcount and mutex with original
@@ -1706,6 +2318,12 @@ brain_t brain_clone_cow(brain_t original)
     clone->last_input = NULL;
     clone->cached_decision = NULL;
     clone->distributed = NULL;
+
+    // Record COW statistics for tracking memory savings
+    // Estimate shared network size based on neurons and synapses
+    size_t network_size = (clone->stats.num_neurons * sizeof(void*) * 2) +  // Neuron structures
+                         (clone->stats.num_synapses * sizeof(float) * 2);   // Synapse weights
+    nimcp_cache_record_reference(network_size);
 
     return clone;
 }
@@ -2135,6 +2753,33 @@ brain_decision_t* brain_decide(brain_t brain, const float* features, uint32_t nu
         return NULL;
     }
 
+    // ========================================================================
+    // STAGE 0: Pre-Processing - Wellbeing Monitoring (Phase 9.3)
+    // ========================================================================
+    // WHAT: Check for distress BEFORE decision-making
+    // WHY: Prevent decisions while system is in distress (ethical obligation)
+    // HOW: Assess using introspection data, circuit-break on CRITICAL severity
+    if (brain->wellbeing_monitoring_enabled && brain->introspection) {
+        uint64_t current_time = nimcp_time_get_ms();
+
+        // Check if it's time for a wellbeing assessment
+        bool should_check = (brain->wellbeing_check_interval_ms == 0) ||  // Always check
+                           ((current_time - brain->last_wellbeing_check_time) >= brain->wellbeing_check_interval_ms);
+
+        if (should_check) {
+            brain->last_distress = wellbeing_assess_distress(brain->introspection);
+            brain->last_wellbeing_check_time = current_time;
+
+            // Circuit breaker: CRITICAL distress prevents decisions
+            if (brain->last_distress.severity == SEVERITY_CRITICAL) {
+                set_error("Decision blocked: System in CRITICAL distress (%s)",
+                         brain->last_distress.description ? brain->last_distress.description : "Unknown");
+                // Note: Caller should check error and potentially apply intervention
+                return NULL;
+            }
+        }
+    }
+
     // Phase 3: Only trigger COW if not using read-only inference
     // WHY: COW clones can use adaptive_network_forward_readonly() indefinitely
     // WHEN: Trigger only for original brains or clones that already triggered COW
@@ -2165,8 +2810,48 @@ brain_decision_t* brain_decide(brain_t brain, const float* features, uint32_t nu
         return NULL;
     }
 
+    // ========================================================================
+    // STAGE 1: Predictive Processing (Phase 10.9) - Generate Prediction
+    // ========================================================================
+    // WHAT: Generate top-down prediction before actual processing
+    // WHY:  Compute prediction error for active inference
+    // HOW:  Use predictive network to anticipate output
+    float* prediction = NULL;
+    float prediction_error = 0.0f;
+    if (brain->predictive_network && brain->config.enable_predictive_processing) {
+        prediction = (float*)nimcp_calloc(num_features, sizeof(float));
+        if (prediction) {
+            // Generate prediction (5 iterations of free energy minimization)
+            predictive_forward(brain->predictive_network, features, 5);
+            // Get prediction from bottom layer
+            predictive_get_layer_prediction(brain->predictive_network, 0, prediction);
+        }
+    }
+
     // Perform forward pass
     uint32_t active_neurons = perform_forward_pass(brain, features, num_features, decision);
+
+    // ========================================================================
+    // STAGE 2: Predictive Processing - Compute Prediction Error
+    // ========================================================================
+    // WHAT: Compute mismatch between prediction and actual output
+    // WHY:  Prediction errors drive learning and attention
+    // HOW:  L2 distance between predicted and actual output
+    if (prediction) {
+        for (uint32_t i = 0; i < decision->output_size; i++) {
+            float error = decision->output_vector[i] -
+                         (i < num_features ? prediction[i] : 0.0f);
+            prediction_error += error * error;
+        }
+        prediction_error = sqrtf(prediction_error / decision->output_size);
+
+        // Update predictive model with actual outcome
+        if (brain->config.enable_predictive_processing) {
+            predictive_update_model(brain->predictive_network);
+        }
+
+        nimcp_free(prediction);
+    }
 
     // Apply task-specific output transformation
     brain->strategy->transform_output(decision->output_vector, decision->output_size);
@@ -2176,6 +2861,64 @@ brain_decision_t* brain_decide(brain_t brain, const float* features, uint32_t nu
 
     // Populate interpretability information
     populate_interpretability(brain, features, num_features, active_neurons, decision);
+
+    // ========================================================================
+    // STAGE 5: Natural Explanations (Phase 10.7)
+    // ========================================================================
+    // WHAT: Generate human-readable what-why-how explanations
+    // WHY:  Enhance interpretability with structured natural language
+    // HOW:  Use explanation_generator to create detailed explanations
+    if (brain->explanation_gen && brain->config.enable_natural_explanations) {
+        natural_explanation_t nat_exp;
+        if (explanation_generate_from_decision(brain->explanation_gen, brain, decision, &nat_exp)) {
+            // Enhance the decision->explanation with natural explanation
+            // Format: "WHAT: <what> | WHY: <why> | CONF: <confidence>"
+            snprintf(decision->explanation, sizeof(decision->explanation),
+                    "WHAT: %s | WHY: %s | CONF: %s",
+                    nat_exp.what, nat_exp.why, nat_exp.confidence);
+
+            // Optional: Add symbolic logic proof if available and enabled
+            if (brain->symbolic_logic && nat_exp.has_symbolic_proof) {
+                char proof_buffer[512];
+                if (explain_with_symbolic_logic(brain->explanation_gen, brain,
+                                               decision, proof_buffer, sizeof(proof_buffer))) {
+                    // Append proof to explanation (if space permits)
+                    size_t current_len = strlen(decision->explanation);
+                    size_t remaining = sizeof(decision->explanation) - current_len;
+                    if (remaining > 20) {  // Enough space for " | PROOF: <text>"
+                        snprintf(decision->explanation + current_len, remaining,
+                                " | PROOF: %s", proof_buffer);
+                    }
+                }
+            }
+        }
+    }
+
+    // ========================================================================
+    // STAGE 6-8: Additional Phase 10 Integration Points
+    // ========================================================================
+    //
+    // WORKING MEMORY (Phase 10.1): Could store decision context for temporal reasoning
+    //   - Store features + decision + prediction_error as working memory item
+    //   - Enable context-dependent decisions across time
+    //   - API: working_memory_*() functions available
+    //
+    // EMOTIONAL TAGGING (Phase 10.2): Could tag significant decisions
+    //   - Compute valence = f(confidence), arousal = f(prediction_error)
+    //   - Tag high-confidence or high-surprise decisions for consolidation
+    //   - API: emotional_tag_create() available
+    //
+    // EXECUTIVE CONTROL (Phase 10.3): Already integrated in brain_check()
+    //   - Task switching, inhibition, planning handled by executive controller
+    //   - API: executive_*() functions integrated in cognitive pipeline
+    //
+    // MENTAL HEALTH (Phase 10.5): Passive monitoring via brain_check()
+    //   - Detects behavioral patterns over time (100+ decisions)
+    //   - No per-decision tracking needed (works passively)
+    //
+    // THEORY OF MIND (Phase 10.6): For multi-agent scenarios
+    //   - Could infer beliefs/intentions of other agents
+    //   - API: tom_*() functions available for social contexts
 
     // Update statistics
     update_inference_stats(brain, decision);
@@ -2196,6 +2939,36 @@ brain_decision_t* brain_decide(brain_t brain, const float* features, uint32_t nu
         // Copy failed - this is bad, but at least don't leak the original
         set_error("Failed to copy decision");
         return NULL;
+    }
+
+    // ========================================================================
+    // STAGE 6: Post-Processing - Wellbeing Monitoring (Phase 9.3)
+    // ========================================================================
+    // WHAT: Verify wellbeing AFTER decision-making
+    // WHY: Detect if decision process caused distress (e.g., contradictions, goal frustration)
+    // HOW: Re-assess if enabled, warn on moderate/severe distress
+    if (brain->wellbeing_monitoring_enabled && brain->introspection) {
+        // Post-decision wellbeing check (skip if we just checked in Stage 0)
+        uint64_t current_time = nimcp_time_get_ms();
+        bool just_checked = (current_time - brain->last_wellbeing_check_time) < 100;  // Within 100ms
+
+        if (!just_checked) {
+            distress_assessment_t post_distress = wellbeing_assess_distress(brain->introspection);
+
+            // Check if distress worsened during decision
+            if (post_distress.severity > brain->last_distress.severity) {
+                // Note: We don't block the decision here (it's already made),
+                // but we update the state for next time
+                brain->last_distress = post_distress;
+                brain->last_wellbeing_check_time = current_time;
+
+                // Log warning if distress increased to severe
+                if (post_distress.severity >= SEVERITY_SEVERE) {
+                    // Could log or trigger intervention here
+                    // For now, just update state silently
+                }
+            }
+        }
     }
 
     brain_clear_error();
@@ -2275,30 +3048,102 @@ bool brain_decide_batch(brain_t brain, const float** inputs, uint32_t num_inputs
 //=============================================================================
 
 /**
+ * @brief Save working memory state to file (Phase 10.2)
+ *
+ * WHAT: Serialize working memory items for COW snapshot persistence
+ * WHY:  Preserve active representations across save/load/snapshot operations
+ * HOW:  Write marker → size/capacity → each item's data
+ *
+ * COMPLEXITY: O(n*m) where n = items, m = avg item size
+ *
+ * @param wm Working memory instance (nullable)
+ * @param file File handle (non-NULL)
+ * @return true on success, false on error
+ */
+static bool save_working_memory_state(working_memory_t* wm, FILE* file)
+{
+    // Guard: NULL file handle
+    if (!file) {
+        return false;
+    }
+
+    // Guard: No working memory → write marker and return
+    if (!wm) {
+        uint8_t has_wm = 0;
+        fwrite(&has_wm, sizeof(uint8_t), 1, file);
+        return true;
+    }
+
+    // Write existence marker
+    uint8_t has_wm = 1;
+    fwrite(&has_wm, sizeof(uint8_t), 1, file);
+
+    // Get current state
+    working_memory_stats_t stats;
+    working_memory_get_stats(wm, &stats);
+
+    // Write metadata
+    fwrite(&stats.current_size, sizeof(uint32_t), 1, file);
+    fwrite(&stats.capacity, sizeof(uint32_t), 1, file);
+
+    // Write each item
+    for (uint32_t i = 0; i < stats.current_size; i++) {
+        uint32_t item_size = 0;
+        const float* item = working_memory_get(wm, i, &item_size);
+
+        // Guard: Invalid item → skip
+        if (!item || item_size == 0) {
+            continue;
+        }
+
+        fwrite(&item_size, sizeof(uint32_t), 1, file);
+        fwrite(item, sizeof(float), item_size, file);
+    }
+
+    return true;
+}
+
+/**
  * @brief Save metadata file
  *
- * COMPLEXITY: O(k) where k = num_labels
+ * WHAT: Persist brain configuration and output labels
+ * WHY:  Enable full state reconstruction on load
+ * HOW:  Write config → labels → working memory state
+ *
+ * COMPLEXITY: O(k + n*m) where k = labels, n = WM items, m = item size
+ *
+ * @param brain Brain instance (non-NULL)
+ * @param filepath Base filepath (non-NULL)
+ * @return true on success, false on error
  */
 static bool save_metadata(brain_t brain, const char* filepath)
 {
+    // Guard: NULL parameters handled by caller
+
     char meta_path[512];
     snprintf(meta_path, sizeof(meta_path), "%s.meta", filepath);
 
     FILE* meta_file = fopen(meta_path, "wb");
-    if (!meta_file)
+    if (!meta_file) {
         return false;
+    }
 
+    // Write configuration
     fwrite(&brain->config, sizeof(brain_config_t), 1, meta_file);
     fwrite(&brain->num_output_labels, sizeof(uint32_t), 1, meta_file);
 
+    // Write output labels
     for (uint32_t i = 0; i < brain->num_output_labels; i++) {
         uint32_t len = strlen(brain->output_labels[i]) + 1;
         fwrite(&len, sizeof(uint32_t), 1, meta_file);
         fwrite(brain->output_labels[i], len, 1, meta_file);
     }
 
+    // Phase 10.2: Save working memory state
+    bool wm_success = save_working_memory_state(brain->working_memory, meta_file);
+
     fclose(meta_file);
-    return true;
+    return wm_success;
 }
 
 /**
@@ -2340,9 +3185,133 @@ bool brain_save(brain_t brain, const char* filepath)
 }
 
 /**
+ * @brief Load single working memory item from file (Phase 10.2)
+ *
+ * WHAT: Deserialize one item and add to working memory buffer
+ * WHY:  Restore individual active representations
+ * HOW:  Read size → allocate → read data → add to buffer → free temp
+ *
+ * COMPLEXITY: O(m) where m = item size
+ *
+ * @param wm Working memory instance (non-NULL)
+ * @param file File handle (non-NULL)
+ * @return true on success, false on error
+ */
+static bool load_working_memory_item(working_memory_t* wm, FILE* file)
+{
+    #define MAX_ITEM_SIZE 10000  // Sanity check limit
+
+    // Guard: NULL parameters
+    if (!wm || !file) {
+        return false;
+    }
+
+    uint32_t item_size = 0;
+    if (fread(&item_size, sizeof(uint32_t), 1, file) != 1) {
+        return false;
+    }
+
+    // Guard: Invalid size
+    if (item_size == 0 || item_size > MAX_ITEM_SIZE) {
+        return false;
+    }
+
+    // Allocate temporary buffer
+    float* item = nimcp_malloc(item_size * sizeof(float));
+    if (!item) {
+        return false;
+    }
+
+    // Read item data
+    if (fread(item, sizeof(float), item_size, file) != item_size) {
+        nimcp_free(item);
+        return false;
+    }
+
+    // Add to working memory (use default salience since not persisted)
+    const float DEFAULT_SALIENCE = 0.5f;
+    bool success = working_memory_add(wm, item, item_size, DEFAULT_SALIENCE);
+
+    nimcp_free(item);
+    return success;
+
+    #undef MAX_ITEM_SIZE
+}
+
+/**
+ * @brief Load working memory state from file (Phase 10.2)
+ *
+ * WHAT: Deserialize working memory items from COW snapshot
+ * WHY:  Restore active representations after load/restore
+ * HOW:  Read marker → initialize if needed → load each item
+ *
+ * COMPLEXITY: O(n*m) where n = items, m = avg item size
+ *
+ * @param brain Brain instance (non-NULL)
+ * @param file File handle (non-NULL)
+ * @return true on success (non-fatal on WM failure)
+ */
+static bool load_working_memory_state(brain_t brain, FILE* file)
+{
+    // Guard: NULL parameters
+    if (!brain || !file) {
+        return false;
+    }
+
+    // Read existence marker
+    uint8_t has_wm = 0;
+    if (fread(&has_wm, sizeof(uint8_t), 1, file) != 1) {
+        return true;  // EOF or old format → non-fatal
+    }
+
+    // Guard: No working memory in snapshot
+    if (has_wm == 0) {
+        return true;  // Nothing to load → success
+    }
+
+    // Read metadata
+    uint32_t wm_size = 0, wm_capacity = 0;
+    if (fread(&wm_size, sizeof(uint32_t), 1, file) != 1) {
+        return true;  // Non-fatal
+    }
+    if (fread(&wm_capacity, sizeof(uint32_t), 1, file) != 1) {
+        return true;  // Non-fatal
+    }
+
+    // Initialize working memory if enabled but not yet created
+    if (!brain->working_memory && brain->config.enable_working_memory) {
+        if (!init_working_memory_subsystem(brain)) {
+            fprintf(stderr, "WARNING: Failed to initialize working memory on load\n");
+            return true;  // Non-fatal: continue without WM
+        }
+    }
+
+    // Guard: Working memory not available
+    if (!brain->working_memory) {
+        return true;  // Skip loading → non-fatal
+    }
+
+    // Load each item
+    for (uint32_t i = 0; i < wm_size; i++) {
+        load_working_memory_item(brain->working_memory, file);
+        // Errors loading individual items are non-fatal
+    }
+
+    return true;
+}
+
+/**
  * @brief Load metadata file
  *
- * COMPLEXITY: O(k) where k = num_labels
+ * WHAT: Deserialize brain configuration and output labels
+ * WHY:  Reconstruct full brain state from persistent storage
+ * HOW:  Read config → validate → load labels → load working memory
+ *
+ * COMPLEXITY: O(k + n*m) where k = labels, n = WM items, m = item size
+ *
+ * @param brain Brain instance (non-NULL)
+ * @param filepath Base filepath (non-NULL)
+ * @return true on success, false on error
  */
 static bool load_metadata(brain_t brain, const char* filepath)
 {
@@ -2452,6 +3421,9 @@ static bool load_metadata(brain_t brain, const char* filepath)
 
         fread(brain->output_labels[i], len, 1, meta_file);
     }
+
+    // Phase 10.2: Load working memory state
+    load_working_memory_state(brain, meta_file);
 
     fclose(meta_file);
     return true;
@@ -3448,8 +4420,76 @@ static bool apply_cognitive_processing(
         }
     }
 
-    // Neural Logic (Phase 9.0): Available for explicit reasoning calls
-    // Logic gates integrate with neural processing pipeline
+    /**
+     * WHAT: Symbolic Logic Processing (Phase 9.4)
+     * WHY:  Validate logical consistency and generate reasoning explanations
+     * HOW:  Apply first-order logic inference, check for contradictions
+     *
+     * Penalty for ethical violations: 50% confidence reduction
+     * Future: Extract predicates, apply inference rules, detect contradictions
+     */
+
+    // Constants for logic processing
+    const float LOGIC_ETHICS_PENALTY = 0.5f;  // Confidence penalty for ethical violations
+
+    if (brain->symbolic_logic) {
+        // Validate output structure
+        if (!output) {
+            set_error("NULL output in symbolic logic processing");
+            return false;
+        }
+
+        // WHAT: Initialize logical consistency state
+        // WHY:  Assume consistency until proven otherwise (innocent until guilty)
+        // HOW:  Start with neural confidence, apply penalties for violations
+        output->logical_consistency = true;
+        output->reasoning_confidence = output->confidence;
+
+        // WHAT: Generate reasoning explanation string
+        // WHY:  Provide transparency into decision-making process
+        // HOW:  Format neural metrics and ethical approval status
+        const int written = snprintf(
+            output->logical_reasoning,
+            sizeof(output->logical_reasoning),
+            "Neural confidence: %.2f, Salience: %.2f, Ethical: %s",
+            output->confidence,
+            output->salience_score,
+            output->ethical_approved ? "YES" : "NO"
+        );
+
+        // Check for buffer overflow (defensive programming)
+        if (written < 0 || (size_t)written >= sizeof(output->logical_reasoning)) {
+            set_error("Logic reasoning buffer overflow");
+            return false;
+        }
+
+        // WHAT: Detect logical inconsistency from ethical violations
+        // WHY:  Unethical decisions are logically inconsistent with moral principles
+        // HOW:  Mark inconsistent, reduce confidence by penalty factor
+        if (!output->ethical_approved) {
+            output->logical_consistency = false;
+            output->reasoning_confidence *= LOGIC_ETHICS_PENALTY;
+        }
+
+        // TODO Phase 9.4 Full Implementation:
+        // 1. Extract predicates from network_output and integrated features
+        //    Example: facial_expression(person, stressed) from visual features
+        // 2. Apply inference rules from knowledge base
+        //    Example: stressed(X) ∧ anxious(X) → needs_support(X)
+        // 3. Check for contradictions between inferred facts and output
+        //    Example: happy(X) ∧ sad(X) → contradiction
+        // 4. Generate detailed logical explanation of reasoning chain
+        //    Example: "Inferred needs_support from stressed ∧ anxious"
+
+    } else {
+        // WHAT: Handle case where logic engine is disabled
+        // WHY:  Gracefully degrade when logic subsystem not configured
+        // HOW:  Use ethical approval as proxy for consistency
+        output->logical_consistency = output->ethical_approved;
+        output->reasoning_confidence = output->confidence;
+        snprintf(output->logical_reasoning, sizeof(output->logical_reasoning),
+                "Logic engine not enabled");
+    }
 
     return output->ethical_approved;
 }
@@ -3633,7 +4673,11 @@ bool brain_process_multimodal(
         return false;
     }
 
-    // Initialize output
+    /**
+     * WHAT: Initialize multimodal output structure
+     * WHY:  Zero all fields to ensure clean state for processing
+     * HOW:  Clear strings, zero floats, set defaults
+     */
     memset(output->decision_label, 0, sizeof(output->decision_label));
     memset(output->explanation, 0, sizeof(output->explanation));
     output->confidence = 0.0f;
@@ -3645,6 +4689,26 @@ bool brain_process_multimodal(
     output->audio_attention = 0.0f;
     output->speech_attention = 0.0f;
     output->direct_attention = 0.0f;
+
+    // Phase 9.4: Initialize language output fields
+    output->language_response = NULL;          // No response yet (caller must free if set)
+    output->language_response_length = 0;
+    output->language_confidence = 0.0f;
+
+    // Phase 9.4: Initialize logical reasoning fields
+    output->logical_consistency = true;        // Assume consistent until proven otherwise
+    output->reasoning_confidence = 0.0f;
+    memset(output->logical_reasoning, 0, sizeof(output->logical_reasoning));
+
+    // =========================================================================
+    // PHASE 10.2: Working Memory Temporal Decay
+    // =========================================================================
+    // WHAT: Update working memory decay based on elapsed time
+    // WHY:  Simulate temporal forgetting (exponential decay)
+    // HOW:  Apply decay_tau_ms to all items before processing
+    if (brain->working_memory) {
+        working_memory_decay(brain->working_memory, input->timestamp_ms);
+    }
 
     // =========================================================================
     // PIPELINE: Five-Stage Processing (Phase 9.1 SRP Refactoring)
@@ -3724,6 +4788,34 @@ bool brain_process_multimodal(
         return false;
     }
 
+    // =========================================================================
+    // PHASE 10.3: Store network output in working memory with emotional tagging
+    // =========================================================================
+    // WHAT: Add current network output to working memory with emotional context
+    // WHY:  Emotional events receive memory priority (amygdala-hippocampus interaction)
+    // HOW:  Detect emotion from cognitive state → Tag with emotion → Store with boosted salience
+    // NOTE: Only stores if working memory enabled and salience sufficient
+    if (brain->working_memory && output->salience_score > 0.1f) {
+        // Detect emotional state from cognitive processing outputs
+        emotional_tag_t emotion = emotional_tag_from_cognitive_state(
+            output->confidence,
+            output->introspection_uncertainty,
+            output->novelty_score,
+            output->ethical_approved,
+            input->timestamp_ms
+        );
+
+        // Add to working memory with emotional tag
+        // Emotional boost will automatically increase effective salience
+        working_memory_add_with_emotion(
+            brain->working_memory,
+            network_output,
+            network_output_size,
+            output->salience_score,  // Base salience
+            &emotion                  // Emotional context
+        );
+    }
+
     // -------------------------------------------------------------------------
     // STAGE 5: Format output with decision label and explanation
     // -------------------------------------------------------------------------
@@ -3738,6 +4830,27 @@ bool brain_process_multimodal(
         speech_dim,
         output
     );
+
+    // -------------------------------------------------------------------------
+    // STAGE 6: Natural Explanations (Phase 10.7)
+    // -------------------------------------------------------------------------
+    // WHAT: Generate human-readable what-why-how explanations for multimodal output
+    // WHY:  Enhance interpretability with structured natural language for multi-sensory decisions
+    // HOW:  Use explanation_generator to create detailed multimodal explanations
+    if (success && brain->explanation_gen && brain->config.enable_natural_explanations) {
+        natural_explanation_t nat_exp;
+        if (explanation_generate_from_multimodal(brain->explanation_gen, brain, output, &nat_exp)) {
+            // Enhance the output->explanation with natural explanation
+            // Keep original format for modality info, append what-why-how
+            char original_exp[256];
+            strncpy(original_exp, output->explanation, sizeof(original_exp) - 1);
+            original_exp[sizeof(original_exp) - 1] = '\0';
+
+            snprintf(output->explanation, sizeof(output->explanation),
+                    "%s | WHAT: %s | WHY: %s",
+                    original_exp, nat_exp.what, nat_exp.why);
+        }
+    }
 
     // Cleanup
     nimcp_free(network_output);
@@ -3974,6 +5087,13 @@ brain_t brain_create_pretrained(const char* model_id, brain_task_t task)
     printf("NIMCP:   Ready for immediate inference!\n");
 
     return brain;
+}
+
+brain_t brain_load_pretrained(const char* model_name, const char* models_dir) {
+    // TODO: Implement once libcjson-dev is available
+    // For now, forward to brain_create_pretrained with default task
+    (void)models_dir;  // Unused parameter
+    return brain_create_pretrained(model_name, BRAIN_TASK_CLASSIFICATION);
 }
 
 bool brain_finetune(brain_t brain, const float* training_data, const float* labels,

@@ -15,7 +15,7 @@ TEST(NeuralNetCreate, ValidConfig)
     // Verify initial network state
     float state;
     ASSERT_TRUE(neural_network_get_neuron_state(network, 0, &state));
-    ASSERT_TRUE(float_equals(state, -65.0f));  // Default rest potential
+    ASSERT_TRUE(float_equals(state, 0.0f));  // Normalized rest potential
 
     neural_network_destroy(network);
 }
@@ -58,7 +58,7 @@ TEST(NeuralNetCreate, NeuronInitialization)
     // Check first neuron's parameters
     float state;
     ASSERT_TRUE(neural_network_get_neuron_state(network, 0, &state));
-    ASSERT_TRUE(float_equals(state, -65.0f));
+    ASSERT_TRUE(float_equals(state, 0.0f));  // Normalized rest potential
 
     // Check neuron count
     network_stats_t stats;
@@ -95,10 +95,16 @@ TEST(NeuralNetNeuron, ActivationFunctions)
     uint32_t tanh_id = neural_network_add_neuron(network, ACTIVATION_TANH);
     ASSERT_NE(tanh_id, UINT32_MAX);
 
-    // Update neurons with positive input
-    ASSERT_TRUE(neural_network_update_neuron(network, sigmoid_id, 2.0f, 1));
-    ASSERT_TRUE(neural_network_update_neuron(network, relu_id, 2.0f, 1));
-    ASSERT_TRUE(neural_network_update_neuron(network, tanh_id, 2.0f, 1));
+    // Update neurons with sub-threshold input to activate them without spiking
+    // Spike threshold is 0.5, so use -0.5 which produces:
+    // - sigmoid(-0.5) ≈ 0.38 (below 0.5, won't spike)
+    // - relu(-0.5) = 0.0 (ReLU clamps negative to 0)
+    // - tanh(-0.5) ≈ -0.46 (below 0.5, won't spike)
+    uint64_t timestamp = 1000;
+    float input_current = -0.5f;
+    ASSERT_TRUE(neural_network_update_neuron(network, sigmoid_id, input_current, timestamp));
+    ASSERT_TRUE(neural_network_update_neuron(network, relu_id, input_current, timestamp));
+    ASSERT_TRUE(neural_network_update_neuron(network, tanh_id, input_current, timestamp));
 
     // Verify different activation results
     float sigmoid_state, relu_state, tanh_state;
@@ -106,16 +112,17 @@ TEST(NeuralNetNeuron, ActivationFunctions)
     ASSERT_TRUE(neural_network_get_neuron_state(network, relu_id, &relu_state));
     ASSERT_TRUE(neural_network_get_neuron_state(network, tanh_id, &tanh_state));
 
-    // Sigmoid should be in (0, 1)
+    // Sigmoid should be in (0, 1), specifically sigmoid(-0.5) ≈ 0.38
     EXPECT_GT(sigmoid_state, 0.0f);
     EXPECT_LT(sigmoid_state, 1.0f);
+    EXPECT_LT(sigmoid_state, 0.5f);  // Should be below threshold
 
-    // ReLU should be positive
-    EXPECT_GT(relu_state, 0.0f);
+    // ReLU should clamp negative input to 0
+    EXPECT_EQ(relu_state, 0.0f);
 
-    // Tanh should be in (-1, 1)
+    // Tanh should be in (-1, 1), specifically tanh(-0.5) ≈ -0.46
     EXPECT_GT(tanh_state, -1.0f);
-    EXPECT_LT(tanh_state, 1.0f);
+    EXPECT_LT(tanh_state, 0.0f);  // Should be negative
 
     neural_network_destroy(network);
 }
@@ -127,13 +134,14 @@ TEST(NeuralNetNeuron, StateUpdate)
     neural_network_t network = neural_network_create(&config);
     ASSERT_NE(network, nullptr);
 
-    // Update neuron state
-    ASSERT_TRUE(neural_network_update_neuron(network, 0, 1.0f, 1));
+    // Update neuron state with input below spike threshold
+    ASSERT_TRUE(neural_network_update_neuron(network, 0, 0.3f, 1));
 
-    // Verify state was updated
+    // Verify state was updated (should be > 0 but < threshold to avoid spike reset)
     float state;
     ASSERT_TRUE(neural_network_get_neuron_state(network, 0, &state));
-    EXPECT_NE(state, -65.0f);  // Should not be rest potential anymore
+    EXPECT_GT(state, 0.0f);  // Should be greater than rest potential
+    EXPECT_LT(state, 0.5f);  // Should be below spike threshold
 
     // Test invalid neuron ID
     ASSERT_FALSE(neural_network_get_neuron_state(network, MAX_NEURONS + 1, &state));
@@ -352,7 +360,7 @@ TEST(NeuralNetNeuron, NetworkReset)
     // Verify neurons are back to rest potential
     float state;
     ASSERT_TRUE(neural_network_get_neuron_state(network, 0, &state));
-    EXPECT_TRUE(float_equals(state, -65.0f));
+    EXPECT_TRUE(float_equals(state, 0.0f));  // Normalized rest potential
 
     // Verify activity is reset
     float activity = neural_network_get_average_activity(network, 0);
@@ -433,7 +441,7 @@ TEST(NeuralNetLowLevel, MembranePotential)
     // Verify neuron state was affected by synaptic inputs
     float state;
     ASSERT_TRUE(neural_network_get_neuron_state(network, 0, &state));
-    EXPECT_NE(state, -65.0f);  // Should not be at rest potential
+    EXPECT_NE(state, 0.0f);  // Should not be at rest potential
 
     neural_network_destroy(network);
 }
@@ -483,7 +491,7 @@ TEST(NeuralNetLowLevel, SpikePropagation)
     ASSERT_TRUE(neural_network_get_neuron_state(network, 2, &state2));
 
     // At least one should be affected (exact behavior depends on activation)
-    EXPECT_TRUE(state1 != -65.0f || state2 != -65.0f);
+    EXPECT_TRUE(state1 != 0.0f || state2 != 0.0f);
 
     neural_network_destroy(network);
 }

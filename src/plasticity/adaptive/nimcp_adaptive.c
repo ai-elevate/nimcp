@@ -1846,7 +1846,8 @@ bool adaptive_network_get_total_weight(adaptive_network_t network, uint32_t neur
     float activation;
     if (neural_network_get_neuron_state(network->base_network, neuron_id, &activation)) {
         /* Estimate: active neurons have higher total weights */
-        *total_weight = activation * 10.0f; /* Rough estimate */
+        /* Use absolute value since total weight should be non-negative */
+        *total_weight = fabsf(activation) * 10.0f; /* Rough estimate */
         return true;
     }
 

@@ -14,10 +14,10 @@
 #include "utils/containers/nimcp_hash_table.h"
 #include "utils/thread/nimcp_thread.h"
 #include "utils/time/nimcp_time.h"
+#include "utils/platform/nimcp_platform_mutex.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <pthread.h>
 
 //=============================================================================
 // Internal Structures
@@ -59,7 +59,7 @@ typedef struct {
     nimcp_cache_config_t config;   /**< Configuration */
     nimcp_cache_stats_t stats;     /**< Statistics */
     hash_table_t* tracking_table;  /**< Allocation tracking (ptr -> header) */
-    pthread_mutex_t mutex;         /**< Protects tracking table and stats */
+    nimcp_platform_mutex_t mutex;  /**< Protects tracking table and stats */
 } nimcp_cache_state_t;
 
 /** Global cache state (initialized by nimcp_cache_init) */
@@ -160,9 +160,9 @@ static bool check_allocation_limit(size_t size) {
 
     // Check total memory limit
     if (cfg->max_total_memory > 0) {
-        pthread_mutex_lock(&g_cache_state.mutex);
+        nimcp_platform_mutex_lock(&g_cache_state.mutex);
         size_t total = g_cache_state.stats.memory_allocated + size;
-        pthread_mutex_unlock(&g_cache_state.mutex);
+        nimcp_platform_mutex_unlock(&g_cache_state.mutex);
 
         if (total > cfg->max_total_memory) {
             if (cfg->enable_debug_output) {
@@ -182,36 +182,36 @@ static bool check_allocation_limit(size_t size) {
  * HOW: Mutex-protected updates
  */
 static void update_stats_alloc(size_t size) {
-    pthread_mutex_lock(&g_cache_state.mutex);
+    nimcp_platform_mutex_lock(&g_cache_state.mutex);
     g_cache_state.stats.allocations_created++;
     g_cache_state.stats.memory_allocated += size;
     g_cache_state.stats.active_allocations++;
     if (g_cache_state.stats.active_allocations > g_cache_state.stats.peak_allocations) {
         g_cache_state.stats.peak_allocations = g_cache_state.stats.active_allocations;
     }
-    pthread_mutex_unlock(&g_cache_state.mutex);
+    nimcp_platform_mutex_unlock(&g_cache_state.mutex);
 }
 
 static void update_stats_reference(size_t size) {
-    pthread_mutex_lock(&g_cache_state.mutex);
+    nimcp_platform_mutex_lock(&g_cache_state.mutex);
     g_cache_state.stats.references_created++;
     g_cache_state.stats.memory_shared += size;
     g_cache_state.stats.memory_saved += size;
-    pthread_mutex_unlock(&g_cache_state.mutex);
+    nimcp_platform_mutex_unlock(&g_cache_state.mutex);
 }
 
 static void update_stats_copy(size_t size) {
-    pthread_mutex_lock(&g_cache_state.mutex);
+    nimcp_platform_mutex_lock(&g_cache_state.mutex);
     g_cache_state.stats.copies_triggered++;
     g_cache_state.stats.memory_shared -= size;
-    pthread_mutex_unlock(&g_cache_state.mutex);
+    nimcp_platform_mutex_unlock(&g_cache_state.mutex);
 }
 
 static void update_stats_release(size_t size) {
-    pthread_mutex_lock(&g_cache_state.mutex);
+    nimcp_platform_mutex_lock(&g_cache_state.mutex);
     g_cache_state.stats.memory_allocated -= size;
     g_cache_state.stats.active_allocations--;
-    pthread_mutex_unlock(&g_cache_state.mutex);
+    nimcp_platform_mutex_unlock(&g_cache_state.mutex);
 }
 
 //=============================================================================
@@ -224,7 +224,7 @@ void nimcp_cache_init(void) {
     }
 
     // Initialize mutex
-    pthread_mutex_init(&g_cache_state.mutex, NULL);
+    nimcp_platform_mutex_init(&g_cache_state.mutex, false);
 
     // Set default configuration
     g_cache_state.config = nimcp_cache_get_default_config();
@@ -263,7 +263,7 @@ void nimcp_cache_cleanup(void) {
     }
 
     // Destroy mutex
-    pthread_mutex_destroy(&g_cache_state.mutex);
+    nimcp_platform_mutex_destroy(&g_cache_state.mutex);
 
     g_cache_state.initialized = false;
 
@@ -275,9 +275,9 @@ void nimcp_cache_cleanup(void) {
 void nimcp_cache_configure(const nimcp_cache_config_t* config) {
     if (!config) return;
 
-    pthread_mutex_lock(&g_cache_state.mutex);
+    nimcp_platform_mutex_lock(&g_cache_state.mutex);
     g_cache_state.config = *config;
-    pthread_mutex_unlock(&g_cache_state.mutex);
+    nimcp_platform_mutex_unlock(&g_cache_state.mutex);
 }
 
 nimcp_cache_config_t nimcp_cache_get_default_config(void) {
@@ -509,15 +509,15 @@ size_t nimcp_cache_get_size(const void* ptr) {
 bool nimcp_cache_get_stats(nimcp_cache_stats_t* stats) {
     if (!stats) return false;
 
-    pthread_mutex_lock(&g_cache_state.mutex);
+    nimcp_platform_mutex_lock(&g_cache_state.mutex);
     *stats = g_cache_state.stats;
-    pthread_mutex_unlock(&g_cache_state.mutex);
+    nimcp_platform_mutex_unlock(&g_cache_state.mutex);
 
     return true;
 }
 
 void nimcp_cache_clear_stats(void) {
-    pthread_mutex_lock(&g_cache_state.mutex);
+    nimcp_platform_mutex_lock(&g_cache_state.mutex);
 
     // Preserve memory_allocated (reflects current state)
     size_t allocated = g_cache_state.stats.memory_allocated;
@@ -528,7 +528,15 @@ void nimcp_cache_clear_stats(void) {
     g_cache_state.stats.memory_allocated = allocated;
     g_cache_state.stats.active_allocations = active;
 
-    pthread_mutex_unlock(&g_cache_state.mutex);
+    nimcp_platform_mutex_unlock(&g_cache_state.mutex);
+}
+
+void nimcp_cache_record_reference(size_t size) {
+    nimcp_platform_mutex_lock(&g_cache_state.mutex);
+    g_cache_state.stats.references_created++;
+    g_cache_state.stats.memory_saved += size;
+    g_cache_state.stats.memory_shared += size;
+    nimcp_platform_mutex_unlock(&g_cache_state.mutex);
 }
 
 void nimcp_cache_dump_allocations(void) {
@@ -539,13 +547,13 @@ void nimcp_cache_dump_allocations(void) {
 
     printf("\n=== Cache Allocations ===\n");
 
-    pthread_mutex_lock(&g_cache_state.mutex);
+    nimcp_platform_mutex_lock(&g_cache_state.mutex);
 
     // Iterate through tracking table
     // (This requires hash_table_iterate function - placeholder for now)
     printf("Total active allocations: %u\n", g_cache_state.stats.active_allocations);
 
-    pthread_mutex_unlock(&g_cache_state.mutex);
+    nimcp_platform_mutex_unlock(&g_cache_state.mutex);
 
     printf("=========================\n\n");
 }
