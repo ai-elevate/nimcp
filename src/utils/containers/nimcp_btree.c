@@ -380,7 +380,54 @@ static void merge_nodes(btree_t* tree, btree_node_t* parent, int index, btree_no
     destroy_node(right, NULL);
 }
 
-static void remove_from_node(btree_t* tree, btree_node_t* node, const char* key)
+static bool remove_from_node_internal(btree_t* tree, btree_node_t* node, const char* key, bool should_free_key);
+
+static bool remove_from_node(btree_t* tree, btree_node_t* node, const char* key)
+{
+    return remove_from_node_internal(tree, node, key, true);
+}
+
+/**
+ * @brief Get predecessor key (rightmost key in left subtree)
+ *
+ * WHAT: Finds the rightmost key by following rightmost children to a leaf
+ * WHY:  Predecessor is needed for internal node removal
+ * HOW:  Traverse rightmost path until leaf, return last key
+ *
+ * @param node Root of subtree to search
+ * @return Pointer to predecessor key data
+ */
+static void* get_predecessor_key(btree_node_t* node)
+{
+    // Follow rightmost child until we reach a leaf
+    while (!node->leaf) {
+        node = node->children[node->n];
+    }
+    // Return rightmost key in leaf
+    return node->keys[node->n - 1];
+}
+
+/**
+ * @brief Get successor key (leftmost key in right subtree)
+ *
+ * WHAT: Finds the leftmost key by following leftmost children to a leaf
+ * WHY:  Successor is needed for internal node removal
+ * HOW:  Traverse leftmost path until leaf, return first key
+ *
+ * @param node Root of subtree to search
+ * @return Pointer to successor key data
+ */
+static void* get_successor_key(btree_node_t* node)
+{
+    // Follow leftmost child until we reach a leaf
+    while (!node->leaf) {
+        node = node->children[0];
+    }
+    // Return leftmost key in leaf
+    return node->keys[0];
+}
+
+static bool remove_from_node_internal(btree_t* tree, btree_node_t* node, const char* key, bool should_free_key)
 {
     int i = 0;
     while (i < node->n && tree->compare(tree->key_func(node->keys[i]), key) < 0) {
@@ -390,44 +437,58 @@ static void remove_from_node(btree_t* tree, btree_node_t* node, const char* key)
     if (i < node->n && tree->compare(tree->key_func(node->keys[i]), key) == 0) {
         if (node->leaf) {
             // Remove from leaf
-            if (tree->free_func) {
-                tree->free_func(node->keys[i]);
-            }
+            void* key_to_free = node->keys[i];
             for (int j = i + 1; j < node->n; j++) {
                 node->keys[j - 1] = node->keys[j];
             }
             node->n--;
-            atomic_fetch_sub(&tree->count, 1);
+            // Free only if requested (not if key is being moved to parent)
+            if (should_free_key && tree->free_func) {
+                tree->free_func(key_to_free);
+            }
+            return true;  // Key was found and removed
         } else {
             // Remove from internal node
             btree_node_t* pred = node->children[i];
             btree_node_t* succ = node->children[i + 1];
 
             if (pred->n >= BTREE_ORDER) {
-                // Use predecessor
-                void* pred_key = pred->keys[pred->n - 1];
+                // Use predecessor - get rightmost key from left subtree
+                void* key_to_free = node->keys[i];
+                void* pred_key = get_predecessor_key(pred);
                 node->keys[i] = pred_key;
-                remove_from_node(tree, pred, tree->key_func(pred_key));
+                // Remove pred_key from pred subtree WITHOUT freeing (it moved to parent)
+                remove_from_node_internal(tree, pred, tree->key_func(pred_key), false);
+                // Free the original key that was replaced (if should_free_key)
+                if (should_free_key && tree->free_func) {
+                    tree->free_func(key_to_free);
+                }
+                return true;  // Key was found and removed
             } else if (succ->n >= BTREE_ORDER) {
-                // Use successor
-                void* succ_key = succ->keys[0];
+                // Use successor - get leftmost key from right subtree
+                void* key_to_free = node->keys[i];
+                void* succ_key = get_successor_key(succ);
                 node->keys[i] = succ_key;
-                remove_from_node(tree, succ, tree->key_func(succ_key));
+                // Remove succ_key from succ subtree WITHOUT freeing (it moved to parent)
+                remove_from_node_internal(tree, succ, tree->key_func(succ_key), false);
+                // Free the original key that was replaced (if should_free_key)
+                if (should_free_key && tree->free_func) {
+                    tree->free_func(key_to_free);
+                }
+                return true;  // Key was found and removed
             } else {
-                // Merge nodes
+                // Merge nodes and recursively remove
                 merge_nodes(tree, node, i, pred, succ);
-                remove_from_node(tree, pred, key);
+                // Pass through should_free_key to recursive call
+                return remove_from_node_internal(tree, pred, key, should_free_key);
             }
         }
     } else if (!node->leaf) {
         // Recurse to appropriate child
         btree_node_t* child = node->children[i];
-        if (acquire_write_lock(&child->lock, LOCK_TIMEOUT_MS) != 0) {
-            return;
-        }
 
         if (child->n < BTREE_ORDER) {
-            // Child needs more keys
+            // Child needs more keys - borrow or merge
             btree_node_t* left_sibling = i > 0 ? node->children[i - 1] : NULL;
             btree_node_t* right_sibling = i < node->n ? node->children[i + 1] : NULL;
 
@@ -471,15 +532,17 @@ static void remove_from_node(btree_t* tree, btree_node_t* node, const char* key)
                 if (left_sibling) {
                     merge_nodes(tree, node, i - 1, left_sibling, child);
                     child = left_sibling;
-                } else {
+                } else if (right_sibling) {
                     merge_nodes(tree, node, i, child, right_sibling);
                 }
             }
         }
 
-        remove_from_node(tree, child, key);
-        nimcp_platform_rwlock_wrunlock(&child->lock);
+        // Pass through should_free_key parameter to maintain consistency
+        return remove_from_node_internal(tree, child, key, should_free_key);
     }
+
+    return false;  // Key not found
 }
 
 int btree_remove(btree_t* tree, const char* key)
@@ -494,18 +557,31 @@ int btree_remove(btree_t* tree, const char* key)
         return BTREE_LOCKED;
     }
 
-    remove_from_node(tree, tree->root, key);
+    // Try to remove the key
+    bool found = remove_from_node(tree, tree->root, key);
+
+    if (found) {
+        // Decrement count only if key was actually found and removed
+        atomic_fetch_sub(&tree->count, 1);
+    }
 
     // Handle empty root
     if (tree->root->n == 0 && !tree->root->leaf) {
         btree_node_t* old_root = tree->root;
-        tree->root = tree->root->children[0];
+        btree_node_t* new_root = tree->root->children[0];
+
+        // CRITICAL: Unlock old root BEFORE changing tree->root
+        nimcp_platform_rwlock_wrunlock(&old_root->lock);
+
+        tree->root = new_root;
         destroy_node(old_root, NULL);
+    } else {
+        // Normal case: unlock the current root
+        nimcp_platform_rwlock_wrunlock(&tree->root->lock);
     }
 
-    nimcp_platform_rwlock_wrunlock(&tree->root->lock);
     nimcp_platform_mutex_unlock(&tree->structural_lock);
-    return BTREE_SUCCESS;
+    return found ? BTREE_SUCCESS : BTREE_NOT_FOUND;
 }
 
 size_t btree_count(const btree_t* tree)

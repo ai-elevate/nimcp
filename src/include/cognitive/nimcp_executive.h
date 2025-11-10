@@ -355,6 +355,40 @@ void executive_reset_stats(executive_controller_t* exec);
  */
 const char* executive_get_last_error(void);
 
+//=============================================================================
+// Bidirectional Feedback Functions (Phase 10.11.3)
+//=============================================================================
+
+/**
+ * @brief Get cognitive load (utilization)
+ *
+ * WHAT: Query current cognitive load on executive system
+ * WHY:  Other modules can adapt behavior based on load
+ * HOW:  Return task count / capacity ratio
+ *
+ * BIOLOGY: Prefrontal cortex has limited capacity
+ *
+ * @param exec Executive controller
+ * @return Cognitive load [0, 1] (0=idle, 1=saturated)
+ */
+float executive_get_cognitive_load(executive_controller_t* exec);
+
+/**
+ * @brief Boost task priority based on external signal
+ *
+ * WHAT: Allow modules to boost task priority
+ * WHY:  Curiosity-driven tasks should be prioritized when informative
+ * HOW:  Increase priority by boost_amount
+ *
+ * @param exec Executive controller
+ * @param task_name Task name to boost
+ * @param boost_amount Priority boost [0, 1]
+ * @return true if task found and boosted
+ */
+bool executive_boost_task_priority(executive_controller_t* exec,
+                                    const char* task_name,
+                                    float boost_amount);
+
 #ifdef __cplusplus
 }
 #endif

@@ -1189,6 +1189,11 @@ bool neural_network_update_neuron(neural_network_t network, uint32_t neuron_id, 
  */
 uint32_t neural_network_apply_oja(neural_network_t network, uint32_t neuron_id, uint64_t timestamp)
 {
+    // Guard: Validate inputs
+    if (!network || neuron_id >= network->num_neurons) {
+        return 0;
+    }
+
     neuron_t* neuron = &network->neurons[neuron_id];
     uint32_t modified = 0;
 
@@ -1379,6 +1384,11 @@ static float compute_stdp_update(float dt, const stdp_params_t* params)
 bool neural_network_apply_homeostasis(neural_network_t network, uint32_t neuron_id,
                                       uint64_t timestamp)
 {
+    // Guard: Validate inputs
+    if (!network || neuron_id >= network->num_neurons) {
+        return false;
+    }
+
     neuron_t* neuron = &network->neurons[neuron_id];
 
     // Skip if too soon since last update

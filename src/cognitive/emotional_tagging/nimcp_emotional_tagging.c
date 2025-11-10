@@ -14,6 +14,8 @@
  */
 
 #include "cognitive/nimcp_emotional_tagging.h"
+#include "plasticity/neuromodulators/nimcp_neuromodulators.h"  // Neuromodulator integration
+#include "core/brain/nimcp_brain.h"  // Brain reference
 #include <math.h>
 #include <string.h>
 
@@ -387,6 +389,104 @@ emotional_tag_t emotional_tag_from_cognitive_state(
 }
 
 /**
+ * @brief Apply neuromodulator adjustments to valence and arousal
+ *
+ * WHAT: Modulate emotional state by dopamine and serotonin levels
+ * WHY:  Neurotransmitters affect mood, arousal, and valence
+ * HOW:  Read DA/5-HT, adjust valence/arousal accordingly
+ *
+ * BIOLOGY:
+ * - Dopamine: Reward/motivation → positive valence
+ * - Serotonin: Mood stability → balanced valence, lower arousal
+ *
+ * COMPLEXITY: O(1)
+ *
+ * @param valence Input valence (modified in-place)
+ * @param arousal Input arousal (modified in-place)
+ * @param brain Brain to read neurotransmitters from
+ */
+static void apply_neuromodulator_emotion_modulation(float* valence,
+                                                    float* arousal,
+                                                    brain_t brain)
+{
+    // Guard: Early return if no brain
+    if (!brain || !valence || !arousal) {
+        return;
+    }
+
+    neuromodulator_system_t neuromod = brain_get_neuromodulator_system(brain);
+    if (!neuromod) {
+        return;
+    }
+
+    // Read neurotransmitter levels
+    float da = neuromodulator_get_level(neuromod, NEUROMOD_DOPAMINE);
+    float serotonin = neuromodulator_get_level(neuromod, NEUROMOD_SEROTONIN);
+
+    // Dopamine modulates valence: High DA → more positive
+    // DA range [0.3, 0.7] → valence shift [-0.2, +0.2]
+    float da_shift = (da - 0.5f) * 0.4f;
+    *valence += da_shift;
+
+    // Serotonin modulates arousal: High 5-HT → lower arousal
+    // 5-HT range [0.3, 0.7] → arousal multiplier [1.2, 0.8]
+    float serotonin_mult = 1.2f - (serotonin - 0.3f);
+    *arousal *= serotonin_mult;
+
+    // Clamp to valid ranges
+    *valence = clamp(*valence, -1.0f, 1.0f);
+    *arousal = clamp(*arousal, 0.0f, 1.0f);
+}
+
+/**
+ * @brief Create emotional tag with neuromodulator integration
+ *
+ * WHAT: Convert cognitive state to emotion with chemical modulation
+ * WHY:  Model how neurotransmitters affect emotional experience
+ * HOW:  Compute base emotion, then modulate by DA/5-HT levels
+ *
+ * COMPLEXITY: O(1)
+ *
+ * @param brain Brain to read neurotransmitters from
+ * @param confidence Decision confidence [0, 1]
+ * @param uncertainty Decision uncertainty [0, 1]
+ * @param novelty Input novelty [0, 1]
+ * @param ethical_approved Whether action is ethically approved
+ * @param timestamp_ms Timestamp
+ * @return Emotional tag with neuromodulator modulation
+ */
+emotional_tag_t emotional_tag_from_brain_state(
+    brain_t brain,
+    float confidence,
+    float uncertainty,
+    float novelty,
+    bool ethical_approved,
+    uint64_t timestamp_ms)
+{
+    // Compute base emotional state
+    float valence = (confidence - 0.5f) * 2.0f;
+    float arousal = clamp(uncertainty * 1.2f, 0.0f, 1.0f);
+
+    // Novelty boosts
+    if (novelty > 0.5f) {
+        valence += (novelty - 0.5f) * 0.6f;
+        arousal += (novelty - 0.5f) * 0.4f;
+    }
+
+    // Ethical violation
+    if (!ethical_approved) {
+        valence = -0.8f;
+        arousal = clamp(arousal + 0.3f, 0.0f, 1.0f);
+    }
+
+    // Apply neuromodulator modulation
+    apply_neuromodulator_emotion_modulation(&valence, &arousal, brain);
+
+    // Create tag
+    return emotional_tag_create(valence, arousal, timestamp_ms);
+}
+
+/**
  * @brief Validate emotional tag
  *
  * WHAT: Check if values are in valid ranges
@@ -435,6 +535,94 @@ void emotional_tag_clamp(emotional_tag_t* tag)
     tag->intensity = clamp(tag->intensity, 0.0f, 1.0f);
 
     // Recompute category and intensity after clamping
+    tag->category = emotional_tag_classify(tag);
+    tag->intensity = emotional_tag_intensity(tag);
+}
+
+//=============================================================================
+// Bidirectional Feedback Functions (Phase 10.11.3)
+//=============================================================================
+
+/**
+ * @brief Get emotional valence from tag
+ *
+ * WHAT: Query emotional positivity/negativity
+ * WHY:  Salience can bias attention based on mood
+ * HOW:  Return valence from emotional tag
+ *
+ * BIOLOGY: Mood-congruent perception bias
+ *          Negative mood → attention drawn to negative cues
+ *          Positive mood → attention drawn to positive cues
+ *
+ * COMPLEXITY: O(1)
+ *
+ * @param tag Emotional tag
+ * @return Valence [-1, +1] (negative to positive)
+ */
+float emotional_get_valence(const emotional_tag_t* tag)
+{
+    // Guard: NULL tag
+    if (!tag) {
+        return 0.0f;
+    }
+
+    return tag->valence;
+}
+
+/**
+ * @brief Get emotional arousal from tag
+ *
+ * WHAT: Query emotional activation level
+ * WHY:  Salience boosted by high arousal
+ * HOW:  Return arousal from emotional tag
+ *
+ * BIOLOGY: High arousal increases attention and salience sensitivity
+ *
+ * COMPLEXITY: O(1)
+ *
+ * @param tag Emotional tag
+ * @return Arousal [0, 1] (calm to excited)
+ */
+float emotional_get_arousal(const emotional_tag_t* tag)
+{
+    // Guard: NULL tag
+    if (!tag) {
+        return 0.0f;
+    }
+
+    return tag->arousal;
+}
+
+/**
+ * @brief Modulate arousal in emotional tag
+ *
+ * WHAT: Allow salience to influence emotional arousal
+ * WHY:  Surprising/salient events increase arousal
+ * HOW:  Add delta to current arousal, clamped to [0, 1]
+ *
+ * BIOLOGY: Unexpected events (prediction errors) increase arousal via LC-NE system
+ *
+ * COMPLEXITY: O(1)
+ *
+ * @param tag Emotional tag to modulate (modified in place)
+ * @param arousal_delta Arousal change [-1, +1]
+ */
+void emotional_modulate_arousal(emotional_tag_t* tag, float arousal_delta)
+{
+    // Guard: NULL tag
+    if (!tag) {
+        return;
+    }
+
+    // WHAT: Add delta to arousal
+    // WHY:  Salience can increase or decrease arousal
+    // HOW:  Clamp result to [0, 1]
+    tag->arousal += arousal_delta;
+    tag->arousal = clamp(tag->arousal, 0.0f, 1.0f);
+
+    // WHAT: Recompute derived fields
+    // WHY:  Arousal change may change category and intensity
+    // HOW:  Re-classify and recompute intensity
     tag->category = emotional_tag_classify(tag);
     tag->intensity = emotional_tag_intensity(tag);
 }

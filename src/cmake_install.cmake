@@ -1,4 +1,4 @@
-# Install script for directory: /home/bbrelin/src/repos/nimcp/src
+# Install script for directory: /home/bbrelin/nimcp/src
 
 # Set the install prefix
 if(NOT DEFINED CMAKE_INSTALL_PREFIX)
@@ -44,9 +44,8 @@ endif()
 
 if(NOT CMAKE_INSTALL_LOCAL_ONLY)
   # Include the install script for each subdirectory.
-  include("/home/bbrelin/src/repos/nimcp/src/lib/cmake_install.cmake")
-  include("/home/bbrelin/src/repos/nimcp/src/python/cmake_install.cmake")
-  include("/home/bbrelin/src/repos/nimcp/src/tests/cmake_install.cmake")
+  include("/home/bbrelin/nimcp/src/lib/cmake_install.cmake")
+  include("/home/bbrelin/nimcp/src/python/cmake_install.cmake")
 
 endif()
 

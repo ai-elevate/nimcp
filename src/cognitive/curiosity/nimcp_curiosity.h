@@ -407,4 +407,34 @@ void curiosity_print_question(const generated_question_t* question);
  */
 void curiosity_print_progress(const learning_progress_t* progress);
 
+//=============================================================================
+// Bidirectional Feedback Functions (Phase 10.11.3)
+//=============================================================================
+
+/**
+ * @brief Set exploration rate based on cognitive load
+ *
+ * WHAT: Adjust exploration vs exploitation based on executive load
+ * WHY:  Prevent exploration when cognitively overloaded
+ * HOW:  Modulate curiosity intensity and exploration rate
+ *
+ * BIOLOGY: Prefrontal cortex regulates exploration/exploitation trade-off
+ *
+ * @param engine Curiosity engine
+ * @param exploration_rate Exploration rate [0, 1] (0=exploit, 1=explore)
+ */
+void curiosity_set_exploration_rate(curiosity_engine_t engine, float exploration_rate);
+
+/**
+ * @brief Get information gain from recent learning
+ *
+ * WHAT: Query expected information gain from exploring
+ * WHY:  Executive can prioritize exploratory tasks
+ * HOW:  Return recent learning value
+ *
+ * @param engine Curiosity engine
+ * @return Information gain [0, 1]
+ */
+float curiosity_get_information_gain(curiosity_engine_t engine);
+
 #endif  // NIMCP_CURIOSITY_H

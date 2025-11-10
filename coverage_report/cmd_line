@@ -1,0 +1,1 @@
+genhtml coverage_src_all.info --output-directory coverage_report

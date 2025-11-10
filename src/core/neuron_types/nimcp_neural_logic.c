@@ -15,6 +15,8 @@
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/validation/nimcp_validate.h"
+#include "plasticity/neuromodulators/nimcp_neuromodulators.h"  // Neuromodulator integration
+#include "core/brain/nimcp_brain.h"  // Brain reference
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -56,16 +58,19 @@ extern cudaError_t launch_update_variable_bindings(
 struct neural_logic_network_struct {
     // Configuration
     neural_logic_config_t config;
-    
+
     // Logic neurons (host-side copy)
     logic_neuron_state_t* neurons_host;
     uint32_t neurons_count;
     uint32_t neurons_capacity;
-    
+
     // Variable bindings (host-side copy)
     variable_binding_state_t* variables_host;
     uint32_t variables_count;
     uint32_t variables_capacity;
+
+    // Neuromodulation
+    brain_t brain;  /**< Brain reference for DA + ACh modulation */
     
     // GPU pointers (NULL if CPU fallback)
 #ifdef NIMCP_ENABLE_CUDA
@@ -158,6 +163,7 @@ NIMCP_EXPORT neural_logic_network_t neural_logic_create(
     network->total_spikes = 0;
     network->total_evaluations = 0;
     network->sum_eval_time_us = 0.0f;
+    network->brain = NULL;  // Initialize neuromodulator brain reference
     
     // Allocate host memory for neurons
     network->neurons_host = nimcp_calloc(network->neurons_capacity, 
@@ -371,6 +377,69 @@ NIMCP_EXPORT uint32_t neural_logic_create_variable(
 }
 
 //=============================================================================
+// Neuromodulation
+//=============================================================================
+
+/**
+ * @brief Compute logic gate threshold modulation from neurotransmitters
+ *
+ * WHAT: Calculate threshold modulation factor based on DA + ACh
+ * WHY:  DA modulates logical flexibility, ACh modulates precision
+ * HOW:  Read DA and ACh levels, combine into threshold multiplier
+ *
+ * BIOLOGY:
+ * - Dopamine: Logical flexibility vs rigidity
+ *   High DA (0.7) → 0.7× threshold (permissive logic, exploratory)
+ *   Low DA (0.3) → 1.3× threshold (rigid logic, perseverative)
+ *
+ * - Acetylcholine: Logical precision
+ *   High ACh (0.7) → precise thresholds (accurate logic)
+ *   Low ACh (0.3) → imprecise thresholds (sloppy logic, errors)
+ *
+ * CLINICAL EXAMPLES:
+ * - Depression (low DA): Rigid, black-and-white thinking
+ * - Mania (high DA): Loose associations, illogical leaps
+ * - ADHD (low ACh): Logical errors, misses contradictions
+ * - Dementia (low ACh): Impaired reasoning, confabulation
+ *
+ * COMPLEXITY: O(1)
+ *
+ * @param brain Brain to read neurotransmitters from
+ * @return Threshold multiplier [0.7, 1.3], or 1.0 if no brain
+ */
+static float get_logic_threshold_modulation(brain_t brain)
+{
+    // Guard: No brain available
+    if (!brain) {
+        return 1.0f;
+    }
+
+    neuromodulator_system_t neuromod = brain_get_neuromodulator_system(brain);
+    if (!neuromod) {
+        return 1.0f;
+    }
+
+    // Read neurotransmitter levels
+    float da = neuromodulator_get_level(neuromod, NEUROMOD_DOPAMINE);
+    float ach = neuromodulator_get_level(neuromod, NEUROMOD_ACETYLCHOLINE);
+
+    // DA contribution: [0.3, 0.7] → [1.3, 0.7] (inverse)
+    // High DA → lower threshold (permissive, exploratory)
+    // Low DA → higher threshold (rigid, perseverative)
+    float da_multiplier = 1.3f - (da - 0.3f) * 1.5f;
+
+    // ACh contribution: [0.3, 0.7] → precision scaling
+    // High ACh → maintains intended thresholds
+    // Low ACh → adds noise/imprecision to reasoning
+    // For simplicity, ACh primarily affects precision of DA effect
+    float ach_precision = 0.8f + (ach - 0.3f) * 0.5f;  // [0.8, 1.0]
+
+    // Combined: DA sets flexibility, ACh sharpens precision
+    // Range: approximately [0.7, 1.3]
+    return da_multiplier * ach_precision;
+}
+
+//=============================================================================
 // CPU Implementation (Fallback)
 //=============================================================================
 
@@ -450,22 +519,26 @@ static inline float cpu_compute_implies_gate(
 static void cpu_update_logic_neuron(
     logic_neuron_state_t* neuron,
     uint64_t timestamp,
-    uint64_t delta_t)
+    uint64_t delta_t,
+    float threshold_modulation)
 {
     // Check refractory period
     if ((timestamp - neuron->last_spike_time) < neuron->refractory_period) {
         return;  // In refractory period
     }
-    
+
+    // Apply neuromodulator modulation to threshold
+    float modulated_threshold = neuron->threshold * threshold_modulation;
+
     // Compute gate output based on type
     float output = 0.0f;
-    
+
     switch (neuron->gate_type) {
         case LOGIC_GATE_AND:
             output = cpu_compute_and_gate(
                 neuron->input_a_activity,
                 neuron->input_b_activity,
-                neuron->threshold,
+                modulated_threshold,
                 neuron->integration_window
             );
             break;
@@ -474,10 +547,10 @@ static void cpu_update_logic_neuron(
             output = cpu_compute_or_gate(
                 neuron->input_a_activity,
                 neuron->input_b_activity,
-                neuron->threshold
+                modulated_threshold
             );
             break;
-            
+
         case LOGIC_GATE_NOT:
             output = cpu_compute_not_gate(
                 neuron->input_a_activity,
@@ -485,12 +558,12 @@ static void cpu_update_logic_neuron(
                 fabsf(neuron->inhibitory_weight)
             );
             break;
-            
+
         case LOGIC_GATE_XOR:
             output = cpu_compute_xor_gate(
                 neuron->input_a_activity,
                 neuron->input_b_activity,
-                neuron->threshold,
+                modulated_threshold,
                 0.1f  // balance_tolerance
             );
             break;
@@ -605,21 +678,24 @@ NIMCP_EXPORT uint32_t neural_logic_update(
 
 cpu_path:
 #endif
-    
+
+    // Compute neuromodulator threshold modulation
+    float threshold_modulation = get_logic_threshold_modulation(network->brain);
+
     // CPU fallback: Update all neurons sequentially
     for (uint32_t i = 0; i < network->neurons_count; i++) {
         logic_neuron_state_t* neuron = &network->neurons_host[i];
         uint32_t spikes_before = neuron->total_spikes;
-        
-        cpu_update_logic_neuron(neuron, timestamp, delta_t);
-        
+
+        cpu_update_logic_neuron(neuron, timestamp, delta_t, threshold_modulation);
+
         if (neuron->total_spikes > spikes_before) {
             spikes_count++;
         }
     }
-    
+
     network->total_spikes += spikes_count;
-    
+
     return spikes_count;
 }
 
@@ -775,6 +851,28 @@ NIMCP_EXPORT const char* neural_logic_gate_name(logic_gate_type_t gate_type)
         case LOGIC_GATE_IMPLIES: return "IMPLIES";
         default: return "UNKNOWN";
     }
+}
+
+/**
+ * @brief Associate brain with neural logic network for neuromodulation
+ *
+ * WHAT: Set brain reference for DA + ACh modulation of logic gates
+ * WHY:  Enable neurochemical modulation (logical flexibility, precision)
+ * HOW:  Store brain pointer for neurotransmitter reading
+ *
+ * BIOLOGY:
+ * - Dopamine modulates logical flexibility vs rigidity
+ * - Acetylcholine modulates logical precision
+ *
+ * @param network Neural logic network instance
+ * @param brain Brain instance (or NULL to clear)
+ */
+NIMCP_EXPORT void neural_logic_set_brain(neural_logic_network_t network, brain_t brain)
+{
+    if (!network) {
+        return;
+    }
+    network->brain = brain;
 }
 
 //=============================================================================

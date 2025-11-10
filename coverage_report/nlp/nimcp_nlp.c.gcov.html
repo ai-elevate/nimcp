@@ -1,0 +1,608 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+
+<html lang="en">
+
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+  <title>LCOV - coverage_src_all.info - nlp/nimcp_nlp.c</title>
+  <link rel="stylesheet" type="text/css" href="../gcov.css">
+</head>
+
+<body>
+
+          <table width="100%" border=0 cellspacing=0 cellpadding=0>
+            <tr><td class="title">LCOV - code coverage report</td></tr>
+            <tr><td class="ruler"><img src="../glass.png" width=3 height=3 alt=""></td></tr>
+
+            <tr>
+              <td width="100%">
+                <table cellpadding=1 border=0 width="100%">
+          <tr>
+            <td width="10%" class="headerItem">Current view:</td>
+            <td width="10%" class="headerValue"><a href="../index.html">top level</a> - <a href="index.html">nlp</a> - nimcp_nlp.c<span style="font-size: 80%;"> (source / <a href="nimcp_nlp.c.func-c.html">functions</a>)</span></td>
+            <td width="5%"></td>
+            <td width="5%"></td>
+            <td width="5%" class="headerCovTableHead">Coverage</td>
+            <td width="5%" class="headerCovTableHead" title="Covered + Uncovered code">Total</td>
+            <td width="5%" class="headerCovTableHead" title="Exercised code only">Hit</td>
+          </tr>
+          <tr>
+            <td class="headerItem">Test:</td>
+            <td class="headerValue">coverage_src_all.info</td>
+            <td></td>
+            <td class="headerItem">Lines:</td>
+            <td class="headerCovTableEntryLo">0.0&nbsp;%</td>
+            <td class="headerCovTableEntry">161</td>
+            <td class="headerCovTableEntry">0</td>
+          </tr>
+          <tr>
+            <td class="headerItem">Test Date:</td>
+            <td class="headerValue">2025-11-10 23:54:05</td>
+            <td></td>
+            <td class="headerItem">Functions:</td>
+            <td class="headerCovTableEntryLo">0.0&nbsp;%</td>
+            <td class="headerCovTableEntry">16</td>
+            <td class="headerCovTableEntry">0</td>
+          </tr>
+                  <tr><td><img src="../glass.png" width=3 height=3 alt=""></td></tr>
+                </table>
+              </td>
+            </tr>
+
+            <tr><td class="ruler"><img src="../glass.png" width=3 height=3 alt=""></td></tr>
+          </table>
+
+          <table cellpadding=0 cellspacing=0 border=0>
+            <tr>
+              <td><br></td>
+            </tr>
+            <tr>
+              <td>
+<pre class="sourceHeading">            Line data    Source code</pre>
+<pre class="source">
+<span id="L1"><span class="lineNum">       1</span>              : //=============================================================================</span>
+<span id="L2"><span class="lineNum">       2</span>              : // nimcp_nlp.c - NLP Integration Module Implementation</span>
+<span id="L3"><span class="lineNum">       3</span>              : //=============================================================================</span>
+<span id="L4"><span class="lineNum">       4</span>              : /**</span>
+<span id="L5"><span class="lineNum">       5</span>              :  * @file nimcp_nlp.c</span>
+<span id="L6"><span class="lineNum">       6</span>              :  * @brief NLP integration combining synapses, attention, and neuromodulation</span>
+<span id="L7"><span class="lineNum">       7</span>              :  *</span>
+<span id="L8"><span class="lineNum">       8</span>              :  * ARCHITECTURE:</span>
+<span id="L9"><span class="lineNum">       9</span>              :  * This module acts as a Facade over three major NIMCP subsystems:</span>
+<span id="L10"><span class="lineNum">      10</span>              :  * 1. Neural Network: Programmable synapses with custom compute functions</span>
+<span id="L11"><span class="lineNum">      11</span>              :  * 2. Multihead Attention: Query-key-value semantic routing</span>
+<span id="L12"><span class="lineNum">      12</span>              :  * 3. Neuromodulators: Reward-based learning and gating</span>
+<span id="L13"><span class="lineNum">      13</span>              :  *</span>
+<span id="L14"><span class="lineNum">      14</span>              :  * DESIGN PATTERN: Facade Pattern</span>
+<span id="L15"><span class="lineNum">      15</span>              :  * - Provides unified interface to complex subsystem interactions</span>
+<span id="L16"><span class="lineNum">      16</span>              :  * - Hides internal wiring complexity from users</span>
+<span id="L17"><span class="lineNum">      17</span>              :  * - Manages lifecycle of multiple interdependent components</span>
+<span id="L18"><span class="lineNum">      18</span>              :  *</span>
+<span id="L19"><span class="lineNum">      19</span>              :  * CRITICAL INTEGRATION POINTS:</span>
+<span id="L20"><span class="lineNum">      20</span>              :  * - synapse_compute_context_t bridges synapses ↔ attention ↔ neuromodulation</span>
+<span id="L21"><span class="lineNum">      21</span>              :  * - Attention output becomes global_state for synapse computation</span>
+<span id="L22"><span class="lineNum">      22</span>              :  * - Neuromodulator levels modulate synaptic transmission and learning</span>
+<span id="L23"><span class="lineNum">      23</span>              :  *</span>
+<span id="L24"><span class="lineNum">      24</span>              :  * @author Claude Code + NIMCP Development Team</span>
+<span id="L25"><span class="lineNum">      25</span>              :  * @date 2025-11-07</span>
+<span id="L26"><span class="lineNum">      26</span>              :  * @version 2.7.0</span>
+<span id="L27"><span class="lineNum">      27</span>              :  */</span>
+<span id="L28"><span class="lineNum">      28</span>              : </span>
+<span id="L29"><span class="lineNum">      29</span>              : #include &quot;nimcp_nlp.h&quot;</span>
+<span id="L30"><span class="lineNum">      30</span>              : #include &quot;core/synapse_compute/nimcp_synapse_compute.h&quot;</span>
+<span id="L31"><span class="lineNum">      31</span>              : #include &lt;stdlib.h&gt;</span>
+<span id="L32"><span class="lineNum">      32</span>              : #include &lt;string.h&gt;</span>
+<span id="L33"><span class="lineNum">      33</span>              : #include &lt;math.h&gt;</span>
+<span id="L34"><span class="lineNum">      34</span>              : </span>
+<span id="L35"><span class="lineNum">      35</span>              : //=============================================================================</span>
+<span id="L36"><span class="lineNum">      36</span>              : // Internal Structures</span>
+<span id="L37"><span class="lineNum">      37</span>              : //=============================================================================</span>
+<span id="L38"><span class="lineNum">      38</span>              : </span>
+<span id="L39"><span class="lineNum">      39</span>              : /**</span>
+<span id="L40"><span class="lineNum">      40</span>              :  * @brief Internal NLP network structure</span>
+<span id="L41"><span class="lineNum">      41</span>              :  *</span>
+<span id="L42"><span class="lineNum">      42</span>              :  * WHAT: Complete state for integrated NLP system</span>
+<span id="L43"><span class="lineNum">      43</span>              :  * WHY: Encapsulates all subsystems and their interconnections</span>
+<span id="L44"><span class="lineNum">      44</span>              :  * HOW: Aggregates handles to neural net, attention, neuromodulators</span>
+<span id="L45"><span class="lineNum">      45</span>              :  *</span>
+<span id="L46"><span class="lineNum">      46</span>              :  * DESIGN: Composite Pattern - treats network as unified entity</span>
+<span id="L47"><span class="lineNum">      47</span>              :  */</span>
+<span id="L48"><span class="lineNum">      48</span>              : struct nlp_network_struct {</span>
+<span id="L49"><span class="lineNum">      49</span>              :     // Core subsystems</span>
+<span id="L50"><span class="lineNum">      50</span>              :     neural_network_t network;              /**&lt; Base neural network */</span>
+<span id="L51"><span class="lineNum">      51</span>              :     multihead_attention_t attention;       /**&lt; Multihead attention system */</span>
+<span id="L52"><span class="lineNum">      52</span>              :     neuromodulator_system_t neuromodulators; /**&lt; Neuromodulator system */</span>
+<span id="L53"><span class="lineNum">      53</span>              : </span>
+<span id="L54"><span class="lineNum">      54</span>              :     // Configuration</span>
+<span id="L55"><span class="lineNum">      55</span>              :     nlp_network_config_t config;           /**&lt; Configuration (copy) */</span>
+<span id="L56"><span class="lineNum">      56</span>              : </span>
+<span id="L57"><span class="lineNum">      57</span>              :     // Embedding matrix: vocab_size × embedding_dim</span>
+<span id="L58"><span class="lineNum">      58</span>              :     float* embeddings;                     /**&lt; Word embeddings [vocab_size × embedding_dim] */</span>
+<span id="L59"><span class="lineNum">      59</span>              : </span>
+<span id="L60"><span class="lineNum">      60</span>              :     // Attention context (shared with synapses via global_state)</span>
+<span id="L61"><span class="lineNum">      61</span>              :     float* attention_output;               /**&lt; Last attention output [sequence_length × output_dim] */</span>
+<span id="L62"><span class="lineNum">      62</span>              :     uint32_t attention_output_size;        /**&lt; Size of attention output buffer */</span>
+<span id="L63"><span class="lineNum">      63</span>              : </span>
+<span id="L64"><span class="lineNum">      64</span>              :     // Sequence processing state</span>
+<span id="L65"><span class="lineNum">      65</span>              :     uint32_t last_sequence_length;         /**&lt; Length of last processed sequence */</span>
+<span id="L66"><span class="lineNum">      66</span>              : };</span>
+<span id="L67"><span class="lineNum">      67</span>              : </span>
+<span id="L68"><span class="lineNum">      68</span>              : //=============================================================================</span>
+<span id="L69"><span class="lineNum">      69</span>              : // Internal Helper Functions</span>
+<span id="L70"><span class="lineNum">      70</span>              : //=============================================================================</span>
+<span id="L71"><span class="lineNum">      71</span>              : </span>
+<span id="L72"><span class="lineNum">      72</span>              : /**</span>
+<span id="L73"><span class="lineNum">      73</span>              :  * @brief Initialize embedding matrix</span>
+<span id="L74"><span class="lineNum">      74</span>              :  *</span>
+<span id="L75"><span class="lineNum">      75</span>              :  * WHAT: Allocate and randomly initialize word embeddings</span>
+<span id="L76"><span class="lineNum">      76</span>              :  * WHY: Need continuous representations for discrete tokens</span>
+<span id="L77"><span class="lineNum">      77</span>              :  * HOW: Xavier/Glorot initialization for stable gradients</span>
+<span id="L78"><span class="lineNum">      78</span>              :  *</span>
+<span id="L79"><span class="lineNum">      79</span>              :  * COMPLEXITY: O(v × d) where v=vocab_size, d=embedding_dim</span>
+<span id="L80"><span class="lineNum">      80</span>              :  *</span>
+<span id="L81"><span class="lineNum">      81</span>              :  * @param network NLP network</span>
+<span id="L82"><span class="lineNum">      82</span>              :  * @return true on success, false on allocation failure</span>
+<span id="L83"><span class="lineNum">      83</span>              :  */</span>
+<span id="L84"><span class="lineNum">      84</span> <span class="tlaUNC tlaBgUNC">           0 : static bool init_embeddings(nlp_network_t network) {</span></span>
+<span id="L85"><span class="lineNum">      85</span> <span class="tlaUNC">           0 :     if (!network) return false;</span></span>
+<span id="L86"><span class="lineNum">      86</span>              : </span>
+<span id="L87"><span class="lineNum">      87</span> <span class="tlaUNC">           0 :     uint32_t vocab_size = network-&gt;config.vocab_size;</span></span>
+<span id="L88"><span class="lineNum">      88</span> <span class="tlaUNC">           0 :     uint32_t embedding_dim = network-&gt;config.embedding_dim;</span></span>
+<span id="L89"><span class="lineNum">      89</span>              : </span>
+<span id="L90"><span class="lineNum">      90</span>              :     // Allocate embedding matrix</span>
+<span id="L91"><span class="lineNum">      91</span> <span class="tlaUNC">           0 :     size_t size = vocab_size * embedding_dim * sizeof(float);</span></span>
+<span id="L92"><span class="lineNum">      92</span> <span class="tlaUNC">           0 :     network-&gt;embeddings = (float*)malloc(size);</span></span>
+<span id="L93"><span class="lineNum">      93</span> <span class="tlaUNC">           0 :     if (!network-&gt;embeddings) {</span></span>
+<span id="L94"><span class="lineNum">      94</span> <span class="tlaUNC">           0 :         return false;</span></span>
+<span id="L95"><span class="lineNum">      95</span>              :     }</span>
+<span id="L96"><span class="lineNum">      96</span>              : </span>
+<span id="L97"><span class="lineNum">      97</span>              :     // Xavier initialization: uniform(-sqrt(6/(vocab+dim)), +sqrt(6/(vocab+dim)))</span>
+<span id="L98"><span class="lineNum">      98</span> <span class="tlaUNC">           0 :     float range = sqrtf(6.0f / (vocab_size + embedding_dim));</span></span>
+<span id="L99"><span class="lineNum">      99</span> <span class="tlaUNC">           0 :     for (uint32_t i = 0; i &lt; vocab_size * embedding_dim; i++) {</span></span>
+<span id="L100"><span class="lineNum">     100</span> <span class="tlaUNC">           0 :         float r = (float)rand() / RAND_MAX;  // [0,1]</span></span>
+<span id="L101"><span class="lineNum">     101</span> <span class="tlaUNC">           0 :         network-&gt;embeddings[i] = 2.0f * range * r - range;  // [-range, +range]</span></span>
+<span id="L102"><span class="lineNum">     102</span>              :     }</span>
+<span id="L103"><span class="lineNum">     103</span>              : </span>
+<span id="L104"><span class="lineNum">     104</span> <span class="tlaUNC">           0 :     return true;</span></span>
+<span id="L105"><span class="lineNum">     105</span>              : }</span>
+<span id="L106"><span class="lineNum">     106</span>              : </span>
+<span id="L107"><span class="lineNum">     107</span>              : /**</span>
+<span id="L108"><span class="lineNum">     108</span>              :  * @brief Configure synapses with NLP-specific compute functions</span>
+<span id="L109"><span class="lineNum">     109</span>              :  *</span>
+<span id="L110"><span class="lineNum">     110</span>              :  * WHAT: Attach attention/neuromodulation compute functions to synapses</span>
+<span id="L111"><span class="lineNum">     111</span>              :  * WHY: Enable context-dependent transmission for language</span>
+<span id="L112"><span class="lineNum">     112</span>              :  * HOW: Iterate through neurons, set compute_function pointers</span>
+<span id="L113"><span class="lineNum">     113</span>              :  *</span>
+<span id="L114"><span class="lineNum">     114</span>              :  * COMPLEXITY: O(n × s) where n=neurons, s=synapses_per_neuron</span>
+<span id="L115"><span class="lineNum">     115</span>              :  *</span>
+<span id="L116"><span class="lineNum">     116</span>              :  * @param network NLP network</span>
+<span id="L117"><span class="lineNum">     117</span>              :  * @return Number of synapses configured</span>
+<span id="L118"><span class="lineNum">     118</span>              :  */</span>
+<span id="L119"><span class="lineNum">     119</span> <span class="tlaUNC">           0 : static uint32_t configure_synapses(nlp_network_t network) {</span></span>
+<span id="L120"><span class="lineNum">     120</span> <span class="tlaUNC">           0 :     if (!network || !network-&gt;network) return 0;</span></span>
+<span id="L121"><span class="lineNum">     121</span>              : </span>
+<span id="L122"><span class="lineNum">     122</span> <span class="tlaUNC">           0 :     uint32_t configured = 0;</span></span>
+<span id="L123"><span class="lineNum">     123</span>              :     // NOTE: This requires access to internal network structure</span>
+<span id="L124"><span class="lineNum">     124</span>              :     // We'll implement this after updating neural_network_struct</span>
+<span id="L125"><span class="lineNum">     125</span>              : </span>
+<span id="L126"><span class="lineNum">     126</span>              :     // TODO: Iterate through neurons and configure synapses based on config flags:</span>
+<span id="L127"><span class="lineNum">     127</span>              :     // - network-&gt;config.use_attention_synapses</span>
+<span id="L128"><span class="lineNum">     128</span>              :     // - network-&gt;config.use_semantic_synapses</span>
+<span id="L129"><span class="lineNum">     129</span>              :     // - network-&gt;config.use_gating_synapses</span>
+<span id="L130"><span class="lineNum">     130</span>              :     // - network-&gt;config.use_neuromodulated_synapses</span>
+<span id="L131"><span class="lineNum">     131</span>              : </span>
+<span id="L132"><span class="lineNum">     132</span> <span class="tlaUNC">           0 :     return configured;</span></span>
+<span id="L133"><span class="lineNum">     133</span>              : }</span>
+<span id="L134"><span class="lineNum">     134</span>              : </span>
+<span id="L135"><span class="lineNum">     135</span>              : //=============================================================================</span>
+<span id="L136"><span class="lineNum">     136</span>              : // Lifecycle Functions</span>
+<span id="L137"><span class="lineNum">     137</span>              : //=============================================================================</span>
+<span id="L138"><span class="lineNum">     138</span>              : </span>
+<span id="L139"><span class="lineNum">     139</span> <span class="tlaUNC">           0 : nlp_network_t nlp_network_create(const nlp_network_config_t* config) {</span></span>
+<span id="L140"><span class="lineNum">     140</span>              :     // Guard: Validate input</span>
+<span id="L141"><span class="lineNum">     141</span> <span class="tlaUNC">           0 :     if (!config) return NULL;</span></span>
+<span id="L142"><span class="lineNum">     142</span> <span class="tlaUNC">           0 :     if (config-&gt;vocab_size == 0 || config-&gt;embedding_dim == 0) return NULL;</span></span>
+<span id="L143"><span class="lineNum">     143</span>              : </span>
+<span id="L144"><span class="lineNum">     144</span>              :     // Allocate network structure</span>
+<span id="L145"><span class="lineNum">     145</span> <span class="tlaUNC">           0 :     nlp_network_t network = (nlp_network_t)calloc(1, sizeof(struct nlp_network_struct));</span></span>
+<span id="L146"><span class="lineNum">     146</span> <span class="tlaUNC">           0 :     if (!network) return NULL;</span></span>
+<span id="L147"><span class="lineNum">     147</span>              : </span>
+<span id="L148"><span class="lineNum">     148</span>              :     // Copy configuration</span>
+<span id="L149"><span class="lineNum">     149</span> <span class="tlaUNC">           0 :     memcpy(&amp;network-&gt;config, config, sizeof(nlp_network_config_t));</span></span>
+<span id="L150"><span class="lineNum">     150</span>              : </span>
+<span id="L151"><span class="lineNum">     151</span>              :     // Create base neural network</span>
+<span id="L152"><span class="lineNum">     152</span> <span class="tlaUNC">           0 :     network-&gt;network = neural_network_create(&amp;config-&gt;network_config);</span></span>
+<span id="L153"><span class="lineNum">     153</span> <span class="tlaUNC">           0 :     if (!network-&gt;network) {</span></span>
+<span id="L154"><span class="lineNum">     154</span> <span class="tlaUNC">           0 :         free(network);</span></span>
+<span id="L155"><span class="lineNum">     155</span> <span class="tlaUNC">           0 :         return NULL;</span></span>
+<span id="L156"><span class="lineNum">     156</span>              :     }</span>
+<span id="L157"><span class="lineNum">     157</span>              : </span>
+<span id="L158"><span class="lineNum">     158</span>              :     // Create multihead attention system</span>
+<span id="L159"><span class="lineNum">     159</span> <span class="tlaUNC">           0 :     network-&gt;attention = multihead_attention_create(&amp;config-&gt;attention_config);</span></span>
+<span id="L160"><span class="lineNum">     160</span> <span class="tlaUNC">           0 :     if (!network-&gt;attention) {</span></span>
+<span id="L161"><span class="lineNum">     161</span> <span class="tlaUNC">           0 :         neural_network_destroy(network-&gt;network);</span></span>
+<span id="L162"><span class="lineNum">     162</span> <span class="tlaUNC">           0 :         free(network);</span></span>
+<span id="L163"><span class="lineNum">     163</span> <span class="tlaUNC">           0 :         return NULL;</span></span>
+<span id="L164"><span class="lineNum">     164</span>              :     }</span>
+<span id="L165"><span class="lineNum">     165</span>              : </span>
+<span id="L166"><span class="lineNum">     166</span>              :     // Create neuromodulator system</span>
+<span id="L167"><span class="lineNum">     167</span> <span class="tlaUNC">           0 :     network-&gt;neuromodulators = neuromodulator_system_create(&amp;config-&gt;neuromod_config);</span></span>
+<span id="L168"><span class="lineNum">     168</span> <span class="tlaUNC">           0 :     if (!network-&gt;neuromodulators) {</span></span>
+<span id="L169"><span class="lineNum">     169</span> <span class="tlaUNC">           0 :         multihead_attention_destroy(network-&gt;attention);</span></span>
+<span id="L170"><span class="lineNum">     170</span> <span class="tlaUNC">           0 :         neural_network_destroy(network-&gt;network);</span></span>
+<span id="L171"><span class="lineNum">     171</span> <span class="tlaUNC">           0 :         free(network);</span></span>
+<span id="L172"><span class="lineNum">     172</span> <span class="tlaUNC">           0 :         return NULL;</span></span>
+<span id="L173"><span class="lineNum">     173</span>              :     }</span>
+<span id="L174"><span class="lineNum">     174</span>              : </span>
+<span id="L175"><span class="lineNum">     175</span>              :     // CRITICAL: Wire neuromodulator system to neural network</span>
+<span id="L176"><span class="lineNum">     176</span>              :     // This enables synapses to access neuromodulator levels during computation</span>
+<span id="L177"><span class="lineNum">     177</span> <span class="tlaUNC">           0 :     neural_network_set_neuromodulator_system(network-&gt;network, network-&gt;neuromodulators);</span></span>
+<span id="L178"><span class="lineNum">     178</span>              : </span>
+<span id="L179"><span class="lineNum">     179</span>              :     // Initialize embeddings</span>
+<span id="L180"><span class="lineNum">     180</span> <span class="tlaUNC">           0 :     if (!init_embeddings(network)) {</span></span>
+<span id="L181"><span class="lineNum">     181</span> <span class="tlaUNC">           0 :         neuromodulator_system_destroy(network-&gt;neuromodulators);</span></span>
+<span id="L182"><span class="lineNum">     182</span> <span class="tlaUNC">           0 :         multihead_attention_destroy(network-&gt;attention);</span></span>
+<span id="L183"><span class="lineNum">     183</span> <span class="tlaUNC">           0 :         neural_network_destroy(network-&gt;network);</span></span>
+<span id="L184"><span class="lineNum">     184</span> <span class="tlaUNC">           0 :         free(network);</span></span>
+<span id="L185"><span class="lineNum">     185</span> <span class="tlaUNC">           0 :         return NULL;</span></span>
+<span id="L186"><span class="lineNum">     186</span>              :     }</span>
+<span id="L187"><span class="lineNum">     187</span>              : </span>
+<span id="L188"><span class="lineNum">     188</span>              :     // Allocate attention output buffer</span>
+<span id="L189"><span class="lineNum">     189</span> <span class="tlaUNC">           0 :     network-&gt;attention_output_size = config-&gt;max_sequence_length *</span></span>
+<span id="L190"><span class="lineNum">     190</span> <span class="tlaUNC">           0 :                                     config-&gt;attention_config.output_dim;</span></span>
+<span id="L191"><span class="lineNum">     191</span> <span class="tlaUNC">           0 :     network-&gt;attention_output = (float*)calloc(network-&gt;attention_output_size, sizeof(float));</span></span>
+<span id="L192"><span class="lineNum">     192</span> <span class="tlaUNC">           0 :     if (!network-&gt;attention_output) {</span></span>
+<span id="L193"><span class="lineNum">     193</span> <span class="tlaUNC">           0 :         free(network-&gt;embeddings);</span></span>
+<span id="L194"><span class="lineNum">     194</span> <span class="tlaUNC">           0 :         neuromodulator_system_destroy(network-&gt;neuromodulators);</span></span>
+<span id="L195"><span class="lineNum">     195</span> <span class="tlaUNC">           0 :         multihead_attention_destroy(network-&gt;attention);</span></span>
+<span id="L196"><span class="lineNum">     196</span> <span class="tlaUNC">           0 :         neural_network_destroy(network-&gt;network);</span></span>
+<span id="L197"><span class="lineNum">     197</span> <span class="tlaUNC">           0 :         free(network);</span></span>
+<span id="L198"><span class="lineNum">     198</span> <span class="tlaUNC">           0 :         return NULL;</span></span>
+<span id="L199"><span class="lineNum">     199</span>              :     }</span>
+<span id="L200"><span class="lineNum">     200</span>              : </span>
+<span id="L201"><span class="lineNum">     201</span>              :     // Configure synapses with NLP compute functions</span>
+<span id="L202"><span class="lineNum">     202</span> <span class="tlaUNC">           0 :     configure_synapses(network);</span></span>
+<span id="L203"><span class="lineNum">     203</span>              : </span>
+<span id="L204"><span class="lineNum">     204</span> <span class="tlaUNC">           0 :     return network;</span></span>
+<span id="L205"><span class="lineNum">     205</span>              : }</span>
+<span id="L206"><span class="lineNum">     206</span>              : </span>
+<span id="L207"><span class="lineNum">     207</span> <span class="tlaUNC">           0 : void nlp_network_destroy(nlp_network_t network) {</span></span>
+<span id="L208"><span class="lineNum">     208</span>              :     // Guard: Null check</span>
+<span id="L209"><span class="lineNum">     209</span> <span class="tlaUNC">           0 :     if (!network) return;</span></span>
+<span id="L210"><span class="lineNum">     210</span>              : </span>
+<span id="L211"><span class="lineNum">     211</span>              :     // Destroy in reverse creation order</span>
+<span id="L212"><span class="lineNum">     212</span> <span class="tlaUNC">           0 :     if (network-&gt;attention_output) {</span></span>
+<span id="L213"><span class="lineNum">     213</span> <span class="tlaUNC">           0 :         free(network-&gt;attention_output);</span></span>
+<span id="L214"><span class="lineNum">     214</span>              :     }</span>
+<span id="L215"><span class="lineNum">     215</span>              : </span>
+<span id="L216"><span class="lineNum">     216</span> <span class="tlaUNC">           0 :     if (network-&gt;embeddings) {</span></span>
+<span id="L217"><span class="lineNum">     217</span> <span class="tlaUNC">           0 :         free(network-&gt;embeddings);</span></span>
+<span id="L218"><span class="lineNum">     218</span>              :     }</span>
+<span id="L219"><span class="lineNum">     219</span>              : </span>
+<span id="L220"><span class="lineNum">     220</span> <span class="tlaUNC">           0 :     if (network-&gt;neuromodulators) {</span></span>
+<span id="L221"><span class="lineNum">     221</span> <span class="tlaUNC">           0 :         neuromodulator_system_destroy(network-&gt;neuromodulators);</span></span>
+<span id="L222"><span class="lineNum">     222</span>              :     }</span>
+<span id="L223"><span class="lineNum">     223</span>              : </span>
+<span id="L224"><span class="lineNum">     224</span> <span class="tlaUNC">           0 :     if (network-&gt;attention) {</span></span>
+<span id="L225"><span class="lineNum">     225</span> <span class="tlaUNC">           0 :         multihead_attention_destroy(network-&gt;attention);</span></span>
+<span id="L226"><span class="lineNum">     226</span>              :     }</span>
+<span id="L227"><span class="lineNum">     227</span>              : </span>
+<span id="L228"><span class="lineNum">     228</span> <span class="tlaUNC">           0 :     if (network-&gt;network) {</span></span>
+<span id="L229"><span class="lineNum">     229</span> <span class="tlaUNC">           0 :         neural_network_destroy(network-&gt;network);</span></span>
+<span id="L230"><span class="lineNum">     230</span>              :     }</span>
+<span id="L231"><span class="lineNum">     231</span>              : </span>
+<span id="L232"><span class="lineNum">     232</span> <span class="tlaUNC">           0 :     free(network);</span></span>
+<span id="L233"><span class="lineNum">     233</span>              : }</span>
+<span id="L234"><span class="lineNum">     234</span>              : </span>
+<span id="L235"><span class="lineNum">     235</span>              : //=============================================================================</span>
+<span id="L236"><span class="lineNum">     236</span>              : // Forward Pass Functions</span>
+<span id="L237"><span class="lineNum">     237</span>              : //=============================================================================</span>
+<span id="L238"><span class="lineNum">     238</span>              : </span>
+<span id="L239"><span class="lineNum">     239</span> <span class="tlaUNC">           0 : bool nlp_network_forward(</span></span>
+<span id="L240"><span class="lineNum">     240</span>              :     nlp_network_t network,</span>
+<span id="L241"><span class="lineNum">     241</span>              :     const uint32_t* token_ids,</span>
+<span id="L242"><span class="lineNum">     242</span>              :     uint32_t sequence_length,</span>
+<span id="L243"><span class="lineNum">     243</span>              :     float* output,</span>
+<span id="L244"><span class="lineNum">     244</span>              :     uint32_t output_dim</span>
+<span id="L245"><span class="lineNum">     245</span>              : ) {</span>
+<span id="L246"><span class="lineNum">     246</span>              :     // Guard: Validate inputs</span>
+<span id="L247"><span class="lineNum">     247</span> <span class="tlaUNC">           0 :     if (!network || !token_ids || !output) return false;</span></span>
+<span id="L248"><span class="lineNum">     248</span> <span class="tlaUNC">           0 :     if (sequence_length == 0 || sequence_length &gt; network-&gt;config.max_sequence_length) return false;</span></span>
+<span id="L249"><span class="lineNum">     249</span> <span class="tlaUNC">           0 :     if (output_dim != network-&gt;config.attention_config.output_dim) return false;</span></span>
+<span id="L250"><span class="lineNum">     250</span>              : </span>
+<span id="L251"><span class="lineNum">     251</span>              :     // Step 1: Convert tokens to embeddings</span>
+<span id="L252"><span class="lineNum">     252</span> <span class="tlaUNC">           0 :     uint32_t embedding_dim = network-&gt;config.embedding_dim;</span></span>
+<span id="L253"><span class="lineNum">     253</span> <span class="tlaUNC">           0 :     float* sequence_embeddings = (float*)malloc(sequence_length * embedding_dim * sizeof(float));</span></span>
+<span id="L254"><span class="lineNum">     254</span> <span class="tlaUNC">           0 :     if (!sequence_embeddings) return false;</span></span>
+<span id="L255"><span class="lineNum">     255</span>              : </span>
+<span id="L256"><span class="lineNum">     256</span> <span class="tlaUNC">           0 :     for (uint32_t i = 0; i &lt; sequence_length; i++) {</span></span>
+<span id="L257"><span class="lineNum">     257</span> <span class="tlaUNC">           0 :         uint32_t token = token_ids[i];</span></span>
+<span id="L258"><span class="lineNum">     258</span> <span class="tlaUNC">           0 :         if (token &gt;= network-&gt;config.vocab_size) {</span></span>
+<span id="L259"><span class="lineNum">     259</span> <span class="tlaUNC">           0 :             free(sequence_embeddings);</span></span>
+<span id="L260"><span class="lineNum">     260</span> <span class="tlaUNC">           0 :             return false;</span></span>
+<span id="L261"><span class="lineNum">     261</span>              :         }</span>
+<span id="L262"><span class="lineNum">     262</span>              : </span>
+<span id="L263"><span class="lineNum">     263</span>              :         // Copy embedding for this token</span>
+<span id="L264"><span class="lineNum">     264</span> <span class="tlaUNC">           0 :         memcpy(</span></span>
+<span id="L265"><span class="lineNum">     265</span> <span class="tlaUNC">           0 :             &amp;sequence_embeddings[i * embedding_dim],</span></span>
+<span id="L266"><span class="lineNum">     266</span> <span class="tlaUNC">           0 :             &amp;network-&gt;embeddings[token * embedding_dim],</span></span>
+<span id="L267"><span class="lineNum">     267</span>              :             embedding_dim * sizeof(float)</span>
+<span id="L268"><span class="lineNum">     268</span>              :         );</span>
+<span id="L269"><span class="lineNum">     269</span>              :     }</span>
+<span id="L270"><span class="lineNum">     270</span>              : </span>
+<span id="L271"><span class="lineNum">     271</span>              :     // Step 2: Run multihead attention over embeddings</span>
+<span id="L272"><span class="lineNum">     272</span>              :     // Note: Attention expects input of shape [sequence_length × input_dim]</span>
+<span id="L273"><span class="lineNum">     273</span> <span class="tlaUNC">           0 :     bool attention_success = multihead_attention_forward(</span></span>
+<span id="L274"><span class="lineNum">     274</span>              :         network-&gt;attention,</span>
+<span id="L275"><span class="lineNum">     275</span>              :         sequence_embeddings,</span>
+<span id="L276"><span class="lineNum">     276</span>              :         sequence_length,</span>
+<span id="L277"><span class="lineNum">     277</span>              :         NULL,  // No salience weighting (can be added later)</span>
+<span id="L278"><span class="lineNum">     278</span>              :         network-&gt;attention_output</span>
+<span id="L279"><span class="lineNum">     279</span>              :     );</span>
+<span id="L280"><span class="lineNum">     280</span>              : </span>
+<span id="L281"><span class="lineNum">     281</span> <span class="tlaUNC">           0 :     free(sequence_embeddings);</span></span>
+<span id="L282"><span class="lineNum">     282</span>              : </span>
+<span id="L283"><span class="lineNum">     283</span> <span class="tlaUNC">           0 :     if (!attention_success) {</span></span>
+<span id="L284"><span class="lineNum">     284</span> <span class="tlaUNC">           0 :         return false;</span></span>
+<span id="L285"><span class="lineNum">     285</span>              :     }</span>
+<span id="L286"><span class="lineNum">     286</span>              : </span>
+<span id="L287"><span class="lineNum">     287</span>              :     // Store sequence length for context</span>
+<span id="L288"><span class="lineNum">     288</span> <span class="tlaUNC">           0 :     network-&gt;last_sequence_length = sequence_length;</span></span>
+<span id="L289"><span class="lineNum">     289</span>              : </span>
+<span id="L290"><span class="lineNum">     290</span>              :     // Step 3: Wire attention output into network as global state</span>
+<span id="L291"><span class="lineNum">     291</span>              :     // CRITICAL: This makes attention output available to all synapses</span>
+<span id="L292"><span class="lineNum">     292</span>              :     // Synapses with attention-based compute functions can access this via</span>
+<span id="L293"><span class="lineNum">     293</span>              :     // synapse_compute_context_t.global_state</span>
+<span id="L294"><span class="lineNum">     294</span> <span class="tlaUNC">           0 :     neural_network_set_global_state(</span></span>
+<span id="L295"><span class="lineNum">     295</span>              :         network-&gt;network,</span>
+<span id="L296"><span class="lineNum">     296</span>              :         network-&gt;attention_output,</span>
+<span id="L297"><span class="lineNum">     297</span>              :         network-&gt;attention_output_size</span>
+<span id="L298"><span class="lineNum">     298</span>              :     );</span>
+<span id="L299"><span class="lineNum">     299</span>              : </span>
+<span id="L300"><span class="lineNum">     300</span>              :     // Step 4: Run neural network forward pass</span>
+<span id="L301"><span class="lineNum">     301</span>              :     // The attention output is now available to all synapse compute functions</span>
+<span id="L302"><span class="lineNum">     302</span>              :     // In a more sophisticated implementation, we would inject initial activations</span>
+<span id="L303"><span class="lineNum">     303</span>              :     // and let the network propagate them</span>
+<span id="L304"><span class="lineNum">     304</span>              : </span>
+<span id="L305"><span class="lineNum">     305</span>              :     // Step 4: Extract output from network</span>
+<span id="L306"><span class="lineNum">     306</span>              :     // For now, copy attention output directly</span>
+<span id="L307"><span class="lineNum">     307</span>              :     // In full implementation, this would come from output neurons</span>
+<span id="L308"><span class="lineNum">     308</span> <span class="tlaUNC">           0 :     uint32_t output_size = sequence_length * output_dim;</span></span>
+<span id="L309"><span class="lineNum">     309</span> <span class="tlaUNC">           0 :     if (output_size &gt; network-&gt;attention_output_size) {</span></span>
+<span id="L310"><span class="lineNum">     310</span> <span class="tlaUNC">           0 :         output_size = network-&gt;attention_output_size;</span></span>
+<span id="L311"><span class="lineNum">     311</span>              :     }</span>
+<span id="L312"><span class="lineNum">     312</span>              : </span>
+<span id="L313"><span class="lineNum">     313</span> <span class="tlaUNC">           0 :     memcpy(output, network-&gt;attention_output, output_size * sizeof(float));</span></span>
+<span id="L314"><span class="lineNum">     314</span>              : </span>
+<span id="L315"><span class="lineNum">     315</span> <span class="tlaUNC">           0 :     return true;</span></span>
+<span id="L316"><span class="lineNum">     316</span>              : }</span>
+<span id="L317"><span class="lineNum">     317</span>              : </span>
+<span id="L318"><span class="lineNum">     318</span> <span class="tlaUNC">           0 : bool nlp_network_get_embedding(</span></span>
+<span id="L319"><span class="lineNum">     319</span>              :     nlp_network_t network,</span>
+<span id="L320"><span class="lineNum">     320</span>              :     uint32_t token_id,</span>
+<span id="L321"><span class="lineNum">     321</span>              :     float* embedding</span>
+<span id="L322"><span class="lineNum">     322</span>              : ) {</span>
+<span id="L323"><span class="lineNum">     323</span>              :     // Guard: Validate inputs</span>
+<span id="L324"><span class="lineNum">     324</span> <span class="tlaUNC">           0 :     if (!network || !embedding) return false;</span></span>
+<span id="L325"><span class="lineNum">     325</span> <span class="tlaUNC">           0 :     if (token_id &gt;= network-&gt;config.vocab_size) return false;</span></span>
+<span id="L326"><span class="lineNum">     326</span>              : </span>
+<span id="L327"><span class="lineNum">     327</span>              :     // Copy embedding</span>
+<span id="L328"><span class="lineNum">     328</span> <span class="tlaUNC">           0 :     uint32_t offset = token_id * network-&gt;config.embedding_dim;</span></span>
+<span id="L329"><span class="lineNum">     329</span> <span class="tlaUNC">           0 :     memcpy(</span></span>
+<span id="L330"><span class="lineNum">     330</span>              :         embedding,</span>
+<span id="L331"><span class="lineNum">     331</span> <span class="tlaUNC">           0 :         &amp;network-&gt;embeddings[offset],</span></span>
+<span id="L332"><span class="lineNum">     332</span> <span class="tlaUNC">           0 :         network-&gt;config.embedding_dim * sizeof(float)</span></span>
+<span id="L333"><span class="lineNum">     333</span>              :     );</span>
+<span id="L334"><span class="lineNum">     334</span>              : </span>
+<span id="L335"><span class="lineNum">     335</span> <span class="tlaUNC">           0 :     return true;</span></span>
+<span id="L336"><span class="lineNum">     336</span>              : }</span>
+<span id="L337"><span class="lineNum">     337</span>              : </span>
+<span id="L338"><span class="lineNum">     338</span> <span class="tlaUNC">           0 : bool nlp_network_set_embedding(</span></span>
+<span id="L339"><span class="lineNum">     339</span>              :     nlp_network_t network,</span>
+<span id="L340"><span class="lineNum">     340</span>              :     uint32_t token_id,</span>
+<span id="L341"><span class="lineNum">     341</span>              :     const float* embedding</span>
+<span id="L342"><span class="lineNum">     342</span>              : ) {</span>
+<span id="L343"><span class="lineNum">     343</span>              :     // Guard: Validate inputs</span>
+<span id="L344"><span class="lineNum">     344</span> <span class="tlaUNC">           0 :     if (!network || !embedding) return false;</span></span>
+<span id="L345"><span class="lineNum">     345</span> <span class="tlaUNC">           0 :     if (token_id &gt;= network-&gt;config.vocab_size) return false;</span></span>
+<span id="L346"><span class="lineNum">     346</span>              : </span>
+<span id="L347"><span class="lineNum">     347</span>              :     // Update embedding</span>
+<span id="L348"><span class="lineNum">     348</span> <span class="tlaUNC">           0 :     uint32_t offset = token_id * network-&gt;config.embedding_dim;</span></span>
+<span id="L349"><span class="lineNum">     349</span> <span class="tlaUNC">           0 :     memcpy(</span></span>
+<span id="L350"><span class="lineNum">     350</span> <span class="tlaUNC">           0 :         &amp;network-&gt;embeddings[offset],</span></span>
+<span id="L351"><span class="lineNum">     351</span>              :         embedding,</span>
+<span id="L352"><span class="lineNum">     352</span> <span class="tlaUNC">           0 :         network-&gt;config.embedding_dim * sizeof(float)</span></span>
+<span id="L353"><span class="lineNum">     353</span>              :     );</span>
+<span id="L354"><span class="lineNum">     354</span>              : </span>
+<span id="L355"><span class="lineNum">     355</span> <span class="tlaUNC">           0 :     return true;</span></span>
+<span id="L356"><span class="lineNum">     356</span>              : }</span>
+<span id="L357"><span class="lineNum">     357</span>              : </span>
+<span id="L358"><span class="lineNum">     358</span>              : //=============================================================================</span>
+<span id="L359"><span class="lineNum">     359</span>              : // Attention Control Functions</span>
+<span id="L360"><span class="lineNum">     360</span>              : //=============================================================================</span>
+<span id="L361"><span class="lineNum">     361</span>              : </span>
+<span id="L362"><span class="lineNum">     362</span> <span class="tlaUNC">           0 : bool nlp_network_set_attention_gate(nlp_network_t network, float gate_signal) {</span></span>
+<span id="L363"><span class="lineNum">     363</span>              :     // Guard: Validate inputs</span>
+<span id="L364"><span class="lineNum">     364</span> <span class="tlaUNC">           0 :     if (!network || !network-&gt;attention) return false;</span></span>
+<span id="L365"><span class="lineNum">     365</span>              : </span>
+<span id="L366"><span class="lineNum">     366</span>              :     // Forward to attention system</span>
+<span id="L367"><span class="lineNum">     367</span> <span class="tlaUNC">           0 :     return multihead_attention_set_gate(network-&gt;attention, gate_signal);</span></span>
+<span id="L368"><span class="lineNum">     368</span>              : }</span>
+<span id="L369"><span class="lineNum">     369</span>              : </span>
+<span id="L370"><span class="lineNum">     370</span> <span class="tlaUNC">           0 : bool nlp_network_get_attention_weights(</span></span>
+<span id="L371"><span class="lineNum">     371</span>              :     nlp_network_t network,</span>
+<span id="L372"><span class="lineNum">     372</span>              :     uint32_t head_idx,</span>
+<span id="L373"><span class="lineNum">     373</span>              :     float* weights</span>
+<span id="L374"><span class="lineNum">     374</span>              : ) {</span>
+<span id="L375"><span class="lineNum">     375</span>              :     // Guard: Validate inputs</span>
+<span id="L376"><span class="lineNum">     376</span> <span class="tlaUNC">           0 :     if (!network || !network-&gt;attention || !weights) return false;</span></span>
+<span id="L377"><span class="lineNum">     377</span> <span class="tlaUNC">           0 :     if (head_idx &gt;= network-&gt;config.attention_config.num_heads) return false;</span></span>
+<span id="L378"><span class="lineNum">     378</span>              : </span>
+<span id="L379"><span class="lineNum">     379</span>              :     // TODO: Implement attention weight extraction</span>
+<span id="L380"><span class="lineNum">     380</span>              :     // The current attention system doesn't expose individual head weights</span>
+<span id="L381"><span class="lineNum">     381</span>              :     // Would need to add multihead_attention_get_head_weights() to nimcp_attention.h</span>
+<span id="L382"><span class="lineNum">     382</span>              : </span>
+<span id="L383"><span class="lineNum">     383</span> <span class="tlaUNC">           0 :     return false;  // Not implemented yet</span></span>
+<span id="L384"><span class="lineNum">     384</span>              : }</span>
+<span id="L385"><span class="lineNum">     385</span>              : </span>
+<span id="L386"><span class="lineNum">     386</span>              : //=============================================================================</span>
+<span id="L387"><span class="lineNum">     387</span>              : // Neuromodulation Functions</span>
+<span id="L388"><span class="lineNum">     388</span>              : //=============================================================================</span>
+<span id="L389"><span class="lineNum">     389</span>              : </span>
+<span id="L390"><span class="lineNum">     390</span> <span class="tlaUNC">           0 : float nlp_network_release_dopamine(</span></span>
+<span id="L391"><span class="lineNum">     391</span>              :     nlp_network_t network,</span>
+<span id="L392"><span class="lineNum">     392</span>              :     float reward_magnitude,</span>
+<span id="L393"><span class="lineNum">     393</span>              :     float predicted_reward</span>
+<span id="L394"><span class="lineNum">     394</span>              : ) {</span>
+<span id="L395"><span class="lineNum">     395</span>              :     // Guard: Validate inputs</span>
+<span id="L396"><span class="lineNum">     396</span> <span class="tlaUNC">           0 :     if (!network || !network-&gt;neuromodulators) return 0.0f;</span></span>
+<span id="L397"><span class="lineNum">     397</span>              : </span>
+<span id="L398"><span class="lineNum">     398</span>              :     // Release dopamine and return prediction error</span>
+<span id="L399"><span class="lineNum">     399</span> <span class="tlaUNC">           0 :     return neuromodulator_release_dopamine(</span></span>
+<span id="L400"><span class="lineNum">     400</span>              :         network-&gt;neuromodulators,</span>
+<span id="L401"><span class="lineNum">     401</span>              :         reward_magnitude,</span>
+<span id="L402"><span class="lineNum">     402</span>              :         predicted_reward</span>
+<span id="L403"><span class="lineNum">     403</span>              :     );</span>
+<span id="L404"><span class="lineNum">     404</span>              : }</span>
+<span id="L405"><span class="lineNum">     405</span>              : </span>
+<span id="L406"><span class="lineNum">     406</span> <span class="tlaUNC">           0 : float nlp_network_release_acetylcholine(</span></span>
+<span id="L407"><span class="lineNum">     407</span>              :     nlp_network_t network,</span>
+<span id="L408"><span class="lineNum">     408</span>              :     float salience</span>
+<span id="L409"><span class="lineNum">     409</span>              : ) {</span>
+<span id="L410"><span class="lineNum">     410</span>              :     // Guard: Validate inputs</span>
+<span id="L411"><span class="lineNum">     411</span> <span class="tlaUNC">           0 :     if (!network || !network-&gt;neuromodulators) return 0.0f;</span></span>
+<span id="L412"><span class="lineNum">     412</span>              : </span>
+<span id="L413"><span class="lineNum">     413</span>              :     // Release acetylcholine</span>
+<span id="L414"><span class="lineNum">     414</span> <span class="tlaUNC">           0 :     return neuromodulator_release_acetylcholine(network-&gt;neuromodulators, salience);</span></span>
+<span id="L415"><span class="lineNum">     415</span>              : }</span>
+<span id="L416"><span class="lineNum">     416</span>              : </span>
+<span id="L417"><span class="lineNum">     417</span> <span class="tlaUNC">           0 : bool nlp_network_get_neuromodulator_levels(</span></span>
+<span id="L418"><span class="lineNum">     418</span>              :     nlp_network_t network,</span>
+<span id="L419"><span class="lineNum">     419</span>              :     float* dopamine,</span>
+<span id="L420"><span class="lineNum">     420</span>              :     float* serotonin,</span>
+<span id="L421"><span class="lineNum">     421</span>              :     float* acetylcholine,</span>
+<span id="L422"><span class="lineNum">     422</span>              :     float* norepinephrine</span>
+<span id="L423"><span class="lineNum">     423</span>              : ) {</span>
+<span id="L424"><span class="lineNum">     424</span>              :     // Guard: Validate inputs</span>
+<span id="L425"><span class="lineNum">     425</span> <span class="tlaUNC">           0 :     if (!network || !network-&gt;neuromodulators) return false;</span></span>
+<span id="L426"><span class="lineNum">     426</span>              : </span>
+<span id="L427"><span class="lineNum">     427</span>              :     // Get neuromodulator pool</span>
+<span id="L428"><span class="lineNum">     428</span>              :     neuromodulator_pool_t pool;</span>
+<span id="L429"><span class="lineNum">     429</span> <span class="tlaUNC">           0 :     bool success = neuromodulator_get_levels(network-&gt;neuromodulators, &amp;pool);</span></span>
+<span id="L430"><span class="lineNum">     430</span> <span class="tlaUNC">           0 :     if (!success) return false;</span></span>
+<span id="L431"><span class="lineNum">     431</span>              : </span>
+<span id="L432"><span class="lineNum">     432</span>              :     // Extract individual levels if requested</span>
+<span id="L433"><span class="lineNum">     433</span> <span class="tlaUNC">           0 :     if (dopamine) *dopamine = pool.dopamine;</span></span>
+<span id="L434"><span class="lineNum">     434</span> <span class="tlaUNC">           0 :     if (serotonin) *serotonin = pool.serotonin;</span></span>
+<span id="L435"><span class="lineNum">     435</span> <span class="tlaUNC">           0 :     if (acetylcholine) *acetylcholine = pool.acetylcholine;</span></span>
+<span id="L436"><span class="lineNum">     436</span> <span class="tlaUNC">           0 :     if (norepinephrine) *norepinephrine = pool.norepinephrine;</span></span>
+<span id="L437"><span class="lineNum">     437</span>              : </span>
+<span id="L438"><span class="lineNum">     438</span> <span class="tlaUNC">           0 :     return true;</span></span>
+<span id="L439"><span class="lineNum">     439</span>              : }</span>
+<span id="L440"><span class="lineNum">     440</span>              : </span>
+<span id="L441"><span class="lineNum">     441</span>              : //=============================================================================</span>
+<span id="L442"><span class="lineNum">     442</span>              : // Training Functions</span>
+<span id="L443"><span class="lineNum">     443</span>              : //=============================================================================</span>
+<span id="L444"><span class="lineNum">     444</span>              : </span>
+<span id="L445"><span class="lineNum">     445</span> <span class="tlaUNC">           0 : float nlp_network_train(</span></span>
+<span id="L446"><span class="lineNum">     446</span>              :     nlp_network_t network,</span>
+<span id="L447"><span class="lineNum">     447</span>              :     const uint32_t* token_ids,</span>
+<span id="L448"><span class="lineNum">     448</span>              :     uint32_t sequence_length,</span>
+<span id="L449"><span class="lineNum">     449</span>              :     const float* target,</span>
+<span id="L450"><span class="lineNum">     450</span>              :     uint32_t output_dim,</span>
+<span id="L451"><span class="lineNum">     451</span>              :     float learning_rate</span>
+<span id="L452"><span class="lineNum">     452</span>              : ) {</span>
+<span id="L453"><span class="lineNum">     453</span>              :     // Guard: Validate inputs</span>
+<span id="L454"><span class="lineNum">     454</span> <span class="tlaUNC">           0 :     if (!network || !token_ids || !target) return -1.0f;</span></span>
+<span id="L455"><span class="lineNum">     455</span>              : </span>
+<span id="L456"><span class="lineNum">     456</span>              :     // Step 1: Forward pass</span>
+<span id="L457"><span class="lineNum">     457</span> <span class="tlaUNC">           0 :     float* output = (float*)malloc(sequence_length * output_dim * sizeof(float));</span></span>
+<span id="L458"><span class="lineNum">     458</span> <span class="tlaUNC">           0 :     if (!output) return -1.0f;</span></span>
+<span id="L459"><span class="lineNum">     459</span>              : </span>
+<span id="L460"><span class="lineNum">     460</span> <span class="tlaUNC">           0 :     bool forward_success = nlp_network_forward(</span></span>
+<span id="L461"><span class="lineNum">     461</span>              :         network,</span>
+<span id="L462"><span class="lineNum">     462</span>              :         token_ids,</span>
+<span id="L463"><span class="lineNum">     463</span>              :         sequence_length,</span>
+<span id="L464"><span class="lineNum">     464</span>              :         output,</span>
+<span id="L465"><span class="lineNum">     465</span>              :         output_dim</span>
+<span id="L466"><span class="lineNum">     466</span>              :     );</span>
+<span id="L467"><span class="lineNum">     467</span>              : </span>
+<span id="L468"><span class="lineNum">     468</span> <span class="tlaUNC">           0 :     if (!forward_success) {</span></span>
+<span id="L469"><span class="lineNum">     469</span> <span class="tlaUNC">           0 :         free(output);</span></span>
+<span id="L470"><span class="lineNum">     470</span> <span class="tlaUNC">           0 :         return -1.0f;</span></span>
+<span id="L471"><span class="lineNum">     471</span>              :     }</span>
+<span id="L472"><span class="lineNum">     472</span>              : </span>
+<span id="L473"><span class="lineNum">     473</span>              :     // Step 2: Compute loss (mean squared error)</span>
+<span id="L474"><span class="lineNum">     474</span> <span class="tlaUNC">           0 :     float loss = 0.0f;</span></span>
+<span id="L475"><span class="lineNum">     475</span> <span class="tlaUNC">           0 :     uint32_t total_elements = sequence_length * output_dim;</span></span>
+<span id="L476"><span class="lineNum">     476</span> <span class="tlaUNC">           0 :     for (uint32_t i = 0; i &lt; total_elements; i++) {</span></span>
+<span id="L477"><span class="lineNum">     477</span> <span class="tlaUNC">           0 :         float error = output[i] - target[i];</span></span>
+<span id="L478"><span class="lineNum">     478</span> <span class="tlaUNC">           0 :         loss += error * error;</span></span>
+<span id="L479"><span class="lineNum">     479</span>              :     }</span>
+<span id="L480"><span class="lineNum">     480</span> <span class="tlaUNC">           0 :     loss /= total_elements;</span></span>
+<span id="L481"><span class="lineNum">     481</span>              : </span>
+<span id="L482"><span class="lineNum">     482</span>              :     // Step 3: Release dopamine based on loss (negative reward)</span>
+<span id="L483"><span class="lineNum">     483</span> <span class="tlaUNC">           0 :     float reward = -loss;  // Lower loss = higher reward</span></span>
+<span id="L484"><span class="lineNum">     484</span> <span class="tlaUNC">           0 :     nlp_network_release_dopamine(network, reward, 0.0f);</span></span>
+<span id="L485"><span class="lineNum">     485</span>              : </span>
+<span id="L486"><span class="lineNum">     486</span>              :     // Step 4: Apply learning (TODO: implement backpropagation)</span>
+<span id="L487"><span class="lineNum">     487</span>              :     // For now, this is a placeholder - full implementation would:</span>
+<span id="L488"><span class="lineNum">     488</span>              :     // - Compute gradients</span>
+<span id="L489"><span class="lineNum">     489</span>              :     // - Apply STDP with neuromodulation</span>
+<span id="L490"><span class="lineNum">     490</span>              :     // - Update attention weights</span>
+<span id="L491"><span class="lineNum">     491</span>              :     // - Update embeddings</span>
+<span id="L492"><span class="lineNum">     492</span>              : </span>
+<span id="L493"><span class="lineNum">     493</span> <span class="tlaUNC">           0 :     free(output);</span></span>
+<span id="L494"><span class="lineNum">     494</span> <span class="tlaUNC">           0 :     return loss;</span></span>
+<span id="L495"><span class="lineNum">     495</span>              : }</span>
+<span id="L496"><span class="lineNum">     496</span>              : </span>
+<span id="L497"><span class="lineNum">     497</span>              : //=============================================================================</span>
+<span id="L498"><span class="lineNum">     498</span>              : // Utility Functions</span>
+<span id="L499"><span class="lineNum">     499</span>              : //=============================================================================</span>
+<span id="L500"><span class="lineNum">     500</span>              : </span>
+<span id="L501"><span class="lineNum">     501</span> <span class="tlaUNC">           0 : bool nlp_network_get_stats(nlp_network_t network, network_stats_t* stats) {</span></span>
+<span id="L502"><span class="lineNum">     502</span>              :     // Guard: Validate inputs</span>
+<span id="L503"><span class="lineNum">     503</span> <span class="tlaUNC">           0 :     if (!network || !stats || !network-&gt;network) return false;</span></span>
+<span id="L504"><span class="lineNum">     504</span>              : </span>
+<span id="L505"><span class="lineNum">     505</span>              :     // Forward to base network</span>
+<span id="L506"><span class="lineNum">     506</span> <span class="tlaUNC">           0 :     return neural_network_get_stats(network-&gt;network, stats);</span></span>
+<span id="L507"><span class="lineNum">     507</span>              : }</span>
+<span id="L508"><span class="lineNum">     508</span>              : </span>
+<span id="L509"><span class="lineNum">     509</span> <span class="tlaUNC">           0 : bool nlp_network_save(nlp_network_t network, const char* filepath) {</span></span>
+<span id="L510"><span class="lineNum">     510</span>              :     // Guard: Validate inputs</span>
+<span id="L511"><span class="lineNum">     511</span> <span class="tlaUNC">           0 :     if (!network || !filepath) return false;</span></span>
+<span id="L512"><span class="lineNum">     512</span>              : </span>
+<span id="L513"><span class="lineNum">     513</span>              :     // TODO: Implement serialization</span>
+<span id="L514"><span class="lineNum">     514</span>              :     // Would write:</span>
+<span id="L515"><span class="lineNum">     515</span>              :     // - Config</span>
+<span id="L516"><span class="lineNum">     516</span>              :     // - Embeddings</span>
+<span id="L517"><span class="lineNum">     517</span>              :     // - Network weights</span>
+<span id="L518"><span class="lineNum">     518</span>              :     // - Attention parameters</span>
+<span id="L519"><span class="lineNum">     519</span>              :     // - Neuromodulator state</span>
+<span id="L520"><span class="lineNum">     520</span>              : </span>
+<span id="L521"><span class="lineNum">     521</span> <span class="tlaUNC">           0 :     return false;  // Not implemented yet</span></span>
+<span id="L522"><span class="lineNum">     522</span>              : }</span>
+<span id="L523"><span class="lineNum">     523</span>              : </span>
+<span id="L524"><span class="lineNum">     524</span> <span class="tlaUNC">           0 : nlp_network_t nlp_network_load(const char* filepath) {</span></span>
+<span id="L525"><span class="lineNum">     525</span>              :     // Guard: Validate inputs</span>
+<span id="L526"><span class="lineNum">     526</span> <span class="tlaUNC">           0 :     if (!filepath) return NULL;</span></span>
+<span id="L527"><span class="lineNum">     527</span>              : </span>
+<span id="L528"><span class="lineNum">     528</span>              :     // TODO: Implement deserialization</span>
+<span id="L529"><span class="lineNum">     529</span>              :     // Would read and reconstruct all components</span>
+<span id="L530"><span class="lineNum">     530</span>              : </span>
+<span id="L531"><span class="lineNum">     531</span> <span class="tlaUNC">           0 :     return NULL;  // Not implemented yet</span></span>
+<span id="L532"><span class="lineNum">     532</span>              : }</span>
+        </pre>
+              </td>
+            </tr>
+          </table>
+          <br>
+
+          <table width="100%" border=0 cellspacing=0 cellpadding=0>
+            <tr><td class="ruler"><img src="../glass.png" width=3 height=3 alt=""></td></tr>
+            <tr><td class="versionInfo">Generated by: <a href="https://github.com//linux-test-project/lcov" target="_parent">LCOV version 2.0-1</a></td></tr>
+          </table>
+          <br>
+
+</body>
+</html>

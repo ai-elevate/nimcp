@@ -1322,7 +1322,7 @@ bool knowledge_learn_from_history(knowledge_system_t system, const historical_kn
 uint32_t knowledge_learn_from_conversation(knowledge_system_t system, const char* dialogue,
                                            const char** participants, uint32_t num_participants)
 {
-    if (!system || !dialogue)
+    if (!system || !dialogue || !participants || num_participants == 0)
         return 0;
     return knowledge_learn_from_text(system, dialogue, KNOWLEDGE_DOMAIN_SOCIAL);
 }

@@ -27,6 +27,7 @@
 #include "utils/thread/nimcp_thread_pool.h"
 #include "utils/time/nimcp_time.h"
 #include "utils/containers/nimcp_vector.h"
+#include "plasticity/neuromodulators/nimcp_neuromodulators.h"  // Acetylcholine gating
 
 //=============================================================================
 // Thread-Local Error Handling
@@ -566,6 +567,54 @@ static brain_salience_t compute_salience_accurate(salience_evaluator_t eval, con
     return salience;
 }
 
+/**
+ * @brief Apply acetylcholine gating to salience scores
+ *
+ * WHAT: Modulate all salience scores by current acetylcholine level
+ * WHY:  ACh gates attention - models attentiveness vs drowsiness
+ * HOW:  Read ACh from brain, compute modulation factor, scale all scores
+ *
+ * BIOLOGY: Acetylcholine enhances sensory processing and attention
+ *          High ACh (0.7) → 1.4× salience (highly attentive, focused)
+ *          Low ACh (0.3) → 0.6× salience (inattentive, drowsy)
+ *
+ * COMPLEXITY: O(1)
+ *
+ * @param salience Salience scores to modulate (modified in-place)
+ * @param brain Brain to read ACh from
+ */
+static void apply_acetylcholine_gating(brain_salience_t* salience, brain_t brain)
+{
+    // Guard: Early return if no brain
+    if (!brain || !salience) {
+        return;
+    }
+
+    // Get neuromodulator system
+    neuromodulator_system_t neuromod = brain_get_neuromodulator_system(brain);
+    if (!neuromod) {
+        return;
+    }
+
+    // Read current acetylcholine level
+    float ach = neuromodulator_get_level(neuromod, NEUROMOD_ACETYLCHOLINE);
+
+    // Map ACh range [0.3, 0.7] to modulation [0.6, 1.4]
+    float modulation = 0.6f + (ach - 0.3f) * 2.0f;
+
+    // Modulate all salience scores
+    salience->salience *= modulation;
+    salience->novelty *= modulation;
+    salience->surprise *= modulation;
+    salience->urgency *= modulation;
+
+    // Clamp to [0, 1] range
+    salience->salience = fminf(salience->salience, 1.0f);
+    salience->novelty = fminf(salience->novelty, 1.0f);
+    salience->surprise = fminf(salience->surprise, 1.0f);
+    salience->urgency = fminf(salience->urgency, 1.0f);
+}
+
 //=============================================================================
 // Salience Evaluator Lifecycle (Factory Pattern)
 //=============================================================================
@@ -794,6 +843,9 @@ brain_salience_t brain_evaluate_salience_temporal(salience_evaluator_t eval, con
             salience = compute_salience_accurate(eval, features, num_features, timestamp);
             break;
     }
+
+    // Apply acetylcholine gating (attentiveness modulation)
+    apply_acetylcholine_gating(&salience, eval->brain);
 
     /**
      * WHAT: Update history and predictor
@@ -1187,4 +1239,114 @@ brain_salience_t salience_quick_evaluate(brain_t brain, const float* features,
     salience_evaluator_destroy(eval);
 
     return salience;
+}
+
+//=============================================================================
+// Bidirectional Feedback Functions (Phase 10.11.3)
+//=============================================================================
+
+/**
+ * @brief Boost salience for negative cues
+ *
+ * WHAT: Increase attention to negative stimuli
+ * WHY:  Depression biases attention toward negative information
+ * HOW:  Store boost factor to apply in next evaluation
+ *
+ * BIOLOGY: Mood-congruent attentional bias
+ *          Depression → hyperattention to negative cues
+ *
+ * COMPLEXITY: O(1)
+ *
+ * @param evaluator Salience evaluator
+ * @param boost_factor Salience boost [0, 1]
+ */
+void salience_boost_negative_cues(salience_evaluator_t evaluator, float boost_factor)
+{
+    // Guard: Validate evaluator
+    if (!evaluator) {
+        return;
+    }
+
+    // Clamp boost factor
+    boost_factor = fminf(fmaxf(boost_factor, 0.0f), 1.0f);
+
+    // WHAT: Increase novelty weight to bias toward unexpected negatives
+    // WHY:  Depression makes negative novelty more salient
+    // HOW:  Scale novelty weight by (1 + boost_factor)
+    nimcp_mutex_lock(&evaluator->eval_lock);
+
+    evaluator->config.novelty_weight *= (1.0f + boost_factor * 0.5f);
+
+    nimcp_mutex_unlock(&evaluator->eval_lock);
+}
+
+/**
+ * @brief Boost threat detection sensitivity
+ *
+ * WHAT: Increase urgency for potential threats
+ * WHY:  Anxiety increases threat vigilance
+ * HOW:  Lower threshold for urgency detection
+ *
+ * BIOLOGY: Amygdala hyperactivity in anxiety
+ *          Anxious individuals detect threats faster with lower thresholds
+ *
+ * COMPLEXITY: O(1)
+ *
+ * @param evaluator Salience evaluator
+ * @param boost_factor Threat sensitivity boost [0, 1]
+ */
+void salience_boost_threat_detection(salience_evaluator_t evaluator, float boost_factor)
+{
+    // Guard: Validate evaluator
+    if (!evaluator) {
+        return;
+    }
+
+    // Clamp boost factor
+    boost_factor = fminf(fmaxf(boost_factor, 0.0f), 1.0f);
+
+    // WHAT: Increase urgency baseline and weight
+    // WHY:  Anxiety makes everything seem more urgent
+    // HOW:  Scale urgency parameters by boost factor
+    nimcp_mutex_lock(&evaluator->eval_lock);
+
+    evaluator->config.urgency_baseline = fminf(
+        evaluator->config.urgency_baseline * (1.0f + boost_factor),
+        1.0f
+    );
+
+    evaluator->config.urgency_weight *= (1.0f + boost_factor * 0.5f);
+
+    nimcp_mutex_unlock(&evaluator->eval_lock);
+}
+
+/**
+ * @brief Get surprise level from recent evaluation
+ *
+ * WHAT: Query most recent surprise score
+ * WHY:  Emotional system modulates arousal based on surprise
+ * HOW:  Return average surprise from running statistics
+ *
+ * COMPLEXITY: O(1)
+ *
+ * @param evaluator Salience evaluator
+ * @return Surprise level [0, 1]
+ */
+float salience_get_surprise_level(salience_evaluator_t evaluator)
+{
+    // Guard: Validate evaluator
+    if (!evaluator) {
+        return 0.0f;
+    }
+
+    // WHAT: Return running average surprise
+    // WHY:  More stable than single sample
+    // HOW:  Read from statistics
+    nimcp_mutex_lock(&evaluator->eval_lock);
+
+    float surprise = evaluator->running_avg_surprise;
+
+    nimcp_mutex_unlock(&evaluator->eval_lock);
+
+    return surprise;
 }

@@ -322,6 +322,48 @@ bool emotional_tag_is_valid(const emotional_tag_t* tag);
  */
 void emotional_tag_clamp(emotional_tag_t* tag);
 
+//=============================================================================
+// Bidirectional Feedback Functions (Phase 10.11.3)
+//=============================================================================
+
+/**
+ * @brief Get emotional valence from tag
+ *
+ * WHAT: Query emotional positivity/negativity
+ * WHY:  Salience can bias attention based on mood
+ * HOW:  Return valence from emotional tag
+ *
+ * BIOLOGY: Mood-congruent perception bias
+ *
+ * @param tag Emotional tag
+ * @return Valence [-1, +1] (negative to positive)
+ */
+float emotional_get_valence(const emotional_tag_t* tag);
+
+/**
+ * @brief Get emotional arousal from tag
+ *
+ * WHAT: Query emotional activation level
+ * WHY:  Salience boosted by high arousal
+ * HOW:  Return arousal from emotional tag
+ *
+ * @param tag Emotional tag
+ * @return Arousal [0, 1] (calm to excited)
+ */
+float emotional_get_arousal(const emotional_tag_t* tag);
+
+/**
+ * @brief Modulate arousal in emotional tag
+ *
+ * WHAT: Allow salience to influence emotional arousal
+ * WHY:  Surprising/salient events increase arousal
+ * HOW:  Add delta to current arousal, clamped to [0, 1]
+ *
+ * @param tag Emotional tag to modulate (modified in place)
+ * @param arousal_delta Arousal change [-1, +1]
+ */
+void emotional_modulate_arousal(emotional_tag_t* tag, float arousal_delta);
+
 #ifdef __cplusplus
 }
 #endif

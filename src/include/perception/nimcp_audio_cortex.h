@@ -26,6 +26,9 @@
 extern "C" {
 #endif
 
+// Forward declaration for brain integration
+typedef struct brain_struct* brain_t;
+
 //=============================================================================
 // Configuration Constants
 //=============================================================================
@@ -357,6 +360,59 @@ bool audio_cortex_compute_envelope(
     uint32_t num_samples,
     float* envelope
 );
+
+/**
+ * @brief Associate brain with audio cortex for neuromodulation
+ *
+ * WHAT: Set brain reference for ACh + 5-HT modulation
+ * WHY:  Enable neurochemical modulation of auditory processing
+ * HOW:  Store brain pointer for neurotransmitter reading
+ *
+ * @param cortex Audio cortex instance
+ * @param brain Brain instance (or NULL to clear)
+ *
+ * BIOLOGY:
+ * - Acetylcholine enhances frequency selectivity (cocktail party effect)
+ * - Serotonin gates auditory sensitivity (prevent sensory overload)
+ *
+ * CLINICAL EXAMPLES:
+ * - Autism (low 5-HT): Sound sensitivity, overwhelmed by noise
+ * - ADHD (low ACh): Poor auditory attention, can't filter background
+ */
+void audio_cortex_set_brain(audio_cortex_t* cortex, brain_t brain);
+
+//=============================================================================
+// Bidirectional Feedback Functions (Phase 10.11.3)
+//=============================================================================
+
+/**
+ * @brief Get speech salience from audio features
+ *
+ * WHAT: Query how speech-like current audio is
+ * WHY:  Speech cortex can prioritize speech processing
+ * HOW:  Return energy concentration in speech frequencies (300-3400 Hz)
+ *
+ * BIOLOGY: Superior temporal gyrus (STG) receives speech-tuned signals from A1
+ *
+ * @param cortex Audio cortex instance
+ * @param features Audio feature vector from recent processing
+ * @param num_features Number of features
+ * @return Speech salience [0, 1] (0=noise, 1=clear speech)
+ */
+float audio_cortex_get_speech_salience(audio_cortex_t* cortex,
+                                        const float* features,
+                                        uint32_t num_features);
+
+/**
+ * @brief Activate speech processing mode
+ *
+ * WHAT: Signal that speech detected, optimize for phoneme extraction
+ * WHY:  Speech detection triggers specialized processing
+ * HOW:  Prime frequency bands and temporal resolution for speech
+ *
+ * @param cortex Audio cortex instance
+ */
+void audio_cortex_activate_speech_mode(audio_cortex_t* cortex);
 
 #ifdef __cplusplus
 }

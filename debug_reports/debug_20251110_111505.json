@@ -1,0 +1,24 @@
+{
+  "test_binary": "./src/tests/utility_tests",
+  "test_filter": "BTreeTest.Stress_MixedOperations",
+  "mode": "memory",
+  "timestamp": "20251110_111505",
+  "results": [
+    {
+      "tool": "valgrind_memcheck",
+      "success": true,
+      "exit_code": 0,
+      "duration": 2.0516083240509033,
+      "issues_found": [],
+      "recommendations": []
+    },
+    {
+      "tool": "address_sanitizer",
+      "success": true,
+      "exit_code": 0,
+      "duration": 0.010293960571289062,
+      "issues_found": [],
+      "recommendations": []
+    }
+  ]
+}

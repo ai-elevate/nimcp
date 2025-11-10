@@ -85,6 +85,7 @@ if(NOT CMAKE_INSTALL_LOCAL_ONLY)
   include("/home/bbrelin/nimcp/build/_deps/googletest-build/cmake_install.cmake")
   include("/home/bbrelin/nimcp/build/src/cmake_install.cmake")
   include("/home/bbrelin/nimcp/build/examples/cmake_install.cmake")
+  include("/home/bbrelin/nimcp/build/test/cmake_install.cmake")
 
 endif()
 

@@ -42,6 +42,9 @@
 extern "C" {
 #endif
 
+// Forward declaration for brain integration
+typedef struct brain_struct* brain_t;
+
 //=============================================================================
 // Configuration Constants
 //=============================================================================
@@ -479,6 +482,62 @@ bool speech_cortex_retrieve_phonological_buffer(
  * @param cortex Speech cortex instance
  */
 void speech_cortex_clear_phonological_buffer(speech_cortex_t* cortex);
+
+/**
+ * @brief Associate brain with speech cortex for neuromodulation
+ *
+ * WHAT: Set brain reference for DA + ACh modulation
+ * WHY:  Enable neurochemical modulation of speech processing
+ * HOW:  Store brain pointer for neurotransmitter reading
+ *
+ * @param cortex Speech cortex instance
+ * @param brain Brain instance (or NULL to clear)
+ *
+ * BIOLOGY:
+ * - Dopamine modulates speech production rate and fluency
+ * - Acetylcholine modulates speech comprehension and phoneme discrimination
+ *
+ * CLINICAL EXAMPLES:
+ * - Depression (low DA): Slow, quiet, monotone speech
+ * - Mania (high DA): Rapid, pressured speech
+ * - ADHD (low ACh): Poor speech comprehension, misses words
+ * - Parkinson's (low DA): Hypophonic speech, reduced prosody
+ */
+void speech_cortex_set_brain(speech_cortex_t* cortex, brain_t brain);
+
+//=============================================================================
+// Bidirectional Feedback Functions (Phase 10.11.3)
+//=============================================================================
+
+/**
+ * @brief Get phoneme confidence from recent processing
+ *
+ * WHAT: Query how confident speech recognition is
+ * WHY:  Audio cortex can boost speech-band processing when confidence is low
+ * HOW:  Return average phoneme detection confidence
+ *
+ * BIOLOGY: Top-down feedback from STG sharpens A1 frequency tuning
+ *
+ * @param cortex Speech cortex instance
+ * @return Average phoneme confidence [0, 1]
+ */
+float speech_cortex_get_phoneme_confidence(speech_cortex_t* cortex);
+
+/**
+ * @brief Request frequency resolution boost from audio cortex
+ *
+ * WHAT: Signal need for enhanced frequency resolution
+ * WHY:  Difficult phoneme discrimination needs finer frequency detail
+ * HOW:  Return target frequency bands for enhancement
+ *
+ * @param cortex Speech cortex instance
+ * @param target_freq_hz Output: center frequency needing enhancement
+ * @param bandwidth_hz Output: bandwidth around target
+ * @return true if boost needed, false if recognition is confident
+ */
+bool speech_cortex_request_frequency_boost(speech_cortex_t* cortex,
+                                            float* target_freq_hz,
+                                            float* bandwidth_hz);
 
 //=============================================================================
 // Utility Functions

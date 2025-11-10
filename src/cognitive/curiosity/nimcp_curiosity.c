@@ -12,6 +12,7 @@
 #include "core/brain/nimcp_brain.h"
 #include "utils/containers/nimcp_hash_table.h"
 #include "utils/memory/nimcp_memory.h"  // CRITICAL: Declares nimcp_calloc/nimcp_free return types
+#include "plasticity/neuromodulators/nimcp_neuromodulators.h"  // Dopamine modulation
 
 //=============================================================================
 // Hash Table Configuration for O(1) Concept Lookup
@@ -794,14 +795,33 @@ void curiosity_engine_destroy(curiosity_engine_t engine)
 /**
  * @brief Calculate curiosity intensity for knowledge gap
  *
- * Combines gap size with baseline curiosity to determine how much
- * the learner wants to fill this gap.
+ * WHAT: Compute how intensely curious we are about this gap
+ * WHY:  Dopamine modulates intrinsic motivation and curiosity
+ * HOW:  gap_size × baseline × dopamine_modulation
+ *
+ * BIOLOGY: Dopamine encodes reward prediction and motivation
+ *          Higher DA → more curious and exploratory
  *
  * Complexity: O(1)
  */
 static float calculate_curiosity_intensity(const curiosity_engine_t engine, float gap_size)
 {
-    return gap_size * engine->baseline_curiosity;
+    float base_intensity = gap_size * engine->baseline_curiosity;
+
+    // Modulate by dopamine if brain available
+    if (engine->gap_detector) {
+        neuromodulator_system_t neuromod = brain_get_neuromodulator_system(engine->gap_detector);
+        if (neuromod) {
+            float dopamine = neuromodulator_get_level(neuromod, NEUROMOD_DOPAMINE);
+            // Dopamine range [0.3, 0.7], map to modulation [0.6, 1.4]
+            // Low DA (0.3) → 0.6× curiosity (apathy, depression)
+            // High DA (0.7) → 1.4× curiosity (motivated, manic)
+            float modulation = 0.6f + (dopamine - 0.3f) * 2.0f;
+            base_intensity *= modulation;
+        }
+    }
+
+    return fminf(base_intensity, 1.0f);  // Clamp to [0, 1]
 }
 
 /**
@@ -1074,6 +1094,17 @@ motivation_state_t curiosity_assess_motivation(curiosity_engine_t engine, const 
     }
 
     state.intrinsic_curiosity = engine->baseline_curiosity;
+
+    // DOPAMINE MODULATION: High DA enhances intrinsic motivation
+    if (engine->gap_detector) {
+        neuromodulator_system_t neuromod = brain_get_neuromodulator_system(engine->gap_detector);
+        if (neuromod) {
+            float dopamine = neuromodulator_get_level(neuromod, NEUROMOD_DOPAMINE);
+            // Dopamine amplifies intrinsic curiosity
+            state.intrinsic_curiosity *= (0.5f + dopamine);  // 0.8-1.2× modulation
+        }
+    }
+
     state.goal_relevance = 0.3f;     // Simplified - would check actual goals
     state.social_importance = 0.4f;  // Simplified - would check social context
     state.survival_value = 0.1f;     // Most concepts have low survival value
@@ -1170,6 +1201,18 @@ bool curiosity_learn_answer(curiosity_engine_t engine, const char* question, con
     }
 
     engine->progress.total_answers_learned++;
+
+    // INTRINSIC REWARD: Release dopamine for learning
+    // BIOLOGY: Learning triggers dopamine release in reward circuits
+    if (engine->gap_detector) {
+        neuromodulator_system_t neuromod = brain_get_neuromodulator_system(engine->gap_detector);
+        if (neuromod) {
+            // Release dopamine proportional to curiosity
+            float reward = 0.3f;  // Moderate intrinsic reward for learning
+            neuromodulator_release_dopamine(neuromod, reward, 0.0f);
+        }
+    }
+
     return true;
 }
 
@@ -1195,6 +1238,17 @@ bool curiosity_learn_experience(curiosity_engine_t engine, const char* experienc
     }
 
     engine->progress.total_experiences++;
+
+    // INTRINSIC REWARD: Release dopamine for experiential learning
+    // BIOLOGY: Novel experiences trigger dopamine release
+    if (engine->gap_detector) {
+        neuromodulator_system_t neuromod = brain_get_neuromodulator_system(engine->gap_detector);
+        if (neuromod) {
+            float reward = 0.4f;  // Higher reward for direct experience
+            neuromodulator_release_dopamine(neuromod, reward, 0.0f);
+        }
+    }
+
     return true;
 }
 
@@ -1576,4 +1630,78 @@ void curiosity_print_progress(const learning_progress_t* progress)
     printf("  Knowledge growth rate: %.3f\n", progress->knowledge_growth_rate);
     printf("  Average curiosity: %.2f\n", progress->avg_curiosity);
     printf("  Current focus: %s\n", progress->current_focus);
+}
+
+//=============================================================================
+// Bidirectional Feedback Functions (Phase 10.11.3)
+//=============================================================================
+
+/**
+ * @brief Set exploration rate based on cognitive load
+ *
+ * WHAT: Adjust exploration vs exploitation based on executive load
+ * WHY:  Prevent exploration when cognitively overloaded
+ * HOW:  Modulate curiosity intensity and baseline
+ *
+ * BIOLOGY: Prefrontal cortex regulates exploration/exploitation trade-off
+ *          High load → exploit known strategies (lower exploration)
+ *          Low load → explore novel options (higher exploration)
+ *
+ * COMPLEXITY: O(1)
+ *
+ * @param engine Curiosity engine
+ * @param exploration_rate Exploration rate [0, 1] (0=exploit, 1=explore)
+ */
+void curiosity_set_exploration_rate(curiosity_engine_t engine, float exploration_rate)
+{
+    // Guard: NULL engine
+    if (!engine) {
+        return;
+    }
+
+    // Clamp exploration rate to [0, 1]
+    exploration_rate = fminf(fmaxf(exploration_rate, 0.0f), 1.0f);
+
+    // WHAT: Modulate baseline curiosity based on exploration rate
+    // WHY:  Higher exploration rate → more curious
+    // HOW:  Scale baseline by exploration rate
+    engine->baseline_curiosity = engine->stage_strategy->get_baseline_curiosity() * exploration_rate;
+    engine->current_motivation = engine->baseline_curiosity;
+}
+
+/**
+ * @brief Get information gain from recent learning
+ *
+ * WHAT: Query expected information gain from exploring
+ * WHY:  Executive can prioritize exploratory tasks
+ * HOW:  Estimate gain from recent learning progress
+ *
+ * COMPLEXITY: O(1)
+ *
+ * @param engine Curiosity engine
+ * @return Information gain [0, 1]
+ */
+float curiosity_get_information_gain(curiosity_engine_t engine)
+{
+    // Guard: NULL engine
+    if (!engine) {
+        return 0.0f;
+    }
+
+    // WHAT: Estimate information gain from recent learning
+    // WHY:  If we're learning a lot, exploration is paying off
+    // HOW:  Use knowledge growth rate as proxy for information gain
+    if (engine->progress.total_questions_asked == 0) {
+        return engine->baseline_curiosity;  // No data yet, use baseline
+    }
+
+    // Calculate learning rate: answers / questions
+    float learning_rate = (float)engine->progress.total_answers_learned /
+                         (float)engine->progress.total_questions_asked;
+
+    // Scale by current motivation
+    float information_gain = learning_rate * engine->current_motivation;
+
+    // Clamp to [0, 1]
+    return fminf(fmaxf(information_gain, 0.0f), 1.0f);
 }

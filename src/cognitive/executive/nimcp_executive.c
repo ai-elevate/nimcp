@@ -23,6 +23,8 @@
 #include "cognitive/nimcp_executive.h"
 #include "utils/memory/nimcp_memory.h"  // nimcp_malloc/nimcp_free
 #include "utils/time/nimcp_time.h"       // get_current_time_ms
+#include "plasticity/neuromodulators/nimcp_neuromodulators.h"  // Neuromodulator integration
+#include "core/brain/nimcp_brain.h"      // Brain reference
 #include <string.h>
 #include <stdio.h>
 #include <stdarg.h>
@@ -62,6 +64,9 @@ struct executive_controller {
 
     // Inhibition tracking
     uint32_t total_decisions;
+
+    // Neuromodulation (Phase 10.x - Chemical modulation integration)
+    brain_t brain;  /**< Brain reference for reading neurotransmitters */
 };
 
 //=============================================================================
@@ -187,6 +192,46 @@ static task_descriptor_t* get_highest_priority_task(executive_controller_t* exec
     return best;
 }
 
+/**
+ * @brief Compute dopamine-modulated task switch cost
+ *
+ * WHAT: Adjust switch cost based on dopamine level
+ * WHY:  Dopamine affects cognitive flexibility and switch cost
+ * HOW:  Read DA, modulate base cost, clamp to reasonable range
+ *
+ * BIOLOGY: High DA → easier switching (lower cost)
+ *          Low DA → harder switching (higher cost, perseveration)
+ *
+ * COMPLEXITY: O(1)
+ *
+ * @param exec Executive controller
+ * @param base_cost Base switch cost (ms)
+ * @return Modulated switch cost (ms)
+ */
+static float compute_modulated_switch_cost(executive_controller_t* exec,
+                                           float base_cost)
+{
+    // Guard: Early return if no brain
+    if (!exec || !exec->brain) {
+        return base_cost;
+    }
+
+    neuromodulator_system_t neuromod = brain_get_neuromodulator_system(exec->brain);
+    if (!neuromod) {
+        return base_cost;
+    }
+
+    // Read dopamine level
+    float da = neuromodulator_get_level(neuromod, NEUROMOD_DOPAMINE);
+
+    // DA range [0.3, 0.7], map to cost multiplier [1.4, 0.6]
+    // High DA (0.7) → 0.6× cost (flexible, easy switching)
+    // Low DA (0.3) → 1.4× cost (rigid, perseverative)
+    float multiplier = 1.4f - (da - 0.3f) * 2.0f;
+
+    return base_cost * multiplier;
+}
+
 //=============================================================================
 // Creation & Destruction
 //=============================================================================
@@ -282,8 +327,30 @@ executive_controller_t* executive_create_custom(const executive_config_t* config
     exec->total_decisions = 0;
 
     memset(&exec->stats, 0, sizeof(executive_stats_t));
+    exec->brain = NULL;  // Initialize to NULL
 
     return exec;
+}
+
+/**
+ * @brief Set brain reference for neuromodulator integration
+ *
+ * WHAT: Associate executive controller with brain for chemical modulation
+ * WHY:  Enable neurotransmitter-based modulation of executive functions
+ * HOW:  Store brain reference in controller structure
+ *
+ * USAGE: Call after creation to enable neuromodulation
+ *
+ * @param exec Executive controller
+ * @param brain Brain handle (can be NULL to disable neuromodulation)
+ */
+void executive_set_brain(executive_controller_t* exec, brain_t brain)
+{
+    if (!exec) {
+        return;
+    }
+
+    exec->brain = brain;
 }
 
 /**
@@ -413,8 +480,8 @@ bool executive_switch_task(executive_controller_t* exec, uint32_t task_id, uint6
         }
     }
 
-    // Calculate switch cost
-    float switch_cost = exec->config.task_switch_cost_ms;
+    // Calculate switch cost (modulated by dopamine if brain available)
+    float switch_cost = compute_modulated_switch_cost(exec, exec->config.task_switch_cost_ms);
 
     // Update statistics
     exec->stats.total_switches++;
@@ -612,4 +679,102 @@ void executive_reset_stats(executive_controller_t* exec)
 
     memset(&exec->stats, 0, sizeof(executive_stats_t));
     exec->total_decisions = 0;
+}
+
+//=============================================================================
+// Bidirectional Feedback Functions (Phase 10.11.3)
+//=============================================================================
+
+/**
+ * @brief Get cognitive load (utilization)
+ *
+ * WHAT: Query current cognitive load on executive system
+ * WHY:  Other modules can adapt behavior based on load
+ * HOW:  Return task count / capacity ratio
+ *
+ * BIOLOGY: Prefrontal cortex has limited capacity (~4 chunks in working memory)
+ *          High load → poor multitasking, reduced exploration
+ *
+ * COMPLEXITY: O(1)
+ *
+ * @param exec Executive controller
+ * @return Cognitive load [0, 1] (0=idle, 1=saturated)
+ */
+float executive_get_cognitive_load(executive_controller_t* exec)
+{
+    // Guard: NULL controller
+    if (!exec) {
+        return 0.0f;
+    }
+
+    // WHAT: Compute load as ratio of active tasks to capacity
+    // WHY:  Simple proxy for cognitive resource usage
+    // HOW:  (num_tasks + active_task) / max_tasks
+    uint32_t total_tasks = exec->num_tasks;
+    if (exec->active_task) {
+        total_tasks++;  // Count active task
+    }
+
+    if (exec->max_tasks == 0) {
+        return 0.0f;
+    }
+
+    float load = (float)total_tasks / (float)exec->max_tasks;
+
+    // Clamp to [0, 1]
+    return fminf(fmaxf(load, 0.0f), 1.0f);
+}
+
+/**
+ * @brief Boost task priority based on external signal
+ *
+ * WHAT: Allow modules to boost task priority
+ * WHY:  Curiosity-driven tasks should be prioritized when informative
+ * HOW:  Find task by name, increase priority
+ *
+ * COMPLEXITY: O(n) where n = number of tasks
+ *
+ * @param exec Executive controller
+ * @param task_name Task name to boost
+ * @param boost_amount Priority boost [0, 1]
+ * @return true if task found and boosted
+ */
+bool executive_boost_task_priority(executive_controller_t* exec,
+                                    const char* task_name,
+                                    float boost_amount)
+{
+    // Guard: Validate inputs
+    if (!exec || !task_name) {
+        set_error("NULL parameter in boost_task_priority");
+        return false;
+    }
+
+    // Clamp boost amount
+    boost_amount = fminf(fmaxf(boost_amount, 0.0f), 1.0f);
+
+    // WHAT: Search for task by name
+    // WHY:  Need to find task in queue or active slot
+    // HOW:  Linear search through task descriptors
+    bool found = false;
+
+    // Check active task
+    if (exec->active_task && strcmp(exec->active_task->name, task_name) == 0) {
+        exec->active_task->priority += boost_amount;
+        found = true;
+    }
+
+    // Check queued tasks
+    for (uint32_t i = 0; i < exec->num_tasks; i++) {
+        task_descriptor_t* task = exec->task_queue[i];
+        if (task && strcmp(task->name, task_name) == 0) {
+            task->priority += boost_amount;
+            found = true;
+        }
+    }
+
+    if (!found) {
+        set_error("Task '%s' not found", task_name);
+    }
+
+    return found;
 }

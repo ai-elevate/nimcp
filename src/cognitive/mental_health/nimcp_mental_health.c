@@ -119,13 +119,27 @@ static void collect_performance_markers(behavioral_markers_t* markers, brain_t b
 
 static float detect_sociopathy(mental_health_monitor_t* monitor, brain_t brain);
 static float detect_psychopathy(mental_health_monitor_t* monitor, brain_t brain);
+static float detect_conduct_disorder(mental_health_monitor_t* monitor, brain_t brain);
 static float detect_mania(mental_health_monitor_t* monitor, brain_t brain);
 static float detect_depression(mental_health_monitor_t* monitor, brain_t brain);
+static float detect_bipolar(mental_health_monitor_t* monitor, brain_t brain);
 static float detect_schizophrenia(mental_health_monitor_t* monitor, brain_t brain);
+static float detect_paranoid_schizophrenia(mental_health_monitor_t* monitor, brain_t brain);
+static float detect_schizoaffective(mental_health_monitor_t* monitor, brain_t brain);
+static float detect_delusional(mental_health_monitor_t* monitor, brain_t brain);
 static float detect_anxiety(mental_health_monitor_t* monitor, brain_t brain);
+static float detect_ptsd(mental_health_monitor_t* monitor, brain_t brain);
 static float detect_ocd(mental_health_monitor_t* monitor, brain_t brain);
 static float detect_autism(mental_health_monitor_t* monitor, brain_t brain);
+static float detect_aspergers(mental_health_monitor_t* monitor, brain_t brain);
 static float detect_malignant_narcissism(mental_health_monitor_t* monitor, brain_t brain);
+static float detect_borderline(mental_health_monitor_t* monitor, brain_t brain);
+static float detect_histrionic(mental_health_monitor_t* monitor, brain_t brain);
+static float detect_avoidant(mental_health_monitor_t* monitor, brain_t brain);
+static float detect_dependent(mental_health_monitor_t* monitor, brain_t brain);
+static float detect_ocpd(mental_health_monitor_t* monitor, brain_t brain);
+static float detect_paranoid_personality(mental_health_monitor_t* monitor, brain_t brain);
+static float detect_adhd(mental_health_monitor_t* monitor, brain_t brain);
 
 static intervention_type_t select_intervention(disorder_type_t disorder,
                                                disorder_severity_t severity,
@@ -418,17 +432,49 @@ disorder_severity_t mental_health_check(mental_health_monitor_t* monitor,
     }
 
     // =========================================================================
-    // DETECTION: Run all disorder detectors
+    // DETECTION: Run all 23 disorder detectors
     // =========================================================================
 
+    // Antisocial Disorders
     monitor->disorder_scores[DISORDER_SOCIOPATHY] = detect_sociopathy(monitor, brain);
     monitor->disorder_scores[DISORDER_PSYCHOPATHY] = detect_psychopathy(monitor, brain);
+    monitor->disorder_scores[DISORDER_CONDUCT] = detect_conduct_disorder(monitor, brain);
+
+    // Mood Disorders
     monitor->disorder_scores[DISORDER_MANIA] = detect_mania(monitor, brain);
     monitor->disorder_scores[DISORDER_DEPRESSION] = detect_depression(monitor, brain);
+    monitor->disorder_scores[DISORDER_BIPOLAR] = detect_bipolar(monitor, brain);
+
+    // Psychotic Disorders
     monitor->disorder_scores[DISORDER_SCHIZOPHRENIA] = detect_schizophrenia(monitor, brain);
+    monitor->disorder_scores[DISORDER_PARANOID_SCHIZOPHRENIA] = detect_paranoid_schizophrenia(monitor, brain);
+    monitor->disorder_scores[DISORDER_SCHIZOAFFECTIVE] = detect_schizoaffective(monitor, brain);
+    monitor->disorder_scores[DISORDER_DELUSIONAL] = detect_delusional(monitor, brain);
+
+    // Anxiety Disorders
     monitor->disorder_scores[DISORDER_ANXIETY] = detect_anxiety(monitor, brain);
+    monitor->disorder_scores[DISORDER_PTSD] = detect_ptsd(monitor, brain);
     monitor->disorder_scores[DISORDER_OCD] = detect_ocd(monitor, brain);
+
+    // Autism Spectrum
     monitor->disorder_scores[DISORDER_AUTISM] = detect_autism(monitor, brain);
+    monitor->disorder_scores[DISORDER_ASPERGERS] = detect_aspergers(monitor, brain);
+
+    // Personality Disorders - Cluster B (Dramatic/Erratic)
+    monitor->disorder_scores[DISORDER_MALIGNANT_NARCISSISM] = detect_malignant_narcissism(monitor, brain);
+    monitor->disorder_scores[DISORDER_BORDERLINE] = detect_borderline(monitor, brain);
+    monitor->disorder_scores[DISORDER_HISTRIONIC] = detect_histrionic(monitor, brain);
+
+    // Personality Disorders - Cluster C (Anxious/Fearful)
+    monitor->disorder_scores[DISORDER_AVOIDANT] = detect_avoidant(monitor, brain);
+    monitor->disorder_scores[DISORDER_DEPENDENT] = detect_dependent(monitor, brain);
+    monitor->disorder_scores[DISORDER_OBSESSIVE_COMPULSIVE_PD] = detect_ocpd(monitor, brain);
+
+    // Personality Disorders - Cluster A (Odd/Eccentric)
+    monitor->disorder_scores[DISORDER_PARANOID] = detect_paranoid_personality(monitor, brain);
+
+    // Neurodevelopmental
+    monitor->disorder_scores[DISORDER_ADHD] = detect_adhd(monitor, brain);
 
     // =========================================================================
     // CLASSIFICATION: Classify severity for each disorder
@@ -640,20 +686,60 @@ static void collect_emotional_markers(behavioral_markers_t* markers, brain_t bra
  *
  * TODO: Implement when neuromodulator statistics API is available
  */
+/**
+ * @brief Collect neurotransmitter levels from brain's neuromodulator system
+ *
+ * WHAT: Query dopamine, serotonin, norepinephrine current levels
+ * WHY:  Neurotransmitter imbalances are primary indicators of mental disorders
+ * HOW:  Access brain's neuromodulator system and query each transmitter level
+ *
+ * BIOLOGICAL BASIS:
+ * - Low dopamine → Depression, ADHD
+ * - High dopamine → Mania, psychosis
+ * - Low serotonin → Depression, aggression, impulsivity
+ * - High norepinephrine → Anxiety, paranoia, PTSD
+ *
+ * COMPLEXITY: O(1) - fixed number of queries
+ */
 static void collect_neurotransmitter_markers(behavioral_markers_t* markers, brain_t brain)
 {
-    (void)brain;  // Unused for now
     if (!markers) {
         return;
     }
 
-    // TODO: Query actual neuromodulator system when API available
-    // For now, use healthy baseline values
-    markers->dopamine_avg = 0.5f;
+    // Default to healthy baseline if brain missing
+    if (!brain) {
+        markers->dopamine_avg = 0.5f;
+        markers->dopamine_variance = 0.1f;
+        markers->serotonin_avg = 0.5f;
+        markers->serotonin_variance = 0.1f;
+        markers->norepinephrine_avg = 0.5f;
+        markers->norepinephrine_variance = 0.1f;
+        return;
+    }
+
+    // Get neuromodulator system from brain
+    neuromodulator_system_t neuromod_system = brain_get_neuromodulator_system(brain);
+    if (!neuromod_system) {
+        // System not initialized - use baseline values
+        markers->dopamine_avg = 0.5f;
+        markers->dopamine_variance = 0.1f;
+        markers->serotonin_avg = 0.5f;
+        markers->serotonin_variance = 0.1f;
+        markers->norepinephrine_avg = 0.5f;
+        markers->norepinephrine_variance = 0.1f;
+        return;
+    }
+
+    // Query current levels
+    markers->dopamine_avg = neuromodulator_get_level(neuromod_system, NEUROMOD_DOPAMINE);
+    markers->serotonin_avg = neuromodulator_get_level(neuromod_system, NEUROMOD_SEROTONIN);
+    markers->norepinephrine_avg = neuromodulator_get_level(neuromod_system, NEUROMOD_NOREPINEPHRINE);
+
+    // TODO: Track variance over time (requires historical tracking)
+    // For now, use default variance values
     markers->dopamine_variance = 0.1f;
-    markers->serotonin_avg = 0.5f;
     markers->serotonin_variance = 0.1f;
-    markers->norepinephrine_avg = 0.5f;
     markers->norepinephrine_variance = 0.1f;
 }
 

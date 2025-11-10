@@ -536,6 +536,50 @@ brain_salience_t salience_quick_evaluate(brain_t brain, const float* features,
  */
 const char* salience_get_last_error(void);
 
+//=============================================================================
+// Bidirectional Feedback Functions (Phase 10.11.3)
+//=============================================================================
+
+/**
+ * @brief Boost salience for negative cues
+ *
+ * WHAT: Increase attention to negative stimuli
+ * WHY:  Depression biases attention toward negative information
+ * HOW:  Scale negative feature salience by boost factor
+ *
+ * BIOLOGY: Mood-congruent attentional bias
+ *
+ * @param evaluator Salience evaluator
+ * @param boost_factor Salience boost [0, 1]
+ */
+void salience_boost_negative_cues(salience_evaluator_t evaluator, float boost_factor);
+
+/**
+ * @brief Boost threat detection sensitivity
+ *
+ * WHAT: Increase urgency for potential threats
+ * WHY:  Anxiety increases threat vigilance
+ * HOW:  Lower threshold for urgency detection
+ *
+ * BIOLOGY: Amygdala hyperactivity in anxiety
+ *
+ * @param evaluator Salience evaluator
+ * @param boost_factor Threat sensitivity boost [0, 1]
+ */
+void salience_boost_threat_detection(salience_evaluator_t evaluator, float boost_factor);
+
+/**
+ * @brief Get surprise level from recent evaluation
+ *
+ * WHAT: Query most recent surprise score
+ * WHY:  Emotional system modulates arousal based on surprise
+ * HOW:  Return cached surprise value
+ *
+ * @param evaluator Salience evaluator
+ * @return Surprise level [0, 1]
+ */
+float salience_get_surprise_level(salience_evaluator_t evaluator);
+
 #ifdef __cplusplus
 }
 #endif

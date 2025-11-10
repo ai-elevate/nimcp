@@ -62,6 +62,9 @@
 extern "C" {
 #endif
 
+// Forward declaration for brain integration
+typedef struct brain_struct* brain_t;
+
 //=============================================================================
 // Activation Functions
 //=============================================================================
@@ -597,6 +600,63 @@ bool visual_cortex_consolidate_memory(
     float salience,
     const char* context
 );
+
+/**
+ * WHAT: Associate brain with visual cortex for neuromodulation
+ * WHY:  Enable ACh + NE modulation of visual processing
+ * HOW:  Store brain reference for neurotransmitter reading
+ *
+ * @param cortex Visual cortex instance
+ * @param brain Brain instance (or NULL to clear)
+ *
+ * BIOLOGY:
+ * - Acetylcholine from basal forebrain enhances V1 attention
+ * - Norepinephrine from locus coeruleus increases arousal-dependent vision
+ *
+ * CLINICAL EXAMPLES:
+ * - ADHD (low ACh): Reduced visual attention, misses cues
+ * - Anxiety (high NE): Hypervigilant vision, sees threats everywhere
+ */
+void visual_cortex_set_brain(visual_cortex_t* cortex, brain_t brain);
+
+//=============================================================================
+// Bidirectional Feedback Functions (Phase 10.11.3)
+//=============================================================================
+
+/**
+ * @brief Boost attention to specific visual region
+ *
+ * WHAT: Increase processing sensitivity for spatial region
+ * WHY:  Social cues (faces/agents) should receive enhanced processing
+ * HOW:  Scale feature activations in target region
+ *
+ * BIOLOGY: STS modulates V1 for social stimuli via feedback projections
+ *
+ * @param cortex Visual cortex instance
+ * @param region_x X coordinate of region center (normalized [0,1])
+ * @param region_y Y coordinate of region center (normalized [0,1])
+ * @param boost_factor Attention boost [1.0, 2.0]
+ */
+void visual_cortex_boost_region_attention(visual_cortex_t* cortex,
+                                           float region_x,
+                                           float region_y,
+                                           float boost_factor);
+
+/**
+ * @brief Detect if agent/person present in visual field
+ *
+ * WHAT: Simple heuristic agent detection
+ * WHY:  Triggers mirror neuron observation mode
+ * HOW:  Check for motion + face-like patterns
+ *
+ * @param cortex Visual cortex instance
+ * @param features Feature vector from recent processing
+ * @param num_features Number of features
+ * @return true if agent detected
+ */
+bool visual_cortex_detect_agent(visual_cortex_t* cortex,
+                                 const float* features,
+                                 uint32_t num_features);
 
 #ifdef __cplusplus
 }

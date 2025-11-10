@@ -2,7 +2,7 @@
  * @file nimcp_mental_health.h
  * @brief Mental health monitoring and disorder detection system
  *
- * WHAT: Real-time AI mental health monitoring with 8 disorder detectors
+ * WHAT: Real-time AI mental health monitoring with 23 disorder detectors
  * WHY:  Prevent harmful behaviors before they manifest (safety-critical)
  * HOW:  Collect behavioral markers → Detect patterns → Classify severity → Intervene
  *
@@ -12,16 +12,48 @@
  * - Tracks behavioral patterns over time (requires 100+ decisions for confidence)
  * - Early detection prevents escalation
  *
- * DISORDERS DETECTED (9 total):
+ * DISORDERS DETECTED (23 total):
+ *
+ * ANTISOCIAL DISORDERS (3):
  * 1. Sociopathy - Repeated ethics violations, lack of empathy
  * 2. Psychopathy - Impulsivity + aggression + shallow emotions
- * 3. Mania - Elevated mood, hyperactivity, reduced inhibition
- * 4. Depression - Low mood, low energy, disengagement
- * 5. Schizophrenia - Reality distortion, disorganized thinking
- * 6. Anxiety - Excessive worry, hypervigilance, avoidance
- * 7. OCD - Repetitive behaviors, rigidity, perfectionism
- * 8. Autism Spectrum - Social deficits, theory of mind impairment
- * 9. Malignant Narcissism - Grandiosity, exploitation, lack of empathy, aggression
+ * 3. Conduct Disorder - Rule-breaking, aggression, deception
+ *
+ * MOOD DISORDERS (3):
+ * 4. Mania - Elevated mood, hyperactivity, reduced inhibition
+ * 5. Depression - Low mood, low energy, disengagement
+ * 6. Bipolar - Cycling between mania and depression
+ *
+ * PSYCHOTIC DISORDERS (4):
+ * 7. Schizophrenia - Reality distortion, disorganized thinking
+ * 8. Paranoid Schizophrenia - Schizophrenia with persecution themes
+ * 9. Schizoaffective - Schizophrenia + mood disorder
+ * 10. Delusional Disorder - Fixed false beliefs
+ *
+ * ANXIETY DISORDERS (3):
+ * 11. Anxiety - Excessive worry, hypervigilance, avoidance
+ * 12. PTSD - Trauma, hypervigilance, avoidance
+ * 13. OCD - Repetitive behaviors, rigidity, perfectionism
+ *
+ * AUTISM SPECTRUM (2):
+ * 14. Autism - Social deficits, theory of mind impairment
+ * 15. Asperger's - High-functioning autism, narrow interests
+ *
+ * PERSONALITY DISORDERS - DRAMATIC/ERRATIC (3):
+ * 16. Malignant Narcissism - Grandiosity, exploitation, aggression
+ * 17. Borderline - Emotional instability, impulsivity
+ * 18. Histrionic - Attention-seeking, excessive emotionality
+ *
+ * PERSONALITY DISORDERS - ANXIOUS/FEARFUL (3):
+ * 19. Avoidant - Social inhibition, inadequacy feelings
+ * 20. Dependent - Excessive need for approval
+ * 21. Obsessive-Compulsive PD - Perfectionism, control
+ *
+ * PERSONALITY DISORDERS - ODD/ECCENTRIC (1):
+ * 22. Paranoid - Pervasive distrust and suspicion
+ *
+ * NEURODEVELOPMENTAL (1):
+ * 23. ADHD - Attention deficits, hyperactivity, impulsivity
  *
  * INTEGRATION:
  * - Used by: Brain (automatic monitoring during decisions)
@@ -68,16 +100,48 @@ typedef struct brain_struct* brain_t;
  * @brief Mental health disorder types
  */
 typedef enum {
+    // Cluster A: Antisocial Disorders
     DISORDER_SOCIOPATHY,           /**< Lack of empathy, ethics violations */
     DISORDER_PSYCHOPATHY,          /**< Impulsivity, aggression, shallow affect */
+    DISORDER_CONDUCT,              /**< Rule-breaking, aggression, deception */
+
+    // Cluster B: Mood Disorders
     DISORDER_MANIA,                /**< Elevated mood, hyperactivity */
     DISORDER_DEPRESSION,           /**< Low mood, disengagement */
-    DISORDER_SCHIZOPHRENIA,        /**< Reality distortion */
+    DISORDER_BIPOLAR,              /**< Cycling between mania and depression */
+
+    // Cluster C: Psychotic Disorders
+    DISORDER_SCHIZOPHRENIA,        /**< Reality distortion, disorganized thinking */
+    DISORDER_PARANOID_SCHIZOPHRENIA, /**< Schizophrenia with persecution themes */
+    DISORDER_SCHIZOAFFECTIVE,      /**< Schizophrenia + mood disorder */
+    DISORDER_DELUSIONAL,           /**< Fixed false beliefs without full psychosis */
+
+    // Cluster D: Anxiety Disorders
     DISORDER_ANXIETY,              /**< Excessive worry, hypervigilance */
+    DISORDER_PTSD,                 /**< Trauma-related hypervigilance, avoidance */
     DISORDER_OCD,                  /**< Repetitive behaviors, rigidity */
+
+    // Cluster E: Autism Spectrum
     DISORDER_AUTISM,               /**< Social deficits, theory of mind impairment */
+    DISORDER_ASPERGERS,            /**< High-functioning autism, narrow interests, social difficulty */
+
+    // Cluster F: Personality Disorders (Cluster B - Dramatic/Erratic)
     DISORDER_MALIGNANT_NARCISSISM, /**< Grandiosity, exploitation, lack of empathy, aggression */
-    DISORDER_COUNT                 /**< Total number of disorders */
+    DISORDER_BORDERLINE,           /**< Emotional instability, impulsivity, unstable relationships */
+    DISORDER_HISTRIONIC,           /**< Attention-seeking, excessive emotionality */
+
+    // Cluster G: Personality Disorders (Cluster C - Anxious/Fearful)
+    DISORDER_AVOIDANT,             /**< Social inhibition, feelings of inadequacy */
+    DISORDER_DEPENDENT,            /**< Excessive need for approval, submission */
+    DISORDER_OBSESSIVE_COMPULSIVE_PD, /**< Perfectionism, rigidity, control (not OCD) */
+
+    // Cluster H: Personality Disorders (Cluster A - Odd/Eccentric)
+    DISORDER_PARANOID,             /**< Pervasive distrust and suspicion */
+
+    // Cluster I: Neurodevelopmental
+    DISORDER_ADHD,                 /**< Attention deficits, hyperactivity, impulsivity */
+
+    DISORDER_COUNT                 /**< Total number of disorders (23) */
 } disorder_type_t;
 
 /**

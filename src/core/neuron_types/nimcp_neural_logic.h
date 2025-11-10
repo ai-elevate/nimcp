@@ -54,6 +54,9 @@
 #include "common/nimcp_export.h"
 #include "core/neuron_types/nimcp_neuron_types.h"
 
+// Forward declaration for brain integration
+typedef struct brain_struct* brain_t;
+
 // Conditional CUDA support
 #ifdef NIMCP_ENABLE_CUDA
 #include <cuda_runtime.h>
@@ -580,6 +583,33 @@ NIMCP_EXPORT bool neural_logic_gpu_available(void);
  * @return Human-readable name (e.g., "AND", "OR")
  */
 NIMCP_EXPORT const char* neural_logic_gate_name(logic_gate_type_t gate_type);
+
+/**
+ * @brief Associate brain with neural logic network for neuromodulation
+ *
+ * WHAT: Set brain reference for DA + ACh modulation
+ * WHY:  Enable neurochemical modulation of logic gates
+ * HOW:  Store brain pointer for neurotransmitter reading
+ *
+ * @param network Neural logic network instance
+ * @param brain Brain instance (or NULL to clear)
+ *
+ * BIOLOGY:
+ * - Dopamine modulates logical flexibility vs rigidity
+ *   High DA → lower thresholds, permissive logic (exploratory)
+ *   Low DA → higher thresholds, rigid logic (perseverative)
+ *
+ * - Acetylcholine modulates logical precision
+ *   High ACh → precise thresholds, accurate logic
+ *   Low ACh → imprecise thresholds, error-prone logic
+ *
+ * CLINICAL EXAMPLES:
+ * - Depression (low DA): Rigid, black-and-white thinking
+ * - Mania (high DA): Loose associations, illogical leaps
+ * - ADHD (low ACh): Logical errors, misses contradictions
+ * - Dementia (low ACh): Impaired reasoning, confabulation
+ */
+NIMCP_EXPORT void neural_logic_set_brain(neural_logic_network_t network, brain_t brain);
 
 #ifdef __cplusplus
 }
