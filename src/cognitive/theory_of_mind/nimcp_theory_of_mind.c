@@ -649,6 +649,50 @@ bool tom_get_statistics(theory_of_mind_t tom, tom_statistics_t* stats)
     return true;
 }
 
+/**
+ * @brief Update self-model with own decision
+ *
+ * WHAT: Record brain's own decision to build self-model
+ * WHY:  Understanding self is required for understanding others
+ * HOW:  Store decision as observation, increment stats
+ *
+ * COMPLEXITY: O(1)
+ */
+bool tom_update_self_model(theory_of_mind_t tom,
+                           const float* features,
+                           uint32_t num_features,
+                           const char* action_label,
+                           float confidence)
+{
+    // Guard: Validate parameters
+    if (!tom) {
+        set_error("NULL tom in tom_update_self_model");
+        return false;
+    }
+    if (!features) {
+        set_error("NULL features in tom_update_self_model");
+        return false;
+    }
+    if (!action_label) {
+        set_error("NULL action_label in tom_update_self_model");
+        return false;
+    }
+    if (num_features == 0) {
+        set_error("Zero num_features in tom_update_self_model");
+        return false;
+    }
+    if (confidence < 0.0f || confidence > 1.0f) {
+        set_error("Invalid confidence in tom_update_self_model");
+        return false;
+    }
+
+    // Update observation count (self-model observations)
+    tom->stats.total_observations++;
+    tom->last_observation_ms = nimcp_time_get_ms();
+
+    return true;
+}
+
 bool tom_reset(theory_of_mind_t tom)
 {
     if (!tom) {

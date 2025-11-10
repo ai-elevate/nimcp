@@ -49,6 +49,9 @@ typedef struct predictive_network_s* predictive_network_t;  // Opaque pointer
 // Phase 10.11: Mirror Neurons (Social Cognition & Imitation Learning)
 typedef struct mirror_neurons_system* mirror_neurons_t;  // Opaque pointer
 
+// Neuromodulator System (for mental health interventions)
+typedef struct neuromodulator_system_struct* neuromodulator_system_t;  // Opaque pointer
+
 /**
  * @file nimcp_brain.h
  * @brief Simple, high-level API for creating lightweight learning systems
@@ -1053,6 +1056,18 @@ void brain_clear_error(void);
  * @return Adaptive network handle (do not free!)
  */
 adaptive_network_t brain_get_network(brain_t brain);
+
+/**
+ * @brief Get neuromodulator system from brain
+ *
+ * WHAT: Accessor for brain's neuromodulator system
+ * WHY:  Mental health monitoring needs to read/write neurotransmitter levels
+ * HOW:  Returns opaque handle to neuromodulator system
+ *
+ * @param brain Brain handle
+ * @return Neuromodulator system handle (do not free!), or NULL if not initialized
+ */
+neuromodulator_system_t brain_get_neuromodulator_system(brain_t brain);
 
 //=============================================================================
 // Phase 8: Unified Multi-Modal Processing API

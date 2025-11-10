@@ -16,6 +16,8 @@
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/time/nimcp_time.h"
+#include "plasticity/neuromodulators/nimcp_neuromodulators.h"  // Neuromodulator integration
+#include "core/brain/nimcp_brain.h"  // Brain reference
 #include <string.h>
 #include <math.h>
 #include <stdlib.h>
@@ -123,6 +125,7 @@ struct mirror_neurons_system {
     void* theory_of_mind;              /**< Theory of mind system */
     void* predictive_network;          /**< Predictive network */
     void* glial_integration;           /**< Glial cell integration (Phase 10.11.1) */
+    brain_t brain;                     /**< Brain reference for neuromodulation */
 
     // Temporal state
     uint64_t creation_time;
@@ -349,6 +352,43 @@ static uint32_t find_or_create_agent(mirror_neurons_t mirror, uint32_t agent_id)
  * WHY:  Implement observation or execution pathway
  * HOW:  Find neurons for action, update activations
  */
+/**
+ * @brief Get acetylcholine modulation for mirror neuron observation
+ *
+ * WHAT: Compute ACh-based gating factor for observed actions
+ * WHY:  Acetylcholine gates social learning and action observation
+ * HOW:  Read ACh level, map to modulation factor [0.6, 1.4]
+ *
+ * BIOLOGY: ACh enhances attention to observed actions
+ *          High ACh (0.7) → 1.4× observation strength (focused social learning)
+ *          Low ACh (0.3) → 0.6× observation strength (inattentive, autism-like)
+ *
+ * COMPLEXITY: O(1)
+ *
+ * @param mirror Mirror neuron system
+ * @return Modulation factor [0.6, 1.4], or 1.0 if no brain
+ */
+static float get_mirror_ach_modulation(mirror_neurons_t mirror)
+{
+    // Guard: Early return if no brain
+    if (!mirror || !mirror->brain) {
+        return 1.0f;
+    }
+
+    neuromodulator_system_t neuromod = brain_get_neuromodulator_system(mirror->brain);
+    if (!neuromod) {
+        return 1.0f;
+    }
+
+    // Read acetylcholine level
+    float ach = neuromodulator_get_level(neuromod, NEUROMOD_ACETYLCHOLINE);
+
+    // Map ACh range [0.3, 0.7] to modulation [0.6, 1.4]
+    float modulation = 0.6f + (ach - 0.3f) * 2.0f;
+
+    return modulation;
+}
+
 static void activate_neurons_for_action(
     mirror_neurons_t mirror,
     uint32_t action_idx,
@@ -382,13 +422,17 @@ static void activate_neurons_for_action(
         }
     }
 
+    // Apply acetylcholine modulation to observation pathway
+    float ach_modulation = is_observation ? get_mirror_ach_modulation(mirror) : 1.0f;
+
     // Activate neurons
     for (uint32_t i = 0; i < mapping->num_neurons; i++) {
         uint32_t neuron_idx = mapping->neuron_indices[i];
         mirror_neuron_unit_t* neuron = &mirror->neurons[neuron_idx];
 
         if (is_observation) {
-            neuron->observation_activation += strength;
+            // Apply ACh gating: enhances social learning when attentive
+            neuron->observation_activation += strength * ach_modulation;
             if (neuron->observation_activation > 1.0f) {
                 neuron->observation_activation = 1.0f;
             }
@@ -522,12 +566,36 @@ mirror_neurons_t mirror_neurons_create(const mirror_neuron_config_t* config)
     // Initialize temporal state
     mirror->creation_time = nimcp_time_get_ms();
     mirror->last_update_time = mirror->creation_time;
+    mirror->brain = NULL;  // Initialize brain reference
     mirror->initialized = true;
 
     MIRROR_LOG_INFO("Mirror neurons: created system with %u neurons, max %u actions",
                   mirror->num_neurons, mirror->config.max_actions);
 
     return mirror;
+}
+
+/**
+ * @brief Set brain reference for neuromodulator integration
+ *
+ * WHAT: Associate mirror neurons with brain for ACh modulation
+ * WHY:  Enable acetylcholine-gated social learning
+ * HOW:  Store brain reference in system structure
+ *
+ * COMPLEXITY: O(1)
+ *
+ * @param mirror Mirror neuron system
+ * @param brain Brain handle (can be NULL to disable neuromodulation)
+ */
+void mirror_neurons_set_brain(mirror_neurons_t mirror, brain_t brain)
+{
+    // Guard: Validate mirror system
+    if (!mirror) {
+        MIRROR_LOG_ERROR("Mirror neurons: NULL system in set_brain");
+        return;
+    }
+
+    mirror->brain = brain;
 }
 
 /**
@@ -1119,4 +1187,124 @@ bool mirror_neurons_integrate_glial(
     }
 
     return true;
+}
+
+//=============================================================================
+// Bidirectional Feedback Functions (Phase 10.11.3)
+//=============================================================================
+
+/**
+ * @brief Get social salience for current context
+ *
+ * WHAT: Query importance of social cues
+ * WHY:  Visual cortex can boost attention to social stimuli
+ * HOW:  Return agent detection confidence × observation activation
+ *
+ * BIOLOGY: STS (superior temporal sulcus) modulates V1 for social stimuli
+ *          High social salience → enhanced processing of faces, biological motion
+ *
+ * COMPLEXITY: O(n) where n = number of actions
+ *
+ * @param mirror Mirror neuron system
+ * @return Social salience [0, 1]
+ */
+float mirror_neurons_get_social_salience(mirror_neurons_t mirror)
+{
+    // Guard: Validate mirror system
+    if (!mirror || !mirror->initialized) {
+        return 0.0f;
+    }
+
+    // WHAT: Compute average activation across all mirror neurons
+    // WHY:  High activation suggests social context is salient
+    // HOW:  Average observation activation across neurons
+    float total_activation = 0.0f;
+    uint32_t active_count = 0;
+
+    for (uint32_t i = 0; i < mirror->num_neurons; i++) {
+        mirror_neuron_unit_t* neuron = &mirror->neurons[i];
+        if (neuron->observation_activation > 0.01f) {
+            total_activation += neuron->observation_activation;
+            active_count++;
+        }
+    }
+
+    if (active_count == 0) {
+        return 0.0f;
+    }
+
+    float avg_activation = total_activation / active_count;
+
+    // Scale by number of observed agents
+    float agent_factor = (mirror->num_agents > 0) ? 1.0f : 0.5f;
+
+    // Combine activation and agent presence
+    float social_salience = avg_activation * agent_factor;
+
+    // Clamp to [0, 1]
+    return fminf(fmaxf(social_salience, 0.0f), 1.0f);
+}
+
+/**
+ * @brief Activate observation mode
+ *
+ * WHAT: Signal that agent detected, prepare for observation learning
+ * WHY:  Visual detection of agents triggers mirror neuron activation
+ * HOW:  Prime observation pathways for incoming action features
+ *
+ * COMPLEXITY: O(1)
+ *
+ * @param mirror Mirror neuron system
+ */
+void mirror_neurons_activate_observation_mode(mirror_neurons_t mirror)
+{
+    // Guard: Validate mirror system
+    if (!mirror || !mirror->initialized) {
+        MIRROR_LOG_ERROR("Mirror neurons: invalid system in activate_observation_mode");
+        return;
+    }
+
+    // WHAT: Boost baseline activation for all neurons
+    // WHY:  Prepare for incoming social observation
+    // HOW:  Small activation boost to make system more sensitive
+    for (uint32_t i = 0; i < mirror->num_neurons; i++) {
+        mirror_neuron_unit_t* neuron = &mirror->neurons[i];
+        if (neuron->action_id != 0) {  // Skip unassigned neurons
+            neuron->observation_activation = fminf(
+                neuron->observation_activation + 0.1f,  // Small boost
+                1.0f
+            );
+        }
+    }
+
+    MIRROR_LOG_INFO("Mirror neurons: observation mode activated (primed %u neurons)",
+                   mirror->num_neurons);
+}
+
+/**
+ * @brief Check for recent observations
+ *
+ * WHAT: Determine if observations occurred recently
+ * WHY:  Enable Theory of Mind predictions
+ * HOW:  Compare last update time with current time
+ *
+ * COMPLEXITY: O(1)
+ */
+bool mirror_neurons_has_recent_observations(mirror_neurons_t mirror)
+{
+    // Guard: Validate mirror system
+    if (!mirror) {
+        return false;
+    }
+
+    // Check if never updated
+    if (mirror->last_update_time == 0) {
+        return false;
+    }
+
+    // Check if observation within last 5 seconds (5000ms)
+    uint64_t current_time = nimcp_time_get_ms();
+    uint64_t time_since_last = current_time - mirror->last_update_time;
+
+    return time_since_last < 5000;
 }

@@ -92,6 +92,8 @@ add_nimcp_test_binary(core_tests
     # test_neuron_types.cpp  # TEMPORARILY DISABLED: API mismatches need fixing
     # test_brain_regions.cpp  # TEMPORARILY DISABLED: API mismatches need fixing
     test_brain_cow.cpp
+    test_brain_comprehensive.cpp  # Comprehensive brain.c coverage (target: 100%)
+    test_brain_cognitive_integration.cpp  # Deep cognitive integration tests for brain_decide
 )
 
 # ============================================================================
@@ -209,7 +211,14 @@ add_nimcp_test_binary(utility_tests
     test_platform_thread.cpp
     test_fft.cpp
     test_visual_cortex.cpp
+)
+
+# ============================================================================
+# TEST BINARY 7.5: Perception Bidirectional Tests (Phase 10.11.3) - FAST
+# ============================================================================
+add_nimcp_test_binary(perception_bidirectional_tests
     test_audio_cortex.cpp
+    test_speech_cortex.cpp
 )
 
 # ============================================================================

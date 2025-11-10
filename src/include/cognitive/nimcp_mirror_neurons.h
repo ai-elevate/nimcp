@@ -537,6 +537,49 @@ action_t mirror_neurons_create_action(
     uint32_t agent_id
 );
 
+//=============================================================================
+// Bidirectional Feedback Functions (Phase 10.11.3)
+//=============================================================================
+
+/**
+ * @brief Get social salience for current context
+ *
+ * WHAT: Query importance of social cues
+ * WHY:  Visual cortex can boost attention to social stimuli
+ * HOW:  Return agent detection confidence × observation activation
+ *
+ * BIOLOGY: STS (superior temporal sulcus) modulates V1 for social stimuli
+ *
+ * @param mirror Mirror neuron system
+ * @return Social salience [0, 1]
+ */
+float mirror_neurons_get_social_salience(mirror_neurons_t mirror);
+
+/**
+ * @brief Activate observation mode
+ *
+ * WHAT: Signal that agent detected, prepare for observation learning
+ * WHY:  Visual detection of agents triggers mirror neuron activation
+ * HOW:  Prime observation pathways for incoming action features
+ *
+ * @param mirror Mirror neuron system
+ */
+void mirror_neurons_activate_observation_mode(mirror_neurons_t mirror);
+
+/**
+ * @brief Check if mirror neurons have recent observations
+ *
+ * WHAT: Determine if other agents observed recently
+ * WHY:  Enable Theory of Mind predictions based on observations
+ * HOW:  Check observation timestamp against current time
+ *
+ * @param mirror Mirror neuron system
+ * @return true if observations within last 5 seconds, false otherwise
+ *
+ * COMPLEXITY: O(1)
+ */
+bool mirror_neurons_has_recent_observations(mirror_neurons_t mirror);
+
 #ifdef __cplusplus
 }
 #endif

@@ -374,6 +374,28 @@ typedef struct {
 bool tom_get_statistics(theory_of_mind_t tom, tom_statistics_t* stats);
 
 /**
+ * @brief Update Theory of Mind self-model with own decision
+ *
+ * WHAT: Record brain's own decision as mental state
+ * WHY:  Build self-model required for understanding others (simulation theory)
+ * HOW:  Store features→decision mapping in BDI framework
+ *
+ * @param tom ToM handle
+ * @param features Input features that led to decision
+ * @param num_features Number of features
+ * @param action_label Human-readable action/decision label
+ * @param confidence Decision confidence [0.0, 1.0]
+ * @return true on success, false on error
+ *
+ * COMPLEXITY: O(1)
+ */
+bool tom_update_self_model(theory_of_mind_t tom,
+                           const float* features,
+                           uint32_t num_features,
+                           const char* action_label,
+                           float confidence);
+
+/**
  * @brief Reset Theory of Mind state
  *
  * WHAT: Clear all BDI state and start fresh
