@@ -356,14 +356,31 @@ def ai_powered_auto_fix(failure: dict, nimcp_root: Path) -> Optional[Fix]:
     RETURNS: Fix object with file edits, or None if fix cannot be generated
     """
     test_name = failure['name']
-    stdout = str(failure.get('stdout', ''))
-    stderr = str(failure.get('stderr', ''))
+    # Handle both 'output'/'error' (from test_runner.py) and 'stdout'/'stderr' formats
+    stdout = str(failure.get('stdout', failure.get('output', '')))
+    stderr = str(failure.get('stderr', failure.get('error', '')))
 
-    # Find test file
-    test_file_name = test_name.replace('unit_test_', 'test_')
-    test_file = nimcp_root / "test" / "unit" / f"{test_file_name}.cpp"
+    # Find test file - handle unit, integration, and regression tests
+    if test_name.startswith('integration_test_'):
+        test_file_name = test_name.replace('integration_test_', 'test_')
+        test_file = nimcp_root / "test" / "integration" / f"{test_file_name}.cpp"
+    elif test_name.startswith('regression_test_'):
+        test_file_name = test_name.replace('regression_test_', 'test_')
+        test_file = nimcp_root / "test" / "regression" / f"{test_file_name}.cpp"
+    elif test_name.startswith('unit_test_'):
+        test_file_name = test_name.replace('unit_test_', 'test_')
+        test_file = nimcp_root / "test" / "unit" / f"{test_file_name}.cpp"
+    else:
+        # Try to find test file in all test directories
+        test_file_name = f"test_{test_name}"
+        test_file = nimcp_root / "test" / "unit" / f"{test_file_name}.cpp"
+        if not test_file.exists():
+            test_file = nimcp_root / "test" / "integration" / f"{test_file_name}.cpp"
+        if not test_file.exists():
+            test_file = nimcp_root / "test" / "regression" / f"{test_file_name}.cpp"
 
     if not test_file.exists():
+        print(f"  ⚠️  Test file not found: {test_file}")
         return None
 
     # Read test file content
@@ -541,8 +558,9 @@ def auto_generate_fix(failure: dict, analysis, nimcp_root: Path, gdb_output: Opt
     RETURNS: Fix object or None if cannot auto-fix
     """
     test_name = failure['name']
-    stdout = str(failure.get('stdout', ''))
-    stderr = str(failure.get('stderr', ''))
+    # Handle both 'output'/'error' (from test_runner.py) and 'stdout'/'stderr' formats
+    stdout = str(failure.get('stdout', failure.get('output', '')))
+    stderr = str(failure.get('stderr', failure.get('error', '')))
 
     # Try AI-powered auto-fix first (provides Claude with full context)
     ai_fix = ai_powered_auto_fix(failure, nimcp_root)
@@ -858,7 +876,10 @@ def orchestrate_full_pipeline(nimcp_root: Path,
                     print(f"  → RR not available or failed")
 
             # Prepare context for fix
-            debug_info = failure.get('stdout', '') + '\n' + failure.get('stderr', '')
+            # Handle both 'output'/'error' (from test_runner.py) and 'stdout'/'stderr' formats
+            stdout_content = failure.get('stdout', failure.get('output', ''))
+            stderr_content = failure.get('stderr', failure.get('error', ''))
+            debug_info = stdout_content + '\n' + stderr_content
             if gdb_output:
                 debug_info += '\n\n=== GDB BACKTRACE ===\n' + gdb_output
             if rr_output:
@@ -868,7 +889,7 @@ def orchestrate_full_pipeline(nimcp_root: Path,
                 failure['name'],
                 {
                     'failure_type': analysis.failure_type.value,
-                    'error_message': failure.get('stderr', ''),
+                    'error_message': stderr_content,
                 },
                 debug_info,
                 ()  # Source files would be added here
