@@ -1157,7 +1157,7 @@ bool nimcp_queue_manager_is_empty(nimcp_queue_manager_handle_t manager, uint32_t
                                   nimcp_queue_priority_t priority)
 {
     if (!is_valid_channel(manager, channel_id) || priority >= NIMCP_QUEUE_PRIORITY_COUNT) {
-        return true;  // Defensive: invalid params treated as empty
+        return false;  // Cannot determine state of invalid queue
     }
 
     nimcp_queue_channel_t* channel = &manager->channels[channel_id];
@@ -1189,7 +1189,7 @@ bool nimcp_queue_manager_is_full(nimcp_queue_manager_handle_t manager, uint32_t 
                                  nimcp_queue_priority_t priority)
 {
     if (!is_valid_channel(manager, channel_id) || priority >= NIMCP_QUEUE_PRIORITY_COUNT) {
-        return true;  // Defensive: invalid params treated as full
+        return false;  // Cannot determine state of invalid queue
     }
 
     nimcp_queue_channel_t* channel = &manager->channels[channel_id];

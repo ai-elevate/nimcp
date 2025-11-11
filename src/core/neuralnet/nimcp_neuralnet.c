@@ -483,6 +483,11 @@ static bool validate_network_config(const network_config_t* config)
         return false;
     }
 
+    // Guard: Check input/output dimensions
+    if (config->input_size == 0 || config->output_size == 0) {
+        return false;
+    }
+
     return true;
 }
 
