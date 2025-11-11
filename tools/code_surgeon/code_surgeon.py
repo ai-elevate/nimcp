@@ -444,22 +444,47 @@ File: {source_file.relative_to(nimcp_root)}
 """
 
     prompt += """## YOUR TASK
-Analyze the test failure and provide a fix. Your response MUST be in this exact format:
+Analyze the test failure and provide a MINIMAL, SURGICAL fix. Your response MUST be in this exact format:
 
 FIX_START
 FILE: <relative path to file to edit>
 OLD_CODE:
-<exact code to find and replace>
+<exact code to find and replace - must match VERBATIM including all whitespace>
 NEW_CODE:
-<replacement code>
+<replacement code - preserve formatting and indentation>
 EXPLANATION: <brief explanation of the fix>
 FIX_END
 
-Important:
-- OLD_CODE must match EXACTLY (including whitespace) a section in the file
-- Provide only ONE fix per response
-- Focus on the root cause, not symptoms
-- If you cannot determine a fix, respond with "NO_FIX_POSSIBLE"
+## CRITICAL RULES:
+1. OLD_CODE must be an EXACT, CHARACTER-FOR-CHARACTER match from the file
+   - Copy the code directly from the file content above
+   - Include ALL whitespace (spaces, tabs, newlines) exactly as shown
+   - Start at the beginning of a line, end at the end of a line
+2. Make MINIMAL changes - only fix what's broken
+   - Don't refactor or improve unrelated code
+   - Don't add extra functionality
+   - Don't change formatting unless necessary
+3. NEW_CODE must be VALID syntax
+   - No duplicate code blocks
+   - No unclosed braces/brackets
+   - Preserve all function signatures
+4. Provide ONLY ONE fix per response
+5. If you cannot determine a safe fix, respond with "NO_FIX_POSSIBLE"
+
+## EXAMPLE OF GOOD FIX:
+OLD_CODE:
+    EXPECT_EQ(result, nullptr);
+NEW_CODE:
+    EXPECT_NE(result, nullptr);
+EXPLANATION: Test expects non-null result
+
+## EXAMPLE OF BAD FIX (DO NOT DO THIS):
+OLD_CODE:
+    EXPECT_EQ(result
+NEW_CODE:
+    EXPECT_NE(result, nullptr);
+    extra_line();
+EXPLANATION: [Bad because: incomplete OLD_CODE, adds unrelated code]
 """
 
     # Call Claude API
