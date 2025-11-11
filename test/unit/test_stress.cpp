@@ -80,15 +80,29 @@ class StressTest : public ::testing::Test {
  */
 TEST_F(StressTest, NeuralNetwork_MassCreationDestruction)
 {
-    network_config_t config = {.num_neurons = 20,
-                               .ei_ratio = 0.8f,
-                               .learning_rate = 0.01f,
-                               .input_size = 10,
-                               .output_size = 5,
-                               .enable_stdp = true,
-                               .enable_hebbian = false,
-                               .enable_oja = false,
-                               .enable_homeostasis = false};
+    network_config_t config = {
+        .num_neurons = 20,
+        .ei_ratio = 0.8f,
+        .learning_rate = 0.01f,
+        .hebbian_rate = 0.001f,
+        .stdp_window = 20.0f,
+        .homeostatic_rate = 0.001f,
+        .target_activity = 0.1f,
+        .adaptation_rate = 0.01f,
+        .refractory_period = 2.0f,
+        .min_weight = -1.0f,
+        .max_weight = 1.0f,
+        .update_interval = 1,
+        .input_size = 10,
+        .output_size = 5,
+        .num_layers = 0,
+        .layer_sizes = nullptr,
+        .enable_stdp = true,
+        .enable_hebbian = false,
+        .enable_oja = false,
+        .enable_homeostasis = false,
+        .neuron_model = NEURON_MODEL_LIF,
+        .model_params = nullptr};
 
     std::vector<neural_network_t> networks;
     networks.reserve(STRESS_ITERATIONS);
@@ -111,15 +125,29 @@ TEST_F(StressTest, NeuralNetwork_MassCreationDestruction)
  */
 TEST_F(StressTest, NeuralNetwork_ConcurrentOperations)
 {
-    network_config_t config = {.num_neurons = 20,
-                               .ei_ratio = 0.8f,
-                               .learning_rate = 0.01f,
-                               .input_size = 10,
-                               .output_size = 5,
-                               .enable_stdp = true,
-                               .enable_hebbian = false,
-                               .enable_oja = false,
-                               .enable_homeostasis = false};
+    network_config_t config = {
+        .num_neurons = 20,
+        .ei_ratio = 0.8f,
+        .learning_rate = 0.01f,
+        .hebbian_rate = 0.001f,
+        .stdp_window = 20.0f,
+        .homeostatic_rate = 0.001f,
+        .target_activity = 0.1f,
+        .adaptation_rate = 0.01f,
+        .refractory_period = 2.0f,
+        .min_weight = -1.0f,
+        .max_weight = 1.0f,
+        .update_interval = 1,
+        .input_size = 10,
+        .output_size = 5,
+        .num_layers = 0,
+        .layer_sizes = nullptr,
+        .enable_stdp = true,
+        .enable_hebbian = false,
+        .enable_oja = false,
+        .enable_homeostasis = false,
+        .neuron_model = NEURON_MODEL_LIF,
+        .model_params = nullptr};
 
     std::atomic<int> error_count{0};
     std::vector<std::thread> threads;
@@ -166,15 +194,29 @@ TEST_F(StressTest, NeuralNetwork_ConcurrentOperations)
  */
 TEST_F(StressTest, DISABLED_NeuralNetwork_LongRunningStability)
 {
-    network_config_t config = {.num_neurons = 20,
-                               .ei_ratio = 0.8f,
-                               .learning_rate = 0.01f,
-                               .input_size = 10,
-                               .output_size = 5,
-                               .enable_stdp = true,
-                               .enable_hebbian = false,
-                               .enable_oja = false,
-                               .enable_homeostasis = false};
+    network_config_t config = {
+        .num_neurons = 20,
+        .ei_ratio = 0.8f,
+        .learning_rate = 0.01f,
+        .hebbian_rate = 0.001f,
+        .stdp_window = 20.0f,
+        .homeostatic_rate = 0.001f,
+        .target_activity = 0.1f,
+        .adaptation_rate = 0.01f,
+        .refractory_period = 2.0f,
+        .min_weight = -1.0f,
+        .max_weight = 1.0f,
+        .update_interval = 1,
+        .input_size = 10,
+        .output_size = 5,
+        .num_layers = 0,
+        .layer_sizes = nullptr,
+        .enable_stdp = true,
+        .enable_hebbian = false,
+        .enable_oja = false,
+        .enable_homeostasis = false,
+        .neuron_model = NEURON_MODEL_LIF,
+        .model_params = nullptr};
 
     neural_network_t net = neural_network_create(&config);
     ASSERT_NE(net, nullptr);
@@ -684,15 +726,29 @@ TEST_F(StressTest, DistributedCognition_RapidStartStopCycles)
  */
 TEST_F(StressTest, Performance_OperationLatency)
 {
-    network_config_t config = {.num_neurons = 20,
-                               .ei_ratio = 0.8f,
-                               .learning_rate = 0.01f,
-                               .input_size = 10,
-                               .output_size = 5,
-                               .enable_stdp = true,
-                               .enable_hebbian = false,
-                               .enable_oja = false,
-                               .enable_homeostasis = false};
+    network_config_t config = {
+        .num_neurons = 20,
+        .ei_ratio = 0.8f,
+        .learning_rate = 0.01f,
+        .hebbian_rate = 0.001f,
+        .stdp_window = 20.0f,
+        .homeostatic_rate = 0.001f,
+        .target_activity = 0.1f,
+        .adaptation_rate = 0.01f,
+        .refractory_period = 2.0f,
+        .min_weight = -1.0f,
+        .max_weight = 1.0f,
+        .update_interval = 1,
+        .input_size = 10,
+        .output_size = 5,
+        .num_layers = 0,
+        .layer_sizes = nullptr,
+        .enable_stdp = true,
+        .enable_hebbian = false,
+        .enable_oja = false,
+        .enable_homeostasis = false,
+        .neuron_model = NEURON_MODEL_LIF,
+        .model_params = nullptr};
 
     neural_network_t net = neural_network_create(&config);
     ASSERT_NE(net, nullptr);
