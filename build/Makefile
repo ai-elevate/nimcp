@@ -380,19 +380,6 @@ izhikevich_demo/fast:
 .PHONY : izhikevich_demo/fast
 
 #=============================================================================
-# Target rules for targets named programmable_synapses_demo
-
-# Build rule for target.
-programmable_synapses_demo: cmake_check_build_system
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 programmable_synapses_demo
-.PHONY : programmable_synapses_demo
-
-# fast build rule for target.
-programmable_synapses_demo/fast:
-	$(MAKE) $(MAKESILENT) -f examples/CMakeFiles/programmable_synapses_demo.dir/build.make examples/CMakeFiles/programmable_synapses_demo.dir/build
-.PHONY : programmable_synapses_demo/fast
-
-#=============================================================================
 # Target rules for targets named nlp_integration_test
 
 # Build rule for target.
@@ -469,19 +456,6 @@ test_phase4: cmake_check_build_system
 test_phase4/fast:
 	$(MAKE) $(MAKESILENT) -f examples/CMakeFiles/test_phase4.dir/build.make examples/CMakeFiles/test_phase4.dir/build
 .PHONY : test_phase4/fast
-
-#=============================================================================
-# Target rules for targets named full_system_integration_test
-
-# Build rule for target.
-full_system_integration_test: cmake_check_build_system
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 full_system_integration_test
-.PHONY : full_system_integration_test
-
-# fast build rule for target.
-full_system_integration_test/fast:
-	$(MAKE) $(MAKESILENT) -f examples/CMakeFiles/full_system_integration_test.dir/build.make examples/CMakeFiles/full_system_integration_test.dir/build
-.PHONY : full_system_integration_test/fast
 
 #=============================================================================
 # Target rules for targets named multimodal_integration_demo
@@ -2443,7 +2417,6 @@ help:
 	@echo "... ethics_demo"
 	@echo "... event_demo"
 	@echo "... fractal_network_demo"
-	@echo "... full_system_integration_test"
 	@echo "... gmock"
 	@echo "... gmock_main"
 	@echo "... gpu_integration_test"
@@ -2466,7 +2439,6 @@ help:
 	@echo "... nlp_integration_demo"
 	@echo "... nlp_integration_test"
 	@echo "... phase8_comprehensive_demo"
-	@echo "... programmable_synapses_demo"
 	@echo "... regression_test_regression"
 	@echo "... regression_test_visual_cortex_regression"
 	@echo "... simple_demo"

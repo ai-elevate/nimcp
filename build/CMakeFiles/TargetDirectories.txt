@@ -63,14 +63,12 @@
 /home/bbrelin/nimcp/build/examples/CMakeFiles/integrated_demo.dir
 /home/bbrelin/nimcp/build/examples/CMakeFiles/brain_probe_demo.dir
 /home/bbrelin/nimcp/build/examples/CMakeFiles/izhikevich_demo.dir
-/home/bbrelin/nimcp/build/examples/CMakeFiles/programmable_synapses_demo.dir
 /home/bbrelin/nimcp/build/examples/CMakeFiles/nlp_integration_test.dir
 /home/bbrelin/nimcp/build/examples/CMakeFiles/fractal_network_demo.dir
 /home/bbrelin/nimcp/build/examples/CMakeFiles/nlp_integration_demo.dir
 /home/bbrelin/nimcp/build/examples/CMakeFiles/test_pink_weights.dir
 /home/bbrelin/nimcp/build/examples/CMakeFiles/test_phase3.dir
 /home/bbrelin/nimcp/build/examples/CMakeFiles/test_phase4.dir
-/home/bbrelin/nimcp/build/examples/CMakeFiles/full_system_integration_test.dir
 /home/bbrelin/nimcp/build/examples/CMakeFiles/multimodal_integration_demo.dir
 /home/bbrelin/nimcp/build/examples/CMakeFiles/speech_cortex_demo.dir
 /home/bbrelin/nimcp/build/examples/CMakeFiles/phase8_comprehensive_demo.dir
