@@ -377,6 +377,30 @@ __/cognitive/explanations/nimcp_explanations.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/explanations/nimcp_explanations.c.s
 .PHONY : __/cognitive/explanations/nimcp_explanations.c.s
 
+__/cognitive/global_workspace/nimcp_global_workspace.o: __/cognitive/global_workspace/nimcp_global_workspace.c.o
+.PHONY : __/cognitive/global_workspace/nimcp_global_workspace.o
+
+# target to build an object file
+__/cognitive/global_workspace/nimcp_global_workspace.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/global_workspace/nimcp_global_workspace.c.o
+.PHONY : __/cognitive/global_workspace/nimcp_global_workspace.c.o
+
+__/cognitive/global_workspace/nimcp_global_workspace.i: __/cognitive/global_workspace/nimcp_global_workspace.c.i
+.PHONY : __/cognitive/global_workspace/nimcp_global_workspace.i
+
+# target to preprocess a source file
+__/cognitive/global_workspace/nimcp_global_workspace.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/global_workspace/nimcp_global_workspace.c.i
+.PHONY : __/cognitive/global_workspace/nimcp_global_workspace.c.i
+
+__/cognitive/global_workspace/nimcp_global_workspace.s: __/cognitive/global_workspace/nimcp_global_workspace.c.s
+.PHONY : __/cognitive/global_workspace/nimcp_global_workspace.s
+
+# target to generate assembly for a file
+__/cognitive/global_workspace/nimcp_global_workspace.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/global_workspace/nimcp_global_workspace.c.s
+.PHONY : __/cognitive/global_workspace/nimcp_global_workspace.c.s
+
 __/cognitive/introspection/nimcp_introspection.o: __/cognitive/introspection/nimcp_introspection.c.o
 .PHONY : __/cognitive/introspection/nimcp_introspection.o
 
@@ -2695,6 +2719,9 @@ help:
 	@echo "... __/cognitive/explanations/nimcp_explanations.o"
 	@echo "... __/cognitive/explanations/nimcp_explanations.i"
 	@echo "... __/cognitive/explanations/nimcp_explanations.s"
+	@echo "... __/cognitive/global_workspace/nimcp_global_workspace.o"
+	@echo "... __/cognitive/global_workspace/nimcp_global_workspace.i"
+	@echo "... __/cognitive/global_workspace/nimcp_global_workspace.s"
 	@echo "... __/cognitive/introspection/nimcp_introspection.o"
 	@echo "... __/cognitive/introspection/nimcp_introspection.i"
 	@echo "... __/cognitive/introspection/nimcp_introspection.s"

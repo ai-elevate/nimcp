@@ -12,6 +12,10 @@
 #include "utils/platform/nimcp_platform_mutex.h"
 #include "utils/platform/nimcp_platform_cond.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /**
  * @file nimcp_thread.h
  * @brief Professional pthread wrapper with error handling and resource management
@@ -312,5 +316,9 @@ void nimcp_thread_clear_error(void);
  * Call on shutdown
  */
 void nimcp_thread_cleanup(void);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif  // NIMCP_THREAD_H

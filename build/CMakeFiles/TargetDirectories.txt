@@ -107,6 +107,7 @@
 /home/bbrelin/nimcp/build/test/CMakeFiles/unit_test_brain_regions_real.dir
 /home/bbrelin/nimcp/build/test/CMakeFiles/unit_test_btree.dir
 /home/bbrelin/nimcp/build/test/CMakeFiles/unit_test_consolidation.dir
+/home/bbrelin/nimcp/build/test/CMakeFiles/unit_test_coverage_boost.dir
 /home/bbrelin/nimcp/build/test/CMakeFiles/unit_test_curiosity.dir
 /home/bbrelin/nimcp/build/test/CMakeFiles/unit_test_dataio.dir
 /home/bbrelin/nimcp/build/test/CMakeFiles/unit_test_distributed_advanced.dir
@@ -129,6 +130,7 @@
 /home/bbrelin/nimcp/build/test/CMakeFiles/unit_test_fft.dir
 /home/bbrelin/nimcp/build/test/CMakeFiles/unit_test_fractal_topology_real.dir
 /home/bbrelin/nimcp/build/test/CMakeFiles/unit_test_glial_integration_real.dir
+/home/bbrelin/nimcp/build/test/CMakeFiles/unit_test_global_workspace.dir
 /home/bbrelin/nimcp/build/test/CMakeFiles/unit_test_gpu_neuron_real.dir
 /home/bbrelin/nimcp/build/test/CMakeFiles/unit_test_graph.dir
 /home/bbrelin/nimcp/build/test/CMakeFiles/unit_test_hash_table.dir
@@ -216,12 +218,14 @@
 /home/bbrelin/nimcp/build/test/CMakeFiles/integration_test_brain_integration.dir
 /home/bbrelin/nimcp/build/test/CMakeFiles/integration_test_comprehensive_brain_integration.dir
 /home/bbrelin/nimcp/build/test/CMakeFiles/integration_test_glial_integration.dir
+/home/bbrelin/nimcp/build/test/CMakeFiles/integration_test_global_workspace_integration.dir
 /home/bbrelin/nimcp/build/test/CMakeFiles/integration_test_integration_cognitive.dir
 /home/bbrelin/nimcp/build/test/CMakeFiles/integration_test_integration_e2e.dir
 /home/bbrelin/nimcp/build/test/CMakeFiles/integration_test_integration_networking.dir
 /home/bbrelin/nimcp/build/test/CMakeFiles/integration_test_visual_cortex_integration.dir
 /home/bbrelin/nimcp/build/test/CMakeFiles/integration_topology_integration_tests.dir
 /home/bbrelin/nimcp/build/test/CMakeFiles/e2e_test_visual_cortex_e2e.dir
+/home/bbrelin/nimcp/build/test/CMakeFiles/regression_test_global_workspace_regression.dir
 /home/bbrelin/nimcp/build/test/CMakeFiles/regression_test_regression.dir
 /home/bbrelin/nimcp/build/test/CMakeFiles/regression_test_visual_cortex_regression.dir
 /home/bbrelin/nimcp/build/test/CMakeFiles/test.dir

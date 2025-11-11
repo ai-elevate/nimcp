@@ -53,6 +53,9 @@ typedef struct predictive_network_s* predictive_network_t;  // Opaque pointer
 // Phase 10.11: Mirror Neurons (Social Cognition & Imitation Learning)
 typedef struct mirror_neurons_system* mirror_neurons_t;  // Opaque pointer
 
+// Global Workspace Architecture (Global Workspace Theory - Baars, Dehaene)
+typedef struct global_workspace_struct* global_workspace_t;  // Opaque pointer
+
 // Neuromodulator System (for mental health interventions)
 typedef struct neuromodulator_system_struct* neuromodulator_system_t;  // Opaque pointer
 
@@ -240,6 +243,14 @@ typedef struct {
     float mirror_learning_rate;       /**< Association learning rate (default: 0.01) */
     float mirror_match_threshold;     /**< Action matching threshold (default: 0.7) */
 
+    // Global Workspace Architecture (Global Workspace Theory)
+    bool enable_global_workspace;     /**< Enable Global Workspace for conscious access */
+    uint32_t workspace_capacity_dim;  /**< Workspace content dimension (default: 256) */
+    float workspace_ignition_threshold; /**< Ignition threshold for conscious access (default: 0.6) */
+    uint32_t workspace_refractory_ms; /**< Refractory period between broadcasts in ms (default: 50) */
+    bool workspace_enable_history;    /**< Enable workspace history tracking (default: true) */
+    uint32_t workspace_history_depth; /**< History buffer depth (default: 10) */
+
     // === PERSISTENCE & CHECKPOINTING ===
     const char* checkpoint_path;      /**< Path to checkpoint file (NULL = no checkpoint) */
     bool auto_load;                   /**< Auto-load from checkpoint on create (default: true) */
@@ -296,6 +307,18 @@ void brain_destroy(brain_t brain);
  * @return Working memory pointer or NULL if not enabled
  */
 working_memory_t* brain_get_working_memory(brain_t brain);
+
+/**
+ * @brief Get global workspace from brain
+ *
+ * WHAT: Retrieve pointer to brain's global workspace subsystem
+ * WHY:  Allow cognitive modules to access workspace for competition and broadcasting
+ * HOW:  Return brain->global_workspace field
+ *
+ * @param brain Brain instance
+ * @return Global workspace pointer or NULL if not enabled
+ */
+global_workspace_t* brain_get_global_workspace(brain_t brain);
 
 /**
  * WHAT: Retrieve pointer to brain's sleep/wake subsystem (Phase 10.4)

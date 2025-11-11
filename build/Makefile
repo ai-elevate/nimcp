@@ -861,6 +861,19 @@ unit_test_consolidation/fast:
 .PHONY : unit_test_consolidation/fast
 
 #=============================================================================
+# Target rules for targets named unit_test_coverage_boost
+
+# Build rule for target.
+unit_test_coverage_boost: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_test_coverage_boost
+.PHONY : unit_test_coverage_boost
+
+# fast build rule for target.
+unit_test_coverage_boost/fast:
+	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_test_coverage_boost.dir/build.make test/CMakeFiles/unit_test_coverage_boost.dir/build
+.PHONY : unit_test_coverage_boost/fast
+
+#=============================================================================
 # Target rules for targets named unit_test_curiosity
 
 # Build rule for target.
@@ -1145,6 +1158,19 @@ unit_test_glial_integration_real: cmake_check_build_system
 unit_test_glial_integration_real/fast:
 	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_test_glial_integration_real.dir/build.make test/CMakeFiles/unit_test_glial_integration_real.dir/build
 .PHONY : unit_test_glial_integration_real/fast
+
+#=============================================================================
+# Target rules for targets named unit_test_global_workspace
+
+# Build rule for target.
+unit_test_global_workspace: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_test_global_workspace
+.PHONY : unit_test_global_workspace
+
+# fast build rule for target.
+unit_test_global_workspace/fast:
+	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_test_global_workspace.dir/build.make test/CMakeFiles/unit_test_global_workspace.dir/build
+.PHONY : unit_test_global_workspace/fast
 
 #=============================================================================
 # Target rules for targets named unit_test_gpu_neuron_real
@@ -2278,6 +2304,19 @@ integration_test_glial_integration/fast:
 .PHONY : integration_test_glial_integration/fast
 
 #=============================================================================
+# Target rules for targets named integration_test_global_workspace_integration
+
+# Build rule for target.
+integration_test_global_workspace_integration: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_test_global_workspace_integration
+.PHONY : integration_test_global_workspace_integration
+
+# fast build rule for target.
+integration_test_global_workspace_integration/fast:
+	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/integration_test_global_workspace_integration.dir/build.make test/CMakeFiles/integration_test_global_workspace_integration.dir/build
+.PHONY : integration_test_global_workspace_integration/fast
+
+#=============================================================================
 # Target rules for targets named integration_test_integration_cognitive
 
 # Build rule for target.
@@ -2356,6 +2395,19 @@ e2e_test_visual_cortex_e2e/fast:
 .PHONY : e2e_test_visual_cortex_e2e/fast
 
 #=============================================================================
+# Target rules for targets named regression_test_global_workspace_regression
+
+# Build rule for target.
+regression_test_global_workspace_regression: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_test_global_workspace_regression
+.PHONY : regression_test_global_workspace_regression
+
+# fast build rule for target.
+regression_test_global_workspace_regression/fast:
+	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/regression_test_global_workspace_regression.dir/build.make test/CMakeFiles/regression_test_global_workspace_regression.dir/build
+.PHONY : regression_test_global_workspace_regression/fast
+
+#=============================================================================
 # Target rules for targets named regression_test_regression
 
 # Build rule for target.
@@ -2414,6 +2466,7 @@ help:
 	@echo "... integration_test_brain_integration"
 	@echo "... integration_test_comprehensive_brain_integration"
 	@echo "... integration_test_glial_integration"
+	@echo "... integration_test_global_workspace_integration"
 	@echo "... integration_test_integration_cognitive"
 	@echo "... integration_test_integration_e2e"
 	@echo "... integration_test_integration_networking"
@@ -2426,6 +2479,7 @@ help:
 	@echo "... nlp_integration_demo"
 	@echo "... nlp_integration_test"
 	@echo "... phase8_comprehensive_demo"
+	@echo "... regression_test_global_workspace_regression"
 	@echo "... regression_test_regression"
 	@echo "... regression_test_visual_cortex_regression"
 	@echo "... simple_demo"
@@ -2456,6 +2510,7 @@ help:
 	@echo "... unit_test_brain_regions_real"
 	@echo "... unit_test_btree"
 	@echo "... unit_test_consolidation"
+	@echo "... unit_test_coverage_boost"
 	@echo "... unit_test_curiosity"
 	@echo "... unit_test_dataio"
 	@echo "... unit_test_distributed_advanced"
@@ -2478,6 +2533,7 @@ help:
 	@echo "... unit_test_fft"
 	@echo "... unit_test_fractal_topology_real"
 	@echo "... unit_test_glial_integration_real"
+	@echo "... unit_test_global_workspace"
 	@echo "... unit_test_gpu_neuron_real"
 	@echo "... unit_test_graph"
 	@echo "... unit_test_hash_table"

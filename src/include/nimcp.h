@@ -563,6 +563,167 @@ nimcp_status_t nimcp_brain_working_memory_refresh(
 );
 
 //=============================================================================
+// Global Workspace API - Conscious Access and Broadcasting
+//=============================================================================
+
+/**
+ * @brief Cognitive module identifiers for Global Workspace Theory
+ *
+ * These modules can compete for conscious access via the global workspace.
+ * Based on Global Workspace Theory (Baars, 1988; Dehaene, 2011).
+ */
+typedef enum {
+    NIMCP_MODULE_NONE = 0,
+    NIMCP_MODULE_PERCEPTION,
+    NIMCP_MODULE_WORKING_MEMORY,
+    NIMCP_MODULE_EXECUTIVE,
+    NIMCP_MODULE_THEORY_OF_MIND,
+    NIMCP_MODULE_ETHICS,
+    NIMCP_MODULE_ATTENTION,
+    NIMCP_MODULE_EMOTION,
+    NIMCP_MODULE_SALIENCE,
+    NIMCP_MODULE_MOTOR,
+    NIMCP_MODULE_LANGUAGE,
+    NIMCP_MODULE_METACOGNITION,
+    NIMCP_MODULE_CURIOSITY,
+    NIMCP_MODULE_INTROSPECTION,
+    NIMCP_MODULE_PREDICTIVE,
+    NIMCP_MODULE_CONSOLIDATION,
+    NIMCP_MODULE_EPISODIC_MEMORY,
+    NIMCP_MODULE_SEMANTIC_MEMORY,
+    NIMCP_MODULE_WELLBEING,
+    NIMCP_MODULE_MENTAL_HEALTH,
+    NIMCP_MODULE_GOAL_MOTIVATION,
+    NIMCP_MODULE_COGNITIVE_CONTROL,
+    NIMCP_MODULE_CUSTOM_START = 100
+} nimcp_cognitive_module_t;
+
+/**
+ * @brief Compete for global workspace access
+ *
+ * WHAT: Submit content to global workspace for potential conscious broadcast
+ * WHY:  Enable cross-module information integration via conscious access
+ * HOW:  Content competes with other modules; winner gets broadcast
+ *
+ * @param brain Brain instance
+ * @param module Source module identifier
+ * @param content Content vector (size = workspace capacity, typically 256 floats)
+ * @param content_dim Content dimension (must match workspace capacity)
+ * @param strength Competition strength (0.0 to 1.0, higher = more likely to win)
+ * @return NIMCP_OK if won and broadcast, NIMCP_ERROR otherwise
+ *
+ * @note Requires enable_global_workspace=true in brain config
+ * @note Refractory period (default 50ms) prevents rapid successive broadcasts
+ * @note Ignition threshold (default 0.6) gates conscious access
+ *
+ * Example:
+ * @code
+ * float features[256] = {...};
+ * nimcp_status_t status = nimcp_brain_workspace_compete(
+ *     brain, NIMCP_MODULE_PERCEPTION, features, 256, 0.85
+ * );
+ * if (status == NIMCP_OK) {
+ *     printf("Content reached conscious access!\n");
+ * }
+ * @endcode
+ */
+nimcp_status_t nimcp_brain_workspace_compete(
+    nimcp_brain_t brain,
+    nimcp_cognitive_module_t module,
+    const float* content,
+    uint32_t content_dim,
+    float strength
+);
+
+/**
+ * @brief Read current global workspace broadcast
+ *
+ * WHAT: Retrieve content from current conscious broadcast
+ * WHY:  Allow modules to access globally broadcast information
+ * HOW:  Copy broadcast content to provided buffer
+ *
+ * @param brain Brain instance
+ * @param content Output buffer for broadcast content
+ * @param max_dim Maximum buffer size
+ * @param actual_dim Output: actual content dimension
+ * @param source_module Output: source module of broadcast
+ * @return NIMCP_OK if broadcast available, NIMCP_ERROR otherwise
+ *
+ * Example:
+ * @code
+ * float content[256];
+ * uint32_t dim;
+ * nimcp_cognitive_module_t source;
+ * if (nimcp_brain_workspace_read(brain, content, 256, &dim, &source) == NIMCP_OK) {
+ *     printf("Broadcast from module %d, dimension %u\n", source, dim);
+ * }
+ * @endcode
+ */
+nimcp_status_t nimcp_brain_workspace_read(
+    nimcp_brain_t brain,
+    float* content,
+    uint32_t max_dim,
+    uint32_t* actual_dim,
+    nimcp_cognitive_module_t* source_module
+);
+
+/**
+ * @brief Subscribe module to workspace broadcasts
+ *
+ * WHAT: Register module to receive all future broadcasts
+ * WHY:  Enable module to stay informed of conscious content
+ * HOW:  Add module to subscriber list
+ *
+ * @param brain Brain instance
+ * @param module Module to subscribe
+ * @return NIMCP_OK on success, NIMCP_ERROR otherwise
+ */
+nimcp_status_t nimcp_brain_workspace_subscribe(
+    nimcp_brain_t brain,
+    nimcp_cognitive_module_t module
+);
+
+/**
+ * @brief Unsubscribe module from workspace broadcasts
+ *
+ * @param brain Brain instance
+ * @param module Module to unsubscribe
+ * @return NIMCP_OK on success, NIMCP_ERROR otherwise
+ */
+nimcp_status_t nimcp_brain_workspace_unsubscribe(
+    nimcp_brain_t brain,
+    nimcp_cognitive_module_t module
+);
+
+/**
+ * @brief Check if workspace has active broadcast
+ *
+ * @param brain Brain instance
+ * @param has_broadcast Output: true if broadcast active
+ * @return NIMCP_OK on success, NIMCP_ERROR otherwise
+ */
+nimcp_status_t nimcp_brain_workspace_has_broadcast(
+    nimcp_brain_t brain,
+    bool* has_broadcast
+);
+
+/**
+ * @brief Get workspace statistics
+ *
+ * @param brain Brain instance
+ * @param total_broadcasts Output: total broadcasts since creation
+ * @param total_competitions Output: total competition attempts
+ * @param avg_strength Output: average broadcast strength
+ * @return NIMCP_OK on success, NIMCP_ERROR otherwise
+ */
+nimcp_status_t nimcp_brain_workspace_stats(
+    nimcp_brain_t brain,
+    uint32_t* total_broadcasts,
+    uint32_t* total_competitions,
+    float* avg_strength
+);
+
+//=============================================================================
 // Neural Network API - Low-Level Interface (Advanced Users)
 //=============================================================================
 

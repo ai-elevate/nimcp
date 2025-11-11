@@ -271,6 +271,7 @@ test/all: test/CMakeFiles/unit_test_brain_regions_coverage.dir/all
 test/all: test/CMakeFiles/unit_test_brain_regions_real.dir/all
 test/all: test/CMakeFiles/unit_test_btree.dir/all
 test/all: test/CMakeFiles/unit_test_consolidation.dir/all
+test/all: test/CMakeFiles/unit_test_coverage_boost.dir/all
 test/all: test/CMakeFiles/unit_test_curiosity.dir/all
 test/all: test/CMakeFiles/unit_test_dataio.dir/all
 test/all: test/CMakeFiles/unit_test_distributed_advanced.dir/all
@@ -293,6 +294,7 @@ test/all: test/CMakeFiles/unit_test_explanations_real.dir/all
 test/all: test/CMakeFiles/unit_test_fft.dir/all
 test/all: test/CMakeFiles/unit_test_fractal_topology_real.dir/all
 test/all: test/CMakeFiles/unit_test_glial_integration_real.dir/all
+test/all: test/CMakeFiles/unit_test_global_workspace.dir/all
 test/all: test/CMakeFiles/unit_test_gpu_neuron_real.dir/all
 test/all: test/CMakeFiles/unit_test_graph.dir/all
 test/all: test/CMakeFiles/unit_test_hash_table.dir/all
@@ -380,12 +382,14 @@ test/all: test/CMakeFiles/unit_topology_tests.dir/all
 test/all: test/CMakeFiles/integration_test_brain_integration.dir/all
 test/all: test/CMakeFiles/integration_test_comprehensive_brain_integration.dir/all
 test/all: test/CMakeFiles/integration_test_glial_integration.dir/all
+test/all: test/CMakeFiles/integration_test_global_workspace_integration.dir/all
 test/all: test/CMakeFiles/integration_test_integration_cognitive.dir/all
 test/all: test/CMakeFiles/integration_test_integration_e2e.dir/all
 test/all: test/CMakeFiles/integration_test_integration_networking.dir/all
 test/all: test/CMakeFiles/integration_test_visual_cortex_integration.dir/all
 test/all: test/CMakeFiles/integration_topology_integration_tests.dir/all
 test/all: test/CMakeFiles/e2e_test_visual_cortex_e2e.dir/all
+test/all: test/CMakeFiles/regression_test_global_workspace_regression.dir/all
 test/all: test/CMakeFiles/regression_test_regression.dir/all
 test/all: test/CMakeFiles/regression_test_visual_cortex_regression.dir/all
 .PHONY : test/all
@@ -417,6 +421,7 @@ test/clean: test/CMakeFiles/unit_test_brain_regions_coverage.dir/clean
 test/clean: test/CMakeFiles/unit_test_brain_regions_real.dir/clean
 test/clean: test/CMakeFiles/unit_test_btree.dir/clean
 test/clean: test/CMakeFiles/unit_test_consolidation.dir/clean
+test/clean: test/CMakeFiles/unit_test_coverage_boost.dir/clean
 test/clean: test/CMakeFiles/unit_test_curiosity.dir/clean
 test/clean: test/CMakeFiles/unit_test_dataio.dir/clean
 test/clean: test/CMakeFiles/unit_test_distributed_advanced.dir/clean
@@ -439,6 +444,7 @@ test/clean: test/CMakeFiles/unit_test_explanations_real.dir/clean
 test/clean: test/CMakeFiles/unit_test_fft.dir/clean
 test/clean: test/CMakeFiles/unit_test_fractal_topology_real.dir/clean
 test/clean: test/CMakeFiles/unit_test_glial_integration_real.dir/clean
+test/clean: test/CMakeFiles/unit_test_global_workspace.dir/clean
 test/clean: test/CMakeFiles/unit_test_gpu_neuron_real.dir/clean
 test/clean: test/CMakeFiles/unit_test_graph.dir/clean
 test/clean: test/CMakeFiles/unit_test_hash_table.dir/clean
@@ -526,12 +532,14 @@ test/clean: test/CMakeFiles/unit_topology_tests.dir/clean
 test/clean: test/CMakeFiles/integration_test_brain_integration.dir/clean
 test/clean: test/CMakeFiles/integration_test_comprehensive_brain_integration.dir/clean
 test/clean: test/CMakeFiles/integration_test_glial_integration.dir/clean
+test/clean: test/CMakeFiles/integration_test_global_workspace_integration.dir/clean
 test/clean: test/CMakeFiles/integration_test_integration_cognitive.dir/clean
 test/clean: test/CMakeFiles/integration_test_integration_e2e.dir/clean
 test/clean: test/CMakeFiles/integration_test_integration_networking.dir/clean
 test/clean: test/CMakeFiles/integration_test_visual_cortex_integration.dir/clean
 test/clean: test/CMakeFiles/integration_topology_integration_tests.dir/clean
 test/clean: test/CMakeFiles/e2e_test_visual_cortex_e2e.dir/clean
+test/clean: test/CMakeFiles/regression_test_global_workspace_regression.dir/clean
 test/clean: test/CMakeFiles/regression_test_regression.dir/clean
 test/clean: test/CMakeFiles/regression_test_visual_cortex_regression.dir/clean
 .PHONY : test/clean
@@ -648,12 +656,12 @@ _deps/googletest-build/googletest/CMakeFiles/gtest_main.dir/clean:
 src/lib/CMakeFiles/nimcp.dir/all:
 	$(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/depend
 	$(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/bbrelin/nimcp/build/CMakeFiles --progress-num=11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28 "Built target nimcp"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/bbrelin/nimcp/build/CMakeFiles --progress-num=12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28 "Built target nimcp"
 .PHONY : src/lib/CMakeFiles/nimcp.dir/all
 
 # Build rule for subdir invocation for target.
 src/lib/CMakeFiles/nimcp.dir/rule: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 18
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 17
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 src/lib/CMakeFiles/nimcp.dir/all
 	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 0
 .PHONY : src/lib/CMakeFiles/nimcp.dir/rule
@@ -679,7 +687,7 @@ src/python/CMakeFiles/nimcp_python.dir/all: src/lib/CMakeFiles/nimcp.dir/all
 
 # Build rule for subdir invocation for target.
 src/python/CMakeFiles/nimcp_python.dir/rule: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 19
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 18
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 src/python/CMakeFiles/nimcp_python.dir/all
 	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 0
 .PHONY : src/python/CMakeFiles/nimcp_python.dir/rule
@@ -705,7 +713,7 @@ examples/CMakeFiles/simple_demo.dir/all: src/lib/CMakeFiles/nimcp.dir/all
 
 # Build rule for subdir invocation for target.
 examples/CMakeFiles/simple_demo.dir/rule: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 18
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 17
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 examples/CMakeFiles/simple_demo.dir/all
 	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 0
 .PHONY : examples/CMakeFiles/simple_demo.dir/rule
@@ -731,7 +739,7 @@ examples/CMakeFiles/working_memory_integration_demo.dir/all: src/lib/CMakeFiles/
 
 # Build rule for subdir invocation for target.
 examples/CMakeFiles/working_memory_integration_demo.dir/rule: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 18
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 17
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 examples/CMakeFiles/working_memory_integration_demo.dir/all
 	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 0
 .PHONY : examples/CMakeFiles/working_memory_integration_demo.dir/rule
@@ -757,7 +765,7 @@ examples/CMakeFiles/working_memory_public_api_demo.dir/all: src/lib/CMakeFiles/n
 
 # Build rule for subdir invocation for target.
 examples/CMakeFiles/working_memory_public_api_demo.dir/rule: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 19
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 18
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 examples/CMakeFiles/working_memory_public_api_demo.dir/all
 	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 0
 .PHONY : examples/CMakeFiles/working_memory_public_api_demo.dir/rule
@@ -783,7 +791,7 @@ examples/CMakeFiles/event_demo.dir/all: src/lib/CMakeFiles/nimcp.dir/all
 
 # Build rule for subdir invocation for target.
 examples/CMakeFiles/event_demo.dir/rule: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 19
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 18
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 examples/CMakeFiles/event_demo.dir/all
 	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 0
 .PHONY : examples/CMakeFiles/event_demo.dir/rule
@@ -809,7 +817,7 @@ examples/CMakeFiles/brain_demo.dir/all: src/lib/CMakeFiles/nimcp.dir/all
 
 # Build rule for subdir invocation for target.
 examples/CMakeFiles/brain_demo.dir/rule: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 18
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 17
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 examples/CMakeFiles/brain_demo.dir/all
 	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 0
 .PHONY : examples/CMakeFiles/brain_demo.dir/rule
@@ -835,7 +843,7 @@ examples/CMakeFiles/ethics_demo.dir/all: src/lib/CMakeFiles/nimcp.dir/all
 
 # Build rule for subdir invocation for target.
 examples/CMakeFiles/ethics_demo.dir/rule: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 18
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 17
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 examples/CMakeFiles/ethics_demo.dir/all
 	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 0
 .PHONY : examples/CMakeFiles/ethics_demo.dir/rule
@@ -861,7 +869,7 @@ examples/CMakeFiles/infant_demo.dir/all: src/lib/CMakeFiles/nimcp.dir/all
 
 # Build rule for subdir invocation for target.
 examples/CMakeFiles/infant_demo.dir/rule: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 18
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 17
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 examples/CMakeFiles/infant_demo.dir/all
 	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 0
 .PHONY : examples/CMakeFiles/infant_demo.dir/rule
@@ -882,12 +890,12 @@ examples/CMakeFiles/infant_demo.dir/clean:
 examples/CMakeFiles/integrated_demo.dir/all: src/lib/CMakeFiles/nimcp.dir/all
 	$(MAKE) $(MAKESILENT) -f examples/CMakeFiles/integrated_demo.dir/build.make examples/CMakeFiles/integrated_demo.dir/depend
 	$(MAKE) $(MAKESILENT) -f examples/CMakeFiles/integrated_demo.dir/build.make examples/CMakeFiles/integrated_demo.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/bbrelin/nimcp/build/CMakeFiles --progress-num=6 "Built target integrated_demo"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/bbrelin/nimcp/build/CMakeFiles --progress-num= "Built target integrated_demo"
 .PHONY : examples/CMakeFiles/integrated_demo.dir/all
 
 # Build rule for subdir invocation for target.
 examples/CMakeFiles/integrated_demo.dir/rule: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 19
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 17
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 examples/CMakeFiles/integrated_demo.dir/all
 	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 0
 .PHONY : examples/CMakeFiles/integrated_demo.dir/rule
@@ -913,7 +921,7 @@ examples/CMakeFiles/brain_probe_demo.dir/all: src/lib/CMakeFiles/nimcp.dir/all
 
 # Build rule for subdir invocation for target.
 examples/CMakeFiles/brain_probe_demo.dir/rule: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 18
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 17
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 examples/CMakeFiles/brain_probe_demo.dir/all
 	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 0
 .PHONY : examples/CMakeFiles/brain_probe_demo.dir/rule
@@ -939,7 +947,7 @@ examples/CMakeFiles/izhikevich_demo.dir/all: src/lib/CMakeFiles/nimcp.dir/all
 
 # Build rule for subdir invocation for target.
 examples/CMakeFiles/izhikevich_demo.dir/rule: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 18
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 17
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 examples/CMakeFiles/izhikevich_demo.dir/all
 	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 0
 .PHONY : examples/CMakeFiles/izhikevich_demo.dir/rule
@@ -965,7 +973,7 @@ examples/CMakeFiles/nlp_integration_test.dir/all: src/lib/CMakeFiles/nimcp.dir/a
 
 # Build rule for subdir invocation for target.
 examples/CMakeFiles/nlp_integration_test.dir/rule: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 18
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 17
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 examples/CMakeFiles/nlp_integration_test.dir/all
 	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 0
 .PHONY : examples/CMakeFiles/nlp_integration_test.dir/rule
@@ -991,7 +999,7 @@ examples/CMakeFiles/fractal_network_demo.dir/all: src/lib/CMakeFiles/nimcp.dir/a
 
 # Build rule for subdir invocation for target.
 examples/CMakeFiles/fractal_network_demo.dir/rule: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 18
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 17
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 examples/CMakeFiles/fractal_network_demo.dir/all
 	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 0
 .PHONY : examples/CMakeFiles/fractal_network_demo.dir/rule
@@ -1017,7 +1025,7 @@ examples/CMakeFiles/nlp_integration_demo.dir/all: src/lib/CMakeFiles/nimcp.dir/a
 
 # Build rule for subdir invocation for target.
 examples/CMakeFiles/nlp_integration_demo.dir/rule: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 18
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 17
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 examples/CMakeFiles/nlp_integration_demo.dir/all
 	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 0
 .PHONY : examples/CMakeFiles/nlp_integration_demo.dir/rule
@@ -1038,12 +1046,12 @@ examples/CMakeFiles/nlp_integration_demo.dir/clean:
 examples/CMakeFiles/test_pink_weights.dir/all: src/lib/CMakeFiles/nimcp.dir/all
 	$(MAKE) $(MAKESILENT) -f examples/CMakeFiles/test_pink_weights.dir/build.make examples/CMakeFiles/test_pink_weights.dir/depend
 	$(MAKE) $(MAKESILENT) -f examples/CMakeFiles/test_pink_weights.dir/build.make examples/CMakeFiles/test_pink_weights.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/bbrelin/nimcp/build/CMakeFiles --progress-num=33 "Built target test_pink_weights"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/bbrelin/nimcp/build/CMakeFiles --progress-num= "Built target test_pink_weights"
 .PHONY : examples/CMakeFiles/test_pink_weights.dir/all
 
 # Build rule for subdir invocation for target.
 examples/CMakeFiles/test_pink_weights.dir/rule: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 19
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 17
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 examples/CMakeFiles/test_pink_weights.dir/all
 	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 0
 .PHONY : examples/CMakeFiles/test_pink_weights.dir/rule
@@ -1069,7 +1077,7 @@ examples/CMakeFiles/test_phase3.dir/all: src/lib/CMakeFiles/nimcp.dir/all
 
 # Build rule for subdir invocation for target.
 examples/CMakeFiles/test_phase3.dir/rule: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 18
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 17
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 examples/CMakeFiles/test_phase3.dir/all
 	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 0
 .PHONY : examples/CMakeFiles/test_phase3.dir/rule
@@ -1090,7 +1098,7 @@ examples/CMakeFiles/test_phase3.dir/clean:
 examples/CMakeFiles/test_phase4.dir/all: src/lib/CMakeFiles/nimcp.dir/all
 	$(MAKE) $(MAKESILENT) -f examples/CMakeFiles/test_phase4.dir/build.make examples/CMakeFiles/test_phase4.dir/depend
 	$(MAKE) $(MAKESILENT) -f examples/CMakeFiles/test_phase4.dir/build.make examples/CMakeFiles/test_phase4.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/bbrelin/nimcp/build/CMakeFiles --progress-num= "Built target test_phase4"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/bbrelin/nimcp/build/CMakeFiles --progress-num=33 "Built target test_phase4"
 .PHONY : examples/CMakeFiles/test_phase4.dir/all
 
 # Build rule for subdir invocation for target.
@@ -1116,7 +1124,7 @@ examples/CMakeFiles/test_phase4.dir/clean:
 examples/CMakeFiles/multimodal_integration_demo.dir/all: src/lib/CMakeFiles/nimcp.dir/all
 	$(MAKE) $(MAKESILENT) -f examples/CMakeFiles/multimodal_integration_demo.dir/build.make examples/CMakeFiles/multimodal_integration_demo.dir/depend
 	$(MAKE) $(MAKESILENT) -f examples/CMakeFiles/multimodal_integration_demo.dir/build.make examples/CMakeFiles/multimodal_integration_demo.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/bbrelin/nimcp/build/CMakeFiles --progress-num= "Built target multimodal_integration_demo"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/bbrelin/nimcp/build/CMakeFiles --progress-num=11 "Built target multimodal_integration_demo"
 .PHONY : examples/CMakeFiles/multimodal_integration_demo.dir/all
 
 # Build rule for subdir invocation for target.
@@ -1142,7 +1150,7 @@ examples/CMakeFiles/multimodal_integration_demo.dir/clean:
 examples/CMakeFiles/speech_cortex_demo.dir/all: src/lib/CMakeFiles/nimcp.dir/all
 	$(MAKE) $(MAKESILENT) -f examples/CMakeFiles/speech_cortex_demo.dir/build.make examples/CMakeFiles/speech_cortex_demo.dir/depend
 	$(MAKE) $(MAKESILENT) -f examples/CMakeFiles/speech_cortex_demo.dir/build.make examples/CMakeFiles/speech_cortex_demo.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/bbrelin/nimcp/build/CMakeFiles --progress-num= "Built target speech_cortex_demo"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/bbrelin/nimcp/build/CMakeFiles --progress-num=32 "Built target speech_cortex_demo"
 .PHONY : examples/CMakeFiles/speech_cortex_demo.dir/all
 
 # Build rule for subdir invocation for target.
@@ -1173,7 +1181,7 @@ examples/CMakeFiles/phase8_comprehensive_demo.dir/all: src/lib/CMakeFiles/nimcp.
 
 # Build rule for subdir invocation for target.
 examples/CMakeFiles/phase8_comprehensive_demo.dir/rule: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 19
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 18
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 examples/CMakeFiles/phase8_comprehensive_demo.dir/all
 	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 0
 .PHONY : examples/CMakeFiles/phase8_comprehensive_demo.dir/rule
@@ -1199,7 +1207,7 @@ examples/CMakeFiles/gpu_integration_test.dir/all: src/lib/CMakeFiles/nimcp.dir/a
 
 # Build rule for subdir invocation for target.
 examples/CMakeFiles/gpu_integration_test.dir/rule: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 18
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 17
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 examples/CMakeFiles/gpu_integration_test.dir/all
 	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 0
 .PHONY : examples/CMakeFiles/gpu_integration_test.dir/rule
@@ -1220,12 +1228,12 @@ examples/CMakeFiles/gpu_integration_test.dir/clean:
 examples/CMakeFiles/test_neural_logic.dir/all: src/lib/CMakeFiles/nimcp.dir/all
 	$(MAKE) $(MAKESILENT) -f examples/CMakeFiles/test_neural_logic.dir/build.make examples/CMakeFiles/test_neural_logic.dir/depend
 	$(MAKE) $(MAKESILENT) -f examples/CMakeFiles/test_neural_logic.dir/build.make examples/CMakeFiles/test_neural_logic.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/bbrelin/nimcp/build/CMakeFiles --progress-num=32 "Built target test_neural_logic"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/bbrelin/nimcp/build/CMakeFiles --progress-num= "Built target test_neural_logic"
 .PHONY : examples/CMakeFiles/test_neural_logic.dir/all
 
 # Build rule for subdir invocation for target.
 examples/CMakeFiles/test_neural_logic.dir/rule: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 19
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 17
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 examples/CMakeFiles/test_neural_logic.dir/all
 	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 0
 .PHONY : examples/CMakeFiles/test_neural_logic.dir/rule
@@ -1251,7 +1259,7 @@ examples/CMakeFiles/cow_inference_server.dir/all: src/lib/CMakeFiles/nimcp.dir/a
 
 # Build rule for subdir invocation for target.
 examples/CMakeFiles/cow_inference_server.dir/rule: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 18
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 17
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 examples/CMakeFiles/cow_inference_server.dir/all
 	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 0
 .PHONY : examples/CMakeFiles/cow_inference_server.dir/rule
@@ -1277,7 +1285,7 @@ examples/CMakeFiles/cow_snapshot_learning.dir/all: src/lib/CMakeFiles/nimcp.dir/
 
 # Build rule for subdir invocation for target.
 examples/CMakeFiles/cow_snapshot_learning.dir/rule: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 18
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 17
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 examples/CMakeFiles/cow_snapshot_learning.dir/all
 	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 0
 .PHONY : examples/CMakeFiles/cow_snapshot_learning.dir/rule
@@ -1303,7 +1311,7 @@ examples/CMakeFiles/cow_ab_testing.dir/all: src/lib/CMakeFiles/nimcp.dir/all
 
 # Build rule for subdir invocation for target.
 examples/CMakeFiles/cow_ab_testing.dir/rule: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 19
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 18
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 examples/CMakeFiles/cow_ab_testing.dir/all
 	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 0
 .PHONY : examples/CMakeFiles/cow_ab_testing.dir/rule
@@ -1329,7 +1337,7 @@ examples/CMakeFiles/distributed_cow_demo.dir/all: src/lib/CMakeFiles/nimcp.dir/a
 
 # Build rule for subdir invocation for target.
 examples/CMakeFiles/distributed_cow_demo.dir/rule: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 19
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 18
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 examples/CMakeFiles/distributed_cow_demo.dir/all
 	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 0
 .PHONY : examples/CMakeFiles/distributed_cow_demo.dir/rule
@@ -1352,7 +1360,7 @@ test/CMakeFiles/unit_epistemic_filter_tests.dir/all: _deps/googletest-build/goog
 test/CMakeFiles/unit_epistemic_filter_tests.dir/all: src/lib/CMakeFiles/nimcp.dir/all
 	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_epistemic_filter_tests.dir/build.make test/CMakeFiles/unit_epistemic_filter_tests.dir/depend
 	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_epistemic_filter_tests.dir/build.make test/CMakeFiles/unit_epistemic_filter_tests.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/bbrelin/nimcp/build/CMakeFiles --progress-num= "Built target unit_epistemic_filter_tests"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/bbrelin/nimcp/build/CMakeFiles --progress-num=34 "Built target unit_epistemic_filter_tests"
 .PHONY : test/CMakeFiles/unit_epistemic_filter_tests.dir/all
 
 # Build rule for subdir invocation for target.
@@ -1380,12 +1388,12 @@ test/CMakeFiles/unit_pink_noise_tests.dir/all: _deps/googletest-build/googletest
 test/CMakeFiles/unit_pink_noise_tests.dir/all: src/lib/CMakeFiles/nimcp.dir/all
 	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_pink_noise_tests.dir/build.make test/CMakeFiles/unit_pink_noise_tests.dir/depend
 	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_pink_noise_tests.dir/build.make test/CMakeFiles/unit_pink_noise_tests.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/bbrelin/nimcp/build/CMakeFiles --progress-num=34 "Built target unit_pink_noise_tests"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/bbrelin/nimcp/build/CMakeFiles --progress-num= "Built target unit_pink_noise_tests"
 .PHONY : test/CMakeFiles/unit_pink_noise_tests.dir/all
 
 # Build rule for subdir invocation for target.
 test/CMakeFiles/unit_pink_noise_tests.dir/rule: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 20
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 18
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test/CMakeFiles/unit_pink_noise_tests.dir/all
 	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 0
 .PHONY : test/CMakeFiles/unit_pink_noise_tests.dir/rule
@@ -1408,7 +1416,7 @@ test/CMakeFiles/unit_test_adaptive.dir/all: _deps/googletest-build/googletest/CM
 test/CMakeFiles/unit_test_adaptive.dir/all: src/lib/CMakeFiles/nimcp.dir/all
 	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_test_adaptive.dir/build.make test/CMakeFiles/unit_test_adaptive.dir/depend
 	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_test_adaptive.dir/build.make test/CMakeFiles/unit_test_adaptive.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/bbrelin/nimcp/build/CMakeFiles --progress-num= "Built target unit_test_adaptive"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/bbrelin/nimcp/build/CMakeFiles --progress-num=35 "Built target unit_test_adaptive"
 .PHONY : test/CMakeFiles/unit_test_adaptive.dir/all
 
 # Build rule for subdir invocation for target.
@@ -1436,12 +1444,12 @@ test/CMakeFiles/unit_test_adaptive_comprehensive.dir/all: _deps/googletest-build
 test/CMakeFiles/unit_test_adaptive_comprehensive.dir/all: src/lib/CMakeFiles/nimcp.dir/all
 	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_test_adaptive_comprehensive.dir/build.make test/CMakeFiles/unit_test_adaptive_comprehensive.dir/depend
 	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_test_adaptive_comprehensive.dir/build.make test/CMakeFiles/unit_test_adaptive_comprehensive.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/bbrelin/nimcp/build/CMakeFiles --progress-num=35 "Built target unit_test_adaptive_comprehensive"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/bbrelin/nimcp/build/CMakeFiles --progress-num= "Built target unit_test_adaptive_comprehensive"
 .PHONY : test/CMakeFiles/unit_test_adaptive_comprehensive.dir/all
 
 # Build rule for subdir invocation for target.
 test/CMakeFiles/unit_test_adaptive_comprehensive.dir/rule: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 20
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 18
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test/CMakeFiles/unit_test_adaptive_comprehensive.dir/all
 	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 0
 .PHONY : test/CMakeFiles/unit_test_adaptive_comprehensive.dir/rule
@@ -1464,7 +1472,7 @@ test/CMakeFiles/unit_test_astrocyte_types_real.dir/all: _deps/googletest-build/g
 test/CMakeFiles/unit_test_astrocyte_types_real.dir/all: src/lib/CMakeFiles/nimcp.dir/all
 	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_test_astrocyte_types_real.dir/build.make test/CMakeFiles/unit_test_astrocyte_types_real.dir/depend
 	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_test_astrocyte_types_real.dir/build.make test/CMakeFiles/unit_test_astrocyte_types_real.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/bbrelin/nimcp/build/CMakeFiles --progress-num= "Built target unit_test_astrocyte_types_real"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/bbrelin/nimcp/build/CMakeFiles --progress-num=36 "Built target unit_test_astrocyte_types_real"
 .PHONY : test/CMakeFiles/unit_test_astrocyte_types_real.dir/all
 
 # Build rule for subdir invocation for target.
@@ -1492,12 +1500,12 @@ test/CMakeFiles/unit_test_astrocytes.dir/all: _deps/googletest-build/googletest/
 test/CMakeFiles/unit_test_astrocytes.dir/all: src/lib/CMakeFiles/nimcp.dir/all
 	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_test_astrocytes.dir/build.make test/CMakeFiles/unit_test_astrocytes.dir/depend
 	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_test_astrocytes.dir/build.make test/CMakeFiles/unit_test_astrocytes.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/bbrelin/nimcp/build/CMakeFiles --progress-num=36 "Built target unit_test_astrocytes"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/bbrelin/nimcp/build/CMakeFiles --progress-num= "Built target unit_test_astrocytes"
 .PHONY : test/CMakeFiles/unit_test_astrocytes.dir/all
 
 # Build rule for subdir invocation for target.
 test/CMakeFiles/unit_test_astrocytes.dir/rule: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 20
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 18
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test/CMakeFiles/unit_test_astrocytes.dir/all
 	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 0
 .PHONY : test/CMakeFiles/unit_test_astrocytes.dir/rule
@@ -1520,7 +1528,7 @@ test/CMakeFiles/unit_test_attention.dir/all: _deps/googletest-build/googletest/C
 test/CMakeFiles/unit_test_attention.dir/all: src/lib/CMakeFiles/nimcp.dir/all
 	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_test_attention.dir/build.make test/CMakeFiles/unit_test_attention.dir/depend
 	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_test_attention.dir/build.make test/CMakeFiles/unit_test_attention.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/bbrelin/nimcp/build/CMakeFiles --progress-num= "Built target unit_test_attention"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/bbrelin/nimcp/build/CMakeFiles --progress-num=37 "Built target unit_test_attention"
 .PHONY : test/CMakeFiles/unit_test_attention.dir/all
 
 # Build rule for subdir invocation for target.
@@ -1548,12 +1556,12 @@ test/CMakeFiles/unit_test_audio_cortex.dir/all: _deps/googletest-build/googletes
 test/CMakeFiles/unit_test_audio_cortex.dir/all: src/lib/CMakeFiles/nimcp.dir/all
 	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_test_audio_cortex.dir/build.make test/CMakeFiles/unit_test_audio_cortex.dir/depend
 	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_test_audio_cortex.dir/build.make test/CMakeFiles/unit_test_audio_cortex.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/bbrelin/nimcp/build/CMakeFiles --progress-num=37 "Built target unit_test_audio_cortex"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/bbrelin/nimcp/build/CMakeFiles --progress-num= "Built target unit_test_audio_cortex"
 .PHONY : test/CMakeFiles/unit_test_audio_cortex.dir/all
 
 # Build rule for subdir invocation for target.
 test/CMakeFiles/unit_test_audio_cortex.dir/rule: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 20
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 18
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test/CMakeFiles/unit_test_audio_cortex.dir/all
 	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 0
 .PHONY : test/CMakeFiles/unit_test_audio_cortex.dir/rule
@@ -1576,7 +1584,7 @@ test/CMakeFiles/unit_test_bcm.dir/all: _deps/googletest-build/googletest/CMakeFi
 test/CMakeFiles/unit_test_bcm.dir/all: src/lib/CMakeFiles/nimcp.dir/all
 	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_test_bcm.dir/build.make test/CMakeFiles/unit_test_bcm.dir/depend
 	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_test_bcm.dir/build.make test/CMakeFiles/unit_test_bcm.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/bbrelin/nimcp/build/CMakeFiles --progress-num= "Built target unit_test_bcm"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/bbrelin/nimcp/build/CMakeFiles --progress-num=38 "Built target unit_test_bcm"
 .PHONY : test/CMakeFiles/unit_test_bcm.dir/all
 
 # Build rule for subdir invocation for target.
@@ -1604,12 +1612,12 @@ test/CMakeFiles/unit_test_brain_comprehensive.dir/all: _deps/googletest-build/go
 test/CMakeFiles/unit_test_brain_comprehensive.dir/all: src/lib/CMakeFiles/nimcp.dir/all
 	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_test_brain_comprehensive.dir/build.make test/CMakeFiles/unit_test_brain_comprehensive.dir/depend
 	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_test_brain_comprehensive.dir/build.make test/CMakeFiles/unit_test_brain_comprehensive.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/bbrelin/nimcp/build/CMakeFiles --progress-num=38 "Built target unit_test_brain_comprehensive"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/bbrelin/nimcp/build/CMakeFiles --progress-num= "Built target unit_test_brain_comprehensive"
 .PHONY : test/CMakeFiles/unit_test_brain_comprehensive.dir/all
 
 # Build rule for subdir invocation for target.
 test/CMakeFiles/unit_test_brain_comprehensive.dir/rule: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 20
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 18
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test/CMakeFiles/unit_test_brain_comprehensive.dir/all
 	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 0
 .PHONY : test/CMakeFiles/unit_test_brain_comprehensive.dir/rule
@@ -1632,7 +1640,7 @@ test/CMakeFiles/unit_test_brain_cow.dir/all: _deps/googletest-build/googletest/C
 test/CMakeFiles/unit_test_brain_cow.dir/all: src/lib/CMakeFiles/nimcp.dir/all
 	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_test_brain_cow.dir/build.make test/CMakeFiles/unit_test_brain_cow.dir/depend
 	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_test_brain_cow.dir/build.make test/CMakeFiles/unit_test_brain_cow.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/bbrelin/nimcp/build/CMakeFiles --progress-num= "Built target unit_test_brain_cow"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/bbrelin/nimcp/build/CMakeFiles --progress-num=39 "Built target unit_test_brain_cow"
 .PHONY : test/CMakeFiles/unit_test_brain_cow.dir/all
 
 # Build rule for subdir invocation for target.
@@ -1660,12 +1668,12 @@ test/CMakeFiles/unit_test_brain_error_paths.dir/all: _deps/googletest-build/goog
 test/CMakeFiles/unit_test_brain_error_paths.dir/all: src/lib/CMakeFiles/nimcp.dir/all
 	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_test_brain_error_paths.dir/build.make test/CMakeFiles/unit_test_brain_error_paths.dir/depend
 	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_test_brain_error_paths.dir/build.make test/CMakeFiles/unit_test_brain_error_paths.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/bbrelin/nimcp/build/CMakeFiles --progress-num=39 "Built target unit_test_brain_error_paths"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/bbrelin/nimcp/build/CMakeFiles --progress-num= "Built target unit_test_brain_error_paths"
 .PHONY : test/CMakeFiles/unit_test_brain_error_paths.dir/all
 
 # Build rule for subdir invocation for target.
 test/CMakeFiles/unit_test_brain_error_paths.dir/rule: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 20
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 18
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test/CMakeFiles/unit_test_brain_error_paths.dir/all
 	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 0
 .PHONY : test/CMakeFiles/unit_test_brain_error_paths.dir/rule
@@ -1688,7 +1696,7 @@ test/CMakeFiles/unit_test_brain_learning_strategies.dir/all: _deps/googletest-bu
 test/CMakeFiles/unit_test_brain_learning_strategies.dir/all: src/lib/CMakeFiles/nimcp.dir/all
 	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_test_brain_learning_strategies.dir/build.make test/CMakeFiles/unit_test_brain_learning_strategies.dir/depend
 	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_test_brain_learning_strategies.dir/build.make test/CMakeFiles/unit_test_brain_learning_strategies.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/bbrelin/nimcp/build/CMakeFiles --progress-num= "Built target unit_test_brain_learning_strategies"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/bbrelin/nimcp/build/CMakeFiles --progress-num=40 "Built target unit_test_brain_learning_strategies"
 .PHONY : test/CMakeFiles/unit_test_brain_learning_strategies.dir/all
 
 # Build rule for subdir invocation for target.
@@ -1716,12 +1724,12 @@ test/CMakeFiles/unit_test_brain_master.dir/all: _deps/googletest-build/googletes
 test/CMakeFiles/unit_test_brain_master.dir/all: src/lib/CMakeFiles/nimcp.dir/all
 	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_test_brain_master.dir/build.make test/CMakeFiles/unit_test_brain_master.dir/depend
 	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_test_brain_master.dir/build.make test/CMakeFiles/unit_test_brain_master.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/bbrelin/nimcp/build/CMakeFiles --progress-num=40 "Built target unit_test_brain_master"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/bbrelin/nimcp/build/CMakeFiles --progress-num= "Built target unit_test_brain_master"
 .PHONY : test/CMakeFiles/unit_test_brain_master.dir/all
 
 # Build rule for subdir invocation for target.
 test/CMakeFiles/unit_test_brain_master.dir/rule: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 20
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 18
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test/CMakeFiles/unit_test_brain_master.dir/all
 	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 0
 .PHONY : test/CMakeFiles/unit_test_brain_master.dir/rule
@@ -1744,7 +1752,7 @@ test/CMakeFiles/unit_test_brain_oscillations_coverage.dir/all: _deps/googletest-
 test/CMakeFiles/unit_test_brain_oscillations_coverage.dir/all: src/lib/CMakeFiles/nimcp.dir/all
 	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_test_brain_oscillations_coverage.dir/build.make test/CMakeFiles/unit_test_brain_oscillations_coverage.dir/depend
 	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_test_brain_oscillations_coverage.dir/build.make test/CMakeFiles/unit_test_brain_oscillations_coverage.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/bbrelin/nimcp/build/CMakeFiles --progress-num= "Built target unit_test_brain_oscillations_coverage"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/bbrelin/nimcp/build/CMakeFiles --progress-num=41 "Built target unit_test_brain_oscillations_coverage"
 .PHONY : test/CMakeFiles/unit_test_brain_oscillations_coverage.dir/all
 
 # Build rule for subdir invocation for target.
@@ -1772,12 +1780,12 @@ test/CMakeFiles/unit_test_brain_oscillations_real.dir/all: _deps/googletest-buil
 test/CMakeFiles/unit_test_brain_oscillations_real.dir/all: src/lib/CMakeFiles/nimcp.dir/all
 	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_test_brain_oscillations_real.dir/build.make test/CMakeFiles/unit_test_brain_oscillations_real.dir/depend
 	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_test_brain_oscillations_real.dir/build.make test/CMakeFiles/unit_test_brain_oscillations_real.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/bbrelin/nimcp/build/CMakeFiles --progress-num=41 "Built target unit_test_brain_oscillations_real"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/bbrelin/nimcp/build/CMakeFiles --progress-num= "Built target unit_test_brain_oscillations_real"
 .PHONY : test/CMakeFiles/unit_test_brain_oscillations_real.dir/all
 
 # Build rule for subdir invocation for target.
 test/CMakeFiles/unit_test_brain_oscillations_real.dir/rule: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 20
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 18
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test/CMakeFiles/unit_test_brain_oscillations_real.dir/all
 	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 0
 .PHONY : test/CMakeFiles/unit_test_brain_oscillations_real.dir/rule
@@ -1800,7 +1808,7 @@ test/CMakeFiles/unit_test_brain_regions.dir/all: _deps/googletest-build/googlete
 test/CMakeFiles/unit_test_brain_regions.dir/all: src/lib/CMakeFiles/nimcp.dir/all
 	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_test_brain_regions.dir/build.make test/CMakeFiles/unit_test_brain_regions.dir/depend
 	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_test_brain_regions.dir/build.make test/CMakeFiles/unit_test_brain_regions.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/bbrelin/nimcp/build/CMakeFiles --progress-num= "Built target unit_test_brain_regions"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/bbrelin/nimcp/build/CMakeFiles --progress-num=42 "Built target unit_test_brain_regions"
 .PHONY : test/CMakeFiles/unit_test_brain_regions.dir/all
 
 # Build rule for subdir invocation for target.
@@ -1828,12 +1836,12 @@ test/CMakeFiles/unit_test_brain_regions_comprehensive.dir/all: _deps/googletest-
 test/CMakeFiles/unit_test_brain_regions_comprehensive.dir/all: src/lib/CMakeFiles/nimcp.dir/all
 	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_test_brain_regions_comprehensive.dir/build.make test/CMakeFiles/unit_test_brain_regions_comprehensive.dir/depend
 	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_test_brain_regions_comprehensive.dir/build.make test/CMakeFiles/unit_test_brain_regions_comprehensive.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/bbrelin/nimcp/build/CMakeFiles --progress-num=42 "Built target unit_test_brain_regions_comprehensive"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/bbrelin/nimcp/build/CMakeFiles --progress-num= "Built target unit_test_brain_regions_comprehensive"
 .PHONY : test/CMakeFiles/unit_test_brain_regions_comprehensive.dir/all
 
 # Build rule for subdir invocation for target.
 test/CMakeFiles/unit_test_brain_regions_comprehensive.dir/rule: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 20
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 18
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test/CMakeFiles/unit_test_brain_regions_comprehensive.dir/all
 	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 0
 .PHONY : test/CMakeFiles/unit_test_brain_regions_comprehensive.dir/rule
@@ -1861,7 +1869,7 @@ test/CMakeFiles/unit_test_brain_regions_coverage.dir/all: src/lib/CMakeFiles/nim
 
 # Build rule for subdir invocation for target.
 test/CMakeFiles/unit_test_brain_regions_coverage.dir/rule: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 20
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 19
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test/CMakeFiles/unit_test_brain_regions_coverage.dir/all
 	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 0
 .PHONY : test/CMakeFiles/unit_test_brain_regions_coverage.dir/rule
@@ -1889,7 +1897,7 @@ test/CMakeFiles/unit_test_brain_regions_real.dir/all: src/lib/CMakeFiles/nimcp.d
 
 # Build rule for subdir invocation for target.
 test/CMakeFiles/unit_test_brain_regions_real.dir/rule: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 19
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 18
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test/CMakeFiles/unit_test_brain_regions_real.dir/all
 	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 0
 .PHONY : test/CMakeFiles/unit_test_brain_regions_real.dir/rule
@@ -1917,7 +1925,7 @@ test/CMakeFiles/unit_test_btree.dir/all: src/lib/CMakeFiles/nimcp.dir/all
 
 # Build rule for subdir invocation for target.
 test/CMakeFiles/unit_test_btree.dir/rule: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 20
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 19
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test/CMakeFiles/unit_test_btree.dir/all
 	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 0
 .PHONY : test/CMakeFiles/unit_test_btree.dir/rule
@@ -1945,7 +1953,7 @@ test/CMakeFiles/unit_test_consolidation.dir/all: src/lib/CMakeFiles/nimcp.dir/al
 
 # Build rule for subdir invocation for target.
 test/CMakeFiles/unit_test_consolidation.dir/rule: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 19
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 18
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test/CMakeFiles/unit_test_consolidation.dir/all
 	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 0
 .PHONY : test/CMakeFiles/unit_test_consolidation.dir/rule
@@ -1960,6 +1968,34 @@ test/CMakeFiles/unit_test_consolidation.dir/clean:
 .PHONY : test/CMakeFiles/unit_test_consolidation.dir/clean
 
 #=============================================================================
+# Target rules for target test/CMakeFiles/unit_test_coverage_boost.dir
+
+# All Build rule for target.
+test/CMakeFiles/unit_test_coverage_boost.dir/all: _deps/googletest-build/googletest/CMakeFiles/gtest.dir/all
+test/CMakeFiles/unit_test_coverage_boost.dir/all: _deps/googletest-build/googletest/CMakeFiles/gtest_main.dir/all
+test/CMakeFiles/unit_test_coverage_boost.dir/all: src/lib/CMakeFiles/nimcp.dir/all
+	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_test_coverage_boost.dir/build.make test/CMakeFiles/unit_test_coverage_boost.dir/depend
+	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_test_coverage_boost.dir/build.make test/CMakeFiles/unit_test_coverage_boost.dir/build
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/bbrelin/nimcp/build/CMakeFiles --progress-num=45 "Built target unit_test_coverage_boost"
+.PHONY : test/CMakeFiles/unit_test_coverage_boost.dir/all
+
+# Build rule for subdir invocation for target.
+test/CMakeFiles/unit_test_coverage_boost.dir/rule: cmake_check_build_system
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 19
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test/CMakeFiles/unit_test_coverage_boost.dir/all
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 0
+.PHONY : test/CMakeFiles/unit_test_coverage_boost.dir/rule
+
+# Convenience name for target.
+unit_test_coverage_boost: test/CMakeFiles/unit_test_coverage_boost.dir/rule
+.PHONY : unit_test_coverage_boost
+
+# clean rule for target.
+test/CMakeFiles/unit_test_coverage_boost.dir/clean:
+	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_test_coverage_boost.dir/build.make test/CMakeFiles/unit_test_coverage_boost.dir/clean
+.PHONY : test/CMakeFiles/unit_test_coverage_boost.dir/clean
+
+#=============================================================================
 # Target rules for target test/CMakeFiles/unit_test_curiosity.dir
 
 # All Build rule for target.
@@ -1968,12 +2004,12 @@ test/CMakeFiles/unit_test_curiosity.dir/all: _deps/googletest-build/googletest/C
 test/CMakeFiles/unit_test_curiosity.dir/all: src/lib/CMakeFiles/nimcp.dir/all
 	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_test_curiosity.dir/build.make test/CMakeFiles/unit_test_curiosity.dir/depend
 	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_test_curiosity.dir/build.make test/CMakeFiles/unit_test_curiosity.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/bbrelin/nimcp/build/CMakeFiles --progress-num=45 "Built target unit_test_curiosity"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/bbrelin/nimcp/build/CMakeFiles --progress-num= "Built target unit_test_curiosity"
 .PHONY : test/CMakeFiles/unit_test_curiosity.dir/all
 
 # Build rule for subdir invocation for target.
 test/CMakeFiles/unit_test_curiosity.dir/rule: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 20
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 18
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test/CMakeFiles/unit_test_curiosity.dir/all
 	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 0
 .PHONY : test/CMakeFiles/unit_test_curiosity.dir/rule
@@ -1996,7 +2032,7 @@ test/CMakeFiles/unit_test_dataio.dir/all: _deps/googletest-build/googletest/CMak
 test/CMakeFiles/unit_test_dataio.dir/all: src/lib/CMakeFiles/nimcp.dir/all
 	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_test_dataio.dir/build.make test/CMakeFiles/unit_test_dataio.dir/depend
 	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_test_dataio.dir/build.make test/CMakeFiles/unit_test_dataio.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/bbrelin/nimcp/build/CMakeFiles --progress-num= "Built target unit_test_dataio"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/bbrelin/nimcp/build/CMakeFiles --progress-num=46 "Built target unit_test_dataio"
 .PHONY : test/CMakeFiles/unit_test_dataio.dir/all
 
 # Build rule for subdir invocation for target.
@@ -2024,12 +2060,12 @@ test/CMakeFiles/unit_test_distributed_advanced.dir/all: _deps/googletest-build/g
 test/CMakeFiles/unit_test_distributed_advanced.dir/all: src/lib/CMakeFiles/nimcp.dir/all
 	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_test_distributed_advanced.dir/build.make test/CMakeFiles/unit_test_distributed_advanced.dir/depend
 	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_test_distributed_advanced.dir/build.make test/CMakeFiles/unit_test_distributed_advanced.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/bbrelin/nimcp/build/CMakeFiles --progress-num=46 "Built target unit_test_distributed_advanced"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/bbrelin/nimcp/build/CMakeFiles --progress-num= "Built target unit_test_distributed_advanced"
 .PHONY : test/CMakeFiles/unit_test_distributed_advanced.dir/all
 
 # Build rule for subdir invocation for target.
 test/CMakeFiles/unit_test_distributed_advanced.dir/rule: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 20
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 18
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test/CMakeFiles/unit_test_distributed_advanced.dir/all
 	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 0
 .PHONY : test/CMakeFiles/unit_test_distributed_advanced.dir/rule
@@ -2052,7 +2088,7 @@ test/CMakeFiles/unit_test_distributed_cognition.dir/all: _deps/googletest-build/
 test/CMakeFiles/unit_test_distributed_cognition.dir/all: src/lib/CMakeFiles/nimcp.dir/all
 	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_test_distributed_cognition.dir/build.make test/CMakeFiles/unit_test_distributed_cognition.dir/depend
 	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_test_distributed_cognition.dir/build.make test/CMakeFiles/unit_test_distributed_cognition.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/bbrelin/nimcp/build/CMakeFiles --progress-num= "Built target unit_test_distributed_cognition"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/bbrelin/nimcp/build/CMakeFiles --progress-num=47 "Built target unit_test_distributed_cognition"
 .PHONY : test/CMakeFiles/unit_test_distributed_cognition.dir/all
 
 # Build rule for subdir invocation for target.
@@ -2080,12 +2116,12 @@ test/CMakeFiles/unit_test_distributed_cow_coverage.dir/all: _deps/googletest-bui
 test/CMakeFiles/unit_test_distributed_cow_coverage.dir/all: src/lib/CMakeFiles/nimcp.dir/all
 	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_test_distributed_cow_coverage.dir/build.make test/CMakeFiles/unit_test_distributed_cow_coverage.dir/depend
 	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_test_distributed_cow_coverage.dir/build.make test/CMakeFiles/unit_test_distributed_cow_coverage.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/bbrelin/nimcp/build/CMakeFiles --progress-num=47 "Built target unit_test_distributed_cow_coverage"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/bbrelin/nimcp/build/CMakeFiles --progress-num= "Built target unit_test_distributed_cow_coverage"
 .PHONY : test/CMakeFiles/unit_test_distributed_cow_coverage.dir/all
 
 # Build rule for subdir invocation for target.
 test/CMakeFiles/unit_test_distributed_cow_coverage.dir/rule: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 20
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 18
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test/CMakeFiles/unit_test_distributed_cow_coverage.dir/all
 	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 0
 .PHONY : test/CMakeFiles/unit_test_distributed_cow_coverage.dir/rule
@@ -2108,7 +2144,7 @@ test/CMakeFiles/unit_test_distributed_cow_real.dir/all: _deps/googletest-build/g
 test/CMakeFiles/unit_test_distributed_cow_real.dir/all: src/lib/CMakeFiles/nimcp.dir/all
 	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_test_distributed_cow_real.dir/build.make test/CMakeFiles/unit_test_distributed_cow_real.dir/depend
 	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_test_distributed_cow_real.dir/build.make test/CMakeFiles/unit_test_distributed_cow_real.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/bbrelin/nimcp/build/CMakeFiles --progress-num= "Built target unit_test_distributed_cow_real"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/bbrelin/nimcp/build/CMakeFiles --progress-num=48 "Built target unit_test_distributed_cow_real"
 .PHONY : test/CMakeFiles/unit_test_distributed_cow_real.dir/all
 
 # Build rule for subdir invocation for target.
@@ -2136,12 +2172,12 @@ test/CMakeFiles/unit_test_emotional_tagging.dir/all: _deps/googletest-build/goog
 test/CMakeFiles/unit_test_emotional_tagging.dir/all: src/lib/CMakeFiles/nimcp.dir/all
 	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_test_emotional_tagging.dir/build.make test/CMakeFiles/unit_test_emotional_tagging.dir/depend
 	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_test_emotional_tagging.dir/build.make test/CMakeFiles/unit_test_emotional_tagging.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/bbrelin/nimcp/build/CMakeFiles --progress-num=48 "Built target unit_test_emotional_tagging"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/bbrelin/nimcp/build/CMakeFiles --progress-num= "Built target unit_test_emotional_tagging"
 .PHONY : test/CMakeFiles/unit_test_emotional_tagging.dir/all
 
 # Build rule for subdir invocation for target.
 test/CMakeFiles/unit_test_emotional_tagging.dir/rule: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 20
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 18
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test/CMakeFiles/unit_test_emotional_tagging.dir/all
 	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 0
 .PHONY : test/CMakeFiles/unit_test_emotional_tagging.dir/rule
@@ -2164,7 +2200,7 @@ test/CMakeFiles/unit_test_emotional_tagging_real.dir/all: _deps/googletest-build
 test/CMakeFiles/unit_test_emotional_tagging_real.dir/all: src/lib/CMakeFiles/nimcp.dir/all
 	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_test_emotional_tagging_real.dir/build.make test/CMakeFiles/unit_test_emotional_tagging_real.dir/depend
 	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_test_emotional_tagging_real.dir/build.make test/CMakeFiles/unit_test_emotional_tagging_real.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/bbrelin/nimcp/build/CMakeFiles --progress-num= "Built target unit_test_emotional_tagging_real"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/bbrelin/nimcp/build/CMakeFiles --progress-num=49 "Built target unit_test_emotional_tagging_real"
 .PHONY : test/CMakeFiles/unit_test_emotional_tagging_real.dir/all
 
 # Build rule for subdir invocation for target.
@@ -2192,12 +2228,12 @@ test/CMakeFiles/unit_test_encryption_real.dir/all: _deps/googletest-build/google
 test/CMakeFiles/unit_test_encryption_real.dir/all: src/lib/CMakeFiles/nimcp.dir/all
 	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_test_encryption_real.dir/build.make test/CMakeFiles/unit_test_encryption_real.dir/depend
 	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_test_encryption_real.dir/build.make test/CMakeFiles/unit_test_encryption_real.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/bbrelin/nimcp/build/CMakeFiles --progress-num=49 "Built target unit_test_encryption_real"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/bbrelin/nimcp/build/CMakeFiles --progress-num= "Built target unit_test_encryption_real"
 .PHONY : test/CMakeFiles/unit_test_encryption_real.dir/all
 
 # Build rule for subdir invocation for target.
 test/CMakeFiles/unit_test_encryption_real.dir/rule: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 20
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 18
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test/CMakeFiles/unit_test_encryption_real.dir/all
 	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 0
 .PHONY : test/CMakeFiles/unit_test_encryption_real.dir/rule
@@ -2220,7 +2256,7 @@ test/CMakeFiles/unit_test_error_injection.dir/all: _deps/googletest-build/google
 test/CMakeFiles/unit_test_error_injection.dir/all: src/lib/CMakeFiles/nimcp.dir/all
 	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_test_error_injection.dir/build.make test/CMakeFiles/unit_test_error_injection.dir/depend
 	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_test_error_injection.dir/build.make test/CMakeFiles/unit_test_error_injection.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/bbrelin/nimcp/build/CMakeFiles --progress-num= "Built target unit_test_error_injection"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/bbrelin/nimcp/build/CMakeFiles --progress-num=50 "Built target unit_test_error_injection"
 .PHONY : test/CMakeFiles/unit_test_error_injection.dir/all
 
 # Build rule for subdir invocation for target.
@@ -2248,12 +2284,12 @@ test/CMakeFiles/unit_test_ethics.dir/all: _deps/googletest-build/googletest/CMak
 test/CMakeFiles/unit_test_ethics.dir/all: src/lib/CMakeFiles/nimcp.dir/all
 	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_test_ethics.dir/build.make test/CMakeFiles/unit_test_ethics.dir/depend
 	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_test_ethics.dir/build.make test/CMakeFiles/unit_test_ethics.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/bbrelin/nimcp/build/CMakeFiles --progress-num=50 "Built target unit_test_ethics"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/bbrelin/nimcp/build/CMakeFiles --progress-num= "Built target unit_test_ethics"
 .PHONY : test/CMakeFiles/unit_test_ethics.dir/all
 
 # Build rule for subdir invocation for target.
 test/CMakeFiles/unit_test_ethics.dir/rule: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 20
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 18
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test/CMakeFiles/unit_test_ethics.dir/all
 	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 0
 .PHONY : test/CMakeFiles/unit_test_ethics.dir/rule
@@ -2276,7 +2312,7 @@ test/CMakeFiles/unit_test_ethics_comprehensive.dir/all: _deps/googletest-build/g
 test/CMakeFiles/unit_test_ethics_comprehensive.dir/all: src/lib/CMakeFiles/nimcp.dir/all
 	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_test_ethics_comprehensive.dir/build.make test/CMakeFiles/unit_test_ethics_comprehensive.dir/depend
 	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_test_ethics_comprehensive.dir/build.make test/CMakeFiles/unit_test_ethics_comprehensive.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/bbrelin/nimcp/build/CMakeFiles --progress-num= "Built target unit_test_ethics_comprehensive"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/bbrelin/nimcp/build/CMakeFiles --progress-num=51 "Built target unit_test_ethics_comprehensive"
 .PHONY : test/CMakeFiles/unit_test_ethics_comprehensive.dir/all
 
 # Build rule for subdir invocation for target.
@@ -2304,12 +2340,12 @@ test/CMakeFiles/unit_test_ethics_real.dir/all: _deps/googletest-build/googletest
 test/CMakeFiles/unit_test_ethics_real.dir/all: src/lib/CMakeFiles/nimcp.dir/all
 	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_test_ethics_real.dir/build.make test/CMakeFiles/unit_test_ethics_real.dir/depend
 	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_test_ethics_real.dir/build.make test/CMakeFiles/unit_test_ethics_real.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/bbrelin/nimcp/build/CMakeFiles --progress-num=51 "Built target unit_test_ethics_real"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/bbrelin/nimcp/build/CMakeFiles --progress-num= "Built target unit_test_ethics_real"
 .PHONY : test/CMakeFiles/unit_test_ethics_real.dir/all
 
 # Build rule for subdir invocation for target.
 test/CMakeFiles/unit_test_ethics_real.dir/rule: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 20
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 18
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test/CMakeFiles/unit_test_ethics_real.dir/all
 	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 0
 .PHONY : test/CMakeFiles/unit_test_ethics_real.dir/rule
@@ -2332,7 +2368,7 @@ test/CMakeFiles/unit_test_events.dir/all: _deps/googletest-build/googletest/CMak
 test/CMakeFiles/unit_test_events.dir/all: src/lib/CMakeFiles/nimcp.dir/all
 	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_test_events.dir/build.make test/CMakeFiles/unit_test_events.dir/depend
 	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_test_events.dir/build.make test/CMakeFiles/unit_test_events.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/bbrelin/nimcp/build/CMakeFiles --progress-num= "Built target unit_test_events"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/bbrelin/nimcp/build/CMakeFiles --progress-num=52 "Built target unit_test_events"
 .PHONY : test/CMakeFiles/unit_test_events.dir/all
 
 # Build rule for subdir invocation for target.
@@ -2360,12 +2396,12 @@ test/CMakeFiles/unit_test_execution_mode_real.dir/all: _deps/googletest-build/go
 test/CMakeFiles/unit_test_execution_mode_real.dir/all: src/lib/CMakeFiles/nimcp.dir/all
 	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_test_execution_mode_real.dir/build.make test/CMakeFiles/unit_test_execution_mode_real.dir/depend
 	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_test_execution_mode_real.dir/build.make test/CMakeFiles/unit_test_execution_mode_real.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/bbrelin/nimcp/build/CMakeFiles --progress-num=52 "Built target unit_test_execution_mode_real"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/bbrelin/nimcp/build/CMakeFiles --progress-num= "Built target unit_test_execution_mode_real"
 .PHONY : test/CMakeFiles/unit_test_execution_mode_real.dir/all
 
 # Build rule for subdir invocation for target.
 test/CMakeFiles/unit_test_execution_mode_real.dir/rule: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 20
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 18
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test/CMakeFiles/unit_test_execution_mode_real.dir/all
 	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 0
 .PHONY : test/CMakeFiles/unit_test_execution_mode_real.dir/rule
@@ -2388,7 +2424,7 @@ test/CMakeFiles/unit_test_executive.dir/all: _deps/googletest-build/googletest/C
 test/CMakeFiles/unit_test_executive.dir/all: src/lib/CMakeFiles/nimcp.dir/all
 	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_test_executive.dir/build.make test/CMakeFiles/unit_test_executive.dir/depend
 	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_test_executive.dir/build.make test/CMakeFiles/unit_test_executive.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/bbrelin/nimcp/build/CMakeFiles --progress-num= "Built target unit_test_executive"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/bbrelin/nimcp/build/CMakeFiles --progress-num=53 "Built target unit_test_executive"
 .PHONY : test/CMakeFiles/unit_test_executive.dir/all
 
 # Build rule for subdir invocation for target.
@@ -2416,12 +2452,12 @@ test/CMakeFiles/unit_test_executive_real.dir/all: _deps/googletest-build/googlet
 test/CMakeFiles/unit_test_executive_real.dir/all: src/lib/CMakeFiles/nimcp.dir/all
 	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_test_executive_real.dir/build.make test/CMakeFiles/unit_test_executive_real.dir/depend
 	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_test_executive_real.dir/build.make test/CMakeFiles/unit_test_executive_real.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/bbrelin/nimcp/build/CMakeFiles --progress-num=53 "Built target unit_test_executive_real"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/bbrelin/nimcp/build/CMakeFiles --progress-num= "Built target unit_test_executive_real"
 .PHONY : test/CMakeFiles/unit_test_executive_real.dir/all
 
 # Build rule for subdir invocation for target.
 test/CMakeFiles/unit_test_executive_real.dir/rule: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 20
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 18
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test/CMakeFiles/unit_test_executive_real.dir/all
 	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 0
 .PHONY : test/CMakeFiles/unit_test_executive_real.dir/rule
@@ -2444,7 +2480,7 @@ test/CMakeFiles/unit_test_explanations.dir/all: _deps/googletest-build/googletes
 test/CMakeFiles/unit_test_explanations.dir/all: src/lib/CMakeFiles/nimcp.dir/all
 	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_test_explanations.dir/build.make test/CMakeFiles/unit_test_explanations.dir/depend
 	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_test_explanations.dir/build.make test/CMakeFiles/unit_test_explanations.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/bbrelin/nimcp/build/CMakeFiles --progress-num= "Built target unit_test_explanations"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/bbrelin/nimcp/build/CMakeFiles --progress-num=54 "Built target unit_test_explanations"
 .PHONY : test/CMakeFiles/unit_test_explanations.dir/all
 
 # Build rule for subdir invocation for target.
@@ -2472,12 +2508,12 @@ test/CMakeFiles/unit_test_explanations_real.dir/all: _deps/googletest-build/goog
 test/CMakeFiles/unit_test_explanations_real.dir/all: src/lib/CMakeFiles/nimcp.dir/all
 	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_test_explanations_real.dir/build.make test/CMakeFiles/unit_test_explanations_real.dir/depend
 	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_test_explanations_real.dir/build.make test/CMakeFiles/unit_test_explanations_real.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/bbrelin/nimcp/build/CMakeFiles --progress-num=54 "Built target unit_test_explanations_real"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/bbrelin/nimcp/build/CMakeFiles --progress-num= "Built target unit_test_explanations_real"
 .PHONY : test/CMakeFiles/unit_test_explanations_real.dir/all
 
 # Build rule for subdir invocation for target.
 test/CMakeFiles/unit_test_explanations_real.dir/rule: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 20
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 18
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test/CMakeFiles/unit_test_explanations_real.dir/all
 	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 0
 .PHONY : test/CMakeFiles/unit_test_explanations_real.dir/rule
@@ -2500,7 +2536,7 @@ test/CMakeFiles/unit_test_fft.dir/all: _deps/googletest-build/googletest/CMakeFi
 test/CMakeFiles/unit_test_fft.dir/all: src/lib/CMakeFiles/nimcp.dir/all
 	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_test_fft.dir/build.make test/CMakeFiles/unit_test_fft.dir/depend
 	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_test_fft.dir/build.make test/CMakeFiles/unit_test_fft.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/bbrelin/nimcp/build/CMakeFiles --progress-num= "Built target unit_test_fft"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/bbrelin/nimcp/build/CMakeFiles --progress-num=55 "Built target unit_test_fft"
 .PHONY : test/CMakeFiles/unit_test_fft.dir/all
 
 # Build rule for subdir invocation for target.
@@ -2528,12 +2564,12 @@ test/CMakeFiles/unit_test_fractal_topology_real.dir/all: _deps/googletest-build/
 test/CMakeFiles/unit_test_fractal_topology_real.dir/all: src/lib/CMakeFiles/nimcp.dir/all
 	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_test_fractal_topology_real.dir/build.make test/CMakeFiles/unit_test_fractal_topology_real.dir/depend
 	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_test_fractal_topology_real.dir/build.make test/CMakeFiles/unit_test_fractal_topology_real.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/bbrelin/nimcp/build/CMakeFiles --progress-num=55 "Built target unit_test_fractal_topology_real"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/bbrelin/nimcp/build/CMakeFiles --progress-num= "Built target unit_test_fractal_topology_real"
 .PHONY : test/CMakeFiles/unit_test_fractal_topology_real.dir/all
 
 # Build rule for subdir invocation for target.
 test/CMakeFiles/unit_test_fractal_topology_real.dir/rule: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 20
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 18
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test/CMakeFiles/unit_test_fractal_topology_real.dir/all
 	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 0
 .PHONY : test/CMakeFiles/unit_test_fractal_topology_real.dir/rule
@@ -2556,7 +2592,7 @@ test/CMakeFiles/unit_test_glial_integration_real.dir/all: _deps/googletest-build
 test/CMakeFiles/unit_test_glial_integration_real.dir/all: src/lib/CMakeFiles/nimcp.dir/all
 	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_test_glial_integration_real.dir/build.make test/CMakeFiles/unit_test_glial_integration_real.dir/depend
 	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_test_glial_integration_real.dir/build.make test/CMakeFiles/unit_test_glial_integration_real.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/bbrelin/nimcp/build/CMakeFiles --progress-num= "Built target unit_test_glial_integration_real"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/bbrelin/nimcp/build/CMakeFiles --progress-num=56 "Built target unit_test_glial_integration_real"
 .PHONY : test/CMakeFiles/unit_test_glial_integration_real.dir/all
 
 # Build rule for subdir invocation for target.
@@ -2576,6 +2612,34 @@ test/CMakeFiles/unit_test_glial_integration_real.dir/clean:
 .PHONY : test/CMakeFiles/unit_test_glial_integration_real.dir/clean
 
 #=============================================================================
+# Target rules for target test/CMakeFiles/unit_test_global_workspace.dir
+
+# All Build rule for target.
+test/CMakeFiles/unit_test_global_workspace.dir/all: _deps/googletest-build/googletest/CMakeFiles/gtest.dir/all
+test/CMakeFiles/unit_test_global_workspace.dir/all: _deps/googletest-build/googletest/CMakeFiles/gtest_main.dir/all
+test/CMakeFiles/unit_test_global_workspace.dir/all: src/lib/CMakeFiles/nimcp.dir/all
+	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_test_global_workspace.dir/build.make test/CMakeFiles/unit_test_global_workspace.dir/depend
+	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_test_global_workspace.dir/build.make test/CMakeFiles/unit_test_global_workspace.dir/build
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/bbrelin/nimcp/build/CMakeFiles --progress-num= "Built target unit_test_global_workspace"
+.PHONY : test/CMakeFiles/unit_test_global_workspace.dir/all
+
+# Build rule for subdir invocation for target.
+test/CMakeFiles/unit_test_global_workspace.dir/rule: cmake_check_build_system
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 18
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test/CMakeFiles/unit_test_global_workspace.dir/all
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 0
+.PHONY : test/CMakeFiles/unit_test_global_workspace.dir/rule
+
+# Convenience name for target.
+unit_test_global_workspace: test/CMakeFiles/unit_test_global_workspace.dir/rule
+.PHONY : unit_test_global_workspace
+
+# clean rule for target.
+test/CMakeFiles/unit_test_global_workspace.dir/clean:
+	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_test_global_workspace.dir/build.make test/CMakeFiles/unit_test_global_workspace.dir/clean
+.PHONY : test/CMakeFiles/unit_test_global_workspace.dir/clean
+
+#=============================================================================
 # Target rules for target test/CMakeFiles/unit_test_gpu_neuron_real.dir
 
 # All Build rule for target.
@@ -2584,12 +2648,12 @@ test/CMakeFiles/unit_test_gpu_neuron_real.dir/all: _deps/googletest-build/google
 test/CMakeFiles/unit_test_gpu_neuron_real.dir/all: src/lib/CMakeFiles/nimcp.dir/all
 	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_test_gpu_neuron_real.dir/build.make test/CMakeFiles/unit_test_gpu_neuron_real.dir/depend
 	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_test_gpu_neuron_real.dir/build.make test/CMakeFiles/unit_test_gpu_neuron_real.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/bbrelin/nimcp/build/CMakeFiles --progress-num=56 "Built target unit_test_gpu_neuron_real"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/bbrelin/nimcp/build/CMakeFiles --progress-num=57 "Built target unit_test_gpu_neuron_real"
 .PHONY : test/CMakeFiles/unit_test_gpu_neuron_real.dir/all
 
 # Build rule for subdir invocation for target.
 test/CMakeFiles/unit_test_gpu_neuron_real.dir/rule: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 20
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 19
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test/CMakeFiles/unit_test_gpu_neuron_real.dir/all
 	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 0
 .PHONY : test/CMakeFiles/unit_test_gpu_neuron_real.dir/rule
@@ -2617,7 +2681,7 @@ test/CMakeFiles/unit_test_graph.dir/all: src/lib/CMakeFiles/nimcp.dir/all
 
 # Build rule for subdir invocation for target.
 test/CMakeFiles/unit_test_graph.dir/rule: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 19
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 18
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test/CMakeFiles/unit_test_graph.dir/all
 	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 0
 .PHONY : test/CMakeFiles/unit_test_graph.dir/rule
@@ -2640,12 +2704,12 @@ test/CMakeFiles/unit_test_hash_table.dir/all: _deps/googletest-build/googletest/
 test/CMakeFiles/unit_test_hash_table.dir/all: src/lib/CMakeFiles/nimcp.dir/all
 	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_test_hash_table.dir/build.make test/CMakeFiles/unit_test_hash_table.dir/depend
 	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_test_hash_table.dir/build.make test/CMakeFiles/unit_test_hash_table.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/bbrelin/nimcp/build/CMakeFiles --progress-num=57 "Built target unit_test_hash_table"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/bbrelin/nimcp/build/CMakeFiles --progress-num=58 "Built target unit_test_hash_table"
 .PHONY : test/CMakeFiles/unit_test_hash_table.dir/all
 
 # Build rule for subdir invocation for target.
 test/CMakeFiles/unit_test_hash_table.dir/rule: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 20
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 19
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test/CMakeFiles/unit_test_hash_table.dir/all
 	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 0
 .PHONY : test/CMakeFiles/unit_test_hash_table.dir/rule
@@ -2668,12 +2732,12 @@ test/CMakeFiles/unit_test_hierarchical.dir/all: _deps/googletest-build/googletes
 test/CMakeFiles/unit_test_hierarchical.dir/all: src/lib/CMakeFiles/nimcp.dir/all
 	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_test_hierarchical.dir/build.make test/CMakeFiles/unit_test_hierarchical.dir/depend
 	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_test_hierarchical.dir/build.make test/CMakeFiles/unit_test_hierarchical.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/bbrelin/nimcp/build/CMakeFiles --progress-num=58 "Built target unit_test_hierarchical"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/bbrelin/nimcp/build/CMakeFiles --progress-num= "Built target unit_test_hierarchical"
 .PHONY : test/CMakeFiles/unit_test_hierarchical.dir/all
 
 # Build rule for subdir invocation for target.
 test/CMakeFiles/unit_test_hierarchical.dir/rule: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 20
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 18
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test/CMakeFiles/unit_test_hierarchical.dir/all
 	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 0
 .PHONY : test/CMakeFiles/unit_test_hierarchical.dir/rule
@@ -2696,7 +2760,7 @@ test/CMakeFiles/unit_test_introspection.dir/all: _deps/googletest-build/googlete
 test/CMakeFiles/unit_test_introspection.dir/all: src/lib/CMakeFiles/nimcp.dir/all
 	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_test_introspection.dir/build.make test/CMakeFiles/unit_test_introspection.dir/depend
 	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_test_introspection.dir/build.make test/CMakeFiles/unit_test_introspection.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/bbrelin/nimcp/build/CMakeFiles --progress-num= "Built target unit_test_introspection"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/bbrelin/nimcp/build/CMakeFiles --progress-num=59 "Built target unit_test_introspection"
 .PHONY : test/CMakeFiles/unit_test_introspection.dir/all
 
 # Build rule for subdir invocation for target.
@@ -2724,12 +2788,12 @@ test/CMakeFiles/unit_test_izhikevich_coverage.dir/all: _deps/googletest-build/go
 test/CMakeFiles/unit_test_izhikevich_coverage.dir/all: src/lib/CMakeFiles/nimcp.dir/all
 	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_test_izhikevich_coverage.dir/build.make test/CMakeFiles/unit_test_izhikevich_coverage.dir/depend
 	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_test_izhikevich_coverage.dir/build.make test/CMakeFiles/unit_test_izhikevich_coverage.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/bbrelin/nimcp/build/CMakeFiles --progress-num=59 "Built target unit_test_izhikevich_coverage"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/bbrelin/nimcp/build/CMakeFiles --progress-num= "Built target unit_test_izhikevich_coverage"
 .PHONY : test/CMakeFiles/unit_test_izhikevich_coverage.dir/all
 
 # Build rule for subdir invocation for target.
 test/CMakeFiles/unit_test_izhikevich_coverage.dir/rule: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 20
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 18
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test/CMakeFiles/unit_test_izhikevich_coverage.dir/all
 	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 0
 .PHONY : test/CMakeFiles/unit_test_izhikevich_coverage.dir/rule
@@ -2752,7 +2816,7 @@ test/CMakeFiles/unit_test_izhikevich_real.dir/all: _deps/googletest-build/google
 test/CMakeFiles/unit_test_izhikevich_real.dir/all: src/lib/CMakeFiles/nimcp.dir/all
 	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_test_izhikevich_real.dir/build.make test/CMakeFiles/unit_test_izhikevich_real.dir/depend
 	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_test_izhikevich_real.dir/build.make test/CMakeFiles/unit_test_izhikevich_real.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/bbrelin/nimcp/build/CMakeFiles --progress-num= "Built target unit_test_izhikevich_real"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/bbrelin/nimcp/build/CMakeFiles --progress-num=60 "Built target unit_test_izhikevich_real"
 .PHONY : test/CMakeFiles/unit_test_izhikevich_real.dir/all
 
 # Build rule for subdir invocation for target.
@@ -2780,12 +2844,12 @@ test/CMakeFiles/unit_test_json.dir/all: _deps/googletest-build/googletest/CMakeF
 test/CMakeFiles/unit_test_json.dir/all: src/lib/CMakeFiles/nimcp.dir/all
 	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_test_json.dir/build.make test/CMakeFiles/unit_test_json.dir/depend
 	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_test_json.dir/build.make test/CMakeFiles/unit_test_json.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/bbrelin/nimcp/build/CMakeFiles --progress-num=60 "Built target unit_test_json"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/bbrelin/nimcp/build/CMakeFiles --progress-num= "Built target unit_test_json"
 .PHONY : test/CMakeFiles/unit_test_json.dir/all
 
 # Build rule for subdir invocation for target.
 test/CMakeFiles/unit_test_json.dir/rule: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 20
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 18
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test/CMakeFiles/unit_test_json.dir/all
 	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 0
 .PHONY : test/CMakeFiles/unit_test_json.dir/rule
@@ -2808,7 +2872,7 @@ test/CMakeFiles/unit_test_knowledge.dir/all: _deps/googletest-build/googletest/C
 test/CMakeFiles/unit_test_knowledge.dir/all: src/lib/CMakeFiles/nimcp.dir/all
 	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_test_knowledge.dir/build.make test/CMakeFiles/unit_test_knowledge.dir/depend
 	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_test_knowledge.dir/build.make test/CMakeFiles/unit_test_knowledge.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/bbrelin/nimcp/build/CMakeFiles --progress-num= "Built target unit_test_knowledge"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/bbrelin/nimcp/build/CMakeFiles --progress-num=61 "Built target unit_test_knowledge"
 .PHONY : test/CMakeFiles/unit_test_knowledge.dir/all
 
 # Build rule for subdir invocation for target.
@@ -2836,12 +2900,12 @@ test/CMakeFiles/unit_test_knowledge_comprehensive.dir/all: _deps/googletest-buil
 test/CMakeFiles/unit_test_knowledge_comprehensive.dir/all: src/lib/CMakeFiles/nimcp.dir/all
 	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_test_knowledge_comprehensive.dir/build.make test/CMakeFiles/unit_test_knowledge_comprehensive.dir/depend
 	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_test_knowledge_comprehensive.dir/build.make test/CMakeFiles/unit_test_knowledge_comprehensive.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/bbrelin/nimcp/build/CMakeFiles --progress-num=61 "Built target unit_test_knowledge_comprehensive"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/bbrelin/nimcp/build/CMakeFiles --progress-num= "Built target unit_test_knowledge_comprehensive"
 .PHONY : test/CMakeFiles/unit_test_knowledge_comprehensive.dir/all
 
 # Build rule for subdir invocation for target.
 test/CMakeFiles/unit_test_knowledge_comprehensive.dir/rule: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 20
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 18
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test/CMakeFiles/unit_test_knowledge_comprehensive.dir/all
 	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 0
 .PHONY : test/CMakeFiles/unit_test_knowledge_comprehensive.dir/rule
@@ -2864,7 +2928,7 @@ test/CMakeFiles/unit_test_knowledge_real.dir/all: _deps/googletest-build/googlet
 test/CMakeFiles/unit_test_knowledge_real.dir/all: src/lib/CMakeFiles/nimcp.dir/all
 	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_test_knowledge_real.dir/build.make test/CMakeFiles/unit_test_knowledge_real.dir/depend
 	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_test_knowledge_real.dir/build.make test/CMakeFiles/unit_test_knowledge_real.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/bbrelin/nimcp/build/CMakeFiles --progress-num= "Built target unit_test_knowledge_real"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/bbrelin/nimcp/build/CMakeFiles --progress-num=62 "Built target unit_test_knowledge_real"
 .PHONY : test/CMakeFiles/unit_test_knowledge_real.dir/all
 
 # Build rule for subdir invocation for target.
@@ -2892,12 +2956,12 @@ test/CMakeFiles/unit_test_lint.dir/all: _deps/googletest-build/googletest/CMakeF
 test/CMakeFiles/unit_test_lint.dir/all: src/lib/CMakeFiles/nimcp.dir/all
 	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_test_lint.dir/build.make test/CMakeFiles/unit_test_lint.dir/depend
 	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_test_lint.dir/build.make test/CMakeFiles/unit_test_lint.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/bbrelin/nimcp/build/CMakeFiles --progress-num=62 "Built target unit_test_lint"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/bbrelin/nimcp/build/CMakeFiles --progress-num= "Built target unit_test_lint"
 .PHONY : test/CMakeFiles/unit_test_lint.dir/all
 
 # Build rule for subdir invocation for target.
 test/CMakeFiles/unit_test_lint.dir/rule: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 20
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 18
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test/CMakeFiles/unit_test_lint.dir/all
 	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 0
 .PHONY : test/CMakeFiles/unit_test_lint.dir/rule
@@ -2920,7 +2984,7 @@ test/CMakeFiles/unit_test_logging.dir/all: _deps/googletest-build/googletest/CMa
 test/CMakeFiles/unit_test_logging.dir/all: src/lib/CMakeFiles/nimcp.dir/all
 	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_test_logging.dir/build.make test/CMakeFiles/unit_test_logging.dir/depend
 	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_test_logging.dir/build.make test/CMakeFiles/unit_test_logging.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/bbrelin/nimcp/build/CMakeFiles --progress-num= "Built target unit_test_logging"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/bbrelin/nimcp/build/CMakeFiles --progress-num=63 "Built target unit_test_logging"
 .PHONY : test/CMakeFiles/unit_test_logging.dir/all
 
 # Build rule for subdir invocation for target.
@@ -2948,12 +3012,12 @@ test/CMakeFiles/unit_test_memory.dir/all: _deps/googletest-build/googletest/CMak
 test/CMakeFiles/unit_test_memory.dir/all: src/lib/CMakeFiles/nimcp.dir/all
 	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_test_memory.dir/build.make test/CMakeFiles/unit_test_memory.dir/depend
 	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_test_memory.dir/build.make test/CMakeFiles/unit_test_memory.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/bbrelin/nimcp/build/CMakeFiles --progress-num=63 "Built target unit_test_memory"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/bbrelin/nimcp/build/CMakeFiles --progress-num= "Built target unit_test_memory"
 .PHONY : test/CMakeFiles/unit_test_memory.dir/all
 
 # Build rule for subdir invocation for target.
 test/CMakeFiles/unit_test_memory.dir/rule: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 20
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 18
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test/CMakeFiles/unit_test_memory.dir/all
 	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 0
 .PHONY : test/CMakeFiles/unit_test_memory.dir/rule
@@ -2976,7 +3040,7 @@ test/CMakeFiles/unit_test_memory_leaks.dir/all: _deps/googletest-build/googletes
 test/CMakeFiles/unit_test_memory_leaks.dir/all: src/lib/CMakeFiles/nimcp.dir/all
 	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_test_memory_leaks.dir/build.make test/CMakeFiles/unit_test_memory_leaks.dir/depend
 	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_test_memory_leaks.dir/build.make test/CMakeFiles/unit_test_memory_leaks.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/bbrelin/nimcp/build/CMakeFiles --progress-num= "Built target unit_test_memory_leaks"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/bbrelin/nimcp/build/CMakeFiles --progress-num=64 "Built target unit_test_memory_leaks"
 .PHONY : test/CMakeFiles/unit_test_memory_leaks.dir/all
 
 # Build rule for subdir invocation for target.
@@ -3004,12 +3068,12 @@ test/CMakeFiles/unit_test_mental_health.dir/all: _deps/googletest-build/googlete
 test/CMakeFiles/unit_test_mental_health.dir/all: src/lib/CMakeFiles/nimcp.dir/all
 	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_test_mental_health.dir/build.make test/CMakeFiles/unit_test_mental_health.dir/depend
 	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_test_mental_health.dir/build.make test/CMakeFiles/unit_test_mental_health.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/bbrelin/nimcp/build/CMakeFiles --progress-num=64 "Built target unit_test_mental_health"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/bbrelin/nimcp/build/CMakeFiles --progress-num= "Built target unit_test_mental_health"
 .PHONY : test/CMakeFiles/unit_test_mental_health.dir/all
 
 # Build rule for subdir invocation for target.
 test/CMakeFiles/unit_test_mental_health.dir/rule: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 20
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 18
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test/CMakeFiles/unit_test_mental_health.dir/all
 	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 0
 .PHONY : test/CMakeFiles/unit_test_mental_health.dir/rule
@@ -3032,7 +3096,7 @@ test/CMakeFiles/unit_test_mental_health_coverage.dir/all: _deps/googletest-build
 test/CMakeFiles/unit_test_mental_health_coverage.dir/all: src/lib/CMakeFiles/nimcp.dir/all
 	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_test_mental_health_coverage.dir/build.make test/CMakeFiles/unit_test_mental_health_coverage.dir/depend
 	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_test_mental_health_coverage.dir/build.make test/CMakeFiles/unit_test_mental_health_coverage.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/bbrelin/nimcp/build/CMakeFiles --progress-num= "Built target unit_test_mental_health_coverage"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/bbrelin/nimcp/build/CMakeFiles --progress-num=65 "Built target unit_test_mental_health_coverage"
 .PHONY : test/CMakeFiles/unit_test_mental_health_coverage.dir/all
 
 # Build rule for subdir invocation for target.
@@ -3060,12 +3124,12 @@ test/CMakeFiles/unit_test_mental_health_real.dir/all: _deps/googletest-build/goo
 test/CMakeFiles/unit_test_mental_health_real.dir/all: src/lib/CMakeFiles/nimcp.dir/all
 	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_test_mental_health_real.dir/build.make test/CMakeFiles/unit_test_mental_health_real.dir/depend
 	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_test_mental_health_real.dir/build.make test/CMakeFiles/unit_test_mental_health_real.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/bbrelin/nimcp/build/CMakeFiles --progress-num=65 "Built target unit_test_mental_health_real"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/bbrelin/nimcp/build/CMakeFiles --progress-num= "Built target unit_test_mental_health_real"
 .PHONY : test/CMakeFiles/unit_test_mental_health_real.dir/all
 
 # Build rule for subdir invocation for target.
 test/CMakeFiles/unit_test_mental_health_real.dir/rule: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 20
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 18
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test/CMakeFiles/unit_test_mental_health_real.dir/all
 	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 0
 .PHONY : test/CMakeFiles/unit_test_mental_health_real.dir/rule
@@ -3088,7 +3152,7 @@ test/CMakeFiles/unit_test_meta_learning.dir/all: _deps/googletest-build/googlete
 test/CMakeFiles/unit_test_meta_learning.dir/all: src/lib/CMakeFiles/nimcp.dir/all
 	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_test_meta_learning.dir/build.make test/CMakeFiles/unit_test_meta_learning.dir/depend
 	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_test_meta_learning.dir/build.make test/CMakeFiles/unit_test_meta_learning.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/bbrelin/nimcp/build/CMakeFiles --progress-num= "Built target unit_test_meta_learning"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/bbrelin/nimcp/build/CMakeFiles --progress-num=66 "Built target unit_test_meta_learning"
 .PHONY : test/CMakeFiles/unit_test_meta_learning.dir/all
 
 # Build rule for subdir invocation for target.
@@ -3116,12 +3180,12 @@ test/CMakeFiles/unit_test_meta_learning_coverage.dir/all: _deps/googletest-build
 test/CMakeFiles/unit_test_meta_learning_coverage.dir/all: src/lib/CMakeFiles/nimcp.dir/all
 	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_test_meta_learning_coverage.dir/build.make test/CMakeFiles/unit_test_meta_learning_coverage.dir/depend
 	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_test_meta_learning_coverage.dir/build.make test/CMakeFiles/unit_test_meta_learning_coverage.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/bbrelin/nimcp/build/CMakeFiles --progress-num=66 "Built target unit_test_meta_learning_coverage"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/bbrelin/nimcp/build/CMakeFiles --progress-num=67 "Built target unit_test_meta_learning_coverage"
 .PHONY : test/CMakeFiles/unit_test_meta_learning_coverage.dir/all
 
 # Build rule for subdir invocation for target.
 test/CMakeFiles/unit_test_meta_learning_coverage.dir/rule: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 20
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 19
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test/CMakeFiles/unit_test_meta_learning_coverage.dir/all
 	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 0
 .PHONY : test/CMakeFiles/unit_test_meta_learning_coverage.dir/rule
@@ -3149,7 +3213,7 @@ test/CMakeFiles/unit_test_meta_learning_real.dir/all: src/lib/CMakeFiles/nimcp.d
 
 # Build rule for subdir invocation for target.
 test/CMakeFiles/unit_test_meta_learning_real.dir/rule: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 19
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 18
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test/CMakeFiles/unit_test_meta_learning_real.dir/all
 	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 0
 .PHONY : test/CMakeFiles/unit_test_meta_learning_real.dir/rule
@@ -3172,12 +3236,12 @@ test/CMakeFiles/unit_test_microglia.dir/all: _deps/googletest-build/googletest/C
 test/CMakeFiles/unit_test_microglia.dir/all: src/lib/CMakeFiles/nimcp.dir/all
 	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_test_microglia.dir/build.make test/CMakeFiles/unit_test_microglia.dir/depend
 	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_test_microglia.dir/build.make test/CMakeFiles/unit_test_microglia.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/bbrelin/nimcp/build/CMakeFiles --progress-num=67 "Built target unit_test_microglia"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/bbrelin/nimcp/build/CMakeFiles --progress-num=68 "Built target unit_test_microglia"
 .PHONY : test/CMakeFiles/unit_test_microglia.dir/all
 
 # Build rule for subdir invocation for target.
 test/CMakeFiles/unit_test_microglia.dir/rule: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 20
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 19
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test/CMakeFiles/unit_test_microglia.dir/all
 	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 0
 .PHONY : test/CMakeFiles/unit_test_microglia.dir/rule
@@ -3205,7 +3269,7 @@ test/CMakeFiles/unit_test_microglia_real.dir/all: src/lib/CMakeFiles/nimcp.dir/a
 
 # Build rule for subdir invocation for target.
 test/CMakeFiles/unit_test_microglia_real.dir/rule: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 19
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 18
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test/CMakeFiles/unit_test_microglia_real.dir/all
 	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 0
 .PHONY : test/CMakeFiles/unit_test_microglia_real.dir/rule
@@ -3228,12 +3292,12 @@ test/CMakeFiles/unit_test_mirror_neurons.dir/all: _deps/googletest-build/googlet
 test/CMakeFiles/unit_test_mirror_neurons.dir/all: src/lib/CMakeFiles/nimcp.dir/all
 	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_test_mirror_neurons.dir/build.make test/CMakeFiles/unit_test_mirror_neurons.dir/depend
 	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_test_mirror_neurons.dir/build.make test/CMakeFiles/unit_test_mirror_neurons.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/bbrelin/nimcp/build/CMakeFiles --progress-num=68 "Built target unit_test_mirror_neurons"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/bbrelin/nimcp/build/CMakeFiles --progress-num=69 "Built target unit_test_mirror_neurons"
 .PHONY : test/CMakeFiles/unit_test_mirror_neurons.dir/all
 
 # Build rule for subdir invocation for target.
 test/CMakeFiles/unit_test_mirror_neurons.dir/rule: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 20
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 19
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test/CMakeFiles/unit_test_mirror_neurons.dir/all
 	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 0
 .PHONY : test/CMakeFiles/unit_test_mirror_neurons.dir/rule
@@ -3261,7 +3325,7 @@ test/CMakeFiles/unit_test_mirror_neurons_coverage.dir/all: src/lib/CMakeFiles/ni
 
 # Build rule for subdir invocation for target.
 test/CMakeFiles/unit_test_mirror_neurons_coverage.dir/rule: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 19
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 18
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test/CMakeFiles/unit_test_mirror_neurons_coverage.dir/all
 	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 0
 .PHONY : test/CMakeFiles/unit_test_mirror_neurons_coverage.dir/rule
@@ -3284,12 +3348,12 @@ test/CMakeFiles/unit_test_mirror_neurons_real.dir/all: _deps/googletest-build/go
 test/CMakeFiles/unit_test_mirror_neurons_real.dir/all: src/lib/CMakeFiles/nimcp.dir/all
 	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_test_mirror_neurons_real.dir/build.make test/CMakeFiles/unit_test_mirror_neurons_real.dir/depend
 	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_test_mirror_neurons_real.dir/build.make test/CMakeFiles/unit_test_mirror_neurons_real.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/bbrelin/nimcp/build/CMakeFiles --progress-num=69 "Built target unit_test_mirror_neurons_real"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/bbrelin/nimcp/build/CMakeFiles --progress-num=70 "Built target unit_test_mirror_neurons_real"
 .PHONY : test/CMakeFiles/unit_test_mirror_neurons_real.dir/all
 
 # Build rule for subdir invocation for target.
 test/CMakeFiles/unit_test_mirror_neurons_real.dir/rule: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 20
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 19
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test/CMakeFiles/unit_test_mirror_neurons_real.dir/all
 	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 0
 .PHONY : test/CMakeFiles/unit_test_mirror_neurons_real.dir/rule
@@ -3317,7 +3381,7 @@ test/CMakeFiles/unit_test_module.dir/all: src/lib/CMakeFiles/nimcp.dir/all
 
 # Build rule for subdir invocation for target.
 test/CMakeFiles/unit_test_module.dir/rule: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 19
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 18
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test/CMakeFiles/unit_test_module.dir/all
 	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 0
 .PHONY : test/CMakeFiles/unit_test_module.dir/rule
@@ -3340,12 +3404,12 @@ test/CMakeFiles/unit_test_multimodal_integration_coverage.dir/all: _deps/googlet
 test/CMakeFiles/unit_test_multimodal_integration_coverage.dir/all: src/lib/CMakeFiles/nimcp.dir/all
 	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_test_multimodal_integration_coverage.dir/build.make test/CMakeFiles/unit_test_multimodal_integration_coverage.dir/depend
 	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_test_multimodal_integration_coverage.dir/build.make test/CMakeFiles/unit_test_multimodal_integration_coverage.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/bbrelin/nimcp/build/CMakeFiles --progress-num=70 "Built target unit_test_multimodal_integration_coverage"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/bbrelin/nimcp/build/CMakeFiles --progress-num=71 "Built target unit_test_multimodal_integration_coverage"
 .PHONY : test/CMakeFiles/unit_test_multimodal_integration_coverage.dir/all
 
 # Build rule for subdir invocation for target.
 test/CMakeFiles/unit_test_multimodal_integration_coverage.dir/rule: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 20
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 19
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test/CMakeFiles/unit_test_multimodal_integration_coverage.dir/all
 	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 0
 .PHONY : test/CMakeFiles/unit_test_multimodal_integration_coverage.dir/rule
@@ -3373,7 +3437,7 @@ test/CMakeFiles/unit_test_multimodal_integration_real.dir/all: src/lib/CMakeFile
 
 # Build rule for subdir invocation for target.
 test/CMakeFiles/unit_test_multimodal_integration_real.dir/rule: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 19
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 18
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test/CMakeFiles/unit_test_multimodal_integration_real.dir/all
 	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 0
 .PHONY : test/CMakeFiles/unit_test_multimodal_integration_real.dir/rule
@@ -3396,12 +3460,12 @@ test/CMakeFiles/unit_test_network_builder_real.dir/all: _deps/googletest-build/g
 test/CMakeFiles/unit_test_network_builder_real.dir/all: src/lib/CMakeFiles/nimcp.dir/all
 	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_test_network_builder_real.dir/build.make test/CMakeFiles/unit_test_network_builder_real.dir/depend
 	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_test_network_builder_real.dir/build.make test/CMakeFiles/unit_test_network_builder_real.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/bbrelin/nimcp/build/CMakeFiles --progress-num=71 "Built target unit_test_network_builder_real"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/bbrelin/nimcp/build/CMakeFiles --progress-num=72 "Built target unit_test_network_builder_real"
 .PHONY : test/CMakeFiles/unit_test_network_builder_real.dir/all
 
 # Build rule for subdir invocation for target.
 test/CMakeFiles/unit_test_network_builder_real.dir/rule: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 20
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 19
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test/CMakeFiles/unit_test_network_builder_real.dir/all
 	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 0
 .PHONY : test/CMakeFiles/unit_test_network_builder_real.dir/rule
@@ -3429,7 +3493,7 @@ test/CMakeFiles/unit_test_network_serialization_real.dir/all: src/lib/CMakeFiles
 
 # Build rule for subdir invocation for target.
 test/CMakeFiles/unit_test_network_serialization_real.dir/rule: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 19
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 18
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test/CMakeFiles/unit_test_network_serialization_real.dir/all
 	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 0
 .PHONY : test/CMakeFiles/unit_test_network_serialization_real.dir/rule
@@ -3452,12 +3516,12 @@ test/CMakeFiles/unit_test_neural_logic_real.dir/all: _deps/googletest-build/goog
 test/CMakeFiles/unit_test_neural_logic_real.dir/all: src/lib/CMakeFiles/nimcp.dir/all
 	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_test_neural_logic_real.dir/build.make test/CMakeFiles/unit_test_neural_logic_real.dir/depend
 	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_test_neural_logic_real.dir/build.make test/CMakeFiles/unit_test_neural_logic_real.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/bbrelin/nimcp/build/CMakeFiles --progress-num=72 "Built target unit_test_neural_logic_real"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/bbrelin/nimcp/build/CMakeFiles --progress-num=73 "Built target unit_test_neural_logic_real"
 .PHONY : test/CMakeFiles/unit_test_neural_logic_real.dir/all
 
 # Build rule for subdir invocation for target.
 test/CMakeFiles/unit_test_neural_logic_real.dir/rule: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 20
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 19
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test/CMakeFiles/unit_test_neural_logic_real.dir/all
 	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 0
 .PHONY : test/CMakeFiles/unit_test_neural_logic_real.dir/rule
@@ -3485,7 +3549,7 @@ test/CMakeFiles/unit_test_neuralnet_comprehensive.dir/all: src/lib/CMakeFiles/ni
 
 # Build rule for subdir invocation for target.
 test/CMakeFiles/unit_test_neuralnet_comprehensive.dir/rule: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 19
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 18
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test/CMakeFiles/unit_test_neuralnet_comprehensive.dir/all
 	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 0
 .PHONY : test/CMakeFiles/unit_test_neuralnet_comprehensive.dir/rule
@@ -3508,12 +3572,12 @@ test/CMakeFiles/unit_test_neuralnet_create.dir/all: _deps/googletest-build/googl
 test/CMakeFiles/unit_test_neuralnet_create.dir/all: src/lib/CMakeFiles/nimcp.dir/all
 	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_test_neuralnet_create.dir/build.make test/CMakeFiles/unit_test_neuralnet_create.dir/depend
 	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_test_neuralnet_create.dir/build.make test/CMakeFiles/unit_test_neuralnet_create.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/bbrelin/nimcp/build/CMakeFiles --progress-num=73 "Built target unit_test_neuralnet_create"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/bbrelin/nimcp/build/CMakeFiles --progress-num=74 "Built target unit_test_neuralnet_create"
 .PHONY : test/CMakeFiles/unit_test_neuralnet_create.dir/all
 
 # Build rule for subdir invocation for target.
 test/CMakeFiles/unit_test_neuralnet_create.dir/rule: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 20
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 19
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test/CMakeFiles/unit_test_neuralnet_create.dir/all
 	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 0
 .PHONY : test/CMakeFiles/unit_test_neuralnet_create.dir/rule
@@ -3536,12 +3600,12 @@ test/CMakeFiles/unit_test_neuralnet_learning.dir/all: _deps/googletest-build/goo
 test/CMakeFiles/unit_test_neuralnet_learning.dir/all: src/lib/CMakeFiles/nimcp.dir/all
 	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_test_neuralnet_learning.dir/build.make test/CMakeFiles/unit_test_neuralnet_learning.dir/depend
 	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_test_neuralnet_learning.dir/build.make test/CMakeFiles/unit_test_neuralnet_learning.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/bbrelin/nimcp/build/CMakeFiles --progress-num=74 "Built target unit_test_neuralnet_learning"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/bbrelin/nimcp/build/CMakeFiles --progress-num= "Built target unit_test_neuralnet_learning"
 .PHONY : test/CMakeFiles/unit_test_neuralnet_learning.dir/all
 
 # Build rule for subdir invocation for target.
 test/CMakeFiles/unit_test_neuralnet_learning.dir/rule: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 20
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 18
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test/CMakeFiles/unit_test_neuralnet_learning.dir/all
 	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 0
 .PHONY : test/CMakeFiles/unit_test_neuralnet_learning.dir/rule
@@ -3564,7 +3628,7 @@ test/CMakeFiles/unit_test_neuromodulators.dir/all: _deps/googletest-build/google
 test/CMakeFiles/unit_test_neuromodulators.dir/all: src/lib/CMakeFiles/nimcp.dir/all
 	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_test_neuromodulators.dir/build.make test/CMakeFiles/unit_test_neuromodulators.dir/depend
 	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_test_neuromodulators.dir/build.make test/CMakeFiles/unit_test_neuromodulators.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/bbrelin/nimcp/build/CMakeFiles --progress-num= "Built target unit_test_neuromodulators"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/bbrelin/nimcp/build/CMakeFiles --progress-num=75 "Built target unit_test_neuromodulators"
 .PHONY : test/CMakeFiles/unit_test_neuromodulators.dir/all
 
 # Build rule for subdir invocation for target.
@@ -3592,12 +3656,12 @@ test/CMakeFiles/unit_test_neuron_model_coverage.dir/all: _deps/googletest-build/
 test/CMakeFiles/unit_test_neuron_model_coverage.dir/all: src/lib/CMakeFiles/nimcp.dir/all
 	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_test_neuron_model_coverage.dir/build.make test/CMakeFiles/unit_test_neuron_model_coverage.dir/depend
 	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_test_neuron_model_coverage.dir/build.make test/CMakeFiles/unit_test_neuron_model_coverage.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/bbrelin/nimcp/build/CMakeFiles --progress-num=75 "Built target unit_test_neuron_model_coverage"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/bbrelin/nimcp/build/CMakeFiles --progress-num= "Built target unit_test_neuron_model_coverage"
 .PHONY : test/CMakeFiles/unit_test_neuron_model_coverage.dir/all
 
 # Build rule for subdir invocation for target.
 test/CMakeFiles/unit_test_neuron_model_coverage.dir/rule: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 20
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 18
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test/CMakeFiles/unit_test_neuron_model_coverage.dir/all
 	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 0
 .PHONY : test/CMakeFiles/unit_test_neuron_model_coverage.dir/rule
@@ -3620,7 +3684,7 @@ test/CMakeFiles/unit_test_neuron_model_real.dir/all: _deps/googletest-build/goog
 test/CMakeFiles/unit_test_neuron_model_real.dir/all: src/lib/CMakeFiles/nimcp.dir/all
 	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_test_neuron_model_real.dir/build.make test/CMakeFiles/unit_test_neuron_model_real.dir/depend
 	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_test_neuron_model_real.dir/build.make test/CMakeFiles/unit_test_neuron_model_real.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/bbrelin/nimcp/build/CMakeFiles --progress-num= "Built target unit_test_neuron_model_real"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/bbrelin/nimcp/build/CMakeFiles --progress-num=76 "Built target unit_test_neuron_model_real"
 .PHONY : test/CMakeFiles/unit_test_neuron_model_real.dir/all
 
 # Build rule for subdir invocation for target.
@@ -3648,12 +3712,12 @@ test/CMakeFiles/unit_test_neuron_types.dir/all: _deps/googletest-build/googletes
 test/CMakeFiles/unit_test_neuron_types.dir/all: src/lib/CMakeFiles/nimcp.dir/all
 	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_test_neuron_types.dir/build.make test/CMakeFiles/unit_test_neuron_types.dir/depend
 	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_test_neuron_types.dir/build.make test/CMakeFiles/unit_test_neuron_types.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/bbrelin/nimcp/build/CMakeFiles --progress-num=76 "Built target unit_test_neuron_types"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/bbrelin/nimcp/build/CMakeFiles --progress-num= "Built target unit_test_neuron_types"
 .PHONY : test/CMakeFiles/unit_test_neuron_types.dir/all
 
 # Build rule for subdir invocation for target.
 test/CMakeFiles/unit_test_neuron_types.dir/rule: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 20
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 18
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test/CMakeFiles/unit_test_neuron_types.dir/all
 	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 0
 .PHONY : test/CMakeFiles/unit_test_neuron_types.dir/rule
@@ -3676,7 +3740,7 @@ test/CMakeFiles/unit_test_oligodendrocytes.dir/all: _deps/googletest-build/googl
 test/CMakeFiles/unit_test_oligodendrocytes.dir/all: src/lib/CMakeFiles/nimcp.dir/all
 	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_test_oligodendrocytes.dir/build.make test/CMakeFiles/unit_test_oligodendrocytes.dir/depend
 	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_test_oligodendrocytes.dir/build.make test/CMakeFiles/unit_test_oligodendrocytes.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/bbrelin/nimcp/build/CMakeFiles --progress-num= "Built target unit_test_oligodendrocytes"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/bbrelin/nimcp/build/CMakeFiles --progress-num=77 "Built target unit_test_oligodendrocytes"
 .PHONY : test/CMakeFiles/unit_test_oligodendrocytes.dir/all
 
 # Build rule for subdir invocation for target.
@@ -3704,12 +3768,12 @@ test/CMakeFiles/unit_test_oligodendrocytes_real.dir/all: _deps/googletest-build/
 test/CMakeFiles/unit_test_oligodendrocytes_real.dir/all: src/lib/CMakeFiles/nimcp.dir/all
 	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_test_oligodendrocytes_real.dir/build.make test/CMakeFiles/unit_test_oligodendrocytes_real.dir/depend
 	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_test_oligodendrocytes_real.dir/build.make test/CMakeFiles/unit_test_oligodendrocytes_real.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/bbrelin/nimcp/build/CMakeFiles --progress-num=77 "Built target unit_test_oligodendrocytes_real"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/bbrelin/nimcp/build/CMakeFiles --progress-num= "Built target unit_test_oligodendrocytes_real"
 .PHONY : test/CMakeFiles/unit_test_oligodendrocytes_real.dir/all
 
 # Build rule for subdir invocation for target.
 test/CMakeFiles/unit_test_oligodendrocytes_real.dir/rule: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 20
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 18
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test/CMakeFiles/unit_test_oligodendrocytes_real.dir/all
 	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 0
 .PHONY : test/CMakeFiles/unit_test_oligodendrocytes_real.dir/rule
@@ -3732,7 +3796,7 @@ test/CMakeFiles/unit_test_p2pnode.dir/all: _deps/googletest-build/googletest/CMa
 test/CMakeFiles/unit_test_p2pnode.dir/all: src/lib/CMakeFiles/nimcp.dir/all
 	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_test_p2pnode.dir/build.make test/CMakeFiles/unit_test_p2pnode.dir/depend
 	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_test_p2pnode.dir/build.make test/CMakeFiles/unit_test_p2pnode.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/bbrelin/nimcp/build/CMakeFiles --progress-num= "Built target unit_test_p2pnode"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/bbrelin/nimcp/build/CMakeFiles --progress-num=78 "Built target unit_test_p2pnode"
 .PHONY : test/CMakeFiles/unit_test_p2pnode.dir/all
 
 # Build rule for subdir invocation for target.
@@ -3760,12 +3824,12 @@ test/CMakeFiles/unit_test_platform_cond.dir/all: _deps/googletest-build/googlete
 test/CMakeFiles/unit_test_platform_cond.dir/all: src/lib/CMakeFiles/nimcp.dir/all
 	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_test_platform_cond.dir/build.make test/CMakeFiles/unit_test_platform_cond.dir/depend
 	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_test_platform_cond.dir/build.make test/CMakeFiles/unit_test_platform_cond.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/bbrelin/nimcp/build/CMakeFiles --progress-num=78 "Built target unit_test_platform_cond"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/bbrelin/nimcp/build/CMakeFiles --progress-num= "Built target unit_test_platform_cond"
 .PHONY : test/CMakeFiles/unit_test_platform_cond.dir/all
 
 # Build rule for subdir invocation for target.
 test/CMakeFiles/unit_test_platform_cond.dir/rule: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 20
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 18
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test/CMakeFiles/unit_test_platform_cond.dir/all
 	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 0
 .PHONY : test/CMakeFiles/unit_test_platform_cond.dir/rule
@@ -3788,7 +3852,7 @@ test/CMakeFiles/unit_test_platform_mutex.dir/all: _deps/googletest-build/googlet
 test/CMakeFiles/unit_test_platform_mutex.dir/all: src/lib/CMakeFiles/nimcp.dir/all
 	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_test_platform_mutex.dir/build.make test/CMakeFiles/unit_test_platform_mutex.dir/depend
 	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_test_platform_mutex.dir/build.make test/CMakeFiles/unit_test_platform_mutex.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/bbrelin/nimcp/build/CMakeFiles --progress-num= "Built target unit_test_platform_mutex"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/bbrelin/nimcp/build/CMakeFiles --progress-num=79 "Built target unit_test_platform_mutex"
 .PHONY : test/CMakeFiles/unit_test_platform_mutex.dir/all
 
 # Build rule for subdir invocation for target.
@@ -3816,12 +3880,12 @@ test/CMakeFiles/unit_test_platform_once.dir/all: _deps/googletest-build/googlete
 test/CMakeFiles/unit_test_platform_once.dir/all: src/lib/CMakeFiles/nimcp.dir/all
 	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_test_platform_once.dir/build.make test/CMakeFiles/unit_test_platform_once.dir/depend
 	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_test_platform_once.dir/build.make test/CMakeFiles/unit_test_platform_once.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/bbrelin/nimcp/build/CMakeFiles --progress-num=79 "Built target unit_test_platform_once"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/bbrelin/nimcp/build/CMakeFiles --progress-num= "Built target unit_test_platform_once"
 .PHONY : test/CMakeFiles/unit_test_platform_once.dir/all
 
 # Build rule for subdir invocation for target.
 test/CMakeFiles/unit_test_platform_once.dir/rule: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 20
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 18
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test/CMakeFiles/unit_test_platform_once.dir/all
 	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 0
 .PHONY : test/CMakeFiles/unit_test_platform_once.dir/rule
@@ -3844,7 +3908,7 @@ test/CMakeFiles/unit_test_platform_rwlock.dir/all: _deps/googletest-build/google
 test/CMakeFiles/unit_test_platform_rwlock.dir/all: src/lib/CMakeFiles/nimcp.dir/all
 	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_test_platform_rwlock.dir/build.make test/CMakeFiles/unit_test_platform_rwlock.dir/depend
 	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_test_platform_rwlock.dir/build.make test/CMakeFiles/unit_test_platform_rwlock.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/bbrelin/nimcp/build/CMakeFiles --progress-num= "Built target unit_test_platform_rwlock"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/bbrelin/nimcp/build/CMakeFiles --progress-num=80 "Built target unit_test_platform_rwlock"
 .PHONY : test/CMakeFiles/unit_test_platform_rwlock.dir/all
 
 # Build rule for subdir invocation for target.
@@ -3872,12 +3936,12 @@ test/CMakeFiles/unit_test_platform_thread.dir/all: _deps/googletest-build/google
 test/CMakeFiles/unit_test_platform_thread.dir/all: src/lib/CMakeFiles/nimcp.dir/all
 	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_test_platform_thread.dir/build.make test/CMakeFiles/unit_test_platform_thread.dir/depend
 	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_test_platform_thread.dir/build.make test/CMakeFiles/unit_test_platform_thread.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/bbrelin/nimcp/build/CMakeFiles --progress-num=80 "Built target unit_test_platform_thread"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/bbrelin/nimcp/build/CMakeFiles --progress-num= "Built target unit_test_platform_thread"
 .PHONY : test/CMakeFiles/unit_test_platform_thread.dir/all
 
 # Build rule for subdir invocation for target.
 test/CMakeFiles/unit_test_platform_thread.dir/rule: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 20
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 18
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test/CMakeFiles/unit_test_platform_thread.dir/all
 	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 0
 .PHONY : test/CMakeFiles/unit_test_platform_thread.dir/rule
@@ -3900,7 +3964,7 @@ test/CMakeFiles/unit_test_platform_time.dir/all: _deps/googletest-build/googlete
 test/CMakeFiles/unit_test_platform_time.dir/all: src/lib/CMakeFiles/nimcp.dir/all
 	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_test_platform_time.dir/build.make test/CMakeFiles/unit_test_platform_time.dir/depend
 	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_test_platform_time.dir/build.make test/CMakeFiles/unit_test_platform_time.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/bbrelin/nimcp/build/CMakeFiles --progress-num= "Built target unit_test_platform_time"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/bbrelin/nimcp/build/CMakeFiles --progress-num=81 "Built target unit_test_platform_time"
 .PHONY : test/CMakeFiles/unit_test_platform_time.dir/all
 
 # Build rule for subdir invocation for target.
@@ -3928,12 +3992,12 @@ test/CMakeFiles/unit_test_predictive.dir/all: _deps/googletest-build/googletest/
 test/CMakeFiles/unit_test_predictive.dir/all: src/lib/CMakeFiles/nimcp.dir/all
 	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_test_predictive.dir/build.make test/CMakeFiles/unit_test_predictive.dir/depend
 	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_test_predictive.dir/build.make test/CMakeFiles/unit_test_predictive.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/bbrelin/nimcp/build/CMakeFiles --progress-num=81 "Built target unit_test_predictive"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/bbrelin/nimcp/build/CMakeFiles --progress-num= "Built target unit_test_predictive"
 .PHONY : test/CMakeFiles/unit_test_predictive.dir/all
 
 # Build rule for subdir invocation for target.
 test/CMakeFiles/unit_test_predictive.dir/rule: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 20
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 18
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test/CMakeFiles/unit_test_predictive.dir/all
 	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 0
 .PHONY : test/CMakeFiles/unit_test_predictive.dir/rule
@@ -3956,7 +4020,7 @@ test/CMakeFiles/unit_test_predictive_coverage.dir/all: _deps/googletest-build/go
 test/CMakeFiles/unit_test_predictive_coverage.dir/all: src/lib/CMakeFiles/nimcp.dir/all
 	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_test_predictive_coverage.dir/build.make test/CMakeFiles/unit_test_predictive_coverage.dir/depend
 	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_test_predictive_coverage.dir/build.make test/CMakeFiles/unit_test_predictive_coverage.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/bbrelin/nimcp/build/CMakeFiles --progress-num= "Built target unit_test_predictive_coverage"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/bbrelin/nimcp/build/CMakeFiles --progress-num=82 "Built target unit_test_predictive_coverage"
 .PHONY : test/CMakeFiles/unit_test_predictive_coverage.dir/all
 
 # Build rule for subdir invocation for target.
@@ -3984,12 +4048,12 @@ test/CMakeFiles/unit_test_predictive_real.dir/all: _deps/googletest-build/google
 test/CMakeFiles/unit_test_predictive_real.dir/all: src/lib/CMakeFiles/nimcp.dir/all
 	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_test_predictive_real.dir/build.make test/CMakeFiles/unit_test_predictive_real.dir/depend
 	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_test_predictive_real.dir/build.make test/CMakeFiles/unit_test_predictive_real.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/bbrelin/nimcp/build/CMakeFiles --progress-num=82 "Built target unit_test_predictive_real"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/bbrelin/nimcp/build/CMakeFiles --progress-num= "Built target unit_test_predictive_real"
 .PHONY : test/CMakeFiles/unit_test_predictive_real.dir/all
 
 # Build rule for subdir invocation for target.
 test/CMakeFiles/unit_test_predictive_real.dir/rule: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 20
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 18
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test/CMakeFiles/unit_test_predictive_real.dir/all
 	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 0
 .PHONY : test/CMakeFiles/unit_test_predictive_real.dir/rule
@@ -4012,7 +4076,7 @@ test/CMakeFiles/unit_test_protocol.dir/all: _deps/googletest-build/googletest/CM
 test/CMakeFiles/unit_test_protocol.dir/all: src/lib/CMakeFiles/nimcp.dir/all
 	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_test_protocol.dir/build.make test/CMakeFiles/unit_test_protocol.dir/depend
 	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_test_protocol.dir/build.make test/CMakeFiles/unit_test_protocol.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/bbrelin/nimcp/build/CMakeFiles --progress-num= "Built target unit_test_protocol"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/bbrelin/nimcp/build/CMakeFiles --progress-num=83 "Built target unit_test_protocol"
 .PHONY : test/CMakeFiles/unit_test_protocol.dir/all
 
 # Build rule for subdir invocation for target.
@@ -4040,12 +4104,12 @@ test/CMakeFiles/unit_test_queue_manager.dir/all: _deps/googletest-build/googlete
 test/CMakeFiles/unit_test_queue_manager.dir/all: src/lib/CMakeFiles/nimcp.dir/all
 	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_test_queue_manager.dir/build.make test/CMakeFiles/unit_test_queue_manager.dir/depend
 	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_test_queue_manager.dir/build.make test/CMakeFiles/unit_test_queue_manager.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/bbrelin/nimcp/build/CMakeFiles --progress-num=83 "Built target unit_test_queue_manager"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/bbrelin/nimcp/build/CMakeFiles --progress-num= "Built target unit_test_queue_manager"
 .PHONY : test/CMakeFiles/unit_test_queue_manager.dir/all
 
 # Build rule for subdir invocation for target.
 test/CMakeFiles/unit_test_queue_manager.dir/rule: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 20
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 18
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test/CMakeFiles/unit_test_queue_manager.dir/all
 	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 0
 .PHONY : test/CMakeFiles/unit_test_queue_manager.dir/rule
@@ -4068,7 +4132,7 @@ test/CMakeFiles/unit_test_queue_utils.dir/all: _deps/googletest-build/googletest
 test/CMakeFiles/unit_test_queue_utils.dir/all: src/lib/CMakeFiles/nimcp.dir/all
 	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_test_queue_utils.dir/build.make test/CMakeFiles/unit_test_queue_utils.dir/depend
 	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_test_queue_utils.dir/build.make test/CMakeFiles/unit_test_queue_utils.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/bbrelin/nimcp/build/CMakeFiles --progress-num= "Built target unit_test_queue_utils"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/bbrelin/nimcp/build/CMakeFiles --progress-num=84 "Built target unit_test_queue_utils"
 .PHONY : test/CMakeFiles/unit_test_queue_utils.dir/all
 
 # Build rule for subdir invocation for target.
@@ -4096,12 +4160,12 @@ test/CMakeFiles/unit_test_replication.dir/all: _deps/googletest-build/googletest
 test/CMakeFiles/unit_test_replication.dir/all: src/lib/CMakeFiles/nimcp.dir/all
 	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_test_replication.dir/build.make test/CMakeFiles/unit_test_replication.dir/depend
 	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_test_replication.dir/build.make test/CMakeFiles/unit_test_replication.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/bbrelin/nimcp/build/CMakeFiles --progress-num=84 "Built target unit_test_replication"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/bbrelin/nimcp/build/CMakeFiles --progress-num= "Built target unit_test_replication"
 .PHONY : test/CMakeFiles/unit_test_replication.dir/all
 
 # Build rule for subdir invocation for target.
 test/CMakeFiles/unit_test_replication.dir/rule: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 20
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 18
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test/CMakeFiles/unit_test_replication.dir/all
 	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 0
 .PHONY : test/CMakeFiles/unit_test_replication.dir/rule
@@ -4124,7 +4188,7 @@ test/CMakeFiles/unit_test_salience.dir/all: _deps/googletest-build/googletest/CM
 test/CMakeFiles/unit_test_salience.dir/all: src/lib/CMakeFiles/nimcp.dir/all
 	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_test_salience.dir/build.make test/CMakeFiles/unit_test_salience.dir/depend
 	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_test_salience.dir/build.make test/CMakeFiles/unit_test_salience.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/bbrelin/nimcp/build/CMakeFiles --progress-num= "Built target unit_test_salience"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/bbrelin/nimcp/build/CMakeFiles --progress-num=85 "Built target unit_test_salience"
 .PHONY : test/CMakeFiles/unit_test_salience.dir/all
 
 # Build rule for subdir invocation for target.
@@ -4152,12 +4216,12 @@ test/CMakeFiles/unit_test_salience_coverage.dir/all: _deps/googletest-build/goog
 test/CMakeFiles/unit_test_salience_coverage.dir/all: src/lib/CMakeFiles/nimcp.dir/all
 	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_test_salience_coverage.dir/build.make test/CMakeFiles/unit_test_salience_coverage.dir/depend
 	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_test_salience_coverage.dir/build.make test/CMakeFiles/unit_test_salience_coverage.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/bbrelin/nimcp/build/CMakeFiles --progress-num=85 "Built target unit_test_salience_coverage"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/bbrelin/nimcp/build/CMakeFiles --progress-num= "Built target unit_test_salience_coverage"
 .PHONY : test/CMakeFiles/unit_test_salience_coverage.dir/all
 
 # Build rule for subdir invocation for target.
 test/CMakeFiles/unit_test_salience_coverage.dir/rule: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 20
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 18
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test/CMakeFiles/unit_test_salience_coverage.dir/all
 	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 0
 .PHONY : test/CMakeFiles/unit_test_salience_coverage.dir/rule
@@ -4180,7 +4244,7 @@ test/CMakeFiles/unit_test_salience_real.dir/all: _deps/googletest-build/googlete
 test/CMakeFiles/unit_test_salience_real.dir/all: src/lib/CMakeFiles/nimcp.dir/all
 	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_test_salience_real.dir/build.make test/CMakeFiles/unit_test_salience_real.dir/depend
 	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_test_salience_real.dir/build.make test/CMakeFiles/unit_test_salience_real.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/bbrelin/nimcp/build/CMakeFiles --progress-num= "Built target unit_test_salience_real"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/bbrelin/nimcp/build/CMakeFiles --progress-num=86 "Built target unit_test_salience_real"
 .PHONY : test/CMakeFiles/unit_test_salience_real.dir/all
 
 # Build rule for subdir invocation for target.
@@ -4208,12 +4272,12 @@ test/CMakeFiles/unit_test_security.dir/all: _deps/googletest-build/googletest/CM
 test/CMakeFiles/unit_test_security.dir/all: src/lib/CMakeFiles/nimcp.dir/all
 	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_test_security.dir/build.make test/CMakeFiles/unit_test_security.dir/depend
 	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_test_security.dir/build.make test/CMakeFiles/unit_test_security.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/bbrelin/nimcp/build/CMakeFiles --progress-num=86 "Built target unit_test_security"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/bbrelin/nimcp/build/CMakeFiles --progress-num= "Built target unit_test_security"
 .PHONY : test/CMakeFiles/unit_test_security.dir/all
 
 # Build rule for subdir invocation for target.
 test/CMakeFiles/unit_test_security.dir/rule: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 20
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 18
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test/CMakeFiles/unit_test_security.dir/all
 	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 0
 .PHONY : test/CMakeFiles/unit_test_security.dir/rule
@@ -4236,7 +4300,7 @@ test/CMakeFiles/unit_test_serialization.dir/all: _deps/googletest-build/googlete
 test/CMakeFiles/unit_test_serialization.dir/all: src/lib/CMakeFiles/nimcp.dir/all
 	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_test_serialization.dir/build.make test/CMakeFiles/unit_test_serialization.dir/depend
 	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_test_serialization.dir/build.make test/CMakeFiles/unit_test_serialization.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/bbrelin/nimcp/build/CMakeFiles --progress-num= "Built target unit_test_serialization"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/bbrelin/nimcp/build/CMakeFiles --progress-num=87 "Built target unit_test_serialization"
 .PHONY : test/CMakeFiles/unit_test_serialization.dir/all
 
 # Build rule for subdir invocation for target.
@@ -4264,12 +4328,12 @@ test/CMakeFiles/unit_test_sleep_wake.dir/all: _deps/googletest-build/googletest/
 test/CMakeFiles/unit_test_sleep_wake.dir/all: src/lib/CMakeFiles/nimcp.dir/all
 	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_test_sleep_wake.dir/build.make test/CMakeFiles/unit_test_sleep_wake.dir/depend
 	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_test_sleep_wake.dir/build.make test/CMakeFiles/unit_test_sleep_wake.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/bbrelin/nimcp/build/CMakeFiles --progress-num=87 "Built target unit_test_sleep_wake"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/bbrelin/nimcp/build/CMakeFiles --progress-num= "Built target unit_test_sleep_wake"
 .PHONY : test/CMakeFiles/unit_test_sleep_wake.dir/all
 
 # Build rule for subdir invocation for target.
 test/CMakeFiles/unit_test_sleep_wake.dir/rule: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 20
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 18
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test/CMakeFiles/unit_test_sleep_wake.dir/all
 	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 0
 .PHONY : test/CMakeFiles/unit_test_sleep_wake.dir/rule
@@ -4292,7 +4356,7 @@ test/CMakeFiles/unit_test_speech_cortex.dir/all: _deps/googletest-build/googlete
 test/CMakeFiles/unit_test_speech_cortex.dir/all: src/lib/CMakeFiles/nimcp.dir/all
 	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_test_speech_cortex.dir/build.make test/CMakeFiles/unit_test_speech_cortex.dir/depend
 	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_test_speech_cortex.dir/build.make test/CMakeFiles/unit_test_speech_cortex.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/bbrelin/nimcp/build/CMakeFiles --progress-num= "Built target unit_test_speech_cortex"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/bbrelin/nimcp/build/CMakeFiles --progress-num=88 "Built target unit_test_speech_cortex"
 .PHONY : test/CMakeFiles/unit_test_speech_cortex.dir/all
 
 # Build rule for subdir invocation for target.
@@ -4320,12 +4384,12 @@ test/CMakeFiles/unit_test_spike_event_real.dir/all: _deps/googletest-build/googl
 test/CMakeFiles/unit_test_spike_event_real.dir/all: src/lib/CMakeFiles/nimcp.dir/all
 	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_test_spike_event_real.dir/build.make test/CMakeFiles/unit_test_spike_event_real.dir/depend
 	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_test_spike_event_real.dir/build.make test/CMakeFiles/unit_test_spike_event_real.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/bbrelin/nimcp/build/CMakeFiles --progress-num=88 "Built target unit_test_spike_event_real"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/bbrelin/nimcp/build/CMakeFiles --progress-num= "Built target unit_test_spike_event_real"
 .PHONY : test/CMakeFiles/unit_test_spike_event_real.dir/all
 
 # Build rule for subdir invocation for target.
 test/CMakeFiles/unit_test_spike_event_real.dir/rule: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 20
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 18
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test/CMakeFiles/unit_test_spike_event_real.dir/all
 	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 0
 .PHONY : test/CMakeFiles/unit_test_spike_event_real.dir/rule
@@ -4348,7 +4412,7 @@ test/CMakeFiles/unit_test_stream.dir/all: _deps/googletest-build/googletest/CMak
 test/CMakeFiles/unit_test_stream.dir/all: src/lib/CMakeFiles/nimcp.dir/all
 	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_test_stream.dir/build.make test/CMakeFiles/unit_test_stream.dir/depend
 	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_test_stream.dir/build.make test/CMakeFiles/unit_test_stream.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/bbrelin/nimcp/build/CMakeFiles --progress-num= "Built target unit_test_stream"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/bbrelin/nimcp/build/CMakeFiles --progress-num=89 "Built target unit_test_stream"
 .PHONY : test/CMakeFiles/unit_test_stream.dir/all
 
 # Build rule for subdir invocation for target.
@@ -4376,12 +4440,12 @@ test/CMakeFiles/unit_test_stress.dir/all: _deps/googletest-build/googletest/CMak
 test/CMakeFiles/unit_test_stress.dir/all: src/lib/CMakeFiles/nimcp.dir/all
 	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_test_stress.dir/build.make test/CMakeFiles/unit_test_stress.dir/depend
 	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_test_stress.dir/build.make test/CMakeFiles/unit_test_stress.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/bbrelin/nimcp/build/CMakeFiles --progress-num=89 "Built target unit_test_stress"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/bbrelin/nimcp/build/CMakeFiles --progress-num= "Built target unit_test_stress"
 .PHONY : test/CMakeFiles/unit_test_stress.dir/all
 
 # Build rule for subdir invocation for target.
 test/CMakeFiles/unit_test_stress.dir/rule: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 20
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 18
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test/CMakeFiles/unit_test_stress.dir/all
 	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 0
 .PHONY : test/CMakeFiles/unit_test_stress.dir/rule
@@ -4409,7 +4473,7 @@ test/CMakeFiles/unit_test_symbolic_logic.dir/all: src/lib/CMakeFiles/nimcp.dir/a
 
 # Build rule for subdir invocation for target.
 test/CMakeFiles/unit_test_symbolic_logic.dir/rule: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 20
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 19
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test/CMakeFiles/unit_test_symbolic_logic.dir/all
 	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 0
 .PHONY : test/CMakeFiles/unit_test_symbolic_logic.dir/rule
@@ -4437,7 +4501,7 @@ test/CMakeFiles/unit_test_symbolic_logic_real.dir/all: src/lib/CMakeFiles/nimcp.
 
 # Build rule for subdir invocation for target.
 test/CMakeFiles/unit_test_symbolic_logic_real.dir/rule: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 19
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 18
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test/CMakeFiles/unit_test_symbolic_logic_real.dir/all
 	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 0
 .PHONY : test/CMakeFiles/unit_test_symbolic_logic_real.dir/rule
@@ -4465,7 +4529,7 @@ test/CMakeFiles/unit_test_synapse_compute_real.dir/all: src/lib/CMakeFiles/nimcp
 
 # Build rule for subdir invocation for target.
 test/CMakeFiles/unit_test_synapse_compute_real.dir/rule: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 20
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 19
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test/CMakeFiles/unit_test_synapse_compute_real.dir/all
 	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 0
 .PHONY : test/CMakeFiles/unit_test_synapse_compute_real.dir/rule
@@ -4493,7 +4557,7 @@ test/CMakeFiles/unit_test_synapse_types_real.dir/all: src/lib/CMakeFiles/nimcp.d
 
 # Build rule for subdir invocation for target.
 test/CMakeFiles/unit_test_synapse_types_real.dir/rule: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 19
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 18
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test/CMakeFiles/unit_test_synapse_types_real.dir/all
 	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 0
 .PHONY : test/CMakeFiles/unit_test_synapse_types_real.dir/rule
@@ -4521,7 +4585,7 @@ test/CMakeFiles/unit_test_theory_of_mind.dir/all: src/lib/CMakeFiles/nimcp.dir/a
 
 # Build rule for subdir invocation for target.
 test/CMakeFiles/unit_test_theory_of_mind.dir/rule: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 20
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 19
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test/CMakeFiles/unit_test_theory_of_mind.dir/all
 	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 0
 .PHONY : test/CMakeFiles/unit_test_theory_of_mind.dir/rule
@@ -4549,7 +4613,7 @@ test/CMakeFiles/unit_test_theory_of_mind_coverage.dir/all: src/lib/CMakeFiles/ni
 
 # Build rule for subdir invocation for target.
 test/CMakeFiles/unit_test_theory_of_mind_coverage.dir/rule: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 19
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 18
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test/CMakeFiles/unit_test_theory_of_mind_coverage.dir/all
 	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 0
 .PHONY : test/CMakeFiles/unit_test_theory_of_mind_coverage.dir/rule
@@ -4577,7 +4641,7 @@ test/CMakeFiles/unit_test_theory_of_mind_real.dir/all: src/lib/CMakeFiles/nimcp.
 
 # Build rule for subdir invocation for target.
 test/CMakeFiles/unit_test_theory_of_mind_real.dir/rule: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 20
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 19
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test/CMakeFiles/unit_test_theory_of_mind_real.dir/all
 	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 0
 .PHONY : test/CMakeFiles/unit_test_theory_of_mind_real.dir/rule
@@ -4605,7 +4669,7 @@ test/CMakeFiles/unit_test_thread_safety.dir/all: src/lib/CMakeFiles/nimcp.dir/al
 
 # Build rule for subdir invocation for target.
 test/CMakeFiles/unit_test_thread_safety.dir/rule: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 19
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 18
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test/CMakeFiles/unit_test_thread_safety.dir/all
 	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 0
 .PHONY : test/CMakeFiles/unit_test_thread_safety.dir/rule
@@ -4633,7 +4697,7 @@ test/CMakeFiles/unit_test_thread_utils.dir/all: src/lib/CMakeFiles/nimcp.dir/all
 
 # Build rule for subdir invocation for target.
 test/CMakeFiles/unit_test_thread_utils.dir/rule: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 20
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 19
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test/CMakeFiles/unit_test_thread_utils.dir/all
 	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 0
 .PHONY : test/CMakeFiles/unit_test_thread_utils.dir/rule
@@ -4661,7 +4725,7 @@ test/CMakeFiles/unit_test_time.dir/all: src/lib/CMakeFiles/nimcp.dir/all
 
 # Build rule for subdir invocation for target.
 test/CMakeFiles/unit_test_time.dir/rule: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 19
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 18
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test/CMakeFiles/unit_test_time.dir/all
 	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 0
 .PHONY : test/CMakeFiles/unit_test_time.dir/rule
@@ -4689,7 +4753,7 @@ test/CMakeFiles/unit_test_validate.dir/all: src/lib/CMakeFiles/nimcp.dir/all
 
 # Build rule for subdir invocation for target.
 test/CMakeFiles/unit_test_validate.dir/rule: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 20
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 19
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test/CMakeFiles/unit_test_validate.dir/all
 	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 0
 .PHONY : test/CMakeFiles/unit_test_validate.dir/rule
@@ -4717,7 +4781,7 @@ test/CMakeFiles/unit_test_vector.dir/all: src/lib/CMakeFiles/nimcp.dir/all
 
 # Build rule for subdir invocation for target.
 test/CMakeFiles/unit_test_vector.dir/rule: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 19
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 18
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test/CMakeFiles/unit_test_vector.dir/all
 	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 0
 .PHONY : test/CMakeFiles/unit_test_vector.dir/rule
@@ -4745,7 +4809,7 @@ test/CMakeFiles/unit_test_visual_cortex.dir/all: src/lib/CMakeFiles/nimcp.dir/al
 
 # Build rule for subdir invocation for target.
 test/CMakeFiles/unit_test_visual_cortex.dir/rule: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 20
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 19
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test/CMakeFiles/unit_test_visual_cortex.dir/all
 	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 0
 .PHONY : test/CMakeFiles/unit_test_visual_cortex.dir/rule
@@ -4773,7 +4837,7 @@ test/CMakeFiles/unit_test_wellbeing.dir/all: src/lib/CMakeFiles/nimcp.dir/all
 
 # Build rule for subdir invocation for target.
 test/CMakeFiles/unit_test_wellbeing.dir/rule: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 19
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 18
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test/CMakeFiles/unit_test_wellbeing.dir/all
 	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 0
 .PHONY : test/CMakeFiles/unit_test_wellbeing.dir/rule
@@ -4801,7 +4865,7 @@ test/CMakeFiles/unit_test_wellbeing_comprehensive.dir/all: src/lib/CMakeFiles/ni
 
 # Build rule for subdir invocation for target.
 test/CMakeFiles/unit_test_wellbeing_comprehensive.dir/rule: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 20
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 19
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test/CMakeFiles/unit_test_wellbeing_comprehensive.dir/all
 	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 0
 .PHONY : test/CMakeFiles/unit_test_wellbeing_comprehensive.dir/rule
@@ -4829,7 +4893,7 @@ test/CMakeFiles/unit_test_wellbeing_coverage.dir/all: src/lib/CMakeFiles/nimcp.d
 
 # Build rule for subdir invocation for target.
 test/CMakeFiles/unit_test_wellbeing_coverage.dir/rule: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 19
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 18
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test/CMakeFiles/unit_test_wellbeing_coverage.dir/all
 	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 0
 .PHONY : test/CMakeFiles/unit_test_wellbeing_coverage.dir/rule
@@ -4857,7 +4921,7 @@ test/CMakeFiles/unit_test_wellbeing_real.dir/all: src/lib/CMakeFiles/nimcp.dir/a
 
 # Build rule for subdir invocation for target.
 test/CMakeFiles/unit_test_wellbeing_real.dir/rule: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 20
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 19
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test/CMakeFiles/unit_test_wellbeing_real.dir/all
 	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 0
 .PHONY : test/CMakeFiles/unit_test_wellbeing_real.dir/rule
@@ -4885,7 +4949,7 @@ test/CMakeFiles/unit_test_working_memory.dir/all: src/lib/CMakeFiles/nimcp.dir/a
 
 # Build rule for subdir invocation for target.
 test/CMakeFiles/unit_test_working_memory.dir/rule: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 19
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 18
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test/CMakeFiles/unit_test_working_memory.dir/all
 	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 0
 .PHONY : test/CMakeFiles/unit_test_working_memory.dir/rule
@@ -4913,7 +4977,7 @@ test/CMakeFiles/unit_topology_tests.dir/all: src/lib/CMakeFiles/nimcp.dir/all
 
 # Build rule for subdir invocation for target.
 test/CMakeFiles/unit_topology_tests.dir/rule: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 20
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 19
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test/CMakeFiles/unit_topology_tests.dir/all
 	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 0
 .PHONY : test/CMakeFiles/unit_topology_tests.dir/rule
@@ -4936,7 +5000,7 @@ test/CMakeFiles/integration_test_brain_integration.dir/all: _deps/googletest-bui
 test/CMakeFiles/integration_test_brain_integration.dir/all: src/lib/CMakeFiles/nimcp.dir/all
 	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/integration_test_brain_integration.dir/build.make test/CMakeFiles/integration_test_brain_integration.dir/depend
 	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/integration_test_brain_integration.dir/build.make test/CMakeFiles/integration_test_brain_integration.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/bbrelin/nimcp/build/CMakeFiles --progress-num= "Built target integration_test_brain_integration"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/bbrelin/nimcp/build/CMakeFiles --progress-num=6 "Built target integration_test_brain_integration"
 .PHONY : test/CMakeFiles/integration_test_brain_integration.dir/all
 
 # Build rule for subdir invocation for target.
@@ -4964,12 +5028,12 @@ test/CMakeFiles/integration_test_comprehensive_brain_integration.dir/all: _deps/
 test/CMakeFiles/integration_test_comprehensive_brain_integration.dir/all: src/lib/CMakeFiles/nimcp.dir/all
 	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/integration_test_comprehensive_brain_integration.dir/build.make test/CMakeFiles/integration_test_comprehensive_brain_integration.dir/depend
 	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/integration_test_comprehensive_brain_integration.dir/build.make test/CMakeFiles/integration_test_comprehensive_brain_integration.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/bbrelin/nimcp/build/CMakeFiles --progress-num=7 "Built target integration_test_comprehensive_brain_integration"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/bbrelin/nimcp/build/CMakeFiles --progress-num= "Built target integration_test_comprehensive_brain_integration"
 .PHONY : test/CMakeFiles/integration_test_comprehensive_brain_integration.dir/all
 
 # Build rule for subdir invocation for target.
 test/CMakeFiles/integration_test_comprehensive_brain_integration.dir/rule: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 20
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 18
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test/CMakeFiles/integration_test_comprehensive_brain_integration.dir/all
 	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 0
 .PHONY : test/CMakeFiles/integration_test_comprehensive_brain_integration.dir/rule
@@ -4992,7 +5056,7 @@ test/CMakeFiles/integration_test_glial_integration.dir/all: _deps/googletest-bui
 test/CMakeFiles/integration_test_glial_integration.dir/all: src/lib/CMakeFiles/nimcp.dir/all
 	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/integration_test_glial_integration.dir/build.make test/CMakeFiles/integration_test_glial_integration.dir/depend
 	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/integration_test_glial_integration.dir/build.make test/CMakeFiles/integration_test_glial_integration.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/bbrelin/nimcp/build/CMakeFiles --progress-num= "Built target integration_test_glial_integration"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/bbrelin/nimcp/build/CMakeFiles --progress-num=7 "Built target integration_test_glial_integration"
 .PHONY : test/CMakeFiles/integration_test_glial_integration.dir/all
 
 # Build rule for subdir invocation for target.
@@ -5012,6 +5076,34 @@ test/CMakeFiles/integration_test_glial_integration.dir/clean:
 .PHONY : test/CMakeFiles/integration_test_glial_integration.dir/clean
 
 #=============================================================================
+# Target rules for target test/CMakeFiles/integration_test_global_workspace_integration.dir
+
+# All Build rule for target.
+test/CMakeFiles/integration_test_global_workspace_integration.dir/all: _deps/googletest-build/googletest/CMakeFiles/gtest.dir/all
+test/CMakeFiles/integration_test_global_workspace_integration.dir/all: _deps/googletest-build/googletest/CMakeFiles/gtest_main.dir/all
+test/CMakeFiles/integration_test_global_workspace_integration.dir/all: src/lib/CMakeFiles/nimcp.dir/all
+	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/integration_test_global_workspace_integration.dir/build.make test/CMakeFiles/integration_test_global_workspace_integration.dir/depend
+	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/integration_test_global_workspace_integration.dir/build.make test/CMakeFiles/integration_test_global_workspace_integration.dir/build
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/bbrelin/nimcp/build/CMakeFiles --progress-num= "Built target integration_test_global_workspace_integration"
+.PHONY : test/CMakeFiles/integration_test_global_workspace_integration.dir/all
+
+# Build rule for subdir invocation for target.
+test/CMakeFiles/integration_test_global_workspace_integration.dir/rule: cmake_check_build_system
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 18
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test/CMakeFiles/integration_test_global_workspace_integration.dir/all
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 0
+.PHONY : test/CMakeFiles/integration_test_global_workspace_integration.dir/rule
+
+# Convenience name for target.
+integration_test_global_workspace_integration: test/CMakeFiles/integration_test_global_workspace_integration.dir/rule
+.PHONY : integration_test_global_workspace_integration
+
+# clean rule for target.
+test/CMakeFiles/integration_test_global_workspace_integration.dir/clean:
+	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/integration_test_global_workspace_integration.dir/build.make test/CMakeFiles/integration_test_global_workspace_integration.dir/clean
+.PHONY : test/CMakeFiles/integration_test_global_workspace_integration.dir/clean
+
+#=============================================================================
 # Target rules for target test/CMakeFiles/integration_test_integration_cognitive.dir
 
 # All Build rule for target.
@@ -5025,7 +5117,7 @@ test/CMakeFiles/integration_test_integration_cognitive.dir/all: src/lib/CMakeFil
 
 # Build rule for subdir invocation for target.
 test/CMakeFiles/integration_test_integration_cognitive.dir/rule: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 20
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 19
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test/CMakeFiles/integration_test_integration_cognitive.dir/all
 	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 0
 .PHONY : test/CMakeFiles/integration_test_integration_cognitive.dir/rule
@@ -5053,7 +5145,7 @@ test/CMakeFiles/integration_test_integration_e2e.dir/all: src/lib/CMakeFiles/nim
 
 # Build rule for subdir invocation for target.
 test/CMakeFiles/integration_test_integration_e2e.dir/rule: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 19
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 18
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test/CMakeFiles/integration_test_integration_e2e.dir/all
 	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 0
 .PHONY : test/CMakeFiles/integration_test_integration_e2e.dir/rule
@@ -5081,7 +5173,7 @@ test/CMakeFiles/integration_test_integration_networking.dir/all: src/lib/CMakeFi
 
 # Build rule for subdir invocation for target.
 test/CMakeFiles/integration_test_integration_networking.dir/rule: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 20
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 19
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test/CMakeFiles/integration_test_integration_networking.dir/all
 	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 0
 .PHONY : test/CMakeFiles/integration_test_integration_networking.dir/rule
@@ -5109,7 +5201,7 @@ test/CMakeFiles/integration_test_visual_cortex_integration.dir/all: src/lib/CMak
 
 # Build rule for subdir invocation for target.
 test/CMakeFiles/integration_test_visual_cortex_integration.dir/rule: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 19
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 18
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test/CMakeFiles/integration_test_visual_cortex_integration.dir/all
 	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 0
 .PHONY : test/CMakeFiles/integration_test_visual_cortex_integration.dir/rule
@@ -5137,7 +5229,7 @@ test/CMakeFiles/integration_topology_integration_tests.dir/all: src/lib/CMakeFil
 
 # Build rule for subdir invocation for target.
 test/CMakeFiles/integration_topology_integration_tests.dir/rule: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 20
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 19
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test/CMakeFiles/integration_topology_integration_tests.dir/all
 	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 0
 .PHONY : test/CMakeFiles/integration_topology_integration_tests.dir/rule
@@ -5165,7 +5257,7 @@ test/CMakeFiles/e2e_test_visual_cortex_e2e.dir/all: src/lib/CMakeFiles/nimcp.dir
 
 # Build rule for subdir invocation for target.
 test/CMakeFiles/e2e_test_visual_cortex_e2e.dir/rule: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 19
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 18
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test/CMakeFiles/e2e_test_visual_cortex_e2e.dir/all
 	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 0
 .PHONY : test/CMakeFiles/e2e_test_visual_cortex_e2e.dir/rule
@@ -5180,6 +5272,34 @@ test/CMakeFiles/e2e_test_visual_cortex_e2e.dir/clean:
 .PHONY : test/CMakeFiles/e2e_test_visual_cortex_e2e.dir/clean
 
 #=============================================================================
+# Target rules for target test/CMakeFiles/regression_test_global_workspace_regression.dir
+
+# All Build rule for target.
+test/CMakeFiles/regression_test_global_workspace_regression.dir/all: _deps/googletest-build/googletest/CMakeFiles/gtest.dir/all
+test/CMakeFiles/regression_test_global_workspace_regression.dir/all: _deps/googletest-build/googletest/CMakeFiles/gtest_main.dir/all
+test/CMakeFiles/regression_test_global_workspace_regression.dir/all: src/lib/CMakeFiles/nimcp.dir/all
+	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/regression_test_global_workspace_regression.dir/build.make test/CMakeFiles/regression_test_global_workspace_regression.dir/depend
+	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/regression_test_global_workspace_regression.dir/build.make test/CMakeFiles/regression_test_global_workspace_regression.dir/build
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/bbrelin/nimcp/build/CMakeFiles --progress-num= "Built target regression_test_global_workspace_regression"
+.PHONY : test/CMakeFiles/regression_test_global_workspace_regression.dir/all
+
+# Build rule for subdir invocation for target.
+test/CMakeFiles/regression_test_global_workspace_regression.dir/rule: cmake_check_build_system
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 18
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test/CMakeFiles/regression_test_global_workspace_regression.dir/all
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 0
+.PHONY : test/CMakeFiles/regression_test_global_workspace_regression.dir/rule
+
+# Convenience name for target.
+regression_test_global_workspace_regression: test/CMakeFiles/regression_test_global_workspace_regression.dir/rule
+.PHONY : regression_test_global_workspace_regression
+
+# clean rule for target.
+test/CMakeFiles/regression_test_global_workspace_regression.dir/clean:
+	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/regression_test_global_workspace_regression.dir/build.make test/CMakeFiles/regression_test_global_workspace_regression.dir/clean
+.PHONY : test/CMakeFiles/regression_test_global_workspace_regression.dir/clean
+
+#=============================================================================
 # Target rules for target test/CMakeFiles/regression_test_regression.dir
 
 # All Build rule for target.
@@ -5188,7 +5308,7 @@ test/CMakeFiles/regression_test_regression.dir/all: _deps/googletest-build/googl
 test/CMakeFiles/regression_test_regression.dir/all: src/lib/CMakeFiles/nimcp.dir/all
 	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/regression_test_regression.dir/build.make test/CMakeFiles/regression_test_regression.dir/depend
 	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/regression_test_regression.dir/build.make test/CMakeFiles/regression_test_regression.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/bbrelin/nimcp/build/CMakeFiles --progress-num= "Built target regression_test_regression"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/bbrelin/nimcp/build/CMakeFiles --progress-num=31 "Built target regression_test_regression"
 .PHONY : test/CMakeFiles/regression_test_regression.dir/all
 
 # Build rule for subdir invocation for target.
@@ -5216,12 +5336,12 @@ test/CMakeFiles/regression_test_visual_cortex_regression.dir/all: _deps/googlete
 test/CMakeFiles/regression_test_visual_cortex_regression.dir/all: src/lib/CMakeFiles/nimcp.dir/all
 	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/regression_test_visual_cortex_regression.dir/build.make test/CMakeFiles/regression_test_visual_cortex_regression.dir/depend
 	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/regression_test_visual_cortex_regression.dir/build.make test/CMakeFiles/regression_test_visual_cortex_regression.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/bbrelin/nimcp/build/CMakeFiles --progress-num=31 "Built target regression_test_visual_cortex_regression"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/bbrelin/nimcp/build/CMakeFiles --progress-num= "Built target regression_test_visual_cortex_regression"
 .PHONY : test/CMakeFiles/regression_test_visual_cortex_regression.dir/all
 
 # Build rule for subdir invocation for target.
 test/CMakeFiles/regression_test_visual_cortex_regression.dir/rule: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 20
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 18
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test/CMakeFiles/regression_test_visual_cortex_regression.dir/all
 	$(CMAKE_COMMAND) -E cmake_progress_start /home/bbrelin/nimcp/build/CMakeFiles 0
 .PHONY : test/CMakeFiles/regression_test_visual_cortex_regression.dir/rule
