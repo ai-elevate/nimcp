@@ -497,7 +497,7 @@ EXPLANATION: [Bad because: incomplete OLD_CODE, adds unrelated code]
         client = anthropic.Anthropic(api_key=api_key)
 
         response = client.messages.create(
-            model="claude-sonnet-4-20250514",
+            model="claude-3-5-haiku-20241022",  # Haiku 3.5: faster & cheaper for focused fixes
             max_tokens=4096,
             messages=[{
                 "role": "user",
@@ -755,7 +755,7 @@ quit
     except Exception as e:
         return f"RR debug failed: {str(e)}"
 
-def rebuild_project(build_dir: Path) -> bool:
+def rebuild_project(build_dir: Path) -> Tuple[bool, str]:
     """
     Rebuild project after applying fixes
 
@@ -763,7 +763,7 @@ def rebuild_project(build_dir: Path) -> bool:
     WHY:  Compile changes before rerunning tests
     HOW:  subprocess.run make command
 
-    RETURNS: True if build succeeded, False otherwise
+    RETURNS: (success: bool, error_message: str) tuple
     NOTE: Side effect - builds project
     """
     try:
@@ -773,6 +773,59 @@ def rebuild_project(build_dir: Path) -> bool:
             capture_output=True,
             text=True,
             timeout=300
+        )
+        if result.returncode == 0:
+            return (True, "")
+        else:
+            # Return compilation errors for debugging
+            error_lines = result.stderr.split('\n')
+            # Get last 10 lines of errors
+            relevant_errors = '\n'.join(error_lines[-10:])
+            return (False, relevant_errors)
+    except Exception as e:
+        return (False, str(e))
+
+def git_create_snapshot(file_path: Path, nimcp_root: Path) -> bool:
+    """
+    Create git snapshot of file before applying fix
+
+    WHAT: Stage current file state in git index
+    WHY:  Enable rollback if fix breaks compilation
+    HOW:  git add <file>
+
+    RETURNS: True if snapshot created, False otherwise
+    NOTE: Side effect - modifies git index
+    """
+    try:
+        result = subprocess.run(
+            ["git", "add", str(file_path)],
+            cwd=nimcp_root,
+            capture_output=True,
+            text=True,
+            timeout=10
+        )
+        return result.returncode == 0
+    except Exception:
+        return False
+
+def git_rollback_file(file_path: Path, nimcp_root: Path) -> bool:
+    """
+    Rollback file to last committed state
+
+    WHAT: Restore file from git HEAD
+    WHY:  Undo broken AI-generated fixes
+    HOW:  git restore <file>
+
+    RETURNS: True if rollback succeeded, False otherwise
+    NOTE: Side effect - discards uncommitted changes
+    """
+    try:
+        result = subprocess.run(
+            ["git", "restore", str(file_path)],
+            cwd=nimcp_root,
+            capture_output=True,
+            text=True,
+            timeout=10
         )
         return result.returncode == 0
     except Exception:
@@ -925,18 +978,34 @@ def orchestrate_full_pipeline(nimcp_root: Path,
 
             if fix:
                 print(f"  → Applying fix to {fix.file_path}")
+
+                # Create git snapshot before applying fix (for rollback)
+                file_path = nimcp_root / fix.file_path
+                snapshot_created = git_create_snapshot(file_path, nimcp_root)
+                if not snapshot_created:
+                    print(f"  ⚠️  Could not create git snapshot, skipping fix")
+                    continue
+
+                # Apply the fix
                 fix_result = apply_fix(fix, nimcp_root)
 
                 if fix_result.success:
-                    fixes_applied += 1
                     print(f"  ✅ Fix applied successfully")
 
-                    # Rebuild if needed
-                    rebuild_result = rebuild_project(build_dir)
-                    if rebuild_result:
-                        print(f"  ✅ Rebuild successful")
+                    # Validate fix by rebuilding project
+                    rebuild_success, rebuild_error = rebuild_project(build_dir)
+                    if rebuild_success:
+                        print(f"  ✅ Rebuild successful - fix validated")
+                        fixes_applied += 1
                     else:
-                        print(f"  ⚠️  Rebuild failed")
+                        # Rebuild failed - rollback the fix
+                        print(f"  ❌ Rebuild failed - rolling back fix")
+                        print(f"     Error: {rebuild_error[:200]}")  # Show first 200 chars
+                        rollback_success = git_rollback_file(file_path, nimcp_root)
+                        if rollback_success:
+                            print(f"  ✅ Rollback successful - file restored")
+                        else:
+                            print(f"  ⚠️  Rollback failed - manual intervention needed")
                 else:
                     print(f"  ❌ Fix failed: {fix_result.error_message}")
             else:
