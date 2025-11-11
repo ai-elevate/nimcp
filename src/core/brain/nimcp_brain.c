@@ -3123,6 +3123,7 @@ brain_decision_t* brain_decide(brain_t brain, const float* features, uint32_t nu
      * when caller freed it and then brain_destroy tried to free cached_decision
      */
     if (is_cached_input(brain, features, num_features)) {
+        brain->stats.total_inferences++;  // Count cached inferences too
         return copy_decision(brain->cached_decision);
     }
 

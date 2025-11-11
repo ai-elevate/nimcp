@@ -32,6 +32,7 @@ from dataclasses import dataclass, field
 from typing import List, Dict, Optional, Callable, Tuple
 from enum import Enum
 from datetime import datetime
+import anthropic
 
 # Add project root to path
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
@@ -344,6 +345,191 @@ def execute_test_suite(binaries: Tuple[Path, ...],
 # Auto-Fix Helpers
 #==============================================================================
 
+def ai_powered_auto_fix(failure: dict, nimcp_root: Path) -> Optional[Fix]:
+    """
+    AI-powered auto-fix using Claude API with full context
+
+    WHAT: Call Claude API with test output, source files, and test files
+    WHY:  Provide Claude with necessary context to understand and fix the issue
+    HOW:  Read relevant files, build comprehensive prompt, call API, parse response
+
+    RETURNS: Fix object with file edits, or None if fix cannot be generated
+    """
+    test_name = failure['name']
+    stdout = str(failure.get('stdout', ''))
+    stderr = str(failure.get('stderr', ''))
+
+    # Find test file
+    test_file_name = test_name.replace('unit_test_', 'test_')
+    test_file = nimcp_root / "test" / "unit" / f"{test_file_name}.cpp"
+
+    if not test_file.exists():
+        return None
+
+    # Read test file content
+    try:
+        test_content = test_file.read_text()
+    except Exception as e:
+        print(f"  ⚠️  Could not read test file: {e}")
+        return None
+
+    # Try to infer the source file being tested
+    # Extract from test file includes or naming convention
+    source_file = None
+    source_content = ""
+
+    # Try common patterns
+    test_base = test_file_name.replace('test_', '')
+    possible_sources = [
+        nimcp_root / "src" / "core" / "brain" / f"nimcp_{test_base}.c",
+        nimcp_root / "src" / "core" / "neuralnet" / f"nimcp_{test_base}.c",
+        nimcp_root / "src" / "cognitive" / f"nimcp_{test_base}.c",
+        nimcp_root / "src" / "glial" / "integration" / f"nimcp_{test_base}.c",
+    ]
+
+    for src in possible_sources:
+        if src.exists():
+            source_file = src
+            try:
+                source_content = src.read_text()
+                break
+            except:
+                pass
+
+    # Build comprehensive prompt for Claude
+    prompt = f"""You are debugging a failing C++ unit test in the NIMCP neuromorphic computing library.
+
+## TEST INFORMATION
+Test Name: {test_name}
+Test File: {test_file.relative_to(nimcp_root)}
+
+## TEST FAILURE OUTPUT
+STDOUT:
+{stdout[:2000]}
+
+STDERR:
+{stderr[:2000]}
+
+## TEST FILE CONTENT
+```cpp
+{test_content[:5000]}
+```
+
+"""
+
+    if source_content:
+        prompt += f"""## SOURCE FILE BEING TESTED
+File: {source_file.relative_to(nimcp_root)}
+```c
+{source_content[:5000]}
+```
+
+"""
+
+    prompt += """## YOUR TASK
+Analyze the test failure and provide a fix. Your response MUST be in this exact format:
+
+FIX_START
+FILE: <relative path to file to edit>
+OLD_CODE:
+<exact code to find and replace>
+NEW_CODE:
+<replacement code>
+EXPLANATION: <brief explanation of the fix>
+FIX_END
+
+Important:
+- OLD_CODE must match EXACTLY (including whitespace) a section in the file
+- Provide only ONE fix per response
+- Focus on the root cause, not symptoms
+- If you cannot determine a fix, respond with "NO_FIX_POSSIBLE"
+"""
+
+    # Call Claude API
+    try:
+        api_key = os.environ.get("ANTHROPIC_API_KEY")
+        if not api_key:
+            print("  ⚠️  ANTHROPIC_API_KEY not set - AI auto-fix disabled")
+            return None
+
+        client = anthropic.Anthropic(api_key=api_key)
+
+        response = client.messages.create(
+            model="claude-sonnet-4-20250514",
+            max_tokens=4096,
+            messages=[{
+                "role": "user",
+                "content": prompt
+            }]
+        )
+
+        response_text = response.content[0].text
+
+        # Parse response
+        if "NO_FIX_POSSIBLE" in response_text:
+            return None
+
+        if "FIX_START" not in response_text or "FIX_END" not in response_text:
+            print(f"  ⚠️  Claude response missing FIX markers")
+            return None
+
+        # Extract fix details
+        fix_block = response_text.split("FIX_START")[1].split("FIX_END")[0]
+
+        file_path = None
+        old_code = None
+        new_code = None
+        explanation = ""
+
+        current_section = None
+        section_lines = []
+
+        for line in fix_block.split('\n'):
+            if line.startswith("FILE:"):
+                file_path = line.replace("FILE:", "").strip()
+            elif line.startswith("OLD_CODE:"):
+                if section_lines and current_section:
+                    # Save previous section
+                    if current_section == "OLD_CODE":
+                        old_code = '\n'.join(section_lines)
+                    elif current_section == "NEW_CODE":
+                        new_code = '\n'.join(section_lines)
+                current_section = "OLD_CODE"
+                section_lines = []
+            elif line.startswith("NEW_CODE:"):
+                if section_lines and current_section == "OLD_CODE":
+                    old_code = '\n'.join(section_lines)
+                current_section = "NEW_CODE"
+                section_lines = []
+            elif line.startswith("EXPLANATION:"):
+                if section_lines and current_section == "NEW_CODE":
+                    new_code = '\n'.join(section_lines)
+                explanation = line.replace("EXPLANATION:", "").strip()
+                current_section = None
+            elif current_section:
+                section_lines.append(line)
+
+        # Handle last section
+        if section_lines and current_section == "NEW_CODE":
+            new_code = '\n'.join(section_lines)
+
+        if not file_path or not old_code or new_code is None:
+            print(f"  ⚠️  Incomplete fix from Claude")
+            return None
+
+        return Fix(
+            file_path=file_path,
+            old_code=old_code.strip(),
+            new_code=new_code.strip(),
+            explanation=explanation,
+            confidence=0.85
+        )
+
+    except Exception as e:
+        print(f"  ⚠️  AI auto-fix failed: {e}")
+        return None
+
+
 def auto_generate_fix(failure: dict, analysis, nimcp_root: Path, gdb_output: Optional[str] = None) -> Optional[Fix]:
     """
     Auto-generate fix for common test failures
@@ -358,6 +544,12 @@ def auto_generate_fix(failure: dict, analysis, nimcp_root: Path, gdb_output: Opt
     stdout = str(failure.get('stdout', ''))
     stderr = str(failure.get('stderr', ''))
 
+    # Try AI-powered auto-fix first (provides Claude with full context)
+    ai_fix = ai_powered_auto_fix(failure, nimcp_root)
+    if ai_fix:
+        return ai_fix
+
+    # Fall back to pattern-based fixes if AI fails
     # Parse gdb backtrace for hang location
     if gdb_output:
         import re
