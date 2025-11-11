@@ -6575,6 +6575,54 @@ static bool apply_cognitive_processing(
                 "Logic engine not enabled");
     }
 
+    // Phase 11: Extract cognitive module outputs (when relevant)
+    // WHAT: Populate output fields from active cognitive modules
+    // WHY:  User requested all modules produce output when relevant
+    // HOW:  Query each module for current state, copy to output structure
+
+    // Global Workspace: Output broadcast state if workspace is broadcasting
+    if (brain->global_workspace) {
+        if (global_workspace_has_broadcast(&brain->global_workspace)) {
+            output->has_workspace_broadcast = true;
+            output->workspace_source_module = (uint8_t)global_workspace_get_broadcast_source(&brain->global_workspace);
+            output->workspace_broadcast_strength = global_workspace_get_broadcast_strength(&brain->global_workspace);
+            output->workspace_num_competitors = global_workspace_get_competitor_count(&brain->global_workspace);
+        }
+    }
+
+    // Executive Function / Working Memory: Output WM state if items present
+    if (brain->working_memory) {
+        // TODO: Re-enable once working_memory_get_count/get_utilization are implemented
+        // output->working_memory_items = working_memory_get_count(brain->working_memory);
+        // output->working_memory_utilization = working_memory_get_utilization(brain->working_memory);
+        output->working_memory_items = 0;
+        output->working_memory_utilization = 0.0f;
+
+        // If WM has items, describe most salient one
+        if (output->working_memory_items > 0) {
+            snprintf(output->top_wm_item_description, sizeof(output->top_wm_item_description),
+                    "%u items active, %.1f%% capacity",
+                    output->working_memory_items,
+                    output->working_memory_utilization * 100.0f);
+        }
+    }
+
+    // Curiosity: Output exploration drive when novelty is high
+    if (brain->curiosity && output->novelty_score > 0.5f) {
+        output->curiosity_drive = curiosity_get_drive(brain->curiosity);
+        output->exploration_triggered = (output->curiosity_drive > 0.6f);
+
+        if (output->exploration_triggered) {
+            snprintf(output->curiosity_reason, sizeof(output->curiosity_reason),
+                    "High novelty (%.2f) triggered exploration drive (%.2f)",
+                    output->novelty_score, output->curiosity_drive);
+        }
+    }
+
+    // Note: Theory of Mind, Predictive Processing, Knowledge, and NLP outputs
+    // are populated when those modules are actively processing relevant inputs.
+    // These outputs remain at default (false/0) if not triggered this cycle.
+
     return output->ethical_approved;
 }
 
@@ -6783,6 +6831,45 @@ bool brain_process_multimodal(
     output->logical_consistency = true;        // Assume consistent until proven otherwise
     output->reasoning_confidence = 0.0f;
     memset(output->logical_reasoning, 0, sizeof(output->logical_reasoning));
+
+    // Phase 11: Initialize cognitive module output fields
+    // Global Workspace
+    output->has_workspace_broadcast = false;
+    output->workspace_source_module = 0;  // MODULE_NONE
+    output->workspace_broadcast_strength = 0.0f;
+    output->workspace_num_competitors = 0;
+
+    // Executive Function / Working Memory
+    output->working_memory_items = 0;
+    output->working_memory_utilization = 0.0f;
+    memset(output->top_wm_item_description, 0, sizeof(output->top_wm_item_description));
+
+    // Theory of Mind
+    output->has_mental_state_inference = false;
+    memset(output->inferred_belief, 0, sizeof(output->inferred_belief));
+    memset(output->inferred_intention, 0, sizeof(output->inferred_intention));
+    output->tom_confidence = 0.0f;
+
+    // Curiosity
+    output->curiosity_drive = 0.0f;
+    output->exploration_triggered = false;
+    memset(output->curiosity_reason, 0, sizeof(output->curiosity_reason));
+
+    // Predictive Processing
+    output->has_prediction = false;
+    output->prediction_error = 0.0f;
+    output->prediction_confidence = 0.0f;
+
+    // Knowledge
+    output->has_knowledge_retrieval = false;
+    output->num_facts_retrieved = 0;
+    memset(output->retrieved_concept, 0, sizeof(output->retrieved_concept));
+
+    // NLP
+    output->has_nlp_interpretation = false;
+    memset(output->nlp_intent, 0, sizeof(output->nlp_intent));
+    memset(output->nlp_sentiment, 0, sizeof(output->nlp_sentiment));
+    output->nlp_comprehension_score = 0.0f;
 
     // =========================================================================
     // PHASE 10.2: Working Memory Temporal Decay

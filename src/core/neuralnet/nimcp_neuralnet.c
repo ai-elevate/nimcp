@@ -43,6 +43,8 @@
 #include "core/neuron_models/nimcp_izhikevich.h"
 #include "core/neuron_models/nimcp_two_compartment.h"    // Part A3.1: Two-compartment neurons
 #include "plasticity/stp/nimcp_stp.h"
+#include "plasticity/bcm/nimcp_bcm.h"                    // Phase 11: BCM homeostatic plasticity
+#include "plasticity/eligibility/nimcp_eligibility_trace.h"  // Phase 11: Eligibility traces for RL
 #include "glial/integration/nimcp_glial_integration.h"   // NIMCP Phase 6: Glial notifications
 #include <math.h>
 #include <stdio.h>
@@ -675,6 +677,26 @@ void neural_network_destroy(neural_network_t network)
                 neuron_model_destroy(network->neurons[i].model);
                 network->neurons[i].model = NULL;
             }
+
+            // Phase 11: Cleanup BCM plasticity state for all synapses
+            // WHAT: Free dynamically allocated BCM state
+            // WHY: BCM state is heap-allocated, must be freed to prevent leaks
+            // HOW: Iterate through outgoing synapses and free BCM state
+            neuron_t* neuron = &network->neurons[i];
+            for (uint32_t j = 0; j < neuron->num_synapses; j++) {
+                synapse_t* syn = &neuron->synapses[j];
+                if (syn->bcm) {
+                    nimcp_free(syn->bcm);
+                    syn->bcm = NULL;
+                }
+                if (syn->eligibility) {
+                    nimcp_free(syn->eligibility);
+                    syn->eligibility = NULL;
+                }
+            }
+
+            // Note: incoming_synapses share BCM/eligibility state with outgoing synapses,
+            // so we don't free them for incoming (would be double-free)
         }
     }
 
@@ -1376,6 +1398,33 @@ uint32_t neural_network_apply_stdp(neural_network_t network, uint32_t neuron_id,
             syn->weight = new_weight;
             modified++;
         }
+
+        // Phase 11: Apply BCM homeostatic plasticity after STDP
+        // WHAT: Apply BCM rule to prevent runaway weight growth
+        // WHY: STDP can cause weights to saturate without homeostatic control
+        // HOW: Use BCM sliding threshold to stabilize weights
+        if (syn->enable_bcm && syn->bcm) {
+            // Get BCM parameters (cortical preset for neural networks)
+            bcm_params_t bcm_params = bcm_params_cortical();
+
+            // Compute time delta in seconds
+            float dt = (float)(timestamp - syn->last_active) / 1000000.0f;  // µs to seconds
+
+            // Use synaptic trace as pre-synaptic activity measure
+            float pre_activity = syn->trace;
+
+            // Use post-synaptic neuron activation as post-synaptic activity
+            float post_activity = post_neuron->state;
+
+            // Apply BCM rule for weight stabilization
+            bcm_apply_rule(syn->bcm, pre_activity, post_activity, dt, &bcm_params);
+
+            // Update synaptic weight from BCM (overrides STDP if BCM makes larger change)
+            // This ensures homeostatic stability takes precedence
+            if (fabs(syn->bcm->weight - syn->weight) > WEIGHT_UPDATE_THRESHOLD) {
+                syn->weight = syn->bcm->weight;
+            }
+        }
     }
 
     return modified;
@@ -1758,6 +1807,26 @@ bool neural_network_add_connection(neural_network_t network, uint32_t from_id, u
     stp_init(&syn->stp, &stp_params, network->network_time);
     syn->enable_stp = true;  // Enable STP by default
 
+    // Phase 11: Initialize BCM (Homeostatic Plasticity)
+    // Allocate and initialize BCM state for weight stabilization
+    syn->bcm = (bcm_synapse_t*)nimcp_calloc(1, sizeof(bcm_synapse_t));
+    if (syn->bcm) {
+        *syn->bcm = bcm_synapse_init(syn->weight, 0.5f);  // Initial threshold = 0.5
+        syn->enable_bcm = true;  // Enable BCM by default
+    } else {
+        syn->enable_bcm = false;  // Disable if allocation failed
+    }
+
+    // Phase 11: Initialize Eligibility Traces (Temporal Credit Assignment)
+    // Allocate and initialize eligibility trace for reward-based learning
+    syn->eligibility = (eligibility_trace_t*)nimcp_calloc(1, sizeof(eligibility_trace_t));
+    if (syn->eligibility) {
+        eligibility_trace_init(syn->eligibility, network->network_time);
+        syn->enable_eligibility = true;  // Enable eligibility traces by default
+    } else {
+        syn->enable_eligibility = false;  // Disable if allocation failed
+    }
+
     from_neuron->num_synapses++;
 
     // OPTIMIZATION: Add INCOMING synapse (reverse edge) for O(S) input summation
@@ -1776,6 +1845,14 @@ bool neural_network_add_connection(neural_network_t network, uint32_t from_id, u
     // NIMCP 2.6: Copy STP state to incoming synapse
     incoming_syn->stp = syn->stp;
     incoming_syn->enable_stp = syn->enable_stp;
+
+    // Phase 11: Copy BCM state to incoming synapse
+    incoming_syn->bcm = syn->bcm;  // Share BCM state (both directions use same threshold)
+    incoming_syn->enable_bcm = syn->enable_bcm;
+
+    // Phase 11: Copy eligibility trace to incoming synapse
+    incoming_syn->eligibility = syn->eligibility;  // Share eligibility trace
+    incoming_syn->enable_eligibility = syn->enable_eligibility;
 
     to_neuron->num_incoming++;
 

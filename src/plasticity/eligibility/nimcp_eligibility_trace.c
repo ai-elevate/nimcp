@@ -29,10 +29,10 @@
  */
 
 #include "plasticity/eligibility/nimcp_eligibility_trace.h"
+#include "core/neuralnet/nimcp_neuralnet.h"  // For complete synapse_t definition
 #include <math.h>
 
-// Note: synapse_t structure is defined in the headers included
-// from nimcp_eligibility_trace.h and forward-declared there
+// Note: synapse_t forward-declared in header, full definition needed here
 
 //=============================================================================
 // Lifecycle Functions

@@ -30,7 +30,9 @@
 
 #include <stdint.h>
 #include <stdbool.h>
-#include "core/neuralnet/nimcp_neuralnet.h"
+
+// Forward declaration to avoid circular dependency
+typedef struct synapse_t synapse_t;
 
 #ifdef __cplusplus
 extern "C" {

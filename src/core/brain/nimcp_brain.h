@@ -1248,6 +1248,45 @@ typedef struct {
 
     // Explanation
     char explanation[256];       /**< Human-readable explanation */
+
+    // Phase 11: Cognitive Module Outputs (when relevant)
+    // Global Workspace outputs (when broadcast active)
+    bool has_workspace_broadcast;         /**< Is global workspace broadcasting? */
+    uint8_t workspace_source_module;      /**< Which module is broadcasting (cognitive_module_t) */
+    float workspace_broadcast_strength;   /**< Strength of current broadcast [0,1] */
+    uint32_t workspace_num_competitors;   /**< Number of modules competing for workspace */
+
+    // Executive Function outputs (when active)
+    uint32_t working_memory_items;        /**< Number of items in working memory */
+    float working_memory_utilization;     /**< Working memory load [0,1] */
+    char top_wm_item_description[128];    /**< Description of most salient WM item */
+
+    // Theory of Mind outputs (when agent detected)
+    bool has_mental_state_inference;      /**< Did ToM infer mental states? */
+    char inferred_belief[128];            /**< Inferred agent belief */
+    char inferred_intention[128];         /**< Inferred agent intention */
+    float tom_confidence;                 /**< Confidence in ToM inference [0,1] */
+
+    // Curiosity outputs (when exploration triggered)
+    float curiosity_drive;                /**< Current exploration drive [0,1] */
+    bool exploration_triggered;           /**< Should explore this input? */
+    char curiosity_reason[128];           /**< Why exploration is recommended */
+
+    // Predictive Processing outputs (when prediction available)
+    bool has_prediction;                  /**< Is prediction available? */
+    float prediction_error;               /**< Mismatch between prediction and actual [0,1] */
+    float prediction_confidence;          /**< Confidence in prediction [0,1] */
+
+    // Knowledge outputs (when facts retrieved)
+    bool has_knowledge_retrieval;         /**< Were facts retrieved? */
+    uint32_t num_facts_retrieved;         /**< Number of knowledge facts accessed */
+    char retrieved_concept[64];           /**< Most relevant retrieved concept */
+
+    // NLP outputs (when language processed)
+    bool has_nlp_interpretation;          /**< Was language interpreted? */
+    char nlp_intent[64];                  /**< Detected intent (e.g., "question", "command") */
+    char nlp_sentiment[32];               /**< Sentiment (e.g., "positive", "negative", "neutral") */
+    float nlp_comprehension_score;        /**< Language comprehension quality [0,1] */
 } brain_multimodal_output_t;
 
 /**

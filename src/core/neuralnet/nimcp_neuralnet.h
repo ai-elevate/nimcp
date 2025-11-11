@@ -8,6 +8,7 @@
 #include "core/neuron_models/nimcp_neuron_model.h"
 #include "core/neuron_types/nimcp_neuron_types.h"  // Phase 8.7: Specialized neuron types
 #include "plasticity/stp/nimcp_stp.h"
+#include "plasticity/bcm/nimcp_bcm.h"  // Phase 11: BCM homeostatic plasticity
 
 // Forward declare neuron_t so we can use it in function pointers before it's fully defined
 // NOTE: neuron_t is defined below as typedef struct { ... } neuron_t;
@@ -23,6 +24,14 @@ struct synapse_compute_state_t;
 // Phase 8.7: Include synapse type system
 // CRITICAL: Must come AFTER neuron_t forward declaration
 #include "core/synapse_types/nimcp_synapse_types.h"
+
+// Phase 11: BCM plasticity types
+// NOTE: Must come AFTER neuron_t forward declaration
+#include "plasticity/bcm/nimcp_bcm.h"
+
+// Phase 11: Eligibility traces for temporal credit assignment
+// NOTE: Must come AFTER neuron_t forward declaration
+#include "plasticity/eligibility/nimcp_eligibility_trace.h"
 
 // Function pointer types for synapse computation (NIMCP 2.7)
 // DESIGN: Define types here so synapse_t can use them without including synapse_compute.h
@@ -188,6 +197,14 @@ typedef struct synapse_t {
     // Short-term plasticity (NIMCP 2.6)
     stp_state_t stp;       /**< Short-term plasticity state */
     bool enable_stp;       /**< Enable STP for this synapse */
+
+    // BCM homeostatic plasticity (Phase 11: Plasticity Wiring)
+    bcm_synapse_t* bcm;  /**< BCM sliding threshold state (NULL = disabled) */
+    bool enable_bcm;     /**< Enable BCM for this synapse */
+
+    // Eligibility traces (Phase 11: Plasticity Wiring)
+    eligibility_trace_t* eligibility;  /**< Eligibility trace for RL (NULL = disabled) */
+    bool enable_eligibility;           /**< Enable eligibility traces for this synapse */
 
     // Programmable computation (NIMCP 2.7) - MAJOR FEATURE
     synapse_compute_fn compute_function;  /**< Custom computation (NULL = default) */
