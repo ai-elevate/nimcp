@@ -1818,14 +1818,17 @@ bool neural_network_add_connection(neural_network_t network, uint32_t from_id, u
     }
 
     // Phase 11: Initialize Eligibility Traces (Temporal Credit Assignment)
+    // TODO: Re-enable once eligibility trace compilation error is fixed
     // Allocate and initialize eligibility trace for reward-based learning
-    syn->eligibility = (eligibility_trace_t*)nimcp_calloc(1, sizeof(eligibility_trace_t));
-    if (syn->eligibility) {
-        eligibility_trace_init(syn->eligibility, network->network_time);
-        syn->enable_eligibility = true;  // Enable eligibility traces by default
-    } else {
-        syn->enable_eligibility = false;  // Disable if allocation failed
-    }
+    // syn->eligibility = (eligibility_trace_t*)nimcp_calloc(1, sizeof(eligibility_trace_t));
+    // if (syn->eligibility) {
+    //     eligibility_trace_init(syn->eligibility, network->network_time);
+    //     syn->enable_eligibility = true;  // Enable eligibility traces by default
+    // } else {
+    //     syn->enable_eligibility = false;  // Disable if allocation failed
+    // }
+    syn->eligibility = NULL;
+    syn->enable_eligibility = false;
 
     from_neuron->num_synapses++;
 
