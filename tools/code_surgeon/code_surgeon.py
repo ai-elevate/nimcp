@@ -716,13 +716,62 @@ def orchestrate_full_pipeline(nimcp_root: Path,
 
     return 1 if failing else 0
 
+def orchestrate_parallel_pipeline(nimcp_root: Path,
+                                  target_files: Tuple[str, ...],
+                                  num_workers: int = 4,
+                                  debug_mode: bool = False) -> int:
+    """
+    Parallel test orchestration pipeline
+
+    WHAT: Execute Code Surgeon operations in parallel across multiple targets
+    WHY:  Maximize throughput for large codebases
+    HOW:  Spawn N child Code Surgeon agents, distribute work, aggregate results
+
+    RETURNS: 0 if all tasks succeed, 1 otherwise
+    COMPLEXITY: O(longest_task) with parallelism factor of num_workers
+    """
+    from parallel_executor import execute_parallel_test_generation
+    from result_aggregator import aggregate_results, generate_text_report, save_report
+
+    print(f"\n{'='*60}")
+    print("Code Surgeon v2.0 - PARALLEL EXECUTION MODE")
+    print(f"{'='*60}")
+    print(f"Workers: {num_workers}")
+    print(f"Targets: {len(target_files)}")
+    print(f"{'='*60}\n")
+
+    # Execute parallel test generation
+    results = execute_parallel_test_generation(
+        target_files=target_files,
+        nimcp_root=nimcp_root,
+        num_workers=num_workers,
+        debug_mode=debug_mode
+    )
+
+    # Aggregate results
+    report = aggregate_results(results)
+
+    # Display report
+    print(generate_text_report(report))
+
+    # Save reports to disk
+    report_dir = nimcp_root / ".code_surgeon" / "reports"
+    saved_reports = save_report(report, report_dir, formats=('text', 'json', 'html'))
+
+    print("\nReports saved:")
+    for format_name, path in saved_reports.items():
+        print(f"  {format_name}: {path.relative_to(nimcp_root)}")
+
+    # Return success if all tasks completed
+    return 0 if report.metrics.failed_tasks == 0 else 1
+
 def main():
     """
     Main entry point
 
     WHAT: Code Surgeon CLI entry
     WHY:  Single point of control
-    HOW:  Parse args, run orchestration
+    HOW:  Parse args, run orchestration (serial or parallel)
     """
     import argparse
 
@@ -736,6 +785,14 @@ def main():
     parser.add_argument("--no-coverage", action="store_false", dest="coverage",
                        help="Skip coverage analysis")
 
+    # Parallel execution options
+    parser.add_argument("--parallel", type=int, metavar="N", default=None,
+                       help="Enable parallel execution with N workers (default: CPU count)")
+    parser.add_argument("--target-files", nargs="+", metavar="FILE",
+                       help="Target files for parallel execution (e.g., nimcp_p2pnode.c nimcp_security.c)")
+    parser.add_argument("--debug", action="store_true",
+                       help="Enable debug output")
+
     args = parser.parse_args()
 
     print("Code Surgeon v2.0 - Automated Test Orchestration")
@@ -743,15 +800,31 @@ def main():
 
     nimcp_root = Path(__file__).parent.parent.parent
 
-    if args.mode == "full":
-        return orchestrate_full_pipeline(nimcp_root,
-                                        args.max_iterations,
-                                        enable_coverage=args.coverage)
+    # Check if parallel mode is enabled
+    if args.parallel is not None:
+        # Parallel execution mode
+        if not args.target_files:
+            print("Error: --target-files required for parallel execution")
+            print("Example: --parallel 3 --target-files nimcp_p2pnode.c nimcp_security.c nimcp.c")
+            return 1
+
+        return orchestrate_parallel_pipeline(
+            nimcp_root=nimcp_root,
+            target_files=tuple(args.target_files),
+            num_workers=args.parallel if args.parallel > 0 else None,
+            debug_mode=args.debug
+        )
     else:
-        # Quick test-only mode
-        return orchestrate_full_pipeline(nimcp_root,
-                                        max_iterations=1,
-                                        enable_coverage=args.coverage)
+        # Serial execution mode (backward compatible)
+        if args.mode == "full":
+            return orchestrate_full_pipeline(nimcp_root,
+                                            args.max_iterations,
+                                            enable_coverage=args.coverage)
+        else:
+            # Quick test-only mode
+            return orchestrate_full_pipeline(nimcp_root,
+                                            max_iterations=1,
+                                            enable_coverage=args.coverage)
 
 if __name__ == "__main__":
     sys.exit(main())
