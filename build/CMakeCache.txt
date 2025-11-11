@@ -288,7 +288,7 @@ CMAKE_VERBOSE_MAKEFILE:BOOL=FALSE
 ENABLE_ASAN:BOOL=OFF
 
 //Enable code coverage instrumentation (gcov/lcov)
-ENABLE_COVERAGE:BOOL=ON
+ENABLE_COVERAGE:BOOL=OFF
 
 //Enable fuzzing targets (requires libFuzzer)
 ENABLE_FUZZING:BOOL=OFF

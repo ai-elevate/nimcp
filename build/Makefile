@@ -744,17 +744,30 @@ unit_test_brain_cow/fast:
 .PHONY : unit_test_brain_cow/fast
 
 #=============================================================================
-# Target rules for targets named unit_test_brain_full_simulation
+# Target rules for targets named unit_test_brain_error_paths
 
 # Build rule for target.
-unit_test_brain_full_simulation: cmake_check_build_system
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_test_brain_full_simulation
-.PHONY : unit_test_brain_full_simulation
+unit_test_brain_error_paths: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_test_brain_error_paths
+.PHONY : unit_test_brain_error_paths
 
 # fast build rule for target.
-unit_test_brain_full_simulation/fast:
-	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_test_brain_full_simulation.dir/build.make test/CMakeFiles/unit_test_brain_full_simulation.dir/build
-.PHONY : unit_test_brain_full_simulation/fast
+unit_test_brain_error_paths/fast:
+	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_test_brain_error_paths.dir/build.make test/CMakeFiles/unit_test_brain_error_paths.dir/build
+.PHONY : unit_test_brain_error_paths/fast
+
+#=============================================================================
+# Target rules for targets named unit_test_brain_learning_strategies
+
+# Build rule for target.
+unit_test_brain_learning_strategies: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_test_brain_learning_strategies
+.PHONY : unit_test_brain_learning_strategies
+
+# fast build rule for target.
+unit_test_brain_learning_strategies/fast:
+	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_test_brain_learning_strategies.dir/build.make test/CMakeFiles/unit_test_brain_learning_strategies.dir/build
+.PHONY : unit_test_brain_learning_strategies/fast
 
 #=============================================================================
 # Target rules for targets named unit_test_brain_master
@@ -859,19 +872,6 @@ unit_test_btree: cmake_check_build_system
 unit_test_btree/fast:
 	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_test_btree.dir/build.make test/CMakeFiles/unit_test_btree.dir/build
 .PHONY : unit_test_btree/fast
-
-#=============================================================================
-# Target rules for targets named unit_test_comprehensive_integration
-
-# Build rule for target.
-unit_test_comprehensive_integration: cmake_check_build_system
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_test_comprehensive_integration
-.PHONY : unit_test_comprehensive_integration
-
-# fast build rule for target.
-unit_test_comprehensive_integration/fast:
-	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_test_comprehensive_integration.dir/build.make test/CMakeFiles/unit_test_comprehensive_integration.dir/build
-.PHONY : unit_test_comprehensive_integration/fast
 
 #=============================================================================
 # Target rules for targets named unit_test_consolidation
@@ -2486,7 +2486,8 @@ help:
 	@echo "... unit_test_bcm"
 	@echo "... unit_test_brain_comprehensive"
 	@echo "... unit_test_brain_cow"
-	@echo "... unit_test_brain_full_simulation"
+	@echo "... unit_test_brain_error_paths"
+	@echo "... unit_test_brain_learning_strategies"
 	@echo "... unit_test_brain_master"
 	@echo "... unit_test_brain_oscillations_coverage"
 	@echo "... unit_test_brain_oscillations_real"
@@ -2495,7 +2496,6 @@ help:
 	@echo "... unit_test_brain_regions_coverage"
 	@echo "... unit_test_brain_regions_real"
 	@echo "... unit_test_btree"
-	@echo "... unit_test_comprehensive_integration"
 	@echo "... unit_test_consolidation"
 	@echo "... unit_test_curiosity"
 	@echo "... unit_test_dataio"

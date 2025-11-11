@@ -98,7 +98,8 @@
 /home/bbrelin/nimcp/build/test/CMakeFiles/unit_test_bcm.dir
 /home/bbrelin/nimcp/build/test/CMakeFiles/unit_test_brain_comprehensive.dir
 /home/bbrelin/nimcp/build/test/CMakeFiles/unit_test_brain_cow.dir
-/home/bbrelin/nimcp/build/test/CMakeFiles/unit_test_brain_full_simulation.dir
+/home/bbrelin/nimcp/build/test/CMakeFiles/unit_test_brain_error_paths.dir
+/home/bbrelin/nimcp/build/test/CMakeFiles/unit_test_brain_learning_strategies.dir
 /home/bbrelin/nimcp/build/test/CMakeFiles/unit_test_brain_master.dir
 /home/bbrelin/nimcp/build/test/CMakeFiles/unit_test_brain_oscillations_coverage.dir
 /home/bbrelin/nimcp/build/test/CMakeFiles/unit_test_brain_oscillations_real.dir
@@ -107,7 +108,6 @@
 /home/bbrelin/nimcp/build/test/CMakeFiles/unit_test_brain_regions_coverage.dir
 /home/bbrelin/nimcp/build/test/CMakeFiles/unit_test_brain_regions_real.dir
 /home/bbrelin/nimcp/build/test/CMakeFiles/unit_test_btree.dir
-/home/bbrelin/nimcp/build/test/CMakeFiles/unit_test_comprehensive_integration.dir
 /home/bbrelin/nimcp/build/test/CMakeFiles/unit_test_consolidation.dir
 /home/bbrelin/nimcp/build/test/CMakeFiles/unit_test_curiosity.dir
 /home/bbrelin/nimcp/build/test/CMakeFiles/unit_test_dataio.dir

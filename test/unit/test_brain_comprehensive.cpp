@@ -183,6 +183,10 @@ TEST_F(BrainComprehensiveTest, CreateCustom_AllPhase10Features) {
     config.mirror_neuron_count = 1000;
 
     brain_t brain = brain_create_custom(&config);
+    if (!brain) {
+        const char* error = brain_get_last_error();
+        FAIL() << "Failed to create brain with Phase 10 features: " << (error ? error : "Unknown error");
+    }
     ASSERT_NE(brain, nullptr);
     brain_destroy(brain);
 }
@@ -1748,6 +1752,55 @@ TEST_F(BrainComprehensiveTest, Stress_ManyInferences) {
     brain_get_stats(brain, &stats);
     EXPECT_GE(stats.total_inferences, 1000u);
 
+    delete[] features;
+    brain_destroy(brain);
+}
+
+//=============================================================================
+// Additional Task Strategy Tests - Coverage Boost
+//=============================================================================
+
+TEST_F(BrainComprehensiveTest, TaskStrategy_Regression) {
+    brain_t brain = brain_create("regression_test", BRAIN_SIZE_TINY,
+                                  BRAIN_TASK_REGRESSION, 5, 3);
+    ASSERT_NE(brain, nullptr);
+
+    float* features = create_test_features(5);
+    brain_learn_example(brain, features, 5, "reg_label", 0.8f);
+    brain_decision_t* decision = brain_decide(brain, features, 5);
+    EXPECT_NE(decision, nullptr);
+
+    brain_free_decision(decision);
+    delete[] features;
+    brain_destroy(brain);
+}
+
+TEST_F(BrainComprehensiveTest, TaskStrategy_Pattern) {
+    brain_t brain = brain_create("pattern_test", BRAIN_SIZE_TINY,
+                                  BRAIN_TASK_PATTERN_MATCHING, 5, 3);
+    ASSERT_NE(brain, nullptr);
+
+    float* features = create_test_features(5);
+    brain_learn_example(brain, features, 5, "pattern_label", 0.9f);
+    brain_decision_t* decision = brain_decide(brain, features, 5);
+    EXPECT_NE(decision, nullptr);
+
+    brain_free_decision(decision);
+    delete[] features;
+    brain_destroy(brain);
+}
+
+TEST_F(BrainComprehensiveTest, TaskStrategy_Association) {
+    brain_t brain = brain_create("assoc_test", BRAIN_SIZE_TINY,
+                                  BRAIN_TASK_ASSOCIATION, 5, 3);
+    ASSERT_NE(brain, nullptr);
+
+    float* features = create_test_features(5);
+    brain_learn_example(brain, features, 5, "assoc_label", 0.7f);
+    brain_decision_t* decision = brain_decide(brain, features, 5);
+    EXPECT_NE(decision, nullptr);
+
+    brain_free_decision(decision);
     delete[] features;
     brain_destroy(brain);
 }

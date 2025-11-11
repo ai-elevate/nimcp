@@ -55,7 +55,7 @@ scale_free_config_t topology_default_scale_free_config(void) {
         .power_law_gamma = -2.1f,      // Typical cortical value
         .hub_ratio = 0.15f,            // 15% hubs matches cortical data
         .min_degree = 3,               // Minimum for connectivity
-        .max_degree = 0,               // 0 = auto-compute as N/10
+        .max_degree = 100,             // Reasonable default (can be auto-computed)
         .spatial_constraint = 0.5f,    // Moderate distance dependence
         .bidirectional = false         // Directed by default
     };

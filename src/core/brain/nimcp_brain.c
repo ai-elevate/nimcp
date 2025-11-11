@@ -890,8 +890,18 @@ static bool validate_creation_params(const char* task_name, uint32_t num_inputs,
         return false;
     }
 
+    if (num_inputs > 10000) {
+        set_error("num_inputs must be <= 10000");
+        return false;
+    }
+
     if (num_outputs == 0) {
         set_error("num_outputs must be > 0");
+        return false;
+    }
+
+    if (num_outputs > 10000) {
+        set_error("num_outputs must be <= 10000");
         return false;
     }
 
@@ -1781,11 +1791,22 @@ static bool init_mirror_neurons(brain_t brain)
 
     // Create mirror neuron config from brain config
     mirror_neuron_config_t mirror_config = mirror_neurons_get_default_config();
-    mirror_config.num_mirror_neurons = brain->config.mirror_neuron_count;
-    mirror_config.max_actions = brain->config.mirror_max_actions;
-    mirror_config.max_agents = brain->config.mirror_max_agents;
-    mirror_config.learning_rate = brain->config.mirror_learning_rate;
-    mirror_config.match_threshold = brain->config.mirror_match_threshold;
+    // Only override defaults if values are explicitly set (non-zero)
+    if (brain->config.mirror_neuron_count > 0) {
+        mirror_config.num_mirror_neurons = brain->config.mirror_neuron_count;
+    }
+    if (brain->config.mirror_max_actions > 0) {
+        mirror_config.max_actions = brain->config.mirror_max_actions;
+    }
+    if (brain->config.mirror_max_agents > 0) {
+        mirror_config.max_agents = brain->config.mirror_max_agents;
+    }
+    if (brain->config.mirror_learning_rate > 0.0f) {
+        mirror_config.learning_rate = brain->config.mirror_learning_rate;
+    }
+    if (brain->config.mirror_match_threshold > 0.0f) {
+        mirror_config.match_threshold = brain->config.mirror_match_threshold;
+    }
 
     // Enable integration with other cognitive systems
     mirror_config.enable_working_memory = brain->config.enable_working_memory;

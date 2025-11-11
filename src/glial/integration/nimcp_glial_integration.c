@@ -55,6 +55,7 @@ static void id_list_value_destructor(void* value, size_t value_size) {
     }
 }
 
+
 static bool id_list_add(id_list_t* list, uint32_t id) {
     if (!list) return false;
 
@@ -91,7 +92,7 @@ static inline uint32_t make_synapse_id(uint32_t pre_neuron_id, uint32_t post_neu
 // ============================================================================
 
 glial_integration_t* glial_integration_create(neural_network_t network, uint32_t max_mappings) {
-    if (!network || max_mappings == 0) {
+    if (max_mappings == 0) {
         return NULL;
     }
 
@@ -111,7 +112,7 @@ glial_integration_t* glial_integration_create(neural_network_t network, uint32_t
         .hash_algorithm = HASH_ALG_MURMUR3,
         .custom_hash_fn = NULL,
         .custom_compare_fn = NULL,
-        .value_destructor = NULL,  // We'll manually free values
+        .value_destructor = NULL,  // Values are uint32_t, no cleanup needed
         .case_insensitive = false,
         .thread_safe = false
     };
@@ -236,13 +237,8 @@ nimcp_result_t glial_integration_assign_astrocyte_to_synapse(glial_integration_t
     nimcp_mutex_lock(&gi->lock);
 
     // Forward mapping: synapse → astrocyte
-    uint32_t* id_ptr = (uint32_t*)nimcp_malloc(sizeof(uint32_t));
-    if (!id_ptr) {
-        nimcp_mutex_unlock(&gi->lock);
-        return NIMCP_ERROR_MEMORY;
-    }
-    *id_ptr = astrocyte_id;
-    hash_table_insert_uint32(gi->synapse_to_astrocyte, synapse_id, id_ptr, sizeof(uint32_t));
+    // Store the astrocyte_id directly (not a pointer to it)
+    hash_table_insert_uint32(gi->synapse_to_astrocyte, synapse_id, &astrocyte_id, sizeof(uint32_t));
 
     // Reverse mapping: astrocyte → list of synapses
     id_list_t** list_ptr = (id_list_t**)hash_table_lookup_uint32(gi->astrocyte_to_synapses, astrocyte_id);
@@ -256,16 +252,8 @@ nimcp_result_t glial_integration_assign_astrocyte_to_synapse(glial_integration_t
             return NIMCP_ERROR_MEMORY;
         }
 
-        // Store pointer to list in hash table
-        id_list_t** new_list_ptr = (id_list_t**)nimcp_malloc(sizeof(id_list_t*));
-        if (!new_list_ptr) {
-            id_list_destroy(list);
-            nimcp_mutex_unlock(&gi->lock);
-            return NIMCP_ERROR_MEMORY;
-        }
-        *new_list_ptr = list;
-
-        hash_table_insert_uint32(gi->astrocyte_to_synapses, astrocyte_id, new_list_ptr, sizeof(id_list_t*));
+        // Store pointer to list in hash table (hash table will copy the pointer value)
+        hash_table_insert_uint32(gi->astrocyte_to_synapses, astrocyte_id, &list, sizeof(id_list_t*));
     } else {
         list = *list_ptr;
     }
@@ -288,13 +276,8 @@ nimcp_result_t glial_integration_assign_oligodendrocyte_to_neuron(glial_integrat
     nimcp_mutex_lock(&gi->lock);
 
     // Forward mapping: neuron → oligodendrocyte
-    uint32_t* id_ptr = (uint32_t*)nimcp_malloc(sizeof(uint32_t));
-    if (!id_ptr) {
-        nimcp_mutex_unlock(&gi->lock);
-        return NIMCP_ERROR_MEMORY;
-    }
-    *id_ptr = oligo_id;
-    hash_table_insert_uint32(gi->neuron_to_oligodendrocyte, neuron_id, id_ptr, sizeof(uint32_t));
+    // Store the oligo_id directly (not a pointer to it)
+    hash_table_insert_uint32(gi->neuron_to_oligodendrocyte, neuron_id, &oligo_id, sizeof(uint32_t));
 
     // Reverse mapping: oligodendrocyte → list of neurons
     id_list_t** list_ptr = (id_list_t**)hash_table_lookup_uint32(gi->oligodendrocyte_to_neurons, oligo_id);
@@ -307,15 +290,8 @@ nimcp_result_t glial_integration_assign_oligodendrocyte_to_neuron(glial_integrat
             return NIMCP_ERROR_MEMORY;
         }
 
-        id_list_t** new_list_ptr = (id_list_t**)nimcp_malloc(sizeof(id_list_t*));
-        if (!new_list_ptr) {
-            id_list_destroy(list);
-            nimcp_mutex_unlock(&gi->lock);
-            return NIMCP_ERROR_MEMORY;
-        }
-        *new_list_ptr = list;
-
-        hash_table_insert_uint32(gi->oligodendrocyte_to_neurons, oligo_id, new_list_ptr, sizeof(id_list_t*));
+        // Store pointer to list in hash table (hash table will copy the pointer value)
+        hash_table_insert_uint32(gi->oligodendrocyte_to_neurons, oligo_id, &list, sizeof(id_list_t*));
     } else {
         list = *list_ptr;
     }
@@ -337,13 +313,8 @@ nimcp_result_t glial_integration_assign_microglia_to_synapse(glial_integration_t
     nimcp_mutex_lock(&gi->lock);
 
     // Forward mapping: synapse → microglia
-    uint32_t* id_ptr = (uint32_t*)nimcp_malloc(sizeof(uint32_t));
-    if (!id_ptr) {
-        nimcp_mutex_unlock(&gi->lock);
-        return NIMCP_ERROR_MEMORY;
-    }
-    *id_ptr = microglia_id;
-    hash_table_insert_uint32(gi->synapse_to_microglia, synapse_id, id_ptr, sizeof(uint32_t));
+    // Store the microglia_id directly (not a pointer to it)
+    hash_table_insert_uint32(gi->synapse_to_microglia, synapse_id, &microglia_id, sizeof(uint32_t));
 
     // Reverse mapping: microglia → list of synapses
     id_list_t** list_ptr = (id_list_t**)hash_table_lookup_uint32(gi->microglia_to_synapses, microglia_id);
@@ -356,15 +327,8 @@ nimcp_result_t glial_integration_assign_microglia_to_synapse(glial_integration_t
             return NIMCP_ERROR_MEMORY;
         }
 
-        id_list_t** new_list_ptr = (id_list_t**)nimcp_malloc(sizeof(id_list_t*));
-        if (!new_list_ptr) {
-            id_list_destroy(list);
-            nimcp_mutex_unlock(&gi->lock);
-            return NIMCP_ERROR_MEMORY;
-        }
-        *new_list_ptr = list;
-
-        hash_table_insert_uint32(gi->microglia_to_synapses, microglia_id, new_list_ptr, sizeof(id_list_t*));
+        // Store pointer to list in hash table (hash table will copy the pointer value)
+        hash_table_insert_uint32(gi->microglia_to_synapses, microglia_id, &list, sizeof(id_list_t*));
     } else {
         list = *list_ptr;
     }
