@@ -264,6 +264,9 @@ brain_region_t* brain_region_create(brain_region_type_t type, uint32_t num_neuro
     config.target_activity = 0.1f;
     config.min_weight = -1.0f;
     config.max_weight = 1.0f;
+    // REQUIRED: Set input/output dimensions (needed by neural_network_create validation)
+    config.input_size = 100;  // Default input dimension for brain regions
+    config.output_size = 10;  // Default output dimension for brain regions
 
     region->network = neural_network_create(&config);
     if (!region->network) {
