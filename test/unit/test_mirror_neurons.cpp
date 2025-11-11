@@ -649,7 +649,7 @@ TEST_F(MirrorNeuronTest, HasRecentObservations_AfterObserve) {
     mirror = mirror_neurons_create(nullptr);
     ASSERT_NE(nullptr, mirror);
 
-    action_t action = create_test_action();
+    action_t action = create_test_action(1, "wave", 1);
     mirror_neurons_observe_action(mirror, &action);
 
     EXPECT_TRUE(mirror_neurons_has_recent_observations(mirror));
