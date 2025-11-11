@@ -86,7 +86,9 @@ TEST_F(StressTest, NeuralNetwork_MassCreationDestruction)
                                .input_size = 10,
                                .output_size = 5,
                                .enable_stdp = true,
-                               .enable_hebbian = false};
+                               .enable_hebbian = false,
+                               .enable_oja = false,
+                               .enable_homeostasis = false};
 
     std::vector<neural_network_t> networks;
     networks.reserve(STRESS_ITERATIONS);
@@ -115,7 +117,9 @@ TEST_F(StressTest, NeuralNetwork_ConcurrentOperations)
                                .input_size = 10,
                                .output_size = 5,
                                .enable_stdp = true,
-                               .enable_hebbian = false};
+                               .enable_hebbian = false,
+                               .enable_oja = false,
+                               .enable_homeostasis = false};
 
     std::atomic<int> error_count{0};
     std::vector<std::thread> threads;
@@ -168,7 +172,9 @@ TEST_F(StressTest, DISABLED_NeuralNetwork_LongRunningStability)
                                .input_size = 10,
                                .output_size = 5,
                                .enable_stdp = true,
-                               .enable_hebbian = false};
+                               .enable_hebbian = false,
+                               .enable_oja = false,
+                               .enable_homeostasis = false};
 
     neural_network_t net = neural_network_create(&config);
     ASSERT_NE(net, nullptr);
@@ -207,9 +213,16 @@ TEST_F(StressTest, DISABLED_NeuralNetwork_LongRunningStability)
  */
 TEST_F(StressTest, QueueManager_HighThroughput)
 {
-    nimcp_queue_manager_config_t config = {.num_channels = 4, .max_queue_size = 1000, .num_priorities = 3};
+    nimcp_queue_manager_config_t config = {
+        .queue_sizes = {.high = 1000, .normal = 1000, .low = 1000},
+        .default_timeout = 1000,
+        .blocking_mode = true,
+        .max_channels = 4,
+        .worker_threads = 1};
 
-    nimcp_queue_manager_t* manager = nimcp_queue_manager_create(&config);
+    nimcp_queue_manager_t* manager = nullptr;
+    nimcp_result_t result = nimcp_queue_manager_create(&config, &manager);
+    ASSERT_EQ(result, NIMCP_SUCCESS);
     ASSERT_NE(manager, nullptr);
 
     std::atomic<int> enqueue_count{0};
@@ -221,7 +234,7 @@ TEST_F(StressTest, QueueManager_HighThroughput)
     // Producer threads
     for (int t = 0; t < CONCURRENT_THREADS / 2; t++) {
         producers.emplace_back([manager, &enqueue_count]() {
-            nimcp_message_t msg = {.size = 64, .data = nullptr};
+            nimcp_message_t msg = {.data = nullptr, .size = 64};
 
             uint8_t data[64] = {0};
             msg.data = data;
@@ -240,10 +253,11 @@ TEST_F(StressTest, QueueManager_HighThroughput)
     for (int t = 0; t < CONCURRENT_THREADS / 2; t++) {
         consumers.emplace_back([manager, &dequeue_count]() {
             nimcp_message_t msg;
+            nimcp_message_t* msg_ptr = &msg;
 
             for (int i = 0; i < STRESS_ITERATIONS; i++) {
                 uint32_t channel = i % 4;
-                if (nimcp_queue_manager_dequeue(manager, channel, &msg, 1)) {
+                if (nimcp_queue_manager_dequeue(manager, channel, &msg_ptr, 1)) {
                     dequeue_count++;
                 }
                 std::this_thread::yield();
@@ -272,12 +286,18 @@ TEST_F(StressTest, QueueManager_MemoryPressure)
     // Create multiple queue managers to simulate memory pressure
     std::vector<nimcp_queue_manager_t*> managers;
 
-    nimcp_queue_manager_config_t config = {.num_channels = 8, .max_queue_size = 500, .num_priorities = 3};
+    nimcp_queue_manager_config_t config = {
+        .queue_sizes = {.high = 500, .normal = 500, .low = 500},
+        .default_timeout = 1000,
+        .blocking_mode = true,
+        .max_channels = 8,
+        .worker_threads = 1};
 
     // Create as many as we can
     for (int i = 0; i < 20; i++) {
-        nimcp_queue_manager_t* manager = nimcp_queue_manager_create(&config);
-        if (manager != nullptr) {
+        nimcp_queue_manager_t* manager = nullptr;
+        nimcp_result_t result = nimcp_queue_manager_create(&config, &manager);
+        if (result == NIMCP_SUCCESS && manager != nullptr) {
             managers.push_back(manager);
         } else {
             // Allocation failure is acceptable under memory pressure
@@ -670,7 +690,9 @@ TEST_F(StressTest, Performance_OperationLatency)
                                .input_size = 10,
                                .output_size = 5,
                                .enable_stdp = true,
-                               .enable_hebbian = false};
+                               .enable_hebbian = false,
+                               .enable_oja = false,
+                               .enable_homeostasis = false};
 
     neural_network_t net = neural_network_create(&config);
     ASSERT_NE(net, nullptr);
