@@ -11,6 +11,7 @@
 #include <string.h>
 #include "core/brain/nimcp_brain.h"
 #include "cognitive/curiosity/nimcp_curiosity.h"
+#include "cognitive/nimcp_symbolic_logic.h"
 #include "utils/memory/nimcp_memory.h"  // CRITICAL: Declares nimcp_calloc/nimcp_free return types
 #include "utils/containers/nimcp_btree.h"
 
@@ -2215,4 +2216,161 @@ bool knowledge_add_item(knowledge_system_t system, const knowledge_item_t* item)
 
     int32_t index = repository_add(system->repository, &item_copy);
     return index >= 0;
+}
+
+//=============================================================================
+// Symbolic Logic Integration (Phase 11: Logic Wiring)
+//=============================================================================
+
+/**
+ * WHAT: Create a simple atomic formula for symbolic logic
+ * WHY:  Enable knowledge→logic integration without complex clause construction
+ * HOW:  Create predicate with terms for basic facts
+ */
+static atomic_formula_t* create_simple_atomic(const char* predicate, const char* arg1, const char* arg2)
+{
+    if (!predicate || !arg1) {
+        return NULL;
+    }
+
+    atomic_formula_t* atom = (atomic_formula_t*)nimcp_calloc(1, sizeof(atomic_formula_t));
+    if (!atom) {
+        return NULL;
+    }
+
+    // Set predicate name
+    strncpy(atom->name, predicate, LOGIC_MAX_NAME_LENGTH - 1);
+    atom->negated = false;
+
+    // Create terms
+    uint8_t arity = arg2 ? 2 : 1;
+    atom->terms = (logical_term_t**)nimcp_calloc(arity, sizeof(logical_term_t*));
+    if (!atom->terms) {
+        nimcp_free(atom);
+        return NULL;
+    }
+
+    // First argument
+    atom->terms[0] = (logical_term_t*)nimcp_calloc(1, sizeof(logical_term_t));
+    if (!atom->terms[0]) {
+        nimcp_free(atom->terms);
+        nimcp_free(atom);
+        return NULL;
+    }
+    atom->terms[0]->type = TERM_CONSTANT;
+    strncpy(atom->terms[0]->name, arg1, LOGIC_MAX_NAME_LENGTH - 1);
+    atom->terms[0]->args = NULL;
+    atom->terms[0]->arity = 0;
+
+    // Second argument (if provided)
+    if (arg2) {
+        atom->terms[1] = (logical_term_t*)nimcp_calloc(1, sizeof(logical_term_t));
+        if (!atom->terms[1]) {
+            nimcp_free(atom->terms[0]);
+            nimcp_free(atom->terms);
+            nimcp_free(atom);
+            return NULL;
+        }
+        atom->terms[1]->type = TERM_CONSTANT;
+        strncpy(atom->terms[1]->name, arg2, LOGIC_MAX_NAME_LENGTH - 1);
+        atom->terms[1]->args = NULL;
+        atom->terms[1]->arity = 0;
+    }
+
+    atom->arity = arity;
+    return atom;
+}
+
+/**
+ * WHAT: Create logic clause from atomic formula
+ * WHY:  Symbolic logic works with clauses (CNF)
+ * HOW:  Wrap atomic formula in a clause with single literal
+ */
+static logic_clause_t* create_clause_from_atomic(atomic_formula_t* atom, float confidence)
+{
+    if (!atom) {
+        return NULL;
+    }
+
+    logic_clause_t* clause = (logic_clause_t*)nimcp_calloc(1, sizeof(logic_clause_t));
+    if (!clause) {
+        return NULL;
+    }
+
+    clause->literals = (atomic_formula_t**)nimcp_calloc(1, sizeof(atomic_formula_t*));
+    if (!clause->literals) {
+        nimcp_free(clause);
+        return NULL;
+    }
+
+    clause->literals[0] = atom;
+    clause->num_literals = 1;
+    clause->confidence = confidence;
+
+    return clause;
+}
+
+/**
+ * WHAT: Add knowledge item to symbolic logic as facts
+ * WHY:  Enable logical reasoning over knowledge graph (as recommended in audit)
+ * HOW:  Convert knowledge concepts to IsA/HasProperty predicates
+ *
+ * INTEGRATION: Called when both knowledge and symbolic_logic are available
+ *
+ * EXAMPLE:
+ *   Concept: "cat" with related: "animal"
+ *   → Logic: IsA(cat, animal)
+ *
+ * @param logic Symbolic logic engine
+ * @param item Knowledge item to convert to logic facts
+ * @return Number of facts added
+ */
+uint32_t knowledge_add_to_symbolic_logic(
+    symbolic_logic_t* logic,
+    const knowledge_item_t* item)
+{
+    if (!logic || !item) {
+        return 0;
+    }
+
+    uint32_t facts_added = 0;
+
+    // Add IsA facts for each related concept
+    // Example: IsA(cat, animal) if "cat" is related to "animal"
+    for (uint32_t i = 0; i < item->num_related && i < 10; i++) {
+        atomic_formula_t* isa_atom = create_simple_atomic(
+            "IsA",
+            item->concept_name,
+            item->related_concepts[i]
+        );
+
+        if (isa_atom) {
+            logic_clause_t* clause = create_clause_from_atomic(isa_atom, item->confidence);
+            if (clause) {
+                if (symbolic_logic_add_fact(logic, clause, item->confidence)) {
+                    facts_added++;
+                }
+                // Note: symbolic_logic takes ownership of clause, don't free
+            }
+        }
+    }
+
+    // Add HasProperty fact for the concept itself
+    // Example: Concept(cat) - indicates concept exists in knowledge base
+    atomic_formula_t* concept_atom = create_simple_atomic(
+        "Concept",
+        item->concept_name,
+        NULL  // Unary predicate
+    );
+
+    if (concept_atom) {
+        logic_clause_t* clause = create_clause_from_atomic(concept_atom, item->confidence);
+        if (clause) {
+            if (symbolic_logic_add_fact(logic, clause, item->confidence)) {
+                facts_added++;
+            }
+        }
+    }
+
+    return facts_added;
 }

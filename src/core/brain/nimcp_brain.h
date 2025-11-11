@@ -8,6 +8,7 @@
 #include "plasticity/adaptive/nimcp_adaptive.h"
 #include "networking/distributed/nimcp_distributed_cognition.h"
 #include "common/nimcp_export.h"
+#include "core/neuron_models/nimcp_neuron_model.h"  // For ode_integration_method_t
 
 #ifdef __cplusplus
 extern "C" {
@@ -142,6 +143,42 @@ typedef struct {
     bool enable_explanations; /**< Enable interpretability */
     char task_name[64];       /**< Name for this brain */
 
+    // === PART A: DIFFERENTIAL EQUATIONS & PDEs ===
+
+    /**
+     * ODE Integration Method (A1.x)
+     *
+     * WHAT: Numerical integration algorithm for neuron membrane dynamics
+     * WHY: Control accuracy/speed tradeoff for differential equation solving
+     * HOW: Passed to neuron update functions during network simulation
+     *
+     * OPTIONS:
+     * - ODE_EULER (default): Fast, first-order accuracy
+     *   - Use when: Real-time performance critical, dt < 0.5ms
+     *   - Speed: 1.0× (baseline)
+     *
+     * - ODE_RK2: Balanced, second-order accuracy
+     *   - Use when: Good accuracy needed, dt = 0.5-2ms
+     *   - Speed: ~0.5× (2× slower than Euler)
+     *
+     * - ODE_RK4: Best accuracy, fourth-order
+     *   - Use when: Scientific precision required, dt = 1-5ms
+     *   - Speed: ~0.25× (4× slower than Euler)
+     *
+     * BACKWARD COMPATIBILITY:
+     * - Default value is ODE_EULER (0)
+     * - Existing code continues to use Euler method
+     * - No breaking changes to API or behavior
+     *
+     * EXAMPLE:
+     * ```c
+     * brain_config_t config = brain_default_config(...);
+     * config.neuron_integration = ODE_RK4;  // High accuracy
+     * brain_t brain = brain_create_custom(&config);
+     * ```
+     */
+    ode_integration_method_t neuron_integration;  /**< Neuron ODE integration method (default: ODE_EULER) */
+
     // === PHASE 3: DISTRIBUTED COGNITION ===
     bool enable_distributed;  /**< Enable P2P cognitive coordination */
     p2p_node_t p2p_node;      /**< P2P network node (if distributed) */
@@ -173,6 +210,18 @@ typedef struct {
     bool enable_pink_noise;    /**< Enable pink noise neuromodulation (Phase 4) */
     bool enable_spike_nlp;     /**< Enable NLP via spike encoding (Phase 5.1) */
     bool enable_fractal_topology; /**< Enable scale-free network topology (Phase 2) */
+
+    // Attention Mechanism
+    bool enable_multihead_attention;  /**< Enable attention mechanism for selective processing */
+    uint32_t num_attention_heads;     /**< Number of attention heads (default: 8) */
+    uint32_t attention_key_dim;       /**< Key/query dimension (default: 64) */
+    bool enable_thalamic_gate;        /**< Enable thalamic gating for top-down control */
+    bool enable_salience_weighting;   /**< Enable salience-based attention */
+
+    // Brain Regions Architecture (hierarchical cortical organization)
+    bool enable_brain_regions;        /**< Enable modular brain regions with cortical layers */
+    uint32_t num_brain_regions;       /**< Number of brain regions to create (default: 4) */
+    uint32_t neurons_per_region;      /**< Neurons per region (default: 1000) */
 
     // === PHASE 8: UNIFIED MULTI-MODAL PROCESSING ===
     bool enable_multimodal_integration; /**< Enable multi-modal sensory integration */

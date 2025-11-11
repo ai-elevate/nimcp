@@ -1101,7 +1101,10 @@ const char* cognitive_module_to_string(cognitive_module_t module) {
         case MODULE_GOAL_MOTIVATION: return "GOAL_MOTIVATION";
         case MODULE_COGNITIVE_CONTROL: return "COGNITIVE_CONTROL";
         default:
-            if (module >= MODULE_CUSTOM_START) return "CUSTOM";
+            // Custom modules in reasonable range
+            if (module >= MODULE_CUSTOM_START && module < MODULE_CUSTOM_START + 1000) {
+                return "CUSTOM";
+            }
             return "UNKNOWN";
     }
 }

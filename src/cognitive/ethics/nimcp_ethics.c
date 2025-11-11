@@ -40,6 +40,9 @@
 #include "cognitive/nimcp_working_memory.h"
 #include "cognitive/nimcp_emotional_tagging.h"
 
+// Phase 11: Symbolic logic integration
+#include "cognitive/nimcp_symbolic_logic.h"
+
 //=============================================================================
 // Constants and Configuration
 //=============================================================================

@@ -31,6 +31,9 @@
 
 #include "nimcp_neuron_model.h"
 #include "nimcp_neuron_model_internal.h"
+#include "nimcp_izhikevich.h"  // For izhikevich_set_integration_method
+#include "nimcp_two_compartment.h"  // For two_compartment functions (Part A3.1)
+#include "utils/numerical/nimcp_integration.h"  // For integration_method_t
 #include <stdlib.h>
 #include <string.h>
 #include "utils/memory/nimcp_memory.h"
@@ -229,4 +232,62 @@ neuron_model_type_t neuron_model_get_type(const neuron_model_state_t state) {
     }
 
     return state->vtable->type;
+}
+
+//=============================================================================
+// Integration Method Configuration (Part A1.1: RK4 Support)
+//=============================================================================
+
+/**
+ * @brief Set ODE integration method for neuron model
+ *
+ * PART A1.1: RK4 Integration Support
+ * Maps ode_integration_method_t to integration_method_t and dispatches to model-specific setters
+ */
+void neuron_model_set_integration_method(neuron_model_state_t state, ode_integration_method_t method) {
+    // Guard: Validate state
+    if (!state || !state->vtable) {
+        return;
+    }
+
+    // Map ode_integration_method_t to integration_method_t
+    integration_method_t integration_method;
+    switch (method) {
+        case ODE_EULER:
+            integration_method = INTEGRATION_EULER;
+            break;
+        case ODE_RK4:
+            integration_method = INTEGRATION_RK4;
+            break;
+        case ODE_RK2:
+            // RK2 not supported in integration system - fall back to Euler
+            integration_method = INTEGRATION_EULER;
+            break;
+        case ODE_ADAPTIVE:
+            // Part A1.2: Adaptive RK45 (Dormand-Prince)
+            integration_method = INTEGRATION_ADAPTIVE;
+            break;
+        default:
+            integration_method = INTEGRATION_EULER;
+            break;
+    }
+
+    // Dispatch to model-specific setter based on type
+    switch (state->vtable->type) {
+        case NEURON_MODEL_IZHIKEVICH:
+            izhikevich_set_integration_method(state, integration_method);
+            break;
+        case NEURON_MODEL_TWO_COMPARTMENT:
+            // Two-compartment model has integration method set at creation time
+            // Integration method is baked into the params structure
+            // No runtime setter needed - already using RK4
+            break;
+        // Add other model types here as they gain RK4 support
+        case NEURON_MODEL_LIF:
+        case NEURON_MODEL_ADEX:
+        case NEURON_MODEL_HODGKIN_HUXLEY:
+            // These models don't support configurable integration yet
+            // They will continue using their built-in methods
+            break;
+    }
 }

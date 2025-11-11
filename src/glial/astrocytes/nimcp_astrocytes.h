@@ -59,6 +59,31 @@ extern "C" {
 #define ASTROCYTE_COUPLING_RADIUS_UM 100.0f
 
 //=============================================================================
+// Enhancement A4.1: Reaction-Diffusion Calcium Dynamics Constants
+//=============================================================================
+
+/** Calcium diffusion coefficient (µm²/s) */
+#define CALCIUM_DIFFUSION_COEFF 50.0f
+
+/** IP3 diffusion coefficient (µm²/s) */
+#define IP3_DIFFUSION_COEFF 280.0f
+
+/** Calcium wave propagation speed (µm/s) - biological range 10-20 */
+#define CALCIUM_WAVE_SPEED_TARGET 15.0f
+
+/** IP3 production rate constant */
+#define IP3_PRODUCTION_RATE 0.5f
+
+/** IP3 degradation rate constant (1/s) */
+#define IP3_DEGRADATION_RATE 1.0f
+
+/** Calcium release flux coefficient */
+#define CALCIUM_RELEASE_FLUX 2.0f
+
+/** Calcium uptake/pump rate constant (1/s) */
+#define CALCIUM_UPTAKE_RATE 0.5f
+
+//=============================================================================
 // Data Structures
 //=============================================================================
 
@@ -66,6 +91,7 @@ extern "C" {
  * @brief Forward declarations
  */
 typedef struct astrocyte_network_t astrocyte_network_t;
+typedef struct astrocyte_calcium_system_t astrocyte_calcium_system_t;
 
 /**
  * @brief Individual astrocyte cell state
@@ -117,6 +143,54 @@ typedef struct astrocyte_t {
 } astrocyte_t;
 
 /**
+ * @brief Enhancement A4.1: Reaction-Diffusion Calcium System
+ *
+ * SINGLE RESPONSIBILITY: Manages coupled Ca²⁺ and IP3 reaction-diffusion dynamics
+ *
+ * BIOLOGICAL MODEL:
+ * - ∂Ca²⁺/∂t = D_Ca∇²Ca²⁺ + J_release - J_uptake
+ * - ∂IP3/∂t = D_IP3∇²IP3 + production - degradation
+ * - Graph-based discretization on astrocyte network topology
+ *
+ * INTEGRATION:
+ * - Integrated with glial_integration module for calcium wave feedback
+ * - Triggers gliotransmitter release when Ca²⁺ exceeds threshold
+ * - Performance overhead target: < 15%
+ */
+struct astrocyte_calcium_system_t {
+    uint32_t num_astrocytes;            /**< Number of astrocytes in system */
+
+    // === STATE ARRAYS (HOT PATH) ===
+    float* calcium;                     /**< [num_astrocytes] Ca²⁺ concentration (µM) */
+    float* ip3;                         /**< [num_astrocytes] IP3 concentration (µM) */
+    float* calcium_er;                  /**< [num_astrocytes] ER Ca²⁺ stores (µM) */
+
+    // === DIFFUSION COEFFICIENTS ===
+    float D_ca;                         /**< Calcium diffusion coefficient (µm²/s) */
+    float D_ip3;                        /**< IP3 diffusion coefficient (µm²/s) */
+
+    // === REACTION RATE CONSTANTS ===
+    float ip3_production_rate;          /**< IP3 synthesis rate */
+    float ip3_degradation_rate;         /**< IP3 breakdown rate (1/s) */
+    float ca_release_flux;              /**< Ca²⁺ release from ER */
+    float ca_uptake_rate;               /**< Ca²⁺ pump rate (1/s) */
+
+    // === NETWORK TOPOLOGY (for graph-based diffusion) ===
+    astrocyte_network_t* network;       /**< Parent network for topology */
+
+    // === WAVE TRACKING ===
+    uint64_t* last_wave_time;           /**< [num_astrocytes] Last wave timestamp (µs) */
+    float wave_speed_measured;          /**< Measured wave speed (µm/s) */
+
+    // === PERFORMANCE METRICS ===
+    uint64_t total_update_time_us;      /**< Total time spent in updates (µs) */
+    uint64_t num_updates;               /**< Number of update calls */
+
+    // === THREAD SAFETY ===
+    nimcp_spinlock_t lock;              /**< Spinlock for concurrent updates */
+};
+
+/**
  * @brief Astrocyte network manager
  *
  * SINGLE RESPONSIBILITY: Manages astrocyte population and spatial indexing
@@ -138,6 +212,9 @@ struct astrocyte_network_t {
     float calcium_threshold_um;         /**< Threshold for Ca2+ wave propagation */
     float coupling_decay_rate;          /**< Gap junction diffusion rate (1/ms) */
     float coupling_radius_um;           /**< Max distance for gap junction coupling */
+
+    // === ENHANCEMENT A4.1: Calcium Dynamics ===
+    astrocyte_calcium_system_t* calcium_system; /**< Reaction-diffusion calcium system */
 
     // === THREAD SAFETY ===
     nimcp_mutex_t lock;                 /**< Mutex for network-level operations */
@@ -548,6 +625,164 @@ void astrocyte_network_get_stats(astrocyte_network_t* network,
                                  float* avg_calcium,
                                  float* max_calcium,
                                  float* avg_glutamate);
+
+//=============================================================================
+// Enhancement A4.1: Reaction-Diffusion Calcium System API
+//=============================================================================
+
+/**
+ * @brief Create calcium system for astrocyte network
+ *
+ * WHAT: Allocates and initializes reaction-diffusion system
+ * WHY:  Enables realistic calcium wave propagation
+ * HOW:  Allocates state arrays, sets parameters from biological data
+ *
+ * @param network Astrocyte network to attach to
+ * @return Calcium system pointer, or NULL on failure
+ *
+ * COMPLEXITY: O(N) where N = num_astrocytes
+ * THREAD-SAFE: Yes
+ */
+astrocyte_calcium_system_t* astrocyte_calcium_system_create(astrocyte_network_t* network);
+
+/**
+ * @brief Destroy calcium system
+ *
+ * WHAT: Frees all memory associated with calcium system
+ * WHY:  Prevent memory leaks
+ * HOW:  Frees state arrays, then system itself
+ *
+ * @param system Calcium system to destroy (can be NULL)
+ *
+ * COMPLEXITY: O(1)
+ * THREAD-SAFE: No (caller must ensure not in use)
+ */
+void astrocyte_calcium_system_destroy(astrocyte_calcium_system_t* system);
+
+/**
+ * @brief Update calcium dynamics using reaction-diffusion equations
+ *
+ * WHAT: Integrates coupled Ca²⁺ and IP3 dynamics on astrocyte network graph
+ * WHY:  Simulates calcium waves with realistic propagation speed
+ * HOW:  Graph-based discretization of diffusion + reaction terms
+ *
+ * BIOLOGICAL MODEL:
+ * ∂Ca²⁺/∂t = D_Ca * (graph Laplacian Ca²⁺) + J_release(IP3, Ca_ER) - J_uptake(Ca²⁺)
+ * ∂IP3/∂t = D_IP3 * (graph Laplacian IP3) + production - degradation * IP3
+ *
+ * where:
+ * - Graph Laplacian: Σ_neighbors (C_neighbor - C_self) / distance²
+ * - J_release: IP3-dependent Ca²⁺ release from ER
+ * - J_uptake: ATP-dependent Ca²⁺ pumps
+ *
+ * @param system Calcium system
+ * @param dt Timestep in seconds (typically 0.0001-0.001s)
+ * @param external_stimulus Per-astrocyte external stimulus array (can be NULL)
+ *
+ * COMPLEXITY: O(N × K) where N = num_astrocytes, K = avg coupled neighbors (~3-6)
+ * THREAD-SAFE: Yes (uses system->lock)
+ *
+ * PERFORMANCE TARGET: < 15% overhead vs simple calcium decay
+ */
+void astrocyte_calcium_system_update(astrocyte_calcium_system_t* system,
+                                     float dt,
+                                     float* external_stimulus);
+
+/**
+ * @brief Stimulate specific astrocyte to initiate calcium wave
+ *
+ * WHAT: Increases Ca²⁺ and IP3 at source astrocyte
+ * WHY:  Initiates calcium wave for testing or biological events
+ * HOW:  Sets concentrations above threshold, triggers wave propagation
+ *
+ * @param system Calcium system
+ * @param astrocyte_id ID of astrocyte to stimulate
+ * @param intensity Stimulus intensity (0-10, where 5+ triggers waves)
+ *
+ * COMPLEXITY: O(1)
+ * THREAD-SAFE: Yes
+ */
+void astrocyte_calcium_system_stimulate(astrocyte_calcium_system_t* system,
+                                        uint32_t astrocyte_id,
+                                        float intensity);
+
+/**
+ * @brief Measure calcium wave propagation speed
+ *
+ * WHAT: Estimates wave speed from recent wave events
+ * WHY:  Validation against biological data (10-20 µm/s)
+ * HOW:  Tracks wavefront position vs time
+ *
+ * @param system Calcium system
+ * @return Measured wave speed in µm/s, or 0.0 if no recent waves
+ *
+ * COMPLEXITY: O(1)
+ * THREAD-SAFE: Yes
+ */
+float astrocyte_calcium_system_get_wave_speed(astrocyte_calcium_system_t* system);
+
+/**
+ * @brief Get performance overhead as percentage
+ *
+ * WHAT: Computes time spent in calcium updates vs total simulation time
+ * WHY:  Monitor performance impact (target < 15%)
+ * HOW:  Returns (total_update_time / total_sim_time) × 100
+ *
+ * @param system Calcium system
+ * @param total_sim_time_us Total simulation time in microseconds
+ * @return Overhead percentage (0-100), or 0.0 if no updates yet
+ *
+ * COMPLEXITY: O(1)
+ * THREAD-SAFE: Yes
+ */
+float astrocyte_calcium_system_get_overhead_percent(astrocyte_calcium_system_t* system,
+                                                    uint64_t total_sim_time_us);
+
+/**
+ * @brief Check if gliotransmitter release should occur
+ *
+ * WHAT: Determines if Ca²⁺ level exceeds release threshold
+ * WHY:  Triggers glutamate/D-serine release to modulate synapses
+ * HOW:  Compares calcium[astrocyte_id] to threshold
+ *
+ * INTEGRATION POINT: Called by glial_integration module
+ *
+ * @param system Calcium system
+ * @param astrocyte_id ID of astrocyte to check
+ * @return true if gliotransmitter should be released
+ *
+ * COMPLEXITY: O(1)
+ * THREAD-SAFE: Yes
+ */
+bool astrocyte_calcium_system_should_release_gliotransmitter(
+    astrocyte_calcium_system_t* system,
+    uint32_t astrocyte_id);
+
+/**
+ * @brief Get calcium concentration for specific astrocyte
+ *
+ * @param system Calcium system
+ * @param astrocyte_id ID of astrocyte
+ * @return Ca²⁺ concentration in µM, or 0.0 if invalid ID
+ *
+ * COMPLEXITY: O(1)
+ * THREAD-SAFE: Yes
+ */
+float astrocyte_calcium_system_get_calcium(astrocyte_calcium_system_t* system,
+                                           uint32_t astrocyte_id);
+
+/**
+ * @brief Get IP3 concentration for specific astrocyte
+ *
+ * @param system Calcium system
+ * @param astrocyte_id ID of astrocyte
+ * @return IP3 concentration in µM, or 0.0 if invalid ID
+ *
+ * COMPLEXITY: O(1)
+ * THREAD-SAFE: Yes
+ */
+float astrocyte_calcium_system_get_ip3(astrocyte_calcium_system_t* system,
+                                       uint32_t astrocyte_id);
 
 #ifdef __cplusplus
 }

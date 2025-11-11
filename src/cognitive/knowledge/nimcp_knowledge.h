@@ -10,6 +10,7 @@
 #include "core/brain/nimcp_brain.h"
 #include "cognitive/curiosity/nimcp_curiosity.h"
 #include "common/nimcp_export.h"
+#include "utils/geometry/nimcp_hyperbolic.h"  // Part B1.1: Hyperbolic embeddings
 
 #ifdef __cplusplus
 extern "C" {
@@ -69,6 +70,11 @@ typedef struct knowledge_system_struct* knowledge_system_t;
 
 /**
  * @brief A piece of knowledge
+ *
+ * PART B1.1: Extended with hyperbolic embeddings for hierarchical representation
+ * - Hyperbolic space naturally represents trees/hierarchies
+ * - 200x memory reduction: 5D hyperbolic vs 1000D Euclidean
+ * - Preserves parent-child relationships via hyperbolic distance
  */
 typedef struct {
     char concept_name[256];    /**< Main concept (renamed from 'concept' for C++20 compatibility) */
@@ -83,6 +89,14 @@ typedef struct {
     uint64_t learned_timestamp;   /**< When learned */
     uint32_t reinforcement_count; /**< How many times reinforced */
     char confidence_key[16];      /**< B-tree key: formatted confidence string */
+
+    // PART B1.1: Hyperbolic Knowledge Embeddings (geometric representation)
+    poincare_point_t *hyperbolic_embedding;  /**< Position in Poincaré ball (hierarchical) */
+    float *euclidean_embedding;              /**< Fallback Euclidean embedding (backward compat) */
+    uint32_t embedding_dim;                  /**< Dimension of embedding (5-10 for hyperbolic, 100-1000 for Euclidean) */
+    bool use_hyperbolic;                     /**< true = use hyperbolic, false = use Euclidean */
+    float hierarchical_level;                /**< Distance from root (0 = root concept, higher = more specific) */
+    uint32_t parent_index;                   /**< Index of parent concept in hierarchy (UINT32_MAX = root) */
 } knowledge_item_t;
 
 /**
@@ -505,6 +519,36 @@ knowledge_system_t knowledge_load(const char* filepath);
 bool knowledge_add_item(knowledge_system_t system, const knowledge_item_t* item);
 
 //=============================================================================
+// Symbolic Logic Integration (Phase 11: Logic Wiring)
+//=============================================================================
+
+// Forward declaration for symbolic logic integration
+typedef struct symbolic_logic symbolic_logic_t;
+
+/**
+ * @brief Add knowledge item to symbolic logic as facts
+ *
+ * WHAT: Convert knowledge concepts to logical predicates (IsA, Concept)
+ * WHY:  Enable logical reasoning over knowledge graph (audit recommendation)
+ * HOW:  Create logic clauses from knowledge relationships
+ *
+ * EXAMPLE:
+ *   Concept: "cat" with related: "animal"
+ *   → Logic facts: IsA(cat, animal), Concept(cat)
+ *
+ * @param logic Symbolic logic engine
+ * @param item Knowledge item to convert to logic facts
+ * @return Number of facts added to logic engine
+ *
+ * THREAD-SAFE: No (requires external synchronization)
+ * COMPLEXITY: O(k) where k = number of related concepts
+ */
+uint32_t knowledge_add_to_symbolic_logic(
+    symbolic_logic_t* logic,
+    const knowledge_item_t* item
+);
+
+//=============================================================================
 // B-TREE INDEXED QUERIES (New in v2.5.1)
 //=============================================================================
 
@@ -550,6 +594,100 @@ uint32_t knowledge_get_by_confidence_range(knowledge_system_t system,
  */
 uint32_t knowledge_get_all_ordered_by_confidence(knowledge_system_t system,
                                                    knowledge_item_t** results_out);
+
+//=============================================================================
+// PART B1.1: Hyperbolic Knowledge Embedding API
+//=============================================================================
+
+/**
+ * @brief Initialize hyperbolic embedding for a knowledge item
+ *
+ * WHAT: Creates hyperbolic embedding in Poincaré ball
+ * WHY: Enables 200x memory reduction for hierarchical knowledge
+ * HOW: Places concept at appropriate radius based on hierarchical level
+ *
+ * @param item Knowledge item to initialize
+ * @param dim Embedding dimension (typically 5)
+ * @param hierarchical_level Distance from root
+ * @param parent Parent concept (NULL if root)
+ * @return true on success
+ */
+bool knowledge_init_hyperbolic_embedding(knowledge_item_t *item, uint32_t dim,
+                                         float hierarchical_level,
+                                         const knowledge_item_t *parent);
+
+/**
+ * @brief Compute hyperbolic distance between two knowledge items
+ *
+ * @param item1 First item
+ * @param item2 Second item
+ * @return Hyperbolic distance, or -1.0 if no embeddings
+ */
+float knowledge_hyperbolic_distance(const knowledge_item_t *item1,
+                                    const knowledge_item_t *item2);
+
+/**
+ * @brief Find k nearest neighbors in hyperbolic space
+ *
+ * @param system Knowledge system
+ * @param query_item Query concept
+ * @param k Number of neighbors
+ * @param neighbors_out Output array [k]
+ * @param distances_out Output distances [k] (can be NULL)
+ * @return Number found
+ */
+uint32_t knowledge_hyperbolic_knn(knowledge_system_t system,
+                                  const knowledge_item_t *query_item,
+                                  uint32_t k,
+                                  knowledge_item_t **neighbors_out,
+                                  float *distances_out);
+
+/**
+ * @brief Update embedding via Riemannian SGD
+ *
+ * @param item Item to update
+ * @param euclidean_gradient Gradient [dim]
+ * @param learning_rate Step size
+ * @return true on success
+ */
+bool knowledge_hyperbolic_sgd_step(knowledge_item_t *item,
+                                   const float *euclidean_gradient,
+                                   float learning_rate);
+
+/**
+ * @brief Learn hyperbolic embeddings for all items
+ *
+ * @param system Knowledge system
+ * @param num_epochs Optimization iterations
+ * @param learning_rate Initial LR
+ * @return Final loss
+ */
+float knowledge_learn_hyperbolic_embeddings(knowledge_system_t system,
+                                            uint32_t num_epochs,
+                                            float learning_rate);
+
+/**
+ * @brief Convert Euclidean to hyperbolic
+ *
+ * @param item Item with Euclidean embedding
+ * @param target_dim Target dimension
+ * @return true on success
+ */
+bool knowledge_euclidean_to_hyperbolic(knowledge_item_t *item, uint32_t target_dim);
+
+/**
+ * @brief Get hierarchical path to root
+ *
+ * @param system Knowledge system
+ * @param concept_name Concept to trace
+ * @param path_out Output array
+ * @param max_depth Maximum length
+ * @return Path length
+ */
+uint32_t knowledge_get_hierarchical_path(knowledge_system_t system,
+                                         const char *concept_name,
+                                         knowledge_item_t **path_out,
+                                         uint32_t max_depth);
 
 #ifdef __cplusplus
 }

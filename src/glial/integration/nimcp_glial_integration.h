@@ -49,6 +49,7 @@
 #include "glial/astrocytes/nimcp_astrocytes.h"
 #include "glial/oligodendrocytes/nimcp_oligodendrocytes.h"
 #include "glial/microglia/nimcp_microglia.h"
+#include "plasticity/neuromodulators/nimcp_spatial_neuromod.h"  // Part A2.1: Spatial diffusion
 #include <stdint.h>
 #include <stdbool.h>
 
@@ -74,6 +75,9 @@ typedef struct {
     oligodendrocyte_network_t* oligodendrocyte_network;
     microglia_network_t* microglia_network;
 
+    // Part A2.1: Spatial Neuromodulator Diffusion
+    spatial_neuromod_system_t* spatial_neuromod;  /**< Spatial diffusion of DA, 5-HT, ACh, NE */
+
     // ID mappings (synapse/neuron ID → glial cell ID)
     hash_table_t* synapse_to_astrocyte;     /**< synapse_id → astrocyte_id */
     hash_table_t* neuron_to_oligodendrocyte; /**< neuron_id → oligo_id */
@@ -88,11 +92,13 @@ typedef struct {
     uint64_t total_astrocyte_modulations;
     uint64_t total_oligodendrocyte_myelinations;
     uint64_t total_microglia_prunings;
+    uint64_t total_neuromod_updates;         /**< Part A2.1: Spatial neuromod step count */
 
     // Configuration
     bool enable_astrocyte_modulation;
     bool enable_oligodendrocyte_myelination;
     bool enable_microglia_pruning;
+    bool enable_spatial_neuromod;            /**< Part A2.1: Enable spatial diffusion */
 
     // Thread safety
     nimcp_mutex_t lock;

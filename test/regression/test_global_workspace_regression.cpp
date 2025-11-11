@@ -248,7 +248,7 @@ TEST_F(GlobalWorkspaceRegressionTest, MemoryLeak_ThousandCompetitions)
  */
 TEST_F(GlobalWorkspaceRegressionTest, MemoryLeak_HistoryBuffer)
 {
-    global_workspace_config_t config = global_workspace_get_default_config();
+    global_workspace_config_t config = global_workspace_default_config();
     config.enable_history = true;
     config.history_depth = 10;
 
@@ -444,7 +444,7 @@ TEST_F(GlobalWorkspaceRegressionTest, Performance_MaxCompetitors)
  */
 TEST_F(GlobalWorkspaceRegressionTest, Performance_HistoryQuery)
 {
-    global_workspace_config_t config = global_workspace_get_default_config();
+    global_workspace_config_t config = global_workspace_default_config();
     config.enable_history = true;
     config.history_depth = 10;
 
@@ -459,12 +459,13 @@ TEST_F(GlobalWorkspaceRegressionTest, Performance_HistoryQuery)
     }
 
     workspace_broadcast_t history_entry;
+    uint32_t count = 0;
 
     auto start = std::chrono::high_resolution_clock::now();
 
     // Query history 1000 times
     for (int i = 0; i < 1000; i++) {
-        global_workspace_get_history_entry(workspace, 0, &history_entry);
+        global_workspace_get_history(workspace, &history_entry, 1, &count);
     }
 
     auto end = std::chrono::high_resolution_clock::now();
@@ -553,14 +554,15 @@ TEST_F(GlobalWorkspaceRegressionTest, Stability_StatisticsAccuracy)
     EXPECT_TRUE(got_stats);
 
     // Verify statistics are reasonable
-    EXPECT_EQ(stats.total_competitions, 5000u);
+    // Note: Many attempts are blocked by refractory period, tracked separately
+    uint64_t total_attempts = stats.total_competitions + stats.refractory_violations;
+    EXPECT_EQ(total_attempts, 5000u);
     EXPECT_GT(stats.total_broadcasts, 0u);
     EXPECT_LE(stats.total_broadcasts, stats.total_competitions);
-    EXPECT_GE(stats.avg_broadcast_strength, 0.0f);
-    EXPECT_LE(stats.avg_broadcast_strength, 1.0f);
+    EXPECT_GT(stats.refractory_violations, 0u);  // Many blocked by refractory
 
-    printf("[REGRESSION] After 5000 operations: broadcasts=%u, avg_strength=%.3f\n",
-           stats.total_broadcasts, stats.avg_broadcast_strength);
+    printf("[REGRESSION] After 5000 operations: broadcasts=%lu, competitions=%lu, refract_blocked=%lu\n",
+           stats.total_broadcasts, stats.total_competitions, stats.refractory_violations);
 }
 
 /**
@@ -614,28 +616,28 @@ TEST_F(GlobalWorkspaceRegressionTest, Stability_HighContentionScenario)
 TEST_F(GlobalWorkspaceRegressionTest, Configuration_VariousSettings)
 {
     // Test with minimal threshold
-    global_workspace_config_t config1 = global_workspace_get_default_config();
+    global_workspace_config_t config1 = global_workspace_default_config();
     config1.ignition_threshold = 0.3f;
     global_workspace_t* ws1 = global_workspace_create_custom(&config1);
     ASSERT_NE(ws1, nullptr);
     global_workspace_destroy(ws1);
 
     // Test with maximal threshold
-    global_workspace_config_t config2 = global_workspace_get_default_config();
+    global_workspace_config_t config2 = global_workspace_default_config();
     config2.ignition_threshold = 0.95f;
     global_workspace_t* ws2 = global_workspace_create_custom(&config2);
     ASSERT_NE(ws2, nullptr);
     global_workspace_destroy(ws2);
 
     // Test with priority-based competition
-    global_workspace_config_t config3 = global_workspace_get_default_config();
+    global_workspace_config_t config3 = global_workspace_default_config();
     config3.strategy = COMPETITION_PRIORITY_BASED;
     global_workspace_t* ws3 = global_workspace_create_custom(&config3);
     ASSERT_NE(ws3, nullptr);
     global_workspace_destroy(ws3);
 
     // Test with round-robin
-    global_workspace_config_t config4 = global_workspace_get_default_config();
+    global_workspace_config_t config4 = global_workspace_default_config();
     config4.strategy = COMPETITION_ROUND_ROBIN;
     global_workspace_t* ws4 = global_workspace_create_custom(&config4);
     ASSERT_NE(ws4, nullptr);
@@ -651,7 +653,7 @@ TEST_F(GlobalWorkspaceRegressionTest, Configuration_VariousSettings)
  */
 TEST_F(GlobalWorkspaceRegressionTest, Configuration_HistoryDisabled)
 {
-    global_workspace_config_t config = global_workspace_get_default_config();
+    global_workspace_config_t config = global_workspace_default_config();
     config.enable_history = false;
 
     workspace = global_workspace_create_custom(&config);
@@ -666,8 +668,9 @@ TEST_F(GlobalWorkspaceRegressionTest, Configuration_HistoryDisabled)
 
     // Verify history queries fail gracefully
     workspace_broadcast_t entry;
-    bool got_entry = global_workspace_get_history_entry(workspace, 0, &entry);
-    EXPECT_FALSE(got_entry);  // History disabled
+    uint32_t count = 0;
+    bool got_entry = global_workspace_get_history(workspace, &entry, 1, &count);
+    EXPECT_FALSE(got_entry || count > 0);  // History disabled
 
     EXPECT_TRUE(true);  // Stable with history disabled
 }

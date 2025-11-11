@@ -5996,6 +5996,10 @@ knowledge_system_t brain_get_knowledge(brain_t brain) {
     return brain ? brain->knowledge : NULL;
 }
 
+symbolic_logic_t* brain_get_symbolic_logic(brain_t brain) {
+    return brain ? brain->symbolic_logic : NULL;
+}
+
 neuromod_pink_noise_t* brain_get_pink_noise(brain_t brain) {
     return brain ? brain->pink_noise : NULL;
 }
@@ -6865,6 +6869,29 @@ bool brain_process_multimodal(
 
     if (spikes_generated == 0 || !network_output) {
         return false;
+    }
+
+    // -------------------------------------------------------------------------
+    // STAGE 3.5: Execute neural logic network (validate constraints)
+    // -------------------------------------------------------------------------
+    // WHAT: Update neural logic gates for logical constraint checking
+    // WHY:  Neural logic provides fast (~0.1ms GPU) validation of network outputs
+    // HOW:  Step logic neurons forward in time, evaluate logic gate circuits
+    // NOTE: Logic gates can validate ethical rules, preconditions, etc.
+    if (brain->logic) {
+        uint64_t logic_delta_t = 100;  // 0.1ms logic update step
+        uint32_t logic_spikes = neural_logic_update(
+            brain->logic,
+            input->timestamp_ms * 1000,  // Convert ms to µs
+            logic_delta_t
+        );
+
+        // Store logic activity for downstream processing
+        // Logic gates can signal constraint violations via spike patterns
+        if (logic_spikes > 0) {
+            // Logic network is active - constraints are being evaluated
+            // Downstream cognitive modules can query logic gate states
+        }
     }
 
     // -------------------------------------------------------------------------

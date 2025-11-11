@@ -1,0 +1,235 @@
+//=============================================================================
+// nimcp_curiosity_fractal.c - Fractal Topology Integration for Curiosity
+//=============================================================================
+/**
+ * @file nimcp_curiosity_fractal.c
+ * @brief ENHANCEMENT 2: Hub-based exploration for curiosity module
+ *
+ * WHAT: Use fractal topology to guide curiosity-driven exploration
+ * WHY: Hub neurons are information bottlenecks - exploring via hubs is efficient
+ * HOW: Route exploration through hub neurons, use centrality for priority
+ *
+ * STRATEGY:
+ * 1. **Hub Hopping:** Jump between hub neurons for broad exploration
+ * 2. **Hub Anchoring:** Use hubs as landmarks for navigation
+ * 3. **Centrality Priority:** Weight exploration by betweenness centrality
+ *
+ * @author NIMCP Development Team
+ * @date 2025-11-11
+ */
+
+#include "nimcp_curiosity.h"
+#include "cognitive/nimcp_fractal_cognitive.h"
+#include "cognitive/knowledge/nimcp_knowledge.h"
+#include <stdlib.h>
+#include <math.h>
+
+//=============================================================================
+// Hub-Based Exploration
+//=============================================================================
+
+/**
+ * @brief Guide exploration toward hub neurons
+ *
+ * WHAT: Modifies exploration priority to favor hub neurons
+ * WHY: Hubs are information bottlenecks with high connectivity
+ * HOW: Boost priority for neurons near hubs
+ *
+ * @param cache Fractal cognitive cache
+ * @param neuron_index Candidate neuron to explore
+ * @param base_priority Base exploration priority
+ * @return Boosted priority (0-1)
+ */
+float curiosity_fractal_boost_hub_priority(const fractal_cognitive_cache_t *cache,
+                                           uint32_t neuron_index,
+                                           float base_priority) {
+    if (!cache || !cache->valid) {
+        return base_priority;
+    }
+
+    // Check if this is a hub neuron
+    bool is_hub = fractal_is_hub_neuron(cache, neuron_index);
+    if (is_hub) {
+        return fminf(base_priority * 1.5f, 1.0f);  // 50% boost for hubs
+    }
+
+    // Otherwise boost by centrality
+    float centrality = fractal_get_centrality(cache, neuron_index);
+    float boost = 1.0f + 0.3f * centrality;  // Up to 30% boost
+    return fminf(base_priority * boost, 1.0f);
+}
+
+/**
+ * @brief Find next exploration target using hub-hopping strategy
+ *
+ * WHAT: Identifies next neuron to explore via hub neurons
+ * WHY: Efficient exploration of scale-free networks
+ * HOW: Find nearest hub, then explore from hub
+ *
+ * ALGORITHM:
+ * 1. Find nearest hub to current position
+ * 2. Get k most central neighbors of that hub
+ * 3. Score by exploration priority (including hyperbolic if available)
+ * 4. Return highest priority
+ *
+ * @param network Neural network
+ * @param cache Fractal cognitive cache
+ * @param current_neuron Current exploration position
+ * @param k Number of candidates to consider
+ * @return Next neuron index to explore, or UINT32_MAX if none
+ */
+uint32_t curiosity_fractal_next_exploration_target(neural_network_t network,
+                                                   const fractal_cognitive_cache_t *cache,
+                                                   uint32_t current_neuron,
+                                                   uint32_t k) {
+    if (!network || !cache || !cache->valid) {
+        return UINT32_MAX;
+    }
+
+    // Find nearest hub
+    uint32_t nearest_hub = fractal_nearest_hub(network, cache, current_neuron, NULL);
+    if (nearest_hub == UINT32_MAX) {
+        return UINT32_MAX;
+    }
+
+    // Get k most central neighbors of the hub
+    uint32_t *candidates = (uint32_t*)malloc(k * sizeof(uint32_t));
+    if (!candidates) {
+        return UINT32_MAX;
+    }
+
+    uint32_t num_candidates = fractal_get_central_neighbors(network, cache,
+                                                            nearest_hub,
+                                                            5,  // 5-hop radius
+                                                            k,
+                                                            candidates);
+
+    if (num_candidates == 0) {
+        free(candidates);
+        return UINT32_MAX;
+    }
+
+    // Score candidates by centrality + hierarchical level diversity
+    float current_level = fractal_get_hierarchical_level(cache, current_neuron);
+    uint32_t best_candidate = candidates[0];
+    float best_score = 0.0f;
+
+    for (uint32_t i = 0; i < num_candidates; i++) {
+        uint32_t candidate = candidates[i];
+        float centrality = fractal_get_centrality(cache, candidate);
+        float level = fractal_get_hierarchical_level(cache, candidate);
+        float level_diversity = fabsf(level - current_level);
+
+        // Score = 70% centrality + 30% level diversity
+        float score = 0.7f * centrality + 0.3f * level_diversity;
+
+        if (score > best_score) {
+            best_score = score;
+            best_candidate = candidate;
+        }
+    }
+
+    free(candidates);
+    return best_candidate;
+}
+
+/**
+ * @brief Get exploration strategy based on current network position
+ *
+ * WHAT: Recommends exploration strategy (hub-hop, local, or vertical)
+ * WHY: Different positions require different exploration approaches
+ * HOW: Analyze centrality and hierarchical level
+ *
+ * STRATEGIES:
+ * - High centrality (hub): **LOCAL** - explore neighbors
+ * - Mid centrality: **HUB_HOP** - jump to nearest hub
+ * - Low centrality + high level: **UPWARD** - move toward hubs/root
+ * - Low centrality + low level: **DOWNWARD** - explore leaves
+ *
+ * @param cache Fractal cognitive cache
+ * @param neuron_index Current position
+ * @return Strategy string
+ */
+const char* curiosity_fractal_recommend_strategy(const fractal_cognitive_cache_t *cache,
+                                                uint32_t neuron_index) {
+    if (!cache || !cache->valid) {
+        return "random";
+    }
+
+    float centrality = fractal_get_centrality(cache, neuron_index);
+    float level = fractal_get_hierarchical_level(cache, neuron_index);
+    bool is_hub = fractal_is_hub_neuron(cache, neuron_index);
+
+    if (is_hub || centrality > 0.7f) {
+        return "local";  // High centrality - explore locally
+    } else if (centrality > 0.3f) {
+        return "hub_hop";  // Mid centrality - hop to hub
+    } else if (level < 0.3f) {
+        return "downward";  // Near root - go deeper
+    } else {
+        return "upward";  // Near leaves - go up toward hubs
+    }
+}
+
+/**
+ * @brief Compute exploration radius based on fractal structure
+ *
+ * WHAT: Determines how far to explore from current position
+ * WHY: Scale-free networks have variable local density
+ * HOW: Use hierarchical level to set radius
+ *
+ * FORMULA:
+ * radius = base_radius * (1 + 0.5 * (1 - hierarchical_level))
+ *
+ * Near root (level ≈ 0): larger radius (global exploration)
+ * Near leaves (level ≈ 1): smaller radius (local exploration)
+ *
+ * @param cache Fractal cognitive cache
+ * @param neuron_index Current position
+ * @param base_radius Base exploration radius (typical: 2.0-5.0)
+ * @return Adjusted radius
+ */
+float curiosity_fractal_exploration_radius(const fractal_cognitive_cache_t *cache,
+                                          uint32_t neuron_index,
+                                          float base_radius) {
+    if (!cache || !cache->valid) {
+        return base_radius;
+    }
+
+    float level = fractal_get_hierarchical_level(cache, neuron_index);
+
+    // Higher level (near leaves) → smaller radius
+    // Lower level (near root) → larger radius
+    float radius_factor = 1.0f + 0.5f * (1.0f - level);
+
+    return base_radius * radius_factor;
+}
+
+//=============================================================================
+// Visualization and Debug
+//=============================================================================
+
+/**
+ * @brief Print curiosity exploration state with fractal context
+ *
+ * @param cache Fractal cognitive cache
+ * @param neuron_index Current exploration position
+ */
+void curiosity_fractal_print_state(const fractal_cognitive_cache_t *cache,
+                                  uint32_t neuron_index) {
+    if (!cache || !cache->valid) {
+        printf("Fractal state: UNAVAILABLE\n");
+        return;
+    }
+
+    printf("=== Curiosity Fractal State ===\n");
+    printf("Neuron: %u\n", neuron_index);
+    printf("Is hub: %s\n", fractal_is_hub_neuron(cache, neuron_index) ? "YES" : "no");
+    printf("Centrality: %.4f\n", fractal_get_centrality(cache, neuron_index));
+    printf("Degree (norm): %.3f\n", fractal_get_degree_normalized(cache, neuron_index));
+    printf("Hierarchical level: %.3f\n", fractal_get_hierarchical_level(cache, neuron_index));
+    printf("Strategy: %s\n", curiosity_fractal_recommend_strategy(cache, neuron_index));
+    printf("Exploration radius: %.2f\n",
+           curiosity_fractal_exploration_radius(cache, neuron_index, 3.0f));
+    printf("===============================\n");
+}

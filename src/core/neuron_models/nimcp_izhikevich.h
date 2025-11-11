@@ -44,6 +44,7 @@
 #define NIMCP_IZHIKEVICH_H
 
 #include "nimcp_neuron_model.h"
+#include "utils/numerical/nimcp_integration.h"  // For integration_method_t
 
 #ifdef __cplusplus
 extern "C" {
@@ -191,6 +192,30 @@ const char* izhikevich_get_preset_name(izhikevich_preset_t preset);
  * @return Description string (never NULL)
  */
 const char* izhikevich_get_preset_description(izhikevich_preset_t preset);
+
+/**
+ * @brief Set ODE integration method for Izhikevich neuron
+ *
+ * WHAT: Configures numerical integration algorithm (Euler, RK4, etc.)
+ * WHY: Enables accuracy/speed tradeoff control from brain configuration
+ * HOW: Writes integration_method field in neuron model state
+ *
+ * PART A1.1: RK4 Integration
+ * - INTEGRATION_EULER: Fastest, least accurate (default)
+ * - INTEGRATION_RK4: 4x slower, 10-1000x more accurate
+ *
+ * USAGE:
+ * @code
+ *   neuron_model_state_t neuron = neuron_model_create(izhikevich_get_vtable(), &params);
+ *   izhikevich_set_integration_method(neuron, INTEGRATION_RK4);
+ * @endcode
+ *
+ * COMPLEXITY: O(1)
+ *
+ * @param state Neuron model state
+ * @param method Integration method to use
+ */
+void izhikevich_set_integration_method(neuron_model_state_t state, integration_method_t method);
 
 #ifdef __cplusplus
 }

@@ -115,7 +115,7 @@ sleep_config_t sleep_default_config(void)
         .enable_rem = true,
 
         // Oscillations
-        .sync_to_oscillations = false  // Disabled for now
+        .sync_to_oscillations = true   // ENABLED: Use FFT for sleep wave detection
     };
 
     return config;

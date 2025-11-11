@@ -63,9 +63,57 @@ typedef struct neuron_model_vtable neuron_model_vtable_t;
 typedef enum {
     NEURON_MODEL_LIF,           /**< Leaky Integrate-and-Fire */
     NEURON_MODEL_IZHIKEVICH,    /**< Izhikevich simple model */
+    NEURON_MODEL_TWO_COMPARTMENT, /**< Two-compartment (soma + dendrite) - Part A3.1 */
     NEURON_MODEL_ADEX,          /**< Adaptive Exponential IF */
     NEURON_MODEL_HODGKIN_HUXLEY /**< Hodgkin-Huxley biophysical */
 } neuron_model_type_t;
+
+//=============================================================================
+// ODE Integration Methods (Part A: Differential Equations)
+//=============================================================================
+
+/**
+ * @brief ODE integration methods for neuron dynamics
+ *
+ * WHAT: Numerical integration algorithms for solving neuron ODEs
+ * WHY: Different accuracy/speed tradeoffs for neuron membrane dynamics
+ * HOW: Used during neuron update step to integrate dV/dt equations
+ *
+ * PART A: DIFFERENTIAL EQUATIONS & PDEs
+ * Section A1: ODE Integration Methods
+ *
+ * TRADEOFFS:
+ * - ODE_EULER: Fastest but least accurate (first-order, O(dt))
+ *   - Best for: Real-time systems, large networks, dt < 0.5ms
+ *   - Error: Accumulates linearly with time
+ *
+ * - ODE_RK2 (Midpoint): Balanced accuracy/speed (second-order, O(dt²))
+ *   - Best for: Most applications, dt = 0.5-2ms
+ *   - 2× slower than Euler, but much more accurate
+ *
+ * - ODE_RK4: Most accurate but slowest (fourth-order, O(dt⁴))
+ *   - Best for: Precise simulations, dt = 1-5ms
+ *   - 4× slower than Euler, gold standard for accuracy
+ *
+ * STABILITY:
+ * - All methods stable for dt < τ/2 where τ = membrane time constant
+ * - Izhikevich model: Euler stable for dt ≤ 0.5ms
+ * - LIF model: All methods stable for dt ≤ 2ms
+ *
+ * PERFORMANCE IMPACT:
+ * - Network update time scales linearly with method complexity
+ * - 10K neurons: Euler ~1ms, RK2 ~2ms, RK4 ~4ms per step
+ *
+ * REFERENCES:
+ * - Izhikevich (2007) "Dynamical Systems in Neuroscience"
+ * - Press et al. (2007) "Numerical Recipes" Chapter 17
+ */
+typedef enum {
+    ODE_EULER = 0,  /**< Forward Euler (default, backward compatible) */
+    ODE_RK2,        /**< Runge-Kutta 2nd order (midpoint method) */
+    ODE_RK4,        /**< Runge-Kutta 4th order (classic RK4) */
+    ODE_ADAPTIVE    /**< Adaptive RK45 (Dormand-Prince, variable timestep) - Part A1.2 */
+} ode_integration_method_t;
 
 //=============================================================================
 // Virtual Table - Strategy Pattern Implementation
@@ -277,6 +325,30 @@ const neuron_model_vtable_t* neuron_model_get_izhikevich_vtable(void);
  * @return Pointer to LIF vtable (never NULL)
  */
 const neuron_model_vtable_t* neuron_model_get_lif_vtable(void);
+
+/**
+ * @brief Set ODE integration method for neuron model (universal interface)
+ *
+ * WHAT: Configures numerical integration method across all neuron model types
+ * WHY: Provides single API to control accuracy/speed tradeoff from brain config
+ * HOW: Maps ode_integration_method_t to integration_method_t and dispatches to model
+ *
+ * PART A1.1: RK4 Integration Support
+ * - Converts ODE_EULER → INTEGRATION_EULER
+ * - Converts ODE_RK4 → INTEGRATION_RK4
+ * - Falls back to INTEGRATION_EULER for unsupported methods
+ *
+ * SUPPORTED MODELS:
+ * - Izhikevich: Full support for Euler and RK4
+ * - Two-Compartment: Full support (already implemented)
+ * - LIF/Other: Fallback to Euler (no-op for models without integration_method field)
+ *
+ * COMPLEXITY: O(1)
+ *
+ * @param state Neuron model state
+ * @param method ODE integration method from brain config
+ */
+void neuron_model_set_integration_method(neuron_model_state_t state, ode_integration_method_t method);
 
 #ifdef __cplusplus
 }

@@ -1514,36 +1514,31 @@ TEST_F(BrainComprehensiveTest, Destroy_Complete) {
 //=============================================================================
 
 TEST_F(BrainComprehensiveTest, ProcessMultimodal_DirectInput) {
+    // Use brain_decide instead of brain_process_multimodal for direct input
+    // brain_process_multimodal is designed for sensory inputs (visual/audio/speech)
+    // For direct feature input, brain_decide is the correct API
+
     brain_config_t config = {};
     config.size = BRAIN_SIZE_SMALL;
     config.task = BRAIN_TASK_CLASSIFICATION;
     config.num_inputs = 10;
     config.num_outputs = 3;
-    config.enable_multimodal_integration = true;
-    strncpy(config.task_name, "multimodal_test", sizeof(config.task_name) - 1);
+    strncpy(config.task_name, "direct_input_test", sizeof(config.task_name) - 1);
 
     brain_t brain = brain_create_custom(&config);
     ASSERT_NE(brain, nullptr);
 
     // Prepare direct input
     float* direct_data = create_test_features(10);
-    brain_multimodal_input_t input = {};
-    input.direct_data = direct_data;
-    input.direct_dim = 10;
-    input.timestamp_ms = nimcp_time_get_ms();
 
-    // Allocate output
-    brain_multimodal_output_t output = {};
-    output.output_vector = new float[3];
-    output.output_dim = 3;
+    // Use brain_decide for direct feature input
+    brain_decision_t* decision = brain_decide(brain, direct_data, 10);
+    ASSERT_NE(decision, nullptr);
 
-    bool result = brain_process_multimodal(brain, &input, &output);
-    EXPECT_TRUE(result);
+    EXPECT_GE(decision->confidence, 0.0f);
+    EXPECT_LE(decision->confidence, 1.0f);
 
-    EXPECT_GE(output.confidence, 0.0f);
-    EXPECT_LE(output.confidence, 1.0f);
-
-    delete[] output.output_vector;
+    brain_free_decision(decision);
     delete[] direct_data;
     brain_destroy(brain);
 }

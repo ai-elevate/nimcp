@@ -198,10 +198,16 @@ typedef struct synapse_t {
     synapse_type_t type;           /**< Synapse type (AMPA, NMDA, GABA-A, etc) */
     synapse_type_state_t type_state; /**< Type-specific state (conductance, modulation, etc) */
 
+    // ENHANCEMENT 1: Semantic Embeddings (NIMCP 2.9)
+    float *semantic_embedding;     /**< Semantic vector [embedding_dim] */
+    uint16_t embedding_dim;        /**< Embedding dimension (0 = no embedding, typically 128-512) */
+    float semantic_relevance;      /**< Cached relevance score (0-1) for current context */
+
     // PERFORMANCE NOTE: Function pointers add 24 bytes per synapse (on 64-bit)
     // Type system adds ~40 bytes per synapse (type enum + union state)
-    // For 100K synapses: 2.4 MB (functions) + 4.0 MB (types) = 6.4 MB overhead
-    // Total synapse size: ~150 bytes/synapse. Acceptable for biological realism.
+    // Semantic embeddings add ~512 bytes per synapse (128D * 4 bytes)
+    // For 100K synapses: 2.4 MB (functions) + 4.0 MB (types) + 51.2 MB (embeddings) = 57.6 MB overhead
+    // Total synapse size: ~600 bytes/synapse with embeddings. Cost justified for intelligent routing.
 } synapse_t;
 
 /**
@@ -293,6 +299,9 @@ typedef struct {
     // NIMCP 2.6 Neuron Model Extensions
     neuron_model_type_t neuron_model;  /**< Neuron dynamics model (LIF, Izhikevich, etc) */
     const void* model_params;          /**< Model-specific parameters (izhikevich_params_t*, etc) */
+
+    // Part A1.1: ODE Integration Method (RK4 Support)
+    ode_integration_method_t integration_method;  /**< ODE integration algorithm (Euler, RK4) */
 } network_config_t;
 
 /**
@@ -516,6 +525,69 @@ uint32_t neural_network_get_incoming_synapse_count(neural_network_t network, uin
  */
 uint32_t neural_network_get_incoming_synapses(neural_network_t network, uint32_t neuron_id,
                                                const synapse_t** out_synapses);
+
+//=============================================================================
+// ENHANCEMENT 1: Synapse Semantic Embeddings API
+//=============================================================================
+
+/**
+ * @brief Initialize semantic embedding for a synapse
+ *
+ * WHAT: Allocates and initializes semantic vector for intelligent routing
+ * WHY: Enables synapses to route information based on semantic relevance
+ * HOW: Random initialization, later refined by learning
+ *
+ * @param synapse Synapse to initialize
+ * @param dim Embedding dimension (128-512 recommended)
+ * @return true on success
+ */
+bool synapse_init_embedding(synapse_t *synapse, uint16_t dim);
+
+/**
+ * @brief Compute semantic similarity between two synapses
+ *
+ * WHAT: Cosine similarity between embedding vectors
+ * WHY: Identifies functionally similar synapses
+ * HOW: dot(a,b) / (||a|| * ||b||)
+ *
+ * @param syn1 First synapse
+ * @param syn2 Second synapse
+ * @return Similarity (-1 to 1, higher = more similar)
+ */
+float synapse_semantic_similarity(const synapse_t *syn1, const synapse_t *syn2);
+
+/**
+ * @brief Update synapse embedding via gradient descent
+ *
+ * WHAT: Refines embedding based on usage patterns
+ * WHY: Learn semantic routing over time
+ *
+ * @param synapse Synapse to update
+ * @param target_embedding Target vector [dim]
+ * @param learning_rate Step size
+ * @return true on success
+ */
+bool synapse_update_embedding(synapse_t *synapse, const float *target_embedding, float learning_rate);
+
+/**
+ * @brief Compute relevance of synapse to current context
+ *
+ * WHAT: Similarity between synapse embedding and context vector
+ * WHY: Route information through relevant synapses
+ *
+ * @param synapse Synapse to evaluate
+ * @param context_embedding Context vector [dim]
+ * @param context_dim Context dimension
+ * @return Relevance score (0-1)
+ */
+float synapse_compute_relevance(synapse_t *synapse, const float *context_embedding, uint16_t context_dim);
+
+/**
+ * @brief Free synapse embedding memory
+ *
+ * @param synapse Synapse to cleanup
+ */
+void synapse_destroy_embedding(synapse_t *synapse);
 
 #ifdef __cplusplus
 }

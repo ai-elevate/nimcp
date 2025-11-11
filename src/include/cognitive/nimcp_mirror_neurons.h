@@ -55,6 +55,11 @@ extern "C" {
 typedef struct mirror_neurons_system mirror_neurons_system_t;
 typedef mirror_neurons_system_t* mirror_neurons_t;
 
+/**
+ * @brief Forward declaration of brain handle
+ */
+typedef struct brain_struct* brain_t;
+
 //=============================================================================
 // Configuration & Parameters
 //=============================================================================
@@ -187,6 +192,21 @@ mirror_neurons_t mirror_neurons_create(const mirror_neuron_config_t* config);
  * @param mirror Mirror neuron system to destroy (NULL-safe)
  */
 void mirror_neurons_destroy(mirror_neurons_t mirror);
+
+/**
+ * @brief Set brain reference for neuromodulator integration
+ *
+ * WHAT: Associate mirror neurons with brain for ACh modulation
+ * WHY:  Enable acetylcholine-gated social learning
+ * HOW:  Store brain reference in system structure
+ *
+ * COMPLEXITY: O(1)
+ * THREAD-SAFE: No (requires external synchronization)
+ *
+ * @param mirror Mirror neuron system
+ * @param brain Brain handle (can be NULL to disable neuromodulation)
+ */
+void mirror_neurons_set_brain(mirror_neurons_t mirror, brain_t brain);
 
 //=============================================================================
 // Core API - Action Processing

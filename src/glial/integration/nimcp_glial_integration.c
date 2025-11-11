@@ -570,6 +570,23 @@ void glial_integration_step(glial_integration_t* gi, uint64_t timestamp) {
         microglia_network_step(gi->microglia_network, timestamp);
     }
 
+    // Part A2.1: Step spatial neuromodulator diffusion (DA, 5-HT, ACh, NE)
+    if (gi->spatial_neuromod && gi->enable_spatial_neuromod) {
+        // Compute timestep (assume 1ms if first call)
+        static uint64_t last_timestamp = 0;
+        float dt = (timestamp > last_timestamp) ? (float)(timestamp - last_timestamp) : 1.0f;
+        last_timestamp = timestamp;
+
+        // Update all enabled neuromodulator fields
+        // Each field represents one neuromodulator type (DA, 5-HT, ACh, NE)
+        for (uint32_t i = 0; i < NEUROMOD_COUNT; i++) {
+            if (gi->spatial_neuromod->fields[i]) {
+                spatial_neuromod_update(gi->spatial_neuromod->fields[i], gi->network, dt);
+            }
+        }
+        gi->total_neuromod_updates++;
+    }
+
     nimcp_mutex_unlock(&gi->lock);
 }
 

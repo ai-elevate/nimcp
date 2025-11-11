@@ -36,6 +36,7 @@
 
 #include "nimcp_izhikevich.h"
 #include "nimcp_neuron_model_internal.h"
+#include "utils/numerical/nimcp_integration.h"  // Part A1: RK4 integration
 #include <string.h>
 #include <stdio.h>
 
@@ -61,6 +62,8 @@ typedef struct {
     float u;                        /**< Recovery variable */
     izhikevich_params_t params;     /**< Model parameters (a,b,c,d) */
     bool spiked_this_step;          /**< Spike flag for current timestep */
+    integration_method_t integration_method; /**< ODE integration method (Part A1) */
+    float current_input;            /**< Current input for derivative function */
 } izhikevich_state_t;
 
 //=============================================================================
@@ -170,6 +173,31 @@ static inline float compute_du_dt(float v, float u, const izhikevich_params_t* p
     return params->a * (params->b * v - u);
 }
 
+/**
+ * @brief Derivative function wrapper for integration_step()
+ *
+ * WHAT: Computes derivatives [dv/dt, du/dt] for RK4 integration
+ * WHY: Bridges Izhikevich model to generic integration interface
+ * HOW: Extracts state, calls compute_dv_dt and compute_du_dt
+ *
+ * PART A1.1: RK4 Integration
+ *
+ * @param state State vector [v, u]
+ * @param t Current time (unused for autonomous system)
+ * @param params User parameters (izhikevich_state_t*)
+ * @param derivatives Output derivatives [dv/dt, du/dt]
+ */
+static void izhikevich_derivatives(const float* state, float t, void* params, float* derivatives) {
+    (void)t;  // Autonomous system - time not used
+
+    izhikevich_state_t* izh = (izhikevich_state_t*)params;
+    float v = state[0];
+    float u = state[1];
+
+    derivatives[0] = compute_dv_dt(v, u, izh->current_input);
+    derivatives[1] = compute_du_dt(v, u, &izh->params);
+}
+
 //=============================================================================
 // Vtable Implementation Functions
 //=============================================================================
@@ -196,6 +224,8 @@ static void izhikevich_init(neuron_model_state_t state, const void* params) {
     izh->v = IZHIKEVICH_RESTING_POTENTIAL;
     izh->u = izh->v * 0.2f;  // u = b*v at rest (approximation)
     izh->spiked_this_step = false;
+    izh->integration_method = INTEGRATION_EULER;  // Default to Euler (backward compatible)
+    izh->current_input = 0.0f;
 
     // Set parameters from input or use default (Regular Spiking)
     if (params) {
@@ -222,12 +252,21 @@ static void izhikevich_destroy(neuron_model_state_t state) {
 /**
  * @brief Update Izhikevich neuron dynamics for one timestep
  *
- * WHAT: Integrates ODEs using Forward Euler method
- * WHY: Core simulation function - advances neuron state
- * HOW: Computes dv/dt and du/dt, then updates v and u
+ * WHAT: Integrates ODEs using configurable integration method (Euler, RK4, etc.)
+ * WHY: Core simulation function - advances neuron state with configurable accuracy
+ * HOW: Uses integration_step() from nimcp_integration.h (Part A1.1)
  *
- * COMPLEXITY: O(1)
- * STABILITY: Stable for dt ≤ 1.0 ms
+ * PART A1.1: RK4 Integration Support
+ * - Euler: O(dt) local error, fastest (1.0x)
+ * - RK4: O(dt^4) local error, 4x slower but 10-1000x more accurate
+ *
+ * COMPLEXITY:
+ * - Euler: O(1) + 1 derivative call
+ * - RK4: O(1) + 4 derivative calls
+ *
+ * STABILITY:
+ * - Euler: Stable for dt ≤ 1.0 ms
+ * - RK4: Stable for dt ≤ 5.0 ms
  *
  * @param state Neuron state
  * @param dt Timestep in milliseconds
@@ -244,13 +283,31 @@ static void izhikevich_update(neuron_model_state_t state, float dt, float input_
     // Clear spike flag from previous timestep
     izh->spiked_this_step = false;
 
-    // Compute derivatives
-    const float dv = compute_dv_dt(izh->v, izh->u, input_current);
-    const float du = compute_du_dt(izh->v, izh->u, &izh->params);
+    // Store input current for derivative function
+    izh->current_input = input_current;
 
-    // Forward Euler integration
-    izh->v += dv * dt;
-    izh->u += du * dt;
+    // Pack state for integration: [v, u]
+    float ode_state[2] = {izh->v, izh->u};
+
+    // Perform ODE integration using configured method (Euler, RK4, etc.)
+    bool success = integration_step(
+        izh->integration_method,    // Method: INTEGRATION_EULER or INTEGRATION_RK4
+        izhikevich_derivatives,     // Derivative function
+        ode_state,                  // State vector [v, u]
+        0.0f,                       // Time (not used - autonomous system)
+        dt,                         // Timestep
+        2,                          // Dimension (v and u)
+        izh                         // Parameters (passed to derivative function)
+    );
+
+    if (!success) {
+        // Integration failed - fall back to previous state
+        return;
+    }
+
+    // Unpack integrated state
+    izh->v = ode_state[0];
+    izh->u = ode_state[1];
 
     // Check for spike and perform reset
     if (izh->v >= IZHIKEVICH_SPIKE_THRESHOLD) {
@@ -417,6 +474,21 @@ const char* izhikevich_get_preset_description(izhikevich_preset_t preset) {
     }
 
     return PRESET_DESCRIPTIONS[preset];
+}
+
+/**
+ * @brief Set ODE integration method for Izhikevich neuron
+ *
+ * PART A1.1: RK4 Integration
+ */
+void izhikevich_set_integration_method(neuron_model_state_t state, integration_method_t method) {
+    // Guard: Validate state
+    if (!state) {
+        return;
+    }
+
+    izhikevich_state_t* izh = (izhikevich_state_t*)state->model_state;
+    izh->integration_method = method;
 }
 
 // Expose vtable via the generic interface

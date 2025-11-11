@@ -208,6 +208,8 @@ static network_config_t create_test_config(void)
 
     // Set required test values
     config.num_neurons = 10;
+    config.input_size = 3;     // Required for validation
+    config.output_size = 2;    // Required for validation
     config.ei_ratio = 0.8f;
     config.learning_rate = 0.01f;
     config.hebbian_rate = 0.1f;
@@ -219,6 +221,14 @@ static network_config_t create_test_config(void)
     config.min_weight = -1.0f;
     config.max_weight = 1.0f;
     config.update_interval = 1000;
+    config.num_layers = 0;
+    config.layer_sizes = NULL;
+    config.enable_stdp = true;
+    config.enable_hebbian = true;
+    config.enable_oja = true;
+    config.enable_homeostasis = true;
+    config.neuron_model = NEURON_MODEL_LIF;
+    config.model_params = NULL;
 
     return config;
 }
