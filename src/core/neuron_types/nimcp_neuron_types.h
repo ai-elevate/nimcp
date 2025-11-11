@@ -719,6 +719,22 @@ const char* neuron_type_get_name(neuron_type_t type);
  */
 bool neuron_type_is_excitatory(neuron_type_t type);
 
+/**
+ * Process input through neuron type-specific processing
+ *
+ * WHAT: Stub function for type-specific input processing
+ * WHY:  Needed by tests, full implementation pending
+ * HOW:  Returns weighted input based on type parameters
+ *
+ * @param type Neuron type
+ * @param params Type parameters (can be NULL for defaults)
+ * @param input Input value
+ * @param timestamp Current timestamp in microseconds
+ * @return Processed output value
+ */
+float neuron_type_process_input(neuron_type_t type, const neuron_type_params_t* params,
+                                 float input, uint64_t timestamp);
+
 #ifdef __cplusplus
 }
 #endif

@@ -768,3 +768,26 @@ bool neuron_type_is_excitatory(neuron_type_t type) {
             return true;
     }
 }
+
+/**
+ * Process input through neuron type-specific processing (stub implementation)
+ *
+ * WHAT: Stub for type-specific input processing
+ * WHY:  Needed by tests, full implementation pending
+ * HOW:  Returns input value (passthrough for now)
+ *
+ * COMPLEXITY: O(1)
+ */
+float neuron_type_process_input(neuron_type_t type, const neuron_type_params_t* params,
+                                 float input, uint64_t timestamp) {
+    // Guard clause: invalid input
+    if (!params) {
+        return 0.0f;
+    }
+
+    (void)type;       // Unused in stub
+    (void)timestamp;  // Unused in stub
+
+    // Simple passthrough for now
+    return input;
+}
