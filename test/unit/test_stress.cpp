@@ -351,7 +351,7 @@ TEST_F(StressTest, QueueManager_MemoryPressure)
 
     // Test that all managers still work
     for (auto* manager : managers) {
-        nimcp_message_t msg = {.size = 64, .data = nullptr};
+        nimcp_message_t msg = {.data = nullptr, .size = 64};
         uint8_t data[64] = {0};
         msg.data = data;
 
