@@ -443,6 +443,24 @@ File: {source_file.relative_to(nimcp_root)}
 
 """
 
+    # Load and inject claude.md coding standards
+    claude_md_path = nimcp_root / ".claude" / "claude.md"
+    if claude_md_path.exists():
+        try:
+            with open(claude_md_path, 'r') as f:
+                claude_standards = f.read()
+            prompt += f"""
+## NIMCP CODING STANDARDS (from .claude/claude.md)
+
+{claude_standards}
+
+## IMPORTANT: Apply these standards to ALL code you generate!
+
+"""
+        except Exception as e:
+            # If loading fails, continue without standards (non-fatal)
+            prompt += f"  ⚠️  Could not load .claude/claude.md: {e}\n\n"
+
     prompt += """## YOUR TASK
 Analyze the test failure and provide a MINIMAL, SURGICAL fix. Your response MUST be in this exact format:
 
