@@ -24,6 +24,7 @@ set(NIMCP_CORE_SOURCES
     # Neuron models - Plugin architecture
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/neuron_models/nimcp_neuron_model.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/neuron_models/nimcp_izhikevich.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/neuron_models/nimcp_two_compartment.c
 
     # Synapse computation - NIMCP 2.7 MAJOR FEATURE
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/synapse_compute/nimcp_synapse_compute.c
@@ -60,6 +61,7 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/predictive/nimcp_predictive.c  # Phase 10.9: Predictive Processing
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/mirror_neurons/nimcp_mirror_neurons.c  # Phase 10.11: Mirror Neurons
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/global_workspace/nimcp_global_workspace.c  # Global Workspace Architecture (Global Workspace Theory)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/nimcp_fractal_cognitive.c  # Fractal cognitive processing
     ${CMAKE_CURRENT_SOURCE_DIR}/cognitive/nimcp_hierarchical.c
 
     # Plasticity mechanisms
@@ -67,6 +69,7 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../plasticity/bcm/nimcp_bcm.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../plasticity/neuromodulators/nimcp_neuromodulators.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../plasticity/neuromodulators/nimcp_neuromod_pink_noise.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../plasticity/neuromodulators/nimcp_spatial_neuromod.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../plasticity/attention/nimcp_attention.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../plasticity/stp/nimcp_stp.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../plasticity/noise/nimcp_pink_noise.c
@@ -141,6 +144,7 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../utils/config/nimcp_config.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../utils/metrics/nimcp_metrics.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../utils/cache/nimcp_cache.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../utils/numerical/nimcp_integration.c
 
     # Utils - Spectral Analysis
     ${CMAKE_CURRENT_SOURCE_DIR}/../utils/spectral/nimcp_fft.c
