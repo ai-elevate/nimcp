@@ -126,6 +126,9 @@ float synapse_compute_default(
     float pre_activity,
     struct synapse_compute_context_t* context
 ) {
+    // Guard against null synapse
+    if (!syn) return 0.0f;
+
     // Base transmission
     float output = syn->weight * pre_activity;
 
@@ -170,6 +173,9 @@ float synapse_compute_attention(
     float pre_activity,
     struct synapse_compute_context_t* context
 ) {
+    // Guard against null inputs
+    if (!syn || !pre_neuron || !post_neuron) return 0.0f;
+
     #define ATTENTION_DIM 16
 
     // Option 1: Use neuron activity history as query/key
@@ -228,6 +234,9 @@ float synapse_compute_semantic(
     float pre_activity,
     struct synapse_compute_context_t* context
 ) {
+    // Guard against null synapse
+    if (!syn) return 0.0f;
+
     // Need compute state with embeddings
     if (!syn->compute_state || !syn->compute_state->extended_memory) {
         // Fallback to default if no embeddings
@@ -277,6 +286,9 @@ float synapse_compute_gating(
     float pre_activity,
     struct synapse_compute_context_t* context
 ) {
+    // Guard against null synapse
+    if (!syn) return 0.0f;
+
     // Default gate = open (1.0)
     float gate_signal = 1.0f;
 
@@ -318,6 +330,9 @@ float synapse_compute_neuromodulated(
     float pre_activity,
     struct synapse_compute_context_t* context
 ) {
+    // Guard against null synapse
+    if (!syn) return 0.0f;
+
     // Default sensitivity = 1.0
     float sensitivity = 1.0f;
     if (syn->compute_state) {
@@ -362,6 +377,9 @@ float synapse_compute_dendritic(
     float pre_activity,
     struct synapse_compute_context_t* context
 ) {
+    // Guard against null synapse
+    if (!syn) return 0.0f;
+
     float local_sum = 0.0f;
 
     // Sum activity from neighboring synapses if available
@@ -369,12 +387,16 @@ float synapse_compute_dendritic(
         // First element = number of neighbors
         uint32_t* data = (uint32_t*)syn->compute_state->function_data;
         uint32_t num_neighbors = data[0];
-        struct synapse_t** neighbors = (struct synapse_t**)&data[1];
 
-        // Sum recent activity from neighbors (stored in local_memory[1])
-        for (uint32_t i = 0; i < num_neighbors; i++) {
-            if (neighbors[i] && neighbors[i]->compute_state) {
-                local_sum += neighbors[i]->compute_state->local_memory[1];
+        // Sanity check: reasonable number of neighbors (prevent crashes on uninitialized data)
+        if (num_neighbors > 0 && num_neighbors < 10000) {
+            struct synapse_t** neighbors = (struct synapse_t**)&data[1];
+
+            // Sum recent activity from neighbors (stored in local_memory[1])
+            for (uint32_t i = 0; i < num_neighbors; i++) {
+                if (neighbors[i] && neighbors[i]->compute_state) {
+                    local_sum += neighbors[i]->compute_state->local_memory[1];
+                }
             }
         }
     }
@@ -421,6 +443,9 @@ void synapse_learn_three_factor(
     float reward_signal,
     struct synapse_compute_context_t* context
 ) {
+    // Guard against null synapse
+    if (!syn) return;
+
     const float TAU_ELIGIBILITY = 1000.0f; // ms
     const float LEARNING_RATE = 0.01f;
 
@@ -468,6 +493,9 @@ void synapse_learn_attention_modulated(
     float reward_signal,
     struct synapse_compute_context_t* context
 ) {
+    // Guard against null synapse
+    if (!syn) return;
+
     // Get attention weight (stored during compute phase)
     float attention = 1.0f;
     if (syn->compute_state) {
@@ -510,6 +538,9 @@ void synapse_learn_metaplastic(
     float reward_signal,
     struct synapse_compute_context_t* context
 ) {
+    // Guard against null inputs
+    if (!syn || !post_neuron) return;
+
     // Update meta-plasticity based on recent activity
     // High activity → lower plasticity (consolidation)
     // Low activity → higher plasticity (exploration)
@@ -585,6 +616,7 @@ void synapse_compute_state_cleanup(synapse_compute_state_t* state) {
     if (state->extended_memory) {
         free(state->extended_memory);
         state->extended_memory = NULL;
+        state->extended_size = 0;
     }
 
     // Call cleanup function if registered
