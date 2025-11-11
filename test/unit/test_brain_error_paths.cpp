@@ -94,8 +94,8 @@ TEST_F(BrainErrorPathTest, NullBrainGetNeuromodulatorSystem) {
 TEST_F(BrainErrorPathTest, LearnExampleWithNullBrain) {
     // Test brain_learn_example with NULL brain
     float features[5] = {1.0f, 2.0f, 3.0f, 4.0f, 5.0f};
-    bool success = brain_learn_example(nullptr, features, 5, "label", 1.0f);
-    EXPECT_FALSE(success);
+    float result = brain_learn_example(nullptr, features, 5, "label", 1.0f);
+    EXPECT_EQ(result, -1.0f);  // Should return error value
 }
 
 TEST_F(BrainErrorPathTest, DecideWithNullBrain) {
@@ -144,8 +144,8 @@ TEST_F(BrainErrorPathTest, LearnWithNullFeatures) {
     ASSERT_NE(brain, nullptr);
 
     // Try to learn with NULL features
-    bool success = brain_learn_example(brain, nullptr, 10, "label", 1.0f);
-    EXPECT_FALSE(success);
+    float result = brain_learn_example(brain, nullptr, 10, "label", 1.0f);
+    EXPECT_EQ(result, -1.0f);  // Should return error value
 
     brain_destroy(brain);
 }
@@ -158,8 +158,8 @@ TEST_F(BrainErrorPathTest, LearnWithNullLabel) {
     float features[10] = {1.0f, 2.0f, 3.0f, 4.0f, 5.0f, 6.0f, 7.0f, 8.0f, 9.0f, 10.0f};
 
     // Try to learn with NULL label
-    bool success = brain_learn_example(brain, features, 10, nullptr, 1.0f);
-    EXPECT_FALSE(success);
+    float result = brain_learn_example(brain, features, 10, nullptr, 1.0f);
+    EXPECT_EQ(result, -1.0f);  // Should return error value
 
     brain_destroy(brain);
 }
@@ -216,8 +216,8 @@ TEST_F(BrainErrorPathTest, LearnWithZeroReward) {
     float features[5] = {1.0f, 2.0f, 3.0f, 4.0f, 5.0f};
 
     // Test with zero reward (no reinforcement)
-    bool success = brain_learn_example(brain, features, 5, "label", 0.0f);
-    EXPECT_TRUE(success);
+    float result = brain_learn_example(brain, features, 5, "label", 0.0f);
+    EXPECT_GE(result, 0.0f);  // Should succeed (loss >= 0)
 
     brain_destroy(brain);
 }
@@ -325,14 +325,19 @@ TEST_F(BrainErrorPathTest, ErrorMessagePersistence) {
 TEST_F(BrainErrorPathTest, MultipleErrorOverwrite) {
     // Trigger first error
     brain_get_network(nullptr);
-    const char* error1 = brain_get_last_error();
-    ASSERT_NE(error1, nullptr);
+    const char* error1_ptr = brain_get_last_error();
+    ASSERT_NE(error1_ptr, nullptr);
+
+    // Copy first error message (since it's a pointer to internal buffer)
+    char error1_copy[256];
+    strncpy(error1_copy, error1_ptr, sizeof(error1_copy) - 1);
+    error1_copy[sizeof(error1_copy) - 1] = '\0';
 
     // Trigger second error (should overwrite first)
     brain_get_neuromodulator_system(nullptr);
     const char* error2 = brain_get_last_error();
     ASSERT_NE(error2, nullptr);
-    EXPECT_STRNE(error1, error2);  // Different error messages
+    EXPECT_STRNE(error1_copy, error2);  // Different error messages
 
     brain_clear_error();
 }
