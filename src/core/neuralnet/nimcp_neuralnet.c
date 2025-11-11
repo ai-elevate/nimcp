@@ -2250,10 +2250,20 @@ bool neural_network_get_stats(neural_network_t network, network_stats_t* stats)
 
     // Calculate network stability (based on weight change rate)
     // Stability = 1 - normalized_change, clamped to [0, 1]
-    float weight_change = fabs(stats->avg_weight - network->last_avg_weight);
-    float normalized_change =
-        weight_change / (fmaxf(fabs(stats->avg_weight), fabs(network->last_avg_weight)) + 1e-6f);
-    stats->network_stability = fmaxf(0.0f, fminf(1.0f, 1.0f - normalized_change));
+    // Special case: On first call (last_avg_weight == 0 and current avg_weight != 0),
+    // we have no history, so assume perfect stability (1.0)
+    if (network->last_avg_weight == 0.0f && stats->avg_weight != 0.0f) {
+        // First call with non-zero weights - no history to compare against
+        stats->network_stability = 1.0f;
+    } else if (network->last_avg_weight == 0.0f && stats->avg_weight == 0.0f) {
+        // Network has no synapses or all weights are zero - assume stable
+        stats->network_stability = 1.0f;
+    } else {
+        float weight_change = fabs(stats->avg_weight - network->last_avg_weight);
+        float normalized_change =
+            weight_change / (fmaxf(fabs(stats->avg_weight), fabs(network->last_avg_weight)) + 1e-6f);
+        stats->network_stability = fmaxf(0.0f, fminf(1.0f, 1.0f - normalized_change));
+    }
     network->last_avg_weight = stats->avg_weight;
 
     // Set network time
