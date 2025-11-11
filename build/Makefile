@@ -1693,19 +1693,6 @@ unit_test_p2pnode/fast:
 .PHONY : unit_test_p2pnode/fast
 
 #=============================================================================
-# Target rules for targets named unit_test_performance_optimizations
-
-# Build rule for target.
-unit_test_performance_optimizations: cmake_check_build_system
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_test_performance_optimizations
-.PHONY : unit_test_performance_optimizations
-
-# fast build rule for target.
-unit_test_performance_optimizations/fast:
-	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_test_performance_optimizations.dir/build.make test/CMakeFiles/unit_test_performance_optimizations.dir/build
-.PHONY : unit_test_performance_optimizations/fast
-
-#=============================================================================
 # Target rules for targets named unit_test_platform_cond
 
 # Build rule for target.
@@ -2533,7 +2520,6 @@ help:
 	@echo "... unit_test_oligodendrocytes"
 	@echo "... unit_test_oligodendrocytes_real"
 	@echo "... unit_test_p2pnode"
-	@echo "... unit_test_performance_optimizations"
 	@echo "... unit_test_platform_cond"
 	@echo "... unit_test_platform_mutex"
 	@echo "... unit_test_platform_once"

@@ -9,6 +9,10 @@
 #include "networking/distributed/nimcp_distributed_cognition.h"
 #include "common/nimcp_export.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 // Forward declarations for opaque types (full headers only in .c file)
 // Using void* to avoid typedef conflicts between modules
 // The .c file will include headers and cast appropriately
@@ -1370,5 +1374,9 @@ bool brain_process_multimodal(
  *
  * These will be uncommented and implemented once module initialization is complete.
  */
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif  // NIMCP_BRAIN_H

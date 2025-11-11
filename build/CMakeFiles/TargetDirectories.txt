@@ -171,7 +171,6 @@
 /home/bbrelin/nimcp/build/test/CMakeFiles/unit_test_oligodendrocytes.dir
 /home/bbrelin/nimcp/build/test/CMakeFiles/unit_test_oligodendrocytes_real.dir
 /home/bbrelin/nimcp/build/test/CMakeFiles/unit_test_p2pnode.dir
-/home/bbrelin/nimcp/build/test/CMakeFiles/unit_test_performance_optimizations.dir
 /home/bbrelin/nimcp/build/test/CMakeFiles/unit_test_platform_cond.dir
 /home/bbrelin/nimcp/build/test/CMakeFiles/unit_test_platform_mutex.dir
 /home/bbrelin/nimcp/build/test/CMakeFiles/unit_test_platform_once.dir
