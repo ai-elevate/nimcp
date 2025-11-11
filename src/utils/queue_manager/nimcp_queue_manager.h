@@ -10,6 +10,9 @@
 #include "utils/containers/nimcp_queue.h"
 #include "utils/thread/nimcp_thread_pool.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 // Constants
 #define NIMCP_QUEUE_MAX_CHANNELS 1024
@@ -143,5 +146,9 @@ static nimcp_result_t submit_queue_operation(nimcp_queue_manager_handle_t manage
                                              nimcp_queue_operation_ctx_t* op_ctx);
 
 #endif  // NIMCP_INTERNAL
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif  // NIMCP_QUEUE_MANAGER_H
