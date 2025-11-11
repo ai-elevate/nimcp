@@ -218,6 +218,31 @@ float attention_compute_entropy(const float* attention_weights, uint32_t sequenc
  */
 bool attention_validate_config(const multihead_attention_config_t* config);
 
+/**
+ * WHAT: Get average attention strength across all heads
+ * WHY:  Enable attention-gated working memory (attended items more salient)
+ * HOW:  Average gate activation across heads, bounded [0.0-1.0]
+ *
+ * @param mha Multihead attention system
+ * @return Average attention strength [0.0-1.0], or 0.0 if NULL
+ *
+ * COMPLEXITY: O(1)
+ * THREAD_SAFETY: Thread-safe read operation
+ *
+ * BIOLOGICAL BASIS:
+ * - Attended stimuli have enhanced cortical representation
+ * - Attention gates what enters working memory (PFC)
+ * - Inattentional blindness: unattended items don't reach awareness
+ *
+ * USAGE:
+ * ```c
+ * float attention_strength = multihead_attention_get_strength(brain->multihead_attention);
+ * float salience = base_salience + (attention_strength * 0.3f);  // Boost by up to 30%
+ * working_memory_add(brain->working_memory, features, num_features, salience);
+ * ```
+ */
+float multihead_attention_get_strength(multihead_attention_t mha);
+
 #ifdef __cplusplus
 }
 #endif

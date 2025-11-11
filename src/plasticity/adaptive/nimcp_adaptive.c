@@ -38,6 +38,9 @@
 #include "core/neuralnet/nimcp_neuralnet.h"
 #include "utils/containers/nimcp_hash_table.h"
 #include "utils/memory/nimcp_memory.h"  // CRITICAL: Declares nimcp_calloc/nimcp_free return types
+#include "plasticity/eligibility/nimcp_eligibility_trace.h"  // Phase 11: Eligibility traces
+#include "plasticity/bcm/nimcp_bcm.h"  // Phase 11: BCM homeostatic plasticity
+#include "plasticity/neuromodulators/nimcp_neuromodulators.h"  // Phase 11: Neuromodulator system
 
 //=============================================================================
 // Constants and Configuration
@@ -1356,23 +1359,51 @@ float adaptive_network_learn(adaptive_network_t network, const training_example_
             }
             loss /= example->target_size;
 
-            // Apply learning using base network's learning rule
-            // This is simplified - actual implementation would use STDP/Hebbian
-            for (uint32_t i = 0; i < example->target_size; i++) {
-                float error = example->target[i] - output[i];
-                output[i] += learning_rate * error * example->confidence;
-            }
+            // =================================================================
+            // BIOLOGICAL PLASTICITY: Apply STDP/BCM to synapses
+            // =================================================================
+            // WHAT: Update synaptic weights using biological learning rules
+            // WHY:  Enable Hebbian learning instead of gradient descent
+            // HOW:  Compute reward signal → Call neural_network_apply_reward_learning
+            //
+            // BIOLOGICAL BASIS:
+            // - STDP: Hebbian learning ("neurons that fire together wire together")
+            // - BCM: Homeostatic plasticity (sliding threshold prevents saturation)
+            // - Eligibility traces: Temporal credit assignment (bridge reward delay)
+            //
+            // COMPLEXITY: O(N×S) where N = neurons, S = synapses per neuron
+            // =================================================================
+
+            // Compute reward signal from error
+            // High error → low reward, low error → high reward
+            // Reward in [0, 1] where 1 = perfect, 0 = maximum error
+            float reward = 1.0f / (1.0f + loss);  // Bounded reward signal
+            reward *= example->confidence;         // Scale by example confidence
+
+            // Apply biological plasticity to all synapses
+            neural_network_t base = network->base_network;
+            uint64_t current_time = network->total_learning_steps;
+
+            neural_network_apply_reward_learning(base, reward, learning_rate, current_time);
             break;
 
         case LEARN_MODE_UNSUPERVISED:
             // Hebbian learning - no explicit target
-            // Already handled by base network's plasticity rules
+            // Already handled by base network's plasticity rules during forward pass
             loss = 0.0f;
             break;
 
         case LEARN_MODE_REINFORCEMENT:
             // Use confidence as reward signal
             loss = 1.0f - example->confidence;
+
+            // Apply reinforcement learning with eligibility traces
+            // Reward comes directly from confidence
+            neural_network_t base_rl = network->base_network;
+            uint64_t time_rl = network->total_learning_steps;
+            float rl_reward = example->confidence;  // Direct reward signal
+
+            neural_network_apply_reward_learning(base_rl, rl_reward, learning_rate, time_rl);
             break;
     }
 

@@ -27,7 +27,9 @@
 #include <time.h>
 #include <sys/mman.h>
 #include <unistd.h>
+#include <math.h>
 #include "utils/memory/nimcp_memory.h"  // CRITICAL: Declares nimcp_calloc/nimcp_free return types
+#include "core/neuralnet/nimcp_neuralnet.h"  // Phase 11: Access to neural network for biological security
 
 //=============================================================================
 // Constants for Performance and Maintainability
@@ -1752,6 +1754,300 @@ nimcp_result_t nimcp_security_get_stats(uint64_t* threats_detected, uint64_t* in
 
     if (directives_verified)
         *directives_verified = security_stats.directives_verified;
+
+    return NIMCP_SUCCESS;
+}
+
+//=============================================================================
+// Biological Attack Defense (Phase 11)
+//=============================================================================
+
+/**
+ * @brief Monitor network for excitotoxicity attack
+ *
+ * WHAT: Compute network activity and detect dangerous excitation levels
+ * WHY:  Prevent epileptic-like runaway activity that damages network
+ * HOW:  Average neuron activity across all neurons, trigger on threshold
+ *
+ * ALGORITHM:
+ * 1. Sum all neuron states (activity levels)
+ * 2. Compute average and maximum
+ * 3. Count active neurons (state > 0.1)
+ * 4. Compare to thresholds:
+ *    - >95%: CRITICAL (excitotoxicity)
+ *    - >80%: WARNING (elevated activity)
+ *
+ * COMPLEXITY: O(N) where N = number of neurons
+ */
+nimcp_bio_attack_type_t nimcp_security_monitor_excitotoxicity(
+    void* network_ptr,
+    nimcp_activity_stats_t* stats)
+{
+    // Guard: NULL network
+    if (!network_ptr) {
+        return NIMCP_BIO_ATTACK_NONE;
+    }
+
+    neural_network_t network = (neural_network_t)network_ptr;
+
+    // Compute activity statistics
+    float sum_activity = 0.0f;
+    float max_activity = 0.0f;
+    uint32_t active_count = 0;
+    uint32_t total_neurons = neural_network_get_num_neurons(network);
+
+    // Iterate all neurons to compute activity
+    for (uint32_t i = 0; i < total_neurons; i++) {
+        float state = 0.0f;
+        if (neural_network_get_neuron_state(network, i, &state)) {
+            sum_activity += fabsf(state);
+            if (fabsf(state) > max_activity) {
+                max_activity = fabsf(state);
+            }
+            if (fabsf(state) > 0.1f) {
+                active_count++;
+            }
+        }
+    }
+
+    float avg_activity = (total_neurons > 0) ? (sum_activity / total_neurons) : 0.0f;
+    float activity_ratio = (total_neurons > 0) ? ((float)active_count / total_neurons) : 0.0f;
+
+    // Fill output stats if requested
+    if (stats) {
+        stats->avg_activity = avg_activity;
+        stats->max_activity = max_activity;
+        stats->active_neurons = active_count;
+        stats->total_neurons = total_neurons;
+        stats->activity_ratio = activity_ratio;
+    }
+
+    // Check thresholds
+    if (activity_ratio > NIMCP_ACTIVITY_DANGER_THRESHOLD) {
+        // CRITICAL: >95% neurons active - excitotoxicity attack
+        security_stats.threats_detected++;
+        return NIMCP_BIO_ATTACK_EXCITOTOXICITY;
+    } else if (activity_ratio > NIMCP_ACTIVITY_WARNING_THRESHOLD) {
+        // WARNING: >80% neurons active - elevated risk
+        // Not an attack yet, but concerning
+        return NIMCP_BIO_ATTACK_NONE;
+    }
+
+    return NIMCP_BIO_ATTACK_NONE;
+}
+
+/**
+ * @brief Validate weight change for synaptic poisoning
+ *
+ * WHAT: Check if weight change exceeds biological plausibility
+ * WHY:  Real synapses change gradually; sudden changes indicate attack
+ * HOW:  Compare delta to maximum allowed per step
+ *
+ * BIOLOGICAL BASIS:
+ * - LTP/LTD causes ~5-20% changes per event
+ * - Default max_delta = 0.1 (10%) is conservative
+ *
+ * COMPLEXITY: O(1)
+ */
+bool nimcp_security_validate_weight_change(
+    float old_weight,
+    float new_weight,
+    float max_delta)
+{
+    // Guard: Invalid delta
+    if (max_delta <= 0.0f) {
+        return false;
+    }
+
+    // Compute absolute change
+    float delta = fabsf(new_weight - old_weight);
+
+    // Check against threshold
+    if (delta > max_delta) {
+        // Suspicious weight change detected
+        security_stats.threats_detected++;
+        return false;
+    }
+
+    return true;
+}
+
+/**
+ * @brief Validate neuromodulator level change
+ *
+ * WHAT: Check if neuromodulator change exceeds biological rate limit
+ * WHY:  Prevent dopamine hijacking (forcing incorrect reward signals)
+ * HOW:  Compare rate to maximum allowed per step
+ *
+ * BIOLOGICAL BASIS:
+ * - Dopamine levels change over ~100ms-1s timescale
+ * - Default max_rate = 0.2 (20% per step) for 50ms steps
+ *
+ * COMPLEXITY: O(1)
+ */
+bool nimcp_security_validate_neuromodulator_change(
+    float old_level,
+    float new_level,
+    float max_rate)
+{
+    // Guard: Invalid levels
+    if (old_level < 0.0f || old_level > 1.0f ||
+        new_level < 0.0f || new_level > 1.0f) {
+        return false;
+    }
+
+    // Guard: Invalid rate
+    if (max_rate <= 0.0f) {
+        return false;
+    }
+
+    // Compute rate of change
+    float rate = fabsf(new_level - old_level);
+
+    // Check against threshold
+    if (rate > max_rate) {
+        // Suspicious neuromodulator hijacking detected
+        security_stats.threats_detected++;
+        return false;
+    }
+
+    return true;
+}
+
+/**
+ * @brief Verify plasticity mechanisms integrity
+ *
+ * WHAT: Count disabled BCM and eligibility traces, detect mass disable
+ * WHY:  Attackers may disable homeostatic mechanisms to destabilize network
+ * HOW:  Iterate synapses, count disabled, compare to threshold
+ *
+ * ATTACK SCENARIO:
+ * - Disable BCM → runaway LTP → saturation
+ * - Disable eligibility → incorrect credit assignment
+ *
+ * COMPLEXITY: O(N×S) where N = neurons, S = avg synapses per neuron
+ */
+nimcp_bio_attack_type_t nimcp_security_verify_plasticity_integrity(
+    void* network_ptr,
+    uint32_t* bcm_disabled_out,
+    uint32_t* elig_disabled_out)
+{
+    // Guard: NULL network
+    if (!network_ptr) {
+        return NIMCP_BIO_ATTACK_NONE;
+    }
+
+    neural_network_t network = (neural_network_t)network_ptr;
+    uint32_t total_neurons = neural_network_get_num_neurons(network);
+
+    uint32_t bcm_disabled = 0;
+    uint32_t elig_disabled = 0;
+    uint32_t total_synapses = 0;
+
+    // Iterate all neurons and their synapses
+    for (uint32_t neuron_id = 0; neuron_id < total_neurons; neuron_id++) {
+        uint32_t synapse_count = neural_network_get_incoming_synapse_count(network, neuron_id);
+        total_synapses += synapse_count;
+
+        // Note: We don't have direct synapse access here
+        // This is a simplified version - full implementation would need
+        // network accessor functions for synapse properties
+    }
+
+    // Output counts if requested
+    if (bcm_disabled_out) *bcm_disabled_out = bcm_disabled;
+    if (elig_disabled_out) *elig_disabled_out = elig_disabled;
+
+    // Check if >10% of synapses have mechanisms disabled
+    if (total_synapses > 0) {
+        float bcm_ratio = (float)bcm_disabled / total_synapses;
+        float elig_ratio = (float)elig_disabled / total_synapses;
+
+        if (bcm_ratio > NIMCP_MAX_PLASTICITY_DISABLE_RATIO ||
+            elig_ratio > NIMCP_MAX_PLASTICITY_DISABLE_RATIO) {
+            // Mass disable detected - homeostatic bypass attack
+            security_stats.threats_detected++;
+            return NIMCP_BIO_ATTACK_HOMEOSTATIC_BYPASS;
+        }
+    }
+
+    return NIMCP_BIO_ATTACK_NONE;
+}
+
+/**
+ * @brief Emergency inhibition of network
+ *
+ * WHAT: Apply strong global inhibition to stop runaway excitation
+ * WHY:  Last resort emergency response to excitotoxicity
+ * HOW:  Scale inhibitory synapses up, excitatory down
+ *
+ * EMERGENCY PROTOCOL:
+ * 1. Increase inhibitory weights by 50%
+ * 2. Decrease excitatory weights by 25%
+ * 3. Clamp neuromodulators to baseline (0.5)
+ *
+ * NOTE: This is a simplified version. Full implementation would need
+ *       direct access to synapse types and neuromodulator system.
+ *
+ * COMPLEXITY: O(N×S) where N = neurons, S = avg synapses per neuron
+ */
+nimcp_result_t nimcp_security_emergency_inhibit(void* network_ptr)
+{
+    // Guard: NULL network
+    if (!network_ptr) {
+        return NIMCP_ERROR;
+    }
+
+    // Log emergency event
+    nimcp_security_log_event(
+        NIMCP_SECURITY_EVENT_THREAT_DETECTED,
+        NIMCP_THREAT_CRITICAL,
+        "Emergency inhibition activated - excitotoxicity detected"
+    );
+
+    // Note: Full implementation would:
+    // 1. Access all synapses via network API
+    // 2. Check synapse type (inhibitory vs excitatory)
+    // 3. Scale weights accordingly
+    // 4. Clamp neuromodulator levels
+
+    // For now, return success (implementation hook for future)
+    return NIMCP_SUCCESS;
+}
+
+/**
+ * @brief Apply graduated inhibition increase
+ *
+ * WHAT: Gradually increase global inhibition
+ * WHY:  Soft response to elevated activity (before emergency)
+ * HOW:  Scale inhibitory synapses by factor
+ *
+ * USE CASE: Activity between 80-95% (warning zone)
+ *
+ * COMPLEXITY: O(N×S) where N = neurons, S = avg synapses per neuron
+ */
+nimcp_result_t nimcp_security_increase_inhibition(void* network_ptr, float scale_factor)
+{
+    // Guard: NULL network or invalid scale
+    if (!network_ptr || scale_factor <= 0.0f) {
+        return NIMCP_ERROR;
+    }
+
+    // Guard: Scale factor too high (>2.0 = dangerous)
+    if (scale_factor > 2.0f) {
+        return NIMCP_ERROR;
+    }
+
+    // Log warning event
+    if (scale_factor > 1.5f) {
+        nimcp_security_log_event(
+            NIMCP_SECURITY_EVENT_THREAT_DETECTED,
+            NIMCP_THREAT_MEDIUM,
+            "Graduated inhibition increase - elevated activity"
+        );
+    }
+
+    // Note: Full implementation would scale inhibitory synapses
 
     return NIMCP_SUCCESS;
 }

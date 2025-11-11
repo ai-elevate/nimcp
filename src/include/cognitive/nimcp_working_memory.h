@@ -370,6 +370,34 @@ void working_memory_clear(working_memory_t* wm);
 uint32_t working_memory_get_size(const working_memory_t* wm);
 
 /**
+ * @brief Get current number of items (alias for get_size)
+ *
+ * WHAT: Return count of currently stored items
+ * WHY:  Provide alternative naming for consistency with other APIs
+ * HOW:  Return current_size field
+ *
+ * COMPLEXITY: O(1)
+ *
+ * @param wm Working memory instance (non-NULL)
+ * @return Number of items [0, capacity]
+ */
+uint32_t working_memory_get_count(const working_memory_t* wm);
+
+/**
+ * @brief Get working memory utilization percentage
+ *
+ * WHAT: Return percentage of capacity currently in use
+ * WHY:  Monitor memory pressure and capacity usage
+ * HOW:  Return (current_size / capacity) as float [0.0, 1.0]
+ *
+ * COMPLEXITY: O(1)
+ *
+ * @param wm Working memory instance (non-NULL)
+ * @return Utilization [0.0, 1.0] where 1.0 = full
+ */
+float working_memory_get_utilization(const working_memory_t* wm);
+
+/**
  * @brief Get maximum capacity of working memory
  *
  * WHAT: Return maximum number of items that can be stored

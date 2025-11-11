@@ -63,7 +63,7 @@ typedef struct {
  * WHY: Track synaptic eligibility for credit assignment
  * HOW: Decays exponentially, reset by spikes
  */
-typedef struct {
+typedef struct eligibility_trace_t {
     float trace;              /**< Current trace value [0, 1] */
     uint64_t last_update;     /**< Last time trace was updated (ms) */
 } eligibility_trace_t;

@@ -1013,3 +1013,43 @@ bool attention_validate_config(const multihead_attention_config_t* config)
 
     return true;
 }
+
+//=============================================================================
+// Phase 11: Attention-Working Memory Coordination
+//=============================================================================
+
+/**
+ * WHAT: Get current attention strength for working memory gating
+ * WHY:  Attended items should be more salient in working memory
+ * HOW:  Read atomic gate signal, convert from fixed-point to float
+ *
+ * COMPLEXITY: O(1)
+ */
+float multihead_attention_get_strength(multihead_attention_t mha)
+{
+    // Guard: NULL check
+    if (!mha) {
+        return 0.0f;
+    }
+
+    // Guard: Check if attention has been used (forward_calls > 0)
+    uint64_t calls = atomic_load(&mha->forward_calls);
+    if (calls == 0) {
+        // No forward passes yet, return neutral strength
+        return 0.5f;
+    }
+
+    // Read atomic gate signal (fixed-point [0, 1000] → [0.0, 1.0])
+    uint32_t gate_scaled = atomic_load(&mha->avg_gate_scaled);
+    float gate_strength = (float)gate_scaled / 1000.0f;
+
+    // Ensure bounded [0.0, 1.0]
+    if (gate_strength > 1.0f) {
+        gate_strength = 1.0f;
+    }
+    if (gate_strength < 0.0f) {
+        gate_strength = 0.0f;
+    }
+
+    return gate_strength;
+}

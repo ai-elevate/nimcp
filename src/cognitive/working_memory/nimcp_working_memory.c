@@ -811,6 +811,42 @@ uint32_t working_memory_get_size(const working_memory_t* wm) {
 }
 
 /**
+ * @brief Get current number of items (alias for get_size)
+ *
+ * WHAT: Return count of currently stored items
+ * WHY:  Provide alternative naming for consistency with other APIs
+ * HOW:  Call working_memory_get_size
+ *
+ * COMPLEXITY: O(1)
+ */
+uint32_t working_memory_get_count(const working_memory_t* wm) {
+    return working_memory_get_size(wm);
+}
+
+/**
+ * @brief Get working memory utilization percentage
+ *
+ * WHAT: Return percentage of capacity currently in use
+ * WHY:  Monitor memory pressure and capacity usage
+ * HOW:  Return (current_size / capacity) as float [0.0, 1.0]
+ *
+ * COMPLEXITY: O(1)
+ */
+float working_memory_get_utilization(const working_memory_t* wm) {
+    // Guard: NULL working memory
+    if (!wm) {
+        return 0.0f;
+    }
+
+    // Guard: Zero capacity (shouldn't happen but guard anyway)
+    if (wm->capacity == 0) {
+        return 0.0f;
+    }
+
+    return (float)wm->current_size / (float)wm->capacity;
+}
+
+/**
  * @brief Get capacity of working memory
  *
  * WHAT: Return maximum item capacity

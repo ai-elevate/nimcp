@@ -46,6 +46,7 @@
 #include "plasticity/bcm/nimcp_bcm.h"                    // Phase 11: BCM homeostatic plasticity
 #include "plasticity/eligibility/nimcp_eligibility_trace.h"  // Phase 11: Eligibility traces for RL
 #include "glial/integration/nimcp_glial_integration.h"   // NIMCP Phase 6: Glial notifications
+#include "security/nimcp_security.h"                     // Phase 11: Biological attack defense
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -1460,6 +1461,122 @@ static float compute_stdp_update(float dt, const stdp_params_t* params)
         return -params->negative_factor * time_factor;
     }
 }
+
+/**
+ * @brief Apply reward-modulated learning to all synapses (Phase 11)
+ *
+ * WHAT: Apply biological plasticity mechanisms with reward signal
+ * WHY:  Enable supervised/RL learning using biological rules
+ * HOW:  Iterate neurons → STDP → Eligibility traces → BCM
+ */
+uint32_t neural_network_apply_reward_learning(neural_network_t network, float reward,
+                                              float learning_rate, uint64_t current_time)
+{
+    // Guard: Validate parameters
+    if (!network || reward < 0.0f || reward > 1.0f || learning_rate <= 0.0f) {
+        return 0;
+    }
+
+    uint32_t total_modified = 0;
+
+    // Iterate over all neurons in the network
+    for (uint32_t neuron_id = 0; neuron_id < network->config.num_neurons; neuron_id++) {
+        neuron_t* neuron = &network->neurons[neuron_id];
+
+        // Step 1: Apply STDP if enabled for this neuron
+        if (neuron->learning_rule & LEARNING_STDP) {
+            total_modified += neural_network_apply_stdp(network, neuron_id, current_time);
+        }
+
+        // Step 2: Apply Oja's rule if enabled (PCA-like learning)
+        if (neuron->learning_rule & LEARNING_OJA) {
+            total_modified += neural_network_apply_oja(network, neuron_id, current_time);
+        }
+
+        // Step 3: Apply eligibility-trace-based learning with reward signal
+        for (uint32_t syn_idx = 0; syn_idx < neuron->num_synapses; syn_idx++) {
+            synapse_t* syn = &neuron->synapses[syn_idx];
+
+            // Update eligibility traces
+            if (syn->enable_eligibility && syn->eligibility) {
+                eligibility_config_t elig_config = eligibility_default_config();
+                elig_config.learning_rate = learning_rate;
+
+                // Update trace based on synaptic activity
+                if (syn->trace > 0.1f) {  // Synapse was recently active
+                    eligibility_trace_update(
+                        syn->eligibility,
+                        &elig_config,
+                        current_time,
+                        syn->trace  // Use synaptic trace as spike contribution
+                    );
+                } else {
+                    // Decay trace without spike
+                    eligibility_trace_decay(syn->eligibility, &elig_config, current_time);
+                }
+
+                // Apply reward-modulated learning
+                // Get dopamine level from neuromodulator system (if available)
+                float dopamine = 0.5f;  // Default dopamine level
+                if (network->neuromodulator_system) {
+                    dopamine = neuromodulator_get_level(network->neuromodulator_system, NEUROMOD_DOPAMINE);
+                }
+
+                // Apply eligibility-based weight update
+                float old_weight = syn->weight;
+                eligibility_apply_reward(
+                    syn,
+                    syn->eligibility,
+                    &elig_config,
+                    reward,      // Reward from prediction accuracy
+                    dopamine     // Dopamine gates learning
+                );
+
+                // ===================================================================
+                // BIOLOGICAL SECURITY: Validate weight change (Phase 11)
+                // ===================================================================
+                // Check if weight change exceeds biological plausibility
+                // Reject suspicious updates to prevent synaptic poisoning attacks
+                if (!nimcp_security_validate_weight_change(old_weight, syn->weight,
+                                                          NIMCP_MAX_WEIGHT_DELTA_PER_STEP)) {
+                    // SECURITY: Reject suspicious weight change
+                    syn->weight = old_weight;  // Revert to safe value
+                    continue;  // Skip this synapse
+                }
+
+                // Clamp weights to valid range
+                syn->weight = fmaxf(network->config.min_weight,
+                                  fminf(network->config.max_weight, syn->weight));
+
+                if (fabsf(syn->weight - old_weight) > WEIGHT_UPDATE_THRESHOLD) {
+                    total_modified++;
+                }
+            }
+
+            // Step 4: Apply BCM homeostatic plasticity
+            if (syn->enable_bcm && syn->bcm) {
+                bcm_params_t bcm_params = bcm_params_cortical();
+                float dt = 1.0f;  // Time step in seconds
+
+                const neuron_t* post_neuron = &network->neurons[syn->target_id];
+                float pre_activity = neuron->state;       // Presynaptic activity
+                float post_activity = post_neuron->state; // Postsynaptic activity
+
+                // Apply BCM rule
+                bcm_apply_rule(syn->bcm, pre_activity, post_activity, dt, &bcm_params);
+
+                // Sync BCM weight to synapse weight
+                if (fabsf(syn->bcm->weight - syn->weight) > WEIGHT_UPDATE_THRESHOLD) {
+                    syn->weight = syn->bcm->weight;
+                    total_modified++;
+                }
+            }
+        }
+    }
+
+    return total_modified;
+}
+
 /**
  * @brief Apply homeostatic plasticity to maintain target activity
  */
@@ -1818,17 +1935,14 @@ bool neural_network_add_connection(neural_network_t network, uint32_t from_id, u
     }
 
     // Phase 11: Initialize Eligibility Traces (Temporal Credit Assignment)
-    // TODO: Re-enable once eligibility trace compilation error is fixed
     // Allocate and initialize eligibility trace for reward-based learning
-    // syn->eligibility = (eligibility_trace_t*)nimcp_calloc(1, sizeof(eligibility_trace_t));
-    // if (syn->eligibility) {
-    //     eligibility_trace_init(syn->eligibility, network->network_time);
-    //     syn->enable_eligibility = true;  // Enable eligibility traces by default
-    // } else {
-    //     syn->enable_eligibility = false;  // Disable if allocation failed
-    // }
-    syn->eligibility = NULL;
-    syn->enable_eligibility = false;
+    syn->eligibility = (eligibility_trace_t*)nimcp_calloc(1, sizeof(eligibility_trace_t));
+    if (syn->eligibility) {
+        eligibility_trace_init(syn->eligibility, network->network_time);
+        syn->enable_eligibility = true;  // Enable eligibility traces by default
+    } else {
+        syn->enable_eligibility = false;  // Disable if allocation failed
+    }
 
     from_neuron->num_synapses++;
 

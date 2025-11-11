@@ -21,6 +21,11 @@ typedef struct neuron_struct neuron_t;
 struct synapse_compute_context_t;
 struct synapse_compute_state_t;
 
+// Forward declaration for eligibility traces (Phase 11)
+// WHY: synapse_t uses eligibility_trace_t*, need forward declaration before synapse_t
+// Full definition included after synapse_t to avoid circular dependency
+typedef struct eligibility_trace_t eligibility_trace_t;
+
 // Phase 8.7: Include synapse type system
 // CRITICAL: Must come AFTER neuron_t forward declaration
 #include "core/synapse_types/nimcp_synapse_types.h"
@@ -28,10 +33,6 @@ struct synapse_compute_state_t;
 // Phase 11: BCM plasticity types
 // NOTE: Must come AFTER neuron_t forward declaration
 #include "plasticity/bcm/nimcp_bcm.h"
-
-// Phase 11: Eligibility traces for temporal credit assignment
-// NOTE: Must come AFTER neuron_t forward declaration
-#include "plasticity/eligibility/nimcp_eligibility_trace.h"
 
 // Function pointer types for synapse computation (NIMCP 2.7)
 // DESIGN: Define types here so synapse_t can use them without including synapse_compute.h
@@ -227,6 +228,10 @@ typedef struct synapse_t {
     // Total synapse size: ~600 bytes/synapse with embeddings. Cost justified for intelligent routing.
 } synapse_t;
 
+// Phase 11: Eligibility traces for temporal credit assignment
+// NOTE: Must come AFTER synapse_t definition (eligibility functions modify synapse->weight)
+#include "plasticity/eligibility/nimcp_eligibility_trace.h"
+
 /**
  * @brief Neuron structure
  *
@@ -406,6 +411,24 @@ bool neural_network_adapt_threshold(neural_network_t network, uint32_t neuron_id
                                     uint64_t timestamp);
 float neural_network_compute_activation(neuron_t* neuron, float input);
 void neural_network_update_traces(neural_network_t network, uint32_t neuron_id, uint64_t timestamp);
+
+/**
+ * @brief Apply reward-modulated learning to all synapses (Phase 11)
+ *
+ * WHAT: Apply biological plasticity (STDP/BCM/eligibility) with reward signal
+ * WHY:  Enable biological learning in supervised/RL contexts
+ * HOW:  Iterate all neurons → Apply STDP → Apply eligibility traces → Apply BCM
+ *
+ * COMPLEXITY: O(N×S) where N = neurons, S = avg synapses per neuron
+ *
+ * @param network Neural network
+ * @param reward Reward signal [0, 1]
+ * @param learning_rate Learning rate for weight updates
+ * @param current_time Current timestamp
+ * @return Number of synapses modified
+ */
+uint32_t neural_network_apply_reward_learning(neural_network_t network, float reward,
+                                              float learning_rate, uint64_t current_time);
 
 // Analysis and monitoring functions
 float neural_network_get_average_activity(neural_network_t network, uint32_t neuron_id);

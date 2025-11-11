@@ -276,6 +276,158 @@ nimcp_result_t nimcp_encryption_decrypt(nimcp_encryption_context_t* ctx, const u
 void nimcp_encryption_destroy(nimcp_encryption_context_t* ctx);
 
 //=============================================================================
+// Biological Attack Defense (Phase 11 - Post Biological Learning)
+//=============================================================================
+
+/**
+ * @brief Biological security thresholds
+ */
+#define NIMCP_ACTIVITY_WARNING_THRESHOLD 0.8f   /**< 80% network activity - warning */
+#define NIMCP_ACTIVITY_DANGER_THRESHOLD 0.95f   /**< 95% network activity - emergency */
+#define NIMCP_MAX_WEIGHT_DELTA_PER_STEP 0.1f    /**< Max 10% weight change per step */
+#define NIMCP_MAX_NEUROMOD_RATE 0.2f            /**< Max 20% neuromodulator change per step */
+#define NIMCP_MAX_PLASTICITY_DISABLE_RATIO 0.1f /**< Alert if >10% synapses disabled */
+
+/**
+ * @brief Biological attack types
+ */
+typedef enum {
+    NIMCP_BIO_ATTACK_NONE = 0,
+    NIMCP_BIO_ATTACK_EXCITOTOXICITY,      /**< Runaway excitation */
+    NIMCP_BIO_ATTACK_SYNAPTIC_POISONING,  /**< Malicious weight updates */
+    NIMCP_BIO_ATTACK_NEUROMOD_HIJACK,     /**< Dopamine manipulation */
+    NIMCP_BIO_ATTACK_HEBBIAN_POISON,      /**< STDP exploitation */
+    NIMCP_BIO_ATTACK_HOMEOSTATIC_BYPASS   /**< BCM/eligibility disable */
+} nimcp_bio_attack_type_t;
+
+/**
+ * @brief Network activity statistics
+ */
+typedef struct {
+    float avg_activity;        /**< Average neuron activity [0, 1] */
+    float max_activity;        /**< Maximum neuron activity */
+    uint32_t active_neurons;   /**< Number of active neurons */
+    uint32_t total_neurons;    /**< Total neurons in network */
+    float activity_ratio;      /**< Ratio of active neurons */
+} nimcp_activity_stats_t;
+
+/**
+ * @brief Monitor network for excitotoxicity attack
+ *
+ * WHAT: Detect runaway excitation that could damage the network
+ * WHY:  Biological networks can enter epileptic-like states if unchecked
+ * HOW:  Monitor average activity and trigger emergency inhibition if exceeded
+ *
+ * DETECTION:
+ * - Warning: >80% neurons active (increase inhibition)
+ * - Danger:  >95% neurons active (emergency shutdown)
+ *
+ * @param network Neural network to monitor
+ * @param stats Output: activity statistics (can be NULL)
+ * @return Attack type detected or NIMCP_BIO_ATTACK_NONE
+ */
+nimcp_bio_attack_type_t nimcp_security_monitor_excitotoxicity(
+    void* network,
+    nimcp_activity_stats_t* stats
+);
+
+/**
+ * @brief Validate weight change for synaptic poisoning
+ *
+ * WHAT: Ensure weight changes are within biological plausibility
+ * WHY:  Prevent malicious training data from corrupting synaptic weights
+ * HOW:  Check delta against maximum allowed per learning step
+ *
+ * BIOLOGICAL BASIS:
+ * - Real synapses change gradually (max ~10% per event)
+ * - Sudden large changes indicate attack or bug
+ *
+ * @param old_weight Previous weight value
+ * @param new_weight Proposed new weight value
+ * @param max_delta Maximum allowed change (default: 0.1)
+ * @return true if change is valid, false if suspicious
+ */
+bool nimcp_security_validate_weight_change(
+    float old_weight,
+    float new_weight,
+    float max_delta
+);
+
+/**
+ * @brief Validate neuromodulator level change
+ *
+ * WHAT: Prevent rapid neuromodulator manipulation
+ * WHY:  Dopamine hijacking can force incorrect reward signals
+ * HOW:  Rate-limit changes to biological plausibility
+ *
+ * BIOLOGICAL BASIS:
+ * - Dopamine changes gradually over ~100ms-1s
+ * - Sudden spikes/drops indicate manipulation
+ *
+ * @param old_level Previous neuromodulator level [0, 1]
+ * @param new_level Proposed new level [0, 1]
+ * @param max_rate Maximum rate of change per step
+ * @return true if change is valid, false if suspicious
+ */
+bool nimcp_security_validate_neuromodulator_change(
+    float old_level,
+    float new_level,
+    float max_rate
+);
+
+/**
+ * @brief Verify plasticity mechanisms integrity
+ *
+ * WHAT: Check that BCM and eligibility traces haven't been disabled en masse
+ * WHY:  Disabling homeostatic mechanisms causes network instability
+ * HOW:  Count disabled synapses and alert if threshold exceeded
+ *
+ * ATTACK SCENARIO:
+ * - Attacker disables BCM to cause runaway potentiation
+ * - Attacker disables eligibility to prevent correct credit assignment
+ *
+ * @param network Neural network to check
+ * @param bcm_disabled Output: count of BCM-disabled synapses (can be NULL)
+ * @param elig_disabled Output: count of eligibility-disabled synapses (can be NULL)
+ * @return Attack type detected or NIMCP_BIO_ATTACK_NONE
+ */
+nimcp_bio_attack_type_t nimcp_security_verify_plasticity_integrity(
+    void* network,
+    uint32_t* bcm_disabled,
+    uint32_t* elig_disabled
+);
+
+/**
+ * @brief Emergency inhibition of network
+ *
+ * WHAT: Apply global inhibition to prevent runaway excitation
+ * WHY:  Last resort to prevent excitotoxic damage
+ * HOW:  Scale all inhibitory synapses up, excitatory down
+ *
+ * EMERGENCY RESPONSE:
+ * - Increase inhibitory weights by 50%
+ * - Decrease excitatory weights by 25%
+ * - Clamp neuromodulators to safe levels
+ *
+ * @param network Neural network to inhibit
+ * @return NIMCP_SUCCESS or error code
+ */
+nimcp_result_t nimcp_security_emergency_inhibit(void* network);
+
+/**
+ * @brief Apply graduated inhibition increase
+ *
+ * WHAT: Gradually increase global inhibition to control activity
+ * WHY:  Soft response to elevated activity (before emergency)
+ * HOW:  Scale inhibitory synapses by factor
+ *
+ * @param network Neural network
+ * @param scale_factor Scaling factor for inhibitory weights (e.g., 1.2 = +20%)
+ * @return NIMCP_SUCCESS or error code
+ */
+nimcp_result_t nimcp_security_increase_inhibition(void* network, float scale_factor);
+
+//=============================================================================
 // Security Audit and Logging
 //=============================================================================
 
