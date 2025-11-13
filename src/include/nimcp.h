@@ -182,6 +182,35 @@ nimcp_status_t nimcp_brain_predict(
 );
 
 /**
+ * @brief Run inference and get raw output vector
+ *
+ * WHAT: Forward pass through network returning raw outputs
+ * WHY:  For numeric predictions, embeddings, or when you don't need label classification
+ * HOW:  Processes inputs through network, returns output activations
+ *
+ * @param brain Brain handle
+ * @param features Input features array
+ * @param num_features Number of input features
+ * @param outputs Output array to fill (must be pre-allocated)
+ * @param num_outputs Number of outputs (must match brain's output dimension)
+ * @return NIMCP_OK on success, error code otherwise
+ *
+ * EXAMPLE:
+ * ```c
+ * float features[20] = {...};
+ * float outputs[10];
+ * nimcp_status_t result = nimcp_brain_infer(brain, features, 20, outputs, 10);
+ * ```
+ */
+nimcp_status_t nimcp_brain_infer(
+    nimcp_brain_t brain,
+    const float* features,
+    uint32_t num_features,
+    float* outputs,
+    uint32_t num_outputs
+);
+
+/**
  * @brief Save brain to file
  *
  * @param brain Brain handle

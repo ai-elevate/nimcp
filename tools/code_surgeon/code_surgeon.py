@@ -32,10 +32,13 @@ from dataclasses import dataclass, field
 from typing import List, Dict, Optional, Callable, Tuple
 from enum import Enum
 from datetime import datetime
-import anthropic
 
 # Add project root to path
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
+
+# Import new abstraction modules
+from llm_provider import LLMProvider, LLMMessage, create_llm_provider
+from config import CodeSurgeonConfig, create_config_from_env
 
 #==============================================================================
 # Core Data Structures (Immutable)
@@ -345,13 +348,19 @@ def execute_test_suite(binaries: Tuple[Path, ...],
 # Auto-Fix Helpers
 #==============================================================================
 
-def ai_powered_auto_fix(failure: dict, nimcp_root: Path) -> Optional[Fix]:
+def ai_powered_auto_fix(failure: dict, nimcp_root: Path, llm_provider: LLMProvider, max_tokens: int = 4096) -> Optional[Fix]:
     """
-    AI-powered auto-fix using Claude API with full context
+    AI-powered auto-fix using injected LLM provider
 
-    WHAT: Call Claude API with test output, source files, and test files
-    WHY:  Provide Claude with necessary context to understand and fix the issue
-    HOW:  Read relevant files, build comprehensive prompt, call API, parse response
+    WHAT: Call LLM API with test output, source files, and test files
+    WHY:  Provide LLM with necessary context to understand and fix the issue
+    HOW:  Read relevant files, build comprehensive prompt, call API via provider, parse response
+
+    PARAMETERS:
+        failure: Test failure dictionary
+        nimcp_root: Path to project root
+        llm_provider: Injected LLM provider (dependency injection)
+        max_tokens: Maximum tokens for LLM response
 
     RETURNS: Fix object with file edits, or None if fix cannot be generated
     """
@@ -505,25 +514,17 @@ NEW_CODE:
 EXPLANATION: [Bad because: incomplete OLD_CODE, adds unrelated code]
 """
 
-    # Call Claude API
+    # Call LLM via injected provider (dependency injection)
     try:
-        api_key = os.environ.get("ANTHROPIC_API_KEY")
-        if not api_key:
-            print("  ⚠️  ANTHROPIC_API_KEY not set - AI auto-fix disabled")
+        messages = [LLMMessage(role="user", content=prompt)]
+
+        llm_response = llm_provider.generate(messages, max_tokens=max_tokens)
+
+        if not llm_response:
+            print(f"  ⚠️  LLM provider failed to generate response")
             return None
 
-        client = anthropic.Anthropic(api_key=api_key)
-
-        response = client.messages.create(
-            model="claude-3-5-haiku-20241022",  # Haiku 3.5: faster & cheaper for focused fixes
-            max_tokens=4096,
-            messages=[{
-                "role": "user",
-                "content": prompt
-            }]
-        )
-
-        response_text = response.content[0].text
+        response_text = llm_response.text
 
         # Parse response
         if "NO_FIX_POSSIBLE" in response_text:
@@ -590,13 +591,20 @@ EXPLANATION: [Bad because: incomplete OLD_CODE, adds unrelated code]
         return None
 
 
-def auto_generate_fix(failure: dict, analysis, nimcp_root: Path, gdb_output: Optional[str] = None) -> Optional[Fix]:
+def auto_generate_fix(failure: dict, analysis, nimcp_root: Path, llm_provider: LLMProvider, gdb_output: Optional[str] = None) -> Optional[Fix]:
     """
-    Auto-generate fix for common test failures
+    Auto-generate fix for common test failures (with dependency injection)
 
     WHAT: Analyze failure and generate automatic fix
     WHY:  Enable self-healing without manual intervention
     HOW:  Pattern matching on common failure types + gdb backtrace parsing
+
+    PARAMETERS:
+        failure: Test failure dictionary
+        analysis: Failure analysis results
+        nimcp_root: Path to project root
+        llm_provider: Injected LLM provider
+        gdb_output: Optional GDB debugging output
 
     RETURNS: Fix object or None if cannot auto-fix
     """
@@ -605,8 +613,8 @@ def auto_generate_fix(failure: dict, analysis, nimcp_root: Path, gdb_output: Opt
     stdout = str(failure.get('stdout', failure.get('output', '')))
     stderr = str(failure.get('stderr', failure.get('error', '')))
 
-    # Try AI-powered auto-fix first (provides Claude with full context)
-    ai_fix = ai_powered_auto_fix(failure, nimcp_root)
+    # Try AI-powered auto-fix first (provides LLM with full context)
+    ai_fix = ai_powered_auto_fix(failure, nimcp_root, llm_provider)
     if ai_fix:
         return ai_fix
 
@@ -853,32 +861,41 @@ def git_rollback_file(file_path: Path, nimcp_root: Path) -> bool:
 # Main Orchestration
 #==============================================================================
 
-def orchestrate_full_pipeline(nimcp_root: Path,
-                              max_iterations: int = 5,
-                              enable_coverage: bool = True) -> int:
+def orchestrate_full_pipeline(config: CodeSurgeonConfig) -> int:
     """
-    Full test-fix-verify loop with coverage analysis
+    Full test-fix-verify loop with coverage analysis (dependency injection)
 
     WHAT: Complete Code Surgeon orchestration with lcov integration
     WHY:  Automated testing + fixing + verification + coverage tracking
     HOW:  Test → Coverage → Analyze → Fix → Verify → Iterate
 
+    PARAMETERS:
+        config: CodeSurgeonConfig with all settings and dependencies
+
     RETURNS: 0 if all tests pass, 1 otherwise
     COMPLEXITY: O(iterations * test_count)
+
+    DESIGN: Uses dependency injection for LLM provider and configuration
     """
     from test_runner import run_tests_parallel
     from failure_analyzer import analyze_failure
     from auto_fixer import prepare_fix_context, apply_fix
     from coverage import run_full_coverage_analysis
 
-    # Look for tests in build directory (where CMake creates executables)
-    build_dir = nimcp_root / "build"
-    test_root = build_dir / "test"
+    # Extract configuration
+    nimcp_root = config.nimcp_root
+    test_root = config.get_test_dir()
+    build_dir = config.get_build_dir()
+    max_iterations = config.max_iterations
+    enable_coverage = config.enable_coverage
+    llm_provider = config.get_llm_provider()
 
     # Guard clause
     if not test_root.exists():
         print(f"❌ Test directory not found: {test_root}")
-        print(f"   Build the project first: cd build && make")
+        print(f"   Build the project first or check configuration")
+        print(f"   Configured test_dir: {test_root}")
+        print(f"   Configured build_dir: {build_dir}")
         return 1
 
     # Discover tests
@@ -991,8 +1008,8 @@ def orchestrate_full_pipeline(nimcp_root: Path,
                 ()  # Source files would be added here
             )
 
-            # Generate fix automatically
-            fix = auto_generate_fix(failure, analysis, nimcp_root, gdb_output=gdb_output)
+            # Generate fix automatically (using injected LLM provider)
+            fix = auto_generate_fix(failure, analysis, nimcp_root, llm_provider, gdb_output=gdb_output)
 
             if fix:
                 print(f"  → Applying fix to {fix.file_path}")
@@ -1140,16 +1157,22 @@ def main():
             debug_mode=args.debug
         )
     else:
-        # Serial execution mode (backward compatible)
+        # Serial execution mode (with dependency injection)
         if args.mode == "full":
-            return orchestrate_full_pipeline(nimcp_root,
-                                            args.max_iterations,
-                                            enable_coverage=args.coverage)
+            config = create_config_from_env(
+                nimcp_root,
+                max_iterations=args.max_iterations,
+                enable_coverage=args.coverage
+            )
+            return orchestrate_full_pipeline(config)
         else:
             # Quick test-only mode
-            return orchestrate_full_pipeline(nimcp_root,
-                                            max_iterations=1,
-                                            enable_coverage=args.coverage)
+            config = create_config_from_env(
+                nimcp_root,
+                max_iterations=1,
+                enable_coverage=args.coverage
+            )
+            return orchestrate_full_pipeline(config)
 
 if __name__ == "__main__":
     sys.exit(main())

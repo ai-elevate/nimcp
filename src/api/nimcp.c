@@ -256,6 +256,54 @@ nimcp_status_t nimcp_brain_predict(
     return NIMCP_OK;
 }
 
+nimcp_status_t nimcp_brain_infer(
+    nimcp_brain_t brain,
+    const float* features,
+    uint32_t num_features,
+    float* outputs,
+    uint32_t num_outputs)
+{
+    if (!brain) {
+        set_error("Brain handle is NULL");
+        return NIMCP_ERROR_NULL_ARG;
+    }
+
+    if (!features) {
+        set_error("Features array is NULL");
+        return NIMCP_ERROR_NULL_ARG;
+    }
+
+    if (!outputs) {
+        set_error("Outputs array is NULL");
+        return NIMCP_ERROR_NULL_ARG;
+    }
+
+    // Call internal brain API to get decision (which includes output vector)
+    brain_decision_t* decision = brain_decide(brain->internal_brain, features, num_features);
+
+    if (!decision) {
+        set_error("Brain inference failed");
+        return NIMCP_ERROR;
+    }
+
+    // Copy raw output vector
+    uint32_t copy_size = (decision->output_size < num_outputs) ? decision->output_size : num_outputs;
+    for (uint32_t i = 0; i < copy_size; i++) {
+        outputs[i] = decision->output_vector[i];
+    }
+
+    // Fill remaining with zeros if requested more outputs than available
+    for (uint32_t i = copy_size; i < num_outputs; i++) {
+        outputs[i] = 0.0f;
+    }
+
+    // Free decision
+    nimcp_free(decision);
+
+    set_error("No error");
+    return NIMCP_OK;
+}
+
 nimcp_status_t nimcp_brain_save(nimcp_brain_t brain, const char* filepath) {
     if (!brain) {
         set_error("Brain handle is NULL");
