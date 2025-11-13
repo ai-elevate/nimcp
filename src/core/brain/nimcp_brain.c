@@ -90,6 +90,12 @@
 #include "cognitive/nimcp_shadow_emotions.h"   // Phase E5: Shadow Emotions (jealousy, envy, obsession, hubris, greed, narcissism)
 #include "cognitive/nimcp_bias_detection.h"    // Phase E6: Bias Detection & Correction (racial, LGBTQ+, gender, misogyny, etc.)
 
+// === PHASE E: FULL EMOTIONAL INTELLIGENCE ===
+#include "cognitive/nimcp_grief_and_loss.h"            // Phase E1: Grief, Loss, Bereavement (negative emotion)
+#include "cognitive/nimcp_joy_euphoria.h"              // Phase E2: Joy, Euphoria, Value-Aligned Success (positive emotion)
+#include "cognitive/nimcp_remorse_regret.h"            // Phase E3: Remorse, Regret, Evaluative Emotions (moral emotion)
+#include "cognitive/nimcp_love_loyalty_friendship.h"   // Phase E4: Love, Loyalty, Friendship (positive social emotion)
+
 // Phase 11 Enhancement C1.1: Quantum Annealing for Weight Optimization
 #include "optimization/quantum_annealing/nimcp_quantum_annealing.h"
 
@@ -269,6 +275,20 @@ struct brain_struct {
 
     // Phase E6: Bias Detection & Correction (fairness & social cognition)
     bias_detection_system_t* bias_detection;      // Detect and correct biases (racial, LGBTQ+, gender, misogyny, etc.)
+
+    // === PHASE E: FULL EMOTIONAL INTELLIGENCE ===
+
+    // Phase E1: Grief and Loss (negative emotion - attachment severing)
+    grief_system_t* grief_system;                 // Process loss, bereavement, mortality awareness
+
+    // Phase E2: Joy and Euphoria (positive emotion - value-aligned success)
+    joy_system_t* joy_system;                     // Reward for value-aligned achievements, flow states
+
+    // Phase E3: Remorse and Regret (moral emotion - evaluative)
+    remorse_regret_system_t* remorse_system;      // Moral evaluation, guilt, learning from mistakes
+
+    // Phase E4: Love, Loyalty, Friendship (positive social emotion - bonding)
+    social_bond_system_t* social_bond_system;     // Attachment, trust, positive relationships
 };
 
 //=============================================================================
@@ -2896,6 +2916,32 @@ brain_t brain_create(const char* task_name, brain_size_t size, brain_task_t task
         fprintf(stderr, "WARNING: Failed to initialize bias detection system\n");
     }
 
+    // === PHASE E: INITIALIZE FULL EMOTIONAL INTELLIGENCE ===
+
+    // Phase E1: Initialize Grief and Loss System
+    brain->grief_system = grief_system_create();
+    if (!brain->grief_system) {
+        fprintf(stderr, "WARNING: Failed to initialize grief and loss system\n");
+    }
+
+    // Phase E2: Initialize Joy and Euphoria System
+    brain->joy_system = joy_system_create();
+    if (!brain->joy_system) {
+        fprintf(stderr, "WARNING: Failed to initialize joy and euphoria system\n");
+    }
+
+    // Phase E3: Initialize Remorse and Regret System
+    brain->remorse_system = remorse_regret_system_create();
+    if (!brain->remorse_system) {
+        fprintf(stderr, "WARNING: Failed to initialize remorse and regret system\n");
+    }
+
+    // Phase E4: Initialize Love, Loyalty, and Friendship System
+    brain->social_bond_system = social_bond_system_create();
+    if (!brain->social_bond_system) {
+        fprintf(stderr, "WARNING: Failed to initialize social bond system\n");
+    }
+
     brain_clear_error();
     return brain;
 }
@@ -3359,6 +3405,28 @@ void brain_destroy(brain_t brain)
     // Phase E6: Cleanup Bias Detection
     if (brain->bias_detection) {
         bias_system_destroy(brain->bias_detection);
+    }
+
+    // === PHASE E: CLEANUP FULL EMOTIONAL INTELLIGENCE ===
+
+    // Phase E1: Cleanup Grief and Loss
+    if (brain->grief_system) {
+        grief_system_destroy(brain->grief_system);
+    }
+
+    // Phase E2: Cleanup Joy and Euphoria
+    if (brain->joy_system) {
+        joy_system_destroy(brain->joy_system);
+    }
+
+    // Phase E3: Cleanup Remorse and Regret
+    if (brain->remorse_system) {
+        remorse_regret_system_destroy(brain->remorse_system);
+    }
+
+    // Phase E4: Cleanup Love, Loyalty, Friendship
+    if (brain->social_bond_system) {
+        social_bond_system_destroy(brain->social_bond_system);
     }
 
     clear_cache(brain);
@@ -4066,6 +4134,60 @@ float brain_learn_example(brain_t brain, const float* features, uint32_t num_fea
 
             // Record detection in stats (could add brain->stats.bias_detections_in_training)
         }
+    }
+
+    // === PHASE E: FULL EMOTIONAL INTELLIGENCE UPDATES ===
+    // Update all emotion systems during learning for holistic emotional processing
+
+    // Phase E1: Grief and Loss - Monitor for themes of loss in training data
+    if (brain->grief_system) {
+        grief_update(brain->grief_system, 0.001f, current_time);
+        // Could detect loss/grief themes in training labels for empathetic understanding
+    }
+
+    // Phase E2: Joy and Euphoria - Reward for successful learning steps
+    if (brain->joy_system) {
+        joy_update(brain->joy_system, 0.001f, current_time);
+
+        // If learning was successful (low loss), register as value-aligned success
+        if (network_loss >= 0 && network_loss < 0.1f) {
+            // Low loss = successful learning = joy trigger
+            // This creates positive reinforcement for good learning
+            uint32_t aligned_values[] = {VALUE_CATEGORY_LEARNING, VALUE_CATEGORY_ACCURACY};
+            joy_process_success(brain->joy_system,
+                SUCCESS_TYPE_LEARNED_SKILL,
+                aligned_values,
+                2,  // num_values
+                0.5f,  // Difficulty (moderate)
+                brain->last_novelty_score,  // Use actual novelty from curiosity system
+                current_time);
+        }
+    }
+
+    // Phase E3: Remorse and Regret - Monitor for poor decisions or errors
+    if (brain->remorse_system) {
+        remorse_update(brain->remorse_system, 0.001f, current_time);
+
+        // If training resulted in high loss, register as regrettable event
+        if (network_loss > 0.5f) {
+            // High loss = learning failure = potential for improvement
+            // Creates motivation to avoid similar failures
+            uint32_t violated_values[] = {VALUE_CATEGORY_ACCURACY};
+            remorse_process_event(brain->remorse_system,
+                EVENT_POOR_DECISION,
+                violated_values,
+                1,  // num_values
+                0.3f,  // Harm caused (moderate - not severe)
+                0.8f,  // Controllability (we have control over learning)
+                true,  // Reversible (can learn better next time)
+                current_time);
+        }
+    }
+
+    // Phase E4: Love, Loyalty, Friendship - Build positive associations with learning
+    if (brain->social_bond_system) {
+        social_update(brain->social_bond_system, 0.001f, current_time);
+        // Could strengthen bonds with training data sources that provide good examples
     }
 
     // ========================================================================
