@@ -1789,19 +1789,19 @@ TEST_F(KnowledgeExtendedTest, HashCollision_ManyConceptsSameHash) {
     // HOW:  Add many concepts (some will hash to same bucket)
     std::vector<std::string> concepts;
     for (int i = 0; i < 100; i++) {
-        char concept[32];
-        snprintf(concept, sizeof(concept), "collision_%d", i);
-        concepts.push_back(concept);
+        char concept_name[32];
+        snprintf(concept_name, sizeof(concept_name), "collision_%d", i);
+        concepts.push_back(concept_name);
 
         std::string text = concepts.back() + " is a test concept";
         knowledge_learn_from_text(system, text.c_str(), KNOWLEDGE_DOMAIN_GENERAL);
     }
 
     // Verify all can be retrieved
-    for (const auto& concept : concepts) {
+    for (const auto& concept_str : concepts) {
         knowledge_item_t item;
-        EXPECT_TRUE(knowledge_retrieve(system, concept.c_str(), &item))
-            << "Failed to retrieve: " << concept;
+        EXPECT_TRUE(knowledge_retrieve(system, concept_str.c_str(), &item))
+            << "Failed to retrieve: " << concept_str;
     }
 }
 

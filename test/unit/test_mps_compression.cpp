@@ -29,8 +29,8 @@
 
 extern "C" {
     #include "utils/tensor_networks/nimcp_mps.h"
-    #include "core/memory/nimcp_memory.h"
-    #include "utils/time/nimcp_time.h"
+    #include "utils/memory/nimcp_memory.h"
+    #include "utils/platform/nimcp_platform_time.h"
 }
 
 //=============================================================================

@@ -40,13 +40,35 @@
 extern "C" {
 #include "core/brain_regions/nimcp_brain_regions.h"
 #include "core/neuron_types/nimcp_neuron_types.h"
+#include "core/brain/nimcp_brain.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/validation/nimcp_validate.h"
 }
 
 //=============================================================================
-// Test Fixture
+// Test Fixtures
 //=============================================================================
+
+/**
+ * WHAT: Test fixture for brain with regions
+ * WHY:  Provides common setup/teardown for brain tests
+ * HOW:  Creates/destroys brain safely
+ */
+class BrainRegionsTest : public ::testing::Test {
+protected:
+    brain_t brain;
+
+    void SetUp() override {
+        brain = nullptr;
+    }
+
+    void TearDown() override {
+        if (brain) {
+            brain_destroy(brain);
+            brain = nullptr;
+        }
+    }
+};
 
 /**
  * WHAT: Test fixture for brain regions tests

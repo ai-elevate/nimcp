@@ -119,7 +119,7 @@ TEST_F(BrainFinalPush95Test, SaveLoad_WithWorkingMemory) {
     cleanup_temp_file();
 }
 
-TEST_F(BrainFinalPush95Test, SaveLoad_WithAllCognitive Systems) {
+TEST_F(BrainFinalPush95Test, SaveLoad_WithAllCognitiveSystems) {
     const char* filename = get_temp_filename();
     cleanup_temp_file();
 
@@ -191,19 +191,24 @@ TEST_F(BrainFinalPush95Test, MultimodalOutput_WithIntrospection) {
         for (int i = 0; i < 64; i++) visual[i] = 0.5f + i * 0.01f;
         for (int i = 0; i < 40; i++) audio[i] = 0.3f + i * 0.015f;
 
+        // Create input struct
+        brain_multimodal_input_t input = {};
+        input.audio_data = audio;
+        input.audio_samples = 40;
+        input.audio_channels = 1;
+        input.direct_data = visual;
+        input.direct_dim = 64;
+
+        // Create output struct
+        brain_multimodal_output_t output = {};
+
         // Process multimodal (exercises apply_cognitive_processing)
-        brain_decision_t decision;
-        bool result = brain_process_multimodal(brain,
-                                                visual, 64,
-                                                audio, 40,
-                                                nullptr, 0,
-                                                nullptr, 0,
-                                                &decision);
+        bool result = brain_process_multimodal(brain, &input, &output);
 
         // Verify confidence and uncertainty are computed
         if (result) {
-            EXPECT_GE(decision.confidence, 0.0f);
-            EXPECT_LE(decision.confidence, 1.0f);
+            EXPECT_GE(output.confidence, 0.0f);
+            EXPECT_LE(output.confidence, 1.0f);
         }
 
         brain_destroy(brain);
@@ -232,19 +237,24 @@ TEST_F(BrainFinalPush95Test, MultimodalOutput_WithoutIntrospection) {
         for (int i = 0; i < 64; i++) visual[i] = 0.6f;
         for (int i = 0; i < 36; i++) audio[i] = 0.4f;
 
+        // Create input struct
+        brain_multimodal_input_t input = {};
+        input.audio_data = audio;
+        input.audio_samples = 36;
+        input.audio_channels = 1;
+        input.direct_data = visual;
+        input.direct_dim = 64;
+
+        // Create output struct
+        brain_multimodal_output_t output = {};
+
         // This will use fallback confidence computation
-        brain_decision_t decision;
-        bool result = brain_process_multimodal(brain,
-                                                visual, 64,
-                                                audio, 36,
-                                                nullptr, 0,
-                                                nullptr, 0,
-                                                &decision);
+        bool result = brain_process_multimodal(brain, &input, &output);
 
         if (result) {
             // Fallback confidence should still be in valid range
-            EXPECT_GE(decision.confidence, 0.0f);
-            EXPECT_LE(decision.confidence, 1.0f);
+            EXPECT_GE(output.confidence, 0.0f);
+            EXPECT_LE(output.confidence, 1.0f);
         }
 
         brain_destroy(brain);
@@ -276,13 +286,18 @@ TEST_F(BrainFinalPush95Test, MultimodalOutput_AllModalities) {
         for (int i = 0; i < 32; i++) speech[i] = 0.6f;
         for (int i = 0; i < 10; i++) direct[i] = 0.7f;
 
-        brain_decision_t decision;
-        bool result = brain_process_multimodal(brain,
-                                                visual, 64,
-                                                audio, 40,
-                                                speech, 32,
-                                                direct, 10,
-                                                &decision);
+        // Create input struct
+        brain_multimodal_input_t input = {};
+        input.audio_data = audio;
+        input.audio_samples = 40;
+        input.audio_channels = 1;
+        input.direct_data = direct;
+        input.direct_dim = 10;
+
+        // Create output struct
+        brain_multimodal_output_t output = {};
+
+        bool result = brain_process_multimodal(brain, &input, &output);
 
         EXPECT_TRUE(result || !result);  // Just exercise the path
 

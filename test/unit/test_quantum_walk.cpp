@@ -35,7 +35,7 @@
 extern "C" {
     #include "utils/quantum/nimcp_quantum_walk.h"
     #include "core/neuralnet/nimcp_neuralnet.h"
-    #include "core/memory/nimcp_memory.h"
+    #include "utils/memory/nimcp_memory.h"
 }
 
 //=============================================================================
