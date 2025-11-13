@@ -4328,6 +4328,61 @@ float brain_learn_example(brain_t brain, const float* features, uint32_t num_fea
         sleep_accumulate_pressure(brain->sleep_system, 1);  // 1 learning step
     }
 
+    // ========================================================================
+    // PHASE M1: MEMORY ENGRAM ENCODING
+    // ========================================================================
+    // WHAT: Encode learning experience as distributed memory trace
+    // WHY:  Enable pattern completion recall and biological memory consolidation
+    // HOW:  Map input features to engram neurons, tag with emotional state
+    //
+    // BIOLOGICAL BASIS:
+    // - Engram cells (Tonegawa et al., 2015): neurons active during encoding
+    // - IEG expression (c-fos/Arc) tags active neurons for consolidation
+    // - Emotional arousal enhances encoding (amygdala modulation)
+    // - Memory traces stored as distributed synaptic patterns
+    //
+    // COMPLEXITY: O(n) where n = num_features
+    if (brain->engram_system) {
+        // Create neuron ID array from feature indices (simplified mapping)
+        // In full implementation, would map to actual active neurons in network
+        uint32_t* neuron_ids = nimcp_malloc(num_features * sizeof(uint32_t));
+        float* activations = nimcp_malloc(num_features * sizeof(float));
+
+        if (neuron_ids && activations) {
+            // Map features to engram neurons
+            for (uint32_t i = 0; i < num_features; i++) {
+                neuron_ids[i] = i;  // Simplified: feature index = neuron ID
+                activations[i] = features[i];  // Feature value = activation
+            }
+
+            // Get emotional state for tagging
+            // Note: Use confidence as proxy for emotional arousal
+            // Higher confidence learning → higher arousal encoding
+            emotional_tag_t emotion = {
+                .valence = (confidence > 0.7f) ? 0.5f : 0.0f,  // Positive valence for high confidence
+                .arousal = confidence,                          // Confidence as arousal proxy
+                .timestamp_ms = current_time,
+                .category = EMOTION_NEUTRAL,
+                .intensity = confidence
+            };
+
+            // Encode engram (episodic memory of this learning event)
+            uint64_t engram_id = engram_encode(
+                brain->engram_system,
+                neuron_ids,
+                activations,
+                num_features,
+                MEMORY_TYPE_EPISODIC,  // Learning experiences are episodic
+                emotion
+            );
+
+            (void)engram_id;  // Suppress unused warning (could log for debugging)
+
+            nimcp_free(neuron_ids);
+            nimcp_free(activations);
+        }
+    }
+
     brain_clear_error();
     return network_loss;
 }
@@ -4836,6 +4891,66 @@ brain_decision_t* brain_decide(brain_t brain, const float* features, uint32_t nu
     }
 
     // ========================================================================
+    // STAGE 0.4: MEMORY ENGRAM RECALL (Phase M1: Pattern Completion)
+    // ========================================================================
+    // WHAT: Retrieve memory traces from partial cues for pattern completion
+    // WHY:  Engrams enable recall of full experiences from incomplete input
+    // HOW:  Map input features to cue neurons, search for matching engrams
+    //
+    // BIOLOGICAL BASIS:
+    // - Pattern completion in hippocampus (Marr 1971, Rolls 2013)
+    // - Partial cues reactivate full engram ensemble (Tonegawa et al., 2015)
+    // - Reconsolidation: Retrieved memories become labile (Nader et al., 2000)
+    // - Competition between overlapping engrams (Rashid et al., 2016)
+    //
+    // COMPLEXITY: O(n + e*k) where n=num_features, e=num_engrams, k=neurons_per_engram
+    uint64_t recalled_engram_id = 0;
+    float engram_confidence = 0.0f;
+
+    if (brain->engram_system) {
+        // Create cue neuron array from input features
+        uint32_t* cue_neurons = nimcp_malloc(num_features * sizeof(uint32_t));
+
+        if (cue_neurons) {
+            // Map features to neuron IDs (simplified: feature index = neuron ID)
+            for (uint32_t i = 0; i < num_features; i++) {
+                cue_neurons[i] = i;
+            }
+
+            // Attempt pattern completion recall
+            uint32_t* recalled_neurons = NULL;
+            float* recalled_activations = NULL;
+            uint32_t recalled_count = 0;
+
+            recalled_engram_id = engram_recall(
+                brain->engram_system,
+                cue_neurons,
+                num_features,
+                &recalled_neurons,
+                &recalled_activations,
+                &recalled_count,
+                &engram_confidence
+            );
+
+            // If pattern completion succeeded (confidence > threshold)
+            if (recalled_engram_id != 0 && engram_confidence > 0.4f) {
+                // BIOLOGICAL: Recalled engrams undergo reconsolidation
+                // Retrieved memories become temporarily labile and must be re-stabilized
+                engram_trigger_reconsolidation(brain->engram_system, recalled_engram_id);
+
+                // Optional: Could blend recalled pattern with network inference
+                // For now, we just track that recall occurred (future enhancement)
+                // decision->metadata could store engram_id and confidence
+            }
+
+            // Cleanup
+            if (recalled_neurons) nimcp_free(recalled_neurons);
+            if (recalled_activations) nimcp_free(recalled_activations);
+            nimcp_free(cue_neurons);
+        }
+    }
+
+    // ========================================================================
     // STAGE 0.5: Sleep/Wake Cycle Integration (Phase 10.11.2 - REAL INTEGRATION)
     // ========================================================================
     // WHAT: Check sleep state and ACTUALLY modify behavior
@@ -5080,6 +5195,43 @@ brain_decision_t* brain_decide(brain_t brain, const float* features, uint32_t nu
             // 1. Have working_memory_get_item() API
             // 2. Have working_memory_remove() API
             // 3. Store consolidated memories back into network weights (Hebbian consolidation)
+        }
+    }
+
+    // ========================================================================
+    // STAGE 3.8: MEMORY ENGRAM CONSOLIDATION (Phase M1: Sleep-Dependent)
+    // ========================================================================
+    // WHAT: Update engram consolidation state during sleep
+    // WHY:  Memory consolidation occurs during sleep (Tonegawa et al., 2015)
+    // HOW:  Call engram_consolidate_update() with time delta and sleep state
+    //
+    // BIOLOGICAL BASIS:
+    // - Sleep-dependent consolidation (Born & Wilhelm, 2012)
+    // - ENCODING → LABILE → CONSOLIDATING → CONSOLIDATED state progression
+    // - SWS (slow-wave sleep) strengthens hippocampal memory traces
+    // - Synaptic homeostasis: weak synapses pruned, strong ones potentiated
+    // - Sleep replay reactivates engram ensembles for strengthening
+    //
+    // COMPLEXITY: O(e) where e = number of engrams in system
+    if (brain->engram_system) {
+        // Compute time delta since last consolidation update
+        // Use typical decision cycle time: ~100ms per decision
+        const float TIME_DELTA_SECONDS = 0.1f;
+
+        // Sleep accelerates consolidation (biological realism)
+        bool is_sleeping = (sleep_state == SLEEP_STATE_DEEP_NREM ||
+                           sleep_state == SLEEP_STATE_LIGHT_NREM ||
+                           sleep_state == SLEEP_STATE_REM);
+
+        // Update all engram consolidation states
+        engram_consolidate_update(brain->engram_system, TIME_DELTA_SECONDS, is_sleeping);
+
+        // During REM sleep: trigger memory replay
+        // Replay reactivates and strengthens recent engrams
+        if (sleep_state == SLEEP_STATE_REM && recalled_engram_id != 0) {
+            // REM replay: reactivate recently recalled engrams
+            // This strengthens the memory trace through repeated activation
+            engram_trigger_reconsolidation(brain->engram_system, recalled_engram_id);
         }
     }
 
