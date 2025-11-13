@@ -1838,6 +1838,22 @@ float neural_network_get_average_activity(neural_network_t network, uint32_t neu
 }
 
 /**
+ * @brief Set the network's internal timestamp
+ *
+ * WHAT: Synchronizes network time with external simulation time
+ * WHY:  Ensure timing-dependent features (STP, etc) use consistent time
+ * HOW:  Directly updates network_time field
+ *
+ * @param network Neural network instance
+ * @param timestamp Current simulation time (µs)
+ */
+void neural_network_set_time(neural_network_t network, uint64_t timestamp)
+{
+    if (!network) return;
+    network->network_time = timestamp;
+}
+
+/**
  * @brief Compute network step
  */
 uint32_t neural_network_compute_step(neural_network_t network, uint64_t timestamp)

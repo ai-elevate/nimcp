@@ -100,6 +100,9 @@ typedef struct {
     bool enable_microglia_pruning;
     bool enable_spatial_neuromod;            /**< Part A2.1: Enable spatial diffusion */
 
+    // Timing (for proper dt calculation)
+    uint64_t last_update_timestamp_us;       /**< Last update timestamp (µs) for dt computation */
+
     // Thread safety
     nimcp_mutex_t lock;
 } glial_integration_t;
@@ -185,6 +188,19 @@ nimcp_result_t glial_integration_set_oligodendrocyte_network(
  */
 nimcp_result_t glial_integration_set_microglia_network(glial_integration_t* gi,
                                                        microglia_network_t* microglia_network);
+
+/**
+ * @brief Assign spatial neuromodulator system to integration (Phase C2.1)
+ *
+ * @param gi Glial integration system
+ * @param spatial_neuromod Spatial neuromodulator system
+ *
+ * @return NIMCP_SUCCESS on success
+ *
+ * NOTE: Glial integration takes ownership and will call destroy on cleanup
+ */
+nimcp_result_t glial_integration_set_spatial_neuromod_system(
+    glial_integration_t* gi, spatial_neuromod_system_t* spatial_neuromod);
 
 /**
  * @brief Assign astrocyte to monitor a synapse

@@ -392,6 +392,9 @@ bool neural_network_add_connection_typed(neural_network_t network, uint32_t from
                                           float weight, synapse_type_t type);
 uint32_t neural_network_compute_step(neural_network_t network, uint64_t timestamp);
 
+// Timing functions
+void neural_network_set_time(neural_network_t network, uint64_t timestamp);
+
 // Learning and plasticity functions
 uint32_t neural_network_apply_oja(neural_network_t network, uint32_t neuron_id, uint64_t timestamp);
 uint32_t neural_network_apply_generalized_oja(neural_network_t network, uint32_t neuron_id,

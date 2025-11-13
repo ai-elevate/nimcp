@@ -152,6 +152,9 @@ glial_integration_t* glial_integration_create(neural_network_t network, uint32_t
     gi->total_oligodendrocyte_myelinations = 0;
     gi->total_microglia_prunings = 0;
 
+    // Initialize timing
+    gi->last_update_timestamp_us = 0;
+
     // Default: all features disabled
     gi->enable_astrocyte_modulation = false;
     gi->enable_oligodendrocyte_myelination = false;
@@ -580,15 +583,19 @@ void glial_integration_step(glial_integration_t* gi, uint64_t timestamp) {
     nimcp_mutex_lock(&gi->lock);
 
     // Compute timestep in milliseconds (convert from microseconds)
-    static uint64_t last_step_timestamp = 0;
     float dt_ms;
-    if (last_step_timestamp == 0) {
+    if (gi->last_update_timestamp_us == 0) {
         dt_ms = 1.0f;  // Assume 1ms for first call
     } else {
-        uint64_t dt_us = timestamp - last_step_timestamp;
+        uint64_t dt_us = timestamp - gi->last_update_timestamp_us;
         dt_ms = (float)dt_us / 1000.0f;  // Convert µs to ms
     }
-    last_step_timestamp = timestamp;
+    gi->last_update_timestamp_us = timestamp;
+
+    // Synchronize network time with glial time (for STP and other timing-dependent features)
+    if (gi->network) {
+        neural_network_set_time(gi->network, timestamp);
+    }
 
     // Step astrocyte network (calcium dynamics, glutamate release)
     if (gi->astrocyte_network && gi->enable_astrocyte_modulation) {
@@ -607,16 +614,12 @@ void glial_integration_step(glial_integration_t* gi, uint64_t timestamp) {
 
     // Part A2.1: Step spatial neuromodulator diffusion (DA, 5-HT, ACh, NE)
     if (gi->spatial_neuromod && gi->enable_spatial_neuromod) {
-        // Compute timestep (assume 1ms if first call)
-        static uint64_t last_timestamp = 0;
-        float dt = (timestamp > last_timestamp) ? (float)(timestamp - last_timestamp) : 1.0f;
-        last_timestamp = timestamp;
-
+        // Use same dt_ms as astrocyte/oligodendrocyte systems (already computed above)
         // Update all enabled neuromodulator fields
         // Each field represents one neuromodulator type (DA, 5-HT, ACh, NE)
         for (uint32_t i = 0; i < NEUROMOD_COUNT; i++) {
             if (gi->spatial_neuromod->fields[i]) {
-                spatial_neuromod_update(gi->spatial_neuromod->fields[i], gi->network, dt);
+                spatial_neuromod_update(gi->spatial_neuromod->fields[i], gi->network, dt_ms);
             }
         }
         gi->total_neuromod_updates++;

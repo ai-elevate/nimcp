@@ -5241,11 +5241,12 @@ brain_decision_t* brain_decide(brain_t brain, const float* features, uint32_t nu
     // NOTE: Glial modulation happens at the network level during forward pass
     //       See: adaptive_network_forward() in nimcp_adaptive.c
     //
-    // IMPLEMENTATION: Trigger glial integration step for this decision cycle
-    if (brain->glial && brain->config.enable_glial) {
-        // Increment simulation time (assume 1ms per decision cycle = 1000 µs)
-        brain->current_time_us += 1000;
+    // Increment simulation time (assume 1ms per decision cycle = 1000 µs)
+    brain->current_time_us += 1000;
 
+    // IMPLEMENTATION: Trigger glial integration step for this decision cycle
+    // Note: glial_integration_step() will synchronize network_time internally
+    if (brain->glial && brain->config.enable_glial) {
         // Step 1: Update glial cell states based on network activity
         // This updates astrocyte calcium levels, oligodendrocyte myelination,
         // and microglia synaptic pruning decisions
