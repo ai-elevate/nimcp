@@ -75,6 +75,7 @@
 #include "cognitive/nimcp_emotional_tagging.h" // Phase 10.2: Emotional tagging (Russell's circumplex)
 #include "cognitive/nimcp_executive.h"         // Phase 10.3: Executive Functions (task switching, planning)
 #include "cognitive/nimcp_sleep_wake.h"        // Phase 10.4: Sleep/wake cycle (consolidation, homeostasis)
+#include "cognitive/memory/nimcp_engram.h"     // Phase M1: Memory Engrams (distributed memory traces)
 #include "cognitive/nimcp_mental_health.h"     // Phase 10.5: Mental Health Monitoring (disorder detection)
 #include "cognitive/nimcp_theory_of_mind.h"    // Phase 10.6: Theory of Mind (BDI model, empathy)
 #include "cognitive/nimcp_explanations.h"      // Phase 10.7: Natural Explanations (interpretability)
@@ -212,6 +213,9 @@ struct brain_struct {
 
     // Phase 10.4: Sleep/Wake Cycle (Memory consolidation & synaptic homeostasis)
     sleep_system_t sleep_system;                 // Sleep/wake state machine, consolidation
+
+    // Phase M1: Memory Engrams (distributed memory traces)
+    engram_system_t* engram_system;              // Memory engram encoding, consolidation, and recall
 
     // Phase 10.5: Mental Health Monitoring (disorder detection & intervention)
     mental_health_monitor_t* mental_health_monitor; // Mental health tracking and safety
@@ -1969,6 +1973,21 @@ static bool init_working_memory_subsystem(brain_t brain)
     // Connect brain reference for working memory access (Phase 10.3 integration)
     sleep_set_brain_reference(brain->sleep_system, (void*)brain);
 
+    /* =========================================================================
+     * PHASE M1: Memory Engram System Initialization
+     * =========================================================================
+     * WHAT: Create engram system for distributed memory traces
+     * WHY:  Enable biological memory encoding, consolidation, and pattern completion
+     * HOW:  Create with default capacity (512 engrams), integrates with sleep/emotion
+     */
+
+    // Create engram system with default capacity (512 engrams)
+    brain->engram_system = engram_system_create();
+    if (!brain->engram_system) {
+        set_error("Failed to create engram system");
+        return false;
+    }
+
     return true;
 }
 
@@ -3308,6 +3327,11 @@ void brain_destroy(brain_t brain)
     // Phase 10.4: Cleanup sleep/wake system
     if (brain->sleep_system) {
         sleep_system_destroy(brain->sleep_system);
+    }
+
+    // Phase M1: Cleanup engram system
+    if (brain->engram_system) {
+        engram_system_destroy(brain->engram_system);
     }
 
     // Phase 10.6: Cleanup Theory of Mind
