@@ -63,6 +63,7 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/personality/nimcp_personality.c  # Phase 12: Personality, Gender, and Sexual Identity
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/grief/nimcp_grief_and_loss.c  # Phase E1: Grief, Loss, and Death Understanding
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/joy/nimcp_joy_euphoria.c  # Phase E2: Joy, Euphoria, and Value-Aligned Success
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/remorse/nimcp_remorse_regret.c  # Phase E3: Remorse, Regret, and Evaluative Emotions
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/social/nimcp_love_loyalty_friendship.c  # Phase E4: Love, Loyalty, and Friendship
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/shadow/nimcp_shadow_emotions.c  # Phase E5: Shadow Emotions (Jealousy, Envy, Obsession, Hubris, Greed, Narcissism)
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/bias/nimcp_bias_detection.c  # Phase E6: Bias Detection (Racial, LGBTQ+, Gender, Misogyny, Age, Disability, Religious, Socioeconomic)
@@ -73,6 +74,7 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/predictive/nimcp_predictive.c  # Phase 10.9: Predictive Processing
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/mirror_neurons/nimcp_mirror_neurons.c  # Phase 10.11: Mirror Neurons
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/global_workspace/nimcp_global_workspace.c  # Global Workspace Architecture (Global Workspace Theory)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/memory/nimcp_engram.c  # Phase M1: Memory Engrams (explicit memory traces)
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/nimcp_fractal_cognitive.c  # Fractal cognitive processing
     ${CMAKE_CURRENT_SOURCE_DIR}/cognitive/nimcp_hierarchical.c
 
