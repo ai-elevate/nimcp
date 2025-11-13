@@ -60,6 +60,11 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/empathetic_response/nimcp_empathetic_response.c  # Phase 11: Part I.2: Empathetic Response
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/autobiographical_memory/nimcp_autobiographical_memory.c  # Phase 12: Autobiographical Memory
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/self_model/nimcp_self_model.c  # Phase 12: Explicit Self-Model
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/personality/nimcp_personality.c  # Phase 12: Personality, Gender, and Sexual Identity
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/grief/nimcp_grief_and_loss.c  # Phase E1: Grief, Loss, and Death Understanding
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/joy/nimcp_joy_euphoria.c  # Phase E2: Joy, Euphoria, and Value-Aligned Success
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/social/nimcp_love_loyalty_friendship.c  # Phase E4: Love, Loyalty, and Friendship
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/shadow/nimcp_shadow_emotions.c  # Phase E5: Shadow Emotions (Jealousy, Envy, Obsession, Hubris, Greed, Narcissism)
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/self_awareness/nimcp_self_awareness_extended.c  # Phase 12: Advanced Self-Awareness (metacognition, agency, safety)
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/theory_of_mind/nimcp_theory_of_mind.c  # Phase 10.6: Theory of Mind
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/explanations/nimcp_explanations.c  # Phase 10.7: Natural Explanations
@@ -76,6 +81,10 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../plasticity/neuromodulators/nimcp_neuromodulators.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../plasticity/neuromodulators/nimcp_neuromod_pink_noise.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../plasticity/neuromodulators/nimcp_spatial_neuromod.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../plasticity/neuromodulators/nimcp_receptor_subtypes.c  # Phase C2.2 Enhancement #1: Receptor subtypes
+    ${CMAKE_CURRENT_SOURCE_DIR}/../plasticity/neuromodulators/nimcp_phasic_tonic.c  # Phase C2.2 Enhancement #2: Phasic-tonic dynamics
+    ${CMAKE_CURRENT_SOURCE_DIR}/../plasticity/neuromodulators/nimcp_vesicle_packaging.c  # Phase C2.3 Enhancement #3: Synaptic vesicle packaging
+    ${CMAKE_CURRENT_SOURCE_DIR}/../plasticity/neuromodulators/nimcp_metabolic_pathways.c  # Phase C2.4 Enhancement #4: Metabolic pathways
     ${CMAKE_CURRENT_SOURCE_DIR}/../plasticity/attention/nimcp_attention.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../plasticity/stp/nimcp_stp.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../plasticity/noise/nimcp_pink_noise.c
@@ -84,6 +93,7 @@ set(NIMCP_CORE_SOURCES
 
     # Glial cells
     ${CMAKE_CURRENT_SOURCE_DIR}/../glial/astrocytes/nimcp_astrocytes.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../glial/astrocytes/nimcp_astrocyte_calcium.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../glial/astrocyte_types/nimcp_astrocyte_types.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../glial/oligodendrocytes/nimcp_oligodendrocytes.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../glial/microglia/nimcp_microglia.c
@@ -154,6 +164,18 @@ set(NIMCP_CORE_SOURCES
 
     # Utils - Spectral Analysis
     ${CMAKE_CURRENT_SOURCE_DIR}/../utils/spectral/nimcp_fft.c
+
+    # Utils - Quantum-Inspired Algorithms (Phase C: Quantum-Inspired Algorithms)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../utils/quantum/nimcp_quantum_walk.c
+
+    # Utils - Geometry (Phase B1.1: Hyperbolic Knowledge Graph Embeddings)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../utils/geometry/nimcp_hyperbolic.c
+
+    # Utils - Tensor Networks (Phase C3.1: MPS Compression)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../utils/tensor_networks/nimcp_mps.c
+
+    # Optimization - Quantum Annealing (Phase 11 Enhancement C1.1)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../optimization/quantum_annealing/nimcp_quantum_annealing.c
 
     # Brain Oscillations
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain_oscillations/nimcp_brain_oscillations.c
