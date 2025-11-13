@@ -376,7 +376,7 @@ astrocyte_network_t* astrocyte_network_create(uint32_t capacity)
 
     // Global parameters
     network->calcium_threshold_um = ASTROCYTE_CALCIUM_WAVE_THRESHOLD_UM;
-    network->coupling_decay_rate = 2.0f; // Stronger coupling for faster wave propagation
+    network->coupling_decay_rate = 0.01f; // Biologically realistic coupling (target: 10-30 µm/s wave speed)
     network->coupling_radius_um = ASTROCYTE_COUPLING_RADIUS_UM;
 
     // Spatial index (NULL for now)
@@ -526,7 +526,12 @@ nimcp_result_t astrocyte_network_establish_coupling(astrocyte_network_t* network
                 // Use max(0.1, ...) to ensure minimum coupling even at boundary
                 float normalized_dist = distance / network->coupling_radius_um;
                 float strength = fmaxf(0.1f, 1.0f - normalized_dist);
-                astro->coupling_strengths[idx] = strength;
+
+                // Scale by distance² to compensate for Laplacian normalization
+                // The graph Laplacian divides by distance², so we multiply here
+                // to maintain the effective diffusion coefficient
+                float distance_sq = dx*dx + dy*dy + dz*dz;
+                astro->coupling_strengths[idx] = strength * distance_sq;
 
                 idx++;
             }

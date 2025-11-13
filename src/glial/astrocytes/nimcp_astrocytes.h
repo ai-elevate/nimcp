@@ -62,26 +62,26 @@ extern "C" {
 // Enhancement A4.1: Reaction-Diffusion Calcium Dynamics Constants
 //=============================================================================
 
-/** Calcium diffusion coefficient (µm²/s) */
-#define CALCIUM_DIFFUSION_COEFF 50.0f
+/** Calcium diffusion coefficient (µm²/s) - buffered cytoplasmic Ca²⁺ (0.1-1.0 µm²/s) */
+#define CALCIUM_DIFFUSION_COEFF 0.2f
 
-/** IP3 diffusion coefficient (µm²/s) */
-#define IP3_DIFFUSION_COEFF 280.0f
+/** IP3 diffusion coefficient (µm²/s) - IP3 diffuses faster than Ca */
+#define IP3_DIFFUSION_COEFF 150.0f
 
 /** Calcium wave propagation speed (µm/s) - biological range 10-20 */
 #define CALCIUM_WAVE_SPEED_TARGET 15.0f
 
-/** IP3 production rate constant */
-#define IP3_PRODUCTION_RATE 0.5f
+/** IP3 production rate constant - stimulus-driven */
+#define IP3_PRODUCTION_RATE 1.0f
 
 /** IP3 degradation rate constant (1/s) */
 #define IP3_DEGRADATION_RATE 1.0f
 
-/** Calcium release flux coefficient */
-#define CALCIUM_RELEASE_FLUX 2.0f
+/** Calcium release flux coefficient - Ca-induced Ca release, tuned for effective propagation */
+#define CALCIUM_RELEASE_FLUX 0.5f
 
-/** Calcium uptake/pump rate constant (1/s) */
-#define CALCIUM_UPTAKE_RATE 0.5f
+/** Calcium uptake/pump rate constant (1/s) - balanced with release */
+#define CALCIUM_UPTAKE_RATE 1.0f
 
 //=============================================================================
 // Data Structures
@@ -164,6 +164,11 @@ struct astrocyte_calcium_system_t {
     float* calcium;                     /**< [num_astrocytes] Ca²⁺ concentration (µM) */
     float* ip3;                         /**< [num_astrocytes] IP3 concentration (µM) */
     float* calcium_er;                  /**< [num_astrocytes] ER Ca²⁺ stores (µM) */
+
+    // === WORKSPACE ARRAYS (pre-allocated for performance) ===
+    float* workspace_dCa;               /**< [num_astrocytes] temp array for Ca derivatives */
+    float* workspace_dIP3;              /**< [num_astrocytes] temp array for IP3 derivatives */
+    float* workspace_dCaER;             /**< [num_astrocytes] temp array for ER derivatives */
 
     // === DIFFUSION COEFFICIENTS ===
     float D_ca;                         /**< Calcium diffusion coefficient (µm²/s) */

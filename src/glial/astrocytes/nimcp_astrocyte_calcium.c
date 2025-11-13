@@ -86,9 +86,13 @@ static inline float compute_ca_uptake_flux(float ca_cytosol, float uptake_rate) 
 }
 
 /**
- * @brief Compute graph Laplacian for diffusion
+ * @brief Compute graph Laplacian for diffusion with proper spatial normalization
  *
- * Laplacian = Σ_neighbors (C_neighbor - C_self) × coupling_strength
+ * Laplacian = Σ_neighbors (C_neighbor - C_self) × coupling_strength / distance²
+ *
+ * CRITICAL FIX: Added / distance² normalization to match continuous ∇² operator
+ * WHY: Discrete Laplacian must normalize by grid spacing squared
+ * PHYSICS: For spacing Δx, finite difference gives ∇²C ≈ ΔC / Δx²
  */
 static float compute_graph_laplacian(
     float* concentration,
@@ -115,8 +119,18 @@ static float compute_graph_laplacian(
         }
 
         if (neighbor) {
+            // Compute spatial distance for normalization
+            float dx = astro->position[0] - neighbor->position[0];
+            float dy = astro->position[1] - neighbor->position[1];
+            float dz = astro->position[2] - neighbor->position[2];
+            float distance_sq = dx*dx + dy*dy + dz*dz;
+
+            // Avoid division by zero (minimum 1 µm² to prevent singularity)
+            if (distance_sq < 1.0f) distance_sq = 1.0f;
+
+            // Discrete Laplacian: ΔC / Δx²
             float diff = concentration[neighbor_idx] - concentration[astrocyte_idx];
-            laplacian += coupling * diff;
+            laplacian += coupling * diff / distance_sq;
         }
     }
 
@@ -151,7 +165,13 @@ astrocyte_calcium_system_t* astrocyte_calcium_system_create(astrocyte_network_t*
     system->calcium_er = (float*) nimcp_malloc(num * sizeof(float));
     system->last_wave_time = (uint64_t*) nimcp_malloc(num * sizeof(uint64_t));
 
-    if (!system->calcium || !system->ip3 || !system->calcium_er || !system->last_wave_time) {
+    // Allocate workspace arrays (pre-allocated for performance)
+    system->workspace_dCa = (float*) nimcp_malloc(num * sizeof(float));
+    system->workspace_dIP3 = (float*) nimcp_malloc(num * sizeof(float));
+    system->workspace_dCaER = (float*) nimcp_malloc(num * sizeof(float));
+
+    if (!system->calcium || !system->ip3 || !system->calcium_er || !system->last_wave_time ||
+        !system->workspace_dCa || !system->workspace_dIP3 || !system->workspace_dCaER) {
         astrocyte_calcium_system_destroy(system);
         return NULL;
     }
@@ -189,18 +209,15 @@ void astrocyte_calcium_system_destroy(astrocyte_calcium_system_t* system)
         return;
     }
 
-    if (system->calcium) {
-        nimcp_free(system->calcium);
-    }
-    if (system->ip3) {
-        nimcp_free(system->ip3);
-    }
-    if (system->calcium_er) {
-        nimcp_free(system->calcium_er);
-    }
-    if (system->last_wave_time) {
-        nimcp_free(system->last_wave_time);
-    }
+    if (system->calcium) nimcp_free(system->calcium);
+    if (system->ip3) nimcp_free(system->ip3);
+    if (system->calcium_er) nimcp_free(system->calcium_er);
+    if (system->last_wave_time) nimcp_free(system->last_wave_time);
+
+    // Free workspace arrays
+    if (system->workspace_dCa) nimcp_free(system->workspace_dCa);
+    if (system->workspace_dIP3) nimcp_free(system->workspace_dIP3);
+    if (system->workspace_dCaER) nimcp_free(system->workspace_dCaER);
 
     nimcp_spinlock_destroy(&system->lock);
     nimcp_free(system);
@@ -226,18 +243,10 @@ void astrocyte_calcium_system_update(
     uint32_t num = system->num_astrocytes;
     astrocyte_network_t* network = system->network;
 
-    // Allocate temporary arrays for derivatives (prevents aliasing)
-    float* dCa_dt = (float*) nimcp_malloc(num * sizeof(float));
-    float* dIP3_dt = (float*) nimcp_malloc(num * sizeof(float));
-    float* dCa_ER_dt = (float*) nimcp_malloc(num * sizeof(float));
-
-    if (!dCa_dt || !dIP3_dt || !dCa_ER_dt) {
-        if (dCa_dt) nimcp_free(dCa_dt);
-        if (dIP3_dt) nimcp_free(dIP3_dt);
-        if (dCa_ER_dt) nimcp_free(dCa_ER_dt);
-        nimcp_spinlock_unlock(&system->lock);
-        return;
-    }
+    // Use pre-allocated workspace arrays (performance optimization)
+    float* dCa_dt = system->workspace_dCa;
+    float* dIP3_dt = system->workspace_dIP3;
+    float* dCa_ER_dt = system->workspace_dCaER;
 
     // Compute derivatives for all astrocytes
     for (uint32_t i = 0; i < num; i++) {
@@ -291,65 +300,92 @@ void astrocyte_calcium_system_update(
         system->ip3[i] += dt * dIP3_dt[i];
         system->calcium_er[i] += dt * dCa_ER_dt[i];
 
-        // Clamp to reasonable ranges
-        system->calcium[i] = fmaxf(0.0f, fminf(50.0f, system->calcium[i]));
-        system->ip3[i] = fmaxf(0.0f, fminf(10.0f, system->ip3[i]));
-        system->calcium_er[i] = fmaxf(0.0f, fminf(1000.0f, system->calcium_er[i]));
+        // Clamp to biological ranges
+        system->calcium[i] = fmaxf(0.0f, fminf(10.0f, system->calcium[i]));
+        system->ip3[i] = fmaxf(0.0f, fminf(5.0f, system->ip3[i]));
+        system->calcium_er[i] = fmaxf(100.0f, fminf(500.0f, system->calcium_er[i]));
+
+        // Update individual astrocyte state (always sync)
+        astrocyte_t* astro = network->astrocytes[i];
+        if (astro) {
+            astro->calcium_concentration = system->calcium[i];
+            astro->ip3_concentration = system->ip3[i];
+        }
 
         // Track wave events (calcium above threshold)
         if (system->calcium[i] > ASTROCYTE_CALCIUM_WAVE_THRESHOLD_UM) {
             system->last_wave_time[i] = current_time;
-
-            // Update individual astrocyte state (for compatibility)
-            astrocyte_t* astro = network->astrocytes[i];
-            if (astro) {
-                astro->calcium_concentration = system->calcium[i];
-                astro->ip3_concentration = system->ip3[i];
-            }
         }
     }
 
-    // Estimate wave speed (simple method: track wavefront spread)
-    // This is a simplified measurement - full method would track wavefront position
-    float max_ca = 0.0f;
-    uint32_t max_idx = 0;
+    // Estimate wave speed by tracking wavefront propagation over time
+    // Method: Find pairs of neighbors where one recently crossed threshold after the other
+    float total_distance = 0.0f;
+    uint64_t total_time_us = 0;
+    int num_measurements = 0;
+
     for (uint32_t i = 0; i < num; i++) {
-        if (system->calcium[i] > max_ca) {
-            max_ca = system->calcium[i];
-            max_idx = i;
-        }
-    }
+        // Check if this astrocyte recently activated
+        if (system->last_wave_time[i] > 0 &&
+            system->calcium[i] > ASTROCYTE_CALCIUM_WAVE_THRESHOLD_UM) {
 
-    if (max_ca > ASTROCYTE_CALCIUM_WAVE_THRESHOLD_UM) {
-        // Count neighbors above threshold
-        astrocyte_t* source = network->astrocytes[max_idx];
-        if (source) {
-            uint32_t neighbors_active = 0;
-            for (uint32_t i = 0; i < source->num_coupled_astrocytes; i++) {
-                uint32_t neighbor_id = source->coupled_astrocyte_ids[i];
-                for (uint32_t j = 0; j < num; j++) {
-                    if (network->astrocytes[j]->id == neighbor_id) {
-                        if (system->calcium[j] > ASTROCYTE_CALCIUM_WAVE_THRESHOLD_UM) {
-                            neighbors_active++;
+            astrocyte_t* astro = network->astrocytes[i];
+            if (!astro) continue;
+
+            // Check its neighbors for recent activations
+            for (uint32_t j = 0; j < astro->num_coupled_astrocytes; j++) {
+                uint32_t neighbor_id = astro->coupled_astrocyte_ids[j];
+
+                // Find neighbor in network
+                for (uint32_t k = 0; k < num; k++) {
+                    if (network->astrocytes[k]->id == neighbor_id) {
+                        // If neighbor activated earlier, measure speed
+                        if (system->last_wave_time[k] > 0 &&
+                            system->last_wave_time[k] < system->last_wave_time[i]) {
+
+                            // Time difference in microseconds
+                            uint64_t time_diff_us = system->last_wave_time[i] - system->last_wave_time[k];
+
+                            if (time_diff_us > 0 && time_diff_us < 10000000) { // < 10 seconds
+                                // Estimate distance between astrocytes
+                                astrocyte_t* neighbor = network->astrocytes[k];
+                                float dx = astro->position[0] - neighbor->position[0];
+                                float dy = astro->position[1] - neighbor->position[1];
+                                float dz = astro->position[2] - neighbor->position[2];
+                                float distance = sqrtf(dx*dx + dy*dy + dz*dz);
+
+                                if (distance > 1.0f) { // Valid distance
+                                    total_distance += distance;
+                                    total_time_us += time_diff_us;
+                                    num_measurements++;
+                                }
+                            }
                         }
                         break;
                     }
                 }
             }
-
-            // Rough estimate: wave speed based on activation rate
-            // Real calculation would track wavefront distance/time
-            if (neighbors_active > 0) {
-                float coupling_dist = network->coupling_radius_um / 2.0f; // Typical distance
-                system->wave_speed_measured = coupling_dist / (dt * 1000.0f); // Convert to µm/s
-            }
         }
     }
 
-    // Free temporary arrays
-    nimcp_free(dCa_dt);
-    nimcp_free(dIP3_dt);
-    nimcp_free(dCa_ER_dt);
+    // Compute average wave speed from measurements
+    if (num_measurements > 0 && total_time_us > 0) {
+        // speed = total_distance (µm) / total_time (s)
+        float total_time_s = total_time_us / 1000000.0f;  // Convert µs to s
+        float speed_um_per_s = total_distance / total_time_s;
+
+        // Update measurement with exponential moving average for stability
+        if (system->wave_speed_measured == 0.0f) {
+            system->wave_speed_measured = speed_um_per_s;
+        } else {
+            // Smooth with previous measurements (α = 0.1)
+            system->wave_speed_measured = 0.9f * system->wave_speed_measured +
+                                          0.1f * speed_um_per_s;
+        }
+    }
+
+    // No need to free - using pre-allocated workspace arrays
+    // (freed in astrocyte_calcium_system_destroy)
 
     // Update performance metrics
     uint64_t end_time = nimcp_time_monotonic_us();
@@ -374,13 +410,14 @@ void astrocyte_calcium_system_stimulate(
 
     nimcp_spinlock_lock(&system->lock);
 
-    // Increase both Ca²⁺ and IP3 to initiate wave
-    system->calcium[astrocyte_id] += intensity * 1.0f; // µM
-    system->ip3[astrocyte_id] += intensity * 0.5f; // µM
+    // Increase both Ca²⁺ and IP3 to initiate wave (biologically calibrated)
+    // Strong perturbation to exceed 2.0µM wave threshold
+    system->calcium[astrocyte_id] += intensity * 0.3f; // µM (exceed wave threshold)
+    system->ip3[astrocyte_id] += intensity * 0.1f; // µM (trigger IP3 receptors)
 
-    // Clamp
-    system->calcium[astrocyte_id] = fminf(50.0f, system->calcium[astrocyte_id]);
-    system->ip3[astrocyte_id] = fminf(10.0f, system->ip3[astrocyte_id]);
+    // Clamp to biological ranges
+    system->calcium[astrocyte_id] = fminf(10.0f, system->calcium[astrocyte_id]);
+    system->ip3[astrocyte_id] = fminf(5.0f, system->ip3[astrocyte_id]);
 
     // Mark wave time
     system->last_wave_time[astrocyte_id] = nimcp_time_monotonic_us();
