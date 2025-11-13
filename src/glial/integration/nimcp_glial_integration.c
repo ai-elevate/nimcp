@@ -185,6 +185,11 @@ void glial_integration_destroy(glial_integration_t* gi) {
         hash_table_destroy(gi->microglia_to_synapses);
     }
 
+    // Phase C2.1: Cleanup spatial neuromod system
+    if (gi->spatial_neuromod) {
+        spatial_neuromod_system_destroy(gi->spatial_neuromod);
+    }
+
     nimcp_mutex_destroy(&gi->lock);
     nimcp_free(gi);
 }
@@ -221,6 +226,25 @@ nimcp_result_t glial_integration_set_microglia_network(glial_integration_t* gi,
 
     nimcp_mutex_lock(&gi->lock);
     gi->microglia_network = microglia_network;
+    nimcp_mutex_unlock(&gi->lock);
+
+    return NIMCP_SUCCESS;
+}
+
+nimcp_result_t glial_integration_set_spatial_neuromod_system(
+    glial_integration_t* gi, spatial_neuromod_system_t* spatial_neuromod) {
+    if (!gi) return NIMCP_ERROR_INVALID_PARAM;
+
+    nimcp_mutex_lock(&gi->lock);
+
+    // Cleanup old system if exists
+    if (gi->spatial_neuromod) {
+        spatial_neuromod_system_destroy(gi->spatial_neuromod);
+    }
+
+    gi->spatial_neuromod = spatial_neuromod;
+    gi->enable_spatial_neuromod = (spatial_neuromod != NULL);
+
     nimcp_mutex_unlock(&gi->lock);
 
     return NIMCP_SUCCESS;
@@ -555,14 +579,25 @@ void glial_integration_step(glial_integration_t* gi, uint64_t timestamp) {
 
     nimcp_mutex_lock(&gi->lock);
 
+    // Compute timestep in milliseconds (convert from microseconds)
+    static uint64_t last_step_timestamp = 0;
+    float dt_ms;
+    if (last_step_timestamp == 0) {
+        dt_ms = 1.0f;  // Assume 1ms for first call
+    } else {
+        uint64_t dt_us = timestamp - last_step_timestamp;
+        dt_ms = (float)dt_us / 1000.0f;  // Convert µs to ms
+    }
+    last_step_timestamp = timestamp;
+
     // Step astrocyte network (calcium dynamics, glutamate release)
     if (gi->astrocyte_network && gi->enable_astrocyte_modulation) {
-        astrocyte_network_step(gi->astrocyte_network, timestamp);
+        astrocyte_network_step(gi->astrocyte_network, dt_ms);
     }
 
     // Step oligodendrocyte network (adaptive myelination)
     if (gi->oligodendrocyte_network && gi->enable_oligodendrocyte_myelination) {
-        oligodendrocyte_network_step(gi->oligodendrocyte_network, timestamp);
+        oligodendrocyte_network_step(gi->oligodendrocyte_network, dt_ms);
     }
 
     // Step microglia network (activity scoring, pruning)

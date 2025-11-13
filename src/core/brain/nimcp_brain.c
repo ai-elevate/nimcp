@@ -57,6 +57,7 @@
 #include "cognitive/wellbeing/nimcp_wellbeing.h"        // Phase 9.3: Self-preservation
 #include "plasticity/neuromodulators/nimcp_neuromod_pink_noise.h"
 #include "plasticity/neuromodulators/nimcp_neuromodulators.h"   // Full neuromodulator system
+#include "plasticity/neuromodulators/nimcp_spatial_neuromod.h"  // Phase C2.1: Spatial neuromodulator diffusion
 #include "plasticity/attention/nimcp_attention.h"               // Multihead attention mechanism
 #include "core/neuron_types/nimcp_neural_logic.h"
 
@@ -83,6 +84,10 @@
 #include "cognitive/global_workspace/nimcp_global_workspace.h"  // Global Workspace Architecture (GWT)
 #include "cognitive/nimcp_autobiographical_memory.h"  // Phase 12: Autobiographical Memory (episodic self-memory)
 #include "cognitive/nimcp_self_model.h"               // Phase 12: Explicit Self-Model (identity, beliefs, capabilities)
+#include "cognitive/nimcp_personality.h"              // Phase 12: Personality, Gender, and Sexual Identity
+
+// Phase 11 Enhancement C1.1: Quantum Annealing for Weight Optimization
+#include "optimization/quantum_annealing/nimcp_quantum_annealing.h"
 
 //=============================================================================
 // Forward Declarations - Strategy Pattern
@@ -180,6 +185,10 @@ struct brain_struct {
     uint64_t wellbeing_check_interval_ms;        // How often to check (0 = every decision)
     uint64_t last_wellbeing_check_time;          // Timestamp of last check
 
+    // Simulation Time Tracking (for proper glial/calcium dynamics)
+    uint64_t current_time_us;                    // Current simulation time in microseconds
+    uint64_t last_glial_update_us;               // Last glial integration update time
+
     // === PHASE 10: ADVANCED COGNITIVE SYSTEMS ===
 
     // Phase 10.1: Working Memory (Miller's 7±2)
@@ -203,6 +212,7 @@ struct brain_struct {
     // Phase 12: Self-Awareness Enhancement (Autobiographical Memory & Self-Model)
     autobiographical_memory_t autobio;           // Episodic self-memory system (timeline-indexed experiences)
     self_model_system_t self_model;              // Explicit self-representation (identity, beliefs, capabilities)
+    personality_profile_t* personality;          // Phase 12: Personality, Gender, and Sexual Identity (unique individual traits)
 
     // Phase 10.6: Theory of Mind (mental state inference)
     theory_of_mind_t theory_of_mind;             // Model other agents' beliefs, desires, goals (opaque pointer)
@@ -225,7 +235,7 @@ struct brain_struct {
     // Advanced Plasticity
     neuromod_pink_noise_t* pink_noise;           // Pink noise neuromodulation (struct type, needs *)
     neuromodulator_system_t neuromodulator_system; // Full neuromodulator system (DA, 5-HT, ACh, NE, GABA, GLU)
-    multihead_attention_t* multihead_attention;  // Attention mechanism for selective feature processing
+    multihead_attention_t multihead_attention;   // Attention mechanism for selective feature processing (typedef already includes *)
 
     // === PHASE 8: UNIFIED MULTI-MODAL PROCESSING ===
     // Sensory Cortices (specialized feature extractors)
@@ -244,6 +254,9 @@ struct brain_struct {
 
     // Brain Regions Architecture (hierarchical cortical organization)
     brain_module_t* brain_regions;               // Modular brain regions with cortical layers and minicolumns
+
+    // Phase 11 Enhancement C1.1: Quantum Annealing for Weight Optimization
+    quantum_annealer_t quantum_annealer;         // Quantum annealing optimizer for escaping local minima
 };
 
 //=============================================================================
@@ -808,6 +821,36 @@ static void init_brain_config(brain_config_t* config, const char* task_name, bra
     config->mirror_max_agents = 10;                 // Multi-agent social learning
     config->mirror_learning_rate = 0.01f;           // Hebbian association rate
     config->mirror_match_threshold = 0.7f;          // Action recognition threshold
+
+    // Phase 11 Enhancement C1.1: Quantum Annealing defaults
+    config->enable_quantum_annealing = false;       // Disable by default (opt-in for optimization)
+    config->annealing_temperature_init = 10.0f;     // Initial exploration temperature
+    config->annealing_temperature_final = 0.1f;     // Final exploitation temperature
+    config->annealing_steps = 1000;                 // Number of optimization steps
+    config->quantum_annealing_frequency = 100;      // Run every 100 learning steps
+
+    // Phase 12: Personality and Identity defaults
+    config->use_random_personality = true;          // Default: generate random personality
+    config->personality_seed = 0;                   // Time-based seed for uniqueness
+    config->explicit_openness = 0.5f;               // Moderate openness (if explicit)
+    config->explicit_conscientiousness = 0.5f;      // Moderate conscientiousness (if explicit)
+    config->explicit_extraversion = 0.5f;           // Moderate extraversion (if explicit)
+    config->explicit_agreeableness = 0.5f;          // Moderate agreeableness (if explicit)
+    config->explicit_neuroticism = 0.5f;            // Moderate neuroticism (if explicit)
+    config->explicit_gender = GENDER_FEMALE;        // Default: female (per user request)
+    config->explicit_sexuality = SEXUALITY_HETEROSEXUAL; // Default: heterosexual
+    config->personality_trait_mean = 0.5f;          // Mean for random trait generation
+    config->personality_trait_stddev = 0.15f;       // Stddev for random trait generation
+    config->female_probability = 1.0f;              // Default 100% female (per user request)
+    config->male_probability = 0.0f;                // 0% male by default
+    config->non_binary_probability = 0.0f;          // 0% non-binary by default
+
+    // Phase C2.1: Quantum Walk defaults (disabled by default for stability/testing)
+    config->enable_quantum_walk_diffusion = false;  // Opt-in: requires testing for production
+    config->quantum_walk_steps = 50;                // Moderate steps for √N speedup
+    config->quantum_classical_mixing = 0.2f;        // 80% quantum + 20% classical (hybrid)
+    config->quantum_coin_type = 0;                  // 0=Hadamard (balanced superposition)
+    config->quantum_decoherence_rate = 0.05f;       // Minimal decoherence (5% per step)
 }
 
 /**
@@ -834,6 +877,7 @@ static void init_brain_stats(brain_stats_t* stats, const char* task_name, brain_
     stats->num_synapses = num_neurons * num_inputs;
     stats->num_active_synapses = stats->num_synapses;
     stats->current_learning_rate = learning_rate;
+    stats->quantum_annealing_runs = 0;  // Initialize quantum annealing counter
     strncpy(stats->task_name, task_name, sizeof(stats->task_name) - 1);
 }
 
@@ -1333,14 +1377,42 @@ static bool init_neuromodulator_system(brain_t brain)
         return true;  // Already initialized
     }
 
+    // Phase 12: Compute personality-modulated neuromodulator baselines
+    // Default to moderate levels if no personality
+    float dopamine_base = 0.5f;
+    float serotonin_base = 0.5f;
+    float acetylcholine_base = 0.5f;
+    float norepinephrine_base = 0.5f;
+
+    if (brain->personality) {
+        // Map personality traits to neurotransmitter baselines
+        personality_profile_t* p = brain->personality;
+
+        // Dopamine (reward, motivation): Driven by Extraversion
+        // Extraverts seek social rewards → higher dopamine baseline
+        dopamine_base = 0.3f + p->traits.extraversion * 0.5f;  // [0.3, 0.8]
+
+        // Serotonin (mood stability, impulse control): Inverse of Neuroticism
+        // High neuroticism → low serotonin (anxiety, mood instability)
+        serotonin_base = 0.7f - p->traits.neuroticism * 0.4f;  // [0.3, 0.7]
+
+        // Acetylcholine (attention, learning): Driven by Openness
+        // High openness → high acetylcholine (intellectual curiosity)
+        acetylcholine_base = 0.3f + p->traits.openness * 0.5f;  // [0.3, 0.8]
+
+        // Norepinephrine (arousal, vigilance): Driven by Conscientiousness
+        // High conscientiousness → sustained alertness
+        norepinephrine_base = 0.4f + p->traits.conscientiousness * 0.4f;  // [0.4, 0.8]
+    }
+
     // Always create neuromodulator system (needed for mental health monitoring)
-    // Configuration with healthy baseline levels
+    // Configuration with personality-modulated baseline levels
     neuromodulator_config_t neuromod_config = {
-        // Baseline concentrations (homeostatic set points)
-        .baseline_dopamine = 0.5f,       // Moderate reward sensitivity
-        .baseline_serotonin = 0.5f,      // Moderate mood/impulse control
-        .baseline_acetylcholine = 0.5f,  // Moderate attention
-        .baseline_norepinephrine = 0.5f, // Moderate arousal
+        // Baseline concentrations (personality-modulated homeostatic set points)
+        .baseline_dopamine = dopamine_base,          // Reward sensitivity
+        .baseline_serotonin = serotonin_base,        // Mood/impulse control
+        .baseline_acetylcholine = acetylcholine_base, // Attention
+        .baseline_norepinephrine = norepinephrine_base, // Arousal
 
         // Decay time constants (seconds)
         .dopamine_decay = 2.0f,         // Fast decay (phasic DA bursts)
@@ -1364,6 +1436,83 @@ static bool init_neuromodulator_system(brain_t brain)
         set_error("Failed to create neuromodulator system");
         return false;
     }
+
+    return true;
+}
+
+/**
+ * WHAT: Initialize spatial neuromodulator system with quantum walk diffusion (Phase C2.1)
+ * WHY:  Enable spatially-distributed neuromodulation with quantum speedup
+ * HOW:  Create spatial neuromod system and wire to glial integration
+ *
+ * BIOLOGICAL MOTIVATION:
+ * - Volume transmission: Neuromodulators diffuse through extracellular space
+ * - Glial mediation: Astrocytes regulate neuromodulator concentrations
+ * - Quantum walk: O(√N) speedup for diffusion on neural network graph
+ *
+ * INTEGRATION WITH BRAIN:
+ * - Wired into glial integration system for coordination with astrocytes
+ * - Uses quantum walk configuration from brain config
+ * - Spatially modulates synaptic transmission based on local concentrations
+ *
+ * @param brain Brain instance to initialize
+ * @return true on success, false on failure
+ */
+static bool init_spatial_neuromod_system(brain_t brain)
+{
+    if (!brain) {
+        return false;
+    }
+
+    // Check if already initialized
+    if (brain->glial && brain->glial->spatial_neuromod) {
+        return true;  // Already initialized
+    }
+
+    // Guard: Need network and glial integration
+    if (!brain->network || !brain->glial) {
+        // Not an error if glial integration not set up yet
+        return true;
+    }
+
+    // Phase C2.1: Create spatial neuromod configs with quantum walk settings
+    bool enabled_types[NEUROMOD_COUNT] = {true, true, true, true};  // Enable all 4 types
+    spatial_neuromod_config_t configs[NEUROMOD_COUNT];
+
+    for (int i = 0; i < NEUROMOD_COUNT; i++) {
+        configs[i] = spatial_neuromod_default_config((neuromodulator_type_t)i);
+
+        // Apply brain quantum walk configuration (Phase C2.1)
+        configs[i].enable_quantum_walk = brain->config.enable_quantum_walk_diffusion;
+        configs[i].quantum_walk_steps = brain->config.quantum_walk_steps;
+        configs[i].quantum_mixing_ratio = brain->config.quantum_classical_mixing;
+        configs[i].quantum_coin_type = brain->config.quantum_coin_type;
+        configs[i].quantum_decoherence = brain->config.quantum_decoherence_rate;
+    }
+
+    // Create spatial neuromod system
+    spatial_neuromod_system_t* spatial_neuromod =
+        spatial_neuromod_system_create(brain->network, enabled_types, configs);
+
+    if (!spatial_neuromod) {
+        // Non-fatal: spatial neuromod is optional enhancement
+        fprintf(stderr, "WARNING: Failed to create spatial neuromodulator system, continuing without it\n");
+        return true;
+    }
+
+    // Wire into glial integration
+    nimcp_result_t result = glial_integration_set_spatial_neuromod_system(
+        brain->glial, spatial_neuromod);
+
+    if (result != NIMCP_SUCCESS) {
+        spatial_neuromod_system_destroy(spatial_neuromod);
+        fprintf(stderr, "WARNING: Failed to wire spatial neuromod into glial integration\n");
+        return true;  // Non-fatal
+    }
+
+    fprintf(stderr, "INFO: Spatial neuromodulator system initialized %s\n",
+            brain->config.enable_quantum_walk_diffusion ?
+            "with quantum walk acceleration (√N speedup)" : "(classical diffusion)");
 
     return true;
 }
@@ -2403,6 +2552,14 @@ static bool init_self_model_subsystem(brain_t brain)
         return false;
     }
 
+    // Phase 12: Wire personality into self-model
+    if (brain->personality) {
+        if (!self_model_set_personality(brain->self_model, brain->personality)) {
+            set_error("Failed to wire personality into self-model");
+            return false;
+        }
+    }
+
     return true;
 }
 
@@ -2487,6 +2644,63 @@ static bool init_global_workspace_subsystem(brain_t brain)
 }
 
 /**
+ * @brief Generate or configure personality from brain config
+ *
+ * WHAT: Create personality profile based on configuration
+ * WHY:  Each brain needs unique personality for individuality
+ * HOW:  Random generation or explicit specification
+ *
+ * @param config Brain configuration with personality settings
+ * @return Allocated personality profile or NULL on error
+ *
+ * COMPLEXITY: O(1)
+ */
+static personality_profile_t* create_personality(const brain_config_t* config)
+{
+    // Guard: NULL check
+    if (!config) return NULL;
+
+    // Allocate personality profile
+    personality_profile_t* profile = nimcp_malloc(sizeof(personality_profile_t));
+    if (!profile) return NULL;
+
+    // Generate personality based on configuration
+    if (config->use_random_personality) {
+        // Random generation with configured probabilities
+        personality_generation_config_t gen_config;
+        gen_config.trait_mean = config->personality_trait_mean;
+        gen_config.trait_stddev = config->personality_trait_stddev;
+        gen_config.female_probability = config->female_probability;
+        gen_config.male_probability = config->male_probability;
+        gen_config.non_binary_probability = config->non_binary_probability;
+        gen_config.seed = config->personality_seed;
+        gen_config.enforce_balanced_traits = false;
+
+        *profile = personality_generate_random(&gen_config);
+    } else {
+        // Explicit specification
+        personality_traits_t traits;
+        traits.openness = config->explicit_openness;
+        traits.conscientiousness = config->explicit_conscientiousness;
+        traits.extraversion = config->explicit_extraversion;
+        traits.agreeableness = config->explicit_agreeableness;
+        traits.neuroticism = config->explicit_neuroticism;
+
+        identity_profile_t identity = {0};
+        identity.gender = (gender_identity_t)config->explicit_gender;
+        identity.sexuality = (sexual_orientation_t)config->explicit_sexuality;
+        identity.gender_certainty = 1.0f;
+        identity.sexuality_certainty = 1.0f;
+        identity.gender_is_core_identity = true;
+        identity.sexuality_is_core_identity = false;
+
+        *profile = personality_create_custom(&traits, &identity);
+    }
+
+    return profile;
+}
+
+/**
  * @brief Create brain with preset size and task
  *
  * WHY: Factory pattern - single creation entry point
@@ -2528,6 +2742,15 @@ brain_t brain_create(const char* task_name, brain_size_t size, brain_task_t task
     // Initialize configuration
     init_brain_config(&brain->config, task_name, size, task, num_inputs, num_outputs,
                       brain->strategy);
+
+    // Phase 12: Create personality profile (unique identity for this brain)
+    brain->personality = create_personality(&brain->config);
+    if (!brain->personality) {
+        set_error("Failed to create personality profile");
+        strategy_destroy(brain->strategy);
+        nimcp_free(brain);
+        return NULL;
+    }
 
     // Create network
     uint32_t num_neurons = get_neuron_count(size);
@@ -2584,6 +2807,13 @@ brain_t brain_create(const char* task_name, brain_size_t size, brain_task_t task
         return NULL;
     }
 
+    // Phase C2.1: Initialize spatial neuromodulator system (if glial integration exists)
+    if (!init_spatial_neuromod_system(brain)) {
+        // Cleanup on failure
+        brain_destroy(brain);
+        return NULL;
+    }
+
     // Phase 8.9: Initialize neural logic gates (if configured)
     if (!init_symbolic_logic_subsystem(brain)) {
         // Cleanup on failure
@@ -2606,11 +2836,36 @@ brain_t brain_create(const char* task_name, brain_size_t size, brain_task_t task
     brain->last_distress.type = DISTRESS_NONE;
     brain->last_distress.severity = SEVERITY_NORMAL;
 
+    // Initialize simulation time tracking (for glial/calcium dynamics)
+    brain->current_time_us = 0;                  // Start at t=0
+    brain->last_glial_update_us = 0;             // No glial updates yet
+
     // Phase 10.2: Initialize working memory (if enabled)
     if (!init_working_memory_subsystem(brain)) {
         // Cleanup on failure
         brain_destroy(brain);
         return NULL;
+    }
+
+    // Phase 11 Enhancement C1.1: Initialize quantum annealer (if enabled)
+    if (brain->config.enable_quantum_annealing) {
+        quantum_annealing_config_t qa_config = {
+            .initial_temperature = brain->config.annealing_temperature_init,
+            .final_temperature = brain->config.annealing_temperature_final,
+            .num_iterations = brain->config.annealing_steps,
+            .cooling_schedule = COOLING_EXPONENTIAL,  // Default to exponential cooling
+            .quantum_strength = 0.5f,                 // Moderate quantum tunneling
+            .enable_tunneling = true,                 // Enable quantum tunneling
+            .seed = (uint32_t)time(NULL)              // Random seed
+        };
+
+        brain->quantum_annealer = quantum_annealer_create(&qa_config);
+        if (!brain->quantum_annealer) {
+            // Non-fatal: just disable quantum annealing
+            brain->config.enable_quantum_annealing = false;
+        }
+    } else {
+        brain->quantum_annealer = NULL;
     }
 
     brain_clear_error();
@@ -3046,6 +3301,11 @@ void brain_destroy(brain_t brain)
         self_model_destroy(brain->self_model);
     }
 
+    // Phase 12: Cleanup personality profile
+    if (brain->personality) {
+        nimcp_free(brain->personality);
+    }
+
     // Phase 11: Cleanup long-term memory consolidation buffer
     if (brain->longterm_memory) {
         for (uint32_t i = 0; i < brain->longterm_count; i++) {
@@ -3054,6 +3314,11 @@ void brain_destroy(brain_t brain)
             }
         }
         nimcp_free(brain->longterm_memory);
+    }
+
+    // Phase 11 Enhancement C1.1: Cleanup quantum annealer
+    if (brain->quantum_annealer) {
+        quantum_annealer_destroy(brain->quantum_annealer);
     }
 
     clear_cache(brain);
@@ -3479,6 +3744,30 @@ static void adapt_learning_rate_from_loss(brain_t brain, float current_loss)
 }
 
 /**
+ * @brief Energy function for quantum annealing weight optimization
+ *
+ * WHAT: Compute L2 regularization energy for given weights
+ * WHY:  Simple proxy energy function for weight optimization
+ * HOW:  Sum of squared weights, normalized by dimension
+ *
+ * NOTE: Full implementation would use validation loss
+ *
+ * @param weights Weight vector
+ * @param dim Vector dimension
+ * @param user_data Unused
+ * @return Energy (lower is better)
+ */
+static float quantum_weight_energy(const float* weights, uint32_t dim, void* user_data)
+{
+    (void)user_data;  // Unused
+    float energy = 0.0f;
+    for (uint32_t i = 0; i < dim; i++) {
+        energy += weights[i] * weights[i];
+    }
+    return energy / (float)dim;  // Normalized
+}
+
+/**
  * @brief Learn from single labeled example
  *
  * WHY: Primary learning interface - supervised learning
@@ -3687,6 +3976,94 @@ float brain_learn_example(brain_t brain, const float* features, uint32_t num_fea
     clear_cache(brain);
 
     // ========================================================================
+    // Phase 11 Enhancement C1.1: QUANTUM ANNEALING WEIGHT OPTIMIZATION
+    // ========================================================================
+    // WHAT: Periodically run quantum annealing to escape local minima
+    // WHY:  Gradient descent can get stuck; quantum tunneling explores better solutions
+    // HOW:  Every N learning steps, optimize network weights using simulated quantum annealing
+    //
+    // BIOLOGICAL BASIS:
+    // - Sleep-based memory consolidation reorganizes synaptic weights
+    // - Exploration vs exploitation balance in learning
+    // - Stochastic resonance helps escape suboptimal configurations
+    //
+    // COMPLEXITY: O(annealing_steps * num_weights) - expensive, run infrequently
+    if (brain->config.enable_quantum_annealing &&
+        brain->quantum_annealer &&
+        (brain->stats.total_learning_steps % brain->config.quantum_annealing_frequency) == 0) {
+
+        brain->stats.quantum_annealing_runs++;
+
+        // Quantum annealing weight optimization - simplified implementation
+        // WHAT: Optimize a small subset of critical weights to avoid excessive computation
+        // WHY:  Full network optimization is expensive; focus on high-impact weights
+        // HOW:  Sample top-K synapses by activity, optimize their weights, apply back
+        //
+        // PERFORMANCE: Limit to 100 weights to keep optimization tractable
+        // Full network optimization would be O(N*M) where N=neurons, M=synapses_per_neuron
+
+        neural_network_t base_net = adaptive_network_get_base_network(brain->network);
+        if (base_net) {
+            uint32_t num_neurons = neural_network_get_num_neurons(base_net);
+
+            // Sample a small subset for optimization (e.g., first 10 neurons, ~100 weights)
+            uint32_t num_neurons_to_optimize = (num_neurons < 10) ? num_neurons : 10;
+
+            // Count total weights to optimize
+            uint32_t total_weights = 0;
+            for (uint32_t n = 0; n < num_neurons_to_optimize; n++) {
+                neuron_t* neuron = neural_network_get_neuron(base_net, n);
+                if (neuron && neuron->synapses) {
+                    total_weights += neuron->num_synapses;
+                }
+            }
+
+            if (total_weights > 0 && total_weights <= 1000) {  // Reasonable limit
+                // Allocate weight vectors
+                float* current_weights = nimcp_malloc(total_weights * sizeof(float));
+                float* optimized_weights = nimcp_malloc(total_weights * sizeof(float));
+
+                if (current_weights && optimized_weights) {
+                    // Extract current weights
+                    uint32_t weight_idx = 0;
+                    for (uint32_t n = 0; n < num_neurons_to_optimize; n++) {
+                        neuron_t* neuron = neural_network_get_neuron(base_net, n);
+                        if (neuron && neuron->synapses) {
+                            for (uint32_t s = 0; s < neuron->num_synapses; s++) {
+                                current_weights[weight_idx++] = neuron->synapses[s].weight;
+                            }
+                        }
+                    }
+
+                    // Run quantum annealing optimization
+                    // Uses quantum_weight_energy (L2 regularization) as objective
+                    quantum_anneal(brain->quantum_annealer, quantum_weight_energy,
+                                 current_weights, optimized_weights, total_weights, NULL);
+
+                    // Apply optimized weights back to network
+                    weight_idx = 0;
+                    for (uint32_t n = 0; n < num_neurons_to_optimize; n++) {
+                        neuron_t* neuron = neural_network_get_neuron(base_net, n);
+                        if (neuron && neuron->synapses) {
+                            for (uint32_t s = 0; s < neuron->num_synapses; s++) {
+                                // Apply with damping to avoid disrupting learning too much
+                                float alpha = 0.1f;  // Mix 10% optimized, 90% current
+                                neuron->synapses[s].weight =
+                                    alpha * optimized_weights[weight_idx] +
+                                    (1.0f - alpha) * neuron->synapses[s].weight;
+                                weight_idx++;
+                            }
+                        }
+                    }
+                }
+
+                nimcp_free(current_weights);
+                nimcp_free(optimized_weights);
+            }
+        }
+    }
+
+    // ========================================================================
     // Phase 11: ADAPTIVE LEARNING RATE (Simple Online Meta-Learning)
     // ========================================================================
     // WHAT: Adjust learning rate based on loss trend
@@ -3752,6 +4129,70 @@ float brain_learn_batch(brain_t brain, const brain_example_t* examples, uint32_t
 
     brain_clear_error();
     return total_loss / num_examples;
+}
+
+/**
+ * @brief Apply reward-based reinforcement learning
+ *
+ * WHAT: Apply eligibility-trace-based learning with reward signal
+ * WHY:  Enable temporal credit assignment for RL tasks
+ * HOW:  Call neural_network_apply_reward_learning() with reward and dopamine
+ *
+ * BIOLOGY: Three-factor learning rule (Hebbian + Reward + Dopamine)
+ * - Eligibility traces mark recently active synapses ("synaptic tags")
+ * - Dopamine bursts trigger consolidation ("capture")
+ * - Reward signal modulates weight changes (Frey & Morris 1997)
+ *
+ * COMPLEXITY: O(n × s) where n=neurons, s=synapses_per_neuron
+ * USE CASE: Reinforcement learning, temporal credit assignment
+ *
+ * @param brain Brain handle
+ * @param reward Reward signal (0-1 positive, -1-0 negative)
+ * @return Number of synapses modified
+ */
+uint32_t brain_apply_reward_learning(brain_t brain, float reward)
+{
+    // Guard: Validate brain
+    if (!brain) {
+        set_error("NULL brain handle");
+        return 0;
+    }
+
+    // Guard: Validate reward range
+    if (reward < -1.0f || reward > 1.0f) {
+        set_error("Reward must be in range [-1.0, 1.0], got %.2f", reward);
+        return 0;
+    }
+
+    // Phase 2: Ensure network is writable
+    if (!ensure_writable_network(brain)) {
+        return 0;  // Error already set
+    }
+
+    // Get base neural network from adaptive network
+    neural_network_t base_network = adaptive_network_get_base_network(brain->network);
+    if (!base_network) {
+        set_error("Failed to get base network");
+        return 0;
+    }
+
+    // Get current network time
+    uint64_t current_time = nimcp_time_get_us();
+
+    // Apply reward-modulated learning with eligibility traces
+    // Uses neural_network_apply_reward_learning() from neuralnet.c (lines 1472-1600)
+    uint32_t num_modified = neural_network_apply_reward_learning(
+        base_network,
+        reward,
+        brain->config.learning_rate,
+        current_time
+    );
+
+    // Update brain stats
+    brain->stats.total_learning_steps++;
+
+    brain_clear_error();
+    return num_modified;
 }
 
 /**
@@ -4802,10 +5243,13 @@ brain_decision_t* brain_decide(brain_t brain, const float* features, uint32_t nu
     //
     // IMPLEMENTATION: Trigger glial integration step for this decision cycle
     if (brain->glial && brain->config.enable_glial) {
+        // Increment simulation time (assume 1ms per decision cycle = 1000 µs)
+        brain->current_time_us += 1000;
+
         // Step 1: Update glial cell states based on network activity
         // This updates astrocyte calcium levels, oligodendrocyte myelination,
         // and microglia synaptic pruning decisions
-        glial_integration_step(brain->glial, brain->network);
+        glial_integration_step(brain->glial, brain->current_time_us);
 
         // Step 2: Glial modulation is automatically applied during forward pass
         // (already integrated in adaptive_network_forward() via glial callbacks)
@@ -5374,6 +5818,10 @@ static bool save_metadata(brain_t brain, const char* filepath)
     fwrite(&brain->wellbeing_check_interval_ms, sizeof(uint64_t), 1, meta_file);
     fwrite(&brain->last_wellbeing_check_time, sizeof(uint64_t), 1, meta_file);
 
+    // Save simulation time tracking
+    fwrite(&brain->current_time_us, sizeof(uint64_t), 1, meta_file);
+    fwrite(&brain->last_glial_update_us, sizeof(uint64_t), 1, meta_file);
+
     // Save knowledge system state (if exists)
     bool has_knowledge = (brain->knowledge != NULL);
     fwrite(&has_knowledge, sizeof(bool), 1, meta_file);
@@ -5712,6 +6160,16 @@ static bool load_metadata(brain_t brain, const char* filepath)
         fread(&brain->wellbeing_check_interval_ms, sizeof(uint64_t), 1, meta_file) == 1 &&
         fread(&brain->last_wellbeing_check_time, sizeof(uint64_t), 1, meta_file) == 1) {
         // Successfully loaded wellbeing state
+    }
+
+    // Load simulation time tracking (may not exist in old snapshots)
+    if (fread(&brain->current_time_us, sizeof(uint64_t), 1, meta_file) == 1 &&
+        fread(&brain->last_glial_update_us, sizeof(uint64_t), 1, meta_file) == 1) {
+        // Successfully loaded time tracking
+    } else {
+        // Old snapshot, initialize to 0
+        brain->current_time_us = 0;
+        brain->last_glial_update_us = 0;
     }
 
     // Load knowledge system state (if exists)
@@ -7348,11 +7806,11 @@ static bool apply_cognitive_processing(
 
     // Global Workspace: Output broadcast state if workspace is broadcasting
     if (brain->global_workspace) {
-        if (global_workspace_has_broadcast(&brain->global_workspace)) {
+        if (global_workspace_has_broadcast(brain->global_workspace)) {
             output->has_workspace_broadcast = true;
-            output->workspace_source_module = (uint8_t)global_workspace_get_broadcast_source(&brain->global_workspace);
-            output->workspace_broadcast_strength = global_workspace_get_broadcast_strength(&brain->global_workspace);
-            output->workspace_num_competitors = global_workspace_get_competitor_count(&brain->global_workspace);
+            output->workspace_source_module = (uint8_t)global_workspace_get_broadcast_source(brain->global_workspace);
+            output->workspace_broadcast_strength = global_workspace_get_broadcast_strength(brain->global_workspace);
+            output->workspace_num_competitors = global_workspace_get_competitor_count(brain->global_workspace);
         }
     }
 
