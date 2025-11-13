@@ -98,7 +98,7 @@ void shadow_system_reset(shadow_emotion_system_t* system) {
     }
 
     // Reset intervention records
-    for (int i = 0; i < INTERVENTION_COUNT; i++) {
+    for (int i = 0; i < SHADOW_INTERVENTION_COUNT; i++) {
         system->interventions[i].active = false;
         system->interventions[i].effectiveness = 0.5f;
         system->interventions[i].application_count = 0;
@@ -725,7 +725,7 @@ bool shadow_should_maintain_boundaries(const shadow_emotion_system_t* system,
 
 bool shadow_apply_intervention(shadow_emotion_system_t* system,
                                shadow_emotion_type_t emotion,
-                               intervention_type_t strategy,
+                               shadow_intervention_type_t strategy,
                                uint64_t current_time) {
     /* WHAT: Apply CBT intervention to reduce shadow emotion
      * WHY:  Self-correction, mental health management
@@ -734,7 +734,7 @@ bool shadow_apply_intervention(shadow_emotion_system_t* system,
      */
     
     if (!system) return false;
-    if (strategy >= INTERVENTION_COUNT) return false;
+    if (strategy >= SHADOW_INTERVENTION_COUNT) return false;
 
     intervention_record_t* intervention = &system->interventions[strategy];
     intervention->target_emotion = emotion;
@@ -747,7 +747,7 @@ bool shadow_apply_intervention(shadow_emotion_system_t* system,
 
     // Apply strategy-specific effects
     switch (strategy) {
-        case INTERVENTION_COGNITIVE_REFRAME:
+        case SHADOW_INTERVENTION_COGNITIVE_REFRAME:
             // Challenge distorted thoughts (effective for jealousy, hubris)
             if (emotion == SHADOW_JEALOUSY) {
                 system->jealousy.catastrophizing *= 0.7f;
@@ -760,7 +760,7 @@ bool shadow_apply_intervention(shadow_emotion_system_t* system,
             }
             break;
 
-        case INTERVENTION_MINDFULNESS:
+        case SHADOW_INTERVENTION_MINDFULNESS:
             // Present moment awareness (effective for obsession, jealousy)
             if (emotion == SHADOW_OBSESSION) {
                 system->obsession.overall_obsession_level *= 0.75f;
@@ -773,7 +773,7 @@ bool shadow_apply_intervention(shadow_emotion_system_t* system,
             }
             break;
 
-        case INTERVENTION_PERSPECTIVE_TAKING:
+        case SHADOW_INTERVENTION_PERSPECTIVE_TAKING:
             // Empathy exercise (effective for narcissism, envy)
             if (emotion == SHADOW_NARCISSISM) {
                 system->narcissism.lack_of_empathy *= 0.85f;
@@ -787,7 +787,7 @@ bool shadow_apply_intervention(shadow_emotion_system_t* system,
             }
             break;
 
-        case INTERVENTION_GRATITUDE:
+        case SHADOW_INTERVENTION_GRATITUDE:
             // Counter envy and greed with gratitude
             if (emotion == SHADOW_ENVY) {
                 system->envy.chronic_envy *= 0.8f;
@@ -802,7 +802,7 @@ bool shadow_apply_intervention(shadow_emotion_system_t* system,
             }
             break;
 
-        case INTERVENTION_REALITY_TESTING:
+        case SHADOW_INTERVENTION_REALITY_TESTING:
             // Counter hubris and narcissism with reality checks
             if (emotion == SHADOW_HUBRIS) {
                 system->hubris.overconfidence *= 0.7f;
@@ -818,7 +818,7 @@ bool shadow_apply_intervention(shadow_emotion_system_t* system,
             }
             break;
 
-        case INTERVENTION_EXPOSURE:
+        case SHADOW_INTERVENTION_EXPOSURE:
             // Gradual exposure (effective for obsession, jealousy)
             if (emotion == SHADOW_OBSESSION) {
                 system->obsession.overall_obsession_level *= 0.8f;
@@ -887,28 +887,28 @@ bool shadow_auto_intervene(shadow_emotion_system_t* system,
     }
 
     // Select best strategy for this emotion
-    intervention_type_t strategy = INTERVENTION_COGNITIVE_REFRAME;
+    shadow_intervention_type_t strategy = SHADOW_INTERVENTION_COGNITIVE_REFRAME;
     switch (strongest) {
         case SHADOW_JEALOUSY:
-            strategy = INTERVENTION_MINDFULNESS;
+            strategy = SHADOW_INTERVENTION_MINDFULNESS;
             break;
         case SHADOW_ENVY:
-            strategy = INTERVENTION_GRATITUDE;
+            strategy = SHADOW_INTERVENTION_GRATITUDE;
             break;
         case SHADOW_OBSESSION:
-            strategy = INTERVENTION_MINDFULNESS;
+            strategy = SHADOW_INTERVENTION_MINDFULNESS;
             break;
         case SHADOW_HUBRIS:
-            strategy = INTERVENTION_REALITY_TESTING;
+            strategy = SHADOW_INTERVENTION_REALITY_TESTING;
             break;
         case SHADOW_GREED:
-            strategy = INTERVENTION_GRATITUDE;
+            strategy = SHADOW_INTERVENTION_GRATITUDE;
             break;
         case SHADOW_NARCISSISM:
-            strategy = INTERVENTION_PERSPECTIVE_TAKING;
+            strategy = SHADOW_INTERVENTION_PERSPECTIVE_TAKING;
             break;
         default:
-            strategy = INTERVENTION_COGNITIVE_REFRAME;
+            strategy = SHADOW_INTERVENTION_COGNITIVE_REFRAME;
     }
 
     return shadow_apply_intervention(system, strongest, strategy, current_time);

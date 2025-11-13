@@ -96,14 +96,14 @@ typedef enum {
  * @brief Intervention strategies (CBT-based)
  */
 typedef enum {
-    INTERVENTION_COGNITIVE_REFRAME = 0,  // Challenge distorted thoughts
-    INTERVENTION_MINDFULNESS,            // Present moment awareness
-    INTERVENTION_PERSPECTIVE_TAKING,     // Empathy exercise
-    INTERVENTION_GRATITUDE,              // Counter envy/greed
-    INTERVENTION_REALITY_TESTING,        // Counter hubris/narcissism
-    INTERVENTION_EXPOSURE,               // Reduce obsession/jealousy
-    INTERVENTION_COUNT
-} intervention_type_t;
+    SHADOW_INTERVENTION_COGNITIVE_REFRAME = 0,  // Challenge distorted thoughts
+    SHADOW_INTERVENTION_MINDFULNESS,            // Present moment awareness
+    SHADOW_INTERVENTION_PERSPECTIVE_TAKING,     // Empathy exercise
+    SHADOW_INTERVENTION_GRATITUDE,              // Counter envy/greed
+    SHADOW_INTERVENTION_REALITY_TESTING,        // Counter hubris/narcissism
+    SHADOW_INTERVENTION_EXPOSURE,               // Reduce obsession/jealousy
+    SHADOW_INTERVENTION_COUNT
+} shadow_intervention_type_t;
 
 //=============================================================================
 // STRUCTURES
@@ -320,7 +320,7 @@ typedef struct {
  */
 typedef struct {
     shadow_emotion_type_t target_emotion;
-    intervention_type_t strategy;
+    shadow_intervention_type_t strategy;
 
     float effectiveness;         // [0-1]
     uint32_t application_count;
@@ -354,7 +354,7 @@ typedef struct {
     uint32_t max_others_tracked;
 
     // Interventions
-    intervention_record_t interventions[INTERVENTION_COUNT];
+    intervention_record_t interventions[SHADOW_INTERVENTION_COUNT];
     uint32_t successful_interventions;
     uint32_t failed_interventions;
 
@@ -545,7 +545,7 @@ bool shadow_should_maintain_boundaries(const shadow_emotion_system_t* system,
  */
 bool shadow_apply_intervention(shadow_emotion_system_t* system,
                                shadow_emotion_type_t emotion,
-                               intervention_type_t strategy,
+                               shadow_intervention_type_t strategy,
                                uint64_t current_time);
 
 /**

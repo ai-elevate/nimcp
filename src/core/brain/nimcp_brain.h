@@ -60,6 +60,11 @@ typedef struct global_workspace_struct* global_workspace_t;  // Opaque pointer
 // Neuromodulator System (for mental health interventions)
 typedef struct neuromodulator_system_struct* neuromodulator_system_t;  // Opaque pointer
 
+// === PHASE E: HIGHER-ORDER COGNITIVE & SOCIAL SYSTEMS ===
+// Forward declarations - actual typedefs in respective headers
+// Phase E5: Shadow Emotions - defined in cognitive/nimcp_shadow_emotions.h
+// Phase E6: Bias Detection - defined in cognitive/nimcp_bias_detection.h
+
 /**
  * @file nimcp_brain.h
  * @brief Simple, high-level API for creating lightweight learning systems
@@ -422,31 +427,6 @@ typedef struct {
     float mps_svd_tolerance;           /**< SVD truncation tolerance (default: 1e-6) */
 
     /**
-     * Quantum Walk Neuromodulation (C2.1)
-     *
-     * WHAT: Use quantum walks for neuromodulator diffusion
-     * WHY: Quadratic speedup: O(d) vs O(d²) for classical diffusion
-     * HOW: Quantum walker on neural network graph
-     *
-     * PERFORMANCE:
-     * - Speed: √N speedup for diffusion distance d
-     * - Memory: 1.1x overhead (quantum amplitude storage)
-     * - Behavior: Faster exploration of network topology
-     *
-     * SYNERGY:
-     * - A2.1 (Spatial diffusion): Hybrid quantum-classical dynamics
-     * - Best with enable_spatial_neuromod = true
-     *
-     * EXAMPLE:
-     * ```c
-     * config.enable_quantum_walks = true;
-     * config.quantum_walk_steps = 100;  // Quantum time evolution steps
-     * ```
-     */
-    bool enable_quantum_walks;         /**< Use quantum walks for neuromodulation (C2.1) */
-    uint32_t quantum_walk_steps;       /**< Number of quantum walk steps (default: 100) */
-
-    /**
      * Quantum Annealing for Network Optimization (C1.1)
      *
      * WHAT: Use quantum annealing for discrete optimization problems
@@ -469,6 +449,7 @@ typedef struct {
     float annealing_temperature_init;  /**< Initial annealing temperature (default: 10.0) */
     float annealing_temperature_final; /**< Final annealing temperature (default: 0.1) */
     uint32_t annealing_steps;          /**< Number of annealing steps (default: 1000) */
+    uint32_t quantum_annealing_frequency; /**< Run annealing every N learning steps (default: 100) */
 
     // === PERSISTENCE & CHECKPOINTING ===
     const char* checkpoint_path;      /**< Path to checkpoint file (NULL = no checkpoint) */
@@ -555,6 +536,88 @@ typedef struct {
     uint32_t multi_gpu_partition_strategy; /**< Partitioning strategy (0=layer, 1=neuron, 2=hybrid, default: 2) */
     bool enable_peer_to_peer;             /**< Enable P2P GPU transfers (3-5x faster, default: true) */
     bool multi_gpu_verbose_logging;       /**< Log multi-GPU operations (default: false) */
+
+    // === PHASE 12: PERSONALITY AND IDENTITY ===
+
+    /**
+     * Personality and Identity Configuration (Phase 12)
+     *
+     * WHAT: Configure unique personality, gender, and sexual identity
+     * WHY:  Each brain should be a unique individual with distinct traits
+     * HOW:  Specify explicit traits or generate randomly
+     *
+     * BEHAVIORAL EFFECTS:
+     * - Personality traits modulate cognitive processes
+     * - High openness → increased curiosity and exploratory learning
+     * - High conscientiousness → better planning and goal persistence
+     * - High extraversion → more social interactions and higher arousal
+     * - High agreeableness → more empathetic and cooperative responses
+     * - High neuroticism → stronger negative emotions and stress sensitivity
+     *
+     * IDENTITY INTEGRATION:
+     * - Gender identity affects self-model and pronoun usage
+     * - Sexual orientation affects social cognition and relationship models
+     * - Identity certainty affects self-concept stability
+     *
+     * USAGE:
+     * ```c
+     * // Option 1: Random personality (default: female, random traits)
+     * config.use_random_personality = true;
+     * config.personality_seed = 12345;  // Reproducible
+     *
+     * // Option 2: Specify explicit traits
+     * config.use_random_personality = false;
+     * config.explicit_openness = 0.8f;  // Creative
+     * config.explicit_conscientiousness = 0.6f;  // Organized
+     * config.explicit_extraversion = 0.7f;  // Social
+     * config.explicit_agreeableness = 0.9f;  // Compassionate
+     * config.explicit_neuroticism = 0.3f;  // Emotionally stable
+     * config.explicit_gender = 1;  // Female (0=male, 1=female, 2=non-binary)
+     * config.explicit_sexuality = 2;  // Bisexual
+     * ```
+     */
+    bool use_random_personality;          /**< Generate random personality (default: true) */
+    uint32_t personality_seed;            /**< RNG seed for personality (0=time-based) */
+
+    // Explicit personality specification (only used if use_random_personality = false)
+    float explicit_openness;              /**< [0-1] Openness to experience */
+    float explicit_conscientiousness;     /**< [0-1] Organization and discipline */
+    float explicit_extraversion;          /**< [0-1] Sociability and energy */
+    float explicit_agreeableness;         /**< [0-1] Compassion and cooperation */
+    float explicit_neuroticism;           /**< [0-1] Emotional sensitivity */
+    uint32_t explicit_gender;             /**< Gender identity (0=male, 1=female, 2=non-binary, etc.) */
+    uint32_t explicit_sexuality;          /**< Sexual orientation (0=hetero, 1=homo, 2=bi, etc.) */
+
+    // Personality generation configuration
+    float personality_trait_mean;         /**< Mean for random traits (default: 0.5) */
+    float personality_trait_stddev;       /**< Stddev for random traits (default: 0.15) */
+    float female_probability;             /**< P(female) when random (default: 1.0) */
+    float male_probability;               /**< P(male) when random (default: 0.0) */
+    float non_binary_probability;         /**< P(non-binary) when random (default: 0.0) */
+
+    // === PHASE C2.1: QUANTUM WALKS FOR NEUROMODULATOR DIFFUSION ===
+    /**
+     * Quantum Walk Configuration
+     *
+     * WHAT: Quantum random walks for O(√N) speedup in neuromodulator diffusion
+     * WHY:  Classical diffusion is O(d²), quantum walk is O(d) for distance d
+     * HOW:  Replace/augment classical diffusion with quantum walk evolution
+     *
+     * PERFORMANCE IMPACT:
+     * - Quadratic speedup for neuromodulator propagation
+     * - 10x faster dopamine/serotonin spread in large networks
+     * - Memory overhead: 2x (complex amplitudes)
+     *
+     * BIOLOGICAL INTERPRETATION:
+     * - Models rapid mood/attention shifts
+     * - Captures non-local neuromodulator effects
+     * - Explains fast reward prediction error propagation
+     */
+    bool enable_quantum_walk_diffusion;   /**< Use quantum walks for neuromodulator diffusion (default: false) */
+    uint32_t quantum_walk_steps;          /**< Steps per diffusion update (default: 50) */
+    float quantum_classical_mixing;       /**< Hybrid mixing ratio [0=pure quantum, 1=classical] (default: 0.2) */
+    uint32_t quantum_coin_type;           /**< Coin operator: 0=Hadamard, 1=Grover, 2=Fourier (default: 0) */
+    float quantum_decoherence_rate;       /**< Decoherence strength [0=none, 1=instant classical] (default: 0.05) */
 } brain_config_t;
 
 /**
@@ -855,6 +918,24 @@ float brain_learn_example(brain_t brain, const float* features, uint32_t num_fea
  * @return Average loss
  */
 float brain_learn_batch(brain_t brain, const brain_example_t* examples, uint32_t num_examples);
+
+/**
+ * @brief Apply reward-based reinforcement learning to all synapses
+ *
+ * WHAT: Apply eligibility-trace-based learning with reward signal
+ * WHY:  Enable temporal credit assignment and reinforcement learning
+ * HOW:  Use eligibility traces to propagate reward to recently active synapses
+ *
+ * BIOLOGY: Implements three-factor learning rule (Hebbian + Reward + Dopamine)
+ * - Eligibility traces mark recently active synapses ("synaptic tags")
+ * - Dopamine bursts trigger consolidation ("capture")
+ * - Reward signal modulates weight changes
+ *
+ * @param brain Brain handle
+ * @param reward Reward signal (0-1 for positive, -1-0 for punishment)
+ * @return Number of synapses modified
+ */
+uint32_t brain_apply_reward_learning(brain_t brain, float reward);
 
 /**
  * @brief LLM teacher function signature
@@ -1216,6 +1297,7 @@ typedef struct {
 
     uint64_t total_inferences;     /**< Inference count */
     uint64_t total_learning_steps; /**< Learning steps */
+    uint64_t quantum_annealing_runs; /**< Quantum annealing optimization runs */
 
     float avg_sparsity;          /**< Average sparsity */
     float avg_inference_time_us; /**< Avg inference (μs) */

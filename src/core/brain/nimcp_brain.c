@@ -86,6 +86,10 @@
 #include "cognitive/nimcp_self_model.h"               // Phase 12: Explicit Self-Model (identity, beliefs, capabilities)
 #include "cognitive/nimcp_personality.h"              // Phase 12: Personality, Gender, and Sexual Identity
 
+// === PHASE E: HIGHER-ORDER COGNITIVE & SOCIAL SYSTEMS ===
+#include "cognitive/nimcp_shadow_emotions.h"   // Phase E5: Shadow Emotions (jealousy, envy, obsession, hubris, greed, narcissism)
+#include "cognitive/nimcp_bias_detection.h"    // Phase E6: Bias Detection & Correction (racial, LGBTQ+, gender, misogyny, etc.)
+
 // Phase 11 Enhancement C1.1: Quantum Annealing for Weight Optimization
 #include "optimization/quantum_annealing/nimcp_quantum_annealing.h"
 
@@ -257,6 +261,14 @@ struct brain_struct {
 
     // Phase 11 Enhancement C1.1: Quantum Annealing for Weight Optimization
     quantum_annealer_t quantum_annealer;         // Quantum annealing optimizer for escaping local minima
+
+    // === PHASE E: HIGHER-ORDER COGNITIVE & SOCIAL SYSTEMS ===
+
+    // Phase E5: Shadow Emotions (self-monitoring & correction for maladaptive patterns)
+    shadow_emotion_system_t* shadow_emotions;     // Detect jealousy, envy, obsession, hubris, greed, narcissism
+
+    // Phase E6: Bias Detection & Correction (fairness & social cognition)
+    bias_detection_system_t* bias_detection;      // Detect and correct biases (racial, LGBTQ+, gender, misogyny, etc.)
 };
 
 //=============================================================================
@@ -2868,6 +2880,22 @@ brain_t brain_create(const char* task_name, brain_size_t size, brain_task_t task
         brain->quantum_annealer = NULL;
     }
 
+    // === PHASE E: INITIALIZE HIGHER-ORDER COGNITIVE & SOCIAL SYSTEMS ===
+
+    // Phase E5: Initialize Shadow Emotions (detect and correct maladaptive patterns)
+    brain->shadow_emotions = shadow_system_create(8);  // Track up to 8 individuals
+    if (!brain->shadow_emotions) {
+        // Non-fatal: continue without shadow emotion detection
+        fprintf(stderr, "WARNING: Failed to initialize shadow emotions system\n");
+    }
+
+    // Phase E6: Initialize Bias Detection & Correction (fairness monitoring)
+    brain->bias_detection = bias_system_create(8);  // Track up to 8 individuals
+    if (!brain->bias_detection) {
+        // Non-fatal: continue without bias detection
+        fprintf(stderr, "WARNING: Failed to initialize bias detection system\n");
+    }
+
     brain_clear_error();
     return brain;
 }
@@ -3319,6 +3347,18 @@ void brain_destroy(brain_t brain)
     // Phase 11 Enhancement C1.1: Cleanup quantum annealer
     if (brain->quantum_annealer) {
         quantum_annealer_destroy(brain->quantum_annealer);
+    }
+
+    // === PHASE E: CLEANUP HIGHER-ORDER COGNITIVE & SOCIAL SYSTEMS ===
+
+    // Phase E5: Cleanup Shadow Emotions
+    if (brain->shadow_emotions) {
+        shadow_system_destroy(brain->shadow_emotions);
+    }
+
+    // Phase E6: Cleanup Bias Detection
+    if (brain->bias_detection) {
+        bias_system_destroy(brain->bias_detection);
     }
 
     clear_cache(brain);
@@ -3974,6 +4014,59 @@ float brain_learn_example(brain_t brain, const float* features, uint32_t num_fea
 
     // Invalidate cache after learning
     clear_cache(brain);
+
+    // ========================================================================
+    // PHASE E: HIGHER-ORDER COGNITIVE & SOCIAL LEARNING INTEGRATION
+    // ========================================================================
+    // WHAT: Update shadow emotions and bias detection during training
+    // WHY:  Monitor for maladaptive patterns and biases in training data/behavior
+    // HOW:  Analyze labels for bias markers, update self-monitoring systems
+    //
+    // BIOLOGICAL BASIS:
+    // - Metacognitive monitoring during learning (prefrontal cortex)
+    // - Social cognition processes during information encoding
+    // - Emotional regulation during knowledge acquisition
+    //
+    // COMPLEXITY: O(1) - Simple pattern matching and updates
+
+    uint64_t current_time = (uint64_t)(brain->stats.total_learning_steps * 1000);  // Simulated time in ms
+
+    // Phase E5: Shadow Emotions - Monitor for maladaptive learning patterns
+    if (brain->shadow_emotions) {
+        // Decay dynamics
+        shadow_update(brain->shadow_emotions, 0.001f, current_time);  // Small dt for incremental updates
+
+        // Auto-intervene if shadow emotions detected
+        shadow_auto_intervene(brain->shadow_emotions, current_time);
+    }
+
+    // Phase E6: Bias Detection - Analyze training labels for bias markers
+    if (brain->bias_detection) {
+        // Update system dynamics
+        bias_update(brain->bias_detection, 0.001f, current_time);
+
+        // Simple language analysis of training label for bias markers
+        // This allows the system to detect if training data contains biased language
+        social_group_t general_group;
+        general_group.group_id = 0;
+        general_group.bias_type = BIAS_RACIAL;  // Default, would be determined by context
+        strncpy(general_group.group_name, "General", sizeof(general_group.group_name) - 1);
+        general_group.is_marginalized = false;
+        general_group.is_stigmatized = false;
+
+        language_pattern_t pattern = bias_analyze_language(brain->bias_detection, label, &general_group, current_time);
+
+        // If bias detected in training data, reduce future learning confidence
+        if (pattern.contains_slur || pattern.objectification || pattern.victim_blaming ||
+            pattern.hostile_sexism || pattern.incel_ideology) {
+            // Apply automatic debiasing intervention
+            if (bias_is_detected(brain->bias_detection, general_group.bias_type)) {
+                bias_auto_debias(brain->bias_detection, current_time);
+            }
+
+            // Record detection in stats (could add brain->stats.bias_detections_in_training)
+        }
+    }
 
     // ========================================================================
     // Phase 11 Enhancement C1.1: QUANTUM ANNEALING WEIGHT OPTIMIZATION
