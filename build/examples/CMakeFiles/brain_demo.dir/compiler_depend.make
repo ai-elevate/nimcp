@@ -14,6 +14,7 @@ examples/CMakeFiles/brain_demo.dir/brain_demo.c.o: /home/bbrelin/nimcp/examples/
   /home/bbrelin/nimcp/src/glial/integration/nimcp_glial_integration.h \
   /home/bbrelin/nimcp/src/glial/microglia/nimcp_microglia.h \
   /home/bbrelin/nimcp/src/glial/oligodendrocytes/nimcp_oligodendrocytes.h \
+  /home/bbrelin/nimcp/src/include/information/nimcp_cross_modal.h \
   /home/bbrelin/nimcp/src/include/information/nimcp_shannon.h \
   /home/bbrelin/nimcp/src/include/plasticity/neuromodulators/nimcp_phasic_tonic.h \
   /home/bbrelin/nimcp/src/networking/distributed/nimcp_distributed_cognition.h \
@@ -326,11 +327,11 @@ examples/CMakeFiles/brain_demo.dir/brain_demo.c.o: /home/bbrelin/nimcp/examples/
 
 /usr/include/x86_64-linux-gnu/bits/types/wint_t.h:
 
+/usr/include/x86_64-linux-gnu/bits/types/time_t.h:
+
 /usr/include/python3.12/memoryobject.h:
 
 /usr/include/python3.12/cpython/pyctype.h:
-
-/usr/include/x86_64-linux-gnu/bits/types/time_t.h:
 
 /usr/include/python3.12/listobject.h:
 
@@ -357,8 +358,6 @@ examples/CMakeFiles/brain_demo.dir/brain_demo.c.o: /home/bbrelin/nimcp/examples/
 /usr/include/python3.12/cpython/pymem.h:
 
 /usr/include/python3.12/cpython/genobject.h:
-
-/usr/include/python3.12/modsupport.h:
 
 /usr/include/python3.12/exports.h:
 
@@ -440,27 +439,23 @@ examples/CMakeFiles/brain_demo.dir/brain_demo.c.o: /home/bbrelin/nimcp/examples/
 
 /usr/include/x86_64-linux-gnu/bits/endian.h:
 
-/usr/include/python3.12/import.h:
-
-/usr/include/python3.12/setobject.h:
-
-/usr/include/python3.12/cpython/import.h:
-
-/home/bbrelin/nimcp/src/networking/protocol/nimcp_protocol.h:
-
-/usr/include/python3.12/cpython/compile.h:
-
-/usr/include/python3.12/cpython/sysmodule.h:
-
-/home/bbrelin/nimcp/src/core/neuron_types/nimcp_neuron_types.h:
-
-/usr/include/x86_64-linux-gnu/bits/timesize.h:
-
 /usr/include/pthread.h:
 
 /usr/include/python3.12/complexobject.h:
 
 /usr/include/python3.12/cpython/picklebufobject.h:
+
+/usr/include/python3.12/cpython/sysmodule.h:
+
+/usr/include/python3.12/cpython/compile.h:
+
+/usr/include/python3.12/rangeobject.h:
+
+/usr/include/python3.12/bytearrayobject.h:
+
+/home/bbrelin/nimcp/src/utils/platform/nimcp_platform_cond.h:
+
+/usr/include/x86_64-linux-gnu/bits/types/cookie_io_functions_t.h:
 
 /home/bbrelin/nimcp/src/utils/memory/nimcp_memory.h:
 
@@ -480,19 +475,31 @@ examples/CMakeFiles/brain_demo.dir/brain_demo.c.o: /home/bbrelin/nimcp/examples/
 
 /usr/include/features-time64.h:
 
+/home/bbrelin/nimcp/src/networking/protocol/nimcp_protocol.h:
+
+/usr/include/python3.12/cpython/import.h:
+
 /usr/include/linux/limits.h:
 
 /usr/include/x86_64-linux-gnu/bits/posix2_lim.h:
-
-/home/bbrelin/nimcp/src/utils/platform/nimcp_platform_cond.h:
-
-/usr/include/x86_64-linux-gnu/bits/types/cookie_io_functions_t.h:
 
 /home/bbrelin/nimcp/src/include/information/nimcp_shannon.h:
 
 /usr/include/x86_64-linux-gnu/bits/stdlib-float.h:
 
+/usr/include/python3.12/cpython/funcobject.h:
+
+/usr/include/lz4.h:
+
 /home/bbrelin/nimcp/src/plasticity/stp/nimcp_stp.h:
+
+/usr/include/python3.12/import.h:
+
+/usr/include/python3.12/setobject.h:
+
+/home/bbrelin/nimcp/src/core/neuron_types/nimcp_neuron_types.h:
+
+/usr/include/x86_64-linux-gnu/bits/timesize.h:
 
 /home/bbrelin/nimcp/src/plasticity/eligibility/nimcp_eligibility_trace.h:
 
@@ -519,10 +526,6 @@ examples/CMakeFiles/brain_demo.dir/brain_demo.c.o: /home/bbrelin/nimcp/examples/
 /usr/include/python3.12/cpython/warnings.h:
 
 /usr/include/python3.12/objimpl.h:
-
-/usr/include/python3.12/patchlevel.h:
-
-/usr/include/strings.h:
 
 /usr/include/python3.12/fileutils.h:
 
@@ -575,10 +578,6 @@ examples/CMakeFiles/brain_demo.dir/brain_demo.c.o: /home/bbrelin/nimcp/examples/
 /usr/include/x86_64-linux-gnu/bits/local_lim.h:
 
 /usr/include/python3.12/cpython/traceback.h:
-
-/usr/include/python3.12/cpython/funcobject.h:
-
-/usr/include/lz4.h:
 
 /home/bbrelin/nimcp/src/utils/platform/nimcp_platform_thread.h:
 
@@ -640,9 +639,11 @@ examples/CMakeFiles/brain_demo.dir/brain_demo.c.o: /home/bbrelin/nimcp/examples/
 
 /usr/include/x86_64-linux-gnu/bits/stdio2-decl.h:
 
-/usr/include/python3.12/rangeobject.h:
+/usr/include/python3.12/modsupport.h:
 
-/usr/include/python3.12/bytearrayobject.h:
+/usr/include/strings.h:
+
+/usr/include/python3.12/patchlevel.h:
 
 /usr/include/python3.12/moduleobject.h:
 
@@ -785,6 +786,8 @@ examples/CMakeFiles/brain_demo.dir/brain_demo.c.o: /home/bbrelin/nimcp/examples/
 /usr/include/x86_64-linux-gnu/bits/types/struct_itimerspec.h:
 
 /usr/include/x86_64-linux-gnu/bits/flt-eval-method.h:
+
+/home/bbrelin/nimcp/src/include/information/nimcp_cross_modal.h:
 
 /usr/include/x86_64-linux-gnu/bits/fp-fast.h:
 

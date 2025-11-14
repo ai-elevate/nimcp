@@ -17,6 +17,7 @@ examples/CMakeFiles/integrated_demo.dir/integrated_learning_demo.c.o: /home/bbre
   /home/bbrelin/nimcp/src/glial/integration/nimcp_glial_integration.h \
   /home/bbrelin/nimcp/src/glial/microglia/nimcp_microglia.h \
   /home/bbrelin/nimcp/src/glial/oligodendrocytes/nimcp_oligodendrocytes.h \
+  /home/bbrelin/nimcp/src/include/information/nimcp_cross_modal.h \
   /home/bbrelin/nimcp/src/include/information/nimcp_shannon.h \
   /home/bbrelin/nimcp/src/include/plasticity/neuromodulators/nimcp_phasic_tonic.h \
   /home/bbrelin/nimcp/src/networking/distributed/nimcp_distributed_cognition.h \
@@ -445,6 +446,12 @@ examples/CMakeFiles/integrated_demo.dir/integrated_learning_demo.c.o: /home/bbre
 
 /usr/include/x86_64-linux-gnu/bits/errno.h:
 
+/usr/include/python3.12/cpython/modsupport.h:
+
+/usr/include/python3.12/cpython/dictobject.h:
+
+/usr/include/pthread.h:
+
 /home/bbrelin/nimcp/src/plasticity/adaptive/nimcp_adaptive.h:
 
 /home/bbrelin/nimcp/src/utils/containers/nimcp_hash_table.h:
@@ -452,10 +459,6 @@ examples/CMakeFiles/integrated_demo.dir/integrated_learning_demo.c.o: /home/bbre
 /usr/include/ctype.h:
 
 /home/bbrelin/nimcp/src/glial/oligodendrocytes/nimcp_oligodendrocytes.h:
-
-/usr/include/python3.12/iterobject.h:
-
-/usr/include/features-time64.h:
 
 /home/bbrelin/nimcp/src/networking/protocol/nimcp_protocol.h:
 
@@ -488,6 +491,10 @@ examples/CMakeFiles/integrated_demo.dir/integrated_learning_demo.c.o: /home/bbre
 /home/bbrelin/nimcp/src/include/information/nimcp_shannon.h:
 
 /usr/include/x86_64-linux-gnu/bits/stdlib-float.h:
+
+/usr/include/python3.12/cpython/funcobject.h:
+
+/usr/include/lz4.h:
 
 /home/bbrelin/nimcp/src/plasticity/eligibility/nimcp_eligibility_trace.h:
 
@@ -533,12 +540,6 @@ examples/CMakeFiles/integrated_demo.dir/integrated_learning_demo.c.o: /home/bbre
 
 /usr/include/errno.h:
 
-/usr/include/python3.12/cpython/modsupport.h:
-
-/usr/include/python3.12/cpython/dictobject.h:
-
-/usr/include/pthread.h:
-
 /usr/include/python3.12/complexobject.h:
 
 /usr/include/python3.12/cpython/picklebufobject.h:
@@ -568,6 +569,10 @@ examples/CMakeFiles/integrated_demo.dir/integrated_learning_demo.c.o: /home/bbre
 /home/bbrelin/nimcp/src/networking/distributed/nimcp_distributed_cognition.h:
 
 /usr/include/x86_64-linux-gnu/bits/pthread_stack_min.h:
+
+/usr/include/features-time64.h:
+
+/usr/include/python3.12/iterobject.h:
 
 /home/bbrelin/nimcp/src/plasticity/stp/nimcp_stp.h:
 
@@ -607,13 +612,11 @@ examples/CMakeFiles/integrated_demo.dir/integrated_learning_demo.c.o: /home/bbre
 
 /home/bbrelin/nimcp/src/utils/geometry/nimcp_hyperbolic.h:
 
+/home/bbrelin/nimcp/src/include/information/nimcp_cross_modal.h:
+
 /usr/include/x86_64-linux-gnu/bits/fp-fast.h:
 
 /home/bbrelin/nimcp/src/utils/memory/nimcp_memory.h:
-
-/usr/include/python3.12/cpython/funcobject.h:
-
-/usr/include/lz4.h:
 
 /home/bbrelin/nimcp/src/utils/platform/nimcp_platform_thread.h:
 
@@ -725,6 +728,10 @@ examples/CMakeFiles/integrated_demo.dir/integrated_learning_demo.c.o: /home/bbre
 
 /usr/include/python3.12/pytypedefs.h:
 
+/usr/include/x86_64-linux-gnu/bits/types/struct_itimerspec.h:
+
+/usr/include/python3.12/sliceobject.h:
+
 /home/bbrelin/nimcp/src/core/neuralnet/nimcp_neuralnet.h:
 
 /usr/include/python3.12/structseq.h:
@@ -794,10 +801,6 @@ examples/CMakeFiles/integrated_demo.dir/integrated_learning_demo.c.o: /home/bbre
 /usr/include/x86_64-linux-gnu/bits/environments.h:
 
 /usr/include/x86_64-linux-gnu/bits/floatn.h:
-
-/usr/include/python3.12/sliceobject.h:
-
-/usr/include/x86_64-linux-gnu/bits/types/struct_itimerspec.h:
 
 /usr/include/x86_64-linux-gnu/bits/flt-eval-method.h:
 

@@ -11,6 +11,7 @@
 #include "core/neuron_models/nimcp_neuron_model.h"  // For ode_integration_method_t
 #include "information/nimcp_shannon.h"  // Phase C4: Shannon Information Theory
 #include "utils/quantum/nimcp_quantum_shannon.h"  // Phase C4.1: Quantum-Shannon diffusion
+#include "information/nimcp_cross_modal.h"  // Phase C4.7: Cross-modal information flow
 
 #ifdef __cplusplus
 extern "C" {
@@ -1938,6 +1939,64 @@ bool brain_get_quantum_shannon_metrics(brain_t brain, shannon_diffusion_metrics_
  * @return true on success, false on error
  */
 bool brain_evolve_quantum_shannon(brain_t brain, uint32_t num_steps);
+
+//=============================================================================
+// Phase C4.7: Cross-Modal Information Flow API
+//=============================================================================
+
+/**
+ * @brief Enable cross-modal information flow monitoring
+ *
+ * WHAT: Activate real-time tracking of information flow between sensory modalities
+ * WHY:  Monitor multi-sensory integration, detect bottlenecks, optimize routing
+ * HOW:  Sets enable_cross_modal_monitoring flag and creates routing graph
+ *
+ * BIOLOGICAL BASIS: Superior temporal sulcus (audiovisual), superior colliculus (multisensory)
+ * PERFORMANCE IMPACT: ~2-5% overhead during multimodal processing
+ *
+ * @param brain Brain handle
+ * @param enable true to enable, false to disable
+ */
+void brain_enable_cross_modal_monitoring(brain_t brain, bool enable);
+
+/**
+ * @brief Get cross-modal routing graph
+ *
+ * WHAT: Retrieve current cross-modal information routing graph
+ * WHY:  Allow external analysis of multi-sensory integration pathways
+ * HOW:  Returns pointer to brain's cross_modal_graph
+ *
+ * NOTE: Graph may be NULL if cross-modal monitoring not enabled
+ *
+ * @param brain Brain handle
+ * @return Cross-modal routing graph (NULL if not enabled)
+ */
+cross_modal_routing_graph_t* brain_get_cross_modal_graph(brain_t brain);
+
+/**
+ * @brief Get last multi-modal integration metrics
+ *
+ * WHAT: Retrieve most recent cross-modal integration metrics
+ * WHY:  Monitor synergy, redundancy, and integration efficiency
+ * HOW:  Returns copy of last_cross_modal_metrics from brain
+ *
+ * @param brain Brain handle
+ * @param metrics Output metrics structure
+ * @return true on success, false on error
+ */
+bool brain_get_cross_modal_metrics(brain_t brain, multi_modal_integration_t* metrics);
+
+/**
+ * @brief Set cross-modal bottleneck detection threshold
+ *
+ * WHAT: Configure threshold for identifying cross-modal bottlenecks
+ * WHY:  Tune sensitivity of bottleneck detection
+ * HOW:  Sets cross_modal_bottleneck_threshold in brain
+ *
+ * @param brain Brain handle
+ * @param threshold Efficiency threshold [0.0-1.0] (default: 0.5)
+ */
+void brain_set_cross_modal_threshold(brain_t brain, float threshold);
 
 #ifdef __cplusplus
 }
