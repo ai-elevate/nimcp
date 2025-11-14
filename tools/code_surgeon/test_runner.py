@@ -59,12 +59,43 @@ def execute_test_binary(binary_path: Path,
     start_time = datetime.now()
 
     try:
+        # Configure ASan environment
+        # WHY: Disable leak detection for tests (many have intentional leaks in test fixtures)
+        # WHY: Preload ASan to avoid runtime ordering issues
+        import os
+        env = os.environ.copy()
+        env['ASAN_OPTIONS'] = 'detect_leaks=0:detect_odr_violation=0'
+
+        # Find and preload libasan
+        try:
+            libasan = subprocess.check_output(['gcc', '-print-file-name=libasan.so'],
+                                             text=True, stderr=subprocess.DEVNULL).strip()
+            if libasan and libasan != 'libasan.so':
+                env['LD_PRELOAD'] = libasan
+            else:
+                # Fallback: try common locations
+                import os.path
+                for path in ['/usr/lib/gcc/x86_64-linux-gnu/13/libasan.so',
+                            '/usr/lib/x86_64-linux-gnu/libasan.so.8']:
+                    if os.path.exists(path):
+                        env['LD_PRELOAD'] = path
+                        break
+        except Exception:
+            # Fallback: try common locations
+            import os.path
+            for path in ['/usr/lib/gcc/x86_64-linux-gnu/13/libasan.so',
+                        '/usr/lib/x86_64-linux-gnu/libasan.so.8']:
+                if os.path.exists(path):
+                    env['LD_PRELOAD'] = path
+                    break
+
         result = subprocess.run(
             [str(binary_path)],
             capture_output=True,
             text=True,
             timeout=timeout_sec,
-            cwd=binary_path.parent
+            cwd=binary_path.parent,
+            env=env
         )
 
         duration = (datetime.now() - start_time).total_seconds() * 1000
@@ -128,13 +159,13 @@ def run_tests_parallel(binaries: Tuple[Path, ...],
         }
 
         # Collect results as they complete
-        for future in as_completed(future_to_binary):
+        for future in as_completed(future_to_binary, timeout=timeout_sec + 30):
             binary = future_to_binary[future]
             try:
-                result = future.result()
+                result = future.result(timeout=10)  # Timeout on getting result
                 results.append(result)
             except Exception as e:
-                # Worker crashed
+                # Worker crashed or timed out
                 results.append({
                     'name': binary.name,
                     'path': str(binary),

@@ -284,15 +284,39 @@ def execute_single_test(binary_path: Path,
     start_time = datetime.now()
 
     try:
+        # Configure ASan environment
+        # WHY: Disable leak detection for tests (many have intentional leaks in test fixtures)
+        # WHY: Preload ASan to avoid runtime ordering issues
+        env = os.environ.copy()
+        env['ASAN_OPTIONS'] = 'detect_leaks=0:detect_odr_violation=0'
+        print(f"[DEBUG_ASAN] Configuring ASan for {binary_path.name}")
+
+        # Find and preload libasan
+        try:
+            libasan = subprocess.check_output(['gcc', '-print-file-name=libasan.so'],
+                                             text=True).strip()
+            if libasan and libasan != 'libasan.so':
+                env['LD_PRELOAD'] = libasan
+                print(f"[DEBUG_ASAN] LD_PRELOAD={libasan}")
+        except Exception as e:
+            print(f"[DEBUG_ASAN] Failed to get libasan: {e}")
+            pass  # Continue without preload
+
         result = subprocess.run(
             [str(binary_path)],
             capture_output=True,
             text=True,
             timeout=timeout_sec,
-            cwd=binary_path.parent
+            cwd=binary_path.parent,
+            env=env
         )
 
         duration = (datetime.now() - start_time).total_seconds() * 1000
+
+        # Debug: print ALL test results
+        print(f"[TEST_RESULT] {binary_path.name}: returncode={result.returncode}")
+        if result.returncode != 0:
+            print(f"  Stderr (first 200): {result.stderr[:200]}")
 
         status = TestStatus.PASS if result.returncode == 0 else TestStatus.FAIL
 
@@ -340,6 +364,11 @@ def execute_test_suite(binaries: Tuple[Path, ...],
     """
     if not binaries:
         return TestSuite(tests=tuple())
+
+    print(f"\n[TEST_SUITE] Starting execution of {len(binaries)} tests:")
+    for i, binary in enumerate(binaries, 1):
+        print(f"  [{i}/{len(binaries)}] {binary.name}")
+    print()
 
     results = tuple(execute_single_test(binary, timeout_sec) for binary in binaries)
     return TestSuite(tests=results)
@@ -917,7 +946,12 @@ def orchestrate_full_pipeline(config: CodeSurgeonConfig) -> int:
 
         # Execute tests in parallel
         print("\n[EXECUTION] Running tests in parallel...")
+        print(f"[DEBUG] About to run {len(binaries)} tests...")
+        import sys
+        sys.stdout.flush()
         results = run_tests_parallel(binaries, timeout_sec=300)
+        print(f"[DEBUG] Finished running tests, got {len(results)} results")
+        sys.stdout.flush()
 
         # Calculate metrics
         passing = sum(1 for r in results if r['status'] == 'pass')

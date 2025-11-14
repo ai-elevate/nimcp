@@ -9,6 +9,10 @@
 #include "core/neuralnet/nimcp_neuralnet.h"
 #include "networking/protocol/nimcp_protocol.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /**
  * @file nimcp_events.h
  * @brief Integration layer between neural networks and NIMCP 2.0 event packets
@@ -194,5 +198,9 @@ uint8_t event_flags_from_neuron_type(neuron_type_t type);
  * @return Feature code for this neuron
  */
 feature_code_t event_default_feature_code(feature_code_t base_code, uint32_t neuron_id);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif  // NIMCP_EVENTS_H

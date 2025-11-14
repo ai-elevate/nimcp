@@ -36,10 +36,6 @@
 #include <stdbool.h>
 #include <stddef.h>
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 //=============================================================================
 // Dependencies
 //=============================================================================
@@ -344,9 +340,5 @@ bool explanation_to_json(
     char* json_buffer,
     size_t buffer_size
 );
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif // NIMCP_EXPLANATIONS_H

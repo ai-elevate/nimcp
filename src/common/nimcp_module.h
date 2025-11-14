@@ -10,10 +10,18 @@
 #include "include/nimcp.h"
 
 // Exception types
+// WHY WEAK: Allow ODR-safe linking when test binaries include Python module
+#if defined(__GNUC__) || defined(__clang__)
+__attribute__((weak)) extern PyObject* NIMCPError;
+__attribute__((weak)) extern PyObject* NetworkError;
+__attribute__((weak)) extern PyObject* ProtocolError;
+__attribute__((weak)) extern PyObject* NodeError;
+#else
 extern PyObject* NIMCPError;
 extern PyObject* NetworkError;
 extern PyObject* ProtocolError;
 extern PyObject* NodeError;
+#endif
 
 // Type objects
 extern PyTypeObject BrainType;

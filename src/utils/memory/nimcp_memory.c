@@ -286,6 +286,7 @@ typedef struct size_pattern {
 typedef struct memory_block {
     void* ptr;
     size_t size;
+    size_t guard_size;  // Size of guard regions (8, 16, 32, 64 bytes)
     const char* file;
     int line;
     const char* function;
@@ -441,6 +442,7 @@ static void init_if_needed(void)
         nimcp_mutex_init(&g_memory_state.lock, NULL);
         memset(&g_memory_state.stats, 0, sizeof(nimcp_memory_stats_t));
         g_memory_state.initialized = true;
+        g_memory_state.tracking_enabled = true;  // Enable by default for guard_size tracking
         g_memory_state.blocks = NULL;
         g_memory_state.patterns = NULL;
     }
@@ -494,6 +496,9 @@ static void* add_memory_guards(void* ptr, size_t size)
     return (char*) ptr + sizeof(uint64_t);
 }
 
+// Forward declaration for get_guard_size
+static size_t get_guard_size(void* ptr);
+
 /**
  * @brief Check canary guards for corruption
  *
@@ -533,15 +538,36 @@ static bool check_memory_guards(void* ptr, size_t size)
     if (!ptr)
         return false;
 
-    // Check 8-byte guards
-    uint64_t* head_guard = (uint64_t*) ((char*) ptr - sizeof(uint64_t));
-    uint64_t* tail_guard = (uint64_t*) ((char*) ptr + size);
+    // Get guard size for this allocation
+    size_t guard_size = get_guard_size(ptr);
+
+    // Check variable-sized guards
+    // WHY: Different allocations use different guard sizes (8, 16, 32, 64)
     uint64_t expected = ((uint64_t)g_memory_state.CANARY_VALUE << 32) | g_memory_state.CANARY_VALUE;
 
-    if (*head_guard != expected || *tail_guard != expected) {
-        fprintf(stderr, "[MEMORY] Buffer overflow detected at %p\n", ptr);
-        return false;
+    // Check head guard (multiple uint64_t values if guard_size > 8)
+    uint64_t* head_guard = (uint64_t*) ((char*) ptr - guard_size);
+    for (size_t i = 0; i < guard_size / sizeof(uint64_t); i++) {
+        if (head_guard[i] != expected) {
+            fprintf(stderr, "[MEMORY] Buffer underflow detected at %p (head guard corrupted)\n", ptr);
+            return false;
+        }
     }
+
+    // Check tail guard
+    // WHY CAST TO CHAR FIRST: size may not be 8-byte aligned, need byte arithmetic
+    char* tail_ptr = (char*) ptr + size;
+    uint64_t* tail_guard = (uint64_t*) tail_ptr;
+    for (size_t i = 0; i < guard_size / sizeof(uint64_t); i++) {
+        // WHY MEMCMP: tail_guard may not be 8-byte aligned if size isn't aligned
+        uint64_t tail_value;
+        memcpy(&tail_value, &tail_guard[i], sizeof(uint64_t));
+        if (tail_value != expected) {
+            fprintf(stderr, "[MEMORY] Buffer overflow detected at %p (tail guard corrupted)\n", ptr);
+            return false;
+        }
+    }
+
     return true;
 }
 
@@ -589,6 +615,43 @@ static size_t get_allocation_size(void* ptr)
 
     nimcp_mutex_unlock(&g_memory_state.lock);
     return size;
+}
+
+/**
+ * @brief Get guard size for allocation
+ *
+ * WHAT: Retrieve guard size from tracking metadata
+ * WHY: nimcp_free needs to know guard offset to compute real_ptr
+ * HOW: Linear search through tracking list
+ *
+ * @param ptr User pointer (after guards)
+ * @return Guard size in bytes (8, 16, 32, 64) or 0 if not tracked
+ */
+static size_t get_guard_size(void* ptr)
+{
+    if (!ptr || !g_memory_state.tracking_enabled) {
+        return 8;  // Default to 8-byte guards for backwards compat
+    }
+
+    nimcp_mutex_lock(&g_memory_state.lock);
+    memory_block_t* current = g_memory_state.blocks;
+    size_t guard_size = 0;  // 0 means not found
+
+    while (current) {
+        if (current->ptr == ptr) {
+            guard_size = current->guard_size;
+            break;
+        }
+        current = current->next;
+    }
+
+    if (guard_size == 0) {
+        // Not found in tracking, default to 8
+        guard_size = 8;
+    }
+
+    nimcp_mutex_unlock(&g_memory_state.lock);
+    return guard_size;
 }
 
 /**
@@ -735,7 +798,7 @@ static void update_memory_patterns(size_t size, bool is_alloc, uint64_t lifetime
  * @param line Source line (__LINE__)
  * @param function Source function (__func__)
  */
-static void track_allocation(void* ptr, size_t size, const char* file, int line,
+static void track_allocation(void* ptr, size_t size, size_t guard_size, const char* file, int line,
                              const char* function)
 {
     if (!g_memory_state.tracking_enabled || !ptr)
@@ -750,6 +813,7 @@ static void track_allocation(void* ptr, size_t size, const char* file, int line,
     // Fill metadata
     block->ptr = ptr;
     block->size = size;
+    block->guard_size = guard_size;
     block->file = file;
     block->line = line;
     block->function = function;
@@ -963,7 +1027,7 @@ void* nimcp_malloc(size_t size)
     if (ptr) {
         // Success path
         ptr = add_memory_guards(ptr, total_size);
-        track_allocation(ptr, size, __FILE__, __LINE__, __func__);
+        track_allocation(ptr, size, 8, __FILE__, __LINE__, __func__);
 
         if (g_memory_state.debug_output) {
             printf("[MEMORY] Allocated: %zu bytes at %p\n", size, ptr);
@@ -1019,7 +1083,7 @@ void* nimcp_calloc(size_t count, size_t size)
 
     if (ptr) {
         ptr = add_memory_guards(ptr, total_size);
-        track_allocation(ptr, count * size, __FILE__, __LINE__, __func__);
+        track_allocation(ptr, count * size, 8, __FILE__, __LINE__, __func__);
 
         if (g_memory_state.debug_output) {
             printf("[MEMORY] Allocated (calloc): %zu bytes at %p\n", count * size, ptr);
@@ -1096,7 +1160,7 @@ void* nimcp_realloc(void* ptr, size_t new_size)
     if (new_ptr) {
         // Success: re-guard and track
         new_ptr = add_memory_guards(new_ptr, total_size);
-        track_allocation(new_ptr, new_size, __FILE__, __LINE__, __func__);
+        track_allocation(new_ptr, new_size, 8, __FILE__, __LINE__, __func__);
 
         if (g_memory_state.debug_output) {
             printf("[MEMORY] Reallocated: %zu bytes at %p (old: %p)\n", new_size, new_ptr, ptr);
@@ -1196,8 +1260,10 @@ void nimcp_free(void* ptr)
         }
     }
 
-    // Compute real pointer and free (8-byte guard offset)
-    void* real_ptr = (char*) ptr - sizeof(uint64_t);
+    // Compute real pointer using guard_size
+    // WHY: Different allocations use different guard sizes (8, 16, 32, 64)
+    size_t guard_size = get_guard_size(ptr);
+    void* real_ptr = (char*) ptr - guard_size;
     untrack_allocation(ptr);
     free(real_ptr);
 }
@@ -1239,7 +1305,7 @@ void* nimcp_aligned_malloc(size_t size, size_t alignment)
         nimcp_mutex_unlock(&g_memory_state.lock);
         return NULL;
     }
-    track_allocation(ptr, size, __FILE__, __LINE__, __func__);
+    track_allocation(ptr, size, 0, __FILE__, __LINE__, __func__);
     return ptr;
 }
 
@@ -1642,8 +1708,8 @@ void* nimcp_aligned_alloc_impl(size_t alignment, size_t size)
     // User pointer (still aligned!)
     void* user_ptr = (char*)real_ptr + guard_size;
 
-    // Track allocation
-    track_allocation(user_ptr, size, __FILE__, __LINE__, __func__);
+    // Track allocation with guard_size
+    track_allocation(user_ptr, size, guard_size, __FILE__, __LINE__, __func__);
 
     if (g_memory_state.debug_output) {
         printf("[MEMORY] Aligned %zu @ %p (align=%zu)\n", size, user_ptr, alignment);

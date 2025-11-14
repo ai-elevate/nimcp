@@ -3,11 +3,12 @@
 // Forward declaration for metrics module
 extern int init_metrics_module(PyObject* module);
 
-// Initialize exception types
-PyObject* NIMCPError;
-PyObject* NetworkError;
-PyObject* ProtocolError;
-PyObject* NodeError;
+// Define exception types
+// These are initialized in PyInit_nimcp()
+PyObject* NIMCPError = NULL;
+PyObject* NetworkError = NULL;
+PyObject* ProtocolError = NULL;
+PyObject* NodeError = NULL;
 
 // Module method definitions
 static PyMethodDef nimcp_methods[] = {
