@@ -9,10 +9,8 @@
 
 #include "test_helpers.h"
 
-extern "C" {
 #include "core/brain/nimcp_brain.h"
 #include "networking/replication/nimcp_replication.h"
-}
 
 #include <gtest/gtest.h>
 #include <string.h>

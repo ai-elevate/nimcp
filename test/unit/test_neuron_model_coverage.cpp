@@ -17,11 +17,9 @@
 
 #include <gtest/gtest.h>
 
-extern "C" {
 #include "core/neuron_models/nimcp_neuron_model.h"
 #include "core/neuron_models/nimcp_neuron_model_internal.h"
 #include "utils/memory/nimcp_memory.h"
-}
 
 //=============================================================================
 // Test Fixtures

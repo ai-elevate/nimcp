@@ -12,10 +12,8 @@
 #include <chrono>
 #include <thread>
 
-extern "C" {
 #include "utils/thread/nimcp_thread.h"
 #include "utils/thread/nimcp_thread_pool.h"
-}
 
 //=============================================================================
 // Thread Wrapper Tests

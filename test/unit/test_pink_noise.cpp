@@ -24,9 +24,7 @@
 #include <cmath>
 #include <vector>
 
-extern "C" {
     #include "plasticity/noise/nimcp_pink_noise.h"
-}
 
 //=============================================================================
 // Test Fixture

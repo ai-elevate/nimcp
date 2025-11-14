@@ -1,10 +1,8 @@
 #include <gtest/gtest.h>
 
-extern "C" {
 #include "core/brain_oscillations/nimcp_brain_oscillations.h"
 #include "core/brain/nimcp_brain.h"
 #include "utils/spectral/nimcp_fft.h"
-}
 
 #include <cstring>
 

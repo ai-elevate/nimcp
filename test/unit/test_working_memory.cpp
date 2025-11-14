@@ -24,9 +24,7 @@
 #include <cstring>
 #include <cmath>
 
-extern "C" {
     #include "cognitive/nimcp_working_memory.h"
-}
 
 // ============================================================================
 // TEST FIXTURE

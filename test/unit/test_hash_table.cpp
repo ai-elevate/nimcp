@@ -5,9 +5,7 @@
 
 #include <gtest/gtest.h>
 #include <cstring>
-extern "C" {
 #include "utils/containers/nimcp_hash_table.h"
-}
 
 // Test fixture for hash table operations
 class HashTableTest : public ::testing::Test {

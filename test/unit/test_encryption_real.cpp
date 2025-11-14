@@ -1,9 +1,7 @@
 #include <gtest/gtest.h>
 #include <cstring>
 
-extern "C" {
 #include "io/serialization/nimcp_encryption.h"
-}
 
 //=============================================================================
 // Encryption Real Tests

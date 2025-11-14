@@ -5,11 +5,9 @@
 #include <gtest/gtest.h>
 #include <cmath>
 
-extern "C" {
 #include "core/synapse_types/nimcp_synapse_types.h"
 #include "core/neuralnet/nimcp_neuralnet.h"
 #include "core/brain/nimcp_brain.h"
-}
 
 class SynapseTypesRealTest : public ::testing::Test {
 protected:

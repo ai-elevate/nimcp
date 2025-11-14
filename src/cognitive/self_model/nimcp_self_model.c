@@ -528,3 +528,22 @@ bool self_model_reflect(self_model_system_t system,
 
     return true;
 }
+
+bool self_model_set_personality(self_model_system_t system,
+                                 void* personality)
+{
+    // Guard: NULL check
+    if (!system) {
+        return false;
+    }
+
+    nimcp_mutex_lock(&system->mutex);
+
+    // Wire personality into self-model
+    system->model.personality_profile = personality;
+    system->model.has_personality = (personality != NULL);
+
+    nimcp_mutex_unlock(&system->mutex);
+
+    return true;
+}

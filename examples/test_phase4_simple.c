@@ -14,49 +14,34 @@ int main(void) {
     printf("Phase 4 Component Test (Simplified)\n");
     printf("========================================\n\n");
 
-    // Test 1: STDP Learner Creation
+    // Test 1: STDP Synapse Initialization
     printf("Test 1: STDP System Initialization\n");
     printf("----------------------------------\n");
 
-    stdp_learner_t* stdp = stdp_create(NULL);  // Use defaults
-    if (!stdp) {
-        fprintf(stderr, "ERROR: Failed to create STDP learner\n");
-        return 1;
-    }
+    stdp_synapse_t stdp;
+    stdp_synapse_init(&stdp);
 
-    printf("✓ Created STDP learner\n");
+    printf("✓ Created STDP synapse\n");
     printf("  Parameters: τ+ = %.1f ms, τ- = %.1f ms\n",
-           stdp->config.tau_plus, stdp->config.tau_minus);
+           stdp.tau_plus, stdp.tau_minus);
     printf("              A+ = %.3f, A- = %.3f\n",
-           stdp->config.A_plus, stdp->config.A_minus);
-
-    // Verify lookup tables created
-    if (stdp->ltp_lookup && stdp->ltd_lookup) {
-        printf("✓ Exponential lookup tables created (size=%u)\n", stdp->lookup_size);
-    } else {
-        fprintf(stderr, "ERROR: Lookup tables not created\n");
-        stdp_destroy(stdp);
-        return 1;
-    }
+           stdp.a_plus, stdp.a_minus);
+    printf("  Weight: %.3f (max: %.3f)\n", stdp.weight, stdp.w_max);
 
     // Test 2: STDP Statistics
     printf("\nTest 2: STDP Statistics\n");
     printf("----------------------------------\n");
 
-    uint64_t ltp_count, ltd_count;
-    float avg_change;
-    stdp_get_statistics(stdp, &ltp_count, &ltd_count, &avg_change);
-
     printf("Initial statistics:\n");
-    printf("  LTP events: %lu\n", ltp_count);
-    printf("  LTD events: %lu\n", ltd_count);
-    printf("  Avg |Δw|: %.6f\n", avg_change);
+    printf("  LTP events: %lu\n", stdp.num_potentiation_events);
+    printf("  LTD events: %lu\n", stdp.num_depression_events);
+    printf("  Total LTP: %.6f\n", stdp.total_ltp);
+    printf("  Total LTD: %.6f\n", stdp.total_ltd);
 
-    if (ltp_count == 0 && ltd_count == 0 && avg_change == 0.0f) {
+    if (stdp.num_potentiation_events == 0 && stdp.num_depression_events == 0) {
         printf("✓ Statistics correctly initialized\n");
     } else {
         fprintf(stderr, "ERROR: Statistics not properly initialized\n");
-        stdp_destroy(stdp);
         return 1;
     }
 
@@ -78,7 +63,6 @@ int main(void) {
         printf("✓ Trace correctly initialized to zero\n");
     } else {
         fprintf(stderr, "ERROR: Trace not properly initialized\n");
-        stdp_destroy(stdp);
         return 1;
     }
 
@@ -96,7 +80,6 @@ int main(void) {
         printf("✓ Spike correctly increments trace\n");
     } else {
         fprintf(stderr, "ERROR: Spike did not increment trace properly (got %.3f)\n", trace.trace);
-        stdp_destroy(stdp);
         return 1;
     }
 
@@ -110,7 +93,6 @@ int main(void) {
     } else {
         fprintf(stderr, "ERROR: Decay incorrect (expected ~%.3f, got %.3f)\n",
                 expected_decay, trace.trace);
-        stdp_destroy(stdp);
         return 1;
     }
 
@@ -133,16 +115,15 @@ int main(void) {
         printf("✓ Significance check correct (below threshold)\n");
     } else {
         fprintf(stderr, "ERROR: Significance check failed\n");
-        stdp_destroy(stdp);
         return 1;
     }
 
-    // Test 6: Cleanup
-    printf("\nTest 6: Resource Cleanup\n");
+    // Test 6: STDP Statistics Print
+    printf("\nTest 6: STDP Statistics\n");
     printf("----------------------------------\n");
 
-    stdp_destroy(stdp);
-    printf("✓ STDP learner destroyed\n");
+    stdp_synapse_print_stats(&stdp);
+    printf("✓ STDP statistics printed\n");
 
     printf("\n========================================\n");
     printf("All Phase 4 tests PASSED!\n");

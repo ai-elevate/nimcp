@@ -5,9 +5,7 @@
 
 #include <gtest/gtest.h>
 #include <cmath>
-extern "C" {
 #include "utils/containers/nimcp_vector.h"
-}
 
 // Test fixture for vector operations
 class VectorTest : public ::testing::Test {

@@ -21,10 +21,8 @@
  */
 
 #include <gtest/gtest.h>
-extern "C" {
 #include "cognitive/nimcp_meta_learning.h"
 #include "core/brain/nimcp_brain.h"
-}
 
 //=============================================================================
 // Test Fixture

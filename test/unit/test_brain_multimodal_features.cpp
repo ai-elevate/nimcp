@@ -19,9 +19,7 @@
 #include <cmath>
 #include <vector>
 
-extern "C" {
 #include "core/brain/nimcp_brain.h"
-}
 
 //=============================================================================
 // Test Fixture

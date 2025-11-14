@@ -209,6 +209,54 @@ __/api/nimcp.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/api/nimcp.c.s
 .PHONY : __/api/nimcp.c.s
 
+__/cognitive/autobiographical_memory/nimcp_autobiographical_memory.o: __/cognitive/autobiographical_memory/nimcp_autobiographical_memory.c.o
+.PHONY : __/cognitive/autobiographical_memory/nimcp_autobiographical_memory.o
+
+# target to build an object file
+__/cognitive/autobiographical_memory/nimcp_autobiographical_memory.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/autobiographical_memory/nimcp_autobiographical_memory.c.o
+.PHONY : __/cognitive/autobiographical_memory/nimcp_autobiographical_memory.c.o
+
+__/cognitive/autobiographical_memory/nimcp_autobiographical_memory.i: __/cognitive/autobiographical_memory/nimcp_autobiographical_memory.c.i
+.PHONY : __/cognitive/autobiographical_memory/nimcp_autobiographical_memory.i
+
+# target to preprocess a source file
+__/cognitive/autobiographical_memory/nimcp_autobiographical_memory.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/autobiographical_memory/nimcp_autobiographical_memory.c.i
+.PHONY : __/cognitive/autobiographical_memory/nimcp_autobiographical_memory.c.i
+
+__/cognitive/autobiographical_memory/nimcp_autobiographical_memory.s: __/cognitive/autobiographical_memory/nimcp_autobiographical_memory.c.s
+.PHONY : __/cognitive/autobiographical_memory/nimcp_autobiographical_memory.s
+
+# target to generate assembly for a file
+__/cognitive/autobiographical_memory/nimcp_autobiographical_memory.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/autobiographical_memory/nimcp_autobiographical_memory.c.s
+.PHONY : __/cognitive/autobiographical_memory/nimcp_autobiographical_memory.c.s
+
+__/cognitive/bias/nimcp_bias_detection.o: __/cognitive/bias/nimcp_bias_detection.c.o
+.PHONY : __/cognitive/bias/nimcp_bias_detection.o
+
+# target to build an object file
+__/cognitive/bias/nimcp_bias_detection.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/bias/nimcp_bias_detection.c.o
+.PHONY : __/cognitive/bias/nimcp_bias_detection.c.o
+
+__/cognitive/bias/nimcp_bias_detection.i: __/cognitive/bias/nimcp_bias_detection.c.i
+.PHONY : __/cognitive/bias/nimcp_bias_detection.i
+
+# target to preprocess a source file
+__/cognitive/bias/nimcp_bias_detection.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/bias/nimcp_bias_detection.c.i
+.PHONY : __/cognitive/bias/nimcp_bias_detection.c.i
+
+__/cognitive/bias/nimcp_bias_detection.s: __/cognitive/bias/nimcp_bias_detection.c.s
+.PHONY : __/cognitive/bias/nimcp_bias_detection.s
+
+# target to generate assembly for a file
+__/cognitive/bias/nimcp_bias_detection.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/bias/nimcp_bias_detection.c.s
+.PHONY : __/cognitive/bias/nimcp_bias_detection.c.s
+
 __/cognitive/consolidation/nimcp_consolidation.o: __/cognitive/consolidation/nimcp_consolidation.c.o
 .PHONY : __/cognitive/consolidation/nimcp_consolidation.o
 
@@ -257,6 +305,30 @@ __/cognitive/curiosity/nimcp_curiosity.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/curiosity/nimcp_curiosity.c.s
 .PHONY : __/cognitive/curiosity/nimcp_curiosity.c.s
 
+__/cognitive/emotion_recognition/nimcp_emotion_recognition_simple.o: __/cognitive/emotion_recognition/nimcp_emotion_recognition_simple.c.o
+.PHONY : __/cognitive/emotion_recognition/nimcp_emotion_recognition_simple.o
+
+# target to build an object file
+__/cognitive/emotion_recognition/nimcp_emotion_recognition_simple.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/emotion_recognition/nimcp_emotion_recognition_simple.c.o
+.PHONY : __/cognitive/emotion_recognition/nimcp_emotion_recognition_simple.c.o
+
+__/cognitive/emotion_recognition/nimcp_emotion_recognition_simple.i: __/cognitive/emotion_recognition/nimcp_emotion_recognition_simple.c.i
+.PHONY : __/cognitive/emotion_recognition/nimcp_emotion_recognition_simple.i
+
+# target to preprocess a source file
+__/cognitive/emotion_recognition/nimcp_emotion_recognition_simple.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/emotion_recognition/nimcp_emotion_recognition_simple.c.i
+.PHONY : __/cognitive/emotion_recognition/nimcp_emotion_recognition_simple.c.i
+
+__/cognitive/emotion_recognition/nimcp_emotion_recognition_simple.s: __/cognitive/emotion_recognition/nimcp_emotion_recognition_simple.c.s
+.PHONY : __/cognitive/emotion_recognition/nimcp_emotion_recognition_simple.s
+
+# target to generate assembly for a file
+__/cognitive/emotion_recognition/nimcp_emotion_recognition_simple.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/emotion_recognition/nimcp_emotion_recognition_simple.c.s
+.PHONY : __/cognitive/emotion_recognition/nimcp_emotion_recognition_simple.c.s
+
 __/cognitive/emotional_tagging/nimcp_emotional_tagging.o: __/cognitive/emotional_tagging/nimcp_emotional_tagging.c.o
 .PHONY : __/cognitive/emotional_tagging/nimcp_emotional_tagging.o
 
@@ -280,6 +352,30 @@ __/cognitive/emotional_tagging/nimcp_emotional_tagging.s: __/cognitive/emotional
 __/cognitive/emotional_tagging/nimcp_emotional_tagging.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/emotional_tagging/nimcp_emotional_tagging.c.s
 .PHONY : __/cognitive/emotional_tagging/nimcp_emotional_tagging.c.s
+
+__/cognitive/empathetic_response/nimcp_empathetic_response.o: __/cognitive/empathetic_response/nimcp_empathetic_response.c.o
+.PHONY : __/cognitive/empathetic_response/nimcp_empathetic_response.o
+
+# target to build an object file
+__/cognitive/empathetic_response/nimcp_empathetic_response.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/empathetic_response/nimcp_empathetic_response.c.o
+.PHONY : __/cognitive/empathetic_response/nimcp_empathetic_response.c.o
+
+__/cognitive/empathetic_response/nimcp_empathetic_response.i: __/cognitive/empathetic_response/nimcp_empathetic_response.c.i
+.PHONY : __/cognitive/empathetic_response/nimcp_empathetic_response.i
+
+# target to preprocess a source file
+__/cognitive/empathetic_response/nimcp_empathetic_response.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/empathetic_response/nimcp_empathetic_response.c.i
+.PHONY : __/cognitive/empathetic_response/nimcp_empathetic_response.c.i
+
+__/cognitive/empathetic_response/nimcp_empathetic_response.s: __/cognitive/empathetic_response/nimcp_empathetic_response.c.s
+.PHONY : __/cognitive/empathetic_response/nimcp_empathetic_response.s
+
+# target to generate assembly for a file
+__/cognitive/empathetic_response/nimcp_empathetic_response.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/empathetic_response/nimcp_empathetic_response.c.s
+.PHONY : __/cognitive/empathetic_response/nimcp_empathetic_response.c.s
 
 __/cognitive/epistemic/nimcp_epistemic_filter.o: __/cognitive/epistemic/nimcp_epistemic_filter.c.o
 .PHONY : __/cognitive/epistemic/nimcp_epistemic_filter.o
@@ -401,6 +497,30 @@ __/cognitive/global_workspace/nimcp_global_workspace.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/global_workspace/nimcp_global_workspace.c.s
 .PHONY : __/cognitive/global_workspace/nimcp_global_workspace.c.s
 
+__/cognitive/grief/nimcp_grief_and_loss.o: __/cognitive/grief/nimcp_grief_and_loss.c.o
+.PHONY : __/cognitive/grief/nimcp_grief_and_loss.o
+
+# target to build an object file
+__/cognitive/grief/nimcp_grief_and_loss.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/grief/nimcp_grief_and_loss.c.o
+.PHONY : __/cognitive/grief/nimcp_grief_and_loss.c.o
+
+__/cognitive/grief/nimcp_grief_and_loss.i: __/cognitive/grief/nimcp_grief_and_loss.c.i
+.PHONY : __/cognitive/grief/nimcp_grief_and_loss.i
+
+# target to preprocess a source file
+__/cognitive/grief/nimcp_grief_and_loss.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/grief/nimcp_grief_and_loss.c.i
+.PHONY : __/cognitive/grief/nimcp_grief_and_loss.c.i
+
+__/cognitive/grief/nimcp_grief_and_loss.s: __/cognitive/grief/nimcp_grief_and_loss.c.s
+.PHONY : __/cognitive/grief/nimcp_grief_and_loss.s
+
+# target to generate assembly for a file
+__/cognitive/grief/nimcp_grief_and_loss.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/grief/nimcp_grief_and_loss.c.s
+.PHONY : __/cognitive/grief/nimcp_grief_and_loss.c.s
+
 __/cognitive/introspection/nimcp_introspection.o: __/cognitive/introspection/nimcp_introspection.c.o
 .PHONY : __/cognitive/introspection/nimcp_introspection.o
 
@@ -424,6 +544,30 @@ __/cognitive/introspection/nimcp_introspection.s: __/cognitive/introspection/nim
 __/cognitive/introspection/nimcp_introspection.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/introspection/nimcp_introspection.c.s
 .PHONY : __/cognitive/introspection/nimcp_introspection.c.s
+
+__/cognitive/joy/nimcp_joy_euphoria.o: __/cognitive/joy/nimcp_joy_euphoria.c.o
+.PHONY : __/cognitive/joy/nimcp_joy_euphoria.o
+
+# target to build an object file
+__/cognitive/joy/nimcp_joy_euphoria.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/joy/nimcp_joy_euphoria.c.o
+.PHONY : __/cognitive/joy/nimcp_joy_euphoria.c.o
+
+__/cognitive/joy/nimcp_joy_euphoria.i: __/cognitive/joy/nimcp_joy_euphoria.c.i
+.PHONY : __/cognitive/joy/nimcp_joy_euphoria.i
+
+# target to preprocess a source file
+__/cognitive/joy/nimcp_joy_euphoria.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/joy/nimcp_joy_euphoria.c.i
+.PHONY : __/cognitive/joy/nimcp_joy_euphoria.c.i
+
+__/cognitive/joy/nimcp_joy_euphoria.s: __/cognitive/joy/nimcp_joy_euphoria.c.s
+.PHONY : __/cognitive/joy/nimcp_joy_euphoria.s
+
+# target to generate assembly for a file
+__/cognitive/joy/nimcp_joy_euphoria.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/joy/nimcp_joy_euphoria.c.s
+.PHONY : __/cognitive/joy/nimcp_joy_euphoria.c.s
 
 __/cognitive/knowledge/nimcp_knowledge.o: __/cognitive/knowledge/nimcp_knowledge.c.o
 .PHONY : __/cognitive/knowledge/nimcp_knowledge.o
@@ -472,6 +616,102 @@ __/cognitive/logic/nimcp_symbolic_logic.s: __/cognitive/logic/nimcp_symbolic_log
 __/cognitive/logic/nimcp_symbolic_logic.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/logic/nimcp_symbolic_logic.c.s
 .PHONY : __/cognitive/logic/nimcp_symbolic_logic.c.s
+
+__/cognitive/memory/nimcp_engram.o: __/cognitive/memory/nimcp_engram.c.o
+.PHONY : __/cognitive/memory/nimcp_engram.o
+
+# target to build an object file
+__/cognitive/memory/nimcp_engram.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/memory/nimcp_engram.c.o
+.PHONY : __/cognitive/memory/nimcp_engram.c.o
+
+__/cognitive/memory/nimcp_engram.i: __/cognitive/memory/nimcp_engram.c.i
+.PHONY : __/cognitive/memory/nimcp_engram.i
+
+# target to preprocess a source file
+__/cognitive/memory/nimcp_engram.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/memory/nimcp_engram.c.i
+.PHONY : __/cognitive/memory/nimcp_engram.c.i
+
+__/cognitive/memory/nimcp_engram.s: __/cognitive/memory/nimcp_engram.c.s
+.PHONY : __/cognitive/memory/nimcp_engram.s
+
+# target to generate assembly for a file
+__/cognitive/memory/nimcp_engram.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/memory/nimcp_engram.c.s
+.PHONY : __/cognitive/memory/nimcp_engram.c.s
+
+__/cognitive/memory/nimcp_semantic_memory.o: __/cognitive/memory/nimcp_semantic_memory.c.o
+.PHONY : __/cognitive/memory/nimcp_semantic_memory.o
+
+# target to build an object file
+__/cognitive/memory/nimcp_semantic_memory.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/memory/nimcp_semantic_memory.c.o
+.PHONY : __/cognitive/memory/nimcp_semantic_memory.c.o
+
+__/cognitive/memory/nimcp_semantic_memory.i: __/cognitive/memory/nimcp_semantic_memory.c.i
+.PHONY : __/cognitive/memory/nimcp_semantic_memory.i
+
+# target to preprocess a source file
+__/cognitive/memory/nimcp_semantic_memory.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/memory/nimcp_semantic_memory.c.i
+.PHONY : __/cognitive/memory/nimcp_semantic_memory.c.i
+
+__/cognitive/memory/nimcp_semantic_memory.s: __/cognitive/memory/nimcp_semantic_memory.c.s
+.PHONY : __/cognitive/memory/nimcp_semantic_memory.s
+
+# target to generate assembly for a file
+__/cognitive/memory/nimcp_semantic_memory.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/memory/nimcp_semantic_memory.c.s
+.PHONY : __/cognitive/memory/nimcp_semantic_memory.c.s
+
+__/cognitive/memory/nimcp_systems_consolidation.o: __/cognitive/memory/nimcp_systems_consolidation.c.o
+.PHONY : __/cognitive/memory/nimcp_systems_consolidation.o
+
+# target to build an object file
+__/cognitive/memory/nimcp_systems_consolidation.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/memory/nimcp_systems_consolidation.c.o
+.PHONY : __/cognitive/memory/nimcp_systems_consolidation.c.o
+
+__/cognitive/memory/nimcp_systems_consolidation.i: __/cognitive/memory/nimcp_systems_consolidation.c.i
+.PHONY : __/cognitive/memory/nimcp_systems_consolidation.i
+
+# target to preprocess a source file
+__/cognitive/memory/nimcp_systems_consolidation.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/memory/nimcp_systems_consolidation.c.i
+.PHONY : __/cognitive/memory/nimcp_systems_consolidation.c.i
+
+__/cognitive/memory/nimcp_systems_consolidation.s: __/cognitive/memory/nimcp_systems_consolidation.c.s
+.PHONY : __/cognitive/memory/nimcp_systems_consolidation.s
+
+# target to generate assembly for a file
+__/cognitive/memory/nimcp_systems_consolidation.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/memory/nimcp_systems_consolidation.c.s
+.PHONY : __/cognitive/memory/nimcp_systems_consolidation.c.s
+
+__/cognitive/memory/nimcp_wm_transfer.o: __/cognitive/memory/nimcp_wm_transfer.c.o
+.PHONY : __/cognitive/memory/nimcp_wm_transfer.o
+
+# target to build an object file
+__/cognitive/memory/nimcp_wm_transfer.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/memory/nimcp_wm_transfer.c.o
+.PHONY : __/cognitive/memory/nimcp_wm_transfer.c.o
+
+__/cognitive/memory/nimcp_wm_transfer.i: __/cognitive/memory/nimcp_wm_transfer.c.i
+.PHONY : __/cognitive/memory/nimcp_wm_transfer.i
+
+# target to preprocess a source file
+__/cognitive/memory/nimcp_wm_transfer.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/memory/nimcp_wm_transfer.c.i
+.PHONY : __/cognitive/memory/nimcp_wm_transfer.c.i
+
+__/cognitive/memory/nimcp_wm_transfer.s: __/cognitive/memory/nimcp_wm_transfer.c.s
+.PHONY : __/cognitive/memory/nimcp_wm_transfer.s
+
+# target to generate assembly for a file
+__/cognitive/memory/nimcp_wm_transfer.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/memory/nimcp_wm_transfer.c.s
+.PHONY : __/cognitive/memory/nimcp_wm_transfer.c.s
 
 __/cognitive/mental_health/nimcp_mental_health.o: __/cognitive/mental_health/nimcp_mental_health.c.o
 .PHONY : __/cognitive/mental_health/nimcp_mental_health.o
@@ -569,6 +809,30 @@ __/cognitive/nimcp_fractal_cognitive.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/nimcp_fractal_cognitive.c.s
 .PHONY : __/cognitive/nimcp_fractal_cognitive.c.s
 
+__/cognitive/personality/nimcp_personality.o: __/cognitive/personality/nimcp_personality.c.o
+.PHONY : __/cognitive/personality/nimcp_personality.o
+
+# target to build an object file
+__/cognitive/personality/nimcp_personality.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/personality/nimcp_personality.c.o
+.PHONY : __/cognitive/personality/nimcp_personality.c.o
+
+__/cognitive/personality/nimcp_personality.i: __/cognitive/personality/nimcp_personality.c.i
+.PHONY : __/cognitive/personality/nimcp_personality.i
+
+# target to preprocess a source file
+__/cognitive/personality/nimcp_personality.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/personality/nimcp_personality.c.i
+.PHONY : __/cognitive/personality/nimcp_personality.c.i
+
+__/cognitive/personality/nimcp_personality.s: __/cognitive/personality/nimcp_personality.c.s
+.PHONY : __/cognitive/personality/nimcp_personality.s
+
+# target to generate assembly for a file
+__/cognitive/personality/nimcp_personality.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/personality/nimcp_personality.c.s
+.PHONY : __/cognitive/personality/nimcp_personality.c.s
+
 __/cognitive/predictive/nimcp_predictive.o: __/cognitive/predictive/nimcp_predictive.c.o
 .PHONY : __/cognitive/predictive/nimcp_predictive.o
 
@@ -592,6 +856,30 @@ __/cognitive/predictive/nimcp_predictive.s: __/cognitive/predictive/nimcp_predic
 __/cognitive/predictive/nimcp_predictive.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/predictive/nimcp_predictive.c.s
 .PHONY : __/cognitive/predictive/nimcp_predictive.c.s
+
+__/cognitive/remorse/nimcp_remorse_regret.o: __/cognitive/remorse/nimcp_remorse_regret.c.o
+.PHONY : __/cognitive/remorse/nimcp_remorse_regret.o
+
+# target to build an object file
+__/cognitive/remorse/nimcp_remorse_regret.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/remorse/nimcp_remorse_regret.c.o
+.PHONY : __/cognitive/remorse/nimcp_remorse_regret.c.o
+
+__/cognitive/remorse/nimcp_remorse_regret.i: __/cognitive/remorse/nimcp_remorse_regret.c.i
+.PHONY : __/cognitive/remorse/nimcp_remorse_regret.i
+
+# target to preprocess a source file
+__/cognitive/remorse/nimcp_remorse_regret.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/remorse/nimcp_remorse_regret.c.i
+.PHONY : __/cognitive/remorse/nimcp_remorse_regret.c.i
+
+__/cognitive/remorse/nimcp_remorse_regret.s: __/cognitive/remorse/nimcp_remorse_regret.c.s
+.PHONY : __/cognitive/remorse/nimcp_remorse_regret.s
+
+# target to generate assembly for a file
+__/cognitive/remorse/nimcp_remorse_regret.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/remorse/nimcp_remorse_regret.c.s
+.PHONY : __/cognitive/remorse/nimcp_remorse_regret.c.s
 
 __/cognitive/salience/nimcp_salience.o: __/cognitive/salience/nimcp_salience.c.o
 .PHONY : __/cognitive/salience/nimcp_salience.o
@@ -617,6 +905,78 @@ __/cognitive/salience/nimcp_salience.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/salience/nimcp_salience.c.s
 .PHONY : __/cognitive/salience/nimcp_salience.c.s
 
+__/cognitive/self_awareness/nimcp_self_awareness_extended.o: __/cognitive/self_awareness/nimcp_self_awareness_extended.c.o
+.PHONY : __/cognitive/self_awareness/nimcp_self_awareness_extended.o
+
+# target to build an object file
+__/cognitive/self_awareness/nimcp_self_awareness_extended.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/self_awareness/nimcp_self_awareness_extended.c.o
+.PHONY : __/cognitive/self_awareness/nimcp_self_awareness_extended.c.o
+
+__/cognitive/self_awareness/nimcp_self_awareness_extended.i: __/cognitive/self_awareness/nimcp_self_awareness_extended.c.i
+.PHONY : __/cognitive/self_awareness/nimcp_self_awareness_extended.i
+
+# target to preprocess a source file
+__/cognitive/self_awareness/nimcp_self_awareness_extended.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/self_awareness/nimcp_self_awareness_extended.c.i
+.PHONY : __/cognitive/self_awareness/nimcp_self_awareness_extended.c.i
+
+__/cognitive/self_awareness/nimcp_self_awareness_extended.s: __/cognitive/self_awareness/nimcp_self_awareness_extended.c.s
+.PHONY : __/cognitive/self_awareness/nimcp_self_awareness_extended.s
+
+# target to generate assembly for a file
+__/cognitive/self_awareness/nimcp_self_awareness_extended.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/self_awareness/nimcp_self_awareness_extended.c.s
+.PHONY : __/cognitive/self_awareness/nimcp_self_awareness_extended.c.s
+
+__/cognitive/self_model/nimcp_self_model.o: __/cognitive/self_model/nimcp_self_model.c.o
+.PHONY : __/cognitive/self_model/nimcp_self_model.o
+
+# target to build an object file
+__/cognitive/self_model/nimcp_self_model.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/self_model/nimcp_self_model.c.o
+.PHONY : __/cognitive/self_model/nimcp_self_model.c.o
+
+__/cognitive/self_model/nimcp_self_model.i: __/cognitive/self_model/nimcp_self_model.c.i
+.PHONY : __/cognitive/self_model/nimcp_self_model.i
+
+# target to preprocess a source file
+__/cognitive/self_model/nimcp_self_model.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/self_model/nimcp_self_model.c.i
+.PHONY : __/cognitive/self_model/nimcp_self_model.c.i
+
+__/cognitive/self_model/nimcp_self_model.s: __/cognitive/self_model/nimcp_self_model.c.s
+.PHONY : __/cognitive/self_model/nimcp_self_model.s
+
+# target to generate assembly for a file
+__/cognitive/self_model/nimcp_self_model.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/self_model/nimcp_self_model.c.s
+.PHONY : __/cognitive/self_model/nimcp_self_model.c.s
+
+__/cognitive/shadow/nimcp_shadow_emotions.o: __/cognitive/shadow/nimcp_shadow_emotions.c.o
+.PHONY : __/cognitive/shadow/nimcp_shadow_emotions.o
+
+# target to build an object file
+__/cognitive/shadow/nimcp_shadow_emotions.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/shadow/nimcp_shadow_emotions.c.o
+.PHONY : __/cognitive/shadow/nimcp_shadow_emotions.c.o
+
+__/cognitive/shadow/nimcp_shadow_emotions.i: __/cognitive/shadow/nimcp_shadow_emotions.c.i
+.PHONY : __/cognitive/shadow/nimcp_shadow_emotions.i
+
+# target to preprocess a source file
+__/cognitive/shadow/nimcp_shadow_emotions.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/shadow/nimcp_shadow_emotions.c.i
+.PHONY : __/cognitive/shadow/nimcp_shadow_emotions.c.i
+
+__/cognitive/shadow/nimcp_shadow_emotions.s: __/cognitive/shadow/nimcp_shadow_emotions.c.s
+.PHONY : __/cognitive/shadow/nimcp_shadow_emotions.s
+
+# target to generate assembly for a file
+__/cognitive/shadow/nimcp_shadow_emotions.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/shadow/nimcp_shadow_emotions.c.s
+.PHONY : __/cognitive/shadow/nimcp_shadow_emotions.c.s
+
 __/cognitive/sleep_wake/nimcp_sleep_wake.o: __/cognitive/sleep_wake/nimcp_sleep_wake.c.o
 .PHONY : __/cognitive/sleep_wake/nimcp_sleep_wake.o
 
@@ -640,6 +1000,30 @@ __/cognitive/sleep_wake/nimcp_sleep_wake.s: __/cognitive/sleep_wake/nimcp_sleep_
 __/cognitive/sleep_wake/nimcp_sleep_wake.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/sleep_wake/nimcp_sleep_wake.c.s
 .PHONY : __/cognitive/sleep_wake/nimcp_sleep_wake.c.s
+
+__/cognitive/social/nimcp_love_loyalty_friendship.o: __/cognitive/social/nimcp_love_loyalty_friendship.c.o
+.PHONY : __/cognitive/social/nimcp_love_loyalty_friendship.o
+
+# target to build an object file
+__/cognitive/social/nimcp_love_loyalty_friendship.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/social/nimcp_love_loyalty_friendship.c.o
+.PHONY : __/cognitive/social/nimcp_love_loyalty_friendship.c.o
+
+__/cognitive/social/nimcp_love_loyalty_friendship.i: __/cognitive/social/nimcp_love_loyalty_friendship.c.i
+.PHONY : __/cognitive/social/nimcp_love_loyalty_friendship.i
+
+# target to preprocess a source file
+__/cognitive/social/nimcp_love_loyalty_friendship.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/social/nimcp_love_loyalty_friendship.c.i
+.PHONY : __/cognitive/social/nimcp_love_loyalty_friendship.c.i
+
+__/cognitive/social/nimcp_love_loyalty_friendship.s: __/cognitive/social/nimcp_love_loyalty_friendship.c.s
+.PHONY : __/cognitive/social/nimcp_love_loyalty_friendship.s
+
+# target to generate assembly for a file
+__/cognitive/social/nimcp_love_loyalty_friendship.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/social/nimcp_love_loyalty_friendship.c.s
+.PHONY : __/cognitive/social/nimcp_love_loyalty_friendship.c.s
 
 __/cognitive/theory_of_mind/nimcp_theory_of_mind.o: __/cognitive/theory_of_mind/nimcp_theory_of_mind.c.o
 .PHONY : __/cognitive/theory_of_mind/nimcp_theory_of_mind.o
@@ -1097,6 +1481,30 @@ __/glial/astrocyte_types/nimcp_astrocyte_types.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/glial/astrocyte_types/nimcp_astrocyte_types.c.s
 .PHONY : __/glial/astrocyte_types/nimcp_astrocyte_types.c.s
 
+__/glial/astrocytes/nimcp_astrocyte_calcium.o: __/glial/astrocytes/nimcp_astrocyte_calcium.c.o
+.PHONY : __/glial/astrocytes/nimcp_astrocyte_calcium.o
+
+# target to build an object file
+__/glial/astrocytes/nimcp_astrocyte_calcium.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/glial/astrocytes/nimcp_astrocyte_calcium.c.o
+.PHONY : __/glial/astrocytes/nimcp_astrocyte_calcium.c.o
+
+__/glial/astrocytes/nimcp_astrocyte_calcium.i: __/glial/astrocytes/nimcp_astrocyte_calcium.c.i
+.PHONY : __/glial/astrocytes/nimcp_astrocyte_calcium.i
+
+# target to preprocess a source file
+__/glial/astrocytes/nimcp_astrocyte_calcium.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/glial/astrocytes/nimcp_astrocyte_calcium.c.i
+.PHONY : __/glial/astrocytes/nimcp_astrocyte_calcium.c.i
+
+__/glial/astrocytes/nimcp_astrocyte_calcium.s: __/glial/astrocytes/nimcp_astrocyte_calcium.c.s
+.PHONY : __/glial/astrocytes/nimcp_astrocyte_calcium.s
+
+# target to generate assembly for a file
+__/glial/astrocytes/nimcp_astrocyte_calcium.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/glial/astrocytes/nimcp_astrocyte_calcium.c.s
+.PHONY : __/glial/astrocytes/nimcp_astrocyte_calcium.c.s
+
 __/glial/astrocytes/nimcp_astrocytes.o: __/glial/astrocytes/nimcp_astrocytes.c.o
 .PHONY : __/glial/astrocytes/nimcp_astrocytes.o
 
@@ -1241,6 +1649,30 @@ __/gpu/neuron/nimcp_gpu_neuron.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/gpu/neuron/nimcp_gpu_neuron.c.s
 .PHONY : __/gpu/neuron/nimcp_gpu_neuron.c.s
 
+__/gpu/nimcp_multigpu.o: __/gpu/nimcp_multigpu.c.o
+.PHONY : __/gpu/nimcp_multigpu.o
+
+# target to build an object file
+__/gpu/nimcp_multigpu.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/gpu/nimcp_multigpu.c.o
+.PHONY : __/gpu/nimcp_multigpu.c.o
+
+__/gpu/nimcp_multigpu.i: __/gpu/nimcp_multigpu.c.i
+.PHONY : __/gpu/nimcp_multigpu.i
+
+# target to preprocess a source file
+__/gpu/nimcp_multigpu.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/gpu/nimcp_multigpu.c.i
+.PHONY : __/gpu/nimcp_multigpu.c.i
+
+__/gpu/nimcp_multigpu.s: __/gpu/nimcp_multigpu.c.s
+.PHONY : __/gpu/nimcp_multigpu.s
+
+# target to generate assembly for a file
+__/gpu/nimcp_multigpu.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/gpu/nimcp_multigpu.c.s
+.PHONY : __/gpu/nimcp_multigpu.c.s
+
 __/gpu/spike_event/nimcp_spike_event.o: __/gpu/spike_event/nimcp_spike_event.c.o
 .PHONY : __/gpu/spike_event/nimcp_spike_event.o
 
@@ -1264,6 +1696,54 @@ __/gpu/spike_event/nimcp_spike_event.s: __/gpu/spike_event/nimcp_spike_event.c.s
 __/gpu/spike_event/nimcp_spike_event.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/gpu/spike_event/nimcp_spike_event.c.s
 .PHONY : __/gpu/spike_event/nimcp_spike_event.c.s
+
+__/information/nimcp_cross_modal.o: __/information/nimcp_cross_modal.c.o
+.PHONY : __/information/nimcp_cross_modal.o
+
+# target to build an object file
+__/information/nimcp_cross_modal.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/information/nimcp_cross_modal.c.o
+.PHONY : __/information/nimcp_cross_modal.c.o
+
+__/information/nimcp_cross_modal.i: __/information/nimcp_cross_modal.c.i
+.PHONY : __/information/nimcp_cross_modal.i
+
+# target to preprocess a source file
+__/information/nimcp_cross_modal.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/information/nimcp_cross_modal.c.i
+.PHONY : __/information/nimcp_cross_modal.c.i
+
+__/information/nimcp_cross_modal.s: __/information/nimcp_cross_modal.c.s
+.PHONY : __/information/nimcp_cross_modal.s
+
+# target to generate assembly for a file
+__/information/nimcp_cross_modal.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/information/nimcp_cross_modal.c.s
+.PHONY : __/information/nimcp_cross_modal.c.s
+
+__/information/nimcp_shannon.o: __/information/nimcp_shannon.c.o
+.PHONY : __/information/nimcp_shannon.o
+
+# target to build an object file
+__/information/nimcp_shannon.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/information/nimcp_shannon.c.o
+.PHONY : __/information/nimcp_shannon.c.o
+
+__/information/nimcp_shannon.i: __/information/nimcp_shannon.c.i
+.PHONY : __/information/nimcp_shannon.i
+
+# target to preprocess a source file
+__/information/nimcp_shannon.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/information/nimcp_shannon.c.i
+.PHONY : __/information/nimcp_shannon.c.i
+
+__/information/nimcp_shannon.s: __/information/nimcp_shannon.c.s
+.PHONY : __/information/nimcp_shannon.s
+
+# target to generate assembly for a file
+__/information/nimcp_shannon.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/information/nimcp_shannon.c.s
+.PHONY : __/information/nimcp_shannon.c.s
 
 __/io/dataio/nimcp_dataio.o: __/io/dataio/nimcp_dataio.c.o
 .PHONY : __/io/dataio/nimcp_dataio.o
@@ -1577,6 +2057,30 @@ __/nlp/nimcp_spike_nlp.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/nlp/nimcp_spike_nlp.c.s
 .PHONY : __/nlp/nimcp_spike_nlp.c.s
 
+__/optimization/quantum_annealing/nimcp_quantum_annealing.o: __/optimization/quantum_annealing/nimcp_quantum_annealing.c.o
+.PHONY : __/optimization/quantum_annealing/nimcp_quantum_annealing.o
+
+# target to build an object file
+__/optimization/quantum_annealing/nimcp_quantum_annealing.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/optimization/quantum_annealing/nimcp_quantum_annealing.c.o
+.PHONY : __/optimization/quantum_annealing/nimcp_quantum_annealing.c.o
+
+__/optimization/quantum_annealing/nimcp_quantum_annealing.i: __/optimization/quantum_annealing/nimcp_quantum_annealing.c.i
+.PHONY : __/optimization/quantum_annealing/nimcp_quantum_annealing.i
+
+# target to preprocess a source file
+__/optimization/quantum_annealing/nimcp_quantum_annealing.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/optimization/quantum_annealing/nimcp_quantum_annealing.c.i
+.PHONY : __/optimization/quantum_annealing/nimcp_quantum_annealing.c.i
+
+__/optimization/quantum_annealing/nimcp_quantum_annealing.s: __/optimization/quantum_annealing/nimcp_quantum_annealing.c.s
+.PHONY : __/optimization/quantum_annealing/nimcp_quantum_annealing.s
+
+# target to generate assembly for a file
+__/optimization/quantum_annealing/nimcp_quantum_annealing.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/optimization/quantum_annealing/nimcp_quantum_annealing.c.s
+.PHONY : __/optimization/quantum_annealing/nimcp_quantum_annealing.c.s
+
 __/plasticity/adaptive/nimcp_adaptive.o: __/plasticity/adaptive/nimcp_adaptive.c.o
 .PHONY : __/plasticity/adaptive/nimcp_adaptive.o
 
@@ -1673,6 +2177,30 @@ __/plasticity/eligibility/nimcp_eligibility_trace.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/plasticity/eligibility/nimcp_eligibility_trace.c.s
 .PHONY : __/plasticity/eligibility/nimcp_eligibility_trace.c.s
 
+__/plasticity/neuromodulators/nimcp_metabolic_pathways.o: __/plasticity/neuromodulators/nimcp_metabolic_pathways.c.o
+.PHONY : __/plasticity/neuromodulators/nimcp_metabolic_pathways.o
+
+# target to build an object file
+__/plasticity/neuromodulators/nimcp_metabolic_pathways.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/plasticity/neuromodulators/nimcp_metabolic_pathways.c.o
+.PHONY : __/plasticity/neuromodulators/nimcp_metabolic_pathways.c.o
+
+__/plasticity/neuromodulators/nimcp_metabolic_pathways.i: __/plasticity/neuromodulators/nimcp_metabolic_pathways.c.i
+.PHONY : __/plasticity/neuromodulators/nimcp_metabolic_pathways.i
+
+# target to preprocess a source file
+__/plasticity/neuromodulators/nimcp_metabolic_pathways.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/plasticity/neuromodulators/nimcp_metabolic_pathways.c.i
+.PHONY : __/plasticity/neuromodulators/nimcp_metabolic_pathways.c.i
+
+__/plasticity/neuromodulators/nimcp_metabolic_pathways.s: __/plasticity/neuromodulators/nimcp_metabolic_pathways.c.s
+.PHONY : __/plasticity/neuromodulators/nimcp_metabolic_pathways.s
+
+# target to generate assembly for a file
+__/plasticity/neuromodulators/nimcp_metabolic_pathways.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/plasticity/neuromodulators/nimcp_metabolic_pathways.c.s
+.PHONY : __/plasticity/neuromodulators/nimcp_metabolic_pathways.c.s
+
 __/plasticity/neuromodulators/nimcp_neuromod_pink_noise.o: __/plasticity/neuromodulators/nimcp_neuromod_pink_noise.c.o
 .PHONY : __/plasticity/neuromodulators/nimcp_neuromod_pink_noise.o
 
@@ -1721,6 +2249,54 @@ __/plasticity/neuromodulators/nimcp_neuromodulators.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/plasticity/neuromodulators/nimcp_neuromodulators.c.s
 .PHONY : __/plasticity/neuromodulators/nimcp_neuromodulators.c.s
 
+__/plasticity/neuromodulators/nimcp_phasic_tonic.o: __/plasticity/neuromodulators/nimcp_phasic_tonic.c.o
+.PHONY : __/plasticity/neuromodulators/nimcp_phasic_tonic.o
+
+# target to build an object file
+__/plasticity/neuromodulators/nimcp_phasic_tonic.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/plasticity/neuromodulators/nimcp_phasic_tonic.c.o
+.PHONY : __/plasticity/neuromodulators/nimcp_phasic_tonic.c.o
+
+__/plasticity/neuromodulators/nimcp_phasic_tonic.i: __/plasticity/neuromodulators/nimcp_phasic_tonic.c.i
+.PHONY : __/plasticity/neuromodulators/nimcp_phasic_tonic.i
+
+# target to preprocess a source file
+__/plasticity/neuromodulators/nimcp_phasic_tonic.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/plasticity/neuromodulators/nimcp_phasic_tonic.c.i
+.PHONY : __/plasticity/neuromodulators/nimcp_phasic_tonic.c.i
+
+__/plasticity/neuromodulators/nimcp_phasic_tonic.s: __/plasticity/neuromodulators/nimcp_phasic_tonic.c.s
+.PHONY : __/plasticity/neuromodulators/nimcp_phasic_tonic.s
+
+# target to generate assembly for a file
+__/plasticity/neuromodulators/nimcp_phasic_tonic.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/plasticity/neuromodulators/nimcp_phasic_tonic.c.s
+.PHONY : __/plasticity/neuromodulators/nimcp_phasic_tonic.c.s
+
+__/plasticity/neuromodulators/nimcp_receptor_subtypes.o: __/plasticity/neuromodulators/nimcp_receptor_subtypes.c.o
+.PHONY : __/plasticity/neuromodulators/nimcp_receptor_subtypes.o
+
+# target to build an object file
+__/plasticity/neuromodulators/nimcp_receptor_subtypes.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/plasticity/neuromodulators/nimcp_receptor_subtypes.c.o
+.PHONY : __/plasticity/neuromodulators/nimcp_receptor_subtypes.c.o
+
+__/plasticity/neuromodulators/nimcp_receptor_subtypes.i: __/plasticity/neuromodulators/nimcp_receptor_subtypes.c.i
+.PHONY : __/plasticity/neuromodulators/nimcp_receptor_subtypes.i
+
+# target to preprocess a source file
+__/plasticity/neuromodulators/nimcp_receptor_subtypes.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/plasticity/neuromodulators/nimcp_receptor_subtypes.c.i
+.PHONY : __/plasticity/neuromodulators/nimcp_receptor_subtypes.c.i
+
+__/plasticity/neuromodulators/nimcp_receptor_subtypes.s: __/plasticity/neuromodulators/nimcp_receptor_subtypes.c.s
+.PHONY : __/plasticity/neuromodulators/nimcp_receptor_subtypes.s
+
+# target to generate assembly for a file
+__/plasticity/neuromodulators/nimcp_receptor_subtypes.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/plasticity/neuromodulators/nimcp_receptor_subtypes.c.s
+.PHONY : __/plasticity/neuromodulators/nimcp_receptor_subtypes.c.s
+
 __/plasticity/neuromodulators/nimcp_spatial_neuromod.o: __/plasticity/neuromodulators/nimcp_spatial_neuromod.c.o
 .PHONY : __/plasticity/neuromodulators/nimcp_spatial_neuromod.o
 
@@ -1744,6 +2320,30 @@ __/plasticity/neuromodulators/nimcp_spatial_neuromod.s: __/plasticity/neuromodul
 __/plasticity/neuromodulators/nimcp_spatial_neuromod.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/plasticity/neuromodulators/nimcp_spatial_neuromod.c.s
 .PHONY : __/plasticity/neuromodulators/nimcp_spatial_neuromod.c.s
+
+__/plasticity/neuromodulators/nimcp_vesicle_packaging.o: __/plasticity/neuromodulators/nimcp_vesicle_packaging.c.o
+.PHONY : __/plasticity/neuromodulators/nimcp_vesicle_packaging.o
+
+# target to build an object file
+__/plasticity/neuromodulators/nimcp_vesicle_packaging.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/plasticity/neuromodulators/nimcp_vesicle_packaging.c.o
+.PHONY : __/plasticity/neuromodulators/nimcp_vesicle_packaging.c.o
+
+__/plasticity/neuromodulators/nimcp_vesicle_packaging.i: __/plasticity/neuromodulators/nimcp_vesicle_packaging.c.i
+.PHONY : __/plasticity/neuromodulators/nimcp_vesicle_packaging.i
+
+# target to preprocess a source file
+__/plasticity/neuromodulators/nimcp_vesicle_packaging.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/plasticity/neuromodulators/nimcp_vesicle_packaging.c.i
+.PHONY : __/plasticity/neuromodulators/nimcp_vesicle_packaging.c.i
+
+__/plasticity/neuromodulators/nimcp_vesicle_packaging.s: __/plasticity/neuromodulators/nimcp_vesicle_packaging.c.s
+.PHONY : __/plasticity/neuromodulators/nimcp_vesicle_packaging.s
+
+# target to generate assembly for a file
+__/plasticity/neuromodulators/nimcp_vesicle_packaging.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/plasticity/neuromodulators/nimcp_vesicle_packaging.c.s
+.PHONY : __/plasticity/neuromodulators/nimcp_vesicle_packaging.c.s
 
 __/plasticity/noise/nimcp_pink_noise.o: __/plasticity/noise/nimcp_pink_noise.c.o
 .PHONY : __/plasticity/noise/nimcp_pink_noise.o
@@ -2201,6 +2801,30 @@ __/utils/error/nimcp_error_codes.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/utils/error/nimcp_error_codes.c.s
 .PHONY : __/utils/error/nimcp_error_codes.c.s
 
+__/utils/geometry/nimcp_hyperbolic.o: __/utils/geometry/nimcp_hyperbolic.c.o
+.PHONY : __/utils/geometry/nimcp_hyperbolic.o
+
+# target to build an object file
+__/utils/geometry/nimcp_hyperbolic.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/utils/geometry/nimcp_hyperbolic.c.o
+.PHONY : __/utils/geometry/nimcp_hyperbolic.c.o
+
+__/utils/geometry/nimcp_hyperbolic.i: __/utils/geometry/nimcp_hyperbolic.c.i
+.PHONY : __/utils/geometry/nimcp_hyperbolic.i
+
+# target to preprocess a source file
+__/utils/geometry/nimcp_hyperbolic.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/utils/geometry/nimcp_hyperbolic.c.i
+.PHONY : __/utils/geometry/nimcp_hyperbolic.c.i
+
+__/utils/geometry/nimcp_hyperbolic.s: __/utils/geometry/nimcp_hyperbolic.c.s
+.PHONY : __/utils/geometry/nimcp_hyperbolic.s
+
+# target to generate assembly for a file
+__/utils/geometry/nimcp_hyperbolic.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/utils/geometry/nimcp_hyperbolic.c.s
+.PHONY : __/utils/geometry/nimcp_hyperbolic.c.s
+
 __/utils/json/nimcp_json.o: __/utils/json/nimcp_json.c.o
 .PHONY : __/utils/json/nimcp_json.o
 
@@ -2513,6 +3137,54 @@ __/utils/platform/nimcp_platform_time.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/utils/platform/nimcp_platform_time.c.s
 .PHONY : __/utils/platform/nimcp_platform_time.c.s
 
+__/utils/quantum/nimcp_quantum_shannon.o: __/utils/quantum/nimcp_quantum_shannon.c.o
+.PHONY : __/utils/quantum/nimcp_quantum_shannon.o
+
+# target to build an object file
+__/utils/quantum/nimcp_quantum_shannon.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/utils/quantum/nimcp_quantum_shannon.c.o
+.PHONY : __/utils/quantum/nimcp_quantum_shannon.c.o
+
+__/utils/quantum/nimcp_quantum_shannon.i: __/utils/quantum/nimcp_quantum_shannon.c.i
+.PHONY : __/utils/quantum/nimcp_quantum_shannon.i
+
+# target to preprocess a source file
+__/utils/quantum/nimcp_quantum_shannon.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/utils/quantum/nimcp_quantum_shannon.c.i
+.PHONY : __/utils/quantum/nimcp_quantum_shannon.c.i
+
+__/utils/quantum/nimcp_quantum_shannon.s: __/utils/quantum/nimcp_quantum_shannon.c.s
+.PHONY : __/utils/quantum/nimcp_quantum_shannon.s
+
+# target to generate assembly for a file
+__/utils/quantum/nimcp_quantum_shannon.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/utils/quantum/nimcp_quantum_shannon.c.s
+.PHONY : __/utils/quantum/nimcp_quantum_shannon.c.s
+
+__/utils/quantum/nimcp_quantum_walk.o: __/utils/quantum/nimcp_quantum_walk.c.o
+.PHONY : __/utils/quantum/nimcp_quantum_walk.o
+
+# target to build an object file
+__/utils/quantum/nimcp_quantum_walk.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/utils/quantum/nimcp_quantum_walk.c.o
+.PHONY : __/utils/quantum/nimcp_quantum_walk.c.o
+
+__/utils/quantum/nimcp_quantum_walk.i: __/utils/quantum/nimcp_quantum_walk.c.i
+.PHONY : __/utils/quantum/nimcp_quantum_walk.i
+
+# target to preprocess a source file
+__/utils/quantum/nimcp_quantum_walk.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/utils/quantum/nimcp_quantum_walk.c.i
+.PHONY : __/utils/quantum/nimcp_quantum_walk.c.i
+
+__/utils/quantum/nimcp_quantum_walk.s: __/utils/quantum/nimcp_quantum_walk.c.s
+.PHONY : __/utils/quantum/nimcp_quantum_walk.s
+
+# target to generate assembly for a file
+__/utils/quantum/nimcp_quantum_walk.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/utils/quantum/nimcp_quantum_walk.c.s
+.PHONY : __/utils/quantum/nimcp_quantum_walk.c.s
+
 __/utils/queue_manager/nimcp_queue_manager.o: __/utils/queue_manager/nimcp_queue_manager.c.o
 .PHONY : __/utils/queue_manager/nimcp_queue_manager.o
 
@@ -2584,6 +3256,30 @@ __/utils/spectral/nimcp_fft.s: __/utils/spectral/nimcp_fft.c.s
 __/utils/spectral/nimcp_fft.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/utils/spectral/nimcp_fft.c.s
 .PHONY : __/utils/spectral/nimcp_fft.c.s
+
+__/utils/tensor_networks/nimcp_mps.o: __/utils/tensor_networks/nimcp_mps.c.o
+.PHONY : __/utils/tensor_networks/nimcp_mps.o
+
+# target to build an object file
+__/utils/tensor_networks/nimcp_mps.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/utils/tensor_networks/nimcp_mps.c.o
+.PHONY : __/utils/tensor_networks/nimcp_mps.c.o
+
+__/utils/tensor_networks/nimcp_mps.i: __/utils/tensor_networks/nimcp_mps.c.i
+.PHONY : __/utils/tensor_networks/nimcp_mps.i
+
+# target to preprocess a source file
+__/utils/tensor_networks/nimcp_mps.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/utils/tensor_networks/nimcp_mps.c.i
+.PHONY : __/utils/tensor_networks/nimcp_mps.c.i
+
+__/utils/tensor_networks/nimcp_mps.s: __/utils/tensor_networks/nimcp_mps.c.s
+.PHONY : __/utils/tensor_networks/nimcp_mps.s
+
+# target to generate assembly for a file
+__/utils/tensor_networks/nimcp_mps.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/utils/tensor_networks/nimcp_mps.c.s
+.PHONY : __/utils/tensor_networks/nimcp_mps.c.s
 
 __/utils/thread/nimcp_deadlock_detector.o: __/utils/thread/nimcp_deadlock_detector.c.o
 .PHONY : __/utils/thread/nimcp_deadlock_detector.o
@@ -2818,15 +3514,27 @@ help:
 	@echo "... __/api/nimcp.o"
 	@echo "... __/api/nimcp.i"
 	@echo "... __/api/nimcp.s"
+	@echo "... __/cognitive/autobiographical_memory/nimcp_autobiographical_memory.o"
+	@echo "... __/cognitive/autobiographical_memory/nimcp_autobiographical_memory.i"
+	@echo "... __/cognitive/autobiographical_memory/nimcp_autobiographical_memory.s"
+	@echo "... __/cognitive/bias/nimcp_bias_detection.o"
+	@echo "... __/cognitive/bias/nimcp_bias_detection.i"
+	@echo "... __/cognitive/bias/nimcp_bias_detection.s"
 	@echo "... __/cognitive/consolidation/nimcp_consolidation.o"
 	@echo "... __/cognitive/consolidation/nimcp_consolidation.i"
 	@echo "... __/cognitive/consolidation/nimcp_consolidation.s"
 	@echo "... __/cognitive/curiosity/nimcp_curiosity.o"
 	@echo "... __/cognitive/curiosity/nimcp_curiosity.i"
 	@echo "... __/cognitive/curiosity/nimcp_curiosity.s"
+	@echo "... __/cognitive/emotion_recognition/nimcp_emotion_recognition_simple.o"
+	@echo "... __/cognitive/emotion_recognition/nimcp_emotion_recognition_simple.i"
+	@echo "... __/cognitive/emotion_recognition/nimcp_emotion_recognition_simple.s"
 	@echo "... __/cognitive/emotional_tagging/nimcp_emotional_tagging.o"
 	@echo "... __/cognitive/emotional_tagging/nimcp_emotional_tagging.i"
 	@echo "... __/cognitive/emotional_tagging/nimcp_emotional_tagging.s"
+	@echo "... __/cognitive/empathetic_response/nimcp_empathetic_response.o"
+	@echo "... __/cognitive/empathetic_response/nimcp_empathetic_response.i"
+	@echo "... __/cognitive/empathetic_response/nimcp_empathetic_response.s"
 	@echo "... __/cognitive/epistemic/nimcp_epistemic_filter.o"
 	@echo "... __/cognitive/epistemic/nimcp_epistemic_filter.i"
 	@echo "... __/cognitive/epistemic/nimcp_epistemic_filter.s"
@@ -2842,15 +3550,33 @@ help:
 	@echo "... __/cognitive/global_workspace/nimcp_global_workspace.o"
 	@echo "... __/cognitive/global_workspace/nimcp_global_workspace.i"
 	@echo "... __/cognitive/global_workspace/nimcp_global_workspace.s"
+	@echo "... __/cognitive/grief/nimcp_grief_and_loss.o"
+	@echo "... __/cognitive/grief/nimcp_grief_and_loss.i"
+	@echo "... __/cognitive/grief/nimcp_grief_and_loss.s"
 	@echo "... __/cognitive/introspection/nimcp_introspection.o"
 	@echo "... __/cognitive/introspection/nimcp_introspection.i"
 	@echo "... __/cognitive/introspection/nimcp_introspection.s"
+	@echo "... __/cognitive/joy/nimcp_joy_euphoria.o"
+	@echo "... __/cognitive/joy/nimcp_joy_euphoria.i"
+	@echo "... __/cognitive/joy/nimcp_joy_euphoria.s"
 	@echo "... __/cognitive/knowledge/nimcp_knowledge.o"
 	@echo "... __/cognitive/knowledge/nimcp_knowledge.i"
 	@echo "... __/cognitive/knowledge/nimcp_knowledge.s"
 	@echo "... __/cognitive/logic/nimcp_symbolic_logic.o"
 	@echo "... __/cognitive/logic/nimcp_symbolic_logic.i"
 	@echo "... __/cognitive/logic/nimcp_symbolic_logic.s"
+	@echo "... __/cognitive/memory/nimcp_engram.o"
+	@echo "... __/cognitive/memory/nimcp_engram.i"
+	@echo "... __/cognitive/memory/nimcp_engram.s"
+	@echo "... __/cognitive/memory/nimcp_semantic_memory.o"
+	@echo "... __/cognitive/memory/nimcp_semantic_memory.i"
+	@echo "... __/cognitive/memory/nimcp_semantic_memory.s"
+	@echo "... __/cognitive/memory/nimcp_systems_consolidation.o"
+	@echo "... __/cognitive/memory/nimcp_systems_consolidation.i"
+	@echo "... __/cognitive/memory/nimcp_systems_consolidation.s"
+	@echo "... __/cognitive/memory/nimcp_wm_transfer.o"
+	@echo "... __/cognitive/memory/nimcp_wm_transfer.i"
+	@echo "... __/cognitive/memory/nimcp_wm_transfer.s"
 	@echo "... __/cognitive/mental_health/nimcp_mental_health.o"
 	@echo "... __/cognitive/mental_health/nimcp_mental_health.i"
 	@echo "... __/cognitive/mental_health/nimcp_mental_health.s"
@@ -2863,15 +3589,33 @@ help:
 	@echo "... __/cognitive/nimcp_fractal_cognitive.o"
 	@echo "... __/cognitive/nimcp_fractal_cognitive.i"
 	@echo "... __/cognitive/nimcp_fractal_cognitive.s"
+	@echo "... __/cognitive/personality/nimcp_personality.o"
+	@echo "... __/cognitive/personality/nimcp_personality.i"
+	@echo "... __/cognitive/personality/nimcp_personality.s"
 	@echo "... __/cognitive/predictive/nimcp_predictive.o"
 	@echo "... __/cognitive/predictive/nimcp_predictive.i"
 	@echo "... __/cognitive/predictive/nimcp_predictive.s"
+	@echo "... __/cognitive/remorse/nimcp_remorse_regret.o"
+	@echo "... __/cognitive/remorse/nimcp_remorse_regret.i"
+	@echo "... __/cognitive/remorse/nimcp_remorse_regret.s"
 	@echo "... __/cognitive/salience/nimcp_salience.o"
 	@echo "... __/cognitive/salience/nimcp_salience.i"
 	@echo "... __/cognitive/salience/nimcp_salience.s"
+	@echo "... __/cognitive/self_awareness/nimcp_self_awareness_extended.o"
+	@echo "... __/cognitive/self_awareness/nimcp_self_awareness_extended.i"
+	@echo "... __/cognitive/self_awareness/nimcp_self_awareness_extended.s"
+	@echo "... __/cognitive/self_model/nimcp_self_model.o"
+	@echo "... __/cognitive/self_model/nimcp_self_model.i"
+	@echo "... __/cognitive/self_model/nimcp_self_model.s"
+	@echo "... __/cognitive/shadow/nimcp_shadow_emotions.o"
+	@echo "... __/cognitive/shadow/nimcp_shadow_emotions.i"
+	@echo "... __/cognitive/shadow/nimcp_shadow_emotions.s"
 	@echo "... __/cognitive/sleep_wake/nimcp_sleep_wake.o"
 	@echo "... __/cognitive/sleep_wake/nimcp_sleep_wake.i"
 	@echo "... __/cognitive/sleep_wake/nimcp_sleep_wake.s"
+	@echo "... __/cognitive/social/nimcp_love_loyalty_friendship.o"
+	@echo "... __/cognitive/social/nimcp_love_loyalty_friendship.i"
+	@echo "... __/cognitive/social/nimcp_love_loyalty_friendship.s"
 	@echo "... __/cognitive/theory_of_mind/nimcp_theory_of_mind.o"
 	@echo "... __/cognitive/theory_of_mind/nimcp_theory_of_mind.i"
 	@echo "... __/cognitive/theory_of_mind/nimcp_theory_of_mind.s"
@@ -2929,6 +3673,9 @@ help:
 	@echo "... __/glial/astrocyte_types/nimcp_astrocyte_types.o"
 	@echo "... __/glial/astrocyte_types/nimcp_astrocyte_types.i"
 	@echo "... __/glial/astrocyte_types/nimcp_astrocyte_types.s"
+	@echo "... __/glial/astrocytes/nimcp_astrocyte_calcium.o"
+	@echo "... __/glial/astrocytes/nimcp_astrocyte_calcium.i"
+	@echo "... __/glial/astrocytes/nimcp_astrocyte_calcium.s"
 	@echo "... __/glial/astrocytes/nimcp_astrocytes.o"
 	@echo "... __/glial/astrocytes/nimcp_astrocytes.i"
 	@echo "... __/glial/astrocytes/nimcp_astrocytes.s"
@@ -2947,9 +3694,18 @@ help:
 	@echo "... __/gpu/neuron/nimcp_gpu_neuron.o"
 	@echo "... __/gpu/neuron/nimcp_gpu_neuron.i"
 	@echo "... __/gpu/neuron/nimcp_gpu_neuron.s"
+	@echo "... __/gpu/nimcp_multigpu.o"
+	@echo "... __/gpu/nimcp_multigpu.i"
+	@echo "... __/gpu/nimcp_multigpu.s"
 	@echo "... __/gpu/spike_event/nimcp_spike_event.o"
 	@echo "... __/gpu/spike_event/nimcp_spike_event.i"
 	@echo "... __/gpu/spike_event/nimcp_spike_event.s"
+	@echo "... __/information/nimcp_cross_modal.o"
+	@echo "... __/information/nimcp_cross_modal.i"
+	@echo "... __/information/nimcp_cross_modal.s"
+	@echo "... __/information/nimcp_shannon.o"
+	@echo "... __/information/nimcp_shannon.i"
+	@echo "... __/information/nimcp_shannon.s"
 	@echo "... __/io/dataio/nimcp_dataio.o"
 	@echo "... __/io/dataio/nimcp_dataio.i"
 	@echo "... __/io/dataio/nimcp_dataio.s"
@@ -2989,6 +3745,9 @@ help:
 	@echo "... __/nlp/nimcp_spike_nlp.o"
 	@echo "... __/nlp/nimcp_spike_nlp.i"
 	@echo "... __/nlp/nimcp_spike_nlp.s"
+	@echo "... __/optimization/quantum_annealing/nimcp_quantum_annealing.o"
+	@echo "... __/optimization/quantum_annealing/nimcp_quantum_annealing.i"
+	@echo "... __/optimization/quantum_annealing/nimcp_quantum_annealing.s"
 	@echo "... __/plasticity/adaptive/nimcp_adaptive.o"
 	@echo "... __/plasticity/adaptive/nimcp_adaptive.i"
 	@echo "... __/plasticity/adaptive/nimcp_adaptive.s"
@@ -3001,15 +3760,27 @@ help:
 	@echo "... __/plasticity/eligibility/nimcp_eligibility_trace.o"
 	@echo "... __/plasticity/eligibility/nimcp_eligibility_trace.i"
 	@echo "... __/plasticity/eligibility/nimcp_eligibility_trace.s"
+	@echo "... __/plasticity/neuromodulators/nimcp_metabolic_pathways.o"
+	@echo "... __/plasticity/neuromodulators/nimcp_metabolic_pathways.i"
+	@echo "... __/plasticity/neuromodulators/nimcp_metabolic_pathways.s"
 	@echo "... __/plasticity/neuromodulators/nimcp_neuromod_pink_noise.o"
 	@echo "... __/plasticity/neuromodulators/nimcp_neuromod_pink_noise.i"
 	@echo "... __/plasticity/neuromodulators/nimcp_neuromod_pink_noise.s"
 	@echo "... __/plasticity/neuromodulators/nimcp_neuromodulators.o"
 	@echo "... __/plasticity/neuromodulators/nimcp_neuromodulators.i"
 	@echo "... __/plasticity/neuromodulators/nimcp_neuromodulators.s"
+	@echo "... __/plasticity/neuromodulators/nimcp_phasic_tonic.o"
+	@echo "... __/plasticity/neuromodulators/nimcp_phasic_tonic.i"
+	@echo "... __/plasticity/neuromodulators/nimcp_phasic_tonic.s"
+	@echo "... __/plasticity/neuromodulators/nimcp_receptor_subtypes.o"
+	@echo "... __/plasticity/neuromodulators/nimcp_receptor_subtypes.i"
+	@echo "... __/plasticity/neuromodulators/nimcp_receptor_subtypes.s"
 	@echo "... __/plasticity/neuromodulators/nimcp_spatial_neuromod.o"
 	@echo "... __/plasticity/neuromodulators/nimcp_spatial_neuromod.i"
 	@echo "... __/plasticity/neuromodulators/nimcp_spatial_neuromod.s"
+	@echo "... __/plasticity/neuromodulators/nimcp_vesicle_packaging.o"
+	@echo "... __/plasticity/neuromodulators/nimcp_vesicle_packaging.i"
+	@echo "... __/plasticity/neuromodulators/nimcp_vesicle_packaging.s"
 	@echo "... __/plasticity/noise/nimcp_pink_noise.o"
 	@echo "... __/plasticity/noise/nimcp_pink_noise.i"
 	@echo "... __/plasticity/noise/nimcp_pink_noise.s"
@@ -3067,6 +3838,9 @@ help:
 	@echo "... __/utils/error/nimcp_error_codes.o"
 	@echo "... __/utils/error/nimcp_error_codes.i"
 	@echo "... __/utils/error/nimcp_error_codes.s"
+	@echo "... __/utils/geometry/nimcp_hyperbolic.o"
+	@echo "... __/utils/geometry/nimcp_hyperbolic.i"
+	@echo "... __/utils/geometry/nimcp_hyperbolic.s"
 	@echo "... __/utils/json/nimcp_json.o"
 	@echo "... __/utils/json/nimcp_json.i"
 	@echo "... __/utils/json/nimcp_json.s"
@@ -3106,6 +3880,12 @@ help:
 	@echo "... __/utils/platform/nimcp_platform_time.o"
 	@echo "... __/utils/platform/nimcp_platform_time.i"
 	@echo "... __/utils/platform/nimcp_platform_time.s"
+	@echo "... __/utils/quantum/nimcp_quantum_shannon.o"
+	@echo "... __/utils/quantum/nimcp_quantum_shannon.i"
+	@echo "... __/utils/quantum/nimcp_quantum_shannon.s"
+	@echo "... __/utils/quantum/nimcp_quantum_walk.o"
+	@echo "... __/utils/quantum/nimcp_quantum_walk.i"
+	@echo "... __/utils/quantum/nimcp_quantum_walk.s"
 	@echo "... __/utils/queue_manager/nimcp_queue_manager.o"
 	@echo "... __/utils/queue_manager/nimcp_queue_manager.i"
 	@echo "... __/utils/queue_manager/nimcp_queue_manager.s"
@@ -3115,6 +3895,9 @@ help:
 	@echo "... __/utils/spectral/nimcp_fft.o"
 	@echo "... __/utils/spectral/nimcp_fft.i"
 	@echo "... __/utils/spectral/nimcp_fft.s"
+	@echo "... __/utils/tensor_networks/nimcp_mps.o"
+	@echo "... __/utils/tensor_networks/nimcp_mps.i"
+	@echo "... __/utils/tensor_networks/nimcp_mps.s"
 	@echo "... __/utils/thread/nimcp_deadlock_detector.o"
 	@echo "... __/utils/thread/nimcp_deadlock_detector.i"
 	@echo "... __/utils/thread/nimcp_deadlock_detector.s"

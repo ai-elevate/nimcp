@@ -5,10 +5,8 @@
 #include <gtest/gtest.h>
 #include <cmath>
 
-extern "C" {
 #include "cognitive/nimcp_fractal_cognitive.h"
 #include "core/brain/nimcp_brain.h"
-}
 
 class FractalCognitiveTest : public ::testing::Test {
 protected:

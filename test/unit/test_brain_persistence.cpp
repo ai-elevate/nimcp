@@ -15,9 +15,7 @@
 #include <cstdio>
 #include <unistd.h>
 
-extern "C" {
 #include "core/brain/nimcp_brain.h"
-}
 
 //=============================================================================
 // Test Fixture

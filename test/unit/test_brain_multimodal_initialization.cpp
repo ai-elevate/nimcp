@@ -13,10 +13,8 @@
 #include <gtest/gtest.h>
 #include <cstring>
 
-extern "C" {
     #include "core/brain/nimcp_brain.h"
     #include "include/nimcp.h"
-}
 
 //=============================================================================
 // Test Fixture

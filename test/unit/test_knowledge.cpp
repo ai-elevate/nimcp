@@ -5,9 +5,7 @@
 
 #include "test_helpers.h"
 
-extern "C" {
 #include "cognitive/knowledge/nimcp_knowledge.h"
-}
 
 #include <cstring>
 

@@ -17,13 +17,11 @@
  */
 
 #include <gtest/gtest.h>
-extern "C" {
 #include "networking/distributed/nimcp_distributed_cognition.h"
 #include "networking/p2p/nimcp_p2pnode.h"
 #include "plasticity/neuromodulators/nimcp_neuromodulators.h"
 #include "utils/memory/nimcp_memory.h"
 #include <unistd.h>
-}
 
 //=============================================================================
 // Test Fixtures

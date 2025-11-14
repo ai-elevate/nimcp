@@ -23,9 +23,7 @@
 #include <thread>
 #include <chrono>
 
-extern "C" {
 #include "cognitive/global_workspace/nimcp_global_workspace.h"
-}
 
 //=============================================================================
 // Test Helpers and Fixtures

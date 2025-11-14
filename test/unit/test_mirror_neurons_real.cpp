@@ -12,10 +12,8 @@
 #include <cstring>
 #include <cmath>
 
-extern "C" {
 #include "cognitive/nimcp_mirror_neurons.h"
 #include "utils/memory/nimcp_memory.h"
-}
 
 //=============================================================================
 // Test Fixtures

@@ -28,13 +28,11 @@
 #include <chrono>
 #include <unistd.h>
 
-extern "C" {
 #define NIMCP_TESTING
 #include "cognitive/wellbeing/nimcp_wellbeing.h"
 #include "core/brain/nimcp_brain.h"
 #include "cognitive/introspection/nimcp_introspection.h"
 #include "utils/memory/nimcp_memory.h"
-}
 
 //=============================================================================
 // Test Fixtures

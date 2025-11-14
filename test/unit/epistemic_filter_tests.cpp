@@ -3,9 +3,7 @@
 //=============================================================================
 
 #include <gtest/gtest.h>
-extern "C" {
 #include "cognitive/epistemic/nimcp_epistemic_filter.h"
-}
 
 //=============================================================================
 // Test Fixtures

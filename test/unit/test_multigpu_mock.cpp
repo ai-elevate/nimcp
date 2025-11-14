@@ -12,9 +12,7 @@
 
 #include <gtest/gtest.h>
 
-extern "C" {
     #include "gpu/nimcp_multigpu.h"
-}
 
 //=============================================================================
 // Test Fixtures

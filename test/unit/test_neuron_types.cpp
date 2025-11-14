@@ -17,11 +17,9 @@
 
 #include <gtest/gtest.h>
 
-extern "C" {
 #include "core/neuralnet/nimcp_neuralnet.h"
 #include "core/neuron_types/nimcp_neuron_types.h"
 #include "utils/time/nimcp_time.h"
-}
 
 #include <cmath>
 

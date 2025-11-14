@@ -1,35 +1,19 @@
-//=============================================================================
-// nimcp_stdp.h - Spike-Timing-Dependent Plasticity
-//=============================================================================
 /**
  * @file nimcp_stdp.h
- * @brief Spike-timing-dependent plasticity for temporal learning
+ * @brief Spike-Timing-Dependent Plasticity with Dopamine Modulation
  *
- * WHAT: Biological learning rule based on spike timing causality
- * WHY:
- *   - Captures temporal relationships in data
- *   - Biologically plausible unsupervised learning
- *   - Enables sequence learning and temporal credit assignment
+ * Implementation of STDP with neuromodulator-gated learning, integrating
+ * Phase C2.2 phasic-tonic dopamine dynamics for biologically realistic
+ * reward learning.
  *
- * HOW:
- *   Δw = A+ × exp(-Δt / τ+)   if pre before post (LTP)
- *   Δw = A- × exp(Δt / τ-)    if post before pre (LTD)
+ * Key Features:
+ * - Classic STDP (Bi & Poo, 1998): LTP for pre-before-post, LTD for post-before-pre
+ * - Dopamine modulation: Learning rate scaled by DA concentration
+ * - Burst amplification: 3x learning during phasic dopamine bursts
+ * - Three-factor learning: Hebbian + Timing + Reward
  *
- * BIOLOGICAL BASIS:
- *   - Bi & Poo (1998): Discovered in hippocampal neurons
- *   - LTP (Long-Term Potentiation): Strengthens causal connections
- *   - LTD (Long-Term Depression): Weakens anti-causal connections
- *   - Asymmetric time window: ±20-50ms typical
- *
- * USE CASES:
- *   - Sequence learning: Learn temporal patterns
- *   - Sensory processing: Extract temporal features
- *   - Reinforcement learning: Credit assignment (with eligibility traces)
- *   - Pattern completion: Predict next spike from history
- *
- * @author NIMCP Development Team
- * @date 2025-11-08
- * @version 2.7.0 Phase 4
+ * NIMCP Phase: Option 2.1 (Integration)
+ * Date: 2025-11-12
  */
 
 #ifndef NIMCP_STDP_H
@@ -37,307 +21,185 @@
 
 #include <stdint.h>
 #include <stdbool.h>
-#include "core/neuralnet/nimcp_neuralnet.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-//=============================================================================
-// STDP Configuration
-//=============================================================================
+/* Forward declarations */
+struct neuromodulator_system_struct;
+typedef struct neuromodulator_system_struct neuromodulator_system_t;
 
 /**
- * @brief STDP learning rule configuration
- *
- * WHAT: Parameters for exponential STDP window
- * WHY: Control plasticity timescales and magnitudes
- * HOW: Time constants and amplitude factors
+ * STDP synapse state
  */
 typedef struct {
-    // Time constants
-    float tau_plus;      /**< LTP time constant in ms (default: 20.0) */
-    float tau_minus;     /**< LTD time constant in ms (default: 20.0) */
+    /* Synaptic weight */
+    float weight;               /* Current weight [0, w_max] */
+    float w_max;                /* Maximum weight (default: 1.0) */
+    float w_min;                /* Minimum weight (default: 0.0) */
 
-    // Amplitude factors
-    float A_plus;        /**< LTP amplitude (default: 0.01) */
-    float A_minus;       /**< LTD amplitude (default: -0.012, asymmetric) */
+    /* Learning parameters */
+    float learning_rate;        /* Base learning rate (default: 0.01) */
+    float a_plus;               /* LTP amplitude (default: 0.005) */
+    float a_minus;              /* LTD amplitude (default: 0.00525) */
+    float tau_plus;             /* LTP time constant [ms] (default: 20) */
+    float tau_minus;            /* LTD time constant [ms] (default: 20) */
 
-    // Weight bounds
-    float w_min;         /**< Minimum synaptic weight (default: 0.0) */
-    float w_max;         /**< Maximum synaptic weight (default: 10.0) */
+    /* Spike timing traces */
+    float pre_trace;            /* Presynaptic trace */
+    float post_trace;           /* Postsynaptic trace */
 
-    // Learning rate modulation
-    float learning_rate; /**< Global learning rate multiplier (default: 1.0) */
+    /* Dopamine modulation parameters */
+    bool enable_da_modulation;  /* Use dopamine modulation (default: true) */
+    float da_modulation_gain;   /* DA concentration → LR scaling (default: 100.0) */
+    float burst_amplification;  /* LR multiplier during bursts (default: 3.0) */
 
-    // Nearest-spike vs all-pairs
-    bool nearest_spike;  /**< Use only nearest spike pair (default: true) */
+    /* Statistics */
+    uint64_t num_potentiation_events;
+    uint64_t num_depression_events;
+    float total_ltp;            /* Cumulative LTP */
+    float total_ltd;            /* Cumulative LTD */
 
+} stdp_synapse_t;
+
+/**
+ * STDP configuration
+ */
+typedef struct {
+    float w_max;
+    float learning_rate;
+    float a_plus;
+    float a_minus;
+    float tau_plus;
+    float tau_minus;
+    bool enable_da_modulation;
+    float da_modulation_gain;
+    float burst_amplification;
 } stdp_config_t;
 
 /**
- * @brief STDP learner state
+ * Initialize STDP synapse with default parameters
  *
- * WHAT: Runtime state for STDP learning
- * WHY: Track configuration and statistics
- * HOW: Store config, update counters, exponential lookup tables
+ * @param synapse Synapse to initialize
  */
-typedef struct {
-    // Configuration
-    stdp_config_t config;
-
-    // Statistics
-    uint64_t updates_applied;  /**< Total STDP updates */
-    uint64_t ltp_count;        /**< LTP events */
-    uint64_t ltd_count;        /**< LTD events */
-    float avg_weight_change;   /**< Exponential moving average of |Δw| */
-
-    // Optimization: Exponential lookup tables (optional)
-    float* ltp_lookup;         /**< Pre-computed exp(-t/τ+) for t=0..200ms */
-    float* ltd_lookup;         /**< Pre-computed exp(t/τ-) for t=0..200ms */
-    uint32_t lookup_size;      /**< Size of lookup tables */
-
-} stdp_learner_t;
-
-//=============================================================================
-// Lifecycle Functions
-//=============================================================================
+void stdp_synapse_init(stdp_synapse_t* synapse);
 
 /**
- * @brief Create STDP learner with configuration
+ * Initialize STDP synapse with custom configuration
  *
- * WHAT: Initialize STDP system with time constants and amplitudes
- * WHY: Set up learning parameters for network
- * HOW: Allocate structure, copy config, create lookup tables
- *
- * @param config STDP configuration (or NULL for defaults)
- * @return STDP learner handle, or NULL on error
+ * @param synapse Synapse to initialize
+ * @param config Configuration parameters
  */
-stdp_learner_t* stdp_create(const stdp_config_t* config);
+void stdp_synapse_init_with_config(stdp_synapse_t* synapse, const stdp_config_t* config);
 
 /**
- * @brief Destroy STDP learner
+ * Get default STDP configuration
  *
- * WHAT: Free all resources associated with STDP learner
- * WHY: Prevent memory leaks
- * HOW: Free lookup tables, then main structure
- *
- * @param learner STDP learner to destroy (can be NULL)
+ * @return Default configuration (Bi & Poo parameters)
  */
-void stdp_destroy(stdp_learner_t* learner);
+stdp_config_t stdp_config_default(void);
 
 /**
- * @brief Get default STDP configuration
+ * Update STDP traces (called every timestep)
  *
- * WHAT: Return sensible default STDP parameters
- * WHY: Provide biologically plausible starting point
- * HOW: Static initialization with literature values
- *
- * DEFAULTS (based on Bi & Poo 1998, Song et al. 2000):
- * - τ+ = τ- = 20ms (symmetric time constants)
- * - A+ = 0.01, A- = -0.012 (slightly asymmetric for stability)
- * - w ∈ [0, 10] (non-negative weights)
- * - learning_rate = 1.0 (no scaling)
- * - nearest_spike = true (computational efficiency)
- *
- * @return Default configuration
- */
-stdp_config_t stdp_default_config(void);
-
-//=============================================================================
-// STDP Update Functions
-//=============================================================================
-
-/**
- * @brief Apply STDP to synapse given spike pair
- *
- * WHAT: Update synapse weight based on pre/post spike timing
- * WHY: Implement spike-timing-dependent plasticity
- * HOW: Compute Δt, apply exponential STDP rule, clamp weight
- *
- * ALGORITHM:
- * ```
- * Δt = t_post - t_pre
- * if (Δt > 0):  // pre before post (causal)
- *     Δw = A+ × exp(-Δt / τ+)  // LTP
- * else:         // post before pre (anti-causal)
- *     Δw = A- × exp(|Δt| / τ-) // LTD
- * w_new = clamp(w_old + Δw, w_min, w_max)
- * ```
- *
- * PERFORMANCE: O(1) - single exponential computation (or lookup)
- *
- * @param learner STDP learner with configuration
  * @param synapse Synapse to update
- * @param t_pre Presynaptic spike time (ms)
- * @param t_post Postsynaptic spike time (ms)
- * @return Weight change (Δw), or 0.0 if no update
+ * @param dt Time step [seconds]
  */
-float stdp_apply(
-    stdp_learner_t* learner,
-    synapse_t* synapse,
-    uint64_t t_pre,
-    uint64_t t_post
-);
+void stdp_update_traces(stdp_synapse_t* synapse, float dt);
 
 /**
- * @brief Apply STDP using spike histories
+ * Process presynaptic spike (classic STDP, no neuromodulation)
  *
- * WHAT: Update synapse based on recent spike history
- * WHY: Handle multiple spike pairs (all-pairs STDP)
- * HOW: Iterate through spike history, apply STDP for each pair
- *
- * MODES:
- * - nearest_spike=true: Use only most recent spike pair (fast)
- * - nearest_spike=false: Use all spike pairs within window (accurate)
- *
- * PERFORMANCE:
- * - Nearest spike: O(1)
- * - All pairs: O(H²) where H = history length
- *
- * @param learner STDP learner
  * @param synapse Synapse to update
- * @param pre_neuron Presynaptic neuron (for spike history)
- * @param post_neuron Postsynaptic neuron (for spike history)
- * @return Total weight change
+ * @param current_time Current time [ms]
+ * @return Weight change applied
  */
-float stdp_apply_from_history(
-    stdp_learner_t* learner,
-    synapse_t* synapse,
-    const neuron_t* pre_neuron,
-    const neuron_t* post_neuron
-);
+float stdp_pre_spike(stdp_synapse_t* synapse, float current_time);
 
 /**
- * @brief Apply STDP to all synapses in network
+ * Process postsynaptic spike (classic STDP, no neuromodulation)
  *
- * WHAT: Batch STDP update for entire network
- * WHY: Update all synapses after network step
- * HOW: Iterate through all neurons, update incoming synapses
- *
- * TYPICAL USAGE:
- * ```
- * // After each network timestep:
- * neural_network_compute_step(network, t);
- * stdp_apply_to_network(learner, network);
- * ```
- *
- * PERFORMANCE: O(S) where S = total synapses in network
- *
- * @param learner STDP learner
- * @param network Neural network to update
- */
-void stdp_apply_to_network(
-    stdp_learner_t* learner,
-    void* network  // neural_network_t (opaque)
-);
-
-//=============================================================================
-// Modulated STDP (Integration with Neuromodulation)
-//=============================================================================
-
-/**
- * @brief Apply dopamine-modulated STDP
- *
- * WHAT: Scale STDP learning by dopamine level
- * WHY: Dopamine gates plasticity (reward-modulated learning)
- * HOW: Multiply weight change by dopamine concentration
- *
- * BIOLOGICAL BASIS:
- * - Dopamine D1 receptors enhance LTP
- * - Low dopamine → weak/no plasticity (Schultz et al., 1997)
- *
- * ALGORITHM:
- * ```
- * Δw_base = stdp_apply(...)
- * Δw_modulated = Δw_base × dopamine_level
- * ```
- *
- * @param learner STDP learner
  * @param synapse Synapse to update
- * @param t_pre Presynaptic spike time
- * @param t_post Postsynaptic spike time
- * @param dopamine_level Dopamine concentration [0, 1]
- * @return Modulated weight change
+ * @param current_time Current time [ms]
+ * @return Weight change applied
  */
-float stdp_apply_modulated(
-    stdp_learner_t* learner,
-    synapse_t* synapse,
-    uint64_t t_pre,
-    uint64_t t_post,
-    float dopamine_level
-);
-
-//=============================================================================
-// Statistics and Analysis
-//=============================================================================
+float stdp_post_spike(stdp_synapse_t* synapse, float current_time);
 
 /**
- * @brief Get STDP learning statistics
+ * Process presynaptic spike with dopamine modulation (THREE-FACTOR LEARNING)
  *
- * WHAT: Query learning activity (LTP/LTD counts, avg weight change)
- * WHY: Monitor learning dynamics
- * HOW: Return statistics structure
+ * This is the key function for reward-modulated learning. The weight change
+ * is modulated by:
+ * 1. Dopamine concentration (tonic + phasic)
+ * 2. Burst state (3x amplification during bursts)
  *
- * @param learner STDP learner
- * @param ltp_count Output: Number of LTP events (can be NULL)
- * @param ltd_count Output: Number of LTD events (can be NULL)
- * @param avg_weight_change Output: Average |Δw| (can be NULL)
- */
-void stdp_get_statistics(
-    const stdp_learner_t* learner,
-    uint64_t* ltp_count,
-    uint64_t* ltd_count,
-    float* avg_weight_change
-);
-
-/**
- * @brief Reset STDP statistics
- *
- * WHAT: Zero all learning counters
- * WHY: Start fresh measurement period
- * HOW: Set all counters to zero
- *
- * @param learner STDP learner
- */
-void stdp_reset_statistics(stdp_learner_t* learner);
-
-//=============================================================================
-// Weight-Dependent STDP (Advanced)
-//=============================================================================
-
-/**
- * @brief Apply weight-dependent STDP
- *
- * WHAT: Scale plasticity by current weight (soft bounds)
- * WHY: Prevent runaway potentiation/depression
- * HOW: Multiply by (1 - w/w_max) for LTP, (w/w_max) for LTD
- *
- * ALGORITHM:
- * ```
- * if (Δt > 0):  // LTP
- *     Δw = A+ × exp(-Δt/τ+) × (1 - w/w_max)
- * else:         // LTD
- *     Δw = A- × exp(|Δt|/τ-) × (w/w_max)
- * ```
- *
- * BENEFIT: Prevents saturation at bounds while allowing exploration
- *
- * @param learner STDP learner
  * @param synapse Synapse to update
- * @param t_pre Presynaptic spike time
- * @param t_post Postsynaptic spike time
- * @return Weight change with soft bounds
+ * @param current_time Current time [ms]
+ * @param neuromod Neuromodulator system (for dopamine level)
+ * @return Weight change applied
  */
-float stdp_apply_weight_dependent(
-    stdp_learner_t* learner,
-    synapse_t* synapse,
-    uint64_t t_pre,
-    uint64_t t_post
-);
+float stdp_pre_spike_modulated(stdp_synapse_t* synapse,
+                                float current_time,
+                                neuromodulator_system_t* neuromod);
+
+/**
+ * Process postsynaptic spike with dopamine modulation
+ *
+ * @param synapse Synapse to update
+ * @param current_time Current time [ms]
+ * @param neuromod Neuromodulator system (for dopamine level)
+ * @return Weight change applied
+ */
+float stdp_post_spike_modulated(stdp_synapse_t* synapse,
+                                 float current_time,
+                                 neuromodulator_system_t* neuromod);
+
+/**
+ * Apply weight change with dopamine modulation
+ *
+ * Internal function that applies DA-gated learning. Called by
+ * stdp_pre_spike_modulated() and stdp_post_spike_modulated().
+ *
+ * @param synapse Synapse to update
+ * @param base_weight_change Unmodulated weight change (from STDP rule)
+ * @param neuromod Neuromodulator system
+ * @return Actual weight change applied (after modulation)
+ */
+float stdp_apply_modulated_weight_change(stdp_synapse_t* synapse,
+                                         float base_weight_change,
+                                         neuromodulator_system_t* neuromod);
+
+/**
+ * Get current dopamine modulation factor
+ *
+ * Computes the multiplicative factor applied to learning rate based on:
+ * - Dopamine concentration (tonic + phasic)
+ * - Burst state (amplification if bursting)
+ *
+ * @param synapse Synapse configuration
+ * @param neuromod Neuromodulator system
+ * @return Modulation factor [0, 10+] (typically 1.0 baseline, 5.0+ during bursts)
+ */
+float stdp_get_da_modulation_factor(const stdp_synapse_t* synapse,
+                                     neuromodulator_system_t* neuromod);
+
+/**
+ * Reset STDP synapse (clear traces and statistics)
+ *
+ * @param synapse Synapse to reset
+ */
+void stdp_synapse_reset(stdp_synapse_t* synapse);
+
+/**
+ * Print STDP synapse statistics
+ *
+ * @param synapse Synapse to print
+ */
+void stdp_synapse_print_stats(const stdp_synapse_t* synapse);
 
 #ifdef __cplusplus
 }
 #endif
 
-#endif // NIMCP_STDP_H
+#endif /* NIMCP_STDP_H */

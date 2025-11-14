@@ -18,11 +18,9 @@
 #include <gtest/gtest.h>
 #include <cmath>
 
-extern "C" {
 #include "core/neuron_models/nimcp_izhikevich.h"
 #include "core/neuron_models/nimcp_neuron_model.h"
 #include "utils/memory/nimcp_memory.h"
-}
 
 //=============================================================================
 // Test Fixtures

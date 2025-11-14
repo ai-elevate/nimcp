@@ -27,7 +27,6 @@
 #include <vector>
 
 // Define structures for testing before implementation is available
-extern "C" {
     // Forward declarations - these will be implemented in nimcp_integration.h
     typedef enum {
         INTEGRATION_EULER,      // 1st order accurate, O(dt)
@@ -109,7 +108,6 @@ extern "C" {
         delete[] y_temp;
     }
     #endif
-}
 
 //=============================================================================
 // Test Fixture

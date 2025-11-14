@@ -10,9 +10,7 @@
 #include <cstring>
 #include <cmath>
 
-extern "C" {
 #include "core/brain/nimcp_brain.h"
-}
 
 class BrainExhaustiveTest : public ::testing::Test {
 protected:

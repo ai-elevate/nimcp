@@ -25,10 +25,8 @@
 #include <cstring>
 #include <chrono>
 
-extern "C" {
     #include "cognitive/nimcp_executive.h"
     #include "utils/time/nimcp_time.h"
-}
 
 // =============================================================================
 // TEST FIXTURES

@@ -21,10 +21,8 @@
 #include <cstring>
 #include <cmath>
 
-extern "C" {
     #include "core/brain/nimcp_brain.h"
     #include "include/nimcp.h"
-}
 
 //=============================================================================
 // Test Fixture

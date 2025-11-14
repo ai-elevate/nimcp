@@ -7,10 +7,8 @@
 #include "test_helpers.h"
 
 // Ensure we're using C linkage for the Python/NIMCP C headers
-extern "C" {
 #define PY_SSIZE_T_CLEAN
 #include <Python.h>
-}
 
 namespace {
 

@@ -7,10 +7,8 @@
 
 #include <gtest/gtest.h>
 
-extern "C" {
 #include "cognitive/ethics/nimcp_ethics.h"
 #include "core/brain/nimcp_brain.h"
-}
 
 class EthicsRealTest : public ::testing::Test {
 protected:

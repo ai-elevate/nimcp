@@ -9,14 +9,12 @@
 
 #include <gtest/gtest.h>
 
-extern "C" {
 #include "glial/integration/nimcp_glial_integration.h"
 #include "glial/astrocytes/nimcp_astrocytes.h"
 #include "glial/oligodendrocytes/nimcp_oligodendrocytes.h"
 #include "glial/microglia/nimcp_microglia.h"
 #include "core/neuralnet/nimcp_neuralnet.h"
 #include "utils/memory/nimcp_memory.h"
-}
 
 //=============================================================================
 // Test Fixture

@@ -1,9 +1,7 @@
 #include "test_helpers.h"
 
-extern "C" {
 #include "plasticity/adaptive/nimcp_adaptive.h"
 #include "utils/memory/nimcp_memory.h"
-}
 
 //=============================================================================
 // Test Helper Functions

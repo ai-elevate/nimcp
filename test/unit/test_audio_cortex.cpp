@@ -14,9 +14,7 @@
 #include <cmath>
 #include <vector>
 
-extern "C" {
     #include "perception/nimcp_audio_cortex.h"
-}
 
 // =============================================================================
 // TEST FIXTURES

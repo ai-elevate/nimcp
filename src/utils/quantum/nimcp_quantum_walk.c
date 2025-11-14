@@ -4,7 +4,7 @@
 
 #include "utils/quantum/nimcp_quantum_walk.h"
 #include "core/neuralnet/nimcp_neuralnet.h"
-#include "core/memory/nimcp_memory.h"
+#include "utils/memory/nimcp_memory.h"
 #include "utils/time/nimcp_time.h"
 #include <math.h>
 #include <string.h>
@@ -124,8 +124,9 @@ static bool build_adjacency_lists(
     // WHY: Need to allocate adjacency lists
     // HOW: Iterate all synapses, increment source neuron degree
     for (uint32_t neuron_id = 0; neuron_id < num_neurons; neuron_id++) {
-        // Get neuron's outgoing synapses
-        uint32_t num_synapses = neural_network_get_num_synapses(network, neuron_id);
+        // Get neuron and count its outgoing synapses
+        neuron_t* neuron = neural_network_get_neuron(network, neuron_id);
+        uint32_t num_synapses = neuron ? neuron->num_synapses : 0;
         walker->node_degrees[neuron_id] = num_synapses;
     }
 

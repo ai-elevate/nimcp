@@ -30,9 +30,7 @@
 #include <thread>
 #include <vector>
 
-extern "C" {
 #include "utils/platform/nimcp_platform_rwlock.h"
-}
 
 //=============================================================================
 // Test Constants

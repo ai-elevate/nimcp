@@ -13,9 +13,7 @@
 #include <numeric>
 #include <chrono>
 
-extern "C" {
 #include "plasticity/attention/nimcp_attention.h"
-}
 
 //=============================================================================
 // Test Fixtures

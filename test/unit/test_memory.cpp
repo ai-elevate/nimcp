@@ -11,9 +11,7 @@
 #include <cstring>
 #include <vector>
 
-extern "C" {
 #include "utils/memory/nimcp_memory.h"
-}
 
 //=============================================================================
 // Basic Allocation Tests

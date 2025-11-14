@@ -9,10 +9,8 @@
 
 #include "test_helpers.h"
 
-extern "C" {
 #include "core/brain/nimcp_brain.h"
 #include "cognitive/salience/nimcp_salience.h"
-}
 
 #include <gtest/gtest.h>
 #include <string.h>

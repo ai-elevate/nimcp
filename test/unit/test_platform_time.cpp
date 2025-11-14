@@ -20,9 +20,7 @@
 #include <vector>
 #include <cstring>
 
-extern "C" {
 #include "utils/platform/nimcp_platform_time.h"
-}
 
 //=============================================================================
 // MONOTONIC TIME TESTS

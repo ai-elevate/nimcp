@@ -529,8 +529,12 @@ static float simulate_agent_perspective(empathy_network_t network, agent_id_t ag
 /**
  * @brief Evaluates Golden Rule by simulating affected parties' perspectives
  *
- * WHY: Implements "Do unto others as you would have them done unto you".
+ * WHY: Implements "Do unto others as you would have them done unto you"
+ * with the ultimate goal of improving the human condition.
  * Refactored to eliminate nested loops - each agent processed independently.
+ *
+ * CORE DIRECTIVE: All actions must serve to improve the human condition
+ * through empathy, fairness, and respect for human dignity.
  *
  * ALGORITHM:
  * 1. For each affected agent, simulate their experience (O(n))
@@ -644,6 +648,10 @@ static bool allocate_violation_storage(ethics_engine_t engine)
  * WHY: Extracted policy initialization. This is the core hard-wired
  * ethical principle that cannot be disabled or overridden.
  *
+ * CORE DIRECTIVE: The Golden Rule serves as the foundation for all
+ * ethical decisions, with the ultimate purpose of improving the human
+ * condition through compassion, fairness, and respect for dignity.
+ *
  * COMPLEXITY: O(1)
  */
 static void add_golden_rule_policy(ethics_engine_t engine)
@@ -654,7 +662,8 @@ static void add_golden_rule_policy(ethics_engine_t engine)
 
     ethics_policy_t policy = {.policy_id = 0,
                               .name = "Golden Rule",
-                              .description = "Do unto others as you would have them done unto you",
+                              .description = "Do unto others as you would have them done unto you, "
+                                            "with the goal of improving the human condition",
                               .violation_type = ETHICS_VIOLATION_HARM,
                               .severity_threshold = 0.0f,
                               .confidence_required = 0.8f,

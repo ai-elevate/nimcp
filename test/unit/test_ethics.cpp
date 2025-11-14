@@ -5,9 +5,7 @@
 
 #include "test_helpers.h"
 
-extern "C" {
 #include "cognitive/ethics/nimcp_ethics.h"
-}
 
 #include <cstring>
 

@@ -6,5 +6,5 @@ C_DEFINES = -DNIMCP_ENABLE_ENCRYPTION
 
 C_INCLUDES = -I/home/bbrelin/nimcp/src -I/home/bbrelin/nimcp/src/include -isystem /usr/include/python3.12
 
-C_FLAGS = --coverage -Wall -Wextra -Wpedantic -g -std=gnu11
+C_FLAGS =  -Wall -Wextra -Wpedantic -g -std=gnu11
 

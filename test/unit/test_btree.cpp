@@ -8,10 +8,8 @@
 #include <cstring>
 #include <string>
 #include <vector>
-extern "C" {
 #include "utils/containers/nimcp_btree.h"
 #include "utils/memory/nimcp_memory.h"
-}
 
 // Test data structure
 struct TestData {

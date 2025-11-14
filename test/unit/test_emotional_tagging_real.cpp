@@ -8,10 +8,8 @@
 #include <gtest/gtest.h>
 #include <cmath>
 
-extern "C" {
 #include "cognitive/nimcp_emotional_tagging.h"
 #include "core/brain/nimcp_brain.h"
-}
 
 class EmotionalTaggingRealTest : public ::testing::Test {
 protected:

@@ -8,9 +8,7 @@
 #include <gtest/gtest.h>
 #include <unistd.h>
 
-extern "C" {
 #include "core/brain/nimcp_brain.h"
-}
 
 class BrainFinalCoverageTest : public ::testing::Test {
 protected:

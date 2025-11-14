@@ -10,12 +10,10 @@
 #include <gtest/gtest.h>
 #include <cmath>
 
-extern "C" {
 #include "glial/astrocyte_types/nimcp_astrocyte_types.h"
 #include "glial/astrocytes/nimcp_astrocytes.h"
 #include "core/neuralnet/nimcp_neuralnet.h"
 #include "utils/memory/nimcp_memory.h"
-}
 
 //=============================================================================
 // Test Fixture

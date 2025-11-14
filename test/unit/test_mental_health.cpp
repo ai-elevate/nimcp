@@ -20,11 +20,9 @@
 
 #include <gtest/gtest.h>
 
-extern "C" {
     #include "core/brain/nimcp_brain.h"
     #include "cognitive/nimcp_mental_health.h"
     #include <string.h>
-}
 
 // =============================================================================
 // TEST FIXTURE

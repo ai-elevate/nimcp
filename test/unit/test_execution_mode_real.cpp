@@ -1,8 +1,6 @@
 #include <gtest/gtest.h>
 
-extern "C" {
 #include "include/gpu/nimcp_execution_mode.h"
-}
 
 //=============================================================================
 // Execution Mode Real Tests

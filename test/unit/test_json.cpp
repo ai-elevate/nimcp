@@ -12,11 +12,9 @@
 #include <cstring>
 #include <fstream>
 
-extern "C" {
 #define NIMCP_INTERNAL
 #include "utils/json/nimcp_json.h"
 #include "utils/memory/nimcp_memory.h"
-}
 
 //=============================================================================
 // Test Fixture Setup

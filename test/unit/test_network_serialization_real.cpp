@@ -1,12 +1,10 @@
 #include <gtest/gtest.h>
 #include <cstring>
 
-extern "C" {
 #include "io/serialization/nimcp_network_serialization.h"
 #include "io/serialization/nimcp_serialization.h"
 #include "core/neuralnet/nimcp_neuralnet.h"
 #include "core/brain/nimcp_brain.h"
-}
 
 //=============================================================================
 // Network Serialization Real Tests

@@ -9,9 +9,7 @@
 #include <cstring>
 #include <unistd.h>
 
-extern "C" {
 #include "core/brain/nimcp_brain.h"
-}
 
 class BrainSnapshotTest : public ::testing::Test {
 protected:

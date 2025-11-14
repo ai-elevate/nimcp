@@ -5,6 +5,7 @@
 
 #include "nimcp_config.h"
 #include "../memory/nimcp_memory.h"
+#include "../json/nimcp_json.h"
 #include <stdio.h>
 #include <string.h>
 #include <ctype.h>
@@ -189,22 +190,91 @@ bool nimcp_config_load_yaml(const char* filepath, nimcp_brain_config_t* config) 
 }
 
 bool nimcp_config_load_json(const char* filepath, nimcp_brain_config_t* config) {
-    // For JSON, we'll use a simplified parser
-    // In production, this would use the nimcp_json module
-    FILE* file = fopen(filepath, "r");
-    if (!file) {
-        fprintf(stderr, "Failed to open config file: %s\n", filepath);
+    // Use the nimcp_json module for proper JSON parsing
+    JsonContext* ctx = NULL;
+
+    if (nimcp_json_create_context(&ctx) != JSON_SUCCESS) {
+        fprintf(stderr, "Failed to create JSON context\n");
+        return false;
+    }
+
+    if (nimcp_json_load_file(ctx, filepath, 0) != JSON_SUCCESS) {
+        fprintf(stderr, "Failed to load JSON config file: %s\n", filepath);
+        nimcp_json_destroy_context(ctx);
         return false;
     }
 
     nimcp_config_init_defaults(config);
 
-    // For now, use the YAML parser logic on JSON (works for simple cases)
-    fseek(file, 0, SEEK_SET);
-    fclose(file);
+    // Parse brain configuration fields
+    char str_buffer[256];
+    int64_t int_value = 0;
+    double double_value = 0.0;
+    bool bool_value = false;
 
-    // Reopen and use YAML parser (JSON is valid YAML for simple cases)
-    return nimcp_config_load_yaml(filepath, config);
+    // Brain section fields
+    if (nimcp_json_get_string_value(ctx, "name", str_buffer, sizeof(str_buffer)) == JSON_SUCCESS) {
+        strncpy(config->name, str_buffer, sizeof(config->name) - 1);
+    }
+
+    // Architecture section fields
+    if (nimcp_json_get_integer_value(ctx, "num_inputs", &int_value) == JSON_SUCCESS) {
+        config->num_inputs = (uint32_t)int_value;
+    }
+    if (nimcp_json_get_integer_value(ctx, "num_outputs", &int_value) == JSON_SUCCESS) {
+        config->num_outputs = (uint32_t)int_value;
+    }
+    if (nimcp_json_get_integer_value(ctx, "num_hidden", &int_value) == JSON_SUCCESS) {
+        config->num_hidden = (uint32_t)int_value;
+    }
+    if (nimcp_json_get_number_value(ctx, "learning_rate", &double_value) == JSON_SUCCESS) {
+        config->learning_rate = (float)double_value;
+    }
+
+    // Training section fields
+    if (nimcp_json_get_integer_value(ctx, "max_epochs", &int_value) == JSON_SUCCESS) {
+        config->max_epochs = (uint32_t)int_value;
+    }
+    if (nimcp_json_get_integer_value(ctx, "batch_size", &int_value) == JSON_SUCCESS) {
+        config->batch_size = (uint32_t)int_value;
+    }
+    if (nimcp_json_get_number_value(ctx, "validation_split", &double_value) == JSON_SUCCESS) {
+        config->validation_split = (float)double_value;
+    }
+    if (nimcp_json_get_boolean_value(ctx, "early_stopping", &bool_value) == JSON_SUCCESS) {
+        config->early_stopping = bool_value;
+    }
+    if (nimcp_json_get_integer_value(ctx, "patience", &int_value) == JSON_SUCCESS) {
+        config->patience = (uint32_t)int_value;
+    }
+
+    // Plasticity section fields
+    if (nimcp_json_get_boolean_value(ctx, "enable_bcm", &bool_value) == JSON_SUCCESS) {
+        config->enable_bcm = bool_value;
+    }
+    if (nimcp_json_get_number_value(ctx, "bcm_tau", &double_value) == JSON_SUCCESS) {
+        config->bcm_tau = (float)double_value;
+    }
+    if (nimcp_json_get_boolean_value(ctx, "enable_stdp", &bool_value) == JSON_SUCCESS) {
+        config->enable_stdp = bool_value;
+    }
+    if (nimcp_json_get_number_value(ctx, "stdp_window", &double_value) == JSON_SUCCESS) {
+        config->stdp_window = (float)double_value;
+    }
+
+    // Ethics section fields
+    if (nimcp_json_get_boolean_value(ctx, "ethics_enabled", &bool_value) == JSON_SUCCESS) {
+        config->ethics_enabled = bool_value;
+    }
+    if (nimcp_json_get_number_value(ctx, "golden_rule_threshold", &double_value) == JSON_SUCCESS) {
+        config->golden_rule_threshold = (float)double_value;
+    }
+    if (nimcp_json_get_number_value(ctx, "empathy_weight", &double_value) == JSON_SUCCESS) {
+        config->empathy_weight = (float)double_value;
+    }
+
+    nimcp_json_destroy_context(ctx);
+    return true;
 }
 
 bool nimcp_config_load(const char* filepath, nimcp_brain_config_t* config) {

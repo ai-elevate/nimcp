@@ -13,9 +13,7 @@
 #include <gtest/gtest.h>
 #include <cmath>
 
-extern "C" {
     #include "perception/nimcp_speech_cortex.h"
-}
 
 // =============================================================================
 // TEST FIXTURES

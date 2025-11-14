@@ -9,9 +9,7 @@
 #include <vector>
 #include <cmath>
 
-extern "C" {
 #include "core/brain/nimcp_brain.h"
-}
 
 class BrainComprehensiveCoverageTest : public ::testing::Test {
 protected:

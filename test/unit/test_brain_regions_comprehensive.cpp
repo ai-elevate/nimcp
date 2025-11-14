@@ -28,11 +28,9 @@
 #include <vector>
 #include <algorithm>
 
-extern "C" {
 #include "core/brain_regions/nimcp_brain_regions.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/time/nimcp_time.h"
-}
 
 //=============================================================================
 // Test Fixture

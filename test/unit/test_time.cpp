@@ -11,9 +11,7 @@
 #include <chrono>
 #include <thread>
 
-extern "C" {
 #include "utils/time/nimcp_time.h"
-}
 
 //=============================================================================
 // Wall Clock Time Tests

@@ -5,11 +5,9 @@
 #include <gtest/gtest.h>
 #include <cmath>
 
-extern "C" {
 #include "core/topology/nimcp_fractal_topology.h"
 #include "core/neuralnet/nimcp_neuralnet.h"
 #include "core/brain/nimcp_brain.h"
-}
 
 class FractalTopologyRealTest : public ::testing::Test {
 protected:

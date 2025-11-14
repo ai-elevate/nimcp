@@ -12,10 +12,8 @@
 #include <cmath>
 #include <vector>
 
-extern "C" {
 #include "utils/containers/nimcp_graph.h"
 #include "utils/memory/nimcp_memory.h"
-}
 
 //=============================================================================
 // Graph Creation and Destruction Tests

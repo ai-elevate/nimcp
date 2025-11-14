@@ -220,6 +220,25 @@ typedef struct {
     uint32_t num_updates;                 /**< Times self-model updated */
     uint64_t last_introspection_ms;       /**< When did I last reflect? */
     bool is_self_model_coherent;          /**< Is my self-understanding consistent? */
+
+    // === Personality and Identity (Phase 12) ===
+    /**
+     * Personality Profile
+     *
+     * WHAT: Unique personality traits, gender identity, sexual orientation
+     * WHY:  Each brain is a distinct individual with unique characteristics
+     * HOW:  Big Five traits + gender/sexuality identity
+     *
+     * BEHAVIORAL IMPACT:
+     * - Personality traits modulate cognitive processes
+     * - Identity shapes self-concept and social behavior
+     * - Traits are relatively stable but can shift with experience
+     *
+     * NOTE: Requires including cognitive/nimcp_personality.h
+     * For now, stored as opaque pointer (forward compatibility)
+     */
+    void* personality_profile;            /**< Personality profile (personality_profile_t*) */
+    bool has_personality;                 /**< Is personality initialized? */
 } self_model_t;
 
 /**
@@ -444,6 +463,26 @@ bool self_model_check_coherence(self_model_system_t system,
 bool self_model_reflect(self_model_system_t system,
                        void* introspection,
                        void* autobio);
+
+/**
+ * @brief Set personality profile for self-model
+ *
+ * WHAT: Wire personality profile into self-model (Phase 12)
+ * WHY:  Self-model should include personality as part of identity
+ * HOW:  Store pointer to personality profile in self-model
+ *
+ * @param system Self-model system
+ * @param personality Personality profile (ownership NOT transferred)
+ * @return true on success
+ *
+ * NOTE: The self-model stores a POINTER to the personality, not a copy.
+ *       The personality must remain valid for the lifetime of the self-model.
+ *
+ * COMPLEXITY: O(1)
+ * THREAD-SAFE: Yes
+ */
+bool self_model_set_personality(self_model_system_t system,
+                                 void* personality);
 
 #ifdef __cplusplus
 }

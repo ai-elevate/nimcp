@@ -4,9 +4,7 @@
  */
 
 #include <gtest/gtest.h>
-extern "C" {
 #include "utils/spectral/nimcp_fft.h"
-}
 #include <cmath>
 
 //=============================================================================

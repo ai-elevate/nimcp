@@ -521,6 +521,34 @@ distributed_cow_demo/fast:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f examples/CMakeFiles/distributed_cow_demo.dir/build.make examples/CMakeFiles/distributed_cow_demo.dir/build
 .PHONY : distributed_cow_demo/fast
 
+# Convenience name for target.
+examples/CMakeFiles/neuromodulation_integration_example.dir/rule:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 examples/CMakeFiles/neuromodulation_integration_example.dir/rule
+.PHONY : examples/CMakeFiles/neuromodulation_integration_example.dir/rule
+
+# Convenience name for target.
+neuromodulation_integration_example: examples/CMakeFiles/neuromodulation_integration_example.dir/rule
+.PHONY : neuromodulation_integration_example
+
+# fast build rule for target.
+neuromodulation_integration_example/fast:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f examples/CMakeFiles/neuromodulation_integration_example.dir/build.make examples/CMakeFiles/neuromodulation_integration_example.dir/build
+.PHONY : neuromodulation_integration_example/fast
+
+# Convenience name for target.
+examples/CMakeFiles/rl_eligibility_demo.dir/rule:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 examples/CMakeFiles/rl_eligibility_demo.dir/rule
+.PHONY : examples/CMakeFiles/rl_eligibility_demo.dir/rule
+
+# Convenience name for target.
+rl_eligibility_demo: examples/CMakeFiles/rl_eligibility_demo.dir/rule
+.PHONY : rl_eligibility_demo
+
+# fast build rule for target.
+rl_eligibility_demo/fast:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f examples/CMakeFiles/rl_eligibility_demo.dir/build.make examples/CMakeFiles/rl_eligibility_demo.dir/build
+.PHONY : rl_eligibility_demo/fast
+
 brain_demo.o: brain_demo.c.o
 .PHONY : brain_demo.o
 
@@ -857,6 +885,30 @@ multimodal_integration_demo.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f examples/CMakeFiles/multimodal_integration_demo.dir/build.make examples/CMakeFiles/multimodal_integration_demo.dir/multimodal_integration_demo.c.s
 .PHONY : multimodal_integration_demo.c.s
 
+neuromodulation_integration_example.o: neuromodulation_integration_example.c.o
+.PHONY : neuromodulation_integration_example.o
+
+# target to build an object file
+neuromodulation_integration_example.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f examples/CMakeFiles/neuromodulation_integration_example.dir/build.make examples/CMakeFiles/neuromodulation_integration_example.dir/neuromodulation_integration_example.c.o
+.PHONY : neuromodulation_integration_example.c.o
+
+neuromodulation_integration_example.i: neuromodulation_integration_example.c.i
+.PHONY : neuromodulation_integration_example.i
+
+# target to preprocess a source file
+neuromodulation_integration_example.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f examples/CMakeFiles/neuromodulation_integration_example.dir/build.make examples/CMakeFiles/neuromodulation_integration_example.dir/neuromodulation_integration_example.c.i
+.PHONY : neuromodulation_integration_example.c.i
+
+neuromodulation_integration_example.s: neuromodulation_integration_example.c.s
+.PHONY : neuromodulation_integration_example.s
+
+# target to generate assembly for a file
+neuromodulation_integration_example.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f examples/CMakeFiles/neuromodulation_integration_example.dir/build.make examples/CMakeFiles/neuromodulation_integration_example.dir/neuromodulation_integration_example.c.s
+.PHONY : neuromodulation_integration_example.c.s
+
 nlp_integration_demo.o: nlp_integration_demo.c.o
 .PHONY : nlp_integration_demo.o
 
@@ -928,6 +980,30 @@ phase8_comprehensive_demo.s: phase8_comprehensive_demo.c.s
 phase8_comprehensive_demo.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f examples/CMakeFiles/phase8_comprehensive_demo.dir/build.make examples/CMakeFiles/phase8_comprehensive_demo.dir/phase8_comprehensive_demo.c.s
 .PHONY : phase8_comprehensive_demo.c.s
+
+rl_eligibility_demo.o: rl_eligibility_demo.c.o
+.PHONY : rl_eligibility_demo.o
+
+# target to build an object file
+rl_eligibility_demo.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f examples/CMakeFiles/rl_eligibility_demo.dir/build.make examples/CMakeFiles/rl_eligibility_demo.dir/rl_eligibility_demo.c.o
+.PHONY : rl_eligibility_demo.c.o
+
+rl_eligibility_demo.i: rl_eligibility_demo.c.i
+.PHONY : rl_eligibility_demo.i
+
+# target to preprocess a source file
+rl_eligibility_demo.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f examples/CMakeFiles/rl_eligibility_demo.dir/build.make examples/CMakeFiles/rl_eligibility_demo.dir/rl_eligibility_demo.c.i
+.PHONY : rl_eligibility_demo.c.i
+
+rl_eligibility_demo.s: rl_eligibility_demo.c.s
+.PHONY : rl_eligibility_demo.s
+
+# target to generate assembly for a file
+rl_eligibility_demo.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f examples/CMakeFiles/rl_eligibility_demo.dir/build.make examples/CMakeFiles/rl_eligibility_demo.dir/rl_eligibility_demo.c.s
+.PHONY : rl_eligibility_demo.c.s
 
 simple_demo.o: simple_demo.c.o
 .PHONY : simple_demo.o
@@ -1148,9 +1224,11 @@ help:
 	@echo "... integrated_demo"
 	@echo "... izhikevich_demo"
 	@echo "... multimodal_integration_demo"
+	@echo "... neuromodulation_integration_example"
 	@echo "... nlp_integration_demo"
 	@echo "... nlp_integration_test"
 	@echo "... phase8_comprehensive_demo"
+	@echo "... rl_eligibility_demo"
 	@echo "... simple_demo"
 	@echo "... speech_cortex_demo"
 	@echo "... test_neural_logic"
@@ -1201,6 +1279,9 @@ help:
 	@echo "... multimodal_integration_demo.o"
 	@echo "... multimodal_integration_demo.i"
 	@echo "... multimodal_integration_demo.s"
+	@echo "... neuromodulation_integration_example.o"
+	@echo "... neuromodulation_integration_example.i"
+	@echo "... neuromodulation_integration_example.s"
 	@echo "... nlp_integration_demo.o"
 	@echo "... nlp_integration_demo.i"
 	@echo "... nlp_integration_demo.s"
@@ -1210,6 +1291,9 @@ help:
 	@echo "... phase8_comprehensive_demo.o"
 	@echo "... phase8_comprehensive_demo.i"
 	@echo "... phase8_comprehensive_demo.s"
+	@echo "... rl_eligibility_demo.o"
+	@echo "... rl_eligibility_demo.i"
+	@echo "... rl_eligibility_demo.s"
 	@echo "... simple_demo.o"
 	@echo "... simple_demo.i"
 	@echo "... simple_demo.s"

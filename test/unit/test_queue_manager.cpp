@@ -9,10 +9,8 @@
 #include <gtest/gtest.h>
 #include <chrono>
 #include <thread>
-extern "C" {
 #include "utils/memory/nimcp_memory.h"
 #include "utils/queue_manager/nimcp_queue_manager.h"
-}
 
 // Test fixture for queue manager operations
 class QueueManagerTest : public ::testing::Test {

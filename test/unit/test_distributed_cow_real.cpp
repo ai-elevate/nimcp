@@ -15,12 +15,10 @@
 #include <gtest/gtest.h>
 #include <cstring>
 
-extern "C" {
 #include "core/brain/nimcp_distributed_cow.h"
 #include "core/brain/nimcp_brain.h"
 #include "networking/p2p/nimcp_p2pnode.h"
 #include "utils/memory/nimcp_memory.h"
-}
 
 //=============================================================================
 // Test Fixtures

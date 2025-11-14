@@ -29,10 +29,8 @@
 #include <cstring>
 #include <cmath>
 
-extern "C" {
 #include "core/brain_regions/nimcp_brain_regions.h"
 #include "core/neuron_types/nimcp_neuron_types.h"
-}
 
 //=============================================================================
 // Test Fixtures

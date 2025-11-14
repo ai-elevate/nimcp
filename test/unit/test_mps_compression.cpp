@@ -27,11 +27,9 @@
 #include <cstring>
 #include <chrono>
 
-extern "C" {
     #include "utils/tensor_networks/nimcp_mps.h"
     #include "utils/memory/nimcp_memory.h"
     #include "utils/platform/nimcp_platform_time.h"
-}
 
 //=============================================================================
 // Test Utilities

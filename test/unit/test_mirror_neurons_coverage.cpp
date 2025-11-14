@@ -33,9 +33,7 @@
 #include <cstring>
 #include <cmath>
 
-extern "C" {
 #include "cognitive/nimcp_mirror_neurons.h"
-}
 
 //=============================================================================
 // Test Fixtures

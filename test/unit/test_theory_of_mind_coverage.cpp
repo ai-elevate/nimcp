@@ -18,10 +18,8 @@
 #include <gtest/gtest.h>
 #include <cstring>
 
-extern "C" {
 #include "cognitive/nimcp_theory_of_mind.h"
 #include "utils/memory/nimcp_memory.h"
-}
 
 //=============================================================================
 // Test Fixtures

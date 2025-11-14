@@ -24,12 +24,10 @@
 #include <cmath>
 #include <vector>
 
-extern "C" {
     #include "cognitive/nimcp_mirror_neurons.h"
     #include "core/brain/nimcp_brain.h"
     #include "utils/memory/nimcp_memory.h"
     #include "utils/time/nimcp_time.h"
-}
 
 //=============================================================================
 // Test Fixture

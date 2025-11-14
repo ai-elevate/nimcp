@@ -5,9 +5,7 @@
 #include <gtest/gtest.h>
 #include <cmath>
 
-extern "C" {
 #include "core/neuralnet/nimcp_neuralnet.h"
-}
 
 class SynapseEmbeddingsTest : public ::testing::Test {
 protected:

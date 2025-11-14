@@ -33,10 +33,8 @@
 #include <cstring>
 #include <vector>
 
-extern "C" {
 #include "cognitive/salience/nimcp_salience.h"
 #include "core/brain/nimcp_brain.h"
-}
 
 //=============================================================================
 // Test Fixtures

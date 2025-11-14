@@ -5,12 +5,10 @@
 
 #include "test_helpers.h"
 
-extern "C" {
 #include "plasticity/adaptive/nimcp_adaptive.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/containers/nimcp_hash_table.h"
 #include "core/neuralnet/nimcp_neuralnet.h"
-}
 
 #include <gtest/gtest.h>
 #include <cmath>

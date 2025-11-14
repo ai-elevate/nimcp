@@ -10,11 +10,9 @@
 #include <gtest/gtest.h>
 #include <cmath>
 
-extern "C" {
 #include "glial/oligodendrocytes/nimcp_oligodendrocytes.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/time/nimcp_time.h"
-}
 
 //=============================================================================
 // Test Fixture

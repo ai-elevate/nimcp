@@ -14,10 +14,8 @@
 #include <gtest/gtest.h>
 #include <cstring>
 
-extern "C" {
 #include "include/cognitive/nimcp_symbolic_logic.h"
 #include "utils/memory/nimcp_memory.h"
-}
 
 //=============================================================================
 // Test Fixtures

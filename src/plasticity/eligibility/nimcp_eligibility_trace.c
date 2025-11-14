@@ -15,24 +15,32 @@
  * Δt = current_time - last_update
  * e = λ^Δt × e_old + spike_contribution
  *
- * // Apply reward:
+ * // Apply reward (standard mode):
  * Δw = η × e × reward × dopamine
+ *
+ * // Apply reward (burst-triggered mode - Option 2.2):
+ * if (in_burst):
+ *     Δw = (η × burst_multiplier) × e × reward × dopamine
+ * else:
+ *     Δw = 0  // No consolidation outside bursts
  * ```
  *
  * PERFORMANCE:
  * - eligibility_trace_update: O(1) - single power computation
  * - eligibility_apply_reward: O(1) - arithmetic only
+ * - eligibility_consolidate_on_burst: O(1) - arithmetic + burst check
  *
  * @author NIMCP Development Team
  * @date 2025-11-08
- * @version 2.7.0 Phase 4
+ * @version 2.7.0 Phase 4 + Option 2.2
  */
 
 #include "plasticity/eligibility/nimcp_eligibility_trace.h"
+#include "plasticity/neuromodulators/nimcp_phasic_tonic.h"  // For burst detection
 #include "core/neuralnet/nimcp_neuralnet.h"  // For complete synapse_t definition
 #include <math.h>
 
-// Note: synapse_t forward-declared in header, full definition needed here
+// Note: synapse_t and phasic_tonic_state_t forward-declared in header, full definitions needed here
 
 //=============================================================================
 // Lifecycle Functions
@@ -52,7 +60,12 @@ eligibility_config_t eligibility_default_config(void) {
         .decay_lambda = 0.95f,        // 95% decay per timestep (~20 step memory)
         .learning_rate = 0.001f,      // Modest learning rate
         .use_neuromodulation = true,  // Dopamine gating enabled
-        .trace_threshold = 0.01f      // Ignore traces < 1%
+        .trace_threshold = 0.01f,     // Ignore traces < 1%
+
+        // Option 2.2: Burst-triggered consolidation (disabled by default)
+        .burst_triggered_mode = false, // Standard mode (consolidate anytime)
+        .burst_lr_multiplier = 3.0f,   // 3x learning rate during bursts
+        .min_burst_concentration = 0.3f // 30% dopamine = burst threshold
     };
     return config;
 }
@@ -241,10 +254,10 @@ float eligibility_apply_reward(
     }
 
     // OPTIMIZATION: Skip negligible traces
-    // WHAT: Check if trace exceeds threshold
+    // WHAT: Check if trace exceeds threshold (absolute value)
     // WHY: Avoid wasting computation on tiny weight changes
-    // HOW: Compare to config.trace_threshold
-    if (trace->trace < config->trace_threshold) {
+    // HOW: Compare absolute value to config.trace_threshold
+    if (fabsf(trace->trace) < config->trace_threshold) {
         return 0.0f;
     }
 
@@ -327,6 +340,197 @@ float eligibility_update_and_learn(
     );
 
     return delta_w;
+}
+
+//=============================================================================
+// Burst-Triggered Consolidation (Option 2.2)
+//=============================================================================
+
+/**
+ * @brief Check if currently in dopamine burst state
+ *
+ * WHAT: Detect if dopamine is in phasic burst mode
+ * WHY: Determine whether to consolidate traces
+ * HOW: Check phasic_tonic->in_burst_state or dopamine concentration threshold
+ *
+ * @param phasic_tonic Dopamine phasic-tonic state
+ * @param config Configuration (for min_burst_concentration threshold)
+ * @return true if in burst state
+ */
+bool eligibility_is_in_burst(
+    const phasic_tonic_state_t* phasic_tonic,
+    const eligibility_config_t* config
+) {
+    // Guard: NULL checks
+    if (!phasic_tonic || !config) {
+        return false;
+    }
+
+    // DETECTION STRATEGY 1: Direct burst state flag (preferred)
+    // WHAT: Check if system marked as in burst
+    // WHY: Most accurate, directly from phasic-tonic system
+    // HOW: Read in_burst_state field
+    if (phasic_tonic->in_burst_state) {
+        return true;
+    }
+
+    // DETECTION STRATEGY 2: Threshold on total concentration (fallback)
+    // WHAT: High dopamine concentration implies burst
+    // WHY: Fallback if burst state not explicitly tracked
+    // HOW: Compare total_concentration to threshold
+    // NOTE: Baseline ~0.05 normalized, burst ~0.8+, threshold 0.3 = 6x baseline
+    if (phasic_tonic->total_concentration >= config->min_burst_concentration) {
+        return true;
+    }
+
+    // Neither condition met - not in burst
+    return false;
+}
+
+/**
+ * @brief Consolidate eligibility traces to weight changes during dopamine burst
+ *
+ * WHAT: Convert accumulated traces to weight changes only during bursts
+ * WHY: Implements "tags and capture" mechanism (Frey & Morris 1997)
+ * HOW: Check burst state, apply amplified learning if in burst
+ *
+ * @param synapse Synapse to potentially update
+ * @param trace Eligibility trace for this synapse
+ * @param config Configuration (includes burst_triggered_mode flag)
+ * @param phasic_tonic Dopamine phasic-tonic state (for burst detection)
+ * @param reward Reward signal [-1, 1]
+ * @return Weight change (Δw), 0 if not in burst and burst_triggered_mode enabled
+ */
+float eligibility_consolidate_on_burst(
+    synapse_t* synapse,
+    const eligibility_trace_t* trace,
+    const eligibility_config_t* config,
+    const phasic_tonic_state_t* phasic_tonic,
+    float reward
+) {
+    // Guard: NULL checks
+    if (!synapse || !trace || !config) {
+        return 0.0f;
+    }
+
+    // OPTIMIZATION: Skip negligible traces
+    if (trace->trace < config->trace_threshold) {
+        return 0.0f;
+    }
+
+    // MODE CHECK: Are we in burst-triggered mode?
+    if (config->burst_triggered_mode) {
+        // BURST-TRIGGERED MODE (Option 2.2)
+        // WHAT: Only consolidate during dopamine bursts
+        // WHY: Implement synaptic tagging and capture mechanism
+        // HOW: Check burst state before allowing consolidation
+
+        if (!phasic_tonic || !eligibility_is_in_burst(phasic_tonic, config)) {
+            // NOT in burst - traces remain as "tags", no consolidation
+            return 0.0f;
+        }
+
+        // IN BURST - consolidate with amplified learning rate
+        // WHAT: Apply burst_lr_multiplier to learning rate
+        // WHY: Bursts provide protein synthesis signal for LTP
+        // HOW: learning_rate × burst_lr_multiplier × trace × reward × dopamine
+        float burst_lr = config->learning_rate * config->burst_lr_multiplier;
+        float dopamine_concentration = phasic_tonic->total_concentration;
+
+        float delta_w = burst_lr * trace->trace * reward;
+
+        // Apply neuromodulation gating (dopamine concentration)
+        if (config->use_neuromodulation) {
+            delta_w *= dopamine_concentration;
+        }
+
+        // Update synapse weight
+        synapse->weight += delta_w;
+
+        return delta_w;
+
+    } else {
+        // STANDARD MODE (Original behavior)
+        // WHAT: Consolidate anytime, using dopamine concentration for gating
+        // WHY: Backward compatibility with existing code
+        // HOW: Same as eligibility_apply_reward()
+
+        float dopamine_concentration = phasic_tonic ?
+            phasic_tonic->total_concentration : 1.0f;  // Default to 1.0 if no phasic-tonic
+
+        float delta_w = config->learning_rate * trace->trace * reward;
+
+        if (config->use_neuromodulation) {
+            delta_w *= dopamine_concentration;
+        }
+
+        synapse->weight += delta_w;
+
+        return delta_w;
+    }
+}
+
+/**
+ * @brief Batch consolidate multiple synapses during dopamine burst
+ *
+ * WHAT: Apply burst-triggered consolidation to array of synapses
+ * WHY: Efficient bulk processing during burst events
+ * HOW: Single burst check, then iterate synapses
+ *
+ * @param synapses Array of synapses
+ * @param traces Array of eligibility traces (parallel to synapses)
+ * @param num_synapses Number of synapses to process
+ * @param config Configuration
+ * @param phasic_tonic Dopamine phasic-tonic state
+ * @param reward Reward signal (same for all synapses)
+ * @return Number of synapses with significant weight changes
+ */
+int eligibility_consolidate_batch(
+    synapse_t* synapses,
+    const eligibility_trace_t* traces,
+    int num_synapses,
+    const eligibility_config_t* config,
+    const phasic_tonic_state_t* phasic_tonic,
+    float reward
+) {
+    // Guard: NULL checks and bounds
+    if (!synapses || !traces || !config || num_synapses <= 0) {
+        return 0;
+    }
+
+    // OPTIMIZATION: Check burst state once (not per synapse)
+    // WHAT: Single burst check for entire batch
+    // WHY: Avoid redundant burst checks for each synapse
+    // HOW: Call eligibility_is_in_burst() once
+    bool in_burst = (phasic_tonic != NULL) &&
+                    eligibility_is_in_burst(phasic_tonic, config);
+
+    // Early exit if burst-triggered mode but not in burst
+    if (config->burst_triggered_mode && !in_burst) {
+        return 0;  // No consolidation outside bursts
+    }
+
+    // BATCH PROCESSING: Apply consolidation to all synapses
+    int num_consolidated = 0;
+
+    for (int i = 0; i < num_synapses; i++) {
+        // Call consolidate_on_burst for each synapse
+        float delta_w = eligibility_consolidate_on_burst(
+            &synapses[i],
+            &traces[i],
+            config,
+            phasic_tonic,
+            reward
+        );
+
+        // Count synapses with significant weight changes
+        // Use same threshold as config->trace_threshold for consistency
+        if (fabsf(delta_w) > 0.0f) {  // Any non-zero weight change
+            num_consolidated++;
+        }
+    }
+
+    return num_consolidated;
 }
 
 //=============================================================================

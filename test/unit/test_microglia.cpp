@@ -24,12 +24,10 @@
 
 #include <gtest/gtest.h>
 
-extern "C" {
 #include "glial/microglia/nimcp_microglia.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/time/nimcp_time.h"
 #include <math.h>
-}
 
 class MicrogliaTest : public ::testing::Test {
 protected:

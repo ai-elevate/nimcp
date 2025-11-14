@@ -24,9 +24,7 @@
 #include <mutex>
 #include <memory>
 
-extern "C" {
 #include "utils/platform/nimcp_platform_once.h"
-}
 
 //=============================================================================
 // Test Constants and Global State

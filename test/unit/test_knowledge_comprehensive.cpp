@@ -4,9 +4,7 @@
 
 #include <gtest/gtest.h>
 #include <cstring>
-extern "C" {
 #include "cognitive/knowledge/nimcp_knowledge.h"
-}
 
 class KnowledgeComprehensiveTest : public ::testing::Test {
 protected:

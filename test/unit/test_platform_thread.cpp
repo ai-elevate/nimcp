@@ -41,9 +41,7 @@
 #include <memory>
 #include <cstring>
 
-extern "C" {
 #include "utils/platform/nimcp_platform_thread.h"
-}
 
 //=============================================================================
 // Test Fixtures and Helpers

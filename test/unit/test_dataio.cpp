@@ -9,10 +9,8 @@
 
 #include "test_helpers.h"
 
-extern "C" {
 #include "core/brain/nimcp_brain.h"
 #include "io/dataio/nimcp_dataio.h"
-}
 
 #include <gtest/gtest.h>
 #include <stdio.h>

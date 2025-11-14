@@ -166,3 +166,31 @@ target_include_directories(cow_ab_testing PRIVATE ${NIMCP_INCLUDE_DIR})
 add_executable(distributed_cow_demo distributed_cow_demo.c)
 target_link_libraries(distributed_cow_demo nimcp m pthread z)
 target_include_directories(distributed_cow_demo PRIVATE ${NIMCP_INCLUDE_DIR})
+
+# ============================================================================
+# Phase C2.2: Neuromodulation Integration Example
+# ============================================================================
+
+# Neuromodulation Integration: Phasic-Tonic + Receptor Subtypes
+# Demonstrates integration of Enhancement #1 and #2:
+# - TD error encoding via phasic bursts
+# - Receptor subtype processing (D1 vs D2)
+# - Regional specialization (cortex vs striatum)
+# - Pharmacological modeling (D2 blockade)
+add_executable(neuromodulation_integration_example neuromodulation_integration_example.c)
+target_link_libraries(neuromodulation_integration_example nimcp m)
+target_include_directories(neuromodulation_integration_example PRIVATE ${NIMCP_INCLUDE_DIR})
+
+# ============================================================================
+# Option 2.2: Reinforcement Learning with Eligibility Traces Demo
+# ============================================================================
+
+# RL Eligibility Demo: Demonstrates reward-based learning with eligibility traces
+# Key features:
+# - Temporal credit assignment via eligibility traces
+# - Delayed reward propagation to earlier actions
+# - Three-factor learning rule (Hebbian + Reward + Dopamine)
+# - Simple cart-pole environment for RL
+add_executable(rl_eligibility_demo rl_eligibility_demo.c)
+target_link_libraries(rl_eligibility_demo nimcp m)
+target_include_directories(rl_eligibility_demo PRIVATE ${NIMCP_INCLUDE_DIR})

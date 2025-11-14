@@ -26,11 +26,9 @@
 #include <cmath>
 #include <vector>
 
-extern "C" {
 #include "core/brain/nimcp_brain.h"
 #include "plasticity/attention/nimcp_attention.h"
 #include "utils/time/nimcp_time.h"
-}
 
 //=============================================================================
 // Test Fixture

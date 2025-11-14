@@ -11,12 +11,10 @@
 #include <gtest/gtest.h>
 #include <cstring>
 
-extern "C" {
 #include "cognitive/wellbeing/nimcp_wellbeing.h"
 #include "cognitive/introspection/nimcp_introspection.h"
 #include "core/brain/nimcp_brain.h"
 #include "utils/memory/nimcp_memory.h"
-}
 
 //=============================================================================
 // Test Fixture

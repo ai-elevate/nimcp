@@ -3,7 +3,8 @@
 //=============================================================================
 
 #include "utils/tensor_networks/nimcp_mps.h"
-#include "core/memory/nimcp_memory.h"
+#include "utils/memory/nimcp_memory.h"
+#include "utils/time/nimcp_time.h"
 #include <math.h>
 #include <string.h>
 #include <stdio.h>
@@ -11,7 +12,7 @@
 
 // For SVD computation - using simple Jacobi SVD for now
 // Production version should use LAPACK/MKL for performance
-#include "utils/linalg/nimcp_svd.h"  // We'll create this next
+// #include "utils/linalg/nimcp_svd.h"  // TODO: Create SVD utilities
 
 //=============================================================================
 // Configuration Functions

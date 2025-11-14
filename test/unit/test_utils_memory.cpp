@@ -27,9 +27,7 @@
 #include <thread>
 #include <vector>
 
-extern "C" {
     #include "utils/memory/nimcp_memory.h"
-}
 
 //=============================================================================
 // Test Fixture

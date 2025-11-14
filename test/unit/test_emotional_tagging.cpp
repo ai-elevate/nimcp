@@ -18,9 +18,7 @@
  */
 
 #include <gtest/gtest.h>
-extern "C" {
 #include "cognitive/nimcp_emotional_tagging.h"
-}
 #include <cmath>
 
 //=============================================================================

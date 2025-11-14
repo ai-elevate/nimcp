@@ -6,11 +6,9 @@
  */
 
 #include <gtest/gtest.h>
-extern "C" {
     #include "core/brain/nimcp_brain.h"
     #include "core/neuralnet/nimcp_neuralnet.h"
     #include "utils/memory/nimcp_memory.h"
-}
 
 class CoverageBoostTest : public ::testing::Test {
 protected:

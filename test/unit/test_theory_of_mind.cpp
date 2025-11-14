@@ -24,10 +24,8 @@
 
 #include <gtest/gtest.h>
 
-extern "C" {
     #include "cognitive/nimcp_theory_of_mind.h"
     #include "utils/time/nimcp_time.h"
-}
 
 //=============================================================================
 // Test Fixture

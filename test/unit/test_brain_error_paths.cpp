@@ -8,10 +8,8 @@
  */
 
 #include <gtest/gtest.h>
-extern "C" {
     #include "core/brain/nimcp_brain.h"
     #include "utils/memory/nimcp_memory.h"
-}
 
 class BrainErrorPathTest : public ::testing::Test {
 protected:

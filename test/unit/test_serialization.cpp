@@ -11,9 +11,7 @@
 #include <cmath>
 #include <cstring>
 
-extern "C" {
 #include "io/serialization/nimcp_serialization.h"
-}
 
 //=============================================================================
 // Serializer Creation and Destruction Tests

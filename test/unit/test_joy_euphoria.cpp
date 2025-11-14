@@ -11,9 +11,7 @@
 
 #include <gtest/gtest.h>
 
-extern "C" {
 #include "cognitive/nimcp_joy_euphoria.h"
-}
 
 class JoySystemTest : public ::testing::Test {
 protected:

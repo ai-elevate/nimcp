@@ -24,9 +24,7 @@
 #include <gtest/gtest.h>
 #include <cmath>
 #include <cstring>
-extern "C" {
 #include "cognitive/nimcp_predictive.h"
-}
 
 //=============================================================================
 // Test Fixture

@@ -21,9 +21,7 @@
 #include <thread>
 #include <vector>
 
-extern "C" {
 #include "utils/logging/nimcp_logging.h"
-}
 
 //=============================================================================
 // Test Constants

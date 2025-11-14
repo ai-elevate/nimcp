@@ -14,11 +14,9 @@
 #include <gtest/gtest.h>
 #include <cstring>
 
-extern "C" {
 #include "core/neuron_types/nimcp_neural_logic.h"
 #include "core/brain/nimcp_brain.h"
 #include "utils/memory/nimcp_memory.h"
-}
 
 //=============================================================================
 // Test Fixture

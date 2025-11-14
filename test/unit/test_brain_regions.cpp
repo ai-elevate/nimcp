@@ -19,11 +19,9 @@
 #include <gtest/gtest.h>
 #include <vector>
 
-extern "C" {
 #include "core/brain/nimcp_brain.h"
 #include "core/brain_regions/nimcp_brain_regions.h"
 #include "utils/time/nimcp_time.h"
-}
 
 //=============================================================================
 // Unit Test Fixture

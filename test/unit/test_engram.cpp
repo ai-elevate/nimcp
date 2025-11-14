@@ -13,9 +13,7 @@
 
 #include <gtest/gtest.h>
 
-extern "C" {
 #include "cognitive/memory/nimcp_engram.h"
-}
 
 //=============================================================================
 // TEST FIXTURE

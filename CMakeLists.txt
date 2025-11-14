@@ -264,3 +264,22 @@ message(STATUS "  Headers: ${CMAKE_INSTALL_INCLUDEDIR}/nimcp/")
 message(STATUS "  Pkg-config: ${CMAKE_INSTALL_LIBDIR}/pkgconfig/nimcp.pc")
 message(STATUS "===============================================================================")
 message(STATUS "")
+
+# ============================================================================
+# Benchmarks
+# ============================================================================
+
+add_executable(benchmark_quantum_walk benchmark_quantum_walk.cpp)
+target_include_directories(benchmark_quantum_walk PRIVATE
+    ${NIMCP_INCLUDE_DIR}
+    ${Python3_INCLUDE_DIRS}
+)
+target_link_libraries(benchmark_quantum_walk PRIVATE
+    nimcp
+    Python3::Python
+    pthread
+)
+set_target_properties(benchmark_quantum_walk PROPERTIES
+    CXX_STANDARD 17
+    CXX_STANDARD_REQUIRED ON
+)

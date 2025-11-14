@@ -47,6 +47,13 @@
  */
 
 #include "nimcp_neuromodulators.h"
+#include "plasticity/neuromodulators/nimcp_phasic_tonic.h"       // Phase C2.2 Enhancement #2
+#include "plasticity/neuromodulators/nimcp_receptor_subtypes.h"  // Phase C2.2 Enhancement #1
+#include "plasticity/neuromodulators/nimcp_vesicle_packaging.h"  // Phase C2.3 Enhancement #3
+#include "plasticity/neuromodulators/nimcp_metabolic_pathways.h" // Phase C2.4 Enhancement #4
+#include "cognitive/nimcp_grief_and_loss.h"                      // Phase E1: Grief and Loss Understanding
+#include "cognitive/nimcp_joy_euphoria.h"                        // Phase E2: Joy and Euphoria System Integration
+#include "cognitive/nimcp_love_loyalty_friendship.h"             // Phase E4: Love, Loyalty, Friendship System Integration
 #include "utils/memory/nimcp_memory.h"
 #include "utils/validation/nimcp_validate.h"
 #include "utils/thread/nimcp_thread.h"
@@ -216,6 +223,106 @@ struct neuromodulator_system_struct {
      * PROTECTED BY: rwlock (write)
      */
     uint64_t last_update_time;
+
+    // ===========================================================================
+    // PHASE C2.2 ENHANCEMENTS: Phasic-Tonic Dynamics + Receptor Subtypes
+    // ===========================================================================
+
+    /* WHAT: Phasic-tonic dynamics for each neurotransmitter system
+     * WHY:  Models burst (phasic) vs baseline (tonic) release
+     * HOW:  Replaces simple concentration with dual-mode dynamics
+     * PROTECTED BY: rwlock (read/write)
+     */
+    phasic_tonic_state_t dopamine_phasic_tonic;
+    phasic_tonic_state_t serotonin_phasic_tonic;
+    phasic_tonic_state_t norepinephrine_phasic_tonic;
+    phasic_tonic_state_t acetylcholine_phasic_tonic;
+
+    /* WHAT: Default receptor profiles for different brain regions
+     * WHY:  Provides regional specialization (cortex vs striatum, etc.)
+     * HOW:  Pre-computed profiles reduce per-neuron memory
+     * PROTECTED BY: rwlock (read-only after initialization)
+     */
+    neuron_receptor_profile_t cortical_profile;
+    neuron_receptor_profile_t striatal_profile;
+
+    /* WHAT: Flag to enable Phase C2.2 enhancements
+     * WHY:  Allows fallback to simple model for compatibility
+     * HOW:  When true, uses phasic-tonic + receptors; when false, uses simple concentrations
+     * PROTECTED BY: rwlock (read-only after initialization)
+     */
+    bool use_enhanced_dynamics;
+
+    // ===========================================================================
+    // PHASE C2.3 ENHANCEMENT: Synaptic Vesicle Packaging
+    // ===========================================================================
+
+    /* WHAT: Vesicle pools for each neurotransmitter system
+     * WHY:  Models short-term synaptic plasticity (facilitation & depression)
+     * HOW:  Each neurotransmitter has independent vesicle dynamics
+     * BIOLOGICAL: Three-pool model (RRP, recycling, reserve) with quantal release
+     * PROTECTED BY: rwlock (read/write)
+     */
+    vesicle_pool_state_t dopamine_vesicles;
+    vesicle_pool_state_t serotonin_vesicles;
+    vesicle_pool_state_t norepinephrine_vesicles;
+    vesicle_pool_state_t acetylcholine_vesicles;
+
+    /* WHAT: Flag to enable Phase C2.3 vesicle packaging
+     * WHY:  Allows fallback for compatibility or performance
+     * HOW:  When true, uses vesicle-based release; when false, uses direct release
+     * PROTECTED BY: rwlock (read-only after initialization)
+     */
+    bool use_vesicle_packaging;
+
+    // ===========================================================================
+    // PHASE C2.4 ENHANCEMENT: Metabolic Pathways
+    // ===========================================================================
+
+    /* WHAT: Metabolic state for each neurotransmitter system
+     * WHY:  Models complete lifecycle (synthesis, degradation, reuptake)
+     * HOW:  Each neurotransmitter has independent metabolism
+     * BIOLOGICAL: Synthesis (precursor→NT), degradation (MAO/COMT), reuptake (DAT/SERT/NET)
+     * PROTECTED BY: rwlock (read/write)
+     */
+    metabolic_state_t dopamine_metabolism;
+    metabolic_state_t serotonin_metabolism;
+    metabolic_state_t norepinephrine_metabolism;
+    metabolic_state_t acetylcholine_metabolism;
+
+    /* WHAT: Flag to enable Phase C2.4 metabolic pathways
+     * WHY:  Allows fallback for compatibility or performance
+     * HOW:  When true, uses metabolic dynamics; when false, uses direct release
+     * PROTECTED BY: rwlock (read-only after initialization)
+     */
+    bool use_metabolic_pathways;
+
+    /* WHAT: Phase E1 grief system integration (cognitive pipeline)
+     * WHY:  Grief affects neuromodulator levels (serotonin↓, dopamine↓, norepinephrine↑)
+     * HOW:  Query grief system for modulation factors, apply to neuromodulator release
+     * BIOLOGICAL: Grief causes measurable changes in neurotransmitter levels
+     * PROTECTED BY: rwlock (read/write)
+     */
+    grief_system_t* grief_system;
+    bool use_grief_integration;
+
+    /* WHAT: Phase E2 joy/euphoria system integration (cognitive pipeline)
+     * WHY:  Joy/euphoria enhance neuromodulator levels (dopamine↑, serotonin↑)
+     * HOW:  Query joy system for modulation factors, apply to neuromodulator release
+     * BIOLOGICAL: Positive emotions boost dopamine and serotonin
+     * PROTECTED BY: rwlock (read/write)
+     */
+    joy_system_t* joy_system;
+    bool use_joy_integration;
+
+    /* WHAT: Phase E4 social bond system integration (cognitive pipeline)
+     * WHY:  Social bonds affect neuromodulator levels (dopamine↑, oxytocin↑)
+     * HOW:  Query social system for modulation factors, apply to neuromodulator release
+     * BIOLOGICAL: Love/friendship boost dopamine and oxytocin, loneliness reduces dopamine
+     * PROTECTED BY: rwlock (read/write)
+     */
+    social_bond_system_t* social_system;
+    bool use_social_integration;
 };
 
 //=============================================================================
@@ -396,6 +503,115 @@ neuromodulator_system_t neuromodulator_system_create(const neuromodulator_config
      * PERFORMANCE: Eliminates contention on pool initialization
      */
 
+    // ===========================================================================
+    // PHASE C2.2: Initialize Phasic-Tonic Dynamics + Receptor Subtypes
+    // ===========================================================================
+
+    /* WHAT: Enable enhanced dynamics by default
+     * WHY:  Provides biologically realistic burst/baseline separation
+     * HOW:  Can be disabled for compatibility or performance if needed
+     */
+    system->use_enhanced_dynamics = true;
+
+    /* WHAT: Initialize phasic-tonic state for each neurotransmitter
+     * WHY:  Models burst vs baseline release (RPE encoding, learning signals)
+     * HOW:  Uses biological parameters from literature (Schultz et al.)
+     */
+    uint64_t current_time = 0;  // Will be set on first update
+
+    // Dopamine: Reward learning, motivation
+    phasic_tonic_config_t da_config = phasic_tonic_config_dopamine_default();
+    phasic_tonic_init(&system->dopamine_phasic_tonic, &da_config, current_time);
+
+    // Serotonin: Mood, inhibition, patience
+    phasic_tonic_config_t serotonin_config = phasic_tonic_config_serotonin_default();
+    phasic_tonic_init(&system->serotonin_phasic_tonic, &serotonin_config, current_time);
+
+    // Norepinephrine: Arousal, alertness, stress
+    phasic_tonic_config_t ne_config = phasic_tonic_config_norepinephrine_default();
+    phasic_tonic_init(&system->norepinephrine_phasic_tonic, &ne_config, current_time);
+
+    // Acetylcholine: Attention, encoding, salience
+    // Note: Using dopamine config as template (can be customized later)
+    phasic_tonic_config_t ach_config = da_config;
+    ach_config.initial_tonic = 0.00004f;  // 40 nM
+    ach_config.tonic_target = 0.00004f;
+    ach_config.burst_decay_tau = 0.1f;    // 100ms (very fast)
+    phasic_tonic_init(&system->acetylcholine_phasic_tonic, &ach_config, current_time);
+
+    /* WHAT: Initialize receptor profiles for different brain regions
+     * WHY:  Enables regional specialization (cortex excitatory, striatum inhibitory)
+     * HOW:  Pre-computed profiles from literature data
+     */
+    system->cortical_profile = receptor_profile_cortical();
+    system->striatal_profile = receptor_profile_striatal();
+    // Note: hippocampal_profile can be added later if needed
+
+    // ===========================================================================
+    // PHASE C2.3: Initialize Synaptic Vesicle Packaging
+    // ===========================================================================
+
+    /* WHAT: Enable vesicle packaging by default
+     * WHY:  Provides short-term synaptic plasticity (facilitation & depression)
+     * HOW:  Can be disabled for compatibility or performance if needed
+     */
+    system->use_vesicle_packaging = true;
+
+    /* WHAT: Initialize vesicle pools for each neurotransmitter
+     * WHY:  Models quantal release, vesicle depletion, and refill dynamics
+     * HOW:  Each neurotransmitter gets independent vesicle dynamics
+     * BIOLOGICAL: Based on three-pool model (Rizzoli & Betz, 2005)
+     */
+
+    // Dopamine vesicles (striatal terminals, reward learning)
+    vesicle_pool_init(&system->dopamine_vesicles);
+
+    // Serotonin vesicles (raphe projections, mood regulation)
+    vesicle_pool_init(&system->serotonin_vesicles);
+
+    // Norepinephrine vesicles (locus coeruleus, arousal/attention)
+    vesicle_pool_init(&system->norepinephrine_vesicles);
+
+    // Acetylcholine vesicles (basal forebrain, attention/encoding)
+    vesicle_pool_init(&system->acetylcholine_vesicles);
+
+    /* WHAT: Initialize metabolic pathways for each neurotransmitter
+     * WHY:  Models synthesis, degradation, and reuptake dynamics
+     * HOW:  Each neurotransmitter gets specific metabolic parameters
+     * BIOLOGICAL: Based on enzyme kinetics and transporter properties
+     */
+
+    // Dopamine metabolism (tyrosine → DA, MAO degradation, DAT reuptake)
+    metabolic_config_t da_metabolic_config = metabolic_config_dopamine_default();
+    metabolic_state_init_with_config(&system->dopamine_metabolism, &da_metabolic_config);
+
+    // Serotonin metabolism (tryptophan → 5-HT, MAO degradation, SERT reuptake)
+    metabolic_config_t serotonin_metabolic_config = metabolic_config_serotonin_default();
+    metabolic_state_init_with_config(&system->serotonin_metabolism, &serotonin_metabolic_config);
+
+    // Norepinephrine metabolism (DA → NE, MAO+COMT degradation, NET reuptake)
+    metabolic_config_t ne_metabolic_config = metabolic_config_norepinephrine_default();
+    metabolic_state_init_with_config(&system->norepinephrine_metabolism, &ne_metabolic_config);
+
+    // Acetylcholine metabolism (choline → ACh, AChE degradation, ChT reuptake)
+    metabolic_config_t ach_metabolic_config = metabolic_config_acetylcholine_default();
+    metabolic_state_init_with_config(&system->acetylcholine_metabolism, &ach_metabolic_config);
+
+    // Enable metabolic pathways by default
+    system->use_metabolic_pathways = true;
+
+    // Phase E1: Initialize grief system for cognitive pipeline integration
+    system->grief_system = grief_system_create();
+    system->use_grief_integration = (system->grief_system != NULL);
+
+    // Phase E2: Initialize joy/euphoria system for cognitive pipeline integration
+    system->joy_system = joy_system_create();
+    system->use_joy_integration = (system->joy_system != NULL);
+
+    // Phase E4: Initialize social bond system for cognitive pipeline integration
+    system->social_system = social_bond_system_create();
+    system->use_social_integration = (system->social_system != NULL);
+
     return system;
 }
 
@@ -418,6 +634,33 @@ void neuromodulator_system_destroy(neuromodulator_system_t system) {
      * USES: NIMCP platform rwlock for cross-platform compatibility
      */
     nimcp_platform_rwlock_destroy(&system->rwlock);
+
+    /* WHAT: Phase E1 - Destroy grief system
+     * WHY:  Free grief system resources
+     * CORRECTNESS: Must be done before freeing system memory
+     */
+    if (system->grief_system) {
+        grief_system_destroy(system->grief_system);
+        system->grief_system = NULL;
+    }
+
+    /* WHAT: Phase E2 - Destroy joy/euphoria system
+     * WHY:  Free joy system resources
+     * CORRECTNESS: Must be done before freeing system memory
+     */
+    if (system->joy_system) {
+        joy_system_destroy(system->joy_system);
+        system->joy_system = NULL;
+    }
+
+    /* WHAT: Phase E4 - Destroy social bond system
+     * WHY:  Free social system resources
+     * CORRECTNESS: Must be done before freeing system memory
+     */
+    if (system->social_system) {
+        social_bond_system_destroy(system->social_system);
+        system->social_system = NULL;
+    }
 
     /* WHAT: Zero out memory before free
      * WHY:  Security - prevent use-after-free exploits
@@ -543,40 +786,84 @@ bool neuromodulator_update(neuromodulator_system_t system, float dt) {
      */
     nimcp_platform_rwlock_wrlock(&system->rwlock);
 
-    /* WHAT: Apply exponential decay to each neuromodulator
-     * WHY:  Different neurotransmitters have different clearance rates
-     * OPTIMIZATION: Loop unrolling could be applied, but compiler likely does this
-     * NOTE: All updates happen under write lock for consistency
-     */
-    for (uint32_t i = 0; i < NEUROMOD_COUNT; i++) {
-        float new_concentration = exponential_decay(
-            system->concentrations[i],
-            system->baselines[i],
-            dt,
-            system->decay_times[i]
-        );
+    // ===========================================================================
+    // PHASE C2.2: Enhanced Phasic-Tonic Dynamics Update
+    // ===========================================================================
 
-        system->concentrations[i] = new_concentration;
-
-        /* WHAT: Update moving average for statistics
-         * WHY:  Track long-term trends, filter out transients
+    if (system->use_enhanced_dynamics) {
+        /* WHAT: Update phasic-tonic dynamics for each neurotransmitter
+         * WHY:  Models burst decay and homeostatic tonic regulation
+         * HOW:  Replaces simple exponential decay with dual-mode dynamics
          */
-        system->stats.moving_averages[i] = update_ema(
-            system->stats.moving_averages[i],
-            new_concentration,
-            0.1f  // Alpha = 0.1 → ~10-sample window
-        );
 
-        /* WHAT: Update variance estimate
-         * WHY:  Measure system stability
-         * HOW:  Welford's online algorithm for numerical stability
+        uint64_t current_time = system->last_update_time;
+
+        // Update dopamine phasic-tonic dynamics
+        phasic_tonic_update(&system->dopamine_phasic_tonic, dt, current_time);
+        float da_conc = phasic_tonic_get_concentration(&system->dopamine_phasic_tonic);
+        system->concentrations[NEUROMOD_DOPAMINE] = clamp(da_conc * 1000.0f, 0.0f, 1.0f);
+
+        // Update serotonin phasic-tonic dynamics
+        phasic_tonic_update(&system->serotonin_phasic_tonic, dt, current_time);
+        float serotonin_conc = phasic_tonic_get_concentration(&system->serotonin_phasic_tonic);
+        system->concentrations[NEUROMOD_SEROTONIN] = clamp(serotonin_conc * 1000.0f, 0.0f, 1.0f);
+
+        // Update norepinephrine phasic-tonic dynamics
+        phasic_tonic_update(&system->norepinephrine_phasic_tonic, dt, current_time);
+        float ne_conc = phasic_tonic_get_concentration(&system->norepinephrine_phasic_tonic);
+        system->concentrations[NEUROMOD_NOREPINEPHRINE] = clamp(ne_conc * 1000.0f, 0.0f, 1.0f);
+
+        // Update acetylcholine phasic-tonic dynamics
+        phasic_tonic_update(&system->acetylcholine_phasic_tonic, dt, current_time);
+        float ach_conc = phasic_tonic_get_concentration(&system->acetylcholine_phasic_tonic);
+        system->concentrations[NEUROMOD_ACETYLCHOLINE] = clamp(ach_conc * 1000.0f, 0.0f, 1.0f);
+
+        // Update statistics for all systems
+        for (uint32_t i = 0; i < NEUROMOD_COUNT; i++) {
+            float concentration = system->concentrations[i];
+
+            system->stats.moving_averages[i] = update_ema(
+                system->stats.moving_averages[i],
+                concentration,
+                0.1f
+            );
+
+            float delta = concentration - system->stats.moving_averages[i];
+            system->stats.variances[i] = update_ema(
+                system->stats.variances[i],
+                delta * delta,
+                0.1f
+            );
+        }
+
+    } else {
+        /* WHAT: Legacy simple exponential decay (fallback)
+         * WHY:  For compatibility or when enhanced dynamics not needed
+         * HOW:  Original behavior preserved
          */
-        float delta = new_concentration - system->stats.moving_averages[i];
-        system->stats.variances[i] = update_ema(
-            system->stats.variances[i],
-            delta * delta,
-            0.1f
-        );
+        for (uint32_t i = 0; i < NEUROMOD_COUNT; i++) {
+            float new_concentration = exponential_decay(
+                system->concentrations[i],
+                system->baselines[i],
+                dt,
+                system->decay_times[i]
+            );
+
+            system->concentrations[i] = new_concentration;
+
+            system->stats.moving_averages[i] = update_ema(
+                system->stats.moving_averages[i],
+                new_concentration,
+                0.1f
+            );
+
+            float delta = new_concentration - system->stats.moving_averages[i];
+            system->stats.variances[i] = update_ema(
+                system->stats.variances[i],
+                delta * delta,
+                0.1f
+            );
+        }
     }
 
     /* WHAT: Update timestamp under lock
@@ -633,21 +920,186 @@ float neuromodulator_release_dopamine(neuromodulator_system_t system, float rewa
      */
     nimcp_platform_rwlock_wrlock(&system->rwlock);
 
-    /* WHAT: Convert RPE to dopamine concentration change
-     * WHY:  Scale RPE to match biological response magnitude
-     * HOW:  ΔDA = gain × RPE
-     * NOTE: Gain is read-only after initialization, safe to read under lock
-     */
-    float dopamine_change = system->reward_dopamine_gain * rpe;
+    // ===========================================================================
+    // PHASE C2.3: Vesicle-Based Release Modulation
+    // ===========================================================================
 
-    /* WHAT: Update dopamine concentration
-     * WHY:  Add phasic burst/dip to tonic baseline
-     * CLAMP: Ensure result stays in [0, 1]
-     */
-    float new_dopamine = system->concentrations[NEUROMOD_DOPAMINE] + dopamine_change;
-    system->concentrations[NEUROMOD_DOPAMINE] = clamp(new_dopamine,
-                                                      MIN_CONCENTRATION,
-                                                      MAX_CONCENTRATION);
+    float vesicle_modulation = 1.0f;  // Default: no modulation
+
+    if (system->use_vesicle_packaging) {
+        /* WHAT: Use vesicle dynamics to modulate neurotransmitter release
+         * WHY:  Models short-term plasticity (facilitation & depression)
+         * HOW:  Vesicle availability scales the effective release amount
+         */
+
+        // Release vesicles (quantal release)
+        bool action_potential = (fabsf(rpe) > 0.1f);  // Release if significant RPE
+        uint64_t current_time = system->last_update_time;
+
+        float molecules_released = vesicle_pool_release(&system->dopamine_vesicles,
+                                                        action_potential,
+                                                        current_time);
+
+        // Update vesicle pools (refill, mobilize, facilitation decay)
+        vesicle_pool_update(&system->dopamine_vesicles, 0.001f);  // 1ms time step
+
+        // Vesicle modulation = actual release / expected release
+        // Expected: ~3 vesicles at Pr=0.3, each ~5000 molecules = 15000 molecules
+        float expected_molecules = VESICLE_DEFAULT_RRP_SIZE * VESICLE_DEFAULT_RELEASE_PROBABILITY * VESICLE_DEFAULT_QUANTAL_SIZE;
+        vesicle_modulation = (expected_molecules > 0.0f) ? (molecules_released / expected_molecules) : 0.0f;
+
+        // Clamp modulation to [0, 2] (can facilitate up to 2x)
+        vesicle_modulation = clamp(vesicle_modulation, 0.0f, 2.0f);
+    }
+
+    // ===========================================================================
+    // PHASE C2.4: Metabolic Pathway Dynamics
+    // ===========================================================================
+
+    float metabolic_concentration = 0.0f;
+
+    if (system->use_metabolic_pathways) {
+        /* WHAT: Use metabolic dynamics for complete neurotransmitter lifecycle
+         * WHY:  Models synthesis, degradation, and reuptake for biological realism
+         * HOW:  Integrate enzyme kinetics and transporter dynamics
+         */
+
+        // Convert normalized vesicle modulation to µM release amount
+        // Typical phasic burst: 1 µM in cleft
+        float release_amount_um = vesicle_modulation * fabsf(rpe);
+
+        // Update metabolic state (synthesis + release - degradation - reuptake)
+        metabolic_concentration = metabolic_update(&system->dopamine_metabolism,
+                                                   0.001f,  // 1ms time step
+                                                   release_amount_um);
+    }
+
+    // ===========================================================================
+    // PHASE E1: Grief System Integration (Cognitive Pipeline)
+    // ===========================================================================
+
+    float grief_dopamine_factor = 1.0f;  // Default: no grief effect
+
+    if (system->use_grief_integration && system->grief_system) {
+        /* WHAT: Apply grief-induced dopamine depletion
+         * WHY:  Grief causes anhedonia via reduced dopamine (60% reduction typical)
+         * HOW:  Query grief system for modulation factor, multiply dopamine release
+         * BIOLOGICAL: Grief disrupts reward processing
+         */
+        float serotonin_factor, norepinephrine_factor;
+        grief_get_neuromodulator_effects(system->grief_system,
+                                        &serotonin_factor,
+                                        &grief_dopamine_factor,
+                                        &norepinephrine_factor);
+
+        // Apply dopamine depletion to metabolic concentration
+        if (system->use_metabolic_pathways) {
+            metabolic_concentration *= grief_dopamine_factor;
+        }
+    }
+
+    // ===========================================================================
+    // PHASE E2: Joy and Euphoria System Integration
+    // ===========================================================================
+
+    float joy_dopamine_factor = 1.0f;  // Default: no joy effect
+
+    if (system->use_joy_integration && system->joy_system) {
+        /* WHAT: Apply joy-induced dopamine enhancement
+         * WHY:  Joy/euphoria boost dopamine release (up to 2x enhancement typical)
+         * HOW:  Query joy system for modulation factor, multiply dopamine release
+         * BIOLOGICAL: Positive emotions enhance reward processing
+         */
+        float joy_serotonin_factor;
+        joy_get_neuromodulator_effects(system->joy_system,
+                                      &joy_dopamine_factor,
+                                      &joy_serotonin_factor);
+
+        // Apply dopamine enhancement to metabolic concentration
+        if (system->use_metabolic_pathways) {
+            metabolic_concentration *= joy_dopamine_factor;
+        }
+    }
+
+    // ===========================================================================
+    // PHASE E4: Social Bond System Integration
+    // ===========================================================================
+
+    float social_dopamine_factor = 1.0f;  // Default: no social effect
+    float social_oxytocin_factor = 1.0f;  // Default: no social effect
+
+    if (system->use_social_integration && system->social_system) {
+        /* WHAT: Apply social bond effects on dopamine and oxytocin
+         * WHY:  Love/friendship boost dopamine (reward) and oxytocin (bonding), loneliness reduces dopamine
+         * HOW:  Query social system for modulation factors, multiply dopamine/oxytocin release
+         * BIOLOGICAL: Social bonds enhance reward processing, loneliness causes anhedonia
+         */
+        social_get_neuromodulator_effects(system->social_system,
+                                         &social_dopamine_factor,
+                                         &social_oxytocin_factor);
+
+        // Apply dopamine modulation to metabolic concentration
+        if (system->use_metabolic_pathways) {
+            metabolic_concentration *= social_dopamine_factor;
+        }
+    }
+
+    // ===========================================================================
+    // PHASE C2.2: Enhanced Phasic-Tonic Dynamics
+    // ===========================================================================
+
+    if (system->use_enhanced_dynamics) {
+        /* WHAT: Use phasic-tonic encoding for biologically realistic TD error signaling
+         * WHY:  Replaces simple concentration with burst/baseline separation
+         * HOW:  Positive RPE → phasic burst, Negative RPE → tonic dip
+         */
+
+        // Normalize RPE to [-1, +1] range for encoding
+        float td_error = clamp(rpe, -1.0f, 1.0f);
+
+        // Get current time (will use last_update_time, or 0 if first call)
+        uint64_t current_time = system->last_update_time;
+
+        // Encode TD error as phasic burst or tonic dip
+        phasic_tonic_encode_td_error(&system->dopamine_phasic_tonic, td_error, current_time);
+
+        // Get updated concentration from phasic-tonic system
+        float da_concentration = phasic_tonic_get_concentration(&system->dopamine_phasic_tonic);
+
+        // Apply vesicle modulation to concentration
+        da_concentration *= vesicle_modulation;
+
+        // Apply metabolic dynamics if enabled
+        if (system->use_metabolic_pathways) {
+            // Use metabolic concentration (includes clearance dynamics)
+            da_concentration = metabolic_concentration;
+        }
+
+        // Normalize to [0, 1] range for compatibility with existing code
+        // Convert from µM to normalized: 1 µM (peak burst) → 1.0
+        system->concentrations[NEUROMOD_DOPAMINE] = clamp(da_concentration * 1000.0f, 0.0f, 1.0f);
+
+    } else {
+        /* WHAT: Legacy simple concentration model (fallback)
+         * WHY:  For compatibility or when enhanced dynamics not needed
+         * HOW:  Direct RPE → concentration mapping (original behavior)
+         */
+
+        if (system->use_metabolic_pathways) {
+            // Use metabolic concentration even in legacy mode
+            system->concentrations[NEUROMOD_DOPAMINE] = clamp(metabolic_concentration * 1000.0f,
+                                                              MIN_CONCENTRATION,
+                                                              MAX_CONCENTRATION);
+        } else {
+            // Original simple model (apply grief and joy factors)
+            float dopamine_change = system->reward_dopamine_gain * rpe * vesicle_modulation *
+                                   grief_dopamine_factor * joy_dopamine_factor;
+            float new_dopamine = system->concentrations[NEUROMOD_DOPAMINE] + dopamine_change;
+            system->concentrations[NEUROMOD_DOPAMINE] = clamp(new_dopamine,
+                                                              MIN_CONCENTRATION,
+                                                              MAX_CONCENTRATION);
+        }
+    }
 
     /* WHAT: Update non-atomic statistics under lock
      * WHY:  reward_prediction_error_sum is not atomic (float)
@@ -687,7 +1139,27 @@ float neuromodulator_release_serotonin(neuromodulator_system_t system, float pun
      */
     nimcp_platform_rwlock_wrlock(&system->rwlock);
 
-    float serotonin_release = system->punishment_serotonin_gain * punishment_magnitude;
+    // Phase E1: Apply grief-induced serotonin depletion
+    float grief_serotonin_factor = 1.0f;
+    if (system->use_grief_integration && system->grief_system) {
+        float dopamine_factor, norepinephrine_factor;
+        grief_get_neuromodulator_effects(system->grief_system,
+                                        &grief_serotonin_factor,
+                                        &dopamine_factor,
+                                        &norepinephrine_factor);
+    }
+
+    // Phase E2: Apply joy-induced serotonin enhancement
+    float joy_serotonin_factor = 1.0f;
+    if (system->use_joy_integration && system->joy_system) {
+        float joy_dopamine_factor;
+        joy_get_neuromodulator_effects(system->joy_system,
+                                      &joy_dopamine_factor,
+                                      &joy_serotonin_factor);
+    }
+
+    float serotonin_release = system->punishment_serotonin_gain * punishment_magnitude *
+                             grief_serotonin_factor * joy_serotonin_factor;
 
     float new_serotonin = system->concentrations[NEUROMOD_SEROTONIN] + serotonin_release;
     system->concentrations[NEUROMOD_SEROTONIN] = clamp(new_serotonin,
@@ -768,7 +1240,17 @@ float neuromodulator_release_norepinephrine(neuromodulator_system_t system, floa
      */
     nimcp_platform_rwlock_wrlock(&system->rwlock);
 
-    float ne_release = system->threat_norepinephrine_gain * arousal_signal;
+    // Phase E1: Apply grief-induced norepinephrine elevation
+    float grief_norepinephrine_factor = 1.0f;
+    if (system->use_grief_integration && system->grief_system) {
+        float serotonin_factor, dopamine_factor;
+        grief_get_neuromodulator_effects(system->grief_system,
+                                        &serotonin_factor,
+                                        &dopamine_factor,
+                                        &grief_norepinephrine_factor);
+    }
+
+    float ne_release = system->threat_norepinephrine_gain * arousal_signal * grief_norepinephrine_factor;
 
     float new_ne = system->concentrations[NEUROMOD_NOREPINEPHRINE] + ne_release;
     system->concentrations[NEUROMOD_NOREPINEPHRINE] = clamp(new_ne,

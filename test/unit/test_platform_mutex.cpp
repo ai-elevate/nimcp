@@ -34,9 +34,7 @@
 #include <chrono>
 #include <memory>
 
-extern "C" {
 #include "utils/platform/nimcp_platform_mutex.h"
-}
 
 //=============================================================================
 // Test Fixture

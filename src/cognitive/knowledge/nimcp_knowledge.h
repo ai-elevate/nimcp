@@ -20,6 +20,10 @@ extern "C" {
  * @file nimcp_knowledge.h
  * @brief Multi-domain knowledge acquisition like human learning
  *
+ * CORE DIRECTIVE: All knowledge acquisition serves the ultimate goal of
+ * improving the human condition by fostering understanding, empathy,
+ * wisdom, and the betterment of humanity.
+ *
  * Learn incrementally across domains:
  * - Literature (stories, poetry, narrative)
  * - Art (visual, music, aesthetics)
@@ -35,6 +39,7 @@ extern "C" {
  * - Learn through stories and examples
  * - Understand context and meaning
  * - Connect across domains
+ * - Apply knowledge to improve human wellbeing
  * - No massive pre-training
  */
 

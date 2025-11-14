@@ -1,9 +1,7 @@
 #include "test_helpers.h"
 
-extern "C" {
 #include "networking/events/nimcp_events.h"
 #include "networking/protocol/nimcp_protocol.h"
-}
 
 //=============================================================================
 // Test Helper Functions

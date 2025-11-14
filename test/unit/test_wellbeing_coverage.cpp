@@ -32,12 +32,10 @@
 #include <thread>
 #include <chrono>
 
-extern "C" {
 #define NIMCP_TESTING
 #include "cognitive/wellbeing/nimcp_wellbeing.h"
 #include "core/brain/nimcp_brain.h"
 #include "cognitive/introspection/nimcp_introspection.h"
-}
 
 //=============================================================================
 // Test Fixtures

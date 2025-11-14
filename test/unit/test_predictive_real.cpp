@@ -15,10 +15,8 @@
 #include <cmath>
 #include <cstring>
 
-extern "C" {
 #include "cognitive/nimcp_predictive.h"
 #include "utils/memory/nimcp_memory.h"
-}
 
 //=============================================================================
 // Test Fixtures

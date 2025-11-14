@@ -9,10 +9,8 @@
 
 #include <gtest/gtest.h>
 #include <cmath>
-extern "C" {
     #include "core/brain/nimcp_brain.h"
     #include "utils/memory/nimcp_memory.h"
-}
 
 class BrainLearningStrategyTest : public ::testing::Test {
 protected:

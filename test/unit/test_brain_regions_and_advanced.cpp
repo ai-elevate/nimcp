@@ -37,13 +37,11 @@
 #include <cmath>
 #include <thread>
 
-extern "C" {
 #include "core/brain_regions/nimcp_brain_regions.h"
 #include "core/neuron_types/nimcp_neuron_types.h"
 #include "core/brain/nimcp_brain.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/validation/nimcp_validate.h"
-}
 
 //=============================================================================
 // Test Fixtures

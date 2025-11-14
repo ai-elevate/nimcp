@@ -13,11 +13,9 @@
 #include <vector>
 #include <cmath>
 
-extern "C" {
 #include "cognitive/salience/nimcp_salience.h"
 #include "core/brain/nimcp_brain.h"
 #include "utils/memory/nimcp_memory.h"
-}
 
 //=============================================================================
 // Test Fixtures

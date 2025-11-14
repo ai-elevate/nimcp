@@ -12,10 +12,8 @@
 #include <cmath>
 #include <cstring>
 
-extern "C" {
 #include "include/perception/nimcp_visual_cortex.h"
 #include "utils/memory/nimcp_memory.h"
-}
 
 //=============================================================================
 // Convolution Tests

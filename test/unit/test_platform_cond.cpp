@@ -30,10 +30,8 @@
 #include <vector>
 #include <queue>
 
-extern "C" {
 #include "utils/platform/nimcp_platform_cond.h"
 #include "utils/platform/nimcp_platform_mutex.h"
-}
 
 //=============================================================================
 // Test Fixture

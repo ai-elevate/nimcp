@@ -19,11 +19,9 @@
 #include <cstring>
 #include <cstdlib>
 
-extern "C" {
 #include "cognitive/ethics/nimcp_ethics.h"
 #include "core/brain/nimcp_brain.h"
 #include "utils/memory/nimcp_memory.h"
-}
 
 namespace {
 

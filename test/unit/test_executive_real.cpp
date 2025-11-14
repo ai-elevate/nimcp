@@ -7,10 +7,8 @@
 
 #include <gtest/gtest.h>
 
-extern "C" {
 #include "cognitive/nimcp_executive.h"
 #include "core/brain/nimcp_brain.h"
-}
 
 class ExecutiveRealTest : public ::testing::Test {
 protected:

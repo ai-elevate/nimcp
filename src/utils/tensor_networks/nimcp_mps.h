@@ -65,6 +65,7 @@
 #define NIMCP_MPS_H
 
 #include <stdint.h>
+#include <stddef.h>
 #include <stdbool.h>
 
 //=============================================================================

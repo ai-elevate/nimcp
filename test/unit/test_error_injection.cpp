@@ -35,7 +35,6 @@ static int g_malloc_failure_countdown = 0;
  * or compiler-specific malloc replacement mechanisms.
  */
 #ifdef ENABLE_MALLOC_INJECTION
-extern "C" {
 void* __real_malloc(size_t size);
 void* __wrap_malloc(size_t size)
 {
@@ -47,7 +46,6 @@ void* __wrap_malloc(size_t size)
         return nullptr;  // Simulate malloc failure
     }
     return __real_malloc(size);
-}
 }
 #endif
 

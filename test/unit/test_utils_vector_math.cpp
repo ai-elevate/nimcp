@@ -25,9 +25,7 @@
 #include <gtest/gtest.h>
 #include <cmath>
 
-extern "C" {
     #include "utils/containers/nimcp_vector.h"
-}
 
 //=============================================================================
 // Test Fixture

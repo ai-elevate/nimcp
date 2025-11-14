@@ -388,6 +388,10 @@ typedef struct {
  * This is the core NIMCP 2.5 function that implements the hard-wired
  * Golden Rule: "Do unto others as you would have them done unto you"
  *
+ * CORE DIRECTIVE: All actions are evaluated with the ultimate goal of
+ * improving the human condition through empathy, compassion, fairness,
+ * and respect for human dignity.
+ *
  * @param engine Ethics engine
  * @param action Action to evaluate
  * @return Evaluation result

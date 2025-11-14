@@ -18,11 +18,9 @@
 #include <gtest/gtest.h>
 #include <cmath>
 
-extern "C" {
 #include "glial/astrocytes/nimcp_astrocytes.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/time/nimcp_time.h"
-}
 
 //=============================================================================
 // Test Fixture

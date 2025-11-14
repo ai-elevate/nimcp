@@ -26,10 +26,8 @@
 #include <random>
 
 // Include quantum annealing module (to be implemented)
-extern "C" {
     #include "../../src/optimization/quantum_annealing/nimcp_quantum_annealing.h"
     #include "../../src/core/brain/nimcp_brain.h"
-}
 
 //=============================================================================
 // Test Fixtures

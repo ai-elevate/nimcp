@@ -14,13 +14,11 @@
  */
 
 #include <gtest/gtest.h>
-extern "C" {
 #include "networking/distributed/nimcp_distributed_cognition.h"
 #include "plasticity/neuromodulators/nimcp_neuromodulators.h"
 #include "utils/time/nimcp_time.h"
 #include <unistd.h>
 #include <math.h>
-}
 
 //=============================================================================
 // Test Fixtures

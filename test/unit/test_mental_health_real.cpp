@@ -15,11 +15,9 @@
 #include <gtest/gtest.h>
 #include <cstring>
 
-extern "C" {
 #include "cognitive/nimcp_mental_health.h"
 #include "core/brain/nimcp_brain.h"
 #include "utils/memory/nimcp_memory.h"
-}
 
 //=============================================================================
 // Test Fixtures

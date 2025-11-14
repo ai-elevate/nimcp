@@ -15,11 +15,9 @@
  * - Regression: Ensure ethical constraints are enforced
  */
 
-extern "C" {
 #include "cognitive/wellbeing/nimcp_wellbeing.h"
 #include "core/brain/nimcp_brain.h"
 #include "cognitive/introspection/nimcp_introspection.h"
-}
 
 //=============================================================================
 // UNIT TESTS - Initialization

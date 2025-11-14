@@ -5,12 +5,10 @@
 #include <gtest/gtest.h>
 #include <cmath>
 
-extern "C" {
 #include "core/topology/nimcp_network_builder.h"
 #include "core/topology/nimcp_fractal_topology.h"
 #include "core/neuralnet/nimcp_neuralnet.h"
 #include "core/brain/nimcp_brain.h"
-}
 
 class NetworkBuilderRealTest : public ::testing::Test {
 protected:

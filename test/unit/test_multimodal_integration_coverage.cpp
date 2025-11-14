@@ -18,10 +18,8 @@
 #include <gtest/gtest.h>
 #include <cmath>
 
-extern "C" {
 #include "core/integration/nimcp_multimodal_integration.h"
 #include "utils/memory/nimcp_memory.h"
-}
 
 //=============================================================================
 // Test Fixtures

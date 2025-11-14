@@ -211,10 +211,58 @@ static bool key_compare_integer(const void* key1, size_t key1_size, const void* 
 /**
  * WHAT: Compute hash for a key
  * WHY: Centralize hash computation logic
- * HOW: Dispatch to appropriate hash function
+ * HOW: Dispatch to appropriate hash function, normalize case if needed
+ *
+ * CRITICAL: For case-insensitive string keys, must normalize to lowercase
+ * before hashing so "ConcePT", "concept", and "CONCEPT" hash to same bucket
  */
 static uint32_t compute_hash(hash_table_t* table, const void* key, size_t key_size)
 {
+    // For case-insensitive string keys, normalize to lowercase before hashing
+    if (table->config.key_type == HASH_KEY_STRING && table->config.case_insensitive) {
+        // Allocate temporary buffer for lowercase version
+        char* lowercase_key = (char*)nimcp_malloc(key_size);
+        if (!lowercase_key) {
+            // Fallback to original key on allocation failure
+            goto hash_original_key;
+        }
+
+        // Convert to lowercase
+        const char* str = (const char*)key;
+        for (size_t i = 0; i < key_size; i++) {
+            lowercase_key[i] = tolower((unsigned char)str[i]);
+        }
+
+        // Hash the lowercase version
+        uint32_t hash;
+        switch (table->config.hash_algorithm) {
+            case HASH_ALG_FNV1A:
+                hash = hash_fnv1a(lowercase_key, key_size);
+                break;
+            case HASH_ALG_DJB2:
+                hash = hash_djb2(lowercase_key, key_size);
+                break;
+            case HASH_ALG_MURMUR3:
+                hash = hash_murmur3(lowercase_key, key_size);
+                break;
+            case HASH_ALG_CUSTOM:
+                if (table->config.custom_hash_fn) {
+                    hash = table->config.custom_hash_fn(lowercase_key, key_size);
+                } else {
+                    hash = hash_fnv1a(lowercase_key, key_size);
+                }
+                break;
+            default:
+                hash = hash_fnv1a(lowercase_key, key_size);
+                break;
+        }
+
+        nimcp_free(lowercase_key);
+        return hash;
+    }
+
+hash_original_key:
+    // Normal path: hash original key
     switch (table->config.hash_algorithm) {
         case HASH_ALG_FNV1A:
             return hash_fnv1a(key, key_size);

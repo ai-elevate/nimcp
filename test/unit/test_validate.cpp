@@ -12,10 +12,8 @@
 #include <cstring>
 #include <limits>
 
-extern "C" {
 #include "utils/validation/nimcp_common.h"
 #include "utils/validation/nimcp_validate.h"
-}
 
 //=============================================================================
 // Integer Field Validation Tests

@@ -78,7 +78,15 @@
 
 #include <stdint.h>
 #include <stdbool.h>
-#include <complex.h>
+
+// Complex number support for both C and C++
+#ifdef __cplusplus
+    #include <complex>
+    typedef std::complex<float> quantum_amplitude_t;
+#else
+    #include <complex.h>
+    typedef float complex quantum_amplitude_t;
+#endif
 
 // Forward declarations
 typedef struct neural_network_struct* neural_network_t;
@@ -92,23 +100,27 @@ typedef struct neural_network_struct* neural_network_t;
  *
  * WHAT: Complex amplitude αᵢ = real + i×imag
  * WHY: Quantum states require complex amplitudes
- * HOW: Standard C99 complex.h support
+ * HOW: C99 complex.h (C) or std::complex (C++)
  */
-typedef float complex quantum_amplitude_t;
 
 /**
  * @brief Compute probability from amplitude
  *
  * WHAT: P = |α|² = real² + imag²
  * WHY: Born rule: probability = amplitude squared
- * HOW: Use creal() and cimag() from complex.h
+ * HOW: Use std::abs for C++, cabsf for C
  *
  * @param amplitude Quantum amplitude
  * @return Probability [0, 1]
  */
 static inline float quantum_probability(quantum_amplitude_t amplitude) {
+#ifdef __cplusplus
+    float re = amplitude.real();
+    float im = amplitude.imag();
+#else
     float re = crealf(amplitude);
     float im = cimagf(amplitude);
+#endif
     return re * re + im * im;
 }
 
@@ -158,6 +170,10 @@ typedef struct {
     uint32_t measurement_interval;     /**< Measure probability every N steps (0=only at end) */
     bool enable_boundary_conditions;   /**< Apply boundary conditions at network edges */
 } quantum_walk_config_t;
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /**
  * @brief Get default quantum walk configuration
@@ -529,5 +545,9 @@ bool quantum_walk_apply_decoherence(
     quantum_walker_t* walker,
     float decoherence_strength
 );
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif // NIMCP_QUANTUM_WALK_H
