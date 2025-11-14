@@ -613,15 +613,13 @@ void glial_integration_step(glial_integration_t* gi, uint64_t timestamp) {
     }
 
     // Part A2.1: Step spatial neuromodulator diffusion (DA, 5-HT, ACh, NE)
+    // PHASE C4.6: Multi-objective optimization integrated here
     if (gi->spatial_neuromod && gi->enable_spatial_neuromod) {
         // Use same dt_ms as astrocyte/oligodendrocyte systems (already computed above)
-        // Update all enabled neuromodulator fields
-        // Each field represents one neuromodulator type (DA, 5-HT, ACh, NE)
-        for (uint32_t i = 0; i < NEUROMOD_COUNT; i++) {
-            if (gi->spatial_neuromod->fields[i]) {
-                spatial_neuromod_update(gi->spatial_neuromod->fields[i], gi->network, dt_ms);
-            }
-        }
+        // Update all enabled neuromodulator fields in one call
+        // Supports all Phase C4.x features: quantum-Shannon, adaptive routing,
+        // dynamic adaptation, and multi-objective Pareto optimization
+        spatial_neuromod_system_update(gi->spatial_neuromod, gi->network, dt_ms);
         gi->total_neuromod_updates++;
     }
 
