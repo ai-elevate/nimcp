@@ -1027,7 +1027,11 @@ void* nimcp_malloc(size_t size)
     if (ptr) {
         // Success path
         ptr = add_memory_guards(ptr, total_size);
-        track_allocation(ptr, size, 8, __FILE__, __LINE__, __func__);
+
+        // KEY FIX: Track usable size after rounding, not requested size
+        // WHY: total_size was rounded up for alignment, so usable space is larger
+        size_t usable_size = total_size - (2 * sizeof(uint64_t));
+        track_allocation(ptr, usable_size, 8, __FILE__, __LINE__, __func__);
 
         if (g_memory_state.debug_output) {
             printf("[MEMORY] Allocated: %zu bytes at %p\n", size, ptr);
@@ -1083,7 +1087,10 @@ void* nimcp_calloc(size_t count, size_t size)
 
     if (ptr) {
         ptr = add_memory_guards(ptr, total_size);
-        track_allocation(ptr, count * size, 8, __FILE__, __LINE__, __func__);
+
+        // KEY FIX: Track usable size after rounding
+        size_t usable_size = total_size - (2 * sizeof(uint64_t));
+        track_allocation(ptr, usable_size, 8, __FILE__, __LINE__, __func__);
 
         if (g_memory_state.debug_output) {
             printf("[MEMORY] Allocated (calloc): %zu bytes at %p\n", count * size, ptr);
@@ -1150,9 +1157,14 @@ void* nimcp_realloc(void* ptr, size_t new_size)
     // Untrack old pointer (realloc may move it)
     untrack_allocation(ptr);
 
-    // Compute total size and real pointer
-    size_t total_size = new_size + (2 * sizeof(uint32_t));
-    void* real_ptr = (char*) ptr - sizeof(uint32_t);
+    // KEY FIX: Use uint64_t (8 bytes) for guards, matching malloc/calloc
+    // WHY: Consistency and proper 8-byte alignment
+    size_t total_size = new_size + (2 * sizeof(uint64_t));
+
+    // Ensure total_size is multiple of 8 for alignment
+    total_size = (total_size + 7) & ~7;
+
+    void* real_ptr = (char*) ptr - sizeof(uint64_t);
 
     // Realloc with real pointer
     void* new_ptr = realloc(real_ptr, total_size);
@@ -1160,7 +1172,10 @@ void* nimcp_realloc(void* ptr, size_t new_size)
     if (new_ptr) {
         // Success: re-guard and track
         new_ptr = add_memory_guards(new_ptr, total_size);
-        track_allocation(new_ptr, new_size, 8, __FILE__, __LINE__, __func__);
+
+        // KEY FIX: Track usable size after rounding
+        size_t usable_size = total_size - (2 * sizeof(uint64_t));
+        track_allocation(new_ptr, usable_size, 8, __FILE__, __LINE__, __func__);
 
         if (g_memory_state.debug_output) {
             printf("[MEMORY] Reallocated: %zu bytes at %p (old: %p)\n", new_size, new_ptr, ptr);
@@ -1383,8 +1398,8 @@ void nimcp_memory_cleanup(void)
             fprintf(stderr, "[MEMORY] Leak detected: %zu bytes at %p\n", current->size,
                     current->ptr);
         }
-        // Free user allocation
-        free((char*) current->ptr - sizeof(uint32_t));
+        // KEY FIX: Use uint64_t (8 bytes) to match malloc/calloc guards
+        free((char*) current->ptr - sizeof(uint64_t));
         // Free tracking structure
         free(current);
         current = next;
@@ -1708,8 +1723,13 @@ void* nimcp_aligned_alloc_impl(size_t alignment, size_t size)
     // User pointer (still aligned!)
     void* user_ptr = (char*)real_ptr + guard_size;
 
-    // Track allocation with guard_size
-    track_allocation(user_ptr, size, guard_size, __FILE__, __LINE__, __func__);
+    // KEY FIX: The usable size is the padded total minus guards
+    // WHY: After rounding total_size for alignment, the user data region may be larger than requested
+    // EXAMPLE: size=10, guard=16, total=(10+32)=42→48, usable=48-32=16 (not 10!)
+    size_t usable_size = total_size - (2 * guard_size);
+
+    // Track allocation with actual usable size (not requested size)
+    track_allocation(user_ptr, usable_size, guard_size, __FILE__, __LINE__, __func__);
 
     if (g_memory_state.debug_output) {
         printf("[MEMORY] Aligned %zu @ %p (align=%zu)\n", size, user_ptr, alignment);
