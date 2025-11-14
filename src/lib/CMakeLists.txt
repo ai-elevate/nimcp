@@ -75,6 +75,9 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/mirror_neurons/nimcp_mirror_neurons.c  # Phase 10.11: Mirror Neurons
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/global_workspace/nimcp_global_workspace.c  # Global Workspace Architecture (Global Workspace Theory)
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/memory/nimcp_engram.c  # Phase M1: Memory Engrams (explicit memory traces)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/memory/nimcp_systems_consolidation.c  # Phase M2: Systems Consolidation (hippocampus → cortex transfer)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/memory/nimcp_wm_transfer.c  # Phase M3: Working Memory Transfer (WM → engram encoding)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/memory/nimcp_semantic_memory.c  # Phase M4: Semantic Memory Network (concept network with spreading activation)
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/nimcp_fractal_cognitive.c  # Fractal cognitive processing
     ${CMAKE_CURRENT_SOURCE_DIR}/cognitive/nimcp_hierarchical.c
 
@@ -170,12 +173,17 @@ set(NIMCP_CORE_SOURCES
 
     # Utils - Quantum-Inspired Algorithms (Phase C: Quantum-Inspired Algorithms)
     ${CMAKE_CURRENT_SOURCE_DIR}/../utils/quantum/nimcp_quantum_walk.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../utils/quantum/nimcp_quantum_shannon.c  # Phase C4.1: Quantum Walk + Shannon Information Theory
 
     # Utils - Geometry (Phase B1.1: Hyperbolic Knowledge Graph Embeddings)
     ${CMAKE_CURRENT_SOURCE_DIR}/../utils/geometry/nimcp_hyperbolic.c
 
     # Utils - Tensor Networks (Phase C3.1: MPS Compression)
     ${CMAKE_CURRENT_SOURCE_DIR}/../utils/tensor_networks/nimcp_mps.c
+
+    # Information Theory (Phase C4: Shannon Information Theory)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../information/nimcp_shannon.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../information/nimcp_cross_modal.c  # Phase C4.7: Cross-Modal Information Flow
 
     # Optimization - Quantum Annealing (Phase 11 Enhancement C1.1)
     ${CMAKE_CURRENT_SOURCE_DIR}/../optimization/quantum_annealing/nimcp_quantum_annealing.c
