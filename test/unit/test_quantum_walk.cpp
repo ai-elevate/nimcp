@@ -45,8 +45,8 @@
  */
 neural_network_t create_test_network(uint32_t num_neurons) {
     network_config_t config = {0};
-    config.num_inputs = num_neurons;
-    config.num_outputs = num_neurons;
+    config.input_size = num_neurons;
+    config.output_size = num_neurons;
     config.num_layers = 1;
     config.layer_sizes = (uint32_t*)nimcp_malloc(sizeof(uint32_t));
     config.layer_sizes[0] = num_neurons;
