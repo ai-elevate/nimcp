@@ -68,6 +68,10 @@
 #include <stddef.h>
 #include <stdbool.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 //=============================================================================
 // Data Structures
 //=============================================================================
@@ -457,5 +461,9 @@ bool mps_canonicalize(
     mps_matrix_t* mps,
     uint32_t center_site
 );
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif // NIMCP_MPS_H
