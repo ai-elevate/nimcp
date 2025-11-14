@@ -5,6 +5,10 @@
 #include <stdio.h>
 #include <time.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #ifndef PATH_MAX
 #define PATH_MAX 256  // Fallback if system doesn't define PATH_MAX
 #endif
@@ -32,5 +36,9 @@ void log_close();
 #define NIMCP_LOGGING_WARN(...) log_message(LOG_LEVEL_WARN, __VA_ARGS__)
 #define NIMCP_LOGGING_ERROR(...) log_message(LOG_LEVEL_ERROR, __VA_ARGS__)
 #define NIMCP_LOGGING_FATAL(...) log_message(LOG_LEVEL_FATAL, __VA_ARGS__)
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif  // LOGGING_H
