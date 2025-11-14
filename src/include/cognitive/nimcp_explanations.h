@@ -44,6 +44,10 @@
 // Note: No circular dependency - brain.h does not include nimcp_explanations.h
 #include "core/brain/nimcp_brain.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 //=============================================================================
 // Natural Explanation Structure
 //=============================================================================
@@ -340,5 +344,9 @@ bool explanation_to_json(
     char* json_buffer,
     size_t buffer_size
 );
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif // NIMCP_EXPLANATIONS_H

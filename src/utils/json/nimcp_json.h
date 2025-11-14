@@ -14,6 +14,10 @@
 #include "utils/memory/nimcp_memory.h"
 #include "utils/thread/nimcp_thread.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 // JSON operation result codes
 typedef enum {
     JSON_SUCCESS = 0,
@@ -71,5 +75,9 @@ JsonResult nimcp_json_set_null_value(JsonContext* ctx, const char* path);
 
 // Error handling
 const char* nimcp_json_get_error(JsonResult result);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif  // NIMCP_JSON_H
