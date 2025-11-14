@@ -40,6 +40,10 @@
  * WHY: Allows fluent API and validation before creation
  * HOW: Filled via builder methods, consumed by build()
  */
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 typedef struct {
     // Basic network config
     uint32_t num_neurons;
@@ -151,4 +155,8 @@ bool network_init_weights_pink_noise(
 
 #endif // C99
 
+
+#ifdef __cplusplus
+}
+#endif
 #endif // NIMCP_NETWORK_BUILDER_H

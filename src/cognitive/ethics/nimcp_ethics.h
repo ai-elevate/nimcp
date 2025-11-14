@@ -25,6 +25,10 @@
 /**
  * @brief Ethical violation types
  */
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 typedef enum {
     ETHICS_VIOLATION_NONE = 0x00,
     ETHICS_VIOLATION_HARM = 0x01,       /**< Potential harm detected */
@@ -615,4 +619,8 @@ uint32_t ethics_get_all_incidents(ethics_engine_t engine, ethics_incident_t** in
  */
 bool ethics_export_incidents(ethics_engine_t engine, const char* filepath, const char* format);
 
+
+#ifdef __cplusplus
+}
+#endif
 #endif  // NIMCP_ETHICS_H

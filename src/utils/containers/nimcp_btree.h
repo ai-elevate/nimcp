@@ -9,6 +9,10 @@
 #include <pthread.h>
 
 // Forward declarations
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 typedef struct btree_t btree_t;
 typedef struct btree_node_t btree_node_t;
 typedef struct btree_iterator_t btree_iterator_t;
@@ -116,4 +120,8 @@ bool btree_iterator_next(btree_iterator_t* iterator, void** data);
  */
 void btree_iterator_destroy(btree_iterator_t* iterator);
 
+
+#ifdef __cplusplus
+}
+#endif
 #endif  // NIMCP_BTREE_H

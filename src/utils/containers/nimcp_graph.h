@@ -42,6 +42,10 @@
  * Type definition for edge weights
  * Using float allows for various metrics (latency, bandwidth, reliability, etc.)
  */
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 typedef float nimcp_weight_t;
 
 /**
@@ -263,4 +267,8 @@ uint32_t nimcp_graph_get_neighbors(const NimcpGraph* graph, uint32_t vertex_idx,
 bool nimcp_graph_get_edge_weight(const NimcpGraph* graph, uint32_t from, uint32_t to,
                                  nimcp_weight_t* weight);
 
+
+#ifdef __cplusplus
+}
+#endif
 #endif /* NIMCP_GRAPH_H */

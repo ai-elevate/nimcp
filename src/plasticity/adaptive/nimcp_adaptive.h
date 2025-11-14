@@ -25,6 +25,10 @@
  * pattern learning suitable for practical applications.
  */
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 //=============================================================================
 // Adaptive Threshold Configuration
 //=============================================================================
@@ -486,5 +490,9 @@ bool adaptive_network_get_total_weight(adaptive_network_t network, uint32_t neur
  * @return Base neural network handle (do not free!)
  */
 neural_network_t adaptive_network_get_base_network(adaptive_network_t network);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif  // NIMCP_ADAPTIVE_H

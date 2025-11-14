@@ -16,6 +16,10 @@
 #include "core/brain/nimcp_brain.h"
 #include "common/nimcp_export.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /**
  * @brief Data format types
  */
@@ -279,5 +283,9 @@ dataset_t dataset_create_stream(stream_callback_fn_t callback, void* user_data,
  */
 uint64_t brain_train_from_stream(brain_t brain, dataset_t stream_dataset,
                                  uint32_t duration_seconds);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif  // NIMCP_DATAIO_H

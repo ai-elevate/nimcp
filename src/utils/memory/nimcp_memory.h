@@ -79,6 +79,22 @@ void* nimcp_malloc(size_t size);
 void* nimcp_calloc(size_t count, size_t size);
 
 /**
+ * WHAT: Allocate aligned memory with tracking
+ * WHY: Required for SIMD operations, atomic ops, and struct alignment
+ * HOW: Uses aligned_alloc with canary guards and tracking
+ *
+ * ALIGNMENT REQUIREMENTS:
+ * - alignment must be power of 2
+ * - alignment must be multiple of sizeof(void*)
+ * - size must be multiple of alignment
+ *
+ * @param alignment Alignment in bytes (must be power of 2)
+ * @param size Bytes to allocate (will be rounded up to alignment)
+ * @return Pointer to aligned memory or NULL on failure
+ */
+void* nimcp_aligned_alloc(size_t alignment, size_t size);
+
+/**
  * WHAT: Resize memory allocation
  * WHY: Track reallocations and update tracking info
  * HOW: Untrack old pointer, realloc, track new pointer

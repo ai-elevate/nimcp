@@ -50,6 +50,10 @@
 /**
  * @brief Curiosity engine handle
  */
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 typedef struct curiosity_engine_struct* curiosity_engine_t;
 
 /**
@@ -437,4 +441,8 @@ void curiosity_set_exploration_rate(curiosity_engine_t engine, float exploration
  */
 float curiosity_get_information_gain(curiosity_engine_t engine);
 
+
+#ifdef __cplusplus
+}
+#endif
 #endif  // NIMCP_CURIOSITY_H

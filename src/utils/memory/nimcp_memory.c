@@ -481,17 +481,17 @@ static void* add_memory_guards(void* ptr, size_t size)
     if (!ptr)
         return NULL;
 
-    // Write head canary
-    uint32_t* guard_ptr = (uint32_t*) ptr;
-    *guard_ptr = g_memory_state.CANARY_VALUE;
+    // Write head canary (8 bytes for proper alignment)
+    uint64_t* guard_ptr = (uint64_t*) ptr;
+    *guard_ptr = ((uint64_t)g_memory_state.CANARY_VALUE << 32) | g_memory_state.CANARY_VALUE;
 
-    // Write tail canary
-    guard_ptr = (uint32_t*) ((char*) ptr + size - sizeof(uint32_t));
-    *guard_ptr = g_memory_state.CANARY_VALUE;
+    // Write tail canary (8 bytes)
+    guard_ptr = (uint64_t*) ((char*) ptr + size - sizeof(uint64_t));
+    *guard_ptr = ((uint64_t)g_memory_state.CANARY_VALUE << 32) | g_memory_state.CANARY_VALUE;
 
-    // Return pointer after head guard
+    // Return pointer after head guard (8-byte aligned)
     // WHY: User data starts here, head guard before, tail guard after
-    return (char*) ptr + sizeof(uint32_t);
+    return (char*) ptr + sizeof(uint64_t);
 }
 
 /**
@@ -533,10 +533,12 @@ static bool check_memory_guards(void* ptr, size_t size)
     if (!ptr)
         return false;
 
-    uint32_t* head_guard = (uint32_t*) ((char*) ptr - sizeof(uint32_t));
-    uint32_t* tail_guard = (uint32_t*) ((char*) ptr + size);
+    // Check 8-byte guards
+    uint64_t* head_guard = (uint64_t*) ((char*) ptr - sizeof(uint64_t));
+    uint64_t* tail_guard = (uint64_t*) ((char*) ptr + size);
+    uint64_t expected = ((uint64_t)g_memory_state.CANARY_VALUE << 32) | g_memory_state.CANARY_VALUE;
 
-    if (*head_guard != g_memory_state.CANARY_VALUE || *tail_guard != g_memory_state.CANARY_VALUE) {
+    if (*head_guard != expected || *tail_guard != expected) {
         fprintf(stderr, "[MEMORY] Buffer overflow detected at %p\n", ptr);
         return false;
     }
@@ -949,9 +951,14 @@ void* nimcp_malloc(size_t size)
 {
     init_if_needed();
 
-    // Compute total size including guards
-    size_t total_size = size + (2 * sizeof(uint32_t));
-    void* ptr = malloc(total_size);
+    // Compute total size including 8-byte guards for proper alignment
+    size_t total_size = size + (2 * sizeof(uint64_t));
+
+    // Ensure total_size is multiple of 8 for alignment
+    total_size = (total_size + 7) & ~7;
+
+    // Use aligned_alloc to guarantee 8-byte alignment
+    void* ptr = aligned_alloc(8, total_size);
 
     if (ptr) {
         // Success path
@@ -997,8 +1004,18 @@ void* nimcp_calloc(size_t count, size_t size)
 {
     init_if_needed();
 
-    size_t total_size = (count * size) + (2 * sizeof(uint32_t));
-    void* ptr = calloc(1, total_size);
+    // Use 8-byte guards for proper alignment
+    size_t user_size = count * size;
+    size_t total_size = user_size + (2 * sizeof(uint64_t));
+
+    // Ensure total_size is multiple of 8 for alignment
+    total_size = (total_size + 7) & ~7;
+
+    // Use aligned_alloc to guarantee 8-byte alignment
+    void* ptr = aligned_alloc(8, total_size);
+    if (ptr) {
+        memset(ptr, 0, total_size);  // Zero it like calloc
+    }
 
     if (ptr) {
         ptr = add_memory_guards(ptr, total_size);
@@ -1179,8 +1196,8 @@ void nimcp_free(void* ptr)
         }
     }
 
-    // Compute real pointer and free
-    void* real_ptr = (char*) ptr - sizeof(uint32_t);
+    // Compute real pointer and free (8-byte guard offset)
+    void* real_ptr = (char*) ptr - sizeof(uint64_t);
     untrack_allocation(ptr);
     free(real_ptr);
 }
@@ -1534,4 +1551,111 @@ void nimcp_memory_analyze_patterns(void)
     printf("=================================================\n\n");
 
     nimcp_mutex_unlock(&g_memory_state.lock);
+}
+
+//=============================================================================
+// Aligned Memory Allocation (Added for AddressSanitizer compatibility)
+//=============================================================================
+
+/**
+ * @brief Allocate aligned memory with tracking and guards
+ *
+ * WHAT: Allocate memory with specific alignment requirement
+ * WHY: Required for SIMD, atomics, structs, and AddressSanitizer
+ * HOW: Use aligned_alloc with alignment-sized guards
+ *
+ * ALIGNMENT REQUIREMENTS:
+ * - Must be power of 2 (2,4,8,16,32,64,128,...)
+ * - Must be >= 8 (for guard compatibility)
+ * - Guards match alignment to preserve it
+ *
+ * GUARD STRATEGY (KEY INSIGHT):
+ * - Guard size = MAX(8, alignment) to preserve alignment
+ * - If alignment=16, guards are 16 bytes each
+ * - User pointer = aligned_ptr + guard_size (still aligned!)
+ * - Pattern: 0xDEADBEEFDEADBEEF repeated
+ *
+ * ALGORITHM (< 50 lines):
+ * 1. Guard: Validate alignment (power of 2, >= 8)
+ * 2. Compute: guard_size = MAX(8, alignment)
+ * 3. Compute: total = size + 2×guard_size, round to alignment
+ * 4. Allocate: aligned_alloc(alignment, total)
+ * 5. Guard: Fill guard regions with pattern
+ * 6. Track: Add to tracking table
+ * 7. Return: ptr + guard_size (preserves alignment!)
+ *
+ * @param alignment Alignment in bytes (power of 2, >= 8)
+ * @param size Bytes to allocate
+ * @return Aligned pointer or NULL
+ */
+void* nimcp_aligned_alloc_impl(size_t alignment, size_t size)
+{
+    // Guard: Validate alignment is power of 2
+    if (alignment == 0 || (alignment & (alignment - 1)) != 0) {
+        if (g_memory_state.debug_output) {
+            fprintf(stderr, "[MEMORY] Invalid alignment %zu\n", alignment);
+        }
+        return NULL;
+    }
+
+    // Guard: Minimum alignment
+    if (alignment < 8) {
+        alignment = 8;
+    }
+
+    // Guard: Zero size
+    if (size == 0) {
+        return NULL;
+    }
+
+    // KEY: Guard size must match alignment to preserve it
+    size_t guard_size = (alignment > 8) ? alignment : 8;
+
+    // Compute total with guards (will preserve alignment)
+    size_t total_size = size + (2 * guard_size);
+    total_size = (total_size + alignment - 1) & ~(alignment - 1);
+
+    // Allocate aligned memory
+    void* real_ptr = aligned_alloc(alignment, total_size);
+
+    if (!real_ptr) {
+        nimcp_mutex_lock(&g_memory_state.lock);
+        g_memory_state.stats.failed_allocations++;
+        nimcp_mutex_unlock(&g_memory_state.lock);
+        return NULL;
+    }
+
+    // Fill guard regions with pattern
+    uint64_t pattern = ((uint64_t)g_memory_state.CANARY_VALUE << 32) | g_memory_state.CANARY_VALUE;
+
+    // Head guard
+    for (size_t i = 0; i < guard_size / sizeof(uint64_t); i++) {
+        ((uint64_t*)real_ptr)[i] = pattern;
+    }
+
+    // Tail guard
+    uint64_t* tail = (uint64_t*)((char*)real_ptr + total_size - guard_size);
+    for (size_t i = 0; i < guard_size / sizeof(uint64_t); i++) {
+        tail[i] = pattern;
+    }
+
+    // User pointer (still aligned!)
+    void* user_ptr = (char*)real_ptr + guard_size;
+
+    // Track allocation
+    track_allocation(user_ptr, size, __FILE__, __LINE__, __func__);
+
+    if (g_memory_state.debug_output) {
+        printf("[MEMORY] Aligned %zu @ %p (align=%zu)\n", size, user_ptr, alignment);
+    }
+
+    return user_ptr;
+}
+
+
+// Public API wrapper
+void* nimcp_aligned_alloc(size_t alignment, size_t size)
+{
+    init_if_needed();
+    return nimcp_aligned_alloc_impl(alignment, size);
 }

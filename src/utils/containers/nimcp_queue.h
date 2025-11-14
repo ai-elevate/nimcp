@@ -7,6 +7,10 @@
 #include "utils/validation/nimcp_common.h"
 
 // Queue configuration
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 typedef struct {
     size_t max_size;      // Maximum number of items
     size_t item_size;     // Size of each item in bytes
@@ -43,4 +47,8 @@ bool nimcp_queue_is_empty(nimcp_queue_handle_t queue);
 bool nimcp_queue_is_full(nimcp_queue_handle_t queue);
 size_t nimcp_queue_get_size(nimcp_queue_handle_t queue);
 
+
+#ifdef __cplusplus
+}
+#endif
 #endif  // NIMCP_QUEUE_H

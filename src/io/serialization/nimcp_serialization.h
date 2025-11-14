@@ -9,6 +9,10 @@
 #include "utils/validation/nimcp_common.h"
 
 // Error codes for serialization operations
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 typedef enum {
     NIMCP_SERIAL_SUCCESS = 0,
     NIMCP_SERIAL_ERROR_MEMORY,
@@ -94,4 +98,8 @@ bool nimcp_serializer_has_error(const NimcpSerializer* serializer);
  */
 void nimcp_serializer_clear_error(NimcpSerializer* serializer);
 
+
+#ifdef __cplusplus
+}
+#endif
 #endif  // NIMCP_SERIALIZATION_H
