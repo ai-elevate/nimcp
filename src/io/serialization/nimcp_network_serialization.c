@@ -473,6 +473,23 @@ nimcp_network_serial_result_t nimcp_network_deserialize(
     // Verify checksum
     uint32_t stored_checksum = nimcp_read_uint32(working_serializer);
 
+    // Recalculate checksum from deserialized data (skip magic + version + flags = 6 bytes)
+    size_t data_length = nimcp_serializer_get_position(working_serializer) - 4;  // Position before checksum
+    const uint8_t* data_buffer = nimcp_serializer_get_buffer(working_serializer);
+    uint32_t calculated_checksum = calculate_checksum(data_buffer + 6, data_length - 6);
+
+    // Verify checksums match
+    if (stored_checksum != calculated_checksum) {
+        nimcp_network_destroy(network);
+        if (decrypted_serializer) {
+            nimcp_serializer_destroy(decrypted_serializer);
+        }
+        if (decompressed_serializer) {
+            nimcp_serializer_destroy(decompressed_serializer);
+        }
+        return NIMCP_NETWORK_SERIAL_ERROR_CHECKSUM_MISMATCH;
+    }
+
     // Clean up temporary serializers if we created them
     if (decrypted_serializer) {
         nimcp_serializer_destroy(decrypted_serializer);
@@ -480,7 +497,6 @@ nimcp_network_serial_result_t nimcp_network_deserialize(
     if (decompressed_serializer) {
         nimcp_serializer_destroy(decompressed_serializer);
     }
-    // TODO: Recalculate and verify checksum
 
     // Fill statistics if requested
     if (stats) {
