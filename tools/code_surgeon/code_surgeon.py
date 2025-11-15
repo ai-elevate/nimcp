@@ -499,6 +499,152 @@ File: {source_file.relative_to(nimcp_root)}
             # If loading fails, continue without standards (non-fatal)
             prompt += f"  ⚠️  Could not load .claude/claude.md: {e}\n\n"
 
+    # Add comprehensive project context for GPT-5
+    prompt += """
+## NIMCP PROJECT CONTEXT
+
+### Architecture Overview
+NIMCP (Neuromorphic Integration & Multi-modal Cognitive Platform) is a biologically-inspired spiking neural network framework written in C.
+
+**Core Concepts:**
+- **Spiking Neural Networks (SNNs)**: Discrete spike-based computation, not continuous activations
+- **Neuromodulation**: Chemical signaling (dopamine, serotonin, etc.) modulates learning and behavior
+- **Brain-Inspired Design**: Hierarchical structure with brain regions, cognitive modules, and plasticity rules
+- **Multi-modal Integration**: Handles visual, audio, speech, and cross-modal processing
+
+### Module Structure
+```
+src/
+├── core/                    # Core neural network components
+│   ├── brain/              # brain_t API - main orchestrator (opaque pointer pattern)
+│   ├── neuralnet/          # neural_network_t - SNN implementation
+│   └── topology/           # Fractal and hierarchical network topologies
+├── cognitive/              # Higher-level cognitive functions
+│   ├── curiosity/          # Knowledge gap detection, question generation
+│   ├── ethics/             # Ethical reasoning and decision-making
+│   ├── knowledge/          # Knowledge representation and retrieval
+│   ├── salience/           # Attention and saliency evaluation
+│   ├── wellbeing/          # Emotional and physiological wellbeing
+│   ├── emotions/           # Emotional processing (grief, joy, love, etc.)
+│   └── ... (introspection, executive, working_memory, etc.)
+├── plasticity/             # Learning and adaptation mechanisms
+│   ├── stdp/               # Spike-timing dependent plasticity
+│   ├── neuromodulators/    # Dopamine, serotonin, acetylcholine systems
+│   ├── bcm/                # BCM learning rule
+│   ├── eligibility/        # Eligibility traces for credit assignment
+│   └── adaptive/           # Adaptive learning rates
+├── glial/                  # Glial cell simulation (astrocytes, microglia, oligodendrocytes)
+├── nlp/                    # Natural language processing integration
+├── networking/             # Distributed cognition and P2P networking
+├── security/               # Encryption, authentication, security measures
+└── utils/                  # Data structures (btree, cache, queue, graph, etc.)
+
+### Test Organization
+```
+test/
+├── unit/                   # Unit tests (test individual functions/modules)
+│   ├── cognitive/         # Tests for cognitive modules
+│   ├── core/              # Tests for brain, neuralnet, topology
+│   ├── plasticity/        # Tests for learning mechanisms
+│   ├── utils/             # Tests for data structures
+│   └── ... (glial, gpu, nlp, security, etc.)
+├── integration/           # Integration tests (test module interactions)
+│   ├── cognitive/
+│   ├── core/
+│   └── ... (same structure as unit/)
+└── regression/            # Regression tests (backward compatibility)
+    └── ... (same structure as unit/)
+```
+
+**Test Naming Convention:**
+- Unit tests: `unit_<category>_<module>_test_<component>.cpp` → `unit_test_<component>` executable
+- Integration tests: `integration_<category>_<module>_test_<component>.cpp` → `integration_test_<component>` executable
+- Regression tests: `regression_<category>_<module>_test_<component>.cpp` → `regression_test_<component>` executable
+
+### Common Patterns
+
+**1. Opaque Pointer Pattern** (information hiding):
+```c
+// Header declares handle type
+typedef struct brain_struct* brain_t;
+
+// Access via getter functions ONLY
+uint32_t brain_get_num_inputs(brain_t brain);
+
+// NEVER access fields directly: brain->field (will fail - opaque!)
+```
+
+**2. Strategy Pattern** (dependency injection):
+- LLM providers (OpenAI, Anthropic, Mock)
+- Neuron models (Izhikevich, LIF, two-compartment)
+- Learning rules (STDP, BCM, eligibility traces)
+
+**3. Reward-Modulated STDP**:
+```c
+// Dopamine modulates synaptic plasticity
+float dopamine = neuromodulator_get_level(system, NEUROMOD_DOPAMINE);
+delta_weight = base_stdp * dopamine;
+```
+
+**4. Error Handling**:
+```c
+// Always validate inputs
+if (!param) {
+    return ERROR_NULL_POINTER;
+}
+
+// Allow NULL for testing when appropriate
+if (!learner_name) {  // Required parameter
+    return NULL;
+}
+// parent_brain can be NULL for standalone testing
+```
+
+**5. Memory Management**:
+```c
+// Create/destroy pairs
+engine_t engine = engine_create(...);
+engine_destroy(engine);
+
+// Thread-safe reference counting for shared resources
+```
+
+### Build System
+- **CMake**: Build configuration in `CMakeLists.txt`
+- **Google Test**: Unit testing framework (C++)
+- **Coverage**: gcov/lcov for code coverage reports
+- **Pre-commit Hook**: Code Surgeon runs on commit to auto-fix tests
+
+### Key Dependencies
+- `brain_t` depends on: neural_network_t, neuromodulator_system_t, cognitive modules
+- `neural_network_t` depends on: neuromodulator_system_t, plasticity rules, neuron models
+- Cognitive modules depend on: brain_t (via getters), utils (btree, cache, queue)
+- Tests depend on: Google Test, source modules under test
+
+### Common Test Failure Causes
+1. **NULL pointer rejection**: Function changed to reject NULL but tests pass NULL for testing
+2. **Opaque pointer access**: Test tries to access struct fields directly instead of using getters
+3. **API changes**: Function signature changed breaking backward compatibility
+4. **Memory leaks**: Create without destroy, or double-free
+5. **Thread safety**: Race conditions in concurrent tests
+6. **Hardcoded values**: Placeholder values (0.0f, NULL, etc.) not replaced with real implementation
+
+### Important Constants
+```c
+// Neuromodulator types
+NEUROMOD_DOPAMINE      // Reward, learning, motivation
+NEUROMOD_SEROTONIN     // Mood, wellbeing
+NEUROMOD_ACETYLCHOLINE // Attention, memory encoding
+NEUROMOD_NOREPINEPHRINE // Arousal, alertness
+
+// Error codes
+ERROR_NULL_POINTER
+ERROR_INVALID_CONFIG
+ERROR_MEMORY_ALLOCATION
+```
+
+"""
+
     prompt += """## YOUR TASK
 Analyze the test failure and provide a MINIMAL, SURGICAL fix. Your response MUST be in this exact format:
 
