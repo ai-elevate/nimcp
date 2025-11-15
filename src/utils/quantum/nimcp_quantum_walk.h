@@ -81,11 +81,17 @@
 
 // Complex number support for both C and C++
 #ifdef __cplusplus
-    #include <complex>
-    typedef std::complex<float> quantum_amplitude_t;
-#else
-    #include <complex.h>
-    typedef float complex quantum_amplitude_t;
+extern "C++" {  // Temporarily use C++ linkage for C++ headers
+#endif
+    #ifdef __cplusplus
+        #include <complex>
+        typedef std::complex<float> quantum_amplitude_t;
+    #else
+        #include <complex.h>
+        typedef float complex quantum_amplitude_t;
+    #endif
+#ifdef __cplusplus
+}  // Close C++ linkage block
 #endif
 
 // Forward declarations

@@ -14,7 +14,6 @@
 #include "cognitive/nimcp_sleep_wake.h"
 #include "cognitive/memory/nimcp_systems_consolidation.h"
 #include "plasticity/neuromodulators/nimcp_neuromodulators.h"
-#include "core/nimcp_types.h"
 
 class EngramIntegrationTest : public ::testing::Test {
 protected:
