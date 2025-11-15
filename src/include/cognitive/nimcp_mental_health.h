@@ -617,6 +617,40 @@ mental_health_config_t mental_health_default_config(void);
  */
 const char* mental_health_get_last_error(void);
 
+//=============================================================================
+// Test Accessors (only available in test builds)
+//=============================================================================
+
+#ifdef NIMCP_TESTING
+
+/**
+ * @brief Test accessor for memory reset intervention
+ *
+ * WHAT: Expose internal memory reset function for unit testing
+ * WHY:  Allow comprehensive testing of memory reset logic without going through full intervention system
+ * HOW:  Directly call intervene_memory_reset() with specified parameters
+ *
+ * Use Cases:
+ * - Test NULL brain handling
+ * - Test invalid reset fraction validation
+ * - Test reset with/without working memory
+ * - Test reset with/without systems consolidation
+ * - Test reset fraction thresholds
+ *
+ * @param monitor Mental health monitor (may be NULL for some tests)
+ * @param brain Brain to reset (must not be NULL)
+ * @param reset_fraction Fraction of memories to clear [0.0, 1.0]
+ * @return true if at least one memory system was cleared, false on error
+ *
+ * COMPLEXITY: O(n) where n = number of working memory slots
+ * AVAILABILITY: Test builds only (requires NIMCP_TESTING defined)
+ */
+bool mental_health_test_memory_reset(mental_health_monitor_t* monitor,
+                                     brain_t brain,
+                                     float reset_fraction);
+
+#endif // NIMCP_TESTING
+
 #ifdef __cplusplus
 }
 #endif

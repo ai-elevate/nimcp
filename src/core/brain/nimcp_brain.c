@@ -7682,6 +7682,29 @@ uint32_t brain_get_num_inputs(brain_t brain)
 }
 
 /**
+ * @brief Get systems consolidation subsystem
+ *
+ * WHAT: Access the brain's systems consolidation component
+ * WHY:  Allow other modules (e.g., mental health) to interact with memory consolidation
+ * HOW:  Return pointer to systems consolidation subsystem
+ *
+ * THREAD SAFETY: Thread-safe (read-only access to pointer)
+ * COMPLEXITY: O(1)
+ *
+ * @param brain Brain handle
+ * @return Pointer to systems consolidation, or NULL if brain is NULL or consolidation not initialized
+ */
+systems_consolidation_system_t* brain_get_systems_consolidation(brain_t brain)
+{
+    // GUARD: NULL check
+    if (brain == NULL) {
+        return NULL;
+    }
+
+    return brain->systems_consolidation;
+}
+
+/**
  * @brief Get COW statistics for brain
  *
  * WHAT: Report copy-on-write memory sharing status

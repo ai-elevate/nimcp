@@ -26,6 +26,9 @@ extern "C" {
 // Phase 10.1: Working Memory
 typedef struct working_memory working_memory_t;
 
+// Phase M2: Systems Consolidation
+typedef struct systems_consolidation_system systems_consolidation_system_t;
+
 // Phase 10.2: Emotional Tagging
 typedef struct emotional_system emotional_system_t;
 typedef struct emotional_tag emotional_tag_t;
@@ -1373,6 +1376,18 @@ bool brain_get_cow_stats(brain_t brain, brain_cow_stats_t* cow_stats);
  * @param brain Brain handle
  */
 void brain_print_info(brain_t brain);
+
+/**
+ * @brief Get systems consolidation subsystem
+ *
+ * WHAT: Access the brain's systems consolidation component
+ * WHY:  Allow other modules (e.g., mental health) to interact with memory consolidation
+ * HOW:  Return pointer to systems consolidation subsystem
+ *
+ * @param brain Brain handle
+ * @return Pointer to systems consolidation, or NULL if brain is NULL or consolidation not initialized
+ */
+systems_consolidation_system_t* brain_get_systems_consolidation(brain_t brain);
 
 /**
  * @brief Get most important neurons

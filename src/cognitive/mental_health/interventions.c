@@ -663,37 +663,83 @@ static bool intervene_neuromod_adjust(mental_health_monitor_t* monitor,
  * WHY:  Schizophrenia and OCD may require pattern interruption
  * HOW:  Clear working memory → Clear recent consolidation buffer
  *
- * @param monitor Monitoring system (unused in current impl)
- * @param brain Brain to reset
+ * Use Cases:
+ * - Break rumination loops in depression/anxiety
+ * - Clear obsessive thoughts in OCD
+ * - Reset after psychotic episode in schizophrenia
+ * - Interrupt manic thought patterns
+ *
+ * Reset Fraction Mapping:
+ * - 0.0 - 0.5: Clear working memory only (mild intervention)
+ * - 0.5 - 1.0: Clear working memory + systems consolidation (severe intervention)
+ *
+ * @param monitor Monitoring system (for logging, may be NULL)
+ * @param brain Brain to reset (must not be NULL)
  * @param reset_fraction Fraction of memories to clear [0.0, 1.0]
- * @return true if reset succeeded
+ * @return true if at least one memory system was cleared, false on error
  *
- * COMPLEXITY: O(1) in stub implementation
+ * COMPLEXITY: O(n) where n = number of working memory slots
  *
- * TODO: Implement when brain accessor API available
+ * SIDE EFFECTS:
+ * - Clears working memory buffers
+ * - May reset systems consolidation state (if reset_fraction >= 0.5)
+ * - Logs intervention actions
  */
 static bool intervene_memory_reset(mental_health_monitor_t* monitor,
                                   brain_t brain,
                                   float reset_fraction)
 {
-    (void)monitor;  // Unused parameter
-    (void)brain;    // Unused for now
-
     // =========================================================================
     // GUARD: Validate reset fraction
     // =========================================================================
 
     if (reset_fraction < 0.0f || reset_fraction > 1.0f) {
-        set_error("Invalid reset_fraction: %f (must be [0.0, 1.0])", reset_fraction);
+        set_error("Invalid reset_fraction: %.2f (must be [0.0, 1.0])", reset_fraction);
         return false;
     }
 
-    // TODO: Implement when brain accessor API available:
-    // - Access brain->working_memory and call working_memory_clear()
-    // - Access brain->consolidation and call consolidation_clear_recent()
+    // =========================================================================
+    // GUARD: Validate brain
+    // =========================================================================
 
-    NIMCP_LOGGING_INFO("Memory reset intervention (stub - not yet implemented)");
-    return true;  // Return success for now
+    if (brain == NULL) {
+        set_error("NULL brain in memory reset intervention");
+        return false;
+    }
+
+    // =========================================================================
+    // WHAT: Access brain subsystems and clear memory
+    // WHY:  Break pathological thought patterns and rumination cycles
+    // HOW:  Get working memory → Clear it → Get consolidation → Reset it
+    // =========================================================================
+
+    uint32_t memories_cleared = 0;
+
+    // Clear working memory if available and reset fraction > 0
+    working_memory_t* wm = brain_get_working_memory(brain);
+    if (wm != NULL && reset_fraction > 0.0f) {
+        working_memory_clear(wm);
+        memories_cleared++;
+        NIMCP_LOGGING_INFO("Cleared working memory (reset_fraction=%.2f)", reset_fraction);
+    }
+
+    // Reset systems consolidation if available and reset fraction >= 0.5
+    // (only clear long-term consolidation for more severe interventions)
+    systems_consolidation_system_t* consolidation = brain_get_systems_consolidation(brain);
+    if (consolidation != NULL && reset_fraction >= 0.5f) {
+        systems_consolidation_reset(consolidation);
+        memories_cleared++;
+        NIMCP_LOGGING_INFO("Reset systems consolidation (reset_fraction=%.2f)", reset_fraction);
+    }
+
+    // Log intervention
+    if (monitor != NULL) {
+        NIMCP_LOGGING_INFO("Memory reset intervention executed: cleared %u memory systems",
+                          memories_cleared);
+    }
+
+    // Return true if at least one memory system was cleared
+    return (memories_cleared > 0);
 }
 
 /**

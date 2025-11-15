@@ -26,6 +26,7 @@
 #include "cognitive/nimcp_theory_of_mind.h"
 #include "cognitive/wellbeing/nimcp_wellbeing.h"
 #include "cognitive/consolidation/nimcp_consolidation.h"
+#include "cognitive/memory/nimcp_systems_consolidation.h"
 #include "plasticity/neuromodulators/nimcp_neuromodulators.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/time/nimcp_time.h"
@@ -1161,3 +1162,30 @@ const char* mental_health_get_last_error(void)
 
 // Include intervention implementations
 #include "interventions.c"
+
+// =============================================================================
+// TEST ACCESSORS (only compiled in test builds)
+// =============================================================================
+
+#ifdef NIMCP_TESTING
+
+/**
+ * @brief Test accessor for memory reset intervention
+ *
+ * WHAT: Expose internal memory reset function for unit testing
+ * WHY:  Allow comprehensive testing of memory reset logic
+ * HOW:  Forward call to static intervene_memory_reset()
+ *
+ * @param monitor Mental health monitor
+ * @param brain Brain to reset
+ * @param reset_fraction Fraction of memories to clear [0.0, 1.0]
+ * @return true if reset succeeded, false on error
+ */
+bool mental_health_test_memory_reset(mental_health_monitor_t* monitor,
+                                     brain_t brain,
+                                     float reset_fraction)
+{
+    return intervene_memory_reset(monitor, brain, reset_fraction);
+}
+
+#endif // NIMCP_TESTING
