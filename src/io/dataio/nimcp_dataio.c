@@ -118,6 +118,7 @@ typedef struct {
     FILE* file;              // CSV file handle
     char** column_names;     // Header column names
     uint32_t num_columns;    // Total columns
+    uint32_t num_features;   // Number of feature columns (for batch allocation)
     uint64_t total_rows;     // Total rows (if known)
     long file_start_offset;  // After header (for reset)
 } csv_context_t;
@@ -151,6 +152,7 @@ static bool csv_initialize(void** context, const dataset_config_t* config)
     }
 
     csv_ctx->num_columns = config->num_feature_columns + config->num_label_columns;
+    csv_ctx->num_features = config->num_feature_columns;
 
     // WHAT: Parse header row if present
     // WHY: Extract column names for metadata
@@ -299,7 +301,7 @@ static bool csv_next_batch(void* context, data_batch_t* batch)
         //
         // SOLUTION: Allocate at num_samples (write index). If parse fails,
         // free immediately and DON'T increment. Next allocation overwrites.
-        uint32_t num_features = 13;  // TODO: get from config
+        uint32_t num_features = csv_ctx->num_features;  // Get from context (configured at initialization)
         batch->features[batch->num_samples] = nimcp_calloc(num_features, sizeof(float));
         batch->labels[batch->num_samples] = nimcp_calloc(64, sizeof(char));
 
