@@ -71,6 +71,7 @@ struct global_workspace_struct {
 
     // Timing state
     uint64_t last_broadcast_time_ms;
+    uint64_t pool_activation_time_ms;  /**< When pool went from empty to non-empty */
     uint32_t next_broadcast_id;
 
     // Round-robin state (for ROUND_ROBIN strategy)
@@ -372,9 +373,7 @@ static void broadcast_winner(
         }
     }
 
-    // Remove winner from competition pool (one-shot competition)
-    winner->is_active = false;
-    workspace->num_active_competitors--;
+    // Note: Winner removal now happens in global_workspace_compete() after broadcast
 }
 
 //=============================================================================
@@ -482,13 +481,16 @@ global_workspace_t* global_workspace_create_custom(
 
     // Initialize timing
     workspace->last_broadcast_time_ms = 0;
+    workspace->pool_activation_time_ms = 0;
     workspace->next_broadcast_id = 1;
     workspace->last_winner_idx = 0;
 
     // Initialize statistics
     memset(&workspace->stats, 0, sizeof(workspace_statistics_t));
 
-    return workspace;
+    // Note: global_workspace_t is typedef'd as a pointer, so function signature
+    // expects global_workspace_t* (double pointer). Cast to match.
+    return (global_workspace_t*)workspace;
 }
 
 void global_workspace_destroy(global_workspace_t* workspace) {
@@ -525,33 +527,60 @@ bool global_workspace_compete(
     uint32_t content_dim,
     float strength)
 {
-    if (workspace == NULL || content == NULL) return false;
+    // WHAT: Submit content and immediately resolve competition
+    // WHY:  Backward compatibility - original API auto-resolves
+    // HOW:  Use submit() + resolve() internally
+
+    // Guard: NULL checks
+    if (workspace == NULL || content == NULL) {
+        return false;
+    }
+
+    // Submit to competition pool
+    if (!global_workspace_submit(workspace, module, content, content_dim, strength)) {
+        return false;
+    }
+
+    // Immediately resolve competition (backward compatible behavior)
+    cognitive_module_t winner = MODULE_NONE;
+    bool broadcast_occurred = global_workspace_resolve(workspace, &winner);
+
+    // Return true only if THIS module won and was broadcast
+    return (broadcast_occurred && winner == module);
+}
+
+bool global_workspace_submit(
+    global_workspace_t* workspace,
+    cognitive_module_t module,
+    const float* content,
+    uint32_t content_dim,
+    float strength)
+{
+    // Guard: NULL checks
+    if (workspace == NULL) {
+        fprintf(stderr, "NULL workspace in global_workspace_submit\n");
+        return false;
+    }
+
+    if (content == NULL) {
+        fprintf(stderr, "NULL content in global_workspace_submit\n");
+        return false;
+    }
 
     struct global_workspace_struct* ws = (struct global_workspace_struct*)workspace;
 
-    // Validate inputs
+    // Guard: Validate content dimension
     if (content_dim != ws->config.capacity_dim) {
-        fprintf(stderr, "Content dimension mismatch: expected %u, got %u\n",
-                ws->config.capacity_dim, content_dim);
+        fprintf(stderr, "Content dimension mismatch in global_workspace_submit: "
+                "expected %u, got %u\n", ws->config.capacity_dim, content_dim);
         return false;
     }
 
+    // Guard: Validate strength range
     if (strength < 0.0f || strength > 1.0f) {
-        fprintf(stderr, "Invalid strength: %f (must be 0.0-1.0)\n", strength);
+        fprintf(stderr, "Invalid strength in global_workspace_submit: %.2f "
+                "(must be 0.0-1.0)\n", strength);
         return false;
-    }
-
-    uint64_t current_time = get_time_ms();
-
-    // Check refractory period
-    if (ws->last_broadcast_time_ms > 0) {
-        uint64_t time_since_broadcast = current_time - ws->last_broadcast_time_ms;
-        if (time_since_broadcast < ws->config.refractory_period_ms) {
-            if (ws->config.enable_statistics) {
-                ws->stats.refractory_violations++;
-            }
-            return false;  // Too soon
-        }
     }
 
     // Update statistics
@@ -562,10 +591,10 @@ bool global_workspace_compete(
         }
     }
 
-    // Find or create competitor slot
+    // Find slot for this module (update existing or find empty)
     uint32_t slot_idx = GLOBAL_WORKSPACE_MAX_COMPETITORS;
 
-    // Check if module already competing (update instead of add)
+    // Check if module already in pool (update case)
     for (uint32_t i = 0; i < GLOBAL_WORKSPACE_MAX_COMPETITORS; i++) {
         if (ws->competitors[i].is_active && ws->competitors[i].module == module) {
             slot_idx = i;
@@ -583,27 +612,64 @@ bool global_workspace_compete(
         }
     }
 
-    // No free slot (pool full)
+    // Guard: Check if pool is full
     if (slot_idx == GLOBAL_WORKSPACE_MAX_COMPETITORS) {
-        fprintf(stderr, "Competition pool full (%u competitors)\n",
-                GLOBAL_WORKSPACE_MAX_COMPETITORS);
+        fprintf(stderr, "Competition pool full in global_workspace_submit "
+                "(%u competitors)\n", GLOBAL_WORKSPACE_MAX_COMPETITORS);
         return false;
     }
 
-    // Add/update competitor
+    // Track if we're adding new competitor vs updating existing
     bool was_inactive = !ws->competitors[slot_idx].is_active;
+    bool pool_was_empty = (ws->num_active_competitors == 0);
+
+    // Add/update competitor in pool
     ws->competitors[slot_idx].module = module;
-    ws->competitors[slot_idx].content = (float*)content;  // Store pointer (caller owns)
+    ws->competitors[slot_idx].content = (float*)content;  // Caller owns content
     ws->competitors[slot_idx].content_dim = content_dim;
     ws->competitors[slot_idx].strength = strength;
-    ws->competitors[slot_idx].timestamp_ms = current_time;
+    ws->competitors[slot_idx].timestamp_ms = get_time_ms();
     ws->competitors[slot_idx].is_active = true;
 
+    // Update pool counts
     if (was_inactive) {
         ws->num_active_competitors++;
+
+        // Track when pool first becomes active
+        if (pool_was_empty) {
+            ws->pool_activation_time_ms = get_time_ms();
+        }
     }
 
-    // Resolve competition
+    return true;
+}
+
+bool global_workspace_resolve(
+    global_workspace_t* workspace,
+    cognitive_module_t* winning_module)
+{
+    // Guard: NULL checks
+    if (workspace == NULL) {
+        fprintf(stderr, "NULL workspace in global_workspace_resolve\n");
+        return false;
+    }
+
+    struct global_workspace_struct* ws = (struct global_workspace_struct*)workspace;
+
+    // Set default output (no winner)
+    if (winning_module != NULL) {
+        *winning_module = MODULE_NONE;
+    }
+
+    // Check if pool is empty
+    if (ws->num_active_competitors == 0) {
+        // No competitors to resolve
+        return false;
+    }
+
+    uint64_t current_time = get_time_ms();
+
+    // Run competition resolution based on strategy
     uint32_t winner_idx;
     float winner_strength;
     bool found_winner = false;
@@ -624,7 +690,6 @@ bool global_workspace_compete(
             break;
 
         case COMPETITION_WEIGHTED_FUSION:
-            // TODO: Implement weighted fusion (blend multiple signals)
             fprintf(stderr, "WEIGHTED_FUSION strategy not yet implemented\n");
             found_winner = resolve_winner_take_all(ws, &winner_idx, &winner_strength);
             break;
@@ -635,15 +700,14 @@ bool global_workspace_compete(
             break;
     }
 
-    // Update competition latency stats
+    // Update competition latency statistics
     if (ws->config.enable_statistics) {
         uint64_t competition_end = get_time_ms();
-        uint64_t latency_us = (competition_end - competition_start) * 1000;  // ms to us
+        uint64_t latency_us = (competition_end - competition_start) * 1000;
         if (ws->stats.total_competitions == 1) {
             ws->stats.avg_competition_latency_us = latency_us;
             ws->stats.max_competition_latency_us = latency_us;
         } else {
-            // Running average
             ws->stats.avg_competition_latency_us =
                 (ws->stats.avg_competition_latency_us * (ws->stats.total_competitions - 1) +
                  latency_us) / ws->stats.total_competitions;
@@ -653,17 +717,58 @@ bool global_workspace_compete(
         }
     }
 
-    // If winner found, broadcast
-    if (found_winner) {
-        broadcast_winner(ws, winner_idx, winner_strength);
+    // If no winner found, clear pool and return
+    if (!found_winner) {
+        // Clear pool (all below threshold or pruned by decay)
+        for (uint32_t i = 0; i < GLOBAL_WORKSPACE_MAX_COMPETITORS; i++) {
+            if (ws->competitors[i].is_active) {
+                ws->competitors[i].is_active = false;
+            }
+        }
+        ws->num_active_competitors = 0;
+        ws->pool_activation_time_ms = 0;
 
-        // Check if this module won
-        return (ws->competitors[winner_idx].module == module);
-    } else {
-        // No winner (all below threshold)
         if (ws->config.enable_statistics) {
             ws->stats.rejected_submissions++;
         }
+
+        return false;
+    }
+
+    // Check refractory period before broadcasting
+    bool can_broadcast = true;
+    if (ws->last_broadcast_time_ms > 0) {
+        uint64_t time_since_broadcast = current_time - ws->last_broadcast_time_ms;
+        if (time_since_broadcast < ws->config.refractory_period_ms) {
+            can_broadcast = false;
+            if (ws->config.enable_statistics) {
+                ws->stats.refractory_violations++;
+            }
+        }
+    }
+
+    // Broadcast if allowed
+    if (can_broadcast) {
+        broadcast_winner(ws, winner_idx, winner_strength);
+
+        // Set output: which module won
+        if (winning_module != NULL) {
+            *winning_module = ws->competitors[winner_idx].module;
+        }
+
+        // Clear the entire competition pool after broadcasting
+        for (uint32_t i = 0; i < GLOBAL_WORKSPACE_MAX_COMPETITORS; i++) {
+            if (ws->competitors[i].is_active) {
+                ws->competitors[i].is_active = false;
+            }
+        }
+        ws->num_active_competitors = 0;
+        ws->pool_activation_time_ms = 0;
+
+        return true;
+    } else {
+        // Winner found but blocked by refractory period
+        // Keep competitors in pool for next resolve attempt
         return false;
     }
 }

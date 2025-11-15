@@ -854,6 +854,293 @@ TEST_F(GlobalWorkspaceTest, PrintStateValid) {
 }
 
 //=============================================================================
+// New API Tests: submit() and resolve()
+//=============================================================================
+
+TEST_F(GlobalWorkspaceTest, SubmitValid) {
+    workspace = CreateDefaultWorkspace();
+    ASSERT_NE(workspace, nullptr);
+
+    auto content = CreateTestContent(256, 1.0f);
+
+    // Submit should succeed
+    bool submitted = global_workspace_submit(workspace, MODULE_WORKING_MEMORY,
+                                             content.data(), 256, 0.8f);
+    EXPECT_TRUE(submitted);
+
+    // Should have 1 competitor in pool
+    EXPECT_EQ(global_workspace_get_competitor_count(workspace), 1u);
+
+    // Should NOT have broadcast yet (submit doesn't resolve)
+    EXPECT_FALSE(global_workspace_has_broadcast(workspace));
+}
+
+TEST_F(GlobalWorkspaceTest, SubmitInvalidNullWorkspace) {
+    auto content = CreateTestContent(256);
+
+    bool submitted = global_workspace_submit(nullptr, MODULE_WORKING_MEMORY,
+                                             content.data(), 256, 0.8f);
+    EXPECT_FALSE(submitted);
+}
+
+TEST_F(GlobalWorkspaceTest, SubmitInvalidNullContent) {
+    workspace = CreateDefaultWorkspace();
+    ASSERT_NE(workspace, nullptr);
+
+    bool submitted = global_workspace_submit(workspace, MODULE_WORKING_MEMORY,
+                                             nullptr, 256, 0.8f);
+    EXPECT_FALSE(submitted);
+}
+
+TEST_F(GlobalWorkspaceTest, SubmitInvalidDimensionMismatch) {
+    workspace = CreateDefaultWorkspace();
+    ASSERT_NE(workspace, nullptr);
+
+    auto content = CreateTestContent(128);  // Wrong size
+
+    bool submitted = global_workspace_submit(workspace, MODULE_WORKING_MEMORY,
+                                             content.data(), 128, 0.8f);
+    EXPECT_FALSE(submitted);
+}
+
+TEST_F(GlobalWorkspaceTest, SubmitInvalidStrengthNegative) {
+    workspace = CreateDefaultWorkspace();
+    ASSERT_NE(workspace, nullptr);
+
+    auto content = CreateTestContent(256);
+
+    bool submitted = global_workspace_submit(workspace, MODULE_WORKING_MEMORY,
+                                             content.data(), 256, -0.5f);
+    EXPECT_FALSE(submitted);
+}
+
+TEST_F(GlobalWorkspaceTest, SubmitInvalidStrengthTooLarge) {
+    workspace = CreateDefaultWorkspace();
+    ASSERT_NE(workspace, nullptr);
+
+    auto content = CreateTestContent(256);
+
+    bool submitted = global_workspace_submit(workspace, MODULE_WORKING_MEMORY,
+                                             content.data(), 256, 1.5f);
+    EXPECT_FALSE(submitted);
+}
+
+TEST_F(GlobalWorkspaceTest, SubmitMultipleCompetitors) {
+    workspace = CreateDefaultWorkspace();
+    ASSERT_NE(workspace, nullptr);
+
+    auto content1 = CreateTestContent(256, 1.0f);
+    auto content2 = CreateTestContent(256, 2.0f);
+    auto content3 = CreateTestContent(256, 3.0f);
+
+    // Submit three competitors
+    EXPECT_TRUE(global_workspace_submit(workspace, MODULE_WORKING_MEMORY,
+                                        content1.data(), 256, 0.7f));
+    EXPECT_TRUE(global_workspace_submit(workspace, MODULE_EXECUTIVE,
+                                        content2.data(), 256, 0.9f));
+    EXPECT_TRUE(global_workspace_submit(workspace, MODULE_SALIENCE,
+                                        content3.data(), 256, 0.65f));
+
+    // Should have 3 competitors in pool
+    EXPECT_EQ(global_workspace_get_competitor_count(workspace), 3u);
+
+    // Should NOT have broadcast yet
+    EXPECT_FALSE(global_workspace_has_broadcast(workspace));
+}
+
+TEST_F(GlobalWorkspaceTest, SubmitUpdateExisting) {
+    workspace = CreateDefaultWorkspace();
+    ASSERT_NE(workspace, nullptr);
+
+    auto content1 = CreateTestContent(256, 1.0f);
+    auto content2 = CreateTestContent(256, 2.0f);
+
+    // Submit first time
+    EXPECT_TRUE(global_workspace_submit(workspace, MODULE_WORKING_MEMORY,
+                                        content1.data(), 256, 0.7f));
+    EXPECT_EQ(global_workspace_get_competitor_count(workspace), 1u);
+
+    // Submit again with same module (should update, not add)
+    EXPECT_TRUE(global_workspace_submit(workspace, MODULE_WORKING_MEMORY,
+                                        content2.data(), 256, 0.8f));
+    EXPECT_EQ(global_workspace_get_competitor_count(workspace), 1u);  // Still 1
+}
+
+TEST_F(GlobalWorkspaceTest, ResolveEmptyPool) {
+    workspace = CreateDefaultWorkspace();
+    ASSERT_NE(workspace, nullptr);
+
+    cognitive_module_t winner = MODULE_WORKING_MEMORY;  // Init to non-NONE
+
+    // Resolve with empty pool should fail
+    bool resolved = global_workspace_resolve(workspace, &winner);
+    EXPECT_FALSE(resolved);
+    EXPECT_EQ(winner, MODULE_NONE);
+}
+
+TEST_F(GlobalWorkspaceTest, ResolveInvalidNullWorkspace) {
+    cognitive_module_t winner = MODULE_NONE;
+
+    bool resolved = global_workspace_resolve(nullptr, &winner);
+    EXPECT_FALSE(resolved);
+}
+
+TEST_F(GlobalWorkspaceTest, ResolveNullWinningModule) {
+    workspace = CreateDefaultWorkspace();
+    ASSERT_NE(workspace, nullptr);
+
+    auto content = CreateTestContent(256);
+    global_workspace_submit(workspace, MODULE_WORKING_MEMORY, content.data(), 256, 0.8f);
+
+    // Should succeed even with NULL winning_module parameter
+    bool resolved = global_workspace_resolve(workspace, nullptr);
+    EXPECT_TRUE(resolved);
+}
+
+TEST_F(GlobalWorkspaceTest, ResolveSingleCompetitor) {
+    workspace = CreateDefaultWorkspace();
+    ASSERT_NE(workspace, nullptr);
+
+    auto content = CreateTestContent(256);
+    global_workspace_submit(workspace, MODULE_WORKING_MEMORY, content.data(), 256, 0.8f);
+
+    cognitive_module_t winner = MODULE_NONE;
+    bool resolved = global_workspace_resolve(workspace, &winner);
+
+    EXPECT_TRUE(resolved);
+    EXPECT_EQ(winner, MODULE_WORKING_MEMORY);
+    EXPECT_TRUE(global_workspace_has_broadcast(workspace));
+    EXPECT_EQ(global_workspace_get_broadcast_source(workspace), MODULE_WORKING_MEMORY);
+    EXPECT_FLOAT_EQ(global_workspace_get_broadcast_strength(workspace), 0.8f);
+}
+
+TEST_F(GlobalWorkspaceTest, ResolveMultipleCompetitorsStrongestWins) {
+    workspace = CreateDefaultWorkspace();
+    ASSERT_NE(workspace, nullptr);
+
+    auto content1 = CreateTestContent(256, 1.0f);
+    auto content2 = CreateTestContent(256, 2.0f);
+    auto content3 = CreateTestContent(256, 3.0f);
+
+    // Submit three competitors with different strengths
+    global_workspace_submit(workspace, MODULE_WORKING_MEMORY, content1.data(), 256, 0.7f);
+    global_workspace_submit(workspace, MODULE_EXECUTIVE, content2.data(), 256, 0.9f);  // Strongest
+    global_workspace_submit(workspace, MODULE_SALIENCE, content3.data(), 256, 0.65f);
+
+    // Resolve - strongest should win
+    cognitive_module_t winner = MODULE_NONE;
+    bool resolved = global_workspace_resolve(workspace, &winner);
+
+    EXPECT_TRUE(resolved);
+    EXPECT_EQ(winner, MODULE_EXECUTIVE);
+    EXPECT_TRUE(global_workspace_has_broadcast(workspace));
+    EXPECT_EQ(global_workspace_get_broadcast_source(workspace), MODULE_EXECUTIVE);
+    EXPECT_FLOAT_EQ(global_workspace_get_broadcast_strength(workspace), 0.9f);
+}
+
+TEST_F(GlobalWorkspaceTest, ResolveAllBelowThreshold) {
+    workspace = CreateDefaultWorkspace();
+    ASSERT_NE(workspace, nullptr);
+
+    auto content = CreateTestContent(256);
+
+    // Submit with strength below default threshold (0.6)
+    global_workspace_submit(workspace, MODULE_WORKING_MEMORY, content.data(), 256, 0.5f);
+
+    cognitive_module_t winner = MODULE_NONE;
+    bool resolved = global_workspace_resolve(workspace, &winner);
+
+    // Should fail (no winner above threshold)
+    EXPECT_FALSE(resolved);
+    EXPECT_EQ(winner, MODULE_NONE);
+    EXPECT_FALSE(global_workspace_has_broadcast(workspace));
+}
+
+TEST_F(GlobalWorkspaceTest, ResolveClearsPool) {
+    workspace = CreateDefaultWorkspace();
+    ASSERT_NE(workspace, nullptr);
+
+    auto content = CreateTestContent(256);
+    global_workspace_submit(workspace, MODULE_WORKING_MEMORY, content.data(), 256, 0.8f);
+
+    EXPECT_EQ(global_workspace_get_competitor_count(workspace), 1u);
+
+    cognitive_module_t winner = MODULE_NONE;
+    global_workspace_resolve(workspace, &winner);
+
+    // Pool should be cleared after resolve
+    EXPECT_EQ(global_workspace_get_competitor_count(workspace), 0u);
+}
+
+TEST_F(GlobalWorkspaceTest, ResolveRefractoryPeriodBlocks) {
+    global_workspace_config_t config = global_workspace_default_config();
+    config.refractory_period_ms = 100;
+    workspace = CreateCustomWorkspace(&config);
+    ASSERT_NE(workspace, nullptr);
+
+    auto content1 = CreateTestContent(256, 1.0f);
+    auto content2 = CreateTestContent(256, 2.0f);
+
+    // First resolve
+    global_workspace_submit(workspace, MODULE_WORKING_MEMORY, content1.data(), 256, 0.8f);
+    cognitive_module_t winner1 = MODULE_NONE;
+    bool resolved1 = global_workspace_resolve(workspace, &winner1);
+    EXPECT_TRUE(resolved1);
+
+    // Immediately submit and try to resolve again (should be blocked)
+    global_workspace_submit(workspace, MODULE_EXECUTIVE, content2.data(), 256, 0.9f);
+    cognitive_module_t winner2 = MODULE_NONE;
+    bool resolved2 = global_workspace_resolve(workspace, &winner2);
+    EXPECT_FALSE(resolved2);  // Blocked by refractory
+
+    // First broadcast should still be active
+    EXPECT_EQ(global_workspace_get_broadcast_source(workspace), MODULE_WORKING_MEMORY);
+}
+
+TEST_F(GlobalWorkspaceTest, SubmitResolveIntegration) {
+    workspace = CreateDefaultWorkspace();
+    ASSERT_NE(workspace, nullptr);
+
+    auto content1 = CreateTestContent(256, 1.0f);
+    auto content2 = CreateTestContent(256, 2.0f);
+    auto content3 = CreateTestContent(256, 3.0f);
+
+    // Batch submit multiple competitors
+    global_workspace_submit(workspace, MODULE_WORKING_MEMORY, content1.data(), 256, 0.7f);
+    global_workspace_submit(workspace, MODULE_EXECUTIVE, content2.data(), 256, 0.9f);
+    global_workspace_submit(workspace, MODULE_SALIENCE, content3.data(), 256, 0.65f);
+
+    // All should be in pool, no broadcast yet
+    EXPECT_EQ(global_workspace_get_competitor_count(workspace), 3u);
+    EXPECT_FALSE(global_workspace_has_broadcast(workspace));
+
+    // Now resolve - strongest should win
+    cognitive_module_t winner = MODULE_NONE;
+    bool resolved = global_workspace_resolve(workspace, &winner);
+
+    EXPECT_TRUE(resolved);
+    EXPECT_EQ(winner, MODULE_EXECUTIVE);
+    EXPECT_EQ(global_workspace_get_broadcast_source(workspace), MODULE_EXECUTIVE);
+    EXPECT_FLOAT_EQ(global_workspace_get_broadcast_strength(workspace), 0.9f);
+    EXPECT_EQ(global_workspace_get_competitor_count(workspace), 0u);  // Pool cleared
+}
+
+TEST_F(GlobalWorkspaceTest, CompeteBackwardCompatibility) {
+    workspace = CreateDefaultWorkspace();
+    ASSERT_NE(workspace, nullptr);
+
+    auto content = CreateTestContent(256);
+
+    // compete() should still work (backward compatibility)
+    bool won = global_workspace_compete(workspace, MODULE_WORKING_MEMORY,
+                                         content.data(), 256, 0.8f);
+
+    EXPECT_TRUE(won);
+    EXPECT_TRUE(global_workspace_has_broadcast(workspace));
+    EXPECT_EQ(global_workspace_get_broadcast_source(workspace), MODULE_WORKING_MEMORY);
+}
+
+//=============================================================================
 // Run All Tests
 //=============================================================================
 

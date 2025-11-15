@@ -573,6 +573,50 @@ bool global_workspace_compete(
 );
 
 /**
+ * @brief Submit content to competition pool without immediate resolution
+ *
+ * WHAT: Add competitor to pool for later evaluation
+ * WHY:  Allows batch submissions before resolution
+ * HOW:  Adds to pool, does NOT resolve or broadcast
+ *
+ * Use this when you want multiple modules to submit before resolving.
+ * Call global_workspace_resolve() when ready to evaluate and broadcast.
+ *
+ * @param workspace Global workspace handle
+ * @param module Which module is submitting
+ * @param content Content to potentially broadcast (must persist until resolve)
+ * @param content_dim Content dimensionality
+ * @param strength Signal strength (0.0-1.0)
+ * @return true if successfully added to pool, false on error
+ */
+bool global_workspace_submit(
+    global_workspace_t* workspace,
+    cognitive_module_t module,
+    const float* content,
+    uint32_t content_dim,
+    float strength
+);
+
+/**
+ * @brief Resolve current competition pool and broadcast winner
+ *
+ * WHAT: Evaluate all competitors in pool and broadcast strongest
+ * WHY:  Explicit control over when resolution happens
+ * HOW:  Runs competition strategy, broadcasts winner, clears pool
+ *
+ * Use after one or more submit() calls to resolve the competition.
+ * Returns which module (if any) won and was broadcast.
+ *
+ * @param workspace Global workspace handle
+ * @param winning_module Output: which module won (MODULE_NONE if none)
+ * @return true if a winner was broadcast, false if no winner or blocked by refractory
+ */
+bool global_workspace_resolve(
+    global_workspace_t* workspace,
+    cognitive_module_t* winning_module
+);
+
+/**
  * @brief Read current workspace broadcast
  *
  * WHAT: Subscriber reads current globally-available content
