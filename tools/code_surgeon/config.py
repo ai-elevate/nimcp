@@ -142,17 +142,17 @@ class CodeSurgeonConfig:
 
         WHAT: Return configured LLM provider or create default
         WHY:  Lazy initialization of LLM provider
-        HOW:  Use configured provider or create Anthropic default
+        HOW:  Use configured provider or create OpenAI GPT-5 default
 
         RETURNS: LLMProvider instance
-        SIDE EFFECTS: May create Anthropic provider
+        SIDE EFFECTS: May create OpenAI provider
         """
         if self.llm_provider:
             return self.llm_provider
 
-        # Default to Anthropic Claude
+        # Default to OpenAI GPT-5 with comprehensive project context
         try:
-            return create_llm_provider("anthropic", model="claude-3-5-haiku-20241022")
+            return create_llm_provider("openai", model="gpt-5")
         except Exception as e:
             raise RuntimeError(f"Failed to create default LLM provider: {e}")
 

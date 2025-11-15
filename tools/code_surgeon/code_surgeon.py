@@ -398,27 +398,58 @@ def ai_powered_auto_fix(failure: dict, nimcp_root: Path, llm_provider: LLMProvid
     stdout = str(failure.get('stdout', failure.get('output', '')))
     stderr = str(failure.get('stderr', failure.get('error', '')))
 
-    # Find test file - handle unit, integration, and regression tests
-    if test_name.startswith('integration_test_'):
-        test_file_name = test_name.replace('integration_test_', 'test_')
-        test_file = nimcp_root / "test" / "integration" / f"{test_file_name}.cpp"
-    elif test_name.startswith('regression_test_'):
-        test_file_name = test_name.replace('regression_test_', 'test_')
-        test_file = nimcp_root / "test" / "regression" / f"{test_file_name}.cpp"
-    elif test_name.startswith('unit_test_'):
-        test_file_name = test_name.replace('unit_test_', 'test_')
-        test_file = nimcp_root / "test" / "unit" / f"{test_file_name}.cpp"
+    # Find test file - handle unit, integration, and regression tests with hierarchical structure
+    # Test names like: unit_cognitive_logic_test_neural_logic_real
+    # Map to files like: test/unit/cognitive/logic/test_neural_logic_real.cpp
+
+    import glob
+
+    # Determine test type and extract base name
+    if test_name.startswith('integration_'):
+        test_type = 'integration'
+        # Remove 'integration_' prefix, extract everything after last '_test_'
+        if '_test_' in test_name:
+            test_file_name = 'test_' + test_name.split('_test_')[-1] + '.cpp'
+        else:
+            test_file_name = test_name.replace('integration_', 'test_') + '.cpp'
+    elif test_name.startswith('regression_'):
+        test_type = 'regression'
+        if '_test_' in test_name:
+            test_file_name = 'test_' + test_name.split('_test_')[-1] + '.cpp'
+        else:
+            test_file_name = test_name.replace('regression_', 'test_') + '.cpp'
+    elif test_name.startswith('unit_'):
+        test_type = 'unit'
+        # Extract the actual test file name after the category
+        # E.g., unit_cognitive_logic_test_neural_logic_real -> test_neural_logic_real.cpp
+        if '_test_' in test_name:
+            test_file_name = 'test_' + test_name.split('_test_')[-1] + '.cpp'
+        else:
+            test_file_name = test_name.replace('unit_', 'test_') + '.cpp'
     else:
-        # Try to find test file in all test directories
-        test_file_name = f"test_{test_name}"
-        test_file = nimcp_root / "test" / "unit" / f"{test_file_name}.cpp"
-        if not test_file.exists():
-            test_file = nimcp_root / "test" / "integration" / f"{test_file_name}.cpp"
-        if not test_file.exists():
-            test_file = nimcp_root / "test" / "regression" / f"{test_file_name}.cpp"
+        test_type = 'unit'
+        test_file_name = f"test_{test_name}.cpp"
+
+    # Search recursively for the test file
+    search_pattern = str(nimcp_root / "test" / test_type / "**" / test_file_name)
+    matches = glob.glob(search_pattern, recursive=True)
+
+    if matches:
+        test_file = Path(matches[0])  # Use first match
+    else:
+        # Fallback: try searching in all test directories
+        for fallback_type in ['unit', 'integration', 'regression']:
+            search_pattern = str(nimcp_root / "test" / fallback_type / "**" / test_file_name)
+            matches = glob.glob(search_pattern, recursive=True)
+            if matches:
+                test_file = Path(matches[0])
+                break
+        else:
+            print(f"  ⚠️  Test file not found: {test_file_name} in test/{test_type}/")
+            return None
 
     if not test_file.exists():
-        print(f"  ⚠️  Test file not found: {test_file}")
+        print(f"  ⚠️  Test file does not exist: {test_file}")
         return None
 
     # Read test file content
