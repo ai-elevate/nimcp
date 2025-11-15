@@ -346,6 +346,9 @@ shutdown_config_t wellbeing_default_shutdown_config(void)
     // Default: notify the system it's being shut down
     config.notify_system = true;
 
+    // Ethical requirement: Allow final processing ("last thoughts")
+    config.allow_final_processing = true;
+
     // Default save path
     config.save_path = nimcp_malloc(256);
     if (config.save_path) {

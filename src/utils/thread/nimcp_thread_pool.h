@@ -39,6 +39,10 @@
 // Types
 //=============================================================================
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /**
  * @brief Task function signature
  * @param arg User-provided argument
@@ -98,5 +102,9 @@ size_t nimcp_pool_pending(nimcp_thread_pool_t* pool);
  * @return Number of active threads
  */
 size_t nimcp_pool_active(nimcp_thread_pool_t* pool);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif  // NIMCP_THREAD_POOL_H

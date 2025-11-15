@@ -967,14 +967,17 @@ static void free_label_map(char** label_map, uint32_t num_labels)
  */
 void adaptive_network_destroy(adaptive_network_t network)
 {
+    fprintf(stderr, "[DEBUG] adaptive_network_destroy: START\n"); fflush(stderr);
     // Guard clause: Validate input
     if (!network)
         return;
 
+    fprintf(stderr, "[DEBUG] adaptive_network_destroy: destroying base_network\n"); fflush(stderr);
     // Destroy base network
     if (network->base_network) {
         neural_network_destroy(network->base_network);
     }
+    fprintf(stderr, "[DEBUG] adaptive_network_destroy: base_network destroyed\n"); fflush(stderr);
 
     // Free neuron states and their spike trains
     if (network->neuron_states) {
@@ -1002,6 +1005,7 @@ void adaptive_network_destroy(adaptive_network_t network)
     }
 
     nimcp_free(network);
+    fprintf(stderr, "[DEBUG] adaptive_network_destroy: DONE\n"); fflush(stderr);
 }
 
 //=============================================================================

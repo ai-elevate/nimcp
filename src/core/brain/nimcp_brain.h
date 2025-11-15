@@ -63,6 +63,11 @@ typedef struct global_workspace_struct* global_workspace_t;  // Opaque pointer
 // Neuromodulator System (for mental health interventions)
 typedef struct neuromodulator_system_struct* neuromodulator_system_t;  // Opaque pointer
 
+// Phase 9.4: Symbolic Logic & Reasoning
+typedef struct symbolic_logic symbolic_logic_t;
+
+// Pink Noise Neuromodulator - typedef defined in plasticity/neuromodulators/nimcp_neuromod_pink_noise.h
+
 // === PHASE E: HIGHER-ORDER COGNITIVE & SOCIAL SYSTEMS ===
 // Forward declarations - actual typedefs in respective headers
 // Phase E5: Shadow Emotions - defined in cognitive/nimcp_shadow_emotions.h
@@ -1052,6 +1057,22 @@ bool brain_observe_action(brain_t brain, const float* features, uint32_t num_fea
 bool brain_decide_batch(brain_t brain, const float** inputs, uint32_t num_inputs,
                         uint32_t features_per_input, brain_decision_t* decisions);
 
+/**
+ * @brief Simple prediction/inference function
+ *
+ * Lightweight wrapper around brain_process_multimodal for simple prediction tasks.
+ * For full multimodal capabilities, use brain_process_multimodal directly.
+ *
+ * @param brain Brain handle
+ * @param input Input feature vector
+ * @param input_size Number of input features
+ * @param output Output vector (allocated by caller)
+ * @param output_size Size of output vector
+ * @return true on success, false on error
+ */
+bool brain_predict(brain_t brain, const float* input, uint32_t input_size,
+                  float* output, uint32_t output_size);
+
 //=============================================================================
 // Persistence API
 //=============================================================================
@@ -1318,6 +1339,14 @@ typedef struct {
  * @return true on success
  */
 bool brain_get_stats(brain_t brain, brain_stats_t* stats);
+
+/**
+ * @brief Get number of input features for this brain
+ *
+ * @param brain Brain handle
+ * @return Number of input features, or 0 if brain is NULL
+ */
+uint32_t brain_get_num_inputs(brain_t brain);
 
 /**
  * @brief Copy-on-Write statistics
@@ -1807,6 +1836,20 @@ bool brain_process_multimodal(
 // For now, modules are accessible via void* cast from brain internals
 //=============================================================================
 
+/**
+ * @brief Get symbolic logic system
+ * @param brain Brain handle
+ * @return Symbolic logic handle or NULL if not initialized
+ */
+symbolic_logic_t* brain_get_symbolic_logic(brain_t brain);
+
+/**
+ * @brief Get pink noise neuromodulator
+ * @param brain Brain handle
+ * @return Pink noise handle or NULL if not initialized
+ */
+void* brain_get_pink_noise(brain_t brain);
+
 /*
  * Future accessor functions (to be implemented with proper initialization):
  * - glial_integration_t* brain_get_glial(brain_t brain);
@@ -1821,7 +1864,6 @@ bool brain_process_multimodal(
  * - knowledge_system_t brain_get_knowledge(brain_t brain);
  * - wellbeing_monitor_t brain_get_wellbeing(brain_t brain);
  * - eligibility_trace_system_t* brain_get_eligibility_traces(brain_t brain);
- * - neuromod_pink_t* brain_get_pink_noise(brain_t brain);
  * - spike_nlp_t* brain_get_spike_nlp(brain_t brain);
  *
  * These will be uncommented and implemented once module initialization is complete.

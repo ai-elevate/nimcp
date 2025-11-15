@@ -15,6 +15,10 @@
 #include "core/brain/nimcp_brain.h"
 #include "common/nimcp_export.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /**
  * @brief Replication backend types
  */
@@ -239,5 +243,9 @@ replication_cluster_t replication_create_redis_cluster(const char* redis_url,
  */
 replication_cluster_t replication_create_filesystem_cluster(const char* shared_dir,
                                                             const char* node_id);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif  // NIMCP_REPLICATION_H

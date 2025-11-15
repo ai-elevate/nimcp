@@ -10,6 +10,10 @@
 #include <stddef.h>
 #include "utils/validation/nimcp_common.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /**
  * @brief Validate integer field data
  *
@@ -63,5 +67,9 @@ bool nimcp_validate_state_fields(const void* state_data, size_t size);
  * @return true if valid (non-NULL), false if NULL
  */
 bool nimcp_validate_pointer(const void* ptr, const char* name);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* NIMCP_VALIDATE_H */

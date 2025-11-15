@@ -353,6 +353,30 @@ __/cognitive/emotional_tagging/nimcp_emotional_tagging.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/emotional_tagging/nimcp_emotional_tagging.c.s
 .PHONY : __/cognitive/emotional_tagging/nimcp_emotional_tagging.c.s
 
+__/cognitive/emotions/nimcp_emotional_system.o: __/cognitive/emotions/nimcp_emotional_system.c.o
+.PHONY : __/cognitive/emotions/nimcp_emotional_system.o
+
+# target to build an object file
+__/cognitive/emotions/nimcp_emotional_system.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/emotions/nimcp_emotional_system.c.o
+.PHONY : __/cognitive/emotions/nimcp_emotional_system.c.o
+
+__/cognitive/emotions/nimcp_emotional_system.i: __/cognitive/emotions/nimcp_emotional_system.c.i
+.PHONY : __/cognitive/emotions/nimcp_emotional_system.i
+
+# target to preprocess a source file
+__/cognitive/emotions/nimcp_emotional_system.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/emotions/nimcp_emotional_system.c.i
+.PHONY : __/cognitive/emotions/nimcp_emotional_system.c.i
+
+__/cognitive/emotions/nimcp_emotional_system.s: __/cognitive/emotions/nimcp_emotional_system.c.s
+.PHONY : __/cognitive/emotions/nimcp_emotional_system.s
+
+# target to generate assembly for a file
+__/cognitive/emotions/nimcp_emotional_system.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/emotions/nimcp_emotional_system.c.s
+.PHONY : __/cognitive/emotions/nimcp_emotional_system.c.s
+
 __/cognitive/empathetic_response/nimcp_empathetic_response.o: __/cognitive/empathetic_response/nimcp_empathetic_response.c.o
 .PHONY : __/cognitive/empathetic_response/nimcp_empathetic_response.o
 
@@ -1240,6 +1264,30 @@ __/core/neuralnet/nimcp_neuralnet.s: __/core/neuralnet/nimcp_neuralnet.c.s
 __/core/neuralnet/nimcp_neuralnet.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/neuralnet/nimcp_neuralnet.c.s
 .PHONY : __/core/neuralnet/nimcp_neuralnet.c.s
+
+__/core/neuralnet/nimcp_synapse_embeddings.o: __/core/neuralnet/nimcp_synapse_embeddings.c.o
+.PHONY : __/core/neuralnet/nimcp_synapse_embeddings.o
+
+# target to build an object file
+__/core/neuralnet/nimcp_synapse_embeddings.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/neuralnet/nimcp_synapse_embeddings.c.o
+.PHONY : __/core/neuralnet/nimcp_synapse_embeddings.c.o
+
+__/core/neuralnet/nimcp_synapse_embeddings.i: __/core/neuralnet/nimcp_synapse_embeddings.c.i
+.PHONY : __/core/neuralnet/nimcp_synapse_embeddings.i
+
+# target to preprocess a source file
+__/core/neuralnet/nimcp_synapse_embeddings.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/neuralnet/nimcp_synapse_embeddings.c.i
+.PHONY : __/core/neuralnet/nimcp_synapse_embeddings.c.i
+
+__/core/neuralnet/nimcp_synapse_embeddings.s: __/core/neuralnet/nimcp_synapse_embeddings.c.s
+.PHONY : __/core/neuralnet/nimcp_synapse_embeddings.s
+
+# target to generate assembly for a file
+__/core/neuralnet/nimcp_synapse_embeddings.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/neuralnet/nimcp_synapse_embeddings.c.s
+.PHONY : __/core/neuralnet/nimcp_synapse_embeddings.c.s
 
 __/core/neuron_models/nimcp_izhikevich.o: __/core/neuron_models/nimcp_izhikevich.c.o
 .PHONY : __/core/neuron_models/nimcp_izhikevich.o
@@ -3532,6 +3580,9 @@ help:
 	@echo "... __/cognitive/emotional_tagging/nimcp_emotional_tagging.o"
 	@echo "... __/cognitive/emotional_tagging/nimcp_emotional_tagging.i"
 	@echo "... __/cognitive/emotional_tagging/nimcp_emotional_tagging.s"
+	@echo "... __/cognitive/emotions/nimcp_emotional_system.o"
+	@echo "... __/cognitive/emotions/nimcp_emotional_system.i"
+	@echo "... __/cognitive/emotions/nimcp_emotional_system.s"
 	@echo "... __/cognitive/empathetic_response/nimcp_empathetic_response.o"
 	@echo "... __/cognitive/empathetic_response/nimcp_empathetic_response.i"
 	@echo "... __/cognitive/empathetic_response/nimcp_empathetic_response.s"
@@ -3643,6 +3694,9 @@ help:
 	@echo "... __/core/neuralnet/nimcp_neuralnet.o"
 	@echo "... __/core/neuralnet/nimcp_neuralnet.i"
 	@echo "... __/core/neuralnet/nimcp_neuralnet.s"
+	@echo "... __/core/neuralnet/nimcp_synapse_embeddings.o"
+	@echo "... __/core/neuralnet/nimcp_synapse_embeddings.i"
+	@echo "... __/core/neuralnet/nimcp_synapse_embeddings.s"
 	@echo "... __/core/neuron_models/nimcp_izhikevich.o"
 	@echo "... __/core/neuron_models/nimcp_izhikevich.i"
 	@echo "... __/core/neuron_models/nimcp_izhikevich.s"

@@ -677,8 +677,8 @@ salience_evaluator_t salience_evaluator_create(brain_t brain, const salience_con
 
     // Create predictor if surprise enabled
     if (config->enable_surprise) {
-        // TODO: Get actual num_features from brain
-        uint32_t num_features = 13;  // Placeholder
+        // Get num_features from brain configuration via getter
+        uint32_t num_features = brain_get_num_inputs(brain);
         eval->predictor = predictor_create(num_features);
         if (!eval->predictor) {
             salience_set_error("Failed to create predictor");

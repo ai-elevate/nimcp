@@ -45,6 +45,15 @@
         "@modelcontextprotocol/server-sequential-thinking"
       ],
       "env": {}
+    },
+    "code-graph-mcp": {
+      "type": "stdio",
+      "command": "/home/bbrelin/nimcp/.venv/bin/code-graph-mcp",
+      "args": [
+        "--project-root",
+        "/home/bbrelin/nimcp"
+      ],
+      "env": {}
     }
   }
 }

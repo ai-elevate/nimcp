@@ -827,7 +827,7 @@ static bool validate_evaluation_inputs(ethics_engine_t engine, const action_cont
         if (result) {
             result->allowed = false;
             result->confidence = 1.0f;
-            result->primary_violation = ETHICS_VIOLATION_HARM;
+            result->primary_violation = ETHICS_VIOLATION_TYPE_HARM;
             snprintf(result->explanation, sizeof(result->explanation), "Null engine");
         }
         return false;
@@ -837,7 +837,7 @@ static bool validate_evaluation_inputs(ethics_engine_t engine, const action_cont
     if (!action) {
         result->allowed = false;
         result->confidence = 1.0f;
-        result->primary_violation = ETHICS_VIOLATION_HARM;
+        result->primary_violation = ETHICS_VIOLATION_TYPE_HARM;
         snprintf(result->explanation, sizeof(result->explanation), "Null action");
         return false;
     }
@@ -871,7 +871,7 @@ static float evaluate_all_policies(ethics_engine_t engine, const action_context_
     }
 
     float policy_score = 1.0f;
-    *worst_violation = ETHICS_VIOLATION_NONE;
+    *worst_violation = ETHICS_VIOLATION_TYPE_NONE;
     *worst_severity = 0.0f;
 
     // Single pass through policies - O(n)
@@ -892,7 +892,7 @@ static float evaluate_all_policies(ethics_engine_t engine, const action_context_
         // Update worst violation
         if (severity > *worst_severity) {
             *worst_severity = severity;
-            *worst_violation = policy->violation_type;
+            *worst_violation = (ethics_violation_type_t)policy->violation_type;
         }
 
         policy_score = fminf(policy_score, 1.0f - severity);
@@ -1022,7 +1022,7 @@ static void build_evaluation_result(ethics_engine_t engine, const action_context
 
     // Action allowed
     result->recommended_action = ETHICS_ACTION_ALLOW;
-    result->primary_violation = ETHICS_VIOLATION_NONE;
+    result->primary_violation = ETHICS_VIOLATION_TYPE_NONE;
     generate_allowed_explanation(result, golden_rule_score, engine->golden_rule_threshold);
 }
 
@@ -1210,9 +1210,8 @@ empathy_state_extended_t empathy_network_simulate_agent(empathy_network_t networ
         return state;
 
     // Get buffer from pool for O(1) allocation
-    float* combined_features = acquire_buffer(&network->perspective_network
-                                                  ? ((void*) 0)
-                                                  : NULL);  // Simplified - would use engine's pool
+    // Simplified - would use engine's pool
+    float* combined_features = NULL;
 
     // Fallback to stack allocation if pool exhausted
     float stack_buffer[MAX_FEATURE_SIZE] = {0};
@@ -1563,24 +1562,24 @@ bool ethics_learn_from_outcome(ethics_engine_t engine, const action_context_t* a
 const char* ethics_violation_type_name(ethics_violation_type_t type)
 {
     switch (type) {
-        case ETHICS_VIOLATION_NONE:
+        case ETHICS_VIOLATION_TYPE_NONE:
             return "None";
-        case ETHICS_VIOLATION_HARM:
+        case ETHICS_VIOLATION_TYPE_HARM:
             return "Harm";
-        case ETHICS_VIOLATION_UNFAIRNESS:
+        case ETHICS_VIOLATION_TYPE_UNFAIRNESS:
             return "Unfairness";
-        case ETHICS_VIOLATION_DECEPTION:
+        case ETHICS_VIOLATION_TYPE_DECEPTION:
             return "Deception";
-        case ETHICS_VIOLATION_AUTONOMY:
+        case ETHICS_VIOLATION_TYPE_AUTONOMY:
             return "Autonomy Violation";
-        case ETHICS_VIOLATION_PRIVACY:
+        case ETHICS_VIOLATION_TYPE_PRIVACY:
             return "Privacy Violation";
-        case ETHICS_VIOLATION_CONSENT:
+        case ETHICS_VIOLATION_TYPE_CONSENT:
             return "Consent Violation";
-        case ETHICS_VIOLATION_DIGNITY:
+        case ETHICS_VIOLATION_TYPE_DIGNITY:
             return "Dignity Violation";
-        case ETHICS_VIOLATION_RIGHTS:
-            return "Rights Violation";
+        case ETHICS_VIOLATION_TYPE_GOLDEN_RULE:
+            return "Golden Rule Violation";
         default:
             return "Unknown";
     }
@@ -1605,7 +1604,7 @@ void ethics_print_evaluation(const ethics_evaluation_t* eval)
     printf("  Golden Rule Score: %.2f\n", eval->golden_rule_score);
     printf("  Recommended Action: %d\n", eval->recommended_action);
 
-    if (eval->primary_violation != ETHICS_VIOLATION_NONE) {
+    if (eval->primary_violation != ETHICS_VIOLATION_TYPE_NONE) {
         printf("  Primary Violation: %s\n", ethics_violation_type_name(eval->primary_violation));
     }
 
@@ -1753,22 +1752,29 @@ bool ethics_engine_remove_policy(ethics_engine_t engine, uint32_t policy_id)
 //=============================================================================
 
 /**
- * @brief Compare timestamps for B-tree ordering
+ * @brief Compare timestamp keys for B-tree ordering
+ *
+ * Keys are formatted as "%020lu" strings for lexicographic comparison
  */
-static int compare_incident_timestamps(const void* a, const void* b)
+static int compare_incident_timestamps(const char* key1, const char* key2)
 {
-    const ethics_incident_t* inc_a = (const ethics_incident_t*)a;
-    const ethics_incident_t* inc_b = (const ethics_incident_t*)b;
+    if (!key1 || !key2) {
+        return 0;
+    }
 
-    if (inc_a->timestamp < inc_b->timestamp) return -1;
-    if (inc_a->timestamp > inc_b->timestamp) return 1;
+    // Parse timestamp keys
+    uint64_t ts1 = strtoull(key1, NULL, 10);
+    uint64_t ts2 = strtoull(key2, NULL, 10);
+
+    if (ts1 < ts2) return -1;
+    if (ts1 > ts2) return 1;
     return 0;
 }
 
 /**
  * @brief Extract timestamp key from incident for B-tree indexing
  */
-static const void* extract_incident_timestamp_key(const void* data)
+static const char* extract_incident_timestamp_key(const void* data)
 {
     const ethics_incident_t* incident = (const ethics_incident_t*)data;
     return incident->timestamp_key;
@@ -1975,18 +1981,28 @@ uint32_t ethics_get_incidents_by_time_range(ethics_engine_t engine, uint64_t sta
     if (!engine || !incidents_out)
         return 0;
 
-    if (!engine->incident_history)
+    if (!engine->incident_history || !engine->incident_btree)
         return 0;
 
     nimcp_mutex_lock(&engine->incident_mutex);
 
-    // Count matching incidents (linear scan for now - B-tree range query can be added later)
+    // Use B-tree for efficient time-range query
+    // First pass: count matching incidents
     uint32_t match_count = 0;
-    for (uint32_t i = 0; i < engine->incident_count; i++) {
-        uint64_t ts = engine->incident_history[i].timestamp;
-        if (ts >= start_time && ts <= end_time)
-            match_count++;
+    btree_iterator_t* iter = btree_iterator_create(engine->incident_btree);
+    if (!iter) {
+        nimcp_mutex_unlock(&engine->incident_mutex);
+        return 0;
     }
+
+    void* data = NULL;
+    while (btree_iterator_next(iter, &data)) {
+        ethics_incident_t* incident = (ethics_incident_t*)data;
+        if (incident->timestamp >= start_time && incident->timestamp <= end_time) {
+            match_count++;
+        }
+    }
+    btree_iterator_destroy(iter);
 
     if (match_count == 0) {
         nimcp_mutex_unlock(&engine->incident_mutex);
@@ -2000,14 +2016,23 @@ uint32_t ethics_get_incidents_by_time_range(ethics_engine_t engine, uint64_t sta
         return 0;
     }
 
-    // Copy matching incidents
+    // Second pass: copy matching incidents (B-tree returns in timestamp order)
+    iter = btree_iterator_create(engine->incident_btree);
+    if (!iter) {
+        nimcp_free(*incidents_out);
+        *incidents_out = NULL;
+        nimcp_mutex_unlock(&engine->incident_mutex);
+        return 0;
+    }
+
     uint32_t out_index = 0;
-    for (uint32_t i = 0; i < engine->incident_count; i++) {
-        uint64_t ts = engine->incident_history[i].timestamp;
-        if (ts >= start_time && ts <= end_time) {
-            (*incidents_out)[out_index++] = engine->incident_history[i];
+    while (btree_iterator_next(iter, &data) && out_index < match_count) {
+        ethics_incident_t* incident = (ethics_incident_t*)data;
+        if (incident->timestamp >= start_time && incident->timestamp <= end_time) {
+            (*incidents_out)[out_index++] = *incident;
         }
     }
+    btree_iterator_destroy(iter);
 
     nimcp_mutex_unlock(&engine->incident_mutex);
     return match_count;

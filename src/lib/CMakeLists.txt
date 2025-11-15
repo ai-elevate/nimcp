@@ -31,6 +31,7 @@ set(NIMCP_CORE_SOURCES
 
     # Synapse type system - NIMCP 2.8.7 (Phase 8.7) - BIOLOGICAL DIVERSITY
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/synapse_types/nimcp_synapse_types.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/neuralnet/nimcp_synapse_embeddings.c
 
     # Fractal Topology - NIMCP 2.7 (scale-free networks)
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/topology/nimcp_fractal_topology.c
@@ -53,6 +54,7 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/epistemic/nimcp_epistemic_filter.c  # Phase 9.2: Bias prevention
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/working_memory/nimcp_working_memory.c  # Phase 10.1: Working Memory
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/emotional_tagging/nimcp_emotional_tagging.c  # Phase 10.2: Emotional Tagging
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/emotions/nimcp_emotional_system.c  # Phase 10.2: Integrated Emotional System
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/executive/nimcp_executive.c  # Phase 10.3: Executive Functions
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/sleep_wake/nimcp_sleep_wake.c  # Phase 10.4: Sleep/Wake Cycle
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/mental_health/nimcp_mental_health.c  # Phase 10.5: Mental Health Monitoring

@@ -60,12 +60,14 @@
 #include "plasticity/neuromodulators/nimcp_spatial_neuromod.h"  // Phase C2.1: Spatial neuromodulator diffusion
 #include "plasticity/attention/nimcp_attention.h"               // Multihead attention mechanism
 #include "core/neuron_types/nimcp_neural_logic.h"
+#include "cognitive/nimcp_fractal_cognitive.h"                  // NIMCP 2.7 Phase 8.5: Fractal topology cognitive integration
 
 // Phase 8: Multi-Modal Integration
 #include "core/integration/nimcp_multimodal_integration.h"
 #include "include/perception/nimcp_visual_cortex.h"
 #include "include/perception/nimcp_audio_cortex.h"
 #include "include/perception/nimcp_speech_cortex.h"
+#include "nlp/nimcp_nlp.h"                      // Natural language processing
 
 // Brain Regions Architecture (hierarchical cortical organization)
 #include "core/brain_regions/nimcp_brain_regions.h"
@@ -73,6 +75,7 @@
 // Phase 10: Advanced Cognitive Architecture
 #include "cognitive/nimcp_working_memory.h"    // Phase 10.1: Miller's 7±2 working memory
 #include "cognitive/nimcp_emotional_tagging.h" // Phase 10.2: Emotional tagging (Russell's circumplex)
+#include "cognitive/nimcp_emotional_system.h"  // Phase 10.2: Integrated emotional system
 #include "cognitive/nimcp_executive.h"         // Phase 10.3: Executive Functions (task switching, planning)
 #include "cognitive/nimcp_sleep_wake.h"        // Phase 10.4: Sleep/wake cycle (consolidation, homeostasis)
 #include "cognitive/memory/nimcp_engram.h"     // Phase M1: Memory Engrams (distributed memory traces)
@@ -277,6 +280,9 @@ struct brain_struct {
     // Multi-Modal Integration Layer
     multimodal_integration_t multimodal;         // Integrates sensory features into unified representation
 
+    // NLP Processing (language understanding and generation)
+    nlp_network_t nlp_network;                   // Natural language processor (token embeddings + attention + neuromodulation)
+
     // Feature buffers (reusable to avoid allocation per frame)
     float* visual_feature_buffer;                // Pre-allocated visual features
     float* audio_feature_buffer;                 // Pre-allocated audio features
@@ -327,8 +333,12 @@ struct brain_struct {
     // Phase E3: Remorse and Regret (moral emotion - evaluative)
     remorse_regret_system_t* remorse_system;      // Moral evaluation, guilt, learning from mistakes
 
-    // Phase E4: Love, Loyalty, Friendship (positive social emotion - bonding)
+        // Phase E4: Love, Loyalty, Friendship (positive social emotion - bonding)
     social_bond_system_t* social_bond_system;     // Attachment, trust, positive relationships
+
+    // NIMCP 2.7 Phase 8.5: Fractal Topology Integration
+    fractal_cognitive_cache_t* fractal_cache;     // Topology-based cognitive enhancements
+    bool has_fractal_topology;                    // Whether fractal topology is enabled
 };
 
 //=============================================================================
@@ -815,6 +825,13 @@ static network_config_t build_base_network_config(uint32_t num_inputs, uint32_t 
     config.enable_oja = true;
     config.enable_homeostasis = true;
 
+    // SCALABILITY: Disable BCM and eligibility traces by default
+    // WHY: These require per-synapse heap allocation
+    // IMPACT: With 1M neurons × 256 synapses = 256M allocations
+    // SOLUTION: Only enable when explicitly configured by brain_config
+    config.enable_bcm = false;          // Conditional BCM allocation
+    config.enable_eligibility = false;  // Conditional eligibility allocation
+
     return config;
 }
 
@@ -1211,23 +1228,28 @@ static bool init_output_labels(brain_t brain, uint32_t num_outputs)
  */
 static bool init_multimodal_subsystems(brain_t brain)
 {
+    fprintf(stderr, "[DEBUG] init_multimodal: START\n"); fflush(stderr);
     if (!brain) {
         return false;
     }
 
     // Check if already initialized (prevent double initialization)
     if (brain->multimodal || brain->visual_cortex || brain->audio_cortex || brain->speech_cortex) {
+        fprintf(stderr, "[DEBUG] init_multimodal: already initialized\n"); fflush(stderr);
         return true;  // Already initialized
     }
 
     // Check if multi-modal processing is enabled
     if (!brain->config.enable_multimodal_integration) {
+        fprintf(stderr, "[DEBUG] init_multimodal: not enabled\n"); fflush(stderr);
         // Not enabled, not an error
         return true;
     }
 
+    fprintf(stderr, "[DEBUG] init_multimodal: checking visual cortex\n"); fflush(stderr);
     // Initialize visual cortex (if enabled)
     if (brain->config.enable_visual_cortex && brain->config.visual_feature_dim > 0) {
+        fprintf(stderr, "[DEBUG] init_multimodal: creating visual cortex\n"); fflush(stderr);
         visual_cortex_config_t visual_config = {
             .input_width = 640,        // Default camera resolution
             .input_height = 480,
@@ -1248,6 +1270,7 @@ static bool init_multimodal_subsystems(brain_t brain)
             set_error("Failed to create visual cortex");
             return false;
         }
+        fprintf(stderr, "[DEBUG] init_multimodal: visual cortex created\n"); fflush(stderr);
 
         // Allocate visual feature buffer
         brain->visual_feature_buffer = nimcp_calloc(brain->config.visual_feature_dim, sizeof(float));
@@ -1257,10 +1280,13 @@ static bool init_multimodal_subsystems(brain_t brain)
             brain->visual_cortex = NULL;
             return false;
         }
+        fprintf(stderr, "[DEBUG] init_multimodal: visual buffer allocated\n"); fflush(stderr);
     }
 
+    fprintf(stderr, "[DEBUG] init_multimodal: checking audio cortex\n"); fflush(stderr);
     // Initialize audio cortex (if enabled)
     if (brain->config.enable_audio_cortex && brain->config.audio_feature_dim > 0) {
+        fprintf(stderr, "[DEBUG] init_multimodal: creating audio cortex\n"); fflush(stderr);
         audio_cortex_config_t audio_config = {
             .sample_rate = 16000,      // Default 16kHz audio
             .frame_size = 512,         // 32ms frames at 16kHz
@@ -1284,6 +1310,7 @@ static bool init_multimodal_subsystems(brain_t brain)
             set_error("Failed to create audio cortex");
             return false;
         }
+        fprintf(stderr, "[DEBUG] init_multimodal: audio cortex created\n"); fflush(stderr);
 
         // Allocate audio feature buffer
         brain->audio_feature_buffer = nimcp_calloc(brain->config.audio_feature_dim, sizeof(float));
@@ -1293,10 +1320,13 @@ static bool init_multimodal_subsystems(brain_t brain)
             brain->audio_cortex = NULL;
             return false;
         }
+        fprintf(stderr, "[DEBUG] init_multimodal: audio buffer allocated\n"); fflush(stderr);
     }
 
+    fprintf(stderr, "[DEBUG] init_multimodal: checking speech cortex\n"); fflush(stderr);
     // Initialize speech cortex (Phase 8.8)
     if (brain->config.enable_speech_cortex && brain->config.speech_feature_dim > 0) {
+        fprintf(stderr, "[DEBUG] init_multimodal: creating speech cortex\n"); fflush(stderr);
         speech_cortex_config_t speech_config = speech_cortex_default_config();
 
         // Override defaults with brain config
@@ -1319,6 +1349,7 @@ static bool init_multimodal_subsystems(brain_t brain)
             set_error("Failed to create speech cortex");
             return false;
         }
+        fprintf(stderr, "[DEBUG] init_multimodal: speech cortex created\n"); fflush(stderr);
 
         // Allocate speech feature buffer
         brain->speech_feature_buffer = nimcp_calloc(brain->config.speech_feature_dim, sizeof(float));
@@ -1328,8 +1359,10 @@ static bool init_multimodal_subsystems(brain_t brain)
             brain->speech_cortex = NULL;
             return false;
         }
+        fprintf(stderr, "[DEBUG] init_multimodal: speech buffer allocated\n"); fflush(stderr);
     }
 
+    fprintf(stderr, "[DEBUG] init_multimodal: computing dimensions\n"); fflush(stderr);
     // Initialize multi-modal integration layer
     uint32_t visual_dim = brain->config.enable_visual_cortex ? brain->config.visual_feature_dim : 0;
     uint32_t audio_dim = brain->config.enable_audio_cortex ? brain->config.audio_feature_dim : 0;
@@ -1341,6 +1374,7 @@ static bool init_multimodal_subsystems(brain_t brain)
     }
 
     if (visual_dim > 0 || audio_dim > 0 || speech_dim > 0 || direct_dim > 0) {
+        fprintf(stderr, "[DEBUG] init_multimodal: creating multimodal integration\n"); fflush(stderr);
         // Phase 8.8: Speech is now a dedicated modality
         multimodal_config_t mm_config = multimodal_default_config(visual_dim, audio_dim, speech_dim, direct_dim);
 
@@ -1352,6 +1386,7 @@ static bool init_multimodal_subsystems(brain_t brain)
             set_error("Failed to create multimodal integration layer");
             return false;
         }
+        fprintf(stderr, "[DEBUG] init_multimodal: multimodal integration created\n"); fflush(stderr);
 
         // Allocate integrated feature buffer
         brain->integrated_feature_buffer = nimcp_calloc(mm_config.output_dim, sizeof(float));
@@ -1361,8 +1396,30 @@ static bool init_multimodal_subsystems(brain_t brain)
             brain->multimodal = NULL;
             return false;
         }
+        fprintf(stderr, "[DEBUG] init_multimodal: multimodal buffer allocated\n"); fflush(stderr);
     }
 
+    // Initialize NLP network (if multimodal or speech is enabled)
+    if (brain->config.enable_multimodal_integration || brain->config.enable_speech_cortex) {
+        fprintf(stderr, "[DEBUG] init_multimodal: creating NLP network\n"); fflush(stderr);
+
+        // Configure NLP network with minimal config (nlp_network_create sets defaults)
+        nlp_network_config_t nlp_config = {0};
+        nlp_config.vocab_size = 10000;            // 10k token vocabulary
+        nlp_config.embedding_dim = 128;           // 128-dim embeddings
+        nlp_config.max_sequence_length = 32;      // 32 token context
+        nlp_config.use_attention_synapses = true;
+        nlp_config.use_neuromodulated_synapses = true;
+
+        brain->nlp_network = nlp_network_create(&nlp_config);
+        if (!brain->nlp_network) {
+            set_error("Failed to create NLP network");
+            return false;
+        }
+        fprintf(stderr, "[DEBUG] init_multimodal: NLP network created\n"); fflush(stderr);
+    }
+
+    fprintf(stderr, "[DEBUG] init_multimodal: DONE\n"); fflush(stderr);
     return true;
 }
 
@@ -1390,20 +1447,24 @@ static bool init_multimodal_subsystems(brain_t brain)
  */
 static bool init_pink_noise_subsystem(brain_t brain)
 {
+    fprintf(stderr, "[DEBUG] init_pink_noise: START\n"); fflush(stderr);
     if (!brain) {
         return false;
     }
 
     // Check if already initialized
     if (brain->pink_noise) {
+        fprintf(stderr, "[DEBUG] init_pink_noise: already initialized\n"); fflush(stderr);
         return true;  // Already initialized
     }
 
     // Check if pink noise is enabled
     if (!brain->config.enable_pink_noise) {
+        fprintf(stderr, "[DEBUG] init_pink_noise: not enabled\n"); fflush(stderr);
         return true;  // Not enabled, not an error
     }
 
+    fprintf(stderr, "[DEBUG] init_pink_noise: creating config\n"); fflush(stderr);
     // Create pink noise neuromodulator with default configuration
     neuromod_pink_config_t pink_config = neuromod_pink_default_config();
 
@@ -1419,12 +1480,15 @@ static bool init_pink_noise_subsystem(brain_t brain)
     pink_config.acetylcholine_noise_amplitude = 0.20f; // 20% noise for dynamic attention
     pink_config.norepinephrine_noise_amplitude = 0.10f;// 10% noise for arousal variation
 
+    fprintf(stderr, "[DEBUG] init_pink_noise: calling neuromod_pink_create\n"); fflush(stderr);
     brain->pink_noise = neuromod_pink_create(&pink_config);
+    fprintf(stderr, "[DEBUG] init_pink_noise: neuromod_pink_create returned\n"); fflush(stderr);
     if (!brain->pink_noise) {
         set_error("Failed to create pink noise neuromodulator");
         return false;
     }
 
+    fprintf(stderr, "[DEBUG] init_pink_noise: DONE\n"); fflush(stderr);
     return true;
 }
 
@@ -1992,6 +2056,20 @@ static bool init_working_memory_subsystem(brain_t brain)
     }
 
     /* =========================================================================
+     * PHASE 10.2: Emotional System Initialization
+     * =========================================================================
+     * WHAT: Create integrated emotional processing system
+     * WHY:  Enable emotional tagging, regulation, salience boost, mental health
+     * HOW:  Create with defaults (Russell's Circumplex Model + CBT/DBT regulation)
+     */
+
+    brain->emotional_system = emotion_system_create(NULL);  // NULL = use defaults
+    if (!brain->emotional_system) {
+        set_error("Failed to create emotional system");
+        return false;
+    }
+
+    /* =========================================================================
      * PHASE 10.1: Sleep/Wake Cycle Initialization
      * =========================================================================
      * WHAT: Create sleep system and connect to brain
@@ -2497,8 +2575,9 @@ static bool init_curiosity_subsystem(brain_t brain)
         return true;  // Not enabled, but not an error
     }
 
-    // Create curiosity engine with descriptive learner name
-    brain->curiosity = curiosity_engine_create("nimcp_brain");
+    // Create curiosity engine with parent brain reference (module pattern)
+    // Curiosity uses parent brain's neuromodulator system instead of creating separate brains
+    brain->curiosity = curiosity_engine_create(brain, "nimcp_brain");
     if (!brain->curiosity) {
         set_error("Failed to create curiosity engine");
         return false;
@@ -2871,15 +2950,20 @@ static personality_profile_t* create_personality(const brain_config_t* config)
 brain_t brain_create(const char* task_name, brain_size_t size, brain_task_t task,
                      uint32_t num_inputs, uint32_t num_outputs)
 {
+    fprintf(stderr, "[DEBUG] brain_create: START for '%s'\n", task_name); fflush(stderr);
+
     // Guard: Validate parameters
     if (!validate_creation_params(task_name, num_inputs, num_outputs)) {
+        fprintf(stderr, "[DEBUG] brain_create: validation failed\n"); fflush(stderr);
         return NULL;
     }
+    fprintf(stderr, "[DEBUG] brain_create: validation OK\n"); fflush(stderr);
 
     // Allocate brain structure
     brain_t brain = allocate_brain();
     if (!brain)
         return NULL;
+    fprintf(stderr, "[DEBUG] brain_create: allocated brain\n"); fflush(stderr);
 
     // Create strategy for task
     brain->strategy = strategy_create(task);
@@ -2888,12 +2972,16 @@ brain_t brain_create(const char* task_name, brain_size_t size, brain_task_t task
         nimcp_free(brain);
         return NULL;
     }
+    fprintf(stderr, "[DEBUG] brain_create: created strategy\n"); fflush(stderr);
 
     // Initialize configuration
+    fprintf(stderr, "[DEBUG] brain_create: initializing config\n"); fflush(stderr);
     init_brain_config(&brain->config, task_name, size, task, num_inputs, num_outputs,
                       brain->strategy);
+    fprintf(stderr, "[DEBUG] brain_create: config initialized\n"); fflush(stderr);
 
     // Phase 12: Create personality profile (unique identity for this brain)
+    fprintf(stderr, "[DEBUG] brain_create: creating personality\n"); fflush(stderr);
     brain->personality = create_personality(&brain->config);
     if (!brain->personality) {
         set_error("Failed to create personality profile");
@@ -2901,8 +2989,10 @@ brain_t brain_create(const char* task_name, brain_size_t size, brain_task_t task
         nimcp_free(brain);
         return NULL;
     }
+    fprintf(stderr, "[DEBUG] brain_create: personality created\n"); fflush(stderr);
 
     // Create network
+    fprintf(stderr, "[DEBUG] brain_create: creating network\n"); fflush(stderr);
     uint32_t num_neurons = get_neuron_count(size);
     brain->network =
         create_brain_network(num_inputs, num_outputs, num_neurons, brain->config.sparsity_target,
@@ -2914,20 +3004,27 @@ brain_t brain_create(const char* task_name, brain_size_t size, brain_task_t task
         nimcp_free(brain);
         return NULL;
     }
+    fprintf(stderr, "[DEBUG] brain_create: network created\n"); fflush(stderr);
 
     // Initialize output labels
+    fprintf(stderr, "[DEBUG] brain_create: init output labels\n"); fflush(stderr);
     if (!init_output_labels(brain, num_outputs)) {
         adaptive_network_destroy(brain->network);
         strategy_destroy(brain->strategy);
         nimcp_free(brain);
         return NULL;
     }
+    fprintf(stderr, "[DEBUG] brain_create: output labels OK\n"); fflush(stderr);
 
     // Initialize statistics
+    fprintf(stderr, "[DEBUG] brain_create: init stats\n"); fflush(stderr);
     init_brain_stats(&brain->stats, task_name, size, num_inputs, brain->config.learning_rate);
+    fprintf(stderr, "[DEBUG] brain_create: stats OK\n"); fflush(stderr);
 
     // Phase 8: Initialize multi-modal subsystems (if configured)
+    fprintf(stderr, "[DEBUG] brain_create: init multimodal\n"); fflush(stderr);
     if (!init_multimodal_subsystems(brain)) {
+        fprintf(stderr, "[DEBUG] brain_create: multimodal FAILED\n"); fflush(stderr);
         // Cleanup on failure
         adaptive_network_destroy(brain->network);
         strategy_destroy(brain->strategy);
@@ -2942,43 +3039,55 @@ brain_t brain_create(const char* task_name, brain_size_t size, brain_task_t task
         nimcp_free(brain);
         return NULL;
     }
+    fprintf(stderr, "[DEBUG] brain_create: multimodal OK\n"); fflush(stderr);
 
     // Phase 8.6: Initialize pink noise neuromodulation (if configured)
+    fprintf(stderr, "[DEBUG] brain_create: init pink noise\n"); fflush(stderr);
     if (!init_pink_noise_subsystem(brain)) {
         // Cleanup on failure
         brain_destroy(brain);  // Use full destroy to cleanup multimodal too
         return NULL;
     }
+    fprintf(stderr, "[DEBUG] brain_create: pink noise OK\n"); fflush(stderr);
 
     // Phase 10.5: Initialize neuromodulator system (always enabled for mental health)
+    fprintf(stderr, "[DEBUG] brain_create: init neuromodulator\n"); fflush(stderr);
     if (!init_neuromodulator_system(brain)) {
         // Cleanup on failure
         brain_destroy(brain);
         return NULL;
     }
+    fprintf(stderr, "[DEBUG] brain_create: neuromodulator OK\n"); fflush(stderr);
 
     // Phase C2.1: Initialize spatial neuromodulator system (if glial integration exists)
+    fprintf(stderr, "[DEBUG] brain_create: init spatial neuromod\n"); fflush(stderr);
     if (!init_spatial_neuromod_system(brain)) {
         // Cleanup on failure
         brain_destroy(brain);
         return NULL;
     }
+    fprintf(stderr, "[DEBUG] brain_create: spatial neuromod OK\n"); fflush(stderr);
 
     // Phase 8.9: Initialize neural logic gates (if configured)
+    fprintf(stderr, "[DEBUG] brain_create: init symbolic logic\n"); fflush(stderr);
     if (!init_symbolic_logic_subsystem(brain)) {
         // Cleanup on failure
         brain_destroy(brain);
         return NULL;
     }
+    fprintf(stderr, "[DEBUG] brain_create: symbolic logic OK\n"); fflush(stderr);
 
     // Phase 9.4: Initialize symbolic reasoning (if configured)
+    fprintf(stderr, "[DEBUG] brain_create: init symbolic reasoning\n"); fflush(stderr);
     if (!init_symbolic_reasoning_subsystem(brain)) {
         // Cleanup on failure
         brain_destroy(brain);
         return NULL;
     }
+    fprintf(stderr, "[DEBUG] brain_create: symbolic reasoning OK\n"); fflush(stderr);
 
     // Phase 9.3: Initialize wellbeing monitoring (enabled by default)
+    fprintf(stderr, "[DEBUG] brain_create: init wellbeing\n"); fflush(stderr);
     brain->wellbeing_monitoring_enabled = true;  // Enable by default for ethical protection
     brain->wellbeing_check_interval_ms = 0;      // Check on every decision (0 = always)
     brain->last_wellbeing_check_time = 0;        // Initialize timestamp
@@ -2989,13 +3098,16 @@ brain_t brain_create(const char* task_name, brain_size_t size, brain_task_t task
     // Initialize simulation time tracking (for glial/calcium dynamics)
     brain->current_time_us = 0;                  // Start at t=0
     brain->last_glial_update_us = 0;             // No glial updates yet
+    fprintf(stderr, "[DEBUG] brain_create: wellbeing OK\n"); fflush(stderr);
 
     // Phase 10.2: Initialize working memory (if enabled)
+    fprintf(stderr, "[DEBUG] brain_create: init working memory\n"); fflush(stderr);
     if (!init_working_memory_subsystem(brain)) {
         // Cleanup on failure
         brain_destroy(brain);
         return NULL;
     }
+    fprintf(stderr, "[DEBUG] brain_create: working memory OK\n"); fflush(stderr);
 
     // Phase 11 Enhancement C1.1: Initialize quantum annealer (if enabled)
     if (brain->config.enable_quantum_annealing) {
@@ -3089,12 +3201,15 @@ brain_t brain_create(const char* task_name, brain_size_t size, brain_task_t task
     }
 
     // Phase E4: Initialize Love, Loyalty, and Friendship System
+    fprintf(stderr, "[DEBUG] brain_create: init social bond system\n"); fflush(stderr);
     brain->social_bond_system = social_bond_system_create();
     if (!brain->social_bond_system) {
         fprintf(stderr, "WARNING: Failed to initialize social bond system\n");
     }
+    fprintf(stderr, "[DEBUG] brain_create: social bond system OK\n"); fflush(stderr);
 
     brain_clear_error();
+    fprintf(stderr, "[DEBUG] brain_create: DONE\n"); fflush(stderr);
     return brain;
 }
 
@@ -3335,15 +3450,18 @@ brain_t brain_create_custom(const brain_config_t* config)
  */
 void brain_destroy(brain_t brain)
 {
+    fprintf(stderr, "[DEBUG] brain_destroy: START\n"); fflush(stderr);
     if (!brain)
         return;
 
+    fprintf(stderr, "[DEBUG] brain_destroy: checking snapshot\n"); fflush(stderr);
     // Save final snapshot if configured (BEFORE destroying anything)
     if (brain->config.snapshot_dir && brain->config.save_final_snapshot) {
         brain_save_snapshot(brain, "final", "Snapshot at brain destruction");
         // Non-fatal if snapshot fails
     }
 
+    fprintf(stderr, "[DEBUG] brain_destroy: destroying network\n"); fflush(stderr);
     // Phase 3: Handle network destruction with reference counting
     if (brain->network) {
         if (brain->owns_network) {
@@ -3367,12 +3485,15 @@ void brain_destroy(brain_t brain)
         // else: Neither owns nor has refcount - strange but safe (network leaked)
     }
 
+    fprintf(stderr, "[DEBUG] brain_destroy: network destroyed\n"); fflush(stderr);
     // Strategies are shared (read-only), don't destroy
     // Only destroy if this is not a COW clone OR if we own it
+    fprintf(stderr, "[DEBUG] brain_destroy: destroying strategy\n"); fflush(stderr);
     if (brain->strategy && !brain->is_cow_clone) {
         strategy_destroy(brain->strategy);
     }
 
+    fprintf(stderr, "[DEBUG] brain_destroy: destroying output_labels\n"); fflush(stderr);
     if (brain->output_labels) {
         for (uint32_t i = 0; i < brain->num_output_labels; i++) {
             if (brain->output_labels[i]) {
@@ -3399,6 +3520,9 @@ void brain_destroy(brain_t brain)
     }
     if (brain->multimodal) {
         multimodal_integration_destroy(brain->multimodal);
+    }
+    if (brain->nlp_network) {
+        nlp_network_destroy(brain->nlp_network);
     }
     nimcp_free(brain->visual_feature_buffer);
     nimcp_free(brain->audio_feature_buffer);
@@ -3442,21 +3566,31 @@ void brain_destroy(brain_t brain)
         symbolic_logic_destroy(brain->symbolic_logic);
     }
 
+    fprintf(stderr, "[DEBUG] brain_destroy: destroying working_memory\n"); fflush(stderr);
     // Phase 10.1: Cleanup working memory
     if (brain->working_memory) {
         working_memory_destroy(brain->working_memory);
     }
 
+    fprintf(stderr, "[DEBUG] brain_destroy: stopping consolidation\n"); fflush(stderr);
     // Phase 10.2: Cleanup memory consolidation
     if (brain->consolidation) {
         brain_stop_background_consolidation(brain->consolidation);
     }
 
+    fprintf(stderr, "[DEBUG] brain_destroy: destroying executive\n"); fflush(stderr);
     // Phase 10.3: Cleanup executive functions
     if (brain->executive) {
         executive_destroy(brain->executive);
     }
 
+    fprintf(stderr, "[DEBUG] brain_destroy: destroying emotional_system\n"); fflush(stderr);
+    // Phase 10.2: Cleanup emotional system
+    if (brain->emotional_system) {
+        emotion_system_destroy(brain->emotional_system);
+    }
+
+    fprintf(stderr, "[DEBUG] brain_destroy: destroying sleep_system\n"); fflush(stderr);
     // Phase 10.4: Cleanup sleep/wake system
     if (brain->sleep_system) {
         sleep_system_destroy(brain->sleep_system);
@@ -3517,13 +3651,17 @@ void brain_destroy(brain_t brain)
         global_workspace_destroy(brain->global_workspace);
     }
 
+    fprintf(stderr, "[DEBUG] brain_destroy: cleanup cognitive modules\n"); fflush(stderr);
     // CRITICAL FIX: Cleanup cognitive modules (memory leak fix)
+    fprintf(stderr, "[DEBUG] brain_destroy: destroying introspection\n"); fflush(stderr);
     if (brain->introspection) {
         introspection_context_destroy(brain->introspection);
     }
+    fprintf(stderr, "[DEBUG] brain_destroy: destroying brain->curiosity (CRITICAL!)\n"); fflush(stderr);
     if (brain->curiosity) {
         curiosity_engine_destroy(brain->curiosity);
     }
+    fprintf(stderr, "[DEBUG] brain_destroy: brain->curiosity destroyed\n"); fflush(stderr);
     if (brain->salience) {
         salience_evaluator_destroy(brain->salience);
     }
@@ -3613,8 +3751,11 @@ void brain_destroy(brain_t brain)
         social_bond_system_destroy(brain->social_bond_system);
     }
 
+    fprintf(stderr, "[DEBUG] brain_destroy: clearing cache\n"); fflush(stderr);
     clear_cache(brain);
+    fprintf(stderr, "[DEBUG] brain_destroy: freeing brain struct\n"); fflush(stderr);
     nimcp_free(brain);
+    fprintf(stderr, "[DEBUG] brain_destroy: DONE\n"); fflush(stderr);
 }
 
 /**
@@ -7530,6 +7671,17 @@ bool brain_get_stats(brain_t brain, brain_stats_t* stats)
 }
 
 /**
+ * @brief Get number of input features for this brain
+ */
+uint32_t brain_get_num_inputs(brain_t brain)
+{
+    if (!brain) {
+        return 0;
+    }
+    return brain->config.num_inputs;
+}
+
+/**
  * @brief Get COW statistics for brain
  *
  * WHAT: Report copy-on-write memory sharing status
@@ -8046,8 +8198,38 @@ symbolic_logic_t* brain_get_symbolic_logic(brain_t brain) {
     return brain ? brain->symbolic_logic : NULL;
 }
 
-neuromod_pink_noise_t* brain_get_pink_noise(brain_t brain) {
-    return brain ? brain->pink_noise : NULL;
+void* brain_get_pink_noise(brain_t brain) {
+    return brain ? (void*)brain->pink_noise : NULL;
+}
+
+bool brain_predict(brain_t brain, const float* input, uint32_t input_size,
+                  float* output, uint32_t output_size) {
+    if (!brain || !input || !output) {
+        return false;
+    }
+
+    // Create multimodal input with direct features
+    brain_multimodal_input_t mm_input = {0};
+    mm_input.direct_data = input;
+    mm_input.direct_dim = input_size;
+
+    // Create output structure
+    brain_multimodal_output_t mm_output = {0};
+
+    // Process
+    if (!brain_process_multimodal(brain, &mm_input, &mm_output)) {
+        return false;
+    }
+
+    // Copy output (up to output_size)
+    uint32_t copy_size = (mm_output.output_dim < output_size) ?
+                         mm_output.output_dim : output_size;
+    if (mm_output.output_vector && copy_size > 0) {
+        memcpy(output, mm_output.output_vector, copy_size * sizeof(float));
+        return true;
+    }
+
+    return false;
 }
 
 //=============================================================================

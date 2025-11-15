@@ -45,6 +45,7 @@
 #include "plasticity/stp/nimcp_stp.h"
 #include "plasticity/bcm/nimcp_bcm.h"                    // Phase 11: BCM homeostatic plasticity
 #include "plasticity/eligibility/nimcp_eligibility_trace.h"  // Phase 11: Eligibility traces for RL
+#include "plasticity/neuromodulators/nimcp_neuromodulators.h"  // Neuromodulator system for dopamine/serotonin/etc
 #include "glial/integration/nimcp_glial_integration.h"   // NIMCP Phase 6: Glial notifications
 #include "security/nimcp_security.h"                     // Phase 11: Biological attack defense
 #include <math.h>
@@ -663,9 +664,12 @@ neural_network_t neural_network_create(const network_config_t* config)
  */
 void neural_network_destroy(neural_network_t network)
 {
+    fprintf(stderr, "[DEBUG] neural_network_destroy: START\n"); fflush(stderr);
     // Guard clause: Handle NULL input
     if (!network)
         return;
+
+    fprintf(stderr, "[DEBUG] neural_network_destroy: num_neurons=%u\n", network->num_neurons); fflush(stderr);
 
     /**
      * WHAT: Cleanup neuron models (NIMCP 2.6)
@@ -673,7 +677,11 @@ void neural_network_destroy(neural_network_t network)
      * HOW: Call neuron_model_destroy for each model
      */
     if (network->neurons) {
+        fprintf(stderr, "[DEBUG] neural_network_destroy: starting neuron loop\n"); fflush(stderr);
         for (uint32_t i = 0; i < network->num_neurons; i++) {
+            if (i % 100 == 0) {
+                fprintf(stderr, "[DEBUG] neural_network_destroy: processing neuron %u/%u\n", i, network->num_neurons); fflush(stderr);
+            }
             if (network->neurons[i].model) {
                 neuron_model_destroy(network->neurons[i].model);
                 network->neurons[i].model = NULL;
@@ -684,15 +692,39 @@ void neural_network_destroy(neural_network_t network)
             // WHY: BCM state is heap-allocated, must be freed to prevent leaks
             // HOW: Iterate through outgoing synapses and free BCM state
             neuron_t* neuron = &network->neurons[i];
+            if (i == 0) {
+                fprintf(stderr, "[DEBUG] neural_network_destroy: neuron 0 has %u synapses\n", neuron->num_synapses); fflush(stderr);
+            }
             for (uint32_t j = 0; j < neuron->num_synapses; j++) {
+                if (i == 0 && j % 10 == 0) {
+                    fprintf(stderr, "[DEBUG] neural_network_destroy: processing synapse %u/%u for neuron 0\n", j, neuron->num_synapses); fflush(stderr);
+                }
                 synapse_t* syn = &neuron->synapses[j];
+                if (i == 0 && j < 5) {
+                    fprintf(stderr, "[DEBUG] neural_network_destroy: synapse %u: bcm=%p, eligibility=%p\n", j, (void*)syn->bcm, (void*)syn->eligibility); fflush(stderr);
+                }
                 if (syn->bcm) {
+                    if (i == 0 && j < 5) {
+                        fprintf(stderr, "[DEBUG] neural_network_destroy: freeing bcm for synapse %u\n", j); fflush(stderr);
+                    }
                     nimcp_free(syn->bcm);
+                    if (i == 0 && j < 5) {
+                        fprintf(stderr, "[DEBUG] neural_network_destroy: bcm freed for synapse %u\n", j); fflush(stderr);
+                    }
                     syn->bcm = NULL;
                 }
                 if (syn->eligibility) {
+                    if (i == 0 && j < 5) {
+                        fprintf(stderr, "[DEBUG] neural_network_destroy: freeing eligibility for synapse %u\n", j); fflush(stderr);
+                    }
                     nimcp_free(syn->eligibility);
+                    if (i == 0 && j < 5) {
+                        fprintf(stderr, "[DEBUG] neural_network_destroy: eligibility freed for synapse %u\n", j); fflush(stderr);
+                    }
                     syn->eligibility = NULL;
+                }
+                if (i == 0 && j < 5) {
+                    fprintf(stderr, "[DEBUG] neural_network_destroy: synapse %u cleanup complete\n", j); fflush(stderr);
                 }
             }
 
@@ -1941,23 +1973,41 @@ bool neural_network_add_connection(neural_network_t network, uint32_t from_id, u
     syn->enable_stp = true;  // Enable STP by default
 
     // Phase 11: Initialize BCM (Homeostatic Plasticity)
-    // Allocate and initialize BCM state for weight stabilization
-    syn->bcm = (bcm_synapse_t*)nimcp_calloc(1, sizeof(bcm_synapse_t));
-    if (syn->bcm) {
-        *syn->bcm = bcm_synapse_init(syn->weight, 0.5f);  // Initial threshold = 0.5
-        syn->enable_bcm = true;  // Enable BCM by default
+    // CONDITIONAL ALLOCATION: Only allocate if enabled in config
+    // WHY: BCM requires per-synapse heap allocation
+    // SCALABILITY: 1M neurons × 256 synapses × sizeof(bcm_synapse_t) = massive overhead
+    // SOLUTION: Lazy initialization - only allocate when feature is enabled
+    if (network->config.enable_bcm) {
+        syn->bcm = (bcm_synapse_t*)nimcp_calloc(1, sizeof(bcm_synapse_t));
+        if (syn->bcm) {
+            *syn->bcm = bcm_synapse_init(syn->weight, 0.5f);  // Initial threshold = 0.5
+            syn->enable_bcm = true;
+        } else {
+            syn->enable_bcm = false;  // Disable if allocation failed
+        }
     } else {
-        syn->enable_bcm = false;  // Disable if allocation failed
+        // Disabled by config - no allocation
+        syn->bcm = NULL;
+        syn->enable_bcm = false;
     }
 
     // Phase 11: Initialize Eligibility Traces (Temporal Credit Assignment)
-    // Allocate and initialize eligibility trace for reward-based learning
-    syn->eligibility = (eligibility_trace_t*)nimcp_calloc(1, sizeof(eligibility_trace_t));
-    if (syn->eligibility) {
-        eligibility_trace_init(syn->eligibility, network->network_time);
-        syn->enable_eligibility = true;  // Enable eligibility traces by default
+    // CONDITIONAL ALLOCATION: Only allocate if enabled in config
+    // WHY: Eligibility traces require per-synapse heap allocation
+    // SCALABILITY: 1M neurons × 256 synapses × sizeof(eligibility_trace_t) = massive overhead
+    // SOLUTION: Lazy initialization - only allocate when feature is enabled
+    if (network->config.enable_eligibility) {
+        syn->eligibility = (eligibility_trace_t*)nimcp_calloc(1, sizeof(eligibility_trace_t));
+        if (syn->eligibility) {
+            eligibility_trace_init(syn->eligibility, network->network_time);
+            syn->enable_eligibility = true;
+        } else {
+            syn->enable_eligibility = false;  // Disable if allocation failed
+        }
     } else {
-        syn->enable_eligibility = false;  // Disable if allocation failed
+        // Disabled by config - no allocation
+        syn->eligibility = NULL;
+        syn->enable_eligibility = false;
     }
 
     from_neuron->num_synapses++;
@@ -2800,15 +2850,12 @@ float neural_network_get_neuromodulation(neural_network_t network)
         return 0.0f;
     }
 
-    // TODO: Query neuromodulator system for dopamine level
-    // This requires including neuromodulators.h and casting the opaque pointer
-    // For now, return placeholder value
-    // Example implementation would be:
-    //   neuromodulator_system_t system = (neuromodulator_system_t)network->neuromodulator_system;
-    //   float dopamine = neuromodulator_get_dopamine(system);
-    //   return dopamine;
+    // Query neuromodulator system for dopamine level
+    // Dopamine is the primary learning/reward neuromodulator
+    neuromodulator_system_t system = (neuromodulator_system_t)network->neuromodulator_system;
+    float dopamine = neuromodulator_get_level(system, NEUROMOD_DOPAMINE);
 
-    return 0.0f;  // Placeholder
+    return dopamine;
 }
 
 //=============================================================================

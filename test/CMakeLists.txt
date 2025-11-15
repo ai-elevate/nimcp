@@ -110,14 +110,14 @@ function(add_test_binary TARGET_NAME SOURCE_FILE CATEGORY)
 endfunction()
 
 # ============================================================================
-# Helper Function: Discover Tests in Category
+# Helper Function: Discover Tests in Category (Recursive)
 # ============================================================================
-# WHAT: Find all test files in a category directory
-# WHY:  Enable automatic test discovery
-# HOW:  Glob for test_*.cpp files, create executable for each
+# WHAT: Recursively find all test files in a category directory tree
+# WHY:  Support modular organization of tests by subdirectory
+# HOW:  GLOB_RECURSE for test files, create executable for each
 #
 # PARAMETERS:
-#   CATEGORY - Test category subdirectory name
+#   CATEGORY - Test category subdirectory name (unit/integration/regression)
 # ============================================================================
 function(discover_category_tests CATEGORY)
     # Build path to category directory
@@ -129,8 +129,8 @@ function(discover_category_tests CATEGORY)
         return()
     endif()
 
-    # Find all test files
-    file(GLOB TEST_FILES "${CATEGORY_DIR}/*.cpp")
+    # Recursively find all test files in subdirectories
+    file(GLOB_RECURSE TEST_FILES "${CATEGORY_DIR}/*.cpp" "${CATEGORY_DIR}/*.c")
 
     # Guard: No tests found
     if(NOT TEST_FILES)
@@ -143,8 +143,18 @@ function(discover_category_tests CATEGORY)
         # Extract test name from filename
         get_filename_component(TEST_NAME ${TEST_FILE} NAME_WE)
 
-        # Create unique target name: category_testname
-        set(TARGET_NAME "${CATEGORY}_${TEST_NAME}")
+        # Get relative path from category dir to determine module
+        file(RELATIVE_PATH REL_PATH ${CATEGORY_DIR} ${TEST_FILE})
+        get_filename_component(MODULE_PATH ${REL_PATH} DIRECTORY)
+
+        # Create unique target name: category_module_testname
+        # Replace / with _ in module path for valid target name
+        string(REPLACE "/" "_" MODULE_NAME "${MODULE_PATH}")
+        if(MODULE_NAME)
+            set(TARGET_NAME "${CATEGORY}_${MODULE_NAME}_${TEST_NAME}")
+        else()
+            set(TARGET_NAME "${CATEGORY}_${TEST_NAME}")
+        endif()
 
         # Create test binary
         add_test_binary(${TARGET_NAME} ${TEST_FILE} ${CATEGORY})
@@ -152,7 +162,7 @@ function(discover_category_tests CATEGORY)
 
     # Report
     list(LENGTH TEST_FILES TEST_COUNT)
-    message(STATUS "  ${CATEGORY}: ${TEST_COUNT} tests")
+    message(STATUS "  ${CATEGORY}: ${TEST_COUNT} tests (across all modules)")
 endfunction()
 
 # ============================================================================

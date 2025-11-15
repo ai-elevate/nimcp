@@ -151,9 +151,22 @@ struct curiosity_engine_struct {
     uint32_t num_sources;
     uint32_t sources_capacity;
 
-    // Neural networks for prediction
-    brain_t gap_detector;
-    brain_t question_prioritizer;
+    // REFACTORED: Parent brain reference (module pattern)
+    // Previously created separate brain instances - wasteful!
+    // Now curiosity is a module that uses parent brain's neuromodulator
+    brain_t parent_brain;  // Reference to parent, NOT ownership
+
+    // State for gap detection (replaces gap_detector brain)
+    struct {
+        float last_novelty_score;
+        float last_gap_size;
+    } gap_detector_state;
+
+    // State for question prioritization (replaces question_prioritizer brain)
+    struct {
+        float last_priority;
+        float last_difficulty;
+    } question_prioritizer_state;
 
     // Motivation state
     float baseline_curiosity;
@@ -692,12 +705,15 @@ static void free_hash_table(curiosity_engine_t engine)
  * Time Complexity: O(1)
  * Space Complexity: O(1) - initial allocation, grows with use
  *
+ * REFACTORED: Now takes parent brain reference (module pattern)
+ *
+ * @param parent_brain Parent brain that owns this curiosity module
  * @param learner_name Name identifier for this learner
  * @return New engine instance, or NULL on failure
  */
-curiosity_engine_t curiosity_engine_create(const char* learner_name)
+curiosity_engine_t curiosity_engine_create(brain_t parent_brain, const char* learner_name)
 {
-    if (!learner_name) {
+    if (!parent_brain || !learner_name) {
         return NULL;
     }
 
@@ -739,17 +755,27 @@ curiosity_engine_t curiosity_engine_create(const char* learner_name)
         return NULL;
     }
 
-    // Create neural networks
-    engine->gap_detector =
-        brain_create("gap_detector", BRAIN_SIZE_SMALL, BRAIN_TASK_REGRESSION, 10, 1);
+    // REFACTORED: Store parent brain reference (module pattern)
+    // Previously created separate brain instances - wasteful!
+    // Now use parent's neuromodulator system
+    engine->parent_brain = parent_brain;
 
-    engine->question_prioritizer =
-        brain_create("question_priority", BRAIN_SIZE_SMALL, BRAIN_TASK_REGRESSION, 15, 1);
+    // Initialize gap detector state (replaces brain)
+    engine->gap_detector_state.last_novelty_score = 0.0f;
+    engine->gap_detector_state.last_gap_size = 0.0f;
 
+    // Initialize question prioritizer state (replaces brain)
+    engine->question_prioritizer_state.last_priority = 0.5f;
+    engine->question_prioritizer_state.last_difficulty = 0.5f;
+
+    fprintf(stderr, "[DEBUG] curiosity_engine_create: init stage\n"); fflush(stderr);
     // Initialize with infant stage
     engine->stage = STAGE_INFANT;
+    fprintf(stderr, "[DEBUG] curiosity_engine_create: calling get_stage_strategy\n"); fflush(stderr);
     engine->stage_strategy = get_stage_strategy(STAGE_INFANT);
+    fprintf(stderr, "[DEBUG] curiosity_engine_create: calling get_baseline_curiosity\n"); fflush(stderr);
     engine->baseline_curiosity = engine->stage_strategy->get_baseline_curiosity();
+    fprintf(stderr, "[DEBUG] curiosity_engine_create: baseline curiosity OK\n"); fflush(stderr);
     engine->current_motivation = engine->baseline_curiosity;
 
     // Initialize progress
@@ -760,6 +786,7 @@ curiosity_engine_t curiosity_engine_create(const char* learner_name)
     snprintf(engine->progress.current_focus, sizeof(engine->progress.current_focus),
              "exploring world");
 
+    fprintf(stderr, "[DEBUG] curiosity_engine_create: DONE\n"); fflush(stderr);
     return engine;
 }
 
@@ -773,19 +800,26 @@ curiosity_engine_t curiosity_engine_create(const char* learner_name)
  */
 void curiosity_engine_destroy(curiosity_engine_t engine)
 {
+    fprintf(stderr, "[DEBUG] curiosity_engine_destroy: START\n"); fflush(stderr);
     if (!engine) {
         return;
     }
 
+    fprintf(stderr, "[DEBUG] curiosity_engine_destroy: freeing hash table\n"); fflush(stderr);
     free_hash_table(engine);
 
+    fprintf(stderr, "[DEBUG] curiosity_engine_destroy: freeing questions\n"); fflush(stderr);
     nimcp_free(engine->questions);
+    fprintf(stderr, "[DEBUG] curiosity_engine_destroy: freeing sources\n"); fflush(stderr);
     nimcp_free(engine->sources);
 
-    brain_destroy(engine->gap_detector);
-    brain_destroy(engine->question_prioritizer);
+    // REFACTORED: No brain destruction needed - we only hold a reference
+    // parent_brain is owned by caller and will be destroyed by them
+    // Previously destroyed gap_detector and question_prioritizer brains here
 
+    fprintf(stderr, "[DEBUG] curiosity_engine_destroy: freeing engine\n"); fflush(stderr);
     nimcp_free(engine);
+    fprintf(stderr, "[DEBUG] curiosity_engine_destroy: DONE\n"); fflush(stderr);
 }
 
 //=============================================================================
@@ -808,9 +842,9 @@ static float calculate_curiosity_intensity(const curiosity_engine_t engine, floa
 {
     float base_intensity = gap_size * engine->baseline_curiosity;
 
-    // Modulate by dopamine if brain available
-    if (engine->gap_detector) {
-        neuromodulator_system_t neuromod = brain_get_neuromodulator_system(engine->gap_detector);
+    // Modulate by dopamine from parent brain's neuromodulator system
+    if (engine->parent_brain) {
+        neuromodulator_system_t neuromod = brain_get_neuromodulator_system(engine->parent_brain);
         if (neuromod) {
             float dopamine = neuromodulator_get_level(neuromod, NEUROMOD_DOPAMINE);
             // Dopamine range [0.3, 0.7], map to modulation [0.6, 1.4]
@@ -1096,8 +1130,8 @@ motivation_state_t curiosity_assess_motivation(curiosity_engine_t engine, const 
     state.intrinsic_curiosity = engine->baseline_curiosity;
 
     // DOPAMINE MODULATION: High DA enhances intrinsic motivation
-    if (engine->gap_detector) {
-        neuromodulator_system_t neuromod = brain_get_neuromodulator_system(engine->gap_detector);
+    if (engine->parent_brain) {
+        neuromodulator_system_t neuromod = brain_get_neuromodulator_system(engine->parent_brain);
         if (neuromod) {
             float dopamine = neuromodulator_get_level(neuromod, NEUROMOD_DOPAMINE);
             // Dopamine amplifies intrinsic curiosity
@@ -1204,8 +1238,8 @@ bool curiosity_learn_answer(curiosity_engine_t engine, const char* question, con
 
     // INTRINSIC REWARD: Release dopamine for learning
     // BIOLOGY: Learning triggers dopamine release in reward circuits
-    if (engine->gap_detector) {
-        neuromodulator_system_t neuromod = brain_get_neuromodulator_system(engine->gap_detector);
+    if (engine->parent_brain) {
+        neuromodulator_system_t neuromod = brain_get_neuromodulator_system(engine->parent_brain);
         if (neuromod) {
             // Release dopamine proportional to curiosity
             float reward = 0.3f;  // Moderate intrinsic reward for learning
@@ -1241,8 +1275,8 @@ bool curiosity_learn_experience(curiosity_engine_t engine, const char* experienc
 
     // INTRINSIC REWARD: Release dopamine for experiential learning
     // BIOLOGY: Novel experiences trigger dopamine release
-    if (engine->gap_detector) {
-        neuromodulator_system_t neuromod = brain_get_neuromodulator_system(engine->gap_detector);
+    if (engine->parent_brain) {
+        neuromodulator_system_t neuromod = brain_get_neuromodulator_system(engine->parent_brain);
         if (neuromod) {
             float reward = 0.4f;  // Higher reward for direct experience
             neuromodulator_release_dopamine(neuromod, reward, 0.0f);

@@ -124,10 +124,14 @@ typedef struct {
 /**
  * @brief Create curiosity engine
  *
+ * BREAKING CHANGE: Now requires parent brain reference (module pattern)
+ * Curiosity is a cognitive module that uses the parent brain's neuromodulator system.
+ *
+ * @param parent_brain Parent brain that owns this curiosity module
  * @param learner_name Name for this learner (e.g., "infant", "student")
  * @return Curiosity engine or NULL on error
  */
-curiosity_engine_t curiosity_engine_create(const char* learner_name);
+curiosity_engine_t curiosity_engine_create(brain_t parent_brain, const char* learner_name);
 
 /**
  * @brief Destroy curiosity engine

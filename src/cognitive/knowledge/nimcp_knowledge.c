@@ -128,13 +128,15 @@ struct knowledge_system_struct {
     uint32_t num_history;
     uint32_t history_capacity;
 
-    brain_t domain_brains[11];
+    // REMOVED: brain_t domain_brains[11] - Never used, completely dead code
 
     reading_progress_t* reading_list;
     uint32_t num_reading;
     uint32_t reading_capacity;
 
-    curiosity_engine_t curiosity;
+    // Unified brain for knowledge system (provides curiosity module)
+    // Previously created curiosity independently - now follows "one brain, many modules" pattern
+    brain_t knowledge_brain;
 
     domain_knowledge_t domain_stats[11];
 
@@ -156,12 +158,16 @@ static int compare_confidence(const char* key1, const char* key2)
         return 0;
     }
 
+    // Key format is "confidence_index" (e.g., "0.300000_00123")
+    // atof stops at underscore, giving us the confidence value
     float conf1 = atof(key1);
     float conf2 = atof(key2);
 
     if (conf1 < conf2) return -1;
     if (conf1 > conf2) return 1;
-    return 0;
+
+    // If confidence is equal, compare by full key (including index) for stable sorting
+    return strcmp(key1, key2);
 }
 
 /**
@@ -435,9 +441,10 @@ static int32_t repository_add(knowledge_repository_t* repo, const knowledge_item
     uint32_t index = repo->num_items;
     repo->items[index] = *item;
 
-    // Populate B-tree key field
+    // Populate B-tree key field with unique key: "confidence_index"
+    // This ensures each item has a unique key even if confidence values are identical
     snprintf(repo->items[index].confidence_key, sizeof(repo->items[index].confidence_key),
-             "%08.6f", repo->items[index].confidence);
+             "%08.6f_%05u", repo->items[index].confidence, index);
 
     repo->num_items++;
 
@@ -915,24 +922,7 @@ static void update_domain_stats(knowledge_system_t system, knowledge_domain_t do
 // Knowledge System Creation/Destruction
 //=============================================================================
 
-/**
- * @brief Initialize domain-specific brain
- *
- * Creates neural network for specific knowledge domain.
- *
- * @param domain_name Name of domain (must be non-NULL)
- * @return Brain instance or NULL on failure
- *
- * Why: Each domain may have different learning characteristics.
- * Separated for clarity and single responsibility.
- */
-static brain_t create_domain_brain(const char* domain_name)
-{
-    if (!domain_name)
-        return NULL;
-
-    return brain_create(domain_name, BRAIN_SIZE_SMALL, BRAIN_TASK_CLASSIFICATION, 20, 10);
-}
+// REMOVED: create_domain_brain() - Dead code, brains were never used
 
 /**
  * @brief Initialize domain statistics structure
@@ -1003,17 +993,25 @@ knowledge_system_t knowledge_system_create(const char* learner_name)
     system->reading_list = nimcp_calloc(100, sizeof(reading_progress_t));
     system->reading_capacity = 100;
 
-    const char* domain_names[] = {"language",  "literature", "art",         "ethics",
-                                  "history",   "science",    "mathematics", "social",
-                                  "technical", "philosophy", "general"};
-
+    // Initialize domain statistics (no brains needed - they were never used!)
     for (int i = 0; i < 11; i++) {
-        system->domain_brains[i] = create_domain_brain(domain_names[i]);
         initialize_domain_stats(&system->domain_stats[i], (knowledge_domain_t) i);
     }
 
-    system->curiosity = curiosity_engine_create(learner_name);
+    fprintf(stderr, "[DEBUG] knowledge_system_create: creating unified brain for knowledge system\n"); fflush(stderr);
 
+    // Create unified brain for knowledge system (provides curiosity module)
+    // Previously created curiosity independently - now follows "one brain, many modules" pattern
+    system->knowledge_brain = brain_create(learner_name, BRAIN_SIZE_SMALL,
+                                           BRAIN_TASK_CLASSIFICATION, 20, 10);
+    if (!system->knowledge_brain) {
+        fprintf(stderr, "[ERROR] knowledge_system_create: failed to create brain\n"); fflush(stderr);
+        knowledge_system_destroy(system);
+        return NULL;
+    }
+    fprintf(stderr, "[DEBUG] knowledge_system_create: unified brain created\n"); fflush(stderr);
+
+    fprintf(stderr, "[DEBUG] knowledge_system_create: DONE\n"); fflush(stderr);
     return system;
 }
 
@@ -1108,25 +1106,7 @@ static void free_history(historical_knowledge_t* history, uint32_t num_history)
     nimcp_free(history);
 }
 
-/**
- * @brief Free domain brains array
- *
- * @param brains Array of brains
- * @param count Number of brains
- *
- * Why: Single responsibility for freeing neural network resources.
- */
-static void free_domain_brains(brain_t* brains, int count)
-{
-    if (!brains)
-        return;
-
-    for (int i = 0; i < count; i++) {
-        if (brains[i]) {
-            brain_destroy(brains[i]);
-        }
-    }
-}
+// REMOVED: free_domain_brains() - Dead code, brains were never used
 
 /**
  * @brief Destroy knowledge system and free all resources
@@ -1140,21 +1120,33 @@ static void free_domain_brains(brain_t* brains, int count)
  */
 void knowledge_system_destroy(knowledge_system_t system)
 {
+    fprintf(stderr, "[DEBUG] knowledge_system_destroy: START\n"); fflush(stderr);
     if (!system)
         return;
 
+    fprintf(stderr, "[DEBUG] knowledge_system_destroy: destroying repository\n"); fflush(stderr);
     repository_destroy(system->repository);
+    fprintf(stderr, "[DEBUG] knowledge_system_destroy: freeing narratives\n"); fflush(stderr);
     free_narratives(system->narratives, system->num_narratives);
+    fprintf(stderr, "[DEBUG] knowledge_system_destroy: freeing artworks\n"); fflush(stderr);
     free_artworks(system->artworks, system->num_artworks);
+    fprintf(stderr, "[DEBUG] knowledge_system_destroy: freeing history\n"); fflush(stderr);
     free_history(system->history, system->num_history);
+    fprintf(stderr, "[DEBUG] knowledge_system_destroy: freeing reading_list\n"); fflush(stderr);
     nimcp_free(system->reading_list);
-    free_domain_brains(system->domain_brains, 11);
+    // REMOVED: free_domain_brains() call - brains were never used
 
-    if (system->curiosity) {
-        curiosity_engine_destroy(system->curiosity);
+    // Destroy unified brain (includes curiosity module cleanup)
+    // Previously destroyed curiosity independently - now brain owns it
+    if (system->knowledge_brain) {
+        fprintf(stderr, "[DEBUG] knowledge_system_destroy: destroying unified brain\n"); fflush(stderr);
+        brain_destroy(system->knowledge_brain);
+        fprintf(stderr, "[DEBUG] knowledge_system_destroy: unified brain destroyed\n"); fflush(stderr);
     }
 
+    fprintf(stderr, "[DEBUG] knowledge_system_destroy: freeing system\n"); fflush(stderr);
     nimcp_free(system);
+    fprintf(stderr, "[DEBUG] knowledge_system_destroy: DONE\n"); fflush(stderr);
 }
 
 //=============================================================================
@@ -1203,8 +1195,24 @@ static bool process_concept(knowledge_system_t system, const char* concept_str, 
     } else {
         knowledge_item_t* item = repository_get(system->repository, idx);
         if (item) {
+            // BUG FIX: Update B-tree when confidence changes
+            // Remove old entry with old key (old confidence + index)
+            if (system->repository->confidence_btree) {
+                btree_remove(system->repository->confidence_btree, item->confidence_key);
+            }
+
+            // Update confidence
             item->reinforcement_count++;
             item->confidence = fminf(item->confidence + CONFIDENCE_INCREMENT, CONFIDENCE_MAX);
+
+            // Update key with new confidence (index stays the same)
+            snprintf(item->confidence_key, sizeof(item->confidence_key),
+                     "%08.6f_%05u", item->confidence, (uint32_t)idx);
+
+            // Re-insert with new key
+            if (system->repository->confidence_btree) {
+                btree_insert(system->repository->confidence_btree, item);
+            }
         }
     }
 
@@ -1660,8 +1668,24 @@ bool knowledge_reinforce(knowledge_system_t system, const char* concept_str, con
     if (!item)
         return false;
 
+    // BUG FIX: Update B-tree when confidence changes
+    // Remove old entry with old key (old confidence + index)
+    if (system->repository->confidence_btree) {
+        btree_remove(system->repository->confidence_btree, item->confidence_key);
+    }
+
+    // Update confidence
     item->reinforcement_count++;
     item->confidence = fminf(item->confidence + 0.05f, CONFIDENCE_MAX);
+
+    // Update key with new confidence (index stays the same)
+    snprintf(item->confidence_key, sizeof(item->confidence_key),
+             "%08.6f_%05u", item->confidence, (uint32_t)idx);
+
+    // Re-insert with new key
+    if (system->repository->confidence_btree) {
+        btree_insert(system->repository->confidence_btree, item);
+    }
 
     if (new_example && item->num_examples < 10) {
         if (!item->examples) {
@@ -2046,10 +2070,10 @@ knowledge_system_t knowledge_load(const char* filepath)
     for (uint32_t i = 0; i < system->repository->num_items; i++) {
         fread(&system->repository->items[i], sizeof(knowledge_item_t), 1, file);
 
-        // Populate B-tree key field
+        // Populate B-tree key field with unique key: "confidence_index"
         snprintf(system->repository->items[i].confidence_key,
                  sizeof(system->repository->items[i].confidence_key),
-                 "%08.6f", system->repository->items[i].confidence);
+                 "%08.6f_%05u", system->repository->items[i].confidence, i);
 
         knowledge_hash_table_insert(system->repository->index, system->repository->items[i].concept_name, i);
 
@@ -2152,6 +2176,8 @@ uint32_t knowledge_get_by_confidence_range(knowledge_system_t system,
  * WHAT: Get all knowledge ordered by confidence using B-tree
  * WHY: Review knowledge progression from least to most understood
  * HOW: B-tree in-order traversal provides sorted output
+ *
+ * BUG FIX: Now uses unique keys (confidence_index) so B-tree stays accurate
  */
 uint32_t knowledge_get_all_ordered_by_confidence(knowledge_system_t system,
                                                    knowledge_item_t** results_out)
@@ -2173,7 +2199,7 @@ uint32_t knowledge_get_all_ordered_by_confidence(knowledge_system_t system,
         return 0;
     }
 
-    // Use B-tree for sorted output
+    // Use B-tree for sorted output (now maintains correct order with unique keys)
     if (repo->confidence_btree) {
         btree_iterator_t* iter = btree_iterator_create(repo->confidence_btree);
         if (iter) {
@@ -2190,7 +2216,7 @@ uint32_t knowledge_get_all_ordered_by_confidence(knowledge_system_t system,
         }
     }
 
-    // Fallback: copy in array order
+    // Fallback: copy in array order if B-tree unavailable
     for (uint32_t i = 0; i < repo->num_items; i++) {
         (*results_out)[i] = repo->items[i];
     }
@@ -2209,12 +2235,8 @@ bool knowledge_add_item(knowledge_system_t system, const knowledge_item_t* item)
         return false;
     }
 
-    // Create a copy with properly formatted confidence_key
-    knowledge_item_t item_copy = *item;
-    snprintf(item_copy.confidence_key, sizeof(item_copy.confidence_key),
-             "%08.6f", item_copy.confidence);
-
-    int32_t index = repository_add(system->repository, &item_copy);
+    // repository_add will set the confidence_key with the proper format (confidence_index)
+    int32_t index = repository_add(system->repository, item);
     return index >= 0;
 }
 

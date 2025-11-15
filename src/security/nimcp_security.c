@@ -1453,7 +1453,7 @@ nimcp_result_t nimcp_encryption_generate_key(uint8_t* key)
     srand(seed);
 
     for (int i = 0; i < NIMCP_SECURITY_KEY_SIZE; i++) {
-        key[i] = (uint8_t) ((rand() ^ (rand() << 8)) % 256);
+        key[i] = (uint8_t) ((rand() ^ ((unsigned int)rand() << 8)) % 256);
     }
 
     return NIMCP_SUCCESS;

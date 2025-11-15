@@ -17,6 +17,8 @@
 #include "utils/logging/nimcp_logging.h"
 #include "plasticity/neuromodulators/nimcp_neuromodulators.h"  // Neuromodulator integration
 #include "core/brain/nimcp_brain.h"  // Brain reference
+#include "core/neuralnet/nimcp_neuralnet.h"  // Neural network for internal V1 connections
+#include "core/topology/nimcp_fractal_topology.h"  // Scale-free topology generation
 #include <math.h>
 #include <stdlib.h>
 #include <string.h>
@@ -617,6 +619,10 @@ struct visual_cortex_struct {
     // Neuromodulation
     brain_t brain;  /**< Brain reference for ACh + NE modulation */
 
+    // NIMCP 2.7 Phase 8.5: Internal recurrent network with fractal topology
+    neural_network_t internal_network;  /**< Recurrent network for horizontal connections */
+    bool has_internal_network;          /**< Whether internal network was created */
+
     // Statistics
     uint32_t images_processed;
     double total_processing_time;
@@ -736,34 +742,62 @@ visual_cortex_t* visual_cortex_create(const visual_cortex_config_t* config)
     // BIOLOGICAL MOTIVATION:
     // While V1's feedforward structure (CNN) is innate, recurrent connections
     // within V1 (horizontal connections, feedback from V2/V4) are extensive and
-    // exhibit scale-free properties. This internal network would model:
+    // exhibit scale-free properties. This internal network models:
     // - Horizontal connections for contour integration
     // - Feedback modulation for attention and expectation
     // - Temporal integration for motion processing
     //
-    // IMPLEMENTATION PLAN:
-    // if (config->enable_fractal_topology && config->internal_neurons > 0) {
-    //     // Create internal recurrent network
-    //     cortex->internal_network = neural_network_create(config->internal_neurons);
-    //
-    //     // Generate scale-free topology
-    //     scale_free_config_t topo_config = {
-    //         .power_law_gamma = config->power_law_gamma,
-    //         .hub_ratio = config->hub_ratio,
-    //         .min_degree = 2,
-    //         .max_degree = config->internal_neurons / 10,
-    //         .spatial_constraint = 0.5f,  // V1 has spatial organization
-    //         .bidirectional = false
-    //     };
-    //     topology_stats_t stats;
-    //     topology_generate_scale_free(cortex->internal_network, &topo_config, &stats);
-    //
-    //     NIMCP_LOGGING_INFO("V1 internal network: %u neurons, %u synapses, %.2f avg degree",
-    //                        stats.num_neurons, stats.num_synapses, stats.avg_degree);
-    // }
-    //
-    // This enhancement deferred to Phase 8.7 (Specialized Neuron Types) to avoid
-    // scope creep. Configuration is in place and ready for future implementation.
+    cortex->internal_network = NULL;
+    cortex->has_internal_network = false;
+
+    if (config->enable_fractal_topology && config->internal_neurons > 0) {
+        // Create internal recurrent network
+        network_config_t net_config = {
+            .num_neurons = config->internal_neurons,
+            .ei_ratio = 0.8f,  // 80% excitatory (typical cortex)
+            .learning_rate = 0.001f,
+            .hebbian_rate = 0.01f,
+            .stdp_window = 20.0f,
+            .homeostatic_rate = 0.001f,
+            .target_activity = 0.1f,
+            .adaptation_rate = 0.01f,
+            .refractory_period = 2.0f,
+            .min_weight = 0.0f,
+            .max_weight = 1.0f,
+            .update_interval = 1,
+            .enable_stdp = true,
+            .enable_homeostasis = true,
+            .neuron_model = NEURON_MODEL_LIF,
+            .model_params = NULL,
+            .integration_method = ODE_EULER
+        };
+
+        cortex->internal_network = neural_network_create(&net_config);
+
+        if (cortex->internal_network) {
+            // Generate scale-free topology
+            scale_free_config_t topo_config = {
+                .power_law_gamma = config->power_law_gamma,
+                .hub_ratio = config->hub_ratio,
+                .min_degree = 2,
+                .max_degree = config->internal_neurons / 10,
+                .spatial_constraint = 0.5f,  // V1 has spatial organization
+                .bidirectional = false
+            };
+
+            topology_stats_t stats;
+            if (topology_generate_scale_free(cortex->internal_network, &topo_config, &stats)) {
+                cortex->has_internal_network = true;
+                NIMCP_LOGGING_INFO("V1 internal network: %u neurons, %u synapses, %.2f avg degree",
+                                   stats.num_neurons, stats.num_synapses, stats.avg_degree);
+            } else {
+                NIMCP_LOGGING_WARN("Failed to generate V1 topology, using network without topology");
+                cortex->has_internal_network = true;  // Network exists, just without topology
+            }
+        } else {
+            NIMCP_LOGGING_WARN("Failed to create V1 internal network");
+        }
+    }
 
     return cortex;
 }
@@ -797,6 +831,11 @@ void visual_cortex_destroy(visual_cortex_t* cortex)
             }
             nimcp_free(cortex->memories[i]);
         }
+    }
+
+    // NIMCP 2.7 Phase 8.5: Destroy internal recurrent network
+    if (cortex->internal_network) {
+        neural_network_destroy(cortex->internal_network);
     }
 
     nimcp_free(cortex);

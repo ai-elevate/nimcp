@@ -324,6 +324,10 @@ typedef struct {
 
     // Part A1.1: ODE Integration Method (RK4 Support)
     ode_integration_method_t integration_method;  /**< ODE integration algorithm (Euler, RK4) */
+
+    // Advanced Plasticity Controls (conditional allocation for scalability)
+    bool enable_bcm;                   /**< Enable BCM plasticity allocation */
+    bool enable_eligibility;           /**< Enable eligibility trace allocation */
 } network_config_t;
 
 /**
