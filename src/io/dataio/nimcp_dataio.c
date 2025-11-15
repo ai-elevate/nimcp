@@ -897,9 +897,10 @@ static void* consumer_thread_func(void* arg)
             }
 
             // Train brain on this sample
-            // TODO: Replace with actual brain_learn_example call when API available
-            // brain_learn_example(ctx->brain, batch->features[i],
-            //                    num_features, batch->labels[i], 1.0);
+            uint32_t num_features = brain_get_num_inputs(ctx->brain);
+            float loss = brain_learn_example(ctx->brain, batch->features[i],
+                                            num_features, batch->labels[i], 1.0f);
+            (void)loss;  // Loss tracked internally by brain
 
             nimcp_mutex_lock(&ctx->stats_lock);
             ctx->samples_trained++;
@@ -1109,6 +1110,9 @@ bool brain_export_predictions(brain_t brain, dataset_t input_dataset, const char
     // Write CSV header
     fprintf(out, "features,prediction,confidence\n");
 
+    // Get number of features from brain
+    uint32_t num_features = brain_get_num_inputs(brain);
+
     // Process dataset
     while (true) {
         data_batch_t batch;
@@ -1120,15 +1124,26 @@ bool brain_export_predictions(brain_t brain, dataset_t input_dataset, const char
 
         // Run brain on each sample
         for (uint32_t i = 0; i < batch.num_samples; i++) {
-            // TODO: Get brain decision
-            // decision_t decision = brain_decide(brain, batch.features[i], num_features);
+            // Get brain decision
+            brain_decision_t* decision = brain_decide(brain, batch.features[i], num_features);
+            if (!decision) {
+                continue;  // Skip on error
+            }
 
-            // Write to CSV
+            // Write to CSV: features, prediction, confidence
             fprintf(out, "\"[");
-            // TODO: Write features
+            for (uint32_t f = 0; f < num_features; f++) {
+                fprintf(out, "%.6f", batch.features[i][f]);
+                if (f < num_features - 1) {
+                    fprintf(out, ",");
+                }
+            }
             fprintf(out, "]\",");
-            // TODO: Write prediction and confidence
+            fprintf(out, "\"%s\",", decision->label);
+            fprintf(out, "%.6f", decision->confidence);
             fprintf(out, "\n");
+
+            brain_free_decision(decision);
         }
 
         dataset_free_batch(&batch);
