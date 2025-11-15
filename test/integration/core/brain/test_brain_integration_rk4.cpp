@@ -147,7 +147,7 @@ protected:
  */
 TEST_F(BrainIntegrationRK4Test, CreateBrainWithRK4_Success)
 {
-    brain_config_t config = {0};
+    brain_config_t config; memset(&config, 0, sizeof(config));
     config.size = BRAIN_SIZE_TINY;
     config.task = BRAIN_TASK_CLASSIFICATION;
     config.num_inputs = 10;
@@ -183,7 +183,7 @@ TEST_F(BrainIntegrationRK4Test, CreateBrainWithRK4_Success)
  */
 TEST_F(BrainIntegrationRK4Test, LearningWithRK4_Converges)
 {
-    brain_config_t config = {0};
+    brain_config_t config; memset(&config, 0, sizeof(config));
     config.size = BRAIN_SIZE_TINY;
     config.task = BRAIN_TASK_CLASSIFICATION;
     config.num_inputs = 10;
@@ -242,7 +242,7 @@ TEST_F(BrainIntegrationRK4Test, MultipleBrainSizes_RK4Works)
     const char* names[] = {"tiny_rk4", "small_rk4", "medium_rk4"};
 
     for (int i = 0; i < 3; i++) {
-        brain_config_t config = {0};
+        brain_config_t config; memset(&config, 0, sizeof(config));
         config.size = sizes[i];
         config.task = BRAIN_TASK_CLASSIFICATION;
         config.num_inputs = 8;
@@ -278,7 +278,7 @@ TEST_F(BrainIntegrationRK4Test, MultipleBrainSizes_RK4Works)
 TEST_F(BrainIntegrationRK4Test, AccuracyVsEuler_RK4HasLessDrift)
 {
     // Create two identical brains (both will use default Euler initially)
-    brain_config_t config_euler = {0};
+    brain_config_t config_euler; memset(&config_euler, 0, sizeof(config_euler));
     config_euler.size = BRAIN_SIZE_TINY;
     config_euler.task = BRAIN_TASK_REGRESSION;
     config_euler.num_inputs = 5;
@@ -358,7 +358,7 @@ TEST_F(BrainIntegrationRK4Test, AccuracyVsEuler_RK4HasLessDrift)
  */
 TEST_F(BrainIntegrationRK4Test, ConvergenceRate_Comparison)
 {
-    brain_config_t config = {0};
+    brain_config_t config; memset(&config, 0, sizeof(config));
     config.size = BRAIN_SIZE_TINY;
     config.task = BRAIN_TASK_CLASSIFICATION;
     config.num_inputs = 6;
@@ -418,7 +418,7 @@ TEST_F(BrainIntegrationRK4Test, ConvergenceRate_Comparison)
  */
 TEST_F(BrainIntegrationRK4Test, PerformanceOverhead_Within2_5x)
 {
-    brain_config_t config = {0};
+    brain_config_t config; memset(&config, 0, sizeof(config));
     config.size = BRAIN_SIZE_SMALL;
     config.task = BRAIN_TASK_CLASSIFICATION;
     config.num_inputs = 20;
@@ -475,7 +475,7 @@ TEST_F(BrainIntegrationRK4Test, PerformanceOverhead_Within2_5x)
  */
 TEST_F(BrainIntegrationRK4Test, MemoryUsage_Comparable)
 {
-    brain_config_t config = {0};
+    brain_config_t config; memset(&config, 0, sizeof(config));
     config.size = BRAIN_SIZE_SMALL;
     config.task = BRAIN_TASK_CLASSIFICATION;
     config.num_inputs = 15;
@@ -517,7 +517,7 @@ TEST_F(BrainIntegrationRK4Test, MemoryUsage_Comparable)
  */
 TEST_F(BrainIntegrationRK4Test, LongRunStability_NoNaN)
 {
-    brain_config_t config = {0};
+    brain_config_t config; memset(&config, 0, sizeof(config));
     config.size = BRAIN_SIZE_TINY;
     config.task = BRAIN_TASK_CLASSIFICATION;
     config.num_inputs = 8;
@@ -577,7 +577,7 @@ TEST_F(BrainIntegrationRK4Test, LongRunStability_NoNaN)
  */
 TEST_F(BrainIntegrationRK4Test, ExtremeInputs_RemainsStable)
 {
-    brain_config_t config = {0};
+    brain_config_t config; memset(&config, 0, sizeof(config));
     config.size = BRAIN_SIZE_TINY;
     config.task = BRAIN_TASK_REGRESSION;
     config.num_inputs = 5;
@@ -702,7 +702,7 @@ TEST_F(BrainIntegrationRK4Test, ExistingFunctionality_StillWorks)
  */
 TEST_F(BrainIntegrationRK4Test, RK4_DeterministicResults)
 {
-    brain_config_t config = {0};
+    brain_config_t config; memset(&config, 0, sizeof(config));
     config.size = BRAIN_SIZE_TINY;
     config.task = BRAIN_TASK_CLASSIFICATION;
     config.num_inputs = 6;
@@ -748,7 +748,7 @@ TEST_F(BrainIntegrationRK4Test, SaveLoad_PreservesRK4State)
     const char* filepath = "/tmp/brain_rk4_saveload_test.nimcp";
 
     // Create and train brain with RK4
-    brain_config_t config = {0};
+    brain_config_t config; memset(&config, 0, sizeof(config));
     config.size = BRAIN_SIZE_TINY;
     config.task = BRAIN_TASK_CLASSIFICATION;
     config.num_inputs = 7;
@@ -859,7 +859,7 @@ TEST_F(BrainIntegrationRK4Test, ComprehensiveRegression_AllPass)
  */
 TEST_F(BrainIntegrationRK4Test, StressTest_RapidCycles)
 {
-    brain_config_t config = {0};
+    brain_config_t config; memset(&config, 0, sizeof(config));
     config.size = BRAIN_SIZE_TINY;
     config.task = BRAIN_TASK_CLASSIFICATION;
     config.num_inputs = 6;
@@ -908,7 +908,7 @@ TEST_F(BrainIntegrationRK4Test, BasicConcurrency_MultipleIndependentBrains)
 
     // Create multiple independent brains
     for (int i = 0; i < num_brains; i++) {
-        brain_config_t config = {0};
+        brain_config_t config; memset(&config, 0, sizeof(config));
         config.size = BRAIN_SIZE_TINY;
         config.task = BRAIN_TASK_CLASSIFICATION;
         config.num_inputs = 4;

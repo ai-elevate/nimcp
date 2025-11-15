@@ -165,23 +165,23 @@ NIMCP_EXPORT neural_logic_network_t neural_logic_create(
     network->sum_eval_time_us = 0.0f;
     network->brain = NULL;  // Initialize neuromodulator brain reference
     
-    // Allocate host memory for neurons
-    network->neurons_host = nimcp_calloc(network->neurons_capacity, 
-                                         sizeof(logic_neuron_state_t));
+    // Allocate host memory for neurons (64-byte aligned for cache line optimization)
+    network->neurons_host = nimcp_aligned_alloc(64, network->neurons_capacity * sizeof(logic_neuron_state_t));
     if (!nimcp_validate_pointer(network->neurons_host, "neurons_host")) {
         nimcp_free(network);
         return NULL;
     }
-    
-    // Allocate host memory for variables
-    network->variables_host = nimcp_calloc(network->variables_capacity,
-                                           sizeof(variable_binding_state_t));
+    memset(network->neurons_host, 0, network->neurons_capacity * sizeof(logic_neuron_state_t));
+
+    // Allocate host memory for variables (64-byte aligned)
+    network->variables_host = nimcp_aligned_alloc(64, network->variables_capacity * sizeof(variable_binding_state_t));
     if (!nimcp_validate_pointer(network->variables_host, "variables_host")) {
         nimcp_free(network->neurons_host);
         nimcp_free(network);
         return NULL;
     }
-    
+    memset(network->variables_host, 0, network->variables_capacity * sizeof(variable_binding_state_t));
+
     // Try to allocate GPU memory if enabled
     network->using_gpu = false;
 #ifdef NIMCP_ENABLE_CUDA

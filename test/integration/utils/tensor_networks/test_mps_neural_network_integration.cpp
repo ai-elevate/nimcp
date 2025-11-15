@@ -37,7 +37,7 @@
 #include "utils/tensor_networks/nimcp_mps.h"
 #include "core/neuralnet/nimcp_neuralnet.h"
 #include "core/brain/nimcp_brain.h"
-#include "core/memory/nimcp_memory.h"
+#include "utils/memory/nimcp_memory.h"
 #include "plasticity/stdp/nimcp_stdp.h"
 #include "plasticity/bcm/nimcp_bcm.h"
 #include "plasticity/stp/nimcp_stp.h"
@@ -234,7 +234,7 @@ TEST_F(MPSIntegrationTest, MPSWithBrainCreate) {
 
     printf("\n=== MPS Brain Creation ===\n");
 
-    brain_config_t config = {0};
+    brain_config_t config; memset(&config, 0, sizeof(config));
     config.size = BRAIN_SIZE_SMALL;
     config.task = BRAIN_TASK_CLASSIFICATION;
     config.num_inputs = 10;
@@ -274,7 +274,7 @@ TEST_F(MPSIntegrationTest, MPSBrainLearningRegression) {
     float targets[4] = {0.0f, 1.0f, 1.0f, 0.0f};
 
     // Train baseline brain (no MPS)
-    brain_config_t config_baseline = {0};
+    brain_config_t config_baseline; memset(&config_baseline, 0, sizeof(config_baseline));
     config_baseline.size = BRAIN_SIZE_TINY;
     config_baseline.task = BRAIN_TASK_CLASSIFICATION;
     config_baseline.num_inputs = 2;
@@ -357,7 +357,7 @@ TEST_F(MPSIntegrationTest, MPSSnapshotLoadRegression) {
     printf("\n=== MPS Snapshot/Load Regression ===\n");
 
     // Create MPS brain
-    brain_config_t config = {0};
+    brain_config_t config; memset(&config, 0, sizeof(config));
     config.size = BRAIN_SIZE_TINY;
     config.task = BRAIN_TASK_PATTERN_MATCHING;
     config.num_inputs = 10;
@@ -437,7 +437,7 @@ TEST_F(MPSIntegrationTest, MPSDisableBackwardCompatibility) {
 
     printf("\n=== MPS Backward Compatibility Test ===\n");
 
-    brain_config_t config = {0};
+    brain_config_t config; memset(&config, 0, sizeof(config));
     config.size = BRAIN_SIZE_TINY;
     config.task = BRAIN_TASK_CLASSIFICATION;
     config.num_inputs = 5;
@@ -474,7 +474,7 @@ TEST_F(MPSIntegrationTest, MPSDefaultConfigBackwardCompatibility) {
 
     printf("\n=== MPS Default Config Test ===\n");
 
-    brain_config_t config = {0};
+    brain_config_t config; memset(&config, 0, sizeof(config));
     config.size = BRAIN_SIZE_SMALL;
     config.task = BRAIN_TASK_REGRESSION;
 
@@ -499,7 +499,7 @@ TEST_F(MPSIntegrationTest, MPSPerformanceRegression) {
     const uint32_t num_iterations = 1000;
     const float max_slowdown = 5.0f; // 5x slower acceptable for 10-100x memory savings
 
-    brain_config_t config = {0};
+    brain_config_t config; memset(&config, 0, sizeof(config));
     config.size = BRAIN_SIZE_SMALL;
     config.task = BRAIN_TASK_CLASSIFICATION;
     config.num_inputs = 20;
