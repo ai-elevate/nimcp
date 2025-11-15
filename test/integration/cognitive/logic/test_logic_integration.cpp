@@ -29,7 +29,8 @@ protected:
 
     void SetUp() override {
         // Create brain with multimodal processing enabled
-        brain_config_t config = {0};
+        brain_config_t config;
+        memset(&config, 0, sizeof(config));
         strncpy(config.task_name, "logic_integration_test", sizeof(config.task_name) - 1);
         config.size = BRAIN_SIZE_SMALL;
         config.task = BRAIN_TASK_CLASSIFICATION;
@@ -82,8 +83,10 @@ TEST_F(LogicIntegrationTest, NeuralLogicExecutesInProcessingPipeline) {
     // HOW:  Process multiple inputs and verify logic gates are evaluated
 
     // Create multimodal input
-    brain_multimodal_input_t input = {0};
-    brain_multimodal_output_t output = {0};
+    brain_multimodal_input_t input;
+    brain_multimodal_output_t output;
+    memset(&input, 0, sizeof(input));
+    memset(&output, 0, sizeof(output));
 
     // Direct input (no visual/audio for this test)
     float direct_data[64];
@@ -113,8 +116,10 @@ TEST_F(LogicIntegrationTest, NeuralLogicHandlesMultipleProcessingCycles) {
     // WHY:  Logic gates should maintain consistent behavior over time
     // HOW:  Process 10 inputs and check outputs remain valid
 
-    brain_multimodal_input_t input = {0};
-    brain_multimodal_output_t output = {0};
+    brain_multimodal_input_t input;
+    brain_multimodal_output_t output;
+    memset(&input, 0, sizeof(input));
+    memset(&output, 0, sizeof(output));
 
     float direct_data[64];
 
@@ -150,7 +155,8 @@ TEST_F(LogicIntegrationTest, KnowledgeIntegratesWithSymbolicLogic) {
     ASSERT_NE(logic, nullptr);
 
     // Create a simple knowledge item
-    knowledge_item_t item = {0};
+    knowledge_item_t item;
+    memset(&item, 0, sizeof(item));
     strncpy(item.concept_name, "cat", sizeof(item.concept_name) - 1);
     item.domain = KNOWLEDGE_DOMAIN_GENERAL;
     strncpy(item.definition, "A small carnivorous mammal", sizeof(item.definition) - 1);
@@ -179,7 +185,8 @@ TEST_F(LogicIntegrationTest, SymbolicLogicStoresMultipleKnowledgeFacts) {
     ASSERT_NE(logic, nullptr);
 
     // Item 1: cat → animal
-    knowledge_item_t item1 = {0};
+    knowledge_item_t item1;
+    memset(&item1, 0, sizeof(item1));
     strncpy(item1.concept_name, "cat", sizeof(item1.concept_name) - 1);
     item1.confidence = 0.9f;
     item1.num_related = 1;
@@ -189,7 +196,8 @@ TEST_F(LogicIntegrationTest, SymbolicLogicStoresMultipleKnowledgeFacts) {
     item1.related_concepts = related1;
 
     // Item 2: dog → animal
-    knowledge_item_t item2 = {0};
+    knowledge_item_t item2;
+    memset(&item2, 0, sizeof(item2));
     strncpy(item2.concept_name, "dog", sizeof(item2.concept_name) - 1);
     item2.confidence = 0.85f;
     item2.num_related = 1;
@@ -198,7 +206,8 @@ TEST_F(LogicIntegrationTest, SymbolicLogicStoresMultipleKnowledgeFacts) {
     item2.related_concepts = related2;
 
     // Item 3: animal (root concept)
-    knowledge_item_t item3 = {0};
+    knowledge_item_t item3;
+    memset(&item3, 0, sizeof(item3));
     strncpy(item3.concept_name, "animal", sizeof(item3.concept_name) - 1);
     item3.confidence = 1.0f;
     item3.num_related = 0;
@@ -227,13 +236,15 @@ TEST_F(LogicIntegrationTest, KnowledgeLogicIntegrationWithComplexHierarchy) {
     ASSERT_NE(logic, nullptr);
 
     // Level 1: animal (root)
-    knowledge_item_t animal = {0};
+    knowledge_item_t animal;
+    memset(&animal, 0, sizeof(animal));
     strncpy(animal.concept_name, "animal", sizeof(animal.concept_name) - 1);
     animal.confidence = 1.0f;
     animal.num_related = 0;
 
     // Level 2: mammal → animal
-    knowledge_item_t mammal = {0};
+    knowledge_item_t mammal;
+    memset(&mammal, 0, sizeof(mammal));
     strncpy(mammal.concept_name, "mammal", sizeof(mammal.concept_name) - 1);
     mammal.confidence = 0.95f;
     mammal.num_related = 1;
@@ -243,7 +254,8 @@ TEST_F(LogicIntegrationTest, KnowledgeLogicIntegrationWithComplexHierarchy) {
     mammal.related_concepts = mammal_related;
 
     // Level 3: cat → mammal
-    knowledge_item_t cat = {0};
+    knowledge_item_t cat;
+    memset(&cat, 0, sizeof(cat));
     strncpy(cat.concept_name, "cat", sizeof(cat.concept_name) - 1);
     cat.confidence = 0.9f;
     cat.num_related = 1;
@@ -331,7 +343,8 @@ TEST_F(LogicIntegrationTest, LogicDoesNotCauseMemoryLeaks) {
     // HOW:  Create/destroy multiple brains with logic enabled
 
     for (int iter = 0; iter < 10; iter++) {
-        brain_config_t config = {0};
+        brain_config_t config;
+        memset(&config, 0, sizeof(config));
         strncpy(config.task_name, "leak_test", sizeof(config.task_name) - 1);
         config.size = BRAIN_SIZE_TINY;
         config.task = BRAIN_TASK_CLASSIFICATION;
@@ -366,7 +379,8 @@ TEST_F(LogicIntegrationTest, KnowledgeLogicIntegrationHandlesNullInputs) {
     symbolic_logic_t* logic = brain_get_symbolic_logic(brain);
 
     // NULL logic pointer
-    knowledge_item_t item = {0};
+    knowledge_item_t item;
+    memset(&item, 0, sizeof(item));
     strncpy(item.concept_name, "test", sizeof(item.concept_name) - 1);
     item.confidence = 0.9f;
     item.num_related = 0;
@@ -392,7 +406,8 @@ TEST_F(LogicIntegrationTest, LogicIntegrationWithEmptyKnowledgeItem) {
     ASSERT_NE(logic, nullptr);
 
     // Empty knowledge item (only concept name)
-    knowledge_item_t item = {0};
+    knowledge_item_t item;
+    memset(&item, 0, sizeof(item));
     strncpy(item.concept_name, "isolated_concept", sizeof(item.concept_name) - 1);
     item.confidence = 0.5f;
     item.num_related = 0;
