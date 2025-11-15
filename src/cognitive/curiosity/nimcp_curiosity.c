@@ -713,7 +713,8 @@ static void free_hash_table(curiosity_engine_t engine)
  */
 curiosity_engine_t curiosity_engine_create(brain_t parent_brain, const char* learner_name)
 {
-    if (!parent_brain || !learner_name) {
+    // Allow NULL parent_brain for standalone testing
+    if (!learner_name) {
         return NULL;
     }
 

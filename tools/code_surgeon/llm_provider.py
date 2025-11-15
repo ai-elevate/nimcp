@@ -216,27 +216,79 @@ class MockLLMProvider(LLMProvider):
 
 class OpenAIProvider(LLMProvider):
     """
-    OpenAI GPT provider (stub for future implementation)
+    OpenAI GPT provider
 
-    WHAT: GPT API implementation
-    WHY:  Alternative to Claude
+    WHAT: GPT-5 API implementation
+    WHY:  Use OpenAI's latest model for Code Surgeon
     HOW:  Wraps OpenAI SDK
-
-    NOTE: Not yet implemented - placeholder for extensibility
     """
 
-    def __init__(self, api_key: Optional[str] = None, model: str = "gpt-4"):
+    def __init__(self, api_key: Optional[str] = None, model: str = "gpt-5"):
+        """
+        Initialize OpenAI provider
+
+        WHAT: Setup OpenAI client
+        WHY:  Connect to OpenAI API
+        HOW:  Use api_key or OPENAI_API_KEY env var
+
+        PARAMETERS:
+            api_key: Optional API key (defaults to env var)
+            model: Model name (default: gpt-5)
+        """
         self.api_key = api_key or os.environ.get("OPENAI_API_KEY")
         self.model = model
 
+        if not self.api_key:
+            raise ValueError("OpenAI API key required (set OPENAI_API_KEY environment variable)")
+
     def generate(self, messages: List[LLMMessage], max_tokens: int = 4096) -> Optional[LLMResponse]:
-        raise NotImplementedError("OpenAI provider not yet implemented")
+        """
+        Generate response from GPT-5
+
+        WHAT: Call OpenAI API
+        WHY:  Get LLM completion
+        HOW:  Use openai.chat.completions.create
+
+        PARAMETERS:
+            messages: Conversation history
+            max_tokens: Max response tokens
+
+        RETURNS: LLMResponse or None on error
+        """
+        try:
+            import openai
+            client = openai.OpenAI(api_key=self.api_key)
+
+            # Convert to OpenAI format
+            openai_messages = [
+                {"role": msg.role, "content": msg.content}
+                for msg in messages
+            ]
+
+            response = client.chat.completions.create(
+                model=self.model,
+                messages=openai_messages,
+                max_tokens=max_tokens
+            )
+
+            return LLMResponse(
+                text=response.choices[0].message.content,
+                model=self.model,
+                tokens_used=response.usage.total_tokens if hasattr(response, 'usage') else None,
+                finish_reason=response.choices[0].finish_reason if response.choices else None,
+                raw_response={"id": response.id} if hasattr(response, 'id') else None
+            )
+
+        except Exception as e:
+            print(f"❌ OpenAI API error: {e}")
+            return None
 
     def get_model_name(self) -> str:
+        """Return GPT model name"""
         return self.model
 
 
-def create_llm_provider(provider_type: str = "anthropic", **kwargs) -> LLMProvider:
+def create_llm_provider(provider_type: str = "openai", **kwargs) -> LLMProvider:
     """
     Factory function for LLM providers
 
