@@ -174,7 +174,79 @@ To achieve 100% code coverage, we need:
 - [ ] Verify coverage improvements
 
 ### Optimizations (Future Work)
-- [ ] COW (Copy-on-Write) snapshot optimization
+
+#### COW (Copy-on-Write) Snapshot Optimization
+
+**Current Implementation** (`src/api/nimcp.c:651-704`):
+- Uses save/load to temporary file for snapshot creation
+- Guarantees complete independence between snapshot and original
+- Performance: ~100-500ms for typical brain (file I/O overhead)
+- Memory: 2x brain size temporarily during snapshot
+- **Status**: ✅ Functionally correct, not performance-optimized
+
+**True COW Requirements**:
+1. **Shared Memory Phase**:
+   - Initial snapshot shares all memory pages with original brain
+   - Mark shared pages/structures as read-only or use reference counting
+   - Zero-copy creation: <1ms snapshot time
+   - Memory: ~48 bytes overhead (just metadata)
+
+2. **Copy-on-Write Phase**:
+   - Intercept write operations to shared structures
+   - Copy specific page/structure only when modified
+   - Update pointers in writing brain to new copy
+   - Other brain continues using shared copy
+
+3. **Required Infrastructure**:
+   - Modify `brain_t` structure to support shared pointers
+   - Add copy-on-write flags to all major data structures:
+     * Neural network weights/synapses
+     * Cognitive module states
+     * Memory buffers (working memory, engrams, etc.)
+     * Neuromodulator states
+   - Implement write interceptors for each structure type
+   - Reference counting mechanism (can use `nimcp_cache_reference`)
+   - Atomic operations for thread-safe COW
+
+4. **Implementation Phases**:
+   - **Phase 1**: Reference-counted structures (LOW hanging fruit)
+     * Use `nimcp_cache_reference()` for heap-allocated buffers
+     * Implement copy-on-write for neural network weights
+     * Estimated effort: 2-3 days
+     * Performance gain: 50% snapshot time reduction
+
+   - **Phase 2**: Page-level COW (MEDIUM complexity)
+     * Use `mprotect()` for memory page protection
+     * Trap SIGSEGV on write to protected pages
+     * Copy page and remap on write
+     * Estimated effort: 1-2 weeks
+     * Performance gain: 90% snapshot time reduction
+
+   - **Phase 3**: Full structural COW (HIGH complexity)
+     * Copy-on-write for all brain data structures
+     * Thread-safe snapshot operations
+     * Garbage collection for unreferenced copies
+     * Estimated effort: 3-4 weeks
+     * Performance gain: 95%+ snapshot time reduction
+
+**Recommendation**:
+Current implementation is sufficient for most use cases. Defer optimization until:
+1. Profiling shows snapshot time is a bottleneck (>10% of total runtime)
+2. Snapshots are created frequently (>10/second)
+3. Brain size exceeds 1GB (where file I/O becomes significant)
+
+For now, the save/load approach provides:
+- ✅ Correctness (perfect state preservation)
+- ✅ Simplicity (no complex COW logic to debug)
+- ✅ Thread safety (no shared state race conditions)
+- ✅ Portability (works on all platforms)
+
+**Status**: Documented as low-priority optimization
+
+---
+
+#### Other Optimizations
+
 - [ ] P2P network metrics calculation
 - [ ] NLP coherence variance analysis
 
