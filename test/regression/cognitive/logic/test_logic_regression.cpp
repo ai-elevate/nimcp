@@ -28,8 +28,9 @@ protected:
     brain_t brain = nullptr;
 
     void SetUp() override {
-        brain_config_t config = brain_config_default();
-        config.task_name = "logic_regression_test";
+        brain_config_t config;
+        memset(&config, 0, sizeof(config));
+        strncpy(config.task_name, "logic_regression_test", sizeof(config.task_name) - 1);
         config.size = BRAIN_SIZE_SMALL;
         config.task = BRAIN_TASK_CLASSIFICATION;
         config.num_inputs = 64;
@@ -282,8 +283,9 @@ TEST_F(LogicRegressionTest, InvalidDimensionsHandledGracefully) {
 TEST_F(LogicRegressionTest, MultipleCreationDestructionCycles) {
     // REGRESSION: Creating and destroying brains repeatedly should work
     for (int i = 0; i < 10; i++) {
-        brain_config_t config = brain_config_default();
-        config.task_name = "cycle_test";
+        brain_config_t config;
+        memset(&config, 0, sizeof(config));
+        strncpy(config.task_name, "cycle_test", sizeof(config.task_name) - 1);
         config.size = BRAIN_SIZE_TINY;
         config.task = BRAIN_TASK_CLASSIFICATION;
         config.num_inputs = 32;
@@ -368,8 +370,9 @@ TEST_F(LogicRegressionTest, OldCodeStillCompiles) {
     // (This test compiling is the test itself)
 
     // Old-style brain creation
-    brain_config_t config = brain_config_default();
-    config.task_name = "old_style";
+    brain_config_t config;
+    memset(&config, 0, sizeof(config));
+    strncpy(config.task_name, "old_style", sizeof(config.task_name) - 1);
     config.size = BRAIN_SIZE_SMALL;
     config.task = BRAIN_TASK_CLASSIFICATION;
     config.num_inputs = 64;
