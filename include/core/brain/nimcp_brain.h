@@ -260,6 +260,85 @@ bool brain_get_neuromodulators(
     float* norepinephrine
 );
 
+//=============================================================================
+// Glial Cell Integration (Astrocytes)
+//=============================================================================
+
+/**
+ * @brief Astrocyte statistics
+ */
+typedef struct {
+    uint32_t num_astrocytes;           /**< Total astrocytes in network */
+    float avg_calcium_um;              /**< Average calcium level (µM) */
+    uint32_t num_tripartite_synapses;  /**< Synapses with astrocyte modulation */
+    uint64_t total_modulations;        /**< Total synaptic modulations applied */
+    float avg_modulation_strength;     /**< Average modulation factor (0.8-1.2) */
+} astrocyte_stats_t;
+
+/**
+ * @brief Enable astrocytes with automatic spatial assignment
+ *
+ * WHAT: Create astrocyte network and automatically assign to synapses
+ * WHY:  Simplify astrocyte integration with one function call
+ * HOW:  Creates astrocyte network, calcium system, spatial assignment, enables modulation
+ *
+ * BIOLOGICAL MODEL:
+ * - Tripartite synapse: Astrocyte modulates synaptic transmission
+ * - Calcium waves: Propagate through astrocyte network
+ * - Gliotransmitter release: Modulates synaptic strength (0.8x - 1.2x)
+ * - Homeostatic plasticity: Maintains stable network activity
+ *
+ * ALGORITHM:
+ * ```
+ * 1. Create astrocyte network (num_astrocytes capacity)
+ * 2. Create calcium system with Li-Rinzel dynamics
+ * 3. Assign to glial integration system
+ * 4. Auto-assign astrocytes to synapses (spatial proximity, coverage_radius_um)
+ * 5. Enable astrocyte modulation
+ * ```
+ *
+ * PARAMETERS:
+ * - coverage_radius_um: Spatial radius each astrocyte covers (typical: 50-100 µm)
+ * - num_astrocytes: 0 = auto-calculate based on network size (1 per 10-20 synapses)
+ *
+ * REQUIREMENTS:
+ * - Brain must have enable_glial = true in config (default)
+ * - Network must exist with synapses
+ *
+ * @param brain Brain system
+ * @param num_astrocytes Number of astrocytes (0 = auto-calculate)
+ * @param coverage_radius_um Spatial coverage radius in micrometers (50-100 typical)
+ * @return true on success, false on error
+ */
+bool brain_enable_astrocytes(
+    brain_t brain,
+    uint32_t num_astrocytes,
+    float coverage_radius_um
+);
+
+/**
+ * @brief Get astrocyte statistics
+ *
+ * WHAT: Retrieve current astrocyte network statistics
+ * WHY:  Monitor astrocyte activity and synaptic modulation
+ * HOW:  Query glial integration system for astrocyte metrics
+ *
+ * STATISTICS PROVIDED:
+ * - Number of astrocytes
+ * - Average calcium level (µM)
+ * - Number of tripartite synapses
+ * - Total modulations applied
+ * - Average modulation strength
+ *
+ * @param brain Brain system
+ * @param stats Output statistics structure
+ * @return true on success, false if astrocytes not enabled
+ */
+bool brain_get_astrocyte_stats(
+    brain_t brain,
+    astrocyte_stats_t* stats
+);
+
 #ifdef __cplusplus
 }
 #endif

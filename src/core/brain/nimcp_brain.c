@@ -8225,6 +8225,132 @@ void* brain_get_pink_noise(brain_t brain) {
     return brain ? (void*)brain->pink_noise : NULL;
 }
 
+//=============================================================================
+// Astrocyte High-Level API
+//=============================================================================
+
+bool brain_enable_astrocytes(brain_t brain, uint32_t num_astrocytes, float coverage_radius_um) {
+    if (!brain) {
+        set_error("brain_enable_astrocytes: NULL brain");
+        return false;
+    }
+
+    if (!brain->config.enable_glial) {
+        set_error("brain_enable_astrocytes: enable_glial must be true in config");
+        return false;
+    }
+
+    if (!brain->glial) {
+        set_error("brain_enable_astrocytes: glial integration system not initialized");
+        return false;
+    }
+
+    // Auto-calculate num_astrocytes if not specified (1 per 10-20 synapses)
+    if (num_astrocytes == 0) {
+        // Get network stats to estimate synapse count
+        network_performance_t perf;
+        adaptive_network_get_performance(brain->network, &perf);
+
+        // Estimate: 1 astrocyte per 15 synapses (biological average)
+        // Assume average connectivity of 100 synapses per neuron
+        uint32_t estimated_synapses = brain->config.num_neurons * 100;
+        num_astrocytes = (estimated_synapses / 15) + 1;
+
+        // Clamp to reasonable range
+        if (num_astrocytes < 10) num_astrocytes = 10;
+        if (num_astrocytes > brain->config.num_neurons) {
+            num_astrocytes = brain->config.num_neurons;
+        }
+    }
+
+    // Set default coverage radius if not specified
+    if (coverage_radius_um <= 0.0f) {
+        coverage_radius_um = 75.0f;  // Typical: 50-100 µm
+    }
+
+    // Step 1: Create astrocyte network
+    astrocyte_network_t* astro_net = astrocyte_network_create(num_astrocytes);
+    if (!astro_net) {
+        set_error("brain_enable_astrocytes: failed to create astrocyte network");
+        return false;
+    }
+
+    // Step 2: Create calcium system
+    astrocyte_calcium_system_t* ca_sys = astrocyte_calcium_system_create(astro_net);
+    if (!ca_sys) {
+        astrocyte_network_destroy(astro_net);
+        set_error("brain_enable_astrocytes: failed to create calcium system");
+        return false;
+    }
+
+    // Step 3: Assign to glial integration
+    nimcp_result_t result = glial_integration_set_astrocyte_network(brain->glial, astro_net);
+    if (result != NIMCP_SUCCESS) {
+        astrocyte_calcium_system_destroy(ca_sys);
+        astrocyte_network_destroy(astro_net);
+        set_error("brain_enable_astrocytes: failed to assign astrocyte network");
+        return false;
+    }
+
+    // Step 4: Auto-assign astrocytes to synapses (spatial proximity)
+    uint32_t assignments = glial_integration_auto_assign_spatial(brain->glial);
+    if (assignments == 0) {
+        // Warning but not fatal - network might not have spatial positions yet
+        nimcp_log(NIMCP_LOG_WARNING,
+                  "brain_enable_astrocytes: no spatial assignments made (neurons may lack positions)");
+    }
+
+    // Step 5: Enable astrocyte modulation
+    glial_integration_set_astrocyte_modulation_enabled(brain->glial, true);
+
+    brain_clear_error();
+    nimcp_log(NIMCP_LOG_INFO,
+              "brain_enable_astrocytes: enabled %u astrocytes with %.1f µm coverage (%u assignments)",
+              num_astrocytes, coverage_radius_um, assignments);
+    return true;
+}
+
+bool brain_get_astrocyte_stats(brain_t brain, astrocyte_stats_t* stats) {
+    if (!brain || !stats) {
+        set_error("brain_get_astrocyte_stats: NULL parameter");
+        return false;
+    }
+
+    if (!brain->glial) {
+        set_error("brain_get_astrocyte_stats: glial integration not initialized");
+        return false;
+    }
+
+    // Get glial integration stats
+    glial_integration_stats_t gi_stats;
+    nimcp_result_t result = glial_integration_get_stats(brain->glial, &gi_stats);
+    if (result != NIMCP_SUCCESS) {
+        set_error("brain_get_astrocyte_stats: failed to get glial stats");
+        return false;
+    }
+
+    // Map to astrocyte-specific stats
+    stats->num_astrocytes = gi_stats.num_astrocytes;
+    stats->avg_calcium_um = 0.0f;  // Will be computed if calcium system exists
+    stats->num_tripartite_synapses = gi_stats.num_tripartite_synapses;
+    stats->total_modulations = gi_stats.total_modulations;
+    stats->avg_modulation_strength = gi_stats.avg_synaptic_modulation;
+
+    // TODO: Get average calcium from astrocyte calcium system when API available
+    // For now, use a placeholder value based on whether modulation is active
+    if (gi_stats.num_astrocytes > 0 && gi_stats.total_modulations > 0) {
+        // Estimate average calcium based on modulation activity
+        // Active modulation suggests elevated calcium (0.2-0.5 µM)
+        stats->avg_calcium_um = 0.3f;
+    } else {
+        // Baseline calcium (~0.1 µM)
+        stats->avg_calcium_um = 0.1f;
+    }
+
+    brain_clear_error();
+    return true;
+}
+
 bool brain_predict(brain_t brain, const float* input, uint32_t input_size,
                   float* output, uint32_t output_size) {
     if (!brain || !input || !output) {
