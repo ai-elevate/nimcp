@@ -449,7 +449,7 @@ static PyObject* Brain_resize(BrainObject* self, PyObject* args) {
     // CRITICAL FIX: Pass internal brain, not handle wrapper
     // self->brain is nimcp_brain_t (struct nimcp_brain_handle*)
     // brain_resize needs brain_t (self->brain->internal_brain)
-    bool success = brain_resize(self->brain->internal_brain, new_neuron_count);
+    bool success = nimcp_brain_resize(self->brain, new_neuron_count);
 
     if (!success) {
         PyErr_SetString(PyExc_RuntimeError, "Failed to resize brain. Check that new size > current size and sufficient memory available.");
@@ -474,7 +474,7 @@ static PyObject* Brain_auto_resize(BrainObject* self, PyObject* args) {
     // CRITICAL FIX: Pass internal brain, not handle wrapper
     // self->brain is nimcp_brain_t (struct nimcp_brain_handle*)
     // brain_auto_resize needs brain_t (self->brain->internal_brain)
-    bool resized = brain_auto_resize(self->brain->internal_brain);
+    bool resized = nimcp_brain_auto_resize(self->brain);
 
     if (resized) {
         Py_RETURN_TRUE;
@@ -494,7 +494,7 @@ static PyObject* Brain_auto_resize(BrainObject* self, PyObject* args) {
  */
 static PyObject* Brain_get_neuron_count(BrainObject* self, PyObject* args) {
     // CRITICAL FIX: Pass internal brain, not handle wrapper
-    uint32_t count = brain_get_neuron_count(self->brain->internal_brain);
+    uint32_t count = nimcp_brain_get_neuron_count(self->brain);
     return PyLong_FromUnsignedLong(count);
 }
 
@@ -512,7 +512,7 @@ static PyObject* Brain_get_utilization_metrics(BrainObject* self, PyObject* args
     float saturation = 0.0f;
 
     // CRITICAL FIX: Pass internal brain, not handle wrapper
-    bool success = brain_get_utilization_metrics(self->brain->internal_brain, &utilization, &saturation);
+    bool success = nimcp_brain_get_utilization_metrics(self->brain, &utilization, &saturation);
 
     if (!success) {
         PyErr_SetString(PyExc_RuntimeError, "Failed to get utilization metrics");

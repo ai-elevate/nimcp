@@ -228,6 +228,45 @@ nimcp_status_t nimcp_brain_save(nimcp_brain_t brain, const char* filepath);
 nimcp_brain_t nimcp_brain_load(const char* filepath);
 
 //=============================================================================
+// Phase 2.8: Dynamic Brain Resizing
+//=============================================================================
+
+/**
+ * @brief Manually resize brain to a specific neuron count
+ *
+ * @param brain Brain handle
+ * @param new_neuron_count Target number of neurons
+ * @return true on success, false on failure
+ */
+bool nimcp_brain_resize(nimcp_brain_t brain, uint32_t new_neuron_count);
+
+/**
+ * @brief Automatically resize brain based on hardware capabilities and utilization
+ *
+ * @param brain Brain handle
+ * @return true if resized, false if no resize needed or on error
+ */
+bool nimcp_brain_auto_resize(nimcp_brain_t brain);
+
+/**
+ * @brief Get current neuron count
+ *
+ * @param brain Brain handle
+ * @return Current number of neurons, or 0 on error
+ */
+uint32_t nimcp_brain_get_neuron_count(nimcp_brain_t brain);
+
+/**
+ * @brief Get brain utilization metrics
+ *
+ * @param brain Brain handle
+ * @param utilization Output: percentage of neurons being utilized (0.0-1.0)
+ * @param saturation Output: percentage of neurons at capacity (0.0-1.0)
+ * @return true on success, false on error
+ */
+bool nimcp_brain_get_utilization_metrics(nimcp_brain_t brain, float* utilization, float* saturation);
+
+//=============================================================================
 // Brain Snapshots - Named, timestamped backups for versioning & A/B testing
 //=============================================================================
 

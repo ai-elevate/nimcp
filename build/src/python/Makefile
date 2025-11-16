@@ -185,29 +185,29 @@ nimcp_python/fast:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/python/CMakeFiles/nimcp_python.dir/build.make src/python/CMakeFiles/nimcp_python.dir/build
 .PHONY : nimcp_python/fast
 
-nimcp_module.o: nimcp_module.c.o
-.PHONY : nimcp_module.o
+__/bindings/python/nimcp_python.o: __/bindings/python/nimcp_python.c.o
+.PHONY : __/bindings/python/nimcp_python.o
 
 # target to build an object file
-nimcp_module.c.o:
-	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/python/CMakeFiles/nimcp_python.dir/build.make src/python/CMakeFiles/nimcp_python.dir/nimcp_module.c.o
-.PHONY : nimcp_module.c.o
+__/bindings/python/nimcp_python.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/python/CMakeFiles/nimcp_python.dir/build.make src/python/CMakeFiles/nimcp_python.dir/__/bindings/python/nimcp_python.c.o
+.PHONY : __/bindings/python/nimcp_python.c.o
 
-nimcp_module.i: nimcp_module.c.i
-.PHONY : nimcp_module.i
+__/bindings/python/nimcp_python.i: __/bindings/python/nimcp_python.c.i
+.PHONY : __/bindings/python/nimcp_python.i
 
 # target to preprocess a source file
-nimcp_module.c.i:
-	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/python/CMakeFiles/nimcp_python.dir/build.make src/python/CMakeFiles/nimcp_python.dir/nimcp_module.c.i
-.PHONY : nimcp_module.c.i
+__/bindings/python/nimcp_python.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/python/CMakeFiles/nimcp_python.dir/build.make src/python/CMakeFiles/nimcp_python.dir/__/bindings/python/nimcp_python.c.i
+.PHONY : __/bindings/python/nimcp_python.c.i
 
-nimcp_module.s: nimcp_module.c.s
-.PHONY : nimcp_module.s
+__/bindings/python/nimcp_python.s: __/bindings/python/nimcp_python.c.s
+.PHONY : __/bindings/python/nimcp_python.s
 
 # target to generate assembly for a file
-nimcp_module.c.s:
-	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/python/CMakeFiles/nimcp_python.dir/build.make src/python/CMakeFiles/nimcp_python.dir/nimcp_module.c.s
-.PHONY : nimcp_module.c.s
+__/bindings/python/nimcp_python.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/python/CMakeFiles/nimcp_python.dir/build.make src/python/CMakeFiles/nimcp_python.dir/__/bindings/python/nimcp_python.c.s
+.PHONY : __/bindings/python/nimcp_python.c.s
 
 # Help Target
 help:
@@ -223,9 +223,9 @@ help:
 	@echo "... rebuild_cache"
 	@echo "... test"
 	@echo "... nimcp_python"
-	@echo "... nimcp_module.o"
-	@echo "... nimcp_module.i"
-	@echo "... nimcp_module.s"
+	@echo "... __/bindings/python/nimcp_python.o"
+	@echo "... __/bindings/python/nimcp_python.i"
+	@echo "... __/bindings/python/nimcp_python.s"
 .PHONY : help
 
 

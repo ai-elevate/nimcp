@@ -146,6 +146,7 @@ struct brain_struct {
     float* last_input;                  // Cached input vector
     brain_decision_t* cached_decision;  // Cached decision
     uint32_t input_size;                // For cache validation
+    nimcp_platform_mutex_t cache_mutex; // Thread-safe cache access
 
     // Phase 11: Adaptive Learning Rate (Simple Online Meta-Learning)
     float loss_history[10];             // Rolling window of last 10 losses
@@ -974,6 +975,9 @@ static void init_brain_stats(brain_stats_t* stats, const char* task_name, brain_
 // Decision Caching
 //=============================================================================
 
+// Forward declaration
+static brain_decision_t* copy_decision(const brain_decision_t* source);
+
 /**
  * @brief Check if input matches cached input
  *
@@ -1024,7 +1028,8 @@ static void cache_decision(brain_t brain, const float* features, uint32_t num_fe
     if (brain->cached_decision) {
         brain_free_decision(brain->cached_decision);
     }
-    brain->cached_decision = decision;
+    // Store a deep copy so caller can safely free the original
+    brain->cached_decision = copy_decision(decision);
 }
 
 /**
@@ -1112,6 +1117,14 @@ static brain_t allocate_brain(void)
     brain->last_input = NULL;
     brain->cached_decision = NULL;
     brain->input_size = 0;
+
+    // Initialize cache mutex for thread-safe access
+    if (nimcp_platform_mutex_init(&brain->cache_mutex, false) != 0) {
+        set_error("Failed to initialize cache mutex");
+        nimcp_free(brain);
+        return NULL;
+    }
+
     brain->distributed = NULL;  // Initialize as standalone brain
 
     // Phase 11: Initialize long-term memory consolidation buffer
@@ -3685,6 +3698,10 @@ void brain_destroy(brain_t brain)
     }
 
     clear_cache(brain);
+
+    // Destroy cache mutex
+    nimcp_platform_mutex_destroy(&brain->cache_mutex);
+
     nimcp_free(brain);
 }
 
@@ -5156,9 +5173,23 @@ brain_decision_t* brain_decide(brain_t brain, const float* features, uint32_t nu
         return NULL;
     }
 
-    // Suppress unused function warnings for caching functions (currently disabled)
-    (void)is_cached_input;
-    (void)cache_decision;
+    // ========================================================================
+    // CACHE CHECK: Thread-safe decision caching with mutex protection
+    // ========================================================================
+    // Lock cache mutex and check for cached decision
+    nimcp_platform_mutex_lock(&brain->cache_mutex);
+    if (is_cached_input(brain, features, num_features)) {
+        brain_decision_t* cached_copy = copy_decision(brain->cached_decision);
+        nimcp_platform_mutex_unlock(&brain->cache_mutex);
+
+        if (cached_copy) {
+            brain->stats.total_inferences++;
+            return cached_copy;
+        }
+        // Fall through if copy failed
+    } else {
+        nimcp_platform_mutex_unlock(&brain->cache_mutex);
+    }
 
     // ========================================================================
     // STAGE 0: Pre-Processing - Wellbeing Monitoring (Phase 9.3)
@@ -6180,20 +6211,11 @@ brain_decision_t* brain_decide(brain_t brain, const float* features, uint32_t nu
     // Update statistics
     update_inference_stats(brain, decision);
 
-    /**
-     * WHAT: Return the decision directly without caching
-     * WHY: Caching creates race conditions in multi-threaded scenarios
-     * HOW: Simply return the decision and let caller own it
-     *
-     * BUG FIX: Removed caching to prevent heap-use-after-free in concurrent scenarios.
-     * The cache_decision mechanism is not thread-safe:
-     *   Thread A: cache_decision(decision_A) -> stores decision_A, frees old cached
-     *   Thread B: copy_decision(brain->cached_decision) -> tries to copy freed memory
-     * Solution: Disable caching for now. Caller owns and must free the returned decision.
-     *
-     * TODO: Add proper mutex protection around caching mechanism to enable thread-safe caching.
-     */
-    // Note: Decision is returned directly; caller must free it with brain_free_decision()
+    // Cache decision for future reuse (thread-safe with mutex protection)
+    nimcp_platform_mutex_lock(&brain->cache_mutex);
+    cache_decision(brain, features, num_features, decision);
+    nimcp_platform_mutex_unlock(&brain->cache_mutex);
+
     return decision;
 
     // ========================================================================

@@ -1,6 +1,6 @@
 # Python module
 Python3_add_library(nimcp_python MODULE
-    nimcp_module.c
+    ../bindings/python/nimcp_python.c
 )
 
 set_target_properties(nimcp_python 

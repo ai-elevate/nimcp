@@ -1536,3 +1536,48 @@ nimcp_status_t nimcp_knowledge_query(
     set_error("No error");
     return NIMCP_OK;
 }
+
+//=============================================================================
+// Phase 2.8: Dynamic Brain Resizing API
+//=============================================================================
+
+bool nimcp_brain_resize(nimcp_brain_t brain, uint32_t new_neuron_count) {
+    if (!brain) {
+        set_error("Brain handle is NULL");
+        return false;
+    }
+    
+    return brain_resize(brain->internal_brain, new_neuron_count);
+}
+
+bool nimcp_brain_auto_resize(nimcp_brain_t brain) {
+    if (!brain) {
+        set_error("Brain handle is NULL");
+        return false;
+    }
+    
+    return brain_auto_resize(brain->internal_brain);
+}
+
+uint32_t nimcp_brain_get_neuron_count(nimcp_brain_t brain) {
+    if (!brain) {
+        set_error("Brain handle is NULL");
+        return 0;
+    }
+    
+    return brain_get_neuron_count(brain->internal_brain);
+}
+
+bool nimcp_brain_get_utilization_metrics(nimcp_brain_t brain, float* utilization, float* saturation) {
+    if (!brain) {
+        set_error("Brain handle is NULL");
+        return false;
+    }
+    
+    if (!utilization || !saturation) {
+        set_error("Output parameters are NULL");
+        return false;
+    }
+    
+    return brain_get_utilization_metrics(brain->internal_brain, utilization, saturation);
+}
