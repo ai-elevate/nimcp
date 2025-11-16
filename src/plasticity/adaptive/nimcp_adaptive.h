@@ -165,6 +165,18 @@ float adaptive_network_get_sparsity(adaptive_network_t network);
  */
 uint32_t adaptive_network_prune(adaptive_network_t network, float threshold);
 
+/**
+ * @brief Get network configuration
+ *
+ * Phase 2.8: Brain resizing support
+ * WHY: Enable reading current config for resize operations
+ * HOW: Return pointer to internal config (read-only)
+ *
+ * @param network Adaptive network
+ * @return Pointer to network configuration (read-only), or NULL on error
+ */
+const adaptive_network_config_t* adaptive_network_get_config(adaptive_network_t network);
+
 //=============================================================================
 // Adaptive Threshold Spiking Functions
 //=============================================================================

@@ -670,6 +670,68 @@ brain_t brain_create_custom(const brain_config_t* config);
  */
 void brain_destroy(brain_t brain);
 
+//=============================================================================
+// Phase 2.8: Dynamic Brain Resizing
+//=============================================================================
+
+/**
+ * @brief Resize brain to new neuron count
+ *
+ * WHAT: Expand brain capacity while preserving all learned knowledge
+ * WHY:  Enable continuous learning without hitting capacity limits
+ * HOW:  Create new network, transfer neurons/weights, swap atomically
+ *
+ * GUARANTEES:
+ * - Zero knowledge loss: All weights, biases, states preserved exactly
+ * - Atomic operation: Network swap is instantaneous
+ * - Memory safe: Old network destroyed only after successful transfer
+ *
+ * @param brain Brain to resize
+ * @param new_neuron_count New total neuron count (must be > current)
+ * @return true on success, false on error (brain unchanged)
+ */
+bool brain_resize(brain_t brain, uint32_t new_neuron_count);
+
+/**
+ * @brief Auto-resize brain based on utilization metrics
+ *
+ * WHAT: Automatically grow brain when capacity is saturated
+ * WHY:  Enable continuous learning without manual intervention
+ * HOW:  Evaluate metrics, decide if growth needed, resize if so
+ *
+ * GROWTH TRIGGERS:
+ * - High utilization: >90% neurons active for >1000 steps
+ * - Weight saturation: >80% weights near ±1.0
+ *
+ * @param brain Brain to potentially resize
+ * @return true if resize occurred, false if no resize needed
+ */
+bool brain_auto_resize(brain_t brain);
+
+/**
+ * @brief Get brain current neuron count
+ *
+ * WHAT: Return current brain capacity in neurons
+ * WHY:  Allow monitoring of brain size for metrics/logging
+ *
+ * @param brain Brain to query
+ * @return Neuron count, or 0 on error
+ */
+uint32_t brain_get_neuron_count(brain_t brain);
+
+/**
+ * @brief Get brain utilization metrics
+ *
+ * WHAT: Return current capacity utilization statistics
+ * WHY:  Enable monitoring and debugging of auto-resize logic
+ *
+ * @param brain Brain to analyze
+ * @param utilization Output: neuron utilization ratio [0.0, 1.0]
+ * @param saturation Output: weight saturation ratio [0.0, 1.0]
+ * @return true on success, false on error
+ */
+bool brain_get_utilization_metrics(brain_t brain, float* utilization, float* saturation);
+
 /**
  * @brief Get working memory from brain (Phase 10.2 accessor)
  *

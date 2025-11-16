@@ -5,6 +5,7 @@ set(NIMCP_CORE_SOURCES
 
     # Core brain components
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/nimcp_brain.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/nimcp_brain_resize.c  # Phase 2.8: Dynamic Brain Resizing
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/nimcp_distributed_cow.c
     # ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/nimcp_pretrained.c  # TODO: Needs libcjson-dev
 
@@ -139,6 +140,7 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../utils/platform/nimcp_platform_rwlock.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../utils/platform/nimcp_platform_once.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../utils/platform/nimcp_platform_time.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../utils/platform/nimcp_system_resources.c  # Phase 2.8: Hardware resource detection
 
     # Utils - Logging
     ${CMAKE_CURRENT_SOURCE_DIR}/../utils/logging/nimcp_logging.c
