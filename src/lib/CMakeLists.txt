@@ -149,6 +149,9 @@ set(NIMCP_CORE_SOURCES
     # Utils - Error Codes (Structured Error System)
     ${CMAKE_CURRENT_SOURCE_DIR}/../utils/error/nimcp_error_codes.c
 
+    # Utils - Spatial Indexing (KD-Tree)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../utils/spatial/nimcp_kdtree.c
+
     # Utils - Dynamic Configuration (Runtime Safety)
     ${CMAKE_CURRENT_SOURCE_DIR}/../utils/config/nimcp_dynamic_config.c
 

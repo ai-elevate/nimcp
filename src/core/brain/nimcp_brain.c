@@ -8245,22 +8245,21 @@ bool brain_enable_astrocytes(brain_t brain, uint32_t num_astrocytes, float cover
         return false;
     }
 
-    // Auto-calculate num_astrocytes if not specified (1 per 10-20 synapses)
+    // Auto-calculate num_astrocytes if not specified (biological ratio: 1 per 10-20 synapses)
     if (num_astrocytes == 0) {
-        // Get network stats to estimate synapse count
-        network_performance_t perf;
-        adaptive_network_get_performance(brain->network, &perf);
-
-        // Estimate: 1 astrocyte per 15 synapses (biological average)
-        // Assume average connectivity of 100 synapses per neuron
-        uint32_t estimated_synapses = brain->config.num_neurons * 100;
-        num_astrocytes = (estimated_synapses / 15) + 1;
+        // Use network regions configuration or default heuristic
+        if (brain->config.enable_brain_regions && brain->config.num_brain_regions > 0) {
+            // Estimate based on regions: 1 astrocyte per ~15 neurons
+            uint32_t total_neurons = brain->config.num_brain_regions * brain->config.neurons_per_region;
+            num_astrocytes = (total_neurons / 15) + 1;
+        } else {
+            // Default heuristic for non-region based brains
+            num_astrocytes = 100;  // Conservative default
+        }
 
         // Clamp to reasonable range
         if (num_astrocytes < 10) num_astrocytes = 10;
-        if (num_astrocytes > brain->config.num_neurons) {
-            num_astrocytes = brain->config.num_neurons;
-        }
+        if (num_astrocytes > 10000) num_astrocytes = 10000;
     }
 
     // Set default coverage radius if not specified
@@ -8294,19 +8293,13 @@ bool brain_enable_astrocytes(brain_t brain, uint32_t num_astrocytes, float cover
 
     // Step 4: Auto-assign astrocytes to synapses (spatial proximity)
     uint32_t assignments = glial_integration_auto_assign_spatial(brain->glial);
-    if (assignments == 0) {
-        // Warning but not fatal - network might not have spatial positions yet
-        nimcp_log(NIMCP_LOG_WARNING,
-                  "brain_enable_astrocytes: no spatial assignments made (neurons may lack positions)");
-    }
+    // Note: assignments may be 0 if network doesn't have spatial positions yet
+    (void)assignments; // Suppress unused variable warning
 
     // Step 5: Enable astrocyte modulation
     glial_integration_set_astrocyte_modulation_enabled(brain->glial, true);
 
     brain_clear_error();
-    nimcp_log(NIMCP_LOG_INFO,
-              "brain_enable_astrocytes: enabled %u astrocytes with %.1f µm coverage (%u assignments)",
-              num_astrocytes, coverage_radius_um, assignments);
     return true;
 }
 

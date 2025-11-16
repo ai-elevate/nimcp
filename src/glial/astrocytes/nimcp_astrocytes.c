@@ -643,7 +643,7 @@ nimcp_result_t astrocyte_network_build_spatial_index(astrocyte_network_t* networ
     // Create KD-tree
     kdtree_t* kdtree = kdtree_create();
     if (!kdtree) {
-        return NIMCP_ERROR_OUT_OF_MEMORY;
+        return NIMCP_ERROR_MEMORY;
     }
 
     // Prepare point and user data arrays
@@ -656,7 +656,7 @@ nimcp_result_t astrocyte_network_build_spatial_index(astrocyte_network_t* networ
         nimcp_free(points);
         nimcp_free(user_data);
         kdtree_destroy(kdtree);
-        return NIMCP_ERROR_OUT_OF_MEMORY;
+        return NIMCP_ERROR_MEMORY;
     }
 
     // Copy astrocyte positions and pointers
@@ -673,7 +673,7 @@ nimcp_result_t astrocyte_network_build_spatial_index(astrocyte_network_t* networ
 
     if (!success) {
         kdtree_destroy(kdtree);
-        return NIMCP_ERROR_UNKNOWN;
+        return NIMCP_ERROR_INVALID_PARAM;
     }
 
     network->spatial_index = kdtree;

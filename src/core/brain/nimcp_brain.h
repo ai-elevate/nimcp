@@ -142,6 +142,17 @@ typedef enum {
 typedef struct brain_struct* brain_t;
 
 /**
+ * @brief Astrocyte network statistics
+ */
+typedef struct {
+    uint32_t num_astrocytes;           /**< Total astrocytes in network */
+    float avg_calcium_um;              /**< Average calcium level (µM) */
+    uint32_t num_tripartite_synapses;  /**< Synapses with astrocyte modulation */
+    uint64_t total_modulations;        /**< Total synaptic modulations applied */
+    float avg_modulation_strength;     /**< Average modulation factor (0.8-1.2) */
+} astrocyte_stats_t;
+
+/**
  * @brief Comprehensive brain configuration
  *
  * WHAT: Extended configuration for all advanced subsystems
