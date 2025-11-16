@@ -21,6 +21,14 @@ from pathlib import Path
 from typing import List, Dict, Iterator
 import numpy as np
 
+# Set LD_PRELOAD for AddressSanitizer before importing NIMCP C extension
+if 'LD_PRELOAD' not in os.environ:
+    asan_lib = '/usr/lib/gcc/x86_64-linux-gnu/13/libasan.so'
+    if os.path.exists(asan_lib):
+        os.environ['LD_PRELOAD'] = asan_lib
+        # Re-exec with LD_PRELOAD set
+        os.execv(sys.executable, [sys.executable] + sys.argv)
+
 # Force unbuffered output
 sys.stdout.reconfigure(line_buffering=True)
 sys.stderr.reconfigure(line_buffering=True)

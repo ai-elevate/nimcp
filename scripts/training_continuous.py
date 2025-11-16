@@ -10,6 +10,11 @@ import time
 import subprocess
 from pathlib import Path
 
+# Set LD_PRELOAD for AddressSanitizer before running any subprocesses
+asan_lib = '/usr/lib/gcc/x86_64-linux-gnu/13/libasan.so'
+if os.path.exists(asan_lib) and 'LD_PRELOAD' not in os.environ:
+    os.environ['LD_PRELOAD'] = asan_lib
+
 # Change to nimcp root directory (parent of scripts)
 os.chdir(Path(__file__).parent.parent)
 

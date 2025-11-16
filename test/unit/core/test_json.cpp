@@ -490,7 +490,9 @@ TEST_F(JsonErrorTest, NullParameterHandling)
     EXPECT_EQ(nimcp_json_set_null_value(nullptr, "key"), JSON_ERROR_INVALID_PARAM);
 
     EXPECT_EQ(nimcp_json_get_value(nullptr, "key", &json_val), JSON_ERROR_INVALID_PARAM);
-    EXPECT_EQ(nimcp_json_set_value(nullptr, "key", json_object()), JSON_ERROR_INVALID_PARAM);
+    json_t* temp_obj = json_object();
+    EXPECT_EQ(nimcp_json_set_value(nullptr, "key", temp_obj), JSON_ERROR_INVALID_PARAM);
+    json_decref(temp_obj);  // Free the object to prevent memory leak
 }
 
 //=============================================================================

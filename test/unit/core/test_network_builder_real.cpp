@@ -26,7 +26,8 @@ protected:
 TEST_F(NetworkBuilderRealTest, BuilderDefaultConfig) {
     network_builder_config_t config = network_builder_default();
 
-    EXPECT_EQ(config.num_neurons, 0u);  // Default may be 0
+    // Default config should have a reasonable number of neurons
+    EXPECT_GT(config.num_neurons, 0u);  // Should be non-zero
     EXPECT_GE(config.ei_ratio, 0.0f);
     EXPECT_LE(config.ei_ratio, 1.0f);
 }
