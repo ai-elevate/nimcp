@@ -448,12 +448,15 @@ TEST_F(PredictiveTest, GetLayerPrediction_ValidLayer) {
         float input[] = {0.5f, 0.5f, 0.5f, 0.5f, 0.5f};
         predictive_forward(net, input, 10);
 
-        float prediction[5];  // Match layer 0 size
+        // Query actual layer size to allocate correct buffer
+        uint32_t layer_size = predictive_get_layer_size(net, 0);
+        float* prediction = new float[layer_size];
         bool success = predictive_get_layer_prediction(net, 0, prediction);
 
         // May succeed or fail depending on implementation
         EXPECT_TRUE(success || !success);
 
+        delete[] prediction;
         predictive_destroy(net);
     } else {
         SUCCEED();
@@ -469,11 +472,14 @@ TEST_F(PredictiveTest, GetLayerError_ValidLayer) {
         float input[] = {0.5f, 0.5f, 0.5f, 0.5f, 0.5f};
         predictive_forward(net, input, 10);
 
-        float error[5];  // Match layer 0 size
+        // Query actual layer size to allocate correct buffer
+        uint32_t layer_size = predictive_get_layer_size(net, 0);
+        float* error = new float[layer_size];
         bool success = predictive_get_layer_error(net, 0, error);
 
         EXPECT_TRUE(success || !success);
 
+        delete[] error;
         predictive_destroy(net);
     } else {
         SUCCEED();
