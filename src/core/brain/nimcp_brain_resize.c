@@ -405,21 +405,127 @@ bool brain_resize(brain_t brain, uint32_t new_neuron_count)
                    ((float)(new_neuron_count - current_neuron_count) / current_neuron_count) * 100);
 
     // Step 1: Create new larger network configuration
+    const adaptive_network_config_t* old_config = adaptive_network_get_config(old_network);
+    if (!old_config) {
+        NIMCP_LOG_ERROR("brain_resize: Cannot access old network config");
+        return false;
+    }
+
+    // DEBUG: Log old config spike params
+    NIMCP_LOG_INFO("brain_resize: old_config k_factor=%f, min_threshold=%f, max_threshold=%f",
+                   old_config->spike_params.k_factor,
+                   old_config->spike_params.min_threshold,
+                   old_config->spike_params.max_threshold);
+
+    // Shallow copy first
     adaptive_network_config_t new_config = {0};
-    memcpy(&new_config, adaptive_network_get_config(old_network), sizeof(adaptive_network_config_t));
+    memcpy(&new_config, old_config, sizeof(adaptive_network_config_t));
+
+    // DEBUG: Log new config spike params after memcpy
+    NIMCP_LOG_INFO("brain_resize: new_config k_factor=%f, min_threshold=%f, max_threshold=%f",
+                   new_config.spike_params.k_factor,
+                   new_config.spike_params.min_threshold,
+                   new_config.spike_params.max_threshold);
+
+    // CRITICAL FIX: Handle corrupted layer config (num_layers=0, layer_sizes=NULL)
+    // WHY: Old configs from certain brain creation paths may not properly initialize layers
+    // WHAT: Rebuild layer config using brain's input/output sizes
+    uint32_t* new_layer_sizes = NULL;
+
+    if (old_config->base_config.num_layers == 0 || !old_config->base_config.layer_sizes) {
+        NIMCP_LOG_WARN("brain_resize: Corrupted layer config (num_layers=%u, layer_sizes=%p), rebuilding",
+                       old_config->base_config.num_layers,
+                       (void*)old_config->base_config.layer_sizes);
+
+        // Rebuild layer config: [input, hidden, output]
+        new_config.base_config.num_layers = 3;
+        new_layer_sizes = nimcp_calloc(3, sizeof(uint32_t));
+        if (!new_layer_sizes) {
+            NIMCP_LOG_ERROR("brain_resize: Failed to allocate layer_sizes");
+            return false;
+        }
+
+        // Get input/output sizes from old config (safer than brain->config)
+        // If old config also has corrupted input/output, use base network sizes
+        uint32_t input_size = old_config->base_config.input_size;
+        uint32_t output_size = old_config->base_config.output_size;
+
+        if (input_size == 0 || output_size == 0) {
+            NIMCP_LOG_WARN("brain_resize: Old config has invalid sizes (input=%u, output=%u), using defaults",
+                           input_size, output_size);
+            input_size = 10;  // Default fallback
+            output_size = 5;
+        }
+
+        new_layer_sizes[0] = input_size;
+        new_layer_sizes[1] = current_neuron_count;  // Will be updated later
+        new_layer_sizes[2] = output_size;
+        new_config.base_config.layer_sizes = new_layer_sizes;
+        new_config.base_config.input_size = input_size;
+        new_config.base_config.output_size = output_size;
+    }
+    else {
+        // Deep copy existing valid layer_sizes (avoid use-after-free)
+        // WHY: Shallow copy copies the pointer, which points to old network's memory
+        new_layer_sizes = nimcp_calloc(old_config->base_config.num_layers, sizeof(uint32_t));
+        if (!new_layer_sizes) {
+            NIMCP_LOG_ERROR("brain_resize: Failed to allocate layer_sizes");
+            return false;
+        }
+        memcpy(new_layer_sizes, old_config->base_config.layer_sizes,
+               old_config->base_config.num_layers * sizeof(uint32_t));
+        new_config.base_config.layer_sizes = new_layer_sizes;
+    }
+
+    // CRITICAL FIX: If spike_params are corrupted (k_factor==0), reinitialize with sane defaults
+    // WHY: Loaded checkpoints or corrupted configs can have invalid spike params
+    // WHAT: Reset to known-good defaults that match build_spike_params
+    if (new_config.spike_params.k_factor <= 0.0f) {
+        NIMCP_LOG_WARN("brain_resize: Corrupted spike_params detected (k_factor=%f), resetting to defaults",
+                       new_config.spike_params.k_factor);
+        new_config.spike_params.k_factor = 0.5f;
+        new_config.spike_params.min_threshold = 0.0001f;
+        new_config.spike_params.max_threshold = 10.0f;
+        new_config.spike_params.sparsity_target = 0.7f;
+        new_config.spike_params.encoding = SPIKE_ENCODING_INTEGER;
+        new_config.spike_params.enable_soft_reset = true;
+        new_config.spike_params.enable_adaptation = true;
+        new_config.spike_params.adaptation_window = 100;
+    }
 
     // Update neuron count in config
     new_config.base_config.num_neurons = new_neuron_count;
 
     // Update layer sizes (input, hidden, output)
-    if (new_config.base_config.layer_sizes && new_config.base_config.num_layers >= 2) {
-        // Grow the hidden layer(s)
-        new_config.base_config.layer_sizes[1] = new_neuron_count;
+    // For 3-layer networks: [input, hidden, output]
+    // Hidden layer (index 1) should grow to new_neuron_count
+    if (new_layer_sizes && new_config.base_config.num_layers >= 2) {
+        new_layer_sizes[1] = new_neuron_count;
+        NIMCP_LOG_INFO("brain_resize: Updated layer_sizes [%u, %u, %u]",
+                       new_layer_sizes[0], new_layer_sizes[1],
+                       new_config.base_config.num_layers >= 3 ? new_layer_sizes[2] : 0);
     }
 
     // Step 2: Create new larger network
     NIMCP_LOG_INFO("brain_resize: Creating new network with %u neurons", new_neuron_count);
+
+    // DEBUG: Log final config values before network creation
+    NIMCP_LOG_INFO("brain_resize: FINAL config - k_factor=%f, min_threshold=%f, max_threshold=%f, sparsity=%f",
+                   new_config.spike_params.k_factor,
+                   new_config.spike_params.min_threshold,
+                   new_config.spike_params.max_threshold,
+                   new_config.spike_params.sparsity_target);
+    NIMCP_LOG_INFO("brain_resize: FINAL config - num_layers=%u, num_neurons=%u, layer_sizes=%p",
+                   new_config.base_config.num_layers,
+                   new_config.base_config.num_neurons,
+                   (void*)new_config.base_config.layer_sizes);
+
     adaptive_network_t new_network = adaptive_network_create(&new_config);
+
+    // Free our temporary layer_sizes copy (adaptive_network_create makes its own deep copy)
+    if (new_layer_sizes) {
+        nimcp_free(new_layer_sizes);
+    }
 
     if (!new_network) {
         NIMCP_LOG_ERROR("brain_resize: Failed to create new network");
@@ -531,14 +637,22 @@ bool brain_auto_resize(brain_t brain)
         return false;
     }
 
-    // FIXME: Metrics computation has memory access issues with Python brains
-    // The network structure from Python has corrupted pointers (freed memory)
-    // Skip metrics entirely and use simple size-based growth for now
-    // TODO: Fix the underlying memory corruption in Python brain lifecycle
-
-    // Simple growth policy: always try to grow on first call, then every Nth call
-    // This ensures testing can proceed while we debug the memory issue
+    // Verify network structure integrity
+    // Use API function to get neuron count (safer than direct access)
     uint32_t current_size = neural_network_get_num_neurons(base_network);
+
+    // Verify num_neurons is reasonable (sanity check for corrupted structure)
+    if (current_size == 0 || current_size > 100000000) {
+        NIMCP_LOG_WARN("brain_auto_resize: Suspicious neuron count %u, skipping resize", current_size);
+        return false;
+    }
+
+    // Verify we can access at least the first neuron (structure validity check)
+    neuron_t* first_neuron = neural_network_get_neuron(base_network, 0);
+    if (!first_neuron) {
+        NIMCP_LOG_WARN("brain_auto_resize: Cannot access neurons, network may be corrupt");
+        return false;
+    }
 
     // Don't grow beyond reasonable limits
     if (current_size >= 100000) {

@@ -777,6 +777,11 @@ TEST_F(CuriosityComprehensiveTest, SeekKnowledge_WithSource) {
 
     uint32_t count = curiosity_seek_knowledge(engine, &gap, results, 10);
     EXPECT_EQ(count, 2u);  // Mock returns 2 results
+
+    // Free the returned strings to prevent memory leaks
+    for (uint32_t i = 0; i < count; i++) {
+        nimcp_free(results[i]);
+    }
 }
 
 TEST_F(CuriosityComprehensiveTest, SeekKnowledge_NoSources) {
@@ -1300,6 +1305,11 @@ TEST_F(CuriosityComprehensiveTest, Integration_CompleteWorkflow) {
     char* results[10];
     uint32_t result_count = curiosity_seek_knowledge(engine, &gap, results, 10);
     EXPECT_GT(result_count, 0u);
+
+    // Free the returned strings to prevent memory leaks
+    for (uint32_t i = 0; i < result_count; i++) {
+        nimcp_free(results[i]);
+    }
 
     // Check progress
     learning_progress_t progress;

@@ -1391,6 +1391,14 @@ static uint32_t query_knowledge_source(const knowledge_source_t* source, const c
         copied++;
     }
 
+    // Free any strings that weren't copied (if result limit was reached)
+    for (uint32_t i = copied; i < num_found; i++) {
+        nimcp_free(source_results[i]);
+    }
+
+    // Free the source_results array itself
+    nimcp_free(source_results);
+
     return copied;
 }
 

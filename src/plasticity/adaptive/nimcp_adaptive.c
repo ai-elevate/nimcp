@@ -704,23 +704,37 @@ float adaptive_decode_spikes(const uint8_t* spike_train, uint32_t length, spike_
 static bool validate_network_config(const adaptive_network_config_t* config)
 {
     // Guard clause: Check config pointer
-    if (!config)
+    if (!config) {
+        fprintf(stderr, "[ERROR] validate_network_config: NULL config\n");
         return false;
+    }
 
     // Guard clause: Validate base config layer_sizes
     // WHY: NULL layer_sizes will cause crash during memcpy or neural_network_create
-    if (config->base_config.num_layers > 0 && !config->base_config.layer_sizes)
+    if (config->base_config.num_layers > 0 && !config->base_config.layer_sizes) {
+        fprintf(stderr, "[ERROR] validate_network_config: num_layers=%u but layer_sizes is NULL\n",
+                config->base_config.num_layers);
         return false;
+    }
 
     // Guard clause: Validate spike parameters
-    if (config->spike_params.k_factor <= 0.0f)
+    if (config->spike_params.k_factor <= 0.0f) {
+        fprintf(stderr, "[ERROR] validate_network_config: invalid k_factor=%f\n", config->spike_params.k_factor);
         return false;
-    if (config->spike_params.min_threshold <= 0.0f)
+    }
+    if (config->spike_params.min_threshold <= 0.0f) {
+        fprintf(stderr, "[ERROR] validate_network_config: invalid min_threshold=%f\n", config->spike_params.min_threshold);
         return false;
-    if (config->spike_params.max_threshold <= config->spike_params.min_threshold)
+    }
+    if (config->spike_params.max_threshold <= config->spike_params.min_threshold) {
+        fprintf(stderr, "[ERROR] validate_network_config: max_threshold=%f <= min_threshold=%f\n",
+                config->spike_params.max_threshold, config->spike_params.min_threshold);
         return false;
-    if (config->spike_params.sparsity_target < 0.0f || config->spike_params.sparsity_target > 1.0f)
+    }
+    if (config->spike_params.sparsity_target < 0.0f || config->spike_params.sparsity_target > 1.0f) {
+        fprintf(stderr, "[ERROR] validate_network_config: invalid sparsity_target=%f\n", config->spike_params.sparsity_target);
         return false;
+    }
 
     return true;
 }
@@ -2203,6 +2217,12 @@ const adaptive_network_config_t* adaptive_network_get_config(adaptive_network_t 
     if (!network) {
         return NULL;
     }
+
+    /* DEBUG: Log config state before returning */
+    fprintf(stderr, "[DEBUG] adaptive_network_get_config: num_layers=%u, layer_sizes=%p, k_factor=%f\n",
+            network->config.base_config.num_layers,
+            (void*)network->config.base_config.layer_sizes,
+            network->config.spike_params.k_factor);
 
     /* WHAT: Return pointer to internal config */
     /* NOTE: Returned as const to prevent modification */
