@@ -7162,9 +7162,16 @@ brain_t brain_load(const char* filepath)
         brain->config.sparsity_target = 0.8f;
         brain->config.enable_explanations = true;
         snprintf(brain->config.task_name, sizeof(brain->config.task_name), "loaded_brain");
+    }
 
-        // Set placeholder dimensions (actual dimensions are in the network)
-        // TODO: Add adaptive_network getter functions to retrieve actual values
+    // CRITICAL: Restore actual dimensions from saved network config
+    // This is essential for resize+persistence compatibility
+    const adaptive_network_config_t* net_config = adaptive_network_get_config(network);
+    if (net_config) {
+        brain->config.num_inputs = net_config->base_config.input_size;
+        brain->config.num_outputs = net_config->base_config.output_size;
+    } else {
+        // Fallback if config not available
         brain->config.num_inputs = 1;
         brain->config.num_outputs = 1;
     }
