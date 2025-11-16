@@ -47,10 +47,11 @@ protected:
         // HOW:  Create small network, initialize spatial field
 
         // Create simple neural network
-        network_config_t net_config = {
-            .num_neurons = NUM_NEURONS,
-            .learning_rate = 0.01f
-        };
+        network_config_t net_config = {};
+        net_config.num_neurons = NUM_NEURONS;
+        net_config.input_size = 10;
+        net_config.output_size = 10;
+        net_config.learning_rate = 0.01f;
         network = neural_network_create(&net_config);
         ASSERT_NE(network, nullptr);
 
