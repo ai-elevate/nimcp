@@ -7,6 +7,7 @@
 
 #include "cognitive/nimcp_fractal_cognitive.h"
 #include "core/brain/nimcp_brain.h"
+#include "plasticity/adaptive/nimcp_adaptive.h"
 
 class FractalCognitiveTest : public ::testing::Test {
 protected:
@@ -20,11 +21,6 @@ protected:
         brain = brain_create("test_fractal", BRAIN_SIZE_TINY,
                             BRAIN_TASK_CLASSIFICATION, 10, 2);
         ASSERT_NE(brain, nullptr);
-
-        // NOTE: fractal_cognitive API expects neural_network_t but brain_get_network()
-        // returns adaptive_network_t. These are incompatible types.
-        // Skip all tests until API is updated to handle adaptive_network_t
-        GTEST_SKIP() << "fractal_cognitive API incompatible with adaptive_network_t";
     }
 
     void TearDown() override {
@@ -40,7 +36,11 @@ protected:
 //=============================================================================
 
 TEST_F(FractalCognitiveTest, InitSuccess) {
-    neural_network_t network = (neural_network_t)brain_get_network(brain);
+    adaptive_network_t adaptive_net = brain_get_network(brain);
+    ASSERT_NE(adaptive_net, nullptr);
+
+    neural_network_t network = adaptive_network_get_base_network(adaptive_net);
+    ASSERT_NE(network, nullptr);
 
     bool result = fractal_cognitive_init(network, &cache);
 
@@ -50,14 +50,14 @@ TEST_F(FractalCognitiveTest, InitSuccess) {
 }
 
 TEST_F(FractalCognitiveTest, InitNullInputs) {
-    neural_network_t network = (neural_network_t)brain_get_network(brain);
+    neural_network_t network = adaptive_network_get_base_network(brain_get_network(brain));
 
     EXPECT_FALSE(fractal_cognitive_init(nullptr, &cache));
     EXPECT_FALSE(fractal_cognitive_init(network, nullptr));
 }
 
 TEST_F(FractalCognitiveTest, InitAllocatesArrays) {
-    neural_network_t network = (neural_network_t)brain_get_network(brain);
+    neural_network_t network = adaptive_network_get_base_network(brain_get_network(brain));
     fractal_cognitive_init(network, &cache);
 
     EXPECT_NE(cache.hub_indices, nullptr);
@@ -70,7 +70,7 @@ TEST_F(FractalCognitiveTest, InitAllocatesArrays) {
 //=============================================================================
 
 TEST_F(FractalCognitiveTest, HubIdentificationFindsHubs) {
-    neural_network_t network = (neural_network_t)brain_get_network(brain);
+    neural_network_t network = adaptive_network_get_base_network(brain_get_network(brain));
     fractal_cognitive_init(network, &cache);
 
     // Should identify some hubs (top 10%)
@@ -79,7 +79,7 @@ TEST_F(FractalCognitiveTest, HubIdentificationFindsHubs) {
 }
 
 TEST_F(FractalCognitiveTest, IsHubNeuronValidQuery) {
-    neural_network_t network = (neural_network_t)brain_get_network(brain);
+    neural_network_t network = adaptive_network_get_base_network(brain_get_network(brain));
     fractal_cognitive_init(network, &cache);
 
     if (cache.num_hubs > 0) {
@@ -99,7 +99,7 @@ TEST_F(FractalCognitiveTest, IsHubNeuronInvalidCache) {
 }
 
 TEST_F(FractalCognitiveTest, NearestHubFindsHub) {
-    neural_network_t network = (neural_network_t)brain_get_network(brain);
+    neural_network_t network = adaptive_network_get_base_network(brain_get_network(brain));
     fractal_cognitive_init(network, &cache);
 
     if (cache.num_hubs > 0) {
@@ -116,7 +116,7 @@ TEST_F(FractalCognitiveTest, NearestHubFindsHub) {
 //=============================================================================
 
 TEST_F(FractalCognitiveTest, CentralityScoresValid) {
-    neural_network_t network = (neural_network_t)brain_get_network(brain);
+    neural_network_t network = adaptive_network_get_base_network(brain_get_network(brain));
     fractal_cognitive_init(network, &cache);
 
     // Check all centrality scores are in valid range
@@ -128,7 +128,7 @@ TEST_F(FractalCognitiveTest, CentralityScoresValid) {
 }
 
 TEST_F(FractalCognitiveTest, CentralityHubsHigher) {
-    neural_network_t network = (neural_network_t)brain_get_network(brain);
+    neural_network_t network = adaptive_network_get_base_network(brain_get_network(brain));
     fractal_cognitive_init(network, &cache);
 
     if (cache.num_hubs > 1) {
@@ -152,7 +152,7 @@ TEST_F(FractalCognitiveTest, CentralityInvalidInputs) {
 }
 
 TEST_F(FractalCognitiveTest, DegreeNormalizedInRange) {
-    neural_network_t network = (neural_network_t)brain_get_network(brain);
+    neural_network_t network = adaptive_network_get_base_network(brain_get_network(brain));
     fractal_cognitive_init(network, &cache);
 
     for (uint32_t i = 0; i < cache.stats.num_neurons; i++) {
@@ -167,7 +167,7 @@ TEST_F(FractalCognitiveTest, DegreeNormalizedInRange) {
 //=============================================================================
 
 TEST_F(FractalCognitiveTest, HierarchicalLevelInRange) {
-    neural_network_t network = (neural_network_t)brain_get_network(brain);
+    neural_network_t network = adaptive_network_get_base_network(brain_get_network(brain));
     fractal_cognitive_init(network, &cache);
 
     for (uint32_t i = 0; i < cache.stats.num_neurons; i++) {
@@ -178,7 +178,7 @@ TEST_F(FractalCognitiveTest, HierarchicalLevelInRange) {
 }
 
 TEST_F(FractalCognitiveTest, HierarchicalLevelHubsNearRoot) {
-    neural_network_t network = (neural_network_t)brain_get_network(brain);
+    neural_network_t network = adaptive_network_get_base_network(brain_get_network(brain));
     fractal_cognitive_init(network, &cache);
 
     if (cache.num_hubs > 0) {
@@ -192,7 +192,7 @@ TEST_F(FractalCognitiveTest, HierarchicalLevelHubsNearRoot) {
 }
 
 TEST_F(FractalCognitiveTest, GetNeuronsAtLevelFindsNeurons) {
-    neural_network_t network = (neural_network_t)brain_get_network(brain);
+    neural_network_t network = adaptive_network_get_base_network(brain_get_network(brain));
     fractal_cognitive_init(network, &cache);
 
     uint32_t* neurons = nullptr;
@@ -225,7 +225,7 @@ TEST_F(FractalCognitiveTest, GetNeuronsAtLevelInvalidInputs) {
 //=============================================================================
 
 TEST_F(FractalCognitiveTest, GetCentralNeighborsFindsNeurons) {
-    neural_network_t network = (neural_network_t)brain_get_network(brain);
+    neural_network_t network = adaptive_network_get_base_network(brain_get_network(brain));
     fractal_cognitive_init(network, &cache);
 
     uint32_t central[5];
@@ -237,7 +237,7 @@ TEST_F(FractalCognitiveTest, GetCentralNeighborsFindsNeurons) {
 }
 
 TEST_F(FractalCognitiveTest, GetCentralNeighborsInvalidInputs) {
-    neural_network_t network = (neural_network_t)brain_get_network(brain);
+    neural_network_t network = adaptive_network_get_base_network(brain_get_network(brain));
     fractal_cognitive_init(network, &cache);
 
     uint32_t central[5];
@@ -253,7 +253,7 @@ TEST_F(FractalCognitiveTest, GetCentralNeighborsInvalidInputs) {
 //=============================================================================
 
 TEST_F(FractalCognitiveTest, RefreshRecomputesCache) {
-    neural_network_t network = (neural_network_t)brain_get_network(brain);
+    neural_network_t network = adaptive_network_get_base_network(brain_get_network(brain));
     fractal_cognitive_init(network, &cache);
 
     uint32_t old_num_hubs = cache.num_hubs;
@@ -271,7 +271,7 @@ TEST_F(FractalCognitiveTest, RefreshRecomputesCache) {
 //=============================================================================
 
 TEST_F(FractalCognitiveTest, FreeReleasesMemory) {
-    neural_network_t network = (neural_network_t)brain_get_network(brain);
+    neural_network_t network = adaptive_network_get_base_network(brain_get_network(brain));
     fractal_cognitive_init(network, &cache);
 
     fractal_cognitive_free(&cache);
@@ -308,7 +308,7 @@ TEST_F(FractalCognitiveTest, FullLifecycleWithBrain) {
 }
 
 TEST_F(FractalCognitiveTest, VisualizationDoesNotCrash) {
-    neural_network_t network = (neural_network_t)brain_get_network(brain);
+    neural_network_t network = adaptive_network_get_base_network(brain_get_network(brain));
     fractal_cognitive_init(network, &cache);
 
     // Should not crash
