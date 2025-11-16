@@ -41,6 +41,23 @@ protected:
 
         brain = brain_create_custom(&config);
         ASSERT_NE(brain, nullptr);
+
+        // Quick training: Run a few predictions to initialize network weights
+        // This ensures outputs are non-zero for regression tests
+        float train_input[64];
+        float train_output[10];
+        float train_target[10];
+
+        for (int epoch = 0; epoch < 10; epoch++) {
+            for (int i = 0; i < 64; i++) {
+                train_input[i] = 0.5f + 0.3f * sinf(i * 0.1f + epoch);
+            }
+            for (int i = 0; i < 10; i++) {
+                train_target[i] = (i == (epoch % 10)) ? 1.0f : 0.0f;
+            }
+
+            brain_finetune(brain, train_input, train_target, 1, nullptr);
+        }
     }
 
     void TearDown() override {
