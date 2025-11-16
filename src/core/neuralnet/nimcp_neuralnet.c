@@ -1831,30 +1831,54 @@ static void update_calcium_dynamics(neuron_t* neuron, uint64_t timestamp)
  */
 float neural_network_get_average_activity(neural_network_t network, uint32_t neuron_id)
 {
-    if (!network || neuron_id >= network->num_neurons || !network->neurons)
+    // Defensive validation
+    if (!network) {
+        return 0.0f;  // No activity in NULL network
+    }
+
+    if (!network->neurons) {
+        return 0.0f;  // No activity if neurons not allocated
+    }
+
+    if (neuron_id >= network->num_neurons) {
+        return 0.0f;  // No activity for out-of-bounds neuron
+    }
+
+    // Validate num_neurons is reasonable (< 10M neurons is sane limit)
+    // This catches cases where num_neurons has garbage value
+    if (network->num_neurons > 10000000) {
         return 0.0f;
+    }
 
-    neuron_t* neuron = &network->neurons[neuron_id];
+    // For newly created networks with no training, return 0 activity
+    // This avoids iterating over uninitialized spike history
+    if (network->network_time == 0) {
+        return 0.0f;
+    }
 
-    // Count recent spikes
+    // Use safe accessor instead of direct array access
+    neuron_t* neuron = neural_network_get_neuron(network, neuron_id);
+    if (!neuron) {
+        return 0.0f;  // Neuron access failed
+    }
+
+    // Count recent spikes within the time window
     uint32_t spike_count = 0;
     uint64_t current_time = network->network_time;
-
-    // Handle underflow: if current_time < HISTORY_WINDOW, start from 0
     uint64_t window_start = (current_time >= HISTORY_WINDOW) ? (current_time - HISTORY_WINDOW) : 0;
 
-    for (uint32_t i = 0; i < SPIKE_HISTORY_LENGTH; i++) {
-        // Check if spike is within window (use >= to include boundary)
-        bool in_window = (neuron->spike_history[i].timestamp >= window_start);
-        // Check if this is a real spike (not uninitialized): magnitude must be non-zero
-        bool is_real_spike = (neuron->spike_history[i].magnitude != 0.0f);
-
-        if (in_window && is_real_spike) {
-            spike_count++;
+    // Only iterate if we have meaningful time progression
+    if (current_time > 0) {
+        for (uint32_t i = 0; i < SPIKE_HISTORY_LENGTH; i++) {
+            // Check if spike is within window and is a real spike (non-zero magnitude)
+            if (neuron->spike_history[i].timestamp >= window_start &&
+                neuron->spike_history[i].magnitude != 0.0f) {
+                spike_count++;
+            }
         }
     }
 
-    return (float) spike_count / HISTORY_WINDOW;
+    return (float)spike_count / HISTORY_WINDOW;
 }
 
 /**

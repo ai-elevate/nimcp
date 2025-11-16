@@ -570,6 +570,16 @@ static void queue_operation_handler(void* arg)
         }
 
         case NIMCP_QUEUE_OP_DEQUEUE: {
+            // CRITICAL: Check if context was abandoned due to timeout
+            // If abandoned, the result pointer is invalid (points to freed stack) so we must not write to it
+            if (atomic_load(&ctx->abandoned)) {
+                // Main thread timed out and abandoned this operation
+                // We can't access ctx->result as it points to invalid memory
+                // Set status but don't write to result - ctx will be leaked
+                ctx->status = NIMCP_TIMEOUT;
+                break;
+            }
+
             // Dequeue message pointer
             nimcp_message_t** msg_ptr = (nimcp_message_t**) ctx->result;
             ctx->status = nimcp_queue_dequeue(channel->queues[ctx->priority],
@@ -663,6 +673,7 @@ static nimcp_result_t submit_queue_operation(nimcp_queue_manager_handle_t manage
     // WHY: Handler needs manager to access channels
     op_ctx->manager_handle = manager;
     atomic_store(&op_ctx->completed, false);
+    atomic_store(&op_ctx->abandoned, false);
 
     // Submit to thread pool for async execution
     nimcp_result_t result =
@@ -680,7 +691,9 @@ static nimcp_result_t submit_queue_operation(nimcp_queue_manager_handle_t manage
     while (!atomic_load(&op_ctx->completed)) {
         // Check for timeout
         if (nimcp_get_timestamp_ms() - start_time > op_ctx->timeout_ms) {
-            // CRITICAL: Can't access or free op_ctx after timeout - worker may still be using it
+            // CRITICAL: Mark context as abandoned so worker knows not to write to result
+            // The result pointer points to the caller's stack which will be invalid after we return
+            atomic_store(&op_ctx->abandoned, true);
             // This leaks the context, but prevents use-after-free which is worse.
             // Timeouts should be rare in normal operation.
             return NIMCP_TIMEOUT;
@@ -1196,7 +1209,7 @@ bool nimcp_queue_manager_is_empty(nimcp_queue_manager_handle_t manager, uint32_t
                                   nimcp_queue_priority_t priority)
 {
     if (!is_valid_channel(manager, channel_id) || priority >= NIMCP_QUEUE_PRIORITY_COUNT) {
-        return false;  // Cannot determine state of invalid queue
+        return true;  // Defensive: invalid queue is considered empty
     }
 
     nimcp_queue_channel_t* channel = &manager->channels[channel_id];

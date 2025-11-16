@@ -48,6 +48,7 @@ typedef struct {
     void* manager_handle;  // Internal: manager reference for handler
     nimcp_result_t status;
     volatile bool completed;  // Accessed atomically in implementation
+    volatile bool abandoned;  // Set to true on timeout - worker must not access result
 } nimcp_queue_operation_ctx_t;
 
 // Queue manager configuration

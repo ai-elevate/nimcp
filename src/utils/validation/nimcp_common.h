@@ -347,6 +347,7 @@ typedef struct {
     NimcpArrayElementType element_type; /* Type of array elements */
     uint32_t element_size;              /* Size of each element */
     uint32_t element_count;             /* Number of elements */
+    uint32_t _padding;                  /* Padding to ensure 8-byte alignment of array data */
 } NimcpArrayHeader;
 
 /* State validation constants */

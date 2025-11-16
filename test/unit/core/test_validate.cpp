@@ -132,7 +132,7 @@ TEST_F(IntegerFieldTest, Alignment)
 
     // Misaligned 2-byte access
     int16_t* ptr16_misaligned = reinterpret_cast<int16_t*>(&buffer[1]);
-    *ptr16_misaligned = 42;
+    // Don't write to misaligned pointer - UBSan will abort before we can test validation
     EXPECT_FALSE(nimcp_validate_integer_field(ptr16_misaligned, sizeof(int16_t)));
 
     // Test 4-byte alignment for int32_t
@@ -142,7 +142,7 @@ TEST_F(IntegerFieldTest, Alignment)
 
     // Misaligned 4-byte access
     int32_t* ptr32_misaligned = reinterpret_cast<int32_t*>(&buffer[2]);
-    *ptr32_misaligned = 42;
+    // Don't write to misaligned pointer - UBSan will abort before we can test validation
     EXPECT_FALSE(nimcp_validate_integer_field(ptr32_misaligned, sizeof(int32_t)));
 }
 
@@ -314,7 +314,7 @@ TEST_F(FloatFieldTest, FloatAlignment)
 
     // Misaligned float (at offset 1)
     float* ptr_misaligned = reinterpret_cast<float*>(&buffer[1]);
-    *ptr_misaligned = 3.14f;
+    // Don't write to misaligned pointer - UBSan will abort before we can test validation
     EXPECT_FALSE(nimcp_validate_float_field(ptr_misaligned, sizeof(float)));
 }
 
@@ -333,7 +333,7 @@ TEST_F(FloatFieldTest, DoubleAlignment)
 
     // Misaligned double (at offset 4)
     double* ptr_misaligned = reinterpret_cast<double*>(&buffer[4]);
-    *ptr_misaligned = 3.14159265;
+    // Don't write to misaligned pointer - UBSan will abort before we can test validation
     EXPECT_FALSE(nimcp_validate_float_field(ptr_misaligned, sizeof(double)));
 }
 

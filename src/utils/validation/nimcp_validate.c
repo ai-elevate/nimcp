@@ -517,7 +517,7 @@ void nimcp_clear_error(void) {
 // Internal Helper Function Prototypes
 //=============================================================================
 
-static bool is_valid_utf8_char(const char* str, size_t len);
+static size_t is_valid_utf8_char(const char* str, size_t len);
 
 //=============================================================================
 // Field-Level Validators
@@ -886,7 +886,8 @@ bool nimcp_validate_string_field(const void* field_data, size_t size)
     // STEP 4: Character-by-character validation
     // WHY: Need to check encoding and control characters
     // LOOP: Through all characters (excluding terminator)
-    for (size_t i = 0; i < len; i++) {
+    // NOTE: Loop increment is variable - skips multi-byte UTF-8 sequences
+    for (size_t i = 0; i < len; ) {
         // Control character check
         // WHY iscntrl: Detects 0x00-0x1F and 0x7F
         // ALLOW: '\n' and '\t' (common in text)
@@ -900,10 +901,17 @@ bool nimcp_validate_string_field(const void* field_data, size_t size)
         // WHY: Ensure valid multi-byte sequences
         // HOW: Check sequence starting at position i
         // REMAINING: Pass remaining length for boundary check
-        if (!is_valid_utf8_char(str + i, len - i)) {
+        // RETURNS: Number of bytes consumed (1-4), or 0 on error
+        size_t bytes_consumed = is_valid_utf8_char(str + i, len - i);
+        if (bytes_consumed == 0) {
             NIMCP_LOGGING_ERROR("Invalid UTF-8 encoding at pos %zu", i);
             return false;
         }
+
+        // Advance by the number of bytes in this UTF-8 character
+        // WHY: Multi-byte sequences (2-4 bytes) need to be skipped
+        // PREVENTS: Re-validating continuation bytes as start bytes
+        i += bytes_consumed;
     }
 
     return true;
@@ -1392,11 +1400,12 @@ bool nimcp_validate_state_fields(const void* state_data, size_t size)
  * - Invalid: 0xC0 0x41 (continuation byte is wrong)
  * - Invalid: 0xE0 0x80 (insufficient bytes)
  */
-static bool is_valid_utf8_char(const char* str, size_t len)
+static size_t is_valid_utf8_char(const char* str, size_t len)
 {
     // NULL/empty check
+    // RETURN 0: Invalid (error condition)
     if (!str || len == 0) {
-        return false;
+        return 0;
     }
 
     // Examine first byte to determine sequence length
@@ -1407,7 +1416,8 @@ static bool is_valid_utf8_char(const char* str, size_t len)
         // 0xxxxxxx: ASCII (1 byte)
         // WHY: Most common case (ASCII text)
         // RANGE: 0x00-0x7F
-        return true;
+        // RETURN 1: Single byte consumed
+        return 1;
     } else if ((first & 0xE0) == 0xC0) {
         // 110xxxxx: 2 byte sequence
         // MASK: 0xE0 = 11100000
@@ -1426,14 +1436,15 @@ static bool is_valid_utf8_char(const char* str, size_t len)
     } else {
         // Invalid first byte
         // WHY: Doesn't match any valid UTF-8 pattern
-        return false;
+        // RETURN 0: Invalid
+        return 0;
     }
 
     // Check if string has enough bytes
     // WHY: Prevent reading past end of string
     // EXAMPLE: 2-byte sequence at end of string
     if (len < seq_len) {
-        return false;
+        return 0;
     }
 
     // Validate continuation bytes
@@ -1445,11 +1456,13 @@ static bool is_valid_utf8_char(const char* str, size_t len)
         // MASK: 0xC0 = 11000000
         // TEST: (byte & 0xC0) == 0x80
         if ((str[i] & 0xC0) != 0x80) {
-            return false;
+            return 0;
         }
     }
 
-    return true;
+    // RETURN seq_len: Number of bytes consumed (1-4)
+    // WHY: Caller needs to skip continuation bytes
+    return seq_len;
 }
 
 //=============================================================================
