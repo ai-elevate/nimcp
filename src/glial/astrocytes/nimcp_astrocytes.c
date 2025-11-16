@@ -384,7 +384,7 @@ nimcp_result_t astrocyte_assign_synapse(astrocyte_t* astro, uint32_t synapse_id)
 // Homeostatic Plasticity - STUB IMPLEMENTATION
 //=============================================================================
 
-float astrocyte_compute_synaptic_scaling(astrocyte_t* astro, neural_network_t* network)
+float astrocyte_compute_synaptic_scaling(astrocyte_t* astro, neural_network_t network)
 {
     if (!astro) {
         return 1.0f;

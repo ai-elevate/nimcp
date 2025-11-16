@@ -428,7 +428,7 @@ nimcp_result_t astrocyte_assign_synapse(astrocyte_t* astro, uint32_t synapse_id)
  * COMPLEXITY: O(S) where S = num_covered_synapses
  * THREAD-SAFE: Yes
  */
-float astrocyte_compute_synaptic_scaling(astrocyte_t* astro, neural_network_t* network);
+float astrocyte_compute_synaptic_scaling(astrocyte_t* astro, neural_network_t network);
 
 //=============================================================================
 // BCM Plasticity Modulation
