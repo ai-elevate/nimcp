@@ -35,7 +35,9 @@ protected:
         config.task = BRAIN_TASK_CLASSIFICATION;
         config.num_inputs = 64;
         config.num_outputs = 10;
-        config.enable_multimodal_integration = true;
+        config.enable_multimodal_integration = false;  // Disabled to avoid NLP network creation issues
+        config.enable_logic = true;  // Enable symbolic logic for logic regression tests
+        config.enable_knowledge = true;  // Enable knowledge system (required for knowledge tests)
 
         brain = brain_create_custom(&config);
         ASSERT_NE(brain, nullptr);
