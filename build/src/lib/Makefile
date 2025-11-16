@@ -3281,6 +3281,30 @@ __/utils/signal/nimcp_signal_handler.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/utils/signal/nimcp_signal_handler.c.s
 .PHONY : __/utils/signal/nimcp_signal_handler.c.s
 
+__/utils/spatial/nimcp_kdtree.o: __/utils/spatial/nimcp_kdtree.c.o
+.PHONY : __/utils/spatial/nimcp_kdtree.o
+
+# target to build an object file
+__/utils/spatial/nimcp_kdtree.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/utils/spatial/nimcp_kdtree.c.o
+.PHONY : __/utils/spatial/nimcp_kdtree.c.o
+
+__/utils/spatial/nimcp_kdtree.i: __/utils/spatial/nimcp_kdtree.c.i
+.PHONY : __/utils/spatial/nimcp_kdtree.i
+
+# target to preprocess a source file
+__/utils/spatial/nimcp_kdtree.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/utils/spatial/nimcp_kdtree.c.i
+.PHONY : __/utils/spatial/nimcp_kdtree.c.i
+
+__/utils/spatial/nimcp_kdtree.s: __/utils/spatial/nimcp_kdtree.c.s
+.PHONY : __/utils/spatial/nimcp_kdtree.s
+
+# target to generate assembly for a file
+__/utils/spatial/nimcp_kdtree.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/utils/spatial/nimcp_kdtree.c.s
+.PHONY : __/utils/spatial/nimcp_kdtree.c.s
+
 __/utils/spectral/nimcp_fft.o: __/utils/spectral/nimcp_fft.c.o
 .PHONY : __/utils/spectral/nimcp_fft.o
 
@@ -3946,6 +3970,9 @@ help:
 	@echo "... __/utils/signal/nimcp_signal_handler.o"
 	@echo "... __/utils/signal/nimcp_signal_handler.i"
 	@echo "... __/utils/signal/nimcp_signal_handler.s"
+	@echo "... __/utils/spatial/nimcp_kdtree.o"
+	@echo "... __/utils/spatial/nimcp_kdtree.i"
+	@echo "... __/utils/spatial/nimcp_kdtree.s"
 	@echo "... __/utils/spectral/nimcp_fft.o"
 	@echo "... __/utils/spectral/nimcp_fft.i"
 	@echo "... __/utils/spectral/nimcp_fft.s"

@@ -69,6 +69,13 @@ TEST_F(LogicRegressionTest, BrainPredictionStillWorks) {
     float output[10];
     bool result = brain_predict(brain, input, 64, output, 10);
 
+    if (!result) {
+        const char* error = brain_get_last_error();
+        if (error) {
+            fprintf(stderr, "brain_predict() failed: %s\n", error);
+        }
+    }
+
     EXPECT_TRUE(result);
     EXPECT_GT(output[0], 0.0f);  // Some output generated
 }

@@ -301,8 +301,8 @@ void astrocyte_calcium_system_update(
         system->calcium_er[i] += dt * dCa_ER_dt[i];
 
         // Clamp to biological ranges
-        system->calcium[i] = fmaxf(0.0f, fminf(10.0f, system->calcium[i]));
-        system->ip3[i] = fmaxf(0.0f, fminf(5.0f, system->ip3[i]));
+        system->calcium[i] = fmaxf(0.01f, fminf(50.0f, system->calcium[i]));
+        system->ip3[i] = fmaxf(0.0f, fminf(10.0f, system->ip3[i]));
         system->calcium_er[i] = fmaxf(100.0f, fminf(500.0f, system->calcium_er[i]));
 
         // Update individual astrocyte state (always sync)

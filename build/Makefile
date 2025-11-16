@@ -2304,6 +2304,19 @@ unit_glial_astrocytes_test_astrocyte_calcium/fast:
 .PHONY : unit_glial_astrocytes_test_astrocyte_calcium/fast
 
 #=============================================================================
+# Target rules for targets named unit_glial_astrocytes_test_astrocyte_comprehensive
+
+# Build rule for target.
+unit_glial_astrocytes_test_astrocyte_comprehensive: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_glial_astrocytes_test_astrocyte_comprehensive
+.PHONY : unit_glial_astrocytes_test_astrocyte_comprehensive
+
+# fast build rule for target.
+unit_glial_astrocytes_test_astrocyte_comprehensive/fast:
+	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_glial_astrocytes_test_astrocyte_comprehensive.dir/build.make test/CMakeFiles/unit_glial_astrocytes_test_astrocyte_comprehensive.dir/build
+.PHONY : unit_glial_astrocytes_test_astrocyte_comprehensive/fast
+
+#=============================================================================
 # Target rules for targets named unit_glial_astrocytes_test_astrocyte_types_real
 
 # Build rule for target.
@@ -3199,6 +3212,19 @@ unit_utils_tensor_networks_test_mps_compression: cmake_check_build_system
 unit_utils_tensor_networks_test_mps_compression/fast:
 	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_utils_tensor_networks_test_mps_compression.dir/build.make test/CMakeFiles/unit_utils_tensor_networks_test_mps_compression.dir/build
 .PHONY : unit_utils_tensor_networks_test_mps_compression/fast
+
+#=============================================================================
+# Target rules for targets named unit_utils_test_kdtree
+
+# Build rule for target.
+unit_utils_test_kdtree: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_utils_test_kdtree
+.PHONY : unit_utils_test_kdtree
+
+# fast build rule for target.
+unit_utils_test_kdtree/fast:
+	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_utils_test_kdtree.dir/build.make test/CMakeFiles/unit_utils_test_kdtree.dir/build
+.PHONY : unit_utils_test_kdtree/fast
 
 #=============================================================================
 # Target rules for targets named unit_utils_test_queue_utils
@@ -4791,6 +4817,7 @@ help:
 	@echo "... unit_core_topology_test_fractal_topology_real"
 	@echo "... unit_core_topology_topology_tests"
 	@echo "... unit_glial_astrocytes_test_astrocyte_calcium"
+	@echo "... unit_glial_astrocytes_test_astrocyte_comprehensive"
 	@echo "... unit_glial_astrocytes_test_astrocyte_types_real"
 	@echo "... unit_glial_astrocytes_test_astrocytes"
 	@echo "... unit_glial_microglia_test_microglia"
@@ -4860,6 +4887,7 @@ help:
 	@echo "... unit_utils_quantum_test_utils_quantum_walk"
 	@echo "... unit_utils_queue_manager_test_queue_manager"
 	@echo "... unit_utils_tensor_networks_test_mps_compression"
+	@echo "... unit_utils_test_kdtree"
 	@echo "... unit_utils_test_queue_utils"
 	@echo "... unit_utils_test_thread_utils"
 	@echo "... unit_utils_test_utils_btree"

@@ -1242,7 +1242,14 @@ static bool init_multimodal_subsystems(brain_t brain)
     // Check if multi-modal processing is enabled
     if (!brain->config.enable_multimodal_integration) {
         fprintf(stderr, "[DEBUG] init_multimodal: not enabled\n"); fflush(stderr);
-        // Not enabled, not an error
+        // Even when multimodal is disabled, we still need integrated_feature_buffer
+        // as a working buffer for direct-only predictions
+        brain->integrated_feature_buffer = nimcp_calloc(brain->config.num_inputs, sizeof(float));
+        if (!brain->integrated_feature_buffer) {
+            set_error("Failed to allocate integrated feature buffer for direct predictions");
+            return false;
+        }
+        fprintf(stderr, "[DEBUG] init_multimodal: allocated buffer for direct-only mode\n"); fflush(stderr);
         return true;
     }
 
@@ -8355,23 +8362,18 @@ bool brain_predict(brain_t brain, const float* input, uint32_t input_size,
     mm_input.direct_data = input;
     mm_input.direct_dim = input_size;
 
-    // Create output structure
+    // Create output structure and provide output buffer
     brain_multimodal_output_t mm_output = {0};
+    mm_output.output_vector = output;  // Use caller's buffer directly
+    mm_output.output_dim = output_size;
 
     // Process
     if (!brain_process_multimodal(brain, &mm_input, &mm_output)) {
         return false;
     }
 
-    // Copy output (up to output_size)
-    uint32_t copy_size = (mm_output.output_dim < output_size) ?
-                         mm_output.output_dim : output_size;
-    if (mm_output.output_vector && copy_size > 0) {
-        memcpy(output, mm_output.output_vector, copy_size * sizeof(float));
-        return true;
-    }
-
-    return false;
+    // Output has already been copied to the buffer by brain_process_multimodal
+    return true;
 }
 
 //=============================================================================
@@ -8687,6 +8689,42 @@ static bool integrate_multimodal_features(
     uint64_t timestamp_ms,
     brain_multimodal_output_t* output)
 {
+    // Check if we have visual or audio inputs that require multimodal integration
+    bool needs_multimodal = (visual_dim > 0) || (audio_dim > 0) || (speech_dim > 0);
+
+    // If we only have direct features and multimodal is disabled, we still need to
+    // copy the features to integrated_feature_buffer if it exists, or just set
+    // the attention weights if it doesn't
+    if (!needs_multimodal && direct_dim > 0) {
+        // Direct-only mode: No multimodal integration needed
+        // Set direct attention to 1.0 to indicate direct input is being used
+        output->visual_attention = 0.0f;
+        output->audio_attention = 0.0f;
+        output->speech_attention = 0.0f;
+        output->direct_attention = 1.0f;
+
+        // If we have integrated_feature_buffer, copy direct features to it
+        // This allows downstream processing (attention, brain regions) to work
+        if (brain->integrated_feature_buffer && direct_features && direct_dim > 0) {
+            uint32_t copy_size = (direct_dim < brain->config.num_inputs) ?
+                                direct_dim : brain->config.num_inputs;
+            memcpy(brain->integrated_feature_buffer, direct_features, copy_size * sizeof(float));
+            // Zero out any remaining elements
+            if (copy_size < brain->config.num_inputs) {
+                memset(brain->integrated_feature_buffer + copy_size, 0,
+                      (brain->config.num_inputs - copy_size) * sizeof(float));
+            }
+        }
+
+        return true;
+    }
+
+    // For visual/audio/speech inputs, we need the multimodal system
+    if (!brain->multimodal || !brain->integrated_feature_buffer) {
+        set_error("Multimodal integration required for visual/audio/speech but not enabled");
+        return false;
+    }
+
     multimodal_input_t mm_input = {
         .visual_features = visual_features,
         .visual_dim = visual_dim,
@@ -8698,11 +8736,6 @@ static bool integrate_multimodal_features(
         .direct_dim = direct_dim,
         .timestamp = timestamp_ms
     };
-
-    // Integrate into unified representation
-    if (!brain->multimodal || !brain->integrated_feature_buffer) {
-        return false;
-    }
 
     bool integrate_success = multimodal_integrate(
         brain->multimodal,
@@ -8732,6 +8765,8 @@ static bool integrate_multimodal_features(
  * RESPONSIBILITY: Forward pass through spiking network with learning
  *
  * @param brain Brain handle with initialized network
+ * @param input_buffer Input features (either integrated or direct)
+ * @param input_size Size of input buffer
  * @param timestamp_ms Timestamp for temporal processing
  * @param network_output Output: allocated buffer for network output
  * @param network_output_size Output size
@@ -8740,11 +8775,18 @@ static bool integrate_multimodal_features(
  */
 static uint32_t process_neural_network(
     brain_t brain,
+    const float* input_buffer,
+    uint32_t input_size,
     uint64_t timestamp_ms,
     float** network_output,
     uint32_t network_output_size,
     brain_multimodal_output_t* output)
 {
+    // Validate input buffer
+    if (!input_buffer || input_size == 0) {
+        return 0;
+    }
+
     // Allocate network output buffer
     *network_output = nimcp_calloc(network_output_size, sizeof(float));
     if (!*network_output) {
@@ -8755,8 +8797,8 @@ static uint32_t process_neural_network(
     // This automatically applies STDP, glial modulation, oscillations, pink noise
     uint32_t spikes_generated = adaptive_network_forward(
         brain->network,
-        brain->integrated_feature_buffer,
-        brain->config.num_inputs,
+        input_buffer,
+        input_size,
         *network_output,
         network_output_size,
         timestamp_ms
@@ -8778,6 +8820,8 @@ static uint32_t process_neural_network(
  * RESPONSIBILITY: Compute confidence, ethics, salience, novelty, curiosity
  *
  * @param brain Brain handle with cognitive modules
+ * @param input_buffer Input features used for network processing
+ * @param input_size Size of input buffer
  * @param network_output Network output vector
  * @param network_output_size Size of network output
  * @param spikes_generated Total spikes during inference
@@ -8787,6 +8831,8 @@ static uint32_t process_neural_network(
  */
 static bool apply_cognitive_processing(
     brain_t brain,
+    const float* input_buffer,
+    uint32_t input_size,
     const float* network_output,
     uint32_t network_output_size,
     uint32_t spikes_generated,
@@ -8794,11 +8840,11 @@ static bool apply_cognitive_processing(
     brain_multimodal_output_t* output)
 {
     // Introspection: Assess confidence and uncertainty
-    if (brain->introspection) {
+    if (brain->introspection && input_buffer) {
         brain_uncertainty_t uncertainty = brain_get_uncertainty(
             brain->introspection,
-            brain->integrated_feature_buffer,
-            brain->config.num_inputs
+            input_buffer,
+            input_size
         );
 
         output->introspection_uncertainty = uncertainty.total;
@@ -8838,11 +8884,11 @@ static bool apply_cognitive_processing(
     }
 
     // Salience: Evaluate input importance (novelty, surprise, urgency)
-    if (brain->salience) {
+    if (brain->salience && input_buffer) {
         brain_salience_t salience = brain_evaluate_salience_temporal(
             brain->salience,
-            brain->integrated_feature_buffer,
-            brain->config.num_inputs,
+            input_buffer,
+            input_size,
             timestamp_ms
         );
 
@@ -9396,15 +9442,36 @@ bool brain_process_multimodal(
     // -------------------------------------------------------------------------
     // STAGE 3: Process through neural network with learning
     // -------------------------------------------------------------------------
+    // Determine which input buffer to use:
+    // - If multimodal integration is enabled, use integrated_feature_buffer
+    // - Otherwise, use direct_features for direct-only predictions
+    const float* network_input = brain->integrated_feature_buffer ?
+                                  brain->integrated_feature_buffer :
+                                  direct_features;
+
+    // Validate we have input data
+    if (!network_input) {
+        set_error("No input data available for neural network processing");
+        return false;
+    }
+
+    // Network always expects brain->config.num_inputs inputs
+    uint32_t network_input_size = brain->config.num_inputs;
+
     spikes_generated = process_neural_network(
         brain,
+        network_input,
+        network_input_size,
         input->timestamp_ms,
         &network_output,
         network_output_size,
         output
     );
 
-    if (spikes_generated == 0 || !network_output) {
+    // Check for NULL output (fatal error), but allow 0 spikes
+    // Output can be valid even without spikes (based on membrane potentials)
+    if (!network_output) {
+        set_error("Neural network forward pass returned NULL output");
         return false;
     }
 
@@ -9436,6 +9503,8 @@ bool brain_process_multimodal(
     // -------------------------------------------------------------------------
     if (!apply_cognitive_processing(
             brain,
+            network_input,
+            network_input_size,
             network_output,
             network_output_size,
             spikes_generated,

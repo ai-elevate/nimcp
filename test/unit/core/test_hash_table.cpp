@@ -685,14 +685,16 @@ TEST_F(HashTableTest, Stats_NullTable)
 
 // Track destructor calls
 struct DestructorContext {
-    int call_count = 0;
+    int* call_count_ptr = nullptr;
 };
 
 static void test_destructor(void* value, size_t value_size)
 {
     (void) value_size;
     DestructorContext* ctx = static_cast<DestructorContext*>(value);
-    ctx->call_count++;
+    if (ctx->call_count_ptr) {
+        (*ctx->call_count_ptr)++;
+    }
 }
 
 /**
@@ -711,13 +713,15 @@ TEST_F(HashTableTest, Destructor_OnRemove)
                                   .thread_safe = false};
     table = hash_table_create(&config);
 
+    int call_count = 0;
     DestructorContext ctx;
+    ctx.call_count_ptr = &call_count;
     hash_table_insert_string(table, "key", &ctx, sizeof(DestructorContext));
 
     hash_table_remove_string(table, "key");
 
     // Destructor should have been called once
-    EXPECT_EQ(ctx.call_count, 1);
+    EXPECT_EQ(call_count, 1);
 }
 
 //=============================================================================

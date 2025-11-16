@@ -236,7 +236,12 @@ bool nimcp_graph_remove_vertex(NimcpGraph* graph, uint32_t vertex_idx)
         return false;
     }
 
-    // Free vertex's outgoing edge list
+    // Free vertex's outgoing edge list and update counts
+    NimcpEdgeNode* edge = graph->vertices[vertex_idx].edges;
+    while (edge) {
+        graph->edge_count--;
+        edge = edge->next;
+    }
     free_edge_list(graph->vertices[vertex_idx].edges);
 
     // Remove incoming edges from other vertices

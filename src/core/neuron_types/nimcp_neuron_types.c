@@ -674,6 +674,11 @@ nimcp_result_t neuron_type_get_default_params(neuron_type_t type,
             out_params->executive.delay_activity = true;
             break;
 
+        case NEURON_MOTOR_PATTERN_GEN:
+            // Motor pattern generator doesn't have type-specific params yet
+            // Just return success with zeroed params
+            break;
+
         default:
             return NIMCP_ERROR_INVALID_PARAM;
     }

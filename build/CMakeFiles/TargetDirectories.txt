@@ -218,6 +218,7 @@
 /home/bbrelin/nimcp/build/test/CMakeFiles/unit_core_topology_test_fractal_topology_real.dir
 /home/bbrelin/nimcp/build/test/CMakeFiles/unit_core_topology_topology_tests.dir
 /home/bbrelin/nimcp/build/test/CMakeFiles/unit_glial_astrocytes_test_astrocyte_calcium.dir
+/home/bbrelin/nimcp/build/test/CMakeFiles/unit_glial_astrocytes_test_astrocyte_comprehensive.dir
 /home/bbrelin/nimcp/build/test/CMakeFiles/unit_glial_astrocytes_test_astrocyte_types_real.dir
 /home/bbrelin/nimcp/build/test/CMakeFiles/unit_glial_astrocytes_test_astrocytes.dir
 /home/bbrelin/nimcp/build/test/CMakeFiles/unit_glial_microglia_test_microglia.dir
@@ -287,6 +288,7 @@
 /home/bbrelin/nimcp/build/test/CMakeFiles/unit_utils_quantum_test_utils_quantum_walk.dir
 /home/bbrelin/nimcp/build/test/CMakeFiles/unit_utils_queue_manager_test_queue_manager.dir
 /home/bbrelin/nimcp/build/test/CMakeFiles/unit_utils_tensor_networks_test_mps_compression.dir
+/home/bbrelin/nimcp/build/test/CMakeFiles/unit_utils_test_kdtree.dir
 /home/bbrelin/nimcp/build/test/CMakeFiles/unit_utils_test_queue_utils.dir
 /home/bbrelin/nimcp/build/test/CMakeFiles/unit_utils_test_thread_utils.dir
 /home/bbrelin/nimcp/build/test/CMakeFiles/unit_utils_test_utils_btree.dir

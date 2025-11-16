@@ -107,12 +107,16 @@ TEST_F(AstrocyteTest, CalciumDynamics_SpontaneousDecay) {
     float initial_ca = astro->calcium_concentration;
 
     // Should decay back to baseline over time
+    // Li-Rinzel model: J_pump ≈ 2.2 µM/s, J_leak ≈ 0.5 µM/s at high Ca
+    // Net decay rate ≈ -1.6 µM/s initially, slowing as Ca approaches baseline
+    // Full decay from 5.0 to ~0.1 µM takes ~5-10 seconds
     float dt = 0.001f; // 1ms
-    for (int i = 0; i < 1000; i++) {
+    for (int i = 0; i < 10000; i++) { // 10 seconds for full decay
         astrocyte_update_calcium(astro, dt, 0.0f);
     }
 
     EXPECT_LT(astro->calcium_concentration, initial_ca);
+    // Li-Rinzel model steady state is ~0.1 µM (baseline), allow 0.5 µM tolerance
     EXPECT_NEAR(astro->calcium_concentration, astro->calcium_baseline, 0.5f);
 
     astrocyte_destroy(astro);
@@ -122,13 +126,19 @@ TEST_F(AstrocyteTest, CalciumDynamics_ExternalStimulus) {
     astrocyte_t* astro = astrocyte_create(0, ASTROCYTE_TYPE_GENERIC, 0.0f, 0.0f, 0.0f, 50.0f);
 
     float initial_ca = astro->calcium_concentration;
+    float initial_ip3 = astro->ip3_concentration;
 
     // Apply strong stimulus
+    // Li-Rinzel model: external_stimulus increases IP3, which then triggers Ca release
+    // ip3 += stimulus * dt * 0.5, so need large stimulus to raise IP3 above k3 = 0.5 µM
     float dt = 0.001f;
-    astrocyte_update_calcium(astro, dt, 10.0f); // Strong external stimulus
+    astrocyte_update_calcium(astro, dt, 500.0f); // Very strong stimulus to produce IP3 >> k3
 
-    // Calcium should increase
-    EXPECT_GT(astro->calcium_concentration, initial_ca);
+    // IP3 should increase significantly from external stimulus
+    EXPECT_GT(astro->ip3_concentration, initial_ip3) << "Strong stimulus should increase IP3";
+
+    // With elevated IP3, calcium should increase due to J_channel (IP3R-mediated release)
+    EXPECT_GT(astro->calcium_concentration, initial_ca) << "Elevated IP3 should trigger Ca release";
 
     astrocyte_destroy(astro);
 }
