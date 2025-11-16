@@ -124,6 +124,17 @@
       "num_classes": 15
     }
   },
+  "network_analysis": {
+    "enable": true,
+    "detect_communities": true,
+    "detect_hubs": true,
+    "hub_threshold": 0.8,
+    "analysis_interval": 100,
+    "validate_topology": true,
+    "min_modularity": 0.25,
+    "max_communities": 10,
+    "log_metrics": true
+  },
   "notes": {
     "purpose": "This configuration implements a developmental curriculum inspired by human learning stages",
     "learning_rate_schedule": "Adaptive - starts high, decays as stage progresses",

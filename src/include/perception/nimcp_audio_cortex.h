@@ -30,6 +30,14 @@ extern "C" {
 typedef struct brain_struct* brain_t;
 
 //=============================================================================
+// Neuromodulation Structures
+//=============================================================================
+
+// NOTE: phasic_tonic_state_t and receptor_expression_t are defined in
+// nimcp_visual_cortex.h to avoid duplicate definitions. Include that header
+// first if you need these types in audio cortex.
+
+//=============================================================================
 // Configuration Constants
 //=============================================================================
 

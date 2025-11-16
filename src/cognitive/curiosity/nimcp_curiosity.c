@@ -13,6 +13,7 @@
 #include "utils/containers/nimcp_hash_table.h"
 #include "utils/memory/nimcp_memory.h"  // CRITICAL: Declares nimcp_calloc/nimcp_free return types
 #include "plasticity/neuromodulators/nimcp_neuromodulators.h"  // Dopamine modulation
+#include "cognitive/analysis/nimcp_network_analysis.h"  // Network topology analysis
 
 //=============================================================================
 // Hash Table Configuration for O(1) Concept Lookup
@@ -155,6 +156,9 @@ struct curiosity_engine_struct {
     // Previously created separate brain instances - wasteful!
     // Now curiosity is a module that uses parent brain's neuromodulator
     brain_t parent_brain;  // Reference to parent, NOT ownership
+
+    // Network topology analyzer for detecting functional reorganization
+    network_analyzer_t* network_analyzer;  // Owned by curiosity engine
 
     // State for gap detection (replaces gap_detector brain)
     struct {
@@ -761,6 +765,17 @@ curiosity_engine_t curiosity_engine_create(brain_t parent_brain, const char* lea
     // Now use parent's neuromodulator system
     engine->parent_brain = parent_brain;
 
+    // Initialize network analyzer if parent brain provided
+    if (parent_brain) {
+        engine->network_analyzer = network_analyzer_create(parent_brain);
+        if (engine->network_analyzer) {
+            // Enable auto-analysis on novel patterns
+            network_analyzer_set_auto_analyze(engine->network_analyzer, true, 10);
+        }
+    } else {
+        engine->network_analyzer = NULL;
+    }
+
     // Initialize gap detector state (replaces brain)
     engine->gap_detector_state.last_novelty_score = 0.0f;
     engine->gap_detector_state.last_gap_size = 0.0f;
@@ -804,6 +819,11 @@ void curiosity_engine_destroy(curiosity_engine_t engine)
 
     nimcp_free(engine->questions);
     nimcp_free(engine->sources);
+
+    // Destroy network analyzer (owned by curiosity engine)
+    if (engine->network_analyzer) {
+        network_analyzer_destroy(engine->network_analyzer);
+    }
 
     // REFACTORED: No brain destruction needed - we only hold a reference
     // parent_brain is owned by caller and will be destroyed by them
@@ -922,6 +942,21 @@ knowledge_gap_t curiosity_detect_knowledge_gap(curiosity_engine_t engine, const 
         engine->stage_strategy->calculate_learning_potential(concept_str, gap.gap_size);
 
     gap.related_concepts = count_related_concepts(engine, concept_str);
+
+    // INTEGRATION: Network topology analysis on high novelty
+    // When curiosity detects novel pattern, trigger community re-detection
+    // This allows us to see if brain is forming new functional modules
+    if (engine->network_analyzer && gap.gap_size > 0.7f) {
+        // High novelty - analyze network topology
+        if (network_analyzer_run(engine->network_analyzer)) {
+            // Check if new community emerged
+            if (network_analyzer_check_new_community(engine->network_analyzer)) {
+                // Novel pattern triggered functional reorganization!
+                // This is a sign of meaningful learning
+                gap.learning_potential *= 1.2f;  // Boost learning potential
+            }
+        }
+    }
 
     return gap;
 }

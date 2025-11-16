@@ -43,6 +43,11 @@ protected:
         config.enable_multimodal_integration = true;
 
         brain = brain_create_custom(&config);
+        if (!brain) {
+            const char* error = brain_get_last_error();
+            FAIL() << "brain_create_custom() returned NULL. Error: "
+                   << (error ? error : "no error message");
+        }
         ASSERT_NE(brain, nullptr);
     }
 

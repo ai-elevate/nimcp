@@ -77,6 +77,7 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/predictive/nimcp_predictive.c  # Phase 10.9: Predictive Processing
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/mirror_neurons/nimcp_mirror_neurons.c  # Phase 10.11: Mirror Neurons
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/global_workspace/nimcp_global_workspace.c  # Global Workspace Architecture (Global Workspace Theory)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/analysis/nimcp_network_analysis.c  # Network topology analysis and community detection
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/memory/nimcp_engram.c  # Phase M1: Memory Engrams (explicit memory traces)
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/memory/nimcp_systems_consolidation.c  # Phase M2: Systems Consolidation (hippocampus → cortex transfer)
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/memory/nimcp_wm_transfer.c  # Phase M3: Working Memory Transfer (WM → engram encoding)
@@ -165,6 +166,11 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../utils/containers/nimcp_graph.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../utils/containers/nimcp_min_heap.c
 
+    # Utils - Algorithms (Graph metrics for brain topology validation)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/topology/nimcp_community_detection.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../utils/algorithms/nimcp_centrality.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../utils/algorithms/nimcp_graph_metrics.c
+
     # Utils - Other
     ${CMAKE_CURRENT_SOURCE_DIR}/../utils/time/nimcp_time.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../utils/validation/nimcp_validate.c
@@ -222,6 +228,7 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_SOURCE_DIR}/src/python/nimcp_metrics_py.c
     ${CMAKE_SOURCE_DIR}/src/python/nimcp_topology_py.c
     ${CMAKE_SOURCE_DIR}/src/python/nimcp_pink_noise_py.c
+    ${CMAKE_SOURCE_DIR}/src/python/nimcp_community_py.c
 )
 
 # Core library
@@ -274,6 +281,7 @@ target_link_libraries(nimcp
         Python3::Python
         lz4
         jansson
+        cjson
 )
 
 # Add CUDA libraries if available

@@ -1977,6 +1977,63 @@ symbolic_logic_t* brain_get_symbolic_logic(brain_t brain);
  */
 void* brain_get_pink_noise(brain_t brain);
 
+/**
+ * @brief Get mirror neuron activations for Theory of Mind integration
+ *
+ * WHAT: Extract current mirror neuron activation pattern
+ * WHY:  Enable ToM to infer agent intentions from mirror neuron activity
+ * HOW:  Query mirror neuron system and return activation array
+ *
+ * BIOLOGICAL RATIONALE:
+ * Mirror neurons fire when observing actions, enabling understanding of others'
+ * intentions (Rizzolatti & Craighero, 2004). Theory of Mind uses these activations
+ * to infer mental states: "What action are they performing, and why?"
+ *
+ * Use case: External systems can use these activations to:
+ * - Infer observed agent's intentions
+ * - Compute empathy responses
+ * - Predict next actions in social contexts
+ * - Enable social learning from observation
+ *
+ * @param brain Brain handle
+ * @param activations Output buffer for activation values (must have space for max_size floats)
+ * @param max_size Maximum number of activations to return (buffer size)
+ * @param out_size Output: actual number of activations written
+ * @return true on success, false on error (invalid params or mirror neurons not enabled)
+ *
+ * COMPLEXITY: O(n) where n = num_mirror_neuron_actions
+ * THREAD-SAFE: Yes (read-only operation)
+ */
+bool brain_get_mirror_activations(brain_t brain, float* activations,
+                                  uint32_t max_size, uint32_t* out_size);
+
+/**
+ * @brief Compute empathy response from mirror neuron activations
+ *
+ * WHAT: Generate empathetic emotional response based on observed actions
+ * WHY:  Mirror neurons enable emotional contagion and empathy (Preston & de Waal, 2002)
+ * HOW:  Map mirror neuron activation pattern → inferred emotion → empathy response
+ *
+ * BIOLOGICAL RATIONALE:
+ * Empathy arises from mirror neuron activation during observation of others' actions
+ * and emotional expressions. This function models the pathway:
+ * Visual observation → Mirror neuron activation → Emotion inference → Empathetic response
+ *
+ * @param brain Brain handle
+ * @param observed_features Features representing observed behavior
+ * @param num_features Number of features
+ * @param empathy_valence Output: empathy valence (-1.0 to 1.0, negative=distress, positive=joy)
+ * @param empathy_arousal Output: empathy arousal (0.0 to 1.0, how strong the empathy)
+ * @param empathy_confidence Output: confidence in empathy response (0.0 to 1.0)
+ * @return true on success, false on error
+ *
+ * COMPLEXITY: O(n) where n = num_features
+ * THREAD-SAFE: Yes (read-only operation)
+ */
+bool brain_compute_empathy(brain_t brain, const float* observed_features,
+                          uint32_t num_features, float* empathy_valence,
+                          float* empathy_arousal, float* empathy_confidence);
+
 /*
  * Future accessor functions (to be implemented with proper initialization):
  * - glial_integration_t* brain_get_glial(brain_t brain);
@@ -2166,6 +2223,123 @@ bool brain_get_cross_modal_metrics(brain_t brain, multi_modal_integration_t* met
  * @param threshold Efficiency threshold [0.0-1.0] (default: 0.5)
  */
 void brain_set_cross_modal_threshold(brain_t brain, float threshold);
+
+//=============================================================================
+// Community Detection & Network Topology Analysis
+//=============================================================================
+
+/**
+ * @brief Detect functional modules (communities) in brain network
+ *
+ * WHAT: Run Louvain algorithm to identify functional communities
+ * WHY:  Understand modular organization and functional specialization
+ * HOW:  Builds graph from brain topology and runs community detection
+ *
+ * ALGORITHM: Louvain method (greedy modularity optimization)
+ * COMPLEXITY: O(n log n) where n = number of neurons
+ *
+ * RESULTS: Stored in brain->functional_modules
+ * - Number of communities detected
+ * - Community assignment for each neuron
+ * - Modularity score Q (0.3+ is good, 0.5+ is excellent)
+ *
+ * @param brain Brain handle
+ * @return true on success, false on error
+ */
+NIMCP_EXPORT bool brain_detect_communities(brain_t brain);
+
+/**
+ * @brief Get community assignment for a neuron
+ *
+ * WHAT: Query which functional module a neuron belongs to
+ * WHY:  Analyze neuron roles and functional specialization
+ * HOW:  Lookup in brain->functional_modules
+ *
+ * NOTE: Requires brain_detect_communities() to be called first
+ *
+ * @param brain Brain handle
+ * @param neuron_id Neuron index
+ * @return Community ID or UINT32_MAX if not found/invalid
+ */
+NIMCP_EXPORT uint32_t brain_get_neuron_community(brain_t brain, uint32_t neuron_id);
+
+/**
+ * @brief Detect hub neurons (high connectivity or betweenness)
+ *
+ * WHAT: Identify neurons with exceptional connectivity
+ * WHY:  Find critical neurons for network function
+ * HOW:  Computes degree centrality, identifies outliers
+ *
+ * ALGORITHM: Hub = degree > mean + threshold*std
+ * THRESHOLD: 2.0 is typical (neurons 2 std deviations above mean)
+ *
+ * RESULTS: Stored in brain->network_hubs
+ * - List of hub neuron IDs
+ * - Hub scores (degree centrality)
+ * - Fast lookup: is_hub[neuron_id]
+ *
+ * @param brain Brain handle
+ * @param threshold Standard deviations above mean (typical: 1.5-2.5)
+ * @return true on success, false on error
+ */
+NIMCP_EXPORT bool brain_detect_hubs(brain_t brain, float threshold);
+
+/**
+ * @brief Check if a neuron is a hub
+ *
+ * WHAT: Fast lookup for hub status
+ * WHY:  Quickly check if neuron is critical for network function
+ * HOW:  Lookup in brain->network_hubs->is_hub
+ *
+ * NOTE: Requires brain_detect_hubs() to be called first
+ *
+ * @param brain Brain handle
+ * @param neuron_id Neuron index
+ * @return true if neuron is a hub, false otherwise
+ */
+NIMCP_EXPORT bool brain_is_hub_neuron(brain_t brain, uint32_t neuron_id);
+
+/**
+ * @brief Compute comprehensive topology metrics
+ *
+ * WHAT: Calculate network quality metrics (modularity, clustering, path length, small-world)
+ * WHY:  Assess brain network health and efficiency
+ * HOW:  Computes Q, C, L, σ and other graph statistics
+ *
+ * METRICS:
+ * - Modularity Q: community structure quality (>0.3 is good)
+ * - Clustering C: local connectivity (>0.1 is healthy)
+ * - Path length L: communication efficiency (low is good)
+ * - Small-world σ: efficiency ratio (>1.0 is small-world)
+ * - Diameter: longest shortest path
+ * - Density: fraction of possible edges present
+ * - Components: number of disconnected subgraphs (should be 1)
+ *
+ * RESULTS: Stored in brain->topology_metrics
+ *
+ * @param brain Brain handle
+ * @return true on success, false on error
+ */
+NIMCP_EXPORT bool brain_compute_topology_metrics(brain_t brain);
+
+/**
+ * @brief Validate brain topology for common problems
+ *
+ * WHAT: Check for network health issues
+ * WHY:  Detect problems like disconnected components, poor modularity
+ * HOW:  Runs comprehensive topology checks
+ *
+ * CHECKS:
+ * 1. Disconnected components (should be 1 component)
+ * 2. Poor modularity (Q should be > 0.2)
+ * 3. Non-small-world (σ should be > 1.0)
+ * 4. Low clustering (C should be > 0.1)
+ * 5. Poorly connected hubs (hub degree should be > 5)
+ *
+ * @param brain Brain handle
+ * @return true if topology is healthy, false if problems detected
+ */
+NIMCP_EXPORT bool brain_validate_topology(brain_t brain);
 
 #ifdef __cplusplus
 }

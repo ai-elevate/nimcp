@@ -60,8 +60,13 @@ protected:
                                        uint32_t max_results, uint32_t* num_results) {
         *num_results = 2;
         char** results = (char**)nimcp_calloc(2, sizeof(char*));
-        results[0] = strdup("Result 1 about the topic");
-        results[1] = strdup("Result 2 with more information");
+        // Use nimcp_malloc instead of strdup to match cleanup expectations
+        const char* str1 = "Result 1 about the topic";
+        const char* str2 = "Result 2 with more information";
+        results[0] = (char*)nimcp_malloc(strlen(str1) + 1);
+        results[1] = (char*)nimcp_malloc(strlen(str2) + 1);
+        strcpy(results[0], str1);
+        strcpy(results[1], str2);
         return results;
     }
 

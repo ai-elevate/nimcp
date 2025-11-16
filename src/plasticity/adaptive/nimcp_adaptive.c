@@ -2229,3 +2229,71 @@ const adaptive_network_config_t* adaptive_network_get_config(adaptive_network_t 
     /* WHY: Config should only be changed during creation or explicit reconfigure */
     return &network->config;
 }
+
+/**
+ * WHAT: Get number of neurons in the adaptive network
+ * WHY: Enable topology analysis and community detection
+ * HOW: Return neuron count from base network
+ *
+ * COMPLEXITY: O(1) - direct field access
+ *
+ * @param network Adaptive network
+ * @return Number of neurons, or 0 on error
+ */
+uint32_t adaptive_network_get_num_neurons(adaptive_network_t network)
+{
+    /* Guard: Validate network handle */
+    if (!network) {
+        return 0;
+    }
+
+    /* Guard: Validate base network */
+    if (!network->base_network) {
+        return 0;
+    }
+
+    /* Return neuron count from base network */
+    return neural_network_get_num_neurons(network->base_network);
+}
+
+/**
+ * WHAT: Get synapse weight between two neurons
+ * WHY: Enable community detection to analyze connectivity patterns
+ * HOW: Access neuron synapses to find connection weight
+ *
+ * COMPLEXITY: O(s) where s = synapses per neuron (typically < 100)
+ *
+ * @param network Adaptive network
+ * @param from_neuron Source neuron ID
+ * @param to_neuron Target neuron ID
+ * @return Synapse weight, or 0.0f if no connection exists
+ */
+float adaptive_network_get_synapse_weight(adaptive_network_t network, uint32_t from_neuron, uint32_t to_neuron)
+{
+    /* Guard: Validate network */
+    if (!network || !network->base_network) {
+        return 0.0f;
+    }
+
+    /* Guard: Validate neuron IDs */
+    uint32_t num_neurons = neural_network_get_num_neurons(network->base_network);
+    if (from_neuron >= num_neurons || to_neuron >= num_neurons) {
+        return 0.0f;
+    }
+
+    /* Get source neuron */
+    neuron_t* from = neural_network_get_neuron(network->base_network, from_neuron);
+    if (!from) {
+        return 0.0f;
+    }
+
+    /* Search for synapse to target neuron */
+    for (uint32_t i = 0; i < from->num_synapses; i++) {
+        if (from->synapses[i].target_id == to_neuron) {
+            return from->synapses[i].weight;
+        }
+    }
+
+    /* No connection found */
+    return 0.0f;
+}

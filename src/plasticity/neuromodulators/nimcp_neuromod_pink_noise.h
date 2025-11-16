@@ -35,7 +35,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include "plasticity/neuromodulators/nimcp_neuromodulators.h"
-#include "plasticity/noise/nimcp_pink_noise.h"
+#include "plasticity/noise/nimcp_pink_noise.h"  // Includes stdio.h for FILE
 
 #ifdef __cplusplus
 extern "C" {
@@ -274,6 +274,41 @@ float neuromod_pink_compute_learning_rate(
  * @return Attention weight [0.5, 1.0]
  */
 float neuromod_pink_compute_attention(const neuromod_pink_noise_t* mod);
+
+//=============================================================================
+// Persistence API (Save/Load) - Phase 10.x
+//=============================================================================
+
+/**
+ * @brief Save pink noise neuromodulator state to file
+ *
+ * WHAT: Serialize pink noise neuromodulator system to binary file
+ * WHY:  Enable persistence of neuromodulator levels and pink noise generators
+ * HOW:  Write version, baselines, current levels, noise amplitudes, and generators
+ *
+ * @param mod Pink noise neuromodulator system
+ * @param file Open file handle for writing
+ * @return true on success, false on error
+ *
+ * COMPLEXITY: O(1)
+ * THREAD-SAFE: No (caller must ensure exclusive access)
+ */
+bool neuromod_pink_save(neuromod_pink_noise_t* mod, FILE* file);
+
+/**
+ * @brief Load pink noise neuromodulator state from file
+ *
+ * WHAT: Deserialize pink noise neuromodulator system from binary file
+ * WHY:  Restore saved neuromodulator levels and pink noise generators
+ * HOW:  Read version, validate, reconstruct state
+ *
+ * @param file Open file handle for reading
+ * @return Pink noise neuromodulator handle or NULL on error
+ *
+ * COMPLEXITY: O(1)
+ * THREAD-SAFE: Yes (creates new instance)
+ */
+neuromod_pink_noise_t* neuromod_pink_load(FILE* file);
 
 #ifdef __cplusplus
 }

@@ -425,7 +425,7 @@ nimcp_BINARY_DIR:STATIC=/home/bbrelin/nimcp/build
 nimcp_IS_TOP_LEVEL:STATIC=ON
 
 //Dependencies for the target
-nimcp_LIB_DEPENDS:STATIC=general;Python3::Python;general;lz4;general;jansson;general;/usr/lib/x86_64-linux-gnu/libsodium.so;
+nimcp_LIB_DEPENDS:STATIC=general;Python3::Python;general;lz4;general;jansson;general;cjson;general;/usr/lib/x86_64-linux-gnu/libsodium.so;
 
 //Value Computed by CMake
 nimcp_SOURCE_DIR:STATIC=/home/bbrelin/nimcp

@@ -22,11 +22,19 @@ import sys
 import time
 import gc
 import shutil
+import logging
 from pathlib import Path
 from typing import Dict, List, Optional, Iterator, Union
 from dataclasses import dataclass
 from datasets import load_dataset, load_from_disk, Dataset
 import nimcp
+
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger('hybrid_train')
 
 @dataclass
 class DatasetInfo:
@@ -51,6 +59,16 @@ class StreamConfig:
     temp_dir: Path = Path("/tmp/nimcp_streaming")
     cleanup_after_training: bool = True  # Delete local datasets after training
     auto_confirm_cleanup: bool = False  # Auto-confirm cleanup (no prompt)
+    # Community detection settings
+    enable_network_analysis: bool = True
+    detect_communities: bool = True
+    detect_hubs: bool = True
+    hub_threshold: float = 0.8
+    analysis_interval: int = 100  # Analyze every N epochs
+    validate_topology: bool = True
+    min_modularity: float = 0.25
+    max_communities: int = 10
+    log_metrics: bool = True
 
 @dataclass
 class TrainingProgress:
@@ -319,6 +337,57 @@ class HybridTrainingPipeline:
         except:
             return None
 
+    def analyze_network_topology(self, epoch: int):
+        """
+        WHAT: Analyze brain network topology using community detection
+        WHY:  Track emergence of functional modules during training
+        HOW:  Call NIMCP community detection API
+        """
+        if not self.config.enable_network_analysis:
+            return
+
+        try:
+            # Detect communities
+            if self.config.detect_communities:
+                result = nimcp.brain_detect_communities(self.brain)
+
+                # Get modularity
+                modularity = nimcp.brain_get_modularity(self.brain)
+                num_communities = nimcp.brain_get_num_communities(self.brain)
+
+                if self.config.log_metrics:
+                    logger.info(f"Epoch {epoch}: Q={modularity:.3f}, Modules={num_communities}")
+
+                # Check modularity threshold
+                if modularity < self.config.min_modularity:
+                    logger.warning(f"Low modularity ({modularity:.3f}) - network may lack functional specialization")
+
+                # Enforce max communities limit
+                if self.config.max_communities > 0 and num_communities > self.config.max_communities:
+                    logger.warning(f"Too many communities ({num_communities}) - network may be over-specialized")
+
+            # Detect hub neurons
+            if self.config.detect_hubs:
+                hubs = nimcp.brain_detect_hubs(self.brain, threshold=self.config.hub_threshold)
+                if self.config.log_metrics:
+                    logger.info(f"Epoch {epoch}: Hubs={hubs.num_hubs}")
+
+            # Validate topology
+            if self.config.validate_topology:
+                validation = nimcp.brain_validate_topology(self.brain, self.config.min_modularity)
+                if not validation.is_valid:
+                    logger.warning(f"Topology validation failed: {validation.error_message}")
+                    logger.info("Network may benefit from rewiring or parameter adjustment")
+                else:
+                    if self.config.log_metrics:
+                        logger.info(f"Topology validation passed - Q={validation.modularity:.3f}, "
+                                  f"C={validation.clustering_coefficient:.3f}, "
+                                  f"Communities={validation.num_communities}, "
+                                  f"Hubs={validation.num_hubs}")
+
+        except Exception as e:
+            logger.error(f"Network analysis failed at epoch {epoch}: {e}")
+
     def train_on_batch(self, batch: List[List[float]], progress: TrainingProgress):
         """
         WHAT: Train brain on batch of features
@@ -415,6 +484,7 @@ class HybridTrainingPipeline:
         # Process examples
         batch = []
         examples_since_checkpoint = 0
+        epoch = 0  # Track training epochs for network analysis
 
         try:
             for i, example in enumerate(dataset_iter):
@@ -434,6 +504,11 @@ class HybridTrainingPipeline:
                     self.train_on_batch(batch, progress)
                     batch = []
                     examples_since_checkpoint += self.config.batch_size
+                    epoch += 1
+
+                    # Periodically analyze network topology
+                    if self.config.enable_network_analysis and epoch % self.config.analysis_interval == 0:
+                        self.analyze_network_topology(epoch)
 
                     # Checkpoint
                     if examples_since_checkpoint >= self.config.checkpoint_interval:

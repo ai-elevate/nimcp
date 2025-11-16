@@ -296,9 +296,15 @@ bool explanation_generate_from_decision(
     // METADATA: Fill metadata fields
     // =========================================================================
 
-    explanation->num_features_used = 0;  // TODO: Extract from decision
-    explanation->decision_confidence = 0.0f;  // TODO: Get from decision
-    explanation->has_symbolic_proof = false;  // TODO: Check brain->symbolic_logic
+    // Extract num_features_used from active neurons in decision
+    explanation->num_features_used = decision->num_active_neurons;
+
+    // Get decision confidence from decision structure
+    explanation->decision_confidence = decision->confidence;
+
+    // Check if brain has symbolic logic module
+    symbolic_logic_t* logic = brain_get_symbolic_logic(brain);
+    explanation->has_symbolic_proof = (logic != NULL);
 
     gen->total_explanations_generated++;
 
@@ -347,17 +353,66 @@ bool explanation_generate_from_multimodal(
     // GENERATION: Multimodal-specific explanation
     // =========================================================================
 
-    // TODO: Extract modality contributions from multimodal_output
-    // For now, use placeholder text
+    // Extract modality contributions from multimodal_output
+    // Build modality-specific explanation based on attention weights
 
+    // What: Decision label and confidence
     snprintf(explanation->what, sizeof(explanation->what),
-            "Multimodal decision combining visual, audio, and direct inputs");
+            "Decision: %s (confidence: %.1f%%)",
+            output->decision_label, output->confidence * 100.0f);
 
-    snprintf(explanation->why, sizeof(explanation->why),
-            "Because multiple sensory modalities provided converging evidence");
+    // Why: Explain modality contributions based on attention weights
+    char modality_list[256] = {0};
+    bool first = true;
 
+    if (output->visual_attention > 0.01f) {
+        snprintf(modality_list + strlen(modality_list),
+                sizeof(modality_list) - strlen(modality_list),
+                "%svisual (%.0f%%)", first ? "" : ", ",
+                output->visual_attention * 100.0f);
+        first = false;
+    }
+    if (output->audio_attention > 0.01f) {
+        snprintf(modality_list + strlen(modality_list),
+                sizeof(modality_list) - strlen(modality_list),
+                "%saudio (%.0f%%)", first ? "" : ", ",
+                output->audio_attention * 100.0f);
+        first = false;
+    }
+    if (output->speech_attention > 0.01f) {
+        snprintf(modality_list + strlen(modality_list),
+                sizeof(modality_list) - strlen(modality_list),
+                "%sspeech (%.0f%%)", first ? "" : ", ",
+                output->speech_attention * 100.0f);
+        first = false;
+    }
+    if (output->language_attention > 0.01f) {
+        snprintf(modality_list + strlen(modality_list),
+                sizeof(modality_list) - strlen(modality_list),
+                "%slanguage (%.0f%%)", first ? "" : ", ",
+                output->language_attention * 100.0f);
+        first = false;
+    }
+    if (output->direct_attention > 0.01f) {
+        snprintf(modality_list + strlen(modality_list),
+                sizeof(modality_list) - strlen(modality_list),
+                "%sdirect (%.0f%%)", first ? "" : ", ",
+                output->direct_attention * 100.0f);
+        first = false;
+    }
+
+    if (strlen(modality_list) > 0) {
+        snprintf(explanation->why, sizeof(explanation->why),
+                "Because multiple sensory modalities converged: %s", modality_list);
+    } else {
+        snprintf(explanation->why, sizeof(explanation->why),
+                "Based on integrated sensory processing");
+    }
+
+    // How: Processing pathway through cortical regions
     snprintf(explanation->how, sizeof(explanation->how),
-            "Visual cortex + Audio cortex + Speech cortex → Multimodal integration");
+            "Multi-modal integration: %s → Unified representation → Decision",
+            modality_list);
 
     gen->total_explanations_generated++;
 
@@ -523,9 +578,14 @@ static void generate_what_explanation(brain_t brain, brain_decision_t* decision,
         return;
     }
 
-    // TODO: Extract actual output label from decision
-    // For now, use placeholder
-    snprintf(buffer, buffer_size, "Decision made");
+    // Extract actual output label from decision
+    if (decision->label[0] != '\0') {
+        snprintf(buffer, buffer_size, "Decision: %s (%.1f%% confidence)",
+                decision->label, decision->confidence * 100.0f);
+    } else {
+        snprintf(buffer, buffer_size, "Decision made with %.1f%% confidence",
+                decision->confidence * 100.0f);
+    }
 }
 
 /**
@@ -542,10 +602,29 @@ static void generate_why_explanation(brain_t brain, brain_decision_t* decision,
         return;
     }
 
-    // TODO: Extract feature saliences from decision
-    // For now, use placeholder
-    snprintf(buffer, buffer_size,
-            "Because key features were detected in the input");
+    // Extract feature saliences from decision
+    // Use active neurons as proxy for important features
+    if (decision->num_active_neurons > 0) {
+        // Calculate sparsity to describe feature selectivity
+        float selectivity = decision->sparsity;
+        const char* selectivity_desc = "many";
+
+        if (selectivity > 0.9f) {
+            selectivity_desc = "very few";
+        } else if (selectivity > 0.7f) {
+            selectivity_desc = "few";
+        } else if (selectivity > 0.5f) {
+            selectivity_desc = "some";
+        }
+
+        snprintf(buffer, buffer_size,
+                "Because %s key features (%u active patterns out of network) "
+                "strongly matched the learned representation",
+                selectivity_desc, decision->num_active_neurons);
+    } else {
+        snprintf(buffer, buffer_size,
+                "Based on distributed pattern recognition across the network");
+    }
 }
 
 /**
@@ -582,14 +661,23 @@ static void generate_confidence_explanation(brain_t brain, brain_decision_t* dec
         return;
     }
 
-    // TODO: Get actual confidence from decision
-    float confidence = 0.75f;  // Placeholder
+    // Get actual confidence from decision
+    float confidence = decision->confidence;
 
     const char* level = confidence_level_to_string(confidence);
 
-    snprintf(buffer, buffer_size,
-            "%.0f%% confident (%s certainty based on feature strength)",
-            confidence * 100.0f, level);
+    // Add context based on sparsity and active neurons
+    if (decision->num_active_neurons > 0) {
+        snprintf(buffer, buffer_size,
+                "%.0f%% confident (%s certainty: %u active features with %.1f%% selectivity)",
+                confidence * 100.0f, level,
+                decision->num_active_neurons,
+                decision->sparsity * 100.0f);
+    } else {
+        snprintf(buffer, buffer_size,
+                "%.0f%% confident (%s certainty based on pattern matching)",
+                confidence * 100.0f, level);
+    }
 }
 
 /**

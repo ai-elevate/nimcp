@@ -40,6 +40,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include <stddef.h>
+#include <stdio.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -599,6 +600,75 @@ void mirror_neurons_activate_observation_mode(mirror_neurons_t mirror);
  * COMPLEXITY: O(1)
  */
 bool mirror_neurons_has_recent_observations(mirror_neurons_t mirror);
+
+/**
+ * @brief Get all mirror neuron activations for Theory of Mind integration
+ *
+ * WHAT: Extract current activation pattern across all mirror neurons
+ * WHY:  Enable ToM to infer agent intentions from mirror neuron activity
+ * HOW:  Aggregate observation and execution activations into output array
+ *
+ * BIOLOGICAL RATIONALE:
+ * Mirror neurons fire when observing actions, enabling understanding of others'
+ * intentions (Rizzolatti & Craighero, 2004). ToM uses these activations to
+ * infer mental states: "What action are they performing, and why?"
+ *
+ * @param mirror Mirror neuron system
+ * @param activations Output buffer for activation values (must have space for max_size floats)
+ * @param max_size Maximum number of activations to return (buffer size)
+ * @param out_size Output: actual number of activations written
+ * @return true on success, false on error
+ *
+ * COMPLEXITY: O(n) where n = num_actions
+ * THREAD-SAFE: Yes (read-only)
+ */
+bool mirror_neurons_get_all_activations(
+    mirror_neurons_t mirror,
+    float* activations,
+    uint32_t max_size,
+    uint32_t* out_size
+);
+
+//=============================================================================
+// Persistence API (Save/Load) - Phase 10.11
+//=============================================================================
+
+/**
+ * @brief Save mirror neuron system state to file
+ *
+ * WHAT: Serialize mirror neuron system to binary file
+ * WHY:  Enable persistence of learned action associations and statistics
+ * HOW:  Write version, config, neurons, actions, agents, and statistics
+ *
+ * Note: Integration handles (working_memory, theory_of_mind, etc.) are not saved
+ *       They must be re-established after loading
+ *
+ * @param mirror Mirror neuron system
+ * @param file Open file handle for writing
+ * @return true on success, false on error
+ *
+ * COMPLEXITY: O(n + a + g) where n=neurons, a=actions, g=agents
+ * THREAD-SAFE: No (caller must ensure exclusive access)
+ */
+bool mirror_neurons_save(mirror_neurons_t mirror, FILE* file);
+
+/**
+ * @brief Load mirror neuron system state from file
+ *
+ * WHAT: Deserialize mirror neuron system from binary file
+ * WHY:  Restore saved action associations and learning state
+ * HOW:  Read version, validate, reconstruct state
+ *
+ * Note: Integration handles must be set separately via integration functions
+ * Note: Brain reference must be set via mirror_neurons_set_brain()
+ *
+ * @param file Open file handle for reading
+ * @return Mirror neuron system handle or NULL on error
+ *
+ * COMPLEXITY: O(n + a + g) where n=neurons, a=actions, g=agents
+ * THREAD-SAFE: Yes (creates new instance)
+ */
+mirror_neurons_t mirror_neurons_load(FILE* file);
 
 #ifdef __cplusplus
 }

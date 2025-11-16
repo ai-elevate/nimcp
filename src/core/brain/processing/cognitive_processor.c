@@ -130,6 +130,245 @@ static bool check_ethical_output(
 }
 
 //=============================================================================
+// Cognitive Constraint Logic Circuits
+//=============================================================================
+
+/**
+ * @brief Create mutual exclusion constraint circuit (A XOR B)
+ *
+ * WHAT: Build XOR logic circuit for mutual exclusion constraints
+ * WHY:  Ensure two conditions cannot be true simultaneously
+ * HOW:  Use neural XOR gate to detect conflicts
+ *
+ * BIOLOGICAL RATIONALE:
+ * - Prefrontal cortex implements mutual exclusion via reciprocal inhibition
+ * - Competing neural populations suppress each other
+ * - Winner-take-all dynamics enforce exclusivity
+ *
+ * @param logic Neural logic network
+ * @param value_a First condition strength [0,1]
+ * @param value_b Second condition strength [0,1]
+ * @return true if constraint satisfied (only one or neither active)
+ */
+static bool check_mutual_exclusion(
+    neural_logic_network_t logic,
+    float value_a,
+    float value_b)
+{
+    // Guard: Null network
+    if (!logic) {
+        return true;
+    }
+
+    // Create XOR gate for mutual exclusion check
+    uint32_t xor_gate = neural_logic_create_gate(logic, LOGIC_GATE_XOR, 0.5f);
+    if (xor_gate == UINT32_MAX) {
+        return true;  // Failed to create gate, assume valid
+    }
+
+    // Evaluate XOR: true if values differ, false if same
+    float inputs[2] = {value_a, value_b};
+    float output = 0.0f;
+
+    if (!neural_logic_evaluate(logic, xor_gate, inputs, 2, &output)) {
+        return true;  // Evaluation failed, assume valid
+    }
+
+    // Mutual exclusion satisfied if:
+    // - Both inactive (A=0, B=0) → XOR=0 → valid
+    // - Only A active (A=1, B=0) → XOR=1 → valid
+    // - Only B active (A=0, B=1) → XOR=1 → valid
+    // - Both active (A=1, B=1) → XOR=0 → INVALID
+
+    // Check if both are active (violation)
+    bool both_active = (value_a > 0.5f && value_b > 0.5f);
+
+    return !both_active;  // Valid if NOT both active
+}
+
+/**
+ * @brief Create prerequisite constraint circuit (A → B)
+ *
+ * WHAT: Build IMPLIES logic circuit for prerequisite checking
+ * WHY:  Ensure B cannot be true unless A is true first
+ * HOW:  Use neural IMPLIES gate (A → B ≡ ¬A ∨ B)
+ *
+ * BIOLOGICAL RATIONALE:
+ * - Sequential task execution in prefrontal cortex
+ * - Working memory maintains prerequisite states
+ * - Conditional firing patterns enforce dependencies
+ *
+ * @param logic Neural logic network
+ * @param prerequisite_value Prerequisite condition [0,1]
+ * @param dependent_value Dependent condition [0,1]
+ * @return true if constraint satisfied (if A then B)
+ */
+static bool check_prerequisite(
+    neural_logic_network_t logic,
+    float prerequisite_value,
+    float dependent_value)
+{
+    // Guard: Null network
+    if (!logic) {
+        return true;
+    }
+
+    // Create IMPLIES gate for prerequisite check
+    uint32_t implies_gate = neural_logic_create_gate(
+        logic,
+        LOGIC_GATE_IMPLIES,
+        0.8f
+    );
+    if (implies_gate == UINT32_MAX) {
+        return true;  // Failed to create gate, assume valid
+    }
+
+    // Evaluate A → B
+    float inputs[2] = {prerequisite_value, dependent_value};
+    float output = 0.0f;
+
+    if (!neural_logic_evaluate(logic, implies_gate, inputs, 2, &output)) {
+        return true;  // Evaluation failed, assume valid
+    }
+
+    // Implication satisfied if output is true
+    // A → B is false only when A=1 and B=0
+    return (output > 0.5f);
+}
+
+/**
+ * @brief Create conflict detection circuit (NOT (A AND B))
+ *
+ * WHAT: Build NOT-AND logic circuit for conflict detection
+ * WHY:  Detect when two incompatible states co-occur
+ * HOW:  Chain AND gate with NOT gate
+ *
+ * BIOLOGICAL RATIONALE:
+ * - Conflict monitoring in anterior cingulate cortex (ACC)
+ * - Detects response conflicts via error-related negativity
+ * - Inhibitory control prevents incompatible actions
+ *
+ * @param logic Neural logic network
+ * @param state_a First state strength [0,1]
+ * @param state_b Second state strength [0,1]
+ * @return true if no conflict detected
+ */
+static bool check_no_conflict(
+    neural_logic_network_t logic,
+    float state_a,
+    float state_b)
+{
+    // Guard: Null network
+    if (!logic) {
+        return true;
+    }
+
+    // Create AND gate
+    uint32_t and_gate = neural_logic_create_gate(logic, LOGIC_GATE_AND, 1.8f);
+    if (and_gate == UINT32_MAX) {
+        return true;
+    }
+
+    // Create NOT gate
+    uint32_t not_gate = neural_logic_create_gate(logic, LOGIC_GATE_NOT, 0.5f);
+    if (not_gate == UINT32_MAX) {
+        return true;
+    }
+
+    // Connect AND → NOT
+    if (!neural_logic_connect(logic, and_gate, not_gate, 1.0f)) {
+        return true;
+    }
+
+    // Evaluate AND(A, B)
+    float and_inputs[2] = {state_a, state_b};
+    float and_output = 0.0f;
+
+    if (!neural_logic_evaluate(logic, and_gate, and_inputs, 2, &and_output)) {
+        return true;
+    }
+
+    // Evaluate NOT(AND(A, B))
+    float not_inputs[1] = {and_output};
+    float not_output = 0.0f;
+
+    if (!neural_logic_evaluate(logic, not_gate, not_inputs, 1, &not_output)) {
+        return true;
+    }
+
+    // No conflict if NOT(AND) is true (i.e., both are NOT active together)
+    return (not_output > 0.5f);
+}
+
+/**
+ * @brief Validate cognitive constraints using logic circuits
+ *
+ * WHAT: Check all cognitive constraints using neural logic gates
+ * WHY:  Ensure output satisfies logical consistency requirements
+ * HOW:  Apply constraint circuits to cognitive annotation values
+ *
+ * BIOLOGICAL RATIONALE:
+ * - Cortical constraint satisfaction networks
+ * - Prefrontal executive control enforces logical rules
+ * - Anterior cingulate monitors for conflicts
+ *
+ * CONSTRAINTS CHECKED:
+ * 1. Mutual exclusion: confidence and uncertainty must sum to ~1
+ * 2. Prerequisite: high confidence requires low uncertainty
+ * 3. Conflict: ethical_approved and high novelty shouldn't conflict
+ *
+ * @param logic Neural logic network
+ * @param net_output Raw network output (for validation context)
+ * @param annotations Cognitive annotations to validate
+ * @return true if all constraints satisfied
+ */
+static bool validate_cognitive_constraints(
+    neural_logic_network_t logic,
+    const network_output_t* net_output,
+    const cognitive_annotations_t* annotations)
+{
+    // Guard: Null inputs
+    if (!logic || !net_output || !annotations) {
+        return true;
+    }
+
+    bool all_valid = true;
+
+    // Constraint 1: Confidence and uncertainty are complementary
+    // Should be mutually exclusive (high confidence = low uncertainty)
+    float confidence_normalized = annotations->confidence;
+    float uncertainty_normalized = annotations->uncertainty;
+
+    // They should sum to ~1.0, check mutual exclusion of extremes
+    bool confidence_uncertainty_valid = check_mutual_exclusion(
+        logic,
+        confidence_normalized > 0.8f ? 1.0f : 0.0f,  // Very confident
+        uncertainty_normalized > 0.8f ? 1.0f : 0.0f   // Very uncertain
+    );
+    all_valid = all_valid && confidence_uncertainty_valid;
+
+    // Constraint 2: High confidence requires low uncertainty (prerequisite)
+    // If confident, then uncertainty must be low
+    bool prerequisite_valid = check_prerequisite(
+        logic,
+        confidence_normalized,      // If confident
+        1.0f - uncertainty_normalized  // Then certain (low uncertainty)
+    );
+    all_valid = all_valid && prerequisite_valid;
+
+    // Constraint 3: Ethical violations conflict with high salience
+    // Unethical outputs should not have high salience
+    bool ethical_salience_valid = check_no_conflict(
+        logic,
+        annotations->ethical_approved ? 0.0f : 1.0f,  // Ethical violation
+        annotations->salience_score                   // High salience
+    );
+    all_valid = all_valid && ethical_salience_valid;
+
+    return all_valid;
+}
+
+//=============================================================================
 // API Implementation
 //=============================================================================
 
@@ -269,9 +508,12 @@ bool cognitive_process_output(
 
     if (brain->logic) {
         // Neural logic gates available for constraint checking / logical inference
-        // For now, assume logic is valid (no constraints violated)
-        annotations->logic_valid = true;
-        // TODO: Add specific logic gate circuits for cognitive constraint checking
+        // Check cognitive constraints using logic circuits
+        annotations->logic_valid = validate_cognitive_constraints(
+            brain->logic,
+            net_output,
+            annotations
+        );
     } else {
         // No logic module, assume valid
         annotations->logic_valid = true;

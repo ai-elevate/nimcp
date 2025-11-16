@@ -4,6 +4,8 @@
 
 #include "core/topology/nimcp_fractal_topology.h"
 #include "core/neuralnet/nimcp_neuralnet.h"
+#include "utils/containers/nimcp_graph.h"
+#include "utils/algorithms/nimcp_centrality.h"
 #include <math.h>
 #include <string.h>
 #include <time.h>
@@ -1290,9 +1292,81 @@ bool topology_identify_hubs(
         return false;
     }
 
-    // TODO: Implement hub identification
-    set_error("Hub identification not yet implemented");
-    return false;
+    // IMPLEMENTATION: Hub identification using degree centrality
+    // Convert network to graph for centrality analysis
+    NimcpGraph* graph = nimcp_graph_create();
+    if (!graph) {
+        set_error("Failed to create graph for hub identification");
+        return false;
+    }
+
+    // Extract network topology into graph
+    uint32_t n_neurons = neural_network_get_num_neurons(network);
+    if (n_neurons == 0) {
+        set_error("Network has no neurons");
+        nimcp_graph_destroy(graph);
+        return false;
+    }
+
+    // Add vertices (neurons) to graph
+    for (uint32_t i = 0; i < n_neurons; i++) {
+        nimcp_graph_add_vertex(graph, i, 0.0f, 0.0f, 0.0f, 0);
+    }
+
+    // Add edges (synapses) to graph
+    for (uint32_t i = 0; i < n_neurons; i++) {
+        neuron_t* neuron = neural_network_get_neuron(network, i);
+        if (!neuron) continue;
+
+        for (uint32_t j = 0; j < neuron->num_synapses; j++) {
+            synapse_t* syn = &neuron->synapses[j];
+            nimcp_graph_add_edge(graph, i, syn->target_id, fabs(syn->weight));
+        }
+    }
+
+    // Compute degree centrality
+    NimcpCentralityScores* degree_scores = nimcp_degree_centrality(graph);
+    if (!degree_scores) {
+        set_error("Failed to compute degree centrality");
+        nimcp_graph_destroy(graph);
+        return false;
+    }
+
+    // Detect hubs using percentile threshold
+    uint32_t* hub_list = nimcp_malloc(n_neurons * sizeof(uint32_t));
+    if (!hub_list) {
+        set_error("Failed to allocate hub list");
+        nimcp_centrality_scores_destroy(degree_scores);
+        nimcp_graph_destroy(graph);
+        return false;
+    }
+
+    // Calculate threshold from percentile of centrality distribution
+    // Use threshold = 2.0 standard deviations for top ~2.5% (high percentile)
+    double threshold = (percentile > 0.9) ? 2.0 : 1.5;
+    *num_hubs = nimcp_detect_hubs(degree_scores, threshold, hub_list, n_neurons);
+
+    // Allocate output array
+    if (*num_hubs > 0) {
+        *hub_indices = nimcp_malloc(*num_hubs * sizeof(uint32_t));
+        if (!*hub_indices) {
+            set_error("Failed to allocate hub indices");
+            nimcp_free(hub_list);
+            nimcp_centrality_scores_destroy(degree_scores);
+            nimcp_graph_destroy(graph);
+            return false;
+        }
+        memcpy(*hub_indices, hub_list, *num_hubs * sizeof(uint32_t));
+    } else {
+        *hub_indices = NULL;
+    }
+
+    // Cleanup
+    nimcp_free(hub_list);
+    nimcp_centrality_scores_destroy(degree_scores);
+    nimcp_graph_destroy(graph);
+
+    return true;
 }
 
 bool topology_compute_betweenness(
@@ -1305,7 +1379,54 @@ bool topology_compute_betweenness(
         return false;
     }
 
-    // TODO: Implement Brandes' algorithm
-    set_error("Betweenness centrality not yet implemented");
-    return false;
+    // IMPLEMENTATION: Betweenness centrality using Brandes' algorithm
+    // Convert network to graph
+    NimcpGraph* graph = nimcp_graph_create();
+    if (!graph) {
+        set_error("Failed to create graph for betweenness centrality");
+        return false;
+    }
+
+    // Extract network topology into graph
+    uint32_t n_neurons = neural_network_get_num_neurons(network);
+    if (n_neurons == 0) {
+        set_error("Network has no neurons");
+        nimcp_graph_destroy(graph);
+        return false;
+    }
+
+    // Add vertices (neurons) to graph
+    for (uint32_t i = 0; i < n_neurons; i++) {
+        nimcp_graph_add_vertex(graph, i, 0.0f, 0.0f, 0.0f, 0);
+    }
+
+    // Add edges (synapses) to graph
+    for (uint32_t i = 0; i < n_neurons; i++) {
+        neuron_t* neuron = neural_network_get_neuron(network, i);
+        if (!neuron) continue;
+
+        for (uint32_t j = 0; j < neuron->num_synapses; j++) {
+            synapse_t* syn = &neuron->synapses[j];
+            nimcp_graph_add_edge(graph, i, syn->target_id, fabs(syn->weight));
+        }
+    }
+
+    // Compute betweenness centrality using Brandes' algorithm
+    NimcpCentralityScores* betweenness_scores = nimcp_betweenness_centrality(graph);
+    if (!betweenness_scores) {
+        set_error("Failed to compute betweenness centrality");
+        nimcp_graph_destroy(graph);
+        return false;
+    }
+
+    // Copy scores to output array
+    for (uint32_t i = 0; i < n_neurons; i++) {
+        centrality[i] = (float)nimcp_get_centrality_score(betweenness_scores, i);
+    }
+
+    // Cleanup
+    nimcp_centrality_scores_destroy(betweenness_scores);
+    nimcp_graph_destroy(graph);
+
+    return true;
 }

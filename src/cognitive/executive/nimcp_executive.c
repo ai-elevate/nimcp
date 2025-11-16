@@ -778,3 +778,300 @@ bool executive_boost_task_priority(executive_controller_t* exec,
 
     return found;
 }
+
+//=============================================================================
+// Persistence API (Save/Load)
+//=============================================================================
+
+/**
+ * @brief Save executive controller state to file
+ *
+ * WHAT: Serialize executive controller state to binary file
+ * WHY:  Enable persistence of task queue, statistics, and configuration
+ * HOW:  Write version marker, config, stats, and task queue to file
+ *
+ * Binary format:
+ *   uint32_t version (1)
+ *   executive_config_t config
+ *   executive_stats_t stats
+ *   uint64_t last_switch_time_ms
+ *   uint32_t next_task_id
+ *   uint32_t total_decisions
+ *   uint32_t num_tasks
+ *   For each task:
+ *     task_descriptor_t task (without context pointer)
+ *
+ * COMPLEXITY: O(n) where n = number of tasks
+ * THREAD-SAFE: No (caller must ensure exclusive access)
+ *
+ * @param exec Executive controller
+ * @param file Open file handle for writing
+ * @return true on success, false on error
+ */
+bool executive_save(executive_controller_t* exec, FILE* file)
+{
+    // Guard: Validate parameters
+    if (!exec || !file) {
+        set_error("Invalid parameters to executive_save");
+        return false;
+    }
+
+    // WHAT: Write version marker for backward compatibility
+    // WHY:  Enable future format changes while supporting old saves
+    // HOW:  Write uint32_t version = 1
+    uint32_t version = 1;
+    if (fwrite(&version, sizeof(uint32_t), 1, file) != 1) {
+        set_error("Failed to write version marker");
+        return false;
+    }
+
+    // WHAT: Write configuration
+    // WHY:  Restore executive behavior on load
+    // HOW:  Binary write of config struct
+    if (fwrite(&exec->config, sizeof(executive_config_t), 1, file) != 1) {
+        set_error("Failed to write executive configuration");
+        return false;
+    }
+
+    // WHAT: Write statistics
+    // WHY:  Preserve historical metrics across sessions
+    // HOW:  Binary write of stats struct
+    if (fwrite(&exec->stats, sizeof(executive_stats_t), 1, file) != 1) {
+        set_error("Failed to write executive statistics");
+        return false;
+    }
+
+    // WHAT: Write temporal state
+    // WHY:  Preserve switch timing information
+    // HOW:  Write last_switch_time_ms, next_task_id, total_decisions
+    if (fwrite(&exec->last_switch_time_ms, sizeof(uint64_t), 1, file) != 1) {
+        set_error("Failed to write last_switch_time_ms");
+        return false;
+    }
+
+    if (fwrite(&exec->next_task_id, sizeof(uint32_t), 1, file) != 1) {
+        set_error("Failed to write next_task_id");
+        return false;
+    }
+
+    if (fwrite(&exec->total_decisions, sizeof(uint32_t), 1, file) != 1) {
+        set_error("Failed to write total_decisions");
+        return false;
+    }
+
+    // WHAT: Write task count
+    // WHY:  Know how many tasks to load
+    // HOW:  Write num_tasks
+    if (fwrite(&exec->num_tasks, sizeof(uint32_t), 1, file) != 1) {
+        set_error("Failed to write task count");
+        return false;
+    }
+
+    // WHAT: Write task queue
+    // WHY:  Restore queued tasks on load
+    // HOW:  For each task, write task_descriptor_t (context pointer set to NULL)
+    for (uint32_t i = 0; i < exec->num_tasks; i++) {
+        if (!exec->task_queue[i]) {
+            set_error("NULL task in queue at index %u", i);
+            return false;
+        }
+
+        // Copy task and clear context pointer (not serializable)
+        task_descriptor_t task_copy = *exec->task_queue[i];
+        task_copy.context = NULL;
+
+        if (fwrite(&task_copy, sizeof(task_descriptor_t), 1, file) != 1) {
+            set_error("Failed to write task %u", i);
+            return false;
+        }
+    }
+
+    // WHAT: Write active task flag and data
+    // WHY:  Restore active task on load
+    // HOW:  Write has_active_task flag, then task if present
+    bool has_active_task = (exec->active_task != NULL);
+    if (fwrite(&has_active_task, sizeof(bool), 1, file) != 1) {
+        set_error("Failed to write active task flag");
+        return false;
+    }
+
+    if (has_active_task) {
+        // Copy active task and clear context pointer
+        task_descriptor_t task_copy = *exec->active_task;
+        task_copy.context = NULL;
+
+        if (fwrite(&task_copy, sizeof(task_descriptor_t), 1, file) != 1) {
+            set_error("Failed to write active task");
+            return false;
+        }
+    }
+
+    return true;
+}
+
+/**
+ * @brief Load executive controller state from file
+ *
+ * WHAT: Deserialize executive controller state from binary file
+ * WHY:  Restore saved task queue, statistics, and configuration
+ * HOW:  Read version marker, validate, reconstruct state
+ *
+ * Note: Brain reference must be set separately via brain field assignment
+ * Note: Task context pointers are not restored (set to NULL)
+ *
+ * COMPLEXITY: O(n) where n = number of tasks
+ * THREAD-SAFE: Yes (creates new instance)
+ *
+ * @param file Open file handle for reading
+ * @return Executive controller handle or NULL on error
+ */
+executive_controller_t* executive_load(FILE* file)
+{
+    // Guard: Validate parameter
+    if (!file) {
+        set_error("NULL file parameter to executive_load");
+        return NULL;
+    }
+
+    // WHAT: Read and validate version
+    // WHY:  Ensure format compatibility
+    // HOW:  Read version, check against current version
+    uint32_t version = 0;
+    if (fread(&version, sizeof(uint32_t), 1, file) != 1) {
+        set_error("Failed to read version marker");
+        return NULL;
+    }
+
+    if (version != 1) {
+        set_error("Unsupported executive save format version %u", version);
+        return NULL;
+    }
+
+    // WHAT: Allocate executive controller
+    // WHY:  Need structure to hold loaded data
+    // HOW:  Use nimcp_calloc for zero-initialization
+    executive_controller_t* exec = (executive_controller_t*)nimcp_calloc(1, sizeof(executive_controller_t));
+    if (!exec) {
+        set_error("Failed to allocate executive controller");
+        return NULL;
+    }
+
+    // WHAT: Read configuration
+    // WHY:  Restore executive behavior
+    // HOW:  Binary read into config struct
+    if (fread(&exec->config, sizeof(executive_config_t), 1, file) != 1) {
+        set_error("Failed to read executive configuration");
+        goto cleanup;
+    }
+
+    // WHAT: Read statistics
+    // WHY:  Restore historical metrics
+    // HOW:  Binary read into stats struct
+    if (fread(&exec->stats, sizeof(executive_stats_t), 1, file) != 1) {
+        set_error("Failed to read executive statistics");
+        goto cleanup;
+    }
+
+    // WHAT: Read temporal state
+    // WHY:  Restore switch timing
+    // HOW:  Read last_switch_time_ms, next_task_id, total_decisions
+    if (fread(&exec->last_switch_time_ms, sizeof(uint64_t), 1, file) != 1) {
+        set_error("Failed to read last_switch_time_ms");
+        goto cleanup;
+    }
+
+    if (fread(&exec->next_task_id, sizeof(uint32_t), 1, file) != 1) {
+        set_error("Failed to read next_task_id");
+        goto cleanup;
+    }
+
+    if (fread(&exec->total_decisions, sizeof(uint32_t), 1, file) != 1) {
+        set_error("Failed to read total_decisions");
+        goto cleanup;
+    }
+
+    // WHAT: Read task count
+    // WHY:  Know how many tasks to allocate
+    // HOW:  Read num_tasks
+    if (fread(&exec->num_tasks, sizeof(uint32_t), 1, file) != 1) {
+        set_error("Failed to read task count");
+        goto cleanup;
+    }
+
+    // WHAT: Allocate task queue
+    // WHY:  Need storage for loaded tasks
+    // HOW:  Allocate array of task_descriptor_t pointers
+    exec->max_tasks = exec->config.max_tasks;
+    exec->task_queue = (task_descriptor_t**)nimcp_calloc(exec->max_tasks, sizeof(task_descriptor_t*));
+    if (!exec->task_queue) {
+        set_error("Failed to allocate task queue");
+        goto cleanup;
+    }
+
+    // WHAT: Read task queue
+    // WHY:  Restore queued tasks
+    // HOW:  For each task, allocate and read task_descriptor_t
+    for (uint32_t i = 0; i < exec->num_tasks; i++) {
+        exec->task_queue[i] = (task_descriptor_t*)nimcp_calloc(1, sizeof(task_descriptor_t));
+        if (!exec->task_queue[i]) {
+            set_error("Failed to allocate task %u", i);
+            goto cleanup;
+        }
+
+        if (fread(exec->task_queue[i], sizeof(task_descriptor_t), 1, file) != 1) {
+            set_error("Failed to read task %u", i);
+            goto cleanup;
+        }
+
+        // Context pointer is always NULL after load (not serializable)
+        exec->task_queue[i]->context = NULL;
+    }
+
+    // WHAT: Read active task flag and data
+    // WHY:  Restore active task if present
+    // HOW:  Read has_active_task, then task if true
+    bool has_active_task = false;
+    if (fread(&has_active_task, sizeof(bool), 1, file) != 1) {
+        set_error("Failed to read active task flag");
+        goto cleanup;
+    }
+
+    if (has_active_task) {
+        exec->active_task = (task_descriptor_t*)nimcp_calloc(1, sizeof(task_descriptor_t));
+        if (!exec->active_task) {
+            set_error("Failed to allocate active task");
+            goto cleanup;
+        }
+
+        if (fread(exec->active_task, sizeof(task_descriptor_t), 1, file) != 1) {
+            set_error("Failed to read active task");
+            goto cleanup;
+        }
+
+        // Context pointer is always NULL after load
+        exec->active_task->context = NULL;
+    }
+
+    // Brain reference must be set separately by caller
+    exec->brain = NULL;
+
+    return exec;
+
+cleanup:
+    // WHAT: Cleanup on error
+    // WHY:  Prevent memory leaks
+    // HOW:  Free allocated tasks and queue
+    if (exec->task_queue) {
+        for (uint32_t i = 0; i < exec->num_tasks; i++) {
+            if (exec->task_queue[i]) {
+                nimcp_free(exec->task_queue[i]);
+            }
+        }
+        nimcp_free(exec->task_queue);
+    }
+    if (exec->active_task) {
+        nimcp_free(exec->active_task);
+    }
+    nimcp_free(exec);
+    return NULL;
+}

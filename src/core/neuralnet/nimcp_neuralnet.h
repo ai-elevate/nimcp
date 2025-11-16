@@ -3,7 +3,6 @@
 #ifndef NIMCP_NEURALNET_H
 #define NIMCP_NEURALNET_H
 
-#include <Python.h>  // Use CMake-provided Python includes
 #include "common/nimcp_export.h"
 #include "core/neuron_models/nimcp_neuron_model.h"
 #include "core/neuron_types/nimcp_neuron_types.h"  // Phase 8.7: Specialized neuron types

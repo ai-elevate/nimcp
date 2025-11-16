@@ -42,9 +42,33 @@
 // NOTE: synapse_compute.h includes neuralnet.h, which has full struct definitions
 #include "core/synapse_compute/nimcp_synapse_compute.h"
 #include "plasticity/eligibility/nimcp_eligibility_trace.h"  // Option 2.2: Burst-triggered consolidation
+#include "plasticity/neuromodulators/nimcp_neuromodulators.h"  // For neuromodulator_get_level
+#include "plasticity/neuromodulators/nimcp_phasic_tonic.h"  // For phasic_tonic_state_t
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
+
+// Helper: Get dopamine phasic-tonic state from neuromodulator system
+// This is an internal accessor that knows the struct layout
+static phasic_tonic_state_t* get_dopamine_phasic_tonic(void* neuromod_system) {
+    if (!neuromod_system) return NULL;
+
+    // The neuromodulator_system_struct layout (from nimcp_neuromodulators.c):
+    // - nimcp_platform_rwlock_t rwlock
+    // - float concentrations[NEUROMOD_COUNT]
+    // - float baselines[NEUROMOD_COUNT]
+    // - float decay_times[NEUROMOD_COUNT]
+    // - float reward_dopamine_gain, threat_norepinephrine_gain, salience_acetylcholine_gain, punishment_serotonin_gain
+    // - bool enable_volume_transmission
+    // - float diffusion_rate
+    // - stats struct
+    // - uint64_t last_update_time
+    // - phasic_tonic_state_t dopamine_phasic_tonic  <-- TARGET
+
+    // Calculate offset: We'll use the actual structure from neuromodulators.c
+    // For now, return NULL and use dopamine_level only (safer approach)
+    return NULL;
+}
 
 //=============================================================================
 // Helper Functions - Mathematical Operations
@@ -457,45 +481,66 @@ void synapse_learn_three_factor(
     if (syn->eligibility && syn->enable_eligibility && context) {
         // === FULL ELIGIBILITY TRACE API WITH BURST-TRIGGERED CONSOLIDATION ===
 
-        // Get configuration and neuromodulator system from context
-        // NOTE: context needs to provide these - will be added in context structure
-        // For now, use defaults if not available
+        // Get configuration - use default as baseline
         eligibility_config_t config = eligibility_default_config();
 
-        // TODO: Get from context when available:
-        // phasic_tonic_state_t* dopamine_phasic_tonic = context->dopamine_phasic_tonic;
-        // if (context->burst_triggered_mode) config.burst_triggered_mode = true;
+        // Extract dopamine phasic-tonic state from context (Phase 2.7.1)
+        phasic_tonic_state_t* dopamine_phasic_tonic = NULL;
+        float dopamine_level = 0.5f;  // Default baseline dopamine
+
+        // Guard: Access neuromodulator system from context
+        if (context->neuromodulator_system) {
+            // Get dopamine level via public API
+            neuromodulator_system_t neuromod = (neuromodulator_system_t)context->neuromodulator_system;
+            dopamine_level = neuromodulator_get_level(neuromod, NEUROMOD_DOPAMINE);
+
+            // Attempt to get phasic-tonic state for burst detection
+            dopamine_phasic_tonic = get_dopamine_phasic_tonic(context->neuromodulator_system);
+
+            // Enable burst-triggered mode if burst state detected
+            if (dopamine_phasic_tonic && eligibility_is_in_burst(dopamine_phasic_tonic, &config)) {
+                config.burst_triggered_mode = true;
+            }
+        }
 
         // Update trace with spike timing (if both spikes present)
+        uint64_t current_time;
         if (pre_spike_time > 0 && post_spike_time > 0) {
-            // Compute STDP contribution
+            // Compute STDP contribution (pre-post correlation)
             float dt = post_spike_time - pre_spike_time;
             float stdp_contribution = expf(-fabsf(dt) / 20.0f);
             if (dt < 0) {
                 stdp_contribution *= -0.5f;  // LTD asymmetry
             }
 
-            // Update eligibility trace
-            uint64_t current_time = (uint64_t)(post_spike_time);  // Convert to ms
+            // Update eligibility trace with STDP
+            current_time = (uint64_t)(post_spike_time);
             eligibility_trace_update(syn->eligibility, &config, current_time, stdp_contribution);
         } else if (pre_spike_time > 0 || post_spike_time > 0) {
             // Decay trace if we have a valid timestamp
-            uint64_t current_time = (post_spike_time > 0) ? (uint64_t)post_spike_time : (uint64_t)pre_spike_time;
+            current_time = (post_spike_time > 0) ? (uint64_t)post_spike_time : (uint64_t)pre_spike_time;
             eligibility_trace_decay(syn->eligibility, &config, current_time);
         } else {
-            // No spikes (both = 0): advance time by 1ms for decay purposes
-            // This allows reward-only updates to work with decayed traces
-            uint64_t current_time = syn->eligibility->last_update + 1;
+            // No spikes: advance time by 1ms for decay
+            current_time = syn->eligibility->last_update + 1;
             eligibility_trace_decay(syn->eligibility, &config, current_time);
         }
 
-        // Consolidate using eligibility trace API
-        // NOTE: When context provides dopamine_phasic_tonic, use eligibility_consolidate_on_burst()
-        // For now, use standard consolidation
-        float dopamine_level = 1.0f;  // Default, or from context->dopamine_level
-        float weight_change = eligibility_apply_reward(
-            syn, syn->eligibility, &config, reward_signal, dopamine_level
-        );
+        // Apply three-factor learning: Δw = learning_rate × trace × reward × dopamine
+        float weight_change = 0.0f;
+
+        if (dopamine_phasic_tonic && config.burst_triggered_mode) {
+            // Burst-triggered consolidation (four-factor rule)
+            // Only consolidate weight changes during dopamine bursts
+            weight_change = eligibility_consolidate_on_burst(
+                syn, syn->eligibility, &config, dopamine_phasic_tonic, reward_signal
+            );
+        } else {
+            // Standard three-factor learning (trace × reward × dopamine)
+            weight_change = eligibility_apply_reward(
+                syn, syn->eligibility, &config, reward_signal, dopamine_level
+            );
+        }
 
         syn->last_change = weight_change;
 

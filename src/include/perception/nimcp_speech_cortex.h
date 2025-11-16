@@ -506,6 +506,106 @@ void speech_cortex_clear_phonological_buffer(speech_cortex_t* cortex);
 void speech_cortex_set_brain(speech_cortex_t* cortex, brain_t brain);
 
 //=============================================================================
+// Plasticity API (Phase 10.11)
+//=============================================================================
+
+/**
+ * @brief Train speech cortex on labeled phoneme example
+ *
+ * WHAT: Update STDP weights, mirror neurons, and eligibility traces
+ * WHY:  Enable phoneme category learning via experience
+ * HOW:  Process audio → extract formants → STDP learning → mirror activation
+ *
+ * ALGORITHM:
+ * 1. Extract formants from audio frame
+ * 2. Update phoneme detector weights via STDP
+ * 3. Activate mirror neurons based on articulatory gestures
+ * 4. Update eligibility traces for temporal credit assignment
+ * 5. Consolidate learning during dopamine bursts (correct detections)
+ *
+ * LEARNING MODES:
+ * - Supervised: Provide target_phoneme for labeled data
+ * - Reinforcement: Provide reward signal for correct/incorrect detections
+ * - Combined: Use both for maximum learning efficiency
+ *
+ * BIOLOGICAL BASIS:
+ * - STDP learns phoneme categories in STG (Mesgarani et al. 2014)
+ * - Mirror neurons simulate articulation during perception (Liberman 1985)
+ * - Dopamine bursts gate consolidation (Reynolds & Wickens 2002)
+ * - Eligibility traces assign credit to delayed outcomes (Izhikevich 2007)
+ *
+ * @param cortex Speech cortex instance
+ * @param audio_data Audio frame containing phoneme
+ * @param num_samples Number of audio samples
+ * @param target_phoneme Ground truth phoneme (PHONEME_UNKNOWN for unsupervised)
+ * @param reward Reward signal [0, 1] (1.0 = correct detection, 0.5 = neutral)
+ * @return true if training successful, false on error
+ *
+ * COMPLEXITY: O(P × F) where P = num_phonemes, F = num_formants
+ */
+bool speech_cortex_train_phoneme(
+    speech_cortex_t* cortex,
+    const float* audio_data,
+    uint32_t num_samples,
+    phoneme_t target_phoneme,
+    float reward
+);
+
+/**
+ * @brief Get plasticity statistics
+ *
+ * WHAT: Query learning progress and plasticity metrics
+ * WHY:  Monitor phoneme learning, mirror neuron activity, and neuromodulation
+ * HOW:  Return statistics on STDP updates, mirror activations, and burst events
+ *
+ * @param cortex Speech cortex instance
+ * @param stdp_updates Output: total STDP weight updates
+ * @param mirror_activations Output: total mirror neuron activations
+ * @param burst_events Output: dopamine burst count
+ * @param avg_learning_rate Output: average learning rate
+ * @return true on success, false on error
+ */
+bool speech_cortex_get_plasticity_stats(
+    const speech_cortex_t* cortex,
+    uint64_t* stdp_updates,
+    uint64_t* mirror_activations,
+    uint64_t* burst_events,
+    float* avg_learning_rate
+);
+
+/**
+ * @brief Get phoneme detector activation for specific phoneme
+ *
+ * WHAT: Query current activation level of phoneme-selective neuron
+ * WHY:  Inspect learned phoneme representations
+ * HOW:  Return activation from most recent processing
+ *
+ * @param cortex Speech cortex instance
+ * @param phoneme Phoneme to query
+ * @return Activation level [0, 1], or -1.0f on error
+ */
+float speech_cortex_get_phoneme_activation(
+    const speech_cortex_t* cortex,
+    phoneme_t phoneme
+);
+
+/**
+ * @brief Get mirror neuron activation for phoneme
+ *
+ * WHAT: Query mirror neuron response to phoneme
+ * WHY:  Inspect motor theory of speech representations
+ * HOW:  Query mirror neuron system activation
+ *
+ * @param cortex Speech cortex instance
+ * @param phoneme Phoneme to query
+ * @return Mirror activation level [0, 1], or -1.0f on error
+ */
+float speech_cortex_get_mirror_activation(
+    const speech_cortex_t* cortex,
+    phoneme_t phoneme
+);
+
+//=============================================================================
 // Bidirectional Feedback Functions (Phase 10.11.3)
 //=============================================================================
 

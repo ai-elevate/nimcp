@@ -177,6 +177,30 @@ uint32_t adaptive_network_prune(adaptive_network_t network, float threshold);
  */
 const adaptive_network_config_t* adaptive_network_get_config(adaptive_network_t network);
 
+/**
+ * @brief Get number of neurons in network
+ *
+ * WHY: Enable community detection and topology analysis
+ * HOW: Return neuron count from base network
+ *
+ * @param network Adaptive network
+ * @return Number of neurons, or 0 on error
+ */
+uint32_t adaptive_network_get_num_neurons(adaptive_network_t network);
+
+/**
+ * @brief Get synapse weight between two neurons
+ *
+ * WHY: Enable community detection to analyze connectivity
+ * HOW: Search neuron synapses for connection
+ *
+ * @param network Adaptive network
+ * @param from_neuron Source neuron ID
+ * @param to_neuron Target neuron ID
+ * @return Synapse weight, or 0.0f if no connection
+ */
+float adaptive_network_get_synapse_weight(adaptive_network_t network, uint32_t from_neuron, uint32_t to_neuron);
+
 //=============================================================================
 // Adaptive Threshold Spiking Functions
 //=============================================================================

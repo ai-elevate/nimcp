@@ -324,17 +324,27 @@ static void predictor_destroy(predictor_t* pred)
  * WHAT: Update prediction with new observation
  * WHY: Learn temporal patterns
  * HOW: Exponential moving average
+ *
+ * BUGFIX: Added num_features parameter for bounds checking
+ * WHY: Prevent buffer overflow when features array is smaller than expected
  */
-static void predictor_update(predictor_t* pred, const float* features)
+static void predictor_update(predictor_t* pred, const float* features, uint32_t num_features)
 {
     nimcp_mutex_lock(&pred->lock);
+
+    // BUGFIX: Use minimum of expected and actual sizes to prevent buffer overflow
+    uint32_t safe_count = (num_features < pred->num_features) ? num_features : pred->num_features;
 
     if (!pred->initialized) {
         /**
          * WHAT: Initialize prediction with first observation
          * WHY: Need starting point for EMA
          */
-        memcpy(pred->prediction, features, pred->num_features * sizeof(float));
+        memcpy(pred->prediction, features, safe_count * sizeof(float));
+        // Zero remaining elements if features array is smaller
+        if (safe_count < pred->num_features) {
+            memset(pred->prediction + safe_count, 0, (pred->num_features - safe_count) * sizeof(float));
+        }
         pred->initialized = true;
     } else {
         /**
@@ -342,7 +352,7 @@ static void predictor_update(predictor_t* pred, const float* features)
          * WHY: Smooth temporal trend
          * HOW: prediction = alpha * new + (1-alpha) * old
          */
-        for (uint32_t i = 0; i < pred->num_features; i++) {
+        for (uint32_t i = 0; i < safe_count; i++) {
             pred->prediction[i] =
                 pred->alpha * features[i] + (1.0f - pred->alpha) * pred->prediction[i];
         }
@@ -356,9 +366,12 @@ static void predictor_update(predictor_t* pred, const float* features)
  * WHY: Surprise = |actual - predicted|
  * HOW: Mean absolute error between prediction and actual
  *
+ * BUGFIX: Added num_features parameter for bounds checking
+ * WHY: Prevent buffer overflow when features array is smaller than expected
+ *
  * @return Surprise score (0.0 = expected, 1.0 = totally unexpected)
  */
-static float predictor_compute_surprise(predictor_t* pred, const float* features)
+static float predictor_compute_surprise(predictor_t* pred, const float* features, uint32_t num_features)
 {
     if (!pred->initialized) {
         return 0.5f;  // Moderate surprise when no prediction exists
@@ -366,17 +379,20 @@ static float predictor_compute_surprise(predictor_t* pred, const float* features
 
     nimcp_mutex_lock(&pred->lock);
 
+    // BUGFIX: Use minimum of expected and actual sizes to prevent buffer overflow
+    uint32_t safe_count = (num_features < pred->num_features) ? num_features : pred->num_features;
+
     /**
      * WHAT: Compute mean absolute prediction error
      * WHY: Measure of unexpectedness
      * HOW: Sum |actual - predicted| / num_features
      */
     float total_error = 0.0f;
-    for (uint32_t i = 0; i < pred->num_features; i++) {
+    for (uint32_t i = 0; i < safe_count; i++) {
         total_error += fabsf(features[i] - pred->prediction[i]);
     }
 
-    float mae = total_error / pred->num_features;
+    float mae = total_error / safe_count;
 
     nimcp_mutex_unlock(&pred->lock);
 
@@ -464,7 +480,7 @@ static brain_salience_t compute_salience_fast(salience_evaluator_t eval, const f
      * WHY: Full prediction error calculation is expensive
      */
     if (eval->config.enable_surprise && eval->predictor->initialized) {
-        salience.surprise = predictor_compute_surprise(eval->predictor, features);
+        salience.surprise = predictor_compute_surprise(eval->predictor, features, num_features);
     }
 
     /**
@@ -513,7 +529,7 @@ static brain_salience_t compute_salience_balanced(salience_evaluator_t eval, con
 
     // Full surprise computation
     if (eval->config.enable_surprise) {
-        salience.surprise = predictor_compute_surprise(eval->predictor, features);
+        salience.surprise = predictor_compute_surprise(eval->predictor, features, num_features);
     }
 
     // Enhanced urgency (add variance to baseline)
@@ -857,7 +873,7 @@ brain_salience_t brain_evaluate_salience_temporal(salience_evaluator_t eval, con
     }
 
     if (eval->predictor) {
-        predictor_update(eval->predictor, features);
+        predictor_update(eval->predictor, features, num_features);
     }
 
     /**
@@ -1018,7 +1034,7 @@ uint32_t brain_evaluate_salience_batch(salience_evaluator_t eval, const float** 
 
         /* WHAT: Update predictor if enabled */
         if (eval->predictor) {
-            predictor_update(eval->predictor, features[i]);
+            predictor_update(eval->predictor, features[i], num_features);
         }
 
         /* WHAT: Update statistics */

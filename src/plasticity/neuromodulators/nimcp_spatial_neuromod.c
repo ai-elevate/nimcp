@@ -633,6 +633,13 @@ bool spatial_neuromod_update(spatial_neuromod_field_t* field,
         field->total_decayed += total_decay;
     }
 
+    // Clear source rates after they've been consumed
+    // RATIONALE: Phasic releases are bursts, not continuous infusions.
+    //            Source term should only apply once per release() call.
+    for (uint32_t i = 0; i < num_neurons; i++) {
+        field->source_rate[i] = 0.0f;
+    }
+
     field->update_count++;
 
     return true;
@@ -647,10 +654,14 @@ bool spatial_neuromod_release(spatial_neuromod_field_t* field,
                                float amount) {
     // WHAT: Adds neuromodulator release at specific neuron
     // WHY:  Models phasic release (e.g., dopamine burst from VTA)
-    // HOW:  Increments source term S_i += amount
+    // HOW:  Directly increments concentration c_i += amount
     //
     // BIOLOGICAL: Vesicular release from presynaptic terminal
     // UNITS: amount in normalized units (0-1 typical)
+    //
+    // RATIONALE: Phasic releases are instantaneous bursts, not continuous rates.
+    //            Changed from source_rate[] to direct concentration[] modification.
+    //            Diffusion and decay will handle spatial/temporal dynamics.
 
     if (!field) {
         nimcp_log_error("NULL field in spatial_neuromod_release");
@@ -667,7 +678,12 @@ bool spatial_neuromod_release(spatial_neuromod_field_t* field,
         amount = 0.0f;
     }
 
-    field->source_rate[neuron_id] += amount;
+    // Add directly to concentration (phasic burst)
+    float new_concentration = field->concentration[neuron_id] + amount;
+    field->concentration[neuron_id] = clamp(new_concentration,
+                                             field->min_concentration,
+                                             field->max_concentration);
+
     field->total_released += amount;
 
     return true;
@@ -768,10 +784,21 @@ float spatial_neuromod_get_gradient(const spatial_neuromod_field_t* field,
 float spatial_neuromod_get_average(const spatial_neuromod_field_t* field) {
     // WHAT: Returns average concentration across network
     // WHY:  Global measure of neuromodulator level
-    // HOW:  Returns cached value (updated during update())
+    // HOW:  Computes average on-the-fly to avoid stale cache
+    //
+    // RATIONALE: Changed from cached to computed to handle manual concentration
+    //            changes via set_concentration() (used in tests and initialization).
+    //            Performance impact is minimal (O(N) scan) for this query operation.
 
     if (!field) return 0.0f;
-    return field->avg_concentration;
+
+    // Compute average from current concentration array
+    float sum = 0.0f;
+    for (uint32_t i = 0; i < field->num_neurons; i++) {
+        sum += field->concentration[i];
+    }
+
+    return sum / field->num_neurons;
 }
 
 float spatial_neuromod_get_max(const spatial_neuromod_field_t* field,

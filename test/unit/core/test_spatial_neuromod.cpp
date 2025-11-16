@@ -55,6 +55,17 @@ protected:
         network = neural_network_create(&net_config);
         ASSERT_NE(network, nullptr);
 
+        // Build ring topology for spatial diffusion testing
+        // Each neuron connects to its left and right neighbors (bidirectional ring)
+        for (uint32_t i = 0; i < NUM_NEURONS; i++) {
+            uint32_t left = (i - 1 + NUM_NEURONS) % NUM_NEURONS;
+            uint32_t right = (i + 1) % NUM_NEURONS;
+
+            // Add bidirectional connections with unit weight
+            neural_network_add_connection(network, i, right, 1.0f);
+            neural_network_add_connection(network, i, left, 1.0f);
+        }
+
         // Create spatial field with dopamine defaults
         spatial_config = spatial_neuromod_default_config(NEUROMOD_DOPAMINE);
         field = spatial_neuromod_create(NUM_NEURONS, &spatial_config);
@@ -465,7 +476,8 @@ TEST_F(SpatialNeuromodTest, IntegrationWithGlobalSystem) {
     float global_level = neuromodulator_get_level(global_system, NEUROMOD_DOPAMINE);
     float spatial_avg = spatial_neuromod_get_average(field);
 
-    EXPECT_FLOAT_EQ(spatial_avg, global_level);
+    // Allow small floating point tolerance from averaging
+    EXPECT_NEAR(spatial_avg, global_level, 1e-6f);
 
     // Modify spatial, sync back to global
     spatial_neuromod_release(field, 0, 0.5f);

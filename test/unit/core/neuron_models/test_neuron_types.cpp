@@ -357,6 +357,320 @@ TEST_F(NeuronTypesTest, AuditoryFrequency_LogarithmicSpacing) {
 // }
 
 // ============================================================================
+// COGNITIVE NEURON TYPE TESTS (METACOGNITIVE)
+// ============================================================================
+
+TEST_F(NeuronTypesTest, Metacognitive_DefaultParameters) {
+    neuron_type_params_t params{};
+    nimcp_result_t result = neuron_type_get_default_params(NEURON_METACOGNITIVE, &params);
+
+    ASSERT_EQ(result, NIMCP_SUCCESS);
+    EXPECT_GE(params.metacognitive.confidence_threshold, 0.0f);
+    EXPECT_LE(params.metacognitive.confidence_threshold, 1.0f);
+    EXPECT_GT(params.metacognitive.uncertainty_window, 0.0f);
+    EXPECT_GT(params.metacognitive.uncertainty_beta, 0.0f);
+    EXPECT_GT(params.metacognitive.history_size, 0);
+}
+
+TEST_F(NeuronTypesTest, Metacognitive_ProcessInput_StableInput) {
+    neuron_type_params_t params{};
+    neuron_type_get_default_params(NEURON_METACOGNITIVE, &params);
+
+    params.metacognitive.confidence_threshold = 0.5f;
+    params.metacognitive.uncertainty_beta = 1.0f;
+
+    uint64_t timestamp = nimcp_time_monotonic_us();
+
+    // Stable input (close to baseline 0.5) should have high confidence
+    float stable_input = 0.5f;
+    float output = neuron_type_process_input(NEURON_METACOGNITIVE, &params, stable_input, timestamp);
+
+    // Should produce output (modulated by confidence)
+    EXPECT_GE(output, 0.0f);
+    EXPECT_LE(output, 1.0f);
+}
+
+TEST_F(NeuronTypesTest, Metacognitive_ProcessInput_UnstableInput) {
+    neuron_type_params_t params{};
+    neuron_type_get_default_params(NEURON_METACOGNITIVE, &params);
+
+    params.metacognitive.confidence_threshold = 0.5f;
+    params.metacognitive.uncertainty_beta = 1.0f;
+
+    uint64_t timestamp = nimcp_time_monotonic_us();
+
+    // Unstable input (far from baseline) should have lower confidence
+    float unstable_input = 0.95f;
+    float output = neuron_type_process_input(NEURON_METACOGNITIVE, &params, unstable_input, timestamp);
+
+    // Should produce attenuated output due to uncertainty
+    EXPECT_GE(output, 0.0f);
+    EXPECT_LE(output, unstable_input);
+}
+
+TEST_F(NeuronTypesTest, Metacognitive_ConfidenceThreshold) {
+    neuron_type_params_t params{};
+    neuron_type_get_default_params(NEURON_METACOGNITIVE, &params);
+
+    // Test different confidence thresholds
+    float thresholds[] = {0.3f, 0.5f, 0.7f, 0.9f};
+    uint64_t timestamp = nimcp_time_monotonic_us();
+
+    for (float threshold : thresholds) {
+        params.metacognitive.confidence_threshold = threshold;
+        float output = neuron_type_process_input(NEURON_METACOGNITIVE, &params, 0.6f, timestamp);
+        EXPECT_GE(output, 0.0f);
+        EXPECT_LE(output, 1.0f);
+    }
+}
+
+TEST_F(NeuronTypesTest, Metacognitive_UncertaintyBeta) {
+    neuron_type_params_t params{};
+    neuron_type_get_default_params(NEURON_METACOGNITIVE, &params);
+
+    params.metacognitive.confidence_threshold = 0.5f;
+
+    uint64_t timestamp = nimcp_time_monotonic_us();
+    float input = 0.8f;
+
+    // Higher beta = more sensitive to uncertainty
+    params.metacognitive.uncertainty_beta = 0.5f;
+    float output_low_beta = neuron_type_process_input(NEURON_METACOGNITIVE, &params, input, timestamp);
+
+    params.metacognitive.uncertainty_beta = 2.0f;
+    float output_high_beta = neuron_type_process_input(NEURON_METACOGNITIVE, &params, input, timestamp);
+
+    // Higher beta should produce lower output (more uncertainty penalty)
+    EXPECT_GT(output_low_beta, 0.0f);
+    EXPECT_GT(output_high_beta, 0.0f);
+    EXPECT_GE(output_low_beta, output_high_beta);
+}
+
+TEST_F(NeuronTypesTest, Metacognitive_ValidateParameters_Valid) {
+    neuron_type_params_t params{};
+    neuron_type_get_default_params(NEURON_METACOGNITIVE, &params);
+
+    nimcp_result_t result = neuron_type_validate_params(NEURON_METACOGNITIVE, &params);
+    EXPECT_EQ(result, NIMCP_SUCCESS);
+}
+
+TEST_F(NeuronTypesTest, Metacognitive_ValidateParameters_InvalidThreshold) {
+    neuron_type_params_t params{};
+    neuron_type_get_default_params(NEURON_METACOGNITIVE, &params);
+
+    // Invalid confidence threshold (> 1.0)
+    params.metacognitive.confidence_threshold = 1.5f;
+    nimcp_result_t result = neuron_type_validate_params(NEURON_METACOGNITIVE, &params);
+    EXPECT_NE(result, NIMCP_SUCCESS);
+
+    // Invalid confidence threshold (< 0.0)
+    params.metacognitive.confidence_threshold = -0.5f;
+    result = neuron_type_validate_params(NEURON_METACOGNITIVE, &params);
+    EXPECT_NE(result, NIMCP_SUCCESS);
+}
+
+TEST_F(NeuronTypesTest, Metacognitive_ZeroInput) {
+    neuron_type_params_t params{};
+    neuron_type_get_default_params(NEURON_METACOGNITIVE, &params);
+
+    uint64_t timestamp = nimcp_time_monotonic_us();
+    float output = neuron_type_process_input(NEURON_METACOGNITIVE, &params, 0.0f, timestamp);
+
+    EXPECT_GE(output, 0.0f);
+}
+
+TEST_F(NeuronTypesTest, Metacognitive_MaxInput) {
+    neuron_type_params_t params{};
+    neuron_type_get_default_params(NEURON_METACOGNITIVE, &params);
+
+    uint64_t timestamp = nimcp_time_monotonic_us();
+    float output = neuron_type_process_input(NEURON_METACOGNITIVE, &params, 1.0f, timestamp);
+
+    EXPECT_GE(output, 0.0f);
+    EXPECT_LE(output, 1.0f);
+}
+
+// ============================================================================
+// COGNITIVE NEURON TYPE TESTS (EXECUTIVE CONTROL)
+// ============================================================================
+
+TEST_F(NeuronTypesTest, ExecutiveControl_DefaultParameters) {
+    neuron_type_params_t params{};
+    nimcp_result_t result = neuron_type_get_default_params(NEURON_EXECUTIVE_CONTROL, &params);
+
+    ASSERT_EQ(result, NIMCP_SUCCESS);
+    EXPECT_GE(params.executive.goal_maintenance, 0.0f);
+    EXPECT_LE(params.executive.goal_maintenance, 1.0f);
+    EXPECT_GT(params.executive.modulation_strength, 0.0f);
+    EXPECT_GE(params.executive.decay_rate, 0.0f);
+    EXPECT_GE(params.executive.threshold_boost, 0.0f);
+}
+
+TEST_F(NeuronTypesTest, ExecutiveControl_ProcessInput_TaskRelevant) {
+    neuron_type_params_t params{};
+    neuron_type_get_default_params(NEURON_EXECUTIVE_CONTROL, &params);
+
+    params.executive.modulation_strength = 0.5f;
+    params.executive.threshold_boost = 0.2f;
+
+    uint64_t timestamp = nimcp_time_monotonic_us();
+
+    // Task-relevant input (moderate strength)
+    float input = 0.7f;
+    float output = neuron_type_process_input(NEURON_EXECUTIVE_CONTROL, &params, input, timestamp);
+
+    // Should be amplified by executive control
+    EXPECT_GE(output, 0.0f);
+    EXPECT_LE(output, 1.0f);
+}
+
+TEST_F(NeuronTypesTest, ExecutiveControl_ProcessInput_WeakInput) {
+    neuron_type_params_t params{};
+    neuron_type_get_default_params(NEURON_EXECUTIVE_CONTROL, &params);
+
+    params.executive.modulation_strength = 0.5f;
+    params.executive.threshold_boost = 0.2f;
+
+    uint64_t timestamp = nimcp_time_monotonic_us();
+
+    // Weak input should be suppressed by inhibitory control
+    float weak_input = 0.1f;
+    float output = neuron_type_process_input(NEURON_EXECUTIVE_CONTROL, &params, weak_input, timestamp);
+
+    // Should be suppressed (low output)
+    EXPECT_GE(output, 0.0f);
+    EXPECT_LT(output, weak_input);
+}
+
+TEST_F(NeuronTypesTest, ExecutiveControl_ModulationStrength) {
+    neuron_type_params_t params{};
+    neuron_type_get_default_params(NEURON_EXECUTIVE_CONTROL, &params);
+
+    uint64_t timestamp = nimcp_time_monotonic_us();
+    float input = 0.6f;
+
+    // Test different modulation strengths
+    params.executive.modulation_strength = 0.2f;
+    float output_weak_mod = neuron_type_process_input(NEURON_EXECUTIVE_CONTROL, &params, input, timestamp);
+
+    params.executive.modulation_strength = 0.8f;
+    float output_strong_mod = neuron_type_process_input(NEURON_EXECUTIVE_CONTROL, &params, input, timestamp);
+
+    // Stronger modulation should amplify more
+    EXPECT_GT(output_weak_mod, 0.0f);
+    EXPECT_GT(output_strong_mod, 0.0f);
+    EXPECT_GE(output_strong_mod, output_weak_mod);
+}
+
+TEST_F(NeuronTypesTest, ExecutiveControl_ThresholdBoost) {
+    neuron_type_params_t params{};
+    neuron_type_get_default_params(NEURON_EXECUTIVE_CONTROL, &params);
+
+    params.executive.modulation_strength = 0.5f;
+
+    uint64_t timestamp = nimcp_time_monotonic_us();
+    float input = 0.5f;
+
+    // Test different threshold boost values
+    params.executive.threshold_boost = 0.1f;
+    float output_low_boost = neuron_type_process_input(NEURON_EXECUTIVE_CONTROL, &params, input, timestamp);
+
+    params.executive.threshold_boost = 0.5f;
+    float output_high_boost = neuron_type_process_input(NEURON_EXECUTIVE_CONTROL, &params, input, timestamp);
+
+    // Both should produce valid output
+    EXPECT_GE(output_low_boost, 0.0f);
+    EXPECT_GE(output_high_boost, 0.0f);
+}
+
+TEST_F(NeuronTypesTest, ExecutiveControl_ValidateParameters_Valid) {
+    neuron_type_params_t params{};
+    neuron_type_get_default_params(NEURON_EXECUTIVE_CONTROL, &params);
+
+    nimcp_result_t result = neuron_type_validate_params(NEURON_EXECUTIVE_CONTROL, &params);
+    EXPECT_EQ(result, NIMCP_SUCCESS);
+}
+
+TEST_F(NeuronTypesTest, ExecutiveControl_ValidateParameters_InvalidGoalMaintenance) {
+    neuron_type_params_t params{};
+    neuron_type_get_default_params(NEURON_EXECUTIVE_CONTROL, &params);
+
+    // Invalid goal_maintenance (> 1.0)
+    params.executive.goal_maintenance = 1.5f;
+    nimcp_result_t result = neuron_type_validate_params(NEURON_EXECUTIVE_CONTROL, &params);
+    EXPECT_NE(result, NIMCP_SUCCESS);
+
+    // Invalid goal_maintenance (< 0.0)
+    params.executive.goal_maintenance = -0.5f;
+    result = neuron_type_validate_params(NEURON_EXECUTIVE_CONTROL, &params);
+    EXPECT_NE(result, NIMCP_SUCCESS);
+}
+
+TEST_F(NeuronTypesTest, ExecutiveControl_ZeroInput) {
+    neuron_type_params_t params{};
+    neuron_type_get_default_params(NEURON_EXECUTIVE_CONTROL, &params);
+
+    uint64_t timestamp = nimcp_time_monotonic_us();
+    float output = neuron_type_process_input(NEURON_EXECUTIVE_CONTROL, &params, 0.0f, timestamp);
+
+    EXPECT_GE(output, 0.0f);
+}
+
+TEST_F(NeuronTypesTest, ExecutiveControl_MaxInput) {
+    neuron_type_params_t params{};
+    neuron_type_get_default_params(NEURON_EXECUTIVE_CONTROL, &params);
+
+    uint64_t timestamp = nimcp_time_monotonic_us();
+    float output = neuron_type_process_input(NEURON_EXECUTIVE_CONTROL, &params, 1.0f, timestamp);
+
+    EXPECT_GE(output, 0.0f);
+    EXPECT_LE(output, 1.0f);
+}
+
+TEST_F(NeuronTypesTest, ExecutiveControl_WorkingMemoryMaintenance) {
+    neuron_type_params_t params{};
+    neuron_type_get_default_params(NEURON_EXECUTIVE_CONTROL, &params);
+
+    params.executive.modulation_strength = 0.5f;
+    params.executive.threshold_boost = 0.2f;
+
+    uint64_t timestamp = nimcp_time_monotonic_us();
+
+    // With strong goal signal (0.6 default), should maintain elevated activity
+    float low_input = 0.2f;
+    float output = neuron_type_process_input(NEURON_EXECUTIVE_CONTROL, &params, low_input, timestamp);
+
+    // Should maintain some activity even with low input (working memory)
+    EXPECT_GE(output, 0.0f);
+}
+
+// ============================================================================
+// COGNITIVE NEURON TYPE NAME TESTS
+// ============================================================================
+
+TEST_F(NeuronTypesTest, Metacognitive_TypeName) {
+    const char* name = neuron_type_get_name(NEURON_METACOGNITIVE);
+    ASSERT_NE(name, nullptr);
+    EXPECT_STRNE(name, "");
+    EXPECT_STREQ(name, "Metacognitive");
+}
+
+TEST_F(NeuronTypesTest, ExecutiveControl_TypeName) {
+    const char* name = neuron_type_get_name(NEURON_EXECUTIVE_CONTROL);
+    ASSERT_NE(name, nullptr);
+    EXPECT_STRNE(name, "");
+    EXPECT_STREQ(name, "Executive Control");
+}
+
+TEST_F(NeuronTypesTest, Metacognitive_ExcitatoryClassification) {
+    EXPECT_TRUE(neuron_type_is_excitatory(NEURON_METACOGNITIVE));
+}
+
+TEST_F(NeuronTypesTest, ExecutiveControl_ExcitatoryClassification) {
+    EXPECT_TRUE(neuron_type_is_excitatory(NEURON_EXECUTIVE_CONTROL));
+}
+
+// ============================================================================
 // PERFORMANCE TESTS
 // ============================================================================
 
@@ -383,4 +697,405 @@ TEST_F(NeuronTypesTest, ProcessInput_Performance) {
 
     // Use sum to prevent optimization
     EXPECT_GE(sum, 0.0f);
+}
+
+TEST_F(NeuronTypesTest, Metacognitive_Performance) {
+    neuron_type_params_t params{};
+    neuron_type_get_default_params(NEURON_METACOGNITIVE, &params);
+
+    uint64_t start = nimcp_time_monotonic_us();
+
+    const int iterations = 10000;
+    float sum = 0.0f;
+    for (int i = 0; i < iterations; i++) {
+        uint64_t timestamp = start + i * 1000;
+        sum += neuron_type_process_input(NEURON_METACOGNITIVE, &params, 0.5f, timestamp);
+    }
+
+    uint64_t end = nimcp_time_monotonic_us();
+    uint64_t duration = end - start;
+
+    // Should process efficiently
+    float inputs_per_us = (float)iterations / (float)duration;
+    EXPECT_GT(inputs_per_us, 1.0f);
+    EXPECT_GE(sum, 0.0f);
+}
+
+TEST_F(NeuronTypesTest, ExecutiveControl_Performance) {
+    neuron_type_params_t params{};
+    neuron_type_get_default_params(NEURON_EXECUTIVE_CONTROL, &params);
+
+    uint64_t start = nimcp_time_monotonic_us();
+
+    const int iterations = 10000;
+    float sum = 0.0f;
+    for (int i = 0; i < iterations; i++) {
+        uint64_t timestamp = start + i * 1000;
+        sum += neuron_type_process_input(NEURON_EXECUTIVE_CONTROL, &params, 0.5f, timestamp);
+    }
+
+    uint64_t end = nimcp_time_monotonic_us();
+    uint64_t duration = end - start;
+
+    // Should process efficiently
+    float inputs_per_us = (float)iterations / (float)duration;
+    EXPECT_GT(inputs_per_us, 1.0f);
+    EXPECT_GE(sum, 0.0f);
+}
+
+// ============================================================================
+// ENHANCED COGNITIVE NEURON TESTS - NEW FEATURES
+// ============================================================================
+
+TEST_F(NeuronTypesTest, Metacognitive_PredictionErrorTracking) {
+    neuron_type_params_t params{};
+    neuron_type_get_default_params(NEURON_METACOGNITIVE, &params);
+
+    params.metacognitive.confidence_threshold = 0.5f;
+    params.metacognitive.uncertainty_beta = 1.0f;
+
+    uint64_t timestamp = nimcp_time_monotonic_us();
+
+    // Test prediction error tracking with varying inputs
+    // First call: baseline
+    float output1 = neuron_type_process_input(NEURON_METACOGNITIVE, &params, 0.5f, timestamp);
+
+    // Second call: small change (low prediction error)
+    float output2 = neuron_type_process_input(NEURON_METACOGNITIVE, &params, 0.52f, timestamp + 1000);
+
+    // Third call: large change (high prediction error)
+    float output3 = neuron_type_process_input(NEURON_METACOGNITIVE, &params, 0.9f, timestamp + 2000);
+
+    // All should produce valid outputs
+    EXPECT_GE(output1, 0.0f);
+    EXPECT_GE(output2, 0.0f);
+    EXPECT_GE(output3, 0.0f);
+
+    // Small change should have higher confidence (less attenuation)
+    EXPECT_GE(output2, output3 * 0.8f);  // Allow some tolerance
+}
+
+TEST_F(NeuronTypesTest, Metacognitive_IntrospectionVarianceTracking) {
+    neuron_type_params_t params{};
+    neuron_type_get_default_params(NEURON_METACOGNITIVE, &params);
+
+    params.metacognitive.confidence_threshold = 0.5f;
+    params.metacognitive.uncertainty_beta = 1.0f;
+
+    uint64_t timestamp = nimcp_time_monotonic_us();
+
+    // Stable sequence: low variance, high confidence
+    float stable_outputs[5];
+    for (int i = 0; i < 5; i++) {
+        stable_outputs[i] = neuron_type_process_input(NEURON_METACOGNITIVE, &params,
+                                                        0.5f + 0.01f * i, timestamp + i * 1000);
+    }
+
+    // Reset for volatile sequence
+    timestamp = nimcp_time_monotonic_us();
+
+    // Volatile sequence: high variance, low confidence
+    float volatile_outputs[5];
+    float volatile_inputs[] = {0.1f, 0.9f, 0.2f, 0.8f, 0.3f};
+    for (int i = 0; i < 5; i++) {
+        volatile_outputs[i] = neuron_type_process_input(NEURON_METACOGNITIVE, &params,
+                                                          volatile_inputs[i], timestamp + i * 1000);
+    }
+
+    // Stable sequence should have higher average output (less uncertainty attenuation)
+    float stable_avg = 0.0f, volatile_avg = 0.0f;
+    for (int i = 0; i < 5; i++) {
+        stable_avg += stable_outputs[i];
+        volatile_avg += volatile_outputs[i];
+    }
+    stable_avg /= 5.0f;
+    volatile_avg /= 5.0f;
+
+    // Stable should be higher than volatile (less attenuation due to higher confidence)
+    EXPECT_GT(stable_avg, volatile_avg * 0.9f);
+}
+
+TEST_F(NeuronTypesTest, Metacognitive_LearningRateModulation) {
+    neuron_type_params_t params{};
+    neuron_type_get_default_params(NEURON_METACOGNITIVE, &params);
+
+    params.metacognitive.confidence_threshold = 0.5f;
+    params.metacognitive.uncertainty_beta = 2.0f;  // High sensitivity
+
+    uint64_t timestamp = nimcp_time_monotonic_us();
+
+    // High confidence scenario (stable inputs)
+    float high_conf_input = 0.5f;
+    float high_conf_output = neuron_type_process_input(NEURON_METACOGNITIVE, &params,
+                                                         high_conf_input, timestamp);
+
+    // Low confidence scenario (unstable inputs)
+    timestamp = nimcp_time_monotonic_us();
+    params.metacognitive.uncertainty_beta = 3.0f;  // Even higher sensitivity
+    float low_conf_output = neuron_type_process_input(NEURON_METACOGNITIVE, &params,
+                                                        0.95f, timestamp);
+
+    // Both should produce output
+    EXPECT_GE(high_conf_output, 0.0f);
+    EXPECT_GE(low_conf_output, 0.0f);
+}
+
+TEST_F(NeuronTypesTest, Metacognitive_ConfidenceThresholdEffect) {
+    neuron_type_params_t params{};
+    neuron_type_get_default_params(NEURON_METACOGNITIVE, &params);
+
+    params.metacognitive.uncertainty_beta = 1.0f;
+
+    uint64_t timestamp = nimcp_time_monotonic_us();
+    float input = 0.8f;
+
+    // Low threshold: more permissive
+    params.metacognitive.confidence_threshold = 0.3f;
+    float low_thresh_output = neuron_type_process_input(NEURON_METACOGNITIVE, &params,
+                                                          input, timestamp);
+
+    // Reset
+    timestamp = nimcp_time_monotonic_us();
+
+    // High threshold: more strict
+    params.metacognitive.confidence_threshold = 0.7f;
+    float high_thresh_output = neuron_type_process_input(NEURON_METACOGNITIVE, &params,
+                                                           input, timestamp);
+
+    // Both should produce valid output
+    EXPECT_GE(low_thresh_output, 0.0f);
+    EXPECT_GE(high_thresh_output, 0.0f);
+}
+
+TEST_F(NeuronTypesTest, ExecutiveControl_TaskSwitching) {
+    neuron_type_params_t params{};
+    neuron_type_get_default_params(NEURON_EXECUTIVE_CONTROL, &params);
+
+    params.executive.modulation_strength = 0.5f;
+    params.executive.threshold_boost = 0.2f;
+
+    uint64_t timestamp = nimcp_time_monotonic_us();
+    float input = 0.7f;
+
+    // First task context (goal signal = 0.6)
+    // Note: neuron_type_process_input uses default goal_signal = 0.6
+    float output1 = neuron_type_process_input(NEURON_EXECUTIVE_CONTROL, &params,
+                                               input, timestamp);
+
+    // Continue same task (no switch)
+    float output2 = neuron_type_process_input(NEURON_EXECUTIVE_CONTROL, &params,
+                                               input, timestamp + 1000);
+
+    // Both should produce valid outputs
+    EXPECT_GE(output1, 0.0f);
+    EXPECT_GE(output2, 0.0f);
+    EXPECT_LE(output1, 1.0f);
+    EXPECT_LE(output2, 1.0f);
+}
+
+TEST_F(NeuronTypesTest, ExecutiveControl_InhibitoryControlSuppression) {
+    neuron_type_params_t params{};
+    neuron_type_get_default_params(NEURON_EXECUTIVE_CONTROL, &params);
+
+    params.executive.modulation_strength = 0.5f;
+    params.executive.threshold_boost = 0.5f;  // Strong threshold boost
+
+    uint64_t timestamp = nimcp_time_monotonic_us();
+
+    // Weak input: should be suppressed
+    float weak_input = 0.15f;
+    float weak_output = neuron_type_process_input(NEURON_EXECUTIVE_CONTROL, &params,
+                                                    weak_input, timestamp);
+
+    // Strong input: should pass through
+    float strong_input = 0.8f;
+    float strong_output = neuron_type_process_input(NEURON_EXECUTIVE_CONTROL, &params,
+                                                      strong_input, timestamp);
+
+    // Weak should be suppressed more than strong
+    EXPECT_GE(weak_output, 0.0f);
+    EXPECT_GE(strong_output, 0.0f);
+    EXPECT_LT(weak_output / weak_input, strong_output / strong_input);
+}
+
+TEST_F(NeuronTypesTest, ExecutiveControl_WorkingMemoryMaintenance) {
+    neuron_type_params_t params{};
+    neuron_type_get_default_params(NEURON_EXECUTIVE_CONTROL, &params);
+
+    params.executive.modulation_strength = 0.5f;
+    params.executive.threshold_boost = 0.2f;
+
+    uint64_t timestamp = nimcp_time_monotonic_us();
+
+    // Low input with strong goal (should maintain elevated activity)
+    // Note: default goal_signal in neuron_type_process_input is 0.6
+    float low_input = 0.2f;
+    float output = neuron_type_process_input(NEURON_EXECUTIVE_CONTROL, &params,
+                                              low_input, timestamp);
+
+    // Should maintain some activity due to working memory
+    EXPECT_GE(output, 0.0f);
+    EXPECT_LE(output, 1.0f);
+}
+
+TEST_F(NeuronTypesTest, ExecutiveControl_TopDownModulation) {
+    neuron_type_params_t params{};
+    neuron_type_get_default_params(NEURON_EXECUTIVE_CONTROL, &params);
+
+    params.executive.threshold_boost = 0.2f;
+
+    uint64_t timestamp = nimcp_time_monotonic_us();
+    float input = 0.6f;
+
+    // Weak modulation
+    params.executive.modulation_strength = 0.2f;
+    float weak_mod_output = neuron_type_process_input(NEURON_EXECUTIVE_CONTROL, &params,
+                                                        input, timestamp);
+
+    // Reset
+    timestamp = nimcp_time_monotonic_us();
+
+    // Strong modulation
+    params.executive.modulation_strength = 0.8f;
+    float strong_mod_output = neuron_type_process_input(NEURON_EXECUTIVE_CONTROL, &params,
+                                                          input, timestamp);
+
+    // Both should produce valid outputs
+    EXPECT_GE(weak_mod_output, 0.0f);
+    EXPECT_GE(strong_mod_output, 0.0f);
+
+    // Strong modulation should amplify more
+    EXPECT_GE(strong_mod_output, weak_mod_output * 0.95f);
+}
+
+TEST_F(NeuronTypesTest, Metacognitive_EdgeCase_ZeroUncertaintyBeta) {
+    neuron_type_params_t params{};
+    neuron_type_get_default_params(NEURON_METACOGNITIVE, &params);
+
+    params.metacognitive.confidence_threshold = 0.5f;
+    params.metacognitive.uncertainty_beta = 0.0f;  // No uncertainty sensitivity
+
+    uint64_t timestamp = nimcp_time_monotonic_us();
+    float output = neuron_type_process_input(NEURON_METACOGNITIVE, &params, 0.7f, timestamp);
+
+    // Should handle gracefully
+    EXPECT_GE(output, 0.0f);
+    EXPECT_LE(output, 1.0f);
+}
+
+TEST_F(NeuronTypesTest, Metacognitive_EdgeCase_HighUncertaintyBeta) {
+    neuron_type_params_t params{};
+    neuron_type_get_default_params(NEURON_METACOGNITIVE, &params);
+
+    params.metacognitive.confidence_threshold = 0.5f;
+    params.metacognitive.uncertainty_beta = 10.0f;  // Very high sensitivity
+
+    uint64_t timestamp = nimcp_time_monotonic_us();
+    float output = neuron_type_process_input(NEURON_METACOGNITIVE, &params, 0.9f, timestamp);
+
+    // Should handle gracefully (heavy attenuation expected)
+    EXPECT_GE(output, 0.0f);
+    EXPECT_LE(output, 1.0f);
+}
+
+TEST_F(NeuronTypesTest, ExecutiveControl_EdgeCase_ZeroModulation) {
+    neuron_type_params_t params{};
+    neuron_type_get_default_params(NEURON_EXECUTIVE_CONTROL, &params);
+
+    params.executive.modulation_strength = 0.0f;  // No modulation
+    params.executive.threshold_boost = 0.2f;
+
+    uint64_t timestamp = nimcp_time_monotonic_us();
+    float output = neuron_type_process_input(NEURON_EXECUTIVE_CONTROL, &params, 0.6f, timestamp);
+
+    // Should handle gracefully
+    EXPECT_GE(output, 0.0f);
+    EXPECT_LE(output, 1.0f);
+}
+
+TEST_F(NeuronTypesTest, ExecutiveControl_EdgeCase_MaxThresholdBoost) {
+    neuron_type_params_t params{};
+    neuron_type_get_default_params(NEURON_EXECUTIVE_CONTROL, &params);
+
+    params.executive.modulation_strength = 0.5f;
+    params.executive.threshold_boost = 1.0f;  // Maximum threshold boost
+
+    uint64_t timestamp = nimcp_time_monotonic_us();
+    float output = neuron_type_process_input(NEURON_EXECUTIVE_CONTROL, &params, 0.5f, timestamp);
+
+    // Should handle gracefully (strong suppression expected)
+    EXPECT_GE(output, 0.0f);
+    EXPECT_LE(output, 1.0f);
+}
+
+TEST_F(NeuronTypesTest, Metacognitive_SequentialProcessing) {
+    neuron_type_params_t params{};
+    neuron_type_get_default_params(NEURON_METACOGNITIVE, &params);
+
+    params.metacognitive.confidence_threshold = 0.5f;
+    params.metacognitive.uncertainty_beta = 1.0f;
+
+    uint64_t timestamp = nimcp_time_monotonic_us();
+
+    // Process sequence of inputs
+    float inputs[] = {0.3f, 0.5f, 0.4f, 0.6f, 0.5f};
+    float outputs[5];
+
+    for (int i = 0; i < 5; i++) {
+        outputs[i] = neuron_type_process_input(NEURON_METACOGNITIVE, &params,
+                                                 inputs[i], timestamp + i * 1000);
+        EXPECT_GE(outputs[i], 0.0f);
+        EXPECT_LE(outputs[i], 1.0f);
+    }
+}
+
+TEST_F(NeuronTypesTest, ExecutiveControl_SequentialProcessing) {
+    neuron_type_params_t params{};
+    neuron_type_get_default_params(NEURON_EXECUTIVE_CONTROL, &params);
+
+    params.executive.modulation_strength = 0.5f;
+    params.executive.threshold_boost = 0.2f;
+
+    uint64_t timestamp = nimcp_time_monotonic_us();
+
+    // Process sequence of inputs
+    float inputs[] = {0.4f, 0.6f, 0.5f, 0.7f, 0.6f};
+    float outputs[5];
+
+    for (int i = 0; i < 5; i++) {
+        outputs[i] = neuron_type_process_input(NEURON_EXECUTIVE_CONTROL, &params,
+                                                 inputs[i], timestamp + i * 1000);
+        EXPECT_GE(outputs[i], 0.0f);
+        EXPECT_LE(outputs[i], 1.0f);
+    }
+}
+
+TEST_F(NeuronTypesTest, Metacognitive_RapidSuccession) {
+    neuron_type_params_t params{};
+    neuron_type_get_default_params(NEURON_METACOGNITIVE, &params);
+
+    uint64_t timestamp = nimcp_time_monotonic_us();
+
+    // Rapid processing (< 1ms between calls)
+    for (int i = 0; i < 100; i++) {
+        float output = neuron_type_process_input(NEURON_METACOGNITIVE, &params,
+                                                   0.5f, timestamp + i);
+        EXPECT_GE(output, 0.0f);
+        EXPECT_LE(output, 1.0f);
+    }
+}
+
+TEST_F(NeuronTypesTest, ExecutiveControl_RapidSuccession) {
+    neuron_type_params_t params{};
+    neuron_type_get_default_params(NEURON_EXECUTIVE_CONTROL, &params);
+
+    uint64_t timestamp = nimcp_time_monotonic_us();
+
+    // Rapid processing (< 1ms between calls)
+    for (int i = 0; i < 100; i++) {
+        float output = neuron_type_process_input(NEURON_EXECUTIVE_CONTROL, &params,
+                                                   0.5f, timestamp + i);
+        EXPECT_GE(output, 0.0f);
+        EXPECT_LE(output, 1.0f);
+    }
 }

@@ -189,6 +189,8 @@ void brain_module_destroy(brain_module_t* brain) {
             nimcp_free(brain->connections[i]);
         }
         nimcp_free(brain->connections);
+        brain->connections = NULL;  // BUGFIX: Prevent use-after-free
+        brain->num_connections = 0;
     }
 
     nimcp_mutex_destroy(&brain->lock);
@@ -353,11 +355,13 @@ void brain_region_destroy(brain_region_t* region) {
     // Destroy glial integration
     if (region->glial) {
         glial_integration_destroy(region->glial);
+        region->glial = NULL;  // BUGFIX: Prevent use-after-free
     }
 
     // Destroy neural network
     if (region->network) {
         neural_network_destroy(region->network);
+        region->network = NULL;  // BUGFIX: Prevent use-after-free
     }
 
     nimcp_free(region->input_regions);

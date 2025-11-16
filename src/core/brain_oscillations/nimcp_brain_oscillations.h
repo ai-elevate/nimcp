@@ -294,25 +294,66 @@ float brain_oscillation_compute_pac(
 //=============================================================================
 
 /**
- * WHAT: Compute network synchrony across neurons
- * WHY:  Measure how well neurons oscillate together
- * HOW:  Cross-correlation of neuron activities
+ * WHAT: Compute network synchrony using Kuramoto order parameter
+ * WHY:  Measure phase synchronization of neural oscillations
+ * HOW:  Kuramoto order parameter R = |⟨e^(iθ)⟩| from instantaneous phases
  *
  * @param analyzer Oscillation analyzer
  * @return Synchrony (0-1), or -1.0 on error
  *
- * COMPLEXITY: O(N²) where N = number of neurons
+ * COMPLEXITY: O(N log N) where N = buffer size
  *
  * SYNCHRONY VALUES:
- * - 0.0-0.3: Asynchronous (independent)
+ * - 0.0-0.3: Asynchronous (independent oscillations)
  * - 0.3-0.6: Partially synchronized
- * - 0.6-1.0: Highly synchronized
+ * - 0.6-1.0: Highly synchronized (coherent oscillations)
  *
  * INTERPRETATION:
- * - High synchrony: Strong coordination, focused processing
- * - Low synchrony: Independent processing, exploration
+ * - High synchrony: Strong phase locking, focused processing
+ * - Low synchrony: Independent phases, exploration
  */
 float brain_oscillation_compute_synchrony(brain_oscillation_analyzer_t* analyzer);
+
+/**
+ * WHAT: Compute spectral coherence
+ * WHY:  Measure consistency of oscillations in frequency domain
+ * HOW:  Spectral concentration index (inverse of spectral entropy)
+ *
+ * @param analyzer Oscillation analyzer
+ * @return Coherence (0-1), or -1.0 on error
+ *
+ * COMPLEXITY: O(N) where N = spectrum size
+ *
+ * COHERENCE VALUES:
+ * - 0.0-0.3: Broadband/noisy activity
+ * - 0.3-0.7: Moderate spectral concentration
+ * - 0.7-1.0: Highly coherent oscillations
+ *
+ * INTERPRETATION:
+ * - High coherence: Stable, precise rhythms
+ * - Low coherence: Transient or irregular activity
+ */
+float brain_oscillation_compute_coherence(brain_oscillation_analyzer_t* analyzer);
+
+/**
+ * WHAT: Compute 3dB bandwidth around peak frequency
+ * WHY:  Quantify sharpness of dominant oscillation
+ * HOW:  Find frequency range where power drops to half of peak
+ *
+ * @param analyzer Oscillation analyzer
+ * @param peak_freq Dominant frequency in Hz
+ * @return Bandwidth in Hz, or -1.0 on error
+ *
+ * COMPLEXITY: O(N) where N = spectrum size
+ *
+ * INTERPRETATION:
+ * - Narrow bandwidth (< 2 Hz): Sharp, stable oscillation
+ * - Moderate bandwidth (2-5 Hz): Normal variability
+ * - Wide bandwidth (> 5 Hz): Transient or unstable rhythm
+ */
+float brain_oscillation_compute_bandwidth(
+    brain_oscillation_analyzer_t* analyzer,
+    float peak_freq);
 
 //=============================================================================
 // Visualization and Export

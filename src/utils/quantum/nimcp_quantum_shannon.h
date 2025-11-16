@@ -435,6 +435,41 @@ bool quantum_shannon_optimize(quantum_shannon_diffusion_t* qsd);
 bool quantum_shannon_route_around_bottlenecks(quantum_shannon_diffusion_t* qsd);
 
 /**
+ * @brief Adaptive routing using network topology analysis
+ *
+ * WHAT: Adjust quantum walk parameters based on real-time topology metrics
+ * WHY:  Optimize information flow using graph structure (hubs, communities, clustering)
+ * HOW:  Query network analyzer, bias quantum walk toward hubs and inter-community edges
+ *
+ * ALGORITHM:
+ * 1. Get topology metrics (degree, centrality, clustering) from network analyzer
+ * 2. Identify hubs (high-degree, high-betweenness neurons)
+ * 3. Detect community boundaries
+ * 4. Adapt routing:
+ *    - Increase exploration near hubs (better distribution)
+ *    - Bias through inter-community edges (global spread)
+ *    - Reduce exploration in dense clusters (avoid redundancy)
+ * 5. Adjust step size based on network diameter
+ *
+ * INTEGRATION:
+ * - Requires network_analyzer_t from cognitive/analysis module
+ * - Works with brain_get_network_analyzer()
+ * - Enhances quantum-Shannon with topology awareness
+ *
+ * PERFORMANCE:
+ * - O(N + H + C) where N=nodes, H=hubs, C=communities
+ * - Cached topology query: O(1) after first analysis
+ * - Typical overhead: 10-20% of quantum walk step time
+ *
+ * COMPLEXITY: O(N + H + C)
+ *
+ * @param qsd Quantum-Shannon diffusion
+ * @param network_analyzer Network analyzer (from brain_get_network_analyzer())
+ * @return true on success, false on failure
+ */
+bool quantum_adaptive_routing(quantum_shannon_diffusion_t* qsd, void* network_analyzer);
+
+/**
  * @brief Suggest synapse weight adjustments
  *
  * WHAT: Compute optimal weights to resolve bottlenecks

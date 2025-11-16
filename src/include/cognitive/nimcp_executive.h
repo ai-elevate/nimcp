@@ -25,10 +25,14 @@
 
 #include <stdint.h>
 #include <stdbool.h>
+#include <stdio.h>  // For FILE
 
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+// Forward declaration for brain handle
+typedef struct brain_struct* brain_t;
 
 //=============================================================================
 // Task Types
@@ -354,6 +358,70 @@ void executive_reset_stats(executive_controller_t* exec);
  * THREAD-SAFE: No (thread-local storage)
  */
 const char* executive_get_last_error(void);
+
+//=============================================================================
+// Persistence API (Save/Load)
+//=============================================================================
+
+/**
+ * @brief Save executive controller state to file
+ *
+ * WHAT: Serialize executive controller state to binary file
+ * WHY:  Enable persistence of task queue, statistics, and configuration
+ * HOW:  Write version marker, config, stats, and task queue to file
+ *
+ * Binary format:
+ *   uint32_t version (1)
+ *   executive_config_t config
+ *   executive_stats_t stats
+ *   uint64_t last_switch_time_ms
+ *   uint32_t next_task_id
+ *   uint32_t total_decisions
+ *   uint32_t num_tasks
+ *   For each task:
+ *     task_descriptor_t task (without context pointer)
+ *
+ * @param exec Executive controller
+ * @param file Open file handle for writing
+ * @return true on success, false on error
+ *
+ * COMPLEXITY: O(n) where n = number of tasks
+ * THREAD-SAFE: No (caller must ensure exclusive access)
+ */
+bool executive_save(executive_controller_t* exec, FILE* file);
+
+/**
+ * @brief Load executive controller state from file
+ *
+ * WHAT: Deserialize executive controller state from binary file
+ * WHY:  Restore saved task queue, statistics, and configuration
+ * HOW:  Read version marker, validate, reconstruct state
+ *
+ * Note: Brain reference must be set separately via executive_set_brain()
+ * Note: Task context pointers are not restored (set to NULL)
+ *
+ * @param file Open file handle for reading
+ * @return Executive controller handle or NULL on error
+ *
+ * COMPLEXITY: O(n) where n = number of tasks
+ * THREAD-SAFE: Yes (creates new instance)
+ */
+executive_controller_t* executive_load(FILE* file);
+
+/**
+ * @brief Set brain reference for loaded executive controller
+ *
+ * WHAT: Associate executive controller with brain for neuromodulation
+ * WHY:  Loaded executive controllers need brain reference restored
+ * HOW:  Set brain field in executive controller struct
+ *
+ * @param exec Executive controller
+ * @param brain Brain handle
+ *
+ * COMPLEXITY: O(1)
+ * THREAD-SAFE: No
+ */
+void executive_set_brain(executive_controller_t* exec, brain_t brain);
 
 //=============================================================================
 // Bidirectional Feedback Functions (Phase 10.11.3)

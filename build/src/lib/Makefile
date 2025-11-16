@@ -209,6 +209,30 @@ __/api/nimcp.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/api/nimcp.c.s
 .PHONY : __/api/nimcp.c.s
 
+__/cognitive/analysis/nimcp_network_analysis.o: __/cognitive/analysis/nimcp_network_analysis.c.o
+.PHONY : __/cognitive/analysis/nimcp_network_analysis.o
+
+# target to build an object file
+__/cognitive/analysis/nimcp_network_analysis.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/analysis/nimcp_network_analysis.c.o
+.PHONY : __/cognitive/analysis/nimcp_network_analysis.c.o
+
+__/cognitive/analysis/nimcp_network_analysis.i: __/cognitive/analysis/nimcp_network_analysis.c.i
+.PHONY : __/cognitive/analysis/nimcp_network_analysis.i
+
+# target to preprocess a source file
+__/cognitive/analysis/nimcp_network_analysis.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/analysis/nimcp_network_analysis.c.i
+.PHONY : __/cognitive/analysis/nimcp_network_analysis.c.i
+
+__/cognitive/analysis/nimcp_network_analysis.s: __/cognitive/analysis/nimcp_network_analysis.c.s
+.PHONY : __/cognitive/analysis/nimcp_network_analysis.s
+
+# target to generate assembly for a file
+__/cognitive/analysis/nimcp_network_analysis.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/analysis/nimcp_network_analysis.c.s
+.PHONY : __/cognitive/analysis/nimcp_network_analysis.c.s
+
 __/cognitive/autobiographical_memory/nimcp_autobiographical_memory.o: __/cognitive/autobiographical_memory/nimcp_autobiographical_memory.c.o
 .PHONY : __/cognitive/autobiographical_memory/nimcp_autobiographical_memory.o
 
@@ -1481,6 +1505,30 @@ __/core/synapse_types/nimcp_synapse_types.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/synapse_types/nimcp_synapse_types.c.s
 .PHONY : __/core/synapse_types/nimcp_synapse_types.c.s
 
+__/core/topology/nimcp_community_detection.o: __/core/topology/nimcp_community_detection.c.o
+.PHONY : __/core/topology/nimcp_community_detection.o
+
+# target to build an object file
+__/core/topology/nimcp_community_detection.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/topology/nimcp_community_detection.c.o
+.PHONY : __/core/topology/nimcp_community_detection.c.o
+
+__/core/topology/nimcp_community_detection.i: __/core/topology/nimcp_community_detection.c.i
+.PHONY : __/core/topology/nimcp_community_detection.i
+
+# target to preprocess a source file
+__/core/topology/nimcp_community_detection.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/topology/nimcp_community_detection.c.i
+.PHONY : __/core/topology/nimcp_community_detection.c.i
+
+__/core/topology/nimcp_community_detection.s: __/core/topology/nimcp_community_detection.c.s
+.PHONY : __/core/topology/nimcp_community_detection.s
+
+# target to generate assembly for a file
+__/core/topology/nimcp_community_detection.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/topology/nimcp_community_detection.c.s
+.PHONY : __/core/topology/nimcp_community_detection.c.s
+
 __/core/topology/nimcp_fractal_topology.o: __/core/topology/nimcp_fractal_topology.c.o
 .PHONY : __/core/topology/nimcp_fractal_topology.o
 
@@ -2489,6 +2537,30 @@ __/plasticity/stp/nimcp_stp.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/plasticity/stp/nimcp_stp.c.s
 .PHONY : __/plasticity/stp/nimcp_stp.c.s
 
+__/python/nimcp_community_py.o: __/python/nimcp_community_py.c.o
+.PHONY : __/python/nimcp_community_py.o
+
+# target to build an object file
+__/python/nimcp_community_py.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/python/nimcp_community_py.c.o
+.PHONY : __/python/nimcp_community_py.c.o
+
+__/python/nimcp_community_py.i: __/python/nimcp_community_py.c.i
+.PHONY : __/python/nimcp_community_py.i
+
+# target to preprocess a source file
+__/python/nimcp_community_py.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/python/nimcp_community_py.c.i
+.PHONY : __/python/nimcp_community_py.c.i
+
+__/python/nimcp_community_py.s: __/python/nimcp_community_py.c.s
+.PHONY : __/python/nimcp_community_py.s
+
+# target to generate assembly for a file
+__/python/nimcp_community_py.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/python/nimcp_community_py.c.s
+.PHONY : __/python/nimcp_community_py.c.s
+
 __/python/nimcp_metrics_py.o: __/python/nimcp_metrics_py.c.o
 .PHONY : __/python/nimcp_metrics_py.o
 
@@ -2632,6 +2704,54 @@ __/security/nimcp_security.s: __/security/nimcp_security.c.s
 __/security/nimcp_security.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/security/nimcp_security.c.s
 .PHONY : __/security/nimcp_security.c.s
+
+__/utils/algorithms/nimcp_centrality.o: __/utils/algorithms/nimcp_centrality.c.o
+.PHONY : __/utils/algorithms/nimcp_centrality.o
+
+# target to build an object file
+__/utils/algorithms/nimcp_centrality.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/utils/algorithms/nimcp_centrality.c.o
+.PHONY : __/utils/algorithms/nimcp_centrality.c.o
+
+__/utils/algorithms/nimcp_centrality.i: __/utils/algorithms/nimcp_centrality.c.i
+.PHONY : __/utils/algorithms/nimcp_centrality.i
+
+# target to preprocess a source file
+__/utils/algorithms/nimcp_centrality.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/utils/algorithms/nimcp_centrality.c.i
+.PHONY : __/utils/algorithms/nimcp_centrality.c.i
+
+__/utils/algorithms/nimcp_centrality.s: __/utils/algorithms/nimcp_centrality.c.s
+.PHONY : __/utils/algorithms/nimcp_centrality.s
+
+# target to generate assembly for a file
+__/utils/algorithms/nimcp_centrality.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/utils/algorithms/nimcp_centrality.c.s
+.PHONY : __/utils/algorithms/nimcp_centrality.c.s
+
+__/utils/algorithms/nimcp_graph_metrics.o: __/utils/algorithms/nimcp_graph_metrics.c.o
+.PHONY : __/utils/algorithms/nimcp_graph_metrics.o
+
+# target to build an object file
+__/utils/algorithms/nimcp_graph_metrics.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/utils/algorithms/nimcp_graph_metrics.c.o
+.PHONY : __/utils/algorithms/nimcp_graph_metrics.c.o
+
+__/utils/algorithms/nimcp_graph_metrics.i: __/utils/algorithms/nimcp_graph_metrics.c.i
+.PHONY : __/utils/algorithms/nimcp_graph_metrics.i
+
+# target to preprocess a source file
+__/utils/algorithms/nimcp_graph_metrics.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/utils/algorithms/nimcp_graph_metrics.c.i
+.PHONY : __/utils/algorithms/nimcp_graph_metrics.c.i
+
+__/utils/algorithms/nimcp_graph_metrics.s: __/utils/algorithms/nimcp_graph_metrics.c.s
+.PHONY : __/utils/algorithms/nimcp_graph_metrics.s
+
+# target to generate assembly for a file
+__/utils/algorithms/nimcp_graph_metrics.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/utils/algorithms/nimcp_graph_metrics.c.s
+.PHONY : __/utils/algorithms/nimcp_graph_metrics.c.s
 
 __/utils/cache/nimcp_cache.o: __/utils/cache/nimcp_cache.c.o
 .PHONY : __/utils/cache/nimcp_cache.o
@@ -3634,6 +3754,9 @@ help:
 	@echo "... __/api/nimcp.o"
 	@echo "... __/api/nimcp.i"
 	@echo "... __/api/nimcp.s"
+	@echo "... __/cognitive/analysis/nimcp_network_analysis.o"
+	@echo "... __/cognitive/analysis/nimcp_network_analysis.i"
+	@echo "... __/cognitive/analysis/nimcp_network_analysis.s"
 	@echo "... __/cognitive/autobiographical_memory/nimcp_autobiographical_memory.o"
 	@echo "... __/cognitive/autobiographical_memory/nimcp_autobiographical_memory.i"
 	@echo "... __/cognitive/autobiographical_memory/nimcp_autobiographical_memory.s"
@@ -3793,6 +3916,9 @@ help:
 	@echo "... __/core/synapse_types/nimcp_synapse_types.o"
 	@echo "... __/core/synapse_types/nimcp_synapse_types.i"
 	@echo "... __/core/synapse_types/nimcp_synapse_types.s"
+	@echo "... __/core/topology/nimcp_community_detection.o"
+	@echo "... __/core/topology/nimcp_community_detection.i"
+	@echo "... __/core/topology/nimcp_community_detection.s"
 	@echo "... __/core/topology/nimcp_fractal_topology.o"
 	@echo "... __/core/topology/nimcp_fractal_topology.i"
 	@echo "... __/core/topology/nimcp_fractal_topology.s"
@@ -3919,6 +4045,9 @@ help:
 	@echo "... __/plasticity/stp/nimcp_stp.o"
 	@echo "... __/plasticity/stp/nimcp_stp.i"
 	@echo "... __/plasticity/stp/nimcp_stp.s"
+	@echo "... __/python/nimcp_community_py.o"
+	@echo "... __/python/nimcp_community_py.i"
+	@echo "... __/python/nimcp_community_py.s"
 	@echo "... __/python/nimcp_metrics_py.o"
 	@echo "... __/python/nimcp_metrics_py.i"
 	@echo "... __/python/nimcp_metrics_py.s"
@@ -3937,6 +4066,12 @@ help:
 	@echo "... __/security/nimcp_security.o"
 	@echo "... __/security/nimcp_security.i"
 	@echo "... __/security/nimcp_security.s"
+	@echo "... __/utils/algorithms/nimcp_centrality.o"
+	@echo "... __/utils/algorithms/nimcp_centrality.i"
+	@echo "... __/utils/algorithms/nimcp_centrality.s"
+	@echo "... __/utils/algorithms/nimcp_graph_metrics.o"
+	@echo "... __/utils/algorithms/nimcp_graph_metrics.i"
+	@echo "... __/utils/algorithms/nimcp_graph_metrics.s"
 	@echo "... __/utils/cache/nimcp_cache.o"
 	@echo "... __/utils/cache/nimcp_cache.i"
 	@echo "... __/utils/cache/nimcp_cache.s"

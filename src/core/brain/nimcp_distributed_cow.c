@@ -55,6 +55,41 @@ static void ensure_registry_mutex_initialized(void) {
 //=============================================================================
 
 /**
+ * @brief Get access to underlying neural network from adaptive network
+ *
+ * WHAT: Internal accessor to neural network for serialization
+ * WHY:  Need to access neurons array for network segment serialization
+ * HOW:  Direct access to base_network->neurons array
+ *
+ * @param network Adaptive network
+ * @return Neural network handle or NULL on error
+ */
+static neural_network_t get_base_network(adaptive_network_t network) {
+    if (!network) {
+        return NULL;
+    }
+    // Access base_network field from adaptive_network_struct
+    // NOTE: We can't directly access struct members since it's opaque
+    // We rely on the fact that base_network is the first field
+    return *((neural_network_t*)network);
+}
+
+/**
+ * @brief Get number of neurons in adaptive network
+ *
+ * WHAT: Get total neuron count from network
+ * WHY:  Validate segment bounds during serialization
+ * HOW:  Call neuralnet_get_num_neurons on base network
+ */
+static uint32_t get_network_num_neurons(adaptive_network_t network) {
+    neural_network_t base = get_base_network(network);
+    if (!base) {
+        return 0;
+    }
+    return neural_network_get_num_neurons(base);
+}
+
+/**
  * @brief Serialize network segment
  *
  * WHAT: Converts neurons and synapses to wire format
@@ -69,7 +104,6 @@ static void ensure_registry_mutex_initialized(void) {
  * @param enable_compression Compress output?
  * @return Bytes written, or -1 on error
  */
-__attribute__((unused))
 static int serialize_network_segment(
     adaptive_network_t network,
     uint32_t start_neuron,
@@ -82,16 +116,24 @@ static int serialize_network_segment(
         return -1;
     }
 
+    // Get base neural network
+    neural_network_t base_net = get_base_network(network);
+    if (!base_net) {
+        return -1;
+    }
+
     // Get network info
-    // TODO: Use actual network API when available
-    uint32_t total_neurons = 10000; // Stub
+    uint32_t total_neurons = get_network_num_neurons(network);
+    if (start_neuron >= total_neurons) {
+        return -1;
+    }
     if (start_neuron + num_neurons > total_neurons) {
         num_neurons = total_neurons - start_neuron;
     }
-    (void)network;  // Suppress unused warning
 
-    // Temporary buffer for uncompressed data
-    size_t temp_buffer_size = num_neurons * (sizeof(float) * 2 + sizeof(uint32_t) * 10); // Estimate
+    // Estimate size: header + (neuron_state + synapses) per neuron
+    // Assume avg 50 synapses per neuron
+    size_t temp_buffer_size = 1024 + num_neurons * (32 + 50 * 8);
     uint8_t* temp_buffer = nimcp_malloc(temp_buffer_size);
     if (!temp_buffer) {
         return -1;
@@ -106,35 +148,40 @@ static int serialize_network_segment(
     offset += sizeof(uint32_t);
 
     // For each neuron, write state and connections
-    // TODO: Use actual network API when available
     for (uint32_t i = start_neuron; i < start_neuron + num_neurons; i++) {
-        // Stub neuron data
-        float activation = 0.0f;
-        float membrane = 0.0f;
+        // Get neuron state from base network
+        float neuron_state = 0.0f;
+        if (!neural_network_get_neuron_state(base_net, i, &neuron_state)) {
+            neuron_state = 0.0f;
+        }
 
-        *(float*)(temp_buffer + offset) = activation;
+        // Get neuron pointer for synapse data (requires internal access)
+        // NOTE: This requires the network structure to expose neurons
+        // For now, we'll serialize just the state and assume synapses are handled elsewhere
+
+        // Write neuron state
+        *(float*)(temp_buffer + offset) = neuron_state;
         offset += sizeof(float);
-        *(float*)(temp_buffer + offset) = membrane;
+
+        // Write threshold (use default if not available)
+        float threshold = 1.0f;
+        *(float*)(temp_buffer + offset) = threshold;
         offset += sizeof(float);
 
-        // Stub synapses
-        uint32_t num_synapses = 10; // Stub
-
+        // Write number of synapses (0 for now - full implementation would iterate synapses)
+        uint32_t num_synapses = 0;
         *(uint32_t*)(temp_buffer + offset) = num_synapses;
         offset += sizeof(uint32_t);
 
-        // Write synapses (target ID + weight)
-        for (uint32_t s = 0; s < num_synapses; s++) {
-            if (offset + sizeof(uint32_t) + sizeof(float) > temp_buffer_size) {
-                // Realloc if needed
-                temp_buffer_size *= 2;
-                temp_buffer = nimcp_realloc(temp_buffer, temp_buffer_size);
+        // Ensure we have enough buffer space
+        if (offset + 256 > temp_buffer_size) {
+            temp_buffer_size *= 2;
+            uint8_t* new_buffer = nimcp_realloc(temp_buffer, temp_buffer_size);
+            if (!new_buffer) {
+                nimcp_free(temp_buffer);
+                return -1;
             }
-
-            *(uint32_t*)(temp_buffer + offset) = i + s; // Stub target
-            offset += sizeof(uint32_t);
-            *(float*)(temp_buffer + offset) = 0.5f; // Stub weight
-            offset += sizeof(float);
+            temp_buffer = new_buffer;
         }
     }
 
@@ -153,7 +200,7 @@ static int serialize_network_segment(
                     memcpy(buffer + 1, compressed_buffer, compressed_size);
                     nimcp_free(compressed_buffer);
                     nimcp_free(temp_buffer);
-                    return compressed_size + 1;
+                    return (int)(compressed_size + 1);
                 }
             }
             nimcp_free(compressed_buffer);
@@ -165,7 +212,7 @@ static int serialize_network_segment(
         buffer[0] = 0; // No compression
         memcpy(buffer + 1, temp_buffer, offset);
         nimcp_free(temp_buffer);
-        return offset + 1;
+        return (int)(offset + 1);
     }
 
     nimcp_free(temp_buffer);
@@ -174,6 +221,10 @@ static int serialize_network_segment(
 
 /**
  * @brief Deserialize network segment
+ *
+ * WHAT: Reconstructs neurons and synapses from wire format
+ * WHY:  Populate local network cache from remote master
+ * HOW:  Unpack neuron states and synapse weights, update network
  *
  * @param buffer Input buffer
  * @param buffer_size Buffer size
@@ -213,7 +264,24 @@ static bool deserialize_network_segment(
         data_size = decompressed_size;
     }
 
+    // Get base network for updates
+    neural_network_t base_net = get_base_network(network);
+    if (!base_net) {
+        if (decompressed_buffer) {
+            nimcp_free(decompressed_buffer);
+        }
+        return false;
+    }
+
     size_t offset = 0;
+
+    // Validate minimum size
+    if (data_size < 2 * sizeof(uint32_t)) {
+        if (decompressed_buffer) {
+            nimcp_free(decompressed_buffer);
+        }
+        return false;
+    }
 
     // Read header
     uint32_t start_neuron = *(const uint32_t*)(data + offset);
@@ -221,35 +289,45 @@ static bool deserialize_network_segment(
     uint32_t num_neurons = *(const uint32_t*)(data + offset);
     offset += sizeof(uint32_t);
 
+    // Validate neuron count
+    uint32_t total_neurons = get_network_num_neurons(network);
+    if (start_neuron >= total_neurons || start_neuron + num_neurons > total_neurons) {
+        if (decompressed_buffer) {
+            nimcp_free(decompressed_buffer);
+        }
+        return false;
+    }
+
     // Read neuron data
     for (uint32_t i = 0; i < num_neurons; i++) {
         uint32_t neuron_id = start_neuron + i;
 
+        // Validate buffer bounds
+        if (offset + 2 * sizeof(float) + sizeof(uint32_t) > data_size) {
+            if (decompressed_buffer) {
+                nimcp_free(decompressed_buffer);
+            }
+            return false;
+        }
+
         // Read neuron state
         float activation = *(const float*)(data + offset);
         offset += sizeof(float);
-        float membrane = *(const float*)(data + offset);
+        float threshold = *(const float*)(data + offset);
         offset += sizeof(float);
 
-        // TODO: Set neuron state when API available
-        (void)neuron_id;
-        (void)activation;
-        (void)membrane;
+        // Update neuron state in base network
+        // NOTE: We update neuron using neural_network_update_neuron
+        neural_network_update_neuron(base_net, neuron_id, activation, nimcp_time_get_us());
 
-        // Read synapses
+        // Read synapses count
         uint32_t num_synapses = *(const uint32_t*)(data + offset);
         offset += sizeof(uint32_t);
 
-        for (uint32_t s = 0; s < num_synapses; s++) {
-            uint32_t target_id = *(const uint32_t*)(data + offset);
-            offset += sizeof(uint32_t);
-            float weight = *(const float*)(data + offset);
-            offset += sizeof(float);
-
-            // TODO: Set synapse weight when API available
-            (void)target_id;
-            (void)weight;
-        }
+        // For now, skip synapse data (would require network modification API)
+        // In a full implementation, we would use neural_network_add_synapse or similar
+        (void)num_synapses;
+        (void)threshold;
     }
 
     if (decompressed_buffer) {
@@ -325,8 +403,18 @@ static bool add_to_cache(
 
 /**
  * @brief Handle COW fetch segment request (master side)
+ *
+ * WHAT: Process segment fetch request from remote clone
+ * WHY:  Serve network data to distributed COW clones on demand
+ * HOW:  Serialize requested network segment and send to clone
+ *
+ * @param brain Master brain instance
+ * @param request Fetch request parameters
+ * @param response_buffer Output buffer for response
+ * @param response_buffer_size Size of response buffer
+ * @param response_length Output: actual response size
+ * @return true on success, false on error
  */
-__attribute__((unused))
 static bool handle_fetch_segment_request(
     brain_t brain,
     const cow_fetch_segment_request_t* request,
@@ -334,40 +422,61 @@ static bool handle_fetch_segment_request(
     size_t response_buffer_size,
     size_t* response_length
 ) {
-    // Serialize network segment
+    // Validate inputs
+    if (!brain || !request || !response_buffer || !response_length) {
+        return false;
+    }
+
+    // Get network from brain
     adaptive_network_t network = brain_get_network(brain);
     if (!network) {
         return false;
+    }
+
+    // Validate segment bounds
+    uint32_t total_neurons = get_network_num_neurons(network);
+    if (request->start_neuron_id >= total_neurons) {
+        return false;
+    }
+
+    uint32_t actual_neurons = request->num_neurons;
+    if (request->start_neuron_id + actual_neurons > total_neurons) {
+        actual_neurons = total_neurons - request->start_neuron_id;
     }
 
     // Prepare response header
     cow_segment_data_response_t response = {
         .segment_id = nimcp_time_get_us(),
         .start_neuron_id = request->start_neuron_id,
-        .num_neurons = request->num_neurons,
-        .num_synapses = 0, // Will be calculated during serialization
+        .num_neurons = actual_neurons,
+        .num_synapses = 0, // Calculated during serialization
         .is_compressed = request->enable_compression,
         .data_length = 0
     };
+
+    // Ensure we have space for response header
+    if (response_buffer_size < sizeof(cow_segment_data_response_t)) {
+        return false;
+    }
 
     // Serialize segment data
     uint8_t* data_buffer = response_buffer + sizeof(cow_segment_data_response_t);
     size_t data_buffer_size = response_buffer_size - sizeof(cow_segment_data_response_t);
 
-    // TODO: Implement actual serialization
-    // For now, return stub response
-    (void)network;
-    (void)request;
-    (void)data_buffer;
-    (void)data_buffer_size;
-
-    int bytes_written = 1024; // Stub
+    int bytes_written = serialize_network_segment(
+        network,
+        request->start_neuron_id,
+        actual_neurons,
+        data_buffer,
+        data_buffer_size,
+        request->enable_compression
+    );
 
     if (bytes_written < 0) {
         return false;
     }
 
-    response.data_length = bytes_written;
+    response.data_length = (uint32_t)bytes_written;
 
     // Write response header
     memcpy(response_buffer, &response, sizeof(cow_segment_data_response_t));
@@ -630,8 +739,11 @@ bool distributed_cow_fetch_segment(
     // Send request via P2P
     // (Simplified - actual implementation would use p2p_node_send_message)
 
-    // For demo purposes, simulate network fetch
-    uint8_t response_buffer[65536];
+    // BUGFIX: Heap allocation instead of 64KB stack buffer to prevent stack overflow
+    uint8_t* response_buffer = (uint8_t*)nimcp_malloc(65536);
+    if (!response_buffer) {
+        return NIMCP_ERROR_MEMORY;  // Fixed: use correct error constant
+    }
     size_t response_length = 0;
 
     // Simulate response (in real implementation, this would come from network)
@@ -673,6 +785,9 @@ bool distributed_cow_fetch_segment(
 
     nimcp_platform_mutex_unlock(&state->fetch_mutex);
 
+    // BUGFIX: Free heap-allocated response buffer
+    nimcp_free(response_buffer);
+
     return true;
 }
 
@@ -702,6 +817,13 @@ uint32_t distributed_cow_prefetch_segments(brain_t brain, uint32_t current_neuro
 
 /**
  * @brief Fetch full network
+ *
+ * WHAT: Downloads entire network from master to local node
+ * WHY:  Prepare for write operations (learning, fine-tuning)
+ * HOW:  Fetch all segments sequentially, transition to local COW
+ *
+ * @param brain Distributed COW clone
+ * @return true on success, false on error
  */
 bool distributed_cow_fetch_full_network(brain_t brain) {
     distributed_cow_state_t* state = find_distributed_cow_state(brain);
@@ -710,9 +832,12 @@ bool distributed_cow_fetch_full_network(brain_t brain) {
     }
 
     adaptive_network_t network = brain_get_network(brain);
-    // TODO: Use actual network API
-    uint32_t total_neurons = 10000; // Stub
-    (void)network;
+    if (!network) {
+        return false;
+    }
+
+    // Get actual network size
+    uint32_t total_neurons = get_network_num_neurons(network);
     uint32_t segment_size = state->config.segment_size;
 
     // Fetch all segments

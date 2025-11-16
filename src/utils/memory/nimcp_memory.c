@@ -1337,8 +1337,28 @@ void nimcp_aligned_free(void* ptr)
 {
     if (!ptr)
         return;
+
+    // BUGFIX: Aligned allocations have guards BEFORE the user pointer
+    // We need to find the guard_size from tracking info and subtract it
+    size_t guard_size = 0;
+
+    if (g_memory_state.tracking_enabled) {
+        nimcp_mutex_lock(&g_memory_state.lock);
+        memory_block_t* current = g_memory_state.blocks;
+        while (current) {
+            if (current->ptr == ptr) {
+                guard_size = current->guard_size;
+                break;
+            }
+            current = current->next;
+        }
+        nimcp_mutex_unlock(&g_memory_state.lock);
+    }
+
     untrack_allocation(ptr);
-    free(ptr);
+
+    // Free the real allocation (user_ptr - guard_size)
+    free((char*)ptr - guard_size);
 }
 
 /**
@@ -1398,8 +1418,9 @@ void nimcp_memory_cleanup(void)
             fprintf(stderr, "[MEMORY] Leak detected: %zu bytes at %p\n", current->size,
                     current->ptr);
         }
-        // KEY FIX: Use uint64_t (8 bytes) to match malloc/calloc guards
-        free((char*) current->ptr - sizeof(uint64_t));
+        // BUGFIX: Use stored guard_size instead of hardcoded sizeof(uint64_t)
+        // WHY: Aligned allocations may have larger guards (e.g., 64 bytes for 64-byte alignment)
+        free((char*) current->ptr - current->guard_size);
         // Free tracking structure
         free(current);
         current = next;

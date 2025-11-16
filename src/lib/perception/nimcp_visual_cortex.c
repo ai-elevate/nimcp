@@ -595,6 +595,11 @@ bool attention_map_set(attention_map_t* map, uint32_t x, uint32_t y, float value
 //=============================================================================
 
 #define MAX_VISUAL_MEMORIES 1000
+#define NUM_V1_LAYERS 4  // Layers 2/3, 4, 5, 6
+#define NEUROMOD_TYPE_DOPAMINE 0
+#define NEUROMOD_TYPE_ACETYLCHOLINE 1
+#define NEUROMOD_TYPE_NOREPINEPHRINE 2
+#define NUM_NEUROMOD_TYPES 3
 
 struct visual_cortex_struct {
     // Configuration
@@ -618,6 +623,33 @@ struct visual_cortex_struct {
 
     // Neuromodulation
     brain_t brain;  /**< Brain reference for ACh + NE modulation */
+
+    // === PHASE: PHASIC/TONIC NEUROMODULATION ===
+    /**
+     * Phasic/tonic states for three neuromodulators
+     * Index: 0=dopamine, 1=acetylcholine, 2=norepinephrine
+     *
+     * WHAT: Dual-timescale neuromodulator dynamics
+     * WHY:  Biological realism - bursts vs. baselines
+     * HOW:  Separate phasic (rapid) and tonic (slow) components
+     */
+    phasic_tonic_state_t neuromod_states[NUM_NEUROMOD_TYPES];
+
+    /**
+     * Receptor expression profiles for V1 cortical layers
+     * Index: 0=L2/3, 1=L4, 2=L5, 3=L6
+     *
+     * WHAT: Layer-specific receptor densities
+     * WHY:  Different layers have different neuromod sensitivity
+     * HOW:  D1/D2, M1/M2, α1/β2 densities per layer
+     *
+     * BIOLOGY:
+     * - L2/3: Top-down attention (high D1, ACh)
+     * - L4: Thalamic input (high ACh, NE)
+     * - L5: Motor output (high DA, NE)
+     * - L6: Feedback modulation (high M1, β2)
+     */
+    receptor_expression_t receptor_profiles[NUM_V1_LAYERS];
 
     // NIMCP 2.7 Phase 8.5: Internal recurrent network with fractal topology
     neural_network_t internal_network;  /**< Recurrent network for horizontal connections */
@@ -657,6 +689,48 @@ visual_cortex_t* visual_cortex_create(const visual_cortex_config_t* config)
     cortex->enable_attention = config->enable_attention;
     cortex->enable_memory = config->enable_memory;
     cortex->brain = NULL;  // Initialize neuromodulator brain reference
+
+    // Initialize phasic/tonic neuromodulator states
+    for (uint32_t i = 0; i < NUM_NEUROMOD_TYPES; i++) {
+        cortex->neuromod_states[i].phasic_burst = 0.0f;
+        cortex->neuromod_states[i].tonic_level = 0.5f;  // Baseline
+        cortex->neuromod_states[i].burst_decay_tau = 0.2f;  // Fast decay (200ms)
+        cortex->neuromod_states[i].homeostatic_tau = 10.0f;   // Slow homeostatic regulation (10s)
+        cortex->neuromod_states[i].burst_start_time_us = 0;
+    }
+
+    // Initialize receptor expression profiles (biologically plausible defaults)
+    // Layer 2/3: Top-down attention
+    cortex->receptor_profiles[0].d1_density = 0.4f;
+    cortex->receptor_profiles[0].d2_density = 0.2f;
+    cortex->receptor_profiles[0].m1_density = 0.5f;
+    cortex->receptor_profiles[0].m2_density = 0.3f;
+    cortex->receptor_profiles[0].alpha1_density = 0.3f;
+    cortex->receptor_profiles[0].beta2_density = 0.3f;
+
+    // Layer 4: Thalamic input
+    cortex->receptor_profiles[1].d1_density = 0.3f;
+    cortex->receptor_profiles[1].d2_density = 0.2f;
+    cortex->receptor_profiles[1].m1_density = 0.6f;  // High ACh
+    cortex->receptor_profiles[1].m2_density = 0.3f;
+    cortex->receptor_profiles[1].alpha1_density = 0.5f;  // High NE
+    cortex->receptor_profiles[1].beta2_density = 0.3f;
+
+    // Layer 5: Motor output/arousal
+    cortex->receptor_profiles[2].d1_density = 0.4f;  // High DA
+    cortex->receptor_profiles[2].d2_density = 0.3f;  // Moderate D2
+    cortex->receptor_profiles[2].m1_density = 0.4f;
+    cortex->receptor_profiles[2].m2_density = 0.2f;
+    cortex->receptor_profiles[2].alpha1_density = 0.5f;  // High NE
+    cortex->receptor_profiles[2].beta2_density = 0.3f;
+
+    // Layer 6: Feedback modulation
+    cortex->receptor_profiles[3].d1_density = 0.3f;
+    cortex->receptor_profiles[3].d2_density = 0.2f;
+    cortex->receptor_profiles[3].m1_density = 0.6f;  // High M1
+    cortex->receptor_profiles[3].m2_density = 0.4f;
+    cortex->receptor_profiles[3].alpha1_density = 0.3f;
+    cortex->receptor_profiles[3].beta2_density = 0.4f;  // High β2
 
     // Create V1 layer (edge detection with Gabor-like filters)
     conv_layer_config_t conv_config = {
@@ -903,10 +977,20 @@ bool visual_cortex_process(
     }
 
     // Apply neuromodulator gain (ACh + NE modulation)
+    // Legacy gain calculation (kept for backward compatibility)
     float visual_gain = get_visual_gain(cortex->brain);
-    if (visual_gain != 1.0f) {
+
+    // NEW: Compute layer-specific neuromodulation effects
+    // Use Layer 4 (thalamic input layer) as default for feedforward processing
+    neuromod_effects_t neuromod_effects;
+    visual_cortex_compute_neuromod_effects(cortex, 1, &neuromod_effects);  // Layer 4
+
+    // Apply combined gain: legacy × neuromodulation
+    float combined_gain = visual_gain * neuromod_effects.gabor_gain;
+
+    if (combined_gain != 1.0f) {
         for (uint32_t i = 0; i < v1_output_size; i++) {
-            v1_output[i] *= visual_gain;
+            v1_output[i] *= combined_gain;
         }
     }
 
@@ -986,12 +1070,20 @@ bool visual_cortex_compute_attention(
         return false;
     }
 
+    // Compute layer-specific neuromodulation effects
+    // Use Layer 2/3 (top-down attention layer) for attention modulation
+    neuromod_effects_t neuromod_effects;
+    visual_cortex_compute_neuromod_effects(cortex, 0, &neuromod_effects);  // Layer 2/3
+
     // Compute gradient magnitude (simple edge-based attention)
     for (uint32_t y = 1; y < height - 1; y++) {
         for (uint32_t x = 1; x < width - 1; x++) {
             float gx = (float)image[(y * width + x + 1)] - (float)image[(y * width + x - 1)];
             float gy = (float)image[((y + 1) * width + x)] - (float)image[((y - 1) * width + x)];
             float magnitude = sqrtf(gx * gx + gy * gy) / 255.0f;
+
+            // Apply neuromodulation attention boost (ACh enhances attention)
+            magnitude *= neuromod_effects.attention_boost;
 
             attention_map_set(attn_map, x, y, magnitude);
         }
@@ -1305,6 +1397,264 @@ void visual_cortex_set_brain(visual_cortex_t* cortex, brain_t brain)
         return;
     }
     cortex->brain = brain;
+}
+
+//=============================================================================
+// Neuromodulation Implementation
+//=============================================================================
+
+/**
+ * @brief Get phasic/tonic state for a neuromodulator
+ */
+const phasic_tonic_state_t* visual_cortex_get_neuromod_state(
+    const visual_cortex_t* cortex,
+    uint32_t neuromod_type)
+{
+    // Guard: Validate inputs
+    if (!nimcp_validate_pointer(cortex, "cortex")) {
+        return NULL;
+    }
+
+    if (neuromod_type >= NUM_NEUROMOD_TYPES) {
+        NIMCP_LOGGING_ERROR("Invalid neuromod_type: %u (max %u)", neuromod_type, NUM_NEUROMOD_TYPES - 1);
+        return NULL;
+    }
+
+    return &cortex->neuromod_states[neuromod_type];
+}
+
+/**
+ * @brief Set receptor expression profile for visual cortex
+ */
+bool visual_cortex_set_receptor_profile(
+    visual_cortex_t* cortex,
+    uint32_t layer_idx,
+    const receptor_expression_t* receptors)
+{
+    // Guard: Validate inputs
+    if (!nimcp_validate_pointer(cortex, "cortex") ||
+        !nimcp_validate_pointer(receptors, "receptors")) {
+        return false;
+    }
+
+    if (layer_idx >= NUM_V1_LAYERS) {
+        NIMCP_LOGGING_ERROR("Invalid layer_idx: %u (max %u)", layer_idx, NUM_V1_LAYERS - 1);
+        return false;
+    }
+
+    // Copy receptor profile
+    cortex->receptor_profiles[layer_idx] = *receptors;
+    return true;
+}
+
+/**
+ * @brief Get receptor expression profile for a layer
+ */
+const receptor_expression_t* visual_cortex_get_receptor_profile(
+    const visual_cortex_t* cortex,
+    uint32_t layer_idx)
+{
+    // Guard: Validate inputs
+    if (!nimcp_validate_pointer(cortex, "cortex")) {
+        return NULL;
+    }
+
+    if (layer_idx >= NUM_V1_LAYERS) {
+        NIMCP_LOGGING_ERROR("Invalid layer_idx: %u (max %u)", layer_idx, NUM_V1_LAYERS - 1);
+        return NULL;
+    }
+
+    return &cortex->receptor_profiles[layer_idx];
+}
+
+/**
+ * @brief Update phasic/tonic decay
+ *
+ * WHAT: Apply exponential decay to phasic and tonic levels
+ * WHY:  Model reuptake and clearance mechanisms
+ * HOW:  level *= exp(-decay_rate * dt)
+ *
+ * COMPLEXITY: O(1)
+ */
+static void update_neuromod_decay(phasic_tonic_state_t* state, float dt_sec)
+{
+    // Exponential decay: level(t+dt) = level(t) * exp(-dt/tau)
+    // Approximation: level *= (1 - dt/tau) for small dt
+    float phasic_decay_rate = 1.0f / state->burst_decay_tau;  // Convert tau to rate
+    float tonic_decay_rate = 1.0f / state->homeostatic_tau;    // Convert tau to rate
+
+    state->phasic_burst *= (1.0f - phasic_decay_rate * dt_sec);
+
+    // Tonic level moves toward target with homeostatic regulation
+    float tonic_error = state->tonic_target - state->tonic_level;
+    state->tonic_level += tonic_error * tonic_decay_rate * dt_sec;
+
+    // Clamp to valid ranges
+    if (state->phasic_burst < 0.0f) state->phasic_burst = 0.0f;
+    if (state->phasic_burst > state->max_burst_amplitude) state->phasic_burst = state->max_burst_amplitude;
+    if (state->tonic_level < state->tonic_min) state->tonic_level = state->tonic_min;
+    if (state->tonic_level > state->tonic_max) state->tonic_level = state->tonic_max;
+}
+
+/**
+ * @brief Trigger phasic neuromodulator burst
+ */
+bool visual_cortex_trigger_phasic_burst(
+    visual_cortex_t* cortex,
+    uint32_t neuromod_type,
+    float amount)
+{
+    // Guard: Validate inputs
+    if (!nimcp_validate_pointer(cortex, "cortex")) {
+        return false;
+    }
+
+    if (neuromod_type >= NUM_NEUROMOD_TYPES) {
+        NIMCP_LOGGING_ERROR("Invalid neuromod_type: %u", neuromod_type);
+        return false;
+    }
+
+    if (amount < 0.0f || amount > 1.0f) {
+        NIMCP_LOGGING_WARN("Phasic burst amount out of range: %.2f, clamping to [0,1]", amount);
+        amount = fminf(fmaxf(amount, 0.0f), 1.0f);
+    }
+
+    // Add to phasic level (capped at 1.0)
+    phasic_tonic_state_t* state = &cortex->neuromod_states[neuromod_type];
+    state->phasic_burst += amount;
+    if (state->phasic_burst > 1.0f) {
+        state->phasic_burst = 1.0f;
+    }
+
+    return true;
+}
+
+/**
+ * @brief Set tonic neuromodulator baseline
+ */
+bool visual_cortex_set_tonic_level(
+    visual_cortex_t* cortex,
+    uint32_t neuromod_type,
+    float level)
+{
+    // Guard: Validate inputs
+    if (!nimcp_validate_pointer(cortex, "cortex")) {
+        return false;
+    }
+
+    if (neuromod_type >= NUM_NEUROMOD_TYPES) {
+        NIMCP_LOGGING_ERROR("Invalid neuromod_type: %u", neuromod_type);
+        return false;
+    }
+
+    if (level < 0.0f || level > 1.0f) {
+        NIMCP_LOGGING_WARN("Tonic level out of range: %.2f, clamping to [0,1]", level);
+        level = fminf(fmaxf(level, 0.0f), 1.0f);
+    }
+
+    // Set tonic level directly
+    cortex->neuromod_states[neuromod_type].tonic_level = level;
+    return true;
+}
+
+/**
+ * @brief Compute current neuromodulation effects
+ *
+ * ALGORITHM:
+ * 1. Read neuromodulator levels from brain (if available)
+ * 2. Update phasic/tonic states with decay
+ * 3. Combine phasic + tonic: effective = α*phasic + (1-α)*tonic
+ * 4. Multiply by receptor densities
+ * 5. Compute gain values for visual processing
+ */
+bool visual_cortex_compute_neuromod_effects(
+    const visual_cortex_t* cortex,
+    uint32_t layer_idx,
+    neuromod_effects_t* effects)
+{
+    // Guard: Validate inputs
+    if (!nimcp_validate_pointer(cortex, "cortex") ||
+        !nimcp_validate_pointer(effects, "effects")) {
+        return false;
+    }
+
+    if (layer_idx >= NUM_V1_LAYERS) {
+        NIMCP_LOGGING_ERROR("Invalid layer_idx: %u", layer_idx);
+        return false;
+    }
+
+    // Default effects (no modulation)
+    effects->gabor_gain = 1.0f;
+    effects->attention_boost = 1.0f;
+    effects->plasticity_gate = 0.5f;
+    effects->contrast_gain = 1.0f;
+
+    // Step 1: Read neuromodulator levels from brain (if available)
+    float dopamine_level = 0.0f;
+    float ach_level = 0.0f;
+    float ne_level = 0.0f;
+
+    if (cortex->brain) {
+        neuromodulator_system_t neuromod = brain_get_neuromodulator_system(cortex->brain);
+        if (neuromod) {
+            dopamine_level = neuromodulator_get_level(neuromod, NEUROMOD_DOPAMINE);
+            ach_level = neuromodulator_get_level(neuromod, NEUROMOD_ACETYLCHOLINE);
+            ne_level = neuromodulator_get_level(neuromod, NEUROMOD_NOREPINEPHRINE);
+        }
+    }
+
+    // Step 2: Combine with local phasic/tonic states
+    // Phasic weight α = 0.6 (phasic dominates for fast events)
+    const float PHASIC_WEIGHT = 0.6f;
+    const float TONIC_WEIGHT = 1.0f - PHASIC_WEIGHT;
+
+    const phasic_tonic_state_t* da_state = &cortex->neuromod_states[NEUROMOD_TYPE_DOPAMINE];
+    const phasic_tonic_state_t* ach_state = &cortex->neuromod_states[NEUROMOD_TYPE_ACETYLCHOLINE];
+    const phasic_tonic_state_t* ne_state = &cortex->neuromod_states[NEUROMOD_TYPE_NOREPINEPHRINE];
+
+    float da_effective = dopamine_level + PHASIC_WEIGHT * da_state->phasic_burst + TONIC_WEIGHT * da_state->tonic_level;
+    float ach_effective = ach_level + PHASIC_WEIGHT * ach_state->phasic_burst + TONIC_WEIGHT * ach_state->tonic_level;
+    float ne_effective = ne_level + PHASIC_WEIGHT * ne_state->phasic_burst + TONIC_WEIGHT * ne_state->tonic_level;
+
+    // Clamp to [0, 1]
+    da_effective = fminf(da_effective, 1.0f);
+    ach_effective = fminf(ach_effective, 1.0f);
+    ne_effective = fminf(ne_effective, 1.0f);
+
+    // Step 3: Multiply by receptor densities
+    const receptor_expression_t* receptors = &cortex->receptor_profiles[layer_idx];
+
+    // Dopamine effect: D1 (excitatory) - 0.5*D2 (inhibitory)
+    float da_effect = (receptors->d1_density - 0.5f * receptors->d2_density) * da_effective;
+
+    // Acetylcholine effect: M1 (excitatory) - 0.3*M2 (inhibitory)
+    float ach_effect = (receptors->m1_density - 0.3f * receptors->m2_density) * ach_effective;
+
+    // Norepinephrine effect: α1 (excitatory) + 0.5*β2 (plasticity)
+    float ne_effect = (receptors->alpha1_density + 0.5f * receptors->beta2_density) * ne_effective;
+
+    // Step 4: Compute gain values
+    // Gabor gain: DA enhances signal detection, ACh enhances features, NE increases sensitivity
+    effects->gabor_gain = 1.0f + 0.5f * da_effect + 0.3f * ach_effect + 0.4f * ne_effect;
+
+    // Attention boost: ACh dominates attention, NE increases alertness
+    effects->attention_boost = 1.0f + 0.7f * ach_effect + 0.3f * ne_effect;
+
+    // Plasticity gate: DA gates learning (reward), ACh gates encoding
+    // Sigmoid to keep in [0, 1]
+    float plasticity_input = 2.0f * da_effect + ach_effect;
+    effects->plasticity_gate = 1.0f / (1.0f + expf(-plasticity_input));
+
+    // Contrast gain: DA enhances contrast sensitivity
+    effects->contrast_gain = 1.0f + 0.4f * da_effect + 0.2f * ach_effect;
+
+    // Clamp all gains to reasonable ranges
+    effects->gabor_gain = fminf(fmaxf(effects->gabor_gain, 0.5f), 2.0f);
+    effects->attention_boost = fminf(fmaxf(effects->attention_boost, 0.5f), 2.0f);
+    effects->plasticity_gate = fminf(fmaxf(effects->plasticity_gate, 0.0f), 1.0f);
+    effects->contrast_gain = fminf(fmaxf(effects->contrast_gain, 0.5f), 2.0f);
+
+    return true;
 }
 
 //=============================================================================

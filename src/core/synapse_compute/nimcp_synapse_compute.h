@@ -89,6 +89,10 @@ typedef struct synapse_compute_context_t {
 
     void* custom_data;          /**< User-defined context data (task-specific) */
     uint32_t custom_data_size;  /**< Size of custom data (bytes) */
+
+    // Three-factor learning integration (Phase 2.7.1)
+    void* network;              /**< Neural network pointer (for accessing neuromod system) */
+    void* neuromodulator_system; /**< Neuromodulator system pointer (for direct access) */
 } synapse_compute_context_t;
 
 //=============================================================================

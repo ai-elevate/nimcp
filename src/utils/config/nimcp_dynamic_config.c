@@ -24,6 +24,7 @@
 #define MAX_CONFIG_ENTRIES 256
 #define MAX_KEY_LENGTH 128
 #define MAX_STRING_VALUE 512
+#define MAX_CALLBACKS 64
 
 typedef struct {
     char key[MAX_KEY_LENGTH];
@@ -32,10 +33,28 @@ typedef struct {
     bool in_use;
 } config_entry_internal_t;
 
+/**
+ * @brief Callback registration entry
+ *
+ * WHAT: Stores callback function and metadata for config change notifications
+ * WHY:  Enable runtime reaction to config changes (e.g., adjust learning rates)
+ * HOW:  Array of registrations with thread-safe access
+ */
+typedef struct {
+    uint32_t id;                        /**< Unique registration ID */
+    char key[MAX_KEY_LENGTH];           /**< Config key to watch (empty = all) */
+    config_change_callback_t callback;  /**< Callback function */
+    void* user_data;                    /**< User data passed to callback */
+    bool in_use;                        /**< Is this slot active? */
+} callback_registration_t;
+
 static config_entry_internal_t g_config_table[MAX_CONFIG_ENTRIES];
+static callback_registration_t g_callbacks[MAX_CALLBACKS];
 static pthread_rwlock_t g_config_lock = PTHREAD_RWLOCK_INITIALIZER;
+static pthread_mutex_t g_callback_lock = PTHREAD_MUTEX_INITIALIZER;
 static char g_config_path[512] = {0};
 static config_stats_t g_stats = {0};
+static uint32_t g_next_callback_id = 1;
 
 //=============================================================================
 // INI Parser (Simple, No Dependencies)
@@ -497,17 +516,127 @@ bool config_validate(const char* config_path) {
     return valid;
 }
 
-// Stub implementations for callback system (can be expanded later)
+/**
+ * @brief Trigger callbacks for a config value change
+ *
+ * WHAT: Notify all registered callbacks about a config change
+ * WHY:  Enable runtime adaptation to config changes
+ * HOW:  Iterate callbacks, invoke matching ones
+ *
+ * THREAD-SAFETY: Must be called with g_config_lock held (read or write)
+ *
+ * @param key Config key that changed
+ * @param old_value Previous value
+ * @param new_value New value
+ */
+static void trigger_callbacks(const char* key, const config_value_t* old_value,
+                              const config_value_t* new_value) {
+    if (!key) {
+        return;
+    }
+
+    // Lock callback table
+    pthread_mutex_lock(&g_callback_lock);
+
+    // Iterate all registered callbacks
+    for (int i = 0; i < MAX_CALLBACKS; i++) {
+        if (!g_callbacks[i].in_use || !g_callbacks[i].callback) {
+            continue;
+        }
+
+        // Check if callback matches this key
+        // Empty key means callback wants all changes
+        bool matches = (g_callbacks[i].key[0] == '\0') ||
+                      (strcmp(g_callbacks[i].key, key) == 0);
+
+        if (matches) {
+            // Invoke callback (unlock first to prevent deadlock)
+            pthread_mutex_unlock(&g_callback_lock);
+            g_callbacks[i].callback(key, old_value, new_value, g_callbacks[i].user_data);
+            pthread_mutex_lock(&g_callback_lock);
+        }
+    }
+
+    pthread_mutex_unlock(&g_callback_lock);
+}
+
 uint32_t config_register_callback(const char* key, config_change_callback_t callback,
                                    void* user_data) {
-    (void)key;
-    (void)callback;
-    (void)user_data;
-    // TODO: Implement callback registration
-    return 0;
+    // WHAT: Register callback for config change notifications
+    // WHY:  Enable runtime reaction to config updates (e.g., adjust learning rate)
+    // HOW:  Store callback in thread-safe registry with unique ID
+
+    // Input validation
+    if (!callback) {
+        fprintf(stderr, "config_register_callback: NULL callback\n");
+        return 0;
+    }
+
+    pthread_mutex_lock(&g_callback_lock);
+
+    // Find free slot
+    uint32_t slot = 0;
+    bool found = false;
+    for (uint32_t i = 0; i < MAX_CALLBACKS; i++) {
+        if (!g_callbacks[i].in_use) {
+            slot = i;
+            found = true;
+            break;
+        }
+    }
+
+    if (!found) {
+        pthread_mutex_unlock(&g_callback_lock);
+        fprintf(stderr, "config_register_callback: No free callback slots (max %d)\n",
+                MAX_CALLBACKS);
+        return 0;
+    }
+
+    // Generate unique ID
+    uint32_t id = g_next_callback_id++;
+
+    // Register callback
+    g_callbacks[slot].id = id;
+    g_callbacks[slot].callback = callback;
+    g_callbacks[slot].user_data = user_data;
+    g_callbacks[slot].in_use = true;
+
+    // Copy key (empty string means watch all keys)
+    if (key) {
+        strncpy(g_callbacks[slot].key, key, MAX_KEY_LENGTH - 1);
+        g_callbacks[slot].key[MAX_KEY_LENGTH - 1] = '\0';
+    } else {
+        g_callbacks[slot].key[0] = '\0';  // Watch all keys
+    }
+
+    pthread_mutex_unlock(&g_callback_lock);
+
+    return id;
 }
 
 void config_unregister_callback(uint32_t registration_id) {
-    (void)registration_id;
-    // TODO: Implement callback unregistration
+    // WHAT: Unregister callback by ID
+    // WHY:  Cleanup when callback no longer needed
+    // HOW:  Find callback by ID and mark slot as free
+
+    // Validate ID
+    if (registration_id == 0) {
+        return;
+    }
+
+    pthread_mutex_lock(&g_callback_lock);
+
+    // Find and remove callback
+    for (int i = 0; i < MAX_CALLBACKS; i++) {
+        if (g_callbacks[i].in_use && g_callbacks[i].id == registration_id) {
+            // Mark slot as free
+            g_callbacks[i].in_use = false;
+            g_callbacks[i].callback = NULL;
+            g_callbacks[i].user_data = NULL;
+            g_callbacks[i].key[0] = '\0';
+            break;
+        }
+    }
+
+    pthread_mutex_unlock(&g_callback_lock);
 }

@@ -339,6 +339,131 @@ bool brain_get_astrocyte_stats(
     astrocyte_stats_t* stats
 );
 
+//=============================================================================
+// JSON Export/Import
+//=============================================================================
+
+/**
+ * @brief Export flags for brain JSON serialization
+ */
+typedef enum {
+    BRAIN_EXPORT_METADATA   = (1 << 0),  /**< Export metadata (version, creation time, etc.) */
+    BRAIN_EXPORT_CONFIG     = (1 << 1),  /**< Export brain configuration */
+    BRAIN_EXPORT_TOPOLOGY   = (1 << 2),  /**< Export network topology (neurons, connections) */
+    BRAIN_EXPORT_WEIGHTS    = (1 << 3),  /**< Export synaptic weights */
+    BRAIN_EXPORT_STATE      = (1 << 4),  /**< Export runtime state (activations, etc.) */
+    BRAIN_EXPORT_LABELS     = (1 << 5),  /**< Export output labels */
+    BRAIN_EXPORT_STATS      = (1 << 6),  /**< Export statistics */
+    BRAIN_EXPORT_ALL        = 0x7F,      /**< Export everything */
+    BRAIN_EXPORT_COMPACT    = (1 << 7),  /**< Use compact format (no pretty-print) */
+} brain_export_flags_t;
+
+/**
+ * @brief Export brain to JSON format
+ *
+ * WHAT: Serialize brain state to human-readable JSON
+ * WHY:  Enable inspection, debugging, and interoperability
+ * HOW:  Use cJSON library to create structured JSON representation
+ *
+ * JSON STRUCTURE:
+ * ```json
+ * {
+ *   "schema_version": "1.0",
+ *   "metadata": {
+ *     "nimcp_version": "2.7.0",
+ *     "creation_time": "2025-11-17T12:34:56Z",
+ *     "export_time": "2025-11-17T14:22:10Z"
+ *   },
+ *   "config": { ... },
+ *   "topology": {
+ *     "num_neurons": 500,
+ *     "neurons": [...],
+ *     "synapses": [...]
+ *   },
+ *   "weights": [...],
+ *   "state": { ... },
+ *   "labels": [...],
+ *   "stats": { ... }
+ * }
+ * ```
+ *
+ * EXPORT FLAGS:
+ * - BRAIN_EXPORT_ALL: Full brain export (default)
+ * - BRAIN_EXPORT_TOPOLOGY: Topology only (structure without weights)
+ * - BRAIN_EXPORT_WEIGHTS: Weights only (for fine-tuning)
+ * - BRAIN_EXPORT_COMPACT: Compact JSON (no pretty-print)
+ *
+ * PERFORMANCE: O(N + S) where N=neurons, S=synapses
+ * MEMORY: Allocates JSON string (typically 10-100x binary size)
+ *
+ * ERROR HANDLING:
+ * - Returns NULL if brain is NULL
+ * - Returns NULL if JSON generation fails
+ * - Caller must free returned string with free()
+ *
+ * THREAD SAFETY: Thread-safe (read-only access to brain)
+ *
+ * @param brain Brain to export
+ * @param flags Export flags (BRAIN_EXPORT_ALL for complete export)
+ * @return JSON string (caller must free) or NULL on error
+ */
+char* brain_export_json(brain_t brain, uint32_t flags);
+
+/**
+ * @brief Import brain from JSON format
+ *
+ * WHAT: Deserialize brain from JSON representation
+ * WHY:  Restore brain state from human-readable format
+ * HOW:  Parse JSON with cJSON, validate schema, reconstruct brain
+ *
+ * VALIDATION:
+ * - Schema version compatibility check
+ * - Field type validation (numbers, strings, arrays)
+ * - Range validation (neuron IDs, weights, etc.)
+ * - Structural integrity (topology consistency)
+ *
+ * ERROR HANDLING:
+ * - Returns NULL if json_str is NULL or empty
+ * - Returns NULL if JSON parsing fails
+ * - Returns NULL if schema version incompatible
+ * - Returns NULL if validation fails
+ * - Detailed error messages via brain error system
+ *
+ * THREAD SAFETY: Thread-safe (creates new brain instance)
+ *
+ * PERFORMANCE: O(N + S) where N=neurons, S=synapses
+ *
+ * @param json_str JSON string to import
+ * @return Brain instance or NULL on error
+ */
+brain_t brain_import_json(const char* json_str);
+
+/**
+ * @brief Save brain to JSON file
+ *
+ * WHAT: Export brain to JSON and write to file
+ * WHY:  Convenience wrapper for file-based export
+ * HOW:  Call brain_export_json() and write to file
+ *
+ * @param brain Brain to export
+ * @param filepath Output file path
+ * @param flags Export flags (BRAIN_EXPORT_ALL for complete export)
+ * @return true on success, false on error
+ */
+bool brain_save_json(brain_t brain, const char* filepath, uint32_t flags);
+
+/**
+ * @brief Load brain from JSON file
+ *
+ * WHAT: Read JSON file and import brain
+ * WHY:  Convenience wrapper for file-based import
+ * HOW:  Read file contents and call brain_import_json()
+ *
+ * @param filepath Input file path
+ * @return Brain instance or NULL on error
+ */
+brain_t brain_load_json(const char* filepath);
+
 #ifdef __cplusplus
 }
 #endif

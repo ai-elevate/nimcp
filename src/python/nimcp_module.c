@@ -92,5 +92,11 @@ PyMODINIT_FUNC PyInit_nimcp(void)
         return NULL;
     }
 
+    // Initialize community detection module
+    if (init_community_module(m) < 0) {
+        Py_DECREF(m);
+        return NULL;
+    }
+
     return m;
 }

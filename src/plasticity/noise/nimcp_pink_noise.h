@@ -41,6 +41,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include <stdlib.h>
+#include <stdio.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -340,6 +341,50 @@ pink_noise_config_t pink_noise_default_config(void);
  * @return true if valid, false if invalid
  */
 bool pink_noise_validate_config(const pink_noise_config_t* config);
+
+//=============================================================================
+// Persistence API (Save/Load)
+//=============================================================================
+
+/**
+ * @brief Save pink noise generator state to file
+ *
+ * WHAT: Serialize pink noise generator state to binary file
+ * WHY:  Enable persistence of noise generation state across sessions
+ * HOW:  Write version marker, config, RNG state, and method-specific state
+ *
+ * Binary format:
+ *   uint32_t version (1)
+ *   pink_noise_config_t config
+ *   uint32_t rng_state
+ *   float voss_octaves[VOSS_NUM_OCTAVES]
+ *   uint32_t voss_counter
+ *   float iir_history[4]
+ *   float iir_coeffs[5]
+ *
+ * @param generator Pink noise generator
+ * @param file Open file handle for writing
+ * @return true on success, false on error
+ *
+ * COMPLEXITY: O(1)
+ * THREAD-SAFE: No (caller must ensure exclusive access)
+ */
+bool pink_noise_save(pink_noise_generator_t generator, FILE* file);
+
+/**
+ * @brief Load pink noise generator state from file
+ *
+ * WHAT: Deserialize pink noise generator state from binary file
+ * WHY:  Restore saved noise generation state
+ * HOW:  Read version marker, validate, reconstruct state
+ *
+ * @param file Open file handle for reading
+ * @return Pink noise generator handle or NULL on error
+ *
+ * COMPLEXITY: O(1)
+ * THREAD-SAFE: Yes (creates new instance)
+ */
+pink_noise_generator_t pink_noise_load(FILE* file);
 
 /**
  * @brief Get method name as string

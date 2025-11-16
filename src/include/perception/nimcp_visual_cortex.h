@@ -57,6 +57,7 @@
 
 #include <stdbool.h>
 #include <stdint.h>
+#include "plasticity/neuromodulators/nimcp_phasic_tonic.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -285,6 +286,82 @@ float attention_map_get(const attention_map_t* map, uint32_t x, uint32_t y);
  * WHAT: Set attention value at location
  */
 bool attention_map_set(attention_map_t* map, uint32_t x, uint32_t y, float value);
+
+//=============================================================================
+// Neuromodulation Structures
+//=============================================================================
+
+/**
+ * @brief Phasic vs Tonic neuromodulator state
+ *
+ * WHAT: Tracks both rapid bursts (phasic) and baseline (tonic) levels
+ * WHY:  Biological neuromodulation has two timescales
+ * HOW:  Phasic = rapid events, Tonic = slow baseline
+ *
+ * BIOLOGY:
+ * - Phasic dopamine: Reward prediction errors (50-200ms bursts)
+ * - Tonic dopamine: Background motivation level (seconds to minutes)
+ * - Phasic ACh: Attention cue detection (100-300ms)
+ * - Tonic ACh: Sustained attention level (seconds)
+ * - Phasic NE: Arousal spike from threat (50-150ms)
+ * - Tonic NE: Background arousal/stress (minutes)
+ */
+#ifndef PHASIC_TONIC_STATE_DEFINED
+// phasic_tonic_state_t already defined in nimcp_phasic_tonic.h
+#define PHASIC_TONIC_STATE_DEFINED
+#endif
+
+/**
+ * @brief Receptor expression profile for visual cortex neurons
+ *
+ * WHAT: Density of different receptor subtypes in V1
+ * WHY:  Different receptors mediate different effects
+ * HOW:  Multiply global neuromodulator by local receptor density
+ *
+ * BIOLOGY:
+ * - D1 receptors: Enhance signal, increase plasticity (excitatory)
+ * - D2 receptors: Reduce noise, decrease plasticity (inhibitory)
+ * - M1 receptors: Slow excitation, attention modulation
+ * - M2 receptors: Presynaptic inhibition, gain control
+ * - α1 receptors: Increase arousal, enhance processing
+ * - β2 receptors: Facilitate plasticity, learning
+ *
+ * LAYER SPECIFICITY (V1 cortical layers):
+ * - Layer 2/3: High D1, moderate ACh (top-down attention)
+ * - Layer 4: High ACh, moderate NE (thalamic input)
+ * - Layer 5: High D1, D2, NE (motor output, arousal)
+ * - Layer 6: High M1, β2 (feedback modulation)
+ */
+#ifndef RECEPTOR_EXPRESSION_DEFINED
+#define RECEPTOR_EXPRESSION_DEFINED
+typedef struct {
+    // Dopamine receptors
+    float d1_density;    /**< D1 receptor density (0-1), default: 0.3 */
+    float d2_density;    /**< D2 receptor density (0-1), default: 0.2 */
+
+    // Acetylcholine receptors
+    float m1_density;    /**< M1 muscarinic density (0-1), default: 0.5 */
+    float m2_density;    /**< M2 muscarinic density (0-1), default: 0.3 */
+
+    // Norepinephrine receptors
+    float alpha1_density; /**< α1-adrenergic density (0-1), default: 0.4 */
+    float beta2_density;  /**< β2-adrenergic density (0-1), default: 0.3 */
+} receptor_expression_t;
+#endif
+
+/**
+ * @brief Computed neuromodulation effects on visual processing
+ *
+ * WHAT: Final gain/modulation values applied to V1 processing
+ * WHY:  Separate computation from application for clarity
+ * HOW:  Computed from phasic/tonic states × receptor expression
+ */
+typedef struct {
+    float gabor_gain;        /**< Gain for Gabor filter outputs (0.5-2.0) */
+    float attention_boost;   /**< Boost for attention map (0.5-2.0) */
+    float plasticity_gate;   /**< Gate for learning (0-1) */
+    float contrast_gain;     /**< Contrast sensitivity modulation (0.5-2.0) */
+} neuromod_effects_t;
 
 //=============================================================================
 // Visual Memory
@@ -618,6 +695,148 @@ bool visual_cortex_consolidate_memory(
  * - Anxiety (high NE): Hypervigilant vision, sees threats everywhere
  */
 void visual_cortex_set_brain(visual_cortex_t* cortex, brain_t brain);
+
+//=============================================================================
+// Neuromodulation API
+//=============================================================================
+
+/**
+ * @brief Get phasic/tonic state for a neuromodulator
+ *
+ * WHAT: Query current phasic and tonic levels
+ * WHY:  Enable monitoring and debugging of neuromodulation
+ * HOW:  Return pointer to internal state
+ *
+ * @param cortex Visual cortex instance
+ * @param type Neuromodulator type (dopamine, acetylcholine, norepinephrine)
+ * @return Phasic/tonic state or NULL on error
+ *
+ * USAGE:
+ * ```c
+ * phasic_tonic_state_t* ach_state =
+ *     visual_cortex_get_neuromod_state(cortex, 0);  // 0=dopamine, 1=ach, 2=ne
+ * printf("ACh: phasic=%.2f, tonic=%.2f\n",
+ *        ach_state->phasic_level, ach_state->tonic_level);
+ * ```
+ */
+const phasic_tonic_state_t* visual_cortex_get_neuromod_state(
+    const visual_cortex_t* cortex,
+    uint32_t neuromod_type);
+
+/**
+ * @brief Set receptor expression profile for visual cortex
+ *
+ * WHAT: Configure receptor densities for different V1 layers
+ * WHY:  Model layer-specific neuromodulation sensitivity
+ * HOW:  Store receptor expression array
+ *
+ * @param cortex Visual cortex instance
+ * @param layer_idx Layer index (0=layer 2/3, 1=layer 4, 2=layer 5, 3=layer 6)
+ * @param receptors Receptor expression profile
+ * @return true on success
+ *
+ * BIOLOGY:
+ * Layer 2/3: High D1 (0.4), moderate ACh (0.5) - top-down attention
+ * Layer 4:   High ACh (0.6), moderate NE (0.5) - thalamic input
+ * Layer 5:   High D1 (0.4), D2 (0.3), NE (0.5) - motor output
+ * Layer 6:   High M1 (0.6), β2 (0.4) - feedback modulation
+ */
+bool visual_cortex_set_receptor_profile(
+    visual_cortex_t* cortex,
+    uint32_t layer_idx,
+    const receptor_expression_t* receptors);
+
+/**
+ * @brief Get receptor expression profile for a layer
+ *
+ * @param cortex Visual cortex instance
+ * @param layer_idx Layer index (0-3)
+ * @return Receptor profile or NULL on error
+ */
+const receptor_expression_t* visual_cortex_get_receptor_profile(
+    const visual_cortex_t* cortex,
+    uint32_t layer_idx);
+
+/**
+ * @brief Trigger phasic neuromodulator burst
+ *
+ * WHAT: Inject rapid neuromodulator pulse (e.g., reward, surprise)
+ * WHY:  Simulate phasic bursts from midbrain/brainstem
+ * HOW:  Add to phasic level, which decays rapidly
+ *
+ * @param cortex Visual cortex instance
+ * @param neuromod_type 0=dopamine, 1=acetylcholine, 2=norepinephrine
+ * @param amount Burst amplitude (0-1), typically 0.3-0.8
+ * @return true on success
+ *
+ * USAGE:
+ * ```c
+ * // Reward → dopamine burst
+ * visual_cortex_trigger_phasic_burst(cortex, 0, 0.5);
+ *
+ * // Surprising stimulus → ACh burst
+ * visual_cortex_trigger_phasic_burst(cortex, 1, 0.6);
+ *
+ * // Threat detected → NE burst
+ * visual_cortex_trigger_phasic_burst(cortex, 2, 0.7);
+ * ```
+ */
+bool visual_cortex_trigger_phasic_burst(
+    visual_cortex_t* cortex,
+    uint32_t neuromod_type,
+    float amount);
+
+/**
+ * @brief Set tonic neuromodulator baseline
+ *
+ * WHAT: Set slow baseline level (mood, arousal, motivation)
+ * WHY:  Model sustained states (stress, focus, motivation)
+ * HOW:  Set tonic level directly
+ *
+ * @param cortex Visual cortex instance
+ * @param neuromod_type 0=dopamine, 1=acetylcholine, 2=norepinephrine
+ * @param level Tonic baseline (0-1)
+ * @return true on success
+ *
+ * CLINICAL EXAMPLES:
+ * - Depression: Low dopamine tonic (0.2), normal phasic bursts
+ * - ADHD: Low ACh tonic (0.3), impaired sustained attention
+ * - Anxiety: High NE tonic (0.7), chronic hypervigilance
+ */
+bool visual_cortex_set_tonic_level(
+    visual_cortex_t* cortex,
+    uint32_t neuromod_type,
+    float level);
+
+/**
+ * @brief Compute current neuromodulation effects
+ *
+ * WHAT: Calculate final gain/modulation values
+ * WHY:  Consolidate all neuromodulation into single effect struct
+ * HOW:  Combine phasic+tonic levels × receptor expression
+ *
+ * @param cortex Visual cortex instance
+ * @param layer_idx Layer to compute effects for (0-3)
+ * @param effects Output: computed neuromodulation effects
+ * @return true on success
+ *
+ * ALGORITHM:
+ * 1. Read phasic + tonic levels from brain neuromodulator system
+ * 2. Combine: effective_level = α*phasic + (1-α)*tonic, α=0.6
+ * 3. Multiply by receptor densities:
+ *    - DA effect = (D1 - 0.5*D2) * dopamine_level
+ *    - ACh effect = (M1 - 0.3*M2) * ach_level
+ *    - NE effect = (α1 + 0.5*β2) * ne_level
+ * 4. Compute gains:
+ *    - gabor_gain = 1.0 + 0.5*DA + 0.3*ACh + 0.4*NE
+ *    - attention_boost = 1.0 + 0.7*ACh + 0.3*NE
+ *    - plasticity_gate = sigmoid(2*DA + ACh)
+ *    - contrast_gain = 1.0 + 0.4*DA + 0.2*ACh
+ */
+bool visual_cortex_compute_neuromod_effects(
+    const visual_cortex_t* cortex,
+    uint32_t layer_idx,
+    neuromod_effects_t* effects);
 
 //=============================================================================
 // Bidirectional Feedback Functions (Phase 10.11.3)

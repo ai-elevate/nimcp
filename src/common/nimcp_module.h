@@ -62,5 +62,6 @@ typedef struct {
 PyMODINIT_FUNC PyInit_nimcp(void);
 extern int init_topology_module(PyObject* module);
 extern int init_pink_noise_module(PyObject* module);
+extern int init_community_module(PyObject* module);
 
 #endif  // NIMCP_MODULE_H

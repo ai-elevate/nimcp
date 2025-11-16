@@ -270,16 +270,124 @@ uint32_t kdtree_k_nearest(const kdtree_t* tree, const kdtree_point_t query,
     return 0;
 }
 
+/**
+ * @brief Helper structure for range search results
+ *
+ * WHAT: Accumulator for points within search radius
+ * WHY:  Need to track count and capacity during recursive traversal
+ * HOW:  Pass by pointer through recursive calls
+ */
+typedef struct {
+    void** results;      /**< Output array of user data pointers */
+    uint32_t count;      /**< Current number of results found */
+    uint32_t capacity;   /**< Maximum capacity of results array */
+} range_search_context_t;
+
+/**
+ * @brief Recursively search for points within radius
+ *
+ * WHAT: Traverse KD-tree and collect all points within sphere
+ * WHY:  Bulk spatial queries for astrocyte networks, connection formation
+ * HOW:  Recursive DFS with bounding box pruning
+ *
+ * ALGORITHM:
+ * 1. Test current node: if within radius, add to results
+ * 2. Compute distance to splitting plane
+ * 3. Recursively search near subtree
+ * 4. If splitting plane intersects sphere, search far subtree too
+ * 5. Pruning: Skip subtree if splitting plane beyond radius
+ *
+ * COMPLEXITY: O(k + sqrt(N)) average, where k = results count
+ * BIOLOGICAL ANALOGY: Find all astrocytes within diffusion radius of synapse
+ *
+ * @param node Current node (NULL-safe)
+ * @param query Query point [x, y, z]
+ * @param radius_sq Squared search radius (for faster comparison)
+ * @param ctx Context with results array and capacity
+ */
+static void range_search_recursive(const kdtree_node_t* node,
+                                   const kdtree_point_t query,
+                                   float radius_sq,
+                                   range_search_context_t* ctx) {
+    // Base case: null node
+    if (!node) {
+        return;
+    }
+
+    // Early exit: capacity reached
+    if (ctx->count >= ctx->capacity) {
+        return;
+    }
+
+    // STEP 1: Test current node - is it within radius?
+    float dist_sq = distance_squared(node->point, query);
+    if (dist_sq <= radius_sq) {
+        // Point is within sphere - add to results
+        ctx->results[ctx->count++] = node->user_data;
+
+        // Early exit if capacity reached
+        if (ctx->count >= ctx->capacity) {
+            return;
+        }
+    }
+
+    // STEP 2: Determine which subtree to search first
+    // Get split dimension for this node
+    uint8_t dim = node->split_dim;
+
+    // Distance from query to splitting plane along split dimension
+    float plane_dist = query[dim] - node->point[dim];
+
+    // Determine near/far children based on which side of plane query is on
+    kdtree_node_t* near_child = (plane_dist < 0) ? node->left : node->right;
+    kdtree_node_t* far_child = (plane_dist < 0) ? node->right : node->left;
+
+    // STEP 3: Always search near subtree
+    range_search_recursive(near_child, query, radius_sq, ctx);
+
+    // Early exit if capacity reached
+    if (ctx->count >= ctx->capacity) {
+        return;
+    }
+
+    // STEP 4: Conditionally search far subtree (bounding box pruning)
+    // Only search if splitting plane intersects search sphere
+    // plane_dist^2 < radius^2 means sphere crosses plane
+    if (plane_dist * plane_dist <= radius_sq) {
+        range_search_recursive(far_child, query, radius_sq, ctx);
+    }
+}
+
 uint32_t kdtree_range_search(const kdtree_t* tree, const kdtree_point_t query,
                               float radius, void** results, uint32_t capacity) {
-    // TODO: Implement range search
-    // For now, return 0 (not implemented)
-    (void)tree;
-    (void)query;
-    (void)radius;
-    (void)results;
-    (void)capacity;
-    return 0;
+    // WHAT: Find all points within radius of query point
+    // WHY:  Bulk spatial queries for synapse-astrocyte matching, connection formation
+    // HOW:  Recursive DFS with bounding box pruning
+
+    // Input validation
+    if (!tree || !tree->root || !results || capacity == 0) {
+        return 0;
+    }
+
+    // Validate radius (must be non-negative)
+    if (radius < 0.0f) {
+        return 0;
+    }
+
+    // Initialize search context
+    range_search_context_t ctx = {
+        .results = results,
+        .count = 0,
+        .capacity = capacity
+    };
+
+    // Compute squared radius once (avoid repeated sqrt in recursion)
+    float radius_sq = radius * radius;
+
+    // Perform recursive range search
+    range_search_recursive(tree->root, query, radius_sq, &ctx);
+
+    return ctx.count;
 }
 
 uint32_t kdtree_size(const kdtree_t* tree) {

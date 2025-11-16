@@ -1,0 +1,948 @@
+//=============================================================================
+// nimcp_community_detection.c - Community Detection Implementation
+//=============================================================================
+
+#include "nimcp_community_detection.h"
+#include "core/neuralnet/nimcp_neuralnet.h"
+#include "nimcp_fractal_topology.h"
+#include <stdio.h>
+#include <string.h>
+#include <math.h>
+#include <time.h>
+
+//=============================================================================
+// Thread-local error handling
+//=============================================================================
+
+static __thread char last_error[512] = {0};
+
+static void set_error(const char* format, ...) {
+    va_list args;
+    va_start(args, format);
+    vsnprintf(last_error, sizeof(last_error), format, args);
+    va_end(args);
+}
+
+const char* community_get_last_error(void) {
+    return last_error[0] ? last_error : NULL;
+}
+
+//=============================================================================
+// Helper Structures
+//=============================================================================
+
+// Internal adjacency list for efficient graph traversal
+typedef struct {
+    uint32_t* neighbors;      // Array of neighbor neuron IDs
+    float* weights;           // Array of connection weights
+    uint32_t num_neighbors;   // Count of neighbors
+    uint32_t capacity;        // Allocated capacity
+} adjacency_node_t;
+
+typedef struct {
+    adjacency_node_t* nodes;
+    uint32_t num_nodes;
+    uint32_t total_edges;
+} adjacency_list_t;
+
+//=============================================================================
+// Graph Construction
+//=============================================================================
+
+static adjacency_list_t* build_adjacency_list(neural_network_t network) {
+    uint32_t num_neurons = neural_network_get_num_neurons(network);
+    if (num_neurons == 0) {
+        set_error("Network has no neurons");
+        return NULL;
+    }
+
+    adjacency_list_t* graph = calloc(1, sizeof(adjacency_list_t));
+    if (!graph) {
+        set_error("Failed to allocate adjacency list");
+        return NULL;
+    }
+
+    graph->num_nodes = num_neurons;
+    graph->nodes = calloc(num_neurons, sizeof(adjacency_node_t));
+    if (!graph->nodes) {
+        free(graph);
+        set_error("Failed to allocate adjacency nodes");
+        return NULL;
+    }
+
+    // Build adjacency list from synapses
+    graph->total_edges = 0;
+    for (uint32_t i = 0; i < num_neurons; i++) {
+        neuron_t* neuron = neural_network_get_neuron(network, i);
+        if (!neuron) continue;
+
+        adjacency_node_t* node = &graph->nodes[i];
+        node->capacity = 32;  // Initial capacity
+        node->neighbors = malloc(node->capacity * sizeof(uint32_t));
+        node->weights = malloc(node->capacity * sizeof(float));
+        node->num_neighbors = 0;
+
+        if (!node->neighbors || !node->weights) {
+            set_error("Failed to allocate neighbor arrays");
+            // Cleanup partial allocation
+            for (uint32_t j = 0; j <= i; j++) {
+                free(graph->nodes[j].neighbors);
+                free(graph->nodes[j].weights);
+            }
+            free(graph->nodes);
+            free(graph);
+            return NULL;
+        }
+
+        // Add outgoing synapses (connections TO other neurons)
+        for (uint32_t s = 0; s < neuron->num_synapses; s++) {
+            synapse_t* syn = &neuron->synapses[s];
+            uint32_t target_id = syn->target_id;
+            float weight = fabsf(syn->weight);  // Use absolute weight for community detection
+
+            // Grow arrays if needed
+            if (node->num_neighbors >= node->capacity) {
+                node->capacity *= 2;
+                node->neighbors = realloc(node->neighbors, node->capacity * sizeof(uint32_t));
+                node->weights = realloc(node->weights, node->capacity * sizeof(float));
+                if (!node->neighbors || !node->weights) {
+                    set_error("Failed to reallocate neighbor arrays");
+                    return NULL;
+                }
+            }
+
+            node->neighbors[node->num_neighbors] = target_id;
+            node->weights[node->num_neighbors] = weight;
+            node->num_neighbors++;
+            graph->total_edges++;
+        }
+    }
+
+    return graph;
+}
+
+static void free_adjacency_list(adjacency_list_t* graph) {
+    if (!graph) return;
+    if (graph->nodes) {
+        for (uint32_t i = 0; i < graph->num_nodes; i++) {
+            free(graph->nodes[i].neighbors);
+            free(graph->nodes[i].weights);
+        }
+        free(graph->nodes);
+    }
+    free(graph);
+}
+
+//=============================================================================
+// Modularity Computation
+//=============================================================================
+
+float community_compute_modularity(
+    neural_network_t network,
+    const uint32_t* community_ids,
+    uint32_t num_communities)
+{
+    if (!network || !community_ids) {
+        set_error("NULL arguments to compute_modularity");
+        return -1.0f;
+    }
+
+    adjacency_list_t* graph = build_adjacency_list(network);
+    if (!graph) return -1.0f;
+
+    float m = (float)graph->total_edges;
+    if (m == 0) {
+        free_adjacency_list(graph);
+        return 0.0f;
+    }
+
+    // Compute degree for each node
+    float* degree = calloc(graph->num_nodes, sizeof(float));
+    if (!degree) {
+        free_adjacency_list(graph);
+        set_error("Failed to allocate degree array");
+        return -1.0f;
+    }
+
+    for (uint32_t i = 0; i < graph->num_nodes; i++) {
+        for (uint32_t j = 0; j < graph->nodes[i].num_neighbors; j++) {
+            degree[i] += graph->nodes[i].weights[j];
+        }
+    }
+
+    // Compute modularity Q
+    // Q = (1/2m) * Σ [A_ij - (k_i * k_j)/2m] * δ(c_i, c_j)
+    float q = 0.0f;
+    for (uint32_t i = 0; i < graph->num_nodes; i++) {
+        uint32_t comm_i = community_ids[i];
+
+        // Add contribution from edges
+        for (uint32_t j = 0; j < graph->nodes[i].num_neighbors; j++) {
+            uint32_t neighbor = graph->nodes[i].neighbors[j];
+            uint32_t comm_j = community_ids[neighbor];
+
+            if (comm_i == comm_j) {
+                float a_ij = graph->nodes[i].weights[j];
+                float expected = (degree[i] * degree[neighbor]) / (2.0f * m);
+                q += (a_ij - expected);
+            }
+        }
+    }
+
+    q /= (2.0f * m);
+
+    free(degree);
+    free_adjacency_list(graph);
+
+    return q;
+}
+
+//=============================================================================
+// Louvain Algorithm Implementation
+//=============================================================================
+
+static bool louvain_phase1(
+    adjacency_list_t* graph,
+    uint32_t* community_ids,
+    const community_detection_config_t* config,
+    float* total_degree)
+{
+    bool improved = false;
+    uint32_t num_nodes = graph->num_nodes;
+    float m = (float)graph->total_edges;
+
+    // Initialize each node in its own community
+    for (uint32_t i = 0; i < num_nodes; i++) {
+        community_ids[i] = i;
+        total_degree[i] = 0.0f;
+        for (uint32_t j = 0; j < graph->nodes[i].num_neighbors; j++) {
+            total_degree[i] += graph->nodes[i].weights[j];
+        }
+    }
+
+    // Iteratively move nodes to best communities
+    for (uint32_t iter = 0; iter < config->max_iterations; iter++) {
+        bool changed = false;
+
+        // Try moving each node
+        for (uint32_t node = 0; node < num_nodes; node++) {
+            uint32_t current_comm = community_ids[node];
+            float best_gain = 0.0f;
+            uint32_t best_comm = current_comm;
+
+            // Count edges to each neighboring community
+            uint32_t max_comms = num_nodes;
+            float* comm_weight = calloc(max_comms, sizeof(float));
+            if (!comm_weight) continue;
+
+            // Sum weights to each neighboring community
+            for (uint32_t i = 0; i < graph->nodes[node].num_neighbors; i++) {
+                uint32_t neighbor = graph->nodes[node].neighbors[i];
+                uint32_t neighbor_comm = community_ids[neighbor];
+                float weight = graph->nodes[node].weights[i];
+                comm_weight[neighbor_comm] += weight;
+            }
+
+            // Try moving to each neighboring community
+            for (uint32_t comm = 0; comm < max_comms; comm++) {
+                if (comm_weight[comm] == 0.0f) continue;
+                if (comm == current_comm) continue;
+
+                // Compute modularity gain
+                float k_i = total_degree[node];
+                float sigma_tot = 0.0f;  // Total degree of target community
+
+                for (uint32_t n = 0; n < num_nodes; n++) {
+                    if (community_ids[n] == comm) {
+                        sigma_tot += total_degree[n];
+                    }
+                }
+
+                float delta_q = (comm_weight[comm] / m) -
+                               (config->resolution * k_i * sigma_tot / (2.0f * m * m));
+
+                if (delta_q > best_gain + config->min_modularity_gain) {
+                    best_gain = delta_q;
+                    best_comm = comm;
+                }
+            }
+
+            free(comm_weight);
+
+            // Move to best community if improvement found
+            if (best_comm != current_comm) {
+                community_ids[node] = best_comm;
+                changed = true;
+                improved = true;
+            }
+        }
+
+        if (!changed) break;  // Converged
+    }
+
+    return improved;
+}
+
+static void renumber_communities(uint32_t* community_ids, uint32_t num_nodes, uint32_t* num_communities) {
+    // Compact community IDs to 0..N-1
+    uint32_t* mapping = calloc(num_nodes, sizeof(uint32_t));
+    if (!mapping) {
+        *num_communities = 0;
+        return;
+    }
+
+    for (uint32_t i = 0; i < num_nodes; i++) {
+        mapping[i] = UINT32_MAX;
+    }
+
+    uint32_t next_id = 0;
+    for (uint32_t i = 0; i < num_nodes; i++) {
+        uint32_t old_comm = community_ids[i];
+        if (mapping[old_comm] == UINT32_MAX) {
+            mapping[old_comm] = next_id++;
+        }
+        community_ids[i] = mapping[old_comm];
+    }
+
+    *num_communities = next_id;
+    free(mapping);
+}
+
+community_structure_t* community_detect(
+    neural_network_t network,
+    const community_detection_config_t* config)
+{
+    if (!network) {
+        set_error("NULL network");
+        return NULL;
+    }
+
+    // Use default config if not provided
+    community_detection_config_t default_config = community_default_config();
+    if (!config) config = &default_config;
+
+    // Build graph
+    adjacency_list_t* graph = build_adjacency_list(network);
+    if (!graph) return NULL;
+
+    uint32_t num_nodes = graph->num_nodes;
+
+    // Allocate community structure
+    community_structure_t* structure = calloc(1, sizeof(community_structure_t));
+    if (!structure) {
+        free_adjacency_list(graph);
+        set_error("Failed to allocate community structure");
+        return NULL;
+    }
+
+    structure->num_neurons = num_nodes;
+    structure->community_ids = calloc(num_nodes, sizeof(uint32_t));
+    float* total_degree = calloc(num_nodes, sizeof(float));
+
+    if (!structure->community_ids || !total_degree) {
+        free(total_degree);
+        topology_community_structure_free(structure);
+        free_adjacency_list(graph);
+        set_error("Failed to allocate arrays");
+        return NULL;
+    }
+
+    // Run Louvain algorithm
+    louvain_phase1(graph, structure->community_ids, config, total_degree);
+
+    // Renumber communities
+    renumber_communities(structure->community_ids, num_nodes, &structure->num_communities);
+
+    // Enforce max communities limit
+    if (config->max_communities > 0 && structure->num_communities > config->max_communities) {
+        // Merge smallest communities
+        // (Simple implementation: just cap the count)
+        structure->num_communities = config->max_communities;
+    }
+
+    // Allocate community stats arrays
+    structure->community_sizes = calloc(structure->num_communities, sizeof(uint32_t));
+    structure->internal_density = calloc(structure->num_communities, sizeof(float));
+    structure->external_density = calloc(structure->num_communities, sizeof(float));
+
+    if (!structure->community_sizes || !structure->internal_density || !structure->external_density) {
+        free(total_degree);
+        topology_community_structure_free(structure);
+        free_adjacency_list(graph);
+        set_error("Failed to allocate community stats");
+        return NULL;
+    }
+
+    // Compute community sizes
+    for (uint32_t i = 0; i < num_nodes; i++) {
+        uint32_t comm = structure->community_ids[i];
+        if (comm < structure->num_communities) {
+            structure->community_sizes[comm]++;
+        }
+    }
+
+    // Compute modularity
+    structure->modularity = community_compute_modularity(network, structure->community_ids, structure->num_communities);
+
+    // Compute internal/external densities
+    for (uint32_t i = 0; i < num_nodes; i++) {
+        uint32_t comm_i = structure->community_ids[i];
+        if (comm_i >= structure->num_communities) continue;
+
+        for (uint32_t j = 0; j < graph->nodes[i].num_neighbors; j++) {
+            uint32_t neighbor = graph->nodes[i].neighbors[j];
+            uint32_t comm_j = structure->community_ids[neighbor];
+
+            if (comm_i == comm_j) {
+                structure->internal_density[comm_i] += 1.0f;
+            } else {
+                structure->external_density[comm_i] += 1.0f;
+            }
+        }
+    }
+
+    // Normalize densities
+    for (uint32_t c = 0; c < structure->num_communities; c++) {
+        uint32_t size = structure->community_sizes[c];
+        if (size > 1) {
+            float max_internal = size * (size - 1);  // Max possible internal edges
+            structure->internal_density[c] /= max_internal;
+        }
+        if (size > 0) {
+            float max_external = size * (num_nodes - size);  // Max possible external edges
+            if (max_external > 0) {
+                structure->external_density[c] /= max_external;
+            }
+        }
+    }
+
+    free(total_degree);
+    free_adjacency_list(graph);
+
+    return structure;
+}
+
+void topology_community_structure_free(community_structure_t* structure) {
+    if (!structure) return;
+    free(structure->community_ids);
+    free(structure->community_sizes);
+    free(structure->internal_density);
+    free(structure->external_density);
+    free(structure);
+}
+
+// Alias for Python bindings compatibility
+void community_structure_free(community_structure_t* structure) {
+    topology_community_structure_free(structure);
+}
+
+//=============================================================================
+// Query Functions
+//=============================================================================
+
+uint32_t community_get_neuron_community(
+    const community_structure_t* structure,
+    uint32_t neuron_id)
+{
+    if (!structure || neuron_id >= structure->num_neurons) {
+        return UINT32_MAX;
+    }
+    return structure->community_ids[neuron_id];
+}
+
+bool community_get_neurons_in_community(
+    const community_structure_t* structure,
+    uint32_t community_id,
+    uint32_t** neuron_ids,
+    uint32_t* count)
+{
+    if (!structure || !neuron_ids || !count) {
+        set_error("NULL arguments to get_neurons_in_community");
+        return false;
+    }
+
+    if (community_id >= structure->num_communities) {
+        set_error("Invalid community ID");
+        return false;
+    }
+
+    uint32_t size = structure->community_sizes[community_id];
+    *neuron_ids = malloc(size * sizeof(uint32_t));
+    if (!*neuron_ids) {
+        set_error("Failed to allocate neuron IDs array");
+        return false;
+    }
+
+    uint32_t idx = 0;
+    for (uint32_t i = 0; i < structure->num_neurons; i++) {
+        if (structure->community_ids[i] == community_id) {
+            (*neuron_ids)[idx++] = i;
+        }
+    }
+
+    *count = idx;
+    return true;
+}
+
+//=============================================================================
+// Hub Detection
+//=============================================================================
+
+hub_structure_t* community_detect_hubs(
+    neural_network_t network,
+    float threshold)
+{
+    if (!network) {
+        set_error("NULL network");
+        return NULL;
+    }
+
+    uint32_t num_neurons = neural_network_get_num_neurons(network);
+    if (num_neurons == 0) {
+        set_error("Network has no neurons");
+        return NULL;
+    }
+
+    // Compute degree centrality for each neuron
+    float* degree = calloc(num_neurons, sizeof(float));
+    if (!degree) {
+        set_error("Failed to allocate degree array");
+        return NULL;
+    }
+
+    float max_degree = 0.0f;
+    for (uint32_t i = 0; i < num_neurons; i++) {
+        neuron_t* neuron = neural_network_get_neuron(network, i);
+        if (!neuron) continue;
+
+        degree[i] = (float)(neuron->num_synapses + neuron->num_incoming);
+        if (degree[i] > max_degree) max_degree = degree[i];
+    }
+
+    // Normalize degree centrality
+    if (max_degree > 0) {
+        for (uint32_t i = 0; i < num_neurons; i++) {
+            degree[i] /= max_degree;
+        }
+    }
+
+    // Count hubs above threshold
+    uint32_t num_hubs = 0;
+    for (uint32_t i = 0; i < num_neurons; i++) {
+        if (degree[i] >= threshold) {
+            num_hubs++;
+        }
+    }
+
+    // Allocate hub structure
+    hub_structure_t* hubs = calloc(1, sizeof(hub_structure_t));
+    if (!hubs) {
+        free(degree);
+        set_error("Failed to allocate hub structure");
+        return NULL;
+    }
+
+    hubs->num_hubs = num_hubs;
+    hubs->hub_indices = malloc(num_hubs * sizeof(uint32_t));
+    hubs->degree_centrality = malloc(num_hubs * sizeof(float));
+    hubs->betweenness_centrality = calloc(num_hubs, sizeof(float));  // Computed below using Brandes' algorithm
+    hubs->hub_communities = calloc(num_hubs, sizeof(uint32_t));
+
+    if (!hubs->hub_indices || !hubs->degree_centrality ||
+        !hubs->betweenness_centrality || !hubs->hub_communities) {
+        free(degree);
+        hub_structure_free(hubs);
+        set_error("Failed to allocate hub arrays");
+        return NULL;
+    }
+
+    // Fill hub arrays
+    uint32_t idx = 0;
+    for (uint32_t i = 0; i < num_neurons; i++) {
+        if (degree[i] >= threshold) {
+            hubs->hub_indices[idx] = i;
+            hubs->degree_centrality[idx] = degree[i];
+            idx++;
+        }
+    }
+
+    free(degree);
+
+    //=========================================================================
+    // Compute betweenness centrality using Brandes' algorithm
+    //=========================================================================
+    /**
+     * WHAT: Calculates betweenness centrality for all neurons in the network
+     * WHY: Betweenness identifies neurons that act as bridges in information flow
+     *      - High betweenness neurons are critical for network connectivity
+     *      - Removing high-betweenness nodes fragments the network
+     *      - Complements degree centrality (hubs) with flow centrality (bridges)
+     * HOW: Brandes' algorithm computes shortest paths and dependency accumulation
+     *      - Time: O(N*M) for unweighted graphs (N=neurons, M=edges)
+     *      - Time: O(N*M + N^2*log(N)) for weighted graphs
+     *
+     * BIOLOGICAL MOTIVATION:
+     * - Brain networks have "connector hubs" with high betweenness (van den Heuvel, 2012)
+     * - Betweenness correlates with functional importance (Sporns et al., 2007)
+     * - High-betweenness regions are vulnerable to damage (Alstott et al., 2009)
+     *
+     * ALGORITHM (Brandes, 2001):
+     * For each source neuron s:
+     *   1. BFS from s to find shortest paths and distances
+     *   2. Count number of shortest paths through each neuron
+     *   3. Accumulate dependency scores in reverse BFS order
+     *   4. Update betweenness scores based on path counts
+     *
+     * NORMALIZATION:
+     * - Raw betweenness: sum of shortest path fractions
+     * - Normalized: divide by (n-1)*(n-2) for undirected graphs
+     * - For directed: divide by (n-1)*(n-2)
+     */
+
+    // Allocate betweenness array for all neurons (not just hubs)
+    float* betweenness = calloc(num_neurons, sizeof(float));
+    if (!betweenness) {
+        hub_structure_free(hubs);
+        set_error("Failed to allocate betweenness array");
+        return NULL;
+    }
+
+    // Build adjacency list for efficient graph traversal
+    adjacency_list_t* graph = build_adjacency_list(network);
+    if (!graph) {
+        free(betweenness);
+        hub_structure_free(hubs);
+        return NULL;
+    }
+
+    // Allocate working arrays for Brandes' algorithm
+    uint32_t* queue = malloc(num_neurons * sizeof(uint32_t));
+    uint32_t** predecessors = malloc(num_neurons * sizeof(uint32_t*));
+    uint32_t* pred_counts = calloc(num_neurons, sizeof(uint32_t));
+    uint32_t* pred_capacities = malloc(num_neurons * sizeof(uint32_t));
+    float* sigma = malloc(num_neurons * sizeof(float));
+    int32_t* distance = malloc(num_neurons * sizeof(int32_t));
+    float* delta = malloc(num_neurons * sizeof(float));
+
+    if (!queue || !predecessors || !pred_counts || !pred_capacities ||
+        !sigma || !distance || !delta) {
+        free(betweenness);
+        free(queue);
+        free(predecessors);
+        free(pred_counts);
+        free(pred_capacities);
+        free(sigma);
+        free(distance);
+        free(delta);
+        free_adjacency_list(graph);
+        hub_structure_free(hubs);
+        set_error("Failed to allocate Brandes working arrays");
+        return NULL;
+    }
+
+    // Initialize predecessor lists
+    for (uint32_t i = 0; i < num_neurons; i++) {
+        pred_capacities[i] = 8;  // Initial capacity
+        predecessors[i] = malloc(pred_capacities[i] * sizeof(uint32_t));
+        if (!predecessors[i]) {
+            for (uint32_t j = 0; j < i; j++) {
+                free(predecessors[j]);
+            }
+            free(betweenness);
+            free(queue);
+            free(predecessors);
+            free(pred_counts);
+            free(pred_capacities);
+            free(sigma);
+            free(distance);
+            free(delta);
+            free_adjacency_list(graph);
+            hub_structure_free(hubs);
+            set_error("Failed to allocate predecessor lists");
+            return NULL;
+        }
+    }
+
+    //=========================================================================
+    // Main Brandes' algorithm loop - iterate over all source neurons
+    //=========================================================================
+    for (uint32_t s = 0; s < num_neurons; s++) {
+        // Initialize data structures for this source
+        for (uint32_t i = 0; i < num_neurons; i++) {
+            pred_counts[i] = 0;
+            sigma[i] = 0.0f;
+            distance[i] = -1;
+            delta[i] = 0.0f;
+        }
+        sigma[s] = 1.0f;
+        distance[s] = 0;
+
+        //=====================================================================
+        // Phase 1: BFS to find shortest paths
+        //=====================================================================
+        /**
+         * WHAT: Breadth-first search from source s
+         * WHY: Find all shortest paths and count them
+         * HOW: Standard BFS with path counting
+         */
+        uint32_t queue_head = 0;
+        uint32_t queue_tail = 0;
+        queue[queue_tail++] = s;
+
+        // Stack to store vertices in order of non-increasing distance from s
+        uint32_t* stack = queue;  // Reuse queue memory for stack
+        uint32_t stack_size = 0;
+
+        while (queue_head < queue_tail) {
+            uint32_t v = queue[queue_head++];
+            stack[stack_size++] = v;
+
+            adjacency_node_t* node = &graph->nodes[v];
+            for (uint32_t i = 0; i < node->num_neighbors; i++) {
+                uint32_t w = node->neighbors[i];
+
+                // First time we see w?
+                if (distance[w] < 0) {
+                    distance[w] = distance[v] + 1;
+                    queue[queue_tail++] = w;
+                }
+
+                // Shortest path to w via v?
+                if (distance[w] == distance[v] + 1) {
+                    sigma[w] += sigma[v];
+
+                    // Add v as predecessor of w
+                    if (pred_counts[w] >= pred_capacities[w]) {
+                        pred_capacities[w] *= 2;
+                        predecessors[w] = realloc(predecessors[w],
+                                                  pred_capacities[w] * sizeof(uint32_t));
+                        if (!predecessors[w]) {
+                            for (uint32_t j = 0; j < num_neurons; j++) {
+                                free(predecessors[j]);
+                            }
+                            free(betweenness);
+                            free(queue);
+                            free(predecessors);
+                            free(pred_counts);
+                            free(pred_capacities);
+                            free(sigma);
+                            free(distance);
+                            free(delta);
+                            free_adjacency_list(graph);
+                            hub_structure_free(hubs);
+                            set_error("Failed to reallocate predecessor list");
+                            return NULL;
+                        }
+                    }
+                    predecessors[w][pred_counts[w]++] = v;
+                }
+            }
+        }
+
+        //=====================================================================
+        // Phase 2: Dependency accumulation (backward pass)
+        //=====================================================================
+        /**
+         * WHAT: Accumulate dependencies in reverse topological order
+         * WHY: Calculate how much each neuron contributes to shortest paths
+         * HOW: Process vertices in reverse distance order from BFS
+         */
+        while (stack_size > 0) {
+            uint32_t w = stack[--stack_size];
+
+            for (uint32_t i = 0; i < pred_counts[w]; i++) {
+                uint32_t v = predecessors[w][i];
+                // Add dependency: how many shortest paths go through v to reach w
+                delta[v] += (sigma[v] / sigma[w]) * (1.0f + delta[w]);
+            }
+
+            if (w != s) {
+                betweenness[w] += delta[w];
+            }
+        }
+    }
+
+    //=========================================================================
+    // Normalize betweenness centrality
+    //=========================================================================
+    /**
+     * WHAT: Normalize betweenness scores to [0, 1] range
+     * WHY: Make scores comparable across different network sizes
+     * HOW: Divide by maximum possible betweenness (n-1)*(n-2)
+     *      - For directed graphs: max = (n-1)*(n-2)
+     *      - For undirected: max = (n-1)*(n-2)/2
+     *      - We treat neural networks as directed
+     */
+    float normalization = 0.0f;
+    if (num_neurons > 2) {
+        normalization = (float)((num_neurons - 1) * (num_neurons - 2));
+    }
+
+    if (normalization > 0.0f) {
+        for (uint32_t i = 0; i < num_neurons; i++) {
+            betweenness[i] /= normalization;
+        }
+    }
+
+    //=========================================================================
+    // Extract betweenness values for hub neurons only
+    //=========================================================================
+    for (uint32_t i = 0; i < hubs->num_hubs; i++) {
+        uint32_t neuron_id = hubs->hub_indices[i];
+        hubs->betweenness_centrality[i] = betweenness[neuron_id];
+    }
+
+    // Cleanup
+    for (uint32_t i = 0; i < num_neurons; i++) {
+        free(predecessors[i]);
+    }
+    free(betweenness);
+    free(queue);
+    free(predecessors);
+    free(pred_counts);
+    free(pred_capacities);
+    free(sigma);
+    free(distance);
+    free(delta);
+    free_adjacency_list(graph);
+
+    return hubs;
+}
+
+void hub_structure_free(hub_structure_t* structure) {
+    if (!structure) return;
+    free(structure->hub_indices);
+    free(structure->degree_centrality);
+    free(structure->betweenness_centrality);
+    free(structure->hub_communities);
+    free(structure);
+}
+
+//=============================================================================
+// Topology Validation
+//=============================================================================
+
+topology_validation_t community_validate_topology(
+    neural_network_t network,
+    float min_modularity)
+{
+    topology_validation_t result = {0};
+    result.is_valid = false;
+    strcpy(result.error_message, "Validation not yet performed");
+
+    if (!network) {
+        strcpy(result.error_message, "NULL network");
+        return result;
+    }
+
+    uint32_t num_neurons = neural_network_get_num_neurons(network);
+    if (num_neurons == 0) {
+        strcpy(result.error_message, "Network has no neurons");
+        return result;
+    }
+
+    // Detect communities
+    community_structure_t* communities = community_detect(network, NULL);
+    if (!communities) {
+        strcpy(result.error_message, "Community detection failed");
+        return result;
+    }
+
+    result.modularity = communities->modularity;
+    result.num_communities = communities->num_communities;
+
+    // Compute topology stats
+    topology_stats_t stats;
+    if (topology_compute_stats(network, &stats)) {
+        result.clustering_coefficient = stats.clustering_coefficient;
+        result.characteristic_path = stats.characteristic_path;
+        result.small_world_sigma = stats.small_world_sigma;
+    }
+
+    // Detect hubs
+    hub_structure_t* hubs = community_detect_hubs(network, 0.8f);
+    if (hubs) {
+        result.num_hubs = hubs->num_hubs;
+        hub_structure_free(hubs);
+    }
+
+    // Validation checks
+    bool valid = true;
+    char* error = result.error_message;
+    error[0] = '\0';
+
+    if (result.modularity < min_modularity) {
+        snprintf(error, 256, "Modularity too low: %.3f < %.3f", result.modularity, min_modularity);
+        valid = false;
+    } else if (result.num_communities < 2) {
+        snprintf(error, 256, "Too few communities: %u", result.num_communities);
+        valid = false;
+    } else if (result.clustering_coefficient < 0.1f) {
+        snprintf(error, 256, "Clustering coefficient too low: %.3f", result.clustering_coefficient);
+        valid = false;
+    } else if (result.num_hubs < (num_neurons / 100)) {
+        snprintf(error, 256, "Too few hub neurons: %u", result.num_hubs);
+        valid = false;
+    } else {
+        strcpy(error, "Topology validation passed");
+    }
+
+    result.is_valid = valid;
+    topology_community_structure_free(communities);
+
+    return result;
+}
+
+//=============================================================================
+// Utility Functions
+//=============================================================================
+
+community_detection_config_t community_default_config(void) {
+    community_detection_config_t config = {
+        .max_iterations = 100,
+        .min_modularity_gain = 1e-5f,
+        .max_communities = 0,  // No limit
+        .resolution = 1.0f,
+        .weighted = true,
+        .random_seed = 0  // Use time-based
+    };
+    return config;
+}
+
+void community_print_stats(const community_structure_t* structure) {
+    if (!structure) {
+        printf("NULL community structure\n");
+        return;
+    }
+
+    printf("Community Structure Statistics:\n");
+    printf("  Neurons: %u\n", structure->num_neurons);
+    printf("  Communities: %u\n", structure->num_communities);
+    printf("  Modularity Q: %.3f\n", structure->modularity);
+    printf("\n");
+
+    printf("Community Sizes:\n");
+    for (uint32_t i = 0; i < structure->num_communities; i++) {
+        printf("  Community %u: %u neurons (%.1f%%), ",
+               i, structure->community_sizes[i],
+               100.0f * structure->community_sizes[i] / structure->num_neurons);
+        printf("internal_density=%.3f, external_density=%.3f\n",
+               structure->internal_density[i],
+               structure->external_density[i]);
+    }
+}
+
+void community_print_hubs(const hub_structure_t* hubs) {
+    if (!hubs) {
+        printf("NULL hub structure\n");
+        return;
+    }
+
+    printf("Hub Neurons:\n");
+    printf("  Total hubs: %u\n\n", hubs->num_hubs);
+
+    for (uint32_t i = 0; i < hubs->num_hubs; i++) {
+        printf("  Hub %u (neuron %u): degree_centrality=%.3f\n",
+               i, hubs->hub_indices[i], hubs->degree_centrality[i]);
+    }
+}

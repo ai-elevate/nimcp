@@ -563,3 +563,198 @@ float neuromod_pink_compute_attention(const neuromod_pink_noise_t* mod) {
     // HOW: Map [0, 1] → [0.5, 1.0] (never fully off)
     return 0.5f + 0.5f * mod->acetylcholine_current;
 }
+
+//=============================================================================
+// Persistence API (Save/Load) - Phase 10.x
+//=============================================================================
+
+/**
+ * @brief Save pink noise neuromodulator state to file
+ *
+ * WHAT: Serialize pink noise neuromodulator system to binary file
+ * WHY:  Enable persistence of neuromodulator levels and pink noise generators
+ * HOW:  Write version, baselines, current levels, noise amplitudes, and pink noise generators
+ *
+ * Binary format:
+ *   uint32_t version (1)
+ *   float dopamine_baseline
+ *   float serotonin_baseline
+ *   float acetylcholine_baseline
+ *   float norepinephrine_baseline
+ *   float dopamine_current
+ *   float serotonin_current
+ *   float acetylcholine_current
+ *   float norepinephrine_current
+ *   float dopamine_noise_amplitude
+ *   float serotonin_noise_amplitude
+ *   float acetylcholine_noise_amplitude
+ *   float norepinephrine_noise_amplitude
+ *   uint64_t update_count
+ *   float avg_dopamine
+ *   float avg_serotonin
+ *   pink_noise_generator_t dopamine_noise (via pink_noise_save)
+ *   pink_noise_generator_t serotonin_noise (via pink_noise_save)
+ *   pink_noise_generator_t acetylcholine_noise (via pink_noise_save)
+ *   pink_noise_generator_t norepinephrine_noise (via pink_noise_save)
+ *
+ * COMPLEXITY: O(1)
+ * THREAD-SAFE: No (caller must ensure exclusive access)
+ *
+ * @param mod Pink noise neuromodulator system
+ * @param file Open file handle for writing
+ * @return true on success, false on error
+ */
+bool neuromod_pink_save(neuromod_pink_noise_t* mod, FILE* file)
+{
+    // Guard: Validate parameters
+    if (!mod || !file) {
+        return false;
+    }
+
+    // WHAT: Write version marker for backward compatibility
+    // WHY:  Enable future format changes while supporting old saves
+    // HOW:  Write uint32_t version = 1
+    uint32_t version = 1;
+    if (fwrite(&version, sizeof(uint32_t), 1, file) != 1) {
+        return false;
+    }
+
+    // WHAT: Write baseline levels
+    // WHY:  Restore resting neuromodulator levels
+    // HOW:  Binary write of 4 float baselines
+    if (fwrite(&mod->dopamine_baseline, sizeof(float), 1, file) != 1) return false;
+    if (fwrite(&mod->serotonin_baseline, sizeof(float), 1, file) != 1) return false;
+    if (fwrite(&mod->acetylcholine_baseline, sizeof(float), 1, file) != 1) return false;
+    if (fwrite(&mod->norepinephrine_baseline, sizeof(float), 1, file) != 1) return false;
+
+    // WHAT: Write current levels
+    // WHY:  Restore active neuromodulator concentrations
+    // HOW:  Binary write of 4 float current levels
+    if (fwrite(&mod->dopamine_current, sizeof(float), 1, file) != 1) return false;
+    if (fwrite(&mod->serotonin_current, sizeof(float), 1, file) != 1) return false;
+    if (fwrite(&mod->acetylcholine_current, sizeof(float), 1, file) != 1) return false;
+    if (fwrite(&mod->norepinephrine_current, sizeof(float), 1, file) != 1) return false;
+
+    // WHAT: Write noise amplitudes
+    // WHY:  Restore exploration noise levels
+    // HOW:  Binary write of 4 float amplitudes
+    if (fwrite(&mod->dopamine_noise_amplitude, sizeof(float), 1, file) != 1) return false;
+    if (fwrite(&mod->serotonin_noise_amplitude, sizeof(float), 1, file) != 1) return false;
+    if (fwrite(&mod->acetylcholine_noise_amplitude, sizeof(float), 1, file) != 1) return false;
+    if (fwrite(&mod->norepinephrine_noise_amplitude, sizeof(float), 1, file) != 1) return false;
+
+    // WHAT: Write statistics
+    // WHY:  Preserve historical tracking data
+    // HOW:  Binary write of update_count, avg_dopamine, avg_serotonin
+    if (fwrite(&mod->update_count, sizeof(uint64_t), 1, file) != 1) return false;
+    if (fwrite(&mod->avg_dopamine, sizeof(float), 1, file) != 1) return false;
+    if (fwrite(&mod->avg_serotonin, sizeof(float), 1, file) != 1) return false;
+
+    // WHAT: Write pink noise generators
+    // WHY:  Restore exact noise generator state for reproducibility
+    // HOW:  Use pink_noise_save API for each generator
+    if (!pink_noise_save(mod->dopamine_noise, file)) return false;
+    if (!pink_noise_save(mod->serotonin_noise, file)) return false;
+    if (!pink_noise_save(mod->acetylcholine_noise, file)) return false;
+    if (!pink_noise_save(mod->norepinephrine_noise, file)) return false;
+
+    return true;
+}
+
+/**
+ * @brief Load pink noise neuromodulator state from file
+ *
+ * WHAT: Deserialize pink noise neuromodulator system from binary file
+ * WHY:  Restore saved neuromodulator levels and pink noise generators
+ * HOW:  Read version, validate, reconstruct state
+ *
+ * COMPLEXITY: O(1)
+ * THREAD-SAFE: Yes (creates new instance)
+ *
+ * @param file Open file handle for reading
+ * @return Pink noise neuromodulator handle or NULL on error
+ */
+neuromod_pink_noise_t* neuromod_pink_load(FILE* file)
+{
+    // Guard: Validate parameter
+    if (!file) {
+        return NULL;
+    }
+
+    // WHAT: Read and validate version
+    // WHY:  Ensure format compatibility
+    // HOW:  Read version, check against current version
+    uint32_t version = 0;
+    if (fread(&version, sizeof(uint32_t), 1, file) != 1) {
+        return NULL;
+    }
+
+    if (version != 1) {
+        return NULL;
+    }
+
+    // WHAT: Allocate pink noise neuromodulator structure
+    // WHY:  Need structure to hold loaded data
+    // HOW:  Use nimcp_calloc for zero-initialization
+    neuromod_pink_noise_t* mod = (neuromod_pink_noise_t*)nimcp_calloc(1, sizeof(neuromod_pink_noise_t));
+    if (!mod) {
+        return NULL;
+    }
+
+    // WHAT: Read baseline levels
+    // WHY:  Restore resting neuromodulator levels
+    // HOW:  Binary read of 4 float baselines
+    if (fread(&mod->dopamine_baseline, sizeof(float), 1, file) != 1) goto cleanup;
+    if (fread(&mod->serotonin_baseline, sizeof(float), 1, file) != 1) goto cleanup;
+    if (fread(&mod->acetylcholine_baseline, sizeof(float), 1, file) != 1) goto cleanup;
+    if (fread(&mod->norepinephrine_baseline, sizeof(float), 1, file) != 1) goto cleanup;
+
+    // WHAT: Read current levels
+    // WHY:  Restore active neuromodulator concentrations
+    // HOW:  Binary read of 4 float current levels
+    if (fread(&mod->dopamine_current, sizeof(float), 1, file) != 1) goto cleanup;
+    if (fread(&mod->serotonin_current, sizeof(float), 1, file) != 1) goto cleanup;
+    if (fread(&mod->acetylcholine_current, sizeof(float), 1, file) != 1) goto cleanup;
+    if (fread(&mod->norepinephrine_current, sizeof(float), 1, file) != 1) goto cleanup;
+
+    // WHAT: Read noise amplitudes
+    // WHY:  Restore exploration noise levels
+    // HOW:  Binary read of 4 float amplitudes
+    if (fread(&mod->dopamine_noise_amplitude, sizeof(float), 1, file) != 1) goto cleanup;
+    if (fread(&mod->serotonin_noise_amplitude, sizeof(float), 1, file) != 1) goto cleanup;
+    if (fread(&mod->acetylcholine_noise_amplitude, sizeof(float), 1, file) != 1) goto cleanup;
+    if (fread(&mod->norepinephrine_noise_amplitude, sizeof(float), 1, file) != 1) goto cleanup;
+
+    // WHAT: Read statistics
+    // WHY:  Restore historical tracking data
+    // HOW:  Binary read of update_count, avg_dopamine, avg_serotonin
+    if (fread(&mod->update_count, sizeof(uint64_t), 1, file) != 1) goto cleanup;
+    if (fread(&mod->avg_dopamine, sizeof(float), 1, file) != 1) goto cleanup;
+    if (fread(&mod->avg_serotonin, sizeof(float), 1, file) != 1) goto cleanup;
+
+    // WHAT: Read pink noise generators
+    // WHY:  Restore exact noise generator state
+    // HOW:  Use pink_noise_load API for each generator
+    mod->dopamine_noise = pink_noise_load(file);
+    if (!mod->dopamine_noise) goto cleanup;
+
+    mod->serotonin_noise = pink_noise_load(file);
+    if (!mod->serotonin_noise) goto cleanup;
+
+    mod->acetylcholine_noise = pink_noise_load(file);
+    if (!mod->acetylcholine_noise) goto cleanup;
+
+    mod->norepinephrine_noise = pink_noise_load(file);
+    if (!mod->norepinephrine_noise) goto cleanup;
+
+    return mod;
+
+cleanup:
+    // WHAT: Cleanup on error
+    // WHY:  Prevent memory leaks
+    // HOW:  Free allocated resources
+    if (mod) {
+        neuromod_pink_destroy(mod);
+    }
+    return NULL;
+}

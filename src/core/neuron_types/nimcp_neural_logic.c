@@ -53,6 +53,19 @@ extern cudaError_t launch_update_variable_bindings(
 //=============================================================================
 
 /**
+ * @brief Synaptic connection between logic neurons
+ *
+ * WHAT: Single weighted connection in adjacency list
+ * WHY:  Sparse connectivity requires edge list (not dense matrix)
+ * HOW:  Store target neuron + weight per connection
+ */
+typedef struct logic_synapse_struct {
+    uint32_t target_id;              /**< Target neuron ID */
+    float weight;                     /**< Synaptic weight */
+    struct logic_synapse_struct* next; /**< Next synapse in list */
+} logic_synapse_t;
+
+/**
  * @brief Neural logic network internal structure
  */
 struct neural_logic_network_struct {
@@ -69,9 +82,14 @@ struct neural_logic_network_struct {
     uint32_t variables_count;
     uint32_t variables_capacity;
 
+    // Connectivity (adjacency list for sparse graphs)
+    logic_synapse_t** outgoing_synapses;  /**< Outgoing connections per neuron */
+    uint32_t* synapse_counts;             /**< Count of outgoing synapses per neuron */
+    uint32_t total_synapses;              /**< Total synapse count (statistics) */
+
     // Neuromodulation
     brain_t brain;  /**< Brain reference for DA + ACh modulation */
-    
+
     // GPU pointers (NULL if CPU fallback)
 #ifdef NIMCP_ENABLE_CUDA
     logic_neuron_state_t* neurons_device;
@@ -79,10 +97,10 @@ struct neural_logic_network_struct {
     float* input_activities_device;
     cudaStream_t stream;
 #endif
-    
+
     // Execution mode
     bool using_gpu;
-    
+
     // Statistics
     uint64_t total_spikes;
     uint64_t total_evaluations;
@@ -182,6 +200,26 @@ NIMCP_EXPORT neural_logic_network_t neural_logic_create(
     }
     memset(network->variables_host, 0, network->variables_capacity * sizeof(variable_binding_state_t));
 
+    // Allocate connectivity arrays (adjacency lists)
+    network->outgoing_synapses = (logic_synapse_t**)nimcp_calloc(network->neurons_capacity, sizeof(logic_synapse_t*));
+    if (!nimcp_validate_pointer(network->outgoing_synapses, "outgoing_synapses")) {
+        nimcp_aligned_free(network->variables_host);
+        nimcp_free(network->neurons_host);
+        nimcp_free(network);
+        return NULL;
+    }
+
+    network->synapse_counts = (uint32_t*)nimcp_calloc(network->neurons_capacity, sizeof(uint32_t));
+    if (!nimcp_validate_pointer(network->synapse_counts, "synapse_counts")) {
+        nimcp_free(network->outgoing_synapses);
+        nimcp_aligned_free(network->variables_host);
+        nimcp_free(network->neurons_host);
+        nimcp_free(network);
+        return NULL;
+    }
+
+    network->total_synapses = 0;
+
     // Try to allocate GPU memory if enabled
     network->using_gpu = false;
 #ifdef NIMCP_ENABLE_CUDA
@@ -247,8 +285,33 @@ NIMCP_EXPORT void neural_logic_destroy(neural_logic_network_t network)
     }
 #endif
     
+    // Free connectivity structures
+    if (network->outgoing_synapses) {
+        for (uint32_t i = 0; i < network->neurons_capacity; i++) {
+            logic_synapse_t* synapse = network->outgoing_synapses[i];
+            while (synapse) {
+                logic_synapse_t* next = synapse->next;
+                nimcp_free(synapse);
+                synapse = next;
+            }
+        }
+        nimcp_free(network->outgoing_synapses);
+    }
+    nimcp_free(network->synapse_counts);
+
     // Free host memory
-    nimcp_free(network->variables_host);
+    // BUGFIX: Free bound patterns allocated in neural_logic_bind_variable()
+    if (network->variables_host) {
+        for (uint32_t i = 0; i < network->variables_count; i++) {
+            if (network->variables_host[i].bound_pattern) {
+                nimcp_free(network->variables_host[i].bound_pattern);
+                network->variables_host[i].bound_pattern = NULL;
+            }
+        }
+        // BUGFIX: variables_host allocated with nimcp_aligned_alloc, must use aligned_free
+        nimcp_aligned_free(network->variables_host);
+    }
+
     nimcp_free(network->neurons_host);
     nimcp_free(network);
 }
@@ -514,6 +577,49 @@ static inline float cpu_compute_implies_gate(
 }
 
 /**
+ * @brief Propagate spikes through synaptic connections
+ *
+ * WHAT: Transfer output activity to connected target neurons
+ * WHY:  Enable signal flow through logic circuits
+ * HOW:  For each spiking neuron, propagate weighted output to targets
+ *
+ * BIOLOGY: Synaptic transmission - presynaptic spike triggers postsynaptic current
+ *
+ * @param network Neural logic network
+ * @param source_id Source neuron ID
+ * @param output_activity Source neuron output [0,1]
+ */
+static void propagate_signals(
+    neural_logic_network_t network,
+    uint32_t source_id,
+    float output_activity)
+{
+    if (output_activity < 0.01f) {
+        return;  // No significant activity to propagate
+    }
+
+    // Iterate through outgoing synapses
+    logic_synapse_t* synapse = network->outgoing_synapses[source_id];
+    while (synapse) {
+        uint32_t target_id = synapse->target_id;
+        float weight = synapse->weight;
+
+        // Accumulate weighted activity in target neuron inputs
+        logic_neuron_state_t* target = &network->neurons_host[target_id];
+
+        // Determine which input channel to use (A or B)
+        // Simple heuristic: use A if it's lower, otherwise use B
+        if (target->input_a_activity <= target->input_b_activity) {
+            target->input_a_activity += output_activity * weight;
+        } else {
+            target->input_b_activity += output_activity * weight;
+        }
+
+        synapse = synapse->next;
+    }
+}
+
+/**
  * @brief CPU update of single logic neuron
  */
 static void cpu_update_logic_neuron(
@@ -542,7 +648,7 @@ static void cpu_update_logic_neuron(
                 neuron->integration_window
             );
             break;
-            
+
         case LOGIC_GATE_OR:
             output = cpu_compute_or_gate(
                 neuron->input_a_activity,
@@ -567,7 +673,7 @@ static void cpu_update_logic_neuron(
                 0.1f  // balance_tolerance
             );
             break;
-            
+
         case LOGIC_GATE_IMPLIES:
             output = cpu_compute_implies_gate(
                 neuron->input_a_activity,
@@ -576,15 +682,15 @@ static void cpu_update_logic_neuron(
                 0.8f   // consequent_threshold
             );
             break;
-            
+
         default:
             output = 0.0f;
             break;
     }
-    
+
     // Update output state
     neuron->output_state = output;
-    
+
     // Fire spike if output is true
     if (output > 0.5f) {
         neuron->last_spike_time = timestamp;
@@ -593,7 +699,7 @@ static void cpu_update_logic_neuron(
     } else {
         neuron->false_outputs++;
     }
-    
+
     // Decay input activities
     float decay = (float)delta_t / 1000.0f;  // Convert μs to ms
     neuron->input_a_activity *= expf(-decay / neuron->integration_window);
@@ -691,6 +797,14 @@ cpu_path:
 
         if (neuron->total_spikes > spikes_before) {
             spikes_count++;
+        }
+    }
+
+    // Propagate signals through connections
+    for (uint32_t i = 0; i < network->neurons_count; i++) {
+        logic_neuron_state_t* neuron = &network->neurons_host[i];
+        if (neuron->output_state > 0.5f) {
+            propagate_signals(network, i, neuron->output_state);
         }
     }
 
@@ -893,9 +1007,41 @@ NIMCP_EXPORT bool neural_logic_bind_variable(
     if (variable_id >= network->variables_count) {
         return false;
     }
-    
-    // TODO: Implement variable binding
-    NIMCP_LOGGING_WARN("Variable binding not yet implemented");
+
+    // IMPLEMENTATION: Bind pattern to variable
+    // WHAT: Store activation pattern in variable binding
+    // WHY:  Variables need to hold learned patterns for unification
+    // HOW:  Allocate memory and copy pattern with binding metadata
+    //
+    // RATIONALE: Variable bindings allow neural logic to perform pattern matching
+    //            and unification similar to symbolic logic engines.
+
+    variable_binding_state_t* var = &network->variables_host[variable_id];
+    uint32_t dim = network->config.variable_pattern_dim;
+
+    // Allocate pattern memory if needed
+    if (var->bound_pattern == NULL) {
+        var->bound_pattern = (float*)nimcp_malloc(dim * sizeof(float));
+        if (!var->bound_pattern) {
+            NIMCP_LOGGING_ERROR("Failed to allocate pattern memory for variable %u", variable_id);
+            return false;
+        }
+        var->pattern_dim = dim;
+    }
+
+    // Verify dimension matches
+    if (var->pattern_dim != dim) {
+        NIMCP_LOGGING_ERROR("Pattern dimension mismatch: expected %u, got %u",
+                           var->pattern_dim, dim);
+        return false;
+    }
+
+    // Copy pattern and set binding state
+    memcpy(var->bound_pattern, pattern, dim * sizeof(float));
+    var->binding_strength = binding_strength;
+    var->is_bound = true;
+    var->decay_rate = 0.001f;  // Default decay: 0.1% per millisecond
+
     return true;
 }
 
@@ -913,10 +1059,34 @@ NIMCP_EXPORT bool neural_logic_query_variable(
     if (variable_id >= network->variables_count) {
         return false;
     }
-    
-    // TODO: Implement variable querying
-    NIMCP_LOGGING_WARN("Variable querying not yet implemented");
-    return false;
+
+    // IMPLEMENTATION: Query bound pattern from variable
+    // WHAT: Retrieve activation pattern stored in variable
+    // WHY:  Logic evaluation needs to access variable contents
+    // HOW:  Copy bound pattern to output buffer
+    //
+    // RATIONALE: Querying allows logic gates to read variable values
+    //            for evaluation and unification operations.
+
+    variable_binding_state_t* var = &network->variables_host[variable_id];
+
+    // Check if variable is bound
+    if (!var->is_bound || var->bound_pattern == NULL) {
+        NIMCP_LOGGING_WARN("Variable %u is not bound", variable_id);
+        return false;
+    }
+
+    // Verify dimension matches
+    if (var->pattern_dim != pattern_dim) {
+        NIMCP_LOGGING_ERROR("Pattern dimension mismatch: variable has %u, requested %u",
+                           var->pattern_dim, pattern_dim);
+        return false;
+    }
+
+    // Copy pattern to output
+    memcpy(pattern, var->bound_pattern, pattern_dim * sizeof(float));
+
+    return true;
 }
 
 NIMCP_EXPORT bool neural_logic_connect(
@@ -928,11 +1098,50 @@ NIMCP_EXPORT bool neural_logic_connect(
     if (!nimcp_validate_pointer(network, "network")) {
         return false;
     }
-    
-    // TODO: Implement synapse connectivity
-    NIMCP_LOGGING_WARN("Synapse connectivity not yet implemented");
-    (void)source_id;
-    (void)target_id;
-    (void)weight;
+
+    // IMPLEMENTATION: Connect logic neurons via synapse
+    // WHAT: Create weighted connection between two logic gates
+    // WHY:  Logic gates need to propagate signals to form circuits
+    // HOW:  Store connection in adjacency list (linked list per source neuron)
+    //
+    // RATIONALE: Adjacency list is ideal for sparse graphs (typical in neural circuits).
+    //            Dense adjacency matrix would waste memory (O(N²) vs O(E) where E << N²).
+    //
+    // COMPLEXITY: O(1) amortized - append to linked list
+    // MEMORY: O(E) where E = number of connections (edges)
+
+    // Validate neuron IDs
+    if (source_id >= network->neurons_count || target_id >= network->neurons_count) {
+        NIMCP_LOGGING_ERROR("Invalid neuron IDs: source=%u, target=%u (max=%u)",
+                           source_id, target_id, network->neurons_count);
+        return false;
+    }
+
+    // Validate weight
+    if (!isfinite(weight)) {
+        NIMCP_LOGGING_ERROR("Invalid weight: %f", weight);
+        return false;
+    }
+
+    // Allocate new synapse
+    logic_synapse_t* synapse = (logic_synapse_t*)nimcp_malloc(sizeof(logic_synapse_t));
+    if (!nimcp_validate_pointer(synapse, "synapse")) {
+        NIMCP_LOGGING_ERROR("Failed to allocate synapse: %u -> %u", source_id, target_id);
+        return false;
+    }
+
+    // Initialize synapse
+    synapse->target_id = target_id;
+    synapse->weight = weight;
+    synapse->next = network->outgoing_synapses[source_id];  // Prepend to list
+
+    // Store synapse in adjacency list
+    network->outgoing_synapses[source_id] = synapse;
+    network->synapse_counts[source_id]++;
+    network->total_synapses++;
+
+    NIMCP_LOGGING_DEBUG("Synapse connected: %u -> %u (weight=%.3f, total=%u)",
+                       source_id, target_id, weight, network->total_synapses);
+
     return true;
 }
