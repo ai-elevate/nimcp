@@ -74,6 +74,10 @@
 #define NIMCP_LOG_WARN(...)  fprintf(stderr, "[WARN] " __VA_ARGS__); fprintf(stderr, "\n")
 #endif
 
+#ifndef NIMCP_LOG_DEBUG
+#define NIMCP_LOG_DEBUG(...) fprintf(stderr, "[DEBUG] " __VA_ARGS__); fprintf(stderr, "\n")
+#endif
+
 //=============================================================================
 // Internal Brain Structure (forward declaration for access)
 //=============================================================================
@@ -659,13 +663,30 @@ bool brain_auto_resize(brain_t brain)
         return false;  // Already at 100K neurons, stop
     }
 
-    // For testing: grow once from TINY (100) to SMALL (500)
-    if (current_size <= 100) {
-        // First call on TINY brain - allow growth
-    } else {
-        // Already resized once, don't resize again for now
+    // Check utilization metrics - only resize if brain is saturated
+    float utilization = 0.0f;
+    float saturation = 0.0f;
+
+    if (!brain_get_utilization_metrics(brain, &utilization, &saturation)) {
+        NIMCP_LOG_WARN("brain_auto_resize: Failed to get utilization metrics");
         return false;
     }
+
+    // Auto-resize policy: Trigger when EITHER condition is met:
+    // - Utilization > 80% (neurons are heavily active)
+    // - Saturation > 70% (weights are saturated/maxed out)
+    const float UTILIZATION_THRESHOLD = 0.80f;
+    const float SATURATION_THRESHOLD = 0.70f;
+
+    if (utilization < UTILIZATION_THRESHOLD && saturation < SATURATION_THRESHOLD) {
+        // Brain has spare capacity - no need to resize
+        NIMCP_LOG_DEBUG("brain_auto_resize: Brain not saturated (util=%.1f%%, sat=%.1f%%), skipping resize",
+                        utilization * 100.0f, saturation * 100.0f);
+        return false;
+    }
+
+    NIMCP_LOG_INFO("brain_auto_resize: Brain saturated (util=%.1f%%, sat=%.1f%%), triggering resize",
+                   utilization * 100.0f, saturation * 100.0f);
 
     // Detect if GPU is being used
     // TODO: Add brain_is_gpu_enabled() API
