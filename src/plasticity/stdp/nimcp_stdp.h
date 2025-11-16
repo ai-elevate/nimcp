@@ -28,7 +28,7 @@ extern "C" {
 
 /* Forward declarations */
 struct neuromodulator_system_struct;
-typedef struct neuromodulator_system_struct neuromodulator_system_t;
+typedef struct neuromodulator_system_struct* neuromodulator_system_t;  /* Opaque pointer (matches brain.h) */
 
 /**
  * STDP synapse state
