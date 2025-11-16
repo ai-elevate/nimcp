@@ -85,6 +85,13 @@ wheels/
 .clangd/
 compile_commands.json
 
+# Code navigation/indexing (generated artifacts)
+tags
+cscope.out
+cscope.files
+cscope.in.out
+cscope.po.out
+
 # Test artifacts
 Testing/
 *.test
