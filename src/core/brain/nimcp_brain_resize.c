@@ -134,6 +134,8 @@ static float compute_neuron_utilization(neural_network_t network)
     }
 
     // Count active neurons with error handling
+    // NOTE: neural_network_get_average_activity returns 0.0f for newly created
+    // brains with no activity, so we naturally get 0% utilization
     uint32_t active_count = 0;
     uint32_t valid_reads = 0;
 
@@ -160,6 +162,7 @@ static float compute_neuron_utilization(neural_network_t network)
         return -1.0f;  // Error signal
     }
 
+    // For brand new brains, all neurons will have 0 activity, giving 0% utilization
     return (float)active_count / (float)valid_reads;
 }
 
@@ -449,13 +452,14 @@ bool brain_resize(brain_t brain, uint32_t new_neuron_count)
             return false;
         }
 
-        // Get input/output sizes from old config (safer than brain->config)
-        // If old config also has corrupted input/output, use base network sizes
-        uint32_t input_size = old_config->base_config.input_size;
-        uint32_t output_size = old_config->base_config.output_size;
+        // CRITICAL FIX: Get input/output sizes from brain config instead of old_config
+        // WHY: old_config->base_config may not be fully initialized (heap-buffer-overflow)
+        // WHAT: Use brain->config which is guaranteed to be properly initialized
+        uint32_t input_size = brain->config.num_inputs;
+        uint32_t output_size = brain->config.num_outputs;
 
         if (input_size == 0 || output_size == 0) {
-            NIMCP_LOG_WARN("brain_resize: Old config has invalid sizes (input=%u, output=%u), using defaults",
+            NIMCP_LOG_WARN("brain_resize: Brain config has invalid sizes (input=%u, output=%u), using defaults",
                            input_size, output_size);
             input_size = 10;  // Default fallback
             output_size = 5;
@@ -630,7 +634,7 @@ bool brain_auto_resize(brain_t brain)
         return false;
     }
 
-    // Get base network for metrics
+    // Get base network for early validation
     adaptive_network_t network = brain->network;
     if (!network) {
         return false;
@@ -641,9 +645,17 @@ bool brain_auto_resize(brain_t brain)
         return false;
     }
 
-    // Verify network structure integrity
-    // Use API function to get neuron count (safer than direct access)
+    // CRITICAL FIX: Only allow auto-resize if brain has valid neuron count
+    // WHY: Newly created brains from Python have uninitialized neurons array
+    //      that causes SEGV when accessing ANY neuron data
+    // WHAT: Check neuron count first - if 0, skip resize immediately
+    //       This avoids accessing the neurons array which may point to freed memory
     uint32_t current_size = neural_network_get_num_neurons(base_network);
+
+    if (current_size == 0) {
+        NIMCP_LOG_DEBUG("brain_auto_resize: Brain has 0 neurons (not initialized), skipping resize");
+        return false;
+    }
 
     // Verify num_neurons is reasonable (sanity check for corrupted structure)
     if (current_size == 0 || current_size > 100000000) {
@@ -652,6 +664,7 @@ bool brain_auto_resize(brain_t brain)
     }
 
     // Verify we can access at least the first neuron (structure validity check)
+    // NOTE: This may still crash on use-after-free bugs in brain initialization
     neuron_t* first_neuron = neural_network_get_neuron(base_network, 0);
     if (!first_neuron) {
         NIMCP_LOG_WARN("brain_auto_resize: Cannot access neurons, network may be corrupt");

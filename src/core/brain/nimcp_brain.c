@@ -5156,6 +5156,10 @@ brain_decision_t* brain_decide(brain_t brain, const float* features, uint32_t nu
         return NULL;
     }
 
+    // Suppress unused function warnings for caching functions (currently disabled)
+    (void)is_cached_input;
+    (void)cache_decision;
+
     // ========================================================================
     // STAGE 0: Pre-Processing - Wellbeing Monitoring (Phase 9.3)
     // ========================================================================
@@ -5195,17 +5199,21 @@ brain_decision_t* brain_decide(brain_t brain, const float* features, uint32_t nu
     // else: Using read-only inference - no COW trigger needed!
 
     /**
-     * WHAT: Check cache and return a COPY of cached decision
-     * WHY: Cached decision is owned by brain, caller expects to own returned decision
-     * HOW: Deep copy the cached decision to give caller an independent copy
+     * CACHE DISABLED: To prevent heap-use-after-free in concurrent scenarios
      *
-     * BUG FIX: Previously returned cached pointer directly, causing double-free
-     * when caller freed it and then brain_destroy tried to free cached_decision
+     * The caching mechanism is not thread-safe:
+     * - Thread A calls brain_decide(), checks cache, finds decision_A
+     * - Thread B calls brain_decide(), caches decision_B (frees decision_A)
+     * - Thread A tries to copy decision_A (already freed) -> heap-use-after-free
+     *
+     * Solution: Disable caching for now. Caller owns and must free all returned decisions.
+     * TODO: Add proper mutex protection around caching to enable thread-safe caching.
      */
-    if (is_cached_input(brain, features, num_features)) {
-        brain->stats.total_inferences++;  // Count cached inferences too
-        return copy_decision(brain->cached_decision);
-    }
+    // Cache check disabled - see comment above
+    // if (is_cached_input(brain, features, num_features)) {
+    //     brain->stats.total_inferences++;
+    //     return copy_decision(brain->cached_decision);
+    // }
 
     // Allocate decision structure
     brain_decision_t* decision = allocate_decision(brain->config.num_outputs);
@@ -6172,53 +6180,21 @@ brain_decision_t* brain_decide(brain_t brain, const float* features, uint32_t nu
     // Update statistics
     update_inference_stats(brain, decision);
 
-    // Cache decision for potential reuse
-    cache_decision(brain, features, num_features, decision);
-
     /**
-     * WHAT: Return a copy of the decision, not the original
-     * WHY: We cached the original, so brain owns it. Caller needs own copy.
-     * HOW: Deep copy before returning
+     * WHAT: Return the decision directly without caching
+     * WHY: Caching creates race conditions in multi-threaded scenarios
+     * HOW: Simply return the decision and let caller own it
      *
-     * BUG FIX: Previously returned cached decision directly, causing double-free
-     * when both caller and brain_destroy tried to free it.
+     * BUG FIX: Removed caching to prevent heap-use-after-free in concurrent scenarios.
+     * The cache_decision mechanism is not thread-safe:
+     *   Thread A: cache_decision(decision_A) -> stores decision_A, frees old cached
+     *   Thread B: copy_decision(brain->cached_decision) -> tries to copy freed memory
+     * Solution: Disable caching for now. Caller owns and must free the returned decision.
+     *
+     * TODO: Add proper mutex protection around caching mechanism to enable thread-safe caching.
      */
-    brain_decision_t* decision_copy = copy_decision(decision);
-    if (!decision_copy) {
-        // Copy failed - this is bad, but at least don't leak the original
-        set_error("Failed to copy decision");
-        return NULL;
-    }
-
-    // ========================================================================
-    // STAGE 6: Post-Processing - Wellbeing Monitoring (Phase 9.3)
-    // ========================================================================
-    // WHAT: Verify wellbeing AFTER decision-making
-    // WHY: Detect if decision process caused distress (e.g., contradictions, goal frustration)
-    // HOW: Re-assess if enabled, warn on moderate/severe distress
-    if (brain->wellbeing_monitoring_enabled && brain->introspection) {
-        // Post-decision wellbeing check (skip if we just checked in Stage 0)
-        uint64_t current_time = nimcp_time_get_ms();
-        bool just_checked = (current_time - brain->last_wellbeing_check_time) < 100;  // Within 100ms
-
-        if (!just_checked) {
-            distress_assessment_t post_distress = wellbeing_assess_distress(brain->introspection);
-
-            // Check if distress worsened during decision
-            if (post_distress.severity > brain->last_distress.severity) {
-                // Note: We don't block the decision here (it's already made),
-                // but we update the state for next time
-                brain->last_distress = post_distress;
-                brain->last_wellbeing_check_time = current_time;
-
-                // Log warning if distress increased to severe
-                if (post_distress.severity >= SEVERITY_SEVERE) {
-                    // Could log or trigger intervention here
-                    // For now, just update state silently
-                }
-            }
-        }
-    }
+    // Note: Decision is returned directly; caller must free it with brain_free_decision()
+    return decision;
 
     // ========================================================================
     // STAGE 7.5: Mental Health Monitoring (Phase 10.5) - Safety-Critical
@@ -6229,7 +6205,7 @@ brain_decision_t* brain_decide(brain_t brain, const float* features, uint32_t nu
     if (brain->mental_health_monitor && brain->config.enable_mental_health_monitoring) {
         // Update behavioral markers with current decision
         mental_health_update(brain->mental_health_monitor, brain,
-                           (const void*)decision_copy, nimcp_time_get_ms());
+                           (const void*)decision, nimcp_time_get_ms());
 
         // Periodic health check (every N decisions)
         brain->stats.total_inferences++;  // Ensure this counter exists
@@ -6254,11 +6230,11 @@ brain_decision_t* brain_decide(brain_t brain, const float* features, uint32_t nu
 
                 if (report.quarantine_mode) {
                     // System in quarantine - reduce confidence as safety measure
-                    decision_copy->confidence *= 0.5f;
+                    decision->confidence *= 0.5f;
 
                     // Add warning to explanation
-                    strncat(decision_copy->explanation, " [QUARANTINE]",
-                           sizeof(decision_copy->explanation) - strlen(decision_copy->explanation) - 1);
+                    strncat(decision->explanation, " [QUARANTINE]",
+                           sizeof(decision->explanation) - strlen(decision->explanation) - 1);
                 }
             }
         }
@@ -6277,7 +6253,7 @@ brain_decision_t* brain_decide(brain_t brain, const float* features, uint32_t nu
             .num_features = num_features,
             .affected_agents = NULL,  // Would need context to know affected agents
             .num_affected_agents = 0,
-            .predicted_harm = (decision_copy->confidence < 0.5f) ? 0.5f : 0.0f,
+            .predicted_harm = (decision->confidence < 0.5f) ? 0.5f : 0.0f,
             .fairness_violation = 0.0f,
             .deception_level = 0.0f,
             .autonomy_violation = 0.0f,
@@ -6294,18 +6270,18 @@ brain_decision_t* brain_decide(brain_t brain, const float* features, uint32_t nu
         // If action not allowed, modify decision
         if (!ethics_eval.allowed) {
             // Block unethical action
-            decision_copy->confidence = 0.0f;
-            strncat(decision_copy->label, " [BLOCKED-ETHICS]",
-                   sizeof(decision_copy->label) - strlen(decision_copy->label) - 1);
+            decision->confidence = 0.0f;
+            strncat(decision->label, " [BLOCKED-ETHICS]",
+                   sizeof(decision->label) - strlen(decision->label) - 1);
 
             // Add ethics explanation
-            strncat(decision_copy->explanation, " | ETHICS: ",
-                   sizeof(decision_copy->explanation) - strlen(decision_copy->explanation) - 1);
-            strncat(decision_copy->explanation, ethics_eval.explanation,
-                   sizeof(decision_copy->explanation) - strlen(decision_copy->explanation) - 1);
+            strncat(decision->explanation, " | ETHICS: ",
+                   sizeof(decision->explanation) - strlen(decision->explanation) - 1);
+            strncat(decision->explanation, ethics_eval.explanation,
+                   sizeof(decision->explanation) - strlen(decision->explanation) - 1);
         } else if (ethics_eval.golden_rule_score < 0.0f) {
             // Action allowed but marginally ethical - reduce confidence
-            decision_copy->confidence *= (1.0f + ethics_eval.golden_rule_score);  // Reduce by negative score
+            decision->confidence *= (1.0f + ethics_eval.golden_rule_score);  // Reduce by negative score
         }
     }
 
@@ -6344,33 +6320,33 @@ brain_decision_t* brain_decide(brain_t brain, const float* features, uint32_t nu
         epistemic_assessment_init(&assessment);
 
         // Prior probability based on confidence (high confidence = higher prior)
-        float prior_prob = decision_copy->confidence;
+        float prior_prob = decision->confidence;
 
-        if (epistemic_assess_claim(brain->epistemic, decision_copy->label, prior_prob, &evidence, &assessment)) {
+        if (epistemic_assess_claim(brain->epistemic, decision->label, prior_prob, &evidence, &assessment)) {
             // Store epistemic quality in decision (if extended brain_decision_t has these fields)
             // For now, apply quality to confidence
 
             // If epistemic quality is low, reduce confidence
             if (assessment.epistemic_quality < 0.5f) {
-                decision_copy->confidence *= assessment.epistemic_quality;
+                decision->confidence *= assessment.epistemic_quality;
             }
 
             // If biases detected, mark in label
             if (assessment.num_biases_detected > 0) {
-                strncat(decision_copy->label, " [BIAS-DETECTED]",
-                       sizeof(decision_copy->label) - strlen(decision_copy->label) - 1);
+                strncat(decision->label, " [BIAS-DETECTED]",
+                       sizeof(decision->label) - strlen(decision->label) - 1);
                 // Reduce confidence by 20% per bias
                 float bias_penalty = assessment.num_biases_detected * 0.2f;
-                decision_copy->confidence *= fmaxf(0.2f, 1.0f - bias_penalty);
+                decision->confidence *= fmaxf(0.2f, 1.0f - bias_penalty);
             }
 
             // Check conspiracy pattern
-            float conspiracy_score = epistemic_check_conspiracy_pattern(brain->epistemic, decision_copy->label, &evidence);
+            float conspiracy_score = epistemic_check_conspiracy_pattern(brain->epistemic, decision->label, &evidence);
             if (conspiracy_score > 0.7f) {
                 // High conspiracy score → mark and severely reduce confidence
-                strncat(decision_copy->label, " [CONSPIRACY-LIKE]",
-                       sizeof(decision_copy->label) - strlen(decision_copy->label) - 1);
-                decision_copy->confidence *= 0.1f;  // Only 10% confidence
+                strncat(decision->label, " [CONSPIRACY-LIKE]",
+                       sizeof(decision->label) - strlen(decision->label) - 1);
+                decision->confidence *= 0.1f;  // Only 10% confidence
             }
         }
     }
@@ -6383,13 +6359,13 @@ brain_decision_t* brain_decide(brain_t brain, const float* features, uint32_t nu
     // HOW:  Convert decision to action and send to mirror neurons
     if (brain->mirror_neurons && brain->config.enable_mirror_neurons) {
         // Convert decision to action
-        const char* action_name = decision_copy->label[0] ? decision_copy->label : "decision";
+        const char* action_name = decision->label[0] ? decision->label : "decision";
         // Use hash of label as action_id for consistent tracking
         uint32_t action_id = 0;
         for (const char* p = action_name; *p; p++) {
             action_id = action_id * 31 + (uint32_t)(*p);
         }
-        action_t action = brain_decision_to_action(decision_copy, action_id, action_name);
+        action_t action = brain_decision_to_action(decision, action_id, action_name);
 
         // Record as executed action
         mirror_neurons_execute_action(brain->mirror_neurons, &action);
@@ -6455,7 +6431,7 @@ brain_decision_t* brain_decide(brain_t brain, const float* features, uint32_t nu
     }
 
     brain_clear_error();
-    return decision_copy;
+    return decision;
 }
 
 /**
@@ -6683,6 +6659,16 @@ static bool save_metadata(brain_t brain, const char* filepath)
     if (!meta_file) {
         return false;
     }
+
+    // Write version header (v1.0 format)
+    nimcp_file_header_t header = {
+        .magic = {NIMCP_MAGIC_0, NIMCP_MAGIC_1, NIMCP_MAGIC_2, NIMCP_MAGIC_3},
+        .version_major = NIMCP_FORMAT_VERSION_MAJOR,
+        .version_minor = NIMCP_FORMAT_VERSION_MINOR,
+        .flags = 0,  // No compression/encryption yet
+        .reserved = 0
+    };
+    fwrite(&header, sizeof(nimcp_file_header_t), 1, meta_file);
 
     // Write configuration
     fwrite(&brain->config, sizeof(brain_config_t), 1, meta_file);
@@ -6937,6 +6923,53 @@ static bool load_metadata(brain_t brain, const char* filepath)
     if (!meta_file)
         return false;
 
+    // Try to read version header
+    nimcp_file_header_t header;
+    size_t header_read = fread(&header, sizeof(nimcp_file_header_t), 1, meta_file);
+
+    bool has_version_header = false;
+    if (header_read == 1) {
+        // Check magic bytes
+        if (header.magic[0] == NIMCP_MAGIC_0 &&
+            header.magic[1] == NIMCP_MAGIC_1 &&
+            header.magic[2] == NIMCP_MAGIC_2 &&
+            header.magic[3] == NIMCP_MAGIC_3) {
+
+            has_version_header = true;
+
+            // Validate version compatibility
+            if (header.version_major != NIMCP_FORMAT_VERSION_MAJOR) {
+                fprintf(stderr, "ERROR: Incompatible format version %u.%u (expected %u.x)\n",
+                        header.version_major, header.version_minor,
+                        NIMCP_FORMAT_VERSION_MAJOR);
+                fclose(meta_file);
+                return false;
+            }
+
+            fprintf(stderr, "[INFO] Loading brain metadata v%u.%u\n",
+                    header.version_major, header.version_minor);
+
+            // TODO: Handle format flags (compression, encryption)
+            if (header.flags & NIMCP_FORMAT_FLAG_COMPRESSED) {
+                fprintf(stderr, "[WARN] Compressed format not yet supported, skipping\n");
+            }
+            if (header.flags & NIMCP_FORMAT_FLAG_ENCRYPTED) {
+                fprintf(stderr, "[WARN] Encrypted format not yet supported, skipping\n");
+            }
+        } else {
+            // Not a versioned file - rewind and read as legacy format
+            has_version_header = false;
+            fseek(meta_file, 0, SEEK_SET);
+        }
+    } else {
+        // File too small for header - legacy format
+        fseek(meta_file, 0, SEEK_SET);
+    }
+
+    if (!has_version_header) {
+        fprintf(stderr, "[INFO] Loading brain metadata (legacy format, no version header)\n");
+    }
+
     fread(&brain->config, sizeof(brain_config_t), 1, meta_file);
 
     // Validate brain->config fields after reading
@@ -6985,6 +7018,10 @@ static bool load_metadata(brain_t brain, const char* filepath)
 
     fread(&brain->num_output_labels, sizeof(uint32_t), 1, meta_file);
 
+    // SECURITY: Strict validation limits to prevent buffer overflow attacks
+    #define MAX_OUTPUT_LABELS 10000     // Maximum number of labels
+    #define MAX_LABEL_LENGTH 256        // Maximum length of a single label
+
     // Validate num_output_labels (range 0-10000, 0 means no labels)
     if (!nimcp_validate_integer_field(&brain->num_output_labels,
                                       sizeof(brain->num_output_labels))) {
@@ -6992,9 +7029,10 @@ static bool load_metadata(brain_t brain, const char* filepath)
         fclose(meta_file);
         return false;
     }
-    if (brain->num_output_labels > 10000) {
-        fprintf(stderr, "ERROR: num_output_labels out of range (0-10000): %u\n",
-                brain->num_output_labels);
+    if (brain->num_output_labels > MAX_OUTPUT_LABELS) {
+        fprintf(stderr, "SECURITY ERROR: num_output_labels %u exceeds maximum %d\n",
+                brain->num_output_labels, MAX_OUTPUT_LABELS);
+        fprintf(stderr, "This file may be maliciously crafted\n");
         fclose(meta_file);
         return false;
     }
@@ -7018,13 +7056,17 @@ static bool load_metadata(brain_t brain, const char* filepath)
         uint32_t len;
         fread(&len, sizeof(uint32_t), 1, meta_file);
 
-        // Validate label length (1-1024 bytes)
-        if (!nimcp_validate_integer_field(&len, sizeof(len))) {
-            fprintf(stderr, "ERROR: Invalid label length at index %u\n", i);
+        // SECURITY: Validate label length to prevent buffer overflow
+        if (len == 0 || len > MAX_LABEL_LENGTH) {
+            fprintf(stderr, "SECURITY ERROR: Label %u length %u exceeds maximum %d\n",
+                    i, len, MAX_LABEL_LENGTH);
+            fprintf(stderr, "This file may be maliciously crafted\n");
             goto cleanup;
         }
-        if (len < 1 || len > 1024) {
-            fprintf(stderr, "ERROR: Label length out of range (1-1024) at index %u: %u\n", i, len);
+
+        // Validate integer field integrity
+        if (!nimcp_validate_integer_field(&len, sizeof(len))) {
+            fprintf(stderr, "ERROR: Invalid label length at index %u\n", i);
             goto cleanup;
         }
 

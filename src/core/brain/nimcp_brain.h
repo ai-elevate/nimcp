@@ -152,6 +152,45 @@ typedef struct {
     float avg_modulation_strength;     /**< Average modulation factor (0.8-1.2) */
 } astrocyte_stats_t;
 
+//=============================================================================
+// Persistence Format Versioning
+//=============================================================================
+
+/**
+ * @brief Brain metadata file format version header
+ *
+ * WHAT: Version identifier written at start of .meta files
+ * WHY:  Enable backward compatibility and format evolution
+ * HOW:  Check magic + version on load, support migrations
+ *
+ * FORMAT: [magic:4 bytes][major:2][minor:2][flags:4][reserved:4]
+ * Total: 16 bytes header
+ *
+ * NOTE: SHA-256 checksum field will be added in v1.1 when CHECKSUM flag is set
+ */
+typedef struct {
+    uint8_t magic[4];       /**< Magic bytes: {'N', 'I', 'M', 'P'} */
+    uint16_t version_major; /**< Major version (incompatible changes) */
+    uint16_t version_minor; /**< Minor version (compatible changes) */
+    uint32_t flags;         /**< Format flags (compressed, encrypted, etc.) */
+    uint32_t reserved;      /**< Reserved for future use */
+} nimcp_file_header_t;
+
+// Current format version
+#define NIMCP_FORMAT_VERSION_MAJOR 1
+#define NIMCP_FORMAT_VERSION_MINOR 0
+
+// Header magic bytes
+#define NIMCP_MAGIC_0 'N'
+#define NIMCP_MAGIC_1 'I'
+#define NIMCP_MAGIC_2 'M'
+#define NIMCP_MAGIC_3 'P'
+
+// Format flags
+#define NIMCP_FORMAT_FLAG_COMPRESSED  0x00000001  /**< Data is compressed */
+#define NIMCP_FORMAT_FLAG_ENCRYPTED   0x00000002  /**< Data is encrypted */
+#define NIMCP_FORMAT_FLAG_CHECKSUM    0x00000004  /**< File has checksum */
+
 /**
  * @brief Comprehensive brain configuration
  *

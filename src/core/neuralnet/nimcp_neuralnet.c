@@ -1856,6 +1856,13 @@ float neural_network_get_average_activity(neural_network_t network, uint32_t neu
         return 0.0f;
     }
 
+    // CRITICAL FIX: Check if neurons array is allocated
+    // WHY: Protects against accessing freed/unallocated memory
+    // WHAT: Return 0 if neurons pointer is NULL
+    if (!network->neurons) {
+        return 0.0f;  // Neurons array not allocated
+    }
+
     // Use safe accessor instead of direct array access
     neuron_t* neuron = neural_network_get_neuron(network, neuron_id);
     if (!neuron) {
