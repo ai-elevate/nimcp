@@ -601,6 +601,78 @@ uint32_t brain_region_get_output(brain_region_t* region,
 // SIMULATION & STEPPING
 // ============================================================================
 
+/**
+ * @brief Propagate activity signals between brain regions via connections
+ *
+ * WHAT: Transfer activity from source to target regions through inter-region connections
+ * WHY:  Enable hierarchical processing and information flow across cortical areas
+ * HOW:  For each connection, compute signal strength and inject into target layer
+ *
+ * BIOLOGICAL RATIONALE:
+ * - Cortical areas communicate via cortico-cortical projections
+ * - Different layers project to different target layers (feedforward/feedback)
+ * - Connection strength represents axonal density and synaptic efficacy
+ * - Activity propagates as weighted sum of source neuron firing rates
+ *
+ * PERFORMANCE: O(num_connections * avg_neurons_per_layer)
+ *              Typically O(num_regions²) for fully connected modules
+ *
+ * @param brain Brain module containing regions and connections
+ * @param delta_t Time step in microseconds
+ * @return NIMCP_SUCCESS on success, error code otherwise
+ */
+static nimcp_result_t propagate_inter_region_signals(brain_module_t* brain, uint64_t delta_t) {
+    if (!brain) {
+        return NIMCP_ERROR_INVALID_PARAM;
+    }
+
+    for (uint32_t c = 0; c < brain->num_connections; c++) {
+        brain_connection_t* conn = brain->connections[c];
+        if (!conn) continue;
+
+        // Find source and target regions
+        brain_region_t* source = NULL;
+        brain_region_t* target = NULL;
+
+        for (uint32_t i = 0; i < brain->num_regions; i++) {
+            if (brain->regions[i]->id == conn->source_region_id) {
+                source = brain->regions[i];
+            }
+            if (brain->regions[i]->id == conn->target_region_id) {
+                target = brain->regions[i];
+            }
+        }
+
+        // Validate connection endpoints
+        if (!source || !target || !source->network || !target->network) {
+            continue;
+        }
+
+        // Compute signal strength = source_activity * connection_strength
+        float signal = source->activity_level * conn->connection_strength;
+        signal = fmaxf(0.0f, fminf(1.0f, signal));  // Clamp to [0, 1]
+
+        if (signal < 0.01f) {
+            continue;  // Skip negligible signals
+        }
+
+        // Compute target layer boundaries
+        uint32_t layer_start = 0;
+        for (uint32_t layer = 0; layer < (uint32_t)conn->target_layer; layer++) {
+            layer_start += target->layer_sizes[layer];
+        }
+        uint32_t layer_end = layer_start + target->layer_sizes[conn->target_layer];
+
+        // Inject signal into target neurons
+        for (uint32_t nid = layer_start; nid < layer_end; nid++) {
+            float current = signal * (float)conn->num_synapses / 100.0f;
+            neural_network_update_neuron(target->network, nid, current, delta_t);
+        }
+    }
+
+    return NIMCP_SUCCESS;
+}
+
 nimcp_result_t brain_module_step(brain_module_t* brain, uint64_t delta_t) {
     if (!brain) {
         return NIMCP_ERROR_INVALID_PARAM;
@@ -613,9 +685,8 @@ nimcp_result_t brain_module_step(brain_module_t* brain, uint64_t delta_t) {
         brain_region_step(brain->regions[i], delta_t);
     }
 
-    // TODO: Propagate signals between regions via connections
-
-    return NIMCP_SUCCESS;
+    // Propagate signals between regions
+    return propagate_inter_region_signals(brain, delta_t);
 }
 
 nimcp_result_t brain_region_step(brain_region_t* region, uint64_t delta_t) {
@@ -623,11 +694,45 @@ nimcp_result_t brain_region_step(brain_region_t* region, uint64_t delta_t) {
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
-    // Simple time update for now
+    // Update region timestamp
     region->last_update += delta_t;
 
-    // TODO: Step underlying neural network
-    // TODO: Update glial cells
+    // IMPLEMENTATION: Step underlying neural network
+    // WHAT: Compute neural activity for this time step
+    // WHY:  Neurons process inputs and generate spikes
+    // HOW:  Call neural_network_compute_step() with delta_t
+    //
+    // RATIONALE: Neural network stepping is the core computation of each brain region.
+    //            Activity level is tracked as an exponential moving average (EMA) of
+    //            spike rate to smooth out instantaneous fluctuations.
+    if (region->network) {
+        // Compute network step with the given delta_t
+        uint32_t spikes = neural_network_compute_step(region->network, delta_t);
+
+        // Update activity level based on spiking activity
+        // Activity = (spikes / total_neurons) smoothed with exponential moving average
+        if (region->total_neurons > 0) {
+            float spike_rate = (float)spikes / (float)region->total_neurons;
+            // EMA with alpha=0.1 for smoothing
+            region->activity_level = 0.9f * region->activity_level + 0.1f * spike_rate;
+        }
+    }
+
+    // IMPLEMENTATION: Update glial cells
+    // WHAT: Step astrocytes, microglia, and oligodendrocytes
+    // WHY:  Glial cells modulate synaptic transmission, provide metabolic support,
+    //       and prune weak connections
+    // HOW:  Call glial_integration_step() with current timestamp
+    //
+    // RATIONALE: Glial integration handles all glial-neural interactions including:
+    //            - Astrocyte calcium dynamics and synaptic modulation (0.8x - 1.2x)
+    //            - Oligodendrocyte adaptive myelination (reduces conduction delay)
+    //            - Microglia activity monitoring and synaptic pruning
+    //            The modulation effects are automatically applied to the network.
+    if (region->glial) {
+        // Update all glial cells and apply modulation to network
+        glial_integration_step(region->glial, region->last_update);
+    }
 
     return NIMCP_SUCCESS;
 }
