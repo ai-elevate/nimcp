@@ -9167,8 +9167,10 @@ bool brain_process_multimodal(
     }
 
     // Check brain is configured for multi-modal processing
-    if (!brain->config.enable_multimodal_integration) {
-        set_error("Brain not configured for multimodal processing");
+    // Allow direct-only predictions even if multimodal integration is disabled
+    bool needs_multimodal = has_visual || has_audio;
+    if (needs_multimodal && !brain->config.enable_multimodal_integration) {
+        set_error("Brain not configured for multimodal processing (visual/audio require enable_multimodal_integration)");
         return false;
     }
 
