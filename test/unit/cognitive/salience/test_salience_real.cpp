@@ -77,8 +77,9 @@ TEST_F(SalienceRealTest, DefaultConfig_ReturnsValid) {
 //=============================================================================
 
 TEST_F(SalienceRealTest, EvaluateSalience_ValidFeatures) {
-    float features[5] = {0.1f, 0.3f, 0.5f, 0.7f, 0.9f};
-    brain_salience_t salience = brain_evaluate_salience(evaluator, features, 5);
+    // Brain has 10 inputs, so features array must have 10 elements
+    float features[10] = {0.1f, 0.2f, 0.3f, 0.4f, 0.5f, 0.6f, 0.7f, 0.8f, 0.9f, 1.0f};
+    brain_salience_t salience = brain_evaluate_salience(evaluator, features, 10);
 
     // Should get valid salience scores
     EXPECT_GE(salience.salience, 0.0f);
@@ -92,22 +93,22 @@ TEST_F(SalienceRealTest, EvaluateSalience_ValidFeatures) {
 }
 
 TEST_F(SalienceRealTest, EvaluateSalience_NoveltyDetection) {
-    // First input - should be novel
-    float features1[5] = {0.1f, 0.2f, 0.3f, 0.4f, 0.5f};
-    brain_salience_t salience1 = brain_evaluate_salience(evaluator, features1, 5);
+    // First input - should be novel (10 features to match brain input size)
+    float features1[10] = {0.1f, 0.2f, 0.3f, 0.4f, 0.5f, 0.6f, 0.7f, 0.8f, 0.9f, 1.0f};
+    brain_salience_t salience1 = brain_evaluate_salience(evaluator, features1, 10);
 
     // First time seeing this, should return valid scores
     EXPECT_GE(salience1.novelty, 0.0f);
     EXPECT_LE(salience1.novelty, 1.0f);
 
     // Same input again - should still be valid
-    brain_salience_t salience2 = brain_evaluate_salience(evaluator, features1, 5);
+    brain_salience_t salience2 = brain_evaluate_salience(evaluator, features1, 10);
     EXPECT_GE(salience2.novelty, 0.0f);
     EXPECT_LE(salience2.novelty, 1.0f);
 
     // Very different input - should also be valid
-    float features2[5] = {0.9f, 0.8f, 0.7f, 0.6f, 0.5f};
-    brain_salience_t salience3 = brain_evaluate_salience(evaluator, features2, 5);
+    float features2[10] = {0.9f, 0.8f, 0.7f, 0.6f, 0.5f, 0.9f, 0.8f, 0.7f, 0.6f, 0.5f};
+    brain_salience_t salience3 = brain_evaluate_salience(evaluator, features2, 10);
     EXPECT_GE(salience3.novelty, 0.0f);
     EXPECT_LE(salience3.novelty, 1.0f);
 }
@@ -115,12 +116,12 @@ TEST_F(SalienceRealTest, EvaluateSalience_NoveltyDetection) {
 TEST_F(SalienceRealTest, EvaluateSalience_MultipleInputs) {
     // Evaluate multiple different inputs
     for (int i = 0; i < 10; i++) {
-        float features[5];
-        for (int j = 0; j < 5; j++) {
+        float features[10];
+        for (int j = 0; j < 10; j++) {
             features[j] = (i * 0.1f) + (j * 0.05f);
         }
 
-        brain_salience_t salience = brain_evaluate_salience(evaluator, features, 5);
+        brain_salience_t salience = brain_evaluate_salience(evaluator, features, 10);
 
         // All scores should be valid
         EXPECT_GE(salience.salience, 0.0f);
@@ -133,24 +134,24 @@ TEST_F(SalienceRealTest, EvaluateSalience_MultipleInputs) {
 //=============================================================================
 
 TEST_F(SalienceRealTest, EvaluateTemporal_WithTimestamps) {
-    float features[5] = {0.2f, 0.4f, 0.6f, 0.8f, 1.0f};
+    float features[10] = {0.2f, 0.4f, 0.6f, 0.8f, 1.0f, 0.2f, 0.4f, 0.6f, 0.8f, 1.0f};
 
-    brain_salience_t salience1 = brain_evaluate_salience_temporal(evaluator, features, 5, 1000);
+    brain_salience_t salience1 = brain_evaluate_salience_temporal(evaluator, features, 10, 1000);
     EXPECT_GE(salience1.salience, 0.0f);
     EXPECT_LE(salience1.salience, 1.0f);
 
     // Later timestamp
-    brain_salience_t salience2 = brain_evaluate_salience_temporal(evaluator, features, 5, 2000);
+    brain_salience_t salience2 = brain_evaluate_salience_temporal(evaluator, features, 10, 2000);
     EXPECT_GE(salience2.salience, 0.0f);
     EXPECT_LE(salience2.salience, 1.0f);
 }
 
 TEST_F(SalienceRealTest, EvaluateTemporal_TimeProgression) {
-    float features[5] = {0.5f, 0.5f, 0.5f, 0.5f, 0.5f};
+    float features[10] = {0.5f, 0.5f, 0.5f, 0.5f, 0.5f, 0.5f, 0.5f, 0.5f, 0.5f, 0.5f};
 
     // Evaluate at different times
     for (uint64_t t = 1000; t <= 5000; t += 1000) {
-        brain_salience_t salience = brain_evaluate_salience_temporal(evaluator, features, 5, t);
+        brain_salience_t salience = brain_evaluate_salience_temporal(evaluator, features, 10, t);
 
         // Should always return valid results
         EXPECT_GE(salience.salience, 0.0f);
@@ -164,14 +165,14 @@ TEST_F(SalienceRealTest, EvaluateTemporal_TimeProgression) {
 
 TEST_F(SalienceRealTest, EvaluateBatch_MultipleInputs) {
     // Create batch of inputs
-    float features1[5] = {0.1f, 0.2f, 0.3f, 0.4f, 0.5f};
-    float features2[5] = {0.6f, 0.7f, 0.8f, 0.9f, 1.0f};
-    float features3[5] = {0.5f, 0.5f, 0.5f, 0.5f, 0.5f};
+    float features1[10] = {0.1f, 0.2f, 0.3f, 0.4f, 0.5f, 0.1f, 0.2f, 0.3f, 0.4f, 0.5f};
+    float features2[10] = {0.6f, 0.7f, 0.8f, 0.9f, 1.0f, 0.6f, 0.7f, 0.8f, 0.9f, 1.0f};
+    float features3[10] = {0.5f, 0.5f, 0.5f, 0.5f, 0.5f, 0.5f, 0.5f, 0.5f, 0.5f, 0.5f};
 
     const float* features_array[3] = {features1, features2, features3};
     brain_salience_t scores[3];
 
-    uint32_t count = brain_evaluate_salience_batch(evaluator, features_array, 3, 5, scores);
+    uint32_t count = brain_evaluate_salience_batch(evaluator, features_array, 3, 10, scores);
 
     // Should process all 3
     EXPECT_GT(count, 0U);
@@ -187,20 +188,20 @@ TEST_F(SalienceRealTest, EvaluateBatch_MultipleInputs) {
 }
 
 TEST_F(SalienceRealTest, EvaluateBatch_LargerBatch) {
-    // Create larger batch (10 inputs)
-    std::vector<float> features_storage(10 * 5);
+    // Create larger batch (10 inputs, each with 10 features to match brain size)
+    std::vector<float> features_storage(10 * 10);
     std::vector<const float*> features_array(10);
 
     for (size_t i = 0; i < 10; i++) {
-        features_array[i] = &features_storage[i * 5];
-        for (size_t j = 0; j < 5; j++) {
-            features_storage[i * 5 + j] = (i * 0.1f) + (j * 0.02f);
+        features_array[i] = &features_storage[i * 10];
+        for (size_t j = 0; j < 10; j++) {
+            features_storage[i * 10 + j] = (i * 0.1f) + (j * 0.02f);
         }
     }
 
     std::vector<brain_salience_t> scores(10);
 
-    uint32_t count = brain_evaluate_salience_batch(evaluator, features_array.data(), 10, 5, scores.data());
+    uint32_t count = brain_evaluate_salience_batch(evaluator, features_array.data(), 10, 10, scores.data());
 
     // Should process some or all
     EXPECT_GT(count, 0U);
@@ -218,17 +219,17 @@ TEST_F(SalienceRealTest, EvaluateBatch_LargerBatch) {
 //=============================================================================
 
 TEST_F(SalienceRealTest, SetWeights_UpdatesEvaluation) {
-    float features[5] = {0.5f, 0.5f, 0.5f, 0.5f, 0.5f};
+    float features[10] = {0.5f, 0.5f, 0.5f, 0.5f, 0.5f, 0.5f, 0.5f, 0.5f, 0.5f, 0.5f};
 
     // Default weights
-    brain_salience_t salience1 = brain_evaluate_salience(evaluator, features, 5);
+    brain_salience_t salience1 = brain_evaluate_salience(evaluator, features, 10);
 
     // Change weights to favor novelty
     bool success = salience_set_weights(evaluator, 0.8f, 0.1f, 0.1f);
     EXPECT_TRUE(success);
 
     // Should still work
-    brain_salience_t salience2 = brain_evaluate_salience(evaluator, features, 5);
+    brain_salience_t salience2 = brain_evaluate_salience(evaluator, features, 10);
     EXPECT_GE(salience2.salience, 0.0f);
     EXPECT_LE(salience2.salience, 1.0f);
 }
@@ -239,8 +240,8 @@ TEST_F(SalienceRealTest, SetThresholds_UpdatesDetection) {
     EXPECT_TRUE(success);
 
     // Evaluation should still work
-    float features[5] = {0.7f, 0.7f, 0.7f, 0.7f, 0.7f};
-    brain_salience_t salience = brain_evaluate_salience(evaluator, features, 5);
+    float features[10] = {0.7f, 0.7f, 0.7f, 0.7f, 0.7f, 0.7f, 0.7f, 0.7f, 0.7f, 0.7f};
+    brain_salience_t salience = brain_evaluate_salience(evaluator, features, 10);
     EXPECT_GE(salience.salience, 0.0f);
     EXPECT_LE(salience.salience, 1.0f);
 }
@@ -268,8 +269,8 @@ TEST_F(SalienceRealTest, RegisterCallback_NoErrors) {
 TEST_F(SalienceRealTest, GetStats_TracksEvaluations) {
     // Perform several evaluations
     for (int i = 0; i < 5; i++) {
-        float features[5] = {i * 0.2f, i * 0.15f, i * 0.1f, i * 0.05f, 0.5f};
-        brain_evaluate_salience(evaluator, features, 5);
+        float features[10] = {i * 0.2f, i * 0.15f, i * 0.1f, i * 0.05f, 0.5f, i * 0.2f, i * 0.15f, i * 0.1f, i * 0.05f, 0.5f};
+        brain_evaluate_salience(evaluator, features, 10);
     }
 
     // Get statistics
@@ -285,8 +286,8 @@ TEST_F(SalienceRealTest, GetStats_TracksEvaluations) {
 
 TEST_F(SalienceRealTest, ResetStats_ClearsCounters) {
     // Perform evaluations
-    float features[5] = {0.5f, 0.5f, 0.5f, 0.5f, 0.5f};
-    brain_evaluate_salience(evaluator, features, 5);
+    float features[10] = {0.5f, 0.5f, 0.5f, 0.5f, 0.5f, 0.5f, 0.5f, 0.5f, 0.5f, 0.5f};
+    brain_evaluate_salience(evaluator, features, 10);
 
     // Reset stats
     bool success = salience_reset_stats(evaluator);
@@ -303,14 +304,14 @@ TEST_F(SalienceRealTest, ResetStats_ClearsCounters) {
 //=============================================================================
 
 TEST_F(SalienceRealTest, ClearHistory_ResetsNovelty) {
-    float features[5] = {0.1f, 0.2f, 0.3f, 0.4f, 0.5f};
+    float features[10] = {0.1f, 0.2f, 0.3f, 0.4f, 0.5f, 0.1f, 0.2f, 0.3f, 0.4f, 0.5f};
 
     // First evaluation
-    brain_salience_t salience1 = brain_evaluate_salience(evaluator, features, 5);
+    brain_salience_t salience1 = brain_evaluate_salience(evaluator, features, 10);
     float novelty1 = salience1.novelty;
 
     // Same input
-    brain_salience_t salience2 = brain_evaluate_salience(evaluator, features, 5);
+    brain_salience_t salience2 = brain_evaluate_salience(evaluator, features, 10);
     float novelty2 = salience2.novelty;
 
     // Clear history
@@ -318,7 +319,7 @@ TEST_F(SalienceRealTest, ClearHistory_ResetsNovelty) {
     EXPECT_TRUE(success);
 
     // Same input should still work
-    brain_salience_t salience3 = brain_evaluate_salience(evaluator, features, 5);
+    brain_salience_t salience3 = brain_evaluate_salience(evaluator, features, 10);
     EXPECT_GE(salience3.novelty, 0.0f);
     EXPECT_LE(salience3.novelty, 1.0f);
 }
@@ -328,31 +329,31 @@ TEST_F(SalienceRealTest, ClearHistory_ResetsNovelty) {
 //=============================================================================
 
 TEST_F(SalienceRealTest, BoostNegativeCues_AffectsEvaluation) {
-    float features[5] = {0.5f, 0.5f, 0.5f, 0.5f, 0.5f};
+    float features[10] = {0.5f, 0.5f, 0.5f, 0.5f, 0.5f, 0.5f, 0.5f, 0.5f, 0.5f, 0.5f};
 
     // Baseline evaluation
-    brain_salience_t salience1 = brain_evaluate_salience(evaluator, features, 5);
+    brain_salience_t salience1 = brain_evaluate_salience(evaluator, features, 10);
 
     // Boost negative cue detection
     salience_boost_negative_cues(evaluator, 0.8f);
 
     // Should still work
-    brain_salience_t salience2 = brain_evaluate_salience(evaluator, features, 5);
+    brain_salience_t salience2 = brain_evaluate_salience(evaluator, features, 10);
     EXPECT_GE(salience2.salience, 0.0f);
     EXPECT_LE(salience2.salience, 1.0f);
 }
 
 TEST_F(SalienceRealTest, BoostThreatDetection_IncreasesUrgency) {
-    float features[5] = {0.8f, 0.8f, 0.8f, 0.8f, 0.8f};
+    float features[10] = {0.8f, 0.8f, 0.8f, 0.8f, 0.8f, 0.8f, 0.8f, 0.8f, 0.8f, 0.8f};
 
     // Baseline
-    brain_salience_t salience1 = brain_evaluate_salience(evaluator, features, 5);
+    brain_salience_t salience1 = brain_evaluate_salience(evaluator, features, 10);
 
     // Boost threat detection
     salience_boost_threat_detection(evaluator, 0.9f);
 
     // Evaluate again
-    brain_salience_t salience2 = brain_evaluate_salience(evaluator, features, 5);
+    brain_salience_t salience2 = brain_evaluate_salience(evaluator, features, 10);
 
     // Should still be valid
     EXPECT_GE(salience2.urgency, 0.0f);
@@ -361,8 +362,8 @@ TEST_F(SalienceRealTest, BoostThreatDetection_IncreasesUrgency) {
 
 TEST_F(SalienceRealTest, GetSurpriseLevel_ReturnsValidValue) {
     // Evaluate to generate surprise
-    float features[5] = {0.3f, 0.6f, 0.9f, 0.2f, 0.7f};
-    brain_evaluate_salience(evaluator, features, 5);
+    float features[10] = {0.3f, 0.6f, 0.9f, 0.2f, 0.7f, 0.3f, 0.6f, 0.9f, 0.2f, 0.7f};
+    brain_evaluate_salience(evaluator, features, 10);
 
     // Get surprise level
     float surprise = salience_get_surprise_level(evaluator);
@@ -376,8 +377,8 @@ TEST_F(SalienceRealTest, GetSurpriseLevel_ReturnsValidValue) {
 
 TEST_F(SalienceRealTest, QuickEvaluate_WorksWithBrain) {
     // Quick evaluate should work directly with brain
-    float features[5] = {0.4f, 0.5f, 0.6f, 0.7f, 0.8f};
-    brain_salience_t salience = salience_quick_evaluate(brain, features, 5);
+    float features[10] = {0.4f, 0.5f, 0.6f, 0.7f, 0.8f, 0.4f, 0.5f, 0.6f, 0.7f, 0.8f};
+    brain_salience_t salience = salience_quick_evaluate(brain, features, 10);
 
     // Should return valid scores
     EXPECT_GE(salience.salience, 0.0f);
@@ -396,7 +397,7 @@ TEST_F(SalienceRealTest, StrategyComparison_AllWork) {
         SALIENCE_STRATEGY_ACCURATE
     };
 
-    float features[5] = {0.3f, 0.5f, 0.7f, 0.2f, 0.8f};
+    float features[10] = {0.3f, 0.5f, 0.7f, 0.2f, 0.8f, 0.3f, 0.5f, 0.7f, 0.2f, 0.8f};
 
     for (int i = 0; i < 3; i++) {
         // Create evaluator with strategy
@@ -408,7 +409,7 @@ TEST_F(SalienceRealTest, StrategyComparison_AllWork) {
         ASSERT_NE(eval, nullptr);
 
         // Evaluate
-        brain_salience_t salience = brain_evaluate_salience(eval, features, 5);
+        brain_salience_t salience = brain_evaluate_salience(eval, features, 10);
 
         // Should work for all strategies
         EXPECT_GE(salience.salience, 0.0f);
@@ -433,20 +434,20 @@ TEST_F(SalienceRealTest, GetLastError_ReturnsString) {
 
 TEST_F(SalienceRealTest, CompleteWorkflow_AttentionAllocation) {
     // Simulate attention-driven decision making
-    float routine_input[5] = {0.5f, 0.5f, 0.5f, 0.5f, 0.5f};
-    float novel_input[5] = {0.9f, 0.1f, 0.9f, 0.1f, 0.9f};
-    float urgent_input[5] = {1.0f, 1.0f, 1.0f, 0.0f, 0.0f};
+    float routine_input[10] = {0.5f, 0.5f, 0.5f, 0.5f, 0.5f, 0.5f, 0.5f, 0.5f, 0.5f, 0.5f};
+    float novel_input[10] = {0.9f, 0.1f, 0.9f, 0.1f, 0.9f, 0.9f, 0.1f, 0.9f, 0.1f, 0.9f};
+    float urgent_input[10] = {1.0f, 1.0f, 1.0f, 0.0f, 0.0f, 1.0f, 1.0f, 1.0f, 0.0f, 0.0f};
 
     // 1. Evaluate routine input
-    brain_evaluate_salience(evaluator, routine_input, 5);
-    brain_evaluate_salience(evaluator, routine_input, 5);
-    brain_salience_t routine = brain_evaluate_salience(evaluator, routine_input, 5);
+    brain_evaluate_salience(evaluator, routine_input, 10);
+    brain_evaluate_salience(evaluator, routine_input, 10);
+    brain_salience_t routine = brain_evaluate_salience(evaluator, routine_input, 10);
 
     // 2. Evaluate novel input
-    brain_salience_t novel = brain_evaluate_salience(evaluator, novel_input, 5);
+    brain_salience_t novel = brain_evaluate_salience(evaluator, novel_input, 10);
 
     // 3. Evaluate urgent input
-    brain_salience_t urgent = brain_evaluate_salience(evaluator, urgent_input, 5);
+    brain_salience_t urgent = brain_evaluate_salience(evaluator, urgent_input, 10);
 
     // All should be valid
     EXPECT_GE(routine.salience, 0.0f);

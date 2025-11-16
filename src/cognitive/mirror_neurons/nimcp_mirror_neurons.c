@@ -565,7 +565,7 @@ mirror_neurons_t mirror_neurons_create(const mirror_neuron_config_t* config)
 
     // Initialize temporal state
     mirror->creation_time = nimcp_time_get_ms();
-    mirror->last_update_time = mirror->creation_time;
+    mirror->last_update_time = 0;  // Set to 0 until first observation
     mirror->brain = NULL;  // Initialize brain reference
     mirror->initialized = true;
 

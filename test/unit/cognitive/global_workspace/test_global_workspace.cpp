@@ -186,18 +186,17 @@ TEST_F(GlobalWorkspaceTest, CompeteWinnerTakeAllMultipleCompetitorsStrongestWins
     auto content2 = CreateTestContent(256, 2.0f);
     auto content3 = CreateTestContent(256, 3.0f);
 
-    // All compete (different modules, different strengths)
-    bool won1 = global_workspace_compete(workspace, MODULE_WORKING_MEMORY,
-                                          content1.data(), 256, 0.7f);
-    bool won2 = global_workspace_compete(workspace, MODULE_EXECUTIVE,
-                                          content2.data(), 256, 0.9f);  // Strongest
-    bool won3 = global_workspace_compete(workspace, MODULE_SALIENCE,
-                                          content3.data(), 256, 0.65f);
+    // Use new submit+resolve API for batch competition
+    global_workspace_submit(workspace, MODULE_WORKING_MEMORY, content1.data(), 256, 0.7f);
+    global_workspace_submit(workspace, MODULE_EXECUTIVE, content2.data(), 256, 0.9f);  // Strongest
+    global_workspace_submit(workspace, MODULE_SALIENCE, content3.data(), 256, 0.65f);
 
-    // Only strongest should win
-    EXPECT_FALSE(won1);
-    EXPECT_TRUE(won2);   // Strongest wins
-    EXPECT_FALSE(won3);
+    // Resolve competition - only strongest should win
+    cognitive_module_t winner = MODULE_NONE;
+    bool broadcast = global_workspace_resolve(workspace, &winner);
+
+    EXPECT_TRUE(broadcast);
+    EXPECT_EQ(winner, MODULE_EXECUTIVE);  // Strongest wins
 
     EXPECT_TRUE(global_workspace_has_broadcast(workspace));
     EXPECT_EQ(global_workspace_get_broadcast_source(workspace), MODULE_EXECUTIVE);
@@ -710,12 +709,15 @@ TEST_F(GlobalWorkspaceTest, SetModulePriorityValid) {
     auto content1 = CreateTestContent(256, 1.0f);
     auto content2 = CreateTestContent(256, 2.0f);
 
-    // Lower priority with higher strength
-    global_workspace_compete(workspace2, MODULE_CURIOSITY, content1.data(), 256, 0.9f);
-    // Higher priority with lower strength
-    global_workspace_compete(workspace2, MODULE_WELLBEING, content2.data(), 256, 0.7f);
+    // Use new submit+resolve API for batch priority testing
+    global_workspace_submit(workspace2, MODULE_CURIOSITY, content1.data(), 256, 0.9f);
+    global_workspace_submit(workspace2, MODULE_WELLBEING, content2.data(), 256, 0.7f);
+
+    cognitive_module_t winner = MODULE_NONE;
+    global_workspace_resolve(workspace2, &winner);
 
     // Higher priority should win despite lower strength
+    EXPECT_EQ(winner, MODULE_WELLBEING);
     EXPECT_EQ(global_workspace_get_broadcast_source(workspace2), MODULE_WELLBEING);
 
     global_workspace_destroy(workspace2);
@@ -779,12 +781,15 @@ TEST_F(GlobalWorkspaceTest, PriorityBasedHighPriorityWins) {
     auto content1 = CreateTestContent(256, 1.0f);
     auto content2 = CreateTestContent(256, 2.0f);
 
-    // Low priority with very high strength
-    global_workspace_compete(workspace, MODULE_CURIOSITY, content1.data(), 256, 0.95f);
-    // High priority with moderate strength
-    global_workspace_compete(workspace, MODULE_WELLBEING, content2.data(), 256, 0.7f);
+    // Use new submit+resolve API for batch competition
+    global_workspace_submit(workspace, MODULE_CURIOSITY, content1.data(), 256, 0.95f);
+    global_workspace_submit(workspace, MODULE_WELLBEING, content2.data(), 256, 0.7f);
+
+    cognitive_module_t winner = MODULE_NONE;
+    global_workspace_resolve(workspace, &winner);
 
     // High priority should win
+    EXPECT_EQ(winner, MODULE_WELLBEING);
     EXPECT_EQ(global_workspace_get_broadcast_source(workspace), MODULE_WELLBEING);
 }
 
@@ -807,13 +812,16 @@ TEST_F(GlobalWorkspaceTest, RoundRobinFairness) {
     std::vector<cognitive_module_t> winners;
 
     for (int round = 0; round < 6; round++) {
-        // All compete
-        global_workspace_compete(workspace, MODULE_WORKING_MEMORY, content1.data(), 256, 0.7f);
-        global_workspace_compete(workspace, MODULE_EXECUTIVE, content2.data(), 256, 0.7f);
-        global_workspace_compete(workspace, MODULE_SALIENCE, content3.data(), 256, 0.7f);
+        // Use new submit+resolve API for batch competition
+        global_workspace_submit(workspace, MODULE_WORKING_MEMORY, content1.data(), 256, 0.7f);
+        global_workspace_submit(workspace, MODULE_EXECUTIVE, content2.data(), 256, 0.7f);
+        global_workspace_submit(workspace, MODULE_SALIENCE, content3.data(), 256, 0.7f);
 
-        if (global_workspace_has_broadcast(workspace)) {
-            winners.push_back(global_workspace_get_broadcast_source(workspace));
+        cognitive_module_t winner = MODULE_NONE;
+        bool broadcast = global_workspace_resolve(workspace, &winner);
+
+        if (broadcast) {
+            winners.push_back(winner);
         }
 
         SleepMs(15);  // Wait for refractory period

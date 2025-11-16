@@ -448,7 +448,7 @@ TEST_F(PredictiveTest, GetLayerPrediction_ValidLayer) {
         float input[] = {0.5f, 0.5f, 0.5f, 0.5f, 0.5f};
         predictive_forward(net, input, 10);
 
-        float prediction[3];
+        float prediction[5];  // Match layer 0 size
         bool success = predictive_get_layer_prediction(net, 0, prediction);
 
         // May succeed or fail depending on implementation
@@ -469,7 +469,7 @@ TEST_F(PredictiveTest, GetLayerError_ValidLayer) {
         float input[] = {0.5f, 0.5f, 0.5f, 0.5f, 0.5f};
         predictive_forward(net, input, 10);
 
-        float error[3];
+        float error[5];  // Match layer 0 size
         bool success = predictive_get_layer_error(net, 0, error);
 
         EXPECT_TRUE(success || !success);

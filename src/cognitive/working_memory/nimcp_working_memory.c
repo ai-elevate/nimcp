@@ -21,6 +21,7 @@
  */
 
 #include "cognitive/nimcp_working_memory.h"
+#include "utils/time/nimcp_time.h"
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
@@ -176,15 +177,14 @@ static void evict_item_at_index(working_memory_t* wm, uint32_t index) {
  *
  * WHAT: System clock for temporal decay
  * WHY:  Track item age for exponential decay
- * HOW:  Use platform clock (placeholder for actual implementation)
+ * HOW:  Use monotonic clock for consistent timing
  *
  * @return Current time in milliseconds
+ *
+ * COMPLEXITY: O(1) - direct system call
  */
 static uint64_t get_current_time_ms(void) {
-    // TODO: Replace with actual high-resolution clock
-    // For now, use simple counter (NOT production-ready)
-    static uint64_t counter = 0;
-    return counter++;
+    return nimcp_time_monotonic_ms();
 }
 
 // ============================================================================

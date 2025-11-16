@@ -1487,8 +1487,58 @@ bool adaptive_network_save(adaptive_network_t network, const char* filepath,
             fwrite(&magic, sizeof(uint32_t), 1, file);
             fwrite(&version, sizeof(uint32_t), 1, file);
 
-            // Write configuration
-            fwrite(&network->config, sizeof(adaptive_network_config_t), 1, file);
+            // WHAT: Write configuration (excluding pointer fields)
+            // WHY:  Can't serialize pointers directly - they're invalid when loaded
+            // HOW:  Write num_layers, then layer_sizes array data separately
+
+            // Write base_config fields (safe ones)
+            fwrite(&network->config.base_config.num_neurons, sizeof(uint32_t), 1, file);
+            fwrite(&network->config.base_config.ei_ratio, sizeof(float), 1, file);
+            fwrite(&network->config.base_config.learning_rate, sizeof(float), 1, file);
+            fwrite(&network->config.base_config.hebbian_rate, sizeof(float), 1, file);
+            fwrite(&network->config.base_config.stdp_window, sizeof(float), 1, file);
+            fwrite(&network->config.base_config.homeostatic_rate, sizeof(float), 1, file);
+            fwrite(&network->config.base_config.target_activity, sizeof(float), 1, file);
+            fwrite(&network->config.base_config.adaptation_rate, sizeof(float), 1, file);
+            fwrite(&network->config.base_config.refractory_period, sizeof(float), 1, file);
+            fwrite(&network->config.base_config.min_weight, sizeof(float), 1, file);
+            fwrite(&network->config.base_config.max_weight, sizeof(float), 1, file);
+            fwrite(&network->config.base_config.update_interval, sizeof(uint32_t), 1, file);
+            fwrite(&network->config.base_config.input_size, sizeof(uint32_t), 1, file);
+            fwrite(&network->config.base_config.output_size, sizeof(uint32_t), 1, file);
+            fwrite(&network->config.base_config.num_layers, sizeof(uint32_t), 1, file);
+
+            // Write layer_sizes array separately
+            if (network->config.base_config.num_layers > 0 && network->config.base_config.layer_sizes) {
+                fwrite(network->config.base_config.layer_sizes,
+                       sizeof(uint32_t),
+                       network->config.base_config.num_layers,
+                       file);
+            }
+
+            // Continue with base_config booleans and enums
+            fwrite(&network->config.base_config.enable_stdp, sizeof(bool), 1, file);
+            fwrite(&network->config.base_config.enable_hebbian, sizeof(bool), 1, file);
+            fwrite(&network->config.base_config.enable_oja, sizeof(bool), 1, file);
+            fwrite(&network->config.base_config.enable_homeostasis, sizeof(bool), 1, file);
+            fwrite(&network->config.base_config.neuron_model, sizeof(neuron_model_type_t), 1, file);
+            // Skip model_params pointer (NULL in most cases, complex to serialize)
+            fwrite(&network->config.base_config.integration_method, sizeof(ode_integration_method_t), 1, file);
+            fwrite(&network->config.base_config.enable_bcm, sizeof(bool), 1, file);
+            fwrite(&network->config.base_config.enable_eligibility, sizeof(bool), 1, file);
+
+            // Write spike_params struct
+            fwrite(&network->config.spike_params, sizeof(adaptive_spike_params_t), 1, file);
+
+            // Write remaining adaptive config fields
+            fwrite(&network->config.enable_sparsity, sizeof(bool), 1, file);
+            fwrite(&network->config.pruning_threshold, sizeof(float), 1, file);
+            fwrite(&network->config.update_frequency, sizeof(uint32_t), 1, file);
+
+            // Skip checkpoint_path pointer (don't need to save this)
+            fwrite(&network->config.auto_load, sizeof(bool), 1, file);
+            fwrite(&network->config.auto_save, sizeof(bool), 1, file);
+            fwrite(&network->config.auto_save_interval, sizeof(uint32_t), 1, file);
 
             // Write neuron count
             fwrite(&network->num_neurons, sizeof(uint32_t), 1, file);
@@ -1601,15 +1651,81 @@ adaptive_network_t adaptive_network_load(const char* filepath)
         return NULL;
     }
 
-    // Read configuration
+    // WHAT: Read configuration (excluding pointer fields)
+    // WHY:  Pointers were serialized separately
+    // HOW:  Read individual fields, then reconstruct layer_sizes array
+
     adaptive_network_config_t config;
-    if (fread(&config, sizeof(adaptive_network_config_t), 1, file) != 1) {
+    memset(&config, 0, sizeof(adaptive_network_config_t));
+
+    // Read base_config fields
+    if (fread(&config.base_config.num_neurons, sizeof(uint32_t), 1, file) != 1) {
         fclose(file);
         return NULL;
     }
+    fread(&config.base_config.ei_ratio, sizeof(float), 1, file);
+    fread(&config.base_config.learning_rate, sizeof(float), 1, file);
+    fread(&config.base_config.hebbian_rate, sizeof(float), 1, file);
+    fread(&config.base_config.stdp_window, sizeof(float), 1, file);
+    fread(&config.base_config.homeostatic_rate, sizeof(float), 1, file);
+    fread(&config.base_config.target_activity, sizeof(float), 1, file);
+    fread(&config.base_config.adaptation_rate, sizeof(float), 1, file);
+    fread(&config.base_config.refractory_period, sizeof(float), 1, file);
+    fread(&config.base_config.min_weight, sizeof(float), 1, file);
+    fread(&config.base_config.max_weight, sizeof(float), 1, file);
+    fread(&config.base_config.update_interval, sizeof(uint32_t), 1, file);
+    fread(&config.base_config.input_size, sizeof(uint32_t), 1, file);
+    fread(&config.base_config.output_size, sizeof(uint32_t), 1, file);
+    fread(&config.base_config.num_layers, sizeof(uint32_t), 1, file);
 
-    // Create network
+    // Read layer_sizes array separately
+    uint32_t* layer_sizes = NULL;
+    if (config.base_config.num_layers > 0) {
+        layer_sizes = nimcp_malloc(config.base_config.num_layers * sizeof(uint32_t));
+        if (!layer_sizes) {
+            fclose(file);
+            return NULL;
+        }
+        if (fread(layer_sizes, sizeof(uint32_t), config.base_config.num_layers, file) != config.base_config.num_layers) {
+            nimcp_free(layer_sizes);
+            fclose(file);
+            return NULL;
+        }
+        config.base_config.layer_sizes = layer_sizes;
+    }
+
+    // Read remaining base_config fields
+    fread(&config.base_config.enable_stdp, sizeof(bool), 1, file);
+    fread(&config.base_config.enable_hebbian, sizeof(bool), 1, file);
+    fread(&config.base_config.enable_oja, sizeof(bool), 1, file);
+    fread(&config.base_config.enable_homeostasis, sizeof(bool), 1, file);
+    fread(&config.base_config.neuron_model, sizeof(neuron_model_type_t), 1, file);
+    config.base_config.model_params = NULL;  // Not serialized
+    fread(&config.base_config.integration_method, sizeof(ode_integration_method_t), 1, file);
+    fread(&config.base_config.enable_bcm, sizeof(bool), 1, file);
+    fread(&config.base_config.enable_eligibility, sizeof(bool), 1, file);
+
+    // Read spike_params
+    fread(&config.spike_params, sizeof(adaptive_spike_params_t), 1, file);
+
+    // Read remaining adaptive config fields
+    fread(&config.enable_sparsity, sizeof(bool), 1, file);
+    fread(&config.pruning_threshold, sizeof(float), 1, file);
+    fread(&config.update_frequency, sizeof(uint32_t), 1, file);
+
+    config.checkpoint_path = NULL;  // Not serialized, will be NULL
+    fread(&config.auto_load, sizeof(bool), 1, file);
+    fread(&config.auto_save, sizeof(bool), 1, file);
+    fread(&config.auto_save_interval, sizeof(uint32_t), 1, file);
+
+    // Create network with reconstructed config
     adaptive_network_t network = adaptive_network_create(&config);
+
+    // Free temporary layer_sizes array (create function makes its own copy)
+    if (layer_sizes) {
+        nimcp_free(layer_sizes);
+    }
+
     if (!network) {
         fclose(file);
         return NULL;

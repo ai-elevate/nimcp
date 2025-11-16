@@ -25,6 +25,7 @@
 #include <cmath>
 
     #include "cognitive/nimcp_working_memory.h"
+    #include "utils/time/nimcp_time.h"
 
 // ============================================================================
 // TEST FIXTURE
@@ -323,10 +324,12 @@ TEST_F(WorkingMemoryTest, TemporalDecayBasic) {
 
     // Add item with medium salience
     float item[4] = {1.0f, 2.0f, 3.0f, 4.0f};
+    uint64_t time_before_add = nimcp_time_monotonic_ms();
     working_memory_add(wm, item, 4, 0.5f);
 
-    // Apply decay after "time" has passed
-    uint32_t removed = working_memory_decay(wm, 1000);  // After 1 tau
+    // Apply decay after "time" has passed (1 tau = 1000ms)
+    uint64_t decay_time = time_before_add + 1000;
+    uint32_t removed = working_memory_decay(wm, decay_time);
 
     // Should decay but not be removed (0.5 × e^(-1) ≈ 0.184 > 0.01)
     EXPECT_EQ(removed, 0);
@@ -344,10 +347,12 @@ TEST_F(WorkingMemoryTest, TemporalDecayRemoval) {
 
     // Add item with low salience
     float item[4] = {1.0f, 2.0f, 3.0f, 4.0f};
+    uint64_t time_before_add = nimcp_time_monotonic_ms();
     working_memory_add(wm, item, 4, 0.2f);
 
-    // Apply significant decay
-    uint32_t removed = working_memory_decay(wm, 500);  // 5 tau
+    // Apply significant decay (5 tau = 500ms)
+    uint64_t decay_time = time_before_add + 500;
+    uint32_t removed = working_memory_decay(wm, decay_time);
 
     // Should be removed (0.2 × e^(-5) ≈ 0.0013 < 0.1)
     EXPECT_EQ(removed, 1);
@@ -366,14 +371,16 @@ TEST_F(WorkingMemoryTest, AttentionRefreshPreventsDev) {
 
     // Add item
     float item[4] = {1.0f, 2.0f, 3.0f, 4.0f};
+    uint64_t time_before_add = nimcp_time_monotonic_ms();
     working_memory_add(wm, item, 4, 0.5f);
 
     // Refresh it
     bool refresh_result = working_memory_refresh(wm, 0);
     EXPECT_TRUE(refresh_result);
 
-    // Apply decay
-    uint32_t removed = working_memory_decay(wm, 10000);
+    // Apply decay (10 tau = 10000ms with default tau=1000ms)
+    uint64_t decay_time = time_before_add + 10000;
+    uint32_t removed = working_memory_decay(wm, decay_time);
 
     // Should not be removed (attention prevented decay)
     EXPECT_EQ(removed, 0);
