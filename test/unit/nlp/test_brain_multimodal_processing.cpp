@@ -413,7 +413,9 @@ TEST_F(BrainMultimodalProcessingTest, BrainNotConfiguredForMultimodal) {
     output.output_dim = 10;
 
     bool result = brain_process_multimodal(brain, &input, &output);
-    EXPECT_FALSE(result);  // Should fail - not configured for multimodal
+    // Changed: Direct-only processing now succeeds even without multimodal config
+    // This allows brain_predict() to work through brain_process_multimodal()
+    EXPECT_TRUE(result);
 
     brain_destroy(brain);
 }
