@@ -669,22 +669,21 @@ TEST_F(ReaderWriterTest, WriterBlocksReaders)
     // Spawn reader threads (will block until writer releases)
     std::vector<std::thread> reader_threads;
     for (int i = 0; i < NUM_READERS; ++i) {
-        reader_threads.emplace_back([this, &readers_acquired, &writer_done]() {
-            if (writer_done.load()) {
-                int result = nimcp_platform_rwlock_rdlock(&rwlock);
-                EXPECT_EQ(result, 0);
+        reader_threads.emplace_back([this, &readers_acquired]() {
+            // Try to acquire read lock - will block while writer holds write lock
+            int result = nimcp_platform_rwlock_rdlock(&rwlock);
+            EXPECT_EQ(result, 0);
 
-                track_reader_entry();
-                read_count++;
-                sleep_ms(SMALL_DELAY_MS);
-                read_count--;
-                track_reader_exit();
+            track_reader_entry();
+            read_count++;
+            sleep_ms(SMALL_DELAY_MS);
+            read_count--;
+            track_reader_exit();
 
-                result = nimcp_platform_rwlock_rdunlock(&rwlock);
-                EXPECT_EQ(result, 0);
+            result = nimcp_platform_rwlock_rdunlock(&rwlock);
+            EXPECT_EQ(result, 0);
 
-                readers_acquired++;
-            }
+            readers_acquired++;
         });
     }
 

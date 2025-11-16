@@ -1831,7 +1831,7 @@ static void update_calcium_dynamics(neuron_t* neuron, uint64_t timestamp)
  */
 float neural_network_get_average_activity(neural_network_t network, uint32_t neuron_id)
 {
-    if (neuron_id >= network->num_neurons)
+    if (!network || neuron_id >= network->num_neurons || !network->neurons)
         return 0.0f;
 
     neuron_t* neuron = &network->neurons[neuron_id];

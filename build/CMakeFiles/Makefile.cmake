@@ -227,6 +227,7 @@ set(CMAKE_DEPEND_INFO_FILES
   "test/CMakeFiles/unit_core_synapse_types_test_synapse_compute_real.dir/DependInfo.cmake"
   "test/CMakeFiles/unit_core_synapse_types_test_synapse_embeddings.dir/DependInfo.cmake"
   "test/CMakeFiles/unit_core_synapse_types_test_synapse_types_real.dir/DependInfo.cmake"
+  "test/CMakeFiles/unit_core_test_brain_resize.dir/DependInfo.cmake"
   "test/CMakeFiles/unit_core_test_coverage_boost.dir/DependInfo.cmake"
   "test/CMakeFiles/unit_core_test_dataio.dir/DependInfo.cmake"
   "test/CMakeFiles/unit_core_test_encryption_real.dir/DependInfo.cmake"
@@ -397,6 +398,7 @@ set(CMAKE_DEPEND_INFO_FILES
   "test/CMakeFiles/integration_plasticity_eligibility_test_eligibility_wiring.dir/DependInfo.cmake"
   "test/CMakeFiles/integration_plasticity_neuromodulators_test_phasic_tonic_integration.dir/DependInfo.cmake"
   "test/CMakeFiles/integration_plasticity_stp_test_stp_integration.dir/DependInfo.cmake"
+  "test/CMakeFiles/integration_test_brain_resize_integration.dir/DependInfo.cmake"
   "test/CMakeFiles/integration_utils_tensor_networks_test_mps_neural_network_integration.dir/DependInfo.cmake"
   "test/CMakeFiles/integration_utils_test_utils_integration.dir/DependInfo.cmake"
   "test/CMakeFiles/e2e_test_visual_cortex_e2e.dir/DependInfo.cmake"
@@ -435,5 +437,6 @@ set(CMAKE_DEPEND_INFO_FILES
   "test/CMakeFiles/regression_plasticity_neuromodulators_test_phasic_tonic_backward_compat.dir/DependInfo.cmake"
   "test/CMakeFiles/regression_plasticity_noise_test_pink_noise_backward_compat.dir/DependInfo.cmake"
   "test/CMakeFiles/regression_plasticity_stp_test_stp_backward_compat.dir/DependInfo.cmake"
+  "test/CMakeFiles/regression_test_brain_resize_backward_compat.dir/DependInfo.cmake"
   "test/CMakeFiles/regression_utils_test_utils_regression.dir/DependInfo.cmake"
   )

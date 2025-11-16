@@ -612,6 +612,10 @@ static void queue_operation_handler(void* arg)
     // Signal operation completion
     // WHY ATOMIC: Allows wait loop to detect completion lock-free
     atomic_store(&ctx->completed, true);
+
+    // NOTE: We don't free ctx here. The calling thread owns it and will free it after
+    // reading the result (on success) or abandon it (on timeout, causing a leak but
+    // preventing use-after-free).
 }
 
 /**
@@ -665,6 +669,8 @@ static nimcp_result_t submit_queue_operation(nimcp_queue_manager_handle_t manage
         nimcp_pool_submit(manager->thread_pool, queue_operation_handler, op_ctx);
 
     if (result != NIMCP_SUCCESS) {
+        // Thread pool submission failed, caller must free op_ctx
+        free(op_ctx);
         return result;
     }
 
@@ -674,6 +680,9 @@ static nimcp_result_t submit_queue_operation(nimcp_queue_manager_handle_t manage
     while (!atomic_load(&op_ctx->completed)) {
         // Check for timeout
         if (nimcp_get_timestamp_ms() - start_time > op_ctx->timeout_ms) {
+            // CRITICAL: Can't access or free op_ctx after timeout - worker may still be using it
+            // This leaks the context, but prevents use-after-free which is worse.
+            // Timeouts should be rare in normal operation.
             return NIMCP_TIMEOUT;
         }
         // Yield briefly to prevent CPU saturation
@@ -681,8 +690,13 @@ static nimcp_result_t submit_queue_operation(nimcp_queue_manager_handle_t manage
         nimcp_yield_thread();
     }
 
-    // Return operation result
-    return op_ctx->status;
+    // Worker has completed, safe to read result and free the context
+    nimcp_result_t status = op_ctx->status;
+
+    // Free the heap-allocated context now that we've read the result
+    free(op_ctx);
+
+    return status;
 }
 
 //=============================================================================
@@ -902,16 +916,21 @@ nimcp_result_t nimcp_queue_manager_enqueue(nimcp_queue_manager_handle_t manager,
         priority = NIMCP_QUEUE_PRIORITY_LOW;
     }
 
-    // Create operation context
-    nimcp_queue_operation_ctx_t op_ctx = {
+    // CRITICAL: Heap-allocate context to prevent stack-use-after-return
+    nimcp_queue_operation_ctx_t* op_ctx = malloc(sizeof(nimcp_queue_operation_ctx_t));
+    if (!op_ctx) {
+        return NIMCP_NO_MEMORY;
+    }
+
+    *op_ctx = (nimcp_queue_operation_ctx_t){
         .op_type = NIMCP_QUEUE_OP_ENQUEUE,
         .channel_id = channel_id,
         .priority = priority,
         .message = (nimcp_message_t*) message,  // Cast away const (won't be modified)
         .timeout_ms = timeout_ms ? timeout_ms : manager->config.default_timeout};
 
-    // Submit and wait for completion
-    return submit_queue_operation(manager, &op_ctx);
+    // Submit and wait for completion (submit_queue_operation will free op_ctx)
+    return submit_queue_operation(manager, op_ctx);
 }
 
 /**
@@ -969,7 +988,15 @@ nimcp_result_t nimcp_queue_manager_dequeue(nimcp_queue_manager_handle_t manager,
     // Try dequeuing from each priority level, starting with highest
     // WHY HIGH→LOW: Ensures critical messages processed first
     for (int pri = NIMCP_QUEUE_PRIORITY_HIGH; pri < NIMCP_QUEUE_PRIORITY_COUNT; pri++) {
-        nimcp_queue_operation_ctx_t op_ctx = {
+        // CRITICAL: Heap-allocate context to prevent stack-use-after-return
+        // The context will be freed by submit_queue_operation() on success,
+        // or leaked on timeout (to prevent use-after-free).
+        nimcp_queue_operation_ctx_t* op_ctx = malloc(sizeof(nimcp_queue_operation_ctx_t));
+        if (!op_ctx) {
+            return NIMCP_NO_MEMORY;
+        }
+
+        *op_ctx = (nimcp_queue_operation_ctx_t){
             .op_type = NIMCP_QUEUE_OP_DEQUEUE,
             .channel_id = channel_id,
             .priority = pri,
@@ -980,7 +1007,7 @@ nimcp_result_t nimcp_queue_manager_dequeue(nimcp_queue_manager_handle_t manager,
                               ? (timeout_ms ? timeout_ms : manager->config.default_timeout)
                               : 0};
 
-        nimcp_result_t result = submit_queue_operation(manager, &op_ctx);
+        nimcp_result_t result = submit_queue_operation(manager, op_ctx);
         if (result == NIMCP_SUCCESS) {
             return NIMCP_SUCCESS;
         }
@@ -1034,12 +1061,18 @@ nimcp_result_t nimcp_queue_manager_get_stats(nimcp_queue_manager_handle_t manage
         return NIMCP_INVALID_PARAM;
     }
 
-    nimcp_queue_operation_ctx_t op_ctx = {.op_type = NIMCP_QUEUE_OP_GET_STATS,
-                                          .channel_id = channel_id,
-                                          .result = stats,
-                                          .timeout_ms = manager->config.default_timeout};
+    // CRITICAL: Heap-allocate context to prevent stack-use-after-return
+    nimcp_queue_operation_ctx_t* op_ctx = malloc(sizeof(nimcp_queue_operation_ctx_t));
+    if (!op_ctx) {
+        return NIMCP_NO_MEMORY;
+    }
 
-    return submit_queue_operation(manager, &op_ctx);
+    *op_ctx = (nimcp_queue_operation_ctx_t){.op_type = NIMCP_QUEUE_OP_GET_STATS,
+                                             .channel_id = channel_id,
+                                             .result = stats,
+                                             .timeout_ms = manager->config.default_timeout};
+
+    return submit_queue_operation(manager, op_ctx);
 }
 
 /**
@@ -1079,12 +1112,18 @@ nimcp_result_t nimcp_queue_manager_clear(nimcp_queue_manager_handle_t manager, u
 
     // Clear all priority queues
     for (int pri = 0; pri < NIMCP_QUEUE_PRIORITY_COUNT; pri++) {
-        nimcp_queue_operation_ctx_t op_ctx = {.op_type = NIMCP_QUEUE_OP_CLEAR,
-                                              .channel_id = channel_id,
-                                              .priority = pri,
-                                              .timeout_ms = manager->config.default_timeout};
+        // CRITICAL: Heap-allocate context to prevent stack-use-after-return
+        nimcp_queue_operation_ctx_t* op_ctx = malloc(sizeof(nimcp_queue_operation_ctx_t));
+        if (!op_ctx) {
+            return NIMCP_NO_MEMORY;
+        }
 
-        nimcp_result_t result = submit_queue_operation(manager, &op_ctx);
+        *op_ctx = (nimcp_queue_operation_ctx_t){.op_type = NIMCP_QUEUE_OP_CLEAR,
+                                                 .channel_id = channel_id,
+                                                 .priority = pri,
+                                                 .timeout_ms = manager->config.default_timeout};
+
+        nimcp_result_t result = submit_queue_operation(manager, op_ctx);
         if (result != NIMCP_SUCCESS) {
             final_result = result;  // Track last error
         }

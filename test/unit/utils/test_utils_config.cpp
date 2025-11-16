@@ -504,7 +504,7 @@ TEST_F(ConfigTest, IntegerValues)
 /**
  * WHAT: Test float configuration values
  * WHY: Verify floating-point parsing works correctly
- * NOTE: Float parsing currently broken - documented bug
+ * NOTE: Float parsing bug has been FIXED!
  */
 TEST_F(ConfigTest, FloatValues)
 {
@@ -513,22 +513,13 @@ TEST_F(ConfigTest, FloatValues)
     bool result = nimcp_config_load_yaml(TEST_YAML_FILE, &config);
     ASSERT_TRUE(result);
 
-    // KNOWN BUG: Float parsing broken due to missing stdlib.h
-    // These tests document expected behavior once bug is fixed
-    // EXPECT_FLOAT_EQ(config.learning_rate, 0.001f);
-    // EXPECT_FLOAT_EQ(config.validation_split, 0.15f);
-    // EXPECT_FLOAT_EQ(config.bcm_tau, 500.0f);
-    // EXPECT_FLOAT_EQ(config.stdp_window, 30.0f);
-    // EXPECT_FLOAT_EQ(config.golden_rule_threshold, 0.75f);
-    // EXPECT_FLOAT_EQ(config.empathy_weight, 0.8f);
-
-    // For now, verify they default to 0 (current broken behavior)
-    EXPECT_FLOAT_EQ(config.learning_rate, 0.0f);
-    EXPECT_FLOAT_EQ(config.validation_split, 0.0f);
-    EXPECT_FLOAT_EQ(config.bcm_tau, 0.0f);
-    EXPECT_FLOAT_EQ(config.stdp_window, 0.0f);
-    EXPECT_FLOAT_EQ(config.golden_rule_threshold, 0.0f);
-    EXPECT_FLOAT_EQ(config.empathy_weight, 0.0f);
+    // Float parsing now works correctly
+    EXPECT_FLOAT_EQ(config.learning_rate, 0.001f);
+    EXPECT_FLOAT_EQ(config.validation_split, 0.15f);
+    EXPECT_FLOAT_EQ(config.bcm_tau, 500.0f);
+    EXPECT_FLOAT_EQ(config.stdp_window, 30.0f);
+    EXPECT_FLOAT_EQ(config.golden_rule_threshold, 0.75f);
+    EXPECT_FLOAT_EQ(config.empathy_weight, 0.8f);
 }
 
 /**

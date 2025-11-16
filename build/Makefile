@@ -1823,6 +1823,19 @@ unit_core_synapse_types_test_synapse_types_real/fast:
 .PHONY : unit_core_synapse_types_test_synapse_types_real/fast
 
 #=============================================================================
+# Target rules for targets named unit_core_test_brain_resize
+
+# Build rule for target.
+unit_core_test_brain_resize: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_core_test_brain_resize
+.PHONY : unit_core_test_brain_resize
+
+# fast build rule for target.
+unit_core_test_brain_resize/fast:
+	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_core_test_brain_resize.dir/build.make test/CMakeFiles/unit_core_test_brain_resize.dir/build
+.PHONY : unit_core_test_brain_resize/fast
+
+#=============================================================================
 # Target rules for targets named unit_core_test_coverage_boost
 
 # Build rule for target.
@@ -4033,6 +4046,19 @@ integration_plasticity_stp_test_stp_integration/fast:
 .PHONY : integration_plasticity_stp_test_stp_integration/fast
 
 #=============================================================================
+# Target rules for targets named integration_test_brain_resize_integration
+
+# Build rule for target.
+integration_test_brain_resize_integration: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_test_brain_resize_integration
+.PHONY : integration_test_brain_resize_integration
+
+# fast build rule for target.
+integration_test_brain_resize_integration/fast:
+	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/integration_test_brain_resize_integration.dir/build.make test/CMakeFiles/integration_test_brain_resize_integration.dir/build
+.PHONY : integration_test_brain_resize_integration/fast
+
+#=============================================================================
 # Target rules for targets named integration_utils_tensor_networks_test_mps_neural_network_integration
 
 # Build rule for target.
@@ -4527,6 +4553,19 @@ regression_plasticity_stp_test_stp_backward_compat/fast:
 .PHONY : regression_plasticity_stp_test_stp_backward_compat/fast
 
 #=============================================================================
+# Target rules for targets named regression_test_brain_resize_backward_compat
+
+# Build rule for target.
+regression_test_brain_resize_backward_compat: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_test_brain_resize_backward_compat
+.PHONY : regression_test_brain_resize_backward_compat
+
+# fast build rule for target.
+regression_test_brain_resize_backward_compat/fast:
+	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/regression_test_brain_resize_backward_compat.dir/build.make test/CMakeFiles/regression_test_brain_resize_backward_compat.dir/build
+.PHONY : regression_test_brain_resize_backward_compat/fast
+
+#=============================================================================
 # Target rules for targets named regression_utils_test_utils_regression
 
 # Build rule for target.
@@ -4634,6 +4673,7 @@ help:
 	@echo "... integration_plasticity_eligibility_test_eligibility_wiring"
 	@echo "... integration_plasticity_neuromodulators_test_phasic_tonic_integration"
 	@echo "... integration_plasticity_stp_test_stp_integration"
+	@echo "... integration_test_brain_resize_integration"
 	@echo "... integration_utils_tensor_networks_test_mps_neural_network_integration"
 	@echo "... integration_utils_test_utils_integration"
 	@echo "... izhikevich_demo"
@@ -4679,6 +4719,7 @@ help:
 	@echo "... regression_plasticity_neuromodulators_test_phasic_tonic_backward_compat"
 	@echo "... regression_plasticity_noise_test_pink_noise_backward_compat"
 	@echo "... regression_plasticity_stp_test_stp_backward_compat"
+	@echo "... regression_test_brain_resize_backward_compat"
 	@echo "... regression_utils_test_utils_regression"
 	@echo "... rl_eligibility_demo"
 	@echo "... simple_demo"
@@ -4780,6 +4821,7 @@ help:
 	@echo "... unit_core_synapse_types_test_synapse_compute_real"
 	@echo "... unit_core_synapse_types_test_synapse_embeddings"
 	@echo "... unit_core_synapse_types_test_synapse_types_real"
+	@echo "... unit_core_test_brain_resize"
 	@echo "... unit_core_test_coverage_boost"
 	@echo "... unit_core_test_dataio"
 	@echo "... unit_core_test_encryption_real"

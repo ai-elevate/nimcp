@@ -1145,6 +1145,30 @@ __/core/brain/nimcp_brain.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/nimcp_brain.c.s
 .PHONY : __/core/brain/nimcp_brain.c.s
 
+__/core/brain/nimcp_brain_resize.o: __/core/brain/nimcp_brain_resize.c.o
+.PHONY : __/core/brain/nimcp_brain_resize.o
+
+# target to build an object file
+__/core/brain/nimcp_brain_resize.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/nimcp_brain_resize.c.o
+.PHONY : __/core/brain/nimcp_brain_resize.c.o
+
+__/core/brain/nimcp_brain_resize.i: __/core/brain/nimcp_brain_resize.c.i
+.PHONY : __/core/brain/nimcp_brain_resize.i
+
+# target to preprocess a source file
+__/core/brain/nimcp_brain_resize.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/nimcp_brain_resize.c.i
+.PHONY : __/core/brain/nimcp_brain_resize.c.i
+
+__/core/brain/nimcp_brain_resize.s: __/core/brain/nimcp_brain_resize.c.s
+.PHONY : __/core/brain/nimcp_brain_resize.s
+
+# target to generate assembly for a file
+__/core/brain/nimcp_brain_resize.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/nimcp_brain_resize.c.s
+.PHONY : __/core/brain/nimcp_brain_resize.c.s
+
 __/core/brain/nimcp_distributed_cow.o: __/core/brain/nimcp_distributed_cow.c.o
 .PHONY : __/core/brain/nimcp_distributed_cow.o
 
@@ -3185,6 +3209,30 @@ __/utils/platform/nimcp_platform_time.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/utils/platform/nimcp_platform_time.c.s
 .PHONY : __/utils/platform/nimcp_platform_time.c.s
 
+__/utils/platform/nimcp_system_resources.o: __/utils/platform/nimcp_system_resources.c.o
+.PHONY : __/utils/platform/nimcp_system_resources.o
+
+# target to build an object file
+__/utils/platform/nimcp_system_resources.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/utils/platform/nimcp_system_resources.c.o
+.PHONY : __/utils/platform/nimcp_system_resources.c.o
+
+__/utils/platform/nimcp_system_resources.i: __/utils/platform/nimcp_system_resources.c.i
+.PHONY : __/utils/platform/nimcp_system_resources.i
+
+# target to preprocess a source file
+__/utils/platform/nimcp_system_resources.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/utils/platform/nimcp_system_resources.c.i
+.PHONY : __/utils/platform/nimcp_system_resources.c.i
+
+__/utils/platform/nimcp_system_resources.s: __/utils/platform/nimcp_system_resources.c.s
+.PHONY : __/utils/platform/nimcp_system_resources.s
+
+# target to generate assembly for a file
+__/utils/platform/nimcp_system_resources.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/utils/platform/nimcp_system_resources.c.s
+.PHONY : __/utils/platform/nimcp_system_resources.c.s
+
 __/utils/quantum/nimcp_quantum_shannon.o: __/utils/quantum/nimcp_quantum_shannon.c.o
 .PHONY : __/utils/quantum/nimcp_quantum_shannon.o
 
@@ -3703,6 +3751,9 @@ help:
 	@echo "... __/core/brain/nimcp_brain.o"
 	@echo "... __/core/brain/nimcp_brain.i"
 	@echo "... __/core/brain/nimcp_brain.s"
+	@echo "... __/core/brain/nimcp_brain_resize.o"
+	@echo "... __/core/brain/nimcp_brain_resize.i"
+	@echo "... __/core/brain/nimcp_brain_resize.s"
 	@echo "... __/core/brain/nimcp_distributed_cow.o"
 	@echo "... __/core/brain/nimcp_distributed_cow.i"
 	@echo "... __/core/brain/nimcp_distributed_cow.s"
@@ -3958,6 +4009,9 @@ help:
 	@echo "... __/utils/platform/nimcp_platform_time.o"
 	@echo "... __/utils/platform/nimcp_platform_time.i"
 	@echo "... __/utils/platform/nimcp_platform_time.s"
+	@echo "... __/utils/platform/nimcp_system_resources.o"
+	@echo "... __/utils/platform/nimcp_system_resources.i"
+	@echo "... __/utils/platform/nimcp_system_resources.s"
 	@echo "... __/utils/quantum/nimcp_quantum_shannon.o"
 	@echo "... __/utils/quantum/nimcp_quantum_shannon.i"
 	@echo "... __/utils/quantum/nimcp_quantum_shannon.s"
