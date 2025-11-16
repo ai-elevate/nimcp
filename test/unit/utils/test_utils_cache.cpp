@@ -550,7 +550,7 @@ TEST_F(CacheTest, EdgeCases_HandlesEdgeCasesCorrectly) {
 
             nimcp_cache_release(copy);
         }
-        nimcp_cache_release(ptr);
+        // Note: ptr already released by force_copy(), don't release again
     }
 
     // Test 9: Make writable when already private (no copy needed)

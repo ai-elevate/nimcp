@@ -473,6 +473,11 @@ TEST_F(PlatformThreadTest, MultipleThreadsWithArgs) {
         void* retval = nullptr;
         int result = nimcp_platform_thread_join(threads[i], &retval);
         EXPECT_EQ(result, 0) << "Thread " << i << " join should succeed";
+
+        // Free the return value to prevent memory leak
+        if (retval) {
+            free(retval);
+        }
     }
 }
 

@@ -598,9 +598,13 @@ def train_streaming(
     num_examples: int = 10000,
     consolidation_interval: int = 500,
     checkpoint_path: str = None,
-    checkpoint_interval: int = 1000
+    checkpoint_interval: int = 1000,
+    phase: int = 1,
+    phase_name: str = "INFANT",
+    resize_check_interval: int = 200,
+    target_brain_size: str = "AUTO"
 ):
-    """Train on streaming data with periodic checkpointing
+    """Train on streaming data with periodic checkpointing and auto-resize
 
     Args:
         brain: NIMCP brain instance
@@ -609,10 +613,14 @@ def train_streaming(
         consolidation_interval: Examples between consolidation
         checkpoint_path: Path to save checkpoints (None = no checkpointing)
         checkpoint_interval: Examples between checkpoint saves
+        phase: Current training phase (1-5)
+        phase_name: Name of current phase
+        resize_check_interval: Examples between resize checks
+        target_brain_size: Target size for this phase (TINY/SMALL/MEDIUM/LARGE/AUTO)
     """
 
     print("\n" + "="*60)
-    print("🌊 STREAMING TRAINING ACTIVE")
+    print(f"🌊 STREAMING TRAINING ACTIVE - PHASE {phase}: {phase_name}")
     print("="*60)
     print(f"Streams: {len(streams)}")
     print(f"Training examples: {num_examples}")
@@ -628,25 +636,42 @@ def train_streaming(
     stats = {
         'total_trained': 0,
         'by_domain': {},
+        'by_source': {},
         'start_time': time.time()
     }
+
+    # Track stream names for better reporting
+    stream_names = [stream.__class__.__name__ for stream in streams]
 
     try:
         for i in range(num_examples):
             # Round-robin through streams
             stream_idx = i % len(stream_iters)
             stream_iter = stream_iters[stream_idx]
+            current_stream = streams[stream_idx]
+            current_stream_name = stream_names[stream_idx]
+
+            # Show which dataset is being fetched
+            if (i + 1) % 100 == 0:
+                print(f"\n🔄 Currently fetching: {current_stream_name} (source: {current_stream.domain})")
+                sys.stdout.flush()
 
             # Get next example
             example = next(stream_iter)
             domain = example['domain']
             text = example['text']
             label = example['label']
+            source = example.get('source', 'unknown')
 
-            # Track stats
+            # Track stats by domain
             if domain not in stats['by_domain']:
                 stats['by_domain'][domain] = 0
             stats['by_domain'][domain] += 1
+
+            # Track stats by source
+            if source not in stats['by_source']:
+                stats['by_source'][source] = 0
+            stats['by_source'][source] += 1
 
             # Extract features
             features = extract_features(text)
@@ -657,6 +682,30 @@ def train_streaming(
 
             stats['total_trained'] += 1
 
+            # Auto-resize check
+            if (i + 1) % resize_check_interval == 0:
+                try:
+                    old_size = brain.get_neuron_count()
+                    resized = brain.auto_resize()
+
+                    if resized:
+                        new_size = brain.get_neuron_count()
+                        growth = ((new_size - old_size) / old_size) * 100
+                        print(f"\n🔧 AUTO-RESIZE at {i+1} examples")
+                        print(f"   {old_size} → {new_size} neurons (+{growth:.1f}%)")
+
+                        # Get utilization metrics
+                        try:
+                            util, sat = brain.get_utilization_metrics()
+                            print(f"   Utilization: {util*100:.1f}%, Saturation: {sat*100:.1f}%")
+                        except:
+                            pass
+
+                        sys.stdout.flush()
+                except Exception as e:
+                    print(f"\n⚠️  Auto-resize check failed: {e}")
+                    sys.stdout.flush()
+
             # Progress
             if (i + 1) % 100 == 0:
                 elapsed = time.time() - stats['start_time']
@@ -665,8 +714,19 @@ def train_streaming(
                 # Domain breakdown
                 domain_str = " | ".join([f"{k[:4]}:{v}" for k, v in list(stats['by_domain'].items())[:3]])
 
-                print(f"\r[{i+1}/{num_examples}] {domain_str} | Rate: {rate:.1f} ex/s",
-                      end='', flush=True)
+                # Get current brain size
+                current_brain_size = brain.get_neuron_count()
+
+                # Source breakdown
+                print(f"\n📊 TRAINING PROGRESS - PHASE {phase}: {phase_name}")
+                print(f"   Session: [{i+1}/{num_examples}] ({(i+1)/num_examples*100:.1f}%)")
+                print(f"   Rate: {rate:.1f} examples/sec")
+                print(f"   Brain size: {current_brain_size} neurons (target: {target_brain_size})")
+                print(f"\n📥 DATASETS ALREADY PROCESSED:")
+                for src, count in sorted(stats['by_source'].items(), key=lambda x: -x[1]):
+                    print(f"   ✓ {src}: {count} examples")
+                print(f"\n🔄 CURRENTLY DOWNLOADING: {current_stream_name}")
+                print("-" * 60)
                 sys.stdout.flush()  # Force flush
 
             # Consolidation
@@ -716,9 +776,14 @@ def train_streaming(
     print(f"Total examples: {stats['total_trained']}")
     print(f"Training time: {elapsed:.1f}s ({elapsed/60:.1f} minutes)")
     print(f"Training rate: {stats['total_trained'] / elapsed:.1f} ex/s")
+    print("\n📥 DATASETS PROCESSED (by source):")
+    for source, count in sorted(stats['by_source'].items(), key=lambda x: -x[1]):
+        percentage = (count / stats['total_trained']) * 100
+        print(f"  ✓ {source}: {count} examples ({percentage:.1f}%)")
     print("\nBy domain:")
-    for domain, count in stats['by_domain'].items():
-        print(f"  {domain}: {count}")
+    for domain, count in sorted(stats['by_domain'].items(), key=lambda x: -x[1]):
+        percentage = (count / stats['total_trained']) * 100
+        print(f"  {domain}: {count} examples ({percentage:.1f}%)")
     print("="*60)
 
     return stats
@@ -728,12 +793,83 @@ def train_streaming(
 #=============================================================================
 
 def main():
+    # Training Phase Configuration (5-phase curriculum)
+    # Brain grows from TINY → SMALL → MEDIUM → LARGE during training
+    PHASES = {
+        1: {
+            'name': 'INFANT',
+            'examples_total': 2000000,  # 1-2M examples
+            'curiosity': 0.95,
+            'skepticism': 0.3,
+            'consolidation_interval': 500,
+            'description': 'Foundation - concrete observables',
+            'target_brain_size': 'SMALL',  # Grow from TINY(100) → SMALL(500)
+            'resize_check_interval': 200   # Check for auto-resize every 200 examples
+        },
+        2: {
+            'name': 'TODDLER',
+            'examples_total': 2500000,  # 2-3M examples
+            'curiosity': 0.85,
+            'skepticism': 0.4,
+            'consolidation_interval': 750,
+            'description': 'Language & simple reasoning',
+            'target_brain_size': 'MEDIUM',  # Grow from SMALL(500) → MEDIUM(1K)
+            'resize_check_interval': 250
+        },
+        3: {
+            'name': 'CHILD',
+            'examples_total': 3500000,  # 3-4M examples
+            'curiosity': 0.7,
+            'skepticism': 0.6,
+            'consolidation_interval': 1000,
+            'description': 'Structured knowledge',
+            'target_brain_size': 'LARGE',  # Grow from MEDIUM(1K) → LARGE(5K)
+            'resize_check_interval': 300
+        },
+        4: {
+            'name': 'ADOLESCENT',
+            'examples_total': 3500000,  # 3-4M examples
+            'curiosity': 0.6,
+            'skepticism': 0.7,
+            'consolidation_interval': 1500,
+            'description': 'Abstract reasoning',
+            'target_brain_size': 'AUTO',  # Hardware-aware auto-resize
+            'resize_check_interval': 500
+        },
+        5: {
+            'name': 'ADULT/EXPERT',
+            'examples_total': 2500000,  # 2-3M examples
+            'curiosity': 0.5,
+            'skepticism': 0.6,
+            'consolidation_interval': 2000,
+            'description': 'Specialization & synthesis',
+            'target_brain_size': 'AUTO',  # Hardware-aware auto-resize
+            'resize_check_interval': 500
+        }
+    }
+
     # Checkpoint configuration
     checkpoint_path = "checkpoints/streaming_brain.checkpoint"
     checkpoint_interval = 1000  # Save every 1000 examples
 
+    # Load or determine current phase
+    current_phase = 1
+    total_examples_trained = 0
+
+    # Try to load existing checkpoint to determine phase
+    if os.path.exists(checkpoint_path + ".meta"):
+        # TODO: Parse metadata to determine current phase and examples
+        # For now, default to Phase 1
+        current_phase = 1
+
+    phase_config = PHASES[current_phase]
+
     print("="*60)
     print("🌊 NIMCP STREAMING TRAINING")
+    print("="*60)
+    print(f"📚 PHASE {current_phase}: {phase_config['name']}")
+    print(f"   {phase_config['description']}")
+    print(f"   Target: {phase_config['examples_total']:,} examples")
     print("="*60)
     print("Mode: True streaming (no local storage)")
     print("Datasets: Fetched on-the-fly from online sources")
@@ -742,10 +878,14 @@ def main():
 
     # Create or load brain
     print("\n🧠 Creating/Loading NIMCP brain...")
-    print("  Size: MEDIUM")
+    print("  Initial Size: TINY (100 neurons)")
+    print("  Growth Strategy: Curriculum-based auto-resize")
+    print(f"  Phase {current_phase} target: {phase_config['target_brain_size']}")
     print("  All cognitive systems: ACTIVE")
-    print("  Epistemic filtering: ACTIVE (skepticism 0.3 - Phase 1)")
-    print("  Curiosity: ACTIVE (0.95 - Phase 1)")
+    print(f"  Epistemic filtering: ACTIVE (skepticism {phase_config['skepticism']} - Phase {current_phase})")
+    print(f"  Curiosity: ACTIVE ({phase_config['curiosity']} - Phase {current_phase})")
+    print(f"  Consolidation interval: {phase_config['consolidation_interval']} examples")
+    print(f"  Resize check interval: {phase_config['resize_check_interval']} examples")
 
     # Try to load from checkpoint first
     brain = None
@@ -754,7 +894,8 @@ def main():
             print(f"\n📂 Found existing checkpoint: {checkpoint_path}")
             print("  Loading brain from checkpoint...")
             brain = nimcp.Brain.load(checkpoint_path)
-            print("  ✓ Brain loaded from checkpoint")
+            current_size = brain.get_neuron_count()
+            print(f"  ✓ Brain loaded from checkpoint ({current_size} neurons)")
             print("  ✓ Resuming training from saved state")
         except Exception as e:
             print(f"  ⚠️  Failed to load checkpoint: {e}")
@@ -765,12 +906,12 @@ def main():
     if brain is None:
         brain = nimcp.Brain(
             'nimcp_streaming',  # name
-            2,                  # size = MEDIUM
+            0,                  # size = TINY (will grow automatically)
             0,                  # task = CLASSIFICATION
             512,                # inputs
             256                 # outputs
         )
-        print("  ✓ Brain created")
+        print(f"  ✓ Brain created ({brain.get_neuron_count()} neurons - TINY)")
 
         # Ensure checkpoint directory exists
         checkpoint_dir = os.path.dirname(checkpoint_path)
@@ -846,16 +987,36 @@ def main():
         return 1
 
     print(f"\n✓ {len(streams)} streams ready")
+    print("\n📋 AVAILABLE DATASETS:")
+    for i, stream in enumerate(streams, 1):
+        stream_name = stream.__class__.__name__
+        domain = stream.domain
+        print(f"  {i}. {stream_name} (domain: {domain})")
+    print("="*60)
 
     # Start streaming training
     try:
+        # For this session, train on a portion of the phase
+        # User can run multiple sessions to complete the full phase
+        session_examples = 50000  # 50K per session (adjustable)
+
+        print(f"\n📊 SESSION CONFIGURATION:")
+        print(f"   Examples this session: {session_examples:,}")
+        print(f"   Phase {current_phase} progress: {session_examples}/{phase_config['examples_total']:,} ({session_examples/phase_config['examples_total']*100:.2f}%)")
+        print(f"   Consolidation: Every {phase_config['consolidation_interval']} examples")
+        print("="*60)
+
         stats = train_streaming(
             brain,
             streams,
-            num_examples=50000,  # Train on 50K streaming examples (5x faster sessions)
-            consolidation_interval=500,  # Phase 1 schedule
+            num_examples=session_examples,
+            consolidation_interval=phase_config['consolidation_interval'],  # Use phase-specific interval
             checkpoint_path=checkpoint_path,  # Checkpoint saving
-            checkpoint_interval=checkpoint_interval  # Save every N examples
+            checkpoint_interval=checkpoint_interval,  # Save every N examples
+            phase=current_phase,  # Current phase number
+            phase_name=phase_config['name'],  # Phase name
+            resize_check_interval=phase_config['resize_check_interval'],  # Auto-resize check interval
+            target_brain_size=phase_config['target_brain_size']  # Target size for this phase
         )
     except Exception as e:
         print(f"\n❌ Training failed: {e}")
@@ -871,6 +1032,28 @@ def main():
     print("\n" + "="*60)
     print("✅ STREAMING TRAINING SESSION COMPLETE")
     print("="*60)
+
+    # Show phase progress
+    examples_completed = session_examples  # In future, track cumulative across sessions
+    examples_remaining = phase_config['examples_total'] - examples_completed
+    phase_progress = (examples_completed / phase_config['examples_total']) * 100
+
+    print(f"\n📊 PHASE {current_phase} ({phase_config['name']}) PROGRESS:")
+    print(f"   Completed: {examples_completed:,} / {phase_config['examples_total']:,} examples ({phase_progress:.2f}%)")
+    print(f"   Remaining: {examples_remaining:,} examples")
+
+    if examples_completed >= phase_config['examples_total']:
+        print(f"\n🎓 PHASE {current_phase} COMPLETE!")
+        if current_phase < 5:
+            next_phase = PHASES[current_phase + 1]
+            print(f"\n📚 READY FOR PHASE {current_phase + 1}: {next_phase['name']}")
+            print(f"   {next_phase['description']}")
+            print(f"   Curiosity: {next_phase['curiosity']}")
+            print(f"   Skepticism: {next_phase['skepticism']}")
+            print(f"   Consolidation: Every {next_phase['consolidation_interval']} examples")
+        else:
+            print("\n🎓🎓🎓 TRAINING COMPLETE - ALL 5 PHASES FINISHED! 🎓🎓🎓")
+
     print("\nTo continue training:")
     print("  python start_streaming.py")
     print("\nTo train with more streams:")
