@@ -3322,8 +3322,14 @@ brain_t brain_create_custom(const brain_config_t* config)
         return NULL;
     }
 
-    // Phase 8.9: Initialize symbolic logic reasoning (now that config is properly set)
+    // Phase 8.9: Initialize neural logic gates (now that config is properly set)
     if (!init_symbolic_logic_subsystem(brain)) {
+        brain_destroy(brain);
+        return NULL;
+    }
+
+    // Phase 9.4: Initialize symbolic reasoning (now that config is properly set)
+    if (!init_symbolic_reasoning_subsystem(brain)) {
         brain_destroy(brain);
         return NULL;
     }
@@ -8354,6 +8360,20 @@ bool brain_get_astrocyte_stats(brain_t brain, astrocyte_stats_t* stats) {
 bool brain_predict(brain_t brain, const float* input, uint32_t input_size,
                   float* output, uint32_t output_size) {
     if (!brain || !input || !output) {
+        set_error("NULL pointer provided to brain_predict");
+        return false;
+    }
+
+    // Validate dimensions match brain configuration
+    if (input_size != brain->config.num_inputs) {
+        set_error("Input size mismatch: expected %u, got %u",
+                 brain->config.num_inputs, input_size);
+        return false;
+    }
+
+    if (output_size != brain->config.num_outputs) {
+        set_error("Output size mismatch: expected %u, got %u",
+                 brain->config.num_outputs, output_size);
         return false;
     }
 
