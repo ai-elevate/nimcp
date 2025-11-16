@@ -580,7 +580,18 @@ float brain_state_similarity(const brain_state_t* state1, const brain_state_t* s
         return 0.0f;
     }
 
-    return compute_cosine_similarity(state1->state_vector, state2->state_vector, state1->dimension);
+    float similarity = compute_cosine_similarity(state1->state_vector, state2->state_vector, state1->dimension);
+
+    /* WHAT: Clamp to [0,1] to handle floating-point rounding errors */
+    /* WHY: Cosine similarity can exceed 1.0 slightly due to FP arithmetic */
+    /* HOW: Use fminf/fmaxf to clamp the value */
+    if (similarity > 1.0f) {
+        similarity = 1.0f;
+    } else if (similarity < 0.0f) {
+        similarity = 0.0f;
+    }
+
+    return similarity;
 }
 
 /* ========================================================================
