@@ -53,18 +53,21 @@ extern "C" {
 // Helper function to create a default network configuration
 static network_config_t create_test_network_config(void)
 {
-    network_config_t config = {.num_neurons = 10,
-                               .ei_ratio = 0.8f,
-                               .learning_rate = 0.01f,
-                               .hebbian_rate = 0.1f,
-                               .stdp_window = 20.0f,
-                               .homeostatic_rate = 0.001f,
-                               .target_activity = 0.1f,
-                               .adaptation_rate = 0.1f,
-                               .refractory_period = 5.0f,
-                               .min_weight = -1.0f,
-                               .max_weight = 1.0f,
-                               .update_interval = 1000};
+    network_config_t config = {};
+    config.num_neurons = 10;
+    config.input_size = 10;
+    config.output_size = 10;
+    config.ei_ratio = 0.8f;
+    config.learning_rate = 0.01f;
+    config.hebbian_rate = 0.1f;
+    config.stdp_window = 20.0f;
+    config.homeostatic_rate = 0.001f;
+    config.target_activity = 0.1f;
+    config.adaptation_rate = 0.1f;
+    config.refractory_period = 5.0f;
+    config.min_weight = -1.0f;
+    config.max_weight = 1.0f;
+    config.update_interval = 1000;
     return config;
 }
 
