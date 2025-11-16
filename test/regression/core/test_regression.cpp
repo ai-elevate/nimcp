@@ -39,7 +39,7 @@ extern "C" {
 #include "security/nimcp_security.h"
 #include "io/stream/nimcp_stream.h"
 #include "utils/containers/nimcp_btree.h"
-#include "utils/containers/nimcp_graph.h"
+// #include "utils/containers/nimcp_graph.h"  // Conflicts with p2pnode.h forward declaration
 #include "utils/containers/nimcp_hash_table.h"
 #include "utils/json/nimcp_json.h"
 #include "utils/memory/nimcp_memory.h"
@@ -319,7 +319,7 @@ TEST_F(RegressionTest, DistributedCognition_PruningCoordination) {
 
 TEST_F(RegressionTest, Performance_TimeBaseline) {
     uint64_t start = nimcp_time_monotonic_us();
-    for (volatile int i = 0; i < 10000; i++) {}
+    for (int i = 0; i < 10000; i++) {}  // Removed volatile (deprecated in C++20)
     uint64_t elapsed = nimcp_time_elapsed_us(start);
     // Should complete in under 10ms
     EXPECT_LT(elapsed, 10000);
