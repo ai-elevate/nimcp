@@ -427,6 +427,90 @@ static PyObject* Brain_load(PyTypeObject* type, PyObject* args) {
     return (PyObject*)self;
 }
 
+//=============================================================================
+// Phase 2.8: Dynamic Brain Resizing (Python Bindings)
+//=============================================================================
+
+/**
+ * WHAT: Resize brain to new neuron count
+ * WHY:  Allow dynamic brain growth during training
+ * HOW:  Call brain_resize from nimcp_brain_resize.h
+ *
+ * @param new_neuron_count Target neuron count (must be > current)
+ * @return True on success, raises RuntimeError on failure
+ */
+static PyObject* Brain_resize(BrainObject* self, PyObject* args) {
+    uint32_t new_neuron_count;
+
+    if (!PyArg_ParseTuple(args, "I", &new_neuron_count)) {
+        return NULL;
+    }
+
+    // Note: brain_resize is declared in nimcp_brain.h (Phase 2.8)
+    // The actual implementation is in nimcp_brain_resize.c
+    // This requires brain_resize to be exposed via the public API
+    // TODO: Ensure brain_resize is properly linked
+
+    bool success = brain_resize(self->brain, new_neuron_count);
+
+    if (!success) {
+        PyErr_SetString(PyExc_RuntimeError, "Failed to resize brain. Check that new size > current size and sufficient memory available.");
+        return NULL;
+    }
+
+    Py_RETURN_TRUE;
+}
+
+/**
+ * WHAT: Auto-resize brain based on utilization
+ * WHY:  Enable automatic capacity management
+ * HOW:  Call brain_auto_resize
+ *
+ * @return True if resize occurred, False if no resize needed
+ */
+static PyObject* Brain_auto_resize(BrainObject* self, PyObject* args) {
+    bool resized = brain_auto_resize(self->brain);
+
+    if (resized) {
+        Py_RETURN_TRUE;
+    } else {
+        Py_RETURN_FALSE;
+    }
+}
+
+/**
+ * WHAT: Get current neuron count
+ * WHY:  Monitor brain size for metrics/logging
+ * HOW:  Call brain_get_neuron_count
+ *
+ * @return Integer neuron count
+ */
+static PyObject* Brain_get_neuron_count(BrainObject* self, PyObject* args) {
+    uint32_t count = brain_get_neuron_count(self->brain);
+    return PyLong_FromUnsignedLong(count);
+}
+
+/**
+ * WHAT: Get brain utilization metrics
+ * WHY:  Monitor capacity and decide when to resize
+ * HOW:  Call brain_get_utilization_metrics
+ *
+ * @return Tuple (utilization, saturation) where both are floats [0.0, 1.0]
+ */
+static PyObject* Brain_get_utilization_metrics(BrainObject* self, PyObject* args) {
+    float utilization = 0.0f;
+    float saturation = 0.0f;
+
+    bool success = brain_get_utilization_metrics(self->brain, &utilization, &saturation);
+
+    if (!success) {
+        PyErr_SetString(PyExc_RuntimeError, "Failed to get utilization metrics");
+        return NULL;
+    }
+
+    return Py_BuildValue("(ff)", utilization, saturation);
+}
+
 static PyMethodDef Brain_methods[] = {
     {"learn", (PyCFunction)Brain_learn, METH_VARARGS,
      "Learn from example: learn(features, label, confidence=1.0) -> loss"},
@@ -438,6 +522,17 @@ static PyMethodDef Brain_methods[] = {
      "Save to file: save(filepath)"},
     {"load", (PyCFunction)Brain_load, METH_VARARGS | METH_CLASS,
      "Load from file: Brain.load(filepath) -> Brain"},
+
+    // Phase 2.8: Dynamic Brain Resizing
+    {"resize", (PyCFunction)Brain_resize, METH_VARARGS,
+     "Resize brain to new neuron count: resize(new_neuron_count) -> True"},
+    {"auto_resize", (PyCFunction)Brain_auto_resize, METH_NOARGS,
+     "Auto-resize based on utilization: auto_resize() -> True if resized, False otherwise"},
+    {"get_neuron_count", (PyCFunction)Brain_get_neuron_count, METH_NOARGS,
+     "Get current neuron count: get_neuron_count() -> int"},
+    {"get_utilization_metrics", (PyCFunction)Brain_get_utilization_metrics, METH_NOARGS,
+     "Get utilization metrics: get_utilization_metrics() -> (utilization, saturation)"},
+
     {NULL}
 };
 

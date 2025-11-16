@@ -998,7 +998,6 @@ knowledge_system_t knowledge_system_create(const char* learner_name)
         initialize_domain_stats(&system->domain_stats[i], (knowledge_domain_t) i);
     }
 
-    fprintf(stderr, "[DEBUG] knowledge_system_create: creating unified brain for knowledge system\n"); fflush(stderr);
 
     // Create unified brain for knowledge system (provides curiosity module)
     // Previously created curiosity independently - now follows "one brain, many modules" pattern
@@ -1009,9 +1008,7 @@ knowledge_system_t knowledge_system_create(const char* learner_name)
         knowledge_system_destroy(system);
         return NULL;
     }
-    fprintf(stderr, "[DEBUG] knowledge_system_create: unified brain created\n"); fflush(stderr);
 
-    fprintf(stderr, "[DEBUG] knowledge_system_create: DONE\n"); fflush(stderr);
     return system;
 }
 
@@ -1120,33 +1117,23 @@ static void free_history(historical_knowledge_t* history, uint32_t num_history)
  */
 void knowledge_system_destroy(knowledge_system_t system)
 {
-    fprintf(stderr, "[DEBUG] knowledge_system_destroy: START\n"); fflush(stderr);
     if (!system)
         return;
 
-    fprintf(stderr, "[DEBUG] knowledge_system_destroy: destroying repository\n"); fflush(stderr);
     repository_destroy(system->repository);
-    fprintf(stderr, "[DEBUG] knowledge_system_destroy: freeing narratives\n"); fflush(stderr);
     free_narratives(system->narratives, system->num_narratives);
-    fprintf(stderr, "[DEBUG] knowledge_system_destroy: freeing artworks\n"); fflush(stderr);
     free_artworks(system->artworks, system->num_artworks);
-    fprintf(stderr, "[DEBUG] knowledge_system_destroy: freeing history\n"); fflush(stderr);
     free_history(system->history, system->num_history);
-    fprintf(stderr, "[DEBUG] knowledge_system_destroy: freeing reading_list\n"); fflush(stderr);
     nimcp_free(system->reading_list);
     // REMOVED: free_domain_brains() call - brains were never used
 
     // Destroy unified brain (includes curiosity module cleanup)
     // Previously destroyed curiosity independently - now brain owns it
     if (system->knowledge_brain) {
-        fprintf(stderr, "[DEBUG] knowledge_system_destroy: destroying unified brain\n"); fflush(stderr);
         brain_destroy(system->knowledge_brain);
-        fprintf(stderr, "[DEBUG] knowledge_system_destroy: unified brain destroyed\n"); fflush(stderr);
     }
 
-    fprintf(stderr, "[DEBUG] knowledge_system_destroy: freeing system\n"); fflush(stderr);
     nimcp_free(system);
-    fprintf(stderr, "[DEBUG] knowledge_system_destroy: DONE\n"); fflush(stderr);
 }
 
 //=============================================================================

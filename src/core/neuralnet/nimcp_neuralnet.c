@@ -664,12 +664,10 @@ neural_network_t neural_network_create(const network_config_t* config)
  */
 void neural_network_destroy(neural_network_t network)
 {
-    fprintf(stderr, "[DEBUG] neural_network_destroy: START\n"); fflush(stderr);
     // Guard clause: Handle NULL input
     if (!network)
         return;
 
-    fprintf(stderr, "[DEBUG] neural_network_destroy: num_neurons=%u\n", network->num_neurons); fflush(stderr);
 
     /**
      * WHAT: Cleanup neuron models (NIMCP 2.6)
@@ -677,10 +675,8 @@ void neural_network_destroy(neural_network_t network)
      * HOW: Call neuron_model_destroy for each model
      */
     if (network->neurons) {
-        fprintf(stderr, "[DEBUG] neural_network_destroy: starting neuron loop\n"); fflush(stderr);
         for (uint32_t i = 0; i < network->num_neurons; i++) {
             if (i % 100 == 0) {
-                fprintf(stderr, "[DEBUG] neural_network_destroy: processing neuron %u/%u\n", i, network->num_neurons); fflush(stderr);
             }
             if (network->neurons[i].model) {
                 neuron_model_destroy(network->neurons[i].model);
@@ -693,38 +689,30 @@ void neural_network_destroy(neural_network_t network)
             // HOW: Iterate through outgoing synapses and free BCM state
             neuron_t* neuron = &network->neurons[i];
             if (i == 0) {
-                fprintf(stderr, "[DEBUG] neural_network_destroy: neuron 0 has %u synapses\n", neuron->num_synapses); fflush(stderr);
             }
             for (uint32_t j = 0; j < neuron->num_synapses; j++) {
                 if (i == 0 && j % 10 == 0) {
-                    fprintf(stderr, "[DEBUG] neural_network_destroy: processing synapse %u/%u for neuron 0\n", j, neuron->num_synapses); fflush(stderr);
                 }
                 synapse_t* syn = &neuron->synapses[j];
                 if (i == 0 && j < 5) {
-                    fprintf(stderr, "[DEBUG] neural_network_destroy: synapse %u: bcm=%p, eligibility=%p\n", j, (void*)syn->bcm, (void*)syn->eligibility); fflush(stderr);
                 }
                 if (syn->bcm) {
                     if (i == 0 && j < 5) {
-                        fprintf(stderr, "[DEBUG] neural_network_destroy: freeing bcm for synapse %u\n", j); fflush(stderr);
                     }
                     nimcp_free(syn->bcm);
                     if (i == 0 && j < 5) {
-                        fprintf(stderr, "[DEBUG] neural_network_destroy: bcm freed for synapse %u\n", j); fflush(stderr);
                     }
                     syn->bcm = NULL;
                 }
                 if (syn->eligibility) {
                     if (i == 0 && j < 5) {
-                        fprintf(stderr, "[DEBUG] neural_network_destroy: freeing eligibility for synapse %u\n", j); fflush(stderr);
                     }
                     nimcp_free(syn->eligibility);
                     if (i == 0 && j < 5) {
-                        fprintf(stderr, "[DEBUG] neural_network_destroy: eligibility freed for synapse %u\n", j); fflush(stderr);
                     }
                     syn->eligibility = NULL;
                 }
                 if (i == 0 && j < 5) {
-                    fprintf(stderr, "[DEBUG] neural_network_destroy: synapse %u cleanup complete\n", j); fflush(stderr);
                 }
             }
 

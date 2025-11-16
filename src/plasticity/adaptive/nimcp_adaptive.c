@@ -967,17 +967,14 @@ static void free_label_map(char** label_map, uint32_t num_labels)
  */
 void adaptive_network_destroy(adaptive_network_t network)
 {
-    fprintf(stderr, "[DEBUG] adaptive_network_destroy: START\n"); fflush(stderr);
     // Guard clause: Validate input
     if (!network)
         return;
 
-    fprintf(stderr, "[DEBUG] adaptive_network_destroy: destroying base_network\n"); fflush(stderr);
     // Destroy base network
     if (network->base_network) {
         neural_network_destroy(network->base_network);
     }
-    fprintf(stderr, "[DEBUG] adaptive_network_destroy: base_network destroyed\n"); fflush(stderr);
 
     // Free neuron states and their spike trains
     if (network->neuron_states) {
@@ -1005,7 +1002,6 @@ void adaptive_network_destroy(adaptive_network_t network)
     }
 
     nimcp_free(network);
-    fprintf(stderr, "[DEBUG] adaptive_network_destroy: DONE\n"); fflush(stderr);
 }
 
 //=============================================================================
@@ -2188,4 +2184,28 @@ neural_network_t adaptive_network_get_base_network(adaptive_network_t network)
     if (!network)
         return NULL;
     return network->base_network;
+}
+
+/**
+ * WHAT: Get network configuration (read-only)
+ * WHY: Enable brain resize to read current config for cloning
+ * HOW: Return pointer to internal config structure
+ *
+ * Phase 2.8: Brain Dynamic Resizing Support
+ * COMPLEXITY: O(1) - direct pointer access
+ *
+ * @param network Adaptive network
+ * @return Pointer to config (read-only), or NULL on error
+ */
+const adaptive_network_config_t* adaptive_network_get_config(adaptive_network_t network)
+{
+    /* Guard: Validate network handle */
+    if (!network) {
+        return NULL;
+    }
+
+    /* WHAT: Return pointer to internal config */
+    /* NOTE: Returned as const to prevent modification */
+    /* WHY: Config should only be changed during creation or explicit reconfigure */
+    return &network->config;
 }

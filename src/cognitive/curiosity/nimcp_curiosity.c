@@ -769,14 +769,10 @@ curiosity_engine_t curiosity_engine_create(brain_t parent_brain, const char* lea
     engine->question_prioritizer_state.last_priority = 0.5f;
     engine->question_prioritizer_state.last_difficulty = 0.5f;
 
-    fprintf(stderr, "[DEBUG] curiosity_engine_create: init stage\n"); fflush(stderr);
     // Initialize with infant stage
     engine->stage = STAGE_INFANT;
-    fprintf(stderr, "[DEBUG] curiosity_engine_create: calling get_stage_strategy\n"); fflush(stderr);
     engine->stage_strategy = get_stage_strategy(STAGE_INFANT);
-    fprintf(stderr, "[DEBUG] curiosity_engine_create: calling get_baseline_curiosity\n"); fflush(stderr);
     engine->baseline_curiosity = engine->stage_strategy->get_baseline_curiosity();
-    fprintf(stderr, "[DEBUG] curiosity_engine_create: baseline curiosity OK\n"); fflush(stderr);
     engine->current_motivation = engine->baseline_curiosity;
 
     // Initialize progress
@@ -787,7 +783,6 @@ curiosity_engine_t curiosity_engine_create(brain_t parent_brain, const char* lea
     snprintf(engine->progress.current_focus, sizeof(engine->progress.current_focus),
              "exploring world");
 
-    fprintf(stderr, "[DEBUG] curiosity_engine_create: DONE\n"); fflush(stderr);
     return engine;
 }
 
@@ -801,26 +796,20 @@ curiosity_engine_t curiosity_engine_create(brain_t parent_brain, const char* lea
  */
 void curiosity_engine_destroy(curiosity_engine_t engine)
 {
-    fprintf(stderr, "[DEBUG] curiosity_engine_destroy: START\n"); fflush(stderr);
     if (!engine) {
         return;
     }
 
-    fprintf(stderr, "[DEBUG] curiosity_engine_destroy: freeing hash table\n"); fflush(stderr);
     free_hash_table(engine);
 
-    fprintf(stderr, "[DEBUG] curiosity_engine_destroy: freeing questions\n"); fflush(stderr);
     nimcp_free(engine->questions);
-    fprintf(stderr, "[DEBUG] curiosity_engine_destroy: freeing sources\n"); fflush(stderr);
     nimcp_free(engine->sources);
 
     // REFACTORED: No brain destruction needed - we only hold a reference
     // parent_brain is owned by caller and will be destroyed by them
     // Previously destroyed gap_detector and question_prioritizer brains here
 
-    fprintf(stderr, "[DEBUG] curiosity_engine_destroy: freeing engine\n"); fflush(stderr);
     nimcp_free(engine);
-    fprintf(stderr, "[DEBUG] curiosity_engine_destroy: DONE\n"); fflush(stderr);
 }
 
 //=============================================================================
