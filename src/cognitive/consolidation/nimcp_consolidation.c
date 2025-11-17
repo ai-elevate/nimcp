@@ -895,6 +895,7 @@ void consolidation_reset_stats(consolidation_handle_t handle)
 {
     if (handle == NULL) {
         /* WHAT: Reset synchronous stats */
+        ensure_sync_stats_init();
         nimcp_mutex_lock(&g_sync_stats_lock);
         memset(&g_sync_stats, 0, sizeof(consolidation_stats_t));
         nimcp_mutex_unlock(&g_sync_stats_lock);
@@ -904,6 +905,34 @@ void consolidation_reset_stats(consolidation_handle_t handle)
         memset(&handle->stats, 0, sizeof(consolidation_stats_t));
         nimcp_mutex_unlock(&handle->lock);
     }
+}
+
+/**
+ * WHAT: Reset global consolidation state to initial values
+ * WHY: Test isolation - prevent state contamination between tests
+ * HOW: Zero g_sync_stats, reset initialization flag
+ *
+ * DESIGN: Complete reset for test isolation
+ * THREAD SAFETY: Fully thread-safe (lock-protected)
+ * COMPLEXITY: O(1)
+ */
+void consolidation_reset_global_state(void)
+{
+    /* WHAT: Ensure initialized before reset */
+    ensure_sync_stats_init();
+
+    /* WHAT: Acquire lock to prevent concurrent access */
+    nimcp_mutex_lock(&g_sync_stats_lock);
+
+    /* WHAT: Reset all statistics counters to zero */
+    memset(&g_sync_stats, 0, sizeof(consolidation_stats_t));
+
+    nimcp_mutex_unlock(&g_sync_stats_lock);
+
+    /* WHAT: Reset the once flag to allow re-initialization */
+    /* NOTE: This is safe because g_sync_stats_lock is already initialized */
+    /* We reset the once flag so tests can start with fresh init state */
+    g_sync_stats_init = NIMCP_ONCE_INIT;
 }
 
 /**

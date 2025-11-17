@@ -1484,6 +1484,56 @@ void nimcp_memory_clear_stats(void)
 }
 
 /**
+ * @brief Reset entire memory tracker to fresh state
+ *
+ * WHAT: Reset all global state to initial values
+ * WHY: Test isolation - prevent state leakage between tests
+ * HOW: Free tracking lists, zero stats, reset flags
+ *
+ * WARNING: Does NOT free user allocations
+ * - Caller must free all nimcp_malloc'd memory first
+ * - Only frees internal tracking structures
+ *
+ * COMPLEXITY: O(n + p) where n=active blocks, p=patterns
+ * THREAD SAFETY: Fully thread-safe (lock-protected)
+ */
+void nimcp_memory_reset_state(void)
+{
+    if (!g_memory_state.initialized)
+        return;
+
+    nimcp_mutex_lock(&g_memory_state.lock);
+
+    /* WHAT: Free all tracking blocks (but not user memory) */
+    /* WHY: Clear tracking list without freeing user allocations */
+    memory_block_t* current = g_memory_state.blocks;
+    while (current) {
+        memory_block_t* next = current->next;
+        free(current); /* Free tracking structure only */
+        current = next;
+    }
+    g_memory_state.blocks = NULL;
+
+    /* WHAT: Free all pattern tracking */
+    size_pattern_t* pattern = g_memory_state.patterns;
+    while (pattern) {
+        size_pattern_t* next = pattern->next;
+        free(pattern);
+        pattern = next;
+    }
+    g_memory_state.patterns = NULL;
+
+    /* WHAT: Reset statistics to zero */
+    memset(&g_memory_state.stats, 0, sizeof(nimcp_memory_stats_t));
+
+    /* WHAT: Reset flags to default state */
+    g_memory_state.tracking_enabled = true;
+    g_memory_state.debug_output = false;
+
+    nimcp_mutex_unlock(&g_memory_state.lock);
+}
+
+/**
  * @brief Enable or disable tracking
  *
  * WHY CONFIGURABLE:

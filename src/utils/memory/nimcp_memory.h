@@ -213,6 +213,17 @@ bool nimcp_memory_get_stats(nimcp_memory_stats_t* stats);
 void nimcp_memory_clear_stats(void);
 
 /**
+ * WHAT: Reset entire memory tracker state
+ * WHY: Restore memory tracker to fresh state for test isolation
+ * HOW: Free all tracking structures, reset stats, clear lists
+ *
+ * USAGE: Call between tests to prevent state contamination
+ * WARNING: Does not free user allocations - caller must free those first
+ * THREAD-SAFE: Yes (acquires lock)
+ */
+void nimcp_memory_reset_state(void);
+
+/**
  * WHAT: Dump all current allocations to console
  * WHY: Debug memory usage and find allocation hotspots
  * HOW: Walks allocation list and prints each block

@@ -461,12 +461,25 @@ bool consolidation_get_stats(consolidation_handle_t handle, consolidation_stats_
  * WHY: Clear counters for new measurement period
  * HOW: Zero all counters
  *
- * @param handle Consolidation handle
+ * @param handle Consolidation handle (NULL for global sync stats)
  *
  * COMPLEXITY: O(1)
  * THREAD-SAFE: Yes
  */
 void consolidation_reset_stats(consolidation_handle_t handle);
+
+/**
+ * WHAT: Reset global consolidation state to initial values
+ * WHY: Test isolation - prevent state contamination between tests
+ * HOW: Reset g_sync_stats to zero, re-initialize mutex if needed
+ *
+ * USAGE: Call between tests to restore clean state
+ * NOTE: Only affects global synchronous consolidation state
+ * THREAD-SAFE: Yes
+ *
+ * COMPLEXITY: O(1)
+ */
+void consolidation_reset_global_state(void);
 
 /**
  * WHAT: Check if consolidation is currently running
