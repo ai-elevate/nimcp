@@ -38,7 +38,7 @@ protected:
         config.task = BRAIN_TASK_CLASSIFICATION;
         config.num_inputs = 64;
         config.num_outputs = 10;
-        config.enable_multimodal_integration = true;
+        config.enable_multimodal_integration = false;  // Not needed for emotion tests
 
         brain = brain_create_custom(&config);
         ASSERT_NE(brain, nullptr);

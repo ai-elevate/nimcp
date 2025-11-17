@@ -1217,6 +1217,30 @@ __/core/brain/nimcp_distributed_cow.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/nimcp_distributed_cow.c.s
 .PHONY : __/core/brain/nimcp_distributed_cow.c.s
 
+__/core/brain/processing/cognitive_processor.o: __/core/brain/processing/cognitive_processor.c.o
+.PHONY : __/core/brain/processing/cognitive_processor.o
+
+# target to build an object file
+__/core/brain/processing/cognitive_processor.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/processing/cognitive_processor.c.o
+.PHONY : __/core/brain/processing/cognitive_processor.c.o
+
+__/core/brain/processing/cognitive_processor.i: __/core/brain/processing/cognitive_processor.c.i
+.PHONY : __/core/brain/processing/cognitive_processor.i
+
+# target to preprocess a source file
+__/core/brain/processing/cognitive_processor.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/processing/cognitive_processor.c.i
+.PHONY : __/core/brain/processing/cognitive_processor.c.i
+
+__/core/brain/processing/cognitive_processor.s: __/core/brain/processing/cognitive_processor.c.s
+.PHONY : __/core/brain/processing/cognitive_processor.s
+
+# target to generate assembly for a file
+__/core/brain/processing/cognitive_processor.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/processing/cognitive_processor.c.s
+.PHONY : __/core/brain/processing/cognitive_processor.c.s
+
 __/core/brain_oscillations/nimcp_brain_oscillations.o: __/core/brain_oscillations/nimcp_brain_oscillations.c.o
 .PHONY : __/core/brain_oscillations/nimcp_brain_oscillations.o
 
@@ -3904,6 +3928,9 @@ help:
 	@echo "... __/core/brain/nimcp_distributed_cow.o"
 	@echo "... __/core/brain/nimcp_distributed_cow.i"
 	@echo "... __/core/brain/nimcp_distributed_cow.s"
+	@echo "... __/core/brain/processing/cognitive_processor.o"
+	@echo "... __/core/brain/processing/cognitive_processor.i"
+	@echo "... __/core/brain/processing/cognitive_processor.s"
 	@echo "... __/core/brain_oscillations/nimcp_brain_oscillations.o"
 	@echo "... __/core/brain_oscillations/nimcp_brain_oscillations.i"
 	@echo "... __/core/brain_oscillations/nimcp_brain_oscillations.s"

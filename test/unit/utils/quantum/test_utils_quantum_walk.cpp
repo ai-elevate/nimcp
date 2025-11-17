@@ -76,6 +76,8 @@ protected:
         // Create zero-initialized config then set required fields
         network_config_t net_config = {};
         net_config.num_neurons = num_neurons;
+        net_config.input_size = num_neurons;
+        net_config.output_size = num_neurons;
         net_config.ei_ratio = 0.8f;
         net_config.learning_rate = 0.01f;
         net_config.stdp_window = 20.0f;

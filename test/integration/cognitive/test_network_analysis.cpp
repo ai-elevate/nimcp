@@ -55,7 +55,7 @@ TEST_F(NetworkAnalysisTest, RunAnalysis) {
 
     // Check that results were generated
     const community_structure_t* communities = network_analyzer_get_communities(analyzer);
-    EXPECT_NE(communities, nullptr);
+    ASSERT_NE(communities, nullptr) << "Communities should be detected";
     EXPECT_GT(communities->num_communities, 0u);
 
     const hub_detection_t* hubs = network_analyzer_get_hubs(analyzer);

@@ -614,6 +614,19 @@ rl_eligibility_demo/fast:
 .PHONY : rl_eligibility_demo/fast
 
 #=============================================================================
+# Target rules for targets named unit_cognitive_analysis_test_network_analyzer_integration
+
+# Build rule for target.
+unit_cognitive_analysis_test_network_analyzer_integration: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_cognitive_analysis_test_network_analyzer_integration
+.PHONY : unit_cognitive_analysis_test_network_analyzer_integration
+
+# fast build rule for target.
+unit_cognitive_analysis_test_network_analyzer_integration/fast:
+	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_cognitive_analysis_test_network_analyzer_integration.dir/build.make test/CMakeFiles/unit_cognitive_analysis_test_network_analyzer_integration.dir/build
+.PHONY : unit_cognitive_analysis_test_network_analyzer_integration/fast
+
+#=============================================================================
 # Target rules for targets named unit_cognitive_bias_test_bias_detection
 
 # Build rule for target.
@@ -3331,6 +3344,32 @@ unit_security_test_security_comprehensive/fast:
 .PHONY : unit_security_test_security_comprehensive/fast
 
 #=============================================================================
+# Target rules for targets named unit_test_brain_full_simulation
+
+# Build rule for target.
+unit_test_brain_full_simulation: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_test_brain_full_simulation
+.PHONY : unit_test_brain_full_simulation
+
+# fast build rule for target.
+unit_test_brain_full_simulation/fast:
+	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_test_brain_full_simulation.dir/build.make test/CMakeFiles/unit_test_brain_full_simulation.dir/build
+.PHONY : unit_test_brain_full_simulation/fast
+
+#=============================================================================
+# Target rules for targets named unit_test_comprehensive_integration
+
+# Build rule for target.
+unit_test_comprehensive_integration: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_test_comprehensive_integration
+.PHONY : unit_test_comprehensive_integration
+
+# fast build rule for target.
+unit_test_comprehensive_integration/fast:
+	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_test_comprehensive_integration.dir/build.make test/CMakeFiles/unit_test_comprehensive_integration.dir/build
+.PHONY : unit_test_comprehensive_integration/fast
+
+#=============================================================================
 # Target rules for targets named unit_utils_algorithms_test_centrality
 
 # Build rule for target.
@@ -5741,6 +5780,7 @@ help:
 	@echo "... test_phase3"
 	@echo "... test_phase4"
 	@echo "... test_pink_weights"
+	@echo "... unit_cognitive_analysis_test_network_analyzer_integration"
 	@echo "... unit_cognitive_bias_test_bias_detection"
 	@echo "... unit_cognitive_consolidation_test_consolidation"
 	@echo "... unit_cognitive_consolidation_test_systems_consolidation"
@@ -5950,6 +5990,8 @@ help:
 	@echo "... unit_plasticity_stdp_test_stdp_modulation"
 	@echo "... unit_security_test_security"
 	@echo "... unit_security_test_security_comprehensive"
+	@echo "... unit_test_brain_full_simulation"
+	@echo "... unit_test_comprehensive_integration"
 	@echo "... unit_utils_algorithms_test_centrality"
 	@echo "... unit_utils_algorithms_test_community_detection"
 	@echo "... unit_utils_algorithms_test_graph_metrics"

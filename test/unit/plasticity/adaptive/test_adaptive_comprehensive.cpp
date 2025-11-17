@@ -22,6 +22,7 @@ class AdaptiveNetworkTest : public ::testing::Test {
 protected:
     adaptive_network_config_t config;
     adaptive_network_t network;
+    uint32_t* layer_sizes;
 
     void SetUp() override {
         // Create default configuration
@@ -35,7 +36,9 @@ protected:
         config.base_config.num_layers = 2;
 
         // Allocate and initialize layer_sizes
-        uint32_t layer_sizes[] = {10, 10};
+        layer_sizes = (uint32_t*)nimcp_malloc(2 * sizeof(uint32_t));
+        layer_sizes[0] = 10;
+        layer_sizes[1] = 10;
         config.base_config.layer_sizes = layer_sizes;
 
         // Adaptive spike parameters
@@ -64,6 +67,10 @@ protected:
         if (network) {
             adaptive_network_destroy(network);
             network = nullptr;
+        }
+        if (layer_sizes) {
+            nimcp_free(layer_sizes);
+            layer_sizes = nullptr;
         }
     }
 };

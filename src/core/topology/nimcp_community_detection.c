@@ -98,6 +98,13 @@ static adjacency_list_t* build_adjacency_list(neural_network_t network) {
         for (uint32_t s = 0; s < neuron->num_synapses; s++) {
             synapse_t* syn = &neuron->synapses[s];
             uint32_t target_id = syn->target_id;
+
+            // Validate target_id is within bounds
+            if (target_id >= num_neurons) {
+                // Skip invalid synapse
+                continue;
+            }
+
             float weight = fabsf(syn->weight);  // Use absolute weight for community detection
 
             // Grow arrays if needed

@@ -304,6 +304,7 @@ TEST_F(EngramIntegrationTest, MemoryDecay) {
     engram_consolidate_update(engram_sys, 21600.0f, false);
 
     memory_engram_t* engram = engram_get_by_id(engram_sys, id);
+    ASSERT_NE(engram, nullptr) << "Engram should exist after encoding and consolidation";
     float initial_strength = engram->consolidation_strength;
     EXPECT_FLOAT_EQ(initial_strength, 1.0f);
 
@@ -312,6 +313,7 @@ TEST_F(EngramIntegrationTest, MemoryDecay) {
     engram_apply_decay(engram_sys, long_time);
 
     engram = engram_get_by_id(engram_sys, id);
+    ASSERT_NE(engram, nullptr) << "Engram should still exist after decay";
 
     // Strength should have decayed
     EXPECT_LT(engram->consolidation_strength, initial_strength);

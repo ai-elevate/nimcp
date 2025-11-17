@@ -88,6 +88,7 @@
 /home/bbrelin/nimcp/build/examples/CMakeFiles/install.dir
 /home/bbrelin/nimcp/build/examples/CMakeFiles/install/local.dir
 /home/bbrelin/nimcp/build/examples/CMakeFiles/install/strip.dir
+/home/bbrelin/nimcp/build/test/CMakeFiles/unit_cognitive_analysis_test_network_analyzer_integration.dir
 /home/bbrelin/nimcp/build/test/CMakeFiles/unit_cognitive_bias_test_bias_detection.dir
 /home/bbrelin/nimcp/build/test/CMakeFiles/unit_cognitive_consolidation_test_consolidation.dir
 /home/bbrelin/nimcp/build/test/CMakeFiles/unit_cognitive_consolidation_test_systems_consolidation.dir
@@ -297,6 +298,8 @@
 /home/bbrelin/nimcp/build/test/CMakeFiles/unit_plasticity_stdp_test_stdp_modulation.dir
 /home/bbrelin/nimcp/build/test/CMakeFiles/unit_security_test_security.dir
 /home/bbrelin/nimcp/build/test/CMakeFiles/unit_security_test_security_comprehensive.dir
+/home/bbrelin/nimcp/build/test/CMakeFiles/unit_test_brain_full_simulation.dir
+/home/bbrelin/nimcp/build/test/CMakeFiles/unit_test_comprehensive_integration.dir
 /home/bbrelin/nimcp/build/test/CMakeFiles/unit_utils_algorithms_test_centrality.dir
 /home/bbrelin/nimcp/build/test/CMakeFiles/unit_utils_algorithms_test_community_detection.dir
 /home/bbrelin/nimcp/build/test/CMakeFiles/unit_utils_algorithms_test_graph_metrics.dir

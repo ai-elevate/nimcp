@@ -28,7 +28,7 @@ protected:
     brain_t brain = nullptr;
 
     void SetUp() override {
-        // Create brain with multimodal processing enabled
+        // Create brain with logic processing enabled
         brain_config_t config;
         memset(&config, 0, sizeof(config));
         strncpy(config.task_name, "logic_integration_test", sizeof(config.task_name) - 1);
@@ -36,8 +36,8 @@ protected:
         config.task = BRAIN_TASK_CLASSIFICATION;
         config.num_inputs = 64;
         config.num_outputs = 10;
-        config.enable_multimodal_integration = true;
-        config.enable_visual_cortex = false;  // Not needed for logic tests
+        config.enable_multimodal_integration = false;  // Not needed for logic tests
+        config.enable_visual_cortex = false;
         config.enable_audio_cortex = false;
         config.enable_speech_cortex = false;
 

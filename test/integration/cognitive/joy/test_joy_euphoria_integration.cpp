@@ -710,7 +710,7 @@ TEST_F(JoyEuphoriaIntegrationTest, LifetimeEuphoriasTracked) {
         joy_process_success(joy_sys, SUCCESS_TYPE_BREAKTHROUGH,
                            aligned, 1,
                            0.95f, 0.95f,
-                           (uint64_t)(i * 1000000000));  // Well separated in time
+                           (uint64_t)i * 1000000000ULL);  // Well separated in time
     }
 
     // Should have recorded multiple euphorias

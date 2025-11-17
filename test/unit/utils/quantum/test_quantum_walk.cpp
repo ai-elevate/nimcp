@@ -45,6 +45,7 @@
  */
 neural_network_t create_test_network(uint32_t num_neurons) {
     network_config_t config = {0};
+    config.num_neurons = num_neurons;
     config.input_size = num_neurons;
     config.output_size = num_neurons;
     config.num_layers = 1;

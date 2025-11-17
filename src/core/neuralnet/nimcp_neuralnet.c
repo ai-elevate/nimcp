@@ -2752,6 +2752,12 @@ uint32_t neural_network_get_incoming_synapses(neural_network_t network, uint32_t
         return 0;
     }
 
+    // Additional validation: check if neurons array is valid
+    if (!network->neurons) {
+        *out_synapses = NULL;
+        return 0;
+    }
+
     neuron_t* neuron = &network->neurons[neuron_id];
     *out_synapses = neuron->incoming_synapses;
     return neuron->num_incoming;

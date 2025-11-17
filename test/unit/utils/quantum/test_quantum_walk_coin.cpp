@@ -89,25 +89,16 @@ void free_coin_matrix(quantum_amplitude_t** matrix, uint32_t size) {
 quantum_amplitude_t** create_hadamard_matrix(uint32_t size) {
     quantum_amplitude_t** matrix = allocate_coin_matrix(size);
 
-    // For size > 2, use tensor product or generalized Hadamard
-    // For simplicity, use scaled identity + all-ones pattern
-    float scale = 1.0f / sqrtf(2.0f);
+    // For size > 2, use DFT-based unitary matrix (always unitary)
+    // This is simpler and always correct
+    float scale = 1.0f / sqrtf((float)size);
+    const float PI = 3.14159265359f;
 
-    if (size == 2) {
-        // Standard 2x2 Hadamard
-        matrix[0][0] = scale;
-        matrix[0][1] = scale;
-        matrix[1][0] = scale;
-        matrix[1][1] = -scale;
-    } else {
-        // Generalized: Walsh-Hadamard for power of 2, or Fourier-like
-        scale = 1.0f / sqrtf((float)size);
-        for (uint32_t i = 0; i < size; i++) {
-            for (uint32_t j = 0; j < size; j++) {
-                // Simple pattern: alternating signs
-                float sign = ((i + j) % 2 == 0) ? 1.0f : -1.0f;
-                matrix[i][j] = scale * sign;
-            }
+    for (uint32_t i = 0; i < size; i++) {
+        for (uint32_t j = 0; j < size; j++) {
+            // DFT matrix: H[i][j] = (1/√N) * exp(2πi*i*j/N)
+            float phase = 2.0f * PI * (float)(i * j) / (float)size;
+            matrix[i][j] = scale * std::complex<float>(cosf(phase), sinf(phase));
         }
     }
 
