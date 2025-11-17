@@ -10,6 +10,7 @@
 
 #include <gtest/gtest.h>
 #include "utils/spatial/nimcp_kdtree.h"
+#include "utils/nimcp_test_base.h"
 #include <vector>
 #include <random>
 #include <cmath>
@@ -18,11 +19,13 @@
 // Test Fixture
 //=============================================================================
 
-class KDTreeTest : public ::testing::Test {
+class KDTreeTest : public NimcpTestBase {
 protected:
     kdtree_t* tree;
 
     void SetUp() override {
+        NimcpTestBase::SetUp();  // Call parent SetUp first for global state cleanup
+
         tree = kdtree_create();
         ASSERT_NE(tree, nullptr);
     }
@@ -32,6 +35,8 @@ protected:
             kdtree_destroy(tree);
             tree = nullptr;
         }
+
+        NimcpTestBase::TearDown();  // Call parent TearDown last for global state cleanup
     }
 
     // Helper: Calculate distance squared

@@ -33,12 +33,13 @@
 #include <string>
 
     #include "utils/containers/nimcp_hash_table.h"
+    #include "utils/nimcp_test_base.h"
 
 //=============================================================================
 // Test Fixture
 //=============================================================================
 
-class HashTableTest : public ::testing::Test {
+class HashTableTest : public NimcpTestBase {
 protected:
     hash_table_t* table = nullptr;
 
@@ -47,6 +48,8 @@ protected:
             hash_table_destroy(table);
             table = nullptr;
         }
+
+        NimcpTestBase::TearDown();  // Call parent TearDown last for global state cleanup
     }
 };
 

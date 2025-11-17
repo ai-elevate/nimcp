@@ -28,14 +28,17 @@
 #include <vector>
 
     #include "utils/cache/nimcp_cache.h"
+    #include "utils/nimcp_test_base.h"
 
 //=============================================================================
 // Test Fixture
 //=============================================================================
 
-class CacheTest : public ::testing::Test {
+class CacheTest : public NimcpTestBase {
 protected:
     void SetUp() override {
+        NimcpTestBase::SetUp();  // Call parent SetUp first for global state cleanup
+
         // WHAT: Initialize cache system before each test
         // WHY:  Ensure clean state for each test
         nimcp_cache_init();
@@ -53,6 +56,8 @@ protected:
         // WHAT: Cleanup cache system after each test
         // WHY:  Prevent leaks between tests
         nimcp_cache_cleanup();
+
+        NimcpTestBase::TearDown();  // Call parent TearDown last for global state cleanup
     }
 };
 

@@ -37,6 +37,7 @@
 
     #include "utils/containers/nimcp_btree.h"
     #include "utils/memory/nimcp_memory.h"
+    #include "utils/nimcp_test_base.h"
 
 //=============================================================================
 // Test Data Structure
@@ -66,11 +67,13 @@ static void test_free_func(void* data) {
 // Test Fixture
 //=============================================================================
 
-class BTreeUtilsTest : public ::testing::Test {
+class BTreeUtilsTest : public NimcpTestBase {
 protected:
     btree_t* tree = nullptr;
 
     void SetUp() override {
+        NimcpTestBase::SetUp();  // Call parent SetUp first for global state cleanup
+
         nimcp_memory_init();
         nimcp_memory_enable_tracking(true);
         nimcp_memory_clear_stats();
@@ -85,6 +88,8 @@ protected:
             tree = nullptr;
         }
         nimcp_memory_cleanup();
+
+        NimcpTestBase::TearDown();  // Call parent TearDown last for global state cleanup
     }
 
     // Helper to create test data
