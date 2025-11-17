@@ -149,6 +149,17 @@ bool signal_handler_uninstall(void);
 void signal_handler_register_brain(brain_t brain);
 
 /**
+ * @brief Unregister brain instance (test cleanup)
+ *
+ * WHAT: Clear registered brain instance from signal handler
+ * WHY:  Prevent test contamination from global state
+ * HOW:  Set g_registered_brain to NULL
+ *
+ * NOTE: Should be called in test TearDown() to ensure clean state
+ */
+void signal_handler_unregister_brain(void);
+
+/**
  * @brief Get signal handler statistics
  *
  * WHAT: Return signal counts and recovery stats

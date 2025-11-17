@@ -389,6 +389,11 @@ void signal_handler_register_brain(brain_t brain)
     g_registered_brain = brain;
 }
 
+void signal_handler_unregister_brain(void)
+{
+    g_registered_brain = NULL;
+}
+
 signal_handler_stats_t signal_handler_get_stats(void)
 {
     signal_handler_stats_t stats = {
