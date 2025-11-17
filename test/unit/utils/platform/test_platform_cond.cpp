@@ -32,19 +32,24 @@
 
 #include "utils/platform/nimcp_platform_cond.h"
 #include "utils/platform/nimcp_platform_mutex.h"
+#include "utils/nimcp_test_base.h"
 
 //=============================================================================
 // Test Fixture
 //=============================================================================
 
-class PlatformCondVarTest : public ::testing::Test {
+class PlatformCondVarTest : public NimcpTestBase {
 protected:
     void SetUp() override {
+        NimcpTestBase::SetUp();  // Call parent first for cleanup
+
         // Nothing special needed for setup
     }
 
     void TearDown() override {
         // All resources should be cleaned up by tests
+
+        NimcpTestBase::TearDown();  // Call parent last for cleanup
     }
 
     // Helper: Create and initialize a condition variable and mutex

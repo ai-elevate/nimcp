@@ -31,6 +31,7 @@
 #include <vector>
 
 #include "utils/platform/nimcp_platform_rwlock.h"
+#include "utils/nimcp_test_base.h"
 
 //=============================================================================
 // Test Constants
@@ -129,12 +130,14 @@ static void track_writer_exit(void)
 // Lifecycle Tests
 //=============================================================================
 
-class LifecycleTest : public ::testing::Test {
+class LifecycleTest : public NimcpTestBase {
    protected:
     nimcp_platform_rwlock_t rwlock;
 
     void SetUp() override
     {
+        NimcpTestBase::SetUp();  // Call parent first for cleanup
+
         // Clear state before each test
         active_readers = 0;
         active_writers = 0;
@@ -145,7 +148,9 @@ class LifecycleTest : public ::testing::Test {
         test_error_msg = "";
     }
 
-    void TearDown() override {}
+    void TearDown() override {
+        NimcpTestBase::TearDown();  // Call parent last for cleanup
+    }
 };
 
 /**
@@ -208,12 +213,14 @@ TEST_F(LifecycleTest, DestroyNullPointer)
 // Read Lock Tests
 //=============================================================================
 
-class ReadLockTest : public ::testing::Test {
+class ReadLockTest : public NimcpTestBase {
    protected:
     nimcp_platform_rwlock_t rwlock;
 
     void SetUp() override
     {
+        NimcpTestBase::SetUp();  // Call parent first for cleanup
+
         nimcp_platform_rwlock_init(&rwlock);
         active_readers = 0;
         active_writers = 0;
@@ -224,6 +231,8 @@ class ReadLockTest : public ::testing::Test {
     void TearDown() override
     {
         nimcp_platform_rwlock_destroy(&rwlock);
+
+        NimcpTestBase::TearDown();  // Call parent last for cleanup
     }
 };
 
@@ -308,12 +317,14 @@ TEST_F(ReadLockTest, ReadUnlockNullPointer)
 // Write Lock Tests
 //=============================================================================
 
-class WriteLockTest : public ::testing::Test {
+class WriteLockTest : public NimcpTestBase {
    protected:
     nimcp_platform_rwlock_t rwlock;
 
     void SetUp() override
     {
+        NimcpTestBase::SetUp();  // Call parent first for cleanup
+
         nimcp_platform_rwlock_init(&rwlock);
         active_readers = 0;
         active_writers = 0;
@@ -323,6 +334,8 @@ class WriteLockTest : public ::testing::Test {
     void TearDown() override
     {
         nimcp_platform_rwlock_destroy(&rwlock);
+
+        NimcpTestBase::TearDown();  // Call parent last for cleanup
     }
 };
 
@@ -411,12 +424,14 @@ TEST_F(WriteLockTest, WriteUnlockNullPointer)
 // Try Lock Tests
 //=============================================================================
 
-class TryLockTest : public ::testing::Test {
+class TryLockTest : public NimcpTestBase {
    protected:
     nimcp_platform_rwlock_t rwlock;
 
     void SetUp() override
     {
+        NimcpTestBase::SetUp();  // Call parent first for cleanup
+
         nimcp_platform_rwlock_init(&rwlock);
         test_error = false;
     }
@@ -424,6 +439,8 @@ class TryLockTest : public ::testing::Test {
     void TearDown() override
     {
         nimcp_platform_rwlock_destroy(&rwlock);
+
+        NimcpTestBase::TearDown();  // Call parent last for cleanup
     }
 };
 
@@ -561,12 +578,14 @@ TEST_F(TryLockTest, TryWriteLockNullPointer)
 // Reader-Writer Scenario Tests
 //=============================================================================
 
-class ReaderWriterTest : public ::testing::Test {
+class ReaderWriterTest : public NimcpTestBase {
    protected:
     nimcp_platform_rwlock_t rwlock;
 
     void SetUp() override
     {
+        NimcpTestBase::SetUp();  // Call parent first for cleanup
+
         nimcp_platform_rwlock_init(&rwlock);
         active_readers = 0;
         active_writers = 0;
@@ -580,6 +599,8 @@ class ReaderWriterTest : public ::testing::Test {
     void TearDown() override
     {
         nimcp_platform_rwlock_destroy(&rwlock);
+
+        NimcpTestBase::TearDown();  // Call parent last for cleanup
     }
 };
 
@@ -824,11 +845,15 @@ TEST_F(ReaderWriterTest, MultipleReadersWithTryWrite)
 // NULL Pointer Safety Tests
 //=============================================================================
 
-class NullSafetyTest : public ::testing::Test {
+class NullSafetyTest : public NimcpTestBase {
    protected:
-    void SetUp() override {}
+    void SetUp() override {
+        NimcpTestBase::SetUp();  // Call parent first for cleanup
+    }
 
-    void TearDown() override {}
+    void TearDown() override {
+        NimcpTestBase::TearDown();  // Call parent last for cleanup
+    }
 };
 
 /**
@@ -876,12 +901,14 @@ TEST_F(NullSafetyTest, SequentialNullOperations)
 // Stress Tests
 //=============================================================================
 
-class StressTest : public ::testing::Test {
+class StressTest : public NimcpTestBase {
    protected:
     nimcp_platform_rwlock_t rwlock;
 
     void SetUp() override
     {
+        NimcpTestBase::SetUp();  // Call parent first for cleanup
+
         nimcp_platform_rwlock_init(&rwlock);
         active_readers = 0;
         active_writers = 0;
@@ -893,6 +920,8 @@ class StressTest : public ::testing::Test {
     void TearDown() override
     {
         nimcp_platform_rwlock_destroy(&rwlock);
+
+        NimcpTestBase::TearDown();  // Call parent last for cleanup
     }
 };
 
@@ -1009,18 +1038,22 @@ TEST_F(StressTest, AlternatingReadWrite)
 // Edge Case Tests
 //=============================================================================
 
-class EdgeCaseTest : public ::testing::Test {
+class EdgeCaseTest : public NimcpTestBase {
    protected:
     nimcp_platform_rwlock_t rwlock;
 
     void SetUp() override
     {
+        NimcpTestBase::SetUp();  // Call parent first for cleanup
+
         nimcp_platform_rwlock_init(&rwlock);
     }
 
     void TearDown() override
     {
         nimcp_platform_rwlock_destroy(&rwlock);
+
+        NimcpTestBase::TearDown();  // Call parent last for cleanup
     }
 };
 

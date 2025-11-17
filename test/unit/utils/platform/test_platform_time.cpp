@@ -21,20 +21,25 @@
 #include <cstring>
 
 #include "utils/platform/nimcp_platform_time.h"
+#include "utils/nimcp_test_base.h"
 
 //=============================================================================
 // MONOTONIC TIME TESTS
 //=============================================================================
 
-class MonotonicTimeTest : public ::testing::Test {
+class MonotonicTimeTest : public NimcpTestBase {
    protected:
     void SetUp() override {
+        NimcpTestBase::SetUp();  // Call parent first for cleanup
+
         // Initialize platform time subsystem
         nimcp_platform_time_init();
     }
 
     void TearDown() override {
         // Cleanup if needed
+
+        NimcpTestBase::TearDown();  // Call parent last for cleanup
     }
 };
 
@@ -152,13 +157,17 @@ TEST_F(MonotonicTimeTest, MonotonicTimePrecision)
 // SLEEP ACCURACY TESTS
 //=============================================================================
 
-class SleepAccuracyTest : public ::testing::Test {
+class SleepAccuracyTest : public NimcpTestBase {
    protected:
     void SetUp() override {
+        NimcpTestBase::SetUp();  // Call parent first for cleanup
+
         nimcp_platform_time_init();
     }
 
-    void TearDown() override {}
+    void TearDown() override {
+        NimcpTestBase::TearDown();  // Call parent last for cleanup
+    }
 };
 
 /**
@@ -282,14 +291,18 @@ TEST_F(SleepAccuracyTest, ConsecutiveSleeps)
 // TIME FORMATTING TESTS
 //=============================================================================
 
-class TimeFormattingTest : public ::testing::Test {
+class TimeFormattingTest : public NimcpTestBase {
    protected:
     void SetUp() override {
+        NimcpTestBase::SetUp();  // Call parent first for cleanup
+
         nimcp_platform_time_init();
         memset(buffer, 0, sizeof(buffer));
     }
 
-    void TearDown() override {}
+    void TearDown() override {
+        NimcpTestBase::TearDown();  // Call parent last for cleanup
+    }
 
     char buffer[256];
 };
@@ -448,13 +461,17 @@ TEST_F(TimeFormattingTest, FormatMillisecondPrecision)
 // TIME PROGRESSION TESTS
 //=============================================================================
 
-class TimeProgressionTest : public ::testing::Test {
+class TimeProgressionTest : public NimcpTestBase {
    protected:
     void SetUp() override {
+        NimcpTestBase::SetUp();  // Call parent first for cleanup
+
         nimcp_platform_time_init();
     }
 
-    void TearDown() override {}
+    void TearDown() override {
+        NimcpTestBase::TearDown();  // Call parent last for cleanup
+    }
 };
 
 /**
@@ -548,13 +565,17 @@ TEST_F(TimeProgressionTest, RapidMeasurementsMonotonic)
 // NULL POINTER SAFETY TESTS
 //=============================================================================
 
-class NullSafetyTest : public ::testing::Test {
+class NullSafetyTest : public NimcpTestBase {
    protected:
     void SetUp() override {
+        NimcpTestBase::SetUp();  // Call parent first for cleanup
+
         nimcp_platform_time_init();
     }
 
-    void TearDown() override {}
+    void TearDown() override {
+        NimcpTestBase::TearDown();  // Call parent last for cleanup
+    }
 };
 
 /**
@@ -670,13 +691,17 @@ TEST_F(NullSafetyTest, InitializationIsIdempotent)
 // INTEGRATION TESTS
 //=============================================================================
 
-class PlatformTimeIntegrationTest : public ::testing::Test {
+class PlatformTimeIntegrationTest : public NimcpTestBase {
    protected:
     void SetUp() override {
+        NimcpTestBase::SetUp();  // Call parent first for cleanup
+
         nimcp_platform_time_init();
     }
 
-    void TearDown() override {}
+    void TearDown() override {
+        NimcpTestBase::TearDown();  // Call parent last for cleanup
+    }
 };
 
 /**
@@ -782,13 +807,17 @@ TEST_F(PlatformTimeIntegrationTest, PerformanceProfilingPattern)
 // STRESS TESTS
 //=============================================================================
 
-class StressTest : public ::testing::Test {
+class StressTest : public NimcpTestBase {
    protected:
     void SetUp() override {
+        NimcpTestBase::SetUp();  // Call parent first for cleanup
+
         nimcp_platform_time_init();
     }
 
-    void TearDown() override {}
+    void TearDown() override {
+        NimcpTestBase::TearDown();  // Call parent last for cleanup
+    }
 };
 
 /**

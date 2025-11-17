@@ -35,17 +35,20 @@
 #include <memory>
 
 #include "utils/platform/nimcp_platform_mutex.h"
+#include "utils/nimcp_test_base.h"
 
 //=============================================================================
 // Test Fixture
 //=============================================================================
 
-class PlatformMutexTest : public ::testing::Test {
+class PlatformMutexTest : public NimcpTestBase {
 protected:
     nimcp_platform_mutex_t mutex;
     nimcp_platform_mutex_t recursive_mutex;
 
     void SetUp() override {
+        NimcpTestBase::SetUp();  // Call parent first for cleanup
+
         // Initialize mutexes to zero (safe state)
         memset(&mutex, 0, sizeof(mutex));
         memset(&recursive_mutex, 0, sizeof(recursive_mutex));
@@ -54,6 +57,8 @@ protected:
     void TearDown() override {
         // Clean up any initialized mutexes
         // (test cleanup is handled per-test)
+
+        NimcpTestBase::TearDown();  // Call parent last for cleanup
     }
 };
 
