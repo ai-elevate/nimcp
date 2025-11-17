@@ -38,6 +38,10 @@ protected:
         config.num_attention_heads = 4;
 
         brain = brain_create_custom(&config);
+        if (!brain) {
+            const char* error = brain_get_last_error();
+            fprintf(stderr, "Brain creation failed: %s\n", error ? error : "unknown error");
+        }
         ASSERT_NE(brain, nullptr);
     }
 

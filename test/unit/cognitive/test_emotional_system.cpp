@@ -23,16 +23,18 @@
 
 #include "cognitive/nimcp_emotional_system.h"
 #include "cognitive/nimcp_emotional_tagging.h"
+#include "utils/nimcp_test_base.h"
 
 //=============================================================================
 // Test Fixture
 //=============================================================================
 
-class EmotionalSystemTest : public ::testing::Test {
+class EmotionalSystemTest : public NimcpTestBase {
 protected:
     emotional_system_t* system = nullptr;
 
     void SetUp() override {
+        NimcpTestBase::SetUp();  // Call parent FIRST
         // Tests will create systems as needed
     }
 
@@ -41,6 +43,7 @@ protected:
             emotion_system_destroy(system);
             system = nullptr;
         }
+        NimcpTestBase::TearDown();  // Call parent LAST
     }
 };
 

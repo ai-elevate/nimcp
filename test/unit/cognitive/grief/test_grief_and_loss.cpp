@@ -18,17 +18,20 @@
 #include <gtest/gtest.h>
 #include <cmath>
 #include "cognitive/nimcp_grief_and_loss.h"
+#include "utils/nimcp_test_base.h"
 
-class GriefSystemTest : public ::testing::Test {
+class GriefSystemTest : public NimcpTestBase {
 protected:
     grief_system_t* system;
 
     void SetUp() override {
+        NimcpTestBase::SetUp();  // Call parent FIRST
         system = grief_system_create();
     }
 
     void TearDown() override {
         grief_system_destroy(system);
+        NimcpTestBase::TearDown();  // Call parent LAST
     }
 };
 

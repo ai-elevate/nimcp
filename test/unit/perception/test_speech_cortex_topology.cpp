@@ -5,16 +5,22 @@
 
 #include <gtest/gtest.h>
 #include "include/perception/nimcp_speech_cortex.h"
+#include "utils/nimcp_test_base.h"
 
-class SpeechCortexTopologyTest : public ::testing::Test {
+class SpeechCortexTopologyTest : public NimcpTestBase {
 protected:
     speech_cortex_t* cortex = nullptr;
+
+    void SetUp() override {
+        NimcpTestBase::SetUp();  // Call parent FIRST
+    }
 
     void TearDown() override {
         if (cortex) {
             speech_cortex_destroy(cortex);
             cortex = nullptr;
         }
+        NimcpTestBase::TearDown();  // Call parent LAST
     }
 };
 

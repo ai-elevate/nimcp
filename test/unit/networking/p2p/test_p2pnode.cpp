@@ -10,14 +10,16 @@
 #include <sys/socket.h>
 #include <unistd.h>
 #include "test_helpers.h"
+#include "utils/nimcp_test_base.h"
 
-class P2PNodeTest : public ::testing::Test {
+class P2PNodeTest : public NimcpTestBase {
    protected:
     node_config_t test_config;
     p2p_node_t test_node;
 
     void SetUp() override
     {
+        NimcpTestBase::SetUp();
         test_config.listen_port = 8000;
         test_config.max_peers = 10;
         //        test_config.keepalive_interval = 1000;
@@ -30,6 +32,7 @@ class P2PNodeTest : public ::testing::Test {
             p2p_node_destroy(test_node);
             test_node = nullptr;
         }
+        NimcpTestBase::TearDown();
     }
 
     /**
@@ -118,7 +121,7 @@ TEST_F(P2PNodeTest, StopNodeNotRunning)
     ASSERT_FALSE(p2p_node_stop(test_node));
 }
 
-class P2PNodeIntegrationTest : public ::testing::Test {
+class P2PNodeIntegrationTest : public NimcpTestBase {
    protected:
     p2p_node_t node1;
     p2p_node_t node2;
@@ -127,6 +130,7 @@ class P2PNodeIntegrationTest : public ::testing::Test {
 
     void SetUp() override
     {
+        NimcpTestBase::SetUp();
         config1.listen_port = 8001;
         config1.max_peers = 10;
         //        config1.keepalive_interval = 1000;
@@ -152,6 +156,7 @@ class P2PNodeIntegrationTest : public ::testing::Test {
             p2p_node_destroy(node2);
             node2 = nullptr;
         }
+        NimcpTestBase::TearDown();
     }
 
     bool is_port_available(int port)

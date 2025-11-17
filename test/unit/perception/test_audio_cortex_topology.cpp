@@ -5,16 +5,22 @@
 
 #include <gtest/gtest.h>
 #include "include/perception/nimcp_audio_cortex.h"
+#include "utils/nimcp_test_base.h"
 
-class AudioCortexTopologyTest : public ::testing::Test {
+class AudioCortexTopologyTest : public NimcpTestBase {
 protected:
     audio_cortex_t* cortex = nullptr;
+
+    void SetUp() override {
+        NimcpTestBase::SetUp();  // Call parent FIRST
+    }
 
     void TearDown() override {
         if (cortex) {
             audio_cortex_destroy(cortex);
             cortex = nullptr;
         }
+        NimcpTestBase::TearDown();  // Call parent LAST
     }
 };
 

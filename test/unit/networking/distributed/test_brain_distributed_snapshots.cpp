@@ -18,20 +18,23 @@
 
     #include "core/brain/nimcp_brain.h"
     #include "include/nimcp.h"
+    #include "utils/nimcp_test_base.h"
 
 //=============================================================================
 // Test Fixture
 //=============================================================================
 
-class BrainDistributedSnapshotsTest : public ::testing::Test {
+class BrainDistributedSnapshotsTest : public NimcpTestBase {
 protected:
     void SetUp() override {
+        NimcpTestBase::SetUp();
         nimcp_init();
         brain_clear_error();
     }
 
     void TearDown() override {
         nimcp_shutdown();
+        NimcpTestBase::TearDown();
     }
 };
 

@@ -1481,13 +1481,50 @@ static bool init_multimodal_subsystems(brain_t brain)
     // Initialize NLP network (if multimodal or speech is enabled)
     if (brain->config.enable_multimodal_integration || brain->config.enable_speech_cortex) {
 
-        // Configure NLP network with minimal config (nlp_network_create sets defaults)
+        // Configure NLP network with minimal config
         nlp_network_config_t nlp_config = {0};
+
+        // NLP-specific parameters
         nlp_config.vocab_size = 10000;            // 10k token vocabulary
         nlp_config.embedding_dim = 128;           // 128-dim embeddings
         nlp_config.max_sequence_length = 32;      // 32 token context
         nlp_config.use_attention_synapses = true;
         nlp_config.use_neuromodulated_synapses = true;
+
+        // Configure base network (required for neural_network_create)
+        nlp_config.network_config.num_neurons = 256;  // Small NLP network
+        nlp_config.network_config.input_size = nlp_config.embedding_dim;
+        nlp_config.network_config.output_size = nlp_config.embedding_dim;
+        nlp_config.network_config.enable_stdp = true;
+        nlp_config.network_config.enable_hebbian = false;
+        nlp_config.network_config.enable_oja = false;
+        nlp_config.network_config.enable_homeostasis = false;
+        nlp_config.network_config.learning_rate = 0.01f;
+
+        // Configure attention (required for multihead_attention_create)
+        nlp_config.attention_config.num_heads = brain->config.num_attention_heads > 0 ? brain->config.num_attention_heads : 4;
+        nlp_config.attention_config.input_dim = nlp_config.embedding_dim;
+        nlp_config.attention_config.output_dim = nlp_config.embedding_dim;
+        nlp_config.attention_config.sequence_length = nlp_config.max_sequence_length;
+        nlp_config.attention_config.use_thalamic_gate = false;
+        nlp_config.attention_config.use_salience_weighting = false;
+        nlp_config.attention_config.gate_bias = 0.5f;
+
+        // Configure neuromodulators (required for neuromodulator_system_create)
+        nlp_config.neuromod_config.baseline_dopamine = 0.2f;
+        nlp_config.neuromod_config.baseline_serotonin = 0.2f;
+        nlp_config.neuromod_config.baseline_acetylcholine = 0.2f;
+        nlp_config.neuromod_config.baseline_norepinephrine = 0.2f;
+        nlp_config.neuromod_config.dopamine_decay = 2.0f;
+        nlp_config.neuromod_config.serotonin_decay = 10.0f;
+        nlp_config.neuromod_config.acetylcholine_decay = 0.5f;
+        nlp_config.neuromod_config.norepinephrine_decay = 3.0f;
+        nlp_config.neuromod_config.reward_dopamine_gain = 0.5f;
+        nlp_config.neuromod_config.threat_norepinephrine_gain = 0.7f;
+        nlp_config.neuromod_config.salience_acetylcholine_gain = 0.6f;
+        nlp_config.neuromod_config.punishment_serotonin_gain = 0.4f;
+        nlp_config.neuromod_config.enable_volume_transmission = true;
+        nlp_config.neuromod_config.diffusion_rate = 0.1f;
 
         brain->nlp_network = nlp_network_create(&nlp_config);
         if (!brain->nlp_network) {
@@ -1775,18 +1812,14 @@ static bool init_attention_subsystem(brain_t brain)
     }
 
     // WHAT: Calculate appropriate dimensions for attention
-    // WHY:  Attention dimensions should match multimodal integration input
-    // HOW:  Use multimodal feature dimensions or fallback to network input
+    // WHY:  Attention dimensions must match integrated_feature_buffer size
+    // HOW:  Always use num_inputs (the output size of multimodal integration)
+    //
+    // NOTE: The multimodal integration layer compresses all modalities
+    //       (visual + audio + speech + direct) into a unified representation
+    //       of size num_inputs. The attention system processes this integrated
+    //       representation, not the raw concatenated features.
     uint32_t input_dim = brain->config.num_inputs;
-    if (brain->config.enable_multimodal_integration) {
-        // Use integrated feature dimension if multimodal
-        input_dim = brain->config.visual_feature_dim +
-                    brain->config.audio_feature_dim +
-                    brain->config.speech_feature_dim;
-        if (input_dim == 0) {
-            input_dim = brain->config.num_inputs;  // Fallback
-        }
-    }
 
     // WHAT: Configure multihead attention system
     // WHY:  Need proper configuration for cortical column architecture
@@ -3811,6 +3844,9 @@ void brain_destroy(brain_t brain)
     }
     if (brain->ethics) {
         ethics_engine_destroy(brain->ethics);
+    }
+    if (brain->knowledge) {
+        knowledge_system_destroy(brain->knowledge);
     }
 
     // Phase 11: Part I.2: Cleanup empathetic response engine (before empathy network)

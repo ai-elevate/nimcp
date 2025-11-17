@@ -12,10 +12,13 @@
     #include "core/brain/nimcp_brain.h"
     #include "utils/cache/nimcp_cache.h"
     #include "utils/memory/nimcp_memory.h"
+    #include "utils/nimcp_test_base.h"
 
-class BrainCOWTest : public ::testing::Test {
+class BrainCOWTest : public NimcpTestBase {
 protected:
     void SetUp() override {
+        NimcpTestBase::SetUp();
+
         // Initialize systems
         nimcp_memory_init();
         nimcp_cache_init();
@@ -35,6 +38,8 @@ protected:
         nimcp_shutdown();
         nimcp_cache_cleanup();
         nimcp_memory_cleanup();
+
+        NimcpTestBase::TearDown();
     }
 };
 

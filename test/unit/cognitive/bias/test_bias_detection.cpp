@@ -7,14 +7,16 @@
 #include <gtest/gtest.h>
 #include <cstring>
 #include "cognitive/nimcp_bias_detection.h"
+#include "utils/nimcp_test_base.h"
 
-class BiasDetectionTest : public ::testing::Test {
+class BiasDetectionTest : public NimcpTestBase {
 protected:
     bias_detection_system_t* system;
     social_group_t test_group_a;
     social_group_t test_group_b;
 
     void SetUp() override {
+        NimcpTestBase::SetUp();
         system = bias_system_create(8);  // Track 8 others
         ASSERT_NE(system, nullptr);
 
@@ -34,6 +36,7 @@ protected:
 
     void TearDown() override {
         bias_system_destroy(system);
+        NimcpTestBase::TearDown();
     }
 };
 

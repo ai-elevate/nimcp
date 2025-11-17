@@ -10,16 +10,22 @@
 #include <gtest/gtest.h>
 #include "include/perception/nimcp_visual_cortex.h"
 #include "core/topology/nimcp_fractal_topology.h"
+#include "utils/nimcp_test_base.h"
 
-class VisualCortexTopologyTest : public ::testing::Test {
+class VisualCortexTopologyTest : public NimcpTestBase {
 protected:
     visual_cortex_t* cortex = nullptr;
+
+    void SetUp() override {
+        NimcpTestBase::SetUp();  // Call parent FIRST
+    }
 
     void TearDown() override {
         if (cortex) {
             visual_cortex_destroy(cortex);
             cortex = nullptr;
         }
+        NimcpTestBase::TearDown();  // Call parent LAST
     }
 };
 

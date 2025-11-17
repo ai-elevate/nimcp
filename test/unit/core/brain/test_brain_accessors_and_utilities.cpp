@@ -57,9 +57,9 @@ TEST_F(BrainAccessorsUtilitiesTest, GetPinkNoise) {
         return;
     }
 
-    // Function brain_get_pink_noise not yet implemented
-    // Skip this test for now
-    GTEST_SKIP() << "brain_get_pink_noise not yet implemented";
+    void* pink_noise = brain_get_pink_noise(brain);
+    // May be NULL if pink noise initialization is not yet implemented
+    // But the accessor function should not crash
 
     brain_destroy(brain);
 }
@@ -79,8 +79,9 @@ TEST_F(BrainAccessorsUtilitiesTest, GetKnowledge) {
         return;
     }
 
-    // Function brain_get_knowledge not yet implemented
-    GTEST_SKIP() << "brain_get_knowledge not yet implemented";
+    knowledge_system_t knowledge = brain_get_knowledge(brain);
+    // May be NULL if knowledge system initialization is not yet implemented
+    // But the accessor function should not crash
 
     brain_destroy(brain);
 }
@@ -100,8 +101,9 @@ TEST_F(BrainAccessorsUtilitiesTest, GetCuriosity) {
         return;
     }
 
-    // Function brain_get_curiosity not yet implemented
-    GTEST_SKIP() << "brain_get_curiosity not yet implemented";
+    curiosity_engine_t curiosity = brain_get_curiosity(brain);
+    // May be NULL if curiosity system initialization is not yet implemented
+    // But the accessor function should not crash
 
     brain_destroy(brain);
 }
@@ -121,8 +123,9 @@ TEST_F(BrainAccessorsUtilitiesTest, GetConsolidation) {
         return;
     }
 
-    // Function brain_get_consolidation not yet implemented
-    GTEST_SKIP() << "brain_get_consolidation not yet implemented";
+    consolidation_handle_t consolidation = brain_get_consolidation(brain);
+    // May be NULL if consolidation system initialization is not yet implemented
+    // But the accessor function should not crash
 
     brain_destroy(brain);
 }
@@ -142,8 +145,9 @@ TEST_F(BrainAccessorsUtilitiesTest, GetSalience) {
         return;
     }
 
-    // Function brain_get_salience not yet implemented
-    GTEST_SKIP() << "brain_get_salience not yet implemented";
+    salience_evaluator_t salience = brain_get_salience(brain);
+    // May be NULL if salience system initialization is not yet implemented
+    // But the accessor function should not crash
 
     brain_destroy(brain);
 }
@@ -163,8 +167,9 @@ TEST_F(BrainAccessorsUtilitiesTest, GetEthics) {
         return;
     }
 
-    // Function brain_get_ethics not yet implemented
-    GTEST_SKIP() << "brain_get_ethics not yet implemented";
+    ethics_engine_t ethics = brain_get_ethics(brain);
+    // May be NULL if ethics system initialization is not yet implemented
+    // But the accessor function should not crash
 
     brain_destroy(brain);
 }
@@ -184,8 +189,9 @@ TEST_F(BrainAccessorsUtilitiesTest, GetIntrospection) {
         return;
     }
 
-    // Function brain_get_introspection not yet implemented
-    GTEST_SKIP() << "brain_get_introspection not yet implemented";
+    introspection_context_t introspection = brain_get_introspection(brain);
+    // May be NULL if introspection system initialization is not yet implemented
+    // But the accessor function should not crash
 
     brain_destroy(brain);
 }
@@ -204,8 +210,8 @@ TEST_F(BrainAccessorsUtilitiesTest, GetOscillations) {
         return;
     }
 
-    // Function brain_get_oscillations not yet implemented
-    GTEST_SKIP() << "brain_get_oscillations not yet implemented";
+    brain_oscillation_analyzer_t* oscillations = brain_get_oscillations(brain);
+    // Oscillations may be NULL if not initialized, but accessor should not crash
 
     brain_destroy(brain);
 }
@@ -224,8 +230,8 @@ TEST_F(BrainAccessorsUtilitiesTest, GetGlial) {
         return;
     }
 
-    // Function brain_get_glial not yet implemented
-    GTEST_SKIP() << "brain_get_glial not yet implemented";
+    glial_integration_t* glial = brain_get_glial(brain);
+    // Glial system may be NULL if not initialized, but accessor should not crash
 
     brain_destroy(brain);
 }

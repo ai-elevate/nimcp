@@ -71,6 +71,17 @@ typedef struct symbolic_logic symbolic_logic_t;
 
 // Pink Noise Neuromodulator - typedef defined in plasticity/neuromodulators/nimcp_neuromod_pink_noise.h
 
+// === PHASE 7: ADVANCED SUBSYSTEM ACCESSORS ===
+// Forward declarations for opaque pointers used by accessor functions
+// Note: glial_integration_t already defined via nimcp_distributed_cognition.h
+typedef struct brain_oscillation_analyzer_struct brain_oscillation_analyzer_t;
+typedef struct introspection_context_struct* introspection_context_t;
+typedef struct ethics_engine_struct* ethics_engine_t;
+typedef struct salience_evaluator_struct* salience_evaluator_t;
+typedef struct consolidation_handle_struct* consolidation_handle_t;
+typedef struct curiosity_engine_struct* curiosity_engine_t;
+typedef struct knowledge_system_struct* knowledge_system_t;
+
 // === PHASE E: HIGHER-ORDER COGNITIVE & SOCIAL SYSTEMS ===
 // Forward declarations - actual typedefs in respective headers
 // Phase E5: Shadow Emotions - defined in cognitive/nimcp_shadow_emotions.h
@@ -1976,6 +1987,62 @@ symbolic_logic_t* brain_get_symbolic_logic(brain_t brain);
  * @return Pink noise handle or NULL if not initialized
  */
 void* brain_get_pink_noise(brain_t brain);
+
+/**
+ * @brief Get glial integration subsystem
+ * @param brain Brain handle
+ * @return Glial integration pointer or NULL if not initialized
+ */
+glial_integration_t* brain_get_glial(brain_t brain);
+
+/**
+ * @brief Get brain oscillation analyzer subsystem
+ * @param brain Brain handle
+ * @return Brain oscillation analyzer pointer or NULL if not initialized
+ */
+brain_oscillation_analyzer_t* brain_get_oscillations(brain_t brain);
+
+/**
+ * @brief Get introspection subsystem
+ * @param brain Brain handle
+ * @return Introspection context handle or NULL if not initialized
+ */
+introspection_context_t brain_get_introspection(brain_t brain);
+
+/**
+ * @brief Get ethics engine subsystem
+ * @param brain Brain handle
+ * @return Ethics engine handle or NULL if not initialized
+ */
+ethics_engine_t brain_get_ethics(brain_t brain);
+
+/**
+ * @brief Get salience evaluator subsystem
+ * @param brain Brain handle
+ * @return Salience evaluator handle or NULL if not initialized
+ */
+salience_evaluator_t brain_get_salience(brain_t brain);
+
+/**
+ * @brief Get consolidation subsystem
+ * @param brain Brain handle
+ * @return Consolidation handle or NULL if not initialized
+ */
+consolidation_handle_t brain_get_consolidation(brain_t brain);
+
+/**
+ * @brief Get curiosity engine subsystem
+ * @param brain Brain handle
+ * @return Curiosity engine handle or NULL if not initialized
+ */
+curiosity_engine_t brain_get_curiosity(brain_t brain);
+
+/**
+ * @brief Get knowledge system subsystem
+ * @param brain Brain handle
+ * @return Knowledge system handle or NULL if not initialized
+ */
+knowledge_system_t brain_get_knowledge(brain_t brain);
 
 /**
  * @brief Get mirror neuron activations for Theory of Mind integration

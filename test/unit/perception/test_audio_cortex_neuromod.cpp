@@ -15,6 +15,7 @@
 #include "include/perception/nimcp_audio_cortex.h"
 #include "core/brain/nimcp_brain.h"
 #include "plasticity/neuromodulators/nimcp_neuromodulators.h"
+#include "utils/nimcp_test_base.h"
 
 #ifndef M_PI
 #define M_PI 3.14159265358979323846
@@ -24,13 +25,15 @@
 // Test Fixtures
 //=============================================================================
 
-class AudioCortexNeuromodTest : public ::testing::Test {
+class AudioCortexNeuromodTest : public NimcpTestBase {
 protected:
     audio_cortex_t* cortex = nullptr;
     brain_t brain = nullptr;
     neuromodulator_system_t neuromod = nullptr;
 
     void SetUp() override {
+        NimcpTestBase::SetUp();  // Call parent FIRST
+
         // Create brain with neuromodulator system (new API)
         brain = brain_create("audio_neuromod_test", BRAIN_SIZE_TINY, BRAIN_TASK_CLASSIFICATION, 512, 10);
         ASSERT_NE(brain, nullptr);
@@ -71,6 +74,7 @@ protected:
             brain_destroy(brain);
             brain = nullptr;
         }
+        NimcpTestBase::TearDown();  // Call parent LAST
     }
 
     /**
