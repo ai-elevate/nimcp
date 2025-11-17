@@ -35,6 +35,7 @@
     #include "utils/quantum/nimcp_quantum_walk.h"
     #include "core/neuralnet/nimcp_neuralnet.h"
     #include "utils/memory/nimcp_memory.h"
+    #include "utils/nimcp_test_base.h"
 
 //=============================================================================
 // Test Utilities
@@ -89,14 +90,16 @@ bool is_valid_distribution(const float* probs, uint32_t size) {
 // Test Fixture
 //=============================================================================
 
-class QuantumWalkTest : public ::testing::Test {
+class QuantumWalkTest : public NimcpTestBase {
 protected:
     void SetUp() override {
+        NimcpTestBase::SetUp();  // Call parent first for cleanup
         srand(42); // Reproducibility
     }
 
     void TearDown() override {
         // Cleanup per test
+        NimcpTestBase::TearDown();  // Call parent last for cleanup
     }
 };
 

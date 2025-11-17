@@ -37,12 +37,13 @@
     #include "utils/quantum/nimcp_quantum_walk.h"
     #include "core/neuralnet/nimcp_neuralnet.h"
     #include "utils/memory/nimcp_memory.h"
+    #include "utils/nimcp_test_base.h"
 
 //=============================================================================
 // Test Fixture
 //=============================================================================
 
-class QuantumWalkTest : public ::testing::Test {
+class QuantumWalkTest : public NimcpTestBase {
 protected:
     static constexpr float EPSILON = 1e-5f;
     static constexpr uint32_t SMALL_NETWORK_SIZE = 10;
@@ -52,6 +53,7 @@ protected:
     neural_network_t network = nullptr;
 
     void SetUp() override {
+        NimcpTestBase::SetUp();  // Call parent first for cleanup
         // Initialize random seed for reproducibility
         srand(42);
     }
@@ -65,6 +67,7 @@ protected:
             neural_network_destroy(network);
             network = nullptr;
         }
+        NimcpTestBase::TearDown();  // Call parent last for cleanup
     }
 
     bool FloatEqual(float a, float b) {

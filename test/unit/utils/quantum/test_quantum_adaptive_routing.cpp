@@ -7,9 +7,10 @@
 #include "cognitive/analysis/nimcp_network_analysis.h"
 #include "core/brain/nimcp_brain.h"
 #include "core/neuralnet/nimcp_neuralnet.h"
+#include "utils/nimcp_test_base.h"
 
 // Test fixture for quantum adaptive routing
-class QuantumAdaptiveRoutingTest : public ::testing::Test {
+class QuantumAdaptiveRoutingTest : public NimcpTestBase {
 protected:
     brain_t brain;
     neural_network_t network;
@@ -17,6 +18,8 @@ protected:
     network_analyzer_t* analyzer;
 
     void SetUp() override {
+        NimcpTestBase::SetUp();  // Call parent first for cleanup
+
         // Create a test brain and network
         brain_config_t config;
         memset(&config, 0, sizeof(config));
@@ -54,6 +57,7 @@ protected:
         if (brain) {
             brain_destroy(brain);
         }
+        NimcpTestBase::TearDown();  // Call parent last for cleanup
     }
 };
 
