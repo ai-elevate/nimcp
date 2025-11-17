@@ -30,25 +30,9 @@
 // Internal Brain Structure Access
 //=============================================================================
 
-// Forward declaration of brain structure (opaque type)
-struct brain_struct {
-    // Cognitive modules
-    introspection_context_t introspection;  // FIXED: was introspection_engine_t
-    ethics_engine_t ethics;
-    salience_evaluator_t salience;
-    curiosity_engine_t curiosity;
-    neural_logic_network_t logic;
-
-    // Feature buffer
-    float* integrated_feature_buffer;
-
-    // Configuration
-    struct {
-        uint32_t num_inputs;
-    } config;
-
-    // ... other fields not needed by this module
-};
+// NOTE: Use accessor functions instead of direct struct access to avoid
+// layout mismatch issues. The brain structure is opaque and defined in nimcp_brain.c
+// We must use the public API to access brain fields safely.
 
 //=============================================================================
 // Helper Functions
@@ -415,10 +399,11 @@ bool cognitive_process_output(
     // INTROSPECTION: Confidence and Uncertainty
     // =========================================================================
 
-    if (brain->introspection) {
+    introspection_context_t introspection = brain_get_introspection(brain);
+    if (introspection) {
         // Use introspection module for sophisticated uncertainty estimation
         brain_uncertainty_t uncertainty = brain_get_uncertainty(
-            brain->introspection,
+            introspection,
             integrated_features,
             integrated_dim
         );
@@ -427,11 +412,12 @@ bool cognitive_process_output(
         annotations->confidence = 1.0f - annotations->uncertainty;
     } else {
         // Fallback: Compute confidence from output statistics
+        uint32_t num_inputs = brain_get_num_inputs(brain);
         annotations->confidence = compute_fallback_confidence(
             net_output->output_vector,
             net_output->output_size,
             net_output->spikes_generated,
-            brain->config.num_inputs
+            num_inputs
         );
         annotations->uncertainty = 1.0f - annotations->confidence;
     }
@@ -440,7 +426,8 @@ bool cognitive_process_output(
     // ETHICS: Validate Output
     // =========================================================================
 
-    if (brain->ethics) {
+    ethics_engine_t ethics = brain_get_ethics(brain);
+    if (ethics) {
         // Use ethics module for sophisticated ethical evaluation
         // For now, just check for NaN/inf/extreme values
         annotations->ethical_approved = check_ethical_output(
@@ -459,10 +446,11 @@ bool cognitive_process_output(
     // SALIENCE: Input Importance (Novelty, Surprise, Urgency)
     // =========================================================================
 
-    if (brain->salience) {
+    salience_evaluator_t salience_eval = brain_get_salience(brain);
+    if (salience_eval) {
         // Use salience module for sophisticated importance evaluation
         brain_salience_t salience = brain_evaluate_salience_temporal(
-            brain->salience,
+            salience_eval,
             integrated_features,
             integrated_dim,
             timestamp_ms
@@ -479,9 +467,10 @@ bool cognitive_process_output(
         );
 
         // Fallback novelty from spike deviation
+        uint32_t num_inputs = brain_get_num_inputs(brain);
         annotations->novelty_score = compute_fallback_novelty(
             net_output->spikes_generated,
-            brain->config.num_inputs
+            num_inputs
         );
 
         annotations->urgency_score = 0.0f;  // No urgency without salience module
@@ -491,7 +480,8 @@ bool cognitive_process_output(
     // CURIOSITY: Exploration Value
     // =========================================================================
 
-    if (brain->curiosity) {
+    curiosity_engine_t curiosity = brain_get_curiosity(brain);
+    if (curiosity) {
         // Curiosity engine can compute exploration bonus and information gain
         // Based on novelty and uncertainty
         annotations->exploration_bonus = annotations->novelty_score * annotations->uncertainty;
@@ -506,11 +496,12 @@ bool cognitive_process_output(
     // NEURAL LOGIC: Logical Reasoning (Phase 9.0)
     // =========================================================================
 
-    if (brain->logic) {
+    neural_logic_network_t logic = brain_get_logic(brain);
+    if (logic) {
         // Neural logic gates available for constraint checking / logical inference
         // Check cognitive constraints using logic circuits
         annotations->logic_valid = validate_cognitive_constraints(
-            brain->logic,
+            logic,
             net_output,
             annotations
         );

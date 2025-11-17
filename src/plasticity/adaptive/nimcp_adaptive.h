@@ -189,6 +189,17 @@ const adaptive_network_config_t* adaptive_network_get_config(adaptive_network_t 
 uint32_t adaptive_network_get_num_neurons(adaptive_network_t network);
 
 /**
+ * @brief Get underlying base neural network
+ *
+ * WHY: Enable access to low-level network structure for analysis
+ * HOW: Return pointer to base neural network
+ *
+ * @param network Adaptive network
+ * @return Base neural network handle, or NULL on error
+ */
+neural_network_t adaptive_network_get_base_network(adaptive_network_t network);
+
+/**
  * @brief Get synapse weight between two neurons
  *
  * WHY: Enable community detection to analyze connectivity

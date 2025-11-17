@@ -525,6 +525,64 @@ bool fft_execute_inverse_real(fft_plan_t* plan, const fft_complex_t* input,
     return true;
 }
 
+/**
+ * @brief Execute inverse complex-to-complex FFT
+ *
+ * WHAT: Transform complex frequency spectrum back to complex time domain
+ * WHY:  Needed for Hilbert transform and complex signal reconstruction
+ * HOW:  Conjugate input, FFT, conjugate and scale output
+ *
+ * @param plan FFT plan (must be FFT_INVERSE type)
+ * @param input Complex frequency spectrum [size]
+ * @param output Complex time-domain signal [size]
+ * @return true on success, false on failure
+ *
+ * ALGORITHM:
+ * 1. Conjugate input spectrum
+ * 2. Execute forward FFT
+ * 3. Conjugate output and scale by 1/N
+ *
+ * COMPLEXITY: O(N log N)
+ * USE CASES: Hilbert transform, complex filtering
+ */
+bool fft_execute_inverse_complex(
+    fft_plan_t* plan,
+    const fft_complex_t* input,
+    fft_complex_t* output)
+{
+    // Guard: Validate inputs
+    if (!plan || !input || !output || plan->type != FFT_INVERSE) {
+        return false;
+    }
+
+    uint32_t n = plan->size;
+
+    // Allocate temporary buffer for conjugated input
+    fft_complex_t* temp = (fft_complex_t*)nimcp_calloc(n, sizeof(fft_complex_t));
+    if (!temp) {
+        return false;
+    }
+
+    // Conjugate input
+    for (uint32_t i = 0; i < n; i++) {
+        temp[i].real = input[i].real;
+        temp[i].imag = -input[i].imag;
+    }
+
+    // Execute FFT (forward FFT on conjugated input)
+    fft_cooley_tukey(temp, plan);
+
+    // Conjugate and scale output by 1/N
+    float scale = 1.0f / n;
+    for (uint32_t i = 0; i < n; i++) {
+        output[i].real = temp[i].real * scale;
+        output[i].imag = -temp[i].imag * scale;
+    }
+
+    nimcp_free(temp);
+    return true;
+}
+
 //=============================================================================
 // Power Spectral Density
 //=============================================================================

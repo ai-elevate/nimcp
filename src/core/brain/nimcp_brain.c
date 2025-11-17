@@ -1036,18 +1036,38 @@ static bool is_cached_input(brain_t brain, const float* features, uint32_t num_f
 static void cache_decision(brain_t brain, const float* features, uint32_t num_features,
                            brain_decision_t* decision)
 {
-    if (!brain->last_input) {
+    // CRITICAL: This function must only be called while cache_mutex is locked!
+    // Caller is responsible for mutex protection.
+
+    // Resize input buffer if needed (defensive: handle size changes)
+    if (!brain->last_input || brain->input_size != num_features) {
+        nimcp_free(brain->last_input);  // Free old buffer (safe if NULL)
         brain->last_input = nimcp_malloc(num_features * sizeof(float));
+        if (!brain->last_input) {
+            set_error("Failed to allocate cache input buffer");
+            return;
+        }
         brain->input_size = num_features;
     }
 
     memcpy(brain->last_input, features, num_features * sizeof(float));
 
-    if (brain->cached_decision) {
-        brain_free_decision(brain->cached_decision);
+    // Create new decision copy FIRST (before freeing old)
+    // This reduces the race window where cached_decision could be NULL
+    brain_decision_t* new_cached = copy_decision(decision);
+    if (!new_cached) {
+        set_error("Failed to copy decision for cache");
+        return;
     }
-    // Store a deep copy so caller can safely free the original
-    brain->cached_decision = copy_decision(decision);
+
+    // Now atomically replace old cached decision
+    brain_decision_t* old_cached = brain->cached_decision;
+    brain->cached_decision = new_cached;
+
+    // Free old decision AFTER replacement (cache always has valid decision)
+    if (old_cached) {
+        brain_free_decision(old_cached);
+    }
 }
 
 /**
@@ -1080,17 +1100,23 @@ static void clear_cache(brain_t brain)
         return;
     }
 
+    // Free cached input vector
     nimcp_free(brain->last_input);
     brain->last_input = NULL;
 
+    // Free cached decision
     if (brain->cached_decision) {
         brain_free_decision(brain->cached_decision);
         brain->cached_decision = NULL;
     }
 
-    // Unlock cache mutex
-    if (nimcp_platform_mutex_unlock(&brain->cache_mutex) != 0) {
-        set_error("Failed to unlock cache mutex during clear_cache");
+    // Always attempt unlock, even if operations above failed
+    // Store result to check for critical errors
+    int unlock_result = nimcp_platform_mutex_unlock(&brain->cache_mutex);
+    if (unlock_result != 0) {
+        // CRITICAL: Mutex unlock failed - cache may be permanently locked!
+        // This is a severe error that could deadlock future operations.
+        set_error("CRITICAL: Failed to unlock cache mutex in clear_cache - potential deadlock");
     }
 }
 
@@ -6358,34 +6384,6 @@ brain_decision_t* brain_decide(brain_t brain, const float* features, uint32_t nu
     // This builds a self-model that can be used to predict other agents
     if (brain->theory_of_mind && brain->config.enable_theory_of_mind && decision) {
         // Step 1: Record own decision as a mental state
-    // Update statistics
-    update_inference_stats(brain, decision);
-
-    // Cache decision for future reuse (thread-safe with mutex protection)
-    if (nimcp_platform_mutex_lock(&brain->cache_mutex) != 0) {
-        set_error("Failed to lock cache mutex for cache write");
-        brain_free_decision(decision);
-        return NULL;
-    }
-
-    cache_decision(brain, features, num_features, decision);
-
-    if (nimcp_platform_mutex_unlock(&brain->cache_mutex) != 0) {
-        set_error("Failed to unlock cache mutex after cache write");
-        brain_free_decision(decision);
-        return NULL;
-    }
-
-    return decision;
-
-
-
-
-
-
-
-
-
         // Convert decision to action for ToM tracking
         const char* intention = decision->label[0] ? decision->label : "decide";
         uint32_t intention_id = 0;
@@ -8278,7 +8276,7 @@ float brain_recommend_pruning_threshold(brain_t brain, float target_sparsity)
     // Guard: Validate brain
     if (!brain) {
         set_error("Null brain provided to brain_recommend_pruning_threshold");
-        return 0.0f;  // Return 0.0f for null brain (error condition)
+        return -1.0f;  // Return negative value to indicate error
     }
 
     // Heuristic: lower threshold for higher sparsity
@@ -8520,6 +8518,10 @@ curiosity_engine_t brain_get_curiosity(brain_t brain) {
 
 knowledge_system_t brain_get_knowledge(brain_t brain) {
     return brain ? brain->knowledge : NULL;
+}
+
+neural_logic_network_t brain_get_logic(brain_t brain) {
+    return brain ? brain->logic : NULL;
 }
 
 symbolic_logic_t* brain_get_symbolic_logic(brain_t brain) {

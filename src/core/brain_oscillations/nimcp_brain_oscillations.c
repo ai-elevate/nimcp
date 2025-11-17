@@ -671,60 +671,67 @@ static bool extract_instantaneous_phase(
         return false;
     }
 
-    // Compute FFT
+    // Allocate buffers
     uint32_t spectrum_size = size / 2 + 1;
     fft_complex_t* spectrum = (fft_complex_t*)nimcp_calloc(spectrum_size, sizeof(fft_complex_t));
+    fft_complex_t* full_spectrum = (fft_complex_t*)nimcp_calloc(size, sizeof(fft_complex_t));
     fft_complex_t* analytic = (fft_complex_t*)nimcp_calloc(size, sizeof(fft_complex_t));
 
-    if (!spectrum || !analytic) {
+    if (!spectrum || !full_spectrum || !analytic) {
         nimcp_free(spectrum);
+        nimcp_free(full_spectrum);
         nimcp_free(analytic);
         fft_plan_destroy(fft_plan);
         return false;
     }
 
+    // Compute FFT
     if (!fft_execute_real(fft_plan, signal, spectrum)) {
         nimcp_free(spectrum);
+        nimcp_free(full_spectrum);
         nimcp_free(analytic);
         fft_plan_destroy(fft_plan);
         return false;
     }
 
-    // Hilbert transform: zero negative frequencies, double positive frequencies
-    // This creates analytic signal: signal + i*hilbert(signal)
+    // Prepare full spectrum for complex IFFT (Hilbert transform)
+    // Standard Hilbert transform: DC stays same, double positive freqs, zero negative freqs
+    full_spectrum[0] = spectrum[0];  // DC component (unchanged)
     for (uint32_t k = 1; k < spectrum_size - 1; k++) {
-        spectrum[k].real *= 2.0f;
-        spectrum[k].imag *= 2.0f;
+        // Double positive frequency components
+        full_spectrum[k].real = spectrum[k].real * 2.0f;
+        full_spectrum[k].imag = spectrum[k].imag * 2.0f;
     }
+    full_spectrum[size / 2] = spectrum[size / 2];  // Nyquist (unchanged)
+    // Negative frequencies remain zero (from calloc)
 
     // Inverse FFT to get analytic signal in time domain
     fft_plan_t* ifft_plan = fft_plan_create(size, FFT_INVERSE);
     if (!ifft_plan) {
         nimcp_free(spectrum);
+        nimcp_free(full_spectrum);
         nimcp_free(analytic);
         fft_plan_destroy(fft_plan);
         return false;
     }
 
-    // Note: We need complex IFFT, but we only have real IFFT
-    // Compute phase directly from spectrum for each time point
-    // Simplified: Use atan2(imag, real) on reconstructed analytic signal
+    if (!fft_execute_inverse_complex(ifft_plan, full_spectrum, analytic)) {
+        nimcp_free(spectrum);
+        nimcp_free(full_spectrum);
+        nimcp_free(analytic);
+        fft_plan_destroy(fft_plan);
+        fft_plan_destroy(ifft_plan);
+        return false;
+    }
+
+    // Extract phase from analytic signal
     for (uint32_t t = 0; t < size; t++) {
-        float real_part = signal[t];  // Original signal
-        float imag_part = 0.0f;  // Hilbert transform (approximation)
-
-        // Approximate Hilbert transform in time domain
-        for (uint32_t k = 1; k < spectrum_size - 1; k++) {
-            float freq = 2.0f * M_PI * k / (float)size;
-            imag_part += spectrum[k].imag * sinf(freq * t) - spectrum[k].real * cosf(freq * t);
-        }
-        imag_part *= 2.0f / size;
-
-        phase[t] = atan2f(imag_part, real_part);
+        phase[t] = atan2f(analytic[t].imag, analytic[t].real);
     }
 
     // Cleanup
     nimcp_free(spectrum);
+    nimcp_free(full_spectrum);
     nimcp_free(analytic);
     fft_plan_destroy(fft_plan);
     fft_plan_destroy(ifft_plan);
@@ -768,44 +775,71 @@ static bool extract_amplitude_envelope(
         return false;
     }
 
-    // Compute FFT
+    // Allocate buffers
     uint32_t spectrum_size = size / 2 + 1;
     fft_complex_t* spectrum = (fft_complex_t*)nimcp_calloc(spectrum_size, sizeof(fft_complex_t));
-    if (!spectrum) {
+    fft_complex_t* full_spectrum = (fft_complex_t*)nimcp_calloc(size, sizeof(fft_complex_t));
+    fft_complex_t* analytic = (fft_complex_t*)nimcp_calloc(size, sizeof(fft_complex_t));
+
+    if (!spectrum || !full_spectrum || !analytic) {
+        nimcp_free(spectrum);
+        nimcp_free(full_spectrum);
+        nimcp_free(analytic);
         fft_plan_destroy(fft_plan);
         return false;
     }
 
+    // Compute FFT
     if (!fft_execute_real(fft_plan, signal, spectrum)) {
         nimcp_free(spectrum);
+        nimcp_free(full_spectrum);
+        nimcp_free(analytic);
         fft_plan_destroy(fft_plan);
         return false;
     }
 
-    // Hilbert transform: create analytic signal
+    // Prepare full spectrum for complex IFFT (Hilbert transform)
+    // Standard Hilbert transform: DC stays same, double positive freqs, zero negative freqs
+    full_spectrum[0] = spectrum[0];  // DC component (unchanged)
     for (uint32_t k = 1; k < spectrum_size - 1; k++) {
-        spectrum[k].real *= 2.0f;
-        spectrum[k].imag *= 2.0f;
+        // Double positive frequency components
+        full_spectrum[k].real = spectrum[k].real * 2.0f;
+        full_spectrum[k].imag = spectrum[k].imag * 2.0f;
+    }
+    full_spectrum[size / 2] = spectrum[size / 2];  // Nyquist (unchanged)
+    // Negative frequencies remain zero (from calloc)
+
+    // Inverse FFT to get analytic signal in time domain
+    fft_plan_t* ifft_plan = fft_plan_create(size, FFT_INVERSE);
+    if (!ifft_plan) {
+        nimcp_free(spectrum);
+        nimcp_free(full_spectrum);
+        nimcp_free(analytic);
+        fft_plan_destroy(fft_plan);
+        return false;
     }
 
-    // Compute magnitude (envelope) for each time point
+    if (!fft_execute_inverse_complex(ifft_plan, full_spectrum, analytic)) {
+        nimcp_free(spectrum);
+        nimcp_free(full_spectrum);
+        nimcp_free(analytic);
+        fft_plan_destroy(fft_plan);
+        fft_plan_destroy(ifft_plan);
+        return false;
+    }
+
+    // Extract amplitude envelope from analytic signal
     for (uint32_t t = 0; t < size; t++) {
-        float real_part = signal[t];
-        float imag_part = 0.0f;
-
-        // Approximate Hilbert transform in time domain
-        for (uint32_t k = 1; k < spectrum_size - 1; k++) {
-            float freq = 2.0f * M_PI * k / (float)size;
-            imag_part += spectrum[k].imag * sinf(freq * t) - spectrum[k].real * cosf(freq * t);
-        }
-        imag_part *= 2.0f / size;
-
-        amplitude[t] = sqrtf(real_part * real_part + imag_part * imag_part);
+        amplitude[t] = sqrtf(analytic[t].real * analytic[t].real +
+                            analytic[t].imag * analytic[t].imag);
     }
 
     // Cleanup
     nimcp_free(spectrum);
+    nimcp_free(full_spectrum);
+    nimcp_free(analytic);
     fft_plan_destroy(fft_plan);
+    fft_plan_destroy(ifft_plan);
 
     return true;
 }

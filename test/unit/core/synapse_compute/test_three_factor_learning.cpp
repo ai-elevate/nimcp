@@ -186,7 +186,7 @@ TEST_F(ThreeFactorLearningTest, RewardSignModulatesDirection) {
     // Changes should be opposite in sign
     float change_pos = weight_positive_reward - initial_weight;
     float change_neg = weight_negative_reward - initial_weight;
-    EXPECT_GT(change_pos * change_neg, 0.0f);  // Opposite signs
+    EXPECT_LT(change_pos * change_neg, 0.0f);  // Opposite signs (product should be negative)
 }
 
 TEST_F(ThreeFactorLearningTest, STDPTimingMatters) {

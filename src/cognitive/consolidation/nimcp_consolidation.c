@@ -416,8 +416,12 @@ static bool consolidate_scaling(brain_t brain, const consolidation_config_t* con
 
         /* Get incoming synapses */
         const synapse_t* synapses = NULL;
+        neural_network_t base_network = adaptive_network_get_base_network(network);
+        if (!base_network) {
+            continue;  /* Skip if base network not available */
+        }
         uint32_t synapse_count = neural_network_get_incoming_synapses(
-            (neural_network_t)network, neuron_id, &synapses);
+            base_network, neuron_id, &synapses);
 
         if (synapses != NULL && synapse_count > 0) {
             for (uint32_t i = 0; i < synapse_count; i++) {
@@ -496,11 +500,16 @@ static bool consolidate_pruning(brain_t brain, const consolidation_config_t* con
     uint32_t total_connections = 0;
     float threshold = config->pruning_threshold;
 
+    neural_network_t base_network = adaptive_network_get_base_network(network);
+    if (!base_network) {
+        return 0.0f;  /* Cannot analyze without base network */
+    }
+
     for (uint32_t neuron_id = 0; neuron_id < num_neurons; neuron_id++) {
         /* Get incoming synapses for this neuron */
         const synapse_t* synapses = NULL;
         uint32_t synapse_count = neural_network_get_incoming_synapses(
-            (neural_network_t)network, neuron_id, &synapses);
+            base_network, neuron_id, &synapses);
 
         if (synapses != NULL && synapse_count > 0) {
             for (uint32_t i = 0; i < synapse_count; i++) {
@@ -1093,8 +1102,12 @@ uint32_t brain_prune_weak_connections(brain_t brain, float threshold)
     /* WHY: Leverages existing, tested pruning infrastructure */
     /* HOW: Delegate to neural_network_prune_synapses which removes */
     /*      synapses with |weight| * strength < threshold */
+    neural_network_t base_network = adaptive_network_get_base_network(network);
+    if (!base_network) {
+        return 0;  /* Cannot prune without base network */
+    }
     uint32_t pruned_count = neural_network_prune_synapses(
-        (neural_network_t)network, threshold);
+        base_network, threshold);
 
     return pruned_count;
 }

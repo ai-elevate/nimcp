@@ -211,6 +211,26 @@ bool fft_execute_complex(fft_plan_t* plan, const fft_complex_t* input,
 bool fft_execute_inverse_real(fft_plan_t* plan, const fft_complex_t* input,
                                float* output);
 
+/**
+ * WHAT: Execute inverse complex-to-complex FFT
+ * WHY:  Reconstruct complex time-domain signal from frequency spectrum
+ * HOW:  Conjugate input, FFT, conjugate and scale output by 1/N
+ *
+ * @param plan FFT plan (must be FFT_INVERSE type)
+ * @param input Complex frequency spectrum [size]
+ * @param output Complex time-domain signal [size]
+ * @return true on success, false on failure
+ *
+ * COMPLEXITY: O(N log N)
+ *
+ * USE CASES:
+ * - Hilbert transform (analytic signal reconstruction)
+ * - Complex filtering in frequency domain
+ * - Phase-amplitude coupling analysis
+ */
+bool fft_execute_inverse_complex(fft_plan_t* plan, const fft_complex_t* input,
+                                  fft_complex_t* output);
+
 //=============================================================================
 // Power Spectral Density (PSD)
 //=============================================================================

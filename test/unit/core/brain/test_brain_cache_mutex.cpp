@@ -31,9 +31,11 @@
 // Test Fixtures
 //=============================================================================
 
-// DISABLED: Cache mutex tests have heap-buffer-overflow issues
-// Requires deeper investigation of decision caching memory management
-class DISABLED_BrainCacheTest : public ::testing::Test {
+// RE-ENABLED: working_memory mutex protection implemented (2025-11-17)
+// FIX APPLIED: Added platform_mutex_t to working_memory_t with locking in 16 functions
+// VALIDATION: Testing if concurrent access issues resolved at nimcp_working_memory.c:420
+// EXPECTED: All 15 tests should now pass (was 6/15 before mutex fix)
+class BrainCacheTest : public ::testing::Test {
 protected:
     brain_t brain;
 
@@ -64,7 +66,7 @@ protected:
  * WHAT: First call should compute decision (cache miss)
  * WHY:  Verify cache starts empty
  */
-TEST_F(DISABLED_BrainCacheTest, CacheMissOnFirstDecision) {
+TEST_F(BrainCacheTest, CacheMissOnFirstDecision) {
     auto input = create_input(0.5f);
 
     brain_decision_t* decision = brain_decide(brain, input.data(), input.size());
@@ -81,7 +83,7 @@ TEST_F(DISABLED_BrainCacheTest, CacheMissOnFirstDecision) {
  * WHAT: Second identical call should return cached decision
  * WHY:  Verify caching works for repeated inputs
  */
-TEST_F(DISABLED_BrainCacheTest, CacheHitOnIdenticalInput) {
+TEST_F(BrainCacheTest, CacheHitOnIdenticalInput) {
     auto input = create_input(0.5f);
 
     // First call - cache miss
@@ -107,7 +109,7 @@ TEST_F(DISABLED_BrainCacheTest, CacheHitOnIdenticalInput) {
  * WHAT: Different input should not hit cache
  * WHY:  Verify cache only returns for exact matches
  */
-TEST_F(DISABLED_BrainCacheTest, CacheMissOnDifferentInput) {
+TEST_F(BrainCacheTest, CacheMissOnDifferentInput) {
     auto input1 = create_input(0.5f);
     auto input2 = create_input(0.7f);
 
@@ -133,7 +135,7 @@ TEST_F(DISABLED_BrainCacheTest, CacheMissOnDifferentInput) {
  * WHAT: Cache should be cleared after brain_learn_example
  * WHY:  Network weights change, cached decisions become invalid
  */
-TEST_F(DISABLED_BrainCacheTest, CacheInvalidationOnLearning) {
+TEST_F(BrainCacheTest, CacheInvalidationOnLearning) {
     auto input = create_input(0.5f);
 
     // Get initial decision (cached)
@@ -161,7 +163,7 @@ TEST_F(DISABLED_BrainCacheTest, CacheInvalidationOnLearning) {
  * WHAT: Cache should be cleared after brain_prune_synapses
  * WHY:  Network structure changes, cached decisions become invalid
  */
-TEST_F(DISABLED_BrainCacheTest, CacheInvalidationOnPruning) {
+TEST_F(BrainCacheTest, CacheInvalidationOnPruning) {
     auto input = create_input(0.5f);
 
     // Get initial decision (cached)
@@ -190,7 +192,7 @@ TEST_F(DISABLED_BrainCacheTest, CacheInvalidationOnPruning) {
  * WHAT: Multiple threads reading same cached decision
  * WHY:  Verify mutex protects concurrent reads
  */
-TEST_F(DISABLED_BrainCacheTest, ConcurrentCacheReads) {
+TEST_F(BrainCacheTest, ConcurrentCacheReads) {
     auto input = create_input(0.5f);
 
     // Pre-cache a decision
@@ -240,7 +242,7 @@ TEST_F(DISABLED_BrainCacheTest, ConcurrentCacheReads) {
  * WHAT: Multiple threads writing different cached decisions
  * WHY:  Verify mutex protects concurrent writes
  */
-TEST_F(DISABLED_BrainCacheTest, ConcurrentCacheWrites) {
+TEST_F(BrainCacheTest, ConcurrentCacheWrites) {
     std::atomic<int> success_count{0};
     std::atomic<int> failure_count{0};
     const int num_threads = 8;
@@ -281,7 +283,7 @@ TEST_F(DISABLED_BrainCacheTest, ConcurrentCacheWrites) {
  * WHAT: Threads reading cache while another invalidates it
  * WHY:  Verify mutex prevents use-after-free during invalidation
  */
-TEST_F(DISABLED_BrainCacheTest, ConcurrentReadAndInvalidate) {
+TEST_F(BrainCacheTest, ConcurrentReadAndInvalidate) {
     auto input = create_input(0.5f);
 
     // Pre-cache a decision
@@ -343,7 +345,7 @@ TEST_F(DISABLED_BrainCacheTest, ConcurrentReadAndInvalidate) {
  * WHAT: Cached decision should be independent copy
  * WHY:  Caller must be able to safely free decision without affecting cache
  */
-TEST_F(DISABLED_BrainCacheTest, CacheReturnsDeepCopy) {
+TEST_F(BrainCacheTest, CacheReturnsDeepCopy) {
     auto input = create_input(0.5f);
 
     // Get first decision
@@ -376,7 +378,7 @@ TEST_F(DISABLED_BrainCacheTest, CacheReturnsDeepCopy) {
  * WHAT: Cached input should be independent copy
  * WHY:  Caller can modify input after decision without affecting cache
  */
-TEST_F(DISABLED_BrainCacheTest, CacheStoresInputCopy) {
+TEST_F(BrainCacheTest, CacheStoresInputCopy) {
     auto input = create_input(0.5f);
 
     // Get first decision (caches input)
@@ -409,7 +411,7 @@ TEST_F(DISABLED_BrainCacheTest, CacheStoresInputCopy) {
  * WHAT: Cached decisions should be faster than recomputation
  * WHY:  Verify cache provides performance benefit
  */
-TEST_F(DISABLED_BrainCacheTest, CachePerformanceImprovement) {
+TEST_F(BrainCacheTest, CachePerformanceImprovement) {
     auto input = create_input(0.5f);
 
     // First decision (uncached) - measure time
@@ -443,7 +445,7 @@ TEST_F(DISABLED_BrainCacheTest, CachePerformanceImprovement) {
  * WHAT: brain_decide with NULL brain should fail gracefully
  * WHY:  Verify parameter validation
  */
-TEST_F(DISABLED_BrainCacheTest, CacheWithNullBrain) {
+TEST_F(BrainCacheTest, CacheWithNullBrain) {
     auto input = create_input(0.5f);
 
     brain_decision_t* decision = brain_decide(nullptr, input.data(), input.size());
@@ -455,7 +457,7 @@ TEST_F(DISABLED_BrainCacheTest, CacheWithNullBrain) {
  * WHAT: brain_decide with NULL features should fail gracefully
  * WHY:  Verify parameter validation
  */
-TEST_F(DISABLED_BrainCacheTest, CacheWithNullFeatures) {
+TEST_F(BrainCacheTest, CacheWithNullFeatures) {
     brain_decision_t* decision = brain_decide(brain, nullptr, 4);
     EXPECT_EQ(decision, nullptr);
 }
@@ -465,7 +467,7 @@ TEST_F(DISABLED_BrainCacheTest, CacheWithNullFeatures) {
  * WHAT: brain_decide with wrong num_features should fail
  * WHY:  Verify dimension validation
  */
-TEST_F(DISABLED_BrainCacheTest, CacheWithWrongFeatureCount) {
+TEST_F(BrainCacheTest, CacheWithWrongFeatureCount) {
     auto input = create_input(0.5f);
 
     brain_decision_t* decision = brain_decide(brain, input.data(), 10);  // Wrong size
@@ -477,7 +479,7 @@ TEST_F(DISABLED_BrainCacheTest, CacheWithWrongFeatureCount) {
  * WHAT: Cache should properly update for different inputs
  * WHY:  Verify cache replacement works correctly
  */
-TEST_F(DISABLED_BrainCacheTest, MultipleSequentialCacheUpdates) {
+TEST_F(BrainCacheTest, MultipleSequentialCacheUpdates) {
     // Decision 1
     auto input1 = create_input(0.1f);
     brain_decision_t* decision1a = brain_decide(brain, input1.data(), input1.size());

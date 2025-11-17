@@ -22,6 +22,7 @@
 
 #include "cognitive/nimcp_working_memory.h"
 #include "utils/time/nimcp_time.h"
+#include "utils/platform/nimcp_platform_mutex.h"  // Thread safety
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
@@ -75,6 +76,9 @@ struct working_memory {
     uint32_t total_evictions;       // Lifetime evictions
     uint32_t total_refreshes;       // Lifetime attention refreshes
     uint32_t total_decay_removals;  // Items removed by decay
+
+    // Thread safety (added 2025-11-17)
+    nimcp_platform_mutex_t mutex;   // Protects all working memory operations
 };
 
 // ============================================================================
@@ -302,6 +306,13 @@ working_memory_t* working_memory_create_custom(
     wm->total_refreshes = 0;
     wm->total_decay_removals = 0;
 
+    // Initialize mutex for thread safety
+    if (nimcp_platform_mutex_init(&wm->mutex, false) != 0) {
+        set_error("Failed to initialize mutex");
+        working_memory_destroy(wm);
+        return NULL;
+    }
+
     return wm;
 }
 
@@ -337,6 +348,9 @@ void working_memory_destroy(working_memory_t* wm) {
     free(wm->attention_refreshed);
     free(wm->emotions);      // Phase 10.3
     free(wm->has_emotion);   // Phase 10.3
+
+    // Destroy mutex
+    nimcp_platform_mutex_destroy(&wm->mutex);
 
     // Free main structure
     free(wm);
@@ -399,6 +413,9 @@ bool working_memory_add(
         return false;
     }
 
+    // Lock mutex for thread-safe access
+    nimcp_platform_mutex_lock(&wm->mutex);
+
     // Check if full → evict lowest salience item
     if (wm->current_size >= wm->capacity) {
         int evict_index = find_lowest_salience_index(wm);
@@ -411,6 +428,7 @@ bool working_memory_add(
     float* item_copy = malloc(item_size * sizeof(float));
     if (!item_copy) {
         set_error("Failed to allocate item memory");
+        nimcp_platform_mutex_unlock(&wm->mutex);
         return false;
     }
     memcpy(item_copy, item, item_size * sizeof(float));
@@ -427,6 +445,7 @@ bool working_memory_add(
     wm->current_size++;
     wm->total_additions++;
 
+    nimcp_platform_mutex_unlock(&wm->mutex);
     return true;
 }
 
@@ -454,6 +473,12 @@ bool working_memory_add_with_emotion(
     const emotional_tag_t* emotion
 )
 {
+    // Guard: NULL working memory
+    if (!wm) {
+        set_error("NULL working_memory_t");
+        return false;
+    }
+
     // Guard: NULL emotion
     if (!emotion) {
         set_error("NULL emotional_tag_t");
@@ -475,16 +500,20 @@ bool working_memory_add_with_emotion(
         total_salience = 1.0f;
     }
 
-    // Add item with boosted salience
+    // Add item with boosted salience (this will acquire the lock)
     if (!working_memory_add(wm, item, item_size, total_salience)) {
         return false;
     }
+
+    // Lock mutex to attach emotional tag
+    nimcp_platform_mutex_lock(&wm->mutex);
 
     // Attach emotional tag to the just-added item
     uint32_t index = wm->current_size - 1;  // Last added
     wm->emotions[index] = *emotion;
     wm->has_emotion[index] = true;
 
+    nimcp_platform_mutex_unlock(&wm->mutex);
     return true;
 }
 
@@ -514,9 +543,15 @@ const float* working_memory_get(
         return NULL;
     }
 
+    // Lock mutex for thread-safe access
+    // NOTE: This is a const function but we need to lock for thread safety
+    // The mutex itself is mutable via nimcp_platform_mutex_lock
+    nimcp_platform_mutex_lock((nimcp_platform_mutex_t*)&wm->mutex);
+
     // Guard: Invalid index
     if (index >= wm->current_size) {
         set_error("Index out of bounds");
+        nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)&wm->mutex);
         return NULL;
     }
 
@@ -525,7 +560,9 @@ const float* working_memory_get(
         *size = wm->item_sizes[index];
     }
 
-    return wm->items[index];
+    const float* result = wm->items[index];
+    nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)&wm->mutex);
+    return result;
 }
 
 /**
@@ -548,13 +585,18 @@ bool working_memory_remove(working_memory_t* wm, uint32_t index) {
         return false;
     }
 
+    // Lock mutex for thread-safe access
+    nimcp_platform_mutex_lock(&wm->mutex);
+
     // Guard: Invalid index
     if (index >= wm->current_size) {
         set_error("Index out of bounds");
+        nimcp_platform_mutex_unlock(&wm->mutex);
         return false;
     }
 
     evict_item_at_index(wm, index);
+    nimcp_platform_mutex_unlock(&wm->mutex);
     return true;
 }
 
@@ -575,6 +617,9 @@ void working_memory_clear(working_memory_t* wm) {
         return;
     }
 
+    // Lock mutex for thread-safe access
+    nimcp_platform_mutex_lock(&wm->mutex);
+
     // Free all items
     for (uint32_t i = 0; i < wm->current_size; i++) {
         free(wm->items[i]);
@@ -582,6 +627,8 @@ void working_memory_clear(working_memory_t* wm) {
     }
 
     wm->current_size = 0;
+
+    nimcp_platform_mutex_unlock(&wm->mutex);
 }
 
 /**
@@ -616,9 +663,13 @@ bool working_memory_get_emotion(
         return false;
     }
 
+    // Lock mutex for thread-safe access
+    nimcp_platform_mutex_lock((nimcp_platform_mutex_t*)&wm->mutex);
+
     // Guard: Invalid index
     if (index >= wm->current_size) {
         set_error("Index out of bounds");
+        nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)&wm->mutex);
         return false;
     }
 
@@ -629,6 +680,7 @@ bool working_memory_get_emotion(
         *emotion = emotional_tag_neutral();
     }
 
+    nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)&wm->mutex);
     return true;
 }
 
@@ -670,15 +722,20 @@ bool working_memory_get_total_salience(
         return false;
     }
 
+    // Lock mutex for thread-safe access
+    nimcp_platform_mutex_lock((nimcp_platform_mutex_t*)&wm->mutex);
+
     // Guard: Invalid index
     if (index >= wm->current_size) {
         set_error("Index out of bounds");
+        nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)&wm->mutex);
         return false;
     }
 
     // Return stored salience (already boosted if emotion present)
     *total_salience = wm->salience[index];
 
+    nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)&wm->mutex);
     return true;
 }
 
@@ -706,15 +763,19 @@ bool working_memory_refresh(working_memory_t* wm, uint32_t index) {
         return false;
     }
 
-    // Guard: Invalid index
-    if (index >= wm->current_size) {
-        set_error("Index out of bounds");
+    // Guard: Feature disabled (check before locking)
+    if (!wm->enable_attention_refresh) {
+        set_error("Attention refresh disabled");
         return false;
     }
 
-    // Guard: Feature disabled
-    if (!wm->enable_attention_refresh) {
-        set_error("Attention refresh disabled");
+    // Lock mutex for thread-safe access
+    nimcp_platform_mutex_lock(&wm->mutex);
+
+    // Guard: Invalid index
+    if (index >= wm->current_size) {
+        set_error("Index out of bounds");
+        nimcp_platform_mutex_unlock(&wm->mutex);
         return false;
     }
 
@@ -723,6 +784,7 @@ bool working_memory_refresh(working_memory_t* wm, uint32_t index) {
     wm->attention_refreshed[index] = true;
     wm->total_refreshes++;
 
+    nimcp_platform_mutex_unlock(&wm->mutex);
     return true;
 }
 
@@ -757,6 +819,9 @@ uint32_t working_memory_decay(
         return 0;
     }
 
+    // Lock mutex for thread-safe access
+    nimcp_platform_mutex_lock(&wm->mutex);
+
     uint32_t removed_count = 0;
 
     // Iterate backwards to safely remove items
@@ -782,6 +847,7 @@ uint32_t working_memory_decay(
         }
     }
 
+    nimcp_platform_mutex_unlock(&wm->mutex);
     return removed_count;
 }
 
@@ -807,7 +873,12 @@ uint32_t working_memory_get_size(const working_memory_t* wm) {
         return 0;
     }
 
-    return wm->current_size;
+    // Lock mutex for thread-safe access
+    nimcp_platform_mutex_lock((nimcp_platform_mutex_t*)&wm->mutex);
+    uint32_t size = wm->current_size;
+    nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)&wm->mutex);
+
+    return size;
 }
 
 /**
@@ -843,7 +914,12 @@ float working_memory_get_utilization(const working_memory_t* wm) {
         return 0.0f;
     }
 
-    return (float)wm->current_size / (float)wm->capacity;
+    // Lock mutex for thread-safe access
+    nimcp_platform_mutex_lock((nimcp_platform_mutex_t*)&wm->mutex);
+    float utilization = (float)wm->current_size / (float)wm->capacity;
+    nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)&wm->mutex);
+
+    return utilization;
 }
 
 /**
@@ -864,7 +940,12 @@ uint32_t working_memory_get_capacity(const working_memory_t* wm) {
         return 0;
     }
 
-    return wm->capacity;
+    // Lock mutex for thread-safe access
+    nimcp_platform_mutex_lock((nimcp_platform_mutex_t*)&wm->mutex);
+    uint32_t capacity = wm->capacity;
+    nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)&wm->mutex);
+
+    return capacity;
 }
 
 /**
@@ -885,7 +966,12 @@ bool working_memory_is_full(const working_memory_t* wm) {
         return false;
     }
 
-    return wm->current_size >= wm->capacity;
+    // Lock mutex for thread-safe access
+    nimcp_platform_mutex_lock((nimcp_platform_mutex_t*)&wm->mutex);
+    bool is_full = wm->current_size >= wm->capacity;
+    nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)&wm->mutex);
+
+    return is_full;
 }
 
 /**
@@ -912,8 +998,12 @@ int working_memory_find_highest_salience(
         return -1;
     }
 
+    // Lock mutex for thread-safe access
+    nimcp_platform_mutex_lock((nimcp_platform_mutex_t*)&wm->mutex);
+
     // Guard: Empty buffer
     if (wm->current_size == 0) {
+        nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)&wm->mutex);
         return -1;
     }
 
@@ -932,6 +1022,7 @@ int working_memory_find_highest_salience(
         *salience = max_salience;
     }
 
+    nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)&wm->mutex);
     return max_index;
 }
 
@@ -956,6 +1047,9 @@ void working_memory_get_stats(
     if (!wm || !stats) {
         return;
     }
+
+    // Lock mutex for thread-safe access
+    nimcp_platform_mutex_lock((nimcp_platform_mutex_t*)&wm->mutex);
 
     stats->current_size = wm->current_size;
     stats->capacity = wm->capacity;
@@ -985,4 +1079,6 @@ void working_memory_get_stats(
         }
         stats->oldest_item_age_ms = (float)(current_time - oldest_time);
     }
+
+    nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)&wm->mutex);
 }

@@ -472,6 +472,10 @@ static uint32_t encode_bitwise(int32_t spike_count, uint8_t* spike_train, uint32
     if (bytes_needed > max_length)
         bytes_needed = max_length;
 
+    // Additional guard: Prevent shift overflow (max 4 bytes for uint32_t)
+    if (bytes_needed > 4)
+        bytes_needed = 4;
+
     for (uint32_t i = 0; i < bytes_needed; i++) {
         spike_train[i] = (abs_count >> (i * 8)) & 0xFF;
     }
@@ -1466,7 +1470,8 @@ float adaptive_network_distill(adaptive_network_t network, const float* input, u
 
     float loss = adaptive_network_learn(network, &example, LEARN_MODE_DISTILLATION, learning_rate);
 
-    // Teacher is responsible for freeing output if needed
+    // Free teacher output (caller's responsibility to allocate, our responsibility to free)
+    free(teacher_output);
 
     return loss;
 }
