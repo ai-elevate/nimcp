@@ -33,7 +33,7 @@ protected:
     void SetUp() override {
         // Create a minimal mock brain (just needs to be non-NULL for some tests)
         // Note: Some tests won't create analyzer to avoid FFT dependencies
-        mock_brain = (brain_t)0x1;  // Mock pointer (some tests just check NULL guards)
+        mock_brain = nullptr;  // Mock pointer (some tests just check NULL guards)
     }
 
     void TearDown() override {

@@ -54,7 +54,7 @@ protected:
 
     // Helper: Create mock brain (placeholder)
     brain_t create_mock_brain() {
-        return (brain_t)0x1;  // Placeholder pointer
+        return nullptr;  // Placeholder pointer
     }
 
     // Helper: Create test task

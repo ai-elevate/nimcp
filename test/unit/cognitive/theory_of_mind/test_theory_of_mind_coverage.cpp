@@ -32,7 +32,7 @@ protected:
 
     void SetUp() override {
         // Mock brain (just needs to be non-NULL)
-        mock_brain = (brain_t)0x1;
+        mock_brain = nullptr;
         tom = tom_create(mock_brain);
         ASSERT_NE(tom, nullptr);
     }
