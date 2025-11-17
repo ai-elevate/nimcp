@@ -221,20 +221,20 @@ TEST_F(KDTreeRangeSearchTest, MultiplePoints_Grid) {
     std::array<float, 3> query{{0.0f, 0.0f, 0.0f}};
     void* results[100];
 
-    // Radius 1.0 should find center point only
-    uint32_t count = kdtree_range_search(tree, query.data(), 1.0f, results, 100);
+    // Radius 0.5 should find center point only (face neighbors at distance 1.0)
+    uint32_t count = kdtree_range_search(tree, query.data(), 0.5f, results, 100);
     EXPECT_EQ(count, 1);
 
-    // Radius 1.5 should find center + 6 face neighbors
-    count = kdtree_range_search(tree, query.data(), 1.5f, results, 100);
+    // Radius 1.1 should find center + 6 face neighbors (edges at distance √2 ≈ 1.414)
+    count = kdtree_range_search(tree, query.data(), 1.1f, results, 100);
     EXPECT_EQ(count, 7);
 
-    // Radius 2.0 should find center + 6 faces + 12 edges
-    count = kdtree_range_search(tree, query.data(), 2.0f, results, 100);
+    // Radius 1.5 should find center + 6 faces + 12 edges (corners at distance √3 ≈ 1.732)
+    count = kdtree_range_search(tree, query.data(), 1.5f, results, 100);
     EXPECT_EQ(count, 19);
 
-    // Radius 2.5 should find all 27 points
-    count = kdtree_range_search(tree, query.data(), 2.5f, results, 100);
+    // Radius 2.0 should find all 27 points
+    count = kdtree_range_search(tree, query.data(), 2.0f, results, 100);
     EXPECT_EQ(count, 27);
 }
 
