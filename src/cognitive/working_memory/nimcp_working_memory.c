@@ -135,7 +135,7 @@ static int find_lowest_salience_index(const working_memory_t* wm) {
  *
  * WHAT: Remove item and compact buffer
  * WHY:  Make space for new item
- * HOW:  Free memory → Shift arrays left → Decrement size
+ * HOW:  Free memory → Shift arrays left → Decrement size → NULL last slot
  *
  * COMPLEXITY: O(n) where n = current_size (due to shift)
  *
@@ -150,7 +150,6 @@ static void evict_item_at_index(working_memory_t* wm, uint32_t index) {
 
     // Free item memory
     free(wm->items[index]);
-    wm->items[index] = NULL;
 
     // Shift arrays left
     uint32_t shift_count = wm->current_size - index - 1;
@@ -173,6 +172,11 @@ static void evict_item_at_index(working_memory_t* wm, uint32_t index) {
     }
 
     wm->current_size--;
+
+    // NULL out the last slot to prevent double-free
+    // After memmove and size decrement, items[current_size] contains a stale pointer
+    wm->items[wm->current_size] = NULL;
+
     wm->total_evictions++;
 }
 
