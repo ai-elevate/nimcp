@@ -6,20 +6,25 @@
 #include <gtest/gtest.h>
 #include "utils/memory/nimcp_memory.h"
 #include "utils/containers/nimcp_queue.h"
+#include "utils/nimcp_test_base.h"
 
 // Note: queue_manager tests are skipped due to C++/C11 atomics incompatibility
 // The queue_manager uses atomic types in its public API which don't work with C++
 
-class QueueTest : public ::testing::Test {
+class QueueTest : public NimcpTestBase {
    protected:
     void SetUp() override
     {
+        NimcpTestBase::SetUp();  // Call parent SetUp first
+
         nimcp_memory_init();
     }
 
     void TearDown() override
     {
         nimcp_memory_cleanup();
+
+        NimcpTestBase::TearDown();  // Call parent TearDown last
     }
 };
 

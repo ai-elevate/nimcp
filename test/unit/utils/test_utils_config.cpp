@@ -24,6 +24,7 @@
 
 #include "utils/config/nimcp_config.h"
 #include "utils/memory/nimcp_memory.h"
+#include "utils/nimcp_test_base.h"
 
 //=============================================================================
 // Test Constants
@@ -176,12 +177,14 @@ static void create_edge_case_yaml_config(const char* filepath)
 // Test Fixture
 //=============================================================================
 
-class ConfigTest : public ::testing::Test {
+class ConfigTest : public NimcpTestBase {
    protected:
     nimcp_brain_config_t config;
 
     void SetUp() override
     {
+        NimcpTestBase::SetUp();  // Call parent SetUp first
+
         create_test_dir();
         memset(&config, 0, sizeof(config));
         nimcp_memory_init();
@@ -191,6 +194,8 @@ class ConfigTest : public ::testing::Test {
     void TearDown() override
     {
         cleanup_test_dir();
+
+        NimcpTestBase::TearDown();  // Call parent TearDown last
     }
 };
 

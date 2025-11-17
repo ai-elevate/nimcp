@@ -12,6 +12,7 @@
 
 #include <gtest/gtest.h>
 #include "utils/spatial/nimcp_kdtree.h"
+#include "utils/nimcp_test_base.h"
 #include <vector>
 #include <array>
 #include <cmath>
@@ -22,13 +23,15 @@
 // Test Fixtures
 //=============================================================================
 
-class KDTreeRangeSearchTest : public ::testing::Test {
+class KDTreeRangeSearchTest : public NimcpTestBase {
 protected:
     kdtree_t* tree;
     std::vector<std::array<float, 3>> points;
     std::vector<void*> user_data;
 
     void SetUp() override {
+        NimcpTestBase::SetUp();  // Call parent SetUp first
+
         tree = kdtree_create();
         ASSERT_NE(tree, nullptr);
     }
@@ -37,6 +40,8 @@ protected:
         if (tree) {
             kdtree_destroy(tree);
         }
+
+        NimcpTestBase::TearDown();  // Call parent TearDown last
     }
 
     // Helper: Build tree with test points
