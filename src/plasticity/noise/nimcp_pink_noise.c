@@ -988,3 +988,66 @@ const char* pink_noise_get_last_error(void) {
 
     return last_error;
 }
+
+//=============================================================================
+// Persistence (Save/Load) - Stub Implementations
+//=============================================================================
+
+bool pink_noise_save(pink_noise_generator_t generator, FILE* file) {
+    // WHAT: Save pink noise generator state (stub)
+    // WHY: Enable persistence for neuromodulator state
+    // HOW: Binary serialization (TODO: full implementation)
+
+    if (!generator || !file) {
+        set_error("Invalid generator or file handle");
+        return false;
+    }
+
+    // TODO: Implement full serialization of internal state
+    // For now, just write a marker to indicate saved state
+    uint32_t marker = 0x50494E4B;  // "PINK" in ASCII
+    size_t written = fwrite(&marker, sizeof(uint32_t), 1, file);
+
+    if (written != 1) {
+        set_error("Failed to write marker");
+        return false;
+    }
+
+    set_error(NULL);
+    return true;
+}
+
+pink_noise_generator_t pink_noise_load(FILE* file) {
+    // WHAT: Load pink noise generator state (stub)
+    // WHY: Restore persistence for neuromodulator state
+    // HOW: Binary deserialization (TODO: full implementation)
+
+    if (!file) {
+        set_error("Invalid file handle");
+        return NULL;
+    }
+
+    // TODO: Implement full deserialization
+    // For now, just read the marker and return a default generator
+    uint32_t marker;
+    size_t read_count = fread(&marker, sizeof(uint32_t), 1, file);
+
+    if (read_count != 1 || marker != 0x50494E4B) {  // "PINK" in ASCII
+        set_error("Failed to read marker or invalid format");
+        return NULL;
+    }
+
+    // Create default generator (stub)
+    pink_noise_config_t config = {
+        .alpha = 1.0f,
+        .amplitude = 0.05f,
+        .min_frequency = 0.1f,
+        .max_frequency = 100.0f,
+        .sample_rate = 1000.0f,
+        .method = PINK_NOISE_VOSS,
+        .seed = 0
+    };
+
+    set_error(NULL);
+    return pink_noise_create(&config);
+}

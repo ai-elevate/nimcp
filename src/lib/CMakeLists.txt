@@ -193,6 +193,7 @@ set(NIMCP_CORE_SOURCES
 
     # Utils - Tensor Networks (Phase C3.1: MPS Compression)
     ${CMAKE_CURRENT_SOURCE_DIR}/../utils/tensor_networks/nimcp_mps.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../utils/tensor_networks/nimcp_svd_simple.c  # SVD for tensor compression
 
     # Information Theory (Phase C4: Shannon Information Theory)
     ${CMAKE_CURRENT_SOURCE_DIR}/../information/nimcp_shannon.c

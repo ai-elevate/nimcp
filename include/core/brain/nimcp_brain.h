@@ -359,6 +359,18 @@ typedef enum {
 } brain_export_flags_t;
 
 /**
+ * @brief Get or create network analyzer for topology analysis
+ *
+ * WHAT: Lazy initialization of network analyzer for real-time topology monitoring
+ * WHY:  Enable continuous analysis of network organization during learning
+ * HOW:  Create analyzer on first access, cache for reuse
+ *
+ * @param brain Brain to analyze
+ * @return Network analyzer pointer (opaque) or NULL on error
+ */
+void* brain_get_network_analyzer(brain_t brain);
+
+/**
  * @brief Export brain to JSON format
  *
  * WHAT: Serialize brain state to human-readable JSON

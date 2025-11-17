@@ -88,7 +88,6 @@
 /home/bbrelin/nimcp/build/examples/CMakeFiles/install.dir
 /home/bbrelin/nimcp/build/examples/CMakeFiles/install/local.dir
 /home/bbrelin/nimcp/build/examples/CMakeFiles/install/strip.dir
-/home/bbrelin/nimcp/build/test/CMakeFiles/unit_cognitive_analysis_test_network_analyzer_integration.dir
 /home/bbrelin/nimcp/build/test/CMakeFiles/unit_cognitive_bias_test_bias_detection.dir
 /home/bbrelin/nimcp/build/test/CMakeFiles/unit_cognitive_consolidation_test_consolidation.dir
 /home/bbrelin/nimcp/build/test/CMakeFiles/unit_cognitive_consolidation_test_systems_consolidation.dir

@@ -3521,6 +3521,30 @@ __/utils/tensor_networks/nimcp_mps.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/utils/tensor_networks/nimcp_mps.c.s
 .PHONY : __/utils/tensor_networks/nimcp_mps.c.s
 
+__/utils/tensor_networks/nimcp_svd_simple.o: __/utils/tensor_networks/nimcp_svd_simple.c.o
+.PHONY : __/utils/tensor_networks/nimcp_svd_simple.o
+
+# target to build an object file
+__/utils/tensor_networks/nimcp_svd_simple.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/utils/tensor_networks/nimcp_svd_simple.c.o
+.PHONY : __/utils/tensor_networks/nimcp_svd_simple.c.o
+
+__/utils/tensor_networks/nimcp_svd_simple.i: __/utils/tensor_networks/nimcp_svd_simple.c.i
+.PHONY : __/utils/tensor_networks/nimcp_svd_simple.i
+
+# target to preprocess a source file
+__/utils/tensor_networks/nimcp_svd_simple.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/utils/tensor_networks/nimcp_svd_simple.c.i
+.PHONY : __/utils/tensor_networks/nimcp_svd_simple.c.i
+
+__/utils/tensor_networks/nimcp_svd_simple.s: __/utils/tensor_networks/nimcp_svd_simple.c.s
+.PHONY : __/utils/tensor_networks/nimcp_svd_simple.s
+
+# target to generate assembly for a file
+__/utils/tensor_networks/nimcp_svd_simple.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/utils/tensor_networks/nimcp_svd_simple.c.s
+.PHONY : __/utils/tensor_networks/nimcp_svd_simple.c.s
+
 __/utils/thread/nimcp_deadlock_detector.o: __/utils/thread/nimcp_deadlock_detector.c.o
 .PHONY : __/utils/thread/nimcp_deadlock_detector.o
 
@@ -4168,6 +4192,9 @@ help:
 	@echo "... __/utils/tensor_networks/nimcp_mps.o"
 	@echo "... __/utils/tensor_networks/nimcp_mps.i"
 	@echo "... __/utils/tensor_networks/nimcp_mps.s"
+	@echo "... __/utils/tensor_networks/nimcp_svd_simple.o"
+	@echo "... __/utils/tensor_networks/nimcp_svd_simple.i"
+	@echo "... __/utils/tensor_networks/nimcp_svd_simple.s"
 	@echo "... __/utils/thread/nimcp_deadlock_detector.o"
 	@echo "... __/utils/thread/nimcp_deadlock_detector.i"
 	@echo "... __/utils/thread/nimcp_deadlock_detector.s"

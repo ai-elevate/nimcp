@@ -1103,49 +1103,39 @@ bool quantum_adaptive_routing(quantum_shannon_diffusion_t* qsd, void* network_an
     // Step 4b: Bias routing through inter-community edges
     // WHY: Inter-community edges enable global information spread
     // HOW: Detect community boundaries and increase routing through them
-    if (communities && communities->num_communities > 1) {
-        // For each community, identify boundary neurons
-        for (uint32_t c = 0; c < communities->num_communities; c++) {
-            const community_t* comm = &communities->communities[c];
+    if (communities && communities->num_communities > 1 && communities->community_ids) {
+        // For each neuron, check if it has inter-community connections
+        for (uint32_t neuron_id = 0; neuron_id < walker->num_nodes; neuron_id++) {
+            // Guard: Valid community assignment
+            if (neuron_id >= walker->num_nodes) continue;
 
-            // Check each neuron in community for external connections
-            for (uint32_t n = 0; n < comm->size; n++) {
-                uint32_t neuron_id = comm->neurons[n];
+            uint32_t my_community = communities->community_ids[neuron_id];
 
-                // Guard: Valid neuron ID
-                if (neuron_id >= walker->num_nodes) continue;
+            // Get this neuron's neighbors
+            uint32_t degree = walker->node_degrees[neuron_id];
+            uint32_t* neighbors = walker->adjacency_list[neuron_id];
+            if (!neighbors || degree == 0) continue;
 
-                // Get this neuron's neighbors
-                uint32_t degree = walker->node_degrees[neuron_id];
-                uint32_t* neighbors = walker->adjacency_list[neuron_id];
-                if (!neighbors) continue;
+            // Count external connections (to other communities)
+            uint32_t external_count = 0;
+            for (uint32_t nb = 0; nb < degree; nb++) {
+                uint32_t neighbor_id = neighbors[nb];
 
-                // Count external connections (to other communities)
-                uint32_t external_count = 0;
-                for (uint32_t nb = 0; nb < degree; nb++) {
-                    uint32_t neighbor_id = neighbors[nb];
+                // Guard: Valid neighbor ID
+                if (neighbor_id >= walker->num_nodes) continue;
 
-                    // Check if neighbor is in same community
-                    bool same_community = false;
-                    for (uint32_t nc = 0; nc < comm->size; nc++) {
-                        if (comm->neurons[nc] == neighbor_id) {
-                            same_community = true;
-                            break;
-                        }
-                    }
-
-                    if (!same_community) {
-                        external_count++;
-                    }
+                // Check if neighbor is in different community
+                if (communities->community_ids[neighbor_id] != my_community) {
+                    external_count++;
                 }
+            }
 
-                // If neuron has external connections, it's a boundary node
-                if (external_count > 0) {
-                    float boundary_ratio = (float)external_count / (float)degree;
-                    // Increase routing weight for boundary neurons
-                    // More external connections → higher weight
-                    routing_weights[neuron_id] *= (1.0f + boundary_ratio * 0.5f);
-                }
+            // If neuron has external connections, it's a boundary node
+            if (external_count > 0) {
+                float boundary_ratio = (float)external_count / (float)degree;
+                // Increase routing weight for boundary neurons
+                // More external connections → higher weight
+                routing_weights[neuron_id] *= (1.0f + boundary_ratio * 0.5f);
             }
         }
     }

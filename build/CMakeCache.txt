@@ -17,6 +17,9 @@
 //Builds the googlemock subproject
 BUILD_GMOCK:BOOL=ON
 
+//No help, variable specified on the command line.
+BUILD_TESTING:UNINITIALIZED=OFF
+
 //Path to a program.
 CMAKE_ADDR2LINE:FILEPATH=/usr/bin/addr2line
 

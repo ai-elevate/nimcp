@@ -455,6 +455,35 @@ bool pink_noise_modulate_multiplicative(
 );
 
 //=============================================================================
+// Persistence (Save/Load)
+//=============================================================================
+
+/**
+ * @brief Save pink noise generator state to file
+ *
+ * WHAT: Serialize generator state for later restoration
+ * WHY: Enable model persistence across sessions
+ * HOW: Binary write of internal state
+ *
+ * @param generator Pink noise generator to save
+ * @param file Open file handle for writing
+ * @return true on success, false on failure
+ */
+bool pink_noise_save(pink_noise_generator_t generator, FILE* file);
+
+/**
+ * @brief Load pink noise generator state from file
+ *
+ * WHAT: Restore generator state from saved file
+ * WHY: Resume from saved model state
+ * HOW: Binary read and reconstruction
+ *
+ * @param file Open file handle for reading
+ * @return Restored generator or NULL on failure
+ */
+pink_noise_generator_t pink_noise_load(FILE* file);
+
+//=============================================================================
 // Error Handling
 //=============================================================================
 

@@ -101,9 +101,8 @@
 // === PHASE E: HIGHER-ORDER COGNITIVE & SOCIAL SYSTEMS ===
 #include "cognitive/nimcp_shadow_emotions.h"   // Phase E5: Shadow Emotions (jealousy, envy, obsession, hubris, greed, narcissism)
 #include "cognitive/nimcp_bias_detection.h"    // Phase E6: Bias Detection & Correction (racial, LGBTQ+, gender, misogyny, etc.)
-// Note: nimcp_network_analysis.h is NOT included here to avoid type conflicts with topology module
-// Forward declarations are used instead, with the header included locally where needed
-typedef struct network_analyzer_struct network_analyzer_t;
+// Network Analysis Module - uses topology module's community_structure_t to avoid conflicts
+#include "cognitive/analysis/nimcp_network_analysis.h"
 
 // === PHASE E: FULL EMOTIONAL INTELLIGENCE ===
 #include "cognitive/nimcp_grief_and_loss.h"            // Phase E1: Grief, Loss, Bereavement (negative emotion)
@@ -11447,9 +11446,6 @@ NIMCP_EXPORT void* brain_get_network_analyzer(brain_t brain) {
     //
     // COMPLEXITY: O(1) cached, O(N + E) first call
 
-    // Local include to avoid global type conflicts with topology module
-    #include "cognitive/analysis/nimcp_network_analysis.h"
-
     // Guard: NULL check
     if (!brain) {
         NIMCP_LOGGING_ERROR("brain_get_network_analyzer: NULL brain");
@@ -11488,6 +11484,11 @@ NIMCP_EXPORT void* brain_get_network_analyzer(brain_t brain) {
         }
 
         NIMCP_LOGGING_INFO("brain_get_network_analyzer: created and initialized analyzer");
+    }
+
+    // Return cached analyzer
+    return b->network_analyzer;
+}
 
 //=============================================================================
 // JSON Export/Import (Stub Implementation)
@@ -11495,12 +11496,12 @@ NIMCP_EXPORT void* brain_get_network_analyzer(brain_t brain) {
 
 char* brain_export_json(brain_t brain, uint32_t flags)
 {
-    if (\!brain) {
+    if (!brain) {
         return NULL;
     }
-    
+
     cJSON* root = cJSON_CreateObject();
-    if (\!root) {
+    if (!root) {
         return NULL;
     }
     
@@ -11521,17 +11522,17 @@ brain_t brain_import_json(const char* json_str)
 
 bool brain_save_json(brain_t brain, const char* filepath, uint32_t flags)
 {
-    if (\!brain || \!filepath) {
+    if (!brain || !filepath) {
         return false;
     }
-    
+
     char* json = brain_export_json(brain, flags);
-    if (\!json) {
+    if (!json) {
         return false;
     }
-    
+
     FILE* f = fopen(filepath, "w");
-    if (\!f) {
+    if (!f) {
         free(json);
         return false;
     }
