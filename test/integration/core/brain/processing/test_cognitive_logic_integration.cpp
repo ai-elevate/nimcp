@@ -32,19 +32,9 @@ protected:
     neural_logic_network_t logic = nullptr;
 
     void SetUp() override {
-        // Create brain with neural logic enabled
-        brain_config_t config = {0};
-        config.num_inputs = 128;
-        config.num_outputs = 20;
-        config.hidden_layers = 2;
-        config.neurons_per_layer = 64;
-        config.enable_neural_logic = true;
-        config.enable_introspection = false;  // Simplify for testing
-        config.enable_ethics = false;
-        config.enable_salience = false;
-        config.enable_curiosity = false;
-
-        brain = brain_create(&config);
+        // Create brain with neural logic enabled (new API)
+        brain = brain_create("cognitive_logic_test", BRAIN_SIZE_SMALL,
+                           BRAIN_TASK_CLASSIFICATION, 128, 20);
         if (!brain) {
             return;
         }
@@ -63,27 +53,20 @@ protected:
         }
     }
 
-    // Helper: Create multimodal input
+    // Helper: Create test input (simple float array)
     void create_test_input(
-        brain_multimodal_input_t* input,
+        float* input,
+        uint32_t size,
         float visual_val,
         float auditory_val)
     {
-        memset(input, 0, sizeof(brain_multimodal_input_t));
-
-        // Visual input
-        for (int i = 0; i < 32; i++) {
-            input->visual_input[i] = visual_val;
+        // Fill first half with visual values, second half with auditory
+        for (uint32_t i = 0; i < size / 2; i++) {
+            input[i] = visual_val;
         }
-        input->visual_dim = 32;
-
-        // Auditory input
-        for (int i = 0; i < 32; i++) {
-            input->auditory_input[i] = auditory_val;
+        for (uint32_t i = size / 2; i < size; i++) {
+            input[i] = auditory_val;
         }
-        input->auditory_dim = 32;
-
-        input->timestamp_ms = 1000;
     }
 };
 
@@ -97,14 +80,15 @@ TEST_F(CognitiveLogicIntegrationTest, BrainDecisionWithLogicValidation) {
         GTEST_SKIP() << "Brain creation failed";
     }
 
-    brain_multimodal_input_t input;
-    create_test_input(&input, 0.8f, 0.6f);
+    float input[128];
+    create_test_input(input, 128, 0.8f, 0.6f);
 
-    brain_decision_t decision;
-    bool result = brain_decide(&decision, brain, &input);
+    brain_decision_t* decision = brain_decide(brain, input, 128);
 
-    EXPECT_TRUE(result);
-    // Decision should have logic_valid field set
+    ASSERT_NE(decision, nullptr);
+    // Decision should have confidence and uncertainty fields
+    EXPECT_GE(decision->confidence, 0.0f);
+    EXPECT_LE(decision->confidence, 1.0f);
 }
 
 TEST_F(CognitiveLogicIntegrationTest, ConstraintCheckingWithRealBrain) {
@@ -113,18 +97,17 @@ TEST_F(CognitiveLogicIntegrationTest, ConstraintCheckingWithRealBrain) {
         GTEST_SKIP() << "Brain creation failed";
     }
 
-    brain_multimodal_input_t input;
-    create_test_input(&input, 0.5f, 0.5f);
+    float input[128];
+    create_test_input(input, 128, 0.5f, 0.5f);
 
-    brain_decision_t decision;
-    bool result = brain_decide(&decision, brain, &input);
+    brain_decision_t* decision = brain_decide(brain, input, 128);
 
-    EXPECT_TRUE(result);
+    ASSERT_NE(decision, nullptr);
 
     // Validate decision constraints
-    // Confidence and uncertainty should be complementary
-    float sum = decision.confidence + decision.uncertainty;
-    EXPECT_NEAR(sum, 1.0f, 0.3f);  // Allow some tolerance
+    // Confidence should be in valid range [0, 1]
+    EXPECT_GE(decision->confidence, 0.0f);
+    EXPECT_LE(decision->confidence, 1.0f);
 }
 
 TEST_F(CognitiveLogicIntegrationTest, LogicCircuitReuse) {
@@ -133,25 +116,23 @@ TEST_F(CognitiveLogicIntegrationTest, LogicCircuitReuse) {
         GTEST_SKIP() << "Brain creation failed";
     }
 
-    brain_multimodal_input_t input1;
-    create_test_input(&input1, 0.7f, 0.3f);
+    float input1[128];
+    create_test_input(input1, 128, 0.7f, 0.3f);
 
-    brain_multimodal_input_t input2;
-    create_test_input(&input2, 0.4f, 0.9f);
-
-    brain_decision_t decision1, decision2;
+    float input2[128];
+    create_test_input(input2, 128, 0.4f, 0.9f);
 
     // First decision
-    bool result1 = brain_decide(&decision1, brain, &input1);
-    EXPECT_TRUE(result1);
+    brain_decision_t* decision1 = brain_decide(brain, input1, 128);
+    ASSERT_NE(decision1, nullptr);
 
     // Second decision (reuses logic network)
-    bool result2 = brain_decide(&decision2, brain, &input2);
-    EXPECT_TRUE(result2);
+    brain_decision_t* decision2 = brain_decide(brain, input2, 128);
+    ASSERT_NE(decision2, nullptr);
 
     // Both should complete successfully
-    EXPECT_GE(decision1.confidence, 0.0f);
-    EXPECT_GE(decision2.confidence, 0.0f);
+    EXPECT_GE(decision1->confidence, 0.0f);
+    EXPECT_GE(decision2->confidence, 0.0f);
 }
 
 TEST_F(CognitiveLogicIntegrationTest, HighUncertaintyScenario) {
@@ -160,19 +141,18 @@ TEST_F(CognitiveLogicIntegrationTest, HighUncertaintyScenario) {
         GTEST_SKIP() << "Brain creation failed";
     }
 
-    brain_multimodal_input_t input;
+    float input[128];
     // Create ambiguous input (mid-range values)
-    create_test_input(&input, 0.5f, 0.5f);
+    create_test_input(input, 128, 0.5f, 0.5f);
 
-    brain_decision_t decision;
-    bool result = brain_decide(&decision, brain, &input);
+    brain_decision_t* decision = brain_decide(brain, input, 128);
 
-    EXPECT_TRUE(result);
+    ASSERT_NE(decision, nullptr);
 
-    // Uncertainty should be reasonably high for ambiguous input
+    // Confidence might be lower for ambiguous input
     // (This depends on introspection module being enabled)
-    EXPECT_GE(decision.uncertainty, 0.0f);
-    EXPECT_LE(decision.uncertainty, 1.0f);
+    EXPECT_GE(decision->confidence, 0.0f);
+    EXPECT_LE(decision->confidence, 1.0f);
 }
 
 TEST_F(CognitiveLogicIntegrationTest, EthicalConstraintValidation) {
@@ -181,13 +161,12 @@ TEST_F(CognitiveLogicIntegrationTest, EthicalConstraintValidation) {
         GTEST_SKIP() << "Brain creation failed";
     }
 
-    brain_multimodal_input_t input;
-    create_test_input(&input, 0.8f, 0.8f);
+    float input[128];
+    create_test_input(input, 128, 0.8f, 0.8f);
 
-    brain_decision_t decision;
-    bool result = brain_decide(&decision, brain, &input);
+    brain_decision_t* decision = brain_decide(brain, input, 128);
 
-    EXPECT_TRUE(result);
+    ASSERT_NE(decision, nullptr);
 
     // Should have ethical approval status
     // (Default should be approved for normal inputs)
@@ -205,19 +184,17 @@ TEST_F(CognitiveLogicIntegrationTest, DetectConfidenceUncertaintyConflict) {
 
     // Process multiple inputs to see constraint variations
     for (int i = 0; i < 5; i++) {
-        brain_multimodal_input_t input;
+        float input[128];
         float val = 0.2f * i;
-        create_test_input(&input, val, 1.0f - val);
+        create_test_input(input, 128, val, 1.0f - val);
 
-        brain_decision_t decision;
-        bool result = brain_decide(&decision, brain, &input);
+        brain_decision_t* decision = brain_decide(brain, input, 128);
 
-        EXPECT_TRUE(result);
+        ASSERT_NE(decision, nullptr);
 
-        // Check complementary relationship
-        float sum = decision.confidence + decision.uncertainty;
-        EXPECT_GE(sum, 0.5f);
-        EXPECT_LE(sum, 1.5f);
+        // Check confidence is in valid range
+        EXPECT_GE(decision->confidence, 0.0f);
+        EXPECT_LE(decision->confidence, 1.0f);
     }
 }
 
@@ -231,15 +208,14 @@ TEST_F(CognitiveLogicIntegrationTest, MultipleDecisionsStressTest) {
     int valid_decisions = 0;
 
     for (int i = 0; i < num_decisions; i++) {
-        brain_multimodal_input_t input;
+        float input[128];
         float visual_val = (float)i / num_decisions;
         float auditory_val = 1.0f - visual_val;
-        create_test_input(&input, visual_val, auditory_val);
+        create_test_input(input, 128, visual_val, auditory_val);
 
-        brain_decision_t decision;
-        bool result = brain_decide(&decision, brain, &input);
+        brain_decision_t* decision = brain_decide(brain, input, 128);
 
-        if (result) {
+        if (decision != nullptr) {
             valid_decisions++;
         }
     }

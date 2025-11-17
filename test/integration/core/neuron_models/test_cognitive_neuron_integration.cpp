@@ -71,12 +71,13 @@ TEST_F(CognitiveNeuronIntegrationTest, Metacognitive_BrainDecisionIntegration) {
     auto features = create_test_features(10, 0.7f);
 
     // Make decision with brain
-    brain_decision_t decision;
-    nimcp_result_t result = brain_decide(brain, features.data(), 10, &decision);
+    brain_decision_t* decision = brain_decide(brain, features.data(), 10);
 
-    ASSERT_EQ(result, NIMCP_SUCCESS);
-    EXPECT_GE(decision.confidence, 0.0f);
-    EXPECT_LE(decision.confidence, 1.0f);
+    ASSERT_NE(decision, nullptr);
+    EXPECT_GE(decision->confidence, 0.0f);
+    EXPECT_LE(decision->confidence, 1.0f);
+
+    brain_free_decision(decision);
 
     brain_destroy(brain);
 }
@@ -119,11 +120,11 @@ TEST_F(CognitiveNeuronIntegrationTest, Metacognitive_UncertaintyTracking) {
     // Make multiple decisions
     for (int i = 0; i < 10; i++) {
         auto features = create_test_features(10, 0.5f + static_cast<float>(i) * 0.05f);
-        brain_decision_t decision;
-        nimcp_result_t result = brain_decide(brain, features.data(), 10, &decision);
+        brain_decision_t* decision = brain_decide(brain, features.data(), 10);
 
-        ASSERT_EQ(result, NIMCP_SUCCESS);
-        confidences.push_back(decision.confidence);
+        ASSERT_NE(decision, nullptr);
+        confidences.push_back(decision->confidence);
+        brain_free_decision(decision);
     }
 
     // All confidences should be valid
@@ -145,17 +146,20 @@ TEST_F(CognitiveNeuronIntegrationTest, Metacognitive_PredictionErrorIntegration)
 
     // Expected pattern (repeated)
     auto expected_features = create_test_features(10, 0.5f);
-    brain_decision_t decision1;
-    brain_decide(brain, expected_features.data(), 10, &decision1);
+    brain_decision_t* decision1 = brain_decide(brain, expected_features.data(), 10);
+    ASSERT_NE(decision1, nullptr);
 
     // Unexpected pattern (different)
     auto unexpected_features = create_test_features(10, 0.9f);
-    brain_decision_t decision2;
-    brain_decide(brain, unexpected_features.data(), 10, &decision2);
+    brain_decision_t* decision2 = brain_decide(brain, unexpected_features.data(), 10);
+    ASSERT_NE(decision2, nullptr);
 
     // Both should produce valid decisions
-    EXPECT_GE(decision1.confidence, 0.0f);
-    EXPECT_GE(decision2.confidence, 0.0f);
+    EXPECT_GE(decision1->confidence, 0.0f);
+    EXPECT_GE(decision2->confidence, 0.0f);
+
+    brain_free_decision(decision1);
+    brain_free_decision(decision2);
 
     brain_destroy(brain);
 }
@@ -197,17 +201,20 @@ TEST_F(CognitiveNeuronIntegrationTest, ExecutiveControl_InhibitoryControlIntegra
 
     // Relevant stimulus
     auto relevant_features = create_test_features(10, 0.7f);
-    brain_decision_t decision_relevant;
-    brain_decide(brain, relevant_features.data(), 10, &decision_relevant);
+    brain_decision_t* decision_relevant = brain_decide(brain, relevant_features.data(), 10);
+    ASSERT_NE(decision_relevant, nullptr);
 
     // Irrelevant stimulus (distractor)
     auto irrelevant_features = create_test_features(10, 0.2f);
-    brain_decision_t decision_irrelevant;
-    brain_decide(brain, irrelevant_features.data(), 10, &decision_irrelevant);
+    brain_decision_t* decision_irrelevant = brain_decide(brain, irrelevant_features.data(), 10);
+    ASSERT_NE(decision_irrelevant, nullptr);
 
     // Both should produce valid decisions
-    EXPECT_GE(decision_relevant.confidence, 0.0f);
-    EXPECT_GE(decision_irrelevant.confidence, 0.0f);
+    EXPECT_GE(decision_relevant->confidence, 0.0f);
+    EXPECT_GE(decision_irrelevant->confidence, 0.0f);
+
+    brain_free_decision(decision_relevant);
+    brain_free_decision(decision_irrelevant);
 
     brain_destroy(brain);
 }
@@ -229,11 +236,12 @@ TEST_F(CognitiveNeuronIntegrationTest, ExecutiveControl_WorkingMemoryIntegration
     // In real implementation, executive neurons would maintain activity
 
     // Test retention via decision
-    brain_decision_t decision;
-    nimcp_result_t result = brain_decide(brain, features.data(), 10, &decision);
+    brain_decision_t* decision = brain_decide(brain, features.data(), 10);
 
-    ASSERT_EQ(result, NIMCP_SUCCESS);
-    EXPECT_GE(decision.confidence, 0.0f);
+    ASSERT_NE(decision, nullptr);
+    EXPECT_GE(decision->confidence, 0.0f);
+
+    brain_free_decision(decision);
 
     brain_destroy(brain);
 }
@@ -248,11 +256,12 @@ TEST_F(CognitiveNeuronIntegrationTest, ExecutiveControl_TopDownModulationIntegra
 
     // Decision with implicit goal bias
     auto features = create_test_features(10, 0.5f);
-    brain_decision_t decision;
-    nimcp_result_t result = brain_decide(brain, features.data(), 10, &decision);
+    brain_decision_t* decision = brain_decide(brain, features.data(), 10);
 
-    ASSERT_EQ(result, NIMCP_SUCCESS);
-    EXPECT_GE(decision.confidence, 0.0f);
+    ASSERT_NE(decision, nullptr);
+    EXPECT_GE(decision->confidence, 0.0f);
+
+    brain_free_decision(decision);
 
     brain_destroy(brain);
 }
@@ -279,12 +288,14 @@ TEST_F(CognitiveNeuronIntegrationTest, Combined_MetacognitiveAndExecutive) {
     float loss_B = brain_learn_example(brain, features_B.data(), 10, "B", 0.7f);
 
     // 3. Make decision with confidence (metacognitive)
-    brain_decision_t decision;
-    brain_decide(brain, features_A.data(), 10, &decision);
+    brain_decision_t* decision = brain_decide(brain, features_A.data(), 10);
+    ASSERT_NE(decision, nullptr);
 
     EXPECT_GE(loss_A, 0.0f);
     EXPECT_GE(loss_B, 0.0f);
-    EXPECT_GE(decision.confidence, 0.0f);
+    EXPECT_GE(decision->confidence, 0.0f);
+
+    brain_free_decision(decision);
 
     brain_destroy(brain);
 }
@@ -332,8 +343,10 @@ TEST_F(CognitiveNeuronIntegrationTest, Performance_HighThroughput) {
     const int num_iterations = 1000;
     for (int i = 0; i < num_iterations; i++) {
         auto features = create_test_features(10, 0.5f);
-        brain_decision_t decision;
-        brain_decide(brain, features.data(), 10, &decision);
+        brain_decision_t* decision = brain_decide(brain, features.data(), 10);
+        if (decision) {
+            brain_free_decision(decision);
+        }
     }
 
     uint64_t duration = nimcp_time_monotonic_us() - start;
@@ -354,23 +367,27 @@ TEST_F(CognitiveNeuronIntegrationTest, Robustness_EdgeCaseInputs) {
 
     // Zero input
     std::vector<float> zeros(10, 0.0f);
-    brain_decision_t decision_zero;
-    brain_decide(brain, zeros.data(), 10, &decision_zero);
+    brain_decision_t* decision_zero = brain_decide(brain, zeros.data(), 10);
+    ASSERT_NE(decision_zero, nullptr);
 
     // Max input
     std::vector<float> ones(10, 1.0f);
-    brain_decision_t decision_one;
-    brain_decide(brain, ones.data(), 10, &decision_one);
+    brain_decision_t* decision_one = brain_decide(brain, ones.data(), 10);
+    ASSERT_NE(decision_one, nullptr);
 
     // Mixed input
     std::vector<float> mixed = {0.0f, 1.0f, 0.5f, 0.2f, 0.8f, 0.1f, 0.9f, 0.3f, 0.7f, 0.6f};
-    brain_decision_t decision_mixed;
-    brain_decide(brain, mixed.data(), 10, &decision_mixed);
+    brain_decision_t* decision_mixed = brain_decide(brain, mixed.data(), 10);
+    ASSERT_NE(decision_mixed, nullptr);
 
     // All should produce valid outputs
-    EXPECT_GE(decision_zero.confidence, 0.0f);
-    EXPECT_GE(decision_one.confidence, 0.0f);
-    EXPECT_GE(decision_mixed.confidence, 0.0f);
+    EXPECT_GE(decision_zero->confidence, 0.0f);
+    EXPECT_GE(decision_one->confidence, 0.0f);
+    EXPECT_GE(decision_mixed->confidence, 0.0f);
+
+    brain_free_decision(decision_zero);
+    brain_free_decision(decision_one);
+    brain_free_decision(decision_mixed);
 
     brain_destroy(brain);
 }
@@ -394,9 +411,11 @@ TEST_F(CognitiveNeuronIntegrationTest, Robustness_LongRunningSession) {
                 brain_learn_example(brain, features.data(), 10, "label", 0.8f);
             } else {
                 // Decide
-                brain_decision_t decision;
-                brain_decide(brain, features.data(), 10, &decision);
-                EXPECT_GE(decision.confidence, 0.0f);
+                brain_decision_t* decision = brain_decide(brain, features.data(), 10);
+                if (decision) {
+                    EXPECT_GE(decision->confidence, 0.0f);
+                    brain_free_decision(decision);
+                }
             }
         }
     }

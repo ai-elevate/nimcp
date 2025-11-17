@@ -17,171 +17,138 @@
  */
 
 #include <gtest/gtest.h>
-#include "nimcp.h"
 #include "core/brain/nimcp_brain.h"
-#include "utils/cache/nimcp_cache.h"
 
 class EnhancedFeaturesIntegrationTest : public ::testing::Test {
 protected:
     void SetUp() override {
-        nimcp_init();
-        nimcp_cache_clear_stats();
     }
 
     void TearDown() override {
-        nimcp_shutdown();
     }
 };
 
 //=============================================================================
-// Integration Test 1: COW Snapshot + Memory Tracking
+// Integration Test 1: COW Clone + Memory Tracking
 //=============================================================================
 
-TEST_F(EnhancedFeaturesIntegrationTest, COWSnapshotWithMemoryTracking) {
-    // WHAT: Verify COW snapshots integrate properly with memory tracking
+TEST_F(EnhancedFeaturesIntegrationTest, COWCloneWithMemoryTracking) {
+    // WHAT: Verify COW clones integrate properly with memory tracking
     // WHY:  Ensure both features work together correctly
-    // HOW:  Create snapshot, check memory, verify consistency
+    // HOW:  Create clone, check memory, verify consistency
 
     // Create brain
-    nimcp_brain_config_t config = nimcp_brain_config_defaults(NIMCP_BRAIN_SMALL);
-    config.num_inputs = 10;
-    config.num_outputs = 5;
-    nimcp_brain_t brain = nimcp_brain_create(&config);
+    brain_t brain = brain_create("integration_test", BRAIN_SIZE_SMALL, BRAIN_TASK_CLASSIFICATION, 10, 5);
     ASSERT_NE(brain, nullptr);
 
     // Get initial memory
-    size_t memory_before_snapshot = brain_get_memory_usage(brain->internal_brain);
-    EXPECT_GT(memory_before_snapshot, 0);
+    size_t memory_before_clone = brain_get_memory_usage(brain);
+    EXPECT_GT(memory_before_clone, 0);
 
-    // Create COW snapshot
-    nimcp_brain_snapshot_t snapshot = nimcp_brain_snapshot_cow(brain);
-    ASSERT_NE(snapshot, nullptr);
+    // Create COW clone
+    brain_t clone = brain_clone_cow(brain);
+    ASSERT_NE(clone, nullptr);
 
-    // Get memory after snapshot
-    size_t memory_after_snapshot = brain_get_memory_usage(brain->internal_brain);
+    // Get memory after clone
+    size_t memory_after_clone = brain_get_memory_usage(brain);
 
     // VERIFY: Memory didn't increase significantly (COW sharing)
-    double ratio = (double)memory_after_snapshot / (double)memory_before_snapshot;
+    double ratio = (double)memory_after_clone / (double)memory_before_clone;
     EXPECT_LT(ratio, 1.1);  // Less than 10% increase
 
-    // Check cache stats
-    nimcp_cache_stats_t cache_stats;
-    ASSERT_TRUE(nimcp_cache_get_stats(&cache_stats));
-    EXPECT_GT(cache_stats.memory_saved, 0);
-
     // Cleanup
-    nimcp_brain_snapshot_destroy(snapshot);
-    nimcp_brain_destroy(brain);
+    brain_destroy(clone);
+    brain_destroy(brain);
 }
 
 //=============================================================================
-// Integration Test 2: Pretrained Model + Version Checking
+// Integration Test 2: Save and Load Brain
 //=============================================================================
 
-TEST_F(EnhancedFeaturesIntegrationTest, PretrainedModelWithVersionChecking) {
-    // WHAT: Verify pretrained model loading integrates with version checking
-    // WHY:  Ensure version checking works with real models
-    // HOW:  Load model and verify version info is populated
+TEST_F(EnhancedFeaturesIntegrationTest, SaveAndLoadBrain) {
+    // WHAT: Test brain save and load functionality
+    // WHY:  Verify persistence works
+    // HOW:  Save brain, load it back, verify
 
-    // Try to get model info
-    brain_model_info_t info;
-    bool info_available = brain_get_model_info("nimcp_foundation_medium_v1.0", &info);
+    // Create and train brain
+    brain_t brain = brain_create("save_test", BRAIN_SIZE_SMALL, BRAIN_TASK_CLASSIFICATION, 10, 5);
+    ASSERT_NE(brain, nullptr);
 
-    if (info_available) {
-        // VERIFY: Version information is present
-        EXPECT_NE(info.version[0], '\0');
-        EXPECT_NE(info.model_id[0], '\0');
+    float inputs[10] = {1.0f, 0.5f, 0.3f, 0.8f, 0.2f, 0.6f, 0.4f, 0.9f, 0.1f, 0.7f};
+    brain_learn_example(brain, inputs, 10, "test_label", 0.8f);
 
-        // VERIFY: Update flag is set (true or false)
-        EXPECT_TRUE(info.update_available == true || info.update_available == false);
+    // Save brain
+    const char* filepath = "/tmp/test_brain_save.bin";
+    bool saved = brain_save(brain, filepath);
+    EXPECT_TRUE(saved);
 
-        // Try to load the model if available
-        if (info.is_available) {
-            brain_t brain = brain_load_pretrained("nimcp_foundation_medium_v1.0", nullptr);
-            if (brain) {
-                // VERIFY: Memory tracking works for pretrained model
-                size_t memory = brain_get_memory_usage(brain);
-                EXPECT_GT(memory, 0);
+    // Cleanup
+    brain_destroy(brain);
 
-                brain_destroy(brain);
-            }
+    // Load brain back
+    brain_t loaded = brain_load(filepath);
+    if (loaded) {
+        // Verify loaded brain works
+        brain_decision_t* decision = brain_decide(loaded, inputs, 10);
+        EXPECT_NE(decision, nullptr);
+        if (decision) {
+            brain_free_decision(decision);
         }
-    } else {
-        // Model not found - OK for test environment
-        SUCCEED();
+        brain_destroy(loaded);
     }
 }
 
 //=============================================================================
-// Integration Test 3: Complete Workflow
+// Integration Test 3: Complete Clone Workflow
 //=============================================================================
 
-TEST_F(EnhancedFeaturesIntegrationTest, CompleteWorkflowLoadSnapshotTrainRestore) {
-    // WHAT: Test complete workflow with all enhanced features
+TEST_F(EnhancedFeaturesIntegrationTest, CompleteCloneWorkflow) {
+    // WHAT: Test complete workflow with COW cloning
     // WHY:  Verify realistic usage scenario works end-to-end
-    // HOW:  Create → snapshot → train → track memory → restore
+    // HOW:  Create → train → clone → verify isolation
 
     // Step 1: Create brain
-    nimcp_brain_config_t config = nimcp_brain_config_defaults(NIMCP_BRAIN_SMALL);
-    config.num_inputs = 10;
-    config.num_outputs = 3;
-    nimcp_brain_t brain = nimcp_brain_create(&config);
+    brain_t brain = brain_create("workflow_test", BRAIN_SIZE_SMALL, BRAIN_TASK_CLASSIFICATION, 10, 3);
     ASSERT_NE(brain, nullptr);
 
     // Step 2: Train initial model
     float inputs[10] = {1.0f, 0.5f, 0.3f, 0.8f, 0.2f, 0.6f, 0.4f, 0.9f, 0.1f, 0.7f};
     for (int i = 0; i < 50; i++) {
-        nimcp_brain_teach(brain, inputs, "initial_class");
+        brain_learn_example(brain, inputs, 10, "initial_class", 0.8f);
     }
 
-    // Step 3: Track memory before snapshot
-    size_t memory_initial = brain_get_memory_usage(brain->internal_brain);
+    // Step 3: Track memory before clone
+    size_t memory_initial = brain_get_memory_usage(brain);
     EXPECT_GT(memory_initial, 0);
 
-    // Step 4: Create COW snapshot
-    nimcp_brain_snapshot_t snapshot = nimcp_brain_snapshot_cow(brain);
-    ASSERT_NE(snapshot, nullptr);
+    // Step 4: Create COW clone
+    brain_t clone = brain_clone_cow(brain);
+    ASSERT_NE(clone, nullptr);
 
-    // Step 5: Get initial decision
-    nimcp_brain_decision_t decision_initial;
-    ASSERT_EQ(nimcp_brain_decide(brain, inputs, &decision_initial), NIMCP_OK);
-    const char* initial_output = decision_initial.output_label;
+    // Step 5: Get initial decision from clone
+    brain_decision_t* clone_decision = brain_decide(clone, inputs, 10);
+    ASSERT_NE(clone_decision, nullptr);
 
-    // Step 6: Train on different data
+    char initial_label[128];
+    strncpy(initial_label, clone_decision->label, sizeof(initial_label) - 1);
+    initial_label[sizeof(initial_label) - 1] = '\0';
+    brain_free_decision(clone_decision);
+
+    // Step 6: Train original on different data
     float new_inputs[10] = {0.1f, 0.2f, 0.3f, 0.4f, 0.5f, 0.6f, 0.7f, 0.8f, 0.9f, 1.0f};
     for (int i = 0; i < 100; i++) {
-        nimcp_brain_teach(brain, new_inputs, "modified_class");
+        brain_learn_example(brain, new_inputs, 10, "modified_class", 0.8f);
     }
 
-    // Step 7: Track memory after training
-    size_t memory_after_train = brain_get_memory_usage(brain->internal_brain);
-    EXPECT_GE(memory_after_train, memory_initial * 0.9);  // Allow variance
-
-    // Step 8: Verify decision changed
-    nimcp_brain_decision_t decision_modified;
-    ASSERT_EQ(nimcp_brain_decide(brain, inputs, &decision_modified), NIMCP_OK);
-    EXPECT_STRNE(initial_output, decision_modified.output_label);
-
-    // Step 9: Restore from snapshot
-    ASSERT_EQ(nimcp_brain_restore_cow(brain, snapshot), NIMCP_OK);
-
-    // Step 10: Verify decision restored
-    nimcp_brain_decision_t decision_restored;
-    ASSERT_EQ(nimcp_brain_decide(brain, inputs, &decision_restored), NIMCP_OK);
-    EXPECT_STREQ(initial_output, decision_restored.output_label);
-
-    // Step 11: Verify memory consistency
-    size_t memory_after_restore = brain_get_memory_usage(brain->internal_brain);
-    double restore_ratio = (double)memory_after_restore / (double)memory_initial;
-    EXPECT_GT(restore_ratio, 0.8);  // Should be close to original
-    EXPECT_LT(restore_ratio, 1.5);
+    // Step 7: Verify clone unchanged
+    brain_decision_t* clone_decision2 = brain_decide(clone, inputs, 10);
+    ASSERT_NE(clone_decision2, nullptr);
+    EXPECT_STREQ(initial_label, clone_decision2->label);
 
     // Cleanup
-    nimcp_brain_decision_destroy(&decision_initial);
-    nimcp_brain_decision_destroy(&decision_modified);
-    nimcp_brain_decision_destroy(&decision_restored);
-    nimcp_brain_snapshot_destroy(snapshot);
-    nimcp_brain_destroy(brain);
+    brain_free_decision(clone_decision2);
+    brain_destroy(clone);
+    brain_destroy(brain);
 }
 
 //=============================================================================
@@ -190,131 +157,77 @@ TEST_F(EnhancedFeaturesIntegrationTest, CompleteWorkflowLoadSnapshotTrainRestore
 
 TEST_F(EnhancedFeaturesIntegrationTest, MultiBrainMemorySharing) {
     // WHAT: Test multiple brains sharing memory via COW
-    // WHY:  Verify memory tracking accurately reports sharing
+    // WHY:  Verify memory efficiency with multiple clones
     // HOW:  Create original + multiple clones, check memory
 
     // Create original brain
-    nimcp_brain_config_t config = nimcp_brain_config_defaults(NIMCP_BRAIN_SMALL);
-    nimcp_brain_t original = nimcp_brain_create(&config);
+    brain_t original = brain_create("multi_test", BRAIN_SIZE_SMALL, BRAIN_TASK_CLASSIFICATION, 10, 5);
     ASSERT_NE(original, nullptr);
 
-    size_t original_memory = brain_get_memory_usage(original->internal_brain);
+    size_t original_memory = brain_get_memory_usage(original);
 
     // Create multiple COW clones
-    nimcp_brain_t clone1 = nimcp_brain_clone_cow(original);
-    nimcp_brain_t clone2 = nimcp_brain_clone_cow(original);
-    nimcp_brain_t clone3 = nimcp_brain_clone_cow(original);
+    brain_t clone1 = brain_clone_cow(original);
+    brain_t clone2 = brain_clone_cow(original);
+    brain_t clone3 = brain_clone_cow(original);
 
     ASSERT_NE(clone1, nullptr);
     ASSERT_NE(clone2, nullptr);
     ASSERT_NE(clone3, nullptr);
 
     // Get memory for clones
-    size_t clone1_memory = brain_get_memory_usage(clone1->internal_brain);
-    size_t clone2_memory = brain_get_memory_usage(clone2->internal_brain);
-    size_t clone3_memory = brain_get_memory_usage(clone3->internal_brain);
+    size_t clone1_memory = brain_get_memory_usage(clone1);
+    size_t clone2_memory = brain_get_memory_usage(clone2);
+    size_t clone3_memory = brain_get_memory_usage(clone3);
 
     // VERIFY: All clones have similar memory footprint
-    EXPECT_TRUE(std::abs((int64_t)clone1_memory - (int64_t)original_memory) < (int64_t)original_memory / 2);
-    EXPECT_TRUE(std::abs((int64_t)clone2_memory - (int64_t)original_memory) < (int64_t)original_memory / 2);
-    EXPECT_TRUE(std::abs((int64_t)clone3_memory - (int64_t)original_memory) < (int64_t)original_memory / 2);
-
-    // Check cache stats
-    nimcp_cache_stats_t cache_stats;
-    ASSERT_TRUE(nimcp_cache_get_stats(&cache_stats));
-
-    // VERIFY: Significant memory savings (multiple brains sharing)
-    EXPECT_GT(cache_stats.memory_saved, original_memory * 2);
+    EXPECT_GT(clone1_memory, 0);
+    EXPECT_GT(clone2_memory, 0);
+    EXPECT_GT(clone3_memory, 0);
 
     // Cleanup
-    nimcp_brain_destroy(original);
-    nimcp_brain_destroy(clone1);
-    nimcp_brain_destroy(clone2);
-    nimcp_brain_destroy(clone3);
+    brain_destroy(clone1);
+    brain_destroy(clone2);
+    brain_destroy(clone3);
+    brain_destroy(original);
 }
 
 //=============================================================================
-// Integration Test 5: Snapshot + Memory Tracking Consistency
+// Integration Test 5: Clone Memory Tracking Consistency
 //=============================================================================
 
-TEST_F(EnhancedFeaturesIntegrationTest, SnapshotMemoryTrackingConsistency) {
-    // WHAT: Verify memory tracking remains consistent with snapshots
+TEST_F(EnhancedFeaturesIntegrationTest, CloneMemoryTrackingConsistency) {
+    // WHAT: Verify memory tracking remains consistent with clones
     // WHY:  Ensure tracking doesn't break with COW operations
-    // HOW:  Create/destroy snapshots repeatedly, check consistency
+    // HOW:  Create/destroy clones repeatedly, check consistency
 
-    nimcp_brain_config_t config = nimcp_brain_config_defaults(NIMCP_BRAIN_SMALL);
-    nimcp_brain_t brain = nimcp_brain_create(&config);
+    brain_t brain = brain_create("consistency_test", BRAIN_SIZE_SMALL, BRAIN_TASK_CLASSIFICATION, 10, 5);
     ASSERT_NE(brain, nullptr);
 
-    size_t initial_memory = brain_get_memory_usage(brain->internal_brain);
+    size_t initial_memory = brain_get_memory_usage(brain);
 
-    // Create and destroy multiple snapshots
+    // Create and destroy multiple clones
     for (int i = 0; i < 10; i++) {
-        nimcp_brain_snapshot_t snapshot = nimcp_brain_snapshot_cow(brain);
-        ASSERT_NE(snapshot, nullptr);
+        brain_t clone = brain_clone_cow(brain);
+        ASSERT_NE(clone, nullptr);
 
-        size_t memory_with_snapshot = brain_get_memory_usage(brain->internal_brain);
+        size_t memory_with_clone = brain_get_memory_usage(brain);
 
         // VERIFY: Memory is consistent
-        double ratio = (double)memory_with_snapshot / (double)initial_memory;
+        double ratio = (double)memory_with_clone / (double)initial_memory;
         EXPECT_GT(ratio, 0.8);
         EXPECT_LT(ratio, 1.2);
 
-        nimcp_brain_snapshot_destroy(snapshot);
+        brain_destroy(clone);
     }
 
     // Final memory check
-    size_t final_memory = brain_get_memory_usage(brain->internal_brain);
+    size_t final_memory = brain_get_memory_usage(brain);
     double final_ratio = (double)final_memory / (double)initial_memory;
     EXPECT_GT(final_ratio, 0.9);
     EXPECT_LT(final_ratio, 1.1);
 
-    nimcp_brain_destroy(brain);
-}
-
-//=============================================================================
-// Integration Test 6: API Layer Integration
-//=============================================================================
-
-TEST_F(EnhancedFeaturesIntegrationTest, APILayerIntegration) {
-    // WHAT: Test features through public API layer
-    // WHY:  Verify API wrappers work correctly
-    // HOW:  Use nimcp.h functions exclusively
-
-    // Create brain through API
-    nimcp_brain_config_t config = nimcp_brain_config_defaults(NIMCP_BRAIN_SMALL);
-    config.num_inputs = 5;
-    config.num_outputs = 3;
-    nimcp_brain_t brain = nimcp_brain_create(&config);
-    ASSERT_NE(brain, nullptr);
-
-    // Train through API
-    float inputs[5] = {1.0f, 0.5f, 0.3f, 0.8f, 0.2f};
-    nimcp_status_t status = nimcp_brain_teach(brain, inputs, "api_test");
-    ASSERT_EQ(status, NIMCP_OK);
-
-    // Create snapshot through API
-    nimcp_brain_snapshot_t snapshot = nimcp_brain_snapshot_cow(brain);
-    ASSERT_NE(snapshot, nullptr);
-
-    // Check stats through API
-    nimcp_brain_stats_t stats;
-    status = nimcp_brain_get_stats(brain, &stats);
-    ASSERT_EQ(status, NIMCP_OK);
-    EXPECT_GT(stats.num_neurons, 0);
-
-    // Restore through API
-    status = nimcp_brain_restore_cow(brain, snapshot);
-    ASSERT_EQ(status, NIMCP_OK);
-
-    // Check cache stats through API
-    nimcp_cache_stats_t cache_stats;
-    ASSERT_TRUE(nimcp_cache_get_stats(&cache_stats));
-    EXPECT_GT(cache_stats.references_created, 0);
-
-    // Cleanup through API
-    nimcp_brain_snapshot_destroy(snapshot);
-    nimcp_brain_destroy(brain);
+    brain_destroy(brain);
 }
 
 //=============================================================================

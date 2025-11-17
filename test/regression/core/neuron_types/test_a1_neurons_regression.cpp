@@ -270,7 +270,7 @@ TEST_F(A1NeuronsRegressionTest, OnsetDetector_ShortWindowBoost) {
     EXPECT_GT(output_1ms, output_5ms);
 }
 
-TEST_F(A1NeuronsRegressionTest, OnsetDetector_AdaptationBelow Threshold) {
+TEST_F(A1NeuronsRegressionTest, OnsetDetector_AdaptationBelowThreshold) {
     // WHAT: Test adaptation threshold at 0.5
     // WHY:  Inputs below 0.5 (after scaling) should be attenuated 10x
     // HOW:  Test weak input

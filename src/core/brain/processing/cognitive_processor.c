@@ -33,7 +33,7 @@
 // Forward declaration of brain structure (opaque type)
 struct brain_struct {
     // Cognitive modules
-    introspection_engine_t introspection;
+    introspection_context_t introspection;  // FIXED: was introspection_engine_t
     ethics_engine_t ethics;
     salience_evaluator_t salience;
     curiosity_engine_t curiosity;

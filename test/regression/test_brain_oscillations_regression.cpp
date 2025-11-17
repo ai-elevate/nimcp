@@ -58,10 +58,9 @@ protected:
     PerformanceTimer timer;
 
     void SetUp() override {
-        brain_config_t config = {0};
-        config.num_neurons = 1000;
-        config.max_synapses = 10000;
-        brain = brain_create(&config);
+        // Create brain with simplified API (BRAIN_SIZE_SMALL ~= 1000 neurons)
+        brain = brain_create("oscillation_test", BRAIN_SIZE_SMALL,
+                           BRAIN_TASK_CLASSIFICATION, 128, 20);
         ASSERT_NE(brain, nullptr);
 
         analyzer = brain_oscillation_create(brain, WINDOW_SIZE_MS, SAMPLING_RATE_HZ);

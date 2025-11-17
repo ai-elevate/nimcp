@@ -16,6 +16,7 @@
 
 #include <gtest/gtest.h>
 #include <chrono>
+#include <cstring>
 #include "core/brain/nimcp_brain.h"
 
 class MirrorActivationsBackwardCompatTest : public ::testing::Test {
@@ -31,11 +32,16 @@ protected:
 
 TEST_F(MirrorActivationsBackwardCompatTest, Legacy_BrainWithoutMirrorNeurons_WorksNormally) {
     // Create brain with mirror neurons disabled (legacy config)
-    brain_config_t config = brain_create_default_config(BRAIN_SIZE_SMALL);
+    brain_config_t config = {};
+    config.size = BRAIN_SIZE_SMALL;
+    config.task = BRAIN_TASK_CLASSIFICATION;
+    config.num_inputs = 128;
+    config.num_outputs = 20;
+    strncpy(config.task_name, "legacy_brain", 63);
     config.enable_mirror_neurons = false;
     config.enable_theory_of_mind = false;
 
-    brain_t brain = brain_create_custom("legacy_brain", &config);
+    brain_t brain = brain_create_custom(&config);
     ASSERT_NE(brain, nullptr);
 
     // Standard brain operations should work
@@ -54,10 +60,15 @@ TEST_F(MirrorActivationsBackwardCompatTest, Legacy_BrainWithoutMirrorNeurons_Wor
 
 TEST_F(MirrorActivationsBackwardCompatTest, Legacy_GetMirrorActivations_FailsGracefully) {
     // Create brain without mirror neurons
-    brain_config_t config = brain_create_default_config(BRAIN_SIZE_TINY);
+    brain_config_t config = {};
+    config.size = BRAIN_SIZE_TINY;
+    config.task = BRAIN_TASK_CLASSIFICATION;
+    config.num_inputs = 128;
+    config.num_outputs = 20;
+    strncpy(config.task_name, "no_mirror", 63);
     config.enable_mirror_neurons = false;
 
-    brain_t brain = brain_create_custom("no_mirror", &config);
+    brain_t brain = brain_create_custom(&config);
     ASSERT_NE(brain, nullptr);
 
     // Getting mirror activations should fail gracefully
@@ -72,10 +83,15 @@ TEST_F(MirrorActivationsBackwardCompatTest, Legacy_GetMirrorActivations_FailsGra
 
 TEST_F(MirrorActivationsBackwardCompatTest, Legacy_ComputeEmpathy_FailsGracefully) {
     // Create brain without mirror neurons
-    brain_config_t config = brain_create_default_config(BRAIN_SIZE_TINY);
+    brain_config_t config = {};
+    config.size = BRAIN_SIZE_TINY;
+    config.task = BRAIN_TASK_CLASSIFICATION;
+    config.num_inputs = 128;
+    config.num_outputs = 20;
+    strncpy(config.task_name, "no_empathy", 63);
     config.enable_mirror_neurons = false;
 
-    brain_t brain = brain_create_custom("no_empathy", &config);
+    brain_t brain = brain_create_custom(&config);
     ASSERT_NE(brain, nullptr);
 
     // Computing empathy should fail gracefully
@@ -94,11 +110,16 @@ TEST_F(MirrorActivationsBackwardCompatTest, Legacy_ComputeEmpathy_FailsGracefull
 
 TEST_F(MirrorActivationsBackwardCompatTest, MixedConfig_ToMWithoutMirrorNeurons) {
     // Configuration where ToM is enabled but mirror neurons are not
-    brain_config_t config = brain_create_default_config(BRAIN_SIZE_SMALL);
+    brain_config_t config = {};
+    config.size = BRAIN_SIZE_SMALL;
+    config.task = BRAIN_TASK_CLASSIFICATION;
+    config.num_inputs = 128;
+    config.num_outputs = 20;
+    strncpy(config.task_name, "tom_only", 63);
     config.enable_theory_of_mind = true;
     config.enable_mirror_neurons = false;
 
-    brain_t brain = brain_create_custom("tom_only", &config);
+    brain_t brain = brain_create_custom(&config);
     ASSERT_NE(brain, nullptr);
 
     // Brain should still create successfully
@@ -113,11 +134,16 @@ TEST_F(MirrorActivationsBackwardCompatTest, MixedConfig_ToMWithoutMirrorNeurons)
 
 TEST_F(MirrorActivationsBackwardCompatTest, MixedConfig_MirrorNeuronsWithoutToM) {
     // Configuration where mirror neurons are enabled but ToM is not
-    brain_config_t config = brain_create_default_config(BRAIN_SIZE_SMALL);
+    brain_config_t config = {};
+    config.size = BRAIN_SIZE_SMALL;
+    config.task = BRAIN_TASK_CLASSIFICATION;
+    config.num_inputs = 128;
+    config.num_outputs = 20;
+    strncpy(config.task_name, "mirror_only", 63);
     config.enable_mirror_neurons = true;
     config.enable_theory_of_mind = false;
 
-    brain_t brain = brain_create_custom("mirror_only", &config);
+    brain_t brain = brain_create_custom(&config);
     ASSERT_NE(brain, nullptr);
 
     // Mirror neuron APIs should work
@@ -134,10 +160,15 @@ TEST_F(MirrorActivationsBackwardCompatTest, MixedConfig_MirrorNeuronsWithoutToM)
 //=============================================================================
 
 TEST_F(MirrorActivationsBackwardCompatTest, ObserveAction_WithMirrorNeurons_WorksAsExpected) {
-    brain_config_t config = brain_create_default_config(BRAIN_SIZE_SMALL);
+    brain_config_t config = {};
+    config.size = BRAIN_SIZE_SMALL;
+    config.task = BRAIN_TASK_CLASSIFICATION;
+    config.num_inputs = 128;
+    config.num_outputs = 20;
+    strncpy(config.task_name, "mirror_brain", 63);
     config.enable_mirror_neurons = true;
 
-    brain_t brain = brain_create_custom("mirror_brain", &config);
+    brain_t brain = brain_create_custom(&config);
     ASSERT_NE(brain, nullptr);
 
     // brain_observe_action should work (existing API)
@@ -148,10 +179,15 @@ TEST_F(MirrorActivationsBackwardCompatTest, ObserveAction_WithMirrorNeurons_Work
 }
 
 TEST_F(MirrorActivationsBackwardCompatTest, ObserveAction_WithoutMirrorNeurons_ReturnsTrue) {
-    brain_config_t config = brain_create_default_config(BRAIN_SIZE_SMALL);
+    brain_config_t config = {};
+    config.size = BRAIN_SIZE_SMALL;
+    config.task = BRAIN_TASK_CLASSIFICATION;
+    config.num_inputs = 128;
+    config.num_outputs = 20;
+    strncpy(config.task_name, "no_mirror", 63);
     config.enable_mirror_neurons = false;
 
-    brain_t brain = brain_create_custom("no_mirror", &config);
+    brain_t brain = brain_create_custom(&config);
     ASSERT_NE(brain, nullptr);
 
     // brain_observe_action should still return true (no-op is valid)
@@ -167,14 +203,24 @@ TEST_F(MirrorActivationsBackwardCompatTest, ObserveAction_WithoutMirrorNeurons_R
 
 TEST_F(MirrorActivationsBackwardCompatTest, Performance_NoOverheadWhenDisabled) {
     // Create two brains: one with mirror neurons, one without
-    brain_config_t config_no_mirror = brain_create_default_config(BRAIN_SIZE_SMALL);
+    brain_config_t config_no_mirror = {};
+    config_no_mirror.size = BRAIN_SIZE_SMALL;
+    config_no_mirror.task = BRAIN_TASK_CLASSIFICATION;
+    config_no_mirror.num_inputs = 128;
+    config_no_mirror.num_outputs = 20;
+    strncpy(config_no_mirror.task_name, "no_mirror", 63);
     config_no_mirror.enable_mirror_neurons = false;
 
-    brain_config_t config_with_mirror = brain_create_default_config(BRAIN_SIZE_SMALL);
+    brain_config_t config_with_mirror = {};
+    config_with_mirror.size = BRAIN_SIZE_SMALL;
+    config_with_mirror.task = BRAIN_TASK_CLASSIFICATION;
+    config_with_mirror.num_inputs = 128;
+    config_with_mirror.num_outputs = 20;
+    strncpy(config_with_mirror.task_name, "with_mirror", 63);
     config_with_mirror.enable_mirror_neurons = true;
 
-    brain_t brain_no_mirror = brain_create_custom("no_mirror", &config_no_mirror);
-    brain_t brain_with_mirror = brain_create_custom("with_mirror", &config_with_mirror);
+    brain_t brain_no_mirror = brain_create_custom(&config_no_mirror);
+    brain_t brain_with_mirror = brain_create_custom(&config_with_mirror);
 
     ASSERT_NE(brain_no_mirror, nullptr);
     ASSERT_NE(brain_with_mirror, nullptr);
@@ -219,10 +265,15 @@ TEST_F(MirrorActivationsBackwardCompatTest, Performance_NoOverheadWhenDisabled) 
 }
 
 TEST_F(MirrorActivationsBackwardCompatTest, Performance_MirrorAPIsFastEnough) {
-    brain_config_t config = brain_create_default_config(BRAIN_SIZE_MEDIUM);
+    brain_config_t config = {};
+    config.size = BRAIN_SIZE_MEDIUM;
+    config.task = BRAIN_TASK_CLASSIFICATION;
+    config.num_inputs = 128;
+    config.num_outputs = 20;
+    strncpy(config.task_name, "perf_test", 63);
     config.enable_mirror_neurons = true;
 
-    brain_t brain = brain_create_custom("perf_test", &config);
+    brain_t brain = brain_create_custom(&config);
     ASSERT_NE(brain, nullptr);
 
     // Set up some mirror neuron activity
@@ -277,10 +328,15 @@ TEST_F(MirrorActivationsBackwardCompatTest, Contract_NullHandlingConsistent) {
 }
 
 TEST_F(MirrorActivationsBackwardCompatTest, Contract_ErrorStatesClearable) {
-    brain_config_t config = brain_create_default_config(BRAIN_SIZE_TINY);
+    brain_config_t config = {};
+    config.size = BRAIN_SIZE_TINY;
+    config.task = BRAIN_TASK_CLASSIFICATION;
+    config.num_inputs = 128;
+    config.num_outputs = 20;
+    strncpy(config.task_name, "error_test", 63);
     config.enable_mirror_neurons = false;
 
-    brain_t brain = brain_create_custom("error_test", &config);
+    brain_t brain = brain_create_custom(&config);
     ASSERT_NE(brain, nullptr);
 
     // Trigger error
@@ -304,10 +360,15 @@ TEST_F(MirrorActivationsBackwardCompatTest, Contract_ErrorStatesClearable) {
 //=============================================================================
 
 TEST_F(MirrorActivationsBackwardCompatTest, Serialization_BrainWithMirrorNeurons_SaveLoad) {
-    brain_config_t config = brain_create_default_config(BRAIN_SIZE_SMALL);
+    brain_config_t config = {};
+    config.size = BRAIN_SIZE_SMALL;
+    config.task = BRAIN_TASK_CLASSIFICATION;
+    config.num_inputs = 128;
+    config.num_outputs = 20;
+    strncpy(config.task_name, "serial_test", 63);
     config.enable_mirror_neurons = true;
 
-    brain_t brain = brain_create_custom("serial_test", &config);
+    brain_t brain = brain_create_custom(&config);
     ASSERT_NE(brain, nullptr);
 
     // Train some observations

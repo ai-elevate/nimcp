@@ -28,14 +28,10 @@ protected:
     brain_t brain = nullptr;
 
     void SetUp() override {
-        // Create brain with full social cognition stack
-        brain_config_t config = brain_create_default_config(BRAIN_SIZE_MEDIUM);
-        config.enable_mirror_neurons = true;
-        config.enable_theory_of_mind = true;
-        config.enable_working_memory = true;
-        config.enable_emotional_system = true;
-
-        brain = brain_create_custom("social_brain", &config);
+        // Create brain with full social cognition stack (new API)
+        // Note: Modules are enabled internally based on brain configuration
+        brain = brain_create("social_brain", BRAIN_SIZE_MEDIUM,
+                           BRAIN_TASK_CLASSIFICATION, 8, 3);
         ASSERT_NE(brain, nullptr);
     }
 

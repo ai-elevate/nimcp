@@ -24,15 +24,13 @@ protected:
 
     void SetUp() override {
         // Create standard test brain (fixed configuration for reproducibility)
-        brain_config_t config = brain_get_default_config(BRAIN_CLASSIFICATION);
-        config.num_neurons = 500;
-        config.hidden_layers = 4;
-        config.neurons_per_layer = 125;
-
-        brain = brain_create(&config);
+        brain = brain_create("quantum_routing_test", BRAIN_SIZE_MEDIUM,
+                            BRAIN_TASK_CLASSIFICATION, 500, 50);
         ASSERT_NE(brain, nullptr);
 
-        network = brain_get_network(brain);
+        adaptive_network_t adaptive_net = brain_get_network(brain);
+        ASSERT_NE(adaptive_net, nullptr);
+        network = adaptive_network_get_base_network(adaptive_net);
         ASSERT_NE(network, nullptr);
 
         analyzer = (network_analyzer_t*)brain_get_network_analyzer(brain);
@@ -103,19 +101,23 @@ TEST_F(QuantumRoutingEfficiencyRegressionTest, RoutingOverhead_ScalesLinearly) {
     std::vector<uint32_t> sizes = {100, 200, 500};
 
     for (uint32_t size : sizes) {
-        brain_config_t config = brain_get_default_config(BRAIN_CLASSIFICATION);
-        config.num_neurons = size;
-        config.hidden_layers = 2;
-        config.neurons_per_layer = size / 2;
-
-        brain_t test_brain = brain_create(&config);
+        // Create test brain with specified size
+        brain_size_t brain_size = (size <= 100) ? BRAIN_SIZE_SMALL :
+                                  (size <= 200) ? BRAIN_SIZE_MEDIUM :
+                                  BRAIN_SIZE_LARGE;
+        brain_t test_brain = brain_create("quantum_routing_scale_test", brain_size,
+                                          BRAIN_TASK_CLASSIFICATION, size, 20);
         ASSERT_NE(test_brain, nullptr);
 
         network_analyzer_t* test_analyzer =
             (network_analyzer_t*)brain_get_network_analyzer(test_brain);
         network_analyzer_run(test_analyzer);
 
-        neural_network_t test_network = brain_get_network(test_brain);
+        adaptive_network_t adaptive_net = brain_get_network(test_brain);
+        ASSERT_NE(adaptive_net, nullptr);
+        neural_network_t test_network = adaptive_network_get_base_network(adaptive_net);
+        ASSERT_NE(test_network, nullptr);
+
         quantum_shannon_config_t qs_config = quantum_shannon_default_config();
         quantum_shannon_diffusion_t* qsd = quantum_shannon_create(
             test_network, 0, 10.0f, &qs_config

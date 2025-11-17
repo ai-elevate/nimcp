@@ -17,7 +17,6 @@
  */
 
 #include <gtest/gtest.h>
-#include "nimcp.h"
 #include "core/brain/nimcp_brain.h"
 #include <cmath>
 #include <vector>
@@ -25,11 +24,9 @@
 class MemoryTrackingRegressionTest : public ::testing::Test {
 protected:
     void SetUp() override {
-        nimcp_init();
     }
 
     void TearDown() override {
-        nimcp_shutdown();
     }
 
     // Helper: Calculate accuracy percentage
@@ -49,15 +46,14 @@ TEST_F(MemoryTrackingRegressionTest, TinyBrainMemoryBaseline) {
     // WHY:  Prevent regressions in small brain tracking
     // HOW:  Compare against expected range
 
-    nimcp_brain_config_t config = nimcp_brain_config_defaults(NIMCP_BRAIN_TINY);
-    nimcp_brain_t brain = nimcp_brain_create(&config);
+    brain_t brain = brain_create("tiny_test", BRAIN_SIZE_TINY, BRAIN_TASK_CLASSIFICATION, 10, 5);
     ASSERT_NE(brain, nullptr);
 
-    size_t measured_memory = brain_get_memory_usage(brain->internal_brain);
+    size_t measured_memory = brain_get_memory_usage(brain);
 
     // Get brain stats
-    nimcp_brain_stats_t stats;
-    ASSERT_EQ(nimcp_brain_get_stats(brain, &stats), NIMCP_OK);
+    brain_stats_t stats;
+    ASSERT_TRUE(brain_get_stats(brain, &stats));
 
     // Calculate expected memory based on stats
     // Tiny brain: ~100 neurons, ~500 synapses (typical)
@@ -77,7 +73,7 @@ TEST_F(MemoryTrackingRegressionTest, TinyBrainMemoryBaseline) {
     std::cout << "Expected Range: " << expected_min << " - " << expected_max << " bytes\n";
     std::cout << "Neurons: " << stats.num_neurons << ", Synapses: " << stats.num_synapses << "\n";
 
-    nimcp_brain_destroy(brain);
+    brain_destroy(brain);
 }
 
 //=============================================================================
@@ -89,14 +85,13 @@ TEST_F(MemoryTrackingRegressionTest, SmallBrainMemoryBaseline) {
     // WHY:  Most common brain size - critical accuracy
     // HOW:  Compare against expected range with tight tolerance
 
-    nimcp_brain_config_t config = nimcp_brain_config_defaults(NIMCP_BRAIN_SMALL);
-    nimcp_brain_t brain = nimcp_brain_create(&config);
+    brain_t brain = brain_create("small_test", BRAIN_SIZE_SMALL, BRAIN_TASK_CLASSIFICATION, 10, 5);
     ASSERT_NE(brain, nullptr);
 
-    size_t measured_memory = brain_get_memory_usage(brain->internal_brain);
+    size_t measured_memory = brain_get_memory_usage(brain);
 
-    nimcp_brain_stats_t stats;
-    ASSERT_EQ(nimcp_brain_get_stats(brain, &stats), NIMCP_OK);
+    brain_stats_t stats;
+    ASSERT_TRUE(brain_get_stats(brain, &stats));
 
     // Small brain: ~1000 neurons, ~5000 synapses (typical)
     size_t expected_min = 1000 * 120 + 5000 * 24;
@@ -112,7 +107,7 @@ TEST_F(MemoryTrackingRegressionTest, SmallBrainMemoryBaseline) {
     std::cout << "Expected Range: " << expected_min << " - " << expected_max << " bytes\n";
     std::cout << "Accuracy: " << accuracy << "%\n";
 
-    nimcp_brain_destroy(brain);
+    brain_destroy(brain);
 }
 
 //=============================================================================
@@ -124,14 +119,13 @@ TEST_F(MemoryTrackingRegressionTest, MediumBrainMemoryBaseline) {
     // WHY:  Large network - critical for accuracy validation
     // HOW:  Compare against expected range
 
-    nimcp_brain_config_t config = nimcp_brain_config_defaults(NIMCP_BRAIN_MEDIUM);
-    nimcp_brain_t brain = nimcp_brain_create(&config);
+    brain_t brain = brain_create("medium_test", BRAIN_SIZE_MEDIUM, BRAIN_TASK_CLASSIFICATION, 10, 5);
     ASSERT_NE(brain, nullptr);
 
-    size_t measured_memory = brain_get_memory_usage(brain->internal_brain);
+    size_t measured_memory = brain_get_memory_usage(brain);
 
-    nimcp_brain_stats_t stats;
-    ASSERT_EQ(nimcp_brain_get_stats(brain, &stats), NIMCP_OK);
+    brain_stats_t stats;
+    ASSERT_TRUE(brain_get_stats(brain, &stats));
 
     // Medium brain: ~10000 neurons, ~50000 synapses (typical)
     size_t expected_min = 10000 * 120 + 50000 * 24;
@@ -146,7 +140,7 @@ TEST_F(MemoryTrackingRegressionTest, MediumBrainMemoryBaseline) {
     std::cout << "Expected Range: " << expected_min << " - " << expected_max << " bytes\n";
     std::cout << "Accuracy: " << accuracy << "%\n";
 
-    nimcp_brain_destroy(brain);
+    brain_destroy(brain);
 }
 
 //=============================================================================
@@ -162,14 +156,13 @@ TEST_F(MemoryTrackingRegressionTest, MemoryTrackingPrecision) {
 
     // Create 10 identical brains
     for (int i = 0; i < 10; i++) {
-        nimcp_brain_config_t config = nimcp_brain_config_defaults(NIMCP_BRAIN_SMALL);
-        nimcp_brain_t brain = nimcp_brain_create(&config);
+        brain_t brain = brain_create("precision_test", BRAIN_SIZE_SMALL, BRAIN_TASK_CLASSIFICATION, 10, 5);
         ASSERT_NE(brain, nullptr);
 
-        size_t memory = brain_get_memory_usage(brain->internal_brain);
+        size_t memory = brain_get_memory_usage(brain);
         memories.push_back(memory);
 
-        nimcp_brain_destroy(brain);
+        brain_destroy(brain);
     }
 
     // Calculate mean and standard deviation
@@ -206,14 +199,13 @@ TEST_F(MemoryTrackingRegressionTest, ComponentMemoryAccuracy) {
     // WHY:  Ensure breakdown remains correct
     // HOW:  Compare calculated vs expected for each component
 
-    nimcp_brain_config_t config = nimcp_brain_config_defaults(NIMCP_BRAIN_SMALL);
-    nimcp_brain_t brain = nimcp_brain_create(&config);
+    brain_t brain = brain_create("component_test", BRAIN_SIZE_SMALL, BRAIN_TASK_CLASSIFICATION, 10, 5);
     ASSERT_NE(brain, nullptr);
 
-    size_t total_memory = brain_get_memory_usage(brain->internal_brain);
+    size_t total_memory = brain_get_memory_usage(brain);
 
-    nimcp_brain_stats_t stats;
-    ASSERT_EQ(nimcp_brain_get_stats(brain, &stats), NIMCP_OK);
+    brain_stats_t stats;
+    ASSERT_TRUE(brain_get_stats(brain, &stats));
 
     // Calculate expected component sizes
     size_t expected_neurons = stats.num_neurons * 120;
@@ -232,7 +224,7 @@ TEST_F(MemoryTrackingRegressionTest, ComponentMemoryAccuracy) {
     std::cout << "Expected Neurons: " << expected_neurons << " bytes\n";
     std::cout << "Expected Synapses: " << expected_synapses << " bytes\n";
 
-    nimcp_brain_destroy(brain);
+    brain_destroy(brain);
 }
 
 //=============================================================================
@@ -244,13 +236,10 @@ TEST_F(MemoryTrackingRegressionTest, LongTermTrackingStability) {
     // WHY:  Prevent drift or accumulation errors
     // HOW:  Perform many operations, check consistency
 
-    nimcp_brain_config_t config = nimcp_brain_config_defaults(NIMCP_BRAIN_SMALL);
-    config.num_inputs = 10;
-    config.num_outputs = 5;
-    nimcp_brain_t brain = nimcp_brain_create(&config);
+    brain_t brain = brain_create("longterm_test", BRAIN_SIZE_SMALL, BRAIN_TASK_CLASSIFICATION, 10, 5);
     ASSERT_NE(brain, nullptr);
 
-    size_t initial_memory = brain_get_memory_usage(brain->internal_brain);
+    size_t initial_memory = brain_get_memory_usage(brain);
 
     // Perform many operations
     float inputs[10] = {1.0f, 0.5f, 0.3f, 0.8f, 0.2f, 0.6f, 0.4f, 0.9f, 0.1f, 0.7f};
@@ -260,11 +249,11 @@ TEST_F(MemoryTrackingRegressionTest, LongTermTrackingStability) {
 
     for (int i = 0; i < 100; i++) {
         // Train
-        nimcp_brain_teach(brain, inputs, "test_class");
+        brain_learn_example(brain, inputs, 10, "test_class", 0.8f);
 
         // Sample memory every 10 iterations
         if (i % 10 == 0) {
-            size_t memory = brain_get_memory_usage(brain->internal_brain);
+            size_t memory = brain_get_memory_usage(brain);
             memory_samples.push_back(memory);
         }
     }
@@ -286,7 +275,7 @@ TEST_F(MemoryTrackingRegressionTest, LongTermTrackingStability) {
     std::cout << "Growth Ratio: " << growth_ratio << "x\n";
     std::cout << "Sample Range Ratio: " << range_ratio << "x\n";
 
-    nimcp_brain_destroy(brain);
+    brain_destroy(brain);
 }
 
 //=============================================================================
@@ -298,13 +287,10 @@ TEST_F(MemoryTrackingRegressionTest, EdgeCaseMinimalBrain) {
     // WHY:  Ensure accuracy at lower bound
     // HOW:  Create minimal brain, check memory is sensible
 
-    nimcp_brain_config_t config = nimcp_brain_config_defaults(NIMCP_BRAIN_TINY);
-    config.num_inputs = 1;
-    config.num_outputs = 1;
-    nimcp_brain_t brain = nimcp_brain_create(&config);
+    brain_t brain = brain_create("minimal_test", BRAIN_SIZE_TINY, BRAIN_TASK_CLASSIFICATION, 1, 1);
     ASSERT_NE(brain, nullptr);
 
-    size_t memory = brain_get_memory_usage(brain->internal_brain);
+    size_t memory = brain_get_memory_usage(brain);
 
     // VERIFY: Memory is non-zero and reasonable
     EXPECT_GT(memory, 100);  // At least 100 bytes
@@ -312,7 +298,7 @@ TEST_F(MemoryTrackingRegressionTest, EdgeCaseMinimalBrain) {
 
     std::cout << "Minimal Brain Memory: " << memory << " bytes\n";
 
-    nimcp_brain_destroy(brain);
+    brain_destroy(brain);
 }
 
 //=============================================================================
@@ -324,23 +310,20 @@ TEST_F(MemoryTrackingRegressionTest, EdgeCaseLargeOutputLabels) {
     // WHY:  Ensure label memory is correctly included
     // HOW:  Add many labels, verify memory increases proportionally
 
-    nimcp_brain_config_t config = nimcp_brain_config_defaults(NIMCP_BRAIN_SMALL);
-    config.num_inputs = 10;
-    config.num_outputs = 100;  // Many outputs
-    nimcp_brain_t brain = nimcp_brain_create(&config);
+    brain_t brain = brain_create("labels_test", BRAIN_SIZE_SMALL, BRAIN_TASK_CLASSIFICATION, 10, 100);
     ASSERT_NE(brain, nullptr);
 
-    size_t memory_before = brain_get_memory_usage(brain->internal_brain);
+    size_t memory_before = brain_get_memory_usage(brain);
 
     // Add many unique labels
     float inputs[10] = {1.0f, 0.5f, 0.3f, 0.8f, 0.2f, 0.6f, 0.4f, 0.9f, 0.1f, 0.7f};
     for (int i = 0; i < 100; i++) {
         char label[64];
         snprintf(label, sizeof(label), "class_number_%d_with_long_name", i);
-        nimcp_brain_teach(brain, inputs, label);
+        brain_learn_example(brain, inputs, 10, label, 0.8f);
     }
 
-    size_t memory_after = brain_get_memory_usage(brain->internal_brain);
+    size_t memory_after = brain_get_memory_usage(brain);
 
     // VERIFY: Memory increased (labels added)
     EXPECT_GT(memory_after, memory_before);
@@ -354,7 +337,7 @@ TEST_F(MemoryTrackingRegressionTest, EdgeCaseLargeOutputLabels) {
     std::cout << "After: " << memory_after << " bytes\n";
     std::cout << "Increase: " << (memory_after - memory_before) << " bytes\n";
 
-    nimcp_brain_destroy(brain);
+    brain_destroy(brain);
 }
 
 //=============================================================================

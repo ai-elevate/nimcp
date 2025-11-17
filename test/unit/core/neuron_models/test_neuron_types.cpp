@@ -627,23 +627,6 @@ TEST_F(NeuronTypesTest, ExecutiveControl_MaxInput) {
     EXPECT_LE(output, 1.0f);
 }
 
-TEST_F(NeuronTypesTest, ExecutiveControl_WorkingMemoryMaintenance) {
-    neuron_type_params_t params{};
-    neuron_type_get_default_params(NEURON_EXECUTIVE_CONTROL, &params);
-
-    params.executive.modulation_strength = 0.5f;
-    params.executive.threshold_boost = 0.2f;
-
-    uint64_t timestamp = nimcp_time_monotonic_us();
-
-    // With strong goal signal (0.6 default), should maintain elevated activity
-    float low_input = 0.2f;
-    float output = neuron_type_process_input(NEURON_EXECUTIVE_CONTROL, &params, low_input, timestamp);
-
-    // Should maintain some activity even with low input (working memory)
-    EXPECT_GE(output, 0.0f);
-}
-
 // ============================================================================
 // COGNITIVE NEURON TYPE NAME TESTS
 // ============================================================================

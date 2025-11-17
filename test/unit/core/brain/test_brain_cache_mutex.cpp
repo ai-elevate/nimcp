@@ -34,19 +34,10 @@
 class BrainCacheTest : public ::testing::Test {
 protected:
     brain_t brain;
-    brain_config_t config;
 
     void SetUp() override {
         // Create a small test brain for caching tests
-        config.num_inputs = 4;
-        config.num_outputs = 2;
-        config.hidden_layers[0] = 8;
-        config.hidden_layers[1] = 0;
-        config.hidden_layers[2] = 0;
-        config.learning_rate = 0.1f;
-        config.sparsity = 0.5f;
-
-        brain = brain_create_classification(&config);
+        brain = brain_create("cache_test", BRAIN_SIZE_SMALL, BRAIN_TASK_CLASSIFICATION, 4, 2);
         ASSERT_NE(brain, nullptr) << "Failed to create brain";
     }
 
@@ -94,7 +85,7 @@ TEST_F(BrainCacheTest, CacheHitOnIdenticalInput) {
     // First call - cache miss
     brain_decision_t* decision1 = brain_decide(brain, input.data(), input.size());
     ASSERT_NE(decision1, nullptr);
-    uint32_t predicted_class1 = decision1->predicted_class;
+    std::string label1 = decision1->label;
     float confidence1 = decision1->confidence;
 
     // Second call with identical input - cache hit
@@ -102,7 +93,7 @@ TEST_F(BrainCacheTest, CacheHitOnIdenticalInput) {
     ASSERT_NE(decision2, nullptr);
 
     // Cached decision should be identical
-    EXPECT_EQ(decision2->predicted_class, predicted_class1);
+    EXPECT_EQ(std::string(decision2->label), label1);
     EXPECT_FLOAT_EQ(decision2->confidence, confidence1);
 
     brain_free_decision(decision1);
@@ -142,16 +133,15 @@ TEST_F(BrainCacheTest, CacheMissOnDifferentInput) {
  */
 TEST_F(BrainCacheTest, CacheInvalidationOnLearning) {
     auto input = create_input(0.5f);
-    float target[] = {1.0f, 0.0f};
 
     // Get initial decision (cached)
     brain_decision_t* decision1 = brain_decide(brain, input.data(), input.size());
     ASSERT_NE(decision1, nullptr);
-    uint32_t class1 = decision1->predicted_class;
+    std::string class1 = decision1->label;
     brain_free_decision(decision1);
 
     // Learn on this input (should invalidate cache)
-    brain_learn_example(brain, input.data(), input.size(), target, 2);
+    brain_learn_example(brain, input.data(), input.size(), "class_0", 1.0f);
 
     // Get decision again (cache was invalidated, recomputes)
     brain_decision_t* decision2 = brain_decide(brain, input.data(), input.size());
@@ -178,7 +168,7 @@ TEST_F(BrainCacheTest, CacheInvalidationOnPruning) {
     brain_free_decision(decision1);
 
     // Prune weak synapses (should invalidate cache)
-    brain_prune_synapses(brain, 0.01f);
+    brain_prune(brain, 0.01f);
 
     // Get decision again (cache was invalidated, recomputes)
     brain_decision_t* decision2 = brain_decide(brain, input.data(), input.size());
@@ -204,7 +194,7 @@ TEST_F(BrainCacheTest, ConcurrentCacheReads) {
     // Pre-cache a decision
     brain_decision_t* initial = brain_decide(brain, input.data(), input.size());
     ASSERT_NE(initial, nullptr);
-    uint32_t expected_class = initial->predicted_class;
+    std::string expected_label = initial->label;
     brain_free_decision(initial);
 
     std::atomic<int> success_count{0};
@@ -217,7 +207,7 @@ TEST_F(BrainCacheTest, ConcurrentCacheReads) {
             brain_decision_t* decision = brain_decide(brain, input.data(), input.size());
             if (decision) {
                 // Verify cached decision is correct
-                if (decision->predicted_class == expected_class) {
+                if (std::string(decision->label) == expected_label) {
                     success_count++;
                 }
                 brain_free_decision(decision);
@@ -291,7 +281,6 @@ TEST_F(BrainCacheTest, ConcurrentCacheWrites) {
  */
 TEST_F(BrainCacheTest, ConcurrentReadAndInvalidate) {
     auto input = create_input(0.5f);
-    float target[] = {1.0f, 0.0f};
 
     // Pre-cache a decision
     brain_decision_t* initial = brain_decide(brain, input.data(), input.size());
@@ -319,7 +308,7 @@ TEST_F(BrainCacheTest, ConcurrentReadAndInvalidate) {
     // Invalidator thread
     auto invalidator = [&]() {
         for (int i = 0; i < 20; i++) {
-            brain_learn_example(brain, input.data(), input.size(), target, 2);
+            brain_learn_example(brain, input.data(), input.size(), "class_0", 1.0f);
             std::this_thread::sleep_for(std::chrono::milliseconds(5));
         }
         keep_running = false;
@@ -370,7 +359,7 @@ TEST_F(BrainCacheTest, CacheReturnsDeepCopy) {
     EXPECT_NE(decision1->output_vector, decision2->output_vector);
 
     // But same values
-    EXPECT_EQ(decision1->predicted_class, decision2->predicted_class);
+    EXPECT_STREQ(decision1->label, decision2->label);
     EXPECT_FLOAT_EQ(decision1->confidence, decision2->confidence);
 
     // Free first decision - second should still be valid
@@ -391,7 +380,7 @@ TEST_F(BrainCacheTest, CacheStoresInputCopy) {
     // Get first decision (caches input)
     brain_decision_t* decision1 = brain_decide(brain, input.data(), input.size());
     ASSERT_NE(decision1, nullptr);
-    uint32_t class1 = decision1->predicted_class;
+    std::string class1 = decision1->label;
     brain_free_decision(decision1);
 
     // Modify original input
@@ -404,7 +393,7 @@ TEST_F(BrainCacheTest, CacheStoresInputCopy) {
     ASSERT_NE(decision2, nullptr);
 
     // Should still match cached decision (cache has copy)
-    EXPECT_EQ(decision2->predicted_class, class1);
+    EXPECT_EQ(std::string(decision2->label), class1);
 
     brain_free_decision(decision2);
 }
@@ -491,27 +480,27 @@ TEST_F(BrainCacheTest, MultipleSequentialCacheUpdates) {
     auto input1 = create_input(0.1f);
     brain_decision_t* decision1a = brain_decide(brain, input1.data(), input1.size());
     ASSERT_NE(decision1a, nullptr);
-    uint32_t class1 = decision1a->predicted_class;
+    std::string class1 = decision1a->label;
     brain_free_decision(decision1a);
 
     // Decision 2 (replaces cache)
     auto input2 = create_input(0.5f);
     brain_decision_t* decision2a = brain_decide(brain, input2.data(), input2.size());
     ASSERT_NE(decision2a, nullptr);
-    uint32_t class2 = decision2a->predicted_class;
+    std::string class2 = decision2a->label;
     brain_free_decision(decision2a);
 
     // Decision 3 (replaces cache)
     auto input3 = create_input(0.9f);
     brain_decision_t* decision3a = brain_decide(brain, input3.data(), input3.size());
     ASSERT_NE(decision3a, nullptr);
-    uint32_t class3 = decision3a->predicted_class;
+    std::string class3 = decision3a->label;
     brain_free_decision(decision3a);
 
     // Verify cache now has input3
     brain_decision_t* decision3b = brain_decide(brain, input3.data(), input3.size());
     ASSERT_NE(decision3b, nullptr);
-    EXPECT_EQ(decision3b->predicted_class, class3);
+    EXPECT_EQ(std::string(decision3b->label), class3);
     brain_free_decision(decision3b);
 }
 

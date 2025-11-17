@@ -15,12 +15,7 @@ protected:
 
     void SetUp() override {
         // Create a small test brain for network analysis
-        brain_config_t config = brain_get_default_config(BRAIN_CLASSIFICATION);
-        config.num_neurons = 100;
-        config.hidden_layers = 2;
-        config.neurons_per_layer = 50;
-
-        brain = brain_create(&config);
+        brain = brain_create("test", BRAIN_SIZE_SMALL, BRAIN_TASK_CLASSIFICATION, 10, 2);
         ASSERT_NE(brain, nullptr);
 
         analyzer = nullptr;
@@ -136,12 +131,14 @@ TEST_F(NetworkAnalyzerIntegrationTest, NetworkAnalyzer_AfterLearning_UpdatesTopo
     // Get initial metrics
     topology_metrics_t initial_metrics = network_analyzer_get_metrics(analyzer);
 
-    // Perform some learning
+    // Perform some decisions to generate network activity
     float input[10] = {0.1f, 0.2f, 0.3f, 0.4f, 0.5f, 0.6f, 0.7f, 0.8f, 0.9f, 1.0f};
-    float targets[2] = {1.0f, 0.0f};
 
     for (int i = 0; i < 20; i++) {
-        brain_train(brain, input, 10, targets, 2);
+        brain_decision_t* decision = brain_decide(brain, input, 10);
+        if (decision) {
+            brain_free_decision(decision);
+        }
     }
 
     // Run analysis manually

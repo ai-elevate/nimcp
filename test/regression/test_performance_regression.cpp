@@ -14,6 +14,7 @@
 #include "core/brain/nimcp_brain.h"
 #include "utils/spatial/nimcp_kdtree.h"
 #include "utils/config/nimcp_dynamic_config.h"
+#include <array>
 #include <chrono>
 #include <vector>
 #include <random>
@@ -52,11 +53,11 @@ TEST(KDTreePerformanceRegression, BuildTime_1000Points) {
     std::mt19937 rng(42);
     std::uniform_real_distribution<float> dist(-100.0f, 100.0f);
 
-    std::vector<kdtree_point_t> points;
+    std::vector<std::array<float, 3>> points;
     std::vector<void*> user_data;
 
     for (int i = 0; i < 1000; i++) {
-        kdtree_point_t pt = {dist(rng), dist(rng), dist(rng)};
+        std::array<float, 3> pt = {{dist(rng), dist(rng), dist(rng)}};
         points.push_back(pt);
         user_data.push_back((void*)(uintptr_t)i);
     }
@@ -65,7 +66,7 @@ TEST(KDTreePerformanceRegression, BuildTime_1000Points) {
     ASSERT_NE(tree, nullptr);
 
     double build_time = PerformanceMonitor::MeasureTimeMs([&]() {
-        kdtree_build(tree, points.data(), user_data.data(), 1000);
+        kdtree_build(tree, reinterpret_cast<const kdtree_point_t*>(points.data()), user_data.data(), 1000);
     });
 
     kdtree_destroy(tree);
@@ -84,11 +85,11 @@ TEST(KDTreePerformanceRegression, QueryTime_RangeSearch) {
     std::mt19937 rng(123);
     std::uniform_real_distribution<float> dist(-50.0f, 50.0f);
 
-    std::vector<kdtree_point_t> points;
+    std::vector<std::array<float, 3>> points;
     std::vector<void*> user_data;
 
     for (int i = 0; i < 1000; i++) {
-        kdtree_point_t pt = {dist(rng), dist(rng), dist(rng)};
+        std::array<float, 3> pt = {{dist(rng), dist(rng), dist(rng)}};
         points.push_back(pt);
         user_data.push_back((void*)(uintptr_t)i);
     }
@@ -96,16 +97,16 @@ TEST(KDTreePerformanceRegression, QueryTime_RangeSearch) {
     kdtree_t* tree = kdtree_create();
     ASSERT_NE(tree, nullptr);
 
-    kdtree_build(tree, points.data(), user_data.data(), 1000);
+    kdtree_build(tree, reinterpret_cast<const kdtree_point_t*>(points.data()), user_data.data(), 1000);
 
     void* results[100];
     double total_query_time = 0.0;
 
     for (int i = 0; i < 100; i++) {
-        kdtree_point_t query = {dist(rng), dist(rng), dist(rng)};
+        std::array<float, 3> query = {{dist(rng), dist(rng), dist(rng)}};
 
         double query_time = PerformanceMonitor::MeasureTimeMs([&]() {
-            kdtree_range_search(tree, query, 10.0f, results, 100);
+            kdtree_range_search(tree, query.data(), 10.0f, results, 100);
         });
 
         total_query_time += query_time;
@@ -131,11 +132,11 @@ TEST(KDTreePerformanceRegression, MemoryUsage_10000Points) {
     std::mt19937 rng(456);
     std::uniform_real_distribution<float> dist(-100.0f, 100.0f);
 
-    std::vector<kdtree_point_t> points;
+    std::vector<std::array<float, 3>> points;
     std::vector<void*> user_data;
 
     for (int i = 0; i < 10000; i++) {
-        kdtree_point_t pt = {dist(rng), dist(rng), dist(rng)};
+        std::array<float, 3> pt = {{dist(rng), dist(rng), dist(rng)}};
         points.push_back(pt);
         user_data.push_back((void*)(uintptr_t)i);
     }
@@ -143,7 +144,7 @@ TEST(KDTreePerformanceRegression, MemoryUsage_10000Points) {
     kdtree_t* tree = kdtree_create();
     ASSERT_NE(tree, nullptr);
 
-    kdtree_build(tree, points.data(), user_data.data(), 10000);
+    kdtree_build(tree, reinterpret_cast<const kdtree_point_t*>(points.data()), user_data.data(), 10000);
 
     long mem_after = PerformanceMonitor::GetMemoryUsageKB();
 
@@ -253,7 +254,8 @@ TEST(LayerFreezingPerformanceRegression, FinetuneTime_SmallBrain) {
     // WHY:  Ensure no significant overhead from freezing logic
     // HOW:  Train TINY brain for 5 epochs, measure time
 
-    brain_t brain = brain_create("perf_brain", BRAIN_SIZE_TINY);
+    brain_t brain = brain_create("perf_brain", BRAIN_SIZE_TINY,
+                                 BRAIN_TASK_CLASSIFICATION, 10, 10);
     ASSERT_NE(brain, nullptr);
 
     // Generate training data
@@ -299,7 +301,8 @@ TEST(LayerFreezingPerformanceRegression, MemoryUsage_Finetune) {
 
     long mem_before = PerformanceMonitor::GetMemoryUsageKB();
 
-    brain_t brain = brain_create("mem_brain", BRAIN_SIZE_TINY);
+    brain_t brain = brain_create("mem_brain", BRAIN_SIZE_TINY,
+                                 BRAIN_TASK_CLASSIFICATION, 10, 10);
     ASSERT_NE(brain, nullptr);
 
     std::vector<float> training_data;
@@ -350,7 +353,8 @@ TEST(PerformanceRegression, EndToEnd_AllFeatures) {
     system("echo 'lr=0.01' > /tmp/e2e_config.ini");
     config_init("/tmp/e2e_config.ini");
 
-    brain_t brain = brain_create("e2e_brain", BRAIN_SIZE_TINY);
+    brain_t brain = brain_create("e2e_brain", BRAIN_SIZE_TINY,
+                                 BRAIN_TASK_CLASSIFICATION, 128, 20);
     ASSERT_NE(brain, nullptr);
 
     // KD-tree for spatial indexing
@@ -360,16 +364,16 @@ TEST(PerformanceRegression, EndToEnd_AllFeatures) {
     std::mt19937 rng(789);
     std::uniform_real_distribution<float> dist(-5.0f, 5.0f);
 
-    std::vector<kdtree_point_t> points;
+    std::vector<std::array<float, 3>> points;
     std::vector<void*> user_data;
 
     for (int i = 0; i < 500; i++) {
-        kdtree_point_t pt = {dist(rng), dist(rng), dist(rng)};
+        std::array<float, 3> pt = {{dist(rng), dist(rng), dist(rng)}};
         points.push_back(pt);
         user_data.push_back((void*)(uintptr_t)i);
     }
 
-    kdtree_build(tree, points.data(), user_data.data(), 500);
+    kdtree_build(tree, reinterpret_cast<const kdtree_point_t*>(points.data()), user_data.data(), 500);
 
     // Config callback
     auto callback = [](const char* k, const config_value_t* o,
@@ -395,9 +399,9 @@ TEST(PerformanceRegression, EndToEnd_AllFeatures) {
 
     double total_time = PerformanceMonitor::MeasureTimeMs([&]() {
         // KD-tree query
-        kdtree_point_t query = {0.0f, 0.0f, 0.0f};
+        std::array<float, 3> query = {{0.0f, 0.0f, 0.0f}};
         void* results[50];
-        kdtree_range_search(tree, query, 2.0f, results, 50);
+        kdtree_range_search(tree, query.data(), 2.0f, results, 50);
 
         // Config change
         config_set_float("lr", 0.005);

@@ -14,12 +14,15 @@ protected:
 
     void SetUp() override {
         // Create a test brain with sufficient neurons for topology analysis
-        brain_config_t config = brain_get_default_config(BRAIN_CLASSIFICATION);
-        config.num_neurons = 200;
-        config.hidden_layers = 3;
-        config.neurons_per_layer = 60;
+        brain_config_t config;
+        memset(&config, 0, sizeof(config));
+        config.size = BRAIN_SIZE_MEDIUM;
+        config.task = BRAIN_TASK_CLASSIFICATION;
+        config.num_inputs = 10;
+        config.num_outputs = 10;
+        snprintf(config.task_name, sizeof(config.task_name), "analyzer_test");
 
-        brain = brain_create(&config);
+        brain = brain_create_custom(&config);
         ASSERT_NE(brain, nullptr);
     }
 
@@ -253,12 +256,15 @@ TEST_F(BrainNetworkAnalyzerTest, GetNetworkAnalyzer_CleanupOnBrainDestroy) {
     // WHY:  Verify no memory leaks
     // HOW:  Create brain, get analyzer, destroy brain, check no crash
 
-    brain_config_t config = brain_get_default_config(BRAIN_CLASSIFICATION);
-    config.num_neurons = 50;
-    config.hidden_layers = 1;
-    config.neurons_per_layer = 25;
+    brain_config_t config;
+    memset(&config, 0, sizeof(config));
+    config.size = BRAIN_SIZE_TINY;
+    config.task = BRAIN_TASK_CLASSIFICATION;
+    config.num_inputs = 10;
+    config.num_outputs = 10;
+    snprintf(config.task_name, sizeof(config.task_name), "temp_brain");
 
-    brain_t temp_brain = brain_create(&config);
+    brain_t temp_brain = brain_create_custom(&config);
     ASSERT_NE(temp_brain, nullptr);
 
     void* analyzer = brain_get_network_analyzer(temp_brain);
@@ -283,14 +289,14 @@ TEST_F(BrainNetworkAnalyzerTest, GetNetworkAnalyzer_WorksWithBrainInference) {
     float input[10] = {1.0f, 0.5f, 0.3f, 0.8f, 0.2f, 0.9f, 0.1f, 0.6f, 0.4f, 0.7f};
 
     // Run inference
-    brain_decision_t decision = brain_decide(brain, input, 10);
-    EXPECT_NE(decision.decision, nullptr);
+    brain_decision_t* decision = brain_decide(brain, input, 10);
+    EXPECT_NE(decision, nullptr);
 
     // Get analyzer (should still work after inference)
     void* analyzer = brain_get_network_analyzer(brain);
     EXPECT_NE(analyzer, nullptr);
 
-    brain_free_decision(&decision);
+    brain_free_decision(decision);
 }
 
 TEST_F(BrainNetworkAnalyzerTest, GetNetworkAnalyzer_WorksWithBrainLearning) {
@@ -303,7 +309,8 @@ TEST_F(BrainNetworkAnalyzerTest, GetNetworkAnalyzer_WorksWithBrainLearning) {
     const char* label = "test_class";
 
     // Run learning
-    bool learned = brain_learn(brain, input, 10, label);
+    float loss = brain_learn_example(brain, input, 10, label, 1.0f);
+    (void)loss;  // Suppress unused warning
 
     // Get analyzer (should still work after learning)
     void* analyzer = brain_get_network_analyzer(brain);
@@ -319,12 +326,15 @@ TEST_F(BrainNetworkAnalyzerTest, GetNetworkAnalyzer_SmallBrain_HandlesGracefully
     // WHY:  Verify edge case handling
     // HOW:  Create minimal brain and get analyzer
 
-    brain_config_t config = brain_get_default_config(BRAIN_CLASSIFICATION);
-    config.num_neurons = 10;
-    config.hidden_layers = 1;
-    config.neurons_per_layer = 5;
+    brain_config_t config;
+    memset(&config, 0, sizeof(config));
+    config.size = BRAIN_SIZE_TINY;
+    config.task = BRAIN_TASK_CLASSIFICATION;
+    config.num_inputs = 10;
+    config.num_outputs = 10;
+    snprintf(config.task_name, sizeof(config.task_name), "small_brain");
 
-    brain_t small_brain = brain_create(&config);
+    brain_t small_brain = brain_create_custom(&config);
     ASSERT_NE(small_brain, nullptr);
 
     void* analyzer = brain_get_network_analyzer(small_brain);
@@ -338,12 +348,15 @@ TEST_F(BrainNetworkAnalyzerTest, GetNetworkAnalyzer_LargeBrain_HandlesGracefully
     // WHY:  Verify scalability
     // HOW:  Create large brain and get analyzer
 
-    brain_config_t config = brain_get_default_config(BRAIN_CLASSIFICATION);
-    config.num_neurons = 1000;
-    config.hidden_layers = 4;
-    config.neurons_per_layer = 250;
+    brain_config_t config;
+    memset(&config, 0, sizeof(config));
+    config.size = BRAIN_SIZE_LARGE;
+    config.task = BRAIN_TASK_CLASSIFICATION;
+    config.num_inputs = 10;
+    config.num_outputs = 10;
+    snprintf(config.task_name, sizeof(config.task_name), "large_brain");
 
-    brain_t large_brain = brain_create(&config);
+    brain_t large_brain = brain_create_custom(&config);
     ASSERT_NE(large_brain, nullptr);
 
     void* analyzer = brain_get_network_analyzer(large_brain);

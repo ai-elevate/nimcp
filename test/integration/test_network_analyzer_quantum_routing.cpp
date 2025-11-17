@@ -12,12 +12,15 @@ protected:
     brain_t brain;
 
     void SetUp() override {
-        brain_config_t config = brain_get_default_config(BRAIN_CLASSIFICATION);
-        config.num_neurons = 200;
-        config.hidden_layers = 3;
-        config.neurons_per_layer = 60;
+        brain_config_t config;
+        memset(&config, 0, sizeof(config));
+        config.size = BRAIN_SIZE_MEDIUM;
+        config.task = BRAIN_TASK_CLASSIFICATION;
+        config.num_inputs = 10;
+        config.num_outputs = 10;
+        snprintf(config.task_name, sizeof(config.task_name), "analyzer_test");
 
-        brain = brain_create(&config);
+        brain = brain_create_custom(&config);
         ASSERT_NE(brain, nullptr);
     }
 
@@ -46,7 +49,9 @@ TEST_F(NetworkAnalyzerQuantumRoutingIntegrationTest, FullPipeline_BrainToRouting
     EXPECT_TRUE(analysis_result);
 
     // Step 3: Create quantum-Shannon diffusion
-    neural_network_t network = brain_get_network(brain);
+    adaptive_network_t adaptive_net = brain_get_network(brain);
+    ASSERT_NE(adaptive_net, nullptr);
+    neural_network_t network = adaptive_network_get_base_network(adaptive_net);
     ASSERT_NE(network, nullptr);
 
     quantum_shannon_config_t qs_config = quantum_shannon_default_config();
@@ -74,9 +79,9 @@ TEST_F(NetworkAnalyzerQuantumRoutingIntegrationTest, FullPipeline_BrainToRouting
 
     // Step 7: Run brain inference
     float input[10] = {0.1f, 0.2f, 0.3f, 0.4f, 0.5f, 0.6f, 0.7f, 0.8f, 0.9f, 1.0f};
-    brain_decision_t decision;
-    bool inference_result = brain_decide(brain, input, 10, &decision);
-    EXPECT_TRUE(inference_result);
+    brain_decision_t* decision = brain_decide(brain, input, 10);
+    EXPECT_NE(decision, nullptr);
+    brain_free_decision(decision);
 
     quantum_shannon_destroy(qsd);
 }
@@ -89,7 +94,9 @@ TEST_F(NetworkAnalyzerQuantumRoutingIntegrationTest, Training_UpdatesTopology_Im
     network_analyzer_t* analyzer = (network_analyzer_t*)brain_get_network_analyzer(brain);
     ASSERT_NE(analyzer, nullptr);
 
-    neural_network_t network = brain_get_network(brain);
+    adaptive_network_t adaptive_net = brain_get_network(brain);
+    ASSERT_NE(adaptive_net, nullptr);
+    neural_network_t network = adaptive_network_get_base_network(adaptive_net);
     ASSERT_NE(network, nullptr);
 
     // Initial analysis and routing
@@ -110,10 +117,9 @@ TEST_F(NetworkAnalyzerQuantumRoutingIntegrationTest, Training_UpdatesTopology_Im
 
     // Perform training
     float input[10] = {0.1f, 0.2f, 0.3f, 0.4f, 0.5f, 0.6f, 0.7f, 0.8f, 0.9f, 1.0f};
-    float targets[2] = {1.0f, 0.0f};
 
     for (int i = 0; i < 50; i++) {
-        brain_train(brain, input, 10, targets, 2);
+        brain_learn_example(brain, input, 10, "class_0", 1.0f);
     }
 
     // Re-analyze and route after training
@@ -157,7 +163,8 @@ TEST_F(NetworkAnalyzerQuantumRoutingIntegrationTest, CommunityDetection_GuidesRo
 
     const community_structure_t* communities = network_analyzer_get_communities(analyzer);
 
-    neural_network_t network = brain_get_network(brain);
+    adaptive_network_t adaptive_net = brain_get_network(brain);
+    neural_network_t network = adaptive_network_get_base_network(adaptive_net);
     quantum_shannon_config_t qs_config = quantum_shannon_default_config();
     quantum_shannon_diffusion_t* qsd = quantum_shannon_create(
         network, 0, 10.0f, &qs_config
@@ -190,7 +197,8 @@ TEST_F(NetworkAnalyzerQuantumRoutingIntegrationTest, HubDetection_BiasesRouting)
 
     const hub_detection_t* hubs = network_analyzer_get_hubs(analyzer);
 
-    neural_network_t network = brain_get_network(brain);
+    adaptive_network_t adaptive_net = brain_get_network(brain);
+    neural_network_t network = adaptive_network_get_base_network(adaptive_net);
     quantum_shannon_config_t qs_config = quantum_shannon_default_config();
     quantum_shannon_diffusion_t* qsd = quantum_shannon_create(
         network, 0, 10.0f, &qs_config
@@ -225,7 +233,8 @@ TEST_F(NetworkAnalyzerQuantumRoutingIntegrationTest, BottleneckDetection_RoutesA
     ASSERT_NE(analyzer, nullptr);
     network_analyzer_run(analyzer);
 
-    neural_network_t network = brain_get_network(brain);
+    adaptive_network_t adaptive_net = brain_get_network(brain);
+    neural_network_t network = adaptive_network_get_base_network(adaptive_net);
     quantum_shannon_config_t qs_config = quantum_shannon_default_config();
     quantum_shannon_diffusion_t* qsd = quantum_shannon_create(
         network, 0, 10.0f, &qs_config
@@ -268,7 +277,8 @@ TEST_F(NetworkAnalyzerQuantumRoutingIntegrationTest, AutoAnalysis_UpdatesRouting
     // Enable auto-analysis (every 5 iterations)
     network_analyzer_set_auto_analyze(analyzer, true, 5);
 
-    neural_network_t network = brain_get_network(brain);
+    adaptive_network_t adaptive_net = brain_get_network(brain);
+    neural_network_t network = adaptive_network_get_base_network(adaptive_net);
     quantum_shannon_config_t qs_config = quantum_shannon_default_config();
     quantum_shannon_diffusion_t* qsd = quantum_shannon_create(
         network, 0, 10.0f, &qs_config
@@ -303,7 +313,8 @@ TEST_F(NetworkAnalyzerQuantumRoutingIntegrationTest, MultipleRoutingCycles_Stabl
     ASSERT_NE(analyzer, nullptr);
     network_analyzer_run(analyzer);
 
-    neural_network_t network = brain_get_network(brain);
+    adaptive_network_t adaptive_net = brain_get_network(brain);
+    neural_network_t network = adaptive_network_get_base_network(adaptive_net);
     quantum_shannon_config_t qs_config = quantum_shannon_default_config();
     quantum_shannon_diffusion_t* qsd = quantum_shannon_create(
         network, 0, 10.0f, &qs_config

@@ -70,12 +70,12 @@ protected:
     // Helper: Compare decisions
     bool decisions_equal(const brain_decision_t* d1, const brain_decision_t* d2) {
         if (!d1 || !d2) return false;
-        if (d1->num_outputs != d2->num_outputs) return false;
-        if (d1->predicted_class != d2->predicted_class) return false;
+        if (std::strcmp(d1->label, d2->label) != 0) return false;
         if (std::abs(d1->confidence - d2->confidence) > 1e-6f) return false;
+        if (d1->output_size != d2->output_size) return false;
 
-        for (uint32_t i = 0; i < d1->num_outputs; i++) {
-            if (std::abs(d1->class_probabilities[i] - d2->class_probabilities[i]) > 1e-6f)
+        for (uint32_t i = 0; i < d1->output_size; i++) {
+            if (std::abs(d1->output_vector[i] - d2->output_vector[i]) > 1e-6f)
                 return false;
         }
         return true;
@@ -160,7 +160,7 @@ TEST_F(BrainCacheThreadSafeTest, CacheInvalidation_OnLearn) {
     brain_free_decision(decision1);
 
     // Learn - should invalidate cache
-    brain_learn_example(brain, features, 10, targets, 3, 1.0f);
+    brain_learn_example(brain, features, 10, "class_0", 1.0f);
 
     // Second decision after learning - should recompute
     brain_decision_t* decision2 = brain_decide(brain, features, 10);
@@ -184,11 +184,13 @@ TEST_F(BrainCacheThreadSafeTest, CacheInvalidation_OnBatchLearn) {
     brain_free_decision(decision1);
 
     // Batch learn - should invalidate cache
-    const float* batch_inputs[1] = {features};
-    float* batch_targets = new float[3]{1.0f, 0.0f, 0.0f};
-    const float* batch_targets_ptr[1] = {batch_targets};
+    brain_example_t example;
+    example.features = features;
+    example.num_features = 10;
+    strcpy(example.label, "class_0");
+    example.confidence = 1.0f;
 
-    brain_learn_batch(brain, batch_inputs, batch_targets_ptr, 1, 10, 3);
+    brain_learn_batch(brain, &example, 1);
 
     // Second decision - should recompute
     brain_decision_t* decision2 = brain_decide(brain, features, 10);
@@ -196,7 +198,6 @@ TEST_F(BrainCacheThreadSafeTest, CacheInvalidation_OnBatchLearn) {
 
     brain_free_decision(decision2);
     delete[] features;
-    delete[] batch_targets;
     brain_destroy(brain);
 }
 
@@ -501,7 +502,7 @@ TEST_F(BrainCacheThreadSafeTest, ConcurrentReadWrite_CacheInvalidation) {
     // Writer thread (triggers cache invalidation)
     auto writer = [&]() {
         for (int i = 0; i < 10; i++) {
-            brain_learn_example(brain, features, 10, targets, 3, 1.0f);
+            brain_learn_example(brain, features, 10, "class_0", 1.0f);
             write_count++;
             std::this_thread::sleep_for(std::chrono::milliseconds(10));
         }
@@ -544,8 +545,8 @@ TEST_F(BrainCacheThreadSafeTest, ConcurrentAccess_RaceCondition) {
             if (decision) {
                 // Simulate some work
                 volatile float sum = 0.0f;
-                for (uint32_t j = 0; j < decision->num_outputs; j++) {
-                    sum += decision->class_probabilities[j];
+                for (uint32_t j = 0; j < decision->output_size; j++) {
+                    sum += decision->output_vector[j];
                 }
                 success_count++;
                 brain_free_decision(decision);
@@ -663,7 +664,7 @@ TEST_F(BrainCacheThreadSafeTest, DeadlockTest_NoHang) {
                 }
             } else {
                 // Writer
-                brain_learn_example(brain, features, 10, targets, 3, 0.01f);
+                brain_learn_example(brain, features, 10, "class_0", 0.01f);
             }
         }
     };
@@ -868,7 +869,7 @@ TEST_F(BrainCacheThreadSafeTest, Regression_CachePersistence_AfterClone) {
     brain_free_decision(d1);
 
     // Clone brain - cache should not be shared
-    brain_t clone = brain_clone(brain);
+    brain_t clone = brain_clone_cow(brain);
     if (clone) {
         brain_decision_t* d2 = brain_decide(clone, features, 10);
         if (d2) {
@@ -963,7 +964,7 @@ TEST_F(BrainCacheThreadSafeTest, Performance_CacheVsNoCache) {
 
     auto start_nocache = std::chrono::high_resolution_clock::now();
     for (int i = 0; i < iterations; i++) {
-        brain_learn_example(brain, features, 100, targets, 10, 0.001f);
+        brain_learn_example(brain, features, 100, "class_0", 0.001f);
         brain_decision_t* decision = brain_decide(brain, features, 100);
         if (decision) brain_free_decision(decision);
     }

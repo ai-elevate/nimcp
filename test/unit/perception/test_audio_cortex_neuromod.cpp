@@ -31,13 +31,8 @@ protected:
     neuromodulator_system_t neuromod = nullptr;
 
     void SetUp() override {
-        // Create brain with neuromodulator system
-        brain_config_t brain_config = {
-            .num_regions = 1,
-            .enable_neuromodulation = true,
-            .enable_logging = false
-        };
-        brain = brain_create(&brain_config);
+        // Create brain with neuromodulator system (new API)
+        brain = brain_create("audio_neuromod_test", BRAIN_SIZE_TINY, BRAIN_TASK_CLASSIFICATION, 512, 10);
         ASSERT_NE(brain, nullptr);
 
         neuromod = brain_get_neuromodulator_system(brain);

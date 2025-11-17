@@ -9,7 +9,7 @@
 #include <gtest/gtest.h>
 extern "C" {
     #include "core/brain/nimcp_brain.h"
-    #include "utils/algorithms/nimcp_community_detection.h"
+    #include "core/topology/nimcp_community_detection.h"
 }
 
 class BrainCommunityDetectionTest : public ::testing::Test {
@@ -24,8 +24,8 @@ protected:
 
         // Train it a bit to establish connections
         float inputs[10] = {1.0f, 0.5f, 0.2f, 0.8f, 0.3f, 0.9f, 0.1f, 0.6f, 0.4f, 0.7f};
-        brain_learn_example(brain, inputs, "class_a", 1.0f);
-        brain_learn_example(brain, inputs, "class_b", 0.5f);
+        brain_learn_example(brain, inputs, 10, "class_a", 1.0f);
+        brain_learn_example(brain, inputs, 10, "class_b", 0.5f);
     }
 
     void TearDown() override {
@@ -260,9 +260,9 @@ TEST_F(BrainCommunityDetectionTest, DetectionAfterTraining_ModularStructure) {
 
     // Train with distinct patterns (should create modular structure)
     for (int i = 0; i < 10; i++) {
-        brain_learn_example(brain, pattern_a, "class_a", 1.0f);
-        brain_learn_example(brain, pattern_b, "class_b", 1.0f);
-        brain_learn_example(brain, pattern_c, "class_c", 1.0f);
+        brain_learn_example(brain, pattern_a, 10, "class_a", 1.0f);
+        brain_learn_example(brain, pattern_b, 10, "class_b", 1.0f);
+        brain_learn_example(brain, pattern_c, 10, "class_c", 1.0f);
     }
 
     // Act: Detect communities after training

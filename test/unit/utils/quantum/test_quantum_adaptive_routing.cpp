@@ -18,15 +18,20 @@ protected:
 
     void SetUp() override {
         // Create a test brain and network
-        brain_config_t config = brain_get_default_config(BRAIN_CLASSIFICATION);
-        config.num_neurons = 100;
-        config.hidden_layers = 2;
-        config.neurons_per_layer = 50;
+        brain_config_t config;
+        memset(&config, 0, sizeof(config));
+        config.size = BRAIN_SIZE_MEDIUM;
+        config.task = BRAIN_TASK_CLASSIFICATION;
+        config.num_inputs = 10;
+        config.num_outputs = 10;
+        snprintf(config.task_name, sizeof(config.task_name), "routing_test");
 
-        brain = brain_create(&config);
+        brain = brain_create_custom(&config);
         ASSERT_NE(brain, nullptr);
 
-        network = brain_get_network(brain);
+        adaptive_network_t adaptive_net = brain_get_network(brain);
+        ASSERT_NE(adaptive_net, nullptr);
+        network = adaptive_network_get_base_network(adaptive_net);
         ASSERT_NE(network, nullptr);
 
         // Create quantum-Shannon diffusion
@@ -323,15 +328,20 @@ TEST_F(QuantumAdaptiveRoutingTest, AdaptiveRouting_SmallNetwork_HandlesGracefull
     // HOW:  Create minimal network and route
 
     // Create small brain
-    brain_config_t config = brain_get_default_config(BRAIN_CLASSIFICATION);
-    config.num_neurons = 10;
-    config.hidden_layers = 1;
-    config.neurons_per_layer = 5;
+    brain_config_t config;
+    memset(&config, 0, sizeof(config));
+    config.size = BRAIN_SIZE_TINY;
+    config.task = BRAIN_TASK_CLASSIFICATION;
+    config.num_inputs = 10;
+    config.num_outputs = 10;
+    snprintf(config.task_name, sizeof(config.task_name), "small_brain");
 
-    brain_t small_brain = brain_create(&config);
+    brain_t small_brain = brain_create_custom(&config);
     ASSERT_NE(small_brain, nullptr);
 
-    neural_network_t small_network = brain_get_network(small_brain);
+    adaptive_network_t adaptive_small_net = brain_get_network(small_brain);
+    ASSERT_NE(adaptive_small_net, nullptr);
+    neural_network_t small_network = adaptive_network_get_base_network(adaptive_small_net);
     ASSERT_NE(small_network, nullptr);
 
     // Create QSD for small network

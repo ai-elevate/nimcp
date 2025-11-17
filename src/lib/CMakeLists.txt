@@ -12,7 +12,7 @@ set(NIMCP_CORE_SOURCES
     # Brain processing modules (Phase 9.1: SRP Refactoring) - TODO: Enable when refactoring complete
     # ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/processing/sensory_extractor.c
     # ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/processing/multimodal_integrator.c
-    # ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/processing/cognitive_processor.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/processing/cognitive_processor.c  # Cognitive output processing
 
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/neuralnet/nimcp_neuralnet.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/neuron_types/nimcp_neuron_types.c

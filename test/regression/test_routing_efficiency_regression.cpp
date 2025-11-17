@@ -13,12 +13,8 @@ protected:
     brain_t brain;
 
     void SetUp() override {
-        brain_config_t config = brain_get_default_config(BRAIN_CLASSIFICATION);
-        config.num_neurons = 200;
-        config.hidden_layers = 3;
-        config.neurons_per_layer = 60;
-
-        brain = brain_create(&config);
+        brain = brain_create("routing_efficiency_test", BRAIN_SIZE_SMALL,
+                            BRAIN_TASK_CLASSIFICATION, 200, 20);
         ASSERT_NE(brain, nullptr);
     }
 
@@ -42,7 +38,8 @@ TEST_F(RoutingEfficiencyRegressionTest, AdaptiveRouting_EfficiencyNotWorse_ThanB
     ASSERT_NE(analyzer, nullptr);
     network_analyzer_run(analyzer);
 
-    neural_network_t network = brain_get_network(brain);
+    adaptive_network_t adaptive_net = brain_get_network(brain);
+    neural_network_t network = adaptive_network_get_base_network(adaptive_net);
     quantum_shannon_config_t qs_config = quantum_shannon_default_config();
 
     // Baseline: No adaptive routing
@@ -90,7 +87,8 @@ TEST_F(RoutingEfficiencyRegressionTest, AdaptiveRouting_PerformanceOverhead_Acce
     ASSERT_NE(analyzer, nullptr);
     network_analyzer_run(analyzer);
 
-    neural_network_t network = brain_get_network(brain);
+    adaptive_network_t adaptive_net = brain_get_network(brain);
+    neural_network_t network = adaptive_network_get_base_network(adaptive_net);
     quantum_shannon_config_t qs_config = quantum_shannon_default_config();
     quantum_shannon_diffusion_t* qsd = quantum_shannon_create(
         network, 0, 10.0f, &qs_config
@@ -173,7 +171,8 @@ TEST_F(RoutingEfficiencyRegressionTest, AdaptiveRouting_InformationLoss_WithinBo
     ASSERT_NE(analyzer, nullptr);
     network_analyzer_run(analyzer);
 
-    neural_network_t network = brain_get_network(brain);
+    adaptive_network_t adaptive_net = brain_get_network(brain);
+    neural_network_t network = adaptive_network_get_base_network(adaptive_net);
     quantum_shannon_config_t qs_config = quantum_shannon_default_config();
 
     // Baseline
@@ -213,7 +212,8 @@ TEST_F(RoutingEfficiencyRegressionTest, AdaptiveRouting_MutualInformation_Preser
     ASSERT_NE(analyzer, nullptr);
     network_analyzer_run(analyzer);
 
-    neural_network_t network = brain_get_network(brain);
+    adaptive_network_t adaptive_net = brain_get_network(brain);
+    neural_network_t network = adaptive_network_get_base_network(adaptive_net);
     quantum_shannon_config_t qs_config = quantum_shannon_default_config();
     quantum_shannon_diffusion_t* qsd = quantum_shannon_create(
         network, 0, 10.0f, &qs_config
@@ -257,12 +257,20 @@ TEST_F(RoutingEfficiencyRegressionTest, Training_TopologyStability_Maintained) {
     topology_metrics_t initial_topology = network_analyzer_get_metrics(analyzer);
 
     // Train
-    float input[10] = {0.1f, 0.2f, 0.3f, 0.4f, 0.5f, 0.6f, 0.7f, 0.8f, 0.9f, 1.0f};
-    float targets[2] = {1.0f, 0.0f};
+    float training_data[10] = {0.1f, 0.2f, 0.3f, 0.4f, 0.5f, 0.6f, 0.7f, 0.8f, 0.9f, 1.0f};
+    float labels[2] = {1.0f, 0.0f};
 
-    for (int i = 0; i < 100; i++) {
-        brain_train(brain, input, 10, targets, 2);
-    }
+    brain_finetune_config_t config = {
+        .learning_rate = 0.01f,
+        .num_epochs = 100,
+        .freeze_sensory = false,
+        .freeze_cognitive = false,
+        .finetune_classifier = true,
+        .batch_size = 1,
+        .verbose = false
+    };
+
+    brain_finetune(brain, training_data, labels, 1, &config);
 
     // Re-analyze
     network_analyzer_run(analyzer);
@@ -327,7 +335,8 @@ TEST_F(RoutingEfficiencyRegressionTest, QuantumRouting_NullInputs_HandledGracefu
     bool result1 = quantum_adaptive_routing(nullptr, nullptr);
     EXPECT_FALSE(result1);
 
-    neural_network_t network = brain_get_network(brain);
+    adaptive_network_t adaptive_net = brain_get_network(brain);
+    neural_network_t network = adaptive_network_get_base_network(adaptive_net);
     quantum_shannon_config_t qs_config = quantum_shannon_default_config();
     quantum_shannon_diffusion_t* qsd = quantum_shannon_create(
         network, 0, 10.0f, &qs_config
@@ -353,7 +362,8 @@ TEST_F(RoutingEfficiencyRegressionTest, AdaptiveRouting_MemoryUsage_WithinBounds
     ASSERT_NE(analyzer, nullptr);
     network_analyzer_run(analyzer);
 
-    neural_network_t network = brain_get_network(brain);
+    adaptive_network_t adaptive_net = brain_get_network(brain);
+    neural_network_t network = adaptive_network_get_base_network(adaptive_net);
     quantum_shannon_config_t qs_config = quantum_shannon_default_config();
     quantum_shannon_diffusion_t* qsd = quantum_shannon_create(
         network, 0, 10.0f, &qs_config
@@ -384,7 +394,8 @@ TEST_F(RoutingEfficiencyRegressionTest, AdaptiveRouting_ProbabilityConservation_
     ASSERT_NE(analyzer, nullptr);
     network_analyzer_run(analyzer);
 
-    neural_network_t network = brain_get_network(brain);
+    adaptive_network_t adaptive_net = brain_get_network(brain);
+    neural_network_t network = adaptive_network_get_base_network(adaptive_net);
     quantum_shannon_config_t qs_config = quantum_shannon_default_config();
     quantum_shannon_diffusion_t* qsd = quantum_shannon_create(
         network, 0, 10.0f, &qs_config

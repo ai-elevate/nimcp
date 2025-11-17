@@ -81,7 +81,8 @@ TEST_F(NetworkAnalysisTest, CommunityDetection) {
 
     // Check communities have neurons
     for (uint32_t i = 0; i < communities->num_communities; i++) {
-        EXPECT_GT(communities->community_sizes[i], 0u);
+        EXPECT_GT(communities->communities[i].size, 0u);
+        EXPECT_NE(communities->communities[i].neurons, nullptr);
     }
 }
 

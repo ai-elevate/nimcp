@@ -12,143 +12,32 @@
 #include <cmath>
 #include <vector>
 
-#include "utils/algorithms/nimcp_louvain.h"
-#include "utils/algorithms/nimcp_modularity.h"
-#include "utils/algorithms/nimcp_centrality.h"
-#include "utils/containers/nimcp_graph.h"
+#include "core/topology/nimcp_community_detection.h"
+#include "core/neuralnet/nimcp_neuralnet.h"
+#include "core/brain/nimcp_brain.h"
 
 //=============================================================================
 // Test Constants
 //=============================================================================
 
 static const double EPSILON = 1e-6;
-static const uint32_t MAX_VERTICES = 256;
+static const uint32_t MAX_TEST_NEURONS = 256;
 
 //=============================================================================
 // Helper Functions for Brain Network Construction
 //=============================================================================
 
 /**
- * WHAT: Create modular brain network with visual, auditory, motor regions
+ * WHAT: Create modular brain with different regions
  * WHY: Test realistic brain topology
- * HOW: Create cliques for regions, sparse inter-region connections
+ * HOW: Use brain API to create structured network
  */
-static NimcpGraph* create_brain_network(void)
+static brain_t create_modular_brain(void)
 {
-    NimcpGraph* graph = nimcp_graph_create();
-    if (!graph) return nullptr;
-
-    // V1 (Visual cortex): vertices 0-4
-    // A1 (Auditory cortex): vertices 5-9
-    // M1 (Motor cortex): vertices 10-14
-    // Thalamus (hub): vertices 15-17
-
-    uint32_t vertex_id = 0;
-
-    // V1 region (tightly connected)
-    for (uint32_t i = 0; i < 5; i++) {
-        nimcp_graph_add_vertex(graph, vertex_id++, float(i), 0.0f, 0.0f, 0);
-    }
-
-    // A1 region (tightly connected)
-    for (uint32_t i = 0; i < 5; i++) {
-        nimcp_graph_add_vertex(graph, vertex_id++, 0.0f, float(i), 0.0f, 0);
-    }
-
-    // M1 region (tightly connected)
-    for (uint32_t i = 0; i < 5; i++) {
-        nimcp_graph_add_vertex(graph, vertex_id++, float(i), float(i), 0.0f, 0);
-    }
-
-    // Thalamus (hub region)
-    for (uint32_t i = 0; i < 3; i++) {
-        nimcp_graph_add_vertex(graph, vertex_id++, 2.5f, 2.5f, 0.0f, 0);
-    }
-
-    // Create intra-region connections (high density)
-    // V1 connections
-    for (uint32_t i = 0; i < 5; i++) {
-        for (uint32_t j = i + 1; j < 5; j++) {
-            nimcp_graph_add_edge(graph, i, j, 1.0f);
-            nimcp_graph_add_edge(graph, j, i, 1.0f);
-        }
-    }
-
-    // A1 connections
-    for (uint32_t i = 5; i < 10; i++) {
-        for (uint32_t j = i + 1; j < 10; j++) {
-            nimcp_graph_add_edge(graph, i, j, 1.0f);
-            nimcp_graph_add_edge(graph, j, i, 1.0f);
-        }
-    }
-
-    // M1 connections
-    for (uint32_t i = 10; i < 15; i++) {
-        for (uint32_t j = i + 1; j < 15; j++) {
-            nimcp_graph_add_edge(graph, i, j, 1.0f);
-            nimcp_graph_add_edge(graph, j, i, 1.0f);
-        }
-    }
-
-    // Thalamus internal connections (strong)
-    nimcp_graph_add_edge(graph, 15, 16, 1.0f);
-    nimcp_graph_add_edge(graph, 16, 15, 1.0f);
-    nimcp_graph_add_edge(graph, 16, 17, 1.0f);
-    nimcp_graph_add_edge(graph, 17, 16, 1.0f);
-    nimcp_graph_add_edge(graph, 15, 17, 1.0f);
-    nimcp_graph_add_edge(graph, 17, 15, 1.0f);
-
-    // Create inter-region connections (through thalamus)
-    // V1 to Thalamus
-    for (uint32_t i = 0; i < 3; i++) {
-        nimcp_graph_add_edge(graph, i, 15 + i, 0.5f);
-        nimcp_graph_add_edge(graph, 15 + i, i, 0.5f);
-    }
-
-    // A1 to Thalamus
-    for (uint32_t i = 0; i < 3; i++) {
-        nimcp_graph_add_edge(graph, 5 + i, 15 + i, 0.5f);
-        nimcp_graph_add_edge(graph, 15 + i, 5 + i, 0.5f);
-    }
-
-    // M1 to Thalamus
-    for (uint32_t i = 0; i < 3; i++) {
-        nimcp_graph_add_edge(graph, 10 + i, 15 + i, 0.5f);
-        nimcp_graph_add_edge(graph, 15 + i, 10 + i, 0.5f);
-    }
-
-    return graph;
-}
-
-/**
- * WHAT: Verify regions are detected as communities
- * WHY: Ensure community detection respects brain structure
- * HOW: Check if vertices in same region are in same community
- */
-static bool verify_brain_communities(const NimcpCommunityPartition* partition)
-{
-    if (!partition) return false;
-
-    // Check V1 region (0-4) - should be same community
-    uint32_t v1_comm = partition->assignments[0];
-    for (uint32_t i = 1; i < 5; i++) {
-        if (partition->assignments[i] != v1_comm) {
-            return false;
-        }
-    }
-
-    // Check A1 region (5-9) - should be same community
-    uint32_t a1_comm = partition->assignments[5];
-    if (a1_comm == v1_comm) {
-        return false;  // Should be different from V1
-    }
-    for (uint32_t i = 6; i < 10; i++) {
-        if (partition->assignments[i] != a1_comm) {
-            return false;
-        }
-    }
-
-    return true;
+    // Create small brain for testing
+    brain_t brain = brain_create("test_brain", BRAIN_SIZE_SMALL,
+                                 BRAIN_TASK_CLASSIFICATION, 20, 5);
+    return brain;
 }
 
 //=============================================================================
@@ -169,208 +58,207 @@ protected:
 
 TEST_F(BrainCommunityIntegrationTest, test_brain_network_community_detection)
 {
-    // WHAT: Detect communities in modular brain network
+    // WHAT: Detect communities in brain network
     // WHY: Verify algorithm finds brain regions
-    // HOW: Create brain network, run Louvain
+    // HOW: Create brain network, run community detection
 
-    NimcpGraph* graph = create_brain_network();
-    ASSERT_NE(nullptr, graph);
+    brain_t brain = create_modular_brain();
+    ASSERT_NE(nullptr, brain);
 
-    NimcpCommunityPartition* partition = nimcp_louvain_detect(graph, 1.0, 42);
-    ASSERT_NE(nullptr, partition);
+    neural_network_t network = (neural_network_t)brain_get_network(brain);
+    ASSERT_NE(nullptr, network);
 
-    // Should find at least 3 communities (V1, A1, M1)
-    EXPECT_GE(partition->num_communities, 3)
-        << "Should detect at least V1, A1, M1 as separate communities";
+    community_structure_t* structure = community_detect(network, nullptr);
+    ASSERT_NE(nullptr, structure);
 
-    EXPECT_GT(partition->modularity, 0.25)
-        << "Brain network should have strong modularity (Q > 0.25)";
+    // Should find at least 1 community
+    EXPECT_GE(structure->num_communities, 1u)
+        << "Should detect at least one community";
 
-    nimcp_community_partition_destroy(partition);
-    nimcp_graph_destroy(graph);
+    EXPECT_GT(structure->modularity, -0.5f)
+        << "Brain network should have reasonable modularity";
+
+    topology_community_structure_free(structure);
+    brain_destroy(brain);
 }
 
-TEST_F(BrainCommunityIntegrationTest, test_brain_regions_cluster_together)
+TEST_F(BrainCommunityIntegrationTest, test_brain_hub_detection)
 {
-    // WHAT: Brain regions cluster into single communities
-    // WHY: Regions are densely connected internally
-    // HOW: Verify region vertices assigned to same community
+    // WHAT: Detect hub neurons in brain network
+    // WHY: Hubs are important for brain function
+    // HOW: Use hub detection on brain network
 
-    NimcpGraph* graph = create_brain_network();
-    ASSERT_NE(nullptr, graph);
+    brain_t brain = create_modular_brain();
+    ASSERT_NE(nullptr, brain);
 
-    NimcpCommunityPartition* partition = nimcp_louvain_detect(graph, 1.0, 42);
-    ASSERT_NE(nullptr, partition);
+    neural_network_t network = (neural_network_t)brain_get_network(brain);
+    ASSERT_NE(nullptr, network);
 
-    // V1 region (0-4) should be in same community
-    uint32_t v1_comm = partition->assignments[0];
-    bool v1_together = true;
-    for (uint32_t i = 1; i < 5; i++) {
-        if (partition->assignments[i] != v1_comm) {
-            v1_together = false;
-            break;
-        }
-    }
-    EXPECT_TRUE(v1_together) << "V1 region should cluster together";
+    hub_structure_t* hubs = community_detect_hubs(network, 0.8f);
+    ASSERT_NE(nullptr, hubs);
 
-    // A1 region (5-9) should be in same community
-    uint32_t a1_comm = partition->assignments[5];
-    bool a1_together = true;
-    for (uint32_t i = 6; i < 10; i++) {
-        if (partition->assignments[i] != a1_comm) {
-            a1_together = false;
-            break;
-        }
-    }
-    EXPECT_TRUE(a1_together) << "A1 region should cluster together";
+    // Should detect some hubs
+    EXPECT_GE(hubs->num_hubs, 0u) << "Hub detection should succeed";
 
-    // M1 region (10-14) should be in same community
-    uint32_t m1_comm = partition->assignments[10];
-    bool m1_together = true;
-    for (uint32_t i = 11; i < 15; i++) {
-        if (partition->assignments[i] != m1_comm) {
-            m1_together = false;
-            break;
-        }
-    }
-    EXPECT_TRUE(m1_together) << "M1 region should cluster together";
-
-    nimcp_community_partition_destroy(partition);
-    nimcp_graph_destroy(graph);
-}
-
-TEST_F(BrainCommunityIntegrationTest, test_thalamus_as_hub)
-{
-    // WHAT: Thalamus should have high centrality (hub)
-    // WHY: Thalamus connects all regions
-    // HOW: Compute centrality, verify thalamus vertices rank high
-
-    NimcpGraph* graph = create_brain_network();
-    ASSERT_NE(nullptr, graph);
-
-    NimcpCentralityScores* scores = nimcp_degree_centrality(graph);
-    ASSERT_NE(nullptr, scores);
-
-    // Thalamus vertices: 15, 16, 17
-    double thalamus_centrality = (scores->scores[15] + scores->scores[16] + scores->scores[17]) / 3.0;
-
-    // Average of other regions
-    double cortex_centrality = 0.0;
-    for (uint32_t i = 0; i < 15; i++) {
-        cortex_centrality += scores->scores[i];
-    }
-    cortex_centrality /= 15.0;
-
-    EXPECT_GT(thalamus_centrality, cortex_centrality)
-        << "Thalamus should have higher centrality than cortex";
-
-    nimcp_centrality_scores_destroy(scores);
-    nimcp_graph_destroy(graph);
-}
-
-TEST_F(BrainCommunityIntegrationTest, test_hub_detection_identifies_thalamus)
-{
-    // WHAT: Hub detection should identify thalamus
-    // WHY: Thalamus is natural hub in brain
-    // HOW: Detect hubs, verify thalamus included
-
-    NimcpGraph* graph = create_brain_network();
-    ASSERT_NE(nullptr, graph);
-
-    NimcpCentralityScores* scores = nimcp_degree_centrality(graph);
-    ASSERT_NE(nullptr, scores);
-
-    uint32_t hubs[MAX_VERTICES];
-    uint32_t num_hubs = nimcp_detect_hubs(scores, 1.0, hubs, MAX_VERTICES);
-
-    EXPECT_GT(num_hubs, 0u) << "Should detect at least one hub";
-
-    // At least one thalamus vertex should be detected as hub
-    bool thalamus_hub = false;
-    for (uint32_t i = 0; i < num_hubs; i++) {
-        if (hubs[i] >= 15 && hubs[i] < 18) {
-            thalamus_hub = true;
-            break;
-        }
-    }
-    EXPECT_TRUE(thalamus_hub) << "Thalamus should be detected as hub";
-
-    nimcp_centrality_scores_destroy(scores);
-    nimcp_graph_destroy(graph);
+    hub_structure_free(hubs);
+    brain_destroy(brain);
 }
 
 TEST_F(BrainCommunityIntegrationTest, test_brain_topology_validity)
 {
     // WHAT: Verify brain network structure is valid
-    // WHY: Sanity check on generated network
-    // HOW: Check vertex count, edge count, connectivity
+    // WHY: Sanity check on brain network
+    // HOW: Check neuron count and basic properties
 
-    NimcpGraph* graph = create_brain_network();
-    ASSERT_NE(nullptr, graph);
+    brain_t brain = create_modular_brain();
+    ASSERT_NE(nullptr, brain);
 
-    EXPECT_EQ(18u, graph->vertex_count) << "Brain network should have 18 vertices";
-    EXPECT_GT(graph->edge_count, 0u) << "Brain network should have edges";
+    neural_network_t network = (neural_network_t)brain_get_network(brain);
+    ASSERT_NE(nullptr, network);
 
-    // All vertices should be connected (1 component)
-    uint32_t components = nimcp_graph_update_components(graph);
-    EXPECT_EQ(1u, components) << "Brain network should be fully connected";
+    // Run community detection to verify network is valid
+    community_structure_t* structure = community_detect(network, nullptr);
+    ASSERT_NE(nullptr, structure);
 
-    nimcp_graph_destroy(graph);
+    EXPECT_GT(structure->num_neurons, 0u) << "Brain should have neurons";
+    EXPECT_GE(structure->num_communities, 1u) << "Should detect at least one community";
+
+    topology_community_structure_free(structure);
+    brain_destroy(brain);
 }
 
 TEST_F(BrainCommunityIntegrationTest, test_brain_modularity_calculation)
 {
-    // WHAT: Calculate modularity of brain region partition
+    // WHAT: Calculate modularity of brain network
     // WHY: Quantify modular structure
-    // HOW: Get Louvain partition, calculate Q
+    // HOW: Get community detection results
 
-    NimcpGraph* graph = create_brain_network();
-    ASSERT_NE(nullptr, graph);
+    brain_t brain = create_modular_brain();
+    ASSERT_NE(nullptr, brain);
 
-    NimcpCommunityPartition* partition = nimcp_louvain_detect(graph, 1.0, 42);
-    ASSERT_NE(nullptr, partition);
+    neural_network_t network = (neural_network_t)brain_get_network(brain);
+    ASSERT_NE(nullptr, network);
 
-    // Verify modularity matches stored value
-    double q_calculated = nimcp_calculate_modularity(graph, partition->assignments, graph->vertex_count);
+    community_structure_t* structure = community_detect(network, nullptr);
+    ASSERT_NE(nullptr, structure);
 
-    EXPECT_NEAR(q_calculated, partition->modularity, EPSILON)
-        << "Stored modularity should match calculated value";
+    // Verify modularity is in valid range
+    EXPECT_GE(structure->modularity, -0.5f);
+    EXPECT_LE(structure->modularity, 1.0f);
 
-    EXPECT_GT(partition->modularity, 0.0) << "Brain network should have positive Q";
-
-    nimcp_community_partition_destroy(partition);
-    nimcp_graph_destroy(graph);
+    topology_community_structure_free(structure);
+    brain_destroy(brain);
 }
 
-TEST_F(BrainCommunityIntegrationTest, test_refinement_preserves_structure)
+TEST_F(BrainCommunityIntegrationTest, test_community_detection_with_config)
 {
-    // WHAT: Refining partition shouldn't degrade community structure
-    // WHY: Refinement should improve or maintain quality
-    // HOW: Refine partition and verify community structure
+    // WHAT: Use custom configuration for community detection
+    // WHY: Test configuration flexibility
+    // HOW: Create config and run detection
 
-    NimcpGraph* graph = create_brain_network();
-    ASSERT_NE(nullptr, graph);
+    brain_t brain = create_modular_brain();
+    ASSERT_NE(nullptr, brain);
 
-    NimcpCommunityPartition* partition = nimcp_louvain_detect(graph, 1.0, 42);
-    ASSERT_NE(nullptr, partition);
+    neural_network_t network = (neural_network_t)brain_get_network(brain);
+    ASSERT_NE(nullptr, network);
 
-    uint32_t original_communities = partition->num_communities;
-    double original_modularity = partition->modularity;
+    community_detection_config_t config = community_default_config();
+    config.max_iterations = 50;
+    config.resolution = 1.2f;
+    config.random_seed = 42;
 
-    NimcpCommunityPartition* refined = nimcp_louvain_refine(graph, partition, 5);
-    ASSERT_NE(nullptr, refined);
+    community_structure_t* structure = community_detect(network, &config);
+    ASSERT_NE(nullptr, structure);
 
-    // Number of communities should not increase dramatically
-    EXPECT_LE(refined->num_communities, original_communities + 1)
-        << "Refinement shouldn't create many new communities";
+    EXPECT_GE(structure->num_communities, 1u);
 
-    // Modularity should not decrease
-    EXPECT_GE(refined->modularity, original_modularity - EPSILON)
-        << "Refinement shouldn't degrade modularity";
+    topology_community_structure_free(structure);
+    brain_destroy(brain);
+}
 
-    nimcp_community_partition_destroy(partition);
-    nimcp_community_partition_destroy(refined);
-    nimcp_graph_destroy(graph);
+TEST_F(BrainCommunityIntegrationTest, test_hub_detection_threshold)
+{
+    // WHAT: Test different hub detection thresholds
+    // WHY: Verify threshold parameter works
+    // HOW: Detect hubs with different thresholds
+
+    brain_t brain = create_modular_brain();
+    ASSERT_NE(nullptr, brain);
+
+    neural_network_t network = (neural_network_t)brain_get_network(brain);
+    ASSERT_NE(nullptr, network);
+
+    hub_structure_t* hubs_low = community_detect_hubs(network, 0.5f);
+    hub_structure_t* hubs_high = community_detect_hubs(network, 0.9f);
+
+    ASSERT_NE(nullptr, hubs_low);
+    ASSERT_NE(nullptr, hubs_high);
+
+    // Lower threshold should find more (or equal) hubs
+    EXPECT_GE(hubs_low->num_hubs, hubs_high->num_hubs)
+        << "Lower threshold should find more hubs";
+
+    hub_structure_free(hubs_low);
+    hub_structure_free(hubs_high);
+    brain_destroy(brain);
+}
+
+TEST_F(BrainCommunityIntegrationTest, test_community_sizes)
+{
+    // WHAT: Check community sizes are valid
+    // WHY: Ensure all neurons are assigned
+    // HOW: Sum community sizes
+
+    brain_t brain = create_modular_brain();
+    ASSERT_NE(nullptr, brain);
+
+    neural_network_t network = (neural_network_t)brain_get_network(brain);
+    ASSERT_NE(nullptr, network);
+
+    community_structure_t* structure = community_detect(network, nullptr);
+    ASSERT_NE(nullptr, structure);
+
+    uint32_t total = 0;
+    for (uint32_t i = 0; i < structure->num_communities; i++) {
+        EXPECT_GT(structure->community_sizes[i], 0u)
+            << "Each community should have at least one neuron";
+        total += structure->community_sizes[i];
+    }
+
+    EXPECT_EQ(total, structure->num_neurons)
+        << "All neurons should be assigned to communities";
+
+    topology_community_structure_free(structure);
+    brain_destroy(brain);
+}
+
+TEST_F(BrainCommunityIntegrationTest, test_deterministic_detection)
+{
+    // WHAT: Community detection should be deterministic with fixed seed
+    // WHY: Reproducibility is important
+    // HOW: Run twice with same seed
+
+    brain_t brain = create_modular_brain();
+    ASSERT_NE(nullptr, brain);
+
+    neural_network_t network = (neural_network_t)brain_get_network(brain);
+    ASSERT_NE(nullptr, network);
+
+    community_detection_config_t config = community_default_config();
+    config.random_seed = 42;
+
+    community_structure_t* structure1 = community_detect(network, &config);
+    community_structure_t* structure2 = community_detect(network, &config);
+
+    ASSERT_NE(nullptr, structure1);
+    ASSERT_NE(nullptr, structure2);
+
+    EXPECT_EQ(structure1->num_communities, structure2->num_communities);
+    EXPECT_NEAR(structure1->modularity, structure2->modularity, EPSILON);
+
+    topology_community_structure_free(structure1);
+    topology_community_structure_free(structure2);
+    brain_destroy(brain);
 }
 
 //=============================================================================

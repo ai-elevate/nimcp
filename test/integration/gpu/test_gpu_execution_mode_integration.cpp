@@ -82,7 +82,7 @@ TEST_F(GPUExecutionModeIntegrationTest, RecommendedModeSelection) {
 
     // Large network - may recommend GPU if available
     execution_mode_t large_mode = execution_get_recommended_mode(100000, 1000);
-    // Don't make assumptions about what's recommended for large networks
+    (void)large_mode;  // Don't make assumptions about what's recommended for large networks
     // (depends on hardware availability)
 }
 

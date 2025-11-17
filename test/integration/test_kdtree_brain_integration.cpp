@@ -14,6 +14,7 @@
 #include "core/brain/nimcp_brain.h"
 #include "utils/spatial/nimcp_kdtree.h"
 #include <vector>
+#include <array>
 #include <random>
 
 //=============================================================================
@@ -50,17 +51,17 @@ TEST_F(KDTreeBrainIntegrationTest, NeuronPlacementIndexing) {
     // HOW:  Simulate neuron positions, build KD-tree, query neighbors
 
     // Create simulated neuron positions (cortical columns)
-    std::vector<kdtree_point_t> neuron_positions;
+    std::vector<std::array<float, 3>> neuron_positions;
     std::vector<void*> neuron_ids;
 
     // Create 100 neurons in a 10x10x1 grid (cortical sheet)
     for (int x = 0; x < 10; x++) {
         for (int y = 0; y < 10; y++) {
-            kdtree_point_t pos = {
+            std::array<float, 3> pos = {{
                 (float)x * 0.1f,
                 (float)y * 0.1f,
                 0.0f
-            };
+            }};
             neuron_positions.push_back(pos);
             neuron_ids.push_back((void*)(uintptr_t)(x * 10 + y));
         }
@@ -70,17 +71,17 @@ TEST_F(KDTreeBrainIntegrationTest, NeuronPlacementIndexing) {
     tree = kdtree_create();
     ASSERT_NE(tree, nullptr);
 
-    bool success = kdtree_build(tree, neuron_positions.data(),
+    bool success = kdtree_build(tree, reinterpret_cast<const kdtree_point_t*>(neuron_positions.data()),
                                neuron_ids.data(),
                                static_cast<uint32_t>(neuron_positions.size()));
     ASSERT_TRUE(success);
 
     // Query: Find all neurons within radius of center
-    kdtree_point_t query_point = {0.5f, 0.5f, 0.0f};  // Center of grid
+    std::array<float, 3> query_point = {{0.5f, 0.5f, 0.0f}};  // Center of grid
     void* results[100];
     float radius = 0.2f;
 
-    uint32_t count = kdtree_range_search(tree, query_point, radius, results, 100);
+    uint32_t count = kdtree_range_search(tree, query_point.data(), radius, results, 100);
 
     // Should find neurons near center
     EXPECT_GT(count, 0);
@@ -91,7 +92,7 @@ TEST_F(KDTreeBrainIntegrationTest, NeuronPlacementIndexing) {
         uint32_t neuron_id = (uintptr_t)results[i];
         ASSERT_LT(neuron_id, neuron_positions.size());
 
-        kdtree_point_t& pos = neuron_positions[neuron_id];
+        const std::array<float, 3>& pos = neuron_positions[neuron_id];
         float dx = pos[0] - query_point[0];
         float dy = pos[1] - query_point[1];
         float dz = pos[2] - query_point[2];
@@ -110,11 +111,11 @@ TEST_F(KDTreeBrainIntegrationTest, SynapseFormation) {
     std::uniform_real_distribution<float> dist(-1.0f, 1.0f);
 
     // Create random neuron positions
-    std::vector<kdtree_point_t> neurons;
+    std::vector<std::array<float, 3>> neurons;
     std::vector<void*> neuron_data;
 
     for (int i = 0; i < 200; i++) {
-        kdtree_point_t pos = {dist(rng), dist(rng), dist(rng)};
+        std::array<float, 3> pos = {{dist(rng), dist(rng), dist(rng)}};
         neurons.push_back(pos);
         neuron_data.push_back((void*)(uintptr_t)i);
     }
@@ -123,7 +124,7 @@ TEST_F(KDTreeBrainIntegrationTest, SynapseFormation) {
     tree = kdtree_create();
     ASSERT_NE(tree, nullptr);
 
-    bool success = kdtree_build(tree, neurons.data(), neuron_data.data(),
+    bool success = kdtree_build(tree, reinterpret_cast<const kdtree_point_t*>(neurons.data()), neuron_data.data(),
                                static_cast<uint32_t>(neurons.size()));
     ASSERT_TRUE(success);
 
@@ -133,7 +134,7 @@ TEST_F(KDTreeBrainIntegrationTest, SynapseFormation) {
 
     for (size_t i = 0; i < neurons.size(); i++) {
         void* candidates[50];
-        uint32_t num_candidates = kdtree_range_search(tree, neurons[i],
+        uint32_t num_candidates = kdtree_range_search(tree, neurons[i].data(),
                                                        connection_radius,
                                                        candidates, 50);
 
@@ -158,17 +159,17 @@ TEST_F(KDTreeBrainIntegrationTest, AstrocyteNetworkQuery) {
     // HOW:  Synapse locations query for covering astrocytes
 
     // Create astrocyte tile positions (regular grid)
-    std::vector<kdtree_point_t> astrocyte_positions;
+    std::vector<std::array<float, 3>> astrocyte_positions;
     std::vector<void*> astrocyte_ids;
 
     for (int x = 0; x < 5; x++) {
         for (int y = 0; y < 5; y++) {
             for (int z = 0; z < 5; z++) {
-                kdtree_point_t pos = {
+                std::array<float, 3> pos = {{
                     (float)x * 0.4f,
                     (float)y * 0.4f,
                     (float)z * 0.4f
-                };
+                }};
                 astrocyte_positions.push_back(pos);
                 astrocyte_ids.push_back((void*)(uintptr_t)astrocyte_positions.size());
             }
@@ -179,7 +180,7 @@ TEST_F(KDTreeBrainIntegrationTest, AstrocyteNetworkQuery) {
     tree = kdtree_create();
     ASSERT_NE(tree, nullptr);
 
-    bool success = kdtree_build(tree, astrocyte_positions.data(),
+    bool success = kdtree_build(tree, reinterpret_cast<const kdtree_point_t*>(astrocyte_positions.data()),
                                astrocyte_ids.data(),
                                static_cast<uint32_t>(astrocyte_positions.size()));
     ASSERT_TRUE(success);
@@ -192,10 +193,10 @@ TEST_F(KDTreeBrainIntegrationTest, AstrocyteNetworkQuery) {
     float astrocyte_reach = 0.5f;  // Astrocyte coverage radius
 
     for (int i = 0; i < 100; i++) {
-        kdtree_point_t synapse_location = {dist(rng), dist(rng), dist(rng)};
+        std::array<float, 3> synapse_location = {{dist(rng), dist(rng), dist(rng)}};
 
         void* covering_astrocytes[10];
-        uint32_t num_covering = kdtree_range_search(tree, synapse_location,
+        uint32_t num_covering = kdtree_range_search(tree, synapse_location.data(),
                                                      astrocyte_reach,
                                                      covering_astrocytes, 10);
 
@@ -217,7 +218,7 @@ TEST_F(KDTreeBrainIntegrationTest, BrainWithSpatialFeatures) {
     // HOW:  Create brain, simulate spatial queries during learning
 
     // Create brain
-    brain = brain_create("spatial_brain", BRAIN_SIZE_TINY);
+    brain = brain_create("spatial_brain", BRAIN_SIZE_TINY, BRAIN_TASK_CLASSIFICATION, 128, 20);
     ASSERT_NE(brain, nullptr);
 
     // Get brain stats to understand neuron count
@@ -232,11 +233,11 @@ TEST_F(KDTreeBrainIntegrationTest, BrainWithSpatialFeatures) {
     std::mt19937 rng(456);
     std::uniform_real_distribution<float> dist(-5.0f, 5.0f);
 
-    std::vector<kdtree_point_t> simulated_positions;
+    std::vector<std::array<float, 3>> simulated_positions;
     std::vector<void*> simulated_ids;
 
     for (uint32_t i = 0; i < num_neurons; i++) {
-        kdtree_point_t pos = {dist(rng), dist(rng), dist(rng)};
+        std::array<float, 3> pos = {{dist(rng), dist(rng), dist(rng)}};
         simulated_positions.push_back(pos);
         simulated_ids.push_back((void*)(uintptr_t)i);
     }
@@ -245,17 +246,17 @@ TEST_F(KDTreeBrainIntegrationTest, BrainWithSpatialFeatures) {
     tree = kdtree_create();
     ASSERT_NE(tree, nullptr);
 
-    success = kdtree_build(tree, simulated_positions.data(),
+    success = kdtree_build(tree, reinterpret_cast<const kdtree_point_t*>(simulated_positions.data()),
                           simulated_ids.data(),
                           static_cast<uint32_t>(simulated_positions.size()));
     ASSERT_TRUE(success);
 
     // Perform spatial query (e.g., for local circuit analysis)
-    kdtree_point_t focus_point = {0.0f, 0.0f, 0.0f};
+    std::array<float, 3> focus_point = {{0.0f, 0.0f, 0.0f}};
     void* local_neurons[100];
     float local_radius = 2.0f;
 
-    uint32_t local_count = kdtree_range_search(tree, focus_point,
+    uint32_t local_count = kdtree_range_search(tree, focus_point.data(),
                                                local_radius,
                                                local_neurons, 100);
 
@@ -278,7 +279,7 @@ TEST_F(KDTreeBrainIntegrationTest, BrainWithSpatialFeatures) {
     EXPECT_GE(loss, 0.0f);
 
     // After learning, spatial queries still work
-    uint32_t new_count = kdtree_range_search(tree, focus_point,
+    uint32_t new_count = kdtree_range_search(tree, focus_point.data(),
                                              local_radius,
                                              local_neurons, 100);
 
@@ -299,11 +300,11 @@ TEST_F(KDTreeBrainIntegrationTest, Performance_LargeScale) {
     std::uniform_real_distribution<float> dist(-10.0f, 10.0f);
 
     // Create 1000 neurons
-    std::vector<kdtree_point_t> neurons;
+    std::vector<std::array<float, 3>> neurons;
     std::vector<void*> neuron_ids;
 
     for (int i = 0; i < 1000; i++) {
-        kdtree_point_t pos = {dist(rng), dist(rng), dist(rng)};
+        std::array<float, 3> pos = {{dist(rng), dist(rng), dist(rng)}};
         neurons.push_back(pos);
         neuron_ids.push_back((void*)(uintptr_t)i);
     }
@@ -314,7 +315,7 @@ TEST_F(KDTreeBrainIntegrationTest, Performance_LargeScale) {
 
     auto build_start = std::chrono::high_resolution_clock::now();
 
-    bool success = kdtree_build(tree, neurons.data(), neuron_ids.data(),
+    bool success = kdtree_build(tree, reinterpret_cast<const kdtree_point_t*>(neurons.data()), neuron_ids.data(),
                                static_cast<uint32_t>(neurons.size()));
     ASSERT_TRUE(success);
 
@@ -331,8 +332,8 @@ TEST_F(KDTreeBrainIntegrationTest, Performance_LargeScale) {
     auto query_start = std::chrono::high_resolution_clock::now();
 
     for (int i = 0; i < 100; i++) {
-        kdtree_point_t query = {dist(rng), dist(rng), dist(rng)};
-        kdtree_range_search(tree, query, radius, results, 100);
+        std::array<float, 3> query = {{dist(rng), dist(rng), dist(rng)}};
+        kdtree_range_search(tree, query.data(), radius, results, 100);
     }
 
     auto query_end = std::chrono::high_resolution_clock::now();

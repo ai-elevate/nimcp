@@ -47,10 +47,10 @@ protected:
     neural_network_t create_test_network(uint32_t num_neurons) {
         // NOTE: neural_network_create with num_neurons in config
         // pre-creates the neurons. Do NOT add neurons manually afterward.
-        network_config_t config = {
-            .num_neurons = num_neurons,
-            .enable_stdp = true
-        };
+        network_config_t config;
+        memset(&config, 0, sizeof(config));
+        config.num_neurons = num_neurons;
+        config.enable_stdp = true;
 
         neural_network_t net = neural_network_create(&config);
 
@@ -242,6 +242,7 @@ TEST_F(TopologyIntegrationTest, HubNeuronsHaveHighDegree) {
 
             // Hub degree should be > avg + 2*std
             float hub_threshold = stats.avg_degree + 2.0f * stats.degree_std;
+            (void)hub_threshold;  // TODO: Use this to verify hub degrees once API is available
 
             // TODO: Verify hub degrees are actually above threshold
             // Requires API to query neuron degree

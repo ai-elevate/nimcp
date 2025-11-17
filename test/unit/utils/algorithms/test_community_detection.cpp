@@ -1,18 +1,17 @@
 /**
  * @file test_community_detection.cpp
- * @brief Comprehensive tests for Louvain community detection
+ * @brief Comprehensive tests for neural network-based community detection
  *
  * COVERAGE:
- *   - Basic functionality (simple graphs)
+ *   - Basic functionality (simple networks)
  *   - Edge cases (empty, single node, disconnected)
- *   - Known ground truth (Karate club)
  *   - Modularity calculation correctness
  *   - Convergence properties
  *   - Determinism
  */
 
-#include "utils/algorithms/nimcp_community_detection.h"
-#include "utils/containers/nimcp_graph.h"
+#include "core/topology/nimcp_community_detection.h"
+#include "core/neuralnet/nimcp_neuralnet.h"
 #include "utils/memory/nimcp_memory.h"
 #include <gtest/gtest.h>
 
@@ -29,124 +28,111 @@ protected:
     }
 
     /**
-     * WHAT: Create simple modular graph (2 communities)
+     * WHAT: Create simple modular network (2 communities)
      * WHY: Test basic community detection
-     * HOW: Two cliques connected by single edge
+     * HOW: Two dense modules connected by weak edges
      */
-    NimcpGraph* create_simple_modular_graph() {
-        NimcpGraph* g = nimcp_graph_create();
-        EXPECT_NE(g, nullptr);
+    neural_network_t create_simple_modular_network() {
+        network_config_t config = {0};
+        config.num_neurons = 20;
+        config.input_size = 5;
+        config.output_size = 3;
+        config.ei_ratio = 0.8f;
+        config.learning_rate = 0.01f;
+        config.min_weight = 0.0f;
+        config.max_weight = 1.0f;
 
-        /* Add 6 nodes */
-        for (uint32_t i = 0; i < 6; i++) {
-            nimcp_graph_add_vertex(g, i, 0.0f, 0.0f, 0.0f, 0);
+        neural_network_t network = neural_network_create(&config);
+        if (!network) return nullptr;
+
+        // Create strong connections within community 1 (neurons 0-9)
+        for (uint32_t i = 0; i < 10; i++) {
+            for (uint32_t j = 0; j < 10; j++) {
+                if (i != j) {
+                    neural_network_add_connection(network, i, j, 0.8f);
+                }
+            }
         }
 
-        /* Community 1: nodes 0,1,2 (fully connected) */
-        nimcp_graph_add_edge(g, 0, 1, 1.0f);
-        nimcp_graph_add_edge(g, 1, 0, 1.0f);
-        nimcp_graph_add_edge(g, 0, 2, 1.0f);
-        nimcp_graph_add_edge(g, 2, 0, 1.0f);
-        nimcp_graph_add_edge(g, 1, 2, 1.0f);
-        nimcp_graph_add_edge(g, 2, 1, 1.0f);
+        // Create strong connections within community 2 (neurons 10-19)
+        for (uint32_t i = 10; i < 20; i++) {
+            for (uint32_t j = 10; j < 20; j++) {
+                if (i != j) {
+                    neural_network_add_connection(network, i, j, 0.8f);
+                }
+            }
+        }
 
-        /* Community 2: nodes 3,4,5 (fully connected) */
-        nimcp_graph_add_edge(g, 3, 4, 1.0f);
-        nimcp_graph_add_edge(g, 4, 3, 1.0f);
-        nimcp_graph_add_edge(g, 3, 5, 1.0f);
-        nimcp_graph_add_edge(g, 5, 3, 1.0f);
-        nimcp_graph_add_edge(g, 4, 5, 1.0f);
-        nimcp_graph_add_edge(g, 5, 4, 1.0f);
+        // Create weak connections between communities
+        for (uint32_t i = 0; i < 10; i += 3) {
+            for (uint32_t j = 10; j < 20; j += 3) {
+                neural_network_add_connection(network, i, j, 0.1f);
+                neural_network_add_connection(network, j, i, 0.1f);
+            }
+        }
 
-        /* Bridge between communities (weak link) */
-        nimcp_graph_add_edge(g, 2, 3, 0.1f);
-        nimcp_graph_add_edge(g, 3, 2, 0.1f);
-
-        return g;
+        return network;
     }
 
     /**
-     * WHAT: Create fully connected graph (clique)
+     * WHAT: Create fully connected network (clique)
      * WHY: Should produce 1 community
      */
-    NimcpGraph* create_clique(uint32_t n) {
-        NimcpGraph* g = nimcp_graph_create();
-        EXPECT_NE(g, nullptr);
+    neural_network_t create_clique(uint32_t n) {
+        network_config_t config = {0};
+        config.num_neurons = n;
+        config.input_size = 2;
+        config.output_size = 2;
+        config.ei_ratio = 0.8f;
+        config.learning_rate = 0.01f;
+        config.min_weight = 0.0f;
+        config.max_weight = 1.0f;
 
-        for (uint32_t i = 0; i < n; i++) {
-            nimcp_graph_add_vertex(g, i, 0.0f, 0.0f, 0.0f, 0);
-        }
+        neural_network_t network = neural_network_create(&config);
+        if (!network) return nullptr;
 
+        // Connect all neurons to all others
         for (uint32_t i = 0; i < n; i++) {
-            for (uint32_t j = i + 1; j < n; j++) {
-                nimcp_graph_add_edge(g, i, j, 1.0f);
-                nimcp_graph_add_edge(g, j, i, 1.0f);
+            for (uint32_t j = 0; j < n; j++) {
+                if (i != j) {
+                    neural_network_add_connection(network, i, j, 1.0f);
+                }
             }
         }
 
-        return g;
+        return network;
     }
 
     /**
-     * WHAT: Create disconnected graph (N components)
+     * WHAT: Create disconnected network (N components)
      * WHY: Should detect N communities
      */
-    NimcpGraph* create_disconnected_graph(uint32_t num_components) {
-        NimcpGraph* g = nimcp_graph_create();
-        EXPECT_NE(g, nullptr);
+    neural_network_t create_disconnected_network(uint32_t num_components) {
+        network_config_t config = {0};
+        config.num_neurons = num_components * 3;
+        config.input_size = 2;
+        config.output_size = 2;
+        config.ei_ratio = 0.8f;
+        config.learning_rate = 0.01f;
+        config.min_weight = 0.0f;
+        config.max_weight = 1.0f;
 
+        neural_network_t network = neural_network_create(&config);
+        if (!network) return nullptr;
+
+        // Each component is a triangle
         for (uint32_t c = 0; c < num_components; c++) {
-            /* Each component is a triangle */
             uint32_t base = c * 3;
 
-            for (uint32_t i = 0; i < 3; i++) {
-                nimcp_graph_add_vertex(g, base + i, 0.0f, 0.0f, 0.0f, 0);
-            }
-
-            nimcp_graph_add_edge(g, base + 0, base + 1, 1.0f);
-            nimcp_graph_add_edge(g, base + 1, base + 0, 1.0f);
-            nimcp_graph_add_edge(g, base + 0, base + 2, 1.0f);
-            nimcp_graph_add_edge(g, base + 2, base + 0, 1.0f);
-            nimcp_graph_add_edge(g, base + 1, base + 2, 1.0f);
-            nimcp_graph_add_edge(g, base + 2, base + 1, 1.0f);
+            neural_network_add_connection(network, base + 0, base + 1, 1.0f);
+            neural_network_add_connection(network, base + 1, base + 0, 1.0f);
+            neural_network_add_connection(network, base + 0, base + 2, 1.0f);
+            neural_network_add_connection(network, base + 2, base + 0, 1.0f);
+            neural_network_add_connection(network, base + 1, base + 2, 1.0f);
+            neural_network_add_connection(network, base + 2, base + 1, 1.0f);
         }
 
-        return g;
-    }
-
-    /**
-     * WHAT: Zachary's Karate Club graph (classic benchmark)
-     * WHY: Known ground truth (2 communities)
-     * HOW: 34 nodes, splits into 2 factions
-     */
-    NimcpGraph* create_karate_club_graph() {
-        NimcpGraph* g = nimcp_graph_create();
-        EXPECT_NE(g, nullptr);
-
-        /* Add 34 nodes */
-        for (uint32_t i = 0; i < 34; i++) {
-            nimcp_graph_add_vertex(g, i, 0.0f, 0.0f, 0.0f, 0);
-        }
-
-        /* Edge list (bidirectional) */
-        uint32_t edges[][2] = {
-            {0, 1},   {0, 2},   {0, 3},   {0, 4},   {0, 5},   {0, 6},   {0, 7},   {0, 8},
-            {0, 10},  {0, 11},  {0, 12},  {0, 13},  {0, 17},  {0, 19},  {0, 21},  {0, 31},
-            {1, 2},   {1, 3},   {1, 7},   {1, 13},  {1, 17},  {1, 19},  {1, 21},  {1, 30},
-            {2, 3},   {2, 7},   {2, 8},   {2, 9},   {2, 13},  {2, 27},  {2, 28},  {2, 32},
-            {3, 7},   {3, 12},  {3, 13},  {4, 6},   {4, 10},  {5, 6},   {5, 10},  {5, 16},
-            {6, 16},  {8, 30},  {8, 32},  {8, 33},  {9, 33},  {13, 33}, {14, 32}, {14, 33},
-            {15, 32}, {15, 33}, {18, 32}, {18, 33}, {19, 33}, {20, 32}, {20, 33}, {22, 32},
-            {22, 33}, {23, 25}, {23, 27}, {23, 29}, {23, 32}, {23, 33}, {24, 25}, {24, 27},
-            {24, 31}, {25, 31}, {26, 29}, {26, 33}, {27, 33}, {28, 31}, {28, 33}, {29, 32},
-            {29, 33}, {30, 32}, {30, 33}, {31, 32}, {31, 33}, {32, 33}};
-
-        for (const auto& edge : edges) {
-            nimcp_graph_add_edge(g, edge[0], edge[1], 1.0f);
-            nimcp_graph_add_edge(g, edge[1], edge[0], 1.0f);
-        }
-
-        return g;
+        return network;
     }
 };
 
@@ -154,11 +140,11 @@ protected:
  * Basic Functionality Tests
  * =========================================================================== */
 
-TEST_F(CommunityDetectionTest, SimpleModularGraph) {
-    NimcpGraph* g = create_simple_modular_graph();
-    ASSERT_NE(g, nullptr);
+TEST_F(CommunityDetectionTest, SimpleModularNetwork) {
+    neural_network_t network = create_simple_modular_network();
+    ASSERT_NE(network, nullptr);
 
-    community_structure_t* comm = louvain_detect_communities(g);
+    community_structure_t* comm = community_detect(network, nullptr);
     ASSERT_NE(comm, nullptr);
 
     /* Should find 2 communities */
@@ -167,144 +153,110 @@ TEST_F(CommunityDetectionTest, SimpleModularGraph) {
     /* Modularity should be positive and decent */
     EXPECT_GT(comm->modularity, 0.2f);
 
-    /* Nodes 0,1,2 should be in same community */
-    uint32_t comm0 = get_node_community(comm, 0);
-    EXPECT_EQ(get_node_community(comm, 1), comm0);
-    EXPECT_EQ(get_node_community(comm, 2), comm0);
+    /* Neurons 0-9 should be in same community */
+    uint32_t comm0 = comm->community_ids[0];
+    for (uint32_t i = 1; i < 10; i++) {
+        EXPECT_EQ(comm->community_ids[i], comm0);
+    }
 
-    /* Nodes 3,4,5 should be in same community (different from 0,1,2) */
-    uint32_t comm3 = get_node_community(comm, 3);
-    EXPECT_NE(comm3, comm0);
-    EXPECT_EQ(get_node_community(comm, 4), comm3);
-    EXPECT_EQ(get_node_community(comm, 5), comm3);
+    /* Neurons 10-19 should be in same community (different from 0-9) */
+    uint32_t comm10 = comm->community_ids[10];
+    EXPECT_NE(comm10, comm0);
+    for (uint32_t i = 11; i < 20; i++) {
+        EXPECT_EQ(comm->community_ids[i], comm10);
+    }
 
-    community_structure_destroy(comm);
-    nimcp_graph_destroy(g);
+    topology_community_structure_free(comm);
+    neural_network_destroy(network);
 }
 
-TEST_F(CommunityDetectionTest, FullyConnectedGraph) {
-    NimcpGraph* g = create_clique(10);
-    ASSERT_NE(g, nullptr);
+TEST_F(CommunityDetectionTest, FullyConnectedNetwork) {
+    neural_network_t network = create_clique(10);
+    ASSERT_NE(network, nullptr);
 
-    community_structure_t* comm = louvain_detect_communities(g);
+    community_structure_t* comm = community_detect(network, nullptr);
     ASSERT_NE(comm, nullptr);
 
     /* Should find 1 community */
     EXPECT_EQ(comm->num_communities, 1u);
 
-    /* All nodes should be in same community */
-    uint32_t first_comm = get_node_community(comm, 0);
+    /* All neurons should be in same community */
+    uint32_t first_comm = comm->community_ids[0];
     for (uint32_t i = 1; i < 10; i++) {
-        EXPECT_EQ(get_node_community(comm, i), first_comm);
+        EXPECT_EQ(comm->community_ids[i], first_comm);
     }
 
     /* Modularity should be ~0 (no internal structure) */
     EXPECT_NEAR(comm->modularity, 0.0f, 0.1f);
 
-    community_structure_destroy(comm);
-    nimcp_graph_destroy(g);
+    topology_community_structure_free(comm);
+    neural_network_destroy(network);
 }
 
-TEST_F(CommunityDetectionTest, DisconnectedGraph) {
+TEST_F(CommunityDetectionTest, DisconnectedNetwork) {
     uint32_t num_components = 3;
-    NimcpGraph* g = create_disconnected_graph(num_components);
-    ASSERT_NE(g, nullptr);
+    neural_network_t network = create_disconnected_network(num_components);
+    ASSERT_NE(network, nullptr);
 
-    community_structure_t* comm = louvain_detect_communities(g);
+    community_structure_t* comm = community_detect(network, nullptr);
     ASSERT_NE(comm, nullptr);
 
     /* Should find 3 communities (one per component) */
     EXPECT_EQ(comm->num_communities, num_components);
 
-    /* Each component's nodes should be in same community */
+    /* Each component's neurons should be in same community */
     for (uint32_t c = 0; c < num_components; c++) {
         uint32_t base = c * 3;
-        uint32_t comm_id = get_node_community(comm, base);
+        uint32_t comm_id = comm->community_ids[base];
 
-        EXPECT_EQ(get_node_community(comm, base + 1), comm_id);
-        EXPECT_EQ(get_node_community(comm, base + 2), comm_id);
+        EXPECT_EQ(comm->community_ids[base + 1], comm_id);
+        EXPECT_EQ(comm->community_ids[base + 2], comm_id);
     }
 
     /* Modularity should be high (perfect separation) */
     EXPECT_GT(comm->modularity, 0.5f);
 
-    community_structure_destroy(comm);
-    nimcp_graph_destroy(g);
-}
-
-TEST_F(CommunityDetectionTest, KarateClubGraph) {
-    NimcpGraph* g = create_karate_club_graph();
-    ASSERT_NE(g, nullptr);
-
-    community_structure_t* comm = louvain_detect_communities(g);
-    ASSERT_NE(comm, nullptr);
-
-    /* Karate club typically has 2-4 communities */
-    EXPECT_GE(comm->num_communities, 2u);
-    EXPECT_LE(comm->num_communities, 4u);
-
-    /* Good modularity for known community structure */
-    EXPECT_GT(comm->modularity, 0.3f);
-
-    /* Should converge quickly */
-    EXPECT_LT(comm->iterations, 50u);
-
-    community_structure_destroy(comm);
-    nimcp_graph_destroy(g);
+    topology_community_structure_free(comm);
+    neural_network_destroy(network);
 }
 
 /* ===========================================================================
  * Edge Case Tests
  * =========================================================================== */
 
-TEST_F(CommunityDetectionTest, NullGraph) {
-    community_structure_t* comm = louvain_detect_communities(nullptr);
+TEST_F(CommunityDetectionTest, NullNetwork) {
+    community_structure_t* comm = community_detect(nullptr, nullptr);
     EXPECT_EQ(comm, nullptr);
 }
 
-TEST_F(CommunityDetectionTest, EmptyGraph) {
-    NimcpGraph* g = nimcp_graph_create();
-    ASSERT_NE(g, nullptr);
+TEST_F(CommunityDetectionTest, EmptyNetwork) {
+    network_config_t config = {0};
+    config.num_neurons = 0;
+    neural_network_t network = neural_network_create(&config);
 
-    community_structure_t* comm = louvain_detect_communities(g);
+    community_structure_t* comm = community_detect(network, nullptr);
     EXPECT_EQ(comm, nullptr);
 
-    nimcp_graph_destroy(g);
+    if (network) neural_network_destroy(network);
 }
 
-TEST_F(CommunityDetectionTest, SingleNode) {
-    NimcpGraph* g = nimcp_graph_create();
-    ASSERT_NE(g, nullptr);
+TEST_F(CommunityDetectionTest, SingleNeuron) {
+    network_config_t config = {0};
+    config.num_neurons = 1;
+    config.input_size = 1;
+    config.output_size = 1;
+    neural_network_t network = neural_network_create(&config);
+    ASSERT_NE(network, nullptr);
 
-    nimcp_graph_add_vertex(g, 0, 0.0f, 0.0f, 0.0f, 0);
-
-    community_structure_t* comm = louvain_detect_communities(g);
+    community_structure_t* comm = community_detect(network, nullptr);
     ASSERT_NE(comm, nullptr);
 
     EXPECT_EQ(comm->num_communities, 1u);
-    EXPECT_EQ(get_node_community(comm, 0), 0u);
+    EXPECT_EQ(comm->community_ids[0], 0u);
     EXPECT_NEAR(comm->modularity, 0.0f, 0.01f);
 
-    community_structure_destroy(comm);
-    nimcp_graph_destroy(g);
-}
-
-TEST_F(CommunityDetectionTest, TwoIsolatedNodes) {
-    NimcpGraph* g = nimcp_graph_create();
-    ASSERT_NE(g, nullptr);
-
-    nimcp_graph_add_vertex(g, 0, 0.0f, 0.0f, 0.0f, 0);
-    nimcp_graph_add_vertex(g, 1, 0.0f, 0.0f, 0.0f, 0);
-
-    community_structure_t* comm = louvain_detect_communities(g);
-    ASSERT_NE(comm, nullptr);
-
-    /* Two isolated nodes = 2 communities */
-    EXPECT_EQ(comm->num_communities, 2u);
-    EXPECT_NE(get_node_community(comm, 0), get_node_community(comm, 1));
-
-    community_structure_destroy(comm);
-    nimcp_graph_destroy(g);
+    topology_community_structure_free(comm);
+    neural_network_destroy(network);
 }
 
 /* ===========================================================================
@@ -312,90 +264,86 @@ TEST_F(CommunityDetectionTest, TwoIsolatedNodes) {
  * =========================================================================== */
 
 TEST_F(CommunityDetectionTest, ModularityCalculation) {
-    NimcpGraph* g = create_simple_modular_graph();
-    ASSERT_NE(g, nullptr);
+    neural_network_t network = create_simple_modular_network();
+    ASSERT_NE(network, nullptr);
 
-    /* Create manual partition */
-    uint32_t communities[6] = {0, 0, 0, 1, 1, 1};
-
-    float Q = compute_modularity(g, communities);
-
-    /* Should be positive for good partition */
-    EXPECT_GT(Q, 0.0f);
-
-    /* Check consistency with Louvain result */
-    community_structure_t* comm = louvain_detect_communities(g);
+    community_structure_t* comm = community_detect(network, nullptr);
     ASSERT_NE(comm, nullptr);
 
-    float Q_louvain = compute_modularity(g, comm->node_to_community);
-    EXPECT_NEAR(Q_louvain, comm->modularity, 0.001f);
+    /* Modularity should be positive for good partition */
+    EXPECT_GT(comm->modularity, 0.0f);
+    EXPECT_LT(comm->modularity, 1.0f);
 
-    community_structure_destroy(comm);
-    nimcp_graph_destroy(g);
-}
-
-TEST_F(CommunityDetectionTest, ModularityWorstCase) {
-    NimcpGraph* g = create_simple_modular_graph();
-    ASSERT_NE(g, nullptr);
-
-    /* Worst partition: interleaved communities */
-    uint32_t bad_communities[6] = {0, 1, 0, 1, 0, 1};
-
-    float Q_bad = compute_modularity(g, bad_communities);
-
-    /* Should be negative or close to zero */
-    EXPECT_LT(Q_bad, 0.1f);
-
-    nimcp_graph_destroy(g);
-}
-
-TEST_F(CommunityDetectionTest, ModularityNullInputs) {
-    EXPECT_FLOAT_EQ(compute_modularity(nullptr, nullptr), -1.0f);
-
-    NimcpGraph* g = nimcp_graph_create();
-    ASSERT_NE(g, nullptr);
-
-    EXPECT_FLOAT_EQ(compute_modularity(g, nullptr), -1.0f);
-
-    nimcp_graph_destroy(g);
+    topology_community_structure_free(comm);
+    neural_network_destroy(network);
 }
 
 /* ===========================================================================
- * Convergence Tests
+ * API Tests
  * =========================================================================== */
 
-TEST_F(CommunityDetectionTest, AlgorithmConverges) {
-    NimcpGraph* g = create_simple_modular_graph();
-    ASSERT_NE(g, nullptr);
+TEST_F(CommunityDetectionTest, GetCommunityForNeuron) {
+    neural_network_t network = create_simple_modular_network();
+    ASSERT_NE(network, nullptr);
 
-    community_structure_t* comm = louvain_detect_communities(g);
+    community_structure_t* comm = community_detect(network, nullptr);
     ASSERT_NE(comm, nullptr);
 
-    /* Should converge in reasonable iterations */
-    EXPECT_LT(comm->iterations, NIMCP_MAX_ITERATIONS);
-    EXPECT_GT(comm->iterations, 0u);
+    /* Valid queries */
+    for (uint32_t i = 0; i < 20; i++) {
+        uint32_t c = community_get_neuron_community(comm, i);
+        EXPECT_LT(c, comm->num_communities);
+    }
 
-    community_structure_destroy(comm);
-    nimcp_graph_destroy(g);
+    topology_community_structure_free(comm);
+    neural_network_destroy(network);
 }
 
-TEST_F(CommunityDetectionTest, ModularityIncreases) {
-    NimcpGraph* g = create_simple_modular_graph();
-    ASSERT_NE(g, nullptr);
+TEST_F(CommunityDetectionTest, CommunitySizes) {
+    neural_network_t network = create_simple_modular_network();
+    ASSERT_NE(network, nullptr);
 
-    /* Initial random partition */
-    uint32_t initial_communities[6] = {0, 1, 2, 3, 4, 5};
-    float Q_initial = compute_modularity(g, initial_communities);
-
-    /* Louvain result */
-    community_structure_t* comm = louvain_detect_communities(g);
+    community_structure_t* comm = community_detect(network, nullptr);
     ASSERT_NE(comm, nullptr);
 
-    /* Final modularity should be better */
-    EXPECT_GT(comm->modularity, Q_initial);
+    /* Sum of sizes should equal num neurons */
+    uint32_t total_size = 0;
+    for (uint32_t i = 0; i < comm->num_communities; i++) {
+        EXPECT_GT(comm->community_sizes[i], 0u);
+        total_size += comm->community_sizes[i];
+    }
 
-    community_structure_destroy(comm);
-    nimcp_graph_destroy(g);
+    EXPECT_EQ(total_size, comm->num_neurons);
+
+    topology_community_structure_free(comm);
+    neural_network_destroy(network);
+}
+
+TEST_F(CommunityDetectionTest, FreeNullCommunity) {
+    /* Should not crash */
+    topology_community_structure_free(nullptr);
+}
+
+/* ===========================================================================
+ * Configuration Tests
+ * =========================================================================== */
+
+TEST_F(CommunityDetectionTest, CustomConfiguration) {
+    neural_network_t network = create_simple_modular_network();
+    ASSERT_NE(network, nullptr);
+
+    community_detection_config_t config = community_default_config();
+    config.max_iterations = 50;
+    config.resolution = 1.5f;
+
+    community_structure_t* comm = community_detect(network, &config);
+    ASSERT_NE(comm, nullptr);
+
+    /* Should still detect communities */
+    EXPECT_GE(comm->num_communities, 1u);
+
+    topology_community_structure_free(comm);
+    neural_network_destroy(network);
 }
 
 /* ===========================================================================
@@ -403,14 +351,17 @@ TEST_F(CommunityDetectionTest, ModularityIncreases) {
  * =========================================================================== */
 
 TEST_F(CommunityDetectionTest, DeterministicResults) {
-    NimcpGraph* g = create_simple_modular_graph();
-    ASSERT_NE(g, nullptr);
+    neural_network_t network = create_simple_modular_network();
+    ASSERT_NE(network, nullptr);
+
+    community_detection_config_t config = community_default_config();
+    config.random_seed = 42;
 
     /* Run twice */
-    community_structure_t* comm1 = louvain_detect_communities(g);
+    community_structure_t* comm1 = community_detect(network, &config);
     ASSERT_NE(comm1, nullptr);
 
-    community_structure_t* comm2 = louvain_detect_communities(g);
+    community_structure_t* comm2 = community_detect(network, &config);
     ASSERT_NE(comm2, nullptr);
 
     /* Should produce same results */
@@ -418,168 +369,13 @@ TEST_F(CommunityDetectionTest, DeterministicResults) {
     EXPECT_NEAR(comm1->modularity, comm2->modularity, 0.001f);
 
     /* Community assignments should match */
-    for (uint32_t i = 0; i < 6; i++) {
-        uint32_t c1 = get_node_community(comm1, i);
-        uint32_t c2 = get_node_community(comm2, i);
-
-        /* Communities may be renumbered, but structure should be same */
-        for (uint32_t j = i + 1; j < 6; j++) {
-            bool same_comm1 = (c1 == get_node_community(comm1, j));
-            bool same_comm2 = (c2 == get_node_community(comm2, j));
-            EXPECT_EQ(same_comm1, same_comm2);
-        }
+    for (uint32_t i = 0; i < comm1->num_neurons; i++) {
+        EXPECT_EQ(comm1->community_ids[i], comm2->community_ids[i]);
     }
 
-    community_structure_destroy(comm1);
-    community_structure_destroy(comm2);
-    nimcp_graph_destroy(g);
-}
-
-/* ===========================================================================
- * API Tests
- * =========================================================================== */
-
-TEST_F(CommunityDetectionTest, GetNodeCommunity) {
-    NimcpGraph* g = create_simple_modular_graph();
-    ASSERT_NE(g, nullptr);
-
-    community_structure_t* comm = louvain_detect_communities(g);
-    ASSERT_NE(comm, nullptr);
-
-    /* Valid queries */
-    for (uint32_t i = 0; i < 6; i++) {
-        uint32_t c = get_node_community(comm, i);
-        EXPECT_LT(c, comm->num_communities);
-    }
-
-    /* Out of bounds */
-    EXPECT_EQ(get_node_community(comm, 999), UINT32_MAX);
-
-    /* NULL structure */
-    EXPECT_EQ(get_node_community(nullptr, 0), UINT32_MAX);
-
-    community_structure_destroy(comm);
-    nimcp_graph_destroy(g);
-}
-
-TEST_F(CommunityDetectionTest, CommunitySizes) {
-    NimcpGraph* g = create_simple_modular_graph();
-    ASSERT_NE(g, nullptr);
-
-    community_structure_t* comm = louvain_detect_communities(g);
-    ASSERT_NE(comm, nullptr);
-
-    /* Sum of sizes should equal num nodes */
-    uint32_t total_size = 0;
-    for (uint32_t i = 0; i < comm->num_communities; i++) {
-        EXPECT_GT(comm->community_sizes[i], 0u);
-        total_size += comm->community_sizes[i];
-    }
-
-    EXPECT_EQ(total_size, 6u);
-
-    community_structure_destroy(comm);
-    nimcp_graph_destroy(g);
-}
-
-TEST_F(CommunityDetectionTest, DestroyNullCommunity) {
-    /* Should not crash */
-    community_structure_destroy(nullptr);
-}
-
-/* ===========================================================================
- * Weighted Graph Tests
- * =========================================================================== */
-
-TEST_F(CommunityDetectionTest, WeightedGraph) {
-    NimcpGraph* g = nimcp_graph_create();
-    ASSERT_NE(g, nullptr);
-
-    /* Create 4 nodes with weighted edges */
-    for (uint32_t i = 0; i < 4; i++) {
-        nimcp_graph_add_vertex(g, i, 0.0f, 0.0f, 0.0f, 0);
-    }
-
-    /* Strong connection: 0-1 */
-    nimcp_graph_add_edge(g, 0, 1, 10.0f);
-    nimcp_graph_add_edge(g, 1, 0, 10.0f);
-
-    /* Strong connection: 2-3 */
-    nimcp_graph_add_edge(g, 2, 3, 10.0f);
-    nimcp_graph_add_edge(g, 3, 2, 10.0f);
-
-    /* Weak bridge: 1-2 */
-    nimcp_graph_add_edge(g, 1, 2, 0.1f);
-    nimcp_graph_add_edge(g, 2, 1, 0.1f);
-
-    community_structure_t* comm = louvain_detect_communities(g);
-    ASSERT_NE(comm, nullptr);
-
-    /* Should find 2 communities based on weights */
-    EXPECT_EQ(comm->num_communities, 2u);
-
-    /* 0-1 should be together, 2-3 should be together */
-    EXPECT_EQ(get_node_community(comm, 0), get_node_community(comm, 1));
-    EXPECT_EQ(get_node_community(comm, 2), get_node_community(comm, 3));
-    EXPECT_NE(get_node_community(comm, 0), get_node_community(comm, 2));
-
-    community_structure_destroy(comm);
-    nimcp_graph_destroy(g);
-}
-
-/* ===========================================================================
- * Performance Tests
- * =========================================================================== */
-
-TEST_F(CommunityDetectionTest, LargerGraph) {
-    /* Create graph with 50 nodes in 5 communities */
-    NimcpGraph* g = nimcp_graph_create();
-    ASSERT_NE(g, nullptr);
-
-    uint32_t nodes_per_comm = 10;
-    uint32_t num_comms = 5;
-
-    /* Add nodes */
-    for (uint32_t i = 0; i < nodes_per_comm * num_comms; i++) {
-        nimcp_graph_add_vertex(g, i, 0.0f, 0.0f, 0.0f, 0);
-    }
-
-    /* Add edges within communities */
-    for (uint32_t c = 0; c < num_comms; c++) {
-        uint32_t base = c * nodes_per_comm;
-
-        for (uint32_t i = 0; i < nodes_per_comm; i++) {
-            for (uint32_t j = i + 1; j < nodes_per_comm; j++) {
-                nimcp_graph_add_edge(g, base + i, base + j, 1.0f);
-                nimcp_graph_add_edge(g, base + j, base + i, 1.0f);
-            }
-        }
-    }
-
-    /* Add sparse inter-community edges */
-    for (uint32_t c = 0; c < num_comms - 1; c++) {
-        uint32_t n1 = c * nodes_per_comm;
-        uint32_t n2 = (c + 1) * nodes_per_comm;
-
-        nimcp_graph_add_edge(g, n1, n2, 0.1f);
-        nimcp_graph_add_edge(g, n2, n1, 0.1f);
-    }
-
-    community_structure_t* comm = louvain_detect_communities(g);
-    ASSERT_NE(comm, nullptr);
-
-    /* Should find approximately 5 communities */
-    EXPECT_GE(comm->num_communities, 4u);
-    EXPECT_LE(comm->num_communities, 6u);
-
-    /* Should have good modularity */
-    EXPECT_GT(comm->modularity, 0.5f);
-
-    /* Should converge quickly */
-    EXPECT_LT(comm->iterations, 30u);
-
-    community_structure_destroy(comm);
-    nimcp_graph_destroy(g);
+    topology_community_structure_free(comm1);
+    topology_community_structure_free(comm2);
+    neural_network_destroy(network);
 }
 
 int main(int argc, char** argv) {

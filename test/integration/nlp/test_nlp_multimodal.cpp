@@ -137,6 +137,7 @@ TEST_F(NLPMultimodalTest, SpeechToNLPPipeline) {
     for (int i = 0; i < 1000; i++) {
         audio_samples[i] = 0.5f * sinf(2.0f * 3.14159f * 440.0f * i / 16000.0f);  // 440 Hz tone
     }
+    (void)audio_samples;  // TODO: Use this to test audio processing pipeline
 
     // This will process through:
     // 1. Audio → Speech cortex → Phonemes
@@ -173,7 +174,8 @@ TEST_F(NLPMultimodalTest, VisualTextToNLPPipeline) {
 //=============================================================================
 
 TEST_F(NLPMultimodalTest, NLPNetworkCreateDestroy) {
-    nlp_network_config_t config = {0};
+    nlp_network_config_t config;
+    memset(&config, 0, sizeof(config));
     config.vocab_size = 1000;
     config.embedding_dim = 128;
     config.max_sequence_length = 50;
@@ -199,12 +201,15 @@ TEST_F(NLPMultimodalTest, NLPNetworkProcessSequence) {
     // Token sequence: [5, 42, 17, 9]
     uint32_t tokens[] = {5, 42, 17, 9};
     uint32_t seq_len = 4;
+    (void)tokens;  // TODO: Use with correct NLP processing function
+    (void)seq_len;  // TODO: Use with correct NLP processing function
 
     // Process sequence - function temporarily disabled
     float output[64];
     // TODO: Update to use correct NLP processing function
     // bool result = spike_nlp_process_sentence(...);
     bool result = true;  // Placeholder
+    (void)result;  // TODO: Use when correct function is found
 
     // EXPECT_TRUE(result);  // Disabled until correct function is found
 
@@ -258,7 +263,8 @@ TEST_F(NLPMultimodalTest, NLPNetworkNullConfig) {
 }
 
 TEST_F(NLPMultimodalTest, NLPNetworkInvalidConfig) {
-    nlp_network_config_t config = {0};
+    nlp_network_config_t config;
+    memset(&config, 0, sizeof(config));
     config.vocab_size = 0;  // Invalid
     config.embedding_dim = 128;
 
@@ -295,7 +301,8 @@ TEST_F(NLPMultimodalTest, RepeatedInferenceConsistent) {
 TEST_F(NLPMultimodalTest, NLPDoesNotLeakMemory) {
     // Create and destroy multiple NLP networks
     for (int iter = 0; iter < 10; iter++) {
-        nlp_network_config_t config = {0};
+        nlp_network_config_t config;
+        memset(&config, 0, sizeof(config));
         config.vocab_size = 100 + iter;
         config.embedding_dim = 64;
         config.max_sequence_length = 10;

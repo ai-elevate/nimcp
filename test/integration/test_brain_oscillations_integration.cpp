@@ -18,7 +18,6 @@
 extern "C" {
 #include "core/brain_oscillations/nimcp_brain_oscillations.h"
 #include "core/brain/nimcp_brain.h"
-#include "core/synapse/nimcp_synapse.h"
 #include "utils/memory/nimcp_memory.h"
 }
 
@@ -39,10 +38,8 @@ protected:
 
     void SetUp() override {
         // Create brain with realistic network
-        brain_config_t config = {0};
-        config.num_neurons = NUM_NEURONS;
-        config.max_synapses = NUM_NEURONS * 100;
-        brain = brain_create(&config);
+        brain = brain_create("oscillation_test", BRAIN_SIZE_SMALL, BRAIN_TASK_PATTERN_MATCHING,
+                             NUM_NEURONS / 10, NUM_NEURONS / 20);
         ASSERT_NE(brain, nullptr);
 
         // Create analyzer
@@ -65,39 +62,20 @@ protected:
      * @brief Create network with specific connectivity pattern
      */
     void createOscillatoryNetwork() {
-        // Create recurrent connections for oscillations
-        // This approximates an E-I network that can generate rhythms
+        // Train the brain on some patterns to create oscillatory dynamics
+        // The brain's internal network will develop oscillatory patterns
+        float pattern1[NUM_NEURONS / 10];
+        float pattern2[NUM_NEURONS / 10];
 
-        for (uint32_t i = 0; i < NUM_NEURONS / 2; i++) {
-            // Excitatory neurons connect to nearby neurons
-            for (int j = -10; j <= 10; j++) {
-                if (j == 0) continue;
-                int target = ((int)i + j + NUM_NEURONS) % NUM_NEURONS;
-
-                synapse_config_t syn_config = {0};
-                syn_config.pre_neuron_id = i;
-                syn_config.post_neuron_id = (neuron_id_t)target;
-                syn_config.weight = 0.05f;
-                syn_config.delay_ms = 1.0f;
-
-                brain_add_synapse(brain, &syn_config);
-            }
+        for (uint32_t i = 0; i < NUM_NEURONS / 10; i++) {
+            pattern1[i] = 0.3f + 0.4f * sinf(2.0f * PI * i / (NUM_NEURONS / 10));
+            pattern2[i] = 0.5f + 0.4f * cosf(2.0f * PI * i / (NUM_NEURONS / 10));
         }
 
-        // Inhibitory neurons for rhythm generation
-        for (uint32_t i = NUM_NEURONS / 2; i < NUM_NEURONS; i++) {
-            for (int j = -5; j <= 5; j++) {
-                if (j == 0) continue;
-                int target = ((int)i + j) % NUM_NEURONS;
-
-                synapse_config_t syn_config = {0};
-                syn_config.pre_neuron_id = i;
-                syn_config.post_neuron_id = (neuron_id_t)target;
-                syn_config.weight = -0.03f;
-                syn_config.delay_ms = 1.0f;
-
-                brain_add_synapse(brain, &syn_config);
-            }
+        // Train on oscillatory patterns
+        for (int i = 0; i < 50; i++) {
+            brain_learn_example(brain, pattern1, NUM_NEURONS / 10, "oscillation_A", 0.8f);
+            brain_learn_example(brain, pattern2, NUM_NEURONS / 10, "oscillation_B", 0.8f);
         }
     }
 
@@ -105,25 +83,24 @@ protected:
      * @brief Simulate network and record activity
      */
     void simulateAndRecord(uint32_t num_steps) {
-        float dt = 0.001f;  // 1ms timestep
+        // Generate test input that varies over time
+        float input[NUM_NEURONS / 10];
 
         for (uint32_t step = 0; step < num_steps; step++) {
-            // Update brain dynamics
-            brain_update(brain, dt);
+            // Create time-varying input to simulate neural activity
+            for (uint32_t i = 0; i < NUM_NEURONS / 10; i++) {
+                float phase = 2.0f * PI * step / 100.0f;
+                input[i] = 0.5f + 0.3f * sinf(phase + i * 0.1f);
+            }
 
-            // Record activity every 4ms (250 Hz sampling)
+            // Make decision to generate activity (every 4ms for 250 Hz sampling)
             if (step % 4 == 0) {
-                // Compute average firing rate
-                float avg_activity = 0.0f;
-                for (uint32_t i = 0; i < NUM_NEURONS; i++) {
-                    neuron_state_t state;
-                    if (brain_get_neuron_state(brain, i, &state)) {
-                        avg_activity += state.membrane_potential > -50.0f ? 1.0f : 0.0f;
-                    }
+                brain_decision_t* decision = brain_decide(brain, input, NUM_NEURONS / 10);
+                if (decision) {
+                    // Record the confidence as a proxy for activity level
+                    brain_oscillation_record_value(analyzer, decision->confidence);
+                    brain_free_decision(decision);
                 }
-                avg_activity /= NUM_NEURONS;
-
-                brain_oscillation_record_value(analyzer, avg_activity);
             }
         }
     }
@@ -226,10 +203,8 @@ TEST_F(BrainOscillationIntegrationTest, LargeNetworkPerformance) {
     brain_destroy(brain);
     brain_oscillation_destroy(analyzer);
 
-    brain_config_t config = {0};
-    config.num_neurons = 10000;  // 10k neurons
-    config.max_synapses = 100000;
-    brain = brain_create(&config);
+    // Create large brain: 10k neurons
+    brain = brain_create("large_osc_brain", BRAIN_SIZE_LARGE, BRAIN_TASK_CLASSIFICATION, 100, 10);
     ASSERT_NE(brain, nullptr);
 
     analyzer = brain_oscillation_create(brain, WINDOW_SIZE_MS, SAMPLING_RATE_HZ);

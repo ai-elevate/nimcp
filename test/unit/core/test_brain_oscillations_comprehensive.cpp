@@ -35,11 +35,8 @@ protected:
     static constexpr float PI = 3.14159265358979323846f;
 
     void SetUp() override {
-        // Create minimal brain for testing
-        brain_config_t config = {0};
-        config.num_neurons = 100;
-        config.max_synapses = 1000;
-        brain = brain_create(&config);
+        // Create minimal brain for testing (new API)
+        brain = brain_create("osc_test", BRAIN_SIZE_TINY, BRAIN_TASK_CLASSIFICATION, 10, 2);
         ASSERT_NE(brain, nullptr);
 
         // Create analyzer

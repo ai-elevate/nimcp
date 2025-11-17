@@ -61,7 +61,14 @@ TEST_F(ConfigBrainIntegrationTest, LearningRateCallback) {
     // WHY:  Test runtime hyperparameter tuning
     // HOW:  Register callback, change config, verify brain uses new LR
 
-    brain = brain_create("test_brain", BRAIN_SIZE_TINY);
+    brain_config_t config;
+    memset(&config, 0, sizeof(config));
+    config.size = BRAIN_SIZE_TINY;
+    config.task = BRAIN_TASK_CLASSIFICATION;
+    config.num_inputs = 10;
+    config.num_outputs = 10;
+    snprintf(config.task_name, sizeof(config.task_name), "test_brain");
+    brain = brain_create_custom(&config);
     ASSERT_NE(brain, nullptr);
 
     std::atomic<int> callback_count{0};
@@ -103,7 +110,14 @@ TEST_F(ConfigBrainIntegrationTest, LayerFreezingIntegration) {
     // WHY:  Test transfer learning pipeline
     // HOW:  Create brain, freeze layers, train with config values
 
-    brain = brain_create("transfer_brain", BRAIN_SIZE_TINY);
+    brain_config_t config;
+    memset(&config, 0, sizeof(config));
+    config.size = BRAIN_SIZE_TINY;
+    config.task = BRAIN_TASK_CLASSIFICATION;
+    config.num_inputs = 10;
+    config.num_outputs = 10;
+    snprintf(config.task_name, sizeof(config.task_name), "test_brain");
+    brain = brain_create_custom(&config);
     ASSERT_NE(brain, nullptr);
 
     // Prepare training data
@@ -146,7 +160,14 @@ TEST_F(ConfigBrainIntegrationTest, RuntimeConfigUpdate) {
     // WHY:  Test dynamic hyperparameter adjustment
     // HOW:  Start training, change config mid-training
 
-    brain = brain_create("adaptive_brain", BRAIN_SIZE_TINY);
+    brain_config_t config;
+    memset(&config, 0, sizeof(config));
+    config.size = BRAIN_SIZE_TINY;
+    config.task = BRAIN_TASK_CLASSIFICATION;
+    config.num_inputs = 10;
+    config.num_outputs = 10;
+    snprintf(config.task_name, sizeof(config.task_name), "test_brain");
+    brain = brain_create_custom(&config);
     ASSERT_NE(brain, nullptr);
 
     std::atomic<bool> config_changed{false};

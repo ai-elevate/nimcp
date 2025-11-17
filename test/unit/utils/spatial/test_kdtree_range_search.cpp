@@ -13,6 +13,7 @@
 #include <gtest/gtest.h>
 #include "utils/spatial/nimcp_kdtree.h"
 #include <vector>
+#include <array>
 #include <cmath>
 #include <algorithm>
 #include <random>
@@ -24,7 +25,7 @@
 class KDTreeRangeSearchTest : public ::testing::Test {
 protected:
     kdtree_t* tree;
-    std::vector<kdtree_point_t> points;
+    std::vector<std::array<float, 3>> points;
     std::vector<void*> user_data;
 
     void SetUp() override {
@@ -39,7 +40,7 @@ protected:
     }
 
     // Helper: Build tree with test points
-    void BuildTreeWithPoints(const std::vector<kdtree_point_t>& pts) {
+    void BuildTreeWithPoints(const std::vector<std::array<float, 3>>& pts) {
         points = pts;
         user_data.resize(pts.size());
 
@@ -48,13 +49,13 @@ protected:
             user_data[i] = (void*)(uintptr_t)i;
         }
 
-        bool success = kdtree_build(tree, points.data(), user_data.data(),
+        bool success = kdtree_build(tree, reinterpret_cast<kdtree_point_t*>(points.data()), user_data.data(),
                                    static_cast<uint32_t>(points.size()));
         ASSERT_TRUE(success);
     }
 
     // Helper: Compute Euclidean distance
-    static float Distance(const kdtree_point_t& a, const kdtree_point_t& b) {
+    static float Distance(const std::array<float, 3>& a, const std::array<float, 3>& b) {
         float dx = a[0] - b[0];
         float dy = a[1] - b[1];
         float dz = a[2] - b[2];
@@ -62,7 +63,7 @@ protected:
     }
 
     // Helper: Brute force range search for validation
-    std::vector<uint32_t> BruteForceRangeSearch(const kdtree_point_t query,
+    std::vector<uint32_t> BruteForceRangeSearch(const std::array<float, 3> query,
                                                  float radius) {
         std::vector<uint32_t> results;
         for (size_t i = 0; i < points.size(); i++) {
@@ -83,10 +84,10 @@ TEST_F(KDTreeRangeSearchTest, NullTree) {
     // WHY:  Should handle gracefully without crashing
     // HOW:  Expect 0 results
 
-    kdtree_point_t query = {0.0f, 0.0f, 0.0f};
+    std::array<float, 3> query{{0.0f, 0.0f, 0.0f}};
     void* results[10];
 
-    uint32_t count = kdtree_range_search(nullptr, query, 1.0f, results, 10);
+    uint32_t count = kdtree_range_search(nullptr, query.data(), 1.0f, results, 10);
     EXPECT_EQ(count, 0);
 }
 
@@ -95,13 +96,13 @@ TEST_F(KDTreeRangeSearchTest, NullResults) {
     // WHY:  Should handle gracefully
     // HOW:  Expect 0 results
 
-    std::vector<kdtree_point_t> pts = {
-        {0.0f, 0.0f, 0.0f}
+    std::vector<std::array<float, 3>> pts = {
+        std::array<float, 3>{{0.0f, 0.0f, 0.0f}}
     };
     BuildTreeWithPoints(pts);
 
-    kdtree_point_t query = {0.0f, 0.0f, 0.0f};
-    uint32_t count = kdtree_range_search(tree, query, 1.0f, nullptr, 10);
+    std::array<float, 3> query{{0.0f, 0.0f, 0.0f}};
+    uint32_t count = kdtree_range_search(tree, query.data(), 1.0f, nullptr, 10);
     EXPECT_EQ(count, 0);
 }
 
@@ -110,14 +111,14 @@ TEST_F(KDTreeRangeSearchTest, ZeroCapacity) {
     // WHY:  Should return 0 results
     // HOW:  Valid tree but capacity=0
 
-    std::vector<kdtree_point_t> pts = {
-        {0.0f, 0.0f, 0.0f}
+    std::vector<std::array<float, 3>> pts = {
+        std::array<float, 3>{{0.0f, 0.0f, 0.0f}}
     };
     BuildTreeWithPoints(pts);
 
-    kdtree_point_t query = {0.0f, 0.0f, 0.0f};
+    std::array<float, 3> query{{0.0f, 0.0f, 0.0f}};
     void* results[10];
-    uint32_t count = kdtree_range_search(tree, query, 1.0f, results, 0);
+    uint32_t count = kdtree_range_search(tree, query.data(), 1.0f, results, 0);
     EXPECT_EQ(count, 0);
 }
 
@@ -126,14 +127,14 @@ TEST_F(KDTreeRangeSearchTest, NegativeRadius) {
     // WHY:  Should handle gracefully (treat as invalid)
     // HOW:  Expect 0 results
 
-    std::vector<kdtree_point_t> pts = {
-        {0.0f, 0.0f, 0.0f}
+    std::vector<std::array<float, 3>> pts = {
+        std::array<float, 3>{{0.0f, 0.0f, 0.0f}}
     };
     BuildTreeWithPoints(pts);
 
-    kdtree_point_t query = {0.0f, 0.0f, 0.0f};
+    std::array<float, 3> query{{0.0f, 0.0f, 0.0f}};
     void* results[10];
-    uint32_t count = kdtree_range_search(tree, query, -1.0f, results, 10);
+    uint32_t count = kdtree_range_search(tree, query.data(), -1.0f, results, 10);
     EXPECT_EQ(count, 0);
 }
 
@@ -142,16 +143,16 @@ TEST_F(KDTreeRangeSearchTest, ZeroRadius) {
     // WHY:  Should only find exact matches
     // HOW:  Point at query location should be found
 
-    std::vector<kdtree_point_t> pts = {
-        {0.0f, 0.0f, 0.0f},
-        {1.0f, 0.0f, 0.0f},
-        {0.0f, 1.0f, 0.0f}
+    std::vector<std::array<float, 3>> pts = {
+        std::array<float, 3>{{0.0f, 0.0f, 0.0f}},
+        std::array<float, 3>{{1.0f, 0.0f, 0.0f}},
+        std::array<float, 3>{{0.0f, 1.0f, 0.0f}}
     };
     BuildTreeWithPoints(pts);
 
-    kdtree_point_t query = {0.0f, 0.0f, 0.0f};
+    std::array<float, 3> query{{0.0f, 0.0f, 0.0f}};
     void* results[10];
-    uint32_t count = kdtree_range_search(tree, query, 0.0f, results, 10);
+    uint32_t count = kdtree_range_search(tree, query.data(), 0.0f, results, 10);
 
     // Should find only the exact match
     EXPECT_EQ(count, 1);
@@ -167,14 +168,14 @@ TEST_F(KDTreeRangeSearchTest, SinglePoint_Inside) {
     // WHY:  Basic correctness test
     // HOW:  Point at origin, query at origin, radius > 0
 
-    std::vector<kdtree_point_t> pts = {
-        {0.0f, 0.0f, 0.0f}
+    std::vector<std::array<float, 3>> pts = {
+        std::array<float, 3>{{0.0f, 0.0f, 0.0f}}
     };
     BuildTreeWithPoints(pts);
 
-    kdtree_point_t query = {0.0f, 0.0f, 0.0f};
+    std::array<float, 3> query{{0.0f, 0.0f, 0.0f}};
     void* results[10];
-    uint32_t count = kdtree_range_search(tree, query, 1.0f, results, 10);
+    uint32_t count = kdtree_range_search(tree, query.data(), 1.0f, results, 10);
 
     EXPECT_EQ(count, 1);
     EXPECT_EQ((uintptr_t)results[0], 0);
@@ -185,14 +186,14 @@ TEST_F(KDTreeRangeSearchTest, SinglePoint_Outside) {
     // WHY:  Ensure points beyond radius are excluded
     // HOW:  Point at (10,0,0), query at origin, radius 5
 
-    std::vector<kdtree_point_t> pts = {
-        {10.0f, 0.0f, 0.0f}
+    std::vector<std::array<float, 3>> pts = {
+        std::array<float, 3>{{10.0f, 0.0f, 0.0f}}
     };
     BuildTreeWithPoints(pts);
 
-    kdtree_point_t query = {0.0f, 0.0f, 0.0f};
+    std::array<float, 3> query{{0.0f, 0.0f, 0.0f}};
     void* results[10];
-    uint32_t count = kdtree_range_search(tree, query, 5.0f, results, 10);
+    uint32_t count = kdtree_range_search(tree, query.data(), 5.0f, results, 10);
 
     EXPECT_EQ(count, 0);
 }
@@ -202,33 +203,33 @@ TEST_F(KDTreeRangeSearchTest, MultiplePoints_Grid) {
     // WHY:  Test with structured data
     // HOW:  3x3x3 grid, query at center
 
-    std::vector<kdtree_point_t> pts;
+    std::vector<std::array<float, 3>> pts;
     for (int x = -1; x <= 1; x++) {
         for (int y = -1; y <= 1; y++) {
             for (int z = -1; z <= 1; z++) {
-                pts.push_back({(float)x, (float)y, (float)z});
+                pts.push_back(std::array<float, 3>{{(float)x, (float)y, (float)z}});
             }
         }
     }
     BuildTreeWithPoints(pts);
 
-    kdtree_point_t query = {0.0f, 0.0f, 0.0f};
+    std::array<float, 3> query{{0.0f, 0.0f, 0.0f}};
     void* results[100];
 
     // Radius 1.0 should find center point only
-    uint32_t count = kdtree_range_search(tree, query, 1.0f, results, 100);
+    uint32_t count = kdtree_range_search(tree, query.data(), 1.0f, results, 100);
     EXPECT_EQ(count, 1);
 
     // Radius 1.5 should find center + 6 face neighbors
-    count = kdtree_range_search(tree, query, 1.5f, results, 100);
+    count = kdtree_range_search(tree, query.data(), 1.5f, results, 100);
     EXPECT_EQ(count, 7);
 
     // Radius 2.0 should find center + 6 faces + 12 edges
-    count = kdtree_range_search(tree, query, 2.0f, results, 100);
+    count = kdtree_range_search(tree, query.data(), 2.0f, results, 100);
     EXPECT_EQ(count, 19);
 
     // Radius 2.5 should find all 27 points
-    count = kdtree_range_search(tree, query, 2.5f, results, 100);
+    count = kdtree_range_search(tree, query.data(), 2.5f, results, 100);
     EXPECT_EQ(count, 27);
 }
 
@@ -237,17 +238,17 @@ TEST_F(KDTreeRangeSearchTest, CapacityLimit) {
     // WHY:  Ensure function respects capacity parameter
     // HOW:  Many points in range, but small capacity
 
-    std::vector<kdtree_point_t> pts;
+    std::vector<std::array<float, 3>> pts;
     for (int i = 0; i < 100; i++) {
-        pts.push_back({0.0f, 0.0f, (float)i * 0.01f});
+        pts.push_back(std::array<float, 3>{{0.0f, 0.0f, (float)i * 0.01f}});
     }
     BuildTreeWithPoints(pts);
 
-    kdtree_point_t query = {0.0f, 0.0f, 0.5f};
+    std::array<float, 3> query{{0.0f, 0.0f, 0.5f}};
     void* results[10];
 
     // Radius 10.0 would find all 100 points, but capacity is only 10
-    uint32_t count = kdtree_range_search(tree, query, 10.0f, results, 10);
+    uint32_t count = kdtree_range_search(tree, query.data(), 10.0f, results, 10);
     EXPECT_EQ(count, 10);
 }
 
@@ -263,17 +264,17 @@ TEST_F(KDTreeRangeSearchTest, RandomPoints_SmallRadius) {
     std::mt19937 rng(42);
     std::uniform_real_distribution<float> dist(-10.0f, 10.0f);
 
-    std::vector<kdtree_point_t> pts;
+    std::vector<std::array<float, 3>> pts;
     for (int i = 0; i < 100; i++) {
-        pts.push_back({dist(rng), dist(rng), dist(rng)});
+        pts.push_back(std::array<float, 3>{{dist(rng), dist(rng), dist(rng)}});
     }
     BuildTreeWithPoints(pts);
 
-    kdtree_point_t query = {0.0f, 0.0f, 0.0f};
+    std::array<float, 3> query{{0.0f, 0.0f, 0.0f}};
     void* results[100];
 
     float radius = 3.0f;
-    uint32_t count = kdtree_range_search(tree, query, radius, results, 100);
+    uint32_t count = kdtree_range_search(tree, query.data(), radius, results, 100);
 
     // Verify against brute force
     std::vector<uint32_t> expected = BruteForceRangeSearch(query, radius);
@@ -300,17 +301,17 @@ TEST_F(KDTreeRangeSearchTest, RandomPoints_LargeRadius) {
     std::mt19937 rng(123);
     std::uniform_real_distribution<float> dist(-10.0f, 10.0f);
 
-    std::vector<kdtree_point_t> pts;
+    std::vector<std::array<float, 3>> pts;
     for (int i = 0; i < 200; i++) {
-        pts.push_back({dist(rng), dist(rng), dist(rng)});
+        pts.push_back(std::array<float, 3>{{dist(rng), dist(rng), dist(rng)}});
     }
     BuildTreeWithPoints(pts);
 
-    kdtree_point_t query = {0.0f, 0.0f, 0.0f};
+    std::array<float, 3> query{{0.0f, 0.0f, 0.0f}};
     void* results[200];
 
     float radius = 10.0f;
-    uint32_t count = kdtree_range_search(tree, query, radius, results, 200);
+    uint32_t count = kdtree_range_search(tree, query.data(), radius, results, 200);
 
     // Verify against brute force
     std::vector<uint32_t> expected = BruteForceRangeSearch(query, radius);
@@ -326,19 +327,19 @@ TEST_F(KDTreeRangeSearchTest, PointExactlyOnBoundary) {
     // WHY:  Test boundary inclusion (should be included with <=)
     // HOW:  Point at distance exactly equal to radius
 
-    std::vector<kdtree_point_t> pts = {
-        {0.0f, 0.0f, 0.0f},
-        {1.0f, 0.0f, 0.0f},  // Distance = 1.0
-        {0.0f, 1.0f, 0.0f},  // Distance = 1.0
-        {0.0f, 0.0f, 1.0f}   // Distance = 1.0
+    std::vector<std::array<float, 3>> pts = {
+        std::array<float, 3>{{0.0f, 0.0f, 0.0f}},
+        std::array<float, 3>{{1.0f, 0.0f, 0.0f}},  // Distance = 1.0
+        std::array<float, 3>{{0.0f, 1.0f, 0.0f}},  // Distance = 1.0
+        std::array<float, 3>{{0.0f, 0.0f, 1.0f}}   // Distance = 1.0
     };
     BuildTreeWithPoints(pts);
 
-    kdtree_point_t query = {0.0f, 0.0f, 0.0f};
+    std::array<float, 3> query{{0.0f, 0.0f, 0.0f}};
     void* results[10];
 
     // Radius exactly 1.0 - should include boundary points
-    uint32_t count = kdtree_range_search(tree, query, 1.0f, results, 10);
+    uint32_t count = kdtree_range_search(tree, query.data(), 1.0f, results, 10);
     EXPECT_EQ(count, 4);  // All 4 points
 }
 
@@ -354,22 +355,22 @@ TEST_F(KDTreeRangeSearchTest, Performance_1000Points) {
     std::mt19937 rng(456);
     std::uniform_real_distribution<float> dist(-100.0f, 100.0f);
 
-    std::vector<kdtree_point_t> pts;
+    std::vector<std::array<float, 3>> pts;
     for (int i = 0; i < 1000; i++) {
-        pts.push_back({dist(rng), dist(rng), dist(rng)});
+        pts.push_back(std::array<float, 3>{{dist(rng), dist(rng), dist(rng)}});
     }
     BuildTreeWithPoints(pts);
 
     void* results[100];
-    kdtree_point_t query = {0.0f, 0.0f, 0.0f};
+    std::array<float, 3> query{{0.0f, 0.0f, 0.0f}};
 
     // Warm-up
-    kdtree_range_search(tree, query, 10.0f, results, 100);
+    kdtree_range_search(tree, query.data(), 10.0f, results, 100);
 
     // Timed queries
     auto start = std::chrono::high_resolution_clock::now();
     for (int i = 0; i < 100; i++) {
-        kdtree_range_search(tree, query, 10.0f, results, 100);
+        kdtree_range_search(tree, query.data(), 10.0f, results, 100);
     }
     auto end = std::chrono::high_resolution_clock::now();
 
@@ -392,16 +393,16 @@ TEST_F(KDTreeRangeSearchTest, EmptyResults) {
     // WHY:  Test early exit paths
     // HOW:  Query far from all points
 
-    std::vector<kdtree_point_t> pts = {
-        {0.0f, 0.0f, 0.0f},
-        {1.0f, 1.0f, 1.0f}
+    std::vector<std::array<float, 3>> pts = {
+        std::array<float, 3>{{0.0f, 0.0f, 0.0f}},
+        std::array<float, 3>{{1.0f, 1.0f, 1.0f}}
     };
     BuildTreeWithPoints(pts);
 
-    kdtree_point_t query = {100.0f, 100.0f, 100.0f};
+    std::array<float, 3> query{{100.0f, 100.0f, 100.0f}};
     void* results[10];
 
-    uint32_t count = kdtree_range_search(tree, query, 1.0f, results, 10);
+    uint32_t count = kdtree_range_search(tree, query.data(), 1.0f, results, 10);
     EXPECT_EQ(count, 0);
 }
 
@@ -410,16 +411,16 @@ TEST_F(KDTreeRangeSearchTest, AllPointsInRange) {
     // WHY:  Test maximum result case
     // HOW:  Very large radius
 
-    std::vector<kdtree_point_t> pts;
+    std::vector<std::array<float, 3>> pts;
     for (int i = 0; i < 50; i++) {
-        pts.push_back({(float)i, (float)i, (float)i});
+        pts.push_back(std::array<float, 3>{{(float)i, (float)i, (float)i}});
     }
     BuildTreeWithPoints(pts);
 
-    kdtree_point_t query = {25.0f, 25.0f, 25.0f};
+    std::array<float, 3> query{{25.0f, 25.0f, 25.0f}};
     void* results[50];
 
-    uint32_t count = kdtree_range_search(tree, query, 1000.0f, results, 50);
+    uint32_t count = kdtree_range_search(tree, query.data(), 1000.0f, results, 50);
     EXPECT_EQ(count, 50);
 }
 
