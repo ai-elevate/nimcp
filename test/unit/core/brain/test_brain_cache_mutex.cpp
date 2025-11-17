@@ -26,6 +26,7 @@
 #include "core/brain/nimcp_brain.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/platform/nimcp_platform_mutex.h"
+#include "utils/nimcp_test_base.h"
 
 //=============================================================================
 // Test Fixtures
@@ -35,11 +36,15 @@
 // FIX APPLIED: Added platform_mutex_t to working_memory_t with locking in 16 functions
 // VALIDATION: Testing if concurrent access issues resolved at nimcp_working_memory.c:420
 // EXPECTED: All 15 tests should now pass (was 6/15 before mutex fix)
-class BrainCacheTest : public ::testing::Test {
+// MIGRATED: Now using NimcpTestBase for automatic global state cleanup
+class BrainCacheTest : public NimcpTestBase {
 protected:
     brain_t brain;
 
     void SetUp() override {
+        // Call parent first for global state cleanup
+        NimcpTestBase::SetUp();
+
         // Create a small test brain for caching tests
         brain = brain_create("cache_test", BRAIN_SIZE_SMALL, BRAIN_TASK_CLASSIFICATION, 4, 2);
         ASSERT_NE(brain, nullptr) << "Failed to create brain";
@@ -49,6 +54,9 @@ protected:
         if (brain) {
             brain_destroy(brain);
         }
+
+        // Call parent last for global state cleanup
+        NimcpTestBase::TearDown();
     }
 
     // Helper: Create test input vector

@@ -30,6 +30,7 @@
 #include "utils/cache/nimcp_cache.h"
 #include "utils/time/nimcp_time.h"
 #include "include/nimcp.h"
+#include "utils/nimcp_test_base.h"
 
 //=============================================================================
 // Test Fixture
@@ -39,9 +40,13 @@
 // FIX APPLIED: Added platform_mutex_t to working_memory_t with locking in 16 functions
 // VALIDATION: Testing if concurrent access issues resolved at nimcp_working_memory.c:420
 // EXPECTED: All 34 tests should now pass (was 15/34 before mutex fix)
-class BrainCacheThreadSafeTest : public ::testing::Test {
+// MIGRATED: Now using NimcpTestBase for automatic global state cleanup
+class BrainCacheThreadSafeTest : public NimcpTestBase {
 protected:
     void SetUp() override {
+        // Call parent first for global state cleanup
+        NimcpTestBase::SetUp();
+
         // Initialize NIMCP systems
         nimcp_memory_init();
         nimcp_cache_init();
@@ -54,6 +59,9 @@ protected:
         nimcp_shutdown();
         nimcp_cache_cleanup();
         nimcp_memory_cleanup();
+
+        // Call parent last for global state cleanup
+        NimcpTestBase::TearDown();
     }
 
     // Helper: Create test brain

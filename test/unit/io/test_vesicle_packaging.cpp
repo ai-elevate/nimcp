@@ -26,8 +26,8 @@
 #include <cmath>
 #include <chrono>
 #include <vector>
-
-    #include "plasticity/neuromodulators/nimcp_vesicle_packaging.h"
+#include "utils/nimcp_test_base.h"
+#include "plasticity/neuromodulators/nimcp_vesicle_packaging.h"
 
 // ============================================================================
 // Helper Functions
@@ -60,11 +60,17 @@ static float compute_stddev(const std::vector<float>& values, float mean) {
 // Test Fixture
 // ============================================================================
 
-class VesiclePackagingTest : public ::testing::Test {
+class VesiclePackagingTest : public NimcpTestBase {
 protected:
     void SetUp() override {
+        NimcpTestBase::SetUp();  // Call parent first for cleanup
+
         current_time = get_time_us();
         vesicle_pool_init(&pool);
+    }
+
+    void TearDown() override {
+        NimcpTestBase::TearDown();  // Call parent last for cleanup
     }
 
     vesicle_pool_state_t pool;

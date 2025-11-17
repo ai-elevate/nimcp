@@ -14,18 +14,23 @@
 
 #include <gtest/gtest.h>
 #include <cmath>
+#include "utils/nimcp_test_base.h"
 #include "plasticity/neuromodulators/nimcp_metabolic_pathways.h"
 
-class MetabolicPathwaysTest : public ::testing::Test {
+class MetabolicPathwaysTest : public NimcpTestBase {
 protected:
     metabolic_state_t state;
 
     void SetUp() override {
+        NimcpTestBase::SetUp();  // Call parent first for cleanup
+
         metabolic_state_init(&state);
     }
 
     void TearDown() override {
         // Cleanup if needed
+
+        NimcpTestBase::TearDown();  // Call parent last for cleanup
     }
 };
 
