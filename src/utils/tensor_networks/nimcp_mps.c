@@ -1201,7 +1201,7 @@ bool mps_canonicalize(
     if (!mps || !mps->sites) return false;
     if (center_site >= mps->num_sites) return false;
 
-    // SIMPLIFIED CANONICALIZATION: Normalize each tensor
+    // SIMPLIFIED CANONICALIZATION: Normalize each tensor and transfer norms
     // This provides basic numerical stability without full SVD/QR
     //
     // Full implementation would require:
@@ -1209,7 +1209,10 @@ bool mps_canonicalize(
     // 2. QR or SVD decomposition
     // 3. Propagating R/S matrices to neighboring sites
     //
-    // For now, we normalize to unit Frobenius norm
+    // ALGORITHM:
+    // Left sweep: Normalize sites 0..center-1, transfer norm to next site
+    // Right sweep: Normalize sites num_sites-1..center+1, transfer norm to prev site
+    // Center: Accumulates all norms (NOT normalized to preserve function)
 
     // Left sweep: Normalize sites to the left of center
     for (uint32_t site = 0; site < center_site; site++) {
@@ -1222,20 +1225,19 @@ bool mps_canonicalize(
         }
         norm = sqrtf(norm);
 
-        // Normalize tensor
+        // Normalize tensor and transfer norm to next site
         if (norm > 1e-12f) {
             float scale = 1.0f / norm;
             for (uint32_t i = 0; i < tensor->total_size; i++) {
                 tensor->data[i] *= scale;
             }
 
-            // In full implementation, would transfer norm to next site
-            // For now, we'll accumulate it in the center
+            // Transfer full norm to next site (preserves product)
+            // This is key: Normalize current site, absorb norm into next site
             if (site + 1 < mps->num_sites) {
                 mps_tensor_t* next_tensor = &mps->sites[site + 1];
-                float transfer_scale = powf(norm, 1.0f / (float)(center_site - site));
                 for (uint32_t i = 0; i < next_tensor->total_size; i++) {
-                    next_tensor->data[i] *= transfer_scale;
+                    next_tensor->data[i] *= norm;
                 }
             }
         }
@@ -1252,40 +1254,26 @@ bool mps_canonicalize(
         }
         norm = sqrtf(norm);
 
-        // Normalize tensor
+        // Normalize tensor and transfer norm to previous site
         if (norm > 1e-12f) {
             float scale = 1.0f / norm;
             for (uint32_t i = 0; i < tensor->total_size; i++) {
                 tensor->data[i] *= scale;
             }
 
-            // Transfer norm to previous site
+            // Transfer full norm to previous site (preserves product)
             if (site > 0) {
                 mps_tensor_t* prev_tensor = &mps->sites[site - 1];
-                float transfer_scale = powf(norm, 1.0f / (float)(site - (int)center_site));
                 for (uint32_t i = 0; i < prev_tensor->total_size; i++) {
-                    prev_tensor->data[i] *= transfer_scale;
+                    prev_tensor->data[i] *= norm;
                 }
             }
         }
     }
 
-    // Center site normalization (contains accumulated singular values)
-    mps_tensor_t* center_tensor = &mps->sites[center_site];
-    float center_norm = 0.0f;
-    for (uint32_t i = 0; i < center_tensor->total_size; i++) {
-        center_norm += center_tensor->data[i] * center_tensor->data[i];
-    }
-    center_norm = sqrtf(center_norm);
-
-    // Optionally normalize center (or leave unnormalized to preserve total norm)
-    // For numerical stability, we'll normalize it
-    if (center_norm > 1e-12f) {
-        float scale = 1.0f / center_norm;
-        for (uint32_t i = 0; i < center_tensor->total_size; i++) {
-            center_tensor->data[i] *= scale;
-        }
-    }
+    // Center site: DO NOT normalize - it accumulates all the norms
+    // This preserves the overall function represented by the MPS
+    // Canonicalization changes internal representation, not the function!
 
     return true;
 }

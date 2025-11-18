@@ -1448,12 +1448,24 @@ nimcp_result_t nimcp_encryption_generate_key(uint8_t* key)
     if (!key)
         return NIMCP_INVALID_PARAM;
 
+    // WHAT: Initialize RNG only once to prevent identical seeds in rapid succession
+    // WHY:  Multiple srand() calls with same time(NULL) produce identical sequences
+    // HOW:  Use static flag to ensure one-time seeding
+    static int rng_initialized = 0;
     static unsigned int seed_counter = 0;
-    unsigned int seed = (unsigned int) time(NULL) ^ (unsigned int) clock() ^ (++seed_counter);
-    srand(seed);
 
+    if (!rng_initialized) {
+        unsigned int seed = (unsigned int) time(NULL) ^ (unsigned int) clock() ^ getpid();
+        srand(seed);
+        rng_initialized = 1;
+    }
+
+    // WHAT: Generate random bytes with additional mixing
+    // WHY:  Even after single seed, each call must produce different output
+    // HOW:  Increment counter and mix with rand() calls
+    ++seed_counter;
     for (int i = 0; i < NIMCP_SECURITY_KEY_SIZE; i++) {
-        key[i] = (uint8_t) ((rand() ^ ((unsigned int)rand() << 8)) % 256);
+        key[i] = (uint8_t) ((rand() ^ ((unsigned int)rand() << 8) ^ seed_counter) % 256);
     }
 
     return NIMCP_SUCCESS;
