@@ -102,6 +102,10 @@ static napi_value CreateNeuralNetwork(napi_env env, napi_callback_info info) {
 
     // Wrap the handle
     NetworkWrap* wrap = (NetworkWrap*)malloc(sizeof(NetworkWrap));
+    if (!wrap) {
+        nimcp_network_destroy(network);
+        return NULL;
+    }
     wrap->network = network;
 
     status = napi_wrap(env, this_arg, wrap, network_finalize, NULL, NULL);
@@ -214,6 +218,10 @@ static napi_value CreateMetricsCollector(napi_env env, napi_callback_info info) 
 
     // Wrap the handle
     MetricsCollectorWrap* wrap = (MetricsCollectorWrap*)malloc(sizeof(MetricsCollectorWrap));
+    if (!wrap) {
+        nimcp_metrics_destroy(collector);
+        return NULL;
+    }
     wrap->collector = collector;
 
     status = napi_wrap(env, this_arg, wrap, metrics_collector_finalize, NULL, NULL);

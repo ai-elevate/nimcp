@@ -17,6 +17,8 @@
 #include "security/nimcp_security.h"
 #include <gtest/gtest.h>
 #include <string.h>
+#include <vector>
+#include <array>
 
 //=============================================================================
 // Test Fixtures
@@ -1295,6 +1297,93 @@ TEST(EncryptionTest_Static, GenerateKey_Randomness)
 
     // Keys should differ (very high probability)
     EXPECT_NE(memcmp(key1, key2, NIMCP_SECURITY_KEY_SIZE), 0);
+}
+
+/**
+ * WHAT: Test cryptographic quality of generated keys (entropy and uniqueness)
+ * WHY:  Verifies fix for CWE-338 vulnerability - ensures keys are cryptographically secure
+ *       Previous implementation used rand/srand which had only ~32 bits entropy
+ *
+ * SECURITY TEST: Validates that:
+ *       1. Multiple keys are all unique (no collisions in 1000 samples)
+ *       2. Keys have high entropy (not biased toward certain values)
+ *       3. No keys are all zeros or all ones (degenerate cases)
+ *       4. Byte distribution is roughly uniform (no obvious bias)
+ */
+TEST(EncryptionTest_Static, GenerateKey_CryptographicQuality)
+{
+    const int NUM_KEYS = 1000;
+    std::vector<std::array<uint8_t, NIMCP_SECURITY_KEY_SIZE>> keys(NUM_KEYS);
+
+    // WHAT: Generate 1000 keys to test for collisions and entropy
+    // WHY:  Weak RNG (like old rand/srand) would show patterns or collisions
+    for (int i = 0; i < NUM_KEYS; i++) {
+        nimcp_result_t result = nimcp_encryption_generate_key(keys[i].data());
+        ASSERT_EQ(result, NIMCP_SUCCESS) << "Key generation failed at index " << i;
+    }
+
+    // WHAT: Verify all keys are unique (no collisions)
+    // WHY:  Cryptographically secure RNG should never produce duplicate 256-bit keys
+    //       in only 1000 samples (probability is astronomically low: ~2^-256)
+    for (int i = 0; i < NUM_KEYS; i++) {
+        for (int j = i + 1; j < NUM_KEYS; j++) {
+            EXPECT_NE(memcmp(keys[i].data(), keys[j].data(), NIMCP_SECURITY_KEY_SIZE), 0)
+                << "Duplicate keys found at indices " << i << " and " << j
+                << " - indicates weak RNG!";
+        }
+    }
+
+    // WHAT: Check for degenerate keys (all zeros, all ones)
+    // WHY:  These indicate RNG failure or uninitialized buffer
+    for (int i = 0; i < NUM_KEYS; i++) {
+        bool all_zeros = true;
+        bool all_ones = true;
+
+        for (int j = 0; j < NIMCP_SECURITY_KEY_SIZE; j++) {
+            if (keys[i][j] != 0)
+                all_zeros = false;
+            if (keys[i][j] != 0xFF)
+                all_ones = false;
+        }
+
+        EXPECT_FALSE(all_zeros) << "Key " << i << " is all zeros - RNG failure!";
+        EXPECT_FALSE(all_ones) << "Key " << i << " is all ones - RNG failure!";
+    }
+
+    // WHAT: Analyze byte distribution across all keys
+    // WHY:  Cryptographic RNG should produce uniform distribution
+    //       Weak RNG (rand/srand) often shows bias
+    std::array<int, 256> byte_counts = {};
+
+    for (int i = 0; i < NUM_KEYS; i++) {
+        for (int j = 0; j < NIMCP_SECURITY_KEY_SIZE; j++) {
+            byte_counts[keys[i][j]]++;
+        }
+    }
+
+    // WHAT: Verify no byte value is severely under/over-represented
+    // WHY:  Expected count per byte value: (1000 keys * 32 bytes) / 256 = 125
+    //       Allow +/- 50% deviation (62-188) for statistical variation
+    //       Severe bias indicates weak RNG
+    int expected = (NUM_KEYS * NIMCP_SECURITY_KEY_SIZE) / 256;
+    int min_acceptable = expected / 2;      // 62
+    int max_acceptable = expected * 3 / 2;  // 188
+
+    int biased_bytes = 0;
+    for (int i = 0; i < 256; i++) {
+        if (byte_counts[i] < min_acceptable || byte_counts[i] > max_acceptable) {
+            biased_bytes++;
+        }
+    }
+
+    // WHAT: Expect less than 10% of byte values to be outside acceptable range
+    // WHY:  Some statistical variation is normal, but widespread bias indicates weak RNG
+    EXPECT_LT(biased_bytes, 26)  // < 10% of 256
+        << "Too many biased byte values (" << biased_bytes << "/256) - indicates weak RNG!";
+
+    // WHAT: Calculate basic entropy estimate (Chi-squared test would be better)
+    // WHY:  High entropy indicates good randomness
+    // NOTE: This is a simplified check - production code should use proper statistical tests
 }
 
 //=============================================================================

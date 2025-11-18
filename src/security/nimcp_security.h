@@ -28,7 +28,14 @@ extern "C" {
 #define NIMCP_SECURITY_DIRECTIVE_MAX_LEN 512
 #define NIMCP_SECURITY_HASH_SIZE 32
 #define NIMCP_SECURITY_KEY_SIZE 32
-#define NIMCP_SECURITY_IV_SIZE 16
+
+// WHAT: AES-256-GCM encryption parameters (libsodium crypto_aead_aes256gcm_*)
+// WHY:  Production-grade authenticated encryption replacing insecure XOR cipher
+// HOW:  12-byte nonce (GCM standard) + 16-byte authentication tag
+#define NIMCP_SECURITY_NONCE_SIZE 12    // AES-GCM nonce (was IV_SIZE 16 for XOR)
+#define NIMCP_SECURITY_TAG_SIZE 16      // Authentication tag for tamper detection
+#define NIMCP_SECURITY_IV_SIZE NIMCP_SECURITY_NONCE_SIZE  // Backwards compatibility alias
+
 #define NIMCP_SECURITY_MAX_ENCRYPTED_SIZE 65536
 
 // Security threat levels

@@ -28,8 +28,33 @@
 #include <sys/mman.h>
 #include <unistd.h>
 #include <math.h>
+
+// WHAT: Production-grade encryption using libsodium
+// WHY:  Replaces insecure XOR cipher with AES-256-GCM authenticated encryption
+// HOW:  crypto_aead_aes256gcm_* API provides NIST-standard AEAD cipher
+#ifdef NIMCP_ENABLE_ENCRYPTION
+#include <sodium.h>
+#endif
+
 #include "utils/memory/nimcp_memory.h"  // CRITICAL: Declares nimcp_calloc/nimcp_free return types
 #include "core/neuralnet/nimcp_neuralnet.h"  // Phase 11: Access to neural network for biological security
+
+// Platform-specific includes for cryptographically secure RNG
+#ifdef _WIN32
+#include <windows.h>
+#include <bcrypt.h>
+#include <ntstatus.h>
+#pragma comment(lib, "bcrypt.lib")
+#else
+#include <fcntl.h>
+#include <errno.h>
+#include <fcntl.h>
+#include <errno.h>
+// BSD systems provide arc4random_buf() as a fallback
+#if defined(__FreeBSD__) || defined(__OpenBSD__) || defined(__NetBSD__) || defined(__APPLE__)
+// arc4random_buf is in stdlib.h which is already included
+#endif
+#endif
 
 //=============================================================================
 // Constants for Performance and Maintainability
@@ -1414,6 +1439,8 @@ nimcp_result_t nimcp_security_evaluate_skepticism(const char* information,
  *
  * PERFORMANCE: O(1) - simple allocation
  *
+ * SECURITY: Initializes libsodium on first use (thread-safe, idempotent)
+ *
  * @param key 32-byte encryption key
  * @return Encryption context or NULL on failure
  */
@@ -1421,6 +1448,26 @@ nimcp_encryption_context_t* nimcp_encryption_create(const uint8_t* key)
 {
     if (!key)
         return NULL;
+
+#ifdef NIMCP_ENABLE_ENCRYPTION
+    // WHAT: Initialize libsodium cryptographic library
+    // WHY:  Required before using any libsodium functions
+    // HOW:  sodium_init() is thread-safe and idempotent (safe to call multiple times)
+    if (sodium_init() < 0) {
+        // WHAT: Initialization failed - libsodium unavailable
+        // WHY:  Could indicate missing CPU features (AES-NI) or library corruption
+        return NULL;
+    }
+
+    // WHAT: Verify AES-256-GCM is available on this CPU
+    // WHY:  AES-GCM requires hardware AES support (AES-NI on x86)
+    // HOW:  crypto_aead_aes256gcm_is_available() checks CPU capabilities
+    if (crypto_aead_aes256gcm_is_available() == 0) {
+        // WHAT: AES-GCM not supported - CPU lacks AES-NI instructions
+        // WHY:  Fallback could use ChaCha20-Poly1305, but we require AES-256-GCM
+        return NULL;
+    }
+#endif
 
     nimcp_encryption_context_t* ctx =
         (nimcp_encryption_context_t*) nimcp_calloc(1, sizeof(nimcp_encryption_context_t));
@@ -1434,11 +1481,14 @@ nimcp_encryption_context_t* nimcp_encryption_create(const uint8_t* key)
 }
 
 /**
- * WHAT: Generates encryption key with improved entropy sources
- * WHY:  Better than simple srand(time(NULL)) but still for demonstration.
- *       Production should use /dev/urandom directly.
+ * WHAT: Generates cryptographically secure encryption key
+ * WHY:  Encryption keys must be unpredictable. Weak keys compromise all security.
  *
- * PERFORMANCE: O(1)
+ * SECURITY: Uses cryptographically secure random number generator (CSPRNG)
+ *           - libsodium: randombytes_buf() (getrandom/arc4random/CryptGenRandom)
+ *           - Fallback: /dev/urandom on Unix, CryptGenRandom on Windows
+ *
+ * PERFORMANCE: O(1) - ~1 microsecond for 32 bytes
  *
  * @param key Output buffer for 32-byte key
  * @return NIMCP_SUCCESS or error code
@@ -1448,66 +1498,115 @@ nimcp_result_t nimcp_encryption_generate_key(uint8_t* key)
     if (!key)
         return NIMCP_INVALID_PARAM;
 
-    // WHAT: Initialize RNG only once to prevent identical seeds in rapid succession
-    // WHY:  Multiple srand() calls with same time(NULL) produce identical sequences
-    // HOW:  Use static flag to ensure one-time seeding
-    static int rng_initialized = 0;
-    static unsigned int seed_counter = 0;
+#ifdef NIMCP_ENABLE_ENCRYPTION
+    // WHAT: Use libsodium's cryptographically secure RNG
+    // WHY:  randombytes_buf() uses best available source (getrandom, /dev/urandom, etc.)
+    // HOW:  Automatically selects platform-specific CSPRNG
+    randombytes_buf(key, NIMCP_SECURITY_KEY_SIZE);
+    return NIMCP_SUCCESS;
+#else
+    // WHAT: Fallback to platform-specific CSPRNG when libsodium unavailable
+    // WHY:  Still better than rand() - uses /dev/urandom (Unix) or CryptGenRandom (Windows)
 
-    if (!rng_initialized) {
-        unsigned int seed = (unsigned int) time(NULL) ^ (unsigned int) clock() ^ getpid();
-        srand(seed);
-        rng_initialized = 1;
-    }
+    #ifdef _WIN32
+        // WHAT: Windows - use BCryptGenRandom (CNG API)
+        // WHY:  Cryptographically secure, FIPS 140-2 compliant, available since Windows Vista
+        // HOW:  Call BCryptGenRandom with BCRYPT_USE_SYSTEM_PREFERRED_RNG flag
+        NTSTATUS status = BCryptGenRandom(
+            NULL,                                    // Use default RNG algorithm
+            key,                                      // Output buffer
+            NIMCP_SECURITY_KEY_SIZE,                 // Number of bytes to generate
+            BCRYPT_USE_SYSTEM_PREFERRED_RNG          // Use system-preferred RNG
+        );
 
-    // WHAT: Generate random bytes with additional mixing
-    // WHY:  Even after single seed, each call must produce different output
-    // HOW:  Increment counter and mix with rand() calls
-    ++seed_counter;
-    for (int i = 0; i < NIMCP_SECURITY_KEY_SIZE; i++) {
-        key[i] = (uint8_t) ((rand() ^ ((unsigned int)rand() << 8) ^ seed_counter) % 256);
-    }
+        if (!BCRYPT_SUCCESS(status)) {
+            // WHAT: Log detailed error for debugging
+            // WHY:  Helps diagnose RNG failures in production
+            fprintf(stderr, "SECURITY: BCryptGenRandom failed with status 0x%lx\n", (unsigned long) status);
+            return NIMCP_IO_ERROR;
+        }
+    #else
+        // WHAT: Unix/Linux - read from /dev/urandom using low-level I/O
+        // WHY:  /dev/urandom provides kernel CSPRNG, never blocks
+        // HOW:  Use read() instead of fread() for proper error handling
+        int fd = open("/dev/urandom", O_RDONLY);
+        if (fd < 0) {
+            // WHAT: Try arc4random_buf as fallback (available on BSD, macOS)
+            // WHY:  Some containerized environments might not have /dev/urandom mounted
+            #if defined(__FreeBSD__) || defined(__OpenBSD__) || defined(__NetBSD__) || defined(__APPLE__)
+            arc4random_buf(key, NIMCP_SECURITY_KEY_SIZE);
+            return NIMCP_SUCCESS;
+            #else
+            // WHAT: Report detailed error for debugging
+            // WHY:  Missing /dev/urandom is a serious system configuration issue
+            fprintf(stderr, "SECURITY: Failed to open /dev/urandom: %s\n", strerror(errno));
+            return NIMCP_IO_ERROR;
+            #endif
+        }
+
+        // WHAT: Read exactly NIMCP_SECURITY_KEY_SIZE bytes from /dev/urandom
+        // WHY:  Partial reads can occur with character devices, must loop until complete
+        // HOW:  Loop while bytes_read < size, handling EINTR interruptions
+        size_t total_read = 0;
+        while (total_read < NIMCP_SECURITY_KEY_SIZE) {
+            ssize_t n = read(fd, key + total_read, NIMCP_SECURITY_KEY_SIZE - total_read);
+
+            if (n < 0) {
+                // WHAT: Handle interrupted system call
+                // WHY:  read() can be interrupted by signals, must retry
+                if (errno == EINTR)
+                    continue;
+
+                // WHAT: Fatal read error occurred
+                // WHY:  Cannot continue if RNG device fails
+                fprintf(stderr, "SECURITY: Failed to read from /dev/urandom: %s\n", strerror(errno));
+                close(fd);
+                return NIMCP_IO_ERROR;
+            }
+
+            if (n == 0) {
+                // WHAT: Unexpected EOF from /dev/urandom
+                // WHY:  /dev/urandom should never return EOF, indicates system problem
+                fprintf(stderr, "SECURITY: Unexpected EOF from /dev/urandom\n");
+                close(fd);
+                return NIMCP_IO_ERROR;
+            }
+
+            total_read += (size_t) n;
+        }
+
+        close(fd);
+    #endif
 
     return NIMCP_SUCCESS;
+#endif
 }
 
 /**
- * WHAT: Simple stream cipher for demonstration
- * WHY:  Fast, no dependencies. For production, replace with ChaCha20.
- *
- * PERFORMANCE: O(n) single pass
- *
- * @param input Input data
- * @param len Length
- * @param key Key
- * @param output Output buffer
- */
-static void xor_cipher(const uint8_t* input, size_t len, const uint8_t* key, uint8_t* output)
-{
-    for (size_t i = 0; i < len; i++) {
-        output[i] = input[i] ^ key[i % NIMCP_SECURITY_KEY_SIZE];
-    }
-}
-
-
-/**
- * WHAT: Encrypts plaintext data for secure inter-component communication
+ * WHAT: Encrypts plaintext data using AES-256-GCM authenticated encryption
  * WHY:  Neural network components may exchange sensitive data (model weights,
- *       activation patterns, internal state). Encryption prevents interception
- *       and eavesdropping during transit.
+ *       activation patterns, internal state). AES-GCM provides:
+ *       1. Confidentiality - prevents eavesdropping
+ *       2. Authenticity - prevents tampering
+ *       3. Performance - hardware acceleration (AES-NI)
  *
  * PERFORMANCE: O(n) where n is plaintext size
+ *              Hardware-accelerated: ~0.5-1 cycles/byte on modern CPUs
  *
- * FORMAT: [IV (16 bytes)][Encrypted Data (n bytes)]
- *         IV prepended to allow random initialization per message
+ * FORMAT: [NONCE (12 bytes)][CIPHERTEXT + TAG (n + 16 bytes)]
+ *         - Nonce: Random value, must never repeat for same key
+ *         - TAG: 16-byte authentication tag (prevents tampering)
  *
- * SECURITY: Currently uses XOR cipher (INSECURE - demonstration only)
- *          Production should use AES-256-GCM for authenticated encryption
+ * SECURITY: AES-256-GCM (NIST-approved AEAD cipher)
+ *           - CWE-327 FIXED: Replaced weak XOR cipher
+ *           - Nonce generated using CSPRNG (libsodium randombytes_buf)
+ *           - Authentication prevents tampering attacks
+ *           - 256-bit key provides post-quantum security margin
  *
  * @param ctx Encryption context with key
  * @param plaintext Data to encrypt
  * @param plaintext_size Length of plaintext
- * @param ciphertext Output buffer (must fit IV + plaintext)
+ * @param ciphertext Output buffer (must fit NONCE + plaintext + TAG)
  * @param ciphertext_size Size of output buffer
  * @param actual_size Output: actual size of encrypted data
  * @return NIMCP_SUCCESS or error code
@@ -1528,65 +1627,108 @@ nimcp_result_t nimcp_encryption_encrypt(nimcp_encryption_context_t* ctx, const u
     if (plaintext_size > NIMCP_SECURITY_MAX_ENCRYPTED_SIZE)
         return NIMCP_BUFFER_TOO_SMALL;
 
-    /* WHAT: Calculate required output buffer size (IV + encrypted data)
-     * WHY:  IV must be transmitted with ciphertext for decryption.
-     *       Each message uses random IV to prevent pattern analysis.
+    /* WHAT: Calculate required output buffer size (NONCE + ciphertext + TAG)
+     * WHY:  - NONCE (12 bytes): Must be transmitted for decryption
+     *       - Ciphertext (n bytes): Same size as plaintext
+     *       - TAG (16 bytes): Authentication tag for tamper detection
      */
-    size_t required_size = NIMCP_SECURITY_IV_SIZE + plaintext_size;
+    size_t required_size = NIMCP_SECURITY_NONCE_SIZE + plaintext_size + NIMCP_SECURITY_TAG_SIZE;
     if (ciphertext_size < required_size)
         return NIMCP_BUFFER_TOO_SMALL;
 
-    /* WHAT: Generate random initialization vector (IV)
-     * WHY:  IV randomizes encryption so identical plaintexts produce
-     *       different ciphertexts. Prevents pattern recognition attacks.
+#ifdef NIMCP_ENABLE_ENCRYPTION
+    /* WHAT: Generate random nonce (number used once)
+     * WHY:  Nonce must NEVER repeat for same key. Reuse catastrophically breaks security.
+     * HOW:  libsodium's randombytes_buf uses CSPRNG (/dev/urandom, getrandom, etc.)
      *
-     * SECURITY NOTE: Uses rand() which is weak. Production should use
-     *                CSPRNG (cryptographically secure RNG).
+     * SECURITY: 12 bytes = 2^96 possible values
+     *           - Collision probability negligible even after 2^48 messages
+     *           - MUST use CSPRNG (not rand()!)
      */
-    uint8_t iv[NIMCP_SECURITY_IV_SIZE];
-    for (int i = 0; i < NIMCP_SECURITY_IV_SIZE; i++) {
-        iv[i] = (uint8_t) (rand() % 256);
+    uint8_t nonce[NIMCP_SECURITY_NONCE_SIZE];
+    randombytes_buf(nonce, NIMCP_SECURITY_NONCE_SIZE);
+
+    /* WHAT: Prepend nonce to ciphertext
+     * WHY:  Receiver needs nonce to decrypt. Nonce is public (not secret).
+     * HOW:  Standard practice - transmit nonce in clear alongside ciphertext
+     */
+    memcpy(ciphertext, nonce, NIMCP_SECURITY_NONCE_SIZE);
+
+    /* WHAT: Encrypt and authenticate using AES-256-GCM
+     * WHY:  - AES-256: NIST-approved, hardware-accelerated, 256-bit security
+     *       - GCM mode: Provides authentication (AEAD - Authenticated Encryption with Associated Data)
+     * HOW:  libsodium crypto_aead_aes256gcm_encrypt API
+     *
+     * PARAMETERS:
+     *   - c: Output ciphertext + tag (n + 16 bytes)
+     *   - clen: Output length (will be plaintext_size + TAG_SIZE)
+     *   - m: Plaintext input
+     *   - mlen: Plaintext length
+     *   - ad: Additional authenticated data (NULL - none)
+     *   - adlen: Length of additional data (0)
+     *   - nsec: Secret nonce (NULL - we use public nonce only)
+     *   - npub: Public nonce (12 bytes)
+     *   - k: Encryption key (32 bytes)
+     */
+    unsigned long long ciphertext_len;
+    int result = crypto_aead_aes256gcm_encrypt(
+        ciphertext + NIMCP_SECURITY_NONCE_SIZE,  // Output: ciphertext + tag
+        &ciphertext_len,                          // Output: length
+        plaintext,                                // Input: plaintext
+        plaintext_size,                           // Input: plaintext length
+        NULL,                                     // No additional authenticated data
+        0,                                        // AAD length
+        NULL,                                     // No secret nonce
+        nonce,                                    // Public nonce
+        ctx->key                                  // Encryption key
+    );
+
+    if (result != 0) {
+        // WHAT: Encryption failed
+        // WHY:  Could indicate hardware issue or corrupted libsodium
+        return NIMCP_ERROR;
     }
 
-    /* WHAT: Prepend IV to ciphertext
-     * WHY:  Receiver needs IV to decrypt. Standard practice is to transmit
-     *       IV in clear (it's not secret, just needs to be random).
-     */
-    memcpy(ciphertext, iv, NIMCP_SECURITY_IV_SIZE);
+    *actual_size = NIMCP_SECURITY_NONCE_SIZE + ciphertext_len;
 
-    /* WHAT: Encrypt plaintext using XOR cipher
-     * WHY:  Demonstration cipher for embedded systems. Fast but insecure.
-     *
-     * TODO: Replace with AES-256-GCM for production:
-     *       - Provides authentication (prevents tampering)
-     *       - Industry standard with hardware acceleration
-     *       - Resistant to cryptanalysis
-     */
-    xor_cipher(plaintext, plaintext_size, ctx->key, ciphertext + NIMCP_SECURITY_IV_SIZE);
-
-    *actual_size = required_size;
+#else
+    // WHAT: Fallback when libsodium unavailable - return error
+    // WHY:  Without proper encryption, system is vulnerable
+    // NOTE: Could implement ChaCha20-Poly1305 fallback, but libsodium should always be available
+    (void)plaintext_size;  // Suppress unused warning
+    return NIMCP_ERROR;
+#endif
 
     return NIMCP_SUCCESS;
 }
 
 /**
- * WHAT: Decrypts ciphertext to recover original plaintext
- * WHY:  Receiving component needs to decrypt data encrypted by sender
+ * WHAT: Decrypts and authenticates ciphertext using AES-256-GCM
+ * WHY:  Receiving component needs to:
+ *       1. Decrypt data encrypted by sender
+ *       2. Verify data hasn't been tampered with
+ *       3. Reject forged or corrupted messages
  *
  * PERFORMANCE: O(n) where n is ciphertext size
+ *              Hardware-accelerated: ~0.5-1 cycles/byte on modern CPUs
  *
- * FORMAT: Expects [IV (16 bytes)][Encrypted Data (n bytes)]
+ * FORMAT: Expects [NONCE (12 bytes)][CIPHERTEXT + TAG (n + 16 bytes)]
+ *         - Nonce: Must match the one used during encryption
+ *         - TAG: 16-byte authentication tag (verified during decryption)
  *
- * SECURITY: XOR cipher is symmetric - same operation for encrypt/decrypt
- *          Production AES-256-GCM would also verify authentication tag
+ * SECURITY: AES-256-GCM authenticated decryption
+ *           - CWE-327 FIXED: Replaced insecure XOR cipher
+ *           - Authentication prevents tampered data from being decrypted
+ *           - Wrong key or corrupted data causes decryption to fail
+ *           - Timing-safe comparison prevents timing attacks
  *
  * @param ctx Encryption context (must have same key as encryptor)
- * @param ciphertext Encrypted data with prepended IV
- * @param ciphertext_size Length of ciphertext including IV
+ * @param ciphertext Encrypted data with prepended nonce
+ * @param ciphertext_size Length of ciphertext including nonce and tag
  * @param plaintext Output buffer for decrypted data
  * @param plaintext_size Size of output buffer
  * @param actual_size Output: actual size of decrypted data
- * @return NIMCP_SUCCESS or error code
+ * @return NIMCP_SUCCESS or error code (NIMCP_ERROR if authentication fails)
  */
 nimcp_result_t nimcp_encryption_decrypt(nimcp_encryption_context_t* ctx, const uint8_t* ciphertext,
                                         size_t ciphertext_size, uint8_t* plaintext,
@@ -1598,37 +1740,89 @@ nimcp_result_t nimcp_encryption_decrypt(nimcp_encryption_context_t* ctx, const u
     if (!ctx->initialized)
         return NIMCP_INVALID_STATE;
 
-    /* WHAT: Validate minimum ciphertext size
-     * WHY:  Must contain at least IV. Shorter messages are malformed.
+    /* WHAT: Validate minimum ciphertext size (NONCE + TAG)
+     * WHY:  Must contain at least nonce + tag. Shorter messages are malformed.
+     * HOW:  Minimum valid ciphertext is NONCE (12) + TAG (16) = 28 bytes
      */
-    if (ciphertext_size < NIMCP_SECURITY_IV_SIZE)
+    size_t min_size = NIMCP_SECURITY_NONCE_SIZE + NIMCP_SECURITY_TAG_SIZE;
+    if (ciphertext_size < min_size)
         return NIMCP_INVALID_PARAM;
 
-    /* WHAT: Calculate size of actual encrypted data (excluding IV)
-     * WHY:  IV is metadata, not part of plaintext. Must subtract it.
+    /* WHAT: Calculate plaintext size (excluding NONCE and TAG)
+     * WHY:  Plaintext = Ciphertext - NONCE - TAG
+     * HOW:  Subtract both nonce and tag from total ciphertext size
      */
-    size_t encrypted_data_size = ciphertext_size - NIMCP_SECURITY_IV_SIZE;
+    size_t expected_plaintext_size = ciphertext_size - NIMCP_SECURITY_NONCE_SIZE - NIMCP_SECURITY_TAG_SIZE;
 
-    if (plaintext_size < encrypted_data_size)
+    if (plaintext_size < expected_plaintext_size)
         return NIMCP_BUFFER_TOO_SMALL;
 
-    /* WHAT: Extract IV and encrypted data portions
-     * WHY:  IV was prepended during encryption. Currently unused by XOR
-     *       cipher but would be needed for proper block cipher (AES).
+#ifdef NIMCP_ENABLE_ENCRYPTION
+    /* WHAT: Extract nonce from ciphertext
+     * WHY:  Nonce is required for AES-GCM decryption
+     * HOW:  First 12 bytes of ciphertext contain the nonce
+     */
+    const uint8_t* nonce = ciphertext;
+
+    /* WHAT: Extract encrypted data + tag portion
+     * WHY:  Remaining bytes after nonce contain ciphertext and authentication tag
+     * HOW:  Skip first NONCE_SIZE bytes
+     */
+    const uint8_t* encrypted_data = ciphertext + NIMCP_SECURITY_NONCE_SIZE;
+    size_t encrypted_data_size = ciphertext_size - NIMCP_SECURITY_NONCE_SIZE;
+
+    /* WHAT: Decrypt and verify authentication tag using AES-256-GCM
+     * WHY:  - Decryption recovers original plaintext
+     *       - Tag verification ensures data hasn't been tampered with
+     *       - Provides both confidentiality AND authenticity
+     * HOW:  libsodium crypto_aead_aes256gcm_decrypt API
      *
-     * NOTE: IV intentionally unused in current XOR implementation.
-     *       Proper block cipher mode (CBC, GCM) would use it.
+     * PARAMETERS:
+     *   - m: Output plaintext buffer
+     *   - mlen: Output plaintext length (can be NULL)
+     *   - nsec: Secret nonce output (NULL - not used)
+     *   - c: Input ciphertext + tag
+     *   - clen: Input ciphertext + tag length
+     *   - ad: Additional authenticated data (NULL - none)
+     *   - adlen: AAD length (0)
+     *   - npub: Public nonce (12 bytes)
+     *   - k: Decryption key (32 bytes)
+     *
+     * RETURN: 0 on success, -1 if authentication fails
      */
-    // const uint8_t* iv = ciphertext;  // Would be used by proper cipher
-    const uint8_t* encrypted_data = ciphertext + NIMCP_SECURITY_IV_SIZE;
+    unsigned long long decrypted_len;
+    int result = crypto_aead_aes256gcm_decrypt(
+        plaintext,                                // Output: plaintext
+        &decrypted_len,                           // Output: plaintext length
+        NULL,                                     // No secret nonce output
+        encrypted_data,                           // Input: ciphertext + tag
+        encrypted_data_size,                      // Input: ciphertext + tag length
+        NULL,                                     // No additional authenticated data
+        0,                                        // AAD length
+        nonce,                                    // Public nonce
+        ctx->key                                  // Decryption key
+    );
 
-    /* WHAT: Decrypt using XOR cipher
-     * WHY:  XOR is reversible: encrypt(decrypt(x)) = decrypt(encrypt(x)) = x
-     *       Same operation works for both directions.
-     */
-    xor_cipher(encrypted_data, encrypted_data_size, ctx->key, plaintext);
+    if (result != 0) {
+        /* WHAT: Authentication failed - message tampered or wrong key
+         * WHY:  AES-GCM verification detected:
+         *       - Corrupted ciphertext
+         *       - Wrong decryption key
+         *       - Modified authentication tag
+         *       - Incorrect nonce
+         * SECURITY: DO NOT return partial plaintext - it may be forged
+         */
+        return NIMCP_ERROR;
+    }
 
-    *actual_size = encrypted_data_size;
+    *actual_size = (size_t) decrypted_len;
+
+#else
+    // WHAT: Fallback when libsodium unavailable - return error
+    // WHY:  Cannot decrypt without proper cryptographic library
+    (void)expected_plaintext_size;  // Suppress unused warning
+    return NIMCP_ERROR;
+#endif
 
     return NIMCP_SUCCESS;
 }

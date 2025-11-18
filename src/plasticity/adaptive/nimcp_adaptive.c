@@ -1361,6 +1361,9 @@ float adaptive_network_learn(adaptive_network_t network, const training_example_
 
     // Forward pass to get current output
     float* output = nimcp_malloc(example->target_size * sizeof(float));
+    if (!output) {
+        return -1.0f;
+    }
     adaptive_network_forward(network, example->input, example->input_size, output,
                              example->target_size, 0);
 
@@ -1924,6 +1927,9 @@ bool adaptive_network_analyze_activation(adaptive_network_t network, const float
 
     // Forward pass
     float* output = nimcp_malloc(network->config.base_config.output_size * sizeof(float));
+    if (!output) {
+        return false;
+    }
     uint32_t active_count = adaptive_network_forward(network, input, input_size, output,
                                                      network->config.base_config.output_size, 0);
 
@@ -1933,6 +1939,13 @@ bool adaptive_network_analyze_activation(adaptive_network_t network, const float
     // Allocate arrays for active neurons
     analysis->active_neuron_ids = nimcp_malloc(active_count * sizeof(uint32_t));
     analysis->activation_strengths = nimcp_malloc(active_count * sizeof(float));
+
+    if (!analysis->active_neuron_ids || !analysis->activation_strengths) {
+        nimcp_free(analysis->active_neuron_ids);
+        nimcp_free(analysis->activation_strengths);
+        nimcp_free(output);
+        return;
+    }
 
     // Collect active neurons
     uint32_t idx = 0;

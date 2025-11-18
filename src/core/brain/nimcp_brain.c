@@ -4641,6 +4641,10 @@ float brain_learn_example(brain_t brain, const float* features, uint32_t num_fea
 
     // Convert label to target output
     float* target = nimcp_malloc(brain->config.num_outputs * sizeof(float));
+    if (!target) {
+        set_error("Failed to allocate target vector (%u outputs)", brain->config.num_outputs);
+        return NIMCP_ERROR_MEMORY;
+    }
     label_to_output(brain, label, target, confidence);
 
     // Create training example
@@ -5496,6 +5500,10 @@ static void populate_interpretability(brain_t brain, const float* features, uint
 
     // Populate active neuron IDs
     decision->active_neuron_ids = nimcp_malloc(active_neurons * sizeof(uint32_t));
+    if (!decision->active_neuron_ids) {
+        set_error("Failed to allocate active neuron IDs array (%u neurons)", active_neurons);
+        return;  // decision->num_active_neurons is 0, so this is safe
+    }
     for (uint32_t i = 0; i < active_neurons; i++) {
         decision->active_neuron_ids[i] = i;
     }
@@ -8441,6 +8449,11 @@ uint32_t brain_get_top_neurons(brain_t brain, uint32_t top_n, uint32_t* neuron_i
 
     // Get neuron rankings from adaptive network
     neuron_importance_t* rankings = nimcp_malloc(top_n * sizeof(neuron_importance_t));
+    if (!rankings) {
+        set_error("Failed to allocate rankings array (%u neurons)", top_n);
+        return 0;
+    }
+
     uint32_t count = adaptive_network_rank_neurons(brain->network, rankings, top_n);
 
     // Extract IDs and importances

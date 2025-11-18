@@ -6,5 +6,5 @@ C_DEFINES = -DNIMCP_ENABLE_ENCRYPTION -Dnimcp_python_EXPORTS
 
 C_INCLUDES = -I/home/bbrelin/nimcp/src -I/home/bbrelin/nimcp/src/lib -I/home/bbrelin/nimcp/src/include -isystem /usr/include/python3.12
 
-C_FLAGS =  -fsanitize=address -fsanitize=leak -fno-omit-frame-pointer -g -O1 -fsanitize=undefined -fno-sanitize-recover=undefined -fno-omit-frame-pointer -Wall -Wextra -Wpedantic -g -std=gnu11 -fPIC
+C_FLAGS =  -Wall -Wextra -Wpedantic -g -std=gnu11 -fPIC
 

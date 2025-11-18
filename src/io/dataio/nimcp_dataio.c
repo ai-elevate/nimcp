@@ -1301,6 +1301,10 @@ dataset_t dataset_create_stream(stream_callback_fn_t callback, void* user_data,
 
     // Create stream context
     stream_context_t* stream_ctx = nimcp_calloc(1, sizeof(stream_context_t));
+    if (!stream_ctx) {
+        nimcp_free(dataset);
+        return NULL;
+    }
     stream_ctx->callback = callback;
     stream_ctx->user_data = user_data;
     stream_ctx->num_features = num_features;

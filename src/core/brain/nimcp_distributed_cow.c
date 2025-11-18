@@ -584,6 +584,10 @@ static bool register_distributed_cow_brain(brain_t brain, distributed_cow_state_
 
     // Find empty slot or expand
     distributed_cow_brain_t* entry = nimcp_calloc(1, sizeof(distributed_cow_brain_t));
+    if (!entry) {
+        nimcp_platform_mutex_unlock(&g_registry_mutex);
+        return false;
+    }
     entry->brain = brain;
     entry->dcow_state = state;
 
@@ -763,16 +767,18 @@ bool distributed_cow_fetch_segment(
 
         // Create cache entry
         network_segment_t* segment = nimcp_calloc(1, sizeof(network_segment_t));
-        segment->start_neuron_id = response->start_neuron_id;
-        segment->num_neurons = response->num_neurons;
-        segment->num_synapses = response->num_synapses;
-        segment->segment_id = response->segment_id;
-        segment->timestamp = nimcp_time_get_us();
-        segment->is_compressed = response->is_compressed;
-        segment->compressed_size = response->data_length;
-        segment->uncompressed_size = num_neurons * 1024; // Estimate
+        if (segment) {
+            segment->start_neuron_id = response->start_neuron_id;
+            segment->num_neurons = response->num_neurons;
+            segment->num_synapses = response->num_synapses;
+            segment->segment_id = response->segment_id;
+            segment->timestamp = nimcp_time_get_us();
+            segment->is_compressed = response->is_compressed;
+            segment->compressed_size = response->data_length;
+            segment->uncompressed_size = num_neurons * 1024; // Estimate
 
-        add_to_cache(state, segment);
+            add_to_cache(state, segment);
+        }
     }
 
     // Update stats
