@@ -267,9 +267,10 @@ uint64_t engram_encode(
     engram->reactivation_count = 0;
     engram->decay_rate = system->baseline_decay_rate;
 
-    // IEG tagging
-    engram->is_tagged = true;
-    engram->tag_strength = 1.0f;
+    // IEG tagging - strength modulated by arousal
+    engram->is_tagged = (emotion.arousal > 0.5f);  // Tag if arousal above threshold
+    // Tag strength scales with arousal: higher arousal = stronger tagging
+    engram->tag_strength = 0.5f + (emotion.arousal * 0.5f);  // Range: 0.5 to 1.0
     engram->tag_onset_time_us = 0;  // Will be set by caller
 
     // Emotional context
@@ -526,13 +527,15 @@ void engram_sleep_replay(
 
     uint32_t replayed = 0;
 
-    // Prioritize labile and consolidating engrams
+    // Prioritize tagged, labile and consolidating engrams
     for (uint32_t i = 0; i < system->capacity && replayed < replay_count; i++) {
         memory_engram_t* engram = &system->engrams[i];
 
         if (!engram->active) continue;
 
-        if (engram->state == ENGRAM_STATE_LABILE ||
+        // Replay tagged engrams (high arousal) or those in consolidation states
+        if (engram->is_tagged ||
+            engram->state == ENGRAM_STATE_LABILE ||
             engram->state == ENGRAM_STATE_CONSOLIDATING) {
 
             // Replay strengthens
@@ -640,10 +643,11 @@ void engram_apply_decay(
             engram->state = ENGRAM_STATE_DEGRADING;
         }
 
-        // Deactivate if forgotten
+        // Mark as forgotten if extremely weak (but keep active for tracking)
+        // Very old/forgotten memories remain in system as degraded traces
         if (engram->consolidation_strength < 0.01f) {
-            engram->active = false;
-            system->active_count--;
+            engram->state = ENGRAM_STATE_DEGRADING;
+            // Don't deactivate - allow tracking of degraded memories
         }
     }
 }
@@ -664,10 +668,21 @@ void engram_extinction(
     memory_engram_t* engram = engram_get_by_id(system, engram_id);
     if (!engram) return;
 
-    // Weaken engram
+    // Weaken engram - affects consolidation, confidence, and vividness
     engram->consolidation_strength -= extinction_strength;
     if (engram->consolidation_strength < 0.0f) {
         engram->consolidation_strength = 0.0f;
+    }
+
+    // Extinction also reduces confidence and vividness of the memory
+    engram->confidence -= extinction_strength * 0.5f;  // Confidence drops with extinction
+    if (engram->confidence < 0.0f) {
+        engram->confidence = 0.0f;
+    }
+
+    engram->vividness -= extinction_strength * 0.3f;  // Memory becomes less vivid
+    if (engram->vividness < 0.0f) {
+        engram->vividness = 0.0f;
     }
 
     // Update state

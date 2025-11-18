@@ -291,4 +291,10 @@ TEST_F(SynapseComputeRealTest, SynapseSetComputeFunctionDefault) {
     int result = synapse_set_compute_function(&test_syn, synapse_compute_default,
                                                nullptr, nullptr, nullptr);
     EXPECT_EQ(result, 0);
+
+    // Cleanup allocated compute_state to prevent memory leak
+    if (test_syn.compute_state) {
+        synapse_compute_state_cleanup(test_syn.compute_state);
+        free(test_syn.compute_state);
+    }
 }

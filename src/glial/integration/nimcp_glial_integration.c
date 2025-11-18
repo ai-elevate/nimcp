@@ -92,9 +92,8 @@ static inline uint32_t make_synapse_id(uint32_t pre_neuron_id, uint32_t post_neu
 // ============================================================================
 
 glial_integration_t* glial_integration_create(neural_network_t network, uint32_t max_mappings) {
-    // Allow NULL network for testing glial integration in isolation
-    // max_mappings must be non-zero to allocate hash tables
-    if (max_mappings == 0) {
+    // Validate parameters - both must be non-NULL/non-zero
+    if (!network || max_mappings == 0) {
         return NULL;
     }
 

@@ -200,8 +200,9 @@ TEST_F(BrainErrorPathTest, LearnWithNegativeReward) {
     float features[5] = {1.0f, 2.0f, 3.0f, 4.0f, 5.0f};
 
     // Test with negative reward (punishment)
-    bool success = brain_learn_example(brain, features, 5, "label", -1.0f);
-    EXPECT_TRUE(success);  // Should handle negative rewards
+    // Negative confidence gets clamped to minimum (0.01f) by epistemic filter
+    float loss = brain_learn_example(brain, features, 5, "label", -1.0f);
+    EXPECT_GE(loss, 0.0f);  // Should clamp and return valid loss (not error -1.0f)
 
     brain_destroy(brain);
 }

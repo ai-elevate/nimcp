@@ -9339,6 +9339,11 @@ static uint32_t process_neural_network(
         uint32_t copy_size = (output->output_dim < network_output_size) ?
                              output->output_dim : network_output_size;
         memcpy(output->output_vector, *network_output, copy_size * sizeof(float));
+
+        // Apply task-specific output transform (e.g., softmax for classification)
+        if (brain->strategy && brain->strategy->transform_output) {
+            brain->strategy->transform_output(output->output_vector, output->output_dim);
+        }
     }
 
     return spikes_generated;
@@ -10741,6 +10746,9 @@ bool brain_finetune(brain_t brain, const float* training_data, const float* labe
 
     // Restore original learning rate
     brain->config.learning_rate = original_lr;
+
+    // Clear decision cache after training
+    clear_cache(brain);
 
     if (cfg->verbose) {
         printf("NIMCP: Fine-tuning complete!\n");

@@ -37,6 +37,10 @@ class AttentionRegressionTest : public ::testing::Test {
 protected:
     brain_t brain;
 
+    void SetUp() override {
+        brain = nullptr;  // Initialize to nullptr to prevent use-after-free in TearDown
+    }
+
     void TearDown() override {
         if (brain) {
             brain_destroy(brain);

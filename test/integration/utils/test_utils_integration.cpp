@@ -738,6 +738,9 @@ TEST_F(UtilsIntegrationTest, ThreadPoolMemoryTracking) {
             if (ptr) {
                 (*data->second)[idx] = ptr;
             }
+
+            // Free task data
+            delete data;
         };
 
         auto task_data = new std::pair<std::atomic<int>*, std::vector<void*>*>{&allocation_count, &allocated_ptrs};

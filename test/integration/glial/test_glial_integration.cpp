@@ -30,6 +30,8 @@ protected:
         // Create simple neural network
         network_config_t config{};
         config.num_neurons = 10;
+        config.input_size = 5;  // Required for validation
+        config.output_size = 2;  // Required for validation
         config.ei_ratio = 0.8f;
         config.learning_rate = 0.01f;
         config.min_weight = -1.0f;
@@ -501,6 +503,8 @@ TEST_F(GlialIntegrationTest, PerformanceLargeNetwork) {
     // Create larger network
     network_config_t config{};
     config.num_neurons = 1000;
+    config.input_size = 100;  // Required for validation
+    config.output_size = 10;  // Required for validation
     config.ei_ratio = 0.8f;
     config.learning_rate = 0.01f;
     neural_network_t large_network = neural_network_create(&config);

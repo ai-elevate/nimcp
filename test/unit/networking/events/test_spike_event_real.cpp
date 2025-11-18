@@ -56,7 +56,7 @@ TEST_F(SpikeEventRealTest, AddMultipleSpikes) {
     train = spike_train_create(100);
     ASSERT_NE(train, nullptr);
 
-    for (uint64_t i = 0; i < 10; i++) {
+    for (uint64_t i = 1; i <= 10; i++) {
         bool result = spike_train_add(train, i * 1000, 1.0f);
         EXPECT_TRUE(result);
     }

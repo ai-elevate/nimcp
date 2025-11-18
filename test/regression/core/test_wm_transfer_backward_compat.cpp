@@ -166,16 +166,16 @@ TEST_F(WMTransferRegressionTest, ConsistentDecisions_NoInterference) {
     }
 
     // Infer multiple times - should be consistent
-    const char* first_label = nullptr;
+    std::string first_label;
     for (int i = 0; i < 5; i++) {
         brain_decision_t* decision = brain_decide(brain, train_features, 4);
         ASSERT_NE(decision, nullptr);
 
-        if (first_label == nullptr) {
-            first_label = decision->label;
+        if (first_label.empty()) {
+            first_label = decision->label;  // Copy to std::string
         } else {
             // Decisions should be consistent (same label)
-            EXPECT_STREQ(decision->label, first_label)
+            EXPECT_STREQ(decision->label, first_label.c_str())
                 << "Iteration " << i << " should produce consistent decision";
         }
 

@@ -34,12 +34,18 @@ protected:
     visual_cortex_config_t config;
 
     void SetUp() override {
+        // Initialize all fields to avoid undefined behavior
+        memset(&config, 0, sizeof(config));
         config.input_width = 64;
         config.input_height = 64;
         config.num_v1_filters = 8;
         config.feature_dim = 128;
         config.enable_attention = true;
         config.enable_memory = true;
+        config.enable_fractal_topology = false;
+        config.hub_ratio = 0.15f;
+        config.power_law_gamma = -2.1f;
+        config.internal_neurons = 0;
 
         cortex = visual_cortex_create(&config);
         ASSERT_NE(cortex, nullptr);

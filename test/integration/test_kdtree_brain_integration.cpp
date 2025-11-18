@@ -217,8 +217,8 @@ TEST_F(KDTreeBrainIntegrationTest, BrainWithSpatialFeatures) {
     // WHY:  End-to-end test with real brain
     // HOW:  Create brain, simulate spatial queries during learning
 
-    // Create brain
-    brain = brain_create("spatial_brain", BRAIN_SIZE_TINY, BRAIN_TASK_CLASSIFICATION, 128, 20);
+    // Create brain (10 inputs to match feature vector size)
+    brain = brain_create("spatial_brain", BRAIN_SIZE_TINY, BRAIN_TASK_CLASSIFICATION, 10, 20);
     ASSERT_NE(brain, nullptr);
 
     // Get brain stats to understand neuron count
@@ -276,6 +276,10 @@ TEST_F(KDTreeBrainIntegrationTest, BrainWithSpatialFeatures) {
                                      "class_A", 1.0f);
 
     // Learning should succeed
+    if (loss < 0.0f) {
+        std::cerr << "brain_learn_example failed with loss = " << loss << std::endl;
+        std::cerr << "Features size: " << features.size() << std::endl;
+    }
     EXPECT_GE(loss, 0.0f);
 
     // After learning, spatial queries still work

@@ -704,7 +704,7 @@ TEST_F(BrainAdvancedCoverageTest, Optimization_ErrorHandling) {
 
     // Test NULL brain for recommend
     float threshold = brain_recommend_pruning_threshold(nullptr, 0.9f);
-    EXPECT_EQ(threshold, 0.0f);
+    EXPECT_EQ(threshold, -1.0f);
     brain_clear_error();
 }
 

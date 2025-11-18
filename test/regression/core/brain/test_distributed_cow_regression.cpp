@@ -69,8 +69,9 @@ TEST_F(DistributedCOWRegressionTest, NoHeapUseAfterFreeInFetchSegment) {
     // and doesn't access freed memory (would be caught by AddressSanitizer)
 
     // Create P2P node
+    // NOTE: Port validation now rejects port 0, use valid test port
     node_config_t node_config = {
-        .listen_port = 0,
+        .listen_port = 50000,  // Use valid high port for testing
         .max_peers = 4,
         .ping_interval = 5000
     };

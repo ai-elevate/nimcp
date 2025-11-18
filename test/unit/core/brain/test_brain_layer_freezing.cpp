@@ -101,11 +101,11 @@ protected:
         // Use decision outputs as a proxy for weights
         std::vector<float> proxy_weights;
 
-        // Make test predictions with fixed input
-        float test_input[10] = {0.1f, 0.2f, 0.3f, 0.4f, 0.5f,
-                               0.6f, 0.7f, 0.8f, 0.9f, 1.0f};
+        // Make test predictions with fixed input (match brain's input size)
+        // Brain is created with 2 inputs, 1 output
+        float test_input[2] = {0.5f, 0.7f};
 
-        brain_decision_t* decision = brain_decide(brain, test_input, 10);
+        brain_decision_t* decision = brain_decide(brain, test_input, 2);
         if (decision) {
             for (uint32_t i = 0; i < decision->output_size; i++) {
                 proxy_weights.push_back(decision->output_vector[i]);
@@ -146,7 +146,7 @@ TEST_F(BrainLayerFreezingTest, FinetuneWithDefaults) {
 
     std::vector<float> training_data, labels;
     uint32_t num_samples;
-    GenerateClassificationData(training_data, labels, num_samples, 10, 10);
+    GenerateClassificationData(training_data, labels, num_samples, 2, 1);
 
     bool success = brain_finetune(brain, training_data.data(), labels.data(),
                                  num_samples, nullptr);
@@ -162,7 +162,7 @@ TEST_F(BrainLayerFreezingTest, FinetuneWithCustomConfig) {
 
     std::vector<float> training_data, labels;
     uint32_t num_samples;
-    GenerateClassificationData(training_data, labels, num_samples, 10, 10);
+    GenerateClassificationData(training_data, labels, num_samples, 2, 1);
 
     brain_finetune_config_t config = {
         .learning_rate = 0.01f,
@@ -192,7 +192,7 @@ TEST_F(BrainLayerFreezingTest, FreezeAllLayers) {
 
     std::vector<float> training_data, labels;
     uint32_t num_samples;
-    GenerateClassificationData(training_data, labels, num_samples, 10, 10);
+    GenerateClassificationData(training_data, labels, num_samples, 2, 1);
 
     auto weights_before = CaptureWeights();
 
@@ -226,7 +226,7 @@ TEST_F(BrainLayerFreezingTest, UnfreezeAllLayers) {
 
     std::vector<float> training_data, labels;
     uint32_t num_samples;
-    GenerateClassificationData(training_data, labels, num_samples, 10, 10);
+    GenerateClassificationData(training_data, labels, num_samples, 2, 1);
 
     auto weights_before = CaptureWeights();
 
@@ -260,7 +260,7 @@ TEST_F(BrainLayerFreezingTest, FreezeSensoryOnly) {
 
     std::vector<float> training_data, labels;
     uint32_t num_samples;
-    GenerateClassificationData(training_data, labels, num_samples, 10, 10);
+    GenerateClassificationData(training_data, labels, num_samples, 2, 1);
 
     brain_finetune_config_t config = {
         .learning_rate = 0.02f,
@@ -286,7 +286,7 @@ TEST_F(BrainLayerFreezingTest, FreezeCognitiveOnly) {
 
     std::vector<float> training_data, labels;
     uint32_t num_samples;
-    GenerateClassificationData(training_data, labels, num_samples, 10, 10);
+    GenerateClassificationData(training_data, labels, num_samples, 2, 1);
 
     brain_finetune_config_t config = {
         .learning_rate = 0.02f,
@@ -312,7 +312,7 @@ TEST_F(BrainLayerFreezingTest, ClassifierOnlyTraining) {
 
     std::vector<float> training_data, labels;
     uint32_t num_samples;
-    GenerateClassificationData(training_data, labels, num_samples, 10, 10);
+    GenerateClassificationData(training_data, labels, num_samples, 2, 1);
 
     brain_finetune_config_t config = {
         .learning_rate = 0.01f,
@@ -342,7 +342,7 @@ TEST_F(BrainLayerFreezingTest, LearningRateScaling_Frozen) {
 
     std::vector<float> training_data, labels;
     uint32_t num_samples;
-    GenerateClassificationData(training_data, labels, num_samples, 10, 10);
+    GenerateClassificationData(training_data, labels, num_samples, 2, 1);
 
     // Test 1: All frozen (1% LR)
     auto weights_before_frozen = CaptureWeights();
@@ -403,7 +403,7 @@ TEST_F(BrainLayerFreezingTest, InvalidBrain) {
 
     std::vector<float> training_data, labels;
     uint32_t num_samples;
-    GenerateClassificationData(training_data, labels, num_samples, 10, 10);
+    GenerateClassificationData(training_data, labels, num_samples, 2, 1);
 
     bool success = brain_finetune(nullptr, training_data.data(), labels.data(),
                                  num_samples, nullptr);
@@ -460,7 +460,7 @@ TEST_F(BrainLayerFreezingTest, VerboseOutput_Enabled) {
 
     std::vector<float> training_data, labels;
     uint32_t num_samples;
-    GenerateClassificationData(training_data, labels, num_samples, 10, 10);
+    GenerateClassificationData(training_data, labels, num_samples, 2, 1);
 
     brain_finetune_config_t config = {
         .learning_rate = 0.01f,
@@ -497,7 +497,7 @@ TEST_F(BrainLayerFreezingTest, VerboseOutput_Disabled) {
 
     std::vector<float> training_data, labels;
     uint32_t num_samples;
-    GenerateClassificationData(training_data, labels, num_samples, 10, 10);
+    GenerateClassificationData(training_data, labels, num_samples, 2, 1);
 
     brain_finetune_config_t config = {
         .learning_rate = 0.01f,
