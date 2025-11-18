@@ -139,10 +139,18 @@ static bool compute_dominant_singular_triplet(
         }
         sigma = sqrtf(sigma);
 
-        // Check convergence
-        if (fabsf(sigma - prev_sigma) < 1e-6f * sigma) {
+        // Check convergence - fixed to avoid division issues
+        // Use absolute tolerance if sigma is very small
+        float tol = (sigma > 1e-6f) ? (1e-6f * sigma) : 1e-9f;
+        if (iter > 0 && fabsf(sigma - prev_sigma) < tol) {
             break;
         }
+
+        // Early exit if sigma becomes negligible (matrix is rank deficient)
+        if (sigma < 1e-10f) {
+            break;
+        }
+
         prev_sigma = sigma;
     }
 

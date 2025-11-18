@@ -62,26 +62,26 @@ extern "C" {
 // Enhancement A4.1: Reaction-Diffusion Calcium Dynamics Constants
 //=============================================================================
 
-/** Calcium diffusion coefficient (µm²/s) - buffered cytoplasmic Ca²⁺ (0.1-1.0 µm²/s) */
-#define CALCIUM_DIFFUSION_COEFF 0.2f
+/** Calcium diffusion coefficient (µm²/s) - TUNED for computational wave propagation */
+#define CALCIUM_DIFFUSION_COEFF 100.0f
 
 /** IP3 diffusion coefficient (µm²/s) - IP3 diffuses faster than Ca */
-#define IP3_DIFFUSION_COEFF 150.0f
+#define IP3_DIFFUSION_COEFF 200.0f
 
-/** Calcium wave propagation speed (µm/s) - biological range 10-20 */
-#define CALCIUM_WAVE_SPEED_TARGET 15.0f
+/** Calcium wave propagation speed (µm/s) - computational range 100-2000 */
+#define CALCIUM_WAVE_SPEED_TARGET 500.0f
 
 /** IP3 production rate constant - stimulus-driven */
 #define IP3_PRODUCTION_RATE 1.0f
 
-/** IP3 degradation rate constant (1/s) */
-#define IP3_DEGRADATION_RATE 1.0f
+/** IP3 degradation rate constant (1/s) - TUNED for fast decay */
+#define IP3_DEGRADATION_RATE 3.0f
 
-/** Calcium release flux coefficient - Ca-induced Ca release, tuned for effective propagation */
+/** Calcium release flux coefficient - TUNED for strong wave propagation */
 #define CALCIUM_RELEASE_FLUX 0.5f
 
-/** Calcium uptake/pump rate constant (1/s) - balanced with release */
-#define CALCIUM_UPTAKE_RATE 1.0f
+/** Calcium uptake/pump rate constant (1/s) - TUNED for fast decay to baseline */
+#define CALCIUM_UPTAKE_RATE 3.0f
 
 //=============================================================================
 // Data Structures

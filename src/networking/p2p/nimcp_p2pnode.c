@@ -738,15 +738,17 @@ bool p2p_node_is_peer_connected(p2p_node_t node, const char* peer_ip, uint16_t p
     generate_peer_key(key, sizeof(key), peer_ip, peer_port);
 
     // O(1) hash table lookup using NIMCP utility
-    // NOTE: We store peer_info_t* pointers in the hash table
-    peer_info_t* peer = (peer_info_t*)hash_table_lookup_string(node->peer_table, key);
+    // NOTE: Hash table stores a COPY of the pointer, so we get back a pointer to the copy
+    // FIX: Need to dereference twice - once for the stored copy, once for the actual pointer
+    peer_info_t** peer_ptr = (peer_info_t**)hash_table_lookup_string(node->peer_table, key);
 
     // Guard clause: Check if peer found
-    if (!peer) {
+    if (!peer_ptr || !*peer_ptr) {
         nimcp_mutex_unlock(&node->lock);
         return false;
     }
 
+    peer_info_t* peer = *peer_ptr;
     bool connected = peer->connected;
     nimcp_mutex_unlock(&node->lock);
     return connected;
@@ -873,7 +875,8 @@ static bool add_peer_to_node(p2p_node_t node, const char* ip, uint16_t port, int
     generate_peer_key(key, sizeof(key), ip, port);
 
     // Add to hash table for O(1) lookups using NIMCP utility
-    // NOTE: We store the peer_info_t* pointer itself (not a copy)
+    // NOTE: We store the peer_info_t* pointer value itself (copy the address)
+    // FIX: Pass &peer to copy the pointer VALUE (address), not what it points to
     if (!hash_table_insert_string(node->peer_table, key, &peer, sizeof(peer_info_t*))) {
         NIMCP_LOGGING_ERROR("[P2P] Failed to insert peer %s into hash table", key);
         return false;
@@ -942,8 +945,9 @@ bool p2p_node_connect_peer(p2p_node_t node, const char* peer_ip, uint16_t peer_p
 
     // Check if peer already exists (O(1) via hash table)
     if (peer_already_exists(node, key)) {
-        peer_info_t* existing = (peer_info_t*)hash_table_lookup_string(node->peer_table, key);
-        bool result = existing ? existing->connected : false;
+        // FIX: Hash table stores a copy of the pointer, need double dereference
+        peer_info_t** existing_ptr = (peer_info_t**)hash_table_lookup_string(node->peer_table, key);
+        bool result = (existing_ptr && *existing_ptr) ? (*existing_ptr)->connected : false;
         nimcp_mutex_unlock(&node->lock);
         return result;
     }
@@ -1120,13 +1124,15 @@ bool p2p_node_disconnect_peer(p2p_node_t node, const char* peer_ip, uint16_t pee
     generate_peer_key(key, sizeof(key), peer_ip, peer_port);
 
     // Lookup peer in hash table (O(1))
-    peer_info_t* peer = (peer_info_t*)hash_table_lookup_string(node->peer_table, key);
+    // FIX: Hash table stores a copy of the pointer, need double dereference
+    peer_info_t** peer_ptr = (peer_info_t**)hash_table_lookup_string(node->peer_table, key);
     // Guard clause: Check if peer exists
-    if (!peer) {
+    if (!peer_ptr || !*peer_ptr) {
         nimcp_mutex_unlock(&node->lock);
         return false;
     }
 
+    peer_info_t* peer = *peer_ptr;
     // Close peer socket
     close_peer_socket(peer);
 
@@ -1447,14 +1453,16 @@ bool p2p_node_process_pong(p2p_node_t node, const char* peer_ip, uint16_t peer_p
     generate_peer_key(peer_key, sizeof(peer_key), peer_ip, peer_port);
 
     // O(1) hash table lookup using NIMCP utility
-    peer_info_t* peer = (peer_info_t*)hash_table_lookup_string(node->peer_table, peer_key);
+    // FIX: Hash table stores a copy of the pointer, need double dereference
+    peer_info_t** peer_ptr = (peer_info_t**)hash_table_lookup_string(node->peer_table, peer_key);
 
     // Guard clause: Peer not found
-    if (!peer) {
+    if (!peer_ptr || !*peer_ptr) {
         nimcp_mutex_unlock(&node->lock);
         return false;
     }
 
+    peer_info_t* peer = *peer_ptr;
     // Update health metrics (O(1) operations)
     peer->last_pong_received = nimcp_time_get_us();
     peer->missed_pings = 0;
@@ -1721,14 +1729,16 @@ bool p2p_node_get_peer_health(p2p_node_t node, const char* peer_ip, uint16_t pee
     generate_peer_key(peer_key, sizeof(peer_key), peer_ip, peer_port);
 
     // O(1) hash table lookup using NIMCP utility
-    peer_info_t* peer = (peer_info_t*)hash_table_lookup_string(node->peer_table, peer_key);
+    // FIX: Hash table stores a copy of the pointer, need double dereference
+    peer_info_t** peer_ptr = (peer_info_t**)hash_table_lookup_string(node->peer_table, peer_key);
 
     // Guard clause: Peer not found
-    if (!peer) {
+    if (!peer_ptr || !*peer_ptr) {
         nimcp_mutex_unlock(&node->lock);
         return false;
     }
 
+    peer_info_t* peer = *peer_ptr;
     *out_health = peer->healthy;
 
     nimcp_mutex_unlock(&node->lock);

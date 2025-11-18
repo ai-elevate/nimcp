@@ -15,6 +15,7 @@
 #include "core/topology/nimcp_community_detection.h"
 #include "core/neuralnet/nimcp_neuralnet.h"
 #include "core/brain/nimcp_brain.h"
+#include "plasticity/adaptive/nimcp_adaptive.h"
 
 //=============================================================================
 // Test Constants
@@ -65,7 +66,9 @@ TEST_F(BrainCommunityIntegrationTest, test_brain_network_community_detection)
     brain_t brain = create_modular_brain();
     ASSERT_NE(nullptr, brain);
 
-    neural_network_t network = (neural_network_t)brain_get_network(brain);
+    adaptive_network_t adaptive_net = brain_get_network(brain);
+    ASSERT_NE(nullptr, adaptive_net);
+    neural_network_t network = adaptive_network_get_base_network(adaptive_net);
     ASSERT_NE(nullptr, network);
 
     community_structure_t* structure = community_detect(network, nullptr);
@@ -91,7 +94,9 @@ TEST_F(BrainCommunityIntegrationTest, test_brain_hub_detection)
     brain_t brain = create_modular_brain();
     ASSERT_NE(nullptr, brain);
 
-    neural_network_t network = (neural_network_t)brain_get_network(brain);
+    adaptive_network_t adaptive_net = brain_get_network(brain);
+    ASSERT_NE(nullptr, adaptive_net);
+    neural_network_t network = adaptive_network_get_base_network(adaptive_net);
     ASSERT_NE(nullptr, network);
 
     hub_structure_t* hubs = community_detect_hubs(network, 0.8f);
@@ -113,7 +118,9 @@ TEST_F(BrainCommunityIntegrationTest, test_brain_topology_validity)
     brain_t brain = create_modular_brain();
     ASSERT_NE(nullptr, brain);
 
-    neural_network_t network = (neural_network_t)brain_get_network(brain);
+    adaptive_network_t adaptive_net = brain_get_network(brain);
+    ASSERT_NE(nullptr, adaptive_net);
+    neural_network_t network = adaptive_network_get_base_network(adaptive_net);
     ASSERT_NE(nullptr, network);
 
     // Run community detection to verify network is valid
@@ -136,7 +143,9 @@ TEST_F(BrainCommunityIntegrationTest, test_brain_modularity_calculation)
     brain_t brain = create_modular_brain();
     ASSERT_NE(nullptr, brain);
 
-    neural_network_t network = (neural_network_t)brain_get_network(brain);
+    adaptive_network_t adaptive_net = brain_get_network(brain);
+    ASSERT_NE(nullptr, adaptive_net);
+    neural_network_t network = adaptive_network_get_base_network(adaptive_net);
     ASSERT_NE(nullptr, network);
 
     community_structure_t* structure = community_detect(network, nullptr);
@@ -159,7 +168,9 @@ TEST_F(BrainCommunityIntegrationTest, test_community_detection_with_config)
     brain_t brain = create_modular_brain();
     ASSERT_NE(nullptr, brain);
 
-    neural_network_t network = (neural_network_t)brain_get_network(brain);
+    adaptive_network_t adaptive_net = brain_get_network(brain);
+    ASSERT_NE(nullptr, adaptive_net);
+    neural_network_t network = adaptive_network_get_base_network(adaptive_net);
     ASSERT_NE(nullptr, network);
 
     community_detection_config_t config = community_default_config();
@@ -185,7 +196,9 @@ TEST_F(BrainCommunityIntegrationTest, test_hub_detection_threshold)
     brain_t brain = create_modular_brain();
     ASSERT_NE(nullptr, brain);
 
-    neural_network_t network = (neural_network_t)brain_get_network(brain);
+    adaptive_network_t adaptive_net = brain_get_network(brain);
+    ASSERT_NE(nullptr, adaptive_net);
+    neural_network_t network = adaptive_network_get_base_network(adaptive_net);
     ASSERT_NE(nullptr, network);
 
     hub_structure_t* hubs_low = community_detect_hubs(network, 0.5f);
@@ -212,7 +225,9 @@ TEST_F(BrainCommunityIntegrationTest, test_community_sizes)
     brain_t brain = create_modular_brain();
     ASSERT_NE(nullptr, brain);
 
-    neural_network_t network = (neural_network_t)brain_get_network(brain);
+    adaptive_network_t adaptive_net = brain_get_network(brain);
+    ASSERT_NE(nullptr, adaptive_net);
+    neural_network_t network = adaptive_network_get_base_network(adaptive_net);
     ASSERT_NE(nullptr, network);
 
     community_structure_t* structure = community_detect(network, nullptr);
@@ -241,7 +256,9 @@ TEST_F(BrainCommunityIntegrationTest, test_deterministic_detection)
     brain_t brain = create_modular_brain();
     ASSERT_NE(nullptr, brain);
 
-    neural_network_t network = (neural_network_t)brain_get_network(brain);
+    adaptive_network_t adaptive_net = brain_get_network(brain);
+    ASSERT_NE(nullptr, adaptive_net);
+    neural_network_t network = adaptive_network_get_base_network(adaptive_net);
     ASSERT_NE(nullptr, network);
 
     community_detection_config_t config = community_default_config();

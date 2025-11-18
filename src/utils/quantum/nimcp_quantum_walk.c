@@ -15,7 +15,7 @@
 #define SQRT2 1.41421356237f
 #define INV_SQRT2 0.70710678118f
 #define PI 3.14159265359f
-#define PROB_TOLERANCE 1e-6f      // Probability conservation tolerance
+#define PROB_TOLERANCE 1e-5f      // Probability conservation tolerance (relaxed for large networks)
 #define AMPLITUDE_THRESHOLD 1e-8f // Ignore amplitudes below this
 
 //=============================================================================

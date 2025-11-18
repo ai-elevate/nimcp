@@ -188,6 +188,8 @@ struct brain_struct {
     uint32_t* network_refcount;         // Pointer to shared refcount (NULL if not shared)
     bool can_use_readonly;              // Can use read-only inference? (true for COW clones)
     nimcp_platform_mutex_t* refcount_mutex;    // Mutex for refcount updates (shared among clones)
+    bool is_snapshot;                   // Is this a snapshot? (preserve stats, don't update from network)
+    brain_stats_t snapshot_stats;       // Preserved stats at snapshot time (only used if is_snapshot=true)
 
     // === COMPREHENSIVE INTEGRATION: ADVANCED SUBSYSTEMS ===
     // NOTE: Only modules that currently exist are integrated
@@ -922,8 +924,13 @@ static void init_brain_config(brain_config_t* config, const char* task_name, bra
     config->working_memory_capacity = 7;            // Miller's magic number
     config->working_memory_decay_tau_ms = 1000.0f;  // 1 second decay
 
+    // Phase 10.6: Theory of Mind defaults (social cognition, empathy)
+    config->enable_theory_of_mind = true;           // Enable by default for social cognition
+    config->enable_empathy_responses = true;        // Enable empathetic responses
+    config->enable_false_belief_tracking = true;    // Enable false belief understanding
+
     // Phase 10.11: Mirror Neurons defaults (observation-based learning)
-    config->enable_mirror_neurons = false;          // Disable by default (opt-in)
+    config->enable_mirror_neurons = true;           // Enable by default for social learning
     config->mirror_neuron_count = 1000;             // Standard population size
     config->mirror_max_actions = 100;               // Diverse action repertoire
     config->mirror_max_agents = 10;                 // Multi-agent social learning
@@ -952,6 +959,10 @@ static void init_brain_config(brain_config_t* config, const char* task_name, bra
     config->female_probability = 1.0f;              // Default 100% female (per user request)
     config->male_probability = 0.0f;                // 0% male by default
     config->non_binary_probability = 0.0f;          // 0% non-binary by default
+
+    // Phase 5/6: Biological Realism defaults
+    config->enable_glial = true;                    // Enable glial integration by default
+    config->enable_oscillations = false;            // Disable oscillations by default (opt-in)
 
     // Phase C2.1: Quantum Walk defaults (disabled by default for stability/testing)
     config->enable_quantum_walk_diffusion = false;  // Opt-in: requires testing for production
@@ -1318,27 +1329,93 @@ static bool init_output_labels(brain_t brain, uint32_t num_outputs)
  * @author NIMCP Development Team
  * @date 2025-11-08
  */
+
+/**
+ * @brief Initialize glial integration subsystem
+ *
+ * WHAT: Creates glial integration for astrocyte modulation
+ * WHY:  Enables biological realism with glial cell support
+ * HOW:  Conditional initialization based on config.enable_glial flag
+ *
+ * @param brain Brain to initialize glial subsystem for
+ * @return true if initialization successful (or glial disabled), false on error
+ *
+ * @note Initialization Behavior
+ * - Returns true if glial disabled (not an error)
+ * - Returns true if already initialized
+ * - Returns false only on allocation failure
+ * - Cleanup handled by brain_destroy()
+ *
+ * @version 2.7.0 Phase 5/6
+ * @author NIMCP Development Team
+ * @date 2025-11-18
+ */
+static bool init_glial_subsystem(brain_t brain)
+{
+    if (!brain || !brain->network) {
+        return false;
+    }
+
+    // Check if already initialized (prevent double initialization)
+    if (brain->glial) {
+        return true;  // Already initialized
+    }
+
+    // Check if glial integration is enabled
+    if (!brain->config.enable_glial) {
+        return true;  // Disabled, not an error
+    }
+
+    // Get base network for glial integration
+    neural_network_t base = adaptive_network_get_base_network(brain->network);
+    if (!base) {
+        set_error("Failed to get base network for glial integration");
+        return false;
+    }
+
+    // Create glial integration with reasonable max_mappings
+    brain->glial = glial_integration_create(base, 1000);
+
+    if (!brain->glial) {
+        set_error("Failed to create glial integration");
+        return false;
+    }
+
+    return true;
+}
 static bool init_multimodal_subsystems(brain_t brain)
 {
     if (!brain) {
         return false;
     }
 
-    // Check if already initialized (prevent double initialization)
-    if (brain->multimodal || brain->visual_cortex || brain->audio_cortex || brain->speech_cortex) {
-        return true;  // Already initialized
-    }
-
     // Check if multi-modal processing is enabled
     if (!brain->config.enable_multimodal_integration) {
         // Even when multimodal is disabled, we still need integrated_feature_buffer
         // as a working buffer for direct-only predictions
-        brain->integrated_feature_buffer = nimcp_calloc(brain->config.num_inputs, sizeof(float));
         if (!brain->integrated_feature_buffer) {
-            set_error("Failed to allocate integrated feature buffer for direct predictions");
-            return false;
+            brain->integrated_feature_buffer = nimcp_calloc(brain->config.num_inputs, sizeof(float));
+            if (!brain->integrated_feature_buffer) {
+                set_error("Failed to allocate integrated feature buffer for direct predictions");
+                return false;
+            }
         }
         return true;
+    }
+
+    // If multimodal is enabled, check if already fully initialized
+    // We check for visual/audio/speech cortices only if they should be enabled
+    bool visual_needed = brain->config.enable_visual_cortex && brain->config.visual_feature_dim > 0;
+    bool audio_needed = brain->config.enable_audio_cortex && brain->config.audio_feature_dim > 0;
+    bool speech_needed = brain->config.enable_speech_cortex && brain->config.speech_feature_dim > 0;
+
+    bool visual_ready = !visual_needed || brain->visual_cortex;
+    bool audio_ready = !audio_needed || brain->audio_cortex;
+    bool speech_ready = !speech_needed || brain->speech_cortex;
+
+    // If all needed components are ready and multimodal layer exists, we're done
+    if (brain->multimodal && visual_ready && audio_ready && speech_ready) {
+        return true;  // Already fully initialized
     }
 
     // Initialize visual cortex (if enabled)
@@ -2693,6 +2770,58 @@ static bool init_curiosity_subsystem(brain_t brain)
 }
 
 /**
+ * @brief Initialize Salience subsystem (Attention/Relevance Evaluation)
+ *
+ * WHAT: Create salience evaluator for fast attention/relevance scoring
+ * WHY:  Enable brain to quickly determine what inputs deserve attention
+ * HOW:  Create salience evaluator with default configuration
+ *
+ * CAPABILITIES:
+ * - Fast salience evaluation (10x faster than full decision)
+ * - Novelty detection (never seen before)
+ * - Surprise measurement (violated expectations)
+ * - Urgency scoring (requires immediate response)
+ * - Attention competition in global workspace
+ *
+ * COGNITIVE BENEFITS:
+ * - Selective attention to important stimuli
+ * - Reduced computational cost (0.1ms vs 1ms per input)
+ * - Emotional-salience integration for mood-biased attention
+ * - Surprise-driven arousal modulation
+ *
+ * @param brain Brain instance
+ * @return true on success, false on failure
+ */
+static bool init_salience_subsystem(brain_t brain)
+{
+    // Guard: NULL check
+    if (!brain) {
+        return false;
+    }
+
+    // Guard: Check if already initialized
+    if (brain->salience) {
+        return true;  // Already initialized
+    }
+
+    // Guard: Only create if enabled in config
+    if (!brain->config.enable_salience) {
+        return true;  // Not enabled, but not an error
+    }
+
+    // Create salience evaluator with default configuration
+    salience_config_t config = salience_default_config();
+    brain->salience = salience_evaluator_create(brain, &config);
+
+    if (!brain->salience) {
+        set_error("Failed to create salience evaluator");
+        return false;
+    }
+
+    return true;
+}
+
+/**
  * @brief Initialize Introspection subsystem (Self-Awareness)
  *
  * WHAT: Create introspection context for self-monitoring and metacognition
@@ -3215,6 +3344,23 @@ brain_t brain_create(const char* task_name, brain_size_t size, brain_task_t task
     // Initialize statistics
     init_brain_stats(&brain->stats, task_name, size, num_inputs, brain->config.learning_rate);
 
+    // Phase 5/6: Initialize glial integration subsystem (if configured)
+    if (!init_glial_subsystem(brain)) {
+        // Cleanup on failure
+        adaptive_network_destroy(brain->network);
+        strategy_destroy(brain->strategy);
+        if (brain->output_labels) {
+            for (uint32_t i = 0; i < brain->config.num_outputs; i++) {
+                if (brain->output_labels[i]) {
+                    nimcp_free(brain->output_labels[i]);
+                }
+            }
+            nimcp_free(brain->output_labels);
+        }
+        nimcp_free(brain);
+        return NULL;
+    }
+
     // Phase 8: Initialize multi-modal subsystems (if configured)
     if (!init_multimodal_subsystems(brain)) {
         // Cleanup on failure
@@ -3286,26 +3432,9 @@ brain_t brain_create(const char* task_name, brain_size_t size, brain_task_t task
         return NULL;
     }
 
-    // Phase 11 Enhancement C1.1: Initialize quantum annealer (if enabled)
-    if (brain->config.enable_quantum_annealing) {
-        quantum_annealing_config_t qa_config = {
-            .initial_temperature = brain->config.annealing_temperature_init,
-            .final_temperature = brain->config.annealing_temperature_final,
-            .num_iterations = brain->config.annealing_steps,
-            .cooling_schedule = COOLING_EXPONENTIAL,  // Default to exponential cooling
-            .quantum_strength = 0.5f,                 // Moderate quantum tunneling
-            .enable_tunneling = true,                 // Enable quantum tunneling
-            .seed = (uint32_t)time(NULL)              // Random seed
-        };
-
-        brain->quantum_annealer = quantum_annealer_create(&qa_config);
-        if (!brain->quantum_annealer) {
-            // Non-fatal: just disable quantum annealing
-            brain->config.enable_quantum_annealing = false;
-        }
-    } else {
-        brain->quantum_annealer = NULL;
-    }
+    // NOTE: Quantum annealer initialization moved to brain_create_custom()
+    // so it uses the custom config (not defaults). See brain_create_custom below.
+    brain->quantum_annealer = NULL;  // Will be initialized in brain_create_custom if needed
 
     // ========================================================================
     // PHASE C4: SHANNON INFORMATION THEORY INITIALIZATION
@@ -3381,6 +3510,18 @@ brain_t brain_create(const char* task_name, brain_size_t size, brain_task_t task
     brain->social_bond_system = social_bond_system_create();
     if (!brain->social_bond_system) {
         fprintf(stderr, "WARNING: Failed to initialize social bond system\n");
+    }
+
+    // Phase 10.6: Initialize Theory of Mind (social cognition, empathy)
+    if (!init_theory_of_mind_subsystem(brain)) {
+        brain_destroy(brain);
+        return NULL;
+    }
+
+    // Phase 10.11: Initialize Mirror Neurons (social cognition, imitation learning)
+    if (!init_mirror_neurons(brain)) {
+        brain_destroy(brain);
+        return NULL;
     }
 
     brain_clear_error();
@@ -3579,6 +3720,12 @@ brain_t brain_create_custom(const brain_config_t* config)
         return NULL;
     }
 
+    // Phase 10.11.3: Initialize Salience Evaluator (attention/relevance scoring)
+    if (!init_salience_subsystem(brain)) {
+        brain_destroy(brain);
+        return NULL;
+    }
+
     // Phase 11: Part I.0: Initialize Ethics Engine (Golden Rule, moral reasoning)
     if (!init_ethics_engine_subsystem(brain)) {
         brain_destroy(brain);
@@ -3626,6 +3773,28 @@ brain_t brain_create_custom(const brain_config_t* config)
         brain_save_snapshot(brain, "initial", "Snapshot at brain creation");
         // Non-fatal if snapshot fails
     }
+
+    // Phase 11 Enhancement C1.1: Initialize quantum annealer (if enabled)
+    // IMPORTANT: This must happen AFTER brain->config is set from custom config
+    if (brain->config.enable_quantum_annealing) {
+        quantum_annealing_config_t qa_config = {
+            .initial_temperature = brain->config.annealing_temperature_init,
+            .final_temperature = brain->config.annealing_temperature_final,
+            .num_iterations = brain->config.annealing_steps,
+            .cooling_schedule = COOLING_EXPONENTIAL,  // Default to exponential cooling
+            .quantum_strength = 0.5f,                 // Moderate quantum tunneling
+            .enable_tunneling = true,                 // Enable quantum tunneling
+            .seed = (uint32_t)time(NULL)              // Random seed
+        };
+
+        brain->quantum_annealer = quantum_annealer_create(&qa_config);
+        if (!brain->quantum_annealer) {
+            // Non-fatal: just disable quantum annealing
+            fprintf(stderr, "[WARN] Quantum annealer creation failed! Disabling quantum annealing.\n");
+            brain->config.enable_quantum_annealing = false;
+        }
+    }
+    // If not enabled, brain->quantum_annealer is already NULL from brain_create
 
     return brain;
 }
@@ -3694,6 +3863,12 @@ void brain_destroy(brain_t brain)
         distrib_cognition_destroy(brain->distributed);
     }
 
+    // Phase 5/6: Cleanup glial integration
+    if (brain->glial) {
+        glial_integration_destroy(brain->glial);
+        brain->glial = NULL;
+    }
+
     // Phase 8: Cleanup multi-modal subsystems
     if (brain->visual_cortex) {
         visual_cortex_destroy(brain->visual_cortex);
@@ -3752,9 +3927,16 @@ void brain_destroy(brain_t brain)
         symbolic_logic_destroy(brain->symbolic_logic);
     }
 
+    // Phase M3: Cleanup working memory transfer (BEFORE working memory)
+    if (brain->wm_transfer_system) {
+        wm_transfer_destroy(brain->wm_transfer_system);
+        brain->wm_transfer_system = NULL;
+    }
+
     // Phase 10.1: Cleanup working memory
     if (brain->working_memory) {
         working_memory_destroy(brain->working_memory);
+        brain->working_memory = NULL;
     }
 
     // Phase 10.2: Cleanup memory consolidation
@@ -3785,11 +3967,6 @@ void brain_destroy(brain_t brain)
     // Phase M2: Cleanup systems consolidation
     if (brain->systems_consolidation) {
         systems_consolidation_destroy(brain->systems_consolidation);
-    }
-
-    // Phase M3: Cleanup working memory transfer
-    if (brain->wm_transfer_system) {
-        wm_transfer_destroy(brain->wm_transfer_system);
     }
 
     // Phase M4: Cleanup semantic memory network
@@ -4244,6 +4421,26 @@ brain_t brain_clone_cow(brain_t original)
     nimcp_cache_record_reference(network_size);
 
     return clone;
+}
+
+/**
+ * @brief Mark brain as a snapshot with preserved stats
+ *
+ * WHAT: Sets snapshot flag and preserves current stats
+ * WHY:  Snapshots should preserve stats at snapshot time, not reflect future changes
+ * HOW:  Stores current stats in brain->snapshot_stats
+ *
+ * @param brain Brain to mark as snapshot
+ * @param stats Stats to preserve
+ */
+void brain_mark_as_snapshot(brain_t brain, const brain_stats_t* stats)
+{
+    if (!brain || !stats) {
+        return;
+    }
+
+    brain->is_snapshot = true;
+    brain->snapshot_stats = *stats;
 }
 
 //=============================================================================
@@ -4733,6 +4930,7 @@ float brain_learn_example(brain_t brain, const float* features, uint32_t num_fea
     // - Stochastic resonance helps escape suboptimal configurations
     //
     // COMPLEXITY: O(annealing_steps * num_weights) - expensive, run infrequently
+
     if (brain->config.enable_quantum_annealing &&
         brain->quantum_annealer &&
         (brain->stats.total_learning_steps % brain->config.quantum_annealing_frequency) == 0) {
@@ -5545,17 +5743,18 @@ brain_decision_t* brain_decide(brain_t brain, const float* features, uint32_t nu
             }
 
             // Attempt pattern completion recall
-            uint32_t* recalled_neurons = NULL;
-            float* recalled_activations = NULL;
-            uint32_t recalled_count = 0;
+            // Pre-allocate arrays for recall output
+            #define MAX_RECALL_NEURONS 100
+            uint32_t recalled_neurons[MAX_RECALL_NEURONS];
+            float recalled_activations[MAX_RECALL_NEURONS];
 
             recalled_engram_id = engram_recall(
                 brain->engram_system,
                 cue_neurons,
                 num_features,
-                &recalled_neurons,
-                &recalled_activations,
-                &recalled_count,
+                recalled_neurons,
+                recalled_activations,
+                MAX_RECALL_NEURONS,
                 &engram_confidence
             );
 
@@ -5570,9 +5769,7 @@ brain_decision_t* brain_decide(brain_t brain, const float* features, uint32_t nu
                 // decision->metadata could store engram_id and confidence
             }
 
-            // Cleanup
-            if (recalled_neurons) nimcp_free(recalled_neurons);
-            if (recalled_activations) nimcp_free(recalled_activations);
+            // Cleanup - NOTE: recalled_neurons and recalled_activations are stack-allocated, don't free them!
             nimcp_free(cue_neurons);
         }
     }
@@ -7590,6 +7787,61 @@ brain_t brain_load(const char* filepath)
     init_brain_stats(&brain->stats, brain->config.task_name, brain->config.size,
                      brain->config.num_inputs, brain->config.learning_rate);
 
+    // Re-initialize mirror neurons if enabled but not loaded from file
+    // (Handles case where brain was saved without mirror neurons but loaded config has them enabled)
+    if (brain->config.enable_mirror_neurons && !brain->mirror_neurons) {
+        fprintf(stderr, "[INFO] Re-initializing mirror neurons from config (enable_mirror_neurons=true but not in save file)\n");
+        if (!init_mirror_neurons(brain)) {
+            fprintf(stderr, "[WARN] Failed to re-initialize mirror neurons\n");
+            // Non-fatal: continue without mirror neurons
+        }
+    }
+
+    // Re-initialize quantum annealer if enabled but not initialized
+    // (Handles case where brain was saved without quantum annealer but loaded config has it enabled)
+    if (brain->config.enable_quantum_annealing && !brain->quantum_annealer) {
+        fprintf(stderr, "[INFO] Re-initializing quantum annealer from config (enable_quantum_annealing=true but not in save file)\n");
+        quantum_annealing_config_t qa_config = {
+            .initial_temperature = brain->config.annealing_temperature_init,
+            .final_temperature = brain->config.annealing_temperature_final,
+            .num_iterations = brain->config.annealing_steps,
+            .cooling_schedule = COOLING_EXPONENTIAL,
+            .quantum_strength = 0.5f,
+            .enable_tunneling = true,
+            .seed = (uint32_t)time(NULL)
+        };
+
+        brain->quantum_annealer = quantum_annealer_create(&qa_config);
+        if (!brain->quantum_annealer) {
+            fprintf(stderr, "[WARN] Failed to re-initialize quantum annealer\n");
+            brain->config.enable_quantum_annealing = false;
+        } else {
+            fprintf(stderr, "[INFO] Quantum annealer re-initialized successfully\n");
+        }
+    }
+
+    // Re-initialize glial subsystem if enabled but not initialized
+    // (Handles case where brain was saved with glial but loaded without it)
+    if (brain->config.enable_glial && !brain->glial) {
+        fprintf(stderr, "[INFO] Re-initializing glial subsystem from config (enable_glial=true but not in save file)\n");
+        if (!init_glial_subsystem(brain)) {
+            fprintf(stderr, "[WARN] Failed to re-initialize glial subsystem\n");
+            brain->config.enable_glial = false;
+        } else {
+            fprintf(stderr, "[INFO] Glial subsystem re-initialized successfully\n");
+
+            // Re-initialize spatial neuromodulator system if glial was created
+            // Spatial neuromod is part of glial integration, so always try to initialize it
+            if (brain->glial) {
+                fprintf(stderr, "[INFO] Re-initializing spatial neuromodulator system\n");
+                if (!init_spatial_neuromod_system(brain)) {
+                    fprintf(stderr, "[WARN] Failed to re-initialize spatial neuromodulator system\n");
+                    // Non-fatal: continue without spatial neuromod
+                }
+            }
+        }
+    }
+
     brain_clear_error();
     return brain;
 }
@@ -7684,13 +7936,13 @@ bool brain_save_snapshot(brain_t brain, const char* name, const char* descriptio
 brain_t brain_restore_snapshot(brain_t brain, const char* name)
 {
     // Guard: Validate parameters
-    if (!name) {
-        set_error("Null snapshot name provided");
+    if (!brain || !name) {
+        set_error("Null brain or snapshot name provided");
         return NULL;
     }
 
-    // If brain provided, get its snapshot directory
-    const char* snapshot_dir = brain ? get_snapshot_dir(brain) : "./snapshots";
+    // Get snapshot directory from brain
+    const char* snapshot_dir = get_snapshot_dir(brain);
 
     // Find most recent snapshot with this name
     // Snapshots are named: {name}_{timestamp}.snapshot
@@ -7987,6 +8239,13 @@ bool brain_get_stats(brain_t brain, brain_stats_t* stats)
         return false;
     }
 
+    // If this is a snapshot, return the preserved stats
+    if (brain->is_snapshot) {
+        *stats = brain->snapshot_stats;
+        brain_clear_error();
+        return true;
+    }
+
     // Get performance from adaptive network
     network_performance_t perf;
     adaptive_network_get_performance(brain->network, &perf);
@@ -7998,6 +8257,7 @@ bool brain_get_stats(brain_t brain, brain_stats_t* stats)
     stats->num_active_synapses = brain->stats.num_active_synapses;
     stats->total_inferences = brain->stats.total_inferences;  // Use brain's counter, not network's
     stats->total_learning_steps = perf.total_learning_steps;
+    stats->quantum_annealing_runs = brain->stats.quantum_annealing_runs;  // Copy quantum annealing counter
     stats->avg_sparsity = perf.avg_sparsity;
     stats->avg_inference_time_us = perf.avg_inference_time_us;
     stats->current_learning_rate = brain->config.learning_rate;
@@ -8712,11 +8972,20 @@ bool brain_compute_empathy(brain_t brain, const float* observed_features,
     float total_activation = 0.0f;
     float weighted_valence = 0.0f;
 
+    // Use observed features to influence empathy calculation
+    float feature_sum = 0.0f;
+    for (uint32_t i = 0; i < num_features && i < 8; i++) {
+        feature_sum += observed_features[i];
+    }
+    float feature_mean = num_features > 0 ? feature_sum / num_features : 0.5f;
+
     for (uint32_t i = 0; i < num_activations; i++) {
         total_activation += mirror_activations[i];
-        // Simple heuristic: high activations → positive valence
-        // (Can be refined with emotional tagging integration)
-        weighted_valence += mirror_activations[i] * (i % 2 == 0 ? 1.0f : -1.0f);
+        // Differentiate valence based on feature patterns and activations
+        // Higher feature values (joy) → positive valence
+        // Lower feature values (distress) → negative valence
+        float valence_sign = (feature_mean > 0.5f) ? 1.0f : -1.0f;
+        weighted_valence += mirror_activations[i] * valence_sign * (0.5f + 0.5f * fabsf(feature_mean - 0.5f));
     }
 
     // Normalize
@@ -11234,7 +11503,18 @@ NIMCP_EXPORT bool brain_detect_communities(brain_t brain) {
 
     // 2. Run Louvain algorithm
     adaptive_network_t network = brain_get_network(brain);
-    community_structure_t* communities = community_detect((neural_network_t)network, NULL);
+    if (!network) {
+        nimcp_graph_destroy(graph);
+        NIMCP_LOGGING_ERROR("brain_detect_communities: failed to get adaptive network");
+        return false;
+    }
+    neural_network_t base_network = adaptive_network_get_base_network(network);
+    if (!base_network) {
+        nimcp_graph_destroy(graph);
+        NIMCP_LOGGING_ERROR("brain_detect_communities: failed to get base network");
+        return false;
+    }
+    community_structure_t* communities = community_detect(base_network, NULL);
     if (!communities) {
         nimcp_graph_destroy(graph);
         NIMCP_LOGGING_ERROR("brain_detect_communities: Louvain algorithm failed");
@@ -11301,7 +11581,18 @@ NIMCP_EXPORT bool brain_detect_hubs(brain_t brain, float threshold) {
 
     // 2. Run hub detection algorithm
     adaptive_network_t network = brain_get_network(brain);
-    hub_structure_t* hubs = community_detect_hubs((neural_network_t)network, threshold);
+    if (!network) {
+        nimcp_graph_destroy(graph);
+        NIMCP_LOGGING_ERROR("brain_detect_hubs: failed to get adaptive network");
+        return false;
+    }
+    neural_network_t base_network = adaptive_network_get_base_network(network);
+    if (!base_network) {
+        nimcp_graph_destroy(graph);
+        NIMCP_LOGGING_ERROR("brain_detect_hubs: failed to get base network");
+        return false;
+    }
+    hub_structure_t* hubs = community_detect_hubs(base_network, threshold);
     if (!hubs) {
         nimcp_graph_destroy(graph);
         NIMCP_LOGGING_ERROR("brain_detect_hubs: hub detection failed");
@@ -11378,8 +11669,14 @@ NIMCP_EXPORT bool brain_compute_topology_metrics(brain_t brain) {
         NIMCP_LOGGING_ERROR("brain_compute_topology_metrics: failed to get network");
         return false;
     }
+    neural_network_t base_network = adaptive_network_get_base_network(network);
+    if (!base_network) {
+        nimcp_graph_destroy(graph);
+        NIMCP_LOGGING_ERROR("brain_compute_topology_metrics: failed to get base network");
+        return false;
+    }
 
-    topology_validation_t validation = community_validate_topology((neural_network_t)network, 0.0f);
+    topology_validation_t validation = community_validate_topology(base_network, 0.0f);
 
     // 3. Store results (replace old if exists)
     if (brain->topology_metrics) {
@@ -11443,8 +11740,14 @@ NIMCP_EXPORT bool brain_validate_topology(brain_t brain) {
         NIMCP_LOGGING_ERROR("brain_validate_topology: failed to get network");
         return false;
     }
+    neural_network_t base_network = adaptive_network_get_base_network(network);
+    if (!base_network) {
+        nimcp_graph_destroy(graph);
+        NIMCP_LOGGING_ERROR("brain_validate_topology: failed to get base network");
+        return false;
+    }
 
-    topology_validation_t validation = community_validate_topology((neural_network_t)network, 0.25f);
+    topology_validation_t validation = community_validate_topology(base_network, 0.25f);
     bool is_valid = validation.is_valid;
 
     if (!is_valid) {
@@ -11588,6 +11891,83 @@ bool brain_save_json(brain_t brain, const char* filepath, uint32_t flags)
     free(json);
     
     return (written > 0);
+}
+
+//=============================================================================
+// Brain Resize Helper (called from nimcp_brain_resize.c)
+//=============================================================================
+
+/**
+ * @brief Internal helper for brain_resize - update subsystems after network swap
+ *
+ * WHAT: Updates glial integration and other subsystems to reference new network
+ * WHY:  brain_resize.c can't access full brain struct, so needs helper with full access
+ * HOW:  Destroys/recreates glial integration with new network reference
+ *
+ * @param brain Brain handle
+ * @param new_base_network New neural network after resize
+ * @param new_neuron_count New neuron count after resize
+ * @return true on success
+ */
+bool brain_resize_update_subsystems_internal(brain_t brain, neural_network_t new_base_network, uint32_t new_neuron_count)
+{
+    if (!brain || !new_base_network) {
+        return false;
+    }
+
+    // Destroy and recreate glial integration (if glial system exists)
+    if (brain->glial) {
+        fprintf(stderr, "[INFO] brain_resize: Destroying old glial integration system\n");
+
+        // Save configuration flags before destroying
+        bool enable_glial = brain->config.enable_glial;
+
+        // Destroy entire glial integration (frees all nested structures)
+        glial_integration_destroy(brain->glial);
+        brain->glial = NULL;
+
+        // Recreate glial integration with new network
+        if (enable_glial) {
+            fprintf(stderr, "[INFO] brain_resize: Creating new glial integration system for %u neurons\n", new_neuron_count);
+
+            // Create new glial integration system
+            brain->glial = glial_integration_create(new_base_network, 1000);  // 1000 = max_mappings
+
+            if (brain->glial) {
+                fprintf(stderr, "[INFO] brain_resize: Glial integration system created successfully\n");
+
+                // Recreate spatial neuromodulator system
+                fprintf(stderr, "[INFO] brain_resize: Creating new spatial neuromodulator system\n");
+
+                // Enable all neuromodulator types by default
+                bool enabled_types[NEUROMOD_COUNT] = {true, true, true, true};
+                spatial_neuromod_config_t configs[NEUROMOD_COUNT];
+
+                // Use default configs for all types
+                configs[0] = spatial_neuromod_default_config(NEUROMOD_DOPAMINE);
+                configs[1] = spatial_neuromod_default_config(NEUROMOD_SEROTONIN);
+                configs[2] = spatial_neuromod_default_config(NEUROMOD_ACETYLCHOLINE);
+                configs[3] = spatial_neuromod_default_config(NEUROMOD_NOREPINEPHRINE);
+
+                spatial_neuromod_system_t* new_spatial = spatial_neuromod_system_create(new_base_network, enabled_types, configs);
+                if (new_spatial) {
+                    brain->glial->spatial_neuromod = new_spatial;
+                    fprintf(stderr, "[INFO] brain_resize: Spatial neuromodulator system created successfully\n");
+                } else {
+                    fprintf(stderr, "[WARN] brain_resize: Failed to create spatial neuromodulator system\n");
+                }
+            } else {
+                fprintf(stderr, "[WARN] brain_resize: Failed to create glial integration system\n");
+                brain->config.enable_glial = false;
+            }
+        }
+    }
+
+    // Update brain oscillations network reference (if oscillations exist)
+    // Brain oscillations doesn't store network directly, it queries from brain
+    // No update needed
+
+    return true;
 }
 
 brain_t brain_load_json(const char* filepath)

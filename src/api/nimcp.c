@@ -680,6 +680,16 @@ nimcp_brain_snapshot_t nimcp_brain_snapshot_cow(nimcp_brain_t brain) {
         return NULL;
     }
 
+    // WHAT: Capture current stats before creating snapshot
+    // WHY:  Snapshot should preserve stats at snapshot time, not reflect future changes
+    // HOW:  Get stats from original brain before cloning
+    brain_stats_t current_stats;
+    if (!brain_get_stats(brain->internal_brain, &current_stats)) {
+        set_error("Failed to get brain stats for snapshot");
+        nimcp_free(snapshot);
+        return NULL;
+    }
+
     // WHAT: Create COW clone of brain
     // WHY:  Enables zero-copy snapshot with reference counting
     // HOW:  brain_clone_cow shares network and increments reference count
@@ -691,17 +701,14 @@ nimcp_brain_snapshot_t nimcp_brain_snapshot_cow(nimcp_brain_t brain) {
         return NULL;
     }
 
+    // CRITICAL: Mark this brain as a snapshot and preserve stats
+    // This prevents brain_get_stats from reading the shared network's current stats
+    brain_mark_as_snapshot(snapshot_brain, &current_stats);
+
     // WHAT: Calculate shared memory size for tracking
     // WHY:  Enables accurate memory usage reporting and cache statistics
-    // HOW:  Get brain stats and estimate network size
-    brain_stats_t stats;
-    size_t shared_size = 0;
-    if (brain_get_stats(snapshot_brain, &stats)) {
-        // Estimate shared network memory:
-        // - Neuron structures: num_neurons * avg_neuron_size (estimated 100 bytes)
-        // - Synapse weights: num_synapses * sizeof(float) * 2 (weight + metadata)
-        shared_size = (size_t)(stats.num_neurons * 100 + stats.num_synapses * 20);
-    }
+    // HOW:  Use the preserved stats to estimate network size
+    size_t shared_size = (size_t)(current_stats.num_neurons * 100 + current_stats.num_synapses * 20);
 
     // WHAT: Store snapshot with enhanced tracking metadata
     // WHY:  Track when snapshot was created and memory usage for monitoring
@@ -766,6 +773,13 @@ nimcp_status_t nimcp_brain_restore_cow(nimcp_brain_t brain, nimcp_brain_snapshot
     if (!new_brain) {
         set_error("Failed to clone snapshot for restore");
         return NIMCP_ERROR;
+    }
+
+    // CRITICAL: Mark the restored brain as a snapshot with the same preserved stats
+    // This ensures brain_get_stats returns the snapshot's stats, not the current network stats
+    brain_stats_t snapshot_stats;
+    if (brain_get_stats(snapshot->internal_brain_snapshot, &snapshot_stats)) {
+        brain_mark_as_snapshot(new_brain, &snapshot_stats);
     }
 
     // Assign new brain (do this before destroying old brain to avoid use-after-free)

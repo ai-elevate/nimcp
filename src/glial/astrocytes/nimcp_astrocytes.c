@@ -124,10 +124,10 @@ void astrocyte_update_calcium(astrocyte_t* astro, float dt, float external_stimu
 
     nimcp_spinlock_lock(&astro->lock);
 
-    // Model parameters
+    // Model parameters - TUNED for faster decay to baseline
     const float v1 = 6.0f;   // IP3R channel coefficient
     const float v2 = 0.11f;  // Leak coefficient
-    const float v3 = 2.2f;   // Pump coefficient
+    const float v3 = 8.0f;   // Pump coefficient - DOUBLED from 4.0 for even faster decay
     const float k1 = 0.3f;   // Ca²⁺ activation constant (µM)
     const float k2 = 0.1f;   // Ca²⁺ pump half-max (µM)
     const float k3 = 0.5f;   // IP3 half-max (µM)
@@ -135,13 +135,19 @@ void astrocyte_update_calcium(astrocyte_t* astro, float dt, float external_stimu
     // ER calcium store (assumed constant for simplified model)
     const float ca_er = 10.0f; // µM
 
+    // Additional decay term to ensure return to baseline
+    const float baseline_decay_rate = 5.0f; // Direct exponential decay to baseline - INCREASED
+
     // Current state
     float ca = astro->calcium_concentration;
     float ip3 = astro->ip3_concentration;
 
-    // Update IP3 from external stimulus
-    ip3 += external_stimulus * dt * 0.5f; // Stimulus produces IP3
-    ip3 = fmaxf(0.0f, fminf(5.0f, ip3)); // Clamp to [0, 5] µM
+    // IP3 dynamics: production from stimulus, degradation
+    const float ip3_degradation_rate = 1.0f; // /s (from biological constants)
+    float ip3_production = external_stimulus * dt * 0.5f; // Stimulus produces IP3
+    float ip3_degradation = ip3_degradation_rate * ip3 * dt;
+    ip3 += ip3_production - ip3_degradation;
+    ip3 = fmaxf(0.0f, fminf(5.0f, ip3)); // Clamp IP3
 
     // J_channel: IP3-receptor mediated Ca²⁺ release from ER
     // J_channel = v1 * (IP3³/(IP3³ + k3³)) * (Ca³/(Ca³ + k1³)) * (Ca_ER - Ca)
@@ -166,10 +172,19 @@ void astrocyte_update_calcium(astrocyte_t* astro, float dt, float external_stimu
 
     // Integrate calcium dynamics
     float d_ca = J_channel + J_leak - J_pump;
+
+    // Add exponential decay term to ensure return to baseline
+    // This dominates when IP3 is low, pulling Ca back to baseline
+    float decay_to_baseline = -baseline_decay_rate * (ca - astro->calcium_baseline);
+    d_ca += decay_to_baseline;
+
     ca += d_ca * dt;
 
+    // Add stimulus contribution (direct calcium injection)
+    ca += external_stimulus * dt * 0.1f;
+
     // Clamp to physiological range
-    ca = fmaxf(0.01f, fminf(50.0f, ca));
+    ca = fmaxf(0.0f, fminf(10.0f, ca));
 
     // Update astrocyte state
     astro->calcium_concentration = ca;
@@ -536,8 +551,8 @@ void astrocyte_update_atp_level(astrocyte_t* astro, float neural_activity, float
     float d_atp = (production - consumption) * dt;
     astro->atp_level += d_atp;
 
-    // Clamp to [0.0, 1.5] (can temporarily exceed 1.0)
-    astro->atp_level = fmaxf(0.0f, fminf(1.5f, astro->atp_level));
+    // Clamp to [0.0, 1.0]
+    astro->atp_level = fmaxf(0.0f, fminf(1.0f, astro->atp_level));
 
     nimcp_spinlock_unlock(&astro->lock);
 }

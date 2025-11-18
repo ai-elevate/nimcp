@@ -42,8 +42,8 @@
 // Constants
 //=============================================================================
 
-/** ER calcium baseline (µM) */
-#define ER_CALCIUM_BASELINE 400.0f
+/** ER calcium baseline (µM) - REDUCED for balanced dynamics */
+#define ER_CALCIUM_BASELINE 100.0f
 
 /** IP3 threshold for calcium release (µM) */
 #define IP3_THRESHOLD_FOR_RELEASE 0.5f
@@ -184,7 +184,7 @@ astrocyte_calcium_system_t* astrocyte_calcium_system_create(astrocyte_network_t*
         system->last_wave_time[i] = 0;
     }
 
-    // Set parameters from biological constants
+    // Set parameters from header constants (tuned for computational wave propagation)
     system->D_ca = CALCIUM_DIFFUSION_COEFF;
     system->D_ip3 = IP3_DIFFUSION_COEFF;
     system->ip3_production_rate = IP3_PRODUCTION_RATE;
@@ -301,8 +301,8 @@ void astrocyte_calcium_system_update(
         system->calcium_er[i] += dt * dCa_ER_dt[i];
 
         // Clamp to biological ranges
-        system->calcium[i] = fmaxf(0.01f, fminf(50.0f, system->calcium[i]));
-        system->ip3[i] = fmaxf(0.0f, fminf(10.0f, system->ip3[i]));
+        system->calcium[i] = fmaxf(0.0f, fminf(10.0f, system->calcium[i]));
+        system->ip3[i] = fmaxf(0.0f, fminf(5.0f, system->ip3[i]));
         system->calcium_er[i] = fmaxf(100.0f, fminf(500.0f, system->calcium_er[i]));
 
         // Update individual astrocyte state (always sync)
@@ -410,14 +410,15 @@ void astrocyte_calcium_system_stimulate(
 
     nimcp_spinlock_lock(&system->lock);
 
-    // Increase both Ca²⁺ and IP3 to initiate wave (biologically calibrated)
+    // Increase Ca²⁺ and IP3 to initiate wave (biologically calibrated)
     // Strong perturbation to exceed 2.0µM wave threshold
+    // Higher IP3 coefficient needed since we reduced release flux
     system->calcium[astrocyte_id] += intensity * 0.3f; // µM (exceed wave threshold)
-    system->ip3[astrocyte_id] += intensity * 0.1f; // µM (trigger IP3 receptors)
+    system->ip3[astrocyte_id] += intensity * 0.5f; // µM - HIGH IP3 for strong wave propagation
 
     // Clamp to biological ranges
-    system->calcium[astrocyte_id] = fminf(10.0f, system->calcium[astrocyte_id]);
-    system->ip3[astrocyte_id] = fminf(5.0f, system->ip3[astrocyte_id]);
+    system->calcium[astrocyte_id] = fmaxf(0.0f, fminf(10.0f, system->calcium[astrocyte_id]));
+    system->ip3[astrocyte_id] = fmaxf(0.0f, fminf(5.0f, system->ip3[astrocyte_id]));
 
     // Mark wave time
     system->last_wave_time[astrocyte_id] = nimcp_time_monotonic_us();

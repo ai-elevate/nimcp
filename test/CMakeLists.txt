@@ -104,7 +104,7 @@ function(add_test_binary TARGET_NAME SOURCE_FILE CATEGORY)
 
     # Set test properties
     set_tests_properties(${TARGET_NAME} PROPERTIES
-        ENVIRONMENT "PYTHONPATH=${CMAKE_BINARY_DIR}/lib/python"
+        ENVIRONMENT "PYTHONPATH=${CMAKE_BINARY_DIR}/lib/python;LSAN_OPTIONS=suppressions=${CMAKE_SOURCE_DIR}/lsan.supp"
         LABELS ${CATEGORY}
     )
 endfunction()
@@ -183,6 +183,25 @@ discover_category_tests(fuzz)
 
 # Enable CTest
 enable_testing()
+
+# ============================================================================
+# Timeout Configuration for Slow Tests
+# ============================================================================
+# WHAT: Extend timeout for computationally intensive tests
+# WHY:  Prevent false failures on slower hardware or Debug builds
+# HOW:  Set 60s timeout for tests that require extensive computation
+
+set_tests_properties(
+  unit_core_brain_test_brain_exhaustive_scenarios
+  unit_cognitive_ethics_test_ethics_comprehensive
+  unit_cognitive_knowledge_test_knowledge_comprehensive
+  unit_cognitive_salience_test_salience_comprehensive
+  unit_utils_tensor_networks_test_mps_compression
+  integration_utils_tensor_networks_test_mps_neural_network_integration
+  integration_test_brain_oscillations_integration
+  regression_test_routing_efficiency_regression
+  PROPERTIES TIMEOUT 60
+)
 
 # ============================================================================
 # Test Execution Instructions

@@ -177,7 +177,9 @@ TEST_F(ErrorInjectionTest, NullPointerHandling_QueueManager)
     nimcp_message_t* msg_ptr = &msg;
     EXPECT_NO_FATAL_FAILURE(nimcp_queue_manager_dequeue(nullptr, 0, &msg_ptr, 0));
 
-    EXPECT_FALSE(nimcp_queue_manager_is_empty(nullptr, 0, NIMCP_QUEUE_PRIORITY_NORMAL));
+    // NULL queue manager should return true for is_empty (defensive programming)
+    EXPECT_TRUE(nimcp_queue_manager_is_empty(nullptr, 0, NIMCP_QUEUE_PRIORITY_NORMAL));
+    // NULL queue manager should return false for is_full (cannot be full if it doesn't exist)
     EXPECT_FALSE(nimcp_queue_manager_is_full(nullptr, 0, NIMCP_QUEUE_PRIORITY_NORMAL));
     EXPECT_EQ(nimcp_queue_manager_get_size(nullptr, 0, NIMCP_QUEUE_PRIORITY_NORMAL), 0);
 }

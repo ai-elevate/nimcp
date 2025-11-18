@@ -48,12 +48,18 @@ protected:
         }
     }
 
-    // Helper: Generate speech-like features (mid-range activations)
+    // Helper: Generate speech-like features (mid-range activations with formant peaks)
     std::vector<float> generate_speech_features(uint32_t size) {
         std::vector<float> features(size);
+        // Create formant-like peaks at specific bins (2-4 peaks typical for speech)
         for (uint32_t i = 0; i < size; i++) {
-            // Speech has structured mid-range activations (0.3-0.7)
-            features[i] = 0.3f + (0.4f * (i % 10) / 10.0f);
+            features[i] = 0.2f;  // Baseline
+            // Add peaks at positions 2, 5, 9 to simulate formants
+            if (i == 2 || i == 5 || i == 9) {
+                features[i] = 2.5f;  // Strong peak
+            } else if (i == 3 || i == 6 || i == 10) {
+                features[i] = 1.2f;  // Adjacent bins
+            }
         }
         return features;
     }

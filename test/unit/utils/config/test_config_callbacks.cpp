@@ -446,15 +446,15 @@ TEST_F(ConfigCallbacksTest, UserData_Preserved) {
     // WHY:  Test user_data parameter
     // HOW:  Pass custom data, verify in callback
 
-    int custom_data = 42;
-    uint32_t id = config_register_callback("test_int", TestCallback, &custom_data);
+    // FIX: Use 'this' as user_data since TestCallback expects ConfigCallbacksTest*
+    uint32_t id = config_register_callback("test_int", TestCallback, this);
     ASSERT_NE(id, 0);
 
     config_set_int("test_int", 1);
 
     EXPECT_EQ(callback_count, 1);
     ASSERT_EQ(callback_history.size(), 1);
-    EXPECT_EQ(callback_history[0].user_data, &custom_data);
+    EXPECT_EQ(callback_history[0].user_data, this);
 
     config_unregister_callback(id);
 }

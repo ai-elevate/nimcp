@@ -169,12 +169,17 @@ NIMCP_EXPORT gpu_neural_network_t gpu_neural_network_create(
     network->total_spikes = 0;
     network->total_updates = 0;
 
-    // Allocate host memory for neurons
-    network->neurons_host = nimcp_calloc(network->neurons_capacity, sizeof(gpu_neuron_state_t));
+    // Allocate host memory for neurons (64-byte aligned for gpu_neuron_state_t)
+    size_t neurons_size = network->neurons_capacity * sizeof(gpu_neuron_state_t);
+    // Round up to multiple of 64 for aligned_alloc requirement
+    neurons_size = ((neurons_size + 63) / 64) * 64;
+    network->neurons_host = (gpu_neuron_state_t*)nimcp_aligned_alloc(64, neurons_size);
     if (!network->neurons_host) {
         nimcp_free(network);
         return NULL;
     }
+    // Zero-initialize the aligned memory
+    memset(network->neurons_host, 0, neurons_size);
 
     // Allocate host memory for synapses
     network->synapses_host = nimcp_calloc(network->synapses_capacity, sizeof(gpu_synapse_t));
@@ -249,7 +254,7 @@ NIMCP_EXPORT void gpu_neural_network_destroy(gpu_neural_network_t network)
 #endif
 
     // Free host memory
-    nimcp_free(network->neurons_host);
+    nimcp_aligned_free(network->neurons_host);
     nimcp_free(network->synapses_host);
     nimcp_free(network);
 }

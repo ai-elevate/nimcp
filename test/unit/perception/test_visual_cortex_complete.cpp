@@ -18,6 +18,7 @@
 #include <algorithm>
 
 #include "fixtures/perception/perception_test_fixtures.h"
+#include "utils/memory/nimcp_memory.h"
 
 //=============================================================================
 // Gabor Filter Tests
@@ -61,7 +62,7 @@ TEST(GaborFilterTest, CreateGaborKernel) {
     }
     EXPECT_TRUE(has_positive && has_negative) << "Gabor kernel not biphasic";
 
-    free(kernel);
+    nimcp_free(kernel);
 }
 
 TEST(GaborFilterTest, OrientationSelectivity) {
@@ -86,8 +87,8 @@ TEST(GaborFilterTest, OrientationSelectivity) {
 
     EXPECT_NEAR(dot_product, 0.0f, 0.2f) << "Orthogonal Gabor filters not orthogonal";
 
-    free(kernel_0);
-    free(kernel_90);
+    nimcp_free(kernel_0);
+    nimcp_free(kernel_90);
 }
 
 //=============================================================================
@@ -399,7 +400,7 @@ TEST_F(VisualCortexProcessingTest, StoreAndRecallMemory) {
     if (num_memories > 0) {
         // Most similar memory should have high salience
         EXPECT_GT(memories[0]->salience, 0.5f);
-        free(memories);
+        nimcp_free(memories);
     }
 }
 

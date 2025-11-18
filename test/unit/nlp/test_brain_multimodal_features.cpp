@@ -84,13 +84,13 @@ TEST_F(BrainMultimodalFeaturesTest, VisualCortex_WithMultimodalProcessing) {
 
     // Test with visual input
     brain_multimodal_input_t input = {};
-    
+
     // Create simple grayscale image (28x28)
     uint8_t visual_data[28 * 28];
     for (int i = 0; i < 28 * 28; i++) {
         visual_data[i] = (uint8_t)(i % 256);
     }
-    
+
     input.visual_data = visual_data;
     input.visual_width = 28;
     input.visual_height = 28;

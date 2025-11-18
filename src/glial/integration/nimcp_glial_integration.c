@@ -92,8 +92,9 @@ static inline uint32_t make_synapse_id(uint32_t pre_neuron_id, uint32_t post_neu
 // ============================================================================
 
 glial_integration_t* glial_integration_create(neural_network_t network, uint32_t max_mappings) {
-    // Validate parameters - both must be non-NULL/non-zero
-    if (!network || max_mappings == 0) {
+    // Validate parameters - max_mappings must be non-zero
+    // Network can be NULL (glial cells can exist independently)
+    if (max_mappings == 0) {
         return NULL;
     }
 
@@ -716,7 +717,7 @@ void glial_integration_step(glial_integration_t* gi, uint64_t timestamp) {
 
     // Part A2.1: Step spatial neuromodulator diffusion (DA, 5-HT, ACh, NE)
     // PHASE C4.6: Multi-objective optimization integrated here
-    if (gi->spatial_neuromod && gi->enable_spatial_neuromod) {
+    if (gi->spatial_neuromod && gi->enable_spatial_neuromod && gi->network) {
         // Use same dt_ms as astrocyte/oligodendrocyte systems (already computed above)
         // Update all enabled neuromodulator fields in one call
         // Supports all Phase C4.x features: quantum-Shannon, adaptive routing,

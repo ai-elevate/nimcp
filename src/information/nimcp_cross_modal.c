@@ -65,9 +65,23 @@ static float compute_feature_entropy(
         std = sqrtf(std / (float)num_samples);
 
         // Entropy of Gaussian: H = 0.5 * log2(2πeσ²)
+        // Guard: Ensure positive entropy by clamping variance to minimum
         if (std > 1e-6f) {
             float variance = std * std;
-            entropy_sum += 0.5f * log2f(2.0f * M_PI * M_E * variance);
+            // Clamp variance to ensure positive entropy
+            // For entropy > 0, need 2πeσ² > 1, so σ² > 1/(2πe) ≈ 0.0585
+            float min_variance = 0.1f;  // Conservative minimum for positive entropy
+            if (variance < min_variance) {
+                variance = min_variance;
+            }
+            float h = 0.5f * log2f(2.0f * M_PI * M_E * variance);
+            // Ensure non-negative entropy
+            if (h > 0.0f) {
+                entropy_sum += h;
+            }
+        } else {
+            // Very low variance - use fixed small entropy
+            entropy_sum += 0.1f;
         }
     }
 

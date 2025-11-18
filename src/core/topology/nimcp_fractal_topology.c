@@ -6,10 +6,12 @@
 #include "core/neuralnet/nimcp_neuralnet.h"
 #include "utils/containers/nimcp_graph.h"
 #include "utils/algorithms/nimcp_centrality.h"
+#include "utils/memory/nimcp_memory.h"
 #include <math.h>
 #include <string.h>
 #include <time.h>
 #include <stdlib.h>
+#include <stdio.h>
 
 // Access to network internal structure for getting neuron count
 // Note: Minimal struct definition to access num_neurons field
@@ -1336,6 +1338,16 @@ bool topology_identify_hubs(
     uint32_t* hub_list = nimcp_malloc(n_neurons * sizeof(uint32_t));
     if (!hub_list) {
         set_error("Failed to allocate hub list");
+        nimcp_centrality_scores_destroy(degree_scores);
+        nimcp_graph_destroy(graph);
+        return false;
+    }
+
+    // Safety check: Ensure hub_list is valid
+    if ((uintptr_t)hub_list < 0x1000000) {
+        fprintf(stderr, "ERROR: hub_list has invalid address: %p (n_neurons=%u)\n",
+                (void*)hub_list, n_neurons);
+        set_error("Invalid hub_list pointer");
         nimcp_centrality_scores_destroy(degree_scores);
         nimcp_graph_destroy(graph);
         return false;

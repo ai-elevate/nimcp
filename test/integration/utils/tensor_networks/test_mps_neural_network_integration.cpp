@@ -66,6 +66,7 @@ protected:
      */
     neural_network_t create_test_network(bool use_mps, uint32_t num_neurons = 100) {
         network_config_t config = {0};
+        config.num_neurons = num_neurons;  // CRITICAL: Must set num_neurons for validation
         config.input_size = num_neurons;
         config.output_size = num_neurons;
         config.num_layers = 3;
@@ -77,6 +78,8 @@ protected:
         config.enable_hebbian = true;
         config.enable_oja = false;
         config.enable_homeostasis = true;
+        config.ei_ratio = 0.8f;  // 80% excitatory, 20% inhibitory
+        config.refractory_period = 2.0f;
 
         neural_network_t network = neural_network_create(&config);
 

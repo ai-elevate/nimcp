@@ -199,8 +199,6 @@ TEST_F(BrainOscillationsPACIntegrationTest, BrainActivity_WithPAC_vs_NoPAC) {
 }
 
 TEST_F(BrainOscillationsPACIntegrationTest, BrainActivity_CognitiveStateInfluence) {
-    GTEST_SKIP() << "Skipping due to missing complex IFFT implementation causing zero gamma_power";
-
     // WHAT: Test how PAC varies with different activity patterns
     // WHY:  Different cognitive states have different PAC profiles
 
@@ -235,8 +233,6 @@ TEST_F(BrainOscillationsPACIntegrationTest, BrainActivity_CognitiveStateInfluenc
 }
 
 TEST_F(BrainOscillationsPACIntegrationTest, BrainActivity_MemoryConsolidation) {
-    GTEST_SKIP() << "Skipping due to missing complex IFFT implementation causing zero gamma_power";
-
     // WHAT: Simulate memory consolidation with strong theta-gamma PAC
     // WHY:  Memory consolidation shows strong theta-gamma coupling
 
@@ -506,8 +502,6 @@ TEST_F(BrainOscillationsPACIntegrationTest, Robustness_VaryingFrequency) {
 //=============================================================================
 
 TEST_F(BrainOscillationsPACIntegrationTest, CrossBand_DeltaGamma) {
-    GTEST_SKIP() << "Skipping due to missing complex IFFT implementation causing error (-1 return)";
-
     // Test delta-gamma coupling (sleep spindles)
     analyzer = brain_oscillation_create(brain, 3000, 200);  // 3s for delta
     ASSERT_NE(analyzer, nullptr);

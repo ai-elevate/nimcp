@@ -46,6 +46,10 @@ class P2PNodeTest : public NimcpTestBase {
         if (sock < 0)
             return false;
 
+        // Set SO_REUSEADDR to avoid TIME_WAIT issues
+        int reuse = 1;
+        setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, &reuse, sizeof(reuse));
+
         struct sockaddr_in addr;
         memset(&addr, 0, sizeof(addr));
         addr.sin_family = AF_INET;
@@ -131,11 +135,12 @@ class P2PNodeIntegrationTest : public NimcpTestBase {
     void SetUp() override
     {
         NimcpTestBase::SetUp();
-        config1.listen_port = 8001;
+        // FIX: Use higher port numbers to avoid conflicts with other tests
+        config1.listen_port = 18001;
         config1.max_peers = 10;
         //        config1.keepalive_interval = 1000;
 
-        config2.listen_port = 8002;
+        config2.listen_port = 18002;
         config2.max_peers = 10;
         //      config2.keepalive_interval = 1000;
 
@@ -148,6 +153,7 @@ class P2PNodeIntegrationTest : public NimcpTestBase {
 
     void TearDown() override
     {
+        // Note: p2p_node_destroy already calls p2p_node_stop internally
         if (node1) {
             p2p_node_destroy(node1);
             node1 = nullptr;
@@ -156,6 +162,8 @@ class P2PNodeIntegrationTest : public NimcpTestBase {
             p2p_node_destroy(node2);
             node2 = nullptr;
         }
+        // Give the OS time to release the ports
+        usleep(50000);
         NimcpTestBase::TearDown();
     }
 
@@ -164,6 +172,10 @@ class P2PNodeIntegrationTest : public NimcpTestBase {
         int sock = socket(AF_INET, SOCK_STREAM, 0);
         if (sock < 0)
             return false;
+
+        // Set SO_REUSEADDR to avoid TIME_WAIT issues
+        int reuse = 1;
+        setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, &reuse, sizeof(reuse));
 
         struct sockaddr_in addr;
         memset(&addr, 0, sizeof(addr));

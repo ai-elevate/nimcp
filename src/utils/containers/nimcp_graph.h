@@ -21,14 +21,16 @@
 /**
  * Maximum number of vertices (peers) supported in the graph
  * This limits the maximum network size but prevents unbounded growth
+ * Increased to 8192 to support BRAIN_SIZE_LARGE (5000 neurons) + overhead
  */
-#define NIMCP_MAX_VERTICES 256
+#define NIMCP_MAX_VERTICES 8192
 
 /**
  * Maximum number of edges (connections) supported in the graph
  * This provides an upper bound on memory usage
+ * Increased proportionally to support higher vertex count
  */
-#define NIMCP_MAX_EDGES 1024
+#define NIMCP_MAX_EDGES 65536
 
 /**
  * Special value indicating an invalid vertex index

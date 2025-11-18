@@ -692,7 +692,11 @@ float fft_dominant_frequency(const float* power, uint32_t size, float sampling_r
     }
 
     // Convert bin to frequency
-    return fft_bin_to_frequency(peak_bin, size * 2, sampling_rate);
+    // For power spectrum with 'size' bins, the FFT size is size * 2
+    // (since power spectrum typically has N/2+1 bins from N-point FFT,
+    //  but here 'size' refers to the number of bins in the power array)
+    uint32_t fft_size = size * 2;
+    return fft_bin_to_frequency(peak_bin, fft_size, sampling_rate);
 }
 
 /**
@@ -711,7 +715,9 @@ float fft_band_power(const float* power, uint32_t size, float sampling_rate,
     }
 
     // Convert frequencies to bins
-    uint32_t fft_size = size * 2;  // Real FFT size
+    // For real FFT power spectrum with 'size' bins, the FFT size is (size-1)*2
+    // because spectrum_size = fft_size/2 + 1, so fft_size = (spectrum_size-1)*2
+    uint32_t fft_size = (size - 1) * 2;  // Real FFT size
     int32_t bin_low = fft_frequency_to_bin(freq_low, fft_size, sampling_rate);
     int32_t bin_high = fft_frequency_to_bin(freq_high, fft_size, sampling_rate);
 

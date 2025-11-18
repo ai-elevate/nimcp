@@ -478,7 +478,7 @@ void synapse_learn_three_factor(
     if (!syn) return;
 
     // OPTION 2.2: Check if full eligibility trace API is enabled
-    if (syn->eligibility && syn->enable_eligibility && context) {
+    if (syn->eligibility && syn->enable_eligibility) {
         // === FULL ELIGIBILITY TRACE API WITH BURST-TRIGGERED CONSOLIDATION ===
 
         // Get configuration - use default as baseline
@@ -489,7 +489,7 @@ void synapse_learn_three_factor(
         float dopamine_level = 0.5f;  // Default baseline dopamine
 
         // Guard: Access neuromodulator system from context
-        if (context->neuromodulator_system) {
+        if (context && context->neuromodulator_system) {
             // Get dopamine level via public API
             neuromodulator_system_t neuromod = (neuromodulator_system_t)context->neuromodulator_system;
             dopamine_level = neuromodulator_get_level(neuromod, NEUROMOD_DOPAMINE);

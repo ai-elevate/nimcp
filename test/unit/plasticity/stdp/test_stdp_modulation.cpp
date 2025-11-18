@@ -201,6 +201,14 @@ TEST_F(STDPModulationTest, StatisticsTracking) {
     EXPECT_EQ(synapse.num_potentiation_events, 10);
     EXPECT_GT(synapse.total_ltp, 0.0f);
 
+    /* Reset traces and statistics to isolate LTD test phase */
+    synapse.pre_trace = 0.0f;
+    synapse.post_trace = 0.0f;
+    synapse.num_potentiation_events = 0;
+    synapse.num_depression_events = 0;
+    synapse.total_ltp = 0.0f;
+    synapse.total_ltd = 0.0f;
+
     /* 5 LTD events */
     for (int i = 0; i < 5; i++) {
         stdp_post_spike(&synapse, 100.0f);
@@ -231,7 +239,7 @@ TEST_F(STDPModulationTest, Reset) {
 
 TEST_F(STDPModulationTest, WeightClampingMax) {
     synapse.weight = 0.99f;
-    synapse.pre_trace = 10.0f;  /* Large trace */
+    synapse.pre_trace = 300.0f;  /* Large trace to exceed w_max */
 
     stdp_post_spike(&synapse, 0.0f);
 
@@ -241,7 +249,7 @@ TEST_F(STDPModulationTest, WeightClampingMax) {
 
 TEST_F(STDPModulationTest, WeightClampingMin) {
     synapse.weight = 0.01f;
-    synapse.post_trace = 10.0f;  /* Large trace */
+    synapse.post_trace = 300.0f;  /* Large trace to go below w_min */
 
     stdp_pre_spike(&synapse, 0.0f);
 

@@ -228,6 +228,9 @@ TEST_F(BrainDistributedSnapshotsTest, Snapshot_SaveAndRestore) {
         // Cleanup snapshot
         brain_delete_snapshot(restored, "test_snapshot");
         brain_destroy(restored);
+
+        // Cleanup original brain (since restore created a new brain instance)
+        brain_destroy(brain);
     } else {
         // Cleanup if restore failed
         brain_delete_snapshot(brain, "test_snapshot");

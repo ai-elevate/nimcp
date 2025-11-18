@@ -14,7 +14,9 @@
  */
 
 #include "nimcp_quantum_annealing.h"
+#include "../../utils/memory/nimcp_memory.h"
 #include <stdlib.h>
+#include <stdio.h>
 #include <string.h>
 #include <math.h>
 #include <float.h>
@@ -59,7 +61,8 @@ static void init_rng(quantum_annealer_t annealer) {
         seed = (uint32_t)time(NULL);
     }
 
-    annealer->rng_state = malloc(sizeof(uint32_t));
+    // BUGFIX: Use nimcp_malloc for consistency with memory tracking
+    annealer->rng_state = nimcp_malloc(sizeof(uint32_t));
     if (!annealer->rng_state) return;
 
     *annealer->rng_state = seed;
@@ -291,7 +294,9 @@ static void generate_neighbor(
 ) {
     if (!annealer || !current || !neighbor) return;
 
-    float stddev = 0.1f * sqrtf(temperature);
+    // Larger step size for better exploration: 0.5 * sqrt(T) instead of 0.1 * sqrt(T)
+    // This allows faster convergence while still decreasing step size as T decreases
+    float stddev = 0.5f * sqrtf(temperature);
 
     for (uint32_t i = 0; i < dim; ++i) {
         neighbor[i] = current[i] + random_gaussian(annealer, 0.0f, stddev);
@@ -356,7 +361,8 @@ quantum_annealer_t quantum_annealer_create(const quantum_annealing_config_t* con
     if (!validate_config(config)) return NULL;
 
     // Allocate annealer
-    quantum_annealer_t annealer = malloc(sizeof(struct quantum_annealer_struct));
+    // BUGFIX: Use nimcp_malloc for consistency with memory tracking
+    quantum_annealer_t annealer = nimcp_malloc(sizeof(struct quantum_annealer_struct));
     if (!annealer) return NULL;
 
     // Copy configuration
@@ -365,7 +371,7 @@ quantum_annealer_t quantum_annealer_create(const quantum_annealing_config_t* con
     // Initialize RNG
     init_rng(annealer);
     if (!annealer->rng_state) {
-        free(annealer);
+        nimcp_free(annealer);
         return NULL;
     }
 
@@ -382,11 +388,12 @@ void quantum_annealer_destroy(quantum_annealer_t annealer) {
     if (!annealer) return;
 
     if (annealer->rng_state) {
-        free(annealer->rng_state);
+        // BUGFIX: Use nimcp_free to match nimcp_malloc
+        nimcp_free(annealer->rng_state);
         annealer->rng_state = NULL;
     }
 
-    free(annealer);
+    nimcp_free(annealer);
 }
 
 float quantum_annealer_get_temperature(quantum_annealer_t annealer, uint32_t iteration) {
@@ -435,14 +442,16 @@ float quantum_anneal(
     if (dim == 0) return INFINITY;
 
     // Allocate temporary state vectors
-    float* current_state = malloc(dim * sizeof(float));
-    float* best_state = malloc(dim * sizeof(float));
-    float* neighbor_state = malloc(dim * sizeof(float));
+    // BUGFIX: Use nimcp_malloc instead of malloc for consistency with memory tracking
+    // WHY: Regular malloc/free can cause heap corruption detected by nimcp memory tracker
+    float* current_state = nimcp_malloc(dim * sizeof(float));
+    float* best_state = nimcp_malloc(dim * sizeof(float));
+    float* neighbor_state = nimcp_malloc(dim * sizeof(float));
 
     if (!current_state || !best_state || !neighbor_state) {
-        free(current_state);
-        free(best_state);
-        free(neighbor_state);
+        nimcp_free(current_state);
+        nimcp_free(best_state);
+        nimcp_free(neighbor_state);
         return INFINITY;
     }
 
@@ -506,9 +515,10 @@ float quantum_anneal(
     copy_state(optimized_state, best_state, dim);
 
     // Cleanup
-    free(current_state);
-    free(best_state);
-    free(neighbor_state);
+    // BUGFIX: Use nimcp_free to match nimcp_malloc
+    nimcp_free(current_state);
+    nimcp_free(best_state);
+    nimcp_free(neighbor_state);
 
     return best_energy;
 }

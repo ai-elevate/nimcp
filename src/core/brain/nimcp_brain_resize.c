@@ -57,6 +57,8 @@
 #include "core/neuralnet/nimcp_neuralnet.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/platform/nimcp_system_resources.h"
+#include "glial/integration/nimcp_glial_integration.h"
+#include "plasticity/neuromodulators/nimcp_spatial_neuromod.h"
 #include <math.h>
 #include <stdio.h>
 #include <string.h>
@@ -83,14 +85,15 @@
 //=============================================================================
 
 /**
- * @brief Internal brain structure
- * WHAT: Forward declaration to access internals from resize logic
+ * @brief Internal brain structure (incomplete - only fields we need)
+ * WHAT: Forward declaration to access minimal internals from resize logic
  * WHY:  Resize needs to update network and config fields
+ * NOTE: We DON'T access glial or other fields directly - use helper functions instead!
  */
 struct brain_struct {
     adaptive_network_t network;
     brain_config_t config;
-    // ... other fields not needed for resize
+    // ... other fields not accessed from resize logic
 };
 
 //=============================================================================
@@ -590,9 +593,13 @@ bool brain_resize(brain_t brain, uint32_t new_neuron_count)
     // Step 6: Update brain configuration
     brain->config.size = BRAIN_SIZE_CUSTOM;  // Now using custom size
 
-    // Update size-dependent subsystems
-    // NOTE: Most cognitive subsystems (working memory, ethics, etc.) are
-    // independent of brain size and don't need updates
+    // Step 6.5: Update subsystems that hold network references
+    // CRITICAL FIX: Call helper function in nimcp_brain.c which has full struct access
+    // This avoids struct offset bugs from incomplete struct definition
+    NIMCP_LOG_INFO("brain_resize: Updating subsystems for new network");
+    if (!brain_resize_update_subsystems_internal(brain, new_base, new_neuron_count)) {
+        NIMCP_LOG_WARN("brain_resize: Subsystem update returned failure, but continuing");
+    }
 
     // Step 7: Clean up old network
     NIMCP_LOG_INFO("brain_resize: Destroying old network");

@@ -153,6 +153,11 @@ typedef enum {
 typedef struct brain_struct* brain_t;
 
 /**
+ * @brief Forward declaration for brain stats (full definition below)
+ */
+typedef struct brain_stats_struct brain_stats_t;
+
+/**
  * @brief Astrocyte network statistics
  */
 typedef struct {
@@ -741,6 +746,22 @@ void brain_destroy(brain_t brain);
  * @return true on success, false on error (brain unchanged)
  */
 bool brain_resize(brain_t brain, uint32_t new_neuron_count);
+
+/**
+ * @brief Internal helper for brain_resize - update subsystems after network swap
+ *
+ * WHAT: Updates glial integration and other subsystems to reference new network
+ * WHY:  brain_resize.c can't access full brain struct, so needs helper in main module
+ * HOW:  Destroys/recreates glial integration with new network reference
+ *
+ * @param brain Brain handle
+ * @param new_base_network New neural network after resize
+ * @param new_neuron_count New neuron count after resize
+ * @return true on success
+ *
+ * NOTE: This is an internal function only called by brain_resize()
+ */
+bool brain_resize_update_subsystems_internal(brain_t brain, neural_network_t new_base_network, uint32_t new_neuron_count);
 
 /**
  * @brief Auto-resize brain based on utilization metrics
@@ -1438,7 +1459,7 @@ size_t brain_get_memory_usage(brain_t brain);
 /**
  * @brief Brain statistics
  */
-typedef struct {
+struct brain_stats_struct {
     char task_name[64];           /**< Brain name */
     brain_size_t size;            /**< Size preset */
     uint32_t num_neurons;         /**< Total neurons */
@@ -1455,7 +1476,7 @@ typedef struct {
 
     float accuracy;      /**< Validation accuracy */
     size_t memory_bytes; /**< Memory usage */
-} brain_stats_t;
+};
 
 /**
  * @brief Get brain statistics
@@ -1465,6 +1486,18 @@ typedef struct {
  * @return true on success
  */
 bool brain_get_stats(brain_t brain, brain_stats_t* stats);
+
+/**
+ * @brief Mark brain as a snapshot with preserved stats
+ *
+ * WHAT: Sets snapshot flag and preserves current stats
+ * WHY:  Snapshots should preserve stats at snapshot time, not reflect future changes
+ * HOW:  Stores current stats in brain->snapshot_stats
+ *
+ * @param brain Brain to mark as snapshot
+ * @param stats Stats to preserve
+ */
+void brain_mark_as_snapshot(brain_t brain, const brain_stats_t* stats);
 
 /**
  * @brief Get number of input features for this brain

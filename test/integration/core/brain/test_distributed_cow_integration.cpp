@@ -43,8 +43,8 @@
 class DistributedCOWIntegrationTest : public ::testing::Test {
 protected:
     void SetUp() override {
-        // Create master brain
-        master_brain = brain_create("master_brain", BRAIN_SIZE_MEDIUM, BRAIN_TASK_CLASSIFICATION, 1000, 100);
+        // Create master brain with input size matching our test patterns (4 features)
+        master_brain = brain_create("master_brain", BRAIN_SIZE_MEDIUM, BRAIN_TASK_CLASSIFICATION, 4, 2);
         ASSERT_NE(master_brain, nullptr);
 
         // Train master brain with some patterns

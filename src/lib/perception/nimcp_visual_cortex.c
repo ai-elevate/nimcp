@@ -481,6 +481,7 @@ float* gabor_create_kernel(int kernel_size, const gabor_params_t* params)
     float psi = params->phase * M_PI / 180.0f;
 
     // Generate Gabor function
+    float sum = 0.0f;
     for (int y = 0; y < kernel_size; y++) {
         for (int x = 0; x < kernel_size; x++) {
             float x_offset = x - center;
@@ -494,8 +495,16 @@ float* gabor_create_kernel(int kernel_size, const gabor_params_t* params)
             float gaussian = expf(-(x_rot * x_rot + gamma * gamma * y_rot * y_rot) / (2.0f * sigma * sigma));
             float sinusoid = cosf(2.0f * M_PI * x_rot / lambda + psi);
 
-            kernel[y * kernel_size + x] = gaussian * sinusoid;
+            float value = gaussian * sinusoid;
+            kernel[y * kernel_size + x] = value;
+            sum += value;
         }
+    }
+
+    // DC balance: subtract mean to make kernel sum to zero
+    float mean = sum / (kernel_size * kernel_size);
+    for (int i = 0; i < kernel_size * kernel_size; i++) {
+        kernel[i] -= mean;
     }
 
     return kernel;
@@ -1262,29 +1271,42 @@ float visual_cortex_compute_novelty(visual_cortex_t* cortex, const float* featur
         return 1.0f;
     }
 
-    // Find maximum similarity to existing memories
+    // Normalize query features
+    float query_norm = 0.0f;
+    for (uint32_t j = 0; j < cortex->feature_dim; j++) {
+        query_norm += features[j] * features[j];
+    }
+    query_norm = sqrtf(query_norm);
+    if (query_norm < 1e-6f) {
+        return 1.0f;  // Zero features are maximally novel
+    }
+
+    // Find maximum cosine similarity to existing memories
     float max_similarity = 0.0f;
     for (uint32_t i = 0; i < cortex->num_memories; i++) {
-        // Cosine similarity
+        // Compute normalized dot product (cosine similarity)
         float dot = 0.0f;
+        float memory_norm = 0.0f;
         for (uint32_t j = 0; j < cortex->feature_dim; j++) {
             dot += features[j] * cortex->memories[i]->features[j];
+            memory_norm += cortex->memories[i]->features[j] * cortex->memories[i]->features[j];
         }
+        memory_norm = sqrtf(memory_norm);
 
-        if (dot > max_similarity) {
-            max_similarity = dot;
+        if (memory_norm > 1e-6f) {
+            float cosine_sim = dot / (query_norm * memory_norm);
+            if (cosine_sim > max_similarity) {
+                max_similarity = cosine_sim;
+            }
         }
     }
 
-    // Novelty = 1 - similarity (range 0-1)
-    // High similarity → low novelty
-    // Low similarity → high novelty
+    // Novelty = 1 - similarity (cosine similarity ranges from -1 to 1)
+    // Clamp similarity to [0, 1] range first
+    if (max_similarity < 0.0f) max_similarity = 0.0f;
+    if (max_similarity > 1.0f) max_similarity = 1.0f;
+
     float novelty = 1.0f - max_similarity;
-
-    // Clamp to [0, 1]
-    if (novelty < 0.0f) novelty = 0.0f;
-    if (novelty > 1.0f) novelty = 1.0f;
-
     return novelty;
 }
 

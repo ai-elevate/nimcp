@@ -34,7 +34,8 @@ struct brain_oscillation_analyzer_struct {
     // Timing parameters
     uint32_t window_size_ms;      /**< Analysis window in ms */
     uint32_t sampling_rate_hz;    /**< Sampling rate in Hz */
-    uint32_t buffer_size;         /**< Activity buffer size (samples) */
+    uint32_t buffer_size;         /**< Activity buffer size (samples, power of 2) */
+    uint32_t min_samples;         /**< Minimum samples needed for analysis */
 
     // Activity tracking
     float* activity_buffer;       /**< Ring buffer for neural activity */
@@ -151,7 +152,8 @@ brain_oscillation_analyzer_t* brain_oscillation_create(
     analyzer->sampling_rate_hz = sampling_rate_hz;
 
     // Compute buffer size (samples = window_ms * rate_hz / 1000)
-    analyzer->buffer_size = (window_size_ms * sampling_rate_hz) / 1000;
+    analyzer->min_samples = (window_size_ms * sampling_rate_hz) / 1000;
+    analyzer->buffer_size = analyzer->min_samples;
 
     // Round up to power of 2 for FFT
     analyzer->buffer_size = fft_next_power_of_2(analyzer->buffer_size);
@@ -273,6 +275,36 @@ bool brain_oscillation_record_activity(brain_oscillation_analyzer_t* analyzer)
 //=============================================================================
 
 /**
+ * @brief Reorder ring buffer into chronological order
+ *
+ * WHAT: Copy ring buffer data to linear array in chronological order
+ * WHY:  FFT requires chronologically ordered data
+ * HOW:  Copy from buffer_head (oldest) to buffer_head-1 (newest)
+ */
+static void reorder_ring_buffer(
+    const brain_oscillation_analyzer_t* analyzer,
+    float* ordered_buffer)
+{
+    // If we haven't wrapped around yet, data is already in order
+    if (analyzer->samples_recorded < analyzer->buffer_size) {
+        memcpy(ordered_buffer, analyzer->activity_buffer,
+               analyzer->buffer_size * sizeof(float));
+        return;
+    }
+
+    // Copy from buffer_head (oldest) to end of buffer
+    uint32_t first_part = analyzer->buffer_size - analyzer->buffer_head;
+    memcpy(ordered_buffer,
+           analyzer->activity_buffer + analyzer->buffer_head,
+           first_part * sizeof(float));
+
+    // Copy from start of buffer to buffer_head-1 (newest)
+    memcpy(ordered_buffer + first_part,
+           analyzer->activity_buffer,
+           analyzer->buffer_head * sizeof(float));
+}
+
+/**
  * @brief Get brain wave power
  */
 bool brain_oscillation_get_wave_power(
@@ -285,13 +317,25 @@ bool brain_oscillation_get_wave_power(
     }
 
     // Check if buffer is full enough
-    if (analyzer->samples_recorded < analyzer->buffer_size) {
+    if (analyzer->samples_recorded < analyzer->min_samples) {
         return false;  // Need full window
     }
 
-    // Perform FFT
-    if (!fft_execute_real(analyzer->fft_plan, analyzer->activity_buffer,
-                          analyzer->spectrum)) {
+    // Allocate temporary buffer for chronologically ordered data
+    float* ordered_buffer = (float*)nimcp_calloc(analyzer->buffer_size, sizeof(float));
+    if (!ordered_buffer) {
+        return false;
+    }
+
+    // Reorder ring buffer into chronological order
+    reorder_ring_buffer(analyzer, ordered_buffer);
+
+    // Perform FFT on ordered data
+    bool fft_success = fft_execute_real(analyzer->fft_plan, ordered_buffer,
+                                        analyzer->spectrum);
+    nimcp_free(ordered_buffer);
+
+    if (!fft_success) {
         return false;
     }
 
@@ -524,7 +568,7 @@ bool brain_oscillation_get_spectrum(
     }
 
     // Check if we have data
-    if (analyzer->samples_recorded < analyzer->buffer_size) {
+    if (analyzer->samples_recorded < analyzer->min_samples) {
         return false;
     }
 
@@ -597,40 +641,90 @@ static bool extract_band_filtered_signal(
         default: return false;
     }
 
-    // Create temporary spectrum buffer (don't modify analyzer's spectrum)
-    fft_complex_t* temp_spectrum = (fft_complex_t*)nimcp_calloc(
+    // Allocate temporary buffer for chronologically ordered data
+    float* ordered_buffer = (float*)nimcp_calloc(analyzer->buffer_size, sizeof(float));
+    if (!ordered_buffer) {
+        return false;
+    }
+
+    // Reorder ring buffer into chronological order
+    reorder_ring_buffer(analyzer, ordered_buffer);
+
+    // Create temporary spectrum buffer (half spectrum from real FFT)
+    fft_complex_t* half_spectrum = (fft_complex_t*)nimcp_calloc(
         analyzer->spectrum_size, sizeof(fft_complex_t));
-    if (!temp_spectrum) {
+    if (!half_spectrum) {
+        nimcp_free(ordered_buffer);
         return false;
     }
 
-    // Compute FFT of signal into temporary buffer
-    if (!fft_execute_real(analyzer->fft_plan, analyzer->activity_buffer,
-                          temp_spectrum)) {
-        nimcp_free(temp_spectrum);
+    // Compute FFT of ordered signal into temporary buffer
+    if (!fft_execute_real(analyzer->fft_plan, ordered_buffer,
+                          half_spectrum)) {
+        nimcp_free(ordered_buffer);
+        nimcp_free(half_spectrum);
         return false;
     }
 
-    // Zero out bins outside frequency band
+    // Done with ordered buffer
+    nimcp_free(ordered_buffer);
+
+    // Create full complex spectrum for bandpass filtering
+    fft_complex_t* full_spectrum = (fft_complex_t*)nimcp_calloc(
+        analyzer->buffer_size, sizeof(fft_complex_t));
+    if (!full_spectrum) {
+        nimcp_free(half_spectrum);
+        return false;
+    }
+
+    // Expand half spectrum to full spectrum with Hermitian symmetry
     float sampling_rate = (float)analyzer->sampling_rate_hz;
     for (uint32_t k = 0; k < analyzer->spectrum_size; k++) {
         float freq = fft_bin_to_frequency(k, analyzer->buffer_size, sampling_rate);
-        if (freq < freq_low || freq > freq_high) {
-            temp_spectrum[k].real = 0.0f;
-            temp_spectrum[k].imag = 0.0f;
+
+        // Apply bandpass filter
+        if (freq >= freq_low && freq <= freq_high) {
+            full_spectrum[k] = half_spectrum[k];
+
+            // Mirror for negative frequencies (Hermitian symmetry)
+            if (k > 0 && k < analyzer->buffer_size / 2) {
+                full_spectrum[analyzer->buffer_size - k].real = half_spectrum[k].real;
+                full_spectrum[analyzer->buffer_size - k].imag = -half_spectrum[k].imag;
+            }
         }
+        // else: remains zero (from calloc)
     }
 
-    // Inverse FFT to get filtered signal
+    // Inverse complex FFT to get filtered signal
     fft_plan_t* ifft_plan = fft_plan_create(analyzer->buffer_size, FFT_INVERSE);
     if (!ifft_plan) {
-        nimcp_free(temp_spectrum);
+        nimcp_free(half_spectrum);
+        nimcp_free(full_spectrum);
         return false;
     }
 
-    bool success = fft_execute_inverse_real(ifft_plan, temp_spectrum, output);
+    fft_complex_t* complex_output = (fft_complex_t*)nimcp_calloc(
+        analyzer->buffer_size, sizeof(fft_complex_t));
+    if (!complex_output) {
+        nimcp_free(half_spectrum);
+        nimcp_free(full_spectrum);
+        fft_plan_destroy(ifft_plan);
+        return false;
+    }
+
+    bool success = fft_execute_inverse_complex(ifft_plan, full_spectrum, complex_output);
+
+    // Extract real part
+    if (success) {
+        for (uint32_t i = 0; i < analyzer->buffer_size; i++) {
+            output[i] = complex_output[i].real;
+        }
+    }
+
     fft_plan_destroy(ifft_plan);
-    nimcp_free(temp_spectrum);
+    nimcp_free(half_spectrum);
+    nimcp_free(full_spectrum);
+    nimcp_free(complex_output);
 
     return success;
 }
@@ -963,7 +1057,7 @@ float brain_oscillation_compute_pac(
     }
 
     // Check buffer is full
-    if (analyzer->samples_recorded < analyzer->buffer_size) {
+    if (analyzer->samples_recorded < analyzer->min_samples) {
         return -1.0f;
     }
 
@@ -1061,7 +1155,7 @@ float brain_oscillation_compute_synchrony(brain_oscillation_analyzer_t* analyzer
     }
 
     // Check buffer is full
-    if (analyzer->samples_recorded < analyzer->buffer_size) {
+    if (analyzer->samples_recorded < analyzer->min_samples) {
         return -1.0f;
     }
 
@@ -1072,6 +1166,8 @@ float brain_oscillation_compute_synchrony(brain_oscillation_analyzer_t* analyzer
     }
 
     // Use already filtered signal (activity buffer)
+    // Note: We use buffer_size for FFT (power of 2), but compute synchrony
+    // using all samples including zero-padding for proper FFT behavior
     if (!extract_instantaneous_phase(analyzer->activity_buffer,
                                      analyzer->buffer_size, phase)) {
         nimcp_free(phase);
@@ -1080,17 +1176,18 @@ float brain_oscillation_compute_synchrony(brain_oscillation_analyzer_t* analyzer
 
     // Compute Kuramoto order parameter: R = |⟨e^(iθ)⟩|
     // This is the magnitude of the mean of complex exponentials of phases
+    // Only use the valid samples (min_samples), not the zero-padded region
     float sum_cos = 0.0f;
     float sum_sin = 0.0f;
 
-    for (uint32_t i = 0; i < analyzer->buffer_size; i++) {
+    for (uint32_t i = 0; i < analyzer->min_samples; i++) {
         sum_cos += cosf(phase[i]);
         sum_sin += sinf(phase[i]);
     }
 
-    // Normalize by number of samples
-    float mean_cos = sum_cos / (float)analyzer->buffer_size;
-    float mean_sin = sum_sin / (float)analyzer->buffer_size;
+    // Normalize by number of valid samples
+    float mean_cos = sum_cos / (float)analyzer->min_samples;
+    float mean_sin = sum_sin / (float)analyzer->min_samples;
 
     // Order parameter magnitude R = |⟨e^(iθ)⟩|
     // This quantifies the degree of phase coherence:
@@ -1143,12 +1240,18 @@ float brain_oscillation_compute_coherence(brain_oscillation_analyzer_t* analyzer
     }
 
     // Check buffer is full
-    if (analyzer->samples_recorded < analyzer->buffer_size) {
+    if (analyzer->samples_recorded < analyzer->min_samples) {
         return -1.0f;
     }
 
-    // Ensure we have power spectrum computed
-    if (!analyzer->power_spectrum || !analyzer->spectrum) {
+    // Compute FFT and power spectrum if not already done
+    if (!fft_execute_real(analyzer->fft_plan, analyzer->activity_buffer,
+                          analyzer->spectrum)) {
+        return -1.0f;
+    }
+
+    if (!fft_power_spectrum(analyzer->spectrum, analyzer->power_spectrum,
+                            analyzer->spectrum_size)) {
         return -1.0f;
     }
 

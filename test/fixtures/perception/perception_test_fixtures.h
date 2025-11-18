@@ -443,7 +443,9 @@ protected:
 
     std::vector<float> ProcessAudio(const std::vector<float>& audio) {
         std::vector<float> features(FEATURE_DIM);
-        bool success = audio_cortex_process(cortex, audio.data(), audio.size(), 1, features.data());
+        // audio_cortex_process expects exactly FRAME_SIZE samples
+        uint32_t num_samples = std::min((uint32_t)audio.size(), FRAME_SIZE);
+        bool success = audio_cortex_process(cortex, audio.data(), num_samples, 1, features.data());
         EXPECT_TRUE(success);
         return features;
     }

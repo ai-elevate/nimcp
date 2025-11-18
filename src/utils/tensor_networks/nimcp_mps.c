@@ -285,6 +285,7 @@ static bool tt_svd_decompose(
         // WHAT: Fill MPS tensor with left singular vectors
         // WHY:  Store factorized component at this site
         // HOW:  A[i,j,k] = U[i×phys_dim + k, j]
+        // NOTE: svd.U is column-major: U[row, col] = U[col * m + row]
         for (uint32_t i = 0; i < tensor->left_dim; i++) {
             for (uint32_t j = 0; j < tensor->right_dim; j++) {
                 for (uint32_t k = 0; k < phys_dim; k++) {
@@ -292,7 +293,7 @@ static bool tt_svd_decompose(
                     if (row_idx < svd.m && j < svd.rank) {
                         uint32_t tensor_idx = i * tensor->right_dim * phys_dim +
                                             j * phys_dim + k;
-                        tensor->data[tensor_idx] = svd.U[row_idx * svd.rank + j];
+                        tensor->data[tensor_idx] = svd.U[j * svd.m + row_idx];
                     }
                 }
             }

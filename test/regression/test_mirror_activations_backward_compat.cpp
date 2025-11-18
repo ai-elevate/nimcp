@@ -45,10 +45,12 @@ TEST_F(MirrorActivationsBackwardCompatTest, Legacy_BrainWithoutMirrorNeurons_Wor
     ASSERT_NE(brain, nullptr);
 
     // Standard brain operations should work
-    float input[10] = {0.1f, 0.2f, 0.3f, 0.4f, 0.5f,
-                       0.6f, 0.7f, 0.8f, 0.9f, 1.0f};
+    float input[128] = {0}; // Brain expects 128 inputs
+    for (int i = 0; i < 10 && i < 128; i++) {
+        input[i] = 0.1f * (i + 1);
+    }
 
-    brain_decision_t* decision = brain_decide(brain, input, 10);
+    brain_decision_t* decision = brain_decide(brain, input, 128);
     EXPECT_NE(decision, nullptr);
 
     if (decision) {
@@ -226,13 +228,15 @@ TEST_F(MirrorActivationsBackwardCompatTest, Performance_NoOverheadWhenDisabled) 
     ASSERT_NE(brain_with_mirror, nullptr);
 
     // Time brain_decide() on both
-    float input[10] = {0.1f, 0.2f, 0.3f, 0.4f, 0.5f,
-                       0.6f, 0.7f, 0.8f, 0.9f, 1.0f};
+    float input[128] = {0}; // Brain expects 128 inputs
+    for (int i = 0; i < 10 && i < 128; i++) {
+        input[i] = 0.1f * (i + 1);
+    }
 
     // Warm up
     for (int i = 0; i < 10; i++) {
-        brain_decision_t* d1 = brain_decide(brain_no_mirror, input, 10);
-        brain_decision_t* d2 = brain_decide(brain_with_mirror, input, 10);
+        brain_decision_t* d1 = brain_decide(brain_no_mirror, input, 128);
+        brain_decision_t* d2 = brain_decide(brain_with_mirror, input, 128);
         if (d1) brain_free_decision(d1);
         if (d2) brain_free_decision(d2);
     }
@@ -240,7 +244,7 @@ TEST_F(MirrorActivationsBackwardCompatTest, Performance_NoOverheadWhenDisabled) 
     // Benchmark without mirror neurons
     auto start1 = std::chrono::high_resolution_clock::now();
     for (int i = 0; i < 1000; i++) {
-        brain_decision_t* decision = brain_decide(brain_no_mirror, input, 10);
+        brain_decision_t* decision = brain_decide(brain_no_mirror, input, 128);
         if (decision) brain_free_decision(decision);
     }
     auto end1 = std::chrono::high_resolution_clock::now();
@@ -249,7 +253,7 @@ TEST_F(MirrorActivationsBackwardCompatTest, Performance_NoOverheadWhenDisabled) 
     // Benchmark with mirror neurons (but not observing, just regular decide)
     auto start2 = std::chrono::high_resolution_clock::now();
     for (int i = 0; i < 1000; i++) {
-        brain_decision_t* decision = brain_decide(brain_with_mirror, input, 10);
+        brain_decision_t* decision = brain_decide(brain_with_mirror, input, 128);
         if (decision) brain_free_decision(decision);
     }
     auto end2 = std::chrono::high_resolution_clock::now();
@@ -345,8 +349,11 @@ TEST_F(MirrorActivationsBackwardCompatTest, Contract_ErrorStatesClearable) {
     EXPECT_FALSE(brain_get_mirror_activations(brain, activations, 100, &out_size));
 
     // Should still be able to use brain for other operations
-    float input[5] = {0.1f, 0.2f, 0.3f, 0.4f, 0.5f};
-    brain_decision_t* decision = brain_decide(brain, input, 5);
+    float input[128] = {0}; // Brain expects 128 inputs
+    for (int i = 0; i < 5 && i < 128; i++) {
+        input[i] = 0.1f * (i + 1);
+    }
+    brain_decision_t* decision = brain_decide(brain, input, 128);
 
     // Should work despite previous error
     EXPECT_NE(decision, nullptr);

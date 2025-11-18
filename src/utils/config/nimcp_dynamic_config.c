@@ -57,6 +57,13 @@ static config_stats_t g_stats = {0};
 static uint32_t g_next_callback_id = 1;
 
 //=============================================================================
+// Forward Declarations
+//=============================================================================
+
+static void trigger_callbacks(const char* key, const config_value_t* old_value,
+                              const config_value_t* new_value);
+
+//=============================================================================
 // INI Parser (Simple, No Dependencies)
 //=============================================================================
 
@@ -312,8 +319,16 @@ bool config_set_int(const char* key, int64_t value) {
                 pthread_rwlock_unlock(&g_config_lock);
                 return false; // Type mismatch
             }
+            // Save old value for callback
+            config_value_t old_value = g_config_table[i].value;
+            config_value_t new_value;
+            new_value.int_val = value;
+
             g_config_table[i].value.int_val = value;
             pthread_rwlock_unlock(&g_config_lock);
+
+            // Trigger callbacks after releasing lock
+            trigger_callbacks(key, &old_value, &new_value);
             return true;
         }
     }
@@ -333,8 +348,16 @@ bool config_set_float(const char* key, double value) {
                 pthread_rwlock_unlock(&g_config_lock);
                 return false; // Type mismatch
             }
+            // Save old value for callback
+            config_value_t old_value = g_config_table[i].value;
+            config_value_t new_value;
+            new_value.float_val = value;
+
             g_config_table[i].value.float_val = value;
             pthread_rwlock_unlock(&g_config_lock);
+
+            // Trigger callbacks after releasing lock
+            trigger_callbacks(key, &old_value, &new_value);
             return true;
         }
     }
@@ -354,8 +377,16 @@ bool config_set_bool(const char* key, bool value) {
                 pthread_rwlock_unlock(&g_config_lock);
                 return false; // Type mismatch
             }
+            // Save old value for callback
+            config_value_t old_value = g_config_table[i].value;
+            config_value_t new_value;
+            new_value.bool_val = value;
+
             g_config_table[i].value.bool_val = value;
             pthread_rwlock_unlock(&g_config_lock);
+
+            // Trigger callbacks after releasing lock
+            trigger_callbacks(key, &old_value, &new_value);
             return true;
         }
     }
@@ -376,12 +407,25 @@ bool config_set_string(const char* key, const char* value) {
                 return false; // Type mismatch
             }
 
+            // Save old value for callback
+            config_value_t old_value = g_config_table[i].value;
+            config_value_t new_value;
+            new_value.string_val = strdup(value);
+
             // Free old value and set new one
             if (g_config_table[i].value.string_val) {
                 free(g_config_table[i].value.string_val);
             }
             g_config_table[i].value.string_val = strdup(value);
             pthread_rwlock_unlock(&g_config_lock);
+
+            // Trigger callbacks after releasing lock
+            trigger_callbacks(key, &old_value, &new_value);
+
+            // Free the temporary copy
+            if (new_value.string_val) {
+                free(new_value.string_val);
+            }
             return true;
         }
     }

@@ -1,266 +1,512 @@
-# Test Coverage Status - Session Summary
-## Date: 2025-11-11
-## Target: 95% Line Coverage
+# NIMCP Coverage Status
+Generated: Sat Nov 15 03:59:29 AM CET 2025
 
----
+## Summary
+- Source files: 149
+- Test files: 293
+- Test executables: 240
 
-## Current Status
+## Detailed Status
 
-**Line Coverage: 56.4%** (16,971 / 30,100 lines)  
-**Function Coverage: 68.8%** (1,638 / 2,382 functions)  
-**Target Coverage: 95.0%**  
-**Gap Remaining: 38.6%** (11,629 lines to cover)
+### api
 
----
+**api/nimcp.c** ✅ HAS TEST
+  - Test files: test/src/cognitive/remorse/nimcp_remorse_regret.c
 
-## Work Completed This Session
+### bindings/nodejs
 
-### 1. ✅ Coverage Infrastructure Setup
-- Enabled `ENABLE_COVERAGE=ON` in CMake build
-- Rebuilt entire codebase with coverage instrumentation (`--coverage` flags)
-- Verified coverage data generation (`.gcda` files present)
+**bindings/nodejs/binding.c** ❌ NO TEST
 
-### 2. ✅ Test Execution
-- **134 test executables** built successfully
-- **105 tests passing** (78.4% pass rate)
-- **29 tests failing** (identified for future fixes)
-- All tests executed to generate coverage data
+### cognitive
 
-### 3. ✅ Coverage Measurement & Analysis
-- Generated coverage data using `lcov/geninfo`
-- Created HTML coverage report: `build/coverage_html/index.html`
-- Identified top priority files for coverage improvement
-- Analyzed function-level and line-level coverage
+**cognitive/mental_health_monitor.c** ❌ NO TEST
 
-### 4. ✅ Documentation Created
-- **COVERAGE_REPORT_2025-11-11.md**: Comprehensive analysis with action plan
-- **COVERAGE_STATUS.md**: This file - session summary
-- **Coverage HTML Report**: Browse-able report at `build/coverage_html/index.html`
+**cognitive/nimcp_fractal_cognitive.c** ❌ NO TEST
 
----
+### cognitive/autobiographical_memory
 
-## Coverage Analysis Summary
+**cognitive/autobiographical_memory/nimcp_autobiographical_memory.c** ❌ NO TEST
 
-### Top 10 Files Needing Coverage (Ranked by Impact)
+### cognitive/bias
 
-| File | Current | Total Lines | Uncovered | Potential Gain |
-|------|---------|-------------|-----------|----------------|
-| nimcp_brain.c | 9.2% | 1,401 | 1,272 | **4.2%** |
-| nimcp_neuralnet.c | 14.1% | 474 | 407 | **1.4%** |
-| nimcp_mirror_neurons.c | 6.8% | 413 | 385 | **1.3%** |
-| nimcp_wellbeing.c | 7.8% | 386 | 356 | **1.2%** |
-| nimcp_visual_cortex.c | 7.9% | 382 | 352 | **1.2%** |
-| nimcp_brain_regions.c | 5.5% | 362 | 342 | **1.1%** |
-| nimcp_salience.c | 9.3% | 356 | 323 | **1.1%** |
-| nimcp_security.c | 8.7% | 355 | 324 | **1.1%** |
-| nimcp_knowledge.c | 16.6% | 368 | 307 | **1.0%** |
-| nimcp_curiosity.c | 24.3% | 304 | 230 | **0.8%** |
+**cognitive/bias/nimcp_bias_detection.c** ❌ NO TEST
 
-**Top 10 Total Impact: 15.4% coverage gain possible**
+### cognitive/consolidation
 
-### Files with Zero Coverage (16 files)
-- NLP modules (`nimcp_nlp.c`, `nimcp_spike_nlp.c`)
-- Python bindings (4 files)
-- Configuration system (2 files)
-- Platform utilities (5 files)
-- Metrics & monitoring (2 files)
+**cognitive/consolidation/nimcp_consolidation.c** ❌ NO TEST
 
-**Zero Coverage Files: ~10% potential gain**
+### cognitive/curiosity
 
----
+**cognitive/curiosity/nimcp_curiosity.c** ❌ NO TEST
 
-## Path to 95% Coverage
+**cognitive/curiosity/nimcp_curiosity_fractal.c** ❌ NO TEST
 
-### Recommended Approach (3 Phases)
+**cognitive/curiosity/nimcp_curiosity_hyperbolic.c** ❌ NO TEST
 
-#### Phase 1: High-Impact Files [Target: +15%]
-Focus on top 10 low-coverage, high-line-count files:
+### cognitive/emotion_recognition
 
-1. **nimcp_brain.c** (1,401 lines)
-   - Add tests for: distributed brain functions, pretrained models, snapshots, optimization
-   - Create: `test_brain_advanced.cpp`
+**cognitive/emotion_recognition/nimcp_emotion_recognition_simple.c** ❌ NO TEST
 
-2. **nimcp_neuralnet.c** (474 lines)
-   - Add tests for: weight initialization, learning algorithms, network variants
-   - Create: `test_neuralnet_advanced.cpp`
+### cognitive/emotional_tagging
 
-3. **nimcp_mirror_neurons.c** (413 lines)
-   - Add tests for: mirror neuron activation, empathy simulation
-   - Create: `test_mirror_neurons_advanced.cpp`
+**cognitive/emotional_tagging/nimcp_emotional_tagging.c** ❌ NO TEST
 
-4-10. Continue through remaining high-impact files
+### cognitive/emotions
 
-#### Phase 2: Zero-Coverage Files [Target: +10%]
-Create initial test suites for 16 files currently at 0%:
+**cognitive/emotions/nimcp_emotional_system.c** ❌ NO TEST
 
-- `test_nlp.cpp`
-- `test_python_bindings.cpp`
-- `test_config_system.cpp`
-- `test_platform_utils.cpp`
+### cognitive/empathetic_response
 
-#### Phase 3: Medium-Coverage Boost [Target: +13.6%]
-Improve files in 10-50% range by targeting:
-- Error paths and edge cases
-- Less common code branches
-- Conditional logic not hit by existing tests
-
----
+**cognitive/empathetic_response/nimcp_empathetic_response.c** ❌ NO TEST
 
-## Technical Details
+### cognitive/epistemic
 
-### Build Configuration
-```bash
-# Coverage is enabled
-cmake -DENABLE_COVERAGE=ON .
+**cognitive/epistemic/nimcp_epistemic_filter.c** ❌ NO TEST
 
-# Build with coverage
-cmake --build . -j4
+### cognitive/ethics
 
-# Run tests
-find test -type f -executable -exec {} \;
+**cognitive/ethics/nimcp_ethics.c** ❌ NO TEST
 
-# Measure coverage
-geninfo src/lib --output-file coverage_lib.info \
-  --ignore-errors mismatch,negative,gcov,source,unused
+**cognitive/ethics/nimcp_ethics_hyperbolic.c** ❌ NO TEST
 
-# View summary
-lcov --summary coverage_lib.info
-```
+### cognitive/executive
 
-### Existing Test Infrastructure
-- **Test Framework**: Google Test (gtest)
-- **Test Discovery**: Automatic via CMake
-- **Test Categories**:
-  - Unit tests: 132
-  - Integration tests: Multiple
-  - Regression tests: Multiple
-  - Coverage-specific tests: Multiple
+**cognitive/executive/nimcp_executive.c** ❌ NO TEST
 
-### Coverage Tools
-- **lcov/geninfo**: Line and function coverage measurement
-- **gcov**: Detailed file-level coverage analysis
-- **genhtml**: HTML report generation
+### cognitive/explanations
 
----
+**cognitive/explanations/nimcp_explanations.c** ❌ NO TEST
 
-## Files & Artifacts Generated
+### cognitive/global_workspace
 
-### Reports
-1. **`COVERAGE_REPORT_2025-11-11.md`** - Detailed analysis with actionable plan
-2. **`COVERAGE_STATUS.md`** - This file, session summary
-3. **`build/coverage_html/index.html`** - Browse-able HTML coverage report
+**cognitive/global_workspace/nimcp_global_workspace.c** ❌ NO TEST
 
-### Coverage Data
-1. **`build/coverage_lib.info`** - lcov coverage data (can be used by CI/CD)
-2. **`build/coverage_lib_new.info`** - Latest regenerated coverage data
-3. **`build/src/lib/**//*.gcda`** - Raw gcov data files
+### cognitive/grief
 
-### Test Executables
-- Located in: `build/test/`
-- Count: 134 executables
-- Naming: `unit_test_*`, `integration_test_*`, `regression_test_*`
+**cognitive/grief/nimcp_grief_and_loss.c** ❌ NO TEST
 
----
+### cognitive/introspection
 
-## Next Steps for Reaching 95%
+**cognitive/introspection/nimcp_introspection.c** ❌ NO TEST
 
-### Immediate Actions (High ROI)
-1. **Write tests for nimcp_brain.c** (4.2% gain)
-   - Focus on uncovered functions identified in gcov analysis
-   - Target: Distributed, pretrained, and optimization code paths
+### cognitive/joy
 
-2. **Write tests for nimcp_neuralnet.c** (1.4% gain)
-   - Focus on learning algorithms and weight initialization
-   - Target: Uncovered network creation variants
+**cognitive/joy/nimcp_joy_euphoria.c** ❌ NO TEST
 
-3. **Fix 29 failing tests** (may uncover additional coverage)
-   - Some tests may be failing due to actual bugs that prevent code execution
-   - Fixing them could expose previously untested code paths
+### cognitive/knowledge
 
-### Medium-Term Actions
-4. Create comprehensive test files for remaining top 10 files
-5. Add initial tests for 16 zero-coverage files
-6. Improve medium-coverage files through targeted edge case testing
+**cognitive/knowledge/nimcp_knowledge.c** ❌ NO TEST
 
-### Verification
-- Re-run coverage measurement after each batch of new tests
-- Track progress: `lcov --summary coverage_lib.info`
-- Update HTML report: `genhtml coverage_lib.info --output-directory coverage_html`
-- Monitor progress toward 95% goal
+**cognitive/knowledge/nimcp_knowledge_fractal.c** ❌ NO TEST
 
----
+**cognitive/knowledge/nimcp_knowledge_hyperbolic.c** ❌ NO TEST
 
-## Estimated Effort to 95%
+### cognitive/logic
 
-### Based on Current Analysis:
-- **Phase 1** (Top 10 files): ~15-20 hours
-  - Each file needs comprehensive test coverage
-  - Requires understanding code paths and creating meaningful tests
+**cognitive/logic/nimcp_symbolic_logic.c** ❌ NO TEST
 
-- **Phase 2** (Zero-coverage files): ~8-12 hours
-  - Simpler as basic tests are sufficient
-  - Focus on API exercising rather than deep logic
+### cognitive/memory
 
-- **Phase 3** (Medium-coverage boost): ~8-10 hours
-  - Edge cases and error paths
-  - Often straightforward once code is understood
+**cognitive/memory/nimcp_engram.c** ❌ NO TEST
 
-**Total Estimated Effort: 31-42 hours of focused test development**
+**cognitive/memory/nimcp_semantic_memory.c** ❌ NO TEST
 
----
+**cognitive/memory/nimcp_systems_consolidation.c** ❌ NO TEST
 
-## Key Insights
+**cognitive/memory/nimcp_wm_transfer.c** ❌ NO TEST
 
-1. **Existing tests are good** - 78.4% pass rate shows quality
-2. **Coverage infrastructure works** - All measurement tools functional
-3. **Biggest wins are clear** - Top 10 files identified with specific targets
-4. **Gcov analysis available** - Function-level detail in `.gcov` files
-5. **HTML report is valuable** - Use `build/coverage_html/index.html` to identify specific lines
+### cognitive/mental_health
 
----
+**cognitive/mental_health/disorder_detectors.c** ❌ NO TEST
 
-## Commands Reference
+**cognitive/mental_health/interventions.c** ❌ NO TEST
 
-### Quick Coverage Measurement
-```bash
-cd /home/bbrelin/nimcp/build
+**cognitive/mental_health/nimcp_mental_health.c** ❌ NO TEST
 
-# Run all tests
-find test -type f -executable | while read t; do ./$t > /dev/null 2>&1 || true; done
+### cognitive/meta_learning
 
-# Generate coverage
-geninfo src/lib --output-file coverage_lib.info --ignore-errors mismatch,negative,gcov,source,unused
+**cognitive/meta_learning/nimcp_meta_learning.c** ❌ NO TEST
 
-# View summary
-lcov --summary coverage_lib.info
+### cognitive/mirror_neurons
 
-# Generate HTML
-genhtml coverage_lib.info --output-directory coverage_html --ignore-errors source
-```
+**cognitive/mirror_neurons/nimcp_mirror_neurons.c** ❌ NO TEST
 
-### View Specific File Coverage
-```bash
-cd /home/bbrelin/nimcp/build
-lcov --list coverage_lib.info | grep "brain.c"
-```
+### cognitive/personality
 
-### Find Uncovered Lines in Specific File
-```bash
-cd /home/bbrelin/nimcp/build/src/lib/CMakeFiles/nimcp.dir/__/core/brain
-gcov nimcp_brain.c.gcda
-grep "^    #####:" nimcp_brain.c.gcov
-```
+**cognitive/personality/nimcp_personality.c** ❌ NO TEST
 
----
+### cognitive/predictive
 
-## Conclusion
+**cognitive/predictive/nimcp_predictive.c** ❌ NO TEST
 
-**Current State**: 56.4% coverage, solid foundation with 105 passing tests  
-**Target State**: 95.0% coverage  
-**Gap**: 38.6% (11,629 lines)  
-**Strategy**: 3-phase targeted approach focusing on high-impact files first  
-**Estimated Effort**: 31-42 hours of focused test development  
+### cognitive/remorse
 
-**Next Session Should Focus On**: Writing comprehensive tests for `nimcp_brain.c` to gain 4.2% coverage in one shot.
+**cognitive/remorse/nimcp_remorse_regret.c** ✅ HAS TEST
+  - Test files: test/src/cognitive/remorse/nimcp_remorse_regret.c
 
-The infrastructure is ready, the analysis is complete, and the path forward is clear. The remaining work is test authoring, which is now straightforward with the detailed coverage reports available.
+### cognitive/salience
+
+**cognitive/salience/nimcp_salience.c** ❌ NO TEST
+
+### cognitive/self_awareness
+
+**cognitive/self_awareness/nimcp_self_awareness_extended.c** ❌ NO TEST
+
+### cognitive/self_model
+
+**cognitive/self_model/nimcp_self_model.c** ❌ NO TEST
+
+### cognitive/shadow
+
+**cognitive/shadow/nimcp_shadow_emotions.c** ❌ NO TEST
+
+### cognitive/sleep_wake
+
+**cognitive/sleep_wake/nimcp_sleep_wake.c** ❌ NO TEST
+
+### cognitive/social
+
+**cognitive/social/nimcp_love_loyalty_friendship.c** ❌ NO TEST
+
+### cognitive/theory_of_mind
+
+**cognitive/theory_of_mind/nimcp_theory_of_mind.c** ❌ NO TEST
+
+### cognitive/wellbeing
+
+**cognitive/wellbeing/nimcp_wellbeing.c** ❌ NO TEST
+
+### cognitive/working_memory
+
+**cognitive/working_memory/nimcp_working_memory.c** ❌ NO TEST
+
+### core/brain
+
+**core/brain/nimcp_brain.c** ❌ NO TEST
+
+**core/brain/nimcp_distributed_cow.c** ❌ NO TEST
+
+**core/brain/nimcp_pretrained.c** ❌ NO TEST
+
+### core/brain/processing
+
+**core/brain/processing/cognitive_processor.c** ❌ NO TEST
+
+**core/brain/processing/multimodal_integrator.c** ❌ NO TEST
+
+**core/brain/processing/sensory_extractor.c** ❌ NO TEST
+
+### core/brain_oscillations
+
+**core/brain_oscillations/nimcp_brain_oscillations.c** ❌ NO TEST
+
+### core/brain_regions
+
+**core/brain_regions/nimcp_brain_regions.c** ❌ NO TEST
+
+### core/integration
+
+**core/integration/nimcp_multimodal_integration.c** ❌ NO TEST
+
+### core/neuralnet
+
+**core/neuralnet/nimcp_neuralnet.c** ❌ NO TEST
+
+**core/neuralnet/nimcp_synapse_embeddings.c** ❌ NO TEST
+
+### core/neuron_models
+
+**core/neuron_models/nimcp_izhikevich.c** ❌ NO TEST
+
+**core/neuron_models/nimcp_neuron_model.c** ❌ NO TEST
+
+**core/neuron_models/nimcp_two_compartment.c** ❌ NO TEST
+
+### core/neuron_types
+
+**core/neuron_types/nimcp_neural_logic.c** ❌ NO TEST
+
+**core/neuron_types/nimcp_neuron_types.c** ❌ NO TEST
+
+### core/synapse_compute
+
+**core/synapse_compute/nimcp_synapse_compute.c** ❌ NO TEST
+
+### core/synapse_types
+
+**core/synapse_types/nimcp_synapse_types.c** ❌ NO TEST
+
+### core/topology
+
+**core/topology/nimcp_fractal_topology.c** ❌ NO TEST
+
+**core/topology/nimcp_network_builder.c** ❌ NO TEST
+
+### glial/astrocyte_types
+
+**glial/astrocyte_types/nimcp_astrocyte_types.c** ❌ NO TEST
+
+### glial/astrocytes
+
+**glial/astrocytes/nimcp_astrocyte_calcium.c** ❌ NO TEST
+
+**glial/astrocytes/nimcp_astrocytes.c** ❌ NO TEST
+
+### glial/integration
+
+**glial/integration/nimcp_glial_integration.c** ❌ NO TEST
+
+### glial/microglia
+
+**glial/microglia/nimcp_microglia.c** ❌ NO TEST
+
+### glial/oligodendrocytes
+
+**glial/oligodendrocytes/nimcp_oligodendrocytes.c** ❌ NO TEST
+
+### gpu
+
+**gpu/nimcp_multigpu.c** ❌ NO TEST
+
+### gpu/execution
+
+**gpu/execution/nimcp_execution_mode.c** ❌ NO TEST
+
+### gpu/neuron
+
+**gpu/neuron/nimcp_gpu_neuron.c** ❌ NO TEST
+
+### gpu/spike_event
+
+**gpu/spike_event/nimcp_spike_event.c** ❌ NO TEST
+
+### information
+
+**information/nimcp_cross_modal.c** ❌ NO TEST
+
+**information/nimcp_shannon.c** ❌ NO TEST
+
+### io/dataio
+
+**io/dataio/nimcp_dataio.c** ❌ NO TEST
+
+### io/serialization
+
+**io/serialization/nimcp_encryption.c** ❌ NO TEST
+
+**io/serialization/nimcp_network_serialization.c** ❌ NO TEST
+
+**io/serialization/nimcp_serialization.c** ❌ NO TEST
+
+### io/stream
+
+**io/stream/nimcp_stream.c** ❌ NO TEST
+
+### lib
+
+**lib/nimcp_distributed_cognition_impl.c** ❌ NO TEST
+
+### lib/cognitive
+
+**lib/cognitive/nimcp_hierarchical.c** ❌ NO TEST
+
+### lib/perception
+
+**lib/perception/nimcp_audio_cortex.c** ❌ NO TEST
+
+**lib/perception/nimcp_speech_cortex.c** ❌ NO TEST
+
+**lib/perception/nimcp_visual_cortex.c** ❌ NO TEST
+
+### networking/distributed
+
+**networking/distributed/nimcp_distributed_cognition.c** ❌ NO TEST
+
+### networking/events
+
+**networking/events/nimcp_events.c** ❌ NO TEST
+
+### networking/p2p
+
+**networking/p2p/nimcp_p2pnode.c** ❌ NO TEST
+
+### networking/protocol
+
+**networking/protocol/nimcp_protocol.c** ❌ NO TEST
+
+### networking/replication
+
+**networking/replication/nimcp_replication.c** ❌ NO TEST
+
+### nlp
+
+**nlp/nimcp_multimodal_nlp_bridge.c** ❌ NO TEST
+
+**nlp/nimcp_nlp.c** ❌ NO TEST
+
+**nlp/nimcp_spike_nlp.c** ❌ NO TEST
+
+### optimization/quantum_annealing
+
+**optimization/quantum_annealing/nimcp_quantum_annealing.c** ❌ NO TEST
+
+### plasticity/adaptive
+
+**plasticity/adaptive/nimcp_adaptive.c** ❌ NO TEST
+
+### plasticity/attention
+
+**plasticity/attention/nimcp_attention.c** ❌ NO TEST
+
+### plasticity/bcm
+
+**plasticity/bcm/nimcp_bcm.c** ❌ NO TEST
+
+### plasticity/eligibility
+
+**plasticity/eligibility/nimcp_eligibility_trace.c** ❌ NO TEST
+
+### plasticity/neuromodulators
+
+**plasticity/neuromodulators/nimcp_metabolic_pathways.c** ❌ NO TEST
+
+**plasticity/neuromodulators/nimcp_neuromod_pink_noise.c** ❌ NO TEST
+
+**plasticity/neuromodulators/nimcp_neuromodulators.c** ❌ NO TEST
+
+**plasticity/neuromodulators/nimcp_phasic_tonic.c** ❌ NO TEST
+
+**plasticity/neuromodulators/nimcp_receptor_subtypes.c** ❌ NO TEST
+
+**plasticity/neuromodulators/nimcp_spatial_neuromod.c** ❌ NO TEST
+
+**plasticity/neuromodulators/nimcp_vesicle_packaging.c** ❌ NO TEST
+
+### plasticity/noise
+
+**plasticity/noise/nimcp_pink_noise.c** ❌ NO TEST
+
+### plasticity/stdp
+
+**plasticity/stdp/nimcp_stdp.c** ❌ NO TEST
+
+### plasticity/stp
+
+**plasticity/stp/nimcp_stp.c** ❌ NO TEST
+
+### security
+
+**security/nimcp_security.c** ❌ NO TEST
+
+### utils/cache
+
+**utils/cache/nimcp_cache.c** ❌ NO TEST
+
+### utils/config
+
+**utils/config/nimcp_config.c** ❌ NO TEST
+
+**utils/config/nimcp_dynamic_config.c** ❌ NO TEST
+
+### utils/containers
+
+**utils/containers/nimcp_btree.c** ❌ NO TEST
+
+**utils/containers/nimcp_graph.c** ❌ NO TEST
+
+**utils/containers/nimcp_hash_table.c** ❌ NO TEST
+
+**utils/containers/nimcp_min_heap.c** ❌ NO TEST
+
+**utils/containers/nimcp_queue.c** ❌ NO TEST
+
+**utils/containers/nimcp_vector.c** ❌ NO TEST
+
+### utils/error
+
+**utils/error/nimcp_error_codes.c** ❌ NO TEST
+
+### utils/geometry
+
+**utils/geometry/nimcp_hyperbolic.c** ❌ NO TEST
+
+### utils/json
+
+**utils/json/nimcp_json.c** ❌ NO TEST
+
+### utils/logging
+
+**utils/logging/nimcp_logging.c** ❌ NO TEST
+
+### utils/memory
+
+**utils/memory/nimcp_memory.c** ❌ NO TEST
+
+**utils/memory/nimcp_memory_guards.c** ❌ NO TEST
+
+### utils/metrics
+
+**utils/metrics/nimcp_metrics.c** ❌ NO TEST
+
+### utils/numerical
+
+**utils/numerical/nimcp_integration.c** ❌ NO TEST
+
+### utils/platform
+
+**utils/platform/nimcp_platform.c** ❌ NO TEST
+
+**utils/platform/nimcp_platform_cond.c** ❌ NO TEST
+
+**utils/platform/nimcp_platform_mutex.c** ❌ NO TEST
+
+**utils/platform/nimcp_platform_once.c** ❌ NO TEST
+
+**utils/platform/nimcp_platform_rwlock.c** ❌ NO TEST
+
+**utils/platform/nimcp_platform_thread.c** ❌ NO TEST
+
+**utils/platform/nimcp_platform_time.c** ❌ NO TEST
+
+### utils/quantum
+
+**utils/quantum/nimcp_quantum_shannon.c** ❌ NO TEST
+
+**utils/quantum/nimcp_quantum_walk.c** ❌ NO TEST
+
+### utils/queue_manager
+
+**utils/queue_manager/nimcp_queue_manager.c** ❌ NO TEST
+
+### utils/signal
+
+**utils/signal/nimcp_signal_handler.c** ❌ NO TEST
+
+### utils/spectral
+
+**utils/spectral/nimcp_fft.c** ❌ NO TEST
+
+### utils/tensor_networks
+
+**utils/tensor_networks/nimcp_mps.c** ❌ NO TEST
+
+### utils/thread
+
+**utils/thread/nimcp_deadlock_detector.c** ❌ NO TEST
+
+**utils/thread/nimcp_thread.c** ❌ NO TEST
+
+**utils/thread/nimcp_thread_pool.c** ❌ NO TEST
+
+### utils/time
+
+**utils/time/nimcp_time.c** ❌ NO TEST
+
+### utils/validation
+
+**utils/validation/nimcp_validate.c** ❌ NO TEST
+
+
+## Statistics
+- Files with tests: 2 (1.3%)
+- Files without tests: 147 (98.7%)

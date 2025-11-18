@@ -654,14 +654,14 @@ bool spatial_neuromod_release(spatial_neuromod_field_t* field,
                                float amount) {
     // WHAT: Adds neuromodulator release at specific neuron
     // WHY:  Models phasic release (e.g., dopamine burst from VTA)
-    // HOW:  Directly increments concentration c_i += amount
+    // HOW:  Increments source_rate which drives diffusion
     //
     // BIOLOGICAL: Vesicular release from presynaptic terminal
     // UNITS: amount in normalized units (0-1 typical)
     //
-    // RATIONALE: Phasic releases are instantaneous bursts, not continuous rates.
-    //            Changed from source_rate[] to direct concentration[] modification.
-    //            Diffusion and decay will handle spatial/temporal dynamics.
+    // RATIONALE: source_rate is the canonical source term in the diffusion equation
+    //            dc/dt = D*Laplacian(c) - k*c + S where S = source_rate
+    //            This allows diffusion update to handle spatial/temporal dynamics
 
     if (!field) {
         nimcp_log_error("NULL field in spatial_neuromod_release");
@@ -678,11 +678,8 @@ bool spatial_neuromod_release(spatial_neuromod_field_t* field,
         amount = 0.0f;
     }
 
-    // Add directly to concentration (phasic burst)
-    float new_concentration = field->concentration[neuron_id] + amount;
-    field->concentration[neuron_id] = clamp(new_concentration,
-                                             field->min_concentration,
-                                             field->max_concentration);
+    // Add to source_rate (will be applied in next diffusion update)
+    field->source_rate[neuron_id] += amount;
 
     field->total_released += amount;
 

@@ -116,7 +116,7 @@ TEST_F(EligibilityWiringTest, FullAPIMode_Activated) {
         10.0f,   // pre_spike_time
         20.0f,   // post_spike_time (LTP timing)
         1.0f,    // reward_signal
-        (synapse_compute_context_t*)1  // Non-NULL context triggers full API
+        NULL  // Context not needed - eligibility enabled via synapse flag
     );
 
     // Verify eligibility trace was updated
@@ -144,7 +144,7 @@ TEST_F(EligibilityWiringTest, TraceAccumulation_MultipleSpikes) {
             t,       // pre_spike_time
             t + 10,  // post_spike_time (LTP)
             0.0f,    // No reward yet
-            (synapse_compute_context_t*)1
+            NULL
         );
     }
 
@@ -169,7 +169,7 @@ TEST_F(EligibilityWiringTest, RewardConsolidation_WeightChange) {
         10.0f,
         20.0f,
         0.0f,    // No reward
-        (synapse_compute_context_t*)1
+        NULL
     );
 
     float trace_after_spike = eligibility_get_trace(synapse_full_api.eligibility);
@@ -185,7 +185,7 @@ TEST_F(EligibilityWiringTest, RewardConsolidation_WeightChange) {
         0.0f,    // No new spike
         0.0f,
         1.0f,    // Strong reward
-        (synapse_compute_context_t*)1
+        NULL
     );
 
     // Weight should change significantly with reward
@@ -212,7 +212,7 @@ TEST_F(EligibilityWiringTest, SpikeTimingDependence_LTPLTD) {
         10.0f,   // pre before
         20.0f,   // post after
         1.0f,    // reward
-        (synapse_compute_context_t*)1
+        NULL
     );
 
     float weight_ltp = syn_ltp.weight;
@@ -231,7 +231,7 @@ TEST_F(EligibilityWiringTest, SpikeTimingDependence_LTPLTD) {
         20.0f,   // pre after
         10.0f,   // post before
         1.0f,    // reward
-        (synapse_compute_context_t*)1
+        NULL
     );
 
     float weight_ltd = syn_ltd.weight;
@@ -258,7 +258,7 @@ TEST_F(EligibilityWiringTest, TraceDecay_Temporal) {
         10.0f,
         20.0f,
         0.0f,
-        (synapse_compute_context_t*)1
+        NULL
     );
 
     float trace_initial = eligibility_get_trace(synapse_full_api.eligibility);
@@ -273,7 +273,7 @@ TEST_F(EligibilityWiringTest, TraceDecay_Temporal) {
             0.0f,    // No spike
             0.0f,
             0.0f,    // No reward
-            (synapse_compute_context_t*)1
+            NULL
         );
     }
 
@@ -299,7 +299,7 @@ TEST_F(EligibilityWiringTest, WeightBounds_Clamping) {
             i * 10.0f,
             i * 10.0f + 10.0f,
             1.0f,    // Strong reward
-            (synapse_compute_context_t*)1
+            NULL
         );
     }
 
@@ -321,7 +321,7 @@ TEST_F(EligibilityWiringTest, ZeroReward_NoConsolidation) {
         10.0f,
         20.0f,
         0.0f,
-        (synapse_compute_context_t*)1
+        NULL
     );
 
     float weight_before = synapse_full_api.weight;
@@ -335,7 +335,7 @@ TEST_F(EligibilityWiringTest, ZeroReward_NoConsolidation) {
             0.0f,
             0.0f,
             0.0f,   // Zero reward
-            (synapse_compute_context_t*)1
+            NULL
         );
     }
 
@@ -356,7 +356,7 @@ TEST_F(EligibilityWiringTest, ModeSelection_Automatic) {
         &pre_neuron,
         &post_neuron,
         10.0f, 20.0f, 1.0f,
-        (synapse_compute_context_t*)1
+        NULL
     );
 
     // Should use inline trace
@@ -369,7 +369,7 @@ TEST_F(EligibilityWiringTest, ModeSelection_Automatic) {
         &pre_neuron,
         &post_neuron,
         10.0f, 20.0f, 1.0f,
-        (synapse_compute_context_t*)1
+        NULL
     );
 
     // Should use full API
@@ -392,7 +392,7 @@ TEST_F(EligibilityWiringTest, NegativeReward_WeightDecrease) {
         10.0f,
         20.0f,
         0.0f,
-        (synapse_compute_context_t*)1
+        NULL
     );
 
     // Apply negative reward (punishment)
@@ -403,7 +403,7 @@ TEST_F(EligibilityWiringTest, NegativeReward_WeightDecrease) {
         0.0f,
         0.0f,
         -1.0f,   // Negative reward
-        (synapse_compute_context_t*)1
+        NULL
     );
 
     // Weight should decrease

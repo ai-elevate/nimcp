@@ -73,24 +73,23 @@ TEST_F(ConfigBrainIntegrationTest, LearningRateCallback) {
 
     std::atomic<int> callback_count{0};
 
-    auto lr_callback = [](const char* key, const config_value_t* old_val,
-                         const config_value_t* new_val, void* user_data) {
-        auto* brain_ptr = static_cast<brain_t*>(user_data);
-        auto* counter = static_cast<std::atomic<int>*>(
-            reinterpret_cast<void*>((char*)user_data + sizeof(brain_t)));
-
-        if (strcmp(key, "learning_rate") == 0 && new_val) {
-            // Update brain learning rate
-            // Note: This would require brain_set_learning_rate API
-            // For now, just count callbacks
-            (*counter)++;
-        }
-    };
-
     struct CallbackData {
         brain_t brain;
         std::atomic<int>* counter;
     } cb_data = {brain, &callback_count};
+
+    auto lr_callback = [](const char* key, const config_value_t* old_val,
+                         const config_value_t* new_val, void* user_data) {
+        // FIX: Cast user_data to CallbackData* to access both brain and counter
+        auto* data = static_cast<CallbackData*>(user_data);
+
+        if (strcmp(key, "learning_rate") == 0 && new_val && data && data->counter) {
+            // Update brain learning rate
+            // Note: This would require brain_set_learning_rate API
+            // For now, just count callbacks
+            (*(data->counter))++;
+        }
+    };
 
     uint32_t id = config_register_callback("learning_rate",
                                            lr_callback,

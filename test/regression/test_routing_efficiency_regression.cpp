@@ -257,8 +257,15 @@ TEST_F(RoutingEfficiencyRegressionTest, Training_TopologyStability_Maintained) {
     topology_metrics_t initial_topology = network_analyzer_get_metrics(analyzer);
 
     // Train
-    float training_data[10] = {0.1f, 0.2f, 0.3f, 0.4f, 0.5f, 0.6f, 0.7f, 0.8f, 0.9f, 1.0f};
-    float labels[2] = {1.0f, 0.0f};
+    // Brain has 200 inputs, 20 outputs (from SetUp), so 1 sample = 200 floats
+    float training_data[200];
+    for (int i = 0; i < 200; i++) {
+        training_data[i] = (float)(i % 10) * 0.1f;  // Pattern: 0.0, 0.1, ..., 0.9, 0.0, ...
+    }
+    float labels[20];
+    for (int i = 0; i < 20; i++) {
+        labels[i] = (i < 10) ? 1.0f : 0.0f;  // Binary pattern
+    }
 
     brain_finetune_config_t config = {
         .learning_rate = 0.01f,
@@ -402,19 +409,22 @@ TEST_F(RoutingEfficiencyRegressionTest, AdaptiveRouting_ProbabilityConservation_
     );
     ASSERT_NE(qsd, nullptr);
 
+    // Get actual neuron count from network
+    uint32_t num_neurons = neural_network_get_num_neurons(network);
+
     // Multiple routing + evolution cycles
     for (int cycle = 0; cycle < 10; cycle++) {
         quantum_adaptive_routing(qsd, (void*)analyzer);
         quantum_shannon_evolve(qsd, 10);
 
         // Check normalization
-        float* probs = (float*)malloc(200 * sizeof(float));
+        float* probs = (float*)malloc(num_neurons * sizeof(float));
         ASSERT_NE(probs, nullptr);
 
         quantum_shannon_get_distribution(qsd, probs);
 
         float total_prob = 0.0f;
-        for (uint32_t i = 0; i < 200; i++) {
+        for (uint32_t i = 0; i < num_neurons; i++) {
             total_prob += probs[i];
         }
 
