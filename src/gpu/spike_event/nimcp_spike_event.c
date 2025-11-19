@@ -130,7 +130,10 @@ void spike_train_destroy(spike_train_t* train)
 bool spike_train_add(spike_train_t* train, uint64_t timestamp, float amplitude)
 {
     // Guard: Validate inputs
-    if (!train || timestamp == 0) {
+    // WHAT: Allow timestamp 0 - it's a valid time (t=0)
+    // WHY:  Tests and simulations often start at t=0
+    // FIX:  Removed timestamp == 0 check (Issue #SPIKE-003)
+    if (!train) {
         return false;
     }
 
@@ -206,17 +209,22 @@ float spike_train_compute_rate(spike_train_t* train, uint64_t time_window)
         return 0.0f;
     }
 
-    // Get current time
-    uint64_t current_time = nimcp_time_get_us();
+    /**
+     * WHAT: Use last spike timestamp as window end (not wall-clock time)
+     * WHY:  Simulations use synthetic timestamps (0, 1000, 2000...), not real time
+     * HOW:  Calculate window relative to last_spike instead of nimcp_time_get_us()
+     * FIX:  Issue #SPIKE-004 - Firing rate always 0 in tests
+     */
+    uint64_t window_end = train->last_spike;
+    uint64_t window_start = (window_end > time_window) ? (window_end - time_window) : 0;
 
     // Count spikes in time window
     uint32_t spike_count = 0;
-    uint64_t window_start = current_time - time_window;
 
     for (uint32_t i = 0; i < train->count; i++) {
         spike_event_t event;
         if (spike_train_get_spike(train, i, &event)) {
-            if (event.timestamp >= window_start) {
+            if (event.timestamp >= window_start && event.timestamp <= window_end) {
                 spike_count++;
             }
         }
@@ -376,27 +384,26 @@ bool spike_queue_pop(spike_queue_t* queue, spike_event_t* event)
         return false;
     }
 
-    // Check if queue is empty
-    uint32_t current_count = ATOMIC_LOAD(&queue->count);
-    if (current_count == 0) {
-        return false;  // Queue empty
-    }
+    /**
+     * WHAT: Atomically reserve a slot by decrementing count first
+     * WHY:  Prevent race where two threads both pass empty check with count=1
+     * HOW:  Use CAS loop to atomically check and decrement count before reading
+     * FIX:  Issue #SPIKE-005 - ConcurrentPop race condition
+     */
+    uint32_t old_count;
+    do {
+        old_count = ATOMIC_LOAD(&queue->count);
+        if (old_count == 0) {
+            return false;  // Queue empty
+        }
+    } while (!ATOMIC_COMPARE_EXCHANGE(&queue->count, &old_count, old_count - 1));
 
-    // Get head position and increment atomically
+    // Slot reserved - now get head position and increment atomically
     uint32_t head_pos = ATOMIC_FETCH_ADD(&queue->head, 1);
     uint32_t index = head_pos & queue->mask;
 
     // Read event
     *event = queue->events[index];
-
-    // Decrement count (with protection)
-    uint32_t old_count;
-    do {
-        old_count = ATOMIC_LOAD(&queue->count);
-        if (old_count == 0) {
-            break;
-        }
-    } while (!ATOMIC_COMPARE_EXCHANGE(&queue->count, &old_count, old_count - 1));
 
     return true;
 }

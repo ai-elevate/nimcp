@@ -181,13 +181,20 @@ NIMCP_EXPORT gpu_neural_network_t gpu_neural_network_create(
     // Zero-initialize the aligned memory
     memset(network->neurons_host, 0, neurons_size);
 
-    // Allocate host memory for synapses
-    network->synapses_host = nimcp_calloc(network->synapses_capacity, sizeof(gpu_synapse_t));
+    /**
+     * WHAT: Allocate host memory for synapses with 16-byte alignment
+     * WHY:  gpu_synapse_t requires 16-byte alignment (Issue #GPU-NEURON-001)
+     * HOW:  Use nimcp_aligned_alloc(16, size) instead of nimcp_calloc
+     */
+    size_t synapses_size = network->synapses_capacity * sizeof(gpu_synapse_t);
+    network->synapses_host = (gpu_synapse_t*)nimcp_aligned_alloc(16, synapses_size);
     if (!network->synapses_host) {
         nimcp_free(network->neurons_host);
         nimcp_free(network);
         return NULL;
     }
+    // Zero-initialize the aligned memory
+    memset(network->synapses_host, 0, synapses_size);
 
     // Try to allocate GPU memory if CUDA available
     network->using_gpu = false;

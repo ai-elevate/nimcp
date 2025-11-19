@@ -596,6 +596,18 @@ bool brain_stream_feed(brain_stream_t stream, const float* features, uint32_t nu
     }
 
     /**
+     * WHAT: Validate feature size matches brain input dimension
+     * WHY: Prevent buffer overflows and memory corruption (Issue #5555)
+     * HOW: Check num_features against brain's expected input size
+     */
+    uint32_t expected_inputs = brain_get_num_inputs(stream->brain);
+    if (num_features != expected_inputs) {
+        stream_set_error("Feature size mismatch: got %u, expected %u",
+                        num_features, expected_inputs);
+        return false;
+    }
+
+    /**
      * WHAT: Handle based on stream mode (Strategy pattern)
      * WHY: Different modes have different processing strategies
      * HOW: Switch on mode, delegate to appropriate handler

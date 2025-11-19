@@ -140,6 +140,14 @@ function(discover_category_tests CATEGORY)
 
     # Create executable for each test file
     foreach(TEST_FILE ${TEST_FILES})
+        # Check if test file's directory has its own CMakeLists.txt
+        # If it does, skip this test file (it's managed by the subdirectory CMakeLists.txt)
+        get_filename_component(TEST_DIR ${TEST_FILE} DIRECTORY)
+        if(EXISTS "${TEST_DIR}/CMakeLists.txt")
+            # Skip - this test is managed by subdirectory CMakeLists.txt
+            continue()
+        endif()
+
         # Extract test name from filename
         get_filename_component(TEST_NAME ${TEST_FILE} NAME_WE)
 
@@ -221,3 +229,23 @@ message(STATUS "  ./tools/code_surgeon/code_surgeon.py --mode test-only")
 message(STATUS "  ./tools/code_surgeon/code_surgeon.py --mode full")
 message(STATUS "===============================================================================")
 message(STATUS "")
+
+# ============================================================================
+# Middleware Tests
+# ============================================================================
+
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/unit/middleware")
+    message(STATUS "Adding middleware unit tests...")
+    add_subdirectory(unit/middleware)
+endif()
+
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/integration/middleware")
+    message(STATUS "Adding middleware integration tests...")
+    add_subdirectory(integration/middleware)
+endif()
+
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/regression/middleware")
+    message(STATUS "Adding middleware regression tests...")
+    add_subdirectory(regression/middleware)
+endif()
+

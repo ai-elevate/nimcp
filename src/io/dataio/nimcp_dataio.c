@@ -167,12 +167,13 @@ static bool csv_initialize(void** context, const dataset_config_t* config)
 
         // Parse header columns
         csv_ctx->column_names = nimcp_calloc(csv_ctx->num_columns, sizeof(char*));
-        char* token = strtok(line, ",\r\n");
+        char* saveptr = NULL;  // Thread-safe strtok_r context
+        char* token = strtok_r(line, ",\r\n", &saveptr);
         uint32_t col_idx = 0;
 
         while (token && col_idx < csv_ctx->num_columns) {
             csv_ctx->column_names[col_idx] = nimcp_strdup(token);
-            token = strtok(NULL, ",\r\n");
+            token = strtok_r(NULL, ",\r\n", &saveptr);
             col_idx++;
         }
     }
@@ -222,7 +223,8 @@ static bool csv_parse_line(const char* line, char delimiter, uint32_t num_featur
     line_copy[sizeof(line_copy) - 1] = '\0';
 
     char delim_str[2] = {delimiter, '\0'};
-    char* token = strtok(line_copy, delim_str);
+    char* saveptr = NULL;  // Thread-safe strtok_r context
+    char* token = strtok_r(line_copy, delim_str, &saveptr);
 
     // Parse features
     for (uint32_t i = 0; i < num_features; i++) {
@@ -243,7 +245,7 @@ static bool csv_parse_line(const char* line, char delimiter, uint32_t num_featur
             return false;
         }
 
-        token = strtok(NULL, delim_str);
+        token = strtok_r(NULL, delim_str, &saveptr);
     }
 
     // Parse label (last column)
