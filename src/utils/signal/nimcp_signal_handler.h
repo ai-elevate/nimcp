@@ -257,6 +257,115 @@ int signal_handler_get_last_signal(void);
  */
 const char* signal_handler_get_signal_name(int sig);
 
+//=============================================================================
+// Enhanced Recovery & Diagnostics API
+//=============================================================================
+
+/**
+ * @brief Health status of the system
+ */
+typedef enum {
+    SIGNAL_HEALTH_HEALTHY,      /**< All systems operational */
+    SIGNAL_HEALTH_DEGRADED,     /**< Some issues detected, recovery attempted */
+    SIGNAL_HEALTH_COMPROMISED,  /**< Multiple issues, stability at risk */
+    SIGNAL_HEALTH_CRITICAL,     /**< Critical issues, immediate attention needed */
+    SIGNAL_HEALTH_UNKNOWN        /**< Status cannot be determined */
+} signal_health_status_t;
+
+/**
+ * @brief Detailed health information
+ */
+typedef struct {
+    signal_health_status_t status;           /**< Overall health status */
+    uint64_t total_signals;                  /**< Total signals received */
+    uint64_t fatal_crashes;                  /**< Unrecoverable crashes */
+    uint64_t successful_recoveries;          /**< Recovery attempts that succeeded */
+    uint64_t failed_recoveries;              /**< Recovery attempts that failed */
+    float recovery_success_rate;             /**< % of recoveries that succeeded */
+    int last_signal;                         /**< Last signal received */
+    const char* last_signal_name;            /**< Name of last signal */
+    uint64_t checkpoint_saves;               /**< Checkpoints successfully saved */
+    bool is_in_recovery;                     /**< Currently attempting recovery */
+} signal_health_info_t;
+
+/**
+ * @brief Get current health status
+ *
+ * WHAT: Return comprehensive health information
+ * WHY:  Monitor system stability and recovery effectiveness
+ * HOW:  Analyze signal stats, recovery history, and system state
+ *
+ * @return Health information structure
+ */
+signal_health_info_t signal_handler_get_health_status(void);
+
+/**
+ * @brief Attempt to manually trigger checkpoint save
+ *
+ * WHAT: Synchronously save registered brain state
+ * WHY:  Guarantee consistent checkpoint before risky operations
+ * HOW:  Call brain_save() if safe, handle errors gracefully
+ *
+ * @param checkpoint_path Path to save checkpoint to (NULL for config default)
+ * @return true on success, false on failure or no brain registered
+ */
+bool signal_handler_checkpoint_save(const char* checkpoint_path);
+
+/**
+ * @brief Set the number of checkpoints to keep
+ *
+ * WHAT: Configure checkpoint retention policy
+ * WHY:  Balance disk usage vs. recovery history
+ * HOW:  Manage rotating checkpoint files
+ *
+ * @param max_checkpoints Maximum number to retain (0 = unlimited)
+ */
+void signal_handler_set_checkpoint_retention(int max_checkpoints);
+
+/**
+ * @brief Get checkpoint statistics
+ *
+ * WHAT: Return information about saved checkpoints
+ * WHY:  Monitor checkpoint health and disk usage
+ * HOW:  Scan checkpoint directory and return stats
+ *
+ * @return Count of saved checkpoints (-1 on error)
+ */
+int signal_handler_get_checkpoint_count(void);
+
+/**
+ * @brief Enable or disable automatic recovery attempts
+ *
+ * WHAT: Control whether signal handler tries to recover
+ * WHY:  Allow explicit control over recovery behavior
+ * HOW:  Set internal flag checked during signal handling
+ *
+ * @param enable true to enable automatic recovery, false to disable
+ */
+void signal_handler_set_auto_recovery(bool enable);
+
+/**
+ * @brief Get current recovery configuration status
+ *
+ * WHAT: Return whether automatic recovery is enabled
+ * WHY:  Query current recovery settings
+ * HOW:  Return flag state
+ *
+ * @return true if auto-recovery enabled, false otherwise
+ */
+bool signal_handler_is_auto_recovery_enabled(void);
+
+/**
+ * @brief Set maximum recovery attempts before giving up
+ *
+ * WHAT: Configure how many times we attempt recovery for same issue
+ * WHY:  Prevent infinite recovery loops
+ * HOW:  Store limit and track attempts per signal
+ *
+ * @param max_attempts Maximum recovery attempts (0 = unlimited)
+ */
+void signal_handler_set_max_recovery_attempts(int max_attempts);
+
 #ifdef __cplusplus
 }
 #endif

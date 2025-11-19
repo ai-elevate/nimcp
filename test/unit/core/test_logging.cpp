@@ -606,8 +606,8 @@ TEST_F(LoggingTest, ConcurrentLogging)
 
     log_close();
 
-    /* WHAT: Verify we have most of the expected log lines
-     * WHY:  Concurrent I/O may have a few lines still buffering (95%+ is acceptable)
+    /* WHAT: Verify we have all expected log lines
+     * WHY:  With mutex protection, all log_message() calls should complete successfully
      * NOTE: All threads completed, so all log_message() calls were made
      */
     int line_count = count_log_lines(TEST_LOG_FILE);

@@ -1657,7 +1657,8 @@ TEST_F(EncryptionTest, Encrypt_EmptyPlaintext)
         nimcp_encryption_encrypt(ctx, plaintext, 0, ciphertext, sizeof(ciphertext), &actual_size);
 
     EXPECT_EQ(result, NIMCP_SUCCESS);
-    EXPECT_EQ(actual_size, NIMCP_SECURITY_IV_SIZE);  // Just IV
+    // With AES-GCM: NONCE (12) + empty ciphertext (0) + TAG (16) = 28 bytes
+    EXPECT_EQ(actual_size, NIMCP_SECURITY_NONCE_SIZE + NIMCP_SECURITY_TAG_SIZE);
 }
 
 /**

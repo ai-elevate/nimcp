@@ -2,6 +2,7 @@
 #include <errno.h>
 #include <libgen.h>
 #include <limits.h>
+#include <pthread.h>
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -12,6 +13,7 @@
 
 static FILE* log_file = NULL;
 static const char* DEFAULT_LOG_FILE = "/var/log/nimcp/nimcp.log";
+static pthread_mutex_t log_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 /**
  * WHAT: Create directory and all parent directories
@@ -96,6 +98,8 @@ void log_message(log_level_t level, const char* format, ...)
         return;  // Log file not initialized
     }
 
+    pthread_mutex_lock(&log_mutex);
+
     const char* level_strings[] = {"DEBUG", "INFO", "WARN", "ERROR", "FATAL"};
     time_t now = time(NULL);
     struct tm* tm_info = localtime(&now);
@@ -112,6 +116,8 @@ void log_message(log_level_t level, const char* format, ...)
 
     fprintf(log_file, "\n");
     fflush(log_file);  // Ensure the message is written immediately
+
+    pthread_mutex_unlock(&log_mutex);
 }
 
 void log_close()

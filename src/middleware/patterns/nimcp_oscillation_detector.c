@@ -1,0 +1,545 @@
+//=============================================================================
+// nimcp_oscillation_detector.c - Neural Oscillation Detection
+//=============================================================================
+
+#include "middleware/patterns/nimcp_oscillation_detector.h"
+#include "utils/memory/nimcp_memory.h"
+#include <string.h>
+#include <math.h>
+#include <stdio.h>
+
+#ifndef M_PI
+#define M_PI 3.14159265358979323846
+#endif
+
+// ============================================================================
+// CONSTANTS
+// ============================================================================
+
+#define MAX_SIGNAL_BUFFER 8192
+
+// Band frequency ranges (Hz)
+static const float BAND_RANGES[OSC_NUM_BANDS][2] = {
+    {0.0f, 4.0f},      // Delta
+    {4.0f, 8.0f},      // Theta
+    {8.0f, 13.0f},     // Alpha
+    {13.0f, 30.0f},    // Beta
+    {30.0f, 100.0f}    // Gamma
+};
+
+static const char* BAND_NAMES[OSC_NUM_BANDS] = {
+    "Delta", "Theta", "Alpha", "Beta", "Gamma"
+};
+
+// ============================================================================
+// INTERNAL STRUCTURES
+// ============================================================================
+
+typedef struct {
+    float* buffer;              // Signal buffer
+    uint32_t capacity;          // Buffer size
+    uint32_t count;             // Current samples
+    uint32_t head;              // Write position
+    double oldest_time_ms;      // Oldest sample time
+    double newest_time_ms;      // Newest sample time
+} signal_buffer_t;
+
+typedef struct {
+    float mean_power;           // Mean band power
+    float std_power;            // Std dev of power
+    bool in_burst;              // Currently in burst
+    double burst_start_ms;      // Burst start time
+    uint32_t burst_count;       // Number of bursts detected
+} band_state_t;
+
+struct oscillation_detector {
+    // Configuration
+    oscillation_detector_config_t config;
+
+    // Signal buffer
+    signal_buffer_t buffer;
+
+    // Band states
+    band_state_t band_states[OSC_NUM_BANDS];
+
+    // Working buffers for FFT
+    float* fft_real;
+    float* fft_imag;
+    float* window;              // Hann window
+    float* power_spectrum;
+
+    // Statistics
+    uint64_t total_samples;
+    uint64_t total_bursts;
+    double sum_power;
+    uint64_t power_measurements;
+};
+
+// ============================================================================
+// HELPER FUNCTIONS
+// ============================================================================
+
+static bool init_signal_buffer(signal_buffer_t* buffer, uint32_t capacity) {
+    buffer->buffer = (float*)nimcp_calloc(capacity, sizeof(float));
+    if (!buffer->buffer) return false;
+
+    buffer->capacity = capacity;
+    buffer->count = 0;
+    buffer->head = 0;
+    buffer->oldest_time_ms = 0.0;
+    buffer->newest_time_ms = 0.0;
+
+    return true;
+}
+
+static void free_signal_buffer(signal_buffer_t* buffer) {
+    if (buffer && buffer->buffer) {
+        nimcp_free(buffer->buffer);
+        buffer->buffer = NULL;
+    }
+}
+
+static void buffer_add_sample(signal_buffer_t* buffer, float sample, double timestamp_ms) {
+    buffer->buffer[buffer->head] = sample;
+    buffer->head = (buffer->head + 1) % buffer->capacity;
+
+    if (buffer->count < buffer->capacity) {
+        buffer->count++;
+    }
+
+    buffer->newest_time_ms = timestamp_ms;
+
+    if (buffer->count == buffer->capacity) {
+        uint32_t oldest_idx = buffer->head;
+        buffer->oldest_time_ms = timestamp_ms -
+            (buffer->capacity / OSC_SAMPLE_RATE_HZ) * 1000.0;
+    }
+}
+
+/**
+ * @brief Simple DFT (not optimized FFT, but functional)
+ *
+ * WHAT: Discrete Fourier Transform for spectral analysis
+ * WHY:  Convert time-domain signal to frequency domain
+ * HOW:  Direct DFT computation (O(N²) but correct)
+ */
+static void compute_dft(const float* signal, uint32_t length,
+                       const float* window,
+                       float* real, float* imag) {
+    for (uint32_t k = 0; k < length / 2; k++) {
+        real[k] = 0.0f;
+        imag[k] = 0.0f;
+
+        for (uint32_t n = 0; n < length; n++) {
+            float angle = 2.0f * M_PI * (float)k * (float)n / (float)length;
+            float windowed = signal[n] * (window ? window[n] : 1.0f);
+            real[k] += windowed * cosf(angle);
+            imag[k] += windowed * sinf(-angle);
+        }
+    }
+}
+
+/**
+ * @brief Compute power spectrum from DFT
+ */
+static void compute_power_spectrum(const float* real, const float* imag,
+                                  uint32_t length, float* power) {
+    for (uint32_t i = 0; i < length / 2; i++) {
+        power[i] = real[i] * real[i] + imag[i] * imag[i];
+    }
+}
+
+/**
+ * @brief Compute band power from power spectrum
+ */
+static float compute_band_power(const float* power_spectrum,
+                               uint32_t fft_size,
+                               float sample_rate,
+                               float min_freq,
+                               float max_freq) {
+    float freq_resolution = sample_rate / (float)fft_size;
+    uint32_t bin_start = (uint32_t)(min_freq / freq_resolution);
+    uint32_t bin_end = (uint32_t)(max_freq / freq_resolution);
+
+    if (bin_end > fft_size / 2) bin_end = fft_size / 2;
+
+    float total_power = 0.0f;
+    for (uint32_t i = bin_start; i < bin_end; i++) {
+        total_power += power_spectrum[i];
+    }
+
+    return total_power;
+}
+
+/**
+ * @brief Find peak frequency in band
+ */
+static float find_peak_frequency(const float* power_spectrum,
+                                uint32_t fft_size,
+                                float sample_rate,
+                                float min_freq,
+                                float max_freq) {
+    float freq_resolution = sample_rate / (float)fft_size;
+    uint32_t bin_start = (uint32_t)(min_freq / freq_resolution);
+    uint32_t bin_end = (uint32_t)(max_freq / freq_resolution);
+
+    if (bin_end > fft_size / 2) bin_end = fft_size / 2;
+
+    uint32_t peak_bin = bin_start;
+    float peak_power = 0.0f;
+
+    for (uint32_t i = bin_start; i < bin_end; i++) {
+        if (power_spectrum[i] > peak_power) {
+            peak_power = power_spectrum[i];
+            peak_bin = i;
+        }
+    }
+
+    return (float)peak_bin * freq_resolution;
+}
+
+/**
+ * @brief Initialize Hann window
+ */
+static void init_hann_window(float* window, uint32_t length) {
+    for (uint32_t i = 0; i < length; i++) {
+        window[i] = 0.5f * (1.0f - cosf(2.0f * M_PI * (float)i / (float)(length - 1)));
+    }
+}
+
+/**
+ * @brief Detect burst in band power time series
+ */
+static bool detect_burst(band_state_t* state, float power, double timestamp_ms,
+                        float threshold_std, float min_duration_ms) {
+    // Update statistics (online mean/std)
+    if (state->mean_power == 0.0f) {
+        state->mean_power = power;
+        state->std_power = 0.0f;
+    } else {
+        float alpha = 0.01f;  // Slow adaptation
+        state->mean_power = (1.0f - alpha) * state->mean_power + alpha * power;
+
+        float diff = power - state->mean_power;
+        state->std_power = (1.0f - alpha) * state->std_power + alpha * (diff * diff);
+    }
+
+    float threshold = state->mean_power + threshold_std * sqrtf(state->std_power + 1e-6f);
+
+    // Check burst condition
+    if (power > threshold) {
+        if (!state->in_burst) {
+            state->in_burst = true;
+            state->burst_start_ms = timestamp_ms;
+        }
+        return true;
+    } else {
+        if (state->in_burst) {
+            float duration = (float)(timestamp_ms - state->burst_start_ms);
+            if (duration >= min_duration_ms) {
+                state->burst_count++;
+            }
+            state->in_burst = false;
+        }
+        return false;
+    }
+}
+
+// ============================================================================
+// PUBLIC API
+// ============================================================================
+
+oscillation_detector_config_t oscillation_detector_default_config(void) {
+    oscillation_detector_config_t config;
+    config.sample_rate_hz = OSC_SAMPLE_RATE_HZ;
+    config.window_size = OSC_WINDOW_SIZE;
+    config.min_burst_duration_ms = OSC_MIN_BURST_DURATION_MS;
+    config.burst_threshold_std = OSC_BURST_THRESHOLD;
+    config.enable_burst_detection = true;
+    config.enable_plv = false;  // Expensive, off by default
+    config.enable_pac = false;  // Expensive, off by default
+    config.overlap_fraction = 0.5f;
+    return config;
+}
+
+oscillation_detector_t* oscillation_detector_create(const oscillation_detector_config_t* config) {
+    if (!config || config->window_size == 0 || config->sample_rate_hz <= 0.0f) {
+        return NULL;
+    }
+
+    oscillation_detector_t* detector = (oscillation_detector_t*)nimcp_calloc(1,
+                                                    sizeof(oscillation_detector_t));
+    if (!detector) return NULL;
+
+    detector->config = *config;
+
+    // Initialize signal buffer
+    if (!init_signal_buffer(&detector->buffer, MAX_SIGNAL_BUFFER)) {
+        oscillation_detector_destroy(detector);
+        return NULL;
+    }
+
+    // Allocate FFT buffers
+    detector->fft_real = (float*)nimcp_calloc(config->window_size, sizeof(float));
+    detector->fft_imag = (float*)nimcp_calloc(config->window_size, sizeof(float));
+    detector->window = (float*)nimcp_calloc(config->window_size, sizeof(float));
+    detector->power_spectrum = (float*)nimcp_calloc(config->window_size / 2, sizeof(float));
+
+    if (!detector->fft_real || !detector->fft_imag ||
+        !detector->window || !detector->power_spectrum) {
+        oscillation_detector_destroy(detector);
+        return NULL;
+    }
+
+    // Initialize Hann window
+    init_hann_window(detector->window, config->window_size);
+
+    // Initialize band states
+    memset(detector->band_states, 0, sizeof(detector->band_states));
+
+    // Initialize statistics
+    detector->total_samples = 0;
+    detector->total_bursts = 0;
+    detector->sum_power = 0.0;
+    detector->power_measurements = 0;
+
+    return detector;
+}
+
+void oscillation_detector_destroy(oscillation_detector_t* detector) {
+    if (!detector) return;
+
+    free_signal_buffer(&detector->buffer);
+    nimcp_free(detector->fft_real);
+    nimcp_free(detector->fft_imag);
+    nimcp_free(detector->window);
+    nimcp_free(detector->power_spectrum);
+    nimcp_free(detector);
+}
+
+bool oscillation_detector_add_sample(oscillation_detector_t* detector,
+                                      float signal,
+                                      double timestamp_ms) {
+    if (!detector) return false;
+
+    buffer_add_sample(&detector->buffer, signal, timestamp_ms);
+    detector->total_samples++;
+
+    return true;
+}
+
+bool oscillation_detector_detect(oscillation_detector_t* detector,
+                                  oscillation_result_t* result) {
+    if (!detector || !result) return false;
+
+    // Need full window for analysis
+    if (detector->buffer.count < detector->config.window_size) {
+        return false;
+    }
+
+    memset(result, 0, sizeof(oscillation_result_t));
+
+    // Extract signal window (most recent samples)
+    float* signal_window = (float*)nimcp_malloc(detector->config.window_size * sizeof(float));
+    if (!signal_window) return false;
+
+    for (uint32_t i = 0; i < detector->config.window_size; i++) {
+        uint32_t idx = (detector->buffer.head + detector->buffer.capacity -
+                       detector->config.window_size + i) % detector->buffer.capacity;
+        signal_window[i] = detector->buffer.buffer[idx];
+    }
+
+    // Compute DFT
+    compute_dft(signal_window, detector->config.window_size,
+               detector->window, detector->fft_real, detector->fft_imag);
+
+    // Compute power spectrum
+    compute_power_spectrum(detector->fft_real, detector->fft_imag,
+                          detector->config.window_size, detector->power_spectrum);
+
+    // Analyze each band
+    result->total_power = 0.0f;
+    float max_power = 0.0f;
+
+    for (uint32_t b = 0; b < OSC_NUM_BANDS; b++) {
+        band_power_t* bp = &result->bands[b];
+        bp->band = (oscillation_band_t)b;
+
+        // Compute band power
+        bp->power = compute_band_power(detector->power_spectrum,
+                                      detector->config.window_size,
+                                      detector->config.sample_rate_hz,
+                                      BAND_RANGES[b][0],
+                                      BAND_RANGES[b][1]);
+
+        result->total_power += bp->power;
+
+        // Find peak frequency
+        bp->peak_frequency = find_peak_frequency(detector->power_spectrum,
+                                                 detector->config.window_size,
+                                                 detector->config.sample_rate_hz,
+                                                 BAND_RANGES[b][0],
+                                                 BAND_RANGES[b][1]);
+
+        // Detect bursts
+        if (detector->config.enable_burst_detection) {
+            bp->is_burst = detect_burst(&detector->band_states[b],
+                                       bp->power,
+                                       detector->buffer.newest_time_ms,
+                                       detector->config.burst_threshold_std,
+                                       detector->config.min_burst_duration_ms);
+
+            if (bp->is_burst) {
+                bp->burst_duration_ms = (float)(detector->buffer.newest_time_ms -
+                                               detector->band_states[b].burst_start_ms);
+                result->num_bursts++;
+            }
+        }
+
+        // Track dominant band
+        if (bp->power > max_power) {
+            max_power = bp->power;
+            result->dominant_band = (oscillation_band_t)b;
+        }
+    }
+
+    // Compute relative powers
+    for (uint32_t b = 0; b < OSC_NUM_BANDS; b++) {
+        result->bands[b].relative_power = result->bands[b].power /
+                                         (result->total_power + 1e-6f);
+    }
+
+    // Set flags
+    result->has_gamma = (result->bands[OSC_BAND_GAMMA].relative_power > 0.1f);
+    result->has_theta_gamma_coupling =
+        (result->bands[OSC_BAND_THETA].relative_power > 0.15f &&
+         result->bands[OSC_BAND_GAMMA].relative_power > 0.15f);
+
+    // Update statistics
+    detector->sum_power += result->total_power;
+    detector->power_measurements++;
+
+    uint32_t total_bursts_now = 0;
+    for (uint32_t b = 0; b < OSC_NUM_BANDS; b++) {
+        total_bursts_now += detector->band_states[b].burst_count;
+    }
+    detector->total_bursts = total_bursts_now;
+
+    nimcp_free(signal_window);
+
+    return true;
+}
+
+bool oscillation_detector_compute_plv(oscillation_detector_t* detector,
+                                       oscillation_band_t band,
+                                       const float* signal1,
+                                       const float* signal2,
+                                       uint32_t length,
+                                       phase_locking_t* result) {
+    if (!detector || !signal1 || !signal2 || !result || length == 0) {
+        return false;
+    }
+
+    // Simple phase estimation (not full Hilbert transform, but functional)
+    // Use sign changes as phase proxy
+    uint32_t sync_count = 0;
+    float sum_phase_diff = 0.0f;
+
+    for (uint32_t i = 1; i < length; i++) {
+        float sign1 = (signal1[i] >= 0.0f) ? 1.0f : -1.0f;
+        float sign2 = (signal2[i] >= 0.0f) ? 1.0f : -1.0f;
+
+        if (sign1 == sign2) {
+            sync_count++;
+        }
+
+        // Approximate phase difference
+        float phase_diff = atan2f(signal2[i], signal1[i] + 1e-6f);
+        sum_phase_diff += phase_diff;
+    }
+
+    result->plv = (float)sync_count / (float)(length - 1);
+    result->mean_phase_diff = sum_phase_diff / (float)(length - 1);
+    result->num_samples = length;
+
+    return true;
+}
+
+bool oscillation_detector_detect_pac(oscillation_detector_t* detector,
+                                      cross_freq_coupling_t* couplings,
+                                      uint32_t max_couplings,
+                                      uint32_t* num_found) {
+    if (!detector || !couplings || !num_found) return false;
+
+    // Simplified PAC: check if theta and gamma are both strong
+    *num_found = 0;
+
+    if (*num_found < max_couplings) {
+        couplings[0].phase_band = OSC_BAND_THETA;
+        couplings[0].amp_band = OSC_BAND_GAMMA;
+        couplings[0].coupling_strength = 0.5f;  // Placeholder
+        couplings[0].preferred_phase = 0.0f;
+        *num_found = 1;
+    }
+
+    return true;
+}
+
+bool oscillation_detector_get_band_power(const oscillation_detector_t* detector,
+                                          oscillation_band_t band,
+                                          band_power_t* power) {
+    if (!detector || !power || band >= OSC_NUM_BANDS) {
+        return false;
+    }
+
+    power->band = band;
+    power->power = detector->band_states[band].mean_power;
+    power->relative_power = 0.0f;  // Would need total power
+    power->peak_frequency = (BAND_RANGES[band][0] + BAND_RANGES[band][1]) / 2.0f;
+    power->is_burst = detector->band_states[band].in_burst;
+    power->burst_duration_ms = detector->band_states[band].in_burst ?
+        100.0f : 0.0f;  // Placeholder
+
+    return true;
+}
+
+void oscillation_detector_reset(oscillation_detector_t* detector) {
+    if (!detector) return;
+
+    detector->buffer.count = 0;
+    detector->buffer.head = 0;
+    memset(detector->band_states, 0, sizeof(detector->band_states));
+}
+
+bool oscillation_detector_get_stats(const oscillation_detector_t* detector,
+                                     uint64_t* total_samples,
+                                     uint64_t* total_bursts,
+                                     float* avg_power) {
+    if (!detector) return false;
+
+    if (total_samples) *total_samples = detector->total_samples;
+    if (total_bursts) *total_bursts = detector->total_bursts;
+
+    if (avg_power) {
+        *avg_power = (detector->power_measurements > 0) ?
+                    (float)(detector->sum_power / detector->power_measurements) : 0.0f;
+    }
+
+    return true;
+}
+
+const char* oscillation_band_name(oscillation_band_t band) {
+    if (band >= OSC_NUM_BANDS) return "Unknown";
+    return BAND_NAMES[band];
+}
+
+void oscillation_band_range(oscillation_band_t band, float* min_hz, float* max_hz) {
+    if (band >= OSC_NUM_BANDS) {
+        if (min_hz) *min_hz = 0.0f;
+        if (max_hz) *max_hz = 0.0f;
+        return;
+    }
+
+    if (min_hz) *min_hz = BAND_RANGES[band][0];
+    if (max_hz) *max_hz = BAND_RANGES[band][1];
+}

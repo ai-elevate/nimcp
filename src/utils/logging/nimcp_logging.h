@@ -37,6 +37,13 @@ void log_close();
 #define NIMCP_LOGGING_ERROR(...) log_message(LOG_LEVEL_ERROR, __VA_ARGS__)
 #define NIMCP_LOGGING_FATAL(...) log_message(LOG_LEVEL_FATAL, __VA_ARGS__)
 
+// Short-form macros for convenience (used by fault tolerance modules)
+#define LOG_DEBUG(...) log_message(LOG_LEVEL_DEBUG, __VA_ARGS__)
+#define LOG_INFO(...) log_message(LOG_LEVEL_INFO, __VA_ARGS__)
+#define LOG_WARNING(...) log_message(LOG_LEVEL_WARN, __VA_ARGS__)
+#define LOG_ERROR(...) log_message(LOG_LEVEL_ERROR, __VA_ARGS__)
+#define LOG_FATAL(...) log_message(LOG_LEVEL_FATAL, __VA_ARGS__)
+
 #ifdef __cplusplus
 }
 #endif

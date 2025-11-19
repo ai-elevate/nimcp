@@ -355,20 +355,21 @@ TEST_F(EncryptionTest, DifferentKeysFailDecryption)
     size_t encrypted_size, decrypted_size;
 
     // Encrypt with ctx
-    nimcp_encryption_encrypt(ctx, (const uint8_t*) plaintext, strlen(plaintext), ciphertext,
+    nimcp_result_t result = nimcp_encryption_encrypt(ctx, (const uint8_t*) plaintext, strlen(plaintext), ciphertext,
                              sizeof(ciphertext), &encrypted_size);
+    ASSERT_EQ(result, NIMCP_SUCCESS);
 
     // Try to decrypt with different key
     uint8_t wrong_key[NIMCP_SECURITY_KEY_SIZE];
     nimcp_encryption_generate_key(wrong_key);
     nimcp_encryption_context_t* wrong_ctx = nimcp_encryption_create(wrong_key);
 
-    nimcp_encryption_decrypt(wrong_ctx, ciphertext, encrypted_size, decrypted, sizeof(decrypted),
+    // With AES-GCM, decryption with wrong key should fail authentication
+    result = nimcp_encryption_decrypt(wrong_ctx, ciphertext, encrypted_size, decrypted, sizeof(decrypted),
                              &decrypted_size);
 
-    decrypted[decrypted_size] = '\0';
-    // Decryption with wrong key should produce garbage, not original plaintext
-    EXPECT_STRNE((const char*) decrypted, plaintext);
+    // Expect decryption to fail (authentication failure with wrong key)
+    EXPECT_EQ(result, NIMCP_ERROR);
 
     nimcp_encryption_destroy(wrong_ctx);
 }

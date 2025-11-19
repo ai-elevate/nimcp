@@ -1327,13 +1327,15 @@ nimcp_result_t nimcp_security_evaluate_skepticism(const char* information,
                                                    const char* source_type,
                                                    nimcp_skepticism_result_t* result)
 {
-    if (!information || !result)
-        return NIMCP_INVALID_PARAM;
-
     /* WHAT: Initialize result structure with default values
      * WHY:  Ensures all fields have valid values even if early return
      */
-    memset(result, 0, sizeof(nimcp_skepticism_result_t));
+    if (result) {
+        memset(result, 0, sizeof(nimcp_skepticism_result_t));
+    }
+
+    if (!information || !result)
+        return NIMCP_INVALID_PARAM;
 
     /* WHAT: Start with moderate skepticism (0.5 on 0-1 scale)
      * WHY:  Neutral prior - neither trusting nor distrusting by default.

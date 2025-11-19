@@ -9,12 +9,15 @@
 #include "nimcp_signal_handler.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
+#include "core/brain/persistence/nimcp_brain_persistence.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
 #include <execinfo.h>  // For backtrace()
 #include <time.h>
+#include <sys/stat.h>  // For directory operations
+#include <dirent.h>    // For directory scanning
 
 //=============================================================================
 // Signal-Safe Globals (accessed from signal handlers)
@@ -36,10 +39,18 @@ static volatile uint64_t g_sigint_count = 0;
 static volatile uint64_t g_sighup_count = 0;
 static volatile uint64_t g_recoveries = 0;
 static volatile uint64_t g_fatal_crashes = 0;
+static volatile uint64_t g_checkpoint_saves = 0;
+static volatile uint64_t g_recovery_failures = 0;
 
 // Configuration (set once during initialization)
 static signal_handler_config_t g_config;
 static bool g_installed = false;
+
+// Recovery configuration
+static bool g_auto_recovery_enabled = true;
+static int g_max_recovery_attempts = 3;
+static int g_checkpoint_retention = 5;
+static volatile uint64_t g_recovery_attempt_count = 0;
 
 // Brain instance for crash recovery (signal-safe pointer)
 static brain_t g_registered_brain = NULL;
@@ -67,6 +78,39 @@ static void safe_write(const char* msg)
 {
     if (msg) {
         write(STDERR_FILENO, msg, strlen(msg));
+    }
+}
+
+/**
+ * WHAT: Attempt checkpoint save (signal-safe version)
+ * WHY:  Preserve brain state before termination
+ * HOW:  Use brain_save() if safe and enabled
+ * NOTE: This is NOT fully signal-safe but necessary for recovery
+ */
+static void attempt_checkpoint_save_unsafe(void)
+{
+    if (!g_config.enable_checkpoint_save || !g_registered_brain) {
+        return;
+    }
+
+    // Make checkpoint directory if needed
+    mkdir(g_config.checkpoint_path, 0755);
+
+    // Generate timestamped checkpoint filename
+    char checkpoint_file[512];
+    time_t now = time(NULL);
+    snprintf(checkpoint_file, sizeof(checkpoint_file),
+             "%s/crash_checkpoint_%ld.nimcp",
+             g_config.checkpoint_path, now);
+
+    // Attempt to save (may fail in signal handler)
+    if (brain_save(g_registered_brain, checkpoint_file)) {
+        g_checkpoint_saves++;
+        safe_write("\n*** Checkpoint saved to: ");
+        safe_write(checkpoint_file);
+        safe_write("\n");
+    } else {
+        safe_write("\n*** Failed to save checkpoint\n");
     }
 }
 
@@ -124,7 +168,7 @@ static void log_stack_trace(void)
 /**
  * WHAT: Handle fatal signals (SIGSEGV, SIGBUS, SIGABRT, etc.)
  * WHY:  Log crash info before termination
- * HOW:  Write to stderr, optionally log stack trace, then exit
+ * HOW:  Write to stderr, optionally log stack trace, save checkpoint, then exit
  */
 static void handle_fatal_signal(int sig)
 {
@@ -157,8 +201,13 @@ static void handle_fatal_signal(int sig)
         g_config.on_fatal_signal(sig);
     }
 
-    // TODO: If enable_checkpoint_save, attempt to save brain state
-    // NOTE: This is risky in a signal handler - only attempt if in safe state
+    // TODO COMPLETED: Attempt checkpoint save if enabled
+    // NOTE: This is risky in a signal handler but necessary for recovery
+    // We attempt it with proper error handling and logging
+    if (g_config.enable_checkpoint_save && g_registered_brain) {
+        safe_write("\n!!! Attempting checkpoint save (signal handler context)\n");
+        attempt_checkpoint_save_unsafe();
+    }
 
     safe_write("!!! Process terminating due to fatal signal\n");
 
@@ -451,10 +500,8 @@ void signal_handler_set_reload_callback(void (*callback)(void))
 
 bool signal_handler_force_checkpoint(void)
 {
-    // TODO: Implement brain checkpoint saving
-    // For now, just return false (not implemented)
-    (void)g_registered_brain;
-    return false;
+    // Deprecated: use signal_handler_checkpoint_save() instead
+    return signal_handler_checkpoint_save(NULL);
 }
 
 int signal_handler_get_last_signal(void)
@@ -475,4 +522,229 @@ const char* signal_handler_get_signal_name(int sig)
         case SIGHUP:  return "SIGHUP";
         default:      return "UNKNOWN";
     }
+}
+
+//=============================================================================
+// Enhanced Recovery & Diagnostics Implementation
+//=============================================================================
+
+/**
+ * WHAT: Count checkpoints in retention directory
+ * WHY:  Monitor checkpoint storage and manage retention
+ * HOW:  Scan directory and count .nimcp files
+ */
+static int count_checkpoints_in_dir(const char* dir_path)
+{
+    if (!dir_path) {
+        return -1;
+    }
+
+    DIR* dir = opendir(dir_path);
+    if (!dir) {
+        return -1;
+    }
+
+    int count = 0;
+    struct dirent* entry;
+    while ((entry = readdir(dir)) != NULL) {
+        // Count .nimcp checkpoint files (excluding backup files)
+        if (entry->d_type == DT_REG && strstr(entry->d_name, ".nimcp")) {
+            count++;
+        }
+    }
+
+    closedir(dir);
+    return count;
+}
+
+/**
+ * WHAT: Cleanup old checkpoints to maintain retention limit
+ * WHY:  Prevent disk space exhaustion from checkpoint accumulation
+ * HOW:  Delete oldest files when limit exceeded
+ */
+static void cleanup_old_checkpoints(const char* dir_path, int max_count)
+{
+    if (!dir_path || max_count <= 0) {
+        return;
+    }
+
+    DIR* dir = opendir(dir_path);
+    if (!dir) {
+        return;
+    }
+
+    // Collect checkpoint files with timestamps
+    typedef struct {
+        char* filename;
+        time_t mtime;
+    } checkpoint_entry_t;
+
+    checkpoint_entry_t* entries = NULL;
+    int entry_count = 0;
+    int capacity = 16;
+
+    entries = nimcp_malloc(sizeof(checkpoint_entry_t) * capacity);
+    if (!entries) {
+        closedir(dir);
+        return;
+    }
+
+    // Scan directory
+    struct dirent* entry;
+    char fullpath[512];
+    struct stat st;
+
+    while ((entry = readdir(dir)) != NULL) {
+        if (entry->d_type == DT_REG && strstr(entry->d_name, ".nimcp")) {
+            // Get file modification time
+            snprintf(fullpath, sizeof(fullpath), "%s/%s", dir_path, entry->d_name);
+            if (stat(fullpath, &st) == 0) {
+                // Resize if needed
+                if (entry_count >= capacity) {
+                    capacity *= 2;
+                    checkpoint_entry_t* new_entries = nimcp_realloc(entries,
+                        sizeof(checkpoint_entry_t) * capacity);
+                    if (!new_entries) {
+                        break;
+                    }
+                    entries = new_entries;
+                }
+
+                entries[entry_count].filename = nimcp_malloc(strlen(entry->d_name) + 1);
+                if (entries[entry_count].filename) {
+                    strcpy(entries[entry_count].filename, entry->d_name);
+                    entries[entry_count].mtime = st.st_mtime;
+                    entry_count++;
+                }
+            }
+        }
+    }
+
+    closedir(dir);
+
+    // Sort by modification time (oldest first)
+    for (int i = 0; i < entry_count - 1; i++) {
+        for (int j = i + 1; j < entry_count; j++) {
+            if (entries[j].mtime < entries[i].mtime) {
+                // Swap
+                checkpoint_entry_t temp = entries[i];
+                entries[i] = entries[j];
+                entries[j] = temp;
+            }
+        }
+    }
+
+    // Delete oldest files beyond retention limit
+    for (int i = 0; i < entry_count && i < (entry_count - max_count); i++) {
+        snprintf(fullpath, sizeof(fullpath), "%s/%s", dir_path, entries[i].filename);
+        remove(fullpath);
+    }
+
+    // Cleanup
+    for (int i = 0; i < entry_count; i++) {
+        nimcp_free(entries[i].filename);
+    }
+    nimcp_free(entries);
+}
+
+signal_health_info_t signal_handler_get_health_status(void)
+{
+    signal_health_info_t health = {0};
+
+    // Calculate totals
+    uint64_t total_signals = g_sigsegv_count + g_sigabrt_count + g_sigbus_count +
+                            g_sigfpe_count + g_sigill_count + g_sigterm_count +
+                            g_sigint_count + g_sighup_count;
+
+    health.total_signals = total_signals;
+    health.fatal_crashes = g_fatal_crashes;
+    health.successful_recoveries = g_recoveries;
+    health.failed_recoveries = g_recovery_failures;
+    health.checkpoint_saves = g_checkpoint_saves;
+    health.last_signal = g_last_signal;
+    health.last_signal_name = signal_handler_get_signal_name(g_last_signal);
+    health.is_in_recovery = (g_recovery_attempt_count > 0);
+
+    // Calculate recovery success rate
+    uint64_t total_attempts = g_recoveries + g_recovery_failures;
+    health.recovery_success_rate = (total_attempts > 0) ?
+        (100.0f * g_recoveries / total_attempts) : 0.0f;
+
+    // Determine health status based on metrics
+    if (g_fatal_crashes == 0 && g_recovery_failures == 0 && g_sigsegv_count == 0) {
+        health.status = SIGNAL_HEALTH_HEALTHY;
+    } else if (g_recovery_failures > 0 || g_sigsegv_count > 5) {
+        health.status = SIGNAL_HEALTH_CRITICAL;
+    } else if (g_sigsegv_count > 3 || health.recovery_success_rate < 50.0f) {
+        health.status = SIGNAL_HEALTH_COMPROMISED;
+    } else if (g_fatal_crashes > 0 || g_recovery_failures > 0) {
+        health.status = SIGNAL_HEALTH_DEGRADED;
+    } else {
+        health.status = SIGNAL_HEALTH_HEALTHY;
+    }
+
+    return health;
+}
+
+bool signal_handler_checkpoint_save(const char* checkpoint_path)
+{
+    // Use provided path or fall back to config default
+    const char* path = checkpoint_path ? checkpoint_path : g_config.checkpoint_path;
+
+    if (!g_registered_brain) {
+        return false;
+    }
+
+    if (!path) {
+        return false;
+    }
+
+    // Create checkpoint directory if it doesn't exist
+    mkdir(path, 0755);
+
+    // Generate timestamped checkpoint filename
+    char checkpoint_file[512];
+    time_t now = time(NULL);
+    snprintf(checkpoint_file, sizeof(checkpoint_file),
+             "%s/checkpoint_%ld.nimcp",
+             path, now);
+
+    // Attempt save
+    if (brain_save(g_registered_brain, checkpoint_file)) {
+        g_checkpoint_saves++;
+
+        // Cleanup old checkpoints if retention limit is set
+        if (g_checkpoint_retention > 0) {
+            cleanup_old_checkpoints(path, g_checkpoint_retention);
+        }
+
+        return true;
+    }
+
+    return false;
+}
+
+void signal_handler_set_checkpoint_retention(int max_checkpoints)
+{
+    g_checkpoint_retention = max_checkpoints;
+}
+
+int signal_handler_get_checkpoint_count(void)
+{
+    return count_checkpoints_in_dir(g_config.checkpoint_path);
+}
+
+void signal_handler_set_auto_recovery(bool enable)
+{
+    g_auto_recovery_enabled = enable;
+}
+
+bool signal_handler_is_auto_recovery_enabled(void)
+{
+    return g_auto_recovery_enabled;
+}
+
+void signal_handler_set_max_recovery_attempts(int max_attempts)
+{
+    g_max_recovery_attempts = max_attempts;
 }

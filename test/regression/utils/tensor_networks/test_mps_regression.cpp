@@ -9,8 +9,15 @@
  * WHY: Detect regressions in compression quality and performance
  * HOW: Fixed test cases with expected outputs
  *
+ * LAPACK/BLAS INTEGRATION:
+ * These regression tests verify that MPS behavior remains consistent with
+ * the LAPACK-based TT-SVD implementation. All tests use wide tolerance ranges
+ * to accommodate numerical differences between LAPACK and simple SVD while
+ * still catching true regressions in functionality.
+ *
  * @author NIMCP Development Team
  * @date 2025-11-16
+ * @updated 2025-11-19 (LAPACK integration)
  */
 
 #include <gtest/gtest.h>

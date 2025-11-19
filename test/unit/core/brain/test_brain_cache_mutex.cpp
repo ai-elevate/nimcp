@@ -426,7 +426,7 @@ TEST_F(BrainCacheTest, CachePerformanceImprovement) {
     auto start1 = std::chrono::high_resolution_clock::now();
     brain_decision_t* decision1 = brain_decide(brain, input.data(), input.size());
     auto end1 = std::chrono::high_resolution_clock::now();
-    auto uncached_us = std::chrono::duration_cast<std::chrono::microseconds>(end1 - start1).count();
+    auto uncached_ns = std::chrono::duration_cast<std::chrono::nanoseconds>(end1 - start1).count();
     ASSERT_NE(decision1, nullptr);
     brain_free_decision(decision1);
 
@@ -434,14 +434,14 @@ TEST_F(BrainCacheTest, CachePerformanceImprovement) {
     auto start2 = std::chrono::high_resolution_clock::now();
     brain_decision_t* decision2 = brain_decide(brain, input.data(), input.size());
     auto end2 = std::chrono::high_resolution_clock::now();
-    auto cached_us = std::chrono::duration_cast<std::chrono::microseconds>(end2 - start2).count();
+    auto cached_ns = std::chrono::duration_cast<std::chrono::nanoseconds>(end2 - start2).count();
     ASSERT_NE(decision2, nullptr);
     brain_free_decision(decision2);
 
     // Cached should be faster (or at least not slower)
     // Note: In small networks, overhead might dominate, so just verify both complete
-    EXPECT_GT(uncached_us, 0);
-    EXPECT_GT(cached_us, 0);
+    EXPECT_GT(uncached_ns, 0);
+    EXPECT_GT(cached_ns, 0);
 }
 
 //=============================================================================

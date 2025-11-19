@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuites tests="17" failures="1" disabled="0" errors="0" time="0.186" timestamp="2025-11-19T00:09:52.509" name="AllTests">
+  <testsuite name="MPSAdvancedTest" tests="17" failures="1" disabled="0" skipped="0" errors="0" time="0.186" timestamp="2025-11-19T00:09:52.509">
+    <testcase name="BackwardBasicFunctionality" file="/home/bbrelin/nimcp/test/unit/utils/tensor_networks/test_mps.cpp" line="69" status="run" result="completed" time="0.016" timestamp="2025-11-19T00:09:52.509" classname="MPSAdvancedTest" />
+    <testcase name="BackwardNullInputHandling" file="/home/bbrelin/nimcp/test/unit/utils/tensor_networks/test_mps.cpp" line="143" status="run" result="completed" time="0." timestamp="2025-11-19T00:09:52.526" classname="MPSAdvancedTest" />
+    <testcase name="BackwardGradientFiniteDifference" file="/home/bbrelin/nimcp/test/unit/utils/tensor_networks/test_mps.cpp" line="168" status="run" result="completed" time="0.005" timestamp="2025-11-19T00:09:52.527" classname="MPSAdvancedTest">
+      <failure message="/home/bbrelin/nimcp/test/unit/utils/tensor_networks/test_mps.cpp:222&#x0A;Expected: (error) &lt; (0.01f), actual: 0.465691328 vs 0.01&#x0A;" type=""><![CDATA[/home/bbrelin/nimcp/test/unit/utils/tensor_networks/test_mps.cpp:222
+Expected: (error) < (0.01f), actual: 0.465691328 vs 0.01
+]]></failure>
+    </testcase>
+    <testcase name="UpdateParamsBasic" file="/home/bbrelin/nimcp/test/unit/utils/tensor_networks/test_mps.cpp" line="238" status="run" result="completed" time="0.016" timestamp="2025-11-19T00:09:52.532" classname="MPSAdvancedTest" />
+    <testcase name="UpdateParamsLearningRateValidation" file="/home/bbrelin/nimcp/test/unit/utils/tensor_networks/test_mps.cpp" line="285" status="run" result="completed" time="0." timestamp="2025-11-19T00:09:52.549" classname="MPSAdvancedTest" />
+    <testcase name="UpdateParamsGradientClipping" file="/home/bbrelin/nimcp/test/unit/utils/tensor_networks/test_mps.cpp" line="311" status="run" result="completed" time="0.012" timestamp="2025-11-19T00:09:52.549" classname="MPSAdvancedTest" />
+    <testcase name="AdaptBondDimensionsBasic" file="/home/bbrelin/nimcp/test/unit/utils/tensor_networks/test_mps.cpp" line="351" status="run" result="completed" time="0.002" timestamp="2025-11-19T00:09:52.561" classname="MPSAdvancedTest" />
+    <testcase name="AdaptBondDimensionsErrorBounds" file="/home/bbrelin/nimcp/test/unit/utils/tensor_networks/test_mps.cpp" line="379" status="run" result="completed" time="0.008" timestamp="2025-11-19T00:09:52.563" classname="MPSAdvancedTest" />
+    <testcase name="RecompressSmallerBondDim" file="/home/bbrelin/nimcp/test/unit/utils/tensor_networks/test_mps.cpp" line="408" status="run" result="completed" time="0.016" timestamp="2025-11-19T00:09:52.572" classname="MPSAdvancedTest" />
+    <testcase name="RecompressLargerBondDim" file="/home/bbrelin/nimcp/test/unit/utils/tensor_networks/test_mps.cpp" line="446" status="run" result="completed" time="0.002" timestamp="2025-11-19T00:09:52.589" classname="MPSAdvancedTest" />
+    <testcase name="RecompressSameBondDim" file="/home/bbrelin/nimcp/test/unit/utils/tensor_networks/test_mps.cpp" line="480" status="run" result="completed" time="0.011" timestamp="2025-11-19T00:09:52.591" classname="MPSAdvancedTest" />
+    <testcase name="RecompressInvalidBondDim" file="/home/bbrelin/nimcp/test/unit/utils/tensor_networks/test_mps.cpp" line="506" status="run" result="completed" time="0.008" timestamp="2025-11-19T00:09:52.602" classname="MPSAdvancedTest" />
+    <testcase name="CanonicalizeBasic" file="/home/bbrelin/nimcp/test/unit/utils/tensor_networks/test_mps.cpp" line="529" status="run" result="completed" time="0.001" timestamp="2025-11-19T00:09:52.611" classname="MPSAdvancedTest" />
+    <testcase name="CanonicalizeAllPositions" file="/home/bbrelin/nimcp/test/unit/utils/tensor_networks/test_mps.cpp" line="554" status="run" result="completed" time="0.016" timestamp="2025-11-19T00:09:52.613" classname="MPSAdvancedTest" />
+    <testcase name="CanonicalizeInvalidCenter" file="/home/bbrelin/nimcp/test/unit/utils/tensor_networks/test_mps.cpp" line="580" status="run" result="completed" time="0.008" timestamp="2025-11-19T00:09:52.630" classname="MPSAdvancedTest" />
+    <testcase name="CanonicalizePreservesOutput" file="/home/bbrelin/nimcp/test/unit/utils/tensor_networks/test_mps.cpp" line="600" status="run" result="completed" time="0.055" timestamp="2025-11-19T00:09:52.638" classname="MPSAdvancedTest" />
+    <testcase name="FullLearningCycle" file="/home/bbrelin/nimcp/test/unit/utils/tensor_networks/test_mps.cpp" line="651" status="run" result="completed" time="0.002" timestamp="2025-11-19T00:09:52.694" classname="MPSAdvancedTest" />
+  </testsuite>
+</testsuites>
