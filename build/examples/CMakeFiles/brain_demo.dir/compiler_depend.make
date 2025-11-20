@@ -26,6 +26,7 @@ examples/CMakeFiles/brain_demo.dir/brain_demo.c.o: /home/bbrelin/nimcp/examples/
   /home/bbrelin/nimcp/src/plasticity/neuromodulators/nimcp_neuromodulators.h \
   /home/bbrelin/nimcp/src/plasticity/neuromodulators/nimcp_spatial_neuromod.h \
   /home/bbrelin/nimcp/src/plasticity/stp/nimcp_stp.h \
+  /home/bbrelin/nimcp/src/utils/containers/nimcp_graph.h \
   /home/bbrelin/nimcp/src/utils/containers/nimcp_hash_table.h \
   /home/bbrelin/nimcp/src/utils/memory/nimcp_memory.h \
   /home/bbrelin/nimcp/src/utils/platform/nimcp_platform.h \
@@ -211,23 +212,14 @@ examples/CMakeFiles/brain_demo.dir/brain_demo.c.o: /home/bbrelin/nimcp/examples/
   /usr/include/x86_64-linux-gnu/bits/pthreadtypes-arch.h \
   /usr/include/x86_64-linux-gnu/bits/pthreadtypes.h \
   /usr/include/x86_64-linux-gnu/bits/sched.h \
-  /usr/include/x86_64-linux-gnu/bits/select-decl.h \
   /usr/include/x86_64-linux-gnu/bits/select.h \
-  /usr/include/x86_64-linux-gnu/bits/select2.h \
   /usr/include/x86_64-linux-gnu/bits/setjmp.h \
   /usr/include/x86_64-linux-gnu/bits/stat.h \
   /usr/include/x86_64-linux-gnu/bits/stdint-intn.h \
   /usr/include/x86_64-linux-gnu/bits/stdint-least.h \
   /usr/include/x86_64-linux-gnu/bits/stdint-uintn.h \
-  /usr/include/x86_64-linux-gnu/bits/stdio.h \
-  /usr/include/x86_64-linux-gnu/bits/stdio2-decl.h \
-  /usr/include/x86_64-linux-gnu/bits/stdio2.h \
   /usr/include/x86_64-linux-gnu/bits/stdio_lim.h \
-  /usr/include/x86_64-linux-gnu/bits/stdlib-bsearch.h \
   /usr/include/x86_64-linux-gnu/bits/stdlib-float.h \
-  /usr/include/x86_64-linux-gnu/bits/stdlib.h \
-  /usr/include/x86_64-linux-gnu/bits/string_fortified.h \
-  /usr/include/x86_64-linux-gnu/bits/strings_fortified.h \
   /usr/include/x86_64-linux-gnu/bits/struct_mutex.h \
   /usr/include/x86_64-linux-gnu/bits/struct_rwlock.h \
   /usr/include/x86_64-linux-gnu/bits/struct_stat.h \
@@ -261,14 +253,10 @@ examples/CMakeFiles/brain_demo.dir/brain_demo.c.o: /home/bbrelin/nimcp/examples/
   /usr/include/x86_64-linux-gnu/bits/types/wint_t.h \
   /usr/include/x86_64-linux-gnu/bits/typesizes.h \
   /usr/include/x86_64-linux-gnu/bits/uintn-identity.h \
-  /usr/include/x86_64-linux-gnu/bits/unistd-decl.h \
-  /usr/include/x86_64-linux-gnu/bits/unistd.h \
   /usr/include/x86_64-linux-gnu/bits/unistd_ext.h \
   /usr/include/x86_64-linux-gnu/bits/waitflags.h \
   /usr/include/x86_64-linux-gnu/bits/waitstatus.h \
   /usr/include/x86_64-linux-gnu/bits/wchar.h \
-  /usr/include/x86_64-linux-gnu/bits/wchar2-decl.h \
-  /usr/include/x86_64-linux-gnu/bits/wchar2.h \
   /usr/include/x86_64-linux-gnu/bits/wordsize.h \
   /usr/include/x86_64-linux-gnu/gnu/stubs-64.h \
   /usr/include/x86_64-linux-gnu/gnu/stubs.h \
@@ -307,24 +295,6 @@ examples/CMakeFiles/brain_demo.dir/brain_demo.c.o: /home/bbrelin/nimcp/examples/
 
 /usr/include/x86_64-linux-gnu/gnu/stubs-64.h:
 
-/usr/include/x86_64-linux-gnu/bits/wordsize.h:
-
-/usr/include/x86_64-linux-gnu/bits/wchar2-decl.h:
-
-/usr/include/x86_64-linux-gnu/bits/wchar.h:
-
-/usr/include/x86_64-linux-gnu/bits/waitstatus.h:
-
-/usr/include/x86_64-linux-gnu/bits/unistd_ext.h:
-
-/usr/include/x86_64-linux-gnu/bits/unistd-decl.h:
-
-/usr/include/x86_64-linux-gnu/bits/uintn-identity.h:
-
-/usr/include/x86_64-linux-gnu/bits/typesizes.h:
-
-/usr/include/x86_64-linux-gnu/bits/types/wint_t.h:
-
 /usr/include/python3.12/memoryobject.h:
 
 /usr/include/python3.12/cpython/pyctype.h:
@@ -338,8 +308,6 @@ examples/CMakeFiles/brain_demo.dir/brain_demo.c.o: /home/bbrelin/nimcp/examples/
 /usr/include/python3.12/genericaliasobject.h:
 
 /usr/include/assert.h:
-
-/usr/include/x86_64-linux-gnu/bits/unistd.h:
 
 /usr/include/python3.12/floatobject.h:
 
@@ -369,17 +337,11 @@ examples/CMakeFiles/brain_demo.dir/brain_demo.c.o: /home/bbrelin/nimcp/examples/
 
 /usr/include/x86_64-linux-gnu/bits/time64.h:
 
-/usr/include/x86_64-linux-gnu/bits/waitflags.h:
-
-/usr/include/python3.12/cpython/objimpl.h:
-
 /usr/include/x86_64-linux-gnu/bits/dlfcn.h:
 
 /usr/include/x86_64-linux-gnu/bits/cmathcalls.h:
 
 /usr/include/python3.12/cpython/object.h:
-
-/usr/include/x86_64-linux-gnu/bits/stdlib.h:
 
 /usr/include/x86_64-linux-gnu/bits/getopt_core.h:
 
@@ -411,11 +373,15 @@ examples/CMakeFiles/brain_demo.dir/brain_demo.c.o: /home/bbrelin/nimcp/examples/
 
 /usr/include/python3.12/cpython/complexobject.h:
 
+/usr/include/python3.12/enumobject.h:
+
+/usr/include/python3.12/cpython/classobject.h:
+
 /usr/include/python3.12/compile.h:
 
-/usr/include/x86_64-linux-gnu/bits/select-decl.h:
-
 /usr/include/python3.12/cpython/ceval.h:
+
+/usr/include/x86_64-linux-gnu/bits/waitstatus.h:
 
 /home/bbrelin/nimcp/src/utils/platform/nimcp_platform_mutex.h:
 
@@ -453,6 +419,8 @@ examples/CMakeFiles/brain_demo.dir/brain_demo.c.o: /home/bbrelin/nimcp/examples/
 
 /usr/include/x86_64-linux-gnu/bits/types/cookie_io_functions_t.h:
 
+/usr/include/x86_64-linux-gnu/bits/wchar.h:
+
 /home/bbrelin/nimcp/src/utils/memory/nimcp_memory.h:
 
 /home/bbrelin/nimcp/src/plasticity/bcm/nimcp_bcm.h:
@@ -475,6 +443,18 @@ examples/CMakeFiles/brain_demo.dir/brain_demo.c.o: /home/bbrelin/nimcp/examples/
 
 /usr/include/python3.12/cpython/import.h:
 
+/usr/include/x86_64-linux-gnu/bits/wordsize.h:
+
+/home/bbrelin/nimcp/src/utils/containers/nimcp_graph.h:
+
+/home/bbrelin/nimcp/src/plasticity/neuromodulators/nimcp_spatial_neuromod.h:
+
+/home/bbrelin/nimcp/src/glial/integration/nimcp_glial_integration.h:
+
+/usr/include/python3.12/cpython/funcobject.h:
+
+/usr/include/lz4.h:
+
 /usr/include/linux/limits.h:
 
 /usr/include/x86_64-linux-gnu/bits/posix2_lim.h:
@@ -483,9 +463,7 @@ examples/CMakeFiles/brain_demo.dir/brain_demo.c.o: /home/bbrelin/nimcp/examples/
 
 /usr/include/x86_64-linux-gnu/bits/stdlib-float.h:
 
-/usr/include/python3.12/cpython/funcobject.h:
-
-/usr/include/lz4.h:
+/usr/include/x86_64-linux-gnu/bits/uintn-identity.h:
 
 /home/bbrelin/nimcp/src/plasticity/stp/nimcp_stp.h:
 
@@ -553,10 +531,6 @@ examples/CMakeFiles/brain_demo.dir/brain_demo.c.o: /home/bbrelin/nimcp/examples/
 
 /usr/include/python3.12/unicodeobject.h:
 
-/home/bbrelin/nimcp/src/plasticity/neuromodulators/nimcp_spatial_neuromod.h:
-
-/home/bbrelin/nimcp/src/glial/integration/nimcp_glial_integration.h:
-
 /home/bbrelin/nimcp/examples/brain_demo.c:
 
 /usr/include/x86_64-linux-gnu/bits/types/struct_FILE.h:
@@ -586,10 +560,6 @@ examples/CMakeFiles/brain_demo.dir/brain_demo.c.o: /home/bbrelin/nimcp/examples/
 /usr/include/alloca.h:
 
 /usr/include/asm-generic/errno-base.h:
-
-/usr/include/python3.12/methodobject.h:
-
-/home/bbrelin/nimcp/src/core/brain_regions/nimcp_brain_regions.h:
 
 /home/bbrelin/nimcp/src/include/plasticity/neuromodulators/nimcp_phasic_tonic.h:
 
@@ -633,7 +603,9 @@ examples/CMakeFiles/brain_demo.dir/brain_demo.c.o: /home/bbrelin/nimcp/examples/
 
 /usr/include/python3.12/abstract.h:
 
-/usr/include/x86_64-linux-gnu/bits/stdio2-decl.h:
+/home/bbrelin/nimcp/src/core/brain_regions/nimcp_brain_regions.h:
+
+/usr/include/python3.12/methodobject.h:
 
 /usr/include/python3.12/modsupport.h:
 
@@ -651,6 +623,8 @@ examples/CMakeFiles/brain_demo.dir/brain_demo.c.o: /home/bbrelin/nimcp/examples/
 
 /usr/include/x86_64-linux-gnu/bits/floatn-common.h:
 
+/usr/include/x86_64-linux-gnu/bits/types/wint_t.h:
+
 /usr/include/x86_64-linux-gnu/bits/mathcalls.h:
 
 /usr/include/python3.12/pyconfig.h:
@@ -661,17 +635,9 @@ examples/CMakeFiles/brain_demo.dir/brain_demo.c.o: /home/bbrelin/nimcp/examples/
 
 /usr/include/x86_64-linux-gnu/bits/stdint-least.h:
 
-/usr/include/python3.12/enumobject.h:
-
-/usr/include/python3.12/cpython/classobject.h:
-
-/usr/include/x86_64-linux-gnu/bits/strings_fortified.h:
-
 /usr/include/x86_64-linux-gnu/bits/types/mbstate_t.h:
 
 /usr/include/python3.12/pyframe.h:
-
-/usr/include/x86_64-linux-gnu/bits/select2.h:
 
 /usr/include/python3.12/cpython/methodobject.h:
 
@@ -679,9 +645,9 @@ examples/CMakeFiles/brain_demo.dir/brain_demo.c.o: /home/bbrelin/nimcp/examples/
 
 /usr/include/python3.12/pylifecycle.h:
 
-/usr/include/python3.12/pymacconfig.h:
+/usr/include/x86_64-linux-gnu/bits/unistd_ext.h:
 
-/usr/include/x86_64-linux-gnu/bits/wchar2.h:
+/usr/include/python3.12/pymacconfig.h:
 
 /usr/include/x86_64-linux-gnu/bits/fp-logb.h:
 
@@ -692,8 +658,6 @@ examples/CMakeFiles/brain_demo.dir/brain_demo.c.o: /home/bbrelin/nimcp/examples/
 /usr/include/x86_64-linux-gnu/bits/byteswap.h:
 
 /usr/include/string.h:
-
-/usr/include/x86_64-linux-gnu/bits/stdio.h:
 
 /usr/include/math.h:
 
@@ -801,6 +765,10 @@ examples/CMakeFiles/brain_demo.dir/brain_demo.c.o: /home/bbrelin/nimcp/examples/
 
 /usr/include/x86_64-linux-gnu/bits/mathdef.h:
 
+/usr/include/python3.12/cpython/objimpl.h:
+
+/usr/include/x86_64-linux-gnu/bits/waitflags.h:
+
 /usr/include/python3.12/cpython/longintrepr.h:
 
 /usr/include/x86_64-linux-gnu/bits/posix1_lim.h:
@@ -825,10 +793,6 @@ examples/CMakeFiles/brain_demo.dir/brain_demo.c.o: /home/bbrelin/nimcp/examples/
 
 /usr/include/x86_64-linux-gnu/bits/types.h:
 
-/usr/include/x86_64-linux-gnu/bits/stdio2.h:
-
-/usr/include/x86_64-linux-gnu/bits/string_fortified.h:
-
 /usr/include/x86_64-linux-gnu/bits/select.h:
 
 /usr/include/python3.12/typeslots.h:
@@ -845,8 +809,6 @@ examples/CMakeFiles/brain_demo.dir/brain_demo.c.o: /home/bbrelin/nimcp/examples/
 
 /usr/include/x86_64-linux-gnu/bits/types/sigset_t.h:
 
-/usr/include/x86_64-linux-gnu/bits/stdlib-bsearch.h:
-
 /usr/include/x86_64-linux-gnu/bits/types/clockid_t.h:
 
 /usr/include/x86_64-linux-gnu/bits/types/struct___jmp_buf_tag.h:
@@ -854,3 +816,5 @@ examples/CMakeFiles/brain_demo.dir/brain_demo.c.o: /home/bbrelin/nimcp/examples/
 /usr/include/x86_64-linux-gnu/bits/stdint-uintn.h:
 
 /usr/include/x86_64-linux-gnu/bits/types/struct_timespec.h:
+
+/usr/include/x86_64-linux-gnu/bits/typesizes.h:

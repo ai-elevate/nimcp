@@ -14,7 +14,7 @@
 
 extern "C" {
 #include "utils/fault_tolerance/nimcp_checkpoint.h"
-#include "utils/fault_tolerance/nimcp_signal_handler.h"
+#include "utils/signal/nimcp_signal_handler.h"
 #include "core/brain/nimcp_brain.h"
 #include "utils/memory/nimcp_memory.h"
 }
@@ -24,6 +24,7 @@ extern "C" {
 #include <csignal>
 #include <sys/stat.h>
 #include <unistd.h>
+#include <chrono>
 
 //=============================================================================
 // Test Fixture
@@ -48,7 +49,7 @@ protected:
                  "%s/brain_checkpoint.ckpt", checkpoint_dir);
 
         // Create test brain
-        brain = brain_create("recovery_test", BRAIN_SIZE_SMALL);
+        brain = brain_create("recovery_test", BRAIN_SIZE_SMALL, BRAIN_TASK_CLASSIFICATION, 10, 5);
         ASSERT_NE(brain, nullptr);
     }
 
@@ -67,11 +68,12 @@ protected:
 
     void train_brain(brain_t b, int iterations) {
         float inputs[10];
+        float outputs[5];
         for (int i = 0; i < iterations; i++) {
             for (int j = 0; j < 10; j++) {
                 inputs[j] = (float)(rand() % 100) / 100.0f;
             }
-            brain_process(b, inputs, 10);
+            brain_predict(b, inputs, 10, outputs, 5);
         }
     }
 };
@@ -88,14 +90,13 @@ TEST_F(CheckpointRecoveryTest, FullSaveRestoreWorkflow) {
     train_brain(brain, 50);
 
     // Save checkpoint
-    ASSERT_TRUE(checkpoint_save(brain, checkpoint_path));
+    ASSERT_TRUE(brain_save(brain, checkpoint_path));
 
     // Get original state
     float test_input[10] = {0.5f, 0.5f, 0.5f, 0.5f, 0.5f,
                            0.5f, 0.5f, 0.5f, 0.5f, 0.5f};
-    brain_process(brain, test_input, 10);
     float original_outputs[5];
-    brain_get_outputs(brain, original_outputs, 5);
+    brain_predict(brain, test_input, 10, original_outputs, 5);
 
     // Destroy original brain
     brain_destroy(brain);
@@ -111,9 +112,8 @@ TEST_F(CheckpointRecoveryTest, FullSaveRestoreWorkflow) {
         ASSERT_NE(restored, nullptr);
 
         // Verify restored state
-        brain_process(restored, test_input, 10);
         float restored_outputs[5];
-        brain_get_outputs(restored, restored_outputs, 5);
+        brain_predict(restored, test_input, 10, restored_outputs, 5);
 
         for (int i = 0; i < 5; i++) {
             EXPECT_NEAR(original_outputs[i], restored_outputs[i], 0.01f);
@@ -135,7 +135,7 @@ TEST_F(CheckpointRecoveryTest, AutoRecoveryFindsLatestCheckpoint) {
         snprintf(path, sizeof(path), "%s/checkpoint_%d.ckpt", checkpoint_dir, i);
 
         train_brain(brain, 10);
-        checkpoint_save(brain, path);
+        brain_save(brain, path);
 
         usleep(200000);  // 200ms delay to ensure different timestamps
     }
@@ -216,7 +216,7 @@ TEST_F(CheckpointRecoveryTest, CheckpointCleanupKeepsRecent) {
         snprintf(path, sizeof(path), "%s/auto_checkpoint_%03d.ckpt",
                  checkpoint_dir, i);
 
-        checkpoint_save(brain, path);
+        brain_save(brain, path);
         usleep(50000);  // 50ms delay
     }
 
@@ -251,7 +251,7 @@ TEST_F(CheckpointRecoveryTest, CheckpointListingSorting) {
     for (int i = 0; i < 3; i++) {
         char full_path[512];
         snprintf(full_path, sizeof(full_path), "%s/%s", checkpoint_dir, paths[i]);
-        checkpoint_save(brain, full_path);
+        brain_save(brain, full_path);
         usleep(200000);  // 200ms delay
     }
 
@@ -279,7 +279,7 @@ TEST_F(CheckpointRecoveryTest, RecoveryFromPartiallyCorruptedCheckpoint) {
     // WHY:  Verify graceful degradation
 
     // Create valid checkpoint
-    ASSERT_TRUE(checkpoint_save(brain, checkpoint_path));
+    ASSERT_TRUE(brain_save(brain, checkpoint_path));
 
     // Corrupt part of the file (not header)
     FILE* fp = fopen(checkpoint_path, "r+b");
@@ -312,7 +312,7 @@ TEST_F(CheckpointRecoveryTest, RecoverySkipsInvalidCheckpoints) {
     // Create mix of valid and invalid checkpoints
     char valid_path[512];
     snprintf(valid_path, sizeof(valid_path), "%s/valid.ckpt", checkpoint_dir);
-    checkpoint_save(brain, valid_path);
+    brain_save(brain, valid_path);
 
     // Create fake invalid checkpoint (newer timestamp by filename)
     char invalid_path[512];
@@ -348,7 +348,7 @@ TEST_F(CheckpointRecoveryTest, CheckpointPerformance) {
 
     // Measure save time
     auto start = std::chrono::high_resolution_clock::now();
-    checkpoint_save(brain, checkpoint_path);
+    brain_save(brain, checkpoint_path);
     auto end = std::chrono::high_resolution_clock::now();
     auto save_duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
 

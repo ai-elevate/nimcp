@@ -117,6 +117,7 @@ typedef struct {
 
     bool requires_user_confirmation;   /**< High-risk decision? */
     bool is_novel_situation;           /**< Never seen before? */
+    char failure_signature[256];       /**< Signature for pattern matching */
 } brain_recovery_decision_t;
 
 //=============================================================================

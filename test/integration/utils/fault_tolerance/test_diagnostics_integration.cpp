@@ -80,7 +80,8 @@ TEST_F(DiagnosticsIntegrationTest, MultipleErrorPatternDetection) {
 
     // Add multiple errors in same function
     for (int i = 0; i < 5; i++) {
-        diagnostic_result_t result = {0};
+        diagnostic_result_t result;
+        memset(&result, 0, sizeof(diagnostic_result_t));
         result.error_type = ERROR_TYPE_SEGFAULT;
         result.timestamp = time(nullptr) + i;
         result.stack_depth = 1;
@@ -167,7 +168,8 @@ TEST_F(DiagnosticsIntegrationTest, BrainStateAnalysis) {
 //=============================================================================
 
 TEST_F(DiagnosticsIntegrationTest, AutoRecoveryForNumericalErrors) {
-    diagnostic_result_t result = {0};
+    diagnostic_result_t result;
+    memset(&result, 0, sizeof(diagnostic_result_t));
     result.error_type = ERROR_TYPE_NAN_DETECTED;
     result.severity = SEVERITY_ERROR;
 
@@ -181,14 +183,15 @@ TEST_F(DiagnosticsIntegrationTest, AutoRecoveryForNumericalErrors) {
 }
 
 TEST_F(DiagnosticsIntegrationTest, ManualRecoveryRecommendations) {
-    diagnostic_result_t result = {0};
+    diagnostic_result_t result;
+    memset(&result, 0, sizeof(diagnostic_result_t));
     result.error_type = ERROR_TYPE_BUFFER_OVERFLOW;
 
     diagnostics_suggest_recovery(&result);
     ASSERT_GT(result.recovery_action_count, 0);
 
     // Buffer overflow should require shutdown
-    const recovery_action_t* action = &result.recovery_actions[0];
+    const recovery_action_recommendation_t* action = &result.recovery_actions[0];
     EXPECT_EQ(action->type, RECOVERY_IMMEDIATE_SHUTDOWN);
     EXPECT_TRUE(action->requires_user_intervention);
 }
@@ -203,7 +206,8 @@ TEST_F(DiagnosticsIntegrationTest, HighVolumeErrorTracking) {
 
     // Add many errors
     for (int i = 0; i < MAX_HISTORY_SIZE + 50; i++) {
-        diagnostic_result_t result = {0};
+        diagnostic_result_t result;
+        memset(&result, 0, sizeof(diagnostic_result_t));
         result.error_type = static_cast<error_type_t>(0x1000 + (i % 10));
         result.timestamp = time(nullptr) + i;
 

@@ -71,6 +71,9 @@
 // Brain Regions Architecture
 #include "core/brain_regions/nimcp_brain_regions.h"
 
+// Universal Event Bus
+#include "core/events/nimcp_event_bus.h"
+
 // Phase 10: Advanced Cognitive Architecture
 #include "cognitive/nimcp_working_memory.h"
 #include "cognitive/nimcp_emotional_tagging.h"
@@ -375,6 +378,12 @@ struct brain_struct {
     // Enable/disable middleware features
     bool enable_spike_analysis;                   // Enable spike-based feature extraction
     bool enable_population_coding;                // Enable population coding analysis
+
+    // === UNIVERSAL EVENT BUS INTEGRATION ===
+
+    // Event bus for broadcasting brain activities (training, inference, cognitive events)
+    event_bus_t event_bus;                        // Event bus for system-wide event coordination
+    bool enable_event_broadcasting;               // Enable/disable event publishing
 };
 
 //=============================================================================

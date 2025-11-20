@@ -117,6 +117,7 @@ extern void set_error(const char* format, ...);
 
 // These macros map short names to the full prefixed names defined in init module
 #define init_output_labels                          nimcp_brain_factory_init_output_labels
+#define init_event_bus                              nimcp_brain_factory_init_event_bus
 #define init_glial_subsystem                        nimcp_brain_factory_init_glial_subsystem
 #define init_multimodal_subsystems                  nimcp_brain_factory_init_multimodal_subsystems
 #define init_pink_noise_subsystem                   nimcp_brain_factory_init_pink_noise_subsystem
@@ -267,6 +268,15 @@ brain_t brain_create(const char* task_name, brain_size_t size, brain_task_t task
     if (!init_output_labels(brain, num_outputs)) {
         adaptive_network_destroy(brain->network);
         strategy_destroy(brain->strategy);
+        nimcp_free(brain);
+        return NULL;
+    }
+
+    // Initialize universal event bus
+    if (!init_event_bus(brain)) {
+        adaptive_network_destroy(brain->network);
+        strategy_destroy(brain->strategy);
+        nimcp_free(brain->output_labels);
         nimcp_free(brain);
         return NULL;
     }

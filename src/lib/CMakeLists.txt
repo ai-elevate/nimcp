@@ -18,6 +18,9 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/factory/init/nimcp_brain_init.c               # Initialization and subsystems (2,523 lines)
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/factory/validation/nimcp_brain_validation.c   # Validation and caching (219 lines)
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/learning/nimcp_brain_learning.c     # Training, backpropagation, batch processing (947 lines)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/learning/nimcp_rule_learning.c      # Rule learning from examples (inductive learning)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/learning/nimcp_association_learning.c  # Association learning (A→B implications)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/learning/nimcp_circuit_compilation.c   # Neural circuit compilation (symbolic→neural)
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/inference/nimcp_brain_inference.c   # Prediction, forward propagation, results (502 lines)
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/persistence/nimcp_brain_persistence.c # Save/load, snapshots, checkpoints (1,187 lines)
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/distributed/nimcp_brain_distributed.c # Copy-on-write, P2P sync, consensus (561 lines)
@@ -37,6 +40,7 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/neuralnet/nimcp_neuralnet.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/neuron_types/nimcp_neuron_types.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/neuron_types/nimcp_neural_logic.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/logic/nimcp_neural_logic_brain_integration.c  # Phase 2.6.2: Neural Logic Brain Integration
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain_regions/nimcp_brain_regions.c
 
     # Multi-modal integration (Phase 8: Unified Architecture)
@@ -74,7 +78,16 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/logic/nimcp_symbolic_logic.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/epistemic/nimcp_epistemic_filter.c  # Phase 9.2: Bias prevention
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/working_memory/nimcp_working_memory.c  # Phase 10.1: Working Memory
-    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/emotional_tagging/nimcp_emotional_tagging.c  # Phase 10.2: Emotional Tagging
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/fault_tolerance/nimcp_recovery_episodic_memory.c  # Phase 10: Episodic Memory for Recovery History
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/fault_tolerance/nimcp_fault_working_memory.c  # Phase 10: Working Memory for Active Fault Context
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/fault_tolerance/nimcp_recovery_executive.c  # Phase 10: Executive Function for Recovery Planning
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/fault_tolerance/nimcp_metacognition.c  # Phase 10: Metacognition for Self-Monitoring
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/fault_tolerance/nimcp_fault_attention.c  # Phase 10: Attention Mechanism for Error Prioritization
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/fault_tolerance/nimcp_failure_prediction.c  # Phase 10: Predictive Coding for Failure Prediction
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/fault_tolerance/nimcp_recovery_consolidation.c  # Phase 10: Consolidation for Long-Term Learning
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/fault_tolerance/nimcp_emotional_tagging.c  # Phase 10: Emotional Tagging for Critical Failures
+    # NOTE: No centralized hub - coordination emerges from distributed event bus (mimics thalamus + white matter tracts)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/nimcp_emotional_tagging.c  # Phase 10.3: General Emotional Tagging (Russell's circumplex model)
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/emotions/nimcp_emotional_system.c  # Phase 10.2: Integrated Emotional System
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/executive/nimcp_executive.c  # Phase 10.3: Executive Functions
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/sleep_wake/nimcp_sleep_wake.c  # Phase 10.4: Sleep/Wake Cycle
@@ -94,6 +107,25 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/theory_of_mind/nimcp_theory_of_mind.c  # Phase 10.6: Theory of Mind
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/explanations/nimcp_explanations.c  # Phase 10.7: Natural Explanations
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/meta_learning/nimcp_meta_learning.c  # Phase 10.8: Meta-Learning
+
+    # Cognitive Reasoning & Logic Integration (Phase 10.x: Logical Reasoning)
+    # NOTE: Temporarily disabled due to API mismatches (brain->logic_engine, brain->event_bus don't exist)
+    # TODO: Fix API usage in these modules to match actual brain_struct and event_bus APIs
+    # ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/reasoning/nimcp_symbolic_logic_attachment.c  # Symbolic logic attachment
+    # ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/reasoning/nimcp_knowledge_base_interface.c  # KB interface
+    # ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/reasoning/nimcp_forward_chaining.c  # Forward chaining (induction)
+    # ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/reasoning/nimcp_backward_chaining.c  # Backward chaining (deduction)
+    # ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/reasoning/nimcp_unification_engine.c  # Unification
+    # ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/reasoning/nimcp_reasoning_factory.c  # Factory
+    # ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/reasoning/integration/nimcp_reasoning_attention.c  # Attention integration
+    # ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/reasoning/integration/nimcp_reasoning_curiosity.c  # Curiosity integration
+
+    # Core Logic Modules (Phase 10.x: Neural Logic Gates)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/logic/nimcp_neural_logic_attachment.c  # Neural logic attachment
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/logic/nimcp_neural_logic_evaluation.c  # Logic gate evaluation
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/logic/nimcp_neural_logic_circuit_builder.c  # Circuit builder
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/logic/nimcp_neural_logic_neuromodulation.c  # Neuromodulation
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/logic/nimcp_neural_logic_factory.c  # Factory
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/predictive/nimcp_predictive.c  # Phase 10.9: Predictive Processing
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/mirror_neurons/nimcp_mirror_neurons.c  # Phase 10.11: Mirror Neurons
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/global_workspace/nimcp_global_workspace.c  # Global Workspace Architecture (Global Workspace Theory)
@@ -169,13 +201,24 @@ set(NIMCP_CORE_SOURCES
     # Utils - Signal Handling (Runtime Safety)
     ${CMAKE_CURRENT_SOURCE_DIR}/../utils/signal/nimcp_signal_handler.c
 
-    # Utils - Fault Tolerance & Recovery (Production Resilience - Complete System)
+    # Core Events Infrastructure (Promoted from Fault Tolerance - Now Universal)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/events/nimcp_event_bus.c                    # Universal event bus for ALL brain activities (promoted to core)
+
+    # Utils - Fault Tolerance & Recovery (Production Resilience - Complete System - 14 modules)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../utils/fault_tolerance/nimcp_recovery_pool.c                 # Pre-allocated memory pool for OOM recovery
+    ${CMAKE_CURRENT_SOURCE_DIR}/../utils/fault_tolerance/nimcp_fast_recovery.c                 # Fast path recovery (<1ms)
     ${CMAKE_CURRENT_SOURCE_DIR}/../utils/fault_tolerance/nimcp_recovery.c                      # Recovery strategy execution
+    ${CMAKE_CURRENT_SOURCE_DIR}/../utils/fault_tolerance/nimcp_recovery_cache.c                # LRU cache for recovery strategies
     ${CMAKE_CURRENT_SOURCE_DIR}/../utils/fault_tolerance/nimcp_diagnostics.c                   # Error detection & classification
     ${CMAKE_CURRENT_SOURCE_DIR}/../utils/fault_tolerance/nimcp_checkpoint.c                    # State persistence & checkpointing
+    ${CMAKE_CURRENT_SOURCE_DIR}/../utils/fault_tolerance/nimcp_async_checkpoint.c              # Async checkpoint with background thread
     ${CMAKE_CURRENT_SOURCE_DIR}/../utils/fault_tolerance/nimcp_health_monitor.c                # Runtime health monitoring
     ${CMAKE_CURRENT_SOURCE_DIR}/../utils/fault_tolerance/nimcp_brain_recovery_integration.c    # Brain-driven intelligent recovery
     ${CMAKE_CURRENT_SOURCE_DIR}/../utils/fault_tolerance/nimcp_runtime_adaptation.c            # Runtime parameter adaptation
+    ${CMAKE_CURRENT_SOURCE_DIR}/../utils/fault_tolerance/nimcp_fault_state_machine.c           # Fault state machine (HEALTHY/DEGRADED/FAILED)
+    # ${CMAKE_CURRENT_SOURCE_DIR}/../utils/fault_tolerance/nimcp_fault_event_bus.c             # DEPRECATED: Moved to core/events/nimcp_event_bus.c (promoted to universal)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../utils/fault_tolerance/nimcp_lockfree_metrics.c              # Lock-free metrics ring buffer (4x faster)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../utils/fault_tolerance/nimcp_metrics_aggregator.c            # Metrics aggregation (P50/P95/P99)
 
     # Utils - Error Codes (Structured Error System)
     ${CMAKE_CURRENT_SOURCE_DIR}/../utils/error/nimcp_error_codes.c
@@ -276,10 +319,14 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../middleware/encoding/nimcp_temporal_coding.c
 
     # Middleware - Events
-    ${CMAKE_CURRENT_SOURCE_DIR}/../middleware/events/nimcp_event_bus.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/../middleware/events/nimcp_event_queue.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/../middleware/events/nimcp_event_subscriber.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/../middleware/events/nimcp_event_types.c
+    # REMOVED: All middleware event bus components removed in favor of core event bus (2025-11-20)
+    # The entire middleware event system has been consolidated into core/events/nimcp_event_bus.c
+    # to eliminate redundancy and provide unified event handling across all subsystems.
+    # Removed components:
+    #   - nimcp_event_bus.c       (duplicate event bus - core version is canonical)
+    #   - nimcp_event_queue.c     (queue functionality integrated into core event bus)
+    #   - nimcp_event_subscriber.c (subscriber management in core event bus)
+    #   - nimcp_event_types.c     (event types consolidated in core system)
 
     # Middleware - Patterns
     ${CMAKE_CURRENT_SOURCE_DIR}/../middleware/patterns/nimcp_synchrony_detector.c
@@ -298,6 +345,13 @@ set(NIMCP_CORE_SOURCES
 
     # Middleware - Integration
     ${CMAKE_CURRENT_SOURCE_DIR}/../middleware/brain_integration.c
+
+    # Middleware - Cognitive Adapters (Phase 2: Brain-Cognitive Layer Integration)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../middleware/cognitive/nimcp_cognitive_adapters.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../middleware/cognitive/nimcp_working_memory_adapter.c
+
+    # Middleware - Training Adapters (Phase 2: Brain-Training Layer Integration)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../middleware/training/nimcp_training_adapters.c
 )
 
 # Core library

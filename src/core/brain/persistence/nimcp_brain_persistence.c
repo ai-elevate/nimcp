@@ -933,13 +933,13 @@ bool brain_save_snapshot(brain_t brain, const char* name, const char* descriptio
 brain_t brain_restore_snapshot(brain_t brain, const char* name)
 {
     // Guard: Validate parameters
-    if (!brain || !name) {
-        set_error("Null brain or snapshot name provided");
+    if (!name) {
+        set_error("Null snapshot name provided");
         return NULL;
     }
 
-    // Get snapshot directory from brain
-    const char* snapshot_dir = get_snapshot_dir(brain);
+    // Get snapshot directory (use default if brain is NULL)
+    const char* snapshot_dir = brain ? get_snapshot_dir(brain) : "snapshots";
 
     // Find most recent snapshot with this name
     // Snapshots are named: {name}_{timestamp}.snapshot

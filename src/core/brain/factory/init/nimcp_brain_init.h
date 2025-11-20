@@ -39,6 +39,13 @@ typedef struct task_strategy task_strategy_t;
 //=============================================================================
 
 //=============================================================================
+// Core Infrastructure Initialization
+//=============================================================================
+
+bool nimcp_brain_factory_init_output_labels(brain_t brain, uint32_t num_outputs);
+bool nimcp_brain_factory_init_event_bus(brain_t brain);
+
+//=============================================================================
 // Subsystem Initialization Functions (31 total)
 //=============================================================================
 

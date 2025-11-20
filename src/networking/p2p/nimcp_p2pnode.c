@@ -687,7 +687,7 @@ void p2p_node_destroy(p2p_node_t node)
  * @param node Handle to the node
  * @return Pointer to topology graph, or NULL if node is invalid
  */
-struct NimcpGraph* p2p_node_get_topology_graph(p2p_node_t node)
+NimcpGraph* p2p_node_get_topology_graph(p2p_node_t node)
 {
     // Guard clause: Validate input
     if (!node)

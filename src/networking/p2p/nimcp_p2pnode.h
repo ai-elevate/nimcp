@@ -5,6 +5,7 @@
 
 #include <Python.h>  // Use CMake-provided Python includes
 #include "common/nimcp_export.h"
+#include "utils/containers/nimcp_graph.h"  // Include NimcpGraph definition
 
 #include <stdbool.h>
 #include <stdint.h>
@@ -131,7 +132,7 @@ bool p2p_node_stop(p2p_node_t node);
  * @note Graph operations are thread-safe (protected by internal mutex)
  * @note Use nimcp_graph.h API functions to query the graph
  */
-struct NimcpGraph* p2p_node_get_topology_graph(p2p_node_t node);
+NimcpGraph* p2p_node_get_topology_graph(p2p_node_t node);
 
 //=============================================================================
 // Heartbeat System API

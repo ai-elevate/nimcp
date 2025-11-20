@@ -29,6 +29,9 @@ void log_message(log_level_t level, const char* format, ...);
 // Function to close the logging system
 void log_close();
 
+// Legacy wrapper function (for backward compatibility)
+void nimcp_log(log_level_t level, const char* format, ...);
+
 // Convenience macros for logging
 // Note: Using NIMCP_LOGGING_ prefix to avoid conflict with log level enums in nimcp_common.h
 #define NIMCP_LOGGING_DEBUG(...) log_message(LOG_LEVEL_DEBUG, __VA_ARGS__)

@@ -83,6 +83,7 @@
 
 // Brain regions and cognitive systems
 #include "core/brain_regions/nimcp_brain_regions.h"
+#include "core/events/nimcp_event_bus.h"
 #include "cognitive/nimcp_working_memory.h"
 #include "cognitive/nimcp_emotional_tagging.h"
 #include "cognitive/nimcp_emotional_system.h"
@@ -100,6 +101,7 @@
 #include "cognitive/nimcp_mirror_neurons.h"
 #include "cognitive/global_workspace/nimcp_global_workspace.h"
 #include "cognitive/nimcp_autobiographical_memory.h"
+#include "core/events/nimcp_event_bus.h"  // Universal event bus for ALL brain activities
 
 //=============================================================================
 // Configuration and Initialization Functions
@@ -439,6 +441,17 @@ brain_t nimcp_brain_factory_allocate_brain(void)
     brain->auto_detect_communities = false;
     brain->community_detection_interval = 0.0f;  // Manual only by default
 
+    // Universal Event Bus: Initialize event broadcasting system
+    // WHAT: Create event bus for broadcasting brain activities (training, inference, cognitive events)
+    // WHY:  Enable decoupled monitoring and integration with external systems
+    // HOW:  Use immediate delivery mode for minimal overhead (<1μs per event)
+    // TODO: Universal event bus integration pending
+    // brain->event_bus = event_bus_create("brain_event_bus", EVENT_DELIVERY_IMMEDIATE);
+    // brain->enable_event_broadcasting = (brain->event_bus != NULL);
+    // if (!brain->event_bus) {
+    //     LOG_WARNING("Failed to create event bus for brain - event broadcasting disabled");
+    // }
+
     return brain;
 }
 
@@ -500,6 +513,49 @@ bool nimcp_brain_factory_init_output_labels(brain_t brain, uint32_t num_outputs)
         return false;
     }
     brain->num_output_labels = 0;
+    return true;
+}
+
+/**
+ * @brief Initialize universal event bus
+ *
+ * WHAT: Creates event bus for brain-wide event coordination
+ * WHY:  Enables all modules to publish and subscribe to events
+ * HOW:  Creates event bus with immediate delivery mode
+ *
+ * @param brain Brain to initialize event bus for
+ * @return true if initialization successful, false on error
+ *
+ * @note Initialization Behavior
+ * - Returns false if brain invalid
+ * - Returns true if already initialized (idempotent)
+ * - Returns false only on allocation failure
+ * - Cleanup handled by brain_destroy()
+ *
+ * @version 2.7.0 Phase 10.x
+ * @author NIMCP Development Team
+ * @date 2025-11-20
+ */
+bool nimcp_brain_factory_init_event_bus(brain_t brain)
+{
+    if (!brain) {
+        set_error("brain_factory_init_event_bus: NULL brain");
+        return false;
+    }
+
+    // Check if already initialized
+    if (brain->event_bus) {
+        return true;  // Already initialized
+    }
+
+    // Create event bus with immediate delivery (synchronous for predictability)
+    brain->event_bus = event_bus_create("brain_event_bus", EVENT_DELIVERY_IMMEDIATE);
+    if (!brain->event_bus) {
+        set_error("Failed to create brain event bus");
+        return false;
+    }
+
+    LOG_INFO("Universal event bus initialized for brain");
     return true;
 }
 

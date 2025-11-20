@@ -77,7 +77,8 @@ TEST_F(DiagnosticsRegressionTest, HistoryCircularBufferStaysValid) {
 
     // Add 2x MAX_HISTORY_SIZE entries
     for (int i = 0; i < MAX_HISTORY_SIZE * 2; i++) {
-        diagnostic_result_t result = {0};
+        diagnostic_result_t result;
+        memset(&result, 0, sizeof(result));
         result.error_type = ERROR_TYPE_SEGFAULT;
         result.timestamp = time(nullptr) + i;
         result.stack_depth = 1;
@@ -103,7 +104,8 @@ TEST_F(DiagnosticsRegressionTest, RecoveryActionsDoNotOverflow) {
     // REGRESSION: Previously, some error types generated > MAX_RECOVERY_ACTIONS
     // EXPECTED: Should cap at MAX_RECOVERY_ACTIONS
 
-    diagnostic_result_t result = {0};
+    diagnostic_result_t result;
+    memset(&result, 0, sizeof(result));
     result.error_type = ERROR_TYPE_OUT_OF_MEMORY;
 
     diagnostics_suggest_recovery(&result);
@@ -167,7 +169,8 @@ TEST_F(DiagnosticsRegressionTest, LongStringsDoNotOverflow) {
     // REGRESSION: Previously, very long root cause strings caused overflow
     // EXPECTED: Should truncate safely
 
-    diagnostic_result_t result = {0};
+    diagnostic_result_t result;
+    memset(&result, 0, sizeof(result));
     result.error_type = ERROR_TYPE_SEGFAULT;
 
     // Fill with very long string (should be truncated)
@@ -254,7 +257,8 @@ TEST_F(DiagnosticsRegressionTest, CrashPatternDetectionAccurate) {
 
     // Add 5 crashes within 30 seconds
     for (int i = 0; i < 5; i++) {
-        diagnostic_result_t result = {0};
+        diagnostic_result_t result;
+        memset(&result, 0, sizeof(result));
         result.error_type = ERROR_TYPE_SEGFAULT;
         result.timestamp = base_time + i * 5;  // 5 second intervals
 
@@ -275,7 +279,8 @@ TEST_F(DiagnosticsRegressionTest, JSONHandlesSpecialCharacters) {
     // REGRESSION: Previously, special chars in strings broke JSON
     // EXPECTED: Should handle safely (may not fully escape, but shouldn't crash)
 
-    diagnostic_result_t result = {0};
+    diagnostic_result_t result;
+    memset(&result, 0, sizeof(result));
     result.error_type = ERROR_TYPE_SEGFAULT;
     strncpy(result.root_cause, "Test \"quoted\" string\nwith newline",
             sizeof(result.root_cause) - 1);
@@ -295,7 +300,8 @@ TEST_F(DiagnosticsRegressionTest, AutoRecoveryDoesNotLoop) {
     // REGRESSION: Previously, failed auto-recovery retried infinitely
     // EXPECTED: Should try once and return false on failure
 
-    diagnostic_result_t result = {0};
+    diagnostic_result_t result;
+    memset(&result, 0, sizeof(result));
     result.error_type = ERROR_TYPE_UNKNOWN;
     result.recovery_action_count = 0;
 
@@ -366,7 +372,8 @@ TEST_F(DiagnosticsRegressionTest, HistoryAdditionPerformance) {
 
     // Fill history
     for (int i = 0; i < MAX_HISTORY_SIZE; i++) {
-        diagnostic_result_t result = {0};
+        diagnostic_result_t result;
+        memset(&result, 0, sizeof(result));
         diagnostics_add_to_history(history, &result);
     }
 
@@ -375,7 +382,8 @@ TEST_F(DiagnosticsRegressionTest, HistoryAdditionPerformance) {
     clock_gettime(CLOCK_MONOTONIC, &start);
 
     for (int i = 0; i < 1000; i++) {
-        diagnostic_result_t result = {0};
+        diagnostic_result_t result;
+        memset(&result, 0, sizeof(result));
         diagnostics_add_to_history(history, &result);
     }
 

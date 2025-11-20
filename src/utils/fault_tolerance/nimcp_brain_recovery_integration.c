@@ -134,7 +134,9 @@ static void update_pattern(
         pattern->success_count,
         pattern->occurrence_count
     );
-    pattern->confidence = fminf(0.99f, pattern->occurrence_count / 10.0f);
+    // Confidence combines success rate with occurrence count
+    // High success rate gives base confidence, occurrences add more
+    pattern->confidence = fminf(0.99f, pattern->success_rate * 0.5f + (pattern->occurrence_count / 10.0f));
 }
 
 //=============================================================================
@@ -191,7 +193,15 @@ void brain_recovery_shutdown(brain_recovery_context_t ctx) {
         ctx->total_recoveries,
         calculate_success_rate(ctx->successful_recoveries, ctx->total_recoveries) * 100.0f);
 
-    free(ctx->history);
+    // Free heap-allocated pointers in history entries
+    if (ctx->history) {
+        for (uint32_t i = 0; i < ctx->history_count; i++) {
+            free(ctx->history[i].strategy);
+            free(ctx->history[i].result);
+        }
+        free(ctx->history);
+    }
+
     free(ctx->patterns);
     free(ctx);
 }
@@ -216,17 +226,16 @@ brain_recovery_decision_t* brain_recovery_select_strategy(
         return NULL;
     }
 
-    // Generate failure signature
-    char signature[256];
-    generate_failure_signature(diagnosis, signature, sizeof(signature));
+    // Generate failure signature and store in decision
+    generate_failure_signature(diagnosis, decision->failure_signature, sizeof(decision->failure_signature));
 
     // Check for learned patterns (simulating working memory)
-    recovery_pattern_t* pattern = find_pattern(ctx, signature);
+    recovery_pattern_t* pattern = find_pattern(ctx, decision->failure_signature);
 
-    if (pattern && pattern->confidence > 0.7f) {
+    if (pattern && pattern->confidence >= 0.1f) {
         // Use learned strategy
         LOG_INFO("Found learned pattern: %s (success_rate=%.2f, confidence=%.2f)",
-            signature, pattern->success_rate, pattern->confidence);
+            decision->failure_signature, pattern->success_rate, pattern->confidence);
 
         decision->selected_strategy = calloc(1, sizeof(recovery_strategy_t));
         if (decision->selected_strategy) {
@@ -248,9 +257,26 @@ brain_recovery_decision_t* brain_recovery_select_strategy(
             pattern->occurrence_count, pattern->success_rate * 100.0f);
     } else {
         // Novel situation - use default strategy selection
-        LOG_INFO("Novel failure pattern: %s - using heuristic selection", signature);
+        LOG_INFO("Novel failure pattern: %s - using heuristic selection", decision->failure_signature);
 
-        decision->selected_strategy = recovery_select_strategy(diagnosis);
+        // Convert diagnostic_result_t to diagnostic_summary_t for recovery_select_strategy
+        diagnostic_summary_t summary = {
+            .signal = 0,  // Not signal-driven
+            .failure_type = diagnosis->root_cause,
+            .severity = (uint32_t)diagnosis->severity,
+            .is_recoverable = (diagnosis->severity < SEVERITY_FATAL),
+            .context = NULL
+        };
+
+        // Get strategy from heuristic (returns static pointer)
+        recovery_strategy_t* static_strategy = recovery_select_strategy(&summary);
+
+        // Make a heap copy so we can safely free it later
+        decision->selected_strategy = calloc(1, sizeof(recovery_strategy_t));
+        if (decision->selected_strategy && static_strategy) {
+            memcpy(decision->selected_strategy, static_strategy, sizeof(recovery_strategy_t));
+        }
+
         decision->confidence = 0.4f;  // Lower confidence for novel situations
         decision->predicted_success_prob = 0.6f;  // Conservative estimate
         decision->is_novel_situation = true;
@@ -286,12 +312,42 @@ void brain_recovery_learn_outcome(
 
     if (!ctx->enable_learning) return;
 
+    // Update recovery counters
+    ctx->total_recoveries++;
+    if (result->status == RECOVERY_SUCCESS) {
+        ctx->successful_recoveries++;
+    }
+
     // Store outcome in history
-    if (ctx->history_count < ctx->history_capacity) {
+    if (ctx->history_capacity > 0) {
         recovery_outcome_t* outcome = &ctx->history[ctx->history_write_idx];
 
-        outcome->strategy = decision->selected_strategy;
-        outcome->result = result;
+        // If we're about to overwrite an old entry, free its pointers first
+        if (ctx->history_count >= ctx->history_capacity) {
+            free(outcome->strategy);
+            free(outcome->result);
+        }
+
+        // Make heap copy of strategy (don't store pointer that will be freed)
+        if (decision->selected_strategy) {
+            outcome->strategy = calloc(1, sizeof(recovery_strategy_t));
+            if (outcome->strategy) {
+                memcpy(outcome->strategy, decision->selected_strategy, sizeof(recovery_strategy_t));
+            }
+        } else {
+            outcome->strategy = NULL;
+        }
+
+        // Make heap copy of result (don't store pointer that may be stack-allocated)
+        if (result) {
+            outcome->result = calloc(1, sizeof(recovery_result_t));
+            if (outcome->result) {
+                memcpy(outcome->result, result, sizeof(recovery_result_t));
+            }
+        } else {
+            outcome->result = NULL;
+        }
+
         outcome->timestamp_us = get_timestamp_us();
         outcome->execution_time_us = result->time_us;
         outcome->was_successful = (result->status == RECOVERY_SUCCESS);
@@ -304,12 +360,8 @@ void brain_recovery_learn_outcome(
         }
     }
 
-    // Update learned patterns (simulating episodic memory)
-    char signature[256];
-    // We'd need the original diagnosis here - simplified for stub
-    snprintf(signature, sizeof(signature), "pattern_%u", ctx->total_recoveries);
-
-    update_pattern(ctx, signature, decision->selected_strategy,
+    // Update learned patterns using stored failure signature
+    update_pattern(ctx, decision->failure_signature, decision->selected_strategy,
                   result->status == RECOVERY_SUCCESS);
 
     // Update prediction accuracy
@@ -319,8 +371,8 @@ void brain_recovery_learn_outcome(
         ctx->brain_correct_predictions++;
     }
 
-    LOG_INFO("Learned from recovery outcome (success=%d, prediction_error=%.2f)",
-        result->status == RECOVERY_SUCCESS, prediction_error);
+    LOG_INFO("Learned from recovery outcome (signature=%s, success=%d, prediction_error=%.2f)",
+        decision->failure_signature, result->status == RECOVERY_SUCCESS, prediction_error);
 }
 
 uint32_t brain_recovery_get_patterns(

@@ -216,11 +216,11 @@ const char* event_source_name(event_source_t source) {
 
 const char* event_priority_name(event_priority_t priority) {
     switch (priority) {
-        case EVENT_PRIORITY_CRITICAL: return "CRITICAL";
-        case EVENT_PRIORITY_HIGH: return "HIGH";
-        case EVENT_PRIORITY_NORMAL: return "NORMAL";
-        case EVENT_PRIORITY_LOW: return "LOW";
-        case EVENT_PRIORITY_BACKGROUND: return "BACKGROUND";
+        case MW_EVENT_PRIORITY_CRITICAL: return "CRITICAL";
+        case MW_EVENT_PRIORITY_HIGH: return "HIGH";
+        case MW_EVENT_PRIORITY_NORMAL: return "NORMAL";
+        case MW_EVENT_PRIORITY_LOW: return "LOW";
+        case MW_EVENT_PRIORITY_BACKGROUND: return "BACKGROUND";
         default: return "UNKNOWN";
     }
 }

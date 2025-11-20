@@ -95,9 +95,6 @@ examples/event_demo: examples/CMakeFiles/event_demo.dir/build.make
 examples/event_demo: /home/bbrelin/nimcp/bin/libnimcp.so.2.6.2
 examples/event_demo: src/middleware/libnimcp_middleware.a
 examples/event_demo: /usr/lib/x86_64-linux-gnu/libpython3.12.so
-examples/event_demo: /usr/lib/x86_64-linux-gnu/liblapack.so
-examples/event_demo: /usr/lib/x86_64-linux-gnu/libblas.so
-examples/event_demo: /usr/lib/x86_64-linux-gnu/libsodium.so
 examples/event_demo: examples/CMakeFiles/event_demo.dir/link.txt
 	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --bold --progress-dir=/home/bbrelin/nimcp/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_2) "Linking C executable event_demo"
 	cd /home/bbrelin/nimcp/build/examples && $(CMAKE_COMMAND) -E cmake_link_script CMakeFiles/event_demo.dir/link.txt --verbose=$(VERBOSE)

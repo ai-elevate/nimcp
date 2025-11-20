@@ -127,3 +127,28 @@ void log_close()
         log_file = NULL;
     }
 }
+
+/**
+ * WHAT: Wrapper for log_message to support legacy nimcp_log calls
+ * WHY:  Some modules use nimcp_log instead of log_message
+ * HOW:  Simply forwards all calls to log_message
+ */
+void nimcp_log(log_level_t level, const char* format, ...)
+{
+    va_list args;
+    va_start(args, format);
+    
+    pthread_mutex_lock(&log_mutex);
+    
+    if (log_file) {
+        vfprintf(log_file, format, args);
+        fprintf(log_file, "\n");
+        fflush(log_file);
+    } else {
+        vfprintf(stderr, format, args);
+        fprintf(stderr, "\n");
+    }
+    
+    pthread_mutex_unlock(&log_mutex);
+    va_end(args);
+}

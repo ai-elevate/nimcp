@@ -252,7 +252,7 @@ bool attention_gate_get_weight(const attention_gate_t* gate,
 
     if (!entry) {
         *weight = 0.0f;
-        return false;
+        return true;  // Return true with 0.0 weight - this is a valid state
     }
 
     *weight = entry->target.combined_weight;
@@ -273,6 +273,21 @@ bool attention_gate_update_salience(attention_gate_t* gate,
         if (gate->entries[i].target_id == target_id) {
             gate->entries[i].target.bottomup_salience = salience;
             update_combined_weight(gate, &gate->entries[i]);
+            updated = true;
+        }
+    }
+
+    // If no entry exists, create one with source_id = 0 (default)
+    if (!updated) {
+        if (!add_entry(gate, 0, target_id)) {
+            return false;
+        }
+
+        // Find the newly added entry and update it
+        attention_entry_t* entry = find_entry(gate, 0, target_id);
+        if (entry) {
+            entry->target.bottomup_salience = salience;
+            update_combined_weight(gate, entry);
             updated = true;
         }
     }

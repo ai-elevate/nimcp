@@ -8,6 +8,7 @@
  */
 
 #include <gtest/gtest.h>
+#include <cstring>
 
 extern "C" {
 #include "utils/fault_tolerance/nimcp_brain_recovery_integration.h"
@@ -24,12 +25,12 @@ extern "C" {
 class BrainRecoveryIntegrationTest : public ::testing::Test {
 protected:
     brain_t brain;
-    brain_recovery_context_t* recovery_ctx;
-    runtime_adaptation_context_t* adaptation_ctx;
+    brain_recovery_context_t recovery_ctx;
+    runtime_adaptation_context_t adaptation_ctx;
 
     void SetUp() override {
         // Create test brain
-        brain = brain_create("test_brain", BRAIN_SIZE_SMALL);
+        brain = brain_create("test_brain", BRAIN_SIZE_SMALL, BRAIN_TASK_CLASSIFICATION, 10, 5);
         ASSERT_NE(brain, nullptr);
 
         // Initialize recovery systems
@@ -96,7 +97,8 @@ TEST_F(BrainRecoveryIntegrationTest, NovelFailureStrategySelection) {
     diagnostic_result_t* diagnosis = create_nan_diagnosis();
 
     // Brain should select strategy despite never seeing this before
-    health_status_snapshot_t health = {0};
+    health_status_snapshot_t health;
+    memset(&health, 0, sizeof(health));
     health.score = 70.0f;
     health.status = HEALTH_GOOD;
 
@@ -120,7 +122,8 @@ TEST_F(BrainRecoveryIntegrationTest, NovelFailureStrategySelection) {
 TEST_F(BrainRecoveryIntegrationTest, LearnedPatternStrategySelection) {
     // First occurrence: Novel failure
     diagnostic_result_t* diagnosis1 = create_nan_diagnosis();
-    health_status_snapshot_t health = {0};
+    health_status_snapshot_t health;
+    memset(&health, 0, sizeof(health));
     health.score = 70.0f;
 
     brain_recovery_decision_t* decision1 =
@@ -161,7 +164,8 @@ TEST_F(BrainRecoveryIntegrationTest, LearnedPatternStrategySelection) {
 
 TEST_F(BrainRecoveryIntegrationTest, OutcomeLearning) {
     diagnostic_result_t* diagnosis = create_nan_diagnosis();
-    health_status_snapshot_t health = {0};
+    health_status_snapshot_t health;
+    memset(&health, 0, sizeof(health));
     health.score = 70.0f;
 
     // Get initial pattern count
@@ -208,7 +212,8 @@ TEST_F(BrainRecoveryIntegrationTest, SuccessProbabilityPrediction) {
     EXPECT_LE(prob, 1.0f);
 
     // Learn successful outcome
-    health_status_snapshot_t health = {0};
+    health_status_snapshot_t health;
+    memset(&health, 0, sizeof(health));
     brain_recovery_decision_t* decision =
         brain_recovery_select_strategy(recovery_ctx, diagnosis, &health);
     decision->selected_strategy->tier = strategy.tier;
@@ -327,7 +332,8 @@ TEST_F(BrainRecoveryIntegrationTest, CompleteNaNRecoveryWorkflow) {
     diagnostic_result_t* diagnosis = create_nan_diagnosis();
 
     // Step 2: Brain analyzes and selects strategy
-    health_status_snapshot_t health = {0};
+    health_status_snapshot_t health;
+    memset(&health, 0, sizeof(health));
     health.score = 70.0f;
 
     brain_recovery_decision_t* decision =
@@ -378,7 +384,8 @@ TEST_F(BrainRecoveryIntegrationTest, MultipleRecoveriesImproveAccuracy) {
 
     for (int i = 0; i < num_recoveries; i++) {
         diagnostic_result_t* diagnosis = create_nan_diagnosis();
-        health_status_snapshot_t health = {0};
+        health_status_snapshot_t health;
+        memset(&health, 0, sizeof(health));
         health.score = 70.0f;
 
         // Get decision
@@ -418,7 +425,8 @@ TEST_F(BrainRecoveryIntegrationTest, StatisticsTracking) {
     // Execute several recoveries
     for (int i = 0; i < 3; i++) {
         diagnostic_result_t* diagnosis = create_nan_diagnosis();
-        health_status_snapshot_t health = {0};
+        health_status_snapshot_t health;
+        memset(&health, 0, sizeof(health));
 
         brain_recovery_decision_t* decision =
             brain_recovery_select_strategy(recovery_ctx, diagnosis, &health);
@@ -447,7 +455,8 @@ TEST_F(BrainRecoveryIntegrationTest, PatternRetrieval) {
     // Learn some patterns
     for (int i = 0; i < 3; i++) {
         diagnostic_result_t* diagnosis = create_nan_diagnosis();
-        health_status_snapshot_t health = {0};
+        health_status_snapshot_t health;
+        memset(&health, 0, sizeof(health));
 
         brain_recovery_decision_t* decision =
             brain_recovery_select_strategy(recovery_ctx, diagnosis, &health);

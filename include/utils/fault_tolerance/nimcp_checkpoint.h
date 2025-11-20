@@ -163,70 +163,92 @@ typedef struct {
 //=============================================================================
 
 /**
- * @brief Save brain checkpoint with default options
+ * @brief Get default checkpoint options
  *
- * WHAT: Serialize brain state to disk with atomic write
- * WHY:  Create recovery point for crash recovery
- * HOW:  Write to temp file, verify, rename (atomic on POSIX)
+ * WHAT: Create checkpoint_options_t with default values
+ * WHY:  Convenient way to initialize options without struct literals
+ * HOW:  Return struct with reasonable defaults
  *
- * DEFAULT OPTIONS:
- * - Compression: enabled (level 6)
- * - Incremental: disabled (full checkpoint)
- * - Subsystems: enabled (save all subsystem state)
- * - Activations: disabled (save weights only)
+ * DEFAULTS:
+ * - Compression: enabled (1)
+ * - Incremental: disabled (0)
+ * - Save subsystems: enabled (1)
+ * - Save activations: disabled (0)
+ * - Compression level: 6
+ * - Temp dir: NULL (use same directory as output)
  *
- * THREAD-SAFE: Yes (acquires brain mutex)
+ * THREAD-SAFE: Yes (returns new struct)
  *
- * ERROR HANDLING:
- * - Returns false on I/O error, allocation failure, or invalid brain
- * - Original file unchanged on error (atomic write guarantees)
- * - Temp file cleaned up on error
+ * @return Checkpoint options with default values
+ */
+checkpoint_options_t checkpoint_default_options(void);
+
+/**
+ * @brief Save brain to checkpoint file
  *
- * @param brain Brain instance to checkpoint
- * @param path Output path for checkpoint file
+ * WHAT: Serialize brain state to disk file
+ * WHY:  Create recovery checkpoint, periodic backups
+ * HOW:  Serialize weights/config, write to temp file, atomic rename
+ *
+ * FEATURES:
+ * - Atomic writes (write-to-temp-then-rename)
+ * - CRC32 checksum for corruption detection
+ * - Optional compression (configurable)
+ * - Format versioning for compatibility
+ *
+ * PERFORMANCE:
+ * - Latency: 50-500ms depending on brain size
+ * - Memory: minimal overhead (streaming writes)
+ * - Compression ratio: 60-80% (typical)
+ *
+ * THREAD-SAFE: Yes (uses internal locks)
+ *
+ * @param brain Brain instance to save
+ * @param path Output file path
  * @return true on success, false on failure
  */
 bool checkpoint_save(brain_t brain, const char* path);
 
 /**
- * @brief Save brain checkpoint with custom options
+ * @brief Save brain with custom options
  *
- * WHAT: Serialize brain state with configurable compression/incrementality
- * WHY:  Fine control over checkpoint size vs speed tradeoff
- * HOW:  Same as checkpoint_save() but with custom options
+ * WHAT: Serialize brain with custom options
+ * WHY:  Control compression, incremental saves, subsystems
+ * HOW:  Same as checkpoint_save() but with options
  *
- * THREAD-SAFE: Yes (acquires brain mutex)
+ * THREAD-SAFE: Yes (uses internal locks)
  *
- * @param brain Brain instance to checkpoint
- * @param path Output path for checkpoint file
- * @param options Checkpoint creation options
+ * @param brain Brain instance to save
+ * @param path Output file path
+ * @param options Checkpoint options (NULL = defaults)
  * @return true on success, false on failure
  */
 bool checkpoint_save_ex(brain_t brain, const char* path, const checkpoint_options_t* options);
 
 /**
- * @brief Save incremental checkpoint (delta only)
+ * @brief Save checkpoint incrementally (only changed data)
  *
- * WHAT: Save only weights/state that changed since last checkpoint
- * WHY:  Faster saves, smaller files for frequent checkpointing
- * HOW:  Compare to previous checkpoint, save only deltas
- *
- * REQUIREMENTS:
- * - Previous full checkpoint must exist at base_path
- * - Brain state must be tracked (internal delta tracking)
+ * WHAT: Save only data that changed since last checkpoint
+ * WHY:  Faster saves, smaller files, efficient backups
+ * HOW:  Compare with previous state, write only deltas
  *
  * PERFORMANCE:
- * - 10-100x faster than full checkpoint (depends on change rate)
- * - 10-100x smaller file size
+ * - First save: same as full save (no reference)
+ * - Subsequent: 5-20% of full save time/size
  *
- * THREAD-SAFE: Yes (acquires brain mutex)
+ * LIMITATIONS:
+ * - Requires previous checkpoint for comparison
+ * - Cannot restore without full checkpoint
+ * - Use full saves periodically
  *
- * @param brain Brain instance to checkpoint
- * @param path Output path for incremental checkpoint
- * @param base_path Path to base (full) checkpoint
+ * THREAD-SAFE: Yes (uses internal locks)
+ *
+ * @param brain Brain instance to save
+ * @param incr_path Output file path for incremental checkpoint
+ * @param base_path Path to base checkpoint for comparison (NULL = use previous)
  * @return true on success, false on failure
  */
-bool checkpoint_save_incremental(brain_t brain, const char* path, const char* base_path);
+bool checkpoint_save_incremental(brain_t brain, const char* incr_path, const char* base_path);
 
 //=============================================================================
 // Checkpoint Loading
@@ -406,22 +428,6 @@ bool recovery_partial(brain_t* brain, const char* path, int* recovery_level);
 // Utility Functions
 //=============================================================================
 
-/**
- * @brief Get default checkpoint options
- *
- * WHAT: Return recommended checkpoint configuration
- * WHY:  Simplify API usage with sensible defaults
- * HOW:  Static initialization
- *
- * DEFAULTS:
- * - Compression: enabled (level 6)
- * - Incremental: false
- * - Subsystems: true
- * - Activations: false
- *
- * @return Default checkpoint options
- */
-checkpoint_options_t checkpoint_default_options(void);
 
 /**
  * @brief Get last checkpoint error message

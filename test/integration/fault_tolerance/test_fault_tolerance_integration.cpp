@@ -87,7 +87,19 @@ protected:
             for (int j = 0; j < 10; j++) {
                 inputs[j] = (j % 2 == 0) ? 1.0f : 0.0f;
             }
-            brain_process(brain, inputs, 10);
+
+            brain_multimodal_input_t input = {};
+            input.direct_data = inputs;
+            input.direct_dim = 10;
+            input.timestamp_ms = 0;
+
+            brain_multimodal_output_t output = {};
+            output.output_vector = new float[5];
+            output.output_dim = 5;
+
+            brain_process_multimodal(brain, &input, &output);
+
+            delete[] output.output_vector;
         }
     }
 };
@@ -109,31 +121,52 @@ TEST_F(FaultToleranceIntegrationTest, CompleteCheckpointRecoveryWorkflow) {
     // 3. Get outputs before "failure"
     float inputs[10] = {1.0f, 0.0f, 1.0f, 0.0f, 1.0f,
                        0.0f, 1.0f, 0.0f, 1.0f, 0.0f};
+    brain_multimodal_input_t input = {};
+    input.direct_data = inputs;
+    input.direct_dim = 10;
+    input.timestamp_ms = 0;
+
+    brain_multimodal_output_t output_before = {};
+    output_before.output_vector = new float[5];
+    output_before.output_dim = 5;
+
+    brain_process_multimodal(brain, &input, &output_before);
     float outputs_before[5];
-    brain_process(brain, inputs, 10);
-    brain_get_outputs(brain, outputs_before, 5);
+    memcpy(outputs_before, output_before.output_vector, sizeof(outputs_before));
 
     // 4. Simulate corruption (more training changes state)
     train_brain(100);
 
     // 5. Detect anomaly (outputs changed significantly)
+    brain_multimodal_output_t output_after = {};
+    output_after.output_vector = new float[5];
+    output_after.output_dim = 5;
+    brain_process_multimodal(brain, &input, &output_after);
+
     float outputs_after_corruption[5];
-    brain_process(brain, inputs, 10);
-    brain_get_outputs(brain, outputs_after_corruption, 5);
+    memcpy(outputs_after_corruption, output_after.output_vector, sizeof(outputs_after_corruption));
 
     // 6. Restore from checkpoint
     brain_t restored = brain_load(checkpoint_path);
     ASSERT_NE(restored, nullptr);
 
     // 7. Verify restored state matches pre-failure
+    brain_multimodal_output_t output_restored = {};
+    output_restored.output_vector = new float[5];
+    output_restored.output_dim = 5;
+    brain_process_multimodal(restored, &input, &output_restored);
+
     float outputs_restored[5];
-    brain_process(restored, inputs, 10);
-    brain_get_outputs(restored, outputs_restored, 5);
+    memcpy(outputs_restored, output_restored.output_vector, sizeof(outputs_restored));
 
     for (int i = 0; i < 5; i++) {
         EXPECT_NEAR(outputs_before[i], outputs_restored[i], 0.05f)
             << "Output " << i << " should match after restore";
     }
+
+    delete[] output_before.output_vector;
+    delete[] output_after.output_vector;
+    delete[] output_restored.output_vector;
 
     brain_destroy(restored);
 }
@@ -294,17 +327,17 @@ TEST_F(FaultToleranceIntegrationTest, DetectPerformanceDegradation) {
     // WHAT: Test detection of performance degradation
     // WHY:  Verify health monitoring integration
 
-    // Establish baseline performance
+    // Establish baseline performance (increased iterations for measurable timing)
     auto start = std::chrono::steady_clock::now();
-    train_brain(10);
+    train_brain(1000);
     auto end = std::chrono::steady_clock::now();
 
     auto baseline_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
         end - start).count();
 
-    // Simulate performance degradation (larger workload)
+    // Simulate performance degradation (larger workload - 10x baseline)
     start = std::chrono::steady_clock::now();
-    train_brain(100);
+    train_brain(10000);
     end = std::chrono::steady_clock::now();
 
     auto degraded_ms = std::chrono::duration_cast<std::chrono::milliseconds>(

@@ -109,7 +109,8 @@ TEST_F(CheckpointFormatTest, HeaderMagicBytes) {
     // WHAT: Verify magic bytes are correct
     // WHY:  Magic bytes identify checkpoint files
 
-    brain_t brain = brain_create("test", BRAIN_SIZE_TINY);
+    brain_t brain = brain_create("test", BRAIN_SIZE_TINY,
+                                BRAIN_TASK_CLASSIFICATION, 10, 5);
     ASSERT_NE(brain, nullptr);
 
     char path[512];
@@ -269,7 +270,8 @@ TEST_F(CheckpointFormatTest, CompressionFlagPersistence) {
     // WHAT: Verify compression flag is saved correctly
     // WHY:  Enable compressed checkpoint detection
 
-    brain_t brain = brain_create("test", BRAIN_SIZE_TINY);
+    brain_t brain = brain_create("test", BRAIN_SIZE_TINY,
+                                BRAIN_TASK_CLASSIFICATION, 10, 5);
     ASSERT_NE(brain, nullptr);
 
     char path[512];
@@ -297,7 +299,8 @@ TEST_F(CheckpointFormatTest, IncrementalFlagPersistence) {
     // WHAT: Verify incremental flag is saved correctly
     // WHY:  Distinguish incremental from full checkpoints
 
-    brain_t brain = brain_create("test", BRAIN_SIZE_TINY);
+    brain_t brain = brain_create("test", BRAIN_SIZE_TINY,
+                                BRAIN_TASK_CLASSIFICATION, 10, 5);
     ASSERT_NE(brain, nullptr);
 
     char base_path[512];
@@ -330,7 +333,8 @@ TEST_F(CheckpointFormatTest, ReservedFieldsZeroed) {
     // WHAT: Verify reserved fields are initialized to zero
     // WHY:  Ensure clean state for future use
 
-    brain_t brain = brain_create("test", BRAIN_SIZE_TINY);
+    brain_t brain = brain_create("test", BRAIN_SIZE_TINY,
+                                BRAIN_TASK_CLASSIFICATION, 10, 5);
     ASSERT_NE(brain, nullptr);
 
     char path[512];
@@ -357,7 +361,8 @@ TEST_F(CheckpointFormatTest, TimestampMonotonicity) {
     // WHAT: Verify checkpoint timestamps are monotonically increasing
     // WHY:  Enable checkpoint ordering by creation time
 
-    brain_t brain = brain_create("test", BRAIN_SIZE_TINY);
+    brain_t brain = brain_create("test", BRAIN_SIZE_TINY,
+                                BRAIN_TASK_CLASSIFICATION, 10, 5);
     ASSERT_NE(brain, nullptr);
 
     char path1[512];

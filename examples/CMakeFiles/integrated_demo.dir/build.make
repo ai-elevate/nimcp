@@ -93,8 +93,8 @@ integrated_demo_EXTERNAL_OBJECTS =
 examples/integrated_demo: examples/CMakeFiles/integrated_demo.dir/integrated_learning_demo.c.o
 examples/integrated_demo: examples/CMakeFiles/integrated_demo.dir/build.make
 examples/integrated_demo: bin/libnimcp.so.2.6.2
+examples/integrated_demo: src/middleware/libnimcp_middleware.a
 examples/integrated_demo: /usr/lib/x86_64-linux-gnu/libpython3.12.so
-examples/integrated_demo: /usr/lib/x86_64-linux-gnu/libsodium.so
 examples/integrated_demo: examples/CMakeFiles/integrated_demo.dir/link.txt
 	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --bold --progress-dir=/home/bbrelin/nimcp/CMakeFiles --progress-num=$(CMAKE_PROGRESS_2) "Linking C executable integrated_demo"
 	cd /home/bbrelin/nimcp/examples && $(CMAKE_COMMAND) -E cmake_link_script CMakeFiles/integrated_demo.dir/link.txt --verbose=$(VERBOSE)

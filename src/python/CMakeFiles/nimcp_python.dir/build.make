@@ -69,32 +69,32 @@ include src/python/CMakeFiles/nimcp_python.dir/progress.make
 # Include the compile flags for this target's objects.
 include src/python/CMakeFiles/nimcp_python.dir/flags.make
 
-src/python/CMakeFiles/nimcp_python.dir/nimcp_module.c.o: src/python/CMakeFiles/nimcp_python.dir/flags.make
-src/python/CMakeFiles/nimcp_python.dir/nimcp_module.c.o: src/python/nimcp_module.c
-src/python/CMakeFiles/nimcp_python.dir/nimcp_module.c.o: src/python/CMakeFiles/nimcp_python.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/bbrelin/nimcp/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1) "Building C object src/python/CMakeFiles/nimcp_python.dir/nimcp_module.c.o"
-	cd /home/bbrelin/nimcp/src/python && /usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -MD -MT src/python/CMakeFiles/nimcp_python.dir/nimcp_module.c.o -MF CMakeFiles/nimcp_python.dir/nimcp_module.c.o.d -o CMakeFiles/nimcp_python.dir/nimcp_module.c.o -c /home/bbrelin/nimcp/src/python/nimcp_module.c
+src/python/CMakeFiles/nimcp_python.dir/__/bindings/python/nimcp_python.c.o: src/python/CMakeFiles/nimcp_python.dir/flags.make
+src/python/CMakeFiles/nimcp_python.dir/__/bindings/python/nimcp_python.c.o: src/bindings/python/nimcp_python.c
+src/python/CMakeFiles/nimcp_python.dir/__/bindings/python/nimcp_python.c.o: src/python/CMakeFiles/nimcp_python.dir/compiler_depend.ts
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/bbrelin/nimcp/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1) "Building C object src/python/CMakeFiles/nimcp_python.dir/__/bindings/python/nimcp_python.c.o"
+	cd /home/bbrelin/nimcp/src/python && /usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -MD -MT src/python/CMakeFiles/nimcp_python.dir/__/bindings/python/nimcp_python.c.o -MF CMakeFiles/nimcp_python.dir/__/bindings/python/nimcp_python.c.o.d -o CMakeFiles/nimcp_python.dir/__/bindings/python/nimcp_python.c.o -c /home/bbrelin/nimcp/src/bindings/python/nimcp_python.c
 
-src/python/CMakeFiles/nimcp_python.dir/nimcp_module.c.i: cmake_force
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Preprocessing C source to CMakeFiles/nimcp_python.dir/nimcp_module.c.i"
-	cd /home/bbrelin/nimcp/src/python && /usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -E /home/bbrelin/nimcp/src/python/nimcp_module.c > CMakeFiles/nimcp_python.dir/nimcp_module.c.i
+src/python/CMakeFiles/nimcp_python.dir/__/bindings/python/nimcp_python.c.i: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Preprocessing C source to CMakeFiles/nimcp_python.dir/__/bindings/python/nimcp_python.c.i"
+	cd /home/bbrelin/nimcp/src/python && /usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -E /home/bbrelin/nimcp/src/bindings/python/nimcp_python.c > CMakeFiles/nimcp_python.dir/__/bindings/python/nimcp_python.c.i
 
-src/python/CMakeFiles/nimcp_python.dir/nimcp_module.c.s: cmake_force
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Compiling C source to assembly CMakeFiles/nimcp_python.dir/nimcp_module.c.s"
-	cd /home/bbrelin/nimcp/src/python && /usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -S /home/bbrelin/nimcp/src/python/nimcp_module.c -o CMakeFiles/nimcp_python.dir/nimcp_module.c.s
+src/python/CMakeFiles/nimcp_python.dir/__/bindings/python/nimcp_python.c.s: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Compiling C source to assembly CMakeFiles/nimcp_python.dir/__/bindings/python/nimcp_python.c.s"
+	cd /home/bbrelin/nimcp/src/python && /usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -S /home/bbrelin/nimcp/src/bindings/python/nimcp_python.c -o CMakeFiles/nimcp_python.dir/__/bindings/python/nimcp_python.c.s
 
 # Object files for target nimcp_python
 nimcp_python_OBJECTS = \
-"CMakeFiles/nimcp_python.dir/nimcp_module.c.o"
+"CMakeFiles/nimcp_python.dir/__/bindings/python/nimcp_python.c.o"
 
 # External object files for target nimcp_python
 nimcp_python_EXTERNAL_OBJECTS =
 
-lib/python/nimcp.so: src/python/CMakeFiles/nimcp_python.dir/nimcp_module.c.o
+lib/python/nimcp.so: src/python/CMakeFiles/nimcp_python.dir/__/bindings/python/nimcp_python.c.o
 lib/python/nimcp.so: src/python/CMakeFiles/nimcp_python.dir/build.make
 lib/python/nimcp.so: bin/libnimcp.so.2.6.2
 lib/python/nimcp.so: /usr/lib/x86_64-linux-gnu/libpython3.12.so
-lib/python/nimcp.so: /usr/lib/x86_64-linux-gnu/libsodium.so
+lib/python/nimcp.so: src/middleware/libnimcp_middleware.a
 lib/python/nimcp.so: src/python/CMakeFiles/nimcp_python.dir/link.txt
 	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --bold --progress-dir=/home/bbrelin/nimcp/CMakeFiles --progress-num=$(CMAKE_PROGRESS_2) "Linking C shared module ../../lib/python/nimcp.so"
 	cd /home/bbrelin/nimcp/src/python && $(CMAKE_COMMAND) -E cmake_link_script CMakeFiles/nimcp_python.dir/link.txt --verbose=$(VERBOSE)

@@ -70,19 +70,20 @@ typedef enum {
 } event_type_t;
 
 /**
- * @brief Event priority levels
+ * @brief Middleware event priority levels
  *
- * WHAT: Priority for event processing order
+ * WHAT: Priority for middleware event processing order
  * WHY:  Critical events processed before routine ones
  * HOW:  Lower number = higher priority (min-heap friendly)
+ * NOTE: Renamed to mw_event_priority_t to avoid conflict with core event_priority_t
  */
 typedef enum {
-    EVENT_PRIORITY_CRITICAL = 0,   /**< Process immediately */
-    EVENT_PRIORITY_HIGH = 1,       /**< Process soon */
-    EVENT_PRIORITY_NORMAL = 2,     /**< Standard processing */
-    EVENT_PRIORITY_LOW = 3,        /**< Process when idle */
-    EVENT_PRIORITY_BACKGROUND = 4  /**< Process opportunistically */
-} event_priority_t;
+    MW_EVENT_PRIORITY_CRITICAL = 0,   /**< Process immediately */
+    MW_EVENT_PRIORITY_HIGH = 1,       /**< Process soon */
+    MW_EVENT_PRIORITY_NORMAL = 2,     /**< Standard processing */
+    MW_EVENT_PRIORITY_LOW = 3,        /**< Process when idle */
+    MW_EVENT_PRIORITY_BACKGROUND = 4  /**< Process opportunistically */
+} mw_event_priority_t;
 
 /**
  * @brief Event source identifier
@@ -243,7 +244,7 @@ typedef struct {
 typedef struct {
     // Common metadata (always present)
     event_type_t type;         /**< Event type tag */
-    event_priority_t priority; /**< Processing priority */
+    mw_event_priority_t priority; /**< Processing priority */
     event_source_t source;     /**< Which component generated this */
     uint64_t timestamp_us;     /**< When event occurred (microseconds) */
     uint64_t sequence_number;  /**< Global sequence number */
@@ -275,62 +276,62 @@ typedef struct {
  */
 event_t event_create_spike_burst(uint32_t* neuron_ids, uint32_t num_neurons,
                                   float synchrony, uint64_t duration_us,
-                                  event_priority_t priority, event_source_t source);
+                                  mw_event_priority_t priority, event_source_t source);
 
 /**
  * @brief Create pattern detected event
  */
 event_t event_create_pattern_detected(uint32_t pattern_id, float confidence,
                                        uint32_t pattern_length, const char* pattern_name,
-                                       event_priority_t priority, event_source_t source);
+                                       mw_event_priority_t priority, event_source_t source);
 
 /**
  * @brief Create attention shift event
  */
 event_t event_create_attention_shift(uint32_t prev_item, uint32_t curr_item,
                                       float attention_strength, const char* reason,
-                                      event_priority_t priority, event_source_t source);
+                                      mw_event_priority_t priority, event_source_t source);
 
 /**
  * @brief Create memory formed event
  */
 event_t event_create_memory_formed(uint32_t memory_id, float* memory_trace,
                                     uint32_t trace_size, float consolidation,
-                                    event_priority_t priority, event_source_t source);
+                                    mw_event_priority_t priority, event_source_t source);
 
 /**
  * @brief Create salience peak event
  */
 event_t event_create_salience_peak(float salience, float novelty,
                                     float surprise, float urgency,
-                                    event_priority_t priority, event_source_t source);
+                                    mw_event_priority_t priority, event_source_t source);
 
 /**
  * @brief Create oscillation change event
  */
 event_t event_create_oscillation_change(float prev_freq, float curr_freq,
                                          float power_change, const char* band_name,
-                                         event_priority_t priority, event_source_t source);
+                                         mw_event_priority_t priority, event_source_t source);
 
 /**
  * @brief Create error detected event
  */
 event_t event_create_error_detected(float expected, float actual,
                                      float magnitude, uint32_t location,
-                                     event_priority_t priority, event_source_t source);
+                                     mw_event_priority_t priority, event_source_t source);
 
 /**
  * @brief Create decision made event
  */
 event_t event_create_decision_made(uint32_t decision_id, float confidence,
                                     float* decision_vector, uint32_t vector_size,
-                                    event_priority_t priority, event_source_t source);
+                                    mw_event_priority_t priority, event_source_t source);
 
 /**
  * @brief Create custom event
  */
 event_t event_create_custom(void* data, uint32_t data_size, const char* description,
-                             event_priority_t priority, event_source_t source);
+                             mw_event_priority_t priority, event_source_t source);
 
 //=============================================================================
 // Event Utility Functions
@@ -353,7 +354,7 @@ const char* event_source_name(event_source_t source);
 /**
  * @brief Get event priority name
  */
-const char* event_priority_name(event_priority_t priority);
+const char* event_priority_name(mw_event_priority_t priority);
 
 /**
  * @brief Copy event (deep copy if needed)

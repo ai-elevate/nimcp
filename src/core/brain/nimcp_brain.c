@@ -1841,6 +1841,12 @@ void brain_destroy(brain_t brain)
         brain->network_analyzer = NULL;
     }
 
+    // Universal Event Bus: Cleanup event broadcasting system
+    if (brain->event_bus) {
+        event_bus_destroy(brain->event_bus);
+        brain->event_bus = NULL;
+    }
+
     clear_cache(brain);
 
     // Destroy cache mutex

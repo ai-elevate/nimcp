@@ -28,6 +28,11 @@ endif()
 # Common Test Configuration
 # ============================================================================
 
+# Define directory variables
+set(NIMCP_INCLUDE_DIR ${CMAKE_SOURCE_DIR}/include)
+set(NIMCP_TEST_DIR ${CMAKE_CURRENT_SOURCE_DIR})
+set(NIMCP_LIB_DIR ${CMAKE_SOURCE_DIR}/src/lib)
+
 set(COMMON_TEST_INCLUDES
     ${NIMCP_INCLUDE_DIR}
     ${NIMCP_TEST_DIR}
@@ -247,5 +252,63 @@ endif()
 if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/regression/middleware")
     message(STATUS "Adding middleware regression tests...")
     add_subdirectory(regression/middleware)
+endif()
+
+# ============================================================================
+# Neural Logic Tests (Core)
+# ============================================================================
+
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/unit/core/logic")
+    message(STATUS "Adding neural logic unit tests...")
+    add_subdirectory(unit/core/logic)
+endif()
+
+# ============================================================================
+# Cognitive Fault Tolerance Tests
+# ============================================================================
+
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/unit/cognitive/fault_tolerance")
+    message(STATUS "Adding cognitive fault tolerance unit tests...")
+    add_subdirectory(unit/cognitive/fault_tolerance)
+endif()
+
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/integration/cognitive/fault_tolerance")
+    message(STATUS "Adding cognitive fault tolerance integration tests...")
+    add_subdirectory(integration/cognitive/fault_tolerance)
+endif()
+
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/regression/cognitive/fault_tolerance")
+    message(STATUS "Adding cognitive fault tolerance regression tests...")
+    add_subdirectory(regression/cognitive/fault_tolerance)
+endif()
+
+# NOTE: Reasoning tests disabled - modules not yet fully integrated
+# if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/unit/cognitive/reasoning")
+#     message(STATUS "Adding symbolic logic brain integration unit tests...")
+#     add_subdirectory(unit/cognitive/reasoning)
+# endif()
+#
+# if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/integration/cognitive/reasoning")
+#     message(STATUS "Adding reasoning integration tests...")
+#     add_subdirectory(integration/cognitive/reasoning)
+# endif()
+#
+# if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/regression/cognitive/reasoning")
+#     message(STATUS "Adding reasoning regression tests...")
+#     add_subdirectory(regression/cognitive/reasoning)
+# endif()
+
+# ============================================================================
+# Networking Protocol Tests
+# ============================================================================
+
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/unit/networking/protocol")
+    message(STATUS "Adding networking protocol unit tests...")
+    add_subdirectory(unit/networking/protocol)
+endif()
+
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/integration/networking/protocol")
+    message(STATUS "Adding networking protocol integration tests...")
+    add_subdirectory(integration/networking/protocol)
 endif()
 

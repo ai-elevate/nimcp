@@ -7,7 +7,7 @@
 
 #include <stdint.h>
 #include <stdbool.h>
-#include "middleware/events/nimcp_event_types.h"
+#include "core/events/nimcp_event_bus.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -56,7 +56,7 @@ typedef struct {
     uint32_t num_detected_patterns; /**< Pattern count */
 
     // Recent events (for debugging/replay)
-    event_t* recent_events;         /**< Circular buffer of recent events */
+    brain_event_t* recent_events;   /**< Circular buffer of recent events */
     uint32_t recent_event_capacity; /**< Buffer capacity */
     uint32_t recent_event_count;    /**< Current event count */
     uint32_t recent_event_head;     /**< Write position */
@@ -129,13 +129,13 @@ void middleware_context_invalidate_cache(middleware_context_t* context);
 /**
  * @brief Add event to history
  */
-void middleware_context_add_event(middleware_context_t* context, const event_t* event);
+void middleware_context_add_event(middleware_context_t* context, const brain_event_t* event);
 
 /**
  * @brief Get recent events
  */
 uint32_t middleware_context_get_recent_events(middleware_context_t* context,
-                                              event_t** events);
+                                              brain_event_t** events);
 
 /**
  * @brief Record stage timing

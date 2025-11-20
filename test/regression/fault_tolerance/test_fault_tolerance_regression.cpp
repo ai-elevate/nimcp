@@ -29,6 +29,7 @@
 #include "core/brain/persistence/nimcp_brain_persistence.h"
 #include "utils/signal/nimcp_signal_handler.h"
 #include "utils/memory/nimcp_memory.h"
+#include "utils/time/nimcp_time.h"
 
 //=============================================================================
 // Test Fixture
@@ -67,7 +68,19 @@ protected:
             for (int j = 0; j < 10; j++) {
                 inputs[j] = (j % 2 == 0) ? 1.0f : 0.0f;
             }
-            brain_process(brain, inputs, 10);
+
+            brain_multimodal_input_t input = {};
+            input.direct_data = inputs;
+            input.direct_dim = 10;
+            input.timestamp_ms = nimcp_time_get_ms();
+
+            brain_multimodal_output_t output = {};
+            output.output_vector = new float[5];
+            output.output_dim = 5;
+
+            brain_process_multimodal(brain, &input, &output);
+
+            delete[] output.output_vector;
         }
     }
 };
@@ -187,9 +200,18 @@ TEST_F(FaultToleranceRegressionTest, StateRestoreAccuracy) {
     // Get original outputs
     float inputs[10] = {1.0f, 0.0f, 1.0f, 0.0f, 1.0f,
                        0.0f, 1.0f, 0.0f, 1.0f, 0.0f};
-    float original_outputs[5];
-    brain_process(brain, inputs, 10);
-    brain_get_outputs(brain, original_outputs, 5);
+
+    brain_multimodal_input_t input = {};
+    input.direct_data = inputs;
+    input.direct_dim = 10;
+    input.timestamp_ms = nimcp_time_get_ms();
+
+    brain_multimodal_output_t output_original = {};
+    output_original.output_vector = new float[5];
+    output_original.output_dim = 5;
+
+    brain_process_multimodal(brain, &input, &output_original);
+    float* original_outputs = output_original.output_vector;
 
     // Save and load
     ASSERT_TRUE(brain_save(brain, checkpoint_path));
@@ -197,9 +219,12 @@ TEST_F(FaultToleranceRegressionTest, StateRestoreAccuracy) {
     ASSERT_NE(loaded, nullptr);
 
     // Get restored outputs
-    float restored_outputs[5];
-    brain_process(loaded, inputs, 10);
-    brain_get_outputs(loaded, restored_outputs, 5);
+    brain_multimodal_output_t output_restored = {};
+    output_restored.output_vector = new float[5];
+    output_restored.output_dim = 5;
+
+    brain_process_multimodal(loaded, &input, &output_restored);
+    float* restored_outputs = output_restored.output_vector;
 
     // Compare - should match within tolerance
     float max_diff = 0.0f;
@@ -210,6 +235,8 @@ TEST_F(FaultToleranceRegressionTest, StateRestoreAccuracy) {
 
     EXPECT_LT(max_diff, 0.01f) << "State restore accuracy should be high";
 
+    delete[] output_original.output_vector;
+    delete[] output_restored.output_vector;
     brain_destroy(loaded);
 }
 

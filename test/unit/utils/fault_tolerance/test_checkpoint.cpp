@@ -78,7 +78,7 @@ protected:
             for (int j = 0; j < 10; j++) {
                 inputs[j] = (j % 2 == 0) ? 1.0f : 0.0f;
             }
-            brain_process(b, inputs, 10);
+            float _dummy_outputs[5]; brain_predict(b, inputs, 10, _dummy_outputs, 5);
         }
     }
 
@@ -91,11 +91,8 @@ protected:
         float outputs1[5];
         float outputs2[5];
 
-        brain_process(b1, inputs, 10);
-        brain_get_outputs(b1, outputs1, 5);
-
-        brain_process(b2, inputs, 10);
-        brain_get_outputs(b2, outputs2, 5);
+        brain_predict(b1, inputs, 10, outputs1, 5);
+        brain_predict(b2, inputs, 10, outputs2, 5);
 
         // Check if outputs are similar (within tolerance)
         for (int i = 0; i < 5; i++) {
@@ -154,8 +151,7 @@ TEST_F(CheckpointTest, SaveLoadPreservesState) {
     float inputs[10] = {1.0f, 0.0f, 1.0f, 0.0f, 1.0f,
                        0.0f, 1.0f, 0.0f, 1.0f, 0.0f};
     float original_outputs[5];
-    brain_process(brain, inputs, 10);
-    brain_get_outputs(brain, original_outputs, 5);
+    brain_predict(brain, inputs, 10, original_outputs, 5);
 
     // Save and load
     ASSERT_TRUE(brain_save(brain, checkpoint_path));
@@ -164,8 +160,7 @@ TEST_F(CheckpointTest, SaveLoadPreservesState) {
 
     // Get loaded output
     float loaded_outputs[5];
-    brain_process(loaded, inputs, 10);
-    brain_get_outputs(loaded, loaded_outputs, 5);
+    brain_predict(loaded, inputs, 10, loaded_outputs, 5);
 
     // Compare outputs
     for (int i = 0; i < 5; i++) {
@@ -415,11 +410,8 @@ TEST_F(CheckpointTest, RollbackToEarlierState) {
     float rolled_outputs[5];
     float late_outputs[5];
 
-    brain_process(rolled_back, inputs, 10);
-    brain_get_outputs(rolled_back, rolled_outputs, 5);
-
-    brain_process(late_brain, inputs, 10);
-    brain_get_outputs(late_brain, late_outputs, 5);
+    brain_predict(rolled_back, inputs, 10, rolled_outputs, 5);
+    brain_predict(late_brain, inputs, 10, late_outputs, 5);
 
     // Outputs should be different
     bool different = false;

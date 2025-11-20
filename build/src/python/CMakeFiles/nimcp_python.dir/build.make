@@ -95,9 +95,6 @@ lib/python/nimcp.so: src/python/CMakeFiles/nimcp_python.dir/build.make
 lib/python/nimcp.so: /home/bbrelin/nimcp/bin/libnimcp.so.2.6.2
 lib/python/nimcp.so: /usr/lib/x86_64-linux-gnu/libpython3.12.so
 lib/python/nimcp.so: src/middleware/libnimcp_middleware.a
-lib/python/nimcp.so: /usr/lib/x86_64-linux-gnu/liblapack.so
-lib/python/nimcp.so: /usr/lib/x86_64-linux-gnu/libblas.so
-lib/python/nimcp.so: /usr/lib/x86_64-linux-gnu/libsodium.so
 lib/python/nimcp.so: src/python/CMakeFiles/nimcp_python.dir/link.txt
 	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --bold --progress-dir=/home/bbrelin/nimcp/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_2) "Linking C shared module ../../lib/python/nimcp.so"
 	cd /home/bbrelin/nimcp/build/src/python && $(CMAKE_COMMAND) -E cmake_link_script CMakeFiles/nimcp_python.dir/link.txt --verbose=$(VERBOSE)
