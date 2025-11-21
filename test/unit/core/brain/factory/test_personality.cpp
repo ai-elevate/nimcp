@@ -24,7 +24,7 @@
 
 #include <gtest/gtest.h>
 #include "core/brain/factory/nimcp_brain_factory.h"
-#include "cognitive/personality/nimcp_personality.h"
+#include "cognitive/nimcp_personality.h"
 #include "include/nimcp.h"
 
 #include <cmath>
