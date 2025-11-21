@@ -312,3 +312,22 @@ if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/integration/networking/protocol")
     add_subdirectory(integration/networking/protocol)
 endif()
 
+# ============================================================================
+# Brain Factory Tests
+# ============================================================================
+
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/unit/core/brain/factory")
+    message(STATUS "Adding brain factory unit tests...")
+    add_subdirectory(unit/core/brain/factory)
+endif()
+
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/integration/core/brain/factory")
+    message(STATUS "Adding brain factory integration tests...")
+    add_subdirectory(integration/core/brain/factory)
+endif()
+
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/regression/core/brain/factory")
+    message(STATUS "Adding brain factory regression tests...")
+    add_subdirectory(regression/core/brain/factory)
+endif()
+
