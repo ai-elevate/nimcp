@@ -577,6 +577,17 @@ brain_t brain_create_custom(const brain_config_t* config)
     // Copy full configuration (including multimodal flags)
     brain->config = *config;
 
+    // Recreate personality with the custom config (since brain_create() created it with default config)
+    if (brain->personality) {
+        nimcp_free(brain->personality);
+    }
+    brain->personality = create_personality(&brain->config);
+    if (!brain->personality) {
+        set_error("Failed to create personality profile with custom config");
+        brain_destroy(brain);
+        return NULL;
+    }
+
     // Initialize multimodal subsystems (now that config is properly set)
     if (!init_multimodal_subsystems(brain)) {
         brain_destroy(brain);

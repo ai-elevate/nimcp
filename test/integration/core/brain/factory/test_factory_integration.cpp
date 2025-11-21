@@ -52,7 +52,7 @@ protected:
  */
 TEST_F(FactoryIntegrationTest, WorkflowSmallBrainCreateTrainInferDestroy) {
     // Create small brain via factory
-    nimcp_brain_t brain = brain_create(
+    brain_t brain = brain_create(
         "small_classifier",
         BRAIN_SIZE_SMALL,
         BRAIN_TASK_CLASSIFICATION,
@@ -72,16 +72,20 @@ TEST_F(FactoryIntegrationTest, WorkflowSmallBrainCreateTrainInferDestroy) {
     float features_b[] = {0.0f, 1.0f, 0.0f, 1.0f, 0.0f};
 
     for (int i = 0; i < 5; i++) {
-        ASSERT_EQ(brain_learn_example(brain, features_a, 5, "class_a", 1.0f), BRAIN_OK);
-        ASSERT_EQ(brain_learn_example(brain, features_b, 5, "class_b", 1.0f), BRAIN_OK);
+        float loss_a = brain_learn_example(brain, features_a, 5, "class_a", 1.0f);
+        float loss_b = brain_learn_example(brain, features_b, 5, "class_b", 1.0f);
+        EXPECT_GE(loss_a, 0.0f);  // Loss should be non-negative
+        EXPECT_GE(loss_b, 0.0f);
     }
 
     // Inference: Make predictions
-    brain_decision_t decision_a = brain_decide(brain, features_a, 5);
-    brain_decision_t decision_b = brain_decide(brain, features_b, 5);
+    brain_decision_t* decision_a = brain_decide(brain, features_a, 5);
+    brain_decision_t* decision_b = brain_decide(brain, features_b, 5);
 
-    EXPECT_GT(decision_a.confidence, 0.0f);
-    EXPECT_GT(decision_b.confidence, 0.0f);
+    ASSERT_NE(decision_a, nullptr);
+    ASSERT_NE(decision_b, nullptr);
+    EXPECT_GT(decision_a->confidence, 0.0f);
+    EXPECT_GT(decision_b->confidence, 0.0f);
 
     // Cleanup
     brain_destroy(brain);
@@ -92,7 +96,7 @@ TEST_F(FactoryIntegrationTest, WorkflowSmallBrainCreateTrainInferDestroy) {
  */
 TEST_F(FactoryIntegrationTest, WorkflowMediumBrainCreateTrainInferDestroy) {
     // Create medium brain via factory
-    nimcp_brain_t brain = brain_create(
+    brain_t brain = brain_create(
         "medium_regression",
         BRAIN_SIZE_MEDIUM,
         BRAIN_TASK_REGRESSION,
@@ -114,16 +118,18 @@ TEST_F(FactoryIntegrationTest, WorkflowMediumBrainCreateTrainInferDestroy) {
             input[i] = (float)rand() / RAND_MAX;
         }
 
-        // Learn mapping
-        ASSERT_EQ(brain_learn_example(brain, input, 10, "regression_sample", 0.8f), BRAIN_OK);
+        // Learn mapping (returns loss value)
+        float loss = brain_learn_example(brain, input, 10, "regression_sample", 0.8f);
+        EXPECT_GE(loss, 0.0f);
     }
 
     // Inference with test input
     for (int i = 0; i < 10; i++) {
         input[i] = 0.5f;
     }
-    brain_decision_t decision = brain_decide(brain, input, 10);
-    EXPECT_GE(decision.confidence, 0.0f);
+    brain_decision_t* decision = brain_decide(brain, input, 10);
+    ASSERT_NE(decision, nullptr);
+    EXPECT_GE(decision->confidence, 0.0f);
 
     // Cleanup
     brain_destroy(brain);
@@ -134,7 +140,7 @@ TEST_F(FactoryIntegrationTest, WorkflowMediumBrainCreateTrainInferDestroy) {
  */
 TEST_F(FactoryIntegrationTest, WorkflowLargeBrainCreateTrainInferDestroy) {
     // Create large brain via factory
-    nimcp_brain_t brain = brain_create(
+    brain_t brain = brain_create(
         "large_complex",
         BRAIN_SIZE_LARGE,
         BRAIN_TASK_CLASSIFICATION,
@@ -146,7 +152,8 @@ TEST_F(FactoryIntegrationTest, WorkflowLargeBrainCreateTrainInferDestroy) {
     // Verify network complexity
     EXPECT_EQ(brain->config.num_inputs, 20);
     EXPECT_EQ(brain->config.num_outputs, 5);
-    EXPECT_GT(brain->network->num_neurons, 100);  // Should have substantial network
+    uint32_t neuron_count = brain_get_neuron_count(brain);
+    EXPECT_GT(neuron_count, 100);  // Should have substantial network
 
     // Training with diverse examples
     float input[20];
@@ -158,7 +165,8 @@ TEST_F(FactoryIntegrationTest, WorkflowLargeBrainCreateTrainInferDestroy) {
             }
             char label[32];
             snprintf(label, sizeof(label), "class_%d", class_id);
-            ASSERT_EQ(brain_learn_example(brain, input, 20, label, 1.0f), BRAIN_OK);
+            float loss = brain_learn_example(brain, input, 20, label, 1.0f);
+            EXPECT_GE(loss, 0.0f);
         }
     }
 
@@ -167,8 +175,9 @@ TEST_F(FactoryIntegrationTest, WorkflowLargeBrainCreateTrainInferDestroy) {
         for (int i = 0; i < 20; i++) {
             input[i] = (i % 5 == class_id) ? 1.0f : 0.0f;
         }
-        brain_decision_t decision = brain_decide(brain, input, 20);
-        EXPECT_GT(decision.confidence, 0.0f);
+        brain_decision_t* decision = brain_decide(brain, input, 20);
+        ASSERT_NE(decision, nullptr);
+        EXPECT_GT(decision->confidence, 0.0f);
     }
 
     // Cleanup
@@ -183,7 +192,7 @@ TEST_F(FactoryIntegrationTest, WorkflowSaveLoadContinueTraining) {
     cleanup_file(save_path);
 
     // Create and train initial brain
-    nimcp_brain_t brain = brain_create(
+    brain_t brain = brain_create(
         "persistent_learner",
         BRAIN_SIZE_SMALL,
         BRAIN_TASK_CLASSIFICATION,
@@ -194,28 +203,33 @@ TEST_F(FactoryIntegrationTest, WorkflowSaveLoadContinueTraining) {
 
     float features_a[] = {1.0f, 0.0f, 1.0f, 0.0f, 1.0f};
     for (int i = 0; i < 5; i++) {
-        ASSERT_EQ(brain_learn_example(brain, features_a, 5, "class_a", 1.0f), BRAIN_OK);
+        float loss = brain_learn_example(brain, features_a, 5, "class_a", 1.0f);
+        EXPECT_GE(loss, 0.0f);
     }
 
     // Save brain
-    ASSERT_EQ(brain_save(brain, save_path), BRAIN_OK);
+    bool save_result = brain_save(brain, save_path);
+    ASSERT_TRUE(save_result);
     brain_destroy(brain);
 
     // Load brain and continue training
-    nimcp_brain_t loaded_brain = brain_load(save_path);
+    brain_t loaded_brain = brain_load(save_path);
     ASSERT_NE(loaded_brain, nullptr);
 
     float features_b[] = {0.0f, 1.0f, 0.0f, 1.0f, 0.0f};
     for (int i = 0; i < 5; i++) {
-        ASSERT_EQ(brain_learn_example(loaded_brain, features_b, 5, "class_b", 1.0f), BRAIN_OK);
+        float loss = brain_learn_example(loaded_brain, features_b, 5, "class_b", 1.0f);
+        EXPECT_GE(loss, 0.0f);
     }
 
     // Inference should work on both learned patterns
-    brain_decision_t decision_a = brain_decide(loaded_brain, features_a, 5);
-    brain_decision_t decision_b = brain_decide(loaded_brain, features_b, 5);
+    brain_decision_t* decision_a = brain_decide(loaded_brain, features_a, 5);
+    brain_decision_t* decision_b = brain_decide(loaded_brain, features_b, 5);
 
-    EXPECT_GT(decision_a.confidence, 0.0f);
-    EXPECT_GT(decision_b.confidence, 0.0f);
+    ASSERT_NE(decision_a, nullptr);
+    ASSERT_NE(decision_b, nullptr);
+    EXPECT_GT(decision_a->confidence, 0.0f);
+    EXPECT_GT(decision_b->confidence, 0.0f);
 
     brain_destroy(loaded_brain);
     cleanup_file(save_path);
@@ -229,7 +243,7 @@ TEST_F(FactoryIntegrationTest, WorkflowSaveLoadContinueTraining) {
  * @brief Test creating multiple brains simultaneously with different sizes
  */
 TEST_F(FactoryIntegrationTest, MultipleBarainsWithDifferentSizes) {
-    std::vector<nimcp_brain_t> brains;
+    std::vector<brain_t> brains;
 
     // Create brains of different sizes
     brain_size_t sizes[] = {BRAIN_SIZE_TINY, BRAIN_SIZE_SMALL, BRAIN_SIZE_MEDIUM, BRAIN_SIZE_LARGE};
@@ -238,7 +252,7 @@ TEST_F(FactoryIntegrationTest, MultipleBarainsWithDifferentSizes) {
         char name[32];
         snprintf(name, sizeof(name), "brain_size_%d", i);
 
-        nimcp_brain_t brain = brain_create(name, sizes[i], BRAIN_TASK_CLASSIFICATION, 10, 3);
+        brain_t brain = brain_create(name, sizes[i], BRAIN_TASK_CLASSIFICATION, 10, 3);
         ASSERT_NE(brain, nullptr);
         brains.push_back(brain);
 
@@ -254,10 +268,12 @@ TEST_F(FactoryIntegrationTest, MultipleBarainsWithDifferentSizes) {
 
     for (auto brain : brains) {
         for (int i = 0; i < 3; i++) {
-            ASSERT_EQ(brain_learn_example(brain, features, 10, "test", 1.0f), BRAIN_OK);
+            float loss = brain_learn_example(brain, features, 10, "test", 1.0f);
+            EXPECT_GE(loss, 0.0f);
         }
-        brain_decision_t decision = brain_decide(brain, features, 10);
-        EXPECT_GE(decision.confidence, 0.0f);
+        brain_decision_t* decision = brain_decide(brain, features, 10);
+        ASSERT_NE(decision, nullptr);
+        EXPECT_GE(decision->confidence, 0.0f);
     }
 
     // Cleanup all brains
@@ -270,20 +286,20 @@ TEST_F(FactoryIntegrationTest, MultipleBarainsWithDifferentSizes) {
  * @brief Test creating multiple brains with different task types
  */
 TEST_F(FactoryIntegrationTest, MultipleBrainsWithDifferentTaskTypes) {
-    std::vector<nimcp_brain_t> brains;
+    std::vector<brain_t> brains;
 
     brain_task_t tasks[] = {
         BRAIN_TASK_CLASSIFICATION,
         BRAIN_TASK_REGRESSION,
-        BRAIN_TASK_CLUSTERING,
-        BRAIN_TASK_ANOMALY_DETECTION
+        BRAIN_TASK_PATTERN_MATCHING,
+        BRAIN_TASK_SEQUENCE
     };
 
     for (int i = 0; i < 4; i++) {
         char name[32];
         snprintf(name, sizeof(name), "brain_task_%d", i);
 
-        nimcp_brain_t brain = brain_create(name, BRAIN_SIZE_SMALL, tasks[i], 8, 2);
+        brain_t brain = brain_create(name, BRAIN_SIZE_SMALL, tasks[i], 8, 2);
         ASSERT_NE(brain, nullptr);
         brains.push_back(brain);
 
@@ -298,9 +314,11 @@ TEST_F(FactoryIntegrationTest, MultipleBrainsWithDifferentTaskTypes) {
     }
 
     for (auto brain : brains) {
-        ASSERT_EQ(brain_learn_example(brain, features, 8, "sample", 1.0f), BRAIN_OK);
-        brain_decision_t decision = brain_decide(brain, features, 8);
-        EXPECT_GE(decision.confidence, 0.0f);
+        float loss = brain_learn_example(brain, features, 8, "sample", 1.0f);
+        EXPECT_GE(loss, 0.0f);
+        brain_decision_t* decision = brain_decide(brain, features, 8);
+        ASSERT_NE(decision, nullptr);
+        EXPECT_GE(decision->confidence, 0.0f);
     }
 
     // Cleanup
@@ -313,7 +331,7 @@ TEST_F(FactoryIntegrationTest, MultipleBrainsWithDifferentTaskTypes) {
  * @brief Test creating multiple brains with varying input/output dimensions
  */
 TEST_F(FactoryIntegrationTest, MultipleBrainsWithVaryingDimensions) {
-    std::vector<nimcp_brain_t> brains;
+    std::vector<brain_t> brains;
     std::vector<std::pair<uint32_t, uint32_t>> dimensions = {
         {3, 2},      // Small
         {10, 5},     // Medium
@@ -325,7 +343,7 @@ TEST_F(FactoryIntegrationTest, MultipleBrainsWithVaryingDimensions) {
         char name[32];
         snprintf(name, sizeof(name), "brain_%u_%u", dims.first, dims.second);
 
-        nimcp_brain_t brain = brain_create(
+        brain_t brain = brain_create(
             name,
             BRAIN_SIZE_SMALL,
             BRAIN_TASK_CLASSIFICATION,
@@ -347,12 +365,11 @@ TEST_F(FactoryIntegrationTest, MultipleBrainsWithVaryingDimensions) {
             features[j] = 0.5f;
         }
 
-        ASSERT_EQ(
-            brain_learn_example(brains[i], features.data(), input_dim, "test", 1.0f),
-            BRAIN_OK
-        );
-        brain_decision_t decision = brain_decide(brains[i], features.data(), input_dim);
-        EXPECT_GE(decision.confidence, 0.0f);
+        float loss = brain_learn_example(brains[i], features.data(), input_dim, "test", 1.0f);
+        EXPECT_GE(loss, 0.0f);
+        brain_decision_t* decision = brain_decide(brains[i], features.data(), input_dim);
+        ASSERT_NE(decision, nullptr);
+        EXPECT_GE(decision->confidence, 0.0f);
     }
 
     // Cleanup
@@ -436,7 +453,7 @@ TEST_F(FactoryIntegrationTest, FactorySparsityConfiguration) {
  * @brief Test that all subsystems interact correctly in created brain
  */
 TEST_F(FactoryIntegrationTest, SubsystemInteractionWorking) {
-    nimcp_brain_t brain = brain_create(
+    brain_t brain = brain_create(
         "subsystem_test",
         BRAIN_SIZE_MEDIUM,
         BRAIN_TASK_CLASSIFICATION,
@@ -459,11 +476,13 @@ TEST_F(FactoryIntegrationTest, SubsystemInteractionWorking) {
     }
 
     // Learning should engage multiple subsystems
-    ASSERT_EQ(brain_learn_example(brain, features, 10, "test_class", 1.0f), BRAIN_OK);
+    float loss = brain_learn_example(brain, features, 10, "test_class", 1.0f);
+    EXPECT_GE(loss, 0.0f);
 
     // Inference should use integrated subsystems
-    brain_decision_t decision = brain_decide(brain, features, 10);
-    EXPECT_GE(decision.confidence, 0.0f);
+    brain_decision_t* decision = brain_decide(brain, features, 10);
+    ASSERT_NE(decision, nullptr);
+    EXPECT_GE(decision->confidence, 0.0f);
 
     // Cleanup
     brain_destroy(brain);
@@ -473,7 +492,7 @@ TEST_F(FactoryIntegrationTest, SubsystemInteractionWorking) {
  * @brief Test brain oscillations subsystem created with brain
  */
 TEST_F(FactoryIntegrationTest, BrainOscillationsInitialization) {
-    nimcp_brain_t brain = brain_create(
+    brain_t brain = brain_create(
         "oscillations_test",
         BRAIN_SIZE_SMALL,
         BRAIN_TASK_CLASSIFICATION,
@@ -486,13 +505,11 @@ TEST_F(FactoryIntegrationTest, BrainOscillationsInitialization) {
     if (brain->config.enable_oscillations) {
         // Perform a decision to generate neural activity
         float features[8] = {0.5f, 0.5f, 0.5f, 0.5f, 0.5f, 0.5f, 0.5f, 0.5f};
-        ASSERT_EQ(brain_learn_example(brain, features, 8, "test", 1.0f), BRAIN_OK);
+        float loss = brain_learn_example(brain, features, 8, "test", 1.0f);
+        EXPECT_GE(loss, 0.0f);
 
-        // Query oscillation metrics if available
-        if (brain->oscillations_analyzer) {
-            // Oscillations should be tracked
-            EXPECT_NE(brain->oscillations_analyzer, nullptr);
-        }
+        // Oscillations subsystem exists if enabled
+        // (No public field to check - subsystem is internal)
     }
 
     brain_destroy(brain);
@@ -502,7 +519,7 @@ TEST_F(FactoryIntegrationTest, BrainOscillationsInitialization) {
  * @brief Test learning strategy integration with factory-created brain
  */
 TEST_F(FactoryIntegrationTest, StrategyIntegrationDuringLearning) {
-    nimcp_brain_t brain = brain_create(
+    brain_t brain = brain_create(
         "strategy_test",
         BRAIN_SIZE_SMALL,
         BRAIN_TASK_CLASSIFICATION,
@@ -523,15 +540,17 @@ TEST_F(FactoryIntegrationTest, StrategyIntegrationDuringLearning) {
         for (int i = 0; i < 6; i++) {
             features[i] = (float)rand() / RAND_MAX;
         }
-        ASSERT_EQ(brain_learn_example(brain, features, 6, "sample", 1.0f), BRAIN_OK);
+        float loss = brain_learn_example(brain, features, 6, "sample", 1.0f);
+        EXPECT_GE(loss, 0.0f);
     }
 
     // Decision should work with trained strategy
     for (int i = 0; i < 6; i++) {
         features[i] = 0.5f;
     }
-    brain_decision_t decision = brain_decide(brain, features, 6);
-    EXPECT_GE(decision.confidence, 0.0f);
+    brain_decision_t* decision = brain_decide(brain, features, 6);
+    ASSERT_NE(decision, nullptr);
+    EXPECT_GE(decision->confidence, 0.0f);
 
     brain_destroy(brain);
 }
@@ -544,7 +563,8 @@ TEST_F(FactoryIntegrationTest, StrategyIntegrationDuringLearning) {
  * @brief Test creating brain with custom configuration
  */
 TEST_F(FactoryIntegrationTest, CustomConfigurationBrainCreation) {
-    brain_config_t config = {0};
+    brain_config_t config;
+    memset(&config, 0, sizeof(config));
     config.task = BRAIN_TASK_CLASSIFICATION;
     config.size = BRAIN_SIZE_MEDIUM;
     config.num_inputs = 15;
@@ -554,7 +574,7 @@ TEST_F(FactoryIntegrationTest, CustomConfigurationBrainCreation) {
     strncpy(config.task_name, "custom_config_brain", sizeof(config.task_name) - 1);
 
     // Create with custom config
-    nimcp_brain_t brain = brain_create_custom(&config);
+    brain_t brain = brain_create_custom(&config);
     ASSERT_NE(brain, nullptr);
 
     // Verify custom settings were applied
@@ -572,7 +592,7 @@ TEST_F(FactoryIntegrationTest, SnapshotSaveLoadComplexWorkflow) {
     const char* snapshot_dir = "/tmp/nimcp_test_snapshots";
     mkdir(snapshot_dir, 0755);
 
-    nimcp_brain_t brain = brain_create(
+    brain_t brain = brain_create(
         "snapshot_brain",
         BRAIN_SIZE_SMALL,
         BRAIN_TASK_CLASSIFICATION,
@@ -587,12 +607,13 @@ TEST_F(FactoryIntegrationTest, SnapshotSaveLoadComplexWorkflow) {
         for (int j = 0; j < 8; j++) {
             features[j] = (i % 3 == 0) ? 1.0f : 0.0f;
         }
-        ASSERT_EQ(brain_learn_example(brain, features, 8, "class_a", 1.0f), BRAIN_OK);
+        float loss = brain_learn_example(brain, features, 8, "class_a", 1.0f);
+        EXPECT_GE(loss, 0.0f);
     }
 
-    // Save snapshot
-    int snapshot_result = brain_save_snapshot(brain, "test_snapshot", "Test snapshot for integration");
-    // Snapshot save may return -1 if functionality not available, that's OK
+    // Save snapshot (returns bool)
+    bool snapshot_result = brain_save_snapshot(brain, "test_snapshot", "Test snapshot for integration");
+    // Snapshot save may fail if functionality not available, that's OK
 
     brain_destroy(brain);
 
@@ -607,7 +628,7 @@ TEST_F(FactoryIntegrationTest, SnapshotSaveLoadComplexWorkflow) {
  */
 TEST_F(FactoryIntegrationTest, ErrorRecoveryThroughRecreation) {
     // Create first brain
-    nimcp_brain_t brain1 = brain_create(
+    brain_t brain1 = brain_create(
         "recovery_test_1",
         BRAIN_SIZE_SMALL,
         BRAIN_TASK_CLASSIFICATION,
@@ -617,12 +638,13 @@ TEST_F(FactoryIntegrationTest, ErrorRecoveryThroughRecreation) {
     ASSERT_NE(brain1, nullptr);
 
     float features[5] = {0.5f, 0.5f, 0.5f, 0.5f, 0.5f};
-    ASSERT_EQ(brain_learn_example(brain1, features, 5, "test", 1.0f), BRAIN_OK);
+    float loss1 = brain_learn_example(brain1, features, 5, "test", 1.0f);
+    EXPECT_GE(loss1, 0.0f);
 
     brain_destroy(brain1);
 
     // Create new brain (simulating error recovery)
-    nimcp_brain_t brain2 = brain_create(
+    brain_t brain2 = brain_create(
         "recovery_test_2",
         BRAIN_SIZE_SMALL,
         BRAIN_TASK_CLASSIFICATION,
@@ -632,9 +654,11 @@ TEST_F(FactoryIntegrationTest, ErrorRecoveryThroughRecreation) {
     ASSERT_NE(brain2, nullptr);
 
     // Should work normally
-    ASSERT_EQ(brain_learn_example(brain2, features, 5, "test", 1.0f), BRAIN_OK);
-    brain_decision_t decision = brain_decide(brain2, features, 5);
-    EXPECT_GE(decision.confidence, 0.0f);
+    float loss2 = brain_learn_example(brain2, features, 5, "test", 1.0f);
+    EXPECT_GE(loss2, 0.0f);
+    brain_decision_t* decision = brain_decide(brain2, features, 5);
+    ASSERT_NE(decision, nullptr);
+    EXPECT_GE(decision->confidence, 0.0f);
 
     brain_destroy(brain2);
 }

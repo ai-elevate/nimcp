@@ -63,7 +63,7 @@ TEST_F(FactoryRegressionTest, RapidCreationDestructionCycles100) {
     const int ITERATIONS = 100;
 
     for (int i = 0; i < ITERATIONS; i++) {
-        nimcp_brain_t brain = brain_create(
+        brain_t brain = brain_create(
             "rapid_cycle_brain",
             BRAIN_SIZE_SMALL,
             BRAIN_TASK_CLASSIFICATION,
@@ -95,7 +95,7 @@ TEST_F(FactoryRegressionTest, RapidCreationDestructionWithVariousSizes200) {
         char name[32];
         snprintf(name, sizeof(name), "rapid_brain_%d", i);
 
-        nimcp_brain_t brain = brain_create(
+        brain_t brain = brain_create(
             name,
             size,
             BRAIN_TASK_CLASSIFICATION,
@@ -120,7 +120,7 @@ TEST_F(FactoryRegressionTest, RapidCreationDestructionWithLearning150) {
     float features[8] = {0.5f, 0.5f, 0.5f, 0.5f, 0.5f, 0.5f, 0.5f, 0.5f};
 
     for (int i = 0; i < ITERATIONS; i++) {
-        nimcp_brain_t brain = brain_create(
+        brain_t brain = brain_create(
             "learning_cycle_brain",
             BRAIN_SIZE_SMALL,
             BRAIN_TASK_CLASSIFICATION,
@@ -130,9 +130,9 @@ TEST_F(FactoryRegressionTest, RapidCreationDestructionWithLearning150) {
 
         ASSERT_NE(brain, nullptr);
 
-        // Perform a learning step
-        brain_status_t status = brain_learn_example(brain, features, 8, "test_class", 1.0f);
-        EXPECT_EQ(status, BRAIN_OK);
+        // Perform a learning step - returns float (loss/error)
+        float loss = brain_learn_example(brain, features, 8, "test_class", 1.0f);
+        EXPECT_GE(loss, 0.0f);  // Loss should be non-negative
 
         brain_destroy(brain);
     }
@@ -150,7 +150,7 @@ TEST_F(FactoryRegressionTest, RapidCreationDestructionWithSaveLoad100) {
     cleanup_file(save_path);
 
     for (int i = 0; i < ITERATIONS; i++) {
-        nimcp_brain_t brain = brain_create(
+        brain_t brain = brain_create(
             "save_load_cycle",
             BRAIN_SIZE_SMALL,
             BRAIN_TASK_CLASSIFICATION,
@@ -160,14 +160,14 @@ TEST_F(FactoryRegressionTest, RapidCreationDestructionWithSaveLoad100) {
 
         ASSERT_NE(brain, nullptr);
 
-        // Save brain
-        brain_status_t save_status = brain_save(brain, save_path);
-        EXPECT_EQ(save_status, BRAIN_OK);
+        // Save brain - returns bool
+        bool save_status = brain_save(brain, save_path);
+        EXPECT_TRUE(save_status);
 
         brain_destroy(brain);
 
         // Load brain back
-        nimcp_brain_t loaded_brain = brain_load(save_path);
+        brain_t loaded_brain = brain_load(save_path);
         ASSERT_NE(loaded_brain, nullptr);
 
         EXPECT_EQ(loaded_brain->config.num_inputs, 6);
@@ -192,13 +192,13 @@ TEST_F(FactoryRegressionTest, ConsistentMemoryAllocationPattern) {
     const int CYCLES = 50;
 
     // Warm-up cycle
-    nimcp_brain_t warmup = brain_create("warmup", BRAIN_SIZE_SMALL, BRAIN_TASK_CLASSIFICATION, 5, 2);
+    brain_t warmup = brain_create("warmup", BRAIN_SIZE_SMALL, BRAIN_TASK_CLASSIFICATION, 5, 2);
     ASSERT_NE(warmup, nullptr);
     brain_destroy(warmup);
 
     // Multiple cycles should show consistent resource usage
     for (int cycle = 0; cycle < CYCLES; cycle++) {
-        nimcp_brain_t brain = brain_create(
+        brain_t brain = brain_create(
             "memory_test",
             BRAIN_SIZE_MEDIUM,
             BRAIN_TASK_CLASSIFICATION,
@@ -215,11 +215,12 @@ TEST_F(FactoryRegressionTest, ConsistentMemoryAllocationPattern) {
         }
 
         for (int sample = 0; sample < 5; sample++) {
-            ASSERT_EQ(brain_learn_example(brain, features, 15, "class", 1.0f), BRAIN_OK);
+            float loss = brain_learn_example(brain, features, 15, "class", 1.0f);
+            ASSERT_GE(loss, 0.0f);
         }
 
-        brain_decision_t decision = brain_decide(brain, features, 15);
-        EXPECT_GE(decision.confidence, 0.0f);
+        brain_decision_t* decision = brain_decide(brain, features, 15);
+        EXPECT_GE(decision->confidence, 0.0f);
 
         brain_destroy(brain);
     }
@@ -234,7 +235,7 @@ TEST_F(FactoryRegressionTest, OutputLabelsAllocationDeallocation) {
     const int ITERATIONS = 50;
 
     for (int i = 0; i < ITERATIONS; i++) {
-        nimcp_brain_t brain = brain_create(
+        brain_t brain = brain_create(
             "label_test",
             BRAIN_SIZE_SMALL,
             BRAIN_TASK_CLASSIFICATION,
@@ -262,7 +263,7 @@ TEST_F(FactoryRegressionTest, SubsystemAllocationConsistency) {
     const int ITERATIONS = 75;
 
     for (int i = 0; i < ITERATIONS; i++) {
-        nimcp_brain_t brain = brain_create(
+        brain_t brain = brain_create(
             "subsystem_test",
             BRAIN_SIZE_MEDIUM,
             BRAIN_TASK_CLASSIFICATION,
@@ -302,7 +303,7 @@ TEST_F(FactoryRegressionTest, ConfigurationConsistency) {
     std::vector<float> learning_rates;
 
     for (int i = 0; i < ITERATIONS; i++) {
-        nimcp_brain_t brain = brain_create(
+        brain_t brain = brain_create(
             NAME,
             BRAIN_SIZE_SMALL,
             BRAIN_TASK_CLASSIFICATION,
@@ -337,7 +338,7 @@ TEST_F(FactoryRegressionTest, StatisticsInitializationConsistency) {
     const int ITERATIONS = 25;
 
     for (int i = 0; i < ITERATIONS; i++) {
-        nimcp_brain_t brain = brain_create(
+        brain_t brain = brain_create(
             "stats_test",
             BRAIN_SIZE_SMALL,
             BRAIN_TASK_CLASSIFICATION,
@@ -348,9 +349,8 @@ TEST_F(FactoryRegressionTest, StatisticsInitializationConsistency) {
         ASSERT_NE(brain, nullptr);
 
         // Verify statistics are initialized
-        EXPECT_STREQ(brain->stats.name, "stats_test");
-        EXPECT_GE(brain->stats.creation_timestamp, 0);
-        EXPECT_EQ(brain->stats.num_training_samples, 0);
+        EXPECT_STREQ(brain->stats.task_name, "stats_test");
+        EXPECT_EQ(brain->stats.total_learning_steps, 0);
 
         brain_destroy(brain);
     }
@@ -364,7 +364,7 @@ TEST_F(FactoryRegressionTest, NetworkStructureConsistency) {
     uint32_t expected_neurons = nimcp_brain_factory_get_neuron_count(BRAIN_SIZE_MEDIUM);
 
     for (int i = 0; i < ITERATIONS; i++) {
-        nimcp_brain_t brain = brain_create(
+        brain_t brain = brain_create(
             "network_test",
             BRAIN_SIZE_MEDIUM,
             BRAIN_TASK_CLASSIFICATION,
@@ -376,8 +376,9 @@ TEST_F(FactoryRegressionTest, NetworkStructureConsistency) {
         ASSERT_NE(brain->network, nullptr);
 
         // Network should have consistent structure
-        EXPECT_EQ(brain->network->num_neurons, expected_neurons);
-        EXPECT_GT(brain->network->num_synapses, 0);
+        // Note: network structure is opaque, can only verify existence
+        EXPECT_EQ(brain->stats.num_neurons, expected_neurons);
+        EXPECT_GT(brain->stats.num_synapses, 0);
 
         brain_destroy(brain);
     }
@@ -392,7 +393,7 @@ TEST_F(FactoryRegressionTest, NetworkStructureConsistency) {
  */
 TEST_F(FactoryRegressionTest, RecoveryFromInvalidParameters) {
     // Attempt invalid creation
-    nimcp_brain_t invalid_brain = brain_create(
+    brain_t invalid_brain = brain_create(
         nullptr,  // Invalid: null name
         BRAIN_SIZE_SMALL,
         BRAIN_TASK_CLASSIFICATION,
@@ -402,7 +403,7 @@ TEST_F(FactoryRegressionTest, RecoveryFromInvalidParameters) {
     EXPECT_EQ(invalid_brain, nullptr);
 
     // Should be able to create valid brain after invalid attempt
-    nimcp_brain_t valid_brain = brain_create(
+    brain_t valid_brain = brain_create(
         "recovery_test",
         BRAIN_SIZE_SMALL,
         BRAIN_TASK_CLASSIFICATION,
@@ -446,7 +447,7 @@ TEST_F(FactoryRegressionTest, ResilienceToRepeatedInvalidOperations) {
         // Mix of valid and invalid creations
         if (i % 2 == 0) {
             // Valid creation
-            nimcp_brain_t brain = brain_create(
+            brain_t brain = brain_create(
                 "resilience_test",
                 BRAIN_SIZE_SMALL,
                 BRAIN_TASK_CLASSIFICATION,
@@ -457,7 +458,7 @@ TEST_F(FactoryRegressionTest, ResilienceToRepeatedInvalidOperations) {
             brain_destroy(brain);
         } else {
             // Invalid creation (should fail gracefully)
-            nimcp_brain_t invalid = brain_create(
+            brain_t invalid = brain_create(
                 "invalid",
                 BRAIN_SIZE_SMALL,
                 BRAIN_TASK_CLASSIFICATION,
@@ -477,7 +478,7 @@ TEST_F(FactoryRegressionTest, StateConsistencyAfterFailedCreation) {
     cleanup_file(test_path);
 
     // Successful creation and save
-    nimcp_brain_t brain1 = brain_create(
+    brain_t brain1 = brain_create(
         "state_test_1",
         BRAIN_SIZE_SMALL,
         BRAIN_TASK_CLASSIFICATION,
@@ -487,13 +488,14 @@ TEST_F(FactoryRegressionTest, StateConsistencyAfterFailedCreation) {
     ASSERT_NE(brain1, nullptr);
 
     float features[5] = {0.5f, 0.5f, 0.5f, 0.5f, 0.5f};
-    ASSERT_EQ(brain_learn_example(brain1, features, 5, "class_a", 1.0f), BRAIN_OK);
+    float loss = brain_learn_example(brain1, features, 5, "class_a", 1.0f);
+    ASSERT_GE(loss, 0.0f);
 
-    ASSERT_EQ(brain_save(brain1, test_path), BRAIN_OK);
+    ASSERT_TRUE(brain_save(brain1, test_path));
     brain_destroy(brain1);
 
     // Attempt invalid operation
-    nimcp_brain_t invalid = brain_create(
+    brain_t invalid = brain_create(
         nullptr,  // Invalid
         BRAIN_SIZE_SMALL,
         BRAIN_TASK_CLASSIFICATION,
@@ -503,13 +505,14 @@ TEST_F(FactoryRegressionTest, StateConsistencyAfterFailedCreation) {
     EXPECT_EQ(invalid, nullptr);
 
     // Load should still work
-    nimcp_brain_t loaded = brain_load(test_path);
+    brain_t loaded = brain_load(test_path);
     ASSERT_NE(loaded, nullptr);
 
     // Continue using loaded brain
-    ASSERT_EQ(brain_learn_example(loaded, features, 5, "class_b", 1.0f), BRAIN_OK);
-    brain_decision_t decision = brain_decide(loaded, features, 5);
-    EXPECT_GE(decision.confidence, 0.0f);
+    loss = brain_learn_example(loaded, features, 5, "class_b", 1.0f);
+    ASSERT_GE(loss, 0.0f);
+    brain_decision_t* decision = brain_decide(loaded, features, 5);
+    EXPECT_GE(decision->confidence, 0.0f);
 
     brain_destroy(loaded);
     cleanup_file(test_path);
@@ -524,7 +527,7 @@ TEST_F(FactoryRegressionTest, StateConsistencyAfterFailedCreation) {
  */
 TEST_F(FactoryRegressionTest, ExtremeDimensionConfigurations) {
     // Minimum valid dimensions
-    nimcp_brain_t tiny_io = brain_create(
+    brain_t tiny_io = brain_create(
         "tiny_io",
         BRAIN_SIZE_TINY,
         BRAIN_TASK_CLASSIFICATION,
@@ -534,14 +537,15 @@ TEST_F(FactoryRegressionTest, ExtremeDimensionConfigurations) {
     ASSERT_NE(tiny_io, nullptr);
 
     float single_input[1] = {0.5f};
-    ASSERT_EQ(brain_learn_example(tiny_io, single_input, 1, "class", 1.0f), BRAIN_OK);
-    brain_decision_t decision = brain_decide(tiny_io, single_input, 1);
-    EXPECT_GE(decision.confidence, 0.0f);
+    float loss = brain_learn_example(tiny_io, single_input, 1, "class", 1.0f);
+    ASSERT_GE(loss, 0.0f);
+    brain_decision_t* decision = brain_decide(tiny_io, single_input, 1);
+    EXPECT_GE(decision->confidence, 0.0f);
 
     brain_destroy(tiny_io);
 
     // Large dimensions
-    nimcp_brain_t large_io = brain_create(
+    brain_t large_io = brain_create(
         "large_io",
         BRAIN_SIZE_LARGE,
         BRAIN_TASK_CLASSIFICATION,
@@ -555,9 +559,10 @@ TEST_F(FactoryRegressionTest, ExtremeDimensionConfigurations) {
         large_input[i] = 0.5f;
     }
 
-    ASSERT_EQ(brain_learn_example(large_io, large_input.data(), 100, "sample", 1.0f), BRAIN_OK);
+    loss = brain_learn_example(large_io, large_input.data(), 100, "sample", 1.0f);
+    ASSERT_GE(loss, 0.0f);
     decision = brain_decide(large_io, large_input.data(), 100);
-    EXPECT_GE(decision.confidence, 0.0f);
+    EXPECT_GE(decision->confidence, 0.0f);
 
     brain_destroy(large_io);
 }
@@ -566,7 +571,7 @@ TEST_F(FactoryRegressionTest, ExtremeDimensionConfigurations) {
  * @brief Test repeated training/inference cycles
  */
 TEST_F(FactoryRegressionTest, RepeatedTrainingInferenceCycles) {
-    nimcp_brain_t brain = brain_create(
+    brain_t brain = brain_create(
         "cycle_test",
         BRAIN_SIZE_SMALL,
         BRAIN_TASK_CLASSIFICATION,
@@ -587,11 +592,12 @@ TEST_F(FactoryRegressionTest, RepeatedTrainingInferenceCycles) {
         // Train
         char label[32];
         snprintf(label, sizeof(label), "class_%d", cycle % 3);
-        ASSERT_EQ(brain_learn_example(brain, features, 8, label, 1.0f), BRAIN_OK);
+        float loss = brain_learn_example(brain, features, 8, label, 1.0f);
+        ASSERT_GE(loss, 0.0f);
 
         // Infer
-        brain_decision_t decision = brain_decide(brain, features, 8);
-        EXPECT_GE(decision.confidence, 0.0f);
+        brain_decision_t* decision = brain_decide(brain, features, 8);
+        EXPECT_GE(decision->confidence, 0.0f);
     }
 
     brain_destroy(brain);
@@ -605,14 +611,14 @@ TEST_F(FactoryRegressionTest, RepeatedTrainingInferenceCycles) {
 TEST_F(FactoryRegressionTest, HeavySequentialStress) {
     const int NUM_BRAINS = 10;
     const int OPS_PER_BRAIN = 20;
-    std::vector<nimcp_brain_t> brains;
+    std::vector<brain_t> brains;
 
     // Create multiple brains
     for (int i = 0; i < NUM_BRAINS; i++) {
         char name[32];
         snprintf(name, sizeof(name), "stress_brain_%d", i);
 
-        nimcp_brain_t brain = brain_create(
+        brain_t brain = brain_create(
             name,
             BRAIN_SIZE_MEDIUM,
             BRAIN_TASK_CLASSIFICATION,
@@ -633,14 +639,12 @@ TEST_F(FactoryRegressionTest, HeavySequentialStress) {
             }
 
             // Train
-            ASSERT_EQ(
-                brain_learn_example(brains[brain_idx], features, 12, "sample", 1.0f),
-                BRAIN_OK
-            );
+            float loss = brain_learn_example(brains[brain_idx], features, 12, "sample", 1.0f);
+            ASSERT_GE(loss, 0.0f);
 
             // Infer
-            brain_decision_t decision = brain_decide(brains[brain_idx], features, 12);
-            EXPECT_GE(decision.confidence, 0.0f);
+            brain_decision_t* decision = brain_decide(brains[brain_idx], features, 12);
+            EXPECT_GE(decision->confidence, 0.0f);
         }
     }
 
