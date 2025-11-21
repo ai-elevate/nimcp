@@ -43,7 +43,7 @@ add_test(NAME unit_brain_population_coding
 add_subdirectory(buffering)
 add_subdirectory(encoding)
 add_subdirectory(features)
-add_subdirectory(events)
+# add_subdirectory(events)  # Removed - middleware event bus consolidated into core event bus
 add_subdirectory(normalization)
 add_subdirectory(patterns)
 add_subdirectory(pipeline)

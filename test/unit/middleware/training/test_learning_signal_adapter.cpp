@@ -38,7 +38,8 @@ protected:
 
     // Helper to create error event
     brain_event_t create_error_event(float expected, float actual, float magnitude) {
-        brain_event_t event = {0};
+        brain_event_t event;
+        memset(&event, 0, sizeof(event));
         event.type = EVENT_ERROR_DETECTED;
         event.priority = EVENT_PRIORITY_HIGH;
         event.source_module = "test";
@@ -56,7 +57,8 @@ protected:
     // These test helpers are kept for future implementation
     // Helper to create attention event with cognitive data
     brain_event_t create_cognitive_event(uint32_t prev_item, uint32_t curr_item, float strength) {
-        brain_event_t event = {0};
+        brain_event_t event;
+        memset(&event, 0, sizeof(event));
         event.type = EVENT_ATTENTION_SHIFT;
         event.priority = EVENT_PRIORITY_NORMAL;
         event.source_module = "test";
@@ -72,7 +74,8 @@ protected:
 
     // Helper to create attention event
     brain_event_t create_attention_event(uint32_t prev_item, uint32_t curr_item, float strength) {
-        brain_event_t event = {0};
+        brain_event_t event;
+        memset(&event, 0, sizeof(event));
         event.type = EVENT_ATTENTION_SHIFT;
         event.priority = EVENT_PRIORITY_NORMAL;
         event.source_module = "test";
@@ -124,7 +127,8 @@ TEST_F(LearningSignalAdapterTest, DestroyNullAdapter) {
 
 TEST_F(LearningSignalAdapterTest, ExtractErrorSignal) {
     brain_event_t event = create_error_event(1.0f, 0.5f, 0.5f);
-    learning_signal_t signal = {0};
+    learning_signal_t signal;
+    memset(&signal, 0, sizeof(signal));
 
     bool success = learning_signal_adapter_extract(adapter, &event, &signal);
     EXPECT_TRUE(success);
@@ -144,7 +148,8 @@ TEST_F(LearningSignalAdapterTest, ExtractErrorSignal) {
 
 TEST_F(LearningSignalAdapterTest, ExtractErrorSignalZeroError) {
     brain_event_t event = create_error_event(1.0f, 1.0f, 0.0f);
-    learning_signal_t signal = {0};
+    learning_signal_t signal;
+    memset(&signal, 0, sizeof(signal));
 
     bool success = learning_signal_adapter_extract(adapter, &event, &signal);
     EXPECT_TRUE(success);
@@ -155,7 +160,8 @@ TEST_F(LearningSignalAdapterTest, ExtractErrorSignalZeroError) {
 
 TEST_F(LearningSignalAdapterTest, ExtractErrorSignalLargeError) {
     brain_event_t event = create_error_event(0.0f, 1.0f, 1.0f);
-    learning_signal_t signal = {0};
+    learning_signal_t signal;
+    memset(&signal, 0, sizeof(signal));
 
     bool success = learning_signal_adapter_extract(adapter, &event, &signal);
     EXPECT_TRUE(success);
@@ -194,7 +200,8 @@ TEST_F(LearningSignalAdapterTest, DISABLED_ExtractSurpriseEvent) {
 
 TEST_F(LearningSignalAdapterTest, ExtractAttentionSignal) {
     brain_event_t event = create_attention_event(10, 20, 0.75f);
-    learning_signal_t signal = {0};
+    learning_signal_t signal;
+    memset(&signal, 0, sizeof(signal));
 
     bool success = learning_signal_adapter_extract(adapter, &event, &signal);
     EXPECT_TRUE(success);
@@ -213,7 +220,8 @@ TEST_F(LearningSignalAdapterTest, ExtractAttentionSignal) {
 
 TEST_F(LearningSignalAdapterTest, ExtractAttentionWeakSignal) {
     brain_event_t event = create_attention_event(5, 15, 0.1f);
-    learning_signal_t signal = {0};
+    learning_signal_t signal;
+    memset(&signal, 0, sizeof(signal));
 
     bool success = learning_signal_adapter_extract(adapter, &event, &signal);
     EXPECT_TRUE(success);
@@ -226,7 +234,8 @@ TEST_F(LearningSignalAdapterTest, ExtractAttentionWeakSignal) {
 
 TEST_F(LearningSignalAdapterTest, ExtractAttentionStrongSignal) {
     brain_event_t event = create_attention_event(1, 2, 1.0f);
-    learning_signal_t signal = {0};
+    learning_signal_t signal;
+    memset(&signal, 0, sizeof(signal));
 
     bool success = learning_signal_adapter_extract(adapter, &event, &signal);
     EXPECT_TRUE(success);
@@ -243,7 +252,8 @@ TEST_F(LearningSignalAdapterTest, ExtractAttentionStrongSignal) {
 //=============================================================================
 
 TEST_F(LearningSignalAdapterTest, ExtractMemorySignal) {
-    brain_event_t event = {0};
+    brain_event_t event;
+    memset(&event, 0, sizeof(event));
     event.type = EVENT_EPISODIC_MEMORY_STORED;
     event.priority = EVENT_PRIORITY_NORMAL;
     event.source_module = "hippocampus";
@@ -254,7 +264,8 @@ TEST_F(LearningSignalAdapterTest, ExtractMemorySignal) {
     memcpy(event.data.data, &memory_strength, sizeof(float));
     event.data.size = sizeof(float);
 
-    learning_signal_t signal = {0};
+    learning_signal_t signal;
+    memset(&signal, 0, sizeof(signal));
     bool success = learning_signal_adapter_extract(adapter, &event, &signal);
 
     // Memory signals are now implemented
@@ -379,7 +390,8 @@ TEST_F(LearningSignalAdapterTest, NormalizeAdaptive) {
 
 TEST_F(LearningSignalAdapterTest, ApplyAttentionWeighting) {
     brain_event_t event = create_error_event(1.0f, 0.5f, 0.5f);
-    learning_signal_t signal = {0};
+    learning_signal_t signal;
+    memset(&signal, 0, sizeof(signal));
 
     learning_signal_adapter_extract(adapter, &event, &signal);
 
@@ -403,7 +415,8 @@ TEST_F(LearningSignalAdapterTest, ApplyAttentionWeighting) {
 
 TEST_F(LearningSignalAdapterTest, ApplyAttentionWeightingZero) {
     brain_event_t event = create_error_event(1.0f, 0.5f, 0.5f);
-    learning_signal_t signal = {0};
+    learning_signal_t signal;
+    memset(&signal, 0, sizeof(signal));
 
     learning_signal_adapter_extract(adapter, &event, &signal);
 
@@ -417,7 +430,8 @@ TEST_F(LearningSignalAdapterTest, ApplyAttentionWeightingZero) {
 
 TEST_F(LearningSignalAdapterTest, ApplyAttentionWeightingFull) {
     brain_event_t event = create_error_event(1.0f, 0.5f, 0.5f);
-    learning_signal_t signal = {0};
+    learning_signal_t signal;
+    memset(&signal, 0, sizeof(signal));
 
     learning_signal_adapter_extract(adapter, &event, &signal);
 
@@ -437,7 +451,8 @@ TEST_F(LearningSignalAdapterTest, ApplyAttentionDisabled) {
     learning_signal_adapter_t test_adapter = learning_signal_adapter_create(&config);
 
     brain_event_t event = create_error_event(1.0f, 0.5f, 0.5f);
-    learning_signal_t signal = {0};
+    learning_signal_t signal;
+    memset(&signal, 0, sizeof(signal));
 
     learning_signal_adapter_extract(test_adapter, &event, &signal);
 
@@ -469,7 +484,8 @@ TEST_F(LearningSignalAdapterTest, GetStatistics) {
 
 TEST_F(LearningSignalAdapterTest, StatisticsAfterExtraction) {
     brain_event_t event = create_error_event(1.0f, 0.5f, 0.5f);
-    learning_signal_t signal = {0};
+    learning_signal_t signal;
+    memset(&signal, 0, sizeof(signal));
 
     learning_signal_adapter_extract(adapter, &event, &signal);
     learning_signal_free(&signal);
@@ -498,14 +514,16 @@ TEST_F(LearningSignalAdapterTest, StatisticsAfterNormalization) {
 
 TEST_F(LearningSignalAdapterTest, ExtractNullAdapter) {
     brain_event_t event = create_error_event(1.0f, 0.5f, 0.5f);
-    learning_signal_t signal = {0};
+    learning_signal_t signal;
+    memset(&signal, 0, sizeof(signal));
 
     bool success = learning_signal_adapter_extract(nullptr, &event, &signal);
     EXPECT_FALSE(success);
 }
 
 TEST_F(LearningSignalAdapterTest, ExtractNullEvent) {
-    learning_signal_t signal = {0};
+    learning_signal_t signal;
+    memset(&signal, 0, sizeof(signal));
 
     bool success = learning_signal_adapter_extract(adapter, nullptr, &signal);
     EXPECT_FALSE(success);
@@ -519,12 +537,14 @@ TEST_F(LearningSignalAdapterTest, ExtractNullSignal) {
 }
 
 TEST_F(LearningSignalAdapterTest, ExtractUnsupportedEvent) {
-    brain_event_t event = {0};
+    brain_event_t event;
+    memset(&event, 0, sizeof(event));
     event.type = EVENT_CUSTOM_USER;  // Custom events not handled by adapter
     event.source_module = "test";
     event.timestamp_us = 5000;
 
-    learning_signal_t signal = {0};
+    learning_signal_t signal;
+    memset(&signal, 0, sizeof(signal));
     bool success = learning_signal_adapter_extract(adapter, &event, &signal);
     EXPECT_FALSE(success);
 }
@@ -547,7 +567,8 @@ TEST_F(LearningSignalAdapterTest, NormalizeZeroFeatures) {
 }
 
 TEST_F(LearningSignalAdapterTest, ApplyAttentionNullAdapter) {
-    learning_signal_t signal = {0};
+    learning_signal_t signal;
+    memset(&signal, 0, sizeof(signal));
     bool success = learning_signal_adapter_apply_attention(nullptr, &signal, 0.5f);
     EXPECT_FALSE(success);
 }
@@ -582,7 +603,8 @@ TEST_F(LearningSignalAdapterTest, ConcurrentExtraction) {
         threads.emplace_back([this, &success_count, extractions_per_thread]() {
             for (int i = 0; i < extractions_per_thread; i++) {
                 brain_event_t event = create_error_event(1.0f, 0.5f, 0.5f);
-                learning_signal_t signal = {0};
+                learning_signal_t signal;
+    memset(&signal, 0, sizeof(signal));
 
                 if (learning_signal_adapter_extract(adapter, &event, &signal)) {
                     success_count++;
@@ -633,7 +655,8 @@ TEST_F(LearningSignalAdapterTest, ConcurrentNormalization) {
 TEST_F(LearningSignalAdapterTest, EndToEndWorkflow) {
     // Extract signal
     brain_event_t event = create_error_event(1.0f, 0.3f, 0.7f);
-    learning_signal_t signal = {0};
+    learning_signal_t signal;
+    memset(&signal, 0, sizeof(signal));
 
     EXPECT_TRUE(learning_signal_adapter_extract(adapter, &event, &signal));
     EXPECT_EQ(signal.type, LEARNING_SIGNAL_ERROR);
