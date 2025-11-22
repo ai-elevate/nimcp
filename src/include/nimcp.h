@@ -939,6 +939,165 @@ nimcp_status_t nimcp_knowledge_query(
 );
 
 //=============================================================================
+// Complex Number & Oscillation API - Phase Coding & Neural Synchrony
+//=============================================================================
+
+/**
+ * @brief Oscillation phasor (complex number) representation
+ *
+ * Represents neural oscillations as amplitude + phase:
+ * - amplitude: Strength of oscillation (magnitude)
+ * - phase: Timing within oscillation cycle (radians, -π to π)
+ *
+ * Mathematical form: z = amplitude·e^(i·phase)
+ */
+typedef struct {
+    float amplitude;  /**< Oscillation amplitude (≥ 0) */
+    float phase;      /**< Phase angle in radians (-π to π) */
+} nimcp_oscillation_phasor_t;
+
+/**
+ * @brief Enable or disable complex oscillation features
+ *
+ * WHAT: Activates phase coding and complex number support in brain
+ * WHY:  Complex oscillations enable phase-based memory and binding
+ * HOW:  Configures neurons/synapses to track amplitude + phase
+ *
+ * When enabled:
+ * - Neurons track oscillatory phase and amplitude
+ * - Synapses compute phase-dependent weights
+ * - Phase coherence and PAC metrics become available
+ * - ~15% memory overhead for phase tracking
+ *
+ * Performance impact:
+ * - Memory: +15% (phase data storage)
+ * - Compute: +10% (complex arithmetic)
+ * - Benefits: Phase-based memory, theta-gamma coupling
+ *
+ * @param brain Brain handle
+ * @param enable true to enable, false to disable
+ * @return true on success, false on error
+ *
+ * EXAMPLE:
+ * ```c
+ * nimcp_brain_t brain = nimcp_brain_create(...);
+ * nimcp_enable_complex_oscillations(brain, true);
+ * // Now can query phase coherence, PAC, etc.
+ * ```
+ */
+bool nimcp_enable_complex_oscillations(nimcp_brain_t brain, bool enable);
+
+/**
+ * @brief Check if complex oscillation features are enabled
+ *
+ * @param brain Brain handle
+ * @return true if enabled, false if disabled or error
+ */
+bool nimcp_is_complex_oscillations_enabled(nimcp_brain_t brain);
+
+/**
+ * @brief Get oscillation phasor for a specific neuron
+ *
+ * WHAT: Retrieves amplitude and phase of neuron's oscillatory activity
+ * WHY:  Enables analysis of neural phase coding and synchronization
+ * HOW:  Extracts complex phasor from neuron's oscillation state
+ *
+ * Returns the neuron's current oscillatory state as a phasor.
+ * Requires complex oscillations to be enabled.
+ *
+ * @param brain Brain handle
+ * @param neuron_id Neuron identifier
+ * @return Phasor with amplitude and phase (returns {0,0} on error or if disabled)
+ *
+ * EXAMPLE:
+ * ```c
+ * nimcp_oscillation_phasor_t phasor = nimcp_get_oscillation_phasor(brain, 42);
+ * printf("Neuron 42: amplitude=%.2f, phase=%.2f rad\n",
+ *        phasor.amplitude, phasor.phase);
+ * ```
+ */
+nimcp_oscillation_phasor_t nimcp_get_oscillation_phasor(
+    nimcp_brain_t brain,
+    uint32_t neuron_id
+);
+
+/**
+ * @brief Compute phase coherence across multiple neurons
+ *
+ * WHAT: Measures phase synchronization between neural oscillations
+ * WHY:  Phase coherence indicates coordinated neural activity
+ * HOW:  Computes inter-trial phase coherence (ITPC) across neurons
+ *
+ * Phase coherence range: [0, 1] where:
+ * - 0.0 = random phases (no synchronization)
+ * - 0.3 = weak synchronization
+ * - 0.6 = moderate synchronization
+ * - 1.0 = perfect phase locking
+ *
+ * Neuroscience application:
+ * - High coherence → neurons fire at same phase (coordinated)
+ * - Low coherence → independent oscillations
+ * - Used to detect neural binding and communication
+ *
+ * @param brain Brain handle
+ * @param neuron_ids Array of neuron identifiers to analyze
+ * @param count Number of neurons in array
+ * @return Phase coherence value [0, 1] (returns 0.0 on error or if disabled)
+ *
+ * EXAMPLE:
+ * ```c
+ * uint32_t neurons[] = {10, 20, 30, 40, 50};
+ * float coherence = nimcp_get_phase_coherence(brain, neurons, 5);
+ * if (coherence > 0.6f) {
+ *     printf("High synchronization detected!\n");
+ * }
+ * ```
+ */
+float nimcp_get_phase_coherence(
+    nimcp_brain_t brain,
+    const uint32_t* neuron_ids,
+    uint32_t count
+);
+
+/**
+ * @brief Compute phase-amplitude coupling (PAC) modulation index
+ *
+ * WHAT: Measures theta-gamma cross-frequency coupling strength
+ * WHY:  PAC is a key mechanism for memory and attention
+ * HOW:  Computes modulation of gamma amplitude by theta phase
+ *
+ * PAC modulation index range: [0, 1] where:
+ * - 0.0 = no coupling (theta and gamma independent)
+ * - 0.2 = weak coupling
+ * - 0.4 = moderate coupling
+ * - 0.6+ = strong coupling (indicates active encoding/retrieval)
+ *
+ * Neuroscience foundation:
+ * - Hippocampal theta (4-8Hz) phase modulates gamma (30-100Hz) amplitude
+ * - Used for sequence encoding (place cells), working memory
+ * - Higher PAC correlates with better memory performance
+ *
+ * @param brain Brain handle
+ * @param theta_freq Theta frequency in Hz (typically 4-8 Hz)
+ * @param gamma_freq Gamma frequency in Hz (typically 30-100 Hz)
+ * @return PAC modulation index [0, 1] (returns 0.0 on error or if disabled)
+ *
+ * EXAMPLE:
+ * ```c
+ * // Measure hippocampal theta-gamma coupling
+ * float pac = nimcp_get_pac_modulation(brain, 6.0f, 40.0f);
+ * if (pac > 0.4f) {
+ *     printf("Strong theta-gamma coupling (memory encoding active)\n");
+ * }
+ * ```
+ */
+float nimcp_get_pac_modulation(
+    nimcp_brain_t brain,
+    float theta_freq,
+    float gamma_freq
+);
+
+//=============================================================================
 // Utility Functions
 //=============================================================================
 

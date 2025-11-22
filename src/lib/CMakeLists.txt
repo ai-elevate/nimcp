@@ -181,9 +181,15 @@ set(NIMCP_CORE_SOURCES
     # Utils - Memory & Thread
     ${CMAKE_CURRENT_SOURCE_DIR}/../utils/memory/nimcp_memory.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../utils/memory/nimcp_memory_guards.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../utils/memory/nimcp_memory_pool.c   # Phase 0: Memory Pool (O(1) allocation)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../utils/memory/nimcp_cow_manager.c  # Phase 0: CoW Manager (lazy copy, refcounting)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../utils/memory/nimcp_buffer_pool.c  # Phase 0: Buffer Pool (CoW + Pool integration)
     ${CMAKE_CURRENT_SOURCE_DIR}/../utils/thread/nimcp_thread.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../utils/thread/nimcp_thread_pool.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../utils/thread/nimcp_deadlock_detector.c
+
+    # Utils - Math (Phase 0.5: Complex Number Support for Neural Phase Coding)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../utils/math/nimcp_complex_math.c  # Complex phasor operations, FFT, PAC detection (SIMD optimized)
 
     # Utils - Platform Abstraction (Phase 2: Cross-platform support, SRP-compliant)
     ${CMAKE_CURRENT_SOURCE_DIR}/../utils/platform/nimcp_platform.c
@@ -211,6 +217,7 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../utils/fault_tolerance/nimcp_recovery_cache.c                # LRU cache for recovery strategies
     ${CMAKE_CURRENT_SOURCE_DIR}/../utils/fault_tolerance/nimcp_diagnostics.c                   # Error detection & classification
     ${CMAKE_CURRENT_SOURCE_DIR}/../utils/fault_tolerance/nimcp_checkpoint.c                    # State persistence & checkpointing
+    ${CMAKE_CURRENT_SOURCE_DIR}/../utils/fault_tolerance/nimcp_checkpoint_pool.c              # Phase 0.5: Fast checkpoint pool (CoW + Pool)
     ${CMAKE_CURRENT_SOURCE_DIR}/../utils/fault_tolerance/nimcp_async_checkpoint.c              # Async checkpoint with background thread
     ${CMAKE_CURRENT_SOURCE_DIR}/../utils/fault_tolerance/nimcp_health_monitor.c                # Runtime health monitoring
     ${CMAKE_CURRENT_SOURCE_DIR}/../utils/fault_tolerance/nimcp_brain_recovery_integration.c    # Brain-driven intelligent recovery
@@ -275,6 +282,7 @@ set(NIMCP_CORE_SOURCES
 
     # Brain Oscillations
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain_oscillations/nimcp_brain_oscillations.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/oscillations/nimcp_brain_complex_oscillations.c  # Phase C2.2: Complex phasor oscillation tracking
 
     # Perception
     ${CMAKE_CURRENT_SOURCE_DIR}/perception/nimcp_visual_cortex.c
@@ -333,6 +341,11 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../middleware/patterns/nimcp_sequence_detector.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../middleware/patterns/nimcp_oscillation_detector.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../middleware/patterns/nimcp_pattern_library.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../middleware/patterns/nimcp_pattern_cow.c
+
+    # Middleware - Events (Phase 1.5: Event queue for pipeline)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../middleware/events/nimcp_event_types.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../middleware/events/nimcp_event_queue.c
 
     # Middleware - Routing
     ${CMAKE_CURRENT_SOURCE_DIR}/../middleware/routing/nimcp_thalamic_router.c
@@ -345,6 +358,10 @@ set(NIMCP_CORE_SOURCES
 
     # Middleware - Integration
     ${CMAKE_CURRENT_SOURCE_DIR}/../middleware/brain_integration.c
+
+    # Middleware - Shannon & Flow Integration (Phase 1.5.1)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../middleware/integration/nimcp_shannon_monitor.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../middleware/integration/nimcp_flow_tracker.c
 
     # Middleware - Cognitive Adapters (Phase 2: Brain-Cognitive Layer Integration)
     ${CMAKE_CURRENT_SOURCE_DIR}/../middleware/cognitive/nimcp_cognitive_adapters.c
@@ -401,8 +418,9 @@ if(SODIUM_FOUND)
 endif()
 
 target_link_libraries(nimcp
-    PUBLIC
+    PRIVATE
         nimcp_middleware
+    PUBLIC
         Python3::Python
         lz4
         jansson
@@ -429,6 +447,14 @@ target_compile_definitions(nimcp PRIVATE NIMCP_TESTING)
 
 # Explicitly add -fPIC for shared library with thread-local storage
 target_compile_options(nimcp PRIVATE -fPIC)
+
+# Enable AVX2 SIMD instructions for complex math optimization
+# Note: This is safe because we have runtime CPU detection fallback
+set_source_files_properties(
+    ${CMAKE_CURRENT_SOURCE_DIR}/../utils/math/nimcp_complex_math.c
+    PROPERTIES
+    COMPILE_FLAGS "-mavx2 -mfma"
+)
 
 # Enable Position Independent Code and set library properties
 set_target_properties(nimcp PROPERTIES

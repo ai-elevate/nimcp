@@ -331,3 +331,53 @@ if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/regression/core/brain/factory")
     add_subdirectory(regression/core/brain/factory)
 endif()
 
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/regression/core/brain")
+    message(STATUS "Adding core brain regression tests...")
+    add_subdirectory(regression/core/brain)
+endif()
+
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/regression/api")
+    message(STATUS "Adding API regression tests (complex opt-in)...")
+    add_subdirectory(regression/api)
+endif()
+
+# ============================================================================
+# Brain Oscillations Tests (Phase C2.2: Complex Oscillation Support)
+# ============================================================================
+
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/unit/core/brain/oscillations")
+    message(STATUS "Adding brain oscillations unit tests (complex phasors)...")
+    add_subdirectory(unit/core/brain/oscillations)
+endif()
+
+# ============================================================================
+# Utils Math Tests (Phase 0.5: Complex Number Support)
+# ============================================================================
+
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/unit/utils/math")
+    message(STATUS "Adding utils math unit tests (complex numbers)...")
+    add_subdirectory(unit/utils/math)
+endif()
+
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/integration/utils/math")
+    message(STATUS "Adding utils math integration tests (complex oscillations)...")
+    add_subdirectory(integration/utils/math)
+endif()
+
+# Utils Fault Tolerance Tests
+# ============================================================================
+
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/unit/utils/fault_tolerance")
+    message(STATUS "Adding utils fault tolerance unit tests...")
+    add_subdirectory(unit/utils/fault_tolerance)
+endif()
+
+# ============================================================================
+# Performance Benchmarks
+# ============================================================================
+
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/benchmarks")
+    message(STATUS "Adding performance benchmarks...")
+    add_subdirectory(benchmarks)
+endif()
+

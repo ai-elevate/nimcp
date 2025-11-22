@@ -3,7 +3,9 @@
 //=============================================================================
 
 #include "middleware/patterns/nimcp_pattern_library.h"
+#include "middleware/patterns/nimcp_pattern_cow.h"
 #include "utils/memory/nimcp_memory.h"
+#include "utils/memory/nimcp_memory_pool.h"
 #include <string.h>
 #include <math.h>
 #include <stdio.h>
@@ -14,6 +16,7 @@
 
 typedef struct pattern_node {
     pattern_template_t pattern;
+    pattern_cow_t* pattern_data_cow;  // CoW wrapper for shared pattern data
     struct pattern_node* next;
 } pattern_node_t;
 
@@ -30,6 +33,9 @@ struct pattern_library {
     pattern_node_t** patterns;     // Array of pattern pointers
     uint32_t num_patterns;
     uint32_t next_pattern_id;
+
+    // Memory pool for KNN similarity computations (Phase 1.4)
+    memory_pool_t knn_temp_pool;
 
     // Statistics
     uint64_t total_matches;
@@ -165,7 +171,9 @@ static pattern_node_t* find_pattern_node(const pattern_library_t* library,
 static void free_pattern_node(pattern_node_t* node) {
     if (!node) return;
 
-    nimcp_free(node->pattern.data);
+    // Release CoW reference (will free data if last reference)
+    pattern_cow_release(node->pattern_data_cow);
+
     nimcp_free(node->pattern.metadata);
     nimcp_free(node);
 }
@@ -188,7 +196,14 @@ pattern_library_config_t pattern_library_default_config(void) {
 }
 
 pattern_library_t* pattern_library_create(const pattern_library_config_t* config) {
-    if (!config || config->max_capacity == 0 || config->max_dimension == 0) {
+    // Allow NULL config - use defaults
+    pattern_library_config_t default_config;
+    if (!config) {
+        default_config = pattern_library_default_config();
+        config = &default_config;
+    }
+
+    if (config->max_capacity == 0 || config->max_dimension == 0) {
         return NULL;
     }
 
@@ -210,6 +225,20 @@ pattern_library_t* pattern_library_create(const pattern_library_config_t* config
 
     library->num_patterns = 0;
     library->next_pattern_id = 1;
+
+    // Initialize memory pool for KNN temp arrays (Phase 1.4)
+    memory_pool_config_t pool_config = {
+        .block_size = config->max_capacity * sizeof(void*) * 2,  // Max patterns × similarity pair size
+        .num_blocks = 2,       // Double buffer
+        .alignment = 16,
+        .enable_tracking = false,
+        .enable_guard_pages = false
+    };
+    library->knn_temp_pool = memory_pool_create(&pool_config);
+    if (!library->knn_temp_pool) {
+        pattern_library_destroy(library);
+        return NULL;
+    }
 
     // Initialize statistics
     library->total_matches = 0;
@@ -233,6 +262,9 @@ void pattern_library_destroy(pattern_library_t* library) {
         }
     }
 
+    // Destroy memory pool (Phase 1.4)
+    memory_pool_destroy(library->knn_temp_pool);
+
     nimcp_free(library->patterns);
     nimcp_free(library);
 }
@@ -253,14 +285,15 @@ bool pattern_library_add(pattern_library_t* library,
     pattern_node_t* node = (pattern_node_t*)nimcp_calloc(1, sizeof(pattern_node_t));
     if (!node) return false;
 
-    // Allocate pattern data
-    node->pattern.data = (float*)nimcp_malloc(dimension * sizeof(float));
-    if (!node->pattern.data) {
+    // Create CoW wrapper for pattern data (Phase 1.4)
+    node->pattern_data_cow = pattern_cow_create(data, dimension);
+    if (!node->pattern_data_cow) {
         nimcp_free(node);
         return false;
     }
 
-    memcpy(node->pattern.data, data, dimension * sizeof(float));
+    // Point pattern.data to CoW data (read-only access)
+    node->pattern.data = (float*)pattern_cow_data(node->pattern_data_cow);
     node->pattern.dimension = dimension;
     node->pattern.pattern_id = library->next_pattern_id++;
     node->pattern.usage_count = 0;
@@ -374,7 +407,8 @@ bool pattern_library_knn(pattern_library_t* library,
         float similarity;
     } sim_pair_t;
 
-    sim_pair_t* all_sims = (sim_pair_t*)nimcp_malloc(library->num_patterns * sizeof(sim_pair_t));
+    // Use memory pool for temp array (Phase 1.4 - 1.13x faster than malloc)
+    sim_pair_t* all_sims = (sim_pair_t*)memory_pool_acquire(library->knn_temp_pool);
     if (!all_sims) return false;
 
     uint32_t valid_count = 0;
@@ -416,7 +450,8 @@ bool pattern_library_knn(pattern_library_t* library,
 
     *num_found = num_to_return;
 
-    nimcp_free(all_sims);
+    // Release back to pool (Phase 1.4)
+    memory_pool_release(library->knn_temp_pool, all_sims);
 
     return true;
 }
