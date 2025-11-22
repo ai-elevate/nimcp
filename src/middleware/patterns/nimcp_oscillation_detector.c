@@ -256,7 +256,9 @@ static bool detect_burst(band_state_t* state, float power, double timestamp_ms,
  *
  * WHAT: Fast coherence-based oscillation detection using Hilbert transform
  * WHY:  2-5x faster than DFT, more accurate phase/amplitude extraction, SIMD optimized
- * HOW:  Use hilbert API for analytic signal, compute coherence and power
+ * HOW:  Band-pass filter signal, compute Hilbert transform, extract amplitude/power
+ *
+ * CRITICAL: Must band-pass filter BEFORE Hilbert to isolate frequency band!
  *
  * Upgraded to use new hilbert_transform API with SIMD optimization
  */
@@ -271,18 +273,40 @@ static bool detect_oscillation_phasor_hilbert(hilbert_transform_t* ht,
                                                float* coherence) {
     if (!ht) return false;
 
-    // Allocate buffers for analytic signal and amplitude
+    // Allocate buffers for filtered signal, analytic signal, and amplitude
+    float* filtered_signal = (float*)nimcp_malloc(length * sizeof(float));
     neural_phasor_t* analytic_signal = (neural_phasor_t*)nimcp_malloc(length * sizeof(neural_phasor_t));
     float* amplitude = (float*)nimcp_malloc(length * sizeof(float));
 
-    if (!analytic_signal || !amplitude) {
+    if (!filtered_signal || !analytic_signal || !amplitude) {
+        nimcp_free(filtered_signal);
         nimcp_free(analytic_signal);
         nimcp_free(amplitude);
         return false;
     }
 
-    // Compute analytic signal via Hilbert transform
-    if (!hilbert_apply(ht, signal_window, analytic_signal, length)) {
+    // CRITICAL FIX: Band-pass filter the signal to isolate frequency band BEFORE Hilbert
+    // This ensures we compute power for the specific band, not the entire broadband signal
+    // For Delta band (min_freq ≈ 0), use lowpass filter; for others, use bandpass
+    signal_filter_config_t filter_config;
+    if (min_freq < 0.5f) {  // Delta band (0-4Hz) → lowpass filter
+        filter_config = signal_filter_lowpass_config(max_freq, sample_rate);
+    } else {  // All other bands → bandpass filter
+        filter_config = signal_filter_bandpass_config(min_freq, max_freq, sample_rate);
+    }
+
+    signal_filter_t* filter = signal_filter_create(&filter_config);
+    if (!filter || !signal_filter_apply(filter, signal_window, filtered_signal, length)) {
+        // Fallback to unfiltered if filter creation/application fails
+        memcpy(filtered_signal, signal_window, length * sizeof(float));
+    }
+    if (filter) {
+        signal_filter_destroy(filter);
+    }
+
+    // Compute analytic signal via Hilbert transform on FILTERED signal
+    if (!hilbert_apply(ht, filtered_signal, analytic_signal, length)) {
+        nimcp_free(filtered_signal);
         nimcp_free(analytic_signal);
         nimcp_free(amplitude);
         return false;
@@ -291,8 +315,8 @@ static bool detect_oscillation_phasor_hilbert(hilbert_transform_t* ht,
     // Compute inter-trial phase coherence (ITPC) for the band
     *coherence = phasor_array_coherence(analytic_signal, length);
 
-    // Extract amplitude envelope using SIMD-optimized extraction
-    if (!hilbert_extract_amplitude(ht, signal_window, amplitude, length)) {
+    // Extract amplitude envelope using SIMD-optimized extraction on FILTERED signal
+    if (!hilbert_extract_amplitude(ht, filtered_signal, amplitude, length)) {
         // Fallback to manual extraction if needed
         for (uint32_t i = 0; i < length; i++) {
             amplitude[i] = phasor_amplitude(analytic_signal[i]);
@@ -331,6 +355,7 @@ static bool detect_oscillation_phasor_hilbert(hilbert_transform_t* ht,
     nimcp_free(spectrum);
     nimcp_free(amplitude);
     nimcp_free(analytic_signal);
+    nimcp_free(filtered_signal);
     return true;
 }
 

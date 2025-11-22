@@ -87,7 +87,7 @@ static bool design_highpass_filter(float* coeffs, uint32_t order, float cutoff, 
 }
 
 static bool design_bandpass_filter(float* coeffs, uint32_t order, float low_freq, float high_freq, float sample_rate) {
-    if (!coeffs || order == 0 || low_freq <= 0.0f || high_freq <= low_freq || sample_rate <= 0.0f) {
+    if (!coeffs || order == 0 || low_freq < 0.0f || high_freq <= low_freq || sample_rate <= 0.0f) {
         return false;
     }
 
@@ -187,7 +187,7 @@ bool signal_filter_validate_config(const signal_filter_config_t* config) {
 
         case FILTER_BANDPASS:
         case FILTER_BANDSTOP:
-            if (config->low_freq <= 0.0f || config->high_freq >= nyquist) {
+            if (config->low_freq < 0.0f || config->high_freq >= nyquist) {
                 return false;
             }
             if (config->low_freq >= config->high_freq) {
