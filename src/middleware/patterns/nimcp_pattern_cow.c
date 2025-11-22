@@ -1,0 +1,72 @@
+//=============================================================================
+// nimcp_pattern_cow.c - Copy-on-Write Pattern Data Implementation
+//=============================================================================
+
+#include "middleware/patterns/nimcp_pattern_cow.h"
+#include "utils/memory/nimcp_memory.h"
+#include <string.h>
+
+//=============================================================================
+// CoW Pattern Data Lifecycle
+//=============================================================================
+
+pattern_cow_t* pattern_cow_create(const float* data, uint32_t dimension) {
+    if (!data || dimension == 0) return NULL;
+
+    // Allocate CoW wrapper
+    pattern_cow_t* cow = (pattern_cow_t*)nimcp_malloc(sizeof(pattern_cow_t));
+    if (!cow) return NULL;
+
+    // Allocate pattern data
+    cow->data = (float*)nimcp_malloc(dimension * sizeof(float));
+    if (!cow->data) {
+        nimcp_free(cow);
+        return NULL;
+    }
+
+    // Copy pattern data
+    memcpy(cow->data, data, dimension * sizeof(float));
+    cow->dimension = dimension;
+
+    // Initialize refcount to 1
+    atomic_init(&cow->refcount, 1);
+
+    return cow;
+}
+
+pattern_cow_t* pattern_cow_clone(pattern_cow_t* cow) {
+    if (!cow) return NULL;
+
+    // Atomically increment reference count
+    atomic_fetch_add(&cow->refcount, 1);
+
+    return cow;
+}
+
+void pattern_cow_release(pattern_cow_t* cow) {
+    if (!cow) return;
+
+    // Atomically decrement reference count
+    uint32_t old_count = atomic_fetch_sub(&cow->refcount, 1);
+
+    // If we were the last reference (old_count was 1, now 0), free resources
+    if (old_count == 1) {
+        nimcp_free(cow->data);
+        nimcp_free(cow);
+    }
+}
+
+const float* pattern_cow_data(const pattern_cow_t* cow) {
+    if (!cow) return NULL;
+    return cow->data;
+}
+
+uint32_t pattern_cow_dimension(const pattern_cow_t* cow) {
+    if (!cow) return 0;
+    return cow->dimension;
+}
+
+uint32_t pattern_cow_refcount(const pattern_cow_t* cow) {
+    if (!cow) return 0;
+    return atomic_load(&cow->refcount);
+}

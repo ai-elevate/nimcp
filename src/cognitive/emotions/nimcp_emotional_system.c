@@ -20,6 +20,7 @@
  */
 
 #include "cognitive/nimcp_emotional_system.h"
+#include "utils/memory/nimcp_memory.h"
 #include "cognitive/nimcp_emotional_tagging.h"
 #include <stdlib.h>
 #include <string.h>
@@ -150,7 +151,7 @@ emotion_config_t emotion_system_default_config(void) {
 
 emotional_system_t* emotion_system_create(const emotion_config_t* config) {
     // Allocate system
-    emotional_system_t* system = (emotional_system_t*)calloc(1, sizeof(emotional_system_t));
+    emotional_system_t* system = (emotional_system_t*)nimcp_calloc(1, sizeof(emotional_system_t));
     if (!system) {
         return NULL;
     }
@@ -180,7 +181,7 @@ void emotion_system_destroy(emotional_system_t* system) {
         return;
     }
 
-    free(system);
+    nimcp_free(system);
 }
 
 //=============================================================================

@@ -18,6 +18,7 @@
  */
 
 #include "cognitive/memory/nimcp_engram.h"
+#include "utils/memory/nimcp_memory.h"
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
@@ -70,7 +71,7 @@ static bool expand_engram_array(engram_system_t* system) {
     if (!system) return false;
 
     uint32_t new_capacity = (uint32_t)(system->capacity * ENGRAM_GROWTH_FACTOR);
-    memory_engram_t* new_array = (memory_engram_t*)realloc(
+    memory_engram_t* new_array = (memory_engram_t*)nimcp_realloc(
         system->engrams,
         new_capacity * sizeof(memory_engram_t));
 
@@ -122,15 +123,15 @@ engram_system_t* engram_system_create(void) {
     // WHY:  Required for memory trace tracking
     // HOW:  Allocate struct and array, set defaults
 
-    engram_system_t* system = (engram_system_t*)calloc(1, sizeof(engram_system_t));
+    engram_system_t* system = (engram_system_t*)nimcp_calloc(1, sizeof(engram_system_t));
     if (!system) return NULL;
 
     // Allocate initial engram array
-    system->engrams = (memory_engram_t*)calloc(
+    system->engrams = (memory_engram_t*)nimcp_calloc(
         ENGRAM_INITIAL_CAPACITY, sizeof(memory_engram_t));
 
     if (!system->engrams) {
-        free(system);
+        nimcp_free(system);
         return NULL;
     }
 
@@ -165,10 +166,10 @@ void engram_system_destroy(engram_system_t* system) {
     if (!system) return;
 
     if (system->engrams) {
-        free(system->engrams);
+        nimcp_free(system->engrams);
     }
 
-    free(system);
+    nimcp_free(system);
 }
 
 void engram_system_reset(engram_system_t* system) {

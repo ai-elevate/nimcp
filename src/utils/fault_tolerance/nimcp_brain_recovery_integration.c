@@ -4,6 +4,7 @@
  */
 
 #include "utils/fault_tolerance/nimcp_brain_recovery_integration.h"
+#include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include <stdlib.h>
 #include <string.h>
@@ -149,7 +150,7 @@ brain_recovery_context_t brain_recovery_init(brain_t brain) {
         return NULL;
     }
 
-    brain_recovery_context_t ctx = calloc(1, sizeof(struct brain_recovery_context_internal));
+    brain_recovery_context_t ctx = nimcp_calloc(1, sizeof(struct brain_recovery_context_internal));
     if (!ctx) {
         LOG_ERROR("Failed to allocate brain recovery context");
         return NULL;
@@ -159,20 +160,20 @@ brain_recovery_context_t brain_recovery_init(brain_t brain) {
 
     // Allocate history
     ctx->history_capacity = MAX_RECOVERY_HISTORY;
-    ctx->history = calloc(ctx->history_capacity, sizeof(recovery_outcome_t));
+    ctx->history = nimcp_calloc(ctx->history_capacity, sizeof(recovery_outcome_t));
     if (!ctx->history) {
         LOG_ERROR("Failed to allocate recovery history");
-        free(ctx);
+        nimcp_free(ctx);
         return NULL;
     }
 
     // Allocate patterns
     ctx->pattern_capacity = MAX_LEARNED_PATTERNS;
-    ctx->patterns = calloc(ctx->pattern_capacity, sizeof(recovery_pattern_t));
+    ctx->patterns = nimcp_calloc(ctx->pattern_capacity, sizeof(recovery_pattern_t));
     if (!ctx->patterns) {
         LOG_ERROR("Failed to allocate pattern storage");
-        free(ctx->history);
-        free(ctx);
+        nimcp_free(ctx->history);
+        nimcp_free(ctx);
         return NULL;
     }
 
@@ -196,14 +197,14 @@ void brain_recovery_shutdown(brain_recovery_context_t ctx) {
     // Free heap-allocated pointers in history entries
     if (ctx->history) {
         for (uint32_t i = 0; i < ctx->history_count; i++) {
-            free(ctx->history[i].strategy);
-            free(ctx->history[i].result);
+            nimcp_free(ctx->history[i].strategy);
+            nimcp_free(ctx->history[i].result);
         }
-        free(ctx->history);
+        nimcp_free(ctx->history);
     }
 
-    free(ctx->patterns);
-    free(ctx);
+    nimcp_free(ctx->patterns);
+    nimcp_free(ctx);
 }
 
 //=============================================================================
@@ -220,7 +221,7 @@ brain_recovery_decision_t* brain_recovery_select_strategy(
         return NULL;
     }
 
-    brain_recovery_decision_t* decision = calloc(1, sizeof(brain_recovery_decision_t));
+    brain_recovery_decision_t* decision = nimcp_calloc(1, sizeof(brain_recovery_decision_t));
     if (!decision) {
         LOG_ERROR("Failed to allocate brain decision");
         return NULL;
@@ -237,7 +238,7 @@ brain_recovery_decision_t* brain_recovery_select_strategy(
         LOG_INFO("Found learned pattern: %s (success_rate=%.2f, confidence=%.2f)",
             decision->failure_signature, pattern->success_rate, pattern->confidence);
 
-        decision->selected_strategy = calloc(1, sizeof(recovery_strategy_t));
+        decision->selected_strategy = nimcp_calloc(1, sizeof(recovery_strategy_t));
         if (decision->selected_strategy) {
             decision->selected_strategy->tier = pattern->best_tier;
             decision->selected_strategy->primary = pattern->best_action;
@@ -272,7 +273,7 @@ brain_recovery_decision_t* brain_recovery_select_strategy(
         recovery_strategy_t* static_strategy = recovery_select_strategy(&summary);
 
         // Make a heap copy so we can safely free it later
-        decision->selected_strategy = calloc(1, sizeof(recovery_strategy_t));
+        decision->selected_strategy = nimcp_calloc(1, sizeof(recovery_strategy_t));
         if (decision->selected_strategy && static_strategy) {
             memcpy(decision->selected_strategy, static_strategy, sizeof(recovery_strategy_t));
         }
@@ -295,8 +296,8 @@ brain_recovery_decision_t* brain_recovery_select_strategy(
 
 void brain_recovery_free_decision(brain_recovery_decision_t* decision) {
     if (!decision) return;
-    free(decision->selected_strategy);
-    free(decision);
+    nimcp_free(decision->selected_strategy);
+    nimcp_free(decision);
 }
 
 //=============================================================================
@@ -324,13 +325,13 @@ void brain_recovery_learn_outcome(
 
         // If we're about to overwrite an old entry, free its pointers first
         if (ctx->history_count >= ctx->history_capacity) {
-            free(outcome->strategy);
-            free(outcome->result);
+            nimcp_free(outcome->strategy);
+            nimcp_free(outcome->result);
         }
 
         // Make heap copy of strategy (don't store pointer that will be freed)
         if (decision->selected_strategy) {
-            outcome->strategy = calloc(1, sizeof(recovery_strategy_t));
+            outcome->strategy = nimcp_calloc(1, sizeof(recovery_strategy_t));
             if (outcome->strategy) {
                 memcpy(outcome->strategy, decision->selected_strategy, sizeof(recovery_strategy_t));
             }
@@ -340,7 +341,7 @@ void brain_recovery_learn_outcome(
 
         // Make heap copy of result (don't store pointer that may be stack-allocated)
         if (result) {
-            outcome->result = calloc(1, sizeof(recovery_result_t));
+            outcome->result = nimcp_calloc(1, sizeof(recovery_result_t));
             if (outcome->result) {
                 memcpy(outcome->result, result, sizeof(recovery_result_t));
             }

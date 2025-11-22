@@ -61,7 +61,7 @@ grief_system_t* grief_system_create(void) {
 void grief_system_destroy(grief_system_t* system) {
     // WHAT: Free grief system resources
     // WHY:  Prevent memory leaks
-    // HOW:  Simple free (no complex nested allocations)
+    // HOW:  Simple nimcp_free(no complex nested allocations)
 
     if (!system) return;
     nimcp_free(system);

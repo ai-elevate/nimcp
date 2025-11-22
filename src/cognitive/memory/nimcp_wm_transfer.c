@@ -11,6 +11,7 @@
  */
 
 #include "cognitive/memory/nimcp_wm_transfer.h"
+#include "utils/memory/nimcp_memory.h"
 #include "cognitive/memory/nimcp_engram.h"
 #include "utils/platform/nimcp_platform_time.h"
 #include <stdlib.h>
@@ -45,7 +46,7 @@
  */
 wm_transfer_system_t* wm_transfer_create(void) {
     // Allocate system
-    wm_transfer_system_t* system = (wm_transfer_system_t*)calloc(1, sizeof(wm_transfer_system_t));
+    wm_transfer_system_t* system = (wm_transfer_system_t*)nimcp_calloc(1, sizeof(wm_transfer_system_t));
     if (!system) {
         fprintf(stderr, "Failed to allocate WM transfer system\n");
         return NULL;
@@ -58,10 +59,10 @@ wm_transfer_system_t* wm_transfer_create(void) {
 
     // Initialize attention tracking
     system->attention_weight_count = DEFAULT_WM_CAPACITY;
-    system->last_attention_weights = (float*)calloc(DEFAULT_WM_CAPACITY, sizeof(float));
+    system->last_attention_weights = (float*)nimcp_calloc(DEFAULT_WM_CAPACITY, sizeof(float));
     if (!system->last_attention_weights) {
         fprintf(stderr, "Failed to allocate attention weights\n");
-        free(system);
+        nimcp_free(system);
         return NULL;
     }
 
@@ -82,11 +83,11 @@ void wm_transfer_destroy(wm_transfer_system_t* system) {
 
     // Free attention tracking
     if (system->last_attention_weights) {
-        free(system->last_attention_weights);
+        nimcp_free(system->last_attention_weights);
     }
 
     // Free system
-    free(system);
+    nimcp_free(system);
 }
 
 /**
@@ -321,7 +322,7 @@ void wm_transfer_update_attention(
 
     // Resize attention array if needed
     if (count != system->attention_weight_count) {
-        float* new_weights = (float*)realloc(system->last_attention_weights,
+        float* new_weights = (float*)nimcp_realloc(system->last_attention_weights,
                                                count * sizeof(float));
         if (!new_weights) {
             fprintf(stderr, "Failed to resize attention weights\n");

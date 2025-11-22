@@ -11,6 +11,7 @@
  */
 
 #include "information/nimcp_shannon.h"
+#include "utils/memory/nimcp_memory.h"
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
@@ -112,12 +113,12 @@ float shannon_mutual_information(const shannon_joint_distribution_t* joint_distr
     uint32_t num_y = joint_distribution->num_y_states;
 
     // Compute marginal distributions
-    float* p_x = (float*)calloc(num_x, sizeof(float));
-    float* p_y = (float*)calloc(num_y, sizeof(float));
+    float* p_x = (float*)nimcp_calloc(num_x, sizeof(float));
+    float* p_y = (float*)nimcp_calloc(num_y, sizeof(float));
 
     if (!p_x || !p_y) {
-        free(p_x);
-        free(p_y);
+        nimcp_free(p_x);
+        nimcp_free(p_y);
         return 0.0f;
     }
 
@@ -144,8 +145,8 @@ float shannon_mutual_information(const shannon_joint_distribution_t* joint_distr
         }
     }
 
-    free(p_x);
-    free(p_y);
+    nimcp_free(p_x);
+    nimcp_free(p_y);
 
     return mutual_info;
 }
@@ -392,7 +393,7 @@ shannon_neuron_metrics_t shannon_analyze_neuron(
     if (spike_history && history_length > 1) {
         // Compute ISI distribution
         uint32_t num_isi_bins = 10;
-        float* isi_histogram = (float*)calloc(num_isi_bins, sizeof(float));
+        float* isi_histogram = (float*)nimcp_calloc(num_isi_bins, sizeof(float));
 
         if (isi_histogram) {
             // Compute ISIs
@@ -411,7 +412,7 @@ shannon_neuron_metrics_t shannon_analyze_neuron(
             // Compute entropy
             metrics.spike_entropy = shannon_entropy_array(isi_histogram, num_isi_bins);
 
-            free(isi_histogram);
+            nimcp_free(isi_histogram);
         }
     }
 
@@ -575,16 +576,16 @@ shannon_distribution_t* shannon_distribution_create(
         return NULL;
     }
 
-    shannon_distribution_t* dist = (shannon_distribution_t*)malloc(sizeof(shannon_distribution_t));
+    shannon_distribution_t* dist = (shannon_distribution_t*)nimcp_malloc(sizeof(shannon_distribution_t));
     if (!dist) {
         return NULL;
     }
 
     dist->num_states = num_states;
-    dist->probabilities = (float*)malloc(num_states * sizeof(float));
+    dist->probabilities = (float*)nimcp_malloc(num_states * sizeof(float));
 
     if (!dist->probabilities) {
-        free(dist);
+        nimcp_free(dist);
         return NULL;
     }
 
@@ -614,10 +615,10 @@ void shannon_distribution_free(shannon_distribution_t* distribution)
     }
 
     if (distribution->probabilities) {
-        free(distribution->probabilities);
+        nimcp_free(distribution->probabilities);
     }
 
-    free(distribution);
+    nimcp_free(distribution);
 }
 
 bool shannon_distribution_normalize(shannon_distribution_t* distribution)
@@ -654,7 +655,7 @@ shannon_joint_distribution_t* shannon_joint_distribution_create(
     }
 
     shannon_joint_distribution_t* joint = (shannon_joint_distribution_t*)
-        malloc(sizeof(shannon_joint_distribution_t));
+        nimcp_malloc(sizeof(shannon_joint_distribution_t));
     if (!joint) {
         return NULL;
     }
@@ -663,10 +664,10 @@ shannon_joint_distribution_t* shannon_joint_distribution_create(
     joint->num_y_states = num_y_states;
 
     uint32_t total_size = num_x_states * num_y_states;
-    joint->joint_probabilities = (float*)malloc(total_size * sizeof(float));
+    joint->joint_probabilities = (float*)nimcp_malloc(total_size * sizeof(float));
 
     if (!joint->joint_probabilities) {
-        free(joint);
+        nimcp_free(joint);
         return NULL;
     }
 
@@ -697,10 +698,10 @@ void shannon_joint_distribution_free(shannon_joint_distribution_t* joint_distrib
     }
 
     if (joint_distribution->joint_probabilities) {
-        free(joint_distribution->joint_probabilities);
+        nimcp_free(joint_distribution->joint_probabilities);
     }
 
-    free(joint_distribution);
+    nimcp_free(joint_distribution);
 }
 
 shannon_distribution_t* shannon_marginal_x(
@@ -713,7 +714,7 @@ shannon_distribution_t* shannon_marginal_x(
     uint32_t num_x = joint_distribution->num_x_states;
     uint32_t num_y = joint_distribution->num_y_states;
 
-    float* marginal_probs = (float*)calloc(num_x, sizeof(float));
+    float* marginal_probs = (float*)nimcp_calloc(num_x, sizeof(float));
     if (!marginal_probs) {
         return NULL;
     }
@@ -726,7 +727,7 @@ shannon_distribution_t* shannon_marginal_x(
     }
 
     shannon_distribution_t* marginal = shannon_distribution_create(num_x, marginal_probs);
-    free(marginal_probs);
+    nimcp_free(marginal_probs);
 
     return marginal;
 }
@@ -741,7 +742,7 @@ shannon_distribution_t* shannon_marginal_y(
     uint32_t num_x = joint_distribution->num_x_states;
     uint32_t num_y = joint_distribution->num_y_states;
 
-    float* marginal_probs = (float*)calloc(num_y, sizeof(float));
+    float* marginal_probs = (float*)nimcp_calloc(num_y, sizeof(float));
     if (!marginal_probs) {
         return NULL;
     }
@@ -754,7 +755,7 @@ shannon_distribution_t* shannon_marginal_y(
     }
 
     shannon_distribution_t* marginal = shannon_distribution_create(num_y, marginal_probs);
-    free(marginal_probs);
+    nimcp_free(marginal_probs);
 
     return marginal;
 }

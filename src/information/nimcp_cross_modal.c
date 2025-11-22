@@ -12,6 +12,7 @@
  */
 
 #include "information/nimcp_cross_modal.h"
+#include "utils/memory/nimcp_memory.h"
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
@@ -110,7 +111,7 @@ static float compute_mutual_information(
 
     // Compute joint entropy H(X,Y)
     uint32_t joint_dim = dim_x + dim_y;
-    float* joint_features = (float*)malloc(num_samples * joint_dim * sizeof(float));
+    float* joint_features = (float*)nimcp_malloc(num_samples * joint_dim * sizeof(float));
     if (!joint_features) {
         return 0.0f;
     }
@@ -129,7 +130,7 @@ static float compute_mutual_information(
         joint_features, joint_dim, num_samples, config
     );
 
-    free(joint_features);
+    nimcp_free(joint_features);
 
     // I(X;Y) = H(X) + H(Y) - H(X,Y)
     float mi = entropy_x + entropy_y - joint_entropy;
@@ -325,7 +326,7 @@ multi_modal_integration_t cross_modal_analyze_integration(
         total_dim += dims[i];
     }
 
-    float* joint_features = (float*)malloc(num_samples * total_dim * sizeof(float));
+    float* joint_features = (float*)nimcp_malloc(num_samples * total_dim * sizeof(float));
     if (!joint_features) {
         nimcp_log_error("cross_modal_analyze_integration: malloc failed");
         return integration;
@@ -346,7 +347,7 @@ multi_modal_integration_t cross_modal_analyze_integration(
         joint_features, total_dim, num_samples, config
     );
 
-    free(joint_features);
+    nimcp_free(joint_features);
 
     // Compute pairwise mutual information (total)
     integration.total_mutual_info = 0.0f;
@@ -434,7 +435,7 @@ cross_modal_routing_graph_t* cross_modal_create_routing_graph(
 
     // Allocate graph
     cross_modal_routing_graph_t* graph = (cross_modal_routing_graph_t*)
-        calloc(1, sizeof(cross_modal_routing_graph_t));
+        nimcp_calloc(1, sizeof(cross_modal_routing_graph_t));
     if (!graph) {
         nimcp_log_error("cross_modal_create_routing_graph: malloc failed");
         return NULL;
@@ -490,7 +491,7 @@ bool cross_modal_update_routing_graph(
     // Allocate channel if needed
     if (!graph->channels[source_id][dest_id]) {
         graph->channels[source_id][dest_id] = (cross_modal_channel_t*)
-            malloc(sizeof(cross_modal_channel_t));
+            nimcp_malloc(sizeof(cross_modal_channel_t));
         if (!graph->channels[source_id][dest_id]) {
             nimcp_log_error("cross_modal_update_routing_graph: malloc failed");
             return false;
@@ -611,14 +612,14 @@ void cross_modal_destroy_routing_graph(cross_modal_routing_graph_t* graph)
     for (uint32_t i = 0; i < graph->num_modalities; i++) {
         for (uint32_t j = 0; j < graph->num_modalities; j++) {
             if (graph->channels[i][j]) {
-                free(graph->channels[i][j]);
+                nimcp_free(graph->channels[i][j]);
                 graph->channels[i][j] = NULL;
             }
         }
     }
 
     // Free graph
-    free(graph);
+    nimcp_free(graph);
 }
 
 //=============================================================================

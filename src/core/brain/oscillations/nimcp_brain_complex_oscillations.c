@@ -4,6 +4,7 @@
 
 #include "core/brain/oscillations/nimcp_brain_complex_oscillations.h"
 #include "core/brain/nimcp_brain_internal.h"
+#include "utils/memory/nimcp_memory.h"
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
@@ -32,15 +33,15 @@ brain_complex_oscillation_state_t* brain_complex_oscillation_create(
 
     // Allocate state structure
     brain_complex_oscillation_state_t* state =
-        (brain_complex_oscillation_state_t*)calloc(1, sizeof(brain_complex_oscillation_state_t));
+        (brain_complex_oscillation_state_t*)nimcp_calloc(1, sizeof(brain_complex_oscillation_state_t));
     if (!state) {
         return NULL;
     }
 
     // Allocate phasor array
-    state->neuron_phasors = (neural_phasor_t*)calloc(num_neurons, sizeof(neural_phasor_t));
+    state->neuron_phasors = (neural_phasor_t*)nimcp_calloc(num_neurons, sizeof(neural_phasor_t));
     if (!state->neuron_phasors) {
-        free(state);
+        nimcp_free(state);
         return NULL;
     }
 
@@ -67,11 +68,11 @@ void brain_complex_oscillation_destroy(
 
     // Free phasor array
     if (state->neuron_phasors) {
-        free(state->neuron_phasors);
+        nimcp_free(state->neuron_phasors);
     }
 
     // Free state
-    free(state);
+    nimcp_free(state);
 }
 
 //=============================================================================
@@ -227,7 +228,7 @@ bool brain_complex_oscillation_compute_coherence_subset(
 
     // Allocate temporary phasor array
     neural_phasor_t* subset_phasors =
-        (neural_phasor_t*)malloc(num_neurons * sizeof(neural_phasor_t));
+        (neural_phasor_t*)nimcp_malloc(num_neurons * sizeof(neural_phasor_t));
     if (!subset_phasors) {
         return false;
     }
@@ -236,7 +237,7 @@ bool brain_complex_oscillation_compute_coherence_subset(
     for (uint32_t i = 0; i < num_neurons; i++) {
         // Guard: Check index bounds
         if (neuron_indices[i] >= state->num_neurons) {
-            free(subset_phasors);
+            nimcp_free(subset_phasors);
             return false;
         }
         subset_phasors[i] = state->neuron_phasors[neuron_indices[i]];
@@ -256,7 +257,7 @@ bool brain_complex_oscillation_compute_coherence_subset(
     result->num_neurons = num_neurons;
 
     // Cleanup
-    free(subset_phasors);
+    nimcp_free(subset_phasors);
 
     return true;
 }
@@ -279,19 +280,19 @@ float brain_complex_oscillation_compute_synchrony(
     }
 
     // Allocate temporary arrays
-    neural_phasor_t* phasors1 = (neural_phasor_t*)malloc(num1 * sizeof(neural_phasor_t));
-    neural_phasor_t* phasors2 = (neural_phasor_t*)malloc(num2 * sizeof(neural_phasor_t));
+    neural_phasor_t* phasors1 = (neural_phasor_t*)nimcp_malloc(num1 * sizeof(neural_phasor_t));
+    neural_phasor_t* phasors2 = (neural_phasor_t*)nimcp_malloc(num2 * sizeof(neural_phasor_t));
     if (!phasors1 || !phasors2) {
-        free(phasors1);
-        free(phasors2);
+        nimcp_free(phasors1);
+        nimcp_free(phasors2);
         return -1.0f;
     }
 
     // Extract phasors for each population
     for (uint32_t i = 0; i < num1; i++) {
         if (indices1[i] >= state->num_neurons) {
-            free(phasors1);
-            free(phasors2);
+            nimcp_free(phasors1);
+            nimcp_free(phasors2);
             return -1.0f;
         }
         phasors1[i] = state->neuron_phasors[indices1[i]];
@@ -299,8 +300,8 @@ float brain_complex_oscillation_compute_synchrony(
 
     for (uint32_t i = 0; i < num2; i++) {
         if (indices2[i] >= state->num_neurons) {
-            free(phasors1);
-            free(phasors2);
+            nimcp_free(phasors1);
+            nimcp_free(phasors2);
             return -1.0f;
         }
         phasors2[i] = state->neuron_phasors[indices2[i]];
@@ -311,8 +312,8 @@ float brain_complex_oscillation_compute_synchrony(
                                               num1 < num2 ? num1 : num2);
 
     // Cleanup
-    free(phasors1);
-    free(phasors2);
+    nimcp_free(phasors1);
+    nimcp_free(phasors2);
 
     return synchrony;
 }
@@ -341,7 +342,7 @@ bool brain_complex_oscillation_compute_pac(
 
     // Allocate temporary phase phasor array
     neural_phasor_t* phase_phasors =
-        (neural_phasor_t*)malloc(num_phase * sizeof(neural_phasor_t));
+        (neural_phasor_t*)nimcp_malloc(num_phase * sizeof(neural_phasor_t));
     if (!phase_phasors) {
         return false;
     }
@@ -349,7 +350,7 @@ bool brain_complex_oscillation_compute_pac(
     // Extract phase phasors
     for (uint32_t i = 0; i < num_phase; i++) {
         if (phase_indices[i] >= state->num_neurons) {
-            free(phase_phasors);
+            nimcp_free(phase_phasors);
             return false;
         }
         phase_phasors[i] = state->neuron_phasors[phase_indices[i]];
@@ -398,7 +399,7 @@ bool brain_complex_oscillation_compute_pac(
     result->significance = result->modulation_index;
 
     // Cleanup
-    free(phase_phasors);
+    nimcp_free(phase_phasors);
 
     return true;
 }

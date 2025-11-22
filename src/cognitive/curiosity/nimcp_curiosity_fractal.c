@@ -19,6 +19,7 @@
  */
 
 #include "nimcp_curiosity.h"
+#include "utils/memory/nimcp_memory.h"
 #include "cognitive/nimcp_fractal_cognitive.h"
 #include "cognitive/knowledge/nimcp_knowledge.h"
 #include <stdlib.h>
@@ -93,7 +94,7 @@ uint32_t curiosity_fractal_next_exploration_target(neural_network_t network,
     }
 
     // Get k most central neighbors of the hub
-    uint32_t *candidates = (uint32_t*)malloc(k * sizeof(uint32_t));
+    uint32_t *candidates = (uint32_t*)nimcp_malloc(k * sizeof(uint32_t));
     if (!candidates) {
         return UINT32_MAX;
     }
@@ -105,7 +106,7 @@ uint32_t curiosity_fractal_next_exploration_target(neural_network_t network,
                                                             candidates);
 
     if (num_candidates == 0) {
-        free(candidates);
+        nimcp_free(candidates);
         return UINT32_MAX;
     }
 
@@ -129,7 +130,7 @@ uint32_t curiosity_fractal_next_exploration_target(neural_network_t network,
         }
     }
 
-    free(candidates);
+    nimcp_free(candidates);
     return best_candidate;
 }
 

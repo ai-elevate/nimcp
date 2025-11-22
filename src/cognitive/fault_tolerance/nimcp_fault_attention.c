@@ -10,6 +10,7 @@
  */
 
 #include "cognitive/fault_tolerance/nimcp_fault_attention.h"
+#include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include <stdlib.h>
 #include <string.h>
@@ -238,7 +239,7 @@ fault_attention_t* fault_attention_create_custom(
     // =========================================================================
 
     fault_attention_t* attention =
-        (fault_attention_t*)calloc(1, sizeof(fault_attention_t));
+        (fault_attention_t*)nimcp_calloc(1, sizeof(fault_attention_t));
 
     if (!attention) {
         nimcp_log(LOG_LEVEL_ERROR,
@@ -294,7 +295,7 @@ void fault_attention_destroy(fault_attention_t* attention) {
               attention->stats.total_computations,
               attention->stats.total_updates);
 
-    free(attention);
+    nimcp_free(attention);
 }
 
 //=============================================================================

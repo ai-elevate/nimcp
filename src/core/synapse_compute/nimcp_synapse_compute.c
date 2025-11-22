@@ -41,6 +41,7 @@
 // NIMCP 2.7: Synapse compute functions
 // NOTE: synapse_compute.h includes neuralnet.h, which has full struct definitions
 #include "core/synapse_compute/nimcp_synapse_compute.h"
+#include "utils/memory/nimcp_memory.h"
 #include "plasticity/eligibility/nimcp_eligibility_trace.h"  // Option 2.2: Burst-triggered consolidation
 #include "plasticity/neuromodulators/nimcp_neuromodulators.h"  // For neuromodulator_get_level
 #include "plasticity/neuromodulators/nimcp_phasic_tonic.h"  // For phasic_tonic_state_t
@@ -696,7 +697,7 @@ int synapse_compute_state_init(synapse_compute_state_t* state, uint32_t extended
 
     // Allocate extended memory if requested
     if (extended_size > 0) {
-        state->extended_memory = (float*)calloc(extended_size, sizeof(float));
+        state->extended_memory = (float*)nimcp_calloc(extended_size, sizeof(float));
         if (!state->extended_memory) {
             return -1; // Allocation failed
         }
@@ -720,7 +721,7 @@ void synapse_compute_state_cleanup(synapse_compute_state_t* state) {
 
     // Free extended memory
     if (state->extended_memory) {
-        free(state->extended_memory);
+        nimcp_free(state->extended_memory);
         state->extended_memory = NULL;
         state->extended_size = 0;
     }
@@ -748,7 +749,7 @@ int synapse_set_compute_function(
 
     // Allocate compute state if needed
     if (!syn->compute_state && (function_data || compute_fn)) {
-        syn->compute_state = (synapse_compute_state_t*)calloc(1, sizeof(synapse_compute_state_t));
+        syn->compute_state = (synapse_compute_state_t*)nimcp_calloc(1, sizeof(synapse_compute_state_t));
         if (!syn->compute_state) {
             return -1; // Allocation failed
         }

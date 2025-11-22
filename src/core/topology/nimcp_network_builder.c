@@ -3,6 +3,7 @@
 //=============================================================================
 
 #include "nimcp_network_builder.h"
+#include "utils/memory/nimcp_memory.h"
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -222,7 +223,7 @@ bool network_init_weights_pink_noise(
     }
 
     // Step 3: Generate all noise samples at once
-    float* noise_samples = (float*)malloc(total_synapses * sizeof(float));
+    float* noise_samples = (float*)nimcp_malloc(total_synapses * sizeof(float));
     if (!noise_samples) {
         fprintf(stderr, "ERROR: Failed to allocate noise samples array\n");
         pink_noise_destroy(generator);
@@ -231,7 +232,7 @@ bool network_init_weights_pink_noise(
 
     if (!pink_noise_generate(generator, noise_samples, total_synapses)) {
         fprintf(stderr, "ERROR: Failed to generate pink noise samples\n");
-        free(noise_samples);
+        nimcp_free(noise_samples);
         pink_noise_destroy(generator);
         return false;
     }
@@ -249,7 +250,7 @@ bool network_init_weights_pink_noise(
     }
 
     // Cleanup
-    free(noise_samples);
+    nimcp_free(noise_samples);
     pink_noise_destroy(generator);
 
     return true;

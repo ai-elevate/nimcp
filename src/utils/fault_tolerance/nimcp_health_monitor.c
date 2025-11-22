@@ -6,6 +6,7 @@
  */
 
 #include "utils/fault_tolerance/nimcp_health_monitor.h"
+#include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include <stdlib.h>
 #include <string.h>
@@ -97,12 +98,12 @@ uint64_t health_monitor_get_timestamp_us(void) {
  * @brief Create metric history buffer
  */
 static metric_history_t* create_metric_history(uint32_t capacity) {
-    metric_history_t* history = (metric_history_t*)malloc(sizeof(metric_history_t));
+    metric_history_t* history = (metric_history_t*)nimcp_malloc(sizeof(metric_history_t));
     if (!history) return NULL;
 
-    history->values = (double*)calloc(capacity, sizeof(double));
+    history->values = (double*)nimcp_calloc(capacity, sizeof(double));
     if (!history->values) {
-        free(history);
+        nimcp_free(history);
         return NULL;
     }
 
@@ -118,8 +119,8 @@ static metric_history_t* create_metric_history(uint32_t capacity) {
  */
 static void destroy_metric_history(metric_history_t* history) {
     if (history) {
-        free(history->values);
-        free(history);
+        nimcp_free(history->values);
+        nimcp_free(history);
     }
 }
 
@@ -128,7 +129,7 @@ static void destroy_metric_history(metric_history_t* history) {
  */
 static void free_metric_history_contents(metric_history_t* history) {
     if (history && history->values) {
-        free(history->values);
+        nimcp_free(history->values);
         history->values = NULL;
     }
 }
@@ -747,7 +748,7 @@ health_monitor_t health_monitor_create(const char* brain_id) {
         return NULL;
     }
 
-    health_monitor_t monitor = (health_monitor_t)calloc(1, sizeof(struct health_monitor_internal));
+    health_monitor_t monitor = (health_monitor_t)nimcp_calloc(1, sizeof(struct health_monitor_internal));
     if (!monitor) {
         NIMCP_LOGGING_ERROR("Failed to allocate health monitor");
         return NULL;
@@ -763,7 +764,7 @@ health_monitor_t health_monitor_create(const char* brain_id) {
     // Initialize mutex
     if (pthread_mutex_init(&monitor->mutex, NULL) != 0) {
         NIMCP_LOGGING_ERROR("Failed to initialize monitor mutex");
-        free(monitor);
+        nimcp_free(monitor);
         return NULL;
     }
 
@@ -774,11 +775,11 @@ health_monitor_t health_monitor_create(const char* brain_id) {
 
     if (!mem_hist || !lat_hist || !err_hist) {
         NIMCP_LOGGING_ERROR("Failed to allocate metric histories");
-        if (mem_hist) free(mem_hist);
-        if (lat_hist) free(lat_hist);
-        if (err_hist) free(err_hist);
+        if (mem_hist) nimcp_free(mem_hist);
+        if (lat_hist) nimcp_free(lat_hist);
+        if (err_hist) nimcp_free(err_hist);
         pthread_mutex_destroy(&monitor->mutex);
-        free(monitor);
+        nimcp_free(monitor);
         return NULL;
     }
 
@@ -787,9 +788,9 @@ health_monitor_t health_monitor_create(const char* brain_id) {
     monitor->error_history = *err_hist;
 
     // Free the wrapper structures (we copied the contents)
-    free(mem_hist);
-    free(lat_hist);
-    free(err_hist);
+    nimcp_free(mem_hist);
+    nimcp_free(lat_hist);
+    nimcp_free(err_hist);
 
     // Initialize last status
     monitor->last_status.status = HEALTH_UNKNOWN;
@@ -821,7 +822,7 @@ void health_monitor_destroy(health_monitor_t monitor) {
     pthread_mutex_destroy(&monitor->mutex);
 
     // Free monitor
-    free(monitor);
+    nimcp_free(monitor);
 
     NIMCP_LOGGING_INFO("Health monitor destroyed");
 }

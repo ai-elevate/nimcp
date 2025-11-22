@@ -6332,13 +6332,13 @@ bool brain_save_json(brain_t brain, const char* filepath, uint32_t flags)
 
     FILE* f = fopen(filepath, "w");
     if (!f) {
-        free(json);
+        nimcp_free(json);
         return false;
     }
     
     size_t written = fwrite(json, 1, strlen(json), f);
     fclose(f);
-    free(json);
+    nimcp_free(json);
     
     return (written > 0);
 }

@@ -209,7 +209,7 @@ static cJSON* load_model_metadata(const char* model_name, const char* models_dir
     fseek(fp, 0, SEEK_SET);
 
     // Read file content
-    char* content = (char*)malloc(file_size + 1);
+    char* content = (char*)nimcp_malloc(file_size + 1);
     if (!content) {
         fclose(fp);
         return NULL;
@@ -221,7 +221,7 @@ static cJSON* load_model_metadata(const char* model_name, const char* models_dir
 
     // Parse JSON
     cJSON* metadata = cJSON_Parse(content);
-    free(content);
+    nimcp_free(content);
 
     if (!metadata) {
         fprintf(stderr, "Error: Invalid JSON in metadata: %s\n", metadata_path);

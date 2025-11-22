@@ -3,6 +3,7 @@
 //=============================================================================
 
 #include "utils/math/nimcp_complex_math.h"
+#include "utils/memory/nimcp_memory.h"
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -601,14 +602,14 @@ bool phasor_power_spectrum(const neural_phasor_t* input, float* output, uint32_t
     }
 
     // Allocate temporary buffer for FFT
-    neural_phasor_t* fft_result = (neural_phasor_t*)malloc(n * sizeof(neural_phasor_t));
+    neural_phasor_t* fft_result = (neural_phasor_t*)nimcp_malloc(n * sizeof(neural_phasor_t));
     if (fft_result == NULL) {
         return false;
     }
 
     // Compute FFT
     if (!phasor_fft(input, fft_result, n)) {
-        free(fft_result);
+        nimcp_free(fft_result);
         return false;
     }
 
@@ -618,7 +619,7 @@ bool phasor_power_spectrum(const neural_phasor_t* input, float* output, uint32_t
         output[i] = magnitude * magnitude;
     }
 
-    free(fft_result);
+    nimcp_free(fft_result);
     return true;
 }
 
@@ -792,7 +793,7 @@ bool phasor_hilbert_transform(const float* real_signal,
     }
 
     // Allocate FFT buffer
-    neural_phasor_t* fft_buffer = (neural_phasor_t*)malloc(n * sizeof(neural_phasor_t));
+    neural_phasor_t* fft_buffer = (neural_phasor_t*)nimcp_malloc(n * sizeof(neural_phasor_t));
     if (fft_buffer == NULL) {
         return false;
     }
@@ -821,7 +822,7 @@ bool phasor_hilbert_transform(const float* real_signal,
     // Copy result
     memcpy(analytic_signal, fft_buffer, n * sizeof(neural_phasor_t));
 
-    free(fft_buffer);
+    nimcp_free(fft_buffer);
     return true;
 }
 

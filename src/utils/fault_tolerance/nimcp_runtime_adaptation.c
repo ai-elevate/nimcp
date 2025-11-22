@@ -4,6 +4,7 @@
  */
 
 #include "utils/fault_tolerance/nimcp_runtime_adaptation.h"
+#include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include <stdlib.h>
 #include <string.h>
@@ -104,7 +105,7 @@ runtime_adaptation_context_t runtime_adaptation_create(brain_t brain) {
         return NULL;
     }
 
-    runtime_adaptation_context_t ctx = calloc(1, sizeof(struct runtime_adaptation_context_internal));
+    runtime_adaptation_context_t ctx = nimcp_calloc(1, sizeof(struct runtime_adaptation_context_internal));
     if (!ctx) {
         LOG_ERROR("Failed to allocate runtime adaptation context");
         return NULL;
@@ -120,10 +121,10 @@ runtime_adaptation_context_t runtime_adaptation_create(brain_t brain) {
 
     // Allocate history
     ctx->history_capacity = MAX_ADAPTATION_HISTORY;
-    ctx->history = calloc(ctx->history_capacity, sizeof(adaptation_history_t));
+    ctx->history = nimcp_calloc(ctx->history_capacity, sizeof(adaptation_history_t));
     if (!ctx->history) {
         LOG_ERROR("Failed to allocate adaptation history");
-        free(ctx);
+        nimcp_free(ctx);
         return NULL;
     }
 
@@ -137,8 +138,8 @@ void runtime_adaptation_destroy(runtime_adaptation_context_t ctx) {
     LOG_INFO("Destroying runtime adaptation (total_adjustments=%u)",
         ctx->total_adjustments);
 
-    free(ctx->history);
-    free(ctx);
+    nimcp_free(ctx->history);
+    nimcp_free(ctx);
 }
 
 //=============================================================================

@@ -18,6 +18,7 @@
  */
 
 #include "gpu/nimcp_multigpu.h"
+#include "utils/memory/nimcp_memory.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -140,7 +141,7 @@ static void free_device_context(device_context_t* dev, bool is_mock)
 
     // Free assigned layers
     if (dev->assigned_layers) {
-        free(dev->assigned_layers);
+        nimcp_free(dev->assigned_layers);
         dev->assigned_layers = NULL;
     }
 
@@ -152,7 +153,7 @@ static void free_device_context(device_context_t* dev, bool is_mock)
                 cudaStreamDestroy((cudaStream_t)dev->streams[i]);
             }
         }
-        free(dev->streams);
+        nimcp_free(dev->streams);
         dev->streams = NULL;
     }
 #else
@@ -166,10 +167,10 @@ static void free_device_context(device_context_t* dev, bool is_mock)
             cudaSetDevice(dev->device_id);
             cudaFree(dev->device_memory);
         } else {
-            free(dev->device_memory);
+            nimcp_free(dev->device_memory);
         }
 #else
-        free(dev->device_memory);
+        nimcp_free(dev->device_memory);
 #endif
         dev->device_memory = NULL;
     }
@@ -341,7 +342,7 @@ multigpu_context_t multigpu_context_create(const multigpu_config_t* config)
     }
 
     // Allocate context
-    multigpu_context_t ctx = (multigpu_context_t)calloc(1, sizeof(struct multigpu_context_struct));
+    multigpu_context_t ctx = (multigpu_context_t)nimcp_calloc(1, sizeof(struct multigpu_context_struct));
 
     // Guard: Allocation failed
     if (!ctx) {
@@ -356,13 +357,13 @@ multigpu_context_t multigpu_context_create(const multigpu_config_t* config)
     uint32_t available_count = 0;
 
     if (!multigpu_enumerate_devices(available_devices, 16, &available_count)) {
-        free(ctx);
+        nimcp_free(ctx);
         return NULL;
     }
 
     // Guard: No devices available
     if (available_count == 0) {
-        free(ctx);
+        nimcp_free(ctx);
         return NULL;
     }
 
@@ -376,11 +377,11 @@ multigpu_context_t multigpu_context_create(const multigpu_config_t* config)
     ctx->is_mock = (NIMCP_MULTIGPU_CUDA_AVAILABLE == 0);
 
     // Allocate device contexts
-    ctx->devices = (device_context_t*)calloc(num_devices, sizeof(device_context_t));
+    ctx->devices = (device_context_t*)nimcp_calloc(num_devices, sizeof(device_context_t));
 
     // Guard: Allocation failed
     if (!ctx->devices) {
-        free(ctx);
+        nimcp_free(ctx);
         return NULL;
     }
 
@@ -402,7 +403,7 @@ multigpu_context_t multigpu_context_create(const multigpu_config_t* config)
 #if NIMCP_MULTIGPU_CUDA_AVAILABLE
         if (!ctx->is_mock) {
             cudaSetDevice(device_id);
-            dev->streams = (void**)calloc(dev->num_streams, sizeof(void*));
+            dev->streams = (void**)nimcp_calloc(dev->num_streams, sizeof(void*));
             for (uint32_t s = 0; s < dev->num_streams; s++) {
                 cudaStreamCreate((cudaStream_t*)&dev->streams[s]);
             }
@@ -470,19 +471,19 @@ void multigpu_context_destroy(multigpu_context_t ctx)
         for (uint32_t i = 0; i < ctx->num_devices; i++) {
             free_device_context(&ctx->devices[i], ctx->is_mock);
         }
-        free(ctx->devices);
+        nimcp_free(ctx->devices);
     }
 
     // Free partition data
     if (ctx->neurons_per_layer) {
-        free(ctx->neurons_per_layer);
+        nimcp_free(ctx->neurons_per_layer);
     }
     if (ctx->layer_to_device) {
-        free(ctx->layer_to_device);
+        nimcp_free(ctx->layer_to_device);
     }
 
     // Free context
-    free(ctx);
+    nimcp_free(ctx);
 }
 
 uint32_t multigpu_get_device_count(multigpu_context_t ctx)
@@ -542,7 +543,7 @@ static bool partition_by_layer(multigpu_context_t ctx)
         }
 
         dev->num_assigned_layers = layers_for_this_gpu;
-        dev->assigned_layers = (uint32_t*)malloc(layers_for_this_gpu * sizeof(uint32_t));
+        dev->assigned_layers = (uint32_t*)nimcp_malloc(layers_for_this_gpu * sizeof(uint32_t));
 
         // Guard: Allocation failed
         if (!dev->assigned_layers) {
@@ -574,7 +575,7 @@ static bool partition_by_neuron(multigpu_context_t ctx)
         device_context_t* dev = &ctx->devices[dev_idx];
 
         dev->num_assigned_layers = ctx->num_layers;
-        dev->assigned_layers = (uint32_t*)malloc(ctx->num_layers * sizeof(uint32_t));
+        dev->assigned_layers = (uint32_t*)nimcp_malloc(ctx->num_layers * sizeof(uint32_t));
 
         // Guard: Allocation failed
         if (!dev->assigned_layers) {
@@ -611,7 +612,7 @@ bool multigpu_partition_network(multigpu_context_t ctx,
 
     // Store network topology
     ctx->num_layers = num_layers;
-    ctx->neurons_per_layer = (uint32_t*)malloc(num_layers * sizeof(uint32_t));
+    ctx->neurons_per_layer = (uint32_t*)nimcp_malloc(num_layers * sizeof(uint32_t));
 
     // Guard: Allocation failed
     if (!ctx->neurons_per_layer) {
@@ -621,11 +622,11 @@ bool multigpu_partition_network(multigpu_context_t ctx,
     memcpy(ctx->neurons_per_layer, neurons_per_layer, num_layers * sizeof(uint32_t));
 
     // Allocate layer-to-device mapping
-    ctx->layer_to_device = (int*)malloc(num_layers * sizeof(int));
+    ctx->layer_to_device = (int*)nimcp_malloc(num_layers * sizeof(int));
 
     // Guard: Allocation failed
     if (!ctx->layer_to_device) {
-        free(ctx->neurons_per_layer);
+        nimcp_free(ctx->neurons_per_layer);
         ctx->neurons_per_layer = NULL;
         return false;
     }
@@ -737,7 +738,7 @@ void** multigpu_alloc(multigpu_context_t ctx, size_t total_size)
     }
 
     // Allocate array of device pointers
-    void** device_ptrs = (void**)calloc(ctx->num_devices, sizeof(void*));
+    void** device_ptrs = (void**)nimcp_calloc(ctx->num_devices, sizeof(void*));
 
     // Guard: Allocation failed
     if (!device_ptrs) {
@@ -761,28 +762,28 @@ void** multigpu_alloc(multigpu_context_t ctx, size_t total_size)
                     cudaSetDevice(ctx->devices[j].device_id);
                     cudaFree(device_ptrs[j]);
                 }
-                free(device_ptrs);
+                nimcp_free(device_ptrs);
                 return NULL;
             }
         } else {
-            device_ptrs[i] = malloc(size_per_gpu);
+            device_ptrs[i] = nimcp_malloc(size_per_gpu);
             if (!device_ptrs[i]) {
                 // Free previously allocated
                 for (uint32_t j = 0; j < i; j++) {
-                    free(device_ptrs[j]);
+                    nimcp_free(device_ptrs[j]);
                 }
-                free(device_ptrs);
+                nimcp_free(device_ptrs);
                 return NULL;
             }
         }
 #else
-        device_ptrs[i] = malloc(size_per_gpu);
+        device_ptrs[i] = nimcp_malloc(size_per_gpu);
         if (!device_ptrs[i]) {
             // Free previously allocated
             for (uint32_t j = 0; j < i; j++) {
-                free(device_ptrs[j]);
+                nimcp_free(device_ptrs[j]);
             }
-            free(device_ptrs);
+            nimcp_free(device_ptrs);
             return NULL;
         }
 #endif
@@ -811,15 +812,15 @@ void multigpu_free(multigpu_context_t ctx, void** device_ptrs)
             cudaSetDevice(ctx->devices[i].device_id);
             cudaFree(device_ptrs[i]);
         } else {
-            free(device_ptrs[i]);
+            nimcp_free(device_ptrs[i]);
         }
 #else
-        free(device_ptrs[i]);
+        nimcp_free(device_ptrs[i]);
 #endif
     }
 
     // Free array
-    free(device_ptrs);
+    nimcp_free(device_ptrs);
 }
 
 bool multigpu_broadcast(multigpu_context_t ctx,
@@ -947,7 +948,7 @@ bool multigpu_sync_devices(multigpu_context_t ctx,
             return (err == cudaSuccess);
         } else {
             // Fallback: Copy via host
-            void* host_buffer = malloc(size);
+            void* host_buffer = nimcp_malloc(size);
             if (!host_buffer) {
                 return false;
             }
@@ -960,7 +961,7 @@ bool multigpu_sync_devices(multigpu_context_t ctx,
             cudaSetDevice(ctx->devices[dst_device].device_id);
             cudaMemcpy((void*)data, host_buffer, size, cudaMemcpyHostToDevice);
 
-            free(host_buffer);
+            nimcp_free(host_buffer);
             return true;
         }
     }

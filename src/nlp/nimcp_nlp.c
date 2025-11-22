@@ -27,6 +27,7 @@
  */
 
 #include "nimcp_nlp.h"
+#include "utils/memory/nimcp_memory.h"
 #include "core/synapse_compute/nimcp_synapse_compute.h"
 #include <stdlib.h>
 #include <string.h>
@@ -90,7 +91,7 @@ static bool init_embeddings(nlp_network_t network) {
 
     // Allocate embedding matrix
     size_t size = vocab_size * embedding_dim * sizeof(float);
-    network->embeddings = (float*)malloc(size);
+    network->embeddings = (float*)nimcp_malloc(size);
     if (!network->embeddings) {
         return false;
     }
@@ -143,7 +144,7 @@ nlp_network_t nlp_network_create(const nlp_network_config_t* config) {
     if (config->vocab_size == 0 || config->embedding_dim == 0) return NULL;
 
     // Allocate network structure
-    nlp_network_t network = (nlp_network_t)calloc(1, sizeof(struct nlp_network_struct));
+    nlp_network_t network = (nlp_network_t)nimcp_calloc(1, sizeof(struct nlp_network_struct));
     if (!network) return NULL;
 
     // Copy configuration
@@ -166,7 +167,7 @@ nlp_network_t nlp_network_create(const nlp_network_config_t* config) {
         default_config.max_weight = 1.0f;
         network->network = neural_network_create(&default_config);
         if (!network->network) {
-            free(network);
+            nimcp_free(network);
             return NULL;
         }
     }
@@ -188,20 +189,20 @@ nlp_network_t nlp_network_create(const nlp_network_config_t* config) {
         neuromodulator_system_destroy(network->neuromodulators);
         multihead_attention_destroy(network->attention);
         neural_network_destroy(network->network);
-        free(network);
+        nimcp_free(network);
         return NULL;
     }
 
     // Allocate attention output buffer
     network->attention_output_size = config->max_sequence_length *
                                     config->attention_config.output_dim;
-    network->attention_output = (float*)calloc(network->attention_output_size, sizeof(float));
+    network->attention_output = (float*)nimcp_calloc(network->attention_output_size, sizeof(float));
     if (!network->attention_output) {
-        free(network->embeddings);
+        nimcp_free(network->embeddings);
         neuromodulator_system_destroy(network->neuromodulators);
         multihead_attention_destroy(network->attention);
         neural_network_destroy(network->network);
-        free(network);
+        nimcp_free(network);
         return NULL;
     }
 
@@ -217,11 +218,11 @@ void nlp_network_destroy(nlp_network_t network) {
 
     // Destroy in reverse creation order
     if (network->attention_output) {
-        free(network->attention_output);
+        nimcp_free(network->attention_output);
     }
 
     if (network->embeddings) {
-        free(network->embeddings);
+        nimcp_free(network->embeddings);
     }
 
     if (network->neuromodulators) {
@@ -236,7 +237,7 @@ void nlp_network_destroy(nlp_network_t network) {
         neural_network_destroy(network->network);
     }
 
-    free(network);
+    nimcp_free(network);
 }
 
 //=============================================================================
@@ -257,13 +258,13 @@ bool nlp_network_forward(
 
     // Step 1: Convert tokens to embeddings
     uint32_t embedding_dim = network->config.embedding_dim;
-    float* sequence_embeddings = (float*)malloc(sequence_length * embedding_dim * sizeof(float));
+    float* sequence_embeddings = (float*)nimcp_malloc(sequence_length * embedding_dim * sizeof(float));
     if (!sequence_embeddings) return false;
 
     for (uint32_t i = 0; i < sequence_length; i++) {
         uint32_t token = token_ids[i];
         if (token >= network->config.vocab_size) {
-            free(sequence_embeddings);
+            nimcp_free(sequence_embeddings);
             return false;
         }
 
@@ -285,7 +286,7 @@ bool nlp_network_forward(
         network->attention_output
     );
 
-    free(sequence_embeddings);
+    nimcp_free(sequence_embeddings);
 
     if (!attention_success) {
         return false;
@@ -471,7 +472,7 @@ float nlp_network_train(
     if (!network || !token_ids || !target) return -1.0f;
 
     // Step 1: Forward pass
-    float* output = (float*)malloc(sequence_length * output_dim * sizeof(float));
+    float* output = (float*)nimcp_malloc(sequence_length * output_dim * sizeof(float));
     if (!output) return -1.0f;
 
     bool forward_success = nlp_network_forward(
@@ -483,7 +484,7 @@ float nlp_network_train(
     );
 
     if (!forward_success) {
-        free(output);
+        nimcp_free(output);
         return -1.0f;
     }
 
@@ -559,7 +560,7 @@ float nlp_network_train(
     // - Reward-modulated strengthening of successful pathways
     // - Hebbian learning: "neurons that fire together, wire together"
 
-    free(output);
+    nimcp_free(output);
     return loss;
 }
 

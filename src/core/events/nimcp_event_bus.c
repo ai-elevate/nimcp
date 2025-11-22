@@ -23,6 +23,7 @@
  */
 
 #include "core/events/nimcp_event_bus.h"
+#include "utils/memory/nimcp_memory.h"
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
@@ -247,7 +248,7 @@ bool event_set_data(brain_event_t* event, const void* data, size_t size) {
  * @brief Create event queue
  */
 static event_queue_t* event_queue_create(uint32_t max_size) {
-    event_queue_t* queue = (event_queue_t*)calloc(1, sizeof(event_queue_t));
+    event_queue_t* queue = (event_queue_t*)nimcp_calloc(1, sizeof(event_queue_t));
     if (!queue) return NULL;
 
     queue->head = NULL;
@@ -274,7 +275,7 @@ static void event_queue_destroy(event_queue_t* queue) {
     event_node_t* node = queue->head;
     while (node) {
         event_node_t* next = node->next;
-        free(node);
+        nimcp_free(node);
         node = next;
     }
 
@@ -284,7 +285,7 @@ static void event_queue_destroy(event_queue_t* queue) {
     pthread_cond_destroy(&queue->not_empty);
     pthread_cond_destroy(&queue->not_full);
 
-    free(queue);
+    nimcp_free(queue);
 }
 
 /**
@@ -302,7 +303,7 @@ static bool event_queue_enqueue(event_queue_t* queue, const brain_event_t* event
     }
 
     // Create node
-    event_node_t* node = (event_node_t*)malloc(sizeof(event_node_t));
+    event_node_t* node = (event_node_t*)nimcp_malloc(sizeof(event_node_t));
     if (!node) {
         pthread_mutex_unlock(&queue->mutex);
         return false;
@@ -354,7 +355,7 @@ static bool event_queue_dequeue(event_queue_t* queue, brain_event_t* event) {
     }
     queue->count--;
 
-    free(node);
+    nimcp_free(node);
 
     // Signal not full
     pthread_cond_signal(&queue->not_full);
@@ -397,7 +398,7 @@ static bool event_queue_is_full(event_queue_t* queue) {
  * @brief Create event bus
  */
 event_bus_t event_bus_create(const char* name, event_delivery_mode_t delivery_mode) {
-    event_bus_internal_t* bus = (event_bus_internal_t*)calloc(1, sizeof(event_bus_internal_t));
+    event_bus_internal_t* bus = (event_bus_internal_t*)nimcp_calloc(1, sizeof(event_bus_internal_t));
     if (!bus) return NULL;
 
     // Set name
@@ -422,7 +423,7 @@ event_bus_t event_bus_create(const char* name, event_delivery_mode_t delivery_mo
         if (!bus->queue) {
             pthread_mutex_destroy(&bus->subscriber_mutex);
             pthread_mutex_destroy(&bus->stats_mutex);
-            free(bus);
+            nimcp_free(bus);
             return NULL;
         }
     }
@@ -450,7 +451,7 @@ void event_bus_destroy(event_bus_t bus) {
         subscriber_t* sub = internal->subscribers[i];
         while (sub) {
             subscriber_t* next = sub->next;
-            free(sub);
+            nimcp_free(sub);
             sub = next;
         }
     }
@@ -466,7 +467,7 @@ void event_bus_destroy(event_bus_t bus) {
     pthread_mutex_destroy(&internal->subscriber_mutex);
     pthread_mutex_destroy(&internal->stats_mutex);
 
-    free(internal);
+    nimcp_free(internal);
 }
 
 /**
@@ -589,7 +590,7 @@ event_subscription_handle_t event_bus_subscribe_priority(
     event_bus_internal_t* internal = (event_bus_internal_t*)bus;
 
     // Create subscriber
-    subscriber_t* sub = (subscriber_t*)calloc(1, sizeof(subscriber_t));
+    subscriber_t* sub = (subscriber_t*)nimcp_calloc(1, sizeof(subscriber_t));
     if (!sub) return INVALID_SUBSCRIPTION_HANDLE;
 
     pthread_mutex_lock(&internal->subscriber_mutex);
@@ -632,7 +633,7 @@ bool event_bus_unsubscribe(event_bus_t bus, event_subscription_handle_t handle) 
         while (sub) {
             if (sub->handle == handle) {
                 *prev = sub->next;
-                free(sub);
+                nimcp_free(sub);
                 internal->subscriber_count--;
                 pthread_mutex_unlock(&internal->subscriber_mutex);
                 return true;
@@ -666,7 +667,7 @@ uint32_t event_bus_unsubscribe_all(event_bus_t bus, void* context) {
                 subscriber_t* to_free = sub;
                 *prev = sub->next;
                 sub = sub->next;
-                free(to_free);
+                nimcp_free(to_free);
                 removed++;
                 internal->subscriber_count--;
             } else {

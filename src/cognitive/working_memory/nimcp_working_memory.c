@@ -21,6 +21,7 @@
  */
 
 #include "cognitive/nimcp_working_memory.h"
+#include "utils/memory/nimcp_memory.h"
 #include "utils/time/nimcp_time.h"
 #include "utils/platform/nimcp_platform_mutex.h"  // Thread safety
 #include <stdlib.h>
@@ -149,7 +150,7 @@ static void evict_item_at_index(working_memory_t* wm, uint32_t index) {
     }
 
     // Free item memory
-    free(wm->items[index]);
+    nimcp_free(wm->items[index]);
 
     // Shift arrays left
     uint32_t shift_count = wm->current_size - index - 1;
@@ -272,20 +273,20 @@ working_memory_t* working_memory_create_custom(
     }
 
     // Allocate main structure
-    working_memory_t* wm = calloc(1, sizeof(working_memory_t));
+    working_memory_t* wm = nimcp_calloc(1, sizeof(working_memory_t));
     if (!wm) {
         set_error("Failed to allocate working_memory_t");
         return NULL;
     }
 
     // Allocate arrays
-    wm->items = calloc(config->capacity, sizeof(float*));
-    wm->item_sizes = calloc(config->capacity, sizeof(uint32_t));
-    wm->salience = calloc(config->capacity, sizeof(float));
-    wm->timestamps = calloc(config->capacity, sizeof(uint64_t));
-    wm->attention_refreshed = calloc(config->capacity, sizeof(bool));
-    wm->emotions = calloc(config->capacity, sizeof(emotional_tag_t));  // Phase 10.3
-    wm->has_emotion = calloc(config->capacity, sizeof(bool));          // Phase 10.3
+    wm->items = nimcp_calloc(config->capacity, sizeof(float*));
+    wm->item_sizes = nimcp_calloc(config->capacity, sizeof(uint32_t));
+    wm->salience = nimcp_calloc(config->capacity, sizeof(float));
+    wm->timestamps = nimcp_calloc(config->capacity, sizeof(uint64_t));
+    wm->attention_refreshed = nimcp_calloc(config->capacity, sizeof(bool));
+    wm->emotions = nimcp_calloc(config->capacity, sizeof(emotional_tag_t));  // Phase 10.3
+    wm->has_emotion = nimcp_calloc(config->capacity, sizeof(bool));          // Phase 10.3
 
     // Check all allocations
     if (!wm->items || !wm->item_sizes || !wm->salience ||
@@ -340,24 +341,24 @@ void working_memory_destroy(working_memory_t* wm) {
     // Free all items
     if (wm->items) {
         for (uint32_t i = 0; i < wm->current_size; i++) {
-            free(wm->items[i]);
+            nimcp_free(wm->items[i]);
         }
-        free(wm->items);
+        nimcp_free(wm->items);
     }
 
     // Free arrays
-    free(wm->item_sizes);
-    free(wm->salience);
-    free(wm->timestamps);
-    free(wm->attention_refreshed);
-    free(wm->emotions);      // Phase 10.3
-    free(wm->has_emotion);   // Phase 10.3
+    nimcp_free(wm->item_sizes);
+    nimcp_free(wm->salience);
+    nimcp_free(wm->timestamps);
+    nimcp_free(wm->attention_refreshed);
+    nimcp_free(wm->emotions);      // Phase 10.3
+    nimcp_free(wm->has_emotion);   // Phase 10.3
 
     // Destroy mutex
     nimcp_platform_mutex_destroy(&wm->mutex);
 
     // Free main structure
-    free(wm);
+    nimcp_free(wm);
 }
 
 // ============================================================================
@@ -429,7 +430,7 @@ bool working_memory_add(
     }
 
     // Allocate and copy item
-    float* item_copy = malloc(item_size * sizeof(float));
+    float* item_copy = nimcp_malloc(item_size * sizeof(float));
     if (!item_copy) {
         set_error("Failed to allocate item memory");
         nimcp_platform_mutex_unlock(&wm->mutex);
@@ -626,7 +627,7 @@ void working_memory_clear(working_memory_t* wm) {
 
     // Free all items
     for (uint32_t i = 0; i < wm->current_size; i++) {
-        free(wm->items[i]);
+        nimcp_free(wm->items[i]);
         wm->items[i] = NULL;
     }
 

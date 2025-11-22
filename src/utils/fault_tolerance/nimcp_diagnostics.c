@@ -3,6 +3,7 @@
 //=============================================================================
 
 #include "utils/fault_tolerance/nimcp_diagnostics.h"
+#include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include <stdlib.h>
 #include <string.h>
@@ -259,7 +260,7 @@ static void symbolicate_stack_frame(void* address, stack_frame_t* frame) {
             }
         }
 
-        free(symbols);
+        nimcp_free(symbols);
     }
 
     // If no symbol, use address as identifier
@@ -274,7 +275,7 @@ diagnostic_result_t* diagnostics_analyze_stack_trace(void** trace, int depth) {
         return NULL;
     }
 
-    diagnostic_result_t* result = calloc(1, sizeof(diagnostic_result_t));
+    diagnostic_result_t* result = nimcp_calloc(1, sizeof(diagnostic_result_t));
     if (!result) {
         return NULL;
     }
@@ -348,7 +349,7 @@ static error_severity_t error_type_to_severity(error_type_t type) {
 }
 
 diagnostic_result_t* diagnostics_analyze_crash(int signal, crash_context_t* crash_context) {
-    diagnostic_result_t* result = calloc(1, sizeof(diagnostic_result_t));
+    diagnostic_result_t* result = nimcp_calloc(1, sizeof(diagnostic_result_t));
     if (!result) {
         return NULL;
     }
@@ -441,7 +442,7 @@ diagnostic_result_t* diagnostics_analyze_crash(int signal, crash_context_t* cras
 //=============================================================================
 
 diagnostic_result_t* diagnostics_analyze_memory_state(brain_t brain) {
-    diagnostic_result_t* result = calloc(1, sizeof(diagnostic_result_t));
+    diagnostic_result_t* result = nimcp_calloc(1, sizeof(diagnostic_result_t));
     if (!result) {
         return NULL;
     }
@@ -509,7 +510,7 @@ static bool is_nan_or_inf(float value) {
 }
 
 diagnostic_result_t* diagnostics_analyze_numerical_stability(brain_t brain) {
-    diagnostic_result_t* result = calloc(1, sizeof(diagnostic_result_t));
+    diagnostic_result_t* result = nimcp_calloc(1, sizeof(diagnostic_result_t));
     if (!result) {
         return NULL;
     }
@@ -886,7 +887,7 @@ char* diagnostics_report_to_json(const diagnostic_result_t* result) {
     }
 
     // Allocate buffer for JSON (simplified, real implementation would use JSON library)
-    char* json = malloc(4096);
+    char* json = nimcp_malloc(4096);
     if (!json) {
         return NULL;
     }
@@ -919,7 +920,7 @@ char* diagnostics_report_to_json(const diagnostic_result_t* result) {
 //=============================================================================
 
 diagnostic_history_t* diagnostics_create_history(void) {
-    diagnostic_history_t* history = calloc(1, sizeof(diagnostic_history_t));
+    diagnostic_history_t* history = nimcp_calloc(1, sizeof(diagnostic_history_t));
     if (!history) {
         return NULL;
     }
@@ -962,7 +963,7 @@ void diagnostics_add_to_history(diagnostic_history_t* history,
 
 void diagnostics_free_history(diagnostic_history_t* history) {
     if (history) {
-        free(history);
+        nimcp_free(history);
     }
 }
 
@@ -972,6 +973,6 @@ void diagnostics_free_history(diagnostic_history_t* history) {
 
 void diagnostics_free_result(diagnostic_result_t* result) {
     if (result) {
-        free(result);
+        nimcp_free(result);
     }
 }

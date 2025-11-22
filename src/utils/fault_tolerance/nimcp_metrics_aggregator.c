@@ -4,6 +4,7 @@
  */
 
 #include "utils/fault_tolerance/nimcp_metrics_aggregator.h"
+#include "utils/memory/nimcp_memory.h"
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
@@ -138,7 +139,7 @@ nimcp_metrics_aggregator_t* nimcp_metrics_aggregator_create(const char* metric_n
     }
 
     nimcp_metrics_aggregator_t* agg =
-        (nimcp_metrics_aggregator_t*)calloc(1, sizeof(nimcp_metrics_aggregator_t));
+        (nimcp_metrics_aggregator_t*)nimcp_calloc(1, sizeof(nimcp_metrics_aggregator_t));
     if (!agg) {
         return NULL;
     }
@@ -179,7 +180,7 @@ void nimcp_metrics_aggregator_destroy(nimcp_metrics_aggregator_t* agg) {
     if (!agg) {
         return;
     }
-    free(agg);
+    nimcp_free(agg);
 }
 
 bool nimcp_metrics_aggregator_add_sample(

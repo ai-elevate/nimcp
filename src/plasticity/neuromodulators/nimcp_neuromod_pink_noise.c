@@ -110,7 +110,7 @@ neuromod_pink_config_t neuromod_pink_default_config(void) {
  * 5. Verify all generators created successfully
  *
  * RESOURCE ALLOCATION:
- * - Main structure: calloc(1, sizeof(neuromod_pink_noise_t))
+ * - Main structure: nimcp_calloc(1, sizeof(neuromod_pink_noise_t))
  * - 4 pink noise generators: ~4KB each (Voss-McCartney state)
  * - Total: ~16KB per neuromodulator system
  *

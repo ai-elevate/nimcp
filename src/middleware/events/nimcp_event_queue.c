@@ -6,6 +6,7 @@
 #include "utils/platform/nimcp_platform_mutex.h"
 #include "utils/time/nimcp_time.h"
 #include "utils/memory/nimcp_memory.h"
+#include "utils/memory/nimcp_memory_pool.h"
 #include <string.h>
 #include <stdio.h>
 
@@ -19,6 +20,7 @@
 typedef struct {
     event_t event;              /**< The event */
     uint64_t enqueue_time_us;   /**< When enqueued (for FIFO within priority) */
+    bool used_pool;             /**< Whether payload came from pool (Phase 1.5) */
 } heap_entry_t;
 
 /**
@@ -34,6 +36,10 @@ struct event_queue_struct {
     overflow_policy_t overflow_policy;
     bool enable_coalescing;
     uint64_t block_timeout_us;
+    uint32_t max_payload_size;  /**< Max size for pooled payloads */
+
+    // Memory pool for event payloads (Phase 1.5)
+    memory_pool_t payload_pool;
 
     // Statistics
     uint64_t total_enqueued;
@@ -59,6 +65,160 @@ static void set_error(const char* msg) {
 
 const char* event_queue_get_last_error(void) {
     return last_error;
+}
+
+//=============================================================================
+// Pool-Aware Event Helpers (Phase 1.5)
+//=============================================================================
+
+/**
+ * WHAT: Copy event with pool-aware payload allocation
+ * WHY:  1.13x faster allocation for small payloads
+ * HOW:  Try pool first (if size fits), fallback to malloc
+ *
+ * @param dest Destination event
+ * @param src Source event
+ * @param pool Memory pool for payloads
+ * @param max_pool_size Maximum size for pool allocation
+ * @param used_pool Output: true if pool was used
+ * @return true on success
+ */
+static bool event_copy_pooled(event_t* dest, const event_t* src,
+                                memory_pool_t pool, uint32_t max_pool_size,
+                                bool* used_pool) {
+    if (!dest || !src || !used_pool) return false;
+
+    // Copy basic structure
+    *dest = *src;
+    *used_pool = false;
+
+    // For types without dynamic allocations, just return
+    if (src->type != EVENT_TYPE_SPIKE_BURST &&
+        src->type != EVENT_TYPE_MEMORY_FORMED &&
+        src->type != EVENT_TYPE_DECISION_MADE &&
+        src->type != EVENT_TYPE_CUSTOM) {
+        return true;
+    }
+
+    // Calculate payload size
+    size_t payload_size = 0;
+    void** dest_ptr = NULL;
+    const void* src_ptr = NULL;
+
+    switch (src->type) {
+        case EVENT_TYPE_SPIKE_BURST:
+            if (src->data.spike_burst.neuron_ids && src->data.spike_burst.num_neurons > 0) {
+                payload_size = src->data.spike_burst.num_neurons * sizeof(uint32_t);
+                dest_ptr = (void**)&dest->data.spike_burst.neuron_ids;
+                src_ptr = src->data.spike_burst.neuron_ids;
+            }
+            break;
+
+        case EVENT_TYPE_MEMORY_FORMED:
+            if (src->data.memory_formed.memory_trace && src->data.memory_formed.trace_size > 0) {
+                payload_size = src->data.memory_formed.trace_size * sizeof(float);
+                dest_ptr = (void**)&dest->data.memory_formed.memory_trace;
+                src_ptr = src->data.memory_formed.memory_trace;
+            }
+            break;
+
+        case EVENT_TYPE_DECISION_MADE:
+            if (src->data.decision_made.decision_vector && src->data.decision_made.vector_size > 0) {
+                payload_size = src->data.decision_made.vector_size * sizeof(float);
+                dest_ptr = (void**)&dest->data.decision_made.decision_vector;
+                src_ptr = src->data.decision_made.decision_vector;
+            }
+            break;
+
+        case EVENT_TYPE_CUSTOM:
+            if (src->data.custom.data && src->data.custom.data_size > 0) {
+                payload_size = src->data.custom.data_size;
+                dest_ptr = (void**)&dest->data.custom.data;
+                src_ptr = src->data.custom.data;
+            }
+            break;
+
+        default:
+            break;
+    }
+
+    // No payload to allocate
+    if (payload_size == 0 || !dest_ptr || !src_ptr) {
+        return true;
+    }
+
+    // Try pool allocation first if size fits
+    void* allocated = NULL;
+    if (payload_size <= max_pool_size && pool) {
+        allocated = memory_pool_acquire(pool);
+        if (allocated) {
+            *used_pool = true;
+        }
+    }
+
+    // Fallback to malloc if pool failed or size too large
+    if (!allocated) {
+        allocated = nimcp_malloc(payload_size);
+        if (!allocated) {
+            return false;
+        }
+        *used_pool = false;
+    }
+
+    // Copy payload data
+    memcpy(allocated, src_ptr, payload_size);
+    *dest_ptr = allocated;
+
+    return true;
+}
+
+/**
+ * WHAT: Free event with pool-aware payload deallocation
+ * WHY:  Return memory to pool instead of system heap
+ * HOW:  Release to pool if used_pool, otherwise nimcp_free()
+ *
+ * @param event Event to free
+ * @param pool Memory pool
+ * @param used_pool Whether payload came from pool
+ */
+static void event_free_pooled(event_t* event, memory_pool_t pool, bool used_pool) {
+    if (!event) return;
+
+    // Get payload pointer based on type
+    void* payload = NULL;
+    switch (event->type) {
+        case EVENT_TYPE_SPIKE_BURST:
+            payload = event->data.spike_burst.neuron_ids;
+            event->data.spike_burst.neuron_ids = NULL;
+            break;
+
+        case EVENT_TYPE_MEMORY_FORMED:
+            payload = event->data.memory_formed.memory_trace;
+            event->data.memory_formed.memory_trace = NULL;
+            break;
+
+        case EVENT_TYPE_DECISION_MADE:
+            payload = event->data.decision_made.decision_vector;
+            event->data.decision_made.decision_vector = NULL;
+            break;
+
+        case EVENT_TYPE_CUSTOM:
+            payload = event->data.custom.data;
+            event->data.custom.data = NULL;
+            break;
+
+        default:
+            break;
+    }
+
+    // Free payload
+    if (payload) {
+        if (used_pool && pool) {
+            memory_pool_release(pool, payload);
+        } else {
+            nimcp_free(payload);
+        }
+    }
 }
 
 //=============================================================================
@@ -139,6 +299,7 @@ event_queue_config_t event_queue_default_config(void) {
     config.overflow_policy = OVERFLOW_POLICY_DROP_OLDEST;
     config.enable_coalescing = false;
     config.block_timeout_us = 0; // No timeout
+    config.max_payload_size = 256; // 256 bytes (Phase 1.5)
     return config;
 }
 
@@ -173,9 +334,27 @@ event_queue_t event_queue_create(const event_queue_config_t* config) {
     queue->overflow_policy = cfg.overflow_policy;
     queue->enable_coalescing = cfg.enable_coalescing;
     queue->block_timeout_us = cfg.block_timeout_us;
+    queue->max_payload_size = cfg.max_payload_size;
+
+    // Create payload memory pool (Phase 1.5)
+    memory_pool_config_t pool_config = {
+        .block_size = cfg.max_payload_size,
+        .num_blocks = cfg.capacity * 2,  // Double-buffer for enqueue/dequeue
+        .alignment = 16,
+        .enable_tracking = false,
+        .enable_guard_pages = false
+    };
+    queue->payload_pool = memory_pool_create(&pool_config);
+    if (!queue->payload_pool) {
+        nimcp_free(queue->heap);
+        nimcp_free(queue);
+        set_error("Failed to create payload pool");
+        return NULL;
+    }
 
     // Create mutex
     if (nimcp_platform_mutex_init(&queue->mutex, false) != 0) {
+        memory_pool_destroy(queue->payload_pool);
         nimcp_free(queue->heap);
         nimcp_free(queue);
         set_error("Failed to create mutex");
@@ -190,12 +369,15 @@ void event_queue_destroy(event_queue_t queue) {
 
     nimcp_platform_mutex_lock(&queue->mutex);
 
-    // Free all events in queue
+    // Free all events in queue (Phase 1.5: use pool-aware free)
     for (uint32_t i = 0; i < queue->size; i++) {
-        event_free(&queue->heap[i].event);
+        event_free_pooled(&queue->heap[i].event, queue->payload_pool, queue->heap[i].used_pool);
     }
 
     nimcp_free(queue->heap);
+
+    // Destroy payload memory pool (Phase 1.5)
+    memory_pool_destroy(queue->payload_pool);
 
     nimcp_platform_mutex_unlock(&queue->mutex);
     nimcp_platform_mutex_destroy(&queue->mutex);
@@ -228,8 +410,8 @@ bool event_queue_enqueue(event_queue_t queue, const event_t* event) {
                 goto unlock;
 
             case OVERFLOW_POLICY_DROP_OLDEST:
-                // Remove root (oldest high-priority event)
-                event_free(&queue->heap[0].event);
+                // Remove root (oldest high-priority event) - Phase 1.5: use pool-aware free
+                event_free_pooled(&queue->heap[0].event, queue->payload_pool, queue->heap[0].used_pool);
                 queue->heap[0] = queue->heap[queue->size - 1];
                 queue->size--;
                 heap_bubble_down(queue->heap, queue->size, 0);
@@ -245,7 +427,9 @@ bool event_queue_enqueue(event_queue_t queue, const event_t* event) {
                             lowest_idx = i;
                         }
                     }
-                    event_free(&queue->heap[lowest_idx].event);
+                    // Phase 1.5: use pool-aware free
+                    event_free_pooled(&queue->heap[lowest_idx].event, queue->payload_pool,
+                                      queue->heap[lowest_idx].used_pool);
                     queue->heap[lowest_idx] = queue->heap[queue->size - 1];
                     queue->size--;
                     heap_bubble_up(queue->heap, lowest_idx);
@@ -262,9 +446,10 @@ bool event_queue_enqueue(event_queue_t queue, const event_t* event) {
         }
     }
 
-    // Add event to heap
+    // Add event to heap (Phase 1.5: use pool-aware copy)
     heap_entry_t entry;
-    if (!event_copy(&entry.event, event)) {
+    if (!event_copy_pooled(&entry.event, event, queue->payload_pool,
+                           queue->max_payload_size, &entry.used_pool)) {
         set_error("Failed to copy event");
         success = false;
         goto unlock;
@@ -392,8 +577,9 @@ void event_queue_clear(event_queue_t queue) {
 
     nimcp_platform_mutex_lock(&queue->mutex);
 
+    // Phase 1.5: use pool-aware free
     for (uint32_t i = 0; i < queue->size; i++) {
-        event_free(&queue->heap[i].event);
+        event_free_pooled(&queue->heap[i].event, queue->payload_pool, queue->heap[i].used_pool);
     }
     queue->size = 0;
 
@@ -414,8 +600,8 @@ uint32_t event_queue_remove_if(event_queue_t queue, event_filter_fn filter, void
 
     while (i < queue->size) {
         if (filter(&queue->heap[i].event, context)) {
-            // Remove this event
-            event_free(&queue->heap[i].event);
+            // Remove this event (Phase 1.5: use pool-aware free)
+            event_free_pooled(&queue->heap[i].event, queue->payload_pool, queue->heap[i].used_pool);
             queue->heap[i] = queue->heap[queue->size - 1];
             queue->size--;
             removed++;

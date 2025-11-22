@@ -11,6 +11,7 @@
  */
 
 #include "cognitive/memory/nimcp_semantic_memory.h"
+#include "utils/memory/nimcp_memory.h"
 #include "cognitive/memory/nimcp_systems_consolidation.h"
 #include "utils/platform/nimcp_platform_time.h"
 #include <stdlib.h>
@@ -109,7 +110,7 @@ static uint64_t generate_relation_id(semantic_memory_system_t* system) {
  */
 semantic_memory_system_t* semantic_memory_create(void) {
     semantic_memory_system_t* system =
-        (semantic_memory_system_t*)calloc(1, sizeof(semantic_memory_system_t));
+        (semantic_memory_system_t*)nimcp_calloc(1, sizeof(semantic_memory_system_t));
 
     if (!system) {
         fprintf(stderr, "Failed to allocate semantic memory system\n");
@@ -118,40 +119,40 @@ semantic_memory_system_t* semantic_memory_create(void) {
 
     // Allocate concept pool
     system->concept_capacity = DEFAULT_CONCEPT_CAPACITY;
-    system->concepts = (semantic_concept_t**)calloc(
+    system->concepts = (semantic_concept_t**)nimcp_calloc(
         system->concept_capacity,
         sizeof(semantic_concept_t*)
     );
 
     if (!system->concepts) {
-        free(system);
+        nimcp_free(system);
         return NULL;
     }
 
     // Allocate relation pool
     system->relation_capacity = DEFAULT_RELATION_CAPACITY;
-    system->relations = (semantic_relation_t**)calloc(
+    system->relations = (semantic_relation_t**)nimcp_calloc(
         system->relation_capacity,
         sizeof(semantic_relation_t*)
     );
 
     if (!system->relations) {
-        free(system->concepts);
-        free(system);
+        nimcp_free(system->concepts);
+        nimcp_free(system);
         return NULL;
     }
 
     // Allocate activation map
     system->activation_map_size = DEFAULT_CONCEPT_CAPACITY;
-    system->activation_map = (float*)calloc(
+    system->activation_map = (float*)nimcp_calloc(
         system->activation_map_size,
         sizeof(float)
     );
 
     if (!system->activation_map) {
-        free(system->relations);
-        free(system->concepts);
-        free(system);
+        nimcp_free(system->relations);
+        nimcp_free(system->concepts);
+        nimcp_free(system);
         return NULL;
     }
 
@@ -175,10 +176,10 @@ semantic_memory_system_t* semantic_memory_create(void) {
 static void free_concept(semantic_concept_t* concept) {
     if (!concept) return;
 
-    if (concept->label) free(concept->label);
-    if (concept->features) free(concept->features);
-    if (concept->source_memory_ids) free(concept->source_memory_ids);
-    free(concept);
+    if (concept->label) nimcp_free(concept->label);
+    if (concept->features) nimcp_free(concept->features);
+    if (concept->source_memory_ids) nimcp_free(concept->source_memory_ids);
+    nimcp_free(concept);
 }
 
 /**
@@ -195,23 +196,23 @@ void semantic_memory_destroy(semantic_memory_system_t* system) {
         for (uint32_t i = 0; i < system->concept_count; i++) {
             free_concept(system->concepts[i]);
         }
-        free(system->concepts);
+        nimcp_free(system->concepts);
     }
 
     // Free all relations
     if (system->relations) {
         for (uint32_t i = 0; i < system->relation_count; i++) {
-            free(system->relations[i]);
+            nimcp_free(system->relations[i]);
         }
-        free(system->relations);
+        nimcp_free(system->relations);
     }
 
     // Free activation map
     if (system->activation_map) {
-        free(system->activation_map);
+        nimcp_free(system->activation_map);
     }
 
-    free(system);
+    nimcp_free(system);
 }
 
 /**
@@ -232,7 +233,7 @@ void semantic_memory_reset(semantic_memory_system_t* system) {
 
     // Free all relations
     for (uint32_t i = 0; i < system->relation_count; i++) {
-        free(system->relations[i]);
+        nimcp_free(system->relations[i]);
         system->relations[i] = NULL;
     }
     system->relation_count = 0;
@@ -291,7 +292,7 @@ uint64_t semantic_memory_create_concept(
 
     // Allocate concept
     semantic_concept_t* concept =
-        (semantic_concept_t*)calloc(1, sizeof(semantic_concept_t));
+        (semantic_concept_t*)nimcp_calloc(1, sizeof(semantic_concept_t));
 
     if (!concept) return 0;
 
@@ -301,9 +302,9 @@ uint64_t semantic_memory_create_concept(
 
     // Copy features
     concept->feature_dim = feature_dim;
-    concept->features = (float*)malloc(feature_dim * sizeof(float));
+    concept->features = (float*)nimcp_malloc(feature_dim * sizeof(float));
     if (!concept->features) {
-        free(concept);
+        nimcp_free(concept);
         return 0;
     }
     memcpy(concept->features, features, feature_dim * sizeof(float));
@@ -371,22 +372,22 @@ semantic_query_result_t* semantic_memory_find_similar(
 
     // Allocate result
     semantic_query_result_t* result =
-        (semantic_query_result_t*)calloc(1, sizeof(semantic_query_result_t));
+        (semantic_query_result_t*)nimcp_calloc(1, sizeof(semantic_query_result_t));
 
     if (!result) return NULL;
 
     // Allocate arrays for all concepts
-    uint64_t* temp_ids = (uint64_t*)malloc(
+    uint64_t* temp_ids = (uint64_t*)nimcp_malloc(
         system->concept_count * sizeof(uint64_t)
     );
-    float* temp_sims = (float*)malloc(
+    float* temp_sims = (float*)nimcp_malloc(
         system->concept_count * sizeof(float)
     );
 
     if (!temp_ids || !temp_sims) {
-        free(temp_ids);
-        free(temp_sims);
-        free(result);
+        nimcp_free(temp_ids);
+        nimcp_free(temp_sims);
+        nimcp_free(result);
         return NULL;
     }
 
@@ -410,12 +411,12 @@ semantic_query_result_t* semantic_memory_find_similar(
                              match_count : max_results;
 
     result->count = return_count;
-    result->concept_ids = (uint64_t*)malloc(return_count * sizeof(uint64_t));
-    result->activation_levels = (float*)malloc(return_count * sizeof(float));
+    result->concept_ids = (uint64_t*)nimcp_malloc(return_count * sizeof(uint64_t));
+    result->activation_levels = (float*)nimcp_malloc(return_count * sizeof(float));
 
     if (!result->concept_ids || !result->activation_levels) {
-        free(temp_ids);
-        free(temp_sims);
+        nimcp_free(temp_ids);
+        nimcp_free(temp_sims);
         semantic_memory_free_result(result);
         return NULL;
     }
@@ -423,8 +424,8 @@ semantic_query_result_t* semantic_memory_find_similar(
     memcpy(result->concept_ids, temp_ids, return_count * sizeof(uint64_t));
     memcpy(result->activation_levels, temp_sims, return_count * sizeof(float));
 
-    free(temp_ids);
-    free(temp_sims);
+    nimcp_free(temp_ids);
+    nimcp_free(temp_sims);
 
     return result;
 }
@@ -457,7 +458,7 @@ uint64_t semantic_memory_create_relation(
 
     // Allocate relation
     semantic_relation_t* relation =
-        (semantic_relation_t*)calloc(1, sizeof(semantic_relation_t));
+        (semantic_relation_t*)nimcp_calloc(1, sizeof(semantic_relation_t));
 
     if (!relation) return 0;
 
@@ -571,7 +572,7 @@ static void spread_activation_bfs(
     if (!system || start_id == 0) return;
 
     // Allocate simple BFS queue
-    activation_queue_node_t* queue = (activation_queue_node_t*)malloc(
+    activation_queue_node_t* queue = (activation_queue_node_t*)nimcp_malloc(
         system->concept_capacity * sizeof(activation_queue_node_t)
     );
     if (!queue) return;
@@ -633,7 +634,7 @@ static void spread_activation_bfs(
         }
     }
 
-    free(queue);
+    nimcp_free(queue);
 }
 
 //=============================================================================
@@ -679,7 +680,7 @@ semantic_query_result_t* semantic_memory_activate(
 
     // Allocate result
     semantic_query_result_t* result =
-        (semantic_query_result_t*)calloc(1, sizeof(semantic_query_result_t));
+        (semantic_query_result_t*)nimcp_calloc(1, sizeof(semantic_query_result_t));
     if (!result) return NULL;
 
     if (activated_count == 0) {
@@ -687,8 +688,8 @@ semantic_query_result_t* semantic_memory_activate(
         return result;
     }
 
-    result->concept_ids = (uint64_t*)malloc(activated_count * sizeof(uint64_t));
-    result->activation_levels = (float*)malloc(activated_count * sizeof(float));
+    result->concept_ids = (uint64_t*)nimcp_malloc(activated_count * sizeof(uint64_t));
+    result->activation_levels = (float*)nimcp_malloc(activated_count * sizeof(float));
 
     if (!result->concept_ids || !result->activation_levels) {
         semantic_memory_free_result(result);
@@ -767,9 +768,9 @@ semantic_query_result_t* semantic_memory_query(
 void semantic_memory_free_result(semantic_query_result_t* result) {
     if (!result) return;
 
-    if (result->concept_ids) free(result->concept_ids);
-    if (result->activation_levels) free(result->activation_levels);
-    free(result);
+    if (result->concept_ids) nimcp_free(result->concept_ids);
+    if (result->activation_levels) nimcp_free(result->activation_levels);
+    nimcp_free(result);
 }
 
 //=============================================================================
@@ -835,7 +836,7 @@ uint32_t semantic_memory_extract_from_consolidation(
             // Store source memory reference
             semantic_concept_t* concept = find_concept_by_id(system, concept_id);
             if (concept) {
-                concept->source_memory_ids = (uint64_t*)malloc(sizeof(uint64_t));
+                concept->source_memory_ids = (uint64_t*)nimcp_malloc(sizeof(uint64_t));
                 if (concept->source_memory_ids) {
                     concept->source_memory_ids[0] = node->id;
                     concept->source_count = 1;

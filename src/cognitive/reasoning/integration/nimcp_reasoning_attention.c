@@ -6,6 +6,7 @@
  */
 
 #include "cognitive/reasoning/integration/nimcp_reasoning_attention.h"
+#include "utils/memory/nimcp_memory.h"
 #include "cognitive/fault_tolerance/nimcp_fault_attention.h"
 #include "utils/logging/nimcp_logging.h"
 #include <stdlib.h>
@@ -122,7 +123,7 @@ reasoning_attention_t* reasoning_attention_create_custom(
     }
 
     // Allocate structure
-    reasoning_attention_t* integration = calloc(1, sizeof(reasoning_attention_t));
+    reasoning_attention_t* integration = nimcp_calloc(1, sizeof(reasoning_attention_t));
     if (!integration) {
         NIMCP_LOG(LOG_ERROR, "reasoning_attention", "Failed to allocate integration");
         return NULL;
@@ -146,7 +147,7 @@ reasoning_attention_t* reasoning_attention_create_custom(
 
     if (integration->subscription_handle == INVALID_SUBSCRIPTION_HANDLE) {
         NIMCP_LOG(LOG_ERROR, "reasoning_attention", "Failed to subscribe to events");
-        free(integration);
+        nimcp_free(integration);
         return NULL;
     }
 
@@ -163,7 +164,7 @@ void reasoning_attention_destroy(reasoning_attention_t* integration) {
     }
 
     NIMCP_LOG(LOG_INFO, "reasoning_attention", "Destroyed reasoning-attention integration");
-    free(integration);
+    nimcp_free(integration);
 }
 
 //=============================================================================

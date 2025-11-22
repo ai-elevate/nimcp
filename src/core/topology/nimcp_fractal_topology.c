@@ -204,7 +204,7 @@ static uint32_t* compute_degree_distribution(neural_network_t network, uint32_t 
     // Guard: Zero neurons
     if (num_neurons == 0) return NULL;
 
-    uint32_t* degrees = (uint32_t*)calloc(num_neurons, sizeof(uint32_t));
+    uint32_t* degrees = (uint32_t*)nimcp_calloc(num_neurons, sizeof(uint32_t));
 
     // Guard: Allocation failure
     if (!degrees) {
@@ -408,7 +408,7 @@ bool topology_generate_scale_free(
     // WHAT: Calculate full network topology metrics
     // WHY: Caller needs comprehensive analysis of generated network
     // HOW: Use topology_compute_stats to calculate all metrics
-    free(degrees);
+    nimcp_free(degrees);
 
     if (stats) {
         // topology_compute_stats will compute all metrics including:
@@ -724,7 +724,7 @@ static uint32_t bfs_shortest_paths(neural_network_t network, uint32_t source, ui
     distances[source] = 0;
 
     // Simple queue using array (BFS queue)
-    uint32_t* queue = (uint32_t*)malloc(num_neurons * sizeof(uint32_t));
+    uint32_t* queue = (uint32_t*)nimcp_malloc(num_neurons * sizeof(uint32_t));
     if (!queue) return 0;
 
     uint32_t queue_start = 0;
@@ -752,7 +752,7 @@ static uint32_t bfs_shortest_paths(neural_network_t network, uint32_t source, ui
         }
     }
 
-    free(queue);
+    nimcp_free(queue);
     return reachable;
 }
 
@@ -767,7 +767,7 @@ static float compute_characteristic_path(neural_network_t network) {
     uint32_t num_neurons = neural_network_get_num_neurons(network);
     if (num_neurons == 0) return 0.0f;
 
-    uint32_t* distances = (uint32_t*)malloc(num_neurons * sizeof(uint32_t));
+    uint32_t* distances = (uint32_t*)nimcp_malloc(num_neurons * sizeof(uint32_t));
     if (!distances) return 0.0f;
 
     uint64_t total_distance = 0;
@@ -786,7 +786,7 @@ static float compute_characteristic_path(neural_network_t network) {
         }
     }
 
-    free(distances);
+    nimcp_free(distances);
 
     return total_pairs > 0 ? (float)total_distance / (float)total_pairs : 0.0f;
 }
@@ -803,7 +803,7 @@ static float compute_power_law_fit(neural_network_t network) {
     if (num_neurons == 0) return 0.0f;
 
     // Collect degree distribution
-    uint32_t* degrees = (uint32_t*)malloc(num_neurons * sizeof(uint32_t));
+    uint32_t* degrees = (uint32_t*)nimcp_malloc(num_neurons * sizeof(uint32_t));
     if (!degrees) return 0.0f;
 
     uint32_t max_degree = 0;
@@ -814,14 +814,14 @@ static float compute_power_law_fit(neural_network_t network) {
     }
 
     if (max_degree == 0) {
-        free(degrees);
+        nimcp_free(degrees);
         return 0.0f;
     }
 
     // Compute degree histogram
-    uint32_t* hist = (uint32_t*)calloc(max_degree + 1, sizeof(uint32_t));
+    uint32_t* hist = (uint32_t*)nimcp_calloc(max_degree + 1, sizeof(uint32_t));
     if (!hist) {
-        free(degrees);
+        nimcp_free(degrees);
         return 0.0f;
     }
 
@@ -850,8 +850,8 @@ static float compute_power_law_fit(neural_network_t network) {
         }
     }
 
-    free(hist);
-    free(degrees);
+    nimcp_free(hist);
+    nimcp_free(degrees);
 
     if (n_points < 2) return 0.0f;
 
@@ -869,7 +869,7 @@ static float compute_power_law_fit(neural_network_t network) {
     float intercept = mean_log_p - gamma * mean_log_k;
 
     // Recompute for R² calculation (need to iterate again)
-    uint32_t* hist2 = (uint32_t*)calloc(max_degree + 1, sizeof(uint32_t));
+    uint32_t* hist2 = (uint32_t*)nimcp_calloc(max_degree + 1, sizeof(uint32_t));
     if (!hist2) return 0.0f;
 
     for (uint32_t i = 0; i < num_neurons; i++) {
@@ -889,7 +889,7 @@ static float compute_power_law_fit(neural_network_t network) {
         }
     }
 
-    free(hist2);
+    nimcp_free(hist2);
 
     float r_squared = ss_tot > 0.0f ? 1.0f - (ss_res / ss_tot) : 0.0f;
     return fmaxf(0.0f, fminf(1.0f, r_squared));  // Clamp to [0, 1]
@@ -911,7 +911,7 @@ static void compute_hub_metrics(neural_network_t network, uint32_t* num_hubs, fl
     }
 
     // Compute degree statistics
-    uint32_t* degrees = (uint32_t*)malloc(num_neurons * sizeof(uint32_t));
+    uint32_t* degrees = (uint32_t*)nimcp_malloc(num_neurons * sizeof(uint32_t));
     if (!degrees) {
         *num_hubs = 0;
         *hub_connectivity = 0.0f;
@@ -939,7 +939,7 @@ static void compute_hub_metrics(neural_network_t network, uint32_t* num_hubs, fl
 
     // Also compute 90th percentile as fallback
     // Sort degrees to find 90th percentile
-    uint32_t* sorted_degrees = (uint32_t*)malloc(num_neurons * sizeof(uint32_t));
+    uint32_t* sorted_degrees = (uint32_t*)nimcp_malloc(num_neurons * sizeof(uint32_t));
     if (sorted_degrees) {
         memcpy(sorted_degrees, degrees, num_neurons * sizeof(uint32_t));
 
@@ -956,7 +956,7 @@ static void compute_hub_metrics(neural_network_t network, uint32_t* num_hubs, fl
 
         uint32_t percentile_90_idx = (uint32_t)(0.9f * (float)num_neurons);
         float percentile_90 = (float)sorted_degrees[percentile_90_idx];
-        free(sorted_degrees);
+        nimcp_free(sorted_degrees);
 
         // Use lower threshold (more inclusive)
         if (percentile_90 < hub_threshold) {
@@ -965,11 +965,11 @@ static void compute_hub_metrics(neural_network_t network, uint32_t* num_hubs, fl
     }
 
     // Identify which neurons are hubs
-    bool* is_hub = (bool*)calloc(num_neurons, sizeof(bool));
+    bool* is_hub = (bool*)nimcp_calloc(num_neurons, sizeof(bool));
     if (!is_hub) {
         *num_hubs = 0;
         *hub_connectivity = 0.0f;
-        free(degrees);
+        nimcp_free(degrees);
         return;
     }
 
@@ -983,11 +983,11 @@ static void compute_hub_metrics(neural_network_t network, uint32_t* num_hubs, fl
 
     // Compute hub connectivity as fraction of paths through hubs
     // Use simplified betweenness: count paths that include a hub
-    uint32_t* distances = (uint32_t*)malloc(num_neurons * sizeof(uint32_t));
+    uint32_t* distances = (uint32_t*)nimcp_malloc(num_neurons * sizeof(uint32_t));
     if (!distances) {
         *hub_connectivity = 0.0f;
-        free(degrees);
-        free(is_hub);
+        nimcp_free(degrees);
+        nimcp_free(is_hub);
         return;
     }
 
@@ -1017,9 +1017,9 @@ static void compute_hub_metrics(neural_network_t network, uint32_t* num_hubs, fl
 
     *hub_connectivity = total_paths > 0 ? (float)paths_through_hubs / (float)total_paths : 0.0f;
 
-    free(distances);
-    free(degrees);
-    free(is_hub);
+    nimcp_free(distances);
+    nimcp_free(degrees);
+    nimcp_free(is_hub);
 }
 
 /**
@@ -1200,7 +1200,7 @@ bool topology_fit_power_law(
     }
 
     // Count degree distribution
-    uint32_t* degrees = (uint32_t*)calloc(num_neurons, sizeof(uint32_t));
+    uint32_t* degrees = (uint32_t*)nimcp_calloc(num_neurons, sizeof(uint32_t));
     if (!degrees) {
         set_error("Failed to allocate degree array");
         return false;
@@ -1218,15 +1218,15 @@ bool topology_fit_power_law(
     }
 
     if (max_degree == 0) {
-        free(degrees);
+        nimcp_free(degrees);
         if (gamma) *gamma = 0.0f;
         return true;  // Empty network, gamma is undefined
     }
 
     // Create histogram
-    uint32_t* histogram = (uint32_t*)calloc(max_degree + 1, sizeof(uint32_t));
+    uint32_t* histogram = (uint32_t*)nimcp_calloc(max_degree + 1, sizeof(uint32_t));
     if (!histogram) {
-        free(degrees);
+        nimcp_free(degrees);
         set_error("Failed to allocate histogram");
         return false;
     }
@@ -1253,8 +1253,8 @@ bool topology_fit_power_law(
         }
     }
 
-    free(degrees);
-    free(histogram);
+    nimcp_free(degrees);
+    nimcp_free(histogram);
 
     if (n_points < 2) {
         if (gamma) *gamma = 0.0f;

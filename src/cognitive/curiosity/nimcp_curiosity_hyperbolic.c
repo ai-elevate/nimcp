@@ -26,6 +26,7 @@
  */
 
 #include "nimcp_curiosity.h"
+#include "utils/memory/nimcp_memory.h"
 #include "cognitive/knowledge/nimcp_knowledge.h"
 #include "utils/geometry/nimcp_hyperbolic.h"
 #include <stdio.h>
@@ -137,12 +138,12 @@ uint32_t curiosity_find_interesting_hyperbolic(knowledge_system_t system,
 
     // Find more neighbors than needed (oversample)
     uint32_t oversample_k = k * 3;
-    knowledge_item_t **neighbors = malloc(oversample_k * sizeof(knowledge_item_t*));
-    float *distances = malloc(oversample_k * sizeof(float));
+    knowledge_item_t **neighbors = nimcp_malloc(oversample_k * sizeof(knowledge_item_t*));
+    float *distances = nimcp_malloc(oversample_k * sizeof(float));
 
     if (!neighbors || !distances) {
-        free(neighbors);
-        free(distances);
+        nimcp_free(neighbors);
+        nimcp_free(distances);
         return 0;
     }
 
@@ -151,8 +152,8 @@ uint32_t curiosity_find_interesting_hyperbolic(knowledge_system_t system,
                                                       oversample_k, neighbors, distances);
 
     if (num_neighbors == 0) {
-        free(neighbors);
-        free(distances);
+        nimcp_free(neighbors);
+        nimcp_free(distances);
         return 0;
     }
 
@@ -162,10 +163,10 @@ uint32_t curiosity_find_interesting_hyperbolic(knowledge_system_t system,
         float priority;
     } scored_item_t;
 
-    scored_item_t *scored = malloc(num_neighbors * sizeof(scored_item_t));
+    scored_item_t *scored = nimcp_malloc(num_neighbors * sizeof(scored_item_t));
     if (!scored) {
-        free(neighbors);
-        free(distances);
+        nimcp_free(neighbors);
+        nimcp_free(distances);
         return 0;
     }
 
@@ -193,9 +194,9 @@ uint32_t curiosity_find_interesting_hyperbolic(knowledge_system_t system,
     }
 
     // Cleanup
-    free(scored);
-    free(neighbors);
-    free(distances);
+    nimcp_free(scored);
+    nimcp_free(neighbors);
+    nimcp_free(distances);
 
     return num_interesting;
 }

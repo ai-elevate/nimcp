@@ -3,6 +3,7 @@
 //=============================================================================
 
 #include "core/brain/learning/nimcp_association_learning.h"
+#include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include <string.h>
 #include <stdio.h>
@@ -33,7 +34,7 @@ static association_store_t g_associations = {NULL, 0, 0};
 
 static void init_association_store(void) {
     if (!g_associations.entries) {
-        g_associations.entries = (association_entry_t*)calloc(MAX_ASSOCIATIONS,
+        g_associations.entries = (association_entry_t*)nimcp_calloc(MAX_ASSOCIATIONS,
                                                               sizeof(association_entry_t));
         g_associations.capacity = MAX_ASSOCIATIONS;
         g_associations.count = 0;

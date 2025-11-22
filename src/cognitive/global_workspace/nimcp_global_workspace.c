@@ -26,6 +26,7 @@
  */
 
 #include "nimcp_global_workspace.h"
+#include "utils/memory/nimcp_memory.h"
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
@@ -407,7 +408,7 @@ global_workspace_t* global_workspace_create_custom(
 
     // Allocate workspace structure
     struct global_workspace_struct* workspace =
-        (struct global_workspace_struct*)calloc(1, sizeof(struct global_workspace_struct));
+        (struct global_workspace_struct*)nimcp_calloc(1, sizeof(struct global_workspace_struct));
     if (workspace == NULL) {
         fprintf(stderr, "Failed to allocate workspace structure\n");
         return NULL;
@@ -418,10 +419,10 @@ global_workspace_t* global_workspace_create_custom(
 
     // Allocate broadcast content buffer
     workspace->broadcast_content =
-        (float*)calloc(actual_config.capacity_dim, sizeof(float));
+        (float*)nimcp_calloc(actual_config.capacity_dim, sizeof(float));
     if (workspace->broadcast_content == NULL) {
         fprintf(stderr, "Failed to allocate broadcast content buffer\n");
-        free(workspace);
+        nimcp_free(workspace);
         return NULL;
     }
 
@@ -432,39 +433,39 @@ global_workspace_t* global_workspace_create_custom(
 
     // Allocate history (if enabled)
     if (actual_config.enable_history && actual_config.history_depth > 0) {
-        workspace->history = (workspace_broadcast_t*)calloc(
+        workspace->history = (workspace_broadcast_t*)nimcp_calloc(
             actual_config.history_depth, sizeof(workspace_broadcast_t));
         if (workspace->history == NULL) {
             fprintf(stderr, "Failed to allocate history buffer\n");
-            free(workspace->broadcast_content);
-            free(workspace);
+            nimcp_free(workspace->broadcast_content);
+            nimcp_free(workspace);
             return NULL;
         }
 
         // Allocate content buffers for history
-        workspace->history_content = (float**)calloc(
+        workspace->history_content = (float**)nimcp_calloc(
             actual_config.history_depth, sizeof(float*));
         if (workspace->history_content == NULL) {
             fprintf(stderr, "Failed to allocate history content array\n");
-            free(workspace->history);
-            free(workspace->broadcast_content);
-            free(workspace);
+            nimcp_free(workspace->history);
+            nimcp_free(workspace->broadcast_content);
+            nimcp_free(workspace);
             return NULL;
         }
 
         for (uint32_t i = 0; i < actual_config.history_depth; i++) {
-            workspace->history_content[i] = (float*)calloc(
+            workspace->history_content[i] = (float*)nimcp_calloc(
                 actual_config.capacity_dim, sizeof(float));
             if (workspace->history_content[i] == NULL) {
                 fprintf(stderr, "Failed to allocate history content buffer %u\n", i);
                 // Clean up previously allocated
                 for (uint32_t j = 0; j < i; j++) {
-                    free(workspace->history_content[j]);
+                    nimcp_free(workspace->history_content[j]);
                 }
-                free(workspace->history_content);
-                free(workspace->history);
-                free(workspace->broadcast_content);
-                free(workspace);
+                nimcp_free(workspace->history_content);
+                nimcp_free(workspace->history);
+                nimcp_free(workspace->broadcast_content);
+                nimcp_free(workspace);
                 return NULL;
             }
         }
@@ -501,19 +502,19 @@ void global_workspace_destroy(global_workspace_t* workspace) {
     // Free history content buffers
     if (ws->history_content != NULL) {
         for (uint32_t i = 0; i < ws->config.history_depth; i++) {
-            free(ws->history_content[i]);
+            nimcp_free(ws->history_content[i]);
         }
-        free(ws->history_content);
+        nimcp_free(ws->history_content);
     }
 
     // Free history metadata
-    free(ws->history);
+    nimcp_free(ws->history);
 
     // Free broadcast content
-    free(ws->broadcast_content);
+    nimcp_free(ws->broadcast_content);
 
     // Free workspace structure
-    free(ws);
+    nimcp_free(ws);
 }
 
 //=============================================================================

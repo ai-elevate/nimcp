@@ -11,6 +11,7 @@
  */
 
 #include "cognitive/nimcp_remorse_regret.h"
+#include "utils/memory/nimcp_memory.h"
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
@@ -67,7 +68,7 @@ remorse_regret_system_t* remorse_regret_system_create(void) {
     // WHY:  Required for tracking moral emotions and learning from mistakes
     // HOW:  Allocate memory, zero-initialize, set defaults
 
-    remorse_regret_system_t* system = (remorse_regret_system_t*)calloc(1, sizeof(remorse_regret_system_t));
+    remorse_regret_system_t* system = (remorse_regret_system_t*)nimcp_calloc(1, sizeof(remorse_regret_system_t));
     if (!system) return NULL;
 
     // Set personality defaults (neutral values)
@@ -90,10 +91,10 @@ remorse_regret_system_t* remorse_regret_system_create(void) {
 void remorse_regret_system_destroy(remorse_regret_system_t* system) {
     // WHAT: Free remorse/regret system resources
     // WHY:  Prevent memory leaks
-    // HOW:  Simple free (no sub-allocations)
+    // HOW:  Simple nimcp_free(no sub-allocations)
 
     if (!system) return;
-    free(system);
+    nimcp_free(system);
 }
 
 void remorse_regret_system_reset(remorse_regret_system_t* system) {

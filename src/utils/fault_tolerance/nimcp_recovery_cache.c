@@ -8,6 +8,7 @@
  */
 
 #include "utils/fault_tolerance/nimcp_recovery_cache.h"
+#include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 
 #include <stdlib.h>
@@ -136,7 +137,7 @@ static bool evict_lru_entry(nimcp_recovery_cache_t* cache) {
     lru_remove(cache, victim);
 
     /* Free entry */
-    free(victim);
+    nimcp_free(victim);
 
     cache->current_size--;
     cache->stats.evictions++;
@@ -183,7 +184,7 @@ nimcp_recovery_cache_t* nimcp_recovery_cache_create(size_t capacity) {
         capacity = NIMCP_RECOVERY_CACHE_DEFAULT_CAPACITY;
     }
 
-    nimcp_recovery_cache_t* cache = calloc(1, sizeof(nimcp_recovery_cache_t));
+    nimcp_recovery_cache_t* cache = nimcp_calloc(1, sizeof(nimcp_recovery_cache_t));
     if (!cache) {
         NIMCP_LOGGING_ERROR("Failed to allocate recovery cache");
         return NULL;
@@ -191,10 +192,10 @@ nimcp_recovery_cache_t* nimcp_recovery_cache_create(size_t capacity) {
 
     /* Allocate hash table */
     cache->hash_size = NIMCP_RECOVERY_CACHE_HASH_SIZE;
-    cache->hash_table = calloc(cache->hash_size, sizeof(nimcp_cache_entry_t*));
+    cache->hash_table = nimcp_calloc(cache->hash_size, sizeof(nimcp_cache_entry_t*));
     if (!cache->hash_table) {
         NIMCP_LOGGING_ERROR("Failed to allocate hash table");
-        free(cache);
+        nimcp_free(cache);
         return NULL;
     }
 
@@ -211,8 +212,8 @@ nimcp_recovery_cache_t* nimcp_recovery_cache_create(size_t capacity) {
     /* Initialize mutex */
     if (pthread_mutex_init(&cache->lock, NULL) != 0) {
         NIMCP_LOGGING_ERROR("Failed to initialize cache mutex");
-        free(cache->hash_table);
-        free(cache);
+        nimcp_free(cache->hash_table);
+        nimcp_free(cache);
         return NULL;
     }
 
@@ -242,19 +243,19 @@ void nimcp_recovery_cache_destroy(nimcp_recovery_cache_t* cache) {
         nimcp_cache_entry_t* entry = cache->hash_table[i];
         while (entry) {
             nimcp_cache_entry_t* next = entry->hash_next;
-            free(entry);
+            nimcp_free(entry);
             entry = next;
         }
     }
 
     /* Free hash table */
-    free(cache->hash_table);
+    nimcp_free(cache->hash_table);
 
     /* Destroy mutex */
     pthread_mutex_destroy(&cache->lock);
 
     /* Free cache structure */
-    free(cache);
+    nimcp_free(cache);
 
     NIMCP_LOGGING_INFO("Recovery cache destroyed");
 }
@@ -273,7 +274,7 @@ bool nimcp_recovery_cache_clear(nimcp_recovery_cache_t* cache) {
         nimcp_cache_entry_t* entry = cache->hash_table[i];
         while (entry) {
             nimcp_cache_entry_t* next = entry->hash_next;
-            free(entry);
+            nimcp_free(entry);
             entry = next;
         }
         cache->hash_table[i] = NULL;
@@ -486,7 +487,7 @@ bool nimcp_recovery_cache_store(
     }
 
     /* Create new entry */
-    nimcp_cache_entry_t* entry = calloc(1, sizeof(nimcp_cache_entry_t));
+    nimcp_cache_entry_t* entry = nimcp_calloc(1, sizeof(nimcp_cache_entry_t));
     if (!entry) {
         pthread_mutex_unlock(&cache->lock);
         NIMCP_LOGGING_ERROR("Failed to allocate cache entry");
@@ -623,7 +624,7 @@ bool nimcp_recovery_cache_invalidate(
             lru_remove(cache, victim);
 
             /* Free entry */
-            free(victim);
+            nimcp_free(victim);
 
             cache->current_size--;
 

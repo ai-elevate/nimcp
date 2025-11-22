@@ -22,6 +22,7 @@
  */
 
 #include "nimcp_integration.h"
+#include "utils/memory/nimcp_memory.h"
 #include <stdio.h>
 #include <string.h>
 #include <math.h>
@@ -153,7 +154,7 @@ bool integration_integrate(
 
     // Allocate trajectory if requested
     if (trajectory != NULL && *trajectory == NULL) {
-        *trajectory = (float*)malloc(steps * n * sizeof(float));
+        *trajectory = (float*)nimcp_malloc(steps * n * sizeof(float));
         if (*trajectory == NULL) {
             integration_error("Failed to allocate trajectory memory");
             return false;
@@ -212,7 +213,7 @@ bool integration_euler_step(
     bool heap_allocated = false;
 
     if (n > STACK_ALLOC_THRESHOLD) {
-        derivatives = (float*)malloc(n * sizeof(float));
+        derivatives = (float*)nimcp_malloc(n * sizeof(float));
         if (derivatives == NULL) {
             integration_error("Euler: Failed to allocate derivatives");
             return false;
@@ -230,7 +231,7 @@ bool integration_euler_step(
 
     // Cleanup
     if (heap_allocated) {
-        free(derivatives);
+        nimcp_free(derivatives);
     }
 
     return true;
@@ -257,7 +258,7 @@ bool integration_rk4_step(
     bool heap_allocated = false;
 
     if (n > STACK_ALLOC_THRESHOLD) {
-        temp_storage = (float*)malloc(5 * n * sizeof(float));
+        temp_storage = (float*)nimcp_malloc(5 * n * sizeof(float));
         if (temp_storage == NULL) {
             integration_error("RK4: Failed to allocate temporary storage");
             return false;
@@ -300,7 +301,7 @@ bool integration_rk4_step(
 
     // Cleanup
     if (heap_allocated) {
-        free(temp_storage);
+        nimcp_free(temp_storage);
     }
 
     return true;
@@ -366,7 +367,7 @@ bool integration_adaptive_step(
     bool heap_allocated = false;
 
     if (n > STACK_ALLOC_THRESHOLD) {
-        temp_storage = (float*)malloc(7 * n * sizeof(float));
+        temp_storage = (float*)nimcp_malloc(7 * n * sizeof(float));
         if (temp_storage == NULL) {
             integration_error("Adaptive: Failed to allocate temporary storage");
             return false;
@@ -479,7 +480,7 @@ bool integration_adaptive_step(
 
     // Cleanup
     if (heap_allocated) {
-        free(temp_storage);
+        nimcp_free(temp_storage);
     }
 
     return step_accepted;

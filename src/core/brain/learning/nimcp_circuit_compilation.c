@@ -3,6 +3,7 @@
 //=============================================================================
 
 #include "core/brain/learning/nimcp_circuit_compilation.h"
+#include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include <string.h>
 #include <stdio.h>
@@ -46,7 +47,7 @@ static circuit_store_t g_circuits = {NULL, 0, 0, 1};
 
 static void init_circuit_store(void) {
     if (!g_circuits.circuits) {
-        g_circuits.circuits = (circuit_entry_t*)calloc(MAX_CIRCUITS,
+        g_circuits.circuits = (circuit_entry_t*)nimcp_calloc(MAX_CIRCUITS,
                                                        sizeof(circuit_entry_t));
         g_circuits.capacity = MAX_CIRCUITS;
         g_circuits.count = 0;
@@ -77,7 +78,7 @@ static circuit_entry_t* create_circuit(const char* rule_str) {
     circuit_entry_t* entry = &g_circuits.circuits[g_circuits.count++];
     entry->id = g_circuits.next_id++;
     strncpy(entry->rule_str, rule_str, sizeof(entry->rule_str) - 1);
-    entry->gates = (neural_gate_t*)calloc(MAX_GATES_PER_CIRCUIT, sizeof(neural_gate_t));
+    entry->gates = (neural_gate_t*)nimcp_calloc(MAX_GATES_PER_CIRCUIT, sizeof(neural_gate_t));
     entry->num_gates = 0;
     entry->capacity = MAX_GATES_PER_CIRCUIT;
     entry->eval_count = 0;
@@ -217,7 +218,7 @@ bool delete_circuit(brain_t brain, circuit_id_t circuit_id) {
     }
 
     // Free gates
-    free(circuit->gates);
+    nimcp_free(circuit->gates);
     circuit->gates = NULL;
     circuit->active = false;
 

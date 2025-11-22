@@ -3,6 +3,7 @@
 //=============================================================================
 
 #include "core/brain/learning/nimcp_rule_learning.h"
+#include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include <string.h>
 #include <stdio.h>
@@ -27,7 +28,7 @@ int brain_learn_rule_from_examples(brain_t brain, const rule_example_t* examples
         const char* current_label = labels[i];
 
         // Find all examples with this label
-        rule_example_t* group = (rule_example_t*)malloc(count * sizeof(rule_example_t));
+        rule_example_t* group = (rule_example_t*)nimcp_malloc(count * sizeof(rule_example_t));
         uint32_t group_size = 0;
 
         for (uint32_t j = 0; j < count; j++) {
@@ -50,7 +51,7 @@ int brain_learn_rule_from_examples(brain_t brain, const rule_example_t* examples
             }
         }
 
-        free(group);
+        nimcp_free(group);
     }
 
     return rules_learned;
@@ -64,7 +65,7 @@ bool extract_rule_pattern(const rule_example_t* examples, uint32_t count,
 
     // Find common features (threshold: present in >80% of examples)
     uint32_t num_features = examples[0].num_features;
-    bool* common_features = (bool*)calloc(num_features, sizeof(bool));
+    bool* common_features = (bool*)nimcp_calloc(num_features, sizeof(bool));
 
     for (uint32_t f = 0; f < num_features; f++) {
         uint32_t present_count = 0;
@@ -104,12 +105,12 @@ bool extract_rule_pattern(const rule_example_t* examples, uint32_t count,
 
     if (first) {
         // No common features found
-        free(common_features);
+        nimcp_free(common_features);
         return false;
     }
 
     snprintf(rule_out + offset, rule_size - offset, " THEN %s", label);
-    free(common_features);
+    nimcp_free(common_features);
 
     return true;
 }

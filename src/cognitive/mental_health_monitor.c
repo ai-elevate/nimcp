@@ -10,6 +10,7 @@
  */
 
 #include "cognitive/nimcp_mental_health.h"
+#include "utils/memory/nimcp_memory.h"
 #include "core/brain/nimcp_brain.h"
 #include "core/nimcp_time.h"
 #include "core/nimcp_error.h"
@@ -608,7 +609,7 @@ mental_health_monitor_t* mental_health_create(const mental_health_config_t* conf
         return NULL;
     }
 
-    mental_health_monitor_t* monitor = calloc(1, sizeof(mental_health_monitor_t));
+    mental_health_monitor_t* monitor = nimcp_calloc(1, sizeof(mental_health_monitor_t));
     if (!monitor) {
         set_error("mental_health_create: Out of memory");
         return NULL;
@@ -635,13 +636,13 @@ mental_health_monitor_t* mental_health_create(const mental_health_config_t* conf
 
     // Allocate history buffers
     for (int i = 0; i < DISORDER_COUNT; i++) {
-        monitor->score_history[i] = calloc(config->history_window_size, sizeof(float));
+        monitor->score_history[i] = nimcp_calloc(config->history_window_size, sizeof(float));
         if (!monitor->score_history[i]) {
             // Cleanup on failure
             for (int j = 0; j < i; j++) {
-                free(monitor->score_history[j]);
+                nimcp_free(monitor->score_history[j]);
             }
-            free(monitor);
+            nimcp_free(monitor);
             set_error("mental_health_create: Failed to allocate history buffers");
             return NULL;
         }
@@ -658,10 +659,10 @@ void mental_health_destroy(mental_health_monitor_t* monitor) {
 
     // Free history buffers
     for (int i = 0; i < DISORDER_COUNT; i++) {
-        free(monitor->score_history[i]);
+        nimcp_free(monitor->score_history[i]);
     }
 
-    free(monitor);
+    nimcp_free(monitor);
 }
 
 //=============================================================================

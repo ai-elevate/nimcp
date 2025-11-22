@@ -199,6 +199,21 @@ network_config_t nimcp_brain_factory_build_base_network_config(uint32_t num_inpu
                                                   ode_integration_method_t integration_method)
 {
     network_config_t config = {0};
+
+    // Validation: Check for zero parameters
+    if (num_inputs == 0) {
+        set_error("Invalid network configuration: num_inputs cannot be zero");
+        return config;  // Return with layer_sizes = NULL to signal error
+    }
+    if (num_outputs == 0) {
+        set_error("Invalid network configuration: num_outputs cannot be zero");
+        return config;  // Return with layer_sizes = NULL to signal error
+    }
+    if (num_neurons == 0) {
+        set_error("Invalid network configuration: num_neurons cannot be zero");
+        return config;  // Return with layer_sizes = NULL to signal error
+    }
+
     config.input_size = num_inputs;
     config.output_size = num_outputs;
     config.num_neurons = num_neurons;

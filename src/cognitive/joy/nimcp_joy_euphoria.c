@@ -63,7 +63,7 @@ joy_system_t* joy_system_create(void) {
 void joy_system_destroy(joy_system_t* system) {
     // WHAT: Free joy system resources
     // WHY:  Prevent memory leaks
-    // HOW:  Simple free (no complex nested allocations)
+    // HOW:  Simple nimcp_free(no complex nested allocations)
 
     if (!system) return;
     nimcp_free(system);

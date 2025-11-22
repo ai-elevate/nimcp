@@ -15,6 +15,7 @@
  */
 
 #include "nimcp_platform_thread.h"
+#include "utils/memory/nimcp_memory.h"
 #include <errno.h>
 #include <stdlib.h>
 
@@ -48,7 +49,7 @@ static DWORD WINAPI win_thread_start(LPVOID arg)
 {
     win_thread_wrapper_t* wrapper = (win_thread_wrapper_t*)arg;
     wrapper->retval = wrapper->func(wrapper->arg);
-    free(wrapper);  /* Cleanup wrapper after thread completes */
+    nimcp_free(wrapper);  /* Cleanup wrapper after thread completes */
     return 0;  /* Windows thread exit code (unused) */
 }
 
@@ -73,7 +74,7 @@ int nimcp_platform_thread_create(nimcp_platform_thread_t* thread,
 
 #elif defined(NIMCP_PLATFORM_WINDOWS)
     /* Windows: Create thread with wrapper */
-    win_thread_wrapper_t* wrapper = (win_thread_wrapper_t*)malloc(sizeof(win_thread_wrapper_t));
+    win_thread_wrapper_t* wrapper = (win_thread_wrapper_t*)nimcp_malloc(sizeof(win_thread_wrapper_t));
     if (!wrapper) {
         return ENOMEM;
     }
@@ -92,7 +93,7 @@ int nimcp_platform_thread_create(nimcp_platform_thread_t* thread,
     );
 
     if (handle == 0) {
-        free(wrapper);
+        nimcp_free(wrapper);
         return EAGAIN;  /* Thread creation failed */
     }
 

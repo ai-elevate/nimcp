@@ -5,6 +5,7 @@
  */
 
 #include "cognitive/nimcp_shadow_emotions.h"
+#include "utils/memory/nimcp_memory.h"
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
@@ -32,14 +33,14 @@ shadow_emotion_system_t* shadow_system_create(uint32_t max_others_tracked) {
      * HOW:  Allocate and initialize all components
      */
     
-    shadow_emotion_system_t* system = (shadow_emotion_system_t*)calloc(1, sizeof(shadow_emotion_system_t));
+    shadow_emotion_system_t* system = (shadow_emotion_system_t*)nimcp_calloc(1, sizeof(shadow_emotion_system_t));
     if (!system) return NULL;
 
     // Allocate other-detection array
     system->max_others_tracked = max_others_tracked;
-    system->detected_in_others = (other_detection_t*)calloc(max_others_tracked, sizeof(other_detection_t));
+    system->detected_in_others = (other_detection_t*)nimcp_calloc(max_others_tracked, sizeof(other_detection_t));
     if (!system->detected_in_others) {
-        free(system);
+        nimcp_free(system);
         return NULL;
     }
 
@@ -53,10 +54,10 @@ void shadow_system_destroy(shadow_emotion_system_t* system) {
     if (!system) return;
 
     if (system->detected_in_others) {
-        free(system->detected_in_others);
+        nimcp_free(system->detected_in_others);
     }
 
-    free(system);
+    nimcp_free(system);
 }
 
 void shadow_system_reset(shadow_emotion_system_t* system) {

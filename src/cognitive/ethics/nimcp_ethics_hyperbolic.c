@@ -40,6 +40,7 @@
  */
 
 #include "nimcp_ethics.h"
+#include "utils/memory/nimcp_memory.h"
 #include "cognitive/knowledge/nimcp_knowledge.h"
 #include "utils/geometry/nimcp_hyperbolic.h"
 #include <stdio.h>
@@ -120,12 +121,12 @@ uint32_t ethics_find_relevant_principles_hyperbolic(knowledge_system_t system,
     }
 
     // Find k-NN in hyperbolic space
-    knowledge_item_t **neighbors = malloc(k * sizeof(knowledge_item_t*));
-    float *distances = malloc(k * sizeof(float));
+    knowledge_item_t **neighbors = nimcp_malloc(k * sizeof(knowledge_item_t*));
+    float *distances = nimcp_malloc(k * sizeof(float));
 
     if (!neighbors || !distances) {
-        free(neighbors);
-        free(distances);
+        nimcp_free(neighbors);
+        nimcp_free(distances);
         return 0;
     }
 
@@ -133,8 +134,8 @@ uint32_t ethics_find_relevant_principles_hyperbolic(knowledge_system_t system,
                                                       k, neighbors, distances);
 
     if (num_neighbors == 0) {
-        free(neighbors);
-        free(distances);
+        nimcp_free(neighbors);
+        nimcp_free(distances);
         return 0;
     }
 
@@ -155,8 +156,8 @@ uint32_t ethics_find_relevant_principles_hyperbolic(knowledge_system_t system,
         }
     }
 
-    free(neighbors);
-    free(distances);
+    nimcp_free(neighbors);
+    nimcp_free(distances);
 
     return num_neighbors;
 }

@@ -7,6 +7,7 @@
  */
 
 #include "nimcp_error_codes.h"
+#include "utils/memory/nimcp_memory.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -22,7 +23,7 @@ static pthread_once_t g_error_key_once = PTHREAD_ONCE_INIT;
 static void error_destructor(void* value)
 {
     if (value) {
-        free(value);
+        nimcp_free(value);
     }
 }
 
@@ -37,7 +38,7 @@ static nimcp_error_info_t* get_thread_error(void)
 
     nimcp_error_info_t* info = (nimcp_error_info_t*)pthread_getspecific(g_error_key);
     if (!info) {
-        info = (nimcp_error_info_t*)calloc(1, sizeof(nimcp_error_info_t));
+        info = (nimcp_error_info_t*)nimcp_calloc(1, sizeof(nimcp_error_info_t));
         pthread_setspecific(g_error_key, info);
     }
     return info;

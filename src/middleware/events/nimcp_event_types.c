@@ -35,7 +35,7 @@ static uint64_t get_next_sequence(void) {
  * HOW:  Fill in type, priority, source, timestamp, sequence
  */
 static void init_event_metadata(event_t* event, event_type_t type,
-                                 event_priority_t priority, event_source_t source) {
+                                 mw_event_priority_t priority, event_source_t source) {
     event->type = type;
     event->priority = priority;
     event->source = source;
@@ -49,7 +49,7 @@ static void init_event_metadata(event_t* event, event_type_t type,
 
 event_t event_create_spike_burst(uint32_t* neuron_ids, uint32_t num_neurons,
                                   float synchrony, uint64_t duration_us,
-                                  event_priority_t priority, event_source_t source) {
+                                  mw_event_priority_t priority, event_source_t source) {
     event_t event = {0};
     init_event_metadata(&event, EVENT_TYPE_SPIKE_BURST, priority, source);
 
@@ -63,7 +63,7 @@ event_t event_create_spike_burst(uint32_t* neuron_ids, uint32_t num_neurons,
 
 event_t event_create_pattern_detected(uint32_t pattern_id, float confidence,
                                        uint32_t pattern_length, const char* pattern_name,
-                                       event_priority_t priority, event_source_t source) {
+                                       mw_event_priority_t priority, event_source_t source) {
     event_t event = {0};
     init_event_metadata(&event, EVENT_TYPE_PATTERN_DETECTED, priority, source);
 
@@ -77,7 +77,7 @@ event_t event_create_pattern_detected(uint32_t pattern_id, float confidence,
 
 event_t event_create_attention_shift(uint32_t prev_item, uint32_t curr_item,
                                       float attention_strength, const char* reason,
-                                      event_priority_t priority, event_source_t source) {
+                                      mw_event_priority_t priority, event_source_t source) {
     event_t event = {0};
     init_event_metadata(&event, EVENT_TYPE_ATTENTION_SHIFT, priority, source);
 
@@ -91,7 +91,7 @@ event_t event_create_attention_shift(uint32_t prev_item, uint32_t curr_item,
 
 event_t event_create_memory_formed(uint32_t memory_id, float* memory_trace,
                                     uint32_t trace_size, float consolidation,
-                                    event_priority_t priority, event_source_t source) {
+                                    mw_event_priority_t priority, event_source_t source) {
     event_t event = {0};
     init_event_metadata(&event, EVENT_TYPE_MEMORY_FORMED, priority, source);
 
@@ -105,7 +105,7 @@ event_t event_create_memory_formed(uint32_t memory_id, float* memory_trace,
 
 event_t event_create_salience_peak(float salience, float novelty,
                                     float surprise, float urgency,
-                                    event_priority_t priority, event_source_t source) {
+                                    mw_event_priority_t priority, event_source_t source) {
     event_t event = {0};
     init_event_metadata(&event, EVENT_TYPE_SALIENCE_PEAK, priority, source);
 
@@ -119,7 +119,7 @@ event_t event_create_salience_peak(float salience, float novelty,
 
 event_t event_create_oscillation_change(float prev_freq, float curr_freq,
                                          float power_change, const char* band_name,
-                                         event_priority_t priority, event_source_t source) {
+                                         mw_event_priority_t priority, event_source_t source) {
     event_t event = {0};
     init_event_metadata(&event, EVENT_TYPE_OSCILLATION_CHANGE, priority, source);
 
@@ -133,7 +133,7 @@ event_t event_create_oscillation_change(float prev_freq, float curr_freq,
 
 event_t event_create_error_detected(float expected, float actual,
                                      float magnitude, uint32_t location,
-                                     event_priority_t priority, event_source_t source) {
+                                     mw_event_priority_t priority, event_source_t source) {
     event_t event = {0};
     init_event_metadata(&event, EVENT_TYPE_ERROR_DETECTED, priority, source);
 
@@ -147,7 +147,7 @@ event_t event_create_error_detected(float expected, float actual,
 
 event_t event_create_decision_made(uint32_t decision_id, float confidence,
                                     float* decision_vector, uint32_t vector_size,
-                                    event_priority_t priority, event_source_t source) {
+                                    mw_event_priority_t priority, event_source_t source) {
     event_t event = {0};
     init_event_metadata(&event, EVENT_TYPE_DECISION_MADE, priority, source);
 
@@ -160,7 +160,7 @@ event_t event_create_decision_made(uint32_t decision_id, float confidence,
 }
 
 event_t event_create_custom(void* data, uint32_t data_size, const char* description,
-                             event_priority_t priority, event_source_t source) {
+                             mw_event_priority_t priority, event_source_t source) {
     event_t event = {0};
     init_event_metadata(&event, EVENT_TYPE_CUSTOM, priority, source);
 
@@ -214,7 +214,7 @@ const char* event_source_name(event_source_t source) {
     }
 }
 
-const char* event_priority_name(event_priority_t priority) {
+const char* event_priority_name(mw_event_priority_t priority) {
     switch (priority) {
         case MW_EVENT_PRIORITY_CRITICAL: return "CRITICAL";
         case MW_EVENT_PRIORITY_HIGH: return "HIGH";

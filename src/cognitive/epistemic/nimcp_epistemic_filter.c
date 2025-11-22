@@ -3,6 +3,7 @@
 //=============================================================================
 
 #include "nimcp_epistemic_filter.h"
+#include "utils/memory/nimcp_memory.h"
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
@@ -86,7 +87,7 @@ static float detect_conspiracy_patterns(const char* text) {
     uint32_t pattern_count = 0;
 
     // Convert to lowercase for pattern matching (bounded)
-    char* lower_text = malloc(text_len + 1);
+    char* lower_text = nimcp_malloc(text_len + 1);
     if (!lower_text) return 0.0f;
 
     for (size_t i = 0; i < text_len; i++) {
@@ -145,7 +146,7 @@ static float detect_conspiracy_patterns(const char* text) {
         pattern_count++;
     }
 
-    free(lower_text);
+    nimcp_free(lower_text);
 
     // Normalize by number of patterns found
     if (pattern_count > 0) {
@@ -214,7 +215,7 @@ static float detect_bandwagon_effect(
 //=============================================================================
 
 epistemic_filter_t epistemic_filter_create(float skepticism_level) {
-    epistemic_filter_t filter = calloc(1, sizeof(struct epistemic_filter_struct));
+    epistemic_filter_t filter = nimcp_calloc(1, sizeof(struct epistemic_filter_struct));
     if (!filter) {
         return NULL;
     }
@@ -235,7 +236,7 @@ epistemic_filter_t epistemic_filter_create(float skepticism_level) {
 
 void epistemic_filter_destroy(epistemic_filter_t filter) {
     if (filter) {
-        free(filter);
+        nimcp_free(filter);
     }
 }
 

@@ -10,6 +10,7 @@
  */
 
 #include "utils/fault_tolerance/nimcp_lockfree_metrics.h"
+#include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include <stdlib.h>
 #include <string.h>
@@ -146,7 +147,7 @@ lockfree_metrics_buffer_t* lockfree_metrics_create(
 
     // Allocate buffer structure
     lockfree_metrics_buffer_t* buffer =
-        (lockfree_metrics_buffer_t*)calloc(1, sizeof(lockfree_metrics_buffer_t));
+        (lockfree_metrics_buffer_t*)nimcp_calloc(1, sizeof(lockfree_metrics_buffer_t));
     if (!buffer) {
         nimcp_log(LOG_LEVEL_ERROR, "Failed to allocate metrics buffer");
         return NULL;
@@ -160,7 +161,7 @@ lockfree_metrics_buffer_t* lockfree_metrics_create(
     if (!buffer->entries) {
         nimcp_log(LOG_LEVEL_ERROR, "Failed to allocate metrics entries (%u entries)",
                   capacity);
-        free(buffer);
+        nimcp_free(buffer);
         return NULL;
     }
 
@@ -213,12 +214,12 @@ void lockfree_metrics_destroy(lockfree_metrics_buffer_t* buffer) {
 
     // Free entries array
     if (buffer->entries) {
-        free(buffer->entries);
+        nimcp_free(buffer->entries);
         buffer->entries = NULL;
     }
 
     // Free buffer structure
-    free(buffer);
+    nimcp_free(buffer);
 }
 
 bool lockfree_metrics_reset(lockfree_metrics_buffer_t* buffer) {

@@ -11,6 +11,7 @@
  */
 
 #include "nimcp_dynamic_config.h"
+#include "utils/memory/nimcp_memory.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -139,7 +140,7 @@ static bool parse_config_file(const char* path) {
                 if (g_config_table[i].in_use &&
                     g_config_table[i].type == CONFIG_TYPE_STRING &&
                     g_config_table[i].value.string_val) {
-                    free(g_config_table[i].value.string_val);
+                    nimcp_free(g_config_table[i].value.string_val);
                     g_config_table[i].value.string_val = NULL;
                 }
 
@@ -206,7 +207,7 @@ void config_shutdown(void) {
         if (g_config_table[i].in_use &&
             g_config_table[i].type == CONFIG_TYPE_STRING &&
             g_config_table[i].value.string_val) {
-            free(g_config_table[i].value.string_val);
+            nimcp_free(g_config_table[i].value.string_val);
         }
         g_config_table[i].in_use = false;
     }
@@ -414,7 +415,7 @@ bool config_set_string(const char* key, const char* value) {
 
             // Free old value and set new one
             if (g_config_table[i].value.string_val) {
-                free(g_config_table[i].value.string_val);
+                nimcp_free(g_config_table[i].value.string_val);
             }
             g_config_table[i].value.string_val = strdup(value);
             pthread_rwlock_unlock(&g_config_lock);
@@ -424,7 +425,7 @@ bool config_set_string(const char* key, const char* value) {
 
             // Free the temporary copy
             if (new_value.string_val) {
-                free(new_value.string_val);
+                nimcp_free(new_value.string_val);
             }
             return true;
         }

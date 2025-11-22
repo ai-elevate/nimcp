@@ -18,6 +18,7 @@
 #include <string.h>
 #include <math.h>
 #include <ctype.h>
+#include "utils/memory/nimcp_memory.h"
 
 //=============================================================================
 // HELPER FUNCTIONS
@@ -71,13 +72,13 @@ static int find_group_index(bias_detection_system_t* system, const social_group_
 //=============================================================================
 
 bias_detection_system_t* bias_system_create(uint32_t max_others_tracked) {
-    bias_detection_system_t* system = (bias_detection_system_t*)calloc(1, sizeof(bias_detection_system_t));
+    bias_detection_system_t* system = (bias_detection_system_t*)nimcp_calloc(1, sizeof(bias_detection_system_t));
     if (!system) return NULL;
 
     system->max_others_tracked = max_others_tracked;
 
     // Allocate other-detection array
-    system->detected_in_others = (bias_detection_other_t*)calloc(max_others_tracked, sizeof(bias_detection_other_t));
+    system->detected_in_others = (bias_detection_other_t*)nimcp_calloc(max_others_tracked, sizeof(bias_detection_other_t));
 
     if (!system->detected_in_others) {
         bias_system_destroy(system);
@@ -93,8 +94,8 @@ bias_detection_system_t* bias_system_create(uint32_t max_others_tracked) {
 void bias_system_destroy(bias_detection_system_t* system) {
     if (!system) return;
 
-    free(system->detected_in_others);
-    free(system);
+    nimcp_free(system->detected_in_others);
+    nimcp_free(system);
 }
 
 void bias_system_reset(bias_detection_system_t* system) {

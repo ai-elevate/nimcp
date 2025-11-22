@@ -5,6 +5,7 @@ add_library(nimcp_middleware STATIC
     buffering/nimcp_sliding_window.c
     buffering/nimcp_temporal_accumulator.c
     buffering/nimcp_integration_buffer.c
+    buffering/nimcp_phase_coded_buffer.c
 
     # Normalization
     normalization/nimcp_zscore_normalizer.c
@@ -23,34 +24,41 @@ add_library(nimcp_middleware STATIC
     # Brain Integration
     brain_integration.c
 
-    # Events - REMOVED: Consolidating to core/events/nimcp_event_bus.c (universal event bus)
-    # The middleware event bus infrastructure has been removed to eliminate redundancy.
-    # All event handling is now centralized in the core event bus system at core/events/.
-    # Removed components:
-    #   - events/nimcp_event_bus.c       (duplicate event bus - core version is canonical)
-    #   - events/nimcp_event_queue.c     (queue functionality integrated into core event bus)
-    #   - events/nimcp_event_subscriber.c (subscriber management in core event bus)
-    #   - events/nimcp_event_types.c     (event types consolidated in core system)
-    # Date removed: 2025-11-20
-    # Reason: Consolidation to single universal event bus eliminates duplication and
-    #         provides unified event handling across all subsystems (middleware, cognitive,
-    #         networking, fault tolerance).
+    # Events module removed - using core event bus (core/events/nimcp_event_bus.h)
 
     # Pattern Recognition
     patterns/nimcp_synchrony_detector.c
     patterns/nimcp_sequence_detector.c
     patterns/nimcp_oscillation_detector.c
     patterns/nimcp_pattern_library.c
+    patterns/nimcp_pattern_cow.c
 
     # Thalamic Routing
+    routing/nimcp_signal_wrapper.c
     routing/nimcp_thalamic_router.c
     routing/nimcp_attention_gate.c
     routing/nimcp_routing_table.c
+
+    # Phase 1.5.1: Shannon Monitor & Flow Tracker
+    integration/nimcp_shannon_monitor.c
+    integration/nimcp_flow_tracker.c
+
+    # Phase 1.5.2: Executive Integration & Quantum Command Propagation
+    integration/nimcp_quantum_command_propagator.c
+    integration/nimcp_executive_middleware_adapter.c
+
+    # Cognitive Adapters
+    cognitive/nimcp_cognitive_adapters.c
+    cognitive/nimcp_working_memory_adapter.c
+
+    # Training Adapters
+    training/nimcp_training_adapters.c
 )
 
 target_include_directories(nimcp_middleware PUBLIC
     $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}/include>
     $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}/src>
+    $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}/src/include>
     $<INSTALL_INTERFACE:include>
 )
 

@@ -3,6 +3,7 @@
 //=============================================================================
 
 #include "middleware/cognitive/nimcp_cognitive_adapters.h"
+#include "utils/memory/nimcp_memory.h"
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
@@ -55,15 +56,15 @@ wm_adapter_t* wm_adapter_create(const wm_adapter_config_t* config) {
         config = &default_config;
     }
 
-    wm_adapter_t* adapter = calloc(1, sizeof(wm_adapter_t));
+    wm_adapter_t* adapter = nimcp_calloc(1, sizeof(wm_adapter_t));
     if (!adapter) return NULL;
 
     adapter->config = *config;
 
     // Allocate item array
-    adapter->items = calloc(config->capacity, sizeof(wm_item_t));
+    adapter->items = nimcp_calloc(config->capacity, sizeof(wm_item_t));
     if (!adapter->items) {
-        free(adapter);
+        nimcp_free(adapter);
         return NULL;
     }
 
@@ -71,8 +72,8 @@ wm_adapter_t* wm_adapter_create(const wm_adapter_config_t* config) {
     if (config->mode == WM_MODE_SLIDING || config->mode == WM_MODE_HYBRID) {
         adapter->window = sliding_window_create(config->window_size, 50);
         if (!adapter->window) {
-            free(adapter->items);
-            free(adapter);
+            nimcp_free(adapter->items);
+            nimcp_free(adapter);
             return NULL;
         }
     }
@@ -87,8 +88,8 @@ wm_adapter_t* wm_adapter_create(const wm_adapter_config_t* config) {
     adapter->gate = attention_gate_create(&gate_config);
     if (!adapter->gate) {
         if (adapter->window) sliding_window_destroy(adapter->window);
-        free(adapter->items);
-        free(adapter);
+        nimcp_free(adapter->items);
+        nimcp_free(adapter);
         return NULL;
     }
 
@@ -106,14 +107,14 @@ void wm_adapter_destroy(wm_adapter_t* adapter) {
     // Free item data
     for (uint32_t i = 0; i < adapter->config.capacity; i++) {
         if (adapter->items[i].data) {
-            free(adapter->items[i].data);
+            nimcp_free(adapter->items[i].data);
         }
     }
 
-    free(adapter->items);
+    nimcp_free(adapter->items);
     if (adapter->window) sliding_window_destroy(adapter->window);
     if (adapter->gate) attention_gate_destroy(adapter->gate);
-    free(adapter);
+    nimcp_free(adapter);
 }
 
 /**
@@ -190,7 +191,7 @@ bool wm_adapter_add_item(wm_adapter_t* adapter,
             if (idx >= 0) {
                 // Free evicted item data
                 if (adapter->items[idx].data) {
-                    free(adapter->items[idx].data);
+                    nimcp_free(adapter->items[idx].data);
                 }
                 adapter->stats.total_evicted++;
             }
@@ -200,7 +201,7 @@ bool wm_adapter_add_item(wm_adapter_t* adapter,
     if (idx < 0) return false; // Should never happen
 
     // Allocate and copy data
-    float* item_data = malloc(data_size * sizeof(float));
+    float* item_data = nimcp_malloc(data_size * sizeof(float));
     if (!item_data) return false;
     memcpy(item_data, data, data_size * sizeof(float));
 
@@ -287,7 +288,7 @@ bool wm_adapter_remove_item(wm_adapter_t* adapter, uint32_t item_id) {
     if (idx < 0) return false;
 
     if (adapter->items[idx].data) {
-        free(adapter->items[idx].data);
+        nimcp_free(adapter->items[idx].data);
         adapter->items[idx].data = NULL;
     }
 
@@ -304,7 +305,7 @@ void wm_adapter_clear(wm_adapter_t* adapter) {
 
     for (uint32_t i = 0; i < adapter->config.capacity; i++) {
         if (adapter->items[i].data) {
-            free(adapter->items[i].data);
+            nimcp_free(adapter->items[i].data);
             adapter->items[i].data = NULL;
         }
         adapter->items[i].is_active = false;
@@ -401,7 +402,7 @@ consol_adapter_t* consol_adapter_create(const consol_adapter_config_t* config) {
         config = &default_config;
     }
 
-    consol_adapter_t* adapter = calloc(1, sizeof(consol_adapter_t));
+    consol_adapter_t* adapter = nimcp_calloc(1, sizeof(consol_adapter_t));
     if (!adapter) return NULL;
 
     adapter->config = *config;
@@ -415,7 +416,7 @@ consol_adapter_t* consol_adapter_create(const consol_adapter_config_t* config) {
     );
 
     if (!adapter->buffer) {
-        free(adapter);
+        nimcp_free(adapter);
         return NULL;
     }
 
@@ -428,7 +429,7 @@ consol_adapter_t* consol_adapter_create(const consol_adapter_config_t* config) {
 
     if (!adapter->accumulator) {
         integration_buffer_destroy(adapter->buffer);
-        free(adapter);
+        nimcp_free(adapter);
         return NULL;
     }
 
@@ -448,7 +449,7 @@ void consol_adapter_destroy(consol_adapter_t* adapter) {
         temporal_accumulator_destroy(adapter->accumulator);
     }
 
-    free(adapter);
+    nimcp_free(adapter);
 }
 
 /**
@@ -667,7 +668,7 @@ attention_adapter_t* attention_adapter_create(
         config = &default_config;
     }
 
-    attention_adapter_t* adapter = calloc(1, sizeof(attention_adapter_t));
+    attention_adapter_t* adapter = nimcp_calloc(1, sizeof(attention_adapter_t));
     if (!adapter) return NULL;
 
     adapter->config = *config;
@@ -697,7 +698,7 @@ attention_adapter_t* attention_adapter_create(
 
     adapter->gate = attention_gate_create(&gate_config);
     if (!adapter->gate) {
-        free(adapter);
+        nimcp_free(adapter);
         return NULL;
     }
 
@@ -714,7 +715,7 @@ void attention_adapter_destroy(attention_adapter_t* adapter) {
         attention_gate_destroy(adapter->gate);
     }
 
-    free(adapter);
+    nimcp_free(adapter);
 }
 
 /**
@@ -813,7 +814,7 @@ bool attention_adapter_detect_pattern(attention_adapter_t* adapter,
     // Simple pattern: if spotlight stable, it's a pattern
     if (pattern) {
         pattern->pattern_id = adapter->pattern_count++;
-        pattern->target_ids = malloc(num_in_spotlight * sizeof(uint32_t));
+        pattern->target_ids = nimcp_malloc(num_in_spotlight * sizeof(uint32_t));
         if (pattern->target_ids) {
             memcpy(pattern->target_ids, spotlight_ids,
                    num_in_spotlight * sizeof(uint32_t));

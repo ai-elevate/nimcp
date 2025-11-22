@@ -1474,7 +1474,7 @@ float adaptive_network_distill(adaptive_network_t network, const float* input, u
     float loss = adaptive_network_learn(network, &example, LEARN_MODE_DISTILLATION, learning_rate);
 
     // Free teacher output (caller's responsibility to allocate, our responsibility to free)
-    free(teacher_output);
+    nimcp_free(teacher_output);
 
     return loss;
 }

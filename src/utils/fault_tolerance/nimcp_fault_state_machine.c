@@ -4,6 +4,7 @@
  */
 
 #include "utils/fault_tolerance/nimcp_fault_state_machine.h"
+#include "utils/memory/nimcp_memory.h"
 #include <stdlib.h>
 #include <string.h>
 
@@ -27,7 +28,7 @@ static const bool transition_matrix[NIMCP_STATE_COUNT][NIMCP_STATE_COUNT] = {
  * ============================================================================= */
 
 nimcp_state_machine_t* nimcp_state_machine_create(void) {
-    nimcp_state_machine_t* sm = (nimcp_state_machine_t*)calloc(1, sizeof(nimcp_state_machine_t));
+    nimcp_state_machine_t* sm = (nimcp_state_machine_t*)nimcp_calloc(1, sizeof(nimcp_state_machine_t));
     if (!sm) {
         return NULL;
     }
@@ -64,7 +65,7 @@ void nimcp_state_machine_destroy(nimcp_state_machine_t* sm) {
         sm->state_durations[sm->current_state] += (now - sm->state_entry_time);
     }
 
-    free(sm);
+    nimcp_free(sm);
 }
 
 nimcp_transition_result_t nimcp_state_machine_transition(

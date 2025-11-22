@@ -3,6 +3,7 @@
 //=============================================================================
 
 #include "nimcp_pink_noise.h"
+#include "utils/memory/nimcp_memory.h"
 #include <math.h>
 #include <string.h>
 #include <time.h>
@@ -308,7 +309,7 @@ static bool fft_init(pink_noise_generator_t gen) {
     }
 
     // Allocate buffer
-    gen->fft_buffer = (float*)malloc(buffer_size * sizeof(float));
+    gen->fft_buffer = (float*)nimcp_malloc(buffer_size * sizeof(float));
 
     // Guard: Allocation failed
     if (!gen->fft_buffer) {
@@ -474,7 +475,7 @@ pink_noise_generator_t pink_noise_create(const pink_noise_config_t* config) {
     }
 
     // Allocate generator
-    pink_noise_generator_t gen = (pink_noise_generator_t)malloc(sizeof(struct pink_noise_generator_internal_t));
+    pink_noise_generator_t gen = (pink_noise_generator_t)nimcp_malloc(sizeof(struct pink_noise_generator_internal_t));
 
     // Guard: Allocation failed
     if (!gen) {
@@ -511,7 +512,7 @@ pink_noise_generator_t pink_noise_create(const pink_noise_config_t* config) {
         case PINK_NOISE_FFT:
             if (!fft_init(gen)) {
                 // Error already set by fft_init
-                free(gen);
+                nimcp_free(gen);
                 return NULL;
             }
             break;
@@ -533,11 +534,11 @@ void pink_noise_destroy(pink_noise_generator_t generator) {
 
     // Free FFT buffer if allocated
     if (generator->fft_buffer) {
-        free(generator->fft_buffer);
+        nimcp_free(generator->fft_buffer);
     }
 
     // Free generator
-    free(generator);
+    nimcp_free(generator);
 }
 
 bool pink_noise_generate_sample(pink_noise_generator_t generator, float* sample) {

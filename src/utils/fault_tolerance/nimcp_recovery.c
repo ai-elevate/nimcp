@@ -722,7 +722,7 @@ circuit_breaker_t* circuit_breaker_create(uint32_t failure_threshold, uint32_t t
         return NULL;
     }
 
-    circuit_breaker_t* cb = (circuit_breaker_t*)calloc(1, sizeof(circuit_breaker_t));
+    circuit_breaker_t* cb = (circuit_breaker_t*)nimcp_calloc(1, sizeof(circuit_breaker_t));
     if (!cb) {
         LOG_ERROR("Circuit breaker: Allocation failed");
         return NULL;
@@ -749,7 +749,7 @@ void circuit_breaker_destroy(circuit_breaker_t* cb)
     if (cb) {
         LOG_INFO("Circuit breaker: Destroyed (total successes: %u, total failures: %u)",
                  cb->total_successes, cb->total_failures);
-        free(cb);
+        nimcp_free(cb);
     }
 }
 

@@ -3,6 +3,7 @@
 //=============================================================================
 
 #include "nimcp_community_detection.h"
+#include "utils/memory/nimcp_memory.h"
 #include "core/neuralnet/nimcp_neuralnet.h"
 #include "nimcp_fractal_topology.h"
 #include <stdio.h>
@@ -56,16 +57,16 @@ static adjacency_list_t* build_adjacency_list(neural_network_t network) {
         return NULL;
     }
 
-    adjacency_list_t* graph = calloc(1, sizeof(adjacency_list_t));
+    adjacency_list_t* graph = nimcp_calloc(1, sizeof(adjacency_list_t));
     if (!graph) {
         set_error("Failed to allocate adjacency list");
         return NULL;
     }
 
     graph->num_nodes = num_neurons;
-    graph->nodes = calloc(num_neurons, sizeof(adjacency_node_t));
+    graph->nodes = nimcp_calloc(num_neurons, sizeof(adjacency_node_t));
     if (!graph->nodes) {
-        free(graph);
+        nimcp_free(graph);
         set_error("Failed to allocate adjacency nodes");
         return NULL;
     }
@@ -78,19 +79,19 @@ static adjacency_list_t* build_adjacency_list(neural_network_t network) {
 
         adjacency_node_t* node = &graph->nodes[i];
         node->capacity = 32;  // Initial capacity
-        node->neighbors = malloc(node->capacity * sizeof(uint32_t));
-        node->weights = malloc(node->capacity * sizeof(float));
+        node->neighbors = nimcp_malloc(node->capacity * sizeof(uint32_t));
+        node->weights = nimcp_malloc(node->capacity * sizeof(float));
         node->num_neighbors = 0;
 
         if (!node->neighbors || !node->weights) {
             set_error("Failed to allocate neighbor arrays");
             // Cleanup partial allocation
             for (uint32_t j = 0; j <= i; j++) {
-                free(graph->nodes[j].neighbors);
-                free(graph->nodes[j].weights);
+                nimcp_free(graph->nodes[j].neighbors);
+                nimcp_free(graph->nodes[j].weights);
             }
-            free(graph->nodes);
-            free(graph);
+            nimcp_free(graph->nodes);
+            nimcp_free(graph);
             return NULL;
         }
 
@@ -110,8 +111,8 @@ static adjacency_list_t* build_adjacency_list(neural_network_t network) {
             // Grow arrays if needed
             if (node->num_neighbors >= node->capacity) {
                 node->capacity *= 2;
-                node->neighbors = realloc(node->neighbors, node->capacity * sizeof(uint32_t));
-                node->weights = realloc(node->weights, node->capacity * sizeof(float));
+                node->neighbors = nimcp_realloc(node->neighbors, node->capacity * sizeof(uint32_t));
+                node->weights = nimcp_realloc(node->weights, node->capacity * sizeof(float));
                 if (!node->neighbors || !node->weights) {
                     set_error("Failed to reallocate neighbor arrays");
                     return NULL;
@@ -132,12 +133,12 @@ static void free_adjacency_list(adjacency_list_t* graph) {
     if (!graph) return;
     if (graph->nodes) {
         for (uint32_t i = 0; i < graph->num_nodes; i++) {
-            free(graph->nodes[i].neighbors);
-            free(graph->nodes[i].weights);
+            nimcp_free(graph->nodes[i].neighbors);
+            nimcp_free(graph->nodes[i].weights);
         }
-        free(graph->nodes);
+        nimcp_free(graph->nodes);
     }
-    free(graph);
+    nimcp_free(graph);
 }
 
 //=============================================================================
@@ -164,7 +165,7 @@ float community_compute_modularity(
     }
 
     // Compute degree for each node
-    float* degree = calloc(graph->num_nodes, sizeof(float));
+    float* degree = nimcp_calloc(graph->num_nodes, sizeof(float));
     if (!degree) {
         free_adjacency_list(graph);
         set_error("Failed to allocate degree array");
@@ -198,7 +199,7 @@ float community_compute_modularity(
 
     q /= (2.0f * m);
 
-    free(degree);
+    nimcp_free(degree);
     free_adjacency_list(graph);
 
     return q;
@@ -239,7 +240,7 @@ static bool louvain_phase1(
 
             // Count edges to each neighboring community
             uint32_t max_comms = num_nodes;
-            float* comm_weight = calloc(max_comms, sizeof(float));
+            float* comm_weight = nimcp_calloc(max_comms, sizeof(float));
             if (!comm_weight) continue;
 
             // Sum weights to each neighboring community
@@ -274,7 +275,7 @@ static bool louvain_phase1(
                 }
             }
 
-            free(comm_weight);
+            nimcp_free(comm_weight);
 
             // Move to best community if improvement found
             if (best_comm != current_comm) {
@@ -292,7 +293,7 @@ static bool louvain_phase1(
 
 static void renumber_communities(uint32_t* community_ids, uint32_t num_nodes, uint32_t* num_communities) {
     // Compact community IDs to 0..N-1
-    uint32_t* mapping = calloc(num_nodes, sizeof(uint32_t));
+    uint32_t* mapping = nimcp_calloc(num_nodes, sizeof(uint32_t));
     if (!mapping) {
         *num_communities = 0;
         return;
@@ -312,7 +313,7 @@ static void renumber_communities(uint32_t* community_ids, uint32_t num_nodes, ui
     }
 
     *num_communities = next_id;
-    free(mapping);
+    nimcp_free(mapping);
 }
 
 community_structure_t* community_detect(
@@ -335,7 +336,7 @@ community_structure_t* community_detect(
     uint32_t num_nodes = graph->num_nodes;
 
     // Allocate community structure
-    community_structure_t* structure = calloc(1, sizeof(community_structure_t));
+    community_structure_t* structure = nimcp_calloc(1, sizeof(community_structure_t));
     if (!structure) {
         free_adjacency_list(graph);
         set_error("Failed to allocate community structure");
@@ -343,11 +344,11 @@ community_structure_t* community_detect(
     }
 
     structure->num_neurons = num_nodes;
-    structure->community_ids = calloc(num_nodes, sizeof(uint32_t));
-    float* total_degree = calloc(num_nodes, sizeof(float));
+    structure->community_ids = nimcp_calloc(num_nodes, sizeof(uint32_t));
+    float* total_degree = nimcp_calloc(num_nodes, sizeof(float));
 
     if (!structure->community_ids || !total_degree) {
-        free(total_degree);
+        nimcp_free(total_degree);
         topology_community_structure_free(structure);
         free_adjacency_list(graph);
         set_error("Failed to allocate arrays");
@@ -368,12 +369,12 @@ community_structure_t* community_detect(
     }
 
     // Allocate community stats arrays
-    structure->community_sizes = calloc(structure->num_communities, sizeof(uint32_t));
-    structure->internal_density = calloc(structure->num_communities, sizeof(float));
-    structure->external_density = calloc(structure->num_communities, sizeof(float));
+    structure->community_sizes = nimcp_calloc(structure->num_communities, sizeof(uint32_t));
+    structure->internal_density = nimcp_calloc(structure->num_communities, sizeof(float));
+    structure->external_density = nimcp_calloc(structure->num_communities, sizeof(float));
 
     if (!structure->community_sizes || !structure->internal_density || !structure->external_density) {
-        free(total_degree);
+        nimcp_free(total_degree);
         topology_community_structure_free(structure);
         free_adjacency_list(graph);
         set_error("Failed to allocate community stats");
@@ -423,7 +424,7 @@ community_structure_t* community_detect(
         }
     }
 
-    free(total_degree);
+    nimcp_free(total_degree);
     free_adjacency_list(graph);
 
     return structure;
@@ -431,11 +432,11 @@ community_structure_t* community_detect(
 
 void topology_community_structure_free(community_structure_t* structure) {
     if (!structure) return;
-    free(structure->community_ids);
-    free(structure->community_sizes);
-    free(structure->internal_density);
-    free(structure->external_density);
-    free(structure);
+    nimcp_free(structure->community_ids);
+    nimcp_free(structure->community_sizes);
+    nimcp_free(structure->internal_density);
+    nimcp_free(structure->external_density);
+    nimcp_free(structure);
 }
 
 // Alias for Python bindings compatibility
@@ -474,7 +475,7 @@ bool community_get_neurons_in_community(
     }
 
     uint32_t size = structure->community_sizes[community_id];
-    *neuron_ids = malloc(size * sizeof(uint32_t));
+    *neuron_ids = nimcp_malloc(size * sizeof(uint32_t));
     if (!*neuron_ids) {
         set_error("Failed to allocate neuron IDs array");
         return false;
@@ -511,7 +512,7 @@ hub_structure_t* community_detect_hubs(
     }
 
     // Compute degree centrality for each neuron
-    float* degree = calloc(num_neurons, sizeof(float));
+    float* degree = nimcp_calloc(num_neurons, sizeof(float));
     if (!degree) {
         set_error("Failed to allocate degree array");
         return NULL;
@@ -542,22 +543,22 @@ hub_structure_t* community_detect_hubs(
     }
 
     // Allocate hub structure
-    hub_structure_t* hubs = calloc(1, sizeof(hub_structure_t));
+    hub_structure_t* hubs = nimcp_calloc(1, sizeof(hub_structure_t));
     if (!hubs) {
-        free(degree);
+        nimcp_free(degree);
         set_error("Failed to allocate hub structure");
         return NULL;
     }
 
     hubs->num_hubs = num_hubs;
-    hubs->hub_indices = malloc(num_hubs * sizeof(uint32_t));
-    hubs->degree_centrality = malloc(num_hubs * sizeof(float));
-    hubs->betweenness_centrality = calloc(num_hubs, sizeof(float));  // Computed below using Brandes' algorithm
-    hubs->hub_communities = calloc(num_hubs, sizeof(uint32_t));
+    hubs->hub_indices = nimcp_malloc(num_hubs * sizeof(uint32_t));
+    hubs->degree_centrality = nimcp_malloc(num_hubs * sizeof(float));
+    hubs->betweenness_centrality = nimcp_calloc(num_hubs, sizeof(float));  // Computed below using Brandes' algorithm
+    hubs->hub_communities = nimcp_calloc(num_hubs, sizeof(uint32_t));
 
     if (!hubs->hub_indices || !hubs->degree_centrality ||
         !hubs->betweenness_centrality || !hubs->hub_communities) {
-        free(degree);
+        nimcp_free(degree);
         hub_structure_free(hubs);
         set_error("Failed to allocate hub arrays");
         return NULL;
@@ -573,7 +574,7 @@ hub_structure_t* community_detect_hubs(
         }
     }
 
-    free(degree);
+    nimcp_free(degree);
 
     //=========================================================================
     // Compute betweenness centrality using Brandes' algorithm
@@ -607,7 +608,7 @@ hub_structure_t* community_detect_hubs(
      */
 
     // Allocate betweenness array for all neurons (not just hubs)
-    float* betweenness = calloc(num_neurons, sizeof(float));
+    float* betweenness = nimcp_calloc(num_neurons, sizeof(float));
     if (!betweenness) {
         hub_structure_free(hubs);
         set_error("Failed to allocate betweenness array");
@@ -617,30 +618,30 @@ hub_structure_t* community_detect_hubs(
     // Build adjacency list for efficient graph traversal
     adjacency_list_t* graph = build_adjacency_list(network);
     if (!graph) {
-        free(betweenness);
+        nimcp_free(betweenness);
         hub_structure_free(hubs);
         return NULL;
     }
 
     // Allocate working arrays for Brandes' algorithm
-    uint32_t* queue = malloc(num_neurons * sizeof(uint32_t));
-    uint32_t** predecessors = malloc(num_neurons * sizeof(uint32_t*));
-    uint32_t* pred_counts = calloc(num_neurons, sizeof(uint32_t));
-    uint32_t* pred_capacities = malloc(num_neurons * sizeof(uint32_t));
-    float* sigma = malloc(num_neurons * sizeof(float));
-    int32_t* distance = malloc(num_neurons * sizeof(int32_t));
-    float* delta = malloc(num_neurons * sizeof(float));
+    uint32_t* queue = nimcp_malloc(num_neurons * sizeof(uint32_t));
+    uint32_t** predecessors = nimcp_malloc(num_neurons * sizeof(uint32_t*));
+    uint32_t* pred_counts = nimcp_calloc(num_neurons, sizeof(uint32_t));
+    uint32_t* pred_capacities = nimcp_malloc(num_neurons * sizeof(uint32_t));
+    float* sigma = nimcp_malloc(num_neurons * sizeof(float));
+    int32_t* distance = nimcp_malloc(num_neurons * sizeof(int32_t));
+    float* delta = nimcp_malloc(num_neurons * sizeof(float));
 
     if (!queue || !predecessors || !pred_counts || !pred_capacities ||
         !sigma || !distance || !delta) {
-        free(betweenness);
-        free(queue);
-        free(predecessors);
-        free(pred_counts);
-        free(pred_capacities);
-        free(sigma);
-        free(distance);
-        free(delta);
+        nimcp_free(betweenness);
+        nimcp_free(queue);
+        nimcp_free(predecessors);
+        nimcp_free(pred_counts);
+        nimcp_free(pred_capacities);
+        nimcp_free(sigma);
+        nimcp_free(distance);
+        nimcp_free(delta);
         free_adjacency_list(graph);
         hub_structure_free(hubs);
         set_error("Failed to allocate Brandes working arrays");
@@ -650,19 +651,19 @@ hub_structure_t* community_detect_hubs(
     // Initialize predecessor lists
     for (uint32_t i = 0; i < num_neurons; i++) {
         pred_capacities[i] = 8;  // Initial capacity
-        predecessors[i] = malloc(pred_capacities[i] * sizeof(uint32_t));
+        predecessors[i] = nimcp_malloc(pred_capacities[i] * sizeof(uint32_t));
         if (!predecessors[i]) {
             for (uint32_t j = 0; j < i; j++) {
-                free(predecessors[j]);
+                nimcp_free(predecessors[j]);
             }
-            free(betweenness);
-            free(queue);
-            free(predecessors);
-            free(pred_counts);
-            free(pred_capacities);
-            free(sigma);
-            free(distance);
-            free(delta);
+            nimcp_free(betweenness);
+            nimcp_free(queue);
+            nimcp_free(predecessors);
+            nimcp_free(pred_counts);
+            nimcp_free(pred_capacities);
+            nimcp_free(sigma);
+            nimcp_free(distance);
+            nimcp_free(delta);
             free_adjacency_list(graph);
             hub_structure_free(hubs);
             set_error("Failed to allocate predecessor lists");
@@ -721,20 +722,20 @@ hub_structure_t* community_detect_hubs(
                     // Add v as predecessor of w
                     if (pred_counts[w] >= pred_capacities[w]) {
                         pred_capacities[w] *= 2;
-                        predecessors[w] = realloc(predecessors[w],
+                        predecessors[w] = nimcp_realloc(predecessors[w],
                                                   pred_capacities[w] * sizeof(uint32_t));
                         if (!predecessors[w]) {
                             for (uint32_t j = 0; j < num_neurons; j++) {
-                                free(predecessors[j]);
+                                nimcp_free(predecessors[j]);
                             }
-                            free(betweenness);
-                            free(queue);
-                            free(predecessors);
-                            free(pred_counts);
-                            free(pred_capacities);
-                            free(sigma);
-                            free(distance);
-                            free(delta);
+                            nimcp_free(betweenness);
+                            nimcp_free(queue);
+                            nimcp_free(predecessors);
+                            nimcp_free(pred_counts);
+                            nimcp_free(pred_capacities);
+                            nimcp_free(sigma);
+                            nimcp_free(distance);
+                            nimcp_free(delta);
                             free_adjacency_list(graph);
                             hub_structure_free(hubs);
                             set_error("Failed to reallocate predecessor list");
@@ -801,16 +802,16 @@ hub_structure_t* community_detect_hubs(
 
     // Cleanup
     for (uint32_t i = 0; i < num_neurons; i++) {
-        free(predecessors[i]);
+        nimcp_free(predecessors[i]);
     }
-    free(betweenness);
-    free(queue);
-    free(predecessors);
-    free(pred_counts);
-    free(pred_capacities);
-    free(sigma);
-    free(distance);
-    free(delta);
+    nimcp_free(betweenness);
+    nimcp_free(queue);
+    nimcp_free(predecessors);
+    nimcp_free(pred_counts);
+    nimcp_free(pred_capacities);
+    nimcp_free(sigma);
+    nimcp_free(distance);
+    nimcp_free(delta);
     free_adjacency_list(graph);
 
     return hubs;
@@ -818,11 +819,11 @@ hub_structure_t* community_detect_hubs(
 
 void hub_structure_free(hub_structure_t* structure) {
     if (!structure) return;
-    free(structure->hub_indices);
-    free(structure->degree_centrality);
-    free(structure->betweenness_centrality);
-    free(structure->hub_communities);
-    free(structure);
+    nimcp_free(structure->hub_indices);
+    nimcp_free(structure->degree_centrality);
+    nimcp_free(structure->betweenness_centrality);
+    nimcp_free(structure->hub_communities);
+    nimcp_free(structure);
 }
 
 //=============================================================================

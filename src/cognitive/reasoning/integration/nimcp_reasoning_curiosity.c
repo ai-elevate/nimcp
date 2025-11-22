@@ -4,6 +4,7 @@
  */
 
 #include "cognitive/reasoning/integration/nimcp_reasoning_curiosity.h"
+#include "utils/memory/nimcp_memory.h"
 #include "cognitive/curiosity/nimcp_curiosity.h"
 #include "utils/logging/nimcp_logging.h"
 #include <stdlib.h>
@@ -52,7 +53,7 @@ reasoning_curiosity_t* reasoning_curiosity_create_custom(
 ) {
     if (!bus || !curiosity) return NULL;
     
-    reasoning_curiosity_t* integration = calloc(1, sizeof(reasoning_curiosity_t));
+    reasoning_curiosity_t* integration = nimcp_calloc(1, sizeof(reasoning_curiosity_t));
     if (!integration) return NULL;
     
     reasoning_curiosity_config_t default_cfg = reasoning_curiosity_default_config();
@@ -65,7 +66,7 @@ reasoning_curiosity_t* reasoning_curiosity_create_custom(
     );
     
     if (integration->subscription_handle == INVALID_SUBSCRIPTION_HANDLE) {
-        free(integration);
+        nimcp_free(integration);
         return NULL;
     }
     
@@ -77,7 +78,7 @@ void reasoning_curiosity_destroy(reasoning_curiosity_t* integration) {
     if (integration->subscription_handle != INVALID_SUBSCRIPTION_HANDLE) {
         event_bus_unsubscribe(integration->event_bus, integration->subscription_handle);
     }
-    free(integration);
+    nimcp_free(integration);
 }
 
 void reasoning_curiosity_callback(const brain_event_t* event, void* context) {

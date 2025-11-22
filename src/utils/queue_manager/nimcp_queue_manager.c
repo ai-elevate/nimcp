@@ -588,7 +588,7 @@ static void queue_operation_handler(void* arg)
                     // This is rare and better than use-after-free
                     // TODO: Could re-enqueue it
                 }
-                free(ctx);
+                nimcp_free(ctx);
                 return;
             }
 
@@ -617,7 +617,7 @@ static void queue_operation_handler(void* arg)
         case NIMCP_QUEUE_OP_GET_STATS: {
             // CRITICAL: Check if context was abandoned BEFORE accessing ctx->result
             if (atomic_load(&ctx->abandoned)) {
-                free(ctx);
+                nimcp_free(ctx);
                 return;
             }
 
@@ -636,7 +636,7 @@ static void queue_operation_handler(void* arg)
         // Main thread timed out and abandoned this operation
         // We can't access ctx->result as it points to invalid/freed memory
         // Worker thread must free since main thread abandoned ownership
-        free(ctx);
+        nimcp_free(ctx);
         return;  // Exit handler immediately after cleanup
     }
 
@@ -708,7 +708,7 @@ static nimcp_result_t submit_queue_operation(nimcp_queue_manager_handle_t manage
 
     if (result != NIMCP_SUCCESS) {
         // Thread pool submission failed, caller must free op_ctx
-        free(op_ctx);
+        nimcp_free(op_ctx);
         return result;
     }
 
@@ -734,7 +734,7 @@ static nimcp_result_t submit_queue_operation(nimcp_queue_manager_handle_t manage
     nimcp_result_t status = op_ctx->status;
 
     // Free the heap-allocated context now that we've read the result
-    free(op_ctx);
+    nimcp_free(op_ctx);
 
     return status;
 }
@@ -957,7 +957,7 @@ nimcp_result_t nimcp_queue_manager_enqueue(nimcp_queue_manager_handle_t manager,
     }
 
     // CRITICAL: Heap-allocate context to prevent stack-use-after-return
-    nimcp_queue_operation_ctx_t* op_ctx = malloc(sizeof(nimcp_queue_operation_ctx_t));
+    nimcp_queue_operation_ctx_t* op_ctx = nimcp_malloc(sizeof(nimcp_queue_operation_ctx_t));
     if (!op_ctx) {
         return NIMCP_NO_MEMORY;
     }
@@ -1031,7 +1031,7 @@ nimcp_result_t nimcp_queue_manager_dequeue(nimcp_queue_manager_handle_t manager,
         // CRITICAL: Heap-allocate context to prevent stack-use-after-return
         // The context will be freed by submit_queue_operation() on success,
         // or leaked on timeout (to prevent use-after-free).
-        nimcp_queue_operation_ctx_t* op_ctx = malloc(sizeof(nimcp_queue_operation_ctx_t));
+        nimcp_queue_operation_ctx_t* op_ctx = nimcp_malloc(sizeof(nimcp_queue_operation_ctx_t));
         if (!op_ctx) {
             return NIMCP_NO_MEMORY;
         }
@@ -1107,7 +1107,7 @@ nimcp_result_t nimcp_queue_manager_get_stats(nimcp_queue_manager_handle_t manage
     }
 
     // CRITICAL: Heap-allocate context to prevent stack-use-after-return
-    nimcp_queue_operation_ctx_t* op_ctx = malloc(sizeof(nimcp_queue_operation_ctx_t));
+    nimcp_queue_operation_ctx_t* op_ctx = nimcp_malloc(sizeof(nimcp_queue_operation_ctx_t));
     if (!op_ctx) {
         return NIMCP_NO_MEMORY;
     }
@@ -1158,7 +1158,7 @@ nimcp_result_t nimcp_queue_manager_clear(nimcp_queue_manager_handle_t manager, u
     // Clear all priority queues
     for (int pri = 0; pri < NIMCP_QUEUE_PRIORITY_COUNT; pri++) {
         // CRITICAL: Heap-allocate context to prevent stack-use-after-return
-        nimcp_queue_operation_ctx_t* op_ctx = malloc(sizeof(nimcp_queue_operation_ctx_t));
+        nimcp_queue_operation_ctx_t* op_ctx = nimcp_malloc(sizeof(nimcp_queue_operation_ctx_t));
         if (!op_ctx) {
             return NIMCP_NO_MEMORY;
         }
