@@ -58,6 +58,19 @@ protected:
         nimcp_shutdown();
     }
 
+    // Helper: Create default brain config (replacement for non-existent brain_config_default)
+    brain_config_t brain_config_default() {
+        brain_config_t config = {};  // Zero-initialize
+        config.size = BRAIN_SIZE_TINY;
+        config.task = BRAIN_TASK_CLASSIFICATION;
+        config.num_inputs = 10;
+        config.num_outputs = 2;
+        config.learning_rate = 0.01f;
+        config.sparsity_target = 0.85f;
+        strcpy(config.task_name, "test_brain");
+        return config;
+    }
+
     // Helper: Create minimal brain for initialization testing
     brain_t create_minimal_brain() {
         brain_t brain = brain_create("init_test", BRAIN_SIZE_TINY,
@@ -72,6 +85,7 @@ protected:
         config.task = BRAIN_TASK_CLASSIFICATION;
         config.num_inputs = 10;
         config.num_outputs = 2;
+        strncpy(config.task_name, name, sizeof(config.task_name) - 1);
 
         // Set all flags that might be relevant
         config.enable_glial = enable_flag;
@@ -88,7 +102,7 @@ protected:
         config.enable_natural_explanations = enable_flag;
         config.enable_meta_learning = enable_flag;
 
-        return brain_create_custom(name, &config);
+        return brain_create_custom(&config);
     }
 };
 
@@ -212,8 +226,9 @@ TEST_F(BrainInitSubsystemsPart1Test, MultimodalSubsystems_CreatesVisualCortex) {
     config.enable_multimodal_integration = true;
     config.enable_visual_cortex = true;
     config.visual_feature_dim = 32;
+    strncpy(config.task_name, "visual_cortex_test", sizeof(config.task_name) - 1);
 
-    brain_t brain = brain_create_custom("visual_cortex_test", &config);
+    brain_t brain = brain_create_custom(&config);
     ASSERT_NE(brain, nullptr);
 
     bool result = nimcp_brain_factory_init_multimodal_subsystems(brain);
@@ -427,8 +442,9 @@ TEST_F(BrainInitSubsystemsPart1Test, AttentionSubsystem_UsesNumInputs) {
     config.num_outputs = 2;
     config.enable_multihead_attention = true;
     config.num_attention_heads = 4;
+    strncpy(config.task_name, "attention_dims", sizeof(config.task_name) - 1);
 
-    brain_t brain = brain_create_custom("attention_dims", &config);
+    brain_t brain = brain_create_custom(&config);
     ASSERT_NE(brain, nullptr);
 
     bool result = nimcp_brain_factory_init_attention_subsystem(brain);
@@ -490,11 +506,12 @@ TEST_F(BrainInitSubsystemsPart1Test, BrainRegionsSubsystem_CreatesDefaultRegions
     config.task = BRAIN_TASK_CLASSIFICATION;
     config.num_inputs = 10;
     config.num_outputs = 2;
+    strncpy(config.task_name, "brain_regions_create", sizeof(config.task_name) - 1);
     config.enable_brain_regions = true;
     config.num_brain_regions = 4;
     config.neurons_per_region = 100;
 
-    brain_t brain = brain_create_custom("brain_regions_create", &config);
+    brain_t brain = brain_create_custom(&config);
     ASSERT_NE(brain, nullptr);
 
     bool result = nimcp_brain_factory_init_brain_regions_subsystem(brain);

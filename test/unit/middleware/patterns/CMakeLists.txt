@@ -51,3 +51,16 @@ target_link_libraries(unit_middleware_patterns_synchrony_detector
     )
 add_test(NAME unit_middleware_patterns_synchrony_detector
          COMMAND unit_middleware_patterns_synchrony_detector)
+# Test Oscillation Detector with Phasor Support
+add_executable(unit_middleware_patterns_oscillation_detector_phasor
+    test_oscillation_detector_phasor.cpp
+)
+target_link_libraries(unit_middleware_patterns_oscillation_detector_phasor
+    PRIVATE
+        GTest::GTest
+        GTest::Main
+        nimcp_middleware
+        nimcp
+    )
+add_test(NAME unit_middleware_patterns_oscillation_detector_phasor
+         COMMAND unit_middleware_patterns_oscillation_detector_phasor)

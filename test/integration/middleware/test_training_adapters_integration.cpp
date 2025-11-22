@@ -21,8 +21,7 @@ extern "C" {
 #include "middleware/training/nimcp_learning_signal_adapter.h"
 #include "middleware/training/nimcp_weight_update_adapter.h"
 #include "middleware/training/nimcp_training_event_adapter.h"
-#include "middleware/events/nimcp_event_bus.h"
-#include "middleware/events/nimcp_event_queue.h"
+#include "core/events/nimcp_event_bus.h"
 #include "middleware/routing/nimcp_routing_table.h"
 }
 
@@ -38,7 +37,7 @@ protected:
     event_bus_t event_bus;
 
     // Test data
-    std::vector<event_t> test_events;
+    std::vector<brain_event_t> test_events;
     std::atomic<int> callback_count;
 
     void SetUp() override {
@@ -67,7 +66,7 @@ protected:
 
     void generateTestEvents() {
         test_events.clear();
-        // Events would be generated based on actual event_t structure
+        // Events would be generated based on actual brain_event_t structure
     }
 
     static void training_callback(const training_event_data_t* event, void* context) {

@@ -13,8 +13,7 @@
 #ifndef NIMCP_TRAINING_EVENT_ADAPTER_H
 #define NIMCP_TRAINING_EVENT_ADAPTER_H
 
-#include "middleware/events/nimcp_event_bus.h"
-#include "middleware/events/nimcp_event_types.h"
+#include "core/events/nimcp_event_bus.h"
 #include <stdint.h>
 #include <stdbool.h>
 

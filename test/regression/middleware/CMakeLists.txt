@@ -7,6 +7,21 @@ add_subdirectory(patterns)
 add_subdirectory(pipeline)
 add_subdirectory(routing)
 
+# Signal Filter Regression Tests
+add_executable(regression_middleware_test_signal_filter_regression
+    test_signal_filter_regression.cpp
+)
+target_link_libraries(regression_middleware_test_signal_filter_regression
+    PRIVATE
+        GTest::GTest
+        GTest::Main
+        nimcp_middleware
+        nimcp
+    )
+add_test(NAME regression_middleware_test_signal_filter_regression
+         COMMAND regression_middleware_test_signal_filter_regression)
+set_tests_properties(regression_middleware_test_signal_filter_regression PROPERTIES TIMEOUT 60)
+
 # Phase 2 Regression Tests
 # TODO: Fix outdated API usage in test_phase2_regression.cpp
 # - Replace rate_coder_t with rate_coding_encoder_t
@@ -25,3 +40,61 @@ add_subdirectory(routing)
 #    )
 #add_test(NAME regression_middleware_middleware_test_phase2_regression
 #         COMMAND regression_middleware_middleware_test_phase2_regression)
+
+# Brain Integration Regression Tests
+add_executable(regression_middleware_test_brain_integration_regression
+    test_brain_integration_regression.cpp
+)
+target_link_libraries(regression_middleware_test_brain_integration_regression
+    PRIVATE
+        GTest::GTest
+        GTest::Main
+        nimcp_middleware
+        nimcp
+    )
+add_test(NAME regression_middleware_test_brain_integration_regression
+         COMMAND regression_middleware_test_brain_integration_regression)
+
+# Cognitive Adapters Regression Tests
+add_executable(regression_middleware_test_cognitive_adapters_regression
+    test_cognitive_adapters_regression.cpp
+)
+target_link_libraries(regression_middleware_test_cognitive_adapters_regression
+    PRIVATE
+        GTest::GTest
+        GTest::Main
+        nimcp_middleware
+        nimcp
+    )
+add_test(NAME regression_middleware_test_cognitive_adapters_regression
+         COMMAND regression_middleware_test_cognitive_adapters_regression)
+
+# Training Adapters Regression Tests
+add_executable(regression_middleware_test_training_adapters_regression
+    test_training_adapters_regression.cpp
+)
+target_link_libraries(regression_middleware_test_training_adapters_regression
+    PRIVATE
+        GTest::GTest
+        GTest::Main
+        nimcp_middleware
+        nimcp
+    )
+add_test(NAME regression_middleware_test_training_adapters_regression
+         COMMAND regression_middleware_test_training_adapters_regression)
+
+# Executive Regression Tests (Phase 1.5.2)
+add_executable(regression_middleware_test_executive_regression
+    test_executive_regression.cpp
+)
+target_link_libraries(regression_middleware_test_executive_regression
+    PRIVATE
+        GTest::GTest
+        GTest::Main
+        nimcp
+        nimcp_middleware
+        pthread
+        m
+)
+add_test(NAME regression_middleware_test_executive_regression
+         COMMAND regression_middleware_test_executive_regression)

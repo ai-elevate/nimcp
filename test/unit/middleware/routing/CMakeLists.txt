@@ -38,3 +38,16 @@ target_link_libraries(unit_middleware_routing_thalamic_router
     )
 add_test(NAME unit_middleware_routing_thalamic_router
          COMMAND unit_middleware_routing_thalamic_router)
+# Test Signal Wrapper
+add_executable(unit_middleware_routing_signal_wrapper
+    test_signal_wrapper.cpp
+)
+target_link_libraries(unit_middleware_routing_signal_wrapper
+    PRIVATE
+        GTest::GTest
+        GTest::Main
+        nimcp_middleware
+        nimcp
+    )
+add_test(NAME unit_middleware_routing_signal_wrapper
+         COMMAND unit_middleware_routing_signal_wrapper)

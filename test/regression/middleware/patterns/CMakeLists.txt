@@ -38,3 +38,17 @@ target_link_libraries(regression_middleware_patterns_sequence_detector
     )
 add_test(NAME regression_middleware_patterns_sequence_detector
          COMMAND regression_middleware_patterns_sequence_detector)
+
+# Test PAC Backward Compatibility
+add_executable(regression_middleware_patterns_pac_backward_compat
+    ../test_pac_backward_compat.cpp
+)
+target_link_libraries(regression_middleware_patterns_pac_backward_compat
+    PRIVATE
+        GTest::GTest
+        GTest::Main
+        nimcp_middleware
+        nimcp
+    )
+add_test(NAME regression_middleware_patterns_pac_backward_compat
+         COMMAND regression_middleware_patterns_pac_backward_compat)

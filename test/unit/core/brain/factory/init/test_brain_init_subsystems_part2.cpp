@@ -36,8 +36,8 @@ protected:
     brain_t test_brain;
 
     void SetUp() override {
-        // Create a minimal test brain
-        test_brain = nimcp_brain_create(
+        // Create a minimal test brain using internal API
+        test_brain = brain_create(
             "subsystem_test_brain",
             BRAIN_SIZE_TINY,
             BRAIN_TASK_CLASSIFICATION,
@@ -49,7 +49,7 @@ protected:
 
     void TearDown() override {
         if (test_brain) {
-            nimcp_brain_destroy(test_brain);
+            brain_destroy(test_brain);
             test_brain = nullptr;
         }
     }

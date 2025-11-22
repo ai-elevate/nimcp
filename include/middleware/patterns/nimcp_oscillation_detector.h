@@ -116,6 +116,7 @@ typedef struct {
     bool enable_plv;                    // Compute phase locking
     bool enable_pac;                    // Detect cross-frequency coupling
     float overlap_fraction;             // Window overlap (0.0-1.0)
+    bool use_phasor_detection;          // Use complex phasor methods (faster, more accurate)
 } oscillation_detector_config_t;
 
 /**

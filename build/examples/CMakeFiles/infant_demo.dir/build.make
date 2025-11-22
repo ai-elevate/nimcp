@@ -93,7 +93,6 @@ infant_demo_EXTERNAL_OBJECTS =
 examples/infant_demo: examples/CMakeFiles/infant_demo.dir/infant_learning_demo.c.o
 examples/infant_demo: examples/CMakeFiles/infant_demo.dir/build.make
 examples/infant_demo: /home/bbrelin/nimcp/bin/libnimcp.so.2.6.2
-examples/infant_demo: src/middleware/libnimcp_middleware.a
 examples/infant_demo: /usr/lib/x86_64-linux-gnu/libpython3.12.so
 examples/infant_demo: examples/CMakeFiles/infant_demo.dir/link.txt
 	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --bold --progress-dir=/home/bbrelin/nimcp/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_2) "Linking C executable infant_demo"

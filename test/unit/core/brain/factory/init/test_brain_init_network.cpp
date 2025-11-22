@@ -36,6 +36,7 @@
 #include "core/brain/factory/nimcp_brain_factory.h"
 #include "core/brain/nimcp_brain.h"
 #include "include/nimcp.h"
+#include "utils/memory/nimcp_memory.h"
 
 //=============================================================================
 // Test Fixture
@@ -71,7 +72,7 @@ TEST_F(BrainInitNetworkTest, CreateNetwork_Success) {
         10, 3, 100, 0.8f, ODE_EULER);
 
     ASSERT_NE(network, nullptr) << "Network creation should succeed";
-    EXPECT_EQ(brain_get_error(), nullptr) << "No error should be set";
+    EXPECT_EQ(brain_get_last_error(), nullptr) << "No error should be set";
 
     destroy_network(network);
 }
@@ -297,7 +298,7 @@ TEST_F(BrainInitNetworkTest, CreateNetwork_ZeroInputs_ShouldFail) {
     // Should fail or return NULL
     // (Actual behavior depends on validation in create function)
     if (network == nullptr) {
-        EXPECT_NE(brain_get_error(), nullptr) << "Error should be set on failure";
+        EXPECT_NE(brain_get_last_error(), nullptr) << "Error should be set on failure";
     } else {
         destroy_network(network);
     }
@@ -308,7 +309,7 @@ TEST_F(BrainInitNetworkTest, CreateNetwork_ZeroOutputs_ShouldFail) {
         10, 0, 100, 0.8f, ODE_EULER);
 
     if (network == nullptr) {
-        EXPECT_NE(brain_get_error(), nullptr);
+        EXPECT_NE(brain_get_last_error(), nullptr);
     } else {
         destroy_network(network);
     }
@@ -319,7 +320,7 @@ TEST_F(BrainInitNetworkTest, CreateNetwork_ZeroNeurons_ShouldFail) {
         10, 3, 0, 0.8f, ODE_EULER);
 
     if (network == nullptr) {
-        EXPECT_NE(brain_get_error(), nullptr);
+        EXPECT_NE(brain_get_last_error(), nullptr);
     } else {
         destroy_network(network);
     }
@@ -330,7 +331,9 @@ TEST_F(BrainInitNetworkTest, CreateNetwork_ZeroNeurons_ShouldFail) {
 //=============================================================================
 
 TEST_F(BrainInitNetworkTest, NoMemoryLeaks_SingleCreation) {
-    size_t allocated_before = nimcp_memory_get_allocated();
+    nimcp_memory_stats_t stats_before, stats_after;
+
+    nimcp_memory_get_stats(&stats_before);
 
     adaptive_network_t network = nimcp_brain_factory_create_brain_network(
         10, 3, 100, 0.8f, ODE_EULER);
@@ -338,14 +341,18 @@ TEST_F(BrainInitNetworkTest, NoMemoryLeaks_SingleCreation) {
 
     destroy_network(network);
 
-    size_t allocated_after = nimcp_memory_get_allocated();
+    nimcp_memory_get_stats(&stats_after);
 
-    // Allow some slack for allocator overhead
-    EXPECT_LE(allocated_after, allocated_before + 1024);
+    // Allow some slack for allocator overhead (check current_allocated, not total)
+    EXPECT_LE(stats_after.current_allocated, stats_before.current_allocated + 1024)
+        << "Memory leak detected: before=" << stats_before.current_allocated
+        << " after=" << stats_after.current_allocated;
 }
 
 TEST_F(BrainInitNetworkTest, NoMemoryLeaks_MultipleCreations) {
-    size_t allocated_before = nimcp_memory_get_allocated();
+    nimcp_memory_stats_t stats_before, stats_after;
+
+    nimcp_memory_get_stats(&stats_before);
 
     for (int i = 0; i < 10; i++) {
         adaptive_network_t network = nimcp_brain_factory_create_brain_network(
@@ -354,9 +361,12 @@ TEST_F(BrainInitNetworkTest, NoMemoryLeaks_MultipleCreations) {
         destroy_network(network);
     }
 
-    size_t allocated_after = nimcp_memory_get_allocated();
+    nimcp_memory_get_stats(&stats_after);
 
-    EXPECT_LE(allocated_after, allocated_before + 1024);
+    // Check current_allocated (memory in use) not total_allocated (cumulative)
+    EXPECT_LE(stats_after.current_allocated, stats_before.current_allocated + 1024)
+        << "Memory leak detected: before=" << stats_before.current_allocated
+        << " after=" << stats_after.current_allocated;
 }
 
 //=============================================================================

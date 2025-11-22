@@ -6,5 +6,5 @@ C_DEFINES =
 
 C_INCLUDES = -I/home/bbrelin/nimcp/src -I/home/bbrelin/nimcp/src/include -I/home/bbrelin/nimcp/include -isystem /usr/include/python3.12
 
-C_FLAGS = -std=gnu11
+C_FLAGS = -O3 -DNDEBUG -std=gnu11
 

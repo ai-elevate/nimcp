@@ -45,6 +45,7 @@
 // Comprehensive Integration: All Advanced Subsystems
 #include "glial/integration/nimcp_glial_integration.h"
 #include "core/brain_oscillations/nimcp_brain_oscillations.h"
+#include "core/brain/oscillations/nimcp_brain_complex_oscillations.h"
 #include "cognitive/introspection/nimcp_introspection.h"
 #include "cognitive/ethics/nimcp_ethics.h"
 #include "cognitive/salience/nimcp_salience.h"
@@ -205,6 +206,7 @@ struct brain_struct {
     // Phase 5/6: Biological Realism
     glial_integration_t* glial;                  // Glial cells (struct type, needs *)
     brain_oscillation_analyzer_t* oscillations;  // Brain wave analysis (struct type, needs *)
+    brain_complex_oscillation_state_t* complex_oscillations;  // Complex phasor tracking (struct type, needs *)
 
     // Consciousness & Cognition (most use pointer typedefs)
     introspection_context_t introspection;       // Self-awareness (already pointer type*)

@@ -6,7 +6,7 @@
 #define NIMCP_MIDDLEWARE_PIPELINE_H
 
 #include "nimcp_middleware_context.h"
-#include "../events/nimcp_event_bus.h"
+#include "core/events/nimcp_event_bus.h"
 
 #ifdef __cplusplus
 extern "C" {

@@ -40,10 +40,26 @@ target_link_libraries(unit_brain_population_coding
 add_test(NAME unit_brain_population_coding
          COMMAND unit_brain_population_coding)
 
+# Brain Integration Tests
+add_executable(unit_brain_integration
+    test_brain_integration.cpp
+)
+target_link_libraries(unit_brain_integration
+    PRIVATE
+        GTest::GTest
+        GTest::Main
+        nimcp_middleware
+        nimcp
+    )
+add_test(NAME unit_brain_integration
+         COMMAND unit_brain_integration)
+
+add_subdirectory(brain_integration)
 add_subdirectory(buffering)
 add_subdirectory(encoding)
+add_subdirectory(events)
 add_subdirectory(features)
-# add_subdirectory(events)  # Removed - middleware event bus consolidated into core event bus
+add_subdirectory(integration)
 add_subdirectory(normalization)
 add_subdirectory(patterns)
 add_subdirectory(pipeline)

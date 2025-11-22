@@ -695,6 +695,40 @@ typedef struct {
     float quantum_classical_mixing;       /**< Hybrid mixing ratio [0=pure quantum, 1=classical] (default: 0.2) */
     uint32_t quantum_coin_type;           /**< Coin operator: 0=Hadamard, 1=Grover, 2=Fourier (default: 0) */
     float quantum_decoherence_rate;       /**< Decoherence strength [0=none, 1=instant classical] (default: 0.05) */
+
+    // === PHASE C2.2: COMPLEX OSCILLATION TRACKING ===
+    /**
+     * Complex Oscillation Support
+     *
+     * WHAT: Phasor-based phase and amplitude tracking per neuron
+     * WHY:  Phase relationships encode binding, memory, spatial information
+     * HOW:  Track neural_phasor_t (complex number) for each neuron
+     *
+     * FEATURES:
+     * - Instantaneous phase and amplitude per neuron
+     * - Phase coherence across neuron populations
+     * - Phase-amplitude coupling (PAC) detection
+     * - Cross-frequency phase relationships
+     *
+     * NEUROSCIENCE:
+     * - Hippocampal place cells: theta phase = position
+     * - Working memory: gamma phase = item order
+     * - Grid cells: phase interference patterns
+     * - Theta-gamma PAC: memory encoding/retrieval
+     *
+     * PERFORMANCE:
+     * - Memory overhead: 8 bytes/neuron (2x float)
+     * - Update cost: ~10ns/neuron (phase increment)
+     * - Coherence: ~0.8µs for 1000 neurons
+     *
+     * INTEGRATION:
+     * - Builds on nimcp_brain_oscillations.h (frequency bands)
+     * - Uses nimcp_complex_math.h (phasor operations)
+     * - Opt-in: disabled by default for backward compatibility
+     */
+    bool complex_oscillation_enabled;     /**< Enable complex phasor tracking (default: false) */
+    float complex_phase_update_rate;      /**< Phase increment per step in radians (default: 0.1) */
+    float complex_amplitude_decay;        /**< Amplitude decay factor per step (default: 0.95) */
 } brain_config_t;
 
 /**

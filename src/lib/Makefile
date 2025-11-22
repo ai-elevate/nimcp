@@ -2993,6 +2993,54 @@ __/middleware/encoding/nimcp_temporal_coding.c.s:
 	cd /home/bbrelin/nimcp && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/middleware/encoding/nimcp_temporal_coding.c.s
 .PHONY : __/middleware/encoding/nimcp_temporal_coding.c.s
 
+__/middleware/events/nimcp_event_queue.o: __/middleware/events/nimcp_event_queue.c.o
+.PHONY : __/middleware/events/nimcp_event_queue.o
+
+# target to build an object file
+__/middleware/events/nimcp_event_queue.c.o:
+	cd /home/bbrelin/nimcp && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/middleware/events/nimcp_event_queue.c.o
+.PHONY : __/middleware/events/nimcp_event_queue.c.o
+
+__/middleware/events/nimcp_event_queue.i: __/middleware/events/nimcp_event_queue.c.i
+.PHONY : __/middleware/events/nimcp_event_queue.i
+
+# target to preprocess a source file
+__/middleware/events/nimcp_event_queue.c.i:
+	cd /home/bbrelin/nimcp && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/middleware/events/nimcp_event_queue.c.i
+.PHONY : __/middleware/events/nimcp_event_queue.c.i
+
+__/middleware/events/nimcp_event_queue.s: __/middleware/events/nimcp_event_queue.c.s
+.PHONY : __/middleware/events/nimcp_event_queue.s
+
+# target to generate assembly for a file
+__/middleware/events/nimcp_event_queue.c.s:
+	cd /home/bbrelin/nimcp && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/middleware/events/nimcp_event_queue.c.s
+.PHONY : __/middleware/events/nimcp_event_queue.c.s
+
+__/middleware/events/nimcp_event_types.o: __/middleware/events/nimcp_event_types.c.o
+.PHONY : __/middleware/events/nimcp_event_types.o
+
+# target to build an object file
+__/middleware/events/nimcp_event_types.c.o:
+	cd /home/bbrelin/nimcp && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/middleware/events/nimcp_event_types.c.o
+.PHONY : __/middleware/events/nimcp_event_types.c.o
+
+__/middleware/events/nimcp_event_types.i: __/middleware/events/nimcp_event_types.c.i
+.PHONY : __/middleware/events/nimcp_event_types.i
+
+# target to preprocess a source file
+__/middleware/events/nimcp_event_types.c.i:
+	cd /home/bbrelin/nimcp && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/middleware/events/nimcp_event_types.c.i
+.PHONY : __/middleware/events/nimcp_event_types.c.i
+
+__/middleware/events/nimcp_event_types.s: __/middleware/events/nimcp_event_types.c.s
+.PHONY : __/middleware/events/nimcp_event_types.s
+
+# target to generate assembly for a file
+__/middleware/events/nimcp_event_types.c.s:
+	cd /home/bbrelin/nimcp && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/middleware/events/nimcp_event_types.c.s
+.PHONY : __/middleware/events/nimcp_event_types.c.s
+
 __/middleware/normalization/nimcp_adaptive_normalizer.o: __/middleware/normalization/nimcp_adaptive_normalizer.c.o
 .PHONY : __/middleware/normalization/nimcp_adaptive_normalizer.o
 
@@ -3112,6 +3160,30 @@ __/middleware/patterns/nimcp_oscillation_detector.s: __/middleware/patterns/nimc
 __/middleware/patterns/nimcp_oscillation_detector.c.s:
 	cd /home/bbrelin/nimcp && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/middleware/patterns/nimcp_oscillation_detector.c.s
 .PHONY : __/middleware/patterns/nimcp_oscillation_detector.c.s
+
+__/middleware/patterns/nimcp_pattern_cow.o: __/middleware/patterns/nimcp_pattern_cow.c.o
+.PHONY : __/middleware/patterns/nimcp_pattern_cow.o
+
+# target to build an object file
+__/middleware/patterns/nimcp_pattern_cow.c.o:
+	cd /home/bbrelin/nimcp && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/middleware/patterns/nimcp_pattern_cow.c.o
+.PHONY : __/middleware/patterns/nimcp_pattern_cow.c.o
+
+__/middleware/patterns/nimcp_pattern_cow.i: __/middleware/patterns/nimcp_pattern_cow.c.i
+.PHONY : __/middleware/patterns/nimcp_pattern_cow.i
+
+# target to preprocess a source file
+__/middleware/patterns/nimcp_pattern_cow.c.i:
+	cd /home/bbrelin/nimcp && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/middleware/patterns/nimcp_pattern_cow.c.i
+.PHONY : __/middleware/patterns/nimcp_pattern_cow.c.i
+
+__/middleware/patterns/nimcp_pattern_cow.s: __/middleware/patterns/nimcp_pattern_cow.c.s
+.PHONY : __/middleware/patterns/nimcp_pattern_cow.s
+
+# target to generate assembly for a file
+__/middleware/patterns/nimcp_pattern_cow.c.s:
+	cd /home/bbrelin/nimcp && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/middleware/patterns/nimcp_pattern_cow.c.s
+.PHONY : __/middleware/patterns/nimcp_pattern_cow.c.s
 
 __/middleware/patterns/nimcp_pattern_library.o: __/middleware/patterns/nimcp_pattern_library.c.o
 .PHONY : __/middleware/patterns/nimcp_pattern_library.o
@@ -4409,6 +4481,30 @@ __/utils/fault_tolerance/nimcp_checkpoint.c.s:
 	cd /home/bbrelin/nimcp && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/utils/fault_tolerance/nimcp_checkpoint.c.s
 .PHONY : __/utils/fault_tolerance/nimcp_checkpoint.c.s
 
+__/utils/fault_tolerance/nimcp_checkpoint_pool.o: __/utils/fault_tolerance/nimcp_checkpoint_pool.c.o
+.PHONY : __/utils/fault_tolerance/nimcp_checkpoint_pool.o
+
+# target to build an object file
+__/utils/fault_tolerance/nimcp_checkpoint_pool.c.o:
+	cd /home/bbrelin/nimcp && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/utils/fault_tolerance/nimcp_checkpoint_pool.c.o
+.PHONY : __/utils/fault_tolerance/nimcp_checkpoint_pool.c.o
+
+__/utils/fault_tolerance/nimcp_checkpoint_pool.i: __/utils/fault_tolerance/nimcp_checkpoint_pool.c.i
+.PHONY : __/utils/fault_tolerance/nimcp_checkpoint_pool.i
+
+# target to preprocess a source file
+__/utils/fault_tolerance/nimcp_checkpoint_pool.c.i:
+	cd /home/bbrelin/nimcp && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/utils/fault_tolerance/nimcp_checkpoint_pool.c.i
+.PHONY : __/utils/fault_tolerance/nimcp_checkpoint_pool.c.i
+
+__/utils/fault_tolerance/nimcp_checkpoint_pool.s: __/utils/fault_tolerance/nimcp_checkpoint_pool.c.s
+.PHONY : __/utils/fault_tolerance/nimcp_checkpoint_pool.s
+
+# target to generate assembly for a file
+__/utils/fault_tolerance/nimcp_checkpoint_pool.c.s:
+	cd /home/bbrelin/nimcp && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/utils/fault_tolerance/nimcp_checkpoint_pool.c.s
+.PHONY : __/utils/fault_tolerance/nimcp_checkpoint_pool.c.s
+
 __/utils/fault_tolerance/nimcp_diagnostics.o: __/utils/fault_tolerance/nimcp_diagnostics.c.o
 .PHONY : __/utils/fault_tolerance/nimcp_diagnostics.o
 
@@ -4721,6 +4817,54 @@ __/utils/logging/nimcp_logging.c.s:
 	cd /home/bbrelin/nimcp && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/utils/logging/nimcp_logging.c.s
 .PHONY : __/utils/logging/nimcp_logging.c.s
 
+__/utils/memory/nimcp_buffer_pool.o: __/utils/memory/nimcp_buffer_pool.c.o
+.PHONY : __/utils/memory/nimcp_buffer_pool.o
+
+# target to build an object file
+__/utils/memory/nimcp_buffer_pool.c.o:
+	cd /home/bbrelin/nimcp && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/utils/memory/nimcp_buffer_pool.c.o
+.PHONY : __/utils/memory/nimcp_buffer_pool.c.o
+
+__/utils/memory/nimcp_buffer_pool.i: __/utils/memory/nimcp_buffer_pool.c.i
+.PHONY : __/utils/memory/nimcp_buffer_pool.i
+
+# target to preprocess a source file
+__/utils/memory/nimcp_buffer_pool.c.i:
+	cd /home/bbrelin/nimcp && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/utils/memory/nimcp_buffer_pool.c.i
+.PHONY : __/utils/memory/nimcp_buffer_pool.c.i
+
+__/utils/memory/nimcp_buffer_pool.s: __/utils/memory/nimcp_buffer_pool.c.s
+.PHONY : __/utils/memory/nimcp_buffer_pool.s
+
+# target to generate assembly for a file
+__/utils/memory/nimcp_buffer_pool.c.s:
+	cd /home/bbrelin/nimcp && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/utils/memory/nimcp_buffer_pool.c.s
+.PHONY : __/utils/memory/nimcp_buffer_pool.c.s
+
+__/utils/memory/nimcp_cow_manager.o: __/utils/memory/nimcp_cow_manager.c.o
+.PHONY : __/utils/memory/nimcp_cow_manager.o
+
+# target to build an object file
+__/utils/memory/nimcp_cow_manager.c.o:
+	cd /home/bbrelin/nimcp && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/utils/memory/nimcp_cow_manager.c.o
+.PHONY : __/utils/memory/nimcp_cow_manager.c.o
+
+__/utils/memory/nimcp_cow_manager.i: __/utils/memory/nimcp_cow_manager.c.i
+.PHONY : __/utils/memory/nimcp_cow_manager.i
+
+# target to preprocess a source file
+__/utils/memory/nimcp_cow_manager.c.i:
+	cd /home/bbrelin/nimcp && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/utils/memory/nimcp_cow_manager.c.i
+.PHONY : __/utils/memory/nimcp_cow_manager.c.i
+
+__/utils/memory/nimcp_cow_manager.s: __/utils/memory/nimcp_cow_manager.c.s
+.PHONY : __/utils/memory/nimcp_cow_manager.s
+
+# target to generate assembly for a file
+__/utils/memory/nimcp_cow_manager.c.s:
+	cd /home/bbrelin/nimcp && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/utils/memory/nimcp_cow_manager.c.s
+.PHONY : __/utils/memory/nimcp_cow_manager.c.s
+
 __/utils/memory/nimcp_memory.o: __/utils/memory/nimcp_memory.c.o
 .PHONY : __/utils/memory/nimcp_memory.o
 
@@ -4768,6 +4912,30 @@ __/utils/memory/nimcp_memory_guards.s: __/utils/memory/nimcp_memory_guards.c.s
 __/utils/memory/nimcp_memory_guards.c.s:
 	cd /home/bbrelin/nimcp && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/utils/memory/nimcp_memory_guards.c.s
 .PHONY : __/utils/memory/nimcp_memory_guards.c.s
+
+__/utils/memory/nimcp_memory_pool.o: __/utils/memory/nimcp_memory_pool.c.o
+.PHONY : __/utils/memory/nimcp_memory_pool.o
+
+# target to build an object file
+__/utils/memory/nimcp_memory_pool.c.o:
+	cd /home/bbrelin/nimcp && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/utils/memory/nimcp_memory_pool.c.o
+.PHONY : __/utils/memory/nimcp_memory_pool.c.o
+
+__/utils/memory/nimcp_memory_pool.i: __/utils/memory/nimcp_memory_pool.c.i
+.PHONY : __/utils/memory/nimcp_memory_pool.i
+
+# target to preprocess a source file
+__/utils/memory/nimcp_memory_pool.c.i:
+	cd /home/bbrelin/nimcp && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/utils/memory/nimcp_memory_pool.c.i
+.PHONY : __/utils/memory/nimcp_memory_pool.c.i
+
+__/utils/memory/nimcp_memory_pool.s: __/utils/memory/nimcp_memory_pool.c.s
+.PHONY : __/utils/memory/nimcp_memory_pool.s
+
+# target to generate assembly for a file
+__/utils/memory/nimcp_memory_pool.c.s:
+	cd /home/bbrelin/nimcp && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/utils/memory/nimcp_memory_pool.c.s
+.PHONY : __/utils/memory/nimcp_memory_pool.c.s
 
 __/utils/metrics/nimcp_metrics.o: __/utils/metrics/nimcp_metrics.c.o
 .PHONY : __/utils/metrics/nimcp_metrics.o
@@ -5782,6 +5950,12 @@ help:
 	@echo "... __/middleware/encoding/nimcp_temporal_coding.o"
 	@echo "... __/middleware/encoding/nimcp_temporal_coding.i"
 	@echo "... __/middleware/encoding/nimcp_temporal_coding.s"
+	@echo "... __/middleware/events/nimcp_event_queue.o"
+	@echo "... __/middleware/events/nimcp_event_queue.i"
+	@echo "... __/middleware/events/nimcp_event_queue.s"
+	@echo "... __/middleware/events/nimcp_event_types.o"
+	@echo "... __/middleware/events/nimcp_event_types.i"
+	@echo "... __/middleware/events/nimcp_event_types.s"
 	@echo "... __/middleware/normalization/nimcp_adaptive_normalizer.o"
 	@echo "... __/middleware/normalization/nimcp_adaptive_normalizer.i"
 	@echo "... __/middleware/normalization/nimcp_adaptive_normalizer.s"
@@ -5797,6 +5971,9 @@ help:
 	@echo "... __/middleware/patterns/nimcp_oscillation_detector.o"
 	@echo "... __/middleware/patterns/nimcp_oscillation_detector.i"
 	@echo "... __/middleware/patterns/nimcp_oscillation_detector.s"
+	@echo "... __/middleware/patterns/nimcp_pattern_cow.o"
+	@echo "... __/middleware/patterns/nimcp_pattern_cow.i"
+	@echo "... __/middleware/patterns/nimcp_pattern_cow.s"
 	@echo "... __/middleware/patterns/nimcp_pattern_library.o"
 	@echo "... __/middleware/patterns/nimcp_pattern_library.i"
 	@echo "... __/middleware/patterns/nimcp_pattern_library.s"
@@ -5959,6 +6136,9 @@ help:
 	@echo "... __/utils/fault_tolerance/nimcp_checkpoint.o"
 	@echo "... __/utils/fault_tolerance/nimcp_checkpoint.i"
 	@echo "... __/utils/fault_tolerance/nimcp_checkpoint.s"
+	@echo "... __/utils/fault_tolerance/nimcp_checkpoint_pool.o"
+	@echo "... __/utils/fault_tolerance/nimcp_checkpoint_pool.i"
+	@echo "... __/utils/fault_tolerance/nimcp_checkpoint_pool.s"
 	@echo "... __/utils/fault_tolerance/nimcp_diagnostics.o"
 	@echo "... __/utils/fault_tolerance/nimcp_diagnostics.i"
 	@echo "... __/utils/fault_tolerance/nimcp_diagnostics.s"
@@ -5998,12 +6178,21 @@ help:
 	@echo "... __/utils/logging/nimcp_logging.o"
 	@echo "... __/utils/logging/nimcp_logging.i"
 	@echo "... __/utils/logging/nimcp_logging.s"
+	@echo "... __/utils/memory/nimcp_buffer_pool.o"
+	@echo "... __/utils/memory/nimcp_buffer_pool.i"
+	@echo "... __/utils/memory/nimcp_buffer_pool.s"
+	@echo "... __/utils/memory/nimcp_cow_manager.o"
+	@echo "... __/utils/memory/nimcp_cow_manager.i"
+	@echo "... __/utils/memory/nimcp_cow_manager.s"
 	@echo "... __/utils/memory/nimcp_memory.o"
 	@echo "... __/utils/memory/nimcp_memory.i"
 	@echo "... __/utils/memory/nimcp_memory.s"
 	@echo "... __/utils/memory/nimcp_memory_guards.o"
 	@echo "... __/utils/memory/nimcp_memory_guards.i"
 	@echo "... __/utils/memory/nimcp_memory_guards.s"
+	@echo "... __/utils/memory/nimcp_memory_pool.o"
+	@echo "... __/utils/memory/nimcp_memory_pool.i"
+	@echo "... __/utils/memory/nimcp_memory_pool.s"
 	@echo "... __/utils/metrics/nimcp_metrics.o"
 	@echo "... __/utils/metrics/nimcp_metrics.i"
 	@echo "... __/utils/metrics/nimcp_metrics.s"

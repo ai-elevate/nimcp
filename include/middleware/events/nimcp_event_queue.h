@@ -56,6 +56,7 @@ typedef struct {
     overflow_policy_t overflow_policy; /**< What to do when full */
     bool enable_coalescing;         /**< Merge similar events? */
     uint64_t block_timeout_us;      /**< Timeout for BLOCK policy (0=forever) */
+    uint32_t max_payload_size;      /**< Max payload size for pooling (default: 256 bytes) */
 } event_queue_config_t;
 
 /**
