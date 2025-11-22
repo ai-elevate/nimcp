@@ -193,6 +193,7 @@ set(NIMCP_CORE_SOURCES
 
     # Utils - Signal Processing (Phase 0.5: Band-pass filtering for PAC detection)
     ${CMAKE_CURRENT_SOURCE_DIR}/../utils/signal/nimcp_signal_filter.c  # FIR/IIR band-pass filtering using windowed sinc method
+    ${CMAKE_CURRENT_SOURCE_DIR}/../utils/signal/nimcp_hilbert.c  # Hilbert transform for analytic signal, amplitude, and phase extraction
 
     # Utils - Platform Abstraction (Phase 2: Cross-platform support, SRP-compliant)
     ${CMAKE_CURRENT_SOURCE_DIR}/../utils/platform/nimcp_platform.c
