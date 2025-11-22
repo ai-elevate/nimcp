@@ -6,6 +6,7 @@
 #include "utils/memory/nimcp_memory.h"
 #include "utils/math/nimcp_complex_math.h"
 #include "utils/signal/nimcp_signal_filter.h"
+#include "utils/signal/nimcp_hilbert.h"
 #include <string.h>
 #include <math.h>
 #include <stdio.h>
@@ -69,6 +70,9 @@ struct oscillation_detector {
     float* fft_imag;
     float* window;              // Hann window
     float* power_spectrum;
+
+    // Hilbert transform for amplitude/phase extraction
+    hilbert_transform_t* hilbert;
 
     // Statistics
     uint64_t total_samples;
@@ -248,44 +252,61 @@ static bool detect_burst(band_state_t* state, float power, double timestamp_ms,
 }
 
 /**
- * @brief Phasor-based oscillation detection using complex math
+ * @brief Phasor-based oscillation detection using Hilbert transform
  *
- * WHAT: Fast coherence-based oscillation detection using phasors
- * WHY:  2-5x faster than DFT, more accurate phase extraction
- * HOW:  Convert signal to phasors via Hilbert transform, compute coherence
+ * WHAT: Fast coherence-based oscillation detection using Hilbert transform
+ * WHY:  2-5x faster than DFT, more accurate phase/amplitude extraction, SIMD optimized
+ * HOW:  Use hilbert API for analytic signal, compute coherence and power
  *
- * This replaces ~50 lines of DFT code with ~10 lines using phasor utilities
+ * Upgraded to use new hilbert_transform API with SIMD optimization
  */
-static bool detect_oscillation_phasor(const float* signal_window,
-                                      uint32_t length,
-                                      float sample_rate,
-                                      float min_freq,
-                                      float max_freq,
-                                      float* band_power,
-                                      float* peak_frequency,
-                                      float* coherence) {
-    // Allocate phasor array for analytic signal
-    neural_phasor_t* analytic_signal = (neural_phasor_t*)nimcp_malloc(length * sizeof(neural_phasor_t));
-    if (!analytic_signal) return false;
+static bool detect_oscillation_phasor_hilbert(hilbert_transform_t* ht,
+                                               const float* signal_window,
+                                               uint32_t length,
+                                               float sample_rate,
+                                               float min_freq,
+                                               float max_freq,
+                                               float* band_power,
+                                               float* peak_frequency,
+                                               float* coherence) {
+    if (!ht) return false;
 
-    // Convert real signal to complex analytic signal via Hilbert transform
-    if (!phasor_hilbert_transform(signal_window, analytic_signal, length)) {
+    // Allocate buffers for analytic signal and amplitude
+    neural_phasor_t* analytic_signal = (neural_phasor_t*)nimcp_malloc(length * sizeof(neural_phasor_t));
+    float* amplitude = (float*)nimcp_malloc(length * sizeof(float));
+
+    if (!analytic_signal || !amplitude) {
         nimcp_free(analytic_signal);
+        nimcp_free(amplitude);
+        return false;
+    }
+
+    // Compute analytic signal via Hilbert transform
+    if (!hilbert_apply(ht, signal_window, analytic_signal, length)) {
+        nimcp_free(analytic_signal);
+        nimcp_free(amplitude);
         return false;
     }
 
     // Compute inter-trial phase coherence (ITPC) for the band
     *coherence = phasor_array_coherence(analytic_signal, length);
 
-    // Extract band power from phasor amplitudes
+    // Extract amplitude envelope using SIMD-optimized extraction
+    if (!hilbert_extract_amplitude(ht, signal_window, amplitude, length)) {
+        // Fallback to manual extraction if needed
+        for (uint32_t i = 0; i < length; i++) {
+            amplitude[i] = phasor_amplitude(analytic_signal[i]);
+        }
+    }
+
+    // Compute band power from amplitudes (faster than manual loop)
     float total_power = 0.0f;
     for (uint32_t i = 0; i < length; i++) {
-        float amp = phasor_amplitude(analytic_signal[i]);
-        total_power += amp * amp;
+        total_power += amplitude[i] * amplitude[i];
     }
     *band_power = total_power / (float)length;
 
-    // Find peak frequency using FFT on phasor array
+    // Find peak frequency using FFT on analytic signal
     neural_phasor_t* spectrum = (neural_phasor_t*)nimcp_malloc(length * sizeof(neural_phasor_t));
     if (spectrum && phasor_fft(analytic_signal, spectrum, length)) {
         float freq_resolution = sample_rate / (float)length;
@@ -308,6 +329,7 @@ static bool detect_oscillation_phasor(const float* signal_window,
     }
 
     nimcp_free(spectrum);
+    nimcp_free(amplitude);
     nimcp_free(analytic_signal);
     return true;
 }
@@ -362,6 +384,18 @@ oscillation_detector_t* oscillation_detector_create(const oscillation_detector_c
     // Initialize Hann window
     init_hann_window(detector->window, config->window_size);
 
+    // Initialize Hilbert transform for amplitude/phase extraction
+    hilbert_config_t hilbert_config = hilbert_default_config();
+    hilbert_config.max_signal_length = config->window_size;
+    hilbert_config.auto_pad_power_of_2 = true;
+    hilbert_config.enable_simd = true;
+    detector->hilbert = hilbert_create(&hilbert_config);
+
+    if (!detector->hilbert) {
+        oscillation_detector_destroy(detector);
+        return NULL;
+    }
+
     // Initialize band states
     memset(detector->band_states, 0, sizeof(detector->band_states));
 
@@ -382,6 +416,11 @@ void oscillation_detector_destroy(oscillation_detector_t* detector) {
     nimcp_free(detector->fft_imag);
     nimcp_free(detector->window);
     nimcp_free(detector->power_spectrum);
+
+    if (detector->hilbert) {
+        hilbert_destroy(detector->hilbert);
+    }
+
     nimcp_free(detector);
 }
 
@@ -433,18 +472,19 @@ bool oscillation_detector_detect(oscillation_detector_t* detector,
         band_power_t* bp = &result->bands[b];
         bp->band = (oscillation_band_t)b;
 
-        // Use phasor-based detection if enabled
-        if (detector->config.use_phasor_detection) {
+        // Use phasor-based detection with Hilbert transform if enabled
+        if (detector->config.use_phasor_detection && detector->hilbert) {
             float coherence = 0.0f;
-            if (detect_oscillation_phasor(signal_window,
-                                         detector->config.window_size,
-                                         detector->config.sample_rate_hz,
-                                         BAND_RANGES[b][0],
-                                         BAND_RANGES[b][1],
-                                         &bp->power,
-                                         &bp->peak_frequency,
-                                         &coherence)) {
-                // Phasor method succeeded - use coherence for improved burst detection
+            if (detect_oscillation_phasor_hilbert(detector->hilbert,
+                                                   signal_window,
+                                                   detector->config.window_size,
+                                                   detector->config.sample_rate_hz,
+                                                   BAND_RANGES[b][0],
+                                                   BAND_RANGES[b][1],
+                                                   &bp->power,
+                                                   &bp->peak_frequency,
+                                                   &coherence)) {
+                // Hilbert method succeeded - SIMD optimized amplitude extraction
                 result->total_power += bp->power;
             } else {
                 // Fall back to traditional method on error
@@ -635,15 +675,28 @@ bool oscillation_detector_detect_pac(oscillation_detector_t* detector,
                     signal_filter_apply(phase_filter, signal_window, phase_filtered, detector->config.window_size);
                     signal_filter_apply(amp_filter, signal_window, amp_filtered, detector->config.window_size);
 
-                    // Extract phase and amplitude via Hilbert transform
-                    if (phasor_hilbert_transform(phase_filtered, phase_phasor, detector->config.window_size) &&
-                        phasor_hilbert_transform(amp_filtered, amp_phasor, detector->config.window_size)) {
+                    // Extract phase and amplitude via Hilbert transform (SIMD-optimized)
+                    bool phase_ok = false;
+                    bool amp_ok = false;
 
-                        // Get amplitude envelope
+                    // Use optimized Hilbert transform for phase extraction
+                    if (detector->hilbert) {
+                        phase_ok = hilbert_apply(detector->hilbert, phase_filtered, phase_phasor, detector->config.window_size);
+                        amp_ok = hilbert_extract_amplitude(detector->hilbert, amp_filtered, amp_envelope, detector->config.window_size);
+                    }
+
+                    // Fallback to legacy phasor method if Hilbert fails
+                    if (!phase_ok) {
+                        phase_ok = phasor_hilbert_transform(phase_filtered, phase_phasor, detector->config.window_size);
+                    }
+                    if (!amp_ok && phasor_hilbert_transform(amp_filtered, amp_phasor, detector->config.window_size)) {
                         for (uint32_t i = 0; i < detector->config.window_size; i++) {
                             amp_envelope[i] = phasor_amplitude(amp_phasor[i]);
                         }
+                        amp_ok = true;
+                    }
 
+                    if (phase_ok && amp_ok) {
                         // Compute PAC modulation index
                         float pac_strength = phasor_pac_modulation_index(
                             phase_phasor, amp_envelope, detector->config.window_size);
