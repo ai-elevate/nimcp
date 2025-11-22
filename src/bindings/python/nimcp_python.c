@@ -50,6 +50,9 @@
 #include "../../include/nimcp.h"
 #include <string.h>
 
+// Forward declaration for signal filter module
+extern int init_signal_filter_module(PyObject* module);
+
 //=============================================================================
 // Utility: Convert Python list to float array
 //=============================================================================
@@ -662,6 +665,12 @@ PyMODINIT_FUNC PyInit_nimcp(void) {
     // Add status constants
     PyModule_AddIntConstant(m, "OK", NIMCP_OK);
     PyModule_AddIntConstant(m, "ERROR", NIMCP_ERROR);
+
+    // Initialize signal filter module
+    if (init_signal_filter_module(m) < 0) {
+        Py_DECREF(m);
+        return NULL;
+    }
 
     return m;
 }

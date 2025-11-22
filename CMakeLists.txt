@@ -27,7 +27,22 @@ else()
 endif()
 
 # Find Python3 for bindings
-find_package(Python3 COMPONENTS Interpreter Development)
+find_package(Python3 COMPONENTS Interpreter Development REQUIRED)
+
+# Find NumPy include directory
+if(Python3_FOUND)
+    execute_process(
+        COMMAND "${Python3_EXECUTABLE}" -c "import numpy; print(numpy.get_include())"
+        OUTPUT_VARIABLE Python3_NumPy_INCLUDE_DIRS
+        OUTPUT_STRIP_TRAILING_WHITESPACE
+        ERROR_QUIET
+    )
+    if(Python3_NumPy_INCLUDE_DIRS)
+        message(STATUS "NumPy include directory: ${Python3_NumPy_INCLUDE_DIRS}")
+    else()
+        message(WARNING "NumPy not found - Python bindings may be limited")
+    endif()
+endif()
 
 # Find GTest for testing
 find_package(GTest)
