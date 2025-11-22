@@ -10,6 +10,22 @@ set(CMAKE_C_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
+# Enable AVX2 SIMD optimizations on x86_64 platforms
+if(CMAKE_SYSTEM_PROCESSOR MATCHES "(x86_64)|(AMD64)")
+    # Check if compiler supports AVX2
+    include(CheckCXXCompilerFlag)
+    check_cxx_compiler_flag("-mavx2" COMPILER_SUPPORTS_AVX2)
+
+    if(COMPILER_SUPPORTS_AVX2)
+        message(STATUS "Enabling AVX2 SIMD optimizations")
+        add_compile_options(-mavx2 -mfma)
+    else()
+        message(STATUS "AVX2 not supported by compiler")
+    endif()
+else()
+    message(STATUS "Non-x86_64 platform: AVX2 disabled")
+endif()
+
 # Find Python3 for bindings
 find_package(Python3 COMPONENTS Interpreter Development)
 

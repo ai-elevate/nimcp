@@ -206,6 +206,8 @@ enable_testing()
 
 set_tests_properties(
   unit_core_brain_test_brain_exhaustive_scenarios
+  unit_cognitive_consolidation_test_consolidation
+  unit_cognitive_ethics_test_ethics
   unit_cognitive_ethics_test_ethics_comprehensive
   unit_cognitive_knowledge_test_knowledge_comprehensive
   unit_cognitive_salience_test_salience_comprehensive
@@ -362,6 +364,14 @@ endif()
 if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/integration/utils/math")
     message(STATUS "Adding utils math integration tests (complex oscillations)...")
     add_subdirectory(integration/utils/math)
+endif()
+
+# Utils Signal Processing Tests (Phase 0.5: Band-pass filtering for PAC)
+# ============================================================================
+
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/unit/utils/signal")
+    message(STATUS "Adding utils signal processing unit tests...")
+    add_subdirectory(unit/utils/signal)
 endif()
 
 # Utils Fault Tolerance Tests

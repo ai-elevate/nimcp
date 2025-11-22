@@ -5,6 +5,7 @@
 #include "middleware/patterns/nimcp_oscillation_detector.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/math/nimcp_complex_math.h"
+#include "utils/signal/nimcp_signal_filter.h"
 #include <string.h>
 #include <math.h>
 #include <stdio.h>
@@ -583,41 +584,94 @@ bool oscillation_detector_detect_pac(oscillation_detector_t* detector,
 
     // Use phasor-based PAC if enabled (2-5x faster than traditional method)
     if (detector->config.use_phasor_detection) {
-        // Test theta-gamma coupling (most important in hippocampus)
-        neural_phasor_t* theta_phasor = (neural_phasor_t*)nimcp_malloc(
+        // Define frequency band ranges
+        typedef struct { float low; float high; } band_range_t;
+        band_range_t bands[] = {
+            {1.0f, 4.0f},    // DELTA
+            {4.0f, 8.0f},    // THETA
+            {8.0f, 13.0f},   // ALPHA
+            {13.0f, 30.0f},  // BETA
+            {30.0f, 80.0f}   // GAMMA (limited to 80Hz for practical PAC)
+        };
+
+        // Common PAC combinations: phase band should be slower than amplitude band
+        typedef struct { oscillation_band_t phase; oscillation_band_t amp; } pac_pair_t;
+        pac_pair_t pac_pairs[] = {
+            {OSC_BAND_THETA, OSC_BAND_GAMMA},  // Most common: theta-gamma
+            {OSC_BAND_ALPHA, OSC_BAND_BETA},   // Alpha-beta coupling
+            {OSC_BAND_DELTA, OSC_BAND_THETA},  // Delta-theta
+            {OSC_BAND_THETA, OSC_BAND_BETA}    // Theta-beta
+        };
+        uint32_t num_pairs = sizeof(pac_pairs) / sizeof(pac_pair_t);
+
+        // Allocate work buffers
+        float* phase_filtered = (float*)nimcp_malloc(detector->config.window_size * sizeof(float));
+        float* amp_filtered = (float*)nimcp_malloc(detector->config.window_size * sizeof(float));
+        neural_phasor_t* phase_phasor = (neural_phasor_t*)nimcp_malloc(
             detector->config.window_size * sizeof(neural_phasor_t));
-        float* gamma_amplitude = (float*)nimcp_malloc(
-            detector->config.window_size * sizeof(float));
+        neural_phasor_t* amp_phasor = (neural_phasor_t*)nimcp_malloc(
+            detector->config.window_size * sizeof(neural_phasor_t));
+        float* amp_envelope = (float*)nimcp_malloc(detector->config.window_size * sizeof(float));
 
-        if (theta_phasor && gamma_amplitude) {
-            // Extract theta phase using Hilbert transform
-            if (phasor_hilbert_transform(signal_window, theta_phasor, detector->config.window_size)) {
-                // Extract gamma amplitude envelope (simplified - use absolute value)
-                for (uint32_t i = 0; i < detector->config.window_size; i++) {
-                    gamma_amplitude[i] = fabsf(signal_window[i]);
+        if (phase_filtered && amp_filtered && phase_phasor && amp_phasor && amp_envelope) {
+            // Test each PAC combination
+            for (uint32_t p = 0; p < num_pairs && *num_found < max_couplings; p++) {
+                oscillation_band_t phase_band = pac_pairs[p].phase;
+                oscillation_band_t amp_band = pac_pairs[p].amp;
+
+                // Create band-pass filters
+                signal_filter_config_t phase_config = signal_filter_bandpass_config(
+                    bands[phase_band].low, bands[phase_band].high, detector->config.sample_rate_hz);
+                phase_config.order = 64;
+                signal_filter_t* phase_filter = signal_filter_create(&phase_config);
+
+                signal_filter_config_t amp_config = signal_filter_bandpass_config(
+                    bands[amp_band].low, bands[amp_band].high, detector->config.sample_rate_hz);
+                amp_config.order = 64;
+                signal_filter_t* amp_filter = signal_filter_create(&amp_config);
+
+                if (phase_filter && amp_filter) {
+                    // Filter signals
+                    signal_filter_apply(phase_filter, signal_window, phase_filtered, detector->config.window_size);
+                    signal_filter_apply(amp_filter, signal_window, amp_filtered, detector->config.window_size);
+
+                    // Extract phase and amplitude via Hilbert transform
+                    if (phasor_hilbert_transform(phase_filtered, phase_phasor, detector->config.window_size) &&
+                        phasor_hilbert_transform(amp_filtered, amp_phasor, detector->config.window_size)) {
+
+                        // Get amplitude envelope
+                        for (uint32_t i = 0; i < detector->config.window_size; i++) {
+                            amp_envelope[i] = phasor_amplitude(amp_phasor[i]);
+                        }
+
+                        // Compute PAC modulation index
+                        float pac_strength = phasor_pac_modulation_index(
+                            phase_phasor, amp_envelope, detector->config.window_size);
+
+                        // Significant coupling threshold (entropy-based MI is conservative)
+                        // Even strong coupling may yield MI ~ 0.04-0.08 after filtering
+                        if (pac_strength > 0.04f) {
+                            couplings[*num_found].phase_band = phase_band;
+                            couplings[*num_found].amp_band = amp_band;
+                            couplings[*num_found].coupling_strength = pac_strength;
+                            couplings[*num_found].preferred_phase =
+                                phasor_array_mean_phase(phase_phasor, detector->config.window_size);
+
+                            (*num_found)++;
+                        }
+                    }
                 }
 
-                // Compute PAC modulation index using phasor utilities
-                float pac_strength = phasor_pac_modulation_index(
-                    theta_phasor, gamma_amplitude, detector->config.window_size);
-
-                // Significant coupling threshold
-                if (pac_strength > 0.2f && *num_found < max_couplings) {
-                    couplings[*num_found].phase_band = OSC_BAND_THETA;
-                    couplings[*num_found].amp_band = OSC_BAND_GAMMA;
-                    couplings[*num_found].coupling_strength = pac_strength;
-
-                    // Compute preferred phase
-                    couplings[*num_found].preferred_phase =
-                        phasor_array_mean_phase(theta_phasor, detector->config.window_size);
-
-                    (*num_found)++;
-                }
+                if (phase_filter) signal_filter_destroy(phase_filter);
+                if (amp_filter) signal_filter_destroy(amp_filter);
             }
         }
 
-        nimcp_free(theta_phasor);
-        nimcp_free(gamma_amplitude);
+        nimcp_free(phase_filtered);
+        nimcp_free(amp_filtered);
+        nimcp_free(phase_phasor);
+        nimcp_free(amp_phasor);
+        nimcp_free(amp_envelope);
     } else {
         // Traditional simplified PAC (placeholder - slower method)
         if (*num_found < max_couplings) {

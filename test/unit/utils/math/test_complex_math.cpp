@@ -488,7 +488,12 @@ class ConfigurationTest : public ::testing::Test {};
 
 TEST_F(ConfigurationTest, DefaultConfig) {
     complex_math_config_t config = complex_math_default_config();
-    EXPECT_FALSE(config.enable_simd);
+    // SIMD is auto-enabled if AVX2 is available at compile time
+#ifdef __AVX2__
+    EXPECT_TRUE(config.enable_simd);  // Optimistic default on AVX2 platforms
+#else
+    EXPECT_FALSE(config.enable_simd); // Conservative default otherwise
+#endif
     EXPECT_FALSE(config.enable_fft_cache);
     EXPECT_EQ(config.fft_cache_size, 0u);
 }
