@@ -140,6 +140,7 @@ extern void set_error(const char* format, ...);
 #define init_curiosity_subsystem                    nimcp_brain_factory_init_curiosity_subsystem
 #define init_salience_subsystem                     nimcp_brain_factory_init_salience_subsystem
 #define init_introspection_subsystem                nimcp_brain_factory_init_introspection_subsystem
+#define init_connectivity_health_subsystem          nimcp_brain_factory_init_connectivity_health_subsystem
 #define init_ethics_engine_subsystem                nimcp_brain_factory_init_ethics_engine_subsystem
 #define init_empathy_network_subsystem              nimcp_brain_factory_init_empathy_network_subsystem
 #define init_empathetic_response_subsystem          nimcp_brain_factory_init_empathetic_response_subsystem
@@ -483,6 +484,18 @@ brain_t brain_create(const char* task_name, brain_size_t size, brain_task_t task
         return NULL;
     }
 
+    // Phase 12: Initialize Introspection (Self-Awareness & Metacognition)
+    if (!init_introspection_subsystem(brain)) {
+        brain_destroy(brain);
+        return NULL;
+    }
+
+    // Phase 1.5.4: Initialize Connectivity Health Monitoring
+    if (!init_connectivity_health_subsystem(brain)) {
+        brain_destroy(brain);
+        return NULL;
+    }
+
     brain_clear_error();
     return brain;
 }
@@ -716,6 +729,12 @@ brain_t brain_create_custom(const brain_config_t* config)
 
     // Phase 12: Initialize Introspection (Self-Awareness & Metacognition)
     if (!init_introspection_subsystem(brain)) {
+        brain_destroy(brain);
+        return NULL;
+    }
+
+    // Phase 1.5.4: Initialize Connectivity Health Monitoring
+    if (!init_connectivity_health_subsystem(brain)) {
         brain_destroy(brain);
         return NULL;
     }

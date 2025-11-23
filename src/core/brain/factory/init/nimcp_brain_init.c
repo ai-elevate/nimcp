@@ -59,6 +59,7 @@
 #include "glial/integration/nimcp_glial_integration.h"
 #include "core/brain_oscillations/nimcp_brain_oscillations.h"
 #include "cognitive/introspection/nimcp_introspection.h"
+#include "cognitive/introspection/nimcp_connectivity_health.h"  // Phase 1.5.4: Connectivity Health
 #include "cognitive/ethics/nimcp_ethics.h"
 #include "cognitive/salience/nimcp_salience.h"
 #include "cognitive/consolidation/nimcp_consolidation.h"
@@ -100,6 +101,7 @@
 #include "cognitive/nimcp_predictive.h"
 #include "cognitive/nimcp_mirror_neurons.h"
 #include "cognitive/global_workspace/nimcp_global_workspace.h"
+#include "cognitive/global_workspace/nimcp_global_workspace_shannon.h"  /* Phase 1.5.3: Shannon info-weighted competition */
 #include "cognitive/nimcp_autobiographical_memory.h"
 #include "core/events/nimcp_event_bus.h"  // Universal event bus for ALL brain activities
 
@@ -2150,6 +2152,51 @@ bool nimcp_brain_factory_init_introspection_subsystem(brain_t brain)
 }
 
 /**
+ * @brief Initialize Connectivity Health Monitoring subsystem (Phase 1.5.4)
+ *
+ * WHAT: Enable periodic brain connectivity health assessment
+ * WHY:  Self-awareness of network organizational quality and information flow
+ * HOW:  Community detection + hub analysis + Shannon metrics + graph topology
+ *
+ * BIOLOGICAL INSPIRATION:
+ * - Modular organization in cortex (Bullmore & Sporns, 2012)
+ * - Hub neurons in prefrontal-parietal network (Power et al., 2013)
+ * - Small-world topology in brain networks (Watts & Strogatz, 1998)
+ * - Information integration in conscious processing (Tononi, 2004)
+ *
+ * @param brain Brain instance
+ * @return true on success, false on error
+ */
+bool nimcp_brain_factory_init_connectivity_health_subsystem(brain_t brain)
+{
+    // Guard: NULL check
+    if (!brain) {
+        return false;
+    }
+
+    // Initialize connectivity health configuration with defaults
+    brain->connectivity_health_config = connectivity_health_default_config();
+
+    // Initialize monitoring state
+    brain->enable_connectivity_monitoring = false;  // Opt-in by default
+    brain->last_connectivity_assessment_time_ms = 0;
+    brain->connectivity_health_callback = NULL;
+    brain->connectivity_health_callback_context = NULL;
+
+    // Initialize health structure to safe defaults
+    memset(&brain->last_connectivity_health, 0, sizeof(brain_connectivity_health_t));
+    brain->last_connectivity_health.overall_health = 0.0f;
+    brain->last_connectivity_health.is_healthy = false;
+
+    // Enable monitoring if Shannon monitoring is enabled (synergy)
+    if (brain->enable_shannon_monitoring) {
+        brain->enable_connectivity_monitoring = true;
+    }
+
+    return true;
+}
+
+/**
  * @brief Initialize Ethics Engine subsystem (Phase 11: Part I.0)
  *
  * WHAT: Create Golden Rule ethics engine for ethical decision-making
@@ -2477,6 +2524,48 @@ bool nimcp_brain_factory_init_global_workspace_subsystem(brain_t brain)
     }
     if (brain->theory_of_mind) {
         global_workspace_subscribe(brain->global_workspace, MODULE_THEORY_OF_MIND);
+    }
+
+    // Phase 1.5.3: Enable Shannon information-weighted competition if requested
+    // WHAT: Add Shannon entropy monitoring to workspace competition
+    // WHY:  High-information, salient content should win workspace access
+    // HOW:  Enable Shannon features, set subscriber capacities
+    if (brain->enable_shannon_monitoring) {
+        shannon_workspace_config_t shannon_config = shannon_workspace_default_config();
+
+        // Enable all Shannon features
+        shannon_config.enable_info_weighted_competition = true;
+        shannon_config.enable_shannon_monitoring = true;
+        shannon_config.enable_adaptive_rate = true;
+
+        if (global_workspace_enable_shannon(brain->global_workspace, &shannon_config)) {
+            // Set subscriber capacities based on module complexity
+            // Higher capacity = can handle more information flow
+            if (brain->working_memory) {
+                global_workspace_set_subscriber_capacity(
+                    brain->global_workspace, MODULE_WORKING_MEMORY, 150.0f);
+            }
+            if (brain->executive) {
+                global_workspace_set_subscriber_capacity(
+                    brain->global_workspace, MODULE_EXECUTIVE, 200.0f);
+            }
+            if (brain->ethics) {
+                global_workspace_set_subscriber_capacity(
+                    brain->global_workspace, MODULE_ETHICS, 100.0f);
+            }
+            if (brain->introspection) {
+                global_workspace_set_subscriber_capacity(
+                    brain->global_workspace, MODULE_INTROSPECTION, 80.0f);
+            }
+            if (brain->salience) {
+                global_workspace_set_subscriber_capacity(
+                    brain->global_workspace, MODULE_SALIENCE, 120.0f);
+            }
+            if (brain->theory_of_mind) {
+                global_workspace_set_subscriber_capacity(
+                    brain->global_workspace, MODULE_THEORY_OF_MIND, 100.0f);
+            }
+        }
     }
 
     return true;

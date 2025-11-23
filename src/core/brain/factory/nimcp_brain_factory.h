@@ -585,6 +585,18 @@ bool nimcp_brain_factory_init_salience_subsystem(brain_t brain);
 bool nimcp_brain_factory_init_introspection_subsystem(brain_t brain);
 
 /**
+ * @brief Initialize connectivity health monitoring subsystem (Phase 1.5.4)
+ *
+ * WHAT: Creates brain connectivity health assessment system
+ * WHY:  Self-awareness of network organizational quality
+ * HOW:  Community detection + hub analysis + Shannon metrics + topology
+ *
+ * @param brain Brain instance
+ * @return true on success, false on failure
+ */
+bool nimcp_brain_factory_init_connectivity_health_subsystem(brain_t brain);
+
+/**
  * @brief Initialize ethics engine subsystem
  *
  * WHAT: Creates moral reasoning and decision-making system

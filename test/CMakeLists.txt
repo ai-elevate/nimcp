@@ -72,6 +72,9 @@ function(add_test_binary TARGET_NAME SOURCE_FILE CATEGORY)
     # Create executable
     add_executable(${TARGET_NAME} ${SOURCE_FILE})
 
+    # Add explicit dependency on nimcp library
+    add_dependencies(${TARGET_NAME} nimcp)
+
     # Configure includes
     target_include_directories(${TARGET_NAME} PRIVATE ${COMMON_TEST_INCLUDES})
 
@@ -87,7 +90,14 @@ function(add_test_binary TARGET_NAME SOURCE_FILE CATEGORY)
     )
 
     # Link libraries
-    target_link_libraries(${TARGET_NAME} PRIVATE ${COMMON_TEST_LIBS})
+    target_link_libraries(${TARGET_NAME}
+    PRIVATE
+        nimcp
+        GTest::GTest
+        GTest::Main
+        Python3::Python
+        pthread
+)
 
     # Set properties
     set_target_properties(${TARGET_NAME} PROPERTIES
@@ -205,6 +215,7 @@ enable_testing()
 # HOW:  Set 60s timeout for tests that require extensive computation
 
 set_tests_properties(
+  unit_utils_test_kdtree
   unit_core_brain_test_brain_exhaustive_scenarios
   unit_cognitive_consolidation_test_consolidation
   unit_cognitive_ethics_test_ethics
@@ -299,6 +310,25 @@ endif()
 #     message(STATUS "Adding reasoning regression tests...")
 #     add_subdirectory(regression/cognitive/reasoning)
 # endif()
+
+# ============================================================================
+# Cognitive Introspection Tests (Phase 1.5.4)
+# ============================================================================
+
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/unit/cognitive/introspection")
+    message(STATUS "Adding cognitive introspection unit tests...")
+    add_subdirectory(unit/cognitive/introspection)
+endif()
+
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/integration/cognitive/introspection")
+    message(STATUS "Adding cognitive introspection integration tests...")
+    add_subdirectory(integration/cognitive/introspection)
+endif()
+
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/regression/cognitive/introspection")
+    message(STATUS "Adding cognitive introspection regression tests...")
+    add_subdirectory(regression/cognitive/introspection)
+endif()
 
 # ============================================================================
 # Networking Protocol Tests

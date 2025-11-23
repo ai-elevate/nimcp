@@ -46,6 +46,7 @@
 #include "glial/integration/nimcp_glial_integration.h"
 #include "core/brain_oscillations/nimcp_brain_oscillations.h"
 #include "cognitive/introspection/nimcp_introspection.h"
+#include "cognitive/introspection/nimcp_connectivity_health.h"  // Phase 1.5.4: Connectivity Health
 #include "cognitive/ethics/nimcp_ethics.h"
 #include "cognitive/salience/nimcp_salience.h"
 #include "cognitive/consolidation/nimcp_consolidation.h"
@@ -366,6 +367,14 @@ struct brain_struct {
 
     // Network analyzer for real-time topology analysis during inference
     void* network_analyzer;                       // network_analyzer_t* (opaque to avoid circular dependency)
+
+    // === PHASE 1.5.4: CONNECTIVITY HEALTH MONITORING ===
+    bool enable_connectivity_monitoring;          // Enable periodic connectivity health assessment
+    connectivity_health_config_t connectivity_health_config; // Configuration for health assessment
+    brain_connectivity_health_t last_connectivity_health;   // Cached last connectivity health assessment
+    uint64_t last_connectivity_assessment_time_ms;          // Timestamp of last assessment
+    void (*connectivity_health_callback)(const brain_connectivity_health_t*, void*); // Callback on health change
+    void* connectivity_health_callback_context;   // Context for callback
 
     // === PHASE 2 MIDDLEWARE: SPIKE ANALYSIS & POPULATION CODING ===
 
