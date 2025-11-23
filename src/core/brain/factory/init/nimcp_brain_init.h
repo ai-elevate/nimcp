@@ -72,6 +72,7 @@ bool nimcp_brain_factory_init_curiosity_subsystem(brain_t brain);
 bool nimcp_brain_factory_init_salience_subsystem(brain_t brain);
 bool nimcp_brain_factory_init_introspection_subsystem(brain_t brain);
 bool nimcp_brain_factory_init_connectivity_health_subsystem(brain_t brain);  // Phase 1.5.4
+bool nimcp_brain_factory_init_middleware_controller_subsystem(brain_t brain);  // Phase 1.5.5
 bool nimcp_brain_factory_init_ethics_engine_subsystem(brain_t brain);
 bool nimcp_brain_factory_init_empathy_network_subsystem(brain_t brain);
 bool nimcp_brain_factory_init_empathetic_response_subsystem(brain_t brain);

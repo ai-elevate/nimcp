@@ -376,6 +376,9 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../middleware/integration/nimcp_shannon_monitor.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../middleware/integration/nimcp_flow_tracker.c
 
+    # Middleware - Cognitive Command Interface (Phase 1.5.5)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../middleware/integration/nimcp_middleware_controller.c
+
     # Middleware - Cognitive Adapters (Phase 2: Brain-Cognitive Layer Integration)
     ${CMAKE_CURRENT_SOURCE_DIR}/../middleware/cognitive/nimcp_cognitive_adapters.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../middleware/cognitive/nimcp_working_memory_adapter.c

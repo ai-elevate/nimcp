@@ -98,3 +98,8 @@ target_link_libraries(regression_middleware_test_executive_regression
 )
 add_test(NAME regression_middleware_test_executive_regression
          COMMAND regression_middleware_test_executive_regression)
+
+# Phase 1.5.5 Middleware Controller Regression Tests
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/integration")
+    add_subdirectory(integration)
+endif()

@@ -167,3 +167,8 @@ target_link_libraries(integration_middleware_test_signal_filter_integration
 add_test(NAME integration_middleware_test_signal_filter_integration
          COMMAND integration_middleware_test_signal_filter_integration)
 set_tests_properties(integration_middleware_test_signal_filter_integration PROPERTIES TIMEOUT 120)
+
+# Phase 1.5.5 Middleware Controller Integration Tests
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/integration")
+    add_subdirectory(integration)
+endif()

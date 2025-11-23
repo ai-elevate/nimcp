@@ -1,0 +1,953 @@
+/**
+ * @file nimcp_middleware_controller.c
+ * @brief Unified middleware control interface implementation
+ *
+ * WHAT: Direct API for cognitive → middleware command execution
+ * WHY:  Enable top-down cognitive control with <5µs latency
+ * HOW:  Unified controller delegating to specialized subsystems
+ *
+ * PHASE: 1.5.5 (Command Interface - Cognitive → Middleware)
+ *
+ * @author NIMCP Development Team
+ * @date 2025-11-23
+ */
+
+#include "middleware/integration/nimcp_middleware_controller.h"
+#include "middleware/routing/nimcp_attention_gate.h"
+#include "middleware/routing/nimcp_routing_table.h"
+#include "middleware/patterns/nimcp_pattern_library.h"
+#include "middleware/integration/nimcp_shannon_monitor.h"
+#include "utils/memory/nimcp_memory.h"
+#include "utils/time/nimcp_time.h"
+#include <string.h>
+#include <math.h>
+#include <pthread.h>
+
+//=============================================================================
+// Internal Structure
+//=============================================================================
+
+/**
+ * @brief Middleware controller internal state
+ */
+struct middleware_controller {
+    /* Configuration */
+    middleware_controller_config_t config;
+
+    /* Brain reference */
+    brain_t brain;
+
+    /* Subsystem references (may be NULL if not available) */
+    attention_gate_t* attention_gate;
+    routing_table_t* routing_table;
+    pattern_library_t* pattern_library;
+    shannon_monitor_t* shannon_monitor;
+
+    /* Pattern subscriptions */
+    pattern_subscription_t subscriptions[MIDDLEWARE_CTRL_MAX_SUBSCRIPTIONS];
+    uint32_t num_subscriptions;
+    uint32_t next_subscription_id;
+
+    /* Regional settings cache */
+    float attention_thresholds[TARGET_CUSTOM + 1];
+    float attention_priorities[TARGET_CUSTOM + 1];
+    float activity_scales[TARGET_CUSTOM + 1];
+
+    /* Metrics */
+    middleware_controller_metrics_t metrics;
+
+    /* Thread safety */
+    pthread_mutex_t mutex;
+
+    /* Timestamps */
+    uint64_t created_at_us;
+    uint64_t last_command_us;
+};
+
+//=============================================================================
+// Internal Helpers
+//=============================================================================
+
+/**
+ * @brief Get current time in microseconds
+ */
+static inline uint64_t get_time_us(void)
+{
+    return nimcp_time_monotonic_ms() * 1000;
+}
+
+/**
+ * @brief Calculate Shannon information content of command
+ *
+ * I(cmd) = -log2(P(cmd))
+ * Assume uniform distribution over command space for simplicity
+ */
+static float calculate_command_information(middleware_command_type_t type)
+{
+    /* Base information for command type selection */
+    const float type_info = 3.17f;  /* log2(9 types) ≈ 3.17 bits */
+
+    /* Additional info based on payload complexity */
+    float payload_info = 0.0f;
+    switch (type) {
+        case COMMAND_CONFIGURE_ATTENTION:
+            payload_info = 4.0f;  /* region + priority + selectivity + top_k */
+            break;
+        case COMMAND_ADJUST_ROUTING:
+            payload_info = 3.0f;  /* source + dest + weight */
+            break;
+        case COMMAND_SUBSCRIBE_PATTERN:
+        case COMMAND_UNSUBSCRIBE_PATTERN:
+            payload_info = 2.0f;  /* pattern_id + threshold */
+            break;
+        case COMMAND_REDUCE_ACTIVITY:
+        case COMMAND_INCREASE_ACTIVITY:
+            payload_info = 1.0f;  /* region only */
+            break;
+        case COMMAND_RESET_BUFFERS:
+            payload_info = 1.0f;  /* region only */
+            break;
+        default:
+            payload_info = 2.0f;
+            break;
+    }
+
+    return type_info + payload_info;
+}
+
+/**
+ * @brief Record command execution metrics
+ */
+static void record_command(
+    middleware_controller_t* ctrl,
+    middleware_command_type_t type,
+    uint64_t start_us,
+    bool success)
+{
+    uint64_t end_us = get_time_us();
+    float latency_us = (float)(end_us - start_us);
+    float info_bits = calculate_command_information(type);
+
+    pthread_mutex_lock(&ctrl->mutex);
+
+    ctrl->metrics.total_commands++;
+    ctrl->metrics.total_latency_us += latency_us;
+    ctrl->metrics.total_information_bits += info_bits;
+
+    if (!success) {
+        ctrl->metrics.failed_commands++;
+    }
+
+    /* Update latency stats */
+    if (ctrl->metrics.total_commands == 1) {
+        ctrl->metrics.min_latency_us = latency_us;
+        ctrl->metrics.max_latency_us = latency_us;
+    } else {
+        if (latency_us < ctrl->metrics.min_latency_us) {
+            ctrl->metrics.min_latency_us = latency_us;
+        }
+        if (latency_us > ctrl->metrics.max_latency_us) {
+            ctrl->metrics.max_latency_us = latency_us;
+        }
+    }
+
+    ctrl->metrics.avg_latency_us =
+        ctrl->metrics.total_latency_us / ctrl->metrics.total_commands;
+
+    if (latency_us > MIDDLEWARE_CTRL_LATENCY_TARGET_US) {
+        ctrl->metrics.commands_exceeding_target++;
+    }
+
+    /* Update category counts */
+    switch (type) {
+        case COMMAND_CONFIGURE_ATTENTION:
+            ctrl->metrics.attention_commands++;
+            break;
+        case COMMAND_ADJUST_ROUTING:
+            ctrl->metrics.routing_commands++;
+            break;
+        case COMMAND_SUBSCRIBE_PATTERN:
+        case COMMAND_UNSUBSCRIBE_PATTERN:
+            ctrl->metrics.pattern_commands++;
+            break;
+        case COMMAND_REDUCE_ACTIVITY:
+        case COMMAND_INCREASE_ACTIVITY:
+            ctrl->metrics.activity_commands++;
+            break;
+        default:
+            break;
+    }
+
+    /* Update Shannon metrics */
+    ctrl->metrics.avg_information_per_command =
+        ctrl->metrics.total_information_bits / ctrl->metrics.total_commands;
+
+    if (ctrl->metrics.total_latency_us > 0) {
+        ctrl->metrics.command_efficiency =
+            ctrl->metrics.total_information_bits / ctrl->metrics.total_latency_us;
+    }
+
+    ctrl->last_command_us = end_us;
+
+    pthread_mutex_unlock(&ctrl->mutex);
+}
+
+/**
+ * @brief Validate region parameter
+ */
+static inline bool is_valid_region(command_target_region_t region)
+{
+    return region <= TARGET_CUSTOM;
+}
+
+/**
+ * @brief Clamp float value to range
+ */
+static inline float clampf(float value, float min_val, float max_val)
+{
+    if (value < min_val) return min_val;
+    if (value > max_val) return max_val;
+    return value;
+}
+
+//=============================================================================
+// Configuration
+//=============================================================================
+
+middleware_controller_config_t middleware_controller_default_config(void)
+{
+    middleware_controller_config_t config;
+    memset(&config, 0, sizeof(config));
+
+    /* Attention defaults */
+    config.default_attention_threshold = 0.5f;
+    config.attention_decay_rate = 0.99f;
+    config.enable_adaptive_attention = true;
+
+    /* Routing defaults */
+    config.default_routing_weight = 0.5f;
+    config.enable_route_learning = true;
+    config.route_learning_rate = 0.1f;
+
+    /* Pattern matching */
+    config.default_pattern_threshold = 0.7f;
+    config.max_subscriptions = MIDDLEWARE_CTRL_MAX_SUBSCRIPTIONS;
+    config.enable_pattern_notifications = true;
+
+    /* Performance tuning */
+    config.enable_command_batching = true;
+    config.batch_timeout_us = 100;
+    config.enable_shannon_tracking = true;
+
+    /* Safety limits */
+    config.max_activity_scale = 2.0f;
+    config.min_activity_scale = 0.1f;
+
+    return config;
+}
+
+//=============================================================================
+// Lifecycle API
+//=============================================================================
+
+middleware_controller_t* middleware_controller_create(brain_t brain)
+{
+    middleware_controller_config_t config = middleware_controller_default_config();
+    return middleware_controller_create_custom(brain, &config);
+}
+
+middleware_controller_t* middleware_controller_create_custom(
+    brain_t brain,
+    const middleware_controller_config_t* config)
+{
+    /* Guard: require brain */
+    if (brain == NULL) {
+        return NULL;
+    }
+
+    /* Guard: require config */
+    if (config == NULL) {
+        return NULL;
+    }
+
+    /* Allocate controller */
+    middleware_controller_t* ctrl = nimcp_calloc(1, sizeof(middleware_controller_t));
+    if (ctrl == NULL) {
+        return NULL;
+    }
+
+    /* Initialize mutex */
+    if (pthread_mutex_init(&ctrl->mutex, NULL) != 0) {
+        nimcp_free(ctrl);
+        return NULL;
+    }
+
+    /* Store configuration */
+    ctrl->config = *config;
+    ctrl->brain = brain;
+    ctrl->created_at_us = get_time_us();
+    ctrl->next_subscription_id = 1;
+
+    /* Initialize regional settings to defaults */
+    for (int i = 0; i <= TARGET_CUSTOM; i++) {
+        ctrl->attention_thresholds[i] = config->default_attention_threshold;
+        ctrl->attention_priorities[i] = 0.5f;
+        ctrl->activity_scales[i] = 1.0f;
+    }
+
+    /* Initialize metrics */
+    memset(&ctrl->metrics, 0, sizeof(ctrl->metrics));
+    ctrl->metrics.min_latency_us = INFINITY;
+
+    return ctrl;
+}
+
+void middleware_controller_destroy(middleware_controller_t* controller)
+{
+    if (controller == NULL) {
+        return;
+    }
+
+    pthread_mutex_destroy(&controller->mutex);
+    nimcp_free(controller);
+}
+
+//=============================================================================
+// Attention Control API
+//=============================================================================
+
+bool middleware_controller_set_attention_threshold(
+    middleware_controller_t* controller,
+    command_target_region_t region,
+    float threshold)
+{
+    /* Guard clauses */
+    if (controller == NULL) return false;
+    if (!is_valid_region(region)) return false;
+
+    uint64_t start_us = get_time_us();
+    threshold = clampf(threshold, 0.0f, 1.0f);
+
+    pthread_mutex_lock(&controller->mutex);
+
+    /* Update cache */
+    if (region == TARGET_ALL_REGIONS) {
+        for (int i = 0; i <= TARGET_CUSTOM; i++) {
+            controller->attention_thresholds[i] = threshold;
+        }
+    } else {
+        controller->attention_thresholds[region] = threshold;
+    }
+
+    /* Apply to attention gate if available */
+    if (controller->attention_gate != NULL) {
+        attention_gate_set_weight(controller->attention_gate,
+                                   0, (uint32_t)region, threshold);
+    }
+
+    pthread_mutex_unlock(&controller->mutex);
+
+    record_command(controller, COMMAND_CONFIGURE_ATTENTION, start_us, true);
+    return true;
+}
+
+bool middleware_controller_set_attention_priority(
+    middleware_controller_t* controller,
+    command_target_region_t region,
+    float priority)
+{
+    /* Guard clauses */
+    if (controller == NULL) return false;
+    if (!is_valid_region(region)) return false;
+
+    uint64_t start_us = get_time_us();
+    priority = clampf(priority, 0.0f, 1.0f);
+
+    pthread_mutex_lock(&controller->mutex);
+
+    /* Update cache */
+    if (region == TARGET_ALL_REGIONS) {
+        for (int i = 0; i <= TARGET_CUSTOM; i++) {
+            controller->attention_priorities[i] = priority;
+        }
+    } else {
+        controller->attention_priorities[region] = priority;
+    }
+
+    pthread_mutex_unlock(&controller->mutex);
+
+    record_command(controller, COMMAND_CONFIGURE_ATTENTION, start_us, true);
+    return true;
+}
+
+bool middleware_controller_set_attention_selectivity(
+    middleware_controller_t* controller,
+    command_target_region_t region,
+    float selectivity,
+    uint32_t top_k)
+{
+    /* Guard clauses */
+    if (controller == NULL) return false;
+    if (!is_valid_region(region)) return false;
+
+    uint64_t start_us = get_time_us();
+    selectivity = clampf(selectivity, 0.0f, 1.0f);
+
+    /* Apply to attention gate if available */
+    if (controller->attention_gate != NULL) {
+        /* Selectivity maps to top-k parameter */
+        (void)selectivity;  /* Used in future implementation */
+        (void)top_k;
+    }
+
+    record_command(controller, COMMAND_CONFIGURE_ATTENTION, start_us, true);
+    return true;
+}
+
+bool middleware_controller_reset_attention(
+    middleware_controller_t* controller,
+    command_target_region_t region)
+{
+    /* Guard clauses */
+    if (controller == NULL) return false;
+
+    uint64_t start_us = get_time_us();
+
+    pthread_mutex_lock(&controller->mutex);
+
+    /* Reset to defaults */
+    if (region == TARGET_ALL_REGIONS) {
+        for (int i = 0; i <= TARGET_CUSTOM; i++) {
+            controller->attention_thresholds[i] =
+                controller->config.default_attention_threshold;
+            controller->attention_priorities[i] = 0.5f;
+        }
+
+        if (controller->attention_gate != NULL) {
+            attention_gate_reset(controller->attention_gate);
+        }
+    } else {
+        controller->attention_thresholds[region] =
+            controller->config.default_attention_threshold;
+        controller->attention_priorities[region] = 0.5f;
+    }
+
+    pthread_mutex_unlock(&controller->mutex);
+
+    record_command(controller, COMMAND_CONFIGURE_ATTENTION, start_us, true);
+    return true;
+}
+
+//=============================================================================
+// Routing Control API
+//=============================================================================
+
+bool middleware_controller_set_routing_priority(
+    middleware_controller_t* controller,
+    command_target_region_t source,
+    command_target_region_t destination,
+    float weight)
+{
+    /* Guard clauses */
+    if (controller == NULL) return false;
+    if (!is_valid_region(source) || !is_valid_region(destination)) return false;
+
+    uint64_t start_us = get_time_us();
+    weight = clampf(weight, 0.0f, 1.0f);
+
+    /* Apply to routing table if available */
+    if (controller->routing_table != NULL) {
+        routing_table_add_route(controller->routing_table,
+                                (uint32_t)source, (uint32_t)destination, weight);
+    }
+
+    record_command(controller, COMMAND_ADJUST_ROUTING, start_us, true);
+    return true;
+}
+
+bool middleware_controller_set_route_learning(
+    middleware_controller_t* controller,
+    command_target_region_t source,
+    command_target_region_t destination,
+    bool enable)
+{
+    /* Guard clauses */
+    if (controller == NULL) return false;
+    if (!is_valid_region(source) || !is_valid_region(destination)) return false;
+
+    uint64_t start_us = get_time_us();
+
+    /* Enable/disable learning is a config change */
+    (void)enable;  /* Applied via routing table config in future */
+
+    record_command(controller, COMMAND_ADJUST_ROUTING, start_us, true);
+    return true;
+}
+
+bool middleware_controller_block_route(
+    middleware_controller_t* controller,
+    command_target_region_t source,
+    command_target_region_t destination)
+{
+    return middleware_controller_set_routing_priority(
+        controller, source, destination, 0.0f);
+}
+
+bool middleware_controller_unblock_route(
+    middleware_controller_t* controller,
+    command_target_region_t source,
+    command_target_region_t destination)
+{
+    /* Guard: NULL check before dereference */
+    if (controller == NULL) return false;
+
+    return middleware_controller_set_routing_priority(
+        controller, source, destination,
+        controller->config.default_routing_weight);
+}
+
+//=============================================================================
+// Pattern Control API
+//=============================================================================
+
+bool middleware_controller_subscribe_pattern(
+    middleware_controller_t* controller,
+    uint32_t pattern_id,
+    float confidence_threshold,
+    pattern_match_callback_t callback,
+    void* user_data,
+    uint32_t* subscription_id)
+{
+    /* Guard clauses */
+    if (controller == NULL) return false;
+    if (callback == NULL) return false;
+    if (subscription_id == NULL) return false;
+
+    uint64_t start_us = get_time_us();
+    confidence_threshold = clampf(confidence_threshold, 0.0f, 1.0f);
+
+    pthread_mutex_lock(&controller->mutex);
+
+    /* Check capacity */
+    if (controller->num_subscriptions >= controller->config.max_subscriptions) {
+        pthread_mutex_unlock(&controller->mutex);
+        record_command(controller, COMMAND_SUBSCRIBE_PATTERN, start_us, false);
+        return false;
+    }
+
+    /* Find empty slot */
+    int slot = -1;
+    for (uint32_t i = 0; i < controller->config.max_subscriptions; i++) {
+        if (!controller->subscriptions[i].active) {
+            slot = (int)i;
+            break;
+        }
+    }
+
+    if (slot < 0) {
+        pthread_mutex_unlock(&controller->mutex);
+        record_command(controller, COMMAND_SUBSCRIBE_PATTERN, start_us, false);
+        return false;
+    }
+
+    /* Create subscription */
+    pattern_subscription_t* sub = &controller->subscriptions[slot];
+    sub->subscription_id = controller->next_subscription_id++;
+    sub->pattern_id = pattern_id;
+    sub->confidence_threshold = confidence_threshold;
+    sub->callback = callback;
+    sub->user_data = user_data;
+    sub->created_at_us = get_time_us();
+    sub->notifications_sent = 0;
+    sub->active = true;
+
+    controller->num_subscriptions++;
+    controller->metrics.active_subscriptions = controller->num_subscriptions;
+
+    *subscription_id = sub->subscription_id;
+
+    pthread_mutex_unlock(&controller->mutex);
+
+    record_command(controller, COMMAND_SUBSCRIBE_PATTERN, start_us, true);
+    return true;
+}
+
+bool middleware_controller_unsubscribe_pattern(
+    middleware_controller_t* controller,
+    uint32_t subscription_id)
+{
+    /* Guard clauses */
+    if (controller == NULL) return false;
+
+    uint64_t start_us = get_time_us();
+    bool found = false;
+
+    pthread_mutex_lock(&controller->mutex);
+
+    /* Find and deactivate subscription */
+    for (uint32_t i = 0; i < controller->config.max_subscriptions; i++) {
+        if (controller->subscriptions[i].active &&
+            controller->subscriptions[i].subscription_id == subscription_id) {
+            controller->subscriptions[i].active = false;
+            controller->num_subscriptions--;
+            controller->metrics.active_subscriptions = controller->num_subscriptions;
+            found = true;
+            break;
+        }
+    }
+
+    pthread_mutex_unlock(&controller->mutex);
+
+    record_command(controller, COMMAND_UNSUBSCRIBE_PATTERN, start_us, found);
+    return found;
+}
+
+bool middleware_controller_set_pattern_threshold(
+    middleware_controller_t* controller,
+    float threshold)
+{
+    /* Guard clauses */
+    if (controller == NULL) return false;
+
+    uint64_t start_us = get_time_us();
+    threshold = clampf(threshold, 0.0f, 1.0f);
+
+    controller->config.default_pattern_threshold = threshold;
+
+    record_command(controller, COMMAND_SUBSCRIBE_PATTERN, start_us, true);
+    return true;
+}
+
+bool middleware_controller_get_subscription(
+    const middleware_controller_t* controller,
+    uint32_t subscription_id,
+    pattern_subscription_t* subscription)
+{
+    /* Guard clauses */
+    if (controller == NULL || subscription == NULL) return false;
+
+    for (uint32_t i = 0; i < controller->config.max_subscriptions; i++) {
+        if (controller->subscriptions[i].active &&
+            controller->subscriptions[i].subscription_id == subscription_id) {
+            *subscription = controller->subscriptions[i];
+            return true;
+        }
+    }
+
+    return false;
+}
+
+//=============================================================================
+// Activity Control API
+//=============================================================================
+
+bool middleware_controller_set_activity_scale(
+    middleware_controller_t* controller,
+    command_target_region_t region,
+    float scale)
+{
+    /* Guard clauses */
+    if (controller == NULL) return false;
+    if (!is_valid_region(region)) return false;
+
+    uint64_t start_us = get_time_us();
+    scale = clampf(scale, controller->config.min_activity_scale,
+                   controller->config.max_activity_scale);
+
+    pthread_mutex_lock(&controller->mutex);
+
+    if (region == TARGET_ALL_REGIONS) {
+        for (int i = 0; i <= TARGET_CUSTOM; i++) {
+            controller->activity_scales[i] = scale;
+        }
+    } else {
+        controller->activity_scales[region] = scale;
+    }
+
+    pthread_mutex_unlock(&controller->mutex);
+
+    middleware_command_type_t cmd_type = (scale < 1.0f) ?
+        COMMAND_REDUCE_ACTIVITY : COMMAND_INCREASE_ACTIVITY;
+    record_command(controller, cmd_type, start_us, true);
+    return true;
+}
+
+bool middleware_controller_reduce_activity(
+    middleware_controller_t* controller,
+    command_target_region_t region)
+{
+    /* Reduce by 50% */
+    if (controller == NULL) return false;
+
+    pthread_mutex_lock(&controller->mutex);
+    float current = controller->activity_scales[region];
+    pthread_mutex_unlock(&controller->mutex);
+
+    return middleware_controller_set_activity_scale(
+        controller, region, current * 0.5f);
+}
+
+bool middleware_controller_boost_activity(
+    middleware_controller_t* controller,
+    command_target_region_t region)
+{
+    /* Boost by 50% */
+    if (controller == NULL) return false;
+
+    pthread_mutex_lock(&controller->mutex);
+    float current = controller->activity_scales[region];
+    pthread_mutex_unlock(&controller->mutex);
+
+    return middleware_controller_set_activity_scale(
+        controller, region, current * 1.5f);
+}
+
+//=============================================================================
+// Buffer Control API
+//=============================================================================
+
+bool middleware_controller_reset_buffers(
+    middleware_controller_t* controller,
+    command_target_region_t region)
+{
+    /* Guard clauses */
+    if (controller == NULL) return false;
+
+    uint64_t start_us = get_time_us();
+
+    /* Buffer reset would delegate to buffer subsystems */
+    (void)region;
+
+    record_command(controller, COMMAND_RESET_BUFFERS, start_us, true);
+    return true;
+}
+
+//=============================================================================
+// Batch Command API
+//=============================================================================
+
+bool middleware_controller_begin_batch(
+    middleware_controller_t* controller,
+    middleware_command_batch_t* batch)
+{
+    /* Guard clauses */
+    if (controller == NULL || batch == NULL) return false;
+
+    memset(batch, 0, sizeof(middleware_command_batch_t));
+    return true;
+}
+
+uint32_t middleware_controller_execute_batch(
+    middleware_controller_t* controller,
+    const middleware_command_batch_t* batch,
+    command_result_t* results)
+{
+    /* Guard clauses */
+    if (controller == NULL || batch == NULL) return 0;
+    if (batch->num_commands == 0) return 0;
+
+    uint64_t start_us = get_time_us();
+    uint32_t success_count = 0;
+
+    for (uint32_t i = 0; i < batch->num_commands; i++) {
+        const middleware_command_t* cmd = &batch->commands[i];
+        bool success = false;
+
+        switch (cmd->type) {
+            case COMMAND_CONFIGURE_ATTENTION:
+                success = middleware_controller_set_attention_threshold(
+                    controller,
+                    cmd->payload.attention.target_region,
+                    cmd->payload.attention.priority);
+                break;
+
+            case COMMAND_ADJUST_ROUTING:
+                success = middleware_controller_set_routing_priority(
+                    controller,
+                    cmd->payload.routing.source_region,
+                    cmd->payload.routing.target_region,
+                    cmd->payload.routing.weight);
+                break;
+
+            case COMMAND_REDUCE_ACTIVITY:
+                success = middleware_controller_reduce_activity(
+                    controller,
+                    cmd->payload.activity.target_region);
+                break;
+
+            case COMMAND_INCREASE_ACTIVITY:
+                success = middleware_controller_boost_activity(
+                    controller,
+                    cmd->payload.activity.target_region);
+                break;
+
+            case COMMAND_RESET_BUFFERS:
+                success = middleware_controller_reset_buffers(
+                    controller, TARGET_ALL_REGIONS);
+                break;
+
+            default:
+                success = false;
+                break;
+        }
+
+        if (success) {
+            success_count++;
+        }
+
+        if (results != NULL) {
+            results[i].command_id = cmd->command_id;
+            results[i].success = success;
+            results[i].execution_latency_us = (float)(get_time_us() - start_us);
+            results[i].information_delivered = cmd->information_bits;
+        }
+    }
+
+    /* Update batching metrics */
+    pthread_mutex_lock(&controller->mutex);
+    controller->metrics.batches_created++;
+    controller->metrics.avg_batch_size =
+        (float)controller->metrics.total_commands / controller->metrics.batches_created;
+    pthread_mutex_unlock(&controller->mutex);
+
+    return success_count;
+}
+
+//=============================================================================
+// Metrics and Diagnostics
+//=============================================================================
+
+bool middleware_controller_get_metrics(
+    const middleware_controller_t* controller,
+    middleware_controller_metrics_t* metrics)
+{
+    /* Guard clauses */
+    if (controller == NULL || metrics == NULL) return false;
+
+    /* Thread-safe copy */
+    middleware_controller_t* ctrl = (middleware_controller_t*)controller;
+    pthread_mutex_lock(&ctrl->mutex);
+    *metrics = controller->metrics;
+    pthread_mutex_unlock(&ctrl->mutex);
+
+    return true;
+}
+
+float middleware_controller_get_efficiency(
+    const middleware_controller_t* controller)
+{
+    if (controller == NULL) return 0.0f;
+    return controller->metrics.command_efficiency;
+}
+
+float middleware_controller_get_avg_latency(
+    const middleware_controller_t* controller)
+{
+    if (controller == NULL) return 0.0f;
+    return controller->metrics.avg_latency_us;
+}
+
+bool middleware_controller_is_performant(
+    const middleware_controller_t* controller)
+{
+    if (controller == NULL) return false;
+    return controller->metrics.avg_latency_us < MIDDLEWARE_CTRL_LATENCY_TARGET_US;
+}
+
+void middleware_controller_reset_stats(
+    middleware_controller_t* controller)
+{
+    if (controller == NULL) return;
+
+    pthread_mutex_lock(&controller->mutex);
+
+    uint32_t active_subs = controller->metrics.active_subscriptions;
+    memset(&controller->metrics, 0, sizeof(controller->metrics));
+    controller->metrics.min_latency_us = INFINITY;
+    controller->metrics.active_subscriptions = active_subs;
+
+    pthread_mutex_unlock(&controller->mutex);
+}
+
+//=============================================================================
+// Configuration API
+//=============================================================================
+
+void middleware_controller_enable_shannon_tracking(
+    middleware_controller_t* controller,
+    bool enable)
+{
+    if (controller == NULL) return;
+    controller->config.enable_shannon_tracking = enable;
+}
+
+void middleware_controller_enable_batching(
+    middleware_controller_t* controller,
+    bool enable)
+{
+    if (controller == NULL) return;
+    controller->config.enable_command_batching = enable;
+}
+
+void middleware_controller_set_activity_limits(
+    middleware_controller_t* controller,
+    float min_scale,
+    float max_scale)
+{
+    if (controller == NULL) return;
+
+    controller->config.min_activity_scale = clampf(min_scale, 0.01f, 1.0f);
+    controller->config.max_activity_scale = clampf(max_scale, 1.0f, 10.0f);
+}
+
+//=============================================================================
+// Integration API
+//=============================================================================
+
+bool middleware_controller_connect_shannon(
+    middleware_controller_t* controller,
+    shannon_monitor_t* monitor)
+{
+    if (controller == NULL) return false;
+    controller->shannon_monitor = monitor;
+    return true;
+}
+
+void middleware_controller_on_pattern_match(
+    middleware_controller_t* controller,
+    uint32_t pattern_id,
+    float similarity,
+    uint32_t region_id)
+{
+    if (controller == NULL) return;
+    if (!controller->config.enable_pattern_notifications) return;
+
+    pthread_mutex_lock(&controller->mutex);
+
+    /* Find matching subscriptions and fire callbacks */
+    for (uint32_t i = 0; i < controller->config.max_subscriptions; i++) {
+        pattern_subscription_t* sub = &controller->subscriptions[i];
+
+        if (sub->active &&
+            sub->pattern_id == pattern_id &&
+            similarity >= sub->confidence_threshold) {
+
+            /* Fire callback (outside mutex to prevent deadlock) */
+            pattern_match_callback_t cb = sub->callback;
+            void* user_data = sub->user_data;
+
+            pthread_mutex_unlock(&controller->mutex);
+
+            if (cb != NULL) {
+                cb(pattern_id, similarity, region_id, user_data);
+            }
+
+            pthread_mutex_lock(&controller->mutex);
+
+            sub->notifications_sent++;
+            controller->metrics.pattern_notifications_sent++;
+        }
+    }
+
+    pthread_mutex_unlock(&controller->mutex);
+}

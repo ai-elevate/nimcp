@@ -376,6 +376,10 @@ struct brain_struct {
     void (*connectivity_health_callback)(const brain_connectivity_health_t*, void*); // Callback on health change
     void* connectivity_health_callback_context;   // Context for callback
 
+    // === PHASE 1.5.5: MIDDLEWARE CONTROLLER (COGNITIVE → MIDDLEWARE) ===
+    struct middleware_controller* middleware_controller;  // Unified cognitive-to-middleware command interface
+    bool enable_middleware_controller;                    // Enable middleware controller subsystem
+
     // === PHASE 2 MIDDLEWARE: SPIKE ANALYSIS & POPULATION CODING ===
 
     // Spike-based feature extraction (firing rates, ISI, CV, synchrony, oscillations, entropy)

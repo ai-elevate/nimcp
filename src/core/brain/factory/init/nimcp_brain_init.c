@@ -60,6 +60,7 @@
 #include "core/brain_oscillations/nimcp_brain_oscillations.h"
 #include "cognitive/introspection/nimcp_introspection.h"
 #include "cognitive/introspection/nimcp_connectivity_health.h"  // Phase 1.5.4: Connectivity Health
+#include "middleware/integration/nimcp_middleware_controller.h" // Phase 1.5.5: Middleware Controller
 #include "cognitive/ethics/nimcp_ethics.h"
 #include "cognitive/salience/nimcp_salience.h"
 #include "cognitive/consolidation/nimcp_consolidation.h"
@@ -2191,6 +2192,48 @@ bool nimcp_brain_factory_init_connectivity_health_subsystem(brain_t brain)
     // Enable monitoring if Shannon monitoring is enabled (synergy)
     if (brain->enable_shannon_monitoring) {
         brain->enable_connectivity_monitoring = true;
+    }
+
+    return true;
+}
+
+/**
+ * @brief Initialize Middleware Controller subsystem (Phase 1.5.5)
+ *
+ * WHAT: Create unified command interface for cognitive → middleware control
+ * WHY:  Enable top-down cognitive modulation of middleware processing
+ * HOW:  Wrap attention gate, routing table, and pattern library with command API
+ *
+ * BIOLOGICAL INSPIRATION:
+ * - Top-down attention control from prefrontal cortex (Miller & Cohen, 2001)
+ * - Executive control of sensory processing (Desimone & Duncan, 1995)
+ * - Cognitive control of information routing (Posner & Petersen, 1990)
+ *
+ * PERFORMANCE TARGET: <5µs per command (real-time cognitive control)
+ *
+ * @param brain Brain instance
+ * @return true on success, false on error
+ */
+bool nimcp_brain_factory_init_middleware_controller_subsystem(brain_t brain)
+{
+    // Guard: NULL check
+    if (!brain) {
+        return false;
+    }
+
+    // Initialize middleware controller state
+    brain->middleware_controller = NULL;
+    brain->enable_middleware_controller = false;  // Opt-in by default
+
+    // Create controller if executive controller is enabled (synergy with Phase 1.5.2)
+    if (brain->executive) {
+        // Create with default configuration
+        brain->middleware_controller = middleware_controller_create(brain);
+
+        if (brain->middleware_controller) {
+            brain->enable_middleware_controller = true;
+        }
+        // Note: Failure to create is not fatal - cognitive control still works via executive
     }
 
     return true;
