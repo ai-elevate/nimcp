@@ -1,0 +1,1010 @@
+/**
+ * @file nimcp_axon.c
+ * @brief NIMCP Axon Module Implementation
+ *
+ * WHAT: Implementation of axon signal propagation and morphology
+ * WHY:  Provide biologically-realistic action potential propagation
+ * HOW:  Uses NIMCP utils for memory, threading, and math
+ *
+ * NIMCP STANDARDS:
+ * - Functions < 50 lines
+ * - Guard clauses for NULL checks
+ * - nimcp_malloc/nimcp_free for memory
+ */
+
+#include "nimcp_axon.h"
+#include "utils/memory/nimcp_memory.h"
+#include "utils/time/nimcp_time.h"
+#include <pthread.h>
+#include <math.h>
+#include <string.h>
+#include <stdio.h>
+
+//=============================================================================
+// INTERNAL CONSTANTS
+//=============================================================================
+
+/** Velocity coefficient for unmyelinated axons (m/s per sqrt(um)) */
+static const float VELOCITY_COEFF_UNMYELINATED = 1.0f;
+
+/** Velocity coefficient for myelinated axons (m/s per um diameter) */
+static const float VELOCITY_COEFF_MYELINATED = 6.0f;
+
+/** Activity EMA decay factor per millisecond */
+static const float ACTIVITY_DECAY_FACTOR = 0.99f;
+
+/** Minimum velocity to prevent division by zero */
+static const float MIN_VELOCITY = 0.1f;
+
+//=============================================================================
+// SPIKE QUEUE INTERNAL STRUCTURE
+//=============================================================================
+
+struct axon_spike_queue_struct {
+    axon_spike_event_t* events;
+    uint32_t capacity;
+    uint32_t count;
+    uint32_t head;
+    uint32_t tail;
+    pthread_mutex_t lock;
+};
+
+//=============================================================================
+// HELPER FUNCTIONS
+//=============================================================================
+
+/**
+ * @brief Calculate 3D distance
+ */
+float axon_distance_3d(const float a[3], const float b[3])
+{
+    if (!a || !b) return 0.0f;
+
+    float dx = b[0] - a[0];
+    float dy = b[1] - a[1];
+    float dz = b[2] - a[2];
+
+    return sqrtf(dx * dx + dy * dy + dz * dz);
+}
+
+/**
+ * @brief Validate axon parameters
+ */
+bool axon_validate_params(float length, float diameter)
+{
+    if (length <= 0.0f) return false;
+    if (diameter < NIMCP_AXON_MIN_DIAMETER_UM) return false;
+    if (diameter > NIMCP_AXON_MAX_DIAMETER_UM) return false;
+    return true;
+}
+
+/**
+ * @brief Clamp float to range
+ */
+static float clamp_f(float value, float min_val, float max_val)
+{
+    if (value < min_val) return min_val;
+    if (value > max_val) return max_val;
+    return value;
+}
+
+//=============================================================================
+// AXON CREATION AND DESTRUCTION
+//=============================================================================
+
+axon_t* axon_create(uint32_t id,
+                    axon_type_t type,
+                    uint32_t source_neuron_id,
+                    uint32_t target_synapse_id,
+                    float length,
+                    float diameter)
+{
+    // Guard: validate parameters
+    if (!axon_validate_params(length, diameter)) {
+        return NULL;
+    }
+
+    // Allocate axon structure
+    axon_t* axon = (axon_t*)nimcp_calloc(1, sizeof(axon_t));
+    if (!axon) return NULL;
+
+    // Initialize identification
+    axon->id = id;
+    axon->type = type;
+    axon->state = AXON_STATE_RESTING;
+
+    // Initialize connectivity
+    axon->source_neuron_id = source_neuron_id;
+    axon->target_synapse_id = target_synapse_id;
+    axon->target_neuron_id = 0;  // Set by caller if needed
+
+    // Initialize morphology
+    axon->length = length;
+    axon->diameter = clamp_f(diameter, NIMCP_AXON_MIN_DIAMETER_UM,
+                             NIMCP_AXON_MAX_DIAMETER_UM);
+
+    // No segments initially
+    axon->num_segments = 0;
+    axon->segments = NULL;
+
+    // Initialize conduction based on type
+    axon->myelination_level = (type == AXON_TYPE_MYELINATED ||
+                               type == AXON_TYPE_A_ALPHA ||
+                               type == AXON_TYPE_A_BETA) ? 0.5f : 0.0f;
+    axon->mean_g_ratio = 0.77f;  // Optimal G-ratio
+
+    // Calculate initial conduction properties
+    axon_update_conduction(axon);
+
+    // Initialize activity tracking
+    memset(&axon->activity, 0, sizeof(axon_activity_stats_t));
+
+    // Initialize metabolic state
+    axon->atp_level = 1.0f;
+    axon->lactate_level = 0.0f;
+
+    // Initialize health
+    axon->damage = 0.0f;
+    axon->is_functional = true;
+
+    // Initialize lock
+    pthread_mutex_init(&axon->lock, NULL);
+
+    return axon;
+}
+
+axon_t* axon_create_with_positions(uint32_t id,
+                                    axon_type_t type,
+                                    uint32_t source_neuron_id,
+                                    uint32_t target_synapse_id,
+                                    const float start_pos[3],
+                                    const float end_pos[3],
+                                    float diameter)
+{
+    // Guard clauses
+    if (!start_pos || !end_pos) return NULL;
+
+    // Calculate length from positions
+    float length = axon_distance_3d(start_pos, end_pos);
+    if (length <= 0.0f) length = 1.0f;  // Minimum length
+
+    // Create base axon
+    axon_t* axon = axon_create(id, type, source_neuron_id, target_synapse_id,
+                                length, diameter);
+    if (!axon) return NULL;
+
+    // Set positions
+    memcpy(axon->start_pos, start_pos, 3 * sizeof(float));
+    memcpy(axon->end_pos, end_pos, 3 * sizeof(float));
+
+    return axon;
+}
+
+void axon_destroy(axon_t* axon)
+{
+    if (!axon) return;
+
+    // Destroy mutex
+    pthread_mutex_destroy(&axon->lock);
+
+    // Free segments if allocated
+    if (axon->segments) {
+        nimcp_free(axon->segments);
+    }
+
+    // Free axon structure
+    nimcp_free(axon);
+}
+
+//=============================================================================
+// AXON SEGMENTATION
+//=============================================================================
+
+bool axon_create_segments(axon_t* axon,
+                          uint32_t num_segments,
+                          float internode_length)
+{
+    // Guard clauses
+    if (!axon) return false;
+    if (num_segments == 0 || num_segments > NIMCP_AXON_MAX_SEGMENTS) return false;
+    if (internode_length <= 0.0f) return false;
+
+    // Free existing segments
+    if (axon->segments) {
+        nimcp_free(axon->segments);
+    }
+
+    // Allocate segment array
+    axon->segments = (axon_segment_t*)nimcp_calloc(num_segments,
+                                                    sizeof(axon_segment_t));
+    if (!axon->segments) return false;
+
+    axon->num_segments = num_segments;
+
+    // Calculate direction vector
+    float dir[3];
+    for (int i = 0; i < 3; i++) {
+        dir[i] = (axon->end_pos[i] - axon->start_pos[i]) / axon->length;
+    }
+
+    // Create alternating node/internode pattern
+    float cumulative_length = 0.0f;
+    float node_length = 1.0f;  // ~1 um for nodes of Ranvier
+
+    for (uint32_t i = 0; i < num_segments; i++) {
+        axon_segment_t* seg = &axon->segments[i];
+
+        // Determine segment type
+        if (i == 0) {
+            seg->type = SEGMENT_TYPE_AIS;
+            seg->length = 50.0f;  // Axon initial segment ~50 um
+        } else if (i == num_segments - 1) {
+            seg->type = SEGMENT_TYPE_TERMINAL;
+            seg->length = 5.0f;  // Terminal bouton
+        } else if (i % 2 == 1) {
+            seg->type = SEGMENT_TYPE_NODE;
+            seg->length = node_length;
+        } else {
+            seg->type = SEGMENT_TYPE_INTERNODE;
+            seg->length = internode_length;
+        }
+
+        // Set position
+        for (int j = 0; j < 3; j++) {
+            seg->position[j] = axon->start_pos[j] + dir[j] * cumulative_length;
+        }
+
+        // Set diameter (slightly tapered)
+        seg->diameter = axon->diameter * (1.0f - 0.1f * (float)i / num_segments);
+
+        // Initialize myelination (internodes only)
+        if (seg->type == SEGMENT_TYPE_INTERNODE) {
+            seg->myelination = axon->myelination_level;
+            seg->g_ratio = axon->mean_g_ratio;
+        } else {
+            seg->myelination = 0.0f;
+            seg->g_ratio = 1.0f;  // No myelin
+        }
+
+        seg->oligo_id = 0;
+
+        // Calculate local velocity
+        if (seg->type == SEGMENT_TYPE_INTERNODE && seg->myelination > 0.0f) {
+            seg->local_velocity = VELOCITY_COEFF_MYELINATED * seg->diameter *
+                                  seg->myelination * NIMCP_AXON_MYELIN_MULTIPLIER / 50.0f;
+        } else {
+            seg->local_velocity = VELOCITY_COEFF_UNMYELINATED * sqrtf(seg->diameter);
+        }
+        if (seg->local_velocity < MIN_VELOCITY) {
+            seg->local_velocity = MIN_VELOCITY;
+        }
+
+        // Calculate cumulative delay (ms) = length (um) / velocity (m/s) / 1000
+        float segment_delay = seg->length / (seg->local_velocity * 1000.0f);
+        if (i == 0) {
+            seg->cumulative_delay = segment_delay;
+        } else {
+            seg->cumulative_delay = axon->segments[i - 1].cumulative_delay +
+                                    segment_delay;
+        }
+
+        cumulative_length += seg->length;
+    }
+
+    // Update total propagation delay
+    if (num_segments > 0) {
+        axon->propagation_delay_ms = axon->segments[num_segments - 1].cumulative_delay;
+    }
+
+    return true;
+}
+
+bool axon_set_segment_myelination(axon_t* axon,
+                                   uint32_t segment_index,
+                                   float myelination,
+                                   uint32_t oligo_id)
+{
+    // Guard clauses
+    if (!axon) return false;
+    if (!axon->segments) return false;
+    if (segment_index >= axon->num_segments) return false;
+
+    axon_segment_t* seg = &axon->segments[segment_index];
+
+    // Only internodes can be myelinated
+    if (seg->type != SEGMENT_TYPE_INTERNODE) return false;
+
+    // Update myelination
+    seg->myelination = clamp_f(myelination, 0.0f, 1.0f);
+    seg->oligo_id = oligo_id;
+
+    // Recalculate local velocity
+    if (seg->myelination > 0.0f) {
+        seg->local_velocity = VELOCITY_COEFF_MYELINATED * seg->diameter *
+                              seg->myelination * NIMCP_AXON_MYELIN_MULTIPLIER / 50.0f;
+    } else {
+        seg->local_velocity = VELOCITY_COEFF_UNMYELINATED * sqrtf(seg->diameter);
+    }
+    if (seg->local_velocity < MIN_VELOCITY) {
+        seg->local_velocity = MIN_VELOCITY;
+    }
+
+    // Recalculate cumulative delays from this segment onward
+    for (uint32_t i = segment_index; i < axon->num_segments; i++) {
+        axon_segment_t* s = &axon->segments[i];
+        float segment_delay = s->length / (s->local_velocity * 1000.0f);
+
+        if (i == 0) {
+            s->cumulative_delay = segment_delay;
+        } else {
+            s->cumulative_delay = axon->segments[i - 1].cumulative_delay +
+                                  segment_delay;
+        }
+    }
+
+    // Update total delay
+    axon->propagation_delay_ms = axon->segments[axon->num_segments - 1].cumulative_delay;
+
+    // Update overall myelination level
+    float total_myelin = 0.0f;
+    uint32_t internode_count = 0;
+    for (uint32_t i = 0; i < axon->num_segments; i++) {
+        if (axon->segments[i].type == SEGMENT_TYPE_INTERNODE) {
+            total_myelin += axon->segments[i].myelination;
+            internode_count++;
+        }
+    }
+    if (internode_count > 0) {
+        axon->myelination_level = total_myelin / internode_count;
+    }
+
+    return true;
+}
+
+//=============================================================================
+// CONDUCTION VELOCITY
+//=============================================================================
+
+float axon_calculate_velocity(const axon_t* axon)
+{
+    if (!axon) return MIN_VELOCITY;
+
+    float velocity;
+
+    // Type-specific velocity calculation
+    switch (axon->type) {
+        case AXON_TYPE_UNMYELINATED:
+        case AXON_TYPE_C_FIBER:
+            // Unmyelinated: v proportional to sqrt(diameter)
+            velocity = VELOCITY_COEFF_UNMYELINATED * sqrtf(axon->diameter);
+            break;
+
+        case AXON_TYPE_MYELINATED:
+        case AXON_TYPE_A_ALPHA:
+        case AXON_TYPE_A_BETA:
+        case AXON_TYPE_A_DELTA:
+            // Myelinated: v proportional to diameter, scaled by myelination
+            velocity = VELOCITY_COEFF_MYELINATED * axon->diameter *
+                       (0.1f + 0.9f * axon->myelination_level);
+            break;
+
+        default:
+            velocity = NIMCP_AXON_BASE_VELOCITY_MS;
+    }
+
+    // Clamp to valid range
+    velocity = clamp_f(velocity, MIN_VELOCITY, NIMCP_AXON_MAX_VELOCITY_MS);
+
+    // Apply damage penalty
+    velocity *= (1.0f - axon->damage * 0.9f);
+
+    return velocity;
+}
+
+void axon_update_conduction(axon_t* axon)
+{
+    if (!axon) return;
+
+    // Calculate new velocity
+    axon->effective_velocity = axon_calculate_velocity(axon);
+
+    // Calculate propagation delay
+    // delay (ms) = length (um) / velocity (m/s) / 1000
+    axon->propagation_delay_ms = axon->length /
+                                  (axon->effective_velocity * 1000.0f);
+
+    // Update base velocity for reference
+    axon->base_velocity = VELOCITY_COEFF_UNMYELINATED * sqrtf(axon->diameter);
+}
+
+//=============================================================================
+// SPIKE PROPAGATION
+//=============================================================================
+
+bool axon_initiate_spike(axon_t* axon,
+                         uint64_t current_time,
+                         float amplitude)
+{
+    // Guard clauses
+    if (!axon) return false;
+    if (!axon->is_functional) return false;
+    if (axon->damage >= 1.0f) return false;
+
+    // Check refractory period
+    if (axon_is_refractory(axon, current_time)) {
+        return false;
+    }
+
+    // Check ATP level (metabolic gating)
+    if (axon->atp_level < 0.1f) {
+        return false;
+    }
+
+    // Acquire lock
+    pthread_mutex_lock(&axon->lock);
+
+    // Update state
+    axon->state = AXON_STATE_ACTIVE;
+
+    // Set refractory period end
+    uint64_t refractory_us = (uint64_t)(NIMCP_AXON_REFRACTORY_PERIOD_MS * 1000.0f);
+    axon->refractory_end = current_time + refractory_us;
+
+    // Update activity statistics
+    axon->activity.total_spikes++;
+    axon->activity.recent_spikes++;
+
+    // Calculate inter-spike interval
+    if (axon->activity.last_spike_time > 0) {
+        float isi = (float)(current_time - axon->activity.last_spike_time) / 1000.0f;
+        axon->activity.mean_isi = 0.9f * axon->activity.mean_isi + 0.1f * isi;
+    }
+    axon->activity.last_spike_time = current_time;
+
+    // Consume ATP
+    axon->atp_level -= 0.01f;
+    if (axon->atp_level < 0.0f) axon->atp_level = 0.0f;
+
+    pthread_mutex_unlock(&axon->lock);
+
+    return true;
+}
+
+bool axon_spike_arrived(axon_t* axon, uint64_t current_time)
+{
+    if (!axon) return false;
+    if (axon->state != AXON_STATE_ACTIVE) return false;
+
+    // Check if enough time has passed for spike to arrive
+    uint64_t delay_us = (uint64_t)(axon->propagation_delay_ms * 1000.0f);
+    uint64_t spike_time = axon->activity.last_spike_time;
+
+    return (current_time >= spike_time + delay_us);
+}
+
+float axon_get_propagation_delay(const axon_t* axon)
+{
+    if (!axon) return 0.0f;
+    return axon->propagation_delay_ms;
+}
+
+//=============================================================================
+// MYELINATION INTERFACE
+//=============================================================================
+
+void axon_set_myelination(axon_t* axon, float myelination_level)
+{
+    if (!axon) return;
+
+    axon->myelination_level = clamp_f(myelination_level, 0.0f, 1.0f);
+
+    // Update all internode segments
+    if (axon->segments) {
+        for (uint32_t i = 0; i < axon->num_segments; i++) {
+            if (axon->segments[i].type == SEGMENT_TYPE_INTERNODE) {
+                axon->segments[i].myelination = axon->myelination_level;
+            }
+        }
+    }
+
+    // Recalculate conduction
+    axon_update_conduction(axon);
+}
+
+float axon_get_myelination_signal(const axon_t* axon)
+{
+    if (!axon) return 0.0f;
+
+    // Myelination signal based on activity
+    // Higher activity = stronger signal for myelination
+    float rate_factor = axon->activity.firing_rate / 50.0f;  // Normalize to 50 Hz
+    rate_factor = clamp_f(rate_factor, 0.0f, 1.0f);
+
+    // EMA provides smoothing
+    float ema_factor = axon->activity.activity_ema;
+
+    return 0.5f * rate_factor + 0.5f * ema_factor;
+}
+
+void axon_receive_lactate(axon_t* axon, float lactate_amount)
+{
+    if (!axon) return;
+    if (lactate_amount <= 0.0f) return;
+
+    pthread_mutex_lock(&axon->lock);
+
+    axon->lactate_level += lactate_amount;
+
+    // Convert lactate to ATP (simplified metabolic model)
+    float atp_gain = lactate_amount * 0.5f;  // 50% efficiency
+    axon->atp_level += atp_gain;
+    if (axon->atp_level > 1.0f) axon->atp_level = 1.0f;
+
+    // Consume lactate
+    axon->lactate_level *= 0.9f;
+
+    pthread_mutex_unlock(&axon->lock);
+}
+
+//=============================================================================
+// ACTIVITY TRACKING
+//=============================================================================
+
+void axon_update_activity(axon_t* axon, uint64_t current_time)
+{
+    if (!axon) return;
+
+    // Calculate time since last update (assume 1ms if unknown)
+    float dt_ms = 1.0f;
+
+    // Decay activity EMA
+    float decay = powf(ACTIVITY_DECAY_FACTOR, dt_ms);
+    axon->activity.activity_ema *= decay;
+
+    // Add contribution from recent spikes
+    if (axon->activity.recent_spikes > 0) {
+        axon->activity.activity_ema += (float)axon->activity.recent_spikes * 0.1f;
+        if (axon->activity.activity_ema > 1.0f) {
+            axon->activity.activity_ema = 1.0f;
+        }
+        axon->activity.recent_spikes = 0;
+    }
+
+    // Calculate firing rate from mean ISI
+    if (axon->activity.mean_isi > 0.0f) {
+        axon->activity.firing_rate = 1000.0f / axon->activity.mean_isi;
+    } else {
+        axon->activity.firing_rate = 0.0f;
+    }
+
+    // Update myelination signal
+    axon->activity.myelination_signal = axon_get_myelination_signal(axon);
+}
+
+float axon_get_firing_rate(const axon_t* axon)
+{
+    if (!axon) return 0.0f;
+    return axon->activity.firing_rate;
+}
+
+void axon_get_activity_stats(const axon_t* axon, axon_activity_stats_t* stats)
+{
+    if (!stats) return;
+    memset(stats, 0, sizeof(axon_activity_stats_t));
+    if (!axon) return;
+
+    memcpy(stats, &axon->activity, sizeof(axon_activity_stats_t));
+}
+
+//=============================================================================
+// STATE MANAGEMENT
+//=============================================================================
+
+void axon_step(axon_t* axon, uint64_t current_time, float dt)
+{
+    if (!axon) return;
+    if (!axon->is_functional) return;
+
+    pthread_mutex_lock(&axon->lock);
+
+    // Update refractory state
+    if (axon->state == AXON_STATE_REFRACTORY) {
+        if (current_time >= axon->refractory_end) {
+            axon->state = AXON_STATE_RESTING;
+        }
+    } else if (axon->state == AXON_STATE_ACTIVE) {
+        // Transition to refractory after spike
+        if (current_time >= axon->refractory_end) {
+            axon->state = AXON_STATE_REFRACTORY;
+        }
+    }
+
+    // Update activity tracking
+    axon_update_activity(axon, current_time);
+
+    // Regenerate ATP slowly
+    axon->atp_level += 0.001f * dt;
+    if (axon->atp_level > 1.0f) axon->atp_level = 1.0f;
+
+    // Check for damage effects
+    if (axon->damage >= 1.0f) {
+        axon->is_functional = false;
+        axon->state = AXON_STATE_DAMAGED;
+    }
+
+    pthread_mutex_unlock(&axon->lock);
+}
+
+bool axon_is_refractory(const axon_t* axon, uint64_t current_time)
+{
+    if (!axon) return false;
+    return (axon->state == AXON_STATE_REFRACTORY ||
+            (axon->state == AXON_STATE_ACTIVE &&
+             current_time < axon->refractory_end));
+}
+
+const char* axon_state_to_string(axon_state_t state)
+{
+    switch (state) {
+        case AXON_STATE_RESTING:      return "Resting";
+        case AXON_STATE_ACTIVE:       return "Active";
+        case AXON_STATE_REFRACTORY:   return "Refractory";
+        case AXON_STATE_DEMYELINATING: return "Demyelinating";
+        case AXON_STATE_DAMAGED:      return "Damaged";
+        default:                      return "Unknown";
+    }
+}
+
+const char* axon_type_to_string(axon_type_t type)
+{
+    switch (type) {
+        case AXON_TYPE_UNMYELINATED:  return "Unmyelinated";
+        case AXON_TYPE_MYELINATED:    return "Myelinated";
+        case AXON_TYPE_A_ALPHA:       return "A-alpha";
+        case AXON_TYPE_A_BETA:        return "A-beta";
+        case AXON_TYPE_A_DELTA:       return "A-delta";
+        case AXON_TYPE_C_FIBER:       return "C-fiber";
+        default:                      return "Unknown";
+    }
+}
+
+//=============================================================================
+// SPIKE QUEUE IMPLEMENTATION
+//=============================================================================
+
+axon_spike_queue_t* axon_spike_queue_create(uint32_t capacity)
+{
+    if (capacity == 0) capacity = NIMCP_AXON_SPIKE_QUEUE_SIZE;
+
+    axon_spike_queue_t* queue = (axon_spike_queue_t*)nimcp_calloc(1,
+                                                                   sizeof(axon_spike_queue_t));
+    if (!queue) return NULL;
+
+    queue->events = (axon_spike_event_t*)nimcp_calloc(capacity,
+                                                       sizeof(axon_spike_event_t));
+    if (!queue->events) {
+        nimcp_free(queue);
+        return NULL;
+    }
+
+    queue->capacity = capacity;
+    queue->count = 0;
+    queue->head = 0;
+    queue->tail = 0;
+    pthread_mutex_init(&queue->lock, NULL);
+
+    return queue;
+}
+
+void axon_spike_queue_destroy(axon_spike_queue_t* queue)
+{
+    if (!queue) return;
+
+    pthread_mutex_destroy(&queue->lock);
+
+    if (queue->events) {
+        nimcp_free(queue->events);
+    }
+    nimcp_free(queue);
+}
+
+bool axon_spike_queue_push(axon_spike_queue_t* queue,
+                           const axon_spike_event_t* event)
+{
+    if (!queue || !event) return false;
+
+    pthread_mutex_lock(&queue->lock);
+
+    if (queue->count >= queue->capacity) {
+        pthread_mutex_unlock(&queue->lock);
+        return false;  // Queue full
+    }
+
+    // Add event at tail
+    memcpy(&queue->events[queue->tail], event, sizeof(axon_spike_event_t));
+    queue->tail = (queue->tail + 1) % queue->capacity;
+    queue->count++;
+
+    pthread_mutex_unlock(&queue->lock);
+
+    return true;
+}
+
+bool axon_spike_queue_pop(axon_spike_queue_t* queue,
+                          uint64_t current_time,
+                          axon_spike_event_t* event)
+{
+    if (!queue || !event) return false;
+
+    pthread_mutex_lock(&queue->lock);
+
+    if (queue->count == 0) {
+        pthread_mutex_unlock(&queue->lock);
+        return false;
+    }
+
+    // Find event with arrival_time <= current_time
+    // Simple linear scan (could optimize with heap)
+    for (uint32_t i = 0; i < queue->count; i++) {
+        uint32_t idx = (queue->head + i) % queue->capacity;
+        if (queue->events[idx].arrival_time <= current_time) {
+            // Copy event
+            memcpy(event, &queue->events[idx], sizeof(axon_spike_event_t));
+
+            // Remove by shifting (simple approach)
+            // Move last element to this position
+            if (i < queue->count - 1) {
+                uint32_t last_idx = (queue->head + queue->count - 1) % queue->capacity;
+                memcpy(&queue->events[idx], &queue->events[last_idx],
+                       sizeof(axon_spike_event_t));
+            }
+            queue->count--;
+
+            pthread_mutex_unlock(&queue->lock);
+            return true;
+        }
+    }
+
+    pthread_mutex_unlock(&queue->lock);
+    return false;
+}
+
+uint32_t axon_spike_queue_size(const axon_spike_queue_t* queue)
+{
+    if (!queue) return 0;
+    return queue->count;
+}
+
+//=============================================================================
+// AXON NETWORK IMPLEMENTATION
+//=============================================================================
+
+axon_network_t* axon_network_create(uint32_t capacity)
+{
+    if (capacity == 0) capacity = 1000;
+    if (capacity > NIMCP_AXON_NETWORK_MAX_AXONS) {
+        capacity = NIMCP_AXON_NETWORK_MAX_AXONS;
+    }
+
+    axon_network_t* network = (axon_network_t*)nimcp_calloc(1,
+                                                             sizeof(axon_network_t));
+    if (!network) return NULL;
+
+    network->axons = (axon_t**)nimcp_calloc(capacity, sizeof(axon_t*));
+    if (!network->axons) {
+        nimcp_free(network);
+        return NULL;
+    }
+
+    network->spike_queue = axon_spike_queue_create(NIMCP_AXON_SPIKE_QUEUE_SIZE);
+    if (!network->spike_queue) {
+        nimcp_free(network->axons);
+        nimcp_free(network);
+        return NULL;
+    }
+
+    network->capacity = capacity;
+    network->count = 0;
+    network->current_time = 0;
+    network->total_spikes_processed = 0;
+    pthread_mutex_init(&network->lock, NULL);
+    network->spatial_index = NULL;
+    network->spatial_index_valid = false;
+
+    return network;
+}
+
+void axon_network_destroy(axon_network_t* network)
+{
+    if (!network) return;
+
+    // Destroy all axons
+    if (network->axons) {
+        for (uint32_t i = 0; i < network->count; i++) {
+            if (network->axons[i]) {
+                axon_destroy(network->axons[i]);
+            }
+        }
+        nimcp_free(network->axons);
+    }
+
+    // Destroy spike queue
+    if (network->spike_queue) {
+        axon_spike_queue_destroy(network->spike_queue);
+    }
+
+    // Destroy network lock
+    pthread_mutex_destroy(&network->lock);
+
+    nimcp_free(network);
+}
+
+bool axon_network_add(axon_network_t* network, axon_t* axon)
+{
+    if (!network || !axon) return false;
+
+    pthread_mutex_lock(&network->lock);
+
+    if (network->count >= network->capacity) {
+        pthread_mutex_unlock(&network->lock);
+        return false;
+    }
+
+    network->axons[network->count] = axon;
+    network->count++;
+
+    // Invalidate spatial index
+    network->spatial_index_valid = false;
+
+    pthread_mutex_unlock(&network->lock);
+
+    return true;
+}
+
+axon_t* axon_network_remove(axon_network_t* network, uint32_t axon_id)
+{
+    if (!network) return NULL;
+
+    pthread_mutex_lock(&network->lock);
+
+    axon_t* removed = NULL;
+    for (uint32_t i = 0; i < network->count; i++) {
+        if (network->axons[i] && network->axons[i]->id == axon_id) {
+            removed = network->axons[i];
+
+            // Shift remaining axons
+            for (uint32_t j = i; j < network->count - 1; j++) {
+                network->axons[j] = network->axons[j + 1];
+            }
+            network->axons[network->count - 1] = NULL;
+            network->count--;
+
+            network->spatial_index_valid = false;
+            break;
+        }
+    }
+
+    pthread_mutex_unlock(&network->lock);
+
+    return removed;
+}
+
+axon_t* axon_network_find(axon_network_t* network, uint32_t axon_id)
+{
+    if (!network) return NULL;
+
+    for (uint32_t i = 0; i < network->count; i++) {
+        if (network->axons[i] && network->axons[i]->id == axon_id) {
+            return network->axons[i];
+        }
+    }
+
+    return NULL;
+}
+
+uint32_t axon_network_find_by_source(axon_network_t* network,
+                                      uint32_t neuron_id,
+                                      axon_t** results,
+                                      uint32_t max_results)
+{
+    if (!network || !results || max_results == 0) return 0;
+
+    uint32_t found = 0;
+    for (uint32_t i = 0; i < network->count && found < max_results; i++) {
+        if (network->axons[i] &&
+            network->axons[i]->source_neuron_id == neuron_id) {
+            results[found++] = network->axons[i];
+        }
+    }
+
+    return found;
+}
+
+void axon_network_step(axon_network_t* network,
+                       uint64_t current_time,
+                       float dt)
+{
+    if (!network) return;
+
+    pthread_mutex_lock(&network->lock);
+
+    network->current_time = current_time;
+
+    // Step each axon
+    for (uint32_t i = 0; i < network->count; i++) {
+        if (network->axons[i]) {
+            axon_step(network->axons[i], current_time, dt);
+        }
+    }
+
+    pthread_mutex_unlock(&network->lock);
+}
+
+uint32_t axon_network_process_arrivals(axon_network_t* network,
+                                        uint64_t current_time,
+                                        axon_spike_callback_t callback,
+                                        void* user_data)
+{
+    if (!network || !network->spike_queue) return 0;
+
+    uint32_t delivered = 0;
+    axon_spike_event_t event;
+
+    while (axon_spike_queue_pop(network->spike_queue, current_time, &event)) {
+        // Find the axon
+        axon_t* axon = axon_network_find(network, event.axon_id);
+
+        if (axon && callback) {
+            callback(axon, &event, user_data);
+        }
+
+        delivered++;
+        network->total_spikes_processed++;
+    }
+
+    return delivered;
+}
+
+void axon_network_get_stats(const axon_network_t* network,
+                            axon_network_stats_t* stats)
+{
+    if (!stats) return;
+    memset(stats, 0, sizeof(axon_network_stats_t));
+    if (!network) return;
+
+    stats->total_axons = network->count;
+
+    float total_myelination = 0.0f;
+    float total_velocity = 0.0f;
+    float total_delay = 0.0f;
+    float total_rate = 0.0f;
+
+    for (uint32_t i = 0; i < network->count; i++) {
+        axon_t* axon = network->axons[i];
+        if (!axon) continue;
+
+        if (axon->myelination_level > 0.1f) {
+            stats->myelinated_count++;
+        } else {
+            stats->unmyelinated_count++;
+        }
+
+        if (axon->state == AXON_STATE_DAMAGED) {
+            stats->damaged_count++;
+        }
+
+        total_myelination += axon->myelination_level;
+        total_velocity += axon->effective_velocity;
+        total_delay += axon->propagation_delay_ms;
+        total_rate += axon->activity.firing_rate;
+    }
+
+    if (network->count > 0) {
+        stats->mean_myelination = total_myelination / network->count;
+        stats->mean_velocity = total_velocity / network->count;
+        stats->mean_delay = total_delay / network->count;
+        stats->mean_firing_rate = total_rate / network->count;
+    }
+
+    stats->spikes_in_transit = axon_spike_queue_size(network->spike_queue);
+}

@@ -136,6 +136,9 @@ struct neural_network_struct {
 
     // NIMCP Phase 6: Glial Integration - Neuro-glial signaling
     void* glial_integration;      /**< Glial integration system (opaque pointer) */
+
+    // Axon Integration - Signal propagation with realistic conduction delays
+    void* axon_network;           /**< Axon network for spike propagation (axon_network_t*, NULL = no axons) */
 };
 
 //=============================================================================
@@ -1982,6 +1985,10 @@ bool neural_network_add_connection(neural_network_t network, uint32_t from_id, u
     syn->meta_plasticity = 1.0f;
     syn->trace = 0.0f;
 
+    // Axon integration - Initialize source neuron and axon references
+    syn->source_neuron_id = from_id;  // Pre-synaptic neuron
+    syn->axon_id = 0;                 // 0 = no axon (direct connection, backward compatible)
+
     // NIMCP 2.6: Initialize STP (Short-Term Plasticity)
     // Default: Depressing synapse for excitatory connections
     stp_preset_t preset = (from_neuron->type == NEURON_EXCITATORY)
@@ -2043,6 +2050,10 @@ bool neural_network_add_connection(neural_network_t network, uint32_t from_id, u
     incoming_syn->strength = syn->strength;
     incoming_syn->meta_plasticity = syn->meta_plasticity;
     incoming_syn->trace = syn->trace;
+
+    // Axon integration - Initialize source neuron and axon references (same as forward edge)
+    incoming_syn->source_neuron_id = from_id;  // Pre-synaptic neuron
+    incoming_syn->axon_id = 0;                 // 0 = no axon (direct connection, backward compatible)
 
     // NIMCP 2.6: Copy STP state to incoming synapse
     incoming_syn->stp = syn->stp;

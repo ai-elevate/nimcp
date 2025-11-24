@@ -1,0 +1,860 @@
+/**
+ * @file nimcp_broca_adapter.c
+ * @brief Implementation of Broca's region brain adapter
+ *
+ * WHAT: Unified adapter connecting Broca's region sub-modules to the brain system
+ * WHY:  Enable seamless integration with cognitive layers, training, and event system
+ * HOW:  Orchestrates syntax, phonological, and speech motor processors
+ *
+ * @version Phase B2: Broca's Region Brain Integration
+ * @date 2025-11-23
+ */
+
+#include "core/brain/regions/broca/nimcp_broca_adapter.h"
+#include "core/brain/regions/broca/nimcp_syntax_processor.h"
+#include "core/brain/regions/broca/nimcp_phonological.h"
+#include "core/brain/regions/broca/nimcp_speech_motor.h"
+#include "utils/memory/nimcp_memory.h"
+#include <string.h>
+#include <math.h>
+
+/*=============================================================================
+ * INTERNAL STRUCTURES
+ *===========================================================================*/
+
+/**
+ * @brief Lexicon entry for internal storage
+ */
+typedef struct lexicon_node {
+    broca_lexical_entry_t entry;
+    struct lexicon_node* next;       /**< Hash collision chain */
+} lexicon_node_t;
+
+/**
+ * @brief Working memory slot
+ */
+typedef struct {
+    uint32_t word_id;
+    float activation;                /**< Decay-based activation */
+    double timestamp;                /**< When added */
+} wm_slot_t;
+
+/**
+ * @brief Internal adapter structure
+ */
+struct broca_adapter {
+    /* Configuration */
+    broca_config_t config;
+
+    /* Sub-modules */
+    syntax_processor_t* syntax;
+    phonological_processor_t* phonological;
+    speech_motor_planner_t* motor;
+
+    /* Lexicon (hash table) */
+    lexicon_node_t** lexicon;
+    uint32_t lexicon_capacity;
+    uint32_t lexicon_count;
+
+    /* Working memory */
+    wm_slot_t* working_memory;
+    uint32_t wm_count;
+    uint32_t wm_head;                /**< Next insert position */
+
+    /* Output buffer */
+    broca_output_command_t* output_commands;
+    uint32_t output_count;
+    uint32_t output_head;            /**< Next read position */
+
+    /* Callbacks */
+    broca_lexical_callback_t lexical_callback;
+    void* lexical_user_data;
+    broca_motor_callback_t motor_callback;
+    void* motor_user_data;
+    broca_event_callback_t event_callback;
+    void* event_user_data;
+
+    /* State */
+    broca_status_t status;
+    broca_error_t last_error;
+    double current_time_ms;
+
+    /* Statistics */
+    broca_stats_t stats;
+};
+
+/*=============================================================================
+ * INTERNAL HELPERS
+ *===========================================================================*/
+
+/**
+ * @brief Simple string hash function
+ */
+static uint32_t hash_string(const char* str, uint32_t capacity) {
+    uint32_t hash = 5381;
+    int c;
+    while ((c = *str++)) {
+        hash = ((hash << 5) + hash) + c;
+    }
+    return hash % capacity;
+}
+
+/**
+ * @brief Hash word ID
+ */
+static uint32_t hash_word_id(uint32_t word_id, uint32_t capacity) {
+    return word_id % capacity;
+}
+
+/**
+ * @brief Emit event to callback
+ */
+static void emit_event(broca_adapter_t* adapter, uint32_t event_type, const void* data) {
+    if (adapter->config.enable_events && adapter->event_callback) {
+        adapter->event_callback(event_type, data, adapter->event_user_data);
+    }
+}
+
+/**
+ * @brief Set error state
+ */
+static void set_error(broca_adapter_t* adapter, broca_error_t error) {
+    if (!adapter) return;  /* NULL safety */
+    adapter->last_error = error;
+    if (error != BROCA_ERROR_NONE) {
+        adapter->status = BROCA_STATUS_ERROR;
+    }
+}
+
+/*=============================================================================
+ * LIFECYCLE FUNCTIONS
+ *===========================================================================*/
+
+broca_config_t broca_default_config(void) {
+    broca_config_t config;
+    config.max_words = BROCA_DEFAULT_MAX_WORDS;
+    config.max_phonemes = BROCA_DEFAULT_MAX_PHONEMES;
+    config.max_motor_commands = BROCA_DEFAULT_MAX_COMMANDS;
+    config.working_memory_slots = BROCA_DEFAULT_WORKING_MEMORY_SLOTS;
+    config.enable_working_memory = true;
+    config.lexicon_size = BROCA_DEFAULT_LEXICON_SIZE;
+    config.enable_lexicon = true;
+    config.enable_coarticulation = true;
+    config.enable_prosody = true;
+    config.enable_morphology = true;
+    config.enable_events = true;
+    config.enable_training = false;
+    config.learning_rate = 0.01f;
+    config.planning_window_ms = BROCA_DEFAULT_PLANNING_WINDOW_MS;
+    return config;
+}
+
+broca_adapter_t* broca_create(const broca_config_t* config) {
+    /* WHAT: Create unified Broca's region adapter
+     * WHY:  Central point for language production
+     * HOW:  Initialize all sub-modules and data structures */
+
+    broca_adapter_t* adapter = (broca_adapter_t*)nimcp_calloc(1, sizeof(broca_adapter_t));
+    if (!adapter) return NULL;
+
+    /* Set configuration */
+    if (config) {
+        adapter->config = *config;
+    } else {
+        adapter->config = broca_default_config();
+    }
+
+    /* Create syntax processor */
+    syntax_config_t syntax_cfg = syntax_default_config();
+    syntax_cfg.max_units = adapter->config.max_words;
+    syntax_cfg.enable_morphology = adapter->config.enable_morphology;
+    adapter->syntax = syntax_create(&syntax_cfg);
+    if (!adapter->syntax) {
+        broca_destroy(adapter);
+        return NULL;
+    }
+
+    /* Create phonological processor */
+    phonological_config_t phono_cfg = phonological_default_config();
+    phono_cfg.max_phonemes = adapter->config.max_phonemes;
+    phono_cfg.enable_prosody = adapter->config.enable_prosody;
+    phono_cfg.enable_coarticulation = adapter->config.enable_coarticulation;
+    adapter->phonological = phonological_create(&phono_cfg);
+    if (!adapter->phonological) {
+        broca_destroy(adapter);
+        return NULL;
+    }
+
+    /* Create speech motor planner */
+    speech_motor_config_t motor_cfg = speech_motor_default_config();
+    motor_cfg.max_commands = adapter->config.max_motor_commands;
+    motor_cfg.enable_coarticulation = adapter->config.enable_coarticulation;
+    motor_cfg.planning_window_ms = adapter->config.planning_window_ms;
+    adapter->motor = speech_motor_create(&motor_cfg);
+    if (!adapter->motor) {
+        broca_destroy(adapter);
+        return NULL;
+    }
+
+    /* Initialize lexicon */
+    if (adapter->config.enable_lexicon) {
+        adapter->lexicon_capacity = adapter->config.lexicon_size;
+        adapter->lexicon = (lexicon_node_t**)nimcp_calloc(
+            adapter->lexicon_capacity, sizeof(lexicon_node_t*));
+        if (!adapter->lexicon) {
+            broca_destroy(adapter);
+            return NULL;
+        }
+    }
+
+    /* Initialize working memory */
+    if (adapter->config.enable_working_memory) {
+        adapter->working_memory = (wm_slot_t*)nimcp_calloc(
+            adapter->config.working_memory_slots, sizeof(wm_slot_t));
+        if (!adapter->working_memory) {
+            broca_destroy(adapter);
+            return NULL;
+        }
+    }
+
+    /* Initialize output buffer */
+    adapter->output_commands = (broca_output_command_t*)nimcp_calloc(
+        adapter->config.max_motor_commands, sizeof(broca_output_command_t));
+    if (!adapter->output_commands) {
+        broca_destroy(adapter);
+        return NULL;
+    }
+
+    /* Initialize state */
+    adapter->status = BROCA_STATUS_IDLE;
+    adapter->last_error = BROCA_ERROR_NONE;
+    adapter->current_time_ms = 0.0;
+
+    return adapter;
+}
+
+void broca_destroy(broca_adapter_t* adapter) {
+    if (!adapter) return;
+
+    /* Destroy sub-modules */
+    if (adapter->syntax) {
+        syntax_destroy(adapter->syntax);
+    }
+    if (adapter->phonological) {
+        phonological_destroy(adapter->phonological);
+    }
+    if (adapter->motor) {
+        speech_motor_destroy(adapter->motor);
+    }
+
+    /* Free lexicon */
+    if (adapter->lexicon) {
+        for (uint32_t i = 0; i < adapter->lexicon_capacity; i++) {
+            lexicon_node_t* node = adapter->lexicon[i];
+            while (node) {
+                lexicon_node_t* next = node->next;
+                nimcp_free(node);
+                node = next;
+            }
+        }
+        nimcp_free(adapter->lexicon);
+    }
+
+    /* Free working memory */
+    if (adapter->working_memory) {
+        nimcp_free(adapter->working_memory);
+    }
+
+    /* Free output buffer */
+    if (adapter->output_commands) {
+        nimcp_free(adapter->output_commands);
+    }
+
+    nimcp_free(adapter);
+}
+
+bool broca_reset(broca_adapter_t* adapter) {
+    if (!adapter) return false;
+
+    /* Reset sub-modules */
+    syntax_reset(adapter->syntax);
+    phonological_reset(adapter->phonological);
+    speech_motor_reset(adapter->motor);
+
+    /* Clear working memory */
+    if (adapter->working_memory) {
+        memset(adapter->working_memory, 0,
+               adapter->config.working_memory_slots * sizeof(wm_slot_t));
+        adapter->wm_count = 0;
+        adapter->wm_head = 0;
+    }
+
+    /* Clear output buffer */
+    adapter->output_count = 0;
+    adapter->output_head = 0;
+
+    /* Reset state */
+    adapter->status = BROCA_STATUS_IDLE;
+    adapter->last_error = BROCA_ERROR_NONE;
+
+    return true;
+}
+
+/*=============================================================================
+ * LEXICON MANAGEMENT
+ *===========================================================================*/
+
+bool broca_add_lexical_entry(broca_adapter_t* adapter,
+                              const broca_lexical_entry_t* entry) {
+    if (!adapter || !entry || !adapter->lexicon) return false;
+
+    /* Check capacity */
+    if (adapter->lexicon_count >= adapter->lexicon_capacity) {
+        return false;
+    }
+
+    /* Create new node */
+    lexicon_node_t* node = (lexicon_node_t*)nimcp_calloc(1, sizeof(lexicon_node_t));
+    if (!node) return false;
+
+    node->entry = *entry;
+    node->next = NULL;
+
+    /* Insert into hash table */
+    uint32_t idx;
+    if (entry->word_id != 0) {
+        idx = hash_word_id(entry->word_id, adapter->lexicon_capacity);
+    } else {
+        idx = hash_string(entry->word, adapter->lexicon_capacity);
+    }
+
+    node->next = adapter->lexicon[idx];
+    adapter->lexicon[idx] = node;
+    adapter->lexicon_count++;
+
+    return true;
+}
+
+bool broca_lookup_word(const broca_adapter_t* adapter,
+                        uint32_t word_id,
+                        const char* word,
+                        broca_lexical_entry_t* entry) {
+    if (!adapter || !entry) return false;
+
+    /* Try internal lexicon first */
+    if (adapter->lexicon) {
+        uint32_t idx;
+        if (word_id != 0) {
+            idx = hash_word_id(word_id, adapter->lexicon_capacity);
+        } else if (word) {
+            idx = hash_string(word, adapter->lexicon_capacity);
+        } else {
+            return false;
+        }
+
+        lexicon_node_t* node = adapter->lexicon[idx];
+        while (node) {
+            if (word_id != 0 && node->entry.word_id == word_id) {
+                *entry = node->entry;
+                return true;
+            }
+            if (word && strcmp(node->entry.word, word) == 0) {
+                *entry = node->entry;
+                return true;
+            }
+            node = node->next;
+        }
+    }
+
+    /* Try callback */
+    if (adapter->lexical_callback) {
+        return adapter->lexical_callback(word_id, word, entry,
+                                         adapter->lexical_user_data);
+    }
+
+    return false;
+}
+
+bool broca_set_lexical_callback(broca_adapter_t* adapter,
+                                 broca_lexical_callback_t callback,
+                                 void* user_data) {
+    if (!adapter) return false;
+    adapter->lexical_callback = callback;
+    adapter->lexical_user_data = user_data;
+    return true;
+}
+
+/*=============================================================================
+ * PRODUCTION PIPELINE
+ *===========================================================================*/
+
+bool broca_begin_utterance(broca_adapter_t* adapter) {
+    if (!adapter) return false;
+
+    /* Reset for new utterance */
+    syntax_reset(adapter->syntax);
+    phonological_reset(adapter->phonological);
+    speech_motor_reset(adapter->motor);
+
+    adapter->output_count = 0;
+    adapter->output_head = 0;
+    adapter->status = BROCA_STATUS_IDLE;
+    adapter->last_error = BROCA_ERROR_NONE;
+
+    return true;
+}
+
+bool broca_add_word(broca_adapter_t* adapter, const broca_input_word_t* word) {
+    if (!adapter || !word) {
+        set_error(adapter, BROCA_ERROR_INVALID_INPUT);
+        return false;
+    }
+
+    /* Look up word in lexicon */
+    broca_lexical_entry_t entry;
+    if (!broca_lookup_word(adapter, word->word_id, word->word, &entry)) {
+        set_error(adapter, BROCA_ERROR_LEXICON_MISS);
+        adapter->stats.lexicon_misses++;
+        return false;
+    }
+
+    /* Add to syntax processor */
+    adapter->status = BROCA_STATUS_LEXICAL_ACCESS;
+
+    syntactic_unit_t unit;
+    memset(&unit, 0, sizeof(syntactic_unit_t));
+    unit.word_id = entry.word_id;
+    unit.pos = (word->pos != 0) ? word->pos : entry.pos;
+    unit.features.number = word->number;
+    unit.features.person = word->person;
+    unit.features.tense = word->tense;
+
+    if (!syntax_add_unit(adapter->syntax, &unit)) {
+        set_error(adapter, BROCA_ERROR_BUFFER_OVERFLOW);
+        return false;
+    }
+
+    adapter->stats.words_processed++;
+    return true;
+}
+
+bool broca_process_utterance(broca_adapter_t* adapter,
+                              broca_utterance_result_t* result) {
+    if (!adapter) return false;
+
+    /* Initialize result */
+    broca_utterance_result_t local_result;
+    memset(&local_result, 0, sizeof(broca_utterance_result_t));
+
+    /* Phase 1: Syntactic processing */
+    adapter->status = BROCA_STATUS_SYNTACTIC;
+
+    if (!syntax_build_tree(adapter->syntax)) {
+        set_error(adapter, BROCA_ERROR_SYNTAX_FAILURE);
+        adapter->stats.syntax_errors++;
+        if (result) *result = local_result;
+        return false;
+    }
+
+    bool agreement_valid = false;
+    syntax_validate_grammar(adapter->syntax, &agreement_valid);
+    local_result.syntax_valid = true;
+    local_result.agreement_valid = agreement_valid;
+    local_result.word_count = syntax_get_unit_count(adapter->syntax);
+
+    emit_event(adapter, 1 /* BROCA_EVENT_SYNTAX_COMPLETE */, NULL);
+
+    /* Phase 2: Phonological processing */
+    adapter->status = BROCA_STATUS_PHONOLOGICAL;
+
+    /* Get words from syntax and look up phonemes */
+    uint32_t num_units = syntax_get_unit_count(adapter->syntax);
+    for (uint32_t i = 0; i < num_units; i++) {
+        syntactic_unit_t unit;
+        if (syntax_get_unit(adapter->syntax, i, &unit)) {
+            broca_lexical_entry_t entry;
+            if (broca_lookup_word(adapter, unit.word_id, NULL, &entry)) {
+                /* Add phonemes from lexical entry */
+                for (uint32_t p = 0; p < entry.phoneme_count; p++) {
+                    uint8_t category = PHONEME_CATEGORY_VOWEL;
+                    /* Simple vowel detection */
+                    uint8_t ph = entry.phonemes[p];
+                    if (ph == 'a' || ph == 'e' || ph == 'i' || ph == 'o' || ph == 'u') {
+                        category = PHONEME_CATEGORY_VOWEL;
+                    } else {
+                        category = PHONEME_CATEGORY_CONSONANT;
+                    }
+                    phonological_add_phoneme_detailed(adapter->phonological,
+                                                       entry.phonemes[p],
+                                                       category,
+                                                       80.0f, 0.7f);
+                }
+            }
+        }
+    }
+
+    /* Generate syllables */
+    if (!phonological_generate_syllables(adapter->phonological)) {
+        set_error(adapter, BROCA_ERROR_PHONOLOGICAL_FAILURE);
+        adapter->stats.phonological_errors++;
+        if (result) *result = local_result;
+        return false;
+    }
+
+    /* Generate prosody */
+    phonological_generate_prosody(adapter->phonological, INTONATION_PATTERN_FALLING);
+
+    local_result.syllable_count = phonological_get_syllable_count(adapter->phonological);
+    local_result.phoneme_count = phonological_get_phoneme_count(adapter->phonological);
+
+    emit_event(adapter, 2 /* BROCA_EVENT_PHONEMES_READY */, NULL);
+
+    /* Phase 3: Motor planning */
+    adapter->status = BROCA_STATUS_MOTOR_PLANNING;
+
+    /* Get phonemes and plan motor commands */
+    uint32_t phoneme_count = phonological_get_phoneme_count(adapter->phonological);
+    for (uint32_t i = 0; i < phoneme_count; i++) {
+        /* Get phoneme from phonological processor */
+        /* Note: Would need to add get_phoneme function or iterate through syllables */
+    }
+
+    /* Plan sequence using syllable phonemes */
+    uint32_t syllable_count = phonological_get_syllable_count(adapter->phonological);
+    float total_duration = 0.0f;
+
+    for (uint32_t s = 0; s < syllable_count; s++) {
+        syllable_t syllable;
+        if (phonological_get_syllable(adapter->phonological, s, &syllable)) {
+            /* Plan onset phonemes */
+            for (uint32_t j = 0; j < syllable.onset_count; j++) {
+                speech_motor_plan_phoneme(adapter->motor, syllable.onset[j].symbol);
+            }
+            /* Plan nucleus phonemes */
+            for (uint32_t j = 0; j < syllable.nucleus_count; j++) {
+                speech_motor_plan_phoneme(adapter->motor, syllable.nucleus[j].symbol);
+            }
+            /* Plan coda phonemes */
+            for (uint32_t j = 0; j < syllable.coda_count; j++) {
+                speech_motor_plan_phoneme(adapter->motor, syllable.coda[j].symbol);
+            }
+            total_duration += syllable.duration_ms;
+        }
+    }
+
+    local_result.total_duration_ms = total_duration;
+
+    /* Retrieve motor commands to output buffer */
+    uint32_t max_commands = adapter->config.max_motor_commands;
+    motor_command_t* temp_commands = (motor_command_t*)nimcp_calloc(
+        max_commands, sizeof(motor_command_t));
+    if (!temp_commands) {
+        set_error(adapter, BROCA_ERROR_INTERNAL);
+        if (result) *result = local_result;
+        return false;
+    }
+
+    uint32_t cmd_count = max_commands;
+    if (speech_motor_get_commands(adapter->motor, temp_commands, &cmd_count)) {
+        /* Convert to output format */
+        for (uint32_t i = 0; i < cmd_count && adapter->output_count < max_commands; i++) {
+            broca_output_command_t* out = &adapter->output_commands[adapter->output_count];
+            out->articulator = temp_commands[i].type;
+            out->position = temp_commands[i].position;
+            out->velocity = temp_commands[i].velocity;
+            out->timestamp_ms = temp_commands[i].timestamp;
+            out->phoneme = temp_commands[i].phoneme;
+            adapter->output_count++;
+        }
+    }
+    nimcp_free(temp_commands);
+
+    local_result.command_count = adapter->output_count;
+    local_result.ready_for_articulation = (adapter->output_count > 0);
+
+    emit_event(adapter, 3 /* BROCA_EVENT_MOTOR_READY */, NULL);
+
+    /* Update statistics */
+    adapter->stats.utterances_processed++;
+    adapter->stats.successful_productions++;
+    adapter->stats.phonemes_generated += local_result.phoneme_count;
+    adapter->stats.commands_generated += local_result.command_count;
+
+    adapter->status = BROCA_STATUS_READY;
+
+    if (result) *result = local_result;
+    return true;
+}
+
+bool broca_get_next_command(broca_adapter_t* adapter,
+                             broca_output_command_t* command) {
+    if (!adapter || !command) return false;
+
+    if (adapter->output_head >= adapter->output_count) {
+        return false;  /* No more commands */
+    }
+
+    *command = adapter->output_commands[adapter->output_head];
+    adapter->output_head++;
+
+    /* Invoke motor callback if set */
+    if (adapter->motor_callback) {
+        adapter->motor_callback(command, adapter->motor_user_data);
+    }
+
+    return true;
+}
+
+bool broca_get_all_commands(broca_adapter_t* adapter,
+                             broca_output_command_t* commands,
+                             uint32_t* count) {
+    if (!adapter || !commands || !count) return false;
+
+    uint32_t available = adapter->output_count - adapter->output_head;
+    uint32_t to_copy = (*count < available) ? *count : available;
+
+    memcpy(commands, &adapter->output_commands[adapter->output_head],
+           to_copy * sizeof(broca_output_command_t));
+
+    adapter->output_head += to_copy;
+    *count = to_copy;
+
+    return true;
+}
+
+/*=============================================================================
+ * HIGH-LEVEL CONVENIENCE FUNCTIONS
+ *===========================================================================*/
+
+bool broca_produce_from_ids(broca_adapter_t* adapter,
+                             const uint32_t* word_ids,
+                             uint32_t num_words,
+                             broca_utterance_result_t* result) {
+    if (!adapter || !word_ids || num_words == 0) return false;
+
+    if (!broca_begin_utterance(adapter)) return false;
+
+    for (uint32_t i = 0; i < num_words; i++) {
+        broca_input_word_t word;
+        memset(&word, 0, sizeof(broca_input_word_t));
+        word.word_id = word_ids[i];
+
+        if (!broca_add_word(adapter, &word)) {
+            return false;
+        }
+    }
+
+    return broca_process_utterance(adapter, result);
+}
+
+bool broca_produce_from_strings(broca_adapter_t* adapter,
+                                 const char* const* words,
+                                 uint32_t num_words,
+                                 broca_utterance_result_t* result) {
+    if (!adapter || !words || num_words == 0) return false;
+
+    if (!broca_begin_utterance(adapter)) return false;
+
+    for (uint32_t i = 0; i < num_words; i++) {
+        broca_input_word_t word;
+        memset(&word, 0, sizeof(broca_input_word_t));
+        word.word_id = 0;
+        strncpy(word.word, words[i], sizeof(word.word) - 1);
+
+        if (!broca_add_word(adapter, &word)) {
+            return false;
+        }
+    }
+
+    return broca_process_utterance(adapter, result);
+}
+
+/*=============================================================================
+ * WORKING MEMORY INTEGRATION
+ *===========================================================================*/
+
+bool broca_wm_push(broca_adapter_t* adapter, uint32_t word_id) {
+    if (!adapter || !adapter->working_memory) return false;
+
+    if (adapter->wm_count >= adapter->config.working_memory_slots) {
+        /* WM full - overwrite oldest */
+        adapter->wm_head = (adapter->wm_head + 1) % adapter->config.working_memory_slots;
+    } else {
+        adapter->wm_count++;
+    }
+
+    uint32_t idx = (adapter->wm_head + adapter->wm_count - 1) %
+                   adapter->config.working_memory_slots;
+    adapter->working_memory[idx].word_id = word_id;
+    adapter->working_memory[idx].activation = 1.0f;
+    adapter->working_memory[idx].timestamp = adapter->current_time_ms;
+
+    return true;
+}
+
+bool broca_wm_pop(broca_adapter_t* adapter, uint32_t* word_id) {
+    if (!adapter || !word_id || !adapter->working_memory) return false;
+    if (adapter->wm_count == 0) return false;
+
+    *word_id = adapter->working_memory[adapter->wm_head].word_id;
+    adapter->wm_head = (adapter->wm_head + 1) % adapter->config.working_memory_slots;
+    adapter->wm_count--;
+
+    return true;
+}
+
+bool broca_wm_get_contents(const broca_adapter_t* adapter,
+                            uint32_t* word_ids,
+                            uint32_t* count) {
+    if (!adapter || !word_ids || !count || !adapter->working_memory) return false;
+
+    uint32_t to_copy = (*count < adapter->wm_count) ? *count : adapter->wm_count;
+
+    for (uint32_t i = 0; i < to_copy; i++) {
+        uint32_t idx = (adapter->wm_head + i) % adapter->config.working_memory_slots;
+        word_ids[i] = adapter->working_memory[idx].word_id;
+    }
+
+    *count = to_copy;
+    return true;
+}
+
+/*=============================================================================
+ * EVENT INTEGRATION
+ *===========================================================================*/
+
+bool broca_set_event_callback(broca_adapter_t* adapter,
+                               broca_event_callback_t callback,
+                               void* user_data) {
+    if (!adapter) return false;
+    adapter->event_callback = callback;
+    adapter->event_user_data = user_data;
+    return true;
+}
+
+/*=============================================================================
+ * TRAINING INTERFACE
+ *===========================================================================*/
+
+bool broca_train_phonemes(broca_adapter_t* adapter,
+                           const uint8_t* target_phonemes,
+                           uint32_t num_phonemes,
+                           float learning_rate) {
+    if (!adapter || !target_phonemes || num_phonemes == 0) return false;
+    if (!adapter->config.enable_training) return false;
+
+    /* Simple training: compare output phonemes to target and adjust */
+    /* This is a placeholder for more sophisticated learning */
+    adapter->stats.training_iterations++;
+
+    /* Use default learning rate if not specified */
+    if (learning_rate <= 0.0f) {
+        learning_rate = adapter->config.learning_rate;
+    }
+
+    /* Compute simple loss (placeholder) */
+    float loss = 0.0f;
+    uint32_t actual_count = phonological_get_phoneme_count(adapter->phonological);
+    if (actual_count != num_phonemes) {
+        loss = fabsf((float)actual_count - (float)num_phonemes) / (float)num_phonemes;
+    }
+
+    adapter->stats.training_loss = loss;
+    return true;
+}
+
+bool broca_train_word(broca_adapter_t* adapter,
+                       const char* word,
+                       const uint8_t* phonemes,
+                       uint32_t num_phonemes) {
+    if (!adapter || !word || !phonemes || num_phonemes == 0) return false;
+
+    /* Create lexical entry */
+    broca_lexical_entry_t entry;
+    memset(&entry, 0, sizeof(broca_lexical_entry_t));
+
+    /* Generate unique word ID from hash */
+    entry.word_id = hash_string(word, 0xFFFFFFFF);
+    strncpy(entry.word, word, sizeof(entry.word) - 1);
+
+    uint32_t copy_count = (num_phonemes < 16) ? num_phonemes : 16;
+    memcpy(entry.phonemes, phonemes, copy_count);
+    entry.phoneme_count = copy_count;
+    entry.pos = POS_NOUN;  /* Default */
+    entry.frequency = 0.5f;
+
+    return broca_add_lexical_entry(adapter, &entry);
+}
+
+/*=============================================================================
+ * STATUS AND DIAGNOSTICS
+ *===========================================================================*/
+
+broca_status_t broca_get_status(const broca_adapter_t* adapter) {
+    if (!adapter) return BROCA_STATUS_ERROR;
+    return adapter->status;
+}
+
+broca_error_t broca_get_last_error(const broca_adapter_t* adapter) {
+    if (!adapter) return BROCA_ERROR_INTERNAL;
+    return adapter->last_error;
+}
+
+const char* broca_error_string(broca_error_t error) {
+    switch (error) {
+        case BROCA_ERROR_NONE: return "No error";
+        case BROCA_ERROR_INVALID_INPUT: return "Invalid input";
+        case BROCA_ERROR_SYNTAX_FAILURE: return "Syntax processing failed";
+        case BROCA_ERROR_PHONOLOGICAL_FAILURE: return "Phonological processing failed";
+        case BROCA_ERROR_MOTOR_PLANNING_FAILURE: return "Motor planning failed";
+        case BROCA_ERROR_WORKING_MEMORY_FULL: return "Working memory full";
+        case BROCA_ERROR_LEXICON_MISS: return "Word not found in lexicon";
+        case BROCA_ERROR_BUFFER_OVERFLOW: return "Buffer overflow";
+        case BROCA_ERROR_INTERNAL: return "Internal error";
+        default: return "Unknown error";
+    }
+}
+
+const char* broca_status_string(broca_status_t status) {
+    switch (status) {
+        case BROCA_STATUS_IDLE: return "Idle";
+        case BROCA_STATUS_LEXICAL_ACCESS: return "Lexical access";
+        case BROCA_STATUS_SYNTACTIC: return "Syntactic processing";
+        case BROCA_STATUS_PHONOLOGICAL: return "Phonological planning";
+        case BROCA_STATUS_MOTOR_PLANNING: return "Motor planning";
+        case BROCA_STATUS_READY: return "Ready";
+        case BROCA_STATUS_ERROR: return "Error";
+        default: return "Unknown";
+    }
+}
+
+bool broca_get_stats(const broca_adapter_t* adapter, broca_stats_t* stats) {
+    if (!adapter || !stats) return false;
+    *stats = adapter->stats;
+    return true;
+}
+
+bool broca_get_config(const broca_adapter_t* adapter, broca_config_t* config) {
+    if (!adapter || !config) return false;
+    *config = adapter->config;
+    return true;
+}
+
+/*=============================================================================
+ * SUB-MODULE ACCESS
+ *===========================================================================*/
+
+syntax_processor_t* broca_get_syntax_processor(broca_adapter_t* adapter) {
+    if (!adapter) return NULL;
+    return adapter->syntax;
+}
+
+phonological_processor_t* broca_get_phonological_processor(broca_adapter_t* adapter) {
+    if (!adapter) return NULL;
+    return adapter->phonological;
+}
+
+speech_motor_planner_t* broca_get_speech_motor_planner(broca_adapter_t* adapter) {
+    if (!adapter) return NULL;
+    return adapter->motor;
+}

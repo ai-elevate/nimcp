@@ -61,6 +61,9 @@ set(NIMCP_CORE_SOURCES
     # Synapse computation - NIMCP 2.7 MAJOR FEATURE
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/synapse_compute/nimcp_synapse_compute.c
 
+    # Axon signal propagation - Action potential modeling
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/axon/nimcp_axon.c
+
     # Synapse type system - NIMCP 2.8.7 (Phase 8.7) - BIOLOGICAL DIVERSITY
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/synapse_types/nimcp_synapse_types.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/neuralnet/nimcp_synapse_embeddings.c

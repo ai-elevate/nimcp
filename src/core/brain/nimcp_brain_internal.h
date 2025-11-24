@@ -397,6 +397,11 @@ struct brain_struct {
     // Event bus for broadcasting brain activities (training, inference, cognitive events)
     event_bus_t event_bus;                        // Event bus for system-wide event coordination
     bool enable_event_broadcasting;               // Enable/disable event publishing
+
+    // === AXON INTEGRATION ===
+
+    // Axon network for realistic signal propagation with conduction delays
+    void* axon_network;                           // axon_network_t* (NULL = no axons, direct connections)
 };
 
 //=============================================================================

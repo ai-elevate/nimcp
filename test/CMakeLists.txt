@@ -214,20 +214,22 @@ enable_testing()
 # WHY:  Prevent false failures on slower hardware or Debug builds
 # HOW:  Set 60s timeout for tests that require extensive computation
 
-set_tests_properties(
-  unit_utils_test_kdtree
-  unit_core_brain_test_brain_exhaustive_scenarios
-  unit_cognitive_consolidation_test_consolidation
-  unit_cognitive_ethics_test_ethics
-  unit_cognitive_ethics_test_ethics_comprehensive
-  unit_cognitive_knowledge_test_knowledge_comprehensive
-  unit_cognitive_salience_test_salience_comprehensive
-  unit_utils_tensor_networks_test_mps_compression
-  integration_utils_tensor_networks_test_mps_neural_network_integration
-  integration_test_brain_oscillations_integration
-  regression_test_routing_efficiency_regression
-  PROPERTIES TIMEOUT 60
-)
+# NOTE: Only set properties for tests that actually exist
+# Commented out missing tests to avoid CMake errors
+# set_tests_properties(
+#   unit_utils_test_kdtree
+#   unit_core_brain_test_brain_exhaustive_scenarios
+#   unit_cognitive_consolidation_test_consolidation
+#   unit_cognitive_ethics_test_ethics
+#   unit_cognitive_ethics_test_ethics_comprehensive
+#   unit_cognitive_knowledge_test_knowledge_comprehensive
+#   unit_cognitive_salience_test_salience_comprehensive
+#   unit_utils_tensor_networks_test_mps_compression
+#   integration_utils_tensor_networks_test_mps_neural_network_integration
+#   integration_test_brain_oscillations_integration
+#   regression_test_routing_efficiency_regression
+#   PROPERTIES TIMEOUT 60
+# )
 
 # ============================================================================
 # Test Execution Instructions
@@ -410,6 +412,44 @@ endif()
 if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/unit/utils/fault_tolerance")
     message(STATUS "Adding utils fault tolerance unit tests...")
     add_subdirectory(unit/utils/fault_tolerance)
+endif()
+
+# ============================================================================
+# Glial Tests (Microglia, Oligodendrocytes)
+# ============================================================================
+
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/unit/glial")
+    message(STATUS "Adding glial unit tests...")
+    add_subdirectory(unit/glial)
+endif()
+
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/integration/glial")
+    message(STATUS "Adding glial integration tests...")
+    add_subdirectory(integration/glial)
+endif()
+
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/regression/glial")
+    message(STATUS "Adding glial performance regression tests...")
+    add_subdirectory(regression/glial)
+endif()
+
+# ============================================================================
+# Axon Tests
+# ============================================================================
+
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/unit/core/axon")
+    message(STATUS "Adding axon unit tests...")
+    add_subdirectory(unit/core/axon)
+endif()
+
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/integration/core/axon")
+    message(STATUS "Adding axon integration tests...")
+    add_subdirectory(integration/core/axon)
+endif()
+
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/regression/core/axon")
+    message(STATUS "Adding axon performance regression tests...")
+    add_subdirectory(regression/core/axon)
 endif()
 
 # ============================================================================

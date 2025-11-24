@@ -194,6 +194,10 @@ typedef struct synapse_t {
     float meta_plasticity; /**< Meta-plasticity factor */
     float trace;           /**< Synaptic trace for STDP */
 
+    // Axon integration - Track source neuron and axon for spike propagation
+    uint32_t source_neuron_id;  /**< Pre-synaptic neuron ID (0 = unset/legacy) */
+    uint32_t axon_id;           /**< Axon delivering spikes (0 = no axon, direct connection) */
+
     // Short-term plasticity (NIMCP 2.6)
     stp_state_t stp;       /**< Short-term plasticity state */
     bool enable_stp;       /**< Enable STP for this synapse */
@@ -287,6 +291,9 @@ typedef struct neuron_struct {
     // Phase 8.7: Type-specific parameters for specialized neurons
     // Forward declaration from nimcp_neuron_types.h
     void* type_params;  /**< Type-specific parameters (neuron_type_params_t*) */
+
+    // Axon integration - Signal propagation with realistic conduction delays
+    uint32_t axon_id;  /**< Axon ID for this neuron's output (0 = no axon, direct connection) */
 } neuron_t;
 
 /**
