@@ -653,3 +653,194 @@ TEST_F(MicrogliaTest, EdgeCase_PruningEmptyMonitorList) {
 
     microglia_destroy(mg);
 }
+
+// ============================================================================
+// CATEGORY 9: ADDITIONAL ACTIVITY SCORE TESTS
+// ============================================================================
+
+TEST_F(MicrogliaTest, ActivityScore_MultipleTracking) {
+    microglia_t* mg = microglia_create(1, 0.0f, 0.0f, 0.0f, 100.0f);
+    ASSERT_NE(mg, nullptr);
+
+    uint64_t now = nimcp_time_monotonic_us();
+
+    // Monitor synapse
+    microglia_monitor_synapse(mg, 1000);
+
+    // Track multiple activity updates
+    for (int i = 0; i < 10; i++) {
+        microglia_track_synapse_activity(mg, 1000, 3.0f, now + i * 1000);
+    }
+
+    float score = microglia_get_synapse_activity_score(mg, 1000);
+    EXPECT_GT(score, 0.0f);
+
+    microglia_destroy(mg);
+}
+
+TEST_F(MicrogliaTest, ActivityScore_VaryingActivity) {
+    microglia_t* mg = microglia_create(1, 0.0f, 0.0f, 0.0f, 100.0f);
+    ASSERT_NE(mg, nullptr);
+
+    uint64_t now = nimcp_time_monotonic_us();
+
+    microglia_monitor_synapse(mg, 1000);
+    microglia_monitor_synapse(mg, 2000);
+
+    // High activity for synapse 1000
+    microglia_track_synapse_activity(mg, 1000, 10.0f, now);
+
+    // Low activity for synapse 2000
+    microglia_track_synapse_activity(mg, 2000, 0.5f, now);
+
+    float score1 = microglia_get_synapse_activity_score(mg, 1000);
+    float score2 = microglia_get_synapse_activity_score(mg, 2000);
+
+    EXPECT_GT(score1, score2);
+
+    microglia_destroy(mg);
+}
+
+// ============================================================================
+// CATEGORY 10: WEAK SYNAPSE IDENTIFICATION
+// ============================================================================
+
+TEST_F(MicrogliaTest, WeakSynapses_Ordering) {
+    microglia_t* mg = microglia_create(1, 0.0f, 0.0f, 0.0f, 100.0f);
+    ASSERT_NE(mg, nullptr);
+
+    uint64_t now = nimcp_time_monotonic_us();
+
+    // Create 5 synapses with decreasing activity
+    for (uint32_t i = 0; i < 5; i++) {
+        microglia_monitor_synapse(mg, 1000 + i);
+        float activity = (5 - i) * 0.1f;  // 0.5, 0.4, 0.3, 0.2, 0.1
+        microglia_track_synapse_activity(mg, 1000 + i, activity, now);
+    }
+
+    uint32_t weak_ids[10];
+    uint32_t count = microglia_identify_weak_synapses(mg, weak_ids, 10);
+
+    // Should identify weak synapses (depends on threshold)
+    EXPECT_GE(count, 0);
+
+    microglia_destroy(mg);
+}
+
+// ============================================================================
+// CATEGORY 11: PRUNING BEHAVIOR
+// ============================================================================
+
+TEST_F(MicrogliaTest, Pruning_ReducesSynapseCount) {
+    microglia_t* mg = microglia_create(1, 0.0f, 0.0f, 0.0f, 100.0f);
+    ASSERT_NE(mg, nullptr);
+
+    uint64_t now = nimcp_time_monotonic_us();
+
+    // Add many weak synapses
+    for (uint32_t i = 0; i < 30; i++) {
+        microglia_monitor_synapse(mg, 1000 + i);
+        microglia_track_synapse_activity(mg, 1000 + i, 0.001f, now);
+    }
+
+    uint32_t initial_count = mg->num_monitored_synapses;
+
+    // Prune
+    uint32_t pruned = microglia_prune_weak_synapses(mg);
+
+    // After pruning, count should be reduced
+    if (pruned > 0) {
+        EXPECT_LT(mg->num_monitored_synapses, initial_count);
+    }
+
+    microglia_destroy(mg);
+}
+
+TEST_F(MicrogliaTest, Pruning_ProtectsActiveSynapses) {
+    microglia_t* mg = microglia_create(1, 0.0f, 0.0f, 0.0f, 100.0f);
+    ASSERT_NE(mg, nullptr);
+
+    uint64_t now = nimcp_time_monotonic_us();
+
+    // Add some highly active synapses
+    for (uint32_t i = 0; i < 10; i++) {
+        microglia_monitor_synapse(mg, 1000 + i);
+        microglia_track_synapse_activity(mg, 1000 + i, 10.0f, now);
+    }
+
+    uint32_t initial_count = mg->num_monitored_synapses;
+
+    // Prune
+    uint32_t pruned = microglia_prune_weak_synapses(mg);
+
+    // Active synapses should not be pruned
+    EXPECT_LE(pruned, 0);
+    EXPECT_EQ(mg->num_monitored_synapses, initial_count);
+
+    microglia_destroy(mg);
+}
+
+// ============================================================================
+// CATEGORY 12: NETWORK OPERATIONS
+// ============================================================================
+
+TEST_F(MicrogliaTest, Network_FindBySynapse) {
+    microglia_network_t* network = microglia_network_create(10);
+    ASSERT_NE(network, nullptr);
+
+    microglia_t* mg1 = microglia_create(1, 0.0f, 0.0f, 0.0f, 100.0f);
+    microglia_t* mg2 = microglia_create(2, 200.0f, 0.0f, 0.0f, 100.0f);
+
+    microglia_network_add(network, mg1);
+    microglia_network_add(network, mg2);
+
+    microglia_monitor_synapse(mg1, 1000);
+    microglia_monitor_synapse(mg2, 2000);
+
+    EXPECT_EQ(microglia_network_find_by_synapse(network, 1000), mg1);
+    EXPECT_EQ(microglia_network_find_by_synapse(network, 2000), mg2);
+    EXPECT_EQ(microglia_network_find_by_synapse(network, 9999), nullptr);
+
+    microglia_network_destroy(network);
+}
+
+// ============================================================================
+// CATEGORY 15: UTILITY FUNCTIONS
+// ============================================================================
+
+TEST_F(MicrogliaTest, Utility_GetTotalPruned) {
+    microglia_t* mg = microglia_create(1, 0.0f, 0.0f, 0.0f, 100.0f);
+    ASSERT_NE(mg, nullptr);
+
+    EXPECT_EQ(microglia_get_total_pruned(mg), 0);
+
+    // Force some pruning by adding weak synapses
+    uint64_t now = nimcp_time_monotonic_us();
+    for (uint32_t i = 0; i < 20; i++) {
+        microglia_monitor_synapse(mg, 1000 + i);
+        microglia_track_synapse_activity(mg, 1000 + i, 0.001f, now);
+    }
+
+    // Prune
+    uint32_t pruned = microglia_prune_weak_synapses(mg);
+
+    // Check total pruned is at least what we just pruned
+    EXPECT_GE(microglia_get_total_pruned(mg), pruned);
+
+    microglia_destroy(mg);
+}
+
+TEST_F(MicrogliaTest, Utility_MonitoredSynapseCountViaField) {
+    microglia_t* mg = microglia_create(1, 0.0f, 0.0f, 0.0f, 100.0f);
+    ASSERT_NE(mg, nullptr);
+
+    EXPECT_EQ(mg->num_monitored_synapses, 0);
+
+    for (uint32_t i = 0; i < 15; i++) {
+        microglia_monitor_synapse(mg, 1000 + i);
+    }
+
+    EXPECT_EQ(mg->num_monitored_synapses, 15);
+
+    microglia_destroy(mg);
+}

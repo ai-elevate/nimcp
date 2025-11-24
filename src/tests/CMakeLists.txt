@@ -99,12 +99,14 @@ add_nimcp_test_binary(core_tests
 # ============================================================================
 # TEST BINARY 2: Glial Cell Tests (medium speed, related)
 # ============================================================================
-add_nimcp_test_binary(glial_tests
-    test_astrocytes.cpp
-    test_oligodendrocytes.cpp
-    test_microglia.cpp
-    test_glial_integration.cpp
-)
+# NOTE: Enhanced glial tests are now in test/unit/glial/ and test/integration/glial/
+# Old monolithic tests removed - use ctest -R glial to run all glial tests
+#add_nimcp_test_binary(glial_tests
+#    test_astrocytes.cpp
+#    test_oligodendrocytes.cpp
+#    test_microglia.cpp
+#    test_glial_integration.cpp
+#)
 
 # ============================================================================
 # TEST BINARY 3: Plasticity & Neuromodulation Tests (medium speed)

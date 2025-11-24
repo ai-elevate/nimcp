@@ -1,0 +1,108 @@
+# ============================================================================
+# Glial Integration Tests
+# ============================================================================
+# WHAT: Integration tests for glial cell modules (microglia, oligodendrocytes)
+# WHY:  Verify cross-module coordination and brain system integration
+# HOW:  Build test executables with all required dependencies
+#
+# TESTS:
+# 1. test_glial_integration - Full glial system coordination
+# 2. test_microglia_brain_integration - Microglia-brain interactions
+# 3. test_oligodendrocyte_integration - Oligodendrocyte network coordination
+# ============================================================================
+
+# ============================================================================
+# Glial System Integration Test
+# ============================================================================
+add_executable(integration_glial_test_glial_integration
+    test_glial_integration.cpp
+)
+
+target_link_libraries(integration_glial_test_glial_integration
+    PRIVATE
+        GTest::GTest
+        GTest::Main
+        nimcp
+        pthread
+)
+
+target_compile_features(integration_glial_test_glial_integration PRIVATE cxx_std_17)
+
+target_include_directories(integration_glial_test_glial_integration
+    PRIVATE
+        ${CMAKE_SOURCE_DIR}/include
+        ${CMAKE_SOURCE_DIR}/src
+)
+
+add_test(NAME integration_glial_test_glial_integration
+         COMMAND integration_glial_test_glial_integration)
+
+set_tests_properties(integration_glial_test_glial_integration
+    PROPERTIES
+        TIMEOUT 120
+        LABELS "integration;glial"
+)
+
+# ============================================================================
+# Microglia-Brain Integration Test
+# ============================================================================
+add_executable(integration_glial_test_microglia_brain
+    test_microglia_brain_integration.cpp
+)
+
+target_link_libraries(integration_glial_test_microglia_brain
+    PRIVATE
+        GTest::GTest
+        GTest::Main
+        nimcp
+        pthread
+)
+
+target_compile_features(integration_glial_test_microglia_brain PRIVATE cxx_std_17)
+
+target_include_directories(integration_glial_test_microglia_brain
+    PRIVATE
+        ${CMAKE_SOURCE_DIR}/include
+        ${CMAKE_SOURCE_DIR}/src
+)
+
+add_test(NAME integration_glial_test_microglia_brain
+         COMMAND integration_glial_test_microglia_brain)
+
+set_tests_properties(integration_glial_test_microglia_brain
+    PROPERTIES
+        TIMEOUT 120
+        LABELS "integration;glial;microglia"
+)
+
+# ============================================================================
+# Oligodendrocyte Integration Test
+# ============================================================================
+add_executable(integration_glial_test_oligodendrocyte
+    test_oligodendrocyte_integration.cpp
+)
+
+target_link_libraries(integration_glial_test_oligodendrocyte
+    PRIVATE
+        GTest::GTest
+        GTest::Main
+        nimcp
+        pthread
+)
+
+target_compile_features(integration_glial_test_oligodendrocyte PRIVATE cxx_std_17)
+
+target_include_directories(integration_glial_test_oligodendrocyte
+    PRIVATE
+        ${CMAKE_SOURCE_DIR}/include
+        ${CMAKE_SOURCE_DIR}/src
+)
+
+add_test(NAME integration_glial_test_oligodendrocyte
+         COMMAND integration_glial_test_oligodendrocyte)
+
+set_tests_properties(integration_glial_test_oligodendrocyte
+    PROPERTIES
+        TIMEOUT 120
+        LABELS "integration;glial;oligodendrocyte"
+)

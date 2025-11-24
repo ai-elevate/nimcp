@@ -790,3 +790,247 @@ TEST_F(OligodendrocyteTest, EdgeCase_DuplicateNeuronAssignment) {
 
     oligodendrocyte_destroy(oligo);
 }
+
+// ============================================================================
+// CATEGORY 11: NRG1/BDNF SIGNALING TESTS
+// ============================================================================
+
+TEST_F(OligodendrocyteTest, Signaling_ActivityDrivenMyelination) {
+    oligodendrocyte_t* oligo = oligodendrocyte_create(1, 30);
+    ASSERT_NE(oligo, nullptr);
+
+    oligodendrocyte_assign_neuron(oligo, 100);
+
+    uint64_t now = nimcp_time_monotonic_us();
+    float initial_myelin = oligodendrocyte_get_myelination_level(oligo, 100);
+
+    for (int i = 0; i < 200; i++) {
+        oligodendrocyte_track_activity(oligo, 100, 15.0f, now + i * 100);
+    }
+
+    oligodendrocyte_remodel_myelination(oligo, 0.5f);
+    float final_myelin = oligodendrocyte_get_myelination_level(oligo, 100);
+
+    EXPECT_GT(final_myelin, initial_myelin);
+
+    oligodendrocyte_destroy(oligo);
+}
+
+TEST_F(OligodendrocyteTest, Signaling_CompetitiveAllocation) {
+    oligodendrocyte_t* oligo = oligodendrocyte_create(1, 30);
+    ASSERT_NE(oligo, nullptr);
+
+    oligodendrocyte_assign_neuron(oligo, 100);
+    oligodendrocyte_assign_neuron(oligo, 200);
+
+    uint64_t now = nimcp_time_monotonic_us();
+
+    for (int i = 0; i < 100; i++) {
+        oligodendrocyte_track_activity(oligo, 100, 20.0f, now + i * 100);
+        oligodendrocyte_track_activity(oligo, 200, 1.0f, now + i * 100);
+    }
+
+    for (int i = 0; i < 10; i++) {
+        oligodendrocyte_remodel_myelination(oligo, 0.5f);
+    }
+
+    float myelin_high = oligodendrocyte_get_myelination_level(oligo, 100);
+    float myelin_low = oligodendrocyte_get_myelination_level(oligo, 200);
+
+    EXPECT_GT(myelin_high, myelin_low);
+
+    oligodendrocyte_destroy(oligo);
+}
+
+// ============================================================================
+// CATEGORY 12: LACTATE SHUTTLE TESTS
+// ============================================================================
+
+TEST_F(OligodendrocyteTest, LactateShuttle_ATPRegeneration) {
+    oligodendrocyte_t* oligo = oligodendrocyte_create(1, 30);
+    ASSERT_NE(oligo, nullptr);
+
+    oligo->atp_level = 0.3f;
+
+    for (int i = 0; i < 100; i++) {
+        oligodendrocyte_update_atp(oligo, 0.01f);
+    }
+
+    EXPECT_GT(oligo->atp_level, 0.3f);
+
+    oligodendrocyte_destroy(oligo);
+}
+
+TEST_F(OligodendrocyteTest, LactateShuttle_MetabolicCost) {
+    oligodendrocyte_t* oligo = oligodendrocyte_create(1, 30);
+    ASSERT_NE(oligo, nullptr);
+
+    for (uint32_t i = 0; i < 20; i++) {
+        oligodendrocyte_assign_neuron(oligo, i);
+        oligo->myelination_levels[i] = 0.8f;
+    }
+
+    float initial_atp = oligo->atp_level;
+    oligodendrocyte_update_atp(oligo, 0.1f);
+
+    EXPECT_LE(oligo->atp_level, initial_atp);
+
+    oligodendrocyte_destroy(oligo);
+}
+
+// ============================================================================
+// CATEGORY 13: G-RATIO OPTIMIZATION TESTS
+// ============================================================================
+
+TEST_F(OligodendrocyteTest, GRatio_VelocityScaling) {
+    oligodendrocyte_t* oligo = oligodendrocyte_create(1, 30);
+    ASSERT_NE(oligo, nullptr);
+
+    oligodendrocyte_assign_neuron(oligo, 100);
+
+    float base_velocity = 1.0f;
+
+    oligo->myelination_levels[0] = 0.2f;
+    float velocity_low = oligodendrocyte_compute_conduction_velocity(oligo, 100, base_velocity);
+
+    oligo->myelination_levels[0] = 0.8f;
+    float velocity_high = oligodendrocyte_compute_conduction_velocity(oligo, 100, base_velocity);
+
+    EXPECT_GT(velocity_high, velocity_low);
+
+    oligodendrocyte_destroy(oligo);
+}
+
+TEST_F(OligodendrocyteTest, GRatio_FullMyelinationMultiplier) {
+    oligodendrocyte_t* oligo = oligodendrocyte_create(1, 30);
+    ASSERT_NE(oligo, nullptr);
+
+    oligodendrocyte_assign_neuron(oligo, 100);
+    oligo->myelination_levels[0] = 1.0f;
+
+    float base_velocity = 1.0f;
+    float velocity = oligodendrocyte_compute_conduction_velocity(oligo, 100, base_velocity);
+
+    EXPECT_GT(velocity, base_velocity * 10.0f);
+
+    oligodendrocyte_destroy(oligo);
+}
+
+TEST_F(OligodendrocyteTest, GRatio_UnmyelinatedBaseline) {
+    oligodendrocyte_t* oligo = oligodendrocyte_create(1, 30);
+    ASSERT_NE(oligo, nullptr);
+
+    oligodendrocyte_assign_neuron(oligo, 100);
+    oligo->myelination_levels[0] = 0.0f;
+
+    float base_velocity = 1.5f;
+    float velocity = oligodendrocyte_compute_conduction_velocity(oligo, 100, base_velocity);
+
+    EXPECT_NEAR(velocity, base_velocity, 0.5f);
+
+    oligodendrocyte_destroy(oligo);
+}
+
+// ============================================================================
+// CATEGORY 14: TOTAL MYELINATION
+// ============================================================================
+
+TEST_F(OligodendrocyteTest, TotalMyelination_ComputeSum) {
+    oligodendrocyte_t* oligo = oligodendrocyte_create(1, 30);
+    ASSERT_NE(oligo, nullptr);
+
+    for (uint32_t i = 0; i < 5; i++) {
+        oligodendrocyte_assign_neuron(oligo, 100 + i);
+        oligo->myelination_levels[i] = 0.2f * (i + 1);
+    }
+
+    float total = oligodendrocyte_get_total_myelination(oligo);
+    EXPECT_NEAR(total, 3.0f, 0.01f);
+
+    oligodendrocyte_destroy(oligo);
+}
+
+TEST_F(OligodendrocyteTest, TotalMyelination_EmptyOligo) {
+    oligodendrocyte_t* oligo = oligodendrocyte_create(1, 30);
+    ASSERT_NE(oligo, nullptr);
+
+    float total = oligodendrocyte_get_total_myelination(oligo);
+    EXPECT_EQ(total, 0.0f);
+
+    oligodendrocyte_destroy(oligo);
+}
+
+// ============================================================================
+// CATEGORY 15: NETWORK FIND BY NEURON
+// ============================================================================
+
+TEST_F(OligodendrocyteTest, Network_FindByNeuron) {
+    oligodendrocyte_network_t* network = oligodendrocyte_network_create(10);
+    ASSERT_NE(network, nullptr);
+
+    oligodendrocyte_t* oligo1 = oligodendrocyte_create(1, 20);
+    oligodendrocyte_t* oligo2 = oligodendrocyte_create(2, 20);
+
+    oligodendrocyte_network_add(network, oligo1);
+    oligodendrocyte_network_add(network, oligo2);
+
+    for (uint32_t i = 100; i < 105; i++) {
+        oligodendrocyte_assign_neuron(oligo1, i);
+    }
+
+    for (uint32_t i = 200; i < 205; i++) {
+        oligodendrocyte_assign_neuron(oligo2, i);
+    }
+
+    EXPECT_EQ(oligodendrocyte_network_find_by_neuron(network, 102), oligo1);
+    EXPECT_EQ(oligodendrocyte_network_find_by_neuron(network, 203), oligo2);
+    EXPECT_EQ(oligodendrocyte_network_find_by_neuron(network, 500), nullptr);
+
+    oligodendrocyte_network_destroy(network);
+}
+
+TEST_F(OligodendrocyteTest, Network_FindWithNullNetwork) {
+    oligodendrocyte_t* found = oligodendrocyte_network_find_by_neuron(nullptr, 100);
+    EXPECT_EQ(found, nullptr);
+}
+
+// ============================================================================
+// CATEGORY 16: REMODELING TIME CONSTANT
+// ============================================================================
+
+TEST_F(OligodendrocyteTest, RemodelingTime_SmallTimestep) {
+    oligodendrocyte_t* oligo = oligodendrocyte_create(1, 30);
+    ASSERT_NE(oligo, nullptr);
+
+    oligodendrocyte_assign_neuron(oligo, 100);
+
+    uint64_t now = nimcp_time_monotonic_us();
+    for (int i = 0; i < 100; i++) {
+        oligodendrocyte_track_activity(oligo, 100, 10.0f, now + i * 100);
+    }
+
+    float initial = oligodendrocyte_get_myelination_level(oligo, 100);
+
+    oligodendrocyte_remodel_myelination(oligo, 0.001f);
+    float after_small = oligodendrocyte_get_myelination_level(oligo, 100);
+
+    float change = fabs(after_small - initial);
+    EXPECT_LT(change, 0.5f);
+
+    oligodendrocyte_destroy(oligo);
+}
+
+TEST_F(OligodendrocyteTest, RemodelingTime_LastRemodelingTracking) {
+    oligodendrocyte_t* oligo = oligodendrocyte_create(1, 30);
+    ASSERT_NE(oligo, nullptr);
+
+    uint64_t initial_time = oligo->last_remodeling_time;
+
+    oligodendrocyte_remodel_myelination(oligo, 0.1f);
+
+    uint64_t updated_time = oligo->last_remodeling_time;
+
+    EXPECT_GE(updated_time, initial_time);
+
+    oligodendrocyte_destroy(oligo);
+}
