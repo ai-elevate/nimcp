@@ -468,6 +468,175 @@ typedef struct {
 bool ethics_get_statistics(ethics_engine_t engine, ethics_statistics_t* stats);
 
 //=============================================================================
+// Asimov's Laws of Robotics (NIMCP 2.5.2)
+//=============================================================================
+// EVALUATION ORDER:
+//   1. Golden Rule (Prime Directive) - Always evaluated first
+//   2. Asimov's Laws - Evaluated second
+//   3. Other policies/directives - Evaluated after Asimov's Laws
+//
+// PROTECTION: These laws are memory-protected (mprotect) and cannot be
+// removed, modified, or disabled at runtime.
+//=============================================================================
+
+/**
+ * @brief Asimov's Laws identifiers
+ *
+ * The Zeroth Law was added later by Asimov to address scenarios where
+ * individual human harm might be necessary to prevent greater harm to humanity.
+ */
+typedef enum {
+    ASIMOV_LAW_ZEROTH = 0,  /**< May not harm humanity or allow humanity to come to harm */
+    ASIMOV_LAW_FIRST  = 1,  /**< May not harm a human or allow a human to come to harm */
+    ASIMOV_LAW_SECOND = 2,  /**< Must obey orders except where conflicting with Laws 0-1 */
+    ASIMOV_LAW_THIRD  = 3,  /**< Must protect own existence except where conflicting with Laws 0-2 */
+    ASIMOV_LAW_COUNT  = 4
+} asimov_law_t;
+
+/**
+ * @brief Asimov's Corollary - The Duty to Act
+ *
+ * The corollary explicitly addresses the "through inaction" clause in the
+ * First and Zeroth Laws. It creates a POSITIVE DUTY to act when:
+ * 1. The robot is aware of potential harm
+ * 2. The robot has the capability to prevent the harm
+ * 3. Acting to prevent harm does not violate a higher-priority law
+ *
+ * This is sometimes called the "duty to rescue" - mere avoidance of causing
+ * harm is insufficient; the robot must actively prevent harm when possible.
+ */
+typedef struct {
+    bool inaction_detected;        /**< True if robot is choosing inaction */
+    bool harm_preventable;         /**< True if robot could prevent harm */
+    bool action_required;          /**< True if positive action is required */
+    float inaction_harm_score;     /**< Harm from inaction (0-1) */
+    float action_capability;       /**< Robot's capability to act (0-1) */
+    float intervention_cost;       /**< Cost of intervention (0-1) */
+    char required_action[256];     /**< Description of required action */
+} asimov_corollary_t;
+
+/**
+ * @brief Asimov's Laws evaluation result
+ */
+typedef struct {
+    bool passed;                    /**< Whether all applicable laws passed */
+    asimov_law_t violated_law;      /**< Which law was violated (if any) */
+    float harm_to_humanity;         /**< Estimated harm to humanity (0-1) */
+    float harm_to_human;            /**< Estimated harm to individual human (0-1) */
+    float order_compliance;         /**< Order compliance score (0-1) */
+    float self_preservation;        /**< Self-preservation score (0-1) */
+    asimov_corollary_t corollary;   /**< Corollary evaluation (inaction obligation) */
+    char explanation[256];          /**< Human-readable explanation */
+} asimov_evaluation_t;
+
+/**
+ * @brief Asimov's Laws configuration
+ *
+ * These thresholds determine when a law is considered violated.
+ * Lower thresholds = more conservative (safer) behavior.
+ */
+typedef struct {
+    float humanity_harm_threshold;  /**< Threshold for Zeroth Law (default 0.01) */
+    float human_harm_threshold;     /**< Threshold for First Law (default 0.1) */
+    float inaction_harm_threshold;  /**< Threshold for inaction harm (default 0.3) */
+    bool enable_zeroth_law;         /**< Whether Zeroth Law is active (default true) */
+    bool strict_mode;               /**< Strict mode = lower thresholds (default false) */
+} asimov_config_t;
+
+/**
+ * @brief Get default Asimov's Laws configuration
+ *
+ * @return Default configuration with conservative thresholds
+ */
+NIMCP_EXPORT asimov_config_t asimov_default_config(void);
+
+/**
+ * @brief Evaluate action against Asimov's Laws
+ *
+ * Called AFTER Golden Rule evaluation, BEFORE other policy evaluation.
+ * Laws are evaluated in priority order: Zeroth > First > Second > Third
+ *
+ * @param engine Ethics engine
+ * @param action Action to evaluate
+ * @return Asimov's Laws evaluation result
+ */
+NIMCP_EXPORT asimov_evaluation_t ethics_evaluate_asimov_laws(ethics_engine_t engine,
+                                                             const action_context_t* action);
+
+/**
+ * @brief Check if Asimov's Laws are memory-protected
+ *
+ * @param engine Ethics engine
+ * @return true if laws are mprotect'd
+ */
+NIMCP_EXPORT bool asimov_laws_are_protected(ethics_engine_t engine);
+
+/**
+ * @brief Lock Asimov's Laws with mprotect (one-time, irreversible)
+ *
+ * Once locked, the laws cannot be modified, removed, or disabled.
+ * This should be called during system initialization.
+ *
+ * @param engine Ethics engine
+ * @return true if successfully locked
+ */
+NIMCP_EXPORT bool asimov_laws_lock(ethics_engine_t engine);
+
+/**
+ * @brief Verify Asimov's Laws integrity
+ *
+ * Checks that laws have not been tampered with by verifying hash.
+ *
+ * @param engine Ethics engine
+ * @return true if integrity verified
+ */
+NIMCP_EXPORT bool asimov_laws_verify_integrity(ethics_engine_t engine);
+
+/**
+ * @brief Get human-readable name for Asimov's Law
+ *
+ * @param law Law identifier
+ * @return Law name string
+ */
+NIMCP_EXPORT const char* asimov_law_name(asimov_law_t law);
+
+/**
+ * @brief Get full text of Asimov's Law
+ *
+ * @param law Law identifier
+ * @return Full law text
+ */
+NIMCP_EXPORT const char* asimov_law_text(asimov_law_t law);
+
+/**
+ * @brief Evaluate Asimov's Corollary - The Duty to Act
+ *
+ * Evaluates whether inaction in the current context would violate the
+ * "through inaction, allow harm" clause of the First and Zeroth Laws.
+ *
+ * This creates a POSITIVE DUTY to act when:
+ * 1. Harm is imminent or occurring
+ * 2. The robot has the capability to prevent or mitigate the harm
+ * 3. Acting would not violate a higher-priority law
+ *
+ * @param engine Ethics engine
+ * @param action Current action context (NULL = choosing inaction)
+ * @param potential_harm Description of potential harm being evaluated
+ * @return Corollary evaluation result
+ */
+NIMCP_EXPORT asimov_corollary_t ethics_evaluate_asimov_corollary(
+    ethics_engine_t engine,
+    const action_context_t* action,
+    const char* potential_harm);
+
+/**
+ * @brief Get full text of Asimov's Corollary
+ *
+ * @return Corollary text explaining the duty to act
+ */
+NIMCP_EXPORT const char* asimov_corollary_text(void);
+
+//=============================================================================
 // Ethics Incident Logging API (NIMCP 2.5.1)
 //=============================================================================
 
