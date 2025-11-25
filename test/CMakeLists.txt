@@ -332,6 +332,21 @@ if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/regression/cognitive/introspection")
     add_subdirectory(regression/cognitive/introspection)
 endif()
 
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/unit/cognitive/mirror_neurons")
+    message(STATUS "Adding cognitive mirror neurons unit tests...")
+    add_subdirectory(unit/cognitive/mirror_neurons)
+endif()
+
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/integration/cognitive/mirror_neurons")
+    message(STATUS "Adding cognitive mirror neurons integration tests...")
+    add_subdirectory(integration/cognitive/mirror_neurons)
+endif()
+
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/regression/cognitive/mirror_neurons")
+    message(STATUS "Adding cognitive mirror neurons regression tests...")
+    add_subdirectory(regression/cognitive/mirror_neurons)
+endif()
+
 # ============================================================================
 # Networking Protocol Tests
 # ============================================================================
@@ -450,6 +465,25 @@ endif()
 if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/regression/core/axon")
     message(STATUS "Adding axon performance regression tests...")
     add_subdirectory(regression/core/axon)
+endif()
+
+# ============================================================================
+# Cortical Columns Tests
+# ============================================================================
+
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/unit/core/cortical_columns")
+    message(STATUS "Adding cortical columns unit tests...")
+    add_subdirectory(unit/core/cortical_columns)
+endif()
+
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/integration/core/cortical_columns")
+    message(STATUS "Adding cortical columns integration tests...")
+    add_subdirectory(integration/core/cortical_columns)
+endif()
+
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/regression/core/cortical_columns")
+    message(STATUS "Adding cortical columns performance regression tests...")
+    add_subdirectory(regression/core/cortical_columns)
 endif()
 
 # ============================================================================

@@ -43,6 +43,14 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/logic/nimcp_neural_logic_brain_integration.c  # Phase 2.6.2: Neural Logic Brain Integration
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain_regions/nimcp_brain_regions.c
 
+    # Cortical columns - Tier 0.65: Cortical Columns Architecture (Phase CC-1)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/cortical_columns/nimcp_cortical_column.c       # Core minicolumn/hypercolumn structures
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/cortical_columns/nimcp_cortical_layers.c       # 6-layer laminar organization
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/cortical_columns/nimcp_columnar_connectivity.c # Canonical microcircuit connectivity
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/cortical_columns/nimcp_topographic_maps.c      # Retinotopic, tonotopic, somatotopic maps
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/cortical_columns/nimcp_orientation_columns.c   # V1 orientation selectivity (Gabor)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/cortical_columns/nimcp_feature_hypercolumns.c  # Feature dimension coverage
+
     # Broca's region sub-modules
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/broca/nimcp_syntax_processor.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/broca/nimcp_phonological.c
@@ -82,6 +90,7 @@ set(NIMCP_CORE_SOURCES
 
     # Cognitive functions
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/ethics/nimcp_ethics.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/ethics/nimcp_combinatorial_harm.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/knowledge/nimcp_knowledge.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/curiosity/nimcp_curiosity.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/introspection/nimcp_introspection.c
@@ -142,6 +151,10 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/logic/nimcp_neural_logic_factory.c  # Factory
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/predictive/nimcp_predictive.c  # Phase 10.9: Predictive Processing
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/mirror_neurons/nimcp_mirror_neurons.c  # Phase 10.11: Mirror Neurons
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/mirror_neurons/nimcp_mirror_substrate.c  # Phase 10.11.2: Mirror Neuron Substrate Integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/mirror_neurons/nimcp_mirror_stdp.c  # Phase 10.11.4: STDP Learning
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/mirror_neurons/nimcp_mirror_resonance.c  # Phase 10.11.5: Motor Resonance
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/mirror_neurons/nimcp_mirror_hierarchy.c  # Phase 10.11.6: Hierarchical Goals
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/global_workspace/nimcp_global_workspace.c  # Global Workspace Architecture (Global Workspace Theory)
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/global_workspace/nimcp_global_workspace_shannon.c  # Phase 1.5.3: Shannon Information-Weighted Competition
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/analysis/nimcp_network_analysis.c  # Network topology analysis and community detection
@@ -174,6 +187,8 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../glial/astrocyte_types/nimcp_astrocyte_types.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../glial/oligodendrocytes/nimcp_oligodendrocytes.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../glial/microglia/nimcp_microglia.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../glial/myelin_sheath/nimcp_myelin_sheath.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../glial/myelin_sheath/nimcp_myelin_math.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../glial/integration/nimcp_glial_integration.c
 
     # Networking
