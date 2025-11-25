@@ -12,6 +12,7 @@
 
 #include "middleware/events/nimcp_event_queue.h"
 #include "middleware/events/nimcp_event_types.h"
+#include "utils/memory/nimcp_memory.h"
 
 #define PAYLOAD_SIZE 128  // bytes
 #define NUM_EVENTS 10000
@@ -23,12 +24,14 @@
 
 static double benchmark_baseline_no_pool() {
     // Create queue with pool disabled (max_payload_size = 0)
+    // When pool is disabled, internal copies use nimcp_malloc
     event_queue_config_t config = event_queue_default_config();
     config.capacity = NUM_EVENTS;
-    config.max_payload_size = 0;  // Disable pool, force malloc
+    config.max_payload_size = 0;  // Disable pool, force malloc for internal copies
 
     event_queue_t queue = event_queue_create(&config);
 
+    // Stack-allocated payload data - queue will copy it during enqueue
     uint32_t payload_data[PAYLOAD_SIZE / sizeof(uint32_t)];
     for (size_t i = 0; i < sizeof(payload_data) / sizeof(uint32_t); i++) {
         payload_data[i] = i;
@@ -38,6 +41,8 @@ static double benchmark_baseline_no_pool() {
     clock_gettime(CLOCK_MONOTONIC, &start);
 
     // Enqueue events
+    // Note: event_queue_enqueue copies the payload data internally using malloc
+    // (since pool is disabled), so we can pass a pointer to stack data
     for (uint32_t i = 0; i < NUM_EVENTS; i++) {
         event_t event = event_create_custom(
             payload_data,
@@ -49,11 +54,13 @@ static double benchmark_baseline_no_pool() {
         event_queue_enqueue(queue, &event);
     }
 
-    // Dequeue events
+    // Dequeue events and free them
+    // Since pool is disabled, the queue used nimcp_malloc for payloads,
+    // so event_free (which uses nimcp_free) will work correctly
     for (uint32_t i = 0; i < NUM_EVENTS; i++) {
         event_t event;
         event_queue_dequeue(queue, &event);
-        event_free(&event);
+        event_free(&event);  // Safe: payload was nimcp_malloc'd
     }
 
     clock_gettime(CLOCK_MONOTONIC, &end);
@@ -71,12 +78,15 @@ static double benchmark_baseline_no_pool() {
 
 static double benchmark_with_pool() {
     // Create queue with pool enabled
+    // When pool is enabled, internal copies use pool for small payloads
+    // On dequeue, pool memory is copied to malloc'd memory for safe event_free()
     event_queue_config_t config = event_queue_default_config();
     config.capacity = NUM_EVENTS;
     config.max_payload_size = 256;  // Phase 1.5: Enable pool for payloads ≤ 256 bytes
 
     event_queue_t queue = event_queue_create(&config);
 
+    // Stack-allocated payload data - queue will copy it during enqueue
     uint32_t payload_data[PAYLOAD_SIZE / sizeof(uint32_t)];
     for (size_t i = 0; i < sizeof(payload_data) / sizeof(uint32_t); i++) {
         payload_data[i] = i;
@@ -85,7 +95,9 @@ static double benchmark_with_pool() {
     struct timespec start, end;
     clock_gettime(CLOCK_MONOTONIC, &start);
 
-    // Enqueue events (uses pool)
+    // Enqueue events (uses pool for internal copies)
+    // Note: event_queue_enqueue copies the payload data internally using pool
+    // (since payload size fits), so we can pass a pointer to stack data
     for (uint32_t i = 0; i < NUM_EVENTS; i++) {
         event_t event = event_create_custom(
             payload_data,
@@ -97,11 +109,13 @@ static double benchmark_with_pool() {
         event_queue_enqueue(queue, &event);
     }
 
-    // Dequeue events (releases to pool)
+    // Dequeue events and free them
+    // The queue now properly converts pool-allocated payloads to malloc'd memory
+    // on dequeue, so event_free() works correctly
     for (uint32_t i = 0; i < NUM_EVENTS; i++) {
         event_t event;
         event_queue_dequeue(queue, &event);
-        event_free(&event);
+        event_free(&event);  // Safe: dequeue copies pool memory to malloc'd memory
     }
 
     clock_gettime(CLOCK_MONOTONIC, &end);

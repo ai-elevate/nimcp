@@ -337,19 +337,24 @@ event_queue_t event_queue_create(const event_queue_config_t* config) {
     queue->max_payload_size = cfg.max_payload_size;
 
     // Create payload memory pool (Phase 1.5)
-    memory_pool_config_t pool_config = {
-        .block_size = cfg.max_payload_size,
-        .num_blocks = cfg.capacity * 2,  // Double-buffer for enqueue/dequeue
-        .alignment = 16,
-        .enable_tracking = false,
-        .enable_guard_pages = false
-    };
-    queue->payload_pool = memory_pool_create(&pool_config);
-    if (!queue->payload_pool) {
-        nimcp_free(queue->heap);
-        nimcp_free(queue);
-        set_error("Failed to create payload pool");
-        return NULL;
+    // If max_payload_size = 0, pool is disabled - all allocations use nimcp_malloc
+    if (cfg.max_payload_size > 0) {
+        memory_pool_config_t pool_config = {
+            .block_size = cfg.max_payload_size,
+            .num_blocks = cfg.capacity * 2,  // Double-buffer for enqueue/dequeue
+            .alignment = 16,
+            .enable_tracking = false,
+            .enable_guard_pages = false
+        };
+        queue->payload_pool = memory_pool_create(&pool_config);
+        if (!queue->payload_pool) {
+            nimcp_free(queue->heap);
+            nimcp_free(queue);
+            set_error("Failed to create payload pool");
+            return NULL;
+        }
+    } else {
+        queue->payload_pool = NULL;  // Pool disabled, use malloc only
     }
 
     // Create mutex
@@ -376,8 +381,10 @@ void event_queue_destroy(event_queue_t queue) {
 
     nimcp_free(queue->heap);
 
-    // Destroy payload memory pool (Phase 1.5)
-    memory_pool_destroy(queue->payload_pool);
+    // Destroy payload memory pool (Phase 1.5) - only if pool was created
+    if (queue->payload_pool) {
+        memory_pool_destroy(queue->payload_pool);
+    }
 
     nimcp_platform_mutex_unlock(&queue->mutex);
     nimcp_platform_mutex_destroy(&queue->mutex);
@@ -471,6 +478,83 @@ unlock:
     return success;
 }
 
+/**
+ * @brief Copy pool-allocated payload to malloc'd memory for safe return to caller
+ *
+ * WHAT: If payload came from pool, copy to nimcp_malloc'd memory
+ * WHY:  Caller uses event_free() which calls nimcp_free() - pool memory can't be freed this way
+ * HOW:  Allocate new memory, copy data, release pool block
+ *
+ * @param event Event to process (modified in place)
+ * @param pool The memory pool
+ * @return true on success, false if malloc fails
+ */
+static bool event_copy_payload_from_pool(event_t* event, memory_pool_t pool) {
+    if (!event || !pool) return true;  // Nothing to do
+
+    void* pool_ptr = NULL;
+    void** dest_ptr = NULL;
+    size_t size = 0;
+
+    switch (event->type) {
+        case EVENT_TYPE_SPIKE_BURST:
+            if (event->data.spike_burst.neuron_ids && event->data.spike_burst.num_neurons > 0) {
+                pool_ptr = event->data.spike_burst.neuron_ids;
+                dest_ptr = (void**)&event->data.spike_burst.neuron_ids;
+                size = event->data.spike_burst.num_neurons * sizeof(uint32_t);
+            }
+            break;
+
+        case EVENT_TYPE_MEMORY_FORMED:
+            if (event->data.memory_formed.memory_trace && event->data.memory_formed.trace_size > 0) {
+                pool_ptr = event->data.memory_formed.memory_trace;
+                dest_ptr = (void**)&event->data.memory_formed.memory_trace;
+                size = event->data.memory_formed.trace_size * sizeof(float);
+            }
+            break;
+
+        case EVENT_TYPE_DECISION_MADE:
+            if (event->data.decision_made.decision_vector && event->data.decision_made.vector_size > 0) {
+                pool_ptr = event->data.decision_made.decision_vector;
+                dest_ptr = (void**)&event->data.decision_made.decision_vector;
+                size = event->data.decision_made.vector_size * sizeof(float);
+            }
+            break;
+
+        case EVENT_TYPE_CUSTOM:
+            if (event->data.custom.data && event->data.custom.data_size > 0) {
+                pool_ptr = event->data.custom.data;
+                dest_ptr = (void**)&event->data.custom.data;
+                size = event->data.custom.data_size;
+            }
+            break;
+
+        default:
+            return true;  // No payload to copy
+    }
+
+    if (!pool_ptr || !dest_ptr || size == 0) {
+        return true;  // Nothing to copy
+    }
+
+    // Allocate new memory with nimcp_malloc
+    void* new_ptr = nimcp_malloc(size);
+    if (!new_ptr) {
+        return false;  // Allocation failed
+    }
+
+    // Copy data from pool to malloc'd memory
+    memcpy(new_ptr, pool_ptr, size);
+
+    // Release pool block
+    memory_pool_release(pool, pool_ptr);
+
+    // Update event to point to malloc'd memory
+    *dest_ptr = new_ptr;
+
+    return true;
+}
+
 bool event_queue_dequeue(event_queue_t queue, event_t* event) {
     if (!queue || !event) {
         set_error("Invalid parameters");
@@ -484,12 +568,26 @@ bool event_queue_dequeue(event_queue_t queue, event_t* event) {
         return false;
     }
 
-    // Copy root to output
-    *event = queue->heap[0].event;
+    // Get the heap entry (contains used_pool flag)
+    heap_entry_t* entry = &queue->heap[0];
+
+    // Copy event to output
+    *event = entry->event;
+
+    // If payload came from pool, copy to malloc'd memory so caller can use event_free()
+    // This ensures the API contract is maintained: dequeued events can be freed with event_free()
+    if (entry->used_pool) {
+        if (!event_copy_payload_from_pool(event, queue->payload_pool)) {
+            // Allocation failed - still return the event but payload points to pool memory
+            // Caller should NOT call event_free() in this case, but we can't signal this cleanly
+            set_error("Failed to copy payload from pool");
+        }
+        // Note: pool block is released inside event_copy_payload_from_pool
+    }
 
     // Calculate wait time
     uint64_t now = nimcp_time_get_us();
-    uint64_t wait_time = now - queue->heap[0].enqueue_time_us;
+    uint64_t wait_time = now - entry->enqueue_time_us;
     queue->total_wait_time_us += wait_time;
 
     // Move last element to root and restore heap
@@ -528,10 +626,18 @@ uint32_t event_queue_dequeue_batch(event_queue_t queue, event_t* events,
 
     uint32_t dequeued = 0;
     while (dequeued < max_events && queue->size > 0) {
-        events[dequeued] = queue->heap[0].event;
+        heap_entry_t* entry = &queue->heap[0];
+        events[dequeued] = entry->event;
+
+        // If payload came from pool, copy to malloc'd memory so caller can use event_free()
+        if (entry->used_pool) {
+            if (!event_copy_payload_from_pool(&events[dequeued], queue->payload_pool)) {
+                set_error("Failed to copy payload from pool in batch dequeue");
+            }
+        }
 
         uint64_t now = nimcp_time_get_us();
-        uint64_t wait_time = now - queue->heap[0].enqueue_time_us;
+        uint64_t wait_time = now - entry->enqueue_time_us;
         queue->total_wait_time_us += wait_time;
 
         queue->heap[0] = queue->heap[queue->size - 1];

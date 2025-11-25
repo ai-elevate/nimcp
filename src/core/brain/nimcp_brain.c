@@ -51,6 +51,8 @@
 // Comprehensive Integration: All Advanced Subsystems
 // NOTE: Only including modules that currently exist
 #include "glial/integration/nimcp_glial_integration.h"
+#include "core/axon/nimcp_axon.h"                          // Phase 1.5.6: Axon signal propagation
+#include "core/dendrite/nimcp_dendrite.h"                  // Phase 1.5.7: Dendrite integration
 #include "core/brain_oscillations/nimcp_brain_oscillations.h"
 #include "cognitive/introspection/nimcp_introspection.h"
 #include "cognitive/ethics/nimcp_ethics.h"
@@ -1566,6 +1568,18 @@ void brain_destroy(brain_t brain)
     if (brain->glial) {
         glial_integration_destroy(brain->glial);
         brain->glial = NULL;
+    }
+
+    // Phase 1.5.6: Cleanup axon network
+    if (brain->axon_network) {
+        axon_network_destroy((axon_network_t*)brain->axon_network);
+        brain->axon_network = NULL;
+    }
+
+    // Phase 1.5.7: Cleanup dendrite network
+    if (brain->dendrite_network) {
+        dendrite_network_destroy((dendrite_network_t*)brain->dendrite_network);
+        brain->dendrite_network = NULL;
     }
 
     // Phase 8: Cleanup multi-modal subsystems

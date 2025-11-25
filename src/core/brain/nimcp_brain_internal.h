@@ -398,10 +398,25 @@ struct brain_struct {
     event_bus_t event_bus;                        // Event bus for system-wide event coordination
     bool enable_event_broadcasting;               // Enable/disable event publishing
 
-    // === AXON INTEGRATION ===
+    // === AXON & DENDRITE INTEGRATION ===
+    //
+    // NOTE: Axons and dendrites are components of individual neurons, not separate networks.
+    // These "network" containers are management structures that:
+    // - Provide efficient lookup/iteration over all axons/dendrites
+    // - Enable network-wide operations (step all, get stats, etc.)
+    // - Allow glial cells to modulate axonal conduction (oligodendrocytes)
+    //
+    // Each neuron has:
+    // - One axon (output): neuron->axon_id references into axon_network
+    // - Multiple dendrites (inputs): neuron->dendrite_ids references into dendrite_network
+    //
+    // Signal flow: Presynaptic neuron → Axon → Synapse → Dendritic spine → Postsynaptic neuron
 
-    // Axon network for realistic signal propagation with conduction delays
-    void* axon_network;                           // axon_network_t* (NULL = no axons, direct connections)
+    // Axon container for all neuron axons (Phase 1.5.6)
+    void* axon_network;                           // axon_network_t* - manages axons for all neurons
+
+    // Dendrite container for all neuron dendrites (Phase 1.5.7)
+    void* dendrite_network;                       // dendrite_network_t* - manages dendrites for all neurons
 };
 
 //=============================================================================

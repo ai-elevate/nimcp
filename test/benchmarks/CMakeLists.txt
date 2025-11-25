@@ -100,6 +100,82 @@ install(TARGETS
     RUNTIME DESTINATION bin/benchmarks
 )
 
+#=============================================================================
+# Additional Benchmarks (middleware, memory, routing)
+#=============================================================================
+
+# Middleware benchmarks (C++)
+set(MIDDLEWARE_BENCHMARK_SOURCES
+    benchmark_feature_extractor_pool.cpp
+    benchmark_integration_buffer_creation.cpp
+    benchmark_sliding_window_pool.cpp
+    benchmark_thalamic_router.cpp
+    routing_comparison_benchmark.cpp
+    simple_cow_benchmark.cpp
+)
+
+foreach(BENCH_SOURCE ${MIDDLEWARE_BENCHMARK_SOURCES})
+    get_filename_component(BENCH_NAME ${BENCH_SOURCE} NAME_WE)
+    set(BENCH_TARGET "bench_${BENCH_NAME}")
+
+    add_executable(${BENCH_TARGET} ${BENCH_SOURCE})
+
+    target_link_libraries(${BENCH_TARGET}
+        PRIVATE
+            nimcp
+            pthread
+    )
+
+    target_include_directories(${BENCH_TARGET}
+        PRIVATE
+            ${CMAKE_SOURCE_DIR}/include
+            ${CMAKE_SOURCE_DIR}/src
+    )
+
+    target_compile_options(${BENCH_TARGET}
+        PRIVATE
+            -O3
+            -march=native
+            -Wall
+            -Wextra
+    )
+endforeach()
+
+# Memory benchmarks (C)
+set(MEMORY_BENCHMARK_SOURCES
+    benchmark_event_queue_pool.c
+    benchmark_pattern_cow.c
+    benchmark_page_cow.c
+)
+
+foreach(BENCH_SOURCE ${MEMORY_BENCHMARK_SOURCES})
+    get_filename_component(BENCH_NAME ${BENCH_SOURCE} NAME_WE)
+    set(BENCH_TARGET "bench_${BENCH_NAME}")
+
+    add_executable(${BENCH_TARGET} ${BENCH_SOURCE})
+
+    target_link_libraries(${BENCH_TARGET}
+        PRIVATE
+            nimcp
+            m
+            pthread
+    )
+
+    target_include_directories(${BENCH_TARGET}
+        PRIVATE
+            ${CMAKE_SOURCE_DIR}/include
+            ${CMAKE_SOURCE_DIR}/src
+    )
+
+    target_compile_options(${BENCH_TARGET}
+        PRIVATE
+            -O3
+            -march=native
+            -Wall
+            -Wextra
+    )
+endforeach()
+
 # Print configuration summary
 message(STATUS "Benchmark configuration:")
 message(STATUS "  Optimization: -O3 -march=native")

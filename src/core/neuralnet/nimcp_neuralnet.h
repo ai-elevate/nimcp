@@ -294,6 +294,10 @@ typedef struct neuron_struct {
 
     // Axon integration - Signal propagation with realistic conduction delays
     uint32_t axon_id;  /**< Axon ID for this neuron's output (0 = no axon, direct connection) */
+
+    // Dendrite integration - Spatiotemporal signal integration (Phase 1.5.7)
+    uint32_t* dendrite_ids;   /**< Array of dendrite IDs for input integration */
+    uint32_t num_dendrites;   /**< Number of dendrites (typically 1-5, 0 = direct input) */
 } neuron_t;
 
 /**

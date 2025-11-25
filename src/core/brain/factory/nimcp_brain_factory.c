@@ -142,6 +142,8 @@ extern void set_error(const char* format, ...);
 #define init_introspection_subsystem                nimcp_brain_factory_init_introspection_subsystem
 #define init_connectivity_health_subsystem          nimcp_brain_factory_init_connectivity_health_subsystem
 #define init_middleware_controller_subsystem        nimcp_brain_factory_init_middleware_controller_subsystem
+#define init_axon_subsystem                         nimcp_brain_factory_init_axon_subsystem
+#define init_dendrite_subsystem                     nimcp_brain_factory_init_dendrite_subsystem
 #define init_ethics_engine_subsystem                nimcp_brain_factory_init_ethics_engine_subsystem
 #define init_empathy_network_subsystem              nimcp_brain_factory_init_empathy_network_subsystem
 #define init_empathetic_response_subsystem          nimcp_brain_factory_init_empathetic_response_subsystem
@@ -300,6 +302,20 @@ brain_t brain_create(const char* task_name, brain_size_t size, brain_task_t task
             nimcp_free(brain->output_labels);
         }
         nimcp_free(brain);
+        return NULL;
+    }
+
+    // Phase 1.5.6: Initialize axon network (realistic signal propagation)
+    if (!init_axon_subsystem(brain)) {
+        // Cleanup on failure
+        brain_destroy(brain);
+        return NULL;
+    }
+
+    // Phase 1.5.7: Initialize dendrite network (spatiotemporal integration)
+    if (!init_dendrite_subsystem(brain)) {
+        // Cleanup on failure
+        brain_destroy(brain);
         return NULL;
     }
 

@@ -7621,6 +7621,19 @@ unit_utils_signal_test_hilbert/fast:
 .PHONY : unit_utils_signal_test_hilbert/fast
 
 #=============================================================================
+# Target rules for targets named unit_utils_signal_test_signal_filter_bands
+
+# Build rule for target.
+unit_utils_signal_test_signal_filter_bands: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_utils_signal_test_signal_filter_bands
+.PHONY : unit_utils_signal_test_signal_filter_bands
+
+# fast build rule for target.
+unit_utils_signal_test_signal_filter_bands/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/utils/signal/CMakeFiles/unit_utils_signal_test_signal_filter_bands.dir/build.make test/unit/utils/signal/CMakeFiles/unit_utils_signal_test_signal_filter_bands.dir/build
+.PHONY : unit_utils_signal_test_signal_filter_bands/fast
+
+#=============================================================================
 # Target rules for targets named unit_utils_fault_tolerance_test_async_checkpoint
 
 # Build rule for target.
@@ -7946,6 +7959,45 @@ regression_core_axon_performance/fast:
 .PHONY : regression_core_axon_performance/fast
 
 #=============================================================================
+# Target rules for targets named unit_core_dendrite_test_dendrite
+
+# Build rule for target.
+unit_core_dendrite_test_dendrite: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_core_dendrite_test_dendrite
+.PHONY : unit_core_dendrite_test_dendrite
+
+# fast build rule for target.
+unit_core_dendrite_test_dendrite/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/core/dendrite/CMakeFiles/unit_core_dendrite_test_dendrite.dir/build.make test/unit/core/dendrite/CMakeFiles/unit_core_dendrite_test_dendrite.dir/build
+.PHONY : unit_core_dendrite_test_dendrite/fast
+
+#=============================================================================
+# Target rules for targets named integration_core_dendrite_test_integration
+
+# Build rule for target.
+integration_core_dendrite_test_integration: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_core_dendrite_test_integration
+.PHONY : integration_core_dendrite_test_integration
+
+# fast build rule for target.
+integration_core_dendrite_test_integration/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/core/dendrite/CMakeFiles/integration_core_dendrite_test_integration.dir/build.make test/integration/core/dendrite/CMakeFiles/integration_core_dendrite_test_integration.dir/build
+.PHONY : integration_core_dendrite_test_integration/fast
+
+#=============================================================================
+# Target rules for targets named regression_core_dendrite_performance
+
+# Build rule for target.
+regression_core_dendrite_performance: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_core_dendrite_performance
+.PHONY : regression_core_dendrite_performance
+
+# fast build rule for target.
+regression_core_dendrite_performance/fast:
+	$(MAKE) $(MAKESILENT) -f test/regression/core/dendrite/CMakeFiles/regression_core_dendrite_performance.dir/build.make test/regression/core/dendrite/CMakeFiles/regression_core_dendrite_performance.dir/build
+.PHONY : regression_core_dendrite_performance/fast
+
+#=============================================================================
 # Target rules for targets named bench_benchmark_complex_vs_real_oscillations
 
 # Build rule for target.
@@ -8048,6 +8100,123 @@ benchmark_report: cmake_check_build_system
 benchmark_report/fast:
 	$(MAKE) $(MAKESILENT) -f test/benchmarks/CMakeFiles/benchmark_report.dir/build.make test/benchmarks/CMakeFiles/benchmark_report.dir/build
 .PHONY : benchmark_report/fast
+
+#=============================================================================
+# Target rules for targets named bench_benchmark_feature_extractor_pool
+
+# Build rule for target.
+bench_benchmark_feature_extractor_pool: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 bench_benchmark_feature_extractor_pool
+.PHONY : bench_benchmark_feature_extractor_pool
+
+# fast build rule for target.
+bench_benchmark_feature_extractor_pool/fast:
+	$(MAKE) $(MAKESILENT) -f test/benchmarks/CMakeFiles/bench_benchmark_feature_extractor_pool.dir/build.make test/benchmarks/CMakeFiles/bench_benchmark_feature_extractor_pool.dir/build
+.PHONY : bench_benchmark_feature_extractor_pool/fast
+
+#=============================================================================
+# Target rules for targets named bench_benchmark_integration_buffer_creation
+
+# Build rule for target.
+bench_benchmark_integration_buffer_creation: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 bench_benchmark_integration_buffer_creation
+.PHONY : bench_benchmark_integration_buffer_creation
+
+# fast build rule for target.
+bench_benchmark_integration_buffer_creation/fast:
+	$(MAKE) $(MAKESILENT) -f test/benchmarks/CMakeFiles/bench_benchmark_integration_buffer_creation.dir/build.make test/benchmarks/CMakeFiles/bench_benchmark_integration_buffer_creation.dir/build
+.PHONY : bench_benchmark_integration_buffer_creation/fast
+
+#=============================================================================
+# Target rules for targets named bench_benchmark_sliding_window_pool
+
+# Build rule for target.
+bench_benchmark_sliding_window_pool: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 bench_benchmark_sliding_window_pool
+.PHONY : bench_benchmark_sliding_window_pool
+
+# fast build rule for target.
+bench_benchmark_sliding_window_pool/fast:
+	$(MAKE) $(MAKESILENT) -f test/benchmarks/CMakeFiles/bench_benchmark_sliding_window_pool.dir/build.make test/benchmarks/CMakeFiles/bench_benchmark_sliding_window_pool.dir/build
+.PHONY : bench_benchmark_sliding_window_pool/fast
+
+#=============================================================================
+# Target rules for targets named bench_benchmark_thalamic_router
+
+# Build rule for target.
+bench_benchmark_thalamic_router: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 bench_benchmark_thalamic_router
+.PHONY : bench_benchmark_thalamic_router
+
+# fast build rule for target.
+bench_benchmark_thalamic_router/fast:
+	$(MAKE) $(MAKESILENT) -f test/benchmarks/CMakeFiles/bench_benchmark_thalamic_router.dir/build.make test/benchmarks/CMakeFiles/bench_benchmark_thalamic_router.dir/build
+.PHONY : bench_benchmark_thalamic_router/fast
+
+#=============================================================================
+# Target rules for targets named bench_routing_comparison_benchmark
+
+# Build rule for target.
+bench_routing_comparison_benchmark: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 bench_routing_comparison_benchmark
+.PHONY : bench_routing_comparison_benchmark
+
+# fast build rule for target.
+bench_routing_comparison_benchmark/fast:
+	$(MAKE) $(MAKESILENT) -f test/benchmarks/CMakeFiles/bench_routing_comparison_benchmark.dir/build.make test/benchmarks/CMakeFiles/bench_routing_comparison_benchmark.dir/build
+.PHONY : bench_routing_comparison_benchmark/fast
+
+#=============================================================================
+# Target rules for targets named bench_simple_cow_benchmark
+
+# Build rule for target.
+bench_simple_cow_benchmark: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 bench_simple_cow_benchmark
+.PHONY : bench_simple_cow_benchmark
+
+# fast build rule for target.
+bench_simple_cow_benchmark/fast:
+	$(MAKE) $(MAKESILENT) -f test/benchmarks/CMakeFiles/bench_simple_cow_benchmark.dir/build.make test/benchmarks/CMakeFiles/bench_simple_cow_benchmark.dir/build
+.PHONY : bench_simple_cow_benchmark/fast
+
+#=============================================================================
+# Target rules for targets named bench_benchmark_event_queue_pool
+
+# Build rule for target.
+bench_benchmark_event_queue_pool: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 bench_benchmark_event_queue_pool
+.PHONY : bench_benchmark_event_queue_pool
+
+# fast build rule for target.
+bench_benchmark_event_queue_pool/fast:
+	$(MAKE) $(MAKESILENT) -f test/benchmarks/CMakeFiles/bench_benchmark_event_queue_pool.dir/build.make test/benchmarks/CMakeFiles/bench_benchmark_event_queue_pool.dir/build
+.PHONY : bench_benchmark_event_queue_pool/fast
+
+#=============================================================================
+# Target rules for targets named bench_benchmark_pattern_cow
+
+# Build rule for target.
+bench_benchmark_pattern_cow: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 bench_benchmark_pattern_cow
+.PHONY : bench_benchmark_pattern_cow
+
+# fast build rule for target.
+bench_benchmark_pattern_cow/fast:
+	$(MAKE) $(MAKESILENT) -f test/benchmarks/CMakeFiles/bench_benchmark_pattern_cow.dir/build.make test/benchmarks/CMakeFiles/bench_benchmark_pattern_cow.dir/build
+.PHONY : bench_benchmark_pattern_cow/fast
+
+#=============================================================================
+# Target rules for targets named bench_benchmark_page_cow
+
+# Build rule for target.
+bench_benchmark_page_cow: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 bench_benchmark_page_cow
+.PHONY : bench_benchmark_page_cow
+
+# fast build rule for target.
+bench_benchmark_page_cow/fast:
+	$(MAKE) $(MAKESILENT) -f test/benchmarks/CMakeFiles/bench_benchmark_page_cow.dir/build.make test/benchmarks/CMakeFiles/bench_benchmark_page_cow.dir/build
+.PHONY : bench_benchmark_page_cow/fast
 
 #=============================================================================
 # Target rules for targets named simple_demo
@@ -8421,6 +8590,15 @@ help:
 	@echo "... bench_benchmark_complex_fft"
 	@echo "... bench_benchmark_complex_pac_detection"
 	@echo "... bench_benchmark_complex_vs_real_oscillations"
+	@echo "... bench_benchmark_event_queue_pool"
+	@echo "... bench_benchmark_feature_extractor_pool"
+	@echo "... bench_benchmark_integration_buffer_creation"
+	@echo "... bench_benchmark_page_cow"
+	@echo "... bench_benchmark_pattern_cow"
+	@echo "... bench_benchmark_sliding_window_pool"
+	@echo "... bench_benchmark_thalamic_router"
+	@echo "... bench_routing_comparison_benchmark"
+	@echo "... bench_simple_cow_benchmark"
 	@echo "... brain_demo"
 	@echo "... brain_probe_demo"
 	@echo "... cow_ab_testing"
@@ -8465,6 +8643,7 @@ help:
 	@echo "... integration_core_brain_test_comprehensive_brain_integration"
 	@echo "... integration_core_brain_test_distributed_cow_integration"
 	@echo "... integration_core_brain_test_enhanced_features_integration"
+	@echo "... integration_core_dendrite_test_integration"
 	@echo "... integration_core_integration_test_integration_cognitive"
 	@echo "... integration_core_integration_test_integration_e2e"
 	@echo "... integration_core_integration_test_integration_networking"
@@ -8573,6 +8752,7 @@ help:
 	@echo "... regression_core_brain_oscillation_backward_compat"
 	@echo "... regression_core_brain_regions_broca_test_nimcp_broca_regression"
 	@echo "... regression_core_brain_regions_test_visual_cortex_regression"
+	@echo "... regression_core_dendrite_performance"
 	@echo "... regression_core_integration_test_integration_regression"
 	@echo "... regression_core_neuron_types_test_a1_neurons_regression"
 	@echo "... regression_core_neuron_types_test_cognitive_neurons_regression"
@@ -8817,6 +8997,7 @@ help:
 	@echo "... unit_core_brain_test_distributed_cow"
 	@echo "... unit_core_brain_test_memory_tracking"
 	@echo "... unit_core_brain_test_version_checking"
+	@echo "... unit_core_dendrite_test_dendrite"
 	@echo "... unit_core_integration_test_numerical_integration"
 	@echo "... unit_core_neuralnet_test_axon_integration_backward_compat"
 	@echo "... unit_core_neuralnet_test_neuralnet_comprehensive"
@@ -9018,6 +9199,7 @@ help:
 	@echo "... unit_utils_queue_manager_test_queue_manager"
 	@echo "... unit_utils_signal_test_hilbert"
 	@echo "... unit_utils_signal_test_signal_filter"
+	@echo "... unit_utils_signal_test_signal_filter_bands"
 	@echo "... unit_utils_spatial_test_kdtree_range_search"
 	@echo "... unit_utils_tensor_networks_test_mps"
 	@echo "... unit_utils_tensor_networks_test_mps_compression"

@@ -745,6 +745,54 @@ The Neural Immune System provides comprehensive protection against code injectio
 
 ---
 
+### Tier 0.65: Cortical Columns Architecture
+
+#### Phase CC-1: Cortical Columns & Laminar Organization
+**Dependencies**: Phase 1.0 (Core Directives), Infrastructure (Tier 0)
+**Priority**: P1 - Foundation for realistic cortical processing
+
+**New Modules**:
+| Module | LOC Est. | Description |
+|--------|----------|-------------|
+| `nimcp_cortical_column.h/c` | 800 | Minicolumn & hypercolumn structures |
+| `nimcp_cortical_layers.h/c` | 600 | 6-layer cortical organization (I-VI) |
+| `nimcp_columnar_connectivity.c` | 700 | Canonical microcircuit patterns |
+| `nimcp_topographic_maps.h/c` | 500 | Retinotopic, tonotopic, somatotopic maps |
+| `nimcp_orientation_columns.c` | 400 | V1 orientation selectivity |
+| `nimcp_feature_hypercolumns.c` | 500 | Complete feature coverage units |
+
+**Key Features**:
+- **Minicolumns**: 80-100 neurons, vertical organization, shared receptive fields
+- **Hypercolumns**: ~100,000 neurons, complete feature set (all orientations)
+- **Cortical Layers**: I-VI with canonical connectivity
+  - Layer I: Apical dendrites, sparse interneurons
+  - Layer II/III: Cortico-cortical projections (association)
+  - Layer IV: Thalamic input (granular layer)
+  - Layer V: Subcortical output (pyramidal neurons → striatum, brainstem)
+  - Layer VI: Thalamo-cortical feedback (corticothalamic)
+- **Topographic Maps**: Retinotopic (V1), tonotopic (A1), somatotopic (S1)
+- **Feature Organization**: Orientation columns, ocular dominance columns
+- **Connectivity Rules**:
+  - Vertical (intracolumnar): Dense connectivity within column
+  - Horizontal (intercolumnar): Patchy connections between columns
+  - Layer-specific: Canonical microcircuit (Douglas & Martin, 1991)
+
+**Integration Points**:
+- Visual Cortex: Orientation columns, pinwheel structure
+- Audio Cortex: Frequency columns (tonotopic organization)
+- Somatosensory: Barrel cortex analog (whisker barrels)
+- All cortical regions: Layer-specific processing rules
+
+**Biological Accuracy**:
+- Minicolumn diameter: ~40-50 μm
+- Hypercolumn size: ~1mm² (V1 orientation)
+- Layer thickness ratios: I (5%), II/III (40%), IV (15%), V (20%), VI (20%)
+- Cortical thickness: ~2-4mm (varies by region)
+
+**LOC Total**: ~3,500
+
+---
+
 ### Tier 0.7: Security Coverage Framework (100% Coverage)
 
 #### Phase SC-1: Security Coverage Framework

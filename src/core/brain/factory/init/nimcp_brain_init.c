@@ -61,6 +61,8 @@
 #include "cognitive/introspection/nimcp_introspection.h"
 #include "cognitive/introspection/nimcp_connectivity_health.h"  // Phase 1.5.4: Connectivity Health
 #include "middleware/integration/nimcp_middleware_controller.h" // Phase 1.5.5: Middleware Controller
+#include "core/axon/nimcp_axon.h"                               // Phase 1.5.6: Axon Integration
+#include "core/dendrite/nimcp_dendrite.h"                       // Phase 1.5.7: Dendrite Integration
 #include "cognitive/ethics/nimcp_ethics.h"
 #include "cognitive/salience/nimcp_salience.h"
 #include "cognitive/consolidation/nimcp_consolidation.h"
@@ -2611,6 +2613,246 @@ bool nimcp_brain_factory_init_global_workspace_subsystem(brain_t brain)
         }
     }
 
+    return true;
+}
+
+/**
+ * @brief Initialize Axon Network subsystem (Phase 1.5.6)
+ *
+ * WHAT: Create axon network for realistic signal propagation with conduction delays
+ * WHY:  Enable biologically realistic action potential propagation between neurons
+ * HOW:  Create axon for each neuron, configure myelination based on neuron type
+ *
+ * BIOLOGICAL INSPIRATION:
+ * - Axonal conduction delays vary 0.5-100 m/s based on myelination (Waxman, 1977)
+ * - Myelinated axons have saltatory conduction (Huxley & Stämpfli, 1949)
+ * - Axon diameter affects conduction velocity (Hursh, 1939)
+ *
+ * PERFORMANCE TARGET: O(n) where n = num_neurons
+ *
+ * @param brain Brain instance
+ * @return true on success, false on error
+ */
+bool nimcp_brain_factory_init_axon_subsystem(brain_t brain)
+{
+    // Guard: NULL check
+    if (!brain) {
+        return false;
+    }
+
+    // Guard: No network
+    if (!brain->network) {
+        brain->axon_network = NULL;
+        return true;  // Not an error - just no network yet
+    }
+
+    // Get base network for neuron access
+    neural_network_t nn = adaptive_network_get_base_network(brain->network);
+    if (!nn) {
+        brain->axon_network = NULL;
+        return true;  // Not an error - empty network
+    }
+
+    // Get neuron count using accessor function (opaque type pattern)
+    uint32_t num_neurons = neural_network_get_num_neurons(nn);
+    if (num_neurons == 0) {
+        brain->axon_network = NULL;
+        return true;  // Not an error - empty network
+    }
+
+    // Create axon network with capacity for all neurons
+    axon_network_t* axon_net = axon_network_create(num_neurons);
+    if (!axon_net) {
+        // Axon network creation failed - continue without axons (graceful degradation)
+        brain->axon_network = NULL;
+        return true;  // Not fatal - direct connections still work
+    }
+
+    // Create axon for each neuron
+    for (uint32_t i = 0; i < num_neurons; i++) {
+        neuron_t* neuron = neural_network_get_neuron(nn, i);
+        if (!neuron) {
+            continue;  // Skip invalid neurons
+        }
+
+        // Determine axon type based on neuron type
+        axon_type_t axon_type = AXON_TYPE_UNMYELINATED;  // Default
+        float myelination = 0.0f;
+
+        // Excitatory neurons tend to have larger, myelinated axons
+        if (neuron->type == NEURON_EXCITATORY) {
+            axon_type = AXON_TYPE_MYELINATED;
+            myelination = 0.6f + (float)(rand() % 40) / 100.0f;  // 0.6-1.0
+        } else {
+            // Inhibitory interneurons often have unmyelinated or lightly myelinated axons
+            axon_type = AXON_TYPE_UNMYELINATED;
+            myelination = (float)(rand() % 30) / 100.0f;  // 0.0-0.3
+        }
+
+        // Calculate axon properties
+        float length = 100.0f + (float)(rand() % 400);  // 100-500 μm
+        float diameter = 0.5f + (float)(rand() % 20) / 10.0f;  // 0.5-2.5 μm
+
+        // Create axon using the axon_create API
+        // Parameters: id, type, source_neuron_id, target_synapse_id, length, diameter
+        axon_t* axon = axon_create(i, axon_type, neuron->id, 0, length, diameter);
+        if (axon) {
+            // Set myelination level
+            axon_set_myelination(axon, myelination);
+
+            // Add to network
+            if (axon_network_add(axon_net, axon)) {
+                neuron->axon_id = axon->id;
+            } else {
+                axon_destroy(axon);
+                neuron->axon_id = 0;
+            }
+        } else {
+            neuron->axon_id = 0;  // No axon - direct connection
+        }
+    }
+
+    brain->axon_network = axon_net;
+    return true;
+}
+
+/**
+ * @brief Initialize Dendrite Network subsystem (Phase 1.5.7)
+ *
+ * WHAT: Create dendrite network for spatiotemporal signal integration
+ * WHY:  Enable biologically realistic dendritic computation and synaptic integration
+ * HOW:  Create dendrites for each neuron, add segments and spines for synaptic inputs
+ *
+ * BIOLOGICAL INSPIRATION:
+ * - Dendritic integration uses cable theory (Rall, 1959)
+ * - Spines are primary sites of excitatory input (Yuste, 2010)
+ * - Dendrites perform nonlinear computation (Polsky et al., 2004)
+ *
+ * PERFORMANCE TARGET: O(n) where n = num_neurons
+ *
+ * @param brain Brain instance
+ * @return true on success, false on error
+ */
+bool nimcp_brain_factory_init_dendrite_subsystem(brain_t brain)
+{
+    // Guard: NULL check
+    if (!brain) {
+        return false;
+    }
+
+    // Guard: No network
+    if (!brain->network) {
+        brain->dendrite_network = NULL;
+        return true;  // Not an error - just no network yet
+    }
+
+    // Get base network for neuron access
+    neural_network_t nn = adaptive_network_get_base_network(brain->network);
+    if (!nn) {
+        brain->dendrite_network = NULL;
+        return true;  // Not an error - empty network
+    }
+
+    // Get neuron count using accessor function (opaque type pattern)
+    uint32_t num_neurons = neural_network_get_num_neurons(nn);
+    if (num_neurons == 0) {
+        brain->dendrite_network = NULL;
+        return true;  // Not an error - empty network
+    }
+
+    // Create dendrite network with capacity for all neurons (each can have multiple dendrites)
+    // Estimate: ~2 dendrites per neuron on average (basal + apical for pyramidal)
+    dendrite_network_t* dend_net = dendrite_network_create(num_neurons * 2);
+    if (!dend_net) {
+        // Dendrite network creation failed - continue without dendrites (graceful degradation)
+        brain->dendrite_network = NULL;
+        return true;  // Not fatal - direct inputs still work
+    }
+
+    // Create dendrites for each neuron
+    for (uint32_t i = 0; i < num_neurons; i++) {
+        neuron_t* neuron = neural_network_get_neuron(nn, i);
+        if (!neuron) {
+            continue;  // Skip invalid neurons
+        }
+
+        // Initialize dendrite tracking for this neuron
+        // Allocate space for up to 4 dendrites per neuron
+        neuron->dendrite_ids = (uint32_t*)nimcp_calloc(4, sizeof(uint32_t));
+        neuron->num_dendrites = 0;
+
+        if (!neuron->dendrite_ids) {
+            continue;  // Skip this neuron on allocation failure
+        }
+
+        // Determine dendrite configuration based on neuron type
+        uint32_t num_dendrites_to_create = 1;  // Default: 1 dendrite
+        dendrite_type_t primary_type = DENDRITE_TYPE_BASAL;
+
+        // Excitatory neurons (pyramidal-like) have more elaborate dendritic trees
+        if (neuron->type == NEURON_EXCITATORY) {
+            num_dendrites_to_create = 2;  // Basal + apical
+            primary_type = DENDRITE_TYPE_BASAL;
+        }
+
+        // Create dendrites for this neuron
+        for (uint32_t d = 0; d < num_dendrites_to_create && neuron->num_dendrites < 4; d++) {
+            dendrite_type_t dtype = (d == 0) ? primary_type : DENDRITE_TYPE_APICAL;
+
+            dendrite_config_t dend_config = {
+                .id = dend_net->num_dendrites,  // Sequential ID
+                .type = dtype,
+                .target_neuron_id = neuron->id,
+                .total_length = 150.0f + (float)(rand() % 200),  // 150-350 μm
+                .mean_diameter = 1.0f + (float)(rand() % 20) / 10.0f,  // 1.0-3.0 μm
+                .start_pos = {0.0f, 0.0f, 0.0f},
+                .integration_window_ms = 15.0f + (float)(rand() % 20),  // 15-35 ms
+                .structural_plasticity = 0.01f,
+                .ltp_threshold = 0.7f + (float)(rand() % 20) / 100.0f,  // 0.7-0.9
+                .ltd_threshold = 0.2f + (float)(rand() % 20) / 100.0f   // 0.2-0.4
+            };
+
+            // Create dendrite
+            dendrite_t* dendrite = dendrite_create(&dend_config);
+            if (!dendrite) {
+                continue;  // Skip on creation failure
+            }
+
+            // Create initial segments (3-5 compartments)
+            uint32_t num_segments = 3 + (rand() % 3);  // 3-5 segments
+            segment_config_t* seg_configs = (segment_config_t*)nimcp_calloc(
+                num_segments, sizeof(segment_config_t));
+
+            if (seg_configs) {
+                float path_dist = 0.0f;
+                for (uint32_t s = 0; s < num_segments; s++) {
+                    seg_configs[s].type = (s == 0) ? DENDRITE_SEGMENT_PROXIMAL :
+                                          (s == num_segments - 1) ? DENDRITE_SEGMENT_TERMINAL :
+                                          DENDRITE_SEGMENT_SHAFT;
+                    seg_configs[s].parent_segment = (s == 0) ? UINT32_MAX : (s - 1);
+                    seg_configs[s].length = 30.0f + (float)(rand() % 40);  // 30-70 μm
+                    seg_configs[s].diameter = dend_config.mean_diameter *
+                                             (1.0f - 0.1f * s);  // Taper
+                    seg_configs[s].path_distance = path_dist;
+                    path_dist += seg_configs[s].length;
+                    seg_configs[s].has_active_properties = (dtype == DENDRITE_TYPE_APICAL);
+                }
+
+                dendrite_create_segments(dendrite, num_segments, seg_configs);
+                nimcp_free(seg_configs);
+            }
+
+            // Add dendrite to network
+            if (dendrite_network_add(dend_net, dendrite)) {
+                neuron->dendrite_ids[neuron->num_dendrites] = dendrite->id;
+                neuron->num_dendrites++;
+            } else {
+                dendrite_destroy(dendrite);
+            }
+        }
+    }
+
+    brain->dendrite_network = dend_net;
     return true;
 }
 

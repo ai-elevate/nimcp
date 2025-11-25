@@ -2105,6 +2105,30 @@ __/core/brain_regions/nimcp_brain_regions.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain_regions/nimcp_brain_regions.c.s
 .PHONY : __/core/brain_regions/nimcp_brain_regions.c.s
 
+__/core/dendrite/nimcp_dendrite.o: __/core/dendrite/nimcp_dendrite.c.o
+.PHONY : __/core/dendrite/nimcp_dendrite.o
+
+# target to build an object file
+__/core/dendrite/nimcp_dendrite.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/dendrite/nimcp_dendrite.c.o
+.PHONY : __/core/dendrite/nimcp_dendrite.c.o
+
+__/core/dendrite/nimcp_dendrite.i: __/core/dendrite/nimcp_dendrite.c.i
+.PHONY : __/core/dendrite/nimcp_dendrite.i
+
+# target to preprocess a source file
+__/core/dendrite/nimcp_dendrite.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/dendrite/nimcp_dendrite.c.i
+.PHONY : __/core/dendrite/nimcp_dendrite.c.i
+
+__/core/dendrite/nimcp_dendrite.s: __/core/dendrite/nimcp_dendrite.c.s
+.PHONY : __/core/dendrite/nimcp_dendrite.s
+
+# target to generate assembly for a file
+__/core/dendrite/nimcp_dendrite.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/dendrite/nimcp_dendrite.c.s
+.PHONY : __/core/dendrite/nimcp_dendrite.c.s
+
 __/core/events/nimcp_event_bus.o: __/core/events/nimcp_event_bus.c.o
 .PHONY : __/core/events/nimcp_event_bus.o
 
@@ -6199,6 +6223,9 @@ help:
 	@echo "... __/core/brain_regions/nimcp_brain_regions.o"
 	@echo "... __/core/brain_regions/nimcp_brain_regions.i"
 	@echo "... __/core/brain_regions/nimcp_brain_regions.s"
+	@echo "... __/core/dendrite/nimcp_dendrite.o"
+	@echo "... __/core/dendrite/nimcp_dendrite.i"
+	@echo "... __/core/dendrite/nimcp_dendrite.s"
 	@echo "... __/core/events/nimcp_event_bus.o"
 	@echo "... __/core/events/nimcp_event_bus.i"
 	@echo "... __/core/events/nimcp_event_bus.s"

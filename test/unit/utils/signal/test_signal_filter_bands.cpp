@@ -1,13 +1,17 @@
 #include <stdio.h>
 #include <math.h>
 #include <stdlib.h>
+
+extern "C" {
+#include "nimcp.h"
 #include "utils/signal/nimcp_signal_filter.h"
 #include "utils/memory/nimcp_memory.h"
+}
 
 #define M_PI 3.14159265358979323846
 
 int main() {
-    nimcp_init(NULL);
+    nimcp_init();
 
     const uint32_t n = 1024;
     const float sample_rate = 1000.0f;
@@ -84,6 +88,6 @@ int main() {
     printf("\nExpected: Theta should have highest RMS power\n");
 
     nimcp_free(signal);
-    nimcp_cleanup();
+    nimcp_shutdown();
     return 0;
 }

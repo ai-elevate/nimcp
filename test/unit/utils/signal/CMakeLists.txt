@@ -45,3 +45,23 @@ set_tests_properties(unit_utils_signal_test_hilbert
     LABELS "unit;utils;signal;hilbert"
     TIMEOUT 60
 )
+
+# Signal Filter Bands Test (standalone executable)
+add_executable(unit_utils_signal_test_signal_filter_bands
+    test_signal_filter_bands.cpp
+)
+
+target_link_libraries(unit_utils_signal_test_signal_filter_bands
+    nimcp
+)
+
+add_test(
+    NAME unit_utils_signal_test_signal_filter_bands
+    COMMAND unit_utils_signal_test_signal_filter_bands
+)
+
+set_tests_properties(unit_utils_signal_test_signal_filter_bands
+    PROPERTIES
+    LABELS "unit;utils;signal;bands"
+    TIMEOUT 60
+)

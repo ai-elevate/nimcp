@@ -9,9 +9,11 @@
 #include <iomanip>
 #include <cstring>
 #include <random>
+#include <algorithm>
 
 extern "C" {
 #include "middleware/features/nimcp_feature_extractor.h"
+#include "utils/memory/nimcp_memory.h"
 }
 
 using namespace std::chrono;
@@ -27,17 +29,29 @@ spike_data_t* create_test_spike_data() {
     spike_data_t* data = spike_data_create(NUM_NEURONS);
     if (!data) return nullptr;
 
-    std::random_device rd;
     std::mt19937 gen(42);  // Fixed seed for reproducibility
     std::uniform_int_distribution<uint64_t> time_dist(0, 100000);
 
     data->start_time = 0;
     data->end_time = 100000;
 
+    // Allocate and populate spike times for each neuron
     for (uint32_t n = 0; n < NUM_NEURONS; n++) {
-        for (uint32_t s = 0; s < SPIKES_PER_NEURON; s++) {
-            spike_data_add_spike(data, n, time_dist(gen));
+        // Allocate spike times array for this neuron (use nimcp_malloc for compatibility with nimcp_free in spike_data_destroy)
+        data->spike_times[n] = (uint64_t*)nimcp_malloc(SPIKES_PER_NEURON * sizeof(uint64_t));
+        if (!data->spike_times[n]) {
+            spike_data_destroy(data);
+            return nullptr;
         }
+
+        // Generate random spike times
+        for (uint32_t s = 0; s < SPIKES_PER_NEURON; s++) {
+            data->spike_times[n][s] = time_dist(gen);
+        }
+        data->spike_counts[n] = SPIKES_PER_NEURON;
+
+        // Sort spike times (required for proper ISI computation)
+        std::sort(data->spike_times[n], data->spike_times[n] + SPIKES_PER_NEURON);
     }
 
     return data;
@@ -59,7 +73,7 @@ double benchmark_oscillation_computation() {
     // Warmup
     for (int i = 0; i < 10; i++) {
         float delta, theta, alpha, beta, gamma;
-        feature_extractor_compute_oscillations(
+        feature_extractor_compute_oscillation_power(
             extractor, spike_data,
             &delta, &theta, &alpha, &beta, &gamma
         );
@@ -70,7 +84,7 @@ double benchmark_oscillation_computation() {
     // Benchmark
     for (uint32_t iter = 0; iter < NUM_ITERATIONS; iter++) {
         float delta, theta, alpha, beta, gamma;
-        feature_extractor_compute_oscillations(
+        feature_extractor_compute_oscillation_power(
             extractor, spike_data,
             &delta, &theta, &alpha, &beta, &gamma
         );

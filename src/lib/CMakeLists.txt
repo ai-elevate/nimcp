@@ -64,6 +64,9 @@ set(NIMCP_CORE_SOURCES
     # Axon signal propagation - Action potential modeling
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/axon/nimcp_axon.c
 
+    # Dendrite computation and integration - Phase 1.5.7
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/dendrite/nimcp_dendrite.c
+
     # Synapse type system - NIMCP 2.8.7 (Phase 8.7) - BIOLOGICAL DIVERSITY
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/synapse_types/nimcp_synapse_types.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/neuralnet/nimcp_synapse_embeddings.c

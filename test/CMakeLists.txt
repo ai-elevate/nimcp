@@ -453,6 +453,25 @@ if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/regression/core/axon")
 endif()
 
 # ============================================================================
+# Dendrite Tests (Phase 1.5.7)
+# ============================================================================
+
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/unit/core/dendrite")
+    message(STATUS "Adding dendrite unit tests...")
+    add_subdirectory(unit/core/dendrite)
+endif()
+
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/integration/core/dendrite")
+    message(STATUS "Adding dendrite integration tests...")
+    add_subdirectory(integration/core/dendrite)
+endif()
+
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/regression/core/dendrite")
+    message(STATUS "Adding dendrite performance regression tests...")
+    add_subdirectory(regression/core/dendrite)
+endif()
+
+# ============================================================================
 # Performance Benchmarks
 # ============================================================================
 
