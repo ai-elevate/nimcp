@@ -342,6 +342,11 @@ oligodendrocyte_t* oligodendrocyte_create(uint32_t id, float x, float y, float z
     // Initialize lock
     nimcp_spinlock_init(&oligo->lock);
 
+    // Initialize CoW fields (Phase 1.5+)
+    oligo->cow_ref_count = 1;
+    oligo->cow_modified = false;
+    oligo->cow_original = NULL;
+
     return oligo;
 }
 
@@ -439,6 +444,10 @@ oligodendrocyte_network_t* oligodendrocyte_network_create_enhanced(
 
     nimcp_mutex_init(&network->lock, NULL);
 
+    // Create memory pools (Phase 1.5+)
+    network->axon_pool = oligo_axon_pool_create(NIMCP_OLIGO_AXON_POOL_SIZE);
+    network->internode_pool = oligo_internode_pool_create(NIMCP_OLIGO_INTERNODE_POOL_SIZE);
+
     return network;
 }
 
@@ -463,6 +472,10 @@ void oligodendrocyte_network_destroy(oligodendrocyte_network_t* network) {
     if (network->axon_tree) kdtree_destroy(network->axon_tree);
     if (network->global_growth_factor_field) nimcp_free(network->global_growth_factor_field);
     if (network->axon_centrality) nimcp_free(network->axon_centrality);
+
+    // Destroy memory pools (Phase 1.5+)
+    if (network->axon_pool) oligo_axon_pool_destroy(network->axon_pool);
+    if (network->internode_pool) oligo_internode_pool_destroy(network->internode_pool);
 
     nimcp_mutex_destroy(&network->lock);
     nimcp_free(network);
@@ -1604,6 +1617,395 @@ void oligodendrocyte_network_get_stats(const oligodendrocyte_network_t* network,
     float optimal_velocity = NIMCP_OLIGO_BASE_VELOCITY_MS * NIMCP_OLIGO_MYELIN_MULTIPLIER;
     stats->network_myelination_efficiency =
         (stats->avg_conduction_velocity / optimal_velocity) * stats->avg_myelination_level;
+}
+
+//=============================================================================
+// MEMORY POOL OPERATIONS (Phase 1.5+)
+//=============================================================================
+
+oligo_axon_pool_t* oligo_axon_pool_create(uint32_t capacity) {
+    if (capacity == 0) return NULL;
+
+    // Round up to nearest 64 for bitmap alignment
+    uint32_t aligned_capacity = ((capacity + 63) / 64) * 64;
+    uint32_t num_bitmap_words = aligned_capacity / 64;
+
+    oligo_axon_pool_t* pool = (oligo_axon_pool_t*)nimcp_malloc(sizeof(oligo_axon_pool_t));
+    if (!pool) return NULL;
+
+    pool->buffer = (myelinated_axon_t*)nimcp_malloc(aligned_capacity * sizeof(myelinated_axon_t));
+    if (!pool->buffer) {
+        nimcp_free(pool);
+        return NULL;
+    }
+
+    pool->bitmap = (uint64_t*)nimcp_malloc(num_bitmap_words * sizeof(uint64_t));
+    if (!pool->bitmap) {
+        nimcp_free(pool->buffer);
+        nimcp_free(pool);
+        return NULL;
+    }
+
+    // Initialize: all bits set to 1 (free)
+    for (uint32_t i = 0; i < num_bitmap_words; i++) {
+        pool->bitmap[i] = UINT64_MAX;
+    }
+
+    pool->capacity = aligned_capacity;
+    pool->num_bitmap_words = num_bitmap_words;
+    pool->allocated_count = 0;
+    nimcp_spinlock_init(&pool->lock);
+
+    memset(pool->buffer, 0, aligned_capacity * sizeof(myelinated_axon_t));
+
+    return pool;
+}
+
+void oligo_axon_pool_destroy(oligo_axon_pool_t* pool) {
+    if (!pool) return;
+
+    if (pool->buffer) nimcp_free(pool->buffer);
+    if (pool->bitmap) nimcp_free(pool->bitmap);
+    nimcp_free(pool);
+}
+
+myelinated_axon_t* oligo_axon_pool_alloc(oligo_axon_pool_t* pool) {
+    if (!pool) return NULL;
+
+    nimcp_spinlock_lock(&pool->lock);
+
+    // Find first word with free bit (O(1) amortized)
+    for (uint32_t w = 0; w < pool->num_bitmap_words; w++) {
+        if (pool->bitmap[w] != 0) {
+            // Find first set bit using __builtin_ctzll
+            int bit = __builtin_ctzll(pool->bitmap[w]);
+            uint32_t index = w * 64 + bit;
+
+            if (index < pool->capacity) {
+                // Clear bit (mark as allocated)
+                pool->bitmap[w] &= ~(1ULL << bit);
+                pool->allocated_count++;
+
+                nimcp_spinlock_unlock(&pool->lock);
+
+                // Zero initialize the slot
+                myelinated_axon_t* axon = &pool->buffer[index];
+                memset(axon, 0, sizeof(myelinated_axon_t));
+                return axon;
+            }
+        }
+    }
+
+    nimcp_spinlock_unlock(&pool->lock);
+    return NULL; // Pool exhausted
+}
+
+void oligo_axon_pool_free(oligo_axon_pool_t* pool, myelinated_axon_t* axon) {
+    if (!pool || !axon) return;
+
+    // Verify pointer is within pool bounds
+    if (axon < pool->buffer || axon >= pool->buffer + pool->capacity) {
+        return; // Not from this pool
+    }
+
+    nimcp_spinlock_lock(&pool->lock);
+
+    uint32_t index = (uint32_t)(axon - pool->buffer);
+    uint32_t word = index / 64;
+    uint32_t bit = index % 64;
+
+    // Set bit (mark as free)
+    pool->bitmap[word] |= (1ULL << bit);
+    if (pool->allocated_count > 0) {
+        pool->allocated_count--;
+    }
+
+    nimcp_spinlock_unlock(&pool->lock);
+}
+
+void oligo_axon_pool_stats(const oligo_axon_pool_t* pool,
+                           uint32_t* allocated, uint32_t* capacity) {
+    if (!pool) {
+        if (allocated) *allocated = 0;
+        if (capacity) *capacity = 0;
+        return;
+    }
+
+    if (allocated) *allocated = pool->allocated_count;
+    if (capacity) *capacity = pool->capacity;
+}
+
+oligo_internode_pool_t* oligo_internode_pool_create(uint32_t capacity) {
+    if (capacity == 0) return NULL;
+
+    // Round up to nearest 64 for bitmap alignment
+    uint32_t aligned_capacity = ((capacity + 63) / 64) * 64;
+    uint32_t num_bitmap_words = aligned_capacity / 64;
+
+    oligo_internode_pool_t* pool = (oligo_internode_pool_t*)nimcp_malloc(sizeof(oligo_internode_pool_t));
+    if (!pool) return NULL;
+
+    pool->buffer = (internode_segment_t*)nimcp_malloc(aligned_capacity * sizeof(internode_segment_t));
+    if (!pool->buffer) {
+        nimcp_free(pool);
+        return NULL;
+    }
+
+    pool->bitmap = (uint64_t*)nimcp_malloc(num_bitmap_words * sizeof(uint64_t));
+    if (!pool->bitmap) {
+        nimcp_free(pool->buffer);
+        nimcp_free(pool);
+        return NULL;
+    }
+
+    // Initialize: all bits set to 1 (free)
+    for (uint32_t i = 0; i < num_bitmap_words; i++) {
+        pool->bitmap[i] = UINT64_MAX;
+    }
+
+    pool->capacity = aligned_capacity;
+    pool->num_bitmap_words = num_bitmap_words;
+    pool->allocated_count = 0;
+    nimcp_spinlock_init(&pool->lock);
+
+    memset(pool->buffer, 0, aligned_capacity * sizeof(internode_segment_t));
+
+    return pool;
+}
+
+void oligo_internode_pool_destroy(oligo_internode_pool_t* pool) {
+    if (!pool) return;
+
+    if (pool->buffer) nimcp_free(pool->buffer);
+    if (pool->bitmap) nimcp_free(pool->bitmap);
+    nimcp_free(pool);
+}
+
+internode_segment_t* oligo_internode_pool_alloc(oligo_internode_pool_t* pool) {
+    if (!pool) return NULL;
+
+    nimcp_spinlock_lock(&pool->lock);
+
+    // Find first word with free bit (O(1) amortized)
+    for (uint32_t w = 0; w < pool->num_bitmap_words; w++) {
+        if (pool->bitmap[w] != 0) {
+            // Find first set bit using __builtin_ctzll
+            int bit = __builtin_ctzll(pool->bitmap[w]);
+            uint32_t index = w * 64 + bit;
+
+            if (index < pool->capacity) {
+                // Clear bit (mark as allocated)
+                pool->bitmap[w] &= ~(1ULL << bit);
+                pool->allocated_count++;
+
+                nimcp_spinlock_unlock(&pool->lock);
+
+                // Zero initialize the slot
+                internode_segment_t* internode = &pool->buffer[index];
+                memset(internode, 0, sizeof(internode_segment_t));
+                return internode;
+            }
+        }
+    }
+
+    nimcp_spinlock_unlock(&pool->lock);
+    return NULL; // Pool exhausted
+}
+
+void oligo_internode_pool_free(oligo_internode_pool_t* pool, internode_segment_t* internode) {
+    if (!pool || !internode) return;
+
+    // Verify pointer is within pool bounds
+    if (internode < pool->buffer || internode >= pool->buffer + pool->capacity) {
+        return; // Not from this pool
+    }
+
+    nimcp_spinlock_lock(&pool->lock);
+
+    uint32_t index = (uint32_t)(internode - pool->buffer);
+    uint32_t word = index / 64;
+    uint32_t bit = index % 64;
+
+    // Set bit (mark as free)
+    pool->bitmap[word] |= (1ULL << bit);
+    if (pool->allocated_count > 0) {
+        pool->allocated_count--;
+    }
+
+    nimcp_spinlock_unlock(&pool->lock);
+}
+
+void oligo_internode_pool_stats(const oligo_internode_pool_t* pool,
+                                uint32_t* allocated, uint32_t* capacity) {
+    if (!pool) {
+        if (allocated) *allocated = 0;
+        if (capacity) *capacity = 0;
+        return;
+    }
+
+    if (allocated) *allocated = pool->allocated_count;
+    if (capacity) *capacity = pool->capacity;
+}
+
+//=============================================================================
+// COPY-ON-WRITE OPERATIONS (Phase 1.5+)
+//=============================================================================
+
+oligodendrocyte_t* oligodendrocyte_cow_copy(oligodendrocyte_t* oligo) {
+    if (!oligo) return NULL;
+
+    nimcp_spinlock_lock(&oligo->lock);
+
+    // Increment reference count on original
+    oligo->cow_ref_count++;
+
+    // Create shallow copy structure
+    oligodendrocyte_t* copy = (oligodendrocyte_t*)nimcp_malloc(sizeof(oligodendrocyte_t));
+    if (!copy) {
+        oligo->cow_ref_count--;
+        nimcp_spinlock_unlock(&oligo->lock);
+        return NULL;
+    }
+
+    // Copy all fields (shallow copy)
+    memcpy(copy, oligo, sizeof(oligodendrocyte_t));
+
+    // Set up CoW tracking
+    copy->cow_ref_count = 1;
+    copy->cow_modified = false;
+    copy->cow_original = oligo;
+
+    // Initialize lock for the copy
+    nimcp_spinlock_init(&copy->lock);
+
+    nimcp_spinlock_unlock(&oligo->lock);
+
+    return copy;
+}
+
+nimcp_result_t oligodendrocyte_cow_prepare_write(oligodendrocyte_t* oligo) {
+    if (!oligo) return NIMCP_ERROR_INVALID_PARAM;
+
+    nimcp_spinlock_lock(&oligo->lock);
+
+    // If already modified or not a CoW copy, nothing to do
+    if (oligo->cow_modified || oligo->cow_original == NULL) {
+        oligo->cow_modified = true;
+        nimcp_spinlock_unlock(&oligo->lock);
+        return NIMCP_SUCCESS;
+    }
+
+    // Need to deep copy the shared arrays
+    oligodendrocyte_t* original = (oligodendrocyte_t*)oligo->cow_original;
+
+    // Deep copy enhanced axon array
+    if (original->axons && original->max_axons > 0) {
+        oligo->axons = (myelinated_axon_t*)nimcp_malloc(original->max_axons * sizeof(myelinated_axon_t));
+        if (!oligo->axons) {
+            nimcp_spinlock_unlock(&oligo->lock);
+            return NIMCP_ERROR_MEMORY;
+        }
+        memcpy(oligo->axons, original->axons, original->max_axons * sizeof(myelinated_axon_t));
+
+        // Deep copy internodes for each axon
+        for (uint32_t i = 0; i < original->max_axons; i++) {
+            if (original->axons[i].internodes && original->axons[i].max_internodes > 0) {
+                oligo->axons[i].internodes = (internode_segment_t*)nimcp_malloc(
+                    original->axons[i].max_internodes * sizeof(internode_segment_t));
+                if (!oligo->axons[i].internodes) {
+                    // Rollback on failure
+                    for (uint32_t j = 0; j < i; j++) {
+                        if (oligo->axons[j].internodes) {
+                            nimcp_free(oligo->axons[j].internodes);
+                        }
+                    }
+                    nimcp_free(oligo->axons);
+                    oligo->axons = original->axons;
+                    nimcp_spinlock_unlock(&oligo->lock);
+                    return NIMCP_ERROR_MEMORY;
+                }
+                memcpy(oligo->axons[i].internodes, original->axons[i].internodes,
+                       original->axons[i].max_internodes * sizeof(internode_segment_t));
+            }
+        }
+    }
+
+    // Deep copy legacy arrays
+    if (original->myelinated_neuron_ids && original->max_axons > 0) {
+        oligo->myelinated_neuron_ids = (uint32_t*)nimcp_malloc(original->max_axons * sizeof(uint32_t));
+        if (oligo->myelinated_neuron_ids) {
+            memcpy(oligo->myelinated_neuron_ids, original->myelinated_neuron_ids,
+                   original->max_axons * sizeof(uint32_t));
+        }
+    }
+
+    if (original->myelination_levels && original->max_axons > 0) {
+        oligo->myelination_levels = (float*)nimcp_malloc(original->max_axons * sizeof(float));
+        if (oligo->myelination_levels) {
+            memcpy(oligo->myelination_levels, original->myelination_levels,
+                   original->max_axons * sizeof(float));
+        }
+    }
+
+    if (original->neuron_activity_history && original->max_axons > 0) {
+        oligo->neuron_activity_history = (float*)nimcp_malloc(original->max_axons * sizeof(float));
+        if (oligo->neuron_activity_history) {
+            memcpy(oligo->neuron_activity_history, original->neuron_activity_history,
+                   original->max_axons * sizeof(float));
+        }
+    }
+
+    if (original->last_spike_times && original->max_axons > 0) {
+        oligo->last_spike_times = (uint64_t*)nimcp_malloc(original->max_axons * sizeof(uint64_t));
+        if (oligo->last_spike_times) {
+            memcpy(oligo->last_spike_times, original->last_spike_times,
+                   original->max_axons * sizeof(uint64_t));
+        }
+    }
+
+    // Deep copy lactate delivery array
+    if (original->lactate_shuttle.axon_lactate_delivery && original->max_axons > 0) {
+        oligo->lactate_shuttle.axon_lactate_delivery = (float*)nimcp_malloc(
+            original->max_axons * sizeof(float));
+        if (oligo->lactate_shuttle.axon_lactate_delivery) {
+            memcpy(oligo->lactate_shuttle.axon_lactate_delivery,
+                   original->lactate_shuttle.axon_lactate_delivery,
+                   original->max_axons * sizeof(float));
+        }
+    }
+
+    oligo->cow_modified = true;
+
+    nimcp_spinlock_unlock(&oligo->lock);
+    return NIMCP_SUCCESS;
+}
+
+void oligodendrocyte_cow_release(oligodendrocyte_t* oligo) {
+    if (!oligo) return;
+
+    nimcp_spinlock_lock(&oligo->lock);
+
+    // Decrement reference count
+    if (oligo->cow_ref_count > 0) {
+        oligo->cow_ref_count--;
+    }
+
+    // If this is a CoW copy that was modified, decrement original's ref count
+    if (oligo->cow_original != NULL) {
+        oligodendrocyte_t* original = (oligodendrocyte_t*)oligo->cow_original;
+        nimcp_spinlock_lock(&original->lock);
+        if (original->cow_ref_count > 0) {
+            original->cow_ref_count--;
+        }
+        nimcp_spinlock_unlock(&original->lock);
+    }
+
+    nimcp_spinlock_unlock(&oligo->lock);
+}
+
+bool oligodendrocyte_is_cow_copy(const oligodendrocyte_t* oligo) {
+    if (!oligo) return false;
+    return oligo->cow_original != NULL;
 }
 
 //=============================================================================

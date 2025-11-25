@@ -56,6 +56,7 @@ extern "C" {
 #define NIMCP_DENDRITE_MAX_SPINES 2000         // Max spines per dendrite
 #define NIMCP_DENDRITE_MAX_CHILDREN 8          // Max children per segment
 #define NIMCP_DENDRITE_NETWORK_MAX_DENDRITES 100000
+#define NIMCP_DENDRITE_SPINE_POOL_SIZE 4096    // Memory pool for spines
 
 #define NIMCP_DENDRITE_DEFAULT_DIAMETER_UM 2.0f
 #define NIMCP_DENDRITE_MIN_DIAMETER_UM 0.5f
@@ -74,6 +75,32 @@ extern "C" {
 #define NIMCP_DENDRITE_LTP_THRESHOLD_DEFAULT 1.0f
 #define NIMCP_DENDRITE_LTD_THRESHOLD_DEFAULT 0.5f
 
+//-----------------------------------------------------------------------------
+// NMDA Spike and Active Properties Constants
+//-----------------------------------------------------------------------------
+#define NIMCP_NMDA_SPIKE_THRESHOLD_MV 20.0f    // NMDA spike initiation threshold
+#define NIMCP_NMDA_PLATEAU_DURATION_MS 100.0f  // Plateau potential duration
+#define NIMCP_NMDA_SPIKE_AMPLITUDE_MV 40.0f    // NMDA spike amplitude
+#define NIMCP_BAP_VELOCITY_UM_MS 500.0f        // Backpropagation velocity
+#define NIMCP_BAP_ATTENUATION_PER_UM 0.003f    // bAP attenuation per μm
+#define NIMCP_BAP_CALCIUM_FACTOR 0.5f          // Ca²⁺ influx from bAP
+
+//-----------------------------------------------------------------------------
+// STDP Constants
+//-----------------------------------------------------------------------------
+#define NIMCP_STDP_TAU_PLUS_MS 17.0f           // LTP time constant
+#define NIMCP_STDP_TAU_MINUS_MS 34.0f          // LTD time constant
+#define NIMCP_STDP_A_PLUS 0.005f               // LTP amplitude
+#define NIMCP_STDP_A_MINUS 0.00525f            // LTD amplitude (asymmetric)
+#define NIMCP_STDP_WINDOW_MS 100.0f            // STDP time window
+
+//-----------------------------------------------------------------------------
+// Spatial Clustering Constants
+//-----------------------------------------------------------------------------
+#define NIMCP_CLUSTER_RADIUS_UM 10.0f          // Cluster detection radius
+#define NIMCP_CLUSTER_MIN_SPINES 3             // Minimum spines for cluster
+#define NIMCP_CLUSTER_NONLINEAR_FACTOR 1.5f    // Nonlinear boost for clusters
+
 //=============================================================================
 // FORWARD DECLARATIONS
 //=============================================================================
@@ -82,6 +109,11 @@ typedef struct dendrite_struct dendrite_t;
 typedef struct dendrite_network_struct dendrite_network_t;
 typedef struct dendritic_spine_struct dendritic_spine_t;
 typedef struct dendritic_segment_struct dendritic_segment_t;
+typedef struct nmda_spike_state_struct nmda_spike_state_t;
+typedef struct bap_state_struct bap_state_t;
+typedef struct stdp_state_struct stdp_state_t;
+typedef struct spine_cluster_struct spine_cluster_t;
+typedef struct dendrite_spine_pool_struct dendrite_spine_pool_t;
 
 //=============================================================================
 // ENUMERATIONS
@@ -146,6 +178,134 @@ typedef enum {
     DENDRITE_SEGMENT_TERMINAL = 2,  // Distal terminal
     DENDRITE_SEGMENT_OBLIQUE = 3    // Oblique branch
 } dendrite_segment_type_t;
+
+//=============================================================================
+// ADVANCED PHYSIOLOGY STRUCTURES
+//=============================================================================
+
+/**
+ * @brief NMDA spike/plateau potential state
+ *
+ * WHAT: Models regenerative NMDA receptor-mediated dendritic spikes
+ * WHY:  NMDA spikes enable:
+ *       - Burst firing induction at soma
+ *       - Nonlinear integration for pattern detection
+ *       - Enhanced plasticity via prolonged calcium influx
+ * HOW:  Track spike state, duration, and calcium dynamics
+ *
+ * BIOLOGICAL:
+ * - Threshold: ~20mV depolarization with glutamate
+ * - Duration: 50-200ms (plateau potential)
+ * - Ca²⁺ influx: 5-10x passive response
+ * - Voltage-dependent Mg²⁺ block removal enables regeneration
+ */
+struct nmda_spike_state_struct {
+    bool active;                    // NMDA spike currently active
+    uint64_t onset_time;            // Spike onset timestamp (μs)
+    float duration_remaining_ms;    // Remaining plateau duration
+    float peak_voltage_mv;          // Peak voltage achieved
+    float calcium_influx_rate;      // Current Ca²⁺ influx (μM/ms)
+    uint32_t segment_id;            // Segment where spike initiated
+    float mg_block_factor;          // Mg²⁺ block (0=full, 1=unblocked)
+    float nmda_conductance;         // Current NMDA conductance (nS)
+};
+
+/**
+ * @brief Backpropagating action potential (bAP) state
+ *
+ * WHAT: Models action potential propagation from soma into dendrites
+ * WHY:  bAPs provide:
+ *       - Coincidence signal for STDP
+ *       - Dendritic calcium influx
+ *       - Burst firing facilitation
+ * HOW:  Track wavefront position and attenuation
+ *
+ * BIOLOGICAL:
+ * - Velocity: 300-500 μm/ms in apical dendrite
+ * - Attenuation: ~50% at 400 μm
+ * - Enhanced by A-type K+ current reduction
+ * - Boosted by dendritic Na+ channels
+ */
+struct bap_state_struct {
+    bool active;                    // bAP currently propagating
+    uint64_t onset_time;            // When AP fired at soma (μs)
+    float wavefront_position_um;    // Current wavefront distance from soma
+    float peak_amplitude_mv;        // Original AP amplitude
+    float current_amplitude_mv;     // Current attenuated amplitude
+    float velocity_um_ms;           // Propagation velocity
+    uint32_t segments_reached;      // Count of segments reached
+};
+
+/**
+ * @brief Spike-timing dependent plasticity (STDP) state per spine
+ *
+ * WHAT: Tracks pre/post spike timing for STDP computation
+ * WHY:  STDP is primary mechanism for:
+ *       - Hebbian learning ("neurons that fire together wire together")
+ *       - Temporal sequence learning
+ *       - Causal relationship detection
+ * HOW:  Exponential traces updated by spikes
+ *
+ * BIOLOGICAL:
+ * - Pre-before-post (Δt > 0): LTP (τ+ ≈ 17ms)
+ * - Post-before-pre (Δt < 0): LTD (τ- ≈ 34ms)
+ * - Asymmetric windows for causal learning
+ */
+struct stdp_state_struct {
+    float pre_trace;                // Presynaptic eligibility trace (0-1)
+    float post_trace;               // Postsynaptic eligibility trace (0-1)
+    uint64_t last_pre_spike;        // Last presynaptic spike time (μs)
+    uint64_t last_post_spike;       // Last postsynaptic spike time (μs)
+    float accumulated_ltp;          // Accumulated LTP signal
+    float accumulated_ltd;          // Accumulated LTD signal
+    bool eligible_for_update;       // Ready for weight update
+};
+
+/**
+ * @brief Spatial cluster of coactive spines
+ *
+ * WHAT: Group of nearby spines for nonlinear integration detection
+ * WHY:  Clustered inputs enable:
+ *       - Supralinear summation (1+1 > 2)
+ *       - NMDA spike generation
+ *       - Feature binding
+ * HOW:  Track member spines and cluster properties
+ *
+ * BIOLOGICAL:
+ * - Typical radius: 10-30 μm
+ * - Minimum cluster size: 3-5 spines
+ * - Nonlinear boost: 1.3-2x for clustered vs distributed
+ */
+struct spine_cluster_struct {
+    uint32_t spine_ids[16];         // Spines in this cluster (max 16)
+    uint32_t num_spines;            // Active spines in cluster
+    uint32_t segment_id;            // Segment containing cluster
+    float center_position_um;       // Cluster center on segment
+    float radius_um;                // Cluster radius
+    float total_input;              // Sum of clustered inputs
+    float nonlinear_output;         // Output after nonlinear boost
+    bool nmda_spike_eligible;       // Can trigger NMDA spike
+    uint64_t last_update_time;      // Last cluster update (μs)
+};
+
+/**
+ * @brief Memory pool for spine allocation (O(1) alloc/free)
+ *
+ * WHAT: Pre-allocated pool for spine structures
+ * WHY:  Eliminates malloc/free overhead for:
+ *       - High-frequency spine creation/destruction
+ *       - Deterministic allocation time
+ *       - Cache-friendly memory layout
+ * HOW:  Fixed-size blocks with bitmap allocation
+ */
+struct dendrite_spine_pool_struct {
+    dendritic_spine_t* spines;      // Pre-allocated spine array
+    uint64_t* allocation_bitmap;    // 1 bit per spine (1=allocated)
+    uint32_t capacity;              // Total spines in pool
+    uint32_t allocated_count;       // Currently allocated
+    uint32_t next_free_hint;        // Hint for next free slot
+    pthread_mutex_t lock;           // Thread safety
+};
 
 //=============================================================================
 // CONFIGURATION STRUCTURES
@@ -283,6 +443,14 @@ struct dendritic_spine_struct {
     // Activity
     uint64_t total_inputs;
     uint64_t last_input_time;
+
+    // STDP state for this spine
+    stdp_state_t stdp;
+
+    // Active conductances (spine-type specific)
+    float g_ampa;                   // AMPA conductance (nS)
+    float g_nmda;                   // NMDA conductance (nS)
+    float g_gaba;                   // GABA conductance (nS, for inhibitory)
 };
 
 //=============================================================================
@@ -342,6 +510,24 @@ struct dendritic_segment_struct {
     float g_k;                  // Potassium conductance (nS)
     float g_ca;                 // Calcium conductance (nS)
     bool has_active_properties; // Enable NMDA spikes, backprop
+
+    // Inter-segment coupling (cable theory)
+    float I_axial_parent;       // Axial current from parent (pA)
+    float I_axial_children;     // Axial current from children (pA)
+    float g_axial;              // Axial conductance (nS)
+
+    // Rall's 3/2 power rule for branching
+    float branch_power_ratio;   // d_parent^3/2 / sum(d_child^3/2)
+
+    // NMDA spike state for this segment
+    bool nmda_spike_active;
+    float nmda_spike_voltage;
+    float nmda_spike_remaining_ms;
+
+    // bAP state for this segment
+    bool bap_reached;
+    float bap_amplitude;
+    uint64_t bap_arrival_time;
 };
 
 //=============================================================================
@@ -418,6 +604,20 @@ struct dendrite_struct {
     //--- Pathology ---
     float damage;                  // Damage level (0-1)
     bool is_functional;            // Is dendrite functional?
+
+    //--- Advanced Physiology ---
+    nmda_spike_state_t nmda_state; // Current NMDA spike state
+    bap_state_t bap_state;         // Current bAP state
+    spine_cluster_t clusters[32];  // Detected spine clusters
+    uint32_t num_clusters;         // Active cluster count
+
+    //--- Memory Pool (O(1) spine allocation) ---
+    dendrite_spine_pool_t* spine_pool; // Pool for spine allocation
+    bool use_spine_pool;           // Enable pool allocation
+
+    //--- Copy-on-Write Support ---
+    uint32_t cow_ref_count;        // CoW reference counter
+    bool cow_modified;             // Modified since last CoW copy
 
     //--- Thread Safety ---
     pthread_mutex_t lock;
@@ -757,6 +957,263 @@ void dendrite_network_step(dendrite_network_t* network, float dt_ms, uint64_t ti
  * @return Statistics structure
  */
 dendrite_network_stats_t dendrite_network_get_stats(dendrite_network_t* network);
+
+//=============================================================================
+// API: NMDA SPIKES AND PLATEAU POTENTIALS
+//=============================================================================
+
+/**
+ * WHAT: Initiate NMDA spike at segment
+ * WHY:  Trigger regenerative dendritic spike for nonlinear integration
+ * HOW:  Check threshold, initiate plateau if conditions met
+ *
+ * @param dendrite Target dendrite
+ * @param segment_id Segment to initiate spike
+ * @param timestamp Current simulation time (μs)
+ * @return true if NMDA spike initiated
+ */
+bool dendrite_initiate_nmda_spike(dendrite_t* dendrite, uint32_t segment_id,
+                                   uint64_t timestamp);
+
+/**
+ * WHAT: Update NMDA spike state
+ * WHY:  Evolve plateau potential over time
+ * HOW:  Decay voltage, update calcium, check termination
+ *
+ * @param dendrite Target dendrite
+ * @param dt_ms Time step (ms)
+ */
+void dendrite_update_nmda_spike(dendrite_t* dendrite, float dt_ms);
+
+/**
+ * WHAT: Check if segment can generate NMDA spike
+ * WHY:  Test conditions for dendritic spike generation
+ * HOW:  Check voltage, glutamate, Mg²⁺ block
+ *
+ * @param dendrite Target dendrite
+ * @param segment_id Segment to test
+ * @return true if conditions met
+ */
+bool dendrite_can_generate_nmda_spike(dendrite_t* dendrite, uint32_t segment_id);
+
+//=============================================================================
+// API: BACKPROPAGATING ACTION POTENTIALS
+//=============================================================================
+
+/**
+ * WHAT: Initiate bAP from soma
+ * WHY:  Propagate action potential into dendrites for STDP
+ * HOW:  Set wavefront at soma, begin propagation
+ *
+ * @param dendrite Target dendrite
+ * @param amplitude_mv AP amplitude at soma (mV)
+ * @param timestamp Current simulation time (μs)
+ * @return true if bAP initiated
+ */
+bool dendrite_initiate_bap(dendrite_t* dendrite, float amplitude_mv,
+                            uint64_t timestamp);
+
+/**
+ * WHAT: Update bAP propagation
+ * WHY:  Advance wavefront through dendrite
+ * HOW:  Move wavefront, calculate attenuation, inject calcium
+ *
+ * @param dendrite Target dendrite
+ * @param dt_ms Time step (ms)
+ */
+void dendrite_update_bap(dendrite_t* dendrite, float dt_ms);
+
+/**
+ * WHAT: Check if bAP reached specific spine
+ * WHY:  Determine STDP timing at spine location
+ * HOW:  Compare wavefront position to spine location
+ *
+ * @param dendrite Target dendrite
+ * @param spine_id Spine to check
+ * @return true if bAP has reached this spine
+ */
+bool dendrite_bap_reached_spine(dendrite_t* dendrite, uint32_t spine_id);
+
+//=============================================================================
+// API: INTER-SEGMENT COUPLING (CABLE THEORY)
+//=============================================================================
+
+/**
+ * WHAT: Calculate axial current between segments
+ * WHY:  Implement cable theory for realistic current flow
+ * HOW:  Apply V_diff / R_axial between connected segments
+ *
+ * @param dendrite Target dendrite
+ * @param dt_ms Time step (ms)
+ */
+void dendrite_update_axial_currents(dendrite_t* dendrite, float dt_ms);
+
+/**
+ * WHAT: Calculate Rall's 3/2 power ratio for branch point
+ * WHY:  Determine impedance matching at branch points
+ * HOW:  d_parent^(3/2) = sum(d_child^(3/2))
+ *
+ * @param dendrite Target dendrite
+ * @param segment_id Parent segment at branch point
+ * @return Ratio of parent to children (1.0 = impedance matched)
+ */
+float dendrite_calculate_rall_ratio(dendrite_t* dendrite, uint32_t segment_id);
+
+//=============================================================================
+// API: SPATIAL CLUSTERING DETECTION
+//=============================================================================
+
+/**
+ * WHAT: Detect clusters of recently active spines
+ * WHY:  Identify conditions for nonlinear summation
+ * HOW:  Group nearby active spines, compute cluster properties
+ *
+ * @param dendrite Target dendrite
+ * @param timestamp Current simulation time (μs)
+ */
+void dendrite_detect_spine_clusters(dendrite_t* dendrite, uint64_t timestamp);
+
+/**
+ * WHAT: Apply nonlinear boost to clustered inputs
+ * WHY:  Model supralinear summation of clustered synaptic inputs
+ * HOW:  Multiply cluster output by nonlinear factor
+ *
+ * @param dendrite Target dendrite
+ * @param cluster_id Cluster index
+ * @return Boosted output (pA)
+ */
+float dendrite_apply_cluster_boost(dendrite_t* dendrite, uint32_t cluster_id);
+
+//=============================================================================
+// API: STDP INTEGRATION
+//=============================================================================
+
+/**
+ * WHAT: Register presynaptic spike for STDP
+ * WHY:  Update pre-spike eligibility trace
+ * HOW:  Increment trace, record timing, check for LTD
+ *
+ * @param dendrite Target dendrite
+ * @param spine_id Spine receiving presynaptic input
+ * @param timestamp Spike arrival time (μs)
+ */
+void dendrite_stdp_pre_spike(dendrite_t* dendrite, uint32_t spine_id,
+                              uint64_t timestamp);
+
+/**
+ * WHAT: Register postsynaptic spike for STDP
+ * WHY:  Update post-spike eligibility trace (bAP)
+ * HOW:  Increment trace, record timing, check for LTP
+ *
+ * @param dendrite Target dendrite
+ * @param timestamp Spike time (μs)
+ */
+void dendrite_stdp_post_spike(dendrite_t* dendrite, uint64_t timestamp);
+
+/**
+ * WHAT: Apply accumulated STDP weight changes
+ * WHY:  Update synaptic weights based on timing-dependent plasticity
+ * HOW:  Integrate eligibility traces, apply bounded weight change
+ *
+ * @param dendrite Target dendrite
+ */
+void dendrite_stdp_apply_weight_changes(dendrite_t* dendrite);
+
+//=============================================================================
+// API: SPINE MEMORY POOL
+//=============================================================================
+
+/**
+ * WHAT: Create spine memory pool for dendrite
+ * WHY:  Enable O(1) spine allocation/deallocation
+ * HOW:  Pre-allocate spine array with bitmap tracking
+ *
+ * @param dendrite Target dendrite
+ * @param capacity Pool capacity (number of spines)
+ * @return true on success
+ */
+bool dendrite_create_spine_pool(dendrite_t* dendrite, uint32_t capacity);
+
+/**
+ * WHAT: Allocate spine from pool
+ * WHY:  O(1) spine creation without malloc
+ * HOW:  Find free slot in bitmap, return pointer
+ *
+ * @param dendrite Target dendrite
+ * @return Pointer to allocated spine or NULL if pool full
+ */
+dendritic_spine_t* dendrite_pool_alloc_spine(dendrite_t* dendrite);
+
+/**
+ * WHAT: Free spine back to pool
+ * WHY:  O(1) spine destruction without free
+ * HOW:  Clear bitmap bit, reset spine data
+ *
+ * @param dendrite Target dendrite
+ * @param spine Spine to free
+ */
+void dendrite_pool_free_spine(dendrite_t* dendrite, dendritic_spine_t* spine);
+
+//=============================================================================
+// API: COPY-ON-WRITE SUPPORT
+//=============================================================================
+
+/**
+ * WHAT: Create shallow copy of dendrite (CoW)
+ * WHY:  Efficient read-only sharing without full copy
+ * HOW:  Increment reference count, share data until write
+ *
+ * @param dendrite Source dendrite
+ * @return New dendrite handle sharing data with source
+ */
+dendrite_t* dendrite_cow_copy(dendrite_t* dendrite);
+
+/**
+ * WHAT: Prepare dendrite for write (CoW)
+ * WHY:  Ensure exclusive ownership before modification
+ * HOW:  If shared, make full copy; otherwise no-op
+ *
+ * @param dendrite Dendrite to prepare for writing
+ * @return true if now exclusively owned
+ */
+bool dendrite_cow_prepare_write(dendrite_t* dendrite);
+
+/**
+ * WHAT: Release CoW reference
+ * WHY:  Decrement reference count, free if zero
+ * HOW:  Atomic decrement, destroy if last reference
+ *
+ * @param dendrite Dendrite to release
+ */
+void dendrite_cow_release(dendrite_t* dendrite);
+
+//=============================================================================
+// API: SPINE-LEVEL INPUT PROCESSING
+//=============================================================================
+
+/**
+ * WHAT: Process input at specific spine
+ * WHY:  Apply spine-level filtering and dynamics
+ * HOW:  RC filtering, calcium dynamics, receptor activation
+ *
+ * @param dendrite Target dendrite
+ * @param spine_id Spine receiving input
+ * @param current Input current (pA)
+ * @param timestamp Current time (μs)
+ * @return Filtered current delivered to dendrite (pA)
+ */
+float dendrite_spine_process_input(dendrite_t* dendrite, uint32_t spine_id,
+                                    float current, uint64_t timestamp);
+
+/**
+ * WHAT: Update all spine conductances
+ * WHY:  Evolve AMPA, NMDA, GABA dynamics
+ * HOW:  Kinetic models for each receptor type
+ *
+ * @param dendrite Target dendrite
+ * @param dt_ms Time step (ms)
+ */
+void dendrite_update_spine_conductances(dendrite_t* dendrite, float dt_ms);
 
 #ifdef __cplusplus
 }

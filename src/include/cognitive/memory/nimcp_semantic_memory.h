@@ -88,6 +88,10 @@ typedef struct {
     uint64_t creation_time_ms;        // When concept was formed
     uint32_t access_count;            // How many times accessed
 
+    // Phase 1.5: Copy-on-Write support for efficient feature sharing
+    uint32_t* _cow_refcount;          /**< Shared reference count (NULL = owned) */
+    bool _cow_is_shallow;             /**< True if features pointer is shared */
+
 } semantic_concept_t;
 
 /**
@@ -163,6 +167,11 @@ typedef struct {
     uint64_t last_update_time_ms;
     uint64_t next_concept_id;
     uint64_t next_relation_id;
+
+    // Phase 1.5: Memory pools for hot-path allocations
+    void* concept_pool;               /**< Pool for concept structs */
+    void* relation_pool;              /**< Pool for relation structs */
+    void* feature_pool;               /**< Pool for feature vectors */
 
 } semantic_memory_system_t;
 

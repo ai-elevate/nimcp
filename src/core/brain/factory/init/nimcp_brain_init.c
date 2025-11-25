@@ -323,6 +323,14 @@ void nimcp_brain_factory_init_brain_config(brain_config_t* config, const char* t
     config->mirror_learning_rate = 0.01f;           // Hebbian association rate
     config->mirror_match_threshold = 0.7f;          // Action recognition threshold
 
+    // Global Workspace Architecture defaults (Global Workspace Theory - Baars 1988)
+    config->enable_global_workspace = true;         // Enable by default for conscious access
+    config->workspace_capacity_dim = 256;           // Content dimension (256 floats)
+    config->workspace_ignition_threshold = 0.6f;    // Threshold for conscious access
+    config->workspace_refractory_ms = 50;           // 50ms refractory between broadcasts
+    config->workspace_enable_history = true;        // Enable history tracking
+    config->workspace_history_depth = 10;           // Last 10 broadcasts
+
     // Phase 11 Enhancement C1.1: Quantum Annealing defaults
     config->enable_quantum_annealing = false;       // Disable by default (opt-in for optimization)
     config->annealing_temperature_init = 10.0f;     // Initial exploration temperature
@@ -527,6 +535,16 @@ adaptive_network_t nimcp_brain_factory_create_brain_network(uint32_t num_inputs,
  */
 bool nimcp_brain_factory_init_output_labels(brain_t brain, uint32_t num_outputs)
 {
+    if (!brain) {
+        set_error("NULL brain pointer in init_output_labels");
+        return false;
+    }
+    if (num_outputs == 0) {
+        // Zero outputs - no allocation needed, but set to NULL
+        brain->output_labels = NULL;
+        brain->num_output_labels = 0;
+        return true;
+    }
     brain->output_labels = nimcp_calloc(num_outputs, sizeof(char*));
     if (!brain->output_labels) {
         set_error("Failed to allocate output labels");

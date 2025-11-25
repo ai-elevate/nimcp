@@ -19,6 +19,7 @@
 
 #include "cognitive/memory/nimcp_engram.h"
 #include "utils/memory/nimcp_memory.h"
+#include "utils/memory/nimcp_memory_pool.h"
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
@@ -155,6 +156,16 @@ engram_system_t* engram_system_create(void) {
     system->integrate_with_emotion = true;
     system->integrate_with_consolidation = true;
 
+    // Phase 1.5: Initialize memory pool for engram allocations
+    memory_pool_config_t engram_pool_config = {
+        .block_size = sizeof(memory_engram_t),
+        .num_blocks = ENGRAM_INITIAL_CAPACITY,  // Match initial array capacity
+        .alignment = 16,   // SIMD alignment
+        .enable_tracking = false,
+        .enable_guard_pages = false
+    };
+    system->engram_pool = memory_pool_create(&engram_pool_config);
+
     return system;
 }
 
@@ -167,6 +178,11 @@ void engram_system_destroy(engram_system_t* system) {
 
     if (system->engrams) {
         nimcp_free(system->engrams);
+    }
+
+    // Phase 1.5: Destroy memory pool
+    if (system->engram_pool) {
+        memory_pool_destroy(system->engram_pool);
     }
 
     nimcp_free(system);

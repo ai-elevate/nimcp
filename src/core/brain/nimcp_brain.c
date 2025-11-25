@@ -659,6 +659,14 @@ static void init_brain_config(brain_config_t* config, const char* task_name, bra
     config->mirror_learning_rate = 0.01f;           // Hebbian association rate
     config->mirror_match_threshold = 0.7f;          // Action recognition threshold
 
+    // Global Workspace Architecture defaults (Global Workspace Theory - Baars 1988)
+    config->enable_global_workspace = true;         // Enable by default for conscious access
+    config->workspace_capacity_dim = 256;           // Content dimension (256 floats)
+    config->workspace_ignition_threshold = 0.6f;    // Threshold for conscious access
+    config->workspace_refractory_ms = 50;           // 50ms refractory between broadcasts
+    config->workspace_enable_history = true;        // Enable history tracking
+    config->workspace_history_depth = 10;           // Last 10 broadcasts
+
     // Phase 11 Enhancement C1.1: Quantum Annealing defaults
     config->enable_quantum_annealing = false;       // Disable by default (opt-in for optimization)
     config->annealing_temperature_init = 10.0f;     // Initial exploration temperature
@@ -1016,6 +1024,16 @@ adaptive_network_t create_brain_network(uint32_t num_inputs, uint32_t num_output
  */
 bool init_output_labels(brain_t brain, uint32_t num_outputs)
 {
+    if (!brain) {
+        set_error("NULL brain pointer in init_output_labels");
+        return false;
+    }
+    if (num_outputs == 0) {
+        // Zero outputs - no allocation needed, but set to NULL
+        brain->output_labels = NULL;
+        brain->num_output_labels = 0;
+        return true;
+    }
     brain->output_labels = nimcp_calloc(num_outputs, sizeof(char*));
     if (!brain->output_labels) {
         set_error("Failed to allocate output labels");
@@ -1861,6 +1879,20 @@ void brain_destroy(brain_t brain)
         brain->event_bus = NULL;
     }
 
+    // Phase 1.5: Cleanup memory pools for hot-path allocations
+    if (brain->decision_struct_pool) {
+        memory_pool_destroy(brain->decision_struct_pool);
+        brain->decision_struct_pool = NULL;
+    }
+    if (brain->output_vector_pool) {
+        memory_pool_destroy(brain->output_vector_pool);
+        brain->output_vector_pool = NULL;
+    }
+    if (brain->active_neuron_ids_pool) {
+        memory_pool_destroy(brain->active_neuron_ids_pool);
+        brain->active_neuron_ids_pool = NULL;
+    }
+
     clear_cache(brain);
 
     // Destroy cache mutex
@@ -2319,6 +2351,8 @@ static float quantum_weight_energy(const float* weights, uint32_t dim, void* use
  * @brief Allocate decision structure
  *
  * COMPLEXITY: O(1)
+ *
+ * Phase 1.5: Initializes CoW fields - newly allocated decisions own their data
  */
 static brain_decision_t* allocate_decision(uint32_t output_size)
 {
@@ -2334,22 +2368,91 @@ static brain_decision_t* allocate_decision(uint32_t output_size)
         return NULL;
     }
 
+    // Phase 1.5: Initialize CoW fields - this decision owns its data
+    decision->_cow_refcount = NULL;    // NULL means we own the data
+    decision->_cow_is_shallow = false; // Not a shallow copy
+
     return decision;
 }
 
 /**
- * @brief Deep copy a decision structure
+ * @brief Copy a decision structure using Copy-on-Write (CoW) semantics
  *
- * WHAT: Creates an independent copy of a decision
+ * WHAT: Creates a shallow copy that shares data with the original
  * WHY: Cached decisions must not be freed by caller - return copies instead
- * HOW: Allocates new decision and copies all fields including dynamically allocated arrays
+ *      Phase 1.5 CoW: Avoid expensive deep copies for read-only access
+ * HOW: Share pointers with reference counting - only copy when modified
+ *
+ * COMPLEXITY: O(1) - just pointer sharing and refcount increment
+ *             (vs O(n) for deep copy where n = output_size + num_active_neurons)
+ *
+ * THREAD SAFETY: Uses atomic operations for refcount updates
+ *
+ * @param source Decision to copy
+ * @return New decision copy (shallow CoW), or NULL on allocation failure
+ */
+brain_decision_t* copy_decision(const brain_decision_t* source)
+{
+    if (!source)
+        return NULL;
+
+    // Allocate new decision structure for the shallow copy
+    brain_decision_t* copy = nimcp_calloc(1, sizeof(brain_decision_t));
+    if (!copy)
+        return NULL;
+
+    // Copy all scalar fields (includes label, explanation, confidence, etc.)
+    memcpy(copy, source, sizeof(brain_decision_t));
+
+    // Phase 1.5 CoW: Share pointers instead of deep copying
+    // The copy shares the same output_vector and active_neuron_ids as source
+
+    // Setup reference counting for the shared data
+    if (!source->_cow_refcount) {
+        // Source owns its data - create a new refcount for sharing
+        // Cast away const since we're modifying refcount metadata, not decision data
+        brain_decision_t* mutable_source = (brain_decision_t*)source;
+
+        mutable_source->_cow_refcount = nimcp_malloc(sizeof(uint32_t));
+        if (!mutable_source->_cow_refcount) {
+            nimcp_free(copy);
+            return NULL;
+        }
+        // Initial refcount = 2 (source + this copy)
+        *mutable_source->_cow_refcount = 2;
+        mutable_source->_cow_is_shallow = true;  // Source is now sharing
+
+        copy->_cow_refcount = mutable_source->_cow_refcount;
+        copy->_cow_is_shallow = true;
+    } else {
+        // Source already has a refcount - just increment it
+        // Use atomic increment for thread safety
+        __atomic_add_fetch(source->_cow_refcount, 1, __ATOMIC_SEQ_CST);
+
+        copy->_cow_refcount = source->_cow_refcount;
+        copy->_cow_is_shallow = true;
+    }
+
+    // Pointers are shared (already copied via memcpy)
+    // copy->output_vector = source->output_vector (same pointer)
+    // copy->active_neuron_ids = source->active_neuron_ids (same pointer)
+
+    return copy;
+}
+
+/**
+ * @brief Create a deep copy of a decision (force copy, ignore CoW)
+ *
+ * WHAT: Creates an independent copy with its own memory
+ * WHY: Needed when caller intends to modify the decision data
+ * HOW: Allocates new arrays and copies all data
  *
  * COMPLEXITY: O(n) where n = output_size + num_active_neurons
  *
- * @param source Decision to copy
- * @return New decision copy, or NULL on allocation failure
+ * @param source Decision to deep copy
+ * @return New independent decision copy, or NULL on allocation failure
  */
-brain_decision_t* copy_decision(const brain_decision_t* source)
+brain_decision_t* copy_decision_deep(const brain_decision_t* source)
 {
     if (!source)
         return NULL;
@@ -2362,9 +2465,11 @@ brain_decision_t* copy_decision(const brain_decision_t* source)
     // Copy scalar fields
     memcpy(copy, source, sizeof(brain_decision_t));
 
-    // NULL out pointer fields to prevent accidental sharing
+    // NULL out pointer fields - we'll allocate fresh ones
     copy->output_vector = NULL;
     copy->active_neuron_ids = NULL;
+    copy->_cow_refcount = NULL;      // Deep copy owns its data
+    copy->_cow_is_shallow = false;
 
     // Deep copy output_vector
     if (source->output_vector && source->output_size > 0) {

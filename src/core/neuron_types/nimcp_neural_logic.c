@@ -13,6 +13,8 @@
 
 #include "nimcp_neural_logic.h"
 #include "utils/memory/nimcp_memory.h"
+#include "utils/memory/nimcp_memory_pool.h"  // Memory pool for O(1) allocations
+#include "utils/memory/nimcp_page_cow.h"     // Copy-on-Write for shallow copies
 #include "utils/logging/nimcp_logging.h"
 #include "utils/validation/nimcp_validate.h"
 #include "plasticity/neuromodulators/nimcp_neuromodulators.h"  // Neuromodulator integration
@@ -89,6 +91,19 @@ struct neural_logic_network_struct {
 
     // Neuromodulation
     brain_t brain;  /**< Brain reference for DA + ACh modulation */
+
+    // === Memory Pool for O(1) Synapse Allocation ===
+    // WHAT: Pre-allocated pool for logic_synapse_t structures
+    // WHY:  Synapse creation is hot path; avoid malloc overhead
+    // HOW:  Pool with block_size = sizeof(logic_synapse_t)
+    memory_pool_t synapse_pool;           /**< Pool for synapse allocations */
+
+    // === Copy-on-Write Support ===
+    // WHAT: Enable shallow copy of network with lazy duplication
+    // WHY:  Fast cloning for parallel inference or checkpointing
+    // HOW:  Reference counting on shared data, copy on modification
+    uint32_t* _cow_refcount;              /**< Reference count for CoW (NULL if owned) */
+    bool _cow_is_shallow;                 /**< True if this is a shallow copy */
 
     // GPU pointers (NULL if CPU fallback)
 #ifdef NIMCP_ENABLE_CUDA
@@ -220,6 +235,26 @@ NIMCP_EXPORT neural_logic_network_t neural_logic_create(
 
     network->total_synapses = 0;
 
+    // === Initialize Memory Pool for Synapses ===
+    // WHAT: Create O(1) allocation pool for logic_synapse_t
+    // WHY:  neural_logic_connect() is hot path; avoid malloc overhead
+    // HOW:  Pre-allocate ~10 synapses per neuron (typical connectivity)
+    memory_pool_config_t pool_config = memory_pool_default_config(
+        sizeof(logic_synapse_t),
+        config->max_logic_neurons * 10  // ~10 connections per neuron average
+    );
+    pool_config.alignment = 16;  // 16-byte alignment for cache efficiency
+    pool_config.enable_tracking = true;
+    network->synapse_pool = memory_pool_create(&pool_config);
+    if (!network->synapse_pool) {
+        NIMCP_LOGGING_WARN("Failed to create synapse pool, will use malloc fallback");
+        // Non-fatal: continue without pool (falls back to malloc)
+    }
+
+    // === Initialize Copy-on-Write Fields ===
+    network->_cow_refcount = NULL;
+    network->_cow_is_shallow = false;
+
     // Try to allocate GPU memory if enabled
     network->using_gpu = false;
 #ifdef NIMCP_ENABLE_CUDA
@@ -271,7 +306,20 @@ NIMCP_EXPORT void neural_logic_destroy(neural_logic_network_t network)
     if (!network) {
         return;
     }
-    
+
+    // === Handle Copy-on-Write Reference Counting ===
+    // If this is a shallow copy, decrement refcount
+    if (network->_cow_refcount) {
+        uint32_t old_count = __atomic_sub_fetch(network->_cow_refcount, 1, __ATOMIC_SEQ_CST);
+        if (old_count > 0) {
+            // Other references exist; only free this network struct
+            nimcp_free(network);
+            return;
+        }
+        // Last reference: proceed with full cleanup
+        nimcp_free(network->_cow_refcount);
+    }
+
     // Free GPU memory if allocated
 #ifdef NIMCP_ENABLE_CUDA
     if (network->using_gpu) {
@@ -284,20 +332,31 @@ NIMCP_EXPORT void neural_logic_destroy(neural_logic_network_t network)
         }
     }
 #endif
-    
+
     // Free connectivity structures
     if (network->outgoing_synapses) {
         for (uint32_t i = 0; i < network->neurons_capacity; i++) {
             logic_synapse_t* synapse = network->outgoing_synapses[i];
             while (synapse) {
                 logic_synapse_t* next = synapse->next;
-                nimcp_free(synapse);
+                // Use pool release if pool exists and owns this memory
+                if (network->synapse_pool && memory_pool_owns(network->synapse_pool, synapse)) {
+                    memory_pool_release(network->synapse_pool, synapse);
+                } else {
+                    nimcp_free(synapse);
+                }
                 synapse = next;
             }
         }
         nimcp_free(network->outgoing_synapses);
     }
     nimcp_free(network->synapse_counts);
+
+    // === Destroy Memory Pool ===
+    if (network->synapse_pool) {
+        memory_pool_destroy(network->synapse_pool);
+        network->synapse_pool = NULL;
+    }
 
     // Free host memory
     // BUGFIX: Free bound patterns allocated in neural_logic_bind_variable()
@@ -312,7 +371,8 @@ NIMCP_EXPORT void neural_logic_destroy(neural_logic_network_t network)
         nimcp_aligned_free(network->variables_host);
     }
 
-    nimcp_free(network->neurons_host);
+    // BUGFIX: neurons_host allocated with nimcp_aligned_alloc, must use aligned_free
+    nimcp_aligned_free(network->neurons_host);
     nimcp_free(network);
 }
 
@@ -1123,8 +1183,15 @@ NIMCP_EXPORT bool neural_logic_connect(
         return false;
     }
 
-    // Allocate new synapse
-    logic_synapse_t* synapse = (logic_synapse_t*)nimcp_malloc(sizeof(logic_synapse_t));
+    // === Allocate Synapse from Pool (O(1)) or Fallback to malloc ===
+    logic_synapse_t* synapse = NULL;
+    if (network->synapse_pool) {
+        synapse = (logic_synapse_t*)memory_pool_acquire(network->synapse_pool);
+    }
+    if (!synapse) {
+        // Pool exhausted or doesn't exist - fallback to malloc
+        synapse = (logic_synapse_t*)nimcp_malloc(sizeof(logic_synapse_t));
+    }
     if (!nimcp_validate_pointer(synapse, "synapse")) {
         NIMCP_LOGGING_ERROR("Failed to allocate synapse: %u -> %u", source_id, target_id);
         return false;

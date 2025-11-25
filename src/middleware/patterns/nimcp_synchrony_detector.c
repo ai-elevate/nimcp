@@ -4,6 +4,7 @@
 
 #include "middleware/patterns/nimcp_synchrony_detector.h"
 #include "utils/memory/nimcp_memory.h"
+#include "utils/memory/nimcp_memory_pool.h"
 #include <string.h>
 #include <math.h>
 #include <stdio.h>
@@ -55,6 +56,12 @@ struct synchrony_detector {
     // Per-neuron spike counts (for coincidence detection)
     uint32_t* neuron_spike_counts;
     double* last_spike_times;
+
+    // Memory pools for hot-path allocations (Phase 1.5)
+    // Pool for neuron_fired bool arrays in compute_coincidence_rate and detect_critical_events
+    memory_pool_t neuron_bool_pool;
+    // Pool for spike_counts uint32_t arrays in compute_mean_correlation
+    memory_pool_t spike_counts_pool;
 
     // Statistics
     uint64_t total_spikes;
@@ -132,30 +139,32 @@ static void window_add_spike(spike_window_t* window, uint32_t neuron_id,
  * WHY:  Measure population-level synchrony
  * HOW:  Count unique neurons firing within ±coincidence_window of each spike
  */
-static float compute_coincidence_rate(const spike_window_t* window,
-                                      uint32_t num_neurons,
+static float compute_coincidence_rate(synchrony_detector_t* detector,
+                                      const spike_window_t* window,
                                       float coincidence_window_ms) {
-    if (!window || window->count == 0 || num_neurons == 0) {
+    if (!detector || !window || window->count == 0 || detector->num_neurons == 0) {
         return 0.0f;
     }
 
-    // Count unique neurons that fired
-    bool* neuron_fired = (bool*)nimcp_calloc(num_neurons, sizeof(bool));
+    // Count unique neurons that fired - Phase 1.5 O(1) pool allocation
+    bool* neuron_fired = (bool*)memory_pool_acquire(detector->neuron_bool_pool);
     if (!neuron_fired) return 0.0f;
+    memset(neuron_fired, 0, detector->num_neurons * sizeof(bool));
 
     uint32_t neurons_fired = 0;
     for (uint32_t i = 0; i < window->count; i++) {
         uint32_t idx = (window->head + window->capacity - window->count + i) % window->capacity;
         uint32_t nid = window->spikes[idx].neuron_id;
-        if (nid < num_neurons && !neuron_fired[nid]) {
+        if (nid < detector->num_neurons && !neuron_fired[nid]) {
             neuron_fired[nid] = true;
             neurons_fired++;
         }
     }
 
-    nimcp_free(neuron_fired);
+    // Release back to pool (Phase 1.5)
+    memory_pool_release(detector->neuron_bool_pool, neuron_fired);
 
-    return (float)neurons_fired / (float)num_neurons;
+    return (float)neurons_fired / (float)detector->num_neurons;
 }
 
 /**
@@ -165,36 +174,38 @@ static float compute_coincidence_rate(const spike_window_t* window,
  * WHY:  Overall synchrony measure across population
  * HOW:  Sample-based correlation for efficiency (not all pairs)
  */
-static float compute_mean_correlation(const spike_window_t* window,
-                                      uint32_t num_neurons) {
-    if (!window || window->count < 2 || num_neurons < 2) {
+static float compute_mean_correlation(synchrony_detector_t* detector,
+                                      const spike_window_t* window) {
+    if (!detector || !window || window->count < 2 || detector->num_neurons < 2) {
         return 0.0f;
     }
 
-    // Build per-neuron spike lists
-    uint32_t* spike_counts = (uint32_t*)nimcp_calloc(num_neurons, sizeof(uint32_t));
+    // Build per-neuron spike lists - Phase 1.5 O(1) pool allocation
+    uint32_t* spike_counts = (uint32_t*)memory_pool_acquire(detector->spike_counts_pool);
     if (!spike_counts) return 0.0f;
+    memset(spike_counts, 0, detector->num_neurons * sizeof(uint32_t));
 
     // Count spikes per neuron
     for (uint32_t i = 0; i < window->count; i++) {
         uint32_t idx = (window->head + window->capacity - window->count + i) % window->capacity;
         uint32_t nid = window->spikes[idx].neuron_id;
-        if (nid < num_neurons) {
+        if (nid < detector->num_neurons) {
             spike_counts[nid]++;
         }
     }
 
     // Compute mean and variance
-    float mean = (float)window->count / (float)num_neurons;
+    float mean = (float)window->count / (float)detector->num_neurons;
     float variance = 0.0f;
 
-    for (uint32_t i = 0; i < num_neurons; i++) {
+    for (uint32_t i = 0; i < detector->num_neurons; i++) {
         float diff = (float)spike_counts[i] - mean;
         variance += diff * diff;
     }
-    variance /= (float)num_neurons;
+    variance /= (float)detector->num_neurons;
 
-    nimcp_free(spike_counts);
+    // Release back to pool (Phase 1.5)
+    memory_pool_release(detector->spike_counts_pool, spike_counts);
 
     // Return normalized variance as correlation proxy
     // High variance = low correlation, low variance = high correlation
@@ -206,22 +217,25 @@ static float compute_mean_correlation(const spike_window_t* window,
 /**
  * @brief Detect critical events (>threshold population firing)
  */
-static uint32_t detect_critical_events(const spike_window_t* window,
-                                       uint32_t num_neurons,
+static uint32_t detect_critical_events(synchrony_detector_t* detector,
+                                       const spike_window_t* window,
                                        float threshold,
                                        float coincidence_window_ms) {
-    if (!window || window->count == 0) return 0;
+    if (!detector || !window || window->count == 0) return 0;
 
     uint32_t critical_count = 0;
+
+    // Acquire work buffer once before loop - Phase 1.5 O(1) pool allocation
+    bool* fired = (bool*)memory_pool_acquire(detector->neuron_bool_pool);
+    if (!fired) return 0;
 
     // Sliding window within the main window
     for (uint32_t i = 0; i < window->count; i++) {
         uint32_t idx = (window->head + window->capacity - window->count + i) % window->capacity;
         double center_time = window->spikes[idx].timestamp_ms;
 
-        // Count neurons firing within coincidence window of this spike
-        bool* fired = (bool*)nimcp_calloc(num_neurons, sizeof(bool));
-        if (!fired) continue;
+        // Clear and reuse buffer (much faster than alloc/free per iteration)
+        memset(fired, 0, detector->num_neurons * sizeof(bool));
 
         uint32_t local_count = 0;
         for (uint32_t j = 0; j < window->count; j++) {
@@ -230,20 +244,21 @@ static uint32_t detect_critical_events(const spike_window_t* window,
 
             if (dt <= coincidence_window_ms) {
                 uint32_t nid = window->spikes[jdx].neuron_id;
-                if (nid < num_neurons && !fired[nid]) {
+                if (nid < detector->num_neurons && !fired[nid]) {
                     fired[nid] = true;
                     local_count++;
                 }
             }
         }
 
-        float fraction = (float)local_count / (float)num_neurons;
+        float fraction = (float)local_count / (float)detector->num_neurons;
         if (fraction >= threshold) {
             critical_count++;
         }
-
-        nimcp_free(fired);
     }
+
+    // Release back to pool (Phase 1.5)
+    memory_pool_release(detector->neuron_bool_pool, fired);
 
     return critical_count;
 }
@@ -309,6 +324,32 @@ synchrony_detector_t* synchrony_detector_create(const synchrony_detector_config_
         return NULL;
     }
 
+    // Initialize memory pools for hot-path allocations (Phase 1.5)
+    // Pool for neuron_fired bool arrays - 4 blocks for concurrent detection calls
+    memory_pool_config_t bool_pool_config = {
+        .block_size = config->num_neurons * sizeof(bool),
+        .num_blocks = 4,
+        .alignment = 16,  // SIMD alignment
+        .enable_tracking = false,
+        .enable_guard_pages = false
+    };
+    detector->neuron_bool_pool = memory_pool_create(&bool_pool_config);
+
+    // Pool for spike_counts uint32_t arrays - 2 blocks for correlation computation
+    memory_pool_config_t counts_pool_config = {
+        .block_size = config->num_neurons * sizeof(uint32_t),
+        .num_blocks = 2,
+        .alignment = 16,
+        .enable_tracking = false,
+        .enable_guard_pages = false
+    };
+    detector->spike_counts_pool = memory_pool_create(&counts_pool_config);
+
+    if (!detector->neuron_bool_pool || !detector->spike_counts_pool) {
+        synchrony_detector_destroy(detector);
+        return NULL;
+    }
+
     // Initialize statistics
     detector->total_spikes = 0;
     detector->total_critical_events = 0;
@@ -329,6 +370,10 @@ void synchrony_detector_destroy(synchrony_detector_t* detector) {
     // Free per-neuron data
     nimcp_free(detector->neuron_spike_counts);
     nimcp_free(detector->last_spike_times);
+
+    // Destroy memory pools (Phase 1.5)
+    memory_pool_destroy(detector->neuron_bool_pool);
+    memory_pool_destroy(detector->spike_counts_pool);
 
     // Free detector
     nimcp_free(detector);
@@ -368,9 +413,10 @@ bool synchrony_detector_detect(synchrony_detector_t* detector,
     result->window_duration_ms = window->window_size_ms;
     result->total_neurons = detector->num_neurons;
 
-    // Count neurons that fired
-    bool* neuron_fired = (bool*)nimcp_calloc(detector->num_neurons, sizeof(bool));
+    // Count neurons that fired - Phase 1.5 O(1) pool allocation
+    bool* neuron_fired = (bool*)memory_pool_acquire(detector->neuron_bool_pool);
     if (!neuron_fired) return false;
+    memset(neuron_fired, 0, detector->num_neurons * sizeof(bool));
 
     for (uint32_t i = 0; i < window->count; i++) {
         uint32_t idx = (window->head + window->capacity - window->count + i) % window->capacity;
@@ -384,25 +430,25 @@ bool synchrony_detector_detect(synchrony_detector_t* detector,
     for (uint32_t i = 0; i < detector->num_neurons; i++) {
         if (neuron_fired[i]) neurons_firing++;
     }
-    nimcp_free(neuron_fired);
+    memory_pool_release(detector->neuron_bool_pool, neuron_fired);
 
     result->neurons_firing = neurons_firing;
 
     // Compute coincidence rate
     if (detector->config.enable_coincidence) {
         result->coincidence_rate = compute_coincidence_rate(
-            window, detector->num_neurons, detector->config.coincidence_window_ms);
+            detector, window, detector->config.coincidence_window_ms);
     }
 
     // Compute mean correlation
     if (detector->config.enable_correlation) {
-        result->mean_correlation = compute_mean_correlation(window, detector->num_neurons);
+        result->mean_correlation = compute_mean_correlation(detector, window);
     }
 
     // Detect critical events
     if (detector->config.enable_critical_detection) {
         result->critical_events = detect_critical_events(
-            window, detector->num_neurons, detector->config.critical_threshold,
+            detector, window, detector->config.critical_threshold,
             detector->config.coincidence_window_ms);
 
         if (result->critical_events > 0) {

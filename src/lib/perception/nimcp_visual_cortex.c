@@ -13,6 +13,8 @@
 
 #include "include/perception/nimcp_visual_cortex.h"
 #include "utils/memory/nimcp_memory.h"
+#include "utils/memory/nimcp_memory_pool.h"  // Memory pool for O(1) allocations
+#include "utils/memory/nimcp_page_cow.h"     // Copy-on-Write for shallow copies
 #include "utils/validation/nimcp_validate.h"
 #include "utils/logging/nimcp_logging.h"
 #include "plasticity/neuromodulators/nimcp_neuromodulators.h"  // Neuromodulator integration
@@ -667,6 +669,13 @@ struct visual_cortex_struct {
     // Statistics
     uint32_t images_processed;
     double total_processing_time;
+
+    // === Memory Pool for O(1) Visual Memory Allocation ===
+    memory_pool_t memory_pool;            /**< Pool for visual memory entries */
+
+    // === Copy-on-Write Support ===
+    uint32_t* _cow_refcount;              /**< Reference count for CoW (NULL if owned) */
+    bool _cow_is_shallow;                 /**< True if this is a shallow copy */
 };
 
 /**
@@ -882,6 +891,23 @@ visual_cortex_t* visual_cortex_create(const visual_cortex_config_t* config)
         }
     }
 
+    // === Initialize Memory Pool for O(1) Visual Memory Allocation ===
+    memory_pool_config_t mem_pool_config = memory_pool_default_config(
+        sizeof(visual_memory_t),
+        MAX_VISUAL_MEMORIES  // Pool sized for maximum memories
+    );
+    mem_pool_config.alignment = 16;  // SIMD alignment for feature vectors
+    mem_pool_config.enable_tracking = true;
+
+    cortex->memory_pool = memory_pool_create(&mem_pool_config);
+    if (!cortex->memory_pool) {
+        NIMCP_LOGGING_WARN("Visual cortex: Failed to create memory pool, using malloc fallback");
+    }
+
+    // Initialize CoW fields (owned by default)
+    cortex->_cow_refcount = NULL;
+    cortex->_cow_is_shallow = false;
+
     return cortex;
 }
 
@@ -892,6 +918,19 @@ void visual_cortex_destroy(visual_cortex_t* cortex)
 {
     if (!cortex) {
         return;
+    }
+
+    // === CoW Reference Counting ===
+    // If this is a shallow copy with shared data, decrement refcount
+    if (cortex->_cow_refcount) {
+        uint32_t old_count = __atomic_sub_fetch(cortex->_cow_refcount, 1, __ATOMIC_SEQ_CST);
+        if (old_count > 0) {
+            // Other references exist - just free our handle
+            nimcp_free(cortex);
+            return;
+        }
+        // We're the last reference - free the refcount and continue cleanup
+        nimcp_free(cortex->_cow_refcount);
     }
 
     if (cortex->v1_layer) {
@@ -906,14 +945,24 @@ void visual_cortex_destroy(visual_cortex_t* cortex)
         nimcp_free(cortex->feature_weights);
     }
 
-    // Free visual memories
+    // Free visual memories (use pool if available)
     for (uint32_t i = 0; i < cortex->num_memories; i++) {
         if (cortex->memories[i]) {
             if (cortex->memories[i]->features) {
                 nimcp_free(cortex->memories[i]->features);
             }
-            nimcp_free(cortex->memories[i]);
+            // Check if memory came from pool or malloc
+            if (cortex->memory_pool && memory_pool_owns(cortex->memory_pool, cortex->memories[i])) {
+                memory_pool_release(cortex->memory_pool, cortex->memories[i]);
+            } else {
+                nimcp_free(cortex->memories[i]);
+            }
         }
+    }
+
+    // === Destroy Memory Pool ===
+    if (cortex->memory_pool) {
+        memory_pool_destroy(cortex->memory_pool);
     }
 
     // NIMCP 2.7 Phase 8.5: Destroy internal recurrent network
@@ -1123,8 +1172,18 @@ bool visual_cortex_store_memory(
         return false;  // Memory full
     }
 
-    // Allocate memory entry
-    visual_memory_t* memory = (visual_memory_t*)nimcp_calloc(1, sizeof(visual_memory_t));
+    // === Allocate memory entry (pool with malloc fallback) ===
+    visual_memory_t* memory = NULL;
+    if (cortex->memory_pool) {
+        memory = (visual_memory_t*)memory_pool_acquire(cortex->memory_pool);
+        if (memory) {
+            memset(memory, 0, sizeof(visual_memory_t));
+        }
+    }
+    // Fallback to malloc if pool exhausted or unavailable
+    if (!memory) {
+        memory = (visual_memory_t*)nimcp_calloc(1, sizeof(visual_memory_t));
+    }
     if (!nimcp_validate_pointer(memory, "memory")) {
         NIMCP_LOGGING_ERROR("Failed to allocate visual memory entry");
         return false;
@@ -1134,7 +1193,12 @@ bool visual_cortex_store_memory(
     memory->features = (float*)nimcp_calloc(cortex->feature_dim, sizeof(float));
     if (!nimcp_validate_pointer(memory->features, "memory->features")) {
         NIMCP_LOGGING_ERROR("Failed to allocate visual memory features");
-        nimcp_free(memory);
+        // Release memory to appropriate allocator
+        if (cortex->memory_pool && memory_pool_owns(cortex->memory_pool, memory)) {
+            memory_pool_release(cortex->memory_pool, memory);
+        } else {
+            nimcp_free(memory);
+        }
         return false;
     }
 

@@ -80,6 +80,16 @@ extern "C" {
 #define NIMCP_MICROGLIA_DEFAULT_CAPACITY 1000
 
 //-----------------------------------------------------------------------------
+// Memory Pool Parameters (Phase 1.5+)
+//-----------------------------------------------------------------------------
+
+/** @brief Pool size for monitored synapse structures */
+#define NIMCP_MICROGLIA_SYNAPSE_POOL_SIZE 2048
+
+/** @brief Pool block size (64 entries per block for bitmap allocation) */
+#define NIMCP_MICROGLIA_POOL_BLOCK_SIZE 64
+
+//-----------------------------------------------------------------------------
 // State Transition Parameters (RK4 ODE)
 //-----------------------------------------------------------------------------
 
@@ -229,6 +239,21 @@ typedef struct {
 } monitored_synapse_t;
 
 /**
+ * @brief Memory pool for monitored synapse structures (Phase 1.5+)
+ *
+ * Pre-allocated pool with O(1) bitmap-based allocation to avoid
+ * malloc/free in hot paths during synapse monitoring operations.
+ */
+typedef struct {
+    monitored_synapse_t* buffer;     /**< Pre-allocated synapse array */
+    uint64_t* bitmap;                /**< Bitmap for free/allocated tracking (1=free) */
+    uint32_t capacity;               /**< Total slots in pool */
+    uint32_t num_bitmap_words;       /**< Number of 64-bit bitmap words */
+    uint32_t allocated_count;        /**< Number of currently allocated slots */
+    nimcp_spinlock_t lock;           /**< Thread-safe access */
+} microglia_synapse_pool_t;
+
+/**
  * @brief Microglia cell state (Enhanced)
  *
  * Models a single microglia with full biological accuracy:
@@ -293,6 +318,13 @@ typedef struct {
     // Thread Safety
     //-------------------------------------------------------------------------
     nimcp_spinlock_t lock;               /**< Lock for concurrent access */
+
+    //-------------------------------------------------------------------------
+    // Copy-on-Write Support (Phase 1.5+)
+    //-------------------------------------------------------------------------
+    uint32_t cow_ref_count;              /**< Reference count for CoW */
+    bool cow_modified;                   /**< True if modified since copy */
+    void* cow_original;                  /**< Pointer to original if this is a copy */
 } microglia_t;
 
 /**
@@ -345,6 +377,11 @@ typedef struct {
     // Thread Safety
     //-------------------------------------------------------------------------
     nimcp_mutex_t lock;                  /**< Network-level lock */
+
+    //-------------------------------------------------------------------------
+    // Memory Pool (Phase 1.5+)
+    //-------------------------------------------------------------------------
+    microglia_synapse_pool_t* synapse_pool;  /**< Shared pool for synapse data */
 } microglia_network_t;
 
 /**
@@ -819,6 +856,92 @@ const char* microglia_state_to_string(microglia_state_t state);
  * @return Cytokine name string
  */
 const char* cytokine_type_to_string(cytokine_type_t type);
+
+//=============================================================================
+// MEMORY POOL FUNCTIONS (Phase 1.5+)
+//=============================================================================
+
+/**
+ * @brief Create a synapse memory pool
+ *
+ * @param capacity Number of synapse slots to pre-allocate
+ *
+ * @return Pool handle or NULL on failure
+ */
+microglia_synapse_pool_t* microglia_synapse_pool_create(uint32_t capacity);
+
+/**
+ * @brief Destroy a synapse memory pool
+ *
+ * @param pool Pool to destroy (NULL safe)
+ */
+void microglia_synapse_pool_destroy(microglia_synapse_pool_t* pool);
+
+/**
+ * @brief Allocate a synapse from the pool
+ *
+ * @param pool Memory pool
+ *
+ * @return Pointer to synapse or NULL if pool exhausted
+ */
+monitored_synapse_t* microglia_synapse_pool_alloc(microglia_synapse_pool_t* pool);
+
+/**
+ * @brief Return a synapse to the pool
+ *
+ * @param pool Memory pool
+ * @param synapse Synapse to return
+ */
+void microglia_synapse_pool_free(microglia_synapse_pool_t* pool,
+                                  monitored_synapse_t* synapse);
+
+/**
+ * @brief Get pool utilization statistics
+ *
+ * @param pool Memory pool
+ * @param allocated Output: number of allocated slots
+ * @param capacity Output: total capacity
+ */
+void microglia_synapse_pool_stats(const microglia_synapse_pool_t* pool,
+                                   uint32_t* allocated, uint32_t* capacity);
+
+//=============================================================================
+// COPY-ON-WRITE FUNCTIONS (Phase 1.5+)
+//=============================================================================
+
+/**
+ * @brief Create a shallow copy of a microglia (CoW)
+ *
+ * @param mg Microglia to copy
+ *
+ * @return Shallow copy sharing data with original
+ */
+microglia_t* microglia_cow_copy(microglia_t* mg);
+
+/**
+ * @brief Prepare microglia for write (deep copy if shared)
+ *
+ * @param mg Microglia to prepare
+ *
+ * @return NIMCP_SUCCESS if ready for writing
+ */
+nimcp_result_t microglia_cow_prepare_write(microglia_t* mg);
+
+/**
+ * @brief Release a CoW reference
+ *
+ * @param mg Microglia to release
+ */
+void microglia_cow_release(microglia_t* mg);
+
+/**
+ * @brief Check if microglia is a CoW copy
+ *
+ * @param mg Microglia to check
+ *
+ * @return true if this is a CoW copy
+ */
+bool microglia_is_cow_copy(const microglia_t* mg);
 
 #ifdef __cplusplus
 }

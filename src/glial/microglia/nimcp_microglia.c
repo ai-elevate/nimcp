@@ -237,6 +237,11 @@ microglia_t* microglia_create(uint32_t id, float x, float y, float z,
     // Initialize lock
     nimcp_spinlock_init(&mg->lock);
 
+    // Initialize CoW fields (Phase 1.5+)
+    mg->cow_ref_count = 1;
+    mg->cow_modified = false;
+    mg->cow_original = NULL;
+
     return mg;
 }
 
@@ -334,6 +339,11 @@ microglia_network_t* microglia_network_create_enhanced(
 
     nimcp_mutex_init(&network->lock, NULL);
 
+    // Create synapse memory pool (Phase 1.5+)
+    network->synapse_pool = microglia_synapse_pool_create(
+        NIMCP_MICROGLIA_SYNAPSE_POOL_SIZE);
+    // Pool is optional - continue even if creation fails
+
     return network;
 }
 
@@ -375,6 +385,11 @@ void microglia_network_destroy(microglia_network_t* network)
     // Free cytokine field
     if (network->global_cytokine_field) {
         nimcp_free(network->global_cytokine_field);
+    }
+
+    // Destroy synapse memory pool (Phase 1.5+)
+    if (network->synapse_pool) {
+        microglia_synapse_pool_destroy(network->synapse_pool);
     }
 
     nimcp_mutex_destroy(&network->lock);
@@ -1260,4 +1275,283 @@ const char* cytokine_type_to_string(cytokine_type_t type)
         case CYTOKINE_TGFB: return "TGF-β";
         default: return "UNKNOWN";
     }
+}
+
+//=============================================================================
+// MEMORY POOL FUNCTIONS (Phase 1.5+)
+//=============================================================================
+
+microglia_synapse_pool_t* microglia_synapse_pool_create(uint32_t capacity)
+{
+    if (capacity == 0) {
+        capacity = NIMCP_MICROGLIA_SYNAPSE_POOL_SIZE;
+    }
+
+    microglia_synapse_pool_t* pool = (microglia_synapse_pool_t*)nimcp_malloc(
+        sizeof(microglia_synapse_pool_t));
+    if (!pool) {
+        return NULL;
+    }
+
+    memset(pool, 0, sizeof(microglia_synapse_pool_t));
+
+    // Allocate synapse buffer
+    pool->buffer = (monitored_synapse_t*)nimcp_malloc(
+        capacity * sizeof(monitored_synapse_t));
+    if (!pool->buffer) {
+        nimcp_free(pool);
+        return NULL;
+    }
+    memset(pool->buffer, 0, capacity * sizeof(monitored_synapse_t));
+
+    // Allocate bitmap (1 bit per slot, 64 slots per word)
+    pool->num_bitmap_words = (capacity + 63) / 64;
+    pool->bitmap = (uint64_t*)nimcp_malloc(pool->num_bitmap_words * sizeof(uint64_t));
+    if (!pool->bitmap) {
+        nimcp_free(pool->buffer);
+        nimcp_free(pool);
+        return NULL;
+    }
+
+    // Initialize bitmap: all bits set = all slots free
+    for (uint32_t i = 0; i < pool->num_bitmap_words; i++) {
+        pool->bitmap[i] = UINT64_MAX;
+    }
+
+    // Clear bits beyond capacity (if capacity not multiple of 64)
+    uint32_t extra_bits = pool->num_bitmap_words * 64 - capacity;
+    if (extra_bits > 0) {
+        pool->bitmap[pool->num_bitmap_words - 1] &= (UINT64_MAX >> extra_bits);
+    }
+
+    pool->capacity = capacity;
+    pool->allocated_count = 0;
+    nimcp_spinlock_init(&pool->lock);
+
+    return pool;
+}
+
+void microglia_synapse_pool_destroy(microglia_synapse_pool_t* pool)
+{
+    if (!pool) return;
+
+    if (pool->bitmap) {
+        nimcp_free(pool->bitmap);
+    }
+    if (pool->buffer) {
+        nimcp_free(pool->buffer);
+    }
+    nimcp_free(pool);
+}
+
+monitored_synapse_t* microglia_synapse_pool_alloc(microglia_synapse_pool_t* pool)
+{
+    if (!pool) return NULL;
+
+    nimcp_spinlock_lock(&pool->lock);
+
+    // Find first free slot using bitmap
+    for (uint32_t word_idx = 0; word_idx < pool->num_bitmap_words; word_idx++) {
+        if (pool->bitmap[word_idx] != 0) {
+            // Find first set bit (free slot)
+            uint64_t word = pool->bitmap[word_idx];
+            int bit_idx = __builtin_ctzll(word);  // Count trailing zeros
+
+            uint32_t slot_idx = word_idx * 64 + bit_idx;
+            if (slot_idx >= pool->capacity) {
+                break;  // Beyond capacity
+            }
+
+            // Clear bit (mark as allocated)
+            pool->bitmap[word_idx] &= ~(1ULL << bit_idx);
+            pool->allocated_count++;
+
+            monitored_synapse_t* synapse = &pool->buffer[slot_idx];
+            memset(synapse, 0, sizeof(monitored_synapse_t));
+
+            nimcp_spinlock_unlock(&pool->lock);
+            return synapse;
+        }
+    }
+
+    nimcp_spinlock_unlock(&pool->lock);
+    return NULL;  // Pool exhausted
+}
+
+void microglia_synapse_pool_free(microglia_synapse_pool_t* pool,
+                                  monitored_synapse_t* synapse)
+{
+    if (!pool || !synapse) return;
+
+    // Verify synapse is within pool
+    if (synapse < pool->buffer ||
+        synapse >= pool->buffer + pool->capacity) {
+        return;  // Not from this pool
+    }
+
+    nimcp_spinlock_lock(&pool->lock);
+
+    uint32_t slot_idx = (uint32_t)(synapse - pool->buffer);
+    uint32_t word_idx = slot_idx / 64;
+    uint32_t bit_idx = slot_idx % 64;
+
+    // Set bit (mark as free)
+    pool->bitmap[word_idx] |= (1ULL << bit_idx);
+    pool->allocated_count--;
+
+    nimcp_spinlock_unlock(&pool->lock);
+}
+
+void microglia_synapse_pool_stats(const microglia_synapse_pool_t* pool,
+                                   uint32_t* allocated, uint32_t* capacity)
+{
+    if (!pool) {
+        if (allocated) *allocated = 0;
+        if (capacity) *capacity = 0;
+        return;
+    }
+
+    if (allocated) *allocated = pool->allocated_count;
+    if (capacity) *capacity = pool->capacity;
+}
+
+//=============================================================================
+// COPY-ON-WRITE FUNCTIONS (Phase 1.5+)
+//=============================================================================
+
+microglia_t* microglia_cow_copy(microglia_t* mg)
+{
+    if (!mg) return NULL;
+
+    nimcp_spinlock_lock(&mg->lock);
+
+    // Create shallow copy
+    microglia_t* copy = (microglia_t*)nimcp_malloc(sizeof(microglia_t));
+    if (!copy) {
+        nimcp_spinlock_unlock(&mg->lock);
+        return NULL;
+    }
+
+    // Copy all fields
+    memcpy(copy, mg, sizeof(microglia_t));
+
+    // Share array pointers (shallow copy)
+    // The arrays (synapses, monitored_synapse_ids, etc.) are shared
+
+    // Set up CoW tracking
+    mg->cow_ref_count++;
+    copy->cow_ref_count = 1;
+    copy->cow_modified = false;
+    copy->cow_original = mg;
+
+    // Initialize separate lock for copy
+    nimcp_spinlock_init(&copy->lock);
+
+    nimcp_spinlock_unlock(&mg->lock);
+    return copy;
+}
+
+nimcp_result_t microglia_cow_prepare_write(microglia_t* mg)
+{
+    if (!mg) return NIMCP_ERROR_INVALID_PARAM;
+
+    nimcp_spinlock_lock(&mg->lock);
+
+    // If already modified or not a copy, nothing to do
+    if (mg->cow_modified || !mg->cow_original) {
+        nimcp_spinlock_unlock(&mg->lock);
+        return NIMCP_SUCCESS;
+    }
+
+    // Need to deep copy the shared arrays
+    microglia_t* original = (microglia_t*)mg->cow_original;
+
+    // Deep copy synapse array
+    if (original->synapses && original->max_monitored_synapses > 0) {
+        mg->synapses = (monitored_synapse_t*)nimcp_malloc(
+            mg->max_monitored_synapses * sizeof(monitored_synapse_t));
+        if (!mg->synapses) {
+            nimcp_spinlock_unlock(&mg->lock);
+            return NIMCP_ERROR_MEMORY;
+        }
+        memcpy(mg->synapses, original->synapses,
+               mg->num_monitored_synapses * sizeof(monitored_synapse_t));
+    }
+
+    // Deep copy legacy arrays
+    if (original->monitored_synapse_ids && mg->max_monitored_synapses > 0) {
+        mg->monitored_synapse_ids = (uint32_t*)nimcp_malloc(
+            mg->max_monitored_synapses * sizeof(uint32_t));
+        if (mg->monitored_synapse_ids) {
+            memcpy(mg->monitored_synapse_ids, original->monitored_synapse_ids,
+                   mg->num_monitored_synapses * sizeof(uint32_t));
+        }
+    }
+
+    if (original->synapse_activity_scores && mg->max_monitored_synapses > 0) {
+        mg->synapse_activity_scores = (float*)nimcp_malloc(
+            mg->max_monitored_synapses * sizeof(float));
+        if (mg->synapse_activity_scores) {
+            memcpy(mg->synapse_activity_scores, original->synapse_activity_scores,
+                   mg->num_monitored_synapses * sizeof(float));
+        }
+    }
+
+    if (original->last_activity_times && mg->max_monitored_synapses > 0) {
+        mg->last_activity_times = (uint64_t*)nimcp_malloc(
+            mg->max_monitored_synapses * sizeof(uint64_t));
+        if (mg->last_activity_times) {
+            memcpy(mg->last_activity_times, original->last_activity_times,
+                   mg->num_monitored_synapses * sizeof(uint64_t));
+        }
+    }
+
+    // Mark as modified and decrement original's ref count
+    mg->cow_modified = true;
+
+    nimcp_spinlock_lock(&original->lock);
+    if (original->cow_ref_count > 0) {
+        original->cow_ref_count--;
+    }
+    nimcp_spinlock_unlock(&original->lock);
+
+    mg->cow_original = NULL;
+
+    nimcp_spinlock_unlock(&mg->lock);
+    return NIMCP_SUCCESS;
+}
+
+void microglia_cow_release(microglia_t* mg)
+{
+    if (!mg) return;
+
+    nimcp_spinlock_lock(&mg->lock);
+
+    if (mg->cow_original && !mg->cow_modified) {
+        // This is a shallow copy - decrement original's ref count
+        microglia_t* original = (microglia_t*)mg->cow_original;
+        nimcp_spinlock_lock(&original->lock);
+        if (original->cow_ref_count > 0) {
+            original->cow_ref_count--;
+        }
+        nimcp_spinlock_unlock(&original->lock);
+
+        // Don't free shared arrays
+        mg->synapses = NULL;
+        mg->monitored_synapse_ids = NULL;
+        mg->synapse_activity_scores = NULL;
+        mg->last_activity_times = NULL;
+    }
+
+    nimcp_spinlock_unlock(&mg->lock);
+
+    // Free the copy structure itself
+    // Note: If cow_modified is true, arrays were deep-copied and will be freed
+    // by microglia_destroy when called
+}
+
+bool microglia_is_cow_copy(const microglia_t* mg)
+{
+    if (!mg) return false;
+    return (mg->cow_original != NULL);
 }

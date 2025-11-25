@@ -14,6 +14,7 @@
 #include "cognitive/memory/nimcp_engram.h"
 #include "utils/platform/nimcp_platform_time.h"
 #include "utils/memory/nimcp_memory.h"
+#include "utils/memory/nimcp_memory_pool.h"
 #include <string.h>
 #include <math.h>
 
@@ -268,6 +269,34 @@ systems_consolidation_system_t* systems_consolidation_create(void)
     system->total_transfers = 0;
     system->total_forgotten = 0;
 
+    // Phase 1.5: Initialize memory pools for hot-path allocations
+    memory_pool_config_t node_pool_config = {
+        .block_size = sizeof(cortical_memory_node_t),
+        .num_blocks = 64,  // Pre-allocate typical usage
+        .alignment = 16,   // SIMD alignment
+        .enable_tracking = false,
+        .enable_guard_pages = false
+    };
+    system->node_pool = memory_pool_create(&node_pool_config);
+
+    memory_pool_config_t feature_pool_config = {
+        .block_size = 32 * sizeof(float),  // Default feature dimension
+        .num_blocks = 64,
+        .alignment = 16,
+        .enable_tracking = false,
+        .enable_guard_pages = false
+    };
+    system->feature_pool = memory_pool_create(&feature_pool_config);
+
+    memory_pool_config_t neighbor_pool_config = {
+        .block_size = CONSOLIDATION_DEFAULT_NEIGHBORS_PER_NODE * sizeof(void*),
+        .num_blocks = 64,
+        .alignment = 16,
+        .enable_tracking = false,
+        .enable_guard_pages = false
+    };
+    system->neighbor_pool = memory_pool_create(&neighbor_pool_config);
+
     return system;
 }
 
@@ -289,6 +318,17 @@ void systems_consolidation_destroy(systems_consolidation_system_t* system)
     // WHAT: Free replay queue
     if (system->replay_queue) {
         nimcp_free(system->replay_queue);
+    }
+
+    // Phase 1.5: Destroy memory pools
+    if (system->node_pool) {
+        memory_pool_destroy(system->node_pool);
+    }
+    if (system->feature_pool) {
+        memory_pool_destroy(system->feature_pool);
+    }
+    if (system->neighbor_pool) {
+        memory_pool_destroy(system->neighbor_pool);
     }
 
     // WHAT: Free system structure

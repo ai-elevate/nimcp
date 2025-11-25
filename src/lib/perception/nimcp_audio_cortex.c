@@ -14,6 +14,8 @@
 #include "include/perception/nimcp_audio_cortex.h"
 #include "include/perception/nimcp_visual_cortex.h"  // For receptor_expression_t
 #include "utils/memory/nimcp_memory.h"
+#include "utils/memory/nimcp_memory_pool.h"  // Memory pool for O(1) allocations
+#include "utils/memory/nimcp_page_cow.h"     // Copy-on-Write for shallow copies
 #include "utils/validation/nimcp_validate.h"
 #include "utils/logging/nimcp_logging.h"
 #include "plasticity/neuromodulators/nimcp_neuromodulators.h"  // Neuromodulator integration
@@ -72,6 +74,19 @@ struct audio_cortex {
     // NIMCP 2.7 Phase 8.5: Internal recurrent network with fractal topology
     neural_network_t internal_network;  /**< Recurrent network for tonotopic connections */
     bool has_internal_network;          /**< Whether internal network was created */
+
+    // === Memory Pool for O(1) Memory Allocation ===
+    // WHAT: Pre-allocated pool for auditory_memory_t structures
+    // WHY:  Memory storage is hot path; avoid malloc overhead
+    // HOW:  Pool with block_size = sizeof(auditory_memory_t)
+    memory_pool_t memory_pool;            /**< Pool for auditory memory entries */
+
+    // === Copy-on-Write Support ===
+    // WHAT: Enable shallow copy of cortex with lazy duplication
+    // WHY:  Fast cloning for parallel processing or checkpointing
+    // HOW:  Reference counting on shared data, copy on modification
+    uint32_t* _cow_refcount;              /**< Reference count for CoW (NULL if owned) */
+    bool _cow_is_shallow;                 /**< True if this is a shallow copy */
 
     // Statistics
     audio_cortex_stats_t stats;
@@ -551,7 +566,27 @@ audio_cortex_t* audio_cortex_create(const audio_cortex_config_t* config)
             audio_cortex_destroy(cortex);
             return NULL;
         }
+
+        // === Initialize Memory Pool for Auditory Memories ===
+        // WHAT: Create O(1) allocation pool for auditory_memory_t
+        // WHY:  audio_cortex_store_memory() is hot path; avoid malloc overhead
+        // HOW:  Pre-allocate for max capacity
+        memory_pool_config_t pool_config = memory_pool_default_config(
+            sizeof(auditory_memory_t),
+            cortex->memory_capacity
+        );
+        pool_config.alignment = 16;  // 16-byte alignment for cache efficiency
+        pool_config.enable_tracking = true;
+        cortex->memory_pool = memory_pool_create(&pool_config);
+        if (!cortex->memory_pool) {
+            NIMCP_LOGGING_WARN("Failed to create auditory memory pool, will use malloc fallback");
+            // Non-fatal: continue without pool (falls back to malloc)
+        }
     }
+
+    // === Initialize Copy-on-Write Fields ===
+    cortex->_cow_refcount = NULL;
+    cortex->_cow_is_shallow = false;
 
     // NIMCP 2.7 Phase 8.5: Fractal Topology Integration (Future Enhancement)
     // TODO: Add internal recurrent network with scale-free topology
@@ -629,6 +664,19 @@ void audio_cortex_destroy(audio_cortex_t* cortex)
 {
     if (!cortex) return;
 
+    // === Handle Copy-on-Write Reference Counting ===
+    // If this is a shallow copy, decrement refcount
+    if (cortex->_cow_refcount) {
+        uint32_t old_count = __atomic_sub_fetch(cortex->_cow_refcount, 1, __ATOMIC_SEQ_CST);
+        if (old_count > 0) {
+            // Other references exist; only free this cortex struct
+            nimcp_free(cortex);
+            return;
+        }
+        // Last reference: proceed with full cleanup
+        nimcp_free(cortex->_cow_refcount);
+    }
+
     // Free FFT buffers
     nimcp_free(cortex->fft_real);
     nimcp_free(cortex->fft_imag);
@@ -643,10 +691,21 @@ void audio_cortex_destroy(audio_cortex_t* cortex)
         for (uint32_t i = 0; i < cortex->num_memories; i++) {
             if (cortex->memories[i]) {
                 nimcp_free(cortex->memories[i]->features);
-                nimcp_free(cortex->memories[i]);
+                // Use pool release if pool exists and owns this memory
+                if (cortex->memory_pool && memory_pool_owns(cortex->memory_pool, cortex->memories[i])) {
+                    memory_pool_release(cortex->memory_pool, cortex->memories[i]);
+                } else {
+                    nimcp_free(cortex->memories[i]);
+                }
             }
         }
         nimcp_free(cortex->memories);
+    }
+
+    // === Destroy Memory Pool ===
+    if (cortex->memory_pool) {
+        memory_pool_destroy(cortex->memory_pool);
+        cortex->memory_pool = NULL;
     }
 
     // NIMCP 2.7 Phase 8.5: Destroy internal recurrent network
@@ -976,10 +1035,18 @@ bool audio_cortex_store_memory(
         return false;  // Memory full
     }
 
-    // Create memory entry
-    auditory_memory_t* memory = (auditory_memory_t*)nimcp_calloc(
-        1, sizeof(auditory_memory_t)
-    );
+    // === Allocate Memory Entry from Pool (O(1)) or Fallback to calloc ===
+    auditory_memory_t* memory = NULL;
+    if (cortex->memory_pool) {
+        memory = (auditory_memory_t*)memory_pool_acquire(cortex->memory_pool);
+        if (memory) {
+            memset(memory, 0, sizeof(auditory_memory_t));  // Pool doesn't zero memory
+        }
+    }
+    if (!memory) {
+        // Pool exhausted or doesn't exist - fallback to calloc
+        memory = (auditory_memory_t*)nimcp_calloc(1, sizeof(auditory_memory_t));
+    }
     if (!nimcp_validate_pointer(memory, "memory")) {
         NIMCP_LOGGING_ERROR("Failed to allocate auditory memory entry");
         return false;
@@ -988,7 +1055,12 @@ bool audio_cortex_store_memory(
     memory->features = (float*)nimcp_calloc(cortex->config.feature_dim, sizeof(float));
     if (!nimcp_validate_pointer(memory->features, "memory->features")) {
         NIMCP_LOGGING_ERROR("Failed to allocate auditory memory features");
-        nimcp_free(memory);
+        // Use pool release if pool owns this memory
+        if (cortex->memory_pool && memory_pool_owns(cortex->memory_pool, memory)) {
+            memory_pool_release(cortex->memory_pool, memory);
+        } else {
+            nimcp_free(memory);
+        }
         return false;
     }
 

@@ -23,6 +23,7 @@
 #include <stdio.h>
 #include <string.h>
 #include "utils/memory/nimcp_memory.h"
+#include "utils/memory/nimcp_memory_pool.h"
 #include "utils/thread/nimcp_thread.h"
 #include "utils/thread/nimcp_thread_pool.h"
 #include "utils/time/nimcp_time.h"
@@ -451,6 +452,9 @@ struct salience_evaluator_struct {
 
     // Parallel processing (for batch operations)
     nimcp_thread_pool_t* thread_pool;
+
+    // Phase 1.5: Memory pool for history entry allocations
+    memory_pool_t history_entry_pool;
 };
 
 //=============================================================================
@@ -739,6 +743,16 @@ salience_evaluator_t salience_evaluator_create(brain_t brain, const salience_con
         return NULL;
     }
 
+    // Phase 1.5: Initialize memory pool for history entries
+    memory_pool_config_t history_pool_config = {
+        .block_size = sizeof(history_entry_t),
+        .num_blocks = config->history_size > 0 ? config->history_size : 32,
+        .alignment = 16,  // SIMD alignment
+        .enable_tracking = false,
+        .enable_guard_pages = false
+    };
+    eval->history_entry_pool = memory_pool_create(&history_pool_config);
+
     return eval;
 }
 
@@ -762,6 +776,11 @@ void salience_evaluator_destroy(salience_evaluator_t eval)
 
     if (eval->predictor) {
         predictor_destroy(eval->predictor);
+    }
+
+    // Phase 1.5: Destroy memory pool
+    if (eval->history_entry_pool) {
+        memory_pool_destroy(eval->history_entry_pool);
     }
 
     nimcp_mutex_destroy(&eval->eval_lock);

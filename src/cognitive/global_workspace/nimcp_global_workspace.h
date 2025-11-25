@@ -361,6 +361,10 @@ typedef struct {
     // Validity
     bool is_valid;                      /**< Is there currently a broadcast? */
 
+    // Phase 1.5: Copy-on-Write support for efficient broadcast sharing
+    uint32_t* _cow_refcount;            /**< Shared reference count (NULL = owned) */
+    bool _cow_is_shallow;               /**< True if content pointer is shared */
+
 } workspace_broadcast_t;
 
 /**

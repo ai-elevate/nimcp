@@ -19,6 +19,7 @@
 
 #include "core/brain/regions/broca/nimcp_syntax_processor.h"
 #include "utils/memory/nimcp_memory.h"
+#include "utils/memory/nimcp_memory_pool.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -62,6 +63,10 @@ struct syntax_processor {
     chart_cell_t** chart;  // 2D array [N][N]
     uint32_t chart_size;
 
+    // Memory pool for hot-path allocations (Phase 1.5)
+    // Pool for syntax tree nodes in build_tree_recursive()
+    memory_pool_t tree_node_pool;
+
     // Statistics
     syntax_stats_t stats;
 
@@ -73,7 +78,7 @@ struct syntax_processor {
 // Forward Declarations
 //=============================================================================
 
-static void free_tree_recursive(syntax_tree_node_t* node);
+static void free_tree_recursive(syntax_processor_t* processor, syntax_tree_node_t* node);
 static syntax_tree_node_t* build_tree_from_chart(syntax_processor_t* processor);
 static bool check_agreement(const syntactic_unit_t* subject, const syntactic_unit_t* verb);
 static void apply_default_features(syntactic_unit_t* unit);
@@ -161,6 +166,21 @@ syntax_processor_t* syntax_create(const syntax_config_t* config) {
     processor->tree_root = NULL;
     processor->tree_depth = 0;
 
+    // Initialize memory pool for hot-path allocations (Phase 1.5)
+    // Pool for syntax tree nodes - estimate 2*max_units nodes per tree, 4 trees concurrently
+    memory_pool_config_t node_pool_config = {
+        .block_size = sizeof(syntax_tree_node_t),
+        .num_blocks = config->max_units * 8,  // 2 nodes per unit * 4 trees
+        .alignment = 16,  // SIMD alignment
+        .enable_tracking = false,
+        .enable_guard_pages = false
+    };
+    processor->tree_node_pool = memory_pool_create(&node_pool_config);
+    if (!processor->tree_node_pool) {
+        syntax_destroy(processor);
+        return NULL;
+    }
+
     // Initialize statistics
     memset(&processor->stats, 0, sizeof(syntax_stats_t));
 
@@ -180,7 +200,7 @@ void syntax_destroy(syntax_processor_t* processor) {
 
     // Free tree
     if (processor->tree_root != NULL) {
-        free_tree_recursive(processor->tree_root);
+        free_tree_recursive(processor, processor->tree_root);
     }
 
     // Free chart
@@ -202,6 +222,9 @@ void syntax_destroy(syntax_processor_t* processor) {
     if (processor->units != NULL) {
         nimcp_free(processor->units);
     }
+
+    // Destroy memory pool (Phase 1.5)
+    memory_pool_destroy(processor->tree_node_pool);
 
     // Free processor
     nimcp_free(processor);
@@ -252,7 +275,7 @@ bool syntax_build_tree(syntax_processor_t* processor) {
 
     // Clear old tree
     if (processor->tree_root != NULL) {
-        free_tree_recursive(processor->tree_root);
+        free_tree_recursive(processor, processor->tree_root);
         processor->tree_root = NULL;
     }
 
@@ -411,7 +434,7 @@ bool syntax_reset(syntax_processor_t* processor) {
 
     // Free tree
     if (processor->tree_root != NULL) {
-        free_tree_recursive(processor->tree_root);
+        free_tree_recursive(processor, processor->tree_root);
         processor->tree_root = NULL;
         processor->tree_depth = 0;
     }
@@ -886,14 +909,16 @@ bool syntax_is_content_word(part_of_speech_t pos) {
 // Internal Helper Functions
 //=============================================================================
 
-static void free_tree_recursive(syntax_tree_node_t* node) {
+static void free_tree_recursive(syntax_processor_t* processor, syntax_tree_node_t* node) {
     if (node == NULL) {
         return;
     }
 
-    free_tree_recursive(node->left);
-    free_tree_recursive(node->right);
-    nimcp_free(node);
+    free_tree_recursive(processor, node->left);
+    free_tree_recursive(processor, node->right);
+
+    /* Release back to pool (Phase 1.5) */
+    memory_pool_release(processor->tree_node_pool, node);
 }
 
 /**
@@ -926,11 +951,12 @@ static syntax_tree_node_t* build_tree_recursive(
         return NULL;
     }
 
-    /* Allocate new node */
-    syntax_tree_node_t* node = (syntax_tree_node_t*)nimcp_calloc(1, sizeof(syntax_tree_node_t));
+    /* Allocate new node - Phase 1.5 O(1) pool allocation */
+    syntax_tree_node_t* node = (syntax_tree_node_t*)memory_pool_acquire(processor->tree_node_pool);
     if (!node) {
         return NULL;
     }
+    memset(node, 0, sizeof(syntax_tree_node_t));
 
     /* Set node properties */
     node->unit.phrase_type = processor->chart[i][j].phrase_type;
@@ -960,7 +986,7 @@ static syntax_tree_node_t* build_tree_recursive(
     node->left = build_tree_recursive(processor, i, k, depth + 1, node);
     if (!node->left) {
         /* Failed to build left child - cleanup and return NULL */
-        nimcp_free(node);
+        memory_pool_release(processor->tree_node_pool, node);
         return NULL;
     }
 
@@ -968,8 +994,8 @@ static syntax_tree_node_t* build_tree_recursive(
     node->right = build_tree_recursive(processor, k + 1, j, depth + 1, node);
     if (!node->right) {
         /* Failed to build right child - cleanup left child and node */
-        free_tree_recursive(node->left);
-        nimcp_free(node);
+        free_tree_recursive(processor, node->left);
+        memory_pool_release(processor->tree_node_pool, node);
         return NULL;
     }
 

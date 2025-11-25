@@ -202,6 +202,9 @@ typedef struct {
     uint64_t total_extinctions;     /**< Memories extinguished */
     float average_consolidation_time; /**< Mean time to consolidate */
 
+    // Phase 1.5: Memory pool for hot-path engram allocations
+    void* engram_pool;              /**< Pool for memory_engram_t structs */
+
 } engram_system_t;
 
 //=============================================================================

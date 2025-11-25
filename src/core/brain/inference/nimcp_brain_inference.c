@@ -334,12 +334,16 @@ static action_t features_to_action(const float* features, uint32_t num_features,
 //=============================================================================
 
 /**
- * @brief Free decision result
+ * @brief Free decision result with CoW support
  *
  * WHY: Proper memory management for decision results
  * Handles all allocated sub-structures
  *
+ * Phase 1.5 CoW: Decisions may share data via reference counting.
+ * Only free shared data when the last reference is released.
+ *
  * COMPLEXITY: O(1)
+ * THREAD SAFETY: Uses atomic operations for refcount updates
  *
  * @param decision Decision to free
  */
@@ -352,13 +356,38 @@ void brain_free_decision(brain_decision_t* decision)
      * WHAT: Free decision structure and its allocated fields
      * WHY: Prevent memory leaks
      * HOW: Use nimcp_free() for memory allocated with nimcp_malloc()
+     *
+     * Phase 1.5 CoW: Check reference count before freeing shared data
      */
-    if (decision->output_vector) {
-        nimcp_free(decision->output_vector);
+
+    if (decision->_cow_refcount) {
+        // This decision shares data with others via CoW
+        // Atomically decrement refcount and check if we're the last user
+        uint32_t remaining = __atomic_sub_fetch(decision->_cow_refcount, 1, __ATOMIC_SEQ_CST);
+
+        if (remaining == 0) {
+            // Last reference - free the shared data
+            if (decision->output_vector) {
+                nimcp_free(decision->output_vector);
+            }
+            if (decision->active_neuron_ids) {
+                nimcp_free(decision->active_neuron_ids);
+            }
+            // Free the refcount itself
+            nimcp_free(decision->_cow_refcount);
+        }
+        // else: Other references exist - don't free the shared data
+    } else {
+        // This decision owns its data exclusively (not shared)
+        if (decision->output_vector) {
+            nimcp_free(decision->output_vector);
+        }
+        if (decision->active_neuron_ids) {
+            nimcp_free(decision->active_neuron_ids);
+        }
     }
-    if (decision->active_neuron_ids) {
-        nimcp_free(decision->active_neuron_ids);
-    }
+
+    // Always free the decision structure itself (each copy has its own)
     nimcp_free(decision);
 }
 

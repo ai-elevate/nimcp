@@ -686,13 +686,16 @@ TEST(BrainInitBuilders, BrainStats_LearningRates)
 TEST(BrainInitBuilders, BrainStats_LongTaskName)
 {
     brain_stats_t stats = {};
-    const char* long_name = "this_is_a_very_long_task_name_that_should_be_truncated_safely";
+    // Task name buffer is 64 chars, so use a string longer than 63 chars to trigger truncation
+    const char* long_name = "this_is_a_very_long_task_name_that_exceeds_the_64_character_buffer_limit_and_should_be_truncated";
 
     nimcp_brain_factory_init_brain_stats(&stats, long_name, BRAIN_SIZE_MEDIUM, 10, 0.01f);
 
     // Name should be truncated but null-terminated
     EXPECT_LT(strlen(stats.task_name), strlen(long_name));
     EXPECT_GT(strlen(stats.task_name), 0u);
+    // Verify max length is 63 (64 - 1 for null terminator)
+    EXPECT_LE(strlen(stats.task_name), 63u);
 }
 
 /**

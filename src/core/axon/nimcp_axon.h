@@ -59,6 +59,8 @@ typedef struct axon_struct axon_t;
 typedef struct axon_segment_struct axon_segment_t;
 typedef struct axon_network_struct axon_network_t;
 typedef struct axon_spike_queue_struct axon_spike_queue_t;
+typedef struct axon_spike_pool_struct axon_spike_pool_t;
+typedef struct axon_segment_pool_struct axon_segment_pool_t;
 
 //=============================================================================
 // CONSTANTS AND CONFIGURATION
@@ -72,6 +74,12 @@ typedef struct axon_spike_queue_struct axon_spike_queue_t;
 
 /** Maximum pending spikes in queue */
 #define NIMCP_AXON_SPIKE_QUEUE_SIZE 10000
+
+/** Memory pool size for spike events */
+#define NIMCP_AXON_SPIKE_POOL_SIZE 8192
+
+/** Memory pool size for axon segments */
+#define NIMCP_AXON_SEGMENT_POOL_SIZE 4096
 
 /** Default unmyelinated conduction velocity (m/s) */
 #define NIMCP_AXON_BASE_VELOCITY_MS 1.0f
@@ -287,6 +295,69 @@ typedef struct {
 } axon_activity_stats_t;
 
 //=============================================================================
+// MEMORY POOL STRUCTURES
+//=============================================================================
+
+/**
+ * @brief Memory pool for spike events
+ *
+ * WHAT: Pre-allocated pool of spike event slots
+ * WHY:  Avoid malloc/free in hot path during spike propagation
+ * HOW:  Bitmap allocation with O(1) acquire/release
+ *
+ * PERFORMANCE: Eliminates ~1-2μs malloc overhead per spike
+ */
+struct axon_spike_pool_struct {
+    /** Pre-allocated spike events */
+    axon_spike_event_t* events;
+
+    /** Allocation bitmap (1 bit per slot) */
+    uint64_t* allocation_bitmap;
+
+    /** Total capacity */
+    uint32_t capacity;
+
+    /** Number of allocated slots */
+    uint32_t allocated_count;
+
+    /** Number of 64-bit words in bitmap */
+    uint32_t bitmap_words;
+
+    /** Next search position for allocation */
+    uint32_t next_search_pos;
+
+    /** High water mark (max simultaneous allocations) */
+    uint32_t high_water_mark;
+};
+
+/**
+ * @brief Memory pool for axon segments
+ *
+ * WHAT: Pre-allocated pool of axon segment slots
+ * WHY:  Efficient segment allocation for axon morphology
+ * HOW:  Bitmap allocation with O(1) acquire/release
+ */
+struct axon_segment_pool_struct {
+    /** Pre-allocated segments */
+    axon_segment_t* segments;
+
+    /** Allocation bitmap (1 bit per slot) */
+    uint64_t* allocation_bitmap;
+
+    /** Total capacity */
+    uint32_t capacity;
+
+    /** Number of allocated slots */
+    uint32_t allocated_count;
+
+    /** Number of 64-bit words in bitmap */
+    uint32_t bitmap_words;
+
+    /** Next search position for allocation */
+    uint32_t next_search_pos;
+};
+
+//=============================================================================
 // MAIN AXON STRUCTURE
 //=============================================================================
 
@@ -380,6 +451,23 @@ struct axon_struct {
     //--- Thread Safety ---
     /** Spinlock for concurrent access */
     pthread_mutex_t lock;
+
+    //--- Memory Pool ---
+    /** Segment memory pool (optional) */
+    axon_segment_pool_t* segment_pool;
+
+    /** Use pool for segment allocation */
+    bool use_segment_pool;
+
+    //--- Copy-on-Write Support ---
+    /** Reference count for CoW sharing */
+    uint32_t cow_ref_count;
+
+    /** Has this instance been modified since creation? */
+    bool cow_modified;
+
+    /** Original axon if this is a CoW copy */
+    axon_t* cow_original;
 };
 
 //=============================================================================
@@ -420,6 +508,13 @@ struct axon_network_struct {
 
     /** Is spatial index valid? */
     bool spatial_index_valid;
+
+    //--- Memory Pool ---
+    /** Spike event memory pool */
+    axon_spike_pool_t* spike_pool;
+
+    /** Use pool for spike events */
+    bool use_spike_pool;
 };
 
 //=============================================================================
@@ -987,6 +1082,166 @@ float axon_distance_3d(const float a[3], const float b[3]);
  * @return true if valid
  */
 bool axon_validate_params(float length, float diameter);
+
+//=============================================================================
+// MEMORY POOL API
+//=============================================================================
+
+/**
+ * @brief Create spike event memory pool
+ *
+ * WHAT: Create pre-allocated pool for spike events
+ * WHY:  O(1) allocation during spike propagation
+ * HOW:  Allocates contiguous memory with bitmap tracking
+ *
+ * @param capacity Number of spike events to pre-allocate
+ * @return New pool or NULL on failure
+ */
+axon_spike_pool_t* axon_spike_pool_create(uint32_t capacity);
+
+/**
+ * @brief Destroy spike event memory pool
+ *
+ * @param pool Pool to destroy
+ */
+void axon_spike_pool_destroy(axon_spike_pool_t* pool);
+
+/**
+ * @brief Allocate spike event from pool
+ *
+ * WHAT: Get a spike event slot from the pool
+ * WHY:  Fast O(1) allocation without malloc
+ * HOW:  Bitmap scan for free slot
+ *
+ * @param pool Pool to allocate from
+ * @return Pointer to spike event or NULL if pool exhausted
+ */
+axon_spike_event_t* axon_spike_pool_alloc(axon_spike_pool_t* pool);
+
+/**
+ * @brief Return spike event to pool
+ *
+ * @param pool Pool to return to
+ * @param event Event to return
+ */
+void axon_spike_pool_free(axon_spike_pool_t* pool, axon_spike_event_t* event);
+
+/**
+ * @brief Get pool statistics
+ *
+ * @param pool Pool to query
+ * @param allocated Output: number of allocated slots
+ * @param capacity Output: total capacity
+ * @param high_water Output: maximum simultaneous allocations
+ */
+void axon_spike_pool_stats(const axon_spike_pool_t* pool,
+                            uint32_t* allocated,
+                            uint32_t* capacity,
+                            uint32_t* high_water);
+
+/**
+ * @brief Create segment memory pool
+ *
+ * @param capacity Number of segments to pre-allocate
+ * @return New pool or NULL on failure
+ */
+axon_segment_pool_t* axon_segment_pool_create(uint32_t capacity);
+
+/**
+ * @brief Destroy segment memory pool
+ *
+ * @param pool Pool to destroy
+ */
+void axon_segment_pool_destroy(axon_segment_pool_t* pool);
+
+/**
+ * @brief Allocate segment from pool
+ *
+ * @param pool Pool to allocate from
+ * @return Pointer to segment or NULL if pool exhausted
+ */
+axon_segment_t* axon_segment_pool_alloc(axon_segment_pool_t* pool);
+
+/**
+ * @brief Return segment to pool
+ *
+ * @param pool Pool to return to
+ * @param segment Segment to return
+ */
+void axon_segment_pool_free(axon_segment_pool_t* pool, axon_segment_t* segment);
+
+/**
+ * @brief Enable spike pool for network
+ *
+ * @param network Network to enable pool for
+ * @param capacity Pool capacity
+ * @return true on success
+ */
+bool axon_network_enable_spike_pool(axon_network_t* network, uint32_t capacity);
+
+/**
+ * @brief Enable segment pool for axon
+ *
+ * @param axon Axon to enable pool for
+ * @param capacity Pool capacity
+ * @return true on success
+ */
+bool axon_enable_segment_pool(axon_t* axon, uint32_t capacity);
+
+//=============================================================================
+// COPY-ON-WRITE API
+//=============================================================================
+
+/**
+ * @brief Create a CoW copy of an axon
+ *
+ * WHAT: Create a shallow copy that shares data until modification
+ * WHY:  Efficient cloning for branching/analysis
+ * HOW:  Increments reference count, defers deep copy until write
+ *
+ * @param axon Axon to copy
+ * @return CoW copy or NULL on failure
+ */
+axon_t* axon_cow_copy(axon_t* axon);
+
+/**
+ * @brief Prepare axon for modification (CoW)
+ *
+ * WHAT: Ensure axon has its own copy of data before modification
+ * WHY:  Implements copy-on-write semantics
+ * HOW:  Deep copy if reference count > 1
+ *
+ * @param axon Axon to prepare for writing
+ * @return true if axon is safe to modify
+ */
+bool axon_cow_prepare_write(axon_t* axon);
+
+/**
+ * @brief Release CoW reference
+ *
+ * WHAT: Decrement reference count and free if last reference
+ * WHY:  Proper cleanup of CoW copies
+ * HOW:  Decrements count, frees when count reaches 0
+ *
+ * @param axon Axon to release
+ */
+void axon_cow_release(axon_t* axon);
+
+/**
+ * @brief Check if axon is a CoW copy
+ *
+ * @param axon Axon to check
+ * @return true if this is a CoW copy (not the original)
+ */
+bool axon_is_cow_copy(const axon_t* axon);
+
+/**
+ * @brief Get CoW reference count
+ *
+ * @param axon Axon to query
+ * @return Current reference count
+ */
+uint32_t axon_cow_ref_count(const axon_t* axon);
 
 #ifdef __cplusplus
 }

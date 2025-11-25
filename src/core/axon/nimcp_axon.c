@@ -150,6 +150,15 @@ axon_t* axon_create(uint32_t id,
     // Initialize lock
     pthread_mutex_init(&axon->lock, NULL);
 
+    // Initialize memory pool (not enabled by default)
+    axon->segment_pool = NULL;
+    axon->use_segment_pool = false;
+
+    // Initialize CoW (reference count starts at 1 for original)
+    axon->cow_ref_count = 1;
+    axon->cow_modified = false;
+    axon->cow_original = NULL;
+
     return axon;
 }
 
@@ -184,12 +193,24 @@ void axon_destroy(axon_t* axon)
 {
     if (!axon) return;
 
+    // Check CoW reference count - only destroy if last reference
+    if (axon->cow_ref_count > 1 && !axon->cow_original) {
+        // This is an original with active CoW copies
+        axon->cow_ref_count--;
+        return;
+    }
+
     // Destroy mutex
     pthread_mutex_destroy(&axon->lock);
 
-    // Free segments if allocated
-    if (axon->segments) {
+    // Free segments if allocated and owned (not a CoW sharing segments)
+    if (axon->segments && (axon->cow_modified || !axon->cow_original)) {
         nimcp_free(axon->segments);
+    }
+
+    // Free segment pool if allocated
+    if (axon->segment_pool) {
+        axon_segment_pool_destroy(axon->segment_pool);
     }
 
     // Free axon structure
@@ -811,6 +832,10 @@ axon_network_t* axon_network_create(uint32_t capacity)
     network->spatial_index = NULL;
     network->spatial_index_valid = false;
 
+    // Initialize spike pool (not enabled by default)
+    network->spike_pool = NULL;
+    network->use_spike_pool = false;
+
     return network;
 }
 
@@ -831,6 +856,11 @@ void axon_network_destroy(axon_network_t* network)
     // Destroy spike queue
     if (network->spike_queue) {
         axon_spike_queue_destroy(network->spike_queue);
+    }
+
+    // Destroy spike pool
+    if (network->spike_pool) {
+        axon_spike_pool_destroy(network->spike_pool);
     }
 
     // Destroy network lock
@@ -1007,4 +1037,457 @@ void axon_network_get_stats(const axon_network_t* network,
     }
 
     stats->spikes_in_transit = axon_spike_queue_size(network->spike_queue);
+}
+
+//=============================================================================
+// MEMORY POOL IMPLEMENTATION - SPIKE EVENTS
+//=============================================================================
+
+axon_spike_pool_t* axon_spike_pool_create(uint32_t capacity)
+{
+    if (capacity == 0) capacity = NIMCP_AXON_SPIKE_POOL_SIZE;
+
+    axon_spike_pool_t* pool = (axon_spike_pool_t*)nimcp_calloc(1,
+                                                                sizeof(axon_spike_pool_t));
+    if (!pool) return NULL;
+
+    // Allocate spike events array
+    pool->events = (axon_spike_event_t*)nimcp_calloc(capacity,
+                                                      sizeof(axon_spike_event_t));
+    if (!pool->events) {
+        nimcp_free(pool);
+        return NULL;
+    }
+
+    // Calculate bitmap size
+    pool->bitmap_words = (capacity + 63) / 64;
+    pool->allocation_bitmap = (uint64_t*)nimcp_calloc(pool->bitmap_words,
+                                                       sizeof(uint64_t));
+    if (!pool->allocation_bitmap) {
+        nimcp_free(pool->events);
+        nimcp_free(pool);
+        return NULL;
+    }
+
+    pool->capacity = capacity;
+    pool->allocated_count = 0;
+    pool->next_search_pos = 0;
+    pool->high_water_mark = 0;
+
+    return pool;
+}
+
+void axon_spike_pool_destroy(axon_spike_pool_t* pool)
+{
+    if (!pool) return;
+
+    if (pool->allocation_bitmap) {
+        nimcp_free(pool->allocation_bitmap);
+    }
+    if (pool->events) {
+        nimcp_free(pool->events);
+    }
+    nimcp_free(pool);
+}
+
+axon_spike_event_t* axon_spike_pool_alloc(axon_spike_pool_t* pool)
+{
+    if (!pool) return NULL;
+    if (pool->allocated_count >= pool->capacity) return NULL;
+
+    // Search for free slot starting from next_search_pos
+    uint32_t start_word = pool->next_search_pos / 64;
+
+    for (uint32_t i = 0; i < pool->bitmap_words; i++) {
+        uint32_t word_idx = (start_word + i) % pool->bitmap_words;
+        uint64_t word = pool->allocation_bitmap[word_idx];
+
+        // Check if any bit is free (0)
+        if (word != UINT64_MAX) {
+            // Find first zero bit
+            uint32_t bit = 0;
+            uint64_t mask = 1ULL;
+            while (word & mask) {
+                mask <<= 1;
+                bit++;
+            }
+
+            uint32_t slot = word_idx * 64 + bit;
+            if (slot >= pool->capacity) continue;
+
+            // Mark as allocated
+            pool->allocation_bitmap[word_idx] |= mask;
+            pool->allocated_count++;
+
+            // Update high water mark
+            if (pool->allocated_count > pool->high_water_mark) {
+                pool->high_water_mark = pool->allocated_count;
+            }
+
+            // Update search position
+            pool->next_search_pos = slot + 1;
+
+            return &pool->events[slot];
+        }
+    }
+
+    return NULL;
+}
+
+void axon_spike_pool_free(axon_spike_pool_t* pool, axon_spike_event_t* event)
+{
+    if (!pool || !event) return;
+
+    // Calculate slot index
+    ptrdiff_t offset = event - pool->events;
+    if (offset < 0 || (uint32_t)offset >= pool->capacity) return;
+
+    uint32_t slot = (uint32_t)offset;
+    uint32_t word_idx = slot / 64;
+    uint32_t bit = slot % 64;
+
+    // Check if actually allocated
+    uint64_t mask = 1ULL << bit;
+    if (!(pool->allocation_bitmap[word_idx] & mask)) return;
+
+    // Mark as free
+    pool->allocation_bitmap[word_idx] &= ~mask;
+    pool->allocated_count--;
+
+    // Optimize next search position
+    if (slot < pool->next_search_pos) {
+        pool->next_search_pos = slot;
+    }
+}
+
+void axon_spike_pool_stats(const axon_spike_pool_t* pool,
+                            uint32_t* allocated,
+                            uint32_t* capacity,
+                            uint32_t* high_water)
+{
+    if (!pool) {
+        if (allocated) *allocated = 0;
+        if (capacity) *capacity = 0;
+        if (high_water) *high_water = 0;
+        return;
+    }
+
+    if (allocated) *allocated = pool->allocated_count;
+    if (capacity) *capacity = pool->capacity;
+    if (high_water) *high_water = pool->high_water_mark;
+}
+
+//=============================================================================
+// MEMORY POOL IMPLEMENTATION - SEGMENTS
+//=============================================================================
+
+axon_segment_pool_t* axon_segment_pool_create(uint32_t capacity)
+{
+    if (capacity == 0) capacity = NIMCP_AXON_SEGMENT_POOL_SIZE;
+
+    axon_segment_pool_t* pool = (axon_segment_pool_t*)nimcp_calloc(1,
+                                                                    sizeof(axon_segment_pool_t));
+    if (!pool) return NULL;
+
+    // Allocate segments array
+    pool->segments = (axon_segment_t*)nimcp_calloc(capacity, sizeof(axon_segment_t));
+    if (!pool->segments) {
+        nimcp_free(pool);
+        return NULL;
+    }
+
+    // Calculate bitmap size
+    pool->bitmap_words = (capacity + 63) / 64;
+    pool->allocation_bitmap = (uint64_t*)nimcp_calloc(pool->bitmap_words,
+                                                       sizeof(uint64_t));
+    if (!pool->allocation_bitmap) {
+        nimcp_free(pool->segments);
+        nimcp_free(pool);
+        return NULL;
+    }
+
+    pool->capacity = capacity;
+    pool->allocated_count = 0;
+    pool->next_search_pos = 0;
+
+    return pool;
+}
+
+void axon_segment_pool_destroy(axon_segment_pool_t* pool)
+{
+    if (!pool) return;
+
+    if (pool->allocation_bitmap) {
+        nimcp_free(pool->allocation_bitmap);
+    }
+    if (pool->segments) {
+        nimcp_free(pool->segments);
+    }
+    nimcp_free(pool);
+}
+
+axon_segment_t* axon_segment_pool_alloc(axon_segment_pool_t* pool)
+{
+    if (!pool) return NULL;
+    if (pool->allocated_count >= pool->capacity) return NULL;
+
+    // Search for free slot
+    uint32_t start_word = pool->next_search_pos / 64;
+
+    for (uint32_t i = 0; i < pool->bitmap_words; i++) {
+        uint32_t word_idx = (start_word + i) % pool->bitmap_words;
+        uint64_t word = pool->allocation_bitmap[word_idx];
+
+        if (word != UINT64_MAX) {
+            // Find first zero bit
+            uint32_t bit = 0;
+            uint64_t mask = 1ULL;
+            while (word & mask) {
+                mask <<= 1;
+                bit++;
+            }
+
+            uint32_t slot = word_idx * 64 + bit;
+            if (slot >= pool->capacity) continue;
+
+            // Mark as allocated
+            pool->allocation_bitmap[word_idx] |= mask;
+            pool->allocated_count++;
+            pool->next_search_pos = slot + 1;
+
+            // Clear segment data
+            memset(&pool->segments[slot], 0, sizeof(axon_segment_t));
+
+            return &pool->segments[slot];
+        }
+    }
+
+    return NULL;
+}
+
+void axon_segment_pool_free(axon_segment_pool_t* pool, axon_segment_t* segment)
+{
+    if (!pool || !segment) return;
+
+    // Calculate slot index
+    ptrdiff_t offset = segment - pool->segments;
+    if (offset < 0 || (uint32_t)offset >= pool->capacity) return;
+
+    uint32_t slot = (uint32_t)offset;
+    uint32_t word_idx = slot / 64;
+    uint32_t bit = slot % 64;
+
+    // Check if actually allocated
+    uint64_t mask = 1ULL << bit;
+    if (!(pool->allocation_bitmap[word_idx] & mask)) return;
+
+    // Mark as free
+    pool->allocation_bitmap[word_idx] &= ~mask;
+    pool->allocated_count--;
+
+    if (slot < pool->next_search_pos) {
+        pool->next_search_pos = slot;
+    }
+}
+
+//=============================================================================
+// MEMORY POOL ENABLE FUNCTIONS
+//=============================================================================
+
+bool axon_network_enable_spike_pool(axon_network_t* network, uint32_t capacity)
+{
+    if (!network) return false;
+
+    pthread_mutex_lock(&network->lock);
+
+    // Destroy existing pool if any
+    if (network->spike_pool) {
+        axon_spike_pool_destroy(network->spike_pool);
+    }
+
+    // Create new pool
+    network->spike_pool = axon_spike_pool_create(capacity);
+    network->use_spike_pool = (network->spike_pool != NULL);
+
+    pthread_mutex_unlock(&network->lock);
+
+    return network->use_spike_pool;
+}
+
+bool axon_enable_segment_pool(axon_t* axon, uint32_t capacity)
+{
+    if (!axon) return false;
+
+    pthread_mutex_lock(&axon->lock);
+
+    // Destroy existing pool if any
+    if (axon->segment_pool) {
+        axon_segment_pool_destroy(axon->segment_pool);
+    }
+
+    // Create new pool
+    axon->segment_pool = axon_segment_pool_create(capacity);
+    axon->use_segment_pool = (axon->segment_pool != NULL);
+
+    pthread_mutex_unlock(&axon->lock);
+
+    return axon->use_segment_pool;
+}
+
+//=============================================================================
+// COPY-ON-WRITE IMPLEMENTATION
+//=============================================================================
+
+axon_t* axon_cow_copy(axon_t* axon)
+{
+    if (!axon) return NULL;
+
+    pthread_mutex_lock(&axon->lock);
+
+    // Allocate new axon structure (shallow copy)
+    axon_t* copy = (axon_t*)nimcp_calloc(1, sizeof(axon_t));
+    if (!copy) {
+        pthread_mutex_unlock(&axon->lock);
+        return NULL;
+    }
+
+    // Copy scalar fields
+    copy->id = axon->id;
+    copy->type = axon->type;
+    copy->state = axon->state;
+    copy->source_neuron_id = axon->source_neuron_id;
+    copy->target_synapse_id = axon->target_synapse_id;
+    copy->target_neuron_id = axon->target_neuron_id;
+    copy->length = axon->length;
+    copy->diameter = axon->diameter;
+    memcpy(copy->start_pos, axon->start_pos, sizeof(copy->start_pos));
+    memcpy(copy->end_pos, axon->end_pos, sizeof(copy->end_pos));
+    copy->base_velocity = axon->base_velocity;
+    copy->effective_velocity = axon->effective_velocity;
+    copy->propagation_delay_ms = axon->propagation_delay_ms;
+    copy->myelination_level = axon->myelination_level;
+    copy->mean_g_ratio = axon->mean_g_ratio;
+    memcpy(&copy->activity, &axon->activity, sizeof(axon_activity_stats_t));
+    copy->refractory_end = axon->refractory_end;
+    copy->atp_level = axon->atp_level;
+    copy->lactate_level = axon->lactate_level;
+    copy->damage = axon->damage;
+    copy->is_functional = axon->is_functional;
+
+    // Share segments (CoW - don't copy yet)
+    copy->segments = axon->segments;
+    copy->num_segments = axon->num_segments;
+
+    // Initialize own mutex
+    pthread_mutex_init(&copy->lock, NULL);
+
+    // CoW bookkeeping
+    copy->segment_pool = NULL;  // Don't share pool
+    copy->use_segment_pool = false;
+    copy->cow_ref_count = 1;
+    copy->cow_modified = false;
+    copy->cow_original = axon;
+
+    // Increment original's reference count
+    axon->cow_ref_count++;
+
+    pthread_mutex_unlock(&axon->lock);
+
+    return copy;
+}
+
+bool axon_cow_prepare_write(axon_t* axon)
+{
+    if (!axon) return false;
+
+    pthread_mutex_lock(&axon->lock);
+
+    // If already modified or no original, we own the data
+    if (axon->cow_modified || !axon->cow_original) {
+        axon->cow_modified = true;
+        pthread_mutex_unlock(&axon->lock);
+        return true;
+    }
+
+    // Need to deep copy shared data
+    if (axon->segments && axon->num_segments > 0) {
+        axon_segment_t* old_segments = axon->segments;
+
+        // Allocate our own copy
+        axon->segments = (axon_segment_t*)nimcp_calloc(axon->num_segments,
+                                                        sizeof(axon_segment_t));
+        if (!axon->segments) {
+            axon->segments = old_segments;  // Restore
+            pthread_mutex_unlock(&axon->lock);
+            return false;
+        }
+
+        // Copy segment data
+        memcpy(axon->segments, old_segments,
+               axon->num_segments * sizeof(axon_segment_t));
+
+        // Decrement original's reference count
+        if (axon->cow_original) {
+            pthread_mutex_lock(&axon->cow_original->lock);
+            if (axon->cow_original->cow_ref_count > 0) {
+                axon->cow_original->cow_ref_count--;
+            }
+            pthread_mutex_unlock(&axon->cow_original->lock);
+        }
+    }
+
+    axon->cow_original = NULL;
+    axon->cow_modified = true;
+
+    pthread_mutex_unlock(&axon->lock);
+
+    return true;
+}
+
+void axon_cow_release(axon_t* axon)
+{
+    if (!axon) return;
+
+    pthread_mutex_lock(&axon->lock);
+
+    // Decrement reference count
+    if (axon->cow_ref_count > 0) {
+        axon->cow_ref_count--;
+    }
+
+    // If this is a CoW copy, decrement original's count
+    if (axon->cow_original) {
+        pthread_mutex_lock(&axon->cow_original->lock);
+        if (axon->cow_original->cow_ref_count > 0) {
+            axon->cow_original->cow_ref_count--;
+        }
+        pthread_mutex_unlock(&axon->cow_original->lock);
+    }
+
+    pthread_mutex_unlock(&axon->lock);
+
+    // If reference count is 0 and this is a CoW copy, free
+    if (axon->cow_ref_count == 0 && axon->cow_original) {
+        // Only free segments if we own them (modified)
+        if (axon->cow_modified && axon->segments) {
+            nimcp_free(axon->segments);
+        }
+        if (axon->segment_pool) {
+            axon_segment_pool_destroy(axon->segment_pool);
+        }
+        pthread_mutex_destroy(&axon->lock);
+        nimcp_free(axon);
+    }
+}
+
+bool axon_is_cow_copy(const axon_t* axon)
+{
+    if (!axon) return false;
+    return (axon->cow_original != NULL);
+}
+
+uint32_t axon_cow_ref_count(const axon_t* axon)
+{
+    if (!axon) return 0;
+    return axon->cow_ref_count;
 }

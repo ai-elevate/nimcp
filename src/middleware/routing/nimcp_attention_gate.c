@@ -4,6 +4,7 @@
 
 #include "middleware/routing/nimcp_attention_gate.h"
 #include "utils/memory/nimcp_memory.h"
+#include "utils/memory/nimcp_memory_pool.h"
 #include <string.h>
 #include <math.h>
 #include <stdio.h>
@@ -19,6 +20,12 @@ typedef struct {
     uint32_t target_id;
     attention_target_t target;
 } attention_entry_t;
+
+// Internal structure for sorting in update_spotlight (8 bytes)
+typedef struct {
+    uint32_t target_id;
+    float weight;
+} weighted_target_t;
 
 struct attention_gate {
     // Configuration
@@ -37,6 +44,10 @@ struct attention_gate {
     attention_shift_t* shift_history;
     uint32_t num_shifts;
     uint32_t shift_capacity;
+
+    // Memory pool for hot-path allocations (Phase 1.5)
+    // Pool for sorting buffer in update_spotlight - max_targets weighted_target_t
+    memory_pool_t sort_buffer_pool;
 
     // Statistics
     uint64_t total_shifts;
@@ -188,6 +199,22 @@ attention_gate_t* attention_gate_create(const attention_gate_config_t* config) {
         }
     }
 
+    // Initialize memory pool for hot-path allocations (Phase 1.5)
+    // Pool for sorting buffer in update_spotlight - 2 blocks for concurrent calls
+    memory_pool_config_t sort_pool_config = {
+        .block_size = config->max_targets * sizeof(weighted_target_t),
+        .num_blocks = 2,
+        .alignment = 16,  // SIMD alignment
+        .enable_tracking = false,
+        .enable_guard_pages = false
+    };
+    gate->sort_buffer_pool = memory_pool_create(&sort_pool_config);
+
+    if (!gate->sort_buffer_pool) {
+        attention_gate_destroy(gate);
+        return NULL;
+    }
+
     gate->num_shifts = 0;
     gate->total_shifts = 0;
     gate->current_winner = 0;
@@ -201,6 +228,9 @@ void attention_gate_destroy(attention_gate_t* gate) {
     nimcp_free(gate->entries);
     nimcp_free(gate->spotlight_ids);
     nimcp_free(gate->shift_history);
+
+    // Destroy memory pool (Phase 1.5)
+    memory_pool_destroy(gate->sort_buffer_pool);
     nimcp_free(gate);
 }
 
@@ -342,15 +372,8 @@ bool attention_gate_update_spotlight(attention_gate_t* gate,
                                       uint32_t* num_in_spotlight) {
     if (!gate) return false;
 
-    // Sort entries by combined weight
-    typedef struct {
-        uint32_t target_id;
-        float weight;
-    } weighted_target_t;
-
-    weighted_target_t* targets = (weighted_target_t*)nimcp_malloc(
-        gate->num_entries * sizeof(weighted_target_t));
-
+    // Sort entries by combined weight - Phase 1.5 O(1) pool allocation
+    weighted_target_t* targets = (weighted_target_t*)memory_pool_acquire(gate->sort_buffer_pool);
     if (!targets) return false;
 
     for (uint32_t i = 0; i < gate->num_entries; i++) {
@@ -402,7 +425,8 @@ bool attention_gate_update_spotlight(attention_gate_t* gate,
         *num_in_spotlight = spotlight_count;
     }
 
-    nimcp_free(targets);
+    // Release back to pool (Phase 1.5)
+    memory_pool_release(gate->sort_buffer_pool, targets);
 
     return true;
 }

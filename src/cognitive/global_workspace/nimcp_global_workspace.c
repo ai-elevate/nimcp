@@ -27,6 +27,7 @@
 
 #include "nimcp_global_workspace.h"
 #include "utils/memory/nimcp_memory.h"
+#include "utils/memory/nimcp_memory_pool.h"
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
@@ -77,6 +78,10 @@ struct global_workspace_struct {
 
     // Round-robin state (for ROUND_ROBIN strategy)
     uint32_t last_winner_idx;
+
+    // Phase 1.5: Memory pools for hot-path allocations
+    memory_pool_t broadcast_content_pool;   /**< Pool for broadcast content buffers */
+    memory_pool_t history_content_pool;     /**< Pool for history content buffers */
 };
 
 //=============================================================================
@@ -489,6 +494,27 @@ global_workspace_t* global_workspace_create_custom(
     // Initialize statistics
     memset(&workspace->stats, 0, sizeof(workspace_statistics_t));
 
+    // Phase 1.5: Initialize memory pools for hot-path allocations
+    // Pool for broadcast content buffers (capacity_dim floats each)
+    memory_pool_config_t content_pool_config = {
+        .block_size = actual_config.capacity_dim * sizeof(float),
+        .num_blocks = 4,  // Current + temp + 2 spare
+        .alignment = 16,  // SIMD alignment
+        .enable_tracking = false,
+        .enable_guard_pages = false
+    };
+    workspace->broadcast_content_pool = memory_pool_create(&content_pool_config);
+
+    // Pool for history content buffers (same size, more blocks)
+    memory_pool_config_t history_pool_config = {
+        .block_size = actual_config.capacity_dim * sizeof(float),
+        .num_blocks = actual_config.history_depth + 2,  // history_depth + spares
+        .alignment = 16,
+        .enable_tracking = false,
+        .enable_guard_pages = false
+    };
+    workspace->history_content_pool = memory_pool_create(&history_pool_config);
+
     // Note: global_workspace_t is typedef'd as a pointer, so function signature
     // expects global_workspace_t* (double pointer). Cast to match.
     return (global_workspace_t*)workspace;
@@ -512,6 +538,14 @@ void global_workspace_destroy(global_workspace_t* workspace) {
 
     // Free broadcast content
     nimcp_free(ws->broadcast_content);
+
+    // Phase 1.5: Destroy memory pools
+    if (ws->broadcast_content_pool != NULL) {
+        memory_pool_destroy(ws->broadcast_content_pool);
+    }
+    if (ws->history_content_pool != NULL) {
+        memory_pool_destroy(ws->history_content_pool);
+    }
 
     // Free workspace structure
     nimcp_free(ws);

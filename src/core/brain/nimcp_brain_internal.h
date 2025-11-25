@@ -121,6 +121,9 @@
 // Phase 2 Middleware: Population coding & spike analysis
 #include "middleware/brain_integration.h"
 
+// Phase 1.5: Memory pools for hot-path allocations
+#include "utils/memory/nimcp_memory_pool.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -417,6 +420,23 @@ struct brain_struct {
 
     // Dendrite container for all neuron dendrites (Phase 1.5.7)
     void* dendrite_network;                       // dendrite_network_t* - manages dendrites for all neurons
+
+    // === PHASE 1.5: MEMORY POOLS FOR HOT-PATH ALLOCATIONS ===
+
+    // Decision structure pool - used for internal cached_decision allocation
+    // Pool for brain_decision_t structures (fixed size, O(1) acquire/release)
+    memory_pool_t decision_struct_pool;
+
+    // Output vector pool - used for decision output vectors
+    // Pool for output vectors of size config.num_outputs * sizeof(float)
+    memory_pool_t output_vector_pool;
+
+    // Active neuron IDs pool - used for decision interpretability data
+    // Pool for neuron ID arrays (max neurons * sizeof(uint32_t))
+    memory_pool_t active_neuron_ids_pool;
+
+    // Track max neurons for pool sizing
+    uint32_t max_active_neurons_for_pool;
 };
 
 //=============================================================================

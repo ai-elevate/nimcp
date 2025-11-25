@@ -68,6 +68,19 @@ extern "C" {
 /** @brief Maximum axons one oligodendrocyte can myelinate */
 #define NIMCP_OLIGO_MAX_AXONS 50
 
+//-----------------------------------------------------------------------------
+// Memory Pool Parameters (Phase 1.5+)
+//-----------------------------------------------------------------------------
+
+/** @brief Pool size for myelinated axon structures */
+#define NIMCP_OLIGO_AXON_POOL_SIZE 1024
+
+/** @brief Pool size for internode segment structures */
+#define NIMCP_OLIGO_INTERNODE_POOL_SIZE 4096
+
+/** @brief Pool block size (64 entries per block for bitmap allocation) */
+#define NIMCP_OLIGO_POOL_BLOCK_SIZE 64
+
 /** @brief Baseline unmyelinated conduction velocity (m/s) */
 #define NIMCP_OLIGO_BASE_VELOCITY_MS 1.0f
 
@@ -372,6 +385,40 @@ typedef struct {
     float metabolic_demand;               /**< Axon metabolic demand */
 } myelinated_axon_t;
 
+//-----------------------------------------------------------------------------
+// Memory Pool Structures (Phase 1.5+)
+//-----------------------------------------------------------------------------
+
+/**
+ * @brief Memory pool for myelinated axon structures
+ *
+ * Provides O(1) allocation for myelinated_axon_t using bitmap-based tracking.
+ * Reduces malloc/free overhead in hot paths during myelination operations.
+ */
+typedef struct {
+    myelinated_axon_t* buffer;           /**< Pre-allocated axon array */
+    uint64_t* bitmap;                    /**< Bitmap for free/allocated tracking (1=free) */
+    uint32_t capacity;                   /**< Total slots in pool */
+    uint32_t num_bitmap_words;           /**< Number of 64-bit bitmap words */
+    uint32_t allocated_count;            /**< Number of currently allocated slots */
+    nimcp_spinlock_t lock;               /**< Thread-safe access */
+} oligo_axon_pool_t;
+
+/**
+ * @brief Memory pool for internode segment structures
+ *
+ * Provides O(1) allocation for internode_segment_t using bitmap-based tracking.
+ * Each myelinated axon can have multiple internode segments.
+ */
+typedef struct {
+    internode_segment_t* buffer;         /**< Pre-allocated internode array */
+    uint64_t* bitmap;                    /**< Bitmap for free/allocated tracking (1=free) */
+    uint32_t capacity;                   /**< Total slots in pool */
+    uint32_t num_bitmap_words;           /**< Number of 64-bit bitmap words */
+    uint32_t allocated_count;            /**< Number of currently allocated slots */
+    nimcp_spinlock_t lock;               /**< Thread-safe access */
+} oligo_internode_pool_t;
+
 /**
  * @brief Oligodendrocyte cell state (Enhanced)
  *
@@ -460,6 +507,13 @@ typedef struct {
     // Thread Safety
     //-------------------------------------------------------------------------
     nimcp_spinlock_t lock;                /**< Lock for concurrent access */
+
+    //-------------------------------------------------------------------------
+    // Copy-on-Write Support (Phase 1.5+)
+    //-------------------------------------------------------------------------
+    uint32_t cow_ref_count;               /**< Reference count for CoW */
+    bool cow_modified;                    /**< True if modified since copy */
+    void* cow_original;                   /**< Pointer to original if this is a copy */
 } oligodendrocyte_t;
 
 /**
@@ -514,6 +568,12 @@ typedef struct {
     // Thread Safety
     //-------------------------------------------------------------------------
     nimcp_mutex_t lock;                   /**< Network-level lock */
+
+    //-------------------------------------------------------------------------
+    // Memory Pools (Phase 1.5+)
+    //-------------------------------------------------------------------------
+    oligo_axon_pool_t* axon_pool;         /**< Shared pool for myelinated axon data */
+    oligo_internode_pool_t* internode_pool; /**< Shared pool for internode segments */
 } oligodendrocyte_network_t;
 
 /**
@@ -1209,6 +1269,134 @@ const char* myelin_state_to_string(myelin_state_t state);
  * @return Growth factor name string
  */
 const char* growth_factor_type_to_string(growth_factor_type_t type);
+
+//=============================================================================
+// MEMORY POOL OPERATIONS (Phase 1.5+)
+//=============================================================================
+
+/**
+ * @brief Create axon memory pool
+ *
+ * @param capacity Maximum number of axon slots (rounds up to nearest 64)
+ *
+ * @return Pool handle or NULL on failure
+ */
+oligo_axon_pool_t* oligo_axon_pool_create(uint32_t capacity);
+
+/**
+ * @brief Destroy axon memory pool
+ *
+ * @param pool Pool to destroy (NULL safe)
+ */
+void oligo_axon_pool_destroy(oligo_axon_pool_t* pool);
+
+/**
+ * @brief Allocate axon from pool (O(1) bitmap allocation)
+ *
+ * @param pool Memory pool
+ *
+ * @return Pointer to axon or NULL if pool exhausted
+ */
+myelinated_axon_t* oligo_axon_pool_alloc(oligo_axon_pool_t* pool);
+
+/**
+ * @brief Return axon to pool
+ *
+ * @param pool Memory pool
+ * @param axon Axon to return
+ */
+void oligo_axon_pool_free(oligo_axon_pool_t* pool, myelinated_axon_t* axon);
+
+/**
+ * @brief Get pool statistics
+ *
+ * @param pool Memory pool
+ * @param allocated Output: number of allocated slots
+ * @param capacity Output: total capacity
+ */
+void oligo_axon_pool_stats(const oligo_axon_pool_t* pool,
+                           uint32_t* allocated, uint32_t* capacity);
+
+/**
+ * @brief Create internode memory pool
+ *
+ * @param capacity Maximum number of internode slots (rounds up to nearest 64)
+ *
+ * @return Pool handle or NULL on failure
+ */
+oligo_internode_pool_t* oligo_internode_pool_create(uint32_t capacity);
+
+/**
+ * @brief Destroy internode memory pool
+ *
+ * @param pool Pool to destroy (NULL safe)
+ */
+void oligo_internode_pool_destroy(oligo_internode_pool_t* pool);
+
+/**
+ * @brief Allocate internode from pool (O(1) bitmap allocation)
+ *
+ * @param pool Memory pool
+ *
+ * @return Pointer to internode or NULL if pool exhausted
+ */
+internode_segment_t* oligo_internode_pool_alloc(oligo_internode_pool_t* pool);
+
+/**
+ * @brief Return internode to pool
+ *
+ * @param pool Memory pool
+ * @param internode Internode to return
+ */
+void oligo_internode_pool_free(oligo_internode_pool_t* pool, internode_segment_t* internode);
+
+/**
+ * @brief Get internode pool statistics
+ *
+ * @param pool Memory pool
+ * @param allocated Output: number of allocated slots
+ * @param capacity Output: total capacity
+ */
+void oligo_internode_pool_stats(const oligo_internode_pool_t* pool,
+                                uint32_t* allocated, uint32_t* capacity);
+
+//=============================================================================
+// COPY-ON-WRITE OPERATIONS (Phase 1.5+)
+//=============================================================================
+
+/**
+ * @brief Create a copy-on-write reference to an oligodendrocyte
+ *
+ * @param oligo Original oligodendrocyte
+ *
+ * @return CoW reference (shares data until modified)
+ */
+oligodendrocyte_t* oligodendrocyte_cow_copy(oligodendrocyte_t* oligo);
+
+/**
+ * @brief Prepare oligodendrocyte for writing (deep copy if needed)
+ *
+ * @param oligo Oligodendrocyte to prepare
+ *
+ * @return NIMCP_SUCCESS if ready for writing
+ */
+nimcp_result_t oligodendrocyte_cow_prepare_write(oligodendrocyte_t* oligo);
+
+/**
+ * @brief Release CoW reference
+ *
+ * @param oligo Oligodendrocyte to release
+ */
+void oligodendrocyte_cow_release(oligodendrocyte_t* oligo);
+
+/**
+ * @brief Check if oligodendrocyte is a CoW copy
+ *
+ * @param oligo Oligodendrocyte to check
+ *
+ * @return true if this is a CoW copy of another oligodendrocyte
+ */
+bool oligodendrocyte_is_cow_copy(const oligodendrocyte_t* oligo);
 
 #ifdef __cplusplus
 }

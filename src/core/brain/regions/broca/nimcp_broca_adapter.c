@@ -15,6 +15,7 @@
 #include "core/brain/regions/broca/nimcp_phonological.h"
 #include "core/brain/regions/broca/nimcp_speech_motor.h"
 #include "utils/memory/nimcp_memory.h"
+#include "utils/memory/nimcp_memory_pool.h"
 #include <string.h>
 #include <math.h>
 
@@ -78,6 +79,10 @@ struct broca_adapter {
     broca_status_t status;
     broca_error_t last_error;
     double current_time_ms;
+
+    /* Memory pool for hot-path allocations (Phase 1.5) */
+    /* Pool for temp motor commands in broca_produce_utterance() */
+    memory_pool_t motor_command_pool;
 
     /* Statistics */
     broca_stats_t stats;
@@ -225,6 +230,21 @@ broca_adapter_t* broca_create(const broca_config_t* config) {
         return NULL;
     }
 
+    /* Initialize memory pool for hot-path allocations (Phase 1.5) */
+    /* Pool for temp motor commands - 2 blocks for concurrent utterances */
+    memory_pool_config_t cmd_pool_config = {
+        .block_size = adapter->config.max_motor_commands * sizeof(motor_command_t),
+        .num_blocks = 2,
+        .alignment = 16,  /* SIMD alignment */
+        .enable_tracking = false,
+        .enable_guard_pages = false
+    };
+    adapter->motor_command_pool = memory_pool_create(&cmd_pool_config);
+    if (!adapter->motor_command_pool) {
+        broca_destroy(adapter);
+        return NULL;
+    }
+
     /* Initialize state */
     adapter->status = BROCA_STATUS_IDLE;
     adapter->last_error = BROCA_ERROR_NONE;
@@ -269,6 +289,9 @@ void broca_destroy(broca_adapter_t* adapter) {
     if (adapter->output_commands) {
         nimcp_free(adapter->output_commands);
     }
+
+    /* Destroy memory pool (Phase 1.5) */
+    memory_pool_destroy(adapter->motor_command_pool);
 
     nimcp_free(adapter);
 }
@@ -544,15 +567,16 @@ bool broca_process_utterance(broca_adapter_t* adapter,
 
     local_result.total_duration_ms = total_duration;
 
-    /* Retrieve motor commands to output buffer */
+    /* Retrieve motor commands to output buffer - Phase 1.5 O(1) pool allocation */
     uint32_t max_commands = adapter->config.max_motor_commands;
-    motor_command_t* temp_commands = (motor_command_t*)nimcp_calloc(
-        max_commands, sizeof(motor_command_t));
+    motor_command_t* temp_commands = (motor_command_t*)memory_pool_acquire(
+        adapter->motor_command_pool);
     if (!temp_commands) {
         set_error(adapter, BROCA_ERROR_INTERNAL);
         if (result) *result = local_result;
         return false;
     }
+    memset(temp_commands, 0, max_commands * sizeof(motor_command_t));
 
     uint32_t cmd_count = max_commands;
     if (speech_motor_get_commands(adapter->motor, temp_commands, &cmd_count)) {
@@ -567,7 +591,8 @@ bool broca_process_utterance(broca_adapter_t* adapter,
             adapter->output_count++;
         }
     }
-    nimcp_free(temp_commands);
+    /* Release back to pool (Phase 1.5) */
+    memory_pool_release(adapter->motor_command_pool, temp_commands);
 
     local_result.command_count = adapter->output_count;
     local_result.ready_for_articulation = (adapter->output_count > 0);

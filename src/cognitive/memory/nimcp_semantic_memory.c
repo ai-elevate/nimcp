@@ -12,6 +12,7 @@
 
 #include "cognitive/memory/nimcp_semantic_memory.h"
 #include "utils/memory/nimcp_memory.h"
+#include "utils/memory/nimcp_memory_pool.h"
 #include "cognitive/memory/nimcp_systems_consolidation.h"
 #include "utils/platform/nimcp_platform_time.h"
 #include <stdlib.h>
@@ -164,6 +165,34 @@ semantic_memory_system_t* semantic_memory_create(void) {
     system->next_concept_id = 1;
     system->next_relation_id = 1;
 
+    // Phase 1.5: Initialize memory pools for hot-path allocations
+    memory_pool_config_t concept_pool_config = {
+        .block_size = sizeof(semantic_concept_t),
+        .num_blocks = 64,  // Pre-allocate for typical usage
+        .alignment = 16,   // SIMD alignment
+        .enable_tracking = false,
+        .enable_guard_pages = false
+    };
+    system->concept_pool = memory_pool_create(&concept_pool_config);
+
+    memory_pool_config_t relation_pool_config = {
+        .block_size = sizeof(semantic_relation_t),
+        .num_blocks = 128,  // More relations than concepts typically
+        .alignment = 16,
+        .enable_tracking = false,
+        .enable_guard_pages = false
+    };
+    system->relation_pool = memory_pool_create(&relation_pool_config);
+
+    memory_pool_config_t feature_pool_config = {
+        .block_size = DEFAULT_FEATURE_DIM * sizeof(float),
+        .num_blocks = 64,  // Same as concept pool
+        .alignment = 16,
+        .enable_tracking = false,
+        .enable_guard_pages = false
+    };
+    system->feature_pool = memory_pool_create(&feature_pool_config);
+
     return system;
 }
 
@@ -171,13 +200,30 @@ semantic_memory_system_t* semantic_memory_create(void) {
  * @brief Free concept resources
  * WHAT: Free memory allocated for concept
  * WHY:  Prevent memory leaks
- * HOW:  Free label, features, source IDs, struct
+ * HOW:  Free label, features, source IDs, struct (with CoW handling)
  */
 static void free_concept(semantic_concept_t* concept) {
     if (!concept) return;
 
     if (concept->label) nimcp_free(concept->label);
-    if (concept->features) nimcp_free(concept->features);
+
+    // Phase 1.5: Handle CoW for features
+    if (concept->features) {
+        if (concept->_cow_refcount) {
+            // Shared features - decrement refcount
+            uint32_t remaining = __atomic_sub_fetch(concept->_cow_refcount, 1, __ATOMIC_SEQ_CST);
+            if (remaining == 0) {
+                // Last reference - free shared data
+                nimcp_free(concept->features);
+                nimcp_free(concept->_cow_refcount);
+            }
+            // else: other references exist, don't free features
+        } else {
+            // Owned features - free directly
+            nimcp_free(concept->features);
+        }
+    }
+
     if (concept->source_memory_ids) nimcp_free(concept->source_memory_ids);
     nimcp_free(concept);
 }
@@ -210,6 +256,17 @@ void semantic_memory_destroy(semantic_memory_system_t* system) {
     // Free activation map
     if (system->activation_map) {
         nimcp_free(system->activation_map);
+    }
+
+    // Phase 1.5: Destroy memory pools
+    if (system->concept_pool) {
+        memory_pool_destroy(system->concept_pool);
+    }
+    if (system->relation_pool) {
+        memory_pool_destroy(system->relation_pool);
+    }
+    if (system->feature_pool) {
+        memory_pool_destroy(system->feature_pool);
     }
 
     nimcp_free(system);

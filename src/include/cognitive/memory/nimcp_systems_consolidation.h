@@ -106,6 +106,10 @@ typedef struct cortical_memory_node {
     // Source tracking
     uint64_t source_engram_id;            // Original hippocampal engram (Phase M1)
     bool is_transferred;                  // True if fully transferred from hippocampus
+
+    // Phase 1.5: Copy-on-Write support for efficient feature sharing
+    uint32_t* _cow_refcount;              /**< Shared reference count (NULL = owned) */
+    bool _cow_is_shallow;                 /**< True if features pointer is shared */
 } cortical_memory_node_t;
 
 /**
@@ -170,6 +174,11 @@ typedef struct systems_consolidation_system {
     uint64_t total_replays;               // Lifetime replay count
     uint64_t total_transfers;             // Memories fully transferred
     uint64_t total_forgotten;             // Memories forgotten
+
+    // Phase 1.5: Memory pools for hot-path allocations
+    void* node_pool;                      /**< Pool for cortical node structs */
+    void* feature_pool;                   /**< Pool for feature vectors */
+    void* neighbor_pool;                  /**< Pool for neighbor arrays */
 } systems_consolidation_system_t;
 
 //=============================================================================

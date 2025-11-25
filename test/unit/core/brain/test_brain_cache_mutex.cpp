@@ -349,9 +349,10 @@ TEST_F(BrainCacheTest, ConcurrentReadAndInvalidate) {
 //=============================================================================
 
 /**
- * TEST: Cache returns deep copy
- * WHAT: Cached decision should be independent copy
+ * TEST: Cache returns CoW copy (Phase 1.5)
+ * WHAT: Cached decision should be a Copy-on-Write shallow copy
  * WHY:  Caller must be able to safely free decision without affecting cache
+ *       Phase 1.5 CoW: Decisions share data via reference counting for O(1) copy
  */
 TEST_F(BrainCacheTest, CacheReturnsDeepCopy) {
     auto input = create_input(0.5f);
@@ -366,17 +367,20 @@ TEST_F(BrainCacheTest, CacheReturnsDeepCopy) {
     ASSERT_NE(decision2, nullptr);
     ASSERT_NE(decision2->output_vector, nullptr);
 
-    // Should be different pointers (deep copy)
+    // Should be different struct pointers (each copy has its own struct)
     EXPECT_NE(decision1, decision2);
-    EXPECT_NE(decision1->output_vector, decision2->output_vector);
 
-    // But same values
+    // Phase 1.5 CoW: output_vector pointers are shared (same pointer)
+    // This is expected with Copy-on-Write semantics
+    EXPECT_EQ(decision1->output_vector, decision2->output_vector);
+
+    // Same values
     EXPECT_STREQ(decision1->label, decision2->label);
     EXPECT_FLOAT_EQ(decision1->confidence, decision2->confidence);
 
-    // Free first decision - second should still be valid
+    // Free first decision - second should still be valid due to refcount
     brain_free_decision(decision1);
-    EXPECT_GE(decision2->confidence, 0.0f); // Still valid
+    EXPECT_GE(decision2->confidence, 0.0f); // Still valid (refcount keeps data alive)
 
     brain_free_decision(decision2);
 }

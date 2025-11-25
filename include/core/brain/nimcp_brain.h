@@ -1164,6 +1164,10 @@ float brain_learn_from_llm(brain_t brain, const float* input, uint32_t num_featu
 
 /**
  * @brief Decision result
+ *
+ * Phase 1.5 CoW: Decisions support copy-on-write for efficient caching.
+ * When copy_decision() is called, the copy shares data with the original
+ * via reference counting. Data is only deep-copied when modified.
  */
 typedef struct {
     char label[64];       /**< Decision label */
@@ -1178,6 +1182,10 @@ typedef struct {
     char explanation[256];       /**< Human-readable explanation */
 
     uint64_t inference_time_us; /**< Inference time (microseconds) */
+
+    // Phase 1.5: Copy-on-Write support for efficient decision caching
+    uint32_t* _cow_refcount;     /**< Shared reference count (NULL = owned, else shared) */
+    bool _cow_is_shallow;        /**< True if this is a shallow copy (shares pointers) */
 } brain_decision_t;
 
 /**

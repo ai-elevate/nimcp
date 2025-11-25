@@ -4,6 +4,7 @@
 
 #include "middleware/routing/nimcp_routing_table.h"
 #include "utils/memory/nimcp_memory.h"
+#include "utils/memory/nimcp_memory_pool.h"
 #include <string.h>
 #include <math.h>
 #include <stdio.h>
@@ -30,6 +31,10 @@ struct routing_table {
     uint32_t num_routes;
     uint64_t total_usage;
     uint64_t total_prunes;
+
+    // Note: Memory pools not applicable here - query results are returned to caller
+    // and freed via routing_table_free_query which doesn't have pool access.
+    // Variable-size allocations (1-16 entries) also don't fit fixed-block pools well.
 };
 
 // ============================================================================
