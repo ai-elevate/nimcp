@@ -156,7 +156,7 @@ static void rotate_coords(
  */
 static float gabor_function(
     float x, float y,
-    const gabor_params_t* params
+    const cc_gabor_params_t* params
 ) {
     if (!params) {
         return 0.0f;
@@ -202,7 +202,7 @@ static float von_mises(float theta, float mu, float kappa) {
  * HOW:  λ = 1/f, σ related to λ, standard aspect ratio.
  */
 static void init_default_gabor_params(
-    gabor_params_t* params,
+    cc_gabor_params_t* params,
     float spatial_frequency,
     float orientation_deg,
     float phase
@@ -302,7 +302,7 @@ void orientation_column_destroy(orientation_column_t* col) {
 
 bool orientation_column_set_gabor(
     orientation_column_t* col,
-    const gabor_params_t* params
+    const cc_gabor_params_t* params
 ) {
     if (!col || !params) {
         LOG_ERROR("NULL parameter in orientation_column_set_gabor");
@@ -310,7 +310,7 @@ bool orientation_column_set_gabor(
     }
 
     nimcp_platform_mutex_lock((nimcp_platform_mutex_t*)col->mutex);
-    memcpy(&col->gabor_params, params, sizeof(gabor_params_t));
+    memcpy(&col->gabor_params, params, sizeof(cc_gabor_params_t));
     nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)col->mutex);
 
     return true;
@@ -384,10 +384,10 @@ float orientation_column_compute_energy(
     nimcp_platform_mutex_lock((nimcp_platform_mutex_t*)col->mutex);
 
     /* Create even and odd phase Gabor filters (quadrature pair) */
-    gabor_params_t even_params = col->gabor_params;
+    cc_gabor_params_t even_params = col->gabor_params;
     even_params.psi = 0.0f;
 
-    gabor_params_t odd_params = col->gabor_params;
+    cc_gabor_params_t odd_params = col->gabor_params;
     odd_params.psi = (float)M_PI / 2.0f;
 
     float even_response = 0.0f;
@@ -1004,7 +1004,7 @@ float orientation_hypercolumn_get_local_orientation(
 
 bool orientation_hypercolumn_get_stats(
     orientation_hypercolumn_t* hcol,
-    hypercolumn_stats_t* stats
+    orientation_hypercolumn_stats_t* stats
 ) {
     if (!hcol || !stats) {
         LOG_ERROR("NULL parameter in orientation_hypercolumn_get_stats");
@@ -1013,7 +1013,7 @@ bool orientation_hypercolumn_get_stats(
 
     nimcp_platform_mutex_lock((nimcp_platform_mutex_t*)hcol->mutex);
 
-    memset(stats, 0, sizeof(hypercolumn_stats_t));
+    memset(stats, 0, sizeof(orientation_hypercolumn_stats_t));
 
     /* Compute OSI and circular variance */
     stats->mean_osi = orientation_hypercolumn_compute_osi(hcol);

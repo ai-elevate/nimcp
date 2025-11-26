@@ -50,6 +50,7 @@ extern "C" {
 #include <stdbool.h>
 #include <stddef.h>
 #include <pthread.h>
+#include "glial/myelin_sheath/nimcp_myelin_math.h"
 
 //=============================================================================
 // FORWARD DECLARATIONS
@@ -227,6 +228,22 @@ struct axon_segment_struct {
 
     /** Cumulative delay to this segment (ms) */
     float cumulative_delay;
+
+    //--- Enhanced Biophysics (from nimcp_myelin_math.h) ---
+    /** Cable theory parameters for this segment */
+    nimcp_cable_params_t cable_params;
+
+    /** Saltatory conduction result (detailed velocity breakdown) */
+    nimcp_saltatory_result_t saltatory;
+
+    /** Optimal G-ratio for this diameter */
+    float optimal_g_ratio;
+
+    /** Conduction block probability (0-1) */
+    float block_probability;
+
+    /** Is segment conducting? */
+    bool is_conducting;
 };
 
 //=============================================================================
@@ -447,6 +464,22 @@ struct axon_struct {
 
     /** Is axon functional? */
     bool is_functional;
+
+    //--- Enhanced Biophysics (from nimcp_myelin_math.h) ---
+    /** Comprehensive biophysics state */
+    nimcp_myelin_biophysics_t* biophysics;
+
+    /** Metabolic efficiency metrics */
+    nimcp_metabolic_efficiency_t metabolic_efficiency;
+
+    /** Current temperature for block modeling (°C) */
+    float temperature_c;
+
+    /** Mean space constant λ across segments (μm) */
+    float mean_lambda_um;
+
+    /** Overall block probability (0-1) */
+    float overall_block_probability;
 
     //--- Thread Safety ---
     /** Spinlock for concurrent access */
@@ -1242,6 +1275,170 @@ bool axon_is_cow_copy(const axon_t* axon);
  * @return Current reference count
  */
 uint32_t axon_cow_ref_count(const axon_t* axon);
+
+//=============================================================================
+// ENHANCED BIOPHYSICS API (from nimcp_myelin_math.h integration)
+//=============================================================================
+
+/**
+ * @brief Initialize enhanced biophysics for axon
+ *
+ * WHAT: Create and attach biophysics state for advanced calculations
+ * WHY:  Enable cable theory, saltatory conduction, and block modeling
+ * HOW:  Allocates nimcp_myelin_biophysics_t and initializes all segments
+ *
+ * @param axon Axon to initialize
+ * @param use_stochastic Enable stochastic variability
+ * @param seed Random seed (0 for time-based)
+ * @return true on success
+ */
+bool axon_init_biophysics(axon_t* axon, bool use_stochastic, uint64_t seed);
+
+/**
+ * @brief Update segment cable theory parameters
+ *
+ * WHAT: Recalculate λ and τ for a segment
+ * WHY:  Cable parameters affect passive signal propagation
+ * HOW:  Uses nimcp_myelin_compute_cable_params
+ *
+ * @param axon Axon containing segment
+ * @param segment_index Index of segment to update
+ */
+void axon_update_segment_cable_params(axon_t* axon, uint32_t segment_index);
+
+/**
+ * @brief Compute segment velocity with enhanced model
+ *
+ * WHAT: Calculate velocity using full saltatory conduction model
+ * WHY:  More accurate than simple Hursh's law
+ * HOW:  Accounts for cable theory, g-ratio efficiency, compaction
+ *
+ * @param axon Axon containing segment
+ * @param segment_index Index of segment
+ * @return Velocity in m/s (0 if blocked)
+ */
+float axon_compute_segment_velocity_enhanced(axon_t* axon, uint32_t segment_index);
+
+/**
+ * @brief Check for conduction block at segment
+ *
+ * WHAT: Determine if signal can propagate through segment
+ * WHY:  Model pathological conditions and temperature effects
+ * HOW:  Sigmoid probability with temperature modulation
+ *
+ * @param axon Axon containing segment
+ * @param segment_index Index of segment
+ * @return true if blocked, false if conducting
+ */
+bool axon_check_segment_block(axon_t* axon, uint32_t segment_index);
+
+/**
+ * @brief Set axon temperature for block modeling
+ *
+ * @param axon Axon to update
+ * @param temperature_c Temperature in Celsius
+ */
+void axon_set_temperature(axon_t* axon, float temperature_c);
+
+/**
+ * @brief Compute metabolic efficiency for axon
+ *
+ * WHAT: Calculate energy costs and efficiency ratio
+ * WHY:  Quantify metabolic benefit of myelination
+ * HOW:  Compare myelinated vs unmyelinated energy costs
+ *
+ * @param axon Axon to analyze
+ */
+void axon_compute_metabolic_efficiency(axon_t* axon);
+
+/**
+ * @brief Get ATP cost per action potential
+ *
+ * @param axon Axon to query
+ * @return ATP molecules per AP
+ */
+float axon_get_atp_per_ap(const axon_t* axon);
+
+/**
+ * @brief Get energy efficiency ratio vs unmyelinated
+ *
+ * @param axon Axon to query
+ * @return Efficiency ratio (>1 means more efficient)
+ */
+float axon_get_efficiency_ratio(const axon_t* axon);
+
+/**
+ * @brief Update all enhanced biophysics for axon
+ *
+ * WHAT: Recalculate all biophysics parameters for all segments
+ * WHY:  Keep cached calculations current after changes
+ * HOW:  Iterate segments and update cable, velocity, block, etc.
+ *
+ * @param axon Axon to update
+ */
+void axon_update_biophysics(axon_t* axon);
+
+/**
+ * @brief Apply activity-dependent myelination using Hill kinetics
+ *
+ * WHAT: Adjust lamellae based on neural activity
+ * WHY:  Activity-dependent plasticity is biological
+ * HOW:  Hill-function kinetics with saturation
+ *
+ * @param axon Axon to update
+ * @param activity Activity level (0-1 normalized)
+ * @param dt Time step (seconds)
+ * @return Total change in lamellae across all segments
+ */
+float axon_apply_activity_myelination(axon_t* axon, float activity, float dt);
+
+/**
+ * @brief Get optimal g-ratio for axon diameter
+ *
+ * WHAT: Calculate diameter-dependent optimal g-ratio
+ * WHY:  Smaller axons have different optimal myelination
+ * HOW:  Rushton model with exponential diameter correction
+ *
+ * @param axon Axon to query
+ * @return Optimal g-ratio
+ */
+float axon_get_optimal_g_ratio(const axon_t* axon);
+
+/**
+ * @brief Get space constant for axon
+ *
+ * WHAT: Return mean space constant λ across segments
+ * WHY:  λ determines passive signal attenuation
+ * HOW:  Average of segment cable parameters
+ *
+ * @param axon Axon to query
+ * @return Mean λ in micrometers
+ */
+float axon_get_space_constant(const axon_t* axon);
+
+/**
+ * @brief Get frequency-dependent block threshold
+ *
+ * WHAT: Calculate minimum integrity for given stimulation frequency
+ * WHY:  High-frequency conduction fails first
+ * HOW:  Inverse of block probability with frequency factor
+ *
+ * @param axon Axon to query
+ * @param frequency_hz Stimulation frequency (Hz)
+ * @return Minimum myelination integrity for reliable conduction
+ */
+float axon_get_frequency_threshold(const axon_t* axon, float frequency_hz);
+
+/**
+ * @brief Apply stochastic variability to axon myelination
+ *
+ * WHAT: Add biological variability to structural parameters
+ * WHY:  Real myelin has natural variation
+ * HOW:  Log-normal and normal distributions
+ *
+ * @param axon Axon to modify
+ */
+void axon_apply_myelination_variability(axon_t* axon);
 
 #ifdef __cplusplus
 }

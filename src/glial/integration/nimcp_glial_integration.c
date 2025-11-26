@@ -831,3 +831,83 @@ void glial_integration_set_microglia_pruning_enabled(glial_integration_t* gi, bo
     gi->enable_microglia_pruning = enable;
     nimcp_mutex_unlock(&gi->lock);
 }
+
+// ============================================================================
+// MYELIN SHEATH INTEGRATION
+// ============================================================================
+
+nimcp_result_t glial_integration_set_myelin_sheath_network(
+    glial_integration_t* gi, myelin_sheath_network_t* myelin_network) {
+    if (!gi) return NIMCP_ERROR_INVALID_PARAM;
+
+    nimcp_mutex_lock(&gi->lock);
+    gi->myelin_sheath_network = myelin_network;
+    gi->enable_myelin_sheath = (myelin_network != NULL);
+    nimcp_mutex_unlock(&gi->lock);
+
+    return NIMCP_SUCCESS;
+}
+
+void glial_integration_set_myelin_sheath_enabled(glial_integration_t* gi, bool enable) {
+    if (!gi) return;
+
+    nimcp_mutex_lock(&gi->lock);
+    gi->enable_myelin_sheath = enable;
+    nimcp_mutex_unlock(&gi->lock);
+}
+
+float glial_integration_get_myelin_velocity(glial_integration_t* gi, uint32_t axon_id) {
+    if (!gi || !gi->enable_myelin_sheath || !gi->myelin_sheath_network) {
+        return NIMCP_MYELIN_BASE_VELOCITY_MS;
+    }
+
+    nimcp_mutex_lock(&gi->lock);
+    float velocity = myelin_network_get_velocity(gi->myelin_sheath_network, axon_id);
+    nimcp_mutex_unlock(&gi->lock);
+
+    return velocity;
+}
+
+float glial_integration_get_myelin_delay(glial_integration_t* gi, uint32_t axon_id) {
+    if (!gi || !gi->enable_myelin_sheath || !gi->myelin_sheath_network) {
+        return 0.0f;
+    }
+
+    nimcp_mutex_lock(&gi->lock);
+    float delay = myelin_network_get_delay(gi->myelin_sheath_network, axon_id);
+    nimcp_mutex_unlock(&gi->lock);
+
+    return delay;
+}
+
+myelin_sheath_t* glial_integration_create_myelin_sheath(
+    glial_integration_t* gi,
+    uint32_t axon_id,
+    uint32_t oligo_id,
+    float axon_length,
+    float axon_diameter) {
+    if (!gi || !gi->myelin_sheath_network) {
+        return NULL;
+    }
+
+    nimcp_mutex_lock(&gi->lock);
+    myelin_sheath_t* sheath = myelin_network_create_sheath_for_axon(
+        gi->myelin_sheath_network, axon_id, oligo_id, axon_length, axon_diameter, 0.0f);
+    nimcp_mutex_unlock(&gi->lock);
+
+    return sheath;
+}
+
+void glial_integration_apply_axon_activity_to_myelin(
+    glial_integration_t* gi,
+    uint32_t axon_id,
+    float activity_level,
+    float dt) {
+    if (!gi || !gi->enable_myelin_sheath || !gi->myelin_sheath_network) {
+        return;
+    }
+
+    nimcp_mutex_lock(&gi->lock);
+    myelin_network_apply_activity(gi->myelin_sheath_network, axon_id, activity_level, dt);
+    nimcp_mutex_unlock(&gi->lock);
+}

@@ -1255,7 +1255,7 @@ TEST_F(FeatureHypercolumnTest, GetStats_ComputesCorrectly) {
         hcol->columns[i].activation = static_cast<float>(i);
     }
 
-    feature_hypercolumn_stats_t stats;
+    feature_cc_hypercolumn_stats_t stats;
     feature_hypercolumn_get_stats(hcol, &stats);
 
     // Verify mean
@@ -1279,7 +1279,7 @@ TEST_F(FeatureHypercolumnTest, GetStats_NullPointers) {
     feature_hypercolumn_t* hcol = feature_hypercolumn_create_orientation(8);
     ASSERT_NE(hcol, nullptr);
 
-    feature_hypercolumn_stats_t stats;
+    feature_cc_hypercolumn_stats_t stats;
 
     // Should not crash
     feature_hypercolumn_get_stats(nullptr, &stats);
@@ -1436,7 +1436,7 @@ TEST_F(FeatureHypercolumnTest, EdgeCase_ZeroActivations) {
     EXPECT_FLOAT_EQ(decoded, 0.0f);
 
     // Stats should handle gracefully
-    feature_hypercolumn_stats_t stats;
+    feature_cc_hypercolumn_stats_t stats;
     feature_hypercolumn_get_stats(hcol, &stats);
     EXPECT_FLOAT_EQ(stats.mean_activation, 0.0f);
 
@@ -1504,7 +1504,7 @@ TEST_F(FeatureHypercolumnTest, Integration_CompleteWorkflow) {
     EXPECT_TRUE(float_approx_equal(decoded, 60.0f, 20.0f));
 
     // Get statistics
-    feature_hypercolumn_stats_t stats;
+    feature_cc_hypercolumn_stats_t stats;
     feature_hypercolumn_get_stats(hcol, &stats);
     EXPECT_GT(stats.max_activation, 0.0f);
 

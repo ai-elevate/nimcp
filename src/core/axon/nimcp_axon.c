@@ -1491,3 +1491,311 @@ uint32_t axon_cow_ref_count(const axon_t* axon)
     if (!axon) return 0;
     return axon->cow_ref_count;
 }
+
+//=============================================================================
+// ENHANCED BIOPHYSICS IMPLEMENTATION (from nimcp_myelin_math.h integration)
+//=============================================================================
+
+bool axon_init_biophysics(axon_t* axon, bool use_stochastic, uint64_t seed)
+{
+    if (!axon) return false;
+
+    pthread_mutex_lock(&axon->lock);
+
+    // Create biophysics state
+    axon->biophysics = nimcp_myelin_biophysics_create(use_stochastic, seed);
+    if (!axon->biophysics) {
+        pthread_mutex_unlock(&axon->lock);
+        return false;
+    }
+
+    // Initialize temperature to normal body temperature
+    axon->temperature_c = 37.0f;
+
+    pthread_mutex_unlock(&axon->lock);
+
+    // Update all segments with enhanced calculations
+    axon_update_biophysics(axon);
+
+    return true;
+}
+
+void axon_update_segment_cable_params(axon_t* axon, uint32_t segment_index)
+{
+    if (!axon || !axon->segments || segment_index >= axon->num_segments) return;
+
+    axon_segment_t* seg = &axon->segments[segment_index];
+
+    // Only calculate for myelinated internodes
+    if (seg->type == SEGMENT_TYPE_INTERNODE) {
+        // Estimate lamellae from myelination level
+        uint32_t lamellae = (uint32_t)(seg->myelination * 40.0f);
+        if (lamellae < 1) lamellae = 1;
+
+        nimcp_myelin_compute_cable_params(seg->diameter, lamellae, &seg->cable_params);
+
+        // Compute optimal g-ratio for this diameter
+        seg->optimal_g_ratio = nimcp_myelin_optimal_g_ratio(seg->diameter);
+    }
+}
+
+float axon_compute_segment_velocity_enhanced(axon_t* axon, uint32_t segment_index)
+{
+    if (!axon || !axon->segments || segment_index >= axon->num_segments) {
+        return NIMCP_AXON_BASE_VELOCITY_MS;
+    }
+
+    axon_segment_t* seg = &axon->segments[segment_index];
+
+    // For non-internode segments, use basic velocity
+    if (seg->type != SEGMENT_TYPE_INTERNODE) {
+        seg->local_velocity = NIMCP_AXON_BASE_VELOCITY_MS;
+        seg->is_conducting = true;
+        seg->block_probability = 0.0f;
+        return seg->local_velocity;
+    }
+
+    // Estimate lamellae and compaction from myelination level
+    uint32_t lamellae = (uint32_t)(seg->myelination * 40.0f);
+    if (lamellae < 1) lamellae = 1;
+    float compaction = seg->myelination;
+    float integrity = 1.0f - (axon->damage);
+
+    // Use enhanced saltatory conduction model
+    float velocity = nimcp_myelin_saltatory_velocity(
+        seg->diameter,
+        seg->length,
+        lamellae,
+        seg->g_ratio,
+        compaction,
+        integrity,
+        &seg->saltatory
+    );
+
+    // Store block probability
+    seg->block_probability = seg->saltatory.block_probability;
+    seg->is_conducting = !seg->saltatory.is_blocked;
+    seg->local_velocity = velocity;
+
+    return velocity;
+}
+
+bool axon_check_segment_block(axon_t* axon, uint32_t segment_index)
+{
+    if (!axon || !axon->segments || segment_index >= axon->num_segments) {
+        return true;  // Block if invalid
+    }
+
+    axon_segment_t* seg = &axon->segments[segment_index];
+    float integrity = 1.0f - axon->damage;
+
+    nimcp_conduction_block_params_t params = nimcp_myelin_block_params_default();
+    seg->block_probability = nimcp_myelin_block_probability(
+        integrity, axon->temperature_c, &params);
+
+    seg->is_conducting = (seg->block_probability < 0.5f);
+    return !seg->is_conducting;
+}
+
+void axon_set_temperature(axon_t* axon, float temperature_c)
+{
+    if (!axon) return;
+
+    axon->temperature_c = clamp_f(temperature_c, 20.0f, 45.0f);
+
+    if (axon->biophysics) {
+        axon->biophysics->temperature_c = axon->temperature_c;
+    }
+}
+
+void axon_compute_metabolic_efficiency(axon_t* axon)
+{
+    if (!axon || axon->num_segments == 0) return;
+
+    // Calculate mean compaction and integrity
+    float mean_compaction = 0.0f;
+    float integrity = 1.0f - axon->damage;
+    uint32_t myelinated_count = 0;
+
+    for (uint32_t i = 0; i < axon->num_segments; i++) {
+        if (axon->segments[i].type == SEGMENT_TYPE_INTERNODE) {
+            mean_compaction += axon->segments[i].myelination;
+            myelinated_count++;
+        }
+    }
+
+    if (myelinated_count > 0) {
+        mean_compaction /= (float)myelinated_count;
+    }
+
+    // Compute metabolic efficiency
+    nimcp_myelin_compute_metabolic_efficiency(
+        axon->length,
+        axon->diameter,
+        myelinated_count,
+        mean_compaction,
+        integrity,
+        &axon->metabolic_efficiency
+    );
+}
+
+float axon_get_atp_per_ap(const axon_t* axon)
+{
+    if (!axon) return 0.0f;
+    return axon->metabolic_efficiency.atp_per_ap;
+}
+
+float axon_get_efficiency_ratio(const axon_t* axon)
+{
+    if (!axon) return 1.0f;
+    return axon->metabolic_efficiency.efficiency_ratio;
+}
+
+void axon_update_biophysics(axon_t* axon)
+{
+    if (!axon) return;
+
+    pthread_mutex_lock(&axon->lock);
+
+    float total_lambda = 0.0f;
+    float total_block_prob = 0.0f;
+    uint32_t internode_count = 0;
+
+    // Update each segment
+    for (uint32_t i = 0; i < axon->num_segments; i++) {
+        axon_segment_t* seg = &axon->segments[i];
+
+        // Update cable parameters
+        axon_update_segment_cable_params(axon, i);
+
+        // Update velocity with enhanced model
+        axon_compute_segment_velocity_enhanced(axon, i);
+
+        // Update block probability
+        axon_check_segment_block(axon, i);
+
+        if (seg->type == SEGMENT_TYPE_INTERNODE) {
+            total_lambda += seg->cable_params.lambda_um;
+            total_block_prob += seg->block_probability;
+            internode_count++;
+        }
+    }
+
+    // Update aggregate values
+    if (internode_count > 0) {
+        axon->mean_lambda_um = total_lambda / (float)internode_count;
+        axon->overall_block_probability = total_block_prob / (float)internode_count;
+    }
+
+    pthread_mutex_unlock(&axon->lock);
+
+    // Update conduction properties
+    axon_update_conduction(axon);
+
+    // Update metabolic efficiency
+    axon_compute_metabolic_efficiency(axon);
+}
+
+float axon_apply_activity_myelination(axon_t* axon, float activity, float dt)
+{
+    if (!axon || dt <= 0.0f) return 0.0f;
+
+    nimcp_myelination_kinetics_t kinetics = nimcp_myelin_kinetics_default();
+    float total_delta = 0.0f;
+
+    pthread_mutex_lock(&axon->lock);
+
+    for (uint32_t i = 0; i < axon->num_segments; i++) {
+        axon_segment_t* seg = &axon->segments[i];
+
+        if (seg->type == SEGMENT_TYPE_INTERNODE) {
+            // Estimate current lamellae from myelination level
+            float current_lamellae = seg->myelination * 40.0f;
+
+            // Compute myelination rate using Hill kinetics
+            float rate = nimcp_myelin_compute_myelination_rate(
+                activity, current_lamellae, &kinetics);
+
+            float new_lamellae = nimcp_myelin_update_lamellae(
+                current_lamellae, activity, dt, &kinetics);
+
+            float delta = new_lamellae - current_lamellae;
+            total_delta += delta;
+
+            // Update myelination level
+            seg->myelination = clamp_f(new_lamellae / 40.0f, 0.0f, 1.0f);
+        }
+    }
+
+    // Update overall myelination level
+    float total_myelination = 0.0f;
+    uint32_t count = 0;
+    for (uint32_t i = 0; i < axon->num_segments; i++) {
+        if (axon->segments[i].type == SEGMENT_TYPE_INTERNODE) {
+            total_myelination += axon->segments[i].myelination;
+            count++;
+        }
+    }
+    if (count > 0) {
+        axon->myelination_level = total_myelination / (float)count;
+    }
+
+    pthread_mutex_unlock(&axon->lock);
+
+    // Recalculate after changes
+    axon_update_biophysics(axon);
+
+    return total_delta;
+}
+
+float axon_get_optimal_g_ratio(const axon_t* axon)
+{
+    if (!axon) return 0.77f;
+    return nimcp_myelin_optimal_g_ratio(axon->diameter);
+}
+
+float axon_get_space_constant(const axon_t* axon)
+{
+    if (!axon) return 0.0f;
+    return axon->mean_lambda_um;
+}
+
+float axon_get_frequency_threshold(const axon_t* axon, float frequency_hz)
+{
+    if (!axon) return 1.0f;
+
+    nimcp_conduction_block_params_t params = nimcp_myelin_block_params_default();
+    return nimcp_myelin_frequency_threshold(frequency_hz, axon->temperature_c, &params);
+}
+
+void axon_apply_myelination_variability(axon_t* axon)
+{
+    if (!axon || !axon->biophysics || !axon->biophysics->use_stochastic) return;
+
+    pthread_mutex_lock(&axon->lock);
+
+    nimcp_myelin_rng_t* rng = &axon->biophysics->rng;
+
+    for (uint32_t i = 0; i < axon->num_segments; i++) {
+        axon_segment_t* seg = &axon->segments[i];
+
+        if (seg->type == SEGMENT_TYPE_INTERNODE) {
+            // Apply variability to myelination level
+            float target_myelination = seg->myelination;
+            float varied = nimcp_myelin_rng_normal(rng, target_myelination, 0.05f);
+            seg->myelination = clamp_f(varied, 0.0f, 1.0f);
+
+            // Apply variability to g-ratio
+            float varied_g = nimcp_myelin_vary_g_ratio(rng, seg->g_ratio);
+            seg->g_ratio = varied_g;
+
+            // Apply variability to segment length
+            seg->length = nimcp_myelin_vary_internode(rng, seg->length);
+        }
+    }
+
+    pthread_mutex_unlock(&axon->lock);
+
+    // Recalculate after variability applied
+    axon_update_biophysics(axon);
+}

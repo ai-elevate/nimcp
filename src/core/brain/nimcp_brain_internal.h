@@ -118,6 +118,14 @@
 #include "utils/algorithms/nimcp_graph_metrics.h"
 #include "utils/containers/nimcp_graph.h"
 
+// Phase CC-1: Cortical Columns Architecture (Tier 0.65)
+#include "core/cortical_columns/nimcp_cortical_column.h"
+#include "core/cortical_columns/nimcp_cortical_layers.h"
+#include "core/cortical_columns/nimcp_columnar_connectivity.h"
+#include "core/cortical_columns/nimcp_topographic_maps.h"
+#include "core/cortical_columns/nimcp_orientation_columns.h"
+#include "core/cortical_columns/nimcp_feature_hypercolumns.h"
+
 // Phase 2 Middleware: Population coding & spike analysis
 #include "middleware/brain_integration.h"
 
@@ -209,6 +217,7 @@ struct brain_struct {
     // Phase 5/6: Biological Realism
     glial_integration_t* glial;                  // Glial cells (struct type, needs *)
     brain_oscillation_analyzer_t* oscillations;  // Brain wave analysis (struct type, needs *)
+    myelin_sheath_network_t* myelin_sheath;      // Myelin structural modeling (struct type, needs *)
 
     // Consciousness & Cognition (most use pointer typedefs)
     introspection_context_t introspection;       // Self-awareness (already pointer type*)
@@ -420,6 +429,35 @@ struct brain_struct {
 
     // Dendrite container for all neuron dendrites (Phase 1.5.7)
     void* dendrite_network;                       // dendrite_network_t* - manages dendrites for all neurons
+
+    // === PHASE CC-1: CORTICAL COLUMNS ARCHITECTURE (Tier 0.65) ===
+    //
+    // Hierarchical cortical column organization based on Douglas & Martin (1991) canonical microcircuit.
+    // Minicolumns (~80-100 neurons) group into hypercolumns (~100K neurons) with lateral inhibition
+    // and competitive dynamics for feature detection and representation.
+    //
+    // Architecture:
+    // - cortical_column_pool: Memory management for minicolumns/hypercolumns
+    // - laminar_system: 6-layer organization (I, II/III, IV, V, VI)
+    // - columnar_connectivity: Canonical microcircuit connectivity patterns
+    // - topographic_maps: Retinotopic, tonotopic, somatotopic spatial maps
+    // - orientation_system: V1 orientation selectivity (Gabor filters)
+    // - feature_hypercolumns: Multi-dimensional feature coverage
+
+    cortical_column_pool_t* cortical_column_pool;     // Memory pool for minicolumns/hypercolumns
+    hypercolumn_t** hypercolumns;                     // Array of hypercolumns
+    uint32_t num_hypercolumns;                        // Number of hypercolumns
+    laminar_structure_t* laminar_system;              // 6-layer cortical organization
+    columnar_connectivity_t* columnar_connectivity;   // Canonical microcircuit connectivity
+    topographic_map_t* visual_topographic_map;        // Retinotopic map for visual cortex
+    topographic_map_t* auditory_topographic_map;      // Tonotopic map for auditory cortex
+    topographic_map_t* somatosensory_topographic_map; // Somatotopic map for S1
+    orientation_hypercolumn_t** orientation_hypercolumns; // V1 orientation columns
+    uint32_t num_orientation_hypercolumns;            // Number of orientation hypercolumns
+    feature_hypercolumn_t** feature_hypercolumns;     // Multi-dimensional feature hypercolumns
+    uint32_t num_feature_hypercolumns;                // Number of feature hypercolumns
+    bool enable_cortical_columns;                     // Master enable flag
+    uint64_t last_cortical_update_us;                 // Last cortical column update timestamp
 
     // === PHASE 1.5: MEMORY POOLS FOR HOT-PATH ALLOCATIONS ===
 

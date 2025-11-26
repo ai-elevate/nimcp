@@ -57,7 +57,7 @@ extern "C" {
  * ========================================================================== */
 
 /**
- * @struct gabor_params_t
+ * @struct cc_gabor_params_t
  * @brief Parameters for Gabor filter kernel
  *
  * WHAT: Configuration for 2D Gabor filter that models simple cell receptive fields.
@@ -71,7 +71,7 @@ typedef struct {
     float gamma;        /**< Aspect ratio (sigma_y/sigma_x) */
     float psi;          /**< Phase offset (0 for even, π/2 for odd symmetry) */
     float theta;        /**< Orientation angle in radians */
-} gabor_params_t;
+} cc_gabor_params_t;
 
 /**
  * @struct orientation_column_t
@@ -90,7 +90,7 @@ typedef struct {
     uint32_t column_id;            /**< Unique identifier */
 
     /* Gabor filter parameters */
-    gabor_params_t gabor_params;   /**< Configured Gabor parameters */
+    cc_gabor_params_t gabor_params;   /**< Configured Gabor parameters */
 
     /* Tuning curve parameters */
     float kappa;                   /**< Von Mises concentration parameter */
@@ -147,12 +147,13 @@ typedef struct {
 } orientation_stats_t;
 
 /**
- * @struct hypercolumn_stats_t
- * @brief Statistics for an entire hypercolumn
+ * @struct orientation_hypercolumn_stats_t
+ * @brief Statistics for an orientation hypercolumn
  *
- * WHAT: Population-level metrics for hypercolumn performance.
+ * WHAT: Population-level metrics for orientation hypercolumn performance.
  * WHY:  Characterize hypercolumn selectivity and competition dynamics.
- * HOW:  Aggregates statistics across all constituent columns.
+ * HOW:  Aggregates statistics across all constituent orientation columns.
+ * NOTE: Named orientation_hypercolumn_stats_t to avoid conflict with cc_hypercolumn_stats_t
  */
 typedef struct {
     float mean_osi;                 /**< Average orientation selectivity index */
@@ -160,7 +161,7 @@ typedef struct {
     float competition_strength;     /**< Measure of competitive interactions */
     float coverage_uniformity;      /**< How evenly orientations are sampled */
     uint32_t num_active_columns;    /**< Number of columns above threshold */
-} hypercolumn_stats_t;
+} orientation_hypercolumn_stats_t;
 
 /* ============================================================================
  * Orientation Column Functions
@@ -211,7 +212,7 @@ void orientation_column_destroy(orientation_column_t* col);
  */
 bool orientation_column_set_gabor(
     orientation_column_t* col,
-    const gabor_params_t* params
+    const cc_gabor_params_t* params
 );
 
 /**
@@ -496,7 +497,7 @@ float orientation_hypercolumn_get_local_orientation(
  */
 bool orientation_hypercolumn_get_stats(
     orientation_hypercolumn_t* hcol,
-    hypercolumn_stats_t* stats
+    orientation_hypercolumn_stats_t* stats
 );
 
 /* ============================================================================

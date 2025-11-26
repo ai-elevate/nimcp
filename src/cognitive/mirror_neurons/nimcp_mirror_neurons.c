@@ -13,6 +13,10 @@
  */
 
 #include "cognitive/nimcp_mirror_neurons.h"
+#include "nimcp_mirror_substrate.h"  // Substrate integration (Phase 10.11.2)
+#include "nimcp_mirror_stdp.h"       // STDP learning (Phase 10.11.4)
+#include "nimcp_mirror_resonance.h"  // Motor resonance (Phase 10.11.5)
+#include "nimcp_mirror_hierarchy.h"  // Hierarchical goals (Phase 10.11.6)
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/time/nimcp_time.h"
@@ -36,6 +40,7 @@
  *
  * WHAT: Represents one mirror neuron with dual observation/execution pathways
  * WHY:  Enable shared representation for observed and executed actions
+ * HOW:  Combines cognitive state with optional biological substrate backing
  */
 typedef struct {
     uint32_t neuron_id;                /**< Unique neuron identifier */
@@ -57,6 +62,10 @@ typedef struct {
     // Temporal state
     uint64_t last_observation_time;    /**< Last observation activation */
     uint64_t last_execution_time;      /**< Last execution activation */
+
+    // Phase 10.11.2: Substrate integration
+    mirror_substrate_backing_t* substrate; /**< Biological substrate backing (NULL = abstract mode) */
+    bool has_substrate;                /**< True if substrate backing is active */
 
 } mirror_neuron_unit_t;
 
@@ -98,6 +107,7 @@ typedef struct {
  *
  * WHAT: Complete mirror neuron system state
  * WHY:  Encapsulate all data for observation-based learning
+ * HOW:  Combines cognitive infrastructure with biological substrate integration
  */
 struct mirror_neurons_system {
     // Configuration
@@ -133,6 +143,24 @@ struct mirror_neurons_system {
 
     // Memory management
     bool initialized;
+
+    // Phase 10.11.2: Substrate integration
+    mirror_substrate_config_t substrate_config;   /**< Substrate configuration */
+    mirror_substrate_pool_t* substrate_pool;      /**< Memory pool for substrate backings */
+    bool substrate_enabled;                       /**< True if substrate mode active */
+
+    // Phase 10.11.2: Network integration handles
+    void* axon_network;                /**< Axon network for propagation delays */
+    void* dendrite_network;            /**< Dendrite network for spine plasticity */
+    void* myelin_network;              /**< Myelin sheath network for myelination */
+
+    // Phase 10.11.4-6: Enhancement systems
+    void* stdp_system;                 /**< STDP learning system */
+    void* resonance_system;            /**< Motor resonance system */
+    void* hierarchy_system;            /**< Goal-motor hierarchy system */
+    bool stdp_enabled;                 /**< True if STDP enabled */
+    bool resonance_enabled;            /**< True if resonance enabled */
+    bool hierarchy_enabled;            /**< True if hierarchy enabled */
 };
 
 //=============================================================================
@@ -175,7 +203,14 @@ mirror_neuron_config_t mirror_neurons_get_default_config(void)
         .enable_glial_modulation = true,
         .enable_astrocytes = true,
         .enable_oligodendrocytes = true,
-        .enable_microglia = true
+        .enable_microglia = true,
+        // Phase 10.11.2: Substrate integration (default: disabled for backward compat)
+        .enable_substrate = false,
+        .enable_myelination = true,
+        .enable_dendrite_plasticity = true,
+        .enable_axon_timing = true,
+        .enable_substrate_pool = true,
+        .substrate_pool_size = NIMCP_MIRROR_SUBSTRATE_POOL_SIZE
     };
     return config;
 }
@@ -1693,4 +1728,491 @@ cleanup:
         nimcp_free(mirror);
     }
     return NULL;
+}
+
+//=============================================================================
+// Phase 10.11.2: Substrate Integration API Implementation
+//=============================================================================
+
+/**
+ * @brief Enable substrate integration for mirror neurons
+ *
+ * WHAT: Enable biological substrate backing for all mirror neuron units
+ * WHY:  Provides myelination timing, dendrite plasticity, glial modulation
+ * HOW:  Create memory pool and substrate backings for each unit
+ */
+bool mirror_neurons_enable_substrate(mirror_neurons_t mirror)
+{
+    if (!mirror) return false;
+
+    /* Already enabled? */
+    if (mirror->substrate_enabled) {
+        MIRROR_LOG_INFO("Mirror neurons: substrate already enabled");
+        return true;
+    }
+
+    /* Initialize substrate config from mirror config */
+    mirror->substrate_config = mirror_substrate_get_default_config();
+    mirror->substrate_config.enable_myelination = mirror->config.enable_myelination;
+    mirror->substrate_config.enable_dendrites = mirror->config.enable_dendrite_plasticity;
+    mirror->substrate_config.enable_axons = mirror->config.enable_axon_timing;
+    mirror->substrate_config.enable_astrocytes = mirror->config.enable_astrocytes;
+    mirror->substrate_config.enable_oligodendrocytes = mirror->config.enable_oligodendrocytes;
+    mirror->substrate_config.enable_microglia = mirror->config.enable_microglia;
+    mirror->substrate_config.enable_memory_pool = mirror->config.enable_substrate_pool;
+    mirror->substrate_config.pool_capacity = mirror->config.substrate_pool_size;
+
+    /* Create memory pool if enabled */
+    if (mirror->config.enable_substrate_pool) {
+        mirror->substrate_pool = mirror_substrate_pool_create(
+            mirror->config.substrate_pool_size);
+        if (!mirror->substrate_pool) {
+            MIRROR_LOG_ERROR("Mirror neurons: failed to create substrate pool");
+            return false;
+        }
+    }
+
+    /* Create substrate backings for all neurons */
+    for (uint32_t i = 0; i < mirror->num_neurons; i++) {
+        mirror_neuron_unit_t* unit = &mirror->neurons[i];
+
+        unit->substrate = mirror_substrate_backing_create(
+            unit->neuron_id,
+            &mirror->substrate_config,
+            mirror->substrate_pool);
+
+        if (unit->substrate) {
+            unit->has_substrate = true;
+        } else {
+            MIRROR_LOG_WARN("Mirror neurons: failed to create substrate for unit %u", i);
+        }
+    }
+
+    mirror->substrate_enabled = true;
+    MIRROR_LOG_INFO("Mirror neurons: substrate enabled for %u units", mirror->num_neurons);
+
+    return true;
+}
+
+/**
+ * @brief Connect substrate to axon network
+ */
+bool mirror_neurons_connect_axon_network(
+    mirror_neurons_t mirror,
+    void* axon_network)
+{
+    if (!mirror) return false;
+
+    mirror->axon_network = axon_network;
+
+    if (axon_network) {
+        nimcp_result_t result = mirror_substrate_connect_axon_network(
+            mirror, axon_network);
+        return result == NIMCP_SUCCESS;
+    }
+
+    return true;
+}
+
+/**
+ * @brief Connect substrate to dendrite network
+ */
+bool mirror_neurons_connect_dendrite_network(
+    mirror_neurons_t mirror,
+    void* dendrite_network)
+{
+    if (!mirror) return false;
+
+    mirror->dendrite_network = dendrite_network;
+
+    if (dendrite_network) {
+        nimcp_result_t result = mirror_substrate_connect_dendrite_network(
+            mirror, dendrite_network);
+        return result == NIMCP_SUCCESS;
+    }
+
+    return true;
+}
+
+/**
+ * @brief Connect substrate to myelin sheath network
+ */
+bool mirror_neurons_connect_myelin_network(
+    mirror_neurons_t mirror,
+    void* myelin_network)
+{
+    if (!mirror) return false;
+
+    mirror->myelin_network = myelin_network;
+
+    if (myelin_network) {
+        nimcp_result_t result = mirror_substrate_connect_myelin_network(
+            mirror, myelin_network);
+        return result == NIMCP_SUCCESS;
+    }
+
+    return true;
+}
+
+/**
+ * @brief Get recognition delay for action (substrate-aware)
+ *
+ * WHAT: Calculate delay for action recognition including substrate effects
+ * WHY:  Myelination and axon properties affect recognition speed
+ * HOW:  Query substrate backing for delay, fall back to base if no substrate
+ */
+float mirror_neurons_get_recognition_delay(mirror_neurons_t mirror, uint32_t action_id)
+{
+    if (!mirror) return NIMCP_MIRROR_BASE_DELAY_MS;
+
+    /* Find action mapping */
+    for (uint32_t i = 0; i < mirror->num_actions; i++) {
+        if (mirror->actions[i].action_id == action_id) {
+            /* Get average delay across neurons for this action */
+            float total_delay = 0.0f;
+            uint32_t count = 0;
+
+            for (uint32_t j = 0; j < mirror->actions[i].num_neurons; j++) {
+                uint32_t neuron_idx = mirror->actions[i].neuron_indices[j];
+                if (neuron_idx < mirror->num_neurons) {
+                    mirror_neuron_unit_t* unit = &mirror->neurons[neuron_idx];
+
+                    if (unit->has_substrate && unit->substrate) {
+                        total_delay += mirror_substrate_get_observation_delay(unit->substrate);
+                    } else {
+                        total_delay += NIMCP_MIRROR_BASE_DELAY_MS;
+                    }
+                    count++;
+                }
+            }
+
+            return (count > 0) ? (total_delay / count) : NIMCP_MIRROR_BASE_DELAY_MS;
+        }
+    }
+
+    return NIMCP_MIRROR_BASE_DELAY_MS;
+}
+
+/**
+ * @brief Get association strength from spine weights
+ *
+ * WHAT: Query observation-execution association based on spine plasticity
+ * WHY:  Spines encode learned associations in substrate mode
+ * HOW:  Sum spine weights for the action's mirror units
+ */
+float mirror_neurons_get_spine_association(mirror_neurons_t mirror, uint32_t action_id)
+{
+    if (!mirror || !mirror->substrate_enabled) return 0.0f;
+
+    /* Find action mapping */
+    for (uint32_t i = 0; i < mirror->num_actions; i++) {
+        if (mirror->actions[i].action_id == action_id) {
+            float total_weight = 0.0f;
+
+            for (uint32_t j = 0; j < mirror->actions[i].num_neurons; j++) {
+                uint32_t neuron_idx = mirror->actions[i].neuron_indices[j];
+                if (neuron_idx < mirror->num_neurons) {
+                    mirror_neuron_unit_t* unit = &mirror->neurons[neuron_idx];
+
+                    if (unit->has_substrate && unit->substrate) {
+                        total_weight += mirror_substrate_get_total_spine_weight(unit->substrate);
+                    }
+                }
+            }
+
+            return total_weight;
+        }
+    }
+
+    return 0.0f;
+}
+
+/**
+ * @brief Step substrate simulation forward
+ *
+ * WHAT: Advance all substrate states by one timestep
+ * WHY:  Keep substrate synchronized with simulation time
+ * HOW:  Update myelination, spine plasticity, glial states for each unit
+ */
+bool mirror_neurons_step_substrate(mirror_neurons_t mirror, float dt_ms)
+{
+    if (!mirror || !mirror->substrate_enabled) return false;
+
+    uint64_t current_time = nimcp_time_get_us();
+    float dt_seconds = dt_ms / 1000.0f;
+
+    /* Step each neuron's substrate */
+    for (uint32_t i = 0; i < mirror->num_neurons; i++) {
+        mirror_neuron_unit_t* unit = &mirror->neurons[i];
+
+        if (unit->has_substrate && unit->substrate) {
+            mirror_substrate_step(unit->substrate, current_time, dt_seconds);
+        }
+    }
+
+    return true;
+}
+
+/**
+ * @brief Check if substrate is enabled
+ */
+bool mirror_neurons_has_substrate(mirror_neurons_t mirror)
+{
+    if (!mirror) return false;
+    return mirror->substrate_enabled;
+}
+
+//=============================================================================
+// Enhancement Systems Implementation (Phase 10.11.4-6)
+//=============================================================================
+
+/**
+ * @brief Enable STDP learning for mirror neurons
+ */
+bool mirror_neurons_enable_stdp(mirror_neurons_t mirror, uint32_t max_synapses)
+{
+    if (!mirror) return false;
+
+    // Already enabled?
+    if (mirror->stdp_enabled && mirror->stdp_system) {
+        return true;
+    }
+
+    // Use max_actions if max_synapses not specified
+    if (max_synapses == 0) {
+        max_synapses = mirror->config.max_actions;
+    }
+
+    // Create STDP system with default configuration
+    mirror_stdp_t stdp = mirror_stdp_create(NULL, max_synapses);
+    if (!stdp) {
+        MIRROR_LOG_ERROR("Failed to create STDP system\n");
+        return false;
+    }
+
+    // Create synapses for existing actions
+    for (uint32_t i = 0; i < mirror->num_actions; i++) {
+        uint32_t action_id = mirror->actions[i].action_id;
+        mirror_stdp_create_synapse(stdp, action_id, 0.5f);  // Initial weight 0.5
+    }
+
+    mirror->stdp_system = stdp;
+    mirror->stdp_enabled = true;
+
+    MIRROR_LOG_INFO("STDP learning enabled with %u synapses\n", max_synapses);
+    return true;
+}
+
+/**
+ * @brief Get STDP system handle
+ */
+mirror_stdp_t mirror_neurons_get_stdp(mirror_neurons_t mirror)
+{
+    if (!mirror || !mirror->stdp_enabled) return NULL;
+    return (mirror_stdp_t)mirror->stdp_system;
+}
+
+/**
+ * @brief Set dopamine level for STDP learning
+ */
+void mirror_neurons_set_stdp_dopamine(mirror_neurons_t mirror, float level)
+{
+    if (!mirror || !mirror->stdp_enabled || !mirror->stdp_system) return;
+
+    mirror_stdp_set_dopamine((mirror_stdp_t)mirror->stdp_system, level);
+}
+
+/**
+ * @brief Enable motor resonance for mirror neurons
+ */
+bool mirror_neurons_enable_resonance(mirror_neurons_t mirror, uint32_t max_channels)
+{
+    if (!mirror) return false;
+
+    // Already enabled?
+    if (mirror->resonance_enabled && mirror->resonance_system) {
+        return true;
+    }
+
+    // Use max_actions if max_channels not specified
+    if (max_channels == 0) {
+        max_channels = mirror->config.max_actions;
+    }
+
+    // Create resonance system with default configuration
+    motor_resonance_t resonance = motor_resonance_create(NULL, max_channels);
+    if (!resonance) {
+        MIRROR_LOG_ERROR("Failed to create motor resonance system\n");
+        return false;
+    }
+
+    // Create channels for existing actions
+    for (uint32_t i = 0; i < mirror->num_actions; i++) {
+        uint32_t action_id = mirror->actions[i].action_id;
+        motor_resonance_create_channel(resonance, action_id);
+    }
+
+    mirror->resonance_system = resonance;
+    mirror->resonance_enabled = true;
+
+    MIRROR_LOG_INFO("Motor resonance enabled with %u channels\n", max_channels);
+    return true;
+}
+
+/**
+ * @brief Get motor resonance system handle
+ */
+motor_resonance_t mirror_neurons_get_resonance(mirror_neurons_t mirror)
+{
+    if (!mirror || !mirror->resonance_enabled) return NULL;
+    return (motor_resonance_t)mirror->resonance_system;
+}
+
+/**
+ * @brief Set learning context for motor resonance
+ */
+void mirror_neurons_set_learning_context(mirror_neurons_t mirror, float learning_strength)
+{
+    if (!mirror || !mirror->resonance_enabled || !mirror->resonance_system) return;
+
+    motor_resonance_release_for_learning((motor_resonance_t)mirror->resonance_system,
+                                          -1, learning_strength);
+}
+
+/**
+ * @brief Set social context for motor resonance
+ */
+void mirror_neurons_set_social_context(mirror_neurons_t mirror, float social_strength)
+{
+    if (!mirror || !mirror->resonance_enabled || !mirror->resonance_system) return;
+
+    motor_resonance_release_for_social((motor_resonance_t)mirror->resonance_system,
+                                        -1, social_strength);
+}
+
+/**
+ * @brief Check if action is above execution threshold
+ */
+bool mirror_neurons_should_imitate(mirror_neurons_t mirror, uint32_t action_id)
+{
+    if (!mirror || !mirror->resonance_enabled || !mirror->resonance_system) return false;
+
+    motor_resonance_t resonance = (motor_resonance_t)mirror->resonance_system;
+    uint32_t channel_id = motor_resonance_find_channel(resonance, action_id);
+
+    if (channel_id == UINT32_MAX) return false;
+
+    return motor_resonance_above_threshold(resonance, channel_id);
+}
+
+/**
+ * @brief Enable hierarchical goal representation
+ */
+bool mirror_neurons_enable_hierarchy(mirror_neurons_t mirror)
+{
+    if (!mirror) return false;
+
+    // Already enabled?
+    if (mirror->hierarchy_enabled && mirror->hierarchy_system) {
+        return true;
+    }
+
+    // Create hierarchy system with default configuration
+    mirror_hierarchy_t hierarchy = mirror_hierarchy_create(NULL);
+    if (!hierarchy) {
+        MIRROR_LOG_ERROR("Failed to create hierarchy system\n");
+        return false;
+    }
+
+    // Create motor representations for existing actions
+    for (uint32_t i = 0; i < mirror->num_actions; i++) {
+        mirror_hierarchy_create_motor(hierarchy, mirror->actions[i].action_name,
+                                       MOTOR_TYPE_UNKNOWN);
+    }
+
+    mirror->hierarchy_system = hierarchy;
+    mirror->hierarchy_enabled = true;
+
+    MIRROR_LOG_INFO("Hierarchical goal representation enabled\n");
+    return true;
+}
+
+/**
+ * @brief Get hierarchy system handle
+ */
+mirror_hierarchy_t mirror_neurons_get_hierarchy(mirror_neurons_t mirror)
+{
+    if (!mirror || !mirror->hierarchy_enabled) return NULL;
+    return (mirror_hierarchy_t)mirror->hierarchy_system;
+}
+
+/**
+ * @brief Infer goal from observed action
+ */
+bool mirror_neurons_infer_goal(mirror_neurons_t mirror, uint32_t action_id,
+                                uint32_t* out_goal, float* out_confidence)
+{
+    if (!mirror || !mirror->hierarchy_enabled || !mirror->hierarchy_system) return false;
+    if (!out_goal || !out_confidence) return false;
+
+    mirror_hierarchy_t hierarchy = (mirror_hierarchy_t)mirror->hierarchy_system;
+
+    // Find motor representation for this action
+    uint32_t motor_id = UINT32_MAX;
+    for (uint32_t i = 0; i < mirror->num_actions; i++) {
+        if (mirror->actions[i].action_id == action_id) {
+            motor_id = i;  // Motor ID corresponds to action index
+            break;
+        }
+    }
+
+    if (motor_id == UINT32_MAX) return false;
+
+    // Infer goal
+    uint32_t goal_ids[4];
+    float probs[4];
+    uint32_t num_goals = mirror_hierarchy_infer_goal(hierarchy, motor_id,
+                                                      goal_ids, probs, 4);
+
+    if (num_goals == 0) return false;
+
+    *out_goal = goal_ids[0];
+    *out_confidence = probs[0];
+
+    return true;
+}
+
+/**
+ * @brief Select goal for top-down motor control
+ */
+void mirror_neurons_select_goal(mirror_neurons_t mirror, int32_t goal_id)
+{
+    if (!mirror || !mirror->hierarchy_enabled || !mirror->hierarchy_system) return;
+
+    mirror_hierarchy_select_goal((mirror_hierarchy_t)mirror->hierarchy_system, goal_id);
+}
+
+/**
+ * @brief Step all enhancement systems
+ */
+bool mirror_neurons_step_enhancements(mirror_neurons_t mirror, float dt_ms)
+{
+    if (!mirror) return false;
+
+    // Step STDP system
+    if (mirror->stdp_enabled && mirror->stdp_system) {
+        mirror_stdp_step((mirror_stdp_t)mirror->stdp_system, dt_ms);
+    }
+
+    // Step resonance system
+    if (mirror->resonance_enabled && mirror->resonance_system) {
+        motor_resonance_step((motor_resonance_t)mirror->resonance_system, dt_ms);
+    }
+
+    // Step hierarchy system
+    if (mirror->hierarchy_enabled && mirror->hierarchy_system) {
+        mirror_hierarchy_step((mirror_hierarchy_t)mirror->hierarchy_system, dt_ms);
+    }
+
+    return true;
 }

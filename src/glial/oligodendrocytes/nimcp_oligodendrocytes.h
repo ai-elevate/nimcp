@@ -54,6 +54,7 @@
 #include "utils/thread/nimcp_thread.h"
 #include "utils/time/nimcp_time.h"
 #include "utils/spatial/nimcp_kdtree.h"
+#include "glial/myelin_sheath/nimcp_myelin_math.h"
 #include <stdint.h>
 #include <stdbool.h>
 
@@ -383,6 +384,17 @@ typedef struct {
     //-------------------------------------------------------------------------
     float lactate_received;               /**< Lactate from oligodendrocyte (mM) */
     float metabolic_demand;               /**< Axon metabolic demand */
+
+    //-------------------------------------------------------------------------
+    // Enhanced Biophysics (from nimcp_myelin_math.h)
+    //-------------------------------------------------------------------------
+    nimcp_cable_params_t cable_params;    /**< Cable theory parameters */
+    nimcp_saltatory_result_t saltatory;   /**< Saltatory conduction result */
+    float optimal_g_ratio_math;           /**< Diameter-dependent optimal g-ratio */
+    float optimal_internode_um;           /**< Optimal internode length */
+    float block_probability;              /**< Conduction block probability (0-1) */
+    bool is_conducting;                   /**< True if signal can propagate */
+    nimcp_metabolic_efficiency_t metabolic; /**< Energy efficiency metrics */
 } myelinated_axon_t;
 
 //-----------------------------------------------------------------------------
@@ -507,6 +519,13 @@ typedef struct {
     // Thread Safety
     //-------------------------------------------------------------------------
     nimcp_spinlock_t lock;                /**< Lock for concurrent access */
+
+    //-------------------------------------------------------------------------
+    // Enhanced Biophysics (from nimcp_myelin_math.h)
+    //-------------------------------------------------------------------------
+    nimcp_myelin_biophysics_t* biophysics; /**< Comprehensive biophysics state */
+    nimcp_myelination_kinetics_t kinetics; /**< Myelination kinetics parameters */
+    float current_temperature_c;           /**< Temperature for block modeling (°C) */
 
     //-------------------------------------------------------------------------
     // Copy-on-Write Support (Phase 1.5+)

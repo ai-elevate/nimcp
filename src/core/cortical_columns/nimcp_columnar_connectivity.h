@@ -55,7 +55,7 @@
 #include "utils/logging/nimcp_logging.h"
 #include "utils/platform/nimcp_platform_mutex.h"
 #include "utils/validation/nimcp_common.h"
-#include "core/brain_regions/nimcp_brain_regions.h"
+#include "core/cortical_columns/nimcp_cortical_layers.h"  // For cc_cortical_layer_t and laminar_structure_t
 #include <stdint.h>
 #include <stdbool.h>
 #include <math.h>
@@ -81,16 +81,8 @@ typedef enum {
     CONNECTIVITY_TYPE_COUNT
 } connectivity_type_t;
 
-/**
- * WHAT: Laminar structure for a cortical column
- * WHY:  Need to store layer-specific neuron counts and IDs
- * HOW:  Parallel arrays indexed by cortical_layer_t
- */
-typedef struct {
-    uint32_t layer_sizes[LAYER_COUNT];       /**< Number of neurons per layer */
-    uint32_t** layer_neuron_ids;             /**< Neuron IDs per layer [layer][neuron] */
-    uint32_t total_neurons;                  /**< Sum of all layer sizes */
-} laminar_structure_t;
+// Note: laminar_structure_t is now defined in nimcp_cortical_layers.h
+// with CC_LAYER_COUNT layers (5-layer condensed model)
 
 //=============================================================================
 // CONNECTION STRUCTURES
@@ -104,8 +96,8 @@ typedef struct {
 typedef struct {
     uint32_t source_column_id;       /**< Source column ID */
     uint32_t target_column_id;       /**< Target column ID */
-    cortical_layer_t source_layer;   /**< Source layer */
-    cortical_layer_t target_layer;   /**< Target layer */
+    cc_cortical_layer_t source_layer;   /**< Source layer */
+    cc_cortical_layer_t target_layer;   /**< Target layer */
     float weight;                    /**< Synaptic weight (0-1) */
     float delay_ms;                  /**< Conduction delay in milliseconds */
     connectivity_type_t type;        /**< Connection type */
@@ -123,8 +115,8 @@ typedef struct {
     float distance_decay_lambda;        /**< Length constant λ (mm) for exp decay */
     float feature_similarity_weight;    /**< Weight for feature similarity (0-1) */
     bool layer_specific;                /**< Apply to specific layers only */
-    cortical_layer_t source_layer;      /**< Source layer (if layer_specific) */
-    cortical_layer_t target_layer;      /**< Target layer (if layer_specific) */
+    cc_cortical_layer_t source_layer;      /**< Source layer (if layer_specific) */
+    cc_cortical_layer_t target_layer;      /**< Target layer (if layer_specific) */
     float min_delay_ms;                 /**< Minimum conduction delay */
     float conduction_velocity_m_s;      /**< Axonal conduction velocity (m/s) */
 } connectivity_rule_t;
@@ -143,7 +135,7 @@ typedef struct {
     float clustering_coefficient;        /**< C (for small-world metric) */
     float characteristic_path_length;    /**< L (for small-world metric) */
     float small_world_sigma;             /**< σ = (C/C_rand)/(L/L_rand) */
-    uint32_t layer_connection_counts[LAYER_COUNT][LAYER_COUNT]; /**< [src][tgt] */
+    uint32_t layer_connection_counts[CC_LAYER_COUNT][CC_LAYER_COUNT]; /**< [src][tgt] */
 } connectivity_stats_t;
 
 //=============================================================================

@@ -109,6 +109,18 @@ int nimcp_platform_mutex_trylock(nimcp_platform_mutex_t* mutex);
  */
 int nimcp_platform_mutex_unlock(nimcp_platform_mutex_t* mutex);
 
+/**
+ * WHAT: Create and initialize a mutex (dynamically allocated)
+ * WHY:  Convenience wrapper for heap-allocated mutexes
+ * HOW:  Allocates mutex and calls nimcp_platform_mutex_init
+ *
+ * @return Pointer to initialized mutex or NULL on failure
+ *
+ * COMPLEXITY: O(1)
+ * THREAD-SAFE: Yes
+ */
+nimcp_platform_mutex_t* nimcp_platform_mutex_create(void);
+
 #ifdef __cplusplus
 }
 #endif

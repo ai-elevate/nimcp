@@ -268,9 +268,21 @@ typedef struct {
     // === PHASE 5/6: BIOLOGICAL REALISM ===
     bool enable_glial;        /**< Enable glial integration (astrocytes, oligodendrocytes, microglia) */
     bool enable_oscillations; /**< Enable brain wave analysis (delta, theta, alpha, beta, gamma) */
+    bool enable_myelin_sheath; /**< Enable myelin sheath structural modeling */
     uint32_t num_astrocytes;  /**< Number of astrocytes (default: neurons/5) */
     uint32_t num_oligodendrocytes; /**< Number of oligodendrocytes (default: neurons/7) */
     uint32_t num_microglia;   /**< Number of microglia (default: neurons/10) */
+
+    // === LAZY INITIALIZATION (Performance optimization for tests) ===
+    /**
+     * WHAT: Defer expensive subsystem creation until first use
+     * WHY:  Tests often don't need all subsystems, lazy init saves 10-30s startup
+     * HOW:  Subsystems are created on first access instead of at brain_create
+     */
+    bool lazy_dendrite_init;  /**< Defer dendrite network creation (default: false) */
+    bool lazy_axon_init;      /**< Defer axon network creation (default: false) */
+    bool enable_dendrites;    /**< Enable dendrite subsystem entirely (default: true) */
+    bool enable_axons;        /**< Enable axon subsystem entirely (default: true) */
 
     // === PHASE 5.3: SENSORY PROCESSING ===
     bool enable_visual_cortex; /**< Enable visual cortex (V1) for image processing */
@@ -304,6 +316,29 @@ typedef struct {
     bool enable_brain_regions;        /**< Enable modular brain regions with cortical layers */
     uint32_t num_brain_regions;       /**< Number of brain regions to create (default: 4) */
     uint32_t neurons_per_region;      /**< Neurons per region (default: 1000) */
+
+    // === PHASE CC-1: CORTICAL COLUMNS ARCHITECTURE (Tier 0.65) ===
+    /**
+     * Cortical Columns Architecture
+     *
+     * WHAT: Biologically-inspired columnar organization (Douglas & Martin 1991)
+     * WHY:  Implements hierarchical processing with minicolumns (~80-100 neurons)
+     *       and hypercolumns (~100K neurons) for feature detection
+     * HOW:  Competition modes (winner-take-all, k-winners, softmax) with lateral
+     *       inhibition, 6-layer laminar structure, and topographic maps
+     */
+    bool enable_cortical_columns;     /**< Enable cortical column architecture */
+    uint32_t num_hypercolumns;        /**< Number of hypercolumns to create (default: 10) */
+    uint32_t minicolumns_per_hypercolumn; /**< Minicolumns per hypercolumn (default: 100) */
+    uint32_t neurons_per_minicolumn;  /**< Neurons per minicolumn (default: 80) */
+    bool enable_laminar_structure;    /**< Enable 6-layer cortical organization */
+    bool enable_columnar_connectivity; /**< Enable canonical microcircuit connectivity */
+    bool enable_visual_topographic;   /**< Enable retinotopic map for V1 */
+    bool enable_auditory_topographic; /**< Enable tonotopic map for A1 */
+    bool enable_somatosensory_topographic; /**< Enable somatotopic map for S1 */
+    bool enable_orientation_columns;  /**< Enable V1 orientation selectivity */
+    uint32_t num_orientation_columns; /**< Orientation columns per hypercolumn (default: 16) */
+    bool enable_feature_hypercolumns; /**< Enable multi-dimensional feature coverage */
 
     // === PHASE 8: UNIFIED MULTI-MODAL PROCESSING ===
     bool enable_multimodal_integration; /**< Enable multi-modal sensory integration */
@@ -2073,6 +2108,13 @@ void* brain_get_pink_noise(brain_t brain);
  * @return Glial integration pointer or NULL if not initialized
  */
 glial_integration_t* brain_get_glial(brain_t brain);
+
+/**
+ * @brief Get myelin sheath network subsystem
+ * @param brain Brain handle
+ * @return Myelin sheath network pointer or NULL if not initialized
+ */
+struct myelin_sheath_network* brain_get_myelin_sheath(brain_t brain);
 
 /**
  * @brief Get brain oscillation analyzer subsystem

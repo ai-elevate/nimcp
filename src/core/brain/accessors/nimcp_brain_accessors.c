@@ -17,6 +17,7 @@
 #include "core/brain/nimcp_brain.h"
 #include "core/brain/nimcp_brain_internal.h"
 #include "glial/integration/nimcp_glial_integration.h"
+#include "glial/myelin_sheath/nimcp_myelin_sheath.h"
 #include "glial/astrocytes/nimcp_astrocytes.h"
 #include "cognitive/nimcp_mirror_neurons.h"
 #include "utils/logging/nimcp_logging.h"
@@ -33,6 +34,10 @@ extern void brain_clear_error(void);
 
 glial_integration_t* brain_get_glial(brain_t brain) {
     return brain ? brain->glial : NULL;
+}
+
+myelin_sheath_network_t* brain_get_myelin_sheath(brain_t brain) {
+    return brain ? brain->myelin_sheath : NULL;
 }
 
 brain_oscillation_analyzer_t* brain_get_oscillations(brain_t brain) {

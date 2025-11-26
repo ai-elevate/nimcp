@@ -1262,7 +1262,7 @@ TEST_F(OrientationColumnsTest, GetHypercolumnStats_ValidHypercolumn) {
         hcol, vertical_edge.data(), patch_size, patch_size
     );
 
-    hypercolumn_stats_t stats;
+    orientation_hypercolumn_stats_t stats;
     bool result = orientation_hypercolumn_get_stats(hcol, &stats);
 
     EXPECT_TRUE(result);
@@ -1291,7 +1291,7 @@ TEST_F(OrientationColumnsTest, GetHypercolumnStats_NullParameters) {
     );
     ASSERT_NE(hcol, nullptr);
 
-    hypercolumn_stats_t stats;
+    orientation_hypercolumn_stats_t stats;
 
     // NULL hypercolumn
     bool result = orientation_hypercolumn_get_stats(nullptr, &stats);

@@ -327,8 +327,8 @@ columnar_connectivity_t* columnar_connectivity_create(uint32_t max_connections) 
         return NULL;
     }
 
-    // Initialize mutex
-    if (nimcp_platform_mutex_init(&conn->lock, false) != 0) {
+    // Initialize mutex (recursive=true to allow nested locking in get_stats->compute_*)
+    if (nimcp_platform_mutex_init(&conn->lock, true) != 0) {
         LOG_ERROR("Failed to initialize mutex");
         conn_hash_table_destroy(conn->by_source);
         conn_hash_table_destroy(conn->by_target);
@@ -401,8 +401,8 @@ nimcp_result_t connectivity_apply_canonical_rules(columnar_connectivity_t* conn)
         .distance_decay_lambda = 0.2f,  // mm
         .feature_similarity_weight = 0.0f,
         .layer_specific = true,
-        .source_layer = LAYER_4,
-        .target_layer = LAYER_2,
+        .source_layer = CC_LAYER_IV,
+        .target_layer = CC_LAYER_II_III,
         .min_delay_ms = 0.5f,
         .conduction_velocity_m_s = 1.0f
     };
@@ -415,8 +415,8 @@ nimcp_result_t connectivity_apply_canonical_rules(columnar_connectivity_t* conn)
         .distance_decay_lambda = 0.3f,
         .feature_similarity_weight = 0.0f,
         .layer_specific = true,
-        .source_layer = LAYER_3,
-        .target_layer = LAYER_5,
+        .source_layer = CC_LAYER_II_III,
+        .target_layer = CC_LAYER_V,
         .min_delay_ms = 0.5f,
         .conduction_velocity_m_s = 1.0f
     };
@@ -429,8 +429,8 @@ nimcp_result_t connectivity_apply_canonical_rules(columnar_connectivity_t* conn)
         .distance_decay_lambda = 0.25f,
         .feature_similarity_weight = 0.0f,
         .layer_specific = true,
-        .source_layer = LAYER_5,
-        .target_layer = LAYER_6,
+        .source_layer = CC_LAYER_V,
+        .target_layer = CC_LAYER_VI,
         .min_delay_ms = 0.5f,
         .conduction_velocity_m_s = 1.0f
     };
@@ -443,8 +443,8 @@ nimcp_result_t connectivity_apply_canonical_rules(columnar_connectivity_t* conn)
         .distance_decay_lambda = 1.5f,  // mm (patchy clusters)
         .feature_similarity_weight = 0.5f,  // Feature similarity modulates
         .layer_specific = false,
-        .source_layer = LAYER_2,
-        .target_layer = LAYER_2,
+        .source_layer = CC_LAYER_II_III,
+        .target_layer = CC_LAYER_II_III,
         .min_delay_ms = 1.0f,
         .conduction_velocity_m_s = 0.5f  // Slower horizontal axons
     };
@@ -507,14 +507,14 @@ uint32_t connectivity_generate_intracolumnar(
         // Guard: only intracolumnar rules
         if (rule->type != CONNECTIVITY_INTRACOLUMNAR) continue;
 
-        cortical_layer_t src_layer = rule->source_layer;
-        cortical_layer_t tgt_layer = rule->target_layer;
+        cc_cortical_layer_t src_layer = rule->source_layer;
+        cc_cortical_layer_t tgt_layer = rule->target_layer;
 
         // Guard: check layer validity
-        if (src_layer >= LAYER_COUNT || tgt_layer >= LAYER_COUNT) continue;
+        if (src_layer >= CC_LAYER_COUNT || tgt_layer >= CC_LAYER_COUNT) continue;
 
-        uint32_t src_count = layers->layer_sizes[src_layer];
-        uint32_t tgt_count = layers->layer_sizes[tgt_layer];
+        uint32_t src_count = laminar_get_layer_neuron_count(layers, src_layer);
+        uint32_t tgt_count = laminar_get_layer_neuron_count(layers, tgt_layer);
 
         // Generate connections between layers
         for (uint32_t i = 0; i < src_count && i < MAX_COLUMN_DEGREE; i++) {
@@ -635,8 +635,8 @@ uint32_t connectivity_generate_intercolumnar(
                     columnar_connection_t new_conn = {
                         .source_column_id = column_ids[i],
                         .target_column_id = column_ids[j],
-                        .source_layer = rule->layer_specific ? rule->source_layer : LAYER_2,
-                        .target_layer = rule->layer_specific ? rule->target_layer : LAYER_2,
+                        .source_layer = rule->layer_specific ? rule->source_layer : CC_LAYER_II_III,
+                        .target_layer = rule->layer_specific ? rule->target_layer : CC_LAYER_II_III,
                         .weight = 0.3f + randg(0.0f, 0.05f),
                         .delay_ms = delay_ms,
                         .type = CONNECTIVITY_INTERCOLUMNAR
@@ -692,16 +692,16 @@ uint32_t connectivity_generate_long_range(
         }
 
         // Determine source/target layers based on type
-        cortical_layer_t src_layer, tgt_layer;
+        cc_cortical_layer_t src_layer, tgt_layer;
         if (rule->type == CONNECTIVITY_FEEDFORWARD) {
-            src_layer = LAYER_3;  // Layer II/III
-            tgt_layer = LAYER_4;  // Layer IV
+            src_layer = CC_LAYER_II_III;  // Layer II/III
+            tgt_layer = CC_LAYER_IV;      // Layer IV
         } else if (rule->type == CONNECTIVITY_FEEDBACK) {
-            src_layer = LAYER_6;
-            tgt_layer = LAYER_1;
+            src_layer = CC_LAYER_VI;
+            tgt_layer = CC_LAYER_I;
         } else {
-            src_layer = rule->layer_specific ? rule->source_layer : LAYER_3;
-            tgt_layer = rule->layer_specific ? rule->target_layer : LAYER_4;
+            src_layer = rule->layer_specific ? rule->source_layer : CC_LAYER_II_III;
+            tgt_layer = rule->layer_specific ? rule->target_layer : CC_LAYER_IV;
         }
 
         // Sparse random connectivity
@@ -1159,7 +1159,7 @@ nimcp_result_t connectivity_get_stats(
         }
 
         // Layer connection matrix
-        if (c->source_layer < LAYER_COUNT && c->target_layer < LAYER_COUNT) {
+        if (c->source_layer < CC_LAYER_COUNT && c->target_layer < CC_LAYER_COUNT) {
             stats->layer_connection_counts[c->source_layer][c->target_layer]++;
         }
 

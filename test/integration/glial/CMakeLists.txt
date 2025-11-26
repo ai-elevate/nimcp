@@ -106,3 +106,72 @@ set_tests_properties(integration_glial_test_oligodendrocyte
         TIMEOUT 120
         LABELS "integration;glial;oligodendrocyte"
 )
+
+# ============================================================================
+# Myelin-Axon-Oligodendrocyte Integration Test
+# ============================================================================
+add_executable(integration_glial_test_myelin_axon_oligo
+    test_myelin_axon_oligo_integration.cpp
+)
+
+target_link_libraries(integration_glial_test_myelin_axon_oligo
+    PRIVATE
+        GTest::GTest
+        GTest::Main
+        nimcp
+        pthread
+)
+
+target_compile_features(integration_glial_test_myelin_axon_oligo PRIVATE cxx_std_17)
+
+target_include_directories(integration_glial_test_myelin_axon_oligo
+    PRIVATE
+        ${CMAKE_SOURCE_DIR}/include
+        ${CMAKE_SOURCE_DIR}/src
+)
+
+add_test(NAME integration_glial_test_myelin_axon_oligo
+         COMMAND integration_glial_test_myelin_axon_oligo)
+
+set_tests_properties(integration_glial_test_myelin_axon_oligo
+    PROPERTIES
+        TIMEOUT 180
+        LABELS "integration;glial;myelin;axon;oligodendrocyte"
+)
+
+# ============================================================================
+# Myelin Biophysics Integration Test
+# ============================================================================
+# WHAT: Integration tests for enhanced myelin biophysics mathematical models
+# WHY:  Verify cross-module coordination of biophysics calculations
+# HOW:  Test G-ratio, cable theory, saltatory conduction, metabolic models
+# ============================================================================
+add_executable(integration_glial_test_myelin_biophysics
+    test_myelin_biophysics_integration.cpp
+)
+
+target_link_libraries(integration_glial_test_myelin_biophysics
+    PRIVATE
+        GTest::GTest
+        GTest::Main
+        nimcp
+        pthread
+        m
+)
+
+target_compile_features(integration_glial_test_myelin_biophysics PRIVATE cxx_std_17)
+
+target_include_directories(integration_glial_test_myelin_biophysics
+    PRIVATE
+        ${CMAKE_SOURCE_DIR}/include
+        ${CMAKE_SOURCE_DIR}/src
+)
+
+add_test(NAME integration_glial_test_myelin_biophysics
+         COMMAND integration_glial_test_myelin_biophysics)
+
+set_tests_properties(integration_glial_test_myelin_biophysics
+    PROPERTIES
+        TIMEOUT 300
+        LABELS "integration;glial;myelin;biophysics;math"
+)

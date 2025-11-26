@@ -51,6 +51,7 @@
 // Comprehensive Integration: All Advanced Subsystems
 // NOTE: Only including modules that currently exist
 #include "glial/integration/nimcp_glial_integration.h"
+#include "glial/myelin_sheath/nimcp_myelin_sheath.h"       // Myelin sheath structural modeling
 #include "core/axon/nimcp_axon.h"                          // Phase 1.5.6: Axon signal propagation
 #include "core/dendrite/nimcp_dendrite.h"                  // Phase 1.5.7: Dendrite integration
 #include "core/brain_oscillations/nimcp_brain_oscillations.h"
@@ -1588,6 +1589,12 @@ void brain_destroy(brain_t brain)
         brain->glial = NULL;
     }
 
+    // Phase 5/6: Cleanup myelin sheath network (after glial to avoid dangling pointers)
+    if (brain->myelin_sheath) {
+        myelin_network_destroy(brain->myelin_sheath);
+        brain->myelin_sheath = NULL;
+    }
+
     // Phase 1.5.6: Cleanup axon network
     if (brain->axon_network) {
         axon_network_destroy((axon_network_t*)brain->axon_network);
@@ -1652,6 +1659,74 @@ void brain_destroy(brain_t brain)
         brain_module_destroy(brain->brain_regions);
         brain->brain_regions = NULL;
     }
+
+    // Phase CC-1: Cleanup cortical columns subsystem (Tier 0.65)
+    // Order: feature hypercolumns → orientation hypercolumns → topographic maps →
+    //        connectivity → laminar → hypercolumns → pool
+    if (brain->feature_hypercolumns) {
+        for (uint32_t i = 0; i < brain->num_feature_hypercolumns; i++) {
+            if (brain->feature_hypercolumns[i]) {
+                feature_hypercolumn_destroy(brain->feature_hypercolumns[i]);
+            }
+        }
+        nimcp_free(brain->feature_hypercolumns);
+        brain->feature_hypercolumns = NULL;
+        brain->num_feature_hypercolumns = 0;
+    }
+
+    if (brain->orientation_hypercolumns) {
+        for (uint32_t i = 0; i < brain->num_orientation_hypercolumns; i++) {
+            if (brain->orientation_hypercolumns[i]) {
+                orientation_hypercolumn_destroy(brain->orientation_hypercolumns[i]);
+            }
+        }
+        nimcp_free(brain->orientation_hypercolumns);
+        brain->orientation_hypercolumns = NULL;
+        brain->num_orientation_hypercolumns = 0;
+    }
+
+    if (brain->visual_topographic_map) {
+        topographic_map_destroy(brain->visual_topographic_map);
+        brain->visual_topographic_map = NULL;
+    }
+
+    if (brain->auditory_topographic_map) {
+        topographic_map_destroy(brain->auditory_topographic_map);
+        brain->auditory_topographic_map = NULL;
+    }
+
+    if (brain->somatosensory_topographic_map) {
+        topographic_map_destroy(brain->somatosensory_topographic_map);
+        brain->somatosensory_topographic_map = NULL;
+    }
+
+    if (brain->columnar_connectivity) {
+        columnar_connectivity_destroy(brain->columnar_connectivity);
+        brain->columnar_connectivity = NULL;
+    }
+
+    if (brain->laminar_system) {
+        laminar_structure_destroy(brain->laminar_system);
+        brain->laminar_system = NULL;
+    }
+
+    if (brain->hypercolumns) {
+        for (uint32_t i = 0; i < brain->num_hypercolumns; i++) {
+            if (brain->hypercolumns[i]) {
+                hypercolumn_destroy(brain->hypercolumns[i]);
+            }
+        }
+        nimcp_free(brain->hypercolumns);
+        brain->hypercolumns = NULL;
+        brain->num_hypercolumns = 0;
+    }
+
+    if (brain->cortical_column_pool) {
+        cortical_column_pool_destroy(brain->cortical_column_pool);
+        brain->cortical_column_pool = NULL;
+    }
+
+    brain->enable_cortical_columns = false;
 
     // Phase 9.0: Cleanup neural logic network
     if (brain->logic) {

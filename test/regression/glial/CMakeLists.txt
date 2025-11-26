@@ -110,3 +110,72 @@ set_tests_properties(regression_oligodendrocyte_performance
         TIMEOUT 120
         LABELS "regression;glial;oligodendrocyte;performance"
 )
+
+# ============================================================================
+# Myelin Sheath Performance Regression Test
+# ============================================================================
+add_executable(regression_myelin_performance
+    test_myelin_performance_regression.cpp
+)
+
+target_link_libraries(regression_myelin_performance
+    PRIVATE
+        GTest::GTest
+        GTest::Main
+        nimcp
+        pthread
+)
+
+target_compile_features(regression_myelin_performance PRIVATE cxx_std_17)
+
+target_include_directories(regression_myelin_performance
+    PRIVATE
+        ${CMAKE_SOURCE_DIR}/include
+        ${CMAKE_SOURCE_DIR}/src
+)
+
+add_test(NAME regression_myelin_performance
+         COMMAND regression_myelin_performance)
+
+set_tests_properties(regression_myelin_performance
+    PROPERTIES
+        TIMEOUT 180
+        LABELS "regression;glial;myelin;performance"
+)
+
+# ============================================================================
+# Myelin Math Biophysics Performance Regression Test
+# ============================================================================
+# WHAT: Performance benchmarks for all myelin math biophysics functions
+# WHY:  Ensure mathematical calculations remain efficient at scale
+# HOW:  Measure timing for G-ratio, cable theory, saltatory, metabolic, RNG
+# ============================================================================
+add_executable(regression_myelin_math_performance
+    test_myelin_math_performance_regression.cpp
+)
+
+target_link_libraries(regression_myelin_math_performance
+    PRIVATE
+        GTest::GTest
+        GTest::Main
+        nimcp
+        pthread
+        m
+)
+
+target_compile_features(regression_myelin_math_performance PRIVATE cxx_std_17)
+
+target_include_directories(regression_myelin_math_performance
+    PRIVATE
+        ${CMAKE_SOURCE_DIR}/include
+        ${CMAKE_SOURCE_DIR}/src
+)
+
+add_test(NAME regression_myelin_math_performance
+         COMMAND regression_myelin_math_performance)
+
+set_tests_properties(regression_myelin_math_performance
+    PROPERTIES
+        TIMEOUT 300
+        LABELS "regression;glial;myelin;biophysics;math;performance"
+)

@@ -64,8 +64,8 @@ typedef struct layer_state {
  * HOW:  Stores source, target, and weight
  */
 typedef struct layer_connection {
-    cortical_layer_t from;               /**< Source layer */
-    cortical_layer_t to;                 /**< Target layer */
+    cc_cortical_layer_t from;               /**< Source layer */
+    cc_cortical_layer_t to;                 /**< Target layer */
     float strength;                      /**< Synaptic weight */
     bool is_feedback;                    /**< Feedback vs feedforward */
 } layer_connection_t;
@@ -76,8 +76,8 @@ typedef struct layer_connection {
  * HOW:  Array of layer states plus connection matrix
  */
 struct laminar_structure {
-    layer_state_t layers[CORTICAL_LAYER_COUNT];           /**< Layer states */
-    layer_connection_t connections[CORTICAL_LAYER_COUNT * CORTICAL_LAYER_COUNT]; /**< Connectivity */
+    layer_state_t layers[CC_LAYER_COUNT];           /**< Layer states */
+    layer_connection_t connections[CC_LAYER_COUNT * CC_LAYER_COUNT]; /**< Connectivity */
     uint32_t connection_count;                            /**< Active connections */
     float prediction_buffer[MAX_NEURONS_PER_LAYER];      /**< Layer VI predictions */
     uint64_t update_count;                                /**< Total updates */
@@ -237,15 +237,24 @@ static void process_layer_II_III(layer_state_t* layer, float dt) {
 
     const float tau = DEFAULT_TIME_CONSTANT;
     const float decay = dt / tau;
+    const float input_threshold = 1e-8f;  // Very low threshold - divisive normalization produces small values
 
     for (uint32_t i = 0; i < layer->neuron_count; i++) {
         // Recurrent dynamics: decay old state, add new input
         float activation = layer->neurons[i];
         float input_current = layer->inputs[i];
 
-        // Euler step: x += dt/τ * (-x + f(I))
-        float f_input = sigmoid(input_current, SIGMOID_STEEPNESS);
-        activation += decay * (-activation + f_input);
+        // Only drive activation when there's meaningful input
+        // Otherwise, apply pure exponential decay
+        if (fabsf(input_current) > input_threshold) {
+            // Scale input for sigmoid (divisive normalization gives small values)
+            // Use input directly in sigmoid, which handles the scaling
+            float f_input = sigmoid(input_current * 10.0f, SIGMOID_STEEPNESS);
+            activation += decay * (-activation + f_input);
+        } else {
+            // No input: pure decay toward zero
+            activation *= (1.0f - decay);
+        }
 
         layer->neurons[i] = activation;
         layer->outputs[i] = activation;
@@ -254,48 +263,75 @@ static void process_layer_II_III(layer_state_t* layer, float dt) {
 }
 
 /**
- * WHAT: Layer IV processing (divisive normalization)
- * WHY:  Contrast-invariant feature detection
- * HOW:  Heeger normalization model
+ * WHAT: Layer IV processing (divisive normalization with decay)
+ * WHY:  Contrast-invariant feature detection with persistent activation
+ * HOW:  Heeger normalization model with exponential decay when no input
  */
 static void process_layer_IV(layer_state_t* layer) {
     if (!layer) return;
 
+    const float decay_rate = 0.9f;  // Activation persistence (90% retention per step)
+
     // Compute normalization pool
     float sum_squares = compute_sum_squares(layer->inputs, layer->neuron_count);
 
+    // Check if there's meaningful input
+    bool has_input = sum_squares > 1e-6f;
+
     for (uint32_t i = 0; i < layer->neuron_count; i++) {
-        float normalized = divisive_normalize(
-            layer->inputs[i],
-            sum_squares,
-            NORMALIZATION_SIGMA
-        );
-        layer->neurons[i] = normalized;
-        layer->outputs[i] = normalized;
+        if (has_input) {
+            // Normal processing with new input
+            float normalized = divisive_normalize(
+                layer->inputs[i],
+                sum_squares,
+                NORMALIZATION_SIGMA
+            );
+            layer->neurons[i] = normalized;
+        } else {
+            // No new input: decay existing activation
+            layer->neurons[i] *= decay_rate;
+        }
+        layer->outputs[i] = layer->neurons[i];
         layer->inputs[i] = 0.0f;
     }
 }
 
 /**
- * WHAT: Layer V processing (bursting output neurons)
+ * WHAT: Layer V processing (bursting output neurons with integration)
  * WHY:  Generate strong output signals for motor commands
- * HOW:  Threshold with burst amplification
+ * HOW:  Integrate inputs over time, threshold with burst amplification
  */
 static void process_layer_V(layer_state_t* layer) {
     if (!layer) return;
 
+    const float integration_rate = 0.3f;  // Rate of input integration
+    const float decay_rate = 0.8f;        // Decay when no input
+    const float input_scale = 20.0f;      // Scale small inputs up
+
     for (uint32_t i = 0; i < layer->neuron_count; i++) {
         float input = layer->inputs[i];
+        float current = layer->neurons[i];
 
-        // Threshold and burst
-        if (input > BURST_THRESHOLD) {
-            layer->neurons[i] = 1.0f;  // Burst spike
-            layer->outputs[i] = 1.0f;
+        // Integrate new input with existing state (scale small normalized values)
+        if (input > 1e-8f) {
+            // Has input: scale up and integrate
+            float scaled_input = input * input_scale;
+            current = current * (1.0f - integration_rate) + scaled_input * integration_rate;
+
+            // Threshold and burst
+            if (current > BURST_THRESHOLD) {
+                current = 1.0f;  // Burst spike
+            } else {
+                // Apply sigmoid to integrated value
+                current = sigmoid(current, SIGMOID_STEEPNESS);
+            }
         } else {
-            layer->neurons[i] = sigmoid(input, SIGMOID_STEEPNESS);
-            layer->outputs[i] = layer->neurons[i];
+            // No input: decay
+            current *= decay_rate;
         }
 
+        layer->neurons[i] = current;
+        layer->outputs[i] = current;
         layer->inputs[i] = 0.0f;
     }
 }
@@ -329,40 +365,40 @@ static void process_layer_VI(layer_state_t* layer,
 // Public API: Layer Configuration
 //=============================================================================
 
-cortical_layer_config_t cortical_layer_get_default_config(cortical_layer_t layer) {
+cortical_layer_config_t cortical_layer_get_default_config(cc_cortical_layer_t layer) {
     cortical_layer_config_t config = {0};
     config.layer = layer;
 
     switch (layer) {
-        case CORTICAL_LAYER_I:
+        case CC_LAYER_I:
             config.thickness_ratio = 0.05f;
             config.neuron_density = 500;
             config.excitatory_ratio = 0.60f;
             config.default_connectivity = 0.10f;
             break;
 
-        case CORTICAL_LAYER_II_III:
+        case CC_LAYER_II_III:
             config.thickness_ratio = 0.40f;
             config.neuron_density = 2000;
             config.excitatory_ratio = 0.80f;
             config.default_connectivity = 0.30f;
             break;
 
-        case CORTICAL_LAYER_IV:
+        case CC_LAYER_IV:
             config.thickness_ratio = 0.15f;
             config.neuron_density = 3000;
             config.excitatory_ratio = 0.85f;
             config.default_connectivity = 0.40f;
             break;
 
-        case CORTICAL_LAYER_V:
+        case CC_LAYER_V:
             config.thickness_ratio = 0.20f;
             config.neuron_density = 1500;
             config.excitatory_ratio = 0.75f;
             config.default_connectivity = 0.25f;
             break;
 
-        case CORTICAL_LAYER_VI:
+        case CC_LAYER_VI:
             config.thickness_ratio = 0.20f;
             config.neuron_density = 1200;
             config.excitatory_ratio = 0.70f;
@@ -378,7 +414,7 @@ cortical_layer_config_t cortical_layer_get_default_config(cortical_layer_t layer
 }
 
 void cortical_layer_set_config(cortical_layer_config_t* config,
-                               cortical_layer_t layer) {
+                               cc_cortical_layer_t layer) {
     // Guard clause
     if (!config) {
         LOG_ERROR("NULL config pointer");
@@ -402,7 +438,7 @@ void cortical_layer_set_config(cortical_layer_config_t* config,
     LOG_DEBUG("Set config for layer %d", layer);
 }
 
-const char* cortical_layer_get_name(cortical_layer_t layer) {
+const char* cortical_layer_get_name(cc_cortical_layer_t layer) {
     static const char* names[] = {
         "Layer I",
         "Layer II/III",
@@ -411,13 +447,13 @@ const char* cortical_layer_get_name(cortical_layer_t layer) {
         "Layer VI"
     };
 
-    if (layer >= 0 && layer < CORTICAL_LAYER_COUNT) {
+    if (layer >= 0 && layer < CC_LAYER_COUNT) {
         return names[layer];
     }
     return "Unknown Layer";
 }
 
-const char* cortical_layer_get_description(cortical_layer_t layer) {
+const char* cortical_layer_get_description(cc_cortical_layer_t layer) {
     static const char* descriptions[] = {
         "Apical dendrites, top-down modulation, feedback processing",
         "Cortico-cortical projections, lateral association, feature binding",
@@ -426,7 +462,7 @@ const char* cortical_layer_get_description(cortical_layer_t layer) {
         "Corticothalamic feedback, predictive coding, error computation"
     };
 
-    if (layer >= 0 && layer < CORTICAL_LAYER_COUNT) {
+    if (layer >= 0 && layer < CC_LAYER_COUNT) {
         return descriptions[layer];
     }
     return "Unknown layer type";
@@ -437,7 +473,7 @@ const char* cortical_layer_get_description(cortical_layer_t layer) {
 //=============================================================================
 
 laminar_structure_t* laminar_structure_create(
-    const cortical_layer_config_t configs[CORTICAL_LAYER_COUNT]) {
+    const cortical_layer_config_t configs[CC_LAYER_COUNT]) {
 
     // Allocate main structure
     laminar_structure_t* ls = nimcp_calloc(1, sizeof(laminar_structure_t));
@@ -455,13 +491,13 @@ laminar_structure_t* laminar_structure_create(
 
     // Initialize each layer
     bool success = true;
-    for (int i = 0; i < CORTICAL_LAYER_COUNT; i++) {
+    for (int i = 0; i < CC_LAYER_COUNT; i++) {
         cortical_layer_config_t config;
 
         if (configs) {
             config = configs[i];
         } else {
-            config = cortical_layer_get_default_config((cortical_layer_t)i);
+            config = cortical_layer_get_default_config((cc_cortical_layer_t)i);
         }
 
         if (!init_layer_state(&ls->layers[i], &config)) {
@@ -481,7 +517,7 @@ laminar_structure_t* laminar_structure_create(
     ls->update_count = 0;
     memset(ls->prediction_buffer, 0, sizeof(ls->prediction_buffer));
 
-    LOG_INFO("Created laminar structure with %d layers", CORTICAL_LAYER_COUNT);
+    LOG_INFO("Created laminar structure with %d layers", CC_LAYER_COUNT);
     return ls;
 }
 
@@ -490,7 +526,7 @@ void laminar_structure_destroy(laminar_structure_t* ls) {
     if (!ls) return;
 
     // Clean up all layers
-    for (int i = 0; i < CORTICAL_LAYER_COUNT; i++) {
+    for (int i = 0; i < CC_LAYER_COUNT; i++) {
         cleanup_layer_state(&ls->layers[i]);
     }
 
@@ -508,7 +544,7 @@ void laminar_structure_destroy(laminar_structure_t* ls) {
 //=============================================================================
 
 void laminar_process_input(laminar_structure_t* ls,
-                          cortical_layer_t target,
+                          cc_cortical_layer_t target,
                           const float* input,
                           uint32_t size) {
     // Guard clauses
@@ -517,7 +553,7 @@ void laminar_process_input(laminar_structure_t* ls,
         return;
     }
 
-    if (target < 0 || target >= CORTICAL_LAYER_COUNT) {
+    if (target < 0 || target >= CC_LAYER_COUNT) {
         LOG_ERROR("Invalid target layer: %d", target);
         return;
     }
@@ -554,11 +590,11 @@ void laminar_process_feedforward(laminar_structure_t* ls) {
     const float dt = 0.001f;  // 1ms timestep
 
     // Process Layer IV (thalamic input)
-    process_layer_IV(&ls->layers[CORTICAL_LAYER_IV]);
+    process_layer_IV(&ls->layers[CC_LAYER_IV]);
 
     // Layer IV → Layer II/III
-    layer_state_t* layer4 = &ls->layers[CORTICAL_LAYER_IV];
-    layer_state_t* layer23 = &ls->layers[CORTICAL_LAYER_II_III];
+    layer_state_t* layer4 = &ls->layers[CC_LAYER_IV];
+    layer_state_t* layer23 = &ls->layers[CC_LAYER_II_III];
     uint32_t transfer_size = (layer4->neuron_count < layer23->neuron_count) ?
                             layer4->neuron_count : layer23->neuron_count;
     for (uint32_t i = 0; i < transfer_size; i++) {
@@ -566,10 +602,10 @@ void laminar_process_feedforward(laminar_structure_t* ls) {
     }
 
     // Process Layer II/III (recurrent integration)
-    process_layer_II_III(&ls->layers[CORTICAL_LAYER_II_III], dt);
+    process_layer_II_III(&ls->layers[CC_LAYER_II_III], dt);
 
     // Layer II/III → Layer V
-    layer_state_t* layer5 = &ls->layers[CORTICAL_LAYER_V];
+    layer_state_t* layer5 = &ls->layers[CC_LAYER_V];
     transfer_size = (layer23->neuron_count < layer5->neuron_count) ?
                    layer23->neuron_count : layer5->neuron_count;
     for (uint32_t i = 0; i < transfer_size; i++) {
@@ -577,7 +613,7 @@ void laminar_process_feedforward(laminar_structure_t* ls) {
     }
 
     // Process Layer V (output bursting)
-    process_layer_V(&ls->layers[CORTICAL_LAYER_V]);
+    process_layer_V(&ls->layers[CC_LAYER_V]);
 
     ls->update_count++;
 
@@ -594,11 +630,11 @@ void laminar_process_feedback(laminar_structure_t* ls) {
     nimcp_platform_mutex_lock(&ls->mutex);
 
     // Layer VI → Layer IV (modulatory feedback)
-    layer_state_t* layer6 = &ls->layers[CORTICAL_LAYER_VI];
-    layer_state_t* layer4 = &ls->layers[CORTICAL_LAYER_IV];
+    layer_state_t* layer6 = &ls->layers[CC_LAYER_VI];
+    layer_state_t* layer4 = &ls->layers[CC_LAYER_IV];
 
     // Process Layer VI prediction
-    process_layer_VI(&ls->layers[CORTICAL_LAYER_VI],
+    process_layer_VI(&ls->layers[CC_LAYER_VI],
                     layer4->neurons,
                     ls->prediction_buffer);
 
@@ -610,10 +646,10 @@ void laminar_process_feedback(laminar_structure_t* ls) {
     }
 
     // Layer I → Layer II/III (attentional modulation)
-    layer_state_t* layer1 = &ls->layers[CORTICAL_LAYER_I];
-    layer_state_t* layer23 = &ls->layers[CORTICAL_LAYER_II_III];
+    layer_state_t* layer1 = &ls->layers[CC_LAYER_I];
+    layer_state_t* layer23 = &ls->layers[CC_LAYER_II_III];
 
-    process_layer_I(&ls->layers[CORTICAL_LAYER_I]);
+    process_layer_I(&ls->layers[CC_LAYER_I]);
 
     transfer_size = (layer1->neuron_count < layer23->neuron_count) ?
                    layer1->neuron_count : layer23->neuron_count;
@@ -621,6 +657,10 @@ void laminar_process_feedback(laminar_structure_t* ls) {
         // Multiplicative modulation (gain control)
         layer23->inputs[i] *= (1.0f + layer1->outputs[i] * 0.4f);
     }
+
+    // Process Layer II/III with the modulated inputs
+    const float dt = 0.001f;  // 1ms timestep
+    process_layer_II_III(layer23, dt);
 
     nimcp_platform_mutex_unlock(&ls->mutex);
 }
@@ -634,7 +674,7 @@ void laminar_process_lateral(laminar_structure_t* ls) {
 
     nimcp_platform_mutex_lock(&ls->mutex);
 
-    layer_state_t* layer23 = &ls->layers[CORTICAL_LAYER_II_III];
+    layer_state_t* layer23 = &ls->layers[CC_LAYER_II_III];
 
     // Simple lateral connections (neighbor coupling)
     // In full implementation, this would use a weight matrix
@@ -652,7 +692,7 @@ void laminar_process_lateral(laminar_structure_t* ls) {
 //=============================================================================
 
 void laminar_get_output(laminar_structure_t* ls,
-                       cortical_layer_t layer,
+                       cc_cortical_layer_t layer,
                        float* output,
                        uint32_t size) {
     // Guard clauses
@@ -661,7 +701,7 @@ void laminar_get_output(laminar_structure_t* ls,
         return;
     }
 
-    if (layer < 0 || layer >= CORTICAL_LAYER_COUNT) {
+    if (layer < 0 || layer >= CC_LAYER_COUNT) {
         LOG_ERROR("Invalid layer: %d", layer);
         return;
     }
@@ -678,14 +718,14 @@ void laminar_get_output(laminar_structure_t* ls,
 }
 
 float laminar_get_layer_activation(laminar_structure_t* ls,
-                                   cortical_layer_t layer) {
+                                   cc_cortical_layer_t layer) {
     // Guard clauses
     if (!ls) {
         LOG_ERROR("NULL laminar structure");
         return 0.0f;
     }
 
-    if (layer < 0 || layer >= CORTICAL_LAYER_COUNT) {
+    if (layer < 0 || layer >= CC_LAYER_COUNT) {
         LOG_ERROR("Invalid layer: %d", layer);
         return 0.0f;
     }
@@ -700,13 +740,29 @@ float laminar_get_layer_activation(laminar_structure_t* ls,
     return activation;
 }
 
+uint32_t laminar_get_layer_neuron_count(const laminar_structure_t* ls,
+                                        cc_cortical_layer_t layer) {
+    // Guard clauses
+    if (!ls) {
+        LOG_ERROR("NULL laminar structure");
+        return 0;
+    }
+
+    if (layer < 0 || layer >= CC_LAYER_COUNT) {
+        LOG_ERROR("Invalid layer: %d", layer);
+        return 0;
+    }
+
+    return ls->layers[layer].neuron_count;
+}
+
 //=============================================================================
 // Public API: Connectivity Configuration
 //=============================================================================
 
 void laminar_connect_feedforward(laminar_structure_t* ls,
-                                 cortical_layer_t from,
-                                 cortical_layer_t to,
+                                 cc_cortical_layer_t from,
+                                 cc_cortical_layer_t to,
                                  float strength) {
     // Guard clauses
     if (!ls) {
@@ -714,8 +770,8 @@ void laminar_connect_feedforward(laminar_structure_t* ls,
         return;
     }
 
-    if (from < 0 || from >= CORTICAL_LAYER_COUNT ||
-        to < 0 || to >= CORTICAL_LAYER_COUNT) {
+    if (from < 0 || from >= CC_LAYER_COUNT ||
+        to < 0 || to >= CC_LAYER_COUNT) {
         LOG_ERROR("Invalid layer indices: %d -> %d", from, to);
         return;
     }
@@ -734,7 +790,7 @@ void laminar_connect_feedforward(laminar_structure_t* ls,
         }
     }
 
-    if (!found && ls->connection_count < CORTICAL_LAYER_COUNT * CORTICAL_LAYER_COUNT) {
+    if (!found && ls->connection_count < CC_LAYER_COUNT * CC_LAYER_COUNT) {
         ls->connections[ls->connection_count].from = from;
         ls->connections[ls->connection_count].to = to;
         ls->connections[ls->connection_count].strength = strength;
@@ -749,8 +805,8 @@ void laminar_connect_feedforward(laminar_structure_t* ls,
 }
 
 void laminar_connect_feedback(laminar_structure_t* ls,
-                              cortical_layer_t from,
-                              cortical_layer_t to,
+                              cc_cortical_layer_t from,
+                              cc_cortical_layer_t to,
                               float strength) {
     // Guard clauses
     if (!ls) {
@@ -758,8 +814,8 @@ void laminar_connect_feedback(laminar_structure_t* ls,
         return;
     }
 
-    if (from < 0 || from >= CORTICAL_LAYER_COUNT ||
-        to < 0 || to >= CORTICAL_LAYER_COUNT) {
+    if (from < 0 || from >= CC_LAYER_COUNT ||
+        to < 0 || to >= CC_LAYER_COUNT) {
         LOG_ERROR("Invalid layer indices: %d -> %d", from, to);
         return;
     }
@@ -778,7 +834,7 @@ void laminar_connect_feedback(laminar_structure_t* ls,
         }
     }
 
-    if (!found && ls->connection_count < CORTICAL_LAYER_COUNT * CORTICAL_LAYER_COUNT) {
+    if (!found && ls->connection_count < CC_LAYER_COUNT * CC_LAYER_COUNT) {
         ls->connections[ls->connection_count].from = from;
         ls->connections[ls->connection_count].to = to;
         ls->connections[ls->connection_count].strength = strength;
@@ -806,16 +862,16 @@ void laminar_apply_canonical_circuit(laminar_structure_t* ls) {
     LOG_INFO("Applying canonical microcircuit (Douglas & Martin 1991)");
 
     // Feedforward connections
-    laminar_connect_feedforward(ls, CORTICAL_LAYER_IV, CORTICAL_LAYER_II_III, 1.0f);
-    laminar_connect_feedforward(ls, CORTICAL_LAYER_II_III, CORTICAL_LAYER_V, 0.8f);
-    laminar_connect_feedforward(ls, CORTICAL_LAYER_V, CORTICAL_LAYER_VI, 0.7f);
+    laminar_connect_feedforward(ls, CC_LAYER_IV, CC_LAYER_II_III, 1.0f);
+    laminar_connect_feedforward(ls, CC_LAYER_II_III, CC_LAYER_V, 0.8f);
+    laminar_connect_feedforward(ls, CC_LAYER_V, CC_LAYER_VI, 0.7f);
 
     // Feedback connections
-    laminar_connect_feedback(ls, CORTICAL_LAYER_VI, CORTICAL_LAYER_IV, 0.5f);
-    laminar_connect_feedback(ls, CORTICAL_LAYER_I, CORTICAL_LAYER_II_III, 0.4f);
+    laminar_connect_feedback(ls, CC_LAYER_VI, CC_LAYER_IV, 0.5f);
+    laminar_connect_feedback(ls, CC_LAYER_I, CC_LAYER_II_III, 0.4f);
 
     // Recurrent connections within Layer II/III
-    laminar_connect_feedforward(ls, CORTICAL_LAYER_II_III, CORTICAL_LAYER_II_III, 0.6f);
+    laminar_connect_feedforward(ls, CC_LAYER_II_III, CC_LAYER_II_III, 0.6f);
 
     LOG_INFO("Canonical circuit applied: %u connections", ls->connection_count);
 }
@@ -834,7 +890,7 @@ void laminar_get_profile(laminar_structure_t* ls,
 
     nimcp_platform_mutex_lock(&ls->mutex);
 
-    for (int i = 0; i < CORTICAL_LAYER_COUNT; i++) {
+    for (int i = 0; i < CC_LAYER_COUNT; i++) {
         update_layer_stats(&ls->layers[i]);
         profile->layer_activations[i] = ls->layers[i].mean_activation;
 
@@ -869,7 +925,7 @@ void laminar_get_stats(laminar_structure_t* ls,
     nimcp_platform_mutex_lock(&ls->mutex);
 
     // Update and copy layer statistics
-    for (int i = 0; i < CORTICAL_LAYER_COUNT; i++) {
+    for (int i = 0; i < CC_LAYER_COUNT; i++) {
         update_layer_stats(&ls->layers[i]);
         stats->mean_activation[i] = ls->layers[i].mean_activation;
         stats->variance_activation[i] = ls->layers[i].variance_activation;
@@ -877,16 +933,16 @@ void laminar_get_stats(laminar_structure_t* ls,
 
     // Compute information flow metrics
     stats->total_feedforward_flow =
-        ls->layers[CORTICAL_LAYER_IV].mean_activation +
-        ls->layers[CORTICAL_LAYER_II_III].mean_activation +
-        ls->layers[CORTICAL_LAYER_V].mean_activation;
+        ls->layers[CC_LAYER_IV].mean_activation +
+        ls->layers[CC_LAYER_II_III].mean_activation +
+        ls->layers[CC_LAYER_V].mean_activation;
 
     stats->total_feedback_flow =
-        ls->layers[CORTICAL_LAYER_VI].mean_activation +
-        ls->layers[CORTICAL_LAYER_I].mean_activation;
+        ls->layers[CC_LAYER_VI].mean_activation +
+        ls->layers[CC_LAYER_I].mean_activation;
 
     // Prediction error from Layer VI
-    stats->prediction_error = fabsf(ls->layers[CORTICAL_LAYER_VI].mean_activation);
+    stats->prediction_error = fabsf(ls->layers[CC_LAYER_VI].mean_activation);
 
     stats->update_count = ls->update_count;
 

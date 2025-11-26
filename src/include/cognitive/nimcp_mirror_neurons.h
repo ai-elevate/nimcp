@@ -97,6 +97,14 @@ typedef struct {
     bool enable_oligodendrocytes;     /**< Oligodendrocytes speed recognition (default: true) */
     bool enable_microglia;            /**< Microglia prune weak associations (default: true) */
 
+    // Phase 10.11.2: Substrate integration
+    bool enable_substrate;            /**< Enable biological substrate backing (default: false) */
+    bool enable_myelination;          /**< Use myelin sheath for timing (default: true if substrate) */
+    bool enable_dendrite_plasticity;  /**< Use dendritic spine plasticity (default: true if substrate) */
+    bool enable_axon_timing;          /**< Use axon propagation delays (default: true if substrate) */
+    bool enable_substrate_pool;       /**< Use memory pool for substrate (default: true if substrate) */
+    uint32_t substrate_pool_size;     /**< Substrate pool capacity (default: 4096) */
+
 } mirror_neuron_config_t;
 
 /**
@@ -628,6 +636,336 @@ bool mirror_neurons_get_all_activations(
     uint32_t max_size,
     uint32_t* out_size
 );
+
+//=============================================================================
+// Substrate Integration API (Phase 10.11.2)
+//=============================================================================
+
+/**
+ * @brief Enable substrate integration for mirror neurons
+ *
+ * WHAT: Enable biological substrate backing for biologically-realistic behavior
+ * WHY:  Provides myelination-dependent timing, dendrite plasticity, glial modulation
+ * HOW:  Creates substrate backings for each mirror neuron unit
+ *
+ * COMPLEXITY: O(num_neurons) for full substrate creation
+ * THREAD-SAFE: No (requires exclusive access)
+ *
+ * @param mirror Mirror neuron system
+ * @return true on success, false on error
+ */
+bool mirror_neurons_enable_substrate(mirror_neurons_t mirror);
+
+/**
+ * @brief Connect substrate to axon network
+ *
+ * WHAT: Wire substrate layer to axon network for propagation delays
+ * WHY:  Enable myelination-dependent recognition speed
+ * HOW:  Create axons for observation/execution pathways
+ *
+ * @param mirror Mirror neuron system
+ * @param axon_network Axon network handle
+ * @return true on success, false on error
+ *
+ * COMPLEXITY: O(num_neurons)
+ * THREAD-SAFE: No
+ */
+bool mirror_neurons_connect_axon_network(
+    mirror_neurons_t mirror,
+    void* axon_network);
+
+/**
+ * @brief Connect substrate to dendrite network
+ *
+ * WHAT: Wire substrate layer to dendrite network for spine plasticity
+ * WHY:  Enable structural plasticity for association learning
+ * HOW:  Create dendrites with spines for each mirror unit
+ *
+ * @param mirror Mirror neuron system
+ * @param dendrite_network Dendrite network handle
+ * @return true on success, false on error
+ *
+ * COMPLEXITY: O(num_neurons)
+ * THREAD-SAFE: No
+ */
+bool mirror_neurons_connect_dendrite_network(
+    mirror_neurons_t mirror,
+    void* dendrite_network);
+
+/**
+ * @brief Connect substrate to myelin sheath network
+ *
+ * WHAT: Wire substrate layer to myelin network for myelination effects
+ * WHY:  Enable detailed myelination structural modeling
+ * HOW:  Create myelin sheaths for active pathways
+ *
+ * @param mirror Mirror neuron system
+ * @param myelin_network Myelin sheath network handle
+ * @return true on success, false on error
+ *
+ * COMPLEXITY: O(num_neurons)
+ * THREAD-SAFE: No
+ */
+bool mirror_neurons_connect_myelin_network(
+    mirror_neurons_t mirror,
+    void* myelin_network);
+
+/**
+ * @brief Get recognition delay for action (substrate-aware)
+ *
+ * WHAT: Calculate delay for action recognition including substrate effects
+ * WHY:  Myelination and axon properties affect recognition speed
+ * HOW:  Query substrate backing for delay, fall back to base if no substrate
+ *
+ * @param mirror Mirror neuron system
+ * @param action_id Action to query
+ * @return Recognition delay in milliseconds
+ *
+ * COMPLEXITY: O(1)
+ * THREAD-SAFE: Yes (read-only)
+ */
+float mirror_neurons_get_recognition_delay(mirror_neurons_t mirror, uint32_t action_id);
+
+/**
+ * @brief Get association strength from spine weights
+ *
+ * WHAT: Query observation-execution association based on spine plasticity
+ * WHY:  Spines encode learned associations in substrate mode
+ * HOW:  Sum spine weights for the action's mirror units
+ *
+ * @param mirror Mirror neuron system
+ * @param action_id Action to query
+ * @return Association strength (0 to num_spines per unit)
+ *
+ * COMPLEXITY: O(neurons_for_action * spines_per_neuron)
+ * THREAD-SAFE: Yes (read-only)
+ */
+float mirror_neurons_get_spine_association(mirror_neurons_t mirror, uint32_t action_id);
+
+/**
+ * @brief Step substrate simulation forward
+ *
+ * WHAT: Advance all substrate states by one timestep
+ * WHY:  Keep substrate synchronized with simulation time
+ * HOW:  Update myelination, spine plasticity, glial states
+ *
+ * @param mirror Mirror neuron system
+ * @param dt_ms Time step in milliseconds
+ * @return true on success, false on error
+ *
+ * COMPLEXITY: O(num_neurons * spines_per_neuron)
+ * THREAD-SAFE: No (requires external synchronization)
+ */
+bool mirror_neurons_step_substrate(mirror_neurons_t mirror, float dt_ms);
+
+/**
+ * @brief Check if substrate is enabled
+ *
+ * @param mirror Mirror neuron system
+ * @return true if substrate mode is active
+ *
+ * COMPLEXITY: O(1)
+ * THREAD-SAFE: Yes (read-only)
+ */
+bool mirror_neurons_has_substrate(mirror_neurons_t mirror);
+
+//=============================================================================
+// Enhanced Mirror Neuron Systems (Phase 10.11.4-6)
+//=============================================================================
+
+/**
+ * @brief Forward declarations for enhancement systems
+ */
+typedef struct mirror_stdp_system* mirror_stdp_t;
+typedef struct motor_resonance_system* motor_resonance_t;
+typedef struct mirror_hierarchy_system* mirror_hierarchy_t;
+
+/**
+ * @brief Enable STDP learning for mirror neurons
+ *
+ * WHAT: Activate spike-timing dependent plasticity for learning
+ * WHY:  Replace simple Hebbian learning with biologically accurate timing rules
+ * HOW:  Create STDP system and connect to observation/execution pathways
+ *
+ * When enabled:
+ * - Observation spikes followed by execution spikes = LTP (strengthen)
+ * - Execution spikes followed by observation spikes = LTD (weaken)
+ * - Supports triplet STDP, homeostasis, metaplasticity, neuromodulator gating
+ *
+ * @param mirror Mirror neuron system
+ * @param max_synapses Maximum STDP-managed synapses (0 = use num_actions)
+ * @return true on success, false on error
+ *
+ * COMPLEXITY: O(max_synapses) for allocation
+ * THREAD-SAFE: No (requires external synchronization)
+ *
+ * @see Phase 10.11.4 - STDP Learning Enhancement
+ */
+bool mirror_neurons_enable_stdp(mirror_neurons_t mirror, uint32_t max_synapses);
+
+/**
+ * @brief Get STDP system handle
+ *
+ * WHAT: Access the STDP learning system
+ * WHY:  Allow direct configuration and monitoring of STDP
+ *
+ * @param mirror Mirror neuron system
+ * @return STDP system handle or NULL if not enabled
+ */
+mirror_stdp_t mirror_neurons_get_stdp(mirror_neurons_t mirror);
+
+/**
+ * @brief Set dopamine level for STDP learning
+ *
+ * WHAT: Update dopamine modulation of STDP
+ * WHY:  Reward signals modulate learning (three-factor rule)
+ *
+ * @param mirror Mirror neuron system
+ * @param level Dopamine level (0-1, 0.5 = baseline)
+ */
+void mirror_neurons_set_stdp_dopamine(mirror_neurons_t mirror, float level);
+
+/**
+ * @brief Enable motor resonance for mirror neurons
+ *
+ * WHAT: Activate motor resonance with suppression circuits
+ * WHY:  Model automatic imitation tendency and its behavioral control
+ * HOW:  Create resonance system with BG/PFC suppression
+ *
+ * When enabled:
+ * - Observations automatically prime motor representations
+ * - Basal ganglia provides tonic suppression to prevent unwanted imitation
+ * - Learning contexts release suppression to allow appropriate imitation
+ * - Conflict detection prevents incompatible motor commands
+ *
+ * @param mirror Mirror neuron system
+ * @param max_channels Maximum motor channels (0 = use max_actions)
+ * @return true on success, false on error
+ *
+ * COMPLEXITY: O(max_channels) for allocation
+ * THREAD-SAFE: No (requires external synchronization)
+ *
+ * @see Phase 10.11.5 - Motor Resonance Enhancement
+ */
+bool mirror_neurons_enable_resonance(mirror_neurons_t mirror, uint32_t max_channels);
+
+/**
+ * @brief Get motor resonance system handle
+ *
+ * WHAT: Access the motor resonance system
+ * WHY:  Allow direct configuration of suppression and release
+ *
+ * @param mirror Mirror neuron system
+ * @return Resonance system handle or NULL if not enabled
+ */
+motor_resonance_t mirror_neurons_get_resonance(mirror_neurons_t mirror);
+
+/**
+ * @brief Set learning context for motor resonance
+ *
+ * WHAT: Signal that current context supports imitation learning
+ * WHY:  Release BG suppression when learning by imitation is appropriate
+ *
+ * @param mirror Mirror neuron system
+ * @param learning_strength Learning context strength (0-1)
+ */
+void mirror_neurons_set_learning_context(mirror_neurons_t mirror, float learning_strength);
+
+/**
+ * @brief Set social context for motor resonance
+ *
+ * WHAT: Signal social interaction context
+ * WHY:  Release suppression for appropriate social mirroring
+ *
+ * @param mirror Mirror neuron system
+ * @param social_strength Social context strength (0-1)
+ */
+void mirror_neurons_set_social_context(mirror_neurons_t mirror, float social_strength);
+
+/**
+ * @brief Check if action is above execution threshold
+ *
+ * WHAT: Query if motor resonance is strong enough for imitation
+ * WHY:  Determine when automatic imitation should trigger
+ *
+ * @param mirror Mirror neuron system
+ * @param action_id Action to check
+ * @return true if resonance above threshold
+ */
+bool mirror_neurons_should_imitate(mirror_neurons_t mirror, uint32_t action_id);
+
+/**
+ * @brief Enable hierarchical goal representation
+ *
+ * WHAT: Activate IPL/F5 goal-motor hierarchy
+ * WHY:  Separate goal-level from motor-level representation
+ * HOW:  Create hierarchy system with goal/motor layers
+ *
+ * When enabled:
+ * - Goals (IPL level): "What is the intention?"
+ * - Motors (F5 level): "What are the motor details?"
+ * - Bindings connect goals to possible motor implementations
+ * - Bottom-up inference: observe motor -> infer goal
+ * - Top-down prediction: select goal -> predict motor
+ *
+ * @param mirror Mirror neuron system
+ * @return true on success, false on error
+ *
+ * COMPLEXITY: O(max_goals + max_motors) for allocation
+ * THREAD-SAFE: No (requires external synchronization)
+ *
+ * @see Phase 10.11.6 - Hierarchical Goals Enhancement
+ */
+bool mirror_neurons_enable_hierarchy(mirror_neurons_t mirror);
+
+/**
+ * @brief Get hierarchy system handle
+ *
+ * WHAT: Access the goal-motor hierarchy system
+ * WHY:  Allow direct configuration and goal/motor management
+ *
+ * @param mirror Mirror neuron system
+ * @return Hierarchy system handle or NULL if not enabled
+ */
+mirror_hierarchy_t mirror_neurons_get_hierarchy(mirror_neurons_t mirror);
+
+/**
+ * @brief Infer goal from observed action
+ *
+ * WHAT: Determine likely goal given observed motor action
+ * WHY:  Understand action intention, not just motor details
+ *
+ * @param mirror Mirror neuron system
+ * @param action_id Observed action
+ * @param out_goal Output: inferred goal ID
+ * @param out_confidence Output: inference confidence
+ * @return true if goal inferred, false if no inference
+ */
+bool mirror_neurons_infer_goal(mirror_neurons_t mirror, uint32_t action_id,
+                                uint32_t* out_goal, float* out_confidence);
+
+/**
+ * @brief Select goal for top-down motor control
+ *
+ * WHAT: Set current intention goal
+ * WHY:  Enable goal-directed motor preparation
+ *
+ * @param mirror Mirror neuron system
+ * @param goal_id Goal to select (-1 to clear)
+ */
+void mirror_neurons_select_goal(mirror_neurons_t mirror, int32_t goal_id);
+
+/**
+ * @brief Step all enhancement systems
+ *
+ * WHAT: Advance STDP, resonance, and hierarchy by one timestep
+ * WHY:  Keep enhancement systems synchronized with simulation
+ *
+ * @param mirror Mirror neuron system
+ * @param dt_ms Time step in milliseconds
+ * @return true on success
+ */
+bool mirror_neurons_step_enhancements(mirror_neurons_t mirror, float dt_ms);
 
 //=============================================================================
 // Persistence API (Save/Load) - Phase 10.11

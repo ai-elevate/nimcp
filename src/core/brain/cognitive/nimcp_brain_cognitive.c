@@ -393,6 +393,12 @@ bool init_ethics_engine_subsystem(brain_t brain)
         return false;
     }
 
+    // Check if ethics is disabled via config
+    if (!brain->config.enable_ethics) {
+        brain->ethics = NULL;
+        return true;  // Not an error - ethics disabled by config
+    }
+
     // Guard: Check if already initialized
     if (brain->ethics) {
         return true;  // Already initialized
@@ -431,6 +437,12 @@ bool init_empathy_network_subsystem(brain_t brain)
     // Guard: NULL check
     if (!brain) {
         return false;
+    }
+
+    // Empathy network requires ethics to be enabled (it's part of ethical reasoning)
+    if (!brain->config.enable_ethics) {
+        brain->empathy_network = NULL;
+        return true;  // Not an error - empathy requires ethics
     }
 
     // Guard: Check if already initialized

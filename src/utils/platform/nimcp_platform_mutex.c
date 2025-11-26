@@ -15,6 +15,7 @@
  */
 
 #include "nimcp_platform_mutex.h"
+#include "../memory/nimcp_memory.h"
 #include <errno.h>
 
 /* ========================================================================
@@ -120,4 +121,21 @@ int nimcp_platform_mutex_unlock(nimcp_platform_mutex_t* mutex)
 #else
     #error "Unsupported platform"
 #endif
+}
+
+nimcp_platform_mutex_t* nimcp_platform_mutex_create(void)
+{
+    nimcp_platform_mutex_t* mutex = (nimcp_platform_mutex_t*)nimcp_malloc(
+        sizeof(nimcp_platform_mutex_t)
+    );
+    if (!mutex) {
+        return NULL;
+    }
+
+    if (nimcp_platform_mutex_init(mutex, false) != 0) {
+        nimcp_free(mutex);
+        return NULL;
+    }
+
+    return mutex;
 }

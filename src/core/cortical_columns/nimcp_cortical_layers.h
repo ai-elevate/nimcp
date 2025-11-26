@@ -53,18 +53,30 @@ extern "C" {
 //=============================================================================
 
 /**
- * WHAT: Cortical layer identifiers
- * WHY:  Distinguish 6 cortical layers with distinct biological roles
+ * WHAT: Cortical layer identifiers (5-layer condensed model)
+ * WHY:  Distinguish cortical layers with distinct biological roles
+ *       Uses combined II/III layer (common in computational literature)
  * HOW:  Enum mapping to layers I, II/III, IV, V, VI
+ * NOTE: Prefixed with CC_ to avoid conflicts with brain_regions.h
+ *       (which uses full 6-layer model)
  */
 typedef enum {
-    CORTICAL_LAYER_I = 0,       /**< Apical dendrites, feedback modulation */
-    CORTICAL_LAYER_II_III = 1,  /**< Lateral association, feature binding */
-    CORTICAL_LAYER_IV = 2,      /**< Thalamic input, feature detection */
-    CORTICAL_LAYER_V = 3,       /**< Subcortical output, action commands */
-    CORTICAL_LAYER_VI = 4,      /**< Corticothalamic feedback, prediction */
-    CORTICAL_LAYER_COUNT = 5    /**< Total number of layers */
-} cortical_layer_t;
+    CC_LAYER_I = 0,         /**< Apical dendrites, feedback modulation */
+    CC_LAYER_II_III = 1,    /**< Lateral association, feature binding */
+    CC_LAYER_IV = 2,        /**< Thalamic input, feature detection */
+    CC_LAYER_V = 3,         /**< Subcortical output, action commands */
+    CC_LAYER_VI = 4,        /**< Corticothalamic feedback, prediction */
+    CC_LAYER_COUNT = 5      /**< Total number of layers (condensed model) */
+} cc_cortical_layer_t;
+
+// Compatibility aliases for older code using CORTICAL_LAYER_* naming
+// Note: These use CC_ prefix to avoid conflicts with brain_regions.h
+#define CORTICAL_LAYER_I       CC_LAYER_I
+#define CORTICAL_LAYER_II_III  CC_LAYER_II_III
+#define CORTICAL_LAYER_IV      CC_LAYER_IV
+#define CORTICAL_LAYER_V       CC_LAYER_V
+#define CORTICAL_LAYER_VI      CC_LAYER_VI
+#define CORTICAL_LAYER_COUNT   CC_LAYER_COUNT
 
 //=============================================================================
 // Configuration Structures
@@ -82,7 +94,7 @@ typedef enum {
  * - 0.0 <= default_connectivity <= 1.0
  */
 typedef struct cortical_layer_config {
-    cortical_layer_t layer;          /**< Layer identifier */
+    cc_cortical_layer_t layer;          /**< Layer identifier */
     float thickness_ratio;           /**< Fraction of total cortical depth */
     uint32_t neuron_density;         /**< Neurons per unit volume */
     float excitatory_ratio;          /**< Fraction excitatory neurons */
@@ -97,9 +109,9 @@ typedef struct cortical_layer_config {
  * USAGE: Use for visualization, analysis, and feedback control
  */
 typedef struct laminar_profile {
-    float layer_activations[CORTICAL_LAYER_COUNT];  /**< Current activation */
-    float layer_inputs[CORTICAL_LAYER_COUNT];       /**< Input currents */
-    float layer_outputs[CORTICAL_LAYER_COUNT];      /**< Output signals */
+    float layer_activations[CC_LAYER_COUNT];  /**< Current activation */
+    float layer_inputs[CC_LAYER_COUNT];       /**< Input currents */
+    float layer_outputs[CC_LAYER_COUNT];      /**< Output signals */
     uint64_t timestamp;                             /**< Profile capture time */
 } laminar_profile_t;
 
@@ -109,8 +121,8 @@ typedef struct laminar_profile {
  * HOW:  Aggregated metrics across layers
  */
 typedef struct laminar_stats {
-    float mean_activation[CORTICAL_LAYER_COUNT];    /**< Average activation */
-    float variance_activation[CORTICAL_LAYER_COUNT]; /**< Activation variance */
+    float mean_activation[CC_LAYER_COUNT];    /**< Average activation */
+    float variance_activation[CC_LAYER_COUNT]; /**< Activation variance */
     float total_feedforward_flow;                    /**< FF information flow */
     float total_feedback_flow;                       /**< FB information flow */
     float prediction_error;                          /**< Layer VI error signal */
@@ -150,7 +162,7 @@ typedef struct laminar_structure laminar_structure_t;
  * @param layer Layer type to get configuration for
  * @return Default configuration structure
  */
-cortical_layer_config_t cortical_layer_get_default_config(cortical_layer_t layer);
+cortical_layer_config_t cortical_layer_get_default_config(cc_cortical_layer_t layer);
 
 /**
  * WHAT: Set custom configuration for a layer
@@ -168,7 +180,7 @@ cortical_layer_config_t cortical_layer_get_default_config(cortical_layer_t layer
  * @param config Configuration structure to set (must be non-NULL)
  * @param layer Layer to apply configuration to
  */
-void cortical_layer_set_config(cortical_layer_config_t* config, cortical_layer_t layer);
+void cortical_layer_set_config(cortical_layer_config_t* config, cc_cortical_layer_t layer);
 
 /**
  * WHAT: Get layer name as string
@@ -181,7 +193,7 @@ void cortical_layer_set_config(cortical_layer_config_t* config, cortical_layer_t
  * @param layer Layer type
  * @return Layer name (e.g., "Layer I", "Layer II/III")
  */
-const char* cortical_layer_get_name(cortical_layer_t layer);
+const char* cortical_layer_get_name(cc_cortical_layer_t layer);
 
 /**
  * WHAT: Get layer description
@@ -194,7 +206,7 @@ const char* cortical_layer_get_name(cortical_layer_t layer);
  * @param layer Layer type
  * @return Description of layer's biological role
  */
-const char* cortical_layer_get_description(cortical_layer_t layer);
+const char* cortical_layer_get_description(cc_cortical_layer_t layer);
 
 //=============================================================================
 // Laminar Structure Lifecycle
@@ -213,12 +225,12 @@ const char* cortical_layer_get_description(cortical_layer_t layer);
  * COMPLEXITY: O(L + C) where L = layers, C = connections
  * THREAD-SAFE: Yes (returns isolated instance)
  *
- * @param configs Array of 5 layer configurations (indexed by cortical_layer_t)
+ * @param configs Array of 5 layer configurations (indexed by cc_cortical_layer_t)
  *                If NULL, uses default configurations
  * @return Pointer to laminar structure, or NULL on failure
  */
 laminar_structure_t* laminar_structure_create(
-    const cortical_layer_config_t configs[CORTICAL_LAYER_COUNT]
+    const cortical_layer_config_t configs[CC_LAYER_COUNT]
 );
 
 /**
@@ -262,7 +274,7 @@ void laminar_structure_destroy(laminar_structure_t* ls);
  */
 void laminar_process_input(
     laminar_structure_t* ls,
-    cortical_layer_t target,
+    cc_cortical_layer_t target,
     const float* input,
     uint32_t size
 );
@@ -354,7 +366,7 @@ void laminar_process_lateral(laminar_structure_t* ls);
  */
 void laminar_get_output(
     laminar_structure_t* ls,
-    cortical_layer_t layer,
+    cc_cortical_layer_t layer,
     float* output,
     uint32_t size
 );
@@ -373,7 +385,24 @@ void laminar_get_output(
  */
 float laminar_get_layer_activation(
     laminar_structure_t* ls,
-    cortical_layer_t layer
+    cc_cortical_layer_t layer
+);
+
+/**
+ * WHAT: Get number of neurons in a specific layer
+ * WHY:  Allow external modules to query layer size for connectivity generation
+ * HOW:  Returns neuron_count from layer_state_t
+ *
+ * COMPLEXITY: O(1)
+ * THREAD-SAFE: Yes (returns immutable value after initialization)
+ *
+ * @param ls Laminar structure (must be non-NULL)
+ * @param layer Layer to query
+ * @return Number of neurons in the layer (0 if invalid)
+ */
+uint32_t laminar_get_layer_neuron_count(
+    const laminar_structure_t* ls,
+    cc_cortical_layer_t layer
 );
 
 //=============================================================================
@@ -400,8 +429,8 @@ float laminar_get_layer_activation(
  */
 void laminar_connect_feedforward(
     laminar_structure_t* ls,
-    cortical_layer_t from,
-    cortical_layer_t to,
+    cc_cortical_layer_t from,
+    cc_cortical_layer_t to,
     float strength
 );
 
@@ -424,8 +453,8 @@ void laminar_connect_feedforward(
  */
 void laminar_connect_feedback(
     laminar_structure_t* ls,
-    cortical_layer_t from,
-    cortical_layer_t to,
+    cc_cortical_layer_t from,
+    cc_cortical_layer_t to,
     float strength
 );
 

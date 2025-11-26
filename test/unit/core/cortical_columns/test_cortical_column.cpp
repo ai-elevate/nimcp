@@ -474,7 +474,7 @@ TEST_F(CorticalColumnTest, HypercolumnCreate_WinnerTakeAll_Success) {
     hc_config.feature_space_max = 180.0f;
     hc_config.topographic_x = 0.0f;
     hc_config.topographic_y = 0.0f;
-    hc_config.competition = COMPETITION_WINNER_TAKE_ALL;
+    hc_config.competition = CC_COMPETITION_WINNER_TAKE_ALL;
     hc_config.k_winners = 0;
     hc_config.temperature = 1.0f;
     hc_config.lateral_inhibition_strength = 0.5f;
@@ -514,7 +514,7 @@ TEST_F(CorticalColumnTest, HypercolumnCreate_KWinners_Success) {
     hc_config.feature_space_max = 180.0f;
     hc_config.topographic_x = 1.0f;
     hc_config.topographic_y = 1.0f;
-    hc_config.competition = COMPETITION_K_WINNERS;
+    hc_config.competition = CC_COMPETITION_K_WINNERS;
     hc_config.k_winners = 3;
     hc_config.temperature = 1.0f;
     hc_config.lateral_inhibition_strength = 0.3f;
@@ -555,7 +555,7 @@ TEST_F(CorticalColumnTest, HypercolumnCreate_Softmax_Success) {
     hc_config.feature_space_max = 180.0f;
     hc_config.topographic_x = 2.0f;
     hc_config.topographic_y = 2.0f;
-    hc_config.competition = COMPETITION_SOFTMAX;
+    hc_config.competition = CC_COMPETITION_SOFTMAX;
     hc_config.k_winners = 0;
     hc_config.temperature = 0.5f;  // Low temperature for sharper distribution
     hc_config.lateral_inhibition_strength = 0.4f;
@@ -569,7 +569,7 @@ TEST_F(CorticalColumnTest, HypercolumnCreate_Softmax_Success) {
 }
 
 /**
- * WHAT: Test hypercolumn creation with COMPETITION_NONE mode
+ * WHAT: Test hypercolumn creation with CC_COMPETITION_NONE mode
  * WHY:  Verify no-competition mode works
  * HOW:  Create hypercolumn with competition = NONE
  */
@@ -595,7 +595,7 @@ TEST_F(CorticalColumnTest, HypercolumnCreate_NoCompetition_Success) {
     hc_config.feature_space_max = 180.0f;
     hc_config.topographic_x = 0.0f;
     hc_config.topographic_y = 0.0f;
-    hc_config.competition = COMPETITION_NONE;
+    hc_config.competition = CC_COMPETITION_NONE;
     hc_config.k_winners = 0;
     hc_config.temperature = 1.0f;
     hc_config.lateral_inhibition_strength = 0.2f;
@@ -622,7 +622,7 @@ TEST_F(CorticalColumnTest, HypercolumnCreate_NullPool_ReturnsNull) {
     hc_config.minicolumn_configs = &mc_config;
     hc_config.feature_space_min = 0.0f;
     hc_config.feature_space_max = 180.0f;
-    hc_config.competition = COMPETITION_WINNER_TAKE_ALL;
+    hc_config.competition = CC_COMPETITION_WINNER_TAKE_ALL;
 
     hypercolumn_t* hcol = hypercolumn_create(nullptr, &hc_config);
     EXPECT_EQ(hcol, nullptr);
@@ -652,7 +652,7 @@ TEST_F(CorticalColumnTest, HypercolumnCreate_ZeroMinicolumns_ReturnsNull) {
     hc_config.minicolumn_configs = nullptr;
     hc_config.feature_space_min = 0.0f;
     hc_config.feature_space_max = 180.0f;
-    hc_config.competition = COMPETITION_WINNER_TAKE_ALL;
+    hc_config.competition = CC_COMPETITION_WINNER_TAKE_ALL;
 
     hypercolumn_t* hcol = hypercolumn_create(pool, &hc_config);
     EXPECT_EQ(hcol, nullptr);
@@ -674,7 +674,7 @@ TEST_F(CorticalColumnTest, HypercolumnCreate_InvalidFeatureSpace_ReturnsNull) {
     hc_config.minicolumn_configs = &mc_config;
     hc_config.feature_space_min = 180.0f;
     hc_config.feature_space_max = 0.0f;  // min > max
-    hc_config.competition = COMPETITION_WINNER_TAKE_ALL;
+    hc_config.competition = CC_COMPETITION_WINNER_TAKE_ALL;
 
     hypercolumn_t* hcol = hypercolumn_create(pool, &hc_config);
     EXPECT_EQ(hcol, nullptr);
@@ -696,7 +696,7 @@ TEST_F(CorticalColumnTest, HypercolumnCreate_KWinnersWithZeroK_ReturnsNull) {
     hc_config.minicolumn_configs = &mc_config;
     hc_config.feature_space_min = 0.0f;
     hc_config.feature_space_max = 180.0f;
-    hc_config.competition = COMPETITION_K_WINNERS;
+    hc_config.competition = CC_COMPETITION_K_WINNERS;
     hc_config.k_winners = 0;  // Invalid for K_WINNERS mode
 
     hypercolumn_t* hcol = hypercolumn_create(pool, &hc_config);
@@ -719,7 +719,7 @@ TEST_F(CorticalColumnTest, HypercolumnDestroy_ValidHypercolumn_Success) {
     hc_config.minicolumn_configs = &mc_config;
     hc_config.feature_space_min = 0.0f;
     hc_config.feature_space_max = 180.0f;
-    hc_config.competition = COMPETITION_WINNER_TAKE_ALL;
+    hc_config.competition = CC_COMPETITION_WINNER_TAKE_ALL;
 
     hypercolumn_t* hcol = hypercolumn_create(pool, &hc_config);
     ASSERT_NE(hcol, nullptr);
@@ -899,7 +899,7 @@ TEST_F(CorticalColumnTest, HypercolumnCompute_WinnerTakeAll_OnlyOneActive) {
     hc_config.minicolumn_configs = mc_configs.data();
     hc_config.feature_space_min = 0.0f;
     hc_config.feature_space_max = 180.0f;
-    hc_config.competition = COMPETITION_WINNER_TAKE_ALL;
+    hc_config.competition = CC_COMPETITION_WINNER_TAKE_ALL;
     hc_config.temperature = 1.0f;
 
     hypercolumn_t* hcol = hypercolumn_create(pool, &hc_config);
@@ -963,7 +963,7 @@ TEST_F(CorticalColumnTest, HypercolumnCompute_KWinners_ExactlyKActive) {
     hc_config.minicolumn_configs = mc_configs.data();
     hc_config.feature_space_min = 0.0f;
     hc_config.feature_space_max = 180.0f;
-    hc_config.competition = COMPETITION_K_WINNERS;
+    hc_config.competition = CC_COMPETITION_K_WINNERS;
     hc_config.k_winners = 3;
     hc_config.temperature = 1.0f;
 
@@ -1017,7 +1017,7 @@ TEST_F(CorticalColumnTest, HypercolumnCompute_Softmax_ValidDistribution) {
     hc_config.minicolumn_configs = mc_configs.data();
     hc_config.feature_space_min = 0.0f;
     hc_config.feature_space_max = 180.0f;
-    hc_config.competition = COMPETITION_SOFTMAX;
+    hc_config.competition = CC_COMPETITION_SOFTMAX;
     hc_config.temperature = 1.0f;
 
     hypercolumn_t* hcol = hypercolumn_create(pool, &hc_config);
@@ -1048,7 +1048,7 @@ TEST_F(CorticalColumnTest, HypercolumnCompute_Softmax_ValidDistribution) {
 /**
  * WHAT: Test hypercolumn compute with no competition
  * WHY:  Verify activations preserved without competition
- * HOW:  Compute with COMPETITION_NONE, verify multiple active
+ * HOW:  Compute with CC_COMPETITION_NONE, verify multiple active
  */
 TEST_F(CorticalColumnTest, HypercolumnCompute_NoCompetition_MultipleActive) {
     CreateDefaultPool();
@@ -1071,7 +1071,7 @@ TEST_F(CorticalColumnTest, HypercolumnCompute_NoCompetition_MultipleActive) {
     hc_config.minicolumn_configs = mc_configs.data();
     hc_config.feature_space_min = 0.0f;
     hc_config.feature_space_max = 180.0f;
-    hc_config.competition = COMPETITION_NONE;
+    hc_config.competition = CC_COMPETITION_NONE;
 
     hypercolumn_t* hcol = hypercolumn_create(pool, &hc_config);
     ASSERT_NE(hcol, nullptr);
@@ -1122,7 +1122,7 @@ TEST_F(CorticalColumnTest, HypercolumnGetWinner_AfterCompute_CorrectIndex) {
     hc_config.minicolumn_configs = mc_configs.data();
     hc_config.feature_space_min = 0.0f;
     hc_config.feature_space_max = 180.0f;
-    hc_config.competition = COMPETITION_WINNER_TAKE_ALL;
+    hc_config.competition = CC_COMPETITION_WINNER_TAKE_ALL;
 
     hypercolumn_t* hcol = hypercolumn_create(pool, &hc_config);
     ASSERT_NE(hcol, nullptr);
@@ -1184,7 +1184,7 @@ TEST_F(CorticalColumnTest, HypercolumnGetDistribution_NullOutput_NoError) {
     hc_config.minicolumn_configs = &mc_config;
     hc_config.feature_space_min = 0.0f;
     hc_config.feature_space_max = 180.0f;
-    hc_config.competition = COMPETITION_WINNER_TAKE_ALL;
+    hc_config.competition = CC_COMPETITION_WINNER_TAKE_ALL;
 
     hypercolumn_t* hcol = hypercolumn_create(pool, &hc_config);
     ASSERT_NE(hcol, nullptr);
@@ -1216,7 +1216,7 @@ TEST_F(CorticalColumnTest, HypercolumnGetDistribution_SmallBuffer_NoError) {
     hc_config.minicolumn_configs = mc_configs.data();
     hc_config.feature_space_min = 0.0f;
     hc_config.feature_space_max = 180.0f;
-    hc_config.competition = COMPETITION_WINNER_TAKE_ALL;
+    hc_config.competition = CC_COMPETITION_WINNER_TAKE_ALL;
 
     hypercolumn_t* hcol = hypercolumn_create(pool, &hc_config);
     ASSERT_NE(hcol, nullptr);
@@ -1341,7 +1341,7 @@ TEST_F(CorticalColumnTest, Competition_WinnerTakeAll_OnlyMaxActive) {
     hc_config.minicolumn_configs = mc_configs.data();
     hc_config.feature_space_min = 0.0f;
     hc_config.feature_space_max = 180.0f;
-    hc_config.competition = COMPETITION_NONE;  // Start with no competition
+    hc_config.competition = CC_COMPETITION_NONE;  // Start with no competition
 
     hypercolumn_t* hcol = hypercolumn_create(pool, &hc_config);
     ASSERT_NE(hcol, nullptr);
@@ -1351,7 +1351,7 @@ TEST_F(CorticalColumnTest, Competition_WinnerTakeAll_OnlyMaxActive) {
     hypercolumn_compute(hcol, input, 3);
 
     // Now apply WTA
-    hypercolumn_run_competition(hcol, COMPETITION_WINNER_TAKE_ALL, 1.0f);
+    hypercolumn_run_competition(hcol, CC_COMPETITION_WINNER_TAKE_ALL, 1.0f);
 
     float distribution[5] = {0.0f};
     hypercolumn_get_distribution(hcol, distribution, 5);
@@ -1399,7 +1399,7 @@ TEST_F(CorticalColumnTest, Competition_Softmax_TemperatureAffectsSharpness) {
         hc_config.minicolumn_configs = mc_configs.data();
         hc_config.feature_space_min = 0.0f;
         hc_config.feature_space_max = 180.0f;
-        hc_config.competition = COMPETITION_SOFTMAX;
+        hc_config.competition = CC_COMPETITION_SOFTMAX;
         hc_config.temperature = 0.1f;  // Low temperature
 
         hypercolumn_t* hcol = hypercolumn_create(pool, &hc_config);
@@ -1408,7 +1408,7 @@ TEST_F(CorticalColumnTest, Competition_Softmax_TemperatureAffectsSharpness) {
         float input[3] = {0.5f, 0.0f, 0.0f};
         hypercolumn_compute(hcol, input, 3);
 
-        hypercolumn_stats_t stats;
+        cc_hypercolumn_stats_t stats;
         hypercolumn_get_stats(hcol, &stats);
         float low_temp_entropy = stats.entropy;
 
@@ -1622,7 +1622,7 @@ TEST_F(CorticalColumnTest, Stats_HypercolumnStats_AccurateValues) {
     hc_config.minicolumn_configs = mc_configs.data();
     hc_config.feature_space_min = 0.0f;
     hc_config.feature_space_max = 180.0f;
-    hc_config.competition = COMPETITION_WINNER_TAKE_ALL;
+    hc_config.competition = CC_COMPETITION_WINNER_TAKE_ALL;
 
     hypercolumn_t* hcol = hypercolumn_create(pool, &hc_config);
     ASSERT_NE(hcol, nullptr);
@@ -1634,7 +1634,7 @@ TEST_F(CorticalColumnTest, Stats_HypercolumnStats_AccurateValues) {
     }
 
     // Get stats
-    hypercolumn_stats_t stats;
+    cc_hypercolumn_stats_t stats;
     hypercolumn_get_stats(hcol, &stats);
 
     EXPECT_EQ(stats.num_minicolumns, 5);
@@ -1644,7 +1644,7 @@ TEST_F(CorticalColumnTest, Stats_HypercolumnStats_AccurateValues) {
     EXPECT_LE(stats.winner_activation, 1.0f);
     EXPECT_GE(stats.total_activation, 0.0f);
     EXPECT_GE(stats.entropy, 0.0f);
-    EXPECT_EQ(stats.competition_mode, COMPETITION_WINNER_TAKE_ALL);
+    EXPECT_EQ(stats.competition_mode, CC_COMPETITION_WINNER_TAKE_ALL);
 
     hypercolumn_destroy(hcol);
 }
@@ -1655,7 +1655,7 @@ TEST_F(CorticalColumnTest, Stats_HypercolumnStats_AccurateValues) {
  * HOW:  Pass NULL, should not crash
  */
 TEST_F(CorticalColumnTest, Stats_HypercolumnGetStatsNull_NoError) {
-    hypercolumn_stats_t stats;
+    cc_hypercolumn_stats_t stats;
     hypercolumn_get_stats(nullptr, &stats);
     // Should not crash
 }
@@ -1676,7 +1676,7 @@ TEST_F(CorticalColumnTest, Stats_HypercolumnGetStatsNullOutput_NoError) {
     hc_config.minicolumn_configs = &mc_config;
     hc_config.feature_space_min = 0.0f;
     hc_config.feature_space_max = 180.0f;
-    hc_config.competition = COMPETITION_WINNER_TAKE_ALL;
+    hc_config.competition = CC_COMPETITION_WINNER_TAKE_ALL;
 
     hypercolumn_t* hcol = hypercolumn_create(pool, &hc_config);
     ASSERT_NE(hcol, nullptr);
@@ -1712,7 +1712,7 @@ TEST_F(CorticalColumnTest, Stats_Entropy_CorrectCalculation) {
     hc_config.minicolumn_configs = mc_configs.data();
     hc_config.feature_space_min = 0.0f;
     hc_config.feature_space_max = 180.0f;
-    hc_config.competition = COMPETITION_SOFTMAX;
+    hc_config.competition = CC_COMPETITION_SOFTMAX;
     hc_config.temperature = 1.0f;
 
     hypercolumn_t* hcol_softmax = hypercolumn_create(pool, &hc_config);
@@ -1721,18 +1721,18 @@ TEST_F(CorticalColumnTest, Stats_Entropy_CorrectCalculation) {
     float input[3] = {0.5f, 0.0f, 0.0f};
     hypercolumn_compute(hcol_softmax, input, 3);
 
-    hypercolumn_stats_t stats_softmax;
+    cc_hypercolumn_stats_t stats_softmax;
     hypercolumn_get_stats(hcol_softmax, &stats_softmax);
     float entropy_softmax = stats_softmax.entropy;
 
     // Test with WTA (should have low entropy)
-    hc_config.competition = COMPETITION_WINNER_TAKE_ALL;
+    hc_config.competition = CC_COMPETITION_WINNER_TAKE_ALL;
     hypercolumn_t* hcol_wta = hypercolumn_create(pool, &hc_config);
     ASSERT_NE(hcol_wta, nullptr);
 
     hypercolumn_compute(hcol_wta, input, 3);
 
-    hypercolumn_stats_t stats_wta;
+    cc_hypercolumn_stats_t stats_wta;
     hypercolumn_get_stats(hcol_wta, &stats_wta);
     float entropy_wta = stats_wta.entropy;
 
@@ -1778,7 +1778,7 @@ TEST_F(CorticalColumnTest, Integration_CompleteWorkflow_Success) {
     hc_config.minicolumn_configs = mc_configs.data();
     hc_config.feature_space_min = 0.0f;
     hc_config.feature_space_max = 180.0f;
-    hc_config.competition = COMPETITION_K_WINNERS;
+    hc_config.competition = CC_COMPETITION_K_WINNERS;
     hc_config.k_winners = 3;
     hc_config.temperature = 1.0f;
 
@@ -1813,7 +1813,7 @@ TEST_F(CorticalColumnTest, Integration_CompleteWorkflow_Success) {
         EXPECT_EQ(active_count, 3);  // K=3
 
         // Verify stats
-        hypercolumn_stats_t stats;
+        cc_hypercolumn_stats_t stats;
         hypercolumn_get_stats(hcol, &stats);
         EXPECT_EQ(stats.total_computations, static_cast<uint32_t>(trial + 1));
     }

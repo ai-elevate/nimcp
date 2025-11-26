@@ -93,7 +93,7 @@ struct hypercolumn {
     float topographic_y;               /**< Y position in cortical map */
 
     // Competition parameters
-    competition_mode_t competition_mode; /**< Competition type */
+    cc_competition_mode_t competition_mode; /**< Competition type */
     uint32_t k_winners;                /**< K for K-winners mode */
     float temperature;                 /**< Softmax temperature */
 
@@ -489,7 +489,7 @@ static bool validate_hypercolumn_config(const hypercolumn_config_t* config) {
         return false;
     }
 
-    if (config->competition == COMPETITION_K_WINNERS && config->k_winners == 0) {
+    if (config->competition == CC_COMPETITION_K_WINNERS && config->k_winners == 0) {
         COLUMN_LOG_ERROR("validate_hypercolumn_config: K_WINNERS mode requires k_winners > 0");
         return false;
     }
@@ -683,21 +683,51 @@ float minicolumn_compute(
 
     nimcp_platform_mutex_lock(&col->mutex);
 
-    // Compute input centroid (simplified - assumes input is 3D feature vector)
-    float input_x = input_size > 0 ? input[0] : 0.0f;
-    float input_y = input_size > 1 ? input[1] : 0.0f;
-    float input_z = input_size > 2 ? input[2] : 0.0f;
+    float activation;
 
-    // Compute distance from receptive field center
-    float distance = euclidean_distance_3d(
-        input_x, input_y, input_z,
-        col->receptive_field.center_x,
-        col->receptive_field.center_y,
-        col->receptive_field.center_z
-    );
+    // Check if this is an orientation distribution input (>3 elements indicates distribution)
+    // If tuning_preference is set and we have a distribution, use orientation-based computation
+    if (input_size > 3 && col->tuning_preference >= 0.0f) {
+        // Orientation-based computation:
+        // Input is a distribution over orientations (0-180°)
+        // Sample at the index corresponding to our tuning preference
 
-    // Apply Gaussian weighting: w(d) = exp(-d²/2σ²)
-    float activation = compute_gaussian_weight(distance, col->receptive_field.radius);
+        // Normalize tuning_preference to [0, 180) range
+        float pref = col->tuning_preference;
+        while (pref < 0.0f) pref += 180.0f;
+        while (pref >= 180.0f) pref -= 180.0f;
+
+        // Compute the fractional index into the input distribution
+        float frac_idx = pref / 180.0f * (float)(input_size - 1);
+        uint32_t idx_low = (uint32_t)frac_idx;
+        uint32_t idx_high = idx_low + 1;
+        float t = frac_idx - (float)idx_low;
+
+        // Handle wraparound for orientation
+        if (idx_high >= input_size) {
+            idx_high = 0;
+        }
+
+        // Linear interpolation to sample the distribution at our tuning preference
+        activation = (1.0f - t) * input[idx_low] + t * input[idx_high];
+    } else {
+        // Spatial receptive field computation (original logic)
+        // Compute input centroid (simplified - assumes input is 3D feature vector)
+        float input_x = input_size > 0 ? input[0] : 0.0f;
+        float input_y = input_size > 1 ? input[1] : 0.0f;
+        float input_z = input_size > 2 ? input[2] : 0.0f;
+
+        // Compute distance from receptive field center
+        float distance = euclidean_distance_3d(
+            input_x, input_y, input_z,
+            col->receptive_field.center_x,
+            col->receptive_field.center_y,
+            col->receptive_field.center_z
+        );
+
+        // Apply Gaussian weighting: w(d) = exp(-d²/2σ²)
+        activation = compute_gaussian_weight(distance, col->receptive_field.radius);
+    }
 
     // Apply inhibition
     float net_activation = fmaxf(0.0f, activation - col->inhibition_level);
@@ -890,7 +920,7 @@ void minicolumn_apply_lateral_inhibition(minicolumn_t* col, float inhibition) {
  */
 void hypercolumn_run_competition(
     hypercolumn_t* hcol,
-    competition_mode_t mode,
+    cc_competition_mode_t mode,
     float temperature
 ) {
     // Guard: validate input
@@ -907,11 +937,11 @@ void hypercolumn_run_competition(
     }
 
     switch (mode) {
-        case COMPETITION_WINNER_TAKE_ALL:
+        case CC_COMPETITION_WINNER_TAKE_ALL:
             apply_winner_take_all(hcol->activations, hcol->num_minicolumns, &hcol->winner_index);
             break;
 
-        case COMPETITION_K_WINNERS:
+        case CC_COMPETITION_K_WINNERS:
             apply_k_winners(hcol->activations, hcol->num_minicolumns, hcol->k_winners);
             // Find winner (highest activation)
             hcol->winner_index = 0;
@@ -922,7 +952,7 @@ void hypercolumn_run_competition(
             }
             break;
 
-        case COMPETITION_SOFTMAX:
+        case CC_COMPETITION_SOFTMAX:
             apply_softmax_inplace(hcol->activations, hcol->num_minicolumns, temperature);
             // Find winner (highest probability)
             hcol->winner_index = 0;
@@ -933,7 +963,7 @@ void hypercolumn_run_competition(
             }
             break;
 
-        case COMPETITION_NONE:
+        case CC_COMPETITION_NONE:
             // No competition - find max activation
             hcol->winner_index = 0;
             for (uint32_t i = 1; i < hcol->num_minicolumns; i++) {
@@ -1056,7 +1086,7 @@ void minicolumn_get_stats(minicolumn_t* col, minicolumn_stats_t* stats) {
  * WHY:  Monitor competition dynamics
  * HOW:  Copy internal stats to output
  */
-void hypercolumn_get_stats(hypercolumn_t* hcol, hypercolumn_stats_t* stats) {
+void hypercolumn_get_stats(hypercolumn_t* hcol, cc_hypercolumn_stats_t* stats) {
     // Guard: validate inputs
     if (!hcol || !hcol->initialized) {
         COLUMN_LOG_ERROR("hypercolumn_get_stats: Invalid hypercolumn");

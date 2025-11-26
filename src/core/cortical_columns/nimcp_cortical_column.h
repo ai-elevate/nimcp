@@ -123,13 +123,14 @@ typedef struct {
  *
  * WHAT: Specifies how minicolumns compete for activation
  * WHY:  Different tasks benefit from different competition strategies
+ * NOTE: Prefixed with CC_ to avoid conflicts with global_workspace.h
  */
 typedef enum {
-    COMPETITION_WINNER_TAKE_ALL,       /**< Only strongest minicolumn active */
-    COMPETITION_K_WINNERS,             /**< Top K minicolumns active */
-    COMPETITION_SOFTMAX,               /**< Soft probabilistic distribution */
-    COMPETITION_NONE                   /**< No competition, all active */
-} competition_mode_t;
+    CC_COMPETITION_WINNER_TAKE_ALL,    /**< Only strongest minicolumn active */
+    CC_COMPETITION_K_WINNERS,          /**< Top K minicolumns active */
+    CC_COMPETITION_SOFTMAX,            /**< Soft probabilistic distribution */
+    CC_COMPETITION_NONE                /**< No competition, all active */
+} cc_competition_mode_t;
 
 /**
  * @brief Hypercolumn configuration
@@ -144,7 +145,7 @@ typedef struct {
     float feature_space_max;           /**< Maximum feature value (e.g., 180° orientation) */
     float topographic_x;               /**< X position in cortical map */
     float topographic_y;               /**< Y position in cortical map */
-    competition_mode_t competition;    /**< Competition mode */
+    cc_competition_mode_t competition; /**< Competition mode */
     uint32_t k_winners;                /**< Number of winners (if K_WINNERS mode) */
     float temperature;                 /**< Temperature for softmax (default: 1.0) */
     float lateral_inhibition_strength; /**< Lateral inhibition amplitude (default: 0.5) */
@@ -190,6 +191,7 @@ typedef struct {
  *
  * WHAT: Runtime statistics for hypercolumn
  * WHY:  Monitor competition dynamics and activity
+ * NOTE: Prefixed with cc_ to avoid conflicts with orientation_columns.h
  */
 typedef struct {
     uint32_t num_minicolumns;          /**< Number of minicolumns */
@@ -198,8 +200,8 @@ typedef struct {
     float total_activation;            /**< Sum of all minicolumn activations */
     float entropy;                     /**< Shannon entropy of distribution */
     uint32_t total_computations;       /**< Total compute calls */
-    competition_mode_t competition_mode; /**< Current competition mode */
-} hypercolumn_stats_t;
+    cc_competition_mode_t competition_mode; /**< Current competition mode */
+} cc_hypercolumn_stats_t;
 
 //=============================================================================
 // Pool Management
@@ -473,7 +475,7 @@ void minicolumn_apply_lateral_inhibition(minicolumn_t* col, float inhibition);
  */
 void hypercolumn_run_competition(
     hypercolumn_t* hcol,
-    competition_mode_t mode,
+    cc_competition_mode_t mode,
     float temperature
 );
 
@@ -562,7 +564,7 @@ void minicolumn_get_stats(minicolumn_t* col, minicolumn_stats_t* stats);
  * ERROR CONDITIONS:
  * - NULL hcol or stats
  */
-void hypercolumn_get_stats(hypercolumn_t* hcol, hypercolumn_stats_t* stats);
+void hypercolumn_get_stats(hypercolumn_t* hcol, cc_hypercolumn_stats_t* stats);
 
 #ifdef __cplusplus
 }

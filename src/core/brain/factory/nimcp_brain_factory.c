@@ -144,6 +144,7 @@ extern void set_error(const char* format, ...);
 #define init_middleware_controller_subsystem        nimcp_brain_factory_init_middleware_controller_subsystem
 #define init_axon_subsystem                         nimcp_brain_factory_init_axon_subsystem
 #define init_dendrite_subsystem                     nimcp_brain_factory_init_dendrite_subsystem
+#define init_cortical_columns_subsystem             nimcp_brain_factory_init_cortical_columns_subsystem
 #define init_ethics_engine_subsystem                nimcp_brain_factory_init_ethics_engine_subsystem
 #define init_empathy_network_subsystem              nimcp_brain_factory_init_empathy_network_subsystem
 #define init_empathetic_response_subsystem          nimcp_brain_factory_init_empathetic_response_subsystem
@@ -464,6 +465,9 @@ brain_t brain_create_custom(const brain_config_t* config)
 
     // Module Integration: Brain regions
     if (!init_brain_regions_subsystem(brain)) { brain_destroy(brain); return NULL; }
+
+    // Phase CC-1: Cortical columns architecture (Tier 0.65)
+    if (!init_cortical_columns_subsystem(brain)) { brain_destroy(brain); return NULL; }
 
     // Phase 9.2: Epistemic filtering
     if (!init_epistemic_subsystem(brain)) { brain_destroy(brain); return NULL; }

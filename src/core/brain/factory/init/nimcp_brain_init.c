@@ -57,6 +57,7 @@
 
 // Subsystem dependencies
 #include "glial/integration/nimcp_glial_integration.h"
+#include "glial/myelin_sheath/nimcp_myelin_sheath.h"       // Myelin sheath structural modeling
 #include "core/brain_oscillations/nimcp_brain_oscillations.h"
 #include "cognitive/introspection/nimcp_introspection.h"
 #include "cognitive/introspection/nimcp_connectivity_health.h"  // Phase 1.5.4: Connectivity Health
@@ -357,6 +358,15 @@ void nimcp_brain_factory_init_brain_config(brain_config_t* config, const char* t
     // Phase 5/6: Biological Realism defaults
     config->enable_glial = true;                    // Enable glial integration by default
     config->enable_oscillations = false;            // Disable oscillations by default (opt-in)
+    config->enable_myelin_sheath = true;            // Enable myelin sheath by default (works with glial)
+
+    // Lazy Initialization defaults (performance optimization)
+    // WHY: Heavy subsystems like dendrites/axons can take 10-30s to initialize
+    // For tests that don't need them, lazy init saves significant time
+    config->lazy_dendrite_init = false;             // Eager init by default (biological realism)
+    config->lazy_axon_init = false;                 // Eager init by default
+    config->enable_dendrites = true;                // Dendrites enabled by default
+    config->enable_axons = true;                    // Axons enabled by default
 
     // Phase C2.1: Quantum Walk defaults (disabled by default for stability/testing)
     config->enable_quantum_walk_diffusion = false;  // Opt-in: requires testing for production
@@ -674,6 +684,31 @@ bool nimcp_brain_factory_init_glial_subsystem(brain_t brain)
     if (!brain->glial) {
         set_error("Failed to create glial integration");
         return false;
+    }
+
+    // Initialize myelin sheath network if enabled
+    if (brain->config.enable_myelin_sheath) {
+        // Check if already initialized
+        if (!brain->myelin_sheath) {
+            // Create myelin sheath network with default configuration
+            // Capacity scales with oligodendrocyte count (each oligo can myelinate multiple axons)
+            uint32_t myelin_capacity = brain->config.num_oligodendrocytes > 0
+                ? brain->config.num_oligodendrocytes * 10
+                : 1000;  // Default capacity
+            brain->myelin_sheath = myelin_network_create_default(myelin_capacity);
+            if (!brain->myelin_sheath) {
+                set_error("Failed to create myelin sheath network");
+                // Non-fatal: glial integration still works without myelin modeling
+            } else {
+                // Wire myelin sheath network to glial integration layer
+                nimcp_result_t result = glial_integration_set_myelin_sheath_network(
+                    brain->glial, brain->myelin_sheath);
+                if (result != NIMCP_SUCCESS) {
+                    set_error("Failed to wire myelin sheath to glial integration");
+                    // Non-fatal: myelin network still usable standalone
+                }
+            }
+        }
     }
 
     return true;
@@ -2285,6 +2320,12 @@ bool nimcp_brain_factory_init_ethics_engine_subsystem(brain_t brain)
         return false;
     }
 
+    // Check if ethics is disabled via config
+    if (!brain->config.enable_ethics) {
+        brain->ethics = NULL;
+        return true;  // Not an error - ethics disabled by config
+    }
+
     // Guard: Check if already initialized
     if (brain->ethics) {
         return true;  // Already initialized
@@ -2341,6 +2382,12 @@ bool nimcp_brain_factory_init_empathy_network_subsystem(brain_t brain)
     // Guard: NULL check
     if (!brain) {
         return false;
+    }
+
+    // Empathy network requires ethics to be enabled (it's part of ethical reasoning)
+    if (!brain->config.enable_ethics) {
+        brain->empathy_network = NULL;
+        return true;  // Not an error - empathy requires ethics
     }
 
     // Guard: Check if already initialized
@@ -2658,6 +2705,19 @@ bool nimcp_brain_factory_init_axon_subsystem(brain_t brain)
         return false;
     }
 
+    // Check if axons are disabled via config
+    if (!brain->config.enable_axons) {
+        brain->axon_network = NULL;
+        return true;  // Not an error - axons disabled by config
+    }
+
+    // Check if lazy initialization is requested
+    if (brain->config.lazy_axon_init) {
+        brain->axon_network = NULL;
+        // Axons will be created on first access via brain_ensure_axons()
+        return true;
+    }
+
     // Guard: No network
     if (!brain->network) {
         brain->axon_network = NULL;
@@ -2756,6 +2816,19 @@ bool nimcp_brain_factory_init_dendrite_subsystem(brain_t brain)
     // Guard: NULL check
     if (!brain) {
         return false;
+    }
+
+    // Check if dendrites are disabled via config
+    if (!brain->config.enable_dendrites) {
+        brain->dendrite_network = NULL;
+        return true;  // Not an error - dendrites disabled by config
+    }
+
+    // Check if lazy initialization is requested
+    if (brain->config.lazy_dendrite_init) {
+        brain->dendrite_network = NULL;
+        // Dendrites will be created on first access via brain_ensure_dendrites()
+        return true;
     }
 
     // Guard: No network
@@ -2871,6 +2944,262 @@ bool nimcp_brain_factory_init_dendrite_subsystem(brain_t brain)
     }
 
     brain->dendrite_network = dend_net;
+    return true;
+}
+
+//=============================================================================
+// Phase CC-1: Cortical Columns Subsystem Initialization (Tier 0.65)
+//=============================================================================
+
+/**
+ * @brief Initialize cortical columns subsystem
+ *
+ * WHAT: Creates hierarchical cortical column architecture with minicolumns,
+ *       hypercolumns, laminar organization, and topographic maps.
+ *
+ * WHY:  Implements biologically-realistic columnar organization (Douglas & Martin 1991)
+ *       for feature detection and competitive dynamics in neural processing.
+ *
+ * HOW:  1. Create cortical column memory pool for efficient allocation
+ *       2. Create hypercolumns based on brain region requirements
+ *       3. Initialize 6-layer laminar structure for each region
+ *       4. Set up canonical microcircuit connectivity
+ *       5. Create topographic maps for sensory processing
+ *       6. Initialize orientation columns for V1 (if visual enabled)
+ *       7. Create feature hypercolumns for multi-dimensional features
+ *
+ * ARCHITECTURE:
+ *   Hypercolumn (100K neurons):
+ *   - Contains ~100 minicolumns
+ *   - Each minicolumn ~80-100 neurons
+ *   - Competition modes: winner-take-all, k-winners, softmax
+ *   - Lateral inhibition (Mexican hat) for sharpening
+ *
+ * @param brain Brain to initialize cortical columns for
+ * @return true on success (or if disabled), false on fatal error
+ *
+ * COMPLEXITY: O(H × M × N) where H=hypercolumns, M=minicolumns, N=neurons
+ * THREAD-SAFE: Yes (pool is thread-safe after creation)
+ *
+ * @version 2.7.0 Phase CC-1
+ * @date 2025-11-25
+ */
+bool nimcp_brain_factory_init_cortical_columns_subsystem(brain_t brain)
+{
+    // Guard: NULL check
+    if (!brain) {
+        set_error("nimcp_brain_factory_init_cortical_columns_subsystem: NULL brain");
+        return false;
+    }
+
+    // Check if cortical columns are enabled
+    if (!brain->config.enable_cortical_columns) {
+        // Initialize pointers to NULL for safe cleanup
+        brain->cortical_column_pool = NULL;
+        brain->hypercolumns = NULL;
+        brain->num_hypercolumns = 0;
+        brain->laminar_system = NULL;
+        brain->columnar_connectivity = NULL;
+        brain->visual_topographic_map = NULL;
+        brain->auditory_topographic_map = NULL;
+        brain->somatosensory_topographic_map = NULL;
+        brain->orientation_hypercolumns = NULL;
+        brain->num_orientation_hypercolumns = 0;
+        brain->feature_hypercolumns = NULL;
+        brain->num_feature_hypercolumns = 0;
+        brain->enable_cortical_columns = false;
+        brain->last_cortical_update_us = 0;
+        return true;  // Disabled, not an error
+    }
+
+    // Check if already initialized (prevent double initialization)
+    if (brain->cortical_column_pool) {
+        return true;  // Already initialized
+    }
+
+    LOG_INFO("Initializing cortical columns subsystem (Phase CC-1)");
+
+    // Get configuration parameters with defaults
+    uint32_t num_hypercolumns = brain->config.num_hypercolumns > 0 ?
+        brain->config.num_hypercolumns : 10;  // Default: 10 hypercolumns
+    uint32_t minicolumns_per_hc = brain->config.minicolumns_per_hypercolumn > 0 ?
+        brain->config.minicolumns_per_hypercolumn : 100;  // Default: 100 minicolumns
+    uint32_t neurons_per_mc = brain->config.neurons_per_minicolumn > 0 ?
+        brain->config.neurons_per_minicolumn : 80;  // Default: 80 neurons
+
+    // Step 1: Create cortical column memory pool
+    cortical_column_pool_config_t pool_config = {
+        .max_minicolumns = num_hypercolumns * minicolumns_per_hc,
+        .max_hypercolumns = num_hypercolumns,
+        .max_neurons_per_minicolumn = neurons_per_mc,
+        .enable_cow_support = brain->is_cow_clone || brain->can_use_readonly
+    };
+
+    brain->cortical_column_pool = cortical_column_pool_create(&pool_config);
+    if (!brain->cortical_column_pool) {
+        LOG_WARNING("Failed to create cortical column pool - continuing without columnar organization");
+        brain->enable_cortical_columns = false;
+        return true;  // Non-fatal: brain still works without columns
+    }
+
+    // Step 2: Create hypercolumns array
+    brain->hypercolumns = (hypercolumn_t**)nimcp_calloc(num_hypercolumns, sizeof(hypercolumn_t*));
+    if (!brain->hypercolumns) {
+        LOG_WARNING("Failed to allocate hypercolumns array");
+        cortical_column_pool_destroy(brain->cortical_column_pool);
+        brain->cortical_column_pool = NULL;
+        brain->enable_cortical_columns = false;
+        return true;  // Non-fatal
+    }
+
+    brain->num_hypercolumns = num_hypercolumns;
+
+    // Step 3: Initialize laminar structure if enabled
+    if (brain->config.enable_laminar_structure) {
+        // Create default laminar structure for cortical region
+        // Pass NULL to use default layer configurations
+        brain->laminar_system = laminar_structure_create(NULL);
+        if (!brain->laminar_system) {
+            LOG_WARNING("Failed to create laminar structure - continuing without layers");
+        } else {
+            LOG_INFO("Created 6-layer laminar structure with default configuration");
+        }
+    }
+
+    // Step 4: Initialize columnar connectivity if enabled
+    if (brain->config.enable_columnar_connectivity) {
+        // Create canonical microcircuit connectivity
+        // Estimate max connections: ~1000 per minicolumn * num_minicolumns
+        uint32_t max_connections = num_hypercolumns * minicolumns_per_hc * 100;
+
+        brain->columnar_connectivity = columnar_connectivity_create(max_connections);
+        if (!brain->columnar_connectivity) {
+            LOG_WARNING("Failed to create columnar connectivity - continuing without connectivity");
+        } else {
+            LOG_INFO("Created canonical microcircuit connectivity (max %u connections)", max_connections);
+        }
+    }
+
+    // Step 5: Create topographic maps if sensory processing is enabled
+    if (brain->config.enable_visual_topographic && brain->config.enable_visual_cortex) {
+        // Create retinotopic map for V1 (log-polar mapping)
+        retinotopic_params_t visual_params = {
+            .foveal_radius = 2.0f,            // 2 degrees foveal region
+            .cortical_magnification = 20.0f,  // 20 mm/degree at fovea
+            .log_polar_a = 0.5f,              // Log-polar offset
+            .aspect_ratio = 1.0f,             // Circular
+            .eccentricity_half = 1.5f,        // E₂ for magnification falloff
+            .angle_coverage = 2.0f * 3.14159f // Full visual field
+        };
+        // Default cortical dimensions: 64x64 columns
+        uint32_t cortical_width = 64;
+        uint32_t cortical_height = 64;
+
+        brain->visual_topographic_map = topographic_map_create_retinotopic(
+            &visual_params, cortical_width, cortical_height);
+        if (!brain->visual_topographic_map) {
+            LOG_WARNING("Failed to create visual topographic map");
+        } else {
+            LOG_INFO("Created retinotopic (log-polar) map for V1 (%ux%u)", cortical_width, cortical_height);
+        }
+    }
+
+    if (brain->config.enable_auditory_topographic && brain->config.enable_audio_cortex) {
+        // Create tonotopic map for A1 (logarithmic frequency mapping)
+        tonotopic_params_t auditory_params = {
+            .min_frequency = 20.0f,            // 20 Hz
+            .max_frequency = 20000.0f,         // 20 kHz
+            .octave_span = 1.0f,               // 1 octave per unit distance
+            .is_logarithmic = true,            // Log frequency scale
+            .q_factor = 10.0f                  // Constant Q bandwidth
+        };
+        // Default: 128 frequency bands (about 10 bands per octave over ~10 octaves)
+        uint32_t num_frequency_bands = 128;
+
+        brain->auditory_topographic_map = topographic_map_create_tonotopic(
+            &auditory_params, num_frequency_bands);
+        if (!brain->auditory_topographic_map) {
+            LOG_WARNING("Failed to create auditory topographic map");
+        } else {
+            LOG_INFO("Created tonotopic (logarithmic) map for A1 (%u bands)", num_frequency_bands);
+        }
+    }
+
+    if (brain->config.enable_somatosensory_topographic) {
+        // Create somatotopic map for S1 (homunculus)
+        // Default: 20 body regions (standard homunculus)
+        uint32_t num_body_regions = 20;
+        brain->somatosensory_topographic_map = topographic_map_create_somatotopic(num_body_regions);
+        if (!brain->somatosensory_topographic_map) {
+            LOG_WARNING("Failed to create somatosensory topographic map");
+        } else {
+            LOG_INFO("Created somatotopic (homunculus) map for S1 (%u regions)", num_body_regions);
+        }
+    }
+
+    // Step 6: Initialize orientation columns if visual processing enabled
+    if (brain->config.enable_orientation_columns && brain->config.enable_visual_cortex) {
+        uint32_t num_orient_cols = brain->config.num_orientation_columns > 0 ?
+            brain->config.num_orientation_columns : 16;  // Default: 16 orientations (0-180° in 11.25° steps)
+        float spatial_frequency = 2.0f;  // Default: 2 cycles/degree
+        float tuning_width = 30.0f;      // Default: 30° half-width at half-height
+
+        // Create orientation hypercolumns (one per visual hypercolumn)
+        uint32_t num_orient_hc = num_hypercolumns;  // Match hypercolumn count
+        brain->orientation_hypercolumns = (orientation_hypercolumn_t**)nimcp_calloc(
+            num_orient_hc, sizeof(orientation_hypercolumn_t*));
+
+        if (brain->orientation_hypercolumns) {
+            for (uint32_t i = 0; i < num_orient_hc; i++) {
+                brain->orientation_hypercolumns[i] = orientation_hypercolumn_create(
+                    num_orient_cols, spatial_frequency, tuning_width);
+                if (!brain->orientation_hypercolumns[i]) {
+                    LOG_WARNING("Failed to create orientation hypercolumn %u", i);
+                }
+            }
+            brain->num_orientation_hypercolumns = num_orient_hc;
+            LOG_INFO("Created %u orientation hypercolumns with %u columns each (sf=%.1f, tw=%.1f)",
+                     num_orient_hc, num_orient_cols, spatial_frequency, tuning_width);
+        }
+    }
+
+    // Step 7: Initialize feature hypercolumns if enabled
+    if (brain->config.enable_feature_hypercolumns) {
+        // Create feature hypercolumns for multi-dimensional feature spaces
+        // Start with a basic orientation + spatial frequency hypercolumn
+        uint32_t num_feat_hc = num_hypercolumns;  // One per spatial location
+
+        brain->feature_hypercolumns = (feature_hypercolumn_t**)nimcp_calloc(
+            num_feat_hc, sizeof(feature_hypercolumn_t*));
+
+        if (brain->feature_hypercolumns) {
+            for (uint32_t i = 0; i < num_feat_hc; i++) {
+                // Create 2D feature space (orientation × spatial frequency)
+                feature_dimension_t dims[2];
+                dims[0] = feature_dimension_create(FEATURE_ORIENTATION, 0.0f, 180.0f, 16);
+                feature_dimension_set_circular(&dims[0], true);
+                dims[1] = feature_dimension_create(FEATURE_SPATIAL_FREQ, 0.5f, 8.0f, 8);
+
+                brain->feature_hypercolumns[i] = feature_hypercolumn_create(dims, 2);
+                if (!brain->feature_hypercolumns[i]) {
+                    LOG_WARNING("Failed to create feature hypercolumn %u", i);
+                }
+            }
+            brain->num_feature_hypercolumns = num_feat_hc;
+            LOG_INFO("Created %u feature hypercolumns (orientation × spatial frequency)",
+                     num_feat_hc);
+        }
+    }
+
+    // Mark as enabled
+    brain->enable_cortical_columns = true;
+    brain->last_cortical_update_us = 0;
+
+    LOG_INFO("Cortical columns subsystem initialized: %u hypercolumns, %s laminar, %s connectivity",
+             brain->num_hypercolumns,
+             brain->laminar_system ? "with" : "no",
+             brain->columnar_connectivity ? "with" : "no");
+
     return true;
 }
 

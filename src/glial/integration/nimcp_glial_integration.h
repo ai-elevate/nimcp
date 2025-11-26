@@ -49,6 +49,7 @@
 #include "glial/astrocytes/nimcp_astrocytes.h"
 #include "glial/oligodendrocytes/nimcp_oligodendrocytes.h"
 #include "glial/microglia/nimcp_microglia.h"
+#include "glial/myelin_sheath/nimcp_myelin_sheath.h"  // Myelin sheath structural modeling
 #include "plasticity/neuromodulators/nimcp_spatial_neuromod.h"  // Part A2.1: Spatial diffusion
 #include <stdint.h>
 #include <stdbool.h>
@@ -74,6 +75,7 @@ typedef struct {
     astrocyte_network_t* astrocyte_network;
     oligodendrocyte_network_t* oligodendrocyte_network;
     microglia_network_t* microglia_network;
+    myelin_sheath_network_t* myelin_sheath_network;  /**< Myelin sheath structural modeling */
 
     // Part A2.1: Spatial Neuromodulator Diffusion
     spatial_neuromod_system_t* spatial_neuromod;  /**< Spatial diffusion of DA, 5-HT, ACh, NE */
@@ -99,6 +101,7 @@ typedef struct {
     bool enable_oligodendrocyte_myelination;
     bool enable_microglia_pruning;
     bool enable_spatial_neuromod;            /**< Part A2.1: Enable spatial diffusion */
+    bool enable_myelin_sheath;               /**< Enable myelin sheath structural modeling */
 
     // Timing (for proper dt calculation)
     uint64_t last_update_timestamp_us;       /**< Last update timestamp (µs) for dt computation */
@@ -188,6 +191,20 @@ nimcp_result_t glial_integration_set_oligodendrocyte_network(
  */
 nimcp_result_t glial_integration_set_microglia_network(glial_integration_t* gi,
                                                        microglia_network_t* microglia_network);
+
+/**
+ * @brief Assign myelin sheath network to integration system
+ *
+ * @param gi Glial integration system
+ * @param myelin_network Myelin sheath network
+ *
+ * @return NIMCP_SUCCESS on success
+ *
+ * NOTE: Myelin sheath provides detailed structural modeling of myelin
+ *       and integrates with oligodendrocyte myelination decisions
+ */
+nimcp_result_t glial_integration_set_myelin_sheath_network(
+    glial_integration_t* gi, myelin_sheath_network_t* myelin_network);
 
 /**
  * @brief Assign spatial neuromodulator system to integration (Phase C2.1)
@@ -429,6 +446,72 @@ void glial_integration_set_oligodendrocyte_myelination_enabled(glial_integration
  * @param enable true to enable, false to disable
  */
 void glial_integration_set_microglia_pruning_enabled(glial_integration_t* gi, bool enable);
+
+/**
+ * @brief Enable/disable myelin sheath structural modeling
+ *
+ * @param gi Glial integration system
+ * @param enable true to enable, false to disable
+ */
+void glial_integration_set_myelin_sheath_enabled(glial_integration_t* gi, bool enable);
+
+// ============================================================================
+// MYELIN SHEATH INTEGRATION
+// ============================================================================
+
+/**
+ * @brief Get myelin sheath conduction velocity for axon
+ *
+ * @param gi Glial integration system
+ * @param axon_id ID of axon
+ *
+ * @return Conduction velocity in m/s, or base velocity if no myelin
+ *
+ * USAGE: Use for accurate signal propagation timing
+ */
+float glial_integration_get_myelin_velocity(glial_integration_t* gi, uint32_t axon_id);
+
+/**
+ * @brief Get myelin sheath propagation delay for axon
+ *
+ * @param gi Glial integration system
+ * @param axon_id ID of axon
+ *
+ * @return Propagation delay in ms, or 0 if no myelin
+ */
+float glial_integration_get_myelin_delay(glial_integration_t* gi, uint32_t axon_id);
+
+/**
+ * @brief Create myelin sheath for axon (coordinated with oligodendrocyte)
+ *
+ * @param gi Glial integration system
+ * @param axon_id ID of axon
+ * @param oligo_id ID of oligodendrocyte providing myelin
+ * @param axon_length Length of axon in micrometers
+ * @param axon_diameter Diameter of axon in micrometers
+ *
+ * @return Created myelin sheath or NULL on failure
+ */
+myelin_sheath_t* glial_integration_create_myelin_sheath(
+    glial_integration_t* gi,
+    uint32_t axon_id,
+    uint32_t oligo_id,
+    float axon_length,
+    float axon_diameter);
+
+/**
+ * @brief Apply axon activity to myelin sheath (activity-dependent myelination)
+ *
+ * @param gi Glial integration system
+ * @param axon_id ID of axon
+ * @param activity_level Activity level (firing rate)
+ * @param dt Time step in seconds
+ */
+void glial_integration_apply_axon_activity_to_myelin(
+    glial_integration_t* gi,
+    uint32_t axon_id,
+    float activity_level,
+    float dt);
 
 #ifdef __cplusplus
 }
