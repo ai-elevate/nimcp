@@ -1,0 +1,120 @@
+# Training Module Regression Tests
+# Phase TM-1: Security + Memory Pool Integration Regression Tests
+
+add_executable(regression_middleware_training_test_training_module_regression
+    test_training_module_regression.cpp
+)
+
+target_include_directories(regression_middleware_training_test_training_module_regression PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${CMAKE_SOURCE_DIR}/src
+)
+
+target_compile_features(regression_middleware_training_test_training_module_regression PRIVATE cxx_std_20)
+
+target_link_libraries(regression_middleware_training_test_training_module_regression
+    PRIVATE
+        GTest::GTest
+        GTest::Main
+        nimcp_middleware
+        nimcp
+        pthread
+)
+
+add_test(NAME regression_middleware_training_test_training_module_regression
+         COMMAND regression_middleware_training_test_training_module_regression)
+
+set_tests_properties(regression_middleware_training_test_training_module_regression
+    PROPERTIES
+        LABELS "regression;middleware;training"
+        TIMEOUT 120)
+
+# Loss Functions Regression Tests (Phase TM-2)
+add_executable(regression_middleware_training_test_loss_functions_regression
+    test_loss_functions_regression.cpp
+)
+
+target_include_directories(regression_middleware_training_test_loss_functions_regression PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${CMAKE_SOURCE_DIR}/src
+)
+
+target_compile_features(regression_middleware_training_test_loss_functions_regression PRIVATE cxx_std_20)
+
+target_link_libraries(regression_middleware_training_test_loss_functions_regression
+    PRIVATE
+        GTest::GTest
+        GTest::Main
+        nimcp_middleware
+        nimcp
+        pthread
+        m
+)
+
+add_test(NAME regression_middleware_training_test_loss_functions_regression
+         COMMAND regression_middleware_training_test_loss_functions_regression)
+
+set_tests_properties(regression_middleware_training_test_loss_functions_regression
+    PROPERTIES
+        LABELS "regression;middleware;training;loss"
+        TIMEOUT 180)
+
+# Optimizers Regression Tests (Phase TM-2)
+add_executable(regression_middleware_training_test_optimizers_regression
+    test_optimizers_regression.cpp
+)
+
+target_include_directories(regression_middleware_training_test_optimizers_regression PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${CMAKE_SOURCE_DIR}/src
+)
+
+target_compile_features(regression_middleware_training_test_optimizers_regression PRIVATE cxx_std_20)
+
+target_link_libraries(regression_middleware_training_test_optimizers_regression
+    PRIVATE
+        GTest::GTest
+        GTest::Main
+        nimcp_middleware
+        nimcp
+        pthread
+        m
+)
+
+add_test(NAME regression_middleware_training_test_optimizers_regression
+         COMMAND regression_middleware_training_test_optimizers_regression)
+
+set_tests_properties(regression_middleware_training_test_optimizers_regression
+    PROPERTIES
+        LABELS "regression;middleware;training;optimizer"
+        TIMEOUT 180)
+
+# Training-Plasticity Bridge Regression Tests (Phase TPB-1)
+add_executable(regression_middleware_training_test_plasticity_bridge_regression
+    test_training_plasticity_bridge_regression.cpp
+)
+
+target_include_directories(regression_middleware_training_test_plasticity_bridge_regression PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${CMAKE_SOURCE_DIR}/src
+)
+
+target_compile_features(regression_middleware_training_test_plasticity_bridge_regression PRIVATE cxx_std_20)
+
+target_link_libraries(regression_middleware_training_test_plasticity_bridge_regression
+    PRIVATE
+        GTest::GTest
+        GTest::Main
+        nimcp_middleware
+        nimcp
+        pthread
+        m
+)
+
+add_test(NAME regression_middleware_training_test_plasticity_bridge_regression
+         COMMAND regression_middleware_training_test_plasticity_bridge_regression)
+
+set_tests_properties(regression_middleware_training_test_plasticity_bridge_regression
+    PROPERTIES
+        LABELS "regression;middleware;training;plasticity_bridge"
+        TIMEOUT 300)

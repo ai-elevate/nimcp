@@ -1,0 +1,1498 @@
+//=============================================================================
+// nimcp_training_plasticity_bridge.c - Training-Plasticity Integration Bridge
+//=============================================================================
+/**
+ * @file nimcp_training_plasticity_bridge.c
+ * @brief Implementation of Training-Plasticity Bridge
+ *
+ * Phase TPB-1: Full implementation connecting training pipeline to biological plasticity
+ *
+ * @author NIMCP Development Team
+ * @version 1.0.0
+ * @date 2025-11-27
+ */
+
+#include "middleware/training/nimcp_training_plasticity_bridge.h"
+#include "utils/memory/nimcp_memory.h"
+#include "utils/logging/nimcp_logging.h"
+#include "utils/time/nimcp_time.h"
+#include "utils/validation/nimcp_validate.h"
+#include "utils/platform/nimcp_platform_rwlock.h"
+#include <math.h>
+#include <string.h>
+#include <stdatomic.h>
+#include <time.h>
+
+//=============================================================================
+// Internal Constants
+//=============================================================================
+
+#define TPB_LOG_MODULE "TPB"
+#define TPB_EPSILON 1e-10f
+#define TPB_DA_BURST_THRESHOLD 0.5f
+#define TPB_DA_DIP_THRESHOLD -0.5f
+
+//=============================================================================
+// Internal Structures
+//=============================================================================
+
+/**
+ * @brief Internal bridge context structure
+ */
+struct tpb_context {
+    /* Configuration */
+    tpb_config_t config;
+
+    /* RPE state */
+    tpb_rpe_state_t rpe_state;
+    nimcp_mutex_t rpe_mutex;
+
+    /* Region routing */
+    uint32_t num_regions;
+    tpb_region_config_t regions[TPB_MAX_REGIONS];
+    nimcp_platform_rwlock_t region_rwlock;
+
+    /* Neuromodulator system */
+    neuromodulator_system_t neuromod_system;
+    bool owns_neuromod;
+
+    /* CoW manager */
+    cow_manager_t cow_manager;
+    bool owns_cow;
+
+    /* Thread pool */
+    nimcp_thread_pool_t* thread_pool;
+
+    /* Event bus */
+    event_bus_t event_bus;
+
+    /* Statistics */
+    tpb_stats_t stats;
+    nimcp_mutex_t stats_mutex;
+
+    /* Training context connection */
+    nimcp_brain_training_ctx_t* training_ctx;
+
+    /* State */
+    atomic_bool initialized;
+    atomic_bool shutdown;
+};
+
+/**
+ * @brief Batch plasticity work item
+ */
+typedef struct {
+    tpb_context_t* ctx;
+    uint32_t start_idx;
+    uint32_t end_idx;
+    const uint32_t* pre_neuron_ids;
+    const uint32_t* post_neuron_ids;
+    const float* pre_activities;
+    const float* post_activities;
+    const float* spike_deltas;
+    float* weights;
+    uint32_t updates_applied;
+} tpb_batch_work_t;
+
+//=============================================================================
+// Forward Declarations
+//=============================================================================
+
+static void tpb_batch_worker(void* arg);
+static float tpb_compute_rpe_temporal_diff(tpb_context_t* ctx, float current_loss);
+static float tpb_compute_rpe_exp_avg(tpb_context_t* ctx, float current_loss);
+static float tpb_compute_rpe_sliding_window(tpb_context_t* ctx, float current_loss);
+static float tpb_compute_rpe_adaptive(tpb_context_t* ctx, float current_loss);
+static float tpb_apply_stdp_rule(tpb_context_t* ctx, uint32_t region_id,
+                                  float pre, float post, float delta);
+static float tpb_apply_bcm_rule(tpb_context_t* ctx, uint32_t region_id,
+                                 float pre, float post, float threshold);
+static uint32_t tpb_find_region_for_neuron(tpb_context_t* ctx, uint32_t neuron_id);
+static void tpb_update_neuromod_from_rpe(tpb_context_t* ctx, float rpe);
+
+//=============================================================================
+// Default Configuration
+//=============================================================================
+
+tpb_config_t tpb_config_default(void)
+{
+    tpb_config_t config;
+    memset(&config, 0, sizeof(config));
+
+    /* RPE defaults */
+    config.rpe_mode = TPB_RPE_EXPONENTIAL_AVG;
+    config.rpe_window_size = TPB_DEFAULT_RPE_WINDOW;
+    config.rpe_smoothing_alpha = 0.1f;
+    config.rpe_to_da_gain = 0.5f;
+
+    /* LR modulation defaults */
+    config.lr_modulation.mode = TPB_NEUROMOD_BALANCED;
+    config.lr_modulation.da_weight = 0.4f;
+    config.lr_modulation.ach_weight = 0.3f;
+    config.lr_modulation.ht5_weight = 0.2f;
+    config.lr_modulation.ne_weight = 0.1f;
+    config.lr_modulation.min_lr_multiplier = 0.1f;
+    config.lr_modulation.max_lr_multiplier = 5.0f;
+    config.lr_modulation.use_sigmoid_scaling = true;
+    config.lr_modulation.sigmoid_steepness = 2.0f;
+
+    /* Thread pool */
+    config.thread_pool_size = TPB_DEFAULT_THREAD_POOL_SIZE;
+
+    /* Memory management */
+    config.enable_cow = true;
+    config.cow_manager = NULL;
+    config.neuromod_system = NULL;
+
+    /* Events */
+    config.event_bus = NULL;
+    config.publish_events = false;
+
+    return config;
+}
+
+tpb_config_t tpb_config_preset(const char* preset_name)
+{
+    tpb_config_t config = tpb_config_default();
+
+    if (!preset_name) {
+        return config;
+    }
+
+    if (strcmp(preset_name, "reinforcement") == 0) {
+        /* Strong dopamine modulation for RL */
+        config.rpe_mode = TPB_RPE_TEMPORAL_DIFF;
+        config.rpe_to_da_gain = 0.8f;
+        config.lr_modulation.mode = TPB_NEUROMOD_DA_PRIMARY;
+        config.lr_modulation.da_weight = 0.7f;
+        config.lr_modulation.max_lr_multiplier = 10.0f;
+    }
+    else if (strcmp(preset_name, "supervised") == 0) {
+        /* Balanced modulation for supervised learning */
+        config.rpe_mode = TPB_RPE_EXPONENTIAL_AVG;
+        config.rpe_to_da_gain = 0.3f;
+        config.lr_modulation.mode = TPB_NEUROMOD_BALANCED;
+    }
+    else if (strcmp(preset_name, "unsupervised") == 0) {
+        /* ACh-dominant for attention-based learning */
+        config.rpe_mode = TPB_RPE_ADAPTIVE;
+        config.lr_modulation.mode = TPB_NEUROMOD_ACH_PRIMARY;
+        config.lr_modulation.ach_weight = 0.6f;
+    }
+    else if (strcmp(preset_name, "biological") == 0) {
+        /* Maximum biological realism */
+        config.rpe_mode = TPB_RPE_ADAPTIVE;
+        config.rpe_to_da_gain = 0.6f;
+        config.lr_modulation.mode = TPB_NEUROMOD_BALANCED;
+        config.lr_modulation.use_sigmoid_scaling = true;
+        config.thread_pool_size = 8;
+    }
+
+    return config;
+}
+
+//=============================================================================
+// Region Configuration Presets
+//=============================================================================
+
+tpb_region_config_t tpb_region_cortical_default(void)
+{
+    tpb_region_config_t region;
+    memset(&region, 0, sizeof(region));
+
+    region.type = TPB_REGION_CORTICAL;
+    region.name = "Cortical";
+    region.primary_rule = TPB_RULE_STDP;
+    region.secondary_rule = TPB_RULE_HOMEOSTATIC;
+    region.enable_three_factor = true;
+
+    region.da_sensitivity = 0.8f;
+    region.ach_sensitivity = 1.2f;  /* High ACh sensitivity for attention */
+    region.ht5_sensitivity = 0.5f;
+    region.ne_sensitivity = 0.7f;
+
+    region.base_learning_rate = 0.01f;
+    region.lr_modulation_strength = 0.5f;
+    region.plasticity_window_ms = 50.0f;
+
+    return region;
+}
+
+tpb_region_config_t tpb_region_striatal_default(void)
+{
+    tpb_region_config_t region;
+    memset(&region, 0, sizeof(region));
+
+    region.type = TPB_REGION_STRIATAL;
+    region.name = "Striatal";
+    region.primary_rule = TPB_RULE_STDP;
+    region.secondary_rule = TPB_RULE_ELIGIBILITY;
+    region.enable_three_factor = true;
+
+    region.da_sensitivity = 1.5f;  /* High DA for reward learning */
+    region.ach_sensitivity = 0.6f;
+    region.ht5_sensitivity = 0.8f;
+    region.ne_sensitivity = 0.4f;
+
+    region.base_learning_rate = 0.02f;
+    region.lr_modulation_strength = 0.8f;  /* Strong modulation */
+    region.plasticity_window_ms = 100.0f;  /* Longer window for RL */
+
+    return region;
+}
+
+tpb_region_config_t tpb_region_hippocampal_default(void)
+{
+    tpb_region_config_t region;
+    memset(&region, 0, sizeof(region));
+
+    region.type = TPB_REGION_HIPPOCAMPAL;
+    region.name = "Hippocampal";
+    region.primary_rule = TPB_RULE_BCM;
+    region.secondary_rule = TPB_RULE_STDP;
+    region.enable_three_factor = true;
+
+    region.da_sensitivity = 0.6f;
+    region.ach_sensitivity = 1.4f;  /* Critical for memory encoding */
+    region.ht5_sensitivity = 0.7f;
+    region.ne_sensitivity = 1.0f;
+
+    region.base_learning_rate = 0.005f;
+    region.lr_modulation_strength = 0.6f;
+    region.plasticity_window_ms = 40.0f;
+
+    return region;
+}
+
+tpb_region_config_t tpb_region_cerebellar_default(void)
+{
+    tpb_region_config_t region;
+    memset(&region, 0, sizeof(region));
+
+    region.type = TPB_REGION_CEREBELLAR;
+    region.name = "Cerebellar";
+    region.primary_rule = TPB_RULE_ELIGIBILITY;  /* Error-driven */
+    region.secondary_rule = TPB_RULE_ANTI_HEBBIAN;
+    region.enable_three_factor = false;  /* Supervised, not reward-based */
+
+    region.da_sensitivity = 0.3f;
+    region.ach_sensitivity = 0.5f;
+    region.ht5_sensitivity = 0.4f;
+    region.ne_sensitivity = 0.6f;
+
+    region.base_learning_rate = 0.001f;  /* Slow, precise learning */
+    region.lr_modulation_strength = 0.3f;
+    region.plasticity_window_ms = 200.0f;
+
+    return region;
+}
+
+tpb_region_config_t tpb_region_amygdala_default(void)
+{
+    tpb_region_config_t region;
+    memset(&region, 0, sizeof(region));
+
+    region.type = TPB_REGION_AMYGDALA;
+    region.name = "Amygdala";
+    region.primary_rule = TPB_RULE_HEBBIAN;
+    region.secondary_rule = TPB_RULE_ELIGIBILITY;
+    region.enable_three_factor = true;
+
+    region.da_sensitivity = 1.0f;
+    region.ach_sensitivity = 0.8f;
+    region.ht5_sensitivity = 1.2f;  /* Fear/anxiety modulation */
+    region.ne_sensitivity = 1.5f;   /* High NE for threat response */
+
+    region.base_learning_rate = 0.05f;  /* Fast fear learning */
+    region.lr_modulation_strength = 0.7f;
+    region.plasticity_window_ms = 30.0f;
+
+    return region;
+}
+
+tpb_region_config_t tpb_region_prefrontal_default(void)
+{
+    tpb_region_config_t region;
+    memset(&region, 0, sizeof(region));
+
+    region.type = TPB_REGION_PREFRONTAL;
+    region.name = "Prefrontal";
+    region.primary_rule = TPB_RULE_STDP;
+    region.secondary_rule = TPB_RULE_HOMEOSTATIC;
+    region.enable_three_factor = true;
+
+    region.da_sensitivity = 1.2f;  /* D1/D2 working memory modulation */
+    region.ach_sensitivity = 1.0f;
+    region.ht5_sensitivity = 0.9f;
+    region.ne_sensitivity = 1.1f;
+
+    region.base_learning_rate = 0.008f;
+    region.lr_modulation_strength = 0.5f;
+    region.plasticity_window_ms = 60.0f;
+
+    return region;
+}
+
+//=============================================================================
+// Lifecycle Functions
+//=============================================================================
+
+tpb_context_t* tpb_create(const tpb_config_t* config)
+{
+    tpb_context_t* ctx = nimcp_malloc(sizeof(tpb_context_t));
+    if (!ctx) {
+        LOG_ERROR("[%s] ", TPB_LOG_MODULE, "Failed to allocate bridge context");
+        return NULL;
+    }
+    memset(ctx, 0, sizeof(tpb_context_t));
+
+    /* Store configuration */
+    if (config) {
+        ctx->config = *config;
+    } else {
+        ctx->config = tpb_config_default();
+    }
+
+    /* Initialize RPE state */
+    ctx->rpe_state.mode = ctx->config.rpe_mode;
+    ctx->rpe_state.rpe_alpha = ctx->config.rpe_smoothing_alpha;
+    ctx->rpe_state.baseline_loss = 0.0f;
+    ctx->rpe_state.baseline_variance = 1.0f;
+
+    /* Initialize mutexes */
+    if (nimcp_mutex_init(&ctx->rpe_mutex, NULL) != NIMCP_SUCCESS) {
+        LOG_ERROR("[%s] ", TPB_LOG_MODULE, "Failed to init RPE mutex");
+        nimcp_free(ctx);
+        return NULL;
+    }
+
+    if (nimcp_mutex_init(&ctx->stats_mutex, NULL) != NIMCP_SUCCESS) {
+        LOG_ERROR("[%s] ", TPB_LOG_MODULE, "Failed to init stats mutex");
+        nimcp_mutex_destroy(&ctx->rpe_mutex);
+        nimcp_free(ctx);
+        return NULL;
+    }
+
+    /* Initialize RW lock for regions */
+    if (nimcp_platform_rwlock_init(&ctx->region_rwlock) != 0) {
+        LOG_ERROR("[%s] ", TPB_LOG_MODULE, "Failed to init region rwlock");
+        nimcp_mutex_destroy(&ctx->stats_mutex);
+        nimcp_mutex_destroy(&ctx->rpe_mutex);
+        nimcp_free(ctx);
+        return NULL;
+    }
+
+    /* Create or use provided neuromodulator system */
+    if (ctx->config.neuromod_system) {
+        ctx->neuromod_system = ctx->config.neuromod_system;
+        ctx->owns_neuromod = false;
+    } else {
+        neuromodulator_config_t neuromod_config;
+        memset(&neuromod_config, 0, sizeof(neuromod_config));
+        neuromod_config.baseline_dopamine = 0.5f;
+        neuromod_config.baseline_serotonin = 0.5f;
+        neuromod_config.baseline_acetylcholine = 0.5f;
+        neuromod_config.baseline_norepinephrine = 0.5f;
+        neuromod_config.dopamine_decay = 2.0f;
+        neuromod_config.serotonin_decay = 10.0f;
+        neuromod_config.acetylcholine_decay = 0.5f;
+        neuromod_config.norepinephrine_decay = 3.0f;
+        neuromod_config.reward_dopamine_gain = ctx->config.rpe_to_da_gain;
+
+        ctx->neuromod_system = neuromodulator_system_create(&neuromod_config);
+        if (!ctx->neuromod_system) {
+            LOG_ERROR("[%s] ", TPB_LOG_MODULE, "Failed to create neuromodulator system");
+            nimcp_platform_rwlock_destroy(&ctx->region_rwlock);
+            nimcp_mutex_destroy(&ctx->stats_mutex);
+            nimcp_mutex_destroy(&ctx->rpe_mutex);
+            nimcp_free(ctx);
+            return NULL;
+        }
+        ctx->owns_neuromod = true;
+    }
+
+    /* Set up CoW support - actual managers are created per-snapshot */
+    if (ctx->config.enable_cow) {
+        if (ctx->config.cow_manager) {
+            ctx->cow_manager = ctx->config.cow_manager;
+            ctx->owns_cow = false;
+        } else {
+            /* Use sentinel value to indicate CoW is enabled
+             * Actual managers are created in tpb_snapshot_weights */
+            ctx->cow_manager = (cow_manager_t)(uintptr_t)1;
+            ctx->owns_cow = true;
+        }
+    }
+
+    /* Create thread pool */
+    if (ctx->config.thread_pool_size > 0) {
+        ctx->thread_pool = nimcp_pool_create(ctx->config.thread_pool_size);
+        if (!ctx->thread_pool) {
+            LOG_WARNING("[%s] ", TPB_LOG_MODULE, "Failed to create thread pool, using single-threaded");
+        }
+    }
+
+    /* Event bus */
+    ctx->event_bus = ctx->config.event_bus;
+
+    /* Initialize state */
+    atomic_store(&ctx->initialized, true);
+    atomic_store(&ctx->shutdown, false);
+
+    LOG_INFO("[%s] ", TPB_LOG_MODULE, "Created Training-Plasticity Bridge (RPE mode=%d, threads=%u)",
+                   ctx->config.rpe_mode, ctx->config.thread_pool_size);
+
+    return ctx;
+}
+
+nimcp_result_t tpb_connect_training(tpb_context_t* ctx, nimcp_brain_training_ctx_t* training_ctx)
+{
+    if (!ctx || !training_ctx) {
+        return NIMCP_ERROR_INVALID_PARAM;
+    }
+
+    ctx->training_ctx = training_ctx;
+
+    LOG_INFO("[%s] ", TPB_LOG_MODULE, "Connected to brain training context");
+    return NIMCP_SUCCESS;
+}
+
+void tpb_destroy(tpb_context_t* ctx)
+{
+    if (!ctx) {
+        return;
+    }
+
+    /* Signal shutdown */
+    atomic_store(&ctx->shutdown, true);
+
+    /* Destroy thread pool first (waits for completion) */
+    if (ctx->thread_pool) {
+        nimcp_pool_wait(ctx->thread_pool);
+        nimcp_pool_destroy(ctx->thread_pool);
+        ctx->thread_pool = NULL;
+    }
+
+    /* Destroy owned resources */
+    /* Note: cow_manager may be a sentinel value (uintptr_t)1 if we created it,
+     * so only destroy if it's a real pointer (> 1) */
+    if (ctx->owns_cow && ctx->cow_manager && (uintptr_t)ctx->cow_manager > 1) {
+        cow_manager_destroy(ctx->cow_manager);
+    }
+
+    if (ctx->owns_neuromod && ctx->neuromod_system) {
+        neuromodulator_system_destroy(ctx->neuromod_system);
+    }
+
+    /* Destroy synchronization primitives */
+    nimcp_platform_rwlock_destroy(&ctx->region_rwlock);
+    nimcp_mutex_destroy(&ctx->stats_mutex);
+    nimcp_mutex_destroy(&ctx->rpe_mutex);
+
+    LOG_INFO("[%s] ", TPB_LOG_MODULE, "Destroyed Training-Plasticity Bridge");
+
+    nimcp_free(ctx);
+}
+
+//=============================================================================
+// Loss-Dopamine Connector (RPE)
+//=============================================================================
+
+nimcp_result_t tpb_report_loss(tpb_context_t* ctx, float loss, float* rpe_out)
+{
+    if (!ctx) {
+        return NIMCP_ERROR_INVALID_PARAM;
+    }
+
+    /* Validate loss */
+    if (isnan(loss) || isinf(loss)) {
+        LOG_WARNING("[%s] ", TPB_LOG_MODULE, "Invalid loss value: %f", loss);
+        return NIMCP_ERROR_INVALID_PARAM;
+    }
+
+    nimcp_mutex_lock(&ctx->rpe_mutex);
+
+    float rpe = 0.0f;
+
+    /* Compute RPE based on mode */
+    switch (ctx->rpe_state.mode) {
+        case TPB_RPE_TEMPORAL_DIFF:
+            rpe = tpb_compute_rpe_temporal_diff(ctx, loss);
+            break;
+        case TPB_RPE_EXPONENTIAL_AVG:
+            rpe = tpb_compute_rpe_exp_avg(ctx, loss);
+            break;
+        case TPB_RPE_SLIDING_WINDOW:
+            rpe = tpb_compute_rpe_sliding_window(ctx, loss);
+            break;
+        case TPB_RPE_ADAPTIVE:
+            rpe = tpb_compute_rpe_adaptive(ctx, loss);
+            break;
+    }
+
+    /* Store in history */
+    ctx->rpe_state.loss_history[ctx->rpe_state.history_index] = loss;
+    ctx->rpe_state.history_index = (ctx->rpe_state.history_index + 1) % TPB_LOSS_HISTORY_SIZE;
+    if (ctx->rpe_state.history_count < TPB_LOSS_HISTORY_SIZE) {
+        ctx->rpe_state.history_count++;
+    }
+
+    /* Smooth RPE */
+    ctx->rpe_state.smoothed_rpe = ctx->rpe_state.rpe_alpha * rpe +
+                                  (1.0f - ctx->rpe_state.rpe_alpha) * ctx->rpe_state.smoothed_rpe;
+    ctx->rpe_state.last_rpe = rpe;
+
+    nimcp_mutex_unlock(&ctx->rpe_mutex);
+
+    /* Update neuromodulator levels based on RPE */
+    tpb_update_neuromod_from_rpe(ctx, rpe);
+
+    /* Update statistics */
+    nimcp_mutex_lock(&ctx->stats_mutex);
+    ctx->stats.rpe_computations++;
+    if (rpe > 0) {
+        ctx->stats.total_positive_rpe += rpe;
+    } else {
+        ctx->stats.total_negative_rpe += rpe;
+    }
+    if (rpe > TPB_DA_BURST_THRESHOLD) {
+        ctx->stats.da_bursts++;
+    } else if (rpe < TPB_DA_DIP_THRESHOLD) {
+        ctx->stats.da_dips++;
+    }
+    /* Update running average */
+    float n = (float)ctx->stats.rpe_computations;
+    ctx->stats.avg_rpe = ctx->stats.avg_rpe * ((n - 1.0f) / n) + rpe / n;
+    nimcp_mutex_unlock(&ctx->stats_mutex);
+
+    /* Callback */
+    if (ctx->config.on_rpe_computed) {
+        ctx->config.on_rpe_computed(rpe, ctx->config.callback_user_data);
+    }
+
+    if (rpe_out) {
+        *rpe_out = rpe;
+    }
+
+    return NIMCP_SUCCESS;
+}
+
+nimcp_result_t tpb_inject_reward(tpb_context_t* ctx, float da_delta)
+{
+    if (!ctx) {
+        return NIMCP_ERROR_INVALID_PARAM;
+    }
+
+    /* Clamp delta */
+    if (da_delta > 1.0f) da_delta = 1.0f;
+    if (da_delta < -1.0f) da_delta = -1.0f;
+
+    /* Direct neuromodulator update */
+    tpb_update_neuromod_from_rpe(ctx, da_delta);
+
+    LOG_DEBUG("[%s] ", TPB_LOG_MODULE, "Injected reward signal: DA delta = %.3f", da_delta);
+
+    return NIMCP_SUCCESS;
+}
+
+nimcp_result_t tpb_get_rpe_state(tpb_context_t* ctx, tpb_rpe_state_t* state_out)
+{
+    if (!ctx || !state_out) {
+        return NIMCP_ERROR_INVALID_PARAM;
+    }
+
+    nimcp_mutex_lock(&ctx->rpe_mutex);
+    *state_out = ctx->rpe_state;
+    nimcp_mutex_unlock(&ctx->rpe_mutex);
+
+    return NIMCP_SUCCESS;
+}
+
+//=============================================================================
+// RPE Computation Helpers
+//=============================================================================
+
+static float tpb_compute_rpe_temporal_diff(tpb_context_t* ctx, float current_loss)
+{
+    /* Simple TD-style: RPE = previous_loss - current_loss
+     * Positive when loss decreases (good learning)
+     * Negative when loss increases (poor learning)
+     *
+     * For more sophisticated implementations, we'd subtract expected improvement,
+     * but for initial implementation, we keep it simple.
+     */
+    if (ctx->rpe_state.history_count == 0) {
+        /* First call - no previous loss to compare, RPE = 0 */
+        return 0.0f;
+    }
+
+    /* Get previous loss from history */
+    uint32_t prev_idx;
+    if (ctx->rpe_state.history_index == 0) {
+        prev_idx = TPB_LOSS_HISTORY_SIZE - 1;
+    } else {
+        prev_idx = ctx->rpe_state.history_index - 1;
+    }
+    float prev_loss = ctx->rpe_state.loss_history[prev_idx];
+
+    /* RPE: Loss decrease = positive, Loss increase = negative */
+    float rpe = prev_loss - current_loss;
+
+    /* Scale by gain */
+    return rpe * ctx->config.rpe_to_da_gain;
+}
+
+static float tpb_compute_rpe_exp_avg(tpb_context_t* ctx, float current_loss)
+{
+    /* EMA baseline: RPE = (baseline - current_loss) / baseline_variance */
+    if (ctx->rpe_state.history_count == 0) {
+        ctx->rpe_state.baseline_loss = current_loss;
+        return 0.0f;
+    }
+
+    float alpha = ctx->rpe_state.rpe_alpha;
+
+    /* RPE: positive when loss is lower than expected */
+    float prediction_error = ctx->rpe_state.baseline_loss - current_loss;
+    float rpe = prediction_error / (ctx->rpe_state.baseline_variance + TPB_EPSILON);
+
+    /* Update baseline */
+    ctx->rpe_state.baseline_loss = alpha * current_loss + (1.0f - alpha) * ctx->rpe_state.baseline_loss;
+
+    /* Update variance estimate */
+    float error_sq = prediction_error * prediction_error;
+    ctx->rpe_state.baseline_variance = alpha * error_sq +
+                                       (1.0f - alpha) * ctx->rpe_state.baseline_variance;
+
+    return rpe * ctx->config.rpe_to_da_gain;
+}
+
+static float tpb_compute_rpe_sliding_window(tpb_context_t* ctx, float current_loss)
+{
+    /* Sliding window average baseline */
+    if (ctx->rpe_state.history_count < ctx->config.rpe_window_size) {
+        /* Not enough history, use simple comparison */
+        if (ctx->rpe_state.history_count == 0) {
+            ctx->rpe_state.baseline_loss = current_loss;
+            return 0.0f;
+        }
+        return (ctx->rpe_state.baseline_loss - current_loss) * ctx->config.rpe_to_da_gain;
+    }
+
+    /* Compute window average */
+    float sum = 0.0f;
+    uint32_t window = ctx->config.rpe_window_size;
+    uint32_t start_idx = (ctx->rpe_state.history_index + TPB_LOSS_HISTORY_SIZE - window) % TPB_LOSS_HISTORY_SIZE;
+
+    for (uint32_t i = 0; i < window; i++) {
+        uint32_t idx = (start_idx + i) % TPB_LOSS_HISTORY_SIZE;
+        sum += ctx->rpe_state.loss_history[idx];
+    }
+    float avg_loss = sum / (float)window;
+
+    /* RPE: positive when current loss is lower than average */
+    float rpe = (avg_loss - current_loss) / (avg_loss + TPB_EPSILON);
+
+    ctx->rpe_state.baseline_loss = avg_loss;
+
+    return rpe * ctx->config.rpe_to_da_gain;
+}
+
+static float tpb_compute_rpe_adaptive(tpb_context_t* ctx, float current_loss)
+{
+    /* Adaptive baseline with variance tracking for normalization */
+    if (ctx->rpe_state.history_count == 0) {
+        ctx->rpe_state.baseline_loss = current_loss;
+        ctx->rpe_state.baseline_variance = 1.0f;
+        return 0.0f;
+    }
+
+    float alpha = ctx->rpe_state.rpe_alpha;
+
+    /* Prediction error */
+    float prediction_error = ctx->rpe_state.baseline_loss - current_loss;
+
+    /* Normalize by standard deviation */
+    float std_dev = sqrtf(ctx->rpe_state.baseline_variance + TPB_EPSILON);
+    float rpe = prediction_error / std_dev;
+
+    /* Clip extreme RPE values */
+    if (rpe > 3.0f) rpe = 3.0f;
+    if (rpe < -3.0f) rpe = -3.0f;
+
+    /* Update baseline (EMA) */
+    ctx->rpe_state.baseline_loss = alpha * current_loss + (1.0f - alpha) * ctx->rpe_state.baseline_loss;
+
+    /* Update variance (EMA of squared error) */
+    float error_sq = prediction_error * prediction_error;
+    ctx->rpe_state.baseline_variance = alpha * error_sq +
+                                       (1.0f - alpha) * ctx->rpe_state.baseline_variance;
+
+    return rpe * ctx->config.rpe_to_da_gain;
+}
+
+static void tpb_update_neuromod_from_rpe(tpb_context_t* ctx, float rpe)
+{
+    if (!ctx->neuromod_system) {
+        return;
+    }
+
+    /* Convert RPE to dopamine change
+     * Positive RPE → DA burst
+     * Negative RPE → DA dip
+     */
+    float da_delta = rpe * ctx->config.rpe_to_da_gain;
+
+    /* Get current levels */
+    neuromodulator_pool_t pool;
+    neuromodulator_get_levels(ctx->neuromod_system, &pool);
+
+    /* Update dopamine */
+    float new_da = pool.dopamine + da_delta;
+    if (new_da > 1.0f) new_da = 1.0f;
+    if (new_da < 0.0f) new_da = 0.0f;
+
+    /* Also update norepinephrine for arousal on large RPE */
+    float ne_delta = fabsf(rpe) * 0.2f;  /* Arousal from any prediction error */
+    float new_ne = pool.norepinephrine + ne_delta;
+    if (new_ne > 1.0f) new_ne = 1.0f;
+
+    /* Apply updates */
+    neuromodulator_set_level(ctx->neuromod_system, NEUROMOD_DOPAMINE, new_da);
+    neuromodulator_set_level(ctx->neuromod_system, NEUROMOD_NOREPINEPHRINE, new_ne);
+}
+
+//=============================================================================
+// Region-Specific Plasticity Router
+//=============================================================================
+
+nimcp_result_t tpb_configure_region(tpb_context_t* ctx, const tpb_region_config_t* region_config,
+                                     uint32_t* region_id_out)
+{
+    if (!ctx || !region_config) {
+        return NIMCP_ERROR_INVALID_PARAM;
+    }
+
+    nimcp_platform_rwlock_wrlock(&ctx->region_rwlock);
+
+    if (ctx->num_regions >= TPB_MAX_REGIONS) {
+        nimcp_platform_rwlock_wrunlock(&ctx->region_rwlock);
+        LOG_ERROR("[%s] ", TPB_LOG_MODULE, "Maximum regions exceeded");
+        return NIMCP_ERROR_MEMORY;
+    }
+
+    uint32_t region_id = ctx->num_regions;
+    ctx->regions[region_id] = *region_config;
+    ctx->num_regions++;
+
+    nimcp_platform_rwlock_wrunlock(&ctx->region_rwlock);
+
+    if (region_id_out) {
+        *region_id_out = region_id;
+    }
+
+    LOG_INFO("[%s] ", TPB_LOG_MODULE, "Configured region %u: %s (neurons %u-%u)",
+                   region_id, region_config->name ? region_config->name : "unnamed",
+                   region_config->neuron_start_idx, region_config->neuron_end_idx);
+
+    return NIMCP_SUCCESS;
+}
+
+nimcp_result_t tpb_route_weight_update(tpb_context_t* ctx, uint32_t neuron_id,
+                                        float pre_activity, float post_activity,
+                                        float spike_time_delta, float* weight_delta_out)
+{
+    if (!ctx || !weight_delta_out) {
+        return NIMCP_ERROR_INVALID_PARAM;
+    }
+
+    nimcp_platform_rwlock_rdlock(&ctx->region_rwlock);
+
+    /* Find region for this neuron */
+    uint32_t region_id = tpb_find_region_for_neuron(ctx, neuron_id);
+
+    float weight_delta = 0.0f;
+
+    if (region_id < ctx->num_regions) {
+        tpb_region_config_t* region = &ctx->regions[region_id];
+
+        /* Get modulated learning rate */
+        float base_lr = region->base_learning_rate;
+        float modulated_lr = base_lr;
+        tpb_get_modulated_lr(ctx, region_id, base_lr, &modulated_lr);
+
+        /* Apply primary plasticity rule */
+        switch (region->primary_rule) {
+            case TPB_RULE_STDP:
+                weight_delta = tpb_apply_stdp_rule(ctx, region_id, pre_activity,
+                                                    post_activity, spike_time_delta);
+                break;
+            case TPB_RULE_BCM:
+                weight_delta = tpb_apply_bcm_rule(ctx, region_id, pre_activity,
+                                                   post_activity, 0.5f);
+                break;
+            case TPB_RULE_HEBBIAN:
+                /* Simple Hebbian: delta_w = lr * pre * post */
+                weight_delta = modulated_lr * pre_activity * post_activity;
+                break;
+            case TPB_RULE_ANTI_HEBBIAN:
+                /* Anti-Hebbian: delta_w = -lr * pre * post */
+                weight_delta = -modulated_lr * pre_activity * post_activity;
+                break;
+            case TPB_RULE_ELIGIBILITY:
+                /* Eligibility trace rule: error-driven learning
+                 * delta_w = lr * eligibility * error_signal
+                 * spike_time_delta is used as error signal */
+                {
+                    float eligibility = pre_activity * post_activity;
+                    float error_signal = spike_time_delta * 0.1f;  /* Scale error */
+                    weight_delta = modulated_lr * eligibility * error_signal;
+                }
+                break;
+            case TPB_RULE_HOMEOSTATIC:
+                /* Homeostatic plasticity: maintain target firing rate
+                 * delta_w = lr * (target_rate - post_activity) * pre_activity */
+                {
+                    float target_rate = 0.5f;  /* Default target */
+                    weight_delta = modulated_lr * (target_rate - post_activity) * pre_activity;
+                }
+                break;
+            default:
+                weight_delta = 0.0f;
+                break;
+        }
+
+        /* Apply learning rate modulation */
+        weight_delta *= modulated_lr / (base_lr + TPB_EPSILON);
+
+        /* Update stats */
+        nimcp_mutex_lock(&ctx->stats_mutex);
+        ctx->stats.total_plasticity_updates++;
+        ctx->stats.region_updates[region_id]++;
+        float n = (float)ctx->stats.region_updates[region_id];
+        ctx->stats.region_avg_delta[region_id] =
+            ctx->stats.region_avg_delta[region_id] * ((n - 1.0f) / n) + fabsf(weight_delta) / n;
+        nimcp_mutex_unlock(&ctx->stats_mutex);
+    }
+
+    nimcp_platform_rwlock_rdunlock(&ctx->region_rwlock);
+
+    *weight_delta_out = weight_delta;
+    return NIMCP_SUCCESS;
+}
+
+nimcp_result_t tpb_apply_plasticity_batch(tpb_context_t* ctx, uint32_t num_synapses,
+                                           const uint32_t* pre_neuron_ids,
+                                           const uint32_t* post_neuron_ids,
+                                           const float* pre_activities,
+                                           const float* post_activities,
+                                           const float* spike_deltas,
+                                           float* weights)
+{
+    if (!ctx || !pre_neuron_ids || !post_neuron_ids || !pre_activities ||
+        !post_activities || !spike_deltas || !weights || num_synapses == 0) {
+        return NIMCP_ERROR_INVALID_PARAM;
+    }
+
+    uint64_t start_time = ((uint64_t)clock() * 1000000000ULL / CLOCKS_PER_SEC);
+
+    if (ctx->thread_pool && num_synapses > 1000) {
+        /* Parallel execution for large batches */
+        uint32_t num_workers = ctx->config.thread_pool_size;
+        if (num_workers == 0) num_workers = 1;
+
+        uint32_t chunk_size = (num_synapses + num_workers - 1) / num_workers;
+        tpb_batch_work_t* work_items = nimcp_malloc(num_workers * sizeof(tpb_batch_work_t));
+        if (!work_items) {
+            return NIMCP_ERROR_MEMORY;
+        }
+
+        /* Submit work */
+        for (uint32_t i = 0; i < num_workers; i++) {
+            work_items[i].ctx = ctx;
+            work_items[i].start_idx = i * chunk_size;
+            work_items[i].end_idx = (i + 1) * chunk_size;
+            if (work_items[i].end_idx > num_synapses) {
+                work_items[i].end_idx = num_synapses;
+            }
+            work_items[i].pre_neuron_ids = pre_neuron_ids;
+            work_items[i].post_neuron_ids = post_neuron_ids;
+            work_items[i].pre_activities = pre_activities;
+            work_items[i].post_activities = post_activities;
+            work_items[i].spike_deltas = spike_deltas;
+            work_items[i].weights = weights;
+            work_items[i].updates_applied = 0;
+
+            nimcp_pool_submit(ctx->thread_pool, tpb_batch_worker, &work_items[i]);
+        }
+
+        /* Wait for completion */
+        nimcp_pool_wait(ctx->thread_pool);
+
+        /* Aggregate statistics */
+        uint32_t total_updates = 0;
+        for (uint32_t i = 0; i < num_workers; i++) {
+            total_updates += work_items[i].updates_applied;
+        }
+
+        nimcp_free(work_items);
+    } else {
+        /* Sequential execution */
+        for (uint32_t i = 0; i < num_synapses; i++) {
+            float delta = 0.0f;
+            tpb_route_weight_update(ctx, post_neuron_ids[i], pre_activities[i],
+                                    post_activities[i], spike_deltas[i], &delta);
+            weights[i] += delta;
+        }
+    }
+
+    /* Update timing statistics */
+    uint64_t elapsed = ((uint64_t)clock() * 1000000000ULL / CLOCKS_PER_SEC) - start_time;
+    nimcp_mutex_lock(&ctx->stats_mutex);
+    ctx->stats.total_time_ns += elapsed;
+    nimcp_mutex_unlock(&ctx->stats_mutex);
+
+    return NIMCP_SUCCESS;
+}
+
+static void tpb_batch_worker(void* arg)
+{
+    tpb_batch_work_t* work = (tpb_batch_work_t*)arg;
+    if (!work) return;
+
+    for (uint32_t i = work->start_idx; i < work->end_idx; i++) {
+        float delta = 0.0f;
+        if (tpb_route_weight_update(work->ctx, work->post_neuron_ids[i],
+                                     work->pre_activities[i], work->post_activities[i],
+                                     work->spike_deltas[i], &delta) == NIMCP_SUCCESS) {
+            work->weights[i] += delta;
+            work->updates_applied++;
+        }
+    }
+}
+
+static uint32_t tpb_find_region_for_neuron(tpb_context_t* ctx, uint32_t neuron_id)
+{
+    /* Binary search would be better for many regions, but linear is fine for < 32 */
+    for (uint32_t i = 0; i < ctx->num_regions; i++) {
+        if (neuron_id >= ctx->regions[i].neuron_start_idx &&
+            neuron_id < ctx->regions[i].neuron_end_idx) {
+            return i;
+        }
+    }
+    return ctx->num_regions;  /* Not found */
+}
+
+//=============================================================================
+// Plasticity Rule Implementations
+//=============================================================================
+
+static float tpb_apply_stdp_rule(tpb_context_t* ctx, uint32_t region_id,
+                                  float pre, float post, float delta_t)
+{
+    tpb_region_config_t* region = &ctx->regions[region_id];
+
+    /* STDP parameters */
+    float tau_plus = region->plasticity_window_ms;
+    float tau_minus = region->plasticity_window_ms;
+    float a_plus = 0.005f;
+    float a_minus = 0.00525f;
+
+    float weight_change = 0.0f;
+
+    if (delta_t > 0) {
+        /* Pre-before-post: LTP */
+        weight_change = a_plus * expf(-delta_t / tau_plus) * pre * post;
+
+        nimcp_mutex_lock(&ctx->stats_mutex);
+        ctx->stats.stdp_updates++;
+        nimcp_mutex_unlock(&ctx->stats_mutex);
+    } else if (delta_t < 0) {
+        /* Post-before-pre: LTD */
+        weight_change = -a_minus * expf(delta_t / tau_minus) * pre * post;
+
+        nimcp_mutex_lock(&ctx->stats_mutex);
+        ctx->stats.stdp_updates++;
+        nimcp_mutex_unlock(&ctx->stats_mutex);
+    }
+
+    /* Apply three-factor modulation if enabled */
+    if (region->enable_three_factor && ctx->neuromod_system) {
+        neuromodulator_pool_t pool;
+        neuromodulator_get_levels(ctx->neuromod_system, &pool);
+
+        /* DA modulation: high DA amplifies, low DA suppresses */
+        float da_factor = 0.5f + pool.dopamine * region->da_sensitivity;
+
+        /* ACh modulation: attention focus */
+        float ach_factor = 0.8f + pool.acetylcholine * region->ach_sensitivity * 0.4f;
+
+        weight_change *= da_factor * ach_factor;
+    }
+
+    return weight_change * region->base_learning_rate;
+}
+
+static float tpb_apply_bcm_rule(tpb_context_t* ctx, uint32_t region_id,
+                                 float pre, float post, float threshold)
+{
+    tpb_region_config_t* region = &ctx->regions[region_id];
+
+    /* BCM rule: delta_w = eta * post * (post - theta) * pre */
+    float weight_change = post * (post - threshold) * pre;
+
+    /* Apply neuromodulation */
+    if (region->enable_three_factor && ctx->neuromod_system) {
+        neuromodulator_pool_t pool;
+        neuromodulator_get_levels(ctx->neuromod_system, &pool);
+
+        float da_factor = 0.5f + pool.dopamine * region->da_sensitivity;
+        weight_change *= da_factor;
+    }
+
+    nimcp_mutex_lock(&ctx->stats_mutex);
+    ctx->stats.bcm_updates++;
+    nimcp_mutex_unlock(&ctx->stats_mutex);
+
+    return weight_change * region->base_learning_rate;
+}
+
+//=============================================================================
+// Neuromodulator-Learning Rate Modulator
+//=============================================================================
+
+nimcp_result_t tpb_get_modulated_lr(tpb_context_t* ctx, uint32_t region_id,
+                                     float base_lr, float* modulated_lr_out)
+{
+    if (!ctx || !modulated_lr_out) {
+        return NIMCP_ERROR_INVALID_PARAM;
+    }
+
+    if (!ctx->neuromod_system) {
+        *modulated_lr_out = base_lr;
+        return NIMCP_SUCCESS;
+    }
+
+    neuromodulator_pool_t pool;
+    neuromodulator_get_levels(ctx->neuromod_system, &pool);
+
+    float lr_multiplier = 1.0f;
+    tpb_lr_modulation_config_t* mod_cfg = &ctx->config.lr_modulation;
+
+    /* Get region-specific sensitivities */
+    float da_sens = 1.0f, ach_sens = 1.0f, ht5_sens = 1.0f, ne_sens = 1.0f;
+    float region_strength = 1.0f;
+    if (region_id < ctx->num_regions) {
+        da_sens = ctx->regions[region_id].da_sensitivity;
+        ach_sens = ctx->regions[region_id].ach_sensitivity;
+        ht5_sens = ctx->regions[region_id].ht5_sensitivity;
+        ne_sens = ctx->regions[region_id].ne_sensitivity;
+        region_strength = ctx->regions[region_id].lr_modulation_strength;
+    }
+
+    switch (mod_cfg->mode) {
+        case TPB_NEUROMOD_DA_PRIMARY:
+            lr_multiplier = 0.5f + pool.dopamine * da_sens;
+            break;
+
+        case TPB_NEUROMOD_ACH_PRIMARY:
+            lr_multiplier = 0.5f + pool.acetylcholine * ach_sens;
+            break;
+
+        case TPB_NEUROMOD_5HT_PRIMARY:
+            /* 5-HT modulates patience - inverse relationship with LR */
+            lr_multiplier = 1.5f - pool.serotonin * ht5_sens;
+            break;
+
+        case TPB_NEUROMOD_NE_PRIMARY:
+            lr_multiplier = 0.5f + pool.norepinephrine * ne_sens;
+            break;
+
+        case TPB_NEUROMOD_BALANCED:
+        case TPB_NEUROMOD_CUSTOM:
+            /* Use region sensitivities with normalized weights */
+            lr_multiplier = mod_cfg->da_weight * pool.dopamine * da_sens +
+                           mod_cfg->ach_weight * pool.acetylcholine * ach_sens +
+                           mod_cfg->ht5_weight * (1.0f - pool.serotonin) * ht5_sens +
+                           mod_cfg->ne_weight * pool.norepinephrine * ne_sens;
+            /* Center around 1.0 by adding baseline */
+            lr_multiplier = 0.5f + lr_multiplier;
+            break;
+    }
+
+    /* Apply region-specific modulation strength to scale deviation from 1.0 */
+    lr_multiplier = 1.0f + (lr_multiplier - 1.0f) * region_strength;
+
+    /* Apply sigmoid scaling if enabled */
+    if (mod_cfg->use_sigmoid_scaling) {
+        float x = (lr_multiplier - 1.0f) * mod_cfg->sigmoid_steepness;
+        lr_multiplier = 1.0f + (mod_cfg->max_lr_multiplier - mod_cfg->min_lr_multiplier) *
+                        (1.0f / (1.0f + expf(-x)) - 0.5f);
+    }
+
+    /* Clamp to bounds */
+    if (lr_multiplier < mod_cfg->min_lr_multiplier) {
+        lr_multiplier = mod_cfg->min_lr_multiplier;
+    }
+    if (lr_multiplier > mod_cfg->max_lr_multiplier) {
+        lr_multiplier = mod_cfg->max_lr_multiplier;
+    }
+
+    *modulated_lr_out = base_lr * lr_multiplier;
+
+    /* Track statistics */
+    nimcp_mutex_lock(&ctx->stats_mutex);
+    float n = (float)(ctx->stats.total_plasticity_updates + 1);
+    ctx->stats.avg_lr_multiplier = ctx->stats.avg_lr_multiplier * ((n - 1.0f) / n) + lr_multiplier / n;
+    nimcp_mutex_unlock(&ctx->stats_mutex);
+
+    return NIMCP_SUCCESS;
+}
+
+nimcp_result_t tpb_get_neuromod_levels(tpb_context_t* ctx, float* da_out,
+                                        float* ach_out, float* ht5_out, float* ne_out)
+{
+    if (!ctx) {
+        return NIMCP_ERROR_INVALID_PARAM;
+    }
+
+    if (!ctx->neuromod_system) {
+        if (da_out) *da_out = 0.5f;
+        if (ach_out) *ach_out = 0.5f;
+        if (ht5_out) *ht5_out = 0.5f;
+        if (ne_out) *ne_out = 0.5f;
+        return NIMCP_SUCCESS;
+    }
+
+    neuromodulator_pool_t pool;
+    neuromodulator_get_levels(ctx->neuromod_system, &pool);
+
+    if (da_out) *da_out = pool.dopamine;
+    if (ach_out) *ach_out = pool.acetylcholine;
+    if (ht5_out) *ht5_out = pool.serotonin;
+    if (ne_out) *ne_out = pool.norepinephrine;
+
+    return NIMCP_SUCCESS;
+}
+
+nimcp_result_t tpb_set_neuromod_levels(tpb_context_t* ctx, float da, float ach,
+                                        float ht5, float ne)
+{
+    if (!ctx || !ctx->neuromod_system) {
+        return NIMCP_ERROR_INVALID_PARAM;
+    }
+
+    if (da >= 0.0f) {
+        neuromodulator_set_level(ctx->neuromod_system, NEUROMOD_DOPAMINE,
+                                        da > 1.0f ? 1.0f : da);
+    }
+    if (ach >= 0.0f) {
+        neuromodulator_set_level(ctx->neuromod_system, NEUROMOD_ACETYLCHOLINE,
+                                        ach > 1.0f ? 1.0f : ach);
+    }
+    if (ht5 >= 0.0f) {
+        neuromodulator_set_level(ctx->neuromod_system, NEUROMOD_SEROTONIN,
+                                        ht5 > 1.0f ? 1.0f : ht5);
+    }
+    if (ne >= 0.0f) {
+        neuromodulator_set_level(ctx->neuromod_system, NEUROMOD_NOREPINEPHRINE,
+                                        ne > 1.0f ? 1.0f : ne);
+    }
+
+    return NIMCP_SUCCESS;
+}
+
+//=============================================================================
+// STDP and BCM Integration
+//=============================================================================
+
+nimcp_result_t tpb_create_stdp_synapse(tpb_context_t* ctx, uint32_t region_id,
+                                        stdp_synapse_t* synapse_out)
+{
+    if (!ctx || !synapse_out) {
+        return NIMCP_ERROR_INVALID_PARAM;
+    }
+
+    stdp_synapse_init(synapse_out);
+
+    if (region_id < ctx->num_regions) {
+        tpb_region_config_t* region = &ctx->regions[region_id];
+
+        synapse_out->learning_rate = region->base_learning_rate;
+        synapse_out->tau_plus = region->plasticity_window_ms;
+        synapse_out->tau_minus = region->plasticity_window_ms;
+        synapse_out->enable_da_modulation = region->enable_three_factor;
+        synapse_out->da_modulation_gain = region->da_sensitivity * 100.0f;
+    }
+
+    return NIMCP_SUCCESS;
+}
+
+nimcp_result_t tpb_create_bcm_synapse(tpb_context_t* ctx, uint32_t region_id,
+                                       bcm_synapse_t* synapse_out)
+{
+    if (!ctx || !synapse_out) {
+        return NIMCP_ERROR_INVALID_PARAM;
+    }
+
+    memset(synapse_out, 0, sizeof(bcm_synapse_t));
+    synapse_out->weight = 0.5f;
+    synapse_out->threshold = 0.5f;
+
+    if (region_id < ctx->num_regions) {
+        tpb_region_config_t* region = &ctx->regions[region_id];
+        /* BCM parameters based on region config */
+        synapse_out->weight = region->base_learning_rate * 10.0f;  /* Scale appropriately */
+    }
+
+    return NIMCP_SUCCESS;
+}
+
+nimcp_result_t tpb_update_stdp(tpb_context_t* ctx, stdp_synapse_t* synapse,
+                                bool pre_spike, bool post_spike,
+                                float current_time_ms, float* weight_delta_out)
+{
+    if (!ctx || !synapse) {
+        return NIMCP_ERROR_INVALID_PARAM;
+    }
+
+    float delta = 0.0f;
+
+    if (pre_spike) {
+        delta += stdp_pre_spike_modulated(synapse, current_time_ms, ctx->neuromod_system);
+    }
+    if (post_spike) {
+        delta += stdp_post_spike_modulated(synapse, current_time_ms, ctx->neuromod_system);
+    }
+
+    if (weight_delta_out) {
+        *weight_delta_out = delta;
+    }
+
+    return NIMCP_SUCCESS;
+}
+
+nimcp_result_t tpb_update_bcm(tpb_context_t* ctx, bcm_synapse_t* synapse,
+                               float pre_activity, float post_activity,
+                               float dt, float* weight_delta_out)
+{
+    if (!ctx || !synapse) {
+        return NIMCP_ERROR_INVALID_PARAM;
+    }
+
+    /* BCM update: delta_w = eta * post * (post - theta) * pre */
+    float weight_change = post_activity * (post_activity - synapse->threshold) * pre_activity;
+
+    /* Update sliding threshold: theta_dot = (post^2 - theta) / tau */
+    float tau_theta = 100.0f;  /* ms */
+    float theta_change = (post_activity * post_activity - synapse->threshold) / tau_theta * dt * 1000.0f;
+    synapse->threshold += theta_change;
+
+    /* Clamp threshold */
+    if (synapse->threshold < 0.01f) synapse->threshold = 0.01f;
+    if (synapse->threshold > 0.99f) synapse->threshold = 0.99f;
+
+    /* Apply neuromodulation */
+    if (ctx->neuromod_system) {
+        neuromodulator_pool_t pool;
+        neuromodulator_get_levels(ctx->neuromod_system, &pool);
+        float da_factor = 0.5f + pool.dopamine;
+        weight_change *= da_factor;
+    }
+
+    /* Apply to synapse */
+    synapse->weight += weight_change * 0.01f;  /* Scale by learning rate */
+    if (synapse->weight < 0.0f) synapse->weight = 0.0f;
+    if (synapse->weight > 1.0f) synapse->weight = 1.0f;
+
+    if (weight_delta_out) {
+        *weight_delta_out = weight_change * 0.01f;
+    }
+
+    return NIMCP_SUCCESS;
+}
+
+//=============================================================================
+// Statistics and Monitoring
+//=============================================================================
+
+nimcp_result_t tpb_get_stats(tpb_context_t* ctx, tpb_stats_t* stats_out)
+{
+    if (!ctx || !stats_out) {
+        return NIMCP_ERROR_INVALID_PARAM;
+    }
+
+    nimcp_mutex_lock(&ctx->stats_mutex);
+    *stats_out = ctx->stats;
+    nimcp_mutex_unlock(&ctx->stats_mutex);
+
+    return NIMCP_SUCCESS;
+}
+
+nimcp_result_t tpb_reset_stats(tpb_context_t* ctx)
+{
+    if (!ctx) {
+        return NIMCP_ERROR_INVALID_PARAM;
+    }
+
+    nimcp_mutex_lock(&ctx->stats_mutex);
+    memset(&ctx->stats, 0, sizeof(tpb_stats_t));
+    nimcp_mutex_unlock(&ctx->stats_mutex);
+
+    return NIMCP_SUCCESS;
+}
+
+void tpb_print_status(tpb_context_t* ctx)
+{
+    if (!ctx) {
+        return;
+    }
+
+    tpb_stats_t stats;
+    tpb_get_stats(ctx, &stats);
+
+    float da, ach, ht5, ne;
+    tpb_get_neuromod_levels(ctx, &da, &ach, &ht5, &ne);
+
+    printf("=== Training-Plasticity Bridge Status ===\n");
+    printf("RPE Computations: %lu\n", (unsigned long)stats.rpe_computations);
+    printf("Avg RPE: %.4f\n", stats.avg_rpe);
+    printf("DA Bursts: %.0f, DA Dips: %.0f\n", stats.da_bursts, stats.da_dips);
+    printf("Total Plasticity Updates: %lu\n", (unsigned long)stats.total_plasticity_updates);
+    printf("  STDP: %lu, BCM: %lu, Homeostatic: %lu\n",
+           (unsigned long)stats.stdp_updates, (unsigned long)stats.bcm_updates,
+           (unsigned long)stats.homeostatic_updates);
+    printf("Avg LR Multiplier: %.3f\n", stats.avg_lr_multiplier);
+    printf("Neuromodulator Levels: DA=%.2f ACh=%.2f 5-HT=%.2f NE=%.2f\n", da, ach, ht5, ne);
+    printf("Regions Configured: %u\n", ctx->num_regions);
+    printf("Total Processing Time: %.2f ms\n", (double)stats.total_time_ns / 1e6);
+    printf("==========================================\n");
+}
+
+//=============================================================================
+// CoW Integration for Weight Snapshots
+//=============================================================================
+
+/**
+ * @brief Internal snapshot wrapper structure
+ *
+ * This structure wraps a CoW manager and handle created specifically
+ * for snapshot operations, allowing us to maintain the cow_handle_t
+ * API while supporting dynamic weight array snapshots.
+ */
+typedef struct tpb_snapshot_wrapper {
+    cow_manager_t manager;      /**< CoW manager for this snapshot */
+    cow_handle_t handle;        /**< CoW handle referencing template */
+    size_t size;                /**< Size of data in bytes */
+    uint32_t magic;             /**< Magic number for validation */
+} tpb_snapshot_wrapper_t;
+
+#define TPB_SNAPSHOT_MAGIC 0x54504253  /* "TPBS" */
+
+nimcp_result_t tpb_snapshot_weights(tpb_context_t* ctx, const float* weights,
+                                     uint32_t num_weights, cow_handle_t* snapshot_out)
+{
+    if (!ctx || !weights || !snapshot_out || num_weights == 0) {
+        return NIMCP_ERROR_INVALID_PARAM;
+    }
+
+    if (!ctx->cow_manager) {
+        LOG_WARNING("[%s] CoW not enabled, snapshot failed", TPB_LOG_MODULE);
+        return NIMCP_ERROR_NOT_IMPLEMENTED;
+    }
+
+    /* Allocate wrapper structure */
+    tpb_snapshot_wrapper_t* wrapper = (tpb_snapshot_wrapper_t*)nimcp_malloc(sizeof(tpb_snapshot_wrapper_t));
+    if (!wrapper) {
+        LOG_ERROR("[%s] Failed to allocate snapshot wrapper", TPB_LOG_MODULE);
+        return NIMCP_ERROR_MEMORY;
+    }
+
+    /* Create CoW manager with weights as template */
+    size_t data_size = num_weights * sizeof(float);
+    cow_manager_config_t snap_config = cow_default_config(data_size, NULL);
+    wrapper->manager = cow_manager_create(&snap_config, weights);
+    if (!wrapper->manager) {
+        LOG_ERROR("[%s] Failed to create snapshot manager", TPB_LOG_MODULE);
+        nimcp_free(wrapper);
+        return NIMCP_ERROR_MEMORY;
+    }
+
+    /* Acquire handle referencing the template */
+    wrapper->handle = cow_acquire(wrapper->manager);
+    if (!wrapper->handle) {
+        LOG_ERROR("[%s] Failed to acquire snapshot handle", TPB_LOG_MODULE);
+        cow_manager_destroy(wrapper->manager);
+        nimcp_free(wrapper);
+        return NIMCP_ERROR_MEMORY;
+    }
+
+    wrapper->size = data_size;
+    wrapper->magic = TPB_SNAPSHOT_MAGIC;
+
+    /* Return wrapper as cow_handle_t (opaque pointer) */
+    *snapshot_out = (cow_handle_t)wrapper;
+
+    nimcp_mutex_lock(&ctx->stats_mutex);
+    ctx->stats.cow_saved_bytes += data_size;
+    nimcp_mutex_unlock(&ctx->stats_mutex);
+
+    return NIMCP_SUCCESS;
+}
+
+nimcp_result_t tpb_restore_weights(tpb_context_t* ctx, cow_handle_t snapshot, float* weights)
+{
+    if (!ctx || !snapshot || !weights) {
+        return NIMCP_ERROR_INVALID_PARAM;
+    }
+
+    if (!ctx->cow_manager) {
+        return NIMCP_ERROR_NOT_IMPLEMENTED;
+    }
+
+    /* Validate wrapper */
+    tpb_snapshot_wrapper_t* wrapper = (tpb_snapshot_wrapper_t*)snapshot;
+    if (wrapper->magic != TPB_SNAPSHOT_MAGIC) {
+        LOG_ERROR("[%s] Invalid snapshot handle", TPB_LOG_MODULE);
+        return NIMCP_ERROR_INVALID_PARAM;
+    }
+
+    /* Get read-only pointer to snapshot data */
+    const float* snapshot_data = (const float*)cow_read(wrapper->handle);
+    if (!snapshot_data) {
+        LOG_ERROR("[%s] Failed to read snapshot data", TPB_LOG_MODULE);
+        return NIMCP_ERROR_INVALID_PARAM;
+    }
+
+    memcpy(weights, snapshot_data, wrapper->size);
+
+    return NIMCP_SUCCESS;
+}
+
+nimcp_result_t tpb_release_snapshot(tpb_context_t* ctx, cow_handle_t snapshot)
+{
+    if (!ctx || !snapshot) {
+        return NIMCP_ERROR_INVALID_PARAM;
+    }
+
+    if (!ctx->cow_manager) {
+        return NIMCP_ERROR_NOT_IMPLEMENTED;
+    }
+
+    /* Validate wrapper */
+    tpb_snapshot_wrapper_t* wrapper = (tpb_snapshot_wrapper_t*)snapshot;
+    if (wrapper->magic != TPB_SNAPSHOT_MAGIC) {
+        LOG_ERROR("[%s] Invalid snapshot handle in release", TPB_LOG_MODULE);
+        return NIMCP_ERROR_INVALID_PARAM;
+    }
+
+    /* Release handle and destroy manager */
+    cow_release(wrapper->handle);
+    cow_manager_destroy(wrapper->manager);
+
+    /* Clear magic and free wrapper */
+    wrapper->magic = 0;
+    nimcp_free(wrapper);
+
+    return NIMCP_SUCCESS;
+}

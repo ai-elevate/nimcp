@@ -53,6 +53,22 @@ add_library(nimcp_middleware STATIC
 
     # Training Adapters
     training/nimcp_training_adapters.c
+
+    # Training Pipeline (Phase TM-2)
+    training/nimcp_loss_functions.c
+    training/nimcp_optimizers.c
+
+    # Learning Rate Schedulers (Phase TM-4)
+    training/nimcp_lr_scheduler.c
+
+    # Regularization (Phase TM-5)
+    training/nimcp_regularization.c
+
+    # Gradient Management (Phase TM-6)
+    training/nimcp_gradient_manager.c
+
+    # Training-Plasticity Bridge (Phase TPB-1)
+    training/nimcp_training_plasticity_bridge.c
 )
 
 target_include_directories(nimcp_middleware PUBLIC

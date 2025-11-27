@@ -33,7 +33,7 @@
 // Required Headers for Type Definitions
 //=============================================================================
 
-#include "nimcp_brain.h"
+#include "core/brain/nimcp_brain.h"
 #include <stdint.h>
 #include <stdbool.h>
 #include "plasticity/adaptive/nimcp_adaptive.h"
@@ -62,7 +62,18 @@
 #include "plasticity/neuromodulators/nimcp_spatial_neuromod.h"
 #include "plasticity/attention/nimcp_attention.h"
 #include "core/neuron_types/nimcp_neural_logic.h"
+
+// Phase T1: Biological Framework Enhancements (Training Pipeline)
+#include "plasticity/homeostatic/nimcp_homeostatic.h"
+#include "plasticity/dendritic/nimcp_dendritic.h"
+#include "plasticity/predictive/nimcp_predictive_coding.h"
 #include "cognitive/nimcp_fractal_cognitive.h"
+
+// Phase TM-3: Brain-Training Integration (Training Pipeline)
+#include "middleware/training/nimcp_brain_training_integration.h"
+
+// Phase TPB-1: Training-Plasticity Bridge (connects training pipeline to biological plasticity)
+#include "middleware/training/nimcp_training_plasticity_bridge.h"
 
 // Phase 8: Multi-Modal Integration
 #include "core/integration/nimcp_multimodal_integration.h"
@@ -302,6 +313,19 @@ struct brain_struct {
     neuromod_pink_noise_t* pink_noise;           // Pink noise neuromodulation (struct type, needs *)
     neuromodulator_system_t neuromodulator_system; // Full neuromodulator system (DA, 5-HT, ACh, NE, GABA, GLU)
     multihead_attention_t multihead_attention;   // Attention mechanism for selective feature processing (typedef already includes *)
+
+    // Phase T1: Biological Framework Enhancements (Training Pipeline)
+    homeostatic_controller_t homeostatic;        // Synaptic scaling + intrinsic plasticity (maintains activity levels)
+    dendritic_tree_t dendritic;                  // Dendritic computation with NMDA dynamics (local nonlinearities)
+    pc_hierarchy_t predictive_coding;            // Free energy minimization (hierarchical error computation)
+
+    // Phase TM-3: Brain-Training Integration (Training Pipeline)
+    nimcp_brain_training_ctx_t* training_ctx;    // Training integration context (loss functions, optimizers)
+    bool enable_training_integration;            // Enable training subsystem
+
+    // Phase TPB-1: Training-Plasticity Bridge
+    tpb_context_t* plasticity_bridge;            // Connects training pipeline to biological plasticity systems
+    bool enable_plasticity_bridge;               // Enable plasticity bridge
 
     // === PHASE 8: UNIFIED MULTI-MODAL PROCESSING ===
     // Sensory Cortices (specialized feature extractors)

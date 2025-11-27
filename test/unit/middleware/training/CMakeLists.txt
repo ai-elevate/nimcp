@@ -1,0 +1,209 @@
+# Training Module Unit Tests
+# Phase TM-1: Security + Memory Pool Integration Tests
+
+add_executable(unit_middleware_training_test_training_module
+    test_training_module.cpp
+)
+
+target_include_directories(unit_middleware_training_test_training_module PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${CMAKE_SOURCE_DIR}/src
+)
+
+target_compile_features(unit_middleware_training_test_training_module PRIVATE cxx_std_20)
+
+target_link_libraries(unit_middleware_training_test_training_module
+    PRIVATE
+        GTest::GTest
+        GTest::Main
+        nimcp_middleware
+        nimcp
+        pthread
+)
+
+add_test(NAME unit_middleware_training_test_training_module
+         COMMAND unit_middleware_training_test_training_module)
+
+# Label for filtering
+set_tests_properties(unit_middleware_training_test_training_module
+    PROPERTIES LABELS "unit;middleware;training")
+
+# Loss Functions Unit Tests (Phase TM-2)
+add_executable(unit_middleware_training_test_loss_functions
+    test_loss_functions.cpp
+)
+
+target_include_directories(unit_middleware_training_test_loss_functions PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${CMAKE_SOURCE_DIR}/src
+)
+
+target_compile_features(unit_middleware_training_test_loss_functions PRIVATE cxx_std_20)
+
+target_link_libraries(unit_middleware_training_test_loss_functions
+    PRIVATE
+        GTest::GTest
+        GTest::Main
+        nimcp_middleware
+        nimcp
+        pthread
+        m
+)
+
+add_test(NAME unit_middleware_training_test_loss_functions
+         COMMAND unit_middleware_training_test_loss_functions)
+
+set_tests_properties(unit_middleware_training_test_loss_functions
+    PROPERTIES
+        LABELS "unit;middleware;training;loss"
+        TIMEOUT 60)
+
+# Optimizers Unit Tests (Phase TM-2)
+add_executable(unit_middleware_training_test_optimizers
+    test_optimizers.cpp
+)
+
+target_include_directories(unit_middleware_training_test_optimizers PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${CMAKE_SOURCE_DIR}/src
+)
+
+target_compile_features(unit_middleware_training_test_optimizers PRIVATE cxx_std_20)
+
+target_link_libraries(unit_middleware_training_test_optimizers
+    PRIVATE
+        GTest::GTest
+        GTest::Main
+        nimcp_middleware
+        nimcp
+        pthread
+        m
+)
+
+add_test(NAME unit_middleware_training_test_optimizers
+         COMMAND unit_middleware_training_test_optimizers)
+
+set_tests_properties(unit_middleware_training_test_optimizers
+    PROPERTIES
+        LABELS "unit;middleware;training;optimizer"
+        TIMEOUT 60)
+
+# Learning Rate Scheduler Unit Tests (Phase TM-4)
+add_executable(unit_middleware_training_test_lr_scheduler
+    test_lr_scheduler.cpp
+)
+
+target_include_directories(unit_middleware_training_test_lr_scheduler PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${CMAKE_SOURCE_DIR}/src
+)
+
+target_compile_features(unit_middleware_training_test_lr_scheduler PRIVATE cxx_std_20)
+
+target_link_libraries(unit_middleware_training_test_lr_scheduler
+    PRIVATE
+        GTest::GTest
+        GTest::Main
+        nimcp_middleware
+        nimcp
+        pthread
+        m
+)
+
+add_test(NAME unit_middleware_training_test_lr_scheduler
+         COMMAND unit_middleware_training_test_lr_scheduler)
+
+set_tests_properties(unit_middleware_training_test_lr_scheduler
+    PROPERTIES
+        LABELS "unit;middleware;training;lr_scheduler"
+        TIMEOUT 60)
+
+# Regularization Unit Tests (Phase TM-5)
+add_executable(unit_middleware_training_test_regularization
+    test_regularization.cpp
+)
+
+target_include_directories(unit_middleware_training_test_regularization PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${CMAKE_SOURCE_DIR}/src
+)
+
+target_compile_features(unit_middleware_training_test_regularization PRIVATE cxx_std_20)
+
+target_link_libraries(unit_middleware_training_test_regularization
+    PRIVATE
+        GTest::GTest
+        GTest::Main
+        nimcp_middleware
+        nimcp
+        pthread
+        m
+)
+
+add_test(NAME unit_middleware_training_test_regularization
+         COMMAND unit_middleware_training_test_regularization)
+
+set_tests_properties(unit_middleware_training_test_regularization
+    PROPERTIES
+        LABELS "unit;middleware;training;regularization"
+        TIMEOUT 60)
+
+# Gradient Management Unit Tests (Phase TM-6)
+add_executable(unit_middleware_training_test_gradient_manager
+    test_gradient_manager.cpp
+)
+
+target_include_directories(unit_middleware_training_test_gradient_manager PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${CMAKE_SOURCE_DIR}/src
+)
+
+target_compile_features(unit_middleware_training_test_gradient_manager PRIVATE cxx_std_20)
+
+target_link_libraries(unit_middleware_training_test_gradient_manager
+    PRIVATE
+        GTest::GTest
+        GTest::Main
+        nimcp_middleware
+        nimcp
+        pthread
+        m
+)
+
+add_test(NAME unit_middleware_training_test_gradient_manager
+         COMMAND unit_middleware_training_test_gradient_manager)
+
+set_tests_properties(unit_middleware_training_test_gradient_manager
+    PROPERTIES
+        LABELS "unit;middleware;training;gradient"
+        TIMEOUT 60)
+
+# Training-Plasticity Bridge Unit Tests (Phase TPB-1)
+add_executable(unit_middleware_training_test_plasticity_bridge
+    test_training_plasticity_bridge.cpp
+)
+
+target_include_directories(unit_middleware_training_test_plasticity_bridge PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${CMAKE_SOURCE_DIR}/src
+)
+
+target_compile_features(unit_middleware_training_test_plasticity_bridge PRIVATE cxx_std_20)
+
+target_link_libraries(unit_middleware_training_test_plasticity_bridge
+    PRIVATE
+        GTest::GTest
+        GTest::Main
+        nimcp_middleware
+        nimcp
+        pthread
+        m
+)
+
+add_test(NAME unit_middleware_training_test_plasticity_bridge
+         COMMAND unit_middleware_training_test_plasticity_bridge)
+
+set_tests_properties(unit_middleware_training_test_plasticity_bridge
+    PROPERTIES
+        LABELS "unit;middleware;training;plasticity_bridge"
+        TIMEOUT 120)

@@ -429,6 +429,24 @@ if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/unit/utils/fault_tolerance")
     add_subdirectory(unit/utils/fault_tolerance)
 endif()
 
+# Utils Memory Tests
+# ============================================================================
+
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/unit/utils/memory")
+    message(STATUS "Adding utils memory unit tests...")
+    add_subdirectory(unit/utils/memory)
+endif()
+
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/integration/utils/memory")
+    message(STATUS "Adding utils memory integration tests...")
+    add_subdirectory(integration/utils/memory)
+endif()
+
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/regression/utils/memory")
+    message(STATUS "Adding utils memory regression tests...")
+    add_subdirectory(regression/utils/memory)
+endif()
+
 # ============================================================================
 # Glial Tests (Microglia, Oligodendrocytes)
 # ============================================================================

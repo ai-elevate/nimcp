@@ -26,8 +26,8 @@
 // Includes
 //=============================================================================
 
-#include "nimcp_brain_init.h"
-#include "../nimcp_brain_factory.h"
+#include "core/brain/factory/init/nimcp_brain_init.h"
+#include "core/brain/factory/nimcp_brain_factory.h"
 #include "core/brain/nimcp_brain.h"
 #include "core/brain/nimcp_brain_internal.h"
 #include <math.h>
@@ -117,6 +117,9 @@
 
 // Phase IS-1: Blood-Brain Barrier (Perimeter Defense)
 #include "security/nimcp_blood_brain_barrier.h"
+
+// Phase TM-3: Brain-Training Integration
+#include "middleware/training/nimcp_brain_training_integration.h"
 
 //=============================================================================
 // Global BBB System (Singleton with Reference Counting)
@@ -481,6 +484,28 @@ void nimcp_brain_factory_init_brain_config(brain_config_t* config, const char* t
     config->quantum_classical_mixing = 0.2f;        // 80% quantum + 20% classical (hybrid)
     config->quantum_coin_type = 0;                  // 0=Hadamard (balanced superposition)
     config->quantum_decoherence_rate = 0.05f;       // Minimal decoherence (5% per step)
+
+    // Phase TM-3: Brain-Training Integration defaults
+    config->enable_training_integration = true;     // Enabled by default for full functionality
+    config->training_register_security = true;      // Register with security system
+    config->training_default_lr = 0.0f;             // 0 = use brain's learning_rate
+
+    // Phase TM-4/5/6: Advanced Training Pipeline defaults
+    // LR Scheduler: Automatically adjust learning rate during training
+    config->enable_lr_scheduler = false;            // Disabled by default (opt-in)
+
+    // Regularization: Prevent overfitting via L1/L2/Dropout
+    config->enable_regularization = false;          // Disabled by default (opt-in)
+    config->regularization_l1_lambda = 0.0f;        // No L1 by default (sparse weights)
+    config->regularization_l2_lambda = 0.0001f;     // Small L2 (weight decay)
+    config->dropout_rate = 0.0f;                    // No dropout by default
+
+    // Gradient Management: Accumulation, clipping, and health monitoring
+    config->enable_gradient_management = false;     // Disabled by default (opt-in)
+    config->enable_gradient_health_check = true;    // Enabled by default (safety)
+    config->gradient_accumulation_steps = 1;        // No accumulation by default
+    config->gradient_clip_value = 0.0f;             // No value clipping (0 = disabled)
+    config->gradient_clip_norm = 0.0f;              // No norm clipping (0 = disabled)
 }
 
 /**
@@ -2294,6 +2319,183 @@ bool nimcp_brain_factory_init_biological_predictive_subsystem(brain_t brain)
 
     LOG_INFO("Biological predictive coding subsystem initialized: levels=%u, learning_rate=%.3f",
             num_levels, config.learning_rate);
+    return true;
+}
+
+//=============================================================================
+// Phase TM-3: Brain-Training Integration
+//=============================================================================
+
+/**
+ * @brief Initialize brain-training integration subsystem
+ *
+ * WHAT: Create and configure training integration context
+ * WHY:  Provides unified interface for loss functions, optimizers, and training events
+ * HOW:  Create nimcp_brain_training_ctx with config-specified parameters
+ *
+ * FEATURES:
+ * - Loss function management (MSE, CrossEntropy, Huber, etc.)
+ * - Optimizer management (SGD, Adam, RMSProp, etc.)
+ * - Automatic security registration with BBB and Security Integration
+ * - Event bus integration for training events
+ * - Memory pool support for gradient buffers
+ *
+ * @param brain Brain instance
+ * @return true on success, false on error
+ */
+bool nimcp_brain_factory_init_training_subsystem(brain_t brain)
+{
+    if (!brain) {
+        return false;
+    }
+
+    // Check if already initialized
+    if (brain->training_ctx) {
+        return true;  // Already initialized
+    }
+
+    // Only create if enabled in config
+    if (!brain->config.enable_training_integration) {
+        brain->enable_training_integration = false;
+        return true;  // Not enabled, but not an error
+    }
+
+    // Build training integration configuration
+    nimcp_brain_training_config_t training_config = nimcp_brain_training_default_config();
+
+    // Override with brain config values
+    if (brain->config.training_default_lr > 0.0f) {
+        training_config.default_learning_rate = brain->config.training_default_lr;
+    } else {
+        training_config.default_learning_rate = brain->config.learning_rate;
+    }
+
+    training_config.enable_security = brain->config.training_register_security;
+    training_config.register_with_bbb = (brain->bbb_system != NULL);
+    training_config.use_memory_pool = true;
+
+    // Phase TM-4/5/6: Advanced Training Pipeline Configuration
+    training_config.enable_lr_scheduler = brain->config.enable_lr_scheduler;
+    training_config.enable_regularization = brain->config.enable_regularization;
+    training_config.enable_gradient_management = brain->config.enable_gradient_management;
+    training_config.enable_gradient_health_check = brain->config.enable_gradient_health_check;
+
+    // Regularization parameters
+    training_config.l1_lambda = brain->config.regularization_l1_lambda;
+    training_config.l2_lambda = brain->config.regularization_l2_lambda;
+    training_config.dropout_rate = brain->config.dropout_rate;
+
+    // Gradient management parameters
+    training_config.gradient_accumulation_steps = brain->config.gradient_accumulation_steps;
+    training_config.gradient_clip_value = brain->config.gradient_clip_value;
+    training_config.gradient_clip_norm = brain->config.gradient_clip_norm;
+
+    // Create training integration context
+    brain->training_ctx = nimcp_brain_training_create(&training_config);
+    if (!brain->training_ctx) {
+        set_error("Failed to create brain-training integration context");
+        return false;
+    }
+
+    // Initialize with security integration if available
+    nimcp_result_t result = nimcp_brain_training_init(
+        brain->training_ctx,
+        brain->security_integration,
+        NULL  // Memory manager - use internal pools
+    );
+
+    if (result != NIMCP_SUCCESS) {
+        LOG_WARNING("Failed to initialize training security integration (result=%d), continuing without security", result);
+        // Non-fatal - training can work without security registration
+    }
+
+    // Phase TM-4: Create default LR scheduler if enabled
+    if (brain->config.enable_lr_scheduler) {
+        nimcp_lr_scheduler_config_t sched_config = {
+            .type = NIMCP_LR_STEP,
+            .params.step = {
+                .initial_lr = training_config.default_learning_rate,
+                .step_size = 100,     // Decay every 100 epochs
+                .gamma = 0.9f,        // 10% decay
+                .min_lr = 1e-6f
+            },
+            .verbose = false,
+            .lr_epsilon = 1e-8f
+        };
+        uint32_t sched_id = 0;
+        nimcp_result_t sres = nimcp_brain_training_create_scheduler(brain->training_ctx, &sched_config, &sched_id);
+        if (sres != NIMCP_SUCCESS || sched_id == 0) {
+            LOG_WARNING("Failed to create default LR scheduler (result=%d)", sres);
+        } else {
+            LOG_INFO("Created default StepLR scheduler (id=%u, step_size=100, gamma=0.9)", sched_id);
+        }
+    }
+
+    // Phase TM-6: Create default gradient manager if enabled
+    if (brain->config.enable_gradient_management && brain->config.gradient_accumulation_steps > 1) {
+        nimcp_gradient_manager_config_t gm_config = nimcp_gradient_manager_default_config();
+        gm_config.use_accumulation = true;
+        gm_config.accumulation.accumulation_steps = brain->config.gradient_accumulation_steps;
+        gm_config.accumulation.mode = NIMCP_GRAD_ACCUM_SUM;
+        gm_config.accumulation.sync_on_step = false;
+        gm_config.check_nan_inf = brain->config.enable_gradient_health_check;
+
+        uint32_t gm_id = 0;
+        nimcp_result_t gres = nimcp_brain_training_create_gradient_manager(brain->training_ctx, &gm_config, &gm_id);
+        if (gres != NIMCP_SUCCESS || gm_id == 0) {
+            LOG_WARNING("Failed to create default gradient manager (result=%d)", gres);
+        } else {
+            LOG_INFO("Created default gradient manager (id=%u, accum_steps=%u)",
+                    gm_id, brain->config.gradient_accumulation_steps);
+        }
+    }
+
+    brain->enable_training_integration = true;
+
+    // Phase TPB-1: Initialize Training-Plasticity Bridge
+    // This connects the training pipeline to biological plasticity systems
+    if (brain->config.enable_training_integration && brain->neuromodulator_system) {
+        tpb_config_t tpb_config = tpb_config_default();
+
+        // Link to the brain's neuromodulator system
+        tpb_config.neuromod_system = brain->neuromodulator_system;
+
+        // Configure RPE parameters from training config
+        tpb_config.rpe_to_da_gain = 0.5f;  // Moderate DA sensitivity to loss changes
+
+        // Enable CoW for weight snapshots
+        tpb_config.enable_cow = true;
+
+        // Create the plasticity bridge
+        brain->plasticity_bridge = tpb_create(&tpb_config);
+        if (brain->plasticity_bridge) {
+            brain->enable_plasticity_bridge = true;
+
+            // Configure default cortical region covering all neurons
+            tpb_region_config_t cortical = tpb_region_cortical_default();
+            cortical.neuron_start_idx = 0;
+            cortical.neuron_end_idx = brain_get_neuron_count(brain);
+            tpb_configure_region(brain->plasticity_bridge, &cortical, NULL);
+
+            LOG_INFO("Training-Plasticity Bridge initialized: connected to neuromodulator system");
+        } else {
+            brain->enable_plasticity_bridge = false;
+            LOG_WARNING("Failed to create Training-Plasticity Bridge, continuing without");
+        }
+    } else {
+        brain->plasticity_bridge = NULL;
+        brain->enable_plasticity_bridge = false;
+    }
+
+    LOG_INFO("Brain-training integration initialized: lr=%.4f, security=%s, "
+             "lr_sched=%s, regularization=%s, grad_mgmt=%s, plasticity_bridge=%s",
+            training_config.default_learning_rate,
+            training_config.enable_security ? "enabled" : "disabled",
+            brain->config.enable_lr_scheduler ? "enabled" : "disabled",
+            brain->config.enable_regularization ? "enabled" : "disabled",
+            brain->config.enable_gradient_management ? "enabled" : "disabled",
+            brain->enable_plasticity_bridge ? "enabled" : "disabled");
+
     return true;
 }
 

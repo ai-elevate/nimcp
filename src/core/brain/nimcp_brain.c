@@ -23,7 +23,7 @@
  * - Thread-safe: Error handling uses thread-local storage
  */
 
-#include "nimcp_brain.h"
+#include "core/brain/nimcp_brain.h"
 #include "core/brain/nimcp_brain_internal.h"
 #include <math.h>
 #include <stdarg.h>
@@ -1637,6 +1637,13 @@ void brain_destroy(brain_t brain)
         neuromod_pink_destroy(brain->pink_noise);
     }
 
+    // Phase TPB-1: Cleanup Training-Plasticity Bridge (before neuromodulator system it depends on)
+    if (brain->plasticity_bridge) {
+        tpb_destroy(brain->plasticity_bridge);
+        brain->plasticity_bridge = NULL;
+        brain->enable_plasticity_bridge = false;
+    }
+
     // Phase 10.5: Cleanup neuromodulator system
     if (brain->neuromodulator_system) {
         neuromodulator_system_destroy(brain->neuromodulator_system);
@@ -1979,6 +1986,14 @@ void brain_destroy(brain_t brain)
         nimcp_srb_destroy((nimcp_security_recovery_bridge_t*)brain->security_bridge);
         brain->security_bridge = NULL;
     }
+
+    // === PHASE TM-3: CLEANUP BRAIN-TRAINING INTEGRATION ===
+    // Must be cleaned up BEFORE security integration since it may be registered with security
+    if (brain->training_ctx) {
+        nimcp_brain_training_destroy(brain->training_ctx);
+        brain->training_ctx = NULL;
+    }
+    brain->enable_training_integration = false;
 
     // === PHASE SC-4: CLEANUP UNIVERSAL SECURITY INTEGRATION ===
     if (brain->security_integration) {
