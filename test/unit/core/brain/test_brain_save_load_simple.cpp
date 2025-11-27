@@ -12,7 +12,7 @@
 #include <cstdio>
 
     #include "core/brain/nimcp_brain.h"
-    #include "include/nimcp.h"
+    #include "nimcp.h"
 
 class BrainSaveLoadTest : public ::testing::Test {
 protected:

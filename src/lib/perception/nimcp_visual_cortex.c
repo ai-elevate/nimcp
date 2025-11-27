@@ -11,7 +11,7 @@
  * @version 2.6
  */
 
-#include "include/perception/nimcp_visual_cortex.h"
+#include "perception/nimcp_visual_cortex.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/memory/nimcp_memory_pool.h"  // Memory pool for O(1) allocations
 #include "utils/memory/nimcp_page_cow.h"     // Copy-on-Write for shallow copies

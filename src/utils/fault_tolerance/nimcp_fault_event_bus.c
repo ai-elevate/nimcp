@@ -23,6 +23,7 @@
 
 #include "utils/fault_tolerance/nimcp_fault_event_bus.h"
 #include "utils/memory/nimcp_memory.h"
+#include "utils/thread/nimcp_thread.h"
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
@@ -66,9 +67,9 @@ typedef struct {
     event_node_t* tail;                  /**< Queue tail */
     uint32_t count;                      /**< Current queue size */
     uint32_t max_size;                   /**< Maximum queue size */
-    pthread_mutex_t mutex;               /**< Queue mutex */
-    pthread_cond_t not_empty;            /**< Condition for dequeue */
-    pthread_cond_t not_full;             /**< Condition for enqueue */
+    nimcp_mutex_t mutex;                 /**< Queue mutex */
+    nimcp_cond_t not_empty;              /**< Condition for dequeue */
+    nimcp_cond_t not_full;               /**< Condition for enqueue */
 } event_queue_t;
 
 /**
@@ -80,7 +81,7 @@ typedef struct event_bus_internal {
 
     // Subscriber management
     subscriber_t* subscribers[EVENT_BUS_MAX_EVENT_TYPES]; /**< Subscribers by type hash */
-    pthread_mutex_t subscriber_mutex;      /**< Subscriber list mutex */
+    nimcp_mutex_t subscriber_mutex;        /**< Subscriber list mutex */
     uint64_t next_handle;                  /**< Next subscription handle */
     uint32_t subscriber_count;             /**< Total subscribers */
 
@@ -88,7 +89,7 @@ typedef struct event_bus_internal {
     event_queue_t* queue;                  /**< Event queue */
 
     // Background thread (for async delivery)
-    pthread_t worker_thread;               /**< Worker thread handle */
+    nimcp_thread_t worker_thread;          /**< Worker thread handle */
     bool running;                          /**< Whether worker is running */
     bool shutdown;                         /**< Shutdown signal */
 
@@ -106,7 +107,7 @@ typedef struct event_bus_internal {
     uint64_t max_latency_us;               /**< Max delivery latency */
     uint64_t latency_samples;              /**< Latency sample count */
 
-    pthread_mutex_t stats_mutex;           /**< Statistics mutex */
+    nimcp_mutex_t stats_mutex;             /**< Statistics mutex */
 } event_bus_internal_t;
 
 //=============================================================================
@@ -255,9 +256,9 @@ static event_queue_t* event_queue_create(uint32_t max_size) {
     queue->count = 0;
     queue->max_size = max_size;
 
-    pthread_mutex_init(&queue->mutex, NULL);
-    pthread_cond_init(&queue->not_empty, NULL);
-    pthread_cond_init(&queue->not_full, NULL);
+    nimcp_mutex_init(&queue->mutex, NULL);
+    nimcp_cond_init(&queue->not_empty);
+    nimcp_cond_init(&queue->not_full);
 
     return queue;
 }
@@ -268,7 +269,7 @@ static event_queue_t* event_queue_create(uint32_t max_size) {
 static void event_queue_destroy(event_queue_t* queue) {
     if (!queue) return;
 
-    pthread_mutex_lock(&queue->mutex);
+    nimcp_mutex_lock(&queue->mutex);
 
     // Free all nodes
     event_node_t* node = queue->head;
@@ -278,11 +279,11 @@ static void event_queue_destroy(event_queue_t* queue) {
         node = next;
     }
 
-    pthread_mutex_unlock(&queue->mutex);
+    nimcp_mutex_unlock(&queue->mutex);
 
-    pthread_mutex_destroy(&queue->mutex);
-    pthread_cond_destroy(&queue->not_empty);
-    pthread_cond_destroy(&queue->not_full);
+    nimcp_mutex_destroy(&queue->mutex);
+    nimcp_cond_destroy(&queue->not_empty);
+    nimcp_cond_destroy(&queue->not_full);
 
     nimcp_free(queue);
 }
@@ -293,18 +294,18 @@ static void event_queue_destroy(event_queue_t* queue) {
 static bool event_queue_enqueue(event_queue_t* queue, const fault_event_t* event) {
     if (!queue || !event) return false;
 
-    pthread_mutex_lock(&queue->mutex);
+    nimcp_mutex_lock(&queue->mutex);
 
     // Check if full
     if (queue->count >= queue->max_size) {
-        pthread_mutex_unlock(&queue->mutex);
+        nimcp_mutex_unlock(&queue->mutex);
         return false;
     }
 
     // Create node
     event_node_t* node = (event_node_t*)nimcp_malloc(sizeof(event_node_t));
     if (!node) {
-        pthread_mutex_unlock(&queue->mutex);
+        nimcp_mutex_unlock(&queue->mutex);
         return false;
     }
 
@@ -321,9 +322,9 @@ static bool event_queue_enqueue(event_queue_t* queue, const fault_event_t* event
     queue->count++;
 
     // Signal not empty
-    pthread_cond_signal(&queue->not_empty);
+    nimcp_cond_signal(&queue->not_empty);
 
-    pthread_mutex_unlock(&queue->mutex);
+    nimcp_mutex_unlock(&queue->mutex);
     return true;
 }
 
@@ -333,17 +334,17 @@ static bool event_queue_enqueue(event_queue_t* queue, const fault_event_t* event
 static bool event_queue_dequeue(event_queue_t* queue, fault_event_t* event) {
     if (!queue || !event) return false;
 
-    pthread_mutex_lock(&queue->mutex);
+    nimcp_mutex_lock(&queue->mutex);
 
     // Wait if empty
     while (queue->count == 0) {
-        pthread_cond_wait(&queue->not_empty, &queue->mutex);
+        nimcp_cond_wait(&queue->not_empty, &queue->mutex);
     }
 
     // Get head
     event_node_t* node = queue->head;
     if (!node) {
-        pthread_mutex_unlock(&queue->mutex);
+        nimcp_mutex_unlock(&queue->mutex);
         return false;
     }
 
@@ -357,9 +358,9 @@ static bool event_queue_dequeue(event_queue_t* queue, fault_event_t* event) {
     nimcp_free(node);
 
     // Signal not full
-    pthread_cond_signal(&queue->not_full);
+    nimcp_cond_signal(&queue->not_full);
 
-    pthread_mutex_unlock(&queue->mutex);
+    nimcp_mutex_unlock(&queue->mutex);
     return true;
 }
 
@@ -369,9 +370,9 @@ static bool event_queue_dequeue(event_queue_t* queue, fault_event_t* event) {
 static bool event_queue_is_empty(event_queue_t* queue) {
     if (!queue) return true;
 
-    pthread_mutex_lock(&queue->mutex);
+    nimcp_mutex_lock(&queue->mutex);
     bool empty = (queue->count == 0);
-    pthread_mutex_unlock(&queue->mutex);
+    nimcp_mutex_unlock(&queue->mutex);
 
     return empty;
 }
@@ -382,9 +383,9 @@ static bool event_queue_is_empty(event_queue_t* queue) {
 static bool event_queue_is_full(event_queue_t* queue) {
     if (!queue) return true;
 
-    pthread_mutex_lock(&queue->mutex);
+    nimcp_mutex_lock(&queue->mutex);
     bool full = (queue->count >= queue->max_size);
-    pthread_mutex_unlock(&queue->mutex);
+    nimcp_mutex_unlock(&queue->mutex);
 
     return full;
 }
@@ -413,15 +414,15 @@ fault_event_bus_t event_bus_create(const char* name, fault_event_delivery_mode_t
     bus->shutdown = false;
 
     // Initialize mutexes
-    pthread_mutex_init(&bus->subscriber_mutex, NULL);
-    pthread_mutex_init(&bus->stats_mutex, NULL);
+    nimcp_mutex_init(&bus->subscriber_mutex, NULL);
+    nimcp_mutex_init(&bus->stats_mutex, NULL);
 
     // Create event queue for async mode
     if (delivery_mode == EVENT_DELIVERY_ASYNC) {
         bus->queue = event_queue_create(EVENT_BUS_QUEUE_SIZE);
         if (!bus->queue) {
-            pthread_mutex_destroy(&bus->subscriber_mutex);
-            pthread_mutex_destroy(&bus->stats_mutex);
+            nimcp_mutex_destroy(&bus->subscriber_mutex);
+            nimcp_mutex_destroy(&bus->stats_mutex);
             nimcp_free(bus);
             return NULL;
         }
@@ -444,7 +445,7 @@ void event_bus_destroy(fault_event_bus_t bus) {
     }
 
     // Free all subscribers
-    pthread_mutex_lock(&internal->subscriber_mutex);
+    nimcp_mutex_lock(&internal->subscriber_mutex);
 
     for (uint32_t i = 0; i < EVENT_BUS_MAX_EVENT_TYPES; i++) {
         subscriber_t* sub = internal->subscribers[i];
@@ -455,7 +456,7 @@ void event_bus_destroy(fault_event_bus_t bus) {
         }
     }
 
-    pthread_mutex_unlock(&internal->subscriber_mutex);
+    nimcp_mutex_unlock(&internal->subscriber_mutex);
 
     // Destroy queue
     if (internal->queue) {
@@ -463,8 +464,8 @@ void event_bus_destroy(fault_event_bus_t bus) {
     }
 
     // Destroy mutexes
-    pthread_mutex_destroy(&internal->subscriber_mutex);
-    pthread_mutex_destroy(&internal->stats_mutex);
+    nimcp_mutex_destroy(&internal->subscriber_mutex);
+    nimcp_mutex_destroy(&internal->stats_mutex);
 
     nimcp_free(internal);
 }
@@ -507,8 +508,9 @@ bool event_bus_start(fault_event_bus_t bus) {
     internal->shutdown = false;
 
     // Create worker thread
-    int result = pthread_create(&internal->worker_thread, NULL,
-                                event_bus_worker_thread, internal);
+    int result = nimcp_thread_create(&internal->worker_thread,
+                                     event_bus_worker_thread, internal,
+                                     NULL);
     if (result != 0) {
         snprintf(internal->last_error, sizeof(internal->last_error),
                 "Failed to create worker thread: %s", strerror(result));
@@ -541,7 +543,7 @@ bool event_bus_stop(fault_event_bus_t bus, bool drain_queue) {
     }
 
     // Wait for thread to exit
-    pthread_join(internal->worker_thread, NULL);
+    nimcp_thread_join(internal->worker_thread, NULL);
 
     internal->running = false;
     return true;
@@ -591,7 +593,7 @@ event_subscription_handle_t event_bus_subscribe_priority(
     subscriber_t* sub = (subscriber_t*)nimcp_calloc(1, sizeof(subscriber_t));
     if (!sub) return INVALID_SUBSCRIPTION_HANDLE;
 
-    pthread_mutex_lock(&internal->subscriber_mutex);
+    nimcp_mutex_lock(&internal->subscriber_mutex);
 
     sub->handle = internal->next_handle++;
     sub->type = type;
@@ -608,7 +610,7 @@ event_subscription_handle_t event_bus_subscribe_priority(
     internal->subscribers[bucket] = sub;
     internal->subscriber_count++;
 
-    pthread_mutex_unlock(&internal->subscriber_mutex);
+    nimcp_mutex_unlock(&internal->subscriber_mutex);
 
     return sub->handle;
 }
@@ -621,7 +623,7 @@ bool event_bus_unsubscribe(fault_event_bus_t bus, event_subscription_handle_t ha
 
     event_bus_internal_t* internal = (event_bus_internal_t*)bus;
 
-    pthread_mutex_lock(&internal->subscriber_mutex);
+    nimcp_mutex_lock(&internal->subscriber_mutex);
 
     // Search all buckets
     for (uint32_t i = 0; i < EVENT_BUS_MAX_EVENT_TYPES; i++) {
@@ -633,7 +635,7 @@ bool event_bus_unsubscribe(fault_event_bus_t bus, event_subscription_handle_t ha
                 *prev = sub->next;
                 nimcp_free(sub);
                 internal->subscriber_count--;
-                pthread_mutex_unlock(&internal->subscriber_mutex);
+                nimcp_mutex_unlock(&internal->subscriber_mutex);
                 return true;
             }
             prev = &sub->next;
@@ -641,7 +643,7 @@ bool event_bus_unsubscribe(fault_event_bus_t bus, event_subscription_handle_t ha
         }
     }
 
-    pthread_mutex_unlock(&internal->subscriber_mutex);
+    nimcp_mutex_unlock(&internal->subscriber_mutex);
     return false;
 }
 
@@ -654,7 +656,7 @@ uint32_t event_bus_unsubscribe_all(fault_event_bus_t bus, void* context) {
     event_bus_internal_t* internal = (event_bus_internal_t*)bus;
     uint32_t removed = 0;
 
-    pthread_mutex_lock(&internal->subscriber_mutex);
+    nimcp_mutex_lock(&internal->subscriber_mutex);
 
     for (uint32_t i = 0; i < EVENT_BUS_MAX_EVENT_TYPES; i++) {
         subscriber_t** prev = &internal->subscribers[i];
@@ -675,7 +677,7 @@ uint32_t event_bus_unsubscribe_all(fault_event_bus_t bus, void* context) {
         }
     }
 
-    pthread_mutex_unlock(&internal->subscriber_mutex);
+    nimcp_mutex_unlock(&internal->subscriber_mutex);
     return removed;
 }
 
@@ -716,7 +718,7 @@ static bool deliver_event_to_subscribers(fault_event_bus_t bus, const fault_even
     uint64_t start_time = event_get_timestamp_us();
     uint32_t delivered = 0;
 
-    pthread_mutex_lock(&internal->subscriber_mutex);
+    nimcp_mutex_lock(&internal->subscriber_mutex);
 
     // Deliver to subscribers of this specific type
     uint32_t bucket = hash_event_type(event->type);
@@ -728,9 +730,9 @@ static bool deliver_event_to_subscribers(fault_event_bus_t bus, const fault_even
                 delivered++;
             } else {
                 sub->errors++;
-                pthread_mutex_lock(&internal->stats_mutex);
+                nimcp_mutex_lock(&internal->stats_mutex);
                 internal->total_callback_errors++;
-                pthread_mutex_unlock(&internal->stats_mutex);
+                nimcp_mutex_unlock(&internal->stats_mutex);
             }
         }
         sub = sub->next;
@@ -747,28 +749,28 @@ static bool deliver_event_to_subscribers(fault_event_bus_t bus, const fault_even
                     delivered++;
                 } else {
                     sub->errors++;
-                    pthread_mutex_lock(&internal->stats_mutex);
+                    nimcp_mutex_lock(&internal->stats_mutex);
                     internal->total_callback_errors++;
-                    pthread_mutex_unlock(&internal->stats_mutex);
+                    nimcp_mutex_unlock(&internal->stats_mutex);
                 }
             }
             sub = sub->next;
         }
     }
 
-    pthread_mutex_unlock(&internal->subscriber_mutex);
+    nimcp_mutex_unlock(&internal->subscriber_mutex);
 
     // Update statistics
     uint64_t latency = event_get_timestamp_us() - start_time;
 
-    pthread_mutex_lock(&internal->stats_mutex);
+    nimcp_mutex_lock(&internal->stats_mutex);
     internal->total_delivered += delivered;
     internal->total_latency_us += latency;
     internal->latency_samples++;
     if (latency > internal->max_latency_us) {
         internal->max_latency_us = latency;
     }
-    pthread_mutex_unlock(&internal->stats_mutex);
+    nimcp_mutex_unlock(&internal->stats_mutex);
 
     return true;
 }
@@ -788,11 +790,11 @@ bool event_bus_publish(fault_event_bus_t bus, const fault_event_t* event) {
     // Create event copy with sequence number
     fault_event_t event_copy = *event;
 
-    pthread_mutex_lock(&internal->stats_mutex);
+    nimcp_mutex_lock(&internal->stats_mutex);
     event_copy.sequence_number = internal->sequence_number++;
     event_copy.timestamp_us = event_get_timestamp_us();
     internal->total_published++;
-    pthread_mutex_unlock(&internal->stats_mutex);
+    nimcp_mutex_unlock(&internal->stats_mutex);
 
     // Deliver based on mode
     if (internal->delivery_mode == EVENT_DELIVERY_IMMEDIATE) {
@@ -800,9 +802,9 @@ bool event_bus_publish(fault_event_bus_t bus, const fault_event_t* event) {
     } else {
         // Enqueue for async delivery
         if (!event_queue_enqueue(internal->queue, &event_copy)) {
-            pthread_mutex_lock(&internal->stats_mutex);
+            nimcp_mutex_lock(&internal->stats_mutex);
             internal->total_dropped++;
-            pthread_mutex_unlock(&internal->stats_mutex);
+            nimcp_mutex_unlock(&internal->stats_mutex);
             snprintf(internal->last_error, sizeof(internal->last_error),
                     "Event queue full, event dropped");
             return false;
@@ -883,7 +885,7 @@ bool event_bus_get_stats(fault_event_bus_t bus, event_bus_stats_t* stats) {
 
     event_bus_internal_t* internal = (event_bus_internal_t*)bus;
 
-    pthread_mutex_lock(&internal->stats_mutex);
+    nimcp_mutex_lock(&internal->stats_mutex);
 
     stats->total_events_published = internal->total_published;
     stats->total_events_delivered = internal->total_delivered;
@@ -895,7 +897,7 @@ bool event_bus_get_stats(fault_event_bus_t bus, event_bus_stats_t* stats) {
         internal->total_latency_us / internal->latency_samples : 0;
     stats->max_delivery_latency_us = internal->max_latency_us;
 
-    pthread_mutex_unlock(&internal->stats_mutex);
+    nimcp_mutex_unlock(&internal->stats_mutex);
 
     return true;
 }
@@ -908,7 +910,7 @@ void event_bus_reset_stats(fault_event_bus_t bus) {
 
     event_bus_internal_t* internal = (event_bus_internal_t*)bus;
 
-    pthread_mutex_lock(&internal->stats_mutex);
+    nimcp_mutex_lock(&internal->stats_mutex);
 
     internal->total_published = 0;
     internal->total_delivered = 0;
@@ -918,7 +920,7 @@ void event_bus_reset_stats(fault_event_bus_t bus) {
     internal->max_latency_us = 0;
     internal->latency_samples = 0;
 
-    pthread_mutex_unlock(&internal->stats_mutex);
+    nimcp_mutex_unlock(&internal->stats_mutex);
 }
 
 /**
@@ -930,7 +932,7 @@ uint32_t event_bus_get_subscriber_count(fault_event_bus_t bus, fault_event_type_
     event_bus_internal_t* internal = (event_bus_internal_t*)bus;
     uint32_t count = 0;
 
-    pthread_mutex_lock(&internal->subscriber_mutex);
+    nimcp_mutex_lock(&internal->subscriber_mutex);
 
     uint32_t bucket = hash_event_type(type);
     subscriber_t* sub = internal->subscribers[bucket];
@@ -942,7 +944,7 @@ uint32_t event_bus_get_subscriber_count(fault_event_bus_t bus, fault_event_type_
         sub = sub->next;
     }
 
-    pthread_mutex_unlock(&internal->subscriber_mutex);
+    nimcp_mutex_unlock(&internal->subscriber_mutex);
 
     return count;
 }
@@ -957,9 +959,9 @@ uint32_t event_bus_get_pending_count(fault_event_bus_t bus) {
 
     if (!internal->queue) return 0;
 
-    pthread_mutex_lock(&internal->queue->mutex);
+    nimcp_mutex_lock(&internal->queue->mutex);
     uint32_t count = internal->queue->count;
-    pthread_mutex_unlock(&internal->queue->mutex);
+    nimcp_mutex_unlock(&internal->queue->mutex);
 
     return count;
 }

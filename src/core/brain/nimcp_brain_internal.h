@@ -41,6 +41,8 @@
 #include "utils/platform/nimcp_platform_mutex.h"
 #include "networking/distributed/nimcp_distributed_cognition.h"
 #include "security/nimcp_security.h"
+#include "security/nimcp_security_integration.h"  // Phase SC-4: Universal Security Integration
+#include "security/nimcp_blood_brain_barrier.h"   // Phase IS-1: BBB Perimeter Defense
 
 // Comprehensive Integration: All Advanced Subsystems
 #include "glial/integration/nimcp_glial_integration.h"
@@ -60,13 +62,18 @@
 #include "plasticity/neuromodulators/nimcp_spatial_neuromod.h"
 #include "plasticity/attention/nimcp_attention.h"
 #include "core/neuron_types/nimcp_neural_logic.h"
+
+// Phase T1: Biological Framework Enhancements (Training Pipeline)
+#include "plasticity/homeostatic/nimcp_homeostatic.h"
+#include "plasticity/dendritic/nimcp_dendritic.h"
+#include "plasticity/predictive/nimcp_predictive_coding.h"
 #include "cognitive/nimcp_fractal_cognitive.h"
 
 // Phase 8: Multi-Modal Integration
 #include "core/integration/nimcp_multimodal_integration.h"
-#include "include/perception/nimcp_visual_cortex.h"
-#include "include/perception/nimcp_audio_cortex.h"
-#include "include/perception/nimcp_speech_cortex.h"
+#include "perception/nimcp_visual_cortex.h"
+#include "perception/nimcp_audio_cortex.h"
+#include "perception/nimcp_speech_cortex.h"
 #include "nlp/nimcp_nlp.h"
 
 // Brain Regions Architecture
@@ -301,6 +308,11 @@ struct brain_struct {
     neuromodulator_system_t neuromodulator_system; // Full neuromodulator system (DA, 5-HT, ACh, NE, GABA, GLU)
     multihead_attention_t multihead_attention;   // Attention mechanism for selective feature processing (typedef already includes *)
 
+    // Phase T1: Biological Framework Enhancements (Training Pipeline)
+    homeostatic_controller_t homeostatic;        // Synaptic scaling + intrinsic plasticity (maintains activity levels)
+    dendritic_tree_t dendritic;                  // Dendritic computation with NMDA dynamics (local nonlinearities)
+    pc_hierarchy_t predictive_coding;            // Free energy minimization (hierarchical error computation)
+
     // === PHASE 8: UNIFIED MULTI-MODAL PROCESSING ===
     // Sensory Cortices (specialized feature extractors)
     visual_cortex_t* visual_cortex;              // V1 visual processing (CNN-based)
@@ -475,6 +487,57 @@ struct brain_struct {
 
     // Track max neurons for pool sizing
     uint32_t max_active_neurons_for_pool;
+
+    // === PHASE SC-2: SECURITY-FAULT TOLERANCE INTEGRATION ===
+    //
+    // Security recovery bridge connects security modules (coverage, fractal, CFI,
+    // shadow stack, audit) with the fault tolerance system (fast recovery, checkpoints).
+    // When security violations are detected, automatic repair actions are triggered.
+    //
+    // Architecture:
+    // - Security Coverage: Tracks protected memory regions with hash verification
+    // - Fractal Security: Hierarchical integrity checking (Merkle tree)
+    // - CFI/Shadow Stack: Control flow protection against ROP/JOP attacks
+    // - Fast Recovery: Sub-millisecond repair for common errors
+    // - Checkpoints: Full state restoration for severe violations
+
+    void* security_bridge;              // nimcp_security_recovery_bridge_t* (opaque)
+    bool enable_security_monitoring;    // Enable security-fault tolerance integration
+    uint32_t security_check_interval_ms; // Verification cycle interval (0 = manual only)
+    uint64_t last_security_check_ms;    // Last security verification timestamp
+
+    // === PHASE SC-4: UNIVERSAL SECURITY INTEGRATION ===
+    //
+    // Global security integration framework provides:
+    // - Entropy monitoring: Detect tampering via Shannon entropy analysis
+    // - Trust management: Bayesian trust propagation across modules
+    // - Differential privacy: Privacy-preserving statistics and queries
+    // - Event system: Security event propagation and logging
+    // - Self-monitoring: Security system monitors its own integrity
+    //
+    // The brain registers itself and its subsystems with the global security
+    // context, enabling comprehensive security monitoring across all modules.
+
+    nimcp_sec_integration_t* security_integration;  // Global security integration context
+    uint32_t sec_module_id;                         // Brain's module ID in security system
+    uint32_t* sec_region_ids;                       // Region IDs for monitored memory regions
+    uint32_t num_sec_regions;                       // Number of monitored regions
+    bool enable_security_integration;               // Enable Phase SC-4 security
+
+    // === PHASE IS-1: BLOOD-BRAIN BARRIER (BBB) INTEGRATION ===
+    //
+    // BBB provides perimeter defense for the neural network:
+    // - Input Gate: Validates and sanitizes all external inputs
+    // - Code Signing: Verifies integrity of loaded weights/models
+    // - Memory Boundary: Protects critical memory regions
+    // - Access Control: Role-based access to brain operations
+    //
+    // Each brain holds a reference to the global BBB system for protection.
+
+    bbb_system_t bbb_system;            // Reference to global BBB system (NULL if disabled)
+    uint32_t bbb_memory_region_id;      // BBB memory region registration ID
+    uint32_t bbb_subject_id;            // BBB access control subject ID
+    bool bbb_enabled;                   // BBB protection enabled for this brain
 };
 
 //=============================================================================

@@ -12,7 +12,7 @@
 #include <cmath>
 #include <cstring>
 
-#include "include/perception/nimcp_visual_cortex.h"
+#include "perception/nimcp_visual_cortex.h"
 #include "utils/memory/nimcp_memory.h"
 
 //=============================================================================

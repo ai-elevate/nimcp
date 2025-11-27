@@ -50,7 +50,7 @@ TEST_F(EventBusTest, CreateEventTypes) {
     uint32_t neurons[] = {1, 2, 3, 4, 5};
     event_t spike = event_create_spike_burst(
         neurons, 5, 0.95f, 1000,
-        EVENT_PRIORITY_HIGH, EVENT_SOURCE_BRAIN);
+        MW_EVENT_PRIORITY_HIGH, EVENT_SOURCE_BRAIN);
 
     EXPECT_EQ(spike.type, EVENT_TYPE_SPIKE_BURST);
     EXPECT_EQ(spike.data.spike_burst.num_neurons, 5u);
@@ -59,7 +59,7 @@ TEST_F(EventBusTest, CreateEventTypes) {
     // Pattern detected event
     event_t pattern = event_create_pattern_detected(
         42, 0.88f, 10, "test_pattern",
-        EVENT_PRIORITY_NORMAL, EVENT_SOURCE_PATTERN_DETECTOR);
+        MW_EVENT_PRIORITY_NORMAL, EVENT_SOURCE_PATTERN_DETECTOR);
 
     EXPECT_EQ(pattern.type, EVENT_TYPE_PATTERN_DETECTED);
     EXPECT_EQ(pattern.data.pattern_detected.pattern_id, 42u);
@@ -68,7 +68,7 @@ TEST_F(EventBusTest, CreateEventTypes) {
     // Salience peak event
     event_t salience = event_create_salience_peak(
         0.9f, 0.7f, 0.8f, 0.6f,
-        EVENT_PRIORITY_HIGH, EVENT_SOURCE_SALIENCE);
+        MW_EVENT_PRIORITY_HIGH, EVENT_SOURCE_SALIENCE);
 
     EXPECT_EQ(salience.type, EVENT_TYPE_SALIENCE_PEAK);
     EXPECT_FLOAT_EQ(salience.data.salience_peak.salience_score, 0.9f);
@@ -79,7 +79,7 @@ TEST_F(EventBusTest, EventCopyAndFree) {
     uint32_t neurons[] = {1, 2, 3};
     event_t original = event_create_spike_burst(
         neurons, 3, 0.9f, 500,
-        EVENT_PRIORITY_NORMAL, EVENT_SOURCE_BRAIN);
+        MW_EVENT_PRIORITY_NORMAL, EVENT_SOURCE_BRAIN);
 
     event_t copy;
     EXPECT_TRUE(event_copy(&copy, &original));
@@ -104,7 +104,7 @@ TEST_F(EventBusTest, EventCopyAndFree) {
 TEST_F(EventBusTest, QueueEnqueueDequeue) {
     event_t event = event_create_salience_peak(
         0.8f, 0.6f, 0.7f, 0.5f,
-        EVENT_PRIORITY_NORMAL, EVENT_SOURCE_SALIENCE);
+        MW_EVENT_PRIORITY_NORMAL, EVENT_SOURCE_SALIENCE);
 
     EXPECT_TRUE(event_bus_publish(bus, &event));
 
@@ -125,11 +125,11 @@ TEST_F(EventBusTest, QueueEnqueueDequeue) {
 TEST_F(EventBusTest, PriorityOrdering) {
     // Enqueue events with different priorities
     event_t low = event_create_salience_peak(0.1f, 0.1f, 0.1f, 0.1f,
-        EVENT_PRIORITY_LOW, EVENT_SOURCE_SALIENCE);
+        MW_EVENT_PRIORITY_LOW, EVENT_SOURCE_SALIENCE);
     event_t high = event_create_salience_peak(0.9f, 0.9f, 0.9f, 0.9f,
-        EVENT_PRIORITY_HIGH, EVENT_SOURCE_SALIENCE);
+        MW_EVENT_PRIORITY_HIGH, EVENT_SOURCE_SALIENCE);
     event_t critical = event_create_salience_peak(1.0f, 1.0f, 1.0f, 1.0f,
-        EVENT_PRIORITY_CRITICAL, EVENT_SOURCE_SALIENCE);
+        MW_EVENT_PRIORITY_CRITICAL, EVENT_SOURCE_SALIENCE);
 
     // Enqueue in wrong order
     EXPECT_TRUE(event_bus_publish(bus, &low));
@@ -138,10 +138,10 @@ TEST_F(EventBusTest, PriorityOrdering) {
 
     // Should come out ordered by priority
     std::atomic<int> callback_count{0};
-    std::vector<event_priority_t> received_priorities;
+    std::vector<mw_event_priority_t> received_priorities;
 
     auto callback = [](const event_t* evt, void* ctx) {
-        auto* priorities = static_cast<std::vector<event_priority_t>*>(ctx);
+        auto* priorities = static_cast<std::vector<mw_event_priority_t>*>(ctx);
         priorities->push_back(evt->priority);
     };
 
@@ -150,9 +150,9 @@ TEST_F(EventBusTest, PriorityOrdering) {
     event_bus_process_events(bus, 10);
 
     ASSERT_EQ(received_priorities.size(), 3u);
-    EXPECT_EQ(received_priorities[0], EVENT_PRIORITY_CRITICAL);
-    EXPECT_EQ(received_priorities[1], EVENT_PRIORITY_HIGH);
-    EXPECT_EQ(received_priorities[2], EVENT_PRIORITY_LOW);
+    EXPECT_EQ(received_priorities[0], MW_EVENT_PRIORITY_CRITICAL);
+    EXPECT_EQ(received_priorities[1], MW_EVENT_PRIORITY_HIGH);
+    EXPECT_EQ(received_priorities[2], MW_EVENT_PRIORITY_LOW);
 }
 
 //=============================================================================
@@ -175,7 +175,7 @@ TEST_F(EventBusTest, SubscribeAndReceive) {
     // Publish event
     event_t event = event_create_salience_peak(
         0.8f, 0.7f, 0.6f, 0.5f,
-        EVENT_PRIORITY_NORMAL, EVENT_SOURCE_SALIENCE);
+        MW_EVENT_PRIORITY_NORMAL, EVENT_SOURCE_SALIENCE);
 
     event_bus_publish(bus, &event);
     event_bus_process_events(bus, 10);
@@ -199,7 +199,7 @@ TEST_F(EventBusTest, MultipleSubscribers) {
 
     event_t event = event_create_salience_peak(
         0.8f, 0.7f, 0.6f, 0.5f,
-        EVENT_PRIORITY_NORMAL, EVENT_SOURCE_SALIENCE);
+        MW_EVENT_PRIORITY_NORMAL, EVENT_SOURCE_SALIENCE);
 
     event_bus_publish(bus, &event);
     event_bus_process_events(bus, 10);
@@ -238,11 +238,11 @@ TEST_F(EventBusTest, FilteredSubscription) {
     // Publish different event types
     event_t salience = event_create_salience_peak(
         0.8f, 0.7f, 0.6f, 0.5f,
-        EVENT_PRIORITY_NORMAL, EVENT_SOURCE_SALIENCE);
+        MW_EVENT_PRIORITY_NORMAL, EVENT_SOURCE_SALIENCE);
 
     event_t pattern = event_create_pattern_detected(
         1, 0.9f, 5, "test",
-        EVENT_PRIORITY_NORMAL, EVENT_SOURCE_PATTERN_DETECTOR);
+        MW_EVENT_PRIORITY_NORMAL, EVENT_SOURCE_PATTERN_DETECTOR);
 
     event_bus_publish(bus, &salience);
     event_bus_publish(bus, &pattern);
@@ -267,7 +267,7 @@ TEST_F(EventBusTest, Unsubscribe) {
     // Publish and process
     event_t event = event_create_salience_peak(
         0.8f, 0.7f, 0.6f, 0.5f,
-        EVENT_PRIORITY_NORMAL, EVENT_SOURCE_SALIENCE);
+        MW_EVENT_PRIORITY_NORMAL, EVENT_SOURCE_SALIENCE);
 
     event_bus_publish(bus, &event);
     event_bus_process_events(bus, 10);
@@ -308,7 +308,7 @@ TEST_F(EventBusTest, ConcurrentPublish) {
             for (int i = 0; i < events_per_thread; i++) {
                 event_t event = event_create_salience_peak(
                     0.5f, 0.5f, 0.5f, 0.5f,
-                    EVENT_PRIORITY_NORMAL, EVENT_SOURCE_SALIENCE);
+                    MW_EVENT_PRIORITY_NORMAL, EVENT_SOURCE_SALIENCE);
                 event_bus_publish(this->bus, &event);
             }
         });
@@ -346,7 +346,7 @@ TEST_F(EventBusTest, HighThroughput) {
     for (int i = 0; i < num_events; i++) {
         event_t event = event_create_salience_peak(
             0.5f, 0.5f, 0.5f, 0.5f,
-            static_cast<event_priority_t>(i % 5),
+            static_cast<mw_event_priority_t>(i % 5),
             EVENT_SOURCE_SALIENCE);
         event_bus_publish(bus, &event);
 
@@ -398,7 +398,7 @@ TEST_F(EventBusTest, OverflowHandling) {
     for (int i = 0; i < 10; i++) {
         event_t event = event_create_salience_peak(
             static_cast<float>(i) / 10.0f, 0.5f, 0.5f, 0.5f,
-            EVENT_PRIORITY_NORMAL, EVENT_SOURCE_SALIENCE);
+            MW_EVENT_PRIORITY_NORMAL, EVENT_SOURCE_SALIENCE);
         event_bus_publish(bus, &event);
     }
 

@@ -14,7 +14,6 @@ target_link_libraries(regression_middleware_controller
 
 target_include_directories(regression_middleware_controller PRIVATE
     ${CMAKE_SOURCE_DIR}/include
-    ${CMAKE_SOURCE_DIR}/src/include
 )
 
 add_test(NAME regression_middleware_controller

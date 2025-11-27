@@ -98,6 +98,7 @@ typedef struct {
 
 // Note: pthread_once is not yet in platform layer
 #define NIMCP_ONCE_INIT PTHREAD_ONCE_INIT
+#define NIMCP_MUTEX_INITIALIZER PTHREAD_MUTEX_INITIALIZER
 #define NIMCP_THREAD_DEFAULT_STACK_SIZE (2 * 1024 * 1024)
 #define RESOURCE_LOCK_BUCKETS 256
 
@@ -237,6 +238,34 @@ nimcp_result_t nimcp_rwlock_rdlock(nimcp_rwlock_t* lock);
 nimcp_result_t nimcp_rwlock_wrlock(nimcp_rwlock_t* lock);
 
 /**
+ * @brief Try to acquire read lock without blocking
+ * @return NIMCP_SUCCESS if locked, NIMCP_BUSY if would block
+ */
+nimcp_result_t nimcp_rwlock_tryrdlock(nimcp_rwlock_t* lock);
+
+/**
+ * @brief Try to acquire write lock without blocking
+ * @return NIMCP_SUCCESS if locked, NIMCP_BUSY if would block
+ */
+nimcp_result_t nimcp_rwlock_trywrlock(nimcp_rwlock_t* lock);
+
+/**
+ * @brief Try to acquire read lock with timeout
+ * @param lock Read-write lock
+ * @param timeout_ms Timeout in milliseconds
+ * @return NIMCP_SUCCESS if locked, NIMCP_BUSY if timeout
+ */
+nimcp_result_t nimcp_rwlock_timedrdlock(nimcp_rwlock_t* lock, uint32_t timeout_ms);
+
+/**
+ * @brief Try to acquire write lock with timeout
+ * @param lock Read-write lock
+ * @param timeout_ms Timeout in milliseconds
+ * @return NIMCP_SUCCESS if locked, NIMCP_BUSY if timeout
+ */
+nimcp_result_t nimcp_rwlock_timedwrlock(nimcp_rwlock_t* lock, uint32_t timeout_ms);
+
+/**
  * @brief Unlock read-write lock
  */
 nimcp_result_t nimcp_rwlock_unlock(nimcp_rwlock_t* lock);
@@ -292,6 +321,46 @@ nimcp_result_t nimcp_get_resource_lock(const char* resource_id, nimcp_mutex_t** 
  * @brief Release a resource lock (decrement refcount)
  */
 nimcp_result_t nimcp_release_resource_lock(const char* resource_id);
+
+//=============================================================================
+// Thread Naming and Affinity
+//=============================================================================
+
+/**
+ * @brief Maximum thread name length (pthread limit on Linux)
+ */
+#define NIMCP_THREAD_NAME_MAX 16
+
+/**
+ * @brief Set name of calling thread (for debugging)
+ * @param name Thread name (max 15 chars + null terminator)
+ * @return NIMCP_SUCCESS or NIMCP_ERROR_SYSTEM
+ */
+nimcp_result_t nimcp_thread_set_name(const char* name);
+
+/**
+ * @brief Get name of calling thread
+ * @param name Buffer to receive name
+ * @param len Buffer length (must be at least NIMCP_THREAD_NAME_MAX)
+ * @return NIMCP_SUCCESS or NIMCP_ERROR_INVALID_PARAM or NIMCP_ERROR_SYSTEM
+ */
+nimcp_result_t nimcp_thread_get_name(char* name, size_t len);
+
+/**
+ * @brief Set CPU affinity for thread (Linux-specific, returns success on other platforms)
+ * @param thread Thread handle
+ * @param cpu_id CPU core ID to bind to
+ * @return NIMCP_SUCCESS or NIMCP_ERROR_SYSTEM
+ */
+nimcp_result_t nimcp_thread_set_affinity(nimcp_thread_t thread, uint32_t cpu_id);
+
+/**
+ * @brief Get CPU affinity for thread (Linux-specific, returns 0 on other platforms)
+ * @param thread Thread handle
+ * @param cpu_id Output parameter for CPU core ID
+ * @return NIMCP_SUCCESS or NIMCP_ERROR_INVALID_PARAM or NIMCP_ERROR_SYSTEM
+ */
+nimcp_result_t nimcp_thread_get_affinity(nimcp_thread_t thread, uint32_t* cpu_id);
 
 //=============================================================================
 // Error Handling

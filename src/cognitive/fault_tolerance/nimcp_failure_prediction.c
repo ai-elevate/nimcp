@@ -38,8 +38,8 @@
 #include <windows.h>
 #else
 #include <sys/time.h>
-#include <pthread.h>
 #endif
+#include "utils/thread/nimcp_thread.h"
 
 //=============================================================================
 // Internal Structures
@@ -77,10 +77,8 @@ struct failure_predictor {
     failure_prediction_t* predictions;
     uint32_t prediction_count;
 
-    // Thread safety (if available)
-#ifndef _WIN32
-    pthread_rwlock_t lock;
-#endif
+    // Thread safety
+    nimcp_rwlock_t lock;
 };
 
 //=============================================================================
@@ -138,11 +136,7 @@ static uint64_t get_timestamp_ms(void) {
  * WHY:  Allow concurrent reads
  */
 static void lock_read(failure_predictor_t* predictor) {
-#ifndef _WIN32
-    pthread_rwlock_rdlock(&predictor->lock);
-#else
-    (void)predictor;  // Unused on Windows
-#endif
+    nimcp_rwlock_rdlock(&predictor->lock);
 }
 
 /**
@@ -152,11 +146,7 @@ static void lock_read(failure_predictor_t* predictor) {
  * WHY:  Exclusive access for modifications
  */
 static void lock_write(failure_predictor_t* predictor) {
-#ifndef _WIN32
-    pthread_rwlock_wrlock(&predictor->lock);
-#else
-    (void)predictor;
-#endif
+    nimcp_rwlock_wrlock(&predictor->lock);
 }
 
 /**
@@ -165,11 +155,7 @@ static void lock_write(failure_predictor_t* predictor) {
  * WHAT: Release lock
  */
 static void unlock(failure_predictor_t* predictor) {
-#ifndef _WIN32
-    pthread_rwlock_unlock(&predictor->lock);
-#else
-    (void)predictor;
-#endif
+    nimcp_rwlock_unlock(&predictor->lock);
 }
 
 /**
@@ -294,9 +280,7 @@ failure_predictor_t* failure_predictor_create_custom(
     predictor->prediction_count = 0;
 
     // Initialize thread safety
-#ifndef _WIN32
-    pthread_rwlock_init(&predictor->lock, NULL);
-#endif
+    nimcp_rwlock_init(&predictor->lock);
 
     LOG_INFO("Created failure predictor (max_predictions=%u, max_indicators=%u)",
              config->max_predictions, config->max_indicators);
@@ -309,9 +293,7 @@ void failure_predictor_destroy(failure_predictor_t* predictor) {
         return;
     }
 
-#ifndef _WIN32
-    pthread_rwlock_destroy(&predictor->lock);
-#endif
+    nimcp_rwlock_destroy(&predictor->lock);
 
     if (predictor->indicators) {
         nimcp_free(predictor->indicators);

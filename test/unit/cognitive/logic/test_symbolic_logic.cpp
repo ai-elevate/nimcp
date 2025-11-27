@@ -14,7 +14,7 @@
 #include <gtest/gtest.h>
 #include <cstring>
 
-#include "include/cognitive/nimcp_symbolic_logic.h"
+#include "cognitive/nimcp_symbolic_logic.h"
 #include "utils/memory/nimcp_memory.h"
 
 //=============================================================================

@@ -31,6 +31,7 @@
  */
 
 #include "security/nimcp_blood_brain_barrier.h"
+#include "utils/thread/nimcp_thread.h"
 #include <string.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -84,11 +85,11 @@ typedef struct {
 static struct {
     trusted_key_entry_t keys[MAX_TRUSTED_KEYS];
     uint32_t key_count;
-    pthread_mutex_t mutex;
+    nimcp_mutex_t mutex;
     bool initialized;
 } g_key_store = {
     .key_count = 0,
-    .mutex = PTHREAD_MUTEX_INITIALIZER,
+    .mutex = NIMCP_MUTEX_INITIALIZER,
     .initialized = false
 };
 
@@ -370,7 +371,7 @@ static void init_key_store(void)
 {
     if (g_key_store.initialized) return;
 
-    pthread_mutex_lock(&g_key_store.mutex);
+    nimcp_mutex_lock(&g_key_store.mutex);
 
     if (!g_key_store.initialized) {
         memset(g_key_store.keys, 0, sizeof(g_key_store.keys));
@@ -378,7 +379,7 @@ static void init_key_store(void)
         g_key_store.initialized = true;
     }
 
-    pthread_mutex_unlock(&g_key_store.mutex);
+    nimcp_mutex_unlock(&g_key_store.mutex);
 }
 
 /**
@@ -523,11 +524,11 @@ bool bbb_add_trusted_key(bbb_system_t system, const uint8_t* key_data,
     /* Initialize key store if needed */
     init_key_store();
 
-    pthread_mutex_lock(&g_key_store.mutex);
+    nimcp_mutex_lock(&g_key_store.mutex);
 
     /* Check if key already exists */
     if (find_key(key_id) != NULL) {
-        pthread_mutex_unlock(&g_key_store.mutex);
+        nimcp_mutex_unlock(&g_key_store.mutex);
         return false;  /* Duplicate key ID */
     }
 
@@ -541,7 +542,7 @@ bool bbb_add_trusted_key(bbb_system_t system, const uint8_t* key_data,
     }
 
     if (!slot) {
-        pthread_mutex_unlock(&g_key_store.mutex);
+        nimcp_mutex_unlock(&g_key_store.mutex);
         return false;  /* Key store full */
     }
 
@@ -553,7 +554,7 @@ bool bbb_add_trusted_key(bbb_system_t system, const uint8_t* key_data,
     slot->in_use = true;
     g_key_store.key_count++;
 
-    pthread_mutex_unlock(&g_key_store.mutex);
+    nimcp_mutex_unlock(&g_key_store.mutex);
 
     return true;
 }
@@ -581,12 +582,12 @@ bool bbb_remove_trusted_key(bbb_system_t system, const char* key_id)
     /* Initialize key store if needed */
     init_key_store();
 
-    pthread_mutex_lock(&g_key_store.mutex);
+    nimcp_mutex_lock(&g_key_store.mutex);
 
     /* Find key */
     trusted_key_entry_t* key = find_key(key_id);
     if (!key) {
-        pthread_mutex_unlock(&g_key_store.mutex);
+        nimcp_mutex_unlock(&g_key_store.mutex);
         return false;  /* Key not found */
     }
 
@@ -597,7 +598,7 @@ bool bbb_remove_trusted_key(bbb_system_t system, const char* key_id)
     key->in_use = false;
     g_key_store.key_count--;
 
-    pthread_mutex_unlock(&g_key_store.mutex);
+    nimcp_mutex_unlock(&g_key_store.mutex);
 
     return true;
 }

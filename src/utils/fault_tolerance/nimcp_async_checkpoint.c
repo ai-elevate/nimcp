@@ -29,6 +29,7 @@
 #include "utils/fault_tolerance/nimcp_checkpoint.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
+#include "utils/thread/nimcp_thread.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -54,9 +55,9 @@ typedef struct {
     uint32_t head;              /**< Next dequeue position */
     uint32_t tail;              /**< Next enqueue position */
     uint32_t count;             /**< Current queue size */
-    pthread_mutex_t mutex;      /**< Queue mutex */
-    pthread_cond_t not_empty;   /**< Signal when queue not empty */
-    pthread_cond_t not_full;    /**< Signal when queue not full */
+    nimcp_mutex_t mutex;        /**< Queue mutex */
+    nimcp_cond_t not_empty;     /**< Signal when queue not empty */
+    nimcp_cond_t not_full;      /**< Signal when queue not full */
 } request_queue_t;
 
 /**
@@ -71,7 +72,7 @@ typedef struct {
     async_checkpoint_request_t requests[ASYNC_CHECKPOINT_HISTORY_SIZE];
     uint32_t head;              /**< Next write position */
     uint32_t count;             /**< Current size */
-    pthread_mutex_t mutex;      /**< History mutex */
+    nimcp_mutex_t mutex;        /**< History mutex */
 } request_history_t;
 
 /**
@@ -82,15 +83,15 @@ typedef struct {
  * HOW:  Opaque structure, accessed via API
  */
 struct async_checkpoint_writer_struct {
-    pthread_t worker_thread;        /**< Background worker thread */
+    nimcp_thread_t worker_thread;   /**< Background worker thread */
     request_queue_t queue;          /**< Request queue */
     request_history_t history;      /**< Completed requests history */
     async_checkpoint_stats_t stats; /**< Statistics */
     volatile bool shutdown;         /**< Shutdown flag */
-    pthread_mutex_t stats_mutex;    /**< Statistics mutex */
+    nimcp_mutex_t stats_mutex;      /**< Statistics mutex */
     uint64_t next_request_id;       /**< Next request ID (atomic) */
     char error_msg[256];            /**< Last error message */
-    pthread_mutex_t error_mutex;    /**< Error message mutex */
+    nimcp_mutex_t error_mutex;      /**< Error message mutex */
 };
 
 //=============================================================================
@@ -157,20 +158,20 @@ static bool queue_init(request_queue_t* queue) {
     queue->tail = 0;
     queue->count = 0;
 
-    if (pthread_mutex_init(&queue->mutex, NULL) != 0) {
+    if (nimcp_mutex_init(&queue->mutex, NULL) != NIMCP_SUCCESS) {
         NIMCP_LOGGING_ERROR("Failed to initialize queue mutex");
         return false;
     }
 
-    if (pthread_cond_init(&queue->not_empty, NULL) != 0) {
-        pthread_mutex_destroy(&queue->mutex);
+    if (nimcp_cond_init(&queue->not_empty) != NIMCP_SUCCESS) {
+        nimcp_mutex_destroy(&queue->mutex);
         NIMCP_LOGGING_ERROR("Failed to initialize not_empty condition");
         return false;
     }
 
-    if (pthread_cond_init(&queue->not_full, NULL) != 0) {
-        pthread_cond_destroy(&queue->not_empty);
-        pthread_mutex_destroy(&queue->mutex);
+    if (nimcp_cond_init(&queue->not_full) != NIMCP_SUCCESS) {
+        nimcp_cond_destroy(&queue->not_empty);
+        nimcp_mutex_destroy(&queue->mutex);
         NIMCP_LOGGING_ERROR("Failed to initialize not_full condition");
         return false;
     }
@@ -192,9 +193,9 @@ static void queue_destroy(request_queue_t* queue) {
         return;
     }
 
-    pthread_cond_destroy(&queue->not_full);
-    pthread_cond_destroy(&queue->not_empty);
-    pthread_mutex_destroy(&queue->mutex);
+    nimcp_cond_destroy(&queue->not_full);
+    nimcp_cond_destroy(&queue->not_empty);
+    nimcp_mutex_destroy(&queue->mutex);
 }
 
 /**
@@ -213,11 +214,11 @@ static bool queue_enqueue(request_queue_t* queue, const async_checkpoint_request
         return false;
     }
 
-    pthread_mutex_lock(&queue->mutex);
+    nimcp_mutex_lock(&queue->mutex);
 
     // Check if queue is full
     if (queue->count >= ASYNC_CHECKPOINT_MAX_QUEUE) {
-        pthread_mutex_unlock(&queue->mutex);
+        nimcp_mutex_unlock(&queue->mutex);
         NIMCP_LOGGING_WARN("Checkpoint queue is full (%u requests)", queue->count);
         return false;
     }
@@ -230,9 +231,9 @@ static bool queue_enqueue(request_queue_t* queue, const async_checkpoint_request
     queue->count++;
 
     // Signal that queue is not empty
-    pthread_cond_signal(&queue->not_empty);
+    nimcp_cond_signal(&queue->not_empty);
 
-    pthread_mutex_unlock(&queue->mutex);
+    nimcp_mutex_unlock(&queue->mutex);
     return true;
 }
 
@@ -253,35 +254,26 @@ static bool queue_dequeue(request_queue_t* queue, async_checkpoint_request_t* re
         return false;
     }
 
-    pthread_mutex_lock(&queue->mutex);
+    nimcp_mutex_lock(&queue->mutex);
 
     // Wait for queue to become non-empty
     if (timeout_ms == 0) {
         // Non-blocking
         if (queue->count == 0) {
-            pthread_mutex_unlock(&queue->mutex);
+            nimcp_mutex_unlock(&queue->mutex);
             return false;
         }
     } else {
         // Blocking with timeout
-        struct timespec timeout;
-        clock_gettime(CLOCK_REALTIME, &timeout);
-        timeout.tv_sec += timeout_ms / 1000;
-        timeout.tv_nsec += (timeout_ms % 1000) * 1000000;
-        if (timeout.tv_nsec >= 1000000000) {
-            timeout.tv_sec++;
-            timeout.tv_nsec -= 1000000000;
-        }
-
         while (queue->count == 0) {
-            int ret = pthread_cond_timedwait(&queue->not_empty, &queue->mutex, &timeout);
+            int ret = nimcp_cond_timedwait(&queue->not_empty, &queue->mutex, timeout_ms);
             if (ret == ETIMEDOUT) {
-                pthread_mutex_unlock(&queue->mutex);
+                nimcp_mutex_unlock(&queue->mutex);
                 return false;
             }
-            if (ret != 0) {
-                pthread_mutex_unlock(&queue->mutex);
-                NIMCP_LOGGING_ERROR("pthread_cond_timedwait failed: %d", ret);
+            if (ret != NIMCP_SUCCESS) {
+                nimcp_mutex_unlock(&queue->mutex);
+                NIMCP_LOGGING_ERROR("nimcp_cond_timedwait failed: %d", ret);
                 return false;
             }
         }
@@ -295,9 +287,9 @@ static bool queue_dequeue(request_queue_t* queue, async_checkpoint_request_t* re
     queue->count--;
 
     // Signal that queue is not full
-    pthread_cond_signal(&queue->not_full);
+    nimcp_cond_signal(&queue->not_full);
 
-    pthread_mutex_unlock(&queue->mutex);
+    nimcp_mutex_unlock(&queue->mutex);
     return true;
 }
 
@@ -316,9 +308,9 @@ static uint32_t queue_size(request_queue_t* queue) {
         return 0;
     }
 
-    pthread_mutex_lock(&queue->mutex);
+    nimcp_mutex_lock(&queue->mutex);
     uint32_t count = queue->count;
-    pthread_mutex_unlock(&queue->mutex);
+    nimcp_mutex_unlock(&queue->mutex);
 
     return count;
 }
@@ -346,7 +338,7 @@ static bool history_init(request_history_t* history) {
     history->head = 0;
     history->count = 0;
 
-    if (pthread_mutex_init(&history->mutex, NULL) != 0) {
+    if (nimcp_mutex_init(&history->mutex, NULL) != NIMCP_SUCCESS) {
         NIMCP_LOGGING_ERROR("Failed to initialize history mutex");
         return false;
     }
@@ -368,7 +360,7 @@ static void history_destroy(request_history_t* history) {
         return;
     }
 
-    pthread_mutex_destroy(&history->mutex);
+    nimcp_mutex_destroy(&history->mutex);
 }
 
 /**
@@ -386,7 +378,7 @@ static void history_add(request_history_t* history, const async_checkpoint_reque
         return;
     }
 
-    pthread_mutex_lock(&history->mutex);
+    nimcp_mutex_lock(&history->mutex);
 
     // Store request at head position
     memcpy(&history->requests[history->head], request, sizeof(async_checkpoint_request_t));
@@ -399,7 +391,7 @@ static void history_add(request_history_t* history, const async_checkpoint_reque
         history->count++;
     }
 
-    pthread_mutex_unlock(&history->mutex);
+    nimcp_mutex_unlock(&history->mutex);
 }
 
 /**
@@ -419,7 +411,7 @@ static bool history_find(request_history_t* history, uint64_t request_id, async_
         return false;
     }
 
-    pthread_mutex_lock(&history->mutex);
+    nimcp_mutex_lock(&history->mutex);
 
     // Search all stored requests (simple linear search)
     for (uint32_t i = 0; i < ASYNC_CHECKPOINT_HISTORY_SIZE; i++) {
@@ -428,12 +420,12 @@ static bool history_find(request_history_t* history, uint64_t request_id, async_
             if (request) {
                 memcpy(request, &history->requests[i], sizeof(async_checkpoint_request_t));
             }
-            pthread_mutex_unlock(&history->mutex);
+            nimcp_mutex_unlock(&history->mutex);
             return true;
         }
     }
 
-    pthread_mutex_unlock(&history->mutex);
+    nimcp_mutex_unlock(&history->mutex);
     return false;
 }
 
@@ -456,7 +448,7 @@ static void update_stats_completed(async_checkpoint_writer_t* writer, const asyn
         return;
     }
 
-    pthread_mutex_lock(&writer->stats_mutex);
+    nimcp_mutex_lock(&writer->stats_mutex);
 
     writer->stats.total_completed++;
     writer->stats.current_pending--;
@@ -481,7 +473,7 @@ static void update_stats_completed(async_checkpoint_writer_t* writer, const asyn
         }
     }
 
-    pthread_mutex_unlock(&writer->stats_mutex);
+    nimcp_mutex_unlock(&writer->stats_mutex);
 }
 
 /**
@@ -499,7 +491,7 @@ static void update_stats_failed(async_checkpoint_writer_t* writer, const async_c
         return;
     }
 
-    pthread_mutex_lock(&writer->stats_mutex);
+    nimcp_mutex_lock(&writer->stats_mutex);
 
     writer->stats.total_failed++;
     writer->stats.current_pending--;
@@ -507,7 +499,7 @@ static void update_stats_failed(async_checkpoint_writer_t* writer, const async_c
     strncpy(writer->stats.last_error, request->error_msg, sizeof(writer->stats.last_error) - 1);
     writer->stats.last_error[sizeof(writer->stats.last_error) - 1] = '\0';
 
-    pthread_mutex_unlock(&writer->stats_mutex);
+    nimcp_mutex_unlock(&writer->stats_mutex);
 }
 
 //=============================================================================
@@ -594,10 +586,10 @@ static bool process_checkpoint_request(async_checkpoint_writer_t* writer, async_
         update_stats_failed(writer, request);
 
         // Update writer error message
-        pthread_mutex_lock(&writer->error_mutex);
+        nimcp_mutex_lock(&writer->error_mutex);
         strncpy(writer->error_msg, request->error_msg, sizeof(writer->error_msg) - 1);
         writer->error_msg[sizeof(writer->error_msg) - 1] = '\0';
-        pthread_mutex_unlock(&writer->error_mutex);
+        nimcp_mutex_unlock(&writer->error_mutex);
     }
 
     // Add request to history for later queries
@@ -679,7 +671,7 @@ async_checkpoint_writer_t* async_checkpoint_create(void) {
     }
 
     // Initialize statistics mutex
-    if (pthread_mutex_init(&writer->stats_mutex, NULL) != 0) {
+    if (nimcp_mutex_init(&writer->stats_mutex, NULL) != NIMCP_SUCCESS) {
         NIMCP_LOGGING_ERROR("Failed to initialize stats mutex");
         history_destroy(&writer->history);
         queue_destroy(&writer->queue);
@@ -688,9 +680,9 @@ async_checkpoint_writer_t* async_checkpoint_create(void) {
     }
 
     // Initialize error mutex
-    if (pthread_mutex_init(&writer->error_mutex, NULL) != 0) {
+    if (nimcp_mutex_init(&writer->error_mutex, NULL) != NIMCP_SUCCESS) {
         NIMCP_LOGGING_ERROR("Failed to initialize error mutex");
-        pthread_mutex_destroy(&writer->stats_mutex);
+        nimcp_mutex_destroy(&writer->stats_mutex);
         history_destroy(&writer->history);
         queue_destroy(&writer->queue);
         nimcp_free(writer);
@@ -702,10 +694,11 @@ async_checkpoint_writer_t* async_checkpoint_create(void) {
     writer->next_request_id = 1;
 
     // Create worker thread
-    if (pthread_create(&writer->worker_thread, NULL, worker_thread_func, writer) != 0) {
+    if (nimcp_thread_create(&writer->worker_thread, worker_thread_func, writer,
+                            NULL) != 0) {
         NIMCP_LOGGING_ERROR("Failed to create worker thread: %s", strerror(errno));
-        pthread_mutex_destroy(&writer->error_mutex);
-        pthread_mutex_destroy(&writer->stats_mutex);
+        nimcp_mutex_destroy(&writer->error_mutex);
+        nimcp_mutex_destroy(&writer->stats_mutex);
         history_destroy(&writer->history);
         queue_destroy(&writer->queue);
         nimcp_free(writer);
@@ -727,23 +720,12 @@ void async_checkpoint_destroy(async_checkpoint_writer_t* writer) {
     writer->shutdown = true;
 
     // Wake up worker thread
-    pthread_mutex_lock(&writer->queue.mutex);
-    pthread_cond_signal(&writer->queue.not_empty);
-    pthread_mutex_unlock(&writer->queue.mutex);
+    nimcp_mutex_lock(&writer->queue.mutex);
+    nimcp_cond_signal(&writer->queue.not_empty);
+    nimcp_mutex_unlock(&writer->queue.mutex);
 
-    // Wait for worker thread to finish (with timeout)
-    struct timespec timeout;
-    clock_gettime(CLOCK_REALTIME, &timeout);
-    timeout.tv_sec += 5;  // 5 second timeout
-
-    int ret = pthread_timedjoin_np(writer->worker_thread, NULL, &timeout);
-    if (ret == ETIMEDOUT) {
-        NIMCP_LOGGING_WARN("Worker thread did not finish within timeout, cancelling...");
-        pthread_cancel(writer->worker_thread);
-        pthread_join(writer->worker_thread, NULL);
-    } else if (ret != 0) {
-        NIMCP_LOGGING_ERROR("pthread_timedjoin_np failed: %d", ret);
-    }
+    // Wait for worker thread to finish
+    nimcp_thread_join(writer->worker_thread, NULL);
 
     // Log pending requests
     uint32_t pending = writer->stats.current_pending;
@@ -752,8 +734,8 @@ void async_checkpoint_destroy(async_checkpoint_writer_t* writer) {
     }
 
     // Cleanup
-    pthread_mutex_destroy(&writer->error_mutex);
-    pthread_mutex_destroy(&writer->stats_mutex);
+    nimcp_mutex_destroy(&writer->error_mutex);
+    nimcp_mutex_destroy(&writer->stats_mutex);
     history_destroy(&writer->history);
     queue_destroy(&writer->queue);
     nimcp_free(writer);
@@ -830,13 +812,13 @@ uint64_t async_checkpoint_queue_ex(async_checkpoint_writer_t* writer,
     }
 
     // Update statistics
-    pthread_mutex_lock(&writer->stats_mutex);
+    nimcp_mutex_lock(&writer->stats_mutex);
     writer->stats.total_queued++;
     writer->stats.current_pending++;
     if (writer->stats.current_pending > writer->stats.peak_queue_size) {
         writer->stats.peak_queue_size = writer->stats.current_pending;
     }
-    pthread_mutex_unlock(&writer->stats_mutex);
+    nimcp_mutex_unlock(&writer->stats_mutex);
 
     NIMCP_LOGGING_DEBUG("Queued checkpoint request %lu: %s", request.request_id, path);
     return request.request_id;
@@ -921,9 +903,9 @@ uint32_t async_checkpoint_get_pending_count(async_checkpoint_writer_t* writer) {
         return 0;
     }
 
-    pthread_mutex_lock(&writer->stats_mutex);
+    nimcp_mutex_lock(&writer->stats_mutex);
     uint32_t pending = writer->stats.current_pending;
-    pthread_mutex_unlock(&writer->stats_mutex);
+    nimcp_mutex_unlock(&writer->stats_mutex);
 
     return pending;
 }
@@ -934,9 +916,9 @@ bool async_checkpoint_get_stats(async_checkpoint_writer_t* writer,
         return false;
     }
 
-    pthread_mutex_lock(&writer->stats_mutex);
+    nimcp_mutex_lock(&writer->stats_mutex);
     memcpy(stats, &writer->stats, sizeof(async_checkpoint_stats_t));
-    pthread_mutex_unlock(&writer->stats_mutex);
+    nimcp_mutex_unlock(&writer->stats_mutex);
 
     return true;
 }
@@ -949,7 +931,7 @@ bool async_checkpoint_get_request_status(async_checkpoint_writer_t* writer,
     }
 
     // First search queue for request
-    pthread_mutex_lock(&writer->queue.mutex);
+    nimcp_mutex_lock(&writer->queue.mutex);
 
     for (uint32_t i = 0; i < writer->queue.count; i++) {
         uint32_t idx = (writer->queue.head + i) % ASYNC_CHECKPOINT_MAX_QUEUE;
@@ -957,12 +939,12 @@ bool async_checkpoint_get_request_status(async_checkpoint_writer_t* writer,
             if (request) {
                 memcpy(request, &writer->queue.requests[idx], sizeof(async_checkpoint_request_t));
             }
-            pthread_mutex_unlock(&writer->queue.mutex);
+            nimcp_mutex_unlock(&writer->queue.mutex);
             return true;
         }
     }
 
-    pthread_mutex_unlock(&writer->queue.mutex);
+    nimcp_mutex_unlock(&writer->queue.mutex);
 
     // Not in queue, search history for completed/failed requests
     if (history_find(&writer->history, request_id, request)) {
@@ -984,11 +966,11 @@ bool async_checkpoint_is_healthy(async_checkpoint_writer_t* writer) {
     }
 
     // Check for recent errors (last 5 minutes)
-    pthread_mutex_lock(&writer->stats_mutex);
+    nimcp_mutex_lock(&writer->stats_mutex);
     uint64_t now = async_checkpoint_get_time_us();
     uint64_t last_error = writer->stats.last_error_time;
     bool has_recent_error = (last_error > 0) && ((now - last_error) < 5 * 60 * 1000000ULL);
-    pthread_mutex_unlock(&writer->stats_mutex);
+    nimcp_mutex_unlock(&writer->stats_mutex);
 
     if (has_recent_error) {
         return false;
@@ -1012,9 +994,9 @@ const char* async_checkpoint_get_error(async_checkpoint_writer_t* writer) {
         return "";
     }
 
-    pthread_mutex_lock(&writer->error_mutex);
+    nimcp_mutex_lock(&writer->error_mutex);
     const char* error = writer->error_msg;
-    pthread_mutex_unlock(&writer->error_mutex);
+    nimcp_mutex_unlock(&writer->error_mutex);
 
     return error;
 }
@@ -1024,9 +1006,9 @@ void async_checkpoint_clear_error(async_checkpoint_writer_t* writer) {
         return;
     }
 
-    pthread_mutex_lock(&writer->error_mutex);
+    nimcp_mutex_lock(&writer->error_mutex);
     writer->error_msg[0] = '\0';
-    pthread_mutex_unlock(&writer->error_mutex);
+    nimcp_mutex_unlock(&writer->error_mutex);
 }
 
 //=============================================================================
@@ -1038,7 +1020,7 @@ bool async_checkpoint_cancel_request(async_checkpoint_writer_t* writer, uint64_t
         return false;
     }
 
-    pthread_mutex_lock(&writer->queue.mutex);
+    nimcp_mutex_lock(&writer->queue.mutex);
 
     // Search for request in queue
     for (uint32_t i = 0; i < writer->queue.count; i++) {
@@ -1049,16 +1031,16 @@ bool async_checkpoint_cancel_request(async_checkpoint_writer_t* writer, uint64_t
                 writer->queue.requests[idx].status = CHECKPOINT_STATUS_CANCELLED;
 
                 // Update stats
-                pthread_mutex_lock(&writer->stats_mutex);
+                nimcp_mutex_lock(&writer->stats_mutex);
                 writer->stats.total_cancelled++;
                 writer->stats.current_pending--;
-                pthread_mutex_unlock(&writer->stats_mutex);
+                nimcp_mutex_unlock(&writer->stats_mutex);
 
-                pthread_mutex_unlock(&writer->queue.mutex);
+                nimcp_mutex_unlock(&writer->queue.mutex);
                 NIMCP_LOGGING_INFO("Cancelled checkpoint request %lu", request_id);
                 return true;
             } else {
-                pthread_mutex_unlock(&writer->queue.mutex);
+                nimcp_mutex_unlock(&writer->queue.mutex);
                 NIMCP_LOGGING_WARN("Cannot cancel request %lu (status: %d)",
                                    request_id, writer->queue.requests[idx].status);
                 return false;
@@ -1066,7 +1048,7 @@ bool async_checkpoint_cancel_request(async_checkpoint_writer_t* writer, uint64_t
         }
     }
 
-    pthread_mutex_unlock(&writer->queue.mutex);
+    nimcp_mutex_unlock(&writer->queue.mutex);
     NIMCP_LOGGING_WARN("Request %lu not found in queue", request_id);
     return false;
 }

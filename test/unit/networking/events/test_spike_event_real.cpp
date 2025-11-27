@@ -1,7 +1,7 @@
 #include <gtest/gtest.h>
 #include <cstring>
 
-#include "include/gpu/nimcp_spike_event.h"
+#include "gpu/nimcp_spike_event.h"
 
 //=============================================================================
 // Spike Event Real Tests

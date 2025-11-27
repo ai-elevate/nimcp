@@ -2259,3 +2259,23 @@ nimcp_result_t nimcp_security_increase_inhibition(void* network_ptr, float scale
 
     return NIMCP_SUCCESS;
 }
+
+
+/**
+ * @brief Get threat level name as string
+ *
+ * WHAT: Convert threat level enum to human-readable string
+ * WHY:  For logging and debugging output
+ * HOW:  Simple switch statement mapping enum to string
+ */
+const char* nimcp_threat_level_name(nimcp_threat_level_t level)
+{
+    switch (level) {
+        case NIMCP_THREAT_NONE:     return "NONE";
+        case NIMCP_THREAT_LOW:      return "LOW";
+        case NIMCP_THREAT_MEDIUM:   return "MEDIUM";
+        case NIMCP_THREAT_HIGH:     return "HIGH";
+        case NIMCP_THREAT_CRITICAL: return "CRITICAL";
+        default:                    return "UNKNOWN";
+    }
+}

@@ -1,3 +1,14 @@
+# Find libsodium for encryption support
+find_package(PkgConfig QUIET)
+if(PkgConfig_FOUND)
+    pkg_check_modules(SODIUM libsodium)
+endif()
+if(SODIUM_FOUND)
+    message(STATUS "libsodium found - enabling encryption support")
+else()
+    message(STATUS "libsodium not found - encryption will return errors")
+endif()
+
 # Core library sources - New hierarchical structure
 set(NIMCP_CORE_SOURCES
     # Public API facade (unified interface for all bindings)
@@ -168,6 +179,9 @@ set(NIMCP_CORE_SOURCES
     # Plasticity mechanisms
     ${CMAKE_CURRENT_SOURCE_DIR}/../plasticity/adaptive/nimcp_adaptive.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../plasticity/bcm/nimcp_bcm.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../plasticity/homeostatic/nimcp_homeostatic.c   # Phase T1: Homeostatic Plasticity (synaptic scaling, intrinsic plasticity)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../plasticity/dendritic/nimcp_dendritic.c       # Phase T2: Dendritic Nonlinearities (NMDA dynamics, compartmental)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../plasticity/predictive/nimcp_predictive_coding.c  # Phase T3: Predictive Coding (hierarchical error minimization)
     ${CMAKE_CURRENT_SOURCE_DIR}/../plasticity/neuromodulators/nimcp_neuromodulators.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../plasticity/neuromodulators/nimcp_neuromod_pink_noise.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../plasticity/neuromodulators/nimcp_spatial_neuromod.c
@@ -205,8 +219,24 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../io/serialization/nimcp_network_serialization.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../io/serialization/nimcp_encryption.c
 
-    # Security
+    # Security - Core and Phase SC-1: Security Coverage Framework (Tier 0.7)
     ${CMAKE_CURRENT_SOURCE_DIR}/../security/nimcp_security.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../security/nimcp_security_coverage.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../security/nimcp_continuous_monitor.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../security/nimcp_cfi.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../security/nimcp_shadow_stack.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../security/nimcp_capability.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../security/nimcp_security_fractal.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../security/nimcp_security_audit.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../security/nimcp_security_recovery_bridge.c  # Phase SC-2: Security-Fault Tolerance Integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/../security/nimcp_security_math.c  # Phase SC-3: Mathematical Security (Entropy, Bayesian Trust, DP)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../security/nimcp_security_integration.c  # Phase SC-4: Universal Security Integration Framework
+    # Blood-Brain Barrier (BBB) - Neural Immune System Perimeter Defense (Phase IS-1)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../security/nimcp_blood_brain_barrier.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../security/nimcp_bbb_input_gate.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../security/nimcp_bbb_code_signing.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../security/nimcp_bbb_memory_boundary.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../security/nimcp_bbb_access_control.c
 
     # Utils - Memory & Thread
     ${CMAKE_CURRENT_SOURCE_DIR}/../utils/memory/nimcp_memory.c
@@ -214,9 +244,13 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../utils/memory/nimcp_memory_pool.c   # Phase 0: Memory Pool (O(1) allocation)
     ${CMAKE_CURRENT_SOURCE_DIR}/../utils/memory/nimcp_cow_manager.c  # Phase 0: CoW Manager (lazy copy, refcounting)
     ${CMAKE_CURRENT_SOURCE_DIR}/../utils/memory/nimcp_buffer_pool.c  # Phase 0: Buffer Pool (CoW + Pool integration)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../utils/memory/nimcp_page_cow.c     # Phase COW: Page-level COW for large structures
     ${CMAKE_CURRENT_SOURCE_DIR}/../utils/thread/nimcp_thread.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../utils/thread/nimcp_thread_pool.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../utils/thread/nimcp_deadlock_detector.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../utils/thread/nimcp_semaphore.c     # Counting semaphore primitive
+    ${CMAKE_CURRENT_SOURCE_DIR}/../utils/thread/nimcp_atomic.c        # Atomic operations wrapper
+    ${CMAKE_CURRENT_SOURCE_DIR}/../utils/thread/nimcp_barrier.c       # Thread barrier primitive
 
     # Utils - Math (Phase 0.5: Complex Number Support for Neural Phase Coding)
     ${CMAKE_CURRENT_SOURCE_DIR}/../utils/math/nimcp_complex_math.c  # Complex phasor operations, FFT, PAC detection (SIMD optimized)
@@ -417,7 +451,6 @@ add_library(nimcp SHARED
 target_include_directories(nimcp
     PUBLIC
         $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}/src>
-        $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}/src/include>
         $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}/include>
         $<INSTALL_INTERFACE:include/nimcp>
     PRIVATE
@@ -449,9 +482,10 @@ if(CUDAToolkit_FOUND)
     )
 endif()
 
-# Add libsodium include directories if available
+# Add libsodium include directories and enable encryption if available
 if(SODIUM_FOUND)
-    target_include_directories(nimcp PRIVATE ${SODIUM_INCLUDE_DIR})
+    target_include_directories(nimcp PRIVATE ${SODIUM_INCLUDE_DIRS})
+    target_compile_definitions(nimcp PRIVATE NIMCP_ENABLE_ENCRYPTION)
 endif()
 
 target_link_libraries(nimcp
@@ -476,7 +510,7 @@ endif()
 
 # Add libsodium library if available
 if(SODIUM_FOUND)
-    target_link_libraries(nimcp PUBLIC ${SODIUM_LIBRARY})
+    target_link_libraries(nimcp PUBLIC ${SODIUM_LIBRARIES})
 endif()
 
 # Add testing API support

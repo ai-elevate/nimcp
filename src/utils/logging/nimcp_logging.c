@@ -1,4 +1,5 @@
 #include "utils/logging/nimcp_logging.h"
+#include "utils/thread/nimcp_thread.h"
 #include <errno.h>
 #include <libgen.h>
 #include <limits.h>
@@ -13,7 +14,7 @@
 
 static FILE* log_file = NULL;
 static const char* DEFAULT_LOG_FILE = "/var/log/nimcp/nimcp.log";
-static pthread_mutex_t log_mutex = PTHREAD_MUTEX_INITIALIZER;
+static nimcp_mutex_t log_mutex = NIMCP_MUTEX_INITIALIZER;
 
 /**
  * WHAT: Create directory and all parent directories
@@ -98,7 +99,7 @@ void log_message(log_level_t level, const char* format, ...)
         return;  // Log file not initialized
     }
 
-    pthread_mutex_lock(&log_mutex);
+    nimcp_mutex_lock(&log_mutex);
 
     const char* level_strings[] = {"DEBUG", "INFO", "WARN", "ERROR", "FATAL"};
     time_t now = time(NULL);
@@ -117,7 +118,7 @@ void log_message(log_level_t level, const char* format, ...)
     fprintf(log_file, "\n");
     fflush(log_file);  // Ensure the message is written immediately
 
-    pthread_mutex_unlock(&log_mutex);
+    nimcp_mutex_unlock(&log_mutex);
 }
 
 void log_close()
@@ -138,7 +139,7 @@ void nimcp_log(log_level_t level, const char* format, ...)
     va_list args;
     va_start(args, format);
     
-    pthread_mutex_lock(&log_mutex);
+    nimcp_mutex_lock(&log_mutex);
     
     if (log_file) {
         vfprintf(log_file, format, args);
@@ -149,6 +150,6 @@ void nimcp_log(log_level_t level, const char* format, ...)
         fprintf(stderr, "\n");
     }
     
-    pthread_mutex_unlock(&log_mutex);
+    nimcp_mutex_unlock(&log_mutex);
     va_end(args);
 }

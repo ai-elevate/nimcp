@@ -4,7 +4,7 @@
  */
 
 #include <gtest/gtest.h>
-#include "include/perception/nimcp_speech_cortex.h"
+#include "perception/nimcp_speech_cortex.h"
 #include "utils/nimcp_test_base.h"
 
 class SpeechCortexTopologyTest : public NimcpTestBase {

@@ -17,9 +17,9 @@
 
 #include "core/brain/processing/sensory_extractor.h"
 #include "core/brain/nimcp_brain.h"
-#include "include/perception/nimcp_visual_cortex.h"
-#include "include/perception/nimcp_audio_cortex.h"
-#include "include/perception/nimcp_speech_cortex.h"
+#include "perception/nimcp_visual_cortex.h"
+#include "perception/nimcp_audio_cortex.h"
+#include "perception/nimcp_speech_cortex.h"
 #include <string.h>
 #include <stdio.h>
 

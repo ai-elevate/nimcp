@@ -25,10 +25,11 @@ protected:
     brain_t brain;
 
     void SetUp() override {
-        brain = brain_create("circuit_test_brain", 1000);
+        brain = brain_create("circuit_test_brain", BRAIN_SIZE_SMALL,
+                              BRAIN_TASK_CLASSIFICATION, 10, 5);
         ASSERT_NE(brain, nullptr);
 
-        bool attached = create_and_attach_neural_logic(brain, 1000);
+        bool attached = create_and_attach_neural_logic(brain, BRAIN_SIZE_SMALL);
         ASSERT_TRUE(attached);
     }
 

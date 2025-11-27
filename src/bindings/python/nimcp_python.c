@@ -47,7 +47,7 @@
 
 #define PY_SSIZE_T_CLEAN
 #include <Python.h>
-#include "../../include/nimcp.h"
+#include "nimcp.h"
 #include <string.h>
 
 // Forward declaration for signal filter module

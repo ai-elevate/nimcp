@@ -7,7 +7,7 @@
  */
 
 #include <gtest/gtest.h>
-#include "../../../src/include/nimcp.h"
+#include "nimcp.h"
 
 /**
  * @brief Test fixture for API brain lifecycle tests

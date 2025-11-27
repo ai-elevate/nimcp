@@ -4,7 +4,7 @@
  */
 
 #include <gtest/gtest.h>
-#include "include/perception/nimcp_audio_cortex.h"
+#include "perception/nimcp_audio_cortex.h"
 #include "utils/nimcp_test_base.h"
 
 class AudioCortexTopologyTest : public NimcpTestBase {

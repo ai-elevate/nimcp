@@ -79,30 +79,6 @@ static void dfs_component(const NimcpGraph* graph, uint32_t vertex, uint32_t com
     }
 }
 
-/**
- * @brief Find minimum distance vertex for Dijkstra's algorithm (DEPRECATED)
- *
- * DEPRECATED: Old O(V) linear search
- * REPLACED BY: Min-heap for O(log V) extract-minimum
- *
- * This function is kept for reference but is no longer used.
- */
-static uint32_t find_min_distance_DEPRECATED(nimcp_weight_t* distances, bool* visited,
-                                             uint32_t vertex_count)
-{
-    nimcp_weight_t min = FLT_MAX;
-    uint32_t min_vertex = NIMCP_INVALID_VERTEX;
-
-    for (uint32_t v = 0; v < vertex_count; v++) {
-        if (!visited[v] && distances[v] < min) {
-            min = distances[v];
-            min_vertex = v;
-        }
-    }
-
-    return min_vertex;
-}
-
 /* Public function implementations */
 
 /**

@@ -8,7 +8,7 @@
 
 #define PY_SSIZE_T_CLEAN
 #include <Python.h>
-#include "../../include/nimcp.h"
+#include "nimcp.h"
 
 //=============================================================================
 // Brain Object Type

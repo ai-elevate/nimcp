@@ -38,6 +38,8 @@
 #include "core/neuralnet/nimcp_neuralnet.h"
 #include "utils/containers/nimcp_hash_table.h"
 #include "utils/memory/nimcp_memory.h"  // CRITICAL: Declares nimcp_calloc/nimcp_free return types
+#include "utils/memory/nimcp_memory_pool.h"  // Phase MP: Memory pool for hot paths
+#include "utils/memory/nimcp_page_cow.h"     // Phase COW: Page-level COW for state snapshots
 #include "plasticity/eligibility/nimcp_eligibility_trace.h"  // Phase 11: Eligibility traces
 #include "plasticity/bcm/nimcp_bcm.h"  // Phase 11: BCM homeostatic plasticity
 #include "plasticity/neuromodulators/nimcp_neuromodulators.h"  // Phase 11: Neuromodulator system
@@ -51,6 +53,64 @@
 #define SPARSITY_ADAPT_INCREASE 1.01f
 #define SPARSITY_ADAPT_DECREASE 0.99f
 #define SPARSITY_EMA_WEIGHT 0.1f
+
+//=============================================================================
+// Memory Pool for Hot Paths (Phase MP)
+//=============================================================================
+
+/**
+ * @brief Memory pool for forward/training buffers
+ *
+ * WHAT: Global memory pool for spike_input and output buffers
+ * WHY:  These buffers are allocated/freed on every forward pass - O(1) vs O(log n)
+ * HOW:  Lazily initialized pool with blocks sized for typical networks
+ */
+#define ADAPTIVE_POOL_BLOCK_SIZE 4096   // 4KB - fits 1024 floats
+#define ADAPTIVE_POOL_NUM_BLOCKS 256    // 256 concurrent buffers
+
+static memory_pool_t g_adaptive_pool = NULL;
+
+/**
+ * @brief Get or create the adaptive network memory pool
+ */
+static memory_pool_t get_adaptive_pool(void) {
+    if (g_adaptive_pool == NULL) {
+        memory_pool_config_t config = memory_pool_default_config(
+            ADAPTIVE_POOL_BLOCK_SIZE, ADAPTIVE_POOL_NUM_BLOCKS);
+        g_adaptive_pool = memory_pool_create(&config);
+    }
+    return g_adaptive_pool;
+}
+
+/**
+ * @brief Allocate buffer from pool or heap
+ */
+static void* alloc_hot_buffer(size_t size) {
+    if (size <= ADAPTIVE_POOL_BLOCK_SIZE) {
+        memory_pool_t pool = get_adaptive_pool();
+        if (pool) {
+            void* buf = memory_pool_acquire(pool);
+            if (buf) {
+                memset(buf, 0, size);
+                return buf;
+            }
+        }
+    }
+    return nimcp_calloc(1, size);
+}
+
+/**
+ * @brief Free buffer to pool or heap
+ */
+static void free_hot_buffer(void* buf) {
+    if (!buf) return;
+    memory_pool_t pool = get_adaptive_pool();
+    if (pool && memory_pool_owns(pool, buf)) {
+        memory_pool_release(pool, buf);
+    } else {
+        nimcp_free(buf);
+    }
+}
 
 //=============================================================================
 // Object Pool Pattern - Eliminates repeated allocations
@@ -165,6 +225,12 @@ struct adaptive_network_struct {
     // Label mapping for classification
     char** label_map;
     uint32_t num_labels;
+
+    // Copy-on-Write support for state snapshots (Phase COW)
+    // WHY: Enable O(1) network state snapshots for training rollback
+    bool uses_cow_states;                    // True if neuron states use COW
+    page_cow_region_t cow_states_region;     // COW region for neuron states
+    page_cow_view_t cow_states_view;         // View into COW states region
 };
 
 //=============================================================================
@@ -864,6 +930,11 @@ adaptive_network_t adaptive_network_create(const adaptive_network_config_t* conf
     // Copy configuration (shallow copy first)
     memcpy(&network->config, config, sizeof(adaptive_network_config_t));
 
+    // Initialize COW fields to NULL/false (Phase COW)
+    network->uses_cow_states = false;
+    network->cow_states_region = NULL;
+    network->cow_states_view = NULL;
+
     // Deep copy layer_sizes array to avoid dangling pointer
     // WHY: Config may be stack-allocated by caller, so we need our own copy
     // WHAT: Allocate and copy the layer_sizes array if present
@@ -994,6 +1065,16 @@ void adaptive_network_destroy(adaptive_network_t network)
         neural_network_destroy(network->base_network);
     }
 
+    // Handle COW cleanup (Phase COW)
+    if (network->uses_cow_states) {
+        if (network->cow_states_view) {
+            page_cow_view_destroy(network->cow_states_view);
+        }
+        if (network->cow_states_region) {
+            page_cow_region_destroy(network->cow_states_region);
+        }
+    }
+
     // Free neuron states and their spike trains
     if (network->neuron_states) {
         free_neuron_spike_trains(network->neuron_states, network->num_neurons);
@@ -1038,7 +1119,8 @@ void adaptive_network_destroy(adaptive_network_t network)
 static float* convert_input_to_spikes(const float* input, uint32_t input_size, float threshold,
                                       spike_encoding_t encoding)
 {
-    float* spike_input = nimcp_malloc(input_size * sizeof(float));
+    // Phase MP: Allocate from pool for hot path performance
+    float* spike_input = (float*)alloc_hot_buffer(input_size * sizeof(float));
     // Guard clause: Check allocation
     if (!spike_input)
         return NULL;
@@ -1255,7 +1337,7 @@ uint32_t adaptive_network_forward(adaptive_network_t network, const float* input
     // Step 3: Forward pass through base network
     neural_network_forward(network->base_network, spike_input, input_size, output, output_size);
 
-    nimcp_free(spike_input);
+    free_hot_buffer(spike_input);  // Phase MP: Return to pool
 
     // Step 4: Process outputs with adaptive thresholding
     uint32_t active_count = process_network_outputs(network, output, output_size);
@@ -1312,7 +1394,7 @@ uint32_t adaptive_network_forward_readonly(const adaptive_network_t network, con
     // (it only reads weights/structure, writes to output buffer)
     neural_network_forward(network->base_network, spike_input, input_size, output, output_size);
 
-    nimcp_free(spike_input);
+    free_hot_buffer(spike_input);  // Phase MP: Return to pool
 
     // Step 4: Process outputs with adaptive thresholding
     // Cast away const - process_network_outputs only reads network config
@@ -1359,8 +1441,8 @@ float adaptive_network_learn(adaptive_network_t network, const training_example_
     if (!network || !example)
         return -1.0f;
 
-    // Forward pass to get current output
-    float* output = nimcp_malloc(example->target_size * sizeof(float));
+    // Forward pass to get current output (Phase MP: use pool)
+    float* output = (float*)alloc_hot_buffer(example->target_size * sizeof(float));
     if (!output) {
         return -1.0f;
     }
@@ -1428,7 +1510,7 @@ float adaptive_network_learn(adaptive_network_t network, const training_example_
             break;
     }
 
-    nimcp_free(output);
+    free_hot_buffer(output);  // Phase MP: Return to pool
 
     network->total_learning_steps++;
 
@@ -1925,8 +2007,8 @@ bool adaptive_network_analyze_activation(adaptive_network_t network, const float
     if (!network || !input || !analysis)
         return false;
 
-    // Forward pass
-    float* output = nimcp_malloc(network->config.base_config.output_size * sizeof(float));
+    // Forward pass (Phase MP: use pool)
+    float* output = (float*)alloc_hot_buffer(network->config.base_config.output_size * sizeof(float));
     if (!output) {
         return false;
     }
@@ -1943,7 +2025,7 @@ bool adaptive_network_analyze_activation(adaptive_network_t network, const float
     if (!analysis->active_neuron_ids || !analysis->activation_strengths) {
         nimcp_free(analysis->active_neuron_ids);
         nimcp_free(analysis->activation_strengths);
-        nimcp_free(output);
+        free_hot_buffer(output);  // Phase MP: Return to pool
         return;
     }
 
@@ -1966,7 +2048,7 @@ bool adaptive_network_analyze_activation(adaptive_network_t network, const float
     }
     analysis->confidence = fminf(max_activation / 10.0f, 1.0f);  // Normalize to [0,1]
 
-    nimcp_free(output);
+    free_hot_buffer(output);  // Phase MP: Return to pool
     return true;
 }
 
@@ -2314,4 +2396,124 @@ float adaptive_network_get_synapse_weight(adaptive_network_t network, uint32_t f
 
     /* No connection found */
     return 0.0f;
+}
+
+//=============================================================================
+// Phase COW: Copy-on-Write Support for Training Snapshots
+//=============================================================================
+
+/**
+ * @brief Enable COW-backed state storage for the adaptive network
+ *
+ * WHAT: Convert neuron states to COW-backed storage
+ * WHY:  Enable O(1) snapshots for training rollback and checkpointing
+ * HOW:  Create COW region from existing states, redirect pointer
+ *
+ * @param network Adaptive network
+ * @return true on success, false if already using COW or on failure
+ *
+ * COMPLEXITY: O(n) where n = neuron_states size (one-time copy)
+ */
+bool adaptive_network_enable_cow_states(adaptive_network_t network)
+{
+    if (!network || !network->neuron_states) {
+        return false;
+    }
+
+    if (network->uses_cow_states) {
+        return true;  // Already enabled
+    }
+
+    // Calculate states size
+    size_t states_size = network->num_neurons * sizeof(adaptive_neuron_state_t);
+    size_t aligned_size = page_cow_align_size(states_size);
+
+    // Create COW region with existing states
+    page_cow_config_t config = page_cow_default_config(aligned_size);
+    config.enable_tracking = true;
+
+    network->cow_states_region = page_cow_region_create(&config, network->neuron_states);
+    if (!network->cow_states_region) {
+        return false;
+    }
+
+    // Create view
+    network->cow_states_view = page_cow_view_create(network->cow_states_region);
+    if (!network->cow_states_view) {
+        page_cow_region_destroy(network->cow_states_region);
+        network->cow_states_region = NULL;
+        return false;
+    }
+
+    // Free original states and point to COW view
+    nimcp_free(network->neuron_states);
+    network->neuron_states = (adaptive_neuron_state_t*)page_cow_view_write(network->cow_states_view);
+    network->uses_cow_states = true;
+
+    return network->neuron_states != NULL;
+}
+
+/**
+ * @brief Create instant snapshot of network state for rollback
+ *
+ * WHAT: O(1) snapshot of neuron states
+ * WHY:  Enable rollback during training (e.g., failed batch)
+ * HOW:  Page-level COW snapshot, copies only on subsequent writes
+ *
+ * @param network Adaptive network (must have COW enabled)
+ * @return Snapshot handle, or NULL on failure
+ *
+ * COMPLEXITY: O(1) - No data copying
+ */
+page_cow_snapshot_t adaptive_network_snapshot_states(adaptive_network_t network)
+{
+    if (!network || !network->uses_cow_states || !network->cow_states_view) {
+        return NULL;
+    }
+
+    return page_cow_snapshot_create(network->cow_states_view);
+}
+
+/**
+ * @brief Restore network state from snapshot
+ *
+ * WHAT: Rollback neuron states to snapshot state
+ * WHY:  Recover from failed training iterations
+ * HOW:  Page-level restore, discards private pages
+ *
+ * @param network Adaptive network
+ * @param snapshot Snapshot to restore from
+ * @return true on success
+ *
+ * COMPLEXITY: O(num_modified_pages)
+ */
+bool adaptive_network_restore_states(adaptive_network_t network,
+                                     page_cow_snapshot_t snapshot)
+{
+    if (!network || !network->uses_cow_states || !network->cow_states_view || !snapshot) {
+        return false;
+    }
+
+    bool success = page_cow_snapshot_restore(network->cow_states_view, snapshot);
+    if (success) {
+        // Re-acquire writable pointer after restore
+        network->neuron_states = (adaptive_neuron_state_t*)page_cow_view_write(network->cow_states_view);
+    }
+
+    return success;
+}
+
+/**
+ * @brief Get memory savings from COW state sharing
+ *
+ * @param network Adaptive network
+ * @return Bytes saved by sharing, or 0 if not using COW
+ */
+size_t adaptive_network_get_cow_savings(adaptive_network_t network)
+{
+    if (!network || !network->uses_cow_states || !network->cow_states_view) {
+        return 0;
+    }
+
+    return page_cow_view_get_memory_saved(network->cow_states_view);
 }

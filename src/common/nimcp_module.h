@@ -7,7 +7,7 @@
 #include "networking/p2p/nimcp_p2pnode.h"
 #include "networking/protocol/nimcp_protocol.h"
 #include "glial/integration/nimcp_glial_integration.h"
-#include "include/nimcp.h"
+#include "nimcp.h"
 
 // Exception types
 // WHY WEAK: Allow ODR-safe linking when test binaries include Python module

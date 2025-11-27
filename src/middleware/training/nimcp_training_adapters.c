@@ -4,10 +4,100 @@
 
 #include "middleware/training/nimcp_training_adapters.h"
 #include "utils/memory/nimcp_memory.h"
+#include "utils/memory/nimcp_memory_pool.h"  // Phase MP: Memory pool for hot paths
 #include "utils/logging/nimcp_logging.h"
+#include "utils/thread/nimcp_thread.h"
+#include "security/nimcp_blood_brain_barrier.h"  // Phase IS-1: BBB perimeter defense
 #include <string.h>
 #include <math.h>
-#include <pthread.h>
+
+// Phase IS-1: External declaration of BBB getter (avoid header conflicts)
+extern bbb_system_t nimcp_bbb_get_global_system(void);
+
+//=============================================================================
+// Memory Pool Configuration (Phase MP)
+//=============================================================================
+
+/**
+ * @brief Signal feature pool configuration
+ *
+ * WHAT: Memory pool for learning signal feature arrays
+ * WHY:  Signals are allocated frequently in hot training path - O(1) vs O(log n)
+ * HOW:  Pre-allocate blocks for typical feature sizes
+ */
+#define SIGNAL_POOL_BLOCK_SIZE 128   // Fits up to 32 floats per signal
+#define SIGNAL_POOL_NUM_BLOCKS 1024  // 1024 signals in flight
+
+static memory_pool_t g_signal_pool = NULL;
+static nimcp_mutex_t g_signal_pool_mutex = NIMCP_MUTEX_INITIALIZER;
+
+/**
+ * @brief Initialize global signal memory pool
+ *
+ * WHAT: Lazily initialize memory pool for signal features
+ * WHY:  Single pool shared across all adapters for efficiency
+ * HOW:  Thread-safe initialization with double-checked locking
+ */
+static memory_pool_t get_signal_pool(void) {
+    if (g_signal_pool == NULL) {
+        nimcp_mutex_lock(&g_signal_pool_mutex);
+        if (g_signal_pool == NULL) {
+            memory_pool_config_t config = memory_pool_default_config(
+                SIGNAL_POOL_BLOCK_SIZE, SIGNAL_POOL_NUM_BLOCKS);
+            g_signal_pool = memory_pool_create(&config);
+            if (g_signal_pool) {
+                nimcp_log(LOG_LEVEL_INFO, "Signal memory pool created: %zu blocks x %zu bytes",
+                          SIGNAL_POOL_NUM_BLOCKS, SIGNAL_POOL_BLOCK_SIZE);
+            }
+        }
+        nimcp_mutex_unlock(&g_signal_pool_mutex);
+    }
+    return g_signal_pool;
+}
+
+/**
+ * @brief Allocate signal features from pool or heap
+ *
+ * WHAT: Allocate memory for signal feature array
+ * WHY:  Use pool for small allocations, fallback to heap for large
+ * HOW:  Check size, try pool first, fallback to nimcp_calloc
+ */
+static float* alloc_signal_features(uint32_t num_features) {
+    size_t size = num_features * sizeof(float);
+
+    // Try pool for small allocations
+    if (size <= SIGNAL_POOL_BLOCK_SIZE) {
+        memory_pool_t pool = get_signal_pool();
+        if (pool) {
+            float* features = (float*)memory_pool_acquire(pool);
+            if (features) {
+                memset(features, 0, size);  // Zero-initialize
+                return features;
+            }
+        }
+    }
+
+    // Fallback to heap for large allocations or pool exhausted
+    return nimcp_calloc(num_features, sizeof(float));
+}
+
+/**
+ * @brief Free signal features to pool or heap
+ *
+ * WHAT: Return memory for signal feature array
+ * WHY:  Match allocation source for correct deallocation
+ * HOW:  Check if from pool, release appropriately
+ */
+static void free_signal_features(float* features) {
+    if (!features) return;
+
+    memory_pool_t pool = get_signal_pool();
+    if (pool && memory_pool_owns(pool, features)) {
+        memory_pool_release(pool, features);
+    } else {
+        nimcp_free(features);
+    }
+}
 
 //=============================================================================
 // Training Event Data Extraction
@@ -63,7 +153,7 @@ typedef struct {
 struct learning_signal_adapter_struct {
     learning_signal_adapter_config_t config;
     normalization_stats_t* norm_stats;
-    pthread_mutex_t mutex;
+    nimcp_mutex_t mutex;
 
     // Statistics
     uint64_t signals_extracted;
@@ -144,7 +234,7 @@ learning_signal_adapter_t learning_signal_adapter_create(
     }
 
     // Initialize mutex
-    if (pthread_mutex_init(&adapter->mutex, NULL) != 0) {
+    if (nimcp_mutex_init(&adapter->mutex, NULL) != NIMCP_SUCCESS) {
         nimcp_log(LOG_LEVEL_ERROR, "Failed to initialize adapter mutex");
         nimcp_free(adapter);
         return NULL;
@@ -158,7 +248,7 @@ void learning_signal_adapter_destroy(learning_signal_adapter_t adapter) {
     if (!adapter) return;
 
     destroy_norm_stats(adapter->norm_stats);
-    pthread_mutex_destroy(&adapter->mutex);
+    nimcp_mutex_destroy(&adapter->mutex);
     nimcp_free(adapter);
 
     nimcp_log(LOG_LEVEL_INFO, "Learning signal adapter destroyed");
@@ -176,9 +266,9 @@ static bool extract_error_signal(const brain_event_t* event,
     if (!event || !signal) return false;
     if (event->type != EVENT_ERROR_DETECTED) return false;
 
-    // Allocate feature vector
+    // Allocate feature vector from pool (Phase MP)
     signal->num_features = 3;
-    signal->features = nimcp_calloc(signal->num_features, sizeof(float));
+    signal->features = alloc_signal_features(signal->num_features);
     if (!signal->features) return false;
 
     // Extract features from event data payload
@@ -215,7 +305,7 @@ static bool extract_cognitive_signal(const brain_event_t* event,
     }
 
     signal->num_features = 2;
-    signal->features = nimcp_calloc(signal->num_features, sizeof(float));
+    signal->features = alloc_signal_features(signal->num_features);
     if (!signal->features) return false;
 
     // Extract features from event data
@@ -237,7 +327,18 @@ bool learning_signal_adapter_extract(learning_signal_adapter_t adapter,
                                       learning_signal_t* signal) {
     if (!adapter || !event || !signal) return false;
 
-    pthread_mutex_lock(&adapter->mutex);
+    // Phase IS-1: BBB validation for event data
+    if (event->data.data && event->data.size > 0) {
+        bbb_system_t bbb = nimcp_bbb_get_global_system();
+        if (bbb) {
+            bbb_validation_result_t result;
+            if (!bbb_validate_input(bbb, event->data.data, event->data.size, &result)) {
+                return false;  // BBB rejected the training data
+            }
+        }
+    }
+
+    nimcp_mutex_lock(&adapter->mutex);
 
     // Initialize signal
     memset(signal, 0, sizeof(learning_signal_t));
@@ -266,7 +367,7 @@ bool learning_signal_adapter_extract(learning_signal_adapter_t adapter,
             signal->type = LEARNING_SIGNAL_MEMORY;
             // Memory signals - simple extraction
             signal->num_features = 1;
-            signal->features = nimcp_calloc(1, sizeof(float));
+            signal->features = alloc_signal_features(1);
             if (signal->features) {
                 extract_float_from_event(event, 0, &signal->features[0]);
                 signal->magnitude = signal->features[0];
@@ -280,7 +381,7 @@ bool learning_signal_adapter_extract(learning_signal_adapter_t adapter,
             signal->type = LEARNING_SIGNAL_REWARD;
             // Weight update as reward signal
             signal->num_features = 1;
-            signal->features = nimcp_calloc(1, sizeof(float));
+            signal->features = alloc_signal_features(1);
             if (signal->features) {
                 extract_float_from_event(event, 0, &signal->features[0]);
                 signal->magnitude = fabsf(signal->features[0]);
@@ -296,7 +397,7 @@ bool learning_signal_adapter_extract(learning_signal_adapter_t adapter,
 
     if (!extracted) {
         adapter->signals_dropped++;
-        pthread_mutex_unlock(&adapter->mutex);
+        nimcp_mutex_unlock(&adapter->mutex);
         return false;
     }
 
@@ -304,7 +405,7 @@ bool learning_signal_adapter_extract(learning_signal_adapter_t adapter,
     if (signal->confidence < adapter->config.min_confidence_threshold) {
         learning_signal_free(signal);
         adapter->signals_dropped++;
-        pthread_mutex_unlock(&adapter->mutex);
+        nimcp_mutex_unlock(&adapter->mutex);
         return false;
     }
 
@@ -315,7 +416,7 @@ bool learning_signal_adapter_extract(learning_signal_adapter_t adapter,
     adapter->running_avg_confidence =
         0.95f * adapter->running_avg_confidence + 0.05f * signal->confidence;
 
-    pthread_mutex_unlock(&adapter->mutex);
+    nimcp_mutex_unlock(&adapter->mutex);
     return true;
 }
 
@@ -367,13 +468,13 @@ bool learning_signal_adapter_normalize(learning_signal_adapter_t adapter,
                                         uint32_t num_features) {
     if (!adapter || !features || num_features == 0) return false;
 
-    pthread_mutex_lock(&adapter->mutex);
+    nimcp_mutex_lock(&adapter->mutex);
 
     // Create normalization stats if needed
     if (!adapter->norm_stats) {
         adapter->norm_stats = create_norm_stats(num_features);
         if (!adapter->norm_stats) {
-            pthread_mutex_unlock(&adapter->mutex);
+            nimcp_mutex_unlock(&adapter->mutex);
             return false;
         }
     }
@@ -439,7 +540,7 @@ bool learning_signal_adapter_normalize(learning_signal_adapter_t adapter,
     }
 
     adapter->signals_normalized++;
-    pthread_mutex_unlock(&adapter->mutex);
+    nimcp_mutex_unlock(&adapter->mutex);
     return true;
 }
 
@@ -453,7 +554,7 @@ bool learning_signal_adapter_apply_attention(learning_signal_adapter_t adapter,
     if (attention_weight < 0.0f) attention_weight = 0.0f;
     if (attention_weight > 1.0f) attention_weight = 1.0f;
 
-    pthread_mutex_lock(&adapter->mutex);
+    nimcp_mutex_lock(&adapter->mutex);
 
     // Scale features by attention weight
     for (uint32_t i = 0; i < signal->num_features; i++) {
@@ -464,13 +565,13 @@ bool learning_signal_adapter_apply_attention(learning_signal_adapter_t adapter,
     signal->magnitude *= attention_weight;
     signal->confidence *= (0.5f + 0.5f * attention_weight);
 
-    pthread_mutex_unlock(&adapter->mutex);
+    nimcp_mutex_unlock(&adapter->mutex);
     return true;
 }
 
 void learning_signal_free(learning_signal_t* signal) {
     if (!signal) return;
-    nimcp_free(signal->features);
+    free_signal_features(signal->features);  // Phase MP: Return to pool if applicable
     signal->features = NULL;
     signal->num_features = 0;
 }
@@ -479,7 +580,7 @@ bool learning_signal_adapter_get_stats(learning_signal_adapter_t adapter,
                                         learning_signal_adapter_stats_t* stats) {
     if (!adapter || !stats) return false;
 
-    pthread_mutex_lock(&adapter->mutex);
+    nimcp_mutex_lock(&adapter->mutex);
 
     stats->signals_extracted = adapter->signals_extracted;
     stats->signals_normalized = adapter->signals_normalized;
@@ -487,7 +588,7 @@ bool learning_signal_adapter_get_stats(learning_signal_adapter_t adapter,
     stats->avg_magnitude = adapter->running_avg_magnitude;
     stats->avg_confidence = adapter->running_avg_confidence;
 
-    pthread_mutex_unlock(&adapter->mutex);
+    nimcp_mutex_unlock(&adapter->mutex);
     return true;
 }
 
@@ -516,7 +617,7 @@ struct weight_update_router_struct {
     routing_table_t* routing_table;
     event_bus_t event_bus;
     bool owns_event_bus;
-    pthread_mutex_t mutex;
+    nimcp_mutex_t mutex;
 
     // Statistics
     uint64_t updates_routed;
@@ -575,7 +676,7 @@ weight_update_router_t weight_update_router_create(
     }
 
     // Initialize mutex
-    if (pthread_mutex_init(&router->mutex, NULL) != 0) {
+    if (nimcp_mutex_init(&router->mutex, NULL) != NIMCP_SUCCESS) {
         nimcp_log(LOG_LEVEL_ERROR, "Failed to initialize router mutex");
         routing_table_destroy(router->routing_table);
         if (router->owns_event_bus) {
@@ -598,7 +699,7 @@ void weight_update_router_destroy(weight_update_router_t router) {
         event_bus_destroy(router->event_bus);
     }
 
-    pthread_mutex_destroy(&router->mutex);
+    nimcp_mutex_destroy(&router->mutex);
     nimcp_free(router);
 
     nimcp_log(LOG_LEVEL_INFO, "Weight update router destroyed");
@@ -627,7 +728,7 @@ bool weight_update_router_route(weight_update_router_t router,
                                  const weight_update_t* update) {
     if (!router || !update) return false;
 
-    pthread_mutex_lock(&router->mutex);
+    nimcp_mutex_lock(&router->mutex);
 
     // Query routing table for target
     uint32_t source_id = (uint32_t)update->target_type;
@@ -638,7 +739,7 @@ bool weight_update_router_route(weight_update_router_t router,
 
     if (!has_route || query.num_dests == 0) {
         router->updates_dropped++;
-        pthread_mutex_unlock(&router->mutex);
+        nimcp_mutex_unlock(&router->mutex);
         routing_table_free_query(&query);
         return false;
     }
@@ -660,7 +761,7 @@ bool weight_update_router_route(weight_update_router_t router,
     }
 
     routing_table_free_query(&query);
-    pthread_mutex_unlock(&router->mutex);
+    nimcp_mutex_unlock(&router->mutex);
     return published;
 }
 
@@ -669,7 +770,7 @@ uint32_t weight_update_router_route_batch(weight_update_router_t router,
                                            uint32_t num_updates) {
     if (!router || !updates || num_updates == 0) return 0;
 
-    pthread_mutex_lock(&router->mutex);
+    nimcp_mutex_lock(&router->mutex);
 
     uint32_t routed = 0;
     uint32_t batch_size = router->config.max_batch_size;
@@ -690,7 +791,7 @@ uint32_t weight_update_router_route_batch(weight_update_router_t router,
     router->updates_dropped += (num_updates - routed);
     router->batch_operations++;
 
-    pthread_mutex_unlock(&router->mutex);
+    nimcp_mutex_unlock(&router->mutex);
     return routed;
 }
 
@@ -700,7 +801,7 @@ bool weight_update_router_add_route(weight_update_router_t router,
                                      uint32_t priority) {
     if (!router) return false;
 
-    pthread_mutex_lock(&router->mutex);
+    nimcp_mutex_lock(&router->mutex);
 
     bool added = routing_table_add_route(router->routing_table,
                                         (uint32_t)source_type,
@@ -714,7 +815,7 @@ bool weight_update_router_add_route(weight_update_router_t router,
                                    priority);
     }
 
-    pthread_mutex_unlock(&router->mutex);
+    nimcp_mutex_unlock(&router->mutex);
     return added;
 }
 
@@ -723,13 +824,13 @@ bool weight_update_router_remove_route(weight_update_router_t router,
                                         weight_target_type_t target_type) {
     if (!router) return false;
 
-    pthread_mutex_lock(&router->mutex);
+    nimcp_mutex_lock(&router->mutex);
 
     bool removed = routing_table_remove_route(router->routing_table,
                                               (uint32_t)source_type,
                                               (uint32_t)target_type);
 
-    pthread_mutex_unlock(&router->mutex);
+    nimcp_mutex_unlock(&router->mutex);
     return removed;
 }
 
@@ -738,13 +839,13 @@ bool weight_update_router_strengthen_route(weight_update_router_t router,
                                             weight_target_type_t target_type) {
     if (!router) return false;
 
-    pthread_mutex_lock(&router->mutex);
+    nimcp_mutex_lock(&router->mutex);
 
     bool strengthened = routing_table_use_route(router->routing_table,
                                                (uint32_t)source_type,
                                                (uint32_t)target_type);
 
-    pthread_mutex_unlock(&router->mutex);
+    nimcp_mutex_unlock(&router->mutex);
     return strengthened;
 }
 
@@ -752,7 +853,7 @@ bool weight_update_router_get_stats(weight_update_router_t router,
                                      weight_update_router_stats_t* stats) {
     if (!router || !stats) return false;
 
-    pthread_mutex_lock(&router->mutex);
+    nimcp_mutex_lock(&router->mutex);
 
     stats->updates_routed = router->updates_routed;
     stats->updates_dropped = router->updates_dropped;
@@ -764,7 +865,7 @@ bool weight_update_router_get_stats(weight_update_router_t router,
 
     stats->avg_routing_time_us = 10.0f; // Placeholder
 
-    pthread_mutex_unlock(&router->mutex);
+    nimcp_mutex_unlock(&router->mutex);
     return true;
 }
 
@@ -801,7 +902,7 @@ struct training_event_manager_struct {
     training_event_manager_config_t config;
     event_bus_t event_bus;
     bool owns_event_bus;
-    pthread_mutex_t mutex;
+    nimcp_mutex_t mutex;
 
     // Simple subscriber list
     training_subscriber_t* subscribers;
@@ -854,7 +955,7 @@ training_event_manager_t training_event_manager_create(
     manager->subscriber_count = 0;
 
     // Initialize mutex
-    if (pthread_mutex_init(&manager->mutex, NULL) != 0) {
+    if (nimcp_mutex_init(&manager->mutex, NULL) != NIMCP_SUCCESS) {
         nimcp_log(LOG_LEVEL_ERROR, "Failed to initialize manager mutex");
         if (manager->owns_event_bus) {
             event_bus_destroy(manager->event_bus);
@@ -886,7 +987,7 @@ void training_event_manager_destroy(training_event_manager_t manager) {
         event_bus_destroy(manager->event_bus);
     }
 
-    pthread_mutex_destroy(&manager->mutex);
+    nimcp_mutex_destroy(&manager->mutex);
     nimcp_free(manager);
 
     nimcp_log(LOG_LEVEL_INFO, "Training event manager destroyed");
@@ -926,7 +1027,7 @@ bool training_event_manager_publish(training_event_manager_t manager,
                                      const training_event_data_t* event) {
     if (!manager || !event) return false;
 
-    pthread_mutex_lock(&manager->mutex);
+    nimcp_mutex_lock(&manager->mutex);
 
     // Convert to brain event
     brain_event_type_t brain_type = training_type_to_brain_type(event->type);
@@ -956,7 +1057,7 @@ bool training_event_manager_publish(training_event_manager_t manager,
         manager->events_dropped++;
     }
 
-    pthread_mutex_unlock(&manager->mutex);
+    nimcp_mutex_unlock(&manager->mutex);
     return published;
 }
 
@@ -1023,12 +1124,12 @@ event_subscription_handle_t training_event_manager_subscribe(
 
     if (!manager || !callback) return INVALID_SUBSCRIPTION_HANDLE;
 
-    pthread_mutex_lock(&manager->mutex);
+    nimcp_mutex_lock(&manager->mutex);
 
     // Create subscriber
     training_subscriber_t* sub = nimcp_calloc(1, sizeof(training_subscriber_t));
     if (!sub) {
-        pthread_mutex_unlock(&manager->mutex);
+        nimcp_mutex_unlock(&manager->mutex);
         return INVALID_SUBSCRIPTION_HANDLE;
     }
 
@@ -1045,7 +1146,7 @@ event_subscription_handle_t training_event_manager_subscribe(
 
     if (sub->handle == INVALID_SUBSCRIPTION_HANDLE) {
         nimcp_free(sub);
-        pthread_mutex_unlock(&manager->mutex);
+        nimcp_mutex_unlock(&manager->mutex);
         return INVALID_SUBSCRIPTION_HANDLE;
     }
 
@@ -1054,7 +1155,7 @@ event_subscription_handle_t training_event_manager_subscribe(
     manager->subscribers = sub;
     manager->subscriber_count++;
 
-    pthread_mutex_unlock(&manager->mutex);
+    nimcp_mutex_unlock(&manager->mutex);
     return sub->handle;
 }
 
@@ -1062,7 +1163,7 @@ bool training_event_manager_unsubscribe(training_event_manager_t manager,
                                          event_subscription_handle_t handle) {
     if (!manager || handle == INVALID_SUBSCRIPTION_HANDLE) return false;
 
-    pthread_mutex_lock(&manager->mutex);
+    nimcp_mutex_lock(&manager->mutex);
 
     // Find and remove subscriber
     training_subscriber_t* prev = NULL;
@@ -1083,14 +1184,14 @@ bool training_event_manager_unsubscribe(training_event_manager_t manager,
             nimcp_free(sub);
             manager->subscriber_count--;
 
-            pthread_mutex_unlock(&manager->mutex);
+            nimcp_mutex_unlock(&manager->mutex);
             return true;
         }
         prev = sub;
         sub = sub->next;
     }
 
-    pthread_mutex_unlock(&manager->mutex);
+    nimcp_mutex_unlock(&manager->mutex);
     return false;
 }
 
@@ -1101,10 +1202,10 @@ uint32_t training_event_manager_process_events(training_event_manager_t manager,
     // With core event bus, events are delivered immediately or via async thread
     // This function is now a no-op for compatibility
     // Could flush the event bus if needed
-    pthread_mutex_lock(&manager->mutex);
+    nimcp_mutex_lock(&manager->mutex);
     uint32_t flushed = event_bus_flush(manager->event_bus);
     manager->events_delivered += flushed;
-    pthread_mutex_unlock(&manager->mutex);
+    nimcp_mutex_unlock(&manager->mutex);
 
     return flushed;
 }
@@ -1113,7 +1214,7 @@ bool training_event_manager_get_stats(training_event_manager_t manager,
                                        training_event_manager_stats_t* stats) {
     if (!manager || !stats) return false;
 
-    pthread_mutex_lock(&manager->mutex);
+    nimcp_mutex_lock(&manager->mutex);
 
     stats->events_published = manager->events_published;
     stats->events_delivered = manager->events_delivered;
@@ -1121,7 +1222,7 @@ bool training_event_manager_get_stats(training_event_manager_t manager,
     stats->active_subscribers = manager->subscriber_count;
     stats->queue_size = event_bus_get_pending_count(manager->event_bus);
 
-    pthread_mutex_unlock(&manager->mutex);
+    nimcp_mutex_unlock(&manager->mutex);
     return true;
 }
 

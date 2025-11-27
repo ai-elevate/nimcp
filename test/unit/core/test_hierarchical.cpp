@@ -15,10 +15,10 @@
 #include <gtest/gtest.h>
 #include <vector>
 
-    #include "../include/cognitive/nimcp_hierarchical.h"
-    #include "../core/brain/nimcp_brain.h"
-    #include "../utils/memory/nimcp_memory.h"
-    #include "../utils/logging/nimcp_logging.h"
+    #include "cognitive/nimcp_hierarchical.h"
+    #include "core/brain/nimcp_brain.h"
+    #include "utils/memory/nimcp_memory.h"
+    #include "utils/logging/nimcp_logging.h"
 
 //=============================================================================
 // Test Fixtures

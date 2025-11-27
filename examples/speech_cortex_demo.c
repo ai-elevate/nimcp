@@ -16,7 +16,7 @@
  * @version 2.7.0 (Phase 8.8)
  */
 
-#include "include/perception/nimcp_speech_cortex.h"
+#include "perception/nimcp_speech_cortex.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>

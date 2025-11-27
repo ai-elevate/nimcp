@@ -46,7 +46,7 @@ extern "C" {
 
 #include <stdint.h>
 #include <stdbool.h>
-#include <pthread.h>
+#include "utils/thread/nimcp_thread.h"
 
 //=============================================================================
 // CONSTANTS
@@ -304,7 +304,7 @@ struct dendrite_spine_pool_struct {
     uint32_t capacity;              // Total spines in pool
     uint32_t allocated_count;       // Currently allocated
     uint32_t next_free_hint;        // Hint for next free slot
-    pthread_mutex_t lock;           // Thread safety
+    nimcp_mutex_t lock;           // Thread safety
 };
 
 //=============================================================================
@@ -620,7 +620,7 @@ struct dendrite_struct {
     bool cow_modified;             // Modified since last CoW copy
 
     //--- Thread Safety ---
-    pthread_mutex_t lock;
+    nimcp_mutex_t lock;
 };
 
 //=============================================================================
@@ -675,7 +675,7 @@ struct dendrite_network_struct {
     dendrite_t** dendrites;     // Array of dendrite pointers
     uint32_t num_dendrites;     // Current number of dendrites
     uint32_t max_dendrites;     // Maximum capacity
-    pthread_mutex_t lock;       // Thread safety lock
+    nimcp_mutex_t lock;       // Thread safety lock
 };
 
 //=============================================================================

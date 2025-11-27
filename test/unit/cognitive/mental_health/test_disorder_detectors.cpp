@@ -38,10 +38,9 @@ protected:
         // Create monitor with default config
         monitor = mental_health_create_default();
 
-        // Create minimal brain for testing
-        brain_config_t brain_config = brain_default_config();
-        brain_config.task = BRAIN_CLASSIFICATION;
-        brain = brain_create(&brain_config);
+        // Create minimal brain for testing using correct API
+        brain = brain_create("test_mental_health", BRAIN_SIZE_TINY,
+                            BRAIN_TASK_CLASSIFICATION, 8, 4);
     }
 
     void TearDown() override {
@@ -94,7 +93,6 @@ protected:
         markers.high_risk_decisions = 0.0f;
         markers.accuracy_obsession = 0.1f;
         markers.interest_narrowness = 0.2f;
-        markers.confidence_score = 0.7f;
         return markers;
     }
 };

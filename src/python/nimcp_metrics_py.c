@@ -7,7 +7,7 @@
 
 #define PY_SSIZE_T_CLEAN
 #include <Python.h>
-#include "../utils/metrics/nimcp_metrics.h"
+#include "utils/metrics/nimcp_metrics.h"
 
 //=============================================================================
 // MetricsCollector Type

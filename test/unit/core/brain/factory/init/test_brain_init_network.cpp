@@ -35,7 +35,7 @@
 
 #include "core/brain/factory/nimcp_brain_factory.h"
 #include "core/brain/nimcp_brain.h"
-#include "include/nimcp.h"
+#include "nimcp.h"
 #include "utils/memory/nimcp_memory.h"
 
 //=============================================================================

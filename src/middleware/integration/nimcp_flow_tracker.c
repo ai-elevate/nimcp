@@ -23,9 +23,9 @@
 #include "utils/memory/nimcp_memory.h"
 #include "utils/time/nimcp_time.h"
 #include "utils/logging/nimcp_logging.h"
+#include "utils/thread/nimcp_thread.h"
 #include <string.h>
 #include <math.h>
-#include <pthread.h>
 
 //=============================================================================
 // Constants
@@ -92,7 +92,7 @@ typedef struct {
     uint64_t latency_sq_sum_us;
 
     // Thread safety
-    pthread_mutex_t mutex;
+    nimcp_mutex_t mutex;
 } path_flow_state_t;
 
 struct flow_tracker {
@@ -259,10 +259,10 @@ flow_tracker_t* flow_tracker_create_custom(
         path->latency_hist.min_value_us = INFINITY;
         path->latency_hist.max_value_us = 0.0f;
 
-        if (pthread_mutex_init(&path->mutex, NULL) != 0) {
+        if (nimcp_mutex_init(&path->mutex, NULL) != NIMCP_SUCCESS) {
             LOG_ERROR("FlowTracker: Failed to init mutex for path %d", i);
             for (int j = 0; j < i; j++) {
-                pthread_mutex_destroy(&tracker->paths[j].mutex);
+                nimcp_mutex_destroy(&tracker->paths[j].mutex);
             }
             nimcp_free(tracker);
             return NULL;
@@ -286,7 +286,7 @@ void flow_tracker_destroy(flow_tracker_t* tracker) {
              tracker->total_throughput_bits_per_sec);
 
     for (int i = 0; i < FLOW_TRACKER_NUM_PATHS; i++) {
-        pthread_mutex_destroy(&tracker->paths[i].mutex);
+        nimcp_mutex_destroy(&tracker->paths[i].mutex);
     }
 
     nimcp_free(tracker);
@@ -306,7 +306,7 @@ void flow_tracker_record_flow(
 
     path_flow_state_t* path_state = &tracker->paths[path];
 
-    pthread_mutex_lock(&path_state->mutex);
+    nimcp_mutex_lock(&path_state->mutex);
 
     path_state->total_events++;
     path_state->total_information_bits += information_bits;
@@ -327,7 +327,7 @@ void flow_tracker_record_flow(
 
     update_path_metrics(path_state);
 
-    pthread_mutex_unlock(&path_state->mutex);
+    nimcp_mutex_unlock(&path_state->mutex);
 }
 
 void flow_tracker_record_filtered_flow(
@@ -339,7 +339,7 @@ void flow_tracker_record_filtered_flow(
 
     path_flow_state_t* path_state = &tracker->paths[path];
 
-    pthread_mutex_lock(&path_state->mutex);
+    nimcp_mutex_lock(&path_state->mutex);
 
     path_state->filtered_events++;
     path_state->filtered_information_bits += information_bits;
@@ -347,7 +347,7 @@ void flow_tracker_record_filtered_flow(
 
     update_path_metrics(path_state);
 
-    pthread_mutex_unlock(&path_state->mutex);
+    nimcp_mutex_unlock(&path_state->mutex);
 }
 
 void flow_tracker_record_bottlenecked_flow(
@@ -359,7 +359,7 @@ void flow_tracker_record_bottlenecked_flow(
 
     path_flow_state_t* path_state = &tracker->paths[path];
 
-    pthread_mutex_lock(&path_state->mutex);
+    nimcp_mutex_lock(&path_state->mutex);
 
     path_state->bottlenecked_events++;
     path_state->information_loss_bits += information_bits;
@@ -369,7 +369,7 @@ void flow_tracker_record_bottlenecked_flow(
 
     update_path_metrics(path_state);
 
-    pthread_mutex_unlock(&path_state->mutex);
+    nimcp_mutex_unlock(&path_state->mutex);
 }
 
 //=============================================================================
@@ -387,7 +387,7 @@ cross_modal_flow_metrics_t flow_tracker_get_metrics(
     for (int i = 0; i < FLOW_TRACKER_NUM_PATHS; i++) {
         const path_flow_state_t* path_state = &tracker->paths[i];
 
-        pthread_mutex_lock((pthread_mutex_t*)&path_state->mutex);
+        nimcp_mutex_lock((nimcp_mutex_t*)&path_state->mutex);
 
         path_flow_stats_t* stats = &metrics.paths[i];
         stats->input_rate_bits_per_sec = path_state->input_rate_bits_per_sec;
@@ -412,7 +412,7 @@ cross_modal_flow_metrics_t flow_tracker_get_metrics(
         stats->measurement_window_start_ms = path_state->measurement_window_start_us / 1000;
         stats->last_update_time_ms = path_state->last_update_time_us / 1000;
 
-        pthread_mutex_unlock((pthread_mutex_t*)&path_state->mutex);
+        nimcp_mutex_unlock((nimcp_mutex_t*)&path_state->mutex);
     }
 
     // Global metrics
@@ -580,7 +580,7 @@ void flow_tracker_reset(
     for (int i = 0; i < FLOW_TRACKER_NUM_PATHS; i++) {
         path_flow_state_t* path = &tracker->paths[i];
 
-        pthread_mutex_lock(&path->mutex);
+        nimcp_mutex_lock(&path->mutex);
 
         memset(path, 0, sizeof(path_flow_state_t));
         path->measurement_window_start_us = now_us;
@@ -590,7 +590,7 @@ void flow_tracker_reset(
         path->latency_hist.min_value_us = INFINITY;
         path->latency_hist.max_value_us = 0.0f;
 
-        pthread_mutex_unlock(&path->mutex);
+        nimcp_mutex_unlock(&path->mutex);
     }
 
     tracker->total_throughput_bits_per_sec = 0.0f;

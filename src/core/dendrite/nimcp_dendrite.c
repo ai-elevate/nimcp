@@ -26,9 +26,9 @@
 #include "core/dendrite/nimcp_dendrite.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
+#include "utils/thread/nimcp_thread.h"
 #include <math.h>
 #include <string.h>
-#include <pthread.h>
 
 // ============================================================================
 // Constants
@@ -166,7 +166,7 @@ dendrite_t* dendrite_create(dendrite_config_t* config) {
     dendrite->is_functional = true;
 
     // Initialize mutex
-    pthread_mutex_init(&dendrite->lock, NULL);
+    nimcp_mutex_init(&dendrite->lock, NULL);
 
     nimcp_log(LOG_LEVEL_DEBUG, "dendrite_create: Created dendrite %u (type=%d)",
               dendrite->id, dendrite->type);
@@ -200,7 +200,7 @@ void dendrite_destroy(dendrite_t* dendrite) {
     }
 
     // Destroy mutex
-    pthread_mutex_destroy(&dendrite->lock);
+    nimcp_mutex_destroy(&dendrite->lock);
 
     // Free dendrite
     nimcp_free(dendrite);
@@ -600,7 +600,7 @@ bool dendrite_receive_input(
         return false;
     }
 
-    pthread_mutex_lock(&dendrite->lock);
+    nimcp_mutex_lock(&dendrite->lock);
 
     dendritic_segment_t* segment = &dendrite->segments[segment_id];
 
@@ -617,7 +617,7 @@ bool dendrite_receive_input(
     dendrite->activity.mean_input_rate =
         (dendrite->activity.mean_input_rate * 0.99f) + 0.01f;
 
-    pthread_mutex_unlock(&dendrite->lock);
+    nimcp_mutex_unlock(&dendrite->lock);
 
     return true;
 }
@@ -633,7 +633,7 @@ float dendrite_compute_somatic_current(dendrite_t* dendrite) {
         return 0.0f;
     }
 
-    pthread_mutex_lock(&dendrite->lock);
+    nimcp_mutex_lock(&dendrite->lock);
 
     float total_current = 0.0f;
 
@@ -650,7 +650,7 @@ float dendrite_compute_somatic_current(dendrite_t* dendrite) {
 
     dendrite->somatic_voltage = total_current;
 
-    pthread_mutex_unlock(&dendrite->lock);
+    nimcp_mutex_unlock(&dendrite->lock);
 
     return total_current;
 }
@@ -688,9 +688,9 @@ float dendrite_get_attenuation(dendrite_t* dendrite, uint32_t segment_id) {
         return 0.0f;
     }
 
-    pthread_mutex_lock(&dendrite->lock);
+    nimcp_mutex_lock(&dendrite->lock);
     float attenuation = calculate_attenuation(dendrite, segment_id);
-    pthread_mutex_unlock(&dendrite->lock);
+    nimcp_mutex_unlock(&dendrite->lock);
 
     return attenuation;
 }
@@ -710,7 +710,7 @@ void dendrite_step(dendrite_t* dendrite, float dt_ms, uint64_t timestamp) {
         return;
     }
 
-    pthread_mutex_lock(&dendrite->lock);
+    nimcp_mutex_lock(&dendrite->lock);
 
     // Update all segments
     for (uint32_t i = 0; i < dendrite->num_segments; i++) {
@@ -736,7 +736,7 @@ void dendrite_step(dendrite_t* dendrite, float dt_ms, uint64_t timestamp) {
     dendrite->activity.mean_voltage = dendrite->mean_voltage;
     dendrite->activity.mean_calcium = dendrite->calcium_level;
 
-    pthread_mutex_unlock(&dendrite->lock);
+    nimcp_mutex_unlock(&dendrite->lock);
 }
 
 /**
@@ -809,12 +809,12 @@ void dendrite_update_calcium(dendrite_t* dendrite, float dt_ms) {
         return;
     }
 
-    pthread_mutex_lock(&dendrite->lock);
+    nimcp_mutex_lock(&dendrite->lock);
 
     // Already updated in dendrite_step
     // This function provides explicit calcium update interface
 
-    pthread_mutex_unlock(&dendrite->lock);
+    nimcp_mutex_unlock(&dendrite->lock);
 }
 
 // ============================================================================
@@ -832,7 +832,7 @@ void dendrite_induce_ltp(dendrite_t* dendrite, uint32_t spine_id, float magnitud
         return;
     }
 
-    pthread_mutex_lock(&dendrite->lock);
+    nimcp_mutex_lock(&dendrite->lock);
 
     dendritic_spine_t* spine = &dendrite->spines[spine_id];
 
@@ -858,7 +858,7 @@ void dendrite_induce_ltp(dendrite_t* dendrite, uint32_t spine_id, float magnitud
                   spine_id, magnitude);
     }
 
-    pthread_mutex_unlock(&dendrite->lock);
+    nimcp_mutex_unlock(&dendrite->lock);
 }
 
 /**
@@ -872,7 +872,7 @@ void dendrite_induce_ltd(dendrite_t* dendrite, uint32_t spine_id, float magnitud
         return;
     }
 
-    pthread_mutex_lock(&dendrite->lock);
+    nimcp_mutex_lock(&dendrite->lock);
 
     dendritic_spine_t* spine = &dendrite->spines[spine_id];
 
@@ -900,7 +900,7 @@ void dendrite_induce_ltd(dendrite_t* dendrite, uint32_t spine_id, float magnitud
                   spine_id, magnitude);
     }
 
-    pthread_mutex_unlock(&dendrite->lock);
+    nimcp_mutex_unlock(&dendrite->lock);
 }
 
 /**
@@ -919,7 +919,7 @@ void dendrite_update_structural_plasticity(dendrite_t* dendrite, uint64_t timest
         return;
     }
 
-    pthread_mutex_lock(&dendrite->lock);
+    nimcp_mutex_lock(&dendrite->lock);
 
     // Check each spine for elimination
     for (uint32_t i = 0; i < dendrite->num_spines; i++) {
@@ -943,7 +943,7 @@ void dendrite_update_structural_plasticity(dendrite_t* dendrite, uint64_t timest
         }
     }
 
-    pthread_mutex_unlock(&dendrite->lock);
+    nimcp_mutex_unlock(&dendrite->lock);
 }
 
 // ============================================================================
@@ -961,12 +961,12 @@ bool dendrite_is_in_plateau(dendrite_t* dendrite) {
         return false;
     }
 
-    pthread_mutex_lock(&dendrite->lock);
+    nimcp_mutex_lock(&dendrite->lock);
 
     // Plateau threshold: ~40 mV above rest
     bool in_plateau = (dendrite->mean_voltage > 0.030f);
 
-    pthread_mutex_unlock(&dendrite->lock);
+    nimcp_mutex_unlock(&dendrite->lock);
 
     return in_plateau;
 }
@@ -985,7 +985,7 @@ dendritic_spine_t* dendrite_get_spine_by_synapse(
         return NULL;
     }
 
-    pthread_mutex_lock(&dendrite->lock);
+    nimcp_mutex_lock(&dendrite->lock);
 
     dendritic_spine_t* result = NULL;
 
@@ -996,7 +996,7 @@ dendritic_spine_t* dendrite_get_spine_by_synapse(
         }
     }
 
-    pthread_mutex_unlock(&dendrite->lock);
+    nimcp_mutex_unlock(&dendrite->lock);
 
     return result;
 }
@@ -1012,7 +1012,7 @@ float dendrite_calculate_surface_area(dendrite_t* dendrite) {
         return 0.0f;
     }
 
-    pthread_mutex_lock(&dendrite->lock);
+    nimcp_mutex_lock(&dendrite->lock);
 
     float total_area = 0.0f;
 
@@ -1023,7 +1023,7 @@ float dendrite_calculate_surface_area(dendrite_t* dendrite) {
 
     dendrite->surface_area = total_area;
 
-    pthread_mutex_unlock(&dendrite->lock);
+    nimcp_mutex_unlock(&dendrite->lock);
 
     return total_area;
 }
@@ -1041,9 +1041,9 @@ dendrite_activity_stats_t dendrite_get_activity_stats(dendrite_t* dendrite) {
         return stats;
     }
 
-    pthread_mutex_lock(&dendrite->lock);
+    nimcp_mutex_lock(&dendrite->lock);
     stats = dendrite->activity;
-    pthread_mutex_unlock(&dendrite->lock);
+    nimcp_mutex_unlock(&dendrite->lock);
 
     return stats;
 }
@@ -1084,7 +1084,7 @@ dendrite_network_t* dendrite_network_create(uint32_t max_dendrites) {
 
     network->num_dendrites = 0;
     network->max_dendrites = max_dendrites;
-    pthread_mutex_init(&network->lock, NULL);
+    nimcp_mutex_init(&network->lock, NULL);
 
     nimcp_log(LOG_LEVEL_DEBUG, "dendrite_network_create: Created network (max=%u)",
               max_dendrites);
@@ -1114,7 +1114,7 @@ void dendrite_network_destroy(dendrite_network_t* network) {
     nimcp_free(network->dendrites);
 
     // Destroy mutex
-    pthread_mutex_destroy(&network->lock);
+    nimcp_mutex_destroy(&network->lock);
 
     // Free network
     nimcp_free(network);
@@ -1132,11 +1132,11 @@ bool dendrite_network_add(dendrite_network_t* network, dendrite_t* dendrite) {
         return false;
     }
 
-    pthread_mutex_lock(&network->lock);
+    nimcp_mutex_lock(&network->lock);
 
     // Guard: Network full
     if (network->num_dendrites >= network->max_dendrites) {
-        pthread_mutex_unlock(&network->lock);
+        nimcp_mutex_unlock(&network->lock);
         nimcp_log(LOG_LEVEL_ERROR, "dendrite_network_add: Network full (%u/%u)",
                   network->num_dendrites, network->max_dendrites);
         return false;
@@ -1146,7 +1146,7 @@ bool dendrite_network_add(dendrite_network_t* network, dendrite_t* dendrite) {
     network->dendrites[network->num_dendrites] = dendrite;
     network->num_dendrites++;
 
-    pthread_mutex_unlock(&network->lock);
+    nimcp_mutex_unlock(&network->lock);
 
     nimcp_log(LOG_LEVEL_DEBUG, "dendrite_network_add: Added dendrite %u (total=%u)",
               dendrite->id, network->num_dendrites);
@@ -1169,7 +1169,7 @@ void dendrite_network_step(
         return;
     }
 
-    pthread_mutex_lock(&network->lock);
+    nimcp_mutex_lock(&network->lock);
 
     for (uint32_t i = 0; i < network->num_dendrites; i++) {
         if (network->dendrites[i]) {
@@ -1177,7 +1177,7 @@ void dendrite_network_step(
         }
     }
 
-    pthread_mutex_unlock(&network->lock);
+    nimcp_mutex_unlock(&network->lock);
 }
 
 /**
@@ -1193,7 +1193,7 @@ dendrite_network_stats_t dendrite_network_get_stats(dendrite_network_t* network)
         return stats;
     }
 
-    pthread_mutex_lock(&network->lock);
+    nimcp_mutex_lock(&network->lock);
 
     stats.total_dendrites = network->num_dendrites;
 
@@ -1217,7 +1217,7 @@ dendrite_network_stats_t dendrite_network_get_stats(dendrite_network_t* network)
         stats.mean_calcium /= (float)network->num_dendrites;
     }
 
-    pthread_mutex_unlock(&network->lock);
+    nimcp_mutex_unlock(&network->lock);
 
     return stats;
 }
@@ -1248,20 +1248,20 @@ bool dendrite_initiate_nmda_spike(dendrite_t* dendrite, uint32_t segment_id,
     // Guard: Already in NMDA spike
     if (dendrite->nmda_state.active) return false;
 
-    pthread_mutex_lock(&dendrite->lock);
+    nimcp_mutex_lock(&dendrite->lock);
 
     dendritic_segment_t* segment = &dendrite->segments[segment_id];
 
     // Check threshold conditions
     float voltage_mv = segment->voltage * 1000.0f;  // Convert to mV
     if (voltage_mv < NIMCP_NMDA_SPIKE_THRESHOLD_MV) {
-        pthread_mutex_unlock(&dendrite->lock);
+        nimcp_mutex_unlock(&dendrite->lock);
         return false;
     }
 
     // Check if segment has active properties
     if (!segment->has_active_properties) {
-        pthread_mutex_unlock(&dendrite->lock);
+        nimcp_mutex_unlock(&dendrite->lock);
         return false;
     }
 
@@ -1283,7 +1283,7 @@ bool dendrite_initiate_nmda_spike(dendrite_t* dendrite, uint32_t segment_id,
     // Update dendrite state
     dendrite->state = DENDRITE_STATE_PLATEAU;
 
-    pthread_mutex_unlock(&dendrite->lock);
+    nimcp_mutex_unlock(&dendrite->lock);
 
     nimcp_log(LOG_LEVEL_DEBUG, "dendrite_initiate_nmda_spike: NMDA spike at seg %u",
               segment_id);
@@ -1298,7 +1298,7 @@ void dendrite_update_nmda_spike(dendrite_t* dendrite, float dt_ms) {
     // Guard: No active NMDA spike
     if (!dendrite->nmda_state.active) return;
 
-    pthread_mutex_lock(&dendrite->lock);
+    nimcp_mutex_lock(&dendrite->lock);
 
     dendritic_segment_t* segment = &dendrite->segments[dendrite->nmda_state.segment_id];
 
@@ -1330,7 +1330,7 @@ void dendrite_update_nmda_spike(dendrite_t* dendrite, float dt_ms) {
         nimcp_log(LOG_LEVEL_DEBUG, "dendrite_update_nmda_spike: NMDA spike ended");
     }
 
-    pthread_mutex_unlock(&dendrite->lock);
+    nimcp_mutex_unlock(&dendrite->lock);
 }
 
 bool dendrite_can_generate_nmda_spike(dendrite_t* dendrite, uint32_t segment_id) {
@@ -1369,7 +1369,7 @@ bool dendrite_initiate_bap(dendrite_t* dendrite, float amplitude_mv,
     // Guard: Already propagating
     if (dendrite->bap_state.active) return false;
 
-    pthread_mutex_lock(&dendrite->lock);
+    nimcp_mutex_lock(&dendrite->lock);
 
     // Initialize bAP state
     dendrite->bap_state.active = true;
@@ -1397,7 +1397,7 @@ bool dendrite_initiate_bap(dendrite_t* dendrite, float amplitude_mv,
 
     dendrite->state = DENDRITE_STATE_ACTIVE;
 
-    pthread_mutex_unlock(&dendrite->lock);
+    nimcp_mutex_unlock(&dendrite->lock);
 
     nimcp_log(LOG_LEVEL_DEBUG, "dendrite_initiate_bap: bAP started (%.1f mV)",
               amplitude_mv);
@@ -1412,7 +1412,7 @@ void dendrite_update_bap(dendrite_t* dendrite, float dt_ms) {
     // Guard: No active bAP
     if (!dendrite->bap_state.active) return;
 
-    pthread_mutex_lock(&dendrite->lock);
+    nimcp_mutex_lock(&dendrite->lock);
 
     // Advance wavefront
     float distance_traveled = dendrite->bap_state.velocity_um_ms * dt_ms;
@@ -1470,7 +1470,7 @@ void dendrite_update_bap(dendrite_t* dendrite, float dt_ms) {
                   dendrite->bap_state.segments_reached);
     }
 
-    pthread_mutex_unlock(&dendrite->lock);
+    nimcp_mutex_unlock(&dendrite->lock);
 }
 
 bool dendrite_bap_reached_spine(dendrite_t* dendrite, uint32_t spine_id) {
@@ -1494,7 +1494,7 @@ void dendrite_update_axial_currents(dendrite_t* dendrite, float dt_ms) {
     // Guard: NULL dendrite
     if (!dendrite) return;
 
-    pthread_mutex_lock(&dendrite->lock);
+    nimcp_mutex_lock(&dendrite->lock);
 
     // First pass: Calculate axial conductances and currents
     for (uint32_t i = 0; i < dendrite->num_segments; i++) {
@@ -1544,7 +1544,7 @@ void dendrite_update_axial_currents(dendrite_t* dendrite, float dt_ms) {
         segment->voltage = fmaxf(-0.080f, fminf(0.040f, segment->voltage));
     }
 
-    pthread_mutex_unlock(&dendrite->lock);
+    nimcp_mutex_unlock(&dendrite->lock);
 }
 
 float dendrite_calculate_rall_ratio(dendrite_t* dendrite, uint32_t segment_id) {
@@ -1589,7 +1589,7 @@ void dendrite_detect_spine_clusters(dendrite_t* dendrite, uint64_t timestamp) {
     // Guard: NULL dendrite
     if (!dendrite) return;
 
-    pthread_mutex_lock(&dendrite->lock);
+    nimcp_mutex_lock(&dendrite->lock);
 
     // Reset clusters
     dendrite->num_clusters = 0;
@@ -1649,7 +1649,7 @@ void dendrite_detect_spine_clusters(dendrite_t* dendrite, uint64_t timestamp) {
         }
     }
 
-    pthread_mutex_unlock(&dendrite->lock);
+    nimcp_mutex_unlock(&dendrite->lock);
 }
 
 float dendrite_apply_cluster_boost(dendrite_t* dendrite, uint32_t cluster_id) {
@@ -1683,7 +1683,7 @@ void dendrite_stdp_pre_spike(dendrite_t* dendrite, uint32_t spine_id,
     if (!dendrite) return;
     if (spine_id >= dendrite->num_spines) return;
 
-    pthread_mutex_lock(&dendrite->lock);
+    nimcp_mutex_lock(&dendrite->lock);
 
     dendritic_spine_t* spine = &dendrite->spines[spine_id];
     stdp_state_t* stdp = &spine->stdp;
@@ -1707,14 +1707,14 @@ void dendrite_stdp_pre_spike(dendrite_t* dendrite, uint32_t spine_id,
         }
     }
 
-    pthread_mutex_unlock(&dendrite->lock);
+    nimcp_mutex_unlock(&dendrite->lock);
 }
 
 void dendrite_stdp_post_spike(dendrite_t* dendrite, uint64_t timestamp) {
     // Guard: NULL dendrite
     if (!dendrite) return;
 
-    pthread_mutex_lock(&dendrite->lock);
+    nimcp_mutex_lock(&dendrite->lock);
 
     // Update all spines with postsynaptic spike
     for (uint32_t i = 0; i < dendrite->num_spines; i++) {
@@ -1741,14 +1741,14 @@ void dendrite_stdp_post_spike(dendrite_t* dendrite, uint64_t timestamp) {
         }
     }
 
-    pthread_mutex_unlock(&dendrite->lock);
+    nimcp_mutex_unlock(&dendrite->lock);
 }
 
 void dendrite_stdp_apply_weight_changes(dendrite_t* dendrite) {
     // Guard: NULL dendrite
     if (!dendrite) return;
 
-    pthread_mutex_lock(&dendrite->lock);
+    nimcp_mutex_lock(&dendrite->lock);
 
     for (uint32_t i = 0; i < dendrite->num_spines; i++) {
         dendritic_spine_t* spine = &dendrite->spines[i];
@@ -1788,7 +1788,7 @@ void dendrite_stdp_apply_weight_changes(dendrite_t* dendrite) {
         stdp->post_trace *= 0.95f;
     }
 
-    pthread_mutex_unlock(&dendrite->lock);
+    nimcp_mutex_unlock(&dendrite->lock);
 }
 
 // ============================================================================
@@ -1802,14 +1802,14 @@ bool dendrite_create_spine_pool(dendrite_t* dendrite, uint32_t capacity) {
     // Guard: Already has pool
     if (dendrite->spine_pool) return false;
 
-    pthread_mutex_lock(&dendrite->lock);
+    nimcp_mutex_lock(&dendrite->lock);
 
     // Allocate pool structure
     dendrite->spine_pool = (dendrite_spine_pool_t*)nimcp_calloc(
         1, sizeof(dendrite_spine_pool_t)
     );
     if (!dendrite->spine_pool) {
-        pthread_mutex_unlock(&dendrite->lock);
+        nimcp_mutex_unlock(&dendrite->lock);
         return false;
     }
 
@@ -1820,7 +1820,7 @@ bool dendrite_create_spine_pool(dendrite_t* dendrite, uint32_t capacity) {
     if (!dendrite->spine_pool->spines) {
         nimcp_free(dendrite->spine_pool);
         dendrite->spine_pool = NULL;
-        pthread_mutex_unlock(&dendrite->lock);
+        nimcp_mutex_unlock(&dendrite->lock);
         return false;
     }
 
@@ -1833,18 +1833,18 @@ bool dendrite_create_spine_pool(dendrite_t* dendrite, uint32_t capacity) {
         nimcp_free(dendrite->spine_pool->spines);
         nimcp_free(dendrite->spine_pool);
         dendrite->spine_pool = NULL;
-        pthread_mutex_unlock(&dendrite->lock);
+        nimcp_mutex_unlock(&dendrite->lock);
         return false;
     }
 
     dendrite->spine_pool->capacity = capacity;
     dendrite->spine_pool->allocated_count = 0;
     dendrite->spine_pool->next_free_hint = 0;
-    pthread_mutex_init(&dendrite->spine_pool->lock, NULL);
+    nimcp_mutex_init(&dendrite->spine_pool->lock, NULL);
 
     dendrite->use_spine_pool = true;
 
-    pthread_mutex_unlock(&dendrite->lock);
+    nimcp_mutex_unlock(&dendrite->lock);
 
     nimcp_log(LOG_LEVEL_DEBUG, "dendrite_create_spine_pool: Pool created (%u capacity)",
               capacity);
@@ -1858,11 +1858,11 @@ dendritic_spine_t* dendrite_pool_alloc_spine(dendrite_t* dendrite) {
 
     dendrite_spine_pool_t* pool = dendrite->spine_pool;
 
-    pthread_mutex_lock(&pool->lock);
+    nimcp_mutex_lock(&pool->lock);
 
     // Check capacity
     if (pool->allocated_count >= pool->capacity) {
-        pthread_mutex_unlock(&pool->lock);
+        nimcp_mutex_unlock(&pool->lock);
         return NULL;
     }
 
@@ -1882,12 +1882,12 @@ dendritic_spine_t* dendrite_pool_alloc_spine(dendrite_t* dendrite) {
             dendritic_spine_t* spine = &pool->spines[idx];
             memset(spine, 0, sizeof(dendritic_spine_t));
 
-            pthread_mutex_unlock(&pool->lock);
+            nimcp_mutex_unlock(&pool->lock);
             return spine;
         }
     }
 
-    pthread_mutex_unlock(&pool->lock);
+    nimcp_mutex_unlock(&pool->lock);
     return NULL;
 }
 
@@ -1903,7 +1903,7 @@ void dendrite_pool_free_spine(dendrite_t* dendrite, dendritic_spine_t* spine) {
         return;  // Not from this pool
     }
 
-    pthread_mutex_lock(&pool->lock);
+    nimcp_mutex_lock(&pool->lock);
 
     uint32_t idx = (uint32_t)offset;
     uint32_t word = idx / 64;
@@ -1920,7 +1920,7 @@ void dendrite_pool_free_spine(dendrite_t* dendrite, dendritic_spine_t* spine) {
         }
     }
 
-    pthread_mutex_unlock(&pool->lock);
+    nimcp_mutex_unlock(&pool->lock);
 }
 
 // ============================================================================
@@ -1931,7 +1931,7 @@ dendrite_t* dendrite_cow_copy(dendrite_t* dendrite) {
     // Guard: NULL dendrite
     if (!dendrite) return NULL;
 
-    pthread_mutex_lock(&dendrite->lock);
+    nimcp_mutex_lock(&dendrite->lock);
 
     // Increment reference count
     dendrite->cow_ref_count++;
@@ -1940,7 +1940,7 @@ dendrite_t* dendrite_cow_copy(dendrite_t* dendrite) {
     dendrite_t* copy = (dendrite_t*)nimcp_calloc(1, sizeof(dendrite_t));
     if (!copy) {
         dendrite->cow_ref_count--;
-        pthread_mutex_unlock(&dendrite->lock);
+        nimcp_mutex_unlock(&dendrite->lock);
         return NULL;
     }
 
@@ -1951,13 +1951,13 @@ dendrite_t* dendrite_cow_copy(dendrite_t* dendrite) {
     // These will be copied on first write
 
     // Initialize copy's lock
-    pthread_mutex_init(&copy->lock, NULL);
+    nimcp_mutex_init(&copy->lock, NULL);
 
     // Mark as shared (not modified)
     copy->cow_modified = false;
     copy->cow_ref_count = 1;
 
-    pthread_mutex_unlock(&dendrite->lock);
+    nimcp_mutex_unlock(&dendrite->lock);
 
     nimcp_log(LOG_LEVEL_DEBUG, "dendrite_cow_copy: CoW copy created (ref=%u)",
               dendrite->cow_ref_count);
@@ -1969,12 +1969,12 @@ bool dendrite_cow_prepare_write(dendrite_t* dendrite) {
     // Guard: NULL dendrite
     if (!dendrite) return false;
 
-    pthread_mutex_lock(&dendrite->lock);
+    nimcp_mutex_lock(&dendrite->lock);
 
     // If already exclusive owner, no copy needed
     if (dendrite->cow_ref_count <= 1 || dendrite->cow_modified) {
         dendrite->cow_modified = true;
-        pthread_mutex_unlock(&dendrite->lock);
+        nimcp_mutex_unlock(&dendrite->lock);
         return true;
     }
 
@@ -2006,7 +2006,7 @@ bool dendrite_cow_prepare_write(dendrite_t* dendrite) {
     dendrite->cow_modified = true;
     dendrite->cow_ref_count = 1;
 
-    pthread_mutex_unlock(&dendrite->lock);
+    nimcp_mutex_unlock(&dendrite->lock);
 
     nimcp_log(LOG_LEVEL_DEBUG, "dendrite_cow_prepare_write: Deep copy made");
 
@@ -2017,20 +2017,20 @@ void dendrite_cow_release(dendrite_t* dendrite) {
     // Guard: NULL dendrite
     if (!dendrite) return;
 
-    pthread_mutex_lock(&dendrite->lock);
+    nimcp_mutex_lock(&dendrite->lock);
 
     if (dendrite->cow_ref_count > 0) {
         dendrite->cow_ref_count--;
     }
 
     if (dendrite->cow_ref_count == 0) {
-        pthread_mutex_unlock(&dendrite->lock);
+        nimcp_mutex_unlock(&dendrite->lock);
         // Last reference - full cleanup
         dendrite_destroy(dendrite);
         return;
     }
 
-    pthread_mutex_unlock(&dendrite->lock);
+    nimcp_mutex_unlock(&dendrite->lock);
 }
 
 // ============================================================================
@@ -2043,7 +2043,7 @@ float dendrite_spine_process_input(dendrite_t* dendrite, uint32_t spine_id,
     if (!dendrite) return 0.0f;
     if (spine_id >= dendrite->num_spines) return 0.0f;
 
-    pthread_mutex_lock(&dendrite->lock);
+    nimcp_mutex_lock(&dendrite->lock);
 
     dendritic_spine_t* spine = &dendrite->spines[spine_id];
 
@@ -2082,7 +2082,7 @@ float dendrite_spine_process_input(dendrite_t* dendrite, uint32_t spine_id,
     // Register pre-spike for STDP
     dendrite_stdp_pre_spike(dendrite, spine_id, timestamp);
 
-    pthread_mutex_unlock(&dendrite->lock);
+    nimcp_mutex_unlock(&dendrite->lock);
 
     return I_dendrite;
 }
@@ -2091,7 +2091,7 @@ void dendrite_update_spine_conductances(dendrite_t* dendrite, float dt_ms) {
     // Guard: NULL dendrite
     if (!dendrite) return;
 
-    pthread_mutex_lock(&dendrite->lock);
+    nimcp_mutex_lock(&dendrite->lock);
 
     // Time constants for receptor kinetics
     const float tau_ampa = 2.0f;   // AMPA decay (ms)
@@ -2119,5 +2119,5 @@ void dendrite_update_spine_conductances(dendrite_t* dendrite, float dt_ms) {
         spine->calcium *= expf(-dt_ms / CALCIUM_DECAY_TAU);
     }
 
-    pthread_mutex_unlock(&dendrite->lock);
+    nimcp_mutex_unlock(&dendrite->lock);
 }

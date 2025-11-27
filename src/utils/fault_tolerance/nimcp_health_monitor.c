@@ -8,6 +8,7 @@
 #include "utils/fault_tolerance/nimcp_health_monitor.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
+#include "utils/thread/nimcp_thread.h"
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
@@ -35,8 +36,8 @@ typedef struct {
 struct health_monitor_internal {
     char brain_id[64];                          /**< Brain identifier */
     bool running;                               /**< Monitor running flag */
-    pthread_t monitor_thread;                   /**< Background thread */
-    pthread_mutex_t mutex;                      /**< Thread synchronization */
+    nimcp_thread_t monitor_thread;              /**< Background thread */
+    nimcp_mutex_t mutex;                        /**< Thread synchronization */
 
     // Configuration
     double anomaly_threshold;                   /**< Z-score threshold */
@@ -654,7 +655,7 @@ static void* monitoring_thread_func(void* arg) {
     NIMCP_LOGGING_INFO("Health monitor started for brain '%s'", monitor->brain_id);
 
     while (monitor->running) {
-        pthread_mutex_lock(&monitor->mutex);
+        nimcp_mutex_lock(&monitor->mutex);
 
         // Perform health check
         monitor->total_checks++;
@@ -728,7 +729,7 @@ static void* monitoring_thread_func(void* arg) {
         monitor->last_status.num_anomalies = monitor->num_anomalies;
         monitor->last_status.timestamp_us = health_monitor_get_timestamp_us();
 
-        pthread_mutex_unlock(&monitor->mutex);
+        nimcp_mutex_unlock(&monitor->mutex);
 
         // Sleep for monitoring interval
         usleep(monitor->monitoring_interval_ms * 1000);
@@ -762,7 +763,7 @@ health_monitor_t health_monitor_create(const char* brain_id) {
     monitor->baseline_established = false;
 
     // Initialize mutex
-    if (pthread_mutex_init(&monitor->mutex, NULL) != 0) {
+    if (nimcp_mutex_init(&monitor->mutex, NULL) != NIMCP_SUCCESS) {
         NIMCP_LOGGING_ERROR("Failed to initialize monitor mutex");
         nimcp_free(monitor);
         return NULL;
@@ -778,7 +779,7 @@ health_monitor_t health_monitor_create(const char* brain_id) {
         if (mem_hist) nimcp_free(mem_hist);
         if (lat_hist) nimcp_free(lat_hist);
         if (err_hist) nimcp_free(err_hist);
-        pthread_mutex_destroy(&monitor->mutex);
+        nimcp_mutex_destroy(&monitor->mutex);
         nimcp_free(monitor);
         return NULL;
     }
@@ -819,7 +820,7 @@ void health_monitor_destroy(health_monitor_t monitor) {
     free_metric_history_contents(&monitor->error_history);
 
     // Destroy mutex
-    pthread_mutex_destroy(&monitor->mutex);
+    nimcp_mutex_destroy(&monitor->mutex);
 
     // Free monitor
     nimcp_free(monitor);
@@ -838,7 +839,8 @@ bool health_monitor_start(health_monitor_t monitor) {
     monitor->running = true;
 
     // Create monitoring thread
-    if (pthread_create(&monitor->monitor_thread, NULL, monitoring_thread_func, monitor) != 0) {
+    if (nimcp_thread_create(&monitor->monitor_thread, monitoring_thread_func, monitor,
+                            NULL) != 0) {
         NIMCP_LOGGING_ERROR("Failed to create monitoring thread");
         monitor->running = false;
         return false;
@@ -858,7 +860,7 @@ bool health_monitor_stop(health_monitor_t monitor) {
     monitor->running = false;
 
     // Wait for thread to finish
-    pthread_join(monitor->monitor_thread, NULL);
+    nimcp_thread_join(monitor->monitor_thread, NULL);
 
     NIMCP_LOGGING_INFO("Health monitoring stopped");
     return true;
@@ -875,7 +877,7 @@ void health_monitor_record_operation(
 ) {
     if (!monitor || !operation) return;
 
-    pthread_mutex_lock(&monitor->mutex);
+    nimcp_mutex_lock(&monitor->mutex);
 
     operation_metric_t* op = find_or_create_operation(monitor, operation);
     if (op) {
@@ -894,13 +896,13 @@ void health_monitor_record_operation(
         add_to_history(&monitor->latency_history, (double)duration_us);
     }
 
-    pthread_mutex_unlock(&monitor->mutex);
+    nimcp_mutex_unlock(&monitor->mutex);
 }
 
 void health_monitor_record_memory(health_monitor_t monitor, size_t bytes) {
     if (!monitor) return;
 
-    pthread_mutex_lock(&monitor->mutex);
+    nimcp_mutex_lock(&monitor->mutex);
 
     uint64_t now = health_monitor_get_timestamp_us();
     size_t prev_bytes = monitor->memory.current_bytes;
@@ -927,7 +929,7 @@ void health_monitor_record_memory(health_monitor_t monitor, size_t bytes) {
     // Add to history
     add_to_history(&monitor->memory_history, (double)bytes);
 
-    pthread_mutex_unlock(&monitor->mutex);
+    nimcp_mutex_unlock(&monitor->mutex);
 }
 
 void health_monitor_record_error(
@@ -936,7 +938,7 @@ void health_monitor_record_error(
 ) {
     if (!monitor || !error_type) return;
 
-    pthread_mutex_lock(&monitor->mutex);
+    nimcp_mutex_lock(&monitor->mutex);
 
     error_metric_t* err = find_or_create_error(monitor, error_type);
     if (err) {
@@ -955,13 +957,13 @@ void health_monitor_record_error(
         add_to_history(&monitor->error_history, (double)err->count_last_window);
     }
 
-    pthread_mutex_unlock(&monitor->mutex);
+    nimcp_mutex_unlock(&monitor->mutex);
 }
 
 void health_monitor_record_cache_access(health_monitor_t monitor, bool hit) {
     if (!monitor) return;
 
-    pthread_mutex_lock(&monitor->mutex);
+    nimcp_mutex_lock(&monitor->mutex);
 
     if (hit) {
         monitor->cache.hits++;
@@ -984,7 +986,7 @@ void health_monitor_record_cache_access(health_monitor_t monitor, bool hit) {
         update_metric_stats(&monitor->cache.stats, monitor->cache.hit_rate, 0.1);
     }
 
-    pthread_mutex_unlock(&monitor->mutex);
+    nimcp_mutex_unlock(&monitor->mutex);
 }
 
 void health_monitor_record_thread_event(
@@ -994,7 +996,7 @@ void health_monitor_record_thread_event(
 ) {
     if (!monitor) return;
 
-    pthread_mutex_lock(&monitor->mutex);
+    nimcp_mutex_lock(&monitor->mutex);
 
     monitor->threads.lock_acquisitions++;
     if (contentious) {
@@ -1011,7 +1013,7 @@ void health_monitor_record_thread_event(
         update_metric_stats(&monitor->threads.stats, monitor->threads.contention_rate, 0.1);
     }
 
-    pthread_mutex_unlock(&monitor->mutex);
+    nimcp_mutex_unlock(&monitor->mutex);
 }
 
 void health_monitor_record_throughput(
@@ -1021,7 +1023,7 @@ void health_monitor_record_throughput(
 ) {
     if (!monitor || window_us == 0) return;
 
-    pthread_mutex_lock(&monitor->mutex);
+    nimcp_mutex_lock(&monitor->mutex);
 
     monitor->throughput.total_operations += operations;
     monitor->throughput.operations_per_sec = (double)operations / ((double)window_us / 1000000.0);
@@ -1041,7 +1043,7 @@ void health_monitor_record_throughput(
     update_metric_stats(&monitor->throughput.stats, monitor->throughput.operations_per_sec, 0.1);
     monitor->throughput.last_update_us = health_monitor_get_timestamp_us();
 
-    pthread_mutex_unlock(&monitor->mutex);
+    nimcp_mutex_unlock(&monitor->mutex);
 }
 
 bool health_monitor_get_status(
@@ -1050,9 +1052,9 @@ bool health_monitor_get_status(
 ) {
     if (!monitor || !status) return false;
 
-    pthread_mutex_lock(&monitor->mutex);
+    nimcp_mutex_lock(&monitor->mutex);
     *status = monitor->last_status;
-    pthread_mutex_unlock(&monitor->mutex);
+    nimcp_mutex_unlock(&monitor->mutex);
 
     return true;
 }
@@ -1060,9 +1062,9 @@ bool health_monitor_get_status(
 float health_monitor_get_score(health_monitor_t monitor) {
     if (!monitor) return -1.0f;
 
-    pthread_mutex_lock(&monitor->mutex);
+    nimcp_mutex_lock(&monitor->mutex);
     float score = monitor->last_status.score;
-    pthread_mutex_unlock(&monitor->mutex);
+    nimcp_mutex_unlock(&monitor->mutex);
 
     return score;
 }
@@ -1074,9 +1076,9 @@ bool health_monitor_is_healthy(health_monitor_t monitor) {
 health_status_t health_monitor_get_status_level(health_monitor_t monitor) {
     if (!monitor) return HEALTH_UNKNOWN;
 
-    pthread_mutex_lock(&monitor->mutex);
+    nimcp_mutex_lock(&monitor->mutex);
     health_status_t status = monitor->last_status.status;
-    pthread_mutex_unlock(&monitor->mutex);
+    nimcp_mutex_unlock(&monitor->mutex);
 
     return status;
 }
@@ -1088,7 +1090,7 @@ int32_t health_monitor_detect_anomalies(
 ) {
     if (!monitor || !anomalies || max_anomalies == 0) return -1;
 
-    pthread_mutex_lock(&monitor->mutex);
+    nimcp_mutex_lock(&monitor->mutex);
 
     uint32_t count = monitor->num_anomalies < max_anomalies ?
                      monitor->num_anomalies : max_anomalies;
@@ -1097,7 +1099,7 @@ int32_t health_monitor_detect_anomalies(
         anomalies[i] = monitor->anomalies[i];
     }
 
-    pthread_mutex_unlock(&monitor->mutex);
+    nimcp_mutex_unlock(&monitor->mutex);
 
     return (int32_t)count;
 }
@@ -1108,7 +1110,7 @@ bool health_monitor_predict_failure(
 ) {
     if (!monitor) return false;
 
-    pthread_mutex_lock(&monitor->mutex);
+    nimcp_mutex_lock(&monitor->mutex);
 
     bool failure_predicted = false;
     uint32_t ttf = UINT32_MAX;
@@ -1152,7 +1154,7 @@ bool health_monitor_predict_failure(
         *time_to_failure_sec = ttf;
     }
 
-    pthread_mutex_unlock(&monitor->mutex);
+    nimcp_mutex_unlock(&monitor->mutex);
 
     return failure_predicted;
 }
@@ -1160,7 +1162,7 @@ bool health_monitor_predict_failure(
 uint32_t health_monitor_clear_resolved_anomalies(health_monitor_t monitor) {
     if (!monitor) return 0;
 
-    pthread_mutex_lock(&monitor->mutex);
+    nimcp_mutex_lock(&monitor->mutex);
 
     uint32_t cleared = 0;
     uint32_t new_count = 0;
@@ -1179,7 +1181,7 @@ uint32_t health_monitor_clear_resolved_anomalies(health_monitor_t monitor) {
 
     monitor->num_anomalies = new_count;
 
-    pthread_mutex_unlock(&monitor->mutex);
+    nimcp_mutex_unlock(&monitor->mutex);
 
     return cleared;
 }
@@ -1190,7 +1192,7 @@ uint32_t health_monitor_get_anomaly_count(
 ) {
     if (!monitor) return 0;
 
-    pthread_mutex_lock(&monitor->mutex);
+    nimcp_mutex_lock(&monitor->mutex);
 
     uint32_t count = 0;
     for (uint32_t i = 0; i < monitor->num_anomalies; i++) {
@@ -1199,7 +1201,7 @@ uint32_t health_monitor_get_anomaly_count(
         }
     }
 
-    pthread_mutex_unlock(&monitor->mutex);
+    nimcp_mutex_unlock(&monitor->mutex);
 
     return count;
 }
@@ -1207,7 +1209,7 @@ uint32_t health_monitor_get_anomaly_count(
 bool health_monitor_establish_baseline(health_monitor_t monitor) {
     if (!monitor) return false;
 
-    pthread_mutex_lock(&monitor->mutex);
+    nimcp_mutex_lock(&monitor->mutex);
 
     // Set memory baseline
     monitor->memory.baseline_bytes = monitor->memory.current_bytes;
@@ -1215,7 +1217,7 @@ bool health_monitor_establish_baseline(health_monitor_t monitor) {
     // Mark baseline as established
     monitor->baseline_established = true;
 
-    pthread_mutex_unlock(&monitor->mutex);
+    nimcp_mutex_unlock(&monitor->mutex);
 
     NIMCP_LOGGING_INFO("Baseline established for brain '%s'", monitor->brain_id);
     return true;
@@ -1224,10 +1226,10 @@ bool health_monitor_establish_baseline(health_monitor_t monitor) {
 bool health_monitor_reset_baseline(health_monitor_t monitor) {
     if (!monitor) return false;
 
-    pthread_mutex_lock(&monitor->mutex);
+    nimcp_mutex_lock(&monitor->mutex);
     monitor->baseline_established = false;
     monitor->memory.baseline_bytes = 0;
-    pthread_mutex_unlock(&monitor->mutex);
+    nimcp_mutex_unlock(&monitor->mutex);
 
     return true;
 }
@@ -1238,9 +1240,9 @@ bool health_monitor_set_anomaly_threshold(
 ) {
     if (!monitor || z_score_threshold < 0) return false;
 
-    pthread_mutex_lock(&monitor->mutex);
+    nimcp_mutex_lock(&monitor->mutex);
     monitor->anomaly_threshold = z_score_threshold;
-    pthread_mutex_unlock(&monitor->mutex);
+    nimcp_mutex_unlock(&monitor->mutex);
 
     return true;
 }
@@ -1248,9 +1250,9 @@ bool health_monitor_set_anomaly_threshold(
 bool health_monitor_set_interval(health_monitor_t monitor, uint32_t interval_ms) {
     if (!monitor || interval_ms == 0) return false;
 
-    pthread_mutex_lock(&monitor->mutex);
+    nimcp_mutex_lock(&monitor->mutex);
     monitor->monitoring_interval_ms = interval_ms;
-    pthread_mutex_unlock(&monitor->mutex);
+    nimcp_mutex_unlock(&monitor->mutex);
 
     return true;
 }
@@ -1258,7 +1260,7 @@ bool health_monitor_set_interval(health_monitor_t monitor, uint32_t interval_ms)
 void health_monitor_report(health_monitor_t monitor, FILE* output) {
     if (!monitor || !output) return;
 
-    pthread_mutex_lock(&monitor->mutex);
+    nimcp_mutex_lock(&monitor->mutex);
 
     fprintf(output, "\n");
     fprintf(output, "=== NIMCP Health Monitor Report ===\n");
@@ -1372,7 +1374,7 @@ void health_monitor_report(health_monitor_t monitor, FILE* output) {
 
     fprintf(output, "=====================================\n");
 
-    pthread_mutex_unlock(&monitor->mutex);
+    nimcp_mutex_unlock(&monitor->mutex);
 }
 
 int32_t health_monitor_export_json(
@@ -1382,7 +1384,7 @@ int32_t health_monitor_export_json(
 ) {
     if (!monitor || !json_buffer || buffer_size == 0) return -1;
 
-    pthread_mutex_lock(&monitor->mutex);
+    nimcp_mutex_lock(&monitor->mutex);
 
     int written = snprintf(json_buffer, buffer_size,
         "{"
@@ -1419,7 +1421,7 @@ int32_t health_monitor_export_json(
         monitor->last_status.time_to_failure_sec
     );
 
-    pthread_mutex_unlock(&monitor->mutex);
+    nimcp_mutex_unlock(&monitor->mutex);
 
     return written < (int32_t)buffer_size ? written : -1;
 }
@@ -1431,17 +1433,17 @@ bool health_monitor_get_operation_stats(
 ) {
     if (!monitor || !operation || !stats) return false;
 
-    pthread_mutex_lock(&monitor->mutex);
+    nimcp_mutex_lock(&monitor->mutex);
 
     for (uint32_t i = 0; i < monitor->num_operations; i++) {
         if (strcmp(monitor->operations[i].name, operation) == 0) {
             *stats = monitor->operations[i];
-            pthread_mutex_unlock(&monitor->mutex);
+            nimcp_mutex_unlock(&monitor->mutex);
             return true;
         }
     }
 
-    pthread_mutex_unlock(&monitor->mutex);
+    nimcp_mutex_unlock(&monitor->mutex);
     return false;
 }
 
@@ -1451,9 +1453,9 @@ bool health_monitor_get_memory_stats(
 ) {
     if (!monitor || !stats) return false;
 
-    pthread_mutex_lock(&monitor->mutex);
+    nimcp_mutex_lock(&monitor->mutex);
     *stats = monitor->memory;
-    pthread_mutex_unlock(&monitor->mutex);
+    nimcp_mutex_unlock(&monitor->mutex);
 
     return true;
 }

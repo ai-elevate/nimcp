@@ -35,7 +35,7 @@
 extern "C" {
 #include "core/cortical_columns/nimcp_topographic_maps.h"
 #include "utils/memory/nimcp_memory.h"
-#include "include/nimcp.h"
+#include "nimcp.h"
 }
 
 // Test constants

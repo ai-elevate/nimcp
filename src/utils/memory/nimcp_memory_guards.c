@@ -7,6 +7,7 @@
  */
 
 #include "nimcp_memory_guards.h"
+#include "utils/thread/nimcp_thread.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -40,7 +41,7 @@ typedef struct {
 static memory_guard_config_t g_config;
 static memory_guard_stats_t g_stats = {0};
 static allocation_header_t* g_allocation_list = NULL;
-static pthread_mutex_t g_guard_mutex = PTHREAD_MUTEX_INITIALIZER;
+static nimcp_mutex_t g_guard_mutex = NIMCP_MUTEX_INITIALIZER;
 static bool g_initialized = false;
 static uint64_t g_next_alloc_id = 1;
 
@@ -49,11 +50,11 @@ static uint64_t g_next_alloc_id = 1;
 //=============================================================================
 
 static void lock_guards(void) {
-    pthread_mutex_lock(&g_guard_mutex);
+    nimcp_mutex_lock(&g_guard_mutex);
 }
 
 static void unlock_guards(void) {
-    pthread_mutex_unlock(&g_guard_mutex);
+    nimcp_mutex_unlock(&g_guard_mutex);
 }
 
 static allocation_header_t* get_header(void* ptr) {

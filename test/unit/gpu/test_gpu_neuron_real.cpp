@@ -1,6 +1,6 @@
 #include <gtest/gtest.h>
 
-#include "include/gpu/nimcp_gpu_neuron.h"
+#include "gpu/nimcp_gpu_neuron.h"
 
 //=============================================================================
 // GPU Neuron Real Tests

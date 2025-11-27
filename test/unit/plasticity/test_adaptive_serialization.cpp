@@ -89,11 +89,12 @@ TEST_F(AdaptiveSerializationTest, LoadBinaryFormat) {
     // Train network
     float input[10] = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
     float target[3] = {1, 0, 0};
-    adaptive_learn_example_t example = {
+    training_example_t example = {
         .input = input,
         .input_size = 10,
         .target = target,
         .target_size = 3,
+        .confidence = 1.0f,
         .label = "class_a"
     };
     adaptive_network_learn(network, &example, LEARN_MODE_SUPERVISED, 0.01f);
@@ -164,11 +165,12 @@ TEST_F(AdaptiveSerializationTest, JSONContainsLabels) {
     // Add some labels
     float input[10] = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
     float target[3] = {1, 0, 0};
-    adaptive_learn_example_t example = {
+    training_example_t example = {
         .input = input,
         .input_size = 10,
         .target = target,
         .target_size = 3,
+        .confidence = 1.0f,
         .label = "test_label"
     };
     adaptive_network_learn(network, &example, LEARN_MODE_SUPERVISED, 0.01f);
@@ -283,11 +285,12 @@ TEST_F(AdaptiveSerializationTest, PreservesNeuronStates) {
     // Train to modify neuron states
     float input[10] = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
     float target[3] = {1, 0, 0};
-    adaptive_learn_example_t example = {
+    training_example_t example = {
         .input = input,
         .input_size = 10,
         .target = target,
         .target_size = 3,
+        .confidence = 1.0f,
         .label = "trained"
     };
 

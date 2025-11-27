@@ -35,7 +35,7 @@
 #include "core/brain/nimcp_brain.h"
 #include "core/brain/nimcp_brain_internal.h"
 #include "utils/platform/nimcp_platform_mutex.h"
-#include "include/nimcp.h"
+#include "nimcp.h"
 
 //=============================================================================
 // Test Fixture
@@ -275,6 +275,24 @@ TEST_F(BrainInitAllocationTest, Destroy_MultipleDestroy) {
 TEST_F(BrainInitAllocationTest, AllFieldsConsistent) {
     brain_t brain = nimcp_brain_factory_allocate_brain();
     ASSERT_NE(brain, nullptr);
+
+    // DEBUG: Print field offsets and values
+    std::cout << "DEBUG: sizeof(brain_struct) = " << sizeof(struct brain_struct) << std::endl;
+    std::cout << "DEBUG: offsetof(is_cow_clone) = " << offsetof(struct brain_struct, is_cow_clone) << std::endl;
+    std::cout << "DEBUG: offsetof(owns_network) = " << offsetof(struct brain_struct, owns_network) << std::endl;
+    std::cout << "DEBUG: offsetof(original_network) = " << offsetof(struct brain_struct, original_network) << std::endl;
+    std::cout << "DEBUG: brain = " << (void*)brain << std::endl;
+    std::cout << "DEBUG: is_cow_clone addr = " << (void*)&brain->is_cow_clone << std::endl;
+    std::cout << "DEBUG: owns_network addr = " << (void*)&brain->owns_network << std::endl;
+    std::cout << "DEBUG: original_network addr = " << (void*)&brain->original_network << std::endl;
+    std::cout << "DEBUG: brain->is_cow_clone = " << brain->is_cow_clone << std::endl;
+    std::cout << "DEBUG: brain->owns_network = " << brain->owns_network << std::endl;
+    std::cout << "DEBUG: brain->original_network = " << (void*)brain->original_network << std::endl;
+    std::cout << "DEBUG: brain->network = " << (void*)brain->network << std::endl;
+    std::cout << "DEBUG: offsetof(longterm_memory) = " << offsetof(struct brain_struct, longterm_memory) << std::endl;
+    std::cout << "DEBUG: brain->longterm_memory = " << (void*)brain->longterm_memory << std::endl;
+    std::cout << "DEBUG: offsetof(distributed) = " << offsetof(struct brain_struct, distributed) << std::endl;
+    std::cout << "DEBUG: brain->distributed = " << (void*)brain->distributed << std::endl;
 
     // COW consistency: if not a clone, should own network
     if (!brain->is_cow_clone) {

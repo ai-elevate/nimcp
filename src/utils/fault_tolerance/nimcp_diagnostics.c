@@ -5,6 +5,7 @@
 #include "utils/fault_tolerance/nimcp_diagnostics.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
+#include "utils/thread/nimcp_thread.h"
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
@@ -21,7 +22,7 @@
 //=============================================================================
 
 static diagnostic_history_t* g_diagnostic_history = NULL;
-static pthread_mutex_t g_diagnostic_mutex = PTHREAD_MUTEX_INITIALIZER;
+static nimcp_mutex_t g_diagnostic_mutex = NIMCP_MUTEX_INITIALIZER;
 static bool g_diagnostics_initialized = false;
 static FILE* g_diagnostic_log = NULL;
 static uint64_t g_error_id_counter = 0;
@@ -150,10 +151,10 @@ const char* diagnostics_get_recovery_action_name(recovery_action_type_t action) 
 //=============================================================================
 
 bool diagnostics_init(const char* log_file) {
-    pthread_mutex_lock(&g_diagnostic_mutex);
+    nimcp_mutex_lock(&g_diagnostic_mutex);
 
     if (g_diagnostics_initialized) {
-        pthread_mutex_unlock(&g_diagnostic_mutex);
+        nimcp_mutex_unlock(&g_diagnostic_mutex);
         return true;
     }
 
@@ -161,7 +162,7 @@ bool diagnostics_init(const char* log_file) {
     const char* log_path = log_file ? log_file : "nimcp_diagnostics.log";
     g_diagnostic_log = fopen(log_path, "a");
     if (!g_diagnostic_log) {
-        pthread_mutex_unlock(&g_diagnostic_mutex);
+        nimcp_mutex_unlock(&g_diagnostic_mutex);
         return false;
     }
 
@@ -170,7 +171,7 @@ bool diagnostics_init(const char* log_file) {
     if (!g_diagnostic_history) {
         fclose(g_diagnostic_log);
         g_diagnostic_log = NULL;
-        pthread_mutex_unlock(&g_diagnostic_mutex);
+        nimcp_mutex_unlock(&g_diagnostic_mutex);
         return false;
     }
 
@@ -187,15 +188,15 @@ bool diagnostics_init(const char* log_file) {
             time(NULL), DIAGNOSTIC_VERSION);
     fflush(g_diagnostic_log);
 
-    pthread_mutex_unlock(&g_diagnostic_mutex);
+    nimcp_mutex_unlock(&g_diagnostic_mutex);
     return true;
 }
 
 void diagnostics_shutdown(void) {
-    pthread_mutex_lock(&g_diagnostic_mutex);
+    nimcp_mutex_lock(&g_diagnostic_mutex);
 
     if (!g_diagnostics_initialized) {
-        pthread_mutex_unlock(&g_diagnostic_mutex);
+        nimcp_mutex_unlock(&g_diagnostic_mutex);
         return;
     }
 
@@ -218,7 +219,7 @@ void diagnostics_shutdown(void) {
     }
 
     g_diagnostics_initialized = false;
-    pthread_mutex_unlock(&g_diagnostic_mutex);
+    nimcp_mutex_unlock(&g_diagnostic_mutex);
 }
 
 //=============================================================================
@@ -793,7 +794,7 @@ void diagnostics_report_to_log(const diagnostic_result_t* result) {
         return;
     }
 
-    pthread_mutex_lock(&g_diagnostic_mutex);
+    nimcp_mutex_lock(&g_diagnostic_mutex);
 
     fprintf(g_diagnostic_log, "\n========================================\n");
     fprintf(g_diagnostic_log, "DIAGNOSTIC REPORT #%lu\n", result->error_id);
@@ -829,7 +830,7 @@ void diagnostics_report_to_log(const diagnostic_result_t* result) {
     fprintf(g_diagnostic_log, "========================================\n\n");
     fflush(g_diagnostic_log);
 
-    pthread_mutex_unlock(&g_diagnostic_mutex);
+    nimcp_mutex_unlock(&g_diagnostic_mutex);
 }
 
 bool diagnostics_report_to_file(const diagnostic_result_t* result, const char* path) {

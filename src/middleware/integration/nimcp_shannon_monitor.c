@@ -13,7 +13,7 @@
  * - Ring buffer: O(1) event recording, periodic entropy recalculation
  * - Memory pools: Fast O(1) allocation instead of malloc
  * - NIMCP utils: nimcp_time, nimcp_memory, nimcp_logging
- * - Thread safety: pthread_mutex per monitor
+ * - Thread safety: nimcp_mutex per monitor
  *
  * @author NIMCP Development Team
  * @date 2025-11-21
@@ -24,9 +24,9 @@
 #include "utils/memory/nimcp_memory_pool.h"
 #include "utils/time/nimcp_time.h"
 #include "utils/logging/nimcp_logging.h"
+#include "utils/thread/nimcp_thread.h"
 #include <string.h>
 #include <math.h>
-#include <pthread.h>
 
 //=============================================================================
 // Constants
@@ -99,7 +99,7 @@ struct shannon_monitor {
     uint64_t filtered_in_window;
 
     // Thread safety
-    pthread_mutex_t mutex;
+    nimcp_mutex_t mutex;
 };
 
 //=============================================================================
@@ -321,7 +321,7 @@ shannon_monitor_t* shannon_monitor_create_custom(
         return NULL;
     }
 
-    if (pthread_mutex_init(&monitor->mutex, NULL) != 0) {
+    if (nimcp_mutex_init(&monitor->mutex, NULL) != NIMCP_SUCCESS) {
         LOG_ERROR("Shannon: Failed to init mutex");
         nimcp_free(monitor->response_history);
         nimcp_free(monitor->event_history);
@@ -345,7 +345,7 @@ void shannon_monitor_destroy(shannon_monitor_t* monitor) {
     LOG_INFO("Shannon: Destroying monitor (events=%lu, filtered=%lu)",
              monitor->metrics.total_events, monitor->metrics.filtered_events);
 
-    pthread_mutex_destroy(&monitor->mutex);
+    nimcp_mutex_destroy(&monitor->mutex);
     nimcp_free(monitor->response_history);
     nimcp_free(monitor->event_history);
     nimcp_free(monitor);
@@ -361,7 +361,7 @@ void shannon_monitor_record_event(
 ) {
     if (!monitor || !event) return;
 
-    pthread_mutex_lock(&monitor->mutex);
+    nimcp_mutex_lock(&monitor->mutex);
 
     float info_bits = shannon_monitor_measure_event_information(monitor, event);
 
@@ -399,7 +399,7 @@ void shannon_monitor_record_event(
     update_capacity_metrics(monitor);
     update_bottleneck_detection(monitor);
 
-    pthread_mutex_unlock(&monitor->mutex);
+    nimcp_mutex_unlock(&monitor->mutex);
 }
 
 void shannon_monitor_record_filtered_event(
@@ -409,7 +409,7 @@ void shannon_monitor_record_filtered_event(
 ) {
     if (!monitor || !event) return;
 
-    pthread_mutex_lock(&monitor->mutex);
+    nimcp_mutex_lock(&monitor->mutex);
 
     monitor->metrics.filtered_events++;
     monitor->filtered_in_window++;
@@ -417,7 +417,7 @@ void shannon_monitor_record_filtered_event(
 
     update_rate_metrics(monitor);
 
-    pthread_mutex_unlock(&monitor->mutex);
+    nimcp_mutex_unlock(&monitor->mutex);
 }
 
 void shannon_monitor_record_response(
@@ -427,7 +427,7 @@ void shannon_monitor_record_response(
 ) {
     if (!monitor || !event) return;
 
-    pthread_mutex_lock(&monitor->mutex);
+    nimcp_mutex_lock(&monitor->mutex);
 
     uint32_t index = monitor->response_head;
     response_history_entry_t* entry = &monitor->response_history[index];
@@ -442,7 +442,7 @@ void shannon_monitor_record_response(
         monitor->response_count++;
     }
 
-    pthread_mutex_unlock(&monitor->mutex);
+    nimcp_mutex_unlock(&monitor->mutex);
 }
 
 //=============================================================================
@@ -532,9 +532,9 @@ shannon_routing_metrics_t shannon_monitor_get_metrics(
 
     if (!monitor) return metrics;
 
-    pthread_mutex_lock((pthread_mutex_t*)&monitor->mutex);
+    nimcp_mutex_lock((nimcp_mutex_t*)&monitor->mutex);
     metrics = monitor->metrics;
-    pthread_mutex_unlock((pthread_mutex_t*)&monitor->mutex);
+    nimcp_mutex_unlock((nimcp_mutex_t*)&monitor->mutex);
 
     return metrics;
 }
@@ -570,11 +570,11 @@ void shannon_monitor_set_snr(
 ) {
     if (!monitor || snr <= 0.0f) return;
 
-    pthread_mutex_lock(&monitor->mutex);
+    nimcp_mutex_lock(&monitor->mutex);
     monitor->config.signal_to_noise_ratio = snr;
     update_capacity_metrics(monitor);
     LOG_INFO("Shannon: SNR set to %.1f", snr);
-    pthread_mutex_unlock(&monitor->mutex);
+    nimcp_mutex_unlock(&monitor->mutex);
 }
 
 void shannon_monitor_set_bottleneck_threshold(
@@ -583,11 +583,11 @@ void shannon_monitor_set_bottleneck_threshold(
 ) {
     if (!monitor || threshold < 0.0f || threshold > 1.0f) return;
 
-    pthread_mutex_lock(&monitor->mutex);
+    nimcp_mutex_lock(&monitor->mutex);
     monitor->config.bottleneck_threshold = threshold;
     update_bottleneck_detection(monitor);
     LOG_INFO("Shannon: Bottleneck threshold set to %.2f", threshold);
-    pthread_mutex_unlock(&monitor->mutex);
+    nimcp_mutex_unlock(&monitor->mutex);
 }
 
 void shannon_monitor_enable_adaptive_snr(
@@ -596,10 +596,10 @@ void shannon_monitor_enable_adaptive_snr(
 ) {
     if (!monitor) return;
 
-    pthread_mutex_lock(&monitor->mutex);
+    nimcp_mutex_lock(&monitor->mutex);
     monitor->config.enable_adaptive_snr = enable;
     LOG_INFO("Shannon: Adaptive SNR %s", enable ? "enabled" : "disabled");
-    pthread_mutex_unlock(&monitor->mutex);
+    nimcp_mutex_unlock(&monitor->mutex);
 }
 
 //=============================================================================
@@ -611,7 +611,7 @@ void shannon_monitor_reset(
 ) {
     if (!monitor) return;
 
-    pthread_mutex_lock(&monitor->mutex);
+    nimcp_mutex_lock(&monitor->mutex);
 
     LOG_INFO("Shannon: Resetting monitor");
 
@@ -644,5 +644,5 @@ void shannon_monitor_reset(
     memset(&monitor->metrics, 0, sizeof(shannon_routing_metrics_t));
     monitor->metrics.measurement_window_ms = monitor->config.measurement_window_ms;
 
-    pthread_mutex_unlock(&monitor->mutex);
+    nimcp_mutex_unlock(&monitor->mutex);
 }

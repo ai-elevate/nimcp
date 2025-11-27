@@ -26,14 +26,16 @@ foreach(BENCH_SOURCE ${BENCHMARK_SOURCES})
     # Create executable
     add_executable(${BENCH_TARGET} ${BENCH_SOURCE})
 
-    # Link libraries
-    # Note: Link complex math object directly to avoid unresolved symbols from main library
+    # Link libraries - link against full nimcp library for all dependencies
     target_link_libraries(${BENCH_TARGET}
         PRIVATE
-            ${CMAKE_BINARY_DIR}/src/lib/CMakeFiles/nimcp.dir/__/utils/math/nimcp_complex_math.c.o
+            nimcp
             m
             pthread
     )
+
+    # Add dependency on nimcp library build
+    add_dependencies(${BENCH_TARGET} nimcp)
 
     # Include directories
     target_include_directories(${BENCH_TARGET}
@@ -142,10 +144,10 @@ foreach(BENCH_SOURCE ${MIDDLEWARE_BENCHMARK_SOURCES})
 endforeach()
 
 # Memory benchmarks (C)
+# Note: benchmark_page_cow.c disabled - uses deprecated page_cow API
 set(MEMORY_BENCHMARK_SOURCES
     benchmark_event_queue_pool.c
     benchmark_pattern_cow.c
-    benchmark_page_cow.c
 )
 
 foreach(BENCH_SOURCE ${MEMORY_BENCHMARK_SOURCES})

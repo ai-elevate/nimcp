@@ -36,7 +36,7 @@ extern "C" {
 #include "glial/oligodendrocytes/nimcp_oligodendrocytes.h"
 #include "core/axon/nimcp_axon.h"
 #include "utils/memory/nimcp_memory.h"
-#include "include/nimcp.h"
+#include "nimcp.h"
 }
 
 //=============================================================================

@@ -19,9 +19,13 @@
 #include "middleware/integration/nimcp_shannon_monitor.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/time/nimcp_time.h"
+#include "utils/thread/nimcp_thread.h"
+#include "security/nimcp_blood_brain_barrier.h"        // Phase IS-1: BBB perimeter defense
 #include <string.h>
 #include <math.h>
-#include <pthread.h>
+
+// Phase IS-1: External declaration of BBB getter (avoid header conflicts)
+extern bbb_system_t nimcp_bbb_get_global_system(void);
 
 //=============================================================================
 // Internal Structure
@@ -57,7 +61,7 @@ struct middleware_controller {
     middleware_controller_metrics_t metrics;
 
     /* Thread safety */
-    pthread_mutex_t mutex;
+    nimcp_mutex_t mutex;
 
     /* Timestamps */
     uint64_t created_at_us;
@@ -128,7 +132,7 @@ static void record_command(
     float latency_us = (float)(end_us - start_us);
     float info_bits = calculate_command_information(type);
 
-    pthread_mutex_lock(&ctrl->mutex);
+    nimcp_mutex_lock(&ctrl->mutex);
 
     ctrl->metrics.total_commands++;
     ctrl->metrics.total_latency_us += latency_us;
@@ -189,7 +193,7 @@ static void record_command(
 
     ctrl->last_command_us = end_us;
 
-    pthread_mutex_unlock(&ctrl->mutex);
+    nimcp_mutex_unlock(&ctrl->mutex);
 }
 
 /**
@@ -277,7 +281,7 @@ middleware_controller_t* middleware_controller_create_custom(
     }
 
     /* Initialize mutex */
-    if (pthread_mutex_init(&ctrl->mutex, NULL) != 0) {
+    if (nimcp_mutex_init(&ctrl->mutex, NULL) != NIMCP_SUCCESS) {
         nimcp_free(ctrl);
         return NULL;
     }
@@ -308,7 +312,7 @@ void middleware_controller_destroy(middleware_controller_t* controller)
         return;
     }
 
-    pthread_mutex_destroy(&controller->mutex);
+    nimcp_mutex_destroy(&controller->mutex);
     nimcp_free(controller);
 }
 
@@ -328,7 +332,7 @@ bool middleware_controller_set_attention_threshold(
     uint64_t start_us = get_time_us();
     threshold = clampf(threshold, 0.0f, 1.0f);
 
-    pthread_mutex_lock(&controller->mutex);
+    nimcp_mutex_lock(&controller->mutex);
 
     /* Update cache */
     if (region == TARGET_ALL_REGIONS) {
@@ -345,7 +349,7 @@ bool middleware_controller_set_attention_threshold(
                                    0, (uint32_t)region, threshold);
     }
 
-    pthread_mutex_unlock(&controller->mutex);
+    nimcp_mutex_unlock(&controller->mutex);
 
     record_command(controller, COMMAND_CONFIGURE_ATTENTION, start_us, true);
     return true;
@@ -363,7 +367,7 @@ bool middleware_controller_set_attention_priority(
     uint64_t start_us = get_time_us();
     priority = clampf(priority, 0.0f, 1.0f);
 
-    pthread_mutex_lock(&controller->mutex);
+    nimcp_mutex_lock(&controller->mutex);
 
     /* Update cache */
     if (region == TARGET_ALL_REGIONS) {
@@ -374,7 +378,7 @@ bool middleware_controller_set_attention_priority(
         controller->attention_priorities[region] = priority;
     }
 
-    pthread_mutex_unlock(&controller->mutex);
+    nimcp_mutex_unlock(&controller->mutex);
 
     record_command(controller, COMMAND_CONFIGURE_ATTENTION, start_us, true);
     return true;
@@ -413,7 +417,7 @@ bool middleware_controller_reset_attention(
 
     uint64_t start_us = get_time_us();
 
-    pthread_mutex_lock(&controller->mutex);
+    nimcp_mutex_lock(&controller->mutex);
 
     /* Reset to defaults */
     if (region == TARGET_ALL_REGIONS) {
@@ -432,7 +436,7 @@ bool middleware_controller_reset_attention(
         controller->attention_priorities[region] = 0.5f;
     }
 
-    pthread_mutex_unlock(&controller->mutex);
+    nimcp_mutex_unlock(&controller->mutex);
 
     record_command(controller, COMMAND_CONFIGURE_ATTENTION, start_us, true);
     return true;
@@ -526,11 +530,11 @@ bool middleware_controller_subscribe_pattern(
     uint64_t start_us = get_time_us();
     confidence_threshold = clampf(confidence_threshold, 0.0f, 1.0f);
 
-    pthread_mutex_lock(&controller->mutex);
+    nimcp_mutex_lock(&controller->mutex);
 
     /* Check capacity */
     if (controller->num_subscriptions >= controller->config.max_subscriptions) {
-        pthread_mutex_unlock(&controller->mutex);
+        nimcp_mutex_unlock(&controller->mutex);
         record_command(controller, COMMAND_SUBSCRIBE_PATTERN, start_us, false);
         return false;
     }
@@ -545,7 +549,7 @@ bool middleware_controller_subscribe_pattern(
     }
 
     if (slot < 0) {
-        pthread_mutex_unlock(&controller->mutex);
+        nimcp_mutex_unlock(&controller->mutex);
         record_command(controller, COMMAND_SUBSCRIBE_PATTERN, start_us, false);
         return false;
     }
@@ -566,7 +570,7 @@ bool middleware_controller_subscribe_pattern(
 
     *subscription_id = sub->subscription_id;
 
-    pthread_mutex_unlock(&controller->mutex);
+    nimcp_mutex_unlock(&controller->mutex);
 
     record_command(controller, COMMAND_SUBSCRIBE_PATTERN, start_us, true);
     return true;
@@ -582,7 +586,7 @@ bool middleware_controller_unsubscribe_pattern(
     uint64_t start_us = get_time_us();
     bool found = false;
 
-    pthread_mutex_lock(&controller->mutex);
+    nimcp_mutex_lock(&controller->mutex);
 
     /* Find and deactivate subscription */
     for (uint32_t i = 0; i < controller->config.max_subscriptions; i++) {
@@ -596,7 +600,7 @@ bool middleware_controller_unsubscribe_pattern(
         }
     }
 
-    pthread_mutex_unlock(&controller->mutex);
+    nimcp_mutex_unlock(&controller->mutex);
 
     record_command(controller, COMMAND_UNSUBSCRIBE_PATTERN, start_us, found);
     return found;
@@ -654,7 +658,7 @@ bool middleware_controller_set_activity_scale(
     scale = clampf(scale, controller->config.min_activity_scale,
                    controller->config.max_activity_scale);
 
-    pthread_mutex_lock(&controller->mutex);
+    nimcp_mutex_lock(&controller->mutex);
 
     if (region == TARGET_ALL_REGIONS) {
         for (int i = 0; i <= TARGET_CUSTOM; i++) {
@@ -664,7 +668,7 @@ bool middleware_controller_set_activity_scale(
         controller->activity_scales[region] = scale;
     }
 
-    pthread_mutex_unlock(&controller->mutex);
+    nimcp_mutex_unlock(&controller->mutex);
 
     middleware_command_type_t cmd_type = (scale < 1.0f) ?
         COMMAND_REDUCE_ACTIVITY : COMMAND_INCREASE_ACTIVITY;
@@ -679,9 +683,9 @@ bool middleware_controller_reduce_activity(
     /* Reduce by 50% */
     if (controller == NULL) return false;
 
-    pthread_mutex_lock(&controller->mutex);
+    nimcp_mutex_lock(&controller->mutex);
     float current = controller->activity_scales[region];
-    pthread_mutex_unlock(&controller->mutex);
+    nimcp_mutex_unlock(&controller->mutex);
 
     return middleware_controller_set_activity_scale(
         controller, region, current * 0.5f);
@@ -694,9 +698,9 @@ bool middleware_controller_boost_activity(
     /* Boost by 50% */
     if (controller == NULL) return false;
 
-    pthread_mutex_lock(&controller->mutex);
+    nimcp_mutex_lock(&controller->mutex);
     float current = controller->activity_scales[region];
-    pthread_mutex_unlock(&controller->mutex);
+    nimcp_mutex_unlock(&controller->mutex);
 
     return middleware_controller_set_activity_scale(
         controller, region, current * 1.5f);
@@ -745,6 +749,15 @@ uint32_t middleware_controller_execute_batch(
     /* Guard clauses */
     if (controller == NULL || batch == NULL) return 0;
     if (batch->num_commands == 0) return 0;
+
+    /* Phase IS-1: BBB validation for command batch data */
+    bbb_system_t bbb = nimcp_bbb_get_global_system();
+    if (bbb) {
+        bbb_validation_result_t bbb_result;
+        if (!bbb_validate_input(bbb, batch, sizeof(*batch), &bbb_result)) {
+            return 0;  /* BBB rejected the command batch */
+        }
+    }
 
     uint64_t start_us = get_time_us();
     uint32_t success_count = 0;
@@ -804,11 +817,11 @@ uint32_t middleware_controller_execute_batch(
     }
 
     /* Update batching metrics */
-    pthread_mutex_lock(&controller->mutex);
+    nimcp_mutex_lock(&controller->mutex);
     controller->metrics.batches_created++;
     controller->metrics.avg_batch_size =
         (float)controller->metrics.total_commands / controller->metrics.batches_created;
-    pthread_mutex_unlock(&controller->mutex);
+    nimcp_mutex_unlock(&controller->mutex);
 
     return success_count;
 }
@@ -826,9 +839,9 @@ bool middleware_controller_get_metrics(
 
     /* Thread-safe copy */
     middleware_controller_t* ctrl = (middleware_controller_t*)controller;
-    pthread_mutex_lock(&ctrl->mutex);
+    nimcp_mutex_lock(&ctrl->mutex);
     *metrics = controller->metrics;
-    pthread_mutex_unlock(&ctrl->mutex);
+    nimcp_mutex_unlock(&ctrl->mutex);
 
     return true;
 }
@@ -859,14 +872,14 @@ void middleware_controller_reset_stats(
 {
     if (controller == NULL) return;
 
-    pthread_mutex_lock(&controller->mutex);
+    nimcp_mutex_lock(&controller->mutex);
 
     uint32_t active_subs = controller->metrics.active_subscriptions;
     memset(&controller->metrics, 0, sizeof(controller->metrics));
     controller->metrics.min_latency_us = INFINITY;
     controller->metrics.active_subscriptions = active_subs;
 
-    pthread_mutex_unlock(&controller->mutex);
+    nimcp_mutex_unlock(&controller->mutex);
 }
 
 //=============================================================================
@@ -922,7 +935,7 @@ void middleware_controller_on_pattern_match(
     if (controller == NULL) return;
     if (!controller->config.enable_pattern_notifications) return;
 
-    pthread_mutex_lock(&controller->mutex);
+    nimcp_mutex_lock(&controller->mutex);
 
     /* Find matching subscriptions and fire callbacks */
     for (uint32_t i = 0; i < controller->config.max_subscriptions; i++) {
@@ -936,18 +949,18 @@ void middleware_controller_on_pattern_match(
             pattern_match_callback_t cb = sub->callback;
             void* user_data = sub->user_data;
 
-            pthread_mutex_unlock(&controller->mutex);
+            nimcp_mutex_unlock(&controller->mutex);
 
             if (cb != NULL) {
                 cb(pattern_id, similarity, region_id, user_data);
             }
 
-            pthread_mutex_lock(&controller->mutex);
+            nimcp_mutex_lock(&controller->mutex);
 
             sub->notifications_sent++;
             controller->metrics.pattern_notifications_sent++;
         }
     }
 
-    pthread_mutex_unlock(&controller->mutex);
+    nimcp_mutex_unlock(&controller->mutex);
 }

@@ -15,7 +15,7 @@
 
 #include <Python.h>
 #include <numpy/arrayobject.h>
-#include "../../include/utils/signal/nimcp_signal_filter.h"
+#include "utils/signal/nimcp_signal_filter.h"
 
 //=============================================================================
 // Signal Filter Type

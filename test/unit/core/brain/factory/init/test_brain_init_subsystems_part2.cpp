@@ -26,7 +26,7 @@
 
 #include "core/brain/factory/nimcp_brain_factory.h"
 #include "core/brain/nimcp_brain.h"
-#include "include/nimcp.h"
+#include "nimcp.h"
 
 /**
  * @brief Test fixture for subsystem initialization tests

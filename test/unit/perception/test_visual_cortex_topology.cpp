@@ -8,7 +8,7 @@
  */
 
 #include <gtest/gtest.h>
-#include "include/perception/nimcp_visual_cortex.h"
+#include "perception/nimcp_visual_cortex.h"
 #include "core/topology/nimcp_fractal_topology.h"
 #include "utils/nimcp_test_base.h"
 

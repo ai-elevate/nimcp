@@ -34,6 +34,8 @@
 #include <stdio.h>
 #include <string.h>
 #include "utils/validation/nimcp_validate.h"
+#include "core/brain/factory/init/nimcp_brain_init.h"  // Phase IS-1: BBB access
+#include "security/nimcp_blood_brain_barrier.h"        // Phase IS-1: BBB perimeter defense
 
 //=============================================================================
 // Constants and Configuration
@@ -229,6 +231,37 @@ int protocol_serialize_message(msg_type_t type, const void* payload, uint32_t pa
 //=============================================================================
 
 /**
+ * @brief Validates network buffer through BBB perimeter defense (Phase IS-1)
+ *
+ * WHY: Network data is untrusted external input - must pass through BBB
+ *      before any parsing or processing to prevent injection attacks.
+ *
+ * COMPLEXITY: O(n) where n = buffer_size (BBB performs content inspection)
+ *
+ * @return true if BBB validation passes (or BBB not enabled), false if rejected
+ */
+static bool bbb_validate_network_buffer(const uint8_t* buffer, uint32_t buffer_size)
+{
+    // Guard clause: Check buffer
+    if (!buffer || buffer_size == 0)
+        return true;  // Let standard validation handle NULL/empty
+
+    // Get global BBB system (thread-safe)
+    bbb_system_t bbb = nimcp_bbb_get_global_system();
+    if (!bbb)
+        return true;  // BBB not enabled - pass through
+
+    // Validate network buffer through BBB input gate
+    bbb_validation_result_t result;
+    if (!bbb_validate_input(bbb, buffer, buffer_size, &result)) {
+        // BBB rejected the input - log and fail
+        return false;
+    }
+
+    return true;
+}
+
+/**
  * @brief Validates deserialization inputs
  *
  * WHY: Extracted validation to eliminate nested ifs. Guard clause pattern.
@@ -345,6 +378,11 @@ static bool verify_message_checksum(const msg_header_t* header, const void* payl
 int protocol_deserialize_message(const uint8_t* buffer, uint32_t buffer_size, msg_header_t* header,
                                  void* payload, uint32_t payload_size)
 {
+    // Step 0: BBB perimeter defense (Phase IS-1) - validate untrusted network data
+    if (!bbb_validate_network_buffer(buffer, buffer_size)) {
+        return -1;  // BBB rejected the input
+    }
+
     // Step 1: Validate inputs
     if (!validate_deserialize_inputs(buffer, buffer_size, header)) {
         return -1;
@@ -790,6 +828,11 @@ static bool extract_event_payload(const uint8_t* buffer, void* payload, uint32_t
 int event_packet_deserialize(const uint8_t* buffer, uint32_t buffer_size, event_packet_t* packet,
                              void* payload, uint32_t payload_size)
 {
+    // Step 0: BBB perimeter defense (Phase IS-1) - validate untrusted network data
+    if (!bbb_validate_network_buffer(buffer, buffer_size)) {
+        return -1;  // BBB rejected the input
+    }
+
     // Step 1: Validate inputs
     if (!validate_event_deserialize_inputs(buffer, buffer_size, packet)) {
         return -1;
@@ -1088,6 +1131,11 @@ static bool extract_control_params(const uint8_t* buffer, void* params, uint32_t
 int control_message_deserialize(const uint8_t* buffer, uint32_t buffer_size, control_message_t* msg,
                                 void* params, uint32_t param_size)
 {
+    // Step 0: BBB perimeter defense (Phase IS-1) - validate untrusted network data
+    if (!bbb_validate_network_buffer(buffer, buffer_size)) {
+        return -1;  // BBB rejected the input
+    }
+
     // Step 1: Validate inputs
     if (!validate_control_deserialize_inputs(buffer, buffer_size, msg)) {
         return -1;

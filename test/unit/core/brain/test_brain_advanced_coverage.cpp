@@ -30,7 +30,7 @@
 #include "utils/memory/nimcp_memory.h"
 #include "utils/cache/nimcp_cache.h"
 #include "utils/time/nimcp_time.h"
-#include "include/nimcp.h"
+#include "nimcp.h"
 
 //=============================================================================
 // Test Fixture

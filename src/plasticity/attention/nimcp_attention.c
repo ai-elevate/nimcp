@@ -16,6 +16,8 @@
 
 #include "nimcp_attention.h"
 #include "utils/memory/nimcp_memory.h"
+#include "utils/memory/nimcp_memory_pool.h"  // Phase MP: Memory pool for hot paths
+#include "utils/memory/nimcp_page_cow.h"     // Phase COW: Copy-on-write for weight sharing
 #include "utils/containers/nimcp_vector.h"
 #include "utils/validation/nimcp_validate.h"
 #include "utils/logging/nimcp_logging.h"
@@ -24,6 +26,61 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdatomic.h>
+
+//=============================================================================
+// Memory Pool for Attention Workspace (Phase MP)
+//=============================================================================
+
+/**
+ * @brief Memory pool for attention forward pass workspace
+ *
+ * WHAT: Global memory pool for projection and score buffers
+ * WHY:  Forward pass allocates multiple workspace buffers - O(1) vs O(log n)
+ * HOW:  Lazily initialized pool with blocks sized for typical attention dims
+ */
+#define ATTENTION_POOL_BLOCK_SIZE 16384  // 16KB - fits 4096 floats
+#define ATTENTION_POOL_NUM_BLOCKS 128    // 128 concurrent buffers
+
+static memory_pool_t g_attention_pool = NULL;
+
+/**
+ * @brief Get or create the attention memory pool
+ */
+static memory_pool_t get_attention_pool(void) {
+    if (g_attention_pool == NULL) {
+        memory_pool_config_t config = memory_pool_default_config(
+            ATTENTION_POOL_BLOCK_SIZE, ATTENTION_POOL_NUM_BLOCKS);
+        g_attention_pool = memory_pool_create(&config);
+    }
+    return g_attention_pool;
+}
+
+/**
+ * @brief Allocate workspace buffer from pool or heap
+ */
+static void* alloc_attention_buffer(size_t size) {
+    if (size <= ATTENTION_POOL_BLOCK_SIZE) {
+        memory_pool_t pool = get_attention_pool();
+        if (pool) {
+            void* buf = memory_pool_acquire(pool);
+            if (buf) return buf;
+        }
+    }
+    return nimcp_malloc(size);
+}
+
+/**
+ * @brief Free workspace buffer to pool or heap
+ */
+static void free_attention_buffer(void* buf) {
+    if (!buf) return;
+    memory_pool_t pool = get_attention_pool();
+    if (pool && memory_pool_owns(pool, buf)) {
+        memory_pool_release(pool, buf);
+    } else {
+        nimcp_free(buf);
+    }
+}
 
 //=============================================================================
 // Internal Structures
@@ -43,6 +100,14 @@ struct attention_head_struct {
     float* key_weights;       // [input_dim × key_dim]
     float* value_weights;     // [input_dim × value_dim]
     float* output_weights;    // [value_dim × output_dim]
+
+    /* WHAT: Copy-on-Write support for weight sharing (Phase COW)
+     * WHY:  Enable O(1) model cloning with lazy copying on write
+     */
+    bool uses_cow;                        // True if weights use COW
+    page_cow_region_t cow_region;         // COW region for combined weights
+    page_cow_view_t cow_view;             // View into COW region
+    size_t cow_weights_offset[4];         // Offsets: query, key, value, output
 };
 
 /**
@@ -484,6 +549,12 @@ attention_head_t attention_head_create(const attention_head_config_t* config)
 
     memcpy(&head->config, config, sizeof(attention_head_config_t));
 
+    /* Initialize COW fields to NULL/false (Phase COW) */
+    head->uses_cow = false;
+    head->cow_region = NULL;
+    head->cow_view = NULL;
+    memset(head->cow_weights_offset, 0, sizeof(head->cow_weights_offset));
+
     /* WHAT: Allocate weight matrices
      * WHY:  Need storage for learned parameters
      */
@@ -529,14 +600,29 @@ void attention_head_destroy(attention_head_t head)
         return;
     }
 
-    /* WHAT: Free all allocated resources
-     * WHY:  Prevent memory leaks
-     * NOTE: nimcp_free handles NULL gracefully
+    /* WHAT: Handle COW cleanup (Phase COW)
+     * WHY:  COW views/regions must be destroyed before freeing structure
      */
-    nimcp_free(head->query_weights);
-    nimcp_free(head->key_weights);
-    nimcp_free(head->value_weights);
-    nimcp_free(head->output_weights);
+    if (head->uses_cow) {
+        if (head->cow_view) {
+            page_cow_view_destroy(head->cow_view);
+        }
+        // Only destroy region if this head owns it (region creator)
+        // Clone heads share the region, they only have views
+        if (head->cow_region && !head->cow_view) {
+            page_cow_region_destroy(head->cow_region);
+        }
+    } else {
+        /* WHAT: Free all allocated resources
+         * WHY:  Prevent memory leaks
+         * NOTE: nimcp_free handles NULL gracefully
+         */
+        nimcp_free(head->query_weights);
+        nimcp_free(head->key_weights);
+        nimcp_free(head->value_weights);
+        nimcp_free(head->output_weights);
+    }
+
     nimcp_free(head);
 }
 
@@ -569,24 +655,24 @@ bool attention_head_forward(attention_head_t head,
     const uint32_t output_dim = head->config.output_dim;
     const float temperature = head->config.temperature;
 
-    /* WHAT: Allocate temporary buffers
-     * WHY:  Need workspace for Q/K/V projections
+    /* WHAT: Allocate temporary buffers from pool (Phase MP)
+     * WHY:  Need workspace for Q/K/V projections - use pool for O(1) allocation
      */
-    float* query_proj = nimcp_malloc(sequence_length * key_dim * sizeof(float));
-    float* key_proj = nimcp_malloc(sequence_length * key_dim * sizeof(float));
-    float* value_proj = nimcp_malloc(sequence_length * value_dim * sizeof(float));
-    float* scores = nimcp_malloc(sequence_length * sizeof(float));
-    float* output_proj = nimcp_malloc(value_dim * sizeof(float));
+    float* query_proj = alloc_attention_buffer(sequence_length * key_dim * sizeof(float));
+    float* key_proj = alloc_attention_buffer(sequence_length * key_dim * sizeof(float));
+    float* value_proj = alloc_attention_buffer(sequence_length * value_dim * sizeof(float));
+    float* scores = alloc_attention_buffer(sequence_length * sizeof(float));
+    float* output_proj = alloc_attention_buffer(value_dim * sizeof(float));
 
     /* WHAT: Check allocations
      * WHY:  Early cleanup if allocation failed
      */
     if (!query_proj || !key_proj || !value_proj || !scores || !output_proj) {
-        nimcp_free(query_proj);
-        nimcp_free(key_proj);
-        nimcp_free(value_proj);
-        nimcp_free(scores);
-        nimcp_free(output_proj);
+        free_attention_buffer(query_proj);
+        free_attention_buffer(key_proj);
+        free_attention_buffer(value_proj);
+        free_attention_buffer(scores);
+        free_attention_buffer(output_proj);
         return false;
     }
 
@@ -637,14 +723,14 @@ bool attention_head_forward(attention_head_t head,
                  output_dim, value_dim);
     }
 
-    /* WHAT: Free temporary buffers
+    /* WHAT: Free temporary buffers (Phase MP: return to pool)
      * WHY:  Prevent memory leaks
      */
-    nimcp_free(query_proj);
-    nimcp_free(key_proj);
-    nimcp_free(value_proj);
-    nimcp_free(scores);
-    nimcp_free(output_proj);
+    free_attention_buffer(query_proj);
+    free_attention_buffer(key_proj);
+    free_attention_buffer(value_proj);
+    free_attention_buffer(scores);
+    free_attention_buffer(output_proj);
 
     return true;
 }
@@ -778,15 +864,15 @@ bool multihead_attention_forward(multihead_attention_t mha,
     const uint32_t gate_scaled = atomic_load(&mha->gate_signal);
     const float gate = (float)gate_scaled / 1000.0f;
 
-    /* WHAT: Allocate temporary buffers
-     * WHY:  Need workspace for head outputs and attention weights (for entropy)
+    /* WHAT: Allocate temporary buffers from pool (Phase MP)
+     * WHY:  Need workspace for head outputs and attention weights - use pool for O(1)
      */
-    float* head_outputs = nimcp_malloc(num_heads * sequence_length * head_dim * sizeof(float));
-    float* attention_weights = nimcp_malloc(sequence_length * sequence_length * sizeof(float));
+    float* head_outputs = alloc_attention_buffer(num_heads * sequence_length * head_dim * sizeof(float));
+    float* attention_weights = alloc_attention_buffer(sequence_length * sequence_length * sizeof(float));
 
     if (!head_outputs || !attention_weights) {
-        nimcp_free(head_outputs);
-        nimcp_free(attention_weights);
+        free_attention_buffer(head_outputs);
+        free_attention_buffer(attention_weights);
         return false;
     }
 
@@ -815,8 +901,8 @@ bool multihead_attention_forward(multihead_attention_t mha,
          * WHY:  Early cleanup and return on error
          */
         if (!success) {
-            nimcp_free(head_outputs);
-            nimcp_free(attention_weights);
+            free_attention_buffer(head_outputs);
+            free_attention_buffer(attention_weights);
             return false;
         }
 
@@ -873,8 +959,8 @@ bool multihead_attention_forward(multihead_attention_t mha,
     /* WHAT: Free temporary buffers
      * WHY:  Prevent memory leaks
      */
-    nimcp_free(head_outputs);
-    nimcp_free(attention_weights);
+    free_attention_buffer(head_outputs);
+    free_attention_buffer(attention_weights);
 
     return true;
 }
@@ -1052,4 +1138,288 @@ float multihead_attention_get_strength(multihead_attention_t mha)
     }
 
     return gate_strength;
+}
+
+//=============================================================================
+// Phase COW: Copy-on-Write Support for Weight Sharing
+//=============================================================================
+
+/**
+ * @brief Calculate total weight buffer size for all attention matrices
+ *
+ * WHAT: Compute total bytes needed for combined Q/K/V/O weights
+ * WHY:  Single contiguous COW region for all weights
+ * HOW:  Sum of all weight matrix sizes, page-aligned
+ */
+static size_t calculate_cow_weights_size(const attention_head_config_t* config)
+{
+    if (!config) return 0;
+
+    size_t query_size = config->input_dim * config->key_dim * sizeof(float);
+    size_t key_size = config->input_dim * config->key_dim * sizeof(float);
+    size_t value_size = config->input_dim * config->value_dim * sizeof(float);
+    size_t output_size = config->value_dim * config->output_dim * sizeof(float);
+
+    return page_cow_align_size(query_size + key_size + value_size + output_size);
+}
+
+/**
+ * @brief Create attention head with COW-backed weight storage
+ *
+ * WHAT: Create attention head using page-level COW for weights
+ * WHY:  Enable O(1) model cloning with lazy weight copying
+ * HOW:  Store all weights in single COW region, set pointers via view
+ *
+ * @param config Attention head configuration
+ * @param initial_weights Initial weights to copy (NULL = random init)
+ * @return Attention head with COW weights, or NULL on failure
+ *
+ * COMPLEXITY: O(weights_size) for initial copy
+ * MEMORY: weights_size bytes in COW region
+ *
+ * EXAMPLE:
+ * ```c
+ * // Create COW-backed attention head for fine-tuning
+ * attention_head_t head = attention_head_create_cow(&config, pretrained_weights);
+ *
+ * // Clone for parallel training (instant, shares pages)
+ * attention_head_t clone = attention_head_clone_cow(head);
+ * ```
+ */
+attention_head_t attention_head_create_cow(const attention_head_config_t* config,
+                                           const float* initial_weights)
+{
+    if (!config) {
+        NIMCP_LOGGING_ERROR("COW attention head config is NULL");
+        return NULL;
+    }
+
+    if (config->input_dim == 0 || config->output_dim == 0) {
+        NIMCP_LOGGING_ERROR("Invalid dimensions in COW attention head config");
+        return NULL;
+    }
+
+    // Calculate weight sizes and offsets
+    size_t query_size = config->input_dim * config->key_dim * sizeof(float);
+    size_t key_size = config->input_dim * config->key_dim * sizeof(float);
+    size_t value_size = config->input_dim * config->value_dim * sizeof(float);
+    size_t output_size = config->value_dim * config->output_dim * sizeof(float);
+    size_t total_size = calculate_cow_weights_size(config);
+
+    // Allocate head structure
+    attention_head_t head = nimcp_malloc(sizeof(struct attention_head_struct));
+    if (!head) {
+        NIMCP_LOGGING_ERROR("Failed to allocate COW attention head");
+        return NULL;
+    }
+
+    memcpy(&head->config, config, sizeof(attention_head_config_t));
+
+    // Initialize COW fields
+    head->uses_cow = true;
+    head->cow_weights_offset[0] = 0;                           // query
+    head->cow_weights_offset[1] = query_size;                  // key
+    head->cow_weights_offset[2] = query_size + key_size;       // value
+    head->cow_weights_offset[3] = query_size + key_size + value_size;  // output
+
+    // Create COW region for weights
+    page_cow_config_t cow_config = page_cow_default_config(total_size);
+    cow_config.enable_tracking = true;
+
+    head->cow_region = page_cow_region_create(&cow_config, initial_weights);
+    if (!head->cow_region) {
+        NIMCP_LOGGING_ERROR("Failed to create COW region for attention weights");
+        nimcp_free(head);
+        return NULL;
+    }
+
+    // Create view into region
+    head->cow_view = page_cow_view_create(head->cow_region);
+    if (!head->cow_view) {
+        NIMCP_LOGGING_ERROR("Failed to create COW view for attention weights");
+        page_cow_region_destroy(head->cow_region);
+        nimcp_free(head);
+        return NULL;
+    }
+
+    // Set weight pointers from view (read-only initially)
+    const float* base = (const float*)page_cow_view_read(head->cow_view);
+    if (!base) {
+        page_cow_view_destroy(head->cow_view);
+        page_cow_region_destroy(head->cow_region);
+        nimcp_free(head);
+        return NULL;
+    }
+
+    // Point to offsets within COW region (cast away const, COW handles writes)
+    head->query_weights = (float*)((char*)base + head->cow_weights_offset[0]);
+    head->key_weights = (float*)((char*)base + head->cow_weights_offset[1]);
+    head->value_weights = (float*)((char*)base + head->cow_weights_offset[2]);
+    head->output_weights = (float*)((char*)base + head->cow_weights_offset[3]);
+
+    // Initialize weights if no initial data provided
+    if (!initial_weights) {
+        // Get writable pointer (will COW on write)
+        float* writable_base = (float*)page_cow_view_write(head->cow_view);
+        if (writable_base) {
+            head->query_weights = (float*)((char*)writable_base + head->cow_weights_offset[0]);
+            head->key_weights = (float*)((char*)writable_base + head->cow_weights_offset[1]);
+            head->value_weights = (float*)((char*)writable_base + head->cow_weights_offset[2]);
+            head->output_weights = (float*)((char*)writable_base + head->cow_weights_offset[3]);
+            initialize_weights(head);
+        }
+    }
+
+    NIMCP_LOGGING_INFO("Created COW attention head: input_dim=%u, output_dim=%u, cow_size=%zu",
+                       config->input_dim, config->output_dim, total_size);
+
+    return head;
+}
+
+/**
+ * @brief Clone attention head with COW semantics
+ *
+ * WHAT: Create O(1) clone sharing weight pages with source
+ * WHY:  Instant model cloning for fine-tuning or parallel training
+ * HOW:  Create new view into same COW region, COW on first write
+ *
+ * @param source Attention head to clone (must use COW)
+ * @return Cloned attention head, or NULL on failure
+ *
+ * COMPLEXITY: O(1) - No weight copying
+ * MEMORY: ~64 bytes for view metadata
+ *
+ * EXAMPLE:
+ * ```c
+ * // Clone for each training worker (instant)
+ * for (int i = 0; i < num_workers; i++) {
+ *     workers[i].head = attention_head_clone_cow(base_head);
+ *     // All workers share pages until they write
+ * }
+ * ```
+ */
+attention_head_t attention_head_clone_cow(attention_head_t source)
+{
+    if (!source) {
+        NIMCP_LOGGING_ERROR("Cannot clone NULL attention head");
+        return NULL;
+    }
+
+    if (!source->uses_cow || !source->cow_view) {
+        NIMCP_LOGGING_ERROR("Cannot COW-clone non-COW attention head");
+        return NULL;
+    }
+
+    // Allocate new head structure
+    attention_head_t clone = nimcp_malloc(sizeof(struct attention_head_struct));
+    if (!clone) {
+        NIMCP_LOGGING_ERROR("Failed to allocate COW clone head");
+        return NULL;
+    }
+
+    // Copy config and COW offsets
+    memcpy(&clone->config, &source->config, sizeof(attention_head_config_t));
+    memcpy(clone->cow_weights_offset, source->cow_weights_offset,
+           sizeof(clone->cow_weights_offset));
+
+    // Mark as COW but without owning the region
+    clone->uses_cow = true;
+    clone->cow_region = NULL;  // Don't own region, source does
+
+    // Create COW clone of the view
+    clone->cow_view = page_cow_view_clone(source->cow_view);
+    if (!clone->cow_view) {
+        NIMCP_LOGGING_ERROR("Failed to clone COW view");
+        nimcp_free(clone);
+        return NULL;
+    }
+
+    // Set weight pointers from cloned view
+    const float* base = (const float*)page_cow_view_read(clone->cow_view);
+    if (!base) {
+        page_cow_view_destroy(clone->cow_view);
+        nimcp_free(clone);
+        return NULL;
+    }
+
+    clone->query_weights = (float*)((char*)base + clone->cow_weights_offset[0]);
+    clone->key_weights = (float*)((char*)base + clone->cow_weights_offset[1]);
+    clone->value_weights = (float*)((char*)base + clone->cow_weights_offset[2]);
+    clone->output_weights = (float*)((char*)base + clone->cow_weights_offset[3]);
+
+    NIMCP_LOGGING_DEBUG("Created COW clone of attention head");
+
+    return clone;
+}
+
+/**
+ * @brief Create instant snapshot of attention weights for rollback
+ *
+ * WHAT: O(1) snapshot of current weight state
+ * WHY:  Enable rollback during training (e.g., failed batch)
+ * HOW:  Page-level COW snapshot, copies only on subsequent writes
+ *
+ * @param head Attention head (must use COW)
+ * @return Snapshot handle, or NULL on failure
+ *
+ * COMPLEXITY: O(1) - No weight copying
+ */
+page_cow_snapshot_t attention_head_snapshot_weights(attention_head_t head)
+{
+    if (!head || !head->uses_cow || !head->cow_view) {
+        NIMCP_LOGGING_ERROR("Cannot snapshot non-COW attention head");
+        return NULL;
+    }
+
+    page_cow_snapshot_t snapshot = page_cow_snapshot_create(head->cow_view);
+    if (!snapshot) {
+        NIMCP_LOGGING_ERROR("Failed to create weight snapshot");
+        return NULL;
+    }
+
+    NIMCP_LOGGING_DEBUG("Created attention weight snapshot");
+    return snapshot;
+}
+
+/**
+ * @brief Restore attention weights from snapshot
+ *
+ * WHAT: Rollback weights to snapshot state
+ * WHY:  Recover from failed training iterations
+ * HOW:  Page-level restore, discards private pages
+ *
+ * @param head Attention head to restore
+ * @param snapshot Snapshot to restore from
+ * @return true on success
+ *
+ * COMPLEXITY: O(num_modified_pages)
+ */
+bool attention_head_restore_weights(attention_head_t head,
+                                    page_cow_snapshot_t snapshot)
+{
+    if (!head || !head->uses_cow || !head->cow_view || !snapshot) {
+        return false;
+    }
+
+    bool success = page_cow_snapshot_restore(head->cow_view, snapshot);
+    if (success) {
+        NIMCP_LOGGING_DEBUG("Restored attention weights from snapshot");
+    }
+
+    return success;
+}
+
+/**
+ * @brief Get memory savings from COW weight sharing
+ *
+ * @param head Attention head (must use COW)
+ * @return Bytes saved by sharing, or 0 if not using COW
+ */
+size_t attention_head_get_cow_savings(attention_head_t head)
+{
+    if (!head || !head->uses_cow || !head->cow_view) {
+        return 0;
+    }
+
+    return page_cow_view_get_memory_saved(head->cow_view);
 }

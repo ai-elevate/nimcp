@@ -35,7 +35,7 @@
 extern "C" {
 #include "glial/myelin_sheath/nimcp_myelin_sheath.h"
 #include "utils/memory/nimcp_memory.h"
-#include "include/nimcp.h"
+#include "nimcp.h"
 }
 
 //=============================================================================

@@ -12,6 +12,9 @@
 
 #include "nimcp_dynamic_config.h"
 #include "utils/memory/nimcp_memory.h"
+#include "utils/thread/nimcp_thread.h"
+#include "core/brain/factory/init/nimcp_brain_init.h"  // Phase IS-1: BBB access
+#include "security/nimcp_blood_brain_barrier.h"        // Phase IS-1: BBB perimeter defense
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -52,7 +55,7 @@ typedef struct {
 static config_entry_internal_t g_config_table[MAX_CONFIG_ENTRIES];
 static callback_registration_t g_callbacks[MAX_CALLBACKS];
 static pthread_rwlock_t g_config_lock = PTHREAD_RWLOCK_INITIALIZER;
-static pthread_mutex_t g_callback_lock = PTHREAD_MUTEX_INITIALIZER;
+static nimcp_mutex_t g_callback_lock = NIMCP_MUTEX_INITIALIZER;
 static char g_config_path[512] = {0};
 static config_stats_t g_stats = {0};
 static uint32_t g_next_callback_id = 1;
@@ -159,8 +162,20 @@ static bool parse_config_file(const char* path) {
                     g_config_table[i].type = CONFIG_TYPE_INT;
                     g_config_table[i].value.int_val = atoll(value);
                 } else {
-                    g_config_table[i].type = CONFIG_TYPE_STRING;
-                    g_config_table[i].value.string_val = strdup(value);
+                    // Phase IS-1: BBB validation for string config values
+                    bbb_system_t bbb = nimcp_bbb_get_global_system();
+                    bool bbb_rejected = false;
+                    if (bbb) {
+                        bbb_validation_result_t result;
+                        if (!bbb_validate_string(bbb, value, &result)) {
+                            fprintf(stderr, "Config parse error line %d: BBB rejected value\n", line_num);
+                            bbb_rejected = true;
+                        }
+                    }
+                    if (!bbb_rejected) {
+                        g_config_table[i].type = CONFIG_TYPE_STRING;
+                        g_config_table[i].value.string_val = strdup(value);
+                    }
                 }
                 break;
             }
@@ -581,7 +596,7 @@ static void trigger_callbacks(const char* key, const config_value_t* old_value,
     }
 
     // Lock callback table
-    pthread_mutex_lock(&g_callback_lock);
+    nimcp_mutex_lock(&g_callback_lock);
 
     // Iterate all registered callbacks
     for (int i = 0; i < MAX_CALLBACKS; i++) {
@@ -596,13 +611,13 @@ static void trigger_callbacks(const char* key, const config_value_t* old_value,
 
         if (matches) {
             // Invoke callback (unlock first to prevent deadlock)
-            pthread_mutex_unlock(&g_callback_lock);
+            nimcp_mutex_unlock(&g_callback_lock);
             g_callbacks[i].callback(key, old_value, new_value, g_callbacks[i].user_data);
-            pthread_mutex_lock(&g_callback_lock);
+            nimcp_mutex_lock(&g_callback_lock);
         }
     }
 
-    pthread_mutex_unlock(&g_callback_lock);
+    nimcp_mutex_unlock(&g_callback_lock);
 }
 
 uint32_t config_register_callback(const char* key, config_change_callback_t callback,
@@ -617,7 +632,7 @@ uint32_t config_register_callback(const char* key, config_change_callback_t call
         return 0;
     }
 
-    pthread_mutex_lock(&g_callback_lock);
+    nimcp_mutex_lock(&g_callback_lock);
 
     // Find free slot
     uint32_t slot = 0;
@@ -631,7 +646,7 @@ uint32_t config_register_callback(const char* key, config_change_callback_t call
     }
 
     if (!found) {
-        pthread_mutex_unlock(&g_callback_lock);
+        nimcp_mutex_unlock(&g_callback_lock);
         fprintf(stderr, "config_register_callback: No free callback slots (max %d)\n",
                 MAX_CALLBACKS);
         return 0;
@@ -654,7 +669,7 @@ uint32_t config_register_callback(const char* key, config_change_callback_t call
         g_callbacks[slot].key[0] = '\0';  // Watch all keys
     }
 
-    pthread_mutex_unlock(&g_callback_lock);
+    nimcp_mutex_unlock(&g_callback_lock);
 
     return id;
 }
@@ -669,7 +684,7 @@ void config_unregister_callback(uint32_t registration_id) {
         return;
     }
 
-    pthread_mutex_lock(&g_callback_lock);
+    nimcp_mutex_lock(&g_callback_lock);
 
     // Find and remove callback
     for (int i = 0; i < MAX_CALLBACKS; i++) {
@@ -683,5 +698,5 @@ void config_unregister_callback(uint32_t registration_id) {
         }
     }
 
-    pthread_mutex_unlock(&g_callback_lock);
+    nimcp_mutex_unlock(&g_callback_lock);
 }

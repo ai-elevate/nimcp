@@ -25,7 +25,7 @@
 #include <vector>
 
 extern "C" {
-#include "include/gpu/nimcp_gpu_neuron.h"
+#include "gpu/nimcp_gpu_neuron.h"
 #include "gpu/nimcp_execution_mode.h"
 }
 

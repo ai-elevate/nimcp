@@ -47,6 +47,14 @@ typedef enum {
     NIMCP_THREAT_CRITICAL = 4
 } nimcp_threat_level_t;
 
+/**
+ * @brief Get threat level name as string
+ *
+ * @param level Threat level
+ * @return Threat level name string
+ */
+const char* nimcp_threat_level_name(nimcp_threat_level_t level);
+
 // Input validation result
 typedef enum {
     NIMCP_INPUT_VALID = 0,

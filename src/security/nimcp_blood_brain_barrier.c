@@ -29,6 +29,7 @@
 
 #include "security/nimcp_blood_brain_barrier.h"
 #include "utils/memory/nimcp_memory.h"
+#include "utils/thread/nimcp_thread.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -79,7 +80,7 @@ struct bbb_system_struct {
     uint64_t creation_time;
 
     /* Thread safety */
-    pthread_mutex_t mutex;
+    nimcp_mutex_t mutex;
     bool mutex_initialized;
 
     /* Statistics */
@@ -257,9 +258,9 @@ NIMCP_EXPORT bbb_config_t bbb_default_config(void)
 void bbb_system_inc_validations(bbb_system_t system)
 {
     if (!system) return;
-    pthread_mutex_lock(&system->mutex);
+    nimcp_mutex_lock(&system->mutex);
     system->stats.total_validations++;
-    pthread_mutex_unlock(&system->mutex);
+    nimcp_mutex_unlock(&system->mutex);
 }
 
 /**
@@ -271,9 +272,9 @@ void bbb_system_inc_validations(bbb_system_t system)
 void bbb_system_inc_threats(bbb_system_t system)
 {
     if (!system) return;
-    pthread_mutex_lock(&system->mutex);
+    nimcp_mutex_lock(&system->mutex);
     system->stats.threats_detected++;
-    pthread_mutex_unlock(&system->mutex);
+    nimcp_mutex_unlock(&system->mutex);
 }
 
 //=============================================================================
@@ -296,7 +297,7 @@ NIMCP_EXPORT bbb_system_t bbb_system_create(const bbb_config_t* config)
     }
 
     /* Initialize mutex */
-    if (pthread_mutex_init(&system->mutex, NULL) != 0) {
+    if (nimcp_mutex_init(&system->mutex, NULL) != NIMCP_SUCCESS) {
         nimcp_free(system);
         return NULL;
     }
@@ -338,7 +339,7 @@ NIMCP_EXPORT void bbb_system_destroy(bbb_system_t system)
 
     /* Destroy mutex if initialized */
     if (system->mutex_initialized) {
-        pthread_mutex_destroy(&system->mutex);
+        nimcp_mutex_destroy(&system->mutex);
     }
 
     /* Zero sensitive data before freeing */
@@ -367,9 +368,9 @@ NIMCP_EXPORT bool bbb_system_set_enabled(bbb_system_t system, bool enabled)
         return false;
     }
 
-    pthread_mutex_lock(&system->mutex);
+    nimcp_mutex_lock(&system->mutex);
     system->enabled = enabled;
-    pthread_mutex_unlock(&system->mutex);
+    nimcp_mutex_unlock(&system->mutex);
 
     return true;
 }
@@ -388,9 +389,9 @@ NIMCP_EXPORT bool bbb_system_is_enabled(bbb_system_t system)
         return false;
     }
 
-    pthread_mutex_lock(&system->mutex);
+    nimcp_mutex_lock(&system->mutex);
     bool enabled = system->enabled;
-    pthread_mutex_unlock(&system->mutex);
+    nimcp_mutex_unlock(&system->mutex);
 
     return enabled;
 }
@@ -413,7 +414,7 @@ NIMCP_EXPORT bool bbb_system_get_statistics(bbb_system_t system, bbb_statistics_
         return false;
     }
 
-    pthread_mutex_lock(&system->mutex);
+    nimcp_mutex_lock(&system->mutex);
 
     /* Copy statistics */
     *stats = system->stats;
@@ -421,7 +422,7 @@ NIMCP_EXPORT bool bbb_system_get_statistics(bbb_system_t system, bbb_statistics_
     /* Calculate uptime */
     stats->uptime_seconds = (uint64_t)time(NULL) - system->creation_time;
 
-    pthread_mutex_unlock(&system->mutex);
+    nimcp_mutex_unlock(&system->mutex);
 
     return true;
 }
@@ -440,9 +441,9 @@ NIMCP_EXPORT void bbb_system_reset_statistics(bbb_system_t system)
         return;
     }
 
-    pthread_mutex_lock(&system->mutex);
+    nimcp_mutex_lock(&system->mutex);
     memset(&system->stats, 0, sizeof(system->stats));
-    pthread_mutex_unlock(&system->mutex);
+    nimcp_mutex_unlock(&system->mutex);
 }
 
 //=============================================================================
@@ -529,7 +530,7 @@ NIMCP_EXPORT bbb_threat_report_t bbb_report_threat(bbb_system_t system,
     report.action_taken = determine_action(system, severity);
 
     /* Thread-safe addition to circular buffer */
-    pthread_mutex_lock(&system->mutex);
+    nimcp_mutex_lock(&system->mutex);
 
     /* Update statistics */
     system->stats.threats_detected++;
@@ -550,7 +551,7 @@ NIMCP_EXPORT bbb_threat_report_t bbb_report_threat(bbb_system_t system,
         system->threat_report_count++;
     }
 
-    pthread_mutex_unlock(&system->mutex);
+    nimcp_mutex_unlock(&system->mutex);
 
     /* Invoke alert callback if configured */
     if (system->config.alert_callback && severity >= BBB_SEVERITY_MEDIUM) {
@@ -576,7 +577,7 @@ NIMCP_EXPORT size_t bbb_get_threat_reports(bbb_system_t system,
         return 0;
     }
 
-    pthread_mutex_lock(&system->mutex);
+    nimcp_mutex_lock(&system->mutex);
 
     size_t count = (system->threat_report_count < max_reports)
                    ? system->threat_report_count : max_reports;
@@ -588,7 +589,7 @@ NIMCP_EXPORT size_t bbb_get_threat_reports(bbb_system_t system,
         reports[i] = system->threat_reports[idx];
     }
 
-    pthread_mutex_unlock(&system->mutex);
+    nimcp_mutex_unlock(&system->mutex);
 
     return count;
 }
@@ -607,11 +608,11 @@ NIMCP_EXPORT void bbb_clear_threat_reports(bbb_system_t system)
         return;
     }
 
-    pthread_mutex_lock(&system->mutex);
+    nimcp_mutex_lock(&system->mutex);
     memset(system->threat_reports, 0, sizeof(system->threat_reports));
     system->threat_report_head = 0;
     system->threat_report_count = 0;
-    pthread_mutex_unlock(&system->mutex);
+    nimcp_mutex_unlock(&system->mutex);
 }
 
 //=============================================================================
@@ -631,7 +632,7 @@ NIMCP_EXPORT bool bbb_is_quarantined(bbb_system_t system, const void* address, s
         return false;
     }
 
-    pthread_mutex_lock(&system->mutex);
+    nimcp_mutex_lock(&system->mutex);
 
     uintptr_t check_start = (uintptr_t)address;
     uintptr_t check_end = check_start + size;
@@ -644,12 +645,12 @@ NIMCP_EXPORT bool bbb_is_quarantined(bbb_system_t system, const void* address, s
 
         /* Check for overlap */
         if (check_start < q_end && check_end > q_start) {
-            pthread_mutex_unlock(&system->mutex);
+            nimcp_mutex_unlock(&system->mutex);
             return true;
         }
     }
 
-    pthread_mutex_unlock(&system->mutex);
+    nimcp_mutex_unlock(&system->mutex);
     return false;
 }
 
@@ -667,11 +668,11 @@ NIMCP_EXPORT bool bbb_quarantine_region(bbb_system_t system, void* address, size
         return false;
     }
 
-    pthread_mutex_lock(&system->mutex);
+    nimcp_mutex_lock(&system->mutex);
 
     /* Check if we have room */
     if (system->quarantine_count >= BBB_MAX_QUARANTINE_REGIONS) {
-        pthread_mutex_unlock(&system->mutex);
+        nimcp_mutex_unlock(&system->mutex);
         return false;
     }
 
@@ -687,7 +688,7 @@ NIMCP_EXPORT bool bbb_quarantine_region(bbb_system_t system, void* address, size
     }
 
     if (!found) {
-        pthread_mutex_unlock(&system->mutex);
+        nimcp_mutex_unlock(&system->mutex);
         return false;
     }
 
@@ -701,7 +702,7 @@ NIMCP_EXPORT bool bbb_quarantine_region(bbb_system_t system, void* address, size
     /* Update statistics */
     system->stats.threats_quarantined++;
 
-    pthread_mutex_unlock(&system->mutex);
+    nimcp_mutex_unlock(&system->mutex);
 
     return true;
 }
@@ -720,7 +721,7 @@ NIMCP_EXPORT bool bbb_release_quarantine(bbb_system_t system, void* address)
         return false;
     }
 
-    pthread_mutex_lock(&system->mutex);
+    nimcp_mutex_lock(&system->mutex);
 
     /* Find quarantine entry */
     bool found = false;
@@ -734,7 +735,7 @@ NIMCP_EXPORT bool bbb_release_quarantine(bbb_system_t system, void* address)
         }
     }
 
-    pthread_mutex_unlock(&system->mutex);
+    nimcp_mutex_unlock(&system->mutex);
 
     return found;
 }

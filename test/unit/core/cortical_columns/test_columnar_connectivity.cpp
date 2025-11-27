@@ -42,7 +42,7 @@ extern "C" {
 #include "core/cortical_columns/nimcp_columnar_connectivity.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
-#include "include/nimcp.h"
+#include "nimcp.h"
 }
 
 //=============================================================================

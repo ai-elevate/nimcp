@@ -12,7 +12,7 @@
  */
 
 #include <gtest/gtest.h>
-#include "include/perception/nimcp_visual_cortex.h"
+#include "perception/nimcp_visual_cortex.h"
 #include "utils/memory/nimcp_memory.h"
 #include <vector>
 #include <chrono>

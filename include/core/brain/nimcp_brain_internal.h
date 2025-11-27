@@ -41,13 +41,14 @@
 #include "utils/platform/nimcp_platform_mutex.h"
 #include "networking/distributed/nimcp_distributed_cognition.h"
 #include "security/nimcp_security.h"
+#include "security/nimcp_security_integration.h"  // Phase SC-4: Universal Security Integration
+#include "security/nimcp_blood_brain_barrier.h"   // Phase IS-1: BBB Perimeter Defense
 
 // Comprehensive Integration: All Advanced Subsystems
 #include "glial/integration/nimcp_glial_integration.h"
 #include "core/brain_oscillations/nimcp_brain_oscillations.h"
-#include "core/brain/oscillations/nimcp_brain_complex_oscillations.h"
 #include "cognitive/introspection/nimcp_introspection.h"
-#include "cognitive/introspection/nimcp_connectivity_health.h"  // Phase 1.5.4: Connectivity Health Assessment
+#include "cognitive/introspection/nimcp_connectivity_health.h"  // Phase 1.5.4: Connectivity Health
 #include "cognitive/ethics/nimcp_ethics.h"
 #include "cognitive/salience/nimcp_salience.h"
 #include "cognitive/consolidation/nimcp_consolidation.h"
@@ -65,9 +66,9 @@
 
 // Phase 8: Multi-Modal Integration
 #include "core/integration/nimcp_multimodal_integration.h"
-#include "include/perception/nimcp_visual_cortex.h"
-#include "include/perception/nimcp_audio_cortex.h"
-#include "include/perception/nimcp_speech_cortex.h"
+#include "perception/nimcp_visual_cortex.h"
+#include "perception/nimcp_audio_cortex.h"
+#include "perception/nimcp_speech_cortex.h"
 #include "nlp/nimcp_nlp.h"
 
 // Brain Regions Architecture
@@ -118,6 +119,14 @@
 #include "core/topology/nimcp_community_detection.h"
 #include "utils/algorithms/nimcp_graph_metrics.h"
 #include "utils/containers/nimcp_graph.h"
+
+// Phase CC-1: Cortical Columns Architecture (Tier 0.65)
+#include "core/cortical_columns/nimcp_cortical_column.h"
+#include "core/cortical_columns/nimcp_cortical_layers.h"
+#include "core/cortical_columns/nimcp_columnar_connectivity.h"
+#include "core/cortical_columns/nimcp_topographic_maps.h"
+#include "core/cortical_columns/nimcp_orientation_columns.h"
+#include "core/cortical_columns/nimcp_feature_hypercolumns.h"
 
 // Phase 2 Middleware: Population coding & spike analysis
 #include "middleware/brain_integration.h"
@@ -210,7 +219,7 @@ struct brain_struct {
     // Phase 5/6: Biological Realism
     glial_integration_t* glial;                  // Glial cells (struct type, needs *)
     brain_oscillation_analyzer_t* oscillations;  // Brain wave analysis (struct type, needs *)
-    brain_complex_oscillation_state_t* complex_oscillations;  // Complex phasor tracking (struct type, needs *)
+    myelin_sheath_network_t* myelin_sheath;      // Myelin structural modeling (struct type, needs *)
 
     // Consciousness & Cognition (most use pointer typedefs)
     introspection_context_t introspection;       // Self-awareness (already pointer type*)
@@ -381,6 +390,10 @@ struct brain_struct {
     void (*connectivity_health_callback)(const brain_connectivity_health_t*, void*); // Callback on health change
     void* connectivity_health_callback_context;   // Context for callback
 
+    // === PHASE 1.5.5: MIDDLEWARE CONTROLLER (COGNITIVE → MIDDLEWARE) ===
+    struct middleware_controller* middleware_controller;  // Unified cognitive-to-middleware command interface
+    bool enable_middleware_controller;                    // Enable middleware controller subsystem
+
     // === PHASE 2 MIDDLEWARE: SPIKE ANALYSIS & POPULATION CODING ===
 
     // Spike-based feature extraction (firing rates, ISI, CV, synchrony, oscillations, entropy)
@@ -399,6 +412,55 @@ struct brain_struct {
     event_bus_t event_bus;                        // Event bus for system-wide event coordination
     bool enable_event_broadcasting;               // Enable/disable event publishing
 
+    // === AXON & DENDRITE INTEGRATION ===
+    //
+    // NOTE: Axons and dendrites are components of individual neurons, not separate networks.
+    // These "network" containers are management structures that:
+    // - Provide efficient lookup/iteration over all axons/dendrites
+    // - Enable network-wide operations (step all, get stats, etc.)
+    // - Allow glial cells to modulate axonal conduction (oligodendrocytes)
+    //
+    // Each neuron has:
+    // - One axon (output): neuron->axon_id references into axon_network
+    // - Multiple dendrites (inputs): neuron->dendrite_ids references into dendrite_network
+    //
+    // Signal flow: Presynaptic neuron → Axon → Synapse → Dendritic spine → Postsynaptic neuron
+
+    // Axon container for all neuron axons (Phase 1.5.6)
+    void* axon_network;                           // axon_network_t* - manages axons for all neurons
+
+    // Dendrite container for all neuron dendrites (Phase 1.5.7)
+    void* dendrite_network;                       // dendrite_network_t* - manages dendrites for all neurons
+
+    // === PHASE CC-1: CORTICAL COLUMNS ARCHITECTURE (Tier 0.65) ===
+    //
+    // Hierarchical cortical column organization based on Douglas & Martin (1991) canonical microcircuit.
+    // Minicolumns (~80-100 neurons) group into hypercolumns (~100K neurons) with lateral inhibition
+    // and competitive dynamics for feature detection and representation.
+    //
+    // Architecture:
+    // - cortical_column_pool: Memory management for minicolumns/hypercolumns
+    // - laminar_system: 6-layer organization (I, II/III, IV, V, VI)
+    // - columnar_connectivity: Canonical microcircuit connectivity patterns
+    // - topographic_maps: Retinotopic, tonotopic, somatotopic spatial maps
+    // - orientation_system: V1 orientation selectivity (Gabor filters)
+    // - feature_hypercolumns: Multi-dimensional feature coverage
+
+    cortical_column_pool_t* cortical_column_pool;     // Memory pool for minicolumns/hypercolumns
+    hypercolumn_t** hypercolumns;                     // Array of hypercolumns
+    uint32_t num_hypercolumns;                        // Number of hypercolumns
+    laminar_structure_t* laminar_system;              // 6-layer cortical organization
+    columnar_connectivity_t* columnar_connectivity;   // Canonical microcircuit connectivity
+    topographic_map_t* visual_topographic_map;        // Retinotopic map for visual cortex
+    topographic_map_t* auditory_topographic_map;      // Tonotopic map for auditory cortex
+    topographic_map_t* somatosensory_topographic_map; // Somatotopic map for S1
+    orientation_hypercolumn_t** orientation_hypercolumns; // V1 orientation columns
+    uint32_t num_orientation_hypercolumns;            // Number of orientation hypercolumns
+    feature_hypercolumn_t** feature_hypercolumns;     // Multi-dimensional feature hypercolumns
+    uint32_t num_feature_hypercolumns;                // Number of feature hypercolumns
+    bool enable_cortical_columns;                     // Master enable flag
+    uint64_t last_cortical_update_us;                 // Last cortical column update timestamp
+
     // === PHASE 1.5: MEMORY POOLS FOR HOT-PATH ALLOCATIONS ===
 
     // Decision structure pool - used for internal cached_decision allocation
@@ -415,6 +477,57 @@ struct brain_struct {
 
     // Track max neurons for pool sizing
     uint32_t max_active_neurons_for_pool;
+
+    // === PHASE SC-2: SECURITY-FAULT TOLERANCE INTEGRATION ===
+    //
+    // Security recovery bridge connects security modules (coverage, fractal, CFI,
+    // shadow stack, audit) with the fault tolerance system (fast recovery, checkpoints).
+    // When security violations are detected, automatic repair actions are triggered.
+    //
+    // Architecture:
+    // - Security Coverage: Tracks protected memory regions with hash verification
+    // - Fractal Security: Hierarchical integrity checking (Merkle tree)
+    // - CFI/Shadow Stack: Control flow protection against ROP/JOP attacks
+    // - Fast Recovery: Sub-millisecond repair for common errors
+    // - Checkpoints: Full state restoration for severe violations
+
+    void* security_bridge;              // nimcp_security_recovery_bridge_t* (opaque)
+    bool enable_security_monitoring;    // Enable security-fault tolerance integration
+    uint32_t security_check_interval_ms; // Verification cycle interval (0 = manual only)
+    uint64_t last_security_check_ms;    // Last security verification timestamp
+
+    // === PHASE SC-4: UNIVERSAL SECURITY INTEGRATION ===
+    //
+    // Global security integration framework provides:
+    // - Entropy monitoring: Detect tampering via Shannon entropy analysis
+    // - Trust management: Bayesian trust propagation across modules
+    // - Differential privacy: Privacy-preserving statistics and queries
+    // - Event system: Security event propagation and logging
+    // - Self-monitoring: Security system monitors its own integrity
+    //
+    // The brain registers itself and its subsystems with the global security
+    // context, enabling comprehensive security monitoring across all modules.
+
+    nimcp_sec_integration_t* security_integration;  // Global security integration context
+    uint32_t sec_module_id;                         // Brain's module ID in security system
+    uint32_t* sec_region_ids;                       // Region IDs for monitored memory regions
+    uint32_t num_sec_regions;                       // Number of monitored regions
+    bool enable_security_integration;               // Enable Phase SC-4 security
+
+    // === PHASE IS-1: BLOOD-BRAIN BARRIER (BBB) INTEGRATION ===
+    //
+    // BBB provides perimeter defense for the neural network:
+    // - Input Gate: Validates and sanitizes all external inputs
+    // - Code Signing: Verifies integrity of loaded weights/models
+    // - Memory Boundary: Protects critical memory regions
+    // - Access Control: Role-based access to brain operations
+    //
+    // Each brain holds a reference to the global BBB system for protection.
+
+    bbb_system_t bbb_system;            // Reference to global BBB system (NULL if disabled)
+    uint32_t bbb_memory_region_id;      // BBB memory region registration ID
+    uint32_t bbb_subject_id;            // BBB access control subject ID
+    bool bbb_enabled;                   // BBB protection enabled for this brain
 };
 
 //=============================================================================

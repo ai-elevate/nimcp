@@ -27,6 +27,7 @@ extern "C" {
 #include "core/brain/nimcp_brain.h"
 #include "core/brain/nimcp_brain_internal.h"
 #include "plasticity/adaptive/nimcp_adaptive.h"
+#include "security/nimcp_blood_brain_barrier.h"  // Phase IS-1: BBB perimeter defense
 #include <stdbool.h>
 #include <stdint.h>
 
@@ -82,6 +83,26 @@ bool nimcp_brain_factory_init_empathetic_response_subsystem(brain_t brain);
 bool nimcp_brain_factory_init_autobiographical_memory_subsystem(brain_t brain);
 bool nimcp_brain_factory_init_self_model_subsystem(brain_t brain);
 bool nimcp_brain_factory_init_global_workspace_subsystem(brain_t brain);
+bool nimcp_brain_factory_init_security_subsystem(brain_t brain);  // Phase SC-2 (Tier 0.7)
+
+// Phase T1: Biological Framework Enhancements (Training Pipeline)
+bool nimcp_brain_factory_init_homeostatic_plasticity_subsystem(brain_t brain);
+bool nimcp_brain_factory_init_dendritic_computation_subsystem(brain_t brain);
+bool nimcp_brain_factory_init_biological_predictive_subsystem(brain_t brain);
+
+// Phase IS-1: BBB Global System Reference Management
+void nimcp_bbb_release_global_system(void);
+
+/**
+ * @brief Get the global BBB system for cross-module protection
+ *
+ * WHAT: Returns the shared BBB system instance
+ * WHY:  Enables all modules to use consistent perimeter security
+ * HOW:  Thread-safe access to reference-counted global BBB system
+ *
+ * @return BBB system handle, or NULL if not initialized
+ */
+bbb_system_t nimcp_bbb_get_global_system(void);
 
 #ifdef __cplusplus
 }

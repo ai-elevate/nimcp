@@ -20,6 +20,7 @@
 #include "cognitive/fault_tolerance/nimcp_emotional_tagging.h"
 #include "../../utils/memory/nimcp_memory.h"
 #include "../../utils/logging/nimcp_logging.h"
+#include "utils/thread/nimcp_thread.h"
 #include <string.h>
 #include <math.h>
 #include <pthread.h>
@@ -61,7 +62,7 @@ struct nimcp_emotional_tagger {
     nimcp_emotional_tagger_stats_t stats;
 
     /* Thread safety */
-    pthread_mutex_t mutex;
+    nimcp_mutex_t mutex;
 };
 
 //=============================================================================
@@ -365,8 +366,8 @@ nimcp_emotional_tagger_t* nimcp_emotional_tagger_create(void) {
 
     /* WHAT: Initialize mutex for thread safety
      * WHY:  Statistics may be updated from multiple threads
-     * HOW:  pthread_mutex_init with default attributes */
-    if (pthread_mutex_init(&tagger->mutex, NULL) != 0) {
+     * HOW:  nimcp_mutex_init with default attributes */
+    if (nimcp_mutex_init(&tagger->mutex, NULL) != NIMCP_SUCCESS) {
         LOG_ERROR("Failed to initialize tagger mutex");
         nimcp_free(tagger);
         return NULL;
@@ -384,8 +385,8 @@ void nimcp_emotional_tagger_destroy(nimcp_emotional_tagger_t* tagger) {
 
     /* WHAT: Destroy mutex
      * WHY:  Clean up resources
-     * HOW:  pthread_mutex_destroy */
-    pthread_mutex_destroy(&tagger->mutex);
+     * HOW:  nimcp_mutex_destroy */
+    nimcp_mutex_destroy(&tagger->mutex);
 
     /* WHAT: Free tagger memory */
     nimcp_free(tagger);
@@ -403,9 +404,9 @@ bool nimcp_emotional_tagger_reset(nimcp_emotional_tagger_t* tagger) {
     /* WHAT: Clear all statistics
      * WHY:  Start fresh tracking
      * HOW:  Zero out stats structure (thread-safe) */
-    pthread_mutex_lock(&tagger->mutex);
+    nimcp_mutex_lock(&tagger->mutex);
     memset(&tagger->stats, 0, sizeof(nimcp_emotional_tagger_stats_t));
-    pthread_mutex_unlock(&tagger->mutex);
+    nimcp_mutex_unlock(&tagger->mutex);
 
     LOG_INFO("Emotional tagger statistics reset");
     return true;
@@ -456,9 +457,9 @@ bool nimcp_emotional_tagger_compute_tag(
      * STATISTICS: Update running statistics
      * ========================================================================= */
 
-    pthread_mutex_lock(&tagger->mutex);
+    nimcp_mutex_lock(&tagger->mutex);
     update_statistics(tagger, output);
-    pthread_mutex_unlock(&tagger->mutex);
+    nimcp_mutex_unlock(&tagger->mutex);
 
     /* WHAT: Log high-intensity emotions for debugging
      * WHY:  Track emotionally salient events */
@@ -566,9 +567,9 @@ bool nimcp_emotional_tagger_get_stats(
     /* WHAT: Thread-safe copy of statistics
      * WHY:  Statistics may be updated concurrently
      * HOW:  Mutex-protected memcpy */
-    pthread_mutex_lock((pthread_mutex_t*)&tagger->mutex);
+    nimcp_mutex_lock((nimcp_mutex_t*)&tagger->mutex);
     memcpy(stats, &tagger->stats, sizeof(nimcp_emotional_tagger_stats_t));
-    pthread_mutex_unlock((pthread_mutex_t*)&tagger->mutex);
+    nimcp_mutex_unlock((nimcp_mutex_t*)&tagger->mutex);
 
     return true;
 }

@@ -97,7 +97,7 @@ rebuild_cache/fast: rebuild_cache
 
 # Special rule for the target list_install_components
 list_install_components:
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --cyan "Available install components are: \"Unspecified\""
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --cyan "Available install components are: \"Unspecified\" \"tests\""
 .PHONY : list_install_components
 
 # Special rule for the target list_install_components
@@ -424,6 +424,30 @@ __/cognitive/epistemic/nimcp_epistemic_filter.s: __/cognitive/epistemic/nimcp_ep
 __/cognitive/epistemic/nimcp_epistemic_filter.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/epistemic/nimcp_epistemic_filter.c.s
 .PHONY : __/cognitive/epistemic/nimcp_epistemic_filter.c.s
+
+__/cognitive/ethics/nimcp_combinatorial_harm.o: __/cognitive/ethics/nimcp_combinatorial_harm.c.o
+.PHONY : __/cognitive/ethics/nimcp_combinatorial_harm.o
+
+# target to build an object file
+__/cognitive/ethics/nimcp_combinatorial_harm.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/ethics/nimcp_combinatorial_harm.c.o
+.PHONY : __/cognitive/ethics/nimcp_combinatorial_harm.c.o
+
+__/cognitive/ethics/nimcp_combinatorial_harm.i: __/cognitive/ethics/nimcp_combinatorial_harm.c.i
+.PHONY : __/cognitive/ethics/nimcp_combinatorial_harm.i
+
+# target to preprocess a source file
+__/cognitive/ethics/nimcp_combinatorial_harm.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/ethics/nimcp_combinatorial_harm.c.i
+.PHONY : __/cognitive/ethics/nimcp_combinatorial_harm.c.i
+
+__/cognitive/ethics/nimcp_combinatorial_harm.s: __/cognitive/ethics/nimcp_combinatorial_harm.c.s
+.PHONY : __/cognitive/ethics/nimcp_combinatorial_harm.s
+
+# target to generate assembly for a file
+__/cognitive/ethics/nimcp_combinatorial_harm.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/ethics/nimcp_combinatorial_harm.c.s
+.PHONY : __/cognitive/ethics/nimcp_combinatorial_harm.c.s
 
 __/cognitive/ethics/nimcp_ethics.o: __/cognitive/ethics/nimcp_ethics.c.o
 .PHONY : __/cognitive/ethics/nimcp_ethics.o
@@ -1025,6 +1049,30 @@ __/cognitive/meta_learning/nimcp_meta_learning.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/meta_learning/nimcp_meta_learning.c.s
 .PHONY : __/cognitive/meta_learning/nimcp_meta_learning.c.s
 
+__/cognitive/mirror_neurons/nimcp_mirror_hierarchy.o: __/cognitive/mirror_neurons/nimcp_mirror_hierarchy.c.o
+.PHONY : __/cognitive/mirror_neurons/nimcp_mirror_hierarchy.o
+
+# target to build an object file
+__/cognitive/mirror_neurons/nimcp_mirror_hierarchy.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/mirror_neurons/nimcp_mirror_hierarchy.c.o
+.PHONY : __/cognitive/mirror_neurons/nimcp_mirror_hierarchy.c.o
+
+__/cognitive/mirror_neurons/nimcp_mirror_hierarchy.i: __/cognitive/mirror_neurons/nimcp_mirror_hierarchy.c.i
+.PHONY : __/cognitive/mirror_neurons/nimcp_mirror_hierarchy.i
+
+# target to preprocess a source file
+__/cognitive/mirror_neurons/nimcp_mirror_hierarchy.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/mirror_neurons/nimcp_mirror_hierarchy.c.i
+.PHONY : __/cognitive/mirror_neurons/nimcp_mirror_hierarchy.c.i
+
+__/cognitive/mirror_neurons/nimcp_mirror_hierarchy.s: __/cognitive/mirror_neurons/nimcp_mirror_hierarchy.c.s
+.PHONY : __/cognitive/mirror_neurons/nimcp_mirror_hierarchy.s
+
+# target to generate assembly for a file
+__/cognitive/mirror_neurons/nimcp_mirror_hierarchy.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/mirror_neurons/nimcp_mirror_hierarchy.c.s
+.PHONY : __/cognitive/mirror_neurons/nimcp_mirror_hierarchy.c.s
+
 __/cognitive/mirror_neurons/nimcp_mirror_neurons.o: __/cognitive/mirror_neurons/nimcp_mirror_neurons.c.o
 .PHONY : __/cognitive/mirror_neurons/nimcp_mirror_neurons.o
 
@@ -1048,6 +1096,78 @@ __/cognitive/mirror_neurons/nimcp_mirror_neurons.s: __/cognitive/mirror_neurons/
 __/cognitive/mirror_neurons/nimcp_mirror_neurons.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/mirror_neurons/nimcp_mirror_neurons.c.s
 .PHONY : __/cognitive/mirror_neurons/nimcp_mirror_neurons.c.s
+
+__/cognitive/mirror_neurons/nimcp_mirror_resonance.o: __/cognitive/mirror_neurons/nimcp_mirror_resonance.c.o
+.PHONY : __/cognitive/mirror_neurons/nimcp_mirror_resonance.o
+
+# target to build an object file
+__/cognitive/mirror_neurons/nimcp_mirror_resonance.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/mirror_neurons/nimcp_mirror_resonance.c.o
+.PHONY : __/cognitive/mirror_neurons/nimcp_mirror_resonance.c.o
+
+__/cognitive/mirror_neurons/nimcp_mirror_resonance.i: __/cognitive/mirror_neurons/nimcp_mirror_resonance.c.i
+.PHONY : __/cognitive/mirror_neurons/nimcp_mirror_resonance.i
+
+# target to preprocess a source file
+__/cognitive/mirror_neurons/nimcp_mirror_resonance.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/mirror_neurons/nimcp_mirror_resonance.c.i
+.PHONY : __/cognitive/mirror_neurons/nimcp_mirror_resonance.c.i
+
+__/cognitive/mirror_neurons/nimcp_mirror_resonance.s: __/cognitive/mirror_neurons/nimcp_mirror_resonance.c.s
+.PHONY : __/cognitive/mirror_neurons/nimcp_mirror_resonance.s
+
+# target to generate assembly for a file
+__/cognitive/mirror_neurons/nimcp_mirror_resonance.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/mirror_neurons/nimcp_mirror_resonance.c.s
+.PHONY : __/cognitive/mirror_neurons/nimcp_mirror_resonance.c.s
+
+__/cognitive/mirror_neurons/nimcp_mirror_stdp.o: __/cognitive/mirror_neurons/nimcp_mirror_stdp.c.o
+.PHONY : __/cognitive/mirror_neurons/nimcp_mirror_stdp.o
+
+# target to build an object file
+__/cognitive/mirror_neurons/nimcp_mirror_stdp.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/mirror_neurons/nimcp_mirror_stdp.c.o
+.PHONY : __/cognitive/mirror_neurons/nimcp_mirror_stdp.c.o
+
+__/cognitive/mirror_neurons/nimcp_mirror_stdp.i: __/cognitive/mirror_neurons/nimcp_mirror_stdp.c.i
+.PHONY : __/cognitive/mirror_neurons/nimcp_mirror_stdp.i
+
+# target to preprocess a source file
+__/cognitive/mirror_neurons/nimcp_mirror_stdp.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/mirror_neurons/nimcp_mirror_stdp.c.i
+.PHONY : __/cognitive/mirror_neurons/nimcp_mirror_stdp.c.i
+
+__/cognitive/mirror_neurons/nimcp_mirror_stdp.s: __/cognitive/mirror_neurons/nimcp_mirror_stdp.c.s
+.PHONY : __/cognitive/mirror_neurons/nimcp_mirror_stdp.s
+
+# target to generate assembly for a file
+__/cognitive/mirror_neurons/nimcp_mirror_stdp.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/mirror_neurons/nimcp_mirror_stdp.c.s
+.PHONY : __/cognitive/mirror_neurons/nimcp_mirror_stdp.c.s
+
+__/cognitive/mirror_neurons/nimcp_mirror_substrate.o: __/cognitive/mirror_neurons/nimcp_mirror_substrate.c.o
+.PHONY : __/cognitive/mirror_neurons/nimcp_mirror_substrate.o
+
+# target to build an object file
+__/cognitive/mirror_neurons/nimcp_mirror_substrate.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/mirror_neurons/nimcp_mirror_substrate.c.o
+.PHONY : __/cognitive/mirror_neurons/nimcp_mirror_substrate.c.o
+
+__/cognitive/mirror_neurons/nimcp_mirror_substrate.i: __/cognitive/mirror_neurons/nimcp_mirror_substrate.c.i
+.PHONY : __/cognitive/mirror_neurons/nimcp_mirror_substrate.i
+
+# target to preprocess a source file
+__/cognitive/mirror_neurons/nimcp_mirror_substrate.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/mirror_neurons/nimcp_mirror_substrate.c.i
+.PHONY : __/cognitive/mirror_neurons/nimcp_mirror_substrate.c.i
+
+__/cognitive/mirror_neurons/nimcp_mirror_substrate.s: __/cognitive/mirror_neurons/nimcp_mirror_substrate.c.s
+.PHONY : __/cognitive/mirror_neurons/nimcp_mirror_substrate.s
+
+# target to generate assembly for a file
+__/cognitive/mirror_neurons/nimcp_mirror_substrate.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/mirror_neurons/nimcp_mirror_substrate.c.s
+.PHONY : __/cognitive/mirror_neurons/nimcp_mirror_substrate.c.s
 
 __/cognitive/nimcp_emotional_tagging.o: __/cognitive/nimcp_emotional_tagging.c.o
 .PHONY : __/cognitive/nimcp_emotional_tagging.o
@@ -2105,6 +2225,150 @@ __/core/brain_regions/nimcp_brain_regions.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain_regions/nimcp_brain_regions.c.s
 .PHONY : __/core/brain_regions/nimcp_brain_regions.c.s
 
+__/core/cortical_columns/nimcp_columnar_connectivity.o: __/core/cortical_columns/nimcp_columnar_connectivity.c.o
+.PHONY : __/core/cortical_columns/nimcp_columnar_connectivity.o
+
+# target to build an object file
+__/core/cortical_columns/nimcp_columnar_connectivity.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/cortical_columns/nimcp_columnar_connectivity.c.o
+.PHONY : __/core/cortical_columns/nimcp_columnar_connectivity.c.o
+
+__/core/cortical_columns/nimcp_columnar_connectivity.i: __/core/cortical_columns/nimcp_columnar_connectivity.c.i
+.PHONY : __/core/cortical_columns/nimcp_columnar_connectivity.i
+
+# target to preprocess a source file
+__/core/cortical_columns/nimcp_columnar_connectivity.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/cortical_columns/nimcp_columnar_connectivity.c.i
+.PHONY : __/core/cortical_columns/nimcp_columnar_connectivity.c.i
+
+__/core/cortical_columns/nimcp_columnar_connectivity.s: __/core/cortical_columns/nimcp_columnar_connectivity.c.s
+.PHONY : __/core/cortical_columns/nimcp_columnar_connectivity.s
+
+# target to generate assembly for a file
+__/core/cortical_columns/nimcp_columnar_connectivity.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/cortical_columns/nimcp_columnar_connectivity.c.s
+.PHONY : __/core/cortical_columns/nimcp_columnar_connectivity.c.s
+
+__/core/cortical_columns/nimcp_cortical_column.o: __/core/cortical_columns/nimcp_cortical_column.c.o
+.PHONY : __/core/cortical_columns/nimcp_cortical_column.o
+
+# target to build an object file
+__/core/cortical_columns/nimcp_cortical_column.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/cortical_columns/nimcp_cortical_column.c.o
+.PHONY : __/core/cortical_columns/nimcp_cortical_column.c.o
+
+__/core/cortical_columns/nimcp_cortical_column.i: __/core/cortical_columns/nimcp_cortical_column.c.i
+.PHONY : __/core/cortical_columns/nimcp_cortical_column.i
+
+# target to preprocess a source file
+__/core/cortical_columns/nimcp_cortical_column.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/cortical_columns/nimcp_cortical_column.c.i
+.PHONY : __/core/cortical_columns/nimcp_cortical_column.c.i
+
+__/core/cortical_columns/nimcp_cortical_column.s: __/core/cortical_columns/nimcp_cortical_column.c.s
+.PHONY : __/core/cortical_columns/nimcp_cortical_column.s
+
+# target to generate assembly for a file
+__/core/cortical_columns/nimcp_cortical_column.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/cortical_columns/nimcp_cortical_column.c.s
+.PHONY : __/core/cortical_columns/nimcp_cortical_column.c.s
+
+__/core/cortical_columns/nimcp_cortical_layers.o: __/core/cortical_columns/nimcp_cortical_layers.c.o
+.PHONY : __/core/cortical_columns/nimcp_cortical_layers.o
+
+# target to build an object file
+__/core/cortical_columns/nimcp_cortical_layers.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/cortical_columns/nimcp_cortical_layers.c.o
+.PHONY : __/core/cortical_columns/nimcp_cortical_layers.c.o
+
+__/core/cortical_columns/nimcp_cortical_layers.i: __/core/cortical_columns/nimcp_cortical_layers.c.i
+.PHONY : __/core/cortical_columns/nimcp_cortical_layers.i
+
+# target to preprocess a source file
+__/core/cortical_columns/nimcp_cortical_layers.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/cortical_columns/nimcp_cortical_layers.c.i
+.PHONY : __/core/cortical_columns/nimcp_cortical_layers.c.i
+
+__/core/cortical_columns/nimcp_cortical_layers.s: __/core/cortical_columns/nimcp_cortical_layers.c.s
+.PHONY : __/core/cortical_columns/nimcp_cortical_layers.s
+
+# target to generate assembly for a file
+__/core/cortical_columns/nimcp_cortical_layers.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/cortical_columns/nimcp_cortical_layers.c.s
+.PHONY : __/core/cortical_columns/nimcp_cortical_layers.c.s
+
+__/core/cortical_columns/nimcp_feature_hypercolumns.o: __/core/cortical_columns/nimcp_feature_hypercolumns.c.o
+.PHONY : __/core/cortical_columns/nimcp_feature_hypercolumns.o
+
+# target to build an object file
+__/core/cortical_columns/nimcp_feature_hypercolumns.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/cortical_columns/nimcp_feature_hypercolumns.c.o
+.PHONY : __/core/cortical_columns/nimcp_feature_hypercolumns.c.o
+
+__/core/cortical_columns/nimcp_feature_hypercolumns.i: __/core/cortical_columns/nimcp_feature_hypercolumns.c.i
+.PHONY : __/core/cortical_columns/nimcp_feature_hypercolumns.i
+
+# target to preprocess a source file
+__/core/cortical_columns/nimcp_feature_hypercolumns.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/cortical_columns/nimcp_feature_hypercolumns.c.i
+.PHONY : __/core/cortical_columns/nimcp_feature_hypercolumns.c.i
+
+__/core/cortical_columns/nimcp_feature_hypercolumns.s: __/core/cortical_columns/nimcp_feature_hypercolumns.c.s
+.PHONY : __/core/cortical_columns/nimcp_feature_hypercolumns.s
+
+# target to generate assembly for a file
+__/core/cortical_columns/nimcp_feature_hypercolumns.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/cortical_columns/nimcp_feature_hypercolumns.c.s
+.PHONY : __/core/cortical_columns/nimcp_feature_hypercolumns.c.s
+
+__/core/cortical_columns/nimcp_orientation_columns.o: __/core/cortical_columns/nimcp_orientation_columns.c.o
+.PHONY : __/core/cortical_columns/nimcp_orientation_columns.o
+
+# target to build an object file
+__/core/cortical_columns/nimcp_orientation_columns.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/cortical_columns/nimcp_orientation_columns.c.o
+.PHONY : __/core/cortical_columns/nimcp_orientation_columns.c.o
+
+__/core/cortical_columns/nimcp_orientation_columns.i: __/core/cortical_columns/nimcp_orientation_columns.c.i
+.PHONY : __/core/cortical_columns/nimcp_orientation_columns.i
+
+# target to preprocess a source file
+__/core/cortical_columns/nimcp_orientation_columns.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/cortical_columns/nimcp_orientation_columns.c.i
+.PHONY : __/core/cortical_columns/nimcp_orientation_columns.c.i
+
+__/core/cortical_columns/nimcp_orientation_columns.s: __/core/cortical_columns/nimcp_orientation_columns.c.s
+.PHONY : __/core/cortical_columns/nimcp_orientation_columns.s
+
+# target to generate assembly for a file
+__/core/cortical_columns/nimcp_orientation_columns.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/cortical_columns/nimcp_orientation_columns.c.s
+.PHONY : __/core/cortical_columns/nimcp_orientation_columns.c.s
+
+__/core/cortical_columns/nimcp_topographic_maps.o: __/core/cortical_columns/nimcp_topographic_maps.c.o
+.PHONY : __/core/cortical_columns/nimcp_topographic_maps.o
+
+# target to build an object file
+__/core/cortical_columns/nimcp_topographic_maps.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/cortical_columns/nimcp_topographic_maps.c.o
+.PHONY : __/core/cortical_columns/nimcp_topographic_maps.c.o
+
+__/core/cortical_columns/nimcp_topographic_maps.i: __/core/cortical_columns/nimcp_topographic_maps.c.i
+.PHONY : __/core/cortical_columns/nimcp_topographic_maps.i
+
+# target to preprocess a source file
+__/core/cortical_columns/nimcp_topographic_maps.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/cortical_columns/nimcp_topographic_maps.c.i
+.PHONY : __/core/cortical_columns/nimcp_topographic_maps.c.i
+
+__/core/cortical_columns/nimcp_topographic_maps.s: __/core/cortical_columns/nimcp_topographic_maps.c.s
+.PHONY : __/core/cortical_columns/nimcp_topographic_maps.s
+
+# target to generate assembly for a file
+__/core/cortical_columns/nimcp_topographic_maps.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/cortical_columns/nimcp_topographic_maps.c.s
+.PHONY : __/core/cortical_columns/nimcp_topographic_maps.c.s
+
 __/core/dendrite/nimcp_dendrite.o: __/core/dendrite/nimcp_dendrite.c.o
 .PHONY : __/core/dendrite/nimcp_dendrite.o
 
@@ -2728,6 +2992,54 @@ __/glial/microglia/nimcp_microglia.s: __/glial/microglia/nimcp_microglia.c.s
 __/glial/microglia/nimcp_microglia.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/glial/microglia/nimcp_microglia.c.s
 .PHONY : __/glial/microglia/nimcp_microglia.c.s
+
+__/glial/myelin_sheath/nimcp_myelin_math.o: __/glial/myelin_sheath/nimcp_myelin_math.c.o
+.PHONY : __/glial/myelin_sheath/nimcp_myelin_math.o
+
+# target to build an object file
+__/glial/myelin_sheath/nimcp_myelin_math.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/glial/myelin_sheath/nimcp_myelin_math.c.o
+.PHONY : __/glial/myelin_sheath/nimcp_myelin_math.c.o
+
+__/glial/myelin_sheath/nimcp_myelin_math.i: __/glial/myelin_sheath/nimcp_myelin_math.c.i
+.PHONY : __/glial/myelin_sheath/nimcp_myelin_math.i
+
+# target to preprocess a source file
+__/glial/myelin_sheath/nimcp_myelin_math.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/glial/myelin_sheath/nimcp_myelin_math.c.i
+.PHONY : __/glial/myelin_sheath/nimcp_myelin_math.c.i
+
+__/glial/myelin_sheath/nimcp_myelin_math.s: __/glial/myelin_sheath/nimcp_myelin_math.c.s
+.PHONY : __/glial/myelin_sheath/nimcp_myelin_math.s
+
+# target to generate assembly for a file
+__/glial/myelin_sheath/nimcp_myelin_math.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/glial/myelin_sheath/nimcp_myelin_math.c.s
+.PHONY : __/glial/myelin_sheath/nimcp_myelin_math.c.s
+
+__/glial/myelin_sheath/nimcp_myelin_sheath.o: __/glial/myelin_sheath/nimcp_myelin_sheath.c.o
+.PHONY : __/glial/myelin_sheath/nimcp_myelin_sheath.o
+
+# target to build an object file
+__/glial/myelin_sheath/nimcp_myelin_sheath.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/glial/myelin_sheath/nimcp_myelin_sheath.c.o
+.PHONY : __/glial/myelin_sheath/nimcp_myelin_sheath.c.o
+
+__/glial/myelin_sheath/nimcp_myelin_sheath.i: __/glial/myelin_sheath/nimcp_myelin_sheath.c.i
+.PHONY : __/glial/myelin_sheath/nimcp_myelin_sheath.i
+
+# target to preprocess a source file
+__/glial/myelin_sheath/nimcp_myelin_sheath.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/glial/myelin_sheath/nimcp_myelin_sheath.c.i
+.PHONY : __/glial/myelin_sheath/nimcp_myelin_sheath.c.i
+
+__/glial/myelin_sheath/nimcp_myelin_sheath.s: __/glial/myelin_sheath/nimcp_myelin_sheath.c.s
+.PHONY : __/glial/myelin_sheath/nimcp_myelin_sheath.s
+
+# target to generate assembly for a file
+__/glial/myelin_sheath/nimcp_myelin_sheath.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/glial/myelin_sheath/nimcp_myelin_sheath.c.s
+.PHONY : __/glial/myelin_sheath/nimcp_myelin_sheath.c.s
 
 __/glial/oligodendrocytes/nimcp_oligodendrocytes.o: __/glial/oligodendrocytes/nimcp_oligodendrocytes.c.o
 .PHONY : __/glial/oligodendrocytes/nimcp_oligodendrocytes.o
@@ -4001,6 +4313,30 @@ __/plasticity/bcm/nimcp_bcm.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/plasticity/bcm/nimcp_bcm.c.s
 .PHONY : __/plasticity/bcm/nimcp_bcm.c.s
 
+__/plasticity/dendritic/nimcp_dendritic.o: __/plasticity/dendritic/nimcp_dendritic.c.o
+.PHONY : __/plasticity/dendritic/nimcp_dendritic.o
+
+# target to build an object file
+__/plasticity/dendritic/nimcp_dendritic.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/plasticity/dendritic/nimcp_dendritic.c.o
+.PHONY : __/plasticity/dendritic/nimcp_dendritic.c.o
+
+__/plasticity/dendritic/nimcp_dendritic.i: __/plasticity/dendritic/nimcp_dendritic.c.i
+.PHONY : __/plasticity/dendritic/nimcp_dendritic.i
+
+# target to preprocess a source file
+__/plasticity/dendritic/nimcp_dendritic.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/plasticity/dendritic/nimcp_dendritic.c.i
+.PHONY : __/plasticity/dendritic/nimcp_dendritic.c.i
+
+__/plasticity/dendritic/nimcp_dendritic.s: __/plasticity/dendritic/nimcp_dendritic.c.s
+.PHONY : __/plasticity/dendritic/nimcp_dendritic.s
+
+# target to generate assembly for a file
+__/plasticity/dendritic/nimcp_dendritic.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/plasticity/dendritic/nimcp_dendritic.c.s
+.PHONY : __/plasticity/dendritic/nimcp_dendritic.c.s
+
 __/plasticity/eligibility/nimcp_eligibility_trace.o: __/plasticity/eligibility/nimcp_eligibility_trace.c.o
 .PHONY : __/plasticity/eligibility/nimcp_eligibility_trace.o
 
@@ -4024,6 +4360,30 @@ __/plasticity/eligibility/nimcp_eligibility_trace.s: __/plasticity/eligibility/n
 __/plasticity/eligibility/nimcp_eligibility_trace.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/plasticity/eligibility/nimcp_eligibility_trace.c.s
 .PHONY : __/plasticity/eligibility/nimcp_eligibility_trace.c.s
+
+__/plasticity/homeostatic/nimcp_homeostatic.o: __/plasticity/homeostatic/nimcp_homeostatic.c.o
+.PHONY : __/plasticity/homeostatic/nimcp_homeostatic.o
+
+# target to build an object file
+__/plasticity/homeostatic/nimcp_homeostatic.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/plasticity/homeostatic/nimcp_homeostatic.c.o
+.PHONY : __/plasticity/homeostatic/nimcp_homeostatic.c.o
+
+__/plasticity/homeostatic/nimcp_homeostatic.i: __/plasticity/homeostatic/nimcp_homeostatic.c.i
+.PHONY : __/plasticity/homeostatic/nimcp_homeostatic.i
+
+# target to preprocess a source file
+__/plasticity/homeostatic/nimcp_homeostatic.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/plasticity/homeostatic/nimcp_homeostatic.c.i
+.PHONY : __/plasticity/homeostatic/nimcp_homeostatic.c.i
+
+__/plasticity/homeostatic/nimcp_homeostatic.s: __/plasticity/homeostatic/nimcp_homeostatic.c.s
+.PHONY : __/plasticity/homeostatic/nimcp_homeostatic.s
+
+# target to generate assembly for a file
+__/plasticity/homeostatic/nimcp_homeostatic.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/plasticity/homeostatic/nimcp_homeostatic.c.s
+.PHONY : __/plasticity/homeostatic/nimcp_homeostatic.c.s
 
 __/plasticity/neuromodulators/nimcp_metabolic_pathways.o: __/plasticity/neuromodulators/nimcp_metabolic_pathways.c.o
 .PHONY : __/plasticity/neuromodulators/nimcp_metabolic_pathways.o
@@ -4217,6 +4577,30 @@ __/plasticity/noise/nimcp_pink_noise.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/plasticity/noise/nimcp_pink_noise.c.s
 .PHONY : __/plasticity/noise/nimcp_pink_noise.c.s
 
+__/plasticity/predictive/nimcp_predictive_coding.o: __/plasticity/predictive/nimcp_predictive_coding.c.o
+.PHONY : __/plasticity/predictive/nimcp_predictive_coding.o
+
+# target to build an object file
+__/plasticity/predictive/nimcp_predictive_coding.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/plasticity/predictive/nimcp_predictive_coding.c.o
+.PHONY : __/plasticity/predictive/nimcp_predictive_coding.c.o
+
+__/plasticity/predictive/nimcp_predictive_coding.i: __/plasticity/predictive/nimcp_predictive_coding.c.i
+.PHONY : __/plasticity/predictive/nimcp_predictive_coding.i
+
+# target to preprocess a source file
+__/plasticity/predictive/nimcp_predictive_coding.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/plasticity/predictive/nimcp_predictive_coding.c.i
+.PHONY : __/plasticity/predictive/nimcp_predictive_coding.c.i
+
+__/plasticity/predictive/nimcp_predictive_coding.s: __/plasticity/predictive/nimcp_predictive_coding.c.s
+.PHONY : __/plasticity/predictive/nimcp_predictive_coding.s
+
+# target to generate assembly for a file
+__/plasticity/predictive/nimcp_predictive_coding.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/plasticity/predictive/nimcp_predictive_coding.c.s
+.PHONY : __/plasticity/predictive/nimcp_predictive_coding.c.s
+
 __/plasticity/stdp/nimcp_stdp.o: __/plasticity/stdp/nimcp_stdp.c.o
 .PHONY : __/plasticity/stdp/nimcp_stdp.o
 
@@ -4409,6 +4793,198 @@ __/python/nimcp_types.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/python/nimcp_types.c.s
 .PHONY : __/python/nimcp_types.c.s
 
+__/security/nimcp_bbb_access_control.o: __/security/nimcp_bbb_access_control.c.o
+.PHONY : __/security/nimcp_bbb_access_control.o
+
+# target to build an object file
+__/security/nimcp_bbb_access_control.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/security/nimcp_bbb_access_control.c.o
+.PHONY : __/security/nimcp_bbb_access_control.c.o
+
+__/security/nimcp_bbb_access_control.i: __/security/nimcp_bbb_access_control.c.i
+.PHONY : __/security/nimcp_bbb_access_control.i
+
+# target to preprocess a source file
+__/security/nimcp_bbb_access_control.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/security/nimcp_bbb_access_control.c.i
+.PHONY : __/security/nimcp_bbb_access_control.c.i
+
+__/security/nimcp_bbb_access_control.s: __/security/nimcp_bbb_access_control.c.s
+.PHONY : __/security/nimcp_bbb_access_control.s
+
+# target to generate assembly for a file
+__/security/nimcp_bbb_access_control.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/security/nimcp_bbb_access_control.c.s
+.PHONY : __/security/nimcp_bbb_access_control.c.s
+
+__/security/nimcp_bbb_code_signing.o: __/security/nimcp_bbb_code_signing.c.o
+.PHONY : __/security/nimcp_bbb_code_signing.o
+
+# target to build an object file
+__/security/nimcp_bbb_code_signing.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/security/nimcp_bbb_code_signing.c.o
+.PHONY : __/security/nimcp_bbb_code_signing.c.o
+
+__/security/nimcp_bbb_code_signing.i: __/security/nimcp_bbb_code_signing.c.i
+.PHONY : __/security/nimcp_bbb_code_signing.i
+
+# target to preprocess a source file
+__/security/nimcp_bbb_code_signing.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/security/nimcp_bbb_code_signing.c.i
+.PHONY : __/security/nimcp_bbb_code_signing.c.i
+
+__/security/nimcp_bbb_code_signing.s: __/security/nimcp_bbb_code_signing.c.s
+.PHONY : __/security/nimcp_bbb_code_signing.s
+
+# target to generate assembly for a file
+__/security/nimcp_bbb_code_signing.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/security/nimcp_bbb_code_signing.c.s
+.PHONY : __/security/nimcp_bbb_code_signing.c.s
+
+__/security/nimcp_bbb_input_gate.o: __/security/nimcp_bbb_input_gate.c.o
+.PHONY : __/security/nimcp_bbb_input_gate.o
+
+# target to build an object file
+__/security/nimcp_bbb_input_gate.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/security/nimcp_bbb_input_gate.c.o
+.PHONY : __/security/nimcp_bbb_input_gate.c.o
+
+__/security/nimcp_bbb_input_gate.i: __/security/nimcp_bbb_input_gate.c.i
+.PHONY : __/security/nimcp_bbb_input_gate.i
+
+# target to preprocess a source file
+__/security/nimcp_bbb_input_gate.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/security/nimcp_bbb_input_gate.c.i
+.PHONY : __/security/nimcp_bbb_input_gate.c.i
+
+__/security/nimcp_bbb_input_gate.s: __/security/nimcp_bbb_input_gate.c.s
+.PHONY : __/security/nimcp_bbb_input_gate.s
+
+# target to generate assembly for a file
+__/security/nimcp_bbb_input_gate.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/security/nimcp_bbb_input_gate.c.s
+.PHONY : __/security/nimcp_bbb_input_gate.c.s
+
+__/security/nimcp_bbb_memory_boundary.o: __/security/nimcp_bbb_memory_boundary.c.o
+.PHONY : __/security/nimcp_bbb_memory_boundary.o
+
+# target to build an object file
+__/security/nimcp_bbb_memory_boundary.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/security/nimcp_bbb_memory_boundary.c.o
+.PHONY : __/security/nimcp_bbb_memory_boundary.c.o
+
+__/security/nimcp_bbb_memory_boundary.i: __/security/nimcp_bbb_memory_boundary.c.i
+.PHONY : __/security/nimcp_bbb_memory_boundary.i
+
+# target to preprocess a source file
+__/security/nimcp_bbb_memory_boundary.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/security/nimcp_bbb_memory_boundary.c.i
+.PHONY : __/security/nimcp_bbb_memory_boundary.c.i
+
+__/security/nimcp_bbb_memory_boundary.s: __/security/nimcp_bbb_memory_boundary.c.s
+.PHONY : __/security/nimcp_bbb_memory_boundary.s
+
+# target to generate assembly for a file
+__/security/nimcp_bbb_memory_boundary.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/security/nimcp_bbb_memory_boundary.c.s
+.PHONY : __/security/nimcp_bbb_memory_boundary.c.s
+
+__/security/nimcp_blood_brain_barrier.o: __/security/nimcp_blood_brain_barrier.c.o
+.PHONY : __/security/nimcp_blood_brain_barrier.o
+
+# target to build an object file
+__/security/nimcp_blood_brain_barrier.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/security/nimcp_blood_brain_barrier.c.o
+.PHONY : __/security/nimcp_blood_brain_barrier.c.o
+
+__/security/nimcp_blood_brain_barrier.i: __/security/nimcp_blood_brain_barrier.c.i
+.PHONY : __/security/nimcp_blood_brain_barrier.i
+
+# target to preprocess a source file
+__/security/nimcp_blood_brain_barrier.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/security/nimcp_blood_brain_barrier.c.i
+.PHONY : __/security/nimcp_blood_brain_barrier.c.i
+
+__/security/nimcp_blood_brain_barrier.s: __/security/nimcp_blood_brain_barrier.c.s
+.PHONY : __/security/nimcp_blood_brain_barrier.s
+
+# target to generate assembly for a file
+__/security/nimcp_blood_brain_barrier.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/security/nimcp_blood_brain_barrier.c.s
+.PHONY : __/security/nimcp_blood_brain_barrier.c.s
+
+__/security/nimcp_capability.o: __/security/nimcp_capability.c.o
+.PHONY : __/security/nimcp_capability.o
+
+# target to build an object file
+__/security/nimcp_capability.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/security/nimcp_capability.c.o
+.PHONY : __/security/nimcp_capability.c.o
+
+__/security/nimcp_capability.i: __/security/nimcp_capability.c.i
+.PHONY : __/security/nimcp_capability.i
+
+# target to preprocess a source file
+__/security/nimcp_capability.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/security/nimcp_capability.c.i
+.PHONY : __/security/nimcp_capability.c.i
+
+__/security/nimcp_capability.s: __/security/nimcp_capability.c.s
+.PHONY : __/security/nimcp_capability.s
+
+# target to generate assembly for a file
+__/security/nimcp_capability.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/security/nimcp_capability.c.s
+.PHONY : __/security/nimcp_capability.c.s
+
+__/security/nimcp_cfi.o: __/security/nimcp_cfi.c.o
+.PHONY : __/security/nimcp_cfi.o
+
+# target to build an object file
+__/security/nimcp_cfi.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/security/nimcp_cfi.c.o
+.PHONY : __/security/nimcp_cfi.c.o
+
+__/security/nimcp_cfi.i: __/security/nimcp_cfi.c.i
+.PHONY : __/security/nimcp_cfi.i
+
+# target to preprocess a source file
+__/security/nimcp_cfi.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/security/nimcp_cfi.c.i
+.PHONY : __/security/nimcp_cfi.c.i
+
+__/security/nimcp_cfi.s: __/security/nimcp_cfi.c.s
+.PHONY : __/security/nimcp_cfi.s
+
+# target to generate assembly for a file
+__/security/nimcp_cfi.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/security/nimcp_cfi.c.s
+.PHONY : __/security/nimcp_cfi.c.s
+
+__/security/nimcp_continuous_monitor.o: __/security/nimcp_continuous_monitor.c.o
+.PHONY : __/security/nimcp_continuous_monitor.o
+
+# target to build an object file
+__/security/nimcp_continuous_monitor.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/security/nimcp_continuous_monitor.c.o
+.PHONY : __/security/nimcp_continuous_monitor.c.o
+
+__/security/nimcp_continuous_monitor.i: __/security/nimcp_continuous_monitor.c.i
+.PHONY : __/security/nimcp_continuous_monitor.i
+
+# target to preprocess a source file
+__/security/nimcp_continuous_monitor.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/security/nimcp_continuous_monitor.c.i
+.PHONY : __/security/nimcp_continuous_monitor.c.i
+
+__/security/nimcp_continuous_monitor.s: __/security/nimcp_continuous_monitor.c.s
+.PHONY : __/security/nimcp_continuous_monitor.s
+
+# target to generate assembly for a file
+__/security/nimcp_continuous_monitor.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/security/nimcp_continuous_monitor.c.s
+.PHONY : __/security/nimcp_continuous_monitor.c.s
+
 __/security/nimcp_security.o: __/security/nimcp_security.c.o
 .PHONY : __/security/nimcp_security.o
 
@@ -4432,6 +5008,174 @@ __/security/nimcp_security.s: __/security/nimcp_security.c.s
 __/security/nimcp_security.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/security/nimcp_security.c.s
 .PHONY : __/security/nimcp_security.c.s
+
+__/security/nimcp_security_audit.o: __/security/nimcp_security_audit.c.o
+.PHONY : __/security/nimcp_security_audit.o
+
+# target to build an object file
+__/security/nimcp_security_audit.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/security/nimcp_security_audit.c.o
+.PHONY : __/security/nimcp_security_audit.c.o
+
+__/security/nimcp_security_audit.i: __/security/nimcp_security_audit.c.i
+.PHONY : __/security/nimcp_security_audit.i
+
+# target to preprocess a source file
+__/security/nimcp_security_audit.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/security/nimcp_security_audit.c.i
+.PHONY : __/security/nimcp_security_audit.c.i
+
+__/security/nimcp_security_audit.s: __/security/nimcp_security_audit.c.s
+.PHONY : __/security/nimcp_security_audit.s
+
+# target to generate assembly for a file
+__/security/nimcp_security_audit.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/security/nimcp_security_audit.c.s
+.PHONY : __/security/nimcp_security_audit.c.s
+
+__/security/nimcp_security_coverage.o: __/security/nimcp_security_coverage.c.o
+.PHONY : __/security/nimcp_security_coverage.o
+
+# target to build an object file
+__/security/nimcp_security_coverage.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/security/nimcp_security_coverage.c.o
+.PHONY : __/security/nimcp_security_coverage.c.o
+
+__/security/nimcp_security_coverage.i: __/security/nimcp_security_coverage.c.i
+.PHONY : __/security/nimcp_security_coverage.i
+
+# target to preprocess a source file
+__/security/nimcp_security_coverage.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/security/nimcp_security_coverage.c.i
+.PHONY : __/security/nimcp_security_coverage.c.i
+
+__/security/nimcp_security_coverage.s: __/security/nimcp_security_coverage.c.s
+.PHONY : __/security/nimcp_security_coverage.s
+
+# target to generate assembly for a file
+__/security/nimcp_security_coverage.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/security/nimcp_security_coverage.c.s
+.PHONY : __/security/nimcp_security_coverage.c.s
+
+__/security/nimcp_security_fractal.o: __/security/nimcp_security_fractal.c.o
+.PHONY : __/security/nimcp_security_fractal.o
+
+# target to build an object file
+__/security/nimcp_security_fractal.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/security/nimcp_security_fractal.c.o
+.PHONY : __/security/nimcp_security_fractal.c.o
+
+__/security/nimcp_security_fractal.i: __/security/nimcp_security_fractal.c.i
+.PHONY : __/security/nimcp_security_fractal.i
+
+# target to preprocess a source file
+__/security/nimcp_security_fractal.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/security/nimcp_security_fractal.c.i
+.PHONY : __/security/nimcp_security_fractal.c.i
+
+__/security/nimcp_security_fractal.s: __/security/nimcp_security_fractal.c.s
+.PHONY : __/security/nimcp_security_fractal.s
+
+# target to generate assembly for a file
+__/security/nimcp_security_fractal.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/security/nimcp_security_fractal.c.s
+.PHONY : __/security/nimcp_security_fractal.c.s
+
+__/security/nimcp_security_integration.o: __/security/nimcp_security_integration.c.o
+.PHONY : __/security/nimcp_security_integration.o
+
+# target to build an object file
+__/security/nimcp_security_integration.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/security/nimcp_security_integration.c.o
+.PHONY : __/security/nimcp_security_integration.c.o
+
+__/security/nimcp_security_integration.i: __/security/nimcp_security_integration.c.i
+.PHONY : __/security/nimcp_security_integration.i
+
+# target to preprocess a source file
+__/security/nimcp_security_integration.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/security/nimcp_security_integration.c.i
+.PHONY : __/security/nimcp_security_integration.c.i
+
+__/security/nimcp_security_integration.s: __/security/nimcp_security_integration.c.s
+.PHONY : __/security/nimcp_security_integration.s
+
+# target to generate assembly for a file
+__/security/nimcp_security_integration.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/security/nimcp_security_integration.c.s
+.PHONY : __/security/nimcp_security_integration.c.s
+
+__/security/nimcp_security_math.o: __/security/nimcp_security_math.c.o
+.PHONY : __/security/nimcp_security_math.o
+
+# target to build an object file
+__/security/nimcp_security_math.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/security/nimcp_security_math.c.o
+.PHONY : __/security/nimcp_security_math.c.o
+
+__/security/nimcp_security_math.i: __/security/nimcp_security_math.c.i
+.PHONY : __/security/nimcp_security_math.i
+
+# target to preprocess a source file
+__/security/nimcp_security_math.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/security/nimcp_security_math.c.i
+.PHONY : __/security/nimcp_security_math.c.i
+
+__/security/nimcp_security_math.s: __/security/nimcp_security_math.c.s
+.PHONY : __/security/nimcp_security_math.s
+
+# target to generate assembly for a file
+__/security/nimcp_security_math.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/security/nimcp_security_math.c.s
+.PHONY : __/security/nimcp_security_math.c.s
+
+__/security/nimcp_security_recovery_bridge.o: __/security/nimcp_security_recovery_bridge.c.o
+.PHONY : __/security/nimcp_security_recovery_bridge.o
+
+# target to build an object file
+__/security/nimcp_security_recovery_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/security/nimcp_security_recovery_bridge.c.o
+.PHONY : __/security/nimcp_security_recovery_bridge.c.o
+
+__/security/nimcp_security_recovery_bridge.i: __/security/nimcp_security_recovery_bridge.c.i
+.PHONY : __/security/nimcp_security_recovery_bridge.i
+
+# target to preprocess a source file
+__/security/nimcp_security_recovery_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/security/nimcp_security_recovery_bridge.c.i
+.PHONY : __/security/nimcp_security_recovery_bridge.c.i
+
+__/security/nimcp_security_recovery_bridge.s: __/security/nimcp_security_recovery_bridge.c.s
+.PHONY : __/security/nimcp_security_recovery_bridge.s
+
+# target to generate assembly for a file
+__/security/nimcp_security_recovery_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/security/nimcp_security_recovery_bridge.c.s
+.PHONY : __/security/nimcp_security_recovery_bridge.c.s
+
+__/security/nimcp_shadow_stack.o: __/security/nimcp_shadow_stack.c.o
+.PHONY : __/security/nimcp_shadow_stack.o
+
+# target to build an object file
+__/security/nimcp_shadow_stack.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/security/nimcp_shadow_stack.c.o
+.PHONY : __/security/nimcp_shadow_stack.c.o
+
+__/security/nimcp_shadow_stack.i: __/security/nimcp_shadow_stack.c.i
+.PHONY : __/security/nimcp_shadow_stack.i
+
+# target to preprocess a source file
+__/security/nimcp_shadow_stack.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/security/nimcp_shadow_stack.c.i
+.PHONY : __/security/nimcp_shadow_stack.c.i
+
+__/security/nimcp_shadow_stack.s: __/security/nimcp_shadow_stack.c.s
+.PHONY : __/security/nimcp_shadow_stack.s
+
+# target to generate assembly for a file
+__/security/nimcp_shadow_stack.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/security/nimcp_shadow_stack.c.s
+.PHONY : __/security/nimcp_shadow_stack.c.s
 
 __/utils/algorithms/nimcp_centrality.o: __/utils/algorithms/nimcp_centrality.c.o
 .PHONY : __/utils/algorithms/nimcp_centrality.o
@@ -5273,6 +6017,30 @@ __/utils/memory/nimcp_memory_pool.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/utils/memory/nimcp_memory_pool.c.s
 .PHONY : __/utils/memory/nimcp_memory_pool.c.s
 
+__/utils/memory/nimcp_page_cow.o: __/utils/memory/nimcp_page_cow.c.o
+.PHONY : __/utils/memory/nimcp_page_cow.o
+
+# target to build an object file
+__/utils/memory/nimcp_page_cow.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/utils/memory/nimcp_page_cow.c.o
+.PHONY : __/utils/memory/nimcp_page_cow.c.o
+
+__/utils/memory/nimcp_page_cow.i: __/utils/memory/nimcp_page_cow.c.i
+.PHONY : __/utils/memory/nimcp_page_cow.i
+
+# target to preprocess a source file
+__/utils/memory/nimcp_page_cow.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/utils/memory/nimcp_page_cow.c.i
+.PHONY : __/utils/memory/nimcp_page_cow.c.i
+
+__/utils/memory/nimcp_page_cow.s: __/utils/memory/nimcp_page_cow.c.s
+.PHONY : __/utils/memory/nimcp_page_cow.s
+
+# target to generate assembly for a file
+__/utils/memory/nimcp_page_cow.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/utils/memory/nimcp_page_cow.c.s
+.PHONY : __/utils/memory/nimcp_page_cow.c.s
+
 __/utils/metrics/nimcp_metrics.o: __/utils/metrics/nimcp_metrics.c.o
 .PHONY : __/utils/metrics/nimcp_metrics.o
 
@@ -5753,6 +6521,54 @@ __/utils/tensor_networks/nimcp_svd_lapack.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/utils/tensor_networks/nimcp_svd_lapack.c.s
 .PHONY : __/utils/tensor_networks/nimcp_svd_lapack.c.s
 
+__/utils/thread/nimcp_atomic.o: __/utils/thread/nimcp_atomic.c.o
+.PHONY : __/utils/thread/nimcp_atomic.o
+
+# target to build an object file
+__/utils/thread/nimcp_atomic.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/utils/thread/nimcp_atomic.c.o
+.PHONY : __/utils/thread/nimcp_atomic.c.o
+
+__/utils/thread/nimcp_atomic.i: __/utils/thread/nimcp_atomic.c.i
+.PHONY : __/utils/thread/nimcp_atomic.i
+
+# target to preprocess a source file
+__/utils/thread/nimcp_atomic.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/utils/thread/nimcp_atomic.c.i
+.PHONY : __/utils/thread/nimcp_atomic.c.i
+
+__/utils/thread/nimcp_atomic.s: __/utils/thread/nimcp_atomic.c.s
+.PHONY : __/utils/thread/nimcp_atomic.s
+
+# target to generate assembly for a file
+__/utils/thread/nimcp_atomic.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/utils/thread/nimcp_atomic.c.s
+.PHONY : __/utils/thread/nimcp_atomic.c.s
+
+__/utils/thread/nimcp_barrier.o: __/utils/thread/nimcp_barrier.c.o
+.PHONY : __/utils/thread/nimcp_barrier.o
+
+# target to build an object file
+__/utils/thread/nimcp_barrier.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/utils/thread/nimcp_barrier.c.o
+.PHONY : __/utils/thread/nimcp_barrier.c.o
+
+__/utils/thread/nimcp_barrier.i: __/utils/thread/nimcp_barrier.c.i
+.PHONY : __/utils/thread/nimcp_barrier.i
+
+# target to preprocess a source file
+__/utils/thread/nimcp_barrier.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/utils/thread/nimcp_barrier.c.i
+.PHONY : __/utils/thread/nimcp_barrier.c.i
+
+__/utils/thread/nimcp_barrier.s: __/utils/thread/nimcp_barrier.c.s
+.PHONY : __/utils/thread/nimcp_barrier.s
+
+# target to generate assembly for a file
+__/utils/thread/nimcp_barrier.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/utils/thread/nimcp_barrier.c.s
+.PHONY : __/utils/thread/nimcp_barrier.c.s
+
 __/utils/thread/nimcp_deadlock_detector.o: __/utils/thread/nimcp_deadlock_detector.c.o
 .PHONY : __/utils/thread/nimcp_deadlock_detector.o
 
@@ -5776,6 +6592,30 @@ __/utils/thread/nimcp_deadlock_detector.s: __/utils/thread/nimcp_deadlock_detect
 __/utils/thread/nimcp_deadlock_detector.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/utils/thread/nimcp_deadlock_detector.c.s
 .PHONY : __/utils/thread/nimcp_deadlock_detector.c.s
+
+__/utils/thread/nimcp_semaphore.o: __/utils/thread/nimcp_semaphore.c.o
+.PHONY : __/utils/thread/nimcp_semaphore.o
+
+# target to build an object file
+__/utils/thread/nimcp_semaphore.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/utils/thread/nimcp_semaphore.c.o
+.PHONY : __/utils/thread/nimcp_semaphore.c.o
+
+__/utils/thread/nimcp_semaphore.i: __/utils/thread/nimcp_semaphore.c.i
+.PHONY : __/utils/thread/nimcp_semaphore.i
+
+# target to preprocess a source file
+__/utils/thread/nimcp_semaphore.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/utils/thread/nimcp_semaphore.c.i
+.PHONY : __/utils/thread/nimcp_semaphore.c.i
+
+__/utils/thread/nimcp_semaphore.s: __/utils/thread/nimcp_semaphore.c.s
+.PHONY : __/utils/thread/nimcp_semaphore.s
+
+# target to generate assembly for a file
+__/utils/thread/nimcp_semaphore.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/utils/thread/nimcp_semaphore.c.s
+.PHONY : __/utils/thread/nimcp_semaphore.c.s
 
 __/utils/thread/nimcp_thread.o: __/utils/thread/nimcp_thread.c.o
 .PHONY : __/utils/thread/nimcp_thread.o
@@ -6013,6 +6853,9 @@ help:
 	@echo "... __/cognitive/epistemic/nimcp_epistemic_filter.o"
 	@echo "... __/cognitive/epistemic/nimcp_epistemic_filter.i"
 	@echo "... __/cognitive/epistemic/nimcp_epistemic_filter.s"
+	@echo "... __/cognitive/ethics/nimcp_combinatorial_harm.o"
+	@echo "... __/cognitive/ethics/nimcp_combinatorial_harm.i"
+	@echo "... __/cognitive/ethics/nimcp_combinatorial_harm.s"
 	@echo "... __/cognitive/ethics/nimcp_ethics.o"
 	@echo "... __/cognitive/ethics/nimcp_ethics.i"
 	@echo "... __/cognitive/ethics/nimcp_ethics.s"
@@ -6088,9 +6931,21 @@ help:
 	@echo "... __/cognitive/meta_learning/nimcp_meta_learning.o"
 	@echo "... __/cognitive/meta_learning/nimcp_meta_learning.i"
 	@echo "... __/cognitive/meta_learning/nimcp_meta_learning.s"
+	@echo "... __/cognitive/mirror_neurons/nimcp_mirror_hierarchy.o"
+	@echo "... __/cognitive/mirror_neurons/nimcp_mirror_hierarchy.i"
+	@echo "... __/cognitive/mirror_neurons/nimcp_mirror_hierarchy.s"
 	@echo "... __/cognitive/mirror_neurons/nimcp_mirror_neurons.o"
 	@echo "... __/cognitive/mirror_neurons/nimcp_mirror_neurons.i"
 	@echo "... __/cognitive/mirror_neurons/nimcp_mirror_neurons.s"
+	@echo "... __/cognitive/mirror_neurons/nimcp_mirror_resonance.o"
+	@echo "... __/cognitive/mirror_neurons/nimcp_mirror_resonance.i"
+	@echo "... __/cognitive/mirror_neurons/nimcp_mirror_resonance.s"
+	@echo "... __/cognitive/mirror_neurons/nimcp_mirror_stdp.o"
+	@echo "... __/cognitive/mirror_neurons/nimcp_mirror_stdp.i"
+	@echo "... __/cognitive/mirror_neurons/nimcp_mirror_stdp.s"
+	@echo "... __/cognitive/mirror_neurons/nimcp_mirror_substrate.o"
+	@echo "... __/cognitive/mirror_neurons/nimcp_mirror_substrate.i"
+	@echo "... __/cognitive/mirror_neurons/nimcp_mirror_substrate.s"
 	@echo "... __/cognitive/nimcp_emotional_tagging.o"
 	@echo "... __/cognitive/nimcp_emotional_tagging.i"
 	@echo "... __/cognitive/nimcp_emotional_tagging.s"
@@ -6223,6 +7078,24 @@ help:
 	@echo "... __/core/brain_regions/nimcp_brain_regions.o"
 	@echo "... __/core/brain_regions/nimcp_brain_regions.i"
 	@echo "... __/core/brain_regions/nimcp_brain_regions.s"
+	@echo "... __/core/cortical_columns/nimcp_columnar_connectivity.o"
+	@echo "... __/core/cortical_columns/nimcp_columnar_connectivity.i"
+	@echo "... __/core/cortical_columns/nimcp_columnar_connectivity.s"
+	@echo "... __/core/cortical_columns/nimcp_cortical_column.o"
+	@echo "... __/core/cortical_columns/nimcp_cortical_column.i"
+	@echo "... __/core/cortical_columns/nimcp_cortical_column.s"
+	@echo "... __/core/cortical_columns/nimcp_cortical_layers.o"
+	@echo "... __/core/cortical_columns/nimcp_cortical_layers.i"
+	@echo "... __/core/cortical_columns/nimcp_cortical_layers.s"
+	@echo "... __/core/cortical_columns/nimcp_feature_hypercolumns.o"
+	@echo "... __/core/cortical_columns/nimcp_feature_hypercolumns.i"
+	@echo "... __/core/cortical_columns/nimcp_feature_hypercolumns.s"
+	@echo "... __/core/cortical_columns/nimcp_orientation_columns.o"
+	@echo "... __/core/cortical_columns/nimcp_orientation_columns.i"
+	@echo "... __/core/cortical_columns/nimcp_orientation_columns.s"
+	@echo "... __/core/cortical_columns/nimcp_topographic_maps.o"
+	@echo "... __/core/cortical_columns/nimcp_topographic_maps.i"
+	@echo "... __/core/cortical_columns/nimcp_topographic_maps.s"
 	@echo "... __/core/dendrite/nimcp_dendrite.o"
 	@echo "... __/core/dendrite/nimcp_dendrite.i"
 	@echo "... __/core/dendrite/nimcp_dendrite.s"
@@ -6301,6 +7174,12 @@ help:
 	@echo "... __/glial/microglia/nimcp_microglia.o"
 	@echo "... __/glial/microglia/nimcp_microglia.i"
 	@echo "... __/glial/microglia/nimcp_microglia.s"
+	@echo "... __/glial/myelin_sheath/nimcp_myelin_math.o"
+	@echo "... __/glial/myelin_sheath/nimcp_myelin_math.i"
+	@echo "... __/glial/myelin_sheath/nimcp_myelin_math.s"
+	@echo "... __/glial/myelin_sheath/nimcp_myelin_sheath.o"
+	@echo "... __/glial/myelin_sheath/nimcp_myelin_sheath.i"
+	@echo "... __/glial/myelin_sheath/nimcp_myelin_sheath.s"
 	@echo "... __/glial/oligodendrocytes/nimcp_oligodendrocytes.o"
 	@echo "... __/glial/oligodendrocytes/nimcp_oligodendrocytes.i"
 	@echo "... __/glial/oligodendrocytes/nimcp_oligodendrocytes.s"
@@ -6460,9 +7339,15 @@ help:
 	@echo "... __/plasticity/bcm/nimcp_bcm.o"
 	@echo "... __/plasticity/bcm/nimcp_bcm.i"
 	@echo "... __/plasticity/bcm/nimcp_bcm.s"
+	@echo "... __/plasticity/dendritic/nimcp_dendritic.o"
+	@echo "... __/plasticity/dendritic/nimcp_dendritic.i"
+	@echo "... __/plasticity/dendritic/nimcp_dendritic.s"
 	@echo "... __/plasticity/eligibility/nimcp_eligibility_trace.o"
 	@echo "... __/plasticity/eligibility/nimcp_eligibility_trace.i"
 	@echo "... __/plasticity/eligibility/nimcp_eligibility_trace.s"
+	@echo "... __/plasticity/homeostatic/nimcp_homeostatic.o"
+	@echo "... __/plasticity/homeostatic/nimcp_homeostatic.i"
+	@echo "... __/plasticity/homeostatic/nimcp_homeostatic.s"
 	@echo "... __/plasticity/neuromodulators/nimcp_metabolic_pathways.o"
 	@echo "... __/plasticity/neuromodulators/nimcp_metabolic_pathways.i"
 	@echo "... __/plasticity/neuromodulators/nimcp_metabolic_pathways.s"
@@ -6487,6 +7372,9 @@ help:
 	@echo "... __/plasticity/noise/nimcp_pink_noise.o"
 	@echo "... __/plasticity/noise/nimcp_pink_noise.i"
 	@echo "... __/plasticity/noise/nimcp_pink_noise.s"
+	@echo "... __/plasticity/predictive/nimcp_predictive_coding.o"
+	@echo "... __/plasticity/predictive/nimcp_predictive_coding.i"
+	@echo "... __/plasticity/predictive/nimcp_predictive_coding.s"
 	@echo "... __/plasticity/stdp/nimcp_stdp.o"
 	@echo "... __/plasticity/stdp/nimcp_stdp.i"
 	@echo "... __/plasticity/stdp/nimcp_stdp.s"
@@ -6511,9 +7399,54 @@ help:
 	@echo "... __/python/nimcp_types.o"
 	@echo "... __/python/nimcp_types.i"
 	@echo "... __/python/nimcp_types.s"
+	@echo "... __/security/nimcp_bbb_access_control.o"
+	@echo "... __/security/nimcp_bbb_access_control.i"
+	@echo "... __/security/nimcp_bbb_access_control.s"
+	@echo "... __/security/nimcp_bbb_code_signing.o"
+	@echo "... __/security/nimcp_bbb_code_signing.i"
+	@echo "... __/security/nimcp_bbb_code_signing.s"
+	@echo "... __/security/nimcp_bbb_input_gate.o"
+	@echo "... __/security/nimcp_bbb_input_gate.i"
+	@echo "... __/security/nimcp_bbb_input_gate.s"
+	@echo "... __/security/nimcp_bbb_memory_boundary.o"
+	@echo "... __/security/nimcp_bbb_memory_boundary.i"
+	@echo "... __/security/nimcp_bbb_memory_boundary.s"
+	@echo "... __/security/nimcp_blood_brain_barrier.o"
+	@echo "... __/security/nimcp_blood_brain_barrier.i"
+	@echo "... __/security/nimcp_blood_brain_barrier.s"
+	@echo "... __/security/nimcp_capability.o"
+	@echo "... __/security/nimcp_capability.i"
+	@echo "... __/security/nimcp_capability.s"
+	@echo "... __/security/nimcp_cfi.o"
+	@echo "... __/security/nimcp_cfi.i"
+	@echo "... __/security/nimcp_cfi.s"
+	@echo "... __/security/nimcp_continuous_monitor.o"
+	@echo "... __/security/nimcp_continuous_monitor.i"
+	@echo "... __/security/nimcp_continuous_monitor.s"
 	@echo "... __/security/nimcp_security.o"
 	@echo "... __/security/nimcp_security.i"
 	@echo "... __/security/nimcp_security.s"
+	@echo "... __/security/nimcp_security_audit.o"
+	@echo "... __/security/nimcp_security_audit.i"
+	@echo "... __/security/nimcp_security_audit.s"
+	@echo "... __/security/nimcp_security_coverage.o"
+	@echo "... __/security/nimcp_security_coverage.i"
+	@echo "... __/security/nimcp_security_coverage.s"
+	@echo "... __/security/nimcp_security_fractal.o"
+	@echo "... __/security/nimcp_security_fractal.i"
+	@echo "... __/security/nimcp_security_fractal.s"
+	@echo "... __/security/nimcp_security_integration.o"
+	@echo "... __/security/nimcp_security_integration.i"
+	@echo "... __/security/nimcp_security_integration.s"
+	@echo "... __/security/nimcp_security_math.o"
+	@echo "... __/security/nimcp_security_math.i"
+	@echo "... __/security/nimcp_security_math.s"
+	@echo "... __/security/nimcp_security_recovery_bridge.o"
+	@echo "... __/security/nimcp_security_recovery_bridge.i"
+	@echo "... __/security/nimcp_security_recovery_bridge.s"
+	@echo "... __/security/nimcp_shadow_stack.o"
+	@echo "... __/security/nimcp_shadow_stack.i"
+	@echo "... __/security/nimcp_shadow_stack.s"
 	@echo "... __/utils/algorithms/nimcp_centrality.o"
 	@echo "... __/utils/algorithms/nimcp_centrality.i"
 	@echo "... __/utils/algorithms/nimcp_centrality.s"
@@ -6619,6 +7552,9 @@ help:
 	@echo "... __/utils/memory/nimcp_memory_pool.o"
 	@echo "... __/utils/memory/nimcp_memory_pool.i"
 	@echo "... __/utils/memory/nimcp_memory_pool.s"
+	@echo "... __/utils/memory/nimcp_page_cow.o"
+	@echo "... __/utils/memory/nimcp_page_cow.i"
+	@echo "... __/utils/memory/nimcp_page_cow.s"
 	@echo "... __/utils/metrics/nimcp_metrics.o"
 	@echo "... __/utils/metrics/nimcp_metrics.i"
 	@echo "... __/utils/metrics/nimcp_metrics.s"
@@ -6679,9 +7615,18 @@ help:
 	@echo "... __/utils/tensor_networks/nimcp_svd_lapack.o"
 	@echo "... __/utils/tensor_networks/nimcp_svd_lapack.i"
 	@echo "... __/utils/tensor_networks/nimcp_svd_lapack.s"
+	@echo "... __/utils/thread/nimcp_atomic.o"
+	@echo "... __/utils/thread/nimcp_atomic.i"
+	@echo "... __/utils/thread/nimcp_atomic.s"
+	@echo "... __/utils/thread/nimcp_barrier.o"
+	@echo "... __/utils/thread/nimcp_barrier.i"
+	@echo "... __/utils/thread/nimcp_barrier.s"
 	@echo "... __/utils/thread/nimcp_deadlock_detector.o"
 	@echo "... __/utils/thread/nimcp_deadlock_detector.i"
 	@echo "... __/utils/thread/nimcp_deadlock_detector.s"
+	@echo "... __/utils/thread/nimcp_semaphore.o"
+	@echo "... __/utils/thread/nimcp_semaphore.i"
+	@echo "... __/utils/thread/nimcp_semaphore.s"
 	@echo "... __/utils/thread/nimcp_thread.o"
 	@echo "... __/utils/thread/nimcp_thread.i"
 	@echo "... __/utils/thread/nimcp_thread.s"

@@ -5,6 +5,7 @@
 
 #include "middleware/encoding/nimcp_population_coding.h"
 #include "utils/memory/nimcp_memory.h"
+#include "utils/thread/nimcp_thread.h"
 #include <string.h>
 #include <math.h>
 #include <stdlib.h>
@@ -23,7 +24,7 @@ struct population_coding_encoder_struct {
     population_coding_config_t config;  /**< Encoder configuration */
     float* work_buffer;                 /**< Working memory buffer */
     uint32_t work_buffer_size;          /**< Size of work buffer */
-    pthread_mutex_t mutex;              /**< Thread safety mutex */
+    nimcp_mutex_t mutex;              /**< Thread safety mutex */
     uint32_t encode_count;              /**< Number of encode operations */
 };
 
@@ -288,7 +289,7 @@ population_coding_encoder_t population_coding_create(
     }
 
     // Initialize mutex
-    if (pthread_mutex_init(&encoder->mutex, NULL) != 0) {
+    if (nimcp_mutex_init(&encoder->mutex, NULL) != NIMCP_SUCCESS) {
         nimcp_free(encoder->work_buffer);
         nimcp_free(encoder);
         return NULL;
@@ -303,7 +304,7 @@ void population_coding_destroy(population_coding_encoder_t encoder) {
         return;
     }
 
-    pthread_mutex_destroy(&encoder->mutex);
+    nimcp_mutex_destroy(&encoder->mutex);
 
     if (encoder->work_buffer) {
         nimcp_free(encoder->work_buffer);
@@ -343,7 +344,7 @@ bool population_coding_encode_vector_sum(
         return false;
     }
 
-    pthread_mutex_lock(&encoder->mutex);
+    nimcp_mutex_lock(&encoder->mutex);
 
     // Initialize output vector
     vector_out->x = 0.0f;
@@ -373,7 +374,7 @@ bool population_coding_encode_vector_sum(
     }
 
     encoder->encode_count++;
-    pthread_mutex_unlock(&encoder->mutex);
+    nimcp_mutex_unlock(&encoder->mutex);
     return true;
 }
 
@@ -392,7 +393,7 @@ bool population_coding_decode_vector_sum(
         return false;
     }
 
-    pthread_mutex_lock(&encoder->mutex);
+    nimcp_mutex_lock(&encoder->mutex);
 
     // Calculate rate for each neuron based on cosine tuning
     for (uint32_t i = 0; i < num_neurons; i++) {
@@ -417,7 +418,7 @@ bool population_coding_decode_vector_sum(
         rates_out[i] = tuning_curves[i].max_rate * fmaxf(0.0f, cos_angle);
     }
 
-    pthread_mutex_unlock(&encoder->mutex);
+    nimcp_mutex_unlock(&encoder->mutex);
     return true;
 }
 
@@ -440,7 +441,7 @@ bool population_coding_encode_center_of_mass(
         return false;
     }
 
-    pthread_mutex_lock(&encoder->mutex);
+    nimcp_mutex_lock(&encoder->mutex);
 
     // Initialize center
     center_out->x = 0.0f;
@@ -461,7 +462,7 @@ bool population_coding_encode_center_of_mass(
     // WHY: Fail if no active neurons (all rates zero)
     // HOW: Check total_rate and return false for degenerate case
     if (total_rate <= 0.0f) {
-        pthread_mutex_unlock(&encoder->mutex);
+        nimcp_mutex_unlock(&encoder->mutex);
         return false;
     }
 
@@ -473,7 +474,7 @@ bool population_coding_encode_center_of_mass(
     center_out->magnitude = calculate_magnitude(center_out);
 
     encoder->encode_count++;
-    pthread_mutex_unlock(&encoder->mutex);
+    nimcp_mutex_unlock(&encoder->mutex);
     return true;
 }
 
@@ -502,7 +503,7 @@ bool population_coding_encode_pca(
         return false;
     }
 
-    pthread_mutex_lock(&encoder->mutex);
+    nimcp_mutex_lock(&encoder->mutex);
 
     // Calculate mean for each neuron
     for (uint32_t n = 0; n < num_neurons; n++) {
@@ -516,7 +517,7 @@ bool population_coding_encode_pca(
     // Center the data
     float* centered = (float*)nimcp_malloc(num_samples * num_neurons * sizeof(float));
     if (!centered) {
-        pthread_mutex_unlock(&encoder->mutex);
+        nimcp_mutex_unlock(&encoder->mutex);
         return false;
     }
 
@@ -531,7 +532,7 @@ bool population_coding_encode_pca(
     float* residual = (float*)nimcp_malloc(num_samples * num_neurons * sizeof(float));
     if (!residual) {
         nimcp_free(centered);
-        pthread_mutex_unlock(&encoder->mutex);
+        nimcp_mutex_unlock(&encoder->mutex);
         return false;
     }
     memcpy(residual, centered, num_samples * num_neurons * sizeof(float));
@@ -546,7 +547,7 @@ bool population_coding_encode_pca(
         )) {
             nimcp_free(centered);
             nimcp_free(residual);
-            pthread_mutex_unlock(&encoder->mutex);
+            nimcp_mutex_unlock(&encoder->mutex);
             return false;
         }
 
@@ -568,7 +569,7 @@ bool population_coding_encode_pca(
     nimcp_free(residual);
 
     encoder->encode_count++;
-    pthread_mutex_unlock(&encoder->mutex);
+    nimcp_mutex_unlock(&encoder->mutex);
     return true;
 }
 
@@ -587,12 +588,12 @@ bool population_coding_project_pca(
         return false;
     }
 
-    pthread_mutex_lock(&encoder->mutex);
+    nimcp_mutex_lock(&encoder->mutex);
 
     // Center activity
     float* centered = (float*)nimcp_malloc(num_neurons * sizeof(float));
     if (!centered) {
-        pthread_mutex_unlock(&encoder->mutex);
+        nimcp_mutex_unlock(&encoder->mutex);
         return false;
     }
 
@@ -613,7 +614,7 @@ bool population_coding_project_pca(
     }
 
     nimcp_free(centered);
-    pthread_mutex_unlock(&encoder->mutex);
+    nimcp_mutex_unlock(&encoder->mutex);
     return true;
 }
 
@@ -635,7 +636,7 @@ bool population_coding_compute_synchrony(
         return false;
     }
 
-    pthread_mutex_lock(&encoder->mutex);
+    nimcp_mutex_lock(&encoder->mutex);
 
     // WHY: Check if all spike trains are empty
     // HOW: Fail if all trains have zero spikes (degenerate case)
@@ -647,7 +648,7 @@ bool population_coding_compute_synchrony(
         }
     }
     if (!has_spikes) {
-        pthread_mutex_unlock(&encoder->mutex);
+        nimcp_mutex_unlock(&encoder->mutex);
         return false;
     }
 
@@ -710,7 +711,7 @@ bool population_coding_compute_synchrony(
     result_out->coherence = result_out->synchrony_index;
 
     encoder->encode_count++;
-    pthread_mutex_unlock(&encoder->mutex);
+    nimcp_mutex_unlock(&encoder->mutex);
     return true;
 }
 
@@ -725,7 +726,7 @@ bool population_coding_correlation_matrix(
         return false;
     }
 
-    pthread_mutex_lock(&encoder->mutex);
+    nimcp_mutex_lock(&encoder->mutex);
 
     // Compute all pairwise correlations
     for (uint32_t i = 0; i < num_neurons; i++) {
@@ -743,7 +744,7 @@ bool population_coding_correlation_matrix(
         }
     }
 
-    pthread_mutex_unlock(&encoder->mutex);
+    nimcp_mutex_unlock(&encoder->mutex);
     return true;
 }
 
@@ -762,14 +763,14 @@ uint32_t population_coding_encode_sparse(
         return 0;
     }
 
-    pthread_mutex_lock(&encoder->mutex);
+    nimcp_mutex_lock(&encoder->mutex);
 
     // Create array of (rate, index) pairs
     rate_index_pair_t* pairs = (rate_index_pair_t*)nimcp_malloc(
         num_neurons * sizeof(rate_index_pair_t)
     );
     if (!pairs) {
-        pthread_mutex_unlock(&encoder->mutex);
+        nimcp_mutex_unlock(&encoder->mutex);
         return 0;
     }
 
@@ -796,7 +797,7 @@ uint32_t population_coding_encode_sparse(
     }
 
     nimcp_free(pairs);
-    pthread_mutex_unlock(&encoder->mutex);
+    nimcp_mutex_unlock(&encoder->mutex);
     return k_active;
 }
 

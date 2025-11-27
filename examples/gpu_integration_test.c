@@ -8,8 +8,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdbool.h>
-#include "../src/include/gpu/nimcp_gpu_neuron.h"
-#include "../src/include/gpu/nimcp_execution_mode.h"
+#include "gpu/nimcp_gpu_neuron.h"
+#include "gpu/nimcp_execution_mode.h"
 
 int main(void) {
     printf("╔════════════════════════════════════════════════════════╗\n");

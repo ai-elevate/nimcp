@@ -17,7 +17,7 @@
 #include <cstring>
 
     #include "core/brain/nimcp_brain.h"
-    #include "include/nimcp.h"
+    #include "nimcp.h"
     #include "utils/nimcp_test_base.h"
 
 //=============================================================================

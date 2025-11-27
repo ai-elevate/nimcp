@@ -14,7 +14,6 @@ target_link_libraries(integration_middleware_controller
 
 target_include_directories(integration_middleware_controller PRIVATE
     ${CMAKE_SOURCE_DIR}/include
-    ${CMAKE_SOURCE_DIR}/src/include
 )
 
 add_test(NAME integration_middleware_controller

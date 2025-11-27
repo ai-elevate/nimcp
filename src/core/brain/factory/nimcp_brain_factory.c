@@ -75,9 +75,9 @@
 
 // Multi-modal integration
 #include "core/integration/nimcp_multimodal_integration.h"
-#include "include/perception/nimcp_visual_cortex.h"
-#include "include/perception/nimcp_audio_cortex.h"
-#include "include/perception/nimcp_speech_cortex.h"
+#include "perception/nimcp_visual_cortex.h"
+#include "perception/nimcp_audio_cortex.h"
+#include "perception/nimcp_speech_cortex.h"
 #include "nlp/nimcp_nlp.h"
 
 // Brain regions and cognitive systems
@@ -151,6 +151,10 @@ extern void set_error(const char* format, ...);
 #define init_autobiographical_memory_subsystem      nimcp_brain_factory_init_autobiographical_memory_subsystem
 #define init_self_model_subsystem                   nimcp_brain_factory_init_self_model_subsystem
 #define init_global_workspace_subsystem             nimcp_brain_factory_init_global_workspace_subsystem
+#define init_security_subsystem                     nimcp_brain_factory_init_security_subsystem
+#define init_homeostatic_plasticity_subsystem       nimcp_brain_factory_init_homeostatic_plasticity_subsystem
+#define init_dendritic_computation_subsystem        nimcp_brain_factory_init_dendritic_computation_subsystem
+#define init_biological_predictive_subsystem        nimcp_brain_factory_init_biological_predictive_subsystem
 #define init_brain_config                           nimcp_brain_factory_init_brain_config
 #define init_brain_stats                            nimcp_brain_factory_init_brain_stats
 
@@ -528,6 +532,14 @@ brain_t brain_create_custom(const brain_config_t* config)
 
     // Global Workspace Architecture
     if (!init_global_workspace_subsystem(brain)) { brain_destroy(brain); return NULL; }
+
+    // Phase SC-2: Security-Fault Tolerance Integration
+    if (!init_security_subsystem(brain)) { brain_destroy(brain); return NULL; }
+
+    // Phase T1: Biological Framework Enhancements (Training Pipeline)
+    if (!init_homeostatic_plasticity_subsystem(brain)) { brain_destroy(brain); return NULL; }
+    if (!init_dendritic_computation_subsystem(brain)) { brain_destroy(brain); return NULL; }
+    if (!init_biological_predictive_subsystem(brain)) { brain_destroy(brain); return NULL; }
 
     // ========================================================================
     // POST-INITIALIZATION

@@ -73,9 +73,9 @@
 
 // Phase 8: Multi-Modal Integration
 #include "core/integration/nimcp_multimodal_integration.h"
-#include "include/perception/nimcp_visual_cortex.h"
-#include "include/perception/nimcp_audio_cortex.h"
-#include "include/perception/nimcp_speech_cortex.h"
+#include "perception/nimcp_visual_cortex.h"
+#include "perception/nimcp_audio_cortex.h"
+#include "perception/nimcp_speech_cortex.h"
 #include "nlp/nimcp_nlp.h"                      // Natural language processing
 
 // Brain Regions Architecture (hierarchical cortical organization)
@@ -126,6 +126,10 @@
 
 // Phase 11 Enhancement C1.1: Quantum Annealing for Weight Optimization
 #include "optimization/quantum_annealing/nimcp_quantum_annealing.h"
+
+// Phase IS-1: Blood-Brain Barrier (BBB) cleanup
+#include "security/nimcp_blood_brain_barrier.h"
+#include "core/brain/factory/init/nimcp_brain_init.h"  // For nimcp_bbb_release_global_system
 
 //=============================================================================
 // Forward Declarations - Strategy Pattern
@@ -1966,6 +1970,53 @@ void brain_destroy(brain_t brain)
     if (brain->active_neuron_ids_pool) {
         memory_pool_destroy(brain->active_neuron_ids_pool);
         brain->active_neuron_ids_pool = NULL;
+    }
+
+    // === PHASE SC-2: CLEANUP SECURITY RECOVERY BRIDGE ===
+    if (brain->security_bridge) {
+        // Local include to avoid global type conflicts
+        #include "security/nimcp_security_recovery_bridge.h"
+        nimcp_srb_destroy((nimcp_security_recovery_bridge_t*)brain->security_bridge);
+        brain->security_bridge = NULL;
+    }
+
+    // === PHASE SC-4: CLEANUP UNIVERSAL SECURITY INTEGRATION ===
+    if (brain->security_integration) {
+        // Local include to avoid global type conflicts
+        #include "security/nimcp_security_integration.h"
+
+        // Unregister regions
+        if (brain->sec_region_ids) {
+            for (uint32_t i = 0; i < brain->num_sec_regions; i++) {
+                nimcp_sec_unregister_region(brain->security_integration, brain->sec_region_ids[i]);
+            }
+            nimcp_free(brain->sec_region_ids);
+            brain->sec_region_ids = NULL;
+        }
+
+        // Unregister module
+        if (brain->sec_module_id > 0) {
+            nimcp_sec_unregister_module(brain->security_integration, brain->sec_module_id);
+        }
+
+        // Destroy the security integration context
+        nimcp_sec_integration_destroy(brain->security_integration);
+        brain->security_integration = NULL;
+    }
+
+    // === PHASE IS-1: CLEANUP BLOOD-BRAIN BARRIER (BBB) ===
+    if (brain->bbb_enabled && brain->bbb_system) {
+        // Unregister this brain's memory region from BBB
+        if (brain->bbb_memory_region_id > 0) {
+            bbb_unregister_memory_region(brain->bbb_system, brain->bbb_memory_region_id);
+        }
+
+        // Release our reference to the global BBB system
+        nimcp_bbb_release_global_system();
+
+        brain->bbb_system = NULL;
+        brain->bbb_memory_region_id = 0;
+        brain->bbb_enabled = false;
     }
 
     clear_cache(brain);

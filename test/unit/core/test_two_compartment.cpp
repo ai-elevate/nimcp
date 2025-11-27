@@ -23,8 +23,8 @@
 #include <cmath>
 #include <vector>
 
-    #include "../../src/core/neuron_models/nimcp_two_compartment.h"
-    #include "../../src/core/neuron_models/nimcp_neuron_model.h"
+    #include "core/neuron_models/nimcp_two_compartment.h"
+    #include "core/neuron_models/nimcp_neuron_model.h"
 
 //=============================================================================
 // Test Fixture

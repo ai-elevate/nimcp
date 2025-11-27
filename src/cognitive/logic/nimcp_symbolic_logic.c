@@ -7,7 +7,7 @@
  * @version 2.6
  */
 
-#include "include/cognitive/nimcp_symbolic_logic.h"
+#include "cognitive/nimcp_symbolic_logic.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/validation/nimcp_validate.h"
 #include "utils/time/nimcp_time.h"

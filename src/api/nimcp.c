@@ -6,17 +6,19 @@
  * and provides a consistent, stable public interface.
  */
 
-#include "../include/nimcp.h"
-#include "../core/brain/nimcp_brain.h"
-#include "../core/neuralnet/nimcp_neuralnet.h"
+#include "nimcp.h"
+#include "core/brain/nimcp_brain.h"
+#include "core/neuralnet/nimcp_neuralnet.h"
 #include "../cognitive/ethics/nimcp_ethics.h"
 #include "../cognitive/knowledge/nimcp_knowledge.h"
-#include "../include/cognitive/nimcp_working_memory.h"  // Phase 10.2: Working Memory API
+#include "cognitive/nimcp_working_memory.h"  // Phase 10.2: Working Memory API
 #include "../cognitive/global_workspace/nimcp_global_workspace.h"  // Global Workspace Architecture
-#include "../utils/memory/nimcp_memory.h"
-#include "../utils/config/nimcp_config.h"
-#include "../utils/cache/nimcp_cache.h"
-#include "../utils/time/nimcp_time.h"
+#include "utils/memory/nimcp_memory.h"
+#include "utils/config/nimcp_config.h"
+#include "utils/cache/nimcp_cache.h"
+#include "utils/time/nimcp_time.h"
+#include "security/nimcp_blood_brain_barrier.h"  // Phase IS-1: BBB perimeter defense
+#include "core/brain/nimcp_brain_internal.h"     // For accessing brain->bbb_system
 #include <stdio.h>
 #include <string.h>
 #include <stdarg.h>
@@ -200,6 +202,26 @@ nimcp_status_t nimcp_brain_learn_example(
         return NIMCP_ERROR_NULL_ARG;
     }
 
+    // === PHASE IS-1: BBB INPUT VALIDATION ===
+    // Validate external input data through Blood-Brain Barrier before processing
+    if (brain->internal_brain && brain->internal_brain->bbb_enabled &&
+        brain->internal_brain->bbb_system) {
+        bbb_validation_result_t result;
+
+        // Validate features array (external input data)
+        if (!bbb_validate_input(brain->internal_brain->bbb_system,
+                               features, num_features * sizeof(float), &result)) {
+            set_error("BBB rejected features: %s", result.reason);
+            return NIMCP_ERROR_INVALID;
+        }
+
+        // Validate label string (external string input)
+        if (!bbb_validate_string(brain->internal_brain->bbb_system, label, &result)) {
+            set_error("BBB rejected label: %s", result.reason);
+            return NIMCP_ERROR_INVALID;
+        }
+    }
+
     // Call internal brain API
     float success = brain_learn_example(brain->internal_brain, features, num_features, label, confidence);
 
@@ -237,6 +259,20 @@ nimcp_status_t nimcp_brain_predict(
     if (!out_confidence) {
         set_error("Output confidence pointer is NULL");
         return NIMCP_ERROR_NULL_ARG;
+    }
+
+    // === PHASE IS-1: BBB INPUT VALIDATION ===
+    // Validate external input data through Blood-Brain Barrier before processing
+    if (brain->internal_brain && brain->internal_brain->bbb_enabled &&
+        brain->internal_brain->bbb_system) {
+        bbb_validation_result_t result;
+
+        // Validate features array (external input data)
+        if (!bbb_validate_input(brain->internal_brain->bbb_system,
+                               features, num_features * sizeof(float), &result)) {
+            set_error("BBB rejected features: %s", result.reason);
+            return NIMCP_ERROR_INVALID;
+        }
     }
 
     // Call internal brain API
@@ -1575,7 +1611,7 @@ nimcp_status_t nimcp_knowledge_query(
 // Complex Number & Oscillation API Implementation
 //=============================================================================
 
-#include "../include/core/brain/oscillations/nimcp_brain_complex_oscillations.h"
+#include "core/brain/oscillations/nimcp_brain_complex_oscillations.h"
 
 /**
  * @brief Enable or disable complex oscillation features

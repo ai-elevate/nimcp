@@ -10,6 +10,7 @@
 #include "utils/fault_tolerance/nimcp_recovery_cache.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
+#include "utils/thread/nimcp_thread.h"
 
 #include <stdlib.h>
 #include <string.h>
@@ -210,7 +211,7 @@ nimcp_recovery_cache_t* nimcp_recovery_cache_create(size_t capacity) {
     cache->lru_tail = NULL;
 
     /* Initialize mutex */
-    if (pthread_mutex_init(&cache->lock, NULL) != 0) {
+    if (nimcp_mutex_init(&cache->lock, NULL) != NIMCP_SUCCESS) {
         NIMCP_LOGGING_ERROR("Failed to initialize cache mutex");
         nimcp_free(cache->hash_table);
         nimcp_free(cache);
@@ -252,7 +253,7 @@ void nimcp_recovery_cache_destroy(nimcp_recovery_cache_t* cache) {
     nimcp_free(cache->hash_table);
 
     /* Destroy mutex */
-    pthread_mutex_destroy(&cache->lock);
+    nimcp_mutex_destroy(&cache->lock);
 
     /* Free cache structure */
     nimcp_free(cache);
@@ -265,7 +266,7 @@ bool nimcp_recovery_cache_clear(nimcp_recovery_cache_t* cache) {
         return false;
     }
 
-    pthread_mutex_lock(&cache->lock);
+    nimcp_mutex_lock(&cache->lock);
 
     NIMCP_LOGGING_DEBUG("Clearing recovery cache");
 
@@ -288,7 +289,7 @@ bool nimcp_recovery_cache_clear(nimcp_recovery_cache_t* cache) {
     /* Reset statistics (but keep configuration) */
     memset(&cache->stats, 0, sizeof(nimcp_recovery_cache_stats_t));
 
-    pthread_mutex_unlock(&cache->lock);
+    nimcp_mutex_unlock(&cache->lock);
 
     NIMCP_LOGGING_INFO("Recovery cache cleared");
 
@@ -382,7 +383,7 @@ bool nimcp_recovery_cache_lookup(
 
     uint64_t start_time = cache->track_stats ? get_timestamp_ns() : 0;
 
-    pthread_mutex_lock(&cache->lock);
+    nimcp_mutex_lock(&cache->lock);
 
     /* Find entry in hash table */
     size_t bucket = hash_bucket_index(signature->hash, cache->hash_size);
@@ -405,7 +406,7 @@ bool nimcp_recovery_cache_lookup(
                 update_stats(cache);
             }
 
-            pthread_mutex_unlock(&cache->lock);
+            nimcp_mutex_unlock(&cache->lock);
 
             NIMCP_LOGGING_DEBUG("Cache hit for signature 0x%016lx (strategy: %s)",
                            signature->hash, nimcp_recovery_strategy_name(*strategy));
@@ -421,7 +422,7 @@ bool nimcp_recovery_cache_lookup(
         update_stats(cache);
     }
 
-    pthread_mutex_unlock(&cache->lock);
+    nimcp_mutex_unlock(&cache->lock);
 
     NIMCP_LOGGING_DEBUG("Cache miss for signature 0x%016lx", signature->hash);
 
@@ -440,7 +441,7 @@ bool nimcp_recovery_cache_store(
 
     uint64_t start_time = cache->track_stats ? get_timestamp_ns() : 0;
 
-    pthread_mutex_lock(&cache->lock);
+    nimcp_mutex_lock(&cache->lock);
 
     /* Check if entry already exists (update instead of insert) */
     size_t bucket = hash_bucket_index(signature->hash, cache->hash_size);
@@ -467,7 +468,7 @@ bool nimcp_recovery_cache_store(
                 update_stats(cache);
             }
 
-            pthread_mutex_unlock(&cache->lock);
+            nimcp_mutex_unlock(&cache->lock);
 
             NIMCP_LOGGING_DEBUG("Updated existing cache entry for signature 0x%016lx",
                            signature->hash);
@@ -480,7 +481,7 @@ bool nimcp_recovery_cache_store(
     /* Evict LRU entry if at capacity */
     if (cache->current_size >= cache->capacity) {
         if (!evict_lru_entry(cache)) {
-            pthread_mutex_unlock(&cache->lock);
+            nimcp_mutex_unlock(&cache->lock);
             NIMCP_LOGGING_ERROR("Failed to evict LRU entry");
             return false;
         }
@@ -489,7 +490,7 @@ bool nimcp_recovery_cache_store(
     /* Create new entry */
     nimcp_cache_entry_t* entry = nimcp_calloc(1, sizeof(nimcp_cache_entry_t));
     if (!entry) {
-        pthread_mutex_unlock(&cache->lock);
+        nimcp_mutex_unlock(&cache->lock);
         NIMCP_LOGGING_ERROR("Failed to allocate cache entry");
         return false;
     }
@@ -537,7 +538,7 @@ bool nimcp_recovery_cache_store(
         update_stats(cache);
     }
 
-    pthread_mutex_unlock(&cache->lock);
+    nimcp_mutex_unlock(&cache->lock);
 
     NIMCP_LOGGING_INFO("Stored cache entry for signature 0x%016lx (strategy: %s, size: %zu/%zu)",
                    signature->hash, nimcp_recovery_strategy_name(strategy),
@@ -555,7 +556,7 @@ bool nimcp_recovery_cache_update_success(
         return false;
     }
 
-    pthread_mutex_lock(&cache->lock);
+    nimcp_mutex_lock(&cache->lock);
 
     /* Find entry */
     size_t bucket = hash_bucket_index(signature->hash, cache->hash_size);
@@ -579,7 +580,7 @@ bool nimcp_recovery_cache_update_success(
 
             entry->last_access_timestamp = get_timestamp_ns();
 
-            pthread_mutex_unlock(&cache->lock);
+            nimcp_mutex_unlock(&cache->lock);
 
             NIMCP_LOGGING_DEBUG("Updated success tracking for signature 0x%016lx "
                            "(success: %s, rate: %.2f%%)",
@@ -591,7 +592,7 @@ bool nimcp_recovery_cache_update_success(
         entry = entry->hash_next;
     }
 
-    pthread_mutex_unlock(&cache->lock);
+    nimcp_mutex_unlock(&cache->lock);
 
     NIMCP_LOGGING_DEBUG("Entry not found for success update (signature: 0x%016lx)",
                    signature->hash);
@@ -607,7 +608,7 @@ bool nimcp_recovery_cache_invalidate(
         return false;
     }
 
-    pthread_mutex_lock(&cache->lock);
+    nimcp_mutex_lock(&cache->lock);
 
     /* Find and remove entry from hash table */
     size_t bucket = hash_bucket_index(signature->hash, cache->hash_size);
@@ -633,7 +634,7 @@ bool nimcp_recovery_cache_invalidate(
                 update_stats(cache);
             }
 
-            pthread_mutex_unlock(&cache->lock);
+            nimcp_mutex_unlock(&cache->lock);
 
             NIMCP_LOGGING_INFO("Invalidated cache entry for signature 0x%016lx (size: %zu/%zu)",
                           signature->hash, cache->current_size, cache->capacity);
@@ -643,7 +644,7 @@ bool nimcp_recovery_cache_invalidate(
         curr = &(*curr)->hash_next;
     }
 
-    pthread_mutex_unlock(&cache->lock);
+    nimcp_mutex_unlock(&cache->lock);
 
     NIMCP_LOGGING_DEBUG("Entry not found for invalidation (signature: 0x%016lx)",
                    signature->hash);
@@ -664,7 +665,7 @@ bool nimcp_recovery_cache_get_entry(
         return false;
     }
 
-    pthread_mutex_lock(&cache->lock);
+    nimcp_mutex_lock(&cache->lock);
 
     /* Find entry */
     size_t bucket = hash_bucket_index(signature->hash, cache->hash_size);
@@ -691,13 +692,13 @@ bool nimcp_recovery_cache_get_entry(
             entry->next = NULL;
             entry->hash_next = NULL;
 
-            pthread_mutex_unlock(&cache->lock);
+            nimcp_mutex_unlock(&cache->lock);
             return true;
         }
         found = found->hash_next;
     }
 
-    pthread_mutex_unlock(&cache->lock);
+    nimcp_mutex_unlock(&cache->lock);
     return false;
 }
 
@@ -709,10 +710,10 @@ bool nimcp_recovery_cache_get_stats(
         return false;
     }
 
-    pthread_mutex_lock(&cache->lock);
+    nimcp_mutex_lock(&cache->lock);
     update_stats(cache);
     memcpy(stats, &cache->stats, sizeof(nimcp_recovery_cache_stats_t));
-    pthread_mutex_unlock(&cache->lock);
+    nimcp_mutex_unlock(&cache->lock);
 
     return true;
 }
@@ -722,9 +723,9 @@ bool nimcp_recovery_cache_reset_stats(nimcp_recovery_cache_t* cache) {
         return false;
     }
 
-    pthread_mutex_lock(&cache->lock);
+    nimcp_mutex_lock(&cache->lock);
     memset(&cache->stats, 0, sizeof(nimcp_recovery_cache_stats_t));
-    pthread_mutex_unlock(&cache->lock);
+    nimcp_mutex_unlock(&cache->lock);
 
     NIMCP_LOGGING_INFO("Reset cache statistics");
 
@@ -739,7 +740,7 @@ bool nimcp_recovery_cache_resize(
         return false;
     }
 
-    pthread_mutex_lock(&cache->lock);
+    nimcp_mutex_lock(&cache->lock);
 
     NIMCP_LOGGING_INFO("Resizing cache from %zu to %zu entries",
                    cache->capacity, new_capacity);
@@ -752,7 +753,7 @@ bool nimcp_recovery_cache_resize(
         if (!evict_lru_entry(cache)) {
             /* Restore old capacity on failure */
             cache->capacity = old_capacity;
-            pthread_mutex_unlock(&cache->lock);
+            nimcp_mutex_unlock(&cache->lock);
             NIMCP_LOGGING_ERROR("Failed to resize cache");
             return false;
         }
@@ -760,7 +761,7 @@ bool nimcp_recovery_cache_resize(
 
     update_stats(cache);
 
-    pthread_mutex_unlock(&cache->lock);
+    nimcp_mutex_unlock(&cache->lock);
 
     return true;
 }
@@ -822,7 +823,7 @@ bool nimcp_recovery_cache_validate(const nimcp_recovery_cache_t* cache) {
         return false;
     }
 
-    pthread_mutex_lock((pthread_mutex_t*)&cache->lock);
+    nimcp_mutex_lock((nimcp_mutex_t*)&cache->lock);
 
     /* Count entries in hash table */
     size_t hash_count = 0;
@@ -842,7 +843,7 @@ bool nimcp_recovery_cache_validate(const nimcp_recovery_cache_t* cache) {
         entry = entry->next;
     }
 
-    pthread_mutex_unlock((pthread_mutex_t*)&cache->lock);
+    nimcp_mutex_unlock((nimcp_mutex_t*)&cache->lock);
 
     /* Verify counts match */
     bool valid = (hash_count == cache->current_size) &&

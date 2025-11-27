@@ -313,7 +313,7 @@ TEST_F(BrainPopulationCodingTest, ComputePopulationSynchronyBasic) {
     EXPECT_GT(synchrony_out.synchrony_index, 0.0f);
 
     for (auto train : trains) {
-        spike_train_destroy(train);
+        rate_coding_spike_train_destroy(train);
     }
 }
 
@@ -332,7 +332,7 @@ TEST_F(BrainPopulationCodingTest, ComputePopulationSynchronyWithNullAnalyzer) {
     EXPECT_FALSE(result);
 
     for (auto train : trains) {
-        spike_train_destroy(train);
+        rate_coding_spike_train_destroy(train);
     }
 }
 
@@ -367,7 +367,7 @@ TEST_F(BrainPopulationCodingTest, ComputePopulationSynchronyWithNullOutput) {
     EXPECT_FALSE(result);
 
     for (auto train : trains) {
-        spike_train_destroy(train);
+        rate_coding_spike_train_destroy(train);
     }
 }
 
@@ -387,7 +387,7 @@ TEST_F(BrainPopulationCodingTest, ComputePopulationSynchronyWithOneNeuron) {
 
     EXPECT_FALSE(result);
 
-    spike_train_destroy(train);
+    rate_coding_spike_train_destroy(train);
 }
 
 TEST_F(BrainPopulationCodingTest, ComputePopulationSynchronyWithTooManyNeurons) {
@@ -408,7 +408,7 @@ TEST_F(BrainPopulationCodingTest, ComputePopulationSynchronyWithTooManyNeurons) 
     EXPECT_FALSE(result);
 
     for (auto train : trains) {
-        spike_train_destroy(train);
+        rate_coding_spike_train_destroy(train);
     }
 }
 
@@ -442,7 +442,7 @@ TEST_F(BrainPopulationCodingTest, ComputePopulationSynchronyDesynchronized) {
     EXPECT_LE(synchrony_out.synchrony_index, 1.0f);
 
     for (auto train : trains) {
-        spike_train_destroy(train);
+        rate_coding_spike_train_destroy(train);
     }
 }
 
@@ -469,7 +469,7 @@ TEST_F(BrainPopulationCodingTest, ComputePopulationSynchronyEmptyTrains) {
     EXPECT_EQ(synchrony_out.synchrony_index, 0.0f);
 
     for (auto train : trains) {
-        spike_train_destroy(train);
+        rate_coding_spike_train_destroy(train);
     }
 }
 
@@ -496,7 +496,7 @@ TEST_F(BrainPopulationCodingTest, ComputePopulationSynchronyLargePopulation) {
     EXPECT_TRUE(result);
 
     for (auto train : trains) {
-        spike_train_destroy(train);
+        rate_coding_spike_train_destroy(train);
     }
 }
 
@@ -548,7 +548,7 @@ TEST_F(BrainPopulationCodingTest, MultipleSynchronyComputations) {
         EXPECT_TRUE(result);
 
         for (auto train : trains) {
-            spike_train_destroy(train);
+            rate_coding_spike_train_destroy(train);
         }
     }
 }

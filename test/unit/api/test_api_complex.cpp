@@ -11,7 +11,7 @@
  */
 
 #include <gtest/gtest.h>
-#include "../../../src/include/nimcp.h"
+#include "nimcp.h"
 #include <cmath>
 
 /**

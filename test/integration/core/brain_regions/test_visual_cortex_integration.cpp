@@ -12,17 +12,17 @@
  */
 
 #include <gtest/gtest.h>
-#include "include/perception/nimcp_visual_cortex.h"
+#include "perception/nimcp_visual_cortex.h"
 #include "utils/memory/nimcp_memory.h"
 #include <vector>
 #include <cstring>
 #include <cmath>
 
 // TODO: Add these includes when the systems are implemented
-// #include "include/nimcp_curiosity.h"
-// #include "include/nimcp_attention.h"
-// #include "include/nimcp_knowledge.h"
-// #include "include/nimcp_salience.h"
+// #include "nimcp_curiosity.h"
+// #include "nimcp_attention.h"
+// #include "nimcp_knowledge.h"
+// #include "nimcp_salience.h"
 
 //=============================================================================
 // Test Fixtures

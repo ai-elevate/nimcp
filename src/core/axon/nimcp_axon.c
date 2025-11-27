@@ -15,7 +15,7 @@
 #include "nimcp_axon.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/time/nimcp_time.h"
-#include <pthread.h>
+#include "utils/thread/nimcp_thread.h"
 #include <math.h>
 #include <string.h>
 #include <stdio.h>
@@ -46,7 +46,7 @@ struct axon_spike_queue_struct {
     uint32_t count;
     uint32_t head;
     uint32_t tail;
-    pthread_mutex_t lock;
+    nimcp_mutex_t lock;
 };
 
 //=============================================================================
@@ -148,7 +148,7 @@ axon_t* axon_create(uint32_t id,
     axon->is_functional = true;
 
     // Initialize lock
-    pthread_mutex_init(&axon->lock, NULL);
+    nimcp_mutex_init(&axon->lock, NULL);
 
     // Initialize memory pool (not enabled by default)
     axon->segment_pool = NULL;
@@ -201,7 +201,7 @@ void axon_destroy(axon_t* axon)
     }
 
     // Destroy mutex
-    pthread_mutex_destroy(&axon->lock);
+    nimcp_mutex_destroy(&axon->lock);
 
     // Free segments if allocated and owned (not a CoW sharing segments)
     if (axon->segments && (axon->cow_modified || !axon->cow_original)) {
@@ -462,7 +462,7 @@ bool axon_initiate_spike(axon_t* axon,
     }
 
     // Acquire lock
-    pthread_mutex_lock(&axon->lock);
+    nimcp_mutex_lock(&axon->lock);
 
     // Update state
     axon->state = AXON_STATE_ACTIVE;
@@ -486,7 +486,7 @@ bool axon_initiate_spike(axon_t* axon,
     axon->atp_level -= 0.01f;
     if (axon->atp_level < 0.0f) axon->atp_level = 0.0f;
 
-    pthread_mutex_unlock(&axon->lock);
+    nimcp_mutex_unlock(&axon->lock);
 
     return true;
 }
@@ -552,7 +552,7 @@ void axon_receive_lactate(axon_t* axon, float lactate_amount)
     if (!axon) return;
     if (lactate_amount <= 0.0f) return;
 
-    pthread_mutex_lock(&axon->lock);
+    nimcp_mutex_lock(&axon->lock);
 
     axon->lactate_level += lactate_amount;
 
@@ -564,7 +564,7 @@ void axon_receive_lactate(axon_t* axon, float lactate_amount)
     // Consume lactate
     axon->lactate_level *= 0.9f;
 
-    pthread_mutex_unlock(&axon->lock);
+    nimcp_mutex_unlock(&axon->lock);
 }
 
 //=============================================================================
@@ -626,7 +626,7 @@ void axon_step(axon_t* axon, uint64_t current_time, float dt)
     if (!axon) return;
     if (!axon->is_functional) return;
 
-    pthread_mutex_lock(&axon->lock);
+    nimcp_mutex_lock(&axon->lock);
 
     // Update refractory state
     if (axon->state == AXON_STATE_REFRACTORY) {
@@ -653,7 +653,7 @@ void axon_step(axon_t* axon, uint64_t current_time, float dt)
         axon->state = AXON_STATE_DAMAGED;
     }
 
-    pthread_mutex_unlock(&axon->lock);
+    nimcp_mutex_unlock(&axon->lock);
 }
 
 bool axon_is_refractory(const axon_t* axon, uint64_t current_time)
@@ -712,7 +712,7 @@ axon_spike_queue_t* axon_spike_queue_create(uint32_t capacity)
     queue->count = 0;
     queue->head = 0;
     queue->tail = 0;
-    pthread_mutex_init(&queue->lock, NULL);
+    nimcp_mutex_init(&queue->lock, NULL);
 
     return queue;
 }
@@ -721,7 +721,7 @@ void axon_spike_queue_destroy(axon_spike_queue_t* queue)
 {
     if (!queue) return;
 
-    pthread_mutex_destroy(&queue->lock);
+    nimcp_mutex_destroy(&queue->lock);
 
     if (queue->events) {
         nimcp_free(queue->events);
@@ -734,10 +734,10 @@ bool axon_spike_queue_push(axon_spike_queue_t* queue,
 {
     if (!queue || !event) return false;
 
-    pthread_mutex_lock(&queue->lock);
+    nimcp_mutex_lock(&queue->lock);
 
     if (queue->count >= queue->capacity) {
-        pthread_mutex_unlock(&queue->lock);
+        nimcp_mutex_unlock(&queue->lock);
         return false;  // Queue full
     }
 
@@ -746,7 +746,7 @@ bool axon_spike_queue_push(axon_spike_queue_t* queue,
     queue->tail = (queue->tail + 1) % queue->capacity;
     queue->count++;
 
-    pthread_mutex_unlock(&queue->lock);
+    nimcp_mutex_unlock(&queue->lock);
 
     return true;
 }
@@ -757,10 +757,10 @@ bool axon_spike_queue_pop(axon_spike_queue_t* queue,
 {
     if (!queue || !event) return false;
 
-    pthread_mutex_lock(&queue->lock);
+    nimcp_mutex_lock(&queue->lock);
 
     if (queue->count == 0) {
-        pthread_mutex_unlock(&queue->lock);
+        nimcp_mutex_unlock(&queue->lock);
         return false;
     }
 
@@ -781,12 +781,12 @@ bool axon_spike_queue_pop(axon_spike_queue_t* queue,
             }
             queue->count--;
 
-            pthread_mutex_unlock(&queue->lock);
+            nimcp_mutex_unlock(&queue->lock);
             return true;
         }
     }
 
-    pthread_mutex_unlock(&queue->lock);
+    nimcp_mutex_unlock(&queue->lock);
     return false;
 }
 
@@ -828,7 +828,7 @@ axon_network_t* axon_network_create(uint32_t capacity)
     network->count = 0;
     network->current_time = 0;
     network->total_spikes_processed = 0;
-    pthread_mutex_init(&network->lock, NULL);
+    nimcp_mutex_init(&network->lock, NULL);
     network->spatial_index = NULL;
     network->spatial_index_valid = false;
 
@@ -864,7 +864,7 @@ void axon_network_destroy(axon_network_t* network)
     }
 
     // Destroy network lock
-    pthread_mutex_destroy(&network->lock);
+    nimcp_mutex_destroy(&network->lock);
 
     nimcp_free(network);
 }
@@ -873,10 +873,10 @@ bool axon_network_add(axon_network_t* network, axon_t* axon)
 {
     if (!network || !axon) return false;
 
-    pthread_mutex_lock(&network->lock);
+    nimcp_mutex_lock(&network->lock);
 
     if (network->count >= network->capacity) {
-        pthread_mutex_unlock(&network->lock);
+        nimcp_mutex_unlock(&network->lock);
         return false;
     }
 
@@ -886,7 +886,7 @@ bool axon_network_add(axon_network_t* network, axon_t* axon)
     // Invalidate spatial index
     network->spatial_index_valid = false;
 
-    pthread_mutex_unlock(&network->lock);
+    nimcp_mutex_unlock(&network->lock);
 
     return true;
 }
@@ -895,7 +895,7 @@ axon_t* axon_network_remove(axon_network_t* network, uint32_t axon_id)
 {
     if (!network) return NULL;
 
-    pthread_mutex_lock(&network->lock);
+    nimcp_mutex_lock(&network->lock);
 
     axon_t* removed = NULL;
     for (uint32_t i = 0; i < network->count; i++) {
@@ -914,7 +914,7 @@ axon_t* axon_network_remove(axon_network_t* network, uint32_t axon_id)
         }
     }
 
-    pthread_mutex_unlock(&network->lock);
+    nimcp_mutex_unlock(&network->lock);
 
     return removed;
 }
@@ -956,7 +956,7 @@ void axon_network_step(axon_network_t* network,
 {
     if (!network) return;
 
-    pthread_mutex_lock(&network->lock);
+    nimcp_mutex_lock(&network->lock);
 
     network->current_time = current_time;
 
@@ -967,7 +967,7 @@ void axon_network_step(axon_network_t* network,
         }
     }
 
-    pthread_mutex_unlock(&network->lock);
+    nimcp_mutex_unlock(&network->lock);
 }
 
 uint32_t axon_network_process_arrivals(axon_network_t* network,
@@ -1298,7 +1298,7 @@ bool axon_network_enable_spike_pool(axon_network_t* network, uint32_t capacity)
 {
     if (!network) return false;
 
-    pthread_mutex_lock(&network->lock);
+    nimcp_mutex_lock(&network->lock);
 
     // Destroy existing pool if any
     if (network->spike_pool) {
@@ -1309,7 +1309,7 @@ bool axon_network_enable_spike_pool(axon_network_t* network, uint32_t capacity)
     network->spike_pool = axon_spike_pool_create(capacity);
     network->use_spike_pool = (network->spike_pool != NULL);
 
-    pthread_mutex_unlock(&network->lock);
+    nimcp_mutex_unlock(&network->lock);
 
     return network->use_spike_pool;
 }
@@ -1318,7 +1318,7 @@ bool axon_enable_segment_pool(axon_t* axon, uint32_t capacity)
 {
     if (!axon) return false;
 
-    pthread_mutex_lock(&axon->lock);
+    nimcp_mutex_lock(&axon->lock);
 
     // Destroy existing pool if any
     if (axon->segment_pool) {
@@ -1329,7 +1329,7 @@ bool axon_enable_segment_pool(axon_t* axon, uint32_t capacity)
     axon->segment_pool = axon_segment_pool_create(capacity);
     axon->use_segment_pool = (axon->segment_pool != NULL);
 
-    pthread_mutex_unlock(&axon->lock);
+    nimcp_mutex_unlock(&axon->lock);
 
     return axon->use_segment_pool;
 }
@@ -1342,12 +1342,12 @@ axon_t* axon_cow_copy(axon_t* axon)
 {
     if (!axon) return NULL;
 
-    pthread_mutex_lock(&axon->lock);
+    nimcp_mutex_lock(&axon->lock);
 
     // Allocate new axon structure (shallow copy)
     axon_t* copy = (axon_t*)nimcp_calloc(1, sizeof(axon_t));
     if (!copy) {
-        pthread_mutex_unlock(&axon->lock);
+        nimcp_mutex_unlock(&axon->lock);
         return NULL;
     }
 
@@ -1379,7 +1379,7 @@ axon_t* axon_cow_copy(axon_t* axon)
     copy->num_segments = axon->num_segments;
 
     // Initialize own mutex
-    pthread_mutex_init(&copy->lock, NULL);
+    nimcp_mutex_init(&copy->lock, NULL);
 
     // CoW bookkeeping
     copy->segment_pool = NULL;  // Don't share pool
@@ -1391,7 +1391,7 @@ axon_t* axon_cow_copy(axon_t* axon)
     // Increment original's reference count
     axon->cow_ref_count++;
 
-    pthread_mutex_unlock(&axon->lock);
+    nimcp_mutex_unlock(&axon->lock);
 
     return copy;
 }
@@ -1400,12 +1400,12 @@ bool axon_cow_prepare_write(axon_t* axon)
 {
     if (!axon) return false;
 
-    pthread_mutex_lock(&axon->lock);
+    nimcp_mutex_lock(&axon->lock);
 
     // If already modified or no original, we own the data
     if (axon->cow_modified || !axon->cow_original) {
         axon->cow_modified = true;
-        pthread_mutex_unlock(&axon->lock);
+        nimcp_mutex_unlock(&axon->lock);
         return true;
     }
 
@@ -1418,7 +1418,7 @@ bool axon_cow_prepare_write(axon_t* axon)
                                                         sizeof(axon_segment_t));
         if (!axon->segments) {
             axon->segments = old_segments;  // Restore
-            pthread_mutex_unlock(&axon->lock);
+            nimcp_mutex_unlock(&axon->lock);
             return false;
         }
 
@@ -1428,18 +1428,18 @@ bool axon_cow_prepare_write(axon_t* axon)
 
         // Decrement original's reference count
         if (axon->cow_original) {
-            pthread_mutex_lock(&axon->cow_original->lock);
+            nimcp_mutex_lock(&axon->cow_original->lock);
             if (axon->cow_original->cow_ref_count > 0) {
                 axon->cow_original->cow_ref_count--;
             }
-            pthread_mutex_unlock(&axon->cow_original->lock);
+            nimcp_mutex_unlock(&axon->cow_original->lock);
         }
     }
 
     axon->cow_original = NULL;
     axon->cow_modified = true;
 
-    pthread_mutex_unlock(&axon->lock);
+    nimcp_mutex_unlock(&axon->lock);
 
     return true;
 }
@@ -1448,7 +1448,7 @@ void axon_cow_release(axon_t* axon)
 {
     if (!axon) return;
 
-    pthread_mutex_lock(&axon->lock);
+    nimcp_mutex_lock(&axon->lock);
 
     // Decrement reference count
     if (axon->cow_ref_count > 0) {
@@ -1457,14 +1457,14 @@ void axon_cow_release(axon_t* axon)
 
     // If this is a CoW copy, decrement original's count
     if (axon->cow_original) {
-        pthread_mutex_lock(&axon->cow_original->lock);
+        nimcp_mutex_lock(&axon->cow_original->lock);
         if (axon->cow_original->cow_ref_count > 0) {
             axon->cow_original->cow_ref_count--;
         }
-        pthread_mutex_unlock(&axon->cow_original->lock);
+        nimcp_mutex_unlock(&axon->cow_original->lock);
     }
 
-    pthread_mutex_unlock(&axon->lock);
+    nimcp_mutex_unlock(&axon->lock);
 
     // If reference count is 0 and this is a CoW copy, free
     if (axon->cow_ref_count == 0 && axon->cow_original) {
@@ -1475,7 +1475,7 @@ void axon_cow_release(axon_t* axon)
         if (axon->segment_pool) {
             axon_segment_pool_destroy(axon->segment_pool);
         }
-        pthread_mutex_destroy(&axon->lock);
+        nimcp_mutex_destroy(&axon->lock);
         nimcp_free(axon);
     }
 }
@@ -1500,19 +1500,19 @@ bool axon_init_biophysics(axon_t* axon, bool use_stochastic, uint64_t seed)
 {
     if (!axon) return false;
 
-    pthread_mutex_lock(&axon->lock);
+    nimcp_mutex_lock(&axon->lock);
 
     // Create biophysics state
     axon->biophysics = nimcp_myelin_biophysics_create(use_stochastic, seed);
     if (!axon->biophysics) {
-        pthread_mutex_unlock(&axon->lock);
+        nimcp_mutex_unlock(&axon->lock);
         return false;
     }
 
     // Initialize temperature to normal body temperature
     axon->temperature_c = 37.0f;
 
-    pthread_mutex_unlock(&axon->lock);
+    nimcp_mutex_unlock(&axon->lock);
 
     // Update all segments with enhanced calculations
     axon_update_biophysics(axon);
@@ -1655,7 +1655,7 @@ void axon_update_biophysics(axon_t* axon)
 {
     if (!axon) return;
 
-    pthread_mutex_lock(&axon->lock);
+    nimcp_mutex_lock(&axon->lock);
 
     float total_lambda = 0.0f;
     float total_block_prob = 0.0f;
@@ -1687,7 +1687,7 @@ void axon_update_biophysics(axon_t* axon)
         axon->overall_block_probability = total_block_prob / (float)internode_count;
     }
 
-    pthread_mutex_unlock(&axon->lock);
+    nimcp_mutex_unlock(&axon->lock);
 
     // Update conduction properties
     axon_update_conduction(axon);
@@ -1703,7 +1703,7 @@ float axon_apply_activity_myelination(axon_t* axon, float activity, float dt)
     nimcp_myelination_kinetics_t kinetics = nimcp_myelin_kinetics_default();
     float total_delta = 0.0f;
 
-    pthread_mutex_lock(&axon->lock);
+    nimcp_mutex_lock(&axon->lock);
 
     for (uint32_t i = 0; i < axon->num_segments; i++) {
         axon_segment_t* seg = &axon->segments[i];
@@ -1740,7 +1740,7 @@ float axon_apply_activity_myelination(axon_t* axon, float activity, float dt)
         axon->myelination_level = total_myelination / (float)count;
     }
 
-    pthread_mutex_unlock(&axon->lock);
+    nimcp_mutex_unlock(&axon->lock);
 
     // Recalculate after changes
     axon_update_biophysics(axon);
@@ -1772,7 +1772,7 @@ void axon_apply_myelination_variability(axon_t* axon)
 {
     if (!axon || !axon->biophysics || !axon->biophysics->use_stochastic) return;
 
-    pthread_mutex_lock(&axon->lock);
+    nimcp_mutex_lock(&axon->lock);
 
     nimcp_myelin_rng_t* rng = &axon->biophysics->rng;
 
@@ -1794,7 +1794,7 @@ void axon_apply_myelination_variability(axon_t* axon)
         }
     }
 
-    pthread_mutex_unlock(&axon->lock);
+    nimcp_mutex_unlock(&axon->lock);
 
     // Recalculate after variability applied
     axon_update_biophysics(axon);

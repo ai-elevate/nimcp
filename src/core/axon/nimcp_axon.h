@@ -49,7 +49,7 @@ extern "C" {
 #include <stdint.h>
 #include <stdbool.h>
 #include <stddef.h>
-#include <pthread.h>
+#include "utils/thread/nimcp_thread.h"
 #include "glial/myelin_sheath/nimcp_myelin_math.h"
 
 //=============================================================================
@@ -483,7 +483,7 @@ struct axon_struct {
 
     //--- Thread Safety ---
     /** Spinlock for concurrent access */
-    pthread_mutex_t lock;
+    nimcp_mutex_t lock;
 
     //--- Memory Pool ---
     /** Segment memory pool (optional) */
@@ -534,7 +534,7 @@ struct axon_network_struct {
     uint64_t total_spikes_processed;
 
     /** Thread lock */
-    pthread_mutex_t lock;
+    nimcp_mutex_t lock;
 
     /** KD-tree for spatial queries (optional) */
     void* spatial_index;

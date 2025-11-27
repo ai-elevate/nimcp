@@ -15,11 +15,10 @@
 #include <unistd.h>
 #include "../../utils/memory/nimcp_memory.h"
 #include "../../utils/logging/nimcp_logging.h"
+#include "utils/thread/nimcp_thread.h"
 
 #include <string.h>
 #include <math.h>
-#include <pthread.h>
-#include <unistd.h>
 
 //=============================================================================
 // Constants
@@ -75,10 +74,10 @@ struct recovery_consolidation {
     bool consolidation_active;
 
     // Background thread
-    pthread_t background_thread;
+    nimcp_thread_t background_thread;
     bool background_running;
     bool background_should_stop;
-    pthread_mutex_t mutex;
+    nimcp_mutex_t mutex;
 };
 
 //=============================================================================
@@ -211,11 +210,11 @@ static void* background_consolidation_thread(void* arg) {
 
     while (!cons->background_should_stop) {
         // Run consolidation if episodes pending
-        pthread_mutex_lock(&cons->mutex);
+        nimcp_mutex_lock(&cons->mutex);
         if (cons->episode_count >= cons->config.min_episodes_for_rule) {
             recovery_consolidation_run(cons);
         }
-        pthread_mutex_unlock(&cons->mutex);
+        nimcp_mutex_unlock(&cons->mutex);
 
         // Sleep for interval
         usleep(cons->config.consolidation_interval_ms * 1000);
@@ -305,7 +304,14 @@ recovery_consolidation_t* consolidation_create_custom(
     }
 
     // INITIALIZE: Mutex
-    pthread_mutex_init(&cons->mutex, NULL);
+    if (nimcp_mutex_init(&cons->mutex, NULL) != NIMCP_SUCCESS) {
+        LOG_ERROR("Failed to initialize consolidation mutex");
+        nimcp_free(cons->rules);
+        nimcp_free(cons->patterns);
+        nimcp_free(cons->episodes);
+        nimcp_free(cons);
+        return NULL;
+    }
 
     LOG_INFO("Consolidation created: max_rules=%u, min_episodes=%u",
              actual_config.max_rules, actual_config.min_episodes_for_rule);
@@ -323,7 +329,7 @@ void recovery_consolidation_destroy(recovery_consolidation_t* consolidation) {
     }
 
     // FREE: All allocations
-    pthread_mutex_destroy(&consolidation->mutex);
+    nimcp_mutex_destroy(&consolidation->mutex);
 
     if (consolidation->rules) {
         nimcp_free(consolidation->rules);
@@ -361,7 +367,7 @@ bool recovery_consolidation_add_episode(
         return false;
     }
 
-    pthread_mutex_lock(&consolidation->mutex);
+    nimcp_mutex_lock(&consolidation->mutex);
 
     // GUARD: Check capacity
     if (consolidation->episode_count >= consolidation->episode_capacity) {
@@ -380,7 +386,7 @@ bool recovery_consolidation_add_episode(
     consolidation->episode_head =
         (consolidation->episode_head + 1) % consolidation->episode_capacity;
 
-    pthread_mutex_unlock(&consolidation->mutex);
+    nimcp_mutex_unlock(&consolidation->mutex);
 
     return true;
 }
@@ -526,7 +532,7 @@ bool consolidation_add_rule(
         return false;
     }
 
-    pthread_mutex_lock(&consolidation->mutex);
+    nimcp_mutex_lock(&consolidation->mutex);
 
     // CHECK: If rule already exists, update it
     for (uint32_t i = 0; i < consolidation->rule_count; i++) {
@@ -535,7 +541,7 @@ bool consolidation_add_rule(
             memcpy(&consolidation->rules[i], rule, sizeof(semantic_rule_t));
             consolidation->stats.rules_updated++;
 
-            pthread_mutex_unlock(&consolidation->mutex);
+            nimcp_mutex_unlock(&consolidation->mutex);
             LOG_INFO("Updated existing rule at index %u", i);
             return true;
         }
@@ -567,7 +573,7 @@ bool consolidation_add_rule(
         LOG_INFO("Added new rule, total rules: %u", consolidation->rule_count);
     }
 
-    pthread_mutex_unlock(&consolidation->mutex);
+    nimcp_mutex_unlock(&consolidation->mutex);
     return true;
 }
 
@@ -606,11 +612,11 @@ void recovery_consolidation_run(recovery_consolidation_t* consolidation) {
     // GUARD: NULL check
     if (!consolidation) return;
 
-    pthread_mutex_lock(&consolidation->mutex);
+    nimcp_mutex_lock(&consolidation->mutex);
 
     // GUARD: Check if already active
     if (consolidation->consolidation_active) {
-        pthread_mutex_unlock(&consolidation->mutex);
+        nimcp_mutex_unlock(&consolidation->mutex);
         LOG_WARNING("Consolidation already active");
         return;
     }
@@ -687,7 +693,7 @@ void recovery_consolidation_run(recovery_consolidation_t* consolidation) {
 
     consolidation->consolidation_active = false;
 
-    pthread_mutex_unlock(&consolidation->mutex);
+    nimcp_mutex_unlock(&consolidation->mutex);
 
     LOG_INFO("Consolidation completed: %u rules total",
              consolidation->rule_count);
@@ -728,11 +734,11 @@ bool consolidation_start_background(
     // START: Background thread
     consolidation->background_should_stop = false;
 
-    int result = pthread_create(
+    int result = nimcp_thread_create(
         &consolidation->background_thread,
-        NULL,
         background_consolidation_thread,
-        consolidation
+        consolidation,
+        NULL
     );
 
     if (result != 0) {
@@ -761,7 +767,7 @@ void consolidation_stop_background(
     consolidation->background_should_stop = true;
 
     // WAIT: For thread to finish
-    pthread_join(consolidation->background_thread, NULL);
+    nimcp_thread_join(consolidation->background_thread, NULL);
 
     consolidation->background_running = false;
     LOG_INFO("Background consolidation stopped");

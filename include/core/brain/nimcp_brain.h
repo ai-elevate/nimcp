@@ -764,6 +764,62 @@ typedef struct {
     bool complex_oscillation_enabled;     /**< Enable complex phasor tracking (default: false) */
     float complex_phase_update_rate;      /**< Phase increment per step in radians (default: 0.1) */
     float complex_amplitude_decay;        /**< Amplitude decay factor per step (default: 0.95) */
+
+    // === PHASE SC-2: SECURITY-FAULT TOLERANCE INTEGRATION (Tier 0.7) ===
+    /**
+     * Security Monitoring Configuration
+     *
+     * WHAT: Real-time security monitoring with automatic recovery
+     * WHY:  Detect memory corruption and trigger fault tolerance mechanisms
+     * HOW:  Security coverage + fractal verification + fast recovery bridge
+     *
+     * FEATURES:
+     * - Memory region protection with hash verification
+     * - Hierarchical Merkle tree integrity checking
+     * - Automatic recovery on security violations
+     * - Integration with fault tolerance checkpoints
+     *
+     * PERFORMANCE:
+     * - Verification overhead: ~1-5µs per region check
+     * - Memory overhead: ~100 bytes per protected region
+     * - Disabled by default for zero overhead when not needed
+     */
+    bool enable_security_monitoring;      /**< Enable security-fault tolerance integration (default: false) */
+    uint32_t security_check_interval_ms;  /**< Verification cycle interval, 0=manual only (default: 0) */
+
+    // === PHASE SC-4: UNIVERSAL SECURITY INTEGRATION ===
+    /**
+     * Universal security integration framework provides entropy monitoring,
+     * Bayesian trust management, differential privacy, and security events.
+     *
+     * WHAT: Global security layer that monitors all brain subsystems
+     * WHY:  Detect tampering, track trust, preserve privacy
+     * HOW:  Brain registers with security system and reports interactions
+     *
+     * PERFORMANCE:
+     * - Module registration: ~0.1µs per module
+     * - Region check: 0.5-30µs depending on region size
+     * - Trust query: <1µs
+     * - Privacy query: <1µs
+     */
+    bool enable_security_integration;     /**< Enable universal security integration (default: false) */
+    double security_trust_threshold;      /**< Trust threshold for security decisions (default: 0.5) */
+    double security_privacy_budget;       /**< Differential privacy budget (default: 10.0) */
+
+    // === PHASE IS-1: BLOOD-BRAIN BARRIER (Perimeter Defense) ===
+    /**
+     * Blood-Brain Barrier (BBB) Security
+     *
+     * WHAT: Perimeter defense layer protecting the brain from malicious input
+     * WHY:  Prevent code injection, memory corruption, and unauthorized access
+     * HOW:  Four-layer defense: Input Gate, Code Signing, Memory Boundary, Access Control
+     *
+     * BIOLOGICAL MODEL: Like the biological BBB that protects the brain from pathogens
+     * and toxins in the bloodstream, this system validates all input to the neural system.
+     *
+     * PERFORMANCE: ~10-50µs overhead per validation, negligible for most workloads
+     */
+    bool enable_bbb_protection;           /**< Enable Blood-Brain Barrier perimeter defense (default: false) */
 } brain_config_t;
 
 /**
@@ -1199,6 +1255,10 @@ float brain_learn_from_llm(brain_t brain, const float* input, uint32_t num_featu
 
 /**
  * @brief Decision result
+ *
+ * NOTE: This file is DEPRECATED. Use include/core/brain/nimcp_brain.h instead.
+ * This file only exists for backwards compatibility and should not be modified.
+ * See include/core/brain/nimcp_brain.h for the authoritative version with CoW support.
  *
  * Phase 1.5 CoW: Decisions support copy-on-write for efficient caching.
  * When copy_decision() is called, the copy shares data with the original

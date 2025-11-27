@@ -11,8 +11,8 @@
  * @version 2.6
  */
 
-#include "include/perception/nimcp_audio_cortex.h"
-#include "include/perception/nimcp_visual_cortex.h"  // For receptor_expression_t
+#include "perception/nimcp_audio_cortex.h"
+#include "perception/nimcp_visual_cortex.h"  // For receptor_expression_t
 #include "utils/memory/nimcp_memory.h"
 #include "utils/memory/nimcp_memory_pool.h"  // Memory pool for O(1) allocations
 #include "utils/memory/nimcp_page_cow.h"     // Copy-on-Write for shallow copies

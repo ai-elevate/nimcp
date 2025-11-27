@@ -17,7 +17,7 @@
 #include <cmath>
 #include <cstring>
 
-#include "include/perception/nimcp_visual_cortex.h"
+#include "perception/nimcp_visual_cortex.h"
 #include "core/brain/nimcp_brain.h"
 #include "utils/memory/nimcp_memory.h"
 #include "plasticity/neuromodulators/nimcp_neuromodulators.h"

@@ -12,7 +12,7 @@
 #include <gtest/gtest.h>
 #include <cmath>
 #include <vector>
-#include "include/perception/nimcp_audio_cortex.h"
+#include "perception/nimcp_audio_cortex.h"
 #include "core/brain/nimcp_brain.h"
 #include "plasticity/neuromodulators/nimcp_neuromodulators.h"
 #include "utils/nimcp_test_base.h"

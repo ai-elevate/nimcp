@@ -764,6 +764,95 @@ typedef struct {
     bool complex_oscillation_enabled;     /**< Enable complex phasor tracking (default: false) */
     float complex_phase_update_rate;      /**< Phase increment per step in radians (default: 0.1) */
     float complex_amplitude_decay;        /**< Amplitude decay factor per step (default: 0.95) */
+
+    // === PHASE SC-2: SECURITY-FAULT TOLERANCE INTEGRATION (Tier 0.7) ===
+    /**
+     * Security Monitoring Configuration
+     *
+     * WHAT: Real-time security monitoring with automatic recovery
+     * WHY:  Detect memory corruption and trigger fault tolerance mechanisms
+     * HOW:  Security coverage + fractal verification + fast recovery bridge
+     *
+     * FEATURES:
+     * - Memory region protection with hash verification
+     * - Hierarchical Merkle tree integrity checking
+     * - Automatic recovery on security violations
+     * - Integration with fault tolerance checkpoints
+     *
+     * PERFORMANCE:
+     * - Verification overhead: ~1-5µs per region check
+     * - Memory overhead: ~100 bytes per protected region
+     * - Disabled by default for zero overhead when not needed
+     */
+    bool enable_security_monitoring;      /**< Enable security-fault tolerance integration (default: false) */
+    uint32_t security_check_interval_ms;  /**< Verification cycle interval, 0=manual only (default: 0) */
+
+    // === PHASE SC-4: UNIVERSAL SECURITY INTEGRATION ===
+    /**
+     * Universal security integration framework provides entropy monitoring,
+     * Bayesian trust management, differential privacy, and security events.
+     *
+     * WHAT: Global security layer that monitors all brain subsystems
+     * WHY:  Detect tampering, track trust, preserve privacy
+     * HOW:  Brain registers with security system and reports interactions
+     *
+     * PERFORMANCE:
+     * - Module registration: ~0.1µs per module
+     * - Region check: 0.5-30µs depending on region size
+     * - Trust query: <1µs
+     * - Privacy query: <1µs
+     */
+    bool enable_security_integration;     /**< Enable universal security integration (default: false) */
+    double security_trust_threshold;      /**< Trust threshold for security decisions (default: 0.5) */
+    double security_privacy_budget;       /**< Differential privacy budget (default: 10.0) */
+
+    // === PHASE IS-1: BLOOD-BRAIN BARRIER (Perimeter Defense) ===
+    /**
+     * Blood-Brain Barrier (BBB) Security
+     *
+     * WHAT: Perimeter defense layer protecting the brain from malicious input
+     * WHY:  Prevent code injection, memory corruption, and unauthorized access
+     * HOW:  Four-layer defense: Input Gate, Code Signing, Memory Boundary, Access Control
+     *
+     * BIOLOGICAL MODEL: Like the biological BBB that protects the brain from pathogens
+     * and toxins in the bloodstream, this system validates all input to the neural system.
+     *
+     * PERFORMANCE: ~10-50µs overhead per validation, negligible for most workloads
+     */
+    bool enable_bbb_protection;           /**< Enable Blood-Brain Barrier perimeter defense (default: false) */
+
+    // === PHASE T1: BIOLOGICAL FRAMEWORK ENHANCEMENTS (Training Pipeline) ===
+    /**
+     * Biological Plasticity Mechanisms
+     *
+     * WHAT: Advanced biologically-realistic plasticity for improved learning
+     * WHY:  Provides homeostatic regulation, dendritic computation, and predictive coding
+     * HOW:  Three integrated systems working together for stable, efficient learning
+     *
+     * HOMEOSTATIC PLASTICITY: Maintains neural activity within healthy ranges
+     * - Synaptic scaling: Adjusts all synaptic weights to maintain target firing rate
+     * - Intrinsic plasticity: Modifies neuron excitability for homeostasis
+     *
+     * DENDRITIC NONLINEARITIES: Local computation in dendritic branches
+     * - NMDA dynamics: Voltage-dependent magnesium block, NMDA-dependent LTP
+     * - Compartmental modeling: Each branch computes local activations
+     *
+     * PREDICTIVE CODING: Hierarchical error minimization (Free Energy Principle)
+     * - Prediction units: Generate top-down expectations
+     * - Error units: Compute mismatch between prediction and input
+     * - Precision weighting: Modulates error importance
+     */
+    bool enable_homeostatic_plasticity;   /**< Enable synaptic scaling and intrinsic plasticity (default: false) */
+    float homeostatic_target_rate_hz;     /**< Target firing rate for homeostasis in Hz (default: 5.0) */
+    float homeostatic_tau_ms;             /**< Time constant for scaling in ms (default: 10000.0) */
+
+    bool enable_dendritic_computation;    /**< Enable NMDA dynamics and dendritic nonlinearities (default: false) */
+    uint32_t dendritic_branches;          /**< Number of dendritic branches per neuron (default: 8) */
+    uint32_t dendritic_compartments;      /**< Compartments per branch (default: 5) */
+
+    bool enable_biological_predictive;    /**< Enable hierarchical predictive coding (default: false) */
+    uint32_t predictive_levels;           /**< Number of hierarchy levels (default: 3) */
+    float predictive_learning_rate;       /**< Learning rate for prediction error (default: 0.01) */
 } brain_config_t;
 
 /**

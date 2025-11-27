@@ -58,7 +58,6 @@ add_library(nimcp_middleware STATIC
 target_include_directories(nimcp_middleware PUBLIC
     $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}/include>
     $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}/src>
-    $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}/src/include>
     $<INSTALL_INTERFACE:include>
 )
 

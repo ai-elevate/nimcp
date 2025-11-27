@@ -506,6 +506,25 @@ if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/regression/core/dendrite")
 endif()
 
 # ============================================================================
+# Security Tests (Phase SC-1: Security Coverage Framework)
+# ============================================================================
+
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/unit/security")
+    message(STATUS "Adding security unit tests...")
+    add_subdirectory(unit/security)
+endif()
+
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/integration/security")
+    message(STATUS "Adding security integration tests...")
+    add_subdirectory(integration/security)
+endif()
+
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/regression/security")
+    message(STATUS "Adding security regression tests...")
+    add_subdirectory(regression/security)
+endif()
+
+# ============================================================================
 # Performance Benchmarks
 # ============================================================================
 

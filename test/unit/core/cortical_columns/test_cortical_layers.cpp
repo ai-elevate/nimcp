@@ -27,7 +27,7 @@
 
 extern "C" {
 // Direct include from src directory (internal header)
-#include "../../../../src/core/cortical_columns/nimcp_cortical_layers.h"
+#include "core/cortical_columns/nimcp_cortical_layers.h"
 }
 
 //=============================================================================

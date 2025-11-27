@@ -34,7 +34,7 @@
 
     #include "cognitive/knowledge/nimcp_knowledge.h"
     #include "utils/memory/nimcp_memory.h"
-    #include "include/nimcp.h"
+    #include "nimcp.h"
 
 //=============================================================================
 // Test Fixture

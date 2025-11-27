@@ -17,8 +17,8 @@
  * @version 2.7.0
  */
 
-#include "include/gpu/nimcp_gpu_neuron.h"
-#include "include/gpu/nimcp_execution_mode.h"
+#include "gpu/nimcp_gpu_neuron.h"
+#include "gpu/nimcp_execution_mode.h"
 #include "utils/memory/nimcp_memory.h"
 #include <stdio.h>
 #include <stdlib.h>
