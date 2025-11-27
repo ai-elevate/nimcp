@@ -22,14 +22,30 @@
  * - Event callbacks executed in processing thread context
  */
 
-#include "nimcp_stream.h"
+#include "io/stream/nimcp_stream.h"
 #include <stdatomic.h>
 #include <stdio.h>
 #include <string.h>
 #include <unistd.h>
 #include "utils/memory/nimcp_memory.h"
+#include "utils/memory/nimcp_unified_memory.h"
 #include "utils/thread/nimcp_thread.h"
 #include "utils/time/nimcp_time.h"
+#include "security/nimcp_security_integration.h"
+#include "utils/logging/nimcp_logging.h"
+
+//=============================================================================
+// Global State for Module-Level Security Registration
+//=============================================================================
+
+/**
+ * WHAT: Global security context and module ID for stream module
+ * WHY: Track module-level security registration for all streams
+ * HOW: Set during stream_init(), used by all stream operations
+ */
+static nimcp_sec_integration_t* g_stream_security_ctx = NULL;
+static uint32_t g_stream_security_module_id = 0;
+static bool g_stream_initialized = false;
 
 //=============================================================================
 // Thread-Local Error Handling
@@ -353,6 +369,17 @@ struct brain_stream_struct {
     // Timing for throughput calculation
     uint64_t last_stats_time;
     uint64_t last_stats_count;
+
+    // Memory Integration (Phase IO-1)
+    unified_mem_manager_t memory_manager;  // Unified memory manager
+    bool owns_memory_manager;              // Did we create it internally?
+    uint64_t pool_allocations;             // Allocations from pool
+    uint64_t malloc_allocations;           // Fallback allocations
+
+    // Security Integration (Phase IO-2)
+    nimcp_sec_integration_t* security_ctx; // Security context
+    uint32_t security_region_id;           // Registered memory region
+    bool security_registered;              // Is this stream registered?
 };
 
 //=============================================================================
@@ -540,6 +567,70 @@ brain_stream_t brain_create_stream(brain_t brain, const stream_config_t* config)
         stream->thread_running = true;
     }
 
+    //=========================================================================
+    // PHASE IO-1: Unified Memory Integration
+    //=========================================================================
+    if (config->use_unified_memory) {
+        if (config->memory_manager) {
+            // Use provided memory manager
+            stream->memory_manager = config->memory_manager;
+            stream->owns_memory_manager = false;
+        } else {
+            // Create internal memory manager
+            unified_mem_config_t mem_config = unified_mem_default_config();
+            mem_config.enable_cow = true;
+            mem_config.enable_tracking = true;
+            stream->memory_manager = unified_mem_create(&mem_config);
+            stream->owns_memory_manager = true;
+
+            if (!stream->memory_manager) {
+                stream_set_error("Failed to create unified memory manager");
+                if (stream->thread_running) {
+                    stream->thread_should_stop = true;
+                    nimcp_thread_join(stream->processing_thread, NULL);
+                }
+                ring_buffer_destroy(stream->input_queue);
+                nimcp_mutex_destroy(&stream->decision_lock);
+                nimcp_mutex_destroy(&stream->control_lock);
+                nimcp_free(stream);
+                return NULL;
+            }
+        }
+        LOG_DEBUG("Stream using unified memory with CoW support");
+    }
+
+    //=========================================================================
+    // PHASE IO-2: Security Module Registration
+    //=========================================================================
+    if (config->enable_security) {
+        // Prefer provided security context, fall back to global
+        stream->security_ctx = config->security_context ? config->security_context
+                                                        : g_stream_security_ctx;
+
+        if (stream->security_ctx && g_stream_security_module_id != 0) {
+            // Register stream configuration as a monitored region
+            nimcp_result_t result = nimcp_sec_register_region(
+                stream->security_ctx,
+                g_stream_security_module_id,
+                "stream_config",
+                &stream->config,
+                sizeof(stream_config_t),
+                &stream->security_region_id
+            );
+
+            if (result == NIMCP_SUCCESS) {
+                stream->security_registered = true;
+                LOG_DEBUG("Stream registered with security (region: %u)",
+                         stream->security_region_id);
+
+                // Record successful initialization
+                NIMCP_SEC_SUCCESS(stream->security_ctx, g_stream_security_module_id);
+            } else {
+                LOG_WARNING("Failed to register stream with security");
+            }
+        }
+    }
+
     return stream;
 }
 
@@ -547,6 +638,18 @@ void brain_destroy_stream(brain_stream_t stream)
 {
     if (!stream)
         return;
+
+    //=========================================================================
+    // PHASE IO-2: Unregister from security
+    //=========================================================================
+    if (stream->security_registered && stream->security_ctx) {
+        // Record successful operation before unregistering
+        NIMCP_SEC_SUCCESS(stream->security_ctx, g_stream_security_module_id);
+
+        // Unregister memory region
+        nimcp_sec_unregister_region(stream->security_ctx, stream->security_region_id);
+        LOG_DEBUG("Stream unregistered from security");
+    }
 
     /**
      * WHAT: Stop background thread if running
@@ -556,6 +659,14 @@ void brain_destroy_stream(brain_stream_t stream)
     if (stream->thread_running) {
         stream->thread_should_stop = true;
         nimcp_thread_join(stream->processing_thread, NULL);
+    }
+
+    //=========================================================================
+    // PHASE IO-1: Clean up unified memory
+    //=========================================================================
+    if (stream->memory_manager && stream->owns_memory_manager) {
+        unified_mem_destroy(stream->memory_manager);
+        LOG_DEBUG("Stream unified memory manager destroyed");
     }
 
     // Destroy input queue (frees any pending inputs)
@@ -1002,6 +1113,127 @@ bool brain_stream_clear(brain_stream_t stream)
 
     while (ring_buffer_dequeue(stream->input_queue, &features, &num_features, &timestamp)) {
         nimcp_free(features);
+    }
+
+    return true;
+}
+
+//=============================================================================
+// Module Initialization and Security Registration (Phase IO-2)
+//=============================================================================
+
+/**
+ * WHAT: Initialize Stream module with security registration
+ * WHY: Enable trust tracking and integrity monitoring
+ * HOW: Register as I/O module with security system
+ */
+nimcp_result_t stream_init(nimcp_sec_integration_t* security_ctx)
+{
+    if (g_stream_initialized) {
+        return NIMCP_SUCCESS;  // Already initialized
+    }
+
+    // Store security context
+    g_stream_security_ctx = security_ctx;
+
+    // Register with security module if context provided
+    if (security_ctx) {
+        nimcp_result_t result = nimcp_sec_register_module(
+            security_ctx,
+            "stream",
+            NIMCP_SEC_CAT_IO,
+            &g_stream_security_module_id
+        );
+
+        if (result != NIMCP_SUCCESS) {
+            stream_set_error("Failed to register Stream module with security");
+            return result;
+        }
+
+        LOG_INFO("Stream module registered with security (ID: %u)", g_stream_security_module_id);
+    }
+
+    g_stream_initialized = true;
+    return NIMCP_SUCCESS;
+}
+
+/**
+ * WHAT: Shutdown Stream module
+ * WHY: Unregister from security module
+ * HOW: Call security unregister
+ */
+void stream_shutdown(void)
+{
+    if (!g_stream_initialized) {
+        return;
+    }
+
+    // Unregister from security module
+    if (g_stream_security_ctx && g_stream_security_module_id != 0) {
+        nimcp_sec_unregister_module(g_stream_security_ctx, g_stream_security_module_id);
+        LOG_INFO("Stream module unregistered from security");
+    }
+
+    g_stream_security_ctx = NULL;
+    g_stream_security_module_id = 0;
+    g_stream_initialized = false;
+}
+
+/**
+ * WHAT: Get Stream module's security ID
+ * WHY: Allow external code to reference this module
+ * HOW: Return global module ID
+ */
+uint32_t stream_get_security_module_id(void)
+{
+    return g_stream_security_module_id;
+}
+
+/**
+ * WHAT: Get extended stream statistics
+ * WHY: Monitor memory and security performance
+ * HOW: Aggregate statistics from stream and subsystems
+ */
+bool brain_stream_get_extended_stats(brain_stream_t stream, stream_extended_stats_t* stats)
+{
+    if (!stream || !stats) {
+        return false;
+    }
+
+    memset(stats, 0, sizeof(stream_extended_stats_t));
+
+    // Get base statistics
+    if (!brain_stream_get_stats(stream, &stats->base)) {
+        return false;
+    }
+
+    // Memory statistics
+    stats->using_unified_memory = (stream->memory_manager != NULL);
+    stats->pool_allocations = stream->pool_allocations;
+    stats->malloc_allocations = stream->malloc_allocations;
+    stats->ring_buffer_memory = stream->input_queue ?
+        stream->input_queue->capacity * sizeof(stream_input_t) : 0;
+
+    if (stream->memory_manager) {
+        unified_mem_stats_t mem_stats;
+        if (unified_mem_get_stats(stream->memory_manager, &mem_stats)) {
+            stats->cow_memory_saved = mem_stats.memory_saved_bytes;
+        }
+    }
+
+    // Security statistics
+    stats->security_registered = stream->security_registered;
+    if (stream->security_registered && stream->security_ctx) {
+        stats->security_module_id = g_stream_security_module_id;
+
+        nimcp_sec_module_info_t mod_info;
+        if (nimcp_sec_get_module_info(stream->security_ctx,
+                                      g_stream_security_module_id,
+                                      &mod_info) == NIMCP_SUCCESS) {
+            stats->security_interactions = mod_info.interaction_count;
+            stats->security_anomalies = mod_info.anomaly_count;
+            stats->trust_score = mod_info.trust_score.expected_trust;
+        }
     }
 
     return true;

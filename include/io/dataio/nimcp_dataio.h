@@ -15,10 +15,19 @@
 #include <stdio.h>
 #include "core/brain/nimcp_brain.h"
 #include "common/nimcp_export.h"
+#include "utils/memory/nimcp_unified_memory.h"
+#include "security/nimcp_security_integration.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+//=============================================================================
+// Forward Declarations
+//=============================================================================
+
+// Security and memory integration handles (optional)
+typedef struct dataio_security_context dataio_security_context_t;
 
 /**
  * @brief Data format types
@@ -62,12 +71,19 @@ typedef struct {
     // Options
     bool has_header;         /**< First row is header */
     char delimiter;          /**< CSV delimiter (default ',') */
-    bool normalize_features; /**< Auto-normalize features to 0-1 */
     bool shuffle;            /**< Shuffle rows during reading */
 
     // Streaming
     uint32_t batch_size; /**< Read this many rows at a time */
     uint32_t max_rows;   /**< Max rows to read (0 = all) */
+
+    // Memory Integration (Phase IO-1)
+    bool use_unified_memory;             /**< Use unified memory with CoW for batches */
+    unified_mem_manager_t memory_manager; /**< External memory manager (NULL = create internal) */
+
+    // Security Integration (Phase IO-2)
+    bool enable_security;                        /**< Enable security module integration */
+    nimcp_sec_integration_t* security_context;   /**< External security context (NULL = skip registration) */
 } dataset_config_t;
 
 /**
@@ -283,6 +299,85 @@ dataset_t dataset_create_stream(stream_callback_fn_t callback, void* user_data,
  */
 uint64_t brain_train_from_stream(brain_t brain, dataset_t stream_dataset,
                                  uint32_t duration_seconds);
+
+//=============================================================================
+// Memory and Security Integration API (Phase IO-1, IO-2)
+//=============================================================================
+
+/**
+ * @brief Dataset statistics with memory and security info
+ */
+typedef struct {
+    // Basic statistics
+    uint64_t total_rows_read;       /**< Total rows read */
+    uint64_t total_batches_read;    /**< Total batches read */
+    uint64_t bytes_allocated;       /**< Total memory allocated */
+
+    // Memory pool statistics
+    bool using_unified_memory;      /**< Is unified memory enabled? */
+    size_t cow_memory_saved;        /**< Bytes saved via CoW sharing */
+    size_t pool_allocations;        /**< Allocations from pool */
+    size_t malloc_allocations;      /**< Fallback malloc allocations */
+
+    // Security statistics
+    bool security_registered;       /**< Is security module registered? */
+    uint32_t security_module_id;    /**< Security module ID */
+    uint64_t security_interactions; /**< Total security interactions */
+    uint64_t security_anomalies;    /**< Security anomalies detected */
+    double trust_score;             /**< Current trust score (0.0-1.0) */
+} dataset_stats_t;
+
+/**
+ * @brief Get dataset statistics
+ *
+ * @param dataset Dataset handle
+ * @param stats Output statistics structure
+ * @return true on success, false on error
+ */
+bool dataset_get_stats(dataset_t dataset, dataset_stats_t* stats);
+
+/**
+ * @brief Get default dataset configuration
+ *
+ * Returns sensible defaults with memory and security integration disabled.
+ * Users can enable these features by setting the appropriate flags.
+ *
+ * @return Default configuration
+ */
+dataset_config_t dataset_default_config(void);
+
+/**
+ * @brief Initialize DataIO module with security registration
+ *
+ * Call this once at application startup to register the DataIO module
+ * with the security system. This enables trust tracking and integrity
+ * monitoring for all subsequent dataset operations.
+ *
+ * @param security_ctx Security integration context (NULL to skip)
+ * @return NIMCP_SUCCESS or error code
+ */
+nimcp_result_t dataio_init(nimcp_sec_integration_t* security_ctx);
+
+/**
+ * @brief Shutdown DataIO module
+ *
+ * Unregisters from security module and cleans up global state.
+ */
+void dataio_shutdown(void);
+
+/**
+ * @brief Get the DataIO module's security ID
+ *
+ * @return Security module ID (0 if not registered)
+ */
+uint32_t dataio_get_security_module_id(void);
+
+/**
+ * @brief Get last error message for DataIO operations
+ *
+ * @return Thread-local error string
+ */
+const char* dataio_get_last_error(void);
 
 #ifdef __cplusplus
 }

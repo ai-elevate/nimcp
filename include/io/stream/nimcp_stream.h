@@ -62,6 +62,8 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include "core/brain/nimcp_brain.h"
+#include "utils/memory/nimcp_unified_memory.h"
+#include "security/nimcp_security_integration.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -177,6 +179,14 @@ typedef struct {
     // Performance tuning
     bool enable_decision_caching;    /**< Cache decisions for fast retrieval? */
     bool enable_salience_evaluation; /**< Compute salience scores? */
+
+    // Memory Integration (Phase IO-1)
+    bool use_unified_memory;              /**< Use unified memory for ring buffer */
+    unified_mem_manager_t memory_manager; /**< External memory manager (NULL = create internal) */
+
+    // Security Integration (Phase IO-2)
+    bool enable_security;                       /**< Enable security module integration */
+    nimcp_sec_integration_t* security_context;  /**< External security context (NULL = use global) */
 
 } stream_config_t;
 
@@ -423,6 +433,66 @@ bool brain_stream_clear(brain_stream_t stream);
  * @return Error message string (valid until next stream call)
  */
 const char* brain_stream_get_last_error(void);
+
+//=============================================================================
+// Memory and Security Integration API (Phase IO-1, IO-2)
+//=============================================================================
+
+/**
+ * @brief Extended stream statistics with memory and security info
+ */
+typedef struct {
+    // Include base statistics
+    stream_stats_t base;
+
+    // Memory pool statistics
+    bool using_unified_memory;      /**< Is unified memory enabled? */
+    size_t cow_memory_saved;        /**< Bytes saved via CoW sharing */
+    size_t pool_allocations;        /**< Allocations from pool */
+    size_t malloc_allocations;      /**< Fallback malloc allocations */
+    size_t ring_buffer_memory;      /**< Ring buffer memory usage */
+
+    // Security statistics
+    bool security_registered;       /**< Is security module registered? */
+    uint32_t security_module_id;    /**< Security module ID */
+    uint64_t security_interactions; /**< Total security interactions */
+    uint64_t security_anomalies;    /**< Security anomalies detected */
+    double trust_score;             /**< Current trust score (0.0-1.0) */
+} stream_extended_stats_t;
+
+/**
+ * @brief Get extended stream statistics including memory and security
+ *
+ * @param stream Stream handle
+ * @param stats Output statistics structure
+ * @return true on success, false on error
+ */
+bool brain_stream_get_extended_stats(brain_stream_t stream, stream_extended_stats_t* stats);
+
+/**
+ * @brief Initialize Stream module with security registration
+ *
+ * Call this once at application startup to register the Stream module
+ * with the security system. This enables trust tracking for all streams.
+ *
+ * @param security_ctx Security integration context (NULL to skip)
+ * @return NIMCP_SUCCESS or error code
+ */
+nimcp_result_t stream_init(nimcp_sec_integration_t* security_ctx);
+
+/**
+ * @brief Shutdown Stream module
+ *
+ * Unregisters from security module and cleans up global state.
+ */
+void stream_shutdown(void);
+
+/**
+ * @brief Get the Stream module's security ID
+ *
+ * @return Security module ID (0 if not registered)
+ */
+uint32_t stream_get_security_module_id(void);
 
 #ifdef __cplusplus
 }

@@ -15,7 +15,7 @@
  * THREAD SAFETY: Thread-local error storage, mutex-protected batch reads
  */
 
-#include "nimcp_dataio.h"
+#include "io/dataio/nimcp_dataio.h"
 #include <errno.h>
 #include <math.h>
 #include <stdarg.h>
@@ -26,9 +26,25 @@
 #include <unistd.h>
 #include "core/brain/nimcp_brain.h"
 #include "utils/memory/nimcp_memory.h"
+#include "utils/memory/nimcp_unified_memory.h"
 #include "utils/containers/nimcp_queue.h"
 #include "utils/thread/nimcp_thread.h"
 #include "utils/validation/nimcp_validate.h"
+#include "security/nimcp_security_integration.h"
+#include "utils/logging/nimcp_logging.h"
+
+//=============================================================================
+// Global State for Module-Level Security Registration
+//=============================================================================
+
+/**
+ * WHAT: Global security context and module ID
+ * WHY: Track module-level security registration for all datasets
+ * HOW: Set during dataio_init(), used by all dataset operations
+ */
+static nimcp_sec_integration_t* g_dataio_security_ctx = NULL;
+static uint32_t g_dataio_security_module_id = 0;
+static bool g_dataio_initialized = false;
 
 //=============================================================================
 // Thread-Local Error Handling (same pattern as replication)
@@ -104,6 +120,21 @@ struct dataset_struct {
     void* source_context;              // Backend-specific context
     nimcp_mutex_t read_lock;         // Thread-safe batch reads
     uint64_t rows_read;                // Current position
+
+    // Memory Integration (Phase IO-1)
+    unified_mem_manager_t memory_manager;    // Unified memory manager
+    bool owns_memory_manager;                // Did we create it internally?
+
+    // Security Integration (Phase IO-2)
+    nimcp_sec_integration_t* security_ctx;   // Security context
+    uint32_t security_region_id;             // Registered memory region
+    bool security_registered;                // Is this dataset registered?
+
+    // Statistics
+    uint64_t batches_read;                   // Total batches
+    uint64_t bytes_allocated;                // Total bytes allocated
+    uint64_t pool_allocations;               // Allocations from pool
+    uint64_t malloc_allocations;             // Fallback allocations
 };
 
 //=============================================================================
@@ -121,6 +152,7 @@ typedef struct {
     uint32_t num_features;   // Number of feature columns (for batch allocation)
     uint64_t total_rows;     // Total rows (if known)
     long file_start_offset;  // After header (for reset)
+    char delimiter;          // Field delimiter (comma, tab, etc.)
 } csv_context_t;
 
 /**
@@ -153,6 +185,7 @@ static bool csv_initialize(void** context, const dataset_config_t* config)
 
     csv_ctx->num_columns = config->num_feature_columns + config->num_label_columns;
     csv_ctx->num_features = config->num_feature_columns;
+    csv_ctx->delimiter = config->delimiter;
 
     // WHAT: Parse header row if present
     // WHY: Extract column names for metadata
@@ -165,15 +198,18 @@ static bool csv_initialize(void** context, const dataset_config_t* config)
             return false;
         }
 
+        // Build delimiter string using configured delimiter
+        char delim_str[4] = {config->delimiter, '\r', '\n', '\0'};
+
         // Parse header columns
         csv_ctx->column_names = nimcp_calloc(csv_ctx->num_columns, sizeof(char*));
         char* saveptr = NULL;  // Thread-safe strtok_r context
-        char* token = strtok_r(line, ",\r\n", &saveptr);
+        char* token = strtok_r(line, delim_str, &saveptr);
         uint32_t col_idx = 0;
 
         while (token && col_idx < csv_ctx->num_columns) {
             csv_ctx->column_names[col_idx] = nimcp_strdup(token);
-            token = strtok_r(NULL, ",\r\n", &saveptr);
+            token = strtok_r(NULL, delim_str, &saveptr);
             col_idx++;
         }
     }
@@ -307,8 +343,8 @@ static bool csv_next_batch(void* context, data_batch_t* batch)
         batch->features[batch->num_samples] = nimcp_calloc(num_features, sizeof(float));
         batch->labels[batch->num_samples] = nimcp_calloc(64, sizeof(char));
 
-        // Parse line
-        if (!csv_parse_line(line, ',', num_features, 1, batch->features[batch->num_samples],
+        // Parse line using configured delimiter
+        if (!csv_parse_line(line, csv_ctx->delimiter, num_features, 1, batch->features[batch->num_samples],
                             batch->labels[batch->num_samples], 64)) {
             // Skip invalid lines - free immediately and don't increment
             nimcp_free(batch->features[batch->num_samples]);
@@ -556,6 +592,9 @@ static data_source_strategy_t* select_backend_strategy(data_source_t source, dat
  * WHAT: Open dataset
  * WHY: Initialize data source for reading
  * HOW: Select backend, initialize, create handle
+ *
+ * PHASE IO-1: Unified memory integration
+ * PHASE IO-2: Security module registration
  */
 dataset_t dataset_open(const dataset_config_t* config)
 {
@@ -592,6 +631,65 @@ dataset_t dataset_open(const dataset_config_t* config)
     // Initialize mutex for thread-safe reads
     nimcp_mutex_init(&dataset->read_lock, NULL);
 
+    //=========================================================================
+    // PHASE IO-1: Unified Memory Integration
+    //=========================================================================
+    if (config->use_unified_memory) {
+        if (config->memory_manager) {
+            // Use provided memory manager
+            dataset->memory_manager = config->memory_manager;
+            dataset->owns_memory_manager = false;
+        } else {
+            // Create internal memory manager
+            unified_mem_config_t mem_config = unified_mem_default_config();
+            mem_config.enable_cow = true;
+            mem_config.enable_tracking = true;
+            dataset->memory_manager = unified_mem_create(&mem_config);
+            dataset->owns_memory_manager = true;
+
+            if (!dataset->memory_manager) {
+                dataio_set_error("Failed to create unified memory manager");
+                strategy->shutdown(dataset->source_context);
+                nimcp_mutex_destroy(&dataset->read_lock);
+                nimcp_free(dataset);
+                return NULL;
+            }
+        }
+        LOG_DEBUG("Dataset using unified memory with CoW support");
+    }
+
+    //=========================================================================
+    // PHASE IO-2: Security Module Registration
+    //=========================================================================
+    if (config->enable_security) {
+        // Prefer provided security context, fall back to global
+        dataset->security_ctx = config->security_context ? config->security_context
+                                                         : g_dataio_security_ctx;
+
+        if (dataset->security_ctx && g_dataio_security_module_id != 0) {
+            // Register dataset configuration as a monitored region
+            nimcp_result_t result = nimcp_sec_register_region(
+                dataset->security_ctx,
+                g_dataio_security_module_id,
+                "dataset_config",
+                &dataset->config,
+                sizeof(dataset_config_t),
+                &dataset->security_region_id
+            );
+
+            if (result == NIMCP_SUCCESS) {
+                dataset->security_registered = true;
+                LOG_DEBUG("Dataset registered with security (region: %u)",
+                         dataset->security_region_id);
+
+                // Record successful initialization
+                NIMCP_SEC_SUCCESS(dataset->security_ctx, g_dataio_security_module_id);
+            } else {
+                LOG_WARNING("Failed to register dataset with security");
+            }
+        }
+    }
+
     return dataset;
 }
 
@@ -599,11 +697,34 @@ dataset_t dataset_open(const dataset_config_t* config)
  * WHAT: Close dataset
  * WHY: Clean up resources
  * HOW: Call backend shutdown, free memory
+ *
+ * PHASE IO-1: Clean up unified memory
+ * PHASE IO-2: Unregister from security
  */
 void dataset_close(dataset_t dataset)
 {
     if (!dataset)
         return;
+
+    //=========================================================================
+    // PHASE IO-2: Unregister from security
+    //=========================================================================
+    if (dataset->security_registered && dataset->security_ctx) {
+        // Record successful operation before unregistering
+        NIMCP_SEC_SUCCESS(dataset->security_ctx, g_dataio_security_module_id);
+
+        // Unregister memory region
+        nimcp_sec_unregister_region(dataset->security_ctx, dataset->security_region_id);
+        LOG_DEBUG("Dataset unregistered from security");
+    }
+
+    //=========================================================================
+    // PHASE IO-1: Clean up unified memory
+    //=========================================================================
+    if (dataset->memory_manager && dataset->owns_memory_manager) {
+        unified_mem_destroy(dataset->memory_manager);
+        LOG_DEBUG("Dataset unified memory manager destroyed");
+    }
 
     // Shutdown backend
     if (dataset->strategy && dataset->strategy->shutdown) {
@@ -637,7 +758,10 @@ bool dataset_next_batch(dataset_t dataset, data_batch_t* batch)
     // Thread-safe batch read
     nimcp_mutex_lock(&dataset->read_lock);
     bool result = dataset->strategy->next_batch(dataset->source_context, batch);
-    dataset->rows_read += batch->num_samples;
+    if (result) {
+        dataset->rows_read += batch->num_samples;
+        dataset->batches_read++;
+    }
     nimcp_mutex_unlock(&dataset->read_lock);
 
     return result;
@@ -1199,7 +1323,6 @@ dataset_t dataset_load_csv(const char* filepath, uint32_t num_feature_columns,
                                .num_label_columns = num_label_columns,
                                .has_header = has_header,
                                .delimiter = ',',
-                               .normalize_features = false,
                                .shuffle = false,
                                .batch_size = 1000,
                                .max_rows = 0};
@@ -1360,4 +1483,153 @@ uint64_t brain_train_from_stream(brain_t brain, dataset_t stream_dataset, uint32
     }
 
     return samples_processed;
+}
+
+//=============================================================================
+// Module Initialization and Security Registration (Phase IO-2)
+//=============================================================================
+
+/**
+ * WHAT: Initialize DataIO module with security registration
+ * WHY: Enable trust tracking and integrity monitoring
+ * HOW: Register as I/O module with security system
+ */
+nimcp_result_t dataio_init(nimcp_sec_integration_t* security_ctx)
+{
+    if (g_dataio_initialized) {
+        return NIMCP_SUCCESS;  // Already initialized
+    }
+
+    // Store security context
+    g_dataio_security_ctx = security_ctx;
+
+    // Register with security module if context provided
+    if (security_ctx) {
+        nimcp_result_t result = nimcp_sec_register_module(
+            security_ctx,
+            "dataio",
+            NIMCP_SEC_CAT_IO,
+            &g_dataio_security_module_id
+        );
+
+        if (result != NIMCP_SUCCESS) {
+            dataio_set_error("Failed to register DataIO module with security");
+            return result;
+        }
+
+        LOG_INFO("DataIO module registered with security (ID: %u)", g_dataio_security_module_id);
+    }
+
+    g_dataio_initialized = true;
+    return NIMCP_SUCCESS;
+}
+
+/**
+ * WHAT: Shutdown DataIO module
+ * WHY: Unregister from security module
+ * HOW: Call security unregister
+ */
+void dataio_shutdown(void)
+{
+    if (!g_dataio_initialized) {
+        return;
+    }
+
+    // Unregister from security module
+    if (g_dataio_security_ctx && g_dataio_security_module_id != 0) {
+        nimcp_sec_unregister_module(g_dataio_security_ctx, g_dataio_security_module_id);
+        LOG_INFO("DataIO module unregistered from security");
+    }
+
+    g_dataio_security_ctx = NULL;
+    g_dataio_security_module_id = 0;
+    g_dataio_initialized = false;
+}
+
+/**
+ * WHAT: Get DataIO module's security ID
+ * WHY: Allow external code to reference this module
+ * HOW: Return global module ID
+ */
+uint32_t dataio_get_security_module_id(void)
+{
+    return g_dataio_security_module_id;
+}
+
+/**
+ * WHAT: Get default dataset configuration
+ * WHY: Provide sensible defaults
+ * HOW: Return pre-initialized struct
+ */
+dataset_config_t dataset_default_config(void)
+{
+    dataset_config_t config = {
+        .format = DATA_FORMAT_CSV,
+        .source = DATA_SOURCE_FILE,
+        .location = {0},
+        .num_feature_columns = 0,
+        .num_label_columns = 1,
+        .feature_names = NULL,
+        .label_names = NULL,
+        .has_header = true,
+        .delimiter = ',',
+        .shuffle = false,
+        .batch_size = 1000,
+        .max_rows = 0,
+        // Memory integration - disabled by default
+        .use_unified_memory = false,
+        .memory_manager = NULL,
+        // Security integration - disabled by default
+        .enable_security = false,
+        .security_context = NULL
+    };
+    return config;
+}
+
+/**
+ * WHAT: Get dataset statistics
+ * WHY: Monitor memory and security performance
+ * HOW: Aggregate statistics from dataset and subsystems
+ */
+bool dataset_get_stats(dataset_t dataset, dataset_stats_t* stats)
+{
+    if (!dataset || !stats) {
+        return false;
+    }
+
+    memset(stats, 0, sizeof(dataset_stats_t));
+
+    // Basic statistics
+    stats->total_rows_read = dataset->rows_read;
+    stats->total_batches_read = dataset->batches_read;
+    stats->bytes_allocated = dataset->bytes_allocated;
+
+    // Memory statistics
+    stats->using_unified_memory = (dataset->memory_manager != NULL);
+    stats->pool_allocations = dataset->pool_allocations;
+    stats->malloc_allocations = dataset->malloc_allocations;
+
+    if (dataset->memory_manager) {
+        unified_mem_stats_t mem_stats;
+        if (unified_mem_get_stats(dataset->memory_manager, &mem_stats)) {
+            stats->cow_memory_saved = mem_stats.memory_saved_bytes;
+        }
+    }
+
+    // Security statistics
+    stats->security_registered = dataset->security_registered;
+    if (dataset->security_registered && dataset->security_ctx) {
+        stats->security_module_id = g_dataio_security_module_id;
+
+        nimcp_sec_module_info_t mod_info;
+        if (nimcp_sec_get_module_info(dataset->security_ctx,
+                                      g_dataio_security_module_id,
+                                      &mod_info) == NIMCP_SUCCESS) {
+            stats->security_interactions = mod_info.interaction_count;
+            stats->security_anomalies = mod_info.anomaly_count;
+            stats->trust_score = mod_info.trust_score.expected_trust;
+        }
+    }
+
+    return true;
 }

@@ -1141,3 +1141,222 @@ TEST_F(StreamTest, AverageProcessingTimeIsTracked) {
     EXPECT_GT(stats.avg_processing_time_ms, 0.0f);
     EXPECT_LT(stats.avg_processing_time_ms, 1000.0f);  // Should be under 1 second
 }
+
+//=============================================================================
+// Phase IO-1: Memory Integration Tests
+//=============================================================================
+
+TEST_F(StreamTest, StreamWithUnifiedMemory) {
+    // WHAT: Stream with unified memory enabled
+    // WHY:  Verify memory integration works correctly
+
+    config.mode = STREAM_MODE_SYNCHRONOUS;
+    config.use_unified_memory = true;  // Enable memory integration
+
+    stream = brain_create_stream(brain, &config);
+    ASSERT_NE(stream, nullptr);
+
+    // Feed some inputs
+    uint64_t timestamp = nimcp_time_monotonic_ns();
+    for (int i = 0; i < 5; i++) {
+        brain_stream_feed(stream, test_features, NUM_FEATURES, timestamp + i);
+    }
+
+    // Get extended statistics
+    stream_extended_stats_t ext_stats;
+    bool result = brain_stream_get_extended_stats(stream, &ext_stats);
+    EXPECT_TRUE(result);
+    EXPECT_TRUE(ext_stats.using_unified_memory);
+}
+
+TEST_F(StreamTest, StreamExtendedStatsBasic) {
+    // WHAT: Extended statistics without integration
+    // WHY:  Verify stats work without memory/security
+
+    config.mode = STREAM_MODE_SYNCHRONOUS;
+
+    stream = brain_create_stream(brain, &config);
+    ASSERT_NE(stream, nullptr);
+
+    // Feed some inputs
+    uint64_t timestamp = nimcp_time_monotonic_ns();
+    brain_stream_feed(stream, test_features, NUM_FEATURES, timestamp);
+
+    // Get extended statistics
+    stream_extended_stats_t ext_stats;
+    bool result = brain_stream_get_extended_stats(stream, &ext_stats);
+    EXPECT_TRUE(result);
+
+    // Base stats should be populated
+    EXPECT_GE(ext_stats.base.inputs_processed, 0u);
+
+    // Memory integration should be disabled
+    EXPECT_FALSE(ext_stats.using_unified_memory);
+
+    // Security integration should be disabled
+    EXPECT_FALSE(ext_stats.security_registered);
+}
+
+TEST_F(StreamTest, StreamExtendedStatsNullParams) {
+    // WHAT: Extended stats with NULL parameters
+    // WHY:  Verify error handling
+
+    stream_extended_stats_t ext_stats;
+
+    // NULL stream
+    EXPECT_FALSE(brain_stream_get_extended_stats(nullptr, &ext_stats));
+
+    // NULL stats
+    config.mode = STREAM_MODE_SYNCHRONOUS;
+    stream = brain_create_stream(brain, &config);
+    ASSERT_NE(stream, nullptr);
+    EXPECT_FALSE(brain_stream_get_extended_stats(stream, nullptr));
+}
+
+TEST_F(StreamTest, ExternalMemoryManager) {
+    // WHAT: Stream with external memory manager
+    // WHY:  Verify user-provided memory manager works
+
+    // Create external memory manager
+    unified_mem_config_t mem_config = unified_mem_default_config();
+    mem_config.enable_cow = true;
+    unified_mem_manager_t ext_manager = unified_mem_create(&mem_config);
+    ASSERT_NE(ext_manager, nullptr);
+
+    config.mode = STREAM_MODE_SYNCHRONOUS;
+    config.use_unified_memory = true;
+    config.memory_manager = ext_manager;
+
+    stream = brain_create_stream(brain, &config);
+    ASSERT_NE(stream, nullptr);
+
+    // Feed a few inputs
+    uint64_t timestamp = nimcp_time_monotonic_ns();
+    brain_stream_feed(stream, test_features, NUM_FEATURES, timestamp);
+
+    // Verify external manager is used
+    stream_extended_stats_t ext_stats;
+    EXPECT_TRUE(brain_stream_get_extended_stats(stream, &ext_stats));
+    EXPECT_TRUE(ext_stats.using_unified_memory);
+
+    // Clean up - destroy stream first
+    brain_destroy_stream(stream);
+    stream = nullptr;
+
+    // External manager should still be valid
+    unified_mem_destroy(ext_manager);
+}
+
+//=============================================================================
+// Phase IO-2: Security Integration Tests
+//=============================================================================
+
+TEST_F(StreamTest, ModuleInitShutdown) {
+    // WHAT: Module initialization and shutdown
+    // WHY:  Verify module lifecycle management
+
+    // Initialize without security context
+    nimcp_result_t result = stream_init(nullptr);
+    EXPECT_EQ(result, NIMCP_SUCCESS);
+
+    // Get module ID (should be 0 without security)
+    uint32_t module_id = stream_get_security_module_id();
+    EXPECT_EQ(module_id, 0u);
+
+    // Shutdown
+    stream_shutdown();
+
+    // Re-initialization should work
+    result = stream_init(nullptr);
+    EXPECT_EQ(result, NIMCP_SUCCESS);
+    stream_shutdown();
+}
+
+TEST_F(StreamTest, DoubleModuleInit) {
+    // WHAT: Double initialization
+    // WHY:  Verify idempotent initialization
+
+    nimcp_result_t result = stream_init(nullptr);
+    EXPECT_EQ(result, NIMCP_SUCCESS);
+
+    // Second init should succeed (no-op)
+    result = stream_init(nullptr);
+    EXPECT_EQ(result, NIMCP_SUCCESS);
+
+    stream_shutdown();
+}
+
+TEST_F(StreamTest, ShutdownWithoutInit) {
+    // WHAT: Shutdown without init
+    // WHY:  Verify safe shutdown when not initialized
+
+    // Should not crash
+    EXPECT_NO_THROW({ stream_shutdown(); });
+}
+
+TEST_F(StreamTest, StreamSecurityNoContext) {
+    // WHAT: Stream with security enabled but no context
+    // WHY:  Verify graceful handling when security not available
+
+    config.mode = STREAM_MODE_SYNCHRONOUS;
+    config.enable_security = true;  // Enable but no context
+
+    stream = brain_create_stream(brain, &config);
+    ASSERT_NE(stream, nullptr);
+
+    // Should work but security not registered
+    stream_extended_stats_t ext_stats;
+    EXPECT_TRUE(brain_stream_get_extended_stats(stream, &ext_stats));
+    EXPECT_FALSE(ext_stats.security_registered);
+}
+
+//=============================================================================
+// Combined Memory and Security Tests
+//=============================================================================
+
+TEST_F(StreamTest, FullIntegrationStack) {
+    // WHAT: Stream with both memory and security enabled
+    // WHY:  Verify full integration stack works together
+
+    config.mode = STREAM_MODE_SYNCHRONOUS;
+    config.use_unified_memory = true;
+    config.enable_security = true;
+
+    stream = brain_create_stream(brain, &config);
+    ASSERT_NE(stream, nullptr);
+
+    // Feed many inputs
+    uint64_t timestamp = nimcp_time_monotonic_ns();
+    for (int i = 0; i < 50; i++) {
+        brain_stream_feed(stream, test_features, NUM_FEATURES, timestamp + i * 1000);
+    }
+
+    // Verify stats
+    stream_extended_stats_t ext_stats;
+    EXPECT_TRUE(brain_stream_get_extended_stats(stream, &ext_stats));
+    EXPECT_TRUE(ext_stats.using_unified_memory);
+    EXPECT_GE(ext_stats.base.inputs_processed, 50u);
+}
+
+TEST_F(StreamTest, StreamMemoryCleanupOnDestroy) {
+    // WHAT: Memory is properly cleaned up on destroy
+    // WHY:  Verify no memory leaks with integration
+
+    config.mode = STREAM_MODE_SYNCHRONOUS;
+    config.use_unified_memory = true;
+
+    // Create and destroy multiple times
+    for (int i = 0; i < 10; i++) {
+        brain_stream_t s = brain_create_stream(brain, &config);
+        ASSERT_NE(s, nullptr);
+
+        // Feed some data
+        uint64_t timestamp = nimcp_time_monotonic_ns();
+        brain_stream_feed(s, test_features, NUM_FEATURES, timestamp);
+
+        brain_destroy_stream(s);
+    }
+
+    // If no crashes or memory issues, test passes
+    SUCCEED();
+}

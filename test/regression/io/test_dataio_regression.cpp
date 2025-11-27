@@ -142,7 +142,6 @@ TEST_F(DataIORegressionTest, DatasetConfigStructStable) {
     config.num_label_columns = 1;
     config.has_header = true;
     config.delimiter = ',';
-    config.normalize_features = true;
     config.shuffle = false;
     config.batch_size = 32;
     config.max_rows = 1000;
@@ -431,47 +430,6 @@ TEST_F(DataIORegressionTest, BatchProcessingSpeed) {
 // Data Integrity Tests
 //=============================================================================
 
-TEST_F(DataIORegressionTest, FeatureNormalization) {
-    // WHAT: Verify feature normalization works correctly
-    // WHY:  Data preprocessing must be accurate
-    // REGRESSION: Bug fix - normalization caused overflow (Issue #7890)
-
-    dataset_config_t config;
-    memset(&config, 0, sizeof(config));
-    config.format = DATA_FORMAT_CSV;
-    config.source = DATA_SOURCE_FILE;
-    strcpy(config.location, test_csv_file.c_str());
-    config.num_feature_columns = 3;
-    config.num_label_columns = 1;
-    config.has_header = true;
-    config.normalize_features = true;
-
-    dataset_t dataset = dataset_open(&config);
-
-    if (dataset == nullptr) {
-        GTEST_SKIP() << "Dataset opening not implemented";
-    }
-
-    // Read batch
-    data_batch_t batch;
-    memset(&batch, 0, sizeof(batch));
-    if (!dataset_next_batch(dataset, &batch)) {
-        dataset_close(dataset);
-        GTEST_SKIP() << "Batch reading not implemented";
-    }
-
-    // Verify features are normalized (0-1 range)
-    for (uint32_t i = 0; i < batch.num_samples; i++) {
-        for (uint32_t j = 0; j < 3; j++) {
-            EXPECT_GE(batch.features[i][j], 0.0f);
-            EXPECT_LE(batch.features[i][j], 1.0f);
-        }
-    }
-
-    dataset_free_batch(&batch);
-    dataset_close(dataset);
-}
-
 TEST_F(DataIORegressionTest, LabelPreservation) {
     // WHAT: Verify labels are correctly preserved
     // WHY:  Data integrity - labels must not be corrupted
@@ -614,14 +572,210 @@ TEST_F(DataIORegressionTest, BrainTrainingIntegration) {
 }
 
 //=============================================================================
+// Phase IO-1: Memory Integration Regression Tests
+//=============================================================================
+
+TEST_F(DataIORegressionTest, DefaultConfigHasMemoryDisabled) {
+    // WHAT: Verify default config has memory integration disabled
+    // WHY:  Backwards compatibility - existing code should work unchanged
+    // REGRESSION: Default behavior must not change
+
+    dataset_config_t config = dataset_default_config();
+
+    // Memory integration disabled by default
+    EXPECT_FALSE(config.use_unified_memory);
+    EXPECT_EQ(config.memory_manager, nullptr);
+
+    // Security integration disabled by default
+    EXPECT_FALSE(config.enable_security);
+    EXPECT_EQ(config.security_context, nullptr);
+}
+
+TEST_F(DataIORegressionTest, MemoryIntegrationDoesNotBreakExistingAPI) {
+    // WHAT: Existing API still works with memory integration enabled
+    // WHY:  Backwards compatibility
+    // REGRESSION: API must not change behavior
+
+    dataset_config_t config = dataset_default_config();
+    strncpy(config.location, test_csv_file.c_str(), sizeof(config.location) - 1);
+    config.num_feature_columns = 3;
+    config.num_label_columns = 1;
+    config.use_unified_memory = true;  // Enable new feature
+
+    dataset_t dataset = dataset_open(&config);
+    ASSERT_NE(dataset, nullptr);
+
+    // Existing API should work exactly the same
+    data_batch_t batch;
+    memset(&batch, 0, sizeof(batch));
+    bool result = dataset_next_batch(dataset, &batch);
+    EXPECT_TRUE(result);
+
+    if (batch.num_samples > 0) {
+        EXPECT_NE(batch.features, nullptr);
+        EXPECT_NE(batch.labels, nullptr);
+    }
+
+    dataset_free_batch(&batch);
+    dataset_close(dataset);
+}
+
+TEST_F(DataIORegressionTest, StatsAPIBackwardsCompatible) {
+    // WHAT: New stats API is compatible with existing code
+    // WHY:  Backwards compatibility
+    // REGRESSION: Stats structure must be additive
+
+    dataset_config_t config = dataset_default_config();
+    strncpy(config.location, test_csv_file.c_str(), sizeof(config.location) - 1);
+    config.num_feature_columns = 3;
+    config.num_label_columns = 1;
+
+    dataset_t dataset = dataset_open(&config);
+    ASSERT_NE(dataset, nullptr);
+
+    // Read data
+    data_batch_t batch;
+    dataset_next_batch(dataset, &batch);
+    dataset_free_batch(&batch);
+
+    // Get new stats (must work even without integration enabled)
+    dataset_stats_t stats;
+    bool result = dataset_get_stats(dataset, &stats);
+    EXPECT_TRUE(result);
+
+    // Basic fields should work
+    EXPECT_GT(stats.total_rows_read, 0u);
+
+    dataset_close(dataset);
+}
+
+//=============================================================================
+// Phase IO-2: Security Integration Regression Tests
+//=============================================================================
+
+TEST_F(DataIORegressionTest, ModuleInitIdempotent) {
+    // WHAT: Module init/shutdown is idempotent
+    // WHY:  Multiple components may call init
+    // REGRESSION: Must not crash on multiple calls
+
+    // Initialize multiple times
+    for (int i = 0; i < 5; i++) {
+        nimcp_result_t result = dataio_init(nullptr);
+        EXPECT_EQ(result, NIMCP_SUCCESS);
+    }
+
+    // Shutdown multiple times
+    for (int i = 0; i < 5; i++) {
+        dataio_shutdown();
+    }
+
+    // Should be able to init again
+    nimcp_result_t result = dataio_init(nullptr);
+    EXPECT_EQ(result, NIMCP_SUCCESS);
+    dataio_shutdown();
+}
+
+TEST_F(DataIORegressionTest, SecurityNoContextStillWorks) {
+    // WHAT: Security enabled without context still works
+    // WHY:  Graceful degradation
+    // REGRESSION: Must not fail if security context unavailable
+
+    dataset_config_t config = dataset_default_config();
+    strncpy(config.location, test_csv_file.c_str(), sizeof(config.location) - 1);
+    config.num_feature_columns = 3;
+    config.num_label_columns = 1;
+    config.enable_security = true;  // Enable without context
+
+    dataset_t dataset = dataset_open(&config);
+    ASSERT_NE(dataset, nullptr);
+
+    // Should work normally
+    data_batch_t batch;
+    bool result = dataset_next_batch(dataset, &batch);
+    EXPECT_TRUE(result);
+    dataset_free_batch(&batch);
+
+    dataset_close(dataset);
+}
+
+//=============================================================================
+// Performance Regression with Integration
+//=============================================================================
+
+TEST_F(DataIORegressionTest, MemoryIntegrationNoMajorSlowdown) {
+    // WHAT: Memory integration doesn't cause major slowdown
+    // WHY:  Performance regression prevention
+    // REGRESSION: < 2x slowdown with integration enabled
+
+    // Create larger test file
+    std::ofstream file(test_csv_file);
+    file << "f1,f2,f3,label\n";
+    for (int i = 0; i < 1000; i++) {
+        file << i << "," << i*2 << "," << i*3 << ",class" << (i%3) << "\n";
+    }
+    file.close();
+
+    // Time without integration
+    auto start1 = std::chrono::high_resolution_clock::now();
+    {
+        dataset_config_t config = dataset_default_config();
+        strncpy(config.location, test_csv_file.c_str(), sizeof(config.location) - 1);
+        config.num_feature_columns = 3;
+        config.num_label_columns = 1;
+
+        dataset_t dataset = dataset_open(&config);
+        if (dataset) {
+            data_batch_t batch;
+            while (dataset_next_batch(dataset, &batch)) {
+                dataset_free_batch(&batch);
+                if (batch.end_of_dataset) break;
+            }
+            dataset_close(dataset);
+        }
+    }
+    auto end1 = std::chrono::high_resolution_clock::now();
+    auto dur1 = std::chrono::duration_cast<std::chrono::microseconds>(end1 - start1);
+
+    // Time with integration
+    auto start2 = std::chrono::high_resolution_clock::now();
+    {
+        dataset_config_t config = dataset_default_config();
+        strncpy(config.location, test_csv_file.c_str(), sizeof(config.location) - 1);
+        config.num_feature_columns = 3;
+        config.num_label_columns = 1;
+        config.use_unified_memory = true;
+
+        dataset_t dataset = dataset_open(&config);
+        if (dataset) {
+            data_batch_t batch;
+            while (dataset_next_batch(dataset, &batch)) {
+                dataset_free_batch(&batch);
+                if (batch.end_of_dataset) break;
+            }
+            dataset_close(dataset);
+        }
+    }
+    auto end2 = std::chrono::high_resolution_clock::now();
+    auto dur2 = std::chrono::duration_cast<std::chrono::microseconds>(end2 - start2);
+
+    // Should not be more than 2x slower
+    if (dur1.count() > 0) {
+        double ratio = (double)dur2.count() / (double)dur1.count();
+        EXPECT_LT(ratio, 2.0) << "Memory integration caused > 2x slowdown";
+    }
+}
+
+//=============================================================================
 // Test Summary
 //=============================================================================
 
-// Test count: 19 regression tests
+// Test count: 25 regression tests
 // Coverage:
 // - API Stability: 4 tests
 // - CSV Format Compatibility: 5 tests
-// - Performance Baselines: 2 tests
+// - Performance Baselines: 3 tests
 // - Data Integrity: 2 tests
 // - Error Handling: 5 tests
 // - Brain Integration: 1 test
+// - Memory Integration: 3 tests
+// - Security Integration: 2 tests

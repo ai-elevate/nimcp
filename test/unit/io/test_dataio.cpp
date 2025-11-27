@@ -800,7 +800,6 @@ TEST_F(DataIOTest, FullConfiguration)
     config.num_label_columns = 1;
     config.has_header = true;
     config.delimiter = ',';
-    config.normalize_features = false;
     config.shuffle = false;
     config.batch_size = 1000;
     config.max_rows = 0;
@@ -995,7 +994,8 @@ TEST_F(DataIOTest, DoubleClose)
     ASSERT_NE(dataset, nullptr);
 
     dataset_close(dataset);
-    // Second close should not crash
+    dataset = nullptr;  // Properly set to NULL after close (C idiom)
+    // Second close on NULL should not crash
     EXPECT_NO_THROW({ dataset_close(dataset); });
 }
 
@@ -1172,4 +1172,296 @@ TEST_F(DataIOTest, ReadExportReadCycle)
 
     dataset_free_batch(&batch2);
     dataset_close(dataset2);
+}
+
+//=============================================================================
+// Phase IO-1: Memory Integration Tests
+//=============================================================================
+
+/**
+ * WHAT: Test default configuration
+ * WHY: Verify sensible defaults are provided
+ */
+TEST_F(DataIOTest, DefaultConfiguration)
+{
+    dataset_config_t config = dataset_default_config();
+
+    // Check sensible defaults
+    EXPECT_EQ(config.format, DATA_FORMAT_CSV);
+    EXPECT_EQ(config.source, DATA_SOURCE_FILE);
+    EXPECT_TRUE(config.has_header);
+    EXPECT_EQ(config.delimiter, ',');
+    EXPECT_EQ(config.batch_size, 1000u);
+    EXPECT_EQ(config.max_rows, 0u);
+
+    // Memory integration defaults (disabled)
+    EXPECT_FALSE(config.use_unified_memory);
+    EXPECT_EQ(config.memory_manager, nullptr);
+
+    // Security integration defaults (disabled)
+    EXPECT_FALSE(config.enable_security);
+    EXPECT_EQ(config.security_context, nullptr);
+}
+
+/**
+ * WHAT: Test dataset statistics without integration
+ * WHY: Verify basic stats work without memory/security
+ */
+TEST_F(DataIOTest, DatasetStatsBasic)
+{
+    create_test_csv_with_header();
+
+    dataset_config_t config = dataset_default_config();
+    strncpy(config.location, TEST_CSV_FILE, sizeof(config.location) - 1);
+    config.num_feature_columns = 3;
+    config.num_label_columns = 1;
+
+    dataset_t dataset = dataset_open(&config);
+    ASSERT_NE(dataset, nullptr);
+
+    // Read a batch
+    data_batch_t batch;
+    memset(&batch, 0, sizeof(batch));
+    dataset_next_batch(dataset, &batch);
+    dataset_free_batch(&batch);
+
+    // Get statistics
+    dataset_stats_t stats;
+    bool result = dataset_get_stats(dataset, &stats);
+    EXPECT_TRUE(result);
+
+    // Basic stats should be populated
+    EXPECT_GT(stats.total_rows_read, 0u);
+    EXPECT_GT(stats.total_batches_read, 0u);
+
+    // Memory integration should be disabled
+    EXPECT_FALSE(stats.using_unified_memory);
+
+    // Security integration should be disabled
+    EXPECT_FALSE(stats.security_registered);
+
+    dataset_close(dataset);
+}
+
+/**
+ * WHAT: Test dataset with unified memory enabled
+ * WHY: Verify memory integration works correctly
+ */
+TEST_F(DataIOTest, DatasetWithUnifiedMemory)
+{
+    create_test_csv_with_header();
+
+    dataset_config_t config = dataset_default_config();
+    strncpy(config.location, TEST_CSV_FILE, sizeof(config.location) - 1);
+    config.num_feature_columns = 3;
+    config.num_label_columns = 1;
+    config.use_unified_memory = true;  // Enable memory integration
+
+    dataset_t dataset = dataset_open(&config);
+    ASSERT_NE(dataset, nullptr);
+
+    // Read a batch
+    data_batch_t batch;
+    memset(&batch, 0, sizeof(batch));
+    dataset_next_batch(dataset, &batch);
+    EXPECT_GT(batch.num_samples, 0u);
+    dataset_free_batch(&batch);
+
+    // Get statistics
+    dataset_stats_t stats;
+    bool result = dataset_get_stats(dataset, &stats);
+    EXPECT_TRUE(result);
+    EXPECT_TRUE(stats.using_unified_memory);
+
+    dataset_close(dataset);
+}
+
+/**
+ * WHAT: Test dataset_get_stats with NULL parameters
+ * WHY: Verify error handling
+ */
+TEST_F(DataIOTest, DatasetStatsNullParams)
+{
+    dataset_stats_t stats;
+
+    // NULL dataset
+    EXPECT_FALSE(dataset_get_stats(nullptr, &stats));
+
+    // NULL stats
+    create_test_csv_with_header();
+    dataset_t dataset = dataset_load_csv(TEST_CSV_FILE, 3, 1, true);
+    ASSERT_NE(dataset, nullptr);
+    EXPECT_FALSE(dataset_get_stats(dataset, nullptr));
+    dataset_close(dataset);
+}
+
+//=============================================================================
+// Phase IO-2: Security Integration Tests
+//=============================================================================
+
+/**
+ * WHAT: Test module initialization and shutdown
+ * WHY: Verify module lifecycle management
+ */
+TEST_F(DataIOTest, ModuleInitShutdown)
+{
+    // Initialize without security context
+    nimcp_result_t result = dataio_init(nullptr);
+    EXPECT_EQ(result, NIMCP_SUCCESS);
+
+    // Get module ID (should be 0 without security)
+    uint32_t module_id = dataio_get_security_module_id();
+    EXPECT_EQ(module_id, 0u);
+
+    // Shutdown
+    dataio_shutdown();
+
+    // Re-initialization should work
+    result = dataio_init(nullptr);
+    EXPECT_EQ(result, NIMCP_SUCCESS);
+    dataio_shutdown();
+}
+
+/**
+ * WHAT: Test double initialization
+ * WHY: Verify idempotent initialization
+ */
+TEST_F(DataIOTest, DoubleModuleInit)
+{
+    nimcp_result_t result = dataio_init(nullptr);
+    EXPECT_EQ(result, NIMCP_SUCCESS);
+
+    // Second init should succeed (no-op)
+    result = dataio_init(nullptr);
+    EXPECT_EQ(result, NIMCP_SUCCESS);
+
+    dataio_shutdown();
+}
+
+/**
+ * WHAT: Test shutdown without init
+ * WHY: Verify safe shutdown when not initialized
+ */
+TEST_F(DataIOTest, ShutdownWithoutInit)
+{
+    // Should not crash
+    EXPECT_NO_THROW({ dataio_shutdown(); });
+}
+
+/**
+ * WHAT: Test dataset with security enabled but no context
+ * WHY: Verify graceful handling when security not available
+ */
+TEST_F(DataIOTest, DatasetSecurityNoContext)
+{
+    create_test_csv_with_header();
+
+    dataset_config_t config = dataset_default_config();
+    strncpy(config.location, TEST_CSV_FILE, sizeof(config.location) - 1);
+    config.num_feature_columns = 3;
+    config.num_label_columns = 1;
+    config.enable_security = true;  // Enable but no context
+
+    dataset_t dataset = dataset_open(&config);
+    ASSERT_NE(dataset, nullptr);
+
+    // Should work but security not registered
+    dataset_stats_t stats;
+    EXPECT_TRUE(dataset_get_stats(dataset, &stats));
+    EXPECT_FALSE(stats.security_registered);
+
+    dataset_close(dataset);
+}
+
+//=============================================================================
+// Combined Memory and Security Tests
+//=============================================================================
+
+/**
+ * WHAT: Test dataset with both memory and security enabled
+ * WHY: Verify full integration stack works together
+ */
+TEST_F(DataIOTest, FullIntegrationStack)
+{
+    create_large_csv(1000);
+
+    dataset_config_t config = dataset_default_config();
+    strncpy(config.location, TEST_CSV_LARGE, sizeof(config.location) - 1);
+    config.num_feature_columns = 4;
+    config.num_label_columns = 1;
+    config.use_unified_memory = true;
+    config.enable_security = true;
+
+    dataset_t dataset = dataset_open(&config);
+    ASSERT_NE(dataset, nullptr);
+
+    // Read multiple batches
+    int total_samples = 0;
+    while (true) {
+        data_batch_t batch;
+        memset(&batch, 0, sizeof(batch));
+
+        if (!dataset_next_batch(dataset, &batch)) {
+            break;
+        }
+
+        total_samples += batch.num_samples;
+        dataset_free_batch(&batch);
+
+        if (batch.end_of_dataset) {
+            break;
+        }
+    }
+
+    EXPECT_EQ(total_samples, 1000);
+
+    // Verify stats
+    dataset_stats_t stats;
+    EXPECT_TRUE(dataset_get_stats(dataset, &stats));
+    EXPECT_TRUE(stats.using_unified_memory);
+    EXPECT_GT(stats.total_rows_read, 0u);
+
+    dataset_close(dataset);
+}
+
+/**
+ * WHAT: Test external memory manager injection
+ * WHY: Verify user-provided memory manager works
+ */
+TEST_F(DataIOTest, ExternalMemoryManager)
+{
+    create_test_csv_with_header();
+
+    // Create external memory manager
+    unified_mem_config_t mem_config = unified_mem_default_config();
+    mem_config.enable_cow = true;
+    unified_mem_manager_t ext_manager = unified_mem_create(&mem_config);
+    ASSERT_NE(ext_manager, nullptr);
+
+    // Use external manager
+    dataset_config_t config = dataset_default_config();
+    strncpy(config.location, TEST_CSV_FILE, sizeof(config.location) - 1);
+    config.num_feature_columns = 3;
+    config.num_label_columns = 1;
+    config.use_unified_memory = true;
+    config.memory_manager = ext_manager;  // External manager
+
+    dataset_t dataset = dataset_open(&config);
+    ASSERT_NE(dataset, nullptr);
+
+    // Read a batch
+    data_batch_t batch;
+    memset(&batch, 0, sizeof(batch));
+    dataset_next_batch(dataset, &batch);
+    dataset_free_batch(&batch);
+
+    // Verify external manager is used
+    dataset_stats_t stats;
+    EXPECT_TRUE(dataset_get_stats(dataset, &stats));
+    EXPECT_TRUE(stats.using_unified_memory);
+
+    dataset_close(dataset);
+
+    // Clean up external manager (should NOT be destroyed by dataset)
+    unified_mem_destroy(ext_manager);
 }

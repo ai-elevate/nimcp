@@ -662,10 +662,178 @@ TEST_F(StreamRegressionTest, EventCallbackStability) {
 }
 
 //=============================================================================
+// Phase IO-1: Memory Integration Regression Tests
+//=============================================================================
+
+TEST_F(StreamRegressionTest, DefaultConfigHasMemoryDisabled) {
+    // WHAT: Verify default config has memory integration disabled
+    // WHY:  Backwards compatibility
+    // REGRESSION: Default behavior must not change
+
+    stream_config_t config = stream_default_config();
+
+    // Memory integration disabled by default
+    EXPECT_FALSE(config.use_unified_memory);
+    EXPECT_EQ(config.memory_manager, nullptr);
+
+    // Security integration disabled by default
+    EXPECT_FALSE(config.enable_security);
+    EXPECT_EQ(config.security_context, nullptr);
+}
+
+TEST_F(StreamRegressionTest, MemoryIntegrationDoesNotBreakAPI) {
+    // WHAT: Existing API works with memory integration
+    // WHY:  Backwards compatibility
+    // REGRESSION: API must not change behavior
+
+    stream_config_t config = stream_default_config();
+    config.use_unified_memory = true;  // Enable new feature
+
+    stream = brain_create_stream(brain, &config);
+    if (stream == nullptr) {
+        GTEST_SKIP() << "Stream creation not implemented";
+    }
+
+    // Existing API should work the same
+    float features[] = {0.1f, 0.2f, 0.3f, 0.4f, 0.5f};
+    bool fed = brain_stream_feed(stream, features, 5, 1000);
+    EXPECT_TRUE(fed);
+
+    // Get decision should work
+    brain_decision_t* decision = brain_stream_get_decision(stream);
+    // May be NULL if not processed yet
+    if (decision) {
+        brain_free_decision(decision);
+    }
+}
+
+TEST_F(StreamRegressionTest, ExtendedStatsBackwardsCompatible) {
+    // WHAT: Extended stats don't break base stats
+    // WHY:  Backwards compatibility
+    // REGRESSION: Stats must be additive, not breaking
+
+    stream_config_t config = stream_default_config();
+    stream = brain_create_stream(brain, &config);
+    if (stream == nullptr) {
+        GTEST_SKIP() << "Stream creation not implemented";
+    }
+
+    float features[] = {0.1f, 0.2f, 0.3f, 0.4f, 0.5f};
+    brain_stream_feed(stream, features, 5, 1000);
+
+    // Base stats still work
+    stream_stats_t base_stats;
+    bool got_base = brain_stream_get_stats(stream, &base_stats);
+    EXPECT_TRUE(got_base);
+
+    // Extended stats work
+    stream_extended_stats_t ext_stats;
+    bool got_ext = brain_stream_get_extended_stats(stream, &ext_stats);
+    EXPECT_TRUE(got_ext);
+
+    // Extended stats should include base stats
+    EXPECT_EQ(ext_stats.base.inputs_fed, base_stats.inputs_fed);
+}
+
+//=============================================================================
+// Phase IO-2: Security Integration Regression Tests
+//=============================================================================
+
+TEST_F(StreamRegressionTest, ModuleInitIdempotent) {
+    // WHAT: Module init/shutdown is idempotent
+    // WHY:  Multiple components may call init
+    // REGRESSION: Must not crash on multiple calls
+
+    // Initialize multiple times
+    for (int i = 0; i < 5; i++) {
+        nimcp_result_t result = stream_init(nullptr);
+        EXPECT_EQ(result, NIMCP_SUCCESS);
+    }
+
+    // Shutdown multiple times
+    for (int i = 0; i < 5; i++) {
+        stream_shutdown();
+    }
+
+    // Should be able to init again
+    nimcp_result_t result = stream_init(nullptr);
+    EXPECT_EQ(result, NIMCP_SUCCESS);
+    stream_shutdown();
+}
+
+TEST_F(StreamRegressionTest, SecurityNoContextStillWorks) {
+    // WHAT: Security enabled without context still works
+    // WHY:  Graceful degradation
+    // REGRESSION: Must not fail if security context unavailable
+
+    stream_config_t config = stream_default_config();
+    config.enable_security = true;  // Enable without context
+
+    stream = brain_create_stream(brain, &config);
+    if (stream == nullptr) {
+        GTEST_SKIP() << "Stream creation not implemented";
+    }
+
+    // Should work normally
+    float features[] = {0.1f, 0.2f, 0.3f, 0.4f, 0.5f};
+    bool fed = brain_stream_feed(stream, features, 5, 1000);
+    EXPECT_TRUE(fed);
+}
+
+//=============================================================================
+// Performance Regression with Integration
+//=============================================================================
+
+TEST_F(StreamRegressionTest, MemoryIntegrationNoMajorSlowdown) {
+    // WHAT: Memory integration doesn't cause major slowdown
+    // WHY:  Performance regression prevention
+    // REGRESSION: < 2x slowdown with integration enabled
+
+    // Time without integration
+    auto start1 = std::chrono::high_resolution_clock::now();
+    {
+        stream_config_t config = stream_default_config();
+        brain_stream_t s = brain_create_stream(brain, &config);
+        if (s) {
+            for (int i = 0; i < 100; i++) {
+                float features[] = {0.1f, 0.2f, 0.3f, 0.4f, 0.5f};
+                brain_stream_feed(s, features, 5, i * 1000);
+            }
+            brain_destroy_stream(s);
+        }
+    }
+    auto end1 = std::chrono::high_resolution_clock::now();
+    auto dur1 = std::chrono::duration_cast<std::chrono::microseconds>(end1 - start1);
+
+    // Time with integration
+    auto start2 = std::chrono::high_resolution_clock::now();
+    {
+        stream_config_t config = stream_default_config();
+        config.use_unified_memory = true;
+        brain_stream_t s = brain_create_stream(brain, &config);
+        if (s) {
+            for (int i = 0; i < 100; i++) {
+                float features[] = {0.1f, 0.2f, 0.3f, 0.4f, 0.5f};
+                brain_stream_feed(s, features, 5, i * 1000);
+            }
+            brain_destroy_stream(s);
+        }
+    }
+    auto end2 = std::chrono::high_resolution_clock::now();
+    auto dur2 = std::chrono::duration_cast<std::chrono::microseconds>(end2 - start2);
+
+    // Should not be more than 2x slower
+    if (dur1.count() > 0) {
+        double ratio = (double)dur2.count() / (double)dur1.count();
+        EXPECT_LT(ratio, 2.0) << "Memory integration caused > 2x slowdown";
+    }
+}
+
+//=============================================================================
 // Test Summary
 //=============================================================================
 
-// Test count: 25 regression tests
+// Test count: 32 regression tests
 // Coverage:
 // - API Stability: 5 tests
 // - Stream Lifecycle: 3 tests
@@ -673,7 +841,9 @@ TEST_F(StreamRegressionTest, EventCallbackStability) {
 // - Output Retrieval: 2 tests
 // - Statistics: 2 tests
 // - Stream Control: 4 tests
-// - Performance Baselines: 2 tests
+// - Performance Baselines: 3 tests
 // - Thread Safety: 1 test
 // - Event Callbacks: 1 test
-// - Error Handling: 1 test (integrated)
+// - Memory Integration: 3 tests
+// - Security Integration: 2 tests
+// - Error Handling: 2 tests
