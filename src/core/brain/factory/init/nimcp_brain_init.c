@@ -2477,6 +2477,19 @@ bool nimcp_brain_factory_init_training_subsystem(brain_t brain)
             cortical.neuron_end_idx = brain_get_neuron_count(brain);
             tpb_configure_region(brain->plasticity_bridge, &cortical, NULL);
 
+            // Connect the plasticity bridge to the training context
+            if (brain->training_ctx) {
+                nimcp_result_t conn_result = nimcp_brain_training_connect_plasticity_bridge(
+                    brain->training_ctx, brain->plasticity_bridge);
+                if (conn_result == NIMCP_SUCCESS) {
+                    // Enable biological modulation by default (50% blend)
+                    nimcp_brain_training_set_biological_modulation(brain->training_ctx, 0.5f);
+                    LOG_INFO("Training-Plasticity Bridge connected to training context");
+                } else {
+                    LOG_WARNING("Failed to connect plasticity bridge to training context");
+                }
+            }
+
             LOG_INFO("Training-Plasticity Bridge initialized: connected to neuromodulator system");
         } else {
             brain->enable_plasticity_bridge = false;

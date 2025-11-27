@@ -924,6 +924,16 @@ nimcp_result_t nimcp_brain_training_step(
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
+    /* Phase TPB-1: If plasticity bridge is connected and biological modulation > 0,
+     * automatically route through biological training step */
+    if (ctx->plasticity_bridge && ctx->biological_modulation_strength > 0.0f) {
+        return nimcp_brain_training_step_biological(
+            ctx, loss_id, optimizer_id, params,
+            predictions, targets, batch_size, output_size,
+            param_count, 0 /* default region */, loss_value
+        );
+    }
+
     /* Calculate gradient buffer size (batch_size * output_size for loss gradients) */
     size_t gradient_count = batch_size * output_size;
     size_t gradient_size = gradient_count * sizeof(float);
@@ -1699,6 +1709,21 @@ nimcp_result_t nimcp_brain_training_step_full(
         return res;
     }
 
+    /* Phase TPB-1: Report loss to plasticity bridge for RPE computation */
+    if (ctx->plasticity_bridge && ctx->biological_modulation_strength > 0.0f) {
+        float rpe = 0.0f;
+        if (tpb_report_loss(ctx->plasticity_bridge, *loss_value, &rpe) == NIMCP_SUCCESS) {
+            ctx->stats.rpe_computations++;
+
+            /* Get current dopamine level for tracking */
+            float da_level = 0.5f, ach_level, ht5_level, ne_level;
+            if (tpb_get_neuromod_levels(ctx->plasticity_bridge, &da_level, &ach_level,
+                                         &ht5_level, &ne_level) == NIMCP_SUCCESS) {
+                ctx->cumulative_da += da_level;
+            }
+        }
+    }
+
     /* Step 2: Check gradient health */
     if (ctx->config.enable_gradient_health_check) {
         nimcp_grad_health_t health = nimcp_gradient_check_health(gradients, gradient_count);
@@ -1753,9 +1778,32 @@ nimcp_result_t nimcp_brain_training_step_full(
         *loss_value += reg_loss;
     }
 
+    /* Phase TPB-1: Apply biological learning rate modulation before optimization */
+    float original_lr = 0.0f;
+    nimcp_optimizer_context_t* opt = NULL;
+    if (ctx->plasticity_bridge && ctx->biological_modulation_strength > 0.0f) {
+        opt = nimcp_brain_training_get_optimizer(ctx, optimizer_id);
+        if (opt) {
+            original_lr = nimcp_optimizer_get_lr(opt);
+            float bio_lr = original_lr;
+            if (tpb_get_modulated_lr(ctx->plasticity_bridge, 0, original_lr, &bio_lr) == NIMCP_SUCCESS) {
+                float blend = ctx->biological_modulation_strength;
+                float effective_lr = (1.0f - blend) * original_lr + blend * bio_lr;
+                nimcp_optimizer_set_lr(opt, effective_lr);
+                ctx->cumulative_lr_mod += (effective_lr / original_lr);
+                ctx->bio_update_count++;
+            }
+        }
+    }
+
     /* Step 6: Optimization step */
     size_t update_count = (param_count < gradient_count) ? param_count : gradient_count;
     res = nimcp_brain_training_optimize(ctx, optimizer_id, params, gradients, update_count);
+
+    /* Restore original learning rate if modified */
+    if (opt && original_lr > 0.0f) {
+        nimcp_optimizer_set_lr(opt, original_lr);
+    }
 
     free(gradients);
 
