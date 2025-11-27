@@ -75,6 +75,9 @@
 // Phase TPB-1: Training-Plasticity Bridge (connects training pipeline to biological plasticity)
 #include "middleware/training/nimcp_training_plasticity_bridge.h"
 
+// Phase EDP-1: Event-Driven Plasticity (continuous learning from sensory events)
+#include "middleware/training/nimcp_event_driven_plasticity.h"
+
 // Phase 8: Multi-Modal Integration
 #include "core/integration/nimcp_multimodal_integration.h"
 #include "perception/nimcp_visual_cortex.h"
@@ -326,6 +329,10 @@ struct brain_struct {
     // Phase TPB-1: Training-Plasticity Bridge
     tpb_context_t* plasticity_bridge;            // Connects training pipeline to biological plasticity systems
     bool enable_plasticity_bridge;               // Enable plasticity bridge
+
+    // Phase EDP-1: Event-Driven Plasticity (continuous learning from sensory events)
+    edp_context_t* event_driven_plasticity;      // Event-driven continuous learning adapter
+    bool enable_event_driven_plasticity;         // Enable EDP system
 
     // === PHASE 8: UNIFIED MULTI-MODAL PROCESSING ===
     // Sensory Cortices (specialized feature extractors)

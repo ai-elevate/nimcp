@@ -118,3 +118,33 @@ set_tests_properties(regression_middleware_training_test_plasticity_bridge_regre
     PROPERTIES
         LABELS "regression;middleware;training;plasticity_bridge"
         TIMEOUT 300)
+
+# Event-Driven Plasticity Regression Tests (Phase EDP-1)
+add_executable(regression_middleware_training_test_event_driven_plasticity_regression
+    test_event_driven_plasticity_regression.cpp
+)
+
+target_include_directories(regression_middleware_training_test_event_driven_plasticity_regression PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${CMAKE_SOURCE_DIR}/src
+)
+
+target_compile_features(regression_middleware_training_test_event_driven_plasticity_regression PRIVATE cxx_std_20)
+
+target_link_libraries(regression_middleware_training_test_event_driven_plasticity_regression
+    PRIVATE
+        GTest::GTest
+        GTest::Main
+        nimcp_middleware
+        nimcp
+        pthread
+        m
+)
+
+add_test(NAME regression_middleware_training_test_event_driven_plasticity_regression
+         COMMAND regression_middleware_training_test_event_driven_plasticity_regression)
+
+set_tests_properties(regression_middleware_training_test_event_driven_plasticity_regression
+    PROPERTIES
+        LABELS "regression;middleware;training;event_driven_plasticity"
+        TIMEOUT 300)

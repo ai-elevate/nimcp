@@ -69,6 +69,9 @@ add_library(nimcp_middleware STATIC
 
     # Training-Plasticity Bridge (Phase TPB-1)
     training/nimcp_training_plasticity_bridge.c
+
+    # Event-Driven Plasticity (Phase EDP-1)
+    training/nimcp_event_driven_plasticity.c
 )
 
 target_include_directories(nimcp_middleware PUBLIC

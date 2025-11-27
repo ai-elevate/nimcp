@@ -2500,6 +2500,73 @@ bool nimcp_brain_factory_init_training_subsystem(brain_t brain)
         brain->enable_plasticity_bridge = false;
     }
 
+    // Phase EDP-1: Initialize Event-Driven Plasticity (continuous learning from sensory events)
+    // This connects the event bus to the plasticity bridge for real-time learning
+    if (brain->enable_plasticity_bridge && brain->event_bus) {
+        edp_config_t edp_config = edp_config_default();
+
+        // Configure for immediate processing mode (real-time learning)
+        edp_config.mode = EDP_MODE_IMMEDIATE;
+
+        // Configure spike timing parameters (STDP window)
+        edp_config.stdp_window_ms = 40.0f;  // ±40ms STDP window (biological)
+        edp_config.ltp_rate = brain->config.learning_rate * 0.5f;  // Scale from brain LR
+        edp_config.ltd_rate = brain->config.learning_rate * 0.6f;  // Slightly stronger LTD
+        edp_config.spike_threshold = 0.1f;
+
+        // Configure eligibility traces for three-factor learning
+        edp_config.enable_eligibility = true;
+        edp_config.eligibility_tau_ms = 1000.0f;  // 1 second decay
+        edp_config.eligibility_threshold = 0.01f;
+
+        // Configure learning signal gains
+        edp_config.error_gain = 1.0f;
+        edp_config.reward_gain = 0.5f;   // Reward modulation strength
+        edp_config.novelty_gain = 0.3f;  // Novelty modulation strength
+
+        // Security integration
+        edp_config.enable_security = (brain->security_integration != NULL);
+        edp_config.security_ctx = brain->security_integration;
+
+        // Create the EDP context
+        brain->event_driven_plasticity = edp_create(&edp_config);
+        if (brain->event_driven_plasticity) {
+            brain->enable_event_driven_plasticity = true;
+
+            // Connect to the plasticity bridge
+            nimcp_result_t bridge_result = edp_connect_bridge(
+                brain->event_driven_plasticity, brain->plasticity_bridge);
+            if (bridge_result != NIMCP_SUCCESS) {
+                LOG_WARNING("EDP: Failed to connect to plasticity bridge");
+            }
+
+            // Connect to the event bus
+            nimcp_result_t bus_result = edp_connect_event_bus(
+                brain->event_driven_plasticity, brain->event_bus);
+            if (bus_result != NIMCP_SUCCESS) {
+                LOG_WARNING("EDP: Failed to connect to event bus");
+            }
+
+            // Register with security module if available
+            if (brain->security_integration) {
+                nimcp_result_t sec_result = edp_register_security(
+                    brain->event_driven_plasticity, brain->security_integration);
+                if (sec_result != NIMCP_SUCCESS) {
+                    LOG_WARNING("EDP: Failed to register with security module");
+                }
+            }
+
+            LOG_INFO("Event-Driven Plasticity initialized: stdp_window=%.1fms, eligibility_tau=%.0fms",
+                     edp_config.stdp_window_ms, edp_config.eligibility_tau_ms);
+        } else {
+            brain->enable_event_driven_plasticity = false;
+            LOG_WARNING("Failed to create Event-Driven Plasticity adapter, continuing without");
+        }
+    } else {
+        brain->event_driven_plasticity = NULL;
+        brain->enable_event_driven_plasticity = false;
+    }
+
     LOG_INFO("Brain-training integration initialized: lr=%.4f, security=%s, "
              "lr_sched=%s, regularization=%s, grad_mgmt=%s, plasticity_bridge=%s",
             training_config.default_learning_rate,

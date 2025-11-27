@@ -1637,6 +1637,13 @@ void brain_destroy(brain_t brain)
         neuromod_pink_destroy(brain->pink_noise);
     }
 
+    // Phase EDP-1: Cleanup Event-Driven Plasticity (before plasticity bridge it depends on)
+    if (brain->event_driven_plasticity) {
+        edp_destroy(brain->event_driven_plasticity);
+        brain->event_driven_plasticity = NULL;
+        brain->enable_event_driven_plasticity = false;
+    }
+
     // Phase TPB-1: Cleanup Training-Plasticity Bridge (before neuromodulator system it depends on)
     if (brain->plasticity_bridge) {
         tpb_destroy(brain->plasticity_bridge);

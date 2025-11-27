@@ -148,3 +148,33 @@ set_tests_properties(integration_middleware_training_test_plasticity_bridge_inte
     PROPERTIES
         LABELS "integration;middleware;training;plasticity_bridge"
         TIMEOUT 240)
+
+# Event-Driven Plasticity Integration Tests (Phase EDP-1)
+add_executable(integration_middleware_training_test_event_driven_plasticity_integration
+    test_event_driven_plasticity_integration.cpp
+)
+
+target_include_directories(integration_middleware_training_test_event_driven_plasticity_integration PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${CMAKE_SOURCE_DIR}/src
+)
+
+target_compile_features(integration_middleware_training_test_event_driven_plasticity_integration PRIVATE cxx_std_20)
+
+target_link_libraries(integration_middleware_training_test_event_driven_plasticity_integration
+    PRIVATE
+        GTest::GTest
+        GTest::Main
+        nimcp_middleware
+        nimcp
+        pthread
+        m
+)
+
+add_test(NAME integration_middleware_training_test_event_driven_plasticity_integration
+         COMMAND integration_middleware_training_test_event_driven_plasticity_integration)
+
+set_tests_properties(integration_middleware_training_test_event_driven_plasticity_integration
+    PROPERTIES
+        LABELS "integration;middleware;training;event_driven_plasticity"
+        TIMEOUT 240)
