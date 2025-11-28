@@ -133,8 +133,8 @@ static void cleanup_test_logs()
  */
 static std::string extract_timestamp(const std::string& log_line)
 {
-    // Format: [YYYY-MM-DD HH:MM:SS] [LEVEL] message
-    std::regex timestamp_regex(R"(\[(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2})\])");
+    // Format: [YYYY-MM-DD HH:MM:SS.mmm] [LEVEL] message (with optional milliseconds)
+    std::regex timestamp_regex(R"(\[(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}(?:\.\d{3})?)\])");
     std::smatch match;
 
     if (std::regex_search(log_line, match, timestamp_regex)) {
@@ -151,10 +151,10 @@ static std::string extract_log_level(const std::string& log_line)
 {
     /* WHAT: Extract log level from log line
      * WHY:  Need to verify correct log level is written
-     * HOW:  Regex matches [CAPITAL_LETTERS] pattern
-     * NOTE: Timestamp [2025-11-01 ...] doesn't match [A-Z]+ so [INFO] is first match
+     * HOW:  Regex matches [LEVEL] pattern with optional padding
+     * NOTE: Format is [%-5s] so level can be padded (e.g., [INFO ] or [DEBUG])
      */
-    std::regex level_regex(R"(\[([A-Z]+)\])");
+    std::regex level_regex(R"(\[([A-Z]+)\s*\])");
     std::smatch match;
 
     // Get first match (level) - timestamp won't match [A-Z]+ pattern
@@ -170,14 +170,39 @@ static std::string extract_log_level(const std::string& log_line)
  */
 static std::string extract_message(const std::string& log_line)
 {
-    // Find the position after the second ']'
-    size_t pos = log_line.find(']');
-    if (pos != std::string::npos) {
-        pos = log_line.find(']', pos + 1);
-        if (pos != std::string::npos && pos + 2 < log_line.length()) {
-            return log_line.substr(pos + 2);  // Skip "] "
+    /* Format options:
+     * - [timestamp] [LEVEL] message
+     * - [timestamp] [LEVEL] [file:line] message
+     * - [timestamp] [LEVEL] [module] message
+     * - [timestamp] [LEVEL] [module] [file:line] message
+     *
+     * Find the last occurrence of "] " before the actual message.
+     * The message starts after all bracketed sections.
+     */
+    size_t last_bracket_end = 0;
+    size_t pos = 0;
+
+    // Find all ] positions and track the last one followed by text (not [)
+    while ((pos = log_line.find(']', pos)) != std::string::npos) {
+        if (pos + 1 < log_line.length()) {
+            char next = log_line[pos + 1];
+            if (next == ' ') {
+                // Check if there's another bracket after this
+                if (pos + 2 < log_line.length() && log_line[pos + 2] != '[') {
+                    // This is the last bracket before the message
+                    return log_line.substr(pos + 2);  // Skip "] "
+                }
+                last_bracket_end = pos;
+            }
         }
+        pos++;
     }
+
+    // If we didn't find a clean break, use the last bracket position
+    if (last_bracket_end > 0 && last_bracket_end + 2 < log_line.length()) {
+        return log_line.substr(last_bracket_end + 2);
+    }
+
     return "";
 }
 
@@ -209,9 +234,16 @@ class LoggingTest : public ::testing::Test {
     {
         /* WHAT: Initialize logging to /tmp for tests (no root required)
          * WHY:  Avoid permission errors when running tests as non-root
-         * NOTE: log_init(path) creates parent directories if needed
+         * NOTE: Using nimcp_log_init to set DEBUG level and disable source location
          */
-        log_init(TEST_LOG_FILE);
+        nimcp_log_config_t config = nimcp_log_default_config();
+        config.file_path = TEST_LOG_FILE;
+        config.async_mode = NIMCP_LOG_ASYNC_OFF;
+        config.destinations = NIMCP_LOG_DEST_FILE;
+        config.level = LOG_LEVEL_DEBUG;  // Enable DEBUG level for tests
+        config.include_source_location = false;  // Simpler format for tests
+        config.rate_limit.enabled = false;  // Disable rate limiting for tests
+        nimcp_log_init(&config);
     }
 };
 
@@ -441,8 +473,8 @@ TEST_F(LoggingTest, TimestampFormat)
     std::string last_line = get_last_log_line(TEST_LOG_FILE);
     std::string timestamp = extract_timestamp(last_line);
 
-    // Verify timestamp matches expected format: YYYY-MM-DD HH:MM:SS
-    std::regex timestamp_format(R"(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2})");
+    // Verify timestamp matches expected format: YYYY-MM-DD HH:MM:SS or YYYY-MM-DD HH:MM:SS.mmm
+    std::regex timestamp_format(R"(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}(?:\.\d{3})?)");
     EXPECT_TRUE(std::regex_match(timestamp, timestamp_format));
 }
 
