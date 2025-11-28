@@ -3,9 +3,9 @@
  * @brief NIMCP Configuration file parser implementation
  */
 
-#include "nimcp_config.h"
-#include "../memory/nimcp_memory.h"
-#include "../json/nimcp_json.h"
+#include "utils/config/nimcp_config.h"
+#include "utils/memory/nimcp_memory.h"
+#include "utils/json/nimcp_json.h"
 #include <stdio.h>
 #include <string.h>
 #include <ctype.h>

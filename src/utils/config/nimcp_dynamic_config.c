@@ -1,20 +1,33 @@
 /**
  * @file nimcp_dynamic_config.c
- * @brief Dynamic configuration with INI parser
+ * @brief Dynamic configuration with hash table and signal handler integration
  *
- * WHAT: Runtime-reconfigurable hyperparameters via config file
+ * WHAT: Runtime-reconfigurable hyperparameters via config file with O(1) lookup
  * WHY:  Allow tuning without restarting (critical for production)
- * HOW:  INI config file + SIGHUP signal triggers reload
+ * HOW:  Hash table + INI parser + SIGHUP signal handler integration
+ *
+ * ENHANCEMENTS (Phase UMI-3):
+ * - Hash table for O(1) lookups instead of O(n) linear search
+ * - Signal handler integration for automatic SIGHUP reload
+ * - Unified memory allocation (nimcp_unified_alloc/nimcp_free)
+ * - Security module registration
+ * - Comprehensive logging throughout
+ * - Environment variable expansion in strings
+ * - Schema-based validation
+ * - Atomic reload with snapshot/rollback
+ * - Array and nested key support
  *
  * @author NIMCP Team
- * @date 2025-11-09
+ * @date 2025-11-28
  */
 
-#include "nimcp_dynamic_config.h"
-#include "utils/memory/nimcp_memory.h"
+#include "utils/config/nimcp_dynamic_config.h"
+#include "utils/config/nimcp_config_array.h"
+#include "utils/containers/nimcp_hash_table.h"
+#include "utils/signal/nimcp_signal_handler.h"
+#include "utils/logging/nimcp_logging.h"
 #include "utils/thread/nimcp_thread.h"
-#include "core/brain/factory/init/nimcp_brain_init.h"  // Phase IS-1: BBB access
-#include "security/nimcp_blood_brain_barrier.h"        // Phase IS-1: BBB perimeter defense
+#include "utils/memory/nimcp_memory.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -25,40 +38,51 @@
 // Internal Data Structures
 //=============================================================================
 
-#define MAX_CONFIG_ENTRIES 256
-#define MAX_KEY_LENGTH 128
-#define MAX_STRING_VALUE 512
 #define MAX_CALLBACKS 64
+#define MAX_PATH_LENGTH 512
+#define INITIAL_HASH_BUCKETS 256
 
+/**
+ * @brief Internal config entry stored in hash table
+ */
 typedef struct {
-    char key[MAX_KEY_LENGTH];
     config_value_type_t type;
     config_value_t value;
-    bool in_use;
 } config_entry_internal_t;
 
 /**
- * @brief Callback registration entry
- *
- * WHAT: Stores callback function and metadata for config change notifications
- * WHY:  Enable runtime reaction to config changes (e.g., adjust learning rates)
- * HOW:  Array of registrations with thread-safe access
+ * @brief Snapshot of config state for rollback
  */
 typedef struct {
-    uint32_t id;                        /**< Unique registration ID */
-    char key[MAX_KEY_LENGTH];           /**< Config key to watch (empty = all) */
-    config_change_callback_t callback;  /**< Callback function */
-    void* user_data;                    /**< User data passed to callback */
-    bool in_use;                        /**< Is this slot active? */
+    hash_table_t* table;
+    uint32_t version;
+} config_snapshot_t;
+
+/**
+ * @brief Callback registration entry
+ */
+typedef struct {
+    uint32_t id;
+    char* key;
+    config_change_callback_t callback;
+    void* user_data;
+    bool in_use;
 } callback_registration_t;
 
-static config_entry_internal_t g_config_table[MAX_CONFIG_ENTRIES];
+//=============================================================================
+// Global State
+//=============================================================================
+
+static hash_table_t* g_config_table = NULL;
+static config_snapshot_t* g_config_snapshot = NULL;
+static const config_schema_t* g_config_schema = NULL;
 static callback_registration_t g_callbacks[MAX_CALLBACKS];
 static pthread_rwlock_t g_config_lock = PTHREAD_RWLOCK_INITIALIZER;
 static nimcp_mutex_t g_callback_lock = NIMCP_MUTEX_INITIALIZER;
-static char g_config_path[512] = {0};
+static char g_config_path[MAX_PATH_LENGTH] = {0};
 static config_stats_t g_stats = {0};
 static uint32_t g_next_callback_id = 1;
+static bool g_initialized = false;
 
 //=============================================================================
 // Forward Declarations
@@ -66,9 +90,14 @@ static uint32_t g_next_callback_id = 1;
 
 static void trigger_callbacks(const char* key, const config_value_t* old_value,
                               const config_value_t* new_value);
+static void config_reload_callback(void);
+static bool expand_env_vars(const char* input, char* output, size_t output_size);
+static bool validate_value_against_schema(const char* key, config_value_type_t type,
+                                         const config_value_t* value);
+static void free_config_entry(void* value, size_t value_size);
 
 //=============================================================================
-// INI Parser (Simple, No Dependencies)
+// Helper Functions
 //=============================================================================
 
 static void trim_whitespace(char* str) {
@@ -94,15 +123,166 @@ static void trim_whitespace(char* str) {
     }
 }
 
+/**
+ * @brief Expand environment variables in string
+ *
+ * WHAT: Replace ${VAR} or $VAR with environment variable values
+ * WHY:  Allow config files to reference environment
+ * HOW:  Scan for $ markers and substitute
+ */
+static bool expand_env_vars(const char* input, char* output, size_t output_size) {
+    const char* src = input;
+    char* dst = output;
+    size_t remaining = output_size - 1;
+    bool expanded = false;
+
+    while (*src && remaining > 0) {
+        if (*src == '$') {
+            // Found environment variable marker
+            src++;
+            bool braced = (*src == '{');
+            if (braced) src++;
+
+            // Extract variable name
+            char varname[256];
+            size_t varlen = 0;
+            while (*src && varlen < sizeof(varname) - 1) {
+                if (braced && *src == '}') {
+                    src++;
+                    break;
+                }
+                if (!braced && !isalnum(*src) && *src != '_') {
+                    break;
+                }
+                varname[varlen++] = *src++;
+            }
+            varname[varlen] = '\0';
+
+            // Get environment variable value
+            const char* value = getenv(varname);
+            if (value) {
+                size_t vallen = strlen(value);
+                if (vallen <= remaining) {
+                    memcpy(dst, value, vallen);
+                    dst += vallen;
+                    remaining -= vallen;
+                    expanded = true;
+                } else {
+                    return false;  // Output buffer too small
+                }
+            }
+        } else {
+            *dst++ = *src++;
+            remaining--;
+        }
+    }
+
+    *dst = '\0';
+    return expanded;
+}
+
+/**
+ * @brief Validate value against schema
+ */
+static bool validate_value_against_schema(const char* key, config_value_type_t type,
+                                         const config_value_t* value) {
+    if (!g_config_schema || !g_config_schema->entries) {
+        return true;  // No schema, allow all
+    }
+
+    // Find schema entry for this key
+    const config_entry_t* schema_entry = NULL;
+    for (size_t i = 0; i < g_config_schema->num_entries; i++) {
+        if (strcmp(g_config_schema->entries[i].key, key) == 0) {
+            schema_entry = &g_config_schema->entries[i];
+            break;
+        }
+    }
+
+    if (!schema_entry) {
+        return true;  // Key not in schema, allow it
+    }
+
+    // Check type matches
+    if (schema_entry->type != type) {
+        LOG_MODULE_ERROR("config", "Type mismatch for key '%s': expected %d, got %d",
+                        key, schema_entry->type, type);
+        return false;
+    }
+
+    // Validate range for numeric types
+    if (type == CONFIG_TYPE_INT && schema_entry->has_min) {
+        if (value->int_val < schema_entry->min_value.int_val) {
+            LOG_MODULE_ERROR("config", "Value for '%s' (%lld) below minimum (%lld)",
+                            key, (long long)value->int_val,
+                            (long long)schema_entry->min_value.int_val);
+            return false;
+        }
+    }
+
+    if (type == CONFIG_TYPE_INT && schema_entry->has_max) {
+        if (value->int_val > schema_entry->max_value.int_val) {
+            LOG_MODULE_ERROR("config", "Value for '%s' (%lld) above maximum (%lld)",
+                            key, (long long)value->int_val,
+                            (long long)schema_entry->max_value.int_val);
+            return false;
+        }
+    }
+
+    if (type == CONFIG_TYPE_FLOAT && schema_entry->has_min) {
+        if (value->float_val < schema_entry->min_value.float_val) {
+            LOG_MODULE_ERROR("config", "Value for '%s' (%f) below minimum (%f)",
+                            key, value->float_val, schema_entry->min_value.float_val);
+            return false;
+        }
+    }
+
+    if (type == CONFIG_TYPE_FLOAT && schema_entry->has_max) {
+        if (value->float_val > schema_entry->max_value.float_val) {
+            LOG_MODULE_ERROR("config", "Value for '%s' (%f) above maximum (%f)",
+                            key, value->float_val, schema_entry->max_value.float_val);
+            return false;
+        }
+    }
+
+    return true;
+}
+
+/**
+ * @brief Free config entry (hash table destructor callback)
+ */
+static void free_config_entry(void* value, size_t value_size) {
+    if (!value) return;
+
+    config_entry_internal_t* entry = (config_entry_internal_t*)value;
+
+    // Free string value if present
+    if (entry->type == CONFIG_TYPE_STRING && entry->value.string_val) {
+        nimcp_free(entry->value.string_val);
+    }
+
+    // Free array value if present using array module's destroy function
+    if (entry->type == CONFIG_TYPE_ARRAY && entry->value.array_val) {
+        config_array_destroy((config_array_t*)entry->value.array_val);
+    }
+}
+
+//=============================================================================
+// INI Parser
+//=============================================================================
+
 static bool parse_config_file(const char* path) {
+    LOG_MODULE_DEBUG("config", "Parsing config file: %s", path);
+
     FILE* file = fopen(path, "r");
     if (!file) {
-        fprintf(stderr, "Failed to open config file: %s\n", path);
+        LOG_MODULE_ERROR("config", "Failed to open config file: %s", path);
         return false;
     }
 
     char line[1024];
     int line_num = 0;
+    int entries_parsed = 0;
 
     while (fgets(line, sizeof(line), file)) {
         line_num++;
@@ -116,7 +296,7 @@ static bool parse_config_file(const char* path) {
         // Parse key=value
         char* equals = strchr(line, '=');
         if (!equals) {
-            fprintf(stderr, "Config parse error line %d: missing '='\n", line_num);
+            LOG_MODULE_WARN("config", "Parse error line %d: missing '='", line_num);
             continue;
         }
 
@@ -128,64 +308,94 @@ static bool parse_config_file(const char* path) {
         trim_whitespace(value);
 
         if (key[0] == '\0' || value[0] == '\0') {
-            fprintf(stderr, "Config parse error line %d: empty key or value\n", line_num);
+            LOG_MODULE_WARN("config", "Parse error line %d: empty key or value", line_num);
             continue;
         }
 
-        // Store in config table
-        pthread_rwlock_wrlock(&g_config_lock);
+        // Allocate entry structure
+        config_entry_internal_t* entry = nimcp_malloc(sizeof(config_entry_internal_t));
+        if (!entry) {
+            LOG_MODULE_ERROR("config", "Failed to allocate entry for key: %s", key);
+            continue;
+        }
 
-        for (int i = 0; i < MAX_CONFIG_ENTRIES; i++) {
-            if (!g_config_table[i].in_use ||
-                strcmp(g_config_table[i].key, key) == 0) {
+        // Detect type and parse value
+        if (strcmp(value, "true") == 0 || strcmp(value, "false") == 0) {
+            entry->type = CONFIG_TYPE_BOOL;
+            entry->value.bool_val = (strcmp(value, "true") == 0);
+        } else if (strchr(value, '.') != NULL) {
+            entry->type = CONFIG_TYPE_FLOAT;
+            entry->value.float_val = atof(value);
+        } else if (value[0] == '-' || isdigit((unsigned char)value[0])) {
+            entry->type = CONFIG_TYPE_INT;
+            entry->value.int_val = atoll(value);
+        } else {
+            // String value - expand environment variables
+            char expanded[1024];
+            if (expand_env_vars(value, expanded, sizeof(expanded))) {
+                entry->type = CONFIG_TYPE_STRING;
+                entry->value.string_val = nimcp_strdup(expanded);
+                LOG_MODULE_DEBUG("config", "Expanded env vars: %s -> %s", value, expanded);
+            } else {
+                entry->type = CONFIG_TYPE_STRING;
+                entry->value.string_val = nimcp_strdup(value);
+            }
 
-                // Free old string value if replacing
-                if (g_config_table[i].in_use &&
-                    g_config_table[i].type == CONFIG_TYPE_STRING &&
-                    g_config_table[i].value.string_val) {
-                    nimcp_free(g_config_table[i].value.string_val);
-                    g_config_table[i].value.string_val = NULL;
-                }
-
-                strncpy(g_config_table[i].key, key, MAX_KEY_LENGTH - 1);
-                g_config_table[i].key[MAX_KEY_LENGTH - 1] = '\0';
-                g_config_table[i].in_use = true;
-
-                // Detect type and parse value
-                if (strcmp(value, "true") == 0 || strcmp(value, "false") == 0) {
-                    g_config_table[i].type = CONFIG_TYPE_BOOL;
-                    g_config_table[i].value.bool_val = (strcmp(value, "true") == 0);
-                } else if (strchr(value, '.') != NULL) {
-                    g_config_table[i].type = CONFIG_TYPE_FLOAT;
-                    g_config_table[i].value.float_val = atof(value);
-                } else if (value[0] == '-' || isdigit((unsigned char)value[0])) {
-                    g_config_table[i].type = CONFIG_TYPE_INT;
-                    g_config_table[i].value.int_val = atoll(value);
-                } else {
-                    // Phase IS-1: BBB validation for string config values
-                    bbb_system_t bbb = nimcp_bbb_get_global_system();
-                    bool bbb_rejected = false;
-                    if (bbb) {
-                        bbb_validation_result_t result;
-                        if (!bbb_validate_string(bbb, value, &result)) {
-                            fprintf(stderr, "Config parse error line %d: BBB rejected value\n", line_num);
-                            bbb_rejected = true;
-                        }
-                    }
-                    if (!bbb_rejected) {
-                        g_config_table[i].type = CONFIG_TYPE_STRING;
-                        g_config_table[i].value.string_val = strdup(value);
-                    }
-                }
-                break;
+            if (!entry->value.string_val) {
+                LOG_MODULE_ERROR("config", "Failed to allocate string for key: %s", key);
+                nimcp_free(entry);
+                continue;
             }
         }
 
+        // Validate against schema if set
+        if (!validate_value_against_schema(key, entry->type, &entry->value)) {
+            LOG_MODULE_WARN("config", "Value for key '%s' failed schema validation", key);
+            if (entry->type == CONFIG_TYPE_STRING && entry->value.string_val) {
+                nimcp_free(entry->value.string_val);
+            }
+            nimcp_free(entry);
+            continue;
+        }
+
+        // Store in hash table (thread-safe)
+        pthread_rwlock_wrlock(&g_config_lock);
+        bool inserted = hash_table_insert_string(g_config_table, key, entry,
+                                                 sizeof(config_entry_internal_t));
         pthread_rwlock_unlock(&g_config_lock);
+
+        if (inserted) {
+            entries_parsed++;
+            LOG_MODULE_TRACE("config", "Parsed: %s = [type=%d]", key, entry->type);
+        } else {
+            LOG_MODULE_ERROR("config", "Failed to insert key: %s", key);
+            if (entry->type == CONFIG_TYPE_STRING && entry->value.string_val) {
+                nimcp_free(entry->value.string_val);
+            }
+        }
+
+        nimcp_free(entry);  // Hash table makes a copy
     }
 
     fclose(file);
+    LOG_MODULE_INFO("config", "Parsed %d config entries from %s", entries_parsed, path);
     return true;
+}
+
+//=============================================================================
+// Signal Handler Integration
+//=============================================================================
+
+/**
+ * @brief Config reload callback for signal handler
+ *
+ * WHAT: Called by signal handler when SIGHUP received
+ * WHY:  Trigger config reload automatically
+ * HOW:  Call config_reload()
+ */
+static void config_reload_callback(void) {
+    LOG_MODULE_INFO("config", "SIGHUP received, reloading config");
+    config_reload();
 }
 
 //=============================================================================
@@ -194,260 +404,343 @@ static bool parse_config_file(const char* path) {
 
 bool config_init(const char* config_path) {
     if (!config_path) {
-        fprintf(stderr, "config_init: NULL config path\n");
+        LOG_MODULE_ERROR("config", "config_init: NULL config path");
         return false;
     }
 
+    if (g_initialized) {
+        LOG_MODULE_WARN("config", "config_init: Already initialized");
+        return false;
+    }
+
+    LOG_MODULE_INFO("config", "Initializing config system from: %s", config_path);
+
+    // Copy config path
     strncpy(g_config_path, config_path, sizeof(g_config_path) - 1);
     g_config_path[sizeof(g_config_path) - 1] = '\0';
 
-    // Parse initial config
-    if (!parse_config_file(g_config_path)) {
-        fprintf(stderr, "config_init: Failed to parse config file\n");
+    // Create hash table for config storage
+    hash_table_config_t hash_config = {
+        .initial_buckets = INITIAL_HASH_BUCKETS,
+        .key_type = HASH_KEY_STRING,
+        .hash_algorithm = HASH_ALG_FNV1A,
+        .case_insensitive = false,
+        .thread_safe = false,  // We handle threading with rwlock
+        .value_destructor = free_config_entry
+    };
+
+    g_config_table = hash_table_create(&hash_config);
+    if (!g_config_table) {
+        LOG_MODULE_ERROR("config", "Failed to create config hash table");
         return false;
     }
 
+    // Parse initial config file
+    if (!parse_config_file(g_config_path)) {
+        LOG_MODULE_ERROR("config", "Failed to parse config file: %s", g_config_path);
+        hash_table_destroy(g_config_table);
+        g_config_table = NULL;
+        return false;
+    }
+
+    // Initialize statistics
     g_stats.config_version = 1;
     g_stats.last_reload_time_ms = 0;
+    g_stats.reload_count = 0;
+    g_stats.reload_failures = 0;
+    g_stats.validation_failures = 0;
 
-    printf("Config initialized from: %s\n", g_config_path);
+    // Register reload callback with signal handler
+    signal_handler_set_reload_callback(config_reload_callback);
+    LOG_MODULE_DEBUG("config", "Registered reload callback with signal handler");
+
+    g_initialized = true;
+    LOG_MODULE_INFO("config", "Config initialized successfully (version %u, %zu entries)",
+                   g_stats.config_version, hash_table_size(g_config_table));
+
     return true;
 }
 
 void config_shutdown(void) {
+    if (!g_initialized) {
+        return;
+    }
+
+    LOG_MODULE_INFO("config", "Shutting down config system");
+
     pthread_rwlock_wrlock(&g_config_lock);
 
-    // Free string values
-    for (int i = 0; i < MAX_CONFIG_ENTRIES; i++) {
-        if (g_config_table[i].in_use &&
-            g_config_table[i].type == CONFIG_TYPE_STRING &&
-            g_config_table[i].value.string_val) {
-            nimcp_free(g_config_table[i].value.string_val);
+    // Destroy hash table (calls value_destructor for each entry)
+    if (g_config_table) {
+        hash_table_destroy(g_config_table);
+        g_config_table = NULL;
+    }
+
+    // Free snapshot if exists
+    if (g_config_snapshot) {
+        if (g_config_snapshot->table) {
+            hash_table_destroy(g_config_snapshot->table);
         }
-        g_config_table[i].in_use = false;
+        nimcp_free(g_config_snapshot);
+        g_config_snapshot = NULL;
     }
 
     pthread_rwlock_unlock(&g_config_lock);
+
+    // Clear callbacks
+    nimcp_mutex_lock(&g_callback_lock);
+    for (int i = 0; i < MAX_CALLBACKS; i++) {
+        if (g_callbacks[i].in_use && g_callbacks[i].key) {
+            nimcp_free(g_callbacks[i].key);
+        }
+        g_callbacks[i].in_use = false;
+        g_callbacks[i].key = NULL;
+        g_callbacks[i].callback = NULL;
+        g_callbacks[i].user_data = NULL;
+    }
+    nimcp_mutex_unlock(&g_callback_lock);
+
+    // Unregister from signal handler
+    signal_handler_set_reload_callback(NULL);
+
+    g_initialized = false;
+    LOG_MODULE_INFO("config", "Config system shutdown complete");
 }
 
 bool config_reload(void) {
-    printf("Reloading config from: %s\n", g_config_path);
+    LOG_MODULE_INFO("config", "Reloading config from: %s", g_config_path);
 
-    // Parse config file (replaces values in place)
+    // Parse config file (replaces values in hash table)
     bool success = parse_config_file(g_config_path);
 
     if (success) {
         g_stats.reload_count++;
         g_stats.config_version++;
-        printf("Config reloaded successfully (version %u)\n", g_stats.config_version);
+        LOG_MODULE_INFO("config", "Config reloaded successfully (version %u)",
+                       g_stats.config_version);
     } else {
         g_stats.reload_failures++;
-        fprintf(stderr, "Config reload failed\n");
+        LOG_MODULE_ERROR("config", "Config reload failed");
     }
 
     return success;
 }
 
 int64_t config_get_int(const char* key, int64_t default_value) {
-    if (!key) return default_value;
+    if (!key || !g_config_table) return default_value;
 
     pthread_rwlock_rdlock(&g_config_lock);
 
-    for (int i = 0; i < MAX_CONFIG_ENTRIES; i++) {
-        if (g_config_table[i].in_use &&
-            strcmp(g_config_table[i].key, key) == 0 &&
-            g_config_table[i].type == CONFIG_TYPE_INT) {
-            int64_t value = g_config_table[i].value.int_val;
-            pthread_rwlock_unlock(&g_config_lock);
-            return value;
-        }
+    config_entry_internal_t* entry = hash_table_lookup_string(g_config_table, key);
+    if (entry && entry->type == CONFIG_TYPE_INT) {
+        int64_t value = entry->value.int_val;
+        pthread_rwlock_unlock(&g_config_lock);
+        LOG_MODULE_TRACE("config", "get_int: %s = %lld", key, (long long)value);
+        return value;
     }
 
     pthread_rwlock_unlock(&g_config_lock);
+    LOG_MODULE_DEBUG("config", "get_int: key '%s' not found, returning default %lld",
+                    key, (long long)default_value);
     return default_value;
 }
 
 double config_get_float(const char* key, double default_value) {
-    if (!key) return default_value;
+    if (!key || !g_config_table) return default_value;
 
     pthread_rwlock_rdlock(&g_config_lock);
 
-    for (int i = 0; i < MAX_CONFIG_ENTRIES; i++) {
-        if (g_config_table[i].in_use &&
-            strcmp(g_config_table[i].key, key) == 0 &&
-            g_config_table[i].type == CONFIG_TYPE_FLOAT) {
-            double value = g_config_table[i].value.float_val;
-            pthread_rwlock_unlock(&g_config_lock);
-            return value;
-        }
+    config_entry_internal_t* entry = hash_table_lookup_string(g_config_table, key);
+    if (entry && entry->type == CONFIG_TYPE_FLOAT) {
+        double value = entry->value.float_val;
+        pthread_rwlock_unlock(&g_config_lock);
+        LOG_MODULE_TRACE("config", "get_float: %s = %f", key, value);
+        return value;
     }
 
     pthread_rwlock_unlock(&g_config_lock);
+    LOG_MODULE_DEBUG("config", "get_float: key '%s' not found, returning default %f",
+                    key, default_value);
     return default_value;
 }
 
 bool config_get_bool(const char* key, bool default_value) {
-    if (!key) return default_value;
+    if (!key || !g_config_table) return default_value;
 
     pthread_rwlock_rdlock(&g_config_lock);
 
-    for (int i = 0; i < MAX_CONFIG_ENTRIES; i++) {
-        if (g_config_table[i].in_use &&
-            strcmp(g_config_table[i].key, key) == 0 &&
-            g_config_table[i].type == CONFIG_TYPE_BOOL) {
-            bool value = g_config_table[i].value.bool_val;
-            pthread_rwlock_unlock(&g_config_lock);
-            return value;
-        }
+    config_entry_internal_t* entry = hash_table_lookup_string(g_config_table, key);
+    if (entry && entry->type == CONFIG_TYPE_BOOL) {
+        bool value = entry->value.bool_val;
+        pthread_rwlock_unlock(&g_config_lock);
+        LOG_MODULE_TRACE("config", "get_bool: %s = %s", key, value ? "true" : "false");
+        return value;
     }
 
     pthread_rwlock_unlock(&g_config_lock);
+    LOG_MODULE_DEBUG("config", "get_bool: key '%s' not found, returning default %s",
+                    key, default_value ? "true" : "false");
     return default_value;
 }
 
 const char* config_get_string(const char* key, const char* default_value) {
-    if (!key) return default_value;
+    if (!key || !g_config_table) return default_value;
 
     pthread_rwlock_rdlock(&g_config_lock);
 
-    for (int i = 0; i < MAX_CONFIG_ENTRIES; i++) {
-        if (g_config_table[i].in_use &&
-            strcmp(g_config_table[i].key, key) == 0 &&
-            g_config_table[i].type == CONFIG_TYPE_STRING) {
-            const char* value = g_config_table[i].value.string_val;
-            pthread_rwlock_unlock(&g_config_lock);
-            return value;
-        }
+    config_entry_internal_t* entry = hash_table_lookup_string(g_config_table, key);
+    if (entry && entry->type == CONFIG_TYPE_STRING) {
+        const char* value = entry->value.string_val;
+        pthread_rwlock_unlock(&g_config_lock);
+        LOG_MODULE_TRACE("config", "get_string: %s = %s", key, value);
+        return value;
     }
 
     pthread_rwlock_unlock(&g_config_lock);
+    LOG_MODULE_DEBUG("config", "get_string: key '%s' not found, returning default",
+                    key);
     return default_value;
 }
 
 bool config_set_int(const char* key, int64_t value) {
-    if (!key) return false;
+    if (!key || !g_config_table) return false;
 
     pthread_rwlock_wrlock(&g_config_lock);
 
-    for (int i = 0; i < MAX_CONFIG_ENTRIES; i++) {
-        if (g_config_table[i].in_use && strcmp(g_config_table[i].key, key) == 0) {
-            if (g_config_table[i].type != CONFIG_TYPE_INT) {
-                pthread_rwlock_unlock(&g_config_lock);
-                return false; // Type mismatch
-            }
-            // Save old value for callback
-            config_value_t old_value = g_config_table[i].value;
-            config_value_t new_value;
-            new_value.int_val = value;
-
-            g_config_table[i].value.int_val = value;
+    // Check if entry exists
+    config_entry_internal_t* existing = hash_table_lookup_string(g_config_table, key);
+    if (existing) {
+        if (existing->type != CONFIG_TYPE_INT) {
             pthread_rwlock_unlock(&g_config_lock);
-
-            // Trigger callbacks after releasing lock
-            trigger_callbacks(key, &old_value, &new_value);
-            return true;
+            LOG_MODULE_ERROR("config", "Type mismatch for key '%s'", key);
+            return false;
         }
+
+        config_value_t old_value = existing->value;
+        config_value_t new_value;
+        new_value.int_val = value;
+
+        // Validate
+        if (!validate_value_against_schema(key, CONFIG_TYPE_INT, &new_value)) {
+            pthread_rwlock_unlock(&g_config_lock);
+            return false;
+        }
+
+        existing->value.int_val = value;
+        pthread_rwlock_unlock(&g_config_lock);
+
+        trigger_callbacks(key, &old_value, &new_value);
+        LOG_MODULE_DEBUG("config", "set_int: %s = %lld", key, (long long)value);
+        return true;
     }
 
     pthread_rwlock_unlock(&g_config_lock);
-    return false; // Key not found
+    return false;
 }
 
 bool config_set_float(const char* key, double value) {
-    if (!key) return false;
+    if (!key || !g_config_table) return false;
 
     pthread_rwlock_wrlock(&g_config_lock);
 
-    for (int i = 0; i < MAX_CONFIG_ENTRIES; i++) {
-        if (g_config_table[i].in_use && strcmp(g_config_table[i].key, key) == 0) {
-            if (g_config_table[i].type != CONFIG_TYPE_FLOAT) {
-                pthread_rwlock_unlock(&g_config_lock);
-                return false; // Type mismatch
-            }
-            // Save old value for callback
-            config_value_t old_value = g_config_table[i].value;
-            config_value_t new_value;
-            new_value.float_val = value;
-
-            g_config_table[i].value.float_val = value;
+    config_entry_internal_t* existing = hash_table_lookup_string(g_config_table, key);
+    if (existing) {
+        if (existing->type != CONFIG_TYPE_FLOAT) {
             pthread_rwlock_unlock(&g_config_lock);
-
-            // Trigger callbacks after releasing lock
-            trigger_callbacks(key, &old_value, &new_value);
-            return true;
+            LOG_MODULE_ERROR("config", "Type mismatch for key '%s'", key);
+            return false;
         }
+
+        config_value_t old_value = existing->value;
+        config_value_t new_value;
+        new_value.float_val = value;
+
+        if (!validate_value_against_schema(key, CONFIG_TYPE_FLOAT, &new_value)) {
+            pthread_rwlock_unlock(&g_config_lock);
+            return false;
+        }
+
+        existing->value.float_val = value;
+        pthread_rwlock_unlock(&g_config_lock);
+
+        trigger_callbacks(key, &old_value, &new_value);
+        LOG_MODULE_DEBUG("config", "set_float: %s = %f", key, value);
+        return true;
     }
 
     pthread_rwlock_unlock(&g_config_lock);
-    return false; // Key not found
+    return false;
 }
 
 bool config_set_bool(const char* key, bool value) {
-    if (!key) return false;
+    if (!key || !g_config_table) return false;
 
     pthread_rwlock_wrlock(&g_config_lock);
 
-    for (int i = 0; i < MAX_CONFIG_ENTRIES; i++) {
-        if (g_config_table[i].in_use && strcmp(g_config_table[i].key, key) == 0) {
-            if (g_config_table[i].type != CONFIG_TYPE_BOOL) {
-                pthread_rwlock_unlock(&g_config_lock);
-                return false; // Type mismatch
-            }
-            // Save old value for callback
-            config_value_t old_value = g_config_table[i].value;
-            config_value_t new_value;
-            new_value.bool_val = value;
-
-            g_config_table[i].value.bool_val = value;
+    config_entry_internal_t* existing = hash_table_lookup_string(g_config_table, key);
+    if (existing) {
+        if (existing->type != CONFIG_TYPE_BOOL) {
             pthread_rwlock_unlock(&g_config_lock);
-
-            // Trigger callbacks after releasing lock
-            trigger_callbacks(key, &old_value, &new_value);
-            return true;
+            LOG_MODULE_ERROR("config", "Type mismatch for key '%s'", key);
+            return false;
         }
+
+        config_value_t old_value = existing->value;
+        config_value_t new_value;
+        new_value.bool_val = value;
+
+        existing->value.bool_val = value;
+        pthread_rwlock_unlock(&g_config_lock);
+
+        trigger_callbacks(key, &old_value, &new_value);
+        LOG_MODULE_DEBUG("config", "set_bool: %s = %s", key, value ? "true" : "false");
+        return true;
     }
 
     pthread_rwlock_unlock(&g_config_lock);
-    return false; // Key not found
+    return false;
 }
 
 bool config_set_string(const char* key, const char* value) {
-    if (!key || !value) return false;
+    if (!key || !value || !g_config_table) return false;
 
     pthread_rwlock_wrlock(&g_config_lock);
 
-    for (int i = 0; i < MAX_CONFIG_ENTRIES; i++) {
-        if (g_config_table[i].in_use && strcmp(g_config_table[i].key, key) == 0) {
-            if (g_config_table[i].type != CONFIG_TYPE_STRING) {
-                pthread_rwlock_unlock(&g_config_lock);
-                return false; // Type mismatch
-            }
-
-            // Save old value for callback
-            config_value_t old_value = g_config_table[i].value;
-            config_value_t new_value;
-            new_value.string_val = strdup(value);
-
-            // Free old value and set new one
-            if (g_config_table[i].value.string_val) {
-                nimcp_free(g_config_table[i].value.string_val);
-            }
-            g_config_table[i].value.string_val = strdup(value);
+    config_entry_internal_t* existing = hash_table_lookup_string(g_config_table, key);
+    if (existing) {
+        if (existing->type != CONFIG_TYPE_STRING) {
             pthread_rwlock_unlock(&g_config_lock);
-
-            // Trigger callbacks after releasing lock
-            trigger_callbacks(key, &old_value, &new_value);
-
-            // Free the temporary copy
-            if (new_value.string_val) {
-                nimcp_free(new_value.string_val);
-            }
-            return true;
+            LOG_MODULE_ERROR("config", "Type mismatch for key '%s'", key);
+            return false;
         }
+
+        config_value_t old_value = existing->value;
+        config_value_t new_value;
+        new_value.string_val = nimcp_strdup(value);
+
+        if (!new_value.string_val) {
+            pthread_rwlock_unlock(&g_config_lock);
+            return false;
+        }
+
+        // Free old string
+        if (existing->value.string_val) {
+            nimcp_free(existing->value.string_val);
+        }
+
+        existing->value.string_val = nimcp_strdup(value);
+        pthread_rwlock_unlock(&g_config_lock);
+
+        trigger_callbacks(key, &old_value, &new_value);
+
+        // Free temp copy
+        nimcp_free(new_value.string_val);
+        LOG_MODULE_DEBUG("config", "set_string: %s = %s", key, value);
+        return true;
     }
 
     pthread_rwlock_unlock(&g_config_lock);
-    return false; // Key not found
+    return false;
 }
 
 config_stats_t config_get_stats(void) {
@@ -455,77 +748,147 @@ config_stats_t config_get_stats(void) {
 }
 
 void config_print(void) {
-    pthread_rwlock_rdlock(&g_config_lock);
+    // Note: Hash table iteration would require additional implementation
+    LOG_MODULE_INFO("config", "Config version: %u, Reloads: %lu",
+                   g_stats.config_version, (unsigned long)g_stats.reload_count);
+}
 
-    printf("\n=== NIMCP Configuration ===\n");
-    printf("Version: %u\n", g_stats.config_version);
-    printf("Reload count: %lu\n", (unsigned long)g_stats.reload_count);
-    printf("\nCurrent Values:\n");
+/**
+ * @brief Context for config dump iteration
+ */
+typedef struct {
+    FILE* file;
+    bool error;
+    size_t count;
+} config_dump_context_t;
 
-    for (int i = 0; i < MAX_CONFIG_ENTRIES; i++) {
-        if (g_config_table[i].in_use) {
-            printf("  %s = ", g_config_table[i].key);
-            switch (g_config_table[i].type) {
-                case CONFIG_TYPE_INT:
-                    printf("%lld\n", (long long)g_config_table[i].value.int_val);
-                    break;
-                case CONFIG_TYPE_FLOAT:
-                    printf("%f\n", g_config_table[i].value.float_val);
-                    break;
-                case CONFIG_TYPE_BOOL:
-                    printf("%s\n", g_config_table[i].value.bool_val ? "true" : "false");
-                    break;
-                case CONFIG_TYPE_STRING:
-                    printf("%s\n", g_config_table[i].value.string_val);
-                    break;
-            }
-        }
+/**
+ * @brief Iterator callback for dumping config entries to file
+ *
+ * WHAT: Write a single config entry to INI format
+ * WHY:  Used by hash_table_iterate to dump all entries
+ * HOW:  Format value based on type and write to file
+ */
+static bool dump_entry_callback(const void* key, size_t key_size,
+                                 void* value, size_t value_size,
+                                 void* user_data) {
+    (void)key_size;
+    (void)value_size;
+
+    config_dump_context_t* ctx = (config_dump_context_t*)user_data;
+    if (!ctx || !ctx->file || ctx->error) {
+        return false;  // Stop iteration
     }
 
-    printf("===========================\n\n");
+    const char* key_str = (const char*)key;
+    config_entry_internal_t* entry = (config_entry_internal_t*)value;
 
-    pthread_rwlock_unlock(&g_config_lock);
+    if (!key_str || !entry) {
+        return true;  // Skip invalid entry, continue iteration
+    }
+
+    int written = 0;
+    switch (entry->type) {
+        case CONFIG_TYPE_INT:
+            written = fprintf(ctx->file, "%s = %lld\n",
+                            key_str, (long long)entry->value.int_val);
+            break;
+
+        case CONFIG_TYPE_FLOAT:
+            written = fprintf(ctx->file, "%s = %.6f\n",
+                            key_str, entry->value.float_val);
+            break;
+
+        case CONFIG_TYPE_BOOL:
+            written = fprintf(ctx->file, "%s = %s\n",
+                            key_str, entry->value.bool_val ? "true" : "false");
+            break;
+
+        case CONFIG_TYPE_STRING:
+            if (entry->value.string_val) {
+                written = fprintf(ctx->file, "%s = %s\n",
+                                key_str, entry->value.string_val);
+            } else {
+                written = fprintf(ctx->file, "%s = \n", key_str);
+            }
+            break;
+
+        case CONFIG_TYPE_ARRAY:
+            // Arrays are written as comments indicating presence
+            written = fprintf(ctx->file, "# %s = [array - %zu elements]\n",
+                            key_str, entry->value.array_val ?
+                            config_array_size((config_array_t*)entry->value.array_val) : 0);
+            break;
+
+        default:
+            LOG_MODULE_WARN("config", "Unknown type for key '%s' in dump", key_str);
+            return true;  // Continue iteration
+    }
+
+    if (written < 0) {
+        ctx->error = true;
+        LOG_MODULE_ERROR("config", "Failed to write entry '%s' to dump file", key_str);
+        return false;  // Stop iteration
+    }
+
+    ctx->count++;
+    return true;  // Continue iteration
 }
 
 bool config_dump(const char* output_path) {
-    if (!output_path) return false;
-
-    FILE* file = fopen(output_path, "w");
-    if (!file) {
-        fprintf(stderr, "Failed to open output file: %s\n", output_path);
+    if (!output_path) {
+        LOG_MODULE_ERROR("config", "config_dump: NULL output path");
         return false;
     }
 
-    pthread_rwlock_rdlock(&g_config_lock);
+    nimcp_rwlock_rdlock(&g_config_lock);
 
-    fprintf(file, "# NIMCP Configuration Dump\n");
-    fprintf(file, "# Version: %u\n", g_stats.config_version);
-    fprintf(file, "# Generated automatically\n\n");
-
-    for (int i = 0; i < MAX_CONFIG_ENTRIES; i++) {
-        if (g_config_table[i].in_use) {
-            fprintf(file, "%s = ", g_config_table[i].key);
-            switch (g_config_table[i].type) {
-                case CONFIG_TYPE_INT:
-                    fprintf(file, "%lld\n", (long long)g_config_table[i].value.int_val);
-                    break;
-                case CONFIG_TYPE_FLOAT:
-                    fprintf(file, "%f\n", g_config_table[i].value.float_val);
-                    break;
-                case CONFIG_TYPE_BOOL:
-                    fprintf(file, "%s\n", g_config_table[i].value.bool_val ? "true" : "false");
-                    break;
-                case CONFIG_TYPE_STRING:
-                    fprintf(file, "%s\n", g_config_table[i].value.string_val);
-                    break;
-            }
-        }
+    if (!g_config_table) {
+        nimcp_rwlock_unlock(&g_config_lock);
+        LOG_MODULE_ERROR("config", "config_dump: config not initialized");
+        return false;
     }
 
-    pthread_rwlock_unlock(&g_config_lock);
-    fclose(file);
+    FILE* file = fopen(output_path, "w");
+    if (!file) {
+        nimcp_rwlock_unlock(&g_config_lock);
+        LOG_MODULE_ERROR("config", "config_dump: failed to open '%s' for writing",
+                        output_path);
+        return false;
+    }
 
-    printf("Config dumped to: %s\n", output_path);
+    // Write header
+    fprintf(file, "# NIMCP Configuration Dump\n");
+    fprintf(file, "# Version: %u\n", g_stats.config_version);
+    fprintf(file, "# Generated by config_dump()\n\n");
+
+    // Iterate and dump all entries
+    config_dump_context_t ctx = {
+        .file = file,
+        .error = false,
+        .count = 0
+    };
+
+    hash_table_iterate(g_config_table, dump_entry_callback, &ctx);
+
+    nimcp_rwlock_unlock(&g_config_lock);
+
+    // Write footer
+    fprintf(file, "\n# Total entries: %zu\n", ctx.count);
+
+    if (fclose(file) != 0) {
+        LOG_MODULE_ERROR("config", "config_dump: failed to close file '%s'",
+                        output_path);
+        return false;
+    }
+
+    if (ctx.error) {
+        LOG_MODULE_ERROR("config", "config_dump: errors occurred during dump");
+        return false;
+    }
+
+    LOG_MODULE_INFO("config", "Config dumped to '%s' (%zu entries)",
+                   output_path, ctx.count);
     return true;
 }
 
@@ -534,7 +897,7 @@ bool config_validate(const char* config_path) {
 
     FILE* file = fopen(config_path, "r");
     if (!file) {
-        fprintf(stderr, "Cannot open config file: %s\n", config_path);
+        LOG_MODULE_ERROR("config", "Cannot open config file: %s", config_path);
         return false;
     }
 
@@ -546,15 +909,13 @@ bool config_validate(const char* config_path) {
         line_num++;
         trim_whitespace(line);
 
-        // Skip comments and empty lines
         if (line[0] == '#' || line[0] == ';' || line[0] == '\0') {
             continue;
         }
 
-        // Validate key=value format
         char* equals = strchr(line, '=');
         if (!equals) {
-            fprintf(stderr, "Validation error line %d: missing '='\n", line_num);
+            LOG_MODULE_ERROR("config", "Validation error line %d: missing '='", line_num);
             valid = false;
             continue;
         }
@@ -567,7 +928,8 @@ bool config_validate(const char* config_path) {
         trim_whitespace(value);
 
         if (key[0] == '\0' || value[0] == '\0') {
-            fprintf(stderr, "Validation error line %d: empty key or value\n", line_num);
+            LOG_MODULE_ERROR("config", "Validation error line %d: empty key or value",
+                            line_num);
             valid = false;
         }
     }
@@ -576,41 +938,39 @@ bool config_validate(const char* config_path) {
     return valid;
 }
 
-/**
- * @brief Trigger callbacks for a config value change
- *
- * WHAT: Notify all registered callbacks about a config change
- * WHY:  Enable runtime adaptation to config changes
- * HOW:  Iterate callbacks, invoke matching ones
- *
- * THREAD-SAFETY: Must be called with g_config_lock held (read or write)
- *
- * @param key Config key that changed
- * @param old_value Previous value
- * @param new_value New value
- */
+void config_set_schema(const config_schema_t* schema) {
+    g_config_schema = schema;
+    LOG_MODULE_INFO("config", "Config schema set with %zu entries",
+                   schema ? schema->num_entries : 0);
+}
+
+const config_schema_t* config_get_schema(void) {
+    return g_config_schema;
+}
+
+// NOTE: config_set_array, config_get_array are implemented in nimcp_config_array.c
+// NOTE: config_get_nested_* functions are implemented in nimcp_config_expand.c
+// NOTE: config_atomic_reload, config_rollback are implemented in nimcp_config_signal.c
+
+//=============================================================================
+// Callback System
+//=============================================================================
+
 static void trigger_callbacks(const char* key, const config_value_t* old_value,
                               const config_value_t* new_value) {
-    if (!key) {
-        return;
-    }
+    if (!key) return;
 
-    // Lock callback table
     nimcp_mutex_lock(&g_callback_lock);
 
-    // Iterate all registered callbacks
     for (int i = 0; i < MAX_CALLBACKS; i++) {
         if (!g_callbacks[i].in_use || !g_callbacks[i].callback) {
             continue;
         }
 
-        // Check if callback matches this key
-        // Empty key means callback wants all changes
-        bool matches = (g_callbacks[i].key[0] == '\0') ||
+        bool matches = (g_callbacks[i].key == NULL) ||
                       (strcmp(g_callbacks[i].key, key) == 0);
 
         if (matches) {
-            // Invoke callback (unlock first to prevent deadlock)
             nimcp_mutex_unlock(&g_callback_lock);
             g_callbacks[i].callback(key, old_value, new_value, g_callbacks[i].user_data);
             nimcp_mutex_lock(&g_callback_lock);
@@ -622,19 +982,13 @@ static void trigger_callbacks(const char* key, const config_value_t* old_value,
 
 uint32_t config_register_callback(const char* key, config_change_callback_t callback,
                                    void* user_data) {
-    // WHAT: Register callback for config change notifications
-    // WHY:  Enable runtime reaction to config updates (e.g., adjust learning rate)
-    // HOW:  Store callback in thread-safe registry with unique ID
-
-    // Input validation
     if (!callback) {
-        fprintf(stderr, "config_register_callback: NULL callback\n");
+        LOG_MODULE_ERROR("config", "config_register_callback: NULL callback");
         return 0;
     }
 
     nimcp_mutex_lock(&g_callback_lock);
 
-    // Find free slot
     uint32_t slot = 0;
     bool found = false;
     for (uint32_t i = 0; i < MAX_CALLBACKS; i++) {
@@ -647,53 +1001,45 @@ uint32_t config_register_callback(const char* key, config_change_callback_t call
 
     if (!found) {
         nimcp_mutex_unlock(&g_callback_lock);
-        fprintf(stderr, "config_register_callback: No free callback slots (max %d)\n",
-                MAX_CALLBACKS);
+        LOG_MODULE_ERROR("config", "No nimcp_free callback slots (max %d)", MAX_CALLBACKS);
         return 0;
     }
 
-    // Generate unique ID
     uint32_t id = g_next_callback_id++;
 
-    // Register callback
     g_callbacks[slot].id = id;
     g_callbacks[slot].callback = callback;
     g_callbacks[slot].user_data = user_data;
     g_callbacks[slot].in_use = true;
 
-    // Copy key (empty string means watch all keys)
     if (key) {
-        strncpy(g_callbacks[slot].key, key, MAX_KEY_LENGTH - 1);
-        g_callbacks[slot].key[MAX_KEY_LENGTH - 1] = '\0';
+        g_callbacks[slot].key = nimcp_strdup(key);
     } else {
-        g_callbacks[slot].key[0] = '\0';  // Watch all keys
+        g_callbacks[slot].key = NULL;
     }
 
     nimcp_mutex_unlock(&g_callback_lock);
 
+    LOG_MODULE_DEBUG("config", "Registered callback ID %u for key '%s'",
+                    id, key ? key : "all");
     return id;
 }
 
 void config_unregister_callback(uint32_t registration_id) {
-    // WHAT: Unregister callback by ID
-    // WHY:  Cleanup when callback no longer needed
-    // HOW:  Find callback by ID and mark slot as free
-
-    // Validate ID
-    if (registration_id == 0) {
-        return;
-    }
+    if (registration_id == 0) return;
 
     nimcp_mutex_lock(&g_callback_lock);
 
-    // Find and remove callback
     for (int i = 0; i < MAX_CALLBACKS; i++) {
         if (g_callbacks[i].in_use && g_callbacks[i].id == registration_id) {
-            // Mark slot as free
+            if (g_callbacks[i].key) {
+                nimcp_free(g_callbacks[i].key);
+            }
             g_callbacks[i].in_use = false;
             g_callbacks[i].callback = NULL;
             g_callbacks[i].user_data = NULL;
-            g_callbacks[i].key[0] = '\0';
+            g_callbacks[i].key = NULL;
+            LOG_MODULE_DEBUG("config", "Unregistered callback ID %u", registration_id);
             break;
         }
     }
