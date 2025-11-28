@@ -1,0 +1,2056 @@
+/**
+ * @file nimcp_bio_async.c
+ * @brief Biologically-Inspired Asynchronous Computation System Implementation
+ *
+ * WHAT: Implementation of bio-async using NIMCP utilities
+ * WHY:  Biologically realistic async with proper memory and threading
+ * HOW:  Uses unified memory, thread pool, atomics, rwlocks
+ *
+ * IMPLEMENTATION NOTES:
+ * - All allocations use unified memory for CoW support
+ * - Thread pool for async workers
+ * - RW locks for concurrent read access
+ * - Atomics for lock-free hot paths
+ * - Cache-line aligned structures
+ *
+ * @author NIMCP Development Team
+ * @date 2025-11-28
+ * @version 1.0.0
+ */
+
+#include "async/nimcp_bio_async.h"
+#include "async/nimcp_biological_timescales.h"
+#include "utils/memory/nimcp_unified_memory.h"
+#include "utils/memory/nimcp_memory.h"
+#include "utils/thread/nimcp_thread.h"
+#include "utils/thread/nimcp_thread_pool.h"
+#include "utils/thread/nimcp_atomic.h"
+#include "utils/platform/nimcp_platform_time.h"
+#include "utils/logging/nimcp_logging.h"
+#include "utils/error/nimcp_error_codes.h"
+
+#include <stdlib.h>
+#include <string.h>
+#include <math.h>
+
+//=============================================================================
+// Constants
+//=============================================================================
+
+#define BIO_MAGIC_PROMISE 0x42494F50  /* 'BIOP' */
+#define BIO_MAGIC_FUTURE  0x42494F46  /* 'BIOF' */
+#define BIO_MAGIC_PHASE   0x42494F53  /* 'BIOS' */
+#define BIO_MAGIC_GLIAL   0x42494F47  /* 'BIOG' */
+#define BIO_MAGIC_PREDICT 0x42494F52  /* 'BIOR' */
+
+#define BIO_MAX_CALLBACKS 32
+#define BIO_MAX_OSCILLATORS 256
+#define BIO_MAX_REGIONS 1024
+#define BIO_MAX_SIGNAL_NAME 64
+
+/** Maximum tracked unified memory handles */
+#define BIO_MAX_TRACKED_HANDLES 4096
+
+/** Confidence threshold below which future is considered decayed */
+#define BIO_CONFIDENCE_THRESHOLD 0.05f
+
+//=============================================================================
+// Internal Structures
+//=============================================================================
+
+/**
+ * @brief Callback node for bio-future
+ */
+typedef struct bio_callback_node {
+    nimcp_bio_callback_t callback;
+    void* user_data;
+    struct bio_callback_node* next;
+} bio_callback_node_t;
+
+/**
+ * @brief Shared state for bio-promise/future pair
+ */
+typedef struct nimcp_bio_shared_state {
+    uint32_t magic;
+
+    /* Channel info */
+    nimcp_bio_channel_type_t channel;
+
+    /* State machine (atomic) */
+    nimcp_atomic_uint32_t state;
+
+    /* Reference counting (atomic) */
+    nimcp_atomic_uint32_t refcount;
+
+    /* Concentration tracking (atomic float via uint32) */
+    nimcp_atomic_uint32_t concentration_bits;  /**< Float as bits for atomics */
+
+    /* Timing */
+    uint64_t create_time_ms;
+    uint64_t complete_time_ms;
+
+    /* Result storage */
+    void* result;
+    size_t result_size;
+    nimcp_error_t error;
+
+    /* Synchronization */
+    nimcp_mutex_t mutex;
+    nimcp_cond_t cond;
+
+    /* Callbacks */
+    bio_callback_node_t* callbacks;
+
+} __attribute__((aligned(BIO_CACHE_LINE_SIZE))) nimcp_bio_shared_state_t;
+
+/**
+ * @brief Bio-promise structure
+ */
+struct nimcp_bio_promise_struct {
+    uint32_t magic;
+    nimcp_bio_shared_state_t* shared;
+};
+
+/**
+ * @brief Bio-future structure
+ */
+struct nimcp_bio_future_struct {
+    uint32_t magic;
+    nimcp_bio_shared_state_t* shared;
+};
+
+/**
+ * @brief Oscillator for phase coupling
+ */
+typedef struct {
+    float phase;              /**< Current phase [0, 2π] */
+    float natural_freq;       /**< Natural frequency (radians/ms) */
+    nimcp_bio_future_t future; /**< Associated future */
+    bool completed;           /**< Future has completed */
+} oscillator_t;
+
+/**
+ * @brief Phase sync structure
+ */
+struct nimcp_phase_sync_struct {
+    uint32_t magic;
+    nimcp_oscillation_band_t band;
+
+    /* Oscillators */
+    oscillator_t* oscillators;
+    size_t count;
+    size_t capacity;
+
+    /* Kuramoto parameters */
+    float coupling_K;
+    float coherence_threshold;
+
+    /* Cached order parameter */
+    nimcp_atomic_uint32_t order_r_bits;
+    nimcp_atomic_uint32_t mean_phase_bits;
+
+    /* Synchronization */
+    nimcp_rwlock_t rwlock;
+    nimcp_cond_t cond;
+    nimcp_mutex_t cond_mutex;
+};
+
+/**
+ * @brief Predictive model callback entry
+ */
+typedef struct predict_callback_entry {
+    nimcp_prediction_error_callback_t callback;
+    void* user_data;
+    float surprise_threshold;
+    struct predict_callback_entry* next;
+} predict_callback_entry_t;
+
+/**
+ * @brief Predictive model structure
+ */
+struct nimcp_predictive_model_struct {
+    uint32_t magic;
+
+    char signal_name[BIO_MAX_SIGNAL_NAME];
+
+    /* Bayesian state */
+    float prediction;
+    float precision;
+    float last_surprise;
+    float learning_rate;
+
+    /* Callbacks */
+    predict_callback_entry_t* callbacks;
+
+    /* Synchronization */
+    nimcp_rwlock_t rwlock;
+};
+
+/**
+ * @brief Region calcium state for glial wave
+ */
+typedef struct {
+    float calcium;         /**< Calcium concentration (μM) */
+    float ip3;             /**< IP3 concentration (μM) */
+    bool reached;          /**< Wave has reached this region */
+    nimcp_wave_callback_t callback;
+    void* callback_data;
+} region_state_t;
+
+/**
+ * @brief Glial wave structure
+ */
+struct nimcp_glial_wave_struct {
+    uint32_t magic;
+
+    uint32_t source_region;
+    float initial_calcium;
+    uint64_t start_time_ms;
+
+    /* Region states */
+    region_state_t* regions;
+    size_t num_regions;
+
+    /* Wave properties */
+    float radius;
+    float speed;
+    bool active;
+
+    /* Synchronization */
+    nimcp_rwlock_t rwlock;
+    nimcp_cond_t cond;
+    nimcp_mutex_t cond_mutex;
+};
+
+//=============================================================================
+// Handle Tracking for Unified Memory
+//=============================================================================
+
+/**
+ * @brief Entry for tracking unified memory handle-to-pointer mapping
+ */
+typedef struct {
+    void* ptr;                      /**< Pointer returned to caller */
+    unified_mem_handle_t handle;    /**< Corresponding unified memory handle */
+} bio_handle_entry_t;
+
+/**
+ * @brief Handle tracker for unified memory
+ */
+typedef struct {
+    bio_handle_entry_t entries[BIO_MAX_TRACKED_HANDLES];
+    nimcp_atomic_uint32_t count;
+    nimcp_mutex_t mutex;
+    bool initialized;
+} bio_handle_tracker_t;
+
+static bio_handle_tracker_t g_handle_tracker = {0};
+
+/**
+ * @brief Initialize handle tracker
+ */
+static nimcp_error_t handle_tracker_init(void) {
+    if (g_handle_tracker.initialized) return NIMCP_SUCCESS;
+
+    nimcp_error_t err = nimcp_mutex_init(&g_handle_tracker.mutex, NULL);
+    if (err != NIMCP_SUCCESS) return err;
+
+    nimcp_atomic_init_u32(&g_handle_tracker.count, 0);
+    memset(g_handle_tracker.entries, 0, sizeof(g_handle_tracker.entries));
+    g_handle_tracker.initialized = true;
+    return NIMCP_SUCCESS;
+}
+
+/**
+ * @brief Shutdown handle tracker
+ */
+static void handle_tracker_shutdown(void) {
+    if (!g_handle_tracker.initialized) return;
+
+    nimcp_mutex_lock(&g_handle_tracker.mutex);
+
+    /* Free any remaining tracked handles */
+    for (uint32_t i = 0; i < BIO_MAX_TRACKED_HANDLES; i++) {
+        if (g_handle_tracker.entries[i].handle) {
+            unified_mem_free(g_handle_tracker.entries[i].handle);
+            g_handle_tracker.entries[i].handle = NULL;
+            g_handle_tracker.entries[i].ptr = NULL;
+        }
+    }
+
+    nimcp_mutex_unlock(&g_handle_tracker.mutex);
+    nimcp_mutex_destroy(&g_handle_tracker.mutex);
+    g_handle_tracker.initialized = false;
+}
+
+/**
+ * @brief Register a pointer-handle mapping
+ * @return true on success, false if table full
+ */
+static bool handle_tracker_register(void* ptr, unified_mem_handle_t handle) {
+    if (!g_handle_tracker.initialized || !ptr || !handle) return false;
+
+    nimcp_mutex_lock(&g_handle_tracker.mutex);
+
+    /* Find empty slot */
+    for (uint32_t i = 0; i < BIO_MAX_TRACKED_HANDLES; i++) {
+        if (g_handle_tracker.entries[i].ptr == NULL) {
+            g_handle_tracker.entries[i].ptr = ptr;
+            g_handle_tracker.entries[i].handle = handle;
+            nimcp_atomic_fetch_add_u32(&g_handle_tracker.count, 1, NIMCP_MEMORY_ORDER_RELAXED);
+            nimcp_mutex_unlock(&g_handle_tracker.mutex);
+            return true;
+        }
+    }
+
+    nimcp_mutex_unlock(&g_handle_tracker.mutex);
+    LOG_WARNING("Handle tracker full - cannot track allocation");
+    return false;
+}
+
+/**
+ * @brief Find and remove a handle by pointer
+ * @return The handle if found, NULL otherwise
+ */
+static unified_mem_handle_t handle_tracker_remove(void* ptr) {
+    if (!g_handle_tracker.initialized || !ptr) return NULL;
+
+    nimcp_mutex_lock(&g_handle_tracker.mutex);
+
+    for (uint32_t i = 0; i < BIO_MAX_TRACKED_HANDLES; i++) {
+        if (g_handle_tracker.entries[i].ptr == ptr) {
+            unified_mem_handle_t handle = g_handle_tracker.entries[i].handle;
+            g_handle_tracker.entries[i].ptr = NULL;
+            g_handle_tracker.entries[i].handle = NULL;
+            nimcp_atomic_fetch_sub_u32(&g_handle_tracker.count, 1, NIMCP_MEMORY_ORDER_RELAXED);
+            nimcp_mutex_unlock(&g_handle_tracker.mutex);
+            return handle;
+        }
+    }
+
+    nimcp_mutex_unlock(&g_handle_tracker.mutex);
+    return NULL;  /* Not found - allocated via nimcp_malloc */
+}
+
+//=============================================================================
+// Global State
+//=============================================================================
+
+static struct {
+    bool initialized;
+    nimcp_bio_async_config_t config;
+
+    /* Memory management */
+    unified_mem_manager_t mem_mgr;
+
+    /* Thread pool */
+    nimcp_thread_pool_t* thread_pool;
+
+    /* Statistics */
+    nimcp_bio_async_stats_t stats;
+    nimcp_rwlock_t stats_lock;
+
+    /* Simulation time */
+    uint64_t simulation_time_ms;
+    nimcp_mutex_t time_mutex;
+
+} g_bio_async = {0};
+
+//=============================================================================
+// Helper Functions - Memory
+//=============================================================================
+
+/**
+ * @brief Allocate memory using unified memory if available
+ *
+ * Uses handle tracker to properly map pointers back to unified memory handles
+ * for correct deallocation.
+ */
+static void* bio_alloc(size_t size) {
+    if (g_bio_async.mem_mgr && g_handle_tracker.initialized) {
+        unified_mem_request_t req = unified_mem_request_direct(size);
+        unified_mem_handle_t handle = unified_mem_alloc(g_bio_async.mem_mgr, &req);
+        if (handle) {
+            void* ptr = (void*)unified_mem_write(handle);
+            if (ptr) {
+                if (handle_tracker_register(ptr, handle)) {
+                    return ptr;
+                }
+                /* Failed to register - free handle and fallback to malloc */
+                unified_mem_free(handle);
+            } else {
+                unified_mem_free(handle);
+            }
+        }
+    }
+    return nimcp_malloc(size);
+}
+
+/**
+ * @brief Allocate aligned memory
+ *
+ * Uses handle tracker for unified memory allocations.
+ */
+static void* bio_aligned_alloc(size_t alignment, size_t size) {
+    if (g_bio_async.mem_mgr && g_handle_tracker.initialized) {
+        unified_mem_request_t req = {
+            .size = size,
+            .initial_data = NULL,
+            .strategy = UNIFIED_STRATEGY_POOL_DIRECT,
+            .enable_cow = false,
+            .alignment = alignment
+        };
+        unified_mem_handle_t handle = unified_mem_alloc(g_bio_async.mem_mgr, &req);
+        if (handle) {
+            void* ptr = (void*)unified_mem_write(handle);
+            if (ptr) {
+                if (handle_tracker_register(ptr, handle)) {
+                    return ptr;
+                }
+                /* Failed to register - free handle and fallback to malloc */
+                unified_mem_free(handle);
+            } else {
+                unified_mem_free(handle);
+            }
+        }
+    }
+    return nimcp_aligned_alloc(alignment, size);
+}
+
+/**
+ * @brief Free memory
+ *
+ * Checks handle tracker for unified memory allocations, otherwise uses nimcp_free.
+ */
+static void bio_free(void* ptr) {
+    if (!ptr) return;
+
+    /* Check if this pointer was allocated via unified memory */
+    unified_mem_handle_t handle = handle_tracker_remove(ptr);
+    if (handle) {
+        /* Unified memory - use proper free */
+        unified_mem_free(handle);
+    } else {
+        /* Regular allocation - use nimcp_free */
+        nimcp_free(ptr);
+    }
+}
+
+/**
+ * @brief Atomic float load (via bit cast)
+ */
+static inline float atomic_load_float(nimcp_atomic_uint32_t* bits) {
+    uint32_t b = nimcp_atomic_load_u32(bits, NIMCP_MEMORY_ORDER_ACQUIRE);
+    float f;
+    memcpy(&f, &b, sizeof(f));
+    return f;
+}
+
+/**
+ * @brief Atomic float store (via bit cast)
+ */
+static inline void atomic_store_float(nimcp_atomic_uint32_t* bits, float f) {
+    uint32_t b;
+    memcpy(&b, &f, sizeof(b));
+    nimcp_atomic_store_u32(bits, b, NIMCP_MEMORY_ORDER_RELEASE);
+}
+
+/**
+ * @brief Get current time in milliseconds
+ */
+static inline uint64_t bio_time_ms(void) {
+    return nimcp_platform_time_monotonic_ms();
+}
+
+//=============================================================================
+// Shared State Management
+//=============================================================================
+
+static nimcp_bio_shared_state_t* shared_state_create(
+    nimcp_bio_channel_type_t channel,
+    size_t result_size)
+{
+    nimcp_bio_shared_state_t* shared = (nimcp_bio_shared_state_t*)
+        bio_aligned_alloc(BIO_CACHE_LINE_SIZE, sizeof(nimcp_bio_shared_state_t));
+    if (!shared) {
+        LOG_ERROR("Failed to allocate bio shared state");
+        return NULL;
+    }
+
+    memset(shared, 0, sizeof(nimcp_bio_shared_state_t));
+    shared->magic = BIO_MAGIC_PROMISE;
+    shared->channel = channel;
+
+    /* Initialize atomics */
+    nimcp_atomic_init_u32(&shared->state, BIO_FUTURE_PENDING);
+    nimcp_atomic_init_u32(&shared->refcount, 1);
+
+    /* Initialize concentration at baseline */
+    float baseline;
+    switch (channel) {
+        case BIO_CHANNEL_DOPAMINE: baseline = BIO_DA_BASELINE_UM; break;
+        case BIO_CHANNEL_SEROTONIN: baseline = BIO_5HT_BASELINE_UM; break;
+        case BIO_CHANNEL_NOREPINEPHRINE: baseline = BIO_NE_BASELINE_UM; break;
+        case BIO_CHANNEL_ACETYLCHOLINE: baseline = BIO_ACH_BASELINE_UM; break;
+        default: baseline = 0.0f;
+    }
+    atomic_store_float(&shared->concentration_bits, baseline);
+
+    /* Initialize timing */
+    shared->create_time_ms = bio_time_ms();
+    shared->complete_time_ms = 0;
+
+    /* Initialize result */
+    shared->result = NULL;
+    shared->result_size = result_size;
+    shared->error = NIMCP_SUCCESS;
+
+    /* Initialize synchronization */
+    if (nimcp_mutex_init(&shared->mutex, NULL) != NIMCP_SUCCESS) {
+        bio_free(shared);
+        return NULL;
+    }
+    if (nimcp_cond_init(&shared->cond) != NIMCP_SUCCESS) {
+        nimcp_mutex_destroy(&shared->mutex);
+        bio_free(shared);
+        return NULL;
+    }
+
+    shared->callbacks = NULL;
+
+    return shared;
+}
+
+static void shared_state_addref(nimcp_bio_shared_state_t* shared) {
+    if (!shared || shared->magic != BIO_MAGIC_PROMISE) return;
+    nimcp_atomic_fetch_add_u32(&shared->refcount, 1, NIMCP_MEMORY_ORDER_ACQ_REL);
+}
+
+static void shared_state_release(nimcp_bio_shared_state_t* shared) {
+    if (!shared || shared->magic != BIO_MAGIC_PROMISE) return;
+
+    uint32_t old_ref = nimcp_atomic_fetch_sub_u32(&shared->refcount, 1, NIMCP_MEMORY_ORDER_ACQ_REL);
+    if (old_ref == 1) {
+        /* Last reference - cleanup */
+        if (shared->result) {
+            bio_free(shared->result);
+        }
+
+        /* Free callbacks */
+        bio_callback_node_t* cb = shared->callbacks;
+        while (cb) {
+            bio_callback_node_t* next = cb->next;
+            bio_free(cb);
+            cb = next;
+        }
+
+        nimcp_cond_destroy(&shared->cond);
+        nimcp_mutex_destroy(&shared->mutex);
+
+        shared->magic = 0;
+        bio_free(shared);
+    }
+}
+
+/**
+ * @brief Update concentration based on decay
+ */
+static float shared_state_update_concentration(nimcp_bio_shared_state_t* shared) {
+    uint32_t state = nimcp_atomic_load_u32(&shared->state, NIMCP_MEMORY_ORDER_ACQUIRE);
+    if (state != BIO_FUTURE_COMPLETED) {
+        return 0.0f;
+    }
+
+    float elapsed_ms = (float)(bio_time_ms() - shared->complete_time_ms);
+    float tau = nimcp_bio_channel_decay_tau(shared->channel);
+
+    /* Get peak and baseline for this channel */
+    float peak, baseline;
+    switch (shared->channel) {
+        case BIO_CHANNEL_DOPAMINE:
+            peak = BIO_DA_PEAK_PHASIC_UM;
+            baseline = BIO_DA_BASELINE_UM;
+            break;
+        case BIO_CHANNEL_SEROTONIN:
+            peak = 1.0f;
+            baseline = BIO_5HT_BASELINE_UM;
+            break;
+        case BIO_CHANNEL_NOREPINEPHRINE:
+            peak = 1.0f;
+            baseline = BIO_NE_BASELINE_UM;
+            break;
+        case BIO_CHANNEL_ACETYLCHOLINE:
+            peak = 1.0f;
+            baseline = BIO_ACH_BASELINE_UM;
+            break;
+        default:
+            peak = 1.0f;
+            baseline = 0.0f;
+    }
+
+    /* Exponential decay: c(t) = baseline + (peak - baseline) * exp(-t/tau) */
+    float concentration = baseline + (peak - baseline) * bio_exponential_decay(1.0f, elapsed_ms, tau);
+    atomic_store_float(&shared->concentration_bits, concentration);
+
+    /* Check for full decay */
+    float confidence = (concentration - baseline) / (peak - baseline);
+    if (confidence < BIO_CONFIDENCE_THRESHOLD) {
+        uint32_t expected = BIO_FUTURE_COMPLETED;
+        nimcp_atomic_compare_exchange_u32(&shared->state, &expected, BIO_FUTURE_DECAYED,
+                                          NIMCP_MEMORY_ORDER_ACQ_REL);
+    }
+
+    return concentration;
+}
+
+/**
+ * @brief Invoke all registered callbacks
+ */
+static void shared_state_invoke_callbacks(nimcp_bio_shared_state_t* shared) {
+    uint32_t state = nimcp_atomic_load_u32(&shared->state, NIMCP_MEMORY_ORDER_ACQUIRE);
+    float concentration = atomic_load_float(&shared->concentration_bits);
+
+    /* Calculate confidence */
+    float peak, baseline;
+    switch (shared->channel) {
+        case BIO_CHANNEL_DOPAMINE:
+            peak = BIO_DA_PEAK_PHASIC_UM;
+            baseline = BIO_DA_BASELINE_UM;
+            break;
+        default:
+            peak = 1.0f;
+            baseline = 0.0f;
+    }
+    float confidence = (peak > baseline) ? (concentration - baseline) / (peak - baseline) : 0.0f;
+    if (confidence < 0.0f) confidence = 0.0f;
+    if (confidence > 1.0f) confidence = 1.0f;
+
+    nimcp_error_t error = (state == BIO_FUTURE_FAILED) ? shared->error : NIMCP_SUCCESS;
+    const void* result = (state == BIO_FUTURE_COMPLETED) ? shared->result : NULL;
+
+    bio_callback_node_t* cb = shared->callbacks;
+    while (cb) {
+        if (cb->callback) {
+            cb->callback(result, confidence, error, cb->user_data);
+        }
+        cb = cb->next;
+    }
+}
+
+//=============================================================================
+// Module Initialization
+//=============================================================================
+
+nimcp_bio_async_config_t nimcp_bio_async_default_config(void) {
+    nimcp_bio_async_config_t config = {0};
+
+    /* Channel configurations with computational scaling */
+    config.channel_configs[BIO_CHANNEL_DOPAMINE] = (nimcp_channel_config_t){
+        .baseline_concentration = BIO_DA_BASELINE_UM,
+        .peak_concentration = BIO_DA_PEAK_PHASIC_UM,
+        .decay_tau_ms = BIO_COMP_DA_DECAY_TAU_MS,
+        .diffusion_coef = BIO_DA_DIFFUSION_COEF,
+        .refractory_period_ms = 10.0f,
+        .enable_diffusion = false
+    };
+
+    config.channel_configs[BIO_CHANNEL_SEROTONIN] = (nimcp_channel_config_t){
+        .baseline_concentration = BIO_5HT_BASELINE_UM,
+        .peak_concentration = 1.0f,
+        .decay_tau_ms = BIO_COMP_5HT_DECAY_TAU_MS,
+        .diffusion_coef = BIO_5HT_DIFFUSION_COEF,
+        .refractory_period_ms = 100.0f,
+        .enable_diffusion = false
+    };
+
+    config.channel_configs[BIO_CHANNEL_NOREPINEPHRINE] = (nimcp_channel_config_t){
+        .baseline_concentration = BIO_NE_BASELINE_UM,
+        .peak_concentration = 1.0f,
+        .decay_tau_ms = BIO_COMP_NE_DECAY_TAU_MS,
+        .diffusion_coef = BIO_NE_DIFFUSION_COEF,
+        .refractory_period_ms = 20.0f,
+        .enable_diffusion = false
+    };
+
+    config.channel_configs[BIO_CHANNEL_ACETYLCHOLINE] = (nimcp_channel_config_t){
+        .baseline_concentration = BIO_ACH_BASELINE_UM,
+        .peak_concentration = 1.0f,
+        .decay_tau_ms = BIO_COMP_ACH_DECAY_TAU_MS,
+        .diffusion_coef = BIO_ACH_DIFFUSION_COEF,
+        .refractory_period_ms = 5.0f,
+        .enable_diffusion = false
+    };
+
+    /* Phase coupling */
+    config.phase_config = (nimcp_phase_config_t){
+        .coherence_threshold = BIO_PHASE_COHERENCE_THRESHOLD,
+        .coupling_strength = BIO_KURAMOTO_K_GAMMA,
+        .frequency_spread = 0.1f,
+        .max_oscillators = BIO_MAX_OSCILLATORS,
+        .enable_cross_frequency = false
+    };
+
+    /* Predictive coding */
+    config.predictive_config = (nimcp_predictive_config_t){
+        .default_prior_precision = BIO_PRED_PRIOR_PRECISION,
+        .default_likelihood_precision = BIO_PRED_LIKELIHOOD_PRECISION,
+        .learning_rate = BIO_PRED_PRECISION_LEARNING_RATE,
+        .surprise_threshold = BIO_PRED_SURPRISE_THRESHOLD,
+        .max_predictors = 256
+    };
+
+    /* Glial signaling */
+    config.glial_config = (nimcp_glial_config_t){
+        .wave_speed_um_s = BIO_COMP_CA_WAVE_SPEED,
+        .wave_threshold_um = BIO_CA_WAVE_THRESHOLD_UM,
+        .decay_rate = 0.1f,
+        .max_concurrent_waves = 16,
+        .mode = BIO_WAVE_ISOTROPIC
+    };
+
+    /* Threading */
+    config.thread_pool_size = BIO_DEFAULT_THREAD_POOL_SIZE;
+    config.enable_thread_affinity = false;
+
+    /* Memory */
+    config.max_memory_bytes = 0;  /* Unlimited */
+    config.use_unified_memory = true;
+
+    /* Timing */
+    config.simulation_dt_ms = 1.0f;
+    config.use_real_time = true;
+    config.time_acceleration = 1.0f;
+
+    /* Debug */
+    config.enable_statistics = true;
+    config.enable_logging = true;
+
+    return config;
+}
+
+nimcp_error_t nimcp_bio_async_init(const nimcp_bio_async_config_t* config) {
+    if (g_bio_async.initialized) {
+        LOG_WARNING("Bio-async already initialized");
+        return NIMCP_SUCCESS;
+    }
+
+    LOG_INFO("Initializing bio-async system");
+
+    /* Use provided config or defaults */
+    if (config) {
+        g_bio_async.config = *config;
+    } else {
+        g_bio_async.config = nimcp_bio_async_default_config();
+    }
+
+    /* Initialize handle tracker (must be before memory manager) */
+    nimcp_error_t tracker_err = handle_tracker_init();
+    if (tracker_err != NIMCP_SUCCESS) {
+        LOG_WARNING("Failed to init handle tracker, unified memory disabled");
+    }
+
+    /* Initialize memory manager */
+    if (g_bio_async.config.use_unified_memory && g_handle_tracker.initialized) {
+        unified_mem_config_t mem_config = unified_mem_default_config();
+        g_bio_async.mem_mgr = unified_mem_create(&mem_config);
+        if (!g_bio_async.mem_mgr) {
+            LOG_WARNING("Failed to create unified memory manager, using malloc");
+        }
+    }
+
+    /* Initialize thread pool */
+    size_t pool_size = g_bio_async.config.thread_pool_size;
+    if (pool_size == 0) {
+        pool_size = BIO_DEFAULT_THREAD_POOL_SIZE;
+    }
+    g_bio_async.thread_pool = nimcp_pool_create(pool_size);
+    if (!g_bio_async.thread_pool) {
+        LOG_ERROR("Failed to create thread pool");
+        if (g_bio_async.mem_mgr) {
+            unified_mem_destroy(g_bio_async.mem_mgr);
+            g_bio_async.mem_mgr = NULL;
+        }
+        return NIMCP_ERROR_THREAD_CREATE;
+    }
+
+    /* Initialize stats lock */
+    if (nimcp_rwlock_init(&g_bio_async.stats_lock) != NIMCP_SUCCESS) {
+        LOG_ERROR("Failed to create stats rwlock");
+        nimcp_pool_destroy(g_bio_async.thread_pool);
+        if (g_bio_async.mem_mgr) {
+            unified_mem_destroy(g_bio_async.mem_mgr);
+        }
+        return NIMCP_ERROR_MUTEX_INIT;
+    }
+
+    /* Initialize time mutex */
+    if (nimcp_mutex_init(&g_bio_async.time_mutex, NULL) != NIMCP_SUCCESS) {
+        LOG_ERROR("Failed to create time mutex");
+        nimcp_rwlock_destroy(&g_bio_async.stats_lock);
+        nimcp_pool_destroy(g_bio_async.thread_pool);
+        if (g_bio_async.mem_mgr) {
+            unified_mem_destroy(g_bio_async.mem_mgr);
+        }
+        return NIMCP_ERROR_MUTEX_INIT;
+    }
+
+    /* Clear statistics */
+    memset(&g_bio_async.stats, 0, sizeof(g_bio_async.stats));
+    g_bio_async.simulation_time_ms = 0;
+
+    g_bio_async.initialized = true;
+    LOG_INFO("Bio-async initialized with %zu threads", pool_size);
+
+    return NIMCP_SUCCESS;
+}
+
+void nimcp_bio_async_shutdown(void) {
+    if (!g_bio_async.initialized) {
+        return;
+    }
+
+    LOG_INFO("Shutting down bio-async system");
+
+    /* Destroy thread pool */
+    if (g_bio_async.thread_pool) {
+        nimcp_pool_destroy(g_bio_async.thread_pool);
+        g_bio_async.thread_pool = NULL;
+    }
+
+    /* Destroy locks */
+    nimcp_rwlock_destroy(&g_bio_async.stats_lock);
+    nimcp_mutex_destroy(&g_bio_async.time_mutex);
+
+    /* Shutdown handle tracker (frees any remaining tracked handles) */
+    handle_tracker_shutdown();
+
+    /* Destroy memory manager */
+    if (g_bio_async.mem_mgr) {
+        unified_mem_destroy(g_bio_async.mem_mgr);
+        g_bio_async.mem_mgr = NULL;
+    }
+
+    g_bio_async.initialized = false;
+    LOG_INFO("Bio-async shutdown complete");
+}
+
+bool nimcp_bio_async_is_initialized(void) {
+    return g_bio_async.initialized;
+}
+
+nimcp_error_t nimcp_bio_async_get_stats(nimcp_bio_async_stats_t* stats) {
+    if (!stats) {
+        return NIMCP_ERROR_NULL_POINTER;
+    }
+
+    nimcp_rwlock_rdlock(&g_bio_async.stats_lock);
+    *stats = g_bio_async.stats;
+    nimcp_rwlock_unlock(&g_bio_async.stats_lock);
+
+    return NIMCP_SUCCESS;
+}
+
+void nimcp_bio_async_reset_stats(void) {
+    nimcp_rwlock_wrlock(&g_bio_async.stats_lock);
+    memset(&g_bio_async.stats, 0, sizeof(g_bio_async.stats));
+    nimcp_rwlock_unlock(&g_bio_async.stats_lock);
+}
+
+nimcp_error_t nimcp_bio_async_step(float dt_ms) {
+    if (!g_bio_async.initialized) {
+        return NIMCP_BIO_ERROR_NOT_INITIALIZED;
+    }
+
+    if (dt_ms <= 0.0f) {
+        dt_ms = g_bio_async.config.simulation_dt_ms;
+    }
+
+    nimcp_mutex_lock(&g_bio_async.time_mutex);
+    g_bio_async.simulation_time_ms += (uint64_t)dt_ms;
+    nimcp_mutex_unlock(&g_bio_async.time_mutex);
+
+    /* Update statistics */
+    nimcp_rwlock_wrlock(&g_bio_async.stats_lock);
+    g_bio_async.stats.simulation_steps++;
+    g_bio_async.stats.simulation_time_ms += dt_ms;
+    nimcp_rwlock_unlock(&g_bio_async.stats_lock);
+
+    return NIMCP_SUCCESS;
+}
+
+//=============================================================================
+// Bio-Promise API
+//=============================================================================
+
+nimcp_bio_promise_t nimcp_bio_promise_create(
+    nimcp_bio_channel_type_t channel,
+    size_t result_size)
+{
+    if (!g_bio_async.initialized) {
+        LOG_ERROR("Bio-async not initialized");
+        return NULL;
+    }
+
+    if (channel >= BIO_CHANNEL_COUNT) {
+        LOG_ERROR("Invalid channel type: %d", channel);
+        return NULL;
+    }
+
+    nimcp_bio_promise_t promise = (nimcp_bio_promise_t)
+        bio_alloc(sizeof(struct nimcp_bio_promise_struct));
+    if (!promise) {
+        LOG_ERROR("Failed to allocate bio promise");
+        return NULL;
+    }
+
+    nimcp_bio_shared_state_t* shared = shared_state_create(channel, result_size);
+    if (!shared) {
+        bio_free(promise);
+        return NULL;
+    }
+
+    promise->magic = BIO_MAGIC_PROMISE;
+    promise->shared = shared;
+
+    /* Update statistics */
+    nimcp_rwlock_wrlock(&g_bio_async.stats_lock);
+    g_bio_async.stats.total_futures_created++;
+    g_bio_async.stats.channel_stats[channel].active_futures++;
+    nimcp_rwlock_unlock(&g_bio_async.stats_lock);
+
+    LOG_DEBUG("Created bio promise for channel %s", nimcp_bio_channel_name(channel));
+    return promise;
+}
+
+nimcp_error_t nimcp_bio_promise_complete(
+    nimcp_bio_promise_t promise,
+    const void* result)
+{
+    if (!promise || promise->magic != BIO_MAGIC_PROMISE) {
+        return NIMCP_ERROR_NULL_POINTER;
+    }
+
+    nimcp_bio_shared_state_t* shared = promise->shared;
+    if (!shared || shared->magic != BIO_MAGIC_PROMISE) {
+        return NIMCP_ERROR_INVALID_STATE;
+    }
+
+    /* Validate result */
+    if (shared->result_size > 0 && !result) {
+        return NIMCP_ERROR_NULL_POINTER;
+    }
+
+    /* Copy result */
+    if (shared->result_size > 0) {
+        shared->result = bio_alloc(shared->result_size);
+        if (!shared->result) {
+            return NIMCP_ERROR_NO_MEMORY;
+        }
+        memcpy(shared->result, result, shared->result_size);
+    }
+
+    /* Set peak concentration */
+    float peak;
+    switch (shared->channel) {
+        case BIO_CHANNEL_DOPAMINE: peak = BIO_DA_PEAK_PHASIC_UM; break;
+        case BIO_CHANNEL_SEROTONIN: peak = 1.0f; break;
+        case BIO_CHANNEL_NOREPINEPHRINE: peak = 1.0f; break;
+        case BIO_CHANNEL_ACETYLCHOLINE: peak = 1.0f; break;
+        default: peak = 1.0f;
+    }
+    atomic_store_float(&shared->concentration_bits, peak);
+
+    /* Record completion time */
+    shared->complete_time_ms = bio_time_ms();
+
+    /* Transition state */
+    uint32_t expected = BIO_FUTURE_PENDING;
+    if (!nimcp_atomic_compare_exchange_u32(&shared->state, &expected, BIO_FUTURE_COMPLETED,
+                                           NIMCP_MEMORY_ORDER_ACQ_REL)) {
+        /* Already completed/failed/cancelled */
+        if (shared->result) {
+            bio_free(shared->result);
+            shared->result = NULL;
+        }
+        return NIMCP_ERROR_INVALID_STATE;
+    }
+
+    /* Wake waiters and invoke callbacks */
+    nimcp_mutex_lock(&shared->mutex);
+    nimcp_cond_broadcast(&shared->cond);
+    shared_state_invoke_callbacks(shared);
+    nimcp_mutex_unlock(&shared->mutex);
+
+    /* Update statistics */
+    nimcp_rwlock_wrlock(&g_bio_async.stats_lock);
+    g_bio_async.stats.total_futures_completed++;
+    g_bio_async.stats.channel_stats[shared->channel].releases++;
+    nimcp_rwlock_unlock(&g_bio_async.stats_lock);
+
+    LOG_DEBUG("Completed bio promise on channel %s", nimcp_bio_channel_name(shared->channel));
+    return NIMCP_SUCCESS;
+}
+
+nimcp_error_t nimcp_bio_promise_fail(
+    nimcp_bio_promise_t promise,
+    nimcp_error_t error)
+{
+    if (!promise || promise->magic != BIO_MAGIC_PROMISE) {
+        return NIMCP_ERROR_NULL_POINTER;
+    }
+
+    nimcp_bio_shared_state_t* shared = promise->shared;
+    if (!shared || shared->magic != BIO_MAGIC_PROMISE) {
+        return NIMCP_ERROR_INVALID_STATE;
+    }
+
+    if (error == NIMCP_SUCCESS) {
+        return NIMCP_ERROR_INVALID_PARAMETER;
+    }
+
+    shared->error = error;
+
+    /* Transition state */
+    uint32_t expected = BIO_FUTURE_PENDING;
+    if (!nimcp_atomic_compare_exchange_u32(&shared->state, &expected, BIO_FUTURE_FAILED,
+                                           NIMCP_MEMORY_ORDER_ACQ_REL)) {
+        return NIMCP_ERROR_INVALID_STATE;
+    }
+
+    /* Wake waiters */
+    nimcp_mutex_lock(&shared->mutex);
+    nimcp_cond_broadcast(&shared->cond);
+    shared_state_invoke_callbacks(shared);
+    nimcp_mutex_unlock(&shared->mutex);
+
+    return NIMCP_SUCCESS;
+}
+
+nimcp_bio_future_t nimcp_bio_promise_get_future(nimcp_bio_promise_t promise) {
+    if (!promise || promise->magic != BIO_MAGIC_PROMISE) {
+        return NULL;
+    }
+
+    nimcp_bio_shared_state_t* shared = promise->shared;
+    if (!shared || shared->magic != BIO_MAGIC_PROMISE) {
+        return NULL;
+    }
+
+    nimcp_bio_future_t future = (nimcp_bio_future_t)
+        bio_alloc(sizeof(struct nimcp_bio_future_struct));
+    if (!future) {
+        return NULL;
+    }
+
+    shared_state_addref(shared);
+
+    future->magic = BIO_MAGIC_FUTURE;
+    future->shared = shared;
+
+    return future;
+}
+
+void nimcp_bio_promise_destroy(nimcp_bio_promise_t promise) {
+    if (!promise || promise->magic != BIO_MAGIC_PROMISE) {
+        return;
+    }
+
+    promise->magic = 0;
+    shared_state_release(promise->shared);
+    bio_free(promise);
+}
+
+//=============================================================================
+// Bio-Future API
+//=============================================================================
+
+nimcp_bio_future_state_t nimcp_bio_future_state(nimcp_bio_future_t future) {
+    if (!future || future->magic != BIO_MAGIC_FUTURE) {
+        return BIO_FUTURE_PENDING;
+    }
+
+    nimcp_bio_shared_state_t* shared = future->shared;
+    if (!shared || shared->magic != BIO_MAGIC_PROMISE) {
+        return BIO_FUTURE_PENDING;
+    }
+
+    /* Update concentration/decay */
+    shared_state_update_concentration(shared);
+
+    return (nimcp_bio_future_state_t)nimcp_atomic_load_u32(&shared->state, NIMCP_MEMORY_ORDER_ACQUIRE);
+}
+
+nimcp_error_t nimcp_bio_future_wait(
+    nimcp_bio_future_t future,
+    void* out_result,
+    uint64_t timeout_ms)
+{
+    if (!future || future->magic != BIO_MAGIC_FUTURE) {
+        return NIMCP_ERROR_NULL_POINTER;
+    }
+
+    nimcp_bio_shared_state_t* shared = future->shared;
+    if (!shared || shared->magic != BIO_MAGIC_PROMISE) {
+        return NIMCP_ERROR_INVALID_STATE;
+    }
+
+    /* Fast path: check if already ready */
+    uint32_t state = nimcp_atomic_load_u32(&shared->state, NIMCP_MEMORY_ORDER_ACQUIRE);
+    if (state != BIO_FUTURE_PENDING) {
+        goto handle_result;
+    }
+
+    /* Slow path: wait */
+    nimcp_mutex_lock(&shared->mutex);
+
+    while ((state = nimcp_atomic_load_u32(&shared->state, NIMCP_MEMORY_ORDER_ACQUIRE)) == BIO_FUTURE_PENDING) {
+        if (timeout_ms > 0) {
+            int wait_result = nimcp_cond_timedwait(&shared->cond, &shared->mutex, (uint32_t)timeout_ms);
+            if (wait_result != NIMCP_SUCCESS) {
+                nimcp_mutex_unlock(&shared->mutex);
+                return NIMCP_ERROR_TIMEOUT;
+            }
+        } else {
+            nimcp_cond_wait(&shared->cond, &shared->mutex);
+        }
+    }
+
+    nimcp_mutex_unlock(&shared->mutex);
+
+handle_result:
+    /* Update concentration */
+    shared_state_update_concentration(shared);
+    state = nimcp_atomic_load_u32(&shared->state, NIMCP_MEMORY_ORDER_ACQUIRE);
+
+    if (state == BIO_FUTURE_COMPLETED) {
+        if (out_result && shared->result && shared->result_size > 0) {
+            memcpy(out_result, shared->result, shared->result_size);
+        }
+        return NIMCP_SUCCESS;
+    } else if (state == BIO_FUTURE_FAILED) {
+        return shared->error;
+    } else if (state == BIO_FUTURE_DECAYED) {
+        return NIMCP_BIO_ERROR_DECAY_COMPLETE;
+    } else if (state == BIO_FUTURE_CANCELLED) {
+        return NIMCP_ERROR_CANCELLED;
+    }
+
+    return NIMCP_ERROR_INVALID_STATE;
+}
+
+float nimcp_bio_future_get_confidence(nimcp_bio_future_t future) {
+    if (!future || future->magic != BIO_MAGIC_FUTURE) {
+        return 0.0f;
+    }
+
+    nimcp_bio_shared_state_t* shared = future->shared;
+    if (!shared || shared->magic != BIO_MAGIC_PROMISE) {
+        return 0.0f;
+    }
+
+    /* Update concentration */
+    float concentration = shared_state_update_concentration(shared);
+
+    /* Calculate confidence */
+    float peak, baseline;
+    switch (shared->channel) {
+        case BIO_CHANNEL_DOPAMINE:
+            peak = BIO_DA_PEAK_PHASIC_UM;
+            baseline = BIO_DA_BASELINE_UM;
+            break;
+        default:
+            peak = 1.0f;
+            baseline = 0.0f;
+    }
+
+    if (peak <= baseline) return 0.0f;
+
+    float confidence = (concentration - baseline) / (peak - baseline);
+    if (confidence < 0.0f) confidence = 0.0f;
+    if (confidence > 1.0f) confidence = 1.0f;
+
+    return confidence;
+}
+
+bool nimcp_bio_future_is_ready(nimcp_bio_future_t future) {
+    nimcp_bio_future_state_t state = nimcp_bio_future_state(future);
+    return state != BIO_FUTURE_PENDING;
+}
+
+float nimcp_bio_future_get_age_ms(nimcp_bio_future_t future) {
+    if (!future || future->magic != BIO_MAGIC_FUTURE) {
+        return -1.0f;
+    }
+
+    nimcp_bio_shared_state_t* shared = future->shared;
+    if (!shared || shared->magic != BIO_MAGIC_PROMISE) {
+        return -1.0f;
+    }
+
+    uint32_t state = nimcp_atomic_load_u32(&shared->state, NIMCP_MEMORY_ORDER_ACQUIRE);
+    if (state == BIO_FUTURE_PENDING) {
+        return -1.0f;
+    }
+
+    return (float)(bio_time_ms() - shared->complete_time_ms);
+}
+
+nimcp_error_t nimcp_bio_future_then(
+    nimcp_bio_future_t future,
+    nimcp_bio_callback_t callback,
+    void* user_data)
+{
+    if (!future || future->magic != BIO_MAGIC_FUTURE || !callback) {
+        return NIMCP_ERROR_NULL_POINTER;
+    }
+
+    nimcp_bio_shared_state_t* shared = future->shared;
+    if (!shared || shared->magic != BIO_MAGIC_PROMISE) {
+        return NIMCP_ERROR_INVALID_STATE;
+    }
+
+    /* Check if already ready */
+    uint32_t state = nimcp_atomic_load_u32(&shared->state, NIMCP_MEMORY_ORDER_ACQUIRE);
+    if (state != BIO_FUTURE_PENDING) {
+        /* Invoke immediately */
+        float confidence = nimcp_bio_future_get_confidence(future);
+        const void* result = (state == BIO_FUTURE_COMPLETED) ? shared->result : NULL;
+        nimcp_error_t error = (state == BIO_FUTURE_FAILED) ? shared->error : NIMCP_SUCCESS;
+        callback(result, confidence, error, user_data);
+        return NIMCP_SUCCESS;
+    }
+
+    /* Allocate callback node */
+    bio_callback_node_t* node = (bio_callback_node_t*)bio_alloc(sizeof(bio_callback_node_t));
+    if (!node) {
+        return NIMCP_ERROR_NO_MEMORY;
+    }
+
+    node->callback = callback;
+    node->user_data = user_data;
+    node->next = NULL;
+
+    /* Add to list */
+    nimcp_mutex_lock(&shared->mutex);
+
+    /* Double-check state */
+    state = nimcp_atomic_load_u32(&shared->state, NIMCP_MEMORY_ORDER_ACQUIRE);
+    if (state != BIO_FUTURE_PENDING) {
+        nimcp_mutex_unlock(&shared->mutex);
+        bio_free(node);
+
+        float confidence = nimcp_bio_future_get_confidence(future);
+        const void* result = (state == BIO_FUTURE_COMPLETED) ? shared->result : NULL;
+        nimcp_error_t error = (state == BIO_FUTURE_FAILED) ? shared->error : NIMCP_SUCCESS;
+        callback(result, confidence, error, user_data);
+        return NIMCP_SUCCESS;
+    }
+
+    node->next = shared->callbacks;
+    shared->callbacks = node;
+
+    nimcp_mutex_unlock(&shared->mutex);
+
+    return NIMCP_SUCCESS;
+}
+
+bool nimcp_bio_future_cancel(nimcp_bio_future_t future) {
+    if (!future || future->magic != BIO_MAGIC_FUTURE) {
+        return false;
+    }
+
+    nimcp_bio_shared_state_t* shared = future->shared;
+    if (!shared || shared->magic != BIO_MAGIC_PROMISE) {
+        return false;
+    }
+
+    uint32_t expected = BIO_FUTURE_PENDING;
+    if (!nimcp_atomic_compare_exchange_u32(&shared->state, &expected, BIO_FUTURE_CANCELLED,
+                                           NIMCP_MEMORY_ORDER_ACQ_REL)) {
+        return false;
+    }
+
+    nimcp_mutex_lock(&shared->mutex);
+    nimcp_cond_broadcast(&shared->cond);
+    shared_state_invoke_callbacks(shared);
+    nimcp_mutex_unlock(&shared->mutex);
+
+    return true;
+}
+
+void nimcp_bio_future_destroy(nimcp_bio_future_t future) {
+    if (!future || future->magic != BIO_MAGIC_FUTURE) {
+        return;
+    }
+
+    nimcp_bio_shared_state_t* shared = future->shared;
+
+    /* Update statistics */
+    if (shared && g_bio_async.initialized) {
+        nimcp_rwlock_wrlock(&g_bio_async.stats_lock);
+        if (shared->channel < BIO_CHANNEL_COUNT) {
+            g_bio_async.stats.channel_stats[shared->channel].active_futures--;
+        }
+        nimcp_rwlock_unlock(&g_bio_async.stats_lock);
+    }
+
+    future->magic = 0;
+    shared_state_release(shared);
+    bio_free(future);
+}
+
+//=============================================================================
+// Phase Coupling API
+//=============================================================================
+
+nimcp_phase_sync_t nimcp_phase_sync_create(nimcp_oscillation_band_t band) {
+    if (!g_bio_async.initialized) {
+        return NULL;
+    }
+
+    if (band >= BIO_OSC_BAND_COUNT) {
+        return NULL;
+    }
+
+    nimcp_phase_sync_t sync = (nimcp_phase_sync_t)
+        bio_aligned_alloc(BIO_CACHE_LINE_SIZE, sizeof(struct nimcp_phase_sync_struct));
+    if (!sync) {
+        return NULL;
+    }
+
+    memset(sync, 0, sizeof(struct nimcp_phase_sync_struct));
+    sync->magic = BIO_MAGIC_PHASE;
+    sync->band = band;
+
+    /* Allocate oscillators */
+    sync->capacity = g_bio_async.config.phase_config.max_oscillators;
+    sync->oscillators = (oscillator_t*)bio_alloc(sync->capacity * sizeof(oscillator_t));
+    if (!sync->oscillators) {
+        bio_free(sync);
+        return NULL;
+    }
+    sync->count = 0;
+
+    /* Set coupling parameters based on band */
+    switch (band) {
+        case BIO_OSC_DELTA: sync->coupling_K = BIO_KURAMOTO_K_DELTA; break;
+        case BIO_OSC_THETA: sync->coupling_K = BIO_KURAMOTO_K_THETA; break;
+        case BIO_OSC_ALPHA: sync->coupling_K = BIO_KURAMOTO_K_ALPHA; break;
+        case BIO_OSC_BETA: sync->coupling_K = BIO_KURAMOTO_K_BETA; break;
+        case BIO_OSC_GAMMA: sync->coupling_K = BIO_KURAMOTO_K_GAMMA; break;
+        default: sync->coupling_K = 1.0f;
+    }
+    sync->coherence_threshold = g_bio_async.config.phase_config.coherence_threshold;
+
+    /* Initialize order parameter */
+    atomic_store_float(&sync->order_r_bits, 0.0f);
+    atomic_store_float(&sync->mean_phase_bits, 0.0f);
+
+    /* Initialize synchronization */
+    if (nimcp_rwlock_init(&sync->rwlock) != NIMCP_SUCCESS) {
+        bio_free(sync->oscillators);
+        bio_free(sync);
+        return NULL;
+    }
+    if (nimcp_cond_init(&sync->cond) != NIMCP_SUCCESS) {
+        nimcp_rwlock_destroy(&sync->rwlock);
+        bio_free(sync->oscillators);
+        bio_free(sync);
+        return NULL;
+    }
+    if (nimcp_mutex_init(&sync->cond_mutex, NULL) != NIMCP_SUCCESS) {
+        nimcp_cond_destroy(&sync->cond);
+        nimcp_rwlock_destroy(&sync->rwlock);
+        bio_free(sync->oscillators);
+        bio_free(sync);
+        return NULL;
+    }
+
+    LOG_DEBUG("Created phase sync for band %s", nimcp_oscillation_band_name(band));
+    return sync;
+}
+
+nimcp_error_t nimcp_phase_sync_add_future(
+    nimcp_phase_sync_t sync,
+    nimcp_bio_future_t future)
+{
+    if (!sync || sync->magic != BIO_MAGIC_PHASE) {
+        return NIMCP_ERROR_NULL_POINTER;
+    }
+    if (!future || future->magic != BIO_MAGIC_FUTURE) {
+        return NIMCP_ERROR_NULL_POINTER;
+    }
+
+    nimcp_rwlock_wrlock(&sync->rwlock);
+
+    if (sync->count >= sync->capacity) {
+        nimcp_rwlock_unlock(&sync->rwlock);
+        return NIMCP_ERROR_OUT_OF_RANGE;
+    }
+
+    /* Create oscillator with random initial phase and natural frequency */
+    float center_freq = nimcp_oscillation_center_freq(sync->band);
+    float omega = center_freq * 2.0f * (float)M_PI / 1000.0f;  /* rad/ms */
+    float spread = g_bio_async.config.phase_config.frequency_spread;
+
+    /* Add small random variation (simple LCG for now) */
+    static uint32_t seed = 12345;
+    seed = seed * 1103515245 + 12345;
+    float rand_01 = (float)(seed & 0x7FFFFFFF) / (float)0x7FFFFFFF;
+    float freq_variation = (rand_01 - 0.5f) * 2.0f * spread;
+
+    oscillator_t* osc = &sync->oscillators[sync->count];
+    osc->phase = rand_01 * 2.0f * (float)M_PI;  /* Random initial phase */
+    osc->natural_freq = omega * (1.0f + freq_variation);
+    osc->future = future;
+    osc->completed = false;
+
+    sync->count++;
+
+    /* Recalculate order parameter after adding oscillator */
+    if (sync->count > 0) {
+        float phases[128];  /* Max sync futures per header definition */
+        size_t count = sync->count < 128 ? sync->count : 128;
+        for (size_t i = 0; i < count; i++) {
+            phases[i] = sync->oscillators[i].phase;
+        }
+        float r, psi;
+        bio_kuramoto_order_parameter(phases, count, &r, &psi);
+        atomic_store_float(&sync->order_r_bits, r);
+        atomic_store_float(&sync->mean_phase_bits, psi);
+    }
+
+    nimcp_rwlock_unlock(&sync->rwlock);
+
+    return NIMCP_SUCCESS;
+}
+
+/**
+ * @brief Update oscillator phases using Kuramoto model
+ */
+static void phase_sync_update(nimcp_phase_sync_t sync, float dt_ms) {
+    nimcp_rwlock_wrlock(&sync->rwlock);
+
+    if (sync->count == 0) {
+        nimcp_rwlock_unlock(&sync->rwlock);
+        return;
+    }
+
+    /* Collect phases */
+    float* phases = (float*)bio_alloc(sync->count * sizeof(float));
+    if (!phases) {
+        nimcp_rwlock_unlock(&sync->rwlock);
+        return;
+    }
+
+    for (size_t i = 0; i < sync->count; i++) {
+        phases[i] = sync->oscillators[i].phase;
+
+        /* Check if future completed */
+        if (!sync->oscillators[i].completed) {
+            if (nimcp_bio_future_is_ready(sync->oscillators[i].future)) {
+                sync->oscillators[i].completed = true;
+            }
+        }
+    }
+
+    /* Calculate order parameter */
+    float r, psi;
+    bio_kuramoto_order_parameter(phases, sync->count, &r, &psi);
+    atomic_store_float(&sync->order_r_bits, r);
+    atomic_store_float(&sync->mean_phase_bits, psi);
+
+    /* Update each oscillator */
+    for (size_t i = 0; i < sync->count; i++) {
+        sync->oscillators[i].phase = bio_kuramoto_step(
+            sync->oscillators[i].phase,
+            sync->oscillators[i].natural_freq,
+            sync->coupling_K,
+            r,
+            psi,
+            dt_ms
+        );
+    }
+
+    bio_free(phases);
+    nimcp_rwlock_unlock(&sync->rwlock);
+}
+
+nimcp_error_t nimcp_phase_sync_wait_all(
+    nimcp_phase_sync_t sync,
+    uint64_t timeout_ms)
+{
+    return nimcp_phase_sync_wait_coherent(sync, sync->coherence_threshold, timeout_ms);
+}
+
+nimcp_error_t nimcp_phase_sync_wait_coherent(
+    nimcp_phase_sync_t sync,
+    float coherence_threshold,
+    uint64_t timeout_ms)
+{
+    if (!sync || sync->magic != BIO_MAGIC_PHASE) {
+        return NIMCP_ERROR_NULL_POINTER;
+    }
+
+    /* Default timeout based on band */
+    if (timeout_ms == 0) {
+        float period_ms = BIO_HZ_TO_PERIOD_MS(nimcp_oscillation_center_freq(sync->band));
+        timeout_ms = (uint64_t)(period_ms * 10);  /* 10 cycles */
+    }
+
+    uint64_t start_ms = bio_time_ms();
+    float dt_ms = g_bio_async.config.simulation_dt_ms;
+
+    while (true) {
+        /* Update phases */
+        phase_sync_update(sync, dt_ms);
+
+        /* Check coherence */
+        float r = atomic_load_float(&sync->order_r_bits);
+        if (r >= coherence_threshold) {
+            /* Check all futures completed */
+            nimcp_rwlock_rdlock(&sync->rwlock);
+            bool all_completed = true;
+            for (size_t i = 0; i < sync->count && all_completed; i++) {
+                all_completed = sync->oscillators[i].completed;
+            }
+            nimcp_rwlock_unlock(&sync->rwlock);
+
+            if (all_completed) {
+                /* Update statistics */
+                nimcp_rwlock_wrlock(&g_bio_async.stats_lock);
+                g_bio_async.stats.phase_stats.sync_requests++;
+                g_bio_async.stats.phase_stats.sync_achieved++;
+                g_bio_async.stats.phase_stats.avg_coherence = r;
+                nimcp_rwlock_unlock(&g_bio_async.stats_lock);
+
+                return NIMCP_SUCCESS;
+            }
+        }
+
+        /* Check timeout */
+        uint64_t elapsed = bio_time_ms() - start_ms;
+        if (elapsed >= timeout_ms) {
+            nimcp_rwlock_wrlock(&g_bio_async.stats_lock);
+            g_bio_async.stats.phase_stats.sync_requests++;
+            g_bio_async.stats.phase_stats.sync_timeouts++;
+            nimcp_rwlock_unlock(&g_bio_async.stats_lock);
+
+            return NIMCP_BIO_ERROR_PHASE_INCOHERENT;
+        }
+
+        /* Small sleep to avoid spinning */
+        nimcp_mutex_lock(&sync->cond_mutex);
+        nimcp_cond_timedwait(&sync->cond, &sync->cond_mutex, 1);  /* 1ms */
+        nimcp_mutex_unlock(&sync->cond_mutex);
+    }
+}
+
+float nimcp_phase_sync_get_coherence(nimcp_phase_sync_t sync) {
+    if (!sync || sync->magic != BIO_MAGIC_PHASE) {
+        return 0.0f;
+    }
+    return atomic_load_float(&sync->order_r_bits);
+}
+
+float nimcp_phase_sync_get_mean_phase(nimcp_phase_sync_t sync) {
+    if (!sync || sync->magic != BIO_MAGIC_PHASE) {
+        return 0.0f;
+    }
+    return atomic_load_float(&sync->mean_phase_bits);
+}
+
+size_t nimcp_phase_sync_get_count(nimcp_phase_sync_t sync) {
+    if (!sync || sync->magic != BIO_MAGIC_PHASE) {
+        return 0;
+    }
+    nimcp_rwlock_rdlock(&sync->rwlock);
+    size_t count = sync->count;
+    nimcp_rwlock_unlock(&sync->rwlock);
+    return count;
+}
+
+void nimcp_phase_sync_destroy(nimcp_phase_sync_t sync) {
+    if (!sync || sync->magic != BIO_MAGIC_PHASE) {
+        return;
+    }
+
+    sync->magic = 0;
+
+    nimcp_mutex_destroy(&sync->cond_mutex);
+    nimcp_cond_destroy(&sync->cond);
+    nimcp_rwlock_destroy(&sync->rwlock);
+
+    bio_free(sync->oscillators);
+    bio_free(sync);
+}
+
+//=============================================================================
+// Predictive Coding API
+//=============================================================================
+
+nimcp_predictive_model_t nimcp_predictive_create(
+    const char* signal_name,
+    float initial_prediction,
+    float initial_precision)
+{
+    if (!g_bio_async.initialized || !signal_name) {
+        return NULL;
+    }
+
+    nimcp_predictive_model_t model = (nimcp_predictive_model_t)
+        bio_alloc(sizeof(struct nimcp_predictive_model_struct));
+    if (!model) {
+        return NULL;
+    }
+
+    memset(model, 0, sizeof(struct nimcp_predictive_model_struct));
+    model->magic = BIO_MAGIC_PREDICT;
+
+    strncpy(model->signal_name, signal_name, BIO_MAX_SIGNAL_NAME - 1);
+    model->signal_name[BIO_MAX_SIGNAL_NAME - 1] = '\0';
+
+    model->prediction = initial_prediction;
+    model->precision = (initial_precision > 0) ? initial_precision :
+                       g_bio_async.config.predictive_config.default_prior_precision;
+    model->last_surprise = 0.0f;
+    model->learning_rate = g_bio_async.config.predictive_config.learning_rate;
+
+    model->callbacks = NULL;
+
+    if (nimcp_rwlock_init(&model->rwlock) != NIMCP_SUCCESS) {
+        bio_free(model);
+        return NULL;
+    }
+
+    LOG_DEBUG("Created predictive model for signal '%s'", signal_name);
+    return model;
+}
+
+nimcp_error_t nimcp_predictive_on_error(
+    nimcp_predictive_model_t model,
+    nimcp_prediction_error_callback_t callback,
+    void* user_data,
+    float surprise_threshold)
+{
+    if (!model || model->magic != BIO_MAGIC_PREDICT || !callback) {
+        return NIMCP_ERROR_NULL_POINTER;
+    }
+
+    predict_callback_entry_t* entry = (predict_callback_entry_t*)
+        bio_alloc(sizeof(predict_callback_entry_t));
+    if (!entry) {
+        return NIMCP_ERROR_NO_MEMORY;
+    }
+
+    entry->callback = callback;
+    entry->user_data = user_data;
+    entry->surprise_threshold = surprise_threshold;
+    entry->next = NULL;
+
+    nimcp_rwlock_wrlock(&model->rwlock);
+    entry->next = model->callbacks;
+    model->callbacks = entry;
+    nimcp_rwlock_unlock(&model->rwlock);
+
+    return NIMCP_SUCCESS;
+}
+
+nimcp_error_t nimcp_predictive_observe(
+    nimcp_predictive_model_t model,
+    float actual_value)
+{
+    if (!model || model->magic != BIO_MAGIC_PREDICT) {
+        return NIMCP_ERROR_NULL_POINTER;
+    }
+
+    nimcp_rwlock_wrlock(&model->rwlock);
+
+    float prediction = model->prediction;
+    float precision = model->precision;
+
+    /* Calculate prediction error */
+    float error = bio_prediction_error(prediction, actual_value, precision);
+
+    /* Calculate surprise */
+    float surprise = bio_surprise(error / precision, precision);
+    model->last_surprise = surprise;
+
+    /* Bayesian update of prediction */
+    float likelihood_precision = g_bio_async.config.predictive_config.default_likelihood_precision;
+    model->prediction = bio_bayesian_update(prediction, actual_value, precision, likelihood_precision);
+    model->precision = bio_posterior_precision(precision, likelihood_precision);
+
+    /* Invoke callbacks if surprise exceeds threshold */
+    predict_callback_entry_t* cb = model->callbacks;
+    while (cb) {
+        if (surprise >= cb->surprise_threshold) {
+            cb->callback(model->signal_name, prediction, actual_value, error, surprise, cb->user_data);
+
+            /* Update statistics */
+            nimcp_rwlock_wrlock(&g_bio_async.stats_lock);
+            g_bio_async.stats.predictive_stats.callbacks_triggered++;
+            nimcp_rwlock_unlock(&g_bio_async.stats_lock);
+        } else {
+            nimcp_rwlock_wrlock(&g_bio_async.stats_lock);
+            g_bio_async.stats.predictive_stats.callbacks_suppressed++;
+            nimcp_rwlock_unlock(&g_bio_async.stats_lock);
+        }
+        cb = cb->next;
+    }
+
+    /* Update statistics */
+    nimcp_rwlock_wrlock(&g_bio_async.stats_lock);
+    g_bio_async.stats.predictive_stats.predictions_made++;
+    g_bio_async.stats.predictive_stats.avg_surprise = surprise;
+    g_bio_async.stats.predictive_stats.avg_precision = model->precision;
+    nimcp_rwlock_unlock(&g_bio_async.stats_lock);
+
+    nimcp_rwlock_unlock(&model->rwlock);
+
+    return NIMCP_SUCCESS;
+}
+
+float nimcp_predictive_get_prediction(nimcp_predictive_model_t model) {
+    if (!model || model->magic != BIO_MAGIC_PREDICT) {
+        return 0.0f;
+    }
+    nimcp_rwlock_rdlock(&model->rwlock);
+    float pred = model->prediction;
+    nimcp_rwlock_unlock(&model->rwlock);
+    return pred;
+}
+
+float nimcp_predictive_get_precision(nimcp_predictive_model_t model) {
+    if (!model || model->magic != BIO_MAGIC_PREDICT) {
+        return 0.0f;
+    }
+    nimcp_rwlock_rdlock(&model->rwlock);
+    float prec = model->precision;
+    nimcp_rwlock_unlock(&model->rwlock);
+    return prec;
+}
+
+float nimcp_predictive_get_last_surprise(nimcp_predictive_model_t model) {
+    if (!model || model->magic != BIO_MAGIC_PREDICT) {
+        return 0.0f;
+    }
+    nimcp_rwlock_rdlock(&model->rwlock);
+    float surp = model->last_surprise;
+    nimcp_rwlock_unlock(&model->rwlock);
+    return surp;
+}
+
+nimcp_error_t nimcp_predictive_set_prediction(
+    nimcp_predictive_model_t model,
+    float new_prediction,
+    float new_precision)
+{
+    if (!model || model->magic != BIO_MAGIC_PREDICT) {
+        return NIMCP_ERROR_NULL_POINTER;
+    }
+
+    nimcp_rwlock_wrlock(&model->rwlock);
+    model->prediction = new_prediction;
+    if (new_precision > 0.0f) {
+        model->precision = new_precision;
+    }
+    nimcp_rwlock_unlock(&model->rwlock);
+
+    return NIMCP_SUCCESS;
+}
+
+void nimcp_predictive_destroy(nimcp_predictive_model_t model) {
+    if (!model || model->magic != BIO_MAGIC_PREDICT) {
+        return;
+    }
+
+    model->magic = 0;
+
+    /* Free callbacks */
+    predict_callback_entry_t* cb = model->callbacks;
+    while (cb) {
+        predict_callback_entry_t* next = cb->next;
+        bio_free(cb);
+        cb = next;
+    }
+
+    nimcp_rwlock_destroy(&model->rwlock);
+    bio_free(model);
+}
+
+//=============================================================================
+// Glial Signaling API
+//=============================================================================
+
+nimcp_glial_wave_t nimcp_glial_wave_initiate(
+    uint32_t source_region,
+    float initial_calcium)
+{
+    if (!g_bio_async.initialized) {
+        return NULL;
+    }
+
+    nimcp_glial_wave_t wave = (nimcp_glial_wave_t)
+        bio_alloc(sizeof(struct nimcp_glial_wave_struct));
+    if (!wave) {
+        return NULL;
+    }
+
+    memset(wave, 0, sizeof(struct nimcp_glial_wave_struct));
+    wave->magic = BIO_MAGIC_GLIAL;
+    wave->source_region = source_region;
+    wave->initial_calcium = initial_calcium;
+    wave->start_time_ms = bio_time_ms();
+
+    /* Allocate region states */
+    wave->num_regions = BIO_MAX_REGIONS;
+    wave->regions = (region_state_t*)bio_alloc(wave->num_regions * sizeof(region_state_t));
+    if (!wave->regions) {
+        bio_free(wave);
+        return NULL;
+    }
+
+    /* Initialize regions */
+    for (size_t i = 0; i < wave->num_regions; i++) {
+        wave->regions[i].calcium = BIO_CA_BASELINE_UM;
+        wave->regions[i].ip3 = 0.0f;
+        wave->regions[i].reached = false;
+        wave->regions[i].callback = NULL;
+        wave->regions[i].callback_data = NULL;
+    }
+
+    /* Set source region to initial calcium */
+    if (source_region < wave->num_regions) {
+        wave->regions[source_region].calcium = initial_calcium;
+        wave->regions[source_region].reached = true;
+    }
+
+    wave->radius = 0.0f;
+    wave->speed = g_bio_async.config.glial_config.wave_speed_um_s / 1000.0f;  /* um/ms */
+    wave->active = true;
+
+    if (nimcp_rwlock_init(&wave->rwlock) != NIMCP_SUCCESS) {
+        bio_free(wave->regions);
+        bio_free(wave);
+        return NULL;
+    }
+    if (nimcp_cond_init(&wave->cond) != NIMCP_SUCCESS) {
+        nimcp_rwlock_destroy(&wave->rwlock);
+        bio_free(wave->regions);
+        bio_free(wave);
+        return NULL;
+    }
+    if (nimcp_mutex_init(&wave->cond_mutex, NULL) != NIMCP_SUCCESS) {
+        nimcp_cond_destroy(&wave->cond);
+        nimcp_rwlock_destroy(&wave->rwlock);
+        bio_free(wave->regions);
+        bio_free(wave);
+        return NULL;
+    }
+
+    LOG_DEBUG("Initiated calcium wave from region %u with Ca=%.2f", source_region, initial_calcium);
+    return wave;
+}
+
+nimcp_error_t nimcp_glial_wave_step(nimcp_glial_wave_t wave, float dt_ms) {
+    if (!wave || wave->magic != BIO_MAGIC_GLIAL) {
+        return NIMCP_ERROR_NULL_POINTER;
+    }
+
+    if (!wave->active) {
+        return NIMCP_BIO_ERROR_WAVE_EXTINCT;
+    }
+
+    if (dt_ms <= 0.0f) {
+        dt_ms = g_bio_async.config.simulation_dt_ms;
+    }
+
+    nimcp_rwlock_wrlock(&wave->rwlock);
+
+    /* Advance wave radius */
+    wave->radius += wave->speed * dt_ms;
+
+    /* Simple isotropic propagation model */
+    /* In a real implementation, we'd use proper reaction-diffusion */
+    float threshold = g_bio_async.config.glial_config.wave_threshold_um;
+    float decay_rate = g_bio_async.config.glial_config.decay_rate;
+
+    /* Update each region */
+    float max_calcium = 0.0f;
+    for (size_t i = 0; i < wave->num_regions; i++) {
+        region_state_t* region = &wave->regions[i];
+
+        /* Simplified: assume regions are at distance i from source */
+        float distance = fabsf((float)i - (float)wave->source_region);
+
+        if (distance <= wave->radius && !region->reached) {
+            /* Wave reached this region */
+            region->calcium = wave->initial_calcium * bio_exponential_decay(1.0f, distance, wave->radius);
+
+            if (region->calcium >= threshold) {
+                region->reached = true;
+
+                /* Invoke callback */
+                if (region->callback) {
+                    region->callback(wave, (uint32_t)i, region->calcium, region->callback_data);
+                }
+            }
+        }
+
+        /* Decay calcium */
+        if (region->calcium > BIO_CA_BASELINE_UM) {
+            region->calcium = BIO_CA_BASELINE_UM +
+                (region->calcium - BIO_CA_BASELINE_UM) * (1.0f - decay_rate * dt_ms / 1000.0f);
+        }
+
+        if (region->calcium > max_calcium) {
+            max_calcium = region->calcium;
+        }
+    }
+
+    /* Check if wave is extinct */
+    if (max_calcium < threshold) {
+        wave->active = false;
+    }
+
+    nimcp_rwlock_unlock(&wave->rwlock);
+
+    /* Signal waiters */
+    nimcp_mutex_lock(&wave->cond_mutex);
+    nimcp_cond_broadcast(&wave->cond);
+    nimcp_mutex_unlock(&wave->cond_mutex);
+
+    return wave->active ? NIMCP_SUCCESS : NIMCP_BIO_ERROR_WAVE_EXTINCT;
+}
+
+float nimcp_glial_wave_get_level_at(nimcp_glial_wave_t wave, uint32_t region_id) {
+    if (!wave || wave->magic != BIO_MAGIC_GLIAL) {
+        return 0.0f;
+    }
+
+    if (region_id >= wave->num_regions) {
+        return 0.0f;
+    }
+
+    nimcp_rwlock_rdlock(&wave->rwlock);
+    float level = wave->regions[region_id].calcium;
+    nimcp_rwlock_unlock(&wave->rwlock);
+
+    return level;
+}
+
+bool nimcp_glial_wave_has_reached(nimcp_glial_wave_t wave, uint32_t region_id) {
+    if (!wave || wave->magic != BIO_MAGIC_GLIAL) {
+        return false;
+    }
+
+    if (region_id >= wave->num_regions) {
+        return false;
+    }
+
+    nimcp_rwlock_rdlock(&wave->rwlock);
+    bool reached = wave->regions[region_id].reached;
+    nimcp_rwlock_unlock(&wave->rwlock);
+
+    return reached;
+}
+
+nimcp_error_t nimcp_glial_wave_wait_for_region(
+    nimcp_glial_wave_t wave,
+    uint32_t region_id,
+    uint64_t timeout_ms)
+{
+    if (!wave || wave->magic != BIO_MAGIC_GLIAL) {
+        return NIMCP_ERROR_NULL_POINTER;
+    }
+
+    if (region_id >= wave->num_regions) {
+        return NIMCP_ERROR_OUT_OF_RANGE;
+    }
+
+    uint64_t start_ms = bio_time_ms();
+    float dt_ms = g_bio_async.config.simulation_dt_ms;
+
+    while (true) {
+        /* Check if reached */
+        if (nimcp_glial_wave_has_reached(wave, region_id)) {
+            return NIMCP_SUCCESS;
+        }
+
+        /* Check if wave extinct */
+        if (!wave->active) {
+            return NIMCP_BIO_ERROR_WAVE_EXTINCT;
+        }
+
+        /* Step wave */
+        nimcp_glial_wave_step(wave, dt_ms);
+
+        /* Check timeout */
+        if (timeout_ms > 0) {
+            uint64_t elapsed = bio_time_ms() - start_ms;
+            if (elapsed >= timeout_ms) {
+                return NIMCP_ERROR_TIMEOUT;
+            }
+        }
+
+        /* Small wait */
+        nimcp_mutex_lock(&wave->cond_mutex);
+        nimcp_cond_timedwait(&wave->cond, &wave->cond_mutex, 1);
+        nimcp_mutex_unlock(&wave->cond_mutex);
+    }
+}
+
+nimcp_error_t nimcp_glial_wave_on_arrival(
+    nimcp_glial_wave_t wave,
+    uint32_t region_id,
+    nimcp_wave_callback_t callback,
+    void* user_data)
+{
+    if (!wave || wave->magic != BIO_MAGIC_GLIAL || !callback) {
+        return NIMCP_ERROR_NULL_POINTER;
+    }
+
+    if (region_id >= wave->num_regions) {
+        return NIMCP_ERROR_OUT_OF_RANGE;
+    }
+
+    nimcp_rwlock_wrlock(&wave->rwlock);
+    wave->regions[region_id].callback = callback;
+    wave->regions[region_id].callback_data = user_data;
+    nimcp_rwlock_unlock(&wave->rwlock);
+
+    return NIMCP_SUCCESS;
+}
+
+float nimcp_glial_wave_get_radius(nimcp_glial_wave_t wave) {
+    if (!wave || wave->magic != BIO_MAGIC_GLIAL) {
+        return 0.0f;
+    }
+    nimcp_rwlock_rdlock(&wave->rwlock);
+    float radius = wave->radius;
+    nimcp_rwlock_unlock(&wave->rwlock);
+    return radius;
+}
+
+bool nimcp_glial_wave_is_active(nimcp_glial_wave_t wave) {
+    if (!wave || wave->magic != BIO_MAGIC_GLIAL) {
+        return false;
+    }
+    return wave->active;
+}
+
+void nimcp_glial_wave_destroy(nimcp_glial_wave_t wave) {
+    if (!wave || wave->magic != BIO_MAGIC_GLIAL) {
+        return;
+    }
+
+    wave->magic = 0;
+
+    nimcp_mutex_destroy(&wave->cond_mutex);
+    nimcp_cond_destroy(&wave->cond);
+    nimcp_rwlock_destroy(&wave->rwlock);
+
+    bio_free(wave->regions);
+    bio_free(wave);
+}
