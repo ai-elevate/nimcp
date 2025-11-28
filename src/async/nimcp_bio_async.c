@@ -34,6 +34,25 @@
 #include <math.h>
 
 //=============================================================================
+// Module Logging Configuration
+//=============================================================================
+
+/** Module name for logging */
+#define BIO_ASYNC_MODULE "bio_async"
+
+/** Enable verbose trace logging (set to 0 for production) */
+#ifndef BIO_ASYNC_VERBOSE_TRACE
+#define BIO_ASYNC_VERBOSE_TRACE 0
+#endif
+
+/** Conditional trace logging for hot paths */
+#if BIO_ASYNC_VERBOSE_TRACE
+#define BIO_TRACE(...) LOG_TRACE(__VA_ARGS__)
+#else
+#define BIO_TRACE(...) ((void)0)
+#endif
+
+//=============================================================================
 // Constants
 //=============================================================================
 
@@ -250,14 +269,24 @@ static bio_handle_tracker_t g_handle_tracker = {0};
  * @brief Initialize handle tracker
  */
 static nimcp_error_t handle_tracker_init(void) {
-    if (g_handle_tracker.initialized) return NIMCP_SUCCESS;
+    if (g_handle_tracker.initialized) {
+        LOG_DEBUG("Handle tracker already initialized");
+        return NIMCP_SUCCESS;
+    }
+
+    LOG_DEBUG("Initializing handle tracker with capacity %d", BIO_MAX_TRACKED_HANDLES);
 
     nimcp_error_t err = nimcp_mutex_init(&g_handle_tracker.mutex, NULL);
-    if (err != NIMCP_SUCCESS) return err;
+    if (err != NIMCP_SUCCESS) {
+        LOG_ERROR("Failed to initialize handle tracker mutex: %d", err);
+        return err;
+    }
 
     nimcp_atomic_init_u32(&g_handle_tracker.count, 0);
     memset(g_handle_tracker.entries, 0, sizeof(g_handle_tracker.entries));
     g_handle_tracker.initialized = true;
+
+    LOG_INFO("Handle tracker initialized successfully");
     return NIMCP_SUCCESS;
 }
 
@@ -265,22 +294,35 @@ static nimcp_error_t handle_tracker_init(void) {
  * @brief Shutdown handle tracker
  */
 static void handle_tracker_shutdown(void) {
-    if (!g_handle_tracker.initialized) return;
+    if (!g_handle_tracker.initialized) {
+        LOG_DEBUG("Handle tracker not initialized, skipping shutdown");
+        return;
+    }
+
+    LOG_DEBUG("Shutting down handle tracker");
 
     nimcp_mutex_lock(&g_handle_tracker.mutex);
 
     /* Free any remaining tracked handles */
+    uint32_t freed_count = 0;
     for (uint32_t i = 0; i < BIO_MAX_TRACKED_HANDLES; i++) {
         if (g_handle_tracker.entries[i].handle) {
             unified_mem_free(g_handle_tracker.entries[i].handle);
             g_handle_tracker.entries[i].handle = NULL;
             g_handle_tracker.entries[i].ptr = NULL;
+            freed_count++;
         }
+    }
+
+    if (freed_count > 0) {
+        LOG_WARNING("Handle tracker shutdown freed %u leaked handles", freed_count);
     }
 
     nimcp_mutex_unlock(&g_handle_tracker.mutex);
     nimcp_mutex_destroy(&g_handle_tracker.mutex);
     g_handle_tracker.initialized = false;
+
+    LOG_INFO("Handle tracker shutdown complete");
 }
 
 /**
@@ -288,7 +330,14 @@ static void handle_tracker_shutdown(void) {
  * @return true on success, false if table full
  */
 static bool handle_tracker_register(void* ptr, unified_mem_handle_t handle) {
-    if (!g_handle_tracker.initialized || !ptr || !handle) return false;
+    if (!g_handle_tracker.initialized) {
+        LOG_DEBUG("Handle tracker not initialized, cannot register %p", ptr);
+        return false;
+    }
+    if (!ptr || !handle) {
+        LOG_WARNING("Invalid arguments to handle_tracker_register: ptr=%p, handle=%p", ptr, (void*)handle);
+        return false;
+    }
 
     nimcp_mutex_lock(&g_handle_tracker.mutex);
 
@@ -297,14 +346,16 @@ static bool handle_tracker_register(void* ptr, unified_mem_handle_t handle) {
         if (g_handle_tracker.entries[i].ptr == NULL) {
             g_handle_tracker.entries[i].ptr = ptr;
             g_handle_tracker.entries[i].handle = handle;
-            nimcp_atomic_fetch_add_u32(&g_handle_tracker.count, 1, NIMCP_MEMORY_ORDER_RELAXED);
+            uint32_t new_count = nimcp_atomic_fetch_add_u32(&g_handle_tracker.count, 1, NIMCP_MEMORY_ORDER_RELAXED) + 1;
             nimcp_mutex_unlock(&g_handle_tracker.mutex);
+            BIO_TRACE("Registered handle %p -> ptr %p (total: %u)", (void*)handle, ptr, new_count);
             return true;
         }
     }
 
     nimcp_mutex_unlock(&g_handle_tracker.mutex);
-    LOG_WARNING("Handle tracker full - cannot track allocation");
+    LOG_ERROR("Handle tracker full (%d entries) - cannot track allocation at %p",
+              BIO_MAX_TRACKED_HANDLES, ptr);
     return false;
 }
 
@@ -313,7 +364,13 @@ static bool handle_tracker_register(void* ptr, unified_mem_handle_t handle) {
  * @return The handle if found, NULL otherwise
  */
 static unified_mem_handle_t handle_tracker_remove(void* ptr) {
-    if (!g_handle_tracker.initialized || !ptr) return NULL;
+    if (!g_handle_tracker.initialized) {
+        BIO_TRACE("Handle tracker not initialized, ptr %p assumed malloc'd", ptr);
+        return NULL;
+    }
+    if (!ptr) {
+        return NULL;
+    }
 
     nimcp_mutex_lock(&g_handle_tracker.mutex);
 
@@ -322,13 +379,15 @@ static unified_mem_handle_t handle_tracker_remove(void* ptr) {
             unified_mem_handle_t handle = g_handle_tracker.entries[i].handle;
             g_handle_tracker.entries[i].ptr = NULL;
             g_handle_tracker.entries[i].handle = NULL;
-            nimcp_atomic_fetch_sub_u32(&g_handle_tracker.count, 1, NIMCP_MEMORY_ORDER_RELAXED);
+            uint32_t remaining = nimcp_atomic_fetch_sub_u32(&g_handle_tracker.count, 1, NIMCP_MEMORY_ORDER_RELAXED) - 1;
             nimcp_mutex_unlock(&g_handle_tracker.mutex);
+            BIO_TRACE("Removed handle %p for ptr %p (remaining: %u)", (void*)handle, ptr, remaining);
             return handle;
         }
     }
 
     nimcp_mutex_unlock(&g_handle_tracker.mutex);
+    BIO_TRACE("Pointer %p not in handle tracker, assuming malloc'd", ptr);
     return NULL;  /* Not found - allocated via nimcp_malloc */
 }
 
@@ -367,6 +426,8 @@ static struct {
  * for correct deallocation.
  */
 static void* bio_alloc(size_t size) {
+    BIO_TRACE("bio_alloc: requesting %zu bytes", size);
+
     if (g_bio_async.mem_mgr && g_handle_tracker.initialized) {
         unified_mem_request_t req = unified_mem_request_direct(size);
         unified_mem_handle_t handle = unified_mem_alloc(g_bio_async.mem_mgr, &req);
@@ -374,16 +435,24 @@ static void* bio_alloc(size_t size) {
             void* ptr = (void*)unified_mem_write(handle);
             if (ptr) {
                 if (handle_tracker_register(ptr, handle)) {
+                    BIO_TRACE("bio_alloc: unified memory allocated %zu bytes at %p", size, ptr);
                     return ptr;
                 }
                 /* Failed to register - free handle and fallback to malloc */
+                LOG_WARNING("bio_alloc: handle registration failed, falling back to malloc");
                 unified_mem_free(handle);
             } else {
+                LOG_WARNING("bio_alloc: unified_mem_write returned NULL");
                 unified_mem_free(handle);
             }
+        } else {
+            LOG_DEBUG("bio_alloc: unified_mem_alloc failed for %zu bytes, using malloc", size);
         }
     }
-    return nimcp_malloc(size);
+
+    void* ptr = nimcp_malloc(size);
+    BIO_TRACE("bio_alloc: malloc allocated %zu bytes at %p", size, ptr);
+    return ptr;
 }
 
 /**
@@ -392,6 +461,8 @@ static void* bio_alloc(size_t size) {
  * Uses handle tracker for unified memory allocations.
  */
 static void* bio_aligned_alloc(size_t alignment, size_t size) {
+    BIO_TRACE("bio_aligned_alloc: requesting %zu bytes with alignment %zu", size, alignment);
+
     if (g_bio_async.mem_mgr && g_handle_tracker.initialized) {
         unified_mem_request_t req = {
             .size = size,
@@ -405,16 +476,24 @@ static void* bio_aligned_alloc(size_t alignment, size_t size) {
             void* ptr = (void*)unified_mem_write(handle);
             if (ptr) {
                 if (handle_tracker_register(ptr, handle)) {
+                    BIO_TRACE("bio_aligned_alloc: unified memory allocated %zu bytes at %p", size, ptr);
                     return ptr;
                 }
                 /* Failed to register - free handle and fallback to malloc */
+                LOG_WARNING("bio_aligned_alloc: handle registration failed, falling back to aligned_alloc");
                 unified_mem_free(handle);
             } else {
+                LOG_WARNING("bio_aligned_alloc: unified_mem_write returned NULL");
                 unified_mem_free(handle);
             }
+        } else {
+            LOG_DEBUG("bio_aligned_alloc: unified_mem_alloc failed, using aligned_alloc");
         }
     }
-    return nimcp_aligned_alloc(alignment, size);
+
+    void* ptr = nimcp_aligned_alloc(alignment, size);
+    BIO_TRACE("bio_aligned_alloc: aligned_alloc allocated %zu bytes at %p", size, ptr);
+    return ptr;
 }
 
 /**
@@ -425,13 +504,17 @@ static void* bio_aligned_alloc(size_t alignment, size_t size) {
 static void bio_free(void* ptr) {
     if (!ptr) return;
 
+    BIO_TRACE("bio_free: freeing %p", ptr);
+
     /* Check if this pointer was allocated via unified memory */
     unified_mem_handle_t handle = handle_tracker_remove(ptr);
     if (handle) {
         /* Unified memory - use proper free */
+        BIO_TRACE("bio_free: using unified_mem_free for %p", ptr);
         unified_mem_free(handle);
     } else {
         /* Regular allocation - use nimcp_free */
+        BIO_TRACE("bio_free: using nimcp_free for %p", ptr);
         nimcp_free(ptr);
     }
 }
@@ -470,10 +553,14 @@ static nimcp_bio_shared_state_t* shared_state_create(
     nimcp_bio_channel_type_t channel,
     size_t result_size)
 {
+    LOG_DEBUG("Creating shared state for channel %s with result_size %zu",
+              nimcp_bio_channel_name(channel), result_size);
+
     nimcp_bio_shared_state_t* shared = (nimcp_bio_shared_state_t*)
         bio_aligned_alloc(BIO_CACHE_LINE_SIZE, sizeof(nimcp_bio_shared_state_t));
     if (!shared) {
-        LOG_ERROR("Failed to allocate bio shared state");
+        LOG_ERROR("Failed to allocate bio shared state (%zu bytes)",
+                  sizeof(nimcp_bio_shared_state_t));
         return NULL;
     }
 
@@ -495,6 +582,7 @@ static nimcp_bio_shared_state_t* shared_state_create(
         default: baseline = 0.0f;
     }
     atomic_store_float(&shared->concentration_bits, baseline);
+    LOG_DEBUG("Shared state baseline concentration: %.4f µM", baseline);
 
     /* Initialize timing */
     shared->create_time_ms = bio_time_ms();
@@ -507,10 +595,12 @@ static nimcp_bio_shared_state_t* shared_state_create(
 
     /* Initialize synchronization */
     if (nimcp_mutex_init(&shared->mutex, NULL) != NIMCP_SUCCESS) {
+        LOG_ERROR("Failed to initialize shared state mutex");
         bio_free(shared);
         return NULL;
     }
     if (nimcp_cond_init(&shared->cond) != NIMCP_SUCCESS) {
+        LOG_ERROR("Failed to initialize shared state condition variable");
         nimcp_mutex_destroy(&shared->mutex);
         bio_free(shared);
         return NULL;
@@ -518,30 +608,50 @@ static nimcp_bio_shared_state_t* shared_state_create(
 
     shared->callbacks = NULL;
 
+    LOG_DEBUG("Shared state created at %p for channel %s",
+              (void*)shared, nimcp_bio_channel_name(channel));
     return shared;
 }
 
 static void shared_state_addref(nimcp_bio_shared_state_t* shared) {
-    if (!shared || shared->magic != BIO_MAGIC_PROMISE) return;
-    nimcp_atomic_fetch_add_u32(&shared->refcount, 1, NIMCP_MEMORY_ORDER_ACQ_REL);
+    if (!shared || shared->magic != BIO_MAGIC_PROMISE) {
+        LOG_WARNING("shared_state_addref: invalid shared state %p", (void*)shared);
+        return;
+    }
+    uint32_t new_ref = nimcp_atomic_fetch_add_u32(&shared->refcount, 1, NIMCP_MEMORY_ORDER_ACQ_REL) + 1;
+    BIO_TRACE("shared_state_addref: %p refcount now %u", (void*)shared, new_ref);
 }
 
 static void shared_state_release(nimcp_bio_shared_state_t* shared) {
-    if (!shared || shared->magic != BIO_MAGIC_PROMISE) return;
+    if (!shared || shared->magic != BIO_MAGIC_PROMISE) {
+        LOG_WARNING("shared_state_release: invalid shared state %p", (void*)shared);
+        return;
+    }
 
     uint32_t old_ref = nimcp_atomic_fetch_sub_u32(&shared->refcount, 1, NIMCP_MEMORY_ORDER_ACQ_REL);
+    BIO_TRACE("shared_state_release: %p refcount %u -> %u", (void*)shared, old_ref, old_ref - 1);
+
     if (old_ref == 1) {
         /* Last reference - cleanup */
+        LOG_DEBUG("shared_state_release: destroying shared state %p (channel %s)",
+                  (void*)shared, nimcp_bio_channel_name(shared->channel));
+
         if (shared->result) {
+            BIO_TRACE("shared_state_release: freeing result buffer");
             bio_free(shared->result);
         }
 
         /* Free callbacks */
+        uint32_t cb_count = 0;
         bio_callback_node_t* cb = shared->callbacks;
         while (cb) {
             bio_callback_node_t* next = cb->next;
             bio_free(cb);
             cb = next;
+            cb_count++;
+        }
+        if (cb_count > 0) {
+            LOG_DEBUG("shared_state_release: freed %u callback nodes", cb_count);
         }
 
         nimcp_cond_destroy(&shared->cond);
@@ -549,6 +659,7 @@ static void shared_state_release(nimcp_bio_shared_state_t* shared) {
 
         shared->magic = 0;
         bio_free(shared);
+        LOG_DEBUG("shared_state_release: shared state destroyed");
     }
 }
 
@@ -926,17 +1037,22 @@ nimcp_error_t nimcp_bio_promise_complete(
     nimcp_bio_promise_t promise,
     const void* result)
 {
+    LOG_DEBUG("nimcp_bio_promise_complete: promise=%p, result=%p", (void*)promise, result);
+
     if (!promise || promise->magic != BIO_MAGIC_PROMISE) {
+        LOG_ERROR("nimcp_bio_promise_complete: invalid promise");
         return NIMCP_ERROR_NULL_POINTER;
     }
 
     nimcp_bio_shared_state_t* shared = promise->shared;
     if (!shared || shared->magic != BIO_MAGIC_PROMISE) {
+        LOG_ERROR("nimcp_bio_promise_complete: invalid shared state");
         return NIMCP_ERROR_INVALID_STATE;
     }
 
     /* Validate result */
     if (shared->result_size > 0 && !result) {
+        LOG_ERROR("nimcp_bio_promise_complete: result required but NULL");
         return NIMCP_ERROR_NULL_POINTER;
     }
 
@@ -944,9 +1060,12 @@ nimcp_error_t nimcp_bio_promise_complete(
     if (shared->result_size > 0) {
         shared->result = bio_alloc(shared->result_size);
         if (!shared->result) {
+            LOG_ERROR("nimcp_bio_promise_complete: failed to allocate result buffer (%zu bytes)",
+                      shared->result_size);
             return NIMCP_ERROR_NO_MEMORY;
         }
         memcpy(shared->result, result, shared->result_size);
+        LOG_DEBUG("nimcp_bio_promise_complete: copied %zu bytes of result data", shared->result_size);
     }
 
     /* Set peak concentration */
@@ -959,15 +1078,18 @@ nimcp_error_t nimcp_bio_promise_complete(
         default: peak = 1.0f;
     }
     atomic_store_float(&shared->concentration_bits, peak);
+    LOG_DEBUG("nimcp_bio_promise_complete: set peak concentration %.4f µM", peak);
 
     /* Record completion time */
     shared->complete_time_ms = bio_time_ms();
+    uint64_t latency_ms = shared->complete_time_ms - shared->create_time_ms;
 
     /* Transition state */
     uint32_t expected = BIO_FUTURE_PENDING;
     if (!nimcp_atomic_compare_exchange_u32(&shared->state, &expected, BIO_FUTURE_COMPLETED,
                                            NIMCP_MEMORY_ORDER_ACQ_REL)) {
         /* Already completed/failed/cancelled */
+        LOG_WARNING("nimcp_bio_promise_complete: promise already in state %u", expected);
         if (shared->result) {
             bio_free(shared->result);
             shared->result = NULL;
@@ -987,7 +1109,8 @@ nimcp_error_t nimcp_bio_promise_complete(
     g_bio_async.stats.channel_stats[shared->channel].releases++;
     nimcp_rwlock_unlock(&g_bio_async.stats_lock);
 
-    LOG_DEBUG("Completed bio promise on channel %s", nimcp_bio_channel_name(shared->channel));
+    LOG_INFO("Completed bio promise on channel %s (latency: %lu ms)",
+             nimcp_bio_channel_name(shared->channel), (unsigned long)latency_ms);
     return NIMCP_SUCCESS;
 }
 
@@ -995,16 +1118,21 @@ nimcp_error_t nimcp_bio_promise_fail(
     nimcp_bio_promise_t promise,
     nimcp_error_t error)
 {
+    LOG_DEBUG("nimcp_bio_promise_fail: promise=%p, error=%d", (void*)promise, error);
+
     if (!promise || promise->magic != BIO_MAGIC_PROMISE) {
+        LOG_ERROR("nimcp_bio_promise_fail: invalid promise");
         return NIMCP_ERROR_NULL_POINTER;
     }
 
     nimcp_bio_shared_state_t* shared = promise->shared;
     if (!shared || shared->magic != BIO_MAGIC_PROMISE) {
+        LOG_ERROR("nimcp_bio_promise_fail: invalid shared state");
         return NIMCP_ERROR_INVALID_STATE;
     }
 
     if (error == NIMCP_SUCCESS) {
+        LOG_ERROR("nimcp_bio_promise_fail: cannot fail with NIMCP_SUCCESS");
         return NIMCP_ERROR_INVALID_PARAMETER;
     }
 
@@ -1014,6 +1142,7 @@ nimcp_error_t nimcp_bio_promise_fail(
     uint32_t expected = BIO_FUTURE_PENDING;
     if (!nimcp_atomic_compare_exchange_u32(&shared->state, &expected, BIO_FUTURE_FAILED,
                                            NIMCP_MEMORY_ORDER_ACQ_REL)) {
+        LOG_WARNING("nimcp_bio_promise_fail: promise already in state %u", expected);
         return NIMCP_ERROR_INVALID_STATE;
     }
 
@@ -1023,22 +1152,29 @@ nimcp_error_t nimcp_bio_promise_fail(
     shared_state_invoke_callbacks(shared);
     nimcp_mutex_unlock(&shared->mutex);
 
+    LOG_WARNING("Bio promise failed on channel %s with error %d",
+                nimcp_bio_channel_name(shared->channel), error);
     return NIMCP_SUCCESS;
 }
 
 nimcp_bio_future_t nimcp_bio_promise_get_future(nimcp_bio_promise_t promise) {
+    BIO_TRACE("nimcp_bio_promise_get_future: promise=%p", (void*)promise);
+
     if (!promise || promise->magic != BIO_MAGIC_PROMISE) {
+        LOG_ERROR("nimcp_bio_promise_get_future: invalid promise");
         return NULL;
     }
 
     nimcp_bio_shared_state_t* shared = promise->shared;
     if (!shared || shared->magic != BIO_MAGIC_PROMISE) {
+        LOG_ERROR("nimcp_bio_promise_get_future: invalid shared state");
         return NULL;
     }
 
     nimcp_bio_future_t future = (nimcp_bio_future_t)
         bio_alloc(sizeof(struct nimcp_bio_future_struct));
     if (!future) {
+        LOG_ERROR("nimcp_bio_promise_get_future: failed to allocate future");
         return NULL;
     }
 
@@ -1047,11 +1183,16 @@ nimcp_bio_future_t nimcp_bio_promise_get_future(nimcp_bio_promise_t promise) {
     future->magic = BIO_MAGIC_FUTURE;
     future->shared = shared;
 
+    LOG_DEBUG("Created bio future %p from promise %p (channel %s)",
+              (void*)future, (void*)promise, nimcp_bio_channel_name(shared->channel));
     return future;
 }
 
 void nimcp_bio_promise_destroy(nimcp_bio_promise_t promise) {
+    BIO_TRACE("nimcp_bio_promise_destroy: promise=%p", (void*)promise);
+
     if (!promise || promise->magic != BIO_MAGIC_PROMISE) {
+        LOG_WARNING("nimcp_bio_promise_destroy: invalid promise %p", (void*)promise);
         return;
     }
 
@@ -1066,18 +1207,22 @@ void nimcp_bio_promise_destroy(nimcp_bio_promise_t promise) {
 
 nimcp_bio_future_state_t nimcp_bio_future_state(nimcp_bio_future_t future) {
     if (!future || future->magic != BIO_MAGIC_FUTURE) {
+        BIO_TRACE("nimcp_bio_future_state: invalid future");
         return BIO_FUTURE_PENDING;
     }
 
     nimcp_bio_shared_state_t* shared = future->shared;
     if (!shared || shared->magic != BIO_MAGIC_PROMISE) {
+        BIO_TRACE("nimcp_bio_future_state: invalid shared state");
         return BIO_FUTURE_PENDING;
     }
 
     /* Update concentration/decay */
     shared_state_update_concentration(shared);
 
-    return (nimcp_bio_future_state_t)nimcp_atomic_load_u32(&shared->state, NIMCP_MEMORY_ORDER_ACQUIRE);
+    nimcp_bio_future_state_t state = (nimcp_bio_future_state_t)nimcp_atomic_load_u32(&shared->state, NIMCP_MEMORY_ORDER_ACQUIRE);
+    BIO_TRACE("nimcp_bio_future_state: future=%p state=%d", (void*)future, state);
+    return state;
 }
 
 nimcp_error_t nimcp_bio_future_wait(
@@ -1085,22 +1230,28 @@ nimcp_error_t nimcp_bio_future_wait(
     void* out_result,
     uint64_t timeout_ms)
 {
+    LOG_DEBUG("nimcp_bio_future_wait: future=%p timeout=%lu ms", (void*)future, (unsigned long)timeout_ms);
+
     if (!future || future->magic != BIO_MAGIC_FUTURE) {
+        LOG_ERROR("nimcp_bio_future_wait: invalid future");
         return NIMCP_ERROR_NULL_POINTER;
     }
 
     nimcp_bio_shared_state_t* shared = future->shared;
     if (!shared || shared->magic != BIO_MAGIC_PROMISE) {
+        LOG_ERROR("nimcp_bio_future_wait: invalid shared state");
         return NIMCP_ERROR_INVALID_STATE;
     }
 
     /* Fast path: check if already ready */
     uint32_t state = nimcp_atomic_load_u32(&shared->state, NIMCP_MEMORY_ORDER_ACQUIRE);
     if (state != BIO_FUTURE_PENDING) {
+        LOG_DEBUG("nimcp_bio_future_wait: fast path - already in state %u", state);
         goto handle_result;
     }
 
     /* Slow path: wait */
+    LOG_DEBUG("nimcp_bio_future_wait: entering slow path wait");
     nimcp_mutex_lock(&shared->mutex);
 
     while ((state = nimcp_atomic_load_u32(&shared->state, NIMCP_MEMORY_ORDER_ACQUIRE)) == BIO_FUTURE_PENDING) {
@@ -1108,6 +1259,7 @@ nimcp_error_t nimcp_bio_future_wait(
             int wait_result = nimcp_cond_timedwait(&shared->cond, &shared->mutex, (uint32_t)timeout_ms);
             if (wait_result != NIMCP_SUCCESS) {
                 nimcp_mutex_unlock(&shared->mutex);
+                LOG_DEBUG("nimcp_bio_future_wait: timeout after %lu ms", (unsigned long)timeout_ms);
                 return NIMCP_ERROR_TIMEOUT;
             }
         } else {
@@ -1116,6 +1268,7 @@ nimcp_error_t nimcp_bio_future_wait(
     }
 
     nimcp_mutex_unlock(&shared->mutex);
+    LOG_DEBUG("nimcp_bio_future_wait: woke up with state %u", state);
 
 handle_result:
     /* Update concentration */
@@ -1125,16 +1278,22 @@ handle_result:
     if (state == BIO_FUTURE_COMPLETED) {
         if (out_result && shared->result && shared->result_size > 0) {
             memcpy(out_result, shared->result, shared->result_size);
+            LOG_DEBUG("nimcp_bio_future_wait: copied %zu bytes of result", shared->result_size);
         }
+        LOG_DEBUG("nimcp_bio_future_wait: completed successfully");
         return NIMCP_SUCCESS;
     } else if (state == BIO_FUTURE_FAILED) {
+        LOG_DEBUG("nimcp_bio_future_wait: future failed with error %d", shared->error);
         return shared->error;
     } else if (state == BIO_FUTURE_DECAYED) {
+        LOG_DEBUG("nimcp_bio_future_wait: future decayed");
         return NIMCP_BIO_ERROR_DECAY_COMPLETE;
     } else if (state == BIO_FUTURE_CANCELLED) {
+        LOG_DEBUG("nimcp_bio_future_wait: future cancelled");
         return NIMCP_ERROR_CANCELLED;
     }
 
+    LOG_ERROR("nimcp_bio_future_wait: unexpected state %u", state);
     return NIMCP_ERROR_INVALID_STATE;
 }
 
@@ -1279,7 +1438,10 @@ bool nimcp_bio_future_cancel(nimcp_bio_future_t future) {
 }
 
 void nimcp_bio_future_destroy(nimcp_bio_future_t future) {
+    BIO_TRACE("nimcp_bio_future_destroy: future=%p", (void*)future);
+
     if (!future || future->magic != BIO_MAGIC_FUTURE) {
+        LOG_WARNING("nimcp_bio_future_destroy: invalid future %p", (void*)future);
         return;
     }
 
@@ -1297,6 +1459,7 @@ void nimcp_bio_future_destroy(nimcp_bio_future_t future) {
     future->magic = 0;
     shared_state_release(shared);
     bio_free(future);
+    LOG_DEBUG("nimcp_bio_future_destroy: future destroyed");
 }
 
 //=============================================================================
@@ -1304,17 +1467,22 @@ void nimcp_bio_future_destroy(nimcp_bio_future_t future) {
 //=============================================================================
 
 nimcp_phase_sync_t nimcp_phase_sync_create(nimcp_oscillation_band_t band) {
+    LOG_DEBUG("nimcp_phase_sync_create: band=%s", nimcp_oscillation_band_name(band));
+
     if (!g_bio_async.initialized) {
+        LOG_ERROR("nimcp_phase_sync_create: bio-async not initialized");
         return NULL;
     }
 
     if (band >= BIO_OSC_BAND_COUNT) {
+        LOG_ERROR("nimcp_phase_sync_create: invalid band %d", band);
         return NULL;
     }
 
     nimcp_phase_sync_t sync = (nimcp_phase_sync_t)
         bio_aligned_alloc(BIO_CACHE_LINE_SIZE, sizeof(struct nimcp_phase_sync_struct));
     if (!sync) {
+        LOG_ERROR("nimcp_phase_sync_create: failed to allocate phase sync");
         return NULL;
     }
 
@@ -1326,6 +1494,7 @@ nimcp_phase_sync_t nimcp_phase_sync_create(nimcp_oscillation_band_t band) {
     sync->capacity = g_bio_async.config.phase_config.max_oscillators;
     sync->oscillators = (oscillator_t*)bio_alloc(sync->capacity * sizeof(oscillator_t));
     if (!sync->oscillators) {
+        LOG_ERROR("nimcp_phase_sync_create: failed to allocate oscillators array");
         bio_free(sync);
         return NULL;
     }
