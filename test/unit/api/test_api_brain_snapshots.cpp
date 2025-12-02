@@ -377,90 +377,114 @@ TEST_F(BrainSnapshotsTest, DeleteOneOfMultipleSnapshots) {
 //=============================================================================
 
 TEST_F(BrainSnapshotsTest, SnapshotMetadataContainsName) {
-    // Create snapshot
-    ASSERT_EQ(nimcp_brain_snapshot_save(brain, "metadata_test", "Test"), NIMCP_OK);
+    // Create snapshot with unique name to avoid collisions
+    char unique_name[64];
+    snprintf(unique_name, sizeof(unique_name), "metadata_test_%ld", (long)time(nullptr));
+    ASSERT_EQ(nimcp_brain_snapshot_save(brain, unique_name, "Test"), NIMCP_OK);
 
-    // List and check metadata
-    nimcp_brain_snapshot_info_t infos[10];
+    // List and check metadata - use heap to avoid stack overflow
+    // Note: build/snapshots/ may have 1000+ snapshots from repeated test runs
+    nimcp_brain_snapshot_info_t* infos = new nimcp_brain_snapshot_info_t[2000];
     uint32_t count = 0;
-    ASSERT_EQ(nimcp_brain_snapshot_list(brain, infos, 10, &count), NIMCP_OK);
+    ASSERT_EQ(nimcp_brain_snapshot_list(brain, infos, 2000, &count), NIMCP_OK);
 
     // Find our snapshot
     bool found = false;
     for (uint32_t i = 0; i < count; i++) {
-        if (strstr(infos[i].name, "metadata_test") != nullptr) {
+        if (strstr(infos[i].name, unique_name) != nullptr) {
             found = true;
             EXPECT_GT(strlen(infos[i].name), 0);
             break;
         }
     }
+    delete[] infos;
     EXPECT_TRUE(found);
 }
 
 TEST_F(BrainSnapshotsTest, SnapshotMetadataContainsDescription) {
     const char* test_desc = "This is a test description";
-    ASSERT_EQ(nimcp_brain_snapshot_save(brain, "desc_test", test_desc), NIMCP_OK);
+    // Use unique name with timestamp to ensure we can find it
+    char unique_name[64];
+    snprintf(unique_name, sizeof(unique_name), "desc_test_%ld", (long)time(nullptr));
+    ASSERT_EQ(nimcp_brain_snapshot_save(brain, unique_name, test_desc), NIMCP_OK);
 
-    nimcp_brain_snapshot_info_t infos[10];
+    // Use large buffer to ensure we can find the snapshot among many
+    // Note: build/snapshots/ may have 1000+ snapshots from repeated test runs
+    nimcp_brain_snapshot_info_t* infos = new nimcp_brain_snapshot_info_t[2000];
     uint32_t count = 0;
-    ASSERT_EQ(nimcp_brain_snapshot_list(brain, infos, 10, &count), NIMCP_OK);
+    ASSERT_EQ(nimcp_brain_snapshot_list(brain, infos, 2000, &count), NIMCP_OK);
 
     // Find our snapshot and check description
     bool found = false;
     for (uint32_t i = 0; i < count; i++) {
-        if (strstr(infos[i].name, "desc_test") != nullptr) {
+        if (strstr(infos[i].name, unique_name) != nullptr) {
             found = true;
             // Description should be set (may be truncated)
             EXPECT_GT(strlen(infos[i].description), 0);
             break;
         }
     }
+    delete[] infos;
     EXPECT_TRUE(found);
 }
 
 TEST_F(BrainSnapshotsTest, SnapshotMetadataContainsTimestamp) {
-    ASSERT_EQ(nimcp_brain_snapshot_save(brain, "timestamp_test", "Test"), NIMCP_OK);
+    // Create snapshot with unique name
+    char unique_name[64];
+    snprintf(unique_name, sizeof(unique_name), "timestamp_test_%ld", (long)time(nullptr));
+    ASSERT_EQ(nimcp_brain_snapshot_save(brain, unique_name, "Test"), NIMCP_OK);
 
-    nimcp_brain_snapshot_info_t infos[10];
+    // Use heap allocation to avoid stack overflow
+    // Note: build/snapshots/ may have 1000+ snapshots from repeated test runs
+    nimcp_brain_snapshot_info_t* infos = new nimcp_brain_snapshot_info_t[2000];
     uint32_t count = 0;
-    ASSERT_EQ(nimcp_brain_snapshot_list(brain, infos, 10, &count), NIMCP_OK);
+    ASSERT_EQ(nimcp_brain_snapshot_list(brain, infos, 2000, &count), NIMCP_OK);
 
     // Find our snapshot and check timestamp
     bool found = false;
     for (uint32_t i = 0; i < count; i++) {
-        if (strstr(infos[i].name, "timestamp_test") != nullptr) {
+        if (strstr(infos[i].name, unique_name) != nullptr) {
             found = true;
             // Timestamp should be non-zero
             EXPECT_GT(infos[i].timestamp, 0);
             break;
         }
     }
+    delete[] infos;
     EXPECT_TRUE(found);
 }
 
 TEST_F(BrainSnapshotsTest, SnapshotMetadataTimestampsAreOrdered) {
-    // Create snapshots with delays
-    ASSERT_EQ(nimcp_brain_snapshot_save(brain, "time1", "First"), NIMCP_OK);
-    usleep(10000); // 10ms delay
-    ASSERT_EQ(nimcp_brain_snapshot_save(brain, "time2", "Second"), NIMCP_OK);
+    // Create snapshots with unique names and delays
+    char name1[64], name2[64];
+    long ts = (long)time(nullptr);
+    snprintf(name1, sizeof(name1), "time1_%ld", ts);
+    snprintf(name2, sizeof(name2), "time2_%ld", ts);
 
-    nimcp_brain_snapshot_info_t infos[10];
+    ASSERT_EQ(nimcp_brain_snapshot_save(brain, name1, "First"), NIMCP_OK);
+    sleep(1); // 1 second delay to ensure different timestamp (second precision)
+    ASSERT_EQ(nimcp_brain_snapshot_save(brain, name2, "Second"), NIMCP_OK);
+
+    // Use heap allocation to avoid stack overflow
+    // Note: build/snapshots/ may have 1000+ snapshots from repeated test runs
+    nimcp_brain_snapshot_info_t* infos = new nimcp_brain_snapshot_info_t[2000];
     uint32_t count = 0;
-    ASSERT_EQ(nimcp_brain_snapshot_list(brain, infos, 10, &count), NIMCP_OK);
+    ASSERT_EQ(nimcp_brain_snapshot_list(brain, infos, 2000, &count), NIMCP_OK);
 
     // Find both snapshots
-    uint64_t time1 = 0, time2 = 0;
+    uint64_t time1_ts = 0, time2_ts = 0;
     for (uint32_t i = 0; i < count; i++) {
-        if (strstr(infos[i].name, "time1") != nullptr) {
-            time1 = infos[i].timestamp;
+        if (strstr(infos[i].name, name1) != nullptr) {
+            time1_ts = infos[i].timestamp;
         }
-        if (strstr(infos[i].name, "time2") != nullptr) {
-            time2 = infos[i].timestamp;
+        if (strstr(infos[i].name, name2) != nullptr) {
+            time2_ts = infos[i].timestamp;
         }
     }
+    delete[] infos;
 
     // Second snapshot should have later timestamp
-    if (time1 > 0 && time2 > 0) {
-        EXPECT_LT(time1, time2);
+    if (time1_ts > 0 && time2_ts > 0) {
+        EXPECT_LT(time1_ts, time2_ts);
     }
 }
