@@ -20,10 +20,14 @@
  */
 
 #include "utils/fault_tolerance/nimcp_checkpoint.h"
+#include "async/nimcp_bio_async.h"
+#include "async/nimcp_bio_messages.h"
 #include "core/brain/nimcp_brain_internal.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/thread/nimcp_thread.h"
 #include "utils/logging/nimcp_logging.h"
+
+#define LOG_MODULE "utils_checkpoint"
 #include "plasticity/adaptive/nimcp_adaptive.h"
 
 #include <stdio.h>
@@ -38,6 +42,7 @@
 // Optional zlib compression support
 #ifdef HAVE_ZLIB
 #include <zlib.h>
+#include "utils/memory/nimcp_unified_memory.h"
 #endif
 
 //=============================================================================

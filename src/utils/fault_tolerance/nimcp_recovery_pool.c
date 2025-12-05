@@ -26,14 +26,20 @@
  */
 
 #include "utils/fault_tolerance/nimcp_recovery_pool.h"
+#include "async/nimcp_bio_async.h"
+#include "async/nimcp_bio_messages.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/thread/nimcp_thread.h"
+#include "utils/logging/nimcp_logging.h"
+
+#define LOG_MODULE "utils_recovery_pool"
 #include "utils/logging/nimcp_logging.h"
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <stdarg.h>
+#include "utils/memory/nimcp_unified_memory.h"
 
 //=============================================================================
 // Internal Constants

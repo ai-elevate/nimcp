@@ -16,14 +16,22 @@
  */
 
 #include "utils/fault_tolerance/nimcp_checkpoint_pool.h"
+#include "async/nimcp_bio_async.h"
+#include "async/nimcp_bio_messages.h"
 #include "utils/memory/nimcp_memory_pool.h"
 #include "utils/memory/nimcp_cow_manager.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/platform/nimcp_platform_mutex.h"
+#include "utils/logging/nimcp_logging.h"
+
+#define LOG_MODULE "utils_checkpoint_pool"
+
 #include <string.h>
 #include <time.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include "utils/memory/nimcp_unified_memory.h"
+#include "utils/logging/nimcp_logging.h"
 
 //=============================================================================
 // Internal Structures

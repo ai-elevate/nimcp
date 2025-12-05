@@ -22,8 +22,13 @@
  */
 
 #include "utils/fault_tolerance/nimcp_fault_event_bus.h"
+#include "async/nimcp_bio_async.h"
+#include "async/nimcp_bio_messages.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/thread/nimcp_thread.h"
+
+#define LOG_MODULE "utils_fault_event_bus"
+
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
@@ -31,6 +36,8 @@
 #include <errno.h>
 #include <signal.h>
 #include <setjmp.h>
+#include "utils/memory/nimcp_unified_memory.h"
+#include "utils/logging/nimcp_logging.h"
 
 //=============================================================================
 // Internal Structures

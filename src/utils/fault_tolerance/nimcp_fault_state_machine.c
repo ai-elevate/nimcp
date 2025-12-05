@@ -4,9 +4,17 @@
  */
 
 #include "utils/fault_tolerance/nimcp_fault_state_machine.h"
+#include "async/nimcp_bio_async.h"
+#include "async/nimcp_bio_messages.h"
 #include "utils/memory/nimcp_memory.h"
+#include "utils/logging/nimcp_logging.h"
+
+#define LOG_MODULE "utils_fault_state_machine"
+
 #include <stdlib.h>
 #include <string.h>
+#include "utils/memory/nimcp_unified_memory.h"
+#include "utils/logging/nimcp_logging.h"
 
 /* =============================================================================
  * State Transition Matrix

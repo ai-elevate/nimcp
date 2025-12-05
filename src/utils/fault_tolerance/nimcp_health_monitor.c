@@ -6,8 +6,12 @@
  */
 
 #include "utils/fault_tolerance/nimcp_health_monitor.h"
+#include "async/nimcp_bio_async.h"
+#include "async/nimcp_bio_messages.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
+
+#define LOG_MODULE "utils_health_monitor"
 #include "utils/thread/nimcp_thread.h"
 #include <stdlib.h>
 #include <string.h>
@@ -15,6 +19,7 @@
 #include <time.h>
 #include <sys/time.h>
 #include <unistd.h>
+#include "utils/memory/nimcp_unified_memory.h"
 
 //=============================================================================
 // Internal Structures
@@ -1053,6 +1058,31 @@ bool health_monitor_get_status(
     if (!monitor || !status) return false;
 
     nimcp_mutex_lock(&monitor->mutex);
+
+    // Compute scores on-demand if not running in background
+    if (!monitor->running) {
+        monitor->last_status.memory_score = calculate_memory_score(monitor);
+        monitor->last_status.performance_score = calculate_performance_score(monitor);
+        monitor->last_status.error_score = calculate_error_score(monitor);
+        monitor->last_status.throughput_score = calculate_throughput_score(monitor);
+        monitor->last_status.cache_score = calculate_cache_score(monitor);
+        monitor->last_status.thread_score = calculate_thread_score(monitor);
+        monitor->last_status.score = calculate_health_score(monitor);
+
+        // Determine status level
+        if (monitor->last_status.score >= 90.0f) {
+            monitor->last_status.status = HEALTH_EXCELLENT;
+        } else if (monitor->last_status.score >= 70.0f) {
+            monitor->last_status.status = HEALTH_GOOD;
+        } else if (monitor->last_status.score >= 50.0f) {
+            monitor->last_status.status = HEALTH_FAIR;
+        } else if (monitor->last_status.score >= 30.0f) {
+            monitor->last_status.status = HEALTH_POOR;
+        } else {
+            monitor->last_status.status = HEALTH_CRITICAL;
+        }
+    }
+
     *status = monitor->last_status;
     nimcp_mutex_unlock(&monitor->mutex);
 

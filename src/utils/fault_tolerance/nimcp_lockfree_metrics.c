@@ -10,14 +10,20 @@
  */
 
 #include "utils/fault_tolerance/nimcp_lockfree_metrics.h"
+#include "async/nimcp_bio_async.h"
+#include "async/nimcp_bio_messages.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
+
+#define LOG_MODULE "utils_lockfree_metrics"
+
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
 #include <sys/time.h>
 #include <time.h>
 #include <errno.h>
+#include "utils/memory/nimcp_unified_memory.h"
 
 //=============================================================================
 // Internal Constants

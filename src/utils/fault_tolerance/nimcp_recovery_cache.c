@@ -8,14 +8,19 @@
  */
 
 #include "utils/fault_tolerance/nimcp_recovery_cache.h"
+#include "async/nimcp_bio_async.h"
+#include "async/nimcp_bio_messages.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/thread/nimcp_thread.h"
+
+#define LOG_MODULE "utils_recovery_cache"
 
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
 #include <stdio.h>
+#include "utils/memory/nimcp_unified_memory.h"
 
 /* ============================================================================
  * INTERNAL HELPERS

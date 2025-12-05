@@ -26,8 +26,13 @@
  */
 
 #include "utils/fault_tolerance/nimcp_async_checkpoint.h"
+#include "async/nimcp_bio_async.h"
+#include "async/nimcp_bio_messages.h"
 #include "utils/fault_tolerance/nimcp_checkpoint.h"
 #include "utils/memory/nimcp_memory.h"
+#include "utils/logging/nimcp_logging.h"
+
+#define LOG_MODULE "utils_async_checkpoint"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/thread/nimcp_thread.h"
 
@@ -38,6 +43,7 @@
 #include <time.h>
 #include <unistd.h>
 #include <sys/time.h>
+#include "utils/memory/nimcp_unified_memory.h"
 
 //=============================================================================
 // Internal Structures

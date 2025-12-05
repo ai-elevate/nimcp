@@ -4,13 +4,19 @@
  */
 
 #include "utils/fault_tolerance/nimcp_brain_recovery_integration.h"
+#include "async/nimcp_bio_async.h"
+#include "async/nimcp_bio_messages.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
+
+#define LOG_MODULE "utils_brain_recovery_integration"
+
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
 #include <time.h>
 #include <sys/time.h>
+#include "utils/memory/nimcp_unified_memory.h"
 
 //=============================================================================
 // Internal Structures

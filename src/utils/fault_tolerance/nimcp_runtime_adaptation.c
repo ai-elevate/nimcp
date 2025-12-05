@@ -4,12 +4,18 @@
  */
 
 #include "utils/fault_tolerance/nimcp_runtime_adaptation.h"
+#include "async/nimcp_bio_async.h"
+#include "async/nimcp_bio_messages.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
+
+#define LOG_MODULE "utils_runtime_adaptation"
+
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
 #include <sys/time.h>
+#include "utils/memory/nimcp_unified_memory.h"
 
 //=============================================================================
 // Parameter Metadata Registry

@@ -7,8 +7,13 @@
  */
 
 #include "utils/fault_tolerance/nimcp_fast_recovery.h"
-#include "../logging/nimcp_logging.h"
+#include "async/nimcp_bio_async.h"
+#include "async/nimcp_bio_messages.h"
+#include "utils/logging/nimcp_logging.h"
 #include "core/brain/nimcp_brain_internal.h"
+
+#define LOG_MODULE "utils_fast_recovery"
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -21,6 +26,7 @@
 
 #ifdef __GLIBC__
 #include <malloc.h>  // For malloc_trim()
+#include "utils/memory/nimcp_unified_memory.h"
 #endif
 
 //=============================================================================
