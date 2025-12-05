@@ -24,24 +24,28 @@
  * @date 2025-11-11
  */
 
-#include "nimcp_spatial_neuromod.h"
+#include "plasticity/neuromodulators/nimcp_spatial_neuromod.h"
+#include "utils/memory/nimcp_unified_memory.h"
 #include "core/neuralnet/nimcp_neuralnet.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/validation/nimcp_validate.h"
 #include "utils/quantum/nimcp_quantum_shannon.h"  // Phase C4.3: Quantum-Shannon diffusion
+#include "async/nimcp_bio_async.h"
+#include "async/nimcp_bio_messages.h"
+#include "async/nimcp_bio_router.h"
 #include <math.h>
 #include <string.h>
 #include <float.h>
 #include <stdio.h>
+#include "utils/logging/nimcp_logging.h"
+
+#define LOG_MODULE "spatial_neuromod"
+
 
 // Logging macros (fallback if logging not available)
 #define nimcp_log_error(...)   fprintf(stderr, "ERROR: " __VA_ARGS__); fprintf(stderr, "\n")
 #define nimcp_log_warning(...) fprintf(stderr, "WARNING: " __VA_ARGS__); fprintf(stderr, "\n")
 #define nimcp_log_info(...)    fprintf(stdout, "INFO: " __VA_ARGS__); fprintf(stdout, "\n")
-
-// Memory allocation compatibility
-#define nimcp_aligned_alloc(size, align) nimcp_malloc(size)
-#define nimcp_aligned_free(ptr) nimcp_free(ptr)
 
 //=============================================================================
 // Constants
@@ -81,6 +85,301 @@ static const struct {
     [NEUROMOD_GABA]          = {0.1f, 10.0f, 0.2f},   // Fast clearance
     [NEUROMOD_GLUTAMATE]     = {0.1f, 10.0f, 0.1f}    // Fast clearance
 };
+
+//=============================================================================
+// Bio-Async Module State
+//=============================================================================
+
+/**
+ * @brief Module state for bio-async integration
+ */
+typedef struct {
+    bio_module_context_t module_ctx;           /**< Router module context */
+    spatial_neuromod_system_t* system;         /**< Associated spatial system */
+    bool initialized;                          /**< Initialization status */
+    uint64_t messages_processed;               /**< Statistics counter */
+} spatial_neuromod_bio_state_t;
+
+/** Global bio-async state (singleton) */
+static spatial_neuromod_bio_state_t g_spatial_bio_state = {
+    .module_ctx = NULL,
+    .system = NULL,
+    .initialized = false,
+    .messages_processed = 0
+};
+
+//=============================================================================
+// Bio-Async Message Handlers
+//=============================================================================
+
+/**
+ * @brief Handle spatial diffusion request
+ *
+ * Processes a request to update spatial neuromodulator diffusion.
+ */
+static nimcp_error_t handle_spatial_diffusion_request(
+    const void* msg, size_t msg_size,
+    nimcp_bio_promise_t response_promise, void* user_data)
+{
+    (void)user_data;  // Not used
+
+    if (!msg || msg_size < sizeof(bio_message_header_t)) {
+        nimcp_log_error("Invalid spatial diffusion request");
+        if (response_promise) {
+            nimcp_bio_promise_fail(response_promise, NIMCP_SUCCESS - 1);
+        }
+        return NIMCP_SUCCESS - 1;
+    }
+
+    const bio_message_header_t* header = (const bio_message_header_t*)msg;
+
+    // For now, acknowledge the message
+    // TODO: Implement actual diffusion processing when message type is defined
+
+    if (response_promise) {
+        bio_message_header_t response;
+        memcpy(&response, header, sizeof(response));
+        response.source_module = BIO_MODULE_NEUROMODULATOR;
+        response.target_module = header->source_module;
+
+        nimcp_bio_promise_complete(response_promise, &response);
+    }
+
+    g_spatial_bio_state.messages_processed++;
+
+    LOG_INFO("Processed spatial diffusion request from module 0x%04X",
+             header->source_module);
+
+    return NIMCP_SUCCESS;
+}
+
+/**
+ * @brief Handle neuromodulator release request
+ *
+ * Processes requests to release neuromodulator at specific neurons.
+ */
+static nimcp_error_t handle_neuromodulator_release_request(
+    const void* msg, size_t msg_size,
+    nimcp_bio_promise_t response_promise, void* user_data)
+{
+    (void)user_data;  // Not used
+
+    if (!msg || msg_size < sizeof(bio_msg_neuromodulator_release_t)) {
+        nimcp_log_error("Invalid neuromodulator release message size");
+        if (response_promise) {
+            nimcp_bio_promise_fail(response_promise, NIMCP_SUCCESS - 1);
+        }
+        return NIMCP_SUCCESS - 1;
+    }
+
+    if (!g_spatial_bio_state.system) {
+        nimcp_log_error("Spatial neuromodulator system not initialized");
+        if (response_promise) {
+            nimcp_bio_promise_fail(response_promise, NIMCP_SUCCESS - 1);
+        }
+        return NIMCP_SUCCESS - 1;
+    }
+
+    const bio_msg_neuromodulator_release_t* release_msg =
+        (const bio_msg_neuromodulator_release_t*)msg;
+
+    // Find the field for the specified neuromodulator type
+    spatial_neuromod_field_t* field = NULL;
+    for (int i = 0; i < NEUROMOD_COUNT; i++) {
+        if (g_spatial_bio_state.system->enabled[i]) {
+            field = g_spatial_bio_state.system->fields[i];
+            if (field && field->type == (neuromodulator_type_t)release_msg->neuromodulator) {
+                break;
+            }
+            field = NULL;
+        }
+    }
+
+    if (!field) {
+        nimcp_log_warning("Neuromodulator type %d not enabled in spatial system",
+                         release_msg->neuromodulator);
+        if (response_promise) {
+            bio_message_header_t response;
+            memcpy(&response, &release_msg->header, sizeof(response));
+            response.source_module = BIO_MODULE_NEUROMODULATOR;
+            response.target_module = release_msg->header.source_module;
+            nimcp_bio_promise_complete(response_promise, &response);
+        }
+        return NIMCP_SUCCESS;
+    }
+
+    // Release neuromodulator at the specified region
+    uint32_t neuron_id = release_msg->source_region;
+    float amount = release_msg->release_amount;
+
+    bool success = spatial_neuromod_release(field, neuron_id, amount);
+
+    LOG_INFO("Released %.3f units of neuromodulator %d at neuron %u: %s",
+             amount, release_msg->neuromodulator, neuron_id,
+             success ? "SUCCESS" : "FAILED");
+
+    // Send response
+    if (response_promise) {
+        bio_message_header_t response;
+        memcpy(&response, &release_msg->header, sizeof(response));
+        response.source_module = BIO_MODULE_NEUROMODULATOR;
+        response.target_module = release_msg->header.source_module;
+
+        nimcp_bio_promise_complete(response_promise, &response);
+    }
+
+    g_spatial_bio_state.messages_processed++;
+
+    return NIMCP_SUCCESS;
+}
+
+/**
+ * @brief Handle concentration query request
+ *
+ * Responds with current concentration at a specific neuron.
+ */
+static nimcp_error_t handle_concentration_query(
+    const void* msg, size_t msg_size,
+    nimcp_bio_promise_t response_promise, void* user_data)
+{
+    (void)user_data;  // Not used
+
+    if (!msg || msg_size < sizeof(bio_message_header_t)) {
+        nimcp_log_error("Invalid concentration query");
+        if (response_promise) {
+            nimcp_bio_promise_fail(response_promise, NIMCP_SUCCESS - 1);
+        }
+        return NIMCP_SUCCESS - 1;
+    }
+
+    const bio_message_header_t* header = (const bio_message_header_t*)msg;
+
+    // For now, send a dummy response
+    // TODO: Define proper query/response message types
+
+    if (response_promise) {
+        bio_message_header_t response;
+        memcpy(&response, header, sizeof(response));
+        response.source_module = BIO_MODULE_NEUROMODULATOR;
+        response.target_module = header->source_module;
+
+        nimcp_bio_promise_complete(response_promise, &response);
+    }
+
+    g_spatial_bio_state.messages_processed++;
+
+    LOG_DEBUG("Processed concentration query from module 0x%04X",
+              header->source_module);
+
+    return NIMCP_SUCCESS;
+}
+
+//=============================================================================
+// Bio-Async Module Initialization
+//=============================================================================
+
+/**
+ * @brief Initialize bio-async integration for spatial neuromodulator
+ *
+ * WHAT: Registers module with bio-router and sets up message handlers
+ * WHY:  Enable async communication with other NIMCP modules
+ * HOW:  Register handlers for diffusion, release, and query operations
+ *
+ * @param system Spatial neuromodulator system to integrate
+ * @return NIMCP_SUCCESS or error code
+ */
+static nimcp_error_t spatial_neuromod_bio_async_init(spatial_neuromod_system_t* system) {
+    if (g_spatial_bio_state.initialized) {
+        LOG_WARNING("Spatial neuromodulator bio-async already initialized");
+        return NIMCP_SUCCESS;
+    }
+
+    if (!system) {
+        nimcp_log_error("NULL system in bio-async init");
+        return NIMCP_SUCCESS - 1;
+    }
+
+    // Check if bio-router is initialized
+    if (!bio_router_is_initialized()) {
+        nimcp_log_warning("Bio-router not initialized, skipping bio-async integration");
+        return NIMCP_SUCCESS;
+    }
+
+    // Register module with bio-router
+    bio_module_info_t module_info = {
+        .module_id = BIO_MODULE_NEUROMODULATOR_SPATIAL,
+        .module_name = "spatial_neuromodulator",
+        .inbox_capacity = 100,
+        .user_data = &g_spatial_bio_state
+    };
+
+    g_spatial_bio_state.module_ctx = bio_router_register_module(&module_info);
+    if (!g_spatial_bio_state.module_ctx) {
+        nimcp_log_error("Failed to register spatial neuromodulator module with bio-router");
+        return NIMCP_SUCCESS - 1;
+    }
+
+    // Register message handlers
+    nimcp_error_t err;
+
+    // Handler for neuromodulator release events
+    err = bio_router_register_handler(
+        g_spatial_bio_state.module_ctx,
+        BIO_MSG_NEUROMODULATOR_RELEASE,
+        handle_neuromodulator_release_request
+    );
+    if (err != NIMCP_SUCCESS) {
+        nimcp_log_error("Failed to register neuromodulator release handler");
+        bio_router_unregister_module(g_spatial_bio_state.module_ctx);
+        g_spatial_bio_state.module_ctx = NULL;
+        return err;
+    }
+
+    // Store system reference
+    g_spatial_bio_state.system = system;
+    g_spatial_bio_state.initialized = true;
+    g_spatial_bio_state.messages_processed = 0;
+
+    LOG_INFO("Spatial neuromodulator bio-async integration initialized");
+
+    return NIMCP_SUCCESS;
+}
+
+/**
+ * @brief Shutdown bio-async integration
+ */
+static void spatial_neuromod_bio_async_shutdown(void) {
+    if (!g_spatial_bio_state.initialized) {
+        return;
+    }
+
+    if (g_spatial_bio_state.module_ctx) {
+        bio_router_unregister_module(g_spatial_bio_state.module_ctx);
+        g_spatial_bio_state.module_ctx = NULL;
+    }
+
+    g_spatial_bio_state.system = NULL;
+    g_spatial_bio_state.initialized = false;
+
+    LOG_INFO("Spatial neuromodulator bio-async integration shutdown (processed %lu messages)",
+             g_spatial_bio_state.messages_processed);
+}
+
+/**
+ * @brief Process pending bio-async messages
+ *
+ * Should be called periodically to handle incoming messages.
+ *
+ * @param max_messages Maximum messages to process (0 = all)
+ * @return Number of messages processed
+ */
+static uint32_t spatial_neuromod_bio_async_process(uint32_t max_messages) {
+    if (!g_spatial_bio_state.initialized || !g_spatial_bio_state.module_ctx) {
+        return 0;
+    }
+
+    return bio_router_process_inbox(g_spatial_bio_state.module_ctx, max_messages);
+}
 
 //=============================================================================
 // Helper Functions
@@ -184,7 +483,7 @@ spatial_neuromod_field_t* spatial_neuromod_create(uint32_t num_neurons,
 
     // Allocate main structure
     spatial_neuromod_field_t* field = (spatial_neuromod_field_t*)
-        nimcp_aligned_alloc(sizeof(spatial_neuromod_field_t), 64);
+        nimcp_aligned_alloc(64, sizeof(spatial_neuromod_field_t));
     if (!field) {
         nimcp_log_error("Failed to allocate spatial neuromodulator field");
         return NULL;
@@ -203,9 +502,9 @@ spatial_neuromod_field_t* spatial_neuromod_create(uint32_t num_neurons,
     field->min_concentration = 0.0f;
 
     // Allocate concentration arrays (cache-aligned for SIMD)
-    field->concentration = (float*)nimcp_aligned_alloc(num_neurons * sizeof(float), 64);
-    field->source_rate = (float*)nimcp_aligned_alloc(num_neurons * sizeof(float), 64);
-    field->laplacian_buffer = (float*)nimcp_aligned_alloc(num_neurons * sizeof(float), 64);
+    field->concentration = (float*)nimcp_aligned_alloc(64, num_neurons * sizeof(float));
+    field->source_rate = (float*)nimcp_aligned_alloc(64, num_neurons * sizeof(float));
+    field->laplacian_buffer = (float*)nimcp_aligned_alloc(64, num_neurons * sizeof(float));
 
     if (!field->concentration || !field->source_rate || !field->laplacian_buffer) {
         nimcp_log_error("Failed to allocate concentration arrays");
@@ -263,6 +562,7 @@ void spatial_neuromod_destroy(spatial_neuromod_field_t* field) {
 
     if (!field) return;
 
+
     if (field->concentration) {
         nimcp_aligned_free(field->concentration);
     }
@@ -297,7 +597,7 @@ spatial_neuromod_system_t* spatial_neuromod_system_create(
     }
 
     spatial_neuromod_system_t* system = (spatial_neuromod_system_t*)
-        nimcp_aligned_alloc(sizeof(spatial_neuromod_system_t), 64);
+        nimcp_aligned_alloc(64, sizeof(spatial_neuromod_system_t));
     if (!system) {
         nimcp_log_error("Failed to allocate spatial neuromodulator system");
         return NULL;
@@ -359,6 +659,14 @@ spatial_neuromod_system_t* spatial_neuromod_system_create(
     }
 
     nimcp_log_info("Created spatial neuromodulator system with %u neurons", num_neurons);
+
+    // Initialize bio-async integration
+    nimcp_error_t bio_err = spatial_neuromod_bio_async_init(system);
+    if (bio_err != NIMCP_SUCCESS) {
+        nimcp_log_warning("Failed to initialize bio-async integration: %d", bio_err);
+        // Continue anyway - bio-async is optional
+    }
+
     return system;
 }
 
@@ -368,6 +676,10 @@ void spatial_neuromod_system_destroy(spatial_neuromod_system_t* system) {
     // HOW:  Destroy each field then system structure
 
     if (!system) return;
+
+
+    // Shutdown bio-async integration
+    spatial_neuromod_bio_async_shutdown();
 
     for (int i = 0; i < NEUROMOD_COUNT; i++) {
         if (system->fields[i]) {
@@ -402,6 +714,9 @@ bool spatial_neuromod_system_update(
         nimcp_log_error("Invalid timestep dt=%.6f in spatial_neuromod_system_update", dt);
         return false;
     }
+
+    // Process bio-async messages before updating
+    spatial_neuromod_bio_async_process(10);  // Process up to 10 messages per update
 
     // Update each enabled field
     for (int i = 0; i < NEUROMOD_COUNT; i++) {

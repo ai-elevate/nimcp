@@ -2,15 +2,28 @@
  * @file nimcp_glial_integration.c
  * @brief Implementation of glial-neuron integration
  *
- * TDD STATUS: Stub implementation for RED phase
- * - All functions present but minimal implementation
- * - Basic memory management working
- * - Will implement full functionality in GREEN phase
+ * FEATURES:
+ * - Bio-async messaging for glial-neural coordination
+ * - Comprehensive logging for debugging and monitoring
+ * - Tripartite synapse integration
+ * - Myelination coordination
+ * - Synaptic surveillance and pruning
+ *
+ * @version 2.0.0
+ * @date 2025-11-28
  */
 
-#include "nimcp_glial_integration.h"
+#include "glial/integration/nimcp_glial_integration.h"
+#include "async/nimcp_bio_async.h"
+#include "async/nimcp_bio_router.h"
+#include "async/nimcp_bio_messages.h"
+#include "utils/logging/nimcp_logging.h"
+#include "utils/memory/nimcp_unified_memory.h"
 #include "utils/memory/nimcp_memory.h"
 #include <string.h>
+#include <stdio.h>
+
+#define LOG_MODULE "GLIAL_INTEGRATION"
 
 // ============================================================================
 // HELPER FUNCTIONS
@@ -160,15 +173,32 @@ glial_integration_t* glial_integration_create(neural_network_t network, uint32_t
     gi->enable_astrocyte_modulation = false;
     gi->enable_oligodendrocyte_myelination = false;
     gi->enable_microglia_pruning = false;
+    gi->enable_bio_async = false;
+
+    // Bio-async initialization
+    gi->bio_ctx = NULL;
+    gi->bio_async_enabled = false;
 
     // Initialize lock
     nimcp_mutex_init(&gi->lock, NULL);
+
+    LOG_INFO(LOG_MODULE, "Glial integration created with max_mappings=%u", max_mappings);
 
     return gi;
 }
 
 void glial_integration_destroy(glial_integration_t* gi) {
     if (!gi) return;
+
+    LOG_INFO(LOG_MODULE, "Destroying glial integration");
+
+    // Unregister bio-async
+    if (gi->bio_async_enabled && gi->bio_ctx) {
+        bio_router_unregister_module(gi->bio_ctx);
+        gi->bio_ctx = NULL;
+        gi->bio_async_enabled = false;
+        LOG_INFO(LOG_MODULE, "Bio-async unregistered");
+    }
 
     if (gi->synapse_to_astrocyte) {
         hash_table_destroy(gi->synapse_to_astrocyte);

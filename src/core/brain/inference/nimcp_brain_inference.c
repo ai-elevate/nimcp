@@ -37,7 +37,13 @@
  * - Batch: O(m*s*n) where m=batch_size
  */
 
-#include "nimcp_brain_inference.h"
+// Bio-async integration
+#include "async/nimcp_bio_async.h"
+#include "utils/memory/nimcp_unified_memory.h"
+#include "async/nimcp_bio_router.h"
+#include "async/nimcp_bio_messages.h"
+
+#include "core/brain/inference/nimcp_brain_inference.h"
 #include <math.h>
 #include <string.h>
 #include <stdio.h>
@@ -48,6 +54,12 @@
 #include "cognitive/nimcp_mirror_neurons.h"
 #include "cognitive/nimcp_theory_of_mind.h"
 #include "cognitive/nimcp_working_memory.h"
+#include "async/nimcp_future.h"
+#include "utils/error/nimcp_error_codes.h"
+#include "utils/thread/nimcp_thread.h"
+#include "utils/logging/nimcp_logging.h"
+
+#define LOG_MODULE "BRAIN_INFERENCE"
 
 // Forward declarations for brain internal functions (defined in nimcp_brain.c)
 extern void set_error(const char* fmt, ...);
@@ -528,4 +540,176 @@ bool brain_observe_action(brain_t brain, const float* features, uint32_t num_fea
 
     brain_clear_error();
     return true;
+}
+
+
+//=============================================================================
+// Async Inference Implementation
+//=============================================================================
+
+/**
+ * @brief Context for async inference thread
+ */
+typedef struct {
+    brain_t brain;
+    float* features;
+    uint32_t num_features;
+    nimcp_promise_t promise;
+} async_infer_context_t;
+
+/**
+ * @brief Background thread function for async inference
+ *
+ * WHAT: Performs inference in background thread and completes promise
+ * WHY:  Enable non-blocking decision making
+ * HOW:  Call brain_decide, set result or error on promise
+ *
+ * THREAD SAFETY: Each thread has its own context, brain must support concurrent reads
+ *
+ * @param arg async_infer_context_t pointer
+ * @return NULL (unused)
+ */
+static void* async_infer_thread(void* arg)
+{
+    async_infer_context_t* ctx = (async_infer_context_t*)arg;
+
+    if (!ctx) {
+        return NULL;
+    }
+
+    LOG_MODULE_DEBUG("brain_inference", "Async inference started: %u features", ctx->num_features);
+
+    // Perform synchronous inference
+    brain_decision_t* decision = brain_decide(
+        ctx->brain,
+        ctx->features,
+        ctx->num_features
+    );
+
+    // Complete promise with result or error
+    if (!decision) {
+        // Inference failed
+        nimcp_error_t error = NIMCP_ERROR_OPERATION_FAILED;
+        nimcp_promise_fail(ctx->promise, error);
+        LOG_MODULE_ERROR("brain_inference", "Async inference failed");
+    } else {
+        // Inference succeeded
+        // Note: promise takes ownership of decision pointer
+        nimcp_promise_complete(ctx->promise, &decision);
+        LOG_MODULE_DEBUG("brain_inference", "Async inference completed: label='%s', confidence=%.2f",
+                       decision->label, decision->confidence);
+    }
+
+    // Cleanup
+    nimcp_free(ctx->features);
+    nimcp_promise_destroy(ctx->promise);
+    nimcp_free(ctx);
+
+    return NULL;
+}
+
+/**
+ * @brief Asynchronous inference/decision making
+ *
+ * WHAT: Non-blocking version of brain_decide
+ * WHY:  Enable concurrent inference without blocking caller
+ * HOW:  Copy inputs, create promise/future, spawn thread
+ *
+ * IMPLEMENTATION NOTES:
+ * - Features are deep-copied to ensure thread safety
+ * - Promise is created with sizeof(brain_decision_t*) for result pointer
+ * - Thread is detached for auto-cleanup
+ * - Context is freed by worker thread
+ *
+ * ERROR HANDLING:
+ * - Returns NULL if allocation fails or thread creation fails
+ * - Inference errors propagated through future
+ *
+ * MEMORY MANAGEMENT:
+ * - Context allocated on heap, freed by worker thread
+ * - Features copied to heap, freed by worker thread
+ * - Promise destroyed by worker thread after completion
+ * - Future must be destroyed by caller
+ * - Decision result must be freed by caller with brain_free_decision()
+ *
+ * @param brain Brain handle
+ * @param features Input features (will be copied)
+ * @param num_features Feature count
+ * @return Future handle or NULL on error
+ */
+nimcp_future_t nimcp_brain_infer_async(brain_t brain, const float* features,
+                                        uint32_t num_features)
+{
+    // Validate parameters
+    if (!brain || !features) {
+        LOG_MODULE_ERROR("brain_inference", "Invalid parameters to nimcp_brain_infer_async");
+        return NULL;
+    }
+
+    if (num_features == 0) {
+        LOG_MODULE_ERROR("brain_inference", "Invalid num_features=0");
+        return NULL;
+    }
+
+    // Allocate context for worker thread
+    async_infer_context_t* ctx = nimcp_malloc(sizeof(async_infer_context_t));
+    if (!ctx) {
+        LOG_MODULE_ERROR("brain_inference", "Failed to allocate async inference context");
+        return NULL;
+    }
+
+    // Copy features to heap (worker thread will free)
+    ctx->features = nimcp_malloc(num_features * sizeof(float));
+    if (!ctx->features) {
+        LOG_MODULE_ERROR("brain_inference", "Failed to allocate features array (%u floats)", num_features);
+        nimcp_free(ctx);
+        return NULL;
+    }
+    memcpy(ctx->features, features, num_features * sizeof(float));
+
+    // Set context fields
+    ctx->brain = brain;
+    ctx->num_features = num_features;
+
+    // Create promise for result (decision is a pointer)
+    ctx->promise = nimcp_promise_create(sizeof(brain_decision_t*));
+    if (!ctx->promise) {
+        LOG_MODULE_ERROR("brain_inference", "Failed to create promise for async inference");
+        nimcp_free(ctx->features);
+        nimcp_free(ctx);
+        return NULL;
+    }
+
+    // Get future before starting thread
+    nimcp_future_t future = nimcp_promise_get_future(ctx->promise);
+    if (!future) {
+        LOG_MODULE_ERROR("brain_inference", "Failed to get future from promise");
+        nimcp_promise_destroy(ctx->promise);
+        nimcp_free(ctx->features);
+        nimcp_free(ctx);
+        return NULL;
+    }
+
+    // Create worker thread
+    nimcp_thread_t thread;
+    thread_attr_t attr = {
+        .stack_size = NIMCP_THREAD_DEFAULT_STACK_SIZE,
+        .priority = 0,
+        .detached = true  // Auto-cleanup on exit
+    };
+
+    nimcp_result_t result = nimcp_thread_create(&thread, async_infer_thread, ctx, &attr);
+    if (result != NIMCP_SUCCESS) {
+        LOG_MODULE_ERROR("brain_inference", "Failed to create async inference thread: %d", result);
+        nimcp_future_destroy(future);
+        nimcp_promise_destroy(ctx->promise);
+        nimcp_free(ctx->features);
+        nimcp_free(ctx);
+        return NULL;
+    }
+
+    LOG_MODULE_INFO("brain_inference", "Async inference thread created successfully");
+
+    // Return future to caller (caller must destroy)
+    return future;
 }

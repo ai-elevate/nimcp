@@ -24,6 +24,7 @@
  */
 
 #include "core/brain/nimcp_brain.h"
+#include "utils/memory/nimcp_unified_memory.h"
 #include "core/brain/nimcp_brain_internal.h"
 #include <math.h>
 #include <stdarg.h>
@@ -44,6 +45,14 @@
 #include "utils/platform/nimcp_platform_mutex.h"
 #include "utils/logging/nimcp_logging.h"
 #include "security/nimcp_security.h"  // Phase 11: Biological attack defense
+#include "async/nimcp_bio_async.h"    // Bio-async messaging system
+#include "async/nimcp_bio_router.h"   // Bio-async message router
+#include "async/nimcp_bio_messages.h" // Bio-async message types
+#include "core/brain/nimcp_brain_bio_async.h" // Brain bio-async integration API
+#include "utils/memory/nimcp_memory_guards.h" // For nimcp_calloc/nimcp_free
+
+/* Logging module identifier */
+#define LOG_MODULE "BRAIN"
 #include "core/topology/nimcp_community_detection.h"  // Community detection & topology analysis
 #include "utils/algorithms/nimcp_graph_metrics.h"       // Graph metrics
 #include "utils/containers/nimcp_graph.h"                // Graph data structures
@@ -132,6 +141,13 @@
 #include "core/brain/factory/init/nimcp_brain_init.h"  // For nimcp_bbb_release_global_system
 
 //=============================================================================
+// Bio-Async Module Registration
+//=============================================================================
+
+static bio_module_context_t g_brain_bio_ctx = NULL;
+static bool g_brain_bio_initialized = false;
+
+//=============================================================================
 // Forward Declarations - Strategy Pattern
 //=============================================================================
 
@@ -156,6 +172,100 @@ typedef struct task_strategy task_strategy_t;
 
 // Phase 2: COW helper - must be declared before brain_get_network()
 bool ensure_writable_network(brain_t brain);
+
+//=============================================================================
+// Bio-Async Message Handlers and Integration
+//=============================================================================
+
+/**
+ * @brief Initialize bio-async integration for brain module
+ *
+ * WHAT: Registers brain with bio-router and sets up message handlers
+ * WHY:  Enable event-driven inter-module communication
+ * HOW:  Create module context, register handlers for brain messages
+ *
+ * @return NIMCP_SUCCESS or error code
+ */
+static nimcp_error_t brain_bio_init(void)
+{
+    if (g_brain_bio_initialized) {
+        LOG_MODULE_WARN("BRAIN", "Bio-async already initialized");
+        return NIMCP_SUCCESS;
+    }
+
+    LOG_MODULE_INFO("BRAIN", "Initializing bio-async integration");
+
+    // Register module with bio-router
+    bio_module_info_t info = {
+        .module_id = BIO_MODULE_BRAIN,
+        .module_name = "Brain",
+        .inbox_capacity = 512,  // High capacity for brain module
+        .user_data = NULL
+    };
+
+    g_brain_bio_ctx = bio_router_register_module(&info);
+    if (!g_brain_bio_ctx) {
+        LOG_MODULE_ERROR("BRAIN", "Failed to register with bio-router");
+        return NIMCP_ERROR_INVALID_PARAM;
+    }
+
+    g_brain_bio_initialized = true;
+    LOG_MODULE_INFO("BRAIN", "Bio-async integration initialized successfully");
+    return NIMCP_SUCCESS;
+}
+
+/**
+ * @brief Publish brain state change event via bio-async
+ *
+ * @param event_type Type of brain event (creation, destruction, etc.)
+ * @param neuron_count Number of neurons (0 if not applicable)
+ * @param channel Neuromodulator channel to use
+ */
+static void brain_publish_state_event(bio_message_type_t event_type,
+                                       uint32_t neuron_count,
+                                       nimcp_bio_channel_type_t channel)
+{
+    if (!g_brain_bio_initialized || !g_brain_bio_ctx) {
+        return;  // Graceful degradation
+    }
+
+    LOG_MODULE_DEBUG("BRAIN", "Publishing state event: type=%d, neurons=%u",
+                     event_type, neuron_count);
+
+    // Create brain state response message
+    bio_msg_brain_state_response_t msg = {0};
+    bio_msg_init_header(&msg.header, event_type, BIO_MODULE_BRAIN,
+                        0, sizeof(msg));  // target=0 (broadcast)
+    msg.header.channel = channel;
+    msg.neuron_count = neuron_count;
+
+    // Publish via router
+    nimcp_error_t result = bio_router_broadcast(g_brain_bio_ctx, &msg, sizeof(msg));
+    if (result != NIMCP_SUCCESS) {
+        LOG_MODULE_WARN("BRAIN", "Failed to publish state event: error=%d", result);
+    }
+}
+
+/**
+ * @brief Publish brain processing event
+ *
+ * @param processing_type Type of processing (inference, learning, etc.)
+ * @param confidence Processing confidence [0,1]
+ */
+static void brain_publish_processing_event(const char* processing_type, float confidence)
+{
+    if (!g_brain_bio_initialized || !g_brain_bio_ctx) {
+        return;  // Graceful degradation
+    }
+
+    LOG_MODULE_DEBUG("BRAIN", "Publishing processing event: type=%s, confidence=%.3f",
+                     processing_type, confidence);
+
+    // Use predictive coding signal for processing events
+    char signal_name[64];
+    snprintf(signal_name, sizeof(signal_name), "brain.processing.%s", processing_type);
+    bio_router_publish_signal(g_brain_bio_ctx, signal_name, confidence);
+}
 
 //=============================================================================
 // Strategy Pattern - Task-Specific Behaviors
@@ -1115,6 +1225,14 @@ bool init_attention_subsystem(brain_t brain)
         return false;
     }
 
+    // Bio-Async: Initialize on first subsystem init
+    if (!g_brain_bio_initialized) {
+        nimcp_error_t bio_result = brain_bio_init();
+        if (bio_result != NIMCP_SUCCESS) {
+            LOG_MODULE_WARN("BRAIN", "Bio-async init failed: %d (continuing anyway)", bio_result);
+        }
+    }
+
     // WHAT: Check if already initialized
     // WHY:  Prevent double initialization and memory leak
     // HOW:  Return success if attention already exists
@@ -1591,25 +1709,31 @@ void brain_destroy(brain_t brain)
     if (brain->glial) {
         glial_integration_destroy(brain->glial);
         brain->glial = NULL;
+    } else {
     }
+
 
     // Phase 5/6: Cleanup myelin sheath network (after glial to avoid dangling pointers)
     if (brain->myelin_sheath) {
         myelin_network_destroy(brain->myelin_sheath);
         brain->myelin_sheath = NULL;
+    } else {
     }
 
     // Phase 1.5.6: Cleanup axon network
     if (brain->axon_network) {
         axon_network_destroy((axon_network_t*)brain->axon_network);
         brain->axon_network = NULL;
+    } else {
     }
 
     // Phase 1.5.7: Cleanup dendrite network
     if (brain->dendrite_network) {
         dendrite_network_destroy((dendrite_network_t*)brain->dendrite_network);
         brain->dendrite_network = NULL;
+    } else {
     }
+
 
     // Phase 8: Cleanup multi-modal subsystems
     if (brain->visual_cortex) {
@@ -1632,10 +1756,12 @@ void brain_destroy(brain_t brain)
     nimcp_free(brain->speech_feature_buffer);
     nimcp_free(brain->integrated_feature_buffer);
 
+
     // Phase 8.6: Cleanup pink noise neuromodulation
     if (brain->pink_noise) {
         neuromod_pink_destroy(brain->pink_noise);
     }
+
 
     // Phase EDP-1: Cleanup Event-Driven Plasticity (before plasticity bridge it depends on)
     if (brain->event_driven_plasticity) {
@@ -1644,6 +1770,7 @@ void brain_destroy(brain_t brain)
         brain->enable_event_driven_plasticity = false;
     }
 
+
     // Phase TPB-1: Cleanup Training-Plasticity Bridge (before neuromodulator system it depends on)
     if (brain->plasticity_bridge) {
         tpb_destroy(brain->plasticity_bridge);
@@ -1651,16 +1778,19 @@ void brain_destroy(brain_t brain)
         brain->enable_plasticity_bridge = false;
     }
 
+
     // Phase 10.5: Cleanup neuromodulator system
     if (brain->neuromodulator_system) {
         neuromodulator_system_destroy(brain->neuromodulator_system);
     }
+
 
     // Phase 3.0: Cleanup multihead attention
     if (brain->multihead_attention) {
         multihead_attention_destroy(brain->multihead_attention);
         brain->multihead_attention = NULL;
     }
+
 
     // Phase 2 Middleware: Cleanup spike analysis and population coding
     if (brain->spike_feature_extractor) {
@@ -1672,11 +1802,13 @@ void brain_destroy(brain_t brain)
         brain->population_analyzer = NULL;
     }
 
+
     // Module Integration: Cleanup brain regions
     if (brain->brain_regions) {
         brain_module_destroy(brain->brain_regions);
         brain->brain_regions = NULL;
     }
+
 
     // Phase CC-1: Cleanup cortical columns subsystem (Tier 0.65)
     // Order: feature hypercolumns → orientation hypercolumns → topographic maps →
@@ -1746,10 +1878,12 @@ void brain_destroy(brain_t brain)
 
     brain->enable_cortical_columns = false;
 
+
     // Phase 9.0: Cleanup neural logic network
     if (brain->logic) {
         neural_logic_destroy(brain->logic);
     }
+
 
     // Phase 9.2: Cleanup epistemic filter
     if (brain->epistemic) {
@@ -1760,6 +1894,7 @@ void brain_destroy(brain_t brain)
     if (brain->symbolic_logic) {
         symbolic_logic_destroy(brain->symbolic_logic);
     }
+
 
     // Phase M3: Cleanup working memory transfer (BEFORE working memory)
     if (brain->wm_transfer_system) {
@@ -1773,6 +1908,7 @@ void brain_destroy(brain_t brain)
         brain->working_memory = NULL;
     }
 
+
     // Phase 10.2: Cleanup memory consolidation
     if (brain->consolidation) {
         brain_stop_background_consolidation(brain->consolidation);
@@ -1783,6 +1919,7 @@ void brain_destroy(brain_t brain)
         executive_destroy(brain->executive);
     }
 
+
     // Phase 10.2: Cleanup emotional system
     if (brain->emotional_system) {
         emotion_system_destroy(brain->emotional_system);
@@ -1792,6 +1929,7 @@ void brain_destroy(brain_t brain)
     if (brain->sleep_system) {
         sleep_system_destroy(brain->sleep_system);
     }
+
 
     // Phase M1: Cleanup engram system
     if (brain->engram_system) {
@@ -1807,6 +1945,7 @@ void brain_destroy(brain_t brain)
     if (brain->semantic_memory) {
         semantic_memory_destroy(brain->semantic_memory);
     }
+
 
     // Phase 10.6: Cleanup Theory of Mind
     if (brain->theory_of_mind) {
@@ -1838,10 +1977,12 @@ void brain_destroy(brain_t brain)
         mirror_neurons_destroy(brain->mirror_neurons);
     }
 
+
     // Cleanup Global Workspace Architecture
     if (brain->global_workspace) {
         global_workspace_destroy(brain->global_workspace);
     }
+
 
     // CRITICAL FIX: Cleanup cognitive modules (memory leak fix)
     if (brain->introspection) {
@@ -1860,6 +2001,7 @@ void brain_destroy(brain_t brain)
         knowledge_system_destroy(brain->knowledge);
     }
 
+
     // Phase 11: Part I.2: Cleanup empathetic response engine (before empathy network)
     if (brain->empathetic_response_engine) {
         extern void empathetic_response_destroy(void* engine);
@@ -1875,6 +2017,7 @@ void brain_destroy(brain_t brain)
     if (brain->autobio) {
         autobio_destroy(brain->autobio);
     }
+
 
     // Phase 12: Cleanup self-model
     if (brain->self_model) {
@@ -1896,6 +2039,7 @@ void brain_destroy(brain_t brain)
         nimcp_free(brain->longterm_memory);
     }
 
+
     // Phase 11 Enhancement C1.1: Cleanup quantum annealer
     if (brain->quantum_annealer) {
         quantum_annealer_destroy(brain->quantum_annealer);
@@ -1907,11 +2051,13 @@ void brain_destroy(brain_t brain)
         brain->quantum_shannon_diffusion = NULL;
     }
 
+
     // Phase C4.7: Cleanup cross-modal routing graph
     if (brain->cross_modal_graph) {
         cross_modal_destroy_routing_graph(brain->cross_modal_graph);
         brain->cross_modal_graph = NULL;
     }
+
 
     // === PHASE E: CLEANUP HIGHER-ORDER COGNITIVE & SOCIAL SYSTEMS ===
 
@@ -1920,10 +2066,12 @@ void brain_destroy(brain_t brain)
         shadow_system_destroy(brain->shadow_emotions);
     }
 
+
     // Phase E6: Cleanup Bias Detection
     if (brain->bias_detection) {
         bias_system_destroy(brain->bias_detection);
     }
+
 
     // === PHASE E: CLEANUP FULL EMOTIONAL INTELLIGENCE ===
 
@@ -1947,6 +2095,7 @@ void brain_destroy(brain_t brain)
         social_bond_system_destroy(brain->social_bond_system);
     }
 
+
     // Community Detection: Cleanup
     if (brain->functional_modules) {
         topology_community_structure_free(brain->functional_modules);
@@ -1958,6 +2107,7 @@ void brain_destroy(brain_t brain)
         nimcp_free(brain->topology_metrics);
     }
 
+
     // Network Analyzer: Cleanup
     if (brain->network_analyzer) {
         // Local include to avoid global type conflicts
@@ -1966,11 +2116,13 @@ void brain_destroy(brain_t brain)
         brain->network_analyzer = NULL;
     }
 
+
     // Universal Event Bus: Cleanup event broadcasting system
     if (brain->event_bus) {
         event_bus_destroy(brain->event_bus);
         brain->event_bus = NULL;
     }
+
 
     // Phase 1.5: Cleanup memory pools for hot-path allocations
     if (brain->decision_struct_pool) {
@@ -1986,6 +2138,7 @@ void brain_destroy(brain_t brain)
         brain->active_neuron_ids_pool = NULL;
     }
 
+
     // === PHASE SC-2: CLEANUP SECURITY RECOVERY BRIDGE ===
     if (brain->security_bridge) {
         // Local include to avoid global type conflicts
@@ -1994,6 +2147,7 @@ void brain_destroy(brain_t brain)
         brain->security_bridge = NULL;
     }
 
+
     // === PHASE TM-3: CLEANUP BRAIN-TRAINING INTEGRATION ===
     // Must be cleaned up BEFORE security integration since it may be registered with security
     if (brain->training_ctx) {
@@ -2001,6 +2155,7 @@ void brain_destroy(brain_t brain)
         brain->training_ctx = NULL;
     }
     brain->enable_training_integration = false;
+
 
     // === PHASE SC-4: CLEANUP UNIVERSAL SECURITY INTEGRATION ===
     if (brain->security_integration) {
@@ -2026,6 +2181,7 @@ void brain_destroy(brain_t brain)
         brain->security_integration = NULL;
     }
 
+
     // === PHASE IS-1: CLEANUP BLOOD-BRAIN BARRIER (BBB) ===
     if (brain->bbb_enabled && brain->bbb_system) {
         // Unregister this brain's memory region from BBB
@@ -2041,10 +2197,27 @@ void brain_destroy(brain_t brain)
         brain->bbb_enabled = false;
     }
 
+
     clear_cache(brain);
 
     // Destroy cache mutex
     nimcp_platform_mutex_destroy(&brain->cache_mutex);
+
+
+    // Bio-Async: Unregister from router (if initialized)
+    if (g_brain_bio_initialized && g_brain_bio_ctx) {
+        LOG_MODULE_INFO("BRAIN", "Unregistering brain from bio-async router");
+        bio_router_unregister_module(g_brain_bio_ctx);
+        g_brain_bio_ctx = NULL;
+        g_brain_bio_initialized = false;
+    }
+
+    // Per-brain bio-async cleanup
+    if (brain->bio_async_enabled) {
+        brain_bio_async_shutdown(brain);
+        brain->bio_async_enabled = false;
+    }
+
 
     nimcp_free(brain);
 }
@@ -6508,6 +6681,32 @@ bool brain_process_multimodal(
         }
     }
 
+    // =========================================================================
+    // BIO-ROUTER MESSAGE PROCESSING
+    // =========================================================================
+
+    // Process pending bio-router messages (non-blocking, limited batch)
+    // This allows the brain to respond to async messages from other modules
+    if (brain->bio_async_enabled) {
+        // Process up to 10 messages per simulation step for efficiency
+        // This prevents message processing from dominating the update loop
+        uint32_t messages_processed = brain_bio_async_process_messages(brain, 10);
+
+        // Periodically update predictive signals (every ~100 calls)
+        // This reduces overhead while keeping observers reasonably up-to-date
+        static uint32_t update_counter = 0;
+        if (++update_counter >= 100) {
+            brain_bio_async_update(brain);
+            update_counter = 0;
+        }
+
+        // Optional: Log heavy message traffic for debugging
+        if (messages_processed > 5) {
+            // High message traffic - may indicate bottleneck
+            // Consider increasing batch size or reducing message frequency
+        }
+    }
+
     // Cleanup
     nimcp_free(network_output);
 
@@ -6713,39 +6912,51 @@ brain_t brain_load_json(const char* filepath)
 bool brain_predict(brain_t brain, const float* input, uint32_t input_size,
                   float* output, uint32_t output_size)
 {
+    LOG_MODULE_DEBUG("BRAIN", "brain_predict: input_size=%u, output_size=%u", input_size, output_size);
+
     // Validation
     if (!brain) {
+        LOG_MODULE_ERROR("BRAIN", "brain_predict: NULL brain");
         set_error("brain_predict: NULL brain");
         return false;
     }
 
     if (!input || input_size == 0) {
+        LOG_MODULE_ERROR("BRAIN", "brain_predict: invalid input parameters (input=%p, size=%u)", input, input_size);
         set_error("brain_predict: invalid input parameters");
         return false;
     }
 
     if (!output || output_size == 0) {
+        LOG_MODULE_ERROR("BRAIN", "brain_predict: invalid output parameters (output=%p, size=%u)", output, output_size);
         set_error("brain_predict: invalid output parameters");
         return false;
     }
 
     // Check network exists
     if (!brain->network) {
+        LOG_MODULE_ERROR("BRAIN", "brain_predict: network not initialized");
         set_error("brain_predict: network not initialized");
         return false;
     }
 
     // Validate input size matches configured dimensions
     if (brain->config.num_inputs > 0 && input_size != brain->config.num_inputs) {
+        LOG_MODULE_ERROR("BRAIN", "brain_predict: input size mismatch (expected=%u, got=%u)",
+                         brain->config.num_inputs, input_size);
         set_error("brain_predict: input size mismatch");
         return false;
     }
 
     // Validate output size matches configured dimensions
     if (brain->config.num_outputs > 0 && output_size != brain->config.num_outputs) {
+        LOG_MODULE_ERROR("BRAIN", "brain_predict: output size mismatch (expected=%u, got=%u)",
+                         brain->config.num_outputs, output_size);
         set_error("brain_predict: output size mismatch");
         return false;
     }
+
+    LOG_MODULE_INFO("BRAIN", "brain_predict: performing forward pass (readonly=%d)", brain->can_use_readonly);
 
     // Perform forward pass through network
     // Use read-only mode if this is a COW clone
@@ -6757,6 +6968,10 @@ bool brain_predict(brain_t brain, const float* input, uint32_t input_size,
                                 output, output_size, 0);
     }
 
+    // Publish prediction event via bio-async
+    brain_publish_processing_event("prediction", 1.0f);
+
+    LOG_MODULE_DEBUG("BRAIN", "brain_predict: prediction complete");
     brain_clear_error();
     return true;
 }
