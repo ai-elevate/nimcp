@@ -20,18 +20,20 @@
  */
 
 #include "middleware/integration/nimcp_shannon_monitor.h"
+#include "async/nimcp_bio_async.h"
+#include "async/nimcp_bio_messages.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/memory/nimcp_memory_pool.h"
 #include "utils/time/nimcp_time.h"
 #include "utils/logging/nimcp_logging.h"
+
+#define LOG_MODULE "middleware_shannon_monitor"
+
 #include "utils/thread/nimcp_thread.h"
 #include "security/nimcp_security.h"
 #include "async/nimcp_bio_router.h"
-#include "async/nimcp_bio_messages.h"
 #include <string.h>
 #include <math.h>
-
-#define LOG_MODULE "shannon_monitor"
 
 //=============================================================================
 // Constants

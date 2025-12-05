@@ -8,6 +8,16 @@
 #include <string.h>
 #include <math.h>
 #include <time.h>
+#include "async/nimcp_bio_async.h"
+#include "async/nimcp_bio_router.h"
+#include "async/nimcp_bio_messages.h"
+#include "utils/logging/nimcp_logging.h"
+#include "utils/memory/nimcp_unified_memory.h"
+
+
+
+#define LOG_MODULE "nimcp_cognitive_adapters"
+#define LOG_MODULE_ID 0x0515
 
 //=============================================================================
 // WORKING MEMORY ADAPTER IMPLEMENTATION

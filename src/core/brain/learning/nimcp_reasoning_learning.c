@@ -15,11 +15,15 @@
  */
 
 #include "core/brain/learning/nimcp_reasoning_learning.h"
+#include "async/nimcp_bio_async.h"
+#include "async/nimcp_bio_messages.h"
 #include "core/brain/nimcp_brain_internal.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/validation/nimcp_validate.h"
 #include "utils/time/nimcp_time.h"
+
+#define LOG_MODULE "core_reasoning_learning"
 
 #include <string.h>
 #include <math.h>

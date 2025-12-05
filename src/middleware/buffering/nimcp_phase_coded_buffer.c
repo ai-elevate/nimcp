@@ -3,8 +3,14 @@
 //=============================================================================
 
 #include "middleware/buffering/nimcp_phase_coded_buffer.h"
+#include "async/nimcp_bio_async.h"
+#include "async/nimcp_bio_messages.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/math/nimcp_complex_math.h"
+#include "utils/logging/nimcp_logging.h"
+
+#define LOG_MODULE "middleware_phase_coded_buffer"
+
 #include <string.h>
 #include <math.h>
 #include <stdlib.h>

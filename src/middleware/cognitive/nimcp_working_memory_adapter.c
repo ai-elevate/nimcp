@@ -1,3 +1,7 @@
+
+#define LOG_MODULE "nimcp_working_memory_adapter"
+#define LOG_MODULE_ID 0x0516
+
 /**
  * @file nimcp_working_memory_adapter.c
  * @brief Working memory adapter implementation (stub for testing)
@@ -6,6 +10,12 @@
 #include "middleware/cognitive/nimcp_working_memory_adapter.h"
 #include "utils/memory/nimcp_memory.h"
 #include <string.h>
+#include "async/nimcp_bio_async.h"
+#include "async/nimcp_bio_router.h"
+#include "async/nimcp_bio_messages.h"
+#include "utils/logging/nimcp_logging.h"
+#include "utils/memory/nimcp_unified_memory.h"
+
 
 struct working_memory_adapter_struct {
     brain_temporal_buffer_t* buffer;

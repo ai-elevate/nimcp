@@ -3,8 +3,13 @@
 //=============================================================================
 
 #include "core/brain/learning/nimcp_circuit_compilation.h"
+#include "async/nimcp_bio_async.h"
+#include "async/nimcp_bio_messages.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
+
+#define LOG_MODULE "core_circuit_compilation"
+
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>

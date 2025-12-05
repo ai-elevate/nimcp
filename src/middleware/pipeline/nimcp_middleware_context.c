@@ -3,7 +3,14 @@
 //=============================================================================
 
 #include "middleware/pipeline/nimcp_middleware_context.h"
+#include "async/nimcp_bio_async.h"
+#include "async/nimcp_bio_messages.h"
+#include "utils/memory/nimcp_unified_memory.h"
 #include "utils/memory/nimcp_memory.h"
+#include "utils/logging/nimcp_logging.h"
+
+#define LOG_MODULE "middleware_context"
+
 #include <string.h>
 
 //=============================================================================

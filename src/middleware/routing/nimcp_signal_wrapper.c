@@ -1,3 +1,7 @@
+
+#define LOG_MODULE "nimcp_signal_wrapper"
+#define LOG_MODULE_ID 0x052B
+
 //=============================================================================
 // nimcp_signal_wrapper.c - CoW-Based Signal Reference Wrapper Implementation
 //=============================================================================
@@ -13,6 +17,12 @@
 #include "utils/memory/nimcp_memory.h"
 #include "utils/memory/nimcp_cow_manager.h"
 #include <string.h>
+#include "async/nimcp_bio_async.h"
+#include "async/nimcp_bio_router.h"
+#include "async/nimcp_bio_messages.h"
+#include "utils/logging/nimcp_logging.h"
+#include "utils/memory/nimcp_unified_memory.h"
+
 
 //=============================================================================
 // Internal Structures

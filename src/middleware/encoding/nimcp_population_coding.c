@@ -1,3 +1,7 @@
+
+#define LOG_MODULE "nimcp_population_coding"
+#define LOG_MODULE_ID 0x0517
+
 /**
  * @file nimcp_population_coding.c
  * @brief Population coding implementation
@@ -10,6 +14,12 @@
 #include <math.h>
 #include <stdlib.h>
 #include <float.h>
+#include "async/nimcp_bio_async.h"
+#include "async/nimcp_bio_router.h"
+#include "async/nimcp_bio_messages.h"
+#include "utils/logging/nimcp_logging.h"
+#include "utils/memory/nimcp_unified_memory.h"
+
 
 //=============================================================================
 // Internal Structures

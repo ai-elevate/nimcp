@@ -5,6 +5,16 @@
 #include "middleware/patterns/nimcp_pattern_cow.h"
 #include "utils/memory/nimcp_memory.h"
 #include <string.h>
+#include "async/nimcp_bio_async.h"
+#include "async/nimcp_bio_router.h"
+#include "async/nimcp_bio_messages.h"
+#include "utils/logging/nimcp_logging.h"
+#include "utils/memory/nimcp_unified_memory.h"
+
+
+
+#define LOG_MODULE "nimcp_pattern_cow"
+#define LOG_MODULE_ID 0x0525
 
 //=============================================================================
 // CoW Pattern Data Lifecycle

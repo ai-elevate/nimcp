@@ -3,8 +3,13 @@
 //=============================================================================
 
 #include "core/brain/learning/nimcp_rule_learning.h"
+#include "async/nimcp_bio_async.h"
+#include "async/nimcp_bio_messages.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
+
+#define LOG_MODULE "core_rule_learning"
+
 #include <string.h>
 #include <stdio.h>
 #include <math.h>

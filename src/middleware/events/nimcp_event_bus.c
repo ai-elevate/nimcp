@@ -3,9 +3,16 @@
 //=============================================================================
 
 #include "middleware/events/nimcp_event_bus.h"
+#include "async/nimcp_bio_async.h"
+#include "async/nimcp_bio_messages.h"
+#include "utils/memory/nimcp_unified_memory.h"
 #include "utils/platform/nimcp_platform_mutex.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/thread/nimcp_thread.h"
+#include "utils/logging/nimcp_logging.h"
+
+#define LOG_MODULE "middleware_event_bus"
+
 #include <unistd.h>
 
 //=============================================================================
@@ -21,6 +28,10 @@ struct event_bus_struct {
     nimcp_thread_t delivery_thread;
     bool running;
     uint32_t delivery_thread_sleep_us;
+
+    // Bio-async integration
+    bio_module_context_t bio_ctx;
+    bool bio_async_enabled;
 
     // Statistics
     uint64_t events_published;
@@ -70,6 +81,7 @@ event_bus_config_t event_bus_default_config(void) {
     config.overflow_policy = OVERFLOW_POLICY_DROP_OLDEST;
     config.async_delivery = false; // Manual by default
     config.delivery_thread_sleep_us = 1000; // 1ms
+    config.enable_bio_async = false;
     return config;
 }
 
@@ -108,34 +120,72 @@ event_bus_t event_bus_create(const event_bus_config_t* config) {
     bus->async_delivery = cfg.async_delivery;
     bus->delivery_thread_sleep_us = cfg.delivery_thread_sleep_us;
 
+    // Bio-async registration
+    bus->bio_ctx = NULL;
+    bus->bio_async_enabled = false;
+    if (cfg.enable_bio_async && bio_router_is_initialized()) {
+        bio_module_info_t bio_info = {
+            .module_id = BIO_MODULE_EVENT_BUS,
+            .module_name = "event_bus",
+            .inbox_capacity = 64,
+            .user_data = bus
+        };
+        bus->bio_ctx = bio_router_register_module(&bio_info);
+        if (bus->bio_ctx) {
+            bus->bio_async_enabled = true;
+            LOG_INFO(LOG_MODULE, "Bio-async integration enabled");
+        } else {
+            LOG_WARN(LOG_MODULE, "Bio-async registration failed");
+        }
+    }
+
     // Start async delivery thread if enabled
     if (bus->async_delivery) {
         bus->running = true;
         if (nimcp_thread_create(&bus->delivery_thread, delivery_thread_fn, bus, NULL) != NIMCP_SUCCESS) {
+            if (bus->bio_async_enabled && bus->bio_ctx) {
+                bio_router_unregister_module(bus->bio_ctx);
+            }
             nimcp_platform_mutex_destroy(&bus->mutex);
             subscriber_manager_destroy(bus->subscribers);
             event_queue_destroy(bus->queue);
             nimcp_free(bus);
+            LOG_ERROR(LOG_MODULE, "Failed to create delivery thread");
             return NULL;
         }
+        LOG_INFO(LOG_MODULE, "Async delivery thread started");
     }
 
+    LOG_INFO(LOG_MODULE, "Event bus created (capacity=%u, async=%d, bio_async=%d)",
+             cfg.queue_capacity, cfg.async_delivery, bus->bio_async_enabled);
     return bus;
 }
 
 void event_bus_destroy(event_bus_t bus) {
     if (!bus) return;
 
+    LOG_DEBUG(LOG_MODULE, "Destroying event bus");
+
     // Stop delivery thread
     if (bus->async_delivery) {
         bus->running = false;
         nimcp_thread_join(bus->delivery_thread, NULL);
+        LOG_DEBUG(LOG_MODULE, "Delivery thread stopped");
+    }
+
+    // Unregister from bio-async
+    if (bus->bio_async_enabled && bus->bio_ctx) {
+        bio_router_unregister_module(bus->bio_ctx);
+        bus->bio_ctx = NULL;
+        bus->bio_async_enabled = false;
+        LOG_DEBUG(LOG_MODULE, "Bio-async unregistered");
     }
 
     subscriber_manager_destroy(bus->subscribers);
     event_queue_destroy(bus->queue);
     nimcp_platform_mutex_destroy(&bus->mutex);
     nimcp_free(bus);
+    LOG_INFO(LOG_MODULE, "Event bus destroyed");
 }
 
 //=============================================================================
@@ -143,15 +193,22 @@ void event_bus_destroy(event_bus_t bus) {
 //=============================================================================
 
 bool event_bus_publish(event_bus_t bus, const event_t* event) {
-    if (!bus || !event) return false;
+    if (!bus || !event) {
+        LOG_ERROR(LOG_MODULE, "Invalid bus or event");
+        return false;
+    }
 
     bool success = event_queue_enqueue(bus->queue, event);
 
     nimcp_platform_mutex_lock(&bus->mutex);
     if (success) {
         bus->events_published++;
+        LOG_DEBUG(LOG_MODULE, "Event published (type=%u, total=%llu)",
+                  event->header.type, (unsigned long long)bus->events_published);
     } else {
         bus->events_dropped++;
+        LOG_WARN(LOG_MODULE, "Event dropped (queue full, total_dropped=%llu)",
+                 (unsigned long long)bus->events_dropped);
     }
     nimcp_platform_mutex_unlock(&bus->mutex);
 
@@ -181,6 +238,10 @@ uint32_t event_bus_process_events(event_bus_t bus, uint32_t max_events) {
     event_t events[256];
     uint32_t batch_size = (max_events < 256) ? max_events : 256;
     uint32_t count = event_queue_dequeue_batch(bus->queue, events, batch_size);
+
+    if (count > 0) {
+        LOG_DEBUG(LOG_MODULE, "Processing %u events", count);
+    }
 
     for (uint32_t i = 0; i < count; i++) {
         subscriber_dispatch_event(bus->subscribers, &events[i]);

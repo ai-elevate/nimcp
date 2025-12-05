@@ -29,6 +29,8 @@
  */
 
 #include "nimcp_brain_learning.h"
+#include "async/nimcp_bio_async.h"
+#include "async/nimcp_bio_messages.h"
 #include <math.h>
 #include <string.h>
 #include "plasticity/adaptive/nimcp_adaptive.h"
@@ -36,6 +38,9 @@
 #include "utils/memory/nimcp_memory.h"
 #include "utils/time/nimcp_time.h"
 #include "security/nimcp_security.h"
+#include "utils/logging/nimcp_logging.h"
+
+#define LOG_MODULE "core_brain_learning"
 
 // Import needed from brain internal structure
 // Note: These functions access brain internal state, defined in nimcp_brain.c

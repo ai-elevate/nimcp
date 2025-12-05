@@ -1,3 +1,7 @@
+
+#define LOG_MODULE "nimcp_rate_coding"
+#define LOG_MODULE_ID 0x0518
+
 /**
  * @file nimcp_rate_coding.c
  * @brief Rate coding implementation
@@ -9,6 +13,12 @@
 #include <math.h>
 #include <stdlib.h>
 #include <time.h>
+#include "async/nimcp_bio_async.h"
+#include "async/nimcp_bio_router.h"
+#include "async/nimcp_bio_messages.h"
+#include "utils/logging/nimcp_logging.h"
+#include "utils/memory/nimcp_unified_memory.h"
+
 
 //=============================================================================
 // Internal Structures

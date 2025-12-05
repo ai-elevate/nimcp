@@ -13,6 +13,9 @@
  */
 
 #include "middleware/integration/nimcp_middleware_controller.h"
+#include "async/nimcp_bio_async.h"
+#include "async/nimcp_bio_messages.h"
+#include "async/nimcp_bio_router.h"
 #include "middleware/routing/nimcp_attention_gate.h"
 #include "middleware/routing/nimcp_routing_table.h"
 #include "middleware/patterns/nimcp_pattern_library.h"
@@ -22,13 +25,12 @@
 #include "utils/thread/nimcp_thread.h"
 #include "security/nimcp_blood_brain_barrier.h"        // Phase IS-1: BBB perimeter defense
 #include "security/nimcp_security.h"                   // Security module for input validation
-#include "async/nimcp_bio_router.h"
-#include "async/nimcp_bio_messages.h"
 #include "utils/logging/nimcp_logging.h"
-#include <string.h>
-#include <math.h>
 
 #define LOG_MODULE "middleware_controller"
+
+#include <string.h>
+#include <math.h>
 
 // Phase IS-1: External declaration of BBB getter (avoid header conflicts)
 extern bbb_system_t nimcp_bbb_get_global_system(void);

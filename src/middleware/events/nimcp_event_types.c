@@ -3,9 +3,15 @@
 //=============================================================================
 
 #include "middleware/events/nimcp_event_types.h"
+#include "async/nimcp_bio_async.h"
+#include "async/nimcp_bio_messages.h"
+#include "utils/memory/nimcp_unified_memory.h"
 #include "utils/time/nimcp_time.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
+
+#define LOG_MODULE "middleware_event_types"
+
 #include <string.h>
 #include <stdio.h>
 #include <stdatomic.h>

@@ -3,9 +3,15 @@
 //=============================================================================
 
 #include "middleware/buffering/nimcp_sliding_window.h"
+#include "async/nimcp_bio_async.h"
+#include "async/nimcp_bio_messages.h"
 #include "middleware/buffering/nimcp_circular_buffer.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/memory/nimcp_memory_pool.h"
+#include "utils/logging/nimcp_logging.h"
+
+#define LOG_MODULE "middleware_sliding_window"
+
 #include <string.h>
 #include <math.h>
 #include <float.h>

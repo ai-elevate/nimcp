@@ -3,9 +3,16 @@
 //=============================================================================
 
 #include "middleware/pipeline/nimcp_middleware_pipeline.h"
+#include "async/nimcp_bio_async.h"
+#include "async/nimcp_bio_messages.h"
+#include "utils/memory/nimcp_unified_memory.h"
 #include "utils/platform/nimcp_platform_mutex.h"
 #include "utils/time/nimcp_time.h"
 #include "utils/memory/nimcp_memory.h"
+#include "utils/logging/nimcp_logging.h"
+
+#define LOG_MODULE "middleware_pipeline"
+
 #include <string.h>
 #include <math.h>
 
@@ -19,6 +26,10 @@ struct middleware_pipeline_struct {
     event_bus_t event_bus;
     bool enable_profiling;
     bool fail_fast;
+
+    // Bio-async integration
+    bio_module_context_t bio_ctx;
+    bool bio_async_enabled;
 
     // Statistics
     uint64_t total_executions;
@@ -35,15 +46,22 @@ struct middleware_pipeline_struct {
 //=============================================================================
 
 middleware_pipeline_t middleware_pipeline_create(const pipeline_config_t* config) {
-    if (!config || !config->stages || config->num_stages == 0) return NULL;
+    if (!config || !config->stages || config->num_stages == 0) {
+        LOG_ERROR(LOG_MODULE, "Invalid pipeline configuration");
+        return NULL;
+    }
 
     middleware_pipeline_t pipeline = nimcp_calloc(1, sizeof(struct middleware_pipeline_struct));
-    if (!pipeline) return NULL;
+    if (!pipeline) {
+        LOG_ERROR(LOG_MODULE, "Failed to allocate pipeline");
+        return NULL;
+    }
 
     // Copy stages
     pipeline->stages = nimcp_calloc(config->num_stages, sizeof(pipeline_stage_config_t));
     if (!pipeline->stages) {
         nimcp_free(pipeline);
+        LOG_ERROR(LOG_MODULE, "Failed to allocate stages");
         return NULL;
     }
 
@@ -63,16 +81,49 @@ middleware_pipeline_t middleware_pipeline_create(const pipeline_config_t* config
         nimcp_free(pipeline->stage_execution_counts);
         nimcp_free(pipeline->stages);
         nimcp_free(pipeline);
+        LOG_ERROR(LOG_MODULE, "Failed to initialize mutex");
         return NULL;
     }
 
+    // Bio-async registration
+    pipeline->bio_ctx = NULL;
+    pipeline->bio_async_enabled = false;
+    if (config->enable_bio_async && bio_router_is_initialized()) {
+        bio_module_info_t bio_info = {
+            .module_id = BIO_MODULE_PIPELINE,
+            .module_name = "pipeline",
+            .inbox_capacity = 64,
+            .user_data = pipeline
+        };
+        pipeline->bio_ctx = bio_router_register_module(&bio_info);
+        if (pipeline->bio_ctx) {
+            pipeline->bio_async_enabled = true;
+            LOG_INFO(LOG_MODULE, "Bio-async integration enabled");
+        } else {
+            LOG_WARN(LOG_MODULE, "Bio-async registration failed");
+        }
+    }
+
+    LOG_INFO(LOG_MODULE, "Pipeline created (stages=%u, profiling=%d, fail_fast=%d, bio_async=%d)",
+             config->num_stages, config->enable_profiling, config->fail_fast,
+             pipeline->bio_async_enabled);
     return pipeline;
 }
 
 void middleware_pipeline_destroy(middleware_pipeline_t pipeline) {
     if (!pipeline) return;
 
+    LOG_DEBUG(LOG_MODULE, "Destroying pipeline");
+
     nimcp_platform_mutex_lock(&pipeline->mutex);
+
+    // Unregister from bio-async
+    if (pipeline->bio_async_enabled && pipeline->bio_ctx) {
+        bio_router_unregister_module(pipeline->bio_ctx);
+        pipeline->bio_ctx = NULL;
+        pipeline->bio_async_enabled = false;
+        LOG_DEBUG(LOG_MODULE, "Bio-async unregistered");
+    }
 
     nimcp_free(pipeline->stages);
     nimcp_free(pipeline->stage_execution_counts);
@@ -82,6 +133,7 @@ void middleware_pipeline_destroy(middleware_pipeline_t pipeline) {
     nimcp_platform_mutex_destroy(&pipeline->mutex);
 
     nimcp_free(pipeline);
+    LOG_INFO(LOG_MODULE, "Pipeline destroyed");
 }
 
 //=============================================================================
@@ -90,21 +142,34 @@ void middleware_pipeline_destroy(middleware_pipeline_t pipeline) {
 
 bool middleware_pipeline_execute(middleware_pipeline_t pipeline,
                                  middleware_context_t* context) {
-    if (!pipeline || !context) return false;
+    if (!pipeline || !context) {
+        LOG_ERROR(LOG_MODULE, "Invalid pipeline or context");
+        return false;
+    }
 
     nimcp_platform_mutex_lock(&pipeline->mutex);
     pipeline->total_executions++;
+    uint64_t exec_num = pipeline->total_executions;
     nimcp_platform_mutex_unlock(&pipeline->mutex);
+
+    LOG_DEBUG(LOG_MODULE, "Executing pipeline (execution #%llu)", (unsigned long long)exec_num);
 
     bool all_success = true;
 
     for (uint32_t i = 0; i < pipeline->num_stages; i++) {
-        if (!pipeline->stages[i].enabled) continue;
+        if (!pipeline->stages[i].enabled) {
+            LOG_DEBUG(LOG_MODULE, "Skipping disabled stage %u (%s)", i,
+                     pipeline->stages[i].name ? pipeline->stages[i].name : "unnamed");
+            continue;
+        }
 
         uint64_t start_time = 0;
         if (pipeline->enable_profiling) {
             start_time = nimcp_time_get_us();
         }
+
+        LOG_DEBUG(LOG_MODULE, "Executing stage %u (%s)", i,
+                 pipeline->stages[i].name ? pipeline->stages[i].name : "unnamed");
 
         bool success = pipeline->stages[i].execute(context, pipeline->stages[i].stage_data);
 
@@ -117,19 +182,27 @@ bool middleware_pipeline_execute(middleware_pipeline_t pipeline,
             nimcp_platform_mutex_unlock(&pipeline->mutex);
 
             middleware_context_record_stage_time(context, i, elapsed);
+            LOG_DEBUG(LOG_MODULE, "Stage %u completed in %llu us", i, (unsigned long long)elapsed);
         }
 
         if (!success) {
             all_success = false;
-            if (pipeline->fail_fast) break;
+            LOG_WARN(LOG_MODULE, "Stage %u (%s) failed", i,
+                    pipeline->stages[i].name ? pipeline->stages[i].name : "unnamed");
+            if (pipeline->fail_fast) {
+                LOG_INFO(LOG_MODULE, "Aborting pipeline (fail_fast enabled)");
+                break;
+            }
         }
     }
 
     nimcp_platform_mutex_lock(&pipeline->mutex);
     if (all_success) {
         pipeline->successful_executions++;
+        LOG_DEBUG(LOG_MODULE, "Pipeline execution succeeded");
     } else {
         pipeline->failed_executions++;
+        LOG_WARN(LOG_MODULE, "Pipeline execution failed");
     }
     nimcp_platform_mutex_unlock(&pipeline->mutex);
 

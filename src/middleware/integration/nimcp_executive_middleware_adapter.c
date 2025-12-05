@@ -14,18 +14,20 @@
  */
 
 #include "middleware/integration/nimcp_executive_middleware_adapter.h"
+#include "async/nimcp_bio_async.h"
+#include "async/nimcp_bio_messages.h"
+#include "async/nimcp_bio_router.h"
 #include "middleware/integration/nimcp_quantum_command_propagator.h"
 #include "middleware/integration/nimcp_shannon_monitor.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/time/nimcp_time.h"
 #include "utils/logging/nimcp_logging.h"
 #include "security/nimcp_security.h"
-#include "async/nimcp_bio_router.h"
-#include "async/nimcp_bio_messages.h"
+
+#define LOG_MODULE "middleware_executive_adapter"
+
 #include <string.h>
 #include <math.h>
-
-#define LOG_MODULE "exec_mw_adapter"
 
 //=============================================================================
 // Constants

@@ -14,6 +14,9 @@
  */
 
 #include "middleware/integration/nimcp_quantum_command_propagator.h"
+#include "async/nimcp_bio_async.h"
+#include "async/nimcp_bio_messages.h"
+#include "async/nimcp_bio_router.h"
 #include "middleware/integration/nimcp_shannon_monitor.h"
 #include "utils/quantum/nimcp_quantum_shannon.h"
 #include "utils/quantum/nimcp_quantum_walk.h"
@@ -22,14 +25,13 @@
 #include "utils/time/nimcp_time.h"
 #include "utils/logging/nimcp_logging.h"
 #include "security/nimcp_security.h"
-#include "async/nimcp_bio_router.h"
-#include "async/nimcp_bio_messages.h"
+
+#define LOG_MODULE "middleware_quantum_propagator"
+
 #include <string.h>
 #include <stdlib.h>
 #include <math.h>
 #include <complex.h>
-
-#define LOG_MODULE "quantum_propagator"
 
 // External brain API (forward-declared in header)
 extern uint32_t brain_get_neuron_count(brain_t brain);

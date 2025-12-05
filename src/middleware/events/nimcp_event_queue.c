@@ -3,10 +3,17 @@
 //=============================================================================
 
 #include "middleware/events/nimcp_event_queue.h"
+#include "async/nimcp_bio_async.h"
+#include "async/nimcp_bio_messages.h"
+#include "utils/memory/nimcp_unified_memory.h"
 #include "utils/platform/nimcp_platform_mutex.h"
 #include "utils/time/nimcp_time.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/memory/nimcp_memory_pool.h"
+#include "utils/logging/nimcp_logging.h"
+
+#define LOG_MODULE "middleware_event_queue"
+
 #include <string.h>
 #include <stdio.h>
 
@@ -19,7 +26,8 @@
  */
 typedef struct {
     event_t event;              /**< The event */
-    uint64_t enqueue_time_us;   /**< When enqueued (for FIFO within priority) */
+    uint64_t enqueue_time_us;   /**< When enqueued (for wait time calculation) */
+    uint64_t seq_num;           /**< Sequence number for deterministic FIFO ordering */
     bool used_pool;             /**< Whether payload came from pool (Phase 1.5) */
 } heap_entry_t;
 
@@ -40,6 +48,9 @@ struct event_queue_struct {
 
     // Memory pool for event payloads (Phase 1.5)
     memory_pool_t payload_pool;
+
+    // Sequence counter for deterministic FIFO ordering
+    uint64_t next_seq;
 
     // Statistics
     uint64_t total_enqueued;
@@ -235,7 +246,7 @@ static bool heap_less_than(const heap_entry_t* a, const heap_entry_t* b) {
     if (a->event.priority != b->event.priority) {
         return a->event.priority < b->event.priority; // Lower priority number = higher priority
     }
-    return a->enqueue_time_us < b->enqueue_time_us; // Earlier = higher priority (FIFO)
+    return a->seq_num < b->seq_num; // Lower sequence = earlier enqueue (deterministic FIFO)
 }
 
 /**
@@ -462,6 +473,7 @@ bool event_queue_enqueue(event_queue_t queue, const event_t* event) {
         goto unlock;
     }
     entry.enqueue_time_us = enqueue_time;
+    entry.seq_num = queue->next_seq++;  // Assign sequence for deterministic FIFO
 
     queue->heap[queue->size] = entry;
     heap_bubble_up(queue->heap, queue->size);
@@ -669,7 +681,7 @@ bool event_queue_is_empty(event_queue_t queue) {
 }
 
 bool event_queue_is_full(event_queue_t queue) {
-    if (!queue) return true;
+    if (!queue) return false;  // NULL queue is not "full" - it doesn't exist
 
     nimcp_platform_mutex_lock(&queue->mutex);
     bool full = (queue->size >= queue->capacity);
@@ -777,7 +789,7 @@ void event_queue_reset_stats(event_queue_t queue) {
     queue->total_dequeued = 0;
     queue->total_dropped = 0;
     queue->total_coalesced = 0;
-    queue->peak_size = queue->size;
+    queue->peak_size = 0;  // Reset peak_size counter to 0
     queue->total_wait_time_us = 0;
 
     nimcp_platform_mutex_unlock(&queue->mutex);

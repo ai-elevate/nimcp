@@ -9,6 +9,16 @@
 #include <string.h>
 #include <math.h>
 #include <stdlib.h>
+#include "async/nimcp_bio_async.h"
+#include "async/nimcp_bio_router.h"
+#include "async/nimcp_bio_messages.h"
+#include "utils/logging/nimcp_logging.h"
+#include "utils/memory/nimcp_unified_memory.h"
+
+
+
+#define LOG_MODULE "nimcp_feature_extractor"
+#define LOG_MODULE_ID 0x051A
 
 //=============================================================================
 // Internal Structures

@@ -1,6 +1,16 @@
 #include "middleware/normalization/nimcp_homeostatic_normalizer.h"
 #include "utils/memory/nimcp_memory.h"
 #include <math.h>
+#include "async/nimcp_bio_async.h"
+#include "async/nimcp_bio_router.h"
+#include "async/nimcp_bio_messages.h"
+#include "utils/logging/nimcp_logging.h"
+#include "utils/memory/nimcp_unified_memory.h"
+
+
+
+#define LOG_MODULE "nimcp_homeostatic_normalizer"
+#define LOG_MODULE_ID 0x0521
 
 typedef struct {
     float current_activity;
