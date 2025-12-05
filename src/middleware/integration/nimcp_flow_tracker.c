@@ -24,6 +24,7 @@
 #include "utils/time/nimcp_time.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/thread/nimcp_thread.h"
+#include "security/nimcp_security.h"
 #include "async/nimcp_bio_router.h"
 #include "async/nimcp_bio_messages.h"
 #include <string.h>

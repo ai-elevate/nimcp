@@ -28,6 +28,7 @@
 #include "utils/platform/nimcp_platform_time.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/error/nimcp_error_codes.h"
+#include "security/nimcp_security.h"
 
 #include <stdlib.h>
 #include <string.h>
@@ -38,6 +39,7 @@
 //=============================================================================
 
 /** Module name for logging */
+#define LOG_MODULE "bio_async"
 #define BIO_ASYNC_MODULE "bio_async"
 
 /** Enable verbose trace logging (set to 0 for production) */
@@ -540,8 +542,15 @@ static inline void atomic_store_float(nimcp_atomic_uint32_t* bits, float f) {
 
 /**
  * @brief Get current time in milliseconds
+ * WHAT: Return simulation time when initialized, real time otherwise
+ * WHY:  Allow deterministic testing with nimcp_bio_async_step()
+ * HOW:  Check initialized flag and return appropriate time source
  */
 static inline uint64_t bio_time_ms(void) {
+    if (g_bio_async.initialized) {
+        /* Use simulation time for deterministic decay calculations */
+        return g_bio_async.simulation_time_ms;
+    }
     return nimcp_platform_time_monotonic_ms();
 }
 
@@ -1033,39 +1042,52 @@ nimcp_bio_promise_t nimcp_bio_promise_create(
     return promise;
 }
 
-nimcp_error_t nimcp_bio_promise_complete(
+nimcp_error_t nimcp_bio_promise_complete_sized(
     nimcp_bio_promise_t promise,
-    const void* result)
+    const void* result,
+    size_t result_size)
 {
-    LOG_DEBUG("nimcp_bio_promise_complete: promise=%p, result=%p", (void*)promise, result);
+    LOG_DEBUG("nimcp_bio_promise_complete_sized: promise=%p, result=%p, size=%zu",
+              (void*)promise, result, result_size);
 
     if (!promise || promise->magic != BIO_MAGIC_PROMISE) {
-        LOG_ERROR("nimcp_bio_promise_complete: invalid promise");
+        LOG_ERROR("nimcp_bio_promise_complete_sized: invalid promise");
         return NIMCP_ERROR_NULL_POINTER;
     }
 
     nimcp_bio_shared_state_t* shared = promise->shared;
     if (!shared || shared->magic != BIO_MAGIC_PROMISE) {
-        LOG_ERROR("nimcp_bio_promise_complete: invalid shared state");
+        LOG_ERROR("nimcp_bio_promise_complete_sized: invalid shared state");
         return NIMCP_ERROR_INVALID_STATE;
     }
 
     /* Validate result */
-    if (shared->result_size > 0 && !result) {
-        LOG_ERROR("nimcp_bio_promise_complete: result required but NULL");
+    if (result_size > 0 && !result) {
+        LOG_ERROR("nimcp_bio_promise_complete_sized: result required but NULL");
         return NIMCP_ERROR_NULL_POINTER;
     }
 
+    /* Determine actual copy size:
+     * - If shared->result_size was set at creation, use min of that and result_size
+     * - If shared->result_size is 0, use result_size (handler provides size)
+     */
+    size_t copy_size = result_size;
+    if (shared->result_size > 0 && result_size > shared->result_size) {
+        copy_size = shared->result_size;  // Cap to allocated capacity
+        LOG_DEBUG("nimcp_bio_promise_complete_sized: capping copy to capacity %zu", copy_size);
+    }
+
     /* Copy result */
-    if (shared->result_size > 0) {
-        shared->result = bio_alloc(shared->result_size);
+    if (copy_size > 0) {
+        shared->result = bio_alloc(copy_size);
         if (!shared->result) {
-            LOG_ERROR("nimcp_bio_promise_complete: failed to allocate result buffer (%zu bytes)",
-                      shared->result_size);
+            LOG_ERROR("nimcp_bio_promise_complete_sized: failed to allocate result buffer (%zu bytes)",
+                      copy_size);
             return NIMCP_ERROR_NO_MEMORY;
         }
-        memcpy(shared->result, result, shared->result_size);
-        LOG_DEBUG("nimcp_bio_promise_complete: copied %zu bytes of result data", shared->result_size);
+        memcpy(shared->result, result, copy_size);
+        shared->result_size = copy_size;  // Update to actual size
+        LOG_DEBUG("nimcp_bio_promise_complete_sized: copied %zu bytes of result data", copy_size);
     }
 
     /* Set peak concentration */
@@ -1112,6 +1134,26 @@ nimcp_error_t nimcp_bio_promise_complete(
     LOG_INFO("Completed bio promise on channel %s (latency: %lu ms)",
              nimcp_bio_channel_name(shared->channel), (unsigned long)latency_ms);
     return NIMCP_SUCCESS;
+}
+
+nimcp_error_t nimcp_bio_promise_complete(
+    nimcp_bio_promise_t promise,
+    const void* result)
+{
+    /* Legacy API: uses pre-set result_size from promise creation */
+    if (!promise || promise->magic != BIO_MAGIC_PROMISE) {
+        LOG_ERROR("nimcp_bio_promise_complete: invalid promise");
+        return NIMCP_ERROR_NULL_POINTER;
+    }
+
+    nimcp_bio_shared_state_t* shared = promise->shared;
+    if (!shared || shared->magic != BIO_MAGIC_PROMISE) {
+        LOG_ERROR("nimcp_bio_promise_complete: invalid shared state");
+        return NIMCP_ERROR_INVALID_STATE;
+    }
+
+    /* Use pre-set result_size or 0 for void results */
+    return nimcp_bio_promise_complete_sized(promise, result, shared->result_size);
 }
 
 nimcp_error_t nimcp_bio_promise_fail(
@@ -1310,12 +1352,24 @@ float nimcp_bio_future_get_confidence(nimcp_bio_future_t future) {
     /* Update concentration */
     float concentration = shared_state_update_concentration(shared);
 
-    /* Calculate confidence */
+    /* Calculate confidence using same peak/baseline as shared_state_update_concentration */
     float peak, baseline;
     switch (shared->channel) {
         case BIO_CHANNEL_DOPAMINE:
             peak = BIO_DA_PEAK_PHASIC_UM;
             baseline = BIO_DA_BASELINE_UM;
+            break;
+        case BIO_CHANNEL_SEROTONIN:
+            peak = 1.0f;
+            baseline = BIO_5HT_BASELINE_UM;
+            break;
+        case BIO_CHANNEL_NOREPINEPHRINE:
+            peak = 1.0f;
+            baseline = BIO_NE_BASELINE_UM;
+            break;
+        case BIO_CHANNEL_ACETYLCHOLINE:
+            peak = 1.0f;
+            baseline = BIO_ACH_BASELINE_UM;
             break;
         default:
             peak = 1.0f;
@@ -1585,6 +1639,8 @@ nimcp_error_t nimcp_phase_sync_add_future(
         }
         float r, psi;
         bio_kuramoto_order_parameter(phases, count, &r, &psi);
+        /* Wrap mean phase to [0, 2π] range (atan2 returns [-π, π]) */
+        if (psi < 0.0f) psi += 2.0f * (float)M_PI;
         atomic_store_float(&sync->order_r_bits, r);
         atomic_store_float(&sync->mean_phase_bits, psi);
     }
@@ -1626,6 +1682,8 @@ static void phase_sync_update(nimcp_phase_sync_t sync, float dt_ms) {
     /* Calculate order parameter */
     float r, psi;
     bio_kuramoto_order_parameter(phases, sync->count, &r, &psi);
+    /* Wrap mean phase to [0, 2π] range (atan2 returns [-π, π]) */
+    if (psi < 0.0f) psi += 2.0f * (float)M_PI;
     atomic_store_float(&sync->order_r_bits, r);
     atomic_store_float(&sync->mean_phase_bits, psi);
 
@@ -2054,8 +2112,12 @@ nimcp_error_t nimcp_glial_wave_step(nimcp_glial_wave_t wave, float dt_ms) {
         float distance = fabsf((float)i - (float)wave->source_region);
 
         if (distance <= wave->radius && !region->reached) {
-            /* Wave reached this region */
-            region->calcium = wave->initial_calcium * bio_exponential_decay(1.0f, distance, wave->radius);
+            /* Wave reached this region
+             * Use constant attenuation length for biological realism.
+             * Calcium waves attenuate with distance regardless of propagation time.
+             * Attenuation length of 5 units ensures significant distance-based decay */
+            const float ATTENUATION_LENGTH = 5.0f;
+            region->calcium = wave->initial_calcium * bio_exponential_decay(1.0f, distance, ATTENUATION_LENGTH);
 
             if (region->calcium >= threshold) {
                 region->reached = true;

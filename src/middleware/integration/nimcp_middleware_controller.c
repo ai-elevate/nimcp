@@ -21,6 +21,7 @@
 #include "utils/time/nimcp_time.h"
 #include "utils/thread/nimcp_thread.h"
 #include "security/nimcp_blood_brain_barrier.h"        // Phase IS-1: BBB perimeter defense
+#include "security/nimcp_security.h"                   // Security module for input validation
 #include "async/nimcp_bio_router.h"
 #include "async/nimcp_bio_messages.h"
 #include "utils/logging/nimcp_logging.h"
@@ -273,24 +274,30 @@ middleware_controller_t* middleware_controller_create_custom(
     brain_t brain,
     const middleware_controller_config_t* config)
 {
+    LOG_DEBUG("Creating middleware controller with custom config");
+
     /* Guard: require brain */
     if (brain == NULL) {
+        LOG_ERROR("Cannot create middleware controller: brain is NULL");
         return NULL;
     }
 
     /* Guard: require config */
     if (config == NULL) {
+        LOG_ERROR("Cannot create middleware controller: config is NULL");
         return NULL;
     }
 
     /* Allocate controller */
     middleware_controller_t* ctrl = nimcp_calloc(1, sizeof(middleware_controller_t));
     if (ctrl == NULL) {
+        LOG_ERROR("Failed to allocate middleware controller");
         return NULL;
     }
 
     /* Initialize mutex */
     if (nimcp_mutex_init(&ctrl->mutex, NULL) != NIMCP_SUCCESS) {
+        LOG_ERROR("Failed to initialize mutex for middleware controller");
         nimcp_free(ctrl);
         return NULL;
     }
@@ -325,21 +332,32 @@ middleware_controller_t* middleware_controller_create_custom(
         ctrl->bio_ctx = bio_router_register_module(&bio_info);
         if (ctrl->bio_ctx) {
             ctrl->bio_async_enabled = true;
-            LOG_INFO(LOG_MODULE, "Bio-async integration enabled");
+            LOG_INFO("Bio-async integration enabled for middleware controller");
+        } else {
+            LOG_WARN("Failed to register middleware controller with bio-router");
         }
+    } else {
+        LOG_DEBUG("Bio-router not initialized, skipping bio-async integration");
     }
 
+    LOG_INFO("Middleware controller created successfully (attention_threshold=%.3f, routing_weight=%.3f)",
+             config->default_attention_threshold, config->default_routing_weight);
     return ctrl;
 }
 
 void middleware_controller_destroy(middleware_controller_t* controller)
 {
     if (controller == NULL) {
+        LOG_WARN("Attempted to destroy NULL middleware controller");
         return;
     }
 
+    LOG_DEBUG("Destroying middleware controller (total_commands=%lu, avg_latency=%.2f us)",
+              controller->metrics.total_commands, controller->metrics.avg_latency_us);
+
     /* Unregister from bio-async */
     if (controller->bio_async_enabled && controller->bio_ctx) {
+        LOG_DEBUG("Unregistering middleware controller from bio-router");
         bio_router_unregister_module(controller->bio_ctx);
         controller->bio_ctx = NULL;
         controller->bio_async_enabled = false;
@@ -347,6 +365,7 @@ void middleware_controller_destroy(middleware_controller_t* controller)
 
     nimcp_mutex_destroy(&controller->mutex);
     nimcp_free(controller);
+    LOG_INFO("Middleware controller destroyed successfully");
 }
 
 //=============================================================================
@@ -359,11 +378,22 @@ bool middleware_controller_set_attention_threshold(
     float threshold)
 {
     /* Guard clauses */
-    if (controller == NULL) return false;
-    if (!is_valid_region(region)) return false;
+    if (controller == NULL) {
+        LOG_ERROR("Cannot set attention threshold: controller is NULL");
+        return false;
+    }
+    if (!is_valid_region(region)) {
+        LOG_ERROR("Cannot set attention threshold: invalid region %d", region);
+        return false;
+    }
 
     uint64_t start_us = get_time_us();
+    float original_threshold = threshold;
     threshold = clampf(threshold, 0.0f, 1.0f);
+    if (threshold != original_threshold) {
+        LOG_DEBUG("Attention threshold clamped from %.3f to %.3f for region %d",
+                  original_threshold, threshold, region);
+    }
 
     nimcp_mutex_lock(&controller->mutex);
 
