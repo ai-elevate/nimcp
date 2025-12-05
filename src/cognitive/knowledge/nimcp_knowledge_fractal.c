@@ -18,11 +18,18 @@
  * @date 2025-11-11
  */
 
-#include "nimcp_knowledge.h"
+#include "cognitive/knowledge/nimcp_knowledge.h"
+#include "utils/memory/nimcp_unified_memory.h"
+#include "utils/logging/nimcp_logging.h"
+#include "async/nimcp_bio_router.h"
+#include "async/nimcp_bio_async.h"
+#include "async/nimcp_bio_messages.h"
 #include "cognitive/nimcp_fractal_cognitive.h"
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
+
+#define LOG_MODULE "cognitive.knowledge.fractal"
 
 //=============================================================================
 // Concept-to-Neuron Mapping

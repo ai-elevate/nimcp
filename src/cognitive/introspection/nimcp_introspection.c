@@ -26,19 +26,30 @@
  * @date 2025
  */
 
-#include "nimcp_introspection.h"
+#include "cognitive/introspection/nimcp_introspection.h"
 #include <math.h>
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
 #include "plasticity/adaptive/nimcp_adaptive.h"
 #include "core/brain/nimcp_brain.h"
-#include "core/brain/nimcp_brain_internal.h"  /* Access brain->config for topology */
+#include "core/brain/nimcp_brain_internal.h"
 #include "utils/memory/nimcp_memory.h"
+#include "utils/memory/nimcp_unified_memory.h"
 #include "utils/containers/nimcp_queue.h"
 #include "utils/thread/nimcp_thread.h"
+#include "utils/platform/nimcp_platform_mutex.h"
 #include "utils/time/nimcp_time.h"
 #include "utils/containers/nimcp_vector.h"
+#include "utils/logging/nimcp_logging.h"
+
+// Bio-async messaging infrastructure
+#include "nimcp.h"  // For error codes
+#include "async/nimcp_bio_async.h"
+#include "async/nimcp_bio_messages.h"
+#include "async/nimcp_bio_router.h"
+
+#define LOG_MODULE "introspection"
 
 // Phase 10.3: Emotional working memory integration
 #include "cognitive/nimcp_working_memory.h"
@@ -90,6 +101,10 @@ struct introspection_context_struct {
     brain_t brain;                 /* Associated brain */
     introspection_config_t config; /* Configuration */
 
+    /* Bio-async module context */
+    bio_module_context_t bio_ctx;  /* Message router context */
+    bool bio_async_enabled;        /* Bio-async registration status */
+
     /* Pattern tracking */
     pattern_registry_t* pattern_registry; /* Learned patterns */
 
@@ -106,6 +121,56 @@ struct introspection_context_struct {
     /* Thread safety */
     nimcp_mutex_t lock; /* Protects context */
 };
+
+/* ========================================================================
+ * BIO-ASYNC MESSAGE HANDLERS
+ * ======================================================================== */
+
+/**
+ * @brief Handle introspection query via bio-async
+ */
+static nimcp_error_t handle_introspection_query(
+    const void* msg,
+    size_t msg_size,
+    nimcp_bio_promise_t response_promise,
+    void* user_data)
+{
+    (void)msg_size;
+    (void)response_promise;
+
+    if (!msg || !user_data) {
+        return NIMCP_ERROR_NULL_ARG;
+    }
+
+    const bio_msg_introspection_query_t* query = (const bio_msg_introspection_query_t*)msg;
+    introspection_context_t* ctx = (introspection_context_t*)user_data;
+    (void)ctx;
+
+    LOG_DEBUG("Received introspection query: type=%u, threshold=%.2f",
+              query->query_type, query->confidence_threshold);
+
+    // TODO: Process query and send response
+    return NIMCP_SUCCESS;
+}
+
+/**
+ * @brief Broadcast introspection state change
+ */
+static void bio_broadcast_state_change(introspection_context_t ctx, float cognitive_load, float confidence) {
+    if (!ctx || !ctx->bio_async_enabled || !ctx->bio_ctx) {
+        return;
+    }
+
+    bio_msg_introspection_response_t msg = {};
+    bio_msg_init_header(&msg.header, BIO_MSG_INTROSPECTION_RESPONSE,
+                        bio_module_context_get_id(ctx->bio_ctx), 0, sizeof(msg));
+    msg.header.flags |= BIO_MSG_FLAG_BROADCAST;
+    msg.cognitive_load = cognitive_load;
+    msg.confidence = confidence;
+
+    bio_router_broadcast(ctx->bio_ctx, &msg, sizeof(msg));
+    LOG_DEBUG("Broadcast: introspection state change");
+}
 
 /* ========================================================================
  * FORWARD DECLARATIONS
@@ -134,6 +199,7 @@ introspection_config_t introspection_default_config(void)
                                      .enable_pattern_tracking = true,
                                      .enable_uncertainty_estimation = true,
                                      .uncertainty_ensemble_size = 5,
+                                     .enable_bio_async = false,
                                      .on_state_change = NULL,
                                      .callback_context = NULL};
     return config;
@@ -169,7 +235,29 @@ introspection_context_t introspection_context_create(brain_t brain,
     context->brain = brain;
     context->config = config ? *config : introspection_default_config();
     context->topology_cached = false;
+    context->bio_ctx = NULL;
+    context->bio_async_enabled = false;
     nimcp_mutex_init(&context->lock, NULL);
+
+    /* WHAT: Register with bio-async router if enabled */
+    /* WHY: Enable asynchronous introspection queries and responses */
+    if (context->config.enable_bio_async && bio_router_is_initialized()) {
+        bio_module_info_t bio_info = {
+            .module_id = BIO_MODULE_INTROSPECTION,
+            .module_name = "introspection",
+            .inbox_capacity = 64,
+            .user_data = context
+        };
+        context->bio_ctx = bio_router_register_module(&bio_info);
+        if (context->bio_ctx) {
+            context->bio_async_enabled = true;
+            // Register message handlers
+            bio_router_register_handler(context->bio_ctx, BIO_MSG_INTROSPECTION_QUERY, handle_introspection_query);
+            LOG_INFO(LOG_MODULE, "Bio-async communication enabled with handlers");
+        } else {
+            LOG_WARN(LOG_MODULE, "Bio-async registration failed");
+        }
+    }
 
     /* WHAT: Create pattern registry if enabled */
     /* WHY: Track learned patterns for queries */
@@ -221,6 +309,14 @@ void introspection_context_destroy(introspection_context_t context)
 {
     if (context == NULL) {
         return;
+    }
+
+    /* WHAT: Unregister from bio-async router */
+    if (context->bio_async_enabled && context->bio_ctx) {
+        bio_router_unregister_module(context->bio_ctx);
+        context->bio_ctx = NULL;
+        context->bio_async_enabled = false;
+        LOG_INFO(LOG_MODULE, "Bio-async communication disabled");
     }
 
     /* WHAT: Free pattern registry */

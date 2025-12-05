@@ -35,6 +35,15 @@
 #include <math.h>
 #include <stdio.h>
 #include <stdarg.h>
+#include "async/nimcp_bio_async.h"
+#include "async/nimcp_bio_router.h"
+#include "async/nimcp_bio_messages.h"
+#include "utils/logging/nimcp_logging.h"
+#include "utils/memory/nimcp_unified_memory.h"
+
+#define LOG_MODULE "cognitive.mental_health.core"
+#define BIO_MODULE_COGNITIVE_MENTAL_HEALTH_CORE 0x035F
+
 
 // =============================================================================
 // ERROR HANDLING (Thread-local)
@@ -105,6 +114,10 @@ struct mental_health_monitor {
     bool quarantine_mode;
     uint64_t last_check_time_ms;
     uint64_t last_intervention_time_ms;
+
+    // Bio-async integration
+    bio_module_context_t bio_ctx;   /**< Bio-async module context */
+    bool bio_async_enabled;         /**< Bio-async registration status */
 };
 
 // =============================================================================
@@ -218,6 +231,7 @@ mental_health_monitor_t* mental_health_create_default(void)
  */
 mental_health_monitor_t* mental_health_create(const mental_health_config_t* config)
 {
+    LOG_DEBUG("Creating module");
     // =========================================================================
     // GUARD: Validate configuration
     // =========================================================================
@@ -293,10 +307,27 @@ mental_health_monitor_t* mental_health_create(const mental_health_config_t* conf
     monitor->current_markers.decision_accuracy = 0.8f;
     monitor->current_markers.emotional_flatness = 0.2f;
 
-    NIMCP_LOGGING_INFO("Mental Health Monitor created (history_window=%u, check_interval=%u)",
+    LOG_INFO("Mental Health Monitor created (history_window=%u, check_interval=%u)",
              config->history_window_size, config->check_interval_decisions);
 
-    return monitor;
+    
+    // Bio-async registration
+    monitor->bio_ctx = NULL;
+    monitor->bio_async_enabled = false;
+    if (bio_router_is_initialized()) {
+        bio_module_info_t bio_info = {
+            .module_id = BIO_MODULE_WELLBEING_MENTAL_HEALTH,
+            .module_name = "mental_health",
+            .inbox_capacity = 32,
+            .user_data = monitor
+        };
+        monitor->bio_ctx = bio_router_register_module(&bio_info);
+        if (monitor->bio_ctx) {
+            monitor->bio_async_enabled = true;
+        }
+    }
+
+return monitor;
 }
 
 /**
@@ -312,6 +343,7 @@ mental_health_monitor_t* mental_health_create(const mental_health_config_t* conf
  */
 void mental_health_destroy(mental_health_monitor_t* monitor)
 {
+    LOG_DEBUG("Destroying module");
     // =========================================================================
     // GUARD: NULL check
     // =========================================================================
@@ -334,9 +366,16 @@ void mental_health_destroy(mental_health_monitor_t* monitor)
     // CLEANUP: Free main structure
     // =========================================================================
 
+    // Unregister from bio-router
+    if (monitor->bio_async_enabled && monitor->bio_ctx) {
+        bio_router_unregister_module(monitor->bio_ctx);
+        monitor->bio_ctx = NULL;
+        monitor->bio_async_enabled = false;
+    }
+
     nimcp_free(monitor);
 
-    NIMCP_LOGGING_DEBUG("Mental Health Monitor destroyed");
+    LOG_DEBUG("Mental Health Monitor destroyed");
 }
 
 // =============================================================================
@@ -393,7 +432,7 @@ void mental_health_update(mental_health_monitor_t* monitor,
     collect_all_markers(&monitor->current_markers, brain);
     monitor->total_decisions++;
 
-    NIMCP_LOGGING_DEBUG("Mental health markers updated (decision #%u)", monitor->total_decisions);
+    LOG_DEBUG("Mental health markers updated (decision #%u)", monitor->total_decisions);
 }
 
 /**
@@ -505,7 +544,7 @@ disorder_severity_t mental_health_check(mental_health_monitor_t* monitor,
     monitor->total_checks++;
     monitor->last_check_time_ms = nimcp_time_monotonic_ms();
 
-    NIMCP_LOGGING_DEBUG("Mental health check complete (max_severity=%d, checks=%u)",
+    LOG_DEBUG("Mental health check complete (max_severity=%d, checks=%u)",
               max_severity, monitor->total_checks);
 
     return max_severity;
@@ -1087,7 +1126,7 @@ void mental_health_reset_stats(mental_health_monitor_t* monitor)
 
     memset(monitor->interventions_by_type, 0, sizeof(monitor->interventions_by_type));
 
-    NIMCP_LOGGING_INFO("Mental health statistics reset");
+    LOG_INFO("Mental health statistics reset");
 }
 
 // =============================================================================

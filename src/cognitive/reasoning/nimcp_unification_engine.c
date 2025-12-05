@@ -9,12 +9,23 @@
 
 #include "cognitive/reasoning/nimcp_unification_engine.h"
 #include "cognitive/reasoning/nimcp_symbolic_logic_attachment.h"
+#include "cognitive/nimcp_symbolic_logic.h"
 #include "utils/validation/nimcp_validate.h"
 #include "utils/logging/nimcp_logging.h"
+#include "utils/memory/nimcp_memory.h"
 #include "core/events/nimcp_event_bus.h"
+
+// Bio-async integration
+#include "async/nimcp_bio_async.h"
+#include "async/nimcp_bio_messages.h"
+#include "async/nimcp_bio_router.h"
+#include "nimcp.h"  // For error codes
+
 #include <string.h>
 #include <stdio.h>
 #include <stdarg.h>
+
+#define LOG_MODULE "reasoning"
 
 static __thread char last_error[256] = {0};
 
@@ -49,17 +60,27 @@ bool brain_unify_terms(
     }
 
     // Delegate to symbolic logic unification
-    bool success = symbolic_logic_unify(brain_get_symbolic_logic(brain), term1, term2, result);
+    // Note: symbolic_logic_unify returns unification_t* rather than taking output param
+    (void)brain; // Brain reference not needed for current API
+    unification_t* unif_result = symbolic_logic_unify(
+        (logical_term_t*)term1,
+        (logical_term_t*)term2
+    );
 
-    if (brain->event_bus) {
-        event_data_t event = {
-            .event_type = success ? EVENT_UNIFICATION_SUCCEEDED : EVENT_UNIFICATION_FAILED,
-            .timestamp = 0,
-            .priority = EVENT_PRIORITY_LOW,
-            .data_size = 0,
-            .data = NULL
-        };
-        event_bus_publish(brain->event_bus, &event);
+    bool success = false;
+    if (unif_result) {
+        // Copy result
+        result->success = unif_result->success;
+        result->bindings = unif_result->bindings;
+        result->num_bindings = unif_result->num_bindings;
+        success = unif_result->success;
+
+        // Don't destroy - caller owns the bindings now
+        nimcp_free(unif_result);
+    } else {
+        result->success = false;
+        result->bindings = NULL;
+        result->num_bindings = 0;
     }
 
     return success;
@@ -83,7 +104,31 @@ bool brain_apply_substitution(
     }
 
     // Delegate to symbolic logic substitution
-    return symbolic_logic_substitute(brain_get_symbolic_logic(brain), term, bindings, result);
+    // Note: symbolic_logic_substitute takes (term, subst) and returns new term
+    (void)brain; // Brain reference not needed for current API
+
+    // Apply each binding in sequence
+    logical_term_t* current = logic_term_create(term->type, term->name);
+    if (!current) {
+        set_error("Failed to copy term");
+        return false;
+    }
+
+    for (uint32_t i = 0; i < bindings->num_bindings; i++) {
+        if (bindings->bindings[i]) {
+            logical_term_t* substituted = symbolic_logic_substitute(
+                current,
+                bindings->bindings[i]
+            );
+            if (substituted) {
+                logic_term_destroy(current);
+                current = substituted;
+            }
+        }
+    }
+
+    *result = current;
+    return true;
 }
 
 void unification_free_result(unification_t* result)

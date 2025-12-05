@@ -15,7 +15,8 @@
  * - compute_graph_metrics() for topology metrics
  */
 
-#include "nimcp_network_analysis.h"
+#include "cognitive/analysis/nimcp_network_analysis.h"
+#include "utils/memory/nimcp_unified_memory.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include "core/topology/nimcp_community_detection.h"
@@ -24,6 +25,13 @@
 #include "plasticity/adaptive/nimcp_adaptive.h"
 #include "core/brain/nimcp_brain.h"
 #include <string.h>
+
+// Bio-async integration
+#include "async/nimcp_bio_async.h"
+#include "async/nimcp_bio_messages.h"
+#include "async/nimcp_bio_router.h"
+
+#define LOG_MODULE "network_analysis"
 
 //=============================================================================
 // Lifecycle
@@ -60,13 +68,48 @@ network_analyzer_t* network_analyzer_create(brain_t brain)
         return NULL;
     }
 
-    NIMCP_LOGGING_INFO("Network analyzer created (stub implementation)");
+    // Initialize bio-async fields
+    analyzer->bio_ctx = NULL;
+    analyzer->bio_async_enabled = false;
+
+    // Register with bio-async router if available
+    NIMCP_LOGGING_DEBUG("network_analysis: Checking bio-async router initialization...");
+    if (bio_router_is_initialized()) {
+        NIMCP_LOGGING_DEBUG("network_analysis: Bio-router initialized, registering module (id=%d, inbox_capacity=32)...",
+                           BIO_MODULE_NETWORK_ANALYSIS);
+        bio_module_info_t bio_info = {
+            .module_id = BIO_MODULE_NETWORK_ANALYSIS,
+            .module_name = "network_analysis",
+            .inbox_capacity = 32,
+            .user_data = analyzer
+        };
+        analyzer->bio_ctx = bio_router_register_module(&bio_info);
+        if (analyzer->bio_ctx) {
+            analyzer->bio_async_enabled = true;
+            NIMCP_LOGGING_INFO("network_analysis: Bio-async communication enabled (module_id=%d)",
+                              BIO_MODULE_NETWORK_ANALYSIS);
+        } else {
+            NIMCP_LOGGING_WARN("network_analysis: Bio-async registration failed - module will operate without async messaging");
+        }
+    } else {
+        NIMCP_LOGGING_DEBUG("network_analysis: Bio-router not initialized, skipping async registration");
+    }
+
+    NIMCP_LOGGING_INFO("Network analyzer created");
     return analyzer;
 }
 
 void network_analyzer_destroy(network_analyzer_t* analyzer)
 {
     if (!analyzer) return;
+
+    // Unregister from bio-async router
+    if (analyzer->bio_async_enabled && analyzer->bio_ctx) {
+        bio_router_unregister_module(analyzer->bio_ctx);
+        analyzer->bio_ctx = NULL;
+        analyzer->bio_async_enabled = false;
+        NIMCP_LOGGING_INFO("Bio-async communication disabled for network_analysis");
+    }
 
     if (analyzer->communities) {
         if (analyzer->communities->community_ids) {

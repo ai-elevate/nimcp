@@ -7,6 +7,15 @@
 #include "utils/memory/nimcp_memory.h"
 #include <math.h>
 #include <string.h>
+#include "async/nimcp_bio_async.h"
+#include "async/nimcp_bio_router.h"
+#include "async/nimcp_bio_messages.h"
+#include "utils/logging/nimcp_logging.h"
+#include "utils/memory/nimcp_unified_memory.h"
+
+#define LOG_MODULE "cognitive.social"
+#define BIO_MODULE_COGNITIVE_SOCIAL 0x034F
+
 
 //=============================================================================
 // HELPER FUNCTIONS
@@ -28,6 +37,7 @@ static inline float exponential_decay(float current, float target, float decay_r
 //=============================================================================
 
 social_bond_system_t* social_bond_system_create(void) {
+    LOG_DEBUG("Creating module");
     // WHAT: Allocate and initialize social bond system
     // WHY:  Central system for love, loyalty, friendship
     // HOW:  Zero-initialize all state, set up default parameters
@@ -65,15 +75,40 @@ social_bond_system_t* social_bond_system_create(void) {
     system->integrate_with_oxytocin = true;
     system->integrate_with_reward = true;
 
-    return system;
+    
+    // Bio-async registration
+    system->bio_ctx = NULL;
+    system->bio_async_enabled = false;
+    if (bio_router_is_initialized()) {
+        bio_module_info_t bio_info = {
+            .module_id = BIO_MODULE_EMOTIONS_SOCIAL,
+            .module_name = "love_loyalty_friendship",
+            .inbox_capacity = 32,
+            .user_data = system
+        };
+        system->bio_ctx = bio_router_register_module(&bio_info);
+        if (system->bio_ctx) {
+            system->bio_async_enabled = true;
+        }
+    }
+
+return system;
 }
 
 void social_bond_system_destroy(social_bond_system_t* system) {
+    LOG_DEBUG("Destroying module");
     // WHAT: Free social bond system memory
     // WHY:  Prevent memory leaks
     // HOW:  Free main structure
 
     if (!system) return;
+    // Unregister from bio-router
+    if (system->bio_async_enabled && system->bio_ctx) {
+        bio_router_unregister_module(system->bio_ctx);
+        system->bio_ctx = NULL;
+        system->bio_async_enabled = false;
+    }
+
     nimcp_free(system);
 }
 

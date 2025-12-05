@@ -9,16 +9,26 @@
  * 3. Apply evidence-based debiasing interventions
  * 4. Ensure statistical fairness in decision-making
  *
+ * BIO-ASYNC MODULE ID: 0x0340
+ *
  * @author Claude Code (Anthropic)
  * @date 2025-11-13
  */
 
 #include "cognitive/nimcp_bias_detection.h"
+#include "async/nimcp_bio_async.h"
+#include "async/nimcp_bio_router.h"
+#include "async/nimcp_bio_messages.h"
+#include "utils/logging/nimcp_logging.h"
+#include "utils/memory/nimcp_unified_memory.h"
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
 #include <ctype.h>
-#include "utils/memory/nimcp_memory.h"
+#include "utils/memory/nimcp_memory_guards.h"  // For nimcp_calloc/nimcp_free
+
+#define LOG_MODULE "cognitive.bias_detection"
+#define BIO_MODULE_BIAS_DETECTION 0x0340
 
 //=============================================================================
 // HELPER FUNCTIONS
@@ -72,8 +82,13 @@ static int find_group_index(bias_detection_system_t* system, const social_group_
 //=============================================================================
 
 bias_detection_system_t* bias_system_create(uint32_t max_others_tracked) {
+    LOG_DEBUG("Creating bias detection system with max_others_tracked=%u", max_others_tracked);
+
     bias_detection_system_t* system = (bias_detection_system_t*)nimcp_calloc(1, sizeof(bias_detection_system_t));
-    if (!system) return NULL;
+    if (!system) {
+        LOG_ERROR("Failed to allocate bias detection system structure");
+        return NULL;
+    }
 
     system->max_others_tracked = max_others_tracked;
 
@@ -81,6 +96,7 @@ bias_detection_system_t* bias_system_create(uint32_t max_others_tracked) {
     system->detected_in_others = (bias_detection_other_t*)nimcp_calloc(max_others_tracked, sizeof(bias_detection_other_t));
 
     if (!system->detected_in_others) {
+        LOG_ERROR("Failed to allocate bias detection other-tracking array");
         bias_system_destroy(system);
         return NULL;
     }
@@ -88,13 +104,39 @@ bias_detection_system_t* bias_system_create(uint32_t max_others_tracked) {
     system->fairness_score = 1.0f;
     system->self_awareness = 0.5f;
 
-    return system;
+    LOG_INFO("Bias detection system created successfully (fairness=%.2f, awareness=%.2f)",
+             system->fairness_score, system->self_awareness);
+    
+    // Bio-async registration
+    system->bio_ctx = NULL;
+    system->bio_async_enabled = false;
+    if (bio_router_is_initialized()) {
+        bio_module_info_t bio_info = {
+            .module_id = BIO_MODULE_EMOTIONS_BIAS,
+            .module_name = "bias_detection",
+            .inbox_capacity = 32,
+            .user_data = system
+        };
+        system->bio_ctx = bio_router_register_module(&bio_info);
+        if (system->bio_ctx) {
+            system->bio_async_enabled = true;
+        }
+    }
+
+return system;
 }
 
 void bias_system_destroy(bias_detection_system_t* system) {
     if (!system) return;
 
     nimcp_free(system->detected_in_others);
+    // Unregister from bio-router
+    if (system->bio_async_enabled && system->bio_ctx) {
+        bio_router_unregister_module(system->bio_ctx);
+        system->bio_ctx = NULL;
+        system->bio_async_enabled = false;
+    }
+
     nimcp_free(system);
 }
 
@@ -139,7 +181,13 @@ void bias_register_implicit(bias_detection_system_t* system,
                             float warmth,
                             float response_time_bias,
                             uint64_t current_time) {
-    if (!system || !group) return;
+    if (!system || !group) {
+        LOG_WARN("Invalid parameters to bias_register_implicit");
+        return;
+    }
+
+    LOG_DEBUG("Registering implicit bias for group_id=%u (pos=%.2f, comp=%.2f, warmth=%.2f)",
+              group->group_id, positive_association, competence, warmth);
 
     // Find or create entry for this group
     int index = find_group_index(system, group);
@@ -147,10 +195,14 @@ void bias_register_implicit(bias_detection_system_t* system,
     if (index < 0) {
         // Create new entry
         if (system->implicit_bias_count >= BIAS_MAX_TRACKED_GROUPS) {
+            LOG_WARN("Cannot register implicit bias: max tracked groups reached (%d)",
+                     BIAS_MAX_TRACKED_GROUPS);
             return;  // No space
         }
         index = system->implicit_bias_count++;
         system->implicit_biases[index].target_group = *group;
+        LOG_DEBUG("Created new implicit bias entry at index %d for group_id=%u",
+                  index, group->group_id);
     }
 
     implicit_bias_t* bias = &system->implicit_biases[index];
@@ -168,6 +220,10 @@ void bias_register_implicit(bias_detection_system_t* system,
     bias->activation_count++;
     bias->last_activation_time = current_time;
 
+    LOG_DEBUG("Updated implicit bias: neg=%.2f, comp=%.2f, warmth=%.2f, activations=%u",
+              bias->negative_association, bias->competence_association,
+              bias->warmth_association, bias->activation_count);
+
     // Recalculate total implicit bias
     float total = 0.0f;
     for (uint32_t i = 0; i < system->implicit_bias_count; i++) {
@@ -177,6 +233,10 @@ void bias_register_implicit(bias_detection_system_t* system,
 
     // Update detection flag
     if (system->total_implicit_bias > BIAS_IMPLICIT_THRESHOLD) {
+        if (!system->bias_detected) {
+            LOG_WARN("Implicit bias detected: total=%.2f exceeds threshold=%.2f",
+                     system->total_implicit_bias, BIAS_IMPLICIT_THRESHOLD);
+        }
         system->bias_detected = true;
         system->total_biases_detected++;
     }

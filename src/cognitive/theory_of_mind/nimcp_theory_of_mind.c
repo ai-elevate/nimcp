@@ -27,6 +27,15 @@
 #include <stdio.h>
 #include <stdarg.h>
 #include <math.h>
+#include "async/nimcp_bio_async.h"
+#include "async/nimcp_bio_router.h"
+#include "async/nimcp_bio_messages.h"
+#include "utils/logging/nimcp_logging.h"
+#include "utils/memory/nimcp_unified_memory.h"
+
+#define LOG_MODULE "cognitive.theory_of_mind"
+#define BIO_MODULE_COGNITIVE_THEORY_OF_MIND 0x034E
+
 
 //=============================================================================
 // Constants
@@ -93,6 +102,10 @@ struct theory_of_mind_s {
 
     // Perspective-taking score
     float perspective_score;
+
+    // Bio-async integration
+    bio_module_context_t bio_ctx;   /**< Bio-async module context */
+    bool bio_async_enabled;         /**< Bio-async registration status */
 };
 
 //=============================================================================
@@ -384,11 +397,29 @@ theory_of_mind_t tom_create(brain_t self_brain)
 
     strncpy(tom->current_goal, "Unknown", sizeof(tom->current_goal) - 1);
 
-    return tom;
+    
+    // Bio-async registration
+    tom->bio_ctx = NULL;
+    tom->bio_async_enabled = false;
+    if (bio_router_is_initialized()) {
+        bio_module_info_t bio_info = {
+            .module_id = BIO_MODULE_INTROSPECTION_THEORY_OF_MIND,
+            .module_name = "theory_of_mind",
+            .inbox_capacity = 32,
+            .user_data = tom
+        };
+        tom->bio_ctx = bio_router_register_module(&bio_info);
+        if (tom->bio_ctx) {
+            tom->bio_async_enabled = true;
+        }
+    }
+
+return tom;
 }
 
 void tom_destroy(theory_of_mind_t tom)
 {
+    LOG_DEBUG("Destroying module");
     if (!tom) {
         return;
     }

@@ -11,7 +11,12 @@
  * @see nimcp_mirror_hierarchy.h for API documentation
  */
 
-#include "nimcp_mirror_hierarchy.h"
+#include "cognitive/mirror_neurons/nimcp_mirror_hierarchy.h"
+#include "utils/memory/nimcp_unified_memory.h"
+#include "utils/logging/nimcp_logging.h"
+#include "async/nimcp_bio_router.h"
+#include "async/nimcp_bio_async.h"
+#include "async/nimcp_bio_messages.h"
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
@@ -146,8 +151,12 @@ mirror_hierarchy_config_t mirror_hierarchy_get_default_config(void) {
 }
 
 mirror_hierarchy_t mirror_hierarchy_create(const mirror_hierarchy_config_t* config) {
-    mirror_hierarchy_t hierarchy = (mirror_hierarchy_t)calloc(1, sizeof(struct mirror_hierarchy_system));
-    if (!hierarchy) return NULL;
+    LOG_DEBUG("Creating mirror hierarchy system");
+    mirror_hierarchy_t hierarchy = (mirror_hierarchy_t)nimcp_calloc(1, sizeof(struct mirror_hierarchy_system));
+    if (!hierarchy) {
+        LOG_ERROR("Failed to allocate mirror hierarchy system");
+        return NULL;
+    }
 
     // Copy configuration
     if (config) {
@@ -158,20 +167,22 @@ mirror_hierarchy_t mirror_hierarchy_create(const mirror_hierarchy_config_t* conf
 
     // Allocate goal storage
     hierarchy->max_goals = hierarchy->config.max_goals;
-    hierarchy->goals = (goal_representation_t*)calloc(hierarchy->max_goals,
+    hierarchy->goals = (goal_representation_t*)nimcp_calloc(hierarchy->max_goals,
                                                        sizeof(goal_representation_t));
     if (!hierarchy->goals) {
-        free(hierarchy);
+        LOG_ERROR("Failed to allocate goal storage");
+        nimcp_free(hierarchy);
         return NULL;
     }
 
     // Allocate motor storage
     hierarchy->max_motors = hierarchy->config.max_motors;
-    hierarchy->motors = (motor_representation_t*)calloc(hierarchy->max_motors,
+    hierarchy->motors = (motor_representation_t*)nimcp_calloc(hierarchy->max_motors,
                                                          sizeof(motor_representation_t));
     if (!hierarchy->motors) {
-        free(hierarchy->goals);
-        free(hierarchy);
+        LOG_ERROR("Failed to allocate motor storage");
+        nimcp_free(hierarchy->goals);
+        nimcp_free(hierarchy);
         return NULL;
     }
 
@@ -179,15 +190,21 @@ mirror_hierarchy_t mirror_hierarchy_create(const mirror_hierarchy_config_t* conf
     hierarchy->num_motors = 0;
     hierarchy->selected_goal = -1;
 
+    LOG_INFO("Mirror hierarchy created with max_goals=%u, max_motors=%u",
+             hierarchy->max_goals, hierarchy->max_motors);
+
     return hierarchy;
 }
 
 void mirror_hierarchy_destroy(mirror_hierarchy_t hierarchy) {
     if (!hierarchy) return;
 
-    if (hierarchy->motors) free(hierarchy->motors);
-    if (hierarchy->goals) free(hierarchy->goals);
-    free(hierarchy);
+    LOG_DEBUG("Destroying mirror hierarchy with %u goals, %u motors",
+              hierarchy->num_goals, hierarchy->num_motors);
+
+    if (hierarchy->motors) nimcp_free(hierarchy->motors);
+    if (hierarchy->goals) nimcp_free(hierarchy->goals);
+    nimcp_free(hierarchy);
 }
 
 //=============================================================================

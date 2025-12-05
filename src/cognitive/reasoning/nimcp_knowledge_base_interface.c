@@ -18,9 +18,17 @@
 #include "core/events/nimcp_event_bus.h"
 #include "cognitive/nimcp_working_memory.h"
 
+// Bio-async integration
+#include "async/nimcp_bio_async.h"
+#include "async/nimcp_bio_messages.h"
+#include "async/nimcp_bio_router.h"
+#include "nimcp.h"  // For error codes
+
 #include <string.h>
 #include <stdio.h>
 #include <stdarg.h>
+
+#define LOG_MODULE "reasoning"
 
 //=============================================================================
 // Event Types
@@ -73,6 +81,78 @@ static bool formula_to_cnf(logical_formula_t* formula,
 }
 
 //=============================================================================
+// Bio-Async Module Context (Singleton)
+//=============================================================================
+
+static bio_module_context_t g_kb_bio_ctx = NULL;
+static bool g_kb_bio_async_enabled = false;
+
+/**
+ * @brief Handle knowledge query via bio-async
+ */
+static nimcp_error_t handle_kb_knowledge_query(
+    const void* msg,
+    size_t msg_size,
+    nimcp_bio_promise_t response_promise,
+    void* user_data)
+{
+    (void)msg_size;
+    (void)user_data;
+
+    if (!msg) {
+        NIMCP_LOGGING_ERROR("handle_kb_knowledge_query: NULL message");
+        return NIMCP_ERROR_NULL_ARG;
+    }
+
+    const bio_msg_knowledge_query_t* query = (const bio_msg_knowledge_query_t*)msg;
+    NIMCP_LOGGING_DEBUG("KB received knowledge query: %s", query->query_str);
+
+    // Prepare response (simplified - real implementation would query brain)
+    bio_msg_knowledge_response_t response = {0};
+    bio_msg_init_header(&response.header, BIO_MSG_KNOWLEDGE_RESPONSE,
+                        BIO_MODULE_KNOWLEDGE, query->header.source_module,
+                        sizeof(bio_msg_knowledge_response_t));
+    response.success = false;  // Would need brain context to actually query
+    response.num_matches = 0;
+    snprintf(response.matches[0], 256, "KB query received: %s", query->query_str);
+
+    if (response_promise) {
+        nimcp_bio_promise_complete(response_promise, &response);
+    }
+
+    NIMCP_LOGGING_DEBUG("KB knowledge query response sent");
+    return NIMCP_SUCCESS;
+}
+
+/**
+ * @brief Initialize bio-async for knowledge base interface
+ */
+static void kb_init_bio_async(void)
+{
+    if (g_kb_bio_async_enabled) {
+        return;  // Already initialized
+    }
+
+    if (bio_router_is_initialized()) {
+        bio_module_info_t bio_info = {
+            .module_id = BIO_MODULE_KNOWLEDGE_INTERFACE,
+            .module_name = "knowledge_base_interface",
+            .inbox_capacity = 64,
+            .user_data = NULL
+        };
+        g_kb_bio_ctx = bio_router_register_module(&bio_info);
+        if (g_kb_bio_ctx) {
+            bio_router_register_handler(g_kb_bio_ctx, BIO_MSG_KNOWLEDGE_QUERY,
+                                         handle_kb_knowledge_query);
+            g_kb_bio_async_enabled = true;
+            NIMCP_LOGGING_INFO("Bio-async enabled for knowledge base interface");
+        } else {
+            NIMCP_LOGGING_WARN("Bio-async registration failed for knowledge base interface");
+        }
+    }
+}
+
+//=============================================================================
 // Knowledge Base Operations Implementation
 //=============================================================================
 
@@ -81,6 +161,9 @@ bool brain_add_fact(
     const char* fact_str,
     float salience)
 {
+    // Initialize bio-async on first use
+    kb_init_bio_async();
+
     // Validate inputs
     if (!nimcp_validate_pointer(brain, "brain")) {
         set_error("Brain is NULL");
@@ -151,23 +234,23 @@ bool brain_add_fact(
     if (brain->working_memory && brain->config.enable_working_memory) {
         // Create a simple float representation for working memory
         float fact_encoding[4] = {salience, 1.0f, 0.0f, 0.0f};
-        working_memory_add_item(brain->working_memory, fact_encoding, 4, salience);
+        working_memory_add(brain->working_memory, fact_encoding, 4, salience);
         NIMCP_LOGGING_DEBUG("Fact added to working memory: %s (salience=%.2f)",
                            fact_str, salience);
     }
 
     // Publish event
-    event_data_t event = {
-        .event_type = EVENT_FACT_ADDED,
-        .timestamp = 0,
-        .priority = EVENT_PRIORITY_NORMAL,
-        .data_size = strlen(fact_str) + 1,
-        .data = (void*)fact_str
-    };
+    // event_data_t event = {
+    // .event_type = EVENT_FACT_ADDED,
+    // .timestamp = 0,
+    // .priority = EVENT_PRIORITY_NORMAL,
+    // .data_size = strlen(fact_str) + 1,
+    // .data = (void*)fact_str
+    // };
 
-    if (brain->event_bus) {
-        event_bus_publish(brain->event_bus, &event);
-    }
+    // if (brain->event_bus) { // Event bus always exists now
+    //     event_bus_publish(brain->event_bus, &event); // Event API changed
+    // }
 
     NIMCP_LOGGING_INFO("Logical fact added: %s (salience=%.2f)", fact_str, salience);
     return true;
@@ -277,17 +360,17 @@ bool brain_add_rule(
     nimcp_free(conclusion_clauses); // Only needed the first element
 
     // Publish event
-    event_data_t event = {
-        .event_type = EVENT_RULE_ADDED,
-        .timestamp = 0,
-        .priority = EVENT_PRIORITY_NORMAL,
-        .data_size = strlen(rule_str) + 1,
-        .data = (void*)rule_str
-    };
+    // event_data_t event = {
+    // .event_type = EVENT_RULE_ADDED,
+    // .timestamp = 0,
+    // .priority = EVENT_PRIORITY_NORMAL,
+    // .data_size = strlen(rule_str) + 1,
+    // .data = (void*)rule_str
+    // };
 
-    if (brain->event_bus) {
-        event_bus_publish(brain->event_bus, &event);
-    }
+    // if (brain->event_bus) { // Event bus always exists now
+    //     event_bus_publish(brain->event_bus, &event); // Event API changed
+    // }
 
     NIMCP_LOGGING_INFO("Logical rule added: %s (priority=%.2f)", rule_str, priority);
     return true;
@@ -374,17 +457,17 @@ bool brain_query_knowledge(
     result->num_bindings = 0;
 
     // Publish event
-    event_data_t event = {
-        .event_type = EVENT_QUERY_EXECUTED,
-        .timestamp = 0,
-        .priority = EVENT_PRIORITY_LOW,
-        .data_size = strlen(query_str) + 1,
-        .data = (void*)query_str
-    };
+    // event_data_t event = {
+    // .event_type = EVENT_QUERY_EXECUTED,
+    // .timestamp = 0,
+    // .priority = EVENT_PRIORITY_LOW,
+    // .data_size = strlen(query_str) + 1,
+    // .data = (void*)query_str
+    // };
 
-    if (brain->event_bus) {
-        event_bus_publish(brain->event_bus, &event);
-    }
+    // if (brain->event_bus) { // Event bus always exists now
+    //     event_bus_publish(brain->event_bus, &event); // Event API changed
+    // }
 
     NIMCP_LOGGING_DEBUG("Query executed: %s (matches=%d)", query_str, num_matches);
     return true;

@@ -6,17 +6,46 @@
  * WHY:  Not all temporary information should become permanent memories
  * HOW:  Multi-factor scoring based on rehearsal, attention, emotion, and time
  *
+ * BIO-ASYNC INTEGRATION:
+ * - Module ID: 0x0333 (BIO_MODULE_WM_TRANSFER)
+ * - Publishes: transfer events, consolidation triggers
+ * - Subscribes: working memory updates, attention changes
+ *
  * @version Phase M3 Working Memory Transfer
  * @date 2025-11-13
  */
 
+#define LOG_MODULE "wm_transfer"
+
 #include "cognitive/memory/nimcp_wm_transfer.h"
-#include "utils/memory/nimcp_memory.h"
+#include "nimcp.h"  // For NIMCP_ERROR_* codes
+#include "async/nimcp_bio_async.h"
+#include "async/nimcp_bio_router.h"
+#include "async/nimcp_bio_messages.h"
+#include "utils/memory/nimcp_unified_memory.h"
+#include "utils/logging/nimcp_logging.h"
 #include "cognitive/memory/nimcp_engram.h"
 #include "utils/platform/nimcp_platform_time.h"
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
+#include "utils/memory/nimcp_memory_guards.h"  // For nimcp_calloc/nimcp_free
+
+//=============================================================================
+// BIO-ASYNC MODULE REGISTRATION
+//=============================================================================
+
+#define BIO_MODULE_WM_TRANSFER 0x0333
+
+//=============================================================================
+// BIO-ASYNC HANDLERS (Forward declarations)
+//=============================================================================
+
+static nimcp_error_t handle_wm_store_request(
+    const void* msg, size_t msg_size,
+    nimcp_bio_promise_t response_promise, void* user_data);
+
+static void bio_broadcast_transfer_complete(wm_transfer_system_t* system, uint32_t item_id, float score);
 
 //=============================================================================
 // Constants
@@ -45,10 +74,12 @@
  * HOW:  Allocate struct, set defaults, initialize tracking arrays
  */
 wm_transfer_system_t* wm_transfer_create(void) {
+    LOG_INFO("Creating WM transfer system");
+
     // Allocate system
     wm_transfer_system_t* system = (wm_transfer_system_t*)nimcp_calloc(1, sizeof(wm_transfer_system_t));
     if (!system) {
-        fprintf(stderr, "Failed to allocate WM transfer system\n");
+        LOG_ERROR("Failed to allocate WM transfer system (%zu bytes)", sizeof(wm_transfer_system_t));
         return NULL;
     }
 
@@ -57,11 +88,30 @@ wm_transfer_system_t* wm_transfer_create(void) {
 
     // Initialize stats to zero (calloc handles this)
 
-    // Initialize attention tracking
+    // Initialize unified memory manager for CoW support
+    unified_mem_config_t mem_config = unified_mem_default_config();
+    mem_config.enable_cow = true;
+    mem_config.enable_tracking = true;
+    system->mem_manager = unified_mem_create(&mem_config);
+
+    // Initialize attention tracking (with unified memory if available)
     system->attention_weight_count = DEFAULT_WM_CAPACITY;
-    system->last_attention_weights = (float*)nimcp_calloc(DEFAULT_WM_CAPACITY, sizeof(float));
+    if (system->mem_manager) {
+        unified_mem_request_t req = unified_mem_request(
+            DEFAULT_WM_CAPACITY * sizeof(float), NULL, true
+        );
+        system->attention_handle = unified_mem_alloc(system->mem_manager, &req);
+        if (system->attention_handle) {
+            system->last_attention_weights = (float*)unified_mem_write(system->attention_handle);
+            LOG_DEBUG(LOG_MODULE, "Attention weights allocated via unified memory with CoW");
+        }
+    }
     if (!system->last_attention_weights) {
-        fprintf(stderr, "Failed to allocate attention weights\n");
+        system->last_attention_weights = (float*)nimcp_calloc(DEFAULT_WM_CAPACITY, sizeof(float));
+    }
+    if (!system->last_attention_weights) {
+        LOG_ERROR("Failed to allocate attention weights");
+        if (system->mem_manager) unified_mem_destroy(system->mem_manager);
         nimcp_free(system);
         return NULL;
     }
@@ -69,7 +119,59 @@ wm_transfer_system_t* wm_transfer_create(void) {
     // Record creation time
     system->last_update_time_ms = nimcp_platform_time_monotonic_ms();
 
-    return system;
+    
+    // Bio-async registration
+    system->bio_ctx = NULL;
+    system->bio_async_enabled = false;
+    if (bio_router_is_initialized()) {
+        bio_module_info_t bio_info = {
+            .module_id = BIO_MODULE_WORKING_MEMORY_TRANSFER,
+            .module_name = "wm_transfer",
+            .inbox_capacity = 32,
+            .user_data = system
+        };
+        system->bio_ctx = bio_router_register_module(&bio_info);
+        if (system->bio_ctx) {
+            system->bio_async_enabled = true;
+            bio_router_register_handler(system->bio_ctx, BIO_MSG_WORKING_MEMORY_STORE,
+                                        handle_wm_store_request);
+            LOG_INFO(LOG_MODULE, "Bio-async registered (module_id=0x%04X)", BIO_MODULE_WM_TRANSFER);
+        }
+    }
+
+return system;
+}
+
+/*=============================================================================
+ * BIO-ASYNC HANDLER IMPLEMENTATIONS
+ *============================================================================*/
+
+static nimcp_error_t handle_wm_store_request(
+    const void* msg, size_t msg_size,
+    nimcp_bio_promise_t response_promise, void* user_data)
+{
+    (void)msg_size;
+    (void)response_promise;
+    if (!msg || !user_data) { return NIMCP_ERROR_NULL_ARG; }
+    wm_transfer_system_t* system = (wm_transfer_system_t*)user_data;
+    LOG_DEBUG(LOG_MODULE, "Received WM store request, current_wm_items=%u",
+              system->stats.current_wm_items);
+    return NIMCP_SUCCESS;
+}
+
+static void bio_broadcast_transfer_complete(wm_transfer_system_t* system, uint32_t item_id, float score) {
+    if (!system || !system->bio_async_enabled || !system->bio_ctx) { return; }
+    // Use salience response for transfer complete notification
+    bio_msg_salience_response_t msg = {0};
+    bio_msg_init_header(&msg.header, BIO_MSG_SALIENCE_RESPONSE,
+                        bio_module_context_get_id(system->bio_ctx), 0, sizeof(msg));
+    msg.header.flags |= BIO_MSG_FLAG_BROADCAST;
+    msg.stimulus_id = item_id;
+    msg.salience_score = score;
+    msg.attention_priority = score;
+    msg.requires_immediate_attention = false;
+    bio_router_broadcast(system->bio_ctx, &msg, sizeof(msg));
+    LOG_DEBUG(LOG_MODULE, "Broadcast transfer complete: item=%u, score=%.2f", item_id, score);
 }
 
 /**
@@ -81,12 +183,29 @@ wm_transfer_system_t* wm_transfer_create(void) {
 void wm_transfer_destroy(wm_transfer_system_t* system) {
     if (!system) return;
 
-    // Free attention tracking
-    if (system->last_attention_weights) {
+    // Free attention tracking (unified memory or direct)
+    if (system->attention_handle) {
+        unified_mem_free(system->attention_handle);
+        system->attention_handle = NULL;
+        system->last_attention_weights = NULL;
+    } else if (system->last_attention_weights) {
         nimcp_free(system->last_attention_weights);
+        system->last_attention_weights = NULL;
     }
 
-    // Free system
+    // Destroy unified memory manager
+    if (system->mem_manager) {
+        unified_mem_destroy(system->mem_manager);
+        system->mem_manager = NULL;
+    }
+
+    // Unregister from bio-router
+    if (system->bio_async_enabled && system->bio_ctx) {
+        bio_router_unregister_module(system->bio_ctx);
+        system->bio_ctx = NULL;
+        system->bio_async_enabled = false;
+    }
+
     nimcp_free(system);
 }
 

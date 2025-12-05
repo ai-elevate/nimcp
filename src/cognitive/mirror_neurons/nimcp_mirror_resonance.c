@@ -11,7 +11,12 @@
  * @see nimcp_mirror_resonance.h for API documentation
  */
 
-#include "nimcp_mirror_resonance.h"
+#include "cognitive/mirror_neurons/nimcp_mirror_resonance.h"
+#include "utils/memory/nimcp_unified_memory.h"
+#include "utils/logging/nimcp_logging.h"
+#include "async/nimcp_bio_router.h"
+#include "async/nimcp_bio_async.h"
+#include "async/nimcp_bio_messages.h"
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
@@ -187,12 +192,18 @@ motor_resonance_config_t motor_resonance_get_default_config(void) {
 
 motor_resonance_t motor_resonance_create(const motor_resonance_config_t* config,
                                           uint32_t max_channels) {
+    LOG_DEBUG("Creating motor resonance system with max_channels=%u", max_channels);
+
     if (max_channels == 0 || max_channels > NIMCP_RESONANCE_MAX_CHANNELS) {
+        LOG_ERROR("Invalid max_channels: %u (max allowed: %u)", max_channels, NIMCP_RESONANCE_MAX_CHANNELS);
         return NULL;
     }
 
-    motor_resonance_t resonance = (motor_resonance_t)calloc(1, sizeof(struct motor_resonance_system));
-    if (!resonance) return NULL;
+    motor_resonance_t resonance = (motor_resonance_t)nimcp_calloc(1, sizeof(struct motor_resonance_system));
+    if (!resonance) {
+        LOG_ERROR("Failed to allocate motor resonance system");
+        return NULL;
+    }
 
     // Copy configuration
     if (config) {
@@ -202,9 +213,10 @@ motor_resonance_t motor_resonance_create(const motor_resonance_config_t* config,
     }
 
     // Allocate channel storage
-    resonance->channels = (motor_channel_t*)calloc(max_channels, sizeof(motor_channel_t));
+    resonance->channels = (motor_channel_t*)nimcp_calloc(max_channels, sizeof(motor_channel_t));
     if (!resonance->channels) {
-        free(resonance);
+        LOG_ERROR("Failed to allocate channel storage");
+        nimcp_free(resonance);
         return NULL;
     }
     resonance->max_channels = max_channels;
@@ -212,10 +224,11 @@ motor_resonance_t motor_resonance_create(const motor_resonance_config_t* config,
 
     // Allocate action map
     resonance->action_map_size = max_channels * 2;
-    resonance->action_map = (uint32_t*)malloc(resonance->action_map_size * sizeof(uint32_t));
+    resonance->action_map = (uint32_t*)nimcp_malloc(resonance->action_map_size * sizeof(uint32_t));
     if (!resonance->action_map) {
-        free(resonance->channels);
-        free(resonance);
+        LOG_ERROR("Failed to allocate action map");
+        nimcp_free(resonance->channels);
+        nimcp_free(resonance);
         return NULL;
     }
     for (uint32_t i = 0; i < resonance->action_map_size; i++) {
@@ -224,11 +237,12 @@ motor_resonance_t motor_resonance_create(const motor_resonance_config_t* config,
 
     // Allocate conflict storage
     resonance->max_conflicts = max_channels * MAX_CONFLICTS_PER_CHANNEL / 2;
-    resonance->conflicts = (conflict_pair_t*)calloc(resonance->max_conflicts, sizeof(conflict_pair_t));
+    resonance->conflicts = (conflict_pair_t*)nimcp_calloc(resonance->max_conflicts, sizeof(conflict_pair_t));
     if (!resonance->conflicts) {
-        free(resonance->action_map);
-        free(resonance->channels);
-        free(resonance);
+        LOG_ERROR("Failed to allocate conflict storage");
+        nimcp_free(resonance->action_map);
+        nimcp_free(resonance->channels);
+        nimcp_free(resonance);
         return NULL;
     }
     resonance->num_conflicts = 0;
@@ -239,16 +253,21 @@ motor_resonance_t motor_resonance_create(const motor_resonance_config_t* config,
     resonance->social_context = 0.0f;
     resonance->learning_context = 0.0f;
 
+    LOG_INFO("Motor resonance system created successfully (channels=%u, conflicts=%u)",
+             max_channels, resonance->max_conflicts);
+
     return resonance;
 }
 
 void motor_resonance_destroy(motor_resonance_t resonance) {
     if (!resonance) return;
 
-    if (resonance->conflicts) free(resonance->conflicts);
-    if (resonance->action_map) free(resonance->action_map);
-    if (resonance->channels) free(resonance->channels);
-    free(resonance);
+    LOG_DEBUG("Destroying motor resonance system (channels=%u)", resonance->num_channels);
+
+    if (resonance->conflicts) nimcp_free(resonance->conflicts);
+    if (resonance->action_map) nimcp_free(resonance->action_map);
+    if (resonance->channels) nimcp_free(resonance->channels);
+    nimcp_free(resonance);
 }
 
 //=============================================================================

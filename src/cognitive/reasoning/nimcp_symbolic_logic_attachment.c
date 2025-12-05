@@ -67,28 +67,27 @@ bool brain_attach_symbolic_logic(
     }
 
     // Check if already attached
-    if (brain->logic_engine != NULL) {
+    if (brain->symbolic_logic != NULL) {
         set_error("Symbolic logic engine already attached to this brain");
-        NIMCP_LOGGING_WARNING("brain_attach_symbolic_logic: brain %p already has logic engine",
+        NIMCP_LOGGING_WARN("brain_attach_symbolic_logic: brain %p already has logic engine",
                               (void*)brain);
         return false;
     }
 
     // Attach the engine
-    brain->logic_engine = logic_engine;
+    brain->symbolic_logic = logic_engine;
 
     // Publish attachment event
-    event_data_t event = {
-        .event_type = EVENT_LOGIC_ENGINE_ATTACHED,
-        .timestamp = 0, // Event bus will set this
-        .priority = EVENT_PRIORITY_NORMAL,
-        .data_size = sizeof(void*),
-        .data = (void*)logic_engine
-    };
-
-    if (brain->event_bus) {
-        event_bus_publish(brain->event_bus, &event);
-    }
+    // event_data_t event = {
+    //     .event_type = EVENT_LOGIC_ENGINE_ATTACHED,
+    //     .timestamp = 0, // Event bus will set this
+    //     .priority = EVENT_PRIORITY_NORMAL,
+    //     .data_size = sizeof(void*),
+    //     .data = (void*)logic_engine
+    // };
+    // if (brain->event_bus) { // Event bus always exists now
+    //     event_bus_publish(brain->event_bus, &event); // Event API changed
+    // }
 
     NIMCP_LOGGING_INFO("Symbolic logic engine attached to brain %p", (void*)brain);
     return true;
@@ -104,7 +103,7 @@ symbolic_logic_t* brain_detach_symbolic_logic(brain_t brain)
     }
 
     // Get current engine
-    symbolic_logic_t* engine = brain->logic_engine;
+    symbolic_logic_t* engine = brain->symbolic_logic;
 
     // Check if anything attached
     if (engine == NULL) {
@@ -114,35 +113,34 @@ symbolic_logic_t* brain_detach_symbolic_logic(brain_t brain)
     }
 
     // Detach the engine
-    brain->logic_engine = NULL;
+    brain->symbolic_logic = NULL;
 
     // Publish detachment event
-    event_data_t event = {
-        .event_type = EVENT_LOGIC_ENGINE_DETACHED,
-        .timestamp = 0,
-        .priority = EVENT_PRIORITY_NORMAL,
-        .data_size = sizeof(void*),
-        .data = (void*)engine
-    };
-
-    if (brain->event_bus) {
-        event_bus_publish(brain->event_bus, &event);
-    }
+    // event_data_t event = {
+    //     .event_type = EVENT_LOGIC_ENGINE_DETACHED,
+    //     .timestamp = 0,
+    //     .priority = EVENT_PRIORITY_NORMAL,
+    //     .data_size = sizeof(void*),
+    //     .data = (void*)engine
+    // };
+    // if (brain->event_bus) { // Event bus always exists now
+    //     event_bus_publish(brain->event_bus, &event); // Event API changed
+    // }
 
     NIMCP_LOGGING_INFO("Symbolic logic engine detached from brain %p", (void*)brain);
     return engine;
 }
 
-symbolic_logic_t* brain_get_symbolic_logic(brain_t brain)
-{
-    // Validate input
-    if (!nimcp_validate_pointer(brain, "brain")) {
-        set_error("Brain is NULL");
-        return NULL;
-    }
-
-    return brain->logic_engine;
-}
+// brain_get_symbolic_logic is defined in src/core/brain/accessors/nimcp_brain_accessors.c
+// symbolic_logic_t* brain_get_symbolic_logic(brain_t brain)
+// {
+//     // Validate input
+//     if (!nimcp_validate_pointer(brain, "brain")) {
+//         set_error("Brain is NULL");
+//         return NULL;
+//     }
+//     return brain->symbolic_logic;
+// }
 
 bool brain_has_symbolic_logic(brain_t brain)
 {
@@ -151,5 +149,5 @@ bool brain_has_symbolic_logic(brain_t brain)
         return false;
     }
 
-    return brain->logic_engine != NULL;
+    return brain->symbolic_logic != NULL;
 }

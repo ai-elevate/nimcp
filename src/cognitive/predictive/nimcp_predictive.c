@@ -12,16 +12,34 @@
  * Inference: x ← x - β∇F  (find most likely state)
  * Action: a* = argmin_a E[F|a]  (expected free energy)
  *
+ * BIO-ASYNC INTEGRATION:
+ * - Module ID: 0x0337 (BIO_MODULE_PREDICTIVE)
+ * - Publishes: prediction errors, free energy updates
+ * - Subscribes: sensory inputs, prior updates
+ *
  * @author NIMCP Phase 10 Team
  * @date 2025-11-09
  */
 
+#define LOG_MODULE "predictive"
+
 #include "cognitive/nimcp_predictive.h"
-#include "utils/memory/nimcp_memory.h"
+#include "async/nimcp_bio_async.h"
+#include "async/nimcp_bio_router.h"
+#include "async/nimcp_bio_messages.h"
+#include "utils/memory/nimcp_unified_memory.h"
+#include "utils/logging/nimcp_logging.h"
 #include <string.h>
 #include <math.h>
 #include <stdio.h>
 #include <stdarg.h>
+#include "utils/memory/nimcp_memory_guards.h"  // For nimcp_calloc/nimcp_free
+
+//=============================================================================
+// BIO-ASYNC MODULE REGISTRATION
+//=============================================================================
+
+// NOTE: Uses BIO_MODULE_PREDICTIVE_CODING from nimcp_bio_messages.h (0x0407)
 
 //=============================================================================
 // Error Handling (module-local)
@@ -63,6 +81,10 @@ struct predictive_network_s {
     float prev_free_energy;              /**< For convergence check */
     uint64_t total_updates;              /**< Statistics */
     uint64_t total_inference_time_us;    /**< Performance tracking */
+
+    // Bio-async integration
+    bio_module_context_t bio_ctx;        /**< Bio-async module context */
+    bool bio_async_enabled;              /**< Bio-async registration status */
 };
 
 //=============================================================================
@@ -89,6 +111,8 @@ static bool update_states(predictive_network_t net, float step_size);
  */
 predictive_config_t predictive_default_config(void)
 {
+    LOG_DEBUG("Creating default predictive config");
+
     // Allocate default layer sizes on heap (freed by caller)
     uint32_t* default_sizes = (uint32_t*)nimcp_malloc(
         PRED_DEFAULT_LAYERS * sizeof(uint32_t));
@@ -141,13 +165,19 @@ predictive_network_t predictive_create(const predictive_config_t* config)
     if (actual_config.num_layers == 0 || actual_config.num_layers > PRED_MAX_LAYERS) {
         set_error("Invalid num_layers: %u (must be 1-%d)",
                  actual_config.num_layers, PRED_MAX_LAYERS);
+        LOG_ERROR("Invalid num_layers: %u (must be 1-%d)",
+                 actual_config.num_layers, PRED_MAX_LAYERS);
         return NULL;
     }
 
     if (!actual_config.layer_sizes) {
         set_error("NULL layer_sizes");
+        LOG_ERROR("NULL layer_sizes provided");
         return NULL;
     }
+
+    LOG_INFO("Creating predictive network: num_layers=%u, learning_rate=%.4f",
+             actual_config.num_layers, actual_config.learning_rate);
 
     // =========================================================================
     // ALLOCATE: Network structure
@@ -157,6 +187,8 @@ predictive_network_t predictive_create(const predictive_config_t* config)
         sizeof(struct predictive_network_s));
     if (!net) {
         set_error("Failed to allocate predictive_network_s");
+        LOG_ERROR("Failed to allocate predictive_network_s (%zu bytes)",
+                 sizeof(struct predictive_network_s));
         return NULL;
     }
 
@@ -165,6 +197,35 @@ predictive_network_t predictive_create(const predictive_config_t* config)
     net->prev_free_energy = INFINITY;
     net->total_updates = 0;
     net->total_inference_time_us = 0;
+
+    // =========================================================================
+    // BIO-ASYNC: Initialize and register with router
+    // =========================================================================
+
+    net->bio_ctx = NULL;
+    net->bio_async_enabled = false;
+
+    LOG_DEBUG("predictive: Checking bio-async router initialization...");
+    if (bio_router_is_initialized()) {
+        LOG_DEBUG("predictive: Bio-router initialized, registering module (id=%d, inbox_capacity=32)...",
+                  BIO_MODULE_PREDICTIVE_CODING);
+        bio_module_info_t bio_info = {
+            .module_id = BIO_MODULE_PREDICTIVE_CODING,
+            .module_name = "predictive",
+            .inbox_capacity = 32,
+            .user_data = net
+        };
+        net->bio_ctx = bio_router_register_module(&bio_info);
+        if (net->bio_ctx) {
+            net->bio_async_enabled = true;
+            LOG_INFO("predictive: Bio-async communication enabled (module_id=%d)",
+                    BIO_MODULE_PREDICTIVE_CODING);
+        } else {
+            LOG_WARN("predictive: Bio-async registration failed - module will operate without async messaging");
+        }
+    } else {
+        LOG_DEBUG("predictive: Bio-router not initialized, skipping async registration");
+    }
 
     // =========================================================================
     // ALLOCATE: Layers array
@@ -234,6 +295,17 @@ void predictive_destroy(predictive_network_t net)
 {
     if (!net) {
         return;
+    }
+
+    LOG_INFO("predictive: Destroying predictive network (num_layers=%u)...", net->num_layers);
+
+    // Unregister from bio-async router
+    if (net->bio_async_enabled && net->bio_ctx) {
+        LOG_DEBUG("predictive: Unregistering from bio-async router...");
+        bio_router_unregister_module(net->bio_ctx);
+        net->bio_ctx = NULL;
+        net->bio_async_enabled = false;
+        LOG_INFO("predictive: Bio-async communication disabled");
     }
 
     if (net->layers) {

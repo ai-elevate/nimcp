@@ -21,7 +21,7 @@
 // - Dependency Inversion: Depends on abstractions (function pointers)
 //=============================================================================
 
-#include "nimcp_ethics.h"
+#include "cognitive/ethics/nimcp_ethics.h"
 #include <math.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -35,6 +35,15 @@
 #include "utils/thread/nimcp_thread.h"
 #include "utils/time/nimcp_time.h"
 #include "utils/logging/nimcp_logging.h"
+
+// BIO-ASYNC INTEGRATION
+#include "async/nimcp_bio_async.h"
+#include "async/nimcp_bio_messages.h"
+#include "async/nimcp_bio_router.h"
+#include "utils/memory/nimcp_unified_memory.h"
+#include "nimcp.h"  // For error codes
+
+#define LOG_MODULE "ethics"
 
 // Phase 10.3: Emotional working memory integration
 #include "cognitive/nimcp_working_memory.h"
@@ -171,6 +180,11 @@ struct ethics_engine_struct {
     bool asimov_laws_locked;                // Whether laws are mprotect'd
     uint8_t asimov_laws_hash[32];           // SHA-256 hash for integrity
     uint64_t asimov_violations;             // Count of Asimov violations
+
+    // BIO-ASYNC INTEGRATION
+    bio_module_context_t bio_ctx;           // Bio-async module context
+    bool bio_async_enabled;                 // Bio-async registration status
+    unified_mem_manager_t mem_mgr;          // Unified memory manager
 };
 
 struct empathy_network_struct {
@@ -1156,6 +1170,120 @@ static void add_golden_rule_policy(ethics_engine_t engine)
     hash_table_insert(engine->policy_table, &engine->policies[0]);
 }
 
+//=============================================================================
+// BIO-ASYNC MESSAGE HANDLERS
+//=============================================================================
+
+/**
+ * @brief Broadcast ethics evaluation response via bio-async
+ */
+static void bio_broadcast_ethics_response(ethics_engine_t engine,
+                                          const ethics_evaluation_t* eval,
+                                          uint32_t action_id);
+
+/**
+ * @brief Bio-async message handler: Handle ethics evaluation request
+ *
+ * WHAT: Process incoming request to evaluate action's ethical implications
+ * WHY:  Enable distributed systems to query ethics via bio-async
+ * HOW:  Extract action context, call ethics_evaluate_action, send response via promise
+ *
+ * NOTE: Stakeholder data follows immediately after bio_msg_ethics_request_t
+ */
+static nimcp_error_t handle_ethics_request(
+    const void* msg,
+    size_t msg_size,
+    nimcp_bio_promise_t response_promise,
+    void* user_data)
+{
+    if (!msg || !user_data) {
+        return NIMCP_ERROR_NULL_ARG;
+    }
+
+    if (msg_size < sizeof(bio_msg_ethics_request_t)) {
+        LOG_ERROR("Ethics request too small: %zu bytes", msg_size);
+        return NIMCP_ERROR_INVALID;
+    }
+
+    const bio_msg_ethics_request_t* request = (const bio_msg_ethics_request_t*)msg;
+    ethics_engine_t engine = (ethics_engine_t)user_data;
+
+    LOG_DEBUG("Received ethics evaluation request: action=%u, context=%u, urgency=%.2f, stakeholders=%u",
+              request->action_id, request->context_id, request->urgency, request->stakeholder_count);
+
+    // Create action context from request
+    // Note: This is a simplified version - full implementation would extract
+    // stakeholder data from message payload
+    action_context_t action = {0};
+    action.num_affected_agents = request->stakeholder_count;
+
+    // For demonstration, we create a simple evaluation
+    // In production, we'd extract full stakeholder impact data from the message payload
+    action.predicted_harm = request->urgency * 0.5f;  // Simple heuristic
+    action.fairness_violation = 0.0f;
+    action.deception_level = 0.0f;
+    action.autonomy_violation = 0.0f;
+    action.privacy_violation = 0.0f;
+    action.consent_violation = 0.0f;
+
+    // Perform ethics evaluation
+    ethics_evaluation_t eval = ethics_engine_evaluate_action(engine, &action);
+
+    LOG_DEBUG("Ethics evaluation complete: score=%.2f, allowed=%s, confidence=%.2f",
+              eval.golden_rule_score, eval.allowed ? "true" : "false", eval.confidence);
+
+    // Send response via promise if provided
+    if (response_promise) {
+        bio_msg_ethics_response_t response = {0};
+        bio_msg_init_header(&response.header, BIO_MSG_ETHICS_EVALUATION_RESPONSE,
+                            bio_module_context_get_id(engine->bio_ctx), 0, sizeof(response));
+        response.action_id = request->action_id;
+        response.ethical_score = eval.golden_rule_score;
+        response.confidence = eval.confidence;
+        response.veto = !eval.allowed;
+        response.primary_concern = eval.primary_violation;
+        strncpy(response.explanation, eval.explanation, sizeof(response.explanation) - 1);
+
+        nimcp_bio_promise_complete_sized(response_promise, &response, sizeof(response));
+
+        LOG_DEBUG("Sent ethics response: score=%.2f, veto=%s, explanation='%s'",
+                  response.ethical_score, response.veto ? "true" : "false", response.explanation);
+    }
+
+    // Broadcast if action is blocked or has low ethical score
+    if (!eval.allowed || eval.golden_rule_score < 0.0f) {
+        bio_broadcast_ethics_response(engine, &eval, request->action_id);
+    }
+
+    return NIMCP_SUCCESS;
+}
+
+/**
+ * @brief Broadcast ethics evaluation response via bio-async
+ */
+static void bio_broadcast_ethics_response(ethics_engine_t engine,
+                                          const ethics_evaluation_t* eval,
+                                          uint32_t action_id) {
+    if (!engine || !eval || !engine->bio_async_enabled || !engine->bio_ctx) {
+        return;
+    }
+
+    bio_msg_ethics_response_t msg = {0};
+    bio_msg_init_header(&msg.header, BIO_MSG_ETHICS_EVALUATION_RESPONSE,
+                        bio_module_context_get_id(engine->bio_ctx), 0, sizeof(msg));
+    msg.header.flags |= BIO_MSG_FLAG_BROADCAST;
+    msg.action_id = action_id;
+    msg.ethical_score = eval->golden_rule_score;
+    msg.confidence = eval->confidence;
+    msg.veto = !eval->allowed;
+    msg.primary_concern = eval->primary_violation;
+    strncpy(msg.explanation, eval->explanation, sizeof(msg.explanation) - 1);
+
+    bio_router_broadcast(engine->bio_ctx, &msg, sizeof(msg));
+    LOG_DEBUG("Broadcast ethics evaluation: score=%.2f, veto=%s",
+              eval->golden_rule_score, msg.veto ? "true" : "false");
+}
+
 /**
  * @brief Creates ethics engine with Golden Rule foundation
  *
@@ -1243,6 +1371,8 @@ ethics_engine_t ethics_engine_create(const ethics_config_t* config)
     engine->golden_rule_threshold = config->golden_rule_threshold;
     engine->empathy_weight = config->empathy_weight;
     engine->enable_learning = config->enable_learning;
+    engine->bio_ctx = NULL;
+    engine->bio_async_enabled = false;
 
     // Initialize Asimov's Laws configuration (NIMCP 2.5.2)
     engine->asimov_config = asimov_default_config();
@@ -1253,6 +1383,24 @@ ethics_engine_t ethics_engine_create(const ethics_config_t* config)
     // Add foundational Golden Rule policy
     add_golden_rule_policy(engine);
 
+    // Register with bio-async router if enabled
+    if (config->enable_bio_async && bio_router_is_initialized()) {
+        bio_module_info_t bio_info = {
+            .module_id = BIO_MODULE_ETHICS,
+            .module_name = "ethics",
+            .inbox_capacity = 64,
+            .user_data = engine
+        };
+        engine->bio_ctx = bio_router_register_module(&bio_info);
+        if (engine->bio_ctx) {
+            engine->bio_async_enabled = true;
+            // Register message handlers
+            bio_router_register_handler(engine->bio_ctx, BIO_MSG_ETHICS_EVALUATION_REQUEST, handle_ethics_request);
+            LOG_INFO("Bio-async communication enabled with handlers");
+        } else {
+            LOG_WARN("Bio-async registration failed");
+        }
+    }
 
     return engine;
 }
@@ -1269,6 +1417,14 @@ void ethics_engine_destroy(ethics_engine_t engine)
     // Guard clause: Validate input
     if (!engine)
         return;
+
+    // Unregister from bio-async router
+    if (engine->bio_async_enabled && engine->bio_ctx) {
+        bio_router_unregister_module(engine->bio_ctx);
+        engine->bio_ctx = NULL;
+        engine->bio_async_enabled = false;
+        LOG_INFO("Bio-async communication disabled");
+    }
 
     // Cleanup incident logging (NIMCP 2.5.1)
     cleanup_incident_logging(engine);
@@ -1649,6 +1805,9 @@ ethics_evaluation_t ethics_engine_evaluate_action(ethics_engine_t engine,
 
     // Step 7: Learn from evaluation (O(1))
     update_learning(engine, action, &result);
+
+    // Broadcast evaluation result via bio-async
+    bio_broadcast_ethics_response(engine, &result, 0);  // No action_id in context
 
     return result;
 }
@@ -2476,7 +2635,7 @@ bool ethics_log_incident(ethics_engine_t engine, const ethics_incident_t* incide
     nimcp_mutex_unlock(&engine->incident_mutex);
 
     // Log to console
-    NIMCP_LOGGING_INFO("[ETHICS] Incident logged: type=%d severity=%.2f action=%d",
+    LOG_INFO("Incident logged: type=%d severity=%.2f action=%d",
                        incident->violation_type, incident->severity, incident->action_taken);
 
     return true;
@@ -2848,6 +3007,6 @@ bool ethics_export_incidents(ethics_engine_t engine, const char* filepath, const
     fclose(file);
     nimcp_free(incidents);
 
-    NIMCP_LOGGING_INFO("[ETHICS] Exported %u incidents to %s", count, filepath);
+    LOG_INFO("Exported %u incidents to %s", count, filepath);
     return true;
 }

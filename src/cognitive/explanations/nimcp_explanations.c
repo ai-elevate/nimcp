@@ -26,6 +26,15 @@
 #include <stdio.h>
 #include <stdarg.h>
 #include <math.h>
+#include "async/nimcp_bio_async.h"
+#include "async/nimcp_bio_router.h"
+#include "async/nimcp_bio_messages.h"
+#include "utils/logging/nimcp_logging.h"
+#include "utils/memory/nimcp_unified_memory.h"
+
+#define LOG_MODULE "cognitive.explanations"
+#define BIO_MODULE_COGNITIVE_EXPLANATIONS 0x0342
+
 
 // =============================================================================
 // ERROR HANDLING (Thread-local)
@@ -72,6 +81,10 @@ struct explanation_generator_s {
     uint32_t why_generated;
     uint32_t how_generated;
     uint32_t counterfactuals_generated;
+
+    // Bio-async integration
+    bio_module_context_t bio_ctx;   /**< Bio-async module context */
+    bool bio_async_enabled;         /**< Bio-async registration status */
 };
 
 // =============================================================================
@@ -147,7 +160,24 @@ explanation_generator_t explanation_generator_create(const explanation_config_t*
 
     NIMCP_LOGGING_INFO("Explanation generator created");
 
-    return gen;
+    
+    // Bio-async registration
+    gen->bio_ctx = NULL;
+    gen->bio_async_enabled = false;
+    if (bio_router_is_initialized()) {
+        bio_module_info_t bio_info = {
+            .module_id = BIO_MODULE_KNOWLEDGE_EXPLANATIONS,
+            .module_name = "explanations",
+            .inbox_capacity = 32,
+            .user_data = gen
+        };
+        gen->bio_ctx = bio_router_register_module(&bio_info);
+        if (gen->bio_ctx) {
+            gen->bio_async_enabled = true;
+        }
+    }
+
+return gen;
 }
 
 /**
@@ -163,6 +193,7 @@ explanation_generator_t explanation_generator_create(const explanation_config_t*
  */
 void explanation_generator_destroy(explanation_generator_t gen)
 {
+    LOG_DEBUG("Destroying module");
     // =========================================================================
     // GUARD: NULL check
     // =========================================================================

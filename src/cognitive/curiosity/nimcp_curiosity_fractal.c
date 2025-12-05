@@ -18,12 +18,19 @@
  * @date 2025-11-11
  */
 
-#include "nimcp_curiosity.h"
+#include "cognitive/curiosity/nimcp_curiosity.h"
+#include "utils/logging/nimcp_logging.h"
+#include "async/nimcp_bio_router.h"
+#include "async/nimcp_bio_async.h"
+#include "async/nimcp_bio_messages.h"
+#include "utils/memory/nimcp_unified_memory.h"
 #include "utils/memory/nimcp_memory.h"
 #include "cognitive/nimcp_fractal_cognitive.h"
 #include "cognitive/knowledge/nimcp_knowledge.h"
 #include <stdlib.h>
 #include <math.h>
+
+#define LOG_MODULE "curiosity_fractal"
 
 //=============================================================================
 // Hub-Based Exploration

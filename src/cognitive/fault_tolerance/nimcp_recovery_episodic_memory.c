@@ -30,6 +30,15 @@
 #include <stdlib.h>
 #include <time.h>
 #include <math.h>
+#include "async/nimcp_bio_async.h"
+#include "async/nimcp_bio_router.h"
+#include "async/nimcp_bio_messages.h"
+#include "utils/logging/nimcp_logging.h"
+#include "utils/memory/nimcp_unified_memory.h"
+
+#define LOG_MODULE "cognitive.fault.recovery_episodic"
+#define BIO_MODULE_COGNITIVE_FAULT_RECOVERY_EPISODIC 0x035B
+
 
 //=============================================================================
 // LSH (Locality-Sensitive Hashing) Structures
@@ -88,6 +97,10 @@ struct episodic_memory {
 
     // ======== Statistics ========
     episodic_memory_stats_t stats;
+
+    // Bio-async integration
+    bio_module_context_t bio_ctx;   /**< Bio-async module context */
+    bool bio_async_enabled;         /**< Bio-async registration status */
 };
 
 //=============================================================================
@@ -196,6 +209,7 @@ static void lsh_bucket_clear(lsh_bucket_t* bucket)
  */
 static void lsh_bucket_destroy(lsh_bucket_t* bucket)
 {
+    LOG_DEBUG("Destroying module");
     if (bucket && bucket->episode_indices) {
         nimcp_free(bucket->episode_indices);
         bucket->episode_indices = NULL;
@@ -219,6 +233,7 @@ static void lsh_bucket_destroy(lsh_bucket_t* bucket)
  */
 static lsh_table_t* lsh_table_create(uint32_t num_buckets)
 {
+    LOG_DEBUG("Creating module");
     lsh_table_t* table = nimcp_calloc(1, sizeof(lsh_table_t));
     if (!table) return NULL;
 
@@ -248,6 +263,7 @@ static lsh_table_t* lsh_table_create(uint32_t num_buckets)
  */
 static void lsh_table_destroy(lsh_table_t* table)
 {
+    LOG_DEBUG("Destroying module");
     if (!table) return;
 
     if (table->buckets) {
@@ -436,11 +452,29 @@ episodic_memory_t* episodic_memory_create_custom(
     LOG_INFO("Created episodic memory: capacity=%u, lsh_tables=%u",
              memory->capacity, memory->num_lsh_tables);
 
-    return memory;
+    
+    // Bio-async registration
+    memory->bio_ctx = NULL;
+    memory->bio_async_enabled = false;
+    if (bio_router_is_initialized()) {
+        bio_module_info_t bio_info = {
+            .module_id = BIO_MODULE_MEMORY_EPISODIC_RECOVERY,
+            .module_name = "recovery_episodic_memory",
+            .inbox_capacity = 32,
+            .user_data = memory
+        };
+        memory->bio_ctx = bio_router_register_module(&bio_info);
+        if (memory->bio_ctx) {
+            memory->bio_async_enabled = true;
+        }
+    }
+
+return memory;
 }
 
 void episodic_memory_destroy(episodic_memory_t* memory)
 {
+    LOG_DEBUG("Destroying module");
     if (!memory) return;
 
     // Free LSH tables

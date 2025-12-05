@@ -25,15 +25,25 @@
  * @date 2025-11-11
  */
 
-#include "nimcp_global_workspace.h"
+#include "cognitive/global_workspace/nimcp_global_workspace.h"
+#include "utils/memory/nimcp_unified_memory.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/memory/nimcp_memory_pool.h"
+#include "utils/logging/nimcp_logging.h"
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
 #include <math.h>
 #include <time.h>
 #include <assert.h>
+
+// Bio-async integration
+#include "nimcp.h"  // For error codes
+#include "async/nimcp_bio_async.h"
+#include "async/nimcp_bio_messages.h"
+#include "async/nimcp_bio_router.h"
+
+#define LOG_MODULE "global_workspace"
 
 //=============================================================================
 // Internal Structures
@@ -82,7 +92,62 @@ struct global_workspace_struct {
     // Phase 1.5: Memory pools for hot-path allocations
     memory_pool_t broadcast_content_pool;   /**< Pool for broadcast content buffers */
     memory_pool_t history_content_pool;     /**< Pool for history content buffers */
+
+    // Bio-async integration
+    bio_module_context_t bio_ctx;           /**< Bio-async module context */
+    bool bio_async_enabled;                 /**< Bio-async registration status */
 };
+
+//=============================================================================
+// BIO-ASYNC MESSAGE HANDLERS
+//=============================================================================
+
+/**
+ * @brief Handle attention shift via bio-async
+ */
+static nimcp_error_t handle_attention_shift(
+    const void* msg,
+    size_t msg_size,
+    nimcp_bio_promise_t response_promise,
+    void* user_data)
+{
+    (void)msg_size;
+    (void)response_promise;
+
+    if (!msg || !user_data) {
+        return NIMCP_ERROR_NULL_ARG;
+    }
+
+    const bio_msg_attention_shift_t* shift = (const bio_msg_attention_shift_t*)msg;
+    global_workspace_t* ws = (global_workspace_t*)user_data;
+    (void)ws;
+
+    LOG_DEBUG("Received attention shift: target=%u, weight=%.2f",
+              shift->target_id, shift->attention_weight);
+
+    // TODO: Process attention shift
+    return NIMCP_SUCCESS;
+}
+
+/**
+ * @brief Broadcast workspace broadcast event
+ * Note: Using internal struct pointer (struct global_workspace_struct*) instead of typedef
+ */
+static void bio_broadcast_workspace_event(struct global_workspace_struct* ws, uint32_t broadcast_id, float strength) {
+    if (!ws || !ws->bio_async_enabled || !ws->bio_ctx) {
+        return;
+    }
+
+    bio_msg_attention_shift_t msg = {};
+    bio_msg_init_header(&msg.header, BIO_MSG_ATTENTION_SHIFT,
+                        bio_module_context_get_id(ws->bio_ctx), 0, sizeof(msg));
+    msg.header.flags |= BIO_MSG_FLAG_BROADCAST;
+    msg.target_id = broadcast_id;
+    msg.attention_weight = strength;
+
+    bio_router_broadcast(ws->bio_ctx, &msg, sizeof(msg));
+    LOG_DEBUG("Broadcast: workspace event %u", broadcast_id);
+}
 
 //=============================================================================
 // Internal Helper Functions
@@ -515,6 +580,35 @@ global_workspace_t* global_workspace_create_custom(
     };
     workspace->history_content_pool = memory_pool_create(&history_pool_config);
 
+    // Initialize bio-async fields
+    workspace->bio_ctx = NULL;
+    workspace->bio_async_enabled = false;
+
+    // Register with bio-async router if available
+    NIMCP_LOGGING_DEBUG("global_workspace: Checking bio-async router initialization...");
+    if (bio_router_is_initialized()) {
+        NIMCP_LOGGING_DEBUG("global_workspace: Bio-router initialized, registering module (id=%d, inbox_capacity=64)...",
+                           BIO_MODULE_GLOBAL_WORKSPACE);
+        bio_module_info_t bio_info = {
+            .module_id = BIO_MODULE_GLOBAL_WORKSPACE,
+            .module_name = "global_workspace",
+            .inbox_capacity = 64,
+            .user_data = workspace
+        };
+        workspace->bio_ctx = bio_router_register_module(&bio_info);
+        if (workspace->bio_ctx) {
+            workspace->bio_async_enabled = true;
+            // Register message handlers
+            bio_router_register_handler(workspace->bio_ctx, BIO_MSG_ATTENTION_SHIFT, handle_attention_shift);
+            NIMCP_LOGGING_INFO("global_workspace: Bio-async communication enabled with handlers (module_id=%d)",
+                              BIO_MODULE_GLOBAL_WORKSPACE);
+        } else {
+            NIMCP_LOGGING_WARN("global_workspace: Bio-async registration failed - module will operate without async messaging");
+        }
+    } else {
+        NIMCP_LOGGING_DEBUG("global_workspace: Bio-router not initialized, skipping async registration");
+    }
+
     // Note: global_workspace_t is typedef'd as a pointer, so function signature
     // expects global_workspace_t* (double pointer). Cast to match.
     return (global_workspace_t*)workspace;
@@ -524,6 +618,14 @@ void global_workspace_destroy(global_workspace_t* workspace) {
     if (workspace == NULL) return;
 
     struct global_workspace_struct* ws = (struct global_workspace_struct*)workspace;
+
+    // Unregister from bio-async router
+    if (ws->bio_async_enabled && ws->bio_ctx) {
+        bio_router_unregister_module(ws->bio_ctx);
+        ws->bio_ctx = NULL;
+        ws->bio_async_enabled = false;
+        NIMCP_LOGGING_INFO("Bio-async communication disabled for global_workspace");
+    }
 
     // Free history content buffers
     if (ws->history_content != NULL) {

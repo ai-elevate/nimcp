@@ -12,11 +12,19 @@
  */
 
 #include "cognitive/nimcp_empathetic_response.h"
-#include "utils/memory/nimcp_memory.h"
+#include "utils/memory/nimcp_unified_memory.h"
+#include "utils/logging/nimcp_logging.h"
+#include "async/nimcp_bio_async.h"
+#include "async/nimcp_bio_router.h"
+#include "async/nimcp_bio_messages.h"
 #include <string.h>
 #include <stdio.h>
 #include <ctype.h>
 #include <math.h>
+#include "utils/memory/nimcp_memory_guards.h"  // For nimcp_calloc/nimcp_free
+
+#define LOG_MODULE "EMPATHY"
+#define BIO_MODULE_EMPATHY 0x0322
 
 // ============================================================================
 // Internal Structures
@@ -31,6 +39,10 @@ struct empathetic_response_engine_struct {
     float avg_effectiveness;
     uint32_t strategy_usage[8];           // Count per strategy type
     float strategy_effectiveness[8];      // Average effectiveness per strategy
+
+    // Bio-async integration
+    bio_module_context_t bio_ctx;   /**< Bio-async module context */
+    bool bio_async_enabled;         /**< Bio-async registration status */
 };
 
 // ============================================================================
@@ -136,7 +148,24 @@ empathetic_response_engine_t empathetic_response_create(
     engine->responses_generated = 0;
     engine->avg_effectiveness = 0.0f;
 
-    return engine;
+    
+    // Bio-async registration
+    engine->bio_ctx = NULL;
+    engine->bio_async_enabled = false;
+    if (bio_router_is_initialized()) {
+        bio_module_info_t bio_info = {
+            .module_id = BIO_MODULE_EMPATHETIC_RESPONSE,
+            .module_name = "empathetic_response",
+            .inbox_capacity = 32,
+            .user_data = engine
+        };
+        engine->bio_ctx = bio_router_register_module(&bio_info);
+        if (engine->bio_ctx) {
+            engine->bio_async_enabled = true;
+        }
+    }
+
+return engine;
 }
 
 void empathetic_response_destroy(empathetic_response_engine_t engine)

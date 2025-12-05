@@ -33,6 +33,15 @@
 #include <string.h>
 #include <math.h>
 #include <stdio.h>
+#include "async/nimcp_bio_async.h"
+#include "async/nimcp_bio_router.h"
+#include "async/nimcp_bio_messages.h"
+#include "utils/logging/nimcp_logging.h"
+#include "utils/memory/nimcp_unified_memory.h"
+
+#define LOG_MODULE "cognitive.fault.prediction"
+#define BIO_MODULE_COGNITIVE_FAULT_PREDICTION 0x0356
+
 
 #ifdef _WIN32
 #include <windows.h>
@@ -79,6 +88,10 @@ struct failure_predictor {
 
     // Thread safety
     nimcp_rwlock_t lock;
+
+    // Bio-async integration
+    bio_module_context_t bio_ctx;   /**< Bio-async module context */
+    bool bio_async_enabled;         /**< Bio-async registration status */
 };
 
 //=============================================================================
@@ -210,6 +223,7 @@ failure_predictor_config_t failure_predictor_default_config(void) {
 }
 
 failure_predictor_t* failure_predictor_create(void) {
+    LOG_DEBUG("Creating module");
     failure_predictor_config_t config = failure_predictor_default_config();
     return failure_predictor_create_custom(&config);
 }
@@ -285,10 +299,28 @@ failure_predictor_t* failure_predictor_create_custom(
     LOG_INFO("Created failure predictor (max_predictions=%u, max_indicators=%u)",
              config->max_predictions, config->max_indicators);
 
-    return predictor;
+    
+    // Bio-async registration
+    predictor->bio_ctx = NULL;
+    predictor->bio_async_enabled = false;
+    if (bio_router_is_initialized()) {
+        bio_module_info_t bio_info = {
+            .module_id = BIO_MODULE_SYSTEM_FAILURE_PREDICTION,
+            .module_name = "failure_prediction",
+            .inbox_capacity = 32,
+            .user_data = predictor
+        };
+        predictor->bio_ctx = bio_router_register_module(&bio_info);
+        if (predictor->bio_ctx) {
+            predictor->bio_async_enabled = true;
+        }
+    }
+
+return predictor;
 }
 
 void failure_predictor_destroy(failure_predictor_t* predictor) {
+    LOG_DEBUG("Destroying module");
     if (!predictor) {
         return;
     }
@@ -301,6 +333,13 @@ void failure_predictor_destroy(failure_predictor_t* predictor) {
 
     if (predictor->predictions) {
         nimcp_free(predictor->predictions);
+    }
+
+    // Unregister from bio-router
+    if (predictor->bio_async_enabled && predictor->bio_ctx) {
+        bio_router_unregister_module(predictor->bio_ctx);
+        predictor->bio_ctx = NULL;
+        predictor->bio_async_enabled = false;
     }
 
     nimcp_free(predictor);

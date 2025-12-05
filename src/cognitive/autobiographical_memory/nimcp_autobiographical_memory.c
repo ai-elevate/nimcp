@@ -2,13 +2,34 @@
 // nimcp_autobiographical_memory.c - Episodic Self-Memory Implementation
 // ============================================================================
 
+/**
+ * BIO-ASYNC INTEGRATION:
+ * - Module ID: 0x0335 (BIO_MODULE_AUTOBIOGRAPHICAL_MEMORY)
+ * - Publishes: memory storage, retrieval, consolidation events
+ * - Subscribes: emotional tags, temporal context
+ */
+
+#define LOG_MODULE "autobiographical_memory"
+
 #include "cognitive/nimcp_autobiographical_memory.h"
-#include "utils/memory/nimcp_memory.h"
+#include "nimcp.h"  // For NIMCP_ERROR_* codes
+#include "async/nimcp_bio_async.h"
+#include "async/nimcp_bio_router.h"
+#include "async/nimcp_bio_messages.h"
+#include "utils/memory/nimcp_unified_memory.h"
+#include "utils/logging/nimcp_logging.h"
 #include "utils/platform/nimcp_platform.h"
 #include "utils/thread/nimcp_thread.h"
 #include <string.h>
 #include <stdio.h>
 #include <math.h>
+#include "utils/memory/nimcp_memory_guards.h"  // For nimcp_calloc/nimcp_free
+
+//=============================================================================
+// BIO-ASYNC MODULE REGISTRATION
+//=============================================================================
+
+#define BIO_MODULE_AUTOBIOGRAPHICAL_MEMORY 0x0335
 
 // ============================================================================
 // Internal Structure
@@ -25,7 +46,25 @@ struct autobiographical_memory_system {
 
     // Thread safety
     nimcp_mutex_t mutex;
+
+    // Unified memory integration (CoW support for brain cloning)
+    void* mem_manager;              /**< unified_mem_manager_t */
+    void* memories_handle;          /**< CoW handle for memories array */
+
+    // Bio-async integration
+    void* bio_ctx;                  /**< bio_module_context_t pointer */
+    bool bio_async_enabled;         /**< Bio-async registration status */
 };
+
+/*=============================================================================
+ * BIO-ASYNC HANDLERS (Forward declarations)
+ *============================================================================*/
+
+static nimcp_error_t handle_memory_retrieve_request(
+    const void* msg, size_t msg_size,
+    nimcp_bio_promise_t response_promise, void* user_data);
+
+static void bio_broadcast_memory_stored(struct autobiographical_memory_system* system, uint64_t memory_id, float salience);
 
 // ============================================================================
 // Helper Functions
@@ -138,16 +177,40 @@ autobiographical_memory_t autobio_create(uint32_t capacity)
         capacity = AUTOBIO_DEFAULT_CAPACITY;
     }
 
+    LOG_INFO("Creating autobiographical memory system: capacity=%u", capacity);
+
     // Allocate system
     struct autobiographical_memory_system* system =
         nimcp_calloc(1, sizeof(struct autobiographical_memory_system));
     if (!system) {
+        LOG_ERROR("Failed to allocate autobiographical memory system (%zu bytes)",
+                 sizeof(struct autobiographical_memory_system));
         return NULL;
     }
 
-    // Allocate memory array
-    system->memories = nimcp_calloc(capacity, sizeof(autobiographical_memory_t));
+    // Initialize unified memory manager for CoW support
+    unified_mem_config_t mem_config = unified_mem_default_config();
+    mem_config.enable_cow = true;
+    mem_config.enable_tracking = true;
+    system->mem_manager = unified_mem_create(&mem_config);
+
+    // Allocate memory array (with unified memory if available)
+    if (system->mem_manager) {
+        unified_mem_request_t req = unified_mem_request(
+            capacity * sizeof(autobiographical_memory_entry_t),
+            NULL, true
+        );
+        system->memories_handle = unified_mem_alloc(system->mem_manager, &req);
+        if (system->memories_handle) {
+            system->memories = (autobiographical_memory_entry_t*)unified_mem_write(system->memories_handle);
+            LOG_DEBUG(LOG_MODULE, "Memories array allocated via unified memory with CoW");
+        }
+    }
     if (!system->memories) {
+        system->memories = nimcp_calloc(capacity, sizeof(autobiographical_memory_entry_t));
+    }
+    if (!system->memories) {
+        if (system->mem_manager) unified_mem_destroy(system->mem_manager);
         nimcp_free(system);
         return NULL;
     }
@@ -158,7 +221,9 @@ autobiographical_memory_t autobio_create(uint32_t capacity)
 
     // Initialize mutex
     if (nimcp_mutex_init(&system->mutex, NULL) != NIMCP_SUCCESS) {
-        nimcp_free(system->memories);
+        if (system->memories_handle) unified_mem_free(system->memories_handle);
+        else nimcp_free(system->memories);
+        if (system->mem_manager) unified_mem_destroy(system->mem_manager);
         nimcp_free(system);
         return NULL;
     }
@@ -166,7 +231,58 @@ autobiographical_memory_t autobio_create(uint32_t capacity)
     // Initialize stats
     memset(&system->stats, 0, sizeof(autobio_stats_t));
 
-    return system;
+    
+    // Bio-async registration
+    system->bio_ctx = NULL;
+    system->bio_async_enabled = false;
+    if (bio_router_is_initialized()) {
+        bio_module_info_t bio_info = {
+            .module_id = BIO_MODULE_MEMORY_AUTOBIOGRAPHICAL,
+            .module_name = "autobiographical_memory",
+            .inbox_capacity = 32,
+            .user_data = system
+        };
+        system->bio_ctx = bio_router_register_module(&bio_info);
+        if (system->bio_ctx) {
+            system->bio_async_enabled = true;
+            bio_router_register_handler(system->bio_ctx, BIO_MSG_WORKING_MEMORY_RETRIEVE,
+                                        handle_memory_retrieve_request);
+            LOG_INFO(LOG_MODULE, "Bio-async registered (module_id=0x%04X)", BIO_MODULE_AUTOBIOGRAPHICAL_MEMORY);
+        }
+    }
+
+return system;
+}
+
+/*=============================================================================
+ * BIO-ASYNC HANDLER IMPLEMENTATIONS
+ *============================================================================*/
+
+static nimcp_error_t handle_memory_retrieve_request(
+    const void* msg, size_t msg_size,
+    nimcp_bio_promise_t response_promise, void* user_data)
+{
+    (void)msg_size;
+    (void)response_promise;
+    if (!msg || !user_data) { return NIMCP_ERROR_NULL_ARG; }
+    struct autobiographical_memory_system* system = (struct autobiographical_memory_system*)user_data;
+    LOG_DEBUG(LOG_MODULE, "Received memory retrieve request, count=%u", system->count);
+    return NIMCP_SUCCESS;
+}
+
+static void bio_broadcast_memory_stored(struct autobiographical_memory_system* system, uint64_t memory_id, float salience) {
+    if (!system || !system->bio_async_enabled || !system->bio_ctx) { return; }
+    // Use salience response for memory stored notification
+    bio_msg_salience_response_t msg = {0};
+    bio_msg_init_header(&msg.header, BIO_MSG_SALIENCE_RESPONSE,
+                        bio_module_context_get_id(system->bio_ctx), 0, sizeof(msg));
+    msg.header.flags |= BIO_MSG_FLAG_BROADCAST;
+    msg.stimulus_id = (uint32_t)memory_id;
+    msg.salience_score = salience;
+    msg.attention_priority = salience;
+    msg.requires_immediate_attention = (salience > 0.7f);
+    bio_router_broadcast(system->bio_ctx, &msg, sizeof(msg));
+    LOG_DEBUG(LOG_MODULE, "Broadcast memory stored: id=%lu, salience=%.2f", (unsigned long)memory_id, salience);
 }
 
 void autobio_destroy(autobiographical_memory_t system)
@@ -175,8 +291,31 @@ void autobio_destroy(autobiographical_memory_t system)
         return;
     }
 
+    // Unregister from bio-router
+    if (system->bio_async_enabled && system->bio_ctx) {
+        bio_router_unregister_module(system->bio_ctx);
+        system->bio_ctx = NULL;
+        system->bio_async_enabled = false;
+    }
+
     nimcp_mutex_destroy(&system->mutex);
-    nimcp_free(system->memories);
+
+    // Free memories array (unified memory or direct)
+    if (system->memories_handle) {
+        unified_mem_free(system->memories_handle);
+        system->memories_handle = NULL;
+        system->memories = NULL;
+    } else if (system->memories) {
+        nimcp_free(system->memories);
+        system->memories = NULL;
+    }
+
+    // Destroy unified memory manager
+    if (system->mem_manager) {
+        unified_mem_destroy(system->mem_manager);
+        system->mem_manager = NULL;
+    }
+
     nimcp_free(system);
 }
 

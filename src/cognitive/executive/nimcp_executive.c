@@ -28,6 +28,15 @@
 #include <string.h>
 #include <stdio.h>
 #include <stdarg.h>
+#include "nimcp.h"  // For error codes
+#include "async/nimcp_bio_async.h"
+#include "async/nimcp_bio_router.h"
+#include "async/nimcp_bio_messages.h"
+#include "utils/logging/nimcp_logging.h"
+#include "utils/memory/nimcp_unified_memory.h"
+
+#define LOG_MODULE "cognitive.executive"
+
 
 //=============================================================================
 // Constants
@@ -67,7 +76,61 @@ struct executive_controller {
 
     // Neuromodulation (Phase 10.x - Chemical modulation integration)
     brain_t brain;  /**< Brain reference for reading neurotransmitters */
+
+    // Bio-async integration
+    bio_module_context_t bio_ctx;  /**< Bio-async module context */
+    bool bio_async_enabled;        /**< Bio-async registration status */
 };
+
+//=============================================================================
+// BIO-ASYNC MESSAGE HANDLERS
+//=============================================================================
+
+/**
+ * @brief Handle decision request via bio-async
+ */
+static nimcp_error_t handle_decision_request(
+    const void* msg,
+    size_t msg_size,
+    nimcp_bio_promise_t response_promise,
+    void* user_data)
+{
+    (void)msg_size;
+    (void)response_promise;
+
+    if (!msg || !user_data) {
+        return NIMCP_ERROR_NULL_ARG;
+    }
+
+    const bio_msg_introspection_query_t* query = (const bio_msg_introspection_query_t*)msg;
+    executive_controller_t* exec = (executive_controller_t*)user_data;
+    (void)exec;
+    (void)query;
+
+    LOG_DEBUG("Received executive decision request");
+
+    // TODO: Process decision request and send response
+    return NIMCP_SUCCESS;
+}
+
+/**
+ * @brief Broadcast executive decision made
+ */
+static void bio_broadcast_decision(executive_controller_t* exec, uint32_t task_id, float confidence) {
+    if (!exec || !exec->bio_async_enabled || !exec->bio_ctx) {
+        return;
+    }
+
+    bio_msg_introspection_response_t msg = {};
+    bio_msg_init_header(&msg.header, BIO_MSG_DECISION_RESPONSE,
+                        bio_module_context_get_id(exec->bio_ctx), 0, sizeof(msg));
+    msg.header.flags |= BIO_MSG_FLAG_BROADCAST;
+    msg.query_type = task_id;
+    msg.confidence = confidence;
+
+    bio_router_broadcast(exec->bio_ctx, &msg, sizeof(msg));
+    LOG_DEBUG("Broadcast: executive decision for task %u", task_id);
+}
 
 //=============================================================================
 // Error Handling
@@ -238,6 +301,7 @@ static float compute_modulated_switch_cost(executive_controller_t* exec,
 
 executive_controller_t* executive_create(void)
 {
+    LOG_DEBUG("Creating module");
     executive_config_t default_config = {
         .max_tasks = DEFAULT_MAX_TASKS,
         .task_switch_cost_ms = DEFAULT_SWITCH_COST_MS,
@@ -329,6 +393,27 @@ executive_controller_t* executive_create_custom(const executive_config_t* config
     memset(&exec->stats, 0, sizeof(executive_stats_t));
     exec->brain = NULL;  // Initialize to NULL
 
+    // =========================================================================
+    // BIO-ASYNC: Register with bio-router
+    // =========================================================================
+    exec->bio_ctx = NULL;
+    exec->bio_async_enabled = false;
+    if (bio_router_is_initialized()) {
+        bio_module_info_t bio_info = {
+            .module_id = BIO_MODULE_EXECUTIVE,
+            .module_name = "executive",
+            .inbox_capacity = 32,
+            .user_data = exec
+        };
+        exec->bio_ctx = bio_router_register_module(&bio_info);
+        if (exec->bio_ctx) {
+            exec->bio_async_enabled = true;
+            // Register message handlers
+            bio_router_register_handler(exec->bio_ctx, BIO_MSG_DECISION_REQUEST, handle_decision_request);
+            LOG_INFO("Bio-async registered for executive module with handlers");
+        }
+    }
+
     return exec;
 }
 
@@ -370,6 +455,7 @@ void executive_set_brain(executive_controller_t* exec, brain_t brain)
  */
 void executive_destroy(executive_controller_t* exec)
 {
+    LOG_DEBUG("Destroying module");
     if (!exec) return;
 
     // WHAT: Free all tasks in queue
@@ -385,6 +471,13 @@ void executive_destroy(executive_controller_t* exec)
     // Free active task if exists
     if (exec->active_task) {
         nimcp_free(exec->active_task);
+    }
+
+    // Unregister from bio-router
+    if (exec->bio_async_enabled && exec->bio_ctx) {
+        bio_router_unregister_module(exec->bio_ctx);
+        exec->bio_ctx = NULL;
+        exec->bio_async_enabled = false;
     }
 
     // Free controller structure

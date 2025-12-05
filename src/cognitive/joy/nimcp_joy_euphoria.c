@@ -7,9 +7,63 @@
  */
 
 #include "cognitive/nimcp_joy_euphoria.h"
-#include "utils/memory/nimcp_memory.h"
+#include "utils/memory/nimcp_unified_memory.h"
+#include "utils/logging/nimcp_logging.h"
+#include "async/nimcp_bio_async.h"
+#include "async/nimcp_bio_router.h"
+#include "async/nimcp_bio_messages.h"
+#include "nimcp.h"
 #include <math.h>
 #include <string.h>
+#include "utils/memory/nimcp_memory_guards.h"  // For nimcp_calloc/nimcp_free
+
+#define LOG_MODULE "JOY"
+#define BIO_MODULE_JOY 0x0324
+
+/*=============================================================================
+ * BIO-ASYNC MESSAGE HANDLERS
+ *============================================================================*/
+
+/**
+ * @brief Handle incoming curiosity signal (joy from learning/discovery)
+ */
+static nimcp_error_t handle_curiosity_signal(
+    const void* msg, size_t msg_size,
+    nimcp_bio_promise_t response_promise, void* user_data)
+{
+    (void)msg_size;
+    (void)response_promise;
+    if (!msg || !user_data) { return NIMCP_ERROR_NULL_ARG; }
+
+    const bio_msg_curiosity_signal_t* signal = (const bio_msg_curiosity_signal_t*)msg;
+    joy_system_t* system = (joy_system_t*)user_data;
+    (void)system;
+
+    LOG_DEBUG(LOG_MODULE, "Received curiosity signal: intensity=%.2f, gain=%.2f",
+              signal->curiosity_intensity, signal->information_gain_estimate);
+
+    return NIMCP_SUCCESS;
+}
+
+/**
+ * @brief Broadcast joy/euphoria state to other modules
+ */
+static void bio_broadcast_joy_state(joy_system_t* system) {
+    if (!system || !system->bio_async_enabled || !system->bio_ctx_ptr) { return; }
+
+    bio_msg_salience_response_t msg = {0};
+    bio_msg_init_header(&msg.header, BIO_MSG_SALIENCE_RESPONSE,
+                        bio_module_context_get_id(system->bio_ctx_ptr), 0, sizeof(msg));
+    msg.header.flags |= BIO_MSG_FLAG_BROADCAST;
+    msg.stimulus_id = 0;
+    msg.salience_score = system->emotion.positive_valence;
+    msg.attention_priority = system->emotion.arousal;
+    msg.requires_immediate_attention = system->emotion.experiencing_euphoria;
+
+    bio_router_broadcast(system->bio_ctx_ptr, &msg, sizeof(msg));
+    LOG_DEBUG(LOG_MODULE, "Broadcast joy state: valence=%.2f, euphoria=%d",
+              system->emotion.positive_valence, system->emotion.experiencing_euphoria);
+}
 
 //=============================================================================
 // HELPER FUNCTIONS
@@ -57,7 +111,28 @@ joy_system_t* joy_system_create(void) {
     system->emotion.baseline_happiness = 0.5f;  // Moderate baseline
     system->emotion.state = JOY_EMOTION_STATE_NEUTRAL;
 
-    return system;
+    
+    // Bio-async registration
+    system->bio_ctx_ptr = NULL;
+    system->bio_async_enabled = false;
+    if (bio_router_is_initialized()) {
+        bio_module_info_t bio_info = {
+            .module_id = BIO_MODULE_JOY,
+            .module_name = "joy_euphoria",
+            .inbox_capacity = 32,
+            .user_data = system
+        };
+        system->bio_ctx_ptr = bio_router_register_module(&bio_info);
+        if (system->bio_ctx_ptr) {
+            system->bio_async_enabled = true;
+            /* Register message handlers */
+            bio_router_register_handler(system->bio_ctx_ptr, BIO_MSG_CURIOSITY_SIGNAL,
+                                        handle_curiosity_signal);
+            LOG_INFO(LOG_MODULE, "Bio-async registered (module_id=0x%04X)", BIO_MODULE_JOY);
+        }
+    }
+
+return system;
 }
 
 void joy_system_destroy(joy_system_t* system) {
@@ -66,6 +141,13 @@ void joy_system_destroy(joy_system_t* system) {
     // HOW:  Simple nimcp_free(no complex nested allocations)
 
     if (!system) return;
+    // Unregister from bio-router
+    if (system->bio_async_enabled && system->bio_ctx_ptr) {
+        bio_router_unregister_module(system->bio_ctx_ptr);
+        system->bio_ctx_ptr = NULL;
+        system->bio_async_enabled = false;
+    }
+
     nimcp_free(system);
 }
 
@@ -337,6 +419,11 @@ void joy_process_success(joy_system_t* system,
 
     // Update joy emotional tag
     system->emotion.joy_emotion = joy_get_emotion(system);
+
+    /* Broadcast joy state if significant */
+    if (system->emotion.positive_valence > 0.4f) {
+        bio_broadcast_joy_state(system);
+    }
 }
 
 void joy_update(joy_system_t* system, float dt, uint64_t current_time_us) {

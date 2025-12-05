@@ -7,9 +7,62 @@
  */
 
 #include "cognitive/nimcp_grief_and_loss.h"
-#include "utils/memory/nimcp_memory.h"
+#include "utils/memory/nimcp_unified_memory.h"
+#include "utils/logging/nimcp_logging.h"
+#include "async/nimcp_bio_async.h"
+#include "async/nimcp_bio_router.h"
+#include "async/nimcp_bio_messages.h"
+#include "nimcp.h"
 #include <math.h>
 #include <string.h>
+#include "utils/memory/nimcp_memory_guards.h"  // For nimcp_calloc/nimcp_free
+
+#define LOG_MODULE "GRIEF"
+#define BIO_MODULE_GRIEF 0x0323
+
+/*=============================================================================
+ * BIO-ASYNC MESSAGE HANDLERS
+ *============================================================================*/
+
+/**
+ * @brief Handle incoming query about grief state (e.g., from mental health module)
+ */
+static nimcp_error_t handle_grief_query(
+    const void* msg, size_t msg_size,
+    nimcp_bio_promise_t response_promise, void* user_data)
+{
+    (void)msg_size;
+    (void)response_promise;
+    if (!msg || !user_data) { return NIMCP_ERROR_NULL_ARG; }
+
+    grief_system_t* system = (grief_system_t*)user_data;
+    LOG_DEBUG(LOG_MODULE, "Received grief query: experiencing=%d, pain=%.2f",
+              system->current_grief.experiencing_grief,
+              system->current_grief.emotional_pain_intensity);
+
+    return NIMCP_SUCCESS;
+}
+
+/**
+ * @brief Broadcast grief state change to other modules
+ */
+static void bio_broadcast_grief_state(grief_system_t* system) {
+    if (!system || !system->bio_async_enabled || !system->bio_ctx_ptr) { return; }
+
+    bio_msg_salience_response_t msg = {0};
+    bio_msg_init_header(&msg.header, BIO_MSG_SALIENCE_RESPONSE,
+                        bio_module_context_get_id(system->bio_ctx_ptr), 0, sizeof(msg));
+    msg.header.flags |= BIO_MSG_FLAG_BROADCAST;
+    msg.stimulus_id = 0;
+    msg.salience_score = system->current_grief.emotional_pain_intensity;
+    msg.attention_priority = system->current_grief.intrusive_thoughts_frequency;
+    msg.requires_immediate_attention = (system->current_grief.emotional_pain_intensity > 0.8f);
+
+    bio_router_broadcast(system->bio_ctx_ptr, &msg, sizeof(msg));
+    LOG_DEBUG(LOG_MODULE, "Broadcast grief state: pain=%.2f, stage=%d",
+              system->current_grief.emotional_pain_intensity,
+              system->current_grief.current_stage);
+}
 
 //=============================================================================
 // HELPER FUNCTIONS
@@ -55,6 +108,26 @@ grief_system_t* grief_system_create(void) {
     system->existential.acceptance_of_finitude = 0.0f;  // Develops with maturity
     system->existential.existential_anxiety = 0.0f;  // Will increase with purpose threats
 
+    // Bio-async registration
+    system->bio_ctx_ptr = NULL;
+    system->bio_async_enabled = false;
+    if (bio_router_is_initialized()) {
+        bio_module_info_t bio_info = {
+            .module_id = BIO_MODULE_GRIEF,
+            .module_name = "grief_and_loss",
+            .inbox_capacity = 32,
+            .user_data = system
+        };
+        system->bio_ctx_ptr = bio_router_register_module(&bio_info);
+        if (system->bio_ctx_ptr) {
+            system->bio_async_enabled = true;
+            /* Register message handlers */
+            bio_router_register_handler(system->bio_ctx_ptr, BIO_MSG_INTROSPECTION_QUERY,
+                                        handle_grief_query);
+            LOG_INFO(LOG_MODULE, "Bio-async registered (module_id=0x%04X)", BIO_MODULE_GRIEF);
+        }
+    }
+
     return system;
 }
 
@@ -64,6 +137,14 @@ void grief_system_destroy(grief_system_t* system) {
     // HOW:  Simple nimcp_free(no complex nested allocations)
 
     if (!system) return;
+
+    // Unregister from bio-router
+    if (system->bio_async_enabled && system->bio_ctx_ptr) {
+        bio_router_unregister_module(system->bio_ctx_ptr);
+        system->bio_ctx_ptr = NULL;
+        system->bio_async_enabled = false;
+    }
+
     nimcp_free(system);
 }
 
@@ -315,6 +396,9 @@ void grief_process_loss(grief_system_t* system,
 
     // Statistics
     system->lifetime_losses++;
+
+    /* Broadcast grief state change */
+    bio_broadcast_grief_state(system);
 
     // Death loss awakens mortality awareness
     if (loss_type == LOSS_TYPE_DEATH) {

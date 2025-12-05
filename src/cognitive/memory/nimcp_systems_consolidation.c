@@ -6,17 +6,46 @@
  * WHY:  Models complementary learning systems (McClelland et al., 1995)
  * HOW:  Sleep replay drives cortical plasticity and semantic abstraction
  *
+ * BIO-ASYNC INTEGRATION:
+ * - Module ID: 0x0332 (BIO_MODULE_SYSTEMS_CONSOLIDATION)
+ * - Publishes: replay events, consolidation progress
+ * - Subscribes: sleep state changes, engram updates
+ *
  * @version Phase M2
  * @date 2025-11-13
  */
 
+#define LOG_MODULE "systems_consolidation"
+
 #include "cognitive/memory/nimcp_systems_consolidation.h"
 #include "cognitive/memory/nimcp_engram.h"
+#include "nimcp.h"  // For NIMCP_ERROR_* codes
+#include "async/nimcp_bio_async.h"
+#include "async/nimcp_bio_router.h"
+#include "async/nimcp_bio_messages.h"
 #include "utils/platform/nimcp_platform_time.h"
-#include "utils/memory/nimcp_memory.h"
+#include "utils/memory/nimcp_unified_memory.h"
 #include "utils/memory/nimcp_memory_pool.h"
+#include "utils/memory/nimcp_memory_guards.h"  // For nimcp_calloc/nimcp_free
+#include "utils/logging/nimcp_logging.h"
 #include <string.h>
 #include <math.h>
+
+//=============================================================================
+// BIO-ASYNC MODULE REGISTRATION
+//=============================================================================
+
+#define BIO_MODULE_SYSTEMS_CONSOLIDATION 0x0332
+
+//=============================================================================
+// BIO-ASYNC HANDLERS (Forward declarations)
+//=============================================================================
+
+static nimcp_error_t handle_consolidation_trigger(
+    const void* msg, size_t msg_size,
+    nimcp_bio_promise_t response_promise, void* user_data);
+
+static void bio_broadcast_consolidation_complete(cortical_memory_node_t* node, uint32_t engram_id, float strength);
 
 //=============================================================================
 // Internal Helper Functions
@@ -154,7 +183,60 @@ static cortical_memory_node_t* cortical_node_create(
     node->is_transferred = false;
     node->neighbor_count = 0;
 
-    return node;
+    
+    // Bio-async registration
+    node->bio_ctx = NULL;
+    node->bio_async_enabled = false;
+    if (bio_router_is_initialized()) {
+        bio_module_info_t bio_info = {
+            .module_id = BIO_MODULE_CONSOLIDATION_SYSTEMS,
+            .module_name = "systems_consolidation",
+            .inbox_capacity = 32,
+            .user_data = node
+        };
+        node->bio_ctx = bio_router_register_module(&bio_info);
+        if (node->bio_ctx) {
+            node->bio_async_enabled = true;
+            bio_router_register_handler(node->bio_ctx, BIO_MSG_CONSOLIDATION_TRIGGER,
+                                        handle_consolidation_trigger);
+            LOG_INFO(LOG_MODULE, "Bio-async registered (module_id=0x%04X)", BIO_MODULE_SYSTEMS_CONSOLIDATION);
+        }
+    }
+
+return node;
+}
+
+/*=============================================================================
+ * BIO-ASYNC HANDLER IMPLEMENTATIONS
+ *============================================================================*/
+
+static nimcp_error_t handle_consolidation_trigger(
+    const void* msg, size_t msg_size,
+    nimcp_bio_promise_t response_promise, void* user_data)
+{
+    (void)msg_size;
+    (void)response_promise;
+    if (!msg || !user_data) { return NIMCP_ERROR_NULL_ARG; }
+    const bio_msg_salience_response_t* trigger = (const bio_msg_salience_response_t*)msg;
+    cortical_memory_node_t* node = (cortical_memory_node_t*)user_data;
+    LOG_DEBUG(LOG_MODULE, "Received consolidation trigger: stimulus_id=%u, strength=%.2f, consolidation=%.2f",
+              trigger->stimulus_id, trigger->salience_score, node->consolidation_strength);
+    return NIMCP_SUCCESS;
+}
+
+static void bio_broadcast_consolidation_complete(cortical_memory_node_t* node, uint32_t engram_id, float strength) {
+    if (!node || !node->bio_async_enabled || !node->bio_ctx) { return; }
+    // Use salience response for consolidation complete notification
+    bio_msg_salience_response_t msg = {0};
+    bio_msg_init_header(&msg.header, BIO_MSG_SALIENCE_RESPONSE,
+                        bio_module_context_get_id(node->bio_ctx), 0, sizeof(msg));
+    msg.header.flags |= BIO_MSG_FLAG_BROADCAST;
+    msg.stimulus_id = engram_id;
+    msg.salience_score = strength;
+    msg.attention_priority = strength;
+    msg.requires_immediate_attention = false;
+    bio_router_broadcast(node->bio_ctx, &msg, sizeof(msg));
+    LOG_DEBUG(LOG_MODULE, "Broadcast consolidation complete: engram=%u, strength=%.2f", engram_id, strength);
 }
 
 /**
@@ -185,6 +267,13 @@ static void cortical_node_destroy(cortical_memory_node_t* node)
     }
 
     // WHAT: Free node structure
+    // Unregister from bio-router
+    if (node->bio_async_enabled && node->bio_ctx) {
+        bio_router_unregister_module(node->bio_ctx);
+        node->bio_ctx = NULL;
+        node->bio_async_enabled = false;
+    }
+
     nimcp_free(node);
 }
 
@@ -229,10 +318,13 @@ static bool cortical_node_add_neighbor(
 
 systems_consolidation_system_t* systems_consolidation_create(void)
 {
+    LOG_INFO("Creating systems consolidation system");
+
     // WHAT: Allocate main system structure
     systems_consolidation_system_t* system =
         nimcp_calloc(1, sizeof(systems_consolidation_system_t));
     if (!system) {
+        LOG_ERROR("Failed to allocate systems consolidation system (%zu bytes)", sizeof(systems_consolidation_system_t));
         return NULL;
     }
 

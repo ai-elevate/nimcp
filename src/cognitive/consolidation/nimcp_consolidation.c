@@ -30,7 +30,8 @@
  * @date 2025
  */
 
-#include "nimcp_consolidation.h"
+#include "cognitive/consolidation/nimcp_consolidation.h"
+#include "utils/memory/nimcp_unified_memory.h"
 #include <math.h>
 #include <stdlib.h>
 #include <string.h>
@@ -38,6 +39,7 @@
 #include "utils/memory/nimcp_memory.h"
 #include "utils/thread/nimcp_thread.h"
 #include "utils/time/nimcp_time.h"
+#include "utils/logging/nimcp_logging.h"
 
 // Phase 10.3: Emotional working memory integration
 #include "cognitive/nimcp_working_memory.h"
@@ -47,6 +49,14 @@
 #include "plasticity/adaptive/nimcp_adaptive.h"
 #include "core/neuralnet/nimcp_neuralnet.h"
 #include "cognitive/analysis/nimcp_network_analysis.h"  // Network topology analysis
+
+// Bio-async integration
+#include "async/nimcp_bio_async.h"
+#include "async/nimcp_bio_messages.h"
+#include "async/nimcp_bio_router.h"
+#include "nimcp.h"  // For error codes
+
+#define LOG_MODULE "consolidation"
 
 /* ========================================================================
  * INTERNAL STRUCTURES
@@ -76,6 +86,10 @@ struct consolidation_handle_struct {
 
     nimcp_mutex_t lock;        /* Protects handle state */
     nimcp_cond_t trigger_cond; /* Condition for triggering */
+
+    // Bio-async integration
+    bio_module_context_t bio_ctx;  /* Bio-async module context */
+    bool bio_async_enabled;        /* Bio-async registration status */
 };
 
 /**
@@ -102,6 +116,7 @@ static void ensure_sync_stats_init(void)
  * ======================================================================== */
 
 static void* consolidation_thread_fn(void* arg);
+static void bio_broadcast_consolidation_complete(consolidation_handle_t handle, float duration_ms);
 static bool perform_consolidation(brain_t brain, const consolidation_config_t* config,
                                   consolidation_stats_t* stats, float* progress);
 static bool consolidate_replay(brain_t brain, const consolidation_config_t* config,
@@ -616,6 +631,9 @@ static void* consolidation_thread_fn(void* arg)
         handle->stats.avg_consolidation_time_ms =
             alpha * duration_ms + (1.0f - alpha) * handle->stats.avg_consolidation_time_ms;
 
+        /* Broadcast consolidation complete via bio-async */
+        bio_broadcast_consolidation_complete(handle, duration_ms);
+
         handle->stats.last_consolidation_timestamp = end_time;
 
         handle->is_consolidating = false;
@@ -625,6 +643,52 @@ static void* consolidation_thread_fn(void* arg)
     }
 
     return NULL;
+}
+
+//=============================================================================
+// BIO-ASYNC MESSAGE HANDLERS
+//=============================================================================
+
+/**
+ * @brief Bio-async message handler: Handle consolidation trigger
+ */
+static nimcp_error_t handle_consolidation_trigger(
+    const void* msg,
+    size_t msg_size,
+    nimcp_bio_promise_t response_promise,
+    void* user_data)
+{
+    (void)msg_size;
+    (void)response_promise;
+
+    if (!msg || !user_data) {
+        return NIMCP_ERROR_NULL_ARG;
+    }
+
+    consolidation_handle_t handle = (consolidation_handle_t)user_data;
+    (void)handle;  // Will be used to trigger consolidation
+
+    LOG_DEBUG(LOG_MODULE, "Received consolidation trigger via bio-async");
+
+    return NIMCP_SUCCESS;
+}
+
+/**
+ * @brief Broadcast consolidation complete event via bio-async
+ */
+static void bio_broadcast_consolidation_complete(consolidation_handle_t handle,
+                                                  float duration_ms) {
+    if (!handle || !handle->bio_async_enabled || !handle->bio_ctx) {
+        return;
+    }
+
+    bio_message_header_t msg = {0};
+    bio_msg_init_header(&msg, BIO_MSG_CONSOLIDATION_TRIGGER,
+                        bio_module_context_get_id(handle->bio_ctx), 0, sizeof(msg));
+    msg.flags |= BIO_MSG_FLAG_BROADCAST;
+
+    bio_router_broadcast(handle->bio_ctx, &msg, sizeof(msg));
+    LOG_DEBUG(LOG_MODULE, "Broadcast consolidation complete: duration=%.2fms", duration_ms);
 }
 
 /**
@@ -677,6 +741,35 @@ consolidation_handle_t brain_start_background_consolidation(brain_t brain,
 
     handle->thread_running = true;
 
+    // Initialize bio-async fields
+    handle->bio_ctx = NULL;
+    handle->bio_async_enabled = false;
+
+    // Register with bio-async router if available
+    NIMCP_LOGGING_DEBUG("consolidation: Checking bio-async router initialization...");
+    if (bio_router_is_initialized()) {
+        NIMCP_LOGGING_DEBUG("consolidation: Bio-router initialized, registering module (id=%d, inbox_capacity=32)...",
+                           BIO_MODULE_CONSOLIDATION);
+        bio_module_info_t bio_info = {
+            .module_id = BIO_MODULE_CONSOLIDATION,
+            .module_name = "consolidation",
+            .inbox_capacity = 32,
+            .user_data = handle
+        };
+        handle->bio_ctx = bio_router_register_module(&bio_info);
+        if (handle->bio_ctx) {
+            handle->bio_async_enabled = true;
+            // Register message handlers
+            bio_router_register_handler(handle->bio_ctx, BIO_MSG_CONSOLIDATION_TRIGGER, handle_consolidation_trigger);
+            NIMCP_LOGGING_INFO("consolidation: Bio-async communication enabled with handlers (module_id=%d)",
+                              BIO_MODULE_CONSOLIDATION);
+        } else {
+            NIMCP_LOGGING_WARN("consolidation: Bio-async registration failed - module will operate without async messaging");
+        }
+    } else {
+        NIMCP_LOGGING_DEBUG("consolidation: Bio-router not initialized, skipping async registration");
+    }
+
     return handle;
 }
 
@@ -689,6 +782,14 @@ void brain_stop_background_consolidation(consolidation_handle_t handle)
 {
     if (handle == NULL) {
         return;
+    }
+
+    // Unregister from bio-async router
+    if (handle->bio_async_enabled && handle->bio_ctx) {
+        bio_router_unregister_module(handle->bio_ctx);
+        handle->bio_ctx = NULL;
+        handle->bio_async_enabled = false;
+        NIMCP_LOGGING_INFO("Bio-async communication disabled for consolidation");
     }
 
     /* WHAT: Signal thread to stop */

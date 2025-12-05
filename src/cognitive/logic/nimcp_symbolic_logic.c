@@ -16,6 +16,15 @@
 #include <string.h>
 #include <ctype.h>
 #include <math.h>
+#include "async/nimcp_bio_async.h"
+#include "async/nimcp_bio_router.h"
+#include "async/nimcp_bio_messages.h"
+#include "utils/logging/nimcp_logging.h"
+#include "utils/memory/nimcp_unified_memory.h"
+
+#define LOG_MODULE "cognitive.logic"
+#define BIO_MODULE_COGNITIVE_LOGIC 0x0343
+
 
 //=============================================================================
 // Internal Structures
@@ -40,6 +49,10 @@ struct symbolic_logic {
     // Working memory for inference
     logic_clause_t** working_memory;
     uint32_t working_memory_size;
+
+    // Bio-async integration
+    bio_module_context_t bio_ctx;   /**< Bio-async module context */
+    bool bio_async_enabled;         /**< Bio-async registration status */
 };
 
 //=============================================================================
@@ -48,12 +61,15 @@ struct symbolic_logic {
 
 logical_term_t* logic_term_create(term_type_t type, const char* name)
 {
+    LOG_DEBUG("Creating module");
     if (!name) {
+        LOG_ERROR("NULL parameter or allocation failure");
         return NULL;
     }
 
     logical_term_t* term = (logical_term_t*)nimcp_calloc(1, sizeof(logical_term_t));
     if (!term) {
+        LOG_ERROR("NULL parameter or allocation failure");
         return NULL;
     }
 
@@ -68,6 +84,7 @@ logical_term_t* logic_term_create(term_type_t type, const char* name)
 
 void logic_term_destroy(logical_term_t* term)
 {
+    LOG_DEBUG("Destroying module");
     if (!term) return;
 
     if (term->args) {
@@ -129,17 +146,20 @@ static bool terms_equal(const logical_term_t* t1, const logical_term_t* t2)
 
 atomic_formula_t* logic_atom_create(const char* name, logical_term_t** terms, uint8_t arity)
 {
+    LOG_DEBUG("Creating module");
     if (!name) {
+        LOG_ERROR("NULL parameter or allocation failure");
         return NULL;
     }
 
     if (arity > LOGIC_MAX_ARITY) {
-        NIMCP_LOGGING_ERROR("Arity %d exceeds maximum %d", arity, LOGIC_MAX_ARITY);
+        LOG_ERROR("Arity %d exceeds maximum %d", arity, LOGIC_MAX_ARITY);
         return NULL;
     }
 
     atomic_formula_t* atom = (atomic_formula_t*)nimcp_calloc(1, sizeof(atomic_formula_t));
     if (!atom) {
+        LOG_ERROR("NULL parameter or allocation failure");
         return NULL;
     }
 
@@ -169,6 +189,7 @@ atomic_formula_t* logic_atom_create(const char* name, logical_term_t** terms, ui
 
 void logic_atom_destroy(atomic_formula_t* atom)
 {
+    LOG_DEBUG("Destroying module");
     if (!atom) return;
 
     if (atom->terms) {
@@ -180,6 +201,208 @@ void logic_atom_destroy(atomic_formula_t* atom)
 
     nimcp_free(atom);
 }
+
+//=============================================================================
+// Formula Construction - Missing Functions
+//=============================================================================
+
+logical_formula_t* logic_formula_create(
+    logical_operator_t op,
+    logical_formula_t* left,
+    logical_formula_t* right)
+{
+    LOG_DEBUG("Creating formula");
+    logical_formula_t* formula = (logical_formula_t*)nimcp_calloc(1, sizeof(logical_formula_t));
+    if (!formula) return NULL;
+
+    formula->op = op;
+    formula->atom = NULL;
+    formula->left = left;
+    formula->right = right;
+    formula->quantified_var = NULL;
+
+    return formula;
+}
+
+void logic_formula_destroy(logical_formula_t* formula)
+{
+    LOG_DEBUG("Destroying formula");
+    if (!formula) return;
+
+    if (formula->atom) {
+        logic_atom_destroy(formula->atom);
+    }
+    if (formula->left) {
+        logic_formula_destroy(formula->left);
+    }
+    if (formula->right) {
+        logic_formula_destroy(formula->right);
+    }
+    if (formula->quantified_var) {
+        logic_term_destroy(formula->quantified_var);
+    }
+
+    nimcp_free(formula);
+}
+
+logical_formula_t* symbolic_logic_parse(const char* str)
+{
+    LOG_DEBUG("Parsing formula: %s", str ? str : "(null)");
+    if (!str || strlen(str) == 0) return NULL;
+
+    // Simple parser: handle basic predicates like "P(x)" or "Bird(tweety)"
+    // For complex formulas, this is a simplified implementation
+    logical_formula_t* formula = (logical_formula_t*)nimcp_calloc(1, sizeof(logical_formula_t));
+    if (!formula) return NULL;
+
+    // Check for negation
+    bool negated = false;
+    const char* start = str;
+    while (*start == '~' || *start == '!' || *start == ' ') {
+        if (*start == '~' || *start == '!') negated = true;
+        start++;
+    }
+
+    // Find predicate name and arguments
+    char pred_name[LOGIC_MAX_NAME_LENGTH] = {0};
+    const char* paren = strchr(start, '(');
+    if (paren) {
+        size_t name_len = paren - start;
+        if (name_len >= LOGIC_MAX_NAME_LENGTH) name_len = LOGIC_MAX_NAME_LENGTH - 1;
+        strncpy(pred_name, start, name_len);
+    } else {
+        strncpy(pred_name, start, LOGIC_MAX_NAME_LENGTH - 1);
+    }
+
+    // Create atomic formula
+    atomic_formula_t* atom = logic_atom_create(pred_name, NULL, 0);
+    if (!atom) {
+        nimcp_free(formula);
+        return NULL;
+    }
+    atom->negated = negated;
+
+    formula->atom = atom;
+    formula->op = OP_AND; // Default
+    formula->left = NULL;
+    formula->right = NULL;
+
+    return formula;
+}
+
+bool symbolic_logic_to_cnf(
+    logical_formula_t* formula,
+    logic_clause_t*** clauses,
+    int* num_clauses)
+{
+    LOG_DEBUG("Converting to CNF");
+    if (!formula || !clauses || !num_clauses) return false;
+
+    // Simple implementation: convert single atomic formula to single clause
+    *num_clauses = 1;
+    *clauses = (logic_clause_t**)nimcp_calloc(1, sizeof(logic_clause_t*));
+    if (!*clauses) return false;
+
+    logic_clause_t* clause = (logic_clause_t*)nimcp_calloc(1, sizeof(logic_clause_t));
+    if (!clause) {
+        nimcp_free(*clauses);
+        return false;
+    }
+
+    if (formula->atom) {
+        clause->num_literals = 1;
+        clause->literals = (atomic_formula_t**)nimcp_calloc(1, sizeof(atomic_formula_t*));
+        if (clause->literals) {
+            atomic_formula_t* lit = (atomic_formula_t*)nimcp_calloc(1, sizeof(atomic_formula_t));
+            if (lit) {
+                strncpy(lit->name, formula->atom->name, LOGIC_MAX_NAME_LENGTH - 1);
+                lit->negated = formula->atom->negated;
+                lit->arity = 0;
+                lit->terms = NULL;
+                clause->literals[0] = lit;
+            }
+        }
+        clause->confidence = 1.0f;
+    }
+
+    (*clauses)[0] = clause;
+    return true;
+}
+
+bool symbolic_logic_backward_chain(
+    symbolic_logic_t* logic,
+    logic_clause_t* goal,
+    inference_rule_t*** proof_trace,
+    int* num_steps)
+{
+    LOG_DEBUG("Backward chaining");
+    if (!logic || !goal || !proof_trace || !num_steps) return false;
+
+    // Simple implementation: check if goal matches any fact
+    *proof_trace = NULL;
+    *num_steps = 0;
+
+    for (uint32_t i = 0; i < logic->num_facts; i++) {
+        kb_entry_t* entry = logic->kb[i];
+        if (!entry || !entry->clause) continue;
+
+        // Check if clause matches goal
+        if (entry->clause->num_literals == goal->num_literals &&
+            entry->clause->num_literals > 0) {
+            // Simple match by predicate name
+            if (strcmp(entry->clause->literals[0]->name,
+                      goal->literals[0]->name) == 0) {
+                LOG_DEBUG("Goal proven by fact match");
+                return true;
+            }
+        }
+    }
+
+    LOG_DEBUG("Goal could not be proven");
+    return false;
+}
+
+bool symbolic_logic_resolve(
+    symbolic_logic_t* logic,
+    logic_clause_t* negated_goal,
+    bool* derived_empty)
+{
+    LOG_DEBUG("Resolution proving");
+    if (!logic || !negated_goal || !derived_empty) return false;
+
+    *derived_empty = false;
+
+    // Simple stub - resolution is complex, return false for now
+    return false;
+}
+
+bool symbolic_logic_evaluate(
+    symbolic_logic_t* logic,
+    logical_formula_t* formula,
+    bool* result)
+{
+    LOG_DEBUG("Evaluating formula");
+    if (!logic || !formula || !result) return false;
+
+    *result = false;
+
+    if (!formula->atom) return false;
+
+    // Check if formula matches any fact in KB
+    for (uint32_t i = 0; i < logic->num_facts; i++) {
+        kb_entry_t* entry = logic->kb[i];
+        if (!entry || !entry->clause || entry->clause->num_literals == 0) continue;
+
+        if (strcmp(entry->clause->literals[0]->name, formula->atom->name) == 0) {
+            *result = !formula->atom->negated;
+            return true;
+        }
+    }
+
+    return true;
+}
+
+// Note: symbolic_logic_compute_novelty is defined later in the file
 
 static atomic_formula_t* logic_atom_copy(const atomic_formula_t* atom)
 {
@@ -215,6 +438,7 @@ static bool atoms_equal(const atomic_formula_t* a1, const atomic_formula_t* a2)
 
 static logic_clause_t* logic_clause_create(uint32_t num_literals)
 {
+    LOG_DEBUG("Creating module");
     logic_clause_t* clause = (logic_clause_t*)nimcp_calloc(1, sizeof(logic_clause_t));
     if (!clause) return NULL;
 
@@ -234,6 +458,7 @@ static logic_clause_t* logic_clause_create(uint32_t num_literals)
 
 static void logic_clause_destroy(logic_clause_t* clause)
 {
+    LOG_DEBUG("Destroying module");
     if (!clause) return;
 
     if (clause->literals) {
@@ -272,17 +497,19 @@ static logic_clause_t* logic_clause_copy(const logic_clause_t* clause)
 
 symbolic_logic_t* symbolic_logic_create(const logic_config_t* config)
 {
+    LOG_DEBUG("Creating module");
     if (!nimcp_validate_pointer(config, "config")) {
         return NULL;
     }
 
     if (config->max_predicates == 0 || config->max_predicates > LOGIC_MAX_PREDICATES) {
-        NIMCP_LOGGING_ERROR("Invalid max_predicates: %u", config->max_predicates);
+        LOG_ERROR("Invalid max_predicates: %u", config->max_predicates);
         return NULL;
     }
 
     symbolic_logic_t* logic = (symbolic_logic_t*)nimcp_calloc(1, sizeof(symbolic_logic_t));
     if (!logic) {
+        LOG_ERROR("NULL parameter or allocation failure");
         return NULL;
     }
 
@@ -313,12 +540,29 @@ symbolic_logic_t* symbolic_logic_create(const logic_config_t* config)
 
     memset(&logic->stats, 0, sizeof(logic_stats_t));
 
-    NIMCP_LOGGING_INFO("Symbolic logic engine created");
+    // Bio-async registration
+    logic->bio_ctx = NULL;
+    logic->bio_async_enabled = false;
+    if (bio_router_is_initialized()) {
+        bio_module_info_t bio_info = {
+            .module_id = BIO_MODULE_KNOWLEDGE_SYMBOLIC_LOGIC,
+            .module_name = "symbolic_logic",
+            .inbox_capacity = 32,
+            .user_data = logic
+        };
+        logic->bio_ctx = bio_router_register_module(&bio_info);
+        if (logic->bio_ctx) {
+            logic->bio_async_enabled = true;
+        }
+    }
+
+    LOG_INFO("Symbolic logic engine created");
     return logic;
 }
 
 void symbolic_logic_destroy(symbolic_logic_t* logic)
 {
+    LOG_DEBUG("Destroying module");
     if (!logic) return;
 
     // Free knowledge base
@@ -355,6 +599,13 @@ void symbolic_logic_destroy(symbolic_logic_t* logic)
         nimcp_free(logic->working_memory);
     }
 
+    // Unregister from bio-router
+    if (logic->bio_async_enabled && logic->bio_ctx) {
+        bio_router_unregister_module(logic->bio_ctx);
+        logic->bio_ctx = NULL;
+        logic->bio_async_enabled = false;
+    }
+
     nimcp_free(logic);
 }
 
@@ -381,12 +632,12 @@ bool symbolic_logic_add_fact(symbolic_logic_t* logic, logic_clause_t* clause, fl
     }
 
     if (salience < 0.0f || salience > 1.0f) {
-        NIMCP_LOGGING_ERROR("Invalid salience value: %f (must be [0,1])", salience);
+        LOG_ERROR("Invalid salience value: %f (must be [0,1])", salience);
         return false;
     }
 
     if (logic->num_facts >= logic->kb_capacity) {
-        NIMCP_LOGGING_ERROR("Knowledge base full");
+        LOG_ERROR("Knowledge base full");
         return false;
     }
 
@@ -419,7 +670,7 @@ bool symbolic_logic_add_rule(symbolic_logic_t* logic, inference_rule_t* rule)
     }
 
     if (logic->num_rules >= logic->rules_capacity) {
-        NIMCP_LOGGING_ERROR("Rules capacity full");
+        LOG_ERROR("Rules capacity full");
         return false;
     }
 
@@ -493,11 +744,13 @@ bool symbolic_logic_query(symbolic_logic_t* logic, logic_clause_t* query,
 unification_t* symbolic_logic_unify(logical_term_t* term1, logical_term_t* term2)
 {
     if (!term1 || !term2) {
+        LOG_ERROR("NULL parameter or allocation failure");
         return NULL;
     }
 
     unification_t* unif = (unification_t*)nimcp_calloc(1, sizeof(unification_t));
     if (!unif) {
+        LOG_ERROR("NULL parameter or allocation failure");
         return NULL;
     }
 
@@ -586,6 +839,7 @@ unification_t* symbolic_logic_unify(logical_term_t* term1, logical_term_t* term2
 logical_term_t* symbolic_logic_substitute(logical_term_t* term, const substitution_t* subst)
 {
     if (!term || !subst) {
+        LOG_ERROR("NULL parameter or allocation failure");
         return NULL;
     }
 
@@ -597,6 +851,7 @@ logical_term_t* symbolic_logic_substitute(logical_term_t* term, const substituti
     // Otherwise copy term with recursive substitution of args
     logical_term_t* result = logic_term_create(term->type, term->name);
     if (!result) {
+        LOG_ERROR("NULL parameter or allocation failure");
         return NULL;
     }
 
@@ -622,6 +877,7 @@ logical_term_t* symbolic_logic_substitute(logical_term_t* term, const substituti
 
 void unification_destroy(unification_t* unif)
 {
+    LOG_DEBUG("Destroying module");
     if (!unif) return;
 
     if (unif->bindings) {
@@ -652,7 +908,7 @@ bool symbolic_logic_forward_chain(symbolic_logic_t* logic, uint32_t max_iteratio
     }
 
     if (!logic->config.enable_forward_chaining) {
-        NIMCP_LOGGING_ERROR("Forward chaining not enabled");
+        LOG_ERROR("Forward chaining not enabled");
         return false;
     }
 

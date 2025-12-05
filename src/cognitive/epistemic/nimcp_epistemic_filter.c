@@ -2,13 +2,22 @@
 // nimcp_epistemic_filter.c - Epistemic Hygiene Implementation
 //=============================================================================
 
-#include "nimcp_epistemic_filter.h"
+#include "cognitive/epistemic/nimcp_epistemic_filter.h"
+#include "utils/memory/nimcp_unified_memory.h"
 #include "utils/memory/nimcp_memory.h"
+#include "utils/logging/nimcp_logging.h"
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
 #include <math.h>
 #include <ctype.h>
+
+// Bio-async integration
+#include "async/nimcp_bio_async.h"
+#include "async/nimcp_bio_messages.h"
+#include "async/nimcp_bio_router.h"
+
+#define LOG_MODULE "epistemic"
 
 //=============================================================================
 // Configuration Constants
@@ -65,6 +74,10 @@ struct epistemic_filter_struct {
     uint64_t claims_accepted;
     uint64_t claims_rejected;
     uint64_t biases_detected;
+
+    // Bio-async integration
+    bio_module_context_t bio_ctx;  /**< Bio-async module context */
+    bool bio_async_enabled;        /**< Bio-async registration status */
 };
 
 //=============================================================================
@@ -231,13 +244,48 @@ epistemic_filter_t epistemic_filter_create(float skepticism_level) {
     filter->claims_rejected = 0;
     filter->biases_detected = 0;
 
+    // Initialize bio-async fields
+    filter->bio_ctx = NULL;
+    filter->bio_async_enabled = false;
+
+    // Register with bio-async router if available
+    NIMCP_LOGGING_DEBUG("epistemic: Checking bio-async router initialization...");
+    if (bio_router_is_initialized()) {
+        NIMCP_LOGGING_DEBUG("epistemic: Bio-router initialized, registering module (id=%d, inbox_capacity=32)...",
+                           BIO_MODULE_EPISTEMIC);
+        bio_module_info_t bio_info = {
+            .module_id = BIO_MODULE_EPISTEMIC,
+            .module_name = "epistemic",
+            .inbox_capacity = 32,
+            .user_data = filter
+        };
+        filter->bio_ctx = bio_router_register_module(&bio_info);
+        if (filter->bio_ctx) {
+            filter->bio_async_enabled = true;
+            NIMCP_LOGGING_INFO("epistemic: Bio-async communication enabled (module_id=%d)",
+                              BIO_MODULE_EPISTEMIC);
+        } else {
+            NIMCP_LOGGING_WARN("epistemic: Bio-async registration failed - module will operate without async messaging");
+        }
+    } else {
+        NIMCP_LOGGING_DEBUG("epistemic: Bio-router not initialized, skipping async registration");
+    }
+
     return filter;
 }
 
 void epistemic_filter_destroy(epistemic_filter_t filter) {
-    if (filter) {
-        nimcp_free(filter);
+    if (!filter) return;
+
+    // Unregister from bio-async router
+    if (filter->bio_async_enabled && filter->bio_ctx) {
+        bio_router_unregister_module(filter->bio_ctx);
+        filter->bio_ctx = NULL;
+        filter->bio_async_enabled = false;
+        NIMCP_LOGGING_INFO("Bio-async communication disabled for epistemic");
     }
+
+    nimcp_free(filter);
 }
 
 void epistemic_evidence_init(claim_evidence_t* evidence) {

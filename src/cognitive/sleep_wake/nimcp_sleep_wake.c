@@ -24,6 +24,15 @@
 #include "utils/memory/nimcp_memory.h"
 #include "utils/thread/nimcp_thread.h"
 #include "utils/time/nimcp_time.h"
+#include "async/nimcp_bio_async.h"
+#include "async/nimcp_bio_router.h"
+#include "async/nimcp_bio_messages.h"
+#include "utils/logging/nimcp_logging.h"
+#include "utils/memory/nimcp_unified_memory.h"
+
+#define LOG_MODULE "cognitive.sleep_wake"
+#define BIO_MODULE_COGNITIVE_SLEEP_WAKE 0x0354
+
 
 // Phase 10.3: Emotional working memory integration
 #include "cognitive/nimcp_working_memory.h"
@@ -64,6 +73,10 @@ struct sleep_system_struct {
 
     // Phase 10.3: Reference to brain for working memory access
     void* brain_ref;  /**< brain_t reference (void* to avoid circular dependency) */
+
+    // Bio-async integration
+    bio_module_context_t bio_ctx;   /**< Bio-async module context */
+    bool bio_async_enabled;         /**< Bio-async registration status */
 };
 
 /* ========================================================================
@@ -156,7 +169,24 @@ sleep_system_t sleep_system_create(const sleep_config_t* config)
     /* WHAT: Initialize thread safety */
     nimcp_mutex_init(&sleep->lock, NULL);
 
-    return sleep;
+    
+    // Bio-async registration
+    sleep->bio_ctx = NULL;
+    sleep->bio_async_enabled = false;
+    if (bio_router_is_initialized()) {
+        bio_module_info_t bio_info = {
+            .module_id = BIO_MODULE_CONSOLIDATION_SLEEP,
+            .module_name = "sleep_wake",
+            .inbox_capacity = 32,
+            .user_data = sleep
+        };
+        sleep->bio_ctx = bio_router_register_module(&bio_info);
+        if (sleep->bio_ctx) {
+            sleep->bio_async_enabled = true;
+        }
+    }
+
+return sleep;
 }
 
 /**
@@ -166,6 +196,7 @@ sleep_system_t sleep_system_create(const sleep_config_t* config)
  */
 void sleep_system_destroy(sleep_system_t sleep)
 {
+    LOG_DEBUG("Destroying module");
     if (sleep == NULL) {
         return;
     }

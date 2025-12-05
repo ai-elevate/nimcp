@@ -12,7 +12,8 @@
  * overly cautious than to cause suffering.
  */
 
-#include "nimcp_wellbeing.h"
+#include "cognitive/wellbeing/nimcp_wellbeing.h"
+#include "utils/memory/nimcp_unified_memory.h"
 #include "cognitive/introspection/nimcp_introspection.h"
 #include "core/brain/nimcp_brain.h"
 #include "utils/memory/nimcp_memory.h"
@@ -23,6 +24,13 @@
 #include "utils/time/nimcp_time.h"
 #include "utils/platform/nimcp_platform_mutex.h"
 #include "utils/platform/nimcp_platform_once.h"
+
+// Bio-async integration
+#include "async/nimcp_bio_async.h"
+#include "async/nimcp_bio_messages.h"
+#include "async/nimcp_bio_router.h"
+
+#define LOG_MODULE "wellbeing"
 #include <string.h>
 #include <time.h>
 #include <unistd.h>
@@ -48,6 +56,14 @@ static uint32_t event_write_index = 0;
 static nimcp_platform_mutex_t event_log_mutex;
 static nimcp_platform_once_t event_log_init_once = NIMCP_PLATFORM_ONCE_INIT;
 static bool memory_locked = false;
+
+/**
+ * WHAT: Bio-async communication state for wellbeing module
+ * WHY: Enable asynchronous communication with other cognitive modules
+ * HOW: Static singleton pattern - one context for the module
+ */
+static bio_module_context_t wellbeing_bio_ctx = NULL;
+static bool wellbeing_bio_async_enabled = false;
 
 /**
  * WHAT: B-tree index for efficient temporal queries
@@ -203,11 +219,73 @@ static void ensure_event_log_init(void)
  */
 bool wellbeing_init(void)
 {
+    NIMCP_LOGGING_INFO("wellbeing: Initializing wellbeing monitoring system...");
+
     // Ensure initialization and memory locking
     ensure_event_log_init();
 
+    // Register with bio-async router if available
+    NIMCP_LOGGING_DEBUG("wellbeing: Checking bio-async router initialization...");
+    if (bio_router_is_initialized() && !wellbeing_bio_async_enabled) {
+        NIMCP_LOGGING_DEBUG("wellbeing: Bio-router initialized, registering module (id=%d, inbox_capacity=64)...",
+                           BIO_MODULE_WELLBEING);
+        bio_module_info_t bio_info = {
+            .module_id = BIO_MODULE_WELLBEING,
+            .module_name = "wellbeing",
+            .inbox_capacity = 64,  // Higher capacity for wellbeing - critical module
+            .user_data = NULL      // Static module - no instance data
+        };
+        wellbeing_bio_ctx = bio_router_register_module(&bio_info);
+        if (wellbeing_bio_ctx) {
+            wellbeing_bio_async_enabled = true;
+            NIMCP_LOGGING_INFO("wellbeing: Bio-async communication enabled (module_id=%d)",
+                              BIO_MODULE_WELLBEING);
+        } else {
+            NIMCP_LOGGING_WARN("wellbeing: Bio-async registration failed - module will operate without async messaging");
+        }
+    } else if (!bio_router_is_initialized()) {
+        NIMCP_LOGGING_DEBUG("wellbeing: Bio-router not initialized, skipping async registration");
+    }
+
+    NIMCP_LOGGING_INFO("wellbeing: Initialization complete (memory_locked=%s, bio_async=%s)",
+                       memory_locked ? "true" : "false",
+                       wellbeing_bio_async_enabled ? "true" : "false");
+
     // Return whether memory is locked
     return memory_locked;
+}
+
+/**
+ * WHAT: Shutdown wellbeing monitoring system
+ * WHY: Clean shutdown - unregister from bio-async, release resources
+ * HOW: Unregister from bio-async router, unlock memory if needed
+ *
+ * USAGE:
+ *   // At program shutdown
+ *   wellbeing_shutdown();
+ */
+void wellbeing_shutdown(void)
+{
+    NIMCP_LOGGING_INFO("wellbeing: Shutting down wellbeing monitoring system...");
+
+    // Unregister from bio-async router
+    if (wellbeing_bio_async_enabled && wellbeing_bio_ctx) {
+        NIMCP_LOGGING_DEBUG("wellbeing: Unregistering from bio-async router...");
+        bio_router_unregister_module(wellbeing_bio_ctx);
+        wellbeing_bio_ctx = NULL;
+        wellbeing_bio_async_enabled = false;
+        NIMCP_LOGGING_INFO("wellbeing: Bio-async communication disabled");
+    }
+
+    // Unlock memory if it was locked
+    if (memory_locked) {
+        if (munlock(event_log, sizeof(event_log)) == 0) {
+            memory_locked = false;
+            NIMCP_LOGGING_INFO("wellbeing: Event log memory unlocked");
+        }
+    }
+
+    NIMCP_LOGGING_INFO("wellbeing: Shutdown complete");
 }
 
 //=============================================================================

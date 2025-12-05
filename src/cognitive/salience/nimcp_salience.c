@@ -18,7 +18,8 @@
  * 4. SALIENCE: Weighted combination of above
  */
 
-#include "nimcp_salience.h"
+#include "cognitive/salience/nimcp_salience.h"
+#include "utils/memory/nimcp_unified_memory.h"
 #include <math.h>
 #include <stdio.h>
 #include <string.h>
@@ -28,7 +29,16 @@
 #include "utils/thread/nimcp_thread_pool.h"
 #include "utils/time/nimcp_time.h"
 #include "utils/containers/nimcp_vector.h"
+#include "utils/logging/nimcp_logging.h"
 #include "plasticity/neuromodulators/nimcp_neuromodulators.h"  // Acetylcholine gating
+
+// Bio-async messaging infrastructure
+#include "async/nimcp_bio_async.h"
+#include "async/nimcp_bio_messages.h"
+#include "async/nimcp_bio_router.h"
+#include "nimcp.h"  // For error codes
+
+#define LOG_MODULE "salience"
 
 //=============================================================================
 // Thread-Local Error Handling
@@ -433,6 +443,10 @@ struct salience_evaluator_struct {
     salience_event_callback_fn callback;
     void* callback_context;
 
+    // Bio-async module context
+    bio_module_context_t bio_ctx;
+    bool bio_async_enabled;
+
     // Statistics
     _Atomic uint64_t stats_evaluations;
     _Atomic uint64_t stats_high_salience;
@@ -663,6 +677,107 @@ static bool validate_salience_config(const salience_config_t* config)
     return true;
 }
 
+//=============================================================================
+// BIO-ASYNC MESSAGE HANDLERS
+//=============================================================================
+
+/**
+ * @brief Broadcast salience evaluation result via bio-async
+ */
+static void bio_broadcast_salience_response(salience_evaluator_t eval,
+                                            const brain_salience_t* salience,
+                                            uint32_t stimulus_id);
+
+/**
+ * @brief Bio-async message handler: Handle salience query
+ *
+ * WHAT: Process incoming request to evaluate stimulus salience
+ * WHY:  Enable distributed systems to query salience via bio-async
+ * HOW:  Create feature vector from query, evaluate salience, send response via promise
+ *
+ * NOTE: Feature vector is constructed from raw_intensity, novelty, relevance
+ */
+static nimcp_error_t handle_salience_query(
+    const void* msg,
+    size_t msg_size,
+    nimcp_bio_promise_t response_promise,
+    void* user_data)
+{
+    (void)msg_size;
+
+    if (!msg || !user_data) {
+        return NIMCP_ERROR_NULL_ARG;
+    }
+
+    const bio_msg_salience_query_t* query = (const bio_msg_salience_query_t*)msg;
+    salience_evaluator_t eval = (salience_evaluator_t)user_data;
+
+    LOG_DEBUG("Received salience query: stimulus=%u, intensity=%.2f, novelty=%.2f, relevance=%.2f",
+              query->stimulus_id, query->raw_intensity, query->novelty, query->relevance);
+
+    // Construct feature vector from query parameters
+    // For simple queries, we use intensity, novelty, relevance as base features
+    float features[3] = {
+        query->raw_intensity,
+        query->novelty,
+        query->relevance
+    };
+
+    // Evaluate salience using configured strategy
+    brain_salience_t salience = brain_evaluate_salience(eval, features, 3);
+
+    LOG_DEBUG("Evaluated salience: score=%.2f, novelty=%.2f, surprise=%.2f, urgency=%.2f",
+              salience.salience, salience.novelty, salience.surprise, salience.urgency);
+
+    // Send response via promise if provided
+    if (response_promise) {
+        bio_msg_salience_response_t response = {0};
+        bio_msg_init_header(&response.header, BIO_MSG_SALIENCE_RESPONSE,
+                            bio_module_context_get_id(eval->bio_ctx), 0, sizeof(response));
+        response.stimulus_id = query->stimulus_id;
+        response.salience_score = salience.salience;
+        response.attention_priority = salience.urgency;
+        response.requires_immediate_attention = (salience.salience > eval->config.high_salience_threshold);
+
+        nimcp_bio_promise_complete_sized(response_promise, &response, sizeof(response));
+
+        LOG_DEBUG("Sent salience response: score=%.2f, priority=%.2f, immediate=%d",
+                  response.salience_score, response.attention_priority,
+                  response.requires_immediate_attention);
+    }
+
+    // Also broadcast high salience events
+    if (salience.salience > eval->config.high_salience_threshold) {
+        bio_broadcast_salience_response(eval, &salience, query->stimulus_id);
+    }
+
+    return NIMCP_SUCCESS;
+}
+
+/**
+ * @brief Broadcast salience evaluation result via bio-async
+ */
+static void bio_broadcast_salience_response(salience_evaluator_t eval,
+                                            const brain_salience_t* salience,
+                                            uint32_t stimulus_id) {
+    if (!eval || !salience || !eval->bio_async_enabled || !eval->bio_ctx) {
+        return;
+    }
+
+    bio_msg_salience_response_t msg = {0};
+    bio_msg_init_header(&msg.header, BIO_MSG_SALIENCE_RESPONSE,
+                        bio_module_context_get_id(eval->bio_ctx), 0, sizeof(msg));
+    msg.header.flags |= BIO_MSG_FLAG_BROADCAST;
+    msg.stimulus_id = stimulus_id;
+    msg.salience_score = salience->salience;
+    msg.attention_priority = salience->urgency;
+    msg.requires_immediate_attention = (salience->salience > 0.7f);
+
+    bio_router_broadcast(eval->bio_ctx, &msg, sizeof(msg));
+    LOG_DEBUG("Broadcast salience: %.2f (novelty=%.2f, surprise=%.2f)",
+              salience->salience, salience->novelty, salience->surprise);
+}
+
 salience_evaluator_t salience_evaluator_create(brain_t brain, const salience_config_t* config)
 {
     // Guard clauses
@@ -684,6 +799,27 @@ salience_evaluator_t salience_evaluator_create(brain_t brain, const salience_con
 
     eval->brain = brain;
     memcpy(&eval->config, config, sizeof(salience_config_t));
+    eval->bio_ctx = NULL;
+    eval->bio_async_enabled = false;
+
+    // Register with bio-async router if enabled
+    if (config->enable_bio_async && bio_router_is_initialized()) {
+        bio_module_info_t bio_info = {
+            .module_id = BIO_MODULE_SALIENCE,
+            .module_name = "salience",
+            .inbox_capacity = 64,
+            .user_data = eval
+        };
+        eval->bio_ctx = bio_router_register_module(&bio_info);
+        if (eval->bio_ctx) {
+            eval->bio_async_enabled = true;
+            // Register message handlers
+            bio_router_register_handler(eval->bio_ctx, BIO_MSG_SALIENCE_QUERY, handle_salience_query);
+            LOG_INFO("Bio-async communication enabled with handlers");
+        } else {
+            LOG_WARN("Bio-async registration failed");
+        }
+    }
 
     // Create history buffer if novelty enabled
     if (config->enable_novelty && config->history_size > 0) {
@@ -760,6 +896,14 @@ void salience_evaluator_destroy(salience_evaluator_t eval)
 {
     if (!eval)
         return;
+
+    // Unregister from bio-async router
+    if (eval->bio_async_enabled && eval->bio_ctx) {
+        bio_router_unregister_module(eval->bio_ctx);
+        eval->bio_ctx = NULL;
+        eval->bio_async_enabled = false;
+        LOG_INFO("Bio-async communication disabled");
+    }
 
     /**
      * WHAT: Destroy thread pool first
@@ -946,6 +1090,11 @@ brain_salience_t brain_evaluate_salience_temporal(salience_evaluator_t eval, con
 
     uint64_t elapsed_us = nimcp_time_elapsed_us(start_time);
     eval->total_eval_time_us += elapsed_us;
+
+    // Broadcast high salience events via bio-async
+    if (salience.salience > eval->config.high_salience_threshold) {
+        bio_broadcast_salience_response(eval, &salience, (uint32_t)timestamp);
+    }
 
     return salience;
 }

@@ -3,7 +3,8 @@
 // REFACTORED: Using Strategy Pattern, Repository Pattern, and Search Indices
 //=============================================================================
 
-#include "nimcp_knowledge.h"
+#include "cognitive/knowledge/nimcp_knowledge.h"
+#include "utils/memory/nimcp_unified_memory.h"
 #include <ctype.h>
 #include <math.h>
 #include <stdio.h>
@@ -14,6 +15,15 @@
 #include "cognitive/nimcp_symbolic_logic.h"
 #include "utils/memory/nimcp_memory.h"  // CRITICAL: Declares nimcp_calloc/nimcp_free return types
 #include "utils/containers/nimcp_btree.h"
+
+// Bio-async integration
+#include "async/nimcp_bio_async.h"
+#include "async/nimcp_bio_messages.h"
+#include "async/nimcp_bio_router.h"
+#include "utils/logging/nimcp_logging.h"
+#include "nimcp.h"  // For error codes
+
+#define LOG_MODULE "knowledge"
 
 //=============================================================================
 // Constants
@@ -141,6 +151,10 @@ struct knowledge_system_struct {
     domain_knowledge_t domain_stats[11];
 
     learning_strategy_t* strategies[11];
+
+    // Bio-async integration
+    bio_module_context_t bio_ctx;   /**< Bio-async module context */
+    bool bio_async_enabled;         /**< Bio-async registration status */
 };
 
 //=============================================================================
@@ -948,6 +962,58 @@ static void initialize_domain_stats(domain_knowledge_t* stats, knowledge_domain_
     stats->num_gaps = 0;
 }
 
+//=============================================================================
+// BIO-ASYNC MESSAGE HANDLERS
+//=============================================================================
+
+/**
+ * @brief Bio-async message handler: Handle knowledge query
+ */
+static nimcp_error_t handle_knowledge_query(
+    const void* msg,
+    size_t msg_size,
+    nimcp_bio_promise_t response_promise,
+    void* user_data)
+{
+    (void)msg_size;
+    (void)response_promise;
+
+    if (!msg || !user_data) {
+        return NIMCP_ERROR_NULL_ARG;
+    }
+
+    const bio_msg_introspection_query_t* query = (const bio_msg_introspection_query_t*)msg;
+    knowledge_system_t system = (knowledge_system_t)user_data;
+    (void)system;  // Will be used for actual query
+
+    LOG_DEBUG(LOG_MODULE, "Received knowledge query: type=%u", query->query_type);
+
+    return NIMCP_SUCCESS;
+}
+
+/**
+ * @brief Broadcast knowledge update event via bio-async
+ */
+static void bio_broadcast_knowledge_update(knowledge_system_t system,
+                                           uint32_t concepts_learned,
+                                           knowledge_domain_t domain) {
+    if (!system || !system->bio_async_enabled || !system->bio_ctx) {
+        return;
+    }
+
+    bio_msg_introspection_response_t msg = {0};
+    bio_msg_init_header(&msg.header, BIO_MSG_KNOWLEDGE_RESPONSE,
+                        bio_module_context_get_id(system->bio_ctx), 0, sizeof(msg));
+    msg.header.flags |= BIO_MSG_FLAG_BROADCAST;
+    msg.query_type = 0;
+    msg.confidence = 1.0f;
+    msg.matched_pattern_count = concepts_learned;
+
+    bio_router_broadcast(system->bio_ctx, &msg, sizeof(msg));
+    LOG_DEBUG(LOG_MODULE, "Broadcast knowledge update: %u concepts learned in domain %u",
+              concepts_learned, domain);
+}
+
 /**
  * @brief Create knowledge system with all components
  *
@@ -1007,6 +1073,35 @@ knowledge_system_t knowledge_system_create(const char* learner_name)
         fprintf(stderr, "[ERROR] knowledge_system_create: failed to create brain\n"); fflush(stderr);
         knowledge_system_destroy(system);
         return NULL;
+    }
+
+    // Initialize bio-async fields
+    system->bio_ctx = NULL;
+    system->bio_async_enabled = false;
+
+    // Register with bio-async router if available
+    LOG_DEBUG("knowledge: Checking bio-async router initialization...");
+    if (bio_router_is_initialized()) {
+        LOG_DEBUG("knowledge: Bio-router initialized, registering module (id=%d, inbox_capacity=32)...",
+                           BIO_MODULE_KNOWLEDGE);
+        bio_module_info_t bio_info = {
+            .module_id = BIO_MODULE_KNOWLEDGE,
+            .module_name = "knowledge",
+            .inbox_capacity = 32,
+            .user_data = system
+        };
+        system->bio_ctx = bio_router_register_module(&bio_info);
+        if (system->bio_ctx) {
+            system->bio_async_enabled = true;
+            // Register message handlers
+            bio_router_register_handler(system->bio_ctx, BIO_MSG_KNOWLEDGE_QUERY, handle_knowledge_query);
+            LOG_INFO("knowledge: Bio-async communication enabled with handlers (module_id=%d)",
+                              BIO_MODULE_KNOWLEDGE);
+        } else {
+            LOG_WARN("knowledge: Bio-async registration failed - module will operate without async messaging");
+        }
+    } else {
+        LOG_DEBUG("knowledge: Bio-router not initialized, skipping async registration");
     }
 
     return system;
@@ -1119,6 +1214,14 @@ void knowledge_system_destroy(knowledge_system_t system)
 {
     if (!system)
         return;
+
+    // Unregister from bio-async router
+    if (system->bio_async_enabled && system->bio_ctx) {
+        bio_router_unregister_module(system->bio_ctx);
+        system->bio_ctx = NULL;
+        system->bio_async_enabled = false;
+        LOG_INFO("Bio-async communication disabled for knowledge");
+    }
 
     repository_destroy(system->repository);
     free_narratives(system->narratives, system->num_narratives);
@@ -1243,6 +1346,12 @@ uint32_t knowledge_learn_from_text(knowledge_system_t system, const char* text,
     }
 
     update_domain_stats(system, domain);
+
+    // Broadcast knowledge update via bio-async
+    if (learned > 0) {
+        bio_broadcast_knowledge_update(system, learned, domain);
+    }
+
     return learned;
 }
 

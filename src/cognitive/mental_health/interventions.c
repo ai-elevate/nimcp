@@ -15,7 +15,15 @@
  * - SHUTDOWN: Graceful shutdown (critical, configurable)
  *
  * @note This file is #included by nimcp_mental_health.c (not compiled standalone)
+ * @note Bio-async, logging, and unified memory provided by parent file
  */
+
+// Includes provided by nimcp_mental_health.c:
+// - async/nimcp_bio_async.h
+// - async/nimcp_bio_router.h
+// - async/nimcp_bio_messages.h
+// - utils/logging/nimcp_logging.h
+// - utils/memory/nimcp_unified_memory.h
 
 // =============================================================================
 // PUBLIC API: INTERVENTION

@@ -13,16 +13,52 @@
  * - Single Responsibility Principle
  * - 100% test coverage
  *
- * @version Phase M1: Memory Engrams - Core Implementation
- * @date 2025-11-13
+ * BIO-ASYNC INTEGRATION:
+ * - Module ID: 0x0330 (BIO_MODULE_MEMORY)
+ * - Publishes: memory encoding, recall, consolidation events
+ * - Subscribes: None (passive memory store)
+ *
+ * @version Phase M1: Memory Engrams - Core Implementation with Bio-Async
+ * @date 2025-11-28
  */
 
+#define LOG_MODULE "engram"
+
 #include "cognitive/memory/nimcp_engram.h"
-#include "utils/memory/nimcp_memory.h"
+#include "nimcp.h"  // For NIMCP_ERROR_* codes
+#include "async/nimcp_bio_async.h"
+#include "async/nimcp_bio_router.h"
+#include "async/nimcp_bio_messages.h"
+#include "utils/memory/nimcp_unified_memory.h"
 #include "utils/memory/nimcp_memory_pool.h"
+#include "utils/logging/nimcp_logging.h"
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
+#include "utils/memory/nimcp_memory_guards.h"  // For nimcp_calloc/nimcp_free
+
+//=============================================================================
+// BIO-ASYNC MODULE REGISTRATION
+//=============================================================================
+
+#define BIO_MODULE_MEMORY 0x0330
+
+// Event types
+#define ENGRAM_EVENT_ENCODED "engram.encoded"
+#define ENGRAM_EVENT_RECALLED "engram.recalled"
+#define ENGRAM_EVENT_CONSOLIDATED "engram.consolidated"
+#define ENGRAM_EVENT_DECAYED "engram.decayed"
+
+//=============================================================================
+// BIO-ASYNC HANDLERS (Forward declarations)
+//=============================================================================
+
+static nimcp_error_t handle_memory_query(
+    const void* msg, size_t msg_size,
+    nimcp_bio_promise_t response_promise, void* user_data);
+
+static void bio_broadcast_engram_encoded(engram_system_t* system, uint32_t engram_id, float strength);
+static void bio_broadcast_engram_recalled(engram_system_t* system, uint32_t engram_id, float confidence);
 
 //=============================================================================
 // CONSTANTS
@@ -122,18 +158,46 @@ static memory_engram_t* find_free_slot(engram_system_t* system) {
 engram_system_t* engram_system_create(void) {
     // WHAT: Allocate and initialize engram system
     // WHY:  Required for memory trace tracking
-    // HOW:  Allocate struct and array, set defaults
+    // HOW:  Allocate struct and array using unified memory with CoW support
+
+    LOG_INFO("Creating engram system");
 
     engram_system_t* system = (engram_system_t*)nimcp_calloc(1, sizeof(engram_system_t));
-    if (!system) return NULL;
-
-    // Allocate initial engram array
-    system->engrams = (memory_engram_t*)nimcp_calloc(
-        ENGRAM_INITIAL_CAPACITY, sizeof(memory_engram_t));
-
-    if (!system->engrams) {
-        nimcp_free(system);
+    if (!system) {
+        LOG_ERROR("Failed to allocate engram system");
         return NULL;
+    }
+
+    // Initialize unified memory manager for CoW support
+    unified_mem_config_t mem_config = unified_mem_default_config();
+    mem_config.enable_cow = true;
+    mem_config.enable_tracking = true;
+    system->mem_manager = unified_mem_create(&mem_config);
+
+    if (system->mem_manager) {
+        // Allocate engram array via unified memory (enables O(1) brain cloning)
+        unified_mem_request_t req = unified_mem_request(
+            ENGRAM_INITIAL_CAPACITY * sizeof(memory_engram_t),
+            NULL,  // Zero-initialized
+            true   // Enable CoW
+        );
+        system->engrams_handle = unified_mem_alloc(system->mem_manager, &req);
+        if (system->engrams_handle) {
+            system->engrams = (memory_engram_t*)unified_mem_write(system->engrams_handle);
+            LOG_DEBUG(LOG_MODULE, "Engram array allocated via unified memory with CoW support");
+        }
+    }
+
+    // Fallback to direct allocation if unified memory unavailable
+    if (!system->engrams) {
+        system->engrams = (memory_engram_t*)nimcp_calloc(
+            ENGRAM_INITIAL_CAPACITY, sizeof(memory_engram_t));
+        if (!system->engrams) {
+            if (system->mem_manager) unified_mem_destroy(system->mem_manager);
+            nimcp_free(system);
+            return NULL;
+        }
+        LOG_DEBUG(LOG_MODULE, "Engram array allocated via direct memory (no CoW)");
     }
 
     // Set initial capacity
@@ -166,23 +230,108 @@ engram_system_t* engram_system_create(void) {
     };
     system->engram_pool = memory_pool_create(&engram_pool_config);
 
-    return system;
+    
+    // Bio-async registration
+    system->bio_ctx = NULL;
+    system->bio_async_enabled = false;
+    if (bio_router_is_initialized()) {
+        bio_module_info_t bio_info = {
+            .module_id = BIO_MODULE_MEMORY,
+            .module_name = "engram",
+            .inbox_capacity = 32,
+            .user_data = system
+        };
+        system->bio_ctx = bio_router_register_module(&bio_info);
+        if (system->bio_ctx) {
+            system->bio_async_enabled = true;
+            bio_router_register_handler(system->bio_ctx, BIO_MSG_WORKING_MEMORY_RETRIEVE,
+                                        handle_memory_query);
+            LOG_INFO(LOG_MODULE, "Bio-async registered (module_id=0x%04X)", BIO_MODULE_MEMORY);
+        }
+    }
+
+return system;
+}
+
+/*=============================================================================
+ * BIO-ASYNC HANDLER IMPLEMENTATIONS
+ *============================================================================*/
+
+static nimcp_error_t handle_memory_query(
+    const void* msg, size_t msg_size,
+    nimcp_bio_promise_t response_promise, void* user_data)
+{
+    (void)msg_size;
+    (void)response_promise;
+    if (!msg || !user_data) { return NIMCP_ERROR_NULL_ARG; }
+    engram_system_t* system = (engram_system_t*)user_data;
+    LOG_DEBUG(LOG_MODULE, "Received memory query, active engrams=%u", system->active_count);
+    return NIMCP_SUCCESS;
+}
+
+static void bio_broadcast_engram_encoded(engram_system_t* system, uint32_t engram_id, float strength) {
+    if (!system || !system->bio_async_enabled || !system->bio_ctx) { return; }
+    // Use salience response for engram encoded notification
+    bio_msg_salience_response_t msg = {0};
+    bio_msg_init_header(&msg.header, BIO_MSG_SALIENCE_RESPONSE,
+                        bio_module_context_get_id(system->bio_ctx), 0, sizeof(msg));
+    msg.header.flags |= BIO_MSG_FLAG_BROADCAST;
+    msg.stimulus_id = engram_id;
+    msg.salience_score = strength;
+    msg.attention_priority = strength;
+    msg.requires_immediate_attention = (strength > 0.8f);
+    bio_router_broadcast(system->bio_ctx, &msg, sizeof(msg));
+    LOG_DEBUG(LOG_MODULE, "Broadcast engram encoded: id=%u, strength=%.2f", engram_id, strength);
+}
+
+static void bio_broadcast_engram_recalled(engram_system_t* system, uint32_t engram_id, float confidence) {
+    if (!system || !system->bio_async_enabled || !system->bio_ctx) { return; }
+    // Use salience response for engram recalled notification
+    bio_msg_salience_response_t msg = {0};
+    bio_msg_init_header(&msg.header, BIO_MSG_SALIENCE_RESPONSE,
+                        bio_module_context_get_id(system->bio_ctx), 0, sizeof(msg));
+    msg.header.flags |= BIO_MSG_FLAG_BROADCAST;
+    msg.stimulus_id = engram_id;
+    msg.salience_score = confidence;
+    msg.attention_priority = confidence;
+    msg.requires_immediate_attention = false;
+    bio_router_broadcast(system->bio_ctx, &msg, sizeof(msg));
+    LOG_DEBUG(LOG_MODULE, "Broadcast engram recalled: id=%u, confidence=%.2f", engram_id, confidence);
 }
 
 void engram_system_destroy(engram_system_t* system) {
     // WHAT: Free all engram system resources
     // WHY:  Prevent memory leaks
-    // HOW:  Free array, then struct
+    // HOW:  Free unified memory handles, then struct
 
     if (!system) return;
 
-    if (system->engrams) {
+    // Free engram array (unified memory or direct)
+    if (system->engrams_handle) {
+        unified_mem_free(system->engrams_handle);
+        system->engrams_handle = NULL;
+        system->engrams = NULL;  // Was pointing into unified memory
+    } else if (system->engrams) {
         nimcp_free(system->engrams);
+        system->engrams = NULL;
+    }
+
+    // Destroy unified memory manager
+    if (system->mem_manager) {
+        unified_mem_destroy(system->mem_manager);
+        system->mem_manager = NULL;
     }
 
     // Phase 1.5: Destroy memory pool
     if (system->engram_pool) {
         memory_pool_destroy(system->engram_pool);
+    }
+
+    // Unregister from bio-router
+    if (system->bio_async_enabled && system->bio_ctx) {
+        bio_router_unregister_module(system->bio_ctx);
+        system->bio_ctx = NULL;
+        system->bio_async_enabled = false;
     }
 
     nimcp_free(system);

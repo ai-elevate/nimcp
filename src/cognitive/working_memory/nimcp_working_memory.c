@@ -12,6 +12,11 @@
  * - Attention refresh prevents decay (frontal-parietal networks)
  * - Salience determines eviction priority (thalamic gating)
  *
+ * BIO-ASYNC INTEGRATION:
+ * - Module ID: 0x0334 (BIO_MODULE_WORKING_MEMORY)
+ * - Publishes: item additions, evictions, refreshes
+ * - Subscribes: attention updates, decay triggers
+ *
  * PHASE: 10.2 (Working Memory)
  * DEPENDENCIES: None (standalone module)
  * TRAINING_IMPACT: None (inference-only, no weight modification)
@@ -20,14 +25,28 @@
  * @date 2025-11
  */
 
+#define LOG_MODULE "working_memory"
+
 #include "cognitive/nimcp_working_memory.h"
-#include "utils/memory/nimcp_memory.h"
+#include "nimcp.h"  // For error codes
+#include "async/nimcp_bio_async.h"
+#include "async/nimcp_bio_router.h"
+#include "async/nimcp_bio_messages.h"
+#include "utils/memory/nimcp_unified_memory.h"
+#include "utils/logging/nimcp_logging.h"
 #include "utils/time/nimcp_time.h"
 #include "utils/platform/nimcp_platform_mutex.h"  // Thread safety
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
 #include <stdio.h>
+#include "utils/memory/nimcp_memory_guards.h"  // For nimcp_calloc/nimcp_free
+
+//=============================================================================
+// BIO-ASYNC MODULE REGISTRATION
+//=============================================================================
+
+#define BIO_MODULE_WORKING_MEMORY 0x0334
 
 // ============================================================================
 // CONSTANTS
@@ -80,7 +99,204 @@ struct working_memory {
 
     // Thread safety (added 2025-11-17)
     nimcp_platform_mutex_t mutex;   // Protects all working memory operations
+
+    // Bio-async integration
+    bio_module_context_t bio_ctx;   // Bio-async module context
+    bool bio_async_enabled;         // Bio-async registration status
 };
+
+//=============================================================================
+// BIO-ASYNC MESSAGE HANDLERS
+//=============================================================================
+
+/**
+ * @brief Handle working memory store request via bio-async
+ *
+ * WHAT: Process incoming request to store data in working memory
+ * WHY:  Enable distributed systems to add items to working memory via bio-async
+ * HOW:  Extract payload data, call working_memory_add with salience from priority
+ *
+ * NOTE: Data follows immediately after bio_msg_wm_store_t in message buffer
+ */
+static nimcp_error_t handle_wm_store_request(
+    const void* msg,
+    size_t msg_size,
+    nimcp_bio_promise_t response_promise,
+    void* user_data)
+{
+    (void)response_promise;
+
+    if (!msg || !user_data) {
+        return NIMCP_ERROR_NULL_ARG;
+    }
+
+    if (msg_size < sizeof(bio_msg_wm_store_t)) {
+        LOG_ERROR("Store request too small: %zu bytes", msg_size);
+        return NIMCP_ERROR_INVALID;
+    }
+
+    const bio_msg_wm_store_t* store_msg = (const bio_msg_wm_store_t*)msg;
+    working_memory_t* wm = (working_memory_t*)user_data;
+
+    LOG_DEBUG("Received WM store request: slot=%u, size=%u, priority=%.2f",
+              store_msg->slot_id, store_msg->data_size, store_msg->priority);
+
+    // Extract payload data (follows immediately after header)
+    const uint8_t* payload = (const uint8_t*)msg + sizeof(bio_msg_wm_store_t);
+    size_t expected_size = sizeof(bio_msg_wm_store_t) + store_msg->data_size;
+
+    if (msg_size < expected_size) {
+        LOG_ERROR("Incomplete store request: expected %zu, got %zu", expected_size, msg_size);
+        return NIMCP_ERROR_INVALID;
+    }
+
+    // Convert byte data to float array (assuming data_size is in bytes)
+    uint32_t num_floats = store_msg->data_size / sizeof(float);
+    if (num_floats == 0) {
+        LOG_WARN("Empty data in store request");
+        return NIMCP_ERROR_INVALID;
+    }
+
+    const float* data = (const float*)payload;
+
+    // Add to working memory with priority as salience
+    bool success = working_memory_add(wm, data, num_floats, store_msg->priority);
+
+    if (!success) {
+        LOG_ERROR("Failed to add item to working memory");
+        return NIMCP_ERROR_MEMORY;
+    }
+
+    LOG_DEBUG("Successfully stored %u floats in working memory", num_floats);
+    return NIMCP_SUCCESS;
+}
+
+/**
+ * @brief Handle working memory retrieve request via bio-async
+ *
+ * WHAT: Process incoming request to retrieve data from working memory
+ * WHY:  Enable distributed systems to query working memory contents via bio-async
+ * HOW:  Lookup item by slot_id, send response with data via promise
+ *
+ * NOTE: Response includes retrieved data in payload
+ */
+static nimcp_error_t handle_wm_retrieve_request(
+    const void* msg,
+    size_t msg_size,
+    nimcp_bio_promise_t response_promise,
+    void* user_data)
+{
+    (void)msg_size;
+
+    if (!msg || !user_data) {
+        return NIMCP_ERROR_NULL_ARG;
+    }
+
+    const bio_msg_wm_retrieve_t* retrieve_msg = (const bio_msg_wm_retrieve_t*)msg;
+    working_memory_t* wm = (working_memory_t*)user_data;
+
+    LOG_DEBUG("Received WM retrieve request: slot=%u, min_confidence=%.2f",
+              retrieve_msg->slot_id, retrieve_msg->min_confidence);
+
+    // Get item from working memory
+    uint32_t item_size = 0;
+    const float* item = working_memory_get(wm, retrieve_msg->slot_id, &item_size);
+
+    if (!item) {
+        LOG_WARN("Item not found at slot %u", retrieve_msg->slot_id);
+        // Send empty response via promise to indicate failure
+        if (response_promise) {
+            bio_msg_wm_store_t response = {0};
+            bio_msg_init_header(&response.header, BIO_MSG_WORKING_MEMORY_STORE,
+                                BIO_MODULE_WORKING_MEMORY, 0, sizeof(response));
+            nimcp_bio_promise_complete_sized(response_promise, &response, sizeof(response));
+        }
+        return NIMCP_ERROR_INVALID;
+    }
+
+    // Get salience for confidence check
+    float salience = 0.0f;
+    working_memory_get_total_salience(wm, retrieve_msg->slot_id, &salience);
+
+    if (salience < retrieve_msg->min_confidence) {
+        LOG_DEBUG("Item salience %.2f below threshold %.2f",
+                  salience, retrieve_msg->min_confidence);
+        // Send empty response to indicate confidence too low
+        if (response_promise) {
+            bio_msg_wm_store_t response = {0};
+            bio_msg_init_header(&response.header, BIO_MSG_WORKING_MEMORY_STORE,
+                                BIO_MODULE_WORKING_MEMORY, 0, sizeof(response));
+            nimcp_bio_promise_complete_sized(response_promise, &response, sizeof(response));
+        }
+        return NIMCP_ERROR_INVALID;
+    }
+
+    // Send response with retrieved data via promise
+    if (response_promise) {
+        size_t response_size = sizeof(bio_msg_wm_store_t) + (item_size * sizeof(float));
+        uint8_t* response_buf = nimcp_malloc(response_size);
+        if (!response_buf) {
+            LOG_ERROR("Failed to allocate response buffer");
+            return NIMCP_ERROR_MEMORY;
+        }
+
+        bio_msg_wm_store_t* response = (bio_msg_wm_store_t*)response_buf;
+        bio_msg_init_header(&response->header, BIO_MSG_WORKING_MEMORY_STORE,
+                            BIO_MODULE_WORKING_MEMORY, 0, response_size);
+        response->slot_id = retrieve_msg->slot_id;
+        response->data_size = item_size * sizeof(float);
+        response->priority = salience;
+
+        // Copy item data to response payload
+        memcpy(response_buf + sizeof(bio_msg_wm_store_t), item, item_size * sizeof(float));
+
+        nimcp_bio_promise_complete_sized(response_promise, response_buf, response_size);
+        nimcp_free(response_buf);
+
+        LOG_DEBUG("Retrieved %u floats from slot %u", item_size, retrieve_msg->slot_id);
+    }
+
+    return NIMCP_SUCCESS;
+}
+
+/**
+ * @brief Broadcast item stored event
+ */
+static void bio_broadcast_item_stored(working_memory_t* wm, uint32_t slot_id, float salience) {
+    if (!wm || !wm->bio_async_enabled || !wm->bio_ctx) {
+        return;
+    }
+
+    bio_msg_wm_store_t msg = {};
+    bio_msg_init_header(&msg.header, BIO_MSG_WORKING_MEMORY_STORE,
+                        bio_module_context_get_id(wm->bio_ctx), 0, sizeof(msg));
+    msg.header.flags |= BIO_MSG_FLAG_BROADCAST;
+    msg.slot_id = slot_id;
+    msg.priority = salience;
+
+    bio_router_broadcast(wm->bio_ctx, &msg, sizeof(msg));
+    LOG_DEBUG("Broadcast: item stored in slot %u", slot_id);
+}
+
+/**
+ * @brief Broadcast item evicted event (attention shift)
+ */
+static void bio_broadcast_item_evicted(working_memory_t* wm, uint32_t slot_id) {
+    if (!wm || !wm->bio_async_enabled || !wm->bio_ctx) {
+        return;
+    }
+
+    bio_msg_attention_shift_t msg = {};
+    bio_msg_init_header(&msg.header, BIO_MSG_ATTENTION_SHIFT,
+                        bio_module_context_get_id(wm->bio_ctx), 0, sizeof(msg));
+    msg.header.flags |= BIO_MSG_FLAG_BROADCAST;
+    msg.target_id = slot_id;
+    msg.attention_weight = 0.0f;  // Item is gone
+    msg.preemptive = false;
+
+    bio_router_broadcast(wm->bio_ctx, &msg, sizeof(msg));
+    LOG_DEBUG("Broadcast: item evicted from slot %u", slot_id);
+}
 
 // ============================================================================
 // ERROR HANDLING
@@ -179,6 +395,9 @@ static void evict_item_at_index(working_memory_t* wm, uint32_t index) {
     wm->items[wm->current_size] = NULL;
 
     wm->total_evictions++;
+
+    // Broadcast eviction event via bio-async
+    bio_broadcast_item_evicted(wm, index);
 }
 
 /**
@@ -257,25 +476,32 @@ working_memory_t* working_memory_create_custom(
     // Guard: NULL config
     if (!config) {
         set_error("NULL config");
+        LOG_ERROR("NULL config provided to working_memory_create_custom");
         return NULL;
     }
 
     // Guard: Invalid capacity
     if (config->capacity < MIN_CAPACITY || config->capacity > MAX_CAPACITY) {
         set_error("Invalid capacity (must be 1-32)");
+        LOG_ERROR("Invalid capacity: %u (must be %d-%d)", config->capacity, MIN_CAPACITY, MAX_CAPACITY);
         return NULL;
     }
 
     // Guard: Invalid decay tau
     if (config->decay_tau_ms <= 0.0f) {
         set_error("Invalid decay_tau_ms (must be > 0)");
+        LOG_ERROR("Invalid decay_tau_ms: %.2f (must be > 0)", config->decay_tau_ms);
         return NULL;
     }
+
+    LOG_INFO("Creating working memory: capacity=%u, decay_tau_ms=%.2f",
+             config->capacity, config->decay_tau_ms);
 
     // Allocate main structure
     working_memory_t* wm = nimcp_calloc(1, sizeof(working_memory_t));
     if (!wm) {
         set_error("Failed to allocate working_memory_t");
+        LOG_ERROR("Failed to allocate working_memory_t (%zu bytes)", sizeof(working_memory_t));
         return NULL;
     }
 
@@ -318,6 +544,26 @@ working_memory_t* working_memory_create_custom(
         return NULL;
     }
 
+    // Bio-async registration
+    wm->bio_ctx = NULL;
+    wm->bio_async_enabled = false;
+    if (bio_router_is_initialized()) {
+        bio_module_info_t bio_info = {
+            .module_id = BIO_MODULE_WORKING_MEMORY,
+            .module_name = "working_memory",
+            .inbox_capacity = 32,
+            .user_data = wm
+        };
+        wm->bio_ctx = bio_router_register_module(&bio_info);
+        if (wm->bio_ctx) {
+            wm->bio_async_enabled = true;
+            // Register message handlers
+            bio_router_register_handler(wm->bio_ctx, BIO_MSG_WORKING_MEMORY_STORE, handle_wm_store_request);
+            bio_router_register_handler(wm->bio_ctx, BIO_MSG_WORKING_MEMORY_RETRIEVE, handle_wm_retrieve_request);
+            LOG_INFO("Bio-async registered for working_memory module with handlers");
+        }
+    }
+
     return wm;
 }
 
@@ -353,6 +599,13 @@ void working_memory_destroy(working_memory_t* wm) {
     nimcp_free(wm->attention_refreshed);
     nimcp_free(wm->emotions);      // Phase 10.3
     nimcp_free(wm->has_emotion);   // Phase 10.3
+
+    // Unregister from bio-router
+    if (wm->bio_async_enabled && wm->bio_ctx) {
+        bio_router_unregister_module(wm->bio_ctx);
+        wm->bio_ctx = NULL;
+        wm->bio_async_enabled = false;
+    }
 
     // Destroy mutex
     nimcp_platform_mutex_destroy(&wm->mutex);
@@ -449,6 +702,9 @@ bool working_memory_add(
 
     wm->current_size++;
     wm->total_additions++;
+
+    // Broadcast item stored event via bio-async
+    bio_broadcast_item_stored(wm, index, salience);
 
     nimcp_platform_mutex_unlock(&wm->mutex);
     return true;

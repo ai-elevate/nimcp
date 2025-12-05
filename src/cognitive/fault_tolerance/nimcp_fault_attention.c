@@ -17,6 +17,15 @@
 #include <math.h>
 #include <float.h>
 #include <time.h>
+#include "async/nimcp_bio_async.h"
+#include "async/nimcp_bio_router.h"
+#include "async/nimcp_bio_messages.h"
+#include "utils/logging/nimcp_logging.h"
+#include "utils/memory/nimcp_unified_memory.h"
+
+#define LOG_MODULE "cognitive.fault.attention"
+#define BIO_MODULE_COGNITIVE_FAULT_ATTENTION 0x0357
+
 
 //=============================================================================
 // Internal Structure Definition
@@ -46,6 +55,10 @@ struct fault_attention {
     // Statistics
     fault_attention_stats_t stats;
     struct timespec last_computation_time;
+
+    // Bio-async integration
+    bio_module_context_t bio_ctx;   /**< Bio-async module context */
+    bool bio_async_enabled;         /**< Bio-async registration status */
 };
 
 //=============================================================================
@@ -210,6 +223,7 @@ bool fault_attention_validate_config(const fault_attention_config_t* config) {
 }
 
 fault_attention_t* fault_attention_create(void) {
+    LOG_DEBUG("Creating module");
     fault_attention_config_t config = fault_attention_default_config();
     return fault_attention_create_custom(&config);
 }
@@ -282,10 +296,28 @@ fault_attention_t* fault_attention_create_custom(
               final_config.impact_weight,
               final_config.enable_adaptive_weights);
 
-    return attention;
+    
+    // Bio-async registration
+    attention->bio_ctx = NULL;
+    attention->bio_async_enabled = false;
+    if (bio_router_is_initialized()) {
+        bio_module_info_t bio_info = {
+            .module_id = BIO_MODULE_ATTENTION_FAULT,
+            .module_name = "fault_attention",
+            .inbox_capacity = 32,
+            .user_data = attention
+        };
+        attention->bio_ctx = bio_router_register_module(&bio_info);
+        if (attention->bio_ctx) {
+            attention->bio_async_enabled = true;
+        }
+    }
+
+return attention;
 }
 
 void fault_attention_destroy(fault_attention_t* attention) {
+    LOG_DEBUG("Destroying module");
     if (!attention) {
         return;
     }
@@ -294,6 +326,13 @@ void fault_attention_destroy(fault_attention_t* attention) {
               "Destroying fault attention (computations=%lu, updates=%lu)",
               attention->stats.total_computations,
               attention->stats.total_updates);
+
+    // Unregister from bio-router
+    if (attention->bio_async_enabled && attention->bio_ctx) {
+        bio_router_unregister_module(attention->bio_ctx);
+        attention->bio_ctx = NULL;
+        attention->bio_async_enabled = false;
+    }
 
     nimcp_free(attention);
 }

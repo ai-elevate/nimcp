@@ -14,6 +14,14 @@
  */
 
 #include "cognitive/nimcp_emotional_tagging.h"
+#include "utils/memory/nimcp_unified_memory.h"
+#include "utils/logging/nimcp_logging.h"
+#include "async/nimcp_bio_router.h"
+#include "async/nimcp_bio_async.h"
+#include "async/nimcp_bio_messages.h"
+
+#define LOG_MODULE "EMOTIONAL_TAGGING"
+#define BIO_MODULE_EMOTIONAL_TAGGING 0x0326
 #include "plasticity/neuromodulators/nimcp_neuromodulators.h"  // Neuromodulator integration
 #include "core/brain/nimcp_brain.h"  // Brain reference
 #include <math.h>

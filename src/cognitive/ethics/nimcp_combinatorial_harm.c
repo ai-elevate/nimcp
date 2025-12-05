@@ -20,6 +20,11 @@
  */
 
 #include "cognitive/ethics/nimcp_combinatorial_harm.h"
+#include "utils/logging/nimcp_logging.h"
+#include "async/nimcp_bio_router.h"
+#include "async/nimcp_bio_async.h"
+#include "async/nimcp_bio_messages.h"
+#include "utils/memory/nimcp_unified_memory.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/platform/nimcp_platform_mutex.h"
 #include "security/nimcp_security.h"  // mprotect-based directive protection

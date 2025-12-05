@@ -6,27 +6,52 @@
  * WHY:  Enable abstract reasoning and inference beyond episodic memory
  * HOW:  Concepts connected by relations, spreading activation for retrieval
  *
+ * BIO-ASYNC INTEGRATION:
+ * - Module ID: 0x0331 (BIO_MODULE_SEMANTIC_MEMORY)
+ * - Publishes: concept activation, relation formation events
+ * - Subscribes: consolidation events from M2
+ *
  * @version Phase M4 Semantic Memory
  * @date 2025-11-13
  */
 
+#define LOG_MODULE "semantic_memory"
+
 #include "cognitive/memory/nimcp_semantic_memory.h"
-#include "utils/memory/nimcp_memory.h"
+#include "nimcp.h"  // For NIMCP_ERROR_* codes
+#include "async/nimcp_bio_async.h"
+#include "async/nimcp_bio_router.h"
+#include "async/nimcp_bio_messages.h"
+#include "utils/memory/nimcp_unified_memory.h"
 #include "utils/memory/nimcp_memory_pool.h"
+#include "utils/logging/nimcp_logging.h"
 #include "cognitive/memory/nimcp_systems_consolidation.h"
 #include "utils/platform/nimcp_platform_time.h"
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
 #include <math.h>
+#include "utils/memory/nimcp_memory_guards.h"  // For nimcp_calloc/nimcp_free
 
 //=============================================================================
 // Constants
 //=============================================================================
 
+#define BIO_MODULE_SEMANTIC_MEMORY 0x0331
+
 #define DEFAULT_CONCEPT_CAPACITY 2048
 #define DEFAULT_RELATION_CAPACITY 8192
 #define DEFAULT_FEATURE_DIM 32
+
+//=============================================================================
+// BIO-ASYNC HANDLERS (Forward declarations)
+//=============================================================================
+
+static nimcp_error_t handle_knowledge_query(
+    const void* msg, size_t msg_size,
+    nimcp_bio_promise_t response_promise, void* user_data);
+
+static void bio_broadcast_concept_activated(semantic_memory_system_t* system, uint32_t concept_id, float activation);
 
 //=============================================================================
 // Internal Helper Functions
@@ -110,22 +135,42 @@ static uint64_t generate_relation_id(semantic_memory_system_t* system) {
  * HOW:  Allocate pools, set defaults, initialize stats
  */
 semantic_memory_system_t* semantic_memory_create(void) {
+    LOG_INFO("Creating semantic memory system");
+
     semantic_memory_system_t* system =
         (semantic_memory_system_t*)nimcp_calloc(1, sizeof(semantic_memory_system_t));
 
     if (!system) {
-        fprintf(stderr, "Failed to allocate semantic memory system\n");
+        LOG_ERROR("Failed to allocate semantic memory system (%zu bytes)", sizeof(semantic_memory_system_t));
         return NULL;
     }
 
-    // Allocate concept pool
-    system->concept_capacity = DEFAULT_CONCEPT_CAPACITY;
-    system->concepts = (semantic_concept_t**)nimcp_calloc(
-        system->concept_capacity,
-        sizeof(semantic_concept_t*)
-    );
+    // Initialize unified memory manager for CoW support
+    unified_mem_config_t mem_config = unified_mem_default_config();
+    mem_config.enable_cow = true;
+    mem_config.enable_tracking = true;
+    system->mem_manager = unified_mem_create(&mem_config);
 
+    // Allocate concept pool (with unified memory if available)
+    system->concept_capacity = DEFAULT_CONCEPT_CAPACITY;
+    if (system->mem_manager) {
+        unified_mem_request_t req = unified_mem_request(
+            system->concept_capacity * sizeof(semantic_concept_t*),
+            NULL, true
+        );
+        system->concepts_handle = unified_mem_alloc(system->mem_manager, &req);
+        if (system->concepts_handle) {
+            system->concepts = (semantic_concept_t**)unified_mem_write(system->concepts_handle);
+            LOG_DEBUG(LOG_MODULE, "Concepts array allocated via unified memory with CoW");
+        }
+    }
     if (!system->concepts) {
+        system->concepts = (semantic_concept_t**)nimcp_calloc(
+            system->concept_capacity, sizeof(semantic_concept_t*)
+        );
+    }
+    if (!system->concepts) {
+        if (system->mem_manager) unified_mem_destroy(system->mem_manager);
         nimcp_free(system);
         return NULL;
     }
@@ -138,21 +183,36 @@ semantic_memory_system_t* semantic_memory_create(void) {
     );
 
     if (!system->relations) {
-        nimcp_free(system->concepts);
+        if (system->concepts_handle) unified_mem_free(system->concepts_handle);
+        else nimcp_free(system->concepts);
+        if (system->mem_manager) unified_mem_destroy(system->mem_manager);
         nimcp_free(system);
         return NULL;
     }
 
-    // Allocate activation map
+    // Allocate activation map (with unified memory if available)
     system->activation_map_size = DEFAULT_CONCEPT_CAPACITY;
-    system->activation_map = (float*)nimcp_calloc(
-        system->activation_map_size,
-        sizeof(float)
-    );
-
+    if (system->mem_manager) {
+        unified_mem_request_t req = unified_mem_request(
+            system->activation_map_size * sizeof(float),
+            NULL, true
+        );
+        system->activation_handle = unified_mem_alloc(system->mem_manager, &req);
+        if (system->activation_handle) {
+            system->activation_map = (float*)unified_mem_write(system->activation_handle);
+            LOG_DEBUG(LOG_MODULE, "Activation map allocated via unified memory with CoW");
+        }
+    }
+    if (!system->activation_map) {
+        system->activation_map = (float*)nimcp_calloc(
+            system->activation_map_size, sizeof(float)
+        );
+    }
     if (!system->activation_map) {
         nimcp_free(system->relations);
-        nimcp_free(system->concepts);
+        if (system->concepts_handle) unified_mem_free(system->concepts_handle);
+        else nimcp_free(system->concepts);
+        if (system->mem_manager) unified_mem_destroy(system->mem_manager);
         nimcp_free(system);
         return NULL;
     }
@@ -193,7 +253,58 @@ semantic_memory_system_t* semantic_memory_create(void) {
     };
     system->feature_pool = memory_pool_create(&feature_pool_config);
 
-    return system;
+    
+    // Bio-async registration
+    system->bio_ctx = NULL;
+    system->bio_async_enabled = false;
+    if (bio_router_is_initialized()) {
+        bio_module_info_t bio_info = {
+            .module_id = BIO_MODULE_MEMORY_SEMANTIC,
+            .module_name = "semantic_memory",
+            .inbox_capacity = 32,
+            .user_data = system
+        };
+        system->bio_ctx = bio_router_register_module(&bio_info);
+        if (system->bio_ctx) {
+            system->bio_async_enabled = true;
+            bio_router_register_handler(system->bio_ctx, BIO_MSG_KNOWLEDGE_QUERY,
+                                        handle_knowledge_query);
+            LOG_INFO(LOG_MODULE, "Bio-async registered (module_id=0x%04X)", BIO_MODULE_SEMANTIC_MEMORY);
+        }
+    }
+
+return system;
+}
+
+/*=============================================================================
+ * BIO-ASYNC HANDLER IMPLEMENTATIONS
+ *============================================================================*/
+
+static nimcp_error_t handle_knowledge_query(
+    const void* msg, size_t msg_size,
+    nimcp_bio_promise_t response_promise, void* user_data)
+{
+    (void)msg_size;
+    (void)response_promise;
+    if (!msg || !user_data) { return NIMCP_ERROR_NULL_ARG; }
+    semantic_memory_system_t* system = (semantic_memory_system_t*)user_data;
+    LOG_DEBUG(LOG_MODULE, "Received knowledge query, concept_count=%u", system->concept_count);
+    return NIMCP_SUCCESS;
+}
+
+static void bio_broadcast_concept_activated(semantic_memory_system_t* system, uint32_t concept_id, float activation) {
+    if (!system || !system->bio_async_enabled || !system->bio_ctx) { return; }
+    // Use salience response for concept activation (repurposed for semantic memory)
+    bio_msg_salience_response_t msg = {0};
+    bio_msg_init_header(&msg.header, BIO_MSG_SALIENCE_RESPONSE,
+                        bio_module_context_get_id(system->bio_ctx), 0, sizeof(msg));
+    msg.header.flags |= BIO_MSG_FLAG_BROADCAST;
+    msg.stimulus_id = concept_id;
+    msg.salience_score = activation;
+    msg.attention_priority = activation;
+    msg.requires_immediate_attention = (activation > 0.8f);
+    bio_router_broadcast(system->bio_ctx, &msg, sizeof(msg));
+    LOG_DEBUG(LOG_MODULE, "Broadcast concept activated: id=%u, activation=%.2f", concept_id, activation);
 }
 
 /**
@@ -237,12 +348,19 @@ static void free_concept(semantic_concept_t* concept) {
 void semantic_memory_destroy(semantic_memory_system_t* system) {
     if (!system) return;
 
-    // Free all concepts
+    // Free all concepts (individual concept objects)
     if (system->concepts) {
         for (uint32_t i = 0; i < system->concept_count; i++) {
             free_concept(system->concepts[i]);
         }
-        nimcp_free(system->concepts);
+        // Free concepts array (unified memory or direct)
+        if (system->concepts_handle) {
+            unified_mem_free(system->concepts_handle);
+            system->concepts_handle = NULL;
+        } else {
+            nimcp_free(system->concepts);
+        }
+        system->concepts = NULL;
     }
 
     // Free all relations
@@ -251,11 +369,23 @@ void semantic_memory_destroy(semantic_memory_system_t* system) {
             nimcp_free(system->relations[i]);
         }
         nimcp_free(system->relations);
+        system->relations = NULL;
     }
 
-    // Free activation map
-    if (system->activation_map) {
+    // Free activation map (unified memory or direct)
+    if (system->activation_handle) {
+        unified_mem_free(system->activation_handle);
+        system->activation_handle = NULL;
+        system->activation_map = NULL;
+    } else if (system->activation_map) {
         nimcp_free(system->activation_map);
+        system->activation_map = NULL;
+    }
+
+    // Destroy unified memory manager
+    if (system->mem_manager) {
+        unified_mem_destroy(system->mem_manager);
+        system->mem_manager = NULL;
     }
 
     // Phase 1.5: Destroy memory pools
@@ -267,6 +397,13 @@ void semantic_memory_destroy(semantic_memory_system_t* system) {
     }
     if (system->feature_pool) {
         memory_pool_destroy(system->feature_pool);
+    }
+
+    // Unregister from bio-router
+    if (system->bio_async_enabled && system->bio_ctx) {
+        bio_router_unregister_module(system->bio_ctx);
+        system->bio_ctx = NULL;
+        system->bio_async_enabled = false;
     }
 
     nimcp_free(system);

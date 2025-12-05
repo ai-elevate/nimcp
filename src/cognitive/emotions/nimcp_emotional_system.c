@@ -20,11 +20,20 @@
  */
 
 #include "cognitive/nimcp_emotional_system.h"
-#include "utils/memory/nimcp_memory.h"
+#include "utils/memory/nimcp_unified_memory.h"
+#include "utils/logging/nimcp_logging.h"
+#include "async/nimcp_bio_async.h"
+#include "async/nimcp_bio_router.h"
+#include "async/nimcp_bio_messages.h"
 #include "cognitive/nimcp_emotional_tagging.h"
+#include "nimcp.h"
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
+#include "utils/memory/nimcp_memory_guards.h"  // For nimcp_calloc/nimcp_free
+
+#define LOG_MODULE "EMOTIONS"
+#define BIO_MODULE_EMOTIONS 0x0320
 
 //=============================================================================
 // Constants
@@ -54,7 +63,59 @@ struct emotional_system {
 
     // === Statistics ===
     emotion_stats_t stats;
+
+    // === Bio-Async Integration ===
+    bio_module_context_t bio_ctx;
+    bool bio_async_enabled;
 };
+
+/*=============================================================================
+ * BIO-ASYNC MESSAGE HANDLERS
+ *============================================================================*/
+
+/**
+ * @brief Handle incoming salience query for emotional boost
+ */
+static nimcp_error_t handle_salience_query(
+    const void* msg, size_t msg_size,
+    nimcp_bio_promise_t response_promise, void* user_data)
+{
+    (void)msg_size;
+    (void)response_promise;
+    if (!msg || !user_data) { return NIMCP_ERROR_NULL_ARG; }
+
+    const bio_msg_salience_query_t* query = (const bio_msg_salience_query_t*)msg;
+    emotional_system_t* system = (emotional_system_t*)user_data;
+
+    LOG_DEBUG(LOG_MODULE, "Received salience query: stimulus=%u, intensity=%.2f",
+              query->stimulus_id, query->raw_intensity);
+
+    /* Could respond with emotional boost for salience calculation */
+    float boost = emotion_system_get_salience_boost(system);
+    LOG_DEBUG(LOG_MODULE, "Emotional salience boost: %.2f", boost);
+
+    return NIMCP_SUCCESS;
+}
+
+/**
+ * @brief Broadcast emotional state change to other modules
+ */
+static void bio_broadcast_emotion_state(emotional_system_t* system) {
+    if (!system || !system->bio_async_enabled || !system->bio_ctx) { return; }
+
+    bio_msg_salience_response_t msg = {0};
+    bio_msg_init_header(&msg.header, BIO_MSG_SALIENCE_RESPONSE,
+                        bio_module_context_get_id(system->bio_ctx), 0, sizeof(msg));
+    msg.header.flags |= BIO_MSG_FLAG_BROADCAST;
+    msg.stimulus_id = 0;
+    msg.salience_score = system->state.intensity;
+    msg.attention_priority = system->state.arousal;
+    msg.requires_immediate_attention = (system->state.intensity > 0.7f);
+
+    bio_router_broadcast(system->bio_ctx, &msg, sizeof(msg));
+    LOG_DEBUG(LOG_MODULE, "Broadcast emotion state: intensity=%.2f, arousal=%.2f",
+              system->state.intensity, system->state.arousal);
+}
 
 //=============================================================================
 // Helper Functions
@@ -150,17 +211,23 @@ emotion_config_t emotion_system_default_config(void) {
 }
 
 emotional_system_t* emotion_system_create(const emotion_config_t* config) {
-    // Allocate system
+    LOG_DEBUG(LOG_MODULE, "emotion_system_create called");
+
+    // Allocate system with unified memory
     emotional_system_t* system = (emotional_system_t*)nimcp_calloc(1, sizeof(emotional_system_t));
     if (!system) {
+        LOG_ERROR(LOG_MODULE, "Failed to allocate emotional system");
         return NULL;
     }
+    LOG_DEBUG(LOG_MODULE, "Allocated %zu bytes for emotional system", sizeof(emotional_system_t));
 
     // Use provided config or defaults
     if (config) {
         system->config = *config;
+        LOG_DEBUG(LOG_MODULE, "Using provided configuration");
     } else {
         system->config = emotion_system_default_config();
+        LOG_DEBUG(LOG_MODULE, "Using default configuration");
     }
 
     // Initialize state to neutral
@@ -169,17 +236,53 @@ emotional_system_t* emotion_system_create(const emotion_config_t* config) {
     system->state.arousal = 0.0f;
     system->state.intensity = 0.0f;
     system->state.emotional_stability = 1.0f;
+    LOG_INFO(LOG_MODULE, "Initialized emotional state to neutral (valence=0.0, arousal=0.0)");
 
     // Initialize statistics
     memset(&system->stats, 0, sizeof(emotion_stats_t));
+    LOG_DEBUG(LOG_MODULE, "Initialized statistics");
 
+    // Initialize bio-async
+    system->bio_ctx = NULL;
+    system->bio_async_enabled = false;
+    if (bio_router_is_initialized()) {
+        bio_module_info_t bio_info = {
+            .module_id = BIO_MODULE_EMOTIONS,
+            .module_name = "emotions",
+            .inbox_capacity = 64,
+            .user_data = system
+        };
+        system->bio_ctx = bio_router_register_module(&bio_info);
+        if (system->bio_ctx) {
+            system->bio_async_enabled = true;
+            /* Register message handlers */
+            bio_router_register_handler(system->bio_ctx, BIO_MSG_SALIENCE_QUERY,
+                                        handle_salience_query);
+            LOG_INFO(LOG_MODULE, "Bio-async registered (module_id=0x%04X)", BIO_MODULE_EMOTIONS);
+        }
+    }
+
+    LOG_INFO(LOG_MODULE, "Emotional system created successfully");
     return system;
 }
 
 void emotion_system_destroy(emotional_system_t* system) {
     if (!system) {
+        LOG_WARN(LOG_MODULE, "emotion_system_destroy called with NULL system");
         return;
     }
+
+    LOG_DEBUG(LOG_MODULE, "Destroying emotional system");
+
+    // Unregister from bio-router
+    if (system->bio_async_enabled && system->bio_ctx) {
+        bio_router_unregister_module(system->bio_ctx);
+        system->bio_ctx = NULL;
+        LOG_DEBUG(LOG_MODULE, "Unregistered from bio-router");
+    }
+
+    LOG_INFO(LOG_MODULE, "Emotional system destroyed (total_updates=%lu, total_regulations=%lu)",
+             system->stats.total_updates, system->stats.total_regulations);
 
     nimcp_free(system);
 }
@@ -231,8 +334,11 @@ bool emotion_system_is_active(const emotional_system_t* system, uint32_t emotion
 bool emotion_system_set_state(emotional_system_t* system, float valence, float arousal,
                               uint64_t timestamp_ms) {
     if (!system) {
+        LOG_ERROR(LOG_MODULE, "emotion_system_set_state called with NULL system");
         return false;
     }
+
+    LOG_DEBUG(LOG_MODULE, "Setting emotional state: valence=%.3f, arousal=%.3f", valence, arousal);
 
     // Clamp inputs to valid ranges
     valence = clamp(valence, -1.0f, 1.0f);
@@ -247,6 +353,9 @@ bool emotion_system_set_state(emotional_system_t* system, float valence, float a
     // Recalculate intensity
     system->state.intensity = calculate_intensity(system->state.valence,
                                                   system->state.arousal);
+
+    LOG_INFO(LOG_MODULE, "Emotional state updated: valence=%.3f, arousal=%.3f, intensity=%.3f",
+             system->state.valence, system->state.arousal, system->state.intensity);
 
     // Update timestamp
     system->state.last_update_ms = timestamp_ms;
@@ -269,6 +378,14 @@ bool emotion_system_set_state(emotional_system_t* system, float valence, float a
     system->stats.avg_stability = update_average(system->stats.avg_stability,
                                                  system->state.emotional_stability,
                                                  system->stats.total_updates);
+
+    LOG_DEBUG(LOG_MODULE, "Statistics: total_updates=%lu, stability=%.3f",
+              system->stats.total_updates, system->state.emotional_stability);
+
+    /* Broadcast emotional state change if significant */
+    if (system->state.intensity > 0.4f) {
+        bio_broadcast_emotion_state(system);
+    }
 
     return true;
 }

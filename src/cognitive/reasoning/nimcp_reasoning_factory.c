@@ -9,9 +9,19 @@
 
 #include "cognitive/reasoning/nimcp_reasoning_factory.h"
 #include "utils/logging/nimcp_logging.h"
+#include "utils/memory/nimcp_memory.h"
+
+// Bio-async integration
+#include "async/nimcp_bio_async.h"
+#include "async/nimcp_bio_messages.h"
+#include "async/nimcp_bio_router.h"
+#include "nimcp.h"  // For error codes
+
 #include <string.h>
 #include <stdio.h>
 #include <stdarg.h>
+
+#define LOG_MODULE "reasoning"
 
 static __thread char last_error[256] = {0};
 
@@ -26,6 +36,39 @@ static void set_error(const char* fmt, ...)
 const char* reasoning_factory_get_last_error(void)
 {
     return last_error;
+}
+
+//=============================================================================
+// Bio-Async Integration (Singleton)
+//=============================================================================
+
+static bio_module_context_t g_factory_bio_ctx = NULL;
+static bool g_factory_bio_async_enabled = false;
+
+/**
+ * @brief Initialize bio-async for reasoning factory
+ */
+static void factory_init_bio_async(void)
+{
+    if (g_factory_bio_async_enabled) {
+        return;  // Already initialized
+    }
+
+    if (bio_router_is_initialized()) {
+        bio_module_info_t bio_info = {
+            .module_id = BIO_MODULE_KNOWLEDGE_FACTORY,
+            .module_name = "reasoning_factory",
+            .inbox_capacity = 64,
+            .user_data = NULL
+        };
+        g_factory_bio_ctx = bio_router_register_module(&bio_info);
+        if (g_factory_bio_ctx) {
+            g_factory_bio_async_enabled = true;
+            NIMCP_LOGGING_INFO("Bio-async enabled for reasoning factory");
+        } else {
+            NIMCP_LOGGING_WARN("Bio-async registration failed for reasoning factory");
+        }
+    }
 }
 
 static logic_config_t get_config_for_size(reasoning_size_t size)
@@ -68,6 +111,9 @@ static logic_config_t get_config_for_size(reasoning_size_t size)
 
 symbolic_logic_t* create_default_symbolic_logic(reasoning_size_t size)
 {
+    // Initialize bio-async on first use
+    factory_init_bio_async();
+
     logic_config_t config = get_config_for_size(size);
     symbolic_logic_t* engine = symbolic_logic_create(&config);
 

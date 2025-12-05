@@ -21,6 +21,15 @@
 #include <string.h>
 #include <stdio.h>
 #include <math.h>
+#include "async/nimcp_bio_async.h"
+#include "async/nimcp_bio_router.h"
+#include "async/nimcp_bio_messages.h"
+#include "utils/logging/nimcp_logging.h"
+#include "utils/memory/nimcp_unified_memory.h"
+
+#define LOG_MODULE "cognitive.self_awareness"
+#define BIO_MODULE_COGNITIVE_SELF_AWARENESS 0x0350
+
 
 // ============================================================================
 // Internal Structures
@@ -42,6 +51,10 @@ struct self_awareness_system {
     uint64_t last_reflection_ms;
 
     nimcp_mutex_t mutex;
+
+    // Bio-async integration
+    bio_module_context_t bio_ctx;   /**< Bio-async module context */
+    bool bio_async_enabled;         /**< Bio-async registration status */
 };
 
 // ============================================================================
@@ -574,11 +587,29 @@ self_awareness_system_t self_awareness_create(const char* name,
         return NULL;
     }
 
-    return system;
+    
+    // Bio-async registration
+    system->bio_ctx = NULL;
+    system->bio_async_enabled = false;
+    if (bio_router_is_initialized()) {
+        bio_module_info_t bio_info = {
+            .module_id = BIO_MODULE_INTROSPECTION_SELF_AWARENESS,
+            .module_name = "self_awareness_extended",
+            .inbox_capacity = 32,
+            .user_data = system
+        };
+        system->bio_ctx = bio_router_register_module(&bio_info);
+        if (system->bio_ctx) {
+            system->bio_async_enabled = true;
+        }
+    }
+
+return system;
 }
 
 void self_awareness_destroy(self_awareness_system_t system)
 {
+    LOG_DEBUG("Destroying module");
     if (!system) {
         return;
     }

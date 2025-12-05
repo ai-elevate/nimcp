@@ -13,12 +13,21 @@
 
 #include "cognitive/fault_tolerance/nimcp_recovery_consolidation.h"
 #include <unistd.h>
-#include "../../utils/memory/nimcp_memory.h"
-#include "../../utils/logging/nimcp_logging.h"
+#include "utils/memory/nimcp_memory.h"
+#include "utils/logging/nimcp_logging.h"
 #include "utils/thread/nimcp_thread.h"
 
 #include <string.h>
 #include <math.h>
+#include "async/nimcp_bio_async.h"
+#include "async/nimcp_bio_router.h"
+#include "async/nimcp_bio_messages.h"
+#include "utils/logging/nimcp_logging.h"
+#include "utils/memory/nimcp_unified_memory.h"
+
+#define LOG_MODULE "cognitive.fault.recovery_consolidation"
+#define BIO_MODULE_COGNITIVE_FAULT_RECOVERY_CONSOLIDATION 0x035A
+
 
 //=============================================================================
 // Constants
@@ -78,6 +87,10 @@ struct recovery_consolidation {
     bool background_running;
     bool background_should_stop;
     nimcp_mutex_t mutex;
+
+    // Bio-async integration
+    bio_module_context_t bio_ctx;   /**< Bio-async module context */
+    bool bio_async_enabled;         /**< Bio-async registration status */
 };
 
 //=============================================================================
@@ -240,6 +253,7 @@ consolidation_config_t recovery_consolidation_default_config(void) {
 }
 
 recovery_consolidation_t* recovery_consolidation_create(void) {
+    LOG_DEBUG("Creating module");
     consolidation_config_t config = recovery_consolidation_default_config();
     return consolidation_create_custom(&config);
 }
@@ -316,10 +330,28 @@ recovery_consolidation_t* consolidation_create_custom(
     LOG_INFO("Consolidation created: max_rules=%u, min_episodes=%u",
              actual_config.max_rules, actual_config.min_episodes_for_rule);
 
-    return cons;
+    
+    // Bio-async registration
+    cons->bio_ctx = NULL;
+    cons->bio_async_enabled = false;
+    if (bio_router_is_initialized()) {
+        bio_module_info_t bio_info = {
+            .module_id = BIO_MODULE_CONSOLIDATION_RECOVERY,
+            .module_name = "recovery_consolidation",
+            .inbox_capacity = 32,
+            .user_data = cons
+        };
+        cons->bio_ctx = bio_router_register_module(&bio_info);
+        if (cons->bio_ctx) {
+            cons->bio_async_enabled = true;
+        }
+    }
+
+return cons;
 }
 
 void recovery_consolidation_destroy(recovery_consolidation_t* consolidation) {
+    LOG_DEBUG("Destroying module");
     // GUARD: NULL check
     if (!consolidation) return;
 
@@ -341,6 +373,13 @@ void recovery_consolidation_destroy(recovery_consolidation_t* consolidation) {
 
     if (consolidation->episodes) {
         nimcp_free(consolidation->episodes);
+    }
+
+    // Unregister from bio-router
+    if (consolidation->bio_async_enabled && consolidation->bio_ctx) {
+        bio_router_unregister_module(consolidation->bio_ctx);
+        consolidation->bio_ctx = NULL;
+        consolidation->bio_async_enabled = false;
     }
 
     nimcp_free(consolidation);

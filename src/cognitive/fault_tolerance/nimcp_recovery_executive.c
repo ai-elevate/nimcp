@@ -27,6 +27,15 @@
 #include <time.h>
 #include <sys/time.h>
 #include <math.h>
+#include "async/nimcp_bio_async.h"
+#include "async/nimcp_bio_router.h"
+#include "async/nimcp_bio_messages.h"
+#include "utils/logging/nimcp_logging.h"
+#include "utils/memory/nimcp_unified_memory.h"
+
+#define LOG_MODULE "cognitive.fault.recovery_executive"
+#define BIO_MODULE_COGNITIVE_FAULT_RECOVERY_EXECUTIVE 0x035C
+
 
 //=============================================================================
 // Internal Structures
@@ -70,6 +79,10 @@ struct recovery_executive_internal {
 
     // Initialized flag
     bool initialized;
+
+    // Bio-async integration
+    bio_module_context_t bio_ctx;   /**< Bio-async module context */
+    bool bio_async_enabled;         /**< Bio-async registration status */
 };
 
 //=============================================================================
@@ -514,6 +527,7 @@ recovery_executive_config_t recovery_executive_default_config(void) {
 recovery_executive_t* recovery_executive_create(
     const recovery_executive_config_t* config
 ) {
+    LOG_DEBUG("Creating module");
     // GUARD: NULL config check
     if (!config) {
         LOG_ERROR("NULL config in recovery_executive_create");
@@ -566,10 +580,28 @@ recovery_executive_t* recovery_executive_create(
 
     LOG_INFO("Recovery executive created successfully");
 
-    return exec;
+    
+    // Bio-async registration
+    exec->bio_ctx = NULL;
+    exec->bio_async_enabled = false;
+    if (bio_router_is_initialized()) {
+        bio_module_info_t bio_info = {
+            .module_id = BIO_MODULE_EXECUTIVE_RECOVERY,
+            .module_name = "recovery_executive",
+            .inbox_capacity = 32,
+            .user_data = exec
+        };
+        exec->bio_ctx = bio_router_register_module(&bio_info);
+        if (exec->bio_ctx) {
+            exec->bio_async_enabled = true;
+        }
+    }
+
+return exec;
 }
 
 void recovery_executive_destroy(recovery_executive_t* exec) {
+    LOG_DEBUG("Destroying module");
     // GUARD: NULL check
     if (!exec) {
         return;
@@ -581,6 +613,13 @@ void recovery_executive_destroy(recovery_executive_t* exec) {
     }
 
     // Free executive structure
+    // Unregister from bio-router
+    if (exec->bio_async_enabled && exec->bio_ctx) {
+        bio_router_unregister_module(exec->bio_ctx);
+        exec->bio_ctx = NULL;
+        exec->bio_async_enabled = false;
+    }
+
     nimcp_free(exec);
 
     LOG_INFO("Recovery executive destroyed");

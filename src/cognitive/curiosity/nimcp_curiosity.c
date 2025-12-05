@@ -3,7 +3,8 @@
 // Refactored for maintainability, performance, and clarity
 //=============================================================================
 
-#include "nimcp_curiosity.h"
+#include "cognitive/curiosity/nimcp_curiosity.h"
+#include "utils/memory/nimcp_unified_memory.h"
 #include <ctype.h>
 #include <math.h>
 #include <stdio.h>
@@ -14,6 +15,13 @@
 #include "utils/memory/nimcp_memory.h"  // CRITICAL: Declares nimcp_calloc/nimcp_free return types
 #include "plasticity/neuromodulators/nimcp_neuromodulators.h"  // Dopamine modulation
 #include "cognitive/analysis/nimcp_network_analysis.h"  // Network topology analysis
+#include "utils/logging/nimcp_logging.h"
+#include "async/nimcp_bio_async.h"
+#include "async/nimcp_bio_messages.h"
+#include "async/nimcp_bio_router.h"
+#include "nimcp.h"  // For error codes
+
+#define LOG_MODULE "curiosity"
 
 //=============================================================================
 // Hash Table Configuration for O(1) Concept Lookup
@@ -182,6 +190,10 @@ struct curiosity_engine_struct {
 
     // Statistics
     learning_progress_t progress;
+
+    // Bio-async communication
+    bio_module_context_t bio_ctx;
+    bool bio_async_enabled;
 };
 
 //=============================================================================
@@ -694,6 +706,35 @@ static void free_hash_table(curiosity_engine_t engine)
 }
 
 //=============================================================================
+// BIO-ASYNC MESSAGE HANDLERS
+//=============================================================================
+
+/**
+ * @brief Broadcast curiosity spike event via bio-async
+ */
+static void bio_broadcast_curiosity_spike(curiosity_engine_t engine,
+                                          float intensity,
+                                          float information_gain,
+                                          uint32_t target_id) {
+    if (!engine || !engine->bio_async_enabled || !engine->bio_ctx) {
+        return;
+    }
+
+    bio_msg_curiosity_signal_t msg = {0};
+    bio_msg_init_header(&msg.header, BIO_MSG_CURIOSITY_SIGNAL,
+                        bio_module_context_get_id(engine->bio_ctx), 0, sizeof(msg));
+    msg.header.flags |= BIO_MSG_FLAG_BROADCAST;
+    msg.target_id = target_id;
+    msg.curiosity_intensity = intensity;
+    msg.information_gain_estimate = information_gain;
+    msg.exploration_bonus = intensity * 0.5f;
+
+    bio_router_broadcast(engine->bio_ctx, &msg, sizeof(msg));
+    LOG_DEBUG("Broadcast curiosity spike: intensity=%.2f, info_gain=%.2f",
+              intensity, information_gain);
+}
+
+//=============================================================================
 // Curiosity Engine Lifecycle
 //=============================================================================
 
@@ -795,8 +836,29 @@ curiosity_engine_t curiosity_engine_create(brain_t parent_brain, const char* lea
     engine->progress.total_answers_learned = 0;
     engine->progress.concepts_learned = 0;
     engine->progress.avg_curiosity = engine->baseline_curiosity;
+    engine->progress.enable_bio_async = false;
     snprintf(engine->progress.current_focus, sizeof(engine->progress.current_focus),
              "exploring world");
+
+    // Bio-async registration
+    engine->bio_ctx = NULL;
+    engine->bio_async_enabled = false;
+    if (bio_router_is_initialized()) {
+        bio_module_info_t bio_info = {
+            .module_id = BIO_MODULE_CURIOSITY,
+            .module_name = "curiosity",
+            .inbox_capacity = 64,
+            .user_data = engine
+        };
+        engine->bio_ctx = bio_router_register_module(&bio_info);
+        if (engine->bio_ctx) {
+            engine->bio_async_enabled = true;
+            engine->progress.enable_bio_async = true;
+            LOG_INFO("Bio-async registered for curiosity module");
+        } else {
+            LOG_WARN("Failed to register bio-async for curiosity module");
+        }
+    }
 
     return engine;
 }
@@ -813,6 +875,14 @@ void curiosity_engine_destroy(curiosity_engine_t engine)
 {
     if (!engine) {
         return;
+    }
+
+    // Bio-async unregistration
+    if (engine->bio_async_enabled && engine->bio_ctx) {
+        bio_router_unregister_module(engine->bio_ctx);
+        engine->bio_ctx = NULL;
+        engine->bio_async_enabled = false;
+        LOG_INFO("Bio-async unregistered for curiosity module");
     }
 
     free_hash_table(engine);
@@ -956,6 +1026,12 @@ knowledge_gap_t curiosity_detect_knowledge_gap(curiosity_engine_t engine, const 
                 gap.learning_potential *= 1.2f;  // Boost learning potential
             }
         }
+    }
+
+    // Broadcast high-curiosity events via bio-async
+    if (gap.curiosity_intensity > 0.7f) {
+        bio_broadcast_curiosity_spike(engine, gap.curiosity_intensity,
+                                      gap.learning_potential, 0);
     }
 
     return gap;

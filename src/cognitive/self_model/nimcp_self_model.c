@@ -9,6 +9,15 @@
 #include <string.h>
 #include <stdio.h>
 #include <math.h>
+#include "async/nimcp_bio_async.h"
+#include "async/nimcp_bio_router.h"
+#include "async/nimcp_bio_messages.h"
+#include "utils/logging/nimcp_logging.h"
+#include "utils/memory/nimcp_unified_memory.h"
+
+#define LOG_MODULE "cognitive.self_model"
+#define BIO_MODULE_COGNITIVE_SELF_MODEL 0x0351
+
 
 // ============================================================================
 // Internal Structure
@@ -17,6 +26,10 @@
 struct self_model_system {
     self_model_t model;
     nimcp_mutex_t mutex;
+
+    // Bio-async integration
+    bio_module_context_t bio_ctx;   /**< Bio-async module context */
+    bool bio_async_enabled;         /**< Bio-async registration status */
 };
 
 // ============================================================================
@@ -38,6 +51,7 @@ self_model_system_t self_model_create(const char* name,
 {
     // Guard: NULL checks
     if (!name || !role || !purpose) {
+        LOG_ERROR("NULL parameter or allocation failure");
         return NULL;
     }
 
@@ -45,6 +59,7 @@ self_model_system_t self_model_create(const char* name,
     struct self_model_system* system =
         nimcp_calloc(1, sizeof(struct self_model_system));
     if (!system) {
+        LOG_ERROR("NULL parameter or allocation failure");
         return NULL;
     }
 
@@ -140,11 +155,29 @@ self_model_system_t self_model_create(const char* name,
         return NULL;
     }
 
-    return system;
+    
+    // Bio-async registration
+    system->bio_ctx = NULL;
+    system->bio_async_enabled = false;
+    if (bio_router_is_initialized()) {
+        bio_module_info_t bio_info = {
+            .module_id = BIO_MODULE_INTROSPECTION_SELF_MODEL,
+            .module_name = "self_model",
+            .inbox_capacity = 32,
+            .user_data = system
+        };
+        system->bio_ctx = bio_router_register_module(&bio_info);
+        if (system->bio_ctx) {
+            system->bio_async_enabled = true;
+        }
+    }
+
+return system;
 }
 
 void self_model_destroy(self_model_system_t system)
 {
+    LOG_DEBUG("Destroying module");
     if (!system) {
         return;
     }

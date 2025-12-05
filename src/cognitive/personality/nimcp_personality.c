@@ -17,6 +17,46 @@
 #include <string.h>
 #include <math.h>
 #include <time.h>
+#include "async/nimcp_bio_async.h"
+#include "async/nimcp_bio_router.h"
+#include "async/nimcp_bio_messages.h"
+#include "utils/logging/nimcp_logging.h"
+#include "utils/memory/nimcp_unified_memory.h"
+
+#define LOG_MODULE "cognitive.personality"
+
+//=============================================================================
+// Bio-Async Module-Level Registration (value-type module)
+//=============================================================================
+
+static bio_module_context_t personality_bio_ctx = NULL;
+static bool personality_bio_async_enabled = false;
+
+__attribute__((constructor))
+static void personality_bio_init(void) {
+    if (!bio_router_is_initialized()) {
+        return;
+    }
+    bio_module_info_t bio_info = {
+        .module_id = BIO_MODULE_EMOTIONS_PERSONALITY,
+        .module_name = "personality",
+        .inbox_capacity = 32,
+        .user_data = NULL
+    };
+    personality_bio_ctx = bio_router_register_module(&bio_info);
+    if (personality_bio_ctx) {
+        personality_bio_async_enabled = true;
+    }
+}
+
+__attribute__((destructor))
+static void personality_bio_cleanup(void) {
+    if (personality_bio_async_enabled && personality_bio_ctx) {
+        bio_router_unregister_module(personality_bio_ctx);
+        personality_bio_ctx = NULL;
+        personality_bio_async_enabled = false;
+    }
+}
 
 //=============================================================================
 // Internal Constants

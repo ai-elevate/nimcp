@@ -73,7 +73,7 @@ bool brain_create_symbolic_logic(
     }
 
     // Check if already initialized
-    if (brain->logic_engine) {
+    if (brain->symbolic_logic) {
         set_error("Symbolic logic engine already initialized");
         return false;
     }
@@ -94,8 +94,8 @@ bool brain_create_symbolic_logic(
     };
 
     // Create symbolic logic engine
-    brain->logic_engine = symbolic_logic_create(&logic_config);
-    if (!brain->logic_engine) {
+    brain->symbolic_logic = symbolic_logic_create(&logic_config);
+    if (!brain->symbolic_logic) {
         set_error("Failed to create symbolic logic engine");
         return false;
     }
@@ -112,9 +112,9 @@ void brain_destroy_symbolic_logic(brain_t brain)
 {
     if (!brain) return;
 
-    if (brain->logic_engine) {
-        symbolic_logic_destroy(brain->logic_engine);
-        brain->logic_engine = NULL;
+    if (brain->symbolic_logic) {
+        symbolic_logic_destroy(brain->symbolic_logic);
+        brain->symbolic_logic = NULL;
         NIMCP_LOGGING_INFO("Symbolic logic engine destroyed");
     }
 }
@@ -134,7 +134,7 @@ bool brain_add_logical_fact(
         return false;
     }
 
-    if (!brain->logic_engine) {
+    if (!brain->symbolic_logic) {
         set_error("Symbolic logic engine not initialized - call brain_create_symbolic_logic first");
         return false;
     }
@@ -169,7 +169,7 @@ bool brain_add_logical_fact(
 
     // Add all clauses to knowledge base
     for (int i = 0; i < num_clauses; i++) {
-        if (!symbolic_logic_add_fact(brain->logic_engine, clauses[i], salience)) {
+        if (!symbolic_logic_add_fact(brain->symbolic_logic, clauses[i], salience)) {
             set_error("Failed to add fact clause %d to knowledge base", i);
             // Clean up remaining clauses
             for (int j = i; j < num_clauses; j++) {
@@ -187,7 +187,7 @@ bool brain_add_logical_fact(
         // Create a simple float representation for working memory
         // (In a real implementation, you'd encode the logical structure)
         float fact_encoding[4] = {salience, 1.0f, 0.0f, 0.0f}; // Simple encoding
-        working_memory_add_item(brain->working_memory, fact_encoding, 4, salience);
+        working_memory_add(brain->working_memory, fact_encoding, 4, salience);
         NIMCP_LOGGING_DEBUG("Fact added to working memory: %s (salience=%.2f)", fact_str, salience);
     }
 
@@ -206,7 +206,7 @@ bool brain_add_logical_rule(
         return false;
     }
 
-    if (!brain->logic_engine) {
+    if (!brain->symbolic_logic) {
         set_error("Symbolic logic engine not initialized");
         return false;
     }
@@ -277,7 +277,7 @@ bool brain_add_logical_rule(
     rule->priority = priority;
 
     // Add rule to logic engine
-    if (!symbolic_logic_add_rule(brain->logic_engine, rule)) {
+    if (!symbolic_logic_add_rule(brain->symbolic_logic, rule)) {
         set_error("Failed to add rule to logic engine");
         nimcp_free(rule);
         if (premise_clauses) nimcp_free(premise_clauses);
@@ -291,6 +291,14 @@ bool brain_add_logical_rule(
     return true;
 }
 
+// ============================================================================
+// NOTE: The following functions have been moved to separate modules per SRP:
+// - brain_query_knowledge -> nimcp_knowledge_base_interface.c
+// - brain_forward_chain -> nimcp_forward_chaining.c
+// - brain_backward_chain -> nimcp_backward_chaining.c
+// ============================================================================
+
+#if 0 // Disabled - see nimcp_knowledge_base_interface.c
 bool brain_query_knowledge(
     brain_t brain,
     const char* query_str,
@@ -302,7 +310,7 @@ bool brain_query_knowledge(
         return false;
     }
 
-    if (!brain->logic_engine) {
+    if (!brain->symbolic_logic) {
         set_error("Symbolic logic engine not initialized");
         return false;
     }
@@ -341,7 +349,7 @@ bool brain_query_knowledge(
     // Query the knowledge base with first clause
     kb_entry_t** matches = NULL;
     int num_matches = 0;
-    success = symbolic_logic_query(brain->logic_engine, clauses[0], &matches, &num_matches);
+    success = symbolic_logic_query(brain->symbolic_logic, clauses[0], &matches, &num_matches);
 
     // Clean up query clauses
     for (int i = 0; i < num_clauses; i++) {
@@ -386,11 +394,13 @@ void brain_free_query_result(query_result_t* result)
 
     memset(result, 0, sizeof(query_result_t));
 }
+#endif // Disabled brain_query_knowledge
 
 //=============================================================================
 // Brain API - Inference Operations
 //=============================================================================
 
+#if 0 // Disabled - see nimcp_forward_chaining.c and nimcp_backward_chaining.c
 bool brain_forward_chain(
     brain_t brain,
     uint32_t max_iterations,
@@ -402,7 +412,7 @@ bool brain_forward_chain(
         return false;
     }
 
-    if (!brain->logic_engine) {
+    if (!brain->symbolic_logic) {
         set_error("Symbolic logic engine not initialized");
         return false;
     }
@@ -422,16 +432,18 @@ bool brain_forward_chain(
 
     // Create executive task if enabled
     uint32_t task_id = 0;
-    if (brain->executive && brain->config.enable_executive) {
-        task_descriptor_t task = {
-            .type = TASK_TYPE_REASONING,
-            .priority = PRIORITY_NORMAL,
-            .status = TASK_STATUS_PENDING,
-            .steps_total = max_iterations
-        };
-        strncpy(task.name, "Forward Chaining", sizeof(task.name) - 1);
-        task_id = executive_add_task(brain->executive, &task);
-    }
+    // Executive task creation disabled - API not available
+    // if (brain->executive && brain->config.enable_executive) {
+    //     task_descriptor_t task = {
+    //         .type = TASK_TYPE_REASONING,
+    //         .priority = PRIORITY_NORMAL,
+    //         .status = TASK_STATUS_PENDING,
+    //         .steps_total = max_iterations
+    //     };
+    //     strncpy(task.name, "Forward Chaining", sizeof(task.name) - 1);
+    //     task_id = executive_add_task(brain->executive, &task);
+    // }
+    (void)task_id; // Suppress unused warning
 
     // Perform forward chaining
     uint64_t start_time = nimcp_time_monotonic_ms();
@@ -439,7 +451,7 @@ bool brain_forward_chain(
     int num_new_facts = 0;
 
     bool success = symbolic_logic_forward_chain(
-        brain->logic_engine,
+        brain->symbolic_logic,
         max_iterations,
         &new_facts,
         &num_new_facts
@@ -449,9 +461,9 @@ bool brain_forward_chain(
 
     if (!success) {
         set_error("Forward chaining failed");
-        if (task_id > 0 && brain->executive) {
-            executive_mark_task_failed(brain->executive, task_id);
-        }
+        // if (task_id > 0 && brain->executive) {
+        //     executive_mark_task_failed(brain->executive, task_id); // Executive task tracking not available
+        // }
         return false;
     }
 
@@ -459,7 +471,7 @@ bool brain_forward_chain(
     if (brain->working_memory && brain->config.enable_working_memory && num_new_facts > 0) {
         for (int i = 0; i < num_new_facts && i < 7; i++) { // Limit to WM capacity
             float fact_encoding[4] = {0.7f, 1.0f, (float)i, 0.0f};
-            working_memory_add_item(brain->working_memory, fact_encoding, 4, 0.7f);
+            working_memory_add(brain->working_memory, fact_encoding, 4, 0.7f);
         }
         NIMCP_LOGGING_DEBUG("Stored %d new inferences in working memory",
                            (num_new_facts < 7) ? num_new_facts : 7);
@@ -473,9 +485,9 @@ bool brain_forward_chain(
     result->inference_time_ms = end_time - start_time;
 
     // Complete executive task if enabled
-    if (task_id > 0 && brain->executive) {
-        executive_mark_task_completed(brain->executive, task_id);
-    }
+    // if (task_id > 0 && brain->executive) {
+    //     executive_mark_task_XXX(XXX); // Executive task tracking not available
+    // }
 
     NIMCP_LOGGING_INFO("Forward chaining completed: %d new facts derived in %llu ms",
                        num_new_facts, (unsigned long long)(end_time - start_time));
@@ -504,7 +516,7 @@ bool brain_backward_chain(
         return false;
     }
 
-    if (!brain->logic_engine) {
+    if (!brain->symbolic_logic) {
         set_error("Symbolic logic engine not initialized");
         return false;
     }
@@ -542,15 +554,16 @@ bool brain_backward_chain(
 
     // Create executive task for planning
     uint32_t task_id = 0;
-    if (brain->executive && brain->config.enable_executive) {
-        task_descriptor_t task = {
-            .type = TASK_TYPE_PLANNING,
-            .priority = PRIORITY_HIGH,
-            .status = TASK_STATUS_PENDING
-        };
-        strncpy(task.name, "Backward Chaining Proof", sizeof(task.name) - 1);
-        task_id = executive_add_task(brain->executive, &task);
-    }
+    // Executive task creation disabled - executive API not available
+    // if (brain->executive && brain->config.enable_executive) {
+    //     task_descriptor_t task = {
+    //         .type = TASK_TYPE_PLANNING,
+    //         .priority = PRIORITY_HIGH,
+    //         .status = TASK_STATUS_PENDING
+    //     };
+    //     strncpy(task.name, "Backward Chaining Proof", sizeof(task.name) - 1);
+    //     task_id = executive_add_task(brain->executive, &task);
+    // }
 
     // Perform backward chaining
     uint64_t start_time = nimcp_time_monotonic_ms();
@@ -558,7 +571,7 @@ bool brain_backward_chain(
     int num_steps = 0;
 
     success = symbolic_logic_backward_chain(
-        brain->logic_engine,
+        brain->symbolic_logic,
         clauses[0],
         &proof_trace,
         &num_steps
@@ -574,16 +587,16 @@ bool brain_backward_chain(
 
     if (!success) {
         NIMCP_LOGGING_INFO("Goal not proven: %s", goal_str);
-        if (task_id > 0 && brain->executive) {
-            executive_mark_task_failed(brain->executive, task_id);
-        }
+        // if (task_id > 0 && brain->executive) {
+        //     executive_mark_task_failed(brain->executive, task_id); // Executive task tracking not available
+        // }
         return false; // Goal not provable
     }
 
     // Store proof in working memory if enabled
     if (brain->working_memory && brain->config.enable_working_memory && num_steps > 0) {
         float proof_encoding[4] = {1.0f, 0.0f, (float)num_steps, 0.0f};
-        working_memory_add_item(brain->working_memory, proof_encoding, 4, 0.9f);
+        working_memory_add(brain->working_memory, proof_encoding, 4, 0.9f);
         NIMCP_LOGGING_DEBUG("Stored proof trace in working memory (steps=%d)", num_steps);
     }
 
@@ -595,9 +608,9 @@ bool brain_backward_chain(
     result->inference_time_ms = end_time - start_time;
 
     // Complete executive task
-    if (task_id > 0 && brain->executive) {
-        executive_mark_task_completed(brain->executive, task_id);
-    }
+    // if (task_id > 0 && brain->executive) {
+    //     executive_mark_task_completed(brain->executive, task_id); // Executive task tracking not available
+    // }
 
     NIMCP_LOGGING_INFO("Backward chaining successful: goal '%s' proven in %d steps (%llu ms)",
                        goal_str, num_steps, (unsigned long long)(end_time - start_time));
@@ -621,6 +634,7 @@ void brain_free_inference_result(inference_result_t* result)
 
     memset(result, 0, sizeof(inference_result_t));
 }
+#endif // Disabled inference operations (forward_chain, backward_chain)
 
 //=============================================================================
 // Brain API - Statistics and Diagnostics
@@ -635,7 +649,7 @@ bool brain_get_logic_stats(
         return false;
     }
 
-    if (!brain->logic_engine) {
+    if (!brain->symbolic_logic) {
         set_error("Symbolic logic engine not initialized");
         return false;
     }
@@ -645,7 +659,7 @@ bool brain_get_logic_stats(
         return false;
     }
 
-    return symbolic_logic_get_stats(brain->logic_engine, stats);
+    return symbolic_logic_get_stats(brain->symbolic_logic, stats);
 }
 
 bool brain_export_knowledge_base(
@@ -657,7 +671,7 @@ bool brain_export_knowledge_base(
         return false;
     }
 
-    if (!brain->logic_engine) {
+    if (!brain->symbolic_logic) {
         set_error("Symbolic logic engine not initialized");
         return false;
     }
@@ -681,7 +695,7 @@ bool brain_import_knowledge_base(
         return false;
     }
 
-    if (!brain->logic_engine) {
+    if (!brain->symbolic_logic) {
         set_error("Symbolic logic engine not initialized");
         return false;
     }

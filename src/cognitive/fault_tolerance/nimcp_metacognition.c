@@ -24,6 +24,15 @@
 #include <string.h>
 #include <math.h>
 #include <time.h>
+#include "async/nimcp_bio_async.h"
+#include "async/nimcp_bio_router.h"
+#include "async/nimcp_bio_messages.h"
+#include "utils/logging/nimcp_logging.h"
+#include "utils/memory/nimcp_unified_memory.h"
+
+#define LOG_MODULE "cognitive.fault.metacognition"
+#define BIO_MODULE_COGNITIVE_FAULT_METACOGNITION 0x0359
+
 
 //=============================================================================
 // Internal Structures
@@ -79,6 +88,10 @@ struct metacognition {
     bool initialized;
     uint64_t total_samples;
     uint64_t last_update_time;
+
+    // Bio-async integration
+    bio_module_context_t bio_ctx;   /**< Bio-async module context */
+    bool bio_async_enabled;         /**< Bio-async registration status */
 };
 
 //=============================================================================
@@ -119,6 +132,7 @@ metacognition_config_t metacognition_default_config(void) {
 }
 
 metacognition_t* metacognition_create(const metacognition_config_t* config) {
+    LOG_DEBUG("Creating module");
     // GUARD: Allocate main structure
     metacognition_t* meta = (metacognition_t*)nimcp_malloc(sizeof(metacognition_t));
     if (!meta) {
@@ -169,10 +183,28 @@ metacognition_t* metacognition_create(const metacognition_config_t* config) {
         LOG_INFO("Metacognition system created successfully");
     }
 
-    return meta;
+    
+    // Bio-async registration
+    meta->bio_ctx = NULL;
+    meta->bio_async_enabled = false;
+    if (bio_router_is_initialized()) {
+        bio_module_info_t bio_info = {
+            .module_id = BIO_MODULE_INTROSPECTION_METACOGNITION,
+            .module_name = "metacognition",
+            .inbox_capacity = 32,
+            .user_data = meta
+        };
+        meta->bio_ctx = bio_router_register_module(&bio_info);
+        if (meta->bio_ctx) {
+            meta->bio_async_enabled = true;
+        }
+    }
+
+return meta;
 }
 
 void metacognition_destroy(metacognition_t* meta) {
+    LOG_DEBUG("Destroying module");
     // GUARD: NULL check
     if (!meta) {
         return;
@@ -189,6 +221,13 @@ void metacognition_destroy(metacognition_t* meta) {
     }
 
     // Free main structure
+    // Unregister from bio-router
+    if (meta->bio_async_enabled && meta->bio_ctx) {
+        bio_router_unregister_module(meta->bio_ctx);
+        meta->bio_ctx = NULL;
+        meta->bio_async_enabled = false;
+    }
+
     nimcp_free(meta);
 }
 
@@ -455,6 +494,7 @@ bool metacognition_is_initialized(const metacognition_t* meta) {
 //=============================================================================
 
 void diagnosis_destroy(diagnosis_t* diagnosis) {
+    LOG_DEBUG("Destroying module");
     if (diagnosis) {
         nimcp_free(diagnosis);
     }
@@ -555,6 +595,7 @@ void metacognition_print_state(const metacognition_t* meta, FILE* fp) {
 //=============================================================================
 
 static baseline_window_t* baseline_window_create(uint32_t capacity) {
+    LOG_DEBUG("Creating module");
     baseline_window_t* window = (baseline_window_t*)nimcp_malloc(sizeof(baseline_window_t));
     if (!window) {
         return NULL;
@@ -574,6 +615,7 @@ static baseline_window_t* baseline_window_create(uint32_t capacity) {
 }
 
 static void baseline_window_destroy(baseline_window_t* window) {
+    LOG_DEBUG("Destroying module");
     if (window) {
         if (window->samples) {
             nimcp_free(window->samples);
@@ -639,11 +681,13 @@ static bool baseline_window_compute_baseline(
 //=============================================================================
 
 static anomaly_detector_t* anomaly_detector_create(void) {
+    LOG_DEBUG("Creating module");
     anomaly_detector_t* detector = (anomaly_detector_t*)nimcp_calloc(1, sizeof(anomaly_detector_t));
     return detector;
 }
 
 static void anomaly_detector_destroy(anomaly_detector_t* detector) {
+    LOG_DEBUG("Destroying module");
     if (detector) {
         nimcp_free(detector);
     }

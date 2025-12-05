@@ -18,12 +18,21 @@
  */
 
 #include "cognitive/fault_tolerance/nimcp_emotional_tagging.h"
-#include "../../utils/memory/nimcp_memory.h"
-#include "../../utils/logging/nimcp_logging.h"
+#include "utils/memory/nimcp_memory.h"
+#include "utils/logging/nimcp_logging.h"
 #include "utils/thread/nimcp_thread.h"
 #include <string.h>
 #include <math.h>
 #include <pthread.h>
+#include "async/nimcp_bio_async.h"
+#include "async/nimcp_bio_router.h"
+#include "async/nimcp_bio_messages.h"
+#include "utils/logging/nimcp_logging.h"
+#include "utils/memory/nimcp_unified_memory.h"
+
+#define LOG_MODULE "cognitive.fault.emotional_tag"
+#define BIO_MODULE_COGNITIVE_FAULT_EMOTIONAL_TAG 0x0355
+
 
 //=============================================================================
 // Constants
@@ -63,6 +72,10 @@ struct nimcp_emotional_tagger {
 
     /* Thread safety */
     nimcp_mutex_t mutex;
+
+    // Bio-async integration
+    bio_module_context_t bio_ctx;   /**< Bio-async module context */
+    bool bio_async_enabled;         /**< Bio-async registration status */
 };
 
 //=============================================================================
@@ -355,6 +368,7 @@ static void update_statistics(
 //=============================================================================
 
 nimcp_emotional_tagger_t* nimcp_emotional_tagger_create(void) {
+    LOG_DEBUG("Creating module");
     /* WHAT: Allocate tagger instance
      * WHY:  Need storage for statistics and mutex
      * HOW:  nimcp_calloc for zero-initialized memory */
@@ -374,10 +388,28 @@ nimcp_emotional_tagger_t* nimcp_emotional_tagger_create(void) {
     }
 
     LOG_INFO("Emotional tagger created");
-    return tagger;
+    
+    // Bio-async registration
+    tagger->bio_ctx = NULL;
+    tagger->bio_async_enabled = false;
+    if (bio_router_is_initialized()) {
+        bio_module_info_t bio_info = {
+            .module_id = BIO_MODULE_EMOTIONAL_TAGGING,
+            .module_name = "emotional_tagging",
+            .inbox_capacity = 32,
+            .user_data = tagger
+        };
+        tagger->bio_ctx = bio_router_register_module(&bio_info);
+        if (tagger->bio_ctx) {
+            tagger->bio_async_enabled = true;
+        }
+    }
+
+return tagger;
 }
 
 void nimcp_emotional_tagger_destroy(nimcp_emotional_tagger_t* tagger) {
+    LOG_DEBUG("Destroying module");
     /* Guard: NULL check */
     if (!tagger) {
         return;
@@ -389,6 +421,13 @@ void nimcp_emotional_tagger_destroy(nimcp_emotional_tagger_t* tagger) {
     nimcp_mutex_destroy(&tagger->mutex);
 
     /* WHAT: Free tagger memory */
+    // Unregister from bio-router
+    if (tagger->bio_async_enabled && tagger->bio_ctx) {
+        bio_router_unregister_module(tagger->bio_ctx);
+        tagger->bio_ctx = NULL;
+        tagger->bio_async_enabled = false;
+    }
+
     nimcp_free(tagger);
 
     LOG_INFO("Emotional tagger destroyed");

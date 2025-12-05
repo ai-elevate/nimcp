@@ -24,6 +24,15 @@
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
+#include "async/nimcp_bio_async.h"
+#include "async/nimcp_bio_router.h"
+#include "async/nimcp_bio_messages.h"
+#include "utils/logging/nimcp_logging.h"
+#include "utils/memory/nimcp_unified_memory.h"
+
+#define LOG_MODULE "cognitive.fault.working_memory"
+#define BIO_MODULE_COGNITIVE_FAULT_WORKING_MEMORY 0x0358
+
 
 //=============================================================================
 // Internal Structure Definition
@@ -55,6 +64,10 @@ struct fault_working_memory {
 
     // Priority tracking
     uint32_t priority_fault_idx;     /**< Index of highest-priority fault */
+
+    // Bio-async integration
+    bio_module_context_t bio_ctx;   /**< Bio-async module context */
+    bool bio_async_enabled;         /**< Bio-async registration status */
 };
 
 //=============================================================================
@@ -149,6 +162,7 @@ fault_working_memory_config_t fault_working_memory_default_config(void) {
 }
 
 fault_working_memory_t* fault_working_memory_create(void) {
+    LOG_DEBUG("Creating module");
     fault_working_memory_config_t config = fault_working_memory_default_config();
     return fault_working_memory_create_custom(&config);
 }
@@ -223,16 +237,41 @@ fault_working_memory_t* fault_working_memory_create_custom(
     LOG_INFO("Created fault working memory: capacity=%u, cascade_threshold=%u",
              capacity, wm->cascade_threshold);
 
-    return wm;
+    
+    // Bio-async registration
+    wm->bio_ctx = NULL;
+    wm->bio_async_enabled = false;
+    if (bio_router_is_initialized()) {
+        bio_module_info_t bio_info = {
+            .module_id = BIO_MODULE_WORKING_MEMORY_FAULT,
+            .module_name = "fault_working_memory",
+            .inbox_capacity = 32,
+            .user_data = wm
+        };
+        wm->bio_ctx = bio_router_register_module(&bio_info);
+        if (wm->bio_ctx) {
+            wm->bio_async_enabled = true;
+        }
+    }
+
+return wm;
 }
 
 void fault_working_memory_destroy(fault_working_memory_t* wm) {
+    LOG_DEBUG("Destroying module");
     if (!wm) {
         return;  // Safe to call with NULL
     }
 
     if (wm->faults) {
         nimcp_free(wm->faults);
+    }
+
+    // Unregister from bio-router
+    if (wm->bio_async_enabled && wm->bio_ctx) {
+        bio_router_unregister_module(wm->bio_ctx);
+        wm->bio_ctx = NULL;
+        wm->bio_async_enabled = false;
     }
 
     nimcp_free(wm);

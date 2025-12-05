@@ -13,10 +13,11 @@
  */
 
 #include "cognitive/nimcp_mirror_neurons.h"
-#include "nimcp_mirror_substrate.h"  // Substrate integration (Phase 10.11.2)
-#include "nimcp_mirror_stdp.h"       // STDP learning (Phase 10.11.4)
-#include "nimcp_mirror_resonance.h"  // Motor resonance (Phase 10.11.5)
-#include "nimcp_mirror_hierarchy.h"  // Hierarchical goals (Phase 10.11.6)
+#include "utils/memory/nimcp_unified_memory.h"
+#include "cognitive/mirror_neurons/nimcp_mirror_substrate.h"  // Substrate integration (Phase 10.11.2)
+#include "cognitive/mirror_neurons/nimcp_mirror_stdp.h"       // STDP learning (Phase 10.11.4)
+#include "cognitive/mirror_neurons/nimcp_mirror_resonance.h"  // Motor resonance (Phase 10.11.5)
+#include "cognitive/mirror_neurons/nimcp_mirror_hierarchy.h"  // Hierarchical goals (Phase 10.11.6)
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/time/nimcp_time.h"
@@ -25,6 +26,14 @@
 #include <string.h>
 #include <math.h>
 #include <stdlib.h>
+
+// Bio-async integration
+#include "async/nimcp_bio_async.h"
+#include "async/nimcp_bio_messages.h"
+#include "async/nimcp_bio_router.h"
+#include "nimcp.h"  // For error codes
+
+#define LOG_MODULE "mirror_neurons"
 
 // Logging macros
 #define MIRROR_LOG_ERROR NIMCP_LOGGING_ERROR
@@ -161,6 +170,10 @@ struct mirror_neurons_system {
     bool stdp_enabled;                 /**< True if STDP enabled */
     bool resonance_enabled;            /**< True if resonance enabled */
     bool hierarchy_enabled;            /**< True if hierarchy enabled */
+
+    // Bio-async integration
+    bio_module_context_t bio_ctx;      /**< Bio-async module context */
+    bool bio_async_enabled;            /**< Bio-async registration status */
 };
 
 //=============================================================================
@@ -528,6 +541,59 @@ static void update_action_statistics(mirror_neurons_t mirror, uint32_t action_id
 }
 
 //=============================================================================
+// BIO-ASYNC MESSAGE HANDLERS
+//=============================================================================
+
+/**
+ * @brief Bio-async message handler: Handle mirror neuron activation
+ */
+static nimcp_error_t handle_mirror_activation(
+    const void* msg,
+    size_t msg_size,
+    nimcp_bio_promise_t response_promise,
+    void* user_data)
+{
+    (void)msg_size;
+    (void)response_promise;
+
+    if (!msg || !user_data) {
+        return NIMCP_ERROR_NULL_ARG;
+    }
+
+    const bio_msg_introspection_query_t* activation = (const bio_msg_introspection_query_t*)msg;
+    mirror_neurons_t mirror = (mirror_neurons_t)user_data;
+    (void)mirror;  // Will be used for actual processing
+    (void)activation;
+
+    LOG_DEBUG(LOG_MODULE, "Received mirror neuron activation via bio-async");
+
+    return NIMCP_SUCCESS;
+}
+
+/**
+ * @brief Broadcast mirror neuron fire event via bio-async
+ */
+static void bio_broadcast_mirror_fire(mirror_neurons_t mirror,
+                                       uint32_t action_id,
+                                       float activation) {
+    if (!mirror || !mirror->bio_async_enabled || !mirror->bio_ctx) {
+        return;
+    }
+
+    bio_msg_introspection_response_t msg = {0};
+    bio_msg_init_header(&msg.header, BIO_MSG_MIRROR_NEURON_ACTIVATION,
+                        bio_module_context_get_id(mirror->bio_ctx), 0, sizeof(msg));
+    msg.header.flags |= BIO_MSG_FLAG_BROADCAST;
+    msg.query_type = action_id;
+    msg.confidence = activation;
+    msg.matched_pattern_count = 1;
+
+    bio_router_broadcast(mirror->bio_ctx, &msg, sizeof(msg));
+    LOG_DEBUG(LOG_MODULE, "Broadcast mirror fire: action=%u, activation=%.2f",
+              action_id, activation);
+}
+
+//=============================================================================
 // Core API Implementation - Lifecycle
 //=============================================================================
 
@@ -607,6 +673,35 @@ mirror_neurons_t mirror_neurons_create(const mirror_neuron_config_t* config)
     MIRROR_LOG_INFO("Mirror neurons: created system with %u neurons, max %u actions",
                   mirror->num_neurons, mirror->config.max_actions);
 
+    // Initialize bio-async fields
+    mirror->bio_ctx = NULL;
+    mirror->bio_async_enabled = false;
+
+    // Register with bio-async router if available
+    MIRROR_LOG_INFO("mirror_neurons: Checking bio-async router initialization...");
+    if (bio_router_is_initialized()) {
+        MIRROR_LOG_INFO("mirror_neurons: Bio-router initialized, registering module (id=%d, inbox_capacity=32)...",
+                       BIO_MODULE_MIRROR_NEURONS);
+        bio_module_info_t bio_info = {
+            .module_id = BIO_MODULE_MIRROR_NEURONS,
+            .module_name = "mirror_neurons",
+            .inbox_capacity = 32,
+            .user_data = mirror
+        };
+        mirror->bio_ctx = bio_router_register_module(&bio_info);
+        if (mirror->bio_ctx) {
+            mirror->bio_async_enabled = true;
+            // Register message handlers
+            bio_router_register_handler(mirror->bio_ctx, BIO_MSG_MIRROR_NEURON_ACTIVATION, handle_mirror_activation);
+            MIRROR_LOG_INFO("mirror_neurons: Bio-async communication enabled with handlers (module_id=%d)",
+                           BIO_MODULE_MIRROR_NEURONS);
+        } else {
+            MIRROR_LOG_WARN("mirror_neurons: Bio-async registration failed - module will operate without async messaging");
+        }
+    } else {
+        MIRROR_LOG_INFO("mirror_neurons: Bio-router not initialized, skipping async registration");
+    }
+
     return mirror;
 }
 
@@ -640,6 +735,14 @@ void mirror_neurons_destroy(mirror_neurons_t mirror)
 {
     if (!mirror) {
         return;
+    }
+
+    // Unregister from bio-async router
+    if (mirror->bio_async_enabled && mirror->bio_ctx) {
+        bio_router_unregister_module(mirror->bio_ctx);
+        mirror->bio_ctx = NULL;
+        mirror->bio_async_enabled = false;
+        MIRROR_LOG_INFO("Bio-async communication disabled for mirror_neurons");
     }
 
     // Free action neuron indices
@@ -705,6 +808,11 @@ bool mirror_neurons_observe_action(mirror_neurons_t mirror, const action_t* acti
     update_action_statistics(mirror, action_idx);
 
     mirror->last_update_time = nimcp_time_get_ms();
+
+    // Broadcast mirror neuron activation via bio-async
+    if (activation_strength > 0.5f) {
+        bio_broadcast_mirror_fire(mirror, action->action_id, activation_strength);
+    }
 
     return true;
 }

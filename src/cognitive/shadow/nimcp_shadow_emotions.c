@@ -9,6 +9,64 @@
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
+#include "async/nimcp_bio_async.h"
+#include "async/nimcp_bio_router.h"
+#include "async/nimcp_bio_messages.h"
+#include "utils/logging/nimcp_logging.h"
+#include "utils/memory/nimcp_unified_memory.h"
+#include "nimcp.h"
+
+#define LOG_MODULE "cognitive.shadow"
+#define BIO_MODULE_COGNITIVE_SHADOW 0x0353
+
+/*=============================================================================
+ * BIO-ASYNC MESSAGE HANDLERS
+ *============================================================================*/
+
+/**
+ * @brief Handle introspection query about shadow emotions
+ */
+static nimcp_error_t handle_introspection_query(
+    const void* msg, size_t msg_size,
+    nimcp_bio_promise_t response_promise, void* user_data)
+{
+    (void)msg_size;
+    (void)response_promise;
+    if (!msg || !user_data) { return NIMCP_ERROR_NULL_ARG; }
+
+    const bio_msg_introspection_query_t* query = (const bio_msg_introspection_query_t*)msg;
+    shadow_emotion_system_t* system = (shadow_emotion_system_t*)user_data;
+
+    LOG_DEBUG(LOG_MODULE, "Received introspection query: type=%u, shadow_intensity=%.2f",
+              query->query_type, system->total_shadow_intensity);
+
+    return NIMCP_SUCCESS;
+}
+
+/**
+ * @brief Broadcast shadow emotion alert when intensity exceeds threshold
+ */
+static void bio_broadcast_shadow_alert(shadow_emotion_system_t* system) {
+    if (!system || !system->bio_async_enabled || !system->bio_ctx) { return; }
+
+    /* Only broadcast if shadow intensity is significant */
+    if (system->total_shadow_intensity < 0.4f) { return; }
+
+    /* Use introspection response to alert other modules */
+    bio_msg_introspection_response_t msg = {0};
+    bio_msg_init_header(&msg.header, BIO_MSG_INTROSPECTION_RESPONSE,
+                        bio_module_context_get_id(system->bio_ctx), 0, sizeof(msg));
+    msg.header.flags |= BIO_MSG_FLAG_BROADCAST;
+    msg.query_type = 5;  /* Shadow emotion alert */
+    msg.matched_pattern_count = (uint32_t)(system->total_shadow_intensity * 100);
+    msg.confidence = system->insight_level;
+    msg.arousal = system->total_shadow_intensity;  /* Use arousal for shadow intensity */
+
+    bio_router_broadcast(system->bio_ctx, &msg, sizeof(msg));
+    LOG_DEBUG(LOG_MODULE, "Broadcast shadow alert: intensity=%.2f, insight=%.2f",
+              system->total_shadow_intensity, system->insight_level);
+}
+
 
 //=============================================================================
 // HELPER FUNCTIONS
@@ -28,6 +86,7 @@ static inline float exponential_decay(float current, float target, float rate, f
 //=============================================================================
 
 shadow_emotion_system_t* shadow_system_create(uint32_t max_others_tracked) {
+    LOG_DEBUG("Creating module");
     /* WHAT: Create shadow emotion monitoring system
      * WHY:  Enable self-awareness and other-detection of maladaptive patterns
      * HOW:  Allocate and initialize all components
@@ -47,14 +106,43 @@ shadow_emotion_system_t* shadow_system_create(uint32_t max_others_tracked) {
     // Initialize baseline state
     shadow_system_reset(system);
 
-    return system;
+    
+    // Bio-async registration
+    system->bio_ctx = NULL;
+    system->bio_async_enabled = false;
+    if (bio_router_is_initialized()) {
+        bio_module_info_t bio_info = {
+            .module_id = BIO_MODULE_EMOTIONS_SHADOW,
+            .module_name = "shadow_emotions",
+            .inbox_capacity = 32,
+            .user_data = system
+        };
+        system->bio_ctx = bio_router_register_module(&bio_info);
+        if (system->bio_ctx) {
+            system->bio_async_enabled = true;
+            /* Register message handlers */
+            bio_router_register_handler(system->bio_ctx, BIO_MSG_INTROSPECTION_QUERY,
+                                        handle_introspection_query);
+            LOG_INFO(LOG_MODULE, "Bio-async registered (module_id=0x%04X)", BIO_MODULE_COGNITIVE_SHADOW);
+        }
+    }
+
+return system;
 }
 
 void shadow_system_destroy(shadow_emotion_system_t* system) {
+    LOG_DEBUG("Destroying module");
     if (!system) return;
 
     if (system->detected_in_others) {
         nimcp_free(system->detected_in_others);
+    }
+
+    // Unregister from bio-router
+    if (system->bio_async_enabled && system->bio_ctx) {
+        bio_router_unregister_module(system->bio_ctx);
+        system->bio_ctx = NULL;
+        system->bio_async_enabled = false;
     }
 
     nimcp_free(system);
@@ -210,6 +298,9 @@ void shadow_update(shadow_emotion_system_t* system, float dt, uint64_t current_t
     float normalized_intensity = system->total_shadow_intensity / 6.0f;
     system->mental_health_impact = normalized_intensity * normalized_intensity;  // Quadratic
     system->mental_health_impact = clamp(system->mental_health_impact, 0.0f, 1.0f);
+
+    /* Broadcast shadow alert if intensity is concerning */
+    bio_broadcast_shadow_alert(system);
 
     // Insight increases with self-awareness and decreases with narcissism
     float insight_target = 0.5f + (1.0f - system->narcissism.lack_of_empathy) * 0.3f;

@@ -18,10 +18,16 @@
  * @see nimcp_mirror_stdp.h for API documentation
  */
 
-#include "nimcp_mirror_stdp.h"
+#include "cognitive/mirror_neurons/nimcp_mirror_stdp.h"
+#include "async/nimcp_bio_async.h"
+#include "async/nimcp_bio_messages.h"
+#include "async/nimcp_bio_router.h"
+#include "utils/logging/nimcp_logging.h"
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
+
+#define LOG_MODULE "mirror_stdp"
 
 //=============================================================================
 // Internal Structure Definition
@@ -61,6 +67,9 @@ struct mirror_stdp_system {
     uint64_t current_time_us;
     uint64_t last_homeostasis_us;
     uint64_t last_metaplasticity_us;
+
+    // Bio-async integration
+    bio_module_context_t bio_ctx;   /**< Bio-async module context */
 };
 
 //=============================================================================
@@ -137,6 +146,122 @@ static inline float exp_decay(float dt_ms, float tau_ms) {
 }
 
 //=============================================================================
+// Bio-Async Message Handlers
+//=============================================================================
+
+/**
+ * @brief Handle BIO_MSG_MIRROR_NEURON_ACTIVATION message
+ *
+ * WHAT: Processes mirror neuron activation messages
+ * WHY:  Receive observation/execution spike events from mirror neurons
+ * HOW:  Extract spike data, call appropriate spike handler
+ */
+static nimcp_error_t handle_mirror_neuron_activation(
+    const void* msg,
+    size_t msg_size,
+    nimcp_bio_promise_t response_promise,
+    void* user_data)
+{
+    LOG_TRACE("handle_mirror_neuron_activation: entered");
+
+    mirror_stdp_t stdp = (mirror_stdp_t)user_data;
+    if (!stdp || !msg) {
+        LOG_ERROR("handle_mirror_neuron_activation: invalid parameters");
+        if (response_promise) {
+            nimcp_bio_promise_fail(response_promise, -1);
+        }
+        return -1;
+    }
+
+    // Parse message (simplified - assumes custom message structure)
+    // In production, define proper message type in nimcp_bio_messages.h
+    const bio_message_header_t* header = (const bio_message_header_t*)msg;
+
+    LOG_DEBUG("handle_mirror_neuron_activation: processing activation from module 0x%x",
+              header->source_module);
+
+    // Complete with success
+    if (response_promise) {
+        nimcp_bio_promise_complete(response_promise, NULL);
+    }
+
+    LOG_TRACE("handle_mirror_neuron_activation: completed");
+    return NIMCP_SUCCESS;
+}
+
+/**
+ * @brief Handle BIO_MSG_STDP_EVENT message
+ *
+ * WHAT: Processes STDP spike timing events
+ * WHY:  Receive spike pairs for STDP computation
+ * HOW:  Extract pre/post spike times, update synaptic weights
+ */
+static nimcp_error_t handle_stdp_event(
+    const void* msg,
+    size_t msg_size,
+    nimcp_bio_promise_t response_promise,
+    void* user_data)
+{
+    LOG_TRACE("handle_stdp_event: entered");
+
+    mirror_stdp_t stdp = (mirror_stdp_t)user_data;
+    if (!stdp || !msg || msg_size < sizeof(bio_msg_stdp_event_t)) {
+        LOG_ERROR("handle_stdp_event: invalid parameters");
+        if (response_promise) {
+            nimcp_bio_promise_fail(response_promise, -1);
+        }
+        return -1;
+    }
+
+    const bio_msg_stdp_event_t* event = (const bio_msg_stdp_event_t*)msg;
+
+    LOG_DEBUG("handle_stdp_event: pre=%u post=%u delta_t=%.2fms",
+              event->pre_neuron_id, event->post_neuron_id, event->delta_t_ms);
+
+    // Find synapse for this neuron pair
+    uint32_t synapse_id = mirror_stdp_find_synapse(stdp, event->pre_neuron_id);
+    if (synapse_id == UINT32_MAX) {
+        LOG_WARN("handle_stdp_event: synapse not found for neuron %u", event->pre_neuron_id);
+        if (response_promise) {
+            nimcp_bio_promise_fail(response_promise, -2);
+        }
+        return -2;
+    }
+
+    // Compute weight change
+    mirror_stdp_synapse_t* syn = &stdp->synapses[synapse_id];
+    float delta_w = mirror_stdp_compute_delta_w(
+        stdp, event->delta_t_ms, syn->weight,
+        stdp->dopamine_level, stdp->ach_level
+    );
+
+    // Apply weight change
+    syn->weight = clamp_f(syn->weight + delta_w, stdp->config.w_min, stdp->config.w_max);
+
+    LOG_DEBUG("handle_stdp_event: synapse %u weight %.4f -> %.4f (delta=%.4f)",
+              synapse_id, syn->weight - delta_w, syn->weight, delta_w);
+
+    // Complete with response
+    if (response_promise) {
+        bio_msg_weight_update_response_t response = {0};
+        bio_msg_init_header(&response.header, BIO_MSG_WEIGHT_UPDATE_RESPONSE,
+                           BIO_MODULE_MIRROR_NEURONS, event->header.source_module,
+                           sizeof(response));
+        response.synapse_id = synapse_id;
+        response.old_weight = syn->weight - delta_w;
+        response.new_weight = syn->weight;
+        response.clamped = (syn->weight == stdp->config.w_min ||
+                           syn->weight == stdp->config.w_max);
+        response.error = NIMCP_SUCCESS;
+
+        nimcp_bio_promise_complete(response_promise, &response);
+    }
+
+    LOG_TRACE("handle_stdp_event: completed");
+    return NIMCP_SUCCESS;
+}
+
+//=============================================================================
 // Lifecycle Management
 //=============================================================================
 
@@ -183,10 +308,18 @@ mirror_stdp_config_t mirror_stdp_get_default_config(void) {
 }
 
 mirror_stdp_t mirror_stdp_create(const mirror_stdp_config_t* config, uint32_t max_synapses) {
-    if (max_synapses == 0) return NULL;
+    LOG_TRACE("mirror_stdp_create: entered with max_synapses=%u", max_synapses);
 
-    mirror_stdp_t stdp = (mirror_stdp_t)calloc(1, sizeof(struct mirror_stdp_system));
-    if (!stdp) return NULL;
+    if (max_synapses == 0) {
+        LOG_ERROR("mirror_stdp_create: max_synapses cannot be zero");
+        return NULL;
+    }
+
+    mirror_stdp_t stdp = (mirror_stdp_t)nimcp_calloc(1, sizeof(struct mirror_stdp_system));
+    if (!stdp) {
+        LOG_ERROR("mirror_stdp_create: failed to allocate STDP system");
+        return NULL;
+    }
 
     // Copy configuration
     if (config) {
@@ -196,9 +329,10 @@ mirror_stdp_t mirror_stdp_create(const mirror_stdp_config_t* config, uint32_t ma
     }
 
     // Allocate synapse storage
-    stdp->synapses = (mirror_stdp_synapse_t*)calloc(max_synapses, sizeof(mirror_stdp_synapse_t));
+    stdp->synapses = (mirror_stdp_synapse_t*)nimcp_calloc(max_synapses, sizeof(mirror_stdp_synapse_t));
     if (!stdp->synapses) {
-        free(stdp);
+        LOG_ERROR("mirror_stdp_create: failed to allocate synapse storage");
+        nimcp_free(stdp);
         return NULL;
     }
     stdp->max_synapses = max_synapses;
@@ -206,10 +340,11 @@ mirror_stdp_t mirror_stdp_create(const mirror_stdp_config_t* config, uint32_t ma
 
     // Allocate action map (2x size for reduced collisions)
     stdp->action_map_size = max_synapses * 2;
-    stdp->action_map = (uint32_t*)malloc(stdp->action_map_size * sizeof(uint32_t));
+    stdp->action_map = (uint32_t*)nimcp_malloc(stdp->action_map_size * sizeof(uint32_t));
     if (!stdp->action_map) {
-        free(stdp->synapses);
-        free(stdp);
+        LOG_ERROR("mirror_stdp_create: failed to allocate action map");
+        nimcp_free(stdp->synapses);
+        nimcp_free(stdp);
         return NULL;
     }
     // Initialize map to invalid
@@ -224,19 +359,74 @@ mirror_stdp_t mirror_stdp_create(const mirror_stdp_config_t* config, uint32_t ma
     // Initialize global scale factor
     stdp->global_scale_factor = 1.0f;
 
+    // Register with bio-async router
+    if (bio_router_is_initialized()) {
+        LOG_DEBUG("mirror_stdp_create: registering with bio-async router");
+
+        bio_module_info_t module_info = {
+            .module_id = BIO_MODULE_MIRROR_NEURONS_STDP,
+            .module_name = "mirror_stdp",
+            .inbox_capacity = 128,
+            .user_data = stdp
+        };
+
+        stdp->bio_ctx = bio_router_register_module(&module_info);
+        if (!stdp->bio_ctx) {
+            LOG_WARN("mirror_stdp_create: failed to register with bio-async router");
+        } else {
+            // Register message handlers
+            nimcp_error_t err;
+
+            err = bio_router_register_handler(
+                stdp->bio_ctx,
+                BIO_MSG_MIRROR_NEURON_ACTIVATION,
+                handle_mirror_neuron_activation
+            );
+            if (err != NIMCP_SUCCESS) {
+                LOG_WARN("mirror_stdp_create: failed to register MIRROR_NEURON_ACTIVATION handler");
+            }
+
+            err = bio_router_register_handler(
+                stdp->bio_ctx,
+                BIO_MSG_STDP_EVENT,
+                handle_stdp_event
+            );
+            if (err != NIMCP_SUCCESS) {
+                LOG_WARN("mirror_stdp_create: failed to register STDP_EVENT handler");
+            }
+
+            LOG_INFO("mirror_stdp_create: successfully registered with bio-async router");
+        }
+    } else {
+        LOG_DEBUG("mirror_stdp_create: bio-async router not initialized, skipping registration");
+        stdp->bio_ctx = NULL;
+    }
+
+    LOG_INFO("mirror_stdp_create: created STDP system with %u max synapses", max_synapses);
     return stdp;
 }
 
 void mirror_stdp_destroy(mirror_stdp_t stdp) {
     if (!stdp) return;
 
+    LOG_TRACE("mirror_stdp_destroy: destroying STDP system");
+
+    // Unregister from bio-async router
+    if (stdp->bio_ctx) {
+        LOG_DEBUG("mirror_stdp_destroy: unregistering from bio-async router");
+        bio_router_unregister_module(stdp->bio_ctx);
+        stdp->bio_ctx = NULL;
+    }
+
     if (stdp->action_map) {
-        free(stdp->action_map);
+        nimcp_free(stdp->action_map);
     }
     if (stdp->synapses) {
-        free(stdp->synapses);
+        nimcp_free(stdp->synapses);
     }
-    free(stdp);
+    nimcp_free(stdp);
+
+    LOG_TRACE("mirror_stdp_destroy: completed");
 }
 
 //=============================================================================

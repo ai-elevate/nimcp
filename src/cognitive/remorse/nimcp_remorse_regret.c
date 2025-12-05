@@ -11,10 +11,66 @@
  */
 
 #include "cognitive/nimcp_remorse_regret.h"
-#include "utils/memory/nimcp_memory.h"
+#include "utils/memory/nimcp_unified_memory.h"
+#include "utils/logging/nimcp_logging.h"
+#include "async/nimcp_bio_async.h"
+#include "async/nimcp_bio_router.h"
+#include "async/nimcp_bio_messages.h"
+#include "nimcp.h"
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
+#include "utils/memory/nimcp_memory_guards.h"  // For nimcp_calloc/nimcp_free
+
+#define LOG_MODULE "REMORSE"
+#define BIO_MODULE_REMORSE 0x0325
+
+/*=============================================================================
+ * BIO-ASYNC MESSAGE HANDLERS
+ *============================================================================*/
+
+/**
+ * @brief Handle ethics evaluation response (may trigger remorse)
+ */
+static nimcp_error_t handle_ethics_response(
+    const void* msg, size_t msg_size,
+    nimcp_bio_promise_t response_promise, void* user_data)
+{
+    (void)msg_size;
+    (void)response_promise;
+    if (!msg || !user_data) { return NIMCP_ERROR_NULL_ARG; }
+
+    const bio_msg_ethics_response_t* response = (const bio_msg_ethics_response_t*)msg;
+    remorse_regret_system_t* system = (remorse_regret_system_t*)user_data;
+    (void)system;
+
+    LOG_DEBUG(LOG_MODULE, "Received ethics response: score=%.2f, veto=%d",
+              response->ethical_score, response->veto);
+
+    return NIMCP_SUCCESS;
+}
+
+/**
+ * @brief Broadcast remorse/guilt state to other modules
+ */
+static void bio_broadcast_remorse_state(remorse_regret_system_t* system) {
+    if (!system || !system->bio_async_enabled || !system->bio_ctx_ptr) { return; }
+
+    bio_msg_ethics_response_t msg = {0};
+    bio_msg_init_header(&msg.header, BIO_MSG_ETHICS_EVALUATION_RESPONSE,
+                        bio_module_context_get_id(system->bio_ctx_ptr), 0, sizeof(msg));
+    msg.header.flags |= BIO_MSG_FLAG_BROADCAST;
+    msg.action_id = 0;
+    msg.ethical_score = 1.0f - system->emotion.remorse_intensity;
+    msg.confidence = system->emotion.guilt_intensity;
+    msg.veto = system->emotion.experiencing_shame;
+    msg.primary_concern = (uint32_t)system->emotion.dominant_emotion;
+
+    bio_router_broadcast(system->bio_ctx_ptr, &msg, sizeof(msg));
+    LOG_DEBUG(LOG_MODULE, "Broadcast remorse state: guilt=%.2f, remorse=%.2f, shame=%.2f",
+              system->emotion.guilt_intensity, system->emotion.remorse_intensity,
+              system->emotion.shame_intensity);
+}
 
 //=============================================================================
 // HELPER FUNCTIONS
@@ -85,7 +141,28 @@ remorse_regret_system_t* remorse_regret_system_create(void) {
     // Initialize emotional state
     system->emotion.self_worth = 0.7f;  // Start with moderate self-worth
 
-    return system;
+    
+    // Bio-async registration
+    system->bio_ctx_ptr = NULL;
+    system->bio_async_enabled = false;
+    if (bio_router_is_initialized()) {
+        bio_module_info_t bio_info = {
+            .module_id = BIO_MODULE_REMORSE,
+            .module_name = "remorse_regret",
+            .inbox_capacity = 32,
+            .user_data = system
+        };
+        system->bio_ctx_ptr = bio_router_register_module(&bio_info);
+        if (system->bio_ctx_ptr) {
+            system->bio_async_enabled = true;
+            /* Register message handlers */
+            bio_router_register_handler(system->bio_ctx_ptr, BIO_MSG_ETHICS_EVALUATION_RESPONSE,
+                                        handle_ethics_response);
+            LOG_INFO(LOG_MODULE, "Bio-async registered (module_id=0x%04X)", BIO_MODULE_REMORSE);
+        }
+    }
+
+return system;
 }
 
 void remorse_regret_system_destroy(remorse_regret_system_t* system) {
@@ -94,6 +171,13 @@ void remorse_regret_system_destroy(remorse_regret_system_t* system) {
     // HOW:  Simple nimcp_free(no sub-allocations)
 
     if (!system) return;
+    // Unregister from bio-router
+    if (system->bio_async_enabled && system->bio_ctx_ptr) {
+        bio_router_unregister_module(system->bio_ctx_ptr);
+        system->bio_ctx_ptr = NULL;
+        system->bio_async_enabled = false;
+    }
+
     nimcp_free(system);
 }
 
@@ -243,6 +327,11 @@ void remorse_process_event(
     system->event_history_index = (system->event_history_index + 1) % REGRET_MAX_EVENTS;
     if (system->event_count < REGRET_MAX_EVENTS) {
         system->event_count++;
+    }
+
+    /* Broadcast remorse state if significant */
+    if (system->emotion.remorse_intensity > 0.3f || system->emotion.guilt_intensity > 0.3f) {
+        bio_broadcast_remorse_state(system);
     }
 }
 

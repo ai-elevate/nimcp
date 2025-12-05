@@ -25,12 +25,19 @@
  * @date 2025-11-11
  */
 
-#include "nimcp_curiosity.h"
+#include "cognitive/curiosity/nimcp_curiosity.h"
+#include "utils/logging/nimcp_logging.h"
+#include "async/nimcp_bio_router.h"
+#include "async/nimcp_bio_async.h"
+#include "async/nimcp_bio_messages.h"
+#include "utils/memory/nimcp_unified_memory.h"
 #include "utils/memory/nimcp_memory.h"
 #include "cognitive/knowledge/nimcp_knowledge.h"
 #include "utils/geometry/nimcp_hyperbolic.h"
 #include <stdio.h>
 #include <math.h>
+
+#define LOG_MODULE "curiosity_hyperbolic"
 
 //=============================================================================
 // Hyperbolic Exploration Strategies

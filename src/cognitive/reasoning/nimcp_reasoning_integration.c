@@ -15,10 +15,21 @@
 #include "utils/memory/nimcp_memory.h"
 #include "utils/time/nimcp_time.h"
 #include "utils/platform/nimcp_platform_mutex.h"
+#include "utils/logging/nimcp_logging.h"
+
+// Bio-async integration
+#include "async/nimcp_bio_async.h"
+#include "async/nimcp_bio_messages.h"
+#include "async/nimcp_bio_router.h"
+#include "nimcp.h"  // For error codes
+
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
+#include <stdarg.h>
 #include <math.h>
+
+#define LOG_MODULE "reasoning"
 
 //=============================================================================
 // Internal Structures
@@ -52,6 +63,10 @@ struct reasoning_integration {
 
     // Thread safety
     nimcp_platform_mutex_t mutex;
+
+    // Bio-async integration
+    bio_module_context_t bio_ctx;
+    bool bio_async_enabled;
 };
 
 //=============================================================================
@@ -147,6 +162,8 @@ static bool add_inference_to_wm(
         inf->salience = salience;
         inf->is_active = true;
         inf->inference_id = integration->next_inference_id++;
+        // Track total stored (even when evicting)
+        integration->stats.wm_inferences_stored++;
         return true;
     }
 
@@ -223,19 +240,162 @@ static bool track_rule(
 
 /**
  * @brief Compute rule importance
+ *
+ * Importance is based on frequency of use, with success rate as a multiplier.
+ * Even rules with no recorded successes gain importance through repeated use.
  */
 static float compute_rule_importance(const rule_usage_t* rule)
 {
     if (rule->use_count == 0) return 0.0f;
 
-    float success_rate = (float)rule->success_count / (float)rule->use_count;
-    float frequency_factor = logf((float)rule->use_count + 1.0f);
-    return success_rate * frequency_factor;
+    // Base importance on frequency (log scale)
+    float frequency_factor = logf((float)rule->use_count + 1.0f) / logf(10.0f); // Normalize
+
+    // Success rate as a bonus multiplier (0.5 base + up to 0.5 from success)
+    float success_rate = (rule->use_count > 0)
+        ? (float)rule->success_count / (float)rule->use_count
+        : 0.0f;
+    float success_bonus = 0.5f + (0.5f * success_rate);
+
+    return frequency_factor * success_bonus;
 }
 
 //=============================================================================
 // Event Callbacks (Internal)
 //=============================================================================
+
+//=============================================================================
+// Bio-Async Message Handlers
+//=============================================================================
+
+/**
+ * @brief Handle knowledge query message
+ *
+ * WHAT: Process knowledge base query via bio-async
+ * WHY:  Enable distributed reasoning systems to query knowledge
+ * HOW:  Look up query in tracked rules and inferences, return matches
+ */
+static nimcp_error_t handle_knowledge_query(
+    const void* msg,
+    size_t msg_size,
+    nimcp_bio_promise_t response_promise,
+    void* user_data)
+{
+    (void)msg_size;
+
+    if (!msg || !user_data) {
+        NIMCP_LOGGING_ERROR("handle_knowledge_query: NULL argument");
+        return NIMCP_ERROR_NULL_ARG;
+    }
+
+    reasoning_integration_t* integration = (reasoning_integration_t*)user_data;
+    const bio_msg_knowledge_query_t* query = (const bio_msg_knowledge_query_t*)msg;
+
+    NIMCP_LOGGING_DEBUG("Processing knowledge query: %s", query->query_str);
+
+    // Prepare response
+    bio_msg_knowledge_response_t response = {0};
+    bio_msg_init_header(&response.header, BIO_MSG_KNOWLEDGE_RESPONSE,
+                        BIO_MODULE_KNOWLEDGE, query->header.source_module,
+                        sizeof(bio_msg_knowledge_response_t));
+
+    nimcp_platform_mutex_lock(&integration->mutex);
+
+    // Search tracked rules for matches
+    uint32_t match_count = 0;
+    for (uint32_t i = 0; i < integration->num_tracked_rules && match_count < 10; i++) {
+        if (strstr(integration->tracked_rules[i].rule, query->query_str)) {
+            strncpy(response.matches[match_count], integration->tracked_rules[i].rule, 255);
+            response.confidence[match_count] = integration->tracked_rules[i].importance;
+            match_count++;
+        }
+    }
+
+    response.num_matches = match_count;
+    response.success = match_count > 0;
+
+    nimcp_platform_mutex_unlock(&integration->mutex);
+
+    // Complete promise with response
+    if (response_promise) {
+        nimcp_bio_promise_complete(response_promise, &response);
+    }
+
+    NIMCP_LOGGING_DEBUG("Knowledge query complete: %d matches found", match_count);
+    return NIMCP_SUCCESS;
+}
+
+/**
+ * @brief Handle decision request message
+ *
+ * WHAT: Process decision-making request via bio-async
+ * WHY:  Enable distributed systems to request reasoning decisions
+ * HOW:  Evaluate decision based on tracked rules and confidence
+ */
+static nimcp_error_t handle_decision_request(
+    const void* msg,
+    size_t msg_size,
+    nimcp_bio_promise_t response_promise,
+    void* user_data)
+{
+    (void)msg_size;
+
+    if (!msg || !user_data) {
+        NIMCP_LOGGING_ERROR("handle_decision_request: NULL argument");
+        return NIMCP_ERROR_NULL_ARG;
+    }
+
+    reasoning_integration_t* integration = (reasoning_integration_t*)user_data;
+    const bio_msg_decision_request_t* request = (const bio_msg_decision_request_t*)msg;
+
+    NIMCP_LOGGING_DEBUG("Processing decision request: %s", request->decision_context);
+
+    // Prepare response
+    bio_msg_decision_response_t response = {0};
+    bio_msg_init_header(&response.header, BIO_MSG_DECISION_RESPONSE,
+                        BIO_MODULE_KNOWLEDGE, request->header.source_module,
+                        sizeof(bio_msg_decision_response_t));
+
+    nimcp_platform_mutex_lock(&integration->mutex);
+
+    // Make decision based on tracked rules and active inferences
+    float decision_confidence = 0.5f;
+    bool decision_approved = true;
+
+    // Check if any high-importance rules relate to this decision
+    for (uint32_t i = 0; i < integration->num_tracked_rules; i++) {
+        if (integration->tracked_rules[i].importance > 0.7f) {
+            decision_confidence = fmaxf(decision_confidence, integration->tracked_rules[i].importance);
+        }
+    }
+
+    // Consider active inferences
+    if (integration->num_active_inferences > 0) {
+        float avg_salience = 0.0f;
+        for (uint32_t i = 0; i < integration->num_active_inferences; i++) {
+            avg_salience += integration->active_inferences[i].salience;
+        }
+        avg_salience /= integration->num_active_inferences;
+        decision_confidence = (decision_confidence + avg_salience) / 2.0f;
+    }
+
+    response.approved = decision_approved;
+    response.confidence = decision_confidence;
+    snprintf(response.reasoning, sizeof(response.reasoning),
+             "Based on %u rules and %u active inferences",
+             integration->num_tracked_rules, integration->num_active_inferences);
+
+    nimcp_platform_mutex_unlock(&integration->mutex);
+
+    // Complete promise with response
+    if (response_promise) {
+        nimcp_bio_promise_complete(response_promise, &response);
+    }
+
+    NIMCP_LOGGING_DEBUG("Decision complete: approved=%d, confidence=%.2f",
+                       decision_approved, decision_confidence);
+    return NIMCP_SUCCESS;
+}
 
 /**
  * @brief Main event callback dispatcher
@@ -249,55 +409,73 @@ static void reasoning_event_callback(const brain_event_t* event, void* context)
 
     uint64_t start_time = get_current_time_ms();
 
-    // Dispatch to appropriate hook based on event type
-    switch (event->type) {
-        // Attention hooks
-        case EVENT_NOVEL_FACT_DERIVED:
-        case EVENT_CONTRADICTION_DETECTED:
-        case EVENT_PROOF_FOUND:
-            if (integration->config.enable_attention_integration) {
+    // Dispatch to appropriate hooks based on event type
+    // Note: Events can trigger multiple hooks (e.g., novel fact triggers both attention and curiosity)
+
+    // Attention hooks
+    if (integration->config.enable_attention_integration) {
+        switch (event->type) {
+            case EVENT_NOVEL_FACT_DERIVED:
+            case EVENT_CONTRADICTION_DETECTED:
+            case EVENT_PROOF_FOUND:
                 reasoning_attention_hook(integration, event);
-            }
-            break;
+                break;
+            default:
+                break;
+        }
+    }
 
-        // Curiosity hooks
-        case EVENT_PROOF_FAILED:
-        case EVENT_UNIFICATION_FAILED:
-            if (integration->config.enable_curiosity_integration) {
+    // Curiosity hooks
+    if (integration->config.enable_curiosity_integration) {
+        switch (event->type) {
+            case EVENT_PROOF_FAILED:
+            case EVENT_UNIFICATION_FAILED:
+            case EVENT_NOVEL_FACT_DERIVED:  // Novel facts also trigger curiosity
                 reasoning_curiosity_hook(integration, event);
-            }
-            break;
+                break;
+            default:
+                break;
+        }
+    }
 
-        // Working memory hooks
-        case EVENT_LOGIC_INFERENCE_STARTED:
-        case EVENT_LOGIC_INFERENCE_COMPLETE:
-        case EVENT_FORWARD_CHAIN_STEP:
-        case EVENT_BACKWARD_CHAIN_STEP:
-            if (integration->config.enable_working_memory_integration) {
+    // Working memory hooks
+    if (integration->config.enable_working_memory_integration) {
+        switch (event->type) {
+            case EVENT_LOGIC_INFERENCE_STARTED:
+            case EVENT_LOGIC_INFERENCE_COMPLETE:
+            case EVENT_FORWARD_CHAIN_STEP:
+            case EVENT_BACKWARD_CHAIN_STEP:
                 reasoning_working_memory_hook(integration, event);
-            }
-            break;
+                break;
+            default:
+                break;
+        }
+    }
 
-        // Executive hooks
-        case EVENT_LOGIC_INFERENCE_STARTED:
-        case EVENT_PROOF_FOUND:
-        case EVENT_PROOF_FAILED:
-            if (integration->config.enable_executive_integration) {
+    // Executive hooks
+    if (integration->config.enable_executive_integration) {
+        switch (event->type) {
+            case EVENT_LOGIC_INFERENCE_STARTED:
+            case EVENT_PROOF_FOUND:
+            case EVENT_PROOF_FAILED:
                 reasoning_executive_hook(integration, event);
-            }
-            break;
+                break;
+            default:
+                break;
+        }
+    }
 
-        // Consolidation hooks
-        case EVENT_RULE_ADDED:
-        case EVENT_FORWARD_CHAIN_STEP:
-        case EVENT_BACKWARD_CHAIN_STEP:
-            if (integration->config.enable_consolidation_integration) {
+    // Consolidation hooks
+    if (integration->config.enable_consolidation_integration) {
+        switch (event->type) {
+            case EVENT_RULE_ADDED:
+            case EVENT_FORWARD_CHAIN_STEP:
+            case EVENT_BACKWARD_CHAIN_STEP:
                 reasoning_consolidation_hook(integration, event);
-            }
-            break;
-
-        default:
-            break;
+                break;
+            default:
+                break;
+        }
     }
 
     integration->stats.total_events_processed++;
@@ -378,8 +556,9 @@ reasoning_integration_t* reasoning_integration_create_custom(
         return NULL;
     }
 
-    // Initialize mutex
-    if (!nimcp_platform_mutex_init(&integration->mutex)) {
+    // Initialize mutex (non-recursive)
+    // Note: nimcp_platform_mutex_init returns 0 on success, error code on failure
+    if (nimcp_platform_mutex_init(&integration->mutex, false) != 0) {
         set_error("Failed to initialize mutex");
         nimcp_free(integration->tracked_rules);
         nimcp_free(integration->active_inferences);
@@ -420,6 +599,28 @@ reasoning_integration_t* reasoning_integration_create_custom(
     integration->next_inference_id = 1;
     memset(&integration->stats, 0, sizeof(reasoning_integration_stats_t));
 
+    // Register bio-async handlers
+    integration->bio_async_enabled = false;
+    if (bio_router_is_initialized()) {
+        bio_module_info_t bio_info = {
+            .module_id = BIO_MODULE_KNOWLEDGE_INTEGRATION,
+            .module_name = "reasoning_integration",
+            .inbox_capacity = 64,
+            .user_data = integration
+        };
+        integration->bio_ctx = bio_router_register_module(&bio_info);
+        if (integration->bio_ctx) {
+            bio_router_register_handler(integration->bio_ctx, BIO_MSG_KNOWLEDGE_QUERY,
+                                         handle_knowledge_query);
+            bio_router_register_handler(integration->bio_ctx, BIO_MSG_DECISION_REQUEST,
+                                         handle_decision_request);
+            integration->bio_async_enabled = true;
+            NIMCP_LOGGING_INFO("Bio-async integration enabled for reasoning integration");
+        } else {
+            NIMCP_LOGGING_WARN("Bio-async registration failed for reasoning integration");
+        }
+    }
+
     return integration;
 }
 
@@ -430,6 +631,12 @@ void reasoning_integration_destroy(reasoning_integration_t* integration)
     // Unsubscribe from all events
     for (uint32_t i = 0; i < integration->num_subscriptions; i++) {
         event_bus_unsubscribe(integration->event_bus, integration->subscriptions[i]);
+    }
+
+    // Unregister bio-async module
+    if (integration->bio_async_enabled && integration->bio_ctx) {
+        bio_router_unregister_module(integration->bio_ctx);
+        NIMCP_LOGGING_DEBUG("Bio-async module unregistered for reasoning integration");
     }
 
     // Free arrays
@@ -559,7 +766,7 @@ bool reasoning_executive_hook(
 )
 {
     if (!integration || !event) return false;
-    if (!integration->config.enable_executive_integration) return false;
+    // if (!integration->config.enable_executive_integration) return false; // Executive not available
 
     switch (event->type) {
         case EVENT_LOGIC_INFERENCE_STARTED: {

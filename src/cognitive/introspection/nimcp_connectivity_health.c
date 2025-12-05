@@ -13,6 +13,10 @@
  */
 
 #include "cognitive/introspection/nimcp_connectivity_health.h"
+#include "utils/memory/nimcp_unified_memory.h"
+#include "async/nimcp_bio_router.h"
+#include "async/nimcp_bio_async.h"
+#include "async/nimcp_bio_messages.h"
 #include "core/brain/nimcp_brain.h"
 #include "core/brain/nimcp_brain_internal.h"
 #include "core/brain_regions/nimcp_brain_regions.h"
@@ -25,6 +29,8 @@
 #include <math.h>
 #include <string.h>
 #include <stdio.h>
+
+#define LOG_MODULE "cognitive.introspection.connectivity_health"
 
 //=============================================================================
 // Internal Constants

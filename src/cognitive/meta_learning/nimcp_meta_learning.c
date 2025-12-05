@@ -10,12 +10,22 @@
  * Inner Loop: θ' ← θ - α∇_θ L_support(θ)  (task-specific adaptation)
  * Outer Loop: θ ← θ - β∇_θ L_query(θ')     (meta-learning update)
  *
+ * BIO-ASYNC INTEGRATION:
+ * - Module ID: 0x0336 (BIO_MODULE_META_LEARNING)
+ * - Publishes: adaptation events, task completions
+ * - Subscribes: training triggers, task specifications
+ *
  * @author NIMCP Phase 10 Team
  * @date 2025-11-09
  */
 
+#define LOG_MODULE "meta_learning"
+
 #include "cognitive/nimcp_meta_learning.h"
-#include "utils/memory/nimcp_memory.h"
+#include "async/nimcp_bio_async.h"
+#include "async/nimcp_bio_router.h"
+#include "async/nimcp_bio_messages.h"
+#include "utils/memory/nimcp_unified_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/containers/nimcp_vector.h"
 #include "core/brain/nimcp_brain.h"
@@ -23,6 +33,13 @@
 #include <math.h>
 #include <stdio.h>
 #include <stdarg.h>
+#include "utils/memory/nimcp_memory_guards.h"  // For nimcp_calloc/nimcp_free
+
+//=============================================================================
+// BIO-ASYNC MODULE REGISTRATION
+//=============================================================================
+
+#define BIO_MODULE_META_LEARNING 0x0336
 
 //=============================================================================
 // Error Handling (module-local)
@@ -93,6 +110,10 @@ struct meta_learner_s {
     float total_adaptation_gain;        // Sum of all adaptation gains
     uint64_t total_adaptation_steps;    // Sum of convergence steps
     uint32_t num_adaptations;           // Number of adaptations performed
+
+    // Bio-async integration
+    bio_module_context_t bio_ctx;   /**< Bio-async module context */
+    bool bio_async_enabled;         /**< Bio-async registration status */
 };
 
 //=============================================================================
@@ -233,7 +254,24 @@ meta_learner_t meta_learner_create(const meta_learning_config_t* config,
                        meta->config.algorithm, meta->config.few_shot_k,
                        meta->config.inner_learning_rate, meta->config.outer_learning_rate);
 
-    return meta;
+    
+    // Bio-async registration
+    meta->bio_ctx = NULL;
+    meta->bio_async_enabled = false;
+    if (bio_router_is_initialized()) {
+        bio_module_info_t bio_info = {
+            .module_id = BIO_MODULE_KNOWLEDGE_META_LEARNING,
+            .module_name = "meta_learning",
+            .inbox_capacity = 32,
+            .user_data = meta
+        };
+        meta->bio_ctx = bio_router_register_module(&bio_info);
+        if (meta->bio_ctx) {
+            meta->bio_async_enabled = true;
+        }
+    }
+
+return meta;
 }
 
 /**

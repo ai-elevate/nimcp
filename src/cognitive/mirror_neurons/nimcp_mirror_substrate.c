@@ -20,7 +20,11 @@
  * @date 2025-11-25
  */
 
-#include "nimcp_mirror_substrate.h"
+#include "cognitive/mirror_neurons/nimcp_mirror_substrate.h"
+#include "async/nimcp_bio_router.h"
+#include "async/nimcp_bio_async.h"
+#include "async/nimcp_bio_messages.h"
+#include "utils/memory/nimcp_unified_memory.h"
 #include "cognitive/nimcp_mirror_neurons.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/time/nimcp_time.h"
