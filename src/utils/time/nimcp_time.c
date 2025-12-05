@@ -8,9 +8,13 @@
  */
 
 #include "utils/time/nimcp_time.h"
+#include "async/nimcp_bio_async.h"
+#include "async/nimcp_bio_messages.h"
 #include <errno.h>
 #include <sys/time.h>
 #include <time.h>
+#include "utils/memory/nimcp_unified_memory.h"
+#include "utils/logging/nimcp_logging.h"
 
 //=============================================================================
 // Platform Detection
@@ -28,6 +32,7 @@
 
 uint64_t nimcp_time_get_us(void)
 {
+    LOG_DEBUG("Entering nimcp_time_get_us");
 #if NIMCP_POSIX
     /**
      * WHAT: Use clock_gettime for better precision if available
@@ -57,11 +62,13 @@ uint64_t nimcp_time_get_us(void)
 
 uint64_t nimcp_time_get_ms(void)
 {
+    LOG_DEBUG("Entering nimcp_time_get_ms");
     return nimcp_time_get_us() / 1000;
 }
 
 uint64_t nimcp_time_get_sec(void)
 {
+    LOG_DEBUG("Entering nimcp_time_get_sec");
     return nimcp_time_get_us() / 1000000;
 }
 
@@ -71,6 +78,7 @@ uint64_t nimcp_time_get_sec(void)
 
 uint64_t nimcp_time_monotonic_ns(void)
 {
+    LOG_DEBUG("Entering nimcp_time_monotonic_ns");
 #if NIMCP_POSIX
     /**
      * WHAT: Use CLOCK_MONOTONIC for steady, non-adjustable time
@@ -95,11 +103,13 @@ uint64_t nimcp_time_monotonic_ns(void)
 
 uint64_t nimcp_time_monotonic_us(void)
 {
+    LOG_DEBUG("Entering nimcp_time_monotonic_us");
     return nimcp_time_monotonic_ns() / 1000;
 }
 
 uint64_t nimcp_time_monotonic_ms(void)
 {
+    LOG_DEBUG("Entering nimcp_time_monotonic_ms");
     return nimcp_time_monotonic_ns() / 1000000;
 }
 
@@ -109,6 +119,7 @@ uint64_t nimcp_time_monotonic_ms(void)
 
 uint64_t nimcp_time_elapsed_us(uint64_t start_us)
 {
+    LOG_DEBUG("Entering nimcp_time_elapsed_us");
     uint64_t now = nimcp_time_monotonic_us();
 
     /**
@@ -130,6 +141,7 @@ uint64_t nimcp_time_elapsed_us(uint64_t start_us)
 
 uint64_t nimcp_time_elapsed_ms(uint64_t start_ms)
 {
+    LOG_DEBUG("Entering nimcp_time_elapsed_ms");
     uint64_t now = nimcp_time_monotonic_ms();
 
     if (now < start_ms) {
@@ -141,6 +153,7 @@ uint64_t nimcp_time_elapsed_ms(uint64_t start_ms)
 
 uint64_t nimcp_time_elapsed_ns(uint64_t start_ns)
 {
+    LOG_DEBUG("Entering nimcp_time_elapsed_ns");
     uint64_t now = nimcp_time_monotonic_ns();
 
     if (now < start_ns) {
@@ -156,6 +169,7 @@ uint64_t nimcp_time_elapsed_ns(uint64_t start_ns)
 
 void nimcp_time_sleep_us(uint64_t us)
 {
+    LOG_DEBUG("Entering nimcp_time_sleep_us");
 #if NIMCP_POSIX
     /**
      * WHAT: Use nanosleep for portable microsecond sleep
@@ -196,5 +210,6 @@ void nimcp_time_sleep_us(uint64_t us)
 
 void nimcp_time_sleep_ms(uint64_t ms)
 {
+    LOG_DEBUG("Entering nimcp_time_sleep_ms");
     nimcp_time_sleep_us(ms * 1000);
 }

@@ -6,12 +6,15 @@
  * @date 2025-11-09
  */
 
-#include "nimcp_memory_guards.h"
+#include "utils/memory/nimcp_memory_guards.h"
+#include "async/nimcp_bio_async.h"
+#include "async/nimcp_bio_messages.h"
 #include "utils/thread/nimcp_thread.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <pthread.h>
+#include "utils/logging/nimcp_logging.h"
 
 //=============================================================================
 // Internal Data Structures

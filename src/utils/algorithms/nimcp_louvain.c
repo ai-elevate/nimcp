@@ -7,7 +7,9 @@
  * HOW: Greedy optimization of modularity in two phases
  */
 
-#include "nimcp_louvain.h"
+#include "utils/algorithms/nimcp_louvain.h"
+#include "async/nimcp_bio_async.h"
+#include "async/nimcp_bio_messages.h"
 
 #include <math.h>
 #include <stdlib.h>
@@ -15,6 +17,8 @@
 
 #include "utils/memory/nimcp_memory.h"
 #include "utils/validation/nimcp_validate.h"
+#include "utils/memory/nimcp_unified_memory.h"
+#include "utils/logging/nimcp_logging.h"
 
 //=============================================================================
 // Internal Types
@@ -361,6 +365,7 @@ NimcpCommunityPartition* nimcp_louvain_detect(const NimcpGraph* graph, double re
 
 void nimcp_community_partition_destroy(NimcpCommunityPartition* partition)
 {
+    LOG_DEBUG("Entering nimcp_community_partition_destroy");
     if (!partition) {
         return;
     }
@@ -371,6 +376,7 @@ void nimcp_community_partition_destroy(NimcpCommunityPartition* partition)
 
 uint32_t nimcp_get_community_id(const NimcpCommunityPartition* partition, uint32_t vertex_idx)
 {
+    LOG_DEBUG("Entering nimcp_get_community_id");
     if (!partition || !partition->assignments) {
         return UINT32_MAX;
     }

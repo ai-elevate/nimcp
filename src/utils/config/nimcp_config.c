@@ -4,11 +4,15 @@
  */
 
 #include "utils/config/nimcp_config.h"
+#include "async/nimcp_bio_async.h"
+#include "async/nimcp_bio_messages.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/json/nimcp_json.h"
 #include <stdio.h>
 #include <string.h>
 #include <ctype.h>
+#include "utils/memory/nimcp_unified_memory.h"
+#include "utils/logging/nimcp_logging.h"
 
 #define MAX_LINE 1024
 

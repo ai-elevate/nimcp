@@ -27,8 +27,12 @@
  * @date 2025
  */
 
-#include "nimcp_platform_rwlock.h"
+#include "utils/platform/nimcp_platform_rwlock.h"
+#include "async/nimcp_bio_async.h"
+#include "async/nimcp_bio_messages.h"
 #include <errno.h>
+#include "utils/memory/nimcp_unified_memory.h"
+#include "utils/logging/nimcp_logging.h"
 
 /* ========================================================================
  * READ-WRITE LOCK FUNCTIONS
@@ -189,6 +193,34 @@ int nimcp_platform_rwlock_wrunlock(nimcp_platform_rwlock_t* rwlock)
 
 #elif defined(NIMCP_PLATFORM_WINDOWS)
     /* Windows: Release exclusive lock (must use correct release function) */
+    ReleaseSRWLockExclusive(rwlock);
+    return 0;
+
+#else
+    #error "Unsupported platform"
+#endif
+}
+
+int nimcp_platform_rwlock_unlock(nimcp_platform_rwlock_t* rwlock)
+{
+    if (!rwlock) {
+        return EINVAL;
+    }
+
+#if defined(NIMCP_PLATFORM_POSIX)
+    /* POSIX: Release lock (same function for read/write) */
+    return pthread_rwlock_unlock(rwlock);
+
+#elif defined(NIMCP_PLATFORM_WINDOWS)
+    /**
+     * Windows: SRWLOCK requires different release functions for shared vs exclusive.
+     * This generic unlock is NOT fully supported on Windows - caller must track lock mode.
+     *
+     * WORKAROUND: Release as exclusive lock. If the lock was actually shared,
+     * this will cause undefined behavior. Callers should use rdunlock/wrunlock instead.
+     *
+     * NOTE: In practice, NIMCP targets Linux primarily, so this is acceptable.
+     */
     ReleaseSRWLockExclusive(rwlock);
     return 0;
 

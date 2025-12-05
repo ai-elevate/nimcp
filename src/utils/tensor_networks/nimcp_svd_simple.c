@@ -13,11 +13,15 @@
  * @date 2025-11-17
  */
 
-#include "nimcp_svd_simple.h"
+#include "utils/tensor_networks/nimcp_svd_simple.h"
+#include "async/nimcp_bio_async.h"
+#include "async/nimcp_bio_messages.h"
 #include "utils/memory/nimcp_memory.h"
 #include <math.h>
 #include <string.h>
 #include <float.h>
+#include "utils/memory/nimcp_unified_memory.h"
+#include "utils/logging/nimcp_logging.h"
 
 //=============================================================================
 // INTERNAL HELPERS

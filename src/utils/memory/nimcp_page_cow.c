@@ -39,13 +39,16 @@
 #define _GNU_SOURCE  // For siginfo_t
 
 #include "utils/memory/nimcp_page_cow.h"
-#include "nimcp_memory.h"
+#include "async/nimcp_bio_async.h"
+#include "async/nimcp_bio_messages.h"
+#include "utils/memory/nimcp_memory.h"
 #include <signal.h>
 #include <string.h>
 #include <sys/mman.h>
 #include <unistd.h>
 #include <errno.h>
 #include <time.h>
+#include "utils/logging/nimcp_logging.h"
 
 //=============================================================================
 // Constants and Configuration
@@ -418,7 +421,7 @@ NIMCP_EXPORT page_cow_region_t page_cow_region_create(
     }
 
     // Allocate region structure
-    page_cow_region_t region = nimcp_calloc(1, sizeof(struct page_cow_region_struct));
+    page_cow_region_t region = calloc(1, sizeof(struct page_cow_region_struct));
     if (!region) return NULL;
 
     region->magic = PAGE_COW_MAGIC;
@@ -434,7 +437,7 @@ NIMCP_EXPORT page_cow_region_t page_cow_region_create(
                              PROT_READ | PROT_WRITE,
                              MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
     if (region->base_data == MAP_FAILED) {
-        nimcp_free(region);
+        free(region);
         return NULL;
     }
 
@@ -446,10 +449,10 @@ NIMCP_EXPORT page_cow_region_t page_cow_region_create(
     }
 
     // Allocate page table
-    region->pages = nimcp_calloc(region->num_pages, sizeof(page_entry_t));
+    region->pages = calloc(region->num_pages, sizeof(page_entry_t));
     if (!region->pages) {
         munmap(region->base_data, region->size);
-        nimcp_free(region);
+        free(region);
         return NULL;
     }
 
@@ -496,14 +499,14 @@ NIMCP_EXPORT void page_cow_region_destroy(page_cow_region_t region) {
     spinlock_release(&g_page_cow.lock);
 
     // Free page table
-    nimcp_free(region->pages);
+    free(region->pages);
 
     // Unmap base memory
     munmap(region->base_data, region->size);
 
     // Invalidate and free
     region->magic = 0;
-    nimcp_free(region);
+    free(region);
 }
 
 NIMCP_EXPORT bool page_cow_region_get_stats(
@@ -533,7 +536,7 @@ NIMCP_EXPORT page_cow_view_t page_cow_view_create(page_cow_region_t region) {
     if (!region || region->magic != PAGE_COW_MAGIC) return NULL;
 
     // Allocate view structure
-    page_cow_view_t view = nimcp_calloc(1, sizeof(struct page_cow_view_struct));
+    page_cow_view_t view = calloc(1, sizeof(struct page_cow_view_struct));
     if (!view) return NULL;
 
     view->magic = PAGE_VIEW_MAGIC;
@@ -544,9 +547,9 @@ NIMCP_EXPORT page_cow_view_t page_cow_view_create(page_cow_region_t region) {
     atomic_flag_clear(&view->spinlock);
 
     // Allocate view page table
-    view->pages = nimcp_calloc(region->num_pages, sizeof(view_page_entry_t));
+    view->pages = calloc(region->num_pages, sizeof(view_page_entry_t));
     if (!view->pages) {
-        nimcp_free(view);
+        free(view);
         return NULL;
     }
 
@@ -555,8 +558,8 @@ NIMCP_EXPORT page_cow_view_t page_cow_view_create(page_cow_region_t region) {
                            PROT_READ | PROT_WRITE,  // Writable for initial copy
                            MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
     if (view->view_base == MAP_FAILED) {
-        nimcp_free(view->pages);
-        nimcp_free(view);
+        free(view->pages);
+        free(view);
         return NULL;
     }
 
@@ -566,8 +569,8 @@ NIMCP_EXPORT page_cow_view_t page_cow_view_create(page_cow_region_t region) {
     // Set to read-only (COW protection) after initial copy
     if (mprotect(view->view_base, region->size, PROT_READ) < 0) {
         munmap(view->view_base, region->size);
-        nimcp_free(view->pages);
-        nimcp_free(view);
+        free(view->pages);
+        free(view);
         return NULL;
     }
 
@@ -652,9 +655,9 @@ NIMCP_EXPORT void page_cow_view_destroy(page_cow_view_t view) {
     }
 
     // Free page table and view
-    nimcp_free(view->pages);
+    free(view->pages);
     view->magic = 0;
-    nimcp_free(view);
+    free(view);
 }
 
 NIMCP_EXPORT const void* page_cow_view_read(page_cow_view_t view) {
@@ -790,7 +793,7 @@ NIMCP_EXPORT size_t page_cow_view_get_memory_saved(page_cow_view_t view) {
 NIMCP_EXPORT page_cow_snapshot_t page_cow_snapshot_create(page_cow_view_t view) {
     if (!view || view->magic != PAGE_VIEW_MAGIC) return NULL;
 
-    page_cow_snapshot_t snap = nimcp_calloc(1, sizeof(struct page_cow_snapshot_struct));
+    page_cow_snapshot_t snap = calloc(1, sizeof(struct page_cow_snapshot_struct));
     if (!snap) return NULL;
 
     snap->magic = PAGE_SNAP_MAGIC;
@@ -800,9 +803,9 @@ NIMCP_EXPORT page_cow_snapshot_t page_cow_snapshot_create(page_cow_view_t view) 
     snap->private_pages_at_snapshot = atomic_load(&view->private_pages);
 
     // Copy view's page state
-    snap->pages = nimcp_calloc(view->num_pages, sizeof(view_page_entry_t));
+    snap->pages = calloc(view->num_pages, sizeof(view_page_entry_t));
     if (!snap->pages) {
-        nimcp_free(snap);
+        free(snap);
         return NULL;
     }
 
@@ -876,9 +879,9 @@ NIMCP_EXPORT void page_cow_snapshot_destroy(page_cow_snapshot_t snapshot) {
         }
     }
 
-    nimcp_free(snapshot->pages);
+    free(snapshot->pages);
     snapshot->magic = 0;
-    nimcp_free(snapshot);
+    free(snapshot);
 }
 
 NIMCP_EXPORT size_t page_cow_snapshot_get_delta_pages(

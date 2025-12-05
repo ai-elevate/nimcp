@@ -42,10 +42,13 @@
  */
 
 #include "utils/memory/nimcp_cow_manager.h"
-#include "nimcp_memory.h"
-#include "../platform/nimcp_platform_mutex.h"
+#include "async/nimcp_bio_async.h"
+#include "async/nimcp_bio_messages.h"
+#include "utils/memory/nimcp_memory.h"
+#include "utils/platform/nimcp_platform_mutex.h"
 #include <string.h>
 #include <time.h>
+#include "utils/logging/nimcp_logging.h"
 
 //=============================================================================
 // Internal Structures
@@ -152,7 +155,7 @@ NIMCP_EXPORT cow_manager_t cow_manager_create(
 ) {
     if (!config || config->data_size == 0) return NULL;
 
-    // Allocate manager
+    // Allocate manager (use nimcp_calloc for tracking)
     cow_manager_t manager = nimcp_calloc(1, sizeof(struct cow_manager_struct));
     if (!manager) return NULL;
 
@@ -224,7 +227,7 @@ NIMCP_EXPORT void cow_manager_destroy(cow_manager_t manager) {
 NIMCP_EXPORT cow_handle_t cow_acquire(cow_manager_t manager) {
     if (!manager) return NULL;
 
-    // Allocate handle
+    // Allocate handle (use nimcp_calloc for tracking)
     cow_handle_t handle = nimcp_calloc(1, sizeof(struct cow_handle_struct));
     if (!handle) return NULL;
 
@@ -407,6 +410,14 @@ NIMCP_EXPORT bool cow_make_private(cow_handle_t handle) {
 NIMCP_EXPORT size_t cow_get_refcount(cow_manager_t manager) {
     if (!manager) return 0;
     return atomic_load(&manager->template_refcount);
+}
+
+NIMCP_EXPORT size_t cow_get_handle_count(cow_manager_t manager) {
+    if (!manager) return 0;
+    nimcp_platform_mutex_lock(&manager->mutex);
+    size_t count = manager->handle_count;
+    nimcp_platform_mutex_unlock(&manager->mutex);
+    return count;
 }
 
 NIMCP_EXPORT bool cow_get_stats(cow_manager_t manager, cow_stats_t* stats) {

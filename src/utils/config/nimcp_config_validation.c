@@ -15,9 +15,13 @@
  */
 
 #include "utils/config/nimcp_config_validation.h"
+#include "async/nimcp_bio_async.h"
+#include "async/nimcp_bio_messages.h"
 #include "utils/config/nimcp_dynamic_config.h"
 #include "utils/memory/nimcp_unified_memory.h"
 #include "utils/logging/nimcp_logging.h"
+#include "utils/platform/nimcp_platform_rwlock.h"
+#include "utils/platform/nimcp_platform_mutex.h"
 #include "security/nimcp_security.h"
 #include <stdio.h>
 #include <stdlib.h>
@@ -80,7 +84,7 @@ struct config_validation_schema_struct {
     config_schema_stats_t stats;               /**< Schema statistics */
 
     // Thread safety
-    pthread_rwlock_t lock;                     /**< Read-write lock */
+    nimcp_platform_rwlock_t lock;                     /**< Read-write lock */
 
     // Memory integration
     unified_mem_manager_t memory_manager;      /**< Unified memory manager */
@@ -95,7 +99,7 @@ struct config_validation_schema_struct {
 //=============================================================================
 
 static unified_mem_manager_t g_mem_manager = NULL;
-static pthread_mutex_t g_init_lock = PTHREAD_MUTEX_INITIALIZER;
+static nimcp_platform_mutex_t g_init_lock = PTHREAD_MUTEX_INITIALIZER;
 static bool g_initialized = false;
 static uint32_t g_security_module_id = 0;
 
@@ -155,10 +159,10 @@ static bool ensure_initialized(void) {
         return true;
     }
 
-    pthread_mutex_lock(&g_init_lock);
+    nimcp_platform_mutex_lock(&g_init_lock);
 
     if (g_initialized) {
-        pthread_mutex_unlock(&g_init_lock);
+        nimcp_platform_mutex_unlock(&g_init_lock);
         return true;
     }
 
@@ -170,7 +174,7 @@ static bool ensure_initialized(void) {
 
     if (!g_mem_manager) {
         LOG_ERROR("Failed to create unified memory manager for config validation");
-        pthread_mutex_unlock(&g_init_lock);
+        nimcp_platform_mutex_unlock(&g_init_lock);
         return false;
     }
 
@@ -180,7 +184,7 @@ static bool ensure_initialized(void) {
     LOG_INFO("Config validation system initialized");
     g_initialized = true;
 
-    pthread_mutex_unlock(&g_init_lock);
+    nimcp_platform_mutex_unlock(&g_init_lock);
     return true;
 }
 
@@ -223,7 +227,7 @@ config_validation_schema_t config_schema_create(void) {
     schema->security_module_id = g_security_module_id;
 
     // Initialize locks
-    if (pthread_rwlock_init(&schema->lock, NULL) != 0) {
+    if (nimcp_platform_rwlock_init(&schema->lock) != 0) {
         LOG_ERROR("Failed to initialize schema lock");
         unified_mem_free(handle);
         return NULL;
@@ -246,7 +250,7 @@ void config_schema_destroy(config_validation_schema_t schema) {
     LOG_DEBUG("Destroying config schema %p", (void*)schema);
 
     // Destroy lock
-    pthread_rwlock_destroy(&schema->lock);
+    nimcp_platform_rwlock_destroy(&schema->lock);
 
     // Invalidate magic
     schema->magic = 0;
@@ -273,7 +277,7 @@ config_validation_schema_t config_schema_clone(config_validation_schema_t schema
         return NULL;
     }
 
-    pthread_rwlock_rdlock(&schema->lock);
+    nimcp_platform_rwlock_rdlock(&schema->lock);
 
     // Copy all fields
     memcpy(new_schema->fields, schema->fields, sizeof(schema->fields));
@@ -281,7 +285,7 @@ config_validation_schema_t config_schema_clone(config_validation_schema_t schema
     new_schema->stats = schema->stats;
     new_schema->version = schema->version + 1;
 
-    pthread_rwlock_unlock(&schema->lock);
+    nimcp_platform_rwlock_unlock(&schema->lock);
 
     LOG_DEBUG("Cloned schema %p -> %p (version %u -> %u)",
               (void*)schema, (void*)new_schema,
@@ -323,7 +327,7 @@ bool config_schema_add_int(
         return false;
     }
 
-    pthread_rwlock_wrlock(&schema->lock);
+    nimcp_platform_rwlock_wrlock(&schema->lock);
 
     // Check if field already exists
     config_field_t* field = find_field(schema, key);
@@ -331,7 +335,7 @@ bool config_schema_add_int(
         // Find free slot
         if (schema->field_count >= CONFIG_SCHEMA_MAX_FIELDS) {
             LOG_ERROR("Schema full, cannot add field '%s'", key);
-            pthread_rwlock_unlock(&schema->lock);
+            nimcp_platform_rwlock_unlock(&schema->lock);
             return false;
         }
 
@@ -347,7 +351,7 @@ bool config_schema_add_int(
 
     if (!field) {
         LOG_ERROR("Failed to allocate field for '%s'", key);
-        pthread_rwlock_unlock(&schema->lock);
+        nimcp_platform_rwlock_unlock(&schema->lock);
         return false;
     }
 
@@ -369,7 +373,7 @@ bool config_schema_add_int(
     }
     schema->stats.total_fields++;
 
-    pthread_rwlock_unlock(&schema->lock);
+    nimcp_platform_rwlock_unlock(&schema->lock);
 
     LOG_DEBUG("Added int field '%s': required=%d, default=%lld, range=[%lld,%lld]",
               key, required, (long long)default_value, (long long)min, (long long)max);
@@ -405,13 +409,13 @@ bool config_schema_add_float(
         return false;
     }
 
-    pthread_rwlock_wrlock(&schema->lock);
+    nimcp_platform_rwlock_wrlock(&schema->lock);
 
     config_field_t* field = find_field(schema, key);
     if (!field) {
         if (schema->field_count >= CONFIG_SCHEMA_MAX_FIELDS) {
             LOG_ERROR("Schema full, cannot add field '%s'", key);
-            pthread_rwlock_unlock(&schema->lock);
+            nimcp_platform_rwlock_unlock(&schema->lock);
             return false;
         }
 
@@ -426,7 +430,7 @@ bool config_schema_add_float(
 
     if (!field) {
         LOG_ERROR("Failed to allocate field for '%s'", key);
-        pthread_rwlock_unlock(&schema->lock);
+        nimcp_platform_rwlock_unlock(&schema->lock);
         return false;
     }
 
@@ -446,7 +450,7 @@ bool config_schema_add_float(
     }
     schema->stats.total_fields++;
 
-    pthread_rwlock_unlock(&schema->lock);
+    nimcp_platform_rwlock_unlock(&schema->lock);
 
     LOG_DEBUG("Added float field '%s': required=%d, default=%f, range=[%f,%f]",
               key, required, default_value, min, max);
@@ -469,13 +473,13 @@ bool config_schema_add_bool(
         return false;
     }
 
-    pthread_rwlock_wrlock(&schema->lock);
+    nimcp_platform_rwlock_wrlock(&schema->lock);
 
     config_field_t* field = find_field(schema, key);
     if (!field) {
         if (schema->field_count >= CONFIG_SCHEMA_MAX_FIELDS) {
             LOG_ERROR("Schema full, cannot add field '%s'", key);
-            pthread_rwlock_unlock(&schema->lock);
+            nimcp_platform_rwlock_unlock(&schema->lock);
             return false;
         }
 
@@ -490,7 +494,7 @@ bool config_schema_add_bool(
 
     if (!field) {
         LOG_ERROR("Failed to allocate field for '%s'", key);
-        pthread_rwlock_unlock(&schema->lock);
+        nimcp_platform_rwlock_unlock(&schema->lock);
         return false;
     }
 
@@ -508,7 +512,7 @@ bool config_schema_add_bool(
     }
     schema->stats.total_fields++;
 
-    pthread_rwlock_unlock(&schema->lock);
+    nimcp_platform_rwlock_unlock(&schema->lock);
 
     LOG_DEBUG("Added bool field '%s': required=%d, default=%s",
               key, required, default_value ? "true" : "false");
@@ -538,13 +542,13 @@ bool config_schema_add_string(
         return false;
     }
 
-    pthread_rwlock_wrlock(&schema->lock);
+    nimcp_platform_rwlock_wrlock(&schema->lock);
 
     config_field_t* field = find_field(schema, key);
     if (!field) {
         if (schema->field_count >= CONFIG_SCHEMA_MAX_FIELDS) {
             LOG_ERROR("Schema full, cannot add field '%s'", key);
-            pthread_rwlock_unlock(&schema->lock);
+            nimcp_platform_rwlock_unlock(&schema->lock);
             return false;
         }
 
@@ -559,7 +563,7 @@ bool config_schema_add_string(
 
     if (!field) {
         LOG_ERROR("Failed to allocate field for '%s'", key);
-        pthread_rwlock_unlock(&schema->lock);
+        nimcp_platform_rwlock_unlock(&schema->lock);
         return false;
     }
 
@@ -579,7 +583,7 @@ bool config_schema_add_string(
     }
     schema->stats.total_fields++;
 
-    pthread_rwlock_unlock(&schema->lock);
+    nimcp_platform_rwlock_unlock(&schema->lock);
 
     LOG_DEBUG("Added string field '%s': required=%d, max_len=%zu",
               key, required, max_len);
@@ -605,25 +609,25 @@ bool config_schema_add_validator(
         return false;
     }
 
-    pthread_rwlock_wrlock(&schema->lock);
+    nimcp_platform_rwlock_wrlock(&schema->lock);
 
     config_field_t* field = find_field(schema, key);
     if (!field) {
         LOG_ERROR("Field '%s' not found in schema", key);
-        pthread_rwlock_unlock(&schema->lock);
+        nimcp_platform_rwlock_unlock(&schema->lock);
         return false;
     }
 
     if (field->validator_count >= CONFIG_MAX_VALIDATORS_PER_FIELD) {
         LOG_ERROR("Max validators reached for field '%s'", key);
-        pthread_rwlock_unlock(&schema->lock);
+        nimcp_platform_rwlock_unlock(&schema->lock);
         return false;
     }
 
     field->validators[field->validator_count++] = validator;
     schema->stats.validators_registered++;
 
-    pthread_rwlock_unlock(&schema->lock);
+    nimcp_platform_rwlock_unlock(&schema->lock);
 
     LOG_DEBUG("Added validator to field '%s' (total: %u)",
               key, field->validator_count);
@@ -644,11 +648,11 @@ bool config_schema_remove_validator(
         return false;
     }
 
-    pthread_rwlock_wrlock(&schema->lock);
+    nimcp_platform_rwlock_wrlock(&schema->lock);
 
     config_field_t* field = find_field(schema, key);
     if (!field) {
-        pthread_rwlock_unlock(&schema->lock);
+        nimcp_platform_rwlock_unlock(&schema->lock);
         return false;
     }
 
@@ -667,7 +671,7 @@ bool config_schema_remove_validator(
         }
     }
 
-    pthread_rwlock_unlock(&schema->lock);
+    nimcp_platform_rwlock_unlock(&schema->lock);
     return found;
 }
 
@@ -689,18 +693,18 @@ bool config_schema_add_dependency(
         return false;
     }
 
-    pthread_rwlock_wrlock(&schema->lock);
+    nimcp_platform_rwlock_wrlock(&schema->lock);
 
     config_field_t* field = find_field(schema, key);
     if (!field) {
         LOG_ERROR("Field '%s' not found in schema", key);
-        pthread_rwlock_unlock(&schema->lock);
+        nimcp_platform_rwlock_unlock(&schema->lock);
         return false;
     }
 
     if (field->dependency_count >= CONFIG_MAX_DEPENDENCIES_PER_FIELD) {
         LOG_ERROR("Max dependencies reached for field '%s'", key);
-        pthread_rwlock_unlock(&schema->lock);
+        nimcp_platform_rwlock_unlock(&schema->lock);
         return false;
     }
 
@@ -708,7 +712,7 @@ bool config_schema_add_dependency(
     bool visited[CONFIG_SCHEMA_MAX_FIELDS] = {false};
     if (has_circular_dependency_from(schema, depends_on, key, visited)) {
         LOG_ERROR("Circular dependency detected: %s -> %s", key, depends_on);
-        pthread_rwlock_unlock(&schema->lock);
+        nimcp_platform_rwlock_unlock(&schema->lock);
         return false;
     }
 
@@ -718,7 +722,7 @@ bool config_schema_add_dependency(
     field->dependency_count++;
     schema->stats.dependencies_registered++;
 
-    pthread_rwlock_unlock(&schema->lock);
+    nimcp_platform_rwlock_unlock(&schema->lock);
 
     LOG_DEBUG("Added dependency: '%s' depends on '%s'", key, depends_on);
 
@@ -740,18 +744,18 @@ bool config_schema_add_dependency_with_constraint(
         return false;
     }
 
-    pthread_rwlock_wrlock(&schema->lock);
+    nimcp_platform_rwlock_wrlock(&schema->lock);
 
     config_field_t* field = find_field(schema, key);
     if (!field) {
         LOG_ERROR("Field '%s' not found in schema", key);
-        pthread_rwlock_unlock(&schema->lock);
+        nimcp_platform_rwlock_unlock(&schema->lock);
         return false;
     }
 
     if (field->dependency_count >= CONFIG_MAX_DEPENDENCIES_PER_FIELD) {
         LOG_ERROR("Max dependencies reached for field '%s'", key);
-        pthread_rwlock_unlock(&schema->lock);
+        nimcp_platform_rwlock_unlock(&schema->lock);
         return false;
     }
 
@@ -759,7 +763,7 @@ bool config_schema_add_dependency_with_constraint(
     bool visited[CONFIG_SCHEMA_MAX_FIELDS] = {false};
     if (has_circular_dependency_from(schema, depends_on, key, visited)) {
         LOG_ERROR("Circular dependency detected: %s -> %s", key, depends_on);
-        pthread_rwlock_unlock(&schema->lock);
+        nimcp_platform_rwlock_unlock(&schema->lock);
         return false;
     }
 
@@ -769,7 +773,7 @@ bool config_schema_add_dependency_with_constraint(
     field->dependency_count++;
     schema->stats.dependencies_registered++;
 
-    pthread_rwlock_unlock(&schema->lock);
+    nimcp_platform_rwlock_unlock(&schema->lock);
 
     LOG_DEBUG("Added dependency with constraint: '%s' depends on '%s'",
               key, depends_on);
@@ -790,11 +794,11 @@ bool config_schema_remove_dependency(
         return false;
     }
 
-    pthread_rwlock_wrlock(&schema->lock);
+    nimcp_platform_rwlock_wrlock(&schema->lock);
 
     config_field_t* field = find_field(schema, key);
     if (!field) {
-        pthread_rwlock_unlock(&schema->lock);
+        nimcp_platform_rwlock_unlock(&schema->lock);
         return false;
     }
 
@@ -814,7 +818,7 @@ bool config_schema_remove_dependency(
         }
     }
 
-    pthread_rwlock_unlock(&schema->lock);
+    nimcp_platform_rwlock_unlock(&schema->lock);
     return found;
 }
 
@@ -827,7 +831,7 @@ bool config_schema_has_circular_dependencies(config_validation_schema_t schema) 
         return false;
     }
 
-    pthread_rwlock_rdlock(&schema->lock);
+    nimcp_platform_rwlock_rdlock(&schema->lock);
 
     for (uint32_t i = 0; i < CONFIG_SCHEMA_MAX_FIELDS; i++) {
         if (!schema->fields[i].in_use) {
@@ -837,12 +841,12 @@ bool config_schema_has_circular_dependencies(config_validation_schema_t schema) 
         bool visited[CONFIG_SCHEMA_MAX_FIELDS] = {false};
         if (has_circular_dependency_from(schema, schema->fields[i].key,
                                          schema->fields[i].key, visited)) {
-            pthread_rwlock_unlock(&schema->lock);
+            nimcp_platform_rwlock_unlock(&schema->lock);
             return true;
         }
     }
 
-    pthread_rwlock_unlock(&schema->lock);
+    nimcp_platform_rwlock_unlock(&schema->lock);
     return false;
 }
 
@@ -867,7 +871,7 @@ bool config_validate_against_schema(
         config_validation_clear_result(result);
     }
 
-    pthread_rwlock_rdlock(&schema->lock);
+    nimcp_platform_rwlock_rdlock(&schema->lock);
 
     schema->stats.validations_performed++;
     bool all_valid = true;
@@ -931,7 +935,7 @@ bool config_validate_against_schema(
         schema->stats.validations_failed++;
     }
 
-    pthread_rwlock_unlock(&schema->lock);
+    nimcp_platform_rwlock_unlock(&schema->lock);
 
     if (result) {
         result->valid = all_valid;
@@ -1043,7 +1047,7 @@ bool config_apply_defaults(config_validation_schema_t schema) {
         return false;
     }
 
-    pthread_rwlock_rdlock(&schema->lock);
+    nimcp_platform_rwlock_rdlock(&schema->lock);
 
     for (uint32_t i = 0; i < CONFIG_SCHEMA_MAX_FIELDS; i++) {
         if (!schema->fields[i].in_use || schema->fields[i].required) {
@@ -1078,7 +1082,7 @@ bool config_apply_defaults(config_validation_schema_t schema) {
         }
     }
 
-    pthread_rwlock_unlock(&schema->lock);
+    nimcp_platform_rwlock_unlock(&schema->lock);
 
     LOG_DEBUG("Applied defaults to config from schema");
     return true;
@@ -1093,9 +1097,9 @@ bool config_schema_has_field(config_validation_schema_t schema, const char* key)
         return false;
     }
 
-    pthread_rwlock_rdlock(&schema->lock);
+    nimcp_platform_rwlock_rdlock(&schema->lock);
     bool found = (find_field(schema, key) != NULL);
-    pthread_rwlock_unlock(&schema->lock);
+    nimcp_platform_rwlock_unlock(&schema->lock);
 
     return found;
 }
@@ -1109,14 +1113,14 @@ bool config_schema_get_field_type(
         return false;
     }
 
-    pthread_rwlock_rdlock(&schema->lock);
+    nimcp_platform_rwlock_rdlock(&schema->lock);
 
     config_field_t* field = find_field(schema, key);
     if (field) {
         *type = field->type;
     }
 
-    pthread_rwlock_unlock(&schema->lock);
+    nimcp_platform_rwlock_unlock(&schema->lock);
 
     return (field != NULL);
 }
@@ -1126,12 +1130,12 @@ bool config_schema_is_field_required(config_validation_schema_t schema, const ch
         return false;
     }
 
-    pthread_rwlock_rdlock(&schema->lock);
+    nimcp_platform_rwlock_rdlock(&schema->lock);
 
     config_field_t* field = find_field(schema, key);
     bool required = (field && field->required);
 
-    pthread_rwlock_unlock(&schema->lock);
+    nimcp_platform_rwlock_unlock(&schema->lock);
 
     return required;
 }
@@ -1144,9 +1148,9 @@ bool config_schema_get_stats(
         return false;
     }
 
-    pthread_rwlock_rdlock(&schema->lock);
+    nimcp_platform_rwlock_rdlock(&schema->lock);
     *stats = schema->stats;
-    pthread_rwlock_unlock(&schema->lock);
+    nimcp_platform_rwlock_unlock(&schema->lock);
 
     return true;
 }

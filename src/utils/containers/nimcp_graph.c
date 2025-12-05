@@ -10,12 +10,16 @@
  */
 
 #include "utils/containers/nimcp_graph.h"
+#include "async/nimcp_bio_async.h"
+#include "async/nimcp_bio_messages.h"
 #include <float.h>
 #include <stdlib.h>
 #include <string.h>
 #include "utils/memory/nimcp_memory.h"
 #include "utils/validation/nimcp_validate.h"
 #include "utils/containers/nimcp_min_heap.h"
+#include "utils/memory/nimcp_unified_memory.h"
+#include "utils/logging/nimcp_logging.h"
 
 /* Internal helper functions */
 
@@ -88,9 +92,12 @@ static void dfs_component(const NimcpGraph* graph, uint32_t vertex, uint32_t com
  */
 NimcpGraph* nimcp_graph_create(void)
 {
+    LOG_DEBUG("Entering nimcp_graph_create");
     NimcpGraph* graph = (NimcpGraph*) nimcp_malloc(sizeof(NimcpGraph));
-    if (!graph)
+    if (!graph) {
+        LOG_ERROR("nimcp_graph_create failed: returning error");
         return NULL;
+    }
 
     // Initialize graph structure
     graph->vertex_count = 0;
@@ -100,6 +107,7 @@ NimcpGraph* nimcp_graph_create(void)
     // Initialize mutex for thread safety (Monitor Pattern)
     if (nimcp_mutex_init(&graph->lock, NULL) != NIMCP_SUCCESS) {
         nimcp_free(graph);
+        LOG_ERROR("nimcp_graph_create failed: returning error");
         return NULL;
     }
 
@@ -108,6 +116,7 @@ NimcpGraph* nimcp_graph_create(void)
     if (!graph->vertices) {
         nimcp_mutex_destroy(&graph->lock);
         nimcp_free(graph);
+        LOG_ERROR("nimcp_graph_create failed: returning error");
         return NULL;
     }
 
@@ -117,6 +126,7 @@ NimcpGraph* nimcp_graph_create(void)
         nimcp_free(graph->vertices);
         nimcp_mutex_destroy(&graph->lock);
         nimcp_free(graph);
+        LOG_ERROR("nimcp_graph_create failed: returning error");
         return NULL;
     }
 
@@ -130,6 +140,7 @@ NimcpGraph* nimcp_graph_create(void)
  */
 void nimcp_graph_destroy(NimcpGraph* graph)
 {
+    LOG_DEBUG("Entering nimcp_graph_destroy");
     if (!graph)
         return;
 
@@ -201,14 +212,18 @@ uint32_t nimcp_graph_add_vertex(NimcpGraph* graph, uint64_t peer_id, float x, fl
  */
 bool nimcp_graph_remove_vertex(NimcpGraph* graph, uint32_t vertex_idx)
 {
-    if (!graph)
+    LOG_DEBUG("Entering nimcp_graph_remove_vertex");
+    if (!graph) {
+        LOG_ERROR("nimcp_graph_remove_vertex failed: returning error");
         return false;
+    }
 
     nimcp_mutex_lock(&graph->lock);
 
     // Guard clause: validate vertex index
     if (vertex_idx >= graph->vertex_count) {
         nimcp_mutex_unlock(&graph->lock);
+        LOG_ERROR("nimcp_graph_remove_vertex failed: returning error");
         return false;
     }
 
@@ -269,8 +284,11 @@ bool nimcp_graph_remove_vertex(NimcpGraph* graph, uint32_t vertex_idx)
  */
 bool nimcp_graph_add_edge(NimcpGraph* graph, uint32_t from, uint32_t to, nimcp_weight_t weight)
 {
-    if (!graph)
+    LOG_DEBUG("Entering nimcp_graph_add_edge");
+    if (!graph) {
+        LOG_ERROR("nimcp_graph_add_edge failed: returning error");
         return false;
+    }
 
     nimcp_mutex_lock(&graph->lock);
 
@@ -278,6 +296,7 @@ bool nimcp_graph_add_edge(NimcpGraph* graph, uint32_t from, uint32_t to, nimcp_w
     if (from >= graph->vertex_count || to >= graph->vertex_count || from == to ||
         graph->edge_count >= NIMCP_MAX_EDGES) {
         nimcp_mutex_unlock(&graph->lock);
+        LOG_ERROR("nimcp_graph_add_edge failed: returning error");
         return false;
     }
 
@@ -296,6 +315,7 @@ bool nimcp_graph_add_edge(NimcpGraph* graph, uint32_t from, uint32_t to, nimcp_w
     NimcpEdgeNode* new_edge = create_edge_node(to, weight);
     if (!new_edge) {
         nimcp_mutex_unlock(&graph->lock);
+        LOG_ERROR("nimcp_graph_add_edge failed: returning error");
         return false;
     }
 
@@ -316,14 +336,18 @@ bool nimcp_graph_add_edge(NimcpGraph* graph, uint32_t from, uint32_t to, nimcp_w
  */
 bool nimcp_graph_remove_edge(NimcpGraph* graph, uint32_t from, uint32_t to)
 {
-    if (!graph)
+    LOG_DEBUG("Entering nimcp_graph_remove_edge");
+    if (!graph) {
+        LOG_ERROR("nimcp_graph_remove_edge failed: returning error");
         return false;
+    }
 
     nimcp_mutex_lock(&graph->lock);
 
     // Guard clauses: validate indices
     if (from >= graph->vertex_count || to >= graph->vertex_count) {
         nimcp_mutex_unlock(&graph->lock);
+        LOG_ERROR("nimcp_graph_remove_edge failed: returning error");
         return false;
     }
 
@@ -343,6 +367,7 @@ bool nimcp_graph_remove_edge(NimcpGraph* graph, uint32_t from, uint32_t to)
     }
 
     nimcp_mutex_unlock(&graph->lock);
+    LOG_ERROR("nimcp_graph_remove_edge failed: returning error");
     return false;
 }
 
@@ -354,8 +379,11 @@ bool nimcp_graph_remove_edge(NimcpGraph* graph, uint32_t from, uint32_t to)
  */
 NimcpPath* nimcp_graph_shortest_path(const NimcpGraph* graph, uint32_t from, uint32_t to)
 {
-    if (!graph)
+    LOG_DEBUG("Entering nimcp_graph_shortest_path");
+    if (!graph) {
+        LOG_ERROR("nimcp_graph_shortest_path failed: returning error");
         return NULL;
+    }
 
     // Cast away const to lock (graph isn't modified, just protected)
     NimcpGraph* g = (NimcpGraph*) graph;
@@ -364,6 +392,7 @@ NimcpPath* nimcp_graph_shortest_path(const NimcpGraph* graph, uint32_t from, uin
     // Guard clauses: validate indices
     if (from >= graph->vertex_count || to >= graph->vertex_count) {
         nimcp_mutex_unlock(&g->lock);
+        LOG_ERROR("nimcp_graph_shortest_path failed: returning error");
         return NULL;
     }
 
@@ -377,6 +406,7 @@ NimcpPath* nimcp_graph_shortest_path(const NimcpGraph* graph, uint32_t from, uin
         nimcp_free(distances);
         nimcp_free(previous);
         nimcp_free(visited);
+        LOG_ERROR("nimcp_graph_shortest_path failed: returning error");
         return NULL;
     }
 
@@ -396,6 +426,7 @@ NimcpPath* nimcp_graph_shortest_path(const NimcpGraph* graph, uint32_t from, uin
         nimcp_free(previous);
         nimcp_free(visited);
         nimcp_mutex_unlock(&g->lock);
+        LOG_ERROR("nimcp_graph_shortest_path failed: returning error");
         return NULL;
     }
 
@@ -540,6 +571,7 @@ bool nimcp_graph_update_coordinates(NimcpGraph* graph, uint32_t vertex_idx, floa
  */
 uint32_t nimcp_graph_find_vertex(const NimcpGraph* graph, uint64_t peer_id)
 {
+    LOG_DEBUG("Entering nimcp_graph_find_vertex");
     if (!graph)
         return NIMCP_INVALID_VERTEX;
 
@@ -565,6 +597,7 @@ uint32_t nimcp_graph_find_vertex(const NimcpGraph* graph, uint64_t peer_id)
  */
 uint32_t nimcp_graph_update_components(NimcpGraph* graph)
 {
+    LOG_DEBUG("Entering nimcp_graph_update_components");
     if (!graph)
         return 0;
 

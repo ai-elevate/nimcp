@@ -267,9 +267,13 @@
  */
 
 #include "utils/thread/nimcp_semaphore.h"
+#include "async/nimcp_bio_async.h"
+#include "async/nimcp_bio_messages.h"
 #include <errno.h>
 #include <stddef.h>
 #include <string.h>
+#include "utils/memory/nimcp_unified_memory.h"
+#include "utils/logging/nimcp_logging.h"
 
 //=============================================================================
 // Helper Functions

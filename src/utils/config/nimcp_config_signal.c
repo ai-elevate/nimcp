@@ -15,12 +15,16 @@
  */
 
 #include "utils/config/nimcp_config_signal.h"
+#include "async/nimcp_bio_async.h"
+#include "async/nimcp_bio_messages.h"
 #include "utils/config/nimcp_dynamic_config.h"
 #include "utils/config/nimcp_config_array.h"
 #include "utils/memory/nimcp_unified_memory.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/time/nimcp_time.h"
+#include "utils/platform/nimcp_platform_rwlock.h"
+#include "utils/platform/nimcp_platform_mutex.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -104,8 +108,8 @@ typedef struct {
 // Global State
 //=============================================================================
 
-static pthread_rwlock_t g_atomic_lock = PTHREAD_RWLOCK_INITIALIZER;
-static pthread_mutex_t g_callback_lock = PTHREAD_MUTEX_INITIALIZER;
+static nimcp_platform_rwlock_t g_atomic_lock = PTHREAD_RWLOCK_INITIALIZER;
+static nimcp_platform_mutex_t g_callback_lock = PTHREAD_MUTEX_INITIALIZER;
 
 static uint32_t g_current_version = 1;
 static uint32_t g_max_history_size = CONFIG_DEFAULT_HISTORY_SIZE;
@@ -160,7 +164,7 @@ config_snapshot_t config_create_snapshot(void) {
     snap->entry_count = 0;
     snap->unified_handle = NULL;
 
-    pthread_rwlock_rdlock(&g_atomic_lock);
+    nimcp_platform_rwlock_rdlock(&g_atomic_lock);
 
     // Capture current config state
     // NOTE: This is a simplified version. Full implementation would need to
@@ -169,7 +173,7 @@ config_snapshot_t config_create_snapshot(void) {
     // For now, we'll just record metadata
     snap->entry_count = 0;  // TODO: Copy actual config entries
 
-    pthread_rwlock_unlock(&g_atomic_lock);
+    nimcp_platform_rwlock_unlock(&g_atomic_lock);
 
     g_atomic_stats.snapshots_created++;
 
@@ -224,7 +228,7 @@ bool config_restore_snapshot(config_snapshot_t snap) {
 
     LOG_INFO("config_restore_snapshot: restoring snapshot v%u", s->version);
 
-    pthread_rwlock_wrlock(&g_atomic_lock);
+    nimcp_platform_rwlock_wrlock(&g_atomic_lock);
 
     // TODO: Restore config entries from snapshot to g_config_table
     // This requires integration with nimcp_dynamic_config.c
@@ -232,7 +236,7 @@ bool config_restore_snapshot(config_snapshot_t snap) {
     g_current_version = s->version;
     g_atomic_stats.rollbacks++;
 
-    pthread_rwlock_unlock(&g_atomic_lock);
+    nimcp_platform_rwlock_unlock(&g_atomic_lock);
 
     LOG_INFO("config_restore_snapshot: restored to v%u", g_current_version);
     return true;
@@ -308,7 +312,7 @@ config_snapshot_t config_clone_snapshot(config_snapshot_t snap) {
 bool config_atomic_reload(const char* path) {
     LOG_INFO("config_atomic_reload: starting atomic reload");
 
-    pthread_rwlock_wrlock(&g_atomic_lock);
+    nimcp_platform_rwlock_wrlock(&g_atomic_lock);
 
     uint32_t version_before = g_current_version;
     uint32_t version_after = version_before + 1;
@@ -320,16 +324,16 @@ bool config_atomic_reload(const char* path) {
     if (!snapshot) {
         LOG_ERROR("config_atomic_reload: failed to create snapshot");
         g_atomic_stats.atomic_reload_failures++;
-        pthread_rwlock_unlock(&g_atomic_lock);
+        nimcp_platform_rwlock_unlock(&g_atomic_lock);
         return false;
     }
 
     LOG_DEBUG("config_atomic_reload: created snapshot v%u", version_before);
 
     // Step 2: Run pre-reload callbacks
-    pthread_rwlock_unlock(&g_atomic_lock);  // Unlock for callbacks
+    nimcp_platform_rwlock_unlock(&g_atomic_lock);  // Unlock for callbacks
     run_pre_reload_callbacks(version_before);
-    pthread_rwlock_wrlock(&g_atomic_lock);  // Re-lock
+    nimcp_platform_rwlock_wrlock(&g_atomic_lock);  // Re-lock
 
     // Step 3: Parse new config into temporary state
     // TODO: This requires integration with nimcp_dynamic_config.c
@@ -341,7 +345,7 @@ bool config_atomic_reload(const char* path) {
         config_restore_snapshot(snapshot);
         config_destroy_snapshot(snapshot);
         g_atomic_stats.atomic_reload_failures++;
-        pthread_rwlock_unlock(&g_atomic_lock);
+        nimcp_platform_rwlock_unlock(&g_atomic_lock);
         run_post_reload_callbacks(version_before, version_before, false);
         return false;
     }
@@ -349,9 +353,9 @@ bool config_atomic_reload(const char* path) {
     LOG_DEBUG("config_atomic_reload: parse succeeded");
 
     // Step 4: Run validators
-    pthread_rwlock_unlock(&g_atomic_lock);  // Unlock for validators
+    nimcp_platform_rwlock_unlock(&g_atomic_lock);  // Unlock for validators
     bool validation_passed = run_validators();
-    pthread_rwlock_wrlock(&g_atomic_lock);  // Re-lock
+    nimcp_platform_rwlock_wrlock(&g_atomic_lock);  // Re-lock
 
     if (!validation_passed) {
         LOG_ERROR("config_atomic_reload: validation failed, rolling back");
@@ -359,7 +363,7 @@ bool config_atomic_reload(const char* path) {
         config_destroy_snapshot(snapshot);
         g_atomic_stats.atomic_reload_failures++;
         g_atomic_stats.validation_failures++;
-        pthread_rwlock_unlock(&g_atomic_lock);
+        nimcp_platform_rwlock_unlock(&g_atomic_lock);
         run_post_reload_callbacks(version_before, version_before, false);
         return false;
     }
@@ -373,7 +377,7 @@ bool config_atomic_reload(const char* path) {
     // Step 6: Add snapshot to history
     add_to_history(snapshot);
 
-    pthread_rwlock_unlock(&g_atomic_lock);
+    nimcp_platform_rwlock_unlock(&g_atomic_lock);
 
     // Step 7: Run post-reload callbacks
     run_post_reload_callbacks(version_before, version_after, true);
@@ -385,11 +389,11 @@ bool config_atomic_reload(const char* path) {
 bool config_rollback(void) {
     LOG_INFO("config_rollback: attempting rollback to previous version");
 
-    pthread_rwlock_wrlock(&g_atomic_lock);
+    nimcp_platform_rwlock_wrlock(&g_atomic_lock);
 
     if (g_history_count < 2) {
         LOG_ERROR("config_rollback: no previous version available");
-        pthread_rwlock_unlock(&g_atomic_lock);
+        nimcp_platform_rwlock_unlock(&g_atomic_lock);
         return false;
     }
 
@@ -397,7 +401,7 @@ bool config_rollback(void) {
     version_history_entry_t* prev = &g_version_history[g_history_count - 2];
     uint32_t target_version = prev->version;
 
-    pthread_rwlock_unlock(&g_atomic_lock);
+    nimcp_platform_rwlock_unlock(&g_atomic_lock);
 
     bool result = config_rollback_to_version(target_version);
     if (result) {
@@ -412,12 +416,12 @@ bool config_rollback(void) {
 bool config_rollback_to_version(uint32_t version) {
     LOG_INFO("config_rollback_to_version: rolling back to v%u", version);
 
-    pthread_rwlock_wrlock(&g_atomic_lock);
+    nimcp_platform_rwlock_wrlock(&g_atomic_lock);
 
     config_snapshot_t snapshot = find_version_in_history(version);
     if (!snapshot) {
         LOG_ERROR("config_rollback_to_version: version %u not found in history", version);
-        pthread_rwlock_unlock(&g_atomic_lock);
+        nimcp_platform_rwlock_unlock(&g_atomic_lock);
         return false;
     }
 
@@ -432,7 +436,7 @@ bool config_rollback_to_version(uint32_t version) {
         LOG_ERROR("config_rollback_to_version: restore failed");
     }
 
-    pthread_rwlock_unlock(&g_atomic_lock);
+    nimcp_platform_rwlock_unlock(&g_atomic_lock);
 
     if (result) {
         run_post_reload_callbacks(version_before, version, false);
@@ -442,23 +446,23 @@ bool config_rollback_to_version(uint32_t version) {
 }
 
 uint32_t config_get_version(void) {
-    pthread_rwlock_rdlock(&g_atomic_lock);
+    nimcp_platform_rwlock_rdlock(&g_atomic_lock);
     uint32_t version = g_current_version;
-    pthread_rwlock_unlock(&g_atomic_lock);
+    nimcp_platform_rwlock_unlock(&g_atomic_lock);
     return version;
 }
 
 size_t config_get_version_history(uint32_t* versions, size_t max_versions) {
     if (!versions || max_versions == 0) return 0;
 
-    pthread_rwlock_rdlock(&g_atomic_lock);
+    nimcp_platform_rwlock_rdlock(&g_atomic_lock);
 
     size_t count = g_history_count < max_versions ? g_history_count : max_versions;
     for (size_t i = 0; i < count; i++) {
         versions[i] = g_version_history[i].version;
     }
 
-    pthread_rwlock_unlock(&g_atomic_lock);
+    nimcp_platform_rwlock_unlock(&g_atomic_lock);
     return count;
 }
 
@@ -473,7 +477,7 @@ void config_set_history_size(uint32_t max_size) {
         return;
     }
 
-    pthread_rwlock_wrlock(&g_atomic_lock);
+    nimcp_platform_rwlock_wrlock(&g_atomic_lock);
 
     g_max_history_size = max_size;
 
@@ -483,7 +487,7 @@ void config_set_history_size(uint32_t max_size) {
             nimcp_calloc(max_size, sizeof(version_history_entry_t));
         if (!g_version_history) {
             LOG_ERROR("config_set_history_size: allocation failed");
-            pthread_rwlock_unlock(&g_atomic_lock);
+            nimcp_platform_rwlock_unlock(&g_atomic_lock);
             return;
         }
     } else {
@@ -496,7 +500,7 @@ void config_set_history_size(uint32_t max_size) {
         }
     }
 
-    pthread_rwlock_unlock(&g_atomic_lock);
+    nimcp_platform_rwlock_unlock(&g_atomic_lock);
 
     LOG_INFO("config_set_history_size: set to %u", max_size);
 }
@@ -508,7 +512,7 @@ uint32_t config_get_history_size(void) {
 void config_clear_history(void) {
     LOG_INFO("config_clear_history: clearing version history");
 
-    pthread_rwlock_wrlock(&g_atomic_lock);
+    nimcp_platform_rwlock_wrlock(&g_atomic_lock);
 
     for (size_t i = 0; i < g_history_count; i++) {
         config_destroy_snapshot(g_version_history[i].snapshot);
@@ -516,7 +520,7 @@ void config_clear_history(void) {
 
     g_history_count = 0;
 
-    pthread_rwlock_unlock(&g_atomic_lock);
+    nimcp_platform_rwlock_unlock(&g_atomic_lock);
 
     LOG_INFO("config_clear_history: history cleared");
 }
@@ -531,7 +535,7 @@ uint32_t config_register_reload_validator(config_reload_validator_t validator, v
         return 0;
     }
 
-    pthread_mutex_lock(&g_callback_lock);
+    nimcp_platform_mutex_lock(&g_callback_lock);
 
     uint32_t id = 0;
     for (size_t i = 0; i < MAX_VALIDATORS; i++) {
@@ -545,7 +549,7 @@ uint32_t config_register_reload_validator(config_reload_validator_t validator, v
         }
     }
 
-    pthread_mutex_unlock(&g_callback_lock);
+    nimcp_platform_mutex_unlock(&g_callback_lock);
 
     if (id == 0) {
         LOG_ERROR("config_register_reload_validator: no slots available");
@@ -557,7 +561,7 @@ uint32_t config_register_reload_validator(config_reload_validator_t validator, v
 }
 
 void config_unregister_reload_validator(uint32_t id) {
-    pthread_mutex_lock(&g_callback_lock);
+    nimcp_platform_mutex_lock(&g_callback_lock);
 
     for (size_t i = 0; i < MAX_VALIDATORS; i++) {
         if (g_validators[i].in_use && g_validators[i].id == id) {
@@ -567,14 +571,14 @@ void config_unregister_reload_validator(uint32_t id) {
         }
     }
 
-    pthread_mutex_unlock(&g_callback_lock);
+    nimcp_platform_mutex_unlock(&g_callback_lock);
 }
 
 uint32_t config_register_pre_reload_callback(config_pre_reload_callback_t callback,
                                                void* user_data) {
     if (!callback) return 0;
 
-    pthread_mutex_lock(&g_callback_lock);
+    nimcp_platform_mutex_lock(&g_callback_lock);
 
     uint32_t id = 0;
     for (size_t i = 0; i < MAX_PRE_CALLBACKS; i++) {
@@ -588,12 +592,12 @@ uint32_t config_register_pre_reload_callback(config_pre_reload_callback_t callba
         }
     }
 
-    pthread_mutex_unlock(&g_callback_lock);
+    nimcp_platform_mutex_unlock(&g_callback_lock);
     return id;
 }
 
 void config_unregister_pre_reload_callback(uint32_t id) {
-    pthread_mutex_lock(&g_callback_lock);
+    nimcp_platform_mutex_lock(&g_callback_lock);
 
     for (size_t i = 0; i < MAX_PRE_CALLBACKS; i++) {
         if (g_pre_callbacks[i].in_use && g_pre_callbacks[i].id == id) {
@@ -602,14 +606,14 @@ void config_unregister_pre_reload_callback(uint32_t id) {
         }
     }
 
-    pthread_mutex_unlock(&g_callback_lock);
+    nimcp_platform_mutex_unlock(&g_callback_lock);
 }
 
 uint32_t config_register_post_reload_callback(config_post_reload_callback_t callback,
                                                 void* user_data) {
     if (!callback) return 0;
 
-    pthread_mutex_lock(&g_callback_lock);
+    nimcp_platform_mutex_lock(&g_callback_lock);
 
     uint32_t id = 0;
     for (size_t i = 0; i < MAX_POST_CALLBACKS; i++) {
@@ -623,12 +627,12 @@ uint32_t config_register_post_reload_callback(config_post_reload_callback_t call
         }
     }
 
-    pthread_mutex_unlock(&g_callback_lock);
+    nimcp_platform_mutex_unlock(&g_callback_lock);
     return id;
 }
 
 void config_unregister_post_reload_callback(uint32_t id) {
-    pthread_mutex_lock(&g_callback_lock);
+    nimcp_platform_mutex_lock(&g_callback_lock);
 
     for (size_t i = 0; i < MAX_POST_CALLBACKS; i++) {
         if (g_post_callbacks[i].in_use && g_post_callbacks[i].id == id) {
@@ -637,7 +641,7 @@ void config_unregister_post_reload_callback(uint32_t id) {
         }
     }
 
-    pthread_mutex_unlock(&g_callback_lock);
+    nimcp_platform_mutex_unlock(&g_callback_lock);
 }
 
 //=============================================================================
@@ -647,7 +651,7 @@ void config_unregister_post_reload_callback(uint32_t id) {
 bool config_get_atomic_stats(config_atomic_stats_t* stats) {
     if (!stats) return false;
 
-    pthread_rwlock_rdlock(&g_atomic_lock);
+    nimcp_platform_rwlock_rdlock(&g_atomic_lock);
 
     *stats = g_atomic_stats;
     stats->current_version = g_current_version;
@@ -660,15 +664,15 @@ bool config_get_atomic_stats(config_atomic_stats_t* stats) {
         stats->oldest_version = g_current_version;
     }
 
-    pthread_rwlock_unlock(&g_atomic_lock);
+    nimcp_platform_rwlock_unlock(&g_atomic_lock);
 
     return true;
 }
 
 void config_reset_atomic_stats(void) {
-    pthread_rwlock_wrlock(&g_atomic_lock);
+    nimcp_platform_rwlock_wrlock(&g_atomic_lock);
     memset(&g_atomic_stats, 0, sizeof(g_atomic_stats));
-    pthread_rwlock_unlock(&g_atomic_lock);
+    nimcp_platform_rwlock_unlock(&g_atomic_lock);
     LOG_INFO("config_reset_atomic_stats: statistics reset");
 }
 
@@ -735,7 +739,7 @@ bool config_is_sighup_handler_installed(void) {
 //=============================================================================
 
 void config_dump_version_history(void) {
-    pthread_rwlock_rdlock(&g_atomic_lock);
+    nimcp_platform_rwlock_rdlock(&g_atomic_lock);
 
     LOG_INFO("=== Config Version History ===");
     LOG_INFO("Current version: %u", g_current_version);
@@ -746,14 +750,14 @@ void config_dump_version_history(void) {
         LOG_INFO("  [%zu] v%u @ %lu ns", i, entry->version, entry->timestamp_ns);
     }
 
-    pthread_rwlock_unlock(&g_atomic_lock);
+    nimcp_platform_rwlock_unlock(&g_atomic_lock);
 }
 
 uint32_t config_force_version_increment(void) {
-    pthread_rwlock_wrlock(&g_atomic_lock);
+    nimcp_platform_rwlock_wrlock(&g_atomic_lock);
     g_current_version++;
     uint32_t version = g_current_version;
-    pthread_rwlock_unlock(&g_atomic_lock);
+    nimcp_platform_rwlock_unlock(&g_atomic_lock);
 
     LOG_DEBUG("config_force_version_increment: incremented to v%u", version);
     return version;
@@ -811,7 +815,7 @@ static config_snapshot_t find_version_in_history(uint32_t version) {
 }
 
 static void run_pre_reload_callbacks(uint32_t version) {
-    pthread_mutex_lock(&g_callback_lock);
+    nimcp_platform_mutex_lock(&g_callback_lock);
 
     for (size_t i = 0; i < MAX_PRE_CALLBACKS; i++) {
         if (g_pre_callbacks[i].in_use) {
@@ -819,11 +823,11 @@ static void run_pre_reload_callbacks(uint32_t version) {
         }
     }
 
-    pthread_mutex_unlock(&g_callback_lock);
+    nimcp_platform_mutex_unlock(&g_callback_lock);
 }
 
 static void run_post_reload_callbacks(uint32_t before, uint32_t after, bool success) {
-    pthread_mutex_lock(&g_callback_lock);
+    nimcp_platform_mutex_lock(&g_callback_lock);
 
     for (size_t i = 0; i < MAX_POST_CALLBACKS; i++) {
         if (g_post_callbacks[i].in_use) {
@@ -831,11 +835,11 @@ static void run_post_reload_callbacks(uint32_t before, uint32_t after, bool succ
         }
     }
 
-    pthread_mutex_unlock(&g_callback_lock);
+    nimcp_platform_mutex_unlock(&g_callback_lock);
 }
 
 static bool run_validators(void) {
-    pthread_mutex_lock(&g_callback_lock);
+    nimcp_platform_mutex_lock(&g_callback_lock);
 
     bool all_passed = true;
 
@@ -849,7 +853,7 @@ static bool run_validators(void) {
         }
     }
 
-    pthread_mutex_unlock(&g_callback_lock);
+    nimcp_platform_mutex_unlock(&g_callback_lock);
 
     return all_passed;
 }

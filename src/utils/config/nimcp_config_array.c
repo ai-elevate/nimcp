@@ -15,9 +15,12 @@
  */
 
 #include "utils/config/nimcp_config_array.h"
+#include "async/nimcp_bio_async.h"
+#include "async/nimcp_bio_messages.h"
 #include "utils/memory/nimcp_unified_memory.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
+#include "utils/platform/nimcp_platform_rwlock.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -162,14 +165,14 @@ config_array_t* config_array_create(config_value_type_t element_type, size_t cap
     arr->unified_mem_handle = NULL;
 
     // Create RW lock
-    pthread_rwlock_t* rwlock = (pthread_rwlock_t*)nimcp_malloc(sizeof(pthread_rwlock_t));
+    nimcp_platform_rwlock_t* rwlock = (nimcp_platform_rwlock_t*)nimcp_malloc(sizeof(nimcp_platform_rwlock_t));
     if (!rwlock) {
         LOG_ERROR("config_array_create: rwlock allocation failed");
         nimcp_free(arr);
         return NULL;
     }
 
-    if (pthread_rwlock_init(rwlock, NULL) != 0) {
+    if (nimcp_platform_rwlock_init(rwlock) != 0) {
         LOG_ERROR("config_array_create: rwlock init failed");
         nimcp_free(rwlock);
         nimcp_free(arr);
@@ -215,7 +218,7 @@ config_array_t* config_array_create(config_value_type_t element_type, size_t cap
 
 alloc_error:
     LOG_ERROR("config_array_create: data allocation failed");
-    pthread_rwlock_destroy((pthread_rwlock_t*)arr->rwlock);
+    nimcp_platform_rwlock_destroy((nimcp_platform_rwlock_t*)arr->rwlock);
     nimcp_free(arr->rwlock);
     nimcp_free(arr);
     return NULL;
@@ -248,7 +251,7 @@ void config_array_destroy(config_array_t* arr) {
 
     // Destroy lock
     if (arr->rwlock) {
-        pthread_rwlock_destroy((pthread_rwlock_t*)arr->rwlock);
+        nimcp_platform_rwlock_destroy((nimcp_platform_rwlock_t*)arr->rwlock);
         nimcp_free(arr->rwlock);
     }
 
@@ -263,11 +266,11 @@ config_array_t* config_array_clone(const config_array_t* arr) {
         return NULL;
     }
 
-    pthread_rwlock_rdlock((pthread_rwlock_t*)arr->rwlock);
+    nimcp_platform_rwlock_rdlock((nimcp_platform_rwlock_t*)arr->rwlock);
 
     config_array_t* clone = config_array_create(arr->element_type, arr->capacity);
     if (!clone) {
-        pthread_rwlock_unlock((pthread_rwlock_t*)arr->rwlock);
+        nimcp_platform_rwlock_unlock((nimcp_platform_rwlock_t*)arr->rwlock);
         return NULL;
     }
 
@@ -294,7 +297,7 @@ config_array_t* config_array_clone(const config_array_t* arr) {
                     if (!clone->data.string_vals[i]) {
                         LOG_ERROR("config_array_clone: string duplication failed at index %zu", i);
                         config_array_destroy(clone);
-                        pthread_rwlock_unlock((pthread_rwlock_t*)arr->rwlock);
+                        nimcp_platform_rwlock_unlock((nimcp_platform_rwlock_t*)arr->rwlock);
                         return NULL;
                     }
                 }
@@ -302,7 +305,7 @@ config_array_t* config_array_clone(const config_array_t* arr) {
             break;
     }
 
-    pthread_rwlock_unlock((pthread_rwlock_t*)arr->rwlock);
+    nimcp_platform_rwlock_unlock((nimcp_platform_rwlock_t*)arr->rwlock);
 
     LOG_DEBUG("config_array_clone: cloned array type=%d count=%zu",
               arr->element_type, arr->count);
@@ -315,7 +318,7 @@ void config_array_clear(config_array_t* arr) {
         return;
     }
 
-    pthread_rwlock_wrlock((pthread_rwlock_t*)arr->rwlock);
+    nimcp_platform_rwlock_wrlock((nimcp_platform_rwlock_t*)arr->rwlock);
 
     // Free strings
     if (arr->element_type == CONFIG_TYPE_STRING && arr->data.string_vals) {
@@ -328,7 +331,7 @@ void config_array_clear(config_array_t* arr) {
     }
 
     arr->count = 0;
-    pthread_rwlock_unlock((pthread_rwlock_t*)arr->rwlock);
+    nimcp_platform_rwlock_unlock((nimcp_platform_rwlock_t*)arr->rwlock);
 
     LOG_DEBUG("config_array_clear: cleared array");
 }
@@ -343,9 +346,9 @@ bool config_array_reserve(config_array_t* arr, size_t new_capacity) {
         return true;  // Already have enough capacity
     }
 
-    pthread_rwlock_wrlock((pthread_rwlock_t*)arr->rwlock);
+    nimcp_platform_rwlock_wrlock((nimcp_platform_rwlock_t*)arr->rwlock);
     bool result = grow_array(arr, new_capacity);
-    pthread_rwlock_unlock((pthread_rwlock_t*)arr->rwlock);
+    nimcp_platform_rwlock_unlock((nimcp_platform_rwlock_t*)arr->rwlock);
 
     return result;
 }
@@ -384,17 +387,17 @@ bool config_array_append_int(config_array_t* arr, int64_t val) {
         return false;
     }
 
-    pthread_rwlock_wrlock((pthread_rwlock_t*)arr->rwlock);
+    nimcp_platform_rwlock_wrlock((nimcp_platform_rwlock_t*)arr->rwlock);
 
     if (arr->count >= arr->capacity) {
         if (!grow_array(arr, arr->count + 1)) {
-            pthread_rwlock_unlock((pthread_rwlock_t*)arr->rwlock);
+            nimcp_platform_rwlock_unlock((nimcp_platform_rwlock_t*)arr->rwlock);
             return false;
         }
     }
 
     arr->data.int_vals[arr->count++] = val;
-    pthread_rwlock_unlock((pthread_rwlock_t*)arr->rwlock);
+    nimcp_platform_rwlock_unlock((nimcp_platform_rwlock_t*)arr->rwlock);
 
     return true;
 }
@@ -405,17 +408,17 @@ bool config_array_append_float(config_array_t* arr, double val) {
         return false;
     }
 
-    pthread_rwlock_wrlock((pthread_rwlock_t*)arr->rwlock);
+    nimcp_platform_rwlock_wrlock((nimcp_platform_rwlock_t*)arr->rwlock);
 
     if (arr->count >= arr->capacity) {
         if (!grow_array(arr, arr->count + 1)) {
-            pthread_rwlock_unlock((pthread_rwlock_t*)arr->rwlock);
+            nimcp_platform_rwlock_unlock((nimcp_platform_rwlock_t*)arr->rwlock);
             return false;
         }
     }
 
     arr->data.float_vals[arr->count++] = val;
-    pthread_rwlock_unlock((pthread_rwlock_t*)arr->rwlock);
+    nimcp_platform_rwlock_unlock((nimcp_platform_rwlock_t*)arr->rwlock);
 
     return true;
 }
@@ -426,17 +429,17 @@ bool config_array_append_bool(config_array_t* arr, bool val) {
         return false;
     }
 
-    pthread_rwlock_wrlock((pthread_rwlock_t*)arr->rwlock);
+    nimcp_platform_rwlock_wrlock((nimcp_platform_rwlock_t*)arr->rwlock);
 
     if (arr->count >= arr->capacity) {
         if (!grow_array(arr, arr->count + 1)) {
-            pthread_rwlock_unlock((pthread_rwlock_t*)arr->rwlock);
+            nimcp_platform_rwlock_unlock((nimcp_platform_rwlock_t*)arr->rwlock);
             return false;
         }
     }
 
     arr->data.bool_vals[arr->count++] = val;
-    pthread_rwlock_unlock((pthread_rwlock_t*)arr->rwlock);
+    nimcp_platform_rwlock_unlock((nimcp_platform_rwlock_t*)arr->rwlock);
 
     return true;
 }
@@ -452,11 +455,11 @@ bool config_array_append_string(config_array_t* arr, const char* val) {
         return false;
     }
 
-    pthread_rwlock_wrlock((pthread_rwlock_t*)arr->rwlock);
+    nimcp_platform_rwlock_wrlock((nimcp_platform_rwlock_t*)arr->rwlock);
 
     if (arr->count >= arr->capacity) {
         if (!grow_array(arr, arr->count + 1)) {
-            pthread_rwlock_unlock((pthread_rwlock_t*)arr->rwlock);
+            nimcp_platform_rwlock_unlock((nimcp_platform_rwlock_t*)arr->rwlock);
             return false;
         }
     }
@@ -464,12 +467,12 @@ bool config_array_append_string(config_array_t* arr, const char* val) {
     arr->data.string_vals[arr->count] = nimcp_strdup(val);
     if (!arr->data.string_vals[arr->count]) {
         LOG_ERROR("config_array_append_string: string duplication failed");
-        pthread_rwlock_unlock((pthread_rwlock_t*)arr->rwlock);
+        nimcp_platform_rwlock_unlock((nimcp_platform_rwlock_t*)arr->rwlock);
         return false;
     }
 
     arr->count++;
-    pthread_rwlock_unlock((pthread_rwlock_t*)arr->rwlock);
+    nimcp_platform_rwlock_unlock((nimcp_platform_rwlock_t*)arr->rwlock);
 
     return true;
 }
@@ -483,14 +486,14 @@ int64_t config_array_get_int(const config_array_t* arr, size_t idx, int64_t defa
         return default_val;
     }
 
-    pthread_rwlock_rdlock((pthread_rwlock_t*)arr->rwlock);
+    nimcp_platform_rwlock_rdlock((nimcp_platform_rwlock_t*)arr->rwlock);
 
     int64_t result = default_val;
     if (idx < arr->count) {
         result = arr->data.int_vals[idx];
     }
 
-    pthread_rwlock_unlock((pthread_rwlock_t*)arr->rwlock);
+    nimcp_platform_rwlock_unlock((nimcp_platform_rwlock_t*)arr->rwlock);
     return result;
 }
 
@@ -499,14 +502,14 @@ double config_array_get_float(const config_array_t* arr, size_t idx, double defa
         return default_val;
     }
 
-    pthread_rwlock_rdlock((pthread_rwlock_t*)arr->rwlock);
+    nimcp_platform_rwlock_rdlock((nimcp_platform_rwlock_t*)arr->rwlock);
 
     double result = default_val;
     if (idx < arr->count) {
         result = arr->data.float_vals[idx];
     }
 
-    pthread_rwlock_unlock((pthread_rwlock_t*)arr->rwlock);
+    nimcp_platform_rwlock_unlock((nimcp_platform_rwlock_t*)arr->rwlock);
     return result;
 }
 
@@ -515,14 +518,14 @@ bool config_array_get_bool(const config_array_t* arr, size_t idx, bool default_v
         return default_val;
     }
 
-    pthread_rwlock_rdlock((pthread_rwlock_t*)arr->rwlock);
+    nimcp_platform_rwlock_rdlock((nimcp_platform_rwlock_t*)arr->rwlock);
 
     bool result = default_val;
     if (idx < arr->count) {
         result = arr->data.bool_vals[idx];
     }
 
-    pthread_rwlock_unlock((pthread_rwlock_t*)arr->rwlock);
+    nimcp_platform_rwlock_unlock((nimcp_platform_rwlock_t*)arr->rwlock);
     return result;
 }
 
@@ -532,14 +535,14 @@ const char* config_array_get_string(const config_array_t* arr, size_t idx,
         return default_val;
     }
 
-    pthread_rwlock_rdlock((pthread_rwlock_t*)arr->rwlock);
+    nimcp_platform_rwlock_rdlock((nimcp_platform_rwlock_t*)arr->rwlock);
 
     const char* result = default_val;
     if (idx < arr->count && arr->data.string_vals[idx]) {
         result = arr->data.string_vals[idx];
     }
 
-    pthread_rwlock_unlock((pthread_rwlock_t*)arr->rwlock);
+    nimcp_platform_rwlock_unlock((nimcp_platform_rwlock_t*)arr->rwlock);
     return result;
 }
 
@@ -553,7 +556,7 @@ bool config_array_set_int(config_array_t* arr, size_t idx, int64_t val) {
         return false;
     }
 
-    pthread_rwlock_wrlock((pthread_rwlock_t*)arr->rwlock);
+    nimcp_platform_rwlock_wrlock((nimcp_platform_rwlock_t*)arr->rwlock);
 
     bool result = false;
     if (idx < arr->count) {
@@ -563,7 +566,7 @@ bool config_array_set_int(config_array_t* arr, size_t idx, int64_t val) {
         LOG_ERROR("config_array_set_int: index %zu out of bounds (count=%zu)", idx, arr->count);
     }
 
-    pthread_rwlock_unlock((pthread_rwlock_t*)arr->rwlock);
+    nimcp_platform_rwlock_unlock((nimcp_platform_rwlock_t*)arr->rwlock);
     return result;
 }
 
@@ -573,7 +576,7 @@ bool config_array_set_float(config_array_t* arr, size_t idx, double val) {
         return false;
     }
 
-    pthread_rwlock_wrlock((pthread_rwlock_t*)arr->rwlock);
+    nimcp_platform_rwlock_wrlock((nimcp_platform_rwlock_t*)arr->rwlock);
 
     bool result = false;
     if (idx < arr->count) {
@@ -583,7 +586,7 @@ bool config_array_set_float(config_array_t* arr, size_t idx, double val) {
         LOG_ERROR("config_array_set_float: index %zu out of bounds (count=%zu)", idx, arr->count);
     }
 
-    pthread_rwlock_unlock((pthread_rwlock_t*)arr->rwlock);
+    nimcp_platform_rwlock_unlock((nimcp_platform_rwlock_t*)arr->rwlock);
     return result;
 }
 
@@ -593,7 +596,7 @@ bool config_array_set_bool(config_array_t* arr, size_t idx, bool val) {
         return false;
     }
 
-    pthread_rwlock_wrlock((pthread_rwlock_t*)arr->rwlock);
+    nimcp_platform_rwlock_wrlock((nimcp_platform_rwlock_t*)arr->rwlock);
 
     bool result = false;
     if (idx < arr->count) {
@@ -603,7 +606,7 @@ bool config_array_set_bool(config_array_t* arr, size_t idx, bool val) {
         LOG_ERROR("config_array_set_bool: index %zu out of bounds (count=%zu)", idx, arr->count);
     }
 
-    pthread_rwlock_unlock((pthread_rwlock_t*)arr->rwlock);
+    nimcp_platform_rwlock_unlock((nimcp_platform_rwlock_t*)arr->rwlock);
     return result;
 }
 
@@ -618,7 +621,7 @@ bool config_array_set_string(config_array_t* arr, size_t idx, const char* val) {
         return false;
     }
 
-    pthread_rwlock_wrlock((pthread_rwlock_t*)arr->rwlock);
+    nimcp_platform_rwlock_wrlock((nimcp_platform_rwlock_t*)arr->rwlock);
 
     bool result = false;
     if (idx < arr->count) {
@@ -638,7 +641,7 @@ bool config_array_set_string(config_array_t* arr, size_t idx, const char* val) {
         LOG_ERROR("config_array_set_string: index %zu out of bounds (count=%zu)", idx, arr->count);
     }
 
-    pthread_rwlock_unlock((pthread_rwlock_t*)arr->rwlock);
+    nimcp_platform_rwlock_unlock((nimcp_platform_rwlock_t*)arr->rwlock);
     return result;
 }
 
@@ -652,11 +655,11 @@ bool config_array_remove(config_array_t* arr, size_t idx) {
         return false;
     }
 
-    pthread_rwlock_wrlock((pthread_rwlock_t*)arr->rwlock);
+    nimcp_platform_rwlock_wrlock((nimcp_platform_rwlock_t*)arr->rwlock);
 
     if (idx >= arr->count) {
         LOG_ERROR("config_array_remove: index %zu out of bounds (count=%zu)", idx, arr->count);
-        pthread_rwlock_unlock((pthread_rwlock_t*)arr->rwlock);
+        nimcp_platform_rwlock_unlock((nimcp_platform_rwlock_t*)arr->rwlock);
         return false;
     }
 
@@ -696,7 +699,7 @@ bool config_array_remove(config_array_t* arr, size_t idx) {
             break;
 
         default:
-            pthread_rwlock_unlock((pthread_rwlock_t*)arr->rwlock);
+            nimcp_platform_rwlock_unlock((nimcp_platform_rwlock_t*)arr->rwlock);
             return false;
     }
 
@@ -706,7 +709,7 @@ bool config_array_remove(config_array_t* arr, size_t idx) {
     }
 
     arr->count--;
-    pthread_rwlock_unlock((pthread_rwlock_t*)arr->rwlock);
+    nimcp_platform_rwlock_unlock((nimcp_platform_rwlock_t*)arr->rwlock);
 
     LOG_DEBUG("config_array_remove: removed element at index %zu (new count=%zu)", idx, arr->count);
     return true;
@@ -729,7 +732,7 @@ bool config_array_resize(config_array_t* arr, size_t new_capacity) {
         return false;
     }
 
-    pthread_rwlock_wrlock((pthread_rwlock_t*)arr->rwlock);
+    nimcp_platform_rwlock_wrlock((nimcp_platform_rwlock_t*)arr->rwlock);
 
     size_t old_capacity = arr->capacity;
     arr->capacity = new_capacity;
@@ -739,7 +742,7 @@ bool config_array_resize(config_array_t* arr, size_t new_capacity) {
         arr->capacity = old_capacity;  // Restore on failure
     }
 
-    pthread_rwlock_unlock((pthread_rwlock_t*)arr->rwlock);
+    nimcp_platform_rwlock_unlock((nimcp_platform_rwlock_t*)arr->rwlock);
     return result;
 }
 
@@ -1000,13 +1003,13 @@ char* config_array_to_string(const config_array_t* arr) {
         return NULL;
     }
 
-    pthread_rwlock_rdlock((pthread_rwlock_t*)arr->rwlock);
+    nimcp_platform_rwlock_rdlock((nimcp_platform_rwlock_t*)arr->rwlock);
 
     // Calculate buffer size (conservative estimate)
     size_t buf_size = 64 + arr->count * 64;  // 64 bytes per element should be enough
     char* buffer = (char*)nimcp_malloc(buf_size);
     if (!buffer) {
-        pthread_rwlock_unlock((pthread_rwlock_t*)arr->rwlock);
+        nimcp_platform_rwlock_unlock((nimcp_platform_rwlock_t*)arr->rwlock);
         return NULL;
     }
 
@@ -1047,14 +1050,14 @@ char* config_array_to_string(const config_array_t* arr) {
         // Safety check for buffer overflow
         if ((size_t)(p - buffer) > buf_size - 64) {
             LOG_ERROR("config_array_to_string: buffer overflow prevented");
-            pthread_rwlock_unlock((pthread_rwlock_t*)arr->rwlock);
+            nimcp_platform_rwlock_unlock((nimcp_platform_rwlock_t*)arr->rwlock);
             nimcp_free(buffer);
             return NULL;
         }
     }
 
     sprintf(p, "]");
-    pthread_rwlock_unlock((pthread_rwlock_t*)arr->rwlock);
+    nimcp_platform_rwlock_unlock((nimcp_platform_rwlock_t*)arr->rwlock);
 
     return buffer;
 }
@@ -1100,10 +1103,10 @@ bool config_array_is_valid(const config_array_t* arr) {
 size_t config_array_memory_usage(const config_array_t* arr) {
     if (!validate_array(arr)) return 0;
 
-    pthread_rwlock_rdlock((pthread_rwlock_t*)arr->rwlock);
+    nimcp_platform_rwlock_rdlock((nimcp_platform_rwlock_t*)arr->rwlock);
 
     size_t usage = sizeof(config_array_t);
-    usage += sizeof(pthread_rwlock_t);
+    usage += sizeof(nimcp_platform_rwlock_t);
 
     switch (arr->element_type) {
         case CONFIG_TYPE_INT:
@@ -1128,7 +1131,7 @@ size_t config_array_memory_usage(const config_array_t* arr) {
             break;
     }
 
-    pthread_rwlock_unlock((pthread_rwlock_t*)arr->rwlock);
+    nimcp_platform_rwlock_unlock((nimcp_platform_rwlock_t*)arr->rwlock);
     return usage;
 }
 

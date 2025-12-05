@@ -22,17 +22,21 @@
  */
 
 #include "utils/config/nimcp_dynamic_config.h"
+#include "async/nimcp_bio_async.h"
+#include "async/nimcp_bio_messages.h"
 #include "utils/config/nimcp_config_array.h"
 #include "utils/containers/nimcp_hash_table.h"
 #include "utils/signal/nimcp_signal_handler.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/thread/nimcp_thread.h"
 #include "utils/memory/nimcp_memory.h"
+#include "utils/platform/nimcp_platform_rwlock.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
 #include <pthread.h>
+#include "utils/memory/nimcp_unified_memory.h"
 
 //=============================================================================
 // Internal Data Structures
@@ -77,7 +81,7 @@ static hash_table_t* g_config_table = NULL;
 static config_snapshot_t* g_config_snapshot = NULL;
 static const config_schema_t* g_config_schema = NULL;
 static callback_registration_t g_callbacks[MAX_CALLBACKS];
-static pthread_rwlock_t g_config_lock = PTHREAD_RWLOCK_INITIALIZER;
+static nimcp_platform_rwlock_t g_config_lock = PTHREAD_RWLOCK_INITIALIZER;
 static nimcp_mutex_t g_callback_lock = NIMCP_MUTEX_INITIALIZER;
 static char g_config_path[MAX_PATH_LENGTH] = {0};
 static config_stats_t g_stats = {0};
@@ -359,10 +363,10 @@ static bool parse_config_file(const char* path) {
         }
 
         // Store in hash table (thread-safe)
-        pthread_rwlock_wrlock(&g_config_lock);
+        nimcp_platform_rwlock_wrlock(&g_config_lock);
         bool inserted = hash_table_insert_string(g_config_table, key, entry,
                                                  sizeof(config_entry_internal_t));
-        pthread_rwlock_unlock(&g_config_lock);
+        nimcp_platform_rwlock_unlock(&g_config_lock);
 
         if (inserted) {
             entries_parsed++;
@@ -468,7 +472,7 @@ void config_shutdown(void) {
 
     LOG_MODULE_INFO("config", "Shutting down config system");
 
-    pthread_rwlock_wrlock(&g_config_lock);
+    nimcp_platform_rwlock_wrlock(&g_config_lock);
 
     // Destroy hash table (calls value_destructor for each entry)
     if (g_config_table) {
@@ -485,7 +489,7 @@ void config_shutdown(void) {
         g_config_snapshot = NULL;
     }
 
-    pthread_rwlock_unlock(&g_config_lock);
+    nimcp_platform_rwlock_unlock(&g_config_lock);
 
     // Clear callbacks
     nimcp_mutex_lock(&g_callback_lock);
@@ -529,17 +533,17 @@ bool config_reload(void) {
 int64_t config_get_int(const char* key, int64_t default_value) {
     if (!key || !g_config_table) return default_value;
 
-    pthread_rwlock_rdlock(&g_config_lock);
+    nimcp_platform_rwlock_rdlock(&g_config_lock);
 
     config_entry_internal_t* entry = hash_table_lookup_string(g_config_table, key);
     if (entry && entry->type == CONFIG_TYPE_INT) {
         int64_t value = entry->value.int_val;
-        pthread_rwlock_unlock(&g_config_lock);
+        nimcp_platform_rwlock_unlock(&g_config_lock);
         LOG_MODULE_TRACE("config", "get_int: %s = %lld", key, (long long)value);
         return value;
     }
 
-    pthread_rwlock_unlock(&g_config_lock);
+    nimcp_platform_rwlock_unlock(&g_config_lock);
     LOG_MODULE_DEBUG("config", "get_int: key '%s' not found, returning default %lld",
                     key, (long long)default_value);
     return default_value;
@@ -548,17 +552,17 @@ int64_t config_get_int(const char* key, int64_t default_value) {
 double config_get_float(const char* key, double default_value) {
     if (!key || !g_config_table) return default_value;
 
-    pthread_rwlock_rdlock(&g_config_lock);
+    nimcp_platform_rwlock_rdlock(&g_config_lock);
 
     config_entry_internal_t* entry = hash_table_lookup_string(g_config_table, key);
     if (entry && entry->type == CONFIG_TYPE_FLOAT) {
         double value = entry->value.float_val;
-        pthread_rwlock_unlock(&g_config_lock);
+        nimcp_platform_rwlock_unlock(&g_config_lock);
         LOG_MODULE_TRACE("config", "get_float: %s = %f", key, value);
         return value;
     }
 
-    pthread_rwlock_unlock(&g_config_lock);
+    nimcp_platform_rwlock_unlock(&g_config_lock);
     LOG_MODULE_DEBUG("config", "get_float: key '%s' not found, returning default %f",
                     key, default_value);
     return default_value;
@@ -567,17 +571,17 @@ double config_get_float(const char* key, double default_value) {
 bool config_get_bool(const char* key, bool default_value) {
     if (!key || !g_config_table) return default_value;
 
-    pthread_rwlock_rdlock(&g_config_lock);
+    nimcp_platform_rwlock_rdlock(&g_config_lock);
 
     config_entry_internal_t* entry = hash_table_lookup_string(g_config_table, key);
     if (entry && entry->type == CONFIG_TYPE_BOOL) {
         bool value = entry->value.bool_val;
-        pthread_rwlock_unlock(&g_config_lock);
+        nimcp_platform_rwlock_unlock(&g_config_lock);
         LOG_MODULE_TRACE("config", "get_bool: %s = %s", key, value ? "true" : "false");
         return value;
     }
 
-    pthread_rwlock_unlock(&g_config_lock);
+    nimcp_platform_rwlock_unlock(&g_config_lock);
     LOG_MODULE_DEBUG("config", "get_bool: key '%s' not found, returning default %s",
                     key, default_value ? "true" : "false");
     return default_value;
@@ -586,17 +590,17 @@ bool config_get_bool(const char* key, bool default_value) {
 const char* config_get_string(const char* key, const char* default_value) {
     if (!key || !g_config_table) return default_value;
 
-    pthread_rwlock_rdlock(&g_config_lock);
+    nimcp_platform_rwlock_rdlock(&g_config_lock);
 
     config_entry_internal_t* entry = hash_table_lookup_string(g_config_table, key);
     if (entry && entry->type == CONFIG_TYPE_STRING) {
         const char* value = entry->value.string_val;
-        pthread_rwlock_unlock(&g_config_lock);
+        nimcp_platform_rwlock_unlock(&g_config_lock);
         LOG_MODULE_TRACE("config", "get_string: %s = %s", key, value);
         return value;
     }
 
-    pthread_rwlock_unlock(&g_config_lock);
+    nimcp_platform_rwlock_unlock(&g_config_lock);
     LOG_MODULE_DEBUG("config", "get_string: key '%s' not found, returning default",
                     key);
     return default_value;
@@ -605,13 +609,13 @@ const char* config_get_string(const char* key, const char* default_value) {
 bool config_set_int(const char* key, int64_t value) {
     if (!key || !g_config_table) return false;
 
-    pthread_rwlock_wrlock(&g_config_lock);
+    nimcp_platform_rwlock_wrlock(&g_config_lock);
 
     // Check if entry exists
     config_entry_internal_t* existing = hash_table_lookup_string(g_config_table, key);
     if (existing) {
         if (existing->type != CONFIG_TYPE_INT) {
-            pthread_rwlock_unlock(&g_config_lock);
+            nimcp_platform_rwlock_unlock(&g_config_lock);
             LOG_MODULE_ERROR("config", "Type mismatch for key '%s'", key);
             return false;
         }
@@ -622,31 +626,31 @@ bool config_set_int(const char* key, int64_t value) {
 
         // Validate
         if (!validate_value_against_schema(key, CONFIG_TYPE_INT, &new_value)) {
-            pthread_rwlock_unlock(&g_config_lock);
+            nimcp_platform_rwlock_unlock(&g_config_lock);
             return false;
         }
 
         existing->value.int_val = value;
-        pthread_rwlock_unlock(&g_config_lock);
+        nimcp_platform_rwlock_unlock(&g_config_lock);
 
         trigger_callbacks(key, &old_value, &new_value);
         LOG_MODULE_DEBUG("config", "set_int: %s = %lld", key, (long long)value);
         return true;
     }
 
-    pthread_rwlock_unlock(&g_config_lock);
+    nimcp_platform_rwlock_unlock(&g_config_lock);
     return false;
 }
 
 bool config_set_float(const char* key, double value) {
     if (!key || !g_config_table) return false;
 
-    pthread_rwlock_wrlock(&g_config_lock);
+    nimcp_platform_rwlock_wrlock(&g_config_lock);
 
     config_entry_internal_t* existing = hash_table_lookup_string(g_config_table, key);
     if (existing) {
         if (existing->type != CONFIG_TYPE_FLOAT) {
-            pthread_rwlock_unlock(&g_config_lock);
+            nimcp_platform_rwlock_unlock(&g_config_lock);
             LOG_MODULE_ERROR("config", "Type mismatch for key '%s'", key);
             return false;
         }
@@ -656,31 +660,31 @@ bool config_set_float(const char* key, double value) {
         new_value.float_val = value;
 
         if (!validate_value_against_schema(key, CONFIG_TYPE_FLOAT, &new_value)) {
-            pthread_rwlock_unlock(&g_config_lock);
+            nimcp_platform_rwlock_unlock(&g_config_lock);
             return false;
         }
 
         existing->value.float_val = value;
-        pthread_rwlock_unlock(&g_config_lock);
+        nimcp_platform_rwlock_unlock(&g_config_lock);
 
         trigger_callbacks(key, &old_value, &new_value);
         LOG_MODULE_DEBUG("config", "set_float: %s = %f", key, value);
         return true;
     }
 
-    pthread_rwlock_unlock(&g_config_lock);
+    nimcp_platform_rwlock_unlock(&g_config_lock);
     return false;
 }
 
 bool config_set_bool(const char* key, bool value) {
     if (!key || !g_config_table) return false;
 
-    pthread_rwlock_wrlock(&g_config_lock);
+    nimcp_platform_rwlock_wrlock(&g_config_lock);
 
     config_entry_internal_t* existing = hash_table_lookup_string(g_config_table, key);
     if (existing) {
         if (existing->type != CONFIG_TYPE_BOOL) {
-            pthread_rwlock_unlock(&g_config_lock);
+            nimcp_platform_rwlock_unlock(&g_config_lock);
             LOG_MODULE_ERROR("config", "Type mismatch for key '%s'", key);
             return false;
         }
@@ -690,26 +694,26 @@ bool config_set_bool(const char* key, bool value) {
         new_value.bool_val = value;
 
         existing->value.bool_val = value;
-        pthread_rwlock_unlock(&g_config_lock);
+        nimcp_platform_rwlock_unlock(&g_config_lock);
 
         trigger_callbacks(key, &old_value, &new_value);
         LOG_MODULE_DEBUG("config", "set_bool: %s = %s", key, value ? "true" : "false");
         return true;
     }
 
-    pthread_rwlock_unlock(&g_config_lock);
+    nimcp_platform_rwlock_unlock(&g_config_lock);
     return false;
 }
 
 bool config_set_string(const char* key, const char* value) {
     if (!key || !value || !g_config_table) return false;
 
-    pthread_rwlock_wrlock(&g_config_lock);
+    nimcp_platform_rwlock_wrlock(&g_config_lock);
 
     config_entry_internal_t* existing = hash_table_lookup_string(g_config_table, key);
     if (existing) {
         if (existing->type != CONFIG_TYPE_STRING) {
-            pthread_rwlock_unlock(&g_config_lock);
+            nimcp_platform_rwlock_unlock(&g_config_lock);
             LOG_MODULE_ERROR("config", "Type mismatch for key '%s'", key);
             return false;
         }
@@ -719,7 +723,7 @@ bool config_set_string(const char* key, const char* value) {
         new_value.string_val = nimcp_strdup(value);
 
         if (!new_value.string_val) {
-            pthread_rwlock_unlock(&g_config_lock);
+            nimcp_platform_rwlock_unlock(&g_config_lock);
             return false;
         }
 
@@ -729,7 +733,7 @@ bool config_set_string(const char* key, const char* value) {
         }
 
         existing->value.string_val = nimcp_strdup(value);
-        pthread_rwlock_unlock(&g_config_lock);
+        nimcp_platform_rwlock_unlock(&g_config_lock);
 
         trigger_callbacks(key, &old_value, &new_value);
 
@@ -739,7 +743,7 @@ bool config_set_string(const char* key, const char* value) {
         return true;
     }
 
-    pthread_rwlock_unlock(&g_config_lock);
+    nimcp_platform_rwlock_unlock(&g_config_lock);
     return false;
 }
 

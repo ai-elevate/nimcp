@@ -7,13 +7,17 @@
  * HOW: Calculate different centrality metrics using algorithms
  */
 
-#include "nimcp_centrality.h"
+#include "utils/algorithms/nimcp_centrality.h"
+#include "async/nimcp_bio_async.h"
+#include "async/nimcp_bio_messages.h"
 
 #include <math.h>
 #include <stdlib.h>
 #include <string.h>
 
 #include "utils/memory/nimcp_memory.h"
+#include "utils/memory/nimcp_unified_memory.h"
+#include "utils/logging/nimcp_logging.h"
 
 //=============================================================================
 // Internal Helper Functions
@@ -120,23 +124,32 @@ static bool bfs_shortest_paths(const NimcpGraph* graph, uint32_t source, uint32_
 
 NimcpCentralityScores* nimcp_degree_centrality(const NimcpGraph* graph)
 {
+    LOG_DEBUG("Entering nimcp_degree_centrality");
+    LOG_DEBUG("Computing degree centrality for graph with %u vertices",
+              graph ? graph->vertex_count : 0);
+
     if (!graph) {
+        LOG_ERROR("NULL graph provided to degree centrality");
         return NULL;
     }
 
     if (graph->vertex_count == 0) {
+        LOG_WARN("Empty graph provided to degree centrality");
+        LOG_ERROR("nimcp_degree_centrality failed: returning error");
         return NULL;
     }
 
     NimcpCentralityScores* scores =
         (NimcpCentralityScores*)nimcp_malloc(sizeof(NimcpCentralityScores));
     if (!scores) {
+        LOG_ERROR("Failed to allocate centrality scores structure");
         return NULL;
     }
 
     scores->scores = (double*)nimcp_malloc(sizeof(double) * graph->vertex_count);
     if (!scores->scores) {
         nimcp_free(scores);
+        LOG_ERROR("nimcp_degree_centrality failed: returning error");
         return NULL;
     }
 
@@ -154,23 +167,28 @@ NimcpCentralityScores* nimcp_degree_centrality(const NimcpGraph* graph)
 
 NimcpCentralityScores* nimcp_betweenness_centrality(const NimcpGraph* graph)
 {
+    LOG_DEBUG("Entering nimcp_betweenness_centrality");
     if (!graph) {
+        LOG_ERROR("nimcp_betweenness_centrality failed: returning error");
         return NULL;
     }
 
     if (graph->vertex_count == 0) {
+        LOG_ERROR("nimcp_betweenness_centrality failed: returning error");
         return NULL;
     }
 
     NimcpCentralityScores* scores =
         (NimcpCentralityScores*)nimcp_malloc(sizeof(NimcpCentralityScores));
     if (!scores) {
+        LOG_ERROR("nimcp_betweenness_centrality failed: returning error");
         return NULL;
     }
 
     scores->scores = (double*)nimcp_malloc(sizeof(double) * graph->vertex_count);
     if (!scores->scores) {
         nimcp_free(scores);
+        LOG_ERROR("nimcp_betweenness_centrality failed: returning error");
         return NULL;
     }
 
@@ -185,6 +203,7 @@ NimcpCentralityScores* nimcp_betweenness_centrality(const NimcpGraph* graph)
         nimcp_free(distances);
         nimcp_free(path_counts);
         nimcp_centrality_scores_destroy(scores);
+        LOG_ERROR("nimcp_betweenness_centrality failed: returning error");
         return NULL;
     }
 
@@ -217,23 +236,28 @@ NimcpCentralityScores* nimcp_betweenness_centrality(const NimcpGraph* graph)
 
 NimcpCentralityScores* nimcp_closeness_centrality(const NimcpGraph* graph)
 {
+    LOG_DEBUG("Entering nimcp_closeness_centrality");
     if (!graph) {
+        LOG_ERROR("nimcp_closeness_centrality failed: returning error");
         return NULL;
     }
 
     if (graph->vertex_count == 0) {
+        LOG_ERROR("nimcp_closeness_centrality failed: returning error");
         return NULL;
     }
 
     NimcpCentralityScores* scores =
         (NimcpCentralityScores*)nimcp_malloc(sizeof(NimcpCentralityScores));
     if (!scores) {
+        LOG_ERROR("nimcp_closeness_centrality failed: returning error");
         return NULL;
     }
 
     scores->scores = (double*)nimcp_malloc(sizeof(double) * graph->vertex_count);
     if (!scores->scores) {
         nimcp_free(scores);
+        LOG_ERROR("nimcp_closeness_centrality failed: returning error");
         return NULL;
     }
 
@@ -242,6 +266,7 @@ NimcpCentralityScores* nimcp_closeness_centrality(const NimcpGraph* graph)
     uint32_t* distances = (uint32_t*)nimcp_malloc(sizeof(uint32_t) * graph->vertex_count);
     if (!distances) {
         nimcp_centrality_scores_destroy(scores);
+        LOG_ERROR("nimcp_closeness_centrality failed: returning error");
         return NULL;
     }
 
@@ -387,6 +412,7 @@ uint32_t nimcp_detect_hubs(const NimcpCentralityScores* scores, double threshold
 
 void nimcp_centrality_scores_destroy(NimcpCentralityScores* scores)
 {
+    LOG_DEBUG("Entering nimcp_centrality_scores_destroy");
     if (!scores) {
         return;
     }
@@ -397,7 +423,9 @@ void nimcp_centrality_scores_destroy(NimcpCentralityScores* scores)
 
 double nimcp_get_centrality_score(const NimcpCentralityScores* scores, uint32_t vertex_idx)
 {
+    LOG_DEBUG("Entering nimcp_get_centrality_score");
     if (!scores || !scores->scores || vertex_idx >= scores->num_scores) {
+        LOG_ERROR("nimcp_get_centrality_score failed: returning error");
         return -1.0;
     }
 

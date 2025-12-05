@@ -33,7 +33,9 @@
  * @date 2025
  */
 
-#include "nimcp_platform_time.h"
+#include "utils/platform/nimcp_platform_time.h"
+#include "async/nimcp_bio_async.h"
+#include "async/nimcp_bio_messages.h"
 #include <errno.h>
 #include <stdio.h>
 
@@ -51,6 +53,8 @@
 
 #elif defined(NIMCP_PLATFORM_WINDOWS)
     #include <windows.h>
+#include "utils/memory/nimcp_unified_memory.h"
+#include "utils/logging/nimcp_logging.h"
 
 #else
     #error "Unsupported platform for time measurement"
@@ -178,6 +182,69 @@ uint64_t nimcp_platform_time_monotonic_ms(void)
     /* Result = (count / frequency) * 1000 */
     /* To avoid losing precision with integer math: (count * 1000) / frequency */
     return (uint64_t)(count.QuadPart * 1000) / g_performance_frequency;
+
+#else
+    #error "Unsupported platform for monotonic time"
+#endif
+}
+
+/* ========================================================================
+ * MONOTONIC TIME - MICROSECONDS
+ * ======================================================================== */
+
+uint64_t nimcp_platform_time_monotonic_us(void)
+{
+#if defined(NIMCP_PLATFORM_LINUX) || defined(NIMCP_PLATFORM_BSD)
+    /* ====================================================================
+     * POSIX (Linux/BSD): clock_gettime(CLOCK_MONOTONIC)
+     * ==================================================================== */
+
+    struct timespec ts;
+    if (clock_gettime(CLOCK_MONOTONIC, &ts) != 0) {
+        /* Fallback to lower precision if CLOCK_MONOTONIC unavailable */
+        clock_gettime(CLOCK_REALTIME, &ts);
+    }
+
+    /* Convert seconds and nanoseconds to microseconds */
+    return (uint64_t)ts.tv_sec * 1000000ULL + (uint64_t)ts.tv_nsec / 1000ULL;
+
+#elif defined(NIMCP_PLATFORM_MACOS)
+    /* ====================================================================
+     * macOS: mach_absolute_time() with timebase conversion
+     * ==================================================================== */
+
+    /* Initialize on first call if needed */
+    if (!g_time_initialized) {
+        nimcp_platform_time_init();
+    }
+
+    uint64_t mach_time = mach_absolute_time();
+
+    /* Convert mach time to nanoseconds */
+    uint64_t nanos = mach_time * g_mach_timebase.numer / g_mach_timebase.denom;
+
+    /* Convert nanoseconds to microseconds */
+    return nanos / 1000ULL;
+
+#elif defined(NIMCP_PLATFORM_WINDOWS)
+    /* ====================================================================
+     * Windows: QueryPerformanceCounter()
+     * ==================================================================== */
+
+    /* Initialize on first call if needed */
+    if (!g_time_initialized) {
+        nimcp_platform_time_init();
+    }
+
+    LARGE_INTEGER count;
+    if (!QueryPerformanceCounter(&count)) {
+        /* Fallback: Return 0 on error (rare) */
+        return 0;
+    }
+
+    /* Convert performance counter to microseconds */
+    /* Result = (count / frequency) * 1000000 */
+    return (uint64_t)(count.QuadPart * 1000000) / g_performance_frequency;
 
 #else
     #error "Unsupported platform for monotonic time"

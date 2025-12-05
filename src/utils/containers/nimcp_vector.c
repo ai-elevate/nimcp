@@ -8,8 +8,12 @@
  */
 
 #include "utils/containers/nimcp_vector.h"
+#include "async/nimcp_bio_async.h"
+#include "async/nimcp_bio_messages.h"
 #include <math.h>
 #include <string.h>
+#include "utils/memory/nimcp_unified_memory.h"
+#include "utils/logging/nimcp_logging.h"
 
 //=============================================================================
 // Basic Vector Operations
@@ -17,6 +21,7 @@
 
 float nimcp_vector_dot_product(const float* a, const float* b, uint32_t size)
 {
+    LOG_DEBUG("Entering nimcp_vector_dot_product");
     if (!a || !b || size == 0) {
         return 0.0f;
     }
@@ -31,6 +36,7 @@ float nimcp_vector_dot_product(const float* a, const float* b, uint32_t size)
 
 float nimcp_vector_norm_l2(const float* vec, uint32_t size)
 {
+    LOG_DEBUG("Entering nimcp_vector_norm_l2");
     if (!vec || size == 0) {
         return 0.0f;
     }
@@ -45,6 +51,7 @@ float nimcp_vector_norm_l2(const float* vec, uint32_t size)
 
 float nimcp_vector_norm_l1(const float* vec, uint32_t size)
 {
+    LOG_DEBUG("Entering nimcp_vector_norm_l1");
     if (!vec || size == 0) {
         return 0.0f;
     }
@@ -59,6 +66,7 @@ float nimcp_vector_norm_l1(const float* vec, uint32_t size)
 
 void nimcp_vector_copy(const float* src, float* dst, uint32_t size)
 {
+    LOG_DEBUG("Entering nimcp_vector_copy");
     if (!src || !dst || size == 0) {
         return;
     }
@@ -72,6 +80,7 @@ void nimcp_vector_copy(const float* src, float* dst, uint32_t size)
 
 float nimcp_vector_cosine_similarity(const float* a, const float* b, uint32_t size)
 {
+    LOG_DEBUG("Entering nimcp_vector_cosine_similarity");
     if (!a || !b || size == 0) {
         return 0.0f;
     }
@@ -117,6 +126,7 @@ float nimcp_vector_cosine_similarity(const float* a, const float* b, uint32_t si
 
 float nimcp_vector_cosine_distance(const float* a, const float* b, uint32_t size)
 {
+    LOG_DEBUG("Entering nimcp_vector_cosine_distance");
     /**
      * WHAT: Cosine distance = 1 - cosine similarity
      * WHY: Convert similarity metric to distance metric
@@ -132,6 +142,7 @@ float nimcp_vector_cosine_distance(const float* a, const float* b, uint32_t size
 
 float nimcp_vector_euclidean_distance(const float* a, const float* b, uint32_t size)
 {
+    LOG_DEBUG("Entering nimcp_vector_euclidean_distance");
     if (!a || !b || size == 0) {
         return 0.0f;
     }
@@ -151,6 +162,7 @@ float nimcp_vector_euclidean_distance(const float* a, const float* b, uint32_t s
 
 float nimcp_vector_normalize_l2(float* vec, uint32_t size, float target_norm)
 {
+    LOG_DEBUG("Entering nimcp_vector_normalize_l2");
     if (!vec || size == 0) {
         return 0.0f;
     }
@@ -185,6 +197,7 @@ float nimcp_vector_normalize_l2(float* vec, uint32_t size, float target_norm)
 
 float nimcp_vector_normalize_l1(float* vec, uint32_t size, float target_norm)
 {
+    LOG_DEBUG("Entering nimcp_vector_normalize_l1");
     if (!vec || size == 0) {
         return 0.0f;
     }

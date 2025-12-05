@@ -20,6 +20,8 @@
  */
 
 #include "utils/config/nimcp_config_expand.h"
+#include "async/nimcp_bio_async.h"
+#include "async/nimcp_bio_messages.h"
 #include "utils/config/nimcp_dynamic_config.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/memory/nimcp_unified_memory.h"

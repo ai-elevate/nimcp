@@ -3,6 +3,8 @@
 //=============================================================================
 
 #include "utils/signal/nimcp_hilbert.h"
+#include "async/nimcp_bio_async.h"
+#include "async/nimcp_bio_messages.h"
 #include "utils/memory/nimcp_memory.h"
 #include <string.h>
 #include <math.h>
@@ -10,6 +12,8 @@
 // AVX2 SIMD support
 #ifdef __AVX2__
 #include <immintrin.h>
+#include "utils/memory/nimcp_unified_memory.h"
+#include "utils/logging/nimcp_logging.h"
 #define NIMCP_HAS_AVX2 1
 #else
 #define NIMCP_HAS_AVX2 0

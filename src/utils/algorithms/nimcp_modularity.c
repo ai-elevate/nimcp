@@ -7,7 +7,9 @@
  * HOW: Apply standard modularity formula to partitions
  */
 
-#include "nimcp_modularity.h"
+#include "utils/algorithms/nimcp_modularity.h"
+#include "async/nimcp_bio_async.h"
+#include "async/nimcp_bio_messages.h"
 
 #include <math.h>
 #include <stdlib.h>
@@ -15,6 +17,8 @@
 
 #include "utils/memory/nimcp_memory.h"
 #include "utils/validation/nimcp_validate.h"
+#include "utils/memory/nimcp_unified_memory.h"
+#include "utils/logging/nimcp_logging.h"
 
 //=============================================================================
 // Internal Helper Functions
@@ -186,6 +190,7 @@ bool nimcp_validate_partition(const uint32_t* assignments, uint32_t num_vertices
 
 uint32_t nimcp_count_communities(const uint32_t* assignments, uint32_t num_vertices)
 {
+    LOG_DEBUG("Entering nimcp_count_communities");
     if (!assignments) return 0;
 
     return count_unique_communities(assignments, num_vertices);

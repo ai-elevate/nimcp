@@ -6,12 +6,16 @@
  * @date 2025-11-09
  */
 
-#include "nimcp_error_codes.h"
+#include "utils/error/nimcp_error_codes.h"
+#include "async/nimcp_bio_async.h"
+#include "async/nimcp_bio_messages.h"
 #include "utils/memory/nimcp_memory.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <pthread.h>
+#include "utils/memory/nimcp_unified_memory.h"
+#include "utils/logging/nimcp_logging.h"
 
 //=============================================================================
 // Thread-Local Error Storage
@@ -50,6 +54,7 @@ static nimcp_error_info_t* get_thread_error(void)
 
 const char* nimcp_error_to_string(nimcp_error_t code)
 {
+    LOG_DEBUG("Entering nimcp_error_to_string");
     switch (code) {
         // Success
         case NIMCP_SUCCESS: return "Success";
@@ -152,6 +157,7 @@ const char* nimcp_error_to_string(nimcp_error_t code)
 
 const char* nimcp_error_get_category_name(nimcp_error_t code)
 {
+    LOG_DEBUG("Entering nimcp_error_get_category_name");
     int category = nimcp_error_get_category(code);
 
     switch (category) {
@@ -184,11 +190,13 @@ void nimcp_error_set(nimcp_error_t code, const char* file, int line,
 
 const nimcp_error_info_t* nimcp_error_get_last(void)
 {
+    LOG_DEBUG("Entering nimcp_error_get_last");
     return get_thread_error();
 }
 
 void nimcp_error_clear(void)
 {
+    LOG_DEBUG("Entering nimcp_error_clear");
     nimcp_error_info_t* info = get_thread_error();
     if (info) {
         memset(info, 0, sizeof(nimcp_error_info_t));
@@ -197,6 +205,7 @@ void nimcp_error_clear(void)
 
 void nimcp_error_print(nimcp_error_t code)
 {
+    LOG_DEBUG("Entering nimcp_error_print");
     fprintf(stderr, "[ERROR %d] %s: %s\n",
             code,
             nimcp_error_get_category_name(code),
@@ -205,6 +214,7 @@ void nimcp_error_print(nimcp_error_t code)
 
 void nimcp_error_print_detailed(const nimcp_error_info_t* info)
 {
+    LOG_DEBUG("Entering nimcp_error_print_detailed");
     if (!info) return;
 
     fprintf(stderr, "\n=== ERROR DETAILS ===\n");

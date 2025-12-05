@@ -44,9 +44,12 @@
 #endif
 
 #include "utils/config/nimcp_config_hash.h"
+#include "async/nimcp_bio_async.h"
+#include "async/nimcp_bio_messages.h"
 #include "utils/memory/nimcp_unified_memory.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
+#include "utils/platform/nimcp_platform_rwlock.h"
 #include <string.h>
 #include <stdlib.h>
 #include <pthread.h>
@@ -106,7 +109,7 @@ struct config_hash_table {
     size_t capacity;                    /**< Current capacity (power of 2) */
     size_t size;                        /**< Number of entries */
     size_t tombstones;                  /**< Number of deleted entries */
-    pthread_rwlock_t lock;              /**< Reader-writer lock */
+    nimcp_platform_rwlock_t lock;              /**< Reader-writer lock */
     unified_mem_manager_t mem_manager;  /**< Unified memory manager */
     unified_mem_handle_t buckets_handle; /**< Handle for buckets array */
     uint32_t security_module_id;        /**< Security module ID */
@@ -480,7 +483,7 @@ config_hash_table_t config_hash_create(size_t initial_capacity) {
     memset(table->buckets, 0, capacity * sizeof(config_hash_entry_t));
 
     // Initialize reader-writer lock
-    int rc = pthread_rwlock_init(&table->lock, NULL);
+    int rc = nimcp_platform_rwlock_init(&table->lock);
     if (rc != 0) {
         LOG_ERROR("Failed to initialize rwlock: %d", rc);
         unified_mem_free(buckets_handle);
@@ -518,7 +521,7 @@ void config_hash_destroy(config_hash_table_t table) {
     }
 
     // Destroy lock
-    pthread_rwlock_destroy(&table->lock);
+    nimcp_platform_rwlock_destroy(&table->lock);
 
     // Free buckets
     if (table->buckets_handle) {
@@ -557,20 +560,20 @@ bool config_hash_set(
     }
 
     // Acquire exclusive lock
-    pthread_rwlock_wrlock(&table->lock);
+    nimcp_platform_rwlock_wrlock(&table->lock);
 
     // Check if resize needed
     if (needs_resize(table)) {
         size_t new_capacity = table->capacity * 2;
         if (new_capacity > CONFIG_HASH_MAX_CAPACITY) {
             LOG_ERROR("Cannot resize beyond max capacity");
-            pthread_rwlock_unlock(&table->lock);
+            nimcp_platform_rwlock_unlock(&table->lock);
             return false;
         }
 
         if (!resize_table(table, new_capacity)) {
             LOG_ERROR("Failed to resize table");
-            pthread_rwlock_unlock(&table->lock);
+            nimcp_platform_rwlock_unlock(&table->lock);
             return false;
         }
     }
@@ -579,7 +582,7 @@ bool config_hash_set(
     ssize_t index = find_entry(table, key, true);
     if (index < 0) {
         LOG_ERROR("Failed to find insertion point for key: %s", key);
-        pthread_rwlock_unlock(&table->lock);
+        nimcp_platform_rwlock_unlock(&table->lock);
         return false;
     }
 
@@ -594,7 +597,7 @@ bool config_hash_set(
 
         // Copy new value
         if (!copy_value(&entry->value, value, type)) {
-            pthread_rwlock_unlock(&table->lock);
+            nimcp_platform_rwlock_unlock(&table->lock);
             return false;
         }
 
@@ -608,14 +611,14 @@ bool config_hash_set(
         entry->key = nimcp_strdup(key);
         if (!entry->key) {
             LOG_ERROR("Failed to duplicate key");
-            pthread_rwlock_unlock(&table->lock);
+            nimcp_platform_rwlock_unlock(&table->lock);
             return false;
         }
 
         // Copy value
         if (!copy_value(&entry->value, value, type)) {
             nimcp_free(entry->key);
-            pthread_rwlock_unlock(&table->lock);
+            nimcp_platform_rwlock_unlock(&table->lock);
             return false;
         }
 
@@ -631,7 +634,7 @@ bool config_hash_set(
         table->size++;
     }
 
-    pthread_rwlock_unlock(&table->lock);
+    nimcp_platform_rwlock_unlock(&table->lock);
 
     LOG_DEBUG("Set config: %s = <value> (type=%s)",
               key, config_value_type_name(type));
@@ -656,13 +659,13 @@ bool config_hash_get(
     }
 
     // Acquire shared lock
-    pthread_rwlock_rdlock(&table->lock);
+    nimcp_platform_rwlock_rdlock(&table->lock);
 
     // Find entry
     ssize_t index = find_entry(table, key, false);
 
     if (index < 0) {
-        pthread_rwlock_unlock(&table->lock);
+        nimcp_platform_rwlock_unlock(&table->lock);
         LOG_DEBUG("Key not found: %s", key);
         return false;
     }
@@ -671,7 +674,7 @@ bool config_hash_get(
 
     // Copy value
     if (!copy_value(value, &entry->value, entry->type)) {
-        pthread_rwlock_unlock(&table->lock);
+        nimcp_platform_rwlock_unlock(&table->lock);
         return false;
     }
 
@@ -679,7 +682,7 @@ bool config_hash_get(
         *type = entry->type;
     }
 
-    pthread_rwlock_unlock(&table->lock);
+    nimcp_platform_rwlock_unlock(&table->lock);
 
     LOG_DEBUG("Get config: %s = <value> (type=%s)",
               key, config_value_type_name(entry->type));
@@ -699,13 +702,13 @@ bool config_hash_remove(config_hash_table_t table, const char* key) {
     }
 
     // Acquire exclusive lock
-    pthread_rwlock_wrlock(&table->lock);
+    nimcp_platform_rwlock_wrlock(&table->lock);
 
     // Find entry
     ssize_t index = find_entry(table, key, false);
 
     if (index < 0) {
-        pthread_rwlock_unlock(&table->lock);
+        nimcp_platform_rwlock_unlock(&table->lock);
         LOG_DEBUG("Key not found for removal: %s", key);
         return false;
     }
@@ -723,7 +726,7 @@ bool config_hash_remove(config_hash_table_t table, const char* key) {
     table->size--;
     table->tombstones++;
 
-    pthread_rwlock_unlock(&table->lock);
+    nimcp_platform_rwlock_unlock(&table->lock);
 
     LOG_DEBUG("Removed config entry: %s", key);
 
@@ -739,9 +742,9 @@ bool config_hash_contains(config_hash_table_t table, const char* key) {
         return false;
     }
 
-    pthread_rwlock_rdlock(&table->lock);
+    nimcp_platform_rwlock_rdlock(&table->lock);
     ssize_t index = find_entry(table, key, false);
-    pthread_rwlock_unlock(&table->lock);
+    nimcp_platform_rwlock_unlock(&table->lock);
 
     return index >= 0;
 }
@@ -758,7 +761,7 @@ void config_hash_clear(config_hash_table_t table) {
 
     LOG_DEBUG("Clearing config hash table (size=%zu)", table->size);
 
-    pthread_rwlock_wrlock(&table->lock);
+    nimcp_platform_rwlock_wrlock(&table->lock);
 
     // Free all entries
     for (size_t i = 0; i < table->capacity; i++) {
@@ -775,7 +778,7 @@ void config_hash_clear(config_hash_table_t table) {
     table->size = 0;
     table->tombstones = 0;
 
-    pthread_rwlock_unlock(&table->lock);
+    nimcp_platform_rwlock_unlock(&table->lock);
 
     LOG_INFO("Config hash table cleared");
 }
@@ -789,9 +792,9 @@ size_t config_hash_size(config_hash_table_t table) {
         return 0;
     }
 
-    pthread_rwlock_rdlock(&table->lock);
+    nimcp_platform_rwlock_rdlock(&table->lock);
     size_t size = table->size;
-    pthread_rwlock_unlock(&table->lock);
+    nimcp_platform_rwlock_unlock(&table->lock);
 
     return size;
 }
@@ -811,7 +814,7 @@ void config_hash_iterate(
         return;
     }
 
-    pthread_rwlock_rdlock(&table->lock);
+    nimcp_platform_rwlock_rdlock(&table->lock);
 
     for (size_t i = 0; i < table->capacity; i++) {
         config_hash_entry_t* entry = &table->buckets[i];
@@ -821,7 +824,7 @@ void config_hash_iterate(
         }
     }
 
-    pthread_rwlock_unlock(&table->lock);
+    nimcp_platform_rwlock_unlock(&table->lock);
 }
 
 config_hash_table_t config_hash_snapshot(config_hash_table_t table) {
@@ -835,12 +838,12 @@ config_hash_table_t config_hash_snapshot(config_hash_table_t table) {
         return NULL;
     }
 
-    pthread_rwlock_rdlock(&table->lock);
+    nimcp_platform_rwlock_rdlock(&table->lock);
 
     // Create new table with same capacity
     config_hash_table_t new_table = config_hash_create(table->capacity);
     if (!new_table) {
-        pthread_rwlock_unlock(&table->lock);
+        nimcp_platform_rwlock_unlock(&table->lock);
         return NULL;
     }
 
@@ -853,7 +856,7 @@ config_hash_table_t config_hash_snapshot(config_hash_table_t table) {
         }
     }
 
-    pthread_rwlock_unlock(&table->lock);
+    nimcp_platform_rwlock_unlock(&table->lock);
 
     LOG_INFO("Created config hash table snapshot (size=%zu)", table->size);
 
@@ -885,9 +888,9 @@ double config_hash_load_factor(config_hash_table_t table) {
         return 0.0;
     }
 
-    pthread_rwlock_rdlock(&table->lock);
+    nimcp_platform_rwlock_rdlock(&table->lock);
     double load = (double)table->size / table->capacity;
-    pthread_rwlock_unlock(&table->lock);
+    nimcp_platform_rwlock_unlock(&table->lock);
 
     return load;
 }
@@ -901,9 +904,9 @@ size_t config_hash_capacity(config_hash_table_t table) {
         return 0;
     }
 
-    pthread_rwlock_rdlock(&table->lock);
+    nimcp_platform_rwlock_rdlock(&table->lock);
     size_t capacity = table->capacity;
-    pthread_rwlock_unlock(&table->lock);
+    nimcp_platform_rwlock_unlock(&table->lock);
 
     return capacity;
 }

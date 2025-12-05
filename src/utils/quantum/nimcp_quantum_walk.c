@@ -3,6 +3,8 @@
 //=============================================================================
 
 #include "utils/quantum/nimcp_quantum_walk.h"
+#include "async/nimcp_bio_async.h"
+#include "async/nimcp_bio_messages.h"
 #include "core/neuralnet/nimcp_neuralnet.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/time/nimcp_time.h"
@@ -10,6 +12,8 @@
 #include <string.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include "utils/memory/nimcp_unified_memory.h"
+#include "utils/logging/nimcp_logging.h"
 
 // Mathematical constants
 #define SQRT2 1.41421356237f

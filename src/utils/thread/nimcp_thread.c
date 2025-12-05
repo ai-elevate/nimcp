@@ -488,6 +488,8 @@
  */
 
 #include "utils/thread/nimcp_thread.h"
+#include "async/nimcp_bio_async.h"
+#include "async/nimcp_bio_messages.h"
 #include <errno.h>
 #include <stdarg.h>
 #include <stdio.h>
@@ -497,6 +499,8 @@
 
 // Keep pthread.h for rwlock and once operations that aren't in platform layer yet
 #include <pthread.h>
+#include "utils/memory/nimcp_unified_memory.h"
+#include "utils/logging/nimcp_logging.h"
 
 //=============================================================================
 // Thread-Local Error Storage

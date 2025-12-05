@@ -10,8 +10,12 @@
  * @date 2025
  */
 
-#include "nimcp_platform.h"
+#include "utils/platform/nimcp_platform.h"
+#include "async/nimcp_bio_async.h"
+#include "async/nimcp_bio_messages.h"
 #include <string.h>
+#include "utils/memory/nimcp_unified_memory.h"
+#include "utils/logging/nimcp_logging.h"
 
 /* ========================================================================
  * PLATFORM NAME

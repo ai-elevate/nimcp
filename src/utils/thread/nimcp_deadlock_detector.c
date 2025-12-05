@@ -6,12 +6,16 @@
  * @date 2025-11-09
  */
 
-#include "nimcp_deadlock_detector.h"
+#include "utils/thread/nimcp_deadlock_detector.h"
+#include "async/nimcp_bio_async.h"
+#include "async/nimcp_bio_messages.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
 #include <errno.h>
+#include "utils/memory/nimcp_unified_memory.h"
+#include "utils/logging/nimcp_logging.h"
 
 //=============================================================================
 // Internal Data Structures

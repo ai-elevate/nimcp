@@ -21,12 +21,16 @@
  * @date 2025-11-11
  */
 
-#include "nimcp_integration.h"
+#include "utils/numerical/nimcp_integration.h"
+#include "async/nimcp_bio_async.h"
+#include "async/nimcp_bio_messages.h"
 #include "utils/memory/nimcp_memory.h"
 #include <stdio.h>
 #include <string.h>
 #include <math.h>
 #include <stdlib.h>
+#include "utils/memory/nimcp_unified_memory.h"
+#include "utils/logging/nimcp_logging.h"
 
 //=============================================================================
 // Internal Constants

@@ -14,7 +14,9 @@
  * @date 2025-11-16
  */
 
-#include "nimcp_system_resources.h"
+#include "utils/platform/nimcp_system_resources.h"
+#include "async/nimcp_bio_async.h"
+#include "async/nimcp_bio_messages.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -29,6 +31,8 @@
 #include <sys/statvfs.h>
 #elif defined(_WIN32)
 #include <windows.h>
+#include "utils/memory/nimcp_unified_memory.h"
+#include "utils/logging/nimcp_logging.h"
 #endif
 
 //=============================================================================

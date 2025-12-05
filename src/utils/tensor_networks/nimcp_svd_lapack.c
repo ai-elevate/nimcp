@@ -29,7 +29,9 @@
  * @date 2025-11-18
  */
 
-#include "nimcp_svd_simple.h"
+#include "utils/tensor_networks/nimcp_svd_simple.h"
+#include "async/nimcp_bio_async.h"
+#include "async/nimcp_bio_messages.h"
 #include "utils/memory/nimcp_memory.h"
 #include <math.h>
 #include <string.h>
@@ -428,5 +430,7 @@ float svd_compute_error(const svd_result_t* svd, const float* A_original) {
 // HOW:  Include the simple implementation
 
 #include "nimcp_svd_simple.c"
+#include "utils/memory/nimcp_unified_memory.h"
+#include "utils/logging/nimcp_logging.h"
 
 #endif  // NIMCP_ENABLE_LAPACK

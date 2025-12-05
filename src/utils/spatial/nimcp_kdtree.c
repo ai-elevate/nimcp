@@ -3,11 +3,15 @@
  * @brief K-D Tree implementation for 3D spatial indexing
  */
 
-#include "nimcp_kdtree.h"
+#include "utils/spatial/nimcp_kdtree.h"
+#include "async/nimcp_bio_async.h"
+#include "async/nimcp_bio_messages.h"
 #include "utils/memory/nimcp_memory.h"
 #include <math.h>
 #include <string.h>
 #include <stdlib.h>
+#include "utils/memory/nimcp_unified_memory.h"
+#include "utils/logging/nimcp_logging.h"
 
 //=============================================================================
 // Internal Structures

@@ -10,6 +10,8 @@
  */
 
 #include "utils/cache/nimcp_cache.h"
+#include "async/nimcp_bio_async.h"
+#include "async/nimcp_bio_messages.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/containers/nimcp_hash_table.h"
 #include "utils/thread/nimcp_thread.h"
@@ -18,6 +20,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include "utils/memory/nimcp_unified_memory.h"
+#include "utils/logging/nimcp_logging.h"
 
 //=============================================================================
 // Internal Structures

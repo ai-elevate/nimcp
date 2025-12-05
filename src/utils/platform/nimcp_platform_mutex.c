@@ -14,9 +14,13 @@
  * @date 2025
  */
 
-#include "nimcp_platform_mutex.h"
-#include "../memory/nimcp_memory.h"
+#include "utils/platform/nimcp_platform_mutex.h"
+#include "async/nimcp_bio_async.h"
+#include "async/nimcp_bio_messages.h"
+#include "utils/memory/nimcp_memory.h"
 #include <errno.h>
+#include "utils/memory/nimcp_unified_memory.h"
+#include "utils/logging/nimcp_logging.h"
 
 /* ========================================================================
  * MUTEX FUNCTIONS

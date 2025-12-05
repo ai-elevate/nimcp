@@ -18,6 +18,8 @@
  */
 
 #include "utils/memory/nimcp_brain_pools.h"
+#include "async/nimcp_bio_async.h"
+#include "async/nimcp_bio_messages.h"
 #include "utils/memory/nimcp_memory_pool.h"
 #include "utils/memory/nimcp_cow_manager.h"
 #include "utils/memory/nimcp_memory.h"
@@ -25,6 +27,7 @@
 #include "utils/platform/nimcp_platform_mutex.h"
 #include <string.h>
 #include <math.h>
+#include "utils/logging/nimcp_logging.h"
 
 //=============================================================================
 // Constants

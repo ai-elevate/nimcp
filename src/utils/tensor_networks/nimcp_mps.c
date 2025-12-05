@@ -3,6 +3,8 @@
 //=============================================================================
 
 #include "utils/tensor_networks/nimcp_mps.h"
+#include "async/nimcp_bio_async.h"
+#include "async/nimcp_bio_messages.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/time/nimcp_time.h"
 #include <math.h>
@@ -11,7 +13,9 @@
 #include <stdlib.h>
 
 // For SVD computation - LAPACK-based or fallback simple implementation
-#include "nimcp_svd_simple.h"  // Header is the same, implementation switches via LAPACK flag
+#include "utils/tensor_networks/nimcp_svd_simple.h"  // Header is the same, implementation switches via LAPACK flag
+#include "utils/memory/nimcp_unified_memory.h"
+#include "utils/logging/nimcp_logging.h"
 
 #ifdef NIMCP_ENABLE_LAPACK
 // WHAT: BLAS/LAPACK FORTRAN interface for optimized operations

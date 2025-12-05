@@ -14,11 +14,15 @@
  * @date 2025
  */
 
-#include "nimcp_platform_cond.h"
+#include "utils/platform/nimcp_platform_cond.h"
+#include "async/nimcp_bio_async.h"
+#include "async/nimcp_bio_messages.h"
 #include <errno.h>
 
 #if defined(NIMCP_PLATFORM_POSIX)
     #include <sys/time.h>  /* gettimeofday for timedwait */
+#include "utils/memory/nimcp_unified_memory.h"
+#include "utils/logging/nimcp_logging.h"
 #endif
 
 /* ========================================================================

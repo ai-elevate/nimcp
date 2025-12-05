@@ -5,17 +5,20 @@
  * @date 2025-11-04
  */
 
-#include "nimcp_metrics.h"
-#include "../memory/nimcp_memory.h"
-#include "../logging/nimcp_logging.h"
-#include "../time/nimcp_time.h"
-#include "../validation/nimcp_validate.h"
+#include "utils/metrics/nimcp_metrics.h"
+#include "async/nimcp_bio_async.h"
+#include "async/nimcp_bio_messages.h"
+#include "utils/memory/nimcp_memory.h"
+#include "utils/logging/nimcp_logging.h"
+#include "utils/time/nimcp_time.h"
+#include "utils/validation/nimcp_validate.h"
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>
+#include "utils/memory/nimcp_unified_memory.h"
 
 //=============================================================================
 // Internal Structures

@@ -11,6 +11,8 @@
  */
 
 #include "utils/serialization/nimcp_serialization.h"
+#include "async/nimcp_bio_async.h"
+#include "async/nimcp_bio_messages.h"
 #include "utils/memory/nimcp_memory.h"
 #include <string.h>
 #include <stdlib.h>
@@ -21,6 +23,8 @@
 
 #ifdef NIMCP_HAVE_ZLIB
 #include <zlib.h>
+#include "utils/memory/nimcp_unified_memory.h"
+#include "utils/logging/nimcp_logging.h"
 #define ZLIB_AVAILABLE 1
 #else
 #define ZLIB_AVAILABLE 0
@@ -32,12 +36,15 @@
 
 bool nimcp_compression_available(void)
 {
+    LOG_DEBUG("Entering nimcp_compression_available");
     return ZLIB_AVAILABLE != 0;
 }
 
 bool nimcp_aes_available(void)
 {
+    LOG_DEBUG("Entering nimcp_aes_available");
     // AES not yet implemented - using XOR fallback
+    LOG_ERROR("nimcp_aes_available failed: returning error");
     return false;
 }
 
@@ -161,8 +168,10 @@ static uint8_t* decompress_fallback(const uint8_t* data, size_t size, size_t* ou
 
 uint8_t* nimcp_compress(const uint8_t* data, size_t size, size_t* out_size)
 {
+    LOG_DEBUG("Entering nimcp_compress");
     if (!data || size == 0 || !out_size) {
         if (out_size) *out_size = 0;
+        LOG_ERROR("nimcp_compress failed: returning error");
         return NULL;
     }
 
@@ -175,8 +184,10 @@ uint8_t* nimcp_compress(const uint8_t* data, size_t size, size_t* out_size)
 
 uint8_t* nimcp_decompress(const uint8_t* data, size_t size, size_t* out_size)
 {
+    LOG_DEBUG("Entering nimcp_decompress");
     if (!data || size == 0 || !out_size) {
         if (out_size) *out_size = 0;
+        LOG_ERROR("nimcp_decompress failed: returning error");
         return NULL;
     }
 
@@ -386,6 +397,7 @@ bool nimcp_write_processed(FILE* file, const uint8_t* data, size_t size,
 
 void nimcp_serialize_ctx_init(nimcp_serialize_ctx_t* ctx)
 {
+    LOG_DEBUG("Entering nimcp_serialize_ctx_init");
     if (!ctx) return;
     memset(ctx, 0, sizeof(nimcp_serialize_ctx_t));
 }
@@ -403,6 +415,7 @@ void nimcp_serialize_ctx_set_key(nimcp_serialize_ctx_t* ctx,
 
 void nimcp_serialize_ctx_set_flags(nimcp_serialize_ctx_t* ctx, uint32_t flags)
 {
+    LOG_DEBUG("Entering nimcp_serialize_ctx_set_flags");
     if (!ctx) return;
     ctx->flags = flags;
 }

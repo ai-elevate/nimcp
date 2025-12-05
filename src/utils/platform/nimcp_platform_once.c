@@ -20,8 +20,12 @@
  * @date 2025
  */
 
-#include "nimcp_platform_once.h"
+#include "utils/platform/nimcp_platform_once.h"
+#include "async/nimcp_bio_async.h"
+#include "async/nimcp_bio_messages.h"
 #include <errno.h>
+#include "utils/memory/nimcp_unified_memory.h"
+#include "utils/logging/nimcp_logging.h"
 
 /* ========================================================================
  * WINDOWS-SPECIFIC CALLBACK WRAPPER

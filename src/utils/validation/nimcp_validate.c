@@ -457,6 +457,8 @@
  */
 
 #include "utils/validation/nimcp_validate.h"
+#include "async/nimcp_bio_async.h"
+#include "async/nimcp_bio_messages.h"
 #include <ctype.h>
 #include <math.h>
 #include <stdarg.h>
@@ -465,6 +467,9 @@
 #include <string.h>
 #include "utils/logging/nimcp_logging.h"
 #include "utils/memory/nimcp_memory.h"  // CRITICAL: Declares nimcp_calloc/nimcp_free return types
+#include "utils/memory/nimcp_unified_memory.h"
+
+#define LOG_MODULE "utils.validation"
 
 //=============================================================================
 // Global Error Tracking
@@ -578,8 +583,10 @@ static size_t is_valid_utf8_char(const char* str, size_t len);
  */
 bool nimcp_validate_integer_field(const void* field_data, size_t size)
 {
+    LOG_DEBUG("Entering nimcp_validate_integer_field");
     // STEP 1: NULL check (prevent segfault)
     if (!field_data) {
+        LOG_ERROR("nimcp_validate_integer_field failed: returning error");
         return false;
     }
 
@@ -593,7 +600,8 @@ bool nimcp_validate_integer_field(const void* field_data, size_t size)
         case sizeof(int64_t):
             break;
         default:
-            NIMCP_LOGGING_ERROR("Invalid integer field size: %zu", size);
+            LOG_ERROR("Invalid integer field size: %zu", size);
+            LOG_ERROR("nimcp_validate_integer_field failed: returning error");
             return false;
     }
 
@@ -602,7 +610,8 @@ bool nimcp_validate_integer_field(const void* field_data, size_t size)
     // HOW: Pointer address must be multiple of size
     // EXAMPLE: int32_t at 0x1000 ✓, int32_t at 0x1002 ✗
     if (((uintptr_t) field_data) % size != 0) {
-        NIMCP_LOGGING_ERROR("Integer field misaligned");
+        LOG_ERROR("Integer field misaligned");
+        LOG_ERROR("nimcp_validate_integer_field failed: returning error");
         return false;
     }
 
@@ -615,7 +624,8 @@ bool nimcp_validate_integer_field(const void* field_data, size_t size)
             // WHY CHECK: Ensure value fits in protocol-defined range
             // WHEN FAILS: Value corrupt or from different protocol version
             if (value < NIMCP_INT32_MIN || value > NIMCP_INT32_MAX) {
-                NIMCP_LOGGING_ERROR("Integer value out of range: %d", value);
+                LOG_ERROR("Integer value out of range: %d", value);
+                LOG_ERROR("nimcp_validate_integer_field failed: returning error");
                 return false;
             }
             break;
@@ -623,7 +633,8 @@ bool nimcp_validate_integer_field(const void* field_data, size_t size)
         case sizeof(int64_t): {
             const int64_t value = *(const int64_t*) field_data;
             if (value < NIMCP_INT64_MIN || value > NIMCP_INT64_MAX) {
-                NIMCP_LOGGING_ERROR("Integer value out of range: %ld", value);
+                LOG_ERROR("Integer value out of range: %ld", value);
+                LOG_ERROR("nimcp_validate_integer_field failed: returning error");
                 return false;
             }
             break;
@@ -699,8 +710,10 @@ bool nimcp_validate_integer_field(const void* field_data, size_t size)
  */
 bool nimcp_validate_float_field(const void* field_data, size_t size)
 {
+    LOG_DEBUG("Entering nimcp_validate_float_field");
     // STEP 1: NULL check
     if (!field_data) {
+        LOG_ERROR("nimcp_validate_float_field failed: returning error");
         return false;
     }
 
@@ -710,7 +723,8 @@ bool nimcp_validate_float_field(const void* field_data, size_t size)
         case sizeof(double):
             break;
         default:
-            NIMCP_LOGGING_ERROR("Invalid float field size: %zu", size);
+            LOG_ERROR("Invalid float field size: %zu", size);
+            LOG_ERROR("nimcp_validate_float_field failed: returning error");
             return false;
     }
 
@@ -718,7 +732,8 @@ bool nimcp_validate_float_field(const void* field_data, size_t size)
     // WHY: Floating point operations require alignment
     // EXAMPLE: float at 0x1000 ✓, float at 0x1001 ✗
     if (((uintptr_t) field_data) % size != 0) {
-        NIMCP_LOGGING_ERROR("Float field misaligned");
+        LOG_ERROR("Float field misaligned");
+        LOG_ERROR("nimcp_validate_float_field failed: returning error");
         return false;
     }
 
@@ -730,14 +745,16 @@ bool nimcp_validate_float_field(const void* field_data, size_t size)
         // NaN check
         // WHY REJECT: NaN is never equal to itself, breaks comparisons
         if (isnan(value)) {
-            NIMCP_LOGGING_ERROR("Float field contains NaN");
+            LOG_ERROR("Float field contains NaN");
+            LOG_ERROR("nimcp_validate_float_field failed: returning error");
             return false;
         }
 
         // Infinity check
         // WHY REJECT: Usually indicates overflow or corruption
         if (isinf(value)) {
-            NIMCP_LOGGING_ERROR("Float field contains infinity");
+            LOG_ERROR("Float field contains infinity");
+            LOG_ERROR("nimcp_validate_float_field failed: returning error");
             return false;
         }
 
@@ -745,7 +762,8 @@ bool nimcp_validate_float_field(const void* field_data, size_t size)
         // WHY: Ensure value is within protocol-defined limits
         // HOW: fabsf for absolute value, single comparison
         if (fabsf(value) > NIMCP_FLOAT_MAX) {
-            NIMCP_LOGGING_ERROR("Float value out of range: %f", value);
+            LOG_ERROR("Float value out of range: %f", value);
+            LOG_ERROR("nimcp_validate_float_field failed: returning error");
             return false;
         }
     } else {
@@ -753,17 +771,20 @@ bool nimcp_validate_float_field(const void* field_data, size_t size)
 
         // Same checks for double
         if (isnan(value)) {
-            NIMCP_LOGGING_ERROR("Double field contains NaN");
+            LOG_ERROR("Double field contains NaN");
+            LOG_ERROR("nimcp_validate_float_field failed: returning error");
             return false;
         }
 
         if (isinf(value)) {
-            NIMCP_LOGGING_ERROR("Double field contains infinity");
+            LOG_ERROR("Double field contains infinity");
+            LOG_ERROR("nimcp_validate_float_field failed: returning error");
             return false;
         }
 
         if (fabs(value) > NIMCP_DOUBLE_MAX) {
-            NIMCP_LOGGING_ERROR("Double value out of range: %f", value);
+            LOG_ERROR("Double value out of range: %f", value);
+            LOG_ERROR("nimcp_validate_float_field failed: returning error");
             return false;
         }
     }
@@ -847,8 +868,10 @@ bool nimcp_validate_float_field(const void* field_data, size_t size)
  */
 bool nimcp_validate_string_field(const void* field_data, size_t size)
 {
+    LOG_DEBUG("Entering nimcp_validate_string_field");
     // STEP 1: NULL/size check
     if (!field_data || size == 0) {
+        LOG_ERROR("nimcp_validate_string_field failed: returning error");
         return false;
     }
 
@@ -859,7 +882,8 @@ bool nimcp_validate_string_field(const void* field_data, size_t size)
     // CHECK: Last byte must be '\0'
     // WHEN FAILS: Unterminated string or wrong size
     if (str[size - 1] != '\0') {
-        NIMCP_LOGGING_ERROR("String not NULL terminated");
+        LOG_ERROR("String not NULL terminated");
+        LOG_ERROR("nimcp_validate_string_field failed: returning error");
         return false;
     }
 
@@ -871,7 +895,8 @@ bool nimcp_validate_string_field(const void* field_data, size_t size)
     // Double-check termination
     // WHY: strnlen returns size if not terminated
     if (len >= size) {
-        NIMCP_LOGGING_ERROR("String exceeds field size");
+        LOG_ERROR("String exceeds field size");
+        LOG_ERROR("nimcp_validate_string_field failed: returning error");
         return false;
     }
 
@@ -879,7 +904,8 @@ bool nimcp_validate_string_field(const void* field_data, size_t size)
     // WHY: Protocol-defined maximum
     // PREVENTS: Huge strings, DoS attacks
     if (len > NIMCP_STRING_MAX_LENGTH) {
-        NIMCP_LOGGING_ERROR("String too long: %zu chars", len);
+        LOG_ERROR("String too long: %zu chars", len);
+        LOG_ERROR("nimcp_validate_string_field failed: returning error");
         return false;
     }
 
@@ -893,7 +919,8 @@ bool nimcp_validate_string_field(const void* field_data, size_t size)
         // ALLOW: '\n' and '\t' (common in text)
         // REJECT: Other control chars (security risk)
         if (iscntrl(str[i]) && str[i] != '\n' && str[i] != '\t') {
-            NIMCP_LOGGING_ERROR("Invalid control character in string at pos %zu", i);
+            LOG_ERROR("Invalid control character in string at pos %zu", i);
+            LOG_ERROR("nimcp_validate_string_field failed: returning error");
             return false;
         }
 
@@ -904,7 +931,8 @@ bool nimcp_validate_string_field(const void* field_data, size_t size)
         // RETURNS: Number of bytes consumed (1-4), or 0 on error
         size_t bytes_consumed = is_valid_utf8_char(str + i, len - i);
         if (bytes_consumed == 0) {
-            NIMCP_LOGGING_ERROR("Invalid UTF-8 encoding at pos %zu", i);
+            LOG_ERROR("Invalid UTF-8 encoding at pos %zu", i);
+            LOG_ERROR("nimcp_validate_string_field failed: returning error");
             return false;
         }
 
@@ -1000,9 +1028,11 @@ bool nimcp_validate_string_field(const void* field_data, size_t size)
  */
 bool nimcp_validate_array_field(const void* field_data, size_t size)
 {
+    LOG_DEBUG("Entering nimcp_validate_array_field");
     // STEP 1: NULL/size check
     // WHY: Prevent invalid access to header
     if (!field_data || size < sizeof(NimcpArrayHeader)) {
+        LOG_ERROR("nimcp_validate_array_field failed: returning error");
         return false;
     }
 
@@ -1013,7 +1043,8 @@ bool nimcp_validate_array_field(const void* field_data, size_t size)
     // CHECK: Non-zero counts, within limits
     if (header->element_count == 0 || header->element_size == 0 ||
         header->element_count > NIMCP_ARRAY_MAX_ELEMENTS) {
-        NIMCP_LOGGING_ERROR("Invalid array header values");
+        LOG_ERROR("Invalid array header values");
+        LOG_ERROR("nimcp_validate_array_field failed: returning error");
         return false;
     }
 
@@ -1024,7 +1055,8 @@ bool nimcp_validate_array_field(const void* field_data, size_t size)
     size_t required_size =
         sizeof(NimcpArrayHeader) + (header->element_count * header->element_size);
     if (required_size > size) {
-        NIMCP_LOGGING_ERROR("Array size exceeds field size");
+        LOG_ERROR("Array size exceeds field size");
+        LOG_ERROR("nimcp_validate_array_field failed: returning error");
         return false;
     }
 
@@ -1035,7 +1067,8 @@ bool nimcp_validate_array_field(const void* field_data, size_t size)
     // WHY: Performance and platform requirements
     // ALIGNMENT: Platform-specific (typically 8 bytes)
     if (((uintptr_t) array_data) % NIMCP_ARRAY_ALIGNMENT != 0) {
-        NIMCP_LOGGING_ERROR("Array data misaligned");
+        LOG_ERROR("Array data misaligned");
+        LOG_ERROR("nimcp_validate_array_field failed: returning error");
         return false;
     }
 
@@ -1052,21 +1085,24 @@ bool nimcp_validate_array_field(const void* field_data, size_t size)
         switch (header->element_type) {
             case NIMCP_ARRAY_INTEGER:
                 if (!nimcp_validate_integer_field(element, header->element_size)) {
-                    NIMCP_LOGGING_ERROR("Invalid integer array element at index %u", i);
+                    LOG_ERROR("Invalid integer array element at index %u", i);
+                    LOG_ERROR("nimcp_validate_array_field failed: returning error");
                     return false;
                 }
                 break;
 
             case NIMCP_ARRAY_FLOAT:
                 if (!nimcp_validate_float_field(element, header->element_size)) {
-                    NIMCP_LOGGING_ERROR("Invalid float array element at index %u", i);
+                    LOG_ERROR("Invalid float array element at index %u", i);
+                    LOG_ERROR("nimcp_validate_array_field failed: returning error");
                     return false;
                 }
                 break;
 
             case NIMCP_ARRAY_STRING:
                 if (!nimcp_validate_string_field(element, header->element_size)) {
-                    NIMCP_LOGGING_ERROR("Invalid string array element at index %u", i);
+                    LOG_ERROR("Invalid string array element at index %u", i);
+                    LOG_ERROR("nimcp_validate_array_field failed: returning error");
                     return false;
                 }
                 break;
@@ -1074,7 +1110,8 @@ bool nimcp_validate_array_field(const void* field_data, size_t size)
             default:
                 // Unknown element type
                 // WHY REJECT: Cannot validate unknown types
-                NIMCP_LOGGING_ERROR("Unknown array element type: %d", header->element_type);
+                LOG_ERROR("Unknown array element type: %d", header->element_type);
+                LOG_ERROR("nimcp_validate_array_field failed: returning error");
                 return false;
         }
     }
@@ -1198,9 +1235,11 @@ bool nimcp_validate_array_field(const void* field_data, size_t size)
  */
 bool nimcp_validate_state_fields(const void* state_data, size_t size)
 {
+    LOG_DEBUG("Entering nimcp_validate_state_fields");
     // STEP 1: NULL/size check
     if (!state_data || size < sizeof(NimcpStateHeader)) {
-        NIMCP_LOGGING_ERROR("Invalid state data pointer or size");
+        LOG_ERROR("Invalid state data pointer or size");
+        LOG_ERROR("nimcp_validate_state_fields failed: returning error");
         return false;
     }
 
@@ -1210,14 +1249,16 @@ bool nimcp_validate_state_fields(const void* state_data, size_t size)
     // WHY: Protocol handshake, ensures this is a state structure
     // VALUE: 'NIMC' in ASCII (0x4E494D43)
     if (header->magic != NIMCP_STATE_MAGIC) {
-        NIMCP_LOGGING_ERROR("Invalid state magic number");
+        LOG_ERROR("Invalid state magic number");
+        LOG_ERROR("nimcp_validate_state_fields failed: returning error");
         return false;
     }
 
     // STEP 3: Field count validation
     // WHY: Ensure sensible structure, prevent DoS
     if (header->field_count == 0 || header->field_count > NIMCP_MAX_FIELDS) {
-        NIMCP_LOGGING_ERROR("Invalid field count: %u", header->field_count);
+        LOG_ERROR("Invalid field count: %u", header->field_count);
+        LOG_ERROR("nimcp_validate_state_fields failed: returning error");
         return false;
     }
 
@@ -1234,7 +1275,8 @@ bool nimcp_validate_state_fields(const void* state_data, size_t size)
     // WHY calloc: Initialize to 0 (unused)
     uint8_t* usage_map = nimcp_calloc(size, sizeof(uint8_t));
     if (!usage_map) {
-        NIMCP_LOGGING_ERROR("Failed to allocate usage map");
+        LOG_ERROR("Failed to allocate usage map");
+        LOG_ERROR("nimcp_validate_state_fields failed: returning error");
         return false;
     }
 
@@ -1252,8 +1294,9 @@ bool nimcp_validate_state_fields(const void* state_data, size_t size)
         // WHY: Prevent out-of-bounds access
         // FORMULA: offset + size must be <= total size
         if (field->offset + field->size > size) {
-            NIMCP_LOGGING_ERROR("Field %u exceeds state boundaries", i);
+            LOG_ERROR("Field %u exceeds state boundaries", i);
             nimcp_free(usage_map);
+            LOG_ERROR("nimcp_validate_state_fields failed: returning error");
             return false;
         }
 
@@ -1263,8 +1306,9 @@ bool nimcp_validate_state_fields(const void* state_data, size_t size)
         for (size_t j = 0; j < field->size; j++) {
             if (usage_map[field->offset + j]) {
                 // Overlap detected: byte already used by header or another field
-                NIMCP_LOGGING_ERROR("Field %u overlaps with other data", i);
+                LOG_ERROR("Field %u overlaps with other data", i);
                 nimcp_free(usage_map);
+                LOG_ERROR("nimcp_validate_state_fields failed: returning error");
                 return false;
             }
             // Mark byte as used
@@ -1299,8 +1343,9 @@ bool nimcp_validate_state_fields(const void* state_data, size_t size)
             default:
                 // Unknown field type
                 // WHY REJECT: Cannot validate unknown types
-                NIMCP_LOGGING_ERROR("Unknown field type %d for field %u", field->type, i);
+                LOG_ERROR("Unknown field type %d for field %u", field->type, i);
                 nimcp_free(usage_map);
+                LOG_ERROR("nimcp_validate_state_fields failed: returning error");
                 return false;
         }
 
@@ -1308,6 +1353,7 @@ bool nimcp_validate_state_fields(const void* state_data, size_t size)
         // WHY: Fail-fast on first invalid field
         if (!valid) {
             nimcp_free(usage_map);
+            LOG_ERROR("nimcp_validate_state_fields failed: returning error");
             return false;
         }
     }
@@ -1505,12 +1551,14 @@ static size_t is_valid_utf8_char(const char* str, size_t len)
  */
 bool nimcp_validate_pointer(const void* ptr, const char* name)
 {
+    LOG_DEBUG("Entering nimcp_validate_pointer");
     if (!ptr) {
         if (name) {
-            NIMCP_LOGGING_ERROR("NULL pointer: %s", name);
+            LOG_ERROR("NULL pointer: %s", name);
         } else {
-            NIMCP_LOGGING_ERROR("NULL pointer validation failed");
+            LOG_ERROR("NULL pointer validation failed");
         }
+        LOG_ERROR("nimcp_validate_pointer failed: returning error");
         return false;
     }
     return true;

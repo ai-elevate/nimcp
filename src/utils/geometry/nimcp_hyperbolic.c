@@ -21,12 +21,16 @@
  * @date 2025-11-11
  */
 
-#include "nimcp_hyperbolic.h"
+#include "utils/geometry/nimcp_hyperbolic.h"
+#include "async/nimcp_bio_async.h"
+#include "async/nimcp_bio_messages.h"
 #include "utils/memory/nimcp_memory.h"
 #include <stdio.h>
 #include <string.h>
 #include <math.h>
 #include <float.h>
+#include "utils/memory/nimcp_unified_memory.h"
+#include "utils/logging/nimcp_logging.h"
 
 //=============================================================================
 // Internal Helper Functions

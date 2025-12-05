@@ -3,6 +3,8 @@
 //=============================================================================
 
 #include "utils/math/nimcp_complex_math.h"
+#include "async/nimcp_bio_async.h"
+#include "async/nimcp_bio_messages.h"
 #include "utils/memory/nimcp_memory.h"
 #include <string.h>
 #include <stdio.h>
@@ -19,6 +21,8 @@
 // CPU feature detection
 #if defined(__x86_64__) || defined(_M_X64) || defined(__i386) || defined(_M_IX86)
 #include <cpuid.h>
+#include "utils/memory/nimcp_unified_memory.h"
+#include "utils/logging/nimcp_logging.h"
 #define NIMCP_HAS_CPUID 1
 #else
 #define NIMCP_HAS_CPUID 0

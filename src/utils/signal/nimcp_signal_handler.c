@@ -6,7 +6,9 @@
  * @date 2025-11-09
  */
 
-#include "nimcp_signal_handler.h"
+#include "utils/signal/nimcp_signal_handler.h"
+#include "async/nimcp_bio_async.h"
+#include "async/nimcp_bio_messages.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include "core/brain/persistence/nimcp_brain_persistence.h"
@@ -18,6 +20,7 @@
 #include <time.h>
 #include <sys/stat.h>  // For directory operations
 #include <dirent.h>    // For directory scanning
+#include "utils/memory/nimcp_unified_memory.h"
 
 //=============================================================================
 // Signal-Safe Globals (accessed from signal handlers)
