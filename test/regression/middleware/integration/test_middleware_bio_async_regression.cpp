@@ -310,6 +310,7 @@ TEST_F(MiddlewareBioAsyncRegressionTest, ConcurrentMessageSending) {
     const int NUM_THREADS = 4;
     const int MSGS_PER_THREAD = 50;
     std::atomic<int> sent{0};
+    std::atomic<bool> senders_done{false};
 
     auto sender = [&](int tid) {
         bio_module_context_t source = RegisterModule(("sender_" + std::to_string(tid)).c_str());
@@ -344,13 +345,14 @@ TEST_F(MiddlewareBioAsyncRegressionTest, ConcurrentMessageSending) {
     }
 
     std::thread processor([&]() {
-        while (threads.size() > 0 || bio_router_inbox_count(target) > 0) {
+        while (!senders_done.load() || bio_router_inbox_count(target) > 0) {
             bio_router_process_inbox(target, 100);
             std::this_thread::sleep_for(std::chrono::milliseconds(1));
         }
     });
 
     for (auto& t : threads) t.join();
+    senders_done.store(true);
     bio_router_process_inbox(target, 0);
     processor.join();
 
