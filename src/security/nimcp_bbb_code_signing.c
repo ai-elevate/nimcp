@@ -31,7 +31,13 @@
  */
 
 #include "security/nimcp_blood_brain_barrier.h"
+#include "async/nimcp_bio_async.h"
+#include "async/nimcp_bio_messages.h"
+#include "utils/logging/nimcp_logging.h"
 #include "utils/thread/nimcp_thread.h"
+
+#define LOG_MODULE "security_bbb_code_signing"
+
 #include <string.h>
 #include <stdlib.h>
 #include <stdio.h>

@@ -14,10 +14,16 @@
 
 #include "nimcp_security_integration.h"
 #include "nimcp_security_math.h"
+#include "async/nimcp_bio_async.h"
+#include "async/nimcp_bio_messages.h"
+#include "utils/logging/nimcp_logging.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/memory/nimcp_memory_pool.h"
 #include "utils/memory/nimcp_cow_manager.h"
 #include "utils/thread/nimcp_thread.h"
+
+#define LOG_MODULE "security_integration"
+
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>

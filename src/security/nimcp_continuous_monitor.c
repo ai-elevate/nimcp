@@ -18,8 +18,13 @@
 
 #include "nimcp_continuous_monitor.h"
 #include "nimcp_security.h"
+#include "async/nimcp_bio_async.h"
+#include "async/nimcp_bio_messages.h"
+#include "utils/logging/nimcp_logging.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/thread/nimcp_thread.h"
+
+#define LOG_MODULE "security_continuous_monitor"
 
 #include <stdio.h>
 #include <stdlib.h>

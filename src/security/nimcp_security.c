@@ -20,8 +20,13 @@
  */
 
 #include "nimcp_security.h"
+#include "async/nimcp_bio_async.h"
+#include "async/nimcp_bio_messages.h"
+#include "utils/logging/nimcp_logging.h"
 #include <ctype.h>
 #include <stdio.h>
+
+#define LOG_MODULE "security"
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>

@@ -37,6 +37,12 @@
  */
 
 #include "security/nimcp_blood_brain_barrier.h"
+#include "async/nimcp_bio_async.h"
+#include "async/nimcp_bio_messages.h"
+#include "utils/logging/nimcp_logging.h"
+
+#define LOG_MODULE "security_bbb_memory_boundary"
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>

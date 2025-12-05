@@ -11,9 +11,15 @@
 
 #include "nimcp_security_recovery_bridge.h"
 #include "nimcp_security.h"
+#include "async/nimcp_bio_async.h"
+#include "async/nimcp_bio_messages.h"
+#include "utils/logging/nimcp_logging.h"
 #include "utils/fault_tolerance/nimcp_fast_recovery.h"
 #include "core/brain/nimcp_brain_internal.h"
 #include "utils/thread/nimcp_thread.h"
+
+#define LOG_MODULE "security_recovery_bridge"
+
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>

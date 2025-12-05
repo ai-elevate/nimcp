@@ -41,9 +41,15 @@
  */
 
 #include "plasticity/neuromodulators/nimcp_neuromod_pink_noise.h"
+#include "async/nimcp_bio_async.h"
+#include "async/nimcp_bio_messages.h"
+#include "utils/logging/nimcp_logging.h"
 #include "utils/memory/nimcp_memory.h"
+#include "security/nimcp_security.h"
 #include <string.h>
 #include <math.h>
+
+#define LOG_MODULE "plasticity_neuromod_pink_noise"
 
 //=============================================================================
 // Lifecycle
