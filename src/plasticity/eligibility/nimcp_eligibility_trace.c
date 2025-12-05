@@ -38,7 +38,13 @@
 #include "plasticity/eligibility/nimcp_eligibility_trace.h"
 #include "plasticity/neuromodulators/nimcp_phasic_tonic.h"  // For burst detection
 #include "core/neuralnet/nimcp_neuralnet.h"  // For complete synapse_t definition
+#include "utils/logging/nimcp_logging.h"
+#include "async/nimcp_bio_async.h"
+#include "async/nimcp_bio_messages.h"
+#include "security/nimcp_security.h"
 #include <math.h>
+
+#define LOG_MODULE "plasticity_eligibility"
 
 // Note: synapse_t and phasic_tonic_state_t forward-declared in header, full definitions needed here
 

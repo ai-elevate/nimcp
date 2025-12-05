@@ -58,9 +58,15 @@
 #include "utils/validation/nimcp_validate.h"
 #include "utils/thread/nimcp_thread.h"
 #include "utils/platform/nimcp_platform_rwlock.h"
+#include "utils/logging/nimcp_logging.h"
+#include "async/nimcp_bio_async.h"
+#include "async/nimcp_bio_messages.h"
+#include "security/nimcp_security.h"
 #include <math.h>
 #include <string.h>
 #include <stdatomic.h>
+
+#define LOG_MODULE "plasticity_neuromodulators"
 
 //=============================================================================
 // Constants for Performance and Biological Realism

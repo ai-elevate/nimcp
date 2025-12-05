@@ -9,9 +9,15 @@
 #include "plasticity/nimcp_stdp.h"
 #include "plasticity/neuromodulators/nimcp_neuromodulators.h"
 #include "plasticity/neuromodulators/nimcp_phasic_tonic.h"
+#include "async/nimcp_bio_async.h"
+#include "async/nimcp_bio_messages.h"
+#include "utils/logging/nimcp_logging.h"
+#include "security/nimcp_security.h"
 #include <math.h>
 #include <stdio.h>
 #include <string.h>
+
+#define LOG_MODULE "plasticity_stdp"
 
 /* ============================================================================
  * Configuration
@@ -42,6 +48,13 @@ void stdp_synapse_init(stdp_synapse_t* synapse) {
 }
 
 void stdp_synapse_init_with_config(stdp_synapse_t* synapse, const stdp_config_t* config) {
+    LOG_DEBUG("Initializing STDP synapse with config");
+
+    if (!synapse || !config) {
+        LOG_ERROR("NULL pointer passed to stdp_synapse_init_with_config");
+        return;
+    }
+
     memset(synapse, 0, sizeof(stdp_synapse_t));
 
     synapse->weight = 0.5f;  /* Initialize to 50% of max */

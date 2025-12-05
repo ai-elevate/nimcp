@@ -26,8 +26,14 @@
  */
 
 #include "nimcp_bcm.h"
+#include "async/nimcp_bio_async.h"
+#include "async/nimcp_bio_messages.h"
+#include "utils/logging/nimcp_logging.h"
+#include "security/nimcp_security.h"
 #include <math.h>
 #include <string.h>
+
+#define LOG_MODULE "plasticity_bcm"
 
 //=============================================================================
 // Constants

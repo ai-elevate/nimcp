@@ -21,6 +21,11 @@
 #include "utils/containers/nimcp_vector.h"
 #include "utils/validation/nimcp_validate.h"
 #include "utils/logging/nimcp_logging.h"
+#include "async/nimcp_bio_async.h"
+#include "async/nimcp_bio_messages.h"
+#include "security/nimcp_security.h"
+
+#define LOG_MODULE "plasticity_attention"
 
 #include <math.h>
 #include <stdlib.h>

@@ -38,6 +38,12 @@
 #include "core/neuralnet/nimcp_neuralnet.h"
 #include "utils/containers/nimcp_hash_table.h"
 #include "utils/memory/nimcp_memory.h"  // CRITICAL: Declares nimcp_calloc/nimcp_free return types
+#include "utils/logging/nimcp_logging.h"
+#include "async/nimcp_bio_async.h"
+#include "async/nimcp_bio_messages.h"
+#include "security/nimcp_security.h"
+
+#define LOG_MODULE "plasticity_adaptive"
 #include "utils/memory/nimcp_memory_pool.h"  // Phase MP: Memory pool for hot paths
 #include "utils/memory/nimcp_page_cow.h"     // Phase COW: Page-level COW for state snapshots
 #include "plasticity/eligibility/nimcp_eligibility_trace.h"  // Phase 11: Eligibility traces
