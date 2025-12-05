@@ -25,8 +25,12 @@
 #include "utils/time/nimcp_time.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/thread/nimcp_thread.h"
+#include "async/nimcp_bio_router.h"
+#include "async/nimcp_bio_messages.h"
 #include <string.h>
 #include <math.h>
+
+#define LOG_MODULE "shannon_monitor"
 
 //=============================================================================
 // Constants
@@ -100,6 +104,10 @@ struct shannon_monitor {
 
     // Thread safety
     nimcp_mutex_t mutex;
+
+    // Bio-async integration
+    bio_module_context_t bio_ctx;
+    bool bio_async_enabled;
 };
 
 //=============================================================================
@@ -333,6 +341,23 @@ shannon_monitor_t* shannon_monitor_create_custom(
     monitor->last_update_us = monitor->window_start_us;
     monitor->metrics.measurement_window_ms = config->measurement_window_ms;
 
+    // Bio-async registration
+    monitor->bio_ctx = NULL;
+    monitor->bio_async_enabled = false;
+    if (bio_router_is_initialized()) {
+        bio_module_info_t bio_info = {
+            .module_id = BIO_MODULE_MIDDLEWARE_SHANNON,
+            .module_name = "shannon_monitor",
+            .inbox_capacity = 64,
+            .user_data = monitor
+        };
+        monitor->bio_ctx = bio_router_register_module(&bio_info);
+        if (monitor->bio_ctx) {
+            monitor->bio_async_enabled = true;
+            LOG_INFO("Shannon: Bio-async enabled");
+        }
+    }
+
     LOG_INFO("Shannon: Monitor created (history=%u, bandwidth=%.0f events/sec)",
              config->history_size, config->bandwidth_events_per_sec);
 
@@ -344,6 +369,13 @@ void shannon_monitor_destroy(shannon_monitor_t* monitor) {
 
     LOG_INFO("Shannon: Destroying monitor (events=%lu, filtered=%lu)",
              monitor->metrics.total_events, monitor->metrics.filtered_events);
+
+    // Unregister from bio-async
+    if (monitor->bio_async_enabled && monitor->bio_ctx) {
+        bio_router_unregister_module(monitor->bio_ctx);
+        monitor->bio_ctx = NULL;
+        monitor->bio_async_enabled = false;
+    }
 
     nimcp_mutex_destroy(&monitor->mutex);
     nimcp_free(monitor->response_history);

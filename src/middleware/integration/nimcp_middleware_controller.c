@@ -21,8 +21,13 @@
 #include "utils/time/nimcp_time.h"
 #include "utils/thread/nimcp_thread.h"
 #include "security/nimcp_blood_brain_barrier.h"        // Phase IS-1: BBB perimeter defense
+#include "async/nimcp_bio_router.h"
+#include "async/nimcp_bio_messages.h"
+#include "utils/logging/nimcp_logging.h"
 #include <string.h>
 #include <math.h>
+
+#define LOG_MODULE "middleware_controller"
 
 // Phase IS-1: External declaration of BBB getter (avoid header conflicts)
 extern bbb_system_t nimcp_bbb_get_global_system(void);
@@ -66,6 +71,10 @@ struct middleware_controller {
     /* Timestamps */
     uint64_t created_at_us;
     uint64_t last_command_us;
+
+    /* Bio-async integration */
+    bio_module_context_t bio_ctx;
+    bool bio_async_enabled;
 };
 
 //=============================================================================
@@ -303,6 +312,23 @@ middleware_controller_t* middleware_controller_create_custom(
     memset(&ctrl->metrics, 0, sizeof(ctrl->metrics));
     ctrl->metrics.min_latency_us = INFINITY;
 
+    /* Bio-async registration */
+    ctrl->bio_ctx = NULL;
+    ctrl->bio_async_enabled = false;
+    if (bio_router_is_initialized()) {
+        bio_module_info_t bio_info = {
+            .module_id = BIO_MODULE_MIDDLEWARE_CONTROLLER,
+            .module_name = "middleware_controller",
+            .inbox_capacity = 64,
+            .user_data = ctrl
+        };
+        ctrl->bio_ctx = bio_router_register_module(&bio_info);
+        if (ctrl->bio_ctx) {
+            ctrl->bio_async_enabled = true;
+            LOG_INFO(LOG_MODULE, "Bio-async integration enabled");
+        }
+    }
+
     return ctrl;
 }
 
@@ -310,6 +336,13 @@ void middleware_controller_destroy(middleware_controller_t* controller)
 {
     if (controller == NULL) {
         return;
+    }
+
+    /* Unregister from bio-async */
+    if (controller->bio_async_enabled && controller->bio_ctx) {
+        bio_router_unregister_module(controller->bio_ctx);
+        controller->bio_ctx = NULL;
+        controller->bio_async_enabled = false;
     }
 
     nimcp_mutex_destroy(&controller->mutex);

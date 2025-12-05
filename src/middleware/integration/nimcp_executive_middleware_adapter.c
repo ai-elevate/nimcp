@@ -19,8 +19,12 @@
 #include "utils/memory/nimcp_memory.h"
 #include "utils/time/nimcp_time.h"
 #include "utils/logging/nimcp_logging.h"
+#include "async/nimcp_bio_router.h"
+#include "async/nimcp_bio_messages.h"
 #include <string.h>
 #include <math.h>
+
+#define LOG_MODULE "exec_mw_adapter"
 
 //=============================================================================
 // Constants
@@ -52,6 +56,10 @@ struct executive_middleware_adapter {
     // State tracking
     uint32_t next_command_id;                   /**< Next command ID to assign */
     uint64_t last_command_time_us;              /**< Last command timestamp */
+
+    // Bio-async integration
+    bio_module_context_t bio_ctx;               /**< Bio-async module context */
+    bool bio_async_enabled;                     /**< Bio-async enabled flag */
 };
 
 //=============================================================================
@@ -193,6 +201,23 @@ executive_middleware_adapter_t* executive_middleware_adapter_create_custom(
     adapter->next_command_id = 1;
     adapter->last_command_time_us = nimcp_time_get_us();
 
+    // Bio-async registration
+    adapter->bio_ctx = NULL;
+    adapter->bio_async_enabled = false;
+    if (bio_router_is_initialized()) {
+        bio_module_info_t bio_info = {
+            .module_id = BIO_MODULE_MIDDLEWARE_EXEC_ADAPTER,
+            .module_name = "exec_mw_adapter",
+            .inbox_capacity = 64,
+            .user_data = adapter
+        };
+        adapter->bio_ctx = bio_router_register_module(&bio_info);
+        if (adapter->bio_ctx) {
+            adapter->bio_async_enabled = true;
+            LOG_INFO("Bio-async integration enabled for executive middleware adapter");
+        }
+    }
+
     LOG_INFO("Executive middleware adapter created");
 
     return adapter;
@@ -201,6 +226,14 @@ executive_middleware_adapter_t* executive_middleware_adapter_create_custom(
 void executive_middleware_adapter_destroy(executive_middleware_adapter_t* adapter) {
     if (!adapter) {
         return;
+    }
+
+    // Unregister from bio-async
+    if (adapter->bio_async_enabled && adapter->bio_ctx) {
+        bio_router_unregister_module(adapter->bio_ctx);
+        adapter->bio_ctx = NULL;
+        adapter->bio_async_enabled = false;
+        LOG_INFO("Bio-async integration disabled for executive middleware adapter");
     }
 
     // Note: We don't destroy executive, propagator, or shannon_monitor

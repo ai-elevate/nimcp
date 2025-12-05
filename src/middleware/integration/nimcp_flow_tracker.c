@@ -24,8 +24,12 @@
 #include "utils/time/nimcp_time.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/thread/nimcp_thread.h"
+#include "async/nimcp_bio_router.h"
+#include "async/nimcp_bio_messages.h"
 #include <string.h>
 #include <math.h>
+
+#define LOG_MODULE "flow_tracker"
 
 //=============================================================================
 // Constants
@@ -110,6 +114,10 @@ struct flow_tracker {
     bool any_bottleneck_detected;
     uint32_t num_bottlenecked_paths;
     uint64_t last_global_update_us;
+
+    // Bio-async integration
+    bio_module_context_t bio_ctx;
+    bool bio_async_enabled;
 };
 
 //=============================================================================
@@ -273,6 +281,23 @@ flow_tracker_t* flow_tracker_create_custom(
     tracker->worst_path_efficiency = 1.0f;
     tracker->last_global_update_us = now_us;
 
+    // Bio-async registration
+    tracker->bio_ctx = NULL;
+    tracker->bio_async_enabled = false;
+    if (bio_router_is_initialized()) {
+        bio_module_info_t bio_info = {
+            .module_id = BIO_MODULE_MIDDLEWARE_FLOW_TRACKER,
+            .module_name = "flow_tracker",
+            .inbox_capacity = 64,
+            .user_data = tracker
+        };
+        tracker->bio_ctx = bio_router_register_module(&bio_info);
+        if (tracker->bio_ctx) {
+            tracker->bio_async_enabled = true;
+            LOG_INFO("FlowTracker: Bio-async enabled");
+        }
+    }
+
     LOG_INFO("FlowTracker: Created (paths=%d, window=%lums)",
              FLOW_TRACKER_NUM_PATHS, config->measurement_window_ms);
 
@@ -284,6 +309,13 @@ void flow_tracker_destroy(flow_tracker_t* tracker) {
 
     LOG_INFO("FlowTracker: Destroying (throughput=%.2f bits/sec)",
              tracker->total_throughput_bits_per_sec);
+
+    // Unregister from bio-async
+    if (tracker->bio_async_enabled && tracker->bio_ctx) {
+        bio_router_unregister_module(tracker->bio_ctx);
+        tracker->bio_ctx = NULL;
+        tracker->bio_async_enabled = false;
+    }
 
     for (int i = 0; i < FLOW_TRACKER_NUM_PATHS; i++) {
         nimcp_mutex_destroy(&tracker->paths[i].mutex);

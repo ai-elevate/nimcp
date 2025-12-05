@@ -21,10 +21,14 @@
 #include "utils/memory/nimcp_memory.h"
 #include "utils/time/nimcp_time.h"
 #include "utils/logging/nimcp_logging.h"
+#include "async/nimcp_bio_router.h"
+#include "async/nimcp_bio_messages.h"
 #include <string.h>
 #include <stdlib.h>
 #include <math.h>
 #include <complex.h>
+
+#define LOG_MODULE "quantum_propagator"
 
 // External brain API (forward-declared in header)
 extern uint32_t brain_get_neuron_count(brain_t brain);
@@ -68,6 +72,10 @@ struct quantum_command_propagator {
     // Quantum walk state
     neural_network_t base_network;              /**< Base network for quantum walk */
     float* probability_buffer;                  /**< Buffer for probability distribution */
+
+    // Bio-async integration
+    bio_module_context_t bio_ctx;               /**< Bio-async module context */
+    bool bio_async_enabled;                     /**< Bio-async enabled flag */
 };
 
 //=============================================================================
@@ -304,6 +312,23 @@ quantum_command_propagator_t* quantum_command_propagator_create_custom(
     // (reusing it across different source neurons is inefficient)
     qcp->qsd = NULL;
 
+    // Bio-async registration
+    qcp->bio_ctx = NULL;
+    qcp->bio_async_enabled = false;
+    if (bio_router_is_initialized()) {
+        bio_module_info_t bio_info = {
+            .module_id = BIO_MODULE_MIDDLEWARE_QUANTUM_PROPAGATOR,
+            .module_name = "quantum_propagator",
+            .inbox_capacity = 64,
+            .user_data = qcp
+        };
+        qcp->bio_ctx = bio_router_register_module(&bio_info);
+        if (qcp->bio_ctx) {
+            qcp->bio_async_enabled = true;
+            LOG_INFO("Bio-async integration enabled for quantum command propagator");
+        }
+    }
+
     LOG_INFO("Quantum command propagator created for %u neurons", qcp->num_neurons);
 
     return qcp;
@@ -312,6 +337,14 @@ quantum_command_propagator_t* quantum_command_propagator_create_custom(
 void quantum_command_propagator_destroy(quantum_command_propagator_t* qcp) {
     if (!qcp) {
         return;
+    }
+
+    // Unregister from bio-async
+    if (qcp->bio_async_enabled && qcp->bio_ctx) {
+        bio_router_unregister_module(qcp->bio_ctx);
+        qcp->bio_ctx = NULL;
+        qcp->bio_async_enabled = false;
+        LOG_INFO("Bio-async integration disabled for quantum command propagator");
     }
 
     // Destroy quantum-Shannon diffusion if exists
