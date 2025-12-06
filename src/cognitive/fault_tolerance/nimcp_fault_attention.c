@@ -356,6 +356,11 @@ bool fault_attention_compute_weights(
         return false;
     }
 
+    // Process pending bio-async messages
+    if (attention->bio_async_enabled && attention->bio_ctx) {
+        bio_router_process_inbox(attention->bio_ctx, 5);
+    }
+
     if (fault_count > 0 && !faults) {
         nimcp_log(LOG_LEVEL_ERROR, "NULL faults with non-zero count");
         return false;

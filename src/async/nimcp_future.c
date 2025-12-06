@@ -61,10 +61,13 @@
 #include "utils/platform/nimcp_platform_cond.h"
 #include "utils/platform/nimcp_platform_time.h"
 #include "utils/memory/nimcp_unified_memory.h"
+#include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include <stdlib.h>
 #include <string.h>
 #include <errno.h>
+
+#define LOG_MODULE "async_future"
 
 //=============================================================================
 // Security Integration (Forward Declarations to Avoid Header Conflicts)
@@ -195,12 +198,12 @@ static void* future_alloc(size_t size) {
         LOG_WARNING("Unified memory allocation failed for %zu bytes, falling back to malloc", size);
     }
 
-    // Fallback to malloc with header
+    // Fallback to nimcp_malloc with header
     size_t total_size = sizeof(future_alloc_header_t) + size;
-    void* base = malloc(total_size);
+    void* base = nimcp_malloc(total_size);
     if (base) {
         future_alloc_header_t* header = (future_alloc_header_t*)base;
-        header->handle = NULL;  // NULL indicates malloc was used
+        header->handle = NULL;  // NULL indicates nimcp_malloc was used
         header->size = size;
         return (char*)base + sizeof(future_alloc_header_t);
     }
@@ -222,8 +225,8 @@ static void future_free(void* ptr) {
         // Unified memory - free the handle
         unified_mem_free(header->handle);
     } else {
-        // Standard malloc - free the base pointer
-        free(header);
+        // Standard nimcp_malloc - free the base pointer
+        nimcp_free(header);
     }
 }
 

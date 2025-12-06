@@ -609,6 +609,11 @@ void engram_consolidate_update(
     engram_system_t* system,
     float dt,
     bool is_sleeping) {
+    // Process pending bio-async messages
+    if (system && system->bio_async_enabled && system->bio_ctx) {
+        bio_router_process_inbox(system->bio_ctx, 5);
+    }
+
 
     // WHAT: Advance consolidation for all engrams
     // WHY:  Labile → stable transition

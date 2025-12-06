@@ -341,6 +341,11 @@ static void update_statistics(
     nimcp_emotional_tagger_t* tagger,
     const nimcp_emotional_tag_t* emotion
 ) {
+    // Process pending bio-async messages
+    if (tagger && tagger->bio_async_enabled && tagger->bio_ctx) {
+        bio_router_process_inbox(tagger->bio_ctx, 5);
+    }
+
     /* WHAT: Update running averages
      * WHY:  Track overall emotional tone
      * HOW:  Incremental average formula */

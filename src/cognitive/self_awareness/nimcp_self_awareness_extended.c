@@ -634,6 +634,11 @@ bool self_awareness_reflect(self_awareness_system_t system,
         return false;
     }
 
+    // Process pending bio-async messages
+    if (system->bio_async_enabled && system->bio_ctx) {
+        bio_router_process_inbox(system->bio_ctx, 5);
+    }
+
     nimcp_mutex_lock(&system->mutex);
 
     // Store introspection reference

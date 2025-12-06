@@ -683,6 +683,11 @@ plan_t* executive_create_plan(executive_controller_t* exec, const char* goal, ui
         return NULL;
     }
 
+    // Process pending bio-async messages before planning
+    if (exec->bio_async_enabled && exec->bio_ctx) {
+        bio_router_process_inbox(exec->bio_ctx, 10);
+    }
+
     if (max_steps == 0 || max_steps > exec->config.max_plan_depth) {
         set_error("Invalid max_steps: %u (max: %u)", max_steps, exec->config.max_plan_depth);
         return NULL;

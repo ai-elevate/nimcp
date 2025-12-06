@@ -16,23 +16,66 @@
  * @author NIMCP Development Team
  */
 
-#include "nimcp_topographic_maps.h"
+#include "core/cortical_columns/nimcp_topographic_maps.h"
+#include "utils/memory/nimcp_unified_memory.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/platform/nimcp_platform_mutex.h"
+#include "async/nimcp_bio_async.h"
+#include "async/nimcp_bio_router.h"
+#include "async/nimcp_bio_messages.h"
 
 #include <math.h>
 #include <string.h>
 #include <float.h>
 
+#define LOG_MODULE "topographic_maps"
+
+//=============================================================================
+// Bio-Async Module Context
+//=============================================================================
+
+static bio_module_context_t bio_ctx = NULL;
+static bool bio_async_enabled = false;
+
+__attribute__((constructor))
+static void topographic_maps_bio_init(void) {
+    if (!bio_router_is_initialized()) {
+        return;
+    }
+
+    bio_module_info_t bio_info = {
+        .module_id = BIO_MODULE_CORTICAL_TOPOGRAPHIC,
+        .module_name = "topographic_maps",
+        .inbox_capacity = 128,
+        .user_data = NULL
+    };
+
+    bio_ctx = bio_router_register_module(&bio_info);
+    if (bio_ctx) {
+        bio_async_enabled = true;
+        LOG_INFO(LOG_MODULE, "Bio-async registered for topographic_maps module");
+    }
+}
+
+__attribute__((destructor))
+static void topographic_maps_bio_cleanup(void) {
+    if (bio_async_enabled && bio_ctx) {
+        bio_router_unregister_module(bio_ctx);
+        bio_ctx = NULL;
+        bio_async_enabled = false;
+        LOG_DEBUG(LOG_MODULE, "Bio-async unregistered for topographic_maps module");
+    }
+}
+
 /* ============================================================================
  * Logging Macros
  * ========================================================================== */
 
-#define TOPO_LOG_ERROR(...) log_message(LOG_LEVEL_ERROR, __VA_ARGS__)
-#define TOPO_LOG_WARN(...) log_message(LOG_LEVEL_WARN, __VA_ARGS__)
-#define TOPO_LOG_INFO(...) log_message(LOG_LEVEL_INFO, __VA_ARGS__)
-#define TOPO_LOG_DEBUG(...) log_message(LOG_LEVEL_DEBUG, __VA_ARGS__)
+#define TOPO_LOG_ERROR(...) LOG_ERROR(LOG_MODULE, __VA_ARGS__)
+#define TOPO_LOG_WARN(...) LOG_WARN(LOG_MODULE, __VA_ARGS__)
+#define TOPO_LOG_INFO(...) LOG_INFO(LOG_MODULE, __VA_ARGS__)
+#define TOPO_LOG_DEBUG(...) LOG_DEBUG(LOG_MODULE, __VA_ARGS__)
 
 /* ============================================================================
  * Constants
@@ -382,6 +425,11 @@ void topographic_map_input_to_cortex(
     if (!map || !input_coords || !cortical_coords || num_points == 0) {
         TOPO_LOG_ERROR("[TopographicMaps] Invalid input_to_cortex parameters");
         return;
+    }
+
+    /* Process pending bio-async messages */
+    if (bio_async_enabled && bio_ctx) {
+        bio_router_process_inbox(bio_ctx, 5);
     }
 
     nimcp_platform_mutex_lock(map->mutex);

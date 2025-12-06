@@ -997,6 +997,11 @@ static nimcp_error_t handle_knowledge_query(
 static void bio_broadcast_knowledge_update(knowledge_system_t system,
                                            uint32_t concepts_learned,
                                            knowledge_domain_t domain) {
+    // Process pending bio-async messages
+    if (system && system->bio_async_enabled && system->bio_ctx) {
+        bio_router_process_inbox(system->bio_ctx, 5);
+    }
+
     if (!system || !system->bio_async_enabled || !system->bio_ctx) {
         return;
     }

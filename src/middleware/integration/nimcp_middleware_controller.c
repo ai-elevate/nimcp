@@ -815,6 +815,11 @@ uint32_t middleware_controller_execute_batch(
     if (controller == NULL || batch == NULL) return 0;
     if (batch->num_commands == 0) return 0;
 
+    /* Process pending bio-async messages */
+    if (controller->bio_async_enabled && controller->bio_ctx) {
+        bio_router_process_inbox(controller->bio_ctx, 5);
+    }
+
     /* Phase IS-1: BBB validation for command batch data */
     bbb_system_t bbb = nimcp_bbb_get_global_system();
     if (bbb) {

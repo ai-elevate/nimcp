@@ -453,6 +453,11 @@ void remorse_practice_self_forgiveness(
 }
 
 void remorse_update(remorse_regret_system_t* system, float dt, uint64_t current_time_us) {
+    // Process pending bio-async messages
+    if (system && system->bio_async_enabled && system->bio_ctx_ptr) {
+        bio_router_process_inbox(system->bio_ctx_ptr, 5);
+    }
+
     // WHAT: Update emotional state over time
     // WHY:  Emotions naturally decay and fade
     // HOW:  Exponential decay modulated by personality

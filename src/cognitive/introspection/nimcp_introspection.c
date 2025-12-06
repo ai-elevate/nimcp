@@ -966,6 +966,11 @@ static void pattern_registry_update(pattern_registry_t* registry, const char* na
  */
 bool brain_is_pattern_active(introspection_context_t context, const char* pattern_name)
 {
+    // Process pending bio-async messages
+    if (context && context->bio_ctx) {
+        bio_router_process_inbox(context->bio_ctx, 5);
+    }
+
     if (context == NULL || pattern_name == NULL) {
         return false;
     }

@@ -809,6 +809,11 @@ recovery_execution_result_t recovery_executive_execute_plan(
         return result;
     }
 
+    // Process pending bio-async messages
+    if (exec->bio_async_enabled && exec->bio_ctx) {
+        bio_router_process_inbox(exec->bio_ctx, 5);
+    }
+
     if (!plan) {
         LOG_ERROR("NULL plan in execute_plan");
         result.success = false;

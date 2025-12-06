@@ -22,9 +22,18 @@
  */
 
 #include "nlp/nimcp_spike_nlp.h"
+#include "utils/memory/nimcp_unified_memory.h"
+#include "async/nimcp_bio_async.h"
+#include "async/nimcp_bio_router.h"
+#include "async/nimcp_bio_messages.h"
+#include "utils/logging/nimcp_logging.h"
+#include "security/nimcp_security_integration.h"
 #include <stdio.h>
 #include <string.h>
 #include <math.h>
+
+#define LOG_MODULE "SPIKE_NLP"
+#define SPIKE_NLP_MODULE_NAME "spike_nlp"
 
 // Internal network structure (for direct neuron access)
 // WHAT: Minimal struct declaration for accessing neuron array
@@ -77,18 +86,21 @@ uint32_t spike_nlp_embed_to_spikes(
 ) {
     // Guard: NULL embedding
     if (!embedding) {
-        fprintf(stderr, "ERROR: spike_nlp_embed_to_spikes: NULL embedding\n");
+        LOG_ERROR(LOG_MODULE, "embed_to_spikes: NULL embedding");
         return 0;
     }
 
     // Guard: NULL network
     if (!network) {
-        fprintf(stderr, "ERROR: spike_nlp_embed_to_spikes: NULL network\n");
+        LOG_ERROR(LOG_MODULE, "embed_to_spikes: NULL network");
         return 0;
     }
 
     struct neural_network_struct* net = (struct neural_network_struct*)network;
     uint32_t spikes_generated = 0;
+
+    LOG_DEBUG(LOG_MODULE, "Converting embedding to spikes: dim=%u, input_start=%u, num_input=%u",
+              dim, input_start, num_input);
 
     // WHAT: Determine how many dimensions to process
     // WHY: Avoid buffer overflow if dim > num_input
@@ -181,20 +193,26 @@ uint32_t spike_nlp_process_word(
     uint32_t input_start,
     uint32_t num_input
 ) {
+    LOG_DEBUG(LOG_MODULE, "Entering spike_nlp_process_word: dim=%u, input_start=%u, num_input=%u",
+              dim, input_start, num_input);
+
     // Guard: NULL network
     if (!network) {
-        fprintf(stderr, "ERROR: spike_nlp_process_word: NULL network\n");
+        LOG_ERROR(LOG_MODULE, "process_word: NULL network");
         return 0;
     }
 
     // Guard: NULL embedding
     if (!embedding) {
-        fprintf(stderr, "ERROR: spike_nlp_process_word: NULL embedding\n");
+        LOG_ERROR(LOG_MODULE, "process_word: NULL embedding");
         return 0;
     }
 
     struct neural_network_struct* net = (struct neural_network_struct*)network;
     uint32_t total_spikes = 0;
+
+    LOG_INFO(LOG_MODULE, "Processing word: dim=%u, input_start=%u, num_input=%u, time=%lu",
+              dim, input_start, num_input, net->current_time);
 
     // PHASE 1: Word presentation with continuous spike injection
     // WHAT: Sustained input mimics fixation during reading
@@ -220,6 +238,8 @@ uint32_t spike_nlp_process_word(
         total_spikes += spikes;
     }
 
+    LOG_DEBUG(LOG_MODULE, "Phase 1 complete: injected %u total spikes", total_spikes);
+
     // PHASE 2: Settling period without input
     // WHAT: Let network dynamics settle after word presentation
     // WHY: Hub neurons need time to integrate information
@@ -227,6 +247,9 @@ uint32_t spike_nlp_process_word(
     for (uint64_t t = 0; t < SPIKE_NLP_SETTLE_TIME; t++) {
         neural_network_compute_step(network, net->current_time + SPIKE_NLP_TIME_PER_WORD + t);
     }
+
+    LOG_INFO(LOG_MODULE, "Word processing complete: %u spikes, settled for %u timesteps",
+             total_spikes, SPIKE_NLP_SETTLE_TIME);
 
     return total_spikes;
 }
@@ -277,23 +300,26 @@ bool spike_nlp_process_sentence(
 ) {
     // Guard: NULL network
     if (!network) {
-        fprintf(stderr, "ERROR: spike_nlp_process_sentence: NULL network\n");
+        LOG_ERROR(LOG_MODULE, "process_sentence: NULL network");
         return false;
     }
 
     // Guard: NULL sentence
     if (!sentence) {
-        fprintf(stderr, "ERROR: spike_nlp_process_sentence: NULL sentence\n");
+        LOG_ERROR(LOG_MODULE, "process_sentence: NULL sentence");
         return false;
     }
 
     // Guard: NULL result
     if (!result) {
-        fprintf(stderr, "ERROR: spike_nlp_process_sentence: NULL result\n");
+        LOG_ERROR(LOG_MODULE, "process_sentence: NULL result");
         return false;
     }
 
     struct neural_network_struct* net = (struct neural_network_struct*)network;
+
+    LOG_INFO(LOG_MODULE, "Processing sentence: %u words, input_start=%u, output_start=%u",
+             sentence_len, input_start, output_start);
 
     // WHAT: Initialize result structure to zero
     // WHY: Ensure all fields start with known values (no garbage)
@@ -374,11 +400,17 @@ bool spike_nlp_process_sentence(
     // HOW: Mean of all hub activities (or 0 if no hubs)
     result->avg_hub_activity = (hub_count > 0) ? (hub_activity_sum / hub_count) : 0.0f;
 
+    LOG_DEBUG(LOG_MODULE, "Hub analysis: %u hubs found, avg_activity=%f",
+              hub_count, result->avg_hub_activity);
+
     // WHAT: Compute semantic coherence metric
     // WHY: Measure how well sentence meaning is captured
     // HOW: Scale hub activity to [0, 1] range
     // NOTE: This is a placeholder - real coherence would use variance analysis
     result->semantic_coherence = result->avg_hub_activity * 0.5f;
+
+    LOG_INFO(LOG_MODULE, "Sentence processing complete: total_spikes=%u, output_spikes=%u, coherence=%f",
+             result->total_spikes, result->output_spikes, result->semantic_coherence);
 
     return true;
 }
@@ -416,8 +448,11 @@ float spike_nlp_compute_semantic_coherence(
     const uint32_t* hub_indices,
     uint32_t num_hubs
 ) {
+    LOG_DEBUG(LOG_MODULE, "Computing semantic coherence for %u hubs", num_hubs);
+
     // Guard: NULL network, NULL indices, or zero hubs
     if (!network || !hub_indices || num_hubs == 0) {
+        LOG_WARN(LOG_MODULE, "compute_semantic_coherence: Invalid parameters");
         return 0.0f;
     }
 

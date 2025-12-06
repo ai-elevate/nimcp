@@ -2,18 +2,34 @@
  * @file nimcp_execution_mode.c
  * @brief Implementation of execution mode detection and selection
  *
+ * NIMCP Phase: Integrated bio-async communication and comprehensive logging
+ * Date: 2025-11-28
+ *
  * WHAT: Detects hardware capabilities and selects optimal execution mode
  * WHY:  Different platforms have different optimal execution strategies
  * HOW:  Query CPU, GPU, network at runtime; select best mode for workload
+ *
+ * BIO-ASYNC INTEGRATION:
+ * - GPU execution events published to bio-async system
+ * - Mode switches communicated via async channels
+ * - Performance metrics shared with monitoring subsystems
  *
  * @author NIMCP Development Team
  * @date 2025
  * @version 2.6 (GPU P2P)
  */
 
+#define LOG_MODULE "GPU_EXEC_MODE"
+#define LOG_MODULE_ID 0x0900
+
 #include "gpu/nimcp_execution_mode.h"
+#include "utils/memory/nimcp_unified_memory.h"
+#include "async/nimcp_bio_async.h"
+#include "async/nimcp_bio_messages.h"
+#include "async/nimcp_bio_router.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/validation/nimcp_validate.h"
+#include "utils/logging/nimcp_logging.h"
 #include <string.h>
 #include <stdio.h>
 
@@ -55,6 +71,9 @@ struct execution_context_struct {
     uint64_t total_operations;
     double total_time_ms;
     uint64_t start_time;
+
+    // Bio-async integration
+    bio_module_context_t bio_ctx;
 };
 
 //=============================================================================
@@ -184,8 +203,11 @@ bool execution_detect_capabilities(hardware_capabilities_t* caps)
 {
     // Guard: Validate output
     if (!caps) {
+        LOG_ERROR("NULL capabilities pointer");
         return false;
     }
+
+    LOG_DEBUG("Detecting hardware capabilities");
 
     // Initialize all fields to zero/false
     memset(caps, 0, sizeof(hardware_capabilities_t));
@@ -198,10 +220,13 @@ bool execution_detect_capabilities(hardware_capabilities_t* caps)
     // Determine recommended mode
     if (caps->cuda_available && caps->gpu_count > 0) {
         caps->recommended_mode = EXEC_MODE_GPU_CUDA;
+        LOG_INFO("Detected CUDA-capable GPU (count=%u), recommending GPU mode", caps->gpu_count);
     } else if (caps->cpu_threads >= 4) {
         caps->recommended_mode = EXEC_MODE_CPU_PARALLEL;
+        LOG_INFO("Detected multi-core CPU (threads=%u), recommending parallel mode", caps->cpu_threads);
     } else {
         caps->recommended_mode = EXEC_MODE_CPU_SEQUENTIAL;
+        LOG_INFO("Limited CPU resources, recommending sequential mode");
     }
 
     return true;

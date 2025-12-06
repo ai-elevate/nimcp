@@ -6,6 +6,10 @@
 #include "utils/memory/nimcp_memory.h"
 #include <string.h>
 
+
+#define LOG_MODULE "brain_integration"
+#define LOG_MODULE_ID 0x0510
+
 //=============================================================================
 // BUFFER SIZE MAPPING
 //=============================================================================
@@ -344,6 +348,12 @@ size_t brain_extract_and_normalize(
 
 #include "middleware/features/nimcp_feature_extractor.h"
 #include "middleware/encoding/nimcp_population_coding.h"
+#include "async/nimcp_bio_async.h"
+#include "async/nimcp_bio_router.h"
+#include "async/nimcp_bio_messages.h"
+#include "utils/logging/nimcp_logging.h"
+#include "utils/memory/nimcp_unified_memory.h"
+
 
 /**
  * @brief Internal structure for spike feature extractor

@@ -239,6 +239,11 @@ bool metacognition_monitor_self(
     metacognition_t* meta,
     const cognitive_state_t* state
 ) {
+    // Process pending bio-async messages
+    if (meta && meta->bio_ctx) {
+        bio_router_process_inbox(meta->bio_ctx, 5);
+    }
+
     // GUARD: NULL checks
     if (!meta) {
         LOG_ERROR("NULL metacognition in monitor_self");

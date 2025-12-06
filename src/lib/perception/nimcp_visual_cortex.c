@@ -12,6 +12,7 @@
  */
 
 #include "perception/nimcp_visual_cortex.h"
+#include "utils/memory/nimcp_unified_memory.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/memory/nimcp_memory_pool.h"  // Memory pool for O(1) allocations
 #include "utils/memory/nimcp_page_cow.h"     // Copy-on-Write for shallow copies
@@ -21,10 +22,19 @@
 #include "core/brain/nimcp_brain.h"  // Brain reference
 #include "core/neuralnet/nimcp_neuralnet.h"  // Neural network for internal V1 connections
 #include "core/topology/nimcp_fractal_topology.h"  // Scale-free topology generation
+#include "async/nimcp_bio_async.h"  // Bio-async communication
+#include "async/nimcp_bio_router.h"
+#include "async/nimcp_bio_messages.h"
 #include <math.h>
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
+
+/*=============================================================================
+ * LOGGING MODULE IDENTIFIER
+ *===========================================================================*/
+
+#define VISUAL_LOG_MODULE "VISUAL_CORTEX"
 
 #ifndef M_PI
 #define M_PI 3.14159265358979323846
@@ -168,14 +178,14 @@ conv_layer_t* conv_layer_create(const conv_layer_config_t* config)
     if (config->input_width == 0 || config->input_height == 0 ||
         config->input_channels == 0 || config->num_filters == 0 ||
         config->kernel_size == 0 || config->stride == 0) {
-        NIMCP_LOGGING_ERROR("Invalid convolution layer configuration parameters");
+        LOG_ERROR(VISUAL_LOG_MODULE, "Invalid convolution layer configuration parameters");
         return NULL;
     }
 
     // Allocate layer
     conv_layer_t* layer = (conv_layer_t*)nimcp_calloc(1, sizeof(conv_layer_t));
     if (!layer) {
-        NIMCP_LOGGING_ERROR("Failed to allocate convolution layer");
+        LOG_ERROR(VISUAL_LOG_MODULE, "Failed to allocate convolution layer");
         return NULL;
     }
 
@@ -196,7 +206,7 @@ conv_layer_t* conv_layer_create(const conv_layer_config_t* config)
     uint32_t kernel_total_size = config->num_filters * config->kernel_size * config->kernel_size * config->input_channels;
     layer->kernels = (float*)nimcp_calloc(kernel_total_size, sizeof(float));
     if (!nimcp_validate_pointer(layer->kernels, "kernels")) {
-        NIMCP_LOGGING_ERROR("Failed to allocate convolution kernels");
+        LOG_ERROR(VISUAL_LOG_MODULE, "Failed to allocate convolution kernels");
         conv_layer_destroy(layer);
         return NULL;
     }
@@ -209,7 +219,7 @@ conv_layer_t* conv_layer_create(const conv_layer_config_t* config)
     // Allocate bias
     layer->bias = (float*)nimcp_calloc(config->num_filters, sizeof(float));
     if (!nimcp_validate_pointer(layer->bias, "bias")) {
-        NIMCP_LOGGING_ERROR("Failed to allocate convolution bias");
+        LOG_ERROR(VISUAL_LOG_MODULE, "Failed to allocate convolution bias");
         conv_layer_destroy(layer);
         return NULL;
     }
@@ -247,7 +257,7 @@ bool conv_layer_set_kernel(conv_layer_t* layer, uint32_t filter_idx, const float
     }
 
     if (filter_idx >= layer->num_filters) {
-        NIMCP_LOGGING_ERROR("Invalid filter index: %u >= %u", filter_idx, layer->num_filters);
+        LOG_ERROR(VISUAL_LOG_MODULE, "Invalid filter index: %u >= %u", filter_idx, layer->num_filters);
         return false;
     }
 
@@ -357,13 +367,13 @@ pool_layer_t* pool_layer_create(const pool_layer_config_t* config)
 
     if (config->input_width == 0 || config->input_height == 0 ||
         config->input_channels == 0 || config->pool_size == 0 || config->stride == 0) {
-        NIMCP_LOGGING_ERROR("Invalid pooling layer configuration parameters");
+        LOG_ERROR(VISUAL_LOG_MODULE, "Invalid pooling layer configuration parameters");
         return NULL;
     }
 
     pool_layer_t* layer = (pool_layer_t*)nimcp_calloc(1, sizeof(pool_layer_t));
     if (!nimcp_validate_pointer(layer, "layer")) {
-        NIMCP_LOGGING_ERROR("Failed to allocate pooling layer");
+        LOG_ERROR(VISUAL_LOG_MODULE, "Failed to allocate pooling layer");
         return NULL;
     }
 
@@ -465,13 +475,13 @@ float* gabor_create_kernel(int kernel_size, const gabor_params_t* params)
     }
 
     if (kernel_size <= 0 || kernel_size % 2 == 0) {
-        NIMCP_LOGGING_ERROR("Invalid kernel size: %d (must be positive and odd)", kernel_size);
+        LOG_ERROR(VISUAL_LOG_MODULE, "Invalid kernel size: %d (must be positive and odd)", kernel_size);
         return NULL;
     }
 
     float* kernel = (float*)nimcp_calloc(kernel_size * kernel_size, sizeof(float));
     if (!nimcp_validate_pointer(kernel, "kernel")) {
-        NIMCP_LOGGING_ERROR("Failed to allocate Gabor kernel");
+        LOG_ERROR(VISUAL_LOG_MODULE, "Failed to allocate Gabor kernel");
         return NULL;
     }
 
@@ -528,13 +538,13 @@ struct attention_map_struct {
 attention_map_t* attention_map_create(uint32_t width, uint32_t height)
 {
     if (width == 0 || height == 0) {
-        NIMCP_LOGGING_ERROR("Invalid attention map dimensions: %u x %u", width, height);
+        LOG_ERROR(VISUAL_LOG_MODULE, "Invalid attention map dimensions: %u x %u", width, height);
         return NULL;
     }
 
     attention_map_t* map = (attention_map_t*)nimcp_calloc(1, sizeof(attention_map_t));
     if (!nimcp_validate_pointer(map, "map")) {
-        NIMCP_LOGGING_ERROR("Failed to allocate attention map");
+        LOG_ERROR(VISUAL_LOG_MODULE, "Failed to allocate attention map");
         return NULL;
     }
 
@@ -543,7 +553,7 @@ attention_map_t* attention_map_create(uint32_t width, uint32_t height)
     map->values = (float*)nimcp_calloc(width * height, sizeof(float));
 
     if (!nimcp_validate_pointer(map->values, "map->values")) {
-        NIMCP_LOGGING_ERROR("Failed to allocate attention map values");
+        LOG_ERROR(VISUAL_LOG_MODULE, "Failed to allocate attention map values");
         nimcp_free(map);
         return NULL;
     }
@@ -576,7 +586,7 @@ float attention_map_get(const attention_map_t* map, uint32_t x, uint32_t y)
     }
 
     if (x >= map->width || y >= map->height) {
-        NIMCP_LOGGING_ERROR("Attention map coordinates out of bounds: (%u, %u) >= (%u, %u)", x, y, map->width, map->height);
+        LOG_ERROR(VISUAL_LOG_MODULE, "Attention map coordinates out of bounds: (%u, %u) >= (%u, %u)", x, y, map->width, map->height);
         return -1.0f;
     }
 
@@ -593,7 +603,7 @@ bool attention_map_set(attention_map_t* map, uint32_t x, uint32_t y, float value
     }
 
     if (x >= map->width || y >= map->height) {
-        NIMCP_LOGGING_ERROR("Attention map coordinates out of bounds: (%u, %u) >= (%u, %u)", x, y, map->width, map->height);
+        LOG_ERROR(VISUAL_LOG_MODULE, "Attention map coordinates out of bounds: (%u, %u) >= (%u, %u)", x, y, map->width, map->height);
         return false;
     }
 
@@ -676,6 +686,10 @@ struct visual_cortex_struct {
     // === Copy-on-Write Support ===
     uint32_t* _cow_refcount;              /**< Reference count for CoW (NULL if owned) */
     bool _cow_is_shallow;                 /**< True if this is a shallow copy */
+
+    // === Bio-Async Communication ===
+    bio_module_context_t bio_ctx;         /**< Bio-async module context */
+    bool bio_async_enabled;               /**< Whether bio-async is enabled */
 };
 
 /**
@@ -690,13 +704,13 @@ visual_cortex_t* visual_cortex_create(const visual_cortex_config_t* config)
 
     if (config->input_width == 0 || config->input_height == 0 ||
         config->num_v1_filters == 0 || config->feature_dim == 0) {
-        NIMCP_LOGGING_ERROR("Invalid visual cortex configuration parameters");
+        LOG_ERROR(VISUAL_LOG_MODULE, "Invalid visual cortex configuration parameters");
         return NULL;
     }
 
     visual_cortex_t* cortex = (visual_cortex_t*)nimcp_calloc(1, sizeof(visual_cortex_t));
     if (!cortex) {
-        NIMCP_LOGGING_ERROR("Failed to allocate visual cortex");
+        LOG_ERROR(VISUAL_LOG_MODULE, "Failed to allocate visual cortex");
         return NULL;
     }
 
@@ -764,7 +778,7 @@ visual_cortex_t* visual_cortex_create(const visual_cortex_config_t* config)
 
     cortex->v1_layer = conv_layer_create(&conv_config);
     if (!nimcp_validate_pointer(cortex->v1_layer, "v1_layer")) {
-        NIMCP_LOGGING_ERROR("Failed to create V1 convolution layer");
+        LOG_ERROR(VISUAL_LOG_MODULE, "Failed to create V1 convolution layer");
         visual_cortex_destroy(cortex);
         return NULL;
     }
@@ -804,7 +818,7 @@ visual_cortex_t* visual_cortex_create(const visual_cortex_config_t* config)
 
     cortex->pool_layer = pool_layer_create(&pool_config);
     if (!nimcp_validate_pointer(cortex->pool_layer, "pool_layer")) {
-        NIMCP_LOGGING_ERROR("Failed to create pooling layer");
+        LOG_ERROR(VISUAL_LOG_MODULE, "Failed to create pooling layer");
         visual_cortex_destroy(cortex);
         return NULL;
     }
@@ -813,7 +827,7 @@ visual_cortex_t* visual_cortex_create(const visual_cortex_config_t* config)
     uint32_t pooled_size = (v1_output_w / 2) * (v1_output_h / 2) * config->num_v1_filters;
     cortex->feature_weights = (float*)nimcp_calloc(pooled_size, sizeof(float));
     if (!nimcp_validate_pointer(cortex->feature_weights, "feature_weights")) {
-        NIMCP_LOGGING_ERROR("Failed to allocate feature weights");
+        LOG_ERROR(VISUAL_LOG_MODULE, "Failed to allocate feature weights");
         visual_cortex_destroy(cortex);
         return NULL;
     }
@@ -880,14 +894,14 @@ visual_cortex_t* visual_cortex_create(const visual_cortex_config_t* config)
             topology_stats_t stats;
             if (topology_generate_scale_free(cortex->internal_network, &topo_config, &stats)) {
                 cortex->has_internal_network = true;
-                NIMCP_LOGGING_INFO("V1 internal network: %u neurons, %u synapses, %.2f avg degree",
-                                   stats.num_neurons, stats.num_synapses, stats.avg_degree);
+                LOG_INFO(VISUAL_LOG_MODULE, "V1 internal network: %u neurons, %u synapses, %.2f avg degree",
+                         stats.num_neurons, stats.num_synapses, stats.avg_degree);
             } else {
-                NIMCP_LOGGING_WARN("Failed to generate V1 topology, using network without topology");
+                LOG_WARN(VISUAL_LOG_MODULE, "Failed to generate V1 topology, using network without topology");
                 cortex->has_internal_network = true;  // Network exists, just without topology
             }
         } else {
-            NIMCP_LOGGING_WARN("Failed to create V1 internal network");
+            LOG_WARN(VISUAL_LOG_MODULE, "Failed to create V1 internal network");
         }
     }
 
@@ -901,12 +915,34 @@ visual_cortex_t* visual_cortex_create(const visual_cortex_config_t* config)
 
     cortex->memory_pool = memory_pool_create(&mem_pool_config);
     if (!cortex->memory_pool) {
-        NIMCP_LOGGING_WARN("Visual cortex: Failed to create memory pool, using malloc fallback");
+        LOG_WARN(VISUAL_LOG_MODULE, "Failed to create memory pool, using malloc fallback");
     }
 
     // Initialize CoW fields (owned by default)
     cortex->_cow_refcount = NULL;
     cortex->_cow_is_shallow = false;
+
+    // === Bio-Async Registration ===
+    cortex->bio_ctx = NULL;
+    cortex->bio_async_enabled = false;
+
+    if (config->enable_bio_async && bio_router_is_initialized()) {
+        bio_module_info_t bio_info = {
+            .module_id = BIO_MODULE_VISUAL_CORTEX,
+            .module_name = "visual_cortex",
+            .inbox_capacity = 64,
+            .user_data = cortex
+        };
+
+        cortex->bio_ctx = bio_router_register_module(&bio_info);
+        if (cortex->bio_ctx) {
+            cortex->bio_async_enabled = true;
+            LOG_INFO(VISUAL_LOG_MODULE, "Bio-async registered for visual cortex (module_id=%d)",
+                     BIO_MODULE_VISUAL_CORTEX);
+        } else {
+            LOG_WARN(VISUAL_LOG_MODULE, "Failed to register bio-async for visual cortex");
+        }
+    }
 
     return cortex;
 }
@@ -918,6 +954,14 @@ void visual_cortex_destroy(visual_cortex_t* cortex)
 {
     if (!cortex) {
         return;
+    }
+
+    // === Bio-Async Unregistration ===
+    if (cortex->bio_async_enabled && cortex->bio_ctx) {
+        bio_router_unregister_module(cortex->bio_ctx);
+        cortex->bio_ctx = NULL;
+        cortex->bio_async_enabled = false;
+        LOG_DEBUG(VISUAL_LOG_MODULE, "Bio-async unregistered for visual cortex");
     }
 
     // === CoW Reference Counting ===
@@ -992,7 +1036,7 @@ bool visual_cortex_process(
     }
 
     if (width != cortex->input_width || height != cortex->input_height || channels == 0) {
-        NIMCP_LOGGING_ERROR("Invalid image dimensions: %ux%ux%u (expected %ux%ux>0)",
+        LOG_ERROR(VISUAL_LOG_MODULE, "Invalid image dimensions: %ux%ux%u (expected %ux%ux>0)",
                            width, height, channels, cortex->input_width, cortex->input_height);
         return false;
     }
@@ -1003,7 +1047,7 @@ bool visual_cortex_process(
     uint32_t input_size = width * height;
     float* input_float = (float*)nimcp_calloc(input_size, sizeof(float));
     if (!nimcp_validate_pointer(input_float, "input_float")) {
-        NIMCP_LOGGING_ERROR("Failed to allocate input buffer");
+        LOG_ERROR(VISUAL_LOG_MODULE, "Failed to allocate input buffer");
         return false;
     }
 
@@ -1023,7 +1067,7 @@ bool visual_cortex_process(
 
     float* v1_output = (float*)nimcp_calloc(v1_output_size, sizeof(float));
     if (!nimcp_validate_pointer(v1_output, "v1_output")) {
-        NIMCP_LOGGING_ERROR("Failed to allocate V1 output buffer");
+        LOG_ERROR(VISUAL_LOG_MODULE, "Failed to allocate V1 output buffer");
         nimcp_free(input_float);
         return false;
     }
@@ -1059,7 +1103,7 @@ bool visual_cortex_process(
 
     float* pooled_output = (float*)nimcp_calloc(pooled_size, sizeof(float));
     if (!nimcp_validate_pointer(pooled_output, "pooled_output")) {
-        NIMCP_LOGGING_ERROR("Failed to allocate pooled output buffer");
+        LOG_ERROR(VISUAL_LOG_MODULE, "Failed to allocate pooled output buffer");
         nimcp_free(input_float);
         nimcp_free(v1_output);
         return false;
@@ -1185,14 +1229,14 @@ bool visual_cortex_store_memory(
         memory = (visual_memory_t*)nimcp_calloc(1, sizeof(visual_memory_t));
     }
     if (!nimcp_validate_pointer(memory, "memory")) {
-        NIMCP_LOGGING_ERROR("Failed to allocate visual memory entry");
+        LOG_ERROR(VISUAL_LOG_MODULE, "Failed to allocate visual memory entry");
         return false;
     }
 
     memory->feature_dim = cortex->feature_dim;
     memory->features = (float*)nimcp_calloc(cortex->feature_dim, sizeof(float));
     if (!nimcp_validate_pointer(memory->features, "memory->features")) {
-        NIMCP_LOGGING_ERROR("Failed to allocate visual memory features");
+        LOG_ERROR(VISUAL_LOG_MODULE, "Failed to allocate visual memory features");
         // Release memory to appropriate allocator
         if (cortex->memory_pool && memory_pool_owns(cortex->memory_pool, memory)) {
             memory_pool_release(cortex->memory_pool, memory);
@@ -1243,7 +1287,7 @@ bool visual_cortex_recall_memory(
     memory_similarity_t* similarities = (memory_similarity_t*)nimcp_calloc(
         cortex->num_memories, sizeof(memory_similarity_t));
     if (!nimcp_validate_pointer(similarities, "similarities")) {
-        NIMCP_LOGGING_ERROR("Failed to allocate similarity buffer");
+        LOG_ERROR(VISUAL_LOG_MODULE, "Failed to allocate similarity buffer");
         return false;
     }
 
@@ -1273,7 +1317,7 @@ bool visual_cortex_recall_memory(
     int num_results = (max_results < (int)cortex->num_memories) ? max_results : (int)cortex->num_memories;
     *memories = (visual_memory_t**)nimcp_calloc(num_results, sizeof(visual_memory_t*));
     if (!nimcp_validate_pointer(*memories, "result_memories")) {
-        NIMCP_LOGGING_ERROR("Failed to allocate memory results array");
+        LOG_ERROR(VISUAL_LOG_MODULE, "Failed to allocate memory results array");
         nimcp_free(similarities);
         return false;
     }
@@ -1396,7 +1440,7 @@ bool visual_cortex_get_attention_peak(
     }
 
     if (!nimcp_validate_pointer(attn_map->values, "attn_map->values")) {
-        NIMCP_LOGGING_ERROR("Attention map has no values");
+        LOG_ERROR(VISUAL_LOG_MODULE, "Attention map has no values");
         return false;
     }
 
@@ -1502,7 +1546,7 @@ const phasic_tonic_state_t* visual_cortex_get_neuromod_state(
     }
 
     if (neuromod_type >= NUM_NEUROMOD_TYPES) {
-        NIMCP_LOGGING_ERROR("Invalid neuromod_type: %u (max %u)", neuromod_type, NUM_NEUROMOD_TYPES - 1);
+        LOG_ERROR(VISUAL_LOG_MODULE, "Invalid neuromod_type: %u (max %u)", neuromod_type, NUM_NEUROMOD_TYPES - 1);
         return NULL;
     }
 
@@ -1524,7 +1568,7 @@ bool visual_cortex_set_receptor_profile(
     }
 
     if (layer_idx >= NUM_V1_LAYERS) {
-        NIMCP_LOGGING_ERROR("Invalid layer_idx: %u (max %u)", layer_idx, NUM_V1_LAYERS - 1);
+        LOG_ERROR(VISUAL_LOG_MODULE, "Invalid layer_idx: %u (max %u)", layer_idx, NUM_V1_LAYERS - 1);
         return false;
     }
 
@@ -1546,7 +1590,7 @@ const receptor_expression_t* visual_cortex_get_receptor_profile(
     }
 
     if (layer_idx >= NUM_V1_LAYERS) {
-        NIMCP_LOGGING_ERROR("Invalid layer_idx: %u (max %u)", layer_idx, NUM_V1_LAYERS - 1);
+        LOG_ERROR(VISUAL_LOG_MODULE, "Invalid layer_idx: %u (max %u)", layer_idx, NUM_V1_LAYERS - 1);
         return NULL;
     }
 
@@ -1596,12 +1640,12 @@ bool visual_cortex_trigger_phasic_burst(
     }
 
     if (neuromod_type >= NUM_NEUROMOD_TYPES) {
-        NIMCP_LOGGING_ERROR("Invalid neuromod_type: %u", neuromod_type);
+        LOG_ERROR(VISUAL_LOG_MODULE, "Invalid neuromod_type: %u", neuromod_type);
         return false;
     }
 
     if (amount < 0.0f || amount > 1.0f) {
-        NIMCP_LOGGING_WARN("Phasic burst amount out of range: %.2f, clamping to [0,1]", amount);
+        LOG_WARN(VISUAL_LOG_MODULE, "Phasic burst amount out of range: %.2f, clamping to [0,1]", amount);
         amount = fminf(fmaxf(amount, 0.0f), 1.0f);
     }
 
@@ -1629,12 +1673,12 @@ bool visual_cortex_set_tonic_level(
     }
 
     if (neuromod_type >= NUM_NEUROMOD_TYPES) {
-        NIMCP_LOGGING_ERROR("Invalid neuromod_type: %u", neuromod_type);
+        LOG_ERROR(VISUAL_LOG_MODULE, "Invalid neuromod_type: %u", neuromod_type);
         return false;
     }
 
     if (level < 0.0f || level > 1.0f) {
-        NIMCP_LOGGING_WARN("Tonic level out of range: %.2f, clamping to [0,1]", level);
+        LOG_WARN(VISUAL_LOG_MODULE, "Tonic level out of range: %.2f, clamping to [0,1]", level);
         level = fminf(fmaxf(level, 0.0f), 1.0f);
     }
 
@@ -1665,7 +1709,7 @@ bool visual_cortex_compute_neuromod_effects(
     }
 
     if (layer_idx >= NUM_V1_LAYERS) {
-        NIMCP_LOGGING_ERROR("Invalid layer_idx: %u", layer_idx);
+        LOG_ERROR(VISUAL_LOG_MODULE, "Invalid layer_idx: %u", layer_idx);
         return false;
     }
 
@@ -1852,4 +1896,136 @@ bool visual_cortex_detect_agent(visual_cortex_t* cortex,
     bool has_organization = (mid_range_count > num_features / 3);
 
     return has_structure && has_organization;
+}
+
+//=============================================================================
+// Bio-Async Communication Implementation
+//=============================================================================
+
+/**
+ * @brief Get bio-async module context
+ */
+bio_module_context_t visual_cortex_get_bio_context(visual_cortex_t* cortex)
+{
+    if (!cortex || !cortex->bio_async_enabled) {
+        return NULL;
+    }
+    return cortex->bio_ctx;
+}
+
+/**
+ * @brief Process pending bio-async messages
+ *
+ * Uses bio_router_process_inbox() which calls registered handlers.
+ * Handlers should be registered during module initialization.
+ */
+uint32_t visual_cortex_process_bio_messages(visual_cortex_t* cortex, uint32_t max_messages)
+{
+    if (!cortex || !cortex->bio_async_enabled || !cortex->bio_ctx) {
+        return 0;
+    }
+
+    // Process inbox using the router's handler-based system
+    uint32_t processed = bio_router_process_inbox(cortex->bio_ctx, max_messages);
+
+    if (processed > 0) {
+        LOG_DEBUG(VISUAL_LOG_MODULE, "Processed %u bio-async messages", processed);
+    }
+
+    return processed;
+}
+
+/**
+ * @brief Broadcast visual feature detection via bio-async
+ */
+nimcp_error_t visual_cortex_broadcast_input(
+    visual_cortex_t* cortex,
+    const float* features,
+    uint32_t num_features,
+    float salience)
+{
+    if (!cortex) {
+        return NIMCP_ERROR_INVALID_PARAM;
+    }
+
+    if (!cortex->bio_async_enabled || !cortex->bio_ctx) {
+        return NIMCP_ERROR_NOT_INITIALIZED;
+    }
+
+    if (!features || num_features == 0) {
+        return NIMCP_ERROR_INVALID_PARAM;
+    }
+
+    // Create visual feature detected message
+    bio_msg_visual_feature_detected_t msg;
+    bio_msg_init_header(&msg.header, BIO_MSG_VISUAL_FEATURE_DETECTED,
+                        BIO_MODULE_VISUAL_CORTEX, 0,  // 0 = broadcast
+                        sizeof(msg) - sizeof(bio_message_header_t));
+
+    msg.header.channel = BIO_CHANNEL_DOPAMINE;  // Visual salience involves dopamine
+    msg.header.flags = BIO_MSG_FLAG_BROADCAST;
+
+    // Fill in feature detection data
+    msg.feature_id = 0;  // Generic visual input
+    msg.x_position = 0.5f;  // Center (can be parameterized)
+    msg.y_position = 0.5f;
+    msg.confidence = salience;
+    msg.salience = salience;
+    msg.layer = 1;  // V1 layer
+
+    // Broadcast to all interested modules
+    nimcp_error_t err = bio_router_broadcast(cortex->bio_ctx, &msg, sizeof(msg));
+    if (err != NIMCP_SUCCESS) {
+        LOG_WARN(VISUAL_LOG_MODULE, "Failed to broadcast visual input: %d", err);
+        return err;
+    }
+
+    LOG_DEBUG(VISUAL_LOG_MODULE, "Broadcast visual input: %u features, salience=%.2f",
+              num_features, salience);
+
+    return NIMCP_SUCCESS;
+}
+
+/**
+ * @brief Send visual attention shift notification
+ */
+nimcp_error_t visual_cortex_broadcast_attention_shift(
+    visual_cortex_t* cortex,
+    float x,
+    float y,
+    float salience)
+{
+    if (!cortex) {
+        return NIMCP_ERROR_INVALID_PARAM;
+    }
+
+    if (!cortex->bio_async_enabled || !cortex->bio_ctx) {
+        return NIMCP_ERROR_NOT_INITIALIZED;
+    }
+
+    // Create attention shift message using the defined type
+    bio_msg_visual_attention_shift_t msg;
+    bio_msg_init_header(&msg.header, BIO_MSG_VISUAL_ATTENTION_SHIFT,
+                        BIO_MODULE_VISUAL_CORTEX, 0,  // 0 = broadcast
+                        sizeof(msg) - sizeof(bio_message_header_t));
+
+    msg.header.channel = BIO_CHANNEL_ACETYLCHOLINE;  // Attention involves ACh
+    msg.header.flags = BIO_MSG_FLAG_BROADCAST | BIO_MSG_FLAG_URGENT;
+
+    msg.target_x = x;
+    msg.target_y = y;
+    msg.urgency = salience;
+    msg.reason = 0;  // Generic attention shift
+
+    // Broadcast to all interested modules
+    nimcp_error_t err = bio_router_broadcast(cortex->bio_ctx, &msg, sizeof(msg));
+    if (err != NIMCP_SUCCESS) {
+        LOG_WARN(VISUAL_LOG_MODULE, "Failed to broadcast attention shift: %d", err);
+        return err;
+    }
+
+    LOG_DEBUG(VISUAL_LOG_MODULE, "Broadcast attention shift: (%.2f, %.2f) salience=%.2f",
+              x, y, salience);
+
+    return NIMCP_SUCCESS;
 }

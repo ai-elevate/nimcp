@@ -96,6 +96,14 @@ typedef struct {
     uint32_t attention_weight_count;  // Number of attention weights
     uint64_t last_update_time_ms;     // Last system update time
 
+    // Unified memory integration (CoW support for brain cloning)
+    void* mem_manager;                /**< unified_mem_manager_t */
+    void* attention_handle;           /**< CoW handle for attention weights */
+
+    // Bio-async integration
+    void* bio_ctx;                    /**< bio_module_context_t pointer */
+    bool bio_async_enabled;           /**< Bio-async registration status */
+
 } wm_transfer_system_t;
 
 //=============================================================================

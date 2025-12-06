@@ -49,6 +49,17 @@
 #include <string.h>
 #include <math.h>
 
+// === BIO-ASYNC + LOGGING + UNIFIED MEMORY INTEGRATION ===
+#include "async/nimcp_bio_async.h"
+#include "async/nimcp_bio_router.h"
+#include "async/nimcp_bio_messages.h"
+#include "utils/logging/nimcp_logging.h"
+#include "utils/memory/nimcp_unified_memory.h"
+
+#define LOG_MODULE "synapse_compute"
+#define BIO_MODULE_ID 0x0133
+
+
 // Helper: Get dopamine phasic-tonic state from neuromodulator system
 // This is an internal accessor that knows the struct layout
 static phasic_tonic_state_t* get_dopamine_phasic_tonic(void* neuromod_system) {

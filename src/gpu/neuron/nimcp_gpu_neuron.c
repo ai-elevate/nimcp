@@ -18,12 +18,19 @@
  */
 
 #include "gpu/nimcp_gpu_neuron.h"
+#include "utils/memory/nimcp_unified_memory.h"
 #include "gpu/nimcp_execution_mode.h"
 #include "utils/memory/nimcp_memory.h"
+#include "async/nimcp_bio_async.h"
+#include "async/nimcp_bio_router.h"
+#include "async/nimcp_bio_messages.h"
+#include "utils/logging/nimcp_logging.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
+
+#define LOG_MODULE "GPU"
 
 #ifdef NIMCP_ENABLE_CUDA
 #include <cuda_runtime.h>
@@ -63,6 +70,10 @@ struct gpu_neural_network_struct {
     // Statistics
     uint64_t total_spikes;
     uint64_t total_updates;
+
+    // Bio-async integration
+    bio_module_context_t bio_ctx;
+    bool bio_async_enabled;
 };
 
 //=============================================================================
@@ -189,7 +200,7 @@ NIMCP_EXPORT gpu_neural_network_t gpu_neural_network_create(
     size_t synapses_size = network->synapses_capacity * sizeof(gpu_synapse_t);
     network->synapses_host = (gpu_synapse_t*)nimcp_aligned_alloc(16, synapses_size);
     if (!network->synapses_host) {
-        nimcp_free(network->neurons_host);
+        nimcp_aligned_free(network->neurons_host);  // BUGFIX: neurons_host uses aligned_alloc
         nimcp_free(network);
         return NULL;
     }
@@ -225,14 +236,38 @@ NIMCP_EXPORT gpu_neural_network_t gpu_neural_network_create(
         }
 
         network->using_gpu = true;
-        return network;
+        LOG_INFO(LOG_MODULE, "GPU neural network created with CUDA acceleration");
+        goto bio_async_init;
     }
-
 cpu_fallback:
 #endif
-
     // CPU fallback mode
     network->using_gpu = false;
+    LOG_INFO(LOG_MODULE, "GPU neural network created with CPU fallback");
+
+#ifdef NIMCP_ENABLE_CUDA
+bio_async_init:
+#endif
+
+    // Bio-async registration
+    network->bio_ctx = NULL;
+    network->bio_async_enabled = false;
+    if (bio_router_is_initialized()) {
+        bio_module_info_t bio_info = {
+            .module_id = BIO_MODULE_SYSTEM_GPU_NEURON,
+            .module_name = "gpu_neuron",
+            .inbox_capacity = 64,
+            .user_data = network
+        };
+        network->bio_ctx = bio_router_register_module(&bio_info);
+        if (network->bio_ctx) {
+            network->bio_async_enabled = true;
+            LOG_INFO(LOG_MODULE, "Bio-async registered for GPU neuron network");
+        } else {
+            LOG_WARN(LOG_MODULE, "Bio-async registration failed for GPU neuron network");
+        }
+    }
+
     return network;
 }
 
@@ -240,6 +275,16 @@ NIMCP_EXPORT void gpu_neural_network_destroy(gpu_neural_network_t network)
 {
     if (!network) {
         return;
+    }
+
+    LOG_DEBUG(LOG_MODULE, "Destroying GPU neural network");
+
+    // Bio-async unregistration
+    if (network->bio_async_enabled && network->bio_ctx) {
+        bio_router_unregister_module(network->bio_ctx);
+        network->bio_ctx = NULL;
+        network->bio_async_enabled = false;
+        LOG_DEBUG(LOG_MODULE, "Bio-async unregistered for GPU neuron network");
     }
 
 #ifdef NIMCP_ENABLE_CUDA
@@ -257,13 +302,15 @@ NIMCP_EXPORT void gpu_neural_network_destroy(gpu_neural_network_t network)
 
         // Destroy stream
         cudaStreamDestroy(network->stream);
+        LOG_DEBUG(LOG_MODULE, "GPU resources freed");
     }
 #endif
 
     // Free host memory
     nimcp_aligned_free(network->neurons_host);
-    nimcp_free(network->synapses_host);
+    nimcp_aligned_free(network->synapses_host);  // BUGFIX: synapses_host uses aligned_alloc
     nimcp_free(network);
+    LOG_DEBUG(LOG_MODULE, "GPU neural network destroyed");
 }
 
 //=============================================================================
@@ -393,6 +440,11 @@ NIMCP_EXPORT uint32_t gpu_neural_network_update(
 {
     if (!network) {
         return 0;
+    }
+
+    // Process pending bio-async messages
+    if (network->bio_async_enabled && network->bio_ctx) {
+        bio_router_process_inbox(network->bio_ctx, 5);
     }
 
     uint32_t spike_count = 0;

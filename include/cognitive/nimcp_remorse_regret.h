@@ -241,6 +241,10 @@ typedef struct {
     float average_regret_intensity;
     float average_remorse_intensity;
 
+    // Bio-async integration
+    void* bio_ctx_ptr;              /**< bio_module_context_t pointer */
+    bool bio_async_enabled;         /**< Bio-async registration status */
+
 } remorse_regret_system_t;
 
 //=============================================================================

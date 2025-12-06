@@ -51,34 +51,97 @@
  * @version 2.8.0
  */
 
-#include "nimcp_brain_resize.h"
-#include "nimcp_brain.h"
+/**
+ * BIO-ASYNC INTEGRATION:
+ * - Module ID: BIO_MODULE_BRAIN_RESIZE (0x0130)
+ * - Publishes: Resize start/complete events, utilization metrics
+ * - Channels: DOPAMINE (success), NOREPINEPHRINE (urgent/failure)
+ */
+
+#define LOG_MODULE "brain_resize"
+
+#include "core/brain/nimcp_brain_resize.h"
+#include "utils/memory/nimcp_unified_memory.h"
+#include "utils/memory/nimcp_memory_guards.h"
+#include "core/brain/nimcp_brain.h"
 #include "plasticity/adaptive/nimcp_adaptive.h"
 #include "core/neuralnet/nimcp_neuralnet.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/platform/nimcp_system_resources.h"
 #include "glial/integration/nimcp_glial_integration.h"
 #include "plasticity/neuromodulators/nimcp_spatial_neuromod.h"
+#include "utils/logging/nimcp_logging.h"
+#include "async/nimcp_bio_async.h"
+#include "async/nimcp_bio_router.h"
+#include "async/nimcp_bio_messages.h"
 #include <math.h>
 #include <stdio.h>
 #include <string.h>
 
-// Logging macros (use fprintf if logging not available)
-#ifndef NIMCP_LOG_INFO
-#define NIMCP_LOG_INFO(...)  fprintf(stderr, "[INFO] " __VA_ARGS__); fprintf(stderr, "\n")
-#endif
+//=============================================================================
+// BIO-ASYNC MODULE REGISTRATION
+//=============================================================================
 
-#ifndef NIMCP_LOG_ERROR
-#define NIMCP_LOG_ERROR(...) fprintf(stderr, "[ERROR] " __VA_ARGS__); fprintf(stderr, "\n")
-#endif
+#define BIO_MODULE_BRAIN_RESIZE 0x0130
 
-#ifndef NIMCP_LOG_WARN
-#define NIMCP_LOG_WARN(...)  fprintf(stderr, "[WARN] " __VA_ARGS__); fprintf(stderr, "\n")
-#endif
+// Bio-async registration state
+static bool g_bio_async_registered = false;
 
-#ifndef NIMCP_LOG_DEBUG
-#define NIMCP_LOG_DEBUG(...) fprintf(stderr, "[DEBUG] " __VA_ARGS__); fprintf(stderr, "\n")
-#endif
+/**
+ * @brief Ensure bio-async system is registered
+ */
+static bio_module_context_t g_bio_module_ctx = NULL;
+
+static void ensure_bio_async_registered(void) {
+    if (!g_bio_async_registered) {
+        LOG_DEBUG("Registering brain_resize module with bio-async router");
+        bio_module_info_t info = {
+            .module_id = BIO_MODULE_BRAIN_RESIZE,
+            .module_name = "brain_resize",
+            .inbox_capacity = 256,
+            .user_data = NULL
+        };
+        g_bio_module_ctx = bio_router_register_module(&info);
+        g_bio_async_registered = (g_bio_module_ctx != NULL);
+        if (!g_bio_async_registered) {
+            LOG_WARN("Failed to register brain_resize with bio-async router");
+        }
+    }
+}
+
+/**
+ * @brief Publish resize event via bio-async
+ */
+static void publish_resize_event(
+    bio_message_type_t msg_type,
+    uint32_t old_size,
+    uint32_t new_size,
+    bool success,
+    nimcp_bio_channel_type_t channel)
+{
+    if (!g_bio_async_registered || !g_bio_module_ctx) {
+        return;  // Bio-async not available, skip publishing
+    }
+
+    // Create resize event message
+    bio_msg_brain_state_query_t msg = {0};
+    bio_msg_init_header(&msg.header, msg_type,
+                       BIO_MODULE_BRAIN_RESIZE,
+                       0,  // Broadcast
+                       sizeof(msg));
+    msg.header.channel = channel;
+    msg.query_flags = old_size;  // Reuse field for old_size
+    msg.region_id = new_size;    // Reuse field for new_size
+
+    // Publish message via bio-router broadcast
+    nimcp_error_t err = bio_router_broadcast(g_bio_module_ctx, &msg, sizeof(msg));
+    if (err != NIMCP_SUCCESS) {
+        LOG_WARN("Failed to broadcast resize event: error=%d", err);
+    }
+
+    LOG_DEBUG("Published resize event: type=%u, old=%u, new=%u, success=%d, channel=%d",
+              msg_type, old_size, new_size, success, channel);
+}
 
 //=============================================================================
 // Internal Brain Structure (forward declaration for access)
@@ -127,12 +190,16 @@ typedef struct {
  */
 static float compute_neuron_utilization(neural_network_t network)
 {
+    LOG_DEBUG("Computing neuron utilization");
+
     if (!network) {
+        LOG_ERROR("compute_neuron_utilization: NULL network");
         return -1.0f;  // Error signal
     }
 
     uint32_t num_neurons = neural_network_get_num_neurons(network);
     if (num_neurons == 0) {
+        LOG_WARN("compute_neuron_utilization: Network has 0 neurons");
         return -1.0f;  // Error signal
     }
 
@@ -166,7 +233,9 @@ static float compute_neuron_utilization(neural_network_t network)
     }
 
     // For brand new brains, all neurons will have 0 activity, giving 0% utilization
-    return (float)active_count / (float)valid_reads;
+    float utilization = (float)active_count / (float)valid_reads;
+    LOG_DEBUG("Neuron utilization: %.2f%% (%u/%u active)", utilization * 100.0f, active_count, valid_reads);
+    return utilization;
 }
 
 /**
@@ -252,7 +321,7 @@ static bool should_grow(const growth_metrics_t* metrics)
 
     // Trigger 1: Manual request
     if (metrics->manual_trigger) {
-        NIMCP_LOG_INFO("Growth triggered: Manual request");
+        LOG_INFO("Growth triggered: Manual request");
         return true;
     }
 
@@ -262,7 +331,7 @@ static bool should_grow(const growth_metrics_t* metrics)
 
     if (metrics->avg_neuron_utilization > utilization_threshold &&
         metrics->steps_since_growth > utilization_patience) {
-        NIMCP_LOG_INFO("Growth triggered: High utilization (%.2f%% > %.2f%%)",
+        LOG_INFO("Growth triggered: High utilization (%.2f%% > %.2f%%)",
                        metrics->avg_neuron_utilization * 100,
                        utilization_threshold * 100);
         return true;
@@ -272,7 +341,7 @@ static bool should_grow(const growth_metrics_t* metrics)
     const float saturation_threshold = 0.80f;
 
     if (metrics->weight_saturation > saturation_threshold) {
-        NIMCP_LOG_INFO("Growth triggered: Weight saturation (%.2f%% > %.2f%%)",
+        LOG_INFO("Growth triggered: Weight saturation (%.2f%% > %.2f%%)",
                        metrics->weight_saturation * 100,
                        saturation_threshold * 100);
         return true;
@@ -306,7 +375,7 @@ static uint32_t compute_next_size(uint32_t current_size, bool use_gpu)
     system_resources_t resources;
     if (!system_resources_query(&resources)) {
         // Fallback: use preset sizes without hardware awareness
-        NIMCP_LOG_WARN("compute_next_size: Failed to query system resources, using defaults");
+        LOG_WARN("compute_next_size: Failed to query system resources, using defaults");
 
         if (current_size <= 100) {
             return 500;  // TINY → SMALL
@@ -323,7 +392,7 @@ static uint32_t compute_next_size(uint32_t current_size, bool use_gpu)
     uint32_t recommended_size = system_resources_recommend_size(&resources, current_size, use_gpu);
 
     // Log resource-aware decision
-    NIMCP_LOG_INFO("compute_next_size: Current=%u, Recommended=%u (RAM: %luMB avail, GPU: %s)",
+    LOG_INFO("compute_next_size: Current=%u, Recommended=%u (RAM: %luMB avail, GPU: %s)",
                    current_size, recommended_size,
                    (unsigned long)resources.available_ram_mb,
                    use_gpu ? "enabled" : "disabled");
@@ -331,7 +400,7 @@ static uint32_t compute_next_size(uint32_t current_size, bool use_gpu)
     // Additional safety check: never recommend same or smaller size
     if (recommended_size <= current_size) {
         uint32_t min_growth = (uint32_t)(current_size * 1.1f);  // At least 10% growth
-        NIMCP_LOG_WARN("compute_next_size: Recommended size (%u) <= current (%u), forcing min growth to %u",
+        LOG_WARN("compute_next_size: Recommended size (%u) <= current (%u), forcing min growth to %u",
                        recommended_size, current_size, min_growth);
         recommended_size = min_growth;
     }
@@ -380,23 +449,33 @@ static uint32_t compute_next_size(uint32_t current_size, bool use_gpu)
  */
 bool brain_resize(brain_t brain, uint32_t new_neuron_count)
 {
+    LOG_DEBUG("brain_resize: Entry, target_size=%u", new_neuron_count);
+
+    // Ensure bio-async is available
+    ensure_bio_async_registered();
+
+    // Process pending bio-async messages
+    if (g_bio_async_registered && g_bio_module_ctx) {
+        bio_router_process_inbox(g_bio_module_ctx, 5);
+    }
+
     // Guard: Validate brain handle
     if (!brain) {
-        NIMCP_LOG_ERROR("brain_resize: NULL brain handle");
+        LOG_ERROR("brain_resize: NULL brain handle");
         return false;
     }
 
     // Get current network
     adaptive_network_t old_network = brain->network;
     if (!old_network) {
-        NIMCP_LOG_ERROR("brain_resize: Brain has no network");
+        LOG_ERROR("brain_resize: Brain has no network");
         return false;
     }
 
     // Get current size
     neural_network_t base_network = adaptive_network_get_base_network(old_network);
     if (!base_network) {
-        NIMCP_LOG_ERROR("brain_resize: Cannot access base network");
+        LOG_ERROR("brain_resize: Cannot access base network");
         return false;
     }
 
@@ -404,25 +483,32 @@ bool brain_resize(brain_t brain, uint32_t new_neuron_count)
 
     // Guard: Validate new size (only growth supported)
     if (new_neuron_count <= current_neuron_count) {
-        NIMCP_LOG_ERROR("brain_resize: New size (%u) must be > current (%u). Shrinking not supported.",
-                        new_neuron_count, current_neuron_count);
+        LOG_ERROR("brain_resize: New size (%u) must be > current (%u). Shrinking not supported.",
+                  new_neuron_count, current_neuron_count);
+        // Publish failure event
+        publish_resize_event(BIO_MSG_ERROR_REPORT, current_neuron_count, new_neuron_count,
+                           false, BIO_CHANNEL_NOREPINEPHRINE);
         return false;
     }
 
-    NIMCP_LOG_INFO("brain_resize: Growing from %u to %u neurons (+%u, +%.1f%%)",
-                   current_neuron_count, new_neuron_count,
-                   new_neuron_count - current_neuron_count,
-                   ((float)(new_neuron_count - current_neuron_count) / current_neuron_count) * 100);
+    LOG_INFO("brain_resize: Growing from %u to %u neurons (+%u, +%.1f%%)",
+             current_neuron_count, new_neuron_count,
+             new_neuron_count - current_neuron_count,
+             ((float)(new_neuron_count - current_neuron_count) / current_neuron_count) * 100);
+
+    // Publish resize start event (via norepinephrine - alerting)
+    publish_resize_event(BIO_MSG_BRAIN_STATE_QUERY, current_neuron_count, new_neuron_count,
+                        true, BIO_CHANNEL_NOREPINEPHRINE);
 
     // Step 1: Create new larger network configuration
     const adaptive_network_config_t* old_config = adaptive_network_get_config(old_network);
     if (!old_config) {
-        NIMCP_LOG_ERROR("brain_resize: Cannot access old network config");
+        LOG_ERROR("brain_resize: Cannot access old network config");
         return false;
     }
 
     // DEBUG: Log old config spike params
-    NIMCP_LOG_INFO("brain_resize: old_config k_factor=%f, min_threshold=%f, max_threshold=%f",
+    LOG_INFO("brain_resize: old_config k_factor=%f, min_threshold=%f, max_threshold=%f",
                    old_config->spike_params.k_factor,
                    old_config->spike_params.min_threshold,
                    old_config->spike_params.max_threshold);
@@ -432,7 +518,7 @@ bool brain_resize(brain_t brain, uint32_t new_neuron_count)
     memcpy(&new_config, old_config, sizeof(adaptive_network_config_t));
 
     // DEBUG: Log new config spike params after memcpy
-    NIMCP_LOG_INFO("brain_resize: new_config k_factor=%f, min_threshold=%f, max_threshold=%f",
+    LOG_INFO("brain_resize: new_config k_factor=%f, min_threshold=%f, max_threshold=%f",
                    new_config.spike_params.k_factor,
                    new_config.spike_params.min_threshold,
                    new_config.spike_params.max_threshold);
@@ -443,7 +529,7 @@ bool brain_resize(brain_t brain, uint32_t new_neuron_count)
     uint32_t* new_layer_sizes = NULL;
 
     if (old_config->base_config.num_layers == 0 || !old_config->base_config.layer_sizes) {
-        NIMCP_LOG_WARN("brain_resize: Corrupted layer config (num_layers=%u, layer_sizes=%p), rebuilding",
+        LOG_WARN("brain_resize: Corrupted layer config (num_layers=%u, layer_sizes=%p), rebuilding",
                        old_config->base_config.num_layers,
                        (void*)old_config->base_config.layer_sizes);
 
@@ -451,7 +537,7 @@ bool brain_resize(brain_t brain, uint32_t new_neuron_count)
         new_config.base_config.num_layers = 3;
         new_layer_sizes = nimcp_calloc(3, sizeof(uint32_t));
         if (!new_layer_sizes) {
-            NIMCP_LOG_ERROR("brain_resize: Failed to allocate layer_sizes");
+            LOG_ERROR("brain_resize: Failed to allocate layer_sizes");
             return false;
         }
 
@@ -462,7 +548,7 @@ bool brain_resize(brain_t brain, uint32_t new_neuron_count)
         uint32_t output_size = brain->config.num_outputs;
 
         if (input_size == 0 || output_size == 0) {
-            NIMCP_LOG_WARN("brain_resize: Brain config has invalid sizes (input=%u, output=%u), using defaults",
+            LOG_WARN("brain_resize: Brain config has invalid sizes (input=%u, output=%u), using defaults",
                            input_size, output_size);
             input_size = 10;  // Default fallback
             output_size = 5;
@@ -480,7 +566,7 @@ bool brain_resize(brain_t brain, uint32_t new_neuron_count)
         // WHY: Shallow copy copies the pointer, which points to old network's memory
         new_layer_sizes = nimcp_calloc(old_config->base_config.num_layers, sizeof(uint32_t));
         if (!new_layer_sizes) {
-            NIMCP_LOG_ERROR("brain_resize: Failed to allocate layer_sizes");
+            LOG_ERROR("brain_resize: Failed to allocate layer_sizes");
             return false;
         }
         memcpy(new_layer_sizes, old_config->base_config.layer_sizes,
@@ -492,7 +578,7 @@ bool brain_resize(brain_t brain, uint32_t new_neuron_count)
     // WHY: Loaded checkpoints or corrupted configs can have invalid spike params
     // WHAT: Reset to known-good defaults that match build_spike_params
     if (new_config.spike_params.k_factor <= 0.0f) {
-        NIMCP_LOG_WARN("brain_resize: Corrupted spike_params detected (k_factor=%f), resetting to defaults",
+        LOG_WARN("brain_resize: Corrupted spike_params detected (k_factor=%f), resetting to defaults",
                        new_config.spike_params.k_factor);
         new_config.spike_params.k_factor = 0.5f;
         new_config.spike_params.min_threshold = 0.0001f;
@@ -512,21 +598,21 @@ bool brain_resize(brain_t brain, uint32_t new_neuron_count)
     // Hidden layer (index 1) should grow to new_neuron_count
     if (new_layer_sizes && new_config.base_config.num_layers >= 2) {
         new_layer_sizes[1] = new_neuron_count;
-        NIMCP_LOG_INFO("brain_resize: Updated layer_sizes [%u, %u, %u]",
+        LOG_INFO("brain_resize: Updated layer_sizes [%u, %u, %u]",
                        new_layer_sizes[0], new_layer_sizes[1],
                        new_config.base_config.num_layers >= 3 ? new_layer_sizes[2] : 0);
     }
 
     // Step 2: Create new larger network
-    NIMCP_LOG_INFO("brain_resize: Creating new network with %u neurons", new_neuron_count);
+    LOG_INFO("brain_resize: Creating new network with %u neurons", new_neuron_count);
 
     // DEBUG: Log final config values before network creation
-    NIMCP_LOG_INFO("brain_resize: FINAL config - k_factor=%f, min_threshold=%f, max_threshold=%f, sparsity=%f",
+    LOG_INFO("brain_resize: FINAL config - k_factor=%f, min_threshold=%f, max_threshold=%f, sparsity=%f",
                    new_config.spike_params.k_factor,
                    new_config.spike_params.min_threshold,
                    new_config.spike_params.max_threshold,
                    new_config.spike_params.sparsity_target);
-    NIMCP_LOG_INFO("brain_resize: FINAL config - num_layers=%u, num_neurons=%u, layer_sizes=%p",
+    LOG_INFO("brain_resize: FINAL config - num_layers=%u, num_neurons=%u, layer_sizes=%p",
                    new_config.base_config.num_layers,
                    new_config.base_config.num_neurons,
                    (void*)new_config.base_config.layer_sizes);
@@ -539,7 +625,7 @@ bool brain_resize(brain_t brain, uint32_t new_neuron_count)
     }
 
     if (!new_network) {
-        NIMCP_LOG_ERROR("brain_resize: Failed to create new network");
+        LOG_ERROR("brain_resize: Failed to create new network");
         return false;
     }
 
@@ -550,11 +636,11 @@ bool brain_resize(brain_t brain, uint32_t new_neuron_count)
     // - Activation states
     // - Plasticity traces (STDP, eligibility, BCM)
     // - Neuromodulator states
-    NIMCP_LOG_INFO("brain_resize: Transferring %u existing neurons", current_neuron_count);
+    LOG_INFO("brain_resize: Transferring %u existing neurons", current_neuron_count);
 
     neural_network_t new_base = adaptive_network_get_base_network(new_network);
     if (!new_base) {
-        NIMCP_LOG_ERROR("brain_resize: Cannot access new base network");
+        LOG_ERROR("brain_resize: Cannot access new base network");
         adaptive_network_destroy(new_network);
         return false;
     }
@@ -565,7 +651,7 @@ bool brain_resize(brain_t brain, uint32_t new_neuron_count)
         neuron_t* new_neuron = neural_network_get_neuron(new_base, i);
 
         if (!old_neuron || !new_neuron) {
-            NIMCP_LOG_ERROR("brain_resize: Failed to access neuron %u during transfer", i);
+            LOG_ERROR("brain_resize: Failed to access neuron %u during transfer", i);
             adaptive_network_destroy(new_network);
             return false;
         }
@@ -580,13 +666,13 @@ bool brain_resize(brain_t brain, uint32_t new_neuron_count)
     // Step 4: Initialize new neurons
     // New neurons added beyond current_neuron_count get random initialization
     uint32_t new_neurons_added = new_neuron_count - current_neuron_count;
-    NIMCP_LOG_INFO("brain_resize: Initializing %u new neurons", new_neurons_added);
+    LOG_INFO("brain_resize: Initializing %u new neurons", new_neurons_added);
 
     // New neurons are already initialized by adaptive_network_create()
     // with random weights based on network configuration
 
     // Step 5: Swap networks atomically
-    NIMCP_LOG_INFO("brain_resize: Swapping networks");
+    LOG_INFO("brain_resize: Swapping networks");
     adaptive_network_t old_network_copy = brain->network;
     brain->network = new_network;
 
@@ -596,19 +682,24 @@ bool brain_resize(brain_t brain, uint32_t new_neuron_count)
     // Step 6.5: Update subsystems that hold network references
     // CRITICAL FIX: Call helper function in nimcp_brain.c which has full struct access
     // This avoids struct offset bugs from incomplete struct definition
-    NIMCP_LOG_INFO("brain_resize: Updating subsystems for new network");
+    LOG_INFO("brain_resize: Updating subsystems for new network");
     if (!brain_resize_update_subsystems_internal(brain, new_base, new_neuron_count)) {
-        NIMCP_LOG_WARN("brain_resize: Subsystem update returned failure, but continuing");
+        LOG_WARN("brain_resize: Subsystem update returned failure, but continuing");
     }
 
     // Step 7: Clean up old network
-    NIMCP_LOG_INFO("brain_resize: Destroying old network");
+    LOG_INFO("brain_resize: Destroying old network");
     adaptive_network_destroy(old_network_copy);
 
-    NIMCP_LOG_INFO("brain_resize: Growth complete. New capacity: %u neurons (%.1fx growth)",
-                   new_neuron_count,
-                   (float)new_neuron_count / (float)current_neuron_count);
+    LOG_INFO("brain_resize: Growth complete. New capacity: %u neurons (%.1fx growth)",
+             new_neuron_count,
+             (float)new_neuron_count / (float)current_neuron_count);
 
+    // Publish resize complete event (via dopamine - success/reward)
+    publish_resize_event(BIO_MSG_BRAIN_STATE_RESPONSE, current_neuron_count, new_neuron_count,
+                        true, BIO_CHANNEL_DOPAMINE);
+
+    LOG_DEBUG("brain_resize: Exit, success=true");
     return true;
 }
 
@@ -636,19 +727,27 @@ bool brain_resize(brain_t brain, uint32_t new_neuron_count)
  */
 bool brain_auto_resize(brain_t brain)
 {
+    LOG_DEBUG("brain_auto_resize: Entry");
+
+    // Ensure bio-async is available
+    ensure_bio_async_registered();
+
     // Guard: Validate brain
     if (!brain) {
+        LOG_ERROR("brain_auto_resize: NULL brain");
         return false;
     }
 
     // Get base network for early validation
     adaptive_network_t network = brain->network;
     if (!network) {
+        LOG_ERROR("brain_auto_resize: Brain has no network");
         return false;
     }
 
     neural_network_t base_network = adaptive_network_get_base_network(network);
     if (!base_network) {
+        LOG_ERROR("brain_auto_resize: Cannot access base network");
         return false;
     }
 
@@ -660,13 +759,13 @@ bool brain_auto_resize(brain_t brain)
     uint32_t current_size = neural_network_get_num_neurons(base_network);
 
     if (current_size == 0) {
-        NIMCP_LOG_DEBUG("brain_auto_resize: Brain has 0 neurons (not initialized), skipping resize");
+        LOG_DEBUG("brain_auto_resize: Brain has 0 neurons (not initialized), skipping resize");
         return false;
     }
 
     // Verify num_neurons is reasonable (sanity check for corrupted structure)
     if (current_size == 0 || current_size > 100000000) {
-        NIMCP_LOG_WARN("brain_auto_resize: Suspicious neuron count %u, skipping resize", current_size);
+        LOG_WARN("brain_auto_resize: Suspicious neuron count %u, skipping resize", current_size);
         return false;
     }
 
@@ -674,12 +773,13 @@ bool brain_auto_resize(brain_t brain)
     // NOTE: This may still crash on use-after-free bugs in brain initialization
     neuron_t* first_neuron = neural_network_get_neuron(base_network, 0);
     if (!first_neuron) {
-        NIMCP_LOG_WARN("brain_auto_resize: Cannot access neurons, network may be corrupt");
+        LOG_WARN("brain_auto_resize: Cannot access neurons, network may be corrupt");
         return false;
     }
 
     // Don't grow beyond reasonable limits
     if (current_size >= 100000) {
+        LOG_INFO("brain_auto_resize: Already at max size (%u neurons), skipping", current_size);
         return false;  // Already at 100K neurons, stop
     }
 
@@ -688,7 +788,7 @@ bool brain_auto_resize(brain_t brain)
     float saturation = 0.0f;
 
     if (!brain_get_utilization_metrics(brain, &utilization, &saturation)) {
-        NIMCP_LOG_WARN("brain_auto_resize: Failed to get utilization metrics");
+        LOG_WARN("brain_auto_resize: Failed to get utilization metrics");
         return false;
     }
 
@@ -700,13 +800,17 @@ bool brain_auto_resize(brain_t brain)
 
     if (utilization < UTILIZATION_THRESHOLD && saturation < SATURATION_THRESHOLD) {
         // Brain has spare capacity - no need to resize
-        NIMCP_LOG_DEBUG("brain_auto_resize: Brain not saturated (util=%.1f%%, sat=%.1f%%), skipping resize",
-                        utilization * 100.0f, saturation * 100.0f);
+        LOG_DEBUG("brain_auto_resize: Brain not saturated (util=%.1f%%, sat=%.1f%%), skipping resize",
+                  utilization * 100.0f, saturation * 100.0f);
         return false;
     }
 
-    NIMCP_LOG_INFO("brain_auto_resize: Brain saturated (util=%.1f%%, sat=%.1f%%), triggering resize",
-                   utilization * 100.0f, saturation * 100.0f);
+    LOG_INFO("brain_auto_resize: Brain saturated (util=%.1f%%, sat=%.1f%%), triggering resize",
+             utilization * 100.0f, saturation * 100.0f);
+
+    // Publish saturation alert (via norepinephrine - urgent)
+    publish_resize_event(BIO_MSG_SALIENCE_QUERY, current_size, 0,
+                        true, BIO_CHANNEL_NOREPINEPHRINE);
 
     // Detect if GPU is being used
     // TODO: Add brain_is_gpu_enabled() API
@@ -719,13 +823,19 @@ bool brain_auto_resize(brain_t brain)
     system_resources_t resources;
     if (system_resources_query(&resources)) {
         if (!system_resources_can_resize(&resources, new_size, use_gpu)) {
-            NIMCP_LOG_WARN("brain_auto_resize: Insufficient resources for target size %u, skipping resize", new_size);
+            LOG_WARN("brain_auto_resize: Insufficient resources for target size %u, skipping resize", new_size);
+            // Publish resource constraint event
+            publish_resize_event(BIO_MSG_ERROR_REPORT, current_size, new_size,
+                               false, BIO_CHANNEL_NOREPINEPHRINE);
             return false;
         }
     }
 
     // Perform resize
-    return brain_resize(brain, new_size);
+    LOG_INFO("brain_auto_resize: Triggering resize to %u neurons", new_size);
+    bool result = brain_resize(brain, new_size);
+    LOG_DEBUG("brain_auto_resize: Exit, result=%d", result);
+    return result;
 }
 
 /**

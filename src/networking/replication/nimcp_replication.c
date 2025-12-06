@@ -26,7 +26,12 @@
  * - Get status: O(n) where n = number of nodes
  */
 
-#include "nimcp_replication.h"
+#include "networking/replication/nimcp_replication.h"
+#include "utils/memory/nimcp_unified_memory.h"
+#include "async/nimcp_bio_async.h"
+#include "async/nimcp_bio_router.h"
+#include "async/nimcp_bio_messages.h"
+#include "utils/logging/nimcp_logging.h"
 #include <dirent.h>
 #include <errno.h>
 #include <stdio.h>
@@ -38,6 +43,8 @@
 #include "utils/memory/nimcp_memory.h"
 #include "utils/thread/nimcp_thread.h"
 #include "utils/time/nimcp_time.h"
+
+#define LOG_MODULE "REPLICATION"
 
 // Ensure clock_gettime is available
 #ifndef CLOCK_REALTIME
@@ -131,6 +138,10 @@ struct replication_cluster_struct {
     bool heartbeat_running;      // Heartbeat active flag
     nimcp_mutex_t heartbeat_lock;    // Lock for heartbeat condition
     nimcp_cond_t heartbeat_cond;     // Condition to interrupt heartbeat sleep
+
+    // Bio-async integration
+    bio_module_context_t bio_ctx;
+    bool bio_async_enabled;
 };
 
 //=============================================================================
@@ -712,6 +723,23 @@ replication_cluster_t replication_create_cluster(const replication_config_t* con
         return NULL;
     }
 
+    // Bio-async registration
+    cluster->bio_ctx = NULL;
+    cluster->bio_async_enabled = false;
+    if (config->enable_bio_async && bio_router_is_initialized()) {
+        bio_module_info_t bio_info = {
+            .module_id = BIO_MODULE_REPLICATION,
+            .module_name = "replication",
+            .inbox_capacity = 64,
+            .user_data = cluster
+        };
+        cluster->bio_ctx = bio_router_register_module(&bio_info);
+        if (cluster->bio_ctx) {
+            cluster->bio_async_enabled = true;
+            LOG_INFO(LOG_MODULE, "Bio-async registered for replication cluster");
+        }
+    }
+
     return cluster;
 }
 
@@ -738,6 +766,13 @@ void replication_destroy_cluster(replication_cluster_t cluster)
         nimcp_cond_signal(&cluster->heartbeat_cond);
         nimcp_mutex_unlock(&cluster->heartbeat_lock);
         nimcp_thread_join(cluster->heartbeat_thread, NULL);
+    }
+
+    // Bio-async unregistration
+    if (cluster->bio_async_enabled && cluster->bio_ctx) {
+        bio_router_unregister_module(cluster->bio_ctx);
+        cluster->bio_ctx = NULL;
+        cluster->bio_async_enabled = false;
     }
 
     // Free registered brains list
@@ -782,6 +817,11 @@ void replication_destroy_cluster(replication_cluster_t cluster)
 bool replication_register_brain(replication_cluster_t cluster, brain_t brain,
                                 const char* brain_name)
 {
+    // Process pending bio-async messages
+    if (cluster && cluster->bio_ctx) {
+        bio_router_process_inbox(cluster->bio_ctx, 5);
+    }
+
     // Guard: Validate parameters
     if (!cluster || !brain || !brain_name) {
         set_replication_error("Invalid parameters to replication_register_brain");

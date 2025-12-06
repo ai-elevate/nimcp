@@ -673,6 +673,12 @@ bool global_workspace_compete(
         return false;
     }
 
+    // Process pending bio-async messages before competition
+    struct global_workspace_struct* ws = (struct global_workspace_struct*)workspace;
+    if (ws->bio_async_enabled && ws->bio_ctx) {
+        bio_router_process_inbox(ws->bio_ctx, 10);  // Process up to 10 messages
+    }
+
     // Submit to competition pool
     if (!global_workspace_submit(workspace, module, content, content_dim, strength)) {
         return false;

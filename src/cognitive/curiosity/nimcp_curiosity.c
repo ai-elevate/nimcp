@@ -1584,6 +1584,11 @@ uint32_t curiosity_seek_knowledge(curiosity_engine_t engine, const knowledge_gap
  */
 static void update_progress_statistics(curiosity_engine_t engine, learning_progress_t* progress)
 {
+    // Process pending bio-async messages
+    if (engine && engine->bio_async_enabled && engine->bio_ctx) {
+        bio_router_process_inbox(engine->bio_ctx, 5);
+    }
+
     progress->concepts_learned = engine->total_concepts;
     progress->avg_curiosity = engine->baseline_curiosity;
 }

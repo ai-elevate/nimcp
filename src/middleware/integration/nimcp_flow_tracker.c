@@ -339,6 +339,11 @@ void flow_tracker_record_flow(
 ) {
     if (!tracker || path >= FLOW_TRACKER_NUM_PATHS) return;
 
+    // Process pending bio-async messages
+    if (tracker->bio_async_enabled && tracker->bio_ctx) {
+        bio_router_process_inbox(tracker->bio_ctx, 5);
+    }
+
     path_flow_state_t* path_state = &tracker->paths[path];
 
     nimcp_mutex_lock(&path_state->mutex);

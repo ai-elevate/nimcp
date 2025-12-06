@@ -12,6 +12,7 @@
  */
 
 #include "perception/nimcp_audio_cortex.h"
+#include "utils/memory/nimcp_unified_memory.h"
 #include "perception/nimcp_visual_cortex.h"  // For receptor_expression_t
 #include "utils/memory/nimcp_memory.h"
 #include "utils/memory/nimcp_memory_pool.h"  // Memory pool for O(1) allocations
@@ -22,10 +23,19 @@
 #include "core/brain/nimcp_brain.h"  // Brain reference
 #include "core/neuralnet/nimcp_neuralnet.h"  // Neural network for internal A1 connections
 #include "core/topology/nimcp_fractal_topology.h"  // Scale-free topology generation
+#include "async/nimcp_bio_async.h"
+#include "async/nimcp_bio_router.h"
+#include "async/nimcp_bio_messages.h"
 #include <math.h>
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
+
+/*=============================================================================
+ * LOGGING MODULE IDENTIFIER
+ *===========================================================================*/
+
+#define AUDIO_LOG_MODULE "AUDIO_CORTEX"
 
 #ifndef M_PI
 #define M_PI 3.14159265358979323846
@@ -87,6 +97,10 @@ struct audio_cortex {
     // HOW:  Reference counting on shared data, copy on modification
     uint32_t* _cow_refcount;              /**< Reference count for CoW (NULL if owned) */
     bool _cow_is_shallow;                 /**< True if this is a shallow copy */
+
+    // === Bio-Async Communication ===
+    bio_module_context_t bio_ctx;         /**< Bio-async module context */
+    bool bio_async_enabled;               /**< Whether bio-async is enabled */
 
     // Statistics
     audio_cortex_stats_t stats;
@@ -350,7 +364,7 @@ static bool init_mel_filterbank(audio_cortex_t* cortex)
         num_filters * num_bins, sizeof(float)
     );
     if (!nimcp_validate_pointer(cortex->mel_filterbank, "mel_filterbank")) {
-        NIMCP_LOGGING_ERROR("Failed to allocate mel filterbank");
+        LOG_ERROR(AUDIO_LOG_MODULE, "Failed to allocate mel filterbank");
         return false;
     }
 
@@ -481,19 +495,19 @@ audio_cortex_t* audio_cortex_create(const audio_cortex_config_t* config)
     // Validate configuration
     if (config->sample_rate < AUDIO_MIN_SAMPLE_RATE ||
         config->sample_rate > AUDIO_MAX_SAMPLE_RATE) {
-        NIMCP_LOGGING_ERROR("Invalid sample rate: %u", config->sample_rate);
+        LOG_ERROR(AUDIO_LOG_MODULE, "Invalid sample rate: %u", config->sample_rate);
         return NULL;
     }
 
     if (config->num_channels == 0 || config->num_channels > AUDIO_MAX_CHANNELS) {
-        NIMCP_LOGGING_ERROR("Invalid number of channels: %u", config->num_channels);
+        LOG_ERROR(AUDIO_LOG_MODULE, "Invalid number of channels: %u", config->num_channels);
         return NULL;
     }
 
     // Allocate cortex structure
     audio_cortex_t* cortex = (audio_cortex_t*)nimcp_calloc(1, sizeof(audio_cortex_t));
     if (!cortex) {
-        NIMCP_LOGGING_ERROR("Failed to allocate audio cortex");
+        LOG_ERROR(AUDIO_LOG_MODULE, "Failed to allocate audio cortex");
         return NULL;
     }
 
@@ -533,7 +547,7 @@ audio_cortex_t* audio_cortex_create(const audio_cortex_config_t* config)
     if (!nimcp_validate_pointer(cortex->fft_real, "fft_real") ||
         !nimcp_validate_pointer(cortex->fft_imag, "fft_imag") ||
         !nimcp_validate_pointer(cortex->fft_window, "fft_window")) {
-        NIMCP_LOGGING_ERROR("Failed to allocate FFT buffers");
+        LOG_ERROR(AUDIO_LOG_MODULE, "Failed to allocate FFT buffers");
         audio_cortex_destroy(cortex);
         return NULL;
     }
@@ -550,7 +564,7 @@ audio_cortex_t* audio_cortex_create(const audio_cortex_config_t* config)
     // Allocate temporal processing buffers
     cortex->prev_frame = (float*)nimcp_calloc(config->frame_size, sizeof(float));
     if (!nimcp_validate_pointer(cortex->prev_frame, "prev_frame")) {
-        NIMCP_LOGGING_ERROR("Failed to allocate temporal processing buffer");
+        LOG_ERROR(AUDIO_LOG_MODULE, "Failed to allocate temporal processing buffer");
         audio_cortex_destroy(cortex);
         return NULL;
     }
@@ -562,7 +576,7 @@ audio_cortex_t* audio_cortex_create(const audio_cortex_config_t* config)
             cortex->memory_capacity, sizeof(auditory_memory_t*)
         );
         if (!nimcp_validate_pointer(cortex->memories, "memories")) {
-            NIMCP_LOGGING_ERROR("Failed to allocate auditory memory array");
+            LOG_ERROR(AUDIO_LOG_MODULE, "Failed to allocate auditory memory array");
             audio_cortex_destroy(cortex);
             return NULL;
         }
@@ -579,7 +593,7 @@ audio_cortex_t* audio_cortex_create(const audio_cortex_config_t* config)
         pool_config.enable_tracking = true;
         cortex->memory_pool = memory_pool_create(&pool_config);
         if (!cortex->memory_pool) {
-            NIMCP_LOGGING_WARN("Failed to create auditory memory pool, will use malloc fallback");
+            LOG_WARN(AUDIO_LOG_MODULE, "Failed to create auditory memory pool, will use malloc fallback");
             // Non-fatal: continue without pool (falls back to malloc)
         }
     }
@@ -646,14 +660,36 @@ audio_cortex_t* audio_cortex_create(const audio_cortex_config_t* config)
             topology_stats_t stats;
             if (topology_generate_scale_free(cortex->internal_network, &topo_config, &stats)) {
                 cortex->has_internal_network = true;
-                NIMCP_LOGGING_INFO("A1 internal network: %u neurons, %u synapses, %.2f avg degree",
-                                   stats.num_neurons, stats.num_synapses, stats.avg_degree);
+                LOG_INFO(AUDIO_LOG_MODULE, "A1 internal network: %u neurons, %u synapses, %.2f avg degree",
+                         stats.num_neurons, stats.num_synapses, stats.avg_degree);
             } else {
-                NIMCP_LOGGING_WARN("Failed to generate A1 topology, using network without topology");
+                LOG_WARN(AUDIO_LOG_MODULE, "Failed to generate A1 topology, using network without topology");
                 cortex->has_internal_network = true;  // Network exists, just without topology
             }
         } else {
-            NIMCP_LOGGING_WARN("Failed to create A1 internal network");
+            LOG_WARN(AUDIO_LOG_MODULE, "Failed to create A1 internal network");
+        }
+    }
+
+    // === Bio-Async Registration ===
+    cortex->bio_ctx = NULL;
+    cortex->bio_async_enabled = false;
+
+    if (config->enable_bio_async && bio_router_is_initialized()) {
+        bio_module_info_t bio_info = {
+            .module_id = BIO_MODULE_AUDIO_CORTEX,
+            .module_name = "audio_cortex",
+            .inbox_capacity = 64,
+            .user_data = cortex
+        };
+
+        cortex->bio_ctx = bio_router_register_module(&bio_info);
+        if (cortex->bio_ctx) {
+            cortex->bio_async_enabled = true;
+            LOG_INFO(AUDIO_LOG_MODULE, "Bio-async registered for audio cortex (module_id=%d)",
+                     BIO_MODULE_AUDIO_CORTEX);
+        } else {
+            LOG_WARN(AUDIO_LOG_MODULE, "Failed to register bio-async for audio cortex");
         }
     }
 
@@ -663,6 +699,14 @@ audio_cortex_t* audio_cortex_create(const audio_cortex_config_t* config)
 void audio_cortex_destroy(audio_cortex_t* cortex)
 {
     if (!cortex) return;
+
+    // === Bio-Async Unregistration ===
+    if (cortex->bio_async_enabled && cortex->bio_ctx) {
+        bio_router_unregister_module(cortex->bio_ctx);
+        cortex->bio_ctx = NULL;
+        cortex->bio_async_enabled = false;
+        LOG_DEBUG(AUDIO_LOG_MODULE, "Bio-async unregistered for audio cortex");
+    }
 
     // === Handle Copy-on-Write Reference Counting ===
     // If this is a shallow copy, decrement refcount
@@ -730,12 +774,12 @@ bool audio_cortex_process(
     }
 
     if (num_samples != cortex->config.frame_size) {
-        NIMCP_LOGGING_ERROR("Invalid frame size: %u (expected %u)", num_samples, cortex->config.frame_size);
+        LOG_ERROR(AUDIO_LOG_MODULE, "Invalid frame size: %u (expected %u)", num_samples, cortex->config.frame_size);
         return false;
     }
 
     if (num_channels != cortex->config.num_channels) {
-        NIMCP_LOGGING_ERROR("Invalid number of channels: %u (expected %u)", num_channels, cortex->config.num_channels);
+        LOG_ERROR(AUDIO_LOG_MODULE, "Invalid number of channels: %u (expected %u)", num_channels, cortex->config.num_channels);
         return false;
     }
 
@@ -750,7 +794,7 @@ bool audio_cortex_process(
     if (num_channels == 2) {
         temp_mono = (float*)nimcp_calloc(num_samples, sizeof(float));
         if (!nimcp_validate_pointer(temp_mono, "temp_mono")) {
-            NIMCP_LOGGING_ERROR("Failed to allocate mono conversion buffer");
+            LOG_ERROR(AUDIO_LOG_MODULE, "Failed to allocate mono conversion buffer");
             return false;
         }
 
@@ -763,7 +807,7 @@ bool audio_cortex_process(
     // Compute power spectrum
     float* spectrum = (float*)nimcp_calloc(cortex->config.num_freq_bins, sizeof(float));
     if (!nimcp_validate_pointer(spectrum, "spectrum")) {
-        NIMCP_LOGGING_ERROR("Failed to allocate spectrum buffer");
+        LOG_ERROR(AUDIO_LOG_MODULE, "Failed to allocate spectrum buffer");
         nimcp_free(temp_mono);
         return false;
     }
@@ -831,7 +875,7 @@ bool audio_cortex_compute_spectrum(
     }
 
     if (num_samples != cortex->config.frame_size) {
-        NIMCP_LOGGING_ERROR("Invalid frame size: %u (expected %u)", num_samples, cortex->config.frame_size);
+        LOG_ERROR(AUDIO_LOG_MODULE, "Invalid frame size: %u (expected %u)", num_samples, cortex->config.frame_size);
         return false;
     }
 
@@ -877,7 +921,7 @@ bool audio_cortex_compute_mel_features(
     }
 
     if (num_bins != cortex->config.num_freq_bins) {
-        NIMCP_LOGGING_ERROR("Invalid number of bins: %u (expected %u)", num_bins, cortex->config.num_freq_bins);
+        LOG_ERROR(AUDIO_LOG_MODULE, "Invalid number of bins: %u (expected %u)", num_bins, cortex->config.num_freq_bins);
         return false;
     }
 
@@ -916,7 +960,7 @@ bool audio_cortex_compute_mfcc(
     }
 
     if (num_mel != cortex->config.num_mel_filters) {
-        NIMCP_LOGGING_ERROR("Invalid number of mel filters: %u (expected %u)", num_mel, cortex->config.num_mel_filters);
+        LOG_ERROR(AUDIO_LOG_MODULE, "Invalid number of mel filters: %u (expected %u)", num_mel, cortex->config.num_mel_filters);
         return false;
     }
 
@@ -935,7 +979,7 @@ audio_attention_map_t* audio_attention_map_create(
     uint32_t num_time)
 {
     if (num_freq == 0 || num_time == 0) {
-        NIMCP_LOGGING_ERROR("Invalid audio attention map dimensions: %u x %u", num_freq, num_time);
+        LOG_ERROR(AUDIO_LOG_MODULE, "Invalid audio attention map dimensions: %u x %u", num_freq, num_time);
         return NULL;
     }
 
@@ -943,7 +987,7 @@ audio_attention_map_t* audio_attention_map_create(
         1, sizeof(audio_attention_map_t)
     );
     if (!nimcp_validate_pointer(map, "map")) {
-        NIMCP_LOGGING_ERROR("Failed to allocate audio attention map");
+        LOG_ERROR(AUDIO_LOG_MODULE, "Failed to allocate audio attention map");
         return NULL;
     }
 
@@ -952,7 +996,7 @@ audio_attention_map_t* audio_attention_map_create(
     map->values = (float*)nimcp_calloc(num_freq * num_time, sizeof(float));
 
     if (!nimcp_validate_pointer(map->values, "map->values")) {
-        NIMCP_LOGGING_ERROR("Failed to allocate audio attention map values");
+        LOG_ERROR(AUDIO_LOG_MODULE, "Failed to allocate audio attention map values");
         nimcp_free(map);
         return NULL;
     }
@@ -983,7 +1027,7 @@ bool audio_cortex_compute_attention(
     // Compute spectrum - handle variable length audio by using first frame
     float* spectrum = (float*)nimcp_calloc(cortex->config.num_freq_bins, sizeof(float));
     if (!nimcp_validate_pointer(spectrum, "spectrum")) {
-        NIMCP_LOGGING_ERROR("Failed to allocate spectrum buffer for attention");
+        LOG_ERROR(AUDIO_LOG_MODULE, "Failed to allocate spectrum buffer for attention");
         return false;
     }
 
@@ -1048,13 +1092,13 @@ bool audio_cortex_store_memory(
         memory = (auditory_memory_t*)nimcp_calloc(1, sizeof(auditory_memory_t));
     }
     if (!nimcp_validate_pointer(memory, "memory")) {
-        NIMCP_LOGGING_ERROR("Failed to allocate auditory memory entry");
+        LOG_ERROR(AUDIO_LOG_MODULE, "Failed to allocate auditory memory entry");
         return false;
     }
 
     memory->features = (float*)nimcp_calloc(cortex->config.feature_dim, sizeof(float));
     if (!nimcp_validate_pointer(memory->features, "memory->features")) {
-        NIMCP_LOGGING_ERROR("Failed to allocate auditory memory features");
+        LOG_ERROR(AUDIO_LOG_MODULE, "Failed to allocate auditory memory features");
         // Use pool release if pool owns this memory
         if (cortex->memory_pool && memory_pool_owns(cortex->memory_pool, memory)) {
             memory_pool_release(cortex->memory_pool, memory);
@@ -1106,7 +1150,7 @@ bool audio_cortex_recall_memory(
         cortex->num_memories, sizeof(memory_score_t)
     );
     if (!nimcp_validate_pointer(scores, "scores")) {
-        NIMCP_LOGGING_ERROR("Failed to allocate memory score buffer");
+        LOG_ERROR(AUDIO_LOG_MODULE, "Failed to allocate memory score buffer");
         return false;
     }
 
@@ -1134,7 +1178,7 @@ bool audio_cortex_recall_memory(
     int k = (top_k < (int)cortex->num_memories) ? top_k : (int)cortex->num_memories;
     *memories = (auditory_memory_t**)nimcp_calloc(k, sizeof(auditory_memory_t*));
     if (!nimcp_validate_pointer(*memories, "result_memories")) {
-        NIMCP_LOGGING_ERROR("Failed to allocate memory results array");
+        LOG_ERROR(AUDIO_LOG_MODULE, "Failed to allocate memory results array");
         nimcp_free(scores);
         return false;
     }
@@ -1218,7 +1262,7 @@ bool audio_cortex_get_attention_peak(
     }
 
     if (!nimcp_validate_pointer(attn_map->values, "attn_map->values")) {
-        NIMCP_LOGGING_ERROR("Audio attention map has no values");
+        LOG_ERROR(AUDIO_LOG_MODULE, "Audio attention map has no values");
         return false;
     }
 
@@ -1581,4 +1625,134 @@ void audio_cortex_activate_speech_mode(audio_cortex_t* cortex)
     // For now, this is a placeholder that logs the activation.
     // The existing neuromodulator system already provides some speech optimization
     // via ACh enhancement of frequency selectivity.
+}
+
+//=============================================================================
+// Bio-Async Communication Implementation
+//=============================================================================
+
+/**
+ * @brief Get bio-async module context
+ */
+bio_module_context_t audio_cortex_get_bio_context(audio_cortex_t* cortex)
+{
+    if (!cortex || !cortex->bio_async_enabled) {
+        return NULL;
+    }
+    return cortex->bio_ctx;
+}
+
+/**
+ * @brief Process pending bio-async messages
+ *
+ * Uses bio_router_process_inbox() which calls registered handlers.
+ */
+uint32_t audio_cortex_process_bio_messages(audio_cortex_t* cortex, uint32_t max_messages)
+{
+    if (!cortex || !cortex->bio_async_enabled || !cortex->bio_ctx) {
+        return 0;
+    }
+
+    // Process inbox using the router's handler-based system
+    uint32_t processed = bio_router_process_inbox(cortex->bio_ctx, max_messages);
+
+    if (processed > 0) {
+        LOG_DEBUG(AUDIO_LOG_MODULE, "Processed %u bio-async messages", processed);
+    }
+
+    return processed;
+}
+
+/**
+ * @brief Broadcast audio feature detection via bio-async
+ */
+nimcp_error_t audio_cortex_broadcast_input(
+    audio_cortex_t* cortex,
+    const float* features,
+    uint32_t num_features,
+    float salience)
+{
+    if (!cortex) {
+        return NIMCP_ERROR_INVALID_PARAM;
+    }
+
+    if (!cortex->bio_async_enabled || !cortex->bio_ctx) {
+        return NIMCP_ERROR_NOT_INITIALIZED;
+    }
+
+    if (!features || num_features == 0) {
+        return NIMCP_ERROR_INVALID_PARAM;
+    }
+
+    // Create audio feature detected message
+    bio_msg_audio_feature_detected_t msg;
+    bio_msg_init_header(&msg.header, BIO_MSG_AUDIO_FEATURE_DETECTED,
+                        BIO_MODULE_AUDIO_CORTEX, 0,  // 0 = broadcast
+                        sizeof(msg) - sizeof(bio_message_header_t));
+
+    msg.header.channel = BIO_CHANNEL_ACETYLCHOLINE;  // Auditory processing involves ACh
+    msg.header.flags = BIO_MSG_FLAG_BROADCAST;
+
+    // Fill in audio feature data
+    msg.feature_id = 0;  // Generic audio input
+    msg.frequency_hz = 1000.0f;  // Placeholder frequency
+    msg.amplitude = salience;
+    msg.onset_time_ms = 0.0f;
+    msg.duration_ms = 20.0f;  // Typical frame duration
+    msg.channel = 0;  // Mono/center
+
+    // Broadcast to all interested modules
+    nimcp_error_t err = bio_router_broadcast(cortex->bio_ctx, &msg, sizeof(msg));
+    if (err != NIMCP_SUCCESS) {
+        LOG_WARN(AUDIO_LOG_MODULE, "Failed to broadcast audio input: %d", err);
+        return err;
+    }
+
+    LOG_DEBUG(AUDIO_LOG_MODULE, "Broadcast audio input: %u features, salience=%.2f",
+              num_features, salience);
+
+    return NIMCP_SUCCESS;
+}
+
+/**
+ * @brief Broadcast speech detected notification
+ */
+nimcp_error_t audio_cortex_broadcast_speech_detected(
+    audio_cortex_t* cortex,
+    float speech_salience)
+{
+    if (!cortex) {
+        return NIMCP_ERROR_INVALID_PARAM;
+    }
+
+    if (!cortex->bio_async_enabled || !cortex->bio_ctx) {
+        return NIMCP_ERROR_NOT_INITIALIZED;
+    }
+
+    // Create speech onset detected message using the proper type
+    bio_msg_audio_feature_detected_t msg;
+    bio_msg_init_header(&msg.header, BIO_MSG_SPEECH_ONSET_DETECTED,
+                        BIO_MODULE_AUDIO_CORTEX, BIO_MODULE_SPEECH_CORTEX,
+                        sizeof(msg) - sizeof(bio_message_header_t));
+
+    msg.header.channel = BIO_CHANNEL_ACETYLCHOLINE;
+    msg.header.flags = BIO_MSG_FLAG_URGENT;  // Speech is high priority
+
+    msg.feature_id = 1;  // Speech onset feature
+    msg.frequency_hz = 1650.0f;  // Center of speech band
+    msg.amplitude = speech_salience;
+    msg.onset_time_ms = 0.0f;
+    msg.duration_ms = 0.0f;  // Unknown duration at onset
+    msg.channel = 0;
+
+    // Send to speech cortex
+    nimcp_error_t err = bio_router_send(cortex->bio_ctx, &msg, sizeof(msg), 0);
+    if (err != NIMCP_SUCCESS) {
+        LOG_WARN(AUDIO_LOG_MODULE, "Failed to send speech detected: %d", err);
+        return err;
+    }
+
+    LOG_DEBUG(AUDIO_LOG_MODULE, "Sent speech detected: salience=%.2f", speech_salience);
+
+    return NIMCP_SUCCESS;
 }

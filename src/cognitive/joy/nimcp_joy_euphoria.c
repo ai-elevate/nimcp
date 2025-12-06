@@ -427,6 +427,11 @@ void joy_process_success(joy_system_t* system,
 }
 
 void joy_update(joy_system_t* system, float dt, uint64_t current_time_us) {
+    // Process pending bio-async messages
+    if (system && system->bio_async_enabled && system->bio_ctx_ptr) {
+        bio_router_process_inbox(system->bio_ctx_ptr, 5);
+    }
+
     // WHAT: Update emotional state over time (decay dynamics)
     // WHY:  Emotions fade back to baseline, not permanent
     // HOW:  Exponential decay with different rates for different emotions

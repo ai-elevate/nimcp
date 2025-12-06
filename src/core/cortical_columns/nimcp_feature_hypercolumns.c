@@ -16,14 +16,57 @@
  * @date 2025-01-25
  */
 
-#include "nimcp_feature_hypercolumns.h"
-#include "../../utils/memory/nimcp_memory.h"
-#include "../../utils/logging/nimcp_logging.h"
-#include "../../utils/platform/nimcp_platform_mutex.h"
+#include "core/cortical_columns/nimcp_feature_hypercolumns.h"
+#include "utils/memory/nimcp_unified_memory.h"
+#include "utils/memory/nimcp_memory.h"
+#include "utils/logging/nimcp_logging.h"
+#include "utils/platform/nimcp_platform_mutex.h"
+#include "async/nimcp_bio_async.h"
+#include "async/nimcp_bio_router.h"
+#include "async/nimcp_bio_messages.h"
 #include <math.h>
 #include <string.h>
 #include <float.h>
 #include <stdlib.h>
+
+#define LOG_MODULE "feature_hypercolumns"
+
+//=============================================================================
+// Bio-Async Module Context
+//=============================================================================
+
+static bio_module_context_t bio_ctx = NULL;
+static bool bio_async_enabled = false;
+
+__attribute__((constructor))
+static void feature_hypercolumns_bio_init(void) {
+    if (!bio_router_is_initialized()) {
+        return;
+    }
+
+    bio_module_info_t bio_info = {
+        .module_id = BIO_MODULE_CORTICAL_HYPERCOLUMNS,
+        .module_name = "feature_hypercolumns",
+        .inbox_capacity = 128,
+        .user_data = NULL
+    };
+
+    bio_ctx = bio_router_register_module(&bio_info);
+    if (bio_ctx) {
+        bio_async_enabled = true;
+        LOG_INFO(LOG_MODULE, "Bio-async registered for feature_hypercolumns module");
+    }
+}
+
+__attribute__((destructor))
+static void feature_hypercolumns_bio_cleanup(void) {
+    if (bio_async_enabled && bio_ctx) {
+        bio_router_unregister_module(bio_ctx);
+        bio_ctx = NULL;
+        bio_async_enabled = false;
+        LOG_DEBUG(LOG_MODULE, "Bio-async unregistered for feature_hypercolumns module");
+    }
+}
 
 /* ============================================================================
  * Constants
@@ -170,7 +213,7 @@ void feature_dimension_set_circular(
     bool is_circular
 ) {
     if (!dim) {
-        NIMCP_LOGGING_ERROR("NULL dimension pointer");
+        LOG_ERROR(LOG_MODULE, "NULL dimension pointer");
         return;
     }
 
@@ -182,12 +225,12 @@ void feature_dimension_set_tuning_width(
     float width
 ) {
     if (!dim) {
-        NIMCP_LOGGING_ERROR("NULL dimension pointer");
+        LOG_ERROR(LOG_MODULE, "NULL dimension pointer");
         return;
     }
 
     if (width <= 0.0f) {
-        NIMCP_LOGGING_ERROR("Invalid tuning width: %f", width);
+        LOG_ERROR(LOG_MODULE, "Invalid tuning width: %f", width);
         return;
     }
 
@@ -239,7 +282,7 @@ feature_hypercolumn_t* feature_hypercolumn_create(
     uint32_t num_dimensions
 ) {
     if (!dimensions || num_dimensions == 0) {
-        NIMCP_LOGGING_ERROR("Invalid dimensions");
+        LOG_ERROR(LOG_MODULE, "Invalid dimensions");
         return NULL;
     }
 
@@ -247,7 +290,7 @@ feature_hypercolumn_t* feature_hypercolumn_create(
         sizeof(feature_hypercolumn_t)
     );
     if (!hcol) {
-        NIMCP_LOGGING_ERROR("Failed to allocate hypercolumn");
+        LOG_ERROR(LOG_MODULE, "Failed to allocate hypercolumn");
         return NULL;
     }
 
@@ -340,8 +383,8 @@ feature_hypercolumn_t* feature_hypercolumn_create(
         return NULL;
     }
 
-    NIMCP_LOGGING_INFO("Created feature hypercolumn: %u dims, %u columns",
-                   num_dimensions, hcol->total_columns);
+    LOG_INFO(LOG_MODULE, "Created feature hypercolumn: %u dims, %u columns",
+             num_dimensions, hcol->total_columns);
 
     return hcol;
 }
@@ -381,7 +424,7 @@ feature_hypercolumn_t* feature_hypercolumn_create_orientation(
     uint32_t num_orientations
 ) {
     if (num_orientations == 0) {
-        NIMCP_LOGGING_ERROR("Invalid orientation count");
+        LOG_ERROR(LOG_MODULE, "Invalid orientation count");
         return NULL;
     }
 
@@ -398,7 +441,7 @@ feature_hypercolumn_t* feature_hypercolumn_create_direction(
     uint32_t num_directions
 ) {
     if (num_directions == 0) {
-        NIMCP_LOGGING_ERROR("Invalid direction count");
+        LOG_ERROR(LOG_MODULE, "Invalid direction count");
         return NULL;
     }
 
@@ -417,7 +460,7 @@ feature_hypercolumn_t* feature_hypercolumn_create_spatial_freq(
     float max_freq
 ) {
     if (num_octaves == 0 || min_freq <= 0.0f || max_freq <= min_freq) {
-        NIMCP_LOGGING_ERROR("Invalid spatial frequency parameters");
+        LOG_ERROR(LOG_MODULE, "Invalid spatial frequency parameters");
         return NULL;
     }
 
@@ -435,7 +478,7 @@ feature_hypercolumn_t* feature_hypercolumn_create_color(
     uint32_t num_saturations
 ) {
     if (num_hues == 0 || num_saturations == 0) {
-        NIMCP_LOGGING_ERROR("Invalid color parameters");
+        LOG_ERROR(LOG_MODULE, "Invalid color parameters");
         return NULL;
     }
 
@@ -463,7 +506,7 @@ feature_hypercolumn_t* feature_hypercolumn_create_disparity(
     float max_disparity
 ) {
     if (num_disparities == 0 || max_disparity <= 0.0f) {
-        NIMCP_LOGGING_ERROR("Invalid disparity parameters");
+        LOG_ERROR(LOG_MODULE, "Invalid disparity parameters");
         return NULL;
     }
 
@@ -485,14 +528,19 @@ void feature_hypercolumn_process(
     const float* input_features,
     uint32_t num_features
 ) {
+    // Process pending bio-async messages
+    if (bio_ctx) {
+        bio_router_process_inbox(bio_ctx, 5);
+    }
+
     if (!hcol || !input_features) {
-        NIMCP_LOGGING_ERROR("NULL pointer");
+        LOG_ERROR(LOG_MODULE, "NULL pointer");
         return;
     }
 
     if (num_features != hcol->num_dimensions) {
-        NIMCP_LOGGING_ERROR("Feature count mismatch: got %u, expected %u",
-                       num_features, hcol->num_dimensions);
+        LOG_ERROR(LOG_MODULE, "Feature count mismatch: got %u, expected %u",
+                  num_features, hcol->num_dimensions);
         return;
     }
 
@@ -557,7 +605,7 @@ void feature_hypercolumn_process_with_input(
     uint32_t input_size
 ) {
     if (!hcol || !raw_input) {
-        NIMCP_LOGGING_ERROR("NULL pointer");
+        LOG_ERROR(LOG_MODULE, "NULL pointer");
         return;
     }
 
@@ -611,7 +659,7 @@ void feature_hypercolumn_process_with_input(
 
 void feature_hypercolumn_normalize(feature_hypercolumn_t* hcol) {
     if (!hcol) {
-        NIMCP_LOGGING_ERROR("NULL hypercolumn");
+        LOG_ERROR(LOG_MODULE, "NULL hypercolumn");
         return;
     }
 
@@ -636,12 +684,12 @@ void feature_hypercolumn_softmax(
     float temperature
 ) {
     if (!hcol) {
-        NIMCP_LOGGING_ERROR("NULL hypercolumn");
+        LOG_ERROR(LOG_MODULE, "NULL hypercolumn");
         return;
     }
 
     if (temperature <= 0.0f) {
-        NIMCP_LOGGING_ERROR("Invalid temperature: %f", temperature);
+        LOG_ERROR(LOG_MODULE, "Invalid temperature: %f", temperature);
         return;
     }
 
@@ -692,7 +740,7 @@ void feature_hypercolumn_k_winners(
     uint32_t k
 ) {
     if (!hcol) {
-        NIMCP_LOGGING_ERROR("NULL hypercolumn");
+        LOG_ERROR(LOG_MODULE, "NULL hypercolumn");
         return;
     }
 
@@ -737,7 +785,7 @@ void feature_hypercolumn_threshold(
     float threshold
 ) {
     if (!hcol) {
-        NIMCP_LOGGING_ERROR("NULL hypercolumn");
+        LOG_ERROR(LOG_MODULE, "NULL hypercolumn");
         return;
     }
 
@@ -761,7 +809,7 @@ void feature_hypercolumn_decode(
     float* decoded_features
 ) {
     if (!hcol || !decoded_features) {
-        NIMCP_LOGGING_ERROR("NULL pointer");
+        LOG_ERROR(LOG_MODULE, "NULL pointer");
         return;
     }
 
@@ -773,12 +821,12 @@ float feature_hypercolumn_decode_single(
     uint32_t dimension
 ) {
     if (!hcol) {
-        NIMCP_LOGGING_ERROR("NULL hypercolumn");
+        LOG_ERROR(LOG_MODULE, "NULL hypercolumn");
         return 0.0f;
     }
 
     if (dimension >= hcol->num_dimensions) {
-        NIMCP_LOGGING_ERROR("Invalid dimension: %u", dimension);
+        LOG_ERROR(LOG_MODULE, "Invalid dimension: %u", dimension);
         return 0.0f;
     }
 
@@ -828,7 +876,7 @@ void feature_hypercolumn_decode_population_vector(
     float* decoded_features
 ) {
     if (!hcol || !decoded_features) {
-        NIMCP_LOGGING_ERROR("NULL pointer");
+        LOG_ERROR(LOG_MODULE, "NULL pointer");
         return;
     }
 
@@ -900,12 +948,12 @@ float feature_hypercolumn_get_activation(
     uint32_t column_idx
 ) {
     if (!hcol) {
-        NIMCP_LOGGING_ERROR("NULL hypercolumn");
+        LOG_ERROR(LOG_MODULE, "NULL hypercolumn");
         return 0.0f;
     }
 
     if (column_idx >= hcol->total_columns) {
-        NIMCP_LOGGING_ERROR("Invalid column index: %u", column_idx);
+        LOG_ERROR(LOG_MODULE, "Invalid column index: %u", column_idx);
         return 0.0f;
     }
 
@@ -921,7 +969,7 @@ void feature_hypercolumn_get_all_activations(
     float* activations
 ) {
     if (!hcol || !activations) {
-        NIMCP_LOGGING_ERROR("NULL pointer");
+        LOG_ERROR(LOG_MODULE, "NULL pointer");
         return;
     }
 
@@ -936,7 +984,7 @@ void feature_hypercolumn_get_all_activations(
 
 uint32_t feature_hypercolumn_get_winner(feature_hypercolumn_t* hcol) {
     if (!hcol) {
-        NIMCP_LOGGING_ERROR("NULL hypercolumn");
+        LOG_ERROR(LOG_MODULE, "NULL hypercolumn");
         return 0;
     }
 
@@ -988,12 +1036,12 @@ void feature_hypercolumn_get_top_k(
     float* activations
 ) {
     if (!hcol || !indices || !activations) {
-        NIMCP_LOGGING_ERROR("NULL pointer");
+        LOG_ERROR(LOG_MODULE, "NULL pointer");
         return;
     }
 
     if (k == 0 || k > hcol->total_columns) {
-        NIMCP_LOGGING_ERROR("Invalid k: %u", k);
+        LOG_ERROR(LOG_MODULE, "Invalid k: %u", k);
         return;
     }
 
@@ -1037,12 +1085,12 @@ void feature_hypercolumn_learn_hebbian(
     float learning_rate
 ) {
     if (!hcol || !input) {
-        NIMCP_LOGGING_ERROR("NULL pointer");
+        LOG_ERROR(LOG_MODULE, "NULL pointer");
         return;
     }
 
     if (learning_rate <= 0.0f || learning_rate > 1.0f) {
-        NIMCP_LOGGING_ERROR("Invalid learning rate: %f", learning_rate);
+        LOG_ERROR(LOG_MODULE, "Invalid learning rate: %f", learning_rate);
         return;
     }
 
@@ -1086,12 +1134,12 @@ void feature_hypercolumn_learn_competitive(
     float neighborhood_sigma
 ) {
     if (!hcol || !input) {
-        NIMCP_LOGGING_ERROR("NULL pointer");
+        LOG_ERROR(LOG_MODULE, "NULL pointer");
         return;
     }
 
     if (learning_rate <= 0.0f || learning_rate > 1.0f) {
-        NIMCP_LOGGING_ERROR("Invalid learning rate: %f", learning_rate);
+        LOG_ERROR(LOG_MODULE, "Invalid learning rate: %f", learning_rate);
         return;
     }
 
@@ -1156,12 +1204,12 @@ void feature_hypercolumn_get_tuning_curve(
     uint32_t num_points
 ) {
     if (!hcol || !values || !responses) {
-        NIMCP_LOGGING_ERROR("NULL pointer");
+        LOG_ERROR(LOG_MODULE, "NULL pointer");
         return;
     }
 
     if (dimension >= hcol->num_dimensions) {
-        NIMCP_LOGGING_ERROR("Invalid dimension: %u", dimension);
+        LOG_ERROR(LOG_MODULE, "Invalid dimension: %u", dimension);
         return;
     }
 
@@ -1218,12 +1266,12 @@ void feature_hypercolumn_pool_responses(
     float* pooled_output
 ) {
     if (!hcols || !pooled_output || num_hcols == 0) {
-        NIMCP_LOGGING_ERROR("Invalid parameters");
+        LOG_ERROR(LOG_MODULE, "Invalid parameters");
         return;
     }
 
     if (!hcols[0]) {
-        NIMCP_LOGGING_ERROR("NULL hypercolumn");
+        LOG_ERROR(LOG_MODULE, "NULL hypercolumn");
         return;
     }
 
@@ -1264,7 +1312,7 @@ void feature_hypercolumn_get_stats(
     feature_hypercolumn_stats_t* stats
 ) {
     if (!hcol || !stats) {
-        NIMCP_LOGGING_ERROR("NULL pointer");
+        LOG_ERROR(LOG_MODULE, "NULL pointer");
         return;
     }
 
@@ -1318,7 +1366,7 @@ void feature_hypercolumn_get_stats(
 
 float feature_hypercolumn_compute_sparsity(feature_hypercolumn_t* hcol) {
     if (!hcol) {
-        NIMCP_LOGGING_ERROR("NULL hypercolumn");
+        LOG_ERROR(LOG_MODULE, "NULL hypercolumn");
         return 0.0f;
     }
 
@@ -1340,7 +1388,7 @@ float feature_hypercolumn_compute_sparsity(feature_hypercolumn_t* hcol) {
 
 float feature_hypercolumn_compute_selectivity(feature_hypercolumn_t* hcol) {
     if (!hcol) {
-        NIMCP_LOGGING_ERROR("NULL hypercolumn");
+        LOG_ERROR(LOG_MODULE, "NULL hypercolumn");
         return 0.0f;
     }
 

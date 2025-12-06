@@ -1,27 +1,297 @@
 /**
  * @file nimcp_oligodendrocytes.c
- * @brief Enhanced Oligodendrocyte Implementation - Myelination, Saltatory Conduction & Metabolic Support
+ * @brief Enhanced Oligodendrocyte Implementation with Bio-Async Integration
  *
  * IMPLEMENTATION FEATURES:
+ * - Bio-async messaging for myelination via SEROTONIN channel (slow, stabilizing)
  * - RK4 ODE integration for myelination dynamics
  * - G-ratio optimization using Rushton's law
  * - Saltatory conduction velocity calculation
  * - NRG1/BDNF growth factor signaling
- * - Lactate shuttle metabolic support
- * - KD-tree spatial indexing for O(log n) queries
- * - Centrality-based myelination prioritization
- * - Thread-safe with spinlock/mutex protection
+ * - Predictive signal publishing for myelination progress
  *
- * @version 2.0.0 (Enhanced with mathematical algorithms)
+ * @author NIMCP Development Team
+ * @date 2025-11-28
+ * @version 2.1.0 - Bio-Async Integrated
  */
 
-#include "nimcp_oligodendrocytes.h"
+#include "glial/oligodendrocytes/nimcp_oligodendrocytes.h"
+#include "async/nimcp_bio_async.h"
+#include "async/nimcp_bio_messages.h"
+#include "async/nimcp_bio_router.h"
+#include "utils/logging/nimcp_logging.h"
+#include "utils/memory/nimcp_unified_memory.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/thread/nimcp_thread.h"
 #include "utils/time/nimcp_time.h"
 #include "utils/spatial/nimcp_kdtree.h"
 #include <string.h>
 #include <math.h>
+
+//=============================================================================
+// Global Bio-Async Context
+//=============================================================================
+
+static bio_module_context_t g_oligo_bio_ctx = NULL;
+static unified_mem_manager_t g_oligo_mem_mgr = NULL;
+static bool g_oligo_bio_initialized = false;
+
+//=============================================================================
+// Bio-Async Message Handlers
+//=============================================================================
+
+/**
+ * @brief Handle BIO_MSG_OLIGODENDROCYTE_MYELINATE message
+ *
+ * Processes myelination requests via SEROTONIN channel (slow, stabilizing).
+ * Publishes myelination progress as predictive signals.
+ */
+static nimcp_error_t handle_myelination_message(
+    const void* msg, size_t msg_size,
+    nimcp_bio_promise_t response_promise, void* user_data)
+{
+    if (!msg || msg_size < sizeof(bio_message_header_t)) {
+        LOG_MODULE_ERROR("OLIGODENDROCYTE", "Invalid myelination message");
+        return NIMCP_ERROR_INVALID_PARAM;
+    }
+
+    const bio_message_header_t* header = (const bio_message_header_t*)msg;
+
+    // Parse myelination request (axon ID, target thickness, priority)
+    if (msg_size < sizeof(bio_message_header_t) + sizeof(uint32_t) + 2 * sizeof(float)) {
+        LOG_MODULE_ERROR("OLIGODENDROCYTE", "Myelination message too small");
+        return NIMCP_ERROR_INVALID_PARAM;
+    }
+
+    const uint8_t* payload = (const uint8_t*)msg + sizeof(bio_message_header_t);
+    uint32_t axon_id = *(const uint32_t*)payload;
+    float target_thickness = *(const float*)(payload + sizeof(uint32_t));
+    float priority = *(const float*)(payload + sizeof(uint32_t) + sizeof(float));
+
+    LOG_MODULE_INFO("OLIGODENDROCYTE", "Myelination request: axon=%u, thickness=%.2f μm, priority=%.2f",
+                    axon_id, target_thickness, priority);
+
+    // Publish myelination request via SEROTONIN (slow, stabilizing) channel
+    nimcp_error_t result = bio_router_publish_signal(g_oligo_bio_ctx,
+        "oligodendrocyte.myelination_request", priority);
+
+    return result;
+}
+
+/**
+ * @brief Handle BIO_MSG_METABOLIC_DEMAND message
+ *
+ * Oligodendrocytes are metabolically expensive - myelination requires significant ATP.
+ * High metabolic demand may slow or pause myelination to preserve energy.
+ */
+static nimcp_error_t handle_metabolic_demand_message(
+    const void* msg, size_t msg_size,
+    nimcp_bio_promise_t response_promise, void* user_data)
+{
+    if (!msg || msg_size < sizeof(bio_msg_metabolic_demand_t)) {
+        LOG_MODULE_ERROR("OLIGODENDROCYTE", "Invalid metabolic demand message");
+        return NIMCP_ERROR_INVALID_PARAM;
+    }
+
+    const bio_msg_metabolic_demand_t* demand = (const bio_msg_metabolic_demand_t*)msg;
+
+    LOG_MODULE_DEBUG("OLIGODENDROCYTE", "Metabolic demand from region %u: glucose=%.2f, ATP deficit=%.2f",
+                     demand->region_id, demand->glucose_demand, demand->atp_deficit);
+
+    // Myelination is ATP-intensive - high demand may require reducing myelination rate
+    if (demand->atp_deficit > 0.6f) {
+        LOG_MODULE_WARN("OLIGODENDROCYTE", "High ATP deficit (%.2f) - reducing myelination activity",
+                        demand->atp_deficit);
+        bio_router_publish_signal(g_oligo_bio_ctx, "oligodendrocyte.metabolic_constraint", demand->atp_deficit);
+    }
+
+    // Oligodendrocytes can provide lactate to axons (metabolic support)
+    float lactate_supply = 0.5f; // Moderate lactate support
+    bio_router_publish_signal(g_oligo_bio_ctx, "oligodendrocyte.lactate_supply", lactate_supply);
+
+    return NIMCP_SUCCESS;
+}
+
+/**
+ * @brief Handle BIO_MSG_METABOLIC_SUPPLY message
+ *
+ * Oligodendrocytes receive metabolic support from astrocytes.
+ * This allows them to continue myelination activities.
+ */
+static nimcp_error_t handle_metabolic_supply_message(
+    const void* msg, size_t msg_size,
+    nimcp_bio_promise_t response_promise, void* user_data)
+{
+    if (!msg || msg_size < sizeof(bio_message_header_t)) {
+        LOG_MODULE_ERROR("OLIGODENDROCYTE", "Invalid metabolic supply message");
+        return NIMCP_ERROR_INVALID_PARAM;
+    }
+
+    // Parse supply amount
+    if (msg_size < sizeof(bio_message_header_t) + sizeof(float)) {
+        LOG_MODULE_ERROR("OLIGODENDROCYTE", "Metabolic supply message too small");
+        return NIMCP_ERROR_INVALID_PARAM;
+    }
+
+    const uint8_t* payload = (const uint8_t*)msg + sizeof(bio_message_header_t);
+    float supply_amount = *(const float*)payload;
+
+    LOG_MODULE_DEBUG("OLIGODENDROCYTE", "Received metabolic supply: %.2f", supply_amount);
+
+    // With adequate metabolic support, can increase myelination activity
+    if (supply_amount > 0.7f) {
+        bio_router_publish_signal(g_oligo_bio_ctx, "oligodendrocyte.myelination_boost", supply_amount);
+    }
+
+    return NIMCP_SUCCESS;
+}
+
+/**
+ * @brief Handle BIO_MSG_GLIAL_SYNC_REQUEST message
+ *
+ * Handles synchronization requests for coordinated glial cell activity.
+ * Oligodendrocytes coordinate myelination with astrocyte metabolic support.
+ */
+static nimcp_error_t handle_glial_sync_message(
+    const void* msg, size_t msg_size,
+    nimcp_bio_promise_t response_promise, void* user_data)
+{
+    if (!msg || msg_size < sizeof(bio_message_header_t)) {
+        LOG_MODULE_ERROR("OLIGODENDROCYTE", "Invalid glial sync message");
+        return NIMCP_ERROR_INVALID_PARAM;
+    }
+
+    const bio_message_header_t* header = (const bio_message_header_t*)msg;
+
+    LOG_MODULE_DEBUG("OLIGODENDROCYTE", "Glial sync request received from module %u", header->source_module);
+
+    // Publish sync acknowledgment
+    nimcp_error_t result = bio_router_publish_signal(g_oligo_bio_ctx,
+        "oligodendrocyte.sync_ack", 1.0f);
+
+    return result;
+}
+
+/**
+ * @brief Initialize bio-async integration for oligodendrocytes module
+ */
+static nimcp_error_t oligodendrocyte_bio_init(void)
+{
+    if (g_oligo_bio_initialized) {
+        LOG_MODULE_WARN("OLIGODENDROCYTE", "Bio-async already initialized");
+        return NIMCP_SUCCESS;
+    }
+
+    // Initialize unified memory manager
+    unified_mem_config_t mem_config = unified_mem_default_config();
+    g_oligo_mem_mgr = unified_mem_create(&mem_config);
+    if (!g_oligo_mem_mgr) {
+        LOG_MODULE_ERROR("OLIGODENDROCYTE", "Failed to create unified memory manager");
+        return NIMCP_ERROR_MEMORY;
+    }
+
+    // Register module with bio-router
+    bio_module_info_t info = {
+        .module_id = BIO_MODULE_OLIGODENDROCYTE,
+        .module_name = "Oligodendrocyte",
+        .inbox_capacity = 128,
+        .user_data = NULL
+    };
+
+    g_oligo_bio_ctx = bio_router_register_module(&info);
+    if (!g_oligo_bio_ctx) {
+        LOG_MODULE_ERROR("OLIGODENDROCYTE", "Failed to register with bio-router");
+        unified_mem_destroy(g_oligo_mem_mgr);
+        g_oligo_mem_mgr = NULL;
+        return NIMCP_ERROR_INVALID_PARAM;
+    }
+
+    // Register message handlers
+    nimcp_error_t result;
+
+    result = bio_router_register_handler(g_oligo_bio_ctx,
+                                          BIO_MSG_OLIGODENDROCYTE_MYELINATE,
+                                          handle_myelination_message);
+    if (result != NIMCP_SUCCESS) {
+        LOG_MODULE_ERROR("OLIGODENDROCYTE", "Failed to register myelination handler: %d", result);
+        goto cleanup;
+    }
+
+    result = bio_router_register_handler(g_oligo_bio_ctx,
+                                          BIO_MSG_METABOLIC_DEMAND,
+                                          handle_metabolic_demand_message);
+    if (result != NIMCP_SUCCESS) {
+        LOG_MODULE_ERROR("OLIGODENDROCYTE", "Failed to register metabolic demand handler: %d", result);
+        goto cleanup;
+    }
+
+    result = bio_router_register_handler(g_oligo_bio_ctx,
+                                          BIO_MSG_METABOLIC_SUPPLY,
+                                          handle_metabolic_supply_message);
+    if (result != NIMCP_SUCCESS) {
+        LOG_MODULE_ERROR("OLIGODENDROCYTE", "Failed to register metabolic supply handler: %d", result);
+        goto cleanup;
+    }
+
+    result = bio_router_register_handler(g_oligo_bio_ctx,
+                                          BIO_MSG_GLIAL_SYNC_REQUEST,
+                                          handle_glial_sync_message);
+    if (result != NIMCP_SUCCESS) {
+        LOG_MODULE_ERROR("OLIGODENDROCYTE", "Failed to register glial sync handler: %d", result);
+        goto cleanup;
+    }
+
+    g_oligo_bio_initialized = true;
+    LOG_MODULE_INFO("OLIGODENDROCYTE", "Bio-async integration initialized successfully (4 handlers registered)");
+    return NIMCP_SUCCESS;
+
+cleanup:
+    bio_router_unregister_module(g_oligo_bio_ctx);
+    g_oligo_bio_ctx = NULL;
+    unified_mem_destroy(g_oligo_mem_mgr);
+    g_oligo_mem_mgr = NULL;
+    return result;
+}
+
+/**
+ * @brief Shutdown bio-async integration
+ */
+static void oligodendrocyte_bio_shutdown(void)
+{
+    if (!g_oligo_bio_initialized) {
+        return;
+    }
+
+    LOG_MODULE_INFO("OLIGODENDROCYTE", "Shutting down bio-async integration");
+
+    if (g_oligo_bio_ctx) {
+        bio_router_unregister_module(g_oligo_bio_ctx);
+        g_oligo_bio_ctx = NULL;
+    }
+
+    if (g_oligo_mem_mgr) {
+        unified_mem_destroy(g_oligo_mem_mgr);
+        g_oligo_mem_mgr = NULL;
+    }
+
+    g_oligo_bio_initialized = false;
+}
+
+//=============================================================================
+// Public Bio-Async API
+//=============================================================================
+
+nimcp_result_t oligodendrocyte_register_bio_handlers(void)
+{
+    LOG_MODULE_INFO("OLIGODENDROCYTE", "Registering bio-async message handlers");
+    return oligodendrocyte_bio_init();
+}
+
+void oligodendrocyte_unregister_bio_handlers(void)
+{
+    LOG_MODULE_INFO("OLIGODENDROCYTE", "Unregistering bio-async message handlers");
+    oligodendrocyte_bio_shutdown();
+}
 
 //=============================================================================
 // INTERNAL HELPER FUNCTIONS
@@ -227,12 +497,24 @@ static void initialize_internodes(myelinated_axon_t* axon) {
 
 oligodendrocyte_t* oligodendrocyte_create(uint32_t id, float x, float y, float z,
                                            uint32_t max_axons) {
+    // Initialize bio-async on first create
+    if (!g_oligo_bio_initialized) {
+        nimcp_error_t result = oligodendrocyte_bio_init();
+        if (result != NIMCP_SUCCESS) {
+            LOG_MODULE_WARN("OLIGODENDROCYTE", "Bio-async init failed: %d (continuing anyway)", result);
+        }
+    }
+
     if (max_axons == 0 || max_axons > NIMCP_OLIGO_MAX_AXONS) {
+        LOG_MODULE_ERROR("OLIGODENDROCYTE", "Invalid max_axons: %u", max_axons);
         return NULL;
     }
 
     oligodendrocyte_t* oligo = (oligodendrocyte_t*)nimcp_malloc(sizeof(oligodendrocyte_t));
-    if (!oligo) return NULL;
+    if (!oligo) {
+        LOG_MODULE_ERROR("OLIGODENDROCYTE", "Failed to allocate oligodendrocyte structure");
+        return NULL;
+    }
 
     memset(oligo, 0, sizeof(oligodendrocyte_t));
 
@@ -1220,6 +1502,11 @@ bool oligodendrocyte_axon_metabolically_supported(const oligodendrocyte_t* oligo
 void oligodendrocyte_update_state_dynamics(oligodendrocyte_t* oligo, float dt) {
     if (!oligo || dt <= 0.0f) return;
 
+    // Process pending bio-async messages before state update
+    if (g_oligo_bio_initialized && g_oligo_bio_ctx) {
+        bio_router_process_inbox(g_oligo_bio_ctx, 5);  // Process up to 5 messages
+    }
+
     nimcp_spinlock_lock(&oligo->lock);
 
     rk4_step(oligo, dt);
@@ -1232,6 +1519,14 @@ void oligodendrocyte_update_state_dynamics(oligodendrocyte_t* oligo, float dt) {
     }
 
     nimcp_spinlock_unlock(&oligo->lock);
+
+    // Publish myelination state via SEROTONIN channel (slow, stabilizing)
+    if (g_oligo_bio_initialized && g_oligo_bio_ctx) {
+        bio_router_publish_signal(g_oligo_bio_ctx, "oligodendrocyte.myelination", oligo->myelination_rate);
+        bio_router_publish_signal(g_oligo_bio_ctx, "oligodendrocyte.maturation", oligo->maturation_progress);
+        LOG_MODULE_DEBUG("OLIGODENDROCYTE", "Published state: myelin_rate=%.3f, maturation=%.3f",
+                         oligo->myelination_rate, oligo->maturation_progress);
+    }
 }
 
 oligo_maturation_state_t oligodendrocyte_get_maturation(const oligodendrocyte_t* oligo) {

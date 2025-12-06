@@ -210,6 +210,11 @@ bool empathetic_response_detect_crisis(
     uint32_t* crisis_flags,
     float* confidence)
 {
+    // Process pending bio-async messages
+    if (engine && engine->bio_ctx) {
+        bio_router_process_inbox(engine->bio_ctx, 5);
+    }
+
     // Guard: NULL checks
     if (!engine || !text || !crisis_flags || !confidence) {
         return false;

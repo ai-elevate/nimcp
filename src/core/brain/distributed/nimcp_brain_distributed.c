@@ -33,7 +33,16 @@
  * @version 2.7
  */
 
-#include "nimcp_brain_distributed.h"
+// Bio-async integration
+#include "async/nimcp_bio_async.h"
+#include "utils/memory/nimcp_unified_memory.h"
+#include "async/nimcp_bio_router.h"
+#include "async/nimcp_bio_messages.h"
+
+// Logging integration
+#include "utils/logging/nimcp_logging.h"
+
+#include "core/brain/distributed/nimcp_brain_distributed.h"
 #include "core/brain/nimcp_brain.h"
 #include "core/brain/nimcp_brain_internal.h"
 #include <stdio.h>
@@ -46,6 +55,8 @@
 #include "utils/memory/nimcp_memory.h"
 #include "utils/cache/nimcp_cache.h"
 #include "utils/platform/nimcp_platform_mutex.h"
+
+#define LOG_MODULE "BRAIN_DISTRIBUTED"
 
 //=============================================================================
 // Error Handling

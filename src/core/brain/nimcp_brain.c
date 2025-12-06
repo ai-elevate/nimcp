@@ -2914,6 +2914,11 @@ static void populate_interpretability(brain_t brain, const float* features, uint
  */
 static void update_inference_stats(brain_t brain, brain_decision_t* decision)
 {
+    // Process pending bio-async messages
+    if (g_brain_bio_ctx) {
+        bio_router_process_inbox(g_brain_bio_ctx, 5);
+    }
+
     brain->stats.total_inferences++;
     brain->stats.avg_inference_time_us =
         (brain->stats.avg_inference_time_us * (brain->stats.total_inferences - 1) +

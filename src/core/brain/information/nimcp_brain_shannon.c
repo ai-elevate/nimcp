@@ -19,6 +19,17 @@
  * - Clean separation: Independent from main brain implementation
  */
 
+// Bio-async integration
+#include "async/nimcp_bio_async.h"
+#include "async/nimcp_bio_router.h"
+#include "async/nimcp_bio_messages.h"
+
+// Logging integration
+#include "utils/logging/nimcp_logging.h"
+
+// Unified memory integration
+#include "utils/memory/nimcp_unified_memory.h"
+
 #include "core/brain/information/nimcp_brain_shannon.h"
 #include "core/brain/nimcp_brain.h"
 #include "core/brain/nimcp_brain_internal.h"
@@ -33,6 +44,8 @@
 #include "information/nimcp_shannon.h"
 #include "utils/quantum/nimcp_quantum_shannon.h"
 #include "information/nimcp_cross_modal.h"
+
+#define LOG_MODULE "BRAIN_INFO"
 
 //=============================================================================
 // Error Handling (External Linkage)

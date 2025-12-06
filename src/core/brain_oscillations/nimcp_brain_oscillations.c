@@ -12,10 +12,54 @@
  */
 
 #include "core/brain_oscillations/nimcp_brain_oscillations.h"
+#include "utils/memory/nimcp_unified_memory.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/validation/nimcp_validate.h"
+#include "utils/logging/nimcp_logging.h"
+#include "async/nimcp_bio_async.h"
+#include "async/nimcp_bio_router.h"
+#include "async/nimcp_bio_messages.h"
 #include <string.h>
 #include <math.h>
+
+#define LOG_MODULE "brain_oscillations"
+
+//=============================================================================
+// Bio-Async Module Context
+//=============================================================================
+
+static bio_module_context_t bio_ctx = NULL;
+static bool bio_async_enabled = false;
+
+__attribute__((constructor))
+static void brain_oscillations_bio_init(void) {
+    if (!bio_router_is_initialized()) {
+        return;
+    }
+
+    bio_module_info_t bio_info = {
+        .module_id = BIO_MODULE_BRAIN_OSCILLATIONS,
+        .module_name = "brain_oscillations",
+        .inbox_capacity = 128,
+        .user_data = NULL
+    };
+
+    bio_ctx = bio_router_register_module(&bio_info);
+    if (bio_ctx) {
+        bio_async_enabled = true;
+        LOG_INFO(LOG_MODULE, "Bio-async registered for brain_oscillations module");
+    }
+}
+
+__attribute__((destructor))
+static void brain_oscillations_bio_cleanup(void) {
+    if (bio_async_enabled && bio_ctx) {
+        bio_router_unregister_module(bio_ctx);
+        bio_ctx = NULL;
+        bio_async_enabled = false;
+        LOG_DEBUG(LOG_MODULE, "Bio-async unregistered for brain_oscillations module");
+    }
+}
 
 #ifndef M_PI
 #define M_PI 3.14159265358979323846
@@ -479,6 +523,11 @@ bool brain_oscillation_analyze(
     brain_oscillation_analyzer_t* analyzer,
     oscillation_analysis_t* results)
 {
+    // Process pending bio-async messages
+    if (bio_ctx) {
+        bio_router_process_inbox(bio_ctx, 5);
+    }
+
     // Guard: Validate inputs
     if (!analyzer || !results) {
         return false;

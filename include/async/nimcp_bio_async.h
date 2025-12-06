@@ -463,6 +463,23 @@ nimcp_error_t nimcp_bio_promise_complete(
 );
 
 /**
+ * @brief Complete bio-promise with sized result
+ *
+ * Use this when the promise was created with result_size=0 (unknown size)
+ * and the handler needs to provide the actual result size.
+ *
+ * @param promise Promise handle
+ * @param result Result data to copy
+ * @param result_size Size of result data in bytes
+ * @return NIMCP_SUCCESS or error code
+ */
+nimcp_error_t nimcp_bio_promise_complete_sized(
+    nimcp_bio_promise_t promise,
+    const void* result,
+    size_t result_size
+);
+
+/**
  * @brief Fail bio-promise with error
  *
  * @param promise Promise handle

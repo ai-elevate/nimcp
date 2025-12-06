@@ -33,6 +33,17 @@ extern "C" {
 #include <stdbool.h>
 #include <stddef.h>
 
+/* Bio-async communication system */
+#include "async/nimcp_bio_async.h"
+#include "async/nimcp_bio_router.h"
+#include "async/nimcp_bio_messages.h"
+
+/* Logging system */
+#include "utils/logging/nimcp_logging.h"
+
+/* Unified memory system */
+#include "utils/memory/nimcp_unified_memory.h"
+
 /* Forward declarations for sub-modules */
 typedef struct syntax_processor syntax_processor_t;
 typedef struct phonological_processor phonological_processor_t;
@@ -86,6 +97,10 @@ typedef struct {
 
     /* Timing */
     float planning_window_ms;        /**< Motor planning window */
+
+    /* Bio-async communication */
+    bool enable_bio_async;           /**< Enable bio-async messaging */
+    nimcp_bio_channel_type_t default_channel; /**< Default neuromodulator channel */
 } broca_config_t;
 
 /*=============================================================================
@@ -652,6 +667,127 @@ phonological_processor_t* broca_get_phonological_processor(broca_adapter_t* adap
  * @return Speech motor planner, or NULL
  */
 speech_motor_planner_t* broca_get_speech_motor_planner(broca_adapter_t* adapter);
+
+/*=============================================================================
+ * BIO-ASYNC COMMUNICATION
+ *===========================================================================*/
+
+/**
+ * @brief Get bio-async module context
+ *
+ * WHAT: Returns the bio-async module context for Broca's region
+ * WHY:  Allow external modules to send messages to Broca
+ * HOW:  Returns internal bio_module_context_t
+ *
+ * @param adapter Adapter instance
+ * @return Bio-async module context, or NULL if not enabled
+ */
+bio_module_context_t broca_get_bio_context(broca_adapter_t* adapter);
+
+/**
+ * @brief Process pending bio-async messages
+ *
+ * WHAT: Process messages in Broca's inbox
+ * WHY:  Handle incoming requests from other modules
+ * HOW:  Calls bio_router_process_inbox and invokes handlers
+ *
+ * @param adapter Adapter instance
+ * @param max_messages Maximum messages to process (0 = all)
+ * @return Number of messages processed
+ */
+uint32_t broca_process_bio_messages(broca_adapter_t* adapter, uint32_t max_messages);
+
+/**
+ * @brief Request lexical access asynchronously
+ *
+ * WHAT: Send lexical access request via bio-async
+ * WHY:  Async communication with external lexicon (Wernicke's area)
+ * HOW:  Sends BIO_MSG_LEXICAL_ACCESS_REQUEST, returns future
+ *
+ * @param adapter Adapter instance
+ * @param word_id Word ID (0 = use string)
+ * @param word Word string (if word_id = 0)
+ * @return Future for lexical response, or NULL on failure
+ */
+nimcp_bio_future_t broca_request_lexical_access_async(
+    broca_adapter_t* adapter,
+    uint32_t word_id,
+    const char* word
+);
+
+/**
+ * @brief Request syntax parsing asynchronously
+ *
+ * WHAT: Send syntax parse request via bio-async
+ * WHY:  Allow external syntax validation or parallel processing
+ * HOW:  Sends BIO_MSG_SYNTAX_PARSE_REQUEST, returns future
+ *
+ * @param adapter Adapter instance
+ * @param word_ids Word sequence to parse
+ * @param word_count Number of words
+ * @return Future for parse result, or NULL on failure
+ */
+nimcp_bio_future_t broca_request_syntax_parse_async(
+    broca_adapter_t* adapter,
+    const uint32_t* word_ids,
+    uint8_t word_count
+);
+
+/**
+ * @brief Request motor command generation asynchronously
+ *
+ * WHAT: Send motor command request via bio-async
+ * WHY:  Communicate with motor cortex for articulation
+ * HOW:  Sends BIO_MSG_MOTOR_COMMAND_REQUEST, returns future
+ *
+ * @param adapter Adapter instance
+ * @param phoneme Target phoneme
+ * @param duration_ms Target duration
+ * @param pitch_hz Target pitch
+ * @return Future for motor command result, or NULL on failure
+ */
+nimcp_bio_future_t broca_request_motor_command_async(
+    broca_adapter_t* adapter,
+    uint8_t phoneme,
+    float duration_ms,
+    float pitch_hz
+);
+
+/**
+ * @brief Broadcast utterance production complete
+ *
+ * WHAT: Notify all modules that utterance production is done
+ * WHY:  Allow speech cortex, feedback systems to sync
+ * HOW:  Broadcasts BIO_MSG_UTTERANCE_PRODUCTION_COMPLETE
+ *
+ * @param adapter Adapter instance
+ * @param result Utterance result to broadcast
+ * @return NIMCP_SUCCESS or error code
+ */
+nimcp_error_t broca_broadcast_utterance_complete(
+    broca_adapter_t* adapter,
+    const broca_utterance_result_t* result
+);
+
+/**
+ * @brief Handle incoming speech feedback
+ *
+ * WHAT: Process feedback from speech perception
+ * WHY:  Enable auditory feedback loop for self-monitoring
+ * HOW:  Callback invoked by bio-async on BIO_MSG_SPEECH_FEEDBACK
+ *
+ * @param adapter Adapter instance
+ * @param phoneme_id Recognized phoneme
+ * @param confidence Recognition confidence
+ * @param timing_error Timing error (ms) from expected
+ * @return NIMCP_SUCCESS or error code
+ */
+nimcp_error_t broca_handle_speech_feedback(
+    broca_adapter_t* adapter,
+    uint8_t phoneme_id,
+    float confidence,
+    float timing_error
+);
 
 #ifdef __cplusplus
 }

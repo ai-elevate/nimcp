@@ -10,11 +10,25 @@
  * @date 2025-11-23
  */
 
+// Bio-async integration
+#include "async/nimcp_bio_async.h"
+#include "async/nimcp_bio_router.h"
+#include "async/nimcp_bio_messages.h"
+
+// Logging integration
+#include "utils/logging/nimcp_logging.h"
+
+// Unified memory integration
+#include "utils/memory/nimcp_unified_memory.h"
+
 #include "core/brain/regions/broca/nimcp_language_production_bridge.h"
 #include "core/brain/regions/broca/nimcp_broca_adapter.h"
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
+#include "utils/memory/nimcp_memory_guards.h"  // For nimcp_calloc/nimcp_free
+
+#define LOG_MODULE "BROCA_LANG_PROD"
 
 /*=============================================================================
  * INTERNAL STRUCTURES
@@ -95,7 +109,7 @@ static void lpb_clear_context(language_production_bridge_t* bridge) {
 
     /* Clear intent */
     if (bridge->current_intent.semantic_vector) {
-        free(bridge->current_intent.semantic_vector);
+        nimcp_free(bridge->current_intent.semantic_vector);
         bridge->current_intent.semantic_vector = NULL;
     }
     memset(&bridge->current_intent, 0, sizeof(lpb_semantic_intent_t));
@@ -257,7 +271,7 @@ language_production_bridge_t* lpb_create(const lpb_config_t* config,
         return NULL;
     }
 
-    language_production_bridge_t* bridge = calloc(1, sizeof(language_production_bridge_t));
+    language_production_bridge_t* bridge = nimcp_calloc(1, sizeof(language_production_bridge_t));
     if (!bridge) {
         return NULL;
     }
@@ -273,18 +287,18 @@ language_production_bridge_t* lpb_create(const lpb_config_t* config,
     bridge->broca = broca;
 
     /* Allocate buffers */
-    bridge->token_buffer = calloc(bridge->config.max_tokens, sizeof(lpb_token_t));
+    bridge->token_buffer = nimcp_calloc(bridge->config.max_tokens, sizeof(lpb_token_t));
     if (!bridge->token_buffer) {
-        free(bridge);
+        nimcp_free(bridge);
         return NULL;
     }
 
     /* Phoneme buffer: estimate 4 phonemes per token average */
     uint32_t phoneme_capacity = bridge->config.max_tokens * 4;
-    bridge->phoneme_buffer = calloc(phoneme_capacity, sizeof(uint8_t));
+    bridge->phoneme_buffer = nimcp_calloc(phoneme_capacity, sizeof(uint8_t));
     if (!bridge->phoneme_buffer) {
-        free(bridge->token_buffer);
-        free(bridge);
+        nimcp_free(bridge->token_buffer);
+        nimcp_free(bridge);
         return NULL;
     }
 
@@ -303,21 +317,21 @@ void lpb_destroy(language_production_bridge_t* bridge) {
 
     /* Free priming vector */
     if (bridge->priming_vector) {
-        free(bridge->priming_vector);
+        nimcp_free(bridge->priming_vector);
     }
 
     /* Free buffers */
     if (bridge->token_buffer) {
-        free(bridge->token_buffer);
+        nimcp_free(bridge->token_buffer);
     }
     if (bridge->phoneme_buffer) {
-        free(bridge->phoneme_buffer);
+        nimcp_free(bridge->phoneme_buffer);
     }
 
     /* Note: We don't destroy broca, speech_cortex, nlp, or wm
      * as they are owned externally */
 
-    free(bridge);
+    nimcp_free(bridge);
 }
 
 bool lpb_reset(language_production_bridge_t* bridge) {
@@ -327,7 +341,7 @@ bool lpb_reset(language_production_bridge_t* bridge) {
 
     /* Clear priming */
     if (bridge->priming_vector) {
-        free(bridge->priming_vector);
+        nimcp_free(bridge->priming_vector);
         bridge->priming_vector = NULL;
     }
     bridge->priming_dim = 0;
@@ -407,11 +421,11 @@ bool lpb_produce_from_intent(language_production_bridge_t* bridge,
 
     /* Copy intent */
     if (bridge->current_intent.semantic_vector) {
-        free(bridge->current_intent.semantic_vector);
+        nimcp_free(bridge->current_intent.semantic_vector);
     }
     bridge->current_intent = *intent;
     if (intent->semantic_vector && intent->semantic_dim > 0) {
-        bridge->current_intent.semantic_vector = malloc(intent->semantic_dim * sizeof(float));
+        bridge->current_intent.semantic_vector = nimcp_malloc(intent->semantic_dim * sizeof(float));
         if (bridge->current_intent.semantic_vector) {
             memcpy(bridge->current_intent.semantic_vector,
                    intent->semantic_vector,
@@ -701,7 +715,7 @@ bool lpb_prime_lexical_access(language_production_bridge_t* bridge,
 
     /* Allocate/reallocate priming vector */
     if (bridge->priming_vector == NULL || bridge->priming_dim != dim) {
-        float* new_vec = realloc(bridge->priming_vector, dim * sizeof(float));
+        float* new_vec = nimcp_realloc(bridge->priming_vector, dim * sizeof(float));
         if (!new_vec) {
             return lpb_set_error(bridge, LPB_ERROR_INTERNAL);
         }

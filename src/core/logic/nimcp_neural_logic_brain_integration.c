@@ -17,11 +17,27 @@
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/validation/nimcp_validate.h"
+#include "async/nimcp_bio_async.h"
+#include "async/nimcp_bio_router.h"
+#include "async/nimcp_bio_messages.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
 #include <math.h>
+
+// === BIO-ASYNC + LOGGING + UNIFIED MEMORY INTEGRATION ===
+#include "async/nimcp_bio_async.h"
+#include "async/nimcp_bio_router.h"
+#include "async/nimcp_bio_messages.h"
+#include "utils/logging/nimcp_logging.h"
+#include "utils/memory/nimcp_unified_memory.h"
+
+#define LOG_MODULE "neural_logic_brain_integration"
+#define BIO_MODULE_ID 0x0136
+
+
+#define LOG_MODULE BIO_MODULE_LOGIC_CORE
 
 //=============================================================================
 // Constants

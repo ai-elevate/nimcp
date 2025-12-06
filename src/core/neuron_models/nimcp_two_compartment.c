@@ -20,13 +20,56 @@
  * @date 2025-11-11
  */
 
-#include "nimcp_two_compartment.h"
-#include "nimcp_neuron_model_internal.h"
-#include "../../utils/numerical/nimcp_integration.h"
+#include "core/neuron_models/nimcp_two_compartment.h"
+#include "core/neuron_models/nimcp_neuron_model_internal.h"
+#include "utils/numerical/nimcp_integration.h"
+#include "utils/logging/nimcp_logging.h"
+#include "async/nimcp_bio_async.h"
+#include "async/nimcp_bio_router.h"
+#include "async/nimcp_bio_messages.h"
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
 #include <stdbool.h>
+
+#define LOG_MODULE "two_compartment"
+
+//=============================================================================
+// Bio-Async Module Context
+//=============================================================================
+
+static bio_module_context_t bio_ctx = NULL;
+static bool bio_async_enabled = false;
+
+__attribute__((constructor))
+static void two_compartment_bio_init(void) {
+    if (!bio_router_is_initialized()) {
+        return;
+    }
+
+    bio_module_info_t bio_info = {
+        .module_id = BIO_MODULE_NEURON_MODEL_TWO_COMPARTMENT,
+        .module_name = "two_compartment",
+        .inbox_capacity = 256,
+        .user_data = NULL
+    };
+
+    bio_ctx = bio_router_register_module(&bio_info);
+    if (bio_ctx) {
+        bio_async_enabled = true;
+        LOG_INFO(LOG_MODULE, "Bio-async registered for two_compartment module");
+    }
+}
+
+__attribute__((destructor))
+static void two_compartment_bio_cleanup(void) {
+    if (bio_async_enabled && bio_ctx) {
+        bio_router_unregister_module(bio_ctx);
+        bio_ctx = NULL;
+        bio_async_enabled = false;
+        LOG_DEBUG(LOG_MODULE, "Bio-async unregistered for two_compartment module");
+    }
+}
 
 //=============================================================================
 // Internal State Structure
@@ -231,6 +274,11 @@ static void two_comp_destroy(neuron_model_state_t state_opaque)
  */
 static void two_comp_update(neuron_model_state_t state_opaque, float dt, float input_current)
 {
+    // Process pending bio-async messages
+    if (bio_ctx) {
+        bio_router_process_inbox(bio_ctx, 5);
+    }
+
     two_compartment_state_t* state = (two_compartment_state_t*)state_opaque->model_state;
 
     // Add input current to soma by default (or could be split)

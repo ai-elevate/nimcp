@@ -46,6 +46,10 @@ extern "C" {
 #include <stdbool.h>
 #include <stdint.h>
 
+// Sub-module headers (Phase 11: SRP Split)
+#include "core/brain/factory/init/nimcp_brain_init.h"
+#include "core/brain/factory/validation/nimcp_brain_validation.h"
+
 // Forward declarations for internal types
 typedef struct task_strategy task_strategy_t;
 
@@ -579,6 +583,18 @@ bool nimcp_brain_factory_init_salience_subsystem(brain_t brain);
  * @return true on success, false on failure
  */
 bool nimcp_brain_factory_init_introspection_subsystem(brain_t brain);
+
+/**
+ * @brief Initialize connectivity health monitoring subsystem (Phase 1.5.4)
+ *
+ * WHAT: Creates brain connectivity health assessment system
+ * WHY:  Self-awareness of network organizational quality
+ * HOW:  Community detection + hub analysis + Shannon metrics + topology
+ *
+ * @param brain Brain instance
+ * @return true on success, false on failure
+ */
+bool nimcp_brain_factory_init_connectivity_health_subsystem(brain_t brain);
 
 /**
  * @brief Initialize ethics engine subsystem

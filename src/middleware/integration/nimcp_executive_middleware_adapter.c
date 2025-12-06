@@ -298,6 +298,11 @@ bool executive_middleware_adapter_on_task_switched(
         return false;
     }
 
+    // Process pending bio-async messages
+    if (adapter->bio_async_enabled && adapter->bio_ctx) {
+        bio_router_process_inbox(adapter->bio_ctx, 5);
+    }
+
     uint64_t start_time = nimcp_time_get_us();
 
     // Update metrics

@@ -13,14 +13,30 @@
  * @version 2.7.0 Phase 11 Enhancement C1.1
  */
 
-#include "nimcp_quantum_annealing.h"
-#include "../../utils/memory/nimcp_memory.h"
+#include "async/nimcp_bio_async.h"
+#include "async/nimcp_bio_router.h"
+#include "async/nimcp_bio_messages.h"
+#include "utils/logging/nimcp_logging.h"
+#include "utils/memory/nimcp_unified_memory.h"
+#include "security/nimcp_security.h"
+
+#define LOG_MODULE "OPTIMIZATION"
+
+#include "optimization/quantum_annealing/nimcp_quantum_annealing.h"
+#include "utils/memory/nimcp_memory.h"
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
 #include <math.h>
 #include <float.h>
 #include <time.h>
+
+//=============================================================================
+// Bio-Async State
+//=============================================================================
+
+static bio_module_context_t g_quantum_bio_ctx = NULL;
+static bool g_quantum_initialized = false;
 
 //=============================================================================
 // Internal Structures
@@ -36,6 +52,8 @@
 struct quantum_annealer_struct {
     quantum_annealing_config_t config;  /**< Configuration copy */
     uint32_t* rng_state;                /**< RNG state for reproducibility */
+    bio_module_context_t bio_ctx;       /**< Bio-async context */
+    void* sec_ctx;                      /**< Security context */
 };
 
 //=============================================================================
@@ -54,18 +72,30 @@ struct quantum_annealer_struct {
  * COMPLEXITY: O(1)
  */
 static void init_rng(quantum_annealer_t annealer) {
-    if (!annealer) return;
+    LOG_DEBUG("Initializing RNG for quantum annealer");
+
+    if (!annealer) {
+        LOG_ERROR("init_rng: null annealer");
+        return;
+    }
 
     uint32_t seed = annealer->config.seed;
     if (seed == 0) {
         seed = (uint32_t)time(NULL);
+        LOG_DEBUG("Using time-based seed: %u", seed);
+    } else {
+        LOG_DEBUG("Using configured seed: %u", seed);
     }
 
     // BUGFIX: Use nimcp_malloc for consistency with memory tracking
     annealer->rng_state = nimcp_malloc(sizeof(uint32_t));
-    if (!annealer->rng_state) return;
+    if (!annealer->rng_state) {
+        LOG_ERROR("Failed to allocate RNG state");
+        return;
+    }
 
     *annealer->rng_state = seed;
+    LOG_DEBUG("RNG initialized with seed %u", seed);
 }
 
 /**
@@ -136,13 +166,35 @@ static float random_gaussian(quantum_annealer_t annealer, float mean, float stdd
  * COMPLEXITY: O(1)
  */
 static bool validate_config(const quantum_annealing_config_t* config) {
-    if (!config) return false;
-    if (config->initial_temperature <= 0.0f) return false;
-    if (config->final_temperature <= 0.0f) return false;
-    if (config->final_temperature >= config->initial_temperature) return false;
-    if (config->num_iterations == 0) return false;
-    if (config->quantum_strength < 0.0f || config->quantum_strength > 1.0f) return false;
+    LOG_DEBUG("Validating quantum annealing configuration");
 
+    if (!config) {
+        LOG_ERROR("validate_config: null config");
+        return false;
+    }
+    if (config->initial_temperature <= 0.0f) {
+        LOG_ERROR("Invalid initial_temperature: %f (must be > 0)", config->initial_temperature);
+        return false;
+    }
+    if (config->final_temperature <= 0.0f) {
+        LOG_ERROR("Invalid final_temperature: %f (must be > 0)", config->final_temperature);
+        return false;
+    }
+    if (config->final_temperature >= config->initial_temperature) {
+        LOG_ERROR("Invalid temperature range: final (%f) >= initial (%f)",
+                  config->final_temperature, config->initial_temperature);
+        return false;
+    }
+    if (config->num_iterations == 0) {
+        LOG_ERROR("Invalid num_iterations: 0 (must be > 0)");
+        return false;
+    }
+    if (config->quantum_strength < 0.0f || config->quantum_strength > 1.0f) {
+        LOG_ERROR("Invalid quantum_strength: %f (must be in [0, 1])", config->quantum_strength);
+        return false;
+    }
+
+    LOG_DEBUG("Configuration validated successfully");
     return true;
 }
 
@@ -331,6 +383,7 @@ quantum_annealing_config_t quantum_annealing_default_config(void) {
      * WHY:  Quick setup for common use cases
      * HOW:  Preset values based on typical scenarios
      */
+    LOG_DEBUG("Creating default quantum annealing configuration");
 
     quantum_annealing_config_t config = {
         .initial_temperature = 1.0f,
@@ -341,6 +394,10 @@ quantum_annealing_config_t quantum_annealing_default_config(void) {
         .enable_tunneling = true,
         .seed = 0  // Use time-based seed
     };
+
+    LOG_DEBUG("Default config: T_init=%f, T_final=%f, iters=%u, quantum_strength=%f",
+              config.initial_temperature, config.final_temperature,
+              config.num_iterations, config.quantum_strength);
 
     return config;
 }

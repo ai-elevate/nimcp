@@ -434,6 +434,11 @@ void tom_destroy(theory_of_mind_t tom)
 
 bool tom_observe(theory_of_mind_t tom, const tom_observation_t* observation)
 {
+    // Process pending bio-async messages
+    if (tom && tom->bio_ctx) {
+        bio_router_process_inbox(tom->bio_ctx, 5);
+    }
+
     if (!tom || !observation) {
         set_error("NULL tom or observation in tom_observe");
         return false;

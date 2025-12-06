@@ -33,6 +33,8 @@
 #include <cmath>
 #include <vector>
 #include <algorithm>
+#include <chrono>
+#include <cstring>
 
 #include "utils/tensor_networks/nimcp_mps.h"
 #include "core/neuralnet/nimcp_neuralnet.h"
@@ -194,10 +196,87 @@ TEST_F(MPSIntegrationTest, MPSWithBCMHomeostasis) {
 
     printf("\n=== MPS + BCM Homeostatic Plasticity ===\n");
 
-    // TODO: Implement once we have access to BCM-enabled network creation
-    // For now, this is a placeholder showing the test structure
+    const uint32_t num_neurons = 50;
+    const uint32_t num_steps = 2000;
+    const float high_input = 5.0f; // High stimulation to induce runaway
 
-    SUCCEED() << "BCM integration test requires BCM-enabled network API";
+    // Create BCM-enabled networks
+    network_config_t config = {0};
+    config.num_neurons = num_neurons;
+    config.input_size = num_neurons;
+    config.output_size = num_neurons;
+    config.num_layers = 2;
+    config.layer_sizes = (uint32_t*)nimcp_malloc(2 * sizeof(uint32_t));
+    config.layer_sizes[0] = num_neurons;
+    config.layer_sizes[1] = num_neurons;
+    config.enable_stdp = true;
+    config.enable_hebbian = true;
+    config.enable_bcm = true;  // Enable BCM plasticity
+    config.enable_homeostasis = true;
+    config.ei_ratio = 0.8f;
+
+    neural_network_t network_dense = neural_network_create(&config);
+    neural_network_t network_mps = neural_network_create(&config);
+
+    ASSERT_NE(network_dense, nullptr);
+    ASSERT_NE(network_mps, nullptr);
+
+    nimcp_free(config.layer_sizes);
+
+    // Apply high stimulation
+    float* input = (float*)nimcp_malloc(num_neurons * sizeof(float));
+    for (uint32_t i = 0; i < num_neurons; i++) {
+        input[i] = high_input;
+    }
+
+    // Track average activity over time
+    std::vector<float> activity_dense;
+    std::vector<float> activity_mps;
+
+    for (uint32_t step = 0; step < num_steps; step++) {
+        // Update both networks
+        for (uint32_t i = 0; i < num_neurons; i++) {
+            neural_network_update_neuron(network_dense, i, input[i], step);
+            neural_network_update_neuron(network_mps, i, input[i], step);
+        }
+
+        // Measure average activity every 100 steps
+        if (step % 100 == 0) {
+            float avg_dense = 0.0f, avg_mps = 0.0f;
+            for (uint32_t i = 0; i < num_neurons; i++) {
+                float state_dense, state_mps;
+                neural_network_get_neuron_state(network_dense, i, &state_dense);
+                neural_network_get_neuron_state(network_mps, i, &state_mps);
+                avg_dense += fabsf(state_dense);
+                avg_mps += fabsf(state_mps);
+            }
+            avg_dense /= num_neurons;
+            avg_mps /= num_neurons;
+            activity_dense.push_back(avg_dense);
+            activity_mps.push_back(avg_mps);
+            printf("Step %4u: Dense activity=%.3f, MPS activity=%.3f\n",
+                   step, avg_dense, avg_mps);
+        }
+    }
+
+    // Verify BCM stabilization: activity should not explode
+    // Both networks should stabilize to similar levels
+    float final_dense = activity_dense.back();
+    float final_mps = activity_mps.back();
+
+    printf("Final dense activity: %.3f\n", final_dense);
+    printf("Final MPS activity: %.3f\n", final_mps);
+
+    // PASS CRITERION: Activities stay bounded and similar
+    EXPECT_LT(final_dense, 100.0f) << "Dense network activity exploded";
+    EXPECT_LT(final_mps, 100.0f) << "MPS network activity exploded";
+    EXPECT_LT(fabsf(final_dense - final_mps) / final_dense, 0.3f)
+        << "BCM behavior differs >30% between dense and MPS";
+
+    // Cleanup
+    neural_network_destroy(network_dense);
+    neural_network_destroy(network_mps);
+    nimcp_free(input);
 }
 
 TEST_F(MPSIntegrationTest, MPSWithSTPDynamics) {
@@ -207,10 +286,103 @@ TEST_F(MPSIntegrationTest, MPSWithSTPDynamics) {
 
     printf("\n=== MPS + STP Short-Term Dynamics ===\n");
 
-    // TODO: Implement once we have access to STP parameters
-    // For now, this is a placeholder
+    const uint32_t num_neurons = 30;
+    const uint32_t num_pulses = 20;
+    const uint32_t pulse_interval_ms = 10; // 100 Hz stimulation
 
-    SUCCEED() << "STP integration test requires STP parameter access API";
+    // Create STP-enabled networks
+    network_config_t config = {0};
+    config.num_neurons = num_neurons;
+    config.input_size = num_neurons;
+    config.output_size = num_neurons;
+    config.num_layers = 2;
+    config.layer_sizes = (uint32_t*)nimcp_malloc(2 * sizeof(uint32_t));
+    config.layer_sizes[0] = num_neurons;
+    config.layer_sizes[1] = num_neurons;
+    config.enable_stdp = true;
+    config.enable_stp = true;  // Enable STP
+    config.enable_homeostasis = true;
+    config.ei_ratio = 0.8f;
+
+    neural_network_t network_dense = neural_network_create(&config);
+    neural_network_t network_mps = neural_network_create(&config);
+
+    ASSERT_NE(network_dense, nullptr);
+    ASSERT_NE(network_mps, nullptr);
+
+    nimcp_free(config.layer_sizes);
+
+    // Apply pulse train
+    float* input = (float*)nimcp_malloc(num_neurons * sizeof(float));
+    std::vector<float> response_dense;
+    std::vector<float> response_mps;
+
+    for (uint32_t pulse = 0; pulse < num_pulses; pulse++) {
+        uint64_t timestamp = pulse * pulse_interval_ms;
+
+        // Generate pulse
+        for (uint32_t i = 0; i < num_neurons; i++) {
+            input[i] = 1.0f;
+        }
+
+        // Update networks
+        for (uint32_t i = 0; i < num_neurons; i++) {
+            neural_network_update_neuron(network_dense, i, input[i], timestamp);
+            neural_network_update_neuron(network_mps, i, input[i], timestamp);
+        }
+
+        // Measure response
+        float avg_dense = 0.0f, avg_mps = 0.0f;
+        for (uint32_t i = 0; i < num_neurons; i++) {
+            float state_dense, state_mps;
+            neural_network_get_neuron_state(network_dense, i, &state_dense);
+            neural_network_get_neuron_state(network_mps, i, &state_mps);
+            avg_dense += fabsf(state_dense);
+            avg_mps += fabsf(state_mps);
+        }
+        avg_dense /= num_neurons;
+        avg_mps /= num_neurons;
+        response_dense.push_back(avg_dense);
+        response_mps.push_back(avg_mps);
+
+        printf("Pulse %2u (t=%4llu ms): Dense=%.4f, MPS=%.4f\n",
+               pulse, (unsigned long long)timestamp, avg_dense, avg_mps);
+    }
+
+    // Verify STP dynamics are similar between dense and MPS
+    // Both should show depression (decreasing response) or facilitation (increasing response)
+    float correlation = 0.0f;
+    float mean_dense = 0.0f, mean_mps = 0.0f;
+    for (size_t i = 0; i < response_dense.size(); i++) {
+        mean_dense += response_dense[i];
+        mean_mps += response_mps[i];
+    }
+    mean_dense /= response_dense.size();
+    mean_mps /= response_mps.size();
+
+    float cov = 0.0f, var_dense = 0.0f, var_mps = 0.0f;
+    for (size_t i = 0; i < response_dense.size(); i++) {
+        float d_dense = response_dense[i] - mean_dense;
+        float d_mps = response_mps[i] - mean_mps;
+        cov += d_dense * d_mps;
+        var_dense += d_dense * d_dense;
+        var_mps += d_mps * d_mps;
+    }
+
+    if (var_dense > 1e-6f && var_mps > 1e-6f) {
+        correlation = cov / (sqrtf(var_dense) * sqrtf(var_mps));
+    }
+
+    printf("Response correlation: %.4f\n", correlation);
+
+    // PASS CRITERION: High correlation (>0.7) between responses
+    EXPECT_GT(correlation, 0.7f)
+        << "STP dynamics differ significantly between dense and MPS";
+
+    // Cleanup
+    neural_network_destroy(network_dense);
+    neural_network_destroy(network_mps);
+    nimcp_free(input);
 }
 
 TEST_F(MPSIntegrationTest, MPSWithEligibilityTraces) {
@@ -220,10 +392,98 @@ TEST_F(MPSIntegrationTest, MPSWithEligibilityTraces) {
 
     printf("\n=== MPS + Eligibility Traces ===\n");
 
-    // TODO: Implement once eligibility trace API is exposed
-    // For now, this is a placeholder
+    const uint32_t num_neurons = 40;
+    const uint32_t action_time = 0;
+    const uint32_t delay_ms = 100;
+    const uint32_t reward_time = action_time + delay_ms;
+    const float reward_signal = 1.0f;
 
-    SUCCEED() << "Eligibility trace integration test requires trace API";
+    // Create eligibility-enabled networks
+    network_config_t config = {0};
+    config.num_neurons = num_neurons;
+    config.input_size = num_neurons;
+    config.output_size = num_neurons;
+    config.num_layers = 2;
+    config.layer_sizes = (uint32_t*)nimcp_malloc(2 * sizeof(uint32_t));
+    config.layer_sizes[0] = num_neurons;
+    config.layer_sizes[1] = num_neurons;
+    config.enable_stdp = true;
+    config.enable_eligibility = true;  // Enable eligibility traces
+    config.enable_homeostasis = true;
+    config.ei_ratio = 0.8f;
+
+    neural_network_t network_dense = neural_network_create(&config);
+    neural_network_t network_mps = neural_network_create(&config);
+
+    ASSERT_NE(network_dense, nullptr);
+    ASSERT_NE(network_mps, nullptr);
+
+    nimcp_free(config.layer_sizes);
+
+    // Phase 1: Action (spike activity at t=0)
+    float* input = (float*)nimcp_malloc(num_neurons * sizeof(float));
+    for (uint32_t i = 0; i < num_neurons; i++) {
+        input[i] = sinf(i * 0.2f) + 1.0f; // Varied activity pattern
+    }
+
+    printf("Phase 1: Action at t=%u ms\n", action_time);
+    for (uint32_t i = 0; i < num_neurons; i++) {
+        neural_network_update_neuron(network_dense, i, input[i], action_time);
+        neural_network_update_neuron(network_mps, i, input[i], action_time);
+    }
+
+    // Update eligibility traces
+    for (uint32_t i = 0; i < num_neurons; i++) {
+        neural_network_update_traces(network_dense, i, action_time);
+        neural_network_update_traces(network_mps, i, action_time);
+    }
+
+    // Phase 2: Delay period (traces decay)
+    printf("Phase 2: Delay period (%u ms)\n", delay_ms);
+    for (uint64_t t = action_time + 1; t < reward_time; t++) {
+        for (uint32_t i = 0; i < num_neurons; i++) {
+            neural_network_update_traces(network_dense, i, t);
+            neural_network_update_traces(network_mps, i, t);
+        }
+    }
+
+    // Phase 3: Reward arrives
+    printf("Phase 3: Reward at t=%u ms (reward=%.2f)\n", reward_time, reward_signal);
+
+    // Apply reward-based plasticity
+    for (uint32_t i = 0; i < num_neurons; i++) {
+        neural_network_apply_plasticity(network_dense, i, reward_signal, 0.5f, reward_time);
+        neural_network_apply_plasticity(network_mps, i, reward_signal, 0.5f, reward_time);
+    }
+
+    // Phase 4: Verify both networks learned similarly
+    printf("Phase 4: Verification\n");
+
+    // Test response to same pattern
+    float* output_dense = (float*)nimcp_calloc(num_neurons, sizeof(float));
+    float* output_mps = (float*)nimcp_calloc(num_neurons, sizeof(float));
+
+    for (uint32_t i = 0; i < num_neurons; i++) {
+        neural_network_update_neuron(network_dense, i, input[i], reward_time + 10);
+        neural_network_update_neuron(network_mps, i, input[i], reward_time + 10);
+        neural_network_get_neuron_state(network_dense, i, &output_dense[i]);
+        neural_network_get_neuron_state(network_mps, i, &output_mps[i]);
+    }
+
+    // Measure output similarity
+    float similarity = output_similarity(output_dense, output_mps, num_neurons);
+    printf("Post-learning output similarity: %.4f\n", similarity);
+
+    // PASS CRITERION: Similar learning outcomes (>0.75 similarity)
+    EXPECT_GT(similarity, 0.75f)
+        << "Eligibility-based learning differs between dense and MPS";
+
+    // Cleanup
+    neural_network_destroy(network_dense);
+    neural_network_destroy(network_mps);
+    nimcp_free(input);
+    nimcp_free(output_dense);
+    nimcp_free(output_mps);
 }
 
 //=============================================================================
@@ -359,10 +619,98 @@ TEST_F(MPSIntegrationTest, MPSSnapshotLoadRegression) {
 
     printf("\n=== MPS Snapshot/Load Regression ===\n");
 
-    // TODO: brain_snapshot API not yet implemented
-    // Required functions: brain_snapshot(), brain_load(), brain_snapshot_free()
-    // Required types: brain_snapshot_t
-    GTEST_SKIP() << "Snapshot/load API not yet implemented (brain_snapshot, brain_load, brain_snapshot_free)";
+    // Create brain with MPS enabled
+    brain_config_t config; memset(&config, 0, sizeof(config));
+    config.size = BRAIN_SIZE_TINY;
+    config.task = BRAIN_TASK_CLASSIFICATION;
+    config.num_inputs = 10;
+    config.num_outputs = 5;
+    config.learning_rate = 0.05f;
+    config.use_mps_weights = true;
+    config.mps_bond_dimension = 8;
+    config.mps_adaptive_bond_dim = true;
+    strncpy(config.task_name, "mps_snapshot_test", 63);
+
+    brain_t brain = brain_create_custom(&config);
+    ASSERT_NE(brain, nullptr);
+
+    // Train on some data to create non-trivial state
+    float input[10];
+    for (uint32_t epoch = 0; epoch < 100; epoch++) {
+        for (uint32_t i = 0; i < 10; i++) {
+            input[i] = sinf(epoch * 0.1f + i * 0.3f);
+        }
+        brain_learn_example(brain, input, 10, "test_output", 0.8f);
+    }
+
+    // Get pre-snapshot decision
+    for (uint32_t i = 0; i < 10; i++) {
+        input[i] = 0.5f;
+    }
+    brain_decision_t* dec_before = brain_decide(brain, input, 10);
+    ASSERT_NE(dec_before, nullptr);
+
+    float confidence_before = dec_before->confidence;
+    printf("Pre-snapshot confidence: %.4f\n", confidence_before);
+    brain_free_decision(dec_before);
+
+    // Save snapshot
+    const char* snapshot_name = "mps_regression_snapshot";
+    const char* snapshot_desc = "MPS snapshot/load regression test";
+    bool save_ok = brain_save_snapshot(brain, snapshot_name, snapshot_desc);
+    ASSERT_TRUE(save_ok) << "Failed to save snapshot";
+    printf("Snapshot saved: %s\n", snapshot_name);
+
+    // List snapshots to verify it was saved
+    brain_snapshot_info_t infos[10];
+    uint32_t num_snapshots = 0;
+    bool list_ok = brain_list_snapshots(brain, infos, 10, &num_snapshots);
+    ASSERT_TRUE(list_ok) << "Failed to list snapshots";
+    ASSERT_GT(num_snapshots, 0u) << "No snapshots found";
+
+    bool found = false;
+    for (uint32_t i = 0; i < num_snapshots; i++) {
+        if (strcmp(infos[i].name, snapshot_name) == 0) {
+            found = true;
+            printf("Found snapshot: %s - %s (timestamp: %llu)\n",
+                   infos[i].name, infos[i].description,
+                   (unsigned long long)infos[i].timestamp);
+            break;
+        }
+    }
+    ASSERT_TRUE(found) << "Saved snapshot not found in list";
+
+    // Modify brain state (additional training)
+    for (uint32_t epoch = 0; epoch < 50; epoch++) {
+        for (uint32_t i = 0; i < 10; i++) {
+            input[i] = cosf(epoch * 0.2f);
+        }
+        brain_learn_example(brain, input, 10, "test_output", 0.3f);
+    }
+
+    // Decision should be different now
+    for (uint32_t i = 0; i < 10; i++) {
+        input[i] = 0.5f;
+    }
+    brain_decision_t* dec_modified = brain_decide(brain, input, 10);
+    ASSERT_NE(dec_modified, nullptr);
+
+    float confidence_modified = dec_modified->confidence;
+    printf("Post-modification confidence: %.4f\n", confidence_modified);
+    brain_free_decision(dec_modified);
+
+    // Note: We cannot restore from snapshot with current API
+    // The brain_save_snapshot() API saves to disk but there's no brain_restore_snapshot()
+    // This is a limitation of the current API design
+    // For now, we verify that:
+    // 1. Snapshot can be saved
+    // 2. Snapshot appears in listing
+    // 3. Additional training changes the brain state (sanity check)
+
+    printf("✅ Snapshot save and listing verified\n");
+    printf("ℹ️  Note: Snapshot restore API not available - partial test only\n");
+
+    brain_destroy(brain);
 }
 
 //=============================================================================

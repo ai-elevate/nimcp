@@ -237,3 +237,121 @@ set_tests_properties(unit_middleware_training_test_event_driven_plasticity
     PROPERTIES
         LABELS "unit;middleware;training;event_driven_plasticity"
         TIMEOUT 120)
+
+# Security Registration Unit Tests (Phase SR-1)
+add_executable(unit_middleware_training_test_security_registration
+    test_security_registration.cpp
+)
+
+target_include_directories(unit_middleware_training_test_security_registration PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${CMAKE_SOURCE_DIR}/src
+)
+
+target_compile_features(unit_middleware_training_test_security_registration PRIVATE cxx_std_20)
+
+target_link_libraries(unit_middleware_training_test_security_registration
+    PRIVATE
+        GTest::GTest
+        GTest::Main
+        nimcp_middleware
+        nimcp
+        pthread
+        m
+)
+
+add_test(NAME unit_middleware_training_test_security_registration
+         COMMAND unit_middleware_training_test_security_registration)
+
+set_tests_properties(unit_middleware_training_test_security_registration
+    PROPERTIES
+        LABELS "unit;middleware;training;security_registration"
+        TIMEOUT 120)
+
+# Training Callbacks Unit Tests (Phase TCB-1)
+add_executable(unit_middleware_training_test_training_callbacks
+    test_training_callbacks.cpp
+)
+
+target_include_directories(unit_middleware_training_test_training_callbacks PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${CMAKE_SOURCE_DIR}/src
+)
+
+target_compile_features(unit_middleware_training_test_training_callbacks PRIVATE cxx_std_20)
+
+target_link_libraries(unit_middleware_training_test_training_callbacks
+    PRIVATE
+        GTest::GTest
+        GTest::Main
+        nimcp_middleware
+        nimcp
+        pthread
+        m
+)
+
+add_test(NAME unit_middleware_training_test_training_callbacks
+         COMMAND unit_middleware_training_test_training_callbacks)
+
+set_tests_properties(unit_middleware_training_test_training_callbacks
+    PROPERTIES
+        LABELS "unit;middleware;training;callbacks"
+        TIMEOUT 120)
+
+# Training Plasticity Bridge Bio-Async Integration Tests (Phase TPB-BIO-1)
+add_executable(unit_middleware_training_test_tpb_bio_async
+    test_tpb_bio_async.cpp
+)
+
+target_include_directories(unit_middleware_training_test_tpb_bio_async PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${CMAKE_SOURCE_DIR}/src
+)
+
+target_compile_features(unit_middleware_training_test_tpb_bio_async PRIVATE cxx_std_20)
+
+target_link_libraries(unit_middleware_training_test_tpb_bio_async
+    PRIVATE
+        GTest::GTest
+        GTest::Main
+        nimcp_middleware
+        nimcp
+        pthread
+        m
+)
+
+gtest_discover_tests(unit_middleware_training_test_tpb_bio_async
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+    PROPERTIES
+        LABELS "unit;middleware;training;tpb;bio-async"
+        TIMEOUT 120
+)
+
+# Training Adapters Bio-Async Integration Tests (Phase TA-BIO-1)
+add_executable(unit_middleware_training_test_training_adapters_bio_async
+    test_training_adapters_bio_async.cpp
+)
+
+target_include_directories(unit_middleware_training_test_training_adapters_bio_async PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${CMAKE_SOURCE_DIR}/src
+)
+
+target_compile_features(unit_middleware_training_test_training_adapters_bio_async PRIVATE cxx_std_20)
+
+target_link_libraries(unit_middleware_training_test_training_adapters_bio_async
+    PRIVATE
+        GTest::GTest
+        GTest::Main
+        nimcp_middleware
+        nimcp
+        pthread
+        m
+)
+
+gtest_discover_tests(unit_middleware_training_test_training_adapters_bio_async
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+    PROPERTIES
+        LABELS "unit;middleware;training;adapters;bio-async"
+        TIMEOUT 120
+)

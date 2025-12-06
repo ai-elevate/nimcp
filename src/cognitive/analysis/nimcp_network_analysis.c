@@ -150,6 +150,11 @@ void network_analyzer_destroy(network_analyzer_t* analyzer)
 
 bool network_analyzer_run(network_analyzer_t* analyzer)
 {
+    // Process pending bio-async messages
+    if (analyzer && analyzer->bio_ctx) {
+        bio_router_process_inbox(analyzer->bio_ctx, 5);
+    }
+
     if (!analyzer || !analyzer->brain) return false;
 
     NIMCP_LOGGING_INFO("network_analyzer_run: running full network analysis");

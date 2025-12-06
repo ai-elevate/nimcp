@@ -35,7 +35,7 @@
 
 #include <stdint.h>
 #include <stdbool.h>
-#include "nimcp_engram.h"  // Phase M1 dependency
+#include "cognitive/memory/nimcp_engram.h"  // Phase M1 dependency
 
 #ifdef __cplusplus
 extern "C" {
@@ -110,6 +110,10 @@ typedef struct cortical_memory_node {
     // Phase 1.5: Copy-on-Write support for efficient feature sharing
     uint32_t* _cow_refcount;              /**< Shared reference count (NULL = owned) */
     bool _cow_is_shallow;                 /**< True if features pointer is shared */
+
+    // Bio-async integration
+    void* bio_ctx;                        /**< bio_module_context_t pointer */
+    bool bio_async_enabled;               /**< Bio-async registration status */
 } cortical_memory_node_t;
 
 /**

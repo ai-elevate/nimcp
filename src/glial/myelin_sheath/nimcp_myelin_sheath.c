@@ -20,11 +20,18 @@
  * @date 2025-11-25
  */
 
-#include "nimcp_myelin_sheath.h"
+#include "glial/myelin_sheath/nimcp_myelin_sheath.h"
+#include "async/nimcp_bio_async.h"
+#include "async/nimcp_bio_router.h"
+#include "async/nimcp_bio_messages.h"
+#include "utils/logging/nimcp_logging.h"
+#include "utils/memory/nimcp_unified_memory.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/validation/nimcp_common.h"
 #include <string.h>
 #include <math.h>
+
+#define LOG_MODULE "MYELIN"
 
 //=============================================================================
 // Internal Macros
@@ -60,7 +67,8 @@ myelin_network_config_t myelin_network_default_config(void)
         .enable_paranodes = true,
         .enable_metabolic_coupling = true,
         .enable_activity_dependence = true,
-        .use_memory_pools = true
+        .use_memory_pools = true,
+        .enable_bio_async = false
     };
     return config;
 }
@@ -1222,6 +1230,15 @@ void myelin_sheath_cow_release(myelin_sheath_t* sheath)
     if (!sheath) return;
 
     nimcp_spinlock_lock(&sheath->lock);
+
+    // If this is a CoW copy, decrement the original's ref count
+    myelin_sheath_t* original = sheath->cow_original;
+    if (original) {
+        nimcp_spinlock_lock(&original->lock);
+        original->cow_ref_count--;
+        nimcp_spinlock_unlock(&original->lock);
+        sheath->cow_original = NULL;
+    }
 
     sheath->cow_ref_count--;
 

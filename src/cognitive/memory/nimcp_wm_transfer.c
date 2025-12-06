@@ -342,6 +342,11 @@ static void update_transfer_stats(
     float emotional_salience,
     uint64_t time_in_wm_ms)
 {
+    // Process pending bio-async messages
+    if (system && system->bio_async_enabled && system->bio_ctx) {
+        bio_router_process_inbox(system->bio_ctx, 5);
+    }
+
     // Update total transfers
     system->stats.total_transfers++;
 

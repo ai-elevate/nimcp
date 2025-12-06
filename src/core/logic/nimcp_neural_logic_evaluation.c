@@ -21,6 +21,17 @@
 #include "utils/time/nimcp_time.h"
 #include <string.h>
 
+// === BIO-ASYNC + LOGGING + UNIFIED MEMORY INTEGRATION ===
+#include "async/nimcp_bio_async.h"
+#include "async/nimcp_bio_router.h"
+#include "async/nimcp_bio_messages.h"
+#include "utils/logging/nimcp_logging.h"
+#include "utils/memory/nimcp_unified_memory.h"
+
+#define LOG_MODULE "neural_logic_evaluation"
+#define BIO_MODULE_ID 0x0138
+
+
 //=============================================================================
 // Event Payload Structures
 //=============================================================================

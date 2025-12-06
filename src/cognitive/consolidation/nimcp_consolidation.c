@@ -606,6 +606,11 @@ static void* consolidation_thread_fn(void* arg)
 
         nimcp_mutex_unlock(&handle->lock);
 
+        /* WHAT: Process pending bio-async messages before consolidation */
+        if (handle->bio_async_enabled && handle->bio_ctx) {
+            bio_router_process_inbox(handle->bio_ctx, 10);  // Process up to 10 messages
+        }
+
         /* WHAT: Perform consolidation */
         uint64_t start_time = nimcp_time_monotonic_ms();
 

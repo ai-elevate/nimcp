@@ -1,8 +1,18 @@
 //=============================================================================
 // nimcp_distributed_cow.c - Distributed COW Implementation
 //=============================================================================
+/**
+ * BIO-ASYNC INTEGRATION:
+ * - Module ID: BIO_MODULE_BRAIN_DISTRIBUTED (0x0224)
+ * - Publishes: COW fork/merge events, fetch operations, cache updates
+ * - Channels: DOPAMINE (success), NOREPINEPHRINE (urgent/alerts)
+ */
 
-#include "nimcp_distributed_cow.h"
+#define LOG_MODULE "distributed_cow"
+
+#include "core/brain/nimcp_distributed_cow.h"
+#include "utils/memory/nimcp_unified_memory.h"
+#include "utils/memory/nimcp_memory_guards.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -14,6 +24,75 @@
 #include "core/neuralnet/nimcp_neuralnet.h"
 #include "utils/platform/nimcp_platform_mutex.h"
 #include "utils/platform/nimcp_platform_rwlock.h"
+#include "utils/logging/nimcp_logging.h"
+#include "async/nimcp_bio_async.h"
+#include "async/nimcp_bio_router.h"
+#include "async/nimcp_bio_messages.h"
+
+//=============================================================================
+// BIO-ASYNC MODULE REGISTRATION
+//=============================================================================
+
+#define BIO_MODULE_DISTRIBUTED_COW 0x0680
+
+// Bio-async registration state
+static bool g_bio_async_registered = false;
+static bio_module_context_t g_bio_module_ctx = NULL;
+
+/**
+ * @brief Ensure bio-async system is registered
+ */
+static void ensure_bio_async_registered(void) {
+    if (!g_bio_async_registered) {
+        LOG_DEBUG("Registering distributed_cow module with bio-async router");
+        bio_module_info_t info = {
+            .module_id = BIO_MODULE_DISTRIBUTED_COW,
+            .module_name = "distributed_cow",
+            .inbox_capacity = 256,
+            .user_data = NULL
+        };
+        g_bio_module_ctx = bio_router_register_module(&info);
+        g_bio_async_registered = (g_bio_module_ctx != NULL);
+        if (!g_bio_async_registered) {
+            LOG_WARN("Failed to register distributed_cow with bio-async router");
+        }
+    }
+}
+
+/**
+ * @brief Publish COW event via bio-async
+ */
+static void publish_cow_event(
+    bio_message_type_t msg_type,
+    uint32_t segment_start,
+    uint32_t segment_size,
+    size_t bytes_transferred,
+    bool success,
+    nimcp_bio_channel_type_t channel)
+{
+    if (!g_bio_async_registered || !g_bio_module_ctx) {
+        return;  // Bio-async not available, skip publishing
+    }
+
+    // Create COW event message
+    bio_msg_brain_state_query_t msg = {0};
+    bio_msg_init_header(&msg.header, msg_type,
+                       BIO_MODULE_DISTRIBUTED_COW,
+                       0,  // Broadcast
+                       sizeof(msg));
+    msg.header.channel = channel;
+    msg.query_flags = segment_start;
+    msg.region_id = segment_size;
+
+    // Publish message via bio-router broadcast
+    nimcp_error_t err = bio_router_broadcast(g_bio_module_ctx, &msg, sizeof(msg));
+    if (err != NIMCP_SUCCESS) {
+        LOG_WARN("Failed to broadcast COW event: error=%d", err);
+    }
+
+    LOG_DEBUG("Published COW event: type=%u, segment=[%u,%u), bytes=%zu, success=%d, channel=%d",
+              msg_type, segment_start, segment_start + segment_size, bytes_transferred, success, channel);
+}
 
 //=============================================================================
 // Internal Structures
@@ -629,17 +708,28 @@ brain_t brain_clone_cow_distributed(
     uint16_t remote_port,
     const distributed_cow_config_t* config
 ) {
+    LOG_DEBUG("brain_clone_cow_distributed: Entry, remote=%s:%u", remote_host, remote_port);
+
+    // Ensure bio-async is available
+    ensure_bio_async_registered();
+
     if (!original || !remote_host) {
+        LOG_ERROR("brain_clone_cow_distributed: Invalid parameters (original=%p, remote_host=%p)",
+                  (void*)original, (const void*)remote_host);
         return NULL;
     }
 
     // Create local COW clone first
+    LOG_INFO("brain_clone_cow_distributed: Creating local COW clone");
     brain_t clone = brain_clone_cow(original);
     if (!clone) {
+        LOG_ERROR("brain_clone_cow_distributed: Failed to create local COW clone");
+        publish_cow_event(BIO_MSG_ERROR_REPORT, 0, 0, 0, false, BIO_CHANNEL_NOREPINEPHRINE);
         return NULL;
     }
 
     // Create P2P node for communication
+    LOG_DEBUG("brain_clone_cow_distributed: Creating P2P node");
     node_config_t node_config = {
         .listen_port = 0, // Any available port
         .max_peers = 4,
@@ -647,36 +737,53 @@ brain_t brain_clone_cow_distributed(
     };
     p2p_node_t p2p_node = p2p_node_create(&node_config);
     if (!p2p_node) {
+        LOG_ERROR("brain_clone_cow_distributed: Failed to create P2P node");
         brain_destroy(clone);
+        publish_cow_event(BIO_MSG_ERROR_REPORT, 0, 0, 0, false, BIO_CHANNEL_NOREPINEPHRINE);
         return NULL;
     }
 
     // Start P2P node
+    LOG_INFO("brain_clone_cow_distributed: Starting P2P node");
     p2p_node_start(p2p_node);
 
     // Connect to master
+    LOG_INFO("brain_clone_cow_distributed: Connecting to master %s:%u", remote_host, remote_port);
     if (!p2p_node_connect_peer(p2p_node, remote_host, remote_port)) {
+        LOG_ERROR("brain_clone_cow_distributed: Failed to connect to master");
         p2p_node_destroy(p2p_node);
         brain_destroy(clone);
+        publish_cow_event(BIO_MSG_ERROR_REPORT, 0, 0, 0, false, BIO_CHANNEL_NOREPINEPHRINE);
         return NULL;
     }
 
     // Create distributed COW state
+    LOG_DEBUG("brain_clone_cow_distributed: Creating distributed COW state");
     distributed_cow_state_t* dcow_state = create_distributed_cow_state(
         remote_host, remote_port, p2p_node, config
     );
     if (!dcow_state) {
+        LOG_ERROR("brain_clone_cow_distributed: Failed to create distributed COW state");
         p2p_node_destroy(p2p_node);
         brain_destroy(clone);
+        publish_cow_event(BIO_MSG_ERROR_REPORT, 0, 0, 0, false, BIO_CHANNEL_NOREPINEPHRINE);
         return NULL;
     }
 
     // Register clone
+    LOG_DEBUG("brain_clone_cow_distributed: Registering clone");
     register_distributed_cow_brain(clone, dcow_state);
 
     // Send create clone message to master
     // (Simplified - actual implementation would use protocol messages)
 
+    LOG_INFO("brain_clone_cow_distributed: Distributed COW clone created successfully, clone_id=%lu",
+             (unsigned long)dcow_state->clone_id);
+
+    // Publish COW fork event (via dopamine - success)
+    publish_cow_event(BIO_MSG_BRAIN_STATE_RESPONSE, 0, 0, 0, true, BIO_CHANNEL_DOPAMINE);
+
+    LOG_DEBUG("brain_clone_cow_distributed: Exit, clone=%p", (void*)clone);
     return clone;
 }
 
@@ -720,17 +827,32 @@ bool distributed_cow_fetch_segment(
     uint32_t start_neuron_id,
     uint32_t num_neurons
 ) {
+    LOG_DEBUG("distributed_cow_fetch_segment: Entry, segment=[%u,%u)", start_neuron_id, start_neuron_id + num_neurons);
+
+    // Ensure bio-async is available
+    ensure_bio_async_registered();
+
+    // Process pending bio-async messages
+    if (g_bio_async_registered && g_bio_module_ctx) {
+        bio_router_process_inbox(g_bio_module_ctx, 5);
+    }
+
     distributed_cow_state_t* state = find_distributed_cow_state(brain);
     if (!state || !state->is_distributed || state->is_master) {
+        LOG_WARN("distributed_cow_fetch_segment: Invalid state (state=%p, is_distributed=%d, is_master=%d)",
+                 (void*)state, state ? state->is_distributed : 0, state ? state->is_master : 0);
         return false;
     }
 
     // Check cache first
     network_segment_t* cached = find_cached_segment(state, start_neuron_id, num_neurons);
     if (cached) {
+        LOG_DEBUG("distributed_cow_fetch_segment: Segment found in cache");
+        publish_cow_event(BIO_MSG_BRAIN_STATE_RESPONSE, start_neuron_id, num_neurons, 0, true, BIO_CHANNEL_DOPAMINE);
         return true; // Already cached
     }
 
+    LOG_INFO("distributed_cow_fetch_segment: Cache miss, fetching from master");
     nimcp_platform_mutex_lock(&state->fetch_mutex);
 
     uint64_t start_time = nimcp_time_get_us();
@@ -789,11 +911,19 @@ bool distributed_cow_fetch_segment(
     state->total_bytes_fetched += response_length;
     state->avg_fetch_latency_ms = (state->avg_fetch_latency_ms * (state->total_fetches - 1) + latency_ms) / state->total_fetches;
 
+    LOG_INFO("distributed_cow_fetch_segment: Fetch complete, bytes=%zu, latency=%.2fms",
+             response_length, latency_ms);
+
     nimcp_platform_mutex_unlock(&state->fetch_mutex);
 
     // BUGFIX: Free heap-allocated response buffer
     nimcp_free(response_buffer);
 
+    // Publish fetch complete event (via dopamine - success)
+    publish_cow_event(BIO_MSG_BRAIN_STATE_RESPONSE, start_neuron_id, num_neurons,
+                     response_length, true, BIO_CHANNEL_DOPAMINE);
+
+    LOG_DEBUG("distributed_cow_fetch_segment: Exit, success=true");
     return true;
 }
 

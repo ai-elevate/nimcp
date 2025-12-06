@@ -31,7 +31,15 @@
  * @date 2025-11-11
  */
 
-#include "nimcp_astrocytes.h"
+#include "async/nimcp_bio_async.h"
+#include "async/nimcp_bio_router.h"
+#include "async/nimcp_bio_messages.h"
+#include "utils/logging/nimcp_logging.h"
+#include "utils/memory/nimcp_unified_memory.h"
+
+#define LOG_MODULE "ASTROCYTES"
+
+#include "glial/astrocytes/nimcp_astrocytes.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/time/nimcp_time.h"
 #include <stdlib.h>

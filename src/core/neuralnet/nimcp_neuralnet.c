@@ -36,7 +36,7 @@
  * - Single responsibility: Each function has one clear purpose
  */
 
-#include "nimcp_neuralnet.h"
+#include "core/neuralnet/nimcp_neuralnet.h"
 #include "core/synapse_compute/nimcp_synapse_compute.h"  // NIMCP 2.7: Programmable synapses
 #include "core/synapse_types/nimcp_synapse_types.h"      // NIMCP 2.8.7: Synapse type system
 #include "core/neuron_models/nimcp_neuron_model.h"
@@ -48,12 +48,29 @@
 #include "plasticity/neuromodulators/nimcp_neuromodulators.h"  // Neuromodulator system for dopamine/serotonin/etc
 #include "glial/integration/nimcp_glial_integration.h"   // NIMCP Phase 6: Glial notifications
 #include "security/nimcp_security.h"                     // Phase 11: Biological attack defense
+#include "async/nimcp_bio_async.h"
+#include "async/nimcp_bio_router.h"
+#include "async/nimcp_bio_messages.h"
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
 #include "utils/memory/nimcp_memory.h"  // CRITICAL: Declares nimcp_calloc/nimcp_free return types
+#include "utils/logging/nimcp_logging.h"
+
+// === BIO-ASYNC + LOGGING + UNIFIED MEMORY INTEGRATION ===
+#include "async/nimcp_bio_async.h"
+#include "async/nimcp_bio_router.h"
+#include "async/nimcp_bio_messages.h"
+#include "utils/logging/nimcp_logging.h"
+#include "utils/memory/nimcp_unified_memory.h"
+
+#define LOG_MODULE "neuralnet"
+#define BIO_MODULE_ID 0x013B
+
+
+#define LOG_MODULE "neuralnet"
 
 //=============================================================================
 // Constants and Configuration
@@ -139,6 +156,10 @@ struct neural_network_struct {
 
     // Axon Integration - Signal propagation with realistic conduction delays
     void* axon_network;           /**< Axon network for spike propagation (axon_network_t*, NULL = no axons) */
+
+    // Bio-async integration
+    bio_module_context_t bio_ctx;
+    bool bio_async_enabled;
 };
 
 //=============================================================================
@@ -648,6 +669,25 @@ neural_network_t neural_network_create(const network_config_t* config)
         }
     }
 
+    // Bio-async registration
+    network->bio_ctx = NULL;
+    network->bio_async_enabled = false;
+    if (config->enable_bio_async && bio_router_is_initialized()) {
+        bio_module_info_t bio_info = {
+            .module_id = BIO_MODULE_NEURALNET,
+            .module_name = "neuralnet",
+            .inbox_capacity = 64,
+            .user_data = network
+        };
+        network->bio_ctx = bio_router_register_module(&bio_info);
+        if (network->bio_ctx) {
+            network->bio_async_enabled = true;
+            LOG_INFO(LOG_MODULE, "Bio-async registered for neuralnet");
+        } else {
+            LOG_WARN(LOG_MODULE, "Bio-async registration failed for neuralnet");
+        }
+    }
+
     return network;
 }
 
@@ -671,6 +711,13 @@ void neural_network_destroy(neural_network_t network)
     if (!network)
         return;
 
+    // Bio-async unregistration
+    if (network->bio_async_enabled && network->bio_ctx) {
+        bio_router_unregister_module(network->bio_ctx);
+        network->bio_ctx = NULL;
+        network->bio_async_enabled = false;
+        LOG_INFO(LOG_MODULE, "Bio-async unregistered for neuralnet");
+    }
 
     /**
      * WHAT: Cleanup neuron models (NIMCP 2.6)
@@ -1912,6 +1959,11 @@ void neural_network_set_time(neural_network_t network, uint64_t timestamp)
  */
 uint32_t neural_network_compute_step(neural_network_t network, uint64_t timestamp)
 {
+    // Process pending bio-async messages
+    if (network && network->bio_async_enabled && network->bio_ctx) {
+        bio_router_process_inbox(network->bio_ctx, 5);
+    }
+
     uint32_t active_neurons = 0;
 
     // Update all neurons

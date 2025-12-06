@@ -11,8 +11,11 @@
 // - Regression: Ensure existing allocations still work
 //=============================================================================
 
-#include "test_helpers.h"
+#include <gtest/gtest.h>
+
+extern "C" {
 #include "utils/memory/nimcp_memory.h"
+}
 
 #include <cstdint>
 #include <cstring>

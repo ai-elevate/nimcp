@@ -5,9 +5,9 @@
 #ifndef NIMCP_BRAIN_INTEGRATION_H
 #define NIMCP_BRAIN_INTEGRATION_H
 
-#include "nimcp_middleware.h"
-#include "encoding/nimcp_population_coding.h"
-#include "features/nimcp_feature_extractor.h"
+#include "middleware/nimcp_middleware.h"
+#include "middleware/encoding/nimcp_population_coding.h"
+#include "middleware/features/nimcp_feature_extractor.h"
 #include <stddef.h>
 #include <stdbool.h>
 

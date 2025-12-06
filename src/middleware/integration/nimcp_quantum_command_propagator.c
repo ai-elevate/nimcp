@@ -378,6 +378,11 @@ uint32_t quantum_command_propagator_propagate(
         return 0;
     }
 
+    // Process pending bio-async messages
+    if (qcp->bio_async_enabled && qcp->bio_ctx) {
+        bio_router_process_inbox(qcp->bio_ctx, 5);
+    }
+
     uint64_t start_time = nimcp_time_get_us();
 
     // Calculate command information content

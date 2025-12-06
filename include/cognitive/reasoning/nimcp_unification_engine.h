@@ -22,11 +22,10 @@ extern "C" {
 #endif
 
 //=============================================================================
-// Event Types
+// Event Types - See include/core/events/nimcp_event_bus.h for definitions
+// EVENT_UNIFICATION_SUCCEEDED = 0xC005
+// EVENT_UNIFICATION_FAILED = 0xC006
 //=============================================================================
-
-#define EVENT_UNIFICATION_SUCCEEDED 0x094A
-#define EVENT_UNIFICATION_FAILED 0x094B
 
 //=============================================================================
 // Unification Operations - SOLE RESPONSIBILITY

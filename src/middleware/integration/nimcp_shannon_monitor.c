@@ -145,6 +145,11 @@ static event_type_stats_t* find_or_create_event_type_stats(
 }
 
 static void update_event_probabilities(shannon_monitor_t* monitor) {
+    // Process pending bio-async messages
+    if (monitor && monitor->bio_async_enabled && monitor->bio_ctx) {
+        bio_router_process_inbox(monitor->bio_ctx, 5);
+    }
+
     for (uint32_t i = 0; i < monitor->num_event_types; i++) {
         monitor->event_type_stats[i].count = 0;
     }

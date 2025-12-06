@@ -11,6 +11,14 @@
  * @version 2.11 (Phase C4.7)
  */
 
+#include "async/nimcp_bio_async.h"
+#include "async/nimcp_bio_router.h"
+#include "async/nimcp_bio_messages.h"
+#include "utils/logging/nimcp_logging.h"
+#include "utils/memory/nimcp_unified_memory.h"
+
+#define LOG_MODULE "INFORMATION"
+
 #include "information/nimcp_cross_modal.h"
 #include "utils/memory/nimcp_memory.h"
 #include <stdlib.h>

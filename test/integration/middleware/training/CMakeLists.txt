@@ -178,3 +178,93 @@ set_tests_properties(integration_middleware_training_test_event_driven_plasticit
     PROPERTIES
         LABELS "integration;middleware;training;event_driven_plasticity"
         TIMEOUT 240)
+
+# Security Registration Integration Tests (Phase SR-1)
+add_executable(integration_middleware_training_test_security_registration_integration
+    test_security_registration_integration.cpp
+)
+
+target_include_directories(integration_middleware_training_test_security_registration_integration PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${CMAKE_SOURCE_DIR}/src
+)
+
+target_compile_features(integration_middleware_training_test_security_registration_integration PRIVATE cxx_std_20)
+
+target_link_libraries(integration_middleware_training_test_security_registration_integration
+    PRIVATE
+        GTest::GTest
+        GTest::Main
+        nimcp_middleware
+        nimcp
+        pthread
+        m
+)
+
+add_test(NAME integration_middleware_training_test_security_registration_integration
+         COMMAND integration_middleware_training_test_security_registration_integration)
+
+set_tests_properties(integration_middleware_training_test_security_registration_integration
+    PROPERTIES
+        LABELS "integration;middleware;training;security_registration"
+        TIMEOUT 300)
+
+# Training Callbacks Integration Tests (Phase TCB-1)
+add_executable(integration_middleware_training_test_training_callbacks_integration
+    test_training_callbacks_integration.cpp
+)
+
+target_include_directories(integration_middleware_training_test_training_callbacks_integration PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${CMAKE_SOURCE_DIR}/src
+)
+
+target_compile_features(integration_middleware_training_test_training_callbacks_integration PRIVATE cxx_std_20)
+
+target_link_libraries(integration_middleware_training_test_training_callbacks_integration
+    PRIVATE
+        GTest::GTest
+        GTest::Main
+        nimcp_middleware
+        nimcp
+        pthread
+        m
+)
+
+add_test(NAME integration_middleware_training_test_training_callbacks_integration
+         COMMAND integration_middleware_training_test_training_callbacks_integration)
+
+set_tests_properties(integration_middleware_training_test_training_callbacks_integration
+    PROPERTIES
+        LABELS "integration;middleware;training;callbacks"
+        TIMEOUT 300)
+
+# Training Async Pipeline Integration Tests (Phase ASYNC-1)
+add_executable(integration_middleware_training_test_training_async_pipeline
+    test_training_async_pipeline.cpp
+)
+
+target_include_directories(integration_middleware_training_test_training_async_pipeline PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${CMAKE_SOURCE_DIR}/src
+)
+
+target_compile_features(integration_middleware_training_test_training_async_pipeline PRIVATE cxx_std_20)
+
+target_link_libraries(integration_middleware_training_test_training_async_pipeline
+    PRIVATE
+        GTest::GTest
+        GTest::Main
+        nimcp_middleware
+        nimcp
+        pthread
+        m
+)
+
+add_test(NAME integration_middleware_training_test_training_async_pipeline
+         COMMAND integration_middleware_training_test_training_async_pipeline)
+
+set_tests_properties(integration_middleware_training_test_training_async_pipeline
+    PROPERTIES
+        LABELS "integration;middleware;training;async;bio-async"
+        TIMEOUT 300)

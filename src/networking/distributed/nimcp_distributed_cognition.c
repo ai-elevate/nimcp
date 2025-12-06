@@ -6,6 +6,9 @@
  * - Mediator between local cognitive systems and P2P network
  * - Event-driven coordination with thread-safe synchronization
  * - Supports neuromodulator diffusion, glial coordination, region sync
+ * - ASYNC INTEGRATION: Uses futures for non-blocking operations
+ * - CONFIG INTEGRATION: All hyperparameters configurable via config module
+ * - SECURITY INTEGRATION: Registered with security system for monitoring
  *
  * THREAD MODEL:
  * - 3 worker threads (neuromod sync, glial sync, region sync)
@@ -13,22 +16,32 @@
  * - Lock-free reads for high-frequency queries
  *
  * MEMORY MANAGEMENT:
- * - All allocations use nimcp_malloc/calloc/free
+ * - All allocations use unified memory (nimcp_malloc/calloc/free)
  * - Cleanup on destroy, NULL-safe operations
  *
  * @author NIMCP Development Team
  * @date 2025
- * @version Phase 3
+ * @version Phase 3.1 (Async/Config/Logging/Security Integrated)
  */
 
-#include "nimcp_distributed_cognition.h"
+#include "networking/distributed/nimcp_distributed_cognition.h"
+#include "utils/memory/nimcp_unified_memory.h"
+#include "async/nimcp_future.h"
+#include "async/nimcp_bio_async.h"
+#include "async/nimcp_bio_router.h"
+#include "async/nimcp_bio_messages.h"
+#include "utils/error/nimcp_error_codes.h"
+#include "security/nimcp_security.h"
+#include "utils/config/nimcp_dynamic_config.h"
+#include "utils/logging/nimcp_logging.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/thread/nimcp_thread.h"
 #include "utils/time/nimcp_time.h"
 #include "utils/validation/nimcp_validate.h"
-#include "utils/logging/nimcp_logging.h"
 #include <string.h>
 #include <math.h>
+
+#define LOG_MODULE "networking.distributed"
 
 //=============================================================================
 // Internal Structures
@@ -98,7 +111,28 @@ struct distrib_cognition_struct {
     // Control flags
     bool running;
     bool shutdown_requested;
+
+    // Bio-async integration
+    bio_module_context_t bio_ctx;
+    bool bio_async_enabled;
 };
+
+//=============================================================================
+// Module Registration and Configuration
+//=============================================================================
+
+#define MODULE_NAME "networking.distributed_cognition"
+static uint32_t g_security_module_id = 0;
+
+// Configuration keys
+#define CONFIG_KEY_ENABLE_NEUROMOD_SYNC "distrib_cog.enable_neuromod_sync"
+#define CONFIG_KEY_NEUROMOD_INTERVAL "distrib_cog.neuromod_broadcast_interval_ms"
+#define CONFIG_KEY_NEUROMOD_DIFFUSION "distrib_cog.neuromod_diffusion_rate"
+#define CONFIG_KEY_ENABLE_GLIAL_SYNC "distrib_cog.enable_glial_sync"
+#define CONFIG_KEY_GLIAL_INTERVAL "distrib_cog.glial_sync_interval_ms"
+#define CONFIG_KEY_ENABLE_REGION_SYNC "distrib_cog.enable_region_sync"
+#define CONFIG_KEY_REGION_INTERVAL "distrib_cog.region_sync_interval_ms"
+#define CONFIG_KEY_MAX_MESSAGE_QUEUE "distrib_cog.max_message_queue"
 
 //=============================================================================
 // Default Configuration
@@ -116,8 +150,66 @@ static const distrib_cognition_config_t DEFAULT_CONFIG = {
     .region_sync_interval_ms = 200,         // 5 Hz sync
 
     .sync_mode = SYNC_MODE_BIDIRECTIONAL,
-    .max_message_queue = 1000
+    .max_message_queue = 1000,
+    .enable_bio_async = false
 };
+
+/**
+ * @brief Load configuration from config module
+ *
+ * WHY: Make all hyperparameters configurable at runtime
+ * HOW: Query config module for each parameter with fallback to defaults
+ */
+static void load_configuration(distrib_cognition_config_t* config)
+{
+    if (!config) return;
+
+    // Start with defaults
+    *config = DEFAULT_CONFIG;
+
+    // Override with config module values if available
+    bool enable_neuromod = config_get_bool(CONFIG_KEY_ENABLE_NEUROMOD_SYNC, config->enable_neuromod_sync);
+    config->enable_neuromod_sync = enable_neuromod;
+    LOG_MODULE_DEBUG(MODULE_NAME, "Config: enable_neuromod_sync=%d", enable_neuromod);
+
+    int64_t neuromod_interval = config_get_int(CONFIG_KEY_NEUROMOD_INTERVAL, config->neuromod_broadcast_interval_ms);
+    if (neuromod_interval > 0) {
+        config->neuromod_broadcast_interval_ms = (uint32_t)neuromod_interval;
+        LOG_MODULE_DEBUG(MODULE_NAME, "Config: neuromod_interval=%d ms", (int)neuromod_interval);
+    }
+
+    double diffusion_rate = config_get_float(CONFIG_KEY_NEUROMOD_DIFFUSION, config->neuromod_diffusion_rate);
+    if (diffusion_rate >= 0.0 && diffusion_rate <= 1.0) {
+        config->neuromod_diffusion_rate = (float)diffusion_rate;
+        LOG_MODULE_DEBUG(MODULE_NAME, "Config: neuromod_diffusion_rate=%.3f", diffusion_rate);
+    }
+
+    bool enable_glial = config_get_bool(CONFIG_KEY_ENABLE_GLIAL_SYNC, config->enable_glial_sync);
+    config->enable_glial_sync = enable_glial;
+    LOG_MODULE_DEBUG(MODULE_NAME, "Config: enable_glial_sync=%d", enable_glial);
+
+    int64_t glial_interval = config_get_int(CONFIG_KEY_GLIAL_INTERVAL, config->glial_sync_interval_ms);
+    if (glial_interval > 0) {
+        config->glial_sync_interval_ms = (uint32_t)glial_interval;
+        LOG_MODULE_DEBUG(MODULE_NAME, "Config: glial_interval=%d ms", (int)glial_interval);
+    }
+
+    bool enable_region = config_get_bool(CONFIG_KEY_ENABLE_REGION_SYNC, config->enable_region_sync);
+    config->enable_region_sync = enable_region;
+    LOG_MODULE_DEBUG(MODULE_NAME, "Config: enable_region_sync=%d", enable_region);
+
+    int64_t region_interval = config_get_int(CONFIG_KEY_REGION_INTERVAL, config->region_sync_interval_ms);
+    if (region_interval > 0) {
+        config->region_sync_interval_ms = (uint32_t)region_interval;
+        LOG_MODULE_DEBUG(MODULE_NAME, "Config: region_interval=%d ms", (int)region_interval);
+    }
+
+    int64_t max_queue = config_get_int(CONFIG_KEY_MAX_MESSAGE_QUEUE, config->max_message_queue);
+    if (max_queue > 0) {
+        config->max_message_queue = (uint32_t)max_queue;
+        LOG_MODULE_DEBUG(MODULE_NAME, "Config: max_message_queue=%d", (int)max_queue);
+    }
+}
 
 //=============================================================================
 // Forward Declarations - Worker Threads
@@ -145,14 +237,14 @@ distrib_cognition_t distrib_cognition_create(
     p2p_node_t p2p_node)
 {
     if (!p2p_node) {
-        log_message(LOG_LEVEL_ERROR, "[distributed_cognition] Invalid P2P node");
+        LOG_ERROR(LOG_MODULE, "Invalid P2P node");
         return NULL;
     }
 
     // Allocate coordinator
     distrib_cognition_t dc = (distrib_cognition_t)nimcp_calloc(1, sizeof(struct distrib_cognition_struct));
     if (!dc) {
-        log_message(LOG_LEVEL_ERROR, "[distributed_cognition] Failed to allocate coordinator");
+        LOG_ERROR(LOG_MODULE, "Failed to allocate coordinator");
         return NULL;
     }
 
@@ -168,7 +260,7 @@ distrib_cognition_t distrib_cognition_create(
 
     // Initialize rwlock
     if (nimcp_rwlock_init(&dc->rwlock) != NIMCP_SUCCESS) {
-        log_message(LOG_LEVEL_ERROR, "[distributed_cognition] Failed to initialize rwlock");
+        LOG_ERROR(LOG_MODULE, "Failed to initialize rwlock");
         nimcp_free(dc);
         return NULL;
     }
@@ -208,7 +300,26 @@ distrib_cognition_t distrib_cognition_create(
     dc->running = false;
     dc->shutdown_requested = false;
 
-    log_message(LOG_LEVEL_INFO, "[distributed_cognition] Coordinator created successfully");
+    // Initialize bio-async if enabled
+    dc->bio_ctx = NULL;
+    dc->bio_async_enabled = false;
+    if (dc->config.enable_bio_async && bio_router_is_initialized()) {
+        bio_module_info_t bio_info = {
+            .module_id = BIO_MODULE_DISTRIBUTED,
+            .module_name = "distributed_cognition",
+            .inbox_capacity = 64,
+            .user_data = dc
+        };
+        dc->bio_ctx = bio_router_register_module(&bio_info);
+        if (dc->bio_ctx) {
+            dc->bio_async_enabled = true;
+            LOG_INFO(LOG_MODULE, "Bio-async communication registered");
+        } else {
+            LOG_WARN(LOG_MODULE, "Failed to register bio-async communication");
+        }
+    }
+
+    LOG_INFO(LOG_MODULE, "Coordinator created successfully");
 
     return dc;
 }
@@ -222,6 +333,14 @@ void distrib_cognition_destroy(distrib_cognition_t dc)
     // Stop if running
     if (dc->running) {
         distrib_cognition_stop(dc);
+    }
+
+    // Unregister bio-async
+    if (dc->bio_async_enabled && dc->bio_ctx) {
+        bio_router_unregister_module(dc->bio_ctx);
+        dc->bio_ctx = NULL;
+        dc->bio_async_enabled = false;
+        LOG_INFO(LOG_MODULE, "Bio-async communication unregistered");
     }
 
     // Free registered systems
@@ -254,6 +373,11 @@ bool distrib_cognition_register_neuromod_pool(
     distrib_cognition_t dc,
     neuromodulator_pool_t* pool)
 {
+    // Process pending bio-async messages
+    if (dc && dc->bio_ctx) {
+        bio_router_process_inbox(dc->bio_ctx, 5);
+    }
+
     if (!dc || !pool) {
         log_message(LOG_LEVEL_ERROR, "[distributed_cognition] Invalid parameters for neuromod pool registration");
         return false;
@@ -897,4 +1021,353 @@ bool distrib_cognition_set_sync_mode(
     log_message(LOG_LEVEL_INFO, "[distributed_cognition] Sync mode set to %d", mode);
 
     return true;
+}
+
+//=============================================================================
+// Async Operations - Context Structures
+//=============================================================================
+
+/**
+ * @brief Context for async neuromodulator broadcast
+ */
+typedef struct {
+    distrib_cognition_t dc;
+    neuromodulator_type_t type;
+    float concentration;
+    nimcp_promise_t promise;
+} async_neuromod_broadcast_ctx_t;
+
+/**
+ * @brief Context for async calcium wave propagation
+ */
+typedef struct {
+    distrib_cognition_t dc;
+    uint32_t astrocyte_id;
+    float calcium_level;
+    float wave_velocity;
+    nimcp_promise_t promise;
+} async_calcium_wave_ctx_t;
+
+/**
+ * @brief Context for async pruning coordination
+ */
+typedef struct {
+    distrib_cognition_t dc;
+    uint32_t source_neuron_id;
+    uint32_t target_neuron_id;
+    float activity_score;
+    uint8_t action;
+    nimcp_promise_t promise;
+} async_pruning_ctx_t;
+
+//=============================================================================
+// Async Operations - Worker Threads
+//=============================================================================
+
+/**
+ * @brief Worker thread for async neuromodulator broadcast
+ */
+static void* async_neuromod_broadcast_worker(void* arg)
+{
+    async_neuromod_broadcast_ctx_t* ctx = (async_neuromod_broadcast_ctx_t*)arg;
+
+    if (!ctx) {
+        return NULL;
+    }
+
+    LOG_MODULE_DEBUG(MODULE_NAME, "Async neuromod broadcast starting: type=%d concentration=%.3f",
+                     ctx->type, ctx->concentration);
+
+    // Perform the synchronous broadcast operation
+    bool result = distrib_cognition_broadcast_neuromod(
+        ctx->dc,
+        ctx->type,
+        ctx->concentration
+    );
+
+    // Set promise result using correct API
+    if (result) {
+        bool success = true;
+        nimcp_promise_complete(ctx->promise, &success);
+        LOG_MODULE_DEBUG(MODULE_NAME, "Async neuromod broadcast completed successfully");
+    } else {
+        nimcp_promise_fail(ctx->promise, NIMCP_ERROR_OPERATION_FAILED);
+        LOG_MODULE_ERROR(MODULE_NAME, "Async neuromod broadcast failed");
+    }
+
+    // Free context
+    nimcp_free(ctx);
+
+    return NULL;
+}
+
+/**
+ * @brief Worker thread for async calcium wave propagation
+ */
+static void* async_calcium_wave_worker(void* arg)
+{
+    async_calcium_wave_ctx_t* ctx = (async_calcium_wave_ctx_t*)arg;
+
+    if (!ctx) {
+        return NULL;
+    }
+
+    LOG_MODULE_DEBUG(MODULE_NAME, "Async calcium wave starting: astrocyte=%u level=%.3f velocity=%.1f",
+                     ctx->astrocyte_id, ctx->calcium_level, ctx->wave_velocity);
+
+    // Perform the synchronous calcium wave operation
+    bool result = distrib_cognition_propagate_calcium_wave(
+        ctx->dc,
+        ctx->astrocyte_id,
+        ctx->calcium_level,
+        ctx->wave_velocity
+    );
+
+    // Set promise result using correct API
+    if (result) {
+        bool success = true;
+        nimcp_promise_complete(ctx->promise, &success);
+        LOG_MODULE_DEBUG(MODULE_NAME, "Async calcium wave completed successfully");
+    } else {
+        nimcp_promise_fail(ctx->promise, NIMCP_ERROR_OPERATION_FAILED);
+        LOG_MODULE_ERROR(MODULE_NAME, "Async calcium wave failed");
+    }
+
+    // Free context
+    nimcp_free(ctx);
+
+    return NULL;
+}
+
+/**
+ * @brief Worker thread for async pruning coordination
+ */
+static void* async_pruning_worker(void* arg)
+{
+    async_pruning_ctx_t* ctx = (async_pruning_ctx_t*)arg;
+
+    if (!ctx) {
+        return NULL;
+    }
+
+    LOG_MODULE_DEBUG(MODULE_NAME, "Async pruning coordination starting: synapse=%u->%u score=%.3f action=%d",
+                     ctx->source_neuron_id, ctx->target_neuron_id, ctx->activity_score, ctx->action);
+
+    // Perform the synchronous pruning coordination
+    bool result = distrib_cognition_coordinate_pruning(
+        ctx->dc,
+        ctx->source_neuron_id,
+        ctx->target_neuron_id,
+        ctx->activity_score,
+        ctx->action
+    );
+
+    // Set promise result using correct API
+    if (result) {
+        bool success = true;
+        nimcp_promise_complete(ctx->promise, &success);
+        LOG_MODULE_DEBUG(MODULE_NAME, "Async pruning coordination completed successfully");
+    } else {
+        nimcp_promise_fail(ctx->promise, NIMCP_ERROR_OPERATION_FAILED);
+        LOG_MODULE_ERROR(MODULE_NAME, "Async pruning coordination failed");
+    }
+
+    // Free context
+    nimcp_free(ctx);
+
+    return NULL;
+}
+
+//=============================================================================
+// Async Operations - Public API
+//=============================================================================
+
+nimcp_future_t distrib_cognition_broadcast_neuromod_async(
+    distrib_cognition_t dc,
+    neuromodulator_type_t type,
+    float concentration)
+{
+    if (!dc) {
+        LOG_MODULE_ERROR(MODULE_NAME, "Async neuromod broadcast: invalid coordinator");
+        return NULL;
+    }
+
+    if (concentration < 0.0f || concentration > 1.0f) {
+        LOG_MODULE_ERROR(MODULE_NAME, "Async neuromod broadcast: invalid concentration %.3f", concentration);
+        return NULL;
+    }
+
+    // Create promise/future pair (result is a bool)
+    nimcp_promise_t promise = nimcp_promise_create(sizeof(bool));
+    if (!promise) {
+        LOG_MODULE_ERROR(MODULE_NAME, "Async neuromod broadcast: failed to create promise");
+        return NULL;
+    }
+
+    nimcp_future_t future = nimcp_promise_get_future(promise);
+    if (!future) {
+        nimcp_promise_destroy(promise);
+        LOG_MODULE_ERROR(MODULE_NAME, "Async neuromod broadcast: failed to get future");
+        return NULL;
+    }
+
+    // Allocate context
+    async_neuromod_broadcast_ctx_t* ctx = (async_neuromod_broadcast_ctx_t*)nimcp_malloc(sizeof(async_neuromod_broadcast_ctx_t));
+    if (!ctx) {
+        nimcp_promise_destroy(promise);
+        LOG_MODULE_ERROR(MODULE_NAME, "Async neuromod broadcast: failed to allocate context");
+        return NULL;
+    }
+
+    ctx->dc = dc;
+    ctx->type = type;
+    ctx->concentration = concentration;
+    ctx->promise = promise;
+
+    // Spawn worker thread
+    nimcp_thread_t thread;
+    if (nimcp_thread_create(&thread, async_neuromod_broadcast_worker, ctx, NULL) != NIMCP_SUCCESS) {
+        nimcp_free(ctx);
+        nimcp_promise_destroy(promise);
+        LOG_MODULE_ERROR(MODULE_NAME, "Async neuromod broadcast: failed to create worker thread");
+        return NULL;
+    }
+
+    // Detach thread (worker will clean up context)
+    nimcp_thread_detach(thread);
+
+    LOG_MODULE_INFO(MODULE_NAME, "Async neuromod broadcast started: type=%d concentration=%.3f", type, concentration);
+
+    return future;
+}
+
+nimcp_future_t distrib_cognition_propagate_calcium_wave_async(
+    distrib_cognition_t dc,
+    uint32_t astrocyte_id,
+    float calcium_level,
+    float wave_velocity)
+{
+    if (!dc) {
+        LOG_MODULE_ERROR(MODULE_NAME, "Async calcium wave: invalid coordinator");
+        return NULL;
+    }
+
+    if (calcium_level < 0.0f || calcium_level > 1.0f) {
+        LOG_MODULE_ERROR(MODULE_NAME, "Async calcium wave: invalid calcium level %.3f", calcium_level);
+        return NULL;
+    }
+
+    // Create promise/future pair (result is a bool)
+    nimcp_promise_t promise = nimcp_promise_create(sizeof(bool));
+    if (!promise) {
+        LOG_MODULE_ERROR(MODULE_NAME, "Async calcium wave: failed to create promise");
+        return NULL;
+    }
+
+    nimcp_future_t future = nimcp_promise_get_future(promise);
+    if (!future) {
+        nimcp_promise_destroy(promise);
+        LOG_MODULE_ERROR(MODULE_NAME, "Async calcium wave: failed to get future");
+        return NULL;
+    }
+
+    // Allocate context
+    async_calcium_wave_ctx_t* ctx = (async_calcium_wave_ctx_t*)nimcp_malloc(sizeof(async_calcium_wave_ctx_t));
+    if (!ctx) {
+        nimcp_promise_destroy(promise);
+        LOG_MODULE_ERROR(MODULE_NAME, "Async calcium wave: failed to allocate context");
+        return NULL;
+    }
+
+    ctx->dc = dc;
+    ctx->astrocyte_id = astrocyte_id;
+    ctx->calcium_level = calcium_level;
+    ctx->wave_velocity = wave_velocity;
+    ctx->promise = promise;
+
+    // Spawn worker thread
+    nimcp_thread_t thread;
+    if (nimcp_thread_create(&thread, async_calcium_wave_worker, ctx, NULL) != NIMCP_SUCCESS) {
+        nimcp_free(ctx);
+        nimcp_promise_destroy(promise);
+        LOG_MODULE_ERROR(MODULE_NAME, "Async calcium wave: failed to create worker thread");
+        return NULL;
+    }
+
+    // Detach thread (worker will clean up context)
+    nimcp_thread_detach(thread);
+
+    LOG_MODULE_INFO(MODULE_NAME, "Async calcium wave started: astrocyte=%u level=%.3f velocity=%.1f",
+                    astrocyte_id, calcium_level, wave_velocity);
+
+    return future;
+}
+
+nimcp_future_t distrib_cognition_coordinate_pruning_async(
+    distrib_cognition_t dc,
+    uint32_t source_neuron_id,
+    uint32_t target_neuron_id,
+    float activity_score,
+    uint8_t action)
+{
+    if (!dc) {
+        LOG_MODULE_ERROR(MODULE_NAME, "Async pruning coordination: invalid coordinator");
+        return NULL;
+    }
+
+    if (activity_score < 0.0f || activity_score > 1.0f) {
+        LOG_MODULE_ERROR(MODULE_NAME, "Async pruning coordination: invalid activity score %.3f", activity_score);
+        return NULL;
+    }
+
+    if (action > 2) {
+        LOG_MODULE_ERROR(MODULE_NAME, "Async pruning coordination: invalid action %d", action);
+        return NULL;
+    }
+
+    // Create promise/future pair (result is a bool)
+    nimcp_promise_t promise = nimcp_promise_create(sizeof(bool));
+    if (!promise) {
+        LOG_MODULE_ERROR(MODULE_NAME, "Async pruning coordination: failed to create promise");
+        return NULL;
+    }
+
+    nimcp_future_t future = nimcp_promise_get_future(promise);
+    if (!future) {
+        nimcp_promise_destroy(promise);
+        LOG_MODULE_ERROR(MODULE_NAME, "Async pruning coordination: failed to get future");
+        return NULL;
+    }
+
+    // Allocate context
+    async_pruning_ctx_t* ctx = (async_pruning_ctx_t*)nimcp_malloc(sizeof(async_pruning_ctx_t));
+    if (!ctx) {
+        nimcp_promise_destroy(promise);
+        LOG_MODULE_ERROR(MODULE_NAME, "Async pruning coordination: failed to allocate context");
+        return NULL;
+    }
+
+    ctx->dc = dc;
+    ctx->source_neuron_id = source_neuron_id;
+    ctx->target_neuron_id = target_neuron_id;
+    ctx->activity_score = activity_score;
+    ctx->action = action;
+    ctx->promise = promise;
+
+    // Spawn worker thread
+    nimcp_thread_t thread;
+    if (nimcp_thread_create(&thread, async_pruning_worker, ctx, NULL) != NIMCP_SUCCESS) {
+        nimcp_free(ctx);
+        nimcp_promise_destroy(promise);
+        LOG_MODULE_ERROR(MODULE_NAME, "Async pruning coordination: failed to create worker thread");
+        return NULL;
+    }
+
+    // Detach thread (worker will clean up context)
+    nimcp_thread_detach(thread);
+
+    LOG_MODULE_INFO(MODULE_NAME, "Async pruning coordination started: synapse=%u->%u score=%.3f action=%d",
+                    source_neuron_id, target_neuron_id, activity_score, action);
+
+    return future;
 }

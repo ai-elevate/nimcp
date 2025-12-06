@@ -126,3 +126,34 @@ set_tests_properties(unit_glial_myelin_math
         TIMEOUT 180
         LABELS "unit;glial;myelin;biophysics;math"
 )
+
+# ============================================================================
+# Bio-async integration tests for glial modules
+# ============================================================================
+add_executable(unit_glial_test_bio_async
+    test_glial_bio_async.cpp
+)
+
+target_link_libraries(unit_glial_test_bio_async
+    PRIVATE
+        nimcp
+        GTest::gtest
+        GTest::gtest_main
+        Threads::Threads
+        m
+)
+
+target_include_directories(unit_glial_test_bio_async
+    PRIVATE
+        ${PROJECT_SOURCE_DIR}/include
+        ${PROJECT_SOURCE_DIR}/src
+)
+
+target_compile_features(unit_glial_test_bio_async PRIVATE cxx_std_17)
+
+gtest_discover_tests(unit_glial_test_bio_async
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+    PROPERTIES
+        LABELS "unit;glial;bio-async"
+        TIMEOUT 90
+)

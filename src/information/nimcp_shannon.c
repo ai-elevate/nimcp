@@ -10,12 +10,71 @@
  * @version 3.0.0 Phase C4
  */
 
+#include "async/nimcp_bio_async.h"
+#include "async/nimcp_bio_router.h"
+#include "async/nimcp_bio_messages.h"
+#include "utils/logging/nimcp_logging.h"
+#include "utils/memory/nimcp_unified_memory.h"
+#include "security/nimcp_security.h"
+
+#define LOG_MODULE "INFORMATION"
+
 #include "information/nimcp_shannon.h"
 #include "utils/memory/nimcp_memory.h"
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
 #include <float.h>
+
+//=============================================================================
+// Module State
+//=============================================================================
+
+static bool g_shannon_initialized = false;
+static bio_module_context_t g_bio_ctx = NULL;
+static bool g_bio_async_enabled = false;
+static void* g_security_context = NULL;
+
+//=============================================================================
+// Initialization and Cleanup
+//=============================================================================
+
+/**
+ * @brief Initialize Shannon module
+ */
+static void shannon_init_once(void)
+{
+    if (g_shannon_initialized) {
+        return;
+    }
+
+    LOG_INFO("Initializing Shannon information module");
+
+    // Register with bio-async router
+    g_bio_ctx = NULL;
+    g_bio_async_enabled = false;
+    if (bio_router_is_initialized()) {
+        bio_module_info_t bio_info = {
+            .module_id = BIO_MODULE_SYSTEM_SHANNON,
+            .module_name = "shannon_information",
+            .inbox_capacity = 32,
+            .user_data = NULL
+        };
+        g_bio_ctx = bio_router_register_module(&bio_info);
+        if (g_bio_ctx) {
+            g_bio_async_enabled = true;
+            LOG_DEBUG("Shannon module registered with bio-async router");
+        } else {
+            LOG_WARN("Failed to register Shannon module with bio-async router");
+        }
+    }
+
+    // Security context (simplified - no function call needed for now)
+    g_security_context = NULL;  // TODO: proper security registration
+
+    g_shannon_initialized = true;
+    LOG_INFO("Shannon information module initialized successfully");
+}
 
 //=============================================================================
 // Internal Helper Functions
@@ -48,31 +107,47 @@ static inline float clamp(float value, float min, float max)
 
 float shannon_channel_capacity(float bandwidth, float snr)
 {
+    shannon_init_once();
+
+    LOG_DEBUG("Computing channel capacity: bandwidth=%.2f Hz, SNR=%.2f", bandwidth, snr);
+
     // Validate inputs
     if (bandwidth < SHANNON_MIN_BANDWIDTH) {
+        LOG_WARN("Bandwidth %.2f below minimum, clamping to %.2f", bandwidth, SHANNON_MIN_BANDWIDTH);
         bandwidth = SHANNON_MIN_BANDWIDTH;
     }
 
     if (snr < 0.0f) {
+        LOG_WARN("Negative SNR %.2f, clamping to 0.0", snr);
         snr = 0.0f;
     }
 
     // Clamp SNR to reasonable range
     if (snr > SHANNON_MAX_SNR) {
+        LOG_WARN("SNR %.2f exceeds maximum, clamping to %.2f", snr, SHANNON_MAX_SNR);
         snr = SHANNON_MAX_SNR;
     }
 
     // Shannon-Hartley theorem: C = B × log₂(1 + SNR)
     float capacity = bandwidth * log2f(1.0f + snr);
 
+    LOG_DEBUG("Channel capacity computed: %.2f bits/s", capacity);
+
     return capacity;
 }
 
 float shannon_entropy(const shannon_distribution_t* distribution)
 {
+    shannon_init_once();
+
+    LOG_DEBUG("Computing Shannon entropy");
+
     if (!distribution || !distribution->probabilities) {
+        LOG_ERROR("NULL distribution or probabilities");
         return 0.0f;
     }
+
+    LOG_DEBUG("Distribution has %u states", distribution->num_states);
 
     float entropy = 0.0f;
 
@@ -84,6 +159,8 @@ float shannon_entropy(const shannon_distribution_t* distribution)
             entropy -= p * log2f(p);
         }
     }
+
+    LOG_DEBUG("Entropy computed: %.4f bits", entropy);
 
     return entropy;
 }
@@ -105,18 +182,26 @@ float shannon_entropy_array(const float* probabilities, uint32_t num_states)
 
 float shannon_mutual_information(const shannon_joint_distribution_t* joint_distribution)
 {
+    shannon_init_once();
+
+    LOG_DEBUG("Computing mutual information");
+
     if (!joint_distribution || !joint_distribution->joint_probabilities) {
+        LOG_ERROR("NULL joint distribution or probabilities");
         return 0.0f;
     }
 
     uint32_t num_x = joint_distribution->num_x_states;
     uint32_t num_y = joint_distribution->num_y_states;
 
+    LOG_DEBUG("Joint distribution: %u x %u states", num_x, num_y);
+
     // Compute marginal distributions
     float* p_x = (float*)nimcp_calloc(num_x, sizeof(float));
     float* p_y = (float*)nimcp_calloc(num_y, sizeof(float));
 
     if (!p_x || !p_y) {
+        LOG_ERROR("Failed to allocate marginal distributions");
         nimcp_free(p_x);
         nimcp_free(p_y);
         return 0.0f;
@@ -623,6 +708,11 @@ void shannon_distribution_free(shannon_distribution_t* distribution)
 
 bool shannon_distribution_normalize(shannon_distribution_t* distribution)
 {
+    // Process pending bio-async messages
+    if (g_bio_ctx) {
+        bio_router_process_inbox(g_bio_ctx, 5);
+    }
+
     if (!distribution || !distribution->probabilities) {
         return false;
     }

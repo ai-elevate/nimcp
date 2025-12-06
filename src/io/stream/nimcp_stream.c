@@ -1,3 +1,7 @@
+
+#define LOG_MODULE "nimcp_stream"
+#define LOG_MODULE_ID 0x052F
+
 /**
  * @file nimcp_stream.c
  * @brief Continuous input streaming implementation
@@ -33,6 +37,10 @@
 #include "utils/time/nimcp_time.h"
 #include "security/nimcp_security_integration.h"
 #include "utils/logging/nimcp_logging.h"
+#include "async/nimcp_bio_async.h"
+#include "async/nimcp_bio_router.h"
+#include "async/nimcp_bio_messages.h"
+
 
 //=============================================================================
 // Global State for Module-Level Security Registration

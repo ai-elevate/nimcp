@@ -6,10 +6,23 @@
  * @date 2025-11-22
  */
 
+// Bio-async integration
+#include "async/nimcp_bio_async.h"
+#include "async/nimcp_bio_router.h"
+#include "async/nimcp_bio_messages.h"
+
+// Logging integration
+#include "utils/logging/nimcp_logging.h"
+
+// Unified memory integration
+#include "utils/memory/nimcp_unified_memory.h"
+
 #include "core/brain/regions/broca/nimcp_phonological.h"
 #include "utils/memory/nimcp_memory.h"
 #include <string.h>
 #include <math.h>
+
+#define LOG_MODULE "BROCA_PHONO"
 
 //=============================================================================
 // INTERNAL STRUCTURES

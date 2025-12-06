@@ -179,28 +179,31 @@ TEST_F(QueueTest, FullQueue_RejectsEnqueue) {
     // WHAT: Verify queue rejects enqueue when full
     // WHY:  Must prevent overflow
     // HOW:  Fill queue to capacity, attempt one more enqueue
-    // NOTE: Circular buffer reserves one slot, so max_size=3 holds 2 items
+    // NOTE: BLOCKING queue (type=0) holds exactly max_size items
+    //       SPSC/MPMC circular buffers reserve 1 slot
 
     nimcp_queue_config_t config = {};
     config.max_size = 3;
     config.item_size = sizeof(int);
+    config.type = NIMCP_QUEUE_TYPE_BLOCKING;  // Explicitly set type
     config.is_blocking = false;  // Non-blocking mode for this test
     config.timeout_ms = 0;
 
     ASSERT_EQ(nimcp_queue_create(&config, &queue), NIMCP_SUCCESS);
 
-    // Fill queue (max_size=3 holds 2 items due to reserved slot)
+    // Fill queue (BLOCKING holds exactly max_size=3 items)
     int value = 100;
+    ASSERT_EQ(nimcp_queue_enqueue(queue, &value, 0), NIMCP_SUCCESS);
     ASSERT_EQ(nimcp_queue_enqueue(queue, &value, 0), NIMCP_SUCCESS);
     ASSERT_EQ(nimcp_queue_enqueue(queue, &value, 0), NIMCP_SUCCESS);
 
     EXPECT_TRUE(nimcp_queue_is_full(queue));
-    EXPECT_EQ(nimcp_queue_get_size(queue), 2u);
+    EXPECT_EQ(nimcp_queue_get_size(queue), 3u);
 
     // Attempt to enqueue when full (should return NIMCP_QUEUE_FULL)
     nimcp_result_t result = nimcp_queue_enqueue(queue, &value, 0);
     EXPECT_EQ(result, NIMCP_QUEUE_FULL);
-    EXPECT_EQ(nimcp_queue_get_size(queue), 2u);
+    EXPECT_EQ(nimcp_queue_get_size(queue), 3u);
 
     SUCCEED() << "Full queue rejects enqueue";
 }

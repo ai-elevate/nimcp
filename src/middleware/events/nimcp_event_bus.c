@@ -193,6 +193,11 @@ void event_bus_destroy(event_bus_t bus) {
 //=============================================================================
 
 bool event_bus_publish(event_bus_t bus, const event_t* event) {
+    // Process pending bio-async messages
+    if (bus && bus->bio_ctx) {
+        bio_router_process_inbox(bus->bio_ctx, 5);
+    }
+
     if (!bus || !event) {
         LOG_ERROR(LOG_MODULE, "Invalid bus or event");
         return false;

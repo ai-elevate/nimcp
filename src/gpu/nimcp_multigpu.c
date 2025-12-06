@@ -12,18 +12,31 @@
  * - Uses pthreads for parallel execution
  * - Enables testing on systems without GPUs
  *
+ * INTEGRATION:
+ * - Bio-async: GPU events published to async system
+ * - Logging: Comprehensive operation tracking
+ * - Unified memory: All allocations via nimcp_malloc/calloc/free
+ *
  * @author NIMCP Development Team
- * @date 2025
- * @version 2.7
+ * @date 2025-11-28
+ * @version 2.8 (Full Integration)
  */
 
+#define LOG_MODULE "GPU_MULTIGPU"
+#define LOG_MODULE_ID 0x0901
+
 #include "gpu/nimcp_multigpu.h"
-#include "utils/memory/nimcp_memory.h"
+#include "async/nimcp_bio_async.h"
+#include "async/nimcp_bio_router.h"
+#include "async/nimcp_bio_messages.h"
+#include "utils/logging/nimcp_logging.h"
+#include "utils/memory/nimcp_unified_memory.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
 #include <time.h>
+#include "utils/memory/nimcp_memory_guards.h"  // For nimcp_calloc/nimcp_free
 
 // CUDA support detection
 #ifdef __CUDACC__
@@ -81,6 +94,9 @@ struct multigpu_context_struct {
     // Performance monitoring
     uint64_t total_iterations;          /**< Total iterations */
     uint32_t iterations_since_balance;  /**< Iterations since last rebalance */
+
+    // Bio-async integration
+    bio_module_context_t bio_ctx;       /**< Async message context */
 };
 
 //=============================================================================
@@ -186,14 +202,18 @@ bool multigpu_enumerate_devices(multigpu_device_info_t* devices,
 {
     // Guard: NULL checks
     if (!devices || !count) {
+        LOG_ERROR("NULL parameters in multigpu_enumerate_devices");
         return false;
     }
 
     // Guard: Invalid max_devices
     if (max_devices == 0) {
+        LOG_WARN("Zero max_devices in multigpu_enumerate_devices");
         *count = 0;
         return false;
     }
+
+    LOG_DEBUG("Enumerating GPU devices: max_devices=%u", max_devices);
 
 #if NIMCP_MULTIGPU_CUDA_AVAILABLE
     // Real CUDA backend

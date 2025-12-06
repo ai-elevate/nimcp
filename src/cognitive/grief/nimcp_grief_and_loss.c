@@ -412,6 +412,11 @@ void grief_process_loss(grief_system_t* system,
 }
 
 void grief_update(grief_system_t* system, float dt, uint64_t current_time_us) {
+    // Process pending bio-async messages
+    if (system && system->bio_async_enabled && system->bio_ctx_ptr) {
+        bio_router_process_inbox(system->bio_ctx_ptr, 5);
+    }
+
     // WHAT: Update grief processing over time
     // WHY:  Grief evolves - stages change, intensity decreases, integration occurs
     // HOW:  Update stage dynamics, dual process oscillation, neurochemistry

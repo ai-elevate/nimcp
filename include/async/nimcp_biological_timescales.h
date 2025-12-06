@@ -177,8 +177,9 @@ extern "C" {
  */
 #define BIO_5HT_BASELINE_UM 0.01f
 
-/** Computational scaled version */
-#define BIO_COMP_5HT_DECAY_TAU_MS 1000.0f
+/** Computational scaled version - serotonin has slower tonic decay than DA/NE
+ * Biological basis: 5-HT has slower reuptake via SERT vs DAT/NET */
+#define BIO_COMP_5HT_DECAY_TAU_MS 1500.0f
 
 //=============================================================================
 // NOREPINEPHRINE (NE) - Alertness and Priority

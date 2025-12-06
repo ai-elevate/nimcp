@@ -20,6 +20,17 @@
 #include <string.h>
 #include <ctype.h>
 
+// === BIO-ASYNC + LOGGING + UNIFIED MEMORY INTEGRATION ===
+#include "async/nimcp_bio_async.h"
+#include "async/nimcp_bio_router.h"
+#include "async/nimcp_bio_messages.h"
+#include "utils/logging/nimcp_logging.h"
+#include "utils/memory/nimcp_unified_memory.h"
+
+#define LOG_MODULE "neural_logic_circuit_builder"
+#define BIO_MODULE_ID 0x0137
+
+
 //=============================================================================
 // Constants
 //=============================================================================

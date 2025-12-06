@@ -1,21 +1,26 @@
 /**
  * @file nimcp_microglia.c
- * @brief Enhanced Microglia Implementation with Mathematical Algorithms
+ * @brief Enhanced Microglia Implementation with Bio-Async Integration
  *
  * FEATURES:
+ * - Bio-async messaging for immune/maintenance alerts via NOREPINEPHRINE channel
  * - KD-tree spatial indexing for O(log n) queries
  * - RK4 ODE integration for state dynamics
- * - Centrality-protected pruning
+ * - Centrality-protected pruning with async event publishing
  * - Complement cascade (C1q/C3) tagging
  * - Cytokine signaling system
- * - Signal filtering for stable activity assessment
  *
  * @author NIMCP Development Team
- * @date 2025-11-24
- * @version 2.0.0
+ * @date 2025-11-28
+ * @version 2.1.0 - Bio-Async Integrated
  */
 
-#include "nimcp_microglia.h"
+#include "glial/microglia/nimcp_microglia.h"
+#include "async/nimcp_bio_async.h"
+#include "async/nimcp_bio_messages.h"
+#include "async/nimcp_bio_router.h"
+#include "utils/logging/nimcp_logging.h"
+#include "utils/memory/nimcp_unified_memory.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/thread/nimcp_thread.h"
 #include "utils/time/nimcp_time.h"
@@ -23,6 +28,14 @@
 #include <string.h>
 #include <math.h>
 #include <float.h>
+
+//=============================================================================
+// Global Bio-Async Context
+//=============================================================================
+
+static bio_module_context_t g_microglia_bio_ctx = NULL;
+static unified_mem_manager_t g_microglia_mem_mgr = NULL;
+static bool g_microglia_bio_initialized = false;
 
 //=============================================================================
 // INTERNAL CONSTANTS
@@ -39,6 +52,261 @@
 #define STATE_IDX_ACTIVATION 1
 #define STATE_IDX_PROCESS 2
 #define STATE_IDX_ENERGY 3
+
+//=============================================================================
+// Bio-Async Message Handlers
+//=============================================================================
+
+/**
+ * @brief Handle BIO_MSG_MICROGLIA_ALERT message
+ *
+ * Processes alert via NOREPINEPHRINE channel (alerting/priority escalation).
+ * High severity alerts trigger state transitions.
+ */
+static nimcp_error_t handle_microglia_alert_message(
+    const void* msg, size_t msg_size,
+    nimcp_bio_promise_t response_promise, void* user_data)
+{
+    if (!msg || msg_size < sizeof(bio_message_header_t)) {
+        LOG_MODULE_ERROR("MICROGLIA", "Invalid alert message");
+        return NIMCP_ERROR_INVALID_PARAM;
+    }
+
+    const bio_message_header_t* header = (const bio_message_header_t*)msg;
+
+    // Parse alert payload (region, type, severity)
+    if (msg_size < sizeof(bio_message_header_t) + sizeof(uint32_t) + sizeof(uint32_t) + sizeof(float)) {
+        LOG_MODULE_ERROR("MICROGLIA", "Alert message too small");
+        return NIMCP_ERROR_INVALID_PARAM;
+    }
+
+    const uint8_t* payload = (const uint8_t*)msg + sizeof(bio_message_header_t);
+    uint32_t alert_region = *(const uint32_t*)payload;
+    uint32_t alert_type = *(const uint32_t*)(payload + sizeof(uint32_t));
+    float severity = *(const float*)(payload + 2 * sizeof(uint32_t));
+
+    LOG_MODULE_WARN("MICROGLIA", "Alert received: region=%u, type=%u, severity=%.2f",
+                    alert_region, alert_type, severity);
+
+    // Publish via NOREPINEPHRINE (alerting) channel
+    nimcp_error_t result = bio_router_publish_signal(g_microglia_bio_ctx,
+        "microglia.alert_severity", severity);
+
+    // If high severity, escalate state
+    if (severity > 0.7f) {
+        LOG_MODULE_INFO("MICROGLIA", "High severity alert - escalating state");
+        bio_router_publish_signal(g_microglia_bio_ctx, "microglia.state_escalation", 1.0f);
+    }
+
+    return result;
+}
+
+/**
+ * @brief Handle BIO_MSG_MICROGLIA_PRUNE_REQUEST message
+ *
+ * Processes pruning requests and publishes pruning decisions.
+ */
+static nimcp_error_t handle_microglia_prune_request_message(
+    const void* msg, size_t msg_size,
+    nimcp_bio_promise_t response_promise, void* user_data)
+{
+    if (!msg || msg_size < sizeof(bio_message_header_t)) {
+        LOG_MODULE_ERROR("MICROGLIA", "Invalid prune request message");
+        return NIMCP_ERROR_INVALID_PARAM;
+    }
+
+    // Parse synapse ID from payload
+    if (msg_size < sizeof(bio_message_header_t) + sizeof(uint32_t)) {
+        LOG_MODULE_ERROR("MICROGLIA", "Prune request message too small");
+        return NIMCP_ERROR_INVALID_PARAM;
+    }
+
+    const uint8_t* payload = (const uint8_t*)msg + sizeof(bio_message_header_t);
+    uint32_t synapse_id = *(const uint32_t*)payload;
+
+    LOG_MODULE_DEBUG("MICROGLIA", "Prune request for synapse %u", synapse_id);
+
+    // Publish pruning decision via NOREPINEPHRINE
+    bio_router_publish_signal(g_microglia_bio_ctx, "microglia.pruning", 1.0f);
+
+    return NIMCP_SUCCESS;
+}
+
+/**
+ * @brief Handle BIO_MSG_METABOLIC_DEMAND message
+ *
+ * Microglia respond to metabolic distress by modulating their state.
+ * High metabolic demand may trigger inflammatory responses or state transitions.
+ */
+static nimcp_error_t handle_metabolic_demand_message(
+    const void* msg, size_t msg_size,
+    nimcp_bio_promise_t response_promise, void* user_data)
+{
+    if (!msg || msg_size < sizeof(bio_msg_metabolic_demand_t)) {
+        LOG_MODULE_ERROR("MICROGLIA", "Invalid metabolic demand message");
+        return NIMCP_ERROR_INVALID_PARAM;
+    }
+
+    const bio_msg_metabolic_demand_t* demand = (const bio_msg_metabolic_demand_t*)msg;
+
+    LOG_MODULE_DEBUG("MICROGLIA", "Metabolic demand from region %u: ATP deficit=%.2f, urgency=%.2f",
+                     demand->region_id, demand->atp_deficit, demand->urgency);
+
+    // High ATP deficit may indicate neuronal distress - trigger alert
+    if (demand->atp_deficit > 0.5f || demand->urgency > 0.7f) {
+        LOG_MODULE_WARN("MICROGLIA", "High metabolic distress detected - activating surveillance");
+        bio_router_publish_signal(g_microglia_bio_ctx, "microglia.metabolic_distress", demand->atp_deficit);
+    }
+
+    return NIMCP_SUCCESS;
+}
+
+/**
+ * @brief Handle BIO_MSG_GLIAL_SYNC_REQUEST message
+ *
+ * Handles synchronization requests for coordinated glial cell activity.
+ * Microglia coordinate pruning and immune responses with other glial cells.
+ */
+static nimcp_error_t handle_glial_sync_message(
+    const void* msg, size_t msg_size,
+    nimcp_bio_promise_t response_promise, void* user_data)
+{
+    if (!msg || msg_size < sizeof(bio_message_header_t)) {
+        LOG_MODULE_ERROR("MICROGLIA", "Invalid glial sync message");
+        return NIMCP_ERROR_INVALID_PARAM;
+    }
+
+    const bio_message_header_t* header = (const bio_message_header_t*)msg;
+
+    LOG_MODULE_DEBUG("MICROGLIA", "Glial sync request received from module %u", header->source_module);
+
+    // Publish sync acknowledgment
+    nimcp_error_t result = bio_router_publish_signal(g_microglia_bio_ctx,
+        "microglia.sync_ack", 1.0f);
+
+    return result;
+}
+
+/**
+ * @brief Initialize bio-async integration for microglia module
+ */
+static nimcp_error_t microglia_bio_init(void)
+{
+    if (g_microglia_bio_initialized) {
+        LOG_MODULE_WARN("MICROGLIA", "Bio-async already initialized");
+        return NIMCP_SUCCESS;
+    }
+
+    // Initialize unified memory manager
+    unified_mem_config_t mem_config = unified_mem_default_config();
+    g_microglia_mem_mgr = unified_mem_create(&mem_config);
+    if (!g_microglia_mem_mgr) {
+        LOG_MODULE_ERROR("MICROGLIA", "Failed to create unified memory manager");
+        return NIMCP_ERROR_MEMORY;
+    }
+
+    // Register module with bio-router
+    bio_module_info_t info = {
+        .module_id = BIO_MODULE_MICROGLIA,
+        .module_name = "Microglia",
+        .inbox_capacity = 128,
+        .user_data = NULL
+    };
+
+    g_microglia_bio_ctx = bio_router_register_module(&info);
+    if (!g_microglia_bio_ctx) {
+        LOG_MODULE_ERROR("MICROGLIA", "Failed to register with bio-router");
+        unified_mem_destroy(g_microglia_mem_mgr);
+        g_microglia_mem_mgr = NULL;
+        return NIMCP_ERROR_INVALID_PARAM;
+    }
+
+    // Register message handlers
+    nimcp_error_t result;
+
+    result = bio_router_register_handler(g_microglia_bio_ctx,
+                                          BIO_MSG_MICROGLIA_ALERT,
+                                          handle_microglia_alert_message);
+    if (result != NIMCP_SUCCESS) {
+        LOG_MODULE_ERROR("MICROGLIA", "Failed to register alert handler: %d", result);
+        goto cleanup;
+    }
+
+    result = bio_router_register_handler(g_microglia_bio_ctx,
+                                          BIO_MSG_MICROGLIA_PRUNE_REQUEST,
+                                          handle_microglia_prune_request_message);
+    if (result != NIMCP_SUCCESS) {
+        LOG_MODULE_ERROR("MICROGLIA", "Failed to register prune request handler: %d", result);
+        goto cleanup;
+    }
+
+    result = bio_router_register_handler(g_microglia_bio_ctx,
+                                          BIO_MSG_METABOLIC_DEMAND,
+                                          handle_metabolic_demand_message);
+    if (result != NIMCP_SUCCESS) {
+        LOG_MODULE_ERROR("MICROGLIA", "Failed to register metabolic demand handler: %d", result);
+        goto cleanup;
+    }
+
+    result = bio_router_register_handler(g_microglia_bio_ctx,
+                                          BIO_MSG_GLIAL_SYNC_REQUEST,
+                                          handle_glial_sync_message);
+    if (result != NIMCP_SUCCESS) {
+        LOG_MODULE_ERROR("MICROGLIA", "Failed to register glial sync handler: %d", result);
+        goto cleanup;
+    }
+
+    g_microglia_bio_initialized = true;
+    LOG_MODULE_INFO("MICROGLIA", "Bio-async integration initialized successfully (4 handlers registered)");
+    return NIMCP_SUCCESS;
+
+cleanup:
+    bio_router_unregister_module(g_microglia_bio_ctx);
+    g_microglia_bio_ctx = NULL;
+    unified_mem_destroy(g_microglia_mem_mgr);
+    g_microglia_mem_mgr = NULL;
+    return result;
+}
+
+/**
+ * @brief Shutdown bio-async integration
+ */
+static void microglia_bio_shutdown(void)
+{
+    if (!g_microglia_bio_initialized) {
+        return;
+    }
+
+    LOG_MODULE_INFO("MICROGLIA", "Shutting down bio-async integration");
+
+    if (g_microglia_bio_ctx) {
+        bio_router_unregister_module(g_microglia_bio_ctx);
+        g_microglia_bio_ctx = NULL;
+    }
+
+    if (g_microglia_mem_mgr) {
+        unified_mem_destroy(g_microglia_mem_mgr);
+        g_microglia_mem_mgr = NULL;
+    }
+
+    g_microglia_bio_initialized = false;
+}
+
+//=============================================================================
+// Public Bio-Async API
+//=============================================================================
+
+nimcp_result_t microglia_register_bio_handlers(void)
+{
+    LOG_MODULE_INFO("MICROGLIA", "Registering bio-async message handlers");
+    return microglia_bio_init();
+}
+
+void microglia_unregister_bio_handlers(void)
+{
+    LOG_MODULE_INFO("MICROGLIA", "Unregistering bio-async message handlers");
+    microglia_bio_shutdown();
+}
 
 //=============================================================================
 // INTERNAL HELPER FUNCTIONS
@@ -162,12 +430,22 @@ static float compute_effective_threshold(const microglia_t* mg,
 microglia_t* microglia_create(uint32_t id, float x, float y, float z,
                                float surveillance_radius)
 {
+    // Initialize bio-async on first create
+    if (!g_microglia_bio_initialized) {
+        nimcp_error_t result = microglia_bio_init();
+        if (result != NIMCP_SUCCESS) {
+            LOG_MODULE_WARN("MICROGLIA", "Bio-async init failed: %d (continuing anyway)", result);
+        }
+    }
+
     if (surveillance_radius <= 0.0f) {
+        LOG_MODULE_ERROR("MICROGLIA", "Invalid surveillance radius: %.2f", surveillance_radius);
         return NULL;
     }
 
     microglia_t* mg = (microglia_t*)nimcp_malloc(sizeof(microglia_t));
     if (!mg) {
+        LOG_MODULE_ERROR("MICROGLIA", "Failed to allocate microglia structure");
         return NULL;
     }
 
@@ -568,6 +846,11 @@ void microglia_update_state_dynamics(microglia_t* mg, float dt)
 {
     if (!mg || dt <= 0.0f) return;
 
+    // Process pending bio-async messages before state update
+    if (g_microglia_bio_initialized && g_microglia_bio_ctx) {
+        bio_router_process_inbox(g_microglia_bio_ctx, 5);  // Process up to 5 messages
+    }
+
     nimcp_spinlock_lock(&mg->lock);
 
     // Use RK4 integration for state dynamics
@@ -630,6 +913,12 @@ void microglia_set_inflammation(microglia_t* mg, float inflammation)
     nimcp_spinlock_lock(&mg->lock);
     mg->inflammation_level = clamp_f(inflammation, 0.0f, 1.0f);
     nimcp_spinlock_unlock(&mg->lock);
+
+    // Publish inflammation via NOREPINEPHRINE (alerting) channel
+    if (g_microglia_bio_initialized && g_microglia_bio_ctx) {
+        bio_router_publish_signal(g_microglia_bio_ctx, "microglia.inflammation", mg->inflammation_level);
+        LOG_MODULE_DEBUG("MICROGLIA", "Published inflammation level: %.3f", mg->inflammation_level);
+    }
 }
 
 float microglia_get_process_extension(const microglia_t* mg)
@@ -898,6 +1187,13 @@ uint32_t microglia_prune_weak_synapses(microglia_t* mg)
     mg->last_pruning_time = nimcp_time_monotonic_us();
 
     nimcp_spinlock_unlock(&mg->lock);
+
+    // Publish pruning event via NOREPINEPHRINE (alerting) channel
+    if (num_pruned > 0 && g_microglia_bio_initialized && g_microglia_bio_ctx) {
+        bio_router_publish_signal(g_microglia_bio_ctx, "microglia.pruning", (float)num_pruned);
+        LOG_MODULE_INFO("MICROGLIA", "Pruned %u synapses - published via bio-async", num_pruned);
+    }
+
     return num_pruned;
 }
 

@@ -14,11 +14,20 @@
  * @date 2025-11-25
  */
 
-#include "nimcp_myelin_math.h"
+#include "async/nimcp_bio_async.h"
+#include "async/nimcp_bio_router.h"
+#include "async/nimcp_bio_messages.h"
+#include "utils/logging/nimcp_logging.h"
+#include "utils/memory/nimcp_unified_memory.h"
+
+#define LOG_MODULE "MYELIN_SHEATH"
+
+#include "glial/myelin_sheath/nimcp_myelin_math.h"
 #include <math.h>
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
+#include "utils/memory/nimcp_memory_guards.h"  // For nimcp_calloc/nimcp_free
 
 //=============================================================================
 // Internal Constants
@@ -143,7 +152,7 @@ nimcp_conduction_block_params_t nimcp_myelin_block_params_default(void) {
 nimcp_myelin_biophysics_t* nimcp_myelin_biophysics_create(bool use_stochastic,
                                                            uint64_t seed) {
     nimcp_myelin_biophysics_t* bio = (nimcp_myelin_biophysics_t*)
-        malloc(sizeof(nimcp_myelin_biophysics_t));
+        nimcp_malloc(sizeof(nimcp_myelin_biophysics_t));
 
     if (!bio) return NULL;
 
@@ -172,7 +181,7 @@ nimcp_myelin_biophysics_t* nimcp_myelin_biophysics_create(bool use_stochastic,
 
 void nimcp_myelin_biophysics_destroy(nimcp_myelin_biophysics_t* bio) {
     if (bio) {
-        free(bio);
+        nimcp_free(bio);
     }
 }
 

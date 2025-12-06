@@ -382,6 +382,11 @@ nimcp_result_t nimcp_regularization_apply_gradient(
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
+    // Process pending bio-async messages
+    if (ctx->bio_async_enabled && ctx->bio_ctx) {
+        bio_router_process_inbox(ctx->bio_ctx, 5);
+    }
+
     switch (ctx->config.weight_reg_type) {
         case NIMCP_REG_NONE:
             break;

@@ -648,6 +648,11 @@ uint32_t consolidation_get_rule_count(
 //=============================================================================
 
 void recovery_consolidation_run(recovery_consolidation_t* consolidation) {
+    // Process pending bio-async messages
+    if (consolidation && consolidation->bio_async_enabled && consolidation->bio_ctx) {
+        bio_router_process_inbox(consolidation->bio_ctx, 5);
+    }
+
     // GUARD: NULL check
     if (!consolidation) return;
 

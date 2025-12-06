@@ -797,6 +797,11 @@ bool bias_auto_debias(bias_detection_system_t* system, uint64_t current_time) {
 //=============================================================================
 
 void bias_update(bias_detection_system_t* system, float dt, uint64_t current_time) {
+    // Process pending bio-async messages
+    if (system && system->bio_async_enabled && system->bio_ctx) {
+        bio_router_process_inbox(system->bio_ctx, 5);
+    }
+
     if (!system) return;
 
     (void)current_time;  // Unused for now

@@ -5,8 +5,11 @@
 #ifndef NIMCP_MIDDLEWARE_PIPELINE_H
 #define NIMCP_MIDDLEWARE_PIPELINE_H
 
-#include "nimcp_middleware_context.h"
+#include "middleware/pipeline/nimcp_middleware_context.h"
 #include "core/events/nimcp_event_bus.h"
+#include "async/nimcp_bio_async.h"
+#include "async/nimcp_bio_router.h"
+#include "async/nimcp_bio_messages.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -80,6 +83,7 @@ typedef struct {
     event_bus_t event_bus;
     bool enable_profiling;
     bool fail_fast;  // Stop on first error?
+    bool enable_bio_async;  /**< Enable bio-async integration */
 } pipeline_config_t;
 
 /**

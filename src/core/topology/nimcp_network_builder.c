@@ -2,11 +2,55 @@
 // nimcp_network_builder.c - Network Builder Implementation
 //=============================================================================
 
-#include "nimcp_network_builder.h"
+#include "core/topology/nimcp_network_builder.h"
+#include "utils/memory/nimcp_unified_memory.h"
 #include "utils/memory/nimcp_memory.h"
+#include "utils/logging/nimcp_logging.h"
+#include "async/nimcp_bio_async.h"
+#include "async/nimcp_bio_router.h"
+#include "async/nimcp_bio_messages.h"
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
+
+#define LOG_MODULE "network_builder"
+
+//=============================================================================
+// Bio-Async Module Context
+//=============================================================================
+
+static bio_module_context_t bio_ctx = NULL;
+static bool bio_async_enabled = false;
+
+__attribute__((constructor))
+static void network_builder_bio_init(void) {
+    if (!bio_router_is_initialized()) {
+        return;
+    }
+
+    bio_module_info_t bio_info = {
+        .module_id = BIO_MODULE_TOPOLOGY_NETWORK_BUILDER,
+        .module_name = "network_builder",
+        .inbox_capacity = 64,
+        .user_data = NULL
+    };
+
+    bio_ctx = bio_router_register_module(&bio_info);
+    if (bio_ctx) {
+        bio_async_enabled = true;
+        LOG_INFO(LOG_MODULE, "Bio-async registered for network_builder module");
+    }
+}
+
+__attribute__((destructor))
+static void network_builder_bio_cleanup(void) {
+    if (bio_async_enabled && bio_ctx) {
+        bio_router_unregister_module(bio_ctx);
+        bio_ctx = NULL;
+        bio_async_enabled = false;
+        LOG_DEBUG(LOG_MODULE, "Bio-async unregistered for network_builder module");
+    }
+}
 
 //=============================================================================
 // Default Configuration
@@ -44,18 +88,23 @@ network_builder_config_t network_builder_default(void) {
 neural_network_t network_builder_build(const network_builder_config_t* config) {
     // Guard: NULL config
     if (!config) {
-        fprintf(stderr, "ERROR: network_builder_build: NULL config\n");
+        LOG_ERROR(LOG_MODULE, "network_builder_build: NULL config");
         return NULL;
+    }
+
+    // Process pending bio-async messages
+    if (bio_async_enabled && bio_ctx) {
+        bio_router_process_inbox(bio_ctx, 5);
     }
 
     // Guard: Invalid neuron count
     if (config->num_neurons < 1) {
-        fprintf(stderr, "ERROR: network_builder_build: num_neurons must be >= 1\n");
+        LOG_ERROR(LOG_MODULE, "network_builder_build: num_neurons must be >= 1");
         return NULL;
     }
 
     if (config->verbose) {
-        printf("Building network with %u neurons...\n", config->num_neurons);
+        LOG_INFO(LOG_MODULE, "Building network with %u neurons", config->num_neurons);
     }
 
     // Step 1: Create base network
@@ -86,30 +135,30 @@ neural_network_t network_builder_build(const network_builder_config_t* config) {
 
     neural_network_t network = neural_network_create(&net_config);
     if (!network) {
-        fprintf(stderr, "ERROR: Failed to create neural network\n");
+        LOG_ERROR(LOG_MODULE, "Failed to create neural network");
         return NULL;
     }
 
     // Step 2: Apply topology if configured
     if (config->use_topology) {
         if (config->verbose) {
-            printf("Applying topology...\n");
+            LOG_INFO(LOG_MODULE, "Applying topology");
         }
 
         topology_stats_t stats;
         bool success = topology_generate(network, &config->topology_config, &stats);
 
         if (!success) {
-            fprintf(stderr, "ERROR: Topology generation failed: %s\n",
+            LOG_ERROR(LOG_MODULE, "Topology generation failed: %s",
                     topology_get_last_error());
             neural_network_destroy(network);
             return NULL;
         }
 
         if (config->verbose) {
-            printf("Topology created: %u neurons, %u synapses, %u hubs\n",
+            LOG_INFO(LOG_MODULE, "Topology created: %u neurons, %u synapses, %u hubs",
                    stats.num_neurons, stats.num_synapses, stats.num_hubs);
-            printf("Average degree: %.2f, std: %.2f\n",
+            LOG_INFO(LOG_MODULE, "Average degree: %.2f, std: %.2f",
                    stats.avg_degree, stats.degree_std);
         }
     }
@@ -117,7 +166,7 @@ neural_network_t network_builder_build(const network_builder_config_t* config) {
     // Step 3: Initialize weights with pink noise if configured
     if (config->use_pink_noise_weights) {
         if (config->verbose) {
-            printf("Initializing weights with pink noise (amplitude: %.2f)...\n",
+            LOG_INFO(LOG_MODULE, "Initializing weights with pink noise (amplitude: %.2f)",
                    config->noise_amplitude);
         }
 
@@ -128,13 +177,13 @@ neural_network_t network_builder_build(const network_builder_config_t* config) {
         );
 
         if (!success) {
-            fprintf(stderr, "WARNING: Pink noise weight initialization failed\n");
+            LOG_WARN(LOG_MODULE, "Pink noise weight initialization failed");
             // Don't fail the whole build, just use default weights
         }
     }
 
     if (config->verbose) {
-        printf("Network build complete!\n");
+        LOG_INFO(LOG_MODULE, "Network build complete");
     }
 
     return network;
@@ -188,7 +237,7 @@ bool network_init_weights_pink_noise(
 ) {
     // Guard: NULL network
     if (!network) {
-        fprintf(stderr, "ERROR: network_init_weights_pink_noise: NULL network\n");
+        LOG_ERROR(LOG_MODULE, "network_init_weights_pink_noise: NULL network");
         return false;
     }
 
@@ -201,7 +250,7 @@ bool network_init_weights_pink_noise(
     }
 
     if (total_synapses == 0) {
-        fprintf(stderr, "INFO: No synapses in network, skipping weight initialization\n");
+        LOG_INFO(LOG_MODULE, "No synapses in network, skipping weight initialization");
         return true;
     }
 
@@ -218,20 +267,20 @@ bool network_init_weights_pink_noise(
 
     pink_noise_generator_t generator = pink_noise_create(&noise_config);
     if (!generator) {
-        fprintf(stderr, "ERROR: Failed to create pink noise generator\n");
+        LOG_ERROR(LOG_MODULE, "Failed to create pink noise generator");
         return false;
     }
 
     // Step 3: Generate all noise samples at once
     float* noise_samples = (float*)nimcp_malloc(total_synapses * sizeof(float));
     if (!noise_samples) {
-        fprintf(stderr, "ERROR: Failed to allocate noise samples array\n");
+        LOG_ERROR(LOG_MODULE, "Failed to allocate noise samples array");
         pink_noise_destroy(generator);
         return false;
     }
 
     if (!pink_noise_generate(generator, noise_samples, total_synapses)) {
-        fprintf(stderr, "ERROR: Failed to generate pink noise samples\n");
+        LOG_ERROR(LOG_MODULE, "Failed to generate pink noise samples");
         nimcp_free(noise_samples);
         pink_noise_destroy(generator);
         return false;

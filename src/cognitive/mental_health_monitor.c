@@ -10,9 +10,14 @@
  */
 
 #include "cognitive/nimcp_mental_health.h"
+#include "utils/logging/nimcp_logging.h"
+#include "async/nimcp_bio_router.h"
+#include "async/nimcp_bio_async.h"
+#include "async/nimcp_bio_messages.h"
+#include "utils/memory/nimcp_unified_memory.h"
 #include "utils/memory/nimcp_memory.h"
 #include "core/brain/nimcp_brain.h"
-#include "core/nimcp_time.h"
+#include "utils/time/nimcp_time.h"
 #include "core/nimcp_error.h"
 #include <stdlib.h>
 #include <string.h>

@@ -15,12 +15,25 @@
  * 3. Loading: Deserialize brain state, restore network topology
  * 4. Fine-tuning: Optional domain adaptation with frozen layers
  *
+ * BIO-ASYNC INTEGRATION:
+ * - Module ID: 0x0119 (BIO_MODULE_BRAIN_PRETRAINED)
+ * - Publishes: model loading events, weight initialization, state changes
+ * - Channels: DOPAMINE (success), SEROTONIN (state changes)
+ *
  * @author NIMCP Development Team
  * @date 2025-11-09
  * @version 1.0.0
  */
 
-#include "nimcp_brain.h"
+#define LOG_MODULE "pretrained"
+
+#include "core/brain/nimcp_brain.h"
+#include "async/nimcp_bio_async.h"
+#include "async/nimcp_bio_router.h"
+#include "async/nimcp_bio_messages.h"
+#include "utils/logging/nimcp_logging.h"
+#include "utils/memory/nimcp_unified_memory.h"
+#include "utils/memory/nimcp_memory_guards.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -58,6 +71,54 @@
 #define MODEL_REPO_BASE "/home/bbrelin/nimcp/models/pretrained/"
 
 //=============================================================================
+// Bio-Async Integration
+//=============================================================================
+
+/**
+ * @brief Publish bio-async message for model loading events
+ *
+ * WHAT: Publishes model loading progress via bio-async channels
+ * WHY:  Enable other modules to react to model loading events
+ * HOW:  Uses DOPAMINE for success, SEROTONIN for state changes
+ *
+ * @param channel Neuromodulator channel
+ * @param msg_type Message type
+ * @param model_name Model name
+ * @param success Whether operation was successful
+ */
+static void publish_model_event(
+    nimcp_bio_channel_type_t channel,
+    bio_message_type_t msg_type,
+    const char* model_name,
+    bool success)
+{
+    // WHAT: Guard against bio-async not being initialized
+    if (!nimcp_bio_async_is_initialized()) {
+        LOG_DEBUG("Bio-async not initialized, skipping message publish");
+        return;
+    }
+
+    LOG_DEBUG("Publishing model event: channel=%s, msg_type=0x%04x, model=%s, success=%d",
+              nimcp_bio_channel_name(channel), msg_type, model_name, success);
+
+    // WHAT: Create and publish brain state change message
+    bio_msg_brain_state_response_t msg = {0};
+    bio_msg_init_header(&msg.header, msg_type,
+                       BIO_MODULE_BRAIN_PRETRAINED,
+                       0,  // Broadcast
+                       sizeof(msg));
+    msg.header.channel = channel;
+
+    // WHAT: Set relevant state fields (simplified for pretrained module)
+    msg.global_activity = success ? 1.0f : 0.0f;
+
+    // WHAT: Publish via bio-router
+    nimcp_bio_router_publish(channel, &msg, sizeof(msg));
+
+    LOG_DEBUG("Model event published successfully");
+}
+
+//=============================================================================
 // Internal Helper Functions
 //=============================================================================
 
@@ -75,16 +136,20 @@
  * @return true on success
  */
 static bool get_models_directory(char* buffer, size_t buffer_size) {
+    LOG_DEBUG("Searching for models directory");
+
     // Check environment variable
     const char* env_dir = getenv("NIMCP_MODELS_DIR");
     if (env_dir && access(env_dir, R_OK) == 0) {
         snprintf(buffer, buffer_size, "%s", env_dir);
+        LOG_INFO("Found models directory from NIMCP_MODELS_DIR: %s", buffer);
         return true;
     }
 
     // Check source repository
     if (access(MODEL_REPO_BASE, R_OK) == 0) {
         snprintf(buffer, buffer_size, "%s", MODEL_REPO_BASE);
+        LOG_INFO("Found models directory in source repository: %s", buffer);
         return true;
     }
 
@@ -94,6 +159,7 @@ static bool get_models_directory(char* buffer, size_t buffer_size) {
     if (home) {
         snprintf(buffer, buffer_size, "%s%s", home, DEFAULT_MODEL_DIR_HOME);
         if (access(buffer, R_OK) == 0) {
+            LOG_INFO("Found models directory in user home: %s", buffer);
             return true;
         }
     }
@@ -101,10 +167,12 @@ static bool get_models_directory(char* buffer, size_t buffer_size) {
     // Check system directory
     if (access(SYSTEM_MODEL_DIR, R_OK) == 0) {
         snprintf(buffer, buffer_size, "%s", SYSTEM_MODEL_DIR);
+        LOG_INFO("Found models directory in system location: %s", buffer);
         return true;
     }
 #endif
 
+    LOG_WARN("No models directory found in any standard location");
     return false;
 }
 
@@ -183,23 +251,28 @@ static bool build_model_path(const char* model_name, const char* models_dir,
  * @return cJSON object or NULL on error (caller must free)
  */
 static cJSON* load_model_metadata(const char* model_name, const char* models_dir) {
+    LOG_DEBUG("Loading metadata for model: %s", model_name);
+
     char metadata_path[1024];
 
     if (!build_model_path(model_name, models_dir, METADATA_EXTENSION,
                          metadata_path, sizeof(metadata_path))) {
+        LOG_ERROR("Failed to build metadata path for model: %s", model_name);
         return NULL;
     }
 
+    LOG_DEBUG("Metadata path: %s", metadata_path);
+
     // Check if metadata file exists
     if (access(metadata_path, R_OK) != 0) {
-        fprintf(stderr, "Error: Model metadata not found: %s\n", metadata_path);
+        LOG_ERROR("Model metadata not found: %s", metadata_path);
         return NULL;
     }
 
     // Read metadata file
     FILE* fp = fopen(metadata_path, "r");
     if (!fp) {
-        fprintf(stderr, "Error: Could not open metadata: %s\n", metadata_path);
+        LOG_ERROR("Could not open metadata file: %s", metadata_path);
         return NULL;
     }
 
@@ -208,9 +281,12 @@ static cJSON* load_model_metadata(const char* model_name, const char* models_dir
     long file_size = ftell(fp);
     fseek(fp, 0, SEEK_SET);
 
+    LOG_DEBUG("Metadata file size: %ld bytes", file_size);
+
     // Read file content
     char* content = (char*)nimcp_malloc(file_size + 1);
     if (!content) {
+        LOG_ERROR("Failed to allocate %ld bytes for metadata", file_size + 1);
         fclose(fp);
         return NULL;
     }
@@ -224,10 +300,11 @@ static cJSON* load_model_metadata(const char* model_name, const char* models_dir
     nimcp_free(content);
 
     if (!metadata) {
-        fprintf(stderr, "Error: Invalid JSON in metadata: %s\n", metadata_path);
+        LOG_ERROR("Invalid JSON in metadata file: %s", metadata_path);
         return NULL;
     }
 
+    LOG_INFO("Successfully loaded metadata for model: %s", model_name);
     return metadata;
 }
 
@@ -238,7 +315,12 @@ static cJSON* load_model_metadata(const char* model_name, const char* models_dir
  * @return true if metadata is valid
  */
 static bool validate_metadata(const cJSON* metadata) {
-    if (!metadata) return false;
+    LOG_DEBUG("Validating model metadata");
+
+    if (!metadata) {
+        LOG_ERROR("Metadata is NULL");
+        return false;
+    }
 
     // Required fields
     const char* required_fields[] = {
@@ -247,7 +329,7 @@ static bool validate_metadata(const cJSON* metadata) {
 
     for (size_t i = 0; i < sizeof(required_fields) / sizeof(required_fields[0]); i++) {
         if (!cJSON_GetObjectItem(metadata, required_fields[i])) {
-            fprintf(stderr, "Error: Missing required field: %s\n", required_fields[i]);
+            LOG_ERROR("Missing required metadata field: %s", required_fields[i]);
             return false;
         }
     }
@@ -255,10 +337,11 @@ static bool validate_metadata(const cJSON* metadata) {
     // Validate architecture section
     cJSON* arch = cJSON_GetObjectItem(metadata, "architecture");
     if (!cJSON_GetObjectItem(arch, "neurons")) {
-        fprintf(stderr, "Error: Missing neurons in architecture\n");
+        LOG_ERROR("Missing 'neurons' field in architecture section");
         return false;
     }
 
+    LOG_INFO("Metadata validation successful");
     return true;
 }
 
@@ -274,23 +357,36 @@ static bool validate_metadata(const cJSON* metadata) {
  * @return Brain handle or NULL on error
  */
 brain_t brain_load_pretrained(const char* model_name, const char* models_dir) {
+    LOG_DEBUG("brain_load_pretrained entry: model_name=%s, models_dir=%s",
+              model_name ? model_name : "NULL",
+              models_dir ? models_dir : "NULL");
+
     if (!model_name) {
-        fprintf(stderr, "Error: model_name is NULL\n");
+        LOG_ERROR("model_name parameter is NULL");
         return NULL;
     }
 
-    printf("Loading pre-trained model: %s\n", model_name);
+    LOG_INFO("Loading pre-trained model: %s", model_name);
+
+    // Publish loading start event via SEROTONIN (state change)
+    publish_model_event(BIO_CHANNEL_SEROTONIN, BIO_MSG_BRAIN_STATE_QUERY,
+                       model_name, false);
 
     // Load metadata
     cJSON* metadata = load_model_metadata(model_name, models_dir);
     if (!metadata) {
-        fprintf(stderr, "Error: Could not load metadata for model: %s\n", model_name);
+        LOG_ERROR("Could not load metadata for model: %s", model_name);
+        publish_model_event(BIO_CHANNEL_SEROTONIN, BIO_MSG_BRAIN_STATE_RESPONSE,
+                           model_name, false);
         return NULL;
     }
 
     // Validate metadata
     if (!validate_metadata(metadata)) {
+        LOG_ERROR("Metadata validation failed for model: %s", model_name);
         cJSON_Delete(metadata);
+        publish_model_event(BIO_CHANNEL_SEROTONIN, BIO_MSG_BRAIN_STATE_RESPONSE,
+                           model_name, false);
         return NULL;
     }
 
@@ -301,52 +397,76 @@ brain_t brain_load_pretrained(const char* model_name, const char* models_dir) {
     cJSON* size_obj = cJSON_GetObjectItem(metadata, "size");
     const char* size_str = size_obj->valuestring;
 
-    printf("  Model: %s\n", model_name);
-    printf("  Size: %s\n", size_str);
-    printf("  Neurons: %d\n", neurons);
+    LOG_INFO("Model configuration: name=%s, size=%s, neurons=%d",
+             model_name, size_str, neurons);
 
     // Build path to model file
     char model_path[1024];
     if (!build_model_path(model_name, models_dir, MODEL_EXTENSION,
                          model_path, sizeof(model_path))) {
+        LOG_ERROR("Failed to build model path for: %s", model_name);
         cJSON_Delete(metadata);
+        publish_model_event(BIO_CHANNEL_SEROTONIN, BIO_MSG_BRAIN_STATE_RESPONSE,
+                           model_name, false);
         return NULL;
     }
 
+    LOG_DEBUG("Model file path: %s", model_path);
+
     // Check if model file exists
     if (access(model_path, R_OK) != 0) {
-        fprintf(stderr, "Error: Model file not found: %s\n", model_path);
-        fprintf(stderr, "Note: This is a placeholder. Actual model binaries need to be trained and saved.\n");
+        LOG_WARN("Model file not found: %s", model_path);
+        LOG_INFO("Creating new brain with model specifications as fallback");
         cJSON_Delete(metadata);
-
-        // For now, create a new brain with the specified configuration as fallback
-        fprintf(stderr, "Creating new brain with model specifications instead...\n");
 
         // Map size string to brain_size_t
         brain_size_t brain_size = BRAIN_SIZE_MEDIUM;
         if (strcmp(size_str, "small") == 0) {
             brain_size = BRAIN_SIZE_SMALL;
+            LOG_DEBUG("Using BRAIN_SIZE_SMALL");
         } else if (strcmp(size_str, "large") == 0) {
             brain_size = BRAIN_SIZE_LARGE;
+            LOG_DEBUG("Using BRAIN_SIZE_LARGE");
+        } else {
+            LOG_DEBUG("Using BRAIN_SIZE_MEDIUM");
         }
 
         // Create new brain with model's specifications
         brain_t brain = brain_create(model_name, brain_size, BRAIN_TASK_CLASSIFICATION,
                                      100, 10); // Default dims
 
+        if (brain) {
+            LOG_INFO("Successfully created new brain with model specs: %s", model_name);
+            publish_model_event(BIO_CHANNEL_DOPAMINE, BIO_MSG_BRAIN_STATE_RESPONSE,
+                               model_name, true);
+        } else {
+            LOG_ERROR("Failed to create brain with model specs: %s", model_name);
+            publish_model_event(BIO_CHANNEL_SEROTONIN, BIO_MSG_BRAIN_STATE_RESPONSE,
+                               model_name, false);
+        }
+
         return brain;
     }
 
     // Load brain from file
+    LOG_INFO("Loading brain from file: %s", model_path);
     brain_t brain = brain_load(model_path);
     cJSON_Delete(metadata);
 
     if (!brain) {
-        fprintf(stderr, "Error: Failed to load brain from: %s\n", model_path);
+        LOG_ERROR("Failed to deserialize brain from: %s", model_path);
+        publish_model_event(BIO_CHANNEL_SEROTONIN, BIO_MSG_BRAIN_STATE_RESPONSE,
+                           model_name, false);
         return NULL;
     }
 
-    printf("Successfully loaded pre-trained model: %s\n", model_name);
+    LOG_INFO("Successfully loaded pre-trained model: %s", model_name);
+
+    // Publish successful load event via DOPAMINE (reward/completion)
+    publish_model_event(BIO_CHANNEL_DOPAMINE, BIO_MSG_BRAIN_STATE_RESPONSE,
+                       model_name, true);
+
+    LOG_DEBUG("brain_load_pretrained exit: success");
     return brain;
 }
 
@@ -577,13 +697,18 @@ static bool check_model_version_update(const char* model_id,
  * @return true on success
  */
 bool brain_get_model_info(const char* model_id, brain_model_info_t* info) {
+    LOG_DEBUG("brain_get_model_info entry: model_id=%s",
+              model_id ? model_id : "NULL");
+
     if (!model_id || !info) {
+        LOG_ERROR("Invalid parameters: model_id=%p, info=%p", (void*)model_id, (void*)info);
         return false;
     }
 
     // Load metadata
     cJSON* metadata = load_model_metadata(model_id, NULL);
     if (!metadata) {
+        LOG_WARN("Could not load metadata for model: %s", model_id);
         return false;
     }
 
@@ -593,13 +718,20 @@ bool brain_get_model_info(const char* model_id, brain_model_info_t* info) {
     cJSON* resources = cJSON_GetObjectItem(metadata, "resources");
     cJSON* meta = cJSON_GetObjectItem(metadata, "metadata");
 
-    if (name) snprintf(info->model_id, sizeof(info->model_id), "%s", name->valuestring);
-    if (version) snprintf(info->version, sizeof(info->version), "%s", version->valuestring);
+    if (name) {
+        snprintf(info->model_id, sizeof(info->model_id), "%s", name->valuestring);
+        LOG_DEBUG("Model ID: %s", info->model_id);
+    }
+    if (version) {
+        snprintf(info->version, sizeof(info->version), "%s", version->valuestring);
+        LOG_DEBUG("Model version: %s", info->version);
+    }
 
     if (resources) {
         cJSON* file_size = cJSON_GetObjectItem(resources, "file_size_mb");
         if (file_size) {
             info->file_size_bytes = (size_t)(file_size->valuedouble * 1024 * 1024);
+            LOG_DEBUG("Model file size: %zu bytes", info->file_size_bytes);
         }
     }
 
@@ -621,6 +753,9 @@ bool brain_get_model_info(const char* model_id, brain_model_info_t* info) {
                                          model_path, sizeof(model_path)) &&
                         (access(model_path, R_OK) == 0);
 
+    LOG_INFO("Model %s is %s locally", model_id,
+             info->is_available ? "available" : "NOT available");
+
     // WHAT: Check for model updates by comparing local vs registry version
     // WHY:  Keep users aware of newer trained models
     // HOW:  Query model registry metadata and compare version strings
@@ -628,7 +763,13 @@ bool brain_get_model_info(const char* model_id, brain_model_info_t* info) {
                                                         info->latest_version,
                                                         sizeof(info->latest_version));
 
+    if (info->update_available) {
+        LOG_INFO("Update available for model %s: %s -> %s",
+                 model_id, info->version, info->latest_version);
+    }
+
     cJSON_Delete(metadata);
+    LOG_DEBUG("brain_get_model_info exit: success");
     return true;
 }
 
@@ -688,8 +829,12 @@ static float train_batch(brain_t brain, const float* data, const float* labels,
                         float learning_rate) {
     // Guard: Validate inputs
     if (!brain || !data || !labels || batch_size == 0) {
+        LOG_ERROR("Invalid train_batch parameters");
         return -1.0f;
     }
+
+    LOG_DEBUG("Training batch: size=%u, input_dim=%u, output_dim=%u, lr=%.6f",
+              batch_size, input_dim, output_dim, learning_rate);
 
     float total_loss = 0.0f;
     uint32_t valid_samples = 0;
@@ -721,10 +866,16 @@ static float train_batch(brain_t brain, const float* data, const float* labels,
         if (loss >= 0.0f) {
             total_loss += loss;
             valid_samples++;
+        } else {
+            LOG_WARN("Sample %u failed with loss < 0", i);
         }
     }
 
-    return valid_samples > 0 ? total_loss / valid_samples : -1.0f;
+    float avg_loss = valid_samples > 0 ? total_loss / valid_samples : -1.0f;
+    LOG_DEBUG("Batch complete: valid_samples=%u/%u, avg_loss=%.4f",
+              valid_samples, batch_size, avg_loss);
+
+    return avg_loss;
 }
 
 /**
@@ -755,19 +906,26 @@ static float train_batch(brain_t brain, const float* data, const float* labels,
 static bool finetune_with_layer_freezing(brain_t brain, const float* training_data,
                                          const float* labels, uint32_t num_samples,
                                          const brain_finetune_config_t* cfg) {
+    LOG_DEBUG("finetune_with_layer_freezing entry");
+
     // Guard: Validate inputs
     if (!brain || !training_data || !labels || !cfg) {
+        LOG_ERROR("Invalid parameters to finetune_with_layer_freezing");
         return false;
     }
 
     // Get brain dimensions
     brain_stats_t stats;
     if (!brain_get_stats(brain, &stats)) {
+        LOG_ERROR("Failed to get brain stats for fine-tuning");
         return false;
     }
 
     uint32_t input_dim = stats.num_neurons;  // Simplified: use neuron count
     uint32_t output_dim = stats.num_neurons; // TODO: Get actual output dim from brain
+
+    LOG_INFO("Fine-tuning dimensions: input=%u, output=%u, neurons=%u, synapses=%u",
+             input_dim, output_dim, stats.num_neurons, stats.num_synapses);
 
     // Save original learning rate
     // Note: We need to access brain->network->config.learning_rate
@@ -776,12 +934,11 @@ static bool finetune_with_layer_freezing(brain_t brain, const float* training_da
 
     // Calculate frozen layer learning rate (100× slower)
     float frozen_lr = cfg->learning_rate * 0.0001f;
+    LOG_DEBUG("Learning rates: original=%.6f, frozen=%.6f", original_lr, frozen_lr);
 
     // Training loop
     for (uint32_t epoch = 0; epoch < cfg->num_epochs; epoch++) {
-        if (cfg->verbose) {
-            printf("Epoch %u/%u\n", epoch + 1, cfg->num_epochs);
-        }
+        LOG_INFO("Starting epoch %u/%u", epoch + 1, cfg->num_epochs);
 
         float epoch_loss = 0.0f;
         uint32_t num_batches = 0;
@@ -805,14 +962,17 @@ static bool finetune_with_layer_freezing(brain_t brain, const float* training_da
             // If both sensory and cognitive are frozen, use very low LR
             if (cfg->freeze_sensory && cfg->freeze_cognitive) {
                 batch_lr = frozen_lr;
+                LOG_DEBUG("Using frozen LR: %.6f", batch_lr);
             }
             // If only classifier is being fine-tuned, use normal LR
             else if (cfg->finetune_classifier) {
                 batch_lr = original_lr;
+                LOG_DEBUG("Using normal LR for classifier: %.6f", batch_lr);
             }
             // Mixed case: use intermediate LR
             else if (cfg->freeze_sensory || cfg->freeze_cognitive) {
                 batch_lr = original_lr * 0.1f;
+                LOG_DEBUG("Using intermediate LR: %.6f", batch_lr);
             }
 
             // Train batch
@@ -823,19 +983,22 @@ static bool finetune_with_layer_freezing(brain_t brain, const float* training_da
             if (batch_loss >= 0.0f) {
                 epoch_loss += batch_loss;
                 num_batches++;
+            } else {
+                LOG_WARN("Batch %u returned negative loss", num_batches);
             }
         }
 
         // Print epoch statistics
-        if (cfg->verbose && num_batches > 0) {
+        if (num_batches > 0) {
             float avg_loss = epoch_loss / num_batches;
-            printf("  Average Loss: %.4f\n", avg_loss);
+            LOG_INFO("Epoch %u/%u complete: avg_loss=%.4f, batches=%u",
+                     epoch + 1, cfg->num_epochs, avg_loss, num_batches);
+        } else {
+            LOG_WARN("Epoch %u had no valid batches", epoch + 1);
         }
     }
 
-    if (cfg->verbose) {
-        printf("Fine-tuning complete\n");
-    }
+    LOG_INFO("Fine-tuning complete: epochs=%u", cfg->num_epochs);
 
     // Learning rate is automatically restored when function exits
     // (we didn't modify the brain's internal LR, just passed different values)
@@ -855,7 +1018,12 @@ static bool finetune_with_layer_freezing(brain_t brain, const float* training_da
  */
 bool brain_finetune(brain_t brain, const float* training_data, const float* labels,
                    uint32_t num_samples, const brain_finetune_config_t* config) {
+    LOG_DEBUG("brain_finetune entry: num_samples=%u", num_samples);
+
     if (!brain || !training_data || !labels || num_samples == 0) {
+        LOG_ERROR("Invalid parameters: brain=%p, training_data=%p, labels=%p, num_samples=%u",
+                  (void*)brain, (const void*)training_data,
+                  (const void*)labels, num_samples);
         return false;
     }
 
@@ -872,13 +1040,30 @@ bool brain_finetune(brain_t brain, const float* training_data, const float* labe
 
     const brain_finetune_config_t* cfg = config ? config : &default_config;
 
-    if (cfg->verbose) {
-        printf("Fine-tuning model with %u samples, %u epochs, lr=%.4f\n",
-               num_samples, cfg->num_epochs, cfg->learning_rate);
+    LOG_INFO("Fine-tuning model: samples=%u, epochs=%u, lr=%.4f, freeze_sensory=%d, freeze_cognitive=%d",
+             num_samples, cfg->num_epochs, cfg->learning_rate,
+             cfg->freeze_sensory, cfg->freeze_cognitive);
+
+    // Publish fine-tuning start event via SEROTONIN (state change)
+    publish_model_event(BIO_CHANNEL_SEROTONIN, BIO_MSG_TRAINING_STEP_REQUEST,
+                       "finetune", false);
+
+    bool result = finetune_with_layer_freezing(brain, training_data, labels,
+                                               num_samples, cfg);
+
+    if (result) {
+        LOG_INFO("Fine-tuning completed successfully");
+        // Publish success via DOPAMINE (reward/completion)
+        publish_model_event(BIO_CHANNEL_DOPAMINE, BIO_MSG_TRAINING_STEP_COMPLETE,
+                           "finetune", true);
+    } else {
+        LOG_ERROR("Fine-tuning failed");
+        publish_model_event(BIO_CHANNEL_SEROTONIN, BIO_MSG_TRAINING_STEP_COMPLETE,
+                           "finetune", false);
     }
 
-    return finetune_with_layer_freezing(brain, training_data, labels,
-                                        num_samples, cfg);
+    LOG_DEBUG("brain_finetune exit: result=%d", result);
+    return result;
 }
 
 /**

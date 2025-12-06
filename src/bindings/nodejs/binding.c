@@ -1,5 +1,5 @@
 #include <node_api.h>
-#include "api/nimcp.h"
+#include "nimcp.h"
 #include "utils/metrics/nimcp_metrics.h"
 #include <stdio.h>
 #include <stdlib.h>

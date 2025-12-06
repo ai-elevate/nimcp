@@ -29,14 +29,58 @@
  * @date 2025-11-06
  */
 
-#include "nimcp_neuron_model.h"
-#include "nimcp_neuron_model_internal.h"
-#include "nimcp_izhikevich.h"  // For izhikevich_set_integration_method
-#include "nimcp_two_compartment.h"  // For two_compartment functions (Part A3.1)
+#include "core/neuron_models/nimcp_neuron_model.h"
+#include "utils/memory/nimcp_unified_memory.h"
+#include "core/neuron_models/nimcp_neuron_model_internal.h"
+#include "core/neuron_models/nimcp_izhikevich.h"  // For izhikevich_set_integration_method
+#include "core/neuron_models/nimcp_two_compartment.h"  // For two_compartment functions (Part A3.1)
 #include "utils/numerical/nimcp_integration.h"  // For integration_method_t
+#include "utils/logging/nimcp_logging.h"
+#include "async/nimcp_bio_async.h"
+#include "async/nimcp_bio_router.h"
+#include "async/nimcp_bio_messages.h"
 #include <stdlib.h>
 #include <string.h>
 #include "utils/memory/nimcp_memory.h"
+
+#define LOG_MODULE "neuron_model"
+
+//=============================================================================
+// Bio-Async Module Context
+//=============================================================================
+
+static bio_module_context_t bio_ctx = NULL;
+static bool bio_async_enabled = false;
+
+__attribute__((constructor))
+static void neuron_model_bio_init(void) {
+    if (!bio_router_is_initialized()) {
+        return;
+    }
+
+    bio_module_info_t bio_info = {
+        .module_id = BIO_MODULE_NEURON_MODEL,
+        .module_name = "neuron_model",
+        .inbox_capacity = 256,
+        .user_data = NULL
+    };
+
+    bio_ctx = bio_router_register_module(&bio_info);
+    if (bio_ctx) {
+        bio_async_enabled = true;
+        LOG_INFO(LOG_MODULE, "Bio-async registered for neuron_model module");
+    }
+}
+
+__attribute__((destructor))
+static void neuron_model_bio_cleanup(void) {
+    if (bio_async_enabled && bio_ctx) {
+        bio_router_unregister_module(bio_ctx);
+        bio_ctx = NULL;
+        bio_async_enabled = false;
+        LOG_DEBUG(LOG_MODULE, "Bio-async unregistered for neuron_model module");
+    }
+}
 
 //=============================================================================
 // Factory Functions
@@ -118,6 +162,11 @@ void neuron_model_destroy(neuron_model_state_t state) {
  * COMPLEXITY: O(1) dispatch + model update complexity
  */
 void neuron_model_update(neuron_model_state_t state, float dt, float input_current) {
+    // Process pending bio-async messages
+    if (bio_ctx) {
+        bio_router_process_inbox(bio_ctx, 5);
+    }
+
     // Guard: Validate state and vtable
     if (!state || !state->vtable || !state->vtable->update) {
         return;

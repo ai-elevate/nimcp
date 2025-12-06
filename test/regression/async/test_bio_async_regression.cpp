@@ -261,8 +261,8 @@ TEST_F(BioAsyncRegressionTest, DifferentChannelDecayRates) {
         nimcp_bio_promise_complete(p, &result);
     }
 
-    // Wait for decay
-    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    // Advance simulation time for decay (confidence uses simulation time)
+    nimcp_bio_async_step(100.0f);
 
     float conf_da = nimcp_bio_future_get_confidence(futures[BIO_CHANNEL_DOPAMINE]);
     float conf_5ht = nimcp_bio_future_get_confidence(futures[BIO_CHANNEL_SEROTONIN]);

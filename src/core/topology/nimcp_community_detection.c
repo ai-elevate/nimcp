@@ -2,14 +2,59 @@
 // nimcp_community_detection.c - Community Detection Implementation
 //=============================================================================
 
-#include "nimcp_community_detection.h"
+#include "core/topology/nimcp_community_detection.h"
+#include "utils/memory/nimcp_unified_memory.h"
 #include "utils/memory/nimcp_memory.h"
+#include "utils/logging/nimcp_logging.h"
 #include "core/neuralnet/nimcp_neuralnet.h"
-#include "nimcp_fractal_topology.h"
+#include "core/topology/nimcp_fractal_topology.h"
+#include "async/nimcp_bio_async.h"
+#include "async/nimcp_bio_router.h"
+#include "async/nimcp_bio_messages.h"
 #include <stdio.h>
 #include <string.h>
 #include <math.h>
 #include <time.h>
+#include <stdarg.h>
+
+#define LOG_MODULE "community_detection"
+
+//=============================================================================
+// Bio-Async Module Context
+//=============================================================================
+
+static bio_module_context_t bio_ctx = NULL;
+static bool bio_async_enabled = false;
+
+__attribute__((constructor))
+static void community_detection_bio_init(void) {
+    if (!bio_router_is_initialized()) {
+        return;
+    }
+
+    bio_module_info_t bio_info = {
+        .module_id = BIO_MODULE_TOPOLOGY_COMMUNITY,
+        .module_name = "community_detection",
+        .inbox_capacity = 64,
+        .user_data = NULL
+    };
+
+    bio_ctx = bio_router_register_module(&bio_info);
+    if (bio_ctx) {
+        bio_async_enabled = true;
+        LOG_INFO(LOG_MODULE, "Bio-async registered for community_detection module");
+    }
+}
+
+__attribute__((destructor))
+static void community_detection_bio_cleanup(void) {
+    if (bio_async_enabled && bio_ctx) {
+        bio_router_unregister_module(bio_ctx);
+        bio_ctx = NULL;
+        bio_async_enabled = false;
+        LOG_DEBUG(LOG_MODULE, "Bio-async unregistered for community_detection module");
+    }
+}
 
 //=============================================================================
 // Thread-local error handling
@@ -323,6 +368,11 @@ community_structure_t* community_detect(
     if (!network) {
         set_error("NULL network");
         return NULL;
+    }
+
+    // Process pending bio-async messages
+    if (bio_async_enabled && bio_ctx) {
+        bio_router_process_inbox(bio_ctx, 5);
     }
 
     // Use default config if not provided

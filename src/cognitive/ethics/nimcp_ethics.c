@@ -1677,6 +1677,11 @@ static void build_evaluation_result(ethics_engine_t engine, const action_context
 static void update_learning(ethics_engine_t engine, const action_context_t* action,
                             const ethics_evaluation_t* result)
 {
+    // Process pending bio-async messages
+    if (engine && engine->bio_async_enabled && engine->bio_ctx) {
+        bio_router_process_inbox(engine->bio_ctx, 5);
+    }
+
     // Guard clause: Check if learning enabled
     if (!engine || !action || !result || !engine->enable_learning) {
         return;

@@ -212,6 +212,10 @@ typedef struct {
     float average_joy_intensity;
     float average_euphoria_intensity;
 
+    // Bio-async integration
+    void* bio_ctx_ptr;              /**< bio_module_context_t pointer */
+    bool bio_async_enabled;         /**< Bio-async registration status */
+
 } joy_system_t;
 
 //=============================================================================

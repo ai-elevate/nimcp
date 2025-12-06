@@ -30,6 +30,17 @@
 #include <math.h>
 #include <string.h>
 
+// === BIO-ASYNC + LOGGING + UNIFIED MEMORY INTEGRATION ===
+#include "async/nimcp_bio_async.h"
+#include "async/nimcp_bio_router.h"
+#include "async/nimcp_bio_messages.h"
+#include "utils/logging/nimcp_logging.h"
+#include "utils/memory/nimcp_unified_memory.h"
+
+#define LOG_MODULE "dendrite"
+#define BIO_MODULE_ID 0x0130
+
+
 // ============================================================================
 // Constants
 // ============================================================================
@@ -107,14 +118,14 @@ static float calculate_attenuation(dendrite_t* dendrite, uint32_t segment_id);
 dendrite_t* dendrite_create(dendrite_config_t* config) {
     // Guard: NULL config
     if (!config) {
-        nimcp_log(LOG_LEVEL_ERROR, "dendrite_create: NULL config");
+        LOG_ERROR(LOG_MODULE, "dendrite_create: NULL config");
         return NULL;
     }
 
     // Allocate dendrite
     dendrite_t* dendrite = (dendrite_t*)nimcp_calloc(1, sizeof(dendrite_t));
     if (!dendrite) {
-        nimcp_log(LOG_LEVEL_ERROR, "dendrite_create: Failed to allocate dendrite");
+        LOG_ERROR(LOG_MODULE, "dendrite_create: Failed to allocate dendrite");
         return NULL;
     }
 
@@ -168,7 +179,7 @@ dendrite_t* dendrite_create(dendrite_config_t* config) {
     // Initialize mutex
     nimcp_mutex_init(&dendrite->lock, NULL);
 
-    nimcp_log(LOG_LEVEL_DEBUG, "dendrite_create: Created dendrite %u (type=%d)",
+    LOG_DEBUG(LOG_MODULE, "dendrite_create: Created dendrite %u (type=%d)",
               dendrite->id, dendrite->type);
 
     return dendrite;
@@ -185,7 +196,7 @@ void dendrite_destroy(dendrite_t* dendrite) {
         return;
     }
 
-    nimcp_log(LOG_LEVEL_DEBUG, "dendrite_destroy: Destroying dendrite %u", dendrite->id);
+    LOG_DEBUG(LOG_MODULE, "dendrite_destroy: Destroying dendrite %u", dendrite->id);
 
     // Free segments
     if (dendrite->segments) {
@@ -222,13 +233,13 @@ bool dendrite_create_segments(
 ) {
     // Guard: NULL inputs
     if (!dendrite || !segment_configs || num_segments == 0) {
-        nimcp_log(LOG_LEVEL_ERROR, "dendrite_create_segments: Invalid inputs");
+        LOG_ERROR(LOG_MODULE, "dendrite_create_segments: Invalid inputs");
         return false;
     }
 
     // Guard: Already has segments
     if (dendrite->segments) {
-        nimcp_log(LOG_LEVEL_ERROR, "dendrite_create_segments: Dendrite %u already has segments",
+        LOG_ERROR(LOG_MODULE, "dendrite_create_segments: Dendrite %u already has segments",
                   dendrite->id);
         return false;
     }
@@ -239,7 +250,7 @@ bool dendrite_create_segments(
         sizeof(dendritic_segment_t)
     );
     if (!dendrite->segments) {
-        nimcp_log(LOG_LEVEL_ERROR, "dendrite_create_segments: Failed to allocate segments");
+        LOG_ERROR(LOG_MODULE, "dendrite_create_segments: Failed to allocate segments");
         return false;
     }
 
@@ -295,7 +306,7 @@ bool dendrite_create_segments(
         }
     }
 
-    nimcp_log(LOG_LEVEL_DEBUG, "dendrite_create_segments: Created %u segments for dendrite %u",
+    LOG_DEBUG(LOG_MODULE, "dendrite_create_segments: Created %u segments for dendrite %u",
               num_segments, dendrite->id);
 
     return true;
@@ -315,13 +326,13 @@ uint32_t dendrite_add_branch(
 ) {
     // Guard: NULL dendrite
     if (!dendrite) {
-        nimcp_log(LOG_LEVEL_ERROR, "dendrite_add_branch: NULL dendrite");
+        LOG_ERROR(LOG_MODULE, "dendrite_add_branch: NULL dendrite");
         return UINT32_MAX;
     }
 
     // Guard: Invalid parent
     if (parent_segment_id >= dendrite->num_segments) {
-        nimcp_log(LOG_LEVEL_ERROR, "dendrite_add_branch: Invalid parent segment %u",
+        LOG_ERROR(LOG_MODULE, "dendrite_add_branch: Invalid parent segment %u",
                   parent_segment_id);
         return UINT32_MAX;
     }
@@ -330,7 +341,7 @@ uint32_t dendrite_add_branch(
 
     // Guard: Parent has too many children
     if (parent->num_children >= NIMCP_DENDRITE_MAX_CHILDREN) {
-        nimcp_log(LOG_LEVEL_ERROR, "dendrite_add_branch: Parent segment %u has max children",
+        LOG_ERROR(LOG_MODULE, "dendrite_add_branch: Parent segment %u has max children",
                   parent_segment_id);
         return UINT32_MAX;
     }
@@ -344,7 +355,7 @@ uint32_t dendrite_add_branch(
         dendrite->num_segments * sizeof(dendritic_segment_t)
     );
     if (!dendrite->segments) {
-        nimcp_log(LOG_LEVEL_ERROR, "dendrite_add_branch: Failed to reallocate segments");
+        LOG_ERROR(LOG_MODULE, "dendrite_add_branch: Failed to reallocate segments");
         return UINT32_MAX;
     }
 
@@ -377,7 +388,7 @@ uint32_t dendrite_add_branch(
     // Add to parent's children
     parent->child_segments[parent->num_children++] = new_id;
 
-    nimcp_log(LOG_LEVEL_DEBUG, "dendrite_add_branch: Added branch segment %u to dendrite %u",
+    LOG_DEBUG(LOG_MODULE, "dendrite_add_branch: Added branch segment %u to dendrite %u",
               new_id, dendrite->id);
 
     return new_id;
@@ -400,13 +411,13 @@ uint32_t dendrite_add_spine(
 ) {
     // Guard: NULL dendrite
     if (!dendrite) {
-        nimcp_log(LOG_LEVEL_ERROR, "dendrite_add_spine: NULL dendrite");
+        LOG_ERROR(LOG_MODULE, "dendrite_add_spine: NULL dendrite");
         return UINT32_MAX;
     }
 
     // Guard: Invalid segment
     if (segment_id >= dendrite->num_segments) {
-        nimcp_log(LOG_LEVEL_ERROR, "dendrite_add_spine: Invalid segment %u", segment_id);
+        LOG_ERROR(LOG_MODULE, "dendrite_add_spine: Invalid segment %u", segment_id);
         return UINT32_MAX;
     }
 
@@ -414,7 +425,7 @@ uint32_t dendrite_add_spine(
 
     // Guard: Segment has too many spines
     if (segment->num_spines >= 64) {
-        nimcp_log(LOG_LEVEL_ERROR, "dendrite_add_spine: Segment %u has max spines", segment_id);
+        LOG_ERROR(LOG_MODULE, "dendrite_add_spine: Segment %u has max spines", segment_id);
         return UINT32_MAX;
     }
 
@@ -427,7 +438,7 @@ uint32_t dendrite_add_spine(
         dendrite->num_spines * sizeof(dendritic_spine_t)
     );
     if (!dendrite->spines) {
-        nimcp_log(LOG_LEVEL_ERROR, "dendrite_add_spine: Failed to reallocate spines");
+        LOG_ERROR(LOG_MODULE, "dendrite_add_spine: Failed to reallocate spines");
         return UINT32_MAX;
     }
 
@@ -497,7 +508,7 @@ uint32_t dendrite_add_spine(
     // Add to segment's spine list
     segment->spine_ids[segment->num_spines++] = new_id;
 
-    nimcp_log(LOG_LEVEL_DEBUG, "dendrite_add_spine: Added spine %u (type=%d) to segment %u",
+    LOG_DEBUG(LOG_MODULE, "dendrite_add_spine: Added spine %u (type=%d) to segment %u",
               new_id, type, segment_id);
 
     return new_id;
@@ -854,7 +865,7 @@ void dendrite_induce_ltp(dendrite_t* dendrite, uint32_t spine_id, float magnitud
         // Update activity stats
         dendrite->activity.ltp_events++;
 
-        nimcp_log(LOG_LEVEL_DEBUG, "dendrite_induce_ltp: LTP at spine %u (magnitude=%.3f)",
+        LOG_DEBUG(LOG_MODULE, "dendrite_induce_ltp: LTP at spine %u (magnitude=%.3f)",
                   spine_id, magnitude);
     }
 
@@ -896,7 +907,7 @@ void dendrite_induce_ltd(dendrite_t* dendrite, uint32_t spine_id, float magnitud
         // Update activity stats
         dendrite->activity.ltd_events++;
 
-        nimcp_log(LOG_LEVEL_DEBUG, "dendrite_induce_ltd: LTD at spine %u (magnitude=%.3f)",
+        LOG_DEBUG(LOG_MODULE, "dendrite_induce_ltd: LTD at spine %u (magnitude=%.3f)",
                   spine_id, magnitude);
     }
 
@@ -1060,7 +1071,7 @@ dendrite_activity_stats_t dendrite_get_activity_stats(dendrite_t* dendrite) {
 dendrite_network_t* dendrite_network_create(uint32_t max_dendrites) {
     // Guard: Invalid size
     if (max_dendrites == 0) {
-        nimcp_log(LOG_LEVEL_ERROR, "dendrite_network_create: Invalid max_dendrites");
+        LOG_ERROR(LOG_MODULE, "dendrite_network_create: Invalid max_dendrites");
         return NULL;
     }
 
@@ -1069,7 +1080,7 @@ dendrite_network_t* dendrite_network_create(uint32_t max_dendrites) {
         1, sizeof(dendrite_network_t)
     );
     if (!network) {
-        nimcp_log(LOG_LEVEL_ERROR, "dendrite_network_create: Failed to allocate network");
+        LOG_ERROR(LOG_MODULE, "dendrite_network_create: Failed to allocate network");
         return NULL;
     }
 
@@ -1086,7 +1097,7 @@ dendrite_network_t* dendrite_network_create(uint32_t max_dendrites) {
     network->max_dendrites = max_dendrites;
     nimcp_mutex_init(&network->lock, NULL);
 
-    nimcp_log(LOG_LEVEL_DEBUG, "dendrite_network_create: Created network (max=%u)",
+    LOG_DEBUG(LOG_MODULE, "dendrite_network_create: Created network (max=%u)",
               max_dendrites);
 
     return network;
@@ -1128,7 +1139,7 @@ void dendrite_network_destroy(dendrite_network_t* network) {
 bool dendrite_network_add(dendrite_network_t* network, dendrite_t* dendrite) {
     // Guard: NULL parameters
     if (!network || !dendrite) {
-        nimcp_log(LOG_LEVEL_ERROR, "dendrite_network_add: NULL parameter");
+        LOG_ERROR(LOG_MODULE, "dendrite_network_add: NULL parameter");
         return false;
     }
 
@@ -1137,7 +1148,7 @@ bool dendrite_network_add(dendrite_network_t* network, dendrite_t* dendrite) {
     // Guard: Network full
     if (network->num_dendrites >= network->max_dendrites) {
         nimcp_mutex_unlock(&network->lock);
-        nimcp_log(LOG_LEVEL_ERROR, "dendrite_network_add: Network full (%u/%u)",
+        LOG_ERROR(LOG_MODULE, "dendrite_network_add: Network full (%u/%u)",
                   network->num_dendrites, network->max_dendrites);
         return false;
     }
@@ -1148,7 +1159,7 @@ bool dendrite_network_add(dendrite_network_t* network, dendrite_t* dendrite) {
 
     nimcp_mutex_unlock(&network->lock);
 
-    nimcp_log(LOG_LEVEL_DEBUG, "dendrite_network_add: Added dendrite %u (total=%u)",
+    LOG_DEBUG(LOG_MODULE, "dendrite_network_add: Added dendrite %u (total=%u)",
               dendrite->id, network->num_dendrites);
 
     return true;
@@ -1285,7 +1296,7 @@ bool dendrite_initiate_nmda_spike(dendrite_t* dendrite, uint32_t segment_id,
 
     nimcp_mutex_unlock(&dendrite->lock);
 
-    nimcp_log(LOG_LEVEL_DEBUG, "dendrite_initiate_nmda_spike: NMDA spike at seg %u",
+    LOG_DEBUG(LOG_MODULE, "dendrite_initiate_nmda_spike: NMDA spike at seg %u",
               segment_id);
 
     return true;
@@ -1327,7 +1338,7 @@ void dendrite_update_nmda_spike(dendrite_t* dendrite, float dt_ms) {
         segment->nmda_spike_voltage = 0.0f;
         dendrite->state = DENDRITE_STATE_NORMAL;
 
-        nimcp_log(LOG_LEVEL_DEBUG, "dendrite_update_nmda_spike: NMDA spike ended");
+        LOG_DEBUG(LOG_MODULE, "dendrite_update_nmda_spike: NMDA spike ended");
     }
 
     nimcp_mutex_unlock(&dendrite->lock);
@@ -1399,7 +1410,7 @@ bool dendrite_initiate_bap(dendrite_t* dendrite, float amplitude_mv,
 
     nimcp_mutex_unlock(&dendrite->lock);
 
-    nimcp_log(LOG_LEVEL_DEBUG, "dendrite_initiate_bap: bAP started (%.1f mV)",
+    LOG_DEBUG(LOG_MODULE, "dendrite_initiate_bap: bAP started (%.1f mV)",
               amplitude_mv);
 
     return true;
@@ -1466,7 +1477,7 @@ void dendrite_update_bap(dendrite_t* dendrite, float dt_ms) {
     if (all_reached || too_weak) {
         dendrite->bap_state.active = false;
         dendrite->state = DENDRITE_STATE_NORMAL;
-        nimcp_log(LOG_LEVEL_DEBUG, "dendrite_update_bap: bAP complete (%u segments)",
+        LOG_DEBUG(LOG_MODULE, "dendrite_update_bap: bAP complete (%u segments)",
                   dendrite->bap_state.segments_reached);
     }
 
@@ -1846,7 +1857,7 @@ bool dendrite_create_spine_pool(dendrite_t* dendrite, uint32_t capacity) {
 
     nimcp_mutex_unlock(&dendrite->lock);
 
-    nimcp_log(LOG_LEVEL_DEBUG, "dendrite_create_spine_pool: Pool created (%u capacity)",
+    LOG_DEBUG(LOG_MODULE, "dendrite_create_spine_pool: Pool created (%u capacity)",
               capacity);
 
     return true;
@@ -1959,7 +1970,7 @@ dendrite_t* dendrite_cow_copy(dendrite_t* dendrite) {
 
     nimcp_mutex_unlock(&dendrite->lock);
 
-    nimcp_log(LOG_LEVEL_DEBUG, "dendrite_cow_copy: CoW copy created (ref=%u)",
+    LOG_DEBUG(LOG_MODULE, "dendrite_cow_copy: CoW copy created (ref=%u)",
               dendrite->cow_ref_count);
 
     return copy;
@@ -2008,7 +2019,7 @@ bool dendrite_cow_prepare_write(dendrite_t* dendrite) {
 
     nimcp_mutex_unlock(&dendrite->lock);
 
-    nimcp_log(LOG_LEVEL_DEBUG, "dendrite_cow_prepare_write: Deep copy made");
+    LOG_DEBUG(LOG_MODULE, "dendrite_cow_prepare_write: Deep copy made");
 
     return true;
 }

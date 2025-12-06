@@ -13,6 +13,18 @@
  * DATE: 2025-11-19
  */
 
+// Bio-async integration
+#include "async/nimcp_bio_async.h"
+#include "async/nimcp_bio_router.h"
+#include "async/nimcp_bio_messages.h"
+
+// Logging integration
+#include "utils/logging/nimcp_logging.h"
+
+// Unified memory integration
+#include "utils/memory/nimcp_memory.h"
+#include "utils/memory/nimcp_unified_memory.h"
+
 #include "core/brain/accessors/nimcp_brain_accessors.h"
 #include "core/brain/nimcp_brain.h"
 #include "core/brain/nimcp_brain_internal.h"
@@ -23,6 +35,8 @@
 #include "utils/logging/nimcp_logging.h"
 #include <math.h>
 #include <stddef.h>
+
+#define LOG_MODULE "BRAIN_ACCESSORS"
 
 // External error handling functions from nimcp_brain.c
 extern void set_error(const char* format, ...);

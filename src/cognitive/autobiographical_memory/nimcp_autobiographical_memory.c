@@ -388,6 +388,11 @@ bool autobio_retrieve(autobiographical_memory_t system,
                      uint64_t memory_id,
                      autobiographical_memory_entry_t* out_memory)
 {
+    // Process pending bio-async messages
+    if (system && system->bio_ctx) {
+        bio_router_process_inbox(system->bio_ctx, 5);
+    }
+
     // Guard: NULL checks
     if (!system || !out_memory || memory_id == 0) {
         return false;

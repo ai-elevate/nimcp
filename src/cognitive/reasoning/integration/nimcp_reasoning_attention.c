@@ -11,8 +11,18 @@
 #include "utils/logging/nimcp_logging.h"
 #include <stdlib.h>
 #include <string.h>
+#include <stdio.h>
 #include <time.h>
 #include <sys/time.h>
+#include "async/nimcp_bio_async.h"
+#include "async/nimcp_bio_router.h"
+#include "async/nimcp_bio_messages.h"
+#include "utils/logging/nimcp_logging.h"
+#include "utils/memory/nimcp_unified_memory.h"
+
+#define LOG_MODULE "cognitive.reasoning.attention"
+#define BIO_MODULE_COGNITIVE_REASONING_ATTENTION 0x034C
+
 
 //=============================================================================
 // Internal Structure
@@ -33,6 +43,10 @@ struct reasoning_attention {
     // State
     uint64_t last_boost_time_ms;
     float current_salience;
+
+    // Bio-async integration
+    bio_module_context_t bio_ctx;   /**< Bio-async module context */
+    bool bio_async_enabled;         /**< Bio-async registration status */
 };
 
 //=============================================================================
@@ -98,6 +112,7 @@ reasoning_attention_t* reasoning_attention_create(
     event_bus_t event_bus,
     fault_attention_t* attention
 ) {
+    LOG_DEBUG("Creating module");
     reasoning_attention_config_t config = reasoning_attention_default_config();
     return reasoning_attention_create_custom(event_bus, attention, &config);
 }
@@ -108,7 +123,7 @@ reasoning_attention_t* reasoning_attention_create_custom(
     const reasoning_attention_config_t* config
 ) {
     if (!event_bus || !attention) {
-        NIMCP_LOG(LOG_ERROR, "reasoning_attention", "NULL event_bus or attention");
+        LOG_ERROR("NULL event_bus or attention");
         return NULL;
     }
 
@@ -118,14 +133,14 @@ reasoning_attention_t* reasoning_attention_create_custom(
 
     // Validate configuration
     if (!reasoning_attention_validate_config(final_config)) {
-        NIMCP_LOG(LOG_ERROR, "reasoning_attention", "Invalid configuration");
+        LOG_ERROR("Invalid configuration");
         return NULL;
     }
 
     // Allocate structure
     reasoning_attention_t* integration = nimcp_calloc(1, sizeof(reasoning_attention_t));
     if (!integration) {
-        NIMCP_LOG(LOG_ERROR, "reasoning_attention", "Failed to allocate integration");
+        LOG_ERROR("Failed to allocate integration");
         return NULL;
     }
 
@@ -146,16 +161,34 @@ reasoning_attention_t* reasoning_attention_create_custom(
     );
 
     if (integration->subscription_handle == INVALID_SUBSCRIPTION_HANDLE) {
-        NIMCP_LOG(LOG_ERROR, "reasoning_attention", "Failed to subscribe to events");
+        LOG_ERROR("Failed to subscribe to events");
         nimcp_free(integration);
         return NULL;
     }
 
-    NIMCP_LOG(LOG_INFO, "reasoning_attention", "Created reasoning-attention integration");
-    return integration;
+    LOG_INFO("Created reasoning-attention integration");
+    
+    // Bio-async registration
+    integration->bio_ctx = NULL;
+    integration->bio_async_enabled = false;
+    if (bio_router_is_initialized()) {
+        bio_module_info_t bio_info = {
+            .module_id = BIO_MODULE_ATTENTION_REASONING,
+            .module_name = "reasoning_attention",
+            .inbox_capacity = 32,
+            .user_data = integration
+        };
+        integration->bio_ctx = bio_router_register_module(&bio_info);
+        if (integration->bio_ctx) {
+            integration->bio_async_enabled = true;
+        }
+    }
+
+return integration;
 }
 
 void reasoning_attention_destroy(reasoning_attention_t* integration) {
+    LOG_DEBUG("Destroying module");
     if (!integration) return;
 
     // Unsubscribe from events
@@ -163,7 +196,14 @@ void reasoning_attention_destroy(reasoning_attention_t* integration) {
         event_bus_unsubscribe(integration->event_bus, integration->subscription_handle);
     }
 
-    NIMCP_LOG(LOG_INFO, "reasoning_attention", "Destroyed reasoning-attention integration");
+    LOG_INFO("Destroyed reasoning-attention integration");
+    // Unregister from bio-router
+    if (integration->bio_async_enabled && integration->bio_ctx) {
+        bio_router_unregister_module(integration->bio_ctx);
+        integration->bio_ctx = NULL;
+        integration->bio_async_enabled = false;
+    }
+
     nimcp_free(integration);
 }
 
@@ -212,6 +252,11 @@ void reasoning_attention_callback(const brain_event_t* event, void* context) {
     if (!event || !context) return;
 
     reasoning_attention_t* integration = (reasoning_attention_t*)context;
+
+    // Process pending bio-async messages
+    if (integration && integration->bio_ctx) {
+        bio_router_process_inbox(integration->bio_ctx, 5);
+    }
     uint64_t start_time_us = get_current_time_us();
 
     // Filter for reasoning events only

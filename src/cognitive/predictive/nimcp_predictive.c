@@ -430,6 +430,11 @@ float predictive_forward(predictive_network_t net, const float* input,
 bool predictive_get_layer_prediction(predictive_network_t net,
                                      uint32_t layer_index, float* output)
 {
+    // Process pending bio-async messages
+    if (net && net->bio_ctx) {
+        bio_router_process_inbox(net->bio_ctx, 5);
+    }
+
     if (!net || !output) {
         set_error("NULL parameter");
         return false;

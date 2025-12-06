@@ -20,8 +20,19 @@
 // Includes
 //=============================================================================
 
-#include "nimcp_brain_validation.h"
-#include "../nimcp_brain_factory.h"
+// Bio-async integration
+#include "async/nimcp_bio_async.h"
+#include "async/nimcp_bio_router.h"
+#include "async/nimcp_bio_messages.h"
+
+// Logging integration
+#include "utils/logging/nimcp_logging.h"
+
+// Unified memory integration
+#include "utils/memory/nimcp_unified_memory.h"
+
+#include "core/brain/factory/validation/nimcp_brain_validation.h"
+#include "core/brain/factory/nimcp_brain_factory.h"
 #include "core/brain/nimcp_brain.h"
 #include "core/brain/nimcp_brain_internal.h"
 #include <math.h>
@@ -45,6 +56,8 @@
 #include "utils/platform/nimcp_platform_mutex.h"
 #include "utils/logging/nimcp_logging.h"
 #include "security/nimcp_security.h"
+
+#define LOG_MODULE "BRAIN_VALID"
 
 //=============================================================================
 // Validation Functions

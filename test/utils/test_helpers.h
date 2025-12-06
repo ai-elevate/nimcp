@@ -14,6 +14,7 @@
 #include <cmath>
 
 extern "C" {
+#include "core/brain/nimcp_brain.h"
 #include "core/neuralnet/nimcp_neuralnet.h"
 #include "networking/p2p/nimcp_p2pnode.h"
 #include "networking/protocol/nimcp_protocol.h"
@@ -277,6 +278,104 @@ class TestNode {
     node_config_t config;
     p2p_node_t node;
 };
+
+//-----------------------------------------------------------------------------
+// Brain Test Helper
+//-----------------------------------------------------------------------------
+
+/**
+ * @brief Helper class for managing test brain lifecycle
+ *
+ * WHAT: Creates a minimal brain_t for testing cognitive modules
+ * WHY:  Many cognitive modules require brain_t but don't need full functionality
+ * HOW:  Creates tiny brain with minimal neurons for fast setup/teardown
+ *
+ * USAGE:
+ *   TestBrain brain("test_brain");
+ *   ASSERT_NE(brain.get(), nullptr);
+ *   network_analyzer_t* analyzer = network_analyzer_create(brain.get());
+ */
+class TestBrain {
+   public:
+    /**
+     * @brief Create test brain with default parameters
+     * @param name Brain name for identification
+     */
+    explicit TestBrain(const char* name = "test_brain")
+    {
+        brain_ = brain_create(name, BRAIN_SIZE_TINY, BRAIN_TASK_CLASSIFICATION, 10, 10);
+    }
+
+    /**
+     * @brief Create test brain with custom parameters
+     * @param name Brain name
+     * @param size Brain size enum
+     * @param task Brain task type
+     * @param num_inputs Number of input neurons
+     * @param num_outputs Number of output neurons
+     */
+    TestBrain(const char* name, brain_size_t size, brain_task_t task,
+              uint32_t num_inputs, uint32_t num_outputs)
+    {
+        brain_ = brain_create(name, size, task, num_inputs, num_outputs);
+    }
+
+    ~TestBrain()
+    {
+        if (brain_) {
+            brain_destroy(brain_);
+        }
+    }
+
+    // Prevent copying
+    TestBrain(const TestBrain&) = delete;
+    TestBrain& operator=(const TestBrain&) = delete;
+
+    // Allow moving
+    TestBrain(TestBrain&& other) noexcept : brain_(other.brain_)
+    {
+        other.brain_ = nullptr;
+    }
+
+    TestBrain& operator=(TestBrain&& other) noexcept
+    {
+        if (this != &other) {
+            if (brain_) {
+                brain_destroy(brain_);
+            }
+            brain_ = other.brain_;
+            other.brain_ = nullptr;
+        }
+        return *this;
+    }
+
+    /**
+     * @brief Get the brain pointer
+     * @return brain_t pointer (nullptr if creation failed)
+     */
+    brain_t get() const
+    {
+        return brain_;
+    }
+
+    /**
+     * @brief Check if brain was created successfully
+     * @return true if brain is valid
+     */
+    bool is_valid() const
+    {
+        return brain_ != nullptr;
+    }
+
+   private:
+    brain_t brain_;
+};
+
+// Helper function to create a minimal test brain
+static inline brain_t create_test_brain(const char* name = "test_brain")
+{
+    return brain_create(name, BRAIN_SIZE_TINY, BRAIN_TASK_CLASSIFICATION, 10, 10);
+}
 
 //-----------------------------------------------------------------------------
 // Test Assertion Macros

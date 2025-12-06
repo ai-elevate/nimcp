@@ -17,6 +17,17 @@
 #include "utils/validation/nimcp_validate.h"
 #include "utils/logging/nimcp_logging.h"
 
+// === BIO-ASYNC + LOGGING + UNIFIED MEMORY INTEGRATION ===
+#include "async/nimcp_bio_async.h"
+#include "async/nimcp_bio_router.h"
+#include "async/nimcp_bio_messages.h"
+#include "utils/logging/nimcp_logging.h"
+#include "utils/memory/nimcp_unified_memory.h"
+
+#define LOG_MODULE "neural_logic_factory"
+#define BIO_MODULE_ID 0x0139
+
+
 //=============================================================================
 // Helper Functions
 //=============================================================================

@@ -321,6 +321,10 @@ typedef struct {
     uint64_t total_biases_detected;
     uint64_t total_biases_corrected;
 
+    // Bio-async integration
+    void* bio_ctx;                  /**< bio_module_context_t pointer */
+    bool bio_async_enabled;         /**< Bio-async registration status */
+
 } bias_detection_system_t;
 
 //=============================================================================

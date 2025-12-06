@@ -2,7 +2,12 @@
 // nimcp_fractal_cognitive.c - Fractal Topology Cognitive Integration
 //=============================================================================
 
-#include "nimcp_fractal_cognitive.h"
+#include "cognitive/nimcp_fractal_cognitive.h"
+#include "utils/logging/nimcp_logging.h"
+#include "async/nimcp_bio_router.h"
+#include "async/nimcp_bio_async.h"
+#include "async/nimcp_bio_messages.h"
+#include "utils/memory/nimcp_unified_memory.h"
 #include "core/topology/nimcp_fractal_topology.h"
 #include "utils/memory/nimcp_memory.h"
 #include <stdio.h>

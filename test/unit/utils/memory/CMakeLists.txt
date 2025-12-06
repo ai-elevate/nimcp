@@ -40,3 +40,6 @@ add_memory_test(test_layer_pools)
 
 # Phase 5 COW Stress Tests
 add_memory_test(test_page_cow_stress)
+
+# Unified Memory Integration Tests
+add_memory_test(test_unified_memory)

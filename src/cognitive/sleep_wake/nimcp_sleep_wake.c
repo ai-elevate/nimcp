@@ -602,6 +602,11 @@ static void sleep_stage_rem(sleep_system_t sleep)
  */
 bool sleep_run_cycle(sleep_system_t sleep, uint32_t num_cycles)
 {
+    // Process pending bio-async messages
+    if (sleep && sleep->bio_ctx) {
+        bio_router_process_inbox(sleep->bio_ctx, 5);
+    }
+
     if (sleep == NULL || num_cycles == 0) {
         return false;
     }

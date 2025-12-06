@@ -17,7 +17,7 @@
 #ifndef NIMCP_PRETRAINED_H
 #define NIMCP_PRETRAINED_H
 
-#include "nimcp_brain.h"
+#include "core/brain/nimcp_brain.h"
 
 #ifdef __cplusplus
 extern "C" {

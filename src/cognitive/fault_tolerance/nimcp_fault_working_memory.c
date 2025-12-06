@@ -128,6 +128,11 @@ static uint32_t find_eviction_candidate(const fault_working_memory_t* wm) {
  * @param wm Working memory instance
  */
 static void update_priority_fault(fault_working_memory_t* wm) {
+    // Process pending bio-async messages
+    if (wm && wm->bio_async_enabled && wm->bio_ctx) {
+        bio_router_process_inbox(wm->bio_ctx, 5);
+    }
+
     if (wm->count == 0) {
         wm->priority_fault_idx = 0;
         return;

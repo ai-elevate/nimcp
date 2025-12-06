@@ -10,6 +10,15 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/time.h>
+#include "async/nimcp_bio_async.h"
+#include "async/nimcp_bio_router.h"
+#include "async/nimcp_bio_messages.h"
+#include "utils/logging/nimcp_logging.h"
+#include "utils/memory/nimcp_unified_memory.h"
+
+#define LOG_MODULE "cognitive.reasoning.curiosity"
+#define BIO_MODULE_COGNITIVE_REASONING_CURIOSITY 0x034D
+
 
 struct reasoning_curiosity {
     reasoning_curiosity_config_t config;
@@ -17,6 +26,10 @@ struct reasoning_curiosity {
     curiosity_engine_t curiosity;
     event_subscription_handle_t subscription_handle;
     reasoning_curiosity_stats_t stats;
+
+    // Bio-async integration
+    bio_module_context_t bio_ctx;   /**< Bio-async module context */
+    bool bio_async_enabled;         /**< Bio-async registration status */
 };
 
 static uint64_t get_time_us(void) {
@@ -44,6 +57,7 @@ bool reasoning_curiosity_validate_config(const reasoning_curiosity_config_t* con
 }
 
 reasoning_curiosity_t* reasoning_curiosity_create(event_bus_t bus, curiosity_engine_t curiosity) {
+    LOG_DEBUG("Creating module");
     reasoning_curiosity_config_t config = reasoning_curiosity_default_config();
     return reasoning_curiosity_create_custom(bus, curiosity, &config);
 }
@@ -70,21 +84,51 @@ reasoning_curiosity_t* reasoning_curiosity_create_custom(
         return NULL;
     }
     
-    return integration;
+    
+    // Bio-async registration
+    integration->bio_ctx = NULL;
+    integration->bio_async_enabled = false;
+    if (bio_router_is_initialized()) {
+        bio_module_info_t bio_info = {
+            .module_id = BIO_MODULE_CURIOSITY_REASONING,
+            .module_name = "reasoning_curiosity",
+            .inbox_capacity = 32,
+            .user_data = integration
+        };
+        integration->bio_ctx = bio_router_register_module(&bio_info);
+        if (integration->bio_ctx) {
+            integration->bio_async_enabled = true;
+        }
+    }
+
+return integration;
 }
 
 void reasoning_curiosity_destroy(reasoning_curiosity_t* integration) {
+    LOG_DEBUG("Destroying module");
     if (!integration) return;
     if (integration->subscription_handle != INVALID_SUBSCRIPTION_HANDLE) {
         event_bus_unsubscribe(integration->event_bus, integration->subscription_handle);
     }
+    // Unregister from bio-router
+    if (integration->bio_async_enabled && integration->bio_ctx) {
+        bio_router_unregister_module(integration->bio_ctx);
+        integration->bio_ctx = NULL;
+        integration->bio_async_enabled = false;
+    }
+
     nimcp_free(integration);
 }
 
 void reasoning_curiosity_callback(const brain_event_t* event, void* context) {
     if (!event || !context) return;
-    
+
     reasoning_curiosity_t* integration = (reasoning_curiosity_t*)context;
+
+    // Process pending bio-async messages
+    if (integration && integration->bio_ctx) {
+        bio_router_process_inbox(integration->bio_ctx, 5);
+    }
     uint64_t start = get_time_us();
     
     if (event->type < EVENT_LOGIC_GATE_EVALUATED || event->type > EVENT_NOVEL_FACT_DERIVED) {

@@ -148,3 +148,63 @@ set_tests_properties(regression_middleware_training_test_event_driven_plasticity
     PROPERTIES
         LABELS "regression;middleware;training;event_driven_plasticity"
         TIMEOUT 300)
+
+# Security Registration Regression Tests (Phase SR-1)
+add_executable(regression_middleware_training_test_security_registration_regression
+    test_security_registration_regression.cpp
+)
+
+target_include_directories(regression_middleware_training_test_security_registration_regression PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${CMAKE_SOURCE_DIR}/src
+)
+
+target_compile_features(regression_middleware_training_test_security_registration_regression PRIVATE cxx_std_20)
+
+target_link_libraries(regression_middleware_training_test_security_registration_regression
+    PRIVATE
+        GTest::GTest
+        GTest::Main
+        nimcp_middleware
+        nimcp
+        pthread
+        m
+)
+
+add_test(NAME regression_middleware_training_test_security_registration_regression
+         COMMAND regression_middleware_training_test_security_registration_regression)
+
+set_tests_properties(regression_middleware_training_test_security_registration_regression
+    PROPERTIES
+        LABELS "regression;middleware;training;security_registration"
+        TIMEOUT 300)
+
+# Training Callbacks Regression Tests (Phase TCB-1)
+add_executable(regression_middleware_training_test_training_callbacks_regression
+    test_training_callbacks_regression.cpp
+)
+
+target_include_directories(regression_middleware_training_test_training_callbacks_regression PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${CMAKE_SOURCE_DIR}/src
+)
+
+target_compile_features(regression_middleware_training_test_training_callbacks_regression PRIVATE cxx_std_20)
+
+target_link_libraries(regression_middleware_training_test_training_callbacks_regression
+    PRIVATE
+        GTest::GTest
+        GTest::Main
+        nimcp_middleware
+        nimcp
+        pthread
+        m
+)
+
+add_test(NAME regression_middleware_training_test_training_callbacks_regression
+         COMMAND regression_middleware_training_test_training_callbacks_regression)
+
+set_tests_properties(regression_middleware_training_test_training_callbacks_regression
+    PROPERTIES
+        LABELS "regression;middleware;training;callbacks"
+        TIMEOUT 300)

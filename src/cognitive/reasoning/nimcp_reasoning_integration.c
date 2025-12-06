@@ -659,6 +659,11 @@ bool reasoning_attention_hook(
     const brain_event_t* event
 )
 {
+    // Process pending bio-async messages
+    if (integration && integration->bio_ctx) {
+        bio_router_process_inbox(integration->bio_ctx, 5);
+    }
+
     if (!integration || !event) return false;
     if (!integration->config.enable_attention_integration) return false;
 

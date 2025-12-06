@@ -72,6 +72,9 @@ add_library(nimcp_middleware STATIC
 
     # Event-Driven Plasticity (Phase EDP-1)
     training/nimcp_event_driven_plasticity.c
+
+    # Training Callbacks (Phase TCB-1)
+    training/nimcp_training_callbacks.c
 )
 
 target_include_directories(nimcp_middleware PUBLIC

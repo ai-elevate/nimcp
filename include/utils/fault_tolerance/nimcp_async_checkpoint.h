@@ -80,7 +80,7 @@ extern "C" {
 #endif
 
 // Include checkpoint header for checkpoint_options_t definition
-#include "nimcp_checkpoint.h"
+#include "utils/fault_tolerance/nimcp_checkpoint.h"
 
 //=============================================================================
 // Forward Declarations

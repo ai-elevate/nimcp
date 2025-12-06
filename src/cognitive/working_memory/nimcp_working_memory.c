@@ -1080,6 +1080,11 @@ uint32_t working_memory_decay(
         return 0;
     }
 
+    // Process pending bio-async messages before decay processing
+    if (wm->bio_async_enabled && wm->bio_ctx) {
+        bio_router_process_inbox(wm->bio_ctx, 10);  // Process up to 10 messages
+    }
+
     // Lock mutex for thread-safe access
     nimcp_platform_mutex_lock(&wm->mutex);
 

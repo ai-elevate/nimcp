@@ -12,8 +12,14 @@
  */
 
 #include "glial/astrocytes/nimcp_astrocytes.h"
+#include "async/nimcp_bio_router.h"
+#include "async/nimcp_bio_messages.h"
+#include "utils/logging/nimcp_logging.h"
 #include <math.h>
 #include <string.h>
+
+// Logging module identifier
+#define LOG_MODULE "ASTROCYTE_TYPES"
 
 //=============================================================================
 // Constants for Type-Specific Modulation
@@ -100,6 +106,8 @@ static inline float clamp(float value, float min, float max)
 
 const char* astrocyte_type_get_name(astrocyte_type_t type)
 {
+    LOG_MODULE_DEBUG(LOG_MODULE, "Getting name for astrocyte type %d", type);
+
     switch (type) {
         case ASTROCYTE_TYPE_GENERIC:
             return "GENERIC";
@@ -114,6 +122,7 @@ const char* astrocyte_type_get_name(astrocyte_type_t type)
         case ASTROCYTE_TYPE_EXECUTIVE_CONTROL:
             return "EXECUTIVE_CONTROL";
         default:
+            LOG_MODULE_WARN(LOG_MODULE, "Unknown astrocyte type: %d", type);
             return "UNKNOWN";
     }
 }
@@ -126,8 +135,11 @@ nimcp_result_t astrocyte_type_init_context(astrocyte_type_context_t* context,
                                             astrocyte_type_t type)
 {
     if (!context) {
+        LOG_MODULE_ERROR(LOG_MODULE, "NULL context pointer in astrocyte_type_init_context");
         return NIMCP_ERROR_INVALID_PARAM;
     }
+
+    LOG_MODULE_DEBUG(LOG_MODULE, "Initializing astrocyte type context for type %s", astrocyte_type_get_name(type));
 
     memset(context, 0, sizeof(astrocyte_type_context_t));
     context->type = type;

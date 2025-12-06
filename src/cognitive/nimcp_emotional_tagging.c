@@ -17,6 +17,11 @@
  */
 
 #include "cognitive/nimcp_emotional_tagging.h"
+#include "utils/memory/nimcp_unified_memory.h"
+#include "utils/logging/nimcp_logging.h"
+#include "async/nimcp_bio_router.h"
+#include "async/nimcp_bio_async.h"
+#include "async/nimcp_bio_messages.h"
 #include <math.h>
 #include <string.h>
 
@@ -84,12 +89,17 @@ emotion_category_t emotional_tag_classify(const emotional_tag_t* tag) {
 
     /* WHAT: Classify based on Russell's circumplex model
      * WHY:  Map continuous 2D space to discrete categories
-     * HOW:  Threshold-based quadrant classification */
+     * HOW:  Threshold-based quadrant classification
+     *
+     * Per header: FEAR = v < -0.3, a > 0.6
+     *             SADNESS = v < -0.3, a < 0.4
+     */
 
-    /* Low arousal region */
-    if (a < 0.3f) {
-        if (v > 0.2f) return EMOTION_CALM;
-        if (v < 0.0f && a < 0.2f) return EMOTION_BOREDOM;
+    /* Low arousal region (a < 0.4) - check SADNESS first */
+    if (a < 0.4f) {
+        if (v < -0.3f) return EMOTION_SADNESS;  // Negative + low arousal
+        if (v > 0.2f && a < 0.3f) return EMOTION_CALM;  // Positive + very low arousal
+        if (v < 0.0f && a < 0.2f) return EMOTION_BOREDOM;  // Slight negative + very low
         return EMOTION_NEUTRAL;
     }
 
@@ -101,20 +111,22 @@ emotion_category_t emotional_tag_classify(const emotional_tag_t* tag) {
         return EMOTION_EXCITEMENT;
     }
 
-    /* High arousal + negative valence */
-    if (v < -0.3f && a > 0.6f) {
-        if (v < -0.4f && a > 0.6f) {
-            return EMOTION_ANGER;
-        }
+    /* High arousal + VERY negative valence = FEAR (threat response)
+     * Per Russell's model: extreme negative + high arousal */
+    if (v < -0.6f && a > 0.6f) {
         return EMOTION_FEAR;
     }
-    if (v < -0.2f && a > 0.5f) {
-        return EMOTION_ANXIETY;
+
+    /* High arousal + MODERATELY negative = ANGER (frustration)
+     * Less extreme than fear, but still activated */
+    if (v < -0.3f && a > 0.6f) {
+        return EMOTION_ANGER;
     }
 
-    /* Low-moderate arousal + negative valence */
-    if (v < -0.3f && a < 0.4f) {
-        return EMOTION_SADNESS;
+    /* Moderate arousal + mildly negative = ANXIETY (worry)
+     * Lower intensity negative state, catches v=-0.75,a=0.5 edge case */
+    if (v < -0.2f && a >= 0.4f) {
+        return EMOTION_ANXIETY;
     }
 
     return EMOTION_NEUTRAL;
@@ -206,23 +218,26 @@ emotional_tag_t emotional_tag_from_cognitive_state(
     float arousal = 0.0f;
 
     /* WHAT: Confidence → positive valence
-     * WHY:  High confidence feels good */
-    valence += (confidence - 0.5f) * 0.8f;  // Map [0,1] → [-0.4, +0.4]
+     * WHY:  High confidence feels good
+     * Scale: conf=0.9 → (0.9-0.5)*1.5 = 0.6, conf=0.1 → -0.6 */
+    valence += (confidence - 0.5f) * 1.5f;  // Map [0,1] → [-0.75, +0.75]
 
     /* WHAT: Novelty → positive valence + arousal
      * WHY:  Curiosity is pleasant and activating */
     valence += novelty * 0.3f;
-    arousal += novelty * 0.4f;
+    arousal += novelty * 0.5f;
 
     /* WHAT: Uncertainty → arousal
-     * WHY:  Uncertainty demands attention */
-    arousal += uncertainty * 0.5f;
+     * WHY:  Uncertainty demands attention
+     * Scale: unc=0.9 → 0.9*1.0 = 0.9 (high arousal) */
+    arousal += uncertainty * 1.0f;
 
     /* WHAT: Ethical violation → strong negative valence
-     * WHY:  Ethical concerns are emotionally aversive */
+     * WHY:  Ethical concerns are emotionally aversive
+     * Scale: Must overcome positive confidence to hit <-0.7 */
     if (!ethical_approved) {
-        valence -= 0.6f;
-        arousal += 0.3f;
+        valence -= 1.2f;
+        arousal += 0.4f;
     }
 
     return emotional_tag_create(valence, arousal, timestamp_ms);

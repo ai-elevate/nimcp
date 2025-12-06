@@ -172,3 +172,8 @@ set_tests_properties(integration_middleware_test_signal_filter_integration PROPE
 if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/integration")
     add_subdirectory(integration)
 endif()
+
+# Training Module Integration Tests (Phase TM-1: Security + Memory Pool Integration)
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/training")
+    add_subdirectory(training)
+endif()

@@ -381,6 +381,11 @@ bool symbolic_logic_evaluate(
     logical_formula_t* formula,
     bool* result)
 {
+    // Process pending bio-async messages
+    if (logic) {
+        bio_router_process_inbox(logic, 5);
+    }
+
     LOG_DEBUG("Evaluating formula");
     if (!logic || !formula || !result) return false;
 

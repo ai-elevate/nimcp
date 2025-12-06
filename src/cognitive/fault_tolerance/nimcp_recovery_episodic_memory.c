@@ -588,6 +588,11 @@ bool episodic_memory_store(
         return false;
     }
 
+    // Process pending bio-async messages
+    if (memory->bio_async_enabled && memory->bio_ctx) {
+        bio_router_process_inbox(memory->bio_ctx, 5);
+    }
+
     uint64_t start_time = get_current_timestamp_ms();
 
     // Make local copy to modify

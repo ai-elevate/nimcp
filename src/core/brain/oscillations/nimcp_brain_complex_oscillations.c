@@ -2,12 +2,23 @@
 // nimcp_brain_complex_oscillations.c - Complex Phasor Oscillation Tracking
 //=============================================================================
 
+// Bio-async integration
+#include "async/nimcp_bio_async.h"
+#include "utils/memory/nimcp_unified_memory.h"
+#include "async/nimcp_bio_router.h"
+#include "async/nimcp_bio_messages.h"
+
+// Logging integration
+#include "utils/logging/nimcp_logging.h"
+
 #include "core/brain/oscillations/nimcp_brain_complex_oscillations.h"
 #include "core/brain/nimcp_brain_internal.h"
 #include "utils/memory/nimcp_memory.h"
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
+
+#define LOG_MODULE "BRAIN_OSCILLATIONS"
 
 //=============================================================================
 // Constants

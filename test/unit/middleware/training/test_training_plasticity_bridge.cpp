@@ -27,6 +27,7 @@
 
 extern "C" {
 #include "middleware/training/nimcp_training_plasticity_bridge.h"
+#include "middleware/training/nimcp_training_callbacks.h"
 #include "utils/memory/nimcp_memory.h"
 }
 
@@ -876,6 +877,302 @@ TEST_F(ThreadSafetyTest, ConcurrentNeuromodAccess) {
     }
 
     EXPECT_EQ(success_count.load(), num_threads * iterations);
+}
+
+//=============================================================================
+// Callback Integration Tests (Phase TCB-1)
+//=============================================================================
+
+class CallbackIntegrationTest : public TrainingPlasticityBridgeTest {
+protected:
+    void SetUp() override {
+        TrainingPlasticityBridgeTest::SetUp();
+        ctx_ = tpb_create(nullptr);
+        ASSERT_NE(ctx_, nullptr);
+
+        // Configure region for testing
+        tpb_region_config_t region = tpb_region_cortical_default();
+        region.neuron_start_idx = 0;
+        region.neuron_end_idx = 1000;
+        tpb_configure_region(ctx_, &region, nullptr);
+    }
+
+    void TearDown() override {
+        if (tcb_ctx_) {
+            tcb_destroy(tcb_ctx_);
+            tcb_ctx_ = nullptr;
+        }
+        TrainingPlasticityBridgeTest::TearDown();
+    }
+
+    tcb_context_t* tcb_ctx_ = nullptr;
+};
+
+TEST_F(CallbackIntegrationTest, ConnectCallbacks) {
+    tcb_ctx_ = tcb_create(nullptr);
+    ASSERT_NE(tcb_ctx_, nullptr);
+
+    EXPECT_EQ(tpb_connect_callbacks(ctx_, tcb_ctx_), NIMCP_SUCCESS);
+    EXPECT_EQ(tpb_get_callback_context(ctx_), tcb_ctx_);
+}
+
+TEST_F(CallbackIntegrationTest, ConnectNullCallbacks) {
+    // Should succeed - disconnecting callbacks
+    EXPECT_EQ(tpb_connect_callbacks(ctx_, nullptr), NIMCP_SUCCESS);
+    EXPECT_EQ(tpb_get_callback_context(ctx_), nullptr);
+}
+
+TEST_F(CallbackIntegrationTest, ConnectCallbacksNullContext) {
+    tcb_ctx_ = tcb_create(nullptr);
+    EXPECT_EQ(tpb_connect_callbacks(nullptr, tcb_ctx_), NIMCP_ERROR_INVALID_PARAM);
+}
+
+TEST_F(CallbackIntegrationTest, RegisterPlasticityCallbacks) {
+    tcb_ctx_ = tcb_create(nullptr);
+    ASSERT_NE(tcb_ctx_, nullptr);
+
+    EXPECT_EQ(tpb_connect_callbacks(ctx_, tcb_ctx_), NIMCP_SUCCESS);
+    EXPECT_EQ(tpb_register_plasticity_callbacks(ctx_), NIMCP_SUCCESS);
+
+    // Verify callbacks are registered
+    EXPECT_GT(tcb_get_callback_count(tcb_ctx_, TCB_EVENT_LOSS_COMPUTED), 0u);
+    EXPECT_GT(tcb_get_callback_count(tcb_ctx_, TCB_EVENT_WEIGHTS_UPDATED), 0u);
+    EXPECT_GT(tcb_get_callback_count(tcb_ctx_, TCB_EVENT_EPOCH_COMPLETE), 0u);
+    EXPECT_GT(tcb_get_callback_count(tcb_ctx_, TCB_EVENT_DIVERGENCE), 0u);
+}
+
+TEST_F(CallbackIntegrationTest, RegisterPlasticityCallbacksNoContext) {
+    // Should fail without connected callback context
+    EXPECT_EQ(tpb_register_plasticity_callbacks(ctx_), NIMCP_ERROR_INVALID_PARAM);
+}
+
+TEST_F(CallbackIntegrationTest, HandleCallbackActionContinue) {
+    EXPECT_EQ(tpb_handle_callback_action(ctx_, TCB_ACTION_CONTINUE), NIMCP_SUCCESS);
+}
+
+TEST_F(CallbackIntegrationTest, HandleCallbackActionReduceLR) {
+    float da_before, da_after, ht5_before, ht5_after;
+
+    tpb_get_neuromod_levels(ctx_, &da_before, nullptr, &ht5_before, nullptr);
+    EXPECT_EQ(tpb_handle_callback_action(ctx_, TCB_ACTION_REDUCE_LR), NIMCP_SUCCESS);
+    tpb_get_neuromod_levels(ctx_, &da_after, nullptr, &ht5_after, nullptr);
+
+    // DA should decrease, 5-HT should increase
+    EXPECT_LT(da_after, da_before) << "DA should decrease on LR reduction";
+    EXPECT_GT(ht5_after, ht5_before) << "5-HT should increase on LR reduction";
+}
+
+TEST_F(CallbackIntegrationTest, HandleCallbackActionIncreaseLR) {
+    float da_before, da_after;
+
+    tpb_get_neuromod_levels(ctx_, &da_before, nullptr, nullptr, nullptr);
+    EXPECT_EQ(tpb_handle_callback_action(ctx_, TCB_ACTION_INCREASE_LR), NIMCP_SUCCESS);
+    tpb_get_neuromod_levels(ctx_, &da_after, nullptr, nullptr, nullptr);
+
+    EXPECT_GT(da_after, da_before) << "DA should increase on LR increase";
+}
+
+TEST_F(CallbackIntegrationTest, HandleCallbackActionSkipStep) {
+    float da_before, da_after, ach_before, ach_after;
+
+    tpb_get_neuromod_levels(ctx_, &da_before, &ach_before, nullptr, nullptr);
+    EXPECT_EQ(tpb_handle_callback_action(ctx_, TCB_ACTION_SKIP_STEP), NIMCP_SUCCESS);
+    tpb_get_neuromod_levels(ctx_, &da_after, &ach_after, nullptr, nullptr);
+
+    // Neuromodulators should be dampened
+    EXPECT_LT(da_after, da_before);
+    EXPECT_LT(ach_after, ach_before);
+}
+
+TEST_F(CallbackIntegrationTest, HandleCallbackActionNull) {
+    EXPECT_EQ(tpb_handle_callback_action(nullptr, TCB_ACTION_CONTINUE), NIMCP_ERROR_INVALID_PARAM);
+}
+
+TEST_F(CallbackIntegrationTest, SetCallbackModulation) {
+    EXPECT_EQ(tpb_set_callback_modulation(ctx_, TCB_EVENT_LOSS_COMPUTED, 0.5f), NIMCP_SUCCESS);
+    EXPECT_EQ(tpb_set_callback_modulation(ctx_, TCB_EVENT_WEIGHTS_UPDATED, 1.5f), NIMCP_SUCCESS);
+}
+
+TEST_F(CallbackIntegrationTest, SetCallbackModulationBounds) {
+    // Should clamp to valid range
+    EXPECT_EQ(tpb_set_callback_modulation(ctx_, TCB_EVENT_LOSS_COMPUTED, -1.0f), NIMCP_SUCCESS);
+    EXPECT_EQ(tpb_set_callback_modulation(ctx_, TCB_EVENT_LOSS_COMPUTED, 5.0f), NIMCP_SUCCESS);
+}
+
+TEST_F(CallbackIntegrationTest, SetCallbackModulationInvalidEvent) {
+    EXPECT_EQ(tpb_set_callback_modulation(ctx_, TCB_EVENT_COUNT, 1.0f), NIMCP_ERROR_INVALID_PARAM);
+}
+
+TEST_F(CallbackIntegrationTest, GetCallbackStats) {
+    tcb_ctx_ = tcb_create(nullptr);
+    ASSERT_NE(tcb_ctx_, nullptr);
+
+    tpb_connect_callbacks(ctx_, tcb_ctx_);
+    tpb_register_plasticity_callbacks(ctx_);
+
+    uint64_t loss_fired = 0, weight_fired = 0, epoch_fired = 0, divergence_fired = 0;
+    EXPECT_EQ(tpb_get_callback_stats(ctx_, &loss_fired, &weight_fired, &epoch_fired, &divergence_fired), NIMCP_SUCCESS);
+
+    // Initially all should be 0
+    EXPECT_EQ(loss_fired, 0u);
+    EXPECT_EQ(weight_fired, 0u);
+    EXPECT_EQ(epoch_fired, 0u);
+    EXPECT_EQ(divergence_fired, 0u);
+}
+
+TEST_F(CallbackIntegrationTest, GetCallbackStatsNullContext) {
+    uint64_t dummy;
+    EXPECT_EQ(tpb_get_callback_stats(nullptr, &dummy, &dummy, &dummy, &dummy), NIMCP_ERROR_INVALID_PARAM);
+}
+
+TEST_F(CallbackIntegrationTest, CallbackOnLossPositiveRPE) {
+    tcb_ctx_ = tcb_create(nullptr);
+    ASSERT_NE(tcb_ctx_, nullptr);
+
+    tpb_connect_callbacks(ctx_, tcb_ctx_);
+    tpb_register_plasticity_callbacks(ctx_);
+
+    // Create event with good loss (low value)
+    tcb_metrics_t metrics;
+    memset(&metrics, 0, sizeof(metrics));
+    metrics.loss = 0.1f;
+    metrics.step = 10;
+
+    // First establish baseline
+    metrics.loss = 1.0f;
+    tcb_fire_event(tcb_ctx_, TCB_EVENT_LOSS_COMPUTED, &metrics);
+
+    // Now report improvement
+    metrics.loss = 0.5f;
+    tcb_action_t action = tcb_fire_event(tcb_ctx_, TCB_EVENT_LOSS_COMPUTED, &metrics);
+
+    // Should continue (positive RPE = good learning)
+    EXPECT_EQ(action, TCB_ACTION_CONTINUE);
+
+    // Verify stats updated
+    uint64_t loss_fired = 0;
+    tpb_get_callback_stats(ctx_, &loss_fired, nullptr, nullptr, nullptr);
+    EXPECT_GT(loss_fired, 0u);
+}
+
+TEST_F(CallbackIntegrationTest, CallbackOnWeights) {
+    tcb_ctx_ = tcb_create(nullptr);
+    ASSERT_NE(tcb_ctx_, nullptr);
+
+    tpb_connect_callbacks(ctx_, tcb_ctx_);
+    tpb_register_plasticity_callbacks(ctx_);
+
+    tcb_metrics_t metrics;
+    memset(&metrics, 0, sizeof(metrics));
+    metrics.gradient_norm = 1.0f;
+    metrics.step = 10;
+
+    tcb_action_t action = tcb_fire_event(tcb_ctx_, TCB_EVENT_WEIGHTS_UPDATED, &metrics);
+    EXPECT_EQ(action, TCB_ACTION_CONTINUE);
+
+    uint64_t weight_fired = 0;
+    tpb_get_callback_stats(ctx_, nullptr, &weight_fired, nullptr, nullptr);
+    EXPECT_GT(weight_fired, 0u);
+}
+
+TEST_F(CallbackIntegrationTest, CallbackOnEpoch) {
+    tcb_ctx_ = tcb_create(nullptr);
+    ASSERT_NE(tcb_ctx_, nullptr);
+
+    tpb_connect_callbacks(ctx_, tcb_ctx_);
+    tpb_register_plasticity_callbacks(ctx_);
+
+    tcb_metrics_t metrics;
+    memset(&metrics, 0, sizeof(metrics));
+    metrics.epoch = 1;
+    metrics.loss = 0.5f;
+
+    tcb_action_t action = tcb_fire_event(tcb_ctx_, TCB_EVENT_EPOCH_COMPLETE, &metrics);
+    EXPECT_EQ(action, TCB_ACTION_CONTINUE);
+
+    uint64_t epoch_fired = 0;
+    tpb_get_callback_stats(ctx_, nullptr, nullptr, &epoch_fired, nullptr);
+    EXPECT_GT(epoch_fired, 0u);
+}
+
+TEST_F(CallbackIntegrationTest, CallbackOnDivergence) {
+    tcb_ctx_ = tcb_create(nullptr);
+    ASSERT_NE(tcb_ctx_, nullptr);
+
+    tpb_connect_callbacks(ctx_, tcb_ctx_);
+    tpb_register_plasticity_callbacks(ctx_);
+
+    tcb_metrics_t metrics;
+    memset(&metrics, 0, sizeof(metrics));
+    metrics.loss = 100.0f;  // High loss indicating divergence
+    metrics.step = 10;
+
+    tcb_action_t action = tcb_fire_event(tcb_ctx_, TCB_EVENT_DIVERGENCE, &metrics);
+    // Should request rollback or reduce LR
+    EXPECT_TRUE(action == TCB_ACTION_ROLLBACK || action == TCB_ACTION_REDUCE_LR);
+
+    uint64_t divergence_fired = 0;
+    tpb_get_callback_stats(ctx_, nullptr, nullptr, nullptr, &divergence_fired);
+    EXPECT_GT(divergence_fired, 0u);
+}
+
+TEST_F(CallbackIntegrationTest, CallbackOnDivergenceNaN) {
+    tcb_ctx_ = tcb_create(nullptr);
+    ASSERT_NE(tcb_ctx_, nullptr);
+
+    tpb_connect_callbacks(ctx_, tcb_ctx_);
+    tpb_register_plasticity_callbacks(ctx_);
+
+    tcb_metrics_t metrics;
+    memset(&metrics, 0, sizeof(metrics));
+    metrics.loss = NAN;  // NaN loss
+    metrics.step = 10;
+
+    tcb_action_t action = tcb_fire_event(tcb_ctx_, TCB_EVENT_DIVERGENCE, &metrics);
+    // Should stop training for NaN
+    EXPECT_EQ(action, TCB_ACTION_STOP_TRAINING);
+}
+
+TEST_F(CallbackIntegrationTest, LargeGradientBoostsNE) {
+    tcb_ctx_ = tcb_create(nullptr);
+    ASSERT_NE(tcb_ctx_, nullptr);
+
+    tpb_connect_callbacks(ctx_, tcb_ctx_);
+    tpb_register_plasticity_callbacks(ctx_);
+
+    float ne_before, ne_after;
+    tpb_get_neuromod_levels(ctx_, nullptr, nullptr, nullptr, &ne_before);
+
+    tcb_metrics_t metrics;
+    memset(&metrics, 0, sizeof(metrics));
+    metrics.gradient_norm = 100.0f;  // Large gradient
+    metrics.step = 10;
+
+    tcb_fire_event(tcb_ctx_, TCB_EVENT_WEIGHTS_UPDATED, &metrics);
+    tpb_get_neuromod_levels(ctx_, nullptr, nullptr, nullptr, &ne_after);
+
+    EXPECT_GT(ne_after, ne_before) << "Large gradient should boost NE";
+}
+
+TEST_F(CallbackIntegrationTest, SmallGradientBoostsACh) {
+    tcb_ctx_ = tcb_create(nullptr);
+    ASSERT_NE(tcb_ctx_, nullptr);
+
+    tpb_connect_callbacks(ctx_, tcb_ctx_);
+    tpb_register_plasticity_callbacks(ctx_);
+
+    float ach_before, ach_after;
+    tpb_get_neuromod_levels(ctx_, nullptr, &ach_before, nullptr, nullptr);
+
+    tcb_metrics_t metrics;
+    memset(&metrics, 0, sizeof(metrics));
+    metrics.gradient_norm = 0.001f;  // Very small gradient
+    metrics.step = 10;
+
+    tcb_fire_event(tcb_ctx_, TCB_EVENT_WEIGHTS_UPDATED, &metrics);
+    tpb_get_neuromod_levels(ctx_, nullptr, &ach_after, nullptr, nullptr);
+
+    EXPECT_GT(ach_after, ach_before) << "Small gradient should boost ACh for exploration";
 }
 
 //=============================================================================

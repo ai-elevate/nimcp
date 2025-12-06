@@ -403,6 +403,11 @@ void mental_health_update(mental_health_monitor_t* monitor,
                          const void* output,  // brain_multimodal_output_t*
                          uint64_t current_time)
 {
+    // Process pending bio-async messages
+    if (monitor && monitor->bio_async_enabled && monitor->bio_ctx) {
+        bio_router_process_inbox(monitor->bio_ctx, 5);
+    }
+
     // =========================================================================
     // GUARD: Validate inputs
     // =========================================================================

@@ -57,7 +57,13 @@
 
 #include <stdbool.h>
 #include <stdint.h>
+#include "utils/error/nimcp_error_codes.h"
 #include "plasticity/neuromodulators/nimcp_phasic_tonic.h"
+
+/* Bio-async communication system */
+#include "async/nimcp_bio_async.h"
+#include "async/nimcp_bio_router.h"
+#include "async/nimcp_bio_messages.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -402,6 +408,9 @@ typedef struct {
     float hub_ratio;               /**< Fraction of hub neurons (0.1-0.2), default: 0.15 */
     float power_law_gamma;         /**< Power-law exponent (-2 to -3), default: -2.1 */
     uint32_t internal_neurons;     /**< Number of internal V1 neurons, default: num_v1_filters * 10 */
+
+    // Bio-async communication
+    bool enable_bio_async;         /**< Enable bio-async messaging */
 } visual_cortex_config_t;
 
 /**
@@ -876,6 +885,75 @@ void visual_cortex_boost_region_attention(visual_cortex_t* cortex,
 bool visual_cortex_detect_agent(visual_cortex_t* cortex,
                                  const float* features,
                                  uint32_t num_features);
+
+//=============================================================================
+// Bio-Async Communication API
+//=============================================================================
+
+/**
+ * @brief Get bio-async module context
+ *
+ * WHAT: Returns the bio-async module context for visual cortex
+ * WHY:  Allow external modules to send messages to visual cortex
+ * HOW:  Returns internal bio_module_context_t
+ *
+ * @param cortex Visual cortex instance
+ * @return Bio-async module context, or NULL if not enabled
+ */
+bio_module_context_t visual_cortex_get_bio_context(visual_cortex_t* cortex);
+
+/**
+ * @brief Process pending bio-async messages
+ *
+ * WHAT: Process messages in visual cortex's inbox
+ * WHY:  Handle incoming requests from other modules
+ * HOW:  Calls bio_router_process_inbox and invokes handlers
+ *
+ * @param cortex Visual cortex instance
+ * @param max_messages Maximum messages to process (0 = all)
+ * @return Number of messages processed
+ */
+uint32_t visual_cortex_process_bio_messages(visual_cortex_t* cortex, uint32_t max_messages);
+
+/**
+ * @brief Send visual input via bio-async
+ *
+ * WHAT: Broadcast visual input detection to other modules
+ * WHY:  Notify downstream modules of new visual information
+ * HOW:  Sends BIO_MSG_VISUAL_INPUT message
+ *
+ * @param cortex Visual cortex instance
+ * @param features Visual features
+ * @param num_features Number of features
+ * @param salience Visual salience (0-1)
+ * @return NIMCP_SUCCESS or error code
+ */
+nimcp_error_t visual_cortex_broadcast_input(
+    visual_cortex_t* cortex,
+    const float* features,
+    uint32_t num_features,
+    float salience
+);
+
+/**
+ * @brief Send visual attention shift notification
+ *
+ * WHAT: Notify modules about attention shift to new location
+ * WHY:  Enable coordinated attention across perception modules
+ * HOW:  Broadcasts BIO_MSG_VISUAL_ATTENTION_SHIFT
+ *
+ * @param cortex Visual cortex instance
+ * @param x Attention focus X coordinate (normalized 0-1)
+ * @param y Attention focus Y coordinate (normalized 0-1)
+ * @param salience Salience at focus point
+ * @return NIMCP_SUCCESS or error code
+ */
+nimcp_error_t visual_cortex_broadcast_attention_shift(
+    visual_cortex_t* cortex,
+    float x,
+    float y,
+    float salience
+);
 
 #ifdef __cplusplus
 }

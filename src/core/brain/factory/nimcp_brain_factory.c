@@ -25,9 +25,16 @@
 // Includes
 //=============================================================================
 
-#include "nimcp_brain_factory.h"
+// Bio-async integration
+#include "async/nimcp_bio_async.h"
+#include "utils/memory/nimcp_unified_memory.h"
+#include "async/nimcp_bio_router.h"
+#include "async/nimcp_bio_messages.h"
+
+#include "core/brain/factory/nimcp_brain_factory.h"
 #include "core/brain/nimcp_brain.h"
 #include "core/brain/nimcp_brain_internal.h"
+#include "core/brain/nimcp_brain_bio_async.h"
 #include "core/brain/strategy/nimcp_brain_strategy.h"
 #include <math.h>
 #include <stdarg.h>
@@ -101,8 +108,10 @@
 #include "cognitive/nimcp_autobiographical_memory.h"
 
 // Sub-module headers
-#include "init/nimcp_brain_init.h"
-#include "validation/nimcp_brain_validation.h"
+#include "core/brain/factory/init/nimcp_brain_init.h"
+#include "core/brain/factory/validation/nimcp_brain_validation.h"
+
+#define LOG_MODULE "BRAIN_FACTORY"
 
 //=============================================================================
 // External Function Declarations
@@ -155,6 +164,7 @@ extern void set_error(const char* format, ...);
 #define init_homeostatic_plasticity_subsystem       nimcp_brain_factory_init_homeostatic_plasticity_subsystem
 #define init_dendritic_computation_subsystem        nimcp_brain_factory_init_dendritic_computation_subsystem
 #define init_biological_predictive_subsystem        nimcp_brain_factory_init_biological_predictive_subsystem
+#define init_training_subsystem                     nimcp_brain_factory_init_training_subsystem
 #define init_brain_config                           nimcp_brain_factory_init_brain_config
 #define init_brain_stats                            nimcp_brain_factory_init_brain_stats
 
@@ -540,6 +550,43 @@ brain_t brain_create_custom(const brain_config_t* config)
     if (!init_homeostatic_plasticity_subsystem(brain)) { brain_destroy(brain); return NULL; }
     if (!init_dendritic_computation_subsystem(brain)) { brain_destroy(brain); return NULL; }
     if (!init_biological_predictive_subsystem(brain)) { brain_destroy(brain); return NULL; }
+
+    // Phase TM-3: Brain-Training Integration (Loss Functions, Optimizers)
+    if (!init_training_subsystem(brain)) { brain_destroy(brain); return NULL; }
+
+    // ========================================================================
+    // BIO-ASYNC INTEGRATION
+    // ========================================================================
+
+    // Initialize bio-router globally if not already initialized
+    if (!bio_router_is_initialized()) {
+        bio_router_config_t router_config = bio_router_default_config();
+        router_config.max_modules = 64;              // Support many brain modules
+        router_config.inbox_capacity = 128;          // Messages per module
+        router_config.outbox_capacity = 128;
+        router_config.max_message_size = 4096;       // 4KB max message
+        router_config.worker_threads = 2;            // Light async processing
+        router_config.enable_logging = true;
+        router_config.enable_statistics = true;
+        router_config.routing_timeout_ms = 100.0f;   // 100ms timeout
+
+        nimcp_error_t router_err = bio_router_init(&router_config);
+        if (router_err != NIMCP_SUCCESS) {
+            fprintf(stderr, "[WARN] Bio-router initialization failed! Bio-async features disabled.\n");
+            brain->bio_async_enabled = false;
+        }
+    }
+
+    // Initialize bio-async for this brain instance
+    if (bio_router_is_initialized()) {
+        nimcp_error_t async_err = brain_bio_async_init(brain);
+        if (async_err != NIMCP_SUCCESS) {
+            fprintf(stderr, "[WARN] Brain bio-async initialization failed! Async messaging disabled.\n");
+            brain->bio_async_enabled = false;
+        } else {
+            brain->bio_async_enabled = true;
+        }
+    }
 
     // ========================================================================
     // POST-INITIALIZATION

@@ -140,6 +140,31 @@ add_e2e_test(e2e_test_bio_async_pipeline
     ${CMAKE_CURRENT_SOURCE_DIR}/test_bio_async_pipeline.cpp
 )
 
+add_e2e_test(e2e_test_cognitive_bio_async
+    ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_framework.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/test_cognitive_bio_async_e2e.cpp
+)
+
+add_e2e_test(e2e_test_core_bio_async
+    ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_framework.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/test_core_bio_async_e2e.cpp
+)
+
+add_e2e_test(e2e_test_bio_async_training_pipeline
+    ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_framework.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_bio_async_training_pipeline.cpp
+)
+
+add_e2e_test(e2e_test_bio_async_plasticity_pipeline
+    ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_framework.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_bio_async_plasticity_pipeline.cpp
+)
+
+add_e2e_test(e2e_test_bio_async_cognitive_pipeline
+    ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_framework.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_bio_async_cognitive_pipeline.cpp
+)
+
 # ============================================================================
 # Test Execution Instructions
 # ============================================================================

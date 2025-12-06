@@ -206,6 +206,11 @@ void shadow_system_reset(shadow_emotion_system_t* system) {
 //=============================================================================
 
 void shadow_update(shadow_emotion_system_t* system, float dt, uint64_t current_time) {
+    // Process pending bio-async messages
+    if (system && system->bio_async_enabled && system->bio_ctx) {
+        bio_router_process_inbox(system->bio_ctx, 5);
+    }
+
     /* WHAT: Update all shadow emotion states over time
      * WHY:  Emotions decay, interventions take effect, patterns evolve
      * HOW:  Apply exponential decay, check thresholds, update global state

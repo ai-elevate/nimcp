@@ -21,6 +21,12 @@
 
 #include <stdint.h>
 #include <stdbool.h>
+#include "utils/error/nimcp_error_codes.h"
+
+/* Bio-async communication system */
+#include "async/nimcp_bio_async.h"
+#include "async/nimcp_bio_router.h"
+#include "async/nimcp_bio_messages.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -70,6 +76,9 @@ typedef struct {
     float hub_ratio;               /**< Fraction of hub neurons (0.1-0.2), default: 0.15 */
     float power_law_gamma;         /**< Power-law exponent (-2 to -3), default: -2.1 */
     uint32_t internal_neurons;     /**< Number of internal A1 neurons, default: num_mel_filters * 10 */
+
+    // Bio-async communication
+    bool enable_bio_async;         /**< Enable bio-async messaging */
 } audio_cortex_config_t;
 
 /**
@@ -421,6 +430,55 @@ float audio_cortex_get_speech_salience(audio_cortex_t* cortex,
  * @param cortex Audio cortex instance
  */
 void audio_cortex_activate_speech_mode(audio_cortex_t* cortex);
+
+//=============================================================================
+// Bio-Async Communication API
+//=============================================================================
+
+/**
+ * @brief Get bio-async module context
+ *
+ * @param cortex Audio cortex instance
+ * @return Bio-async module context, or NULL if not enabled
+ */
+bio_module_context_t audio_cortex_get_bio_context(audio_cortex_t* cortex);
+
+/**
+ * @brief Process pending bio-async messages
+ *
+ * @param cortex Audio cortex instance
+ * @param max_messages Maximum messages to process (0 = all)
+ * @return Number of messages processed
+ */
+uint32_t audio_cortex_process_bio_messages(audio_cortex_t* cortex, uint32_t max_messages);
+
+/**
+ * @brief Broadcast audio input detection via bio-async
+ *
+ * @param cortex Audio cortex instance
+ * @param features Audio features
+ * @param num_features Number of features
+ * @param salience Audio salience (0-1)
+ * @return NIMCP_SUCCESS or error code
+ */
+nimcp_error_t audio_cortex_broadcast_input(
+    audio_cortex_t* cortex,
+    const float* features,
+    uint32_t num_features,
+    float salience
+);
+
+/**
+ * @brief Broadcast speech detected notification
+ *
+ * @param cortex Audio cortex instance
+ * @param speech_salience Speech likelihood (0-1)
+ * @return NIMCP_SUCCESS or error code
+ */
+nimcp_error_t audio_cortex_broadcast_speech_detected(
+    audio_cortex_t* cortex,
+    float speech_salience
+);
 
 #ifdef __cplusplus
 }

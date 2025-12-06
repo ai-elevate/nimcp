@@ -24,6 +24,17 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+// Bio-async integration
+#include "async/nimcp_bio_async.h"
+#include "async/nimcp_bio_router.h"
+#include "async/nimcp_bio_messages.h"
+
+// Logging integration
+#include "utils/logging/nimcp_logging.h"
+
+// Unified memory integration
+#include "utils/memory/nimcp_unified_memory.h"
+
 // Required includes from original nimcp_brain.c
 #include "core/brain/nimcp_brain.h"
 #include "core/brain/nimcp_brain_internal.h"
@@ -37,7 +48,9 @@
 #include "plasticity/neuromodulators/nimcp_neuromod_pink_noise.h"
 #include "plasticity/neuromodulators/nimcp_neuromodulators.h"
 #include "plasticity/neuromodulators/nimcp_spatial_neuromod.h"
-#include "utils/memory/nimcp_memory.h"
+#include "utils/memory/nimcp_memory_guards.h"  // For nimcp_calloc/nimcp_free
+
+#define LOG_MODULE "BRAIN_BIOLOGICAL"
 
 //=============================================================================
 // Function Implementations
@@ -56,24 +69,32 @@
  */
 bool init_glial_subsystem(brain_t brain)
 {
+    LOG_DEBUG("Initializing glial subsystem");
+
     if (!brain || !brain->network) {
+        LOG_ERROR("Invalid brain or network handle");
         return false;
     }
 
     // Check if already initialized (prevent double initialization)
     if (brain->glial) {
+        LOG_DEBUG("Glial subsystem already initialized");
         return true;  // Already initialized
     }
 
     // Check if glial integration is enabled
     if (!brain->config.enable_glial) {
+        LOG_INFO("Glial integration disabled");
         return true;  // Disabled, not an error
     }
+
+    LOG_INFO("Creating glial integration with 1000 max mappings");
 
     // Get base network for glial integration
     neural_network_t base = adaptive_network_get_base_network(brain->network);
     if (!base) {
         set_error("Failed to get base network for glial integration");
+        LOG_ERROR("Failed to get base network for glial integration");
         return false;
     }
 
@@ -82,9 +103,11 @@ bool init_glial_subsystem(brain_t brain)
 
     if (!brain->glial) {
         set_error("Failed to create glial integration");
+        LOG_ERROR("Failed to create glial integration");
         return false;
     }
 
+    LOG_INFO("Glial subsystem initialized successfully");
     return true;
 }
 
@@ -496,76 +519,18 @@ bool init_neuromodulator_system(brain_t brain)
 /**
  * WHAT: Initialize spatial neuromodulator system with quantum walk diffusion (Phase C2.1)
  * WHY:  Enable spatially-distributed neuromodulation with quantum speedup
- * HOW:  Create spatial neuromod system and wire to glial integration
+ * HOW:  Delegate to factory implementation to avoid code duplication
  *
- * BIOLOGICAL MOTIVATION:
- * - Volume transmission: Neuromodulators diffuse through extracellular space
- * - Glial mediation: Astrocytes regulate neuromodulator concentrations
- * - Quantum walk: O(√N) speedup for diffusion on neural network graph
- *
- * INTEGRATION WITH BRAIN:
- * - Wired into glial integration system for coordination with astrocytes
- * - Uses quantum walk configuration from brain config
- * - Spatially modulates synaptic transmission based on local concentrations
+ * NOTE: This function exists for API compatibility with code that calls
+ *       init_spatial_neuromod_system directly (e.g., brain_persistence.c).
+ *       The actual implementation is in nimcp_brain_init.c.
  *
  * @param brain Brain instance to initialize
  * @return true on success, false on failure
  */
 bool init_spatial_neuromod_system(brain_t brain)
 {
-    if (!brain) {
-        return false;
-    }
-
-    // Check if already initialized
-    if (brain->glial && brain->glial->spatial_neuromod) {
-        return true;  // Already initialized
-    }
-
-    // Guard: Need network and glial integration
-    if (!brain->network || !brain->glial) {
-        // Not an error if glial integration not set up yet
-        return true;
-    }
-
-    // Phase C2.1: Create spatial neuromod configs with quantum walk settings
-    bool enabled_types[NEUROMOD_COUNT] = {true, true, true, true};  // Enable all 4 types
-    spatial_neuromod_config_t configs[NEUROMOD_COUNT];
-
-    for (int i = 0; i < NEUROMOD_COUNT; i++) {
-        configs[i] = spatial_neuromod_default_config((neuromodulator_type_t)i);
-
-        // Apply brain quantum walk configuration (Phase C2.1)
-        configs[i].enable_quantum_walk = brain->config.enable_quantum_walk_diffusion;
-        configs[i].quantum_walk_steps = brain->config.quantum_walk_steps;
-        configs[i].quantum_mixing_ratio = brain->config.quantum_classical_mixing;
-        configs[i].quantum_coin_type = brain->config.quantum_coin_type;
-        configs[i].quantum_decoherence = brain->config.quantum_decoherence_rate;
-    }
-
-    // Create spatial neuromod system
-    spatial_neuromod_system_t* spatial_neuromod =
-        spatial_neuromod_system_create(brain->network, enabled_types, configs);
-
-    if (!spatial_neuromod) {
-        // Non-fatal: spatial neuromod is optional enhancement
-        fprintf(stderr, "WARNING: Failed to create spatial neuromodulator system, continuing without it\n");
-        return true;
-    }
-
-    // Wire into glial integration
-    nimcp_result_t result = glial_integration_set_spatial_neuromod_system(
-        brain->glial, spatial_neuromod);
-
-    if (result != NIMCP_SUCCESS) {
-        spatial_neuromod_system_destroy(spatial_neuromod);
-        fprintf(stderr, "WARNING: Failed to wire spatial neuromod into glial integration\n");
-        return true;  // Non-fatal
-    }
-
-    fprintf(stderr, "INFO: Spatial neuromodulator system initialized %s\n",
-            brain->config.enable_quantum_walk_diffusion ?
-            "with quantum walk acceleration (√N speedup)" : "(classical diffusion)");
-
-    return true;
+    // Delegate to factory implementation (defined in nimcp_brain_init.c)
+    extern bool nimcp_brain_factory_init_spatial_neuromod_system(brain_t brain);
+    return nimcp_brain_factory_init_spatial_neuromod_system(brain);
 }

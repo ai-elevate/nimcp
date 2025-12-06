@@ -5,7 +5,7 @@
 #ifndef NIMCP_EVENT_QUEUE_H
 #define NIMCP_EVENT_QUEUE_H
 
-#include "nimcp_event_types.h"
+#include "middleware/events/nimcp_event_types.h"
 #include <stdbool.h>
 
 #ifdef __cplusplus

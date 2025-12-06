@@ -22,7 +22,16 @@
  * - Clean separation: Independent from main brain implementation
  */
 
-#include "nimcp_brain_strategy.h"
+// Bio-async integration
+#include "async/nimcp_bio_async.h"
+#include "utils/memory/nimcp_unified_memory.h"
+#include "async/nimcp_bio_router.h"
+#include "async/nimcp_bio_messages.h"
+
+// Logging integration
+#include "utils/logging/nimcp_logging.h"
+
+#include "core/brain/strategy/nimcp_brain_strategy.h"
 #include "core/brain/nimcp_brain.h"
 #include "core/brain/nimcp_brain_internal.h"
 #include <math.h>
@@ -34,6 +43,8 @@
 #include <unistd.h>
 #include "plasticity/adaptive/nimcp_adaptive.h"
 #include "utils/memory/nimcp_memory.h"
+
+#define LOG_MODULE "BRAIN_STRATEGY"
 
 //=============================================================================
 // Forward Declarations for Private Functions

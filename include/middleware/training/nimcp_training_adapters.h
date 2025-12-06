@@ -42,6 +42,7 @@
 #include <stdbool.h>
 #include "core/events/nimcp_event_bus.h"
 #include "middleware/routing/nimcp_routing_table.h"
+#include "security/nimcp_security_integration.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -111,6 +112,7 @@ typedef struct {
     float novelty_boost_factor;              /**< Novelty multiplier [1,5] */
     uint32_t history_window_size;            /**< Stats window size */
     float min_confidence_threshold;          /**< Drop below threshold */
+    nimcp_sec_integration_t* security_ctx;   /**< Security context (optional) */
 } learning_signal_adapter_config_t;
 
 /**
@@ -275,6 +277,7 @@ typedef struct {
     float route_learning_rate;        /**< Hebbian route learning */
     uint32_t max_batch_size;          /**< Max updates per batch */
     bool enable_update_coalescing;    /**< Merge similar updates? */
+    nimcp_sec_integration_t* security_ctx; /**< Security context (optional) */
 } weight_update_router_config_t;
 
 /**
@@ -475,6 +478,7 @@ typedef struct {
     bool enable_event_batching;      /**< Batch similar events? */
     uint32_t batch_timeout_ms;       /**< Batching timeout */
     bool enable_priority_scheduling; /**< Priority event scheduling? */
+    nimcp_sec_integration_t* security_ctx; /**< Security context (optional) */
 } training_event_manager_config_t;
 
 /**

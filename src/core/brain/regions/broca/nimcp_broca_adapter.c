@@ -16,8 +16,19 @@
 #include "core/brain/regions/broca/nimcp_speech_motor.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/memory/nimcp_memory_pool.h"
+#include "utils/memory/nimcp_unified_memory.h"
+#include "utils/logging/nimcp_logging.h"
+#include "async/nimcp_bio_async.h"
+#include "async/nimcp_bio_router.h"
+#include "async/nimcp_bio_messages.h"
 #include <string.h>
 #include <math.h>
+
+/*=============================================================================
+ * LOGGING MODULE IDENTIFIER
+ *===========================================================================*/
+
+#define BROCA_LOG_MODULE "BROCA"
 
 /*=============================================================================
  * INTERNAL STRUCTURES
@@ -84,6 +95,10 @@ struct broca_adapter {
     /* Pool for temp motor commands in broca_produce_utterance() */
     memory_pool_t motor_command_pool;
 
+    /* Bio-async communication context */
+    bio_module_context_t bio_ctx;
+    nimcp_bio_channel_type_t default_channel;
+
     /* Statistics */
     broca_stats_t stats;
 };
@@ -128,8 +143,37 @@ static void set_error(broca_adapter_t* adapter, broca_error_t error) {
     adapter->last_error = error;
     if (error != BROCA_ERROR_NONE) {
         adapter->status = BROCA_STATUS_ERROR;
+        LOG_ERROR("[%s] Error set: %d", BROCA_LOG_MODULE, error);
     }
 }
+
+/*=============================================================================
+ * BIO-ASYNC MESSAGE HANDLERS (Forward declarations)
+ *===========================================================================*/
+
+static nimcp_error_t handle_lexical_access_request(
+    const void* msg, size_t msg_size,
+    nimcp_bio_promise_t response_promise, void* user_data);
+
+static nimcp_error_t handle_syntax_parse_request(
+    const void* msg, size_t msg_size,
+    nimcp_bio_promise_t response_promise, void* user_data);
+
+static nimcp_error_t handle_phonological_encode_request(
+    const void* msg, size_t msg_size,
+    nimcp_bio_promise_t response_promise, void* user_data);
+
+static nimcp_error_t handle_motor_command_request(
+    const void* msg, size_t msg_size,
+    nimcp_bio_promise_t response_promise, void* user_data);
+
+static nimcp_error_t handle_speech_feedback(
+    const void* msg, size_t msg_size,
+    nimcp_bio_promise_t response_promise, void* user_data);
+
+static nimcp_error_t handle_utterance_production_request(
+    const void* msg, size_t msg_size,
+    nimcp_bio_promise_t response_promise, void* user_data);
 
 /*=============================================================================
  * LIFECYCLE FUNCTIONS
@@ -151,6 +195,9 @@ broca_config_t broca_default_config(void) {
     config.enable_training = false;
     config.learning_rate = 0.01f;
     config.planning_window_ms = BROCA_DEFAULT_PLANNING_WINDOW_MS;
+    /* Bio-async: enabled by default, use acetylcholine for fast language processing */
+    config.enable_bio_async = true;
+    config.default_channel = BIO_CHANNEL_ACETYLCHOLINE;
     return config;
 }
 
@@ -159,54 +206,70 @@ broca_adapter_t* broca_create(const broca_config_t* config) {
      * WHY:  Central point for language production
      * HOW:  Initialize all sub-modules and data structures */
 
+    LOG_INFO("[%s] Creating Broca's region adapter", BROCA_LOG_MODULE);
+
     broca_adapter_t* adapter = (broca_adapter_t*)nimcp_calloc(1, sizeof(broca_adapter_t));
-    if (!adapter) return NULL;
+    if (!adapter) {
+        LOG_ERROR("[%s] Failed to allocate adapter memory", BROCA_LOG_MODULE);
+        return NULL;
+    }
 
     /* Set configuration */
     if (config) {
         adapter->config = *config;
+        LOG_DEBUG("[%s] Using provided configuration", BROCA_LOG_MODULE);
     } else {
         adapter->config = broca_default_config();
+        LOG_DEBUG("[%s] Using default configuration", BROCA_LOG_MODULE);
     }
 
     /* Create syntax processor */
+    LOG_DEBUG("[%s] Creating syntax processor", BROCA_LOG_MODULE);
     syntax_config_t syntax_cfg = syntax_default_config();
     syntax_cfg.max_units = adapter->config.max_words;
     syntax_cfg.enable_morphology = adapter->config.enable_morphology;
     adapter->syntax = syntax_create(&syntax_cfg);
     if (!adapter->syntax) {
+        LOG_ERROR("[%s] Failed to create syntax processor", BROCA_LOG_MODULE);
         broca_destroy(adapter);
         return NULL;
     }
 
     /* Create phonological processor */
+    LOG_DEBUG("[%s] Creating phonological processor", BROCA_LOG_MODULE);
     phonological_config_t phono_cfg = phonological_default_config();
     phono_cfg.max_phonemes = adapter->config.max_phonemes;
     phono_cfg.enable_prosody = adapter->config.enable_prosody;
     phono_cfg.enable_coarticulation = adapter->config.enable_coarticulation;
     adapter->phonological = phonological_create(&phono_cfg);
     if (!adapter->phonological) {
+        LOG_ERROR("[%s] Failed to create phonological processor", BROCA_LOG_MODULE);
         broca_destroy(adapter);
         return NULL;
     }
 
     /* Create speech motor planner */
+    LOG_DEBUG("[%s] Creating speech motor planner", BROCA_LOG_MODULE);
     speech_motor_config_t motor_cfg = speech_motor_default_config();
     motor_cfg.max_commands = adapter->config.max_motor_commands;
     motor_cfg.enable_coarticulation = adapter->config.enable_coarticulation;
     motor_cfg.planning_window_ms = adapter->config.planning_window_ms;
     adapter->motor = speech_motor_create(&motor_cfg);
     if (!adapter->motor) {
+        LOG_ERROR("[%s] Failed to create speech motor planner", BROCA_LOG_MODULE);
         broca_destroy(adapter);
         return NULL;
     }
 
     /* Initialize lexicon */
     if (adapter->config.enable_lexicon) {
+        LOG_DEBUG("[%s] Initializing lexicon (capacity=%u)", BROCA_LOG_MODULE,
+                  adapter->config.lexicon_size);
         adapter->lexicon_capacity = adapter->config.lexicon_size;
         adapter->lexicon = (lexicon_node_t**)nimcp_calloc(
             adapter->lexicon_capacity, sizeof(lexicon_node_t*));
         if (!adapter->lexicon) {
+            LOG_ERROR("[%s] Failed to allocate lexicon", BROCA_LOG_MODULE);
             broca_destroy(adapter);
             return NULL;
         }
@@ -214,24 +277,31 @@ broca_adapter_t* broca_create(const broca_config_t* config) {
 
     /* Initialize working memory */
     if (adapter->config.enable_working_memory) {
+        LOG_DEBUG("[%s] Initializing working memory (slots=%u)", BROCA_LOG_MODULE,
+                  adapter->config.working_memory_slots);
         adapter->working_memory = (wm_slot_t*)nimcp_calloc(
             adapter->config.working_memory_slots, sizeof(wm_slot_t));
         if (!adapter->working_memory) {
+            LOG_ERROR("[%s] Failed to allocate working memory", BROCA_LOG_MODULE);
             broca_destroy(adapter);
             return NULL;
         }
     }
 
     /* Initialize output buffer */
+    LOG_DEBUG("[%s] Initializing output buffer (max_commands=%u)", BROCA_LOG_MODULE,
+              adapter->config.max_motor_commands);
     adapter->output_commands = (broca_output_command_t*)nimcp_calloc(
         adapter->config.max_motor_commands, sizeof(broca_output_command_t));
     if (!adapter->output_commands) {
+        LOG_ERROR("[%s] Failed to allocate output buffer", BROCA_LOG_MODULE);
         broca_destroy(adapter);
         return NULL;
     }
 
     /* Initialize memory pool for hot-path allocations (Phase 1.5) */
     /* Pool for temp motor commands - 2 blocks for concurrent utterances */
+    LOG_DEBUG("[%s] Creating motor command memory pool", BROCA_LOG_MODULE);
     memory_pool_config_t cmd_pool_config = {
         .block_size = adapter->config.max_motor_commands * sizeof(motor_command_t),
         .num_blocks = 2,
@@ -241,8 +311,47 @@ broca_adapter_t* broca_create(const broca_config_t* config) {
     };
     adapter->motor_command_pool = memory_pool_create(&cmd_pool_config);
     if (!adapter->motor_command_pool) {
+        LOG_ERROR("[%s] Failed to create motor command memory pool", BROCA_LOG_MODULE);
         broca_destroy(adapter);
         return NULL;
+    }
+
+    /* Initialize bio-async communication */
+    adapter->bio_ctx = NULL;
+    adapter->default_channel = adapter->config.default_channel;
+
+    if (adapter->config.enable_bio_async && bio_router_is_initialized()) {
+        LOG_DEBUG("[%s] Registering with bio-async router", BROCA_LOG_MODULE);
+
+        bio_module_info_t bio_info = {
+            .module_id = BIO_MODULE_BROCA,
+            .module_name = "broca_region",
+            .inbox_capacity = 64,
+            .user_data = adapter
+        };
+
+        adapter->bio_ctx = bio_router_register_module(&bio_info);
+        if (adapter->bio_ctx) {
+            /* Register message handlers */
+            bio_router_register_handler(adapter->bio_ctx,
+                BIO_MSG_LEXICAL_ACCESS_REQUEST, handle_lexical_access_request);
+            bio_router_register_handler(adapter->bio_ctx,
+                BIO_MSG_SYNTAX_PARSE_REQUEST, handle_syntax_parse_request);
+            bio_router_register_handler(adapter->bio_ctx,
+                BIO_MSG_PHONOLOGICAL_ENCODE_REQUEST, handle_phonological_encode_request);
+            bio_router_register_handler(adapter->bio_ctx,
+                BIO_MSG_MOTOR_COMMAND_REQUEST, handle_motor_command_request);
+            bio_router_register_handler(adapter->bio_ctx,
+                BIO_MSG_SPEECH_FEEDBACK, handle_speech_feedback);
+            bio_router_register_handler(adapter->bio_ctx,
+                BIO_MSG_UTTERANCE_PRODUCTION_REQUEST, handle_utterance_production_request);
+
+            LOG_INFO("[%s] Bio-async handlers registered successfully", BROCA_LOG_MODULE);
+        } else {
+            LOG_WARNING("[%s] Failed to register with bio-async router", BROCA_LOG_MODULE);
+        }
+    } else if (adapter->config.enable_bio_async) {
+        LOG_DEBUG("[%s] Bio-async enabled but router not initialized", BROCA_LOG_MODULE);
     }
 
     /* Initialize state */
@@ -250,25 +359,39 @@ broca_adapter_t* broca_create(const broca_config_t* config) {
     adapter->last_error = BROCA_ERROR_NONE;
     adapter->current_time_ms = 0.0;
 
+    LOG_INFO("[%s] Broca's region adapter created successfully", BROCA_LOG_MODULE);
     return adapter;
 }
 
 void broca_destroy(broca_adapter_t* adapter) {
     if (!adapter) return;
 
+    LOG_INFO("[%s] Destroying Broca's region adapter", BROCA_LOG_MODULE);
+
+    /* Unregister from bio-async router */
+    if (adapter->bio_ctx) {
+        LOG_DEBUG("[%s] Unregistering from bio-async router", BROCA_LOG_MODULE);
+        bio_router_unregister_module(adapter->bio_ctx);
+        adapter->bio_ctx = NULL;
+    }
+
     /* Destroy sub-modules */
     if (adapter->syntax) {
+        LOG_DEBUG("[%s] Destroying syntax processor", BROCA_LOG_MODULE);
         syntax_destroy(adapter->syntax);
     }
     if (adapter->phonological) {
+        LOG_DEBUG("[%s] Destroying phonological processor", BROCA_LOG_MODULE);
         phonological_destroy(adapter->phonological);
     }
     if (adapter->motor) {
+        LOG_DEBUG("[%s] Destroying speech motor planner", BROCA_LOG_MODULE);
         speech_motor_destroy(adapter->motor);
     }
 
     /* Free lexicon */
     if (adapter->lexicon) {
+        LOG_DEBUG("[%s] Freeing lexicon", BROCA_LOG_MODULE);
         for (uint32_t i = 0; i < adapter->lexicon_capacity; i++) {
             lexicon_node_t* node = adapter->lexicon[i];
             while (node) {
@@ -282,22 +405,28 @@ void broca_destroy(broca_adapter_t* adapter) {
 
     /* Free working memory */
     if (adapter->working_memory) {
+        LOG_DEBUG("[%s] Freeing working memory", BROCA_LOG_MODULE);
         nimcp_free(adapter->working_memory);
     }
 
     /* Free output buffer */
     if (adapter->output_commands) {
+        LOG_DEBUG("[%s] Freeing output buffer", BROCA_LOG_MODULE);
         nimcp_free(adapter->output_commands);
     }
 
     /* Destroy memory pool (Phase 1.5) */
+    LOG_DEBUG("[%s] Destroying motor command memory pool", BROCA_LOG_MODULE);
     memory_pool_destroy(adapter->motor_command_pool);
 
+    LOG_DEBUG("[%s] Broca's region adapter destroyed", BROCA_LOG_MODULE);
     nimcp_free(adapter);
 }
 
 bool broca_reset(broca_adapter_t* adapter) {
     if (!adapter) return false;
+
+    LOG_DEBUG("[%s] Resetting adapter state", BROCA_LOG_MODULE);
 
     /* Reset sub-modules */
     syntax_reset(adapter->syntax);
@@ -320,6 +449,7 @@ bool broca_reset(broca_adapter_t* adapter) {
     adapter->status = BROCA_STATUS_IDLE;
     adapter->last_error = BROCA_ERROR_NONE;
 
+    LOG_DEBUG("[%s] Adapter reset complete", BROCA_LOG_MODULE);
     return true;
 }
 
@@ -882,4 +1012,461 @@ phonological_processor_t* broca_get_phonological_processor(broca_adapter_t* adap
 speech_motor_planner_t* broca_get_speech_motor_planner(broca_adapter_t* adapter) {
     if (!adapter) return NULL;
     return adapter->motor;
+}
+
+/*=============================================================================
+ * BIO-ASYNC COMMUNICATION API
+ *===========================================================================*/
+
+bio_module_context_t broca_get_bio_context(broca_adapter_t* adapter) {
+    if (!adapter) return NULL;
+    return adapter->bio_ctx;
+}
+
+uint32_t broca_process_bio_messages(broca_adapter_t* adapter, uint32_t max_messages) {
+    if (!adapter || !adapter->bio_ctx) return 0;
+
+    uint32_t processed = bio_router_process_inbox(adapter->bio_ctx, max_messages);
+    if (processed > 0) {
+        LOG_DEBUG("[%s] Processed %u bio-async messages", BROCA_LOG_MODULE, processed);
+    }
+    return processed;
+}
+
+nimcp_bio_future_t broca_request_lexical_access_async(
+    broca_adapter_t* adapter,
+    uint32_t word_id,
+    const char* word) {
+
+    if (!adapter || !adapter->bio_ctx) {
+        LOG_WARNING("[%s] Cannot request lexical access: bio-async not available",
+                    BROCA_LOG_MODULE);
+        return NULL;
+    }
+
+    LOG_DEBUG("[%s] Requesting lexical access for word_id=%u", BROCA_LOG_MODULE, word_id);
+
+    /* Create lexical access request message */
+    bio_msg_lexical_access_request_t msg;
+    memset(&msg, 0, sizeof(msg));
+
+    msg.header.type = BIO_MSG_LEXICAL_ACCESS_REQUEST;
+    msg.header.source_module = BIO_MODULE_BROCA;
+    msg.header.target_module = BIO_MODULE_WERNICKE;  /* Send to Wernicke's area */
+    msg.header.payload_size = sizeof(msg);
+    msg.header.channel = adapter->default_channel;
+
+    msg.word_id = word_id;
+    if (word) {
+        strncpy(msg.word, word, sizeof(msg.word) - 1);
+    }
+
+    /* Send async and get promise */
+    nimcp_bio_promise_t promise = bio_router_send_async(
+        adapter->bio_ctx, &msg, sizeof(msg), adapter->default_channel);
+
+    if (!promise) {
+        LOG_ERROR("[%s] Failed to send lexical access request", BROCA_LOG_MODULE);
+        return NULL;
+    }
+
+    return nimcp_bio_promise_get_future(promise);
+}
+
+nimcp_bio_future_t broca_request_syntax_parse_async(
+    broca_adapter_t* adapter,
+    const uint32_t* word_ids,
+    uint8_t word_count) {
+
+    if (!adapter || !adapter->bio_ctx || !word_ids || word_count == 0) {
+        LOG_WARNING("[%s] Cannot request syntax parse: invalid arguments", BROCA_LOG_MODULE);
+        return NULL;
+    }
+
+    LOG_DEBUG("[%s] Requesting syntax parse for %u words", BROCA_LOG_MODULE, word_count);
+
+    bio_msg_syntax_parse_request_t msg;
+    memset(&msg, 0, sizeof(msg));
+
+    msg.header.type = BIO_MSG_SYNTAX_PARSE_REQUEST;
+    msg.header.source_module = BIO_MODULE_BROCA;
+    msg.header.target_module = BIO_MODULE_BROCA;  /* Self-processing */
+    msg.header.payload_size = sizeof(msg);
+    msg.header.channel = adapter->default_channel;
+
+    uint8_t copy_count = (word_count < 16) ? word_count : 16;
+    memcpy(msg.word_ids, word_ids, copy_count * sizeof(uint32_t));
+    msg.word_count = copy_count;
+    msg.parse_mode = 0;  /* Full parse */
+
+    nimcp_bio_promise_t promise = bio_router_send_async(
+        adapter->bio_ctx, &msg, sizeof(msg), adapter->default_channel);
+
+    if (!promise) {
+        LOG_ERROR("[%s] Failed to send syntax parse request", BROCA_LOG_MODULE);
+        return NULL;
+    }
+
+    return nimcp_bio_promise_get_future(promise);
+}
+
+nimcp_bio_future_t broca_request_motor_command_async(
+    broca_adapter_t* adapter,
+    uint8_t phoneme,
+    float duration_ms,
+    float pitch_hz) {
+
+    if (!adapter || !adapter->bio_ctx) {
+        LOG_WARNING("[%s] Cannot request motor command: bio-async not available",
+                    BROCA_LOG_MODULE);
+        return NULL;
+    }
+
+    LOG_DEBUG("[%s] Requesting motor command for phoneme=%u", BROCA_LOG_MODULE, phoneme);
+
+    bio_msg_motor_command_request_t msg;
+    memset(&msg, 0, sizeof(msg));
+
+    msg.header.type = BIO_MSG_MOTOR_COMMAND_REQUEST;
+    msg.header.source_module = BIO_MODULE_BROCA;
+    msg.header.target_module = BIO_MODULE_SPEECH_CORTEX;  /* Send to speech motor cortex */
+    msg.header.payload_size = sizeof(msg);
+    msg.header.channel = adapter->default_channel;
+
+    msg.phoneme = phoneme;
+    msg.duration_ms = duration_ms;
+    msg.pitch_hz = pitch_hz;
+    msg.intensity = 0.7f;  /* Default intensity */
+
+    nimcp_bio_promise_t promise = bio_router_send_async(
+        adapter->bio_ctx, &msg, sizeof(msg), adapter->default_channel);
+
+    if (!promise) {
+        LOG_ERROR("[%s] Failed to send motor command request", BROCA_LOG_MODULE);
+        return NULL;
+    }
+
+    return nimcp_bio_promise_get_future(promise);
+}
+
+nimcp_error_t broca_broadcast_utterance_complete(
+    broca_adapter_t* adapter,
+    const broca_utterance_result_t* result) {
+
+    if (!adapter || !result) {
+        return NIMCP_BIO_ERROR_NOT_INITIALIZED;
+    }
+
+    if (!adapter->bio_ctx) {
+        LOG_DEBUG("[%s] Cannot broadcast: bio-async not available", BROCA_LOG_MODULE);
+        return NIMCP_SUCCESS;  /* Not an error if bio-async disabled */
+    }
+
+    LOG_INFO("[%s] Broadcasting utterance complete (words=%u, phonemes=%u)",
+             BROCA_LOG_MODULE, result->word_count, result->phoneme_count);
+
+    /* Create utterance complete message - reusing syntax_parse_result for now */
+    bio_msg_syntax_parse_result_t msg;
+    memset(&msg, 0, sizeof(msg));
+
+    msg.header.type = BIO_MSG_UTTERANCE_PRODUCTION_COMPLETE;
+    msg.header.source_module = BIO_MODULE_BROCA;
+    msg.header.target_module = 0;  /* Broadcast */
+    msg.header.payload_size = sizeof(msg);
+    msg.header.channel = adapter->default_channel;
+    msg.header.flags = BIO_MSG_FLAG_BROADCAST;
+
+    msg.valid = result->syntax_valid;
+    msg.constituent_count = (uint8_t)result->word_count;
+    msg.complexity = result->total_duration_ms;
+
+    return bio_router_broadcast(adapter->bio_ctx, &msg, sizeof(msg));
+}
+
+nimcp_error_t broca_handle_speech_feedback(
+    broca_adapter_t* adapter,
+    uint8_t phoneme_id,
+    float confidence,
+    float timing_error) {
+
+    if (!adapter) return NIMCP_BIO_ERROR_NOT_INITIALIZED;
+
+    LOG_DEBUG("[%s] Received speech feedback: phoneme=%u, conf=%.2f, timing_err=%.2fms",
+              BROCA_LOG_MODULE, phoneme_id, confidence, timing_error);
+
+    /* Process feedback for self-monitoring and error correction */
+    if (confidence < 0.5f || fabsf(timing_error) > 50.0f) {
+        LOG_WARNING("[%s] Speech feedback indicates potential error: phoneme=%u",
+                    BROCA_LOG_MODULE, phoneme_id);
+        /* Could trigger re-planning or adjustment here */
+    }
+
+    return NIMCP_SUCCESS;
+}
+
+/*=============================================================================
+ * BIO-ASYNC MESSAGE HANDLERS (Implementation)
+ *===========================================================================*/
+
+static nimcp_error_t handle_lexical_access_request(
+    const void* msg, size_t msg_size,
+    nimcp_bio_promise_t response_promise, void* user_data) {
+
+    broca_adapter_t* adapter = (broca_adapter_t*)user_data;
+    const bio_msg_lexical_access_request_t* req = (const bio_msg_lexical_access_request_t*)msg;
+
+    if (!adapter || !req || msg_size < sizeof(bio_msg_lexical_access_request_t)) {
+        LOG_ERROR("[%s] Invalid lexical access request", BROCA_LOG_MODULE);
+        return NIMCP_BIO_ERROR_NOT_INITIALIZED;
+    }
+
+    LOG_DEBUG("[%s] Handling lexical access request: word_id=%u, word='%s'",
+              BROCA_LOG_MODULE, req->word_id, req->word);
+
+    /* Look up word in lexicon */
+    broca_lexical_entry_t entry;
+    bool found = broca_lookup_word(adapter, req->word_id, req->word, &entry);
+
+    /* Build response */
+    bio_msg_lexical_access_response_t response;
+    memset(&response, 0, sizeof(response));
+
+    response.header.type = BIO_MSG_LEXICAL_ACCESS_RESPONSE;
+    response.header.source_module = BIO_MODULE_BROCA;
+    response.header.target_module = req->header.source_module;
+    response.header.payload_size = sizeof(response);
+    response.header.channel = req->header.channel;
+
+    response.word_id = entry.word_id;
+    response.found = found;
+    if (found) {
+        memcpy(response.phonemes, entry.phonemes, sizeof(response.phonemes));
+        response.phoneme_count = entry.phoneme_count;
+        response.pos = entry.pos;
+        response.frequency = entry.frequency;
+        response.activation = 1.0f;
+    }
+
+    /* Complete promise with response */
+    if (response_promise) {
+        nimcp_bio_promise_complete(response_promise, &response);
+    }
+
+    return NIMCP_SUCCESS;
+}
+
+static nimcp_error_t handle_syntax_parse_request(
+    const void* msg, size_t msg_size,
+    nimcp_bio_promise_t response_promise, void* user_data) {
+
+    broca_adapter_t* adapter = (broca_adapter_t*)user_data;
+    const bio_msg_syntax_parse_request_t* req = (const bio_msg_syntax_parse_request_t*)msg;
+
+    if (!adapter || !req || msg_size < sizeof(bio_msg_syntax_parse_request_t)) {
+        LOG_ERROR("[%s] Invalid syntax parse request", BROCA_LOG_MODULE);
+        return NIMCP_BIO_ERROR_NOT_INITIALIZED;
+    }
+
+    LOG_DEBUG("[%s] Handling syntax parse request: word_count=%u", BROCA_LOG_MODULE, req->word_count);
+
+    /* Perform syntax parsing */
+    bool parse_valid = true;
+    float complexity = 0.0f;
+
+    /* Reset and add words */
+    syntax_reset(adapter->syntax);
+    for (uint8_t i = 0; i < req->word_count; i++) {
+        syntactic_unit_t unit;
+        memset(&unit, 0, sizeof(unit));
+        unit.word_id = req->word_ids[i];
+        if (!syntax_add_unit(adapter->syntax, &unit)) {
+            parse_valid = false;
+            break;
+        }
+    }
+
+    if (parse_valid) {
+        parse_valid = syntax_build_tree(adapter->syntax);
+        complexity = (float)req->word_count * 1.5f;  /* Simple complexity estimate */
+    }
+
+    /* Build response */
+    bio_msg_syntax_parse_result_t response;
+    memset(&response, 0, sizeof(response));
+
+    response.header.type = BIO_MSG_SYNTAX_PARSE_RESULT;
+    response.header.source_module = BIO_MODULE_BROCA;
+    response.header.target_module = req->header.source_module;
+    response.header.payload_size = sizeof(response);
+    response.header.channel = req->header.channel;
+
+    response.valid = parse_valid;
+    response.constituent_count = req->word_count;
+    response.complexity = complexity;
+
+    if (response_promise) {
+        nimcp_bio_promise_complete(response_promise, &response);
+    }
+
+    return NIMCP_SUCCESS;
+}
+
+static nimcp_error_t handle_phonological_encode_request(
+    const void* msg, size_t msg_size,
+    nimcp_bio_promise_t response_promise, void* user_data) {
+
+    broca_adapter_t* adapter = (broca_adapter_t*)user_data;
+    const bio_msg_phonological_encode_request_t* req =
+        (const bio_msg_phonological_encode_request_t*)msg;
+
+    if (!adapter || !req || msg_size < sizeof(bio_msg_phonological_encode_request_t)) {
+        LOG_ERROR("[%s] Invalid phonological encode request", BROCA_LOG_MODULE);
+        return NIMCP_BIO_ERROR_NOT_INITIALIZED;
+    }
+
+    LOG_DEBUG("[%s] Handling phonological encode request: phoneme_count=%u",
+              BROCA_LOG_MODULE, req->phoneme_count);
+
+    /* Reset and add phonemes */
+    phonological_reset(adapter->phonological);
+    for (uint8_t i = 0; i < req->phoneme_count && i < 32; i++) {
+        phonological_add_phoneme_detailed(adapter->phonological,
+            req->phonemes[i], PHONEME_CATEGORY_CONSONANT, 80.0f, 0.7f);
+    }
+
+    /* Generate syllables */
+    bool success = phonological_generate_syllables(adapter->phonological);
+
+    /* Build response */
+    bio_msg_phonological_encode_result_t response;
+    memset(&response, 0, sizeof(response));
+
+    response.header.type = BIO_MSG_PHONOLOGICAL_ENCODE_RESULT;
+    response.header.source_module = BIO_MODULE_BROCA;
+    response.header.target_module = req->header.source_module;
+    response.header.payload_size = sizeof(response);
+    response.header.channel = req->header.channel;
+
+    response.success = success;
+    response.syllable_count = phonological_get_syllable_count(adapter->phonological);
+
+    if (response_promise) {
+        nimcp_bio_promise_complete(response_promise, &response);
+    }
+
+    return NIMCP_SUCCESS;
+}
+
+static nimcp_error_t handle_motor_command_request(
+    const void* msg, size_t msg_size,
+    nimcp_bio_promise_t response_promise, void* user_data) {
+
+    broca_adapter_t* adapter = (broca_adapter_t*)user_data;
+    const bio_msg_motor_command_request_t* req = (const bio_msg_motor_command_request_t*)msg;
+
+    if (!adapter || !req || msg_size < sizeof(bio_msg_motor_command_request_t)) {
+        LOG_ERROR("[%s] Invalid motor command request", BROCA_LOG_MODULE);
+        return NIMCP_BIO_ERROR_NOT_INITIALIZED;
+    }
+
+    LOG_DEBUG("[%s] Handling motor command request: phoneme=%u", BROCA_LOG_MODULE, req->phoneme);
+
+    /* Generate motor command for the phoneme */
+    speech_motor_plan_phoneme(adapter->motor, req->phoneme);
+
+    /* Build response with articulator positions */
+    bio_msg_motor_command_result_t response;
+    memset(&response, 0, sizeof(response));
+
+    response.header.type = BIO_MSG_MOTOR_COMMAND_RESULT;
+    response.header.source_module = BIO_MODULE_BROCA;
+    response.header.target_module = req->header.source_module;
+    response.header.payload_size = sizeof(response);
+    response.header.channel = req->header.channel;
+
+    /* Fill in articulator positions based on phoneme type */
+    /* This is a simplified model - real values would come from speech motor planner */
+    response.lip_aperture = 0.5f;
+    response.tongue_height = 0.5f;
+    response.tongue_advance = 0.5f;
+    response.jaw_opening = 0.3f;
+    response.velum_opening = 0.0f;
+    response.larynx_tension = 0.5f;
+    response.timestamp_ms = adapter->current_time_ms;
+
+    if (response_promise) {
+        nimcp_bio_promise_complete(response_promise, &response);
+    }
+
+    return NIMCP_SUCCESS;
+}
+
+static nimcp_error_t handle_speech_feedback(
+    const void* msg, size_t msg_size,
+    nimcp_bio_promise_t response_promise, void* user_data) {
+
+    broca_adapter_t* adapter = (broca_adapter_t*)user_data;
+    const bio_msg_phoneme_recognized_t* feedback = (const bio_msg_phoneme_recognized_t*)msg;
+
+    if (!adapter || !feedback || msg_size < sizeof(bio_msg_phoneme_recognized_t)) {
+        LOG_ERROR("[%s] Invalid speech feedback message", BROCA_LOG_MODULE);
+        return NIMCP_BIO_ERROR_NOT_INITIALIZED;
+    }
+
+    LOG_DEBUG("[%s] Received speech feedback: phoneme='%s', confidence=%.2f",
+              BROCA_LOG_MODULE, feedback->phoneme_symbol, feedback->confidence);
+
+    /* Process feedback for error monitoring */
+    broca_handle_speech_feedback(adapter, feedback->phoneme_id,
+                                  feedback->confidence, 0.0f);
+
+    /* No response needed for feedback */
+    (void)response_promise;
+
+    return NIMCP_SUCCESS;
+}
+
+static nimcp_error_t handle_utterance_production_request(
+    const void* msg, size_t msg_size,
+    nimcp_bio_promise_t response_promise, void* user_data) {
+
+    broca_adapter_t* adapter = (broca_adapter_t*)user_data;
+    const bio_msg_syntax_parse_request_t* req = (const bio_msg_syntax_parse_request_t*)msg;
+
+    if (!adapter || !req || msg_size < sizeof(bio_msg_syntax_parse_request_t)) {
+        LOG_ERROR("[%s] Invalid utterance production request", BROCA_LOG_MODULE);
+        return NIMCP_BIO_ERROR_NOT_INITIALIZED;
+    }
+
+    LOG_INFO("[%s] Handling utterance production request: word_count=%u",
+             BROCA_LOG_MODULE, req->word_count);
+
+    /* Process complete utterance */
+    broca_utterance_result_t result;
+    bool success = broca_produce_from_ids(adapter, req->word_ids, req->word_count, &result);
+
+    /* Build response */
+    bio_msg_syntax_parse_result_t response;
+    memset(&response, 0, sizeof(response));
+
+    response.header.type = BIO_MSG_UTTERANCE_PRODUCTION_COMPLETE;
+    response.header.source_module = BIO_MODULE_BROCA;
+    response.header.target_module = req->header.source_module;
+    response.header.payload_size = sizeof(response);
+    response.header.channel = req->header.channel;
+
+    response.valid = success && result.syntax_valid;
+    response.constituent_count = (uint8_t)result.word_count;
+    response.complexity = result.total_duration_ms;
+
+    if (response_promise) {
+        nimcp_bio_promise_complete(response_promise, &response);
+    }
+
+    /* Also broadcast completion */
+    if (success) {
+        broca_broadcast_utterance_complete(adapter, &result);
+    }
+
+    return NIMCP_SUCCESS;
 }

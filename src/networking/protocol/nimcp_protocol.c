@@ -29,7 +29,15 @@
 // - Version compatibility is enforced for all messages
 //=============================================================================
 
-#include "nimcp_protocol.h"
+#include "async/nimcp_bio_async.h"
+#include "async/nimcp_bio_router.h"
+#include "async/nimcp_bio_messages.h"
+#include "utils/logging/nimcp_logging.h"
+#include "utils/memory/nimcp_unified_memory.h"
+
+#define LOG_MODULE "NETWORKING"
+
+#include "networking/protocol/nimcp_protocol.h"
 #include <arpa/inet.h>
 #include <stdio.h>
 #include <string.h>

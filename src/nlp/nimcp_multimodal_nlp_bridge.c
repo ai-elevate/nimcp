@@ -3,9 +3,16 @@
 //=============================================================================
 
 #include "nlp/nimcp_multimodal_nlp_bridge.h"
+#include "utils/memory/nimcp_unified_memory.h"
+#include "async/nimcp_bio_async.h"
+#include "async/nimcp_bio_router.h"
+#include "async/nimcp_bio_messages.h"
 #include "utils/memory/nimcp_memory.h"
+#include "utils/logging/nimcp_logging.h"
 #include <string.h>
 #include <math.h>
+
+#define LOG_MODULE "MULTIMODAL_NLP"
 
 //=============================================================================
 // Phoneme Lexicon (Simple Mapping)
@@ -24,6 +31,8 @@ static phoneme_word_entry_t* g_phoneme_lexicon = NULL;
 static uint32_t g_lexicon_size = 0;
 
 bool multimodal_nlp_init_phoneme_lexicon(void) {
+    LOG_DEBUG(LOG_MODULE, "Initializing phoneme lexicon");
+
     // Simplified lexicon with a few common words
     // In production, this would load from a file/database
 
@@ -43,10 +52,12 @@ bool multimodal_nlp_init_phoneme_lexicon(void) {
     g_lexicon_size = sizeof(lexicon) / sizeof(phoneme_word_entry_t);
     g_phoneme_lexicon = (phoneme_word_entry_t*)nimcp_malloc(sizeof(lexicon));
     if (!g_phoneme_lexicon) {
+        LOG_ERROR(LOG_MODULE, "Failed to allocate phoneme lexicon");
         return false;
     }
 
     memcpy(g_phoneme_lexicon, lexicon, sizeof(lexicon));
+    LOG_INFO(LOG_MODULE, "Phoneme lexicon initialized with %u entries", g_lexicon_size);
     return true;
 }
 
@@ -55,6 +66,7 @@ void multimodal_nlp_cleanup_phoneme_lexicon(void) {
         nimcp_free(g_phoneme_lexicon);
         g_phoneme_lexicon = NULL;
         g_lexicon_size = 0;
+        LOG_DEBUG(LOG_MODULE, "Phoneme lexicon cleaned up");
     }
 }
 
@@ -83,12 +95,16 @@ bool multimodal_nlp_phonemes_to_tokens(
     uint32_t* num_tokens
 ) {
     if (!phonemes || !tokens || !num_tokens || max_tokens == 0) {
+        LOG_ERROR(LOG_MODULE, "phonemes_to_tokens: Invalid parameters");
         return false;
     }
+
+    LOG_DEBUG(LOG_MODULE, "Converting %u phonemes to tokens", num_phonemes);
 
     // Initialize lexicon if not already done
     if (!g_phoneme_lexicon) {
         if (!multimodal_nlp_init_phoneme_lexicon()) {
+            LOG_ERROR(LOG_MODULE, "Failed to initialize phoneme lexicon");
             return false;
         }
     }
@@ -124,10 +140,12 @@ bool multimodal_nlp_phonemes_to_tokens(
 
         if (!found) {
             // Unknown phoneme sequence - skip one phoneme
+            LOG_DEBUG(LOG_MODULE, "Unknown phoneme at position %u, skipping", pos);
             pos++;
         }
     }
 
+    LOG_DEBUG(LOG_MODULE, "Converted %u phonemes to %u tokens", num_phonemes, *num_tokens);
     return true;
 }
 
@@ -144,8 +162,11 @@ bool multimodal_nlp_process_speech(
     uint32_t output_dim
 ) {
     if (!speech_cortex || !nlp_network || !audio_data || !output) {
+        LOG_ERROR(LOG_MODULE, "process_speech: Invalid parameters");
         return false;
     }
+
+    LOG_DEBUG(LOG_MODULE, "Processing speech: %u samples, output_dim=%u", num_samples, output_dim);
 
     // Step 1: Detect phonemes from audio
     phoneme_event_t phoneme_events[50];
@@ -159,14 +180,18 @@ bool multimodal_nlp_process_speech(
         50,
         &num_detected
     )) {
+        LOG_ERROR(LOG_MODULE, "Failed to detect phonemes");
         return false;
     }
 
     if (num_detected == 0) {
         // No phonemes detected - return zero vector
+        LOG_DEBUG(LOG_MODULE, "No phonemes detected in audio");
         memset(output, 0, output_dim * sizeof(float));
         return true;
     }
+
+    LOG_DEBUG(LOG_MODULE, "Detected %u phonemes", num_detected);
 
     // Step 2: Extract phoneme sequence
     phoneme_t phonemes[50];
@@ -435,8 +460,12 @@ bool multimodal_nlp_fuse_inputs(
     uint32_t output_dim
 ) {
     if (!nlp_network || !output) {
+        LOG_ERROR(LOG_MODULE, "fuse_inputs: Invalid parameters");
         return false;
     }
+
+    LOG_INFO(LOG_MODULE, "Fusing multimodal inputs: visual=%d, audio=%d, text=%d",
+             image != NULL, audio_data != NULL, text_tokens != NULL);
 
     // Allocate buffers for each modality
     float visual_output[128] = {0};
@@ -496,8 +525,11 @@ bool multimodal_nlp_fuse_inputs(
     if (has_text) num_modalities++;
 
     if (num_modalities == 0) {
+        LOG_WARN(LOG_MODULE, "No modalities processed successfully");
         return true;  // Return zero vector (no modalities processed)
     }
+
+    LOG_DEBUG(LOG_MODULE, "Fusing %u modalities", num_modalities);
 
     uint32_t fuse_dim = (output_dim < 128) ? output_dim : 128;
 
@@ -509,5 +541,6 @@ bool multimodal_nlp_fuse_inputs(
         output[i] = sum / (float)num_modalities;
     }
 
+    LOG_INFO(LOG_MODULE, "Multimodal fusion completed successfully");
     return true;
 }

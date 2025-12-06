@@ -319,6 +319,19 @@ NIMCP_EXPORT bool cow_make_private(cow_handle_t handle);
 NIMCP_EXPORT size_t cow_get_refcount(cow_manager_t manager);
 
 /**
+ * @brief Get total handle count for the manager
+ *
+ * WHY DIFFERENT FROM REFCOUNT:
+ * - refcount only counts SHARED handles (pointing to template)
+ * - handle_count includes ALL handles (shared + private)
+ * - Use handle_count to determine when cow_manager can be safely destroyed
+ *
+ * @param manager Manager handle
+ * @return Total number of active handles (shared + private)
+ */
+NIMCP_EXPORT size_t cow_get_handle_count(cow_manager_t manager);
+
+/**
  * @brief Get CoW statistics
  *
  * @param manager Manager handle

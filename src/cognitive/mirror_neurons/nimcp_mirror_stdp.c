@@ -950,6 +950,11 @@ bool mirror_stdp_get_weight_histogram(mirror_stdp_t stdp, uint32_t* bins, uint32
 }
 
 void mirror_stdp_step(mirror_stdp_t stdp, float dt_ms) {
+    // Process pending bio-async messages
+    if (stdp && stdp->bio_ctx) {
+        bio_router_process_inbox(stdp->bio_ctx, 5);
+    }
+
     if (!stdp) return;
 
     // Update eligibility traces

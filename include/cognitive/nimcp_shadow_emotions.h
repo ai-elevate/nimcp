@@ -363,6 +363,10 @@ typedef struct {
     uint64_t total_detections_self;
     uint64_t total_detections_other;
 
+    // Bio-async integration
+    void* bio_ctx;                  /**< bio_module_context_t pointer */
+    bool bio_async_enabled;         /**< Bio-async registration status */
+
 } shadow_emotion_system_t;
 
 //=============================================================================

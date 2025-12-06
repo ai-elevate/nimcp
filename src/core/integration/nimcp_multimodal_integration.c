@@ -8,6 +8,17 @@
 #include <math.h>
 #include <stdlib.h>
 
+// === BIO-ASYNC + LOGGING + UNIFIED MEMORY INTEGRATION ===
+#include "async/nimcp_bio_async.h"
+#include "async/nimcp_bio_router.h"
+#include "async/nimcp_bio_messages.h"
+#include "utils/logging/nimcp_logging.h"
+#include "utils/memory/nimcp_unified_memory.h"
+
+#define LOG_MODULE "multimodal_integration"
+#define BIO_MODULE_ID 0x0132
+
+
 //=============================================================================
 // Internal Structure
 //=============================================================================

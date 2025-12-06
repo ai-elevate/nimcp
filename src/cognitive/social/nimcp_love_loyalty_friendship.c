@@ -751,6 +751,11 @@ void social_attempt_repair(social_bond_system_t* system,
 //=============================================================================
 
 void social_update(social_bond_system_t* system, float dt, uint64_t current_time_us) {
+    // Process pending bio-async messages
+    if (system && system->bio_async_enabled && system->bio_ctx) {
+        bio_router_process_inbox(system->bio_ctx, 5);
+    }
+
     // WHAT: Advance relationship dynamics, oxytocin decay, loneliness
     // WHY:  Bonds require maintenance, decay without contact
     // HOW:  Update closeness based on interaction frequency, oxytocin half-life

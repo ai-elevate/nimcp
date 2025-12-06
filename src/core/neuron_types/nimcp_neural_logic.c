@@ -1,20 +1,31 @@
 /**
- * @file nimcp_neural_logic.c  
+ * @file nimcp_neural_logic.c
  * @brief Neural Logic Implementation (GPU + CPU Fallback)
  *
  * WHAT: Spiking neural logic gates with GPU acceleration
  * WHY:  Replace symbolic engine with 100x faster neural logic
  * HOW:  CUDA kernels for GPU, optimized loops for CPU
  *
+ * BIO-ASYNC INTEGRATION:
+ * - Module ID: 0x0650 (BIO_MODULE_NEURAL_LOGIC)
+ * - Publishes: logic gate results, circuit completion events
+ * - Uses: BIO_CHANNEL_ACETYLCHOLINE for fast queries
+ * - Uses: BIO_CHANNEL_DOPAMINE for learning signals
+ *
  * @author NIMCP Development Team
  * @date 2025-11-08
  * @version 2.7.0 Phase 9.0
  */
 
-#include "nimcp_neural_logic.h"
+#include "core/neuron_types/nimcp_neural_logic.h"
+#include "async/nimcp_bio_async.h"
+#include "async/nimcp_bio_router.h"
+#include "async/nimcp_bio_messages.h"
+#include "utils/memory/nimcp_unified_memory.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/memory/nimcp_memory_pool.h"  // Memory pool for O(1) allocations
 #include "utils/memory/nimcp_page_cow.h"     // Copy-on-Write for shallow copies
+#include "utils/memory/nimcp_memory_guards.h"  // For nimcp_calloc/nimcp_free
 #include "utils/logging/nimcp_logging.h"
 #include "utils/validation/nimcp_validate.h"
 #include "plasticity/neuromodulators/nimcp_neuromodulators.h"  // Neuromodulator integration
@@ -23,6 +34,9 @@
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
+
+/* Logging module identifier */
+#define LOG_MODULE "NEURAL_LOGIC"
 
 #ifdef NIMCP_ENABLE_CUDA
 #include <cuda_runtime.h>
@@ -120,6 +134,10 @@ struct neural_logic_network_struct {
     uint64_t total_spikes;
     uint64_t total_evaluations;
     float sum_eval_time_us;
+
+    // Bio-async communication
+    bio_module_context_t bio_ctx;     /**< Bio-async module context */
+    bool bio_async_enabled;           /**< Whether bio-async is enabled */
 };
 
 //=============================================================================
@@ -177,7 +195,7 @@ NIMCP_EXPORT neural_logic_network_t neural_logic_create(
     }
     
     if (config->max_logic_neurons == 0) {
-        NIMCP_LOGGING_ERROR("max_logic_neurons must be > 0");
+        LOG_ERROR(LOG_MODULE,"max_logic_neurons must be > 0");
         return NULL;
     }
     
@@ -209,7 +227,7 @@ NIMCP_EXPORT neural_logic_network_t neural_logic_create(
     // Allocate host memory for variables (64-byte aligned)
     network->variables_host = nimcp_aligned_alloc(64, network->variables_capacity * sizeof(variable_binding_state_t));
     if (!nimcp_validate_pointer(network->variables_host, "variables_host")) {
-        nimcp_free(network->neurons_host);
+        nimcp_aligned_free(network->neurons_host);  // BUGFIX: neurons_host uses aligned_alloc
         nimcp_free(network);
         return NULL;
     }
@@ -219,7 +237,7 @@ NIMCP_EXPORT neural_logic_network_t neural_logic_create(
     network->outgoing_synapses = (logic_synapse_t**)nimcp_calloc(network->neurons_capacity, sizeof(logic_synapse_t*));
     if (!nimcp_validate_pointer(network->outgoing_synapses, "outgoing_synapses")) {
         nimcp_aligned_free(network->variables_host);
-        nimcp_free(network->neurons_host);
+        nimcp_aligned_free(network->neurons_host);  // BUGFIX: neurons_host uses aligned_alloc
         nimcp_free(network);
         return NULL;
     }
@@ -228,7 +246,7 @@ NIMCP_EXPORT neural_logic_network_t neural_logic_create(
     if (!nimcp_validate_pointer(network->synapse_counts, "synapse_counts")) {
         nimcp_free(network->outgoing_synapses);
         nimcp_aligned_free(network->variables_host);
-        nimcp_free(network->neurons_host);
+        nimcp_aligned_free(network->neurons_host);  // BUGFIX: neurons_host uses aligned_alloc
         nimcp_free(network);
         return NULL;
     }
@@ -247,7 +265,7 @@ NIMCP_EXPORT neural_logic_network_t neural_logic_create(
     pool_config.enable_tracking = true;
     network->synapse_pool = memory_pool_create(&pool_config);
     if (!network->synapse_pool) {
-        NIMCP_LOGGING_WARN("Failed to create synapse pool, will use malloc fallback");
+        LOG_WARN(LOG_MODULE,"Failed to create synapse pool, will use malloc fallback");
         // Non-fatal: continue without pool (falls back to malloc)
     }
 
@@ -265,7 +283,7 @@ NIMCP_EXPORT neural_logic_network_t neural_logic_create(
         err = cudaMalloc(&network->neurons_device,
                         network->neurons_capacity * sizeof(logic_neuron_state_t));
         if (err != cudaSuccess) {
-            NIMCP_LOGGING_WARN("GPU malloc failed, using CPU fallback");
+            LOG_WARN(LOG_MODULE,"GPU malloc failed, using CPU fallback");
             goto cpu_fallback;
         }
         
@@ -273,7 +291,7 @@ NIMCP_EXPORT neural_logic_network_t neural_logic_create(
         err = cudaMalloc(&network->variables_device,
                         network->variables_capacity * sizeof(variable_binding_state_t));
         if (err != cudaSuccess) {
-            NIMCP_LOGGING_WARN("GPU malloc failed, using CPU fallback");
+            LOG_WARN(LOG_MODULE,"GPU malloc failed, using CPU fallback");
             cudaFree(network->neurons_device);
             goto cpu_fallback;
         }
@@ -281,23 +299,49 @@ NIMCP_EXPORT neural_logic_network_t neural_logic_create(
         // Create CUDA stream
         err = cudaStreamCreate(&network->stream);
         if (err != cudaSuccess) {
-            NIMCP_LOGGING_WARN("GPU stream creation failed, using CPU fallback");
+            LOG_WARN(LOG_MODULE,"GPU stream creation failed, using CPU fallback");
             cudaFree(network->neurons_device);
             cudaFree(network->variables_device);
             goto cpu_fallback;
         }
         
         network->using_gpu = true;
-        NIMCP_LOGGING_INFO("Neural logic using GPU acceleration");
+        LOG_INFO(LOG_MODULE,"Neural logic using GPU acceleration");
     }
     
 cpu_fallback:
 #endif
-    
+
     if (!network->using_gpu) {
-        NIMCP_LOGGING_INFO("Neural logic using CPU fallback");
+        LOG_INFO(LOG_MODULE, "Neural logic using CPU fallback");
     }
-    
+
+    // === Initialize Bio-Async Communication ===
+    network->bio_ctx = NULL;
+    network->bio_async_enabled = false;
+
+    if (config->enable_bio_async && bio_router_is_initialized()) {
+        bio_module_info_t bio_info = {
+            .module_id = BIO_MODULE_NEURAL_LOGIC,
+            .module_name = "neural_logic",
+            .inbox_capacity = 64,
+            .user_data = network
+        };
+        network->bio_ctx = bio_router_register_module(&bio_info);
+        if (network->bio_ctx) {
+            network->bio_async_enabled = true;
+            LOG_INFO(LOG_MODULE, "Bio-async registered for neural logic (module_id=0x%04X)",
+                     BIO_MODULE_NEURAL_LOGIC);
+        } else {
+            LOG_WARN(LOG_MODULE, "Failed to register bio-async module");
+        }
+    }
+
+    LOG_INFO(LOG_MODULE, "Neural logic network created: max_neurons=%u, max_vars=%u, gpu=%s, bio_async=%s",
+             config->max_logic_neurons, config->max_variables,
+             network->using_gpu ? "enabled" : "disabled",
+             network->bio_async_enabled ? "enabled" : "disabled");
+
     return network;
 }
 
@@ -305,6 +349,17 @@ NIMCP_EXPORT void neural_logic_destroy(neural_logic_network_t network)
 {
     if (!network) {
         return;
+    }
+
+    LOG_DEBUG(LOG_MODULE, "Destroying neural logic network: neurons=%u, synapses=%u",
+              network->neurons_count, network->total_synapses);
+
+    // === Unregister Bio-Async Module ===
+    if (network->bio_async_enabled && network->bio_ctx) {
+        bio_router_unregister_module(network->bio_ctx);
+        network->bio_ctx = NULL;
+        network->bio_async_enabled = false;
+        LOG_DEBUG(LOG_MODULE, "Bio-async unregistered for neural logic");
     }
 
     // === Handle Copy-on-Write Reference Counting ===
@@ -385,24 +440,29 @@ NIMCP_EXPORT uint32_t neural_logic_create_gate(
     logic_gate_type_t gate_type,
     float threshold)
 {
+    LOG_DEBUG(LOG_MODULE, "Creating logic gate: type=%s, threshold=%.2f",
+              neural_logic_gate_name(gate_type), threshold);
+
     if (!nimcp_validate_pointer(network, "network")) {
+        LOG_ERROR(LOG_MODULE, "NULL network pointer");
         return UINT32_MAX;
     }
-    
+
     if (network->neurons_count >= network->neurons_capacity) {
-        NIMCP_LOGGING_ERROR("Maximum neurons reached");
+        LOG_ERROR(LOG_MODULE, "Maximum neurons reached: %u/%u",
+                  network->neurons_count, network->neurons_capacity);
         return UINT32_MAX;
     }
-    
+
     if (gate_type >= LOGIC_GATE_COUNT) {
-        NIMCP_LOGGING_ERROR("Invalid gate type: %d", gate_type);
+        LOG_ERROR(LOG_MODULE, "Invalid gate type: %d (max=%d)", gate_type, LOGIC_GATE_COUNT);
         return UINT32_MAX;
     }
-    
+
     // Get next neuron ID
     uint32_t neuron_id = network->neurons_count++;
     logic_neuron_state_t* neuron = &network->neurons_host[neuron_id];
-    
+
     // Initialize neuron state
     memset(neuron, 0, sizeof(logic_neuron_state_t));
     neuron->neuron_id = neuron_id;
@@ -410,7 +470,7 @@ NIMCP_EXPORT uint32_t neural_logic_create_gate(
     neuron->membrane_potential = 0.0f;
     neuron->output_state = 0.0f;
     neuron->integration_window = network->config.integration_window_ms;
-    
+
     // Set gate-specific parameters
     switch (gate_type) {
         case LOGIC_GATE_AND:
@@ -420,7 +480,7 @@ NIMCP_EXPORT uint32_t neural_logic_create_gate(
             neuron->inhibitory_weight = 0.0f;
             neuron->refractory_period = 1000;  // 1ms
             break;
-            
+
         case LOGIC_GATE_OR:
             // OR: Fires if any input active (low threshold)
             neuron->threshold = (threshold > 0.0f) ? threshold : 0.6f;  // Less than 1.0
@@ -428,7 +488,7 @@ NIMCP_EXPORT uint32_t neural_logic_create_gate(
             neuron->inhibitory_weight = 0.0f;
             neuron->refractory_period = 500;   // 0.5ms
             break;
-            
+
         case LOGIC_GATE_NOT:
             // NOT: Baseline firing, inhibited by input
             neuron->threshold = (threshold > 0.0f) ? threshold : 0.5f;
@@ -437,7 +497,7 @@ NIMCP_EXPORT uint32_t neural_logic_create_gate(
             neuron->membrane_potential = 1.0f;  // Baseline depolarization
             neuron->refractory_period = 1000;   // 1ms
             break;
-            
+
         case LOGIC_GATE_XOR:
             // XOR: Fires if inputs differ (balanced)
             neuron->threshold = (threshold > 0.0f) ? threshold : 0.5f;
@@ -445,7 +505,7 @@ NIMCP_EXPORT uint32_t neural_logic_create_gate(
             neuron->inhibitory_weight = -1.0f;
             neuron->refractory_period = 1000;   // 1ms
             break;
-            
+
         case LOGIC_GATE_IMPLIES:
             // IMPLIES: A → B (fires if A=0 OR B=1)
             neuron->threshold = (threshold > 0.0f) ? threshold : 0.8f;
@@ -453,13 +513,37 @@ NIMCP_EXPORT uint32_t neural_logic_create_gate(
             neuron->inhibitory_weight = -0.5f;
             neuron->refractory_period = 1000;   // 1ms
             break;
-            
+
         default:
-            NIMCP_LOGGING_ERROR("Unhandled gate type: %d", gate_type);
+            LOG_ERROR(LOG_MODULE, "Unhandled gate type: %d", gate_type);
             network->neurons_count--;  // Rollback
             return UINT32_MAX;
     }
-    
+
+    LOG_INFO(LOG_MODULE, "Created logic gate %s (id=%u, threshold=%.2f)",
+             neural_logic_gate_name(gate_type), neuron_id, neuron->threshold);
+
+    // Publish bio-async message for gate creation if enabled
+    if (network->bio_async_enabled && network->bio_ctx) {
+        // Use generic state query message to broadcast gate creation
+        bio_msg_brain_state_query_t msg = {0};
+        bio_msg_init_header(&msg.header, BIO_MSG_BRAIN_STATE_QUERY,
+                            BIO_MODULE_NEURAL_LOGIC, 0,
+                            sizeof(msg));
+        msg.header.channel = BIO_CHANNEL_ACETYLCHOLINE;  // Fast notification
+        msg.region_id = neuron_id;
+        msg.query_flags = gate_type;  // Store gate type in flags
+
+        nimcp_error_t err = bio_router_broadcast(network->bio_ctx, &msg, sizeof(msg));
+        if (err != NIMCP_SUCCESS) {
+            LOG_WARN(LOG_MODULE, "Failed to broadcast neuron creation: neuron=%u, error=%d",
+                     neuron_id, err);
+        } else {
+            LOG_DEBUG(LOG_MODULE, "Broadcast neuron creation: neuron=%u, type=%s",
+                      neuron_id, neural_logic_gate_name(gate_type));
+        }
+    }
+
     return neuron_id;
 }
 
@@ -473,7 +557,7 @@ NIMCP_EXPORT uint32_t neural_logic_create_variable(
     }
     
     if (network->variables_count >= network->variables_capacity) {
-        NIMCP_LOGGING_ERROR("Maximum variables reached");
+        LOG_ERROR(LOG_MODULE,"Maximum variables reached");
         return UINT32_MAX;
     }
     
@@ -793,7 +877,7 @@ NIMCP_EXPORT uint32_t neural_logic_update(
         );
 
         if (err != cudaSuccess) {
-            NIMCP_LOGGING_ERROR("Failed to copy neurons to GPU: %s", cudaGetErrorString(err));
+            LOG_ERROR(LOG_MODULE,"Failed to copy neurons to GPU: %s", cudaGetErrorString(err));
             goto cpu_path;
         }
 
@@ -809,7 +893,7 @@ NIMCP_EXPORT uint32_t neural_logic_update(
         );
 
         if (err != cudaSuccess) {
-            NIMCP_LOGGING_ERROR("GPU kernel launch failed: %s", cudaGetErrorString(err));
+            LOG_ERROR(LOG_MODULE,"GPU kernel launch failed: %s", cudaGetErrorString(err));
             goto cpu_path;
         }
 
@@ -823,7 +907,7 @@ NIMCP_EXPORT uint32_t neural_logic_update(
         );
 
         if (err != cudaSuccess) {
-            NIMCP_LOGGING_ERROR("Failed to copy neurons from GPU: %s", cudaGetErrorString(err));
+            LOG_ERROR(LOG_MODULE,"Failed to copy neurons from GPU: %s", cudaGetErrorString(err));
             goto cpu_path;
         }
 
@@ -900,17 +984,21 @@ NIMCP_EXPORT bool neural_logic_evaluate(
     uint32_t num_inputs,
     float* output)
 {
+    LOG_DEBUG(LOG_MODULE, "Evaluating logic gate: gate_id=%u, num_inputs=%u", gate_id, num_inputs);
+
     if (!nimcp_validate_pointer(network, "network") ||
         !nimcp_validate_pointer(inputs, "inputs") ||
         !nimcp_validate_pointer(output, "output")) {
+        LOG_ERROR(LOG_MODULE, "NULL pointer(s) in evaluate: network=%p, inputs=%p, output=%p",
+                  (void*)network, (const void*)inputs, (void*)output);
         return false;
     }
-    
+
     if (gate_id >= network->neurons_count) {
-        NIMCP_LOGGING_ERROR("Invalid gate_id: %u >= %u", gate_id, network->neurons_count);
+        LOG_ERROR(LOG_MODULE, "Invalid gate_id: %u >= %u", gate_id, network->neurons_count);
         return false;
     }
-    
+
     logic_neuron_state_t* neuron = &network->neurons_host[gate_id];
 
     // Directly compute gate output (combinational logic, no temporal dynamics needed)
@@ -941,6 +1029,7 @@ NIMCP_EXPORT bool neural_logic_evaluate(
             break;
 
         default:
+            LOG_WARN(LOG_MODULE, "Unsupported gate type: %d", neuron->gate_type);
             result = 0.0f;
             break;
     }
@@ -948,6 +1037,18 @@ NIMCP_EXPORT bool neural_logic_evaluate(
     // Return output
     *output = result;
     network->total_evaluations++;
+
+    LOG_DEBUG(LOG_MODULE, "Logic gate evaluated: gate=%s(%u), inputs=[%.1f,%.1f], output=%.1f",
+              neural_logic_gate_name(neuron->gate_type), gate_id, input_a, input_b, result);
+
+    // Publish bio-async message for evaluation result if enabled
+    if (network->bio_async_enabled && network->bio_ctx) {
+        bool spiked = (result > 0.5f);
+        nimcp_error_t err = neural_logic_broadcast_result(network, gate_id, result, spiked);
+        if (err != NIMCP_SUCCESS) {
+            LOG_DEBUG(LOG_MODULE, "Failed to broadcast result for gate %u: error=%d", gate_id, err);
+        }
+    }
 
     return true;
 }
@@ -1083,7 +1184,7 @@ NIMCP_EXPORT bool neural_logic_bind_variable(
     if (var->bound_pattern == NULL) {
         var->bound_pattern = (float*)nimcp_malloc(dim * sizeof(float));
         if (!var->bound_pattern) {
-            NIMCP_LOGGING_ERROR("Failed to allocate pattern memory for variable %u", variable_id);
+            LOG_ERROR(LOG_MODULE,"Failed to allocate pattern memory for variable %u", variable_id);
             return false;
         }
         var->pattern_dim = dim;
@@ -1091,7 +1192,7 @@ NIMCP_EXPORT bool neural_logic_bind_variable(
 
     // Verify dimension matches
     if (var->pattern_dim != dim) {
-        NIMCP_LOGGING_ERROR("Pattern dimension mismatch: expected %u, got %u",
+        LOG_ERROR(LOG_MODULE,"Pattern dimension mismatch: expected %u, got %u",
                            var->pattern_dim, dim);
         return false;
     }
@@ -1132,13 +1233,13 @@ NIMCP_EXPORT bool neural_logic_query_variable(
 
     // Check if variable is bound
     if (!var->is_bound || var->bound_pattern == NULL) {
-        NIMCP_LOGGING_WARN("Variable %u is not bound", variable_id);
+        LOG_WARN(LOG_MODULE,"Variable %u is not bound", variable_id);
         return false;
     }
 
     // Verify dimension matches
     if (var->pattern_dim != pattern_dim) {
-        NIMCP_LOGGING_ERROR("Pattern dimension mismatch: variable has %u, requested %u",
+        LOG_ERROR(LOG_MODULE,"Pattern dimension mismatch: variable has %u, requested %u",
                            var->pattern_dim, pattern_dim);
         return false;
     }
@@ -1172,14 +1273,14 @@ NIMCP_EXPORT bool neural_logic_connect(
 
     // Validate neuron IDs
     if (source_id >= network->neurons_count || target_id >= network->neurons_count) {
-        NIMCP_LOGGING_ERROR("Invalid neuron IDs: source=%u, target=%u (max=%u)",
+        LOG_ERROR(LOG_MODULE,"Invalid neuron IDs: source=%u, target=%u (max=%u)",
                            source_id, target_id, network->neurons_count);
         return false;
     }
 
     // Validate weight
     if (!isfinite(weight)) {
-        NIMCP_LOGGING_ERROR("Invalid weight: %f", weight);
+        LOG_ERROR(LOG_MODULE,"Invalid weight: %f", weight);
         return false;
     }
 
@@ -1193,7 +1294,7 @@ NIMCP_EXPORT bool neural_logic_connect(
         synapse = (logic_synapse_t*)nimcp_malloc(sizeof(logic_synapse_t));
     }
     if (!nimcp_validate_pointer(synapse, "synapse")) {
-        NIMCP_LOGGING_ERROR("Failed to allocate synapse: %u -> %u", source_id, target_id);
+        LOG_ERROR(LOG_MODULE,"Failed to allocate synapse: %u -> %u", source_id, target_id);
         return false;
     }
 
@@ -1207,8 +1308,113 @@ NIMCP_EXPORT bool neural_logic_connect(
     network->synapse_counts[source_id]++;
     network->total_synapses++;
 
-    NIMCP_LOGGING_DEBUG("Synapse connected: %u -> %u (weight=%.3f, total=%u)",
-                       source_id, target_id, weight, network->total_synapses);
+    LOG_DEBUG(LOG_MODULE, "Synapse connected: %u -> %u (weight=%.3f, total=%u)",
+              source_id, target_id, weight, network->total_synapses);
 
     return true;
+}
+
+//=============================================================================
+// Bio-Async Communication API
+//=============================================================================
+
+NIMCP_EXPORT bio_module_context_t neural_logic_get_bio_context(neural_logic_network_t network)
+{
+    if (!network) {
+        return NULL;
+    }
+    return network->bio_ctx;
+}
+
+NIMCP_EXPORT uint32_t neural_logic_process_bio_messages(neural_logic_network_t network, uint32_t max_messages)
+{
+    if (!network || !network->bio_async_enabled || !network->bio_ctx) {
+        return 0;
+    }
+
+    uint32_t processed = bio_router_process_inbox(network->bio_ctx, max_messages);
+    if (processed > 0) {
+        LOG_DEBUG(LOG_MODULE, "Processed %u bio-async messages", processed);
+    }
+    return processed;
+}
+
+NIMCP_EXPORT nimcp_error_t neural_logic_broadcast_result(
+    neural_logic_network_t network,
+    uint32_t gate_id,
+    float output,
+    bool spiked)
+{
+    if (!network) {
+        return NIMCP_ERROR_NULL_POINTER;
+    }
+    if (!network->bio_async_enabled || !network->bio_ctx) {
+        return NIMCP_ERROR_NOT_INITIALIZED;
+    }
+
+    // Get gate type for the message
+    uint32_t gate_type = LOGIC_GATE_AND;  // Default
+    if (gate_id < network->neurons_count) {
+        gate_type = network->neurons_host[gate_id].gate_type;
+    }
+
+    // Build and send message
+    bio_msg_logic_gate_result_t msg;
+    bio_msg_init_header(&msg.header, BIO_MSG_LOGIC_GATE_RESULT,
+                        BIO_MODULE_NEURAL_LOGIC, 0,
+                        sizeof(msg) - sizeof(bio_message_header_t));
+    msg.header.channel = BIO_CHANNEL_ACETYLCHOLINE;  // Logic results are fast queries
+    msg.header.flags = BIO_MSG_FLAG_BROADCAST;
+    msg.gate_id = gate_id;
+    msg.gate_type = gate_type;
+    msg.output = output;
+    msg.spiked = spiked;
+    msg.spike_time_us = 0;  // Could be filled from neuron state
+    msg.threshold_used = 0;  // Could be filled from neuron state
+
+    nimcp_error_t err = bio_router_broadcast(network->bio_ctx, &msg, sizeof(msg));
+    if (err != NIMCP_SUCCESS) {
+        LOG_WARN(LOG_MODULE, "Failed to broadcast logic result: gate=%u, error=%d",
+                 gate_id, err);
+    } else {
+        LOG_DEBUG(LOG_MODULE, "Broadcast logic result: gate=%u, output=%.2f, spiked=%d",
+                  gate_id, output, spiked);
+    }
+    return err;
+}
+
+NIMCP_EXPORT nimcp_error_t neural_logic_broadcast_circuit_complete(
+    neural_logic_network_t network,
+    uint32_t spikes_generated,
+    uint32_t gates_evaluated)
+{
+    if (!network) {
+        return NIMCP_ERROR_NULL_POINTER;
+    }
+    if (!network->bio_async_enabled || !network->bio_ctx) {
+        return NIMCP_ERROR_NOT_INITIALIZED;
+    }
+
+    // Build and send message
+    bio_msg_logic_circuit_complete_t msg;
+    bio_msg_init_header(&msg.header, BIO_MSG_LOGIC_CIRCUIT_COMPLETE,
+                        BIO_MODULE_NEURAL_LOGIC, 0,
+                        sizeof(msg) - sizeof(bio_message_header_t));
+    msg.header.channel = BIO_CHANNEL_DOPAMINE;  // Circuit completion is reward-like
+    msg.header.flags = BIO_MSG_FLAG_BROADCAST;
+    msg.timestamp_us = 0;  // Could be filled with current timestamp
+    msg.spikes_generated = spikes_generated;
+    msg.gates_evaluated = gates_evaluated;
+    msg.avg_eval_time_us = (network->total_evaluations > 0) ?
+        (network->sum_eval_time_us / network->total_evaluations) : 0.0f;
+    msg.circuit_stable = (spikes_generated == 0);  // Stable if no new spikes
+
+    nimcp_error_t err = bio_router_broadcast(network->bio_ctx, &msg, sizeof(msg));
+    if (err != NIMCP_SUCCESS) {
+        LOG_WARN(LOG_MODULE, "Failed to broadcast circuit complete: error=%d", err);
+    } else {
+        LOG_DEBUG(LOG_MODULE, "Broadcast circuit complete: spikes=%u, gates=%u",
+                  spikes_generated, gates_evaluated);
+    }
+    return err;
 }

@@ -3,15 +3,59 @@
 //=============================================================================
 
 #include "core/topology/nimcp_fractal_topology.h"
+#include "utils/memory/nimcp_unified_memory.h"
 #include "core/neuralnet/nimcp_neuralnet.h"
 #include "utils/containers/nimcp_graph.h"
 #include "utils/algorithms/nimcp_centrality.h"
 #include "utils/memory/nimcp_memory.h"
+#include "utils/logging/nimcp_logging.h"
+#include "async/nimcp_bio_async.h"
+#include "async/nimcp_bio_router.h"
+#include "async/nimcp_bio_messages.h"
 #include <math.h>
 #include <string.h>
 #include <time.h>
 #include <stdlib.h>
 #include <stdio.h>
+
+#define LOG_MODULE "fractal_topology"
+
+//=============================================================================
+// Bio-Async Module Context
+//=============================================================================
+
+static bio_module_context_t bio_ctx = NULL;
+static bool bio_async_enabled = false;
+
+__attribute__((constructor))
+static void fractal_topology_bio_init(void) {
+    if (!bio_router_is_initialized()) {
+        return;
+    }
+
+    bio_module_info_t bio_info = {
+        .module_id = BIO_MODULE_TOPOLOGY_FRACTAL,
+        .module_name = "fractal_topology",
+        .inbox_capacity = 64,
+        .user_data = NULL
+    };
+
+    bio_ctx = bio_router_register_module(&bio_info);
+    if (bio_ctx) {
+        bio_async_enabled = true;
+        LOG_INFO(LOG_MODULE, "Bio-async registered for fractal_topology module");
+    }
+}
+
+__attribute__((destructor))
+static void fractal_topology_bio_cleanup(void) {
+    if (bio_async_enabled && bio_ctx) {
+        bio_router_unregister_module(bio_ctx);
+        bio_ctx = NULL;
+        bio_async_enabled = false;
+        LOG_DEBUG(LOG_MODULE, "Bio-async unregistered for fractal_topology module");
+    }
+}
 
 // Access to network internal structure for getting neuron count
 // Note: Minimal struct definition to access num_neurons field
@@ -597,6 +641,11 @@ bool topology_generate(
     const topology_config_t* config,
     topology_stats_t* stats
 ) {
+    // Process pending bio-async messages
+    if (bio_async_enabled && bio_ctx) {
+        bio_router_process_inbox(bio_ctx, 5);
+    }
+
     // Guard: NULL network
     if (!network) {
         set_error("Network is NULL");
@@ -1345,7 +1394,7 @@ bool topology_identify_hubs(
 
     // Safety check: Ensure hub_list is valid
     if ((uintptr_t)hub_list < 0x1000000) {
-        fprintf(stderr, "ERROR: hub_list has invalid address: %p (n_neurons=%u)\n",
+        LOG_ERROR(LOG_MODULE, "hub_list has invalid address: %p (n_neurons=%u)",
                 (void*)hub_list, n_neurons);
         set_error("Invalid hub_list pointer");
         nimcp_centrality_scores_destroy(degree_scores);

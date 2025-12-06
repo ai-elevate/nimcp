@@ -173,6 +173,15 @@ typedef struct {
     void* relation_pool;              /**< Pool for relation structs */
     void* feature_pool;               /**< Pool for feature vectors */
 
+    // Unified memory integration (CoW support for brain cloning)
+    void* mem_manager;                /**< unified_mem_manager_t */
+    void* concepts_handle;            /**< CoW handle for concepts array */
+    void* activation_handle;          /**< CoW handle for activation map */
+
+    // Bio-async integration
+    void* bio_ctx;                    /**< bio_module_context_t pointer */
+    bool bio_async_enabled;           /**< Bio-async registration status */
+
 } semantic_memory_system_t;
 
 /**

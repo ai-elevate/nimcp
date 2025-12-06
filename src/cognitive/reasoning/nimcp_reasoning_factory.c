@@ -114,6 +114,11 @@ symbolic_logic_t* create_default_symbolic_logic(reasoning_size_t size)
     // Initialize bio-async on first use
     factory_init_bio_async();
 
+    // Process pending bio-async messages
+    if (g_factory_bio_async_enabled && g_factory_bio_ctx) {
+        bio_router_process_inbox(g_factory_bio_ctx, 5);
+    }
+
     logic_config_t config = get_config_for_size(size);
     symbolic_logic_t* engine = symbolic_logic_create(&config);
 

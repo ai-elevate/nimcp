@@ -559,6 +559,19 @@ struct brain_struct {
     uint32_t bbb_memory_region_id;      // BBB memory region registration ID
     uint32_t bbb_subject_id;            // BBB access control subject ID
     bool bbb_enabled;                   // BBB protection enabled for this brain
+
+    // === BIO-ASYNC MESSAGING INTEGRATION ===
+    //
+    // Bio-async provides biologically-inspired asynchronous communication:
+    // - Neuromodulator channels (dopamine, serotonin, norepinephrine, acetylcholine)
+    // - Message handlers for brain state queries and neuron activation requests
+    // - Predictive signal publishing for state changes (only triggers on prediction errors)
+    // - Decoupled from cognitive modules via bio-router
+    //
+    void* bio_async_ctx;                         // brain_bio_async_ctx_t* (opaque pointer)
+    void* bio_async_ctx_handle;                  // unified_mem_handle_t for context memory
+    void* bio_async_mem_mgr;                     // unified_mem_manager_t for bio-async allocations
+    bool bio_async_enabled;                      // Bio-async messaging enabled for this brain
 };
 
 //=============================================================================

@@ -36,6 +36,7 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/persistence/nimcp_brain_persistence.c # Save/load, snapshots, checkpoints (1,187 lines)
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/distributed/nimcp_brain_distributed.c # Copy-on-write, P2P sync, consensus (561 lines)
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/strategy/nimcp_brain_strategy.c     # Strategy pattern, monitoring, optimization (770 lines)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/nimcp_brain_bio_async.c             # Phase BIO-ASYNC: Bio-async brain integration
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/cognitive/nimcp_brain_cognitive.c   # Cognitive systems subsystem (2,150 lines extracted)
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/biological/nimcp_brain_biological.c # Glial, neuromodulators, pink noise, multimodal (~1,500 lines)
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/accessors/nimcp_brain_accessors.c   # Brain accessor functions (388 lines)
@@ -76,6 +77,7 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/neuron_models/nimcp_neuron_model.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/neuron_models/nimcp_izhikevich.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/neuron_models/nimcp_two_compartment.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/neuron_models/nimcp_neuron_model_bio_async.c  # Phase BIO-ASYNC: Neuron model bio-async integration
 
     # Synapse computation - NIMCP 2.7 MAJOR FEATURE
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/synapse_compute/nimcp_synapse_compute.c
@@ -143,16 +145,16 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/meta_learning/nimcp_meta_learning.c  # Phase 10.8: Meta-Learning
 
     # Cognitive Reasoning & Logic Integration (Phase 10.x: Logical Reasoning)
-    # NOTE: Temporarily disabled due to API mismatches (brain->logic_engine, brain->event_bus don't exist)
-    # TODO: Fix API usage in these modules to match actual brain_struct and event_bus APIs
-    # ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/reasoning/nimcp_symbolic_logic_attachment.c  # Symbolic logic attachment
-    # ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/reasoning/nimcp_knowledge_base_interface.c  # KB interface
-    # ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/reasoning/nimcp_forward_chaining.c  # Forward chaining (induction)
-    # ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/reasoning/nimcp_backward_chaining.c  # Backward chaining (deduction)
-    # ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/reasoning/nimcp_unification_engine.c  # Unification
-    # ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/reasoning/nimcp_reasoning_factory.c  # Factory
-    # ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/reasoning/integration/nimcp_reasoning_attention.c  # Attention integration
-    # ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/reasoning/integration/nimcp_reasoning_curiosity.c  # Curiosity integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/reasoning/nimcp_symbolic_logic_attachment.c  # Symbolic logic attachment
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/reasoning/nimcp_symbolic_logic_brain_integration.c  # Brain integration API
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/reasoning/nimcp_knowledge_base_interface.c  # KB interface
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/reasoning/nimcp_forward_chaining.c  # Forward chaining (induction)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/reasoning/nimcp_backward_chaining.c  # Backward chaining (deduction)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/reasoning/nimcp_unification_engine.c  # Unification
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/reasoning/nimcp_reasoning_factory.c  # Factory
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/reasoning/nimcp_reasoning_integration.c  # Reasoning integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/reasoning/integration/nimcp_reasoning_attention.c  # Attention integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/reasoning/integration/nimcp_reasoning_curiosity.c  # Curiosity integration
 
     # Core Logic Modules (Phase 10.x: Neural Logic Gates)
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/logic/nimcp_neural_logic_attachment.c  # Neural logic attachment
@@ -245,6 +247,10 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../utils/memory/nimcp_cow_manager.c  # Phase 0: CoW Manager (lazy copy, refcounting)
     ${CMAKE_CURRENT_SOURCE_DIR}/../utils/memory/nimcp_buffer_pool.c  # Phase 0: Buffer Pool (CoW + Pool integration)
     ${CMAKE_CURRENT_SOURCE_DIR}/../utils/memory/nimcp_page_cow.c     # Phase COW: Page-level COW for large structures
+    ${CMAKE_CURRENT_SOURCE_DIR}/../utils/memory/nimcp_unified_memory.c  # Unified Memory Manager (object/page CoW + pools)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../utils/memory/nimcp_brain_pools.c     # Brain-level specialized pools
+    ${CMAKE_CURRENT_SOURCE_DIR}/../utils/memory/nimcp_layer_pools.c     # Layer-level specialized pools
+    ${CMAKE_CURRENT_SOURCE_DIR}/../utils/memory/nimcp_unified_pools.c   # Unified pool management
     ${CMAKE_CURRENT_SOURCE_DIR}/../utils/thread/nimcp_thread.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../utils/thread/nimcp_thread_pool.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../utils/thread/nimcp_deadlock_detector.c
@@ -303,14 +309,27 @@ set(NIMCP_CORE_SOURCES
 
     # Utils - Dynamic Configuration (Runtime Safety)
     ${CMAKE_CURRENT_SOURCE_DIR}/../utils/config/nimcp_dynamic_config.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../utils/config/nimcp_config_hash.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../utils/config/nimcp_config_validation.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../utils/config/nimcp_config_expand.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../utils/config/nimcp_config_array.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../utils/config/nimcp_config_signal.c
 
     # Utils - Containers
     ${CMAKE_CURRENT_SOURCE_DIR}/../utils/containers/nimcp_vector.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../utils/containers/nimcp_hash_table.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../utils/containers/nimcp_btree.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../utils/containers/nimcp_queue.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../utils/containers/nimcp_queue_blocking.c   # Phase ASY-1: Mutex-based blocking queue
+    ${CMAKE_CURRENT_SOURCE_DIR}/../utils/containers/nimcp_queue_spsc.c       # Phase ASY-1: Lock-free SPSC queue (<100ns)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../utils/containers/nimcp_queue_mpmc.c       # Phase ASY-1: Lock-free MPMC queue (Vyukov algorithm)
     ${CMAKE_CURRENT_SOURCE_DIR}/../utils/containers/nimcp_graph.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../utils/containers/nimcp_min_heap.c
+
+    # Async - Futures/Promises (Phase ASY-1: Async Communication)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../async/nimcp_future.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../async/nimcp_bio_async.c      # Phase BIO-ASYNC: Biologically-inspired async
+    ${CMAKE_CURRENT_SOURCE_DIR}/../async/nimcp_bio_router.c     # Phase BIO-ASYNC: Bio-router message routing
 
     # Utils - Algorithms (Graph metrics for brain topology validation)
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/topology/nimcp_community_detection.c
@@ -440,6 +459,21 @@ set(NIMCP_CORE_SOURCES
 
     # Middleware - Training Adapters (Phase 2: Brain-Training Layer Integration)
     ${CMAKE_CURRENT_SOURCE_DIR}/../middleware/training/nimcp_training_adapters.c
+
+    # Middleware - Training Module Infrastructure (Phase TM-1: Security + Memory Pool Integration)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../middleware/training/nimcp_training_module.c
+
+    # Middleware - Loss Functions (Phase TM-2: Training Loss Functions)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../middleware/training/nimcp_loss_functions.c
+
+    # Middleware - Optimizers (Phase TM-2: Neural Network Optimizers)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../middleware/training/nimcp_optimizers.c
+
+    # Middleware - Brain Training Integration (Phase TM-3: Brain-Security Integration)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../middleware/training/nimcp_brain_training_integration.c
+
+    # NOTE: nimcp_training_plasticity_bridge_bioasync_handlers.c is included via #include
+    # in nimcp_training_plasticity_bridge.c, not compiled separately (uses internal types)
 )
 
 # Core library

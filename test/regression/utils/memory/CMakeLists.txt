@@ -29,3 +29,18 @@ target_link_libraries(regression_utils_memory_test_layer_pools_regression
 )
 add_test(NAME regression_utils_memory_test_layer_pools_regression
          COMMAND regression_utils_memory_test_layer_pools_regression)
+
+# Unified Memory Regression Tests
+add_executable(regression_utils_memory_test_unified_memory_regression
+    test_unified_memory_regression.cpp
+)
+target_link_libraries(regression_utils_memory_test_unified_memory_regression
+    PRIVATE
+        GTest::GTest
+        GTest::Main
+        nimcp
+        m
+        pthread
+)
+add_test(NAME regression_utils_memory_test_unified_memory_regression
+         COMMAND regression_utils_memory_test_unified_memory_regression)

@@ -15,6 +15,18 @@
  * - Reusable: can be used by any module needing sensory features
  */
 
+// Bio-async integration
+#include "async/nimcp_bio_async.h"
+#include "async/nimcp_bio_router.h"
+#include "async/nimcp_bio_messages.h"
+
+// Logging integration
+#include "utils/logging/nimcp_logging.h"
+
+// Unified memory integration
+#include "utils/memory/nimcp_memory.h"
+#include "utils/memory/nimcp_unified_memory.h"
+
 #include "core/brain/processing/sensory_extractor.h"
 #include "core/brain/nimcp_brain.h"
 #include "perception/nimcp_visual_cortex.h"
@@ -22,6 +34,8 @@
 #include "perception/nimcp_speech_cortex.h"
 #include <string.h>
 #include <stdio.h>
+
+#define LOG_MODULE "BRAIN_PROC_SENS"
 
 //=============================================================================
 // Internal Brain Structure Access

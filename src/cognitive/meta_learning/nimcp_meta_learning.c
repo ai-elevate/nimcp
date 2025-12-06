@@ -347,6 +347,11 @@ bool meta_maml_inner_loop(meta_learner_t meta, brain_t brain,
         return false;
     }
 
+    // Process pending bio-async messages
+    if (meta->bio_async_enabled && meta->bio_ctx) {
+        bio_router_process_inbox(meta->bio_ctx, 5);
+    }
+
     if (!brain) {
         set_error("NULL brain");
         return false;

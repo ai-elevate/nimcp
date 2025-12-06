@@ -284,6 +284,10 @@ typedef struct {
     uint32_t total_loyalty_commitments;
     float average_relationship_closeness;
 
+    // Bio-async integration
+    void* bio_ctx;                  /**< bio_module_context_t pointer */
+    bool bio_async_enabled;         /**< Bio-async registration status */
+
 } social_bond_system_t;
 
 //=============================================================================

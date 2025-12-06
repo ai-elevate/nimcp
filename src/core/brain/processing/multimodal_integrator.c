@@ -10,11 +10,25 @@
  * Reason: Apply Single Responsibility Principle - separate integration logic
  */
 
+// Bio-async integration
+#include "async/nimcp_bio_async.h"
+#include "async/nimcp_bio_router.h"
+#include "async/nimcp_bio_messages.h"
+
+// Logging integration
+#include "utils/logging/nimcp_logging.h"
+
+// Unified memory integration
+#include "utils/memory/nimcp_memory.h"
+#include "utils/memory/nimcp_unified_memory.h"
+
 #include "core/brain/processing/multimodal_integrator.h"
 #include "core/brain/nimcp_brain.h"
 #include "core/integration/nimcp_multimodal_integration.h"
 #include <string.h>
 #include <stdio.h>
+
+#define LOG_MODULE "BRAIN_PROC_MM"
 
 //=============================================================================
 // Internal Brain Structure Access

@@ -367,6 +367,11 @@ bool failure_predictor_update_indicator(
         return false;
     }
 
+    // Process pending bio-async messages
+    if (predictor->bio_async_enabled && predictor->bio_ctx) {
+        bio_router_process_inbox(predictor->bio_ctx, 5);
+    }
+
     // Sanitize inputs
     if (isnan(current_value) || isinf(current_value)) {
         LOG_WARNING("Invalid current_value (NaN or Inf) for metric %d", metric);

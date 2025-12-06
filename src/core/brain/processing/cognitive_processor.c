@@ -15,6 +15,18 @@
  * - Pure function: no side effects except annotation writes
  */
 
+// Bio-async integration
+#include "async/nimcp_bio_async.h"
+#include "async/nimcp_bio_router.h"
+#include "async/nimcp_bio_messages.h"
+
+// Logging integration
+#include "utils/logging/nimcp_logging.h"
+
+// Unified memory integration
+#include "utils/memory/nimcp_memory.h"
+#include "utils/memory/nimcp_unified_memory.h"
+
 #include "core/brain/processing/cognitive_processor.h"
 #include "core/brain/nimcp_brain.h"
 #include "cognitive/introspection/nimcp_introspection.h"
@@ -25,6 +37,8 @@
 #include <string.h>
 #include <stdio.h>
 #include <math.h>
+
+#define LOG_MODULE "BRAIN_PROC_COG"
 
 //=============================================================================
 // Internal Brain Structure Access

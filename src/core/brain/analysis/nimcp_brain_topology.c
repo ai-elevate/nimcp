@@ -13,6 +13,12 @@
  * - Integration: Works with network_analyzer module for real-time analysis
  */
 
+// Bio-async integration
+#include "async/nimcp_bio_async.h"
+#include "utils/memory/nimcp_unified_memory.h"
+#include "async/nimcp_bio_router.h"
+#include "async/nimcp_bio_messages.h"
+
 #include "core/brain/analysis/nimcp_brain_topology.h"
 #include "core/brain/nimcp_brain_internal.h"
 #include "core/brain/strategy/nimcp_brain_strategy.h"
@@ -26,6 +32,8 @@
 #include "utils/algorithms/nimcp_graph_metrics.h"
 #include "utils/containers/nimcp_graph.h"
 #include "cognitive/analysis/nimcp_network_analysis.h"
+
+#define LOG_MODULE "BRAIN_TOPOLOGY"
 
 //=============================================================================
 // Static Helper: Build Graph from Brain Topology

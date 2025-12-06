@@ -188,6 +188,11 @@ void self_model_destroy(self_model_system_t system)
 
 bool self_model_get(self_model_system_t system, self_model_t* model)
 {
+    // Process pending bio-async messages
+    if (system && system->bio_ctx) {
+        bio_router_process_inbox(system->bio_ctx, 5);
+    }
+
     // Guard: NULL checks
     if (!system || !model) {
         return false;

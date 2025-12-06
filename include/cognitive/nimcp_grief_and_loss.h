@@ -244,6 +244,10 @@ typedef struct {
     uint32_t complicated_grief_episodes;
     float average_grief_duration;
 
+    // Bio-async integration (forward declaration from bio_async.h)
+    void* bio_ctx_ptr;                /**< bio_module_context_t pointer */
+    bool bio_async_enabled;
+
 } grief_system_t;
 
 //=============================================================================

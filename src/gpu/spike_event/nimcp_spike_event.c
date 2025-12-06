@@ -11,17 +11,30 @@
  * - Circular Buffer: Spike trains
  * - Lock-Free: Atomic operations for thread safety
  *
+ * BIO-ASYNC INTEGRATION:
+ * - Registers with bio_router for spike event propagation
+ * - Sends spike events to middleware for processing
+ * - Receives commands from cognitive layer
+ *
  * @author NIMCP Development Team
  * @date 2025
- * @version 2.6 (GPU P2P)
+ * @version 2.7.0
  */
 
 #include "gpu/nimcp_spike_event.h"
+#include "utils/memory/nimcp_unified_memory.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/time/nimcp_time.h"
 #include "utils/validation/nimcp_validate.h"
+#include "async/nimcp_bio_async.h"
+#include "async/nimcp_bio_router.h"
+#include "async/nimcp_bio_messages.h"
+#include "utils/logging/nimcp_logging.h"
+#include "security/nimcp_security.h"
 #include <string.h>
 #include <math.h>
+
+#define LOG_MODULE "SPIKE_EVENT"
 
 // C11 atomics for lock-free operations
 #if __STDC_VERSION__ >= 201112L && !defined(__STDC_NO_ATOMICS__)
@@ -57,6 +70,10 @@ struct spike_train_struct {
     uint64_t last_spike;
     float firing_rate;
     uint64_t window_start;   /**< For rate calculation */
+
+    // Bio-async integration
+    bio_module_context_t bio_ctx;
+    bool bio_async_enabled;
 };
 
 /**
@@ -71,6 +88,10 @@ struct spike_queue_struct {
     ATOMIC_UINT count;
     bool gpu_enabled;
     void* gpu_ptr;
+
+    // Bio-async integration
+    bio_module_context_t bio_ctx;
+    bool bio_async_enabled;
 };
 
 //=============================================================================
@@ -82,18 +103,23 @@ struct spike_queue_struct {
  */
 spike_train_t* spike_train_create(uint32_t capacity)
 {
+    LOG_DEBUG("Creating spike train with capacity %u", capacity);
+
     // Guard: Validate capacity
     if (capacity == 0 || capacity > 1000000) {
+        LOG_ERROR("Invalid spike train capacity: %u (must be 1-1000000)", capacity);
         return NULL;
     }
 
     spike_train_t* train = (spike_train_t*)nimcp_calloc(1, sizeof(spike_train_t));
     if (!train) {
+        LOG_ERROR("Failed to allocate spike train structure");
         return NULL;
     }
 
     train->events = (spike_event_t*)nimcp_calloc(capacity, sizeof(spike_event_t));
     if (!train->events) {
+        LOG_ERROR("Failed to allocate spike train events buffer (capacity=%u)", capacity);
         nimcp_free(train);
         return NULL;
     }
@@ -104,6 +130,31 @@ spike_train_t* spike_train_create(uint32_t capacity)
     train->last_spike = 0;
     train->firing_rate = 0.0f;
     train->window_start = 0;
+
+    // Initialize bio-async integration
+    train->bio_async_enabled = false;
+    train->bio_ctx = NULL;
+    if (bio_router_is_initialized()) {
+        bio_module_info_t bio_info = {
+            .module_id = BIO_MODULE_SPIKE_EVENT,
+            .module_name = "spike_train",
+            .inbox_capacity = 64,
+            .user_data = train
+        };
+        train->bio_ctx = bio_router_register_module(&bio_info);
+        if (train->bio_ctx) {
+            train->bio_async_enabled = true;
+            LOG_INFO("Spike train registered with bio_router");
+        } else {
+            LOG_WARN("Failed to register spike train with bio_router (async disabled)");
+        }
+    }
+
+    // Security registration (TODO: implement proper security API)
+    // Note: Security system registration is handled at a higher level
+
+    LOG_INFO("Spike train created successfully (capacity=%u, bio_async=%s)",
+             capacity, train->bio_async_enabled ? "enabled" : "disabled");
 
     return train;
 }
@@ -117,11 +168,24 @@ void spike_train_destroy(spike_train_t* train)
         return;
     }
 
+    LOG_DEBUG("Destroying spike train (count=%u, capacity=%u)", train->count, train->capacity);
+
+    // Unregister from bio-async
+    if (train->bio_async_enabled && train->bio_ctx) {
+        bio_router_unregister_module(train->bio_ctx);
+        train->bio_ctx = NULL;
+        LOG_DEBUG("Spike train unregistered from bio_router");
+    }
+
+    // Security unregistration (TODO: implement proper security API)
+    // Note: Security system unregistration is handled at a higher level
+
     if (train->events) {
         nimcp_free(train->events);
     }
 
     nimcp_free(train);
+    LOG_DEBUG("Spike train destroyed successfully");
 }
 
 /**
@@ -134,8 +198,16 @@ bool spike_train_add(spike_train_t* train, uint64_t timestamp, float amplitude)
     // WHY:  Tests and simulations often start at t=0
     // FIX:  Removed timestamp == 0 check (Issue #SPIKE-003)
     if (!train) {
+        LOG_ERROR("spike_train_add: train is NULL");
         return false;
     }
+
+    // Process pending bio-async messages
+    if (train->bio_async_enabled && train->bio_ctx) {
+        bio_router_process_inbox(train->bio_ctx, 5);
+    }
+
+    LOG_DEBUG("Adding spike to train: timestamp=%lu, amplitude=%.3f", timestamp, amplitude);
 
     // Create spike event
     spike_event_t event = {
@@ -153,10 +225,33 @@ bool spike_train_add(spike_train_t* train, uint64_t timestamp, float amplitude)
     // Update count (saturate at capacity)
     if (train->count < train->capacity) {
         train->count++;
+    } else {
+        LOG_DEBUG("Spike train full (capacity=%u), overwriting oldest spike", train->capacity);
     }
 
     // Update last spike time
     train->last_spike = timestamp;
+
+    // Send spike event via bio-async
+    if (train->bio_async_enabled && train->bio_ctx) {
+        /* Construct a spike event message with header + payload */
+        struct {
+            bio_message_header_t header;
+            spike_event_t payload;
+        } msg;
+
+        bio_msg_init_header(&msg.header, BIO_MSG_LOGIC_SPIKE_EVENT,
+                           BIO_MODULE_NEURON_MODEL, BIO_MODULE_PIPELINE,
+                           sizeof(spike_event_t));
+        msg.header.timestamp_us = timestamp;
+        msg.payload = event;
+
+        if (bio_router_send(train->bio_ctx, &msg, sizeof(msg), 0) != NIMCP_SUCCESS) {
+            LOG_WARN("Failed to send spike event via bio_router");
+        } else {
+            LOG_DEBUG("Spike event sent via bio_router");
+        }
+    }
 
     return true;
 }

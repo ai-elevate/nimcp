@@ -54,3 +54,35 @@ target_link_libraries(regression_core_brain_memory_tracking_regression
     )
 add_test(NAME regression_core_brain_memory_tracking_regression
          COMMAND regression_core_brain_memory_tracking_regression)
+
+# Brain Persistence Regression Test - DISABLED: outdated API
+# add_executable(regression_core_brain_persistence_regression
+#     test_brain_persistence_regression.cpp
+# )
+# target_link_libraries(regression_core_brain_persistence_regression
+#     PRIVATE
+#         GTest::GTest
+#         GTest::Main
+#         nimcp
+#     )
+# add_test(NAME regression_core_brain_persistence_regression
+#          COMMAND regression_core_brain_persistence_regression)
+
+# Brain Bio-Async Regression Test (DISABLED - needs API fixes)
+# add_executable(regression_core_brain_bio_async_regression
+#     test_brain_bio_async_regression.cpp
+# )
+# target_link_libraries(regression_core_brain_bio_async_regression
+#     PRIVATE
+#         GTest::GTest
+#         GTest::Main
+#         nimcp
+#     )
+# add_test(NAME regression_core_brain_bio_async_regression
+#          COMMAND regression_core_brain_bio_async_regression)
+
+# Set test timeouts for long-running regression tests (5 minutes)
+# set_tests_properties(regression_core_brain_bio_async_regression
+#     PROPERTIES TIMEOUT 300)
+# set_tests_properties(regression_core_brain_persistence_regression
+#     PROPERTIES TIMEOUT 300)

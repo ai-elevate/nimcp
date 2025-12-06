@@ -12,6 +12,7 @@
 #include "information/nimcp_shannon.h"  // Phase C4: Shannon Information Theory
 #include "utils/quantum/nimcp_quantum_shannon.h"  // Phase C4.1: Quantum-Shannon diffusion
 #include "information/nimcp_cross_modal.h"  // Phase C4.7: Cross-modal information flow
+#include "async/nimcp_future.h"  // Async futures for non-blocking operations
 
 #ifdef __cplusplus
 extern "C" {
@@ -820,6 +821,79 @@ typedef struct {
      * PERFORMANCE: ~10-50µs overhead per validation, negligible for most workloads
      */
     bool enable_bbb_protection;           /**< Enable Blood-Brain Barrier perimeter defense (default: false) */
+
+    // === PHASE T1: BIOLOGICAL FRAMEWORK ENHANCEMENTS (Training Pipeline) ===
+    /**
+     * Biological Plasticity Mechanisms
+     *
+     * WHAT: Advanced biologically-realistic plasticity for improved learning
+     * WHY:  Provides homeostatic regulation, dendritic computation, and predictive coding
+     * HOW:  Three integrated systems working together for stable, efficient learning
+     *
+     * HOMEOSTATIC PLASTICITY: Maintains neural activity within healthy ranges
+     * - Synaptic scaling: Adjusts all synaptic weights to maintain target firing rate
+     * - Intrinsic plasticity: Modifies neuron excitability for homeostasis
+     *
+     * DENDRITIC NONLINEARITIES: Local computation in dendritic branches
+     * - NMDA dynamics: Voltage-dependent magnesium block, NMDA-dependent LTP
+     * - Compartmental modeling: Each branch computes local activations
+     *
+     * PREDICTIVE CODING: Hierarchical error minimization (Free Energy Principle)
+     * - Prediction units: Generate top-down expectations
+     * - Error units: Compute mismatch between prediction and input
+     * - Precision weighting: Modulates error importance
+     */
+    bool enable_homeostatic_plasticity;   /**< Enable synaptic scaling and intrinsic plasticity (default: false) */
+    float homeostatic_target_rate_hz;     /**< Target firing rate for homeostasis in Hz (default: 5.0) */
+    float homeostatic_tau_ms;             /**< Time constant for scaling in ms (default: 10000.0) */
+
+    bool enable_dendritic_computation;    /**< Enable NMDA dynamics and dendritic nonlinearities (default: false) */
+    uint32_t dendritic_branches;          /**< Number of dendritic branches per neuron (default: 8) */
+    uint32_t dendritic_compartments;      /**< Compartments per branch (default: 5) */
+
+    bool enable_biological_predictive;    /**< Enable hierarchical predictive coding (default: false) */
+    uint32_t predictive_levels;           /**< Number of hierarchy levels (default: 3) */
+    float predictive_learning_rate;       /**< Learning rate for prediction error (default: 0.01) */
+
+    // === PHASE TM-3: BRAIN-TRAINING INTEGRATION ===
+    /**
+     * Brain-Training Integration (Phase TM-3)
+     *
+     * WHAT: Integrates training modules (Loss Functions, Optimizers) with brain system
+     * WHY:  Provides unified training interface with automatic security registration
+     * HOW:  Creates training context that manages loss functions and optimizers
+     *
+     * FEATURES:
+     * - Automatic security registration (BBB + Security Integration)
+     * - Event bus integration for training events
+     * - Memory pool support for gradient buffers
+     * - Statistics tracking and convergence detection
+     */
+    bool enable_training_integration;     /**< Enable brain-training integration (default: false) */
+    bool training_register_security;      /**< Register training with security system (default: true) */
+    float training_default_lr;            /**< Default learning rate for training (default: 0.001) */
+
+    /*
+     * Phase TM-4/5/6: Advanced Training Pipeline Configuration
+     *
+     * LR Scheduler: Automatic learning rate adjustment during training
+     * Regularization: Prevent overfitting via L1/L2/Dropout/Early Stopping
+     * Gradient Management: Accumulation, clipping, and health monitoring
+     */
+    bool enable_lr_scheduler;             /**< Enable learning rate scheduling (default: false) */
+    bool enable_regularization;           /**< Enable regularization (L1/L2/Dropout) (default: false) */
+    bool enable_gradient_management;      /**< Enable gradient accumulation/clipping (default: false) */
+    bool enable_gradient_health_check;    /**< Enable NaN/Inf gradient detection (default: true) */
+
+    /* Regularization parameters */
+    float regularization_l1_lambda;       /**< L1 regularization strength (default: 0.0) */
+    float regularization_l2_lambda;       /**< L2 regularization strength (default: 0.0001) */
+    float dropout_rate;                   /**< Dropout probability during training (default: 0.0) */
+
+    /* Gradient management parameters */
+    uint32_t gradient_accumulation_steps; /**< Steps to accumulate before update (default: 1) */
+    float gradient_clip_value;            /**< Max gradient value for clipping (default: 0.0 = disabled) */
+    float gradient_clip_norm;             /**< Max gradient norm for clipping (default: 0.0 = disabled) */
 } brain_config_t;
 
 /**
@@ -1340,6 +1414,135 @@ bool brain_observe_action(brain_t brain, const float* features, uint32_t num_fea
  */
 bool brain_decide_batch(brain_t brain, const float** inputs, uint32_t num_inputs,
                         uint32_t features_per_input, brain_decision_t* decisions);
+
+//=============================================================================
+// Async API - Non-blocking Learning and Inference
+//=============================================================================
+
+/**
+ * @brief Asynchronous learning from labeled example
+ *
+ * WHAT: Non-blocking version of brain_learn_example that returns immediately
+ * WHY:  Enable concurrent learning while continuing other operations
+ * HOW:  Spawns background thread to perform learning, returns future handle
+ *
+ * The returned future can be used to:
+ * - Check if learning completed (nimcp_future_is_ready)
+ * - Wait for completion (nimcp_future_wait/nimcp_future_wait_timeout)
+ * - Retrieve final loss value (nimcp_future_get)
+ * - Handle errors (nimcp_future_get_error)
+ *
+ * THREAD SAFETY:
+ * - Brain must support concurrent access or use external synchronization
+ * - Future handle is thread-safe for waiting/polling from multiple threads
+ * - Caller must eventually destroy future with nimcp_future_destroy()
+ *
+ * MEMORY MANAGEMENT:
+ * - Input features are copied internally, safe to free after call returns
+ * - Label string is copied internally
+ * - Caller owns returned future, must call nimcp_future_destroy()
+ *
+ * ERROR HANDLING:
+ * - Returns NULL if async system not initialized or allocation fails
+ * - Learning errors propagated through future (check nimcp_future_get_error)
+ *
+ * COMPLEXITY: O(1) setup + O(s*n) background learning
+ *
+ * EXAMPLE:
+ * ```c
+ * // Start async learning
+ * nimcp_future_t future = nimcp_brain_learn_async(
+ *     brain, features, 10, "cat", 0.9f
+ * );
+ * if (!future) {
+ *     // Handle error
+ * }
+ *
+ * // Do other work while learning...
+ * process_other_tasks();
+ *
+ * // Wait for completion with timeout
+ * if (nimcp_future_wait_timeout(future, 1000)) {
+ *     float loss;
+ *     if (nimcp_future_get(future, &loss) == NIMCP_SUCCESS) {
+ *         printf("Learning complete, loss: %.4f\n", loss);
+ *     }
+ * }
+ *
+ * nimcp_future_destroy(future);
+ * ```
+ *
+ * @param brain Brain handle
+ * @param features Input feature vector
+ * @param num_features Number of features
+ * @param label Target label string
+ * @param confidence Training confidence (0-1)
+ * @return Future handle or NULL on error (caller must destroy)
+ */
+nimcp_future_t nimcp_brain_learn_async(brain_t brain, const float* features,
+                                        uint32_t num_features, const char* label,
+                                        float confidence);
+
+/**
+ * @brief Asynchronous inference/decision making
+ *
+ * WHAT: Non-blocking version of brain_decide that returns immediately
+ * WHY:  Enable concurrent inference without blocking caller
+ * HOW:  Spawns background thread for forward pass, returns future handle
+ *
+ * The returned future can be used to:
+ * - Check if inference completed (nimcp_future_is_ready)
+ * - Wait for completion (nimcp_future_wait/nimcp_future_wait_timeout)
+ * - Retrieve decision result (nimcp_future_get)
+ * - Handle errors (nimcp_future_get_error)
+ *
+ * THREAD SAFETY:
+ * - Brain must support concurrent access or use external synchronization
+ * - Future handle is thread-safe for waiting/polling
+ * - Caller must eventually destroy both future and decision
+ *
+ * MEMORY MANAGEMENT:
+ * - Input features are copied internally, safe to free after call returns
+ * - Decision result is allocated on heap, must free with brain_free_decision()
+ * - Caller owns returned future, must call nimcp_future_destroy()
+ *
+ * ERROR HANDLING:
+ * - Returns NULL if async system not initialized or allocation fails
+ * - Inference errors propagated through future (check nimcp_future_get_error)
+ *
+ * COMPLEXITY: O(1) setup + O(s*n) background inference
+ *
+ * EXAMPLE:
+ * ```c
+ * // Start async inference
+ * nimcp_future_t future = nimcp_brain_infer_async(brain, features, 10);
+ * if (!future) {
+ *     // Handle error
+ * }
+ *
+ * // Do other work while inferring...
+ * process_other_tasks();
+ *
+ * // Wait for completion with timeout
+ * if (nimcp_future_wait_timeout(future, 500)) {
+ *     brain_decision_t* decision;
+ *     if (nimcp_future_get(future, &decision) == NIMCP_SUCCESS) {
+ *         printf("Decision: %s (%.2f confidence)\n",
+ *                decision->label, decision->confidence);
+ *         brain_free_decision(decision);
+ *     }
+ * }
+ *
+ * nimcp_future_destroy(future);
+ * ```
+ *
+ * @param brain Brain handle
+ * @param features Input feature vector
+ * @param num_features Number of features
+ * @return Future handle or NULL on error (caller must destroy)
+ */
+nimcp_future_t nimcp_brain_infer_async(brain_t brain, const float* features,
+                                        uint32_t num_features);
 
 /**
  * @brief Simple prediction/inference function

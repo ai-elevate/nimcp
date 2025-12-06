@@ -26,11 +26,25 @@
  * - Comprehensive error handling with set_error()
  */
 
+// Bio-async integration
+#include "async/nimcp_bio_async.h"
+#include "async/nimcp_bio_router.h"
+#include "async/nimcp_bio_messages.h"
+
+// Logging integration
+#include "utils/logging/nimcp_logging.h"
+
+// Unified memory integration
+#include "utils/memory/nimcp_memory.h"
+#include "utils/memory/nimcp_unified_memory.h"
+
 #include "core/brain/cognitive/nimcp_brain_cognitive.h"
 #include "core/brain/nimcp_brain.h"
 #include "core/brain/nimcp_brain_internal.h"
 #include <stdlib.h>
 #include <string.h>
+
+#define LOG_MODULE "BRAIN_COGNITIVE"
 
 //=============================================================================
 // COGNITIVE SUBSYSTEM INITIALIZATION IMPLEMENTATIONS

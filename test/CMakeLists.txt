@@ -200,9 +200,14 @@ message(STATUS "================================================================
 # Discover tests in each category
 discover_category_tests(unit)
 discover_category_tests(integration)
-discover_category_tests(e2e)
 discover_category_tests(regression)
 discover_category_tests(fuzz)
+
+# E2E tests have their own CMakeLists.txt (uses custom build rules)
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/e2e")
+    message(STATUS "Adding E2E test subdirectory...")
+    add_subdirectory(e2e)
+endif()
 
 # Enable CTest
 enable_testing()
@@ -215,21 +220,27 @@ enable_testing()
 # HOW:  Set 60s timeout for tests that require extensive computation
 
 # NOTE: Only set properties for tests that actually exist
-# Commented out missing tests to avoid CMake errors
+# Timeout values set based on test complexity and computation requirements
+set_tests_properties(
+  unit_utils_test_kdtree
+  PROPERTIES TIMEOUT 60
+)
+
+set_tests_properties(
+  unit_cognitive_ethics_test_ethics_comprehensive
+  PROPERTIES TIMEOUT 120
+)
+
+# Disabled test that doesn't exist
 # set_tests_properties(
-#   unit_utils_test_kdtree
-#   unit_core_brain_test_brain_exhaustive_scenarios
-#   unit_cognitive_consolidation_test_consolidation
-#   unit_cognitive_ethics_test_ethics
-#   unit_cognitive_ethics_test_ethics_comprehensive
 #   unit_cognitive_knowledge_test_knowledge_comprehensive
-#   unit_cognitive_salience_test_salience_comprehensive
-#   unit_utils_tensor_networks_test_mps_compression
-#   integration_utils_tensor_networks_test_mps_neural_network_integration
-#   integration_test_brain_oscillations_integration
-#   regression_test_routing_efficiency_regression
-#   PROPERTIES TIMEOUT 60
+#   PROPERTIES TIMEOUT 120
 # )
+
+set_tests_properties(
+  integration_test_brain_oscillations_integration
+  PROPERTIES TIMEOUT 90
+)
 
 # ============================================================================
 # Test Execution Instructions
@@ -297,21 +308,20 @@ if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/regression/cognitive/fault_tolerance")
     add_subdirectory(regression/cognitive/fault_tolerance)
 endif()
 
-# NOTE: Reasoning tests disabled - modules not yet fully integrated
-# if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/unit/cognitive/reasoning")
-#     message(STATUS "Adding symbolic logic brain integration unit tests...")
-#     add_subdirectory(unit/cognitive/reasoning)
-# endif()
-#
-# if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/integration/cognitive/reasoning")
-#     message(STATUS "Adding reasoning integration tests...")
-#     add_subdirectory(integration/cognitive/reasoning)
-# endif()
-#
-# if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/regression/cognitive/reasoning")
-#     message(STATUS "Adding reasoning regression tests...")
-#     add_subdirectory(regression/cognitive/reasoning)
-# endif()
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/unit/cognitive/reasoning")
+    message(STATUS "Adding symbolic logic brain integration unit tests...")
+    add_subdirectory(unit/cognitive/reasoning)
+endif()
+
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/integration/cognitive/reasoning")
+    message(STATUS "Adding reasoning integration tests...")
+    add_subdirectory(integration/cognitive/reasoning)
+endif()
+
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/regression/cognitive/reasoning")
+    message(STATUS "Adding reasoning regression tests...")
+    add_subdirectory(regression/cognitive/reasoning)
+endif()
 
 # ============================================================================
 # Cognitive Introspection Tests (Phase 1.5.4)
@@ -330,6 +340,25 @@ endif()
 if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/regression/cognitive/introspection")
     message(STATUS "Adding cognitive introspection regression tests...")
     add_subdirectory(regression/cognitive/introspection)
+endif()
+
+# ============================================================================
+# Cognitive Bio-Async Tests
+# ============================================================================
+
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/unit/cognitive")
+    message(STATUS "Adding cognitive unit tests...")
+    add_subdirectory(unit/cognitive)
+endif()
+
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/integration/cognitive/bio_async")
+    message(STATUS "Adding cognitive bio-async integration tests...")
+    add_subdirectory(integration/cognitive/bio_async)
+endif()
+
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/regression/cognitive/bio_async")
+    message(STATUS "Adding cognitive bio-async regression tests...")
+    add_subdirectory(regression/cognitive/bio_async)
 endif()
 
 if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/unit/cognitive/mirror_neurons")
@@ -362,6 +391,25 @@ if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/integration/networking/protocol")
 endif()
 
 # ============================================================================
+# Networking Distributed Tests (Async API)
+# ============================================================================
+
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/unit/networking/distributed")
+    message(STATUS "Adding networking distributed unit tests...")
+    add_subdirectory(unit/networking/distributed)
+endif()
+
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/integration/networking/distributed")
+    message(STATUS "Adding networking distributed integration tests...")
+    add_subdirectory(integration/networking/distributed)
+endif()
+
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/regression/networking/distributed")
+    message(STATUS "Adding networking distributed regression tests...")
+    add_subdirectory(regression/networking/distributed)
+endif()
+
+# ============================================================================
 # Brain Factory Tests
 # ============================================================================
 
@@ -380,9 +428,27 @@ if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/regression/core/brain/factory")
     add_subdirectory(regression/core/brain/factory)
 endif()
 
+# ============================================================================
+# Core Brain Bio-Async Integration Tests
+# ============================================================================
+
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/integration/core/brain")
+    message(STATUS "Adding core brain bio-async integration tests...")
+    add_subdirectory(integration/core/brain)
+endif()
+
 if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/regression/core/brain")
     message(STATUS "Adding core brain regression tests...")
     add_subdirectory(regression/core/brain)
+endif()
+
+# ============================================================================
+# Core Neuron Types Bio-Async Integration Tests
+# ============================================================================
+
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/integration/core/neuron_types")
+    message(STATUS "Adding neuron types bio-async integration tests...")
+    add_subdirectory(integration/core/neuron_types)
 endif()
 
 if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/regression/api")
@@ -445,6 +511,19 @@ endif()
 if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/regression/utils/memory")
     message(STATUS "Adding utils memory regression tests...")
     add_subdirectory(regression/utils/memory)
+endif()
+
+# Utils Containers Tests
+# ============================================================================
+
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/integration/utils/containers")
+    message(STATUS "Adding utils containers integration tests...")
+    add_subdirectory(integration/utils/containers)
+endif()
+
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/regression/utils/containers")
+    message(STATUS "Adding utils containers regression tests...")
+    add_subdirectory(regression/utils/containers)
 endif()
 
 # ============================================================================
@@ -523,6 +602,12 @@ if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/regression/core/dendrite")
     add_subdirectory(regression/core/dendrite)
 endif()
 
+# Neuron Types Regression Tests
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/regression/core/neuron_types")
+    message(STATUS "Adding neuron types performance regression tests...")
+    add_subdirectory(regression/core/neuron_types)
+endif()
+
 # ============================================================================
 # Security Tests (Phase SC-1: Security Coverage Framework)
 # ============================================================================
@@ -540,6 +625,48 @@ endif()
 if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/regression/security")
     message(STATUS "Adding security regression tests...")
     add_subdirectory(regression/security)
+endif()
+
+# ============================================================================
+# Utils Logging Tests (Phase LOG-1: Enhanced Logging System)
+# ============================================================================
+
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/unit/utils/logging")
+    message(STATUS "Adding utils logging unit tests...")
+    add_subdirectory(unit/utils/logging)
+endif()
+
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/integration/utils/logging")
+    message(STATUS "Adding utils logging integration tests...")
+    add_subdirectory(integration/utils/logging)
+endif()
+
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/regression/utils/logging")
+    message(STATUS "Adding utils logging regression tests...")
+    add_subdirectory(regression/utils/logging)
+endif()
+
+# ============================================================================
+# Async Tests (Phase BIO-ASYNC: Biologically-Inspired Async)
+# ============================================================================
+# WHAT: Tests for biological async system (neuromodulators, phase coupling, etc.)
+# WHY:  Verify correctness and performance of biologically-plausible async primitives
+# HOW:  Unit tests verify components, integration tests verify interactions,
+#       regression tests verify performance and numerical stability
+
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/unit/async")
+    message(STATUS "Adding async unit tests...")
+    add_subdirectory(unit/async)
+endif()
+
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/integration/async")
+    message(STATUS "Adding async integration tests...")
+    add_subdirectory(integration/async)
+endif()
+
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/regression/async")
+    message(STATUS "Adding async regression tests...")
+    add_subdirectory(regression/async)
 endif()
 
 # ============================================================================

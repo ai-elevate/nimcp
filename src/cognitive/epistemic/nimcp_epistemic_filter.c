@@ -495,6 +495,11 @@ bool epistemic_assess_claim(
     const claim_evidence_t* evidence,
     epistemic_assessment_t* assessment)
 {
+    // Process pending bio-async messages
+    if (filter && filter->bio_ctx) {
+        bio_router_process_inbox(filter->bio_ctx, 5);
+    }
+
     if (!filter || !claim_text || !evidence || !assessment) {
         return false;
     }

@@ -361,6 +361,11 @@ distress_assessment_t wellbeing_assess_distress(introspection_context_t ctx)
  */
 bool wellbeing_provide_relief(brain_t brain, distress_assessment_t assessment)
 {
+    // Process pending bio-async messages
+    if (wellbeing_bio_ctx) {
+        bio_router_process_inbox(wellbeing_bio_ctx, 5);
+    }
+
     // Guard: NULL brain
     if (!brain) {
         return false;

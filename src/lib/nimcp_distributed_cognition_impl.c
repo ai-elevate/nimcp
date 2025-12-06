@@ -30,12 +30,20 @@
  * @date 2025
  */
 
-#include "nimcp_distributed_cognition.h"
-#include "nimcp_neuromodulators.h"
-#include "utils/nimcp_memory.h"
-#include "utils/nimcp_time.h"
-#include "utils/nimcp_validate.h"
-#include "logging/nimcp_logging.h"
+#include "async/nimcp_bio_async.h"
+#include "async/nimcp_bio_router.h"
+#include "async/nimcp_bio_messages.h"
+#include "utils/logging/nimcp_logging.h"
+#include "utils/memory/nimcp_unified_memory.h"
+
+#define LOG_MODULE "LIB"
+
+#include "networking/distributed/nimcp_distributed_cognition.h"
+#include "plasticity/neuromodulators/nimcp_neuromodulators.h"
+#include "utils/memory/nimcp_memory.h"
+#include "utils/time/nimcp_time.h"
+#include "utils/validation/nimcp_validate.h"
+#include "utils/logging/nimcp_logging.h"
 #include <math.h>
 #include <string.h>
 

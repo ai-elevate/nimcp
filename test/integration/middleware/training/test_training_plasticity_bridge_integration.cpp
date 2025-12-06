@@ -24,6 +24,7 @@
 extern "C" {
 #include "middleware/training/nimcp_training_plasticity_bridge.h"
 #include "middleware/training/nimcp_brain_training_integration.h"
+#include "middleware/training/nimcp_training_callbacks.h"
 #include "plasticity/neuromodulators/nimcp_neuromodulators.h"
 #include "plasticity/nimcp_stdp.h"
 #include "plasticity/bcm/nimcp_bcm.h"
@@ -527,6 +528,254 @@ TEST_F(TrainingPlasticityIntegrationTest, LongRunningStability) {
     tpb_get_stats(bridge_, &stats);
     EXPECT_EQ(stats.rpe_computations, (uint64_t)iterations);
     EXPECT_EQ(stats.total_plasticity_updates, (uint64_t)(iterations * batch_size));
+}
+
+//=============================================================================
+// Callback-Plasticity Auto-Wiring Tests (Phase TCB-1)
+//=============================================================================
+
+class CallbackPlasticityWiringTest : public ::testing::Test {
+protected:
+    void SetUp() override {
+        bridge_ = nullptr;
+        training_ctx_ = nullptr;
+    }
+
+    void TearDown() override {
+        if (training_ctx_) {
+            nimcp_brain_training_destroy(training_ctx_);
+            training_ctx_ = nullptr;
+        }
+        if (bridge_) {
+            tpb_destroy(bridge_);
+            bridge_ = nullptr;
+        }
+    }
+
+    tpb_context_t* bridge_;
+    nimcp_brain_training_ctx_t* training_ctx_;
+};
+
+TEST_F(CallbackPlasticityWiringTest, AutoWireWhenBridgeConnected) {
+    // Create training context
+    nimcp_brain_training_config_t train_cfg = nimcp_brain_training_default_config();
+    train_cfg.enable_training_callbacks = true;
+    training_ctx_ = nimcp_brain_training_create(&train_cfg);
+    ASSERT_NE(training_ctx_, nullptr);
+
+    // Create callbacks
+    EXPECT_EQ(nimcp_brain_training_create_callbacks(training_ctx_), NIMCP_SUCCESS);
+    tcb_context_t* callbacks = nimcp_brain_training_get_callbacks(training_ctx_);
+    ASSERT_NE(callbacks, nullptr);
+
+    // Create plasticity bridge
+    bridge_ = tpb_create(nullptr);
+    ASSERT_NE(bridge_, nullptr);
+
+    // Verify no plasticity callbacks registered yet
+    EXPECT_EQ(tcb_get_callback_count(callbacks, TCB_EVENT_LOSS_COMPUTED), 0u);
+
+    // Connect bridge to training - this should auto-wire callbacks
+    EXPECT_EQ(nimcp_brain_training_connect_plasticity_bridge(training_ctx_, bridge_),
+              NIMCP_SUCCESS);
+
+    // Verify plasticity callbacks are now registered
+    EXPECT_GT(tcb_get_callback_count(callbacks, TCB_EVENT_LOSS_COMPUTED), 0u)
+        << "Loss callback should be auto-registered";
+    EXPECT_GT(tcb_get_callback_count(callbacks, TCB_EVENT_WEIGHTS_UPDATED), 0u)
+        << "Weights callback should be auto-registered";
+    EXPECT_GT(tcb_get_callback_count(callbacks, TCB_EVENT_EPOCH_COMPLETE), 0u)
+        << "Epoch callback should be auto-registered";
+    EXPECT_GT(tcb_get_callback_count(callbacks, TCB_EVENT_DIVERGENCE), 0u)
+        << "Divergence callback should be auto-registered";
+
+    // Verify bridge has the callback context
+    EXPECT_EQ(tpb_get_callback_context(bridge_), callbacks);
+}
+
+TEST_F(CallbackPlasticityWiringTest, AutoWireWhenCallbacksCreatedAfter) {
+    // Create training context WITHOUT callbacks initially
+    nimcp_brain_training_config_t train_cfg = nimcp_brain_training_default_config();
+    train_cfg.enable_training_callbacks = false;
+    training_ctx_ = nimcp_brain_training_create(&train_cfg);
+    ASSERT_NE(training_ctx_, nullptr);
+
+    // Create and connect plasticity bridge FIRST
+    bridge_ = tpb_create(nullptr);
+    ASSERT_NE(bridge_, nullptr);
+    EXPECT_EQ(nimcp_brain_training_connect_plasticity_bridge(training_ctx_, bridge_),
+              NIMCP_SUCCESS);
+
+    // No callbacks yet
+    EXPECT_EQ(tpb_get_callback_context(bridge_), nullptr);
+
+    // NOW create callbacks - should auto-wire to bridge
+    EXPECT_EQ(nimcp_brain_training_create_callbacks(training_ctx_), NIMCP_SUCCESS);
+    tcb_context_t* callbacks = nimcp_brain_training_get_callbacks(training_ctx_);
+    ASSERT_NE(callbacks, nullptr);
+
+    // Verify callbacks are wired to plasticity
+    EXPECT_EQ(tpb_get_callback_context(bridge_), callbacks)
+        << "Bridge should be connected to callbacks created after";
+    EXPECT_GT(tcb_get_callback_count(callbacks, TCB_EVENT_LOSS_COMPUTED), 0u)
+        << "Plasticity callbacks should be registered";
+}
+
+TEST_F(CallbackPlasticityWiringTest, EndToEndCallbackFiringModulatesPlasticity) {
+    // Setup training context with callbacks
+    nimcp_brain_training_config_t train_cfg = nimcp_brain_training_default_config();
+    train_cfg.enable_training_callbacks = true;
+    training_ctx_ = nimcp_brain_training_create(&train_cfg);
+    ASSERT_NE(training_ctx_, nullptr);
+    EXPECT_EQ(nimcp_brain_training_create_callbacks(training_ctx_), NIMCP_SUCCESS);
+
+    // Setup plasticity bridge with region
+    tpb_config_t tpb_cfg = tpb_config_default();
+    bridge_ = tpb_create(&tpb_cfg);
+    ASSERT_NE(bridge_, nullptr);
+
+    tpb_region_config_t region = tpb_region_cortical_default();
+    region.neuron_start_idx = 0;
+    region.neuron_end_idx = 1000;
+    tpb_configure_region(bridge_, &region, nullptr);
+
+    // Connect bridge (auto-wires callbacks)
+    EXPECT_EQ(nimcp_brain_training_connect_plasticity_bridge(training_ctx_, bridge_),
+              NIMCP_SUCCESS);
+
+    // Get initial neuromodulator levels
+    float da_initial, ach_initial;
+    tpb_get_neuromod_levels(bridge_, &da_initial, &ach_initial, nullptr, nullptr);
+
+    // Get callbacks context
+    tcb_context_t* callbacks = nimcp_brain_training_get_callbacks(training_ctx_);
+
+    // Fire loss events simulating training improvement
+    tcb_metrics_t metrics;
+    memset(&metrics, 0, sizeof(metrics));
+
+    // Establish baseline loss
+    metrics.loss = 1.0f;
+    metrics.step = 0;
+    tcb_update_metrics(callbacks, metrics.loss, 0.01f, metrics.step, 0.0f);
+    tcb_fire_event(callbacks, TCB_EVENT_LOSS_COMPUTED, &metrics);
+
+    // Fire improving loss - should boost DA
+    metrics.loss = 0.5f;
+    metrics.step = 1;
+    tcb_update_metrics(callbacks, metrics.loss, 0.01f, metrics.step, 0.0f);
+    tcb_fire_event(callbacks, TCB_EVENT_LOSS_COMPUTED, &metrics);
+
+    // Check callback stats on plasticity bridge
+    uint64_t loss_fired = 0;
+    tpb_get_callback_stats(bridge_, &loss_fired, nullptr, nullptr, nullptr);
+    EXPECT_GT(loss_fired, 0u) << "Loss callbacks should have fired";
+
+    // Verify DA changed from RPE computation
+    float da_after;
+    tpb_get_neuromod_levels(bridge_, &da_after, nullptr, nullptr, nullptr);
+
+    // Fire large gradient event - should boost NE
+    float ne_before, ne_after;
+    tpb_get_neuromod_levels(bridge_, nullptr, nullptr, nullptr, &ne_before);
+
+    metrics.gradient_norm = 100.0f;  // Large gradient
+    metrics.step = 2;
+    tcb_fire_event(callbacks, TCB_EVENT_WEIGHTS_UPDATED, &metrics);
+
+    tpb_get_neuromod_levels(bridge_, nullptr, nullptr, nullptr, &ne_after);
+    EXPECT_GT(ne_after, ne_before) << "Large gradient should boost NE";
+
+    // Verify weights callback fired
+    uint64_t weight_fired = 0;
+    tpb_get_callback_stats(bridge_, nullptr, &weight_fired, nullptr, nullptr);
+    EXPECT_GT(weight_fired, 0u) << "Weights callbacks should have fired";
+}
+
+TEST_F(CallbackPlasticityWiringTest, DivergenceCallbackTriggersEmergencyResponse) {
+    // Setup
+    nimcp_brain_training_config_t train_cfg = nimcp_brain_training_default_config();
+    train_cfg.enable_training_callbacks = true;
+    training_ctx_ = nimcp_brain_training_create(&train_cfg);
+    ASSERT_NE(training_ctx_, nullptr);
+    EXPECT_EQ(nimcp_brain_training_create_callbacks(training_ctx_), NIMCP_SUCCESS);
+
+    bridge_ = tpb_create(nullptr);
+    ASSERT_NE(bridge_, nullptr);
+    EXPECT_EQ(nimcp_brain_training_connect_plasticity_bridge(training_ctx_, bridge_),
+              NIMCP_SUCCESS);
+
+    // Set high neuromodulator levels (as if learning was going well)
+    tpb_set_neuromod_levels(bridge_, 0.9f, 0.8f, 0.3f, 0.8f);
+
+    tcb_context_t* callbacks = nimcp_brain_training_get_callbacks(training_ctx_);
+
+    // Fire divergence event
+    tcb_metrics_t metrics;
+    memset(&metrics, 0, sizeof(metrics));
+    metrics.loss = 1000.0f;  // Diverged loss
+    metrics.step = 100;
+
+    tcb_action_t action = tcb_fire_event(callbacks, TCB_EVENT_DIVERGENCE, &metrics);
+
+    // Divergence callback should request rollback or reduce LR
+    EXPECT_TRUE(action == TCB_ACTION_ROLLBACK || action == TCB_ACTION_REDUCE_LR)
+        << "Divergence should trigger emergency action";
+
+    // Check neuromodulators were reset toward baseline (calming response)
+    float da, ht5, ne;
+    tpb_get_neuromod_levels(bridge_, &da, nullptr, &ht5, &ne);
+
+    // 5-HT should be elevated (calming), NE should be reduced
+    EXPECT_GT(ht5, 0.5f) << "5-HT should be elevated after divergence (calm down)";
+    EXPECT_LT(ne, 0.5f) << "NE should be reduced after divergence";
+
+    // Verify stats
+    uint64_t divergence_fired = 0;
+    tpb_get_callback_stats(bridge_, nullptr, nullptr, nullptr, &divergence_fired);
+    EXPECT_GT(divergence_fired, 0u) << "Divergence callback should have fired";
+}
+
+TEST_F(CallbackPlasticityWiringTest, EpochCallbackTriggersConsolidation) {
+    // Setup
+    nimcp_brain_training_config_t train_cfg = nimcp_brain_training_default_config();
+    train_cfg.enable_training_callbacks = true;
+    training_ctx_ = nimcp_brain_training_create(&train_cfg);
+    ASSERT_NE(training_ctx_, nullptr);
+    EXPECT_EQ(nimcp_brain_training_create_callbacks(training_ctx_), NIMCP_SUCCESS);
+
+    bridge_ = tpb_create(nullptr);
+    ASSERT_NE(bridge_, nullptr);
+    EXPECT_EQ(nimcp_brain_training_connect_plasticity_bridge(training_ctx_, bridge_),
+              NIMCP_SUCCESS);
+
+    // Set extreme neuromodulator levels
+    tpb_set_neuromod_levels(bridge_, 0.9f, 0.2f, 0.1f, 0.9f);
+
+    tcb_context_t* callbacks = nimcp_brain_training_get_callbacks(training_ctx_);
+
+    // Fire epoch complete event
+    tcb_metrics_t metrics;
+    memset(&metrics, 0, sizeof(metrics));
+    metrics.epoch = 1;
+    metrics.loss = 0.5f;
+
+    tcb_fire_event(callbacks, TCB_EVENT_EPOCH_COMPLETE, &metrics);
+
+    // Epoch callback triggers homeostatic scaling - neuromodulators drift toward baseline
+    float da, ach, ht5, ne;
+    tpb_get_neuromod_levels(bridge_, &da, &ach, &ht5, &ne);
+
+    // All should be closer to 0.5 than before
+    EXPECT_LT(da, 0.9f) << "DA should drift toward baseline after epoch";
+    EXPECT_GT(ach, 0.2f) << "ACh should drift toward baseline after epoch";
+    EXPECT_GT(ht5, 0.1f) << "5-HT should drift toward baseline after epoch";
+    EXPECT_LT(ne, 0.9f) << "NE should drift toward baseline after epoch";
+
+    // Verify epoch callback fired
+    uint64_t epoch_fired = 0;
+    tpb_get_callback_stats(bridge_, nullptr, nullptr, &epoch_fired, nullptr);
+    EXPECT_GT(epoch_fired, 0u) << "Epoch callback should have fired";
 }
 
 //=============================================================================

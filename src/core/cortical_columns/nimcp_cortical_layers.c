@@ -17,14 +17,57 @@
  * @date 2025-11-25
  */
 
-#include "nimcp_cortical_layers.h"
+#include "core/cortical_columns/nimcp_cortical_layers.h"
+#include "utils/memory/nimcp_unified_memory.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/platform/nimcp_platform.h"
 #include "utils/platform/nimcp_platform_mutex.h"
+#include "async/nimcp_bio_async.h"
+#include "async/nimcp_bio_router.h"
+#include "async/nimcp_bio_messages.h"
 #include <string.h>
 #include <math.h>
 #include <time.h>
+
+#define LOG_MODULE "cortical_layers"
+
+//=============================================================================
+// Bio-Async Module Context
+//=============================================================================
+
+static bio_module_context_t bio_ctx = NULL;
+static bool bio_async_enabled = false;
+
+__attribute__((constructor))
+static void cortical_layers_bio_init(void) {
+    if (!bio_router_is_initialized()) {
+        return;
+    }
+
+    bio_module_info_t bio_info = {
+        .module_id = BIO_MODULE_CORTICAL_LAYERS,
+        .module_name = "cortical_layers",
+        .inbox_capacity = 128,
+        .user_data = NULL
+    };
+
+    bio_ctx = bio_router_register_module(&bio_info);
+    if (bio_ctx) {
+        bio_async_enabled = true;
+        LOG_INFO(LOG_MODULE, "Bio-async registered for cortical_layers module");
+    }
+}
+
+__attribute__((destructor))
+static void cortical_layers_bio_cleanup(void) {
+    if (bio_async_enabled && bio_ctx) {
+        bio_router_unregister_module(bio_ctx);
+        bio_ctx = NULL;
+        bio_async_enabled = false;
+        LOG_DEBUG(LOG_MODULE, "Bio-async unregistered for cortical_layers module");
+    }
+}
 
 //=============================================================================
 // Constants
@@ -583,6 +626,11 @@ void laminar_process_feedforward(laminar_structure_t* ls) {
     if (!ls) {
         LOG_ERROR("NULL laminar structure");
         return;
+    }
+
+    // Process pending bio-async messages
+    if (bio_async_enabled && bio_ctx) {
+        bio_router_process_inbox(bio_ctx, 5);
     }
 
     nimcp_platform_mutex_lock(&ls->mutex);

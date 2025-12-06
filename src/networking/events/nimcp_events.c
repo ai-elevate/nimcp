@@ -71,7 +71,15 @@
 // - Shutdown: Flag checked by worker before queue operations
 //=============================================================================
 
-#include "nimcp_events.h"
+#include "async/nimcp_bio_async.h"
+#include "async/nimcp_bio_router.h"
+#include "async/nimcp_bio_messages.h"
+#include "utils/logging/nimcp_logging.h"
+#include "utils/memory/nimcp_unified_memory.h"
+
+#define LOG_MODULE "NETWORKING"
+
+#include "networking/events/nimcp_events.h"
 #include <math.h>
 #include <stdlib.h>
 #include <string.h>

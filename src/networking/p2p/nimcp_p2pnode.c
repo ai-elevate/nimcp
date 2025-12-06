@@ -32,7 +32,11 @@
 // - status transitions: INIT -> RUNNING -> SHUTDOWN or ERROR
 //=============================================================================
 
-#include "nimcp_p2pnode.h"
+#include "networking/p2p/nimcp_p2pnode.h"
+#include "utils/memory/nimcp_unified_memory.h"
+#include "async/nimcp_bio_async.h"
+#include "async/nimcp_bio_router.h"
+#include "async/nimcp_bio_messages.h"
 #include <arpa/inet.h>
 #include <errno.h>
 #include <fcntl.h>
@@ -49,7 +53,9 @@
 #include "utils/validation/nimcp_validate.h"
 #include "utils/time/nimcp_time.h"
 #include "utils/logging/nimcp_logging.h"
-#include "../protocol/nimcp_protocol.h"
+#include "networking/protocol/nimcp_protocol.h"
+
+#define LOG_MODULE "P2P_NODE"
 
 //=============================================================================
 // Constants and Configuration
@@ -215,6 +221,10 @@ struct p2p_node_struct {
     uint64_t failed_connections;
     uint64_t bytes_sent;
     uint64_t bytes_received;
+
+    // Bio-async integration
+    bio_module_context_t bio_ctx;
+    bool bio_async_enabled;
 };
 
 //=============================================================================
@@ -532,12 +542,12 @@ p2p_node_t p2p_node_create(const node_config_t* config)
 {
     // Guard clause: Validate configuration
     if (!validate_config(config)) {
-        NIMCP_LOGGING_ERROR("[P2P] Node creation failed: invalid configuration");
+        LOG_ERROR(LOG_MODULE, "Node creation failed: invalid configuration");
         return NULL;
     }
 
-    NIMCP_LOGGING_DEBUG("[P2P] Creating node on port %u with max_peers=%u",
-                        config->listen_port, config->max_peers);
+    LOG_DEBUG(LOG_MODULE, "Creating node on port %u with max_peers=%u",
+              config->listen_port, config->max_peers);
 
     // Allocate node structure
     p2p_node_t node = nimcp_calloc(1, sizeof(struct p2p_node_struct));
@@ -562,7 +572,7 @@ p2p_node_t p2p_node_create(const node_config_t* config)
 
     // Guard clause: Check hash table creation
     if (!node->peer_table) {
-        NIMCP_LOGGING_ERROR("[P2P] Failed to create peer hash table");
+        LOG_ERROR(LOG_MODULE, "Failed to create peer hash table");
         nimcp_free(node);
         return NULL;
     }
@@ -588,16 +598,33 @@ p2p_node_t p2p_node_create(const node_config_t* config)
     // WHY: Enables introspection, pathfinding, and component analysis
     node->topology_graph = nimcp_graph_create();
     if (!node->topology_graph) {
-        NIMCP_LOGGING_ERROR("[P2P] Failed to create topology graph for node on port %u",
-                            config->listen_port);
+        LOG_ERROR(LOG_MODULE, "Failed to create topology graph for node on port %u",
+                  config->listen_port);
         nimcp_mutex_destroy(&node->lock);
         nimcp_free(node->peers);
         nimcp_free(node);
         return NULL;
     }
 
-    NIMCP_LOGGING_INFO("[P2P] Node created successfully: port=%u, max_peers=%u, ping_interval=%ums",
-                       config->listen_port, config->max_peers, config->ping_interval);
+    LOG_INFO(LOG_MODULE, "Node created successfully: port=%u, max_peers=%u, ping_interval=%ums",
+             config->listen_port, config->max_peers, config->ping_interval);
+
+    // Bio-async registration
+    node->bio_ctx = NULL;
+    node->bio_async_enabled = false;
+    if (config->enable_bio_async && bio_router_is_initialized()) {
+        bio_module_info_t bio_info = {
+            .module_id = BIO_MODULE_P2P,
+            .module_name = "p2p_node",
+            .inbox_capacity = 64,
+            .user_data = node
+        };
+        node->bio_ctx = bio_router_register_module(&bio_info);
+        if (node->bio_ctx) {
+            node->bio_async_enabled = true;
+            LOG_INFO(LOG_MODULE, "Bio-async registered for P2P node");
+        }
+    }
 
     return node;
 }
@@ -649,6 +676,13 @@ void p2p_node_destroy(p2p_node_t node)
     // Stop if running
     if (node->running) {
         p2p_node_stop(node);
+    }
+
+    // Bio-async unregistration
+    if (node->bio_async_enabled && node->bio_ctx) {
+        bio_router_unregister_module(node->bio_ctx);
+        node->bio_ctx = NULL;
+        node->bio_async_enabled = false;
     }
 
     // Destroy hash table (NIMCP utility handles cleanup)
@@ -878,7 +912,7 @@ static bool add_peer_to_node(p2p_node_t node, const char* ip, uint16_t port, int
     // NOTE: We store the peer_info_t* pointer value itself (copy the address)
     // FIX: Pass &peer to copy the pointer VALUE (address), not what it points to
     if (!hash_table_insert_string(node->peer_table, key, &peer, sizeof(peer_info_t*))) {
-        NIMCP_LOGGING_ERROR("[P2P] Failed to insert peer %s into hash table", key);
+        LOG_ERROR(LOG_MODULE, "Failed to insert peer %s into hash table", key);
         return false;
     }
 
@@ -1177,6 +1211,11 @@ bool p2p_node_disconnect_peer(p2p_node_t node, const char* peer_ip, uint16_t pee
  */
 static void update_node_status(p2p_node_t node, node_status_t status, bool running)
 {
+    // Process pending bio-async messages
+    if (node && node->bio_async_enabled && node->bio_ctx) {
+        bio_router_process_inbox(node->bio_ctx, 5);
+    }
+
     // Guard clause: Validate input
     if (!node)
         return;
@@ -1354,12 +1393,12 @@ static bool send_ping_to_peer(peer_info_t* peer)
     // Update timestamp on successful send
     if (sent == bytes) {
         peer->last_ping_sent = nimcp_time_get_us();
-        NIMCP_LOGGING_DEBUG("[P2P] PING sent to %s:%u", peer->ip, peer->port);
+        LOG_DEBUG(LOG_MODULE, "PING sent to %s:%u", peer->ip, peer->port);
         return true;
     }
 
-    NIMCP_LOGGING_WARN("[P2P] Failed to send PING to %s:%u (sent %zd/%d bytes)",
-                       peer->ip, peer->port, sent, bytes);
+    LOG_WARN(LOG_MODULE, "Failed to send PING to %s:%u (sent %zd/%d bytes)",
+             peer->ip, peer->port, sent, bytes);
     return false;
 }
 
@@ -1414,7 +1453,7 @@ uint32_t p2p_node_send_heartbeats(p2p_node_t node)
     nimcp_mutex_unlock(&node->lock);
 
     if (pings_sent > 0) {
-        NIMCP_LOGGING_DEBUG("[P2P] Heartbeat cycle: sent %u pings to connected peers", pings_sent);
+        LOG_DEBUG(LOG_MODULE, "Heartbeat cycle: sent %u pings to connected peers", pings_sent);
     }
 
     return pings_sent;
@@ -1468,7 +1507,7 @@ bool p2p_node_process_pong(p2p_node_t node, const char* peer_ip, uint16_t peer_p
     peer->missed_pings = 0;
     peer->healthy = true;
 
-    NIMCP_LOGGING_DEBUG("[P2P] PONG received from %s:%u (peer healthy)", peer_ip, peer_port);
+    LOG_DEBUG(LOG_MODULE, "PONG received from %s:%u (peer healthy)", peer_ip, peer_port);
 
     nimcp_mutex_unlock(&node->lock);
     return true;
@@ -1528,11 +1567,11 @@ static void mark_peer_unhealthy(peer_info_t* peer, uint32_t max_retries)
     // Mark unhealthy after exceeding max retries
     if (peer->missed_pings >= max_retries) {
         peer->healthy = false;
-        NIMCP_LOGGING_WARN("[P2P] Peer %s:%u marked UNHEALTHY (missed %u pings)",
-                           peer->ip, peer->port, peer->missed_pings);
+        LOG_WARN(LOG_MODULE, "Peer %s:%u marked UNHEALTHY (missed %u pings)",
+                 peer->ip, peer->port, peer->missed_pings);
     } else {
-        NIMCP_LOGGING_DEBUG("[P2P] Peer %s:%u missed ping (%u/%u)",
-                            peer->ip, peer->port, peer->missed_pings, max_retries);
+        LOG_DEBUG(LOG_MODULE, "Peer %s:%u missed ping (%u/%u)",
+                  peer->ip, peer->port, peer->missed_pings, max_retries);
     }
 }
 
@@ -1627,8 +1666,8 @@ static bool attempt_peer_reconnect(p2p_node_t node, peer_info_t* peer)
     }
 
     // Attempt reconnection using existing connect function
-    NIMCP_LOGGING_INFO("[P2P] Attempting to reconnect to unhealthy peer %s:%u",
-                       peer->ip, peer->port);
+    LOG_INFO(LOG_MODULE, "Attempting to reconnect to unhealthy peer %s:%u",
+             peer->ip, peer->port);
 
     bool reconnected = p2p_node_connect_peer(node, peer->ip, peer->port);
 
@@ -1639,11 +1678,11 @@ static bool attempt_peer_reconnect(p2p_node_t node, peer_info_t* peer)
         peer->last_pong_received = now;
         peer->missed_pings = 0;
         peer->healthy = true;
-        NIMCP_LOGGING_INFO("[P2P] Successfully reconnected to peer %s:%u",
-                           peer->ip, peer->port);
+        LOG_INFO(LOG_MODULE, "Successfully reconnected to peer %s:%u",
+                 peer->ip, peer->port);
     } else {
-        NIMCP_LOGGING_WARN("[P2P] Failed to reconnect to peer %s:%u",
-                           peer->ip, peer->port);
+        LOG_WARN(LOG_MODULE, "Failed to reconnect to peer %s:%u",
+                 peer->ip, peer->port);
     }
 
     return reconnected;

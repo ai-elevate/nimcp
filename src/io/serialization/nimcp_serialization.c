@@ -5,6 +5,16 @@
 #include "utils/validation/nimcp_common.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/thread/nimcp_thread.h"
+#include "async/nimcp_bio_async.h"
+#include "async/nimcp_bio_router.h"
+#include "async/nimcp_bio_messages.h"
+#include "utils/logging/nimcp_logging.h"
+#include "utils/memory/nimcp_unified_memory.h"
+
+
+
+#define LOG_MODULE "nimcp_serialization"
+#define LOG_MODULE_ID 0x052E
 
 /**
  * @brief Checks if a read operation can be performed safely

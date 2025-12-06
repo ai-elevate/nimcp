@@ -32,6 +32,8 @@
 
 #include "core/brain/nimcp_brain.h"
 #include "core/brain/nimcp_brain_internal.h"
+#include "utils/memory/nimcp_unified_memory.h"
+#include "security/nimcp_security_integration.h"
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -39,6 +41,164 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+//=============================================================================
+// Phase PERSIST-1: Module Initialization and Security Integration
+//=============================================================================
+
+/**
+ * @brief Persistence module configuration
+ *
+ * WHAT: Configuration for persistence operations
+ * WHY:  Enable unified memory and security integration for save/load
+ * HOW:  Configure memory pooling, CoW, and security tracking
+ */
+typedef struct {
+    // Memory Integration (Phase PERSIST-1.1)
+    bool use_unified_memory;              /**< Use unified memory for buffers */
+    unified_mem_manager_t memory_manager; /**< External memory manager (NULL = create internal) */
+    bool enable_cow_snapshots;            /**< Use CoW for instant snapshots */
+
+    // Security Integration (Phase PERSIST-1.2)
+    bool enable_security;                        /**< Enable security module integration */
+    nimcp_sec_integration_t* security_context;   /**< External security context */
+
+    // Buffer settings
+    size_t read_buffer_size;              /**< Read buffer size (default 64KB) */
+    size_t write_buffer_size;             /**< Write buffer size (default 64KB) */
+
+    // Integrity checking
+    bool enable_checksum;                 /**< Compute checksums for integrity */
+    bool verify_on_load;                  /**< Verify checksum on load */
+} persistence_config_t;
+
+/**
+ * @brief Persistence module statistics
+ *
+ * WHAT: Statistics for persistence operations
+ * WHY:  Monitor save/load performance and resource usage
+ */
+typedef struct {
+    // Operation counts
+    uint64_t total_saves;                 /**< Total save operations */
+    uint64_t total_loads;                 /**< Total load operations */
+    uint64_t total_snapshots_created;     /**< Snapshots created */
+    uint64_t total_snapshots_restored;    /**< Snapshots restored */
+    uint64_t total_snapshots_deleted;     /**< Snapshots deleted */
+
+    // Byte counts
+    uint64_t bytes_written;               /**< Total bytes written */
+    uint64_t bytes_read;                  /**< Total bytes read */
+
+    // Memory integration stats
+    uint64_t pool_allocations;            /**< Allocations from pool */
+    uint64_t malloc_allocations;          /**< Direct malloc allocations */
+    uint64_t cow_snapshots;               /**< CoW snapshots created */
+    uint64_t memory_saved_bytes;          /**< Memory saved by CoW */
+
+    // Performance
+    uint64_t total_save_time_ms;          /**< Total time in save operations */
+    uint64_t total_load_time_ms;          /**< Total time in load operations */
+
+    // Errors
+    uint64_t save_errors;                 /**< Save operation failures */
+    uint64_t load_errors;                 /**< Load operation failures */
+    uint64_t checksum_failures;           /**< Checksum verification failures */
+} persistence_stats_t;
+
+/**
+ * @brief Initialize persistence module
+ *
+ * WHAT: Initialize persistence module with security registration
+ * WHY:  Enable security tracking and audit for persistence operations
+ * HOW:  Register with security module, initialize statistics
+ *
+ * @param security_ctx Security integration context (NULL to skip registration)
+ * @return true on success, false on failure
+ */
+bool persistence_init(nimcp_sec_integration_t* security_ctx);
+
+/**
+ * @brief Shutdown persistence module
+ *
+ * WHAT: Clean shutdown of persistence module
+ * WHY:  Unregister from security, cleanup resources
+ */
+void persistence_shutdown(void);
+
+/**
+ * @brief Get persistence module security ID
+ *
+ * @return Security module ID (0 if not registered)
+ */
+uint32_t persistence_get_security_module_id(void);
+
+/**
+ * @brief Get persistence statistics
+ *
+ * @param stats Output statistics structure
+ * @return true on success
+ */
+bool persistence_get_stats(persistence_stats_t* stats);
+
+/**
+ * @brief Reset persistence statistics
+ */
+void persistence_reset_stats(void);
+
+/**
+ * @brief Get default persistence configuration
+ *
+ * @return Default configuration with sensible values
+ */
+persistence_config_t persistence_default_config(void);
+
+//=============================================================================
+// Extended Save/Load API with Memory/Security Integration
+//=============================================================================
+
+/**
+ * @brief Save brain with extended configuration
+ *
+ * WHAT: Save brain with unified memory and security integration
+ * WHY:  Enable efficient buffering and security audit trail
+ * HOW:  Use configured memory manager for buffers, record security interactions
+ *
+ * @param brain Brain instance
+ * @param filepath Path to save to
+ * @param config Persistence configuration (NULL for defaults)
+ * @return true on success, false on error
+ */
+bool brain_save_ex(brain_t brain, const char* filepath, const persistence_config_t* config);
+
+/**
+ * @brief Load brain with extended configuration
+ *
+ * WHAT: Load brain with unified memory and security integration
+ * WHY:  Enable efficient buffering and security audit trail
+ * HOW:  Use configured memory manager for buffers, record security interactions
+ *
+ * @param filepath Path to load from
+ * @param config Persistence configuration (NULL for defaults)
+ * @return Brain instance or NULL on error
+ */
+brain_t brain_load_ex(const char* filepath, const persistence_config_t* config);
+
+/**
+ * @brief Create instant snapshot using CoW
+ *
+ * WHAT: Create instant snapshot without copying data
+ * WHY:  O(1) snapshot creation for checkpointing
+ * HOW:  Uses page-level CoW if available
+ *
+ * @param brain Brain instance
+ * @param name Snapshot name
+ * @param description Optional description
+ * @param config Persistence configuration (NULL for defaults)
+ * @return true on success
+ */
+bool brain_save_snapshot_cow(brain_t brain, const char* name,
+                             const char* description, const persistence_config_t* config);
 
 //=============================================================================
 // Persistence API

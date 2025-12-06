@@ -1,3 +1,7 @@
+
+#define LOG_MODULE "nimcp_encryption"
+#define LOG_MODULE_ID 0x052E
+
 /**
  * @file nimcp_encryption.c
  * @brief Implementation of encryption utilities for NIMCP serialization
@@ -10,6 +14,12 @@
 #ifdef NIMCP_ENABLE_ENCRYPTION
 
 #include <sodium.h>
+#include "async/nimcp_bio_async.h"
+#include "async/nimcp_bio_router.h"
+#include "async/nimcp_bio_messages.h"
+#include "utils/logging/nimcp_logging.h"
+#include "utils/memory/nimcp_unified_memory.h"
+
 
 // Constants for our encryption format
 #define SALT_BYTES 16

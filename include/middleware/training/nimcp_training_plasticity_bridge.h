@@ -89,6 +89,7 @@
 #include "utils/thread/nimcp_thread.h"
 #include "core/events/nimcp_event_bus.h"
 #include "common/nimcp_export.h"
+#include "security/nimcp_security_integration.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -287,6 +288,9 @@ typedef struct {
     void (*on_lr_modulated)(uint32_t region_id, float new_lr, void* user_data);
     void (*on_plasticity_applied)(uint32_t region_id, uint32_t updates, void* user_data);
     void* callback_user_data;
+
+    /* Security integration */
+    nimcp_sec_integration_t* security_ctx;        /**< Security context (optional) */
 
 } tpb_config_t;
 
@@ -799,6 +803,158 @@ NIMCP_EXPORT tpb_region_config_t tpb_region_amygdala_default(void);
  * @brief Get preset prefrontal region configuration
  */
 NIMCP_EXPORT tpb_region_config_t tpb_region_prefrontal_default(void);
+
+//=============================================================================
+// Training Callbacks Integration (Phase TCB-1)
+//=============================================================================
+
+/**
+ * @brief Connect callback context to plasticity bridge
+ *
+ * WHAT: Links callback system to plasticity bridge for bidirectional communication
+ * WHY:  Enable biological plasticity to respond to training callbacks
+ * HOW:  Registers plasticity-specific callbacks, enables action handling
+ *
+ * @param ctx Bridge context
+ * @param callback_ctx Training callback context
+ * @return NIMCP_SUCCESS or error code
+ */
+NIMCP_EXPORT nimcp_result_t tpb_connect_callbacks(
+    tpb_context_t* ctx,
+    tcb_context_t* callback_ctx
+);
+
+/**
+ * @brief Get connected callback context
+ *
+ * @param ctx Bridge context
+ * @return Callback context or NULL if not connected
+ */
+NIMCP_EXPORT tcb_context_t* tpb_get_callback_context(const tpb_context_t* ctx);
+
+/**
+ * @brief Handle callback action for plasticity modulation
+ *
+ * WHAT: Responds to callback actions with biological plasticity adjustments
+ * WHY:  Actions like REDUCE_LR should affect biological learning rates too
+ * HOW:  Maps actions to neuromodulator adjustments and LR multipliers
+ *
+ * Actions handled:
+ * - TCB_ACTION_REDUCE_LR: Reduce DA, increase 5-HT (slow learning)
+ * - TCB_ACTION_INCREASE_LR: Increase DA, reduce 5-HT (fast learning)
+ * - TCB_ACTION_ROLLBACK: Restore from CoW snapshot if available
+ * - TCB_ACTION_STOP_TRAINING: Set shutdown flag
+ *
+ * @param ctx Bridge context
+ * @param action Action to handle
+ * @return NIMCP_SUCCESS or error code
+ */
+NIMCP_EXPORT nimcp_result_t tpb_handle_callback_action(
+    tpb_context_t* ctx,
+    tcb_action_t action
+);
+
+/**
+ * @brief Register built-in plasticity callbacks
+ *
+ * WHAT: Registers callbacks that trigger plasticity updates at training events
+ * WHY:  Automate biological learning rule application during training
+ * HOW:  Registers callbacks for loss, weights, epoch events
+ *
+ * Callbacks registered:
+ * - on_loss_computed: Computes RPE, updates dopamine
+ * - on_weights_updated: Triggers STDP/BCM based on gradients
+ * - on_epoch_complete: Consolidation, homeostatic scaling
+ * - on_divergence: Emergency neuromodulator reset
+ *
+ * @param ctx Bridge context
+ * @return NIMCP_SUCCESS or error code
+ */
+NIMCP_EXPORT nimcp_result_t tpb_register_plasticity_callbacks(tpb_context_t* ctx);
+
+/**
+ * @brief Callback: Triggered when loss is computed
+ *
+ * Computes Reward Prediction Error from loss and updates dopamine levels.
+ * Loss decrease → positive RPE → DA burst → enhanced plasticity.
+ *
+ * @param event Callback event with loss metrics
+ * @return Action (usually CONTINUE, STOP_TRAINING on divergence)
+ */
+NIMCP_EXPORT tcb_action_t tpb_callback_on_loss(const tcb_event_t* event);
+
+/**
+ * @brief Callback: Triggered when weights are updated
+ *
+ * Applies three-factor learning: modulates weight change by current
+ * neuromodulator levels (DA × eligibility × Hebbian).
+ *
+ * @param event Callback event with gradient info
+ * @return Action (usually CONTINUE)
+ */
+NIMCP_EXPORT tcb_action_t tpb_callback_on_weights(const tcb_event_t* event);
+
+/**
+ * @brief Callback: Triggered at epoch completion
+ *
+ * Triggers:
+ * - Memory consolidation (transfer from short-term to long-term)
+ * - Homeostatic scaling (normalize firing rates)
+ * - BCM threshold updates
+ *
+ * @param event Callback event with epoch metrics
+ * @return Action (usually CONTINUE)
+ */
+NIMCP_EXPORT tcb_action_t tpb_callback_on_epoch(const tcb_event_t* event);
+
+/**
+ * @brief Callback: Triggered on training divergence
+ *
+ * Emergency response:
+ * - Reset neuromodulators to baseline
+ * - Reduce all learning rates
+ * - Optionally rollback weights
+ *
+ * @param event Callback event with divergence info
+ * @return Action (ROLLBACK or STOP_TRAINING)
+ */
+NIMCP_EXPORT tcb_action_t tpb_callback_on_divergence(const tcb_event_t* event);
+
+/**
+ * @brief Set plasticity modulation based on callback frequency
+ *
+ * WHAT: Adjusts biological learning intensity based on callback patterns
+ * WHY:  Frequent LR reduction callbacks indicate training instability
+ * HOW:  Tracks callback history, modulates neuromodulator sensitivity
+ *
+ * @param ctx Bridge context
+ * @param event_type Event type to track
+ * @param modulation_factor Factor to apply (0.0-2.0, 1.0 = normal)
+ * @return NIMCP_SUCCESS or error code
+ */
+NIMCP_EXPORT nimcp_result_t tpb_set_callback_modulation(
+    tpb_context_t* ctx,
+    tcb_event_type_t event_type,
+    float modulation_factor
+);
+
+/**
+ * @brief Get plasticity callback statistics
+ *
+ * @param ctx Bridge context
+ * @param loss_callbacks_fired Output: loss callback count
+ * @param weight_callbacks_fired Output: weight callback count
+ * @param epoch_callbacks_fired Output: epoch callback count
+ * @param divergence_callbacks_fired Output: divergence callback count
+ * @return NIMCP_SUCCESS or error code
+ */
+NIMCP_EXPORT nimcp_result_t tpb_get_callback_stats(
+    const tpb_context_t* ctx,
+    uint64_t* loss_callbacks_fired,
+    uint64_t* weight_callbacks_fired,
+    uint64_t* epoch_callbacks_fired,
+    uint64_t* divergence_callbacks_fired
+);
 
 #ifdef __cplusplus
 }

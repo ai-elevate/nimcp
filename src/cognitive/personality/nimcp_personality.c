@@ -329,6 +329,11 @@ personality_profile_t personality_create_custom(
 }
 
 void personality_compute_modifiers(personality_profile_t* profile) {
+    // Process pending bio-async messages
+    if (personality_bio_ctx) {
+        bio_router_process_inbox(personality_bio_ctx, 5);
+    }
+
     /**
      * WHAT: Calculate behavioral modifiers from traits
      * WHY:  Traits must influence brain behavior

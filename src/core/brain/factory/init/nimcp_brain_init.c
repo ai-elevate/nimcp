@@ -26,6 +26,17 @@
 // Includes
 //=============================================================================
 
+// Bio-async integration
+#include "async/nimcp_bio_async.h"
+#include "async/nimcp_bio_router.h"
+#include "async/nimcp_bio_messages.h"
+
+// Logging integration
+#include "utils/logging/nimcp_logging.h"
+
+// Unified memory integration
+#include "utils/memory/nimcp_unified_memory.h"
+
 #include "core/brain/factory/init/nimcp_brain_init.h"
 #include "core/brain/factory/nimcp_brain_factory.h"
 #include "core/brain/nimcp_brain.h"
@@ -120,6 +131,8 @@
 
 // Phase TM-3: Brain-Training Integration
 #include "middleware/training/nimcp_brain_training_integration.h"
+
+#define LOG_MODULE "BRAIN_INIT"
 
 //=============================================================================
 // Global BBB System (Singleton with Reference Counting)
@@ -2287,7 +2300,7 @@ bool nimcp_brain_factory_init_biological_predictive_subsystem(brain_t brain)
     }
 
     // Allocate units array and set up pyramid structure
-    uint32_t* units = (uint32_t*)malloc(num_levels * sizeof(uint32_t));
+    uint32_t* units = (uint32_t*)nimcp_malloc(num_levels * sizeof(uint32_t));
     if (!units) {
         set_error("Failed to allocate predictive coding units array");
         return false;
@@ -2310,7 +2323,7 @@ bool nimcp_brain_factory_init_biological_predictive_subsystem(brain_t brain)
 
     // Create predictive coding hierarchy
     brain->predictive_coding = pc_hierarchy_create(&config);
-    free(units);  // pc_hierarchy_create copies the array
+    nimcp_free(units);  // pc_hierarchy_create copies the array
 
     if (!brain->predictive_coding) {
         set_error("Failed to create biological predictive coding hierarchy");

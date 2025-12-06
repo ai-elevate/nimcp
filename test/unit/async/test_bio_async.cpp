@@ -337,8 +337,8 @@ TEST_F(BioAsyncTest, ConfidenceDecaysOverTime) {
 
     float confidence_t0 = nimcp_bio_future_get_confidence(future);
 
-    // Wait a bit
-    std::this_thread::sleep_for(std::chrono::milliseconds(50));
+    // Advance simulation time (dopamine tau=200ms, so 50ms gives ~22% decay)
+    nimcp_bio_async_step(50.0f);
 
     float confidence_t1 = nimcp_bio_future_get_confidence(future);
 
@@ -350,13 +350,13 @@ TEST_F(BioAsyncTest, ConfidenceDecaysOverTime) {
 }
 
 TEST_F(BioAsyncTest, DifferentChannelsHaveDifferentDecayRates) {
-    // Test that serotonin (slow) decays slower than acetylcholine (fast)
+    // Test that serotonin (slow, tau=1000ms) decays slower than acetylcholine (fast, tau=50ms)
 
-    // Create ACh promise (fast decay)
+    // Create ACh promise (fast decay, tau=50ms)
     nimcp_bio_promise_t promise_ach = nimcp_bio_promise_create(BIO_CHANNEL_ACETYLCHOLINE, sizeof(int));
     nimcp_bio_future_t future_ach = nimcp_bio_promise_get_future(promise_ach);
 
-    // Create 5-HT promise (slow decay)
+    // Create 5-HT promise (slow decay, tau=1000ms)
     nimcp_bio_promise_t promise_5ht = nimcp_bio_promise_create(BIO_CHANNEL_SEROTONIN, sizeof(int));
     nimcp_bio_future_t future_5ht = nimcp_bio_promise_get_future(promise_5ht);
 
@@ -364,8 +364,9 @@ TEST_F(BioAsyncTest, DifferentChannelsHaveDifferentDecayRates) {
     nimcp_bio_promise_complete(promise_ach, &result);
     nimcp_bio_promise_complete(promise_5ht, &result);
 
-    // Wait for decay
-    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    // Advance simulation time (ACh tau=50ms, 5-HT tau=1000ms)
+    // After 100ms: ACh has decayed e^(-100/50) = 0.135, 5-HT has decayed e^(-100/1000) = 0.905
+    nimcp_bio_async_step(100.0f);
 
     float conf_ach = nimcp_bio_future_get_confidence(future_ach);
     float conf_5ht = nimcp_bio_future_get_confidence(future_5ht);
@@ -392,7 +393,8 @@ TEST_F(BioAsyncTest, AgeIncreasesAfterComplete) {
     float age_t0 = nimcp_bio_future_get_age_ms(future);
     EXPECT_GE(age_t0, 0.0f);
 
-    std::this_thread::sleep_for(std::chrono::milliseconds(50));
+    // Advance simulation time (age is based on simulation time, not real time)
+    nimcp_bio_async_step(50.0f);
 
     float age_t1 = nimcp_bio_future_get_age_ms(future);
     EXPECT_GT(age_t1, age_t0);
@@ -563,9 +565,10 @@ TEST_F(BioAsyncTest, MeanPhaseInValidRange) {
     nimcp_bio_future_t future = nimcp_bio_promise_get_future(promise);
     nimcp_phase_sync_add_future(sync, future);
 
+    // Mean phase is in [0, 2π] range (wrapped from atan2's [-π, π])
     float mean_phase = nimcp_phase_sync_get_mean_phase(sync);
-    EXPECT_GE(mean_phase, -M_PI);
-    EXPECT_LE(mean_phase, M_PI);
+    EXPECT_GE(mean_phase, 0.0f);
+    EXPECT_LT(mean_phase, 2.0f * M_PI);
 
     nimcp_bio_future_destroy(future);
     nimcp_bio_promise_destroy(promise);

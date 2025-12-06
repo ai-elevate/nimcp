@@ -36,6 +36,7 @@
 #include "middleware/training/nimcp_lr_scheduler.h"
 #include "middleware/training/nimcp_regularization.h"
 #include "middleware/training/nimcp_gradient_manager.h"
+#include "middleware/training/nimcp_training_callbacks.h"
 #include "security/nimcp_security_integration.h"
 #include "utils/validation/nimcp_common.h"
 
@@ -186,6 +187,10 @@ typedef struct nimcp_brain_training_config {
     bool enable_plasticity_bridge;             /**< Enable Training-Plasticity Bridge */
     float rpe_to_da_gain;                      /**< RPE to dopamine conversion gain */
     float biological_lr_modulation;            /**< Strength of biological LR modulation (0-1) */
+
+    /* Training Callbacks integration (Phase TCB-1) */
+    bool enable_training_callbacks;            /**< Enable training callback system */
+    tcb_config_t* callback_config;             /**< Callback configuration (NULL for defaults) */
 } nimcp_brain_training_config_t;
 
 /**
@@ -239,6 +244,12 @@ typedef struct nimcp_training_session_stats {
     uint64_t biological_updates;      /**< Weight updates routed through plasticity */
     float avg_dopamine_level;         /**< Average dopamine level during training */
     float avg_lr_modulation;          /**< Average learning rate modulation factor */
+
+    /* Training Callbacks stats (Phase TCB-1) */
+    uint64_t callback_events_fired;   /**< Total callback events fired */
+    uint64_t callback_stop_requests;  /**< Times callback requested stop */
+    uint64_t callback_lr_reductions;  /**< Times callback requested LR reduction */
+    uint64_t callback_rollbacks;      /**< Times callback requested rollback */
 } nimcp_training_session_stats_t;
 
 /* ============================================================================
@@ -947,6 +958,190 @@ nimcp_result_t nimcp_brain_training_set_biological_modulation(
  */
 float nimcp_brain_training_get_biological_modulation(
     const nimcp_brain_training_ctx_t* ctx
+);
+
+/* ============================================================================
+ * Training Callbacks Integration (Phase TCB-1)
+ * ============================================================================ */
+
+/**
+ * @brief Connect training callback context to training integration
+ *
+ * This enables the callback system to receive events during training and
+ * allows callbacks to control training flow (stop, reduce LR, rollback, etc.)
+ *
+ * @param ctx Brain-training context
+ * @param callback_ctx Training callback context
+ * @return NIMCP_SUCCESS on success
+ */
+nimcp_result_t nimcp_brain_training_connect_callbacks(
+    nimcp_brain_training_ctx_t* ctx,
+    tcb_context_t* callback_ctx
+);
+
+/**
+ * @brief Get connected callback context
+ * @param ctx Brain-training context
+ * @return Callback context or NULL if not connected
+ */
+tcb_context_t* nimcp_brain_training_get_callbacks(
+    const nimcp_brain_training_ctx_t* ctx
+);
+
+/**
+ * @brief Create internal callback context with default configuration
+ *
+ * Creates and connects a callback context using the config provided
+ * during brain training creation. Use this if you want the training
+ * integration to manage the callback lifecycle.
+ *
+ * @param ctx Brain-training context
+ * @return NIMCP_SUCCESS on success
+ */
+nimcp_result_t nimcp_brain_training_create_callbacks(
+    nimcp_brain_training_ctx_t* ctx
+);
+
+/**
+ * @brief Register a TCB callback for training events
+ *
+ * Convenience function that registers a callback with the connected
+ * callback context. Maps training events to callback event types.
+ *
+ * @param ctx Brain-training context
+ * @param event_type Training event type to listen for
+ * @param callback Callback function
+ * @param user_data User data passed to callback
+ * @param name Callback name for debugging
+ * @return Callback ID or 0 on failure
+ */
+uint32_t nimcp_brain_training_register_tcb_callback(
+    nimcp_brain_training_ctx_t* ctx,
+    nimcp_training_event_type_t event_type,
+    tcb_callback_fn callback,
+    void* user_data,
+    const char* name
+);
+
+/**
+ * @brief Unregister a TCB training callback
+ * @param ctx Brain-training context
+ * @param callback_id Callback ID from registration
+ * @return NIMCP_SUCCESS on success
+ */
+nimcp_result_t nimcp_brain_training_unregister_tcb_callback(
+    nimcp_brain_training_ctx_t* ctx,
+    uint32_t callback_id
+);
+
+/**
+ * @brief Register built-in callbacks for common training patterns
+ *
+ * Registers standard callbacks for:
+ * - Progress logging
+ * - Early stopping
+ * - Divergence detection
+ * - Gradient monitoring
+ *
+ * @param ctx Brain-training context
+ * @param enable_progress Enable progress logger
+ * @param enable_early_stop Enable early stopping
+ * @param enable_divergence Enable divergence detection
+ * @param enable_gradient_monitor Enable gradient monitoring
+ * @return NIMCP_SUCCESS on success
+ */
+nimcp_result_t nimcp_brain_training_register_builtin_callbacks(
+    nimcp_brain_training_ctx_t* ctx,
+    bool enable_progress,
+    bool enable_early_stop,
+    bool enable_divergence,
+    bool enable_gradient_monitor
+);
+
+/**
+ * @brief Handle callback action during training
+ *
+ * Internal function called after firing callbacks. Handles the returned
+ * action by modifying training state (stopping, reducing LR, etc.)
+ *
+ * @param ctx Brain-training context
+ * @param action Action returned from callback
+ * @param optimizer_id Optimizer ID for LR modifications
+ * @return NIMCP_SUCCESS if training should continue, error code otherwise
+ */
+nimcp_result_t nimcp_brain_training_handle_callback_action(
+    nimcp_brain_training_ctx_t* ctx,
+    tcb_action_t action,
+    uint32_t optimizer_id
+);
+
+/**
+ * @brief Perform training step with callback integration
+ *
+ * Like nimcp_brain_training_step but fires callback events at each stage
+ * and respects callback actions (stop, reduce LR, rollback).
+ *
+ * Event sequence:
+ * 1. TCB_EVENT_LOSS_COMPUTED (after loss computation)
+ * 2. TCB_EVENT_GRADIENT_CLIPPED (after gradient computation, for monitoring)
+ * 3. TCB_EVENT_WEIGHTS_UPDATED (after optimization step)
+ * 4. TCB_EVENT_STEP_COMPLETE (after full step)
+ *
+ * @param ctx Brain-training context
+ * @param loss_id Loss context ID
+ * @param optimizer_id Optimizer ID
+ * @param params Parameters to update
+ * @param predictions Model predictions
+ * @param targets Ground truth targets
+ * @param batch_size Batch size
+ * @param output_size Output dimension
+ * @param param_count Number of parameters
+ * @param step Current training step
+ * @param loss_value Output: loss value
+ * @return NIMCP_SUCCESS on success, NIMCP_TRAINING_ERROR_EARLY_STOP if stopped
+ */
+nimcp_result_t nimcp_brain_training_step_with_callbacks(
+    nimcp_brain_training_ctx_t* ctx,
+    uint32_t loss_id,
+    uint32_t optimizer_id,
+    float* params,
+    const float* predictions,
+    const float* targets,
+    size_t batch_size,
+    size_t output_size,
+    size_t param_count,
+    uint64_t step,
+    float* loss_value
+);
+
+/**
+ * @brief Signal epoch completion to callbacks
+ *
+ * Fires TCB_EVENT_EPOCH_COMPLETE and handles actions.
+ *
+ * @param ctx Brain-training context
+ * @param epoch Epoch number
+ * @param epoch_loss Average loss for the epoch
+ * @return NIMCP_SUCCESS if training should continue
+ */
+nimcp_result_t nimcp_brain_training_signal_epoch_complete(
+    nimcp_brain_training_ctx_t* ctx,
+    uint64_t epoch,
+    float epoch_loss
+);
+
+/**
+ * @brief Create checkpoint through callback system
+ *
+ * Fires TCB_EVENT_CHECKPOINT and records the checkpoint.
+ *
+ * @param ctx Brain-training context
+ * @param checkpoint_name Checkpoint name/path
+ * @return NIMCP_SUCCESS on success
+ */
+nimcp_result_t nimcp_brain_training_checkpoint(
+    nimcp_brain_training_ctx_t* ctx,
+    const char* checkpoint_name
 );
 
 #ifdef __cplusplus

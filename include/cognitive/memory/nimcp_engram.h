@@ -35,6 +35,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include "cognitive/nimcp_emotional_tagging.h"
+#include "utils/memory/nimcp_unified_memory.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -204,6 +205,14 @@ typedef struct {
 
     // Phase 1.5: Memory pool for hot-path engram allocations
     void* engram_pool;              /**< Pool for memory_engram_t structs */
+
+    // Unified memory integration (CoW support for brain cloning)
+    unified_mem_manager_t mem_manager;  /**< Unified memory manager */
+    unified_mem_handle_t engrams_handle; /**< CoW handle for engram array */
+
+    // Bio-async integration
+    void* bio_ctx;                  /**< bio_module_context_t pointer */
+    bool bio_async_enabled;         /**< Bio-async registration status */
 
 } engram_system_t;
 

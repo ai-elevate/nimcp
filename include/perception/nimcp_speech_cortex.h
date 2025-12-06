@@ -37,6 +37,12 @@
 
 #include <stdint.h>
 #include <stdbool.h>
+#include "utils/error/nimcp_error_codes.h"
+
+/* Bio-async communication system */
+#include "async/nimcp_bio_async.h"
+#include "async/nimcp_bio_router.h"
+#include "async/nimcp_bio_messages.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -203,6 +209,9 @@ typedef struct {
     float hub_ratio;                /**< Fraction of hub neurons, default: 0.15 */
     float power_law_gamma;          /**< Power-law exponent, default: -2.1 */
     uint32_t internal_neurons;      /**< Internal neurons for recurrent processing */
+
+    // Bio-async communication
+    bool enable_bio_async;          /**< Enable bio-async messaging */
 } speech_cortex_config_t;
 
 /**
@@ -669,6 +678,55 @@ bool speech_cortex_is_vowel(phoneme_t phoneme);
  * @return Default configuration with sensible values
  */
 speech_cortex_config_t speech_cortex_default_config(void);
+
+//=============================================================================
+// Bio-Async Communication API
+//=============================================================================
+
+/**
+ * @brief Get bio-async module context
+ *
+ * @param cortex Speech cortex instance
+ * @return Bio-async module context, or NULL if not enabled
+ */
+bio_module_context_t speech_cortex_get_bio_context(speech_cortex_t* cortex);
+
+/**
+ * @brief Process pending bio-async messages
+ *
+ * @param cortex Speech cortex instance
+ * @param max_messages Maximum messages to process (0 = all)
+ * @return Number of messages processed
+ */
+uint32_t speech_cortex_process_bio_messages(speech_cortex_t* cortex, uint32_t max_messages);
+
+/**
+ * @brief Broadcast phoneme recognition via bio-async
+ *
+ * @param cortex Speech cortex instance
+ * @param phoneme Recognized phoneme
+ * @param confidence Recognition confidence (0-1)
+ * @return NIMCP_SUCCESS or error code
+ */
+nimcp_error_t speech_cortex_broadcast_phoneme(
+    speech_cortex_t* cortex,
+    phoneme_t phoneme,
+    float confidence
+);
+
+/**
+ * @brief Broadcast word recognition via bio-async
+ *
+ * @param cortex Speech cortex instance
+ * @param word Recognized word string
+ * @param confidence Recognition confidence (0-1)
+ * @return NIMCP_SUCCESS or error code
+ */
+nimcp_error_t speech_cortex_broadcast_word(
+    speech_cortex_t* cortex,
+    const char* word,
+    float confidence
+);
 
 #ifdef __cplusplus
 }

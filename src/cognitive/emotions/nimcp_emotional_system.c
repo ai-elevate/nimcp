@@ -421,6 +421,11 @@ bool emotion_system_update_multimodal(emotional_system_t* system,
         return false;
     }
 
+    // Process pending bio-async messages before update
+    if (system->bio_async_enabled && system->bio_ctx) {
+        bio_router_process_inbox(system->bio_ctx, 10);  // Process up to 10 messages
+    }
+
     // For now, simple placeholder implementation
     // In full implementation, would:
     // 1. Pass to emotion_recognition subsystem

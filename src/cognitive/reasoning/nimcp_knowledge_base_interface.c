@@ -164,6 +164,11 @@ bool brain_add_fact(
     // Initialize bio-async on first use
     kb_init_bio_async();
 
+    // Process pending bio-async messages
+    if (g_kb_bio_ctx) {
+        bio_router_process_inbox(g_kb_bio_ctx, 5);
+    }
+
     // Validate inputs
     if (!nimcp_validate_pointer(brain, "brain")) {
         set_error("Brain is NULL");

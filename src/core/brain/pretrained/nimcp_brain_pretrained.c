@@ -27,6 +27,17 @@
  * @version 1.0.0
  */
 
+// Bio-async integration
+#include "async/nimcp_bio_async.h"
+#include "async/nimcp_bio_router.h"
+#include "async/nimcp_bio_messages.h"
+
+// Logging integration
+#include "utils/logging/nimcp_logging.h"
+
+// Unified memory integration
+#include "utils/memory/nimcp_unified_memory.h"
+
 #include "core/brain/pretrained/nimcp_brain_pretrained.h"
 #include "core/brain/nimcp_brain_internal.h"
 #include <stdio.h>
@@ -34,6 +45,8 @@
 #include <string.h>
 #include <sys/stat.h>
 #include <errno.h>
+
+#define LOG_MODULE "BRAIN_PRETRAINED"
 
 //=============================================================================
 // Static Helper Functions

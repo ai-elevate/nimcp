@@ -5,19 +5,36 @@
  * This file implements biologically-motivated compute functions for each
  * specialized neuron type defined in Phase 8.7.
  *
+ * BIO-ASYNC INTEGRATION:
+ * - Module ID: 0x0660 (BIO_MODULE_NEURON_TYPES)
+ * - Publishes: neuron type registration, type parameter updates
+ * - Uses: BIO_CHANNEL_ACETYLCHOLINE for neuron queries
+ * - Uses: BIO_CHANNEL_DOPAMINE for learning-related events
+ *
  * @author NIMCP Phase 8.7
  * @date 2025-11-08
  */
 
-#include "nimcp_neuron_types.h"
+#include "core/neuron_types/nimcp_neuron_types.h"
+#include "async/nimcp_bio_async.h"
+#include "async/nimcp_bio_router.h"
+#include "async/nimcp_bio_messages.h"
+#include "utils/memory/nimcp_memory_guards.h"  // For nimcp_calloc/nimcp_free
+#include "utils/logging/nimcp_logging.h"
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
+
+/* Logging module identifier */
+#define LOG_MODULE "NEURON_TYPES"
 
 // Define M_PI if not already defined (for some compilers)
 #ifndef M_PI
 #define M_PI 3.14159265358979323846
 #endif
+
+// Bio-async module ID
+#define BIO_MODULE_NEURON_TYPES 0x0660
 
 // ============================================================================
 // INTERNAL HELPER FUNCTIONS
@@ -601,7 +618,12 @@ float compute_executive_control(const executive_control_params_t* params,
 
 nimcp_result_t neuron_type_get_default_params(neuron_type_t type,
                                                neuron_type_params_t* out_params) {
-    if (!out_params) return NIMCP_ERROR_INVALID_PARAM;
+    LOG_DEBUG(LOG_MODULE, "Getting default params for neuron type: %s", neuron_type_get_name(type));
+
+    if (!out_params) {
+        LOG_ERROR(LOG_MODULE, "NULL out_params pointer");
+        return NIMCP_ERROR_INVALID_PARAM;
+    }
 
     // Zero out union
     memset(out_params, 0, sizeof(neuron_type_params_t));
@@ -615,6 +637,8 @@ nimcp_result_t neuron_type_get_default_params(neuron_type_t type,
             out_params->lif.threshold = -55.0f;
             out_params->lif.reset_potential = -75.0f;
             out_params->lif.refractory_period = 2.0f;
+            LOG_DEBUG(LOG_MODULE, "Initialized LIF params for %s: tau=%.1fms, threshold=%.1fmV",
+                      neuron_type_get_name(type), out_params->lif.tau_membrane, out_params->lif.threshold);
             break;
 
         case NEURON_GENERIC_LIF:
@@ -682,23 +706,51 @@ nimcp_result_t neuron_type_get_default_params(neuron_type_t type,
         case NEURON_MOTOR_PATTERN_GEN:
             // Motor pattern generator doesn't have type-specific params yet
             // Just return success with zeroed params
+            LOG_DEBUG(LOG_MODULE, "Motor pattern generator: no specific params yet");
+            break;
+
+        // Neural logic gates don't need specific params - they operate on binary inputs
+        case NEURON_LOGIC_AND:
+        case NEURON_LOGIC_OR:
+        case NEURON_LOGIC_XOR:
+        case NEURON_LOGIC_NOT:
+        case NEURON_LOGIC_VARIABLE:
+        case NEURON_LOGIC_IMPLIES:
+            LOG_DEBUG(LOG_MODULE, "Logic gate %s: stateless, no params needed",
+                      neuron_type_get_name(type));
             break;
 
         default:
-            return NIMCP_ERROR_INVALID_PARAM;
+            // For types without specific default params, return success with zeroed params
+            // (params were already zeroed at start of function)
+            LOG_DEBUG(LOG_MODULE, "Neuron type %d (%s): using zeroed default params",
+                      type, neuron_type_get_name(type));
+            break;
     }
 
+    LOG_INFO(LOG_MODULE, "Default params initialized for %s", neuron_type_get_name(type));
     return NIMCP_SUCCESS;
 }
 
 nimcp_result_t neuron_type_validate_params(neuron_type_t type,
                                             const neuron_type_params_t* params) {
-    if (!params) return NIMCP_ERROR_INVALID_PARAM;
+    LOG_DEBUG(LOG_MODULE, "Validating params for neuron type: %s", neuron_type_get_name(type));
+
+    if (!params) {
+        LOG_ERROR(LOG_MODULE, "NULL params pointer");
+        return NIMCP_ERROR_INVALID_PARAM;
+    }
 
     switch (type) {
         case NEURON_GENERIC_LIF:
-            if (params->lif.tau_membrane <= 0.0f) return NIMCP_ERROR_INVALID_PARAM;
-            if (params->lif.refractory_period < 0.0f) return NIMCP_ERROR_INVALID_PARAM;
+            if (params->lif.tau_membrane <= 0.0f) {
+                LOG_ERROR(LOG_MODULE, "LIF: invalid tau_membrane=%.2f (must be > 0)", params->lif.tau_membrane);
+                return NIMCP_ERROR_INVALID_PARAM;
+            }
+            if (params->lif.refractory_period < 0.0f) {
+                LOG_ERROR(LOG_MODULE, "LIF: invalid refractory_period=%.2f (must be >= 0)", params->lif.refractory_period);
+                return NIMCP_ERROR_INVALID_PARAM;
+            }
             break;
 
         case NEURON_GENERIC_IZHIKEVICH:
@@ -706,47 +758,68 @@ nimcp_result_t neuron_type_validate_params(neuron_type_t type,
             break;
 
         case NEURON_V1_SIMPLE_CELL:
-            if (params->v1_simple.orientation < 0.0f || params->v1_simple.orientation > 180.0f)
+            if (params->v1_simple.orientation < 0.0f || params->v1_simple.orientation > 180.0f) {
+                LOG_ERROR(LOG_MODULE, "V1 Simple: invalid orientation=%.1f (must be 0-180)", params->v1_simple.orientation);
                 return NIMCP_ERROR_INVALID_PARAM;
-            if (params->v1_simple.spatial_frequency <= 0.0f)
+            }
+            if (params->v1_simple.spatial_frequency <= 0.0f) {
+                LOG_ERROR(LOG_MODULE, "V1 Simple: invalid spatial_frequency=%.2f (must be > 0)", params->v1_simple.spatial_frequency);
                 return NIMCP_ERROR_INVALID_PARAM;
-            if (params->v1_simple.sigma <= 0.0f)
+            }
+            if (params->v1_simple.sigma <= 0.0f) {
+                LOG_ERROR(LOG_MODULE, "V1 Simple: invalid sigma=%.2f (must be > 0)", params->v1_simple.sigma);
                 return NIMCP_ERROR_INVALID_PARAM;
+            }
             break;
 
         case NEURON_V1_COMPLEX_CELL:
-            if (params->v1_complex.orientation < 0.0f || params->v1_complex.orientation > 180.0f)
+            if (params->v1_complex.orientation < 0.0f || params->v1_complex.orientation > 180.0f) {
+                LOG_ERROR(LOG_MODULE, "V1 Complex: invalid orientation=%.1f (must be 0-180)", params->v1_complex.orientation);
                 return NIMCP_ERROR_INVALID_PARAM;
-            if (params->v1_complex.direction_selectivity < 0.0f || params->v1_complex.direction_selectivity > 1.0f)
+            }
+            if (params->v1_complex.direction_selectivity < 0.0f || params->v1_complex.direction_selectivity > 1.0f) {
+                LOG_ERROR(LOG_MODULE, "V1 Complex: invalid direction_selectivity=%.2f (must be 0-1)", params->v1_complex.direction_selectivity);
                 return NIMCP_ERROR_INVALID_PARAM;
+            }
             break;
 
         case NEURON_A1_FREQUENCY_TUNED:
-            if (params->a1_frequency.center_frequency <= 0.0f || params->a1_frequency.center_frequency > 20000.0f)
+            if (params->a1_frequency.center_frequency <= 0.0f || params->a1_frequency.center_frequency > 20000.0f) {
+                LOG_ERROR(LOG_MODULE, "A1 Frequency: invalid center_frequency=%.1f (must be 0-20000 Hz)", params->a1_frequency.center_frequency);
                 return NIMCP_ERROR_INVALID_PARAM;
-            if (params->a1_frequency.q_factor <= 0.0f)
+            }
+            if (params->a1_frequency.q_factor <= 0.0f) {
+                LOG_ERROR(LOG_MODULE, "A1 Frequency: invalid q_factor=%.2f (must be > 0)", params->a1_frequency.q_factor);
                 return NIMCP_ERROR_INVALID_PARAM;
+            }
             break;
 
         case NEURON_A1_COINCIDENCE_DETECTOR:
-            if (params->a1_coincidence.integration_window <= 0.0f)
+            if (params->a1_coincidence.integration_window <= 0.0f) {
+                LOG_ERROR(LOG_MODULE, "A1 Coincidence: invalid integration_window=%.2f (must be > 0)", params->a1_coincidence.integration_window);
                 return NIMCP_ERROR_INVALID_PARAM;
+            }
             break;
 
         case NEURON_METACOGNITIVE:
-            if (params->metacognitive.confidence_threshold < 0.0f || params->metacognitive.confidence_threshold > 1.0f)
+            if (params->metacognitive.confidence_threshold < 0.0f || params->metacognitive.confidence_threshold > 1.0f) {
+                LOG_ERROR(LOG_MODULE, "Metacognitive: invalid confidence_threshold=%.2f (must be 0-1)", params->metacognitive.confidence_threshold);
                 return NIMCP_ERROR_INVALID_PARAM;
+            }
             break;
 
         case NEURON_EXECUTIVE_CONTROL:
-            if (params->executive.goal_maintenance < 0.0f || params->executive.goal_maintenance > 1.0f)
+            if (params->executive.goal_maintenance < 0.0f || params->executive.goal_maintenance > 1.0f) {
+                LOG_ERROR(LOG_MODULE, "Executive: invalid goal_maintenance=%.2f (must be 0-1)", params->executive.goal_maintenance);
                 return NIMCP_ERROR_INVALID_PARAM;
+            }
             break;
 
         default:
             break;
     }
 
+    LOG_DEBUG(LOG_MODULE, "Params validated successfully for %s", neuron_type_get_name(type));
     return NIMCP_SUCCESS;
 }
 
@@ -1349,24 +1422,33 @@ static float apply_executive_control(float input, float goal_signal,
  */
 float neuron_type_process_input(neuron_type_t type, const neuron_type_params_t* params,
                                  float input, uint64_t timestamp) {
+    LOG_DEBUG(LOG_MODULE, "Processing input for %s: input=%.3f, timestamp=%lu",
+              neuron_type_get_name(type), input, timestamp);
+
     // Guard clause: invalid input
     if (!params) {
+        LOG_WARN(LOG_MODULE, "NULL params for %s, returning 0.0", neuron_type_get_name(type));
         return 0.0f;
     }
 
     (void)timestamp;  // May be used by future neuron types
+
+    float result = 0.0f;
 
     switch (type) {
         case NEURON_V1_SIMPLE_CELL:  // NEURON_VISUAL_EDGE is an alias (same value)
             // WHAT: Orientation-selective Gabor filter response
             // WHY:  V1 simple cells detect oriented edges
             // HOW:  Apply Gabor-like orientation tuning
-            return apply_gabor_response(
+            result = apply_gabor_response(
                 input,
                 params->v1_simple.orientation,
                 params->v1_simple.spatial_frequency,
                 params->v1_simple.phase
             );
+            LOG_DEBUG(LOG_MODULE, "V1 Simple: input=%.3f, orientation=%.1f, output=%.3f",
+                      input, params->v1_simple.orientation, result);
+            return result;
 
         case NEURON_V1_COMPLEX_CELL:
         case NEURON_VISUAL_ORIENTATION:
@@ -1452,7 +1534,11 @@ float neuron_type_process_input(neuron_type_t type, const neuron_type_params_t* 
         case NEURON_INHIBITORY:
         case NEURON_GENERIC_LIF:
         case NEURON_GENERIC_IZHIKEVICH:
+            LOG_DEBUG(LOG_MODULE, "%s: passthrough input=%.3f", neuron_type_get_name(type), input);
+            return input;
+
         default:
+            LOG_WARN(LOG_MODULE, "Unknown neuron type %d, passthrough input=%.3f", type, input);
             return input;
     }
 }

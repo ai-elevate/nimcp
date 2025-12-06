@@ -16,20 +16,63 @@
  * - Comprehensive error checking
  */
 
-#include "nimcp_cortical_column.h"
+#include "core/cortical_columns/nimcp_cortical_column.h"
+#include "utils/memory/nimcp_unified_memory.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/memory/nimcp_memory_pool.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/platform/nimcp_platform_mutex.h"
+#include "async/nimcp_bio_async.h"
+#include "async/nimcp_bio_router.h"
+#include "async/nimcp_bio_messages.h"
 #include <string.h>
 #include <math.h>
 #include <float.h>
 
+#define LOG_MODULE "cortical_column"
+
 // Logging macros
-#define COLUMN_LOG_ERROR(...) log_message(LOG_LEVEL_ERROR, __VA_ARGS__)
-#define COLUMN_LOG_WARN(...) log_message(LOG_LEVEL_WARN, __VA_ARGS__)
-#define COLUMN_LOG_INFO(...) log_message(LOG_LEVEL_INFO, __VA_ARGS__)
-#define COLUMN_LOG_DEBUG(...) log_message(LOG_LEVEL_DEBUG, __VA_ARGS__)
+#define COLUMN_LOG_ERROR(...) LOG_ERROR(LOG_MODULE, __VA_ARGS__)
+#define COLUMN_LOG_WARN(...) LOG_WARN(LOG_MODULE, __VA_ARGS__)
+#define COLUMN_LOG_INFO(...) LOG_INFO(LOG_MODULE, __VA_ARGS__)
+#define COLUMN_LOG_DEBUG(...) LOG_DEBUG(LOG_MODULE, __VA_ARGS__)
+
+//=============================================================================
+// Bio-Async Module Context
+//=============================================================================
+
+static bio_module_context_t bio_ctx = NULL;
+static bool bio_async_enabled = false;
+
+__attribute__((constructor))
+static void cortical_column_bio_init(void) {
+    if (!bio_router_is_initialized()) {
+        return;
+    }
+
+    bio_module_info_t bio_info = {
+        .module_id = BIO_MODULE_CORTICAL_COLUMN,
+        .module_name = "cortical_column",
+        .inbox_capacity = 128,
+        .user_data = NULL
+    };
+
+    bio_ctx = bio_router_register_module(&bio_info);
+    if (bio_ctx) {
+        bio_async_enabled = true;
+        LOG_INFO(LOG_MODULE, "Bio-async registered for cortical_column module");
+    }
+}
+
+__attribute__((destructor))
+static void cortical_column_bio_cleanup(void) {
+    if (bio_async_enabled && bio_ctx) {
+        bio_router_unregister_module(bio_ctx);
+        bio_ctx = NULL;
+        bio_async_enabled = false;
+        LOG_DEBUG(LOG_MODULE, "Bio-async unregistered for cortical_column module");
+    }
+}
 
 // Constants
 #define DEFAULT_MAX_MINICOLUMNS 1000
@@ -791,6 +834,11 @@ void hypercolumn_compute(
     const float* input,
     uint32_t input_size
 ) {
+    // Process pending bio-async messages
+    if (bio_ctx) {
+        bio_router_process_inbox(bio_ctx, 5);
+    }
+
     // Guard: validate inputs
     if (!hcol || !hcol->initialized) {
         COLUMN_LOG_ERROR("hypercolumn_compute: Invalid hypercolumn");

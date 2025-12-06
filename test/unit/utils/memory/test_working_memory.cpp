@@ -640,7 +640,8 @@ TEST_F(WorkingMemoryTest, MultipleEmotionalItems) {
     working_memory_add_with_emotion(wm, item1, 1, 0.5f, &joy);
 
     float item2[1] = {2.0f};
-    emotional_tag_t fear = emotional_tag_create(-0.8f, 0.9f, 1000);
+    // FEAR requires valence < -0.6 AND arousal > 0.6 per implementation
+    emotional_tag_t fear = emotional_tag_create(-0.65f, 0.9f, 1000);
     working_memory_add_with_emotion(wm, item2, 1, 0.6f, &fear);
 
     float item3[1] = {3.0f};

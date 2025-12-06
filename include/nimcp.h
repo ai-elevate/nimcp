@@ -228,6 +228,391 @@ nimcp_status_t nimcp_brain_save(nimcp_brain_t brain, const char* filepath);
 nimcp_brain_t nimcp_brain_load(const char* filepath);
 
 //=============================================================================
+// Training Pipeline API - Loss Functions, Optimizers, LR Schedulers
+//=============================================================================
+
+/**
+ * @brief Loss function types for training (public API)
+ * @note Uses distinct names to avoid conflicts with internal training module types
+ */
+typedef enum {
+    NIMCP_API_LOSS_MSE = 0,              /**< Mean Squared Error (regression) */
+    NIMCP_API_LOSS_CROSS_ENTROPY = 1,    /**< Cross-Entropy (classification) */
+    NIMCP_API_LOSS_BINARY_CE = 2,        /**< Binary Cross-Entropy */
+    NIMCP_API_LOSS_HUBER = 3,            /**< Huber Loss (robust regression) */
+    NIMCP_API_LOSS_MAE = 4,              /**< Mean Absolute Error */
+    NIMCP_API_LOSS_FOCAL = 5,            /**< Focal Loss (imbalanced classes) */
+    NIMCP_API_LOSS_KL_DIV = 6            /**< KL Divergence */
+} nimcp_api_loss_t;
+
+/**
+ * @brief Optimizer types for training (public API)
+ */
+typedef enum {
+    NIMCP_API_OPT_SGD = 0,               /**< Stochastic Gradient Descent */
+    NIMCP_API_OPT_MOMENTUM = 1,          /**< SGD with Momentum */
+    NIMCP_API_OPT_ADAM = 2,              /**< Adam optimizer */
+    NIMCP_API_OPT_ADAMW = 3,             /**< AdamW (weight decay) */
+    NIMCP_API_OPT_RMSPROP = 4,           /**< RMSprop */
+    NIMCP_API_OPT_ADAGRAD = 5            /**< Adagrad */
+} nimcp_api_optimizer_t;
+
+/**
+ * @brief Learning rate scheduler types (public API)
+ */
+typedef enum {
+    NIMCP_API_SCHED_CONSTANT = 0,           /**< Constant learning rate */
+    NIMCP_API_SCHED_STEP = 1,               /**< Step decay */
+    NIMCP_API_SCHED_EXPONENTIAL = 2,        /**< Exponential decay */
+    NIMCP_API_SCHED_COSINE = 3,             /**< Cosine annealing */
+    NIMCP_API_SCHED_WARMUP_COSINE = 4,      /**< Warmup + Cosine annealing */
+    NIMCP_API_SCHED_REDUCE_ON_PLATEAU = 5,  /**< Reduce when metric plateaus */
+    NIMCP_API_SCHED_CYCLIC = 6              /**< Cyclic learning rate */
+} nimcp_api_scheduler_t;
+
+/**
+ * @brief Training configuration for the training pipeline
+ */
+typedef struct {
+    nimcp_api_loss_t loss_type;           /**< Loss function type */
+    nimcp_api_optimizer_t optimizer_type; /**< Optimizer type */
+    nimcp_api_scheduler_t scheduler_type; /**< LR scheduler type */
+
+    float learning_rate;       /**< Initial learning rate (default: 0.001) */
+    float weight_decay;        /**< L2 regularization (default: 0.0) */
+    float momentum;            /**< Momentum for SGD/Momentum (default: 0.9) */
+    float beta1;               /**< Adam beta1 (default: 0.9) */
+    float beta2;               /**< Adam beta2 (default: 0.999) */
+    float epsilon;             /**< Adam epsilon (default: 1e-8) */
+
+    uint32_t scheduler_step_size;   /**< Steps between LR updates */
+    float scheduler_gamma;          /**< LR decay factor (default: 0.1) */
+    uint32_t warmup_steps;          /**< Warmup steps (default: 0) */
+
+    bool enable_gradient_clipping;  /**< Enable gradient clipping */
+    float gradient_clip_value;      /**< Max gradient norm (default: 1.0) */
+
+    bool enable_biological_modulation; /**< Enable plasticity bridge modulation */
+    float biological_blend;            /**< Biological modulation strength (0-1) */
+} nimcp_training_config_t;
+
+/**
+ * @brief Training result/statistics from a training step
+ */
+typedef struct {
+    float loss;                /**< Loss value */
+    float learning_rate;       /**< Current learning rate */
+    uint32_t step;             /**< Training step number */
+    bool early_stopped;        /**< True if early stopping triggered */
+    float gradient_norm;       /**< Gradient norm (if clipping enabled) */
+} nimcp_training_result_t;
+
+/**
+ * @brief Get default training configuration
+ *
+ * Returns a sensible default configuration:
+ * - Loss: Cross-Entropy
+ * - Optimizer: Adam (lr=0.001, betas=0.9/0.999)
+ * - Scheduler: Cosine annealing
+ * - Biological modulation: enabled at 50%
+ *
+ * @return Default training configuration
+ */
+nimcp_training_config_t nimcp_training_config_default(void);
+
+/**
+ * @brief Configure brain's training pipeline
+ *
+ * Sets up the internal training coordinator with specified loss function,
+ * optimizer, and learning rate scheduler. Must be called before using
+ * nimcp_brain_train_step() or nimcp_brain_train_batch().
+ *
+ * @param brain Brain handle
+ * @param config Training configuration
+ * @return NIMCP_OK on success, error code otherwise
+ *
+ * EXAMPLE:
+ * ```c
+ * nimcp_training_config_t config = nimcp_training_config_default();
+ * config.loss_type = NIMCP_LOSS_CROSS_ENTROPY;
+ * config.optimizer_type = NIMCP_OPT_ADAM;
+ * config.learning_rate = 0.001f;
+ * nimcp_brain_configure_training(brain, &config);
+ * ```
+ */
+nimcp_status_t nimcp_brain_configure_training(
+    nimcp_brain_t brain,
+    const nimcp_training_config_t* config
+);
+
+/**
+ * @brief Train brain using the training pipeline (single step)
+ *
+ * Performs a complete training step using the configured training pipeline:
+ * 1. Forward pass to get predictions
+ * 2. Loss computation (via Loss Functions module)
+ * 3. Gradient computation (backpropagation)
+ * 4. Gradient health check (via Gradient Manager)
+ * 5. Regularization (if enabled)
+ * 6. Biological modulation (via Plasticity Bridge, if enabled)
+ * 7. Weight update (via Optimizer)
+ * 8. Learning rate update (via LR Scheduler)
+ *
+ * This uses the full training coordinator with all integrated modules.
+ *
+ * @param brain Brain handle
+ * @param features Input features array
+ * @param num_features Number of input features
+ * @param targets Target output array (one-hot or continuous)
+ * @param num_targets Number of target outputs
+ * @param result Output: training result (can be NULL)
+ * @return NIMCP_OK on success, error code otherwise
+ *
+ * EXAMPLE:
+ * ```c
+ * float features[784] = {...};
+ * float targets[10] = {0,0,0,1,0,0,0,0,0,0};  // One-hot for class 3
+ * nimcp_training_result_t result;
+ * nimcp_brain_train_step(brain, features, 784, targets, 10, &result);
+ * printf("Loss: %.4f, LR: %.6f\n", result.loss, result.learning_rate);
+ * ```
+ */
+nimcp_status_t nimcp_brain_train_step(
+    nimcp_brain_t brain,
+    const float* features,
+    uint32_t num_features,
+    const float* targets,
+    uint32_t num_targets,
+    nimcp_training_result_t* result
+);
+
+/**
+ * @brief Train brain on a batch of examples
+ *
+ * Performs training on multiple examples, accumulating gradients before
+ * applying weight updates (mini-batch gradient descent).
+ *
+ * @param brain Brain handle
+ * @param features 2D array of features [batch_size][num_features]
+ * @param targets 2D array of targets [batch_size][num_targets]
+ * @param batch_size Number of examples in batch
+ * @param num_features Features per example
+ * @param num_targets Targets per example
+ * @param result Output: training result with averaged loss (can be NULL)
+ * @return NIMCP_OK on success, error code otherwise
+ *
+ * EXAMPLE:
+ * ```c
+ * float features[32][784];  // 32 images, 784 pixels each
+ * float targets[32][10];    // 32 one-hot labels
+ * nimcp_training_result_t result;
+ * nimcp_brain_train_batch(brain, (float*)features, (float*)targets,
+ *                          32, 784, 10, &result);
+ * ```
+ */
+nimcp_status_t nimcp_brain_train_batch(
+    nimcp_brain_t brain,
+    const float* features,
+    const float* targets,
+    uint32_t batch_size,
+    uint32_t num_features,
+    uint32_t num_targets,
+    nimcp_training_result_t* result
+);
+
+/**
+ * @brief Get current training statistics
+ *
+ * @param brain Brain handle
+ * @param total_steps Output: total training steps
+ * @param total_loss Output: cumulative loss
+ * @param current_lr Output: current learning rate
+ * @return NIMCP_OK on success, error code otherwise
+ */
+nimcp_status_t nimcp_brain_get_training_stats(
+    nimcp_brain_t brain,
+    uint64_t* total_steps,
+    float* total_loss,
+    float* current_lr
+);
+
+/**
+ * @brief Step the learning rate scheduler (call at epoch end)
+ *
+ * Updates the learning rate according to the configured scheduler.
+ * For ReduceOnPlateau, provide the validation metric.
+ *
+ * @param brain Brain handle
+ * @param validation_metric Validation metric (for ReduceOnPlateau, ignored otherwise)
+ * @return New learning rate
+ */
+float nimcp_brain_step_scheduler(nimcp_brain_t brain, float validation_metric);
+
+//=============================================================================
+// Training Callbacks API - Event-driven training monitoring and control
+//=============================================================================
+
+/**
+ * @brief Training callback event types (public API)
+ */
+typedef enum {
+    NIMCP_CB_STEP_COMPLETE = 0,    /**< Training step finished */
+    NIMCP_CB_EPOCH_COMPLETE,        /**< Epoch finished */
+    NIMCP_CB_LOSS_COMPUTED,         /**< Loss calculated */
+    NIMCP_CB_WEIGHTS_UPDATED,       /**< Weights modified */
+    NIMCP_CB_LR_CHANGED,            /**< Learning rate changed */
+    NIMCP_CB_CONVERGENCE,           /**< Early stopping triggered */
+    NIMCP_CB_DIVERGENCE,            /**< Training instability */
+    NIMCP_CB_CHECKPOINT,            /**< Checkpoint saved */
+    NIMCP_CB_EVENT_COUNT
+} nimcp_callback_event_t;
+
+/**
+ * @brief Callback return actions
+ */
+typedef enum {
+    NIMCP_CB_ACTION_CONTINUE = 0,   /**< Continue training normally */
+    NIMCP_CB_ACTION_STOP,           /**< Stop training loop */
+    NIMCP_CB_ACTION_SKIP,           /**< Skip current step */
+    NIMCP_CB_ACTION_ROLLBACK,       /**< Rollback to checkpoint */
+    NIMCP_CB_ACTION_REDUCE_LR,      /**< Reduce learning rate */
+    NIMCP_CB_ACTION_INCREASE_LR     /**< Increase learning rate */
+} nimcp_callback_action_t;
+
+/**
+ * @brief Training metrics passed to callbacks
+ */
+typedef struct {
+    uint64_t step;                  /**< Current training step */
+    uint64_t epoch;                 /**< Current epoch */
+    float loss;                     /**< Current loss value */
+    float loss_ema;                 /**< Exponential moving average of loss */
+    float learning_rate;            /**< Current learning rate */
+    float gradient_norm;            /**< L2 norm of gradients */
+    uint64_t step_time_us;          /**< Time for current step */
+    bool is_converging;             /**< Loss trending down */
+    bool is_diverging;              /**< Loss trending up rapidly */
+} nimcp_callback_metrics_t;
+
+/**
+ * @brief Callback function signature
+ *
+ * @param event Event type that triggered callback
+ * @param metrics Current training metrics
+ * @param user_data User-provided context
+ * @return Action for training loop to take
+ */
+typedef nimcp_callback_action_t (*nimcp_training_callback_fn)(
+    nimcp_callback_event_t event,
+    const nimcp_callback_metrics_t* metrics,
+    void* user_data
+);
+
+/**
+ * @brief Callback configuration for registration
+ */
+typedef struct {
+    bool enable_auto_checkpoint;     /**< Enable automatic checkpointing */
+    uint32_t checkpoint_interval;    /**< Steps between checkpoints */
+    bool enable_early_stopping;      /**< Enable early stopping */
+    uint32_t patience;               /**< Steps without improvement before stop */
+    float min_delta;                 /**< Minimum improvement to reset patience */
+    float divergence_threshold;      /**< Loss increase ratio for divergence */
+    uint32_t log_interval;           /**< Steps between log outputs (0=disabled) */
+} nimcp_callback_config_t;
+
+/**
+ * @brief Get default callback configuration
+ *
+ * @return Default configuration with sensible values
+ */
+nimcp_callback_config_t nimcp_callback_config_default(void);
+
+/**
+ * @brief Enable training callbacks for a brain
+ *
+ * Must be called after nimcp_brain_configure_training().
+ * Enables the callback system with the specified configuration.
+ *
+ * @param brain Brain handle
+ * @param config Callback configuration (NULL for defaults)
+ * @return NIMCP_OK on success, error code otherwise
+ */
+nimcp_status_t nimcp_brain_enable_callbacks(
+    nimcp_brain_t brain,
+    const nimcp_callback_config_t* config
+);
+
+/**
+ * @brief Disable training callbacks for a brain
+ *
+ * @param brain Brain handle
+ * @return NIMCP_OK on success, error code otherwise
+ */
+nimcp_status_t nimcp_brain_disable_callbacks(nimcp_brain_t brain);
+
+/**
+ * @brief Register a callback for a specific event type
+ *
+ * @param brain Brain handle
+ * @param event Event type to subscribe to
+ * @param callback Callback function
+ * @param user_data User context passed to callback
+ * @param name Callback name for logging (can be NULL)
+ * @return Callback ID (>0) on success, 0 on error
+ *
+ * EXAMPLE:
+ * ```c
+ * nimcp_callback_action_t my_logger(
+ *     nimcp_callback_event_t event,
+ *     const nimcp_callback_metrics_t* m,
+ *     void* user_data)
+ * {
+ *     printf("Step %lu: loss=%.4f lr=%.6f\n", m->step, m->loss, m->learning_rate);
+ *     return NIMCP_CB_ACTION_CONTINUE;
+ * }
+ *
+ * uint32_t cb_id = nimcp_brain_register_callback(
+ *     brain, NIMCP_CB_STEP_COMPLETE, my_logger, NULL, "logger");
+ * ```
+ */
+uint32_t nimcp_brain_register_callback(
+    nimcp_brain_t brain,
+    nimcp_callback_event_t event,
+    nimcp_training_callback_fn callback,
+    void* user_data,
+    const char* name
+);
+
+/**
+ * @brief Unregister a callback
+ *
+ * @param brain Brain handle
+ * @param callback_id Callback ID from registration
+ * @return NIMCP_OK on success, error code otherwise
+ */
+nimcp_status_t nimcp_brain_unregister_callback(
+    nimcp_brain_t brain,
+    uint32_t callback_id
+);
+
+/**
+ * @brief Get callback statistics
+ *
+ * @param brain Brain handle
+ * @param total_fired Output: total callbacks fired
+ * @param avg_time_us Output: average callback execution time
+ * @param early_stops Output: early stops triggered
+ * @return NIMCP_OK on success, error code otherwise
+ */
+nimcp_status_t nimcp_brain_get_callback_stats(
+    nimcp_brain_t brain,
+    uint64_t* total_fired,
+    float* avg_time_us,
+    uint32_t* early_stops
+);
+
+//=============================================================================
 // Phase 2.8: Dynamic Brain Resizing
 //=============================================================================
 

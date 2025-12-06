@@ -123,6 +123,11 @@ static uint64_t get_time_ns(void) {
 }
 
 static void update_gradient_stats(nimcp_optimizer_context_t* ctx, float norm) {
+    // Process pending bio-async messages
+    if (ctx && ctx->bio_async_enabled && ctx->bio_ctx) {
+        bio_router_process_inbox(ctx->bio_ctx, 5);
+    }
+
     ctx->stats.total_gradient_norm += norm;
     if (norm < ctx->stats.min_gradient_norm) {
         ctx->stats.min_gradient_norm = norm;

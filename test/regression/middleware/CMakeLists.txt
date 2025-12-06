@@ -6,6 +6,7 @@ add_subdirectory(normalization)
 add_subdirectory(patterns)
 add_subdirectory(pipeline)
 add_subdirectory(routing)
+add_subdirectory(training)
 
 # Signal Filter Regression Tests
 add_executable(regression_middleware_test_signal_filter_regression

@@ -831,9 +831,14 @@ TEST_F(StressTest, RapidTimeCallsStress)
 {
     std::vector<uint64_t> times;
 
-    // Call 10,000 times
+    // Call 10,000 times with a brief sleep partway through
+    // to ensure millisecond clock actually advances (10k calls can complete < 1ms)
     for (int i = 0; i < 10000; i++) {
         times.push_back(nimcp_platform_time_monotonic_ms());
+        // Brief sleep at midpoint to ensure clock advances at least once
+        if (i == 5000) {
+            nimcp_platform_sleep_ms(2);
+        }
     }
 
     // Verify monotonic property maintained
@@ -842,9 +847,9 @@ TEST_F(StressTest, RapidTimeCallsStress)
             << "Stress test: monotonic violation at " << i;
     }
 
-    // Verify time advanced
+    // Verify time advanced (we added a 2ms sleep, so it must advance)
     EXPECT_GT(times.back(), times.front())
-        << "Time should advance over 10,000 calls";
+        << "Time should advance over 10,000 calls with 2ms sleep";
 }
 
 /**

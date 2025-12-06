@@ -922,6 +922,11 @@ semantic_query_result_t* semantic_memory_query(
     if (!system) return NULL;
     if (!features || feature_dim == 0) return NULL;
 
+    // Process pending bio-async messages
+    if (system->bio_async_enabled && system->bio_ctx) {
+        bio_router_process_inbox(system->bio_ctx, 5);
+    }
+
     // Find similar concepts
     semantic_query_result_t* similar = semantic_memory_find_similar(
         system,

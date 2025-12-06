@@ -236,6 +236,11 @@ bool explanation_generate_from_decision(
     brain_decision_t* decision,
     natural_explanation_t* explanation)
 {
+    // Process pending bio-async messages
+    if (gen && gen->bio_ctx) {
+        bio_router_process_inbox(gen->bio_ctx, 5);
+    }
+
     // =========================================================================
     // GUARD: Validate inputs
     // =========================================================================

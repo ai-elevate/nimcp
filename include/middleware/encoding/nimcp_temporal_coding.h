@@ -19,7 +19,7 @@
 #ifndef NIMCP_TEMPORAL_CODING_H
 #define NIMCP_TEMPORAL_CODING_H
 
-#include "nimcp_rate_coding.h"  // For spike_train_t
+#include "middleware/encoding/nimcp_rate_coding.h"  // For spike_train_t
 #include <stdint.h>
 #include <stdbool.h>
 

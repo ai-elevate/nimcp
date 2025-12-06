@@ -59,12 +59,12 @@ extern "C" {
     #define NIMCP_EXPORT
 #endif
 
-// Forward declarations for middleware types (to be integrated in Phase 1)
-// Note: These are now defined in their respective middleware headers
-// Removed to avoid conflicts during Phase 1.2 integration:
-// - sliding_window_t (defined in middleware/buffering/nimcp_sliding_window.h)
-// - integration_buffer_t (defined in middleware/buffering/nimcp_integration_buffer.h)
-// - temporal_accumulator_t (defined in middleware/buffering/nimcp_temporal_accumulator.h)
+// Buffer type definitions for pool management
+// These are opaque pointers to buffers managed by the pool
+// The actual buffer structure is internal to the pool implementation
+typedef void* integration_buffer_t;    /**< Integration buffer handle (fast/medium/slow timescales) */
+typedef void* sliding_window_t;        /**< Sliding window buffer handle */
+typedef void* temporal_accumulator_t;  /**< Temporal accumulator buffer handle */
 
 //=============================================================================
 // Configuration and Types
@@ -165,20 +165,9 @@ NIMCP_EXPORT buffer_pool_t buffer_pool_create(const buffer_pool_config_t* config
  */
 NIMCP_EXPORT void buffer_pool_destroy(buffer_pool_t pool);
 
-/*
- * PLACEHOLDER FUNCTIONS - NOT YET IMPLEMENTED
- *
- * These functions are placeholders for future Phase 1.2/1.3 integration.
- * They reference middleware types (integration_buffer_t, sliding_window_t,
- * temporal_accumulator_t) that are defined in their respective headers.
- *
- * For now, we use the simpler buffer_pool_acquire/release API which works
- * with raw void* pointers.
- *
- * Uncomment and implement these when integrating specific middleware types.
- */
-
-#if 0
+//=============================================================================
+// Buffer Acquisition API
+//=============================================================================
 /**
  * @brief Acquire integration buffer from pool
  *
@@ -260,7 +249,6 @@ NIMCP_EXPORT void buffer_pool_release_temporal_accumulator(
     buffer_pool_t pool,
     temporal_accumulator_t accumulator
 );
-#endif  // 0 - Placeholder functions
 
 /**
  * @brief Trigger Copy-on-Write for channel

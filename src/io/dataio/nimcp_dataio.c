@@ -1,3 +1,7 @@
+
+#define LOG_MODULE "nimcp_dataio"
+#define LOG_MODULE_ID 0x052D
+
 /**
  * @file nimcp_dataio.c
  * @brief Brain data I/O implementation
@@ -32,6 +36,10 @@
 #include "utils/validation/nimcp_validate.h"
 #include "security/nimcp_security_integration.h"
 #include "utils/logging/nimcp_logging.h"
+#include "async/nimcp_bio_async.h"
+#include "async/nimcp_bio_router.h"
+#include "async/nimcp_bio_messages.h"
+
 
 //=============================================================================
 // Global State for Module-Level Security Registration

@@ -142,6 +142,11 @@ void middleware_pipeline_destroy(middleware_pipeline_t pipeline) {
 
 bool middleware_pipeline_execute(middleware_pipeline_t pipeline,
                                  middleware_context_t* context) {
+    // Process pending bio-async messages
+    if (pipeline && pipeline->bio_ctx) {
+        bio_router_process_inbox(pipeline->bio_ctx, 5);
+    }
+
     if (!pipeline || !context) {
         LOG_ERROR(LOG_MODULE, "Invalid pipeline or context");
         return false;

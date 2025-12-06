@@ -37,6 +37,7 @@ TEST_F(QueueTest, CreateDestroy)
     nimcp_queue_config_t config;
     config.max_size = 100;
     config.item_size = sizeof(int);
+    config.type = NIMCP_QUEUE_TYPE_BLOCKING;
     config.is_blocking = false;
     config.timeout_ms = 0;
 
@@ -56,6 +57,7 @@ TEST_F(QueueTest, EnqueueDequeue)
     nimcp_queue_config_t config;
     config.max_size = 10;
     config.item_size = sizeof(int);
+    config.type = NIMCP_QUEUE_TYPE_BLOCKING;
     config.is_blocking = false;
     config.timeout_ms = 0;
 
@@ -87,21 +89,23 @@ TEST_F(QueueTest, EnqueueDequeue)
 /**
  * WHAT: Test queue full condition
  * WHY: Verify queue properly handles overflow
- * NOTE: Circular buffer keeps one slot empty, so max_size=4 holds 3 items
+ * NOTE: BLOCKING queue uses max_size directly (no reserved slot)
+ *       SPSC/MPMC use circular buffer which reserves 1 slot
  */
 TEST_F(QueueTest, QueueFull)
 {
     nimcp_queue_config_t config;
-    config.max_size = 4;  // Holds 3 items (circular buffer uses 1 slot for empty detection)
+    config.max_size = 4;  // BLOCKING type holds exactly 4 items
     config.item_size = sizeof(int);
+    config.type = NIMCP_QUEUE_TYPE_BLOCKING;
     config.is_blocking = false;
     config.timeout_ms = 0;
 
     nimcp_queue_handle_t queue = nullptr;
     ASSERT_EQ(nimcp_queue_create(&config, &queue), NIMCP_SUCCESS);
 
-    // Fill the queue (can hold max_size - 1 items)
-    for (int i = 0; i < 3; i++) {
+    // Fill the queue (BLOCKING holds max_size items)
+    for (int i = 0; i < 4; i++) {
         ASSERT_EQ(nimcp_queue_enqueue(queue, &i, 0), NIMCP_SUCCESS);
     }
 
@@ -123,6 +127,7 @@ TEST_F(QueueTest, Peek)
     nimcp_queue_config_t config;
     config.max_size = 10;
     config.item_size = sizeof(int);
+    config.type = NIMCP_QUEUE_TYPE_BLOCKING;
     config.is_blocking = false;
     config.timeout_ms = 0;
 
@@ -152,6 +157,7 @@ TEST_F(QueueTest, Clear)
     nimcp_queue_config_t config;
     config.max_size = 10;
     config.item_size = sizeof(int);
+    config.type = NIMCP_QUEUE_TYPE_BLOCKING;
     config.is_blocking = false;
     config.timeout_ms = 0;
 
@@ -184,6 +190,7 @@ TEST_F(QueueTest, Status)
     nimcp_queue_config_t config;
     config.max_size = 10;
     config.item_size = sizeof(int);
+    config.type = NIMCP_QUEUE_TYPE_BLOCKING;
     config.is_blocking = false;
     config.timeout_ms = 0;
 

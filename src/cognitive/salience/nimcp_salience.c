@@ -1250,6 +1250,11 @@ uint32_t brain_evaluate_salience_batch(salience_evaluator_t eval, const float** 
 bool salience_set_weights(salience_evaluator_t eval, float novelty_weight, float surprise_weight,
                           float urgency_weight)
 {
+    // Process pending bio-async messages
+    if (eval && eval->bio_ctx) {
+        bio_router_process_inbox(eval->bio_ctx, 5);
+    }
+
     if (!eval)
         return false;
 
