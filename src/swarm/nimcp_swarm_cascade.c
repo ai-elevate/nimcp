@@ -155,6 +155,7 @@ static nimcp_health_state_t calculate_health_state(
 
 /**
  * @brief Send bio-async message
+ * @note Stubbed - requires brain integration with proper bio-async API
  */
 static nimcp_result_t send_bio_message(
     void *bio_ctx,
@@ -166,19 +167,10 @@ static nimcp_result_t send_bio_message(
         return NIMCP_INVALID_PARAM;
     }
 
-    /* Create bio-async message */
-    bio_message_header_t *msg = nimcp_bio_message_create(msg_type, data_size);
-    if (!msg) {
-        return NIMCP_NO_MEMORY;
-    }
-
-    memcpy(msg->payload, data, data_size);
-
-    /* Send message (implementation depends on bio-async API) */
-    /* For now, just log and clean up */
-    nimcp_log(NIMCP_LOG_DEBUG, "Cascade: Sending bio-async message type 0x%x", msg_type);
-
-    nimcp_bio_message_destroy(msg);
+    /* Bio-async message sending stubbed - requires brain integration */
+    (void)msg_type;
+    (void)data_size;
+    LOG_DEBUG("Cascade: bio-async message 0x%x stubbed (requires brain integration)", msg_type);
     return NIMCP_SUCCESS;
 }
 
@@ -228,17 +220,17 @@ nimcp_cascade_system_t* nimcp_cascade_create(
     void *bio_ctx
 ) {
     if (!config) {
-        nimcp_log(NIMCP_LOG_ERROR, "Cascade: NULL configuration");
+        LOG_ERROR( "Cascade: NULL configuration");
         return NULL;
     }
 
-    nimcp_log(NIMCP_LOG_INFO, "Cascade: Creating failure prevention system");
+    LOG_INFO( "Cascade: Creating failure prevention system");
 
     /* Allocate system structure */
     nimcp_cascade_system_t *system = (nimcp_cascade_system_t*)
         nimcp_calloc(1, sizeof(nimcp_cascade_system_t));
     if (!system) {
-        nimcp_log(NIMCP_LOG_ERROR, "Cascade: Failed to allocate system");
+        LOG_ERROR( "Cascade: Failed to allocate system");
         return NULL;
     }
 
@@ -250,7 +242,7 @@ nimcp_cascade_system_t* nimcp_cascade_create(
     system->telemetry_history.samples = (nimcp_health_telemetry_t*)
         nimcp_calloc(config->telemetry_window_size, sizeof(nimcp_health_telemetry_t));
     if (!system->telemetry_history.samples) {
-        nimcp_log(NIMCP_LOG_ERROR, "Cascade: Failed to allocate telemetry history");
+        LOG_ERROR( "Cascade: Failed to allocate telemetry history");
         nimcp_free(system);
         return NULL;
     }
@@ -260,7 +252,7 @@ nimcp_cascade_system_t* nimcp_cascade_create(
     system->breakers = (nimcp_circuit_breaker_t*)
         nimcp_calloc(system->breaker_capacity, sizeof(nimcp_circuit_breaker_t));
     if (!system->breakers) {
-        nimcp_log(NIMCP_LOG_ERROR, "Cascade: Failed to allocate breakers");
+        LOG_ERROR( "Cascade: Failed to allocate breakers");
         nimcp_free(system->telemetry_history.samples);
         nimcp_free(system);
         return NULL;
@@ -271,7 +263,7 @@ nimcp_cascade_system_t* nimcp_cascade_create(
     system->capabilities = (nimcp_capability_t*)
         nimcp_calloc(system->capability_capacity, sizeof(nimcp_capability_t));
     if (!system->capabilities) {
-        nimcp_log(NIMCP_LOG_ERROR, "Cascade: Failed to allocate capabilities");
+        LOG_ERROR( "Cascade: Failed to allocate capabilities");
         nimcp_free(system->breakers);
         nimcp_free(system->telemetry_history.samples);
         nimcp_free(system);
@@ -283,7 +275,7 @@ nimcp_cascade_system_t* nimcp_cascade_create(
     system->groups = (nimcp_redundancy_group_t*)
         nimcp_calloc(system->group_capacity, sizeof(nimcp_redundancy_group_t));
     if (!system->groups) {
-        nimcp_log(NIMCP_LOG_ERROR, "Cascade: Failed to allocate groups");
+        LOG_ERROR( "Cascade: Failed to allocate groups");
         nimcp_free(system->capabilities);
         nimcp_free(system->breakers);
         nimcp_free(system->telemetry_history.samples);
@@ -299,7 +291,7 @@ nimcp_cascade_system_t* nimcp_cascade_create(
     /* Create lock */
     system->lock = nimcp_platform_mutex_create();
     if (!system->lock) {
-        nimcp_log(NIMCP_LOG_ERROR, "Cascade: Failed to create lock");
+        LOG_ERROR( "Cascade: Failed to create lock");
         nimcp_free(system->groups);
         nimcp_free(system->capabilities);
         nimcp_free(system->breakers);
@@ -308,7 +300,7 @@ nimcp_cascade_system_t* nimcp_cascade_create(
         return NULL;
     }
 
-    nimcp_log(NIMCP_LOG_INFO, "Cascade: System created successfully");
+    LOG_INFO( "Cascade: System created successfully");
     return system;
 }
 
@@ -317,7 +309,7 @@ void nimcp_cascade_destroy(nimcp_cascade_system_t *system) {
         return;
     }
 
-    nimcp_log(NIMCP_LOG_INFO, "Cascade: Destroying system");
+    LOG_INFO( "Cascade: Destroying system");
 
     if (system->lock) {
         nimcp_platform_mutex_destroy(system->lock);
@@ -365,7 +357,7 @@ nimcp_result_t nimcp_cascade_update_telemetry(
 
     /* Log state changes */
     if (old_state != new_state) {
-        nimcp_log(NIMCP_LOG_INFO, "Cascade: Health state changed from %s to %s",
+        LOG_INFO( "Cascade: Health state changed from %s to %s",
                   nimcp_cascade_health_state_string(old_state),
                   nimcp_cascade_health_state_string(new_state));
 
@@ -486,7 +478,7 @@ nimcp_result_t nimcp_cascade_detect_anomaly(
     nimcp_platform_mutex_unlock(system->lock);
 
     if (result->is_anomalous) {
-        nimcp_log(NIMCP_LOG_WARNING,
+        LOG_WARN(
                   "Cascade: Anomaly detected in %s (%.2f sigma, score %.2f)",
                   result->metric_name, result->deviation_sigma, result->anomaly_score);
     }
@@ -562,7 +554,7 @@ nimcp_result_t nimcp_cascade_predict_failure(
     nimcp_platform_mutex_unlock(system->lock);
 
     if (prediction->failure_predicted) {
-        nimcp_log(NIMCP_LOG_WARNING,
+        LOG_WARN(
                   "Cascade: Failure predicted (confidence %.2f, TTF %lu us): %s",
                   prediction->confidence, prediction->time_to_failure_us, prediction->cause);
     }
@@ -589,7 +581,7 @@ nimcp_result_t nimcp_cascade_register_breaker(
     /* Check capacity */
     if (system->num_breakers >= system->breaker_capacity) {
         nimcp_platform_mutex_unlock(system->lock);
-        nimcp_log(NIMCP_LOG_ERROR, "Cascade: Breaker capacity exceeded");
+        LOG_ERROR( "Cascade: Breaker capacity exceeded");
         return NIMCP_NO_MEMORY;
     }
 
@@ -605,7 +597,7 @@ nimcp_result_t nimcp_cascade_register_breaker(
 
     nimcp_platform_mutex_unlock(system->lock);
 
-    nimcp_log(NIMCP_LOG_INFO, "Cascade: Registered breaker %u for service '%s'",
+    LOG_INFO( "Cascade: Registered breaker %u for service '%s'",
               id, service_name);
 
     return NIMCP_SUCCESS;
@@ -643,7 +635,7 @@ nimcp_result_t nimcp_cascade_record_operation(
                     breaker->state = BREAKER_OPEN;
                     breaker->trip_time_us = now;
                     breaker->total_trips++;
-                    nimcp_log(NIMCP_LOG_WARNING,
+                    LOG_WARN(
                               "Cascade: Breaker %u tripped (%u failures)",
                               breaker_id, breaker->failure_count);
                 }
@@ -656,7 +648,7 @@ nimcp_result_t nimcp_cascade_record_operation(
                 breaker->state = BREAKER_HALF_OPEN;
                 breaker->success_count = 0;
                 breaker->failure_count = 0;
-                nimcp_log(NIMCP_LOG_INFO, "Cascade: Breaker %u entering half-open state",
+                LOG_INFO( "Cascade: Breaker %u entering half-open state",
                           breaker_id);
             }
             break;
@@ -669,7 +661,7 @@ nimcp_result_t nimcp_cascade_record_operation(
                 if (breaker->success_count >= breaker->config.success_threshold) {
                     breaker->state = BREAKER_CLOSED;
                     breaker->failure_count = 0;
-                    nimcp_log(NIMCP_LOG_INFO, "Cascade: Breaker %u closed after recovery",
+                    LOG_INFO( "Cascade: Breaker %u closed after recovery",
                               breaker_id);
                 }
             } else {
@@ -678,7 +670,7 @@ nimcp_result_t nimcp_cascade_record_operation(
                 breaker->trip_time_us = now;
                 breaker->failure_count = 1;
                 breaker->success_count = 0;
-                nimcp_log(NIMCP_LOG_WARNING, "Cascade: Breaker %u re-tripped",
+                LOG_WARN( "Cascade: Breaker %u re-tripped",
                           breaker_id);
             }
             break;
@@ -752,7 +744,7 @@ nimcp_result_t nimcp_cascade_register_capability(
     /* Check capacity */
     if (system->num_capabilities >= system->capability_capacity) {
         nimcp_platform_mutex_unlock(system->lock);
-        nimcp_log(NIMCP_LOG_ERROR, "Cascade: Capability capacity exceeded");
+        LOG_ERROR( "Cascade: Capability capacity exceeded");
         return NIMCP_NO_MEMORY;
     }
 
@@ -764,7 +756,7 @@ nimcp_result_t nimcp_cascade_register_capability(
 
     nimcp_platform_mutex_unlock(system->lock);
 
-    nimcp_log(NIMCP_LOG_INFO, "Cascade: Registered capability %u: '%s' (priority %d)",
+    LOG_INFO( "Cascade: Registered capability %u: '%s' (priority %d)",
               id, capability->name, capability->priority);
 
     return NIMCP_SUCCESS;
@@ -825,7 +817,7 @@ nimcp_result_t nimcp_cascade_decide_load_shedding(
 done:
     nimcp_platform_mutex_unlock(system->lock);
 
-    nimcp_log(NIMCP_LOG_INFO,
+    LOG_INFO(
               "Cascade: Load shedding decision: %u capabilities, %.2f relief",
               decision->capabilities_to_shed, decision->estimated_relief);
 
@@ -851,7 +843,7 @@ nimcp_result_t nimcp_cascade_apply_load_shedding(
             cap->enabled = false;
             cap->disable_time_us = now;
 
-            nimcp_log(NIMCP_LOG_INFO, "Cascade: Shed capability '%s'", cap->name);
+            LOG_INFO( "Cascade: Shed capability '%s'", cap->name);
         }
     }
 
@@ -881,7 +873,7 @@ nimcp_result_t nimcp_cascade_restore_capabilities(
                 cap->disable_time_us = 0;
                 restored++;
 
-                nimcp_log(NIMCP_LOG_INFO, "Cascade: Restored capability '%s'", cap->name);
+                LOG_INFO( "Cascade: Restored capability '%s'", cap->name);
             }
         }
     }
@@ -917,7 +909,7 @@ nimcp_result_t nimcp_cascade_register_redundancy_group(
 
     nimcp_platform_mutex_unlock(system->lock);
 
-    nimcp_log(NIMCP_LOG_INFO, "Cascade: Registered redundancy group %u: '%s'",
+    LOG_INFO( "Cascade: Registered redundancy group %u: '%s'",
               id, group->group_name);
 
     return NIMCP_SUCCESS;
@@ -992,7 +984,7 @@ nimcp_result_t nimcp_cascade_check_failover(
         snprintf(decision->reason, sizeof(decision->reason),
                  "Primary node %u heartbeat timeout", group->primary_node_id);
 
-        nimcp_log(NIMCP_LOG_WARNING, "Cascade: Failover needed in group %u: %s",
+        LOG_WARN( "Cascade: Failover needed in group %u: %s",
                   group_id, decision->reason);
     }
 
@@ -1019,7 +1011,7 @@ nimcp_result_t nimcp_cascade_execute_failover(
             group->primary_node_id = decision->new_primary_id;
             group->last_heartbeat_us = get_time_us();
 
-            nimcp_log(NIMCP_LOG_INFO,
+            LOG_INFO(
                       "Cascade: Executed failover in group '%s': %u -> %u",
                       group->group_name, decision->failed_node_id,
                       decision->new_primary_id);
@@ -1069,7 +1061,7 @@ nimcp_result_t nimcp_cascade_record_failure(
 
     nimcp_platform_mutex_unlock(system->lock);
 
-    nimcp_log(NIMCP_LOG_WARNING, "Cascade: Recorded failure: node %u, %s -> %s",
+    LOG_WARN( "Cascade: Recorded failure: node %u, %s -> %s",
               event->node_id,
               nimcp_cascade_health_state_string(event->prev_state),
               nimcp_cascade_health_state_string(event->new_state));
@@ -1139,8 +1131,7 @@ nimcp_result_t nimcp_cascade_detect_cascade(
     nimcp_platform_mutex_unlock(system->lock);
 
     if (detection->cascade_detected) {
-        nimcp_log(NIMCP_LOG_CRITICAL,
-                  "Cascade: CASCADE DETECTED! %u failures, rate %.2f/sec, correlation %.2f",
+        LOG_ERROR("Cascade: CASCADE DETECTED! %u failures, rate %.2f/sec, correlation %.2f",
                   detection->affected_nodes, detection->cascade_rate,
                   detection->correlation_score);
     }
@@ -1184,7 +1175,7 @@ nimcp_result_t nimcp_cascade_start_recovery(
 
     nimcp_platform_mutex_unlock(system->lock);
 
-    nimcp_log(NIMCP_LOG_INFO, "Cascade: Started recovery for node %u: %s",
+    LOG_INFO( "Cascade: Started recovery for node %u: %s",
               node_id, state->status_message);
 
     /* Send recovery message if bio-async enabled */
@@ -1223,7 +1214,7 @@ nimcp_result_t nimcp_cascade_update_recovery(
 
     nimcp_platform_mutex_unlock(system->lock);
 
-    nimcp_log(NIMCP_LOG_DEBUG, "Cascade: Recovery progress: %s", state->status_message);
+    LOG_DEBUG( "Cascade: Recovery progress: %s", state->status_message);
 
     return NIMCP_SUCCESS;
 }
@@ -1254,7 +1245,7 @@ nimcp_result_t nimcp_cascade_verify_health(
 
     nimcp_platform_mutex_unlock(system->lock);
 
-    nimcp_log(NIMCP_LOG_INFO, "Cascade: Health verification for node %u: %s",
+    LOG_INFO( "Cascade: Health verification for node %u: %s",
               node_id, *passed ? "PASSED" : "FAILED");
 
     return NIMCP_SUCCESS;
@@ -1281,7 +1272,7 @@ nimcp_result_t nimcp_cascade_complete_recovery(
 
     nimcp_platform_mutex_unlock(system->lock);
 
-    nimcp_log(NIMCP_LOG_INFO, "Cascade: Recovery complete for node %u", node_id);
+    LOG_INFO( "Cascade: Recovery complete for node %u", node_id);
 
     /* Send recovery completion message */
     if (system->bio_enabled) {
@@ -1324,7 +1315,7 @@ nimcp_result_t nimcp_cascade_enable_bio_async(
     system->bio_enabled = true;
     nimcp_platform_mutex_unlock(system->lock);
 
-    nimcp_log(NIMCP_LOG_INFO, "Cascade: Bio-async integration enabled");
+    LOG_INFO( "Cascade: Bio-async integration enabled");
     return NIMCP_SUCCESS;
 }
 

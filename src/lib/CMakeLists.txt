@@ -421,6 +421,7 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../utils/containers/nimcp_queue_mpmc.c       # Phase ASY-1: Lock-free MPMC queue (Vyukov algorithm)
     ${CMAKE_CURRENT_SOURCE_DIR}/../utils/containers/nimcp_graph.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../utils/containers/nimcp_min_heap.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../utils/containers/nimcp_darray.c           # Generic dynamic array container
 
     # Async - Futures/Promises (Phase ASY-1: Async Communication)
     ${CMAKE_CURRENT_SOURCE_DIR}/../async/nimcp_future.c
@@ -585,18 +586,24 @@ set(NIMCP_CORE_SOURCES
     # ENABLED - Uses correct bio-async pattern with embedded message headers:
     ${CMAKE_CURRENT_SOURCE_DIR}/../swarm/nimcp_swarm_pheromone.c         # Stigmergic pheromone trails
 
-    # DISABLED - Require full API migration from NimcpStatus to nimcp_result_t,
-    # NIMCP_MALLOC to nimcp_malloc, and other naming convention updates.
-    # Reference nimcp_swarm_pheromone.c for correct bio-async integration pattern.
-    # ${CMAKE_CURRENT_SOURCE_DIR}/../swarm/nimcp_swarm_morphogenesis.c  # Needs: NimcpStatus→nimcp_result_t, NIMCP_MALLOC→nimcp_malloc
-    # ${CMAKE_CURRENT_SOURCE_DIR}/../swarm/nimcp_swarm_flocking.c       # Needs full API migration
-    # ${CMAKE_CURRENT_SOURCE_DIR}/../swarm/nimcp_swarm_quorum.c         # Needs full API migration
-    # ${CMAKE_CURRENT_SOURCE_DIR}/../swarm/nimcp_swarm_immune.c         # Needs full API migration
-    # ${CMAKE_CURRENT_SOURCE_DIR}/../swarm/nimcp_swarm_energy_gossip.c  # Needs full API migration
-    # ${CMAKE_CURRENT_SOURCE_DIR}/../swarm/nimcp_swarm_memory.c         # Needs full API migration
-    # ${CMAKE_CURRENT_SOURCE_DIR}/../swarm/nimcp_swarm_cascade.c        # Needs full API migration
-    # ${CMAKE_CURRENT_SOURCE_DIR}/../swarm/nimcp_swarm_multi.c          # Needs full API migration
-    # ${CMAKE_CURRENT_SOURCE_DIR}/../swarm/nimcp_swarm_proprioception.c # Needs full API migration
+    # MIGRATED - Full API migration from NimcpStatus to nimcp_result_t complete:
+    ${CMAKE_CURRENT_SOURCE_DIR}/../swarm/nimcp_swarm_morphogenesis.c  # Role specialization system
+    ${CMAKE_CURRENT_SOURCE_DIR}/../swarm/nimcp_swarm_flocking.c       # Flocking dynamics (Reynolds boids)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../swarm/nimcp_swarm_quorum.c         # Quorum sensing system
+    ${CMAKE_CURRENT_SOURCE_DIR}/../swarm/nimcp_swarm_immune.c         # Adaptive immune system
+    ${CMAKE_CURRENT_SOURCE_DIR}/../swarm/nimcp_swarm_cascade.c        # Cascade failure prevention
+
+    # MIGRATED - Energy gossip protocol with API fixes:
+    ${CMAKE_CURRENT_SOURCE_DIR}/../swarm/nimcp_swarm_energy_gossip.c  # Energy-aware gossip protocol
+
+    # MIGRATED - Collective proprioception with time API fix:
+    ${CMAKE_CURRENT_SOURCE_DIR}/../swarm/nimcp_swarm_proprioception.c # Collective proprioception
+
+    # MIGRATED - Memory consolidation with stubbed containers:
+    ${CMAKE_CURRENT_SOURCE_DIR}/../swarm/nimcp_swarm_memory.c         # Memory consolidation
+
+    # MIGRATED - Multi-swarm coordination with stubbed containers:
+    ${CMAKE_CURRENT_SOURCE_DIR}/../swarm/nimcp_swarm_multi.c          # Multi-swarm coordination
 
     # Platform Tier System (Portia Spider Foundation)
     ${CMAKE_CURRENT_SOURCE_DIR}/../utils/platform/nimcp_platform_tier.c  # Platform-adaptive configuration

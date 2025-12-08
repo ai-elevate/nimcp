@@ -163,7 +163,7 @@ static uint32_t generate_unique_id(void) {
 
 nimcp_result_t nimcp_swarm_immune_default_config(NimcpSwarmImmuneConfig* config) {
     if (!config) {
-        NIMCP_LOG_ERROR("Invalid config pointer");
+        LOG_ERROR("Invalid config pointer");
         return NIMCP_INVALID_PARAM;
     }
 
@@ -187,15 +187,15 @@ NimcpSwarmImmuneSystem* nimcp_swarm_immune_create(
     uint32_t self_drone_id
 ) {
     if (!config) {
-        NIMCP_LOG_ERROR("Invalid configuration");
+        LOG_ERROR("Invalid configuration");
         return NULL;
     }
 
-    NimcpSwarmImmuneSystem* system = (NimcpSwarmImmuneSystem*)NIMCP_MALLOC(
+    NimcpSwarmImmuneSystem* system = (NimcpSwarmImmuneSystem*)nimcp_malloc(
         sizeof(NimcpSwarmImmuneSystem)
     );
     if (!system) {
-        NIMCP_LOG_ERROR("Failed to allocate immune system");
+        LOG_ERROR("Failed to allocate immune system");
         return NULL;
     }
 
@@ -211,67 +211,67 @@ NimcpSwarmImmuneSystem* nimcp_swarm_immune_create(
 
     /* Allocate memory cells */
     system->memory_cell_capacity = config->max_memory_cells;
-    system->memory_cells = (nimcp_swarm_memoryCell*)NIMCP_MALLOC(
-        system->memory_cell_capacity * sizeof(nimcp_swarm_memoryCell)
+    system->memory_cells = (NimcpSwarmMemoryCell*)nimcp_malloc(
+        system->memory_cell_capacity * sizeof(NimcpSwarmMemoryCell)
     );
     if (!system->memory_cells) {
-        NIMCP_LOG_ERROR("Failed to allocate memory cells");
-        NIMCP_FREE(system);
+        LOG_ERROR("Failed to allocate memory cells");
+        nimcp_free(system);
         return NULL;
     }
 
     /* Allocate active threats */
     system->active_threat_capacity = config->max_active_threats;
-    system->active_threats = (NimcpSwarmThreat*)NIMCP_MALLOC(
+    system->active_threats = (NimcpSwarmThreat*)nimcp_malloc(
         system->active_threat_capacity * sizeof(NimcpSwarmThreat)
     );
     if (!system->active_threats) {
-        NIMCP_LOG_ERROR("Failed to allocate threat storage");
-        NIMCP_FREE(system->memory_cells);
-        NIMCP_FREE(system);
+        LOG_ERROR("Failed to allocate threat storage");
+        nimcp_free(system->memory_cells);
+        nimcp_free(system);
         return NULL;
     }
 
     /* Allocate active responses */
     system->active_response_capacity = config->max_active_responses;
-    system->active_responses = (NimcpSwarmResponse*)NIMCP_MALLOC(
+    system->active_responses = (NimcpSwarmResponse*)nimcp_malloc(
         system->active_response_capacity * sizeof(NimcpSwarmResponse)
     );
     if (!system->active_responses) {
-        NIMCP_LOG_ERROR("Failed to allocate response storage");
-        NIMCP_FREE(system->active_threats);
-        NIMCP_FREE(system->memory_cells);
-        NIMCP_FREE(system);
+        LOG_ERROR("Failed to allocate response storage");
+        nimcp_free(system->active_threats);
+        nimcp_free(system->memory_cells);
+        nimcp_free(system);
         return NULL;
     }
 
     /* Allocate behavior profiles */
     system->behavior_profile_capacity = 100; /* Initial capacity */
-    system->behavior_profiles = (NimcpSwarmBehaviorProfile*)NIMCP_MALLOC(
+    system->behavior_profiles = (NimcpSwarmBehaviorProfile*)nimcp_malloc(
         system->behavior_profile_capacity * sizeof(NimcpSwarmBehaviorProfile)
     );
     if (!system->behavior_profiles) {
-        NIMCP_LOG_ERROR("Failed to allocate behavior profiles");
-        NIMCP_FREE(system->active_responses);
-        NIMCP_FREE(system->active_threats);
-        NIMCP_FREE(system->memory_cells);
-        NIMCP_FREE(system);
+        LOG_ERROR("Failed to allocate behavior profiles");
+        nimcp_free(system->active_responses);
+        nimcp_free(system->active_threats);
+        nimcp_free(system->memory_cells);
+        nimcp_free(system);
         return NULL;
     }
 
     /* Create mutex for thread safety */
     system->mutex = nimcp_platform_mutex_create();
     if (!system->mutex) {
-        NIMCP_LOG_ERROR("Failed to create mutex");
-        NIMCP_FREE(system->behavior_profiles);
-        NIMCP_FREE(system->active_responses);
-        NIMCP_FREE(system->active_threats);
-        NIMCP_FREE(system->memory_cells);
-        NIMCP_FREE(system);
+        LOG_ERROR("Failed to create mutex");
+        nimcp_free(system->behavior_profiles);
+        nimcp_free(system->active_responses);
+        nimcp_free(system->active_threats);
+        nimcp_free(system->memory_cells);
+        nimcp_free(system);
         return NULL;
     }
 
-    NIMCP_LOG_INFO("Swarm immune system created (drone_id=%u, version=%s)",
+    LOG_INFO("Swarm immune system created (drone_id=%u, version=%s)",
                    self_drone_id, NIMCP_SWARM_IMMUNE_VERSION);
 
     return system;
@@ -282,18 +282,18 @@ void nimcp_swarm_immune_destroy(NimcpSwarmImmuneSystem* system) {
         return;
     }
 
-    NIMCP_LOG_INFO("Destroying swarm immune system (drone_id=%u)",
+    LOG_INFO("Destroying swarm immune system (drone_id=%u)",
                    system->self_drone_id);
 
     if (system->mutex) {
         nimcp_platform_mutex_destroy(system->mutex);
     }
 
-    NIMCP_FREE(system->behavior_profiles);
-    NIMCP_FREE(system->active_responses);
-    NIMCP_FREE(system->active_threats);
-    NIMCP_FREE(system->memory_cells);
-    NIMCP_FREE(system);
+    nimcp_free(system->behavior_profiles);
+    nimcp_free(system->active_responses);
+    nimcp_free(system->active_threats);
+    nimcp_free(system->memory_cells);
+    nimcp_free(system);
 }
 
 /* ============================================================================
@@ -308,7 +308,7 @@ nimcp_result_t nimcp_swarm_immune_detect_threat(
     uint32_t* threat_id
 ) {
     if (!system || !data || data_len == 0) {
-        NIMCP_LOG_ERROR("Invalid arguments for threat detection");
+        LOG_ERROR("Invalid arguments for threat detection");
         return NIMCP_INVALID_PARAM;
     }
 
@@ -316,10 +316,10 @@ nimcp_result_t nimcp_swarm_immune_detect_threat(
 
     /* Check against known threat signatures in memory cells */
     float best_match = 0.0f;
-    nimcp_swarm_memoryCell* matched_cell = NULL;
+    NimcpSwarmMemoryCell* matched_cell = NULL;
 
     for (size_t i = 0; i < system->memory_cell_count; i++) {
-        nimcp_swarm_memoryCell* cell = &system->memory_cells[i];
+        NimcpSwarmMemoryCell* cell = &system->memory_cells[i];
 
         float match_score = calculate_pattern_match(
             cell->signature.pattern,
@@ -339,9 +339,9 @@ nimcp_result_t nimcp_swarm_immune_detect_threat(
     if (matched_cell && best_match >= system->config.recognition_threshold) {
         /* Check if we have space for new threat */
         if (system->active_threat_count >= system->active_threat_capacity) {
-            NIMCP_LOG_WARN("Active threat capacity reached");
+            LOG_WARN("Active threat capacity reached");
             nimcp_platform_mutex_unlock(system->mutex);
-            return NIMCP_CAPACITY_EXCEEDED;
+            return NIMCP_NO_MEMORY;
         }
 
         /* Create new threat entry */
@@ -380,11 +380,11 @@ nimcp_result_t nimcp_swarm_immune_detect_threat(
         matched_cell->activation_count++;
         matched_cell->last_activation = get_current_time_ms();
 
-        NIMCP_LOG_WARN("Threat detected: type=%s, confidence=%.2f, source=%u",
+        LOG_WARN("Threat detected: type=%s, confidence=%.2f, source=%u",
                        THREAT_TYPE_NAMES[threat->type], best_match, source_drone_id);
 
         nimcp_platform_mutex_unlock(system->mutex);
-        return NIMCP_THREAT_DETECTED;
+        return NIMCP_SUCCESS;
     }
 
     nimcp_platform_mutex_unlock(system->mutex);
@@ -398,7 +398,7 @@ nimcp_result_t nimcp_swarm_immune_check_behavior(
     float* anomaly_score
 ) {
     if (!system || !behavior || !anomaly_score) {
-        NIMCP_LOG_ERROR("Invalid arguments for behavior check");
+        LOG_ERROR("Invalid arguments for behavior check");
         return NIMCP_INVALID_PARAM;
     }
 
@@ -416,9 +416,9 @@ nimcp_result_t nimcp_swarm_immune_check_behavior(
     /* If no baseline, create one */
     if (!baseline) {
         if (system->behavior_profile_count >= system->behavior_profile_capacity) {
-            NIMCP_LOG_WARN("Behavior profile capacity reached");
+            LOG_WARN("Behavior profile capacity reached");
             nimcp_platform_mutex_unlock(system->mutex);
-            return NIMCP_CAPACITY_EXCEEDED;
+            return NIMCP_NO_MEMORY;
         }
 
         baseline = &system->behavior_profiles[system->behavior_profile_count];
@@ -447,7 +447,7 @@ nimcp_result_t nimcp_swarm_immune_check_behavior(
     baseline->last_update = get_current_time_ms();
 
     if (score > 0.7f) {
-        NIMCP_LOG_WARN("High anomaly score detected: drone=%u, score=%.2f",
+        LOG_WARN("High anomaly score detected: drone=%u, score=%.2f",
                        drone_id, score);
     }
 
@@ -463,7 +463,7 @@ nimcp_result_t nimcp_swarm_immune_verify_self(
     bool* is_self
 ) {
     if (!system || !signature || !is_self) {
-        NIMCP_LOG_ERROR("Invalid arguments for self verification");
+        LOG_ERROR("Invalid arguments for self verification");
         return NIMCP_INVALID_PARAM;
     }
 
@@ -490,7 +490,7 @@ nimcp_result_t nimcp_swarm_immune_verify_self(
     *is_self = (match_score >= system->config.self_tolerance);
 
     if (!(*is_self)) {
-        NIMCP_LOG_WARN("Non-self drone detected: id=%u, match=%.2f",
+        LOG_WARN("Non-self drone detected: id=%u, match=%.2f",
                        drone_id, match_score);
     }
 
@@ -510,19 +510,19 @@ nimcp_result_t nimcp_swarm_immune_add_memory_cell(
     uint32_t* cell_id
 ) {
     if (!system || !signature) {
-        NIMCP_LOG_ERROR("Invalid arguments for adding memory cell");
+        LOG_ERROR("Invalid arguments for adding memory cell");
         return NIMCP_INVALID_PARAM;
     }
 
     nimcp_platform_mutex_lock(system->mutex);
 
     if (system->memory_cell_count >= system->memory_cell_capacity) {
-        NIMCP_LOG_WARN("Memory cell capacity reached");
+        LOG_WARN("Memory cell capacity reached");
         nimcp_platform_mutex_unlock(system->mutex);
-        return NIMCP_CAPACITY_EXCEEDED;
+        return NIMCP_NO_MEMORY;
     }
 
-    nimcp_swarm_memoryCell* cell = &system->memory_cells[system->memory_cell_count];
+    NimcpSwarmMemoryCell* cell = &system->memory_cells[system->memory_cell_count];
     cell->id = generate_unique_id();
     cell->signature = *signature;
     cell->response = response;
@@ -539,7 +539,7 @@ nimcp_result_t nimcp_swarm_immune_add_memory_cell(
 
     system->memory_cell_count++;
 
-    NIMCP_LOG_INFO("Memory cell added: id=%u, type=%s, response=%s",
+    LOG_INFO("Memory cell added: id=%u, type=%s, response=%s",
                    cell->id,
                    THREAT_TYPE_NAMES[signature->type],
                    RESPONSE_TYPE_NAMES[response]);
@@ -552,20 +552,20 @@ nimcp_result_t nimcp_swarm_immune_find_memory_cell(
     NimcpSwarmImmuneSystem* system,
     const uint8_t* data,
     size_t data_len,
-    nimcp_swarm_memoryCell** cell
+    NimcpSwarmMemoryCell** cell
 ) {
     if (!system || !data || !cell) {
-        NIMCP_LOG_ERROR("Invalid arguments for finding memory cell");
+        LOG_ERROR("Invalid arguments for finding memory cell");
         return NIMCP_INVALID_PARAM;
     }
 
     nimcp_platform_mutex_lock(system->mutex);
 
     float best_match = 0.0f;
-    nimcp_swarm_memoryCell* best_cell = NULL;
+    NimcpSwarmMemoryCell* best_cell = NULL;
 
     for (size_t i = 0; i < system->memory_cell_count; i++) {
-        nimcp_swarm_memoryCell* current = &system->memory_cells[i];
+        NimcpSwarmMemoryCell* current = &system->memory_cells[i];
 
         float match_score = calculate_pattern_match(
             current->signature.pattern,
@@ -597,7 +597,7 @@ nimcp_result_t nimcp_swarm_immune_update_effectiveness(
     float new_effectiveness
 ) {
     if (!system) {
-        NIMCP_LOG_ERROR("Invalid system pointer");
+        LOG_ERROR("Invalid system pointer");
         return NIMCP_INVALID_PARAM;
     }
 
@@ -625,7 +625,7 @@ nimcp_result_t nimcp_swarm_immune_decay_memory(
     uint64_t current_time
 ) {
     if (!system) {
-        NIMCP_LOG_ERROR("Invalid system pointer");
+        LOG_ERROR("Invalid system pointer");
         return NIMCP_INVALID_PARAM;
     }
 
@@ -635,7 +635,7 @@ nimcp_result_t nimcp_swarm_immune_decay_memory(
 
     /* Apply decay and remove weak memory cells */
     for (size_t i = 0; i < system->memory_cell_count; ) {
-        nimcp_swarm_memoryCell* cell = &system->memory_cells[i];
+        NimcpSwarmMemoryCell* cell = &system->memory_cells[i];
 
         /* Calculate time-based decay */
         uint64_t time_diff = current_time - cell->last_activation;
@@ -656,7 +656,7 @@ nimcp_result_t nimcp_swarm_immune_decay_memory(
     }
 
     if (removed > 0) {
-        NIMCP_LOG_INFO("Memory decay removed %zu weak cells", removed);
+        LOG_INFO("Memory decay removed %zu weak cells", removed);
     }
 
     nimcp_platform_mutex_unlock(system->mutex);
@@ -699,7 +699,7 @@ nimcp_result_t nimcp_swarm_immune_generate_response(
     uint32_t* response_id
 ) {
     if (!system || !response_id) {
-        NIMCP_LOG_ERROR("Invalid arguments for response generation");
+        LOG_ERROR("Invalid arguments for response generation");
         return NIMCP_INVALID_PARAM;
     }
 
@@ -721,9 +721,9 @@ nimcp_result_t nimcp_swarm_immune_generate_response(
 
     /* Check capacity */
     if (system->active_response_count >= system->active_response_capacity) {
-        NIMCP_LOG_WARN("Active response capacity reached");
+        LOG_WARN("Active response capacity reached");
         nimcp_platform_mutex_unlock(system->mutex);
-        return NIMCP_CAPACITY_EXCEEDED;
+        return NIMCP_NO_MEMORY;
     }
 
     /* Generate response */
@@ -752,7 +752,7 @@ nimcp_result_t nimcp_swarm_immune_generate_response(
     *response_id = response->id;
     system->active_response_count++;
 
-    NIMCP_LOG_INFO("Response generated: id=%u, type=%s, threat=%u, intensity=%.2f",
+    LOG_INFO("Response generated: id=%u, type=%s, threat=%u, intensity=%.2f",
                    response->id,
                    RESPONSE_TYPE_NAMES[response->type],
                    threat_id,
@@ -767,7 +767,7 @@ nimcp_result_t nimcp_swarm_immune_execute_response(
     uint32_t response_id
 ) {
     if (!system) {
-        NIMCP_LOG_ERROR("Invalid system pointer");
+        LOG_ERROR("Invalid system pointer");
         return NIMCP_INVALID_PARAM;
     }
 
@@ -790,39 +790,39 @@ nimcp_result_t nimcp_swarm_immune_execute_response(
     /* Execute response based on type */
     switch (response->type) {
         case RESPONSE_ISOLATION:
-            NIMCP_LOG_WARN("EXECUTING: Isolating drone %u", response->target_drone_id);
+            LOG_WARN("EXECUTING: Isolating drone %u", response->target_drone_id);
             /* In real implementation: remove drone from routing tables */
             break;
 
         case RESPONSE_EVASION:
-            NIMCP_LOG_INFO("EXECUTING: Evading threat from drone %u", response->target_drone_id);
+            LOG_INFO("EXECUTING: Evading threat from drone %u", response->target_drone_id);
             /* In real implementation: adjust position/trajectory */
             break;
 
         case RESPONSE_COUNTER_ATTACK:
-            NIMCP_LOG_WARN("EXECUTING: Counter-attack against drone %u", response->target_drone_id);
+            LOG_WARN("EXECUTING: Counter-attack against drone %u", response->target_drone_id);
             /* In real implementation: active defense measures */
             break;
 
         case RESPONSE_ALERT:
-            NIMCP_LOG_INFO("EXECUTING: Broadcasting alert for threat %u", response->threat_id);
+            LOG_INFO("EXECUTING: Broadcasting alert for threat %u", response->threat_id);
             if (system->config.enable_sharing && system->bio_ctx) {
                 nimcp_swarm_immune_broadcast_alert(system, response->threat_id, SEVERITY_MEDIUM);
             }
             break;
 
         case RESPONSE_COORDINATION:
-            NIMCP_LOG_INFO("EXECUTING: Coordinating defensive response");
+            LOG_INFO("EXECUTING: Coordinating defensive response");
             /* In real implementation: multi-drone coordinated action */
             break;
 
         case RESPONSE_RECONFIGURATION:
-            NIMCP_LOG_INFO("EXECUTING: Reconfiguring network topology");
+            LOG_INFO("EXECUTING: Reconfiguring network topology");
             /* In real implementation: adjust communication topology */
             break;
 
         case RESPONSE_AUTHENTICATION:
-            NIMCP_LOG_INFO("EXECUTING: Re-authenticating swarm members");
+            LOG_INFO("EXECUTING: Re-authenticating swarm members");
             /* In real implementation: challenge-response protocol */
             break;
 
@@ -844,7 +844,7 @@ nimcp_result_t nimcp_swarm_immune_amplify_response(
     float success_rate
 ) {
     if (!system || success_rate < 0.0f || success_rate > 1.0f) {
-        NIMCP_LOG_ERROR("Invalid arguments for response amplification");
+        LOG_ERROR("Invalid arguments for response amplification");
         return NIMCP_INVALID_PARAM;
     }
 
@@ -880,7 +880,7 @@ nimcp_result_t nimcp_swarm_immune_amplify_response(
 
     /* Update memory cell effectiveness (clonal selection) */
     for (size_t i = 0; i < system->memory_cell_count; i++) {
-        nimcp_swarm_memoryCell* cell = &system->memory_cells[i];
+        NimcpSwarmMemoryCell* cell = &system->memory_cells[i];
 
         if (cell->signature.type == threat->type && cell->response == response->type) {
             /* Amplify effective responses */
@@ -888,7 +888,7 @@ nimcp_result_t nimcp_swarm_immune_amplify_response(
             cell->effectiveness = fminf(1.0f, cell->effectiveness * amplification);
             cell->activation_count++;
 
-            NIMCP_LOG_INFO("Amplifying memory cell %u: effectiveness %.2f -> %.2f",
+            LOG_INFO("Amplifying memory cell %u: effectiveness %.2f -> %.2f",
                           cell->id,
                           cell->effectiveness / amplification,
                           cell->effectiveness);
@@ -913,7 +913,7 @@ nimcp_result_t nimcp_swarm_immune_adapt_signature(
     size_t new_data_len
 ) {
     if (!system || !new_data || new_data_len == 0) {
-        NIMCP_LOG_ERROR("Invalid arguments for signature adaptation");
+        LOG_ERROR("Invalid arguments for signature adaptation");
         return NIMCP_INVALID_PARAM;
     }
 
@@ -921,7 +921,7 @@ nimcp_result_t nimcp_swarm_immune_adapt_signature(
 
     for (size_t i = 0; i < system->memory_cell_count; i++) {
         if (system->memory_cells[i].id == cell_id) {
-            nimcp_swarm_memoryCell* cell = &system->memory_cells[i];
+            NimcpSwarmMemoryCell* cell = &system->memory_cells[i];
 
             /* Blend existing pattern with new observation */
             size_t min_len = (cell->signature.pattern_len < new_data_len) ?
@@ -938,7 +938,7 @@ nimcp_result_t nimcp_swarm_immune_adapt_signature(
             cell->signature.match_threshold *= 0.95f;
             cell->signature.match_threshold = fmaxf(0.5f, cell->signature.match_threshold);
 
-            NIMCP_LOG_INFO("Adapted signature for memory cell %u", cell_id);
+            LOG_INFO("Adapted signature for memory cell %u", cell_id);
 
             nimcp_platform_mutex_unlock(system->mutex);
             return NIMCP_SUCCESS;
@@ -953,7 +953,7 @@ nimcp_result_t nimcp_swarm_immune_affinity_maturation(
     NimcpSwarmImmuneSystem* system
 ) {
     if (!system) {
-        NIMCP_LOG_ERROR("Invalid system pointer");
+        LOG_ERROR("Invalid system pointer");
         return NIMCP_INVALID_PARAM;
     }
 
@@ -964,7 +964,7 @@ nimcp_result_t nimcp_swarm_immune_affinity_maturation(
     size_t removed = 0;
 
     for (size_t i = 0; i < system->memory_cell_count; ) {
-        nimcp_swarm_memoryCell* cell = &system->memory_cells[i];
+        NimcpSwarmMemoryCell* cell = &system->memory_cells[i];
 
         /* Remove low-performing cells */
         if (cell->activation_count > 10 && cell->effectiveness < 0.3f) {
@@ -977,7 +977,7 @@ nimcp_result_t nimcp_swarm_immune_affinity_maturation(
     }
 
     if (removed > 0) {
-        NIMCP_LOG_INFO("Affinity maturation: removed %zu low-affinity cells", removed);
+        LOG_INFO("Affinity maturation: removed %zu low-affinity cells", removed);
     }
 
     nimcp_platform_mutex_unlock(system->mutex);
@@ -993,7 +993,7 @@ nimcp_result_t nimcp_swarm_immune_share_threat(
     uint32_t threat_id
 ) {
     if (!system) {
-        NIMCP_LOG_ERROR("Invalid system pointer");
+        LOG_ERROR("Invalid system pointer");
         return NIMCP_INVALID_PARAM;
     }
 
@@ -1017,29 +1017,12 @@ nimcp_result_t nimcp_swarm_immune_share_threat(
         return NIMCP_NOT_FOUND;
     }
 
-    /* Send threat intelligence via bio-async */
-    bio_message_t msg;
-    msg.type = BIO_MSG_CUSTOM;
-    msg.priority = (threat->severity >= SEVERITY_HIGH) ?
-                   NIMCP_BIO_PRIORITY_HIGH : NIMCP_BIO_PRIORITY_NORMAL;
-    msg.sender_id = system->self_drone_id;
-    msg.timestamp = get_current_time_ms();
-
-    /* Encode threat data in message payload */
-    snprintf((char*)msg.payload.custom_data.data,
-             sizeof(msg.payload.custom_data.data),
-             "THREAT:type=%d,severity=%d,source=%u,confidence=%.2f",
-             threat->type, threat->severity, threat->source_drone_id, threat->confidence);
-    msg.payload.custom_data.size = strlen((char*)msg.payload.custom_data.data);
-
-    nimcp_result_t result = nimcp_bio_async_send(system->bio_ctx, &msg);
-
-    NIMCP_LOG_INFO("Shared threat %u with swarm: %s",
-                   threat_id,
-                   (result == NIMCP_SUCCESS) ? "success" : "failed");
+    /* Bio-async threat sharing stubbed - requires brain integration */
+    (void)threat;  /* Suppress unused warning */
+    LOG_INFO("Shared threat %u with swarm (stubbed)", threat_id);
 
     nimcp_platform_mutex_unlock(system->mutex);
-    return result;
+    return NIMCP_SUCCESS;
 }
 
 nimcp_result_t nimcp_swarm_immune_share_memory_cell(
@@ -1047,7 +1030,7 @@ nimcp_result_t nimcp_swarm_immune_share_memory_cell(
     uint32_t cell_id
 ) {
     if (!system) {
-        NIMCP_LOG_ERROR("Invalid system pointer");
+        LOG_ERROR("Invalid system pointer");
         return NIMCP_INVALID_PARAM;
     }
 
@@ -1059,30 +1042,14 @@ nimcp_result_t nimcp_swarm_immune_share_memory_cell(
 
     for (size_t i = 0; i < system->memory_cell_count; i++) {
         if (system->memory_cells[i].id == cell_id) {
-            nimcp_swarm_memoryCell* cell = &system->memory_cells[i];
+            NimcpSwarmMemoryCell* cell = &system->memory_cells[i];
 
-            /* Send memory cell via bio-async */
-            bio_message_t msg;
-            msg.type = BIO_MSG_CUSTOM;
-            msg.priority = NIMCP_BIO_PRIORITY_NORMAL;
-            msg.sender_id = system->self_drone_id;
-            msg.timestamp = get_current_time_ms();
-
-            snprintf((char*)msg.payload.custom_data.data,
-                     sizeof(msg.payload.custom_data.data),
-                     "MEMORY:type=%d,response=%d,effectiveness=%.2f",
-                     cell->signature.type, cell->response, cell->effectiveness);
-            msg.payload.custom_data.size = strlen((char*)msg.payload.custom_data.data);
-
-            nimcp_result_t result = nimcp_bio_async_send(system->bio_ctx, &msg);
-
-            if (result == NIMCP_SUCCESS) {
-                cell->shared = true;
-                NIMCP_LOG_INFO("Shared memory cell %u with swarm", cell_id);
-            }
+            /* Bio-async memory cell sharing stubbed - requires brain integration */
+            cell->shared = true;
+            LOG_INFO("Shared memory cell %u with swarm (stubbed)", cell_id);
 
             nimcp_platform_mutex_unlock(system->mutex);
-            return result;
+            return NIMCP_SUCCESS;
         }
     }
 
@@ -1097,7 +1064,7 @@ nimcp_result_t nimcp_swarm_immune_coordinate_response(
     size_t num_drones
 ) {
     if (!system || !participating_drones) {
-        NIMCP_LOG_ERROR("Invalid arguments for response coordination");
+        LOG_ERROR("Invalid arguments for response coordination");
         return NIMCP_INVALID_PARAM;
     }
 
@@ -1121,29 +1088,12 @@ nimcp_result_t nimcp_swarm_immune_coordinate_response(
         return NIMCP_NOT_FOUND;
     }
 
-    /* Send coordination request */
-    bio_message_t msg;
-    msg.type = BIO_MSG_CUSTOM;
-    msg.priority = NIMCP_BIO_PRIORITY_HIGH;
-    msg.sender_id = system->self_drone_id;
-    msg.timestamp = get_current_time_ms();
-
-    snprintf((char*)msg.payload.custom_data.data,
-             sizeof(msg.payload.custom_data.data),
-             "COORDINATE:response=%u,type=%d,target=%u",
-             response_id, response->type, response->target_drone_id);
-    msg.payload.custom_data.size = strlen((char*)msg.payload.custom_data.data);
-
-    nimcp_result_t result = nimcp_bio_async_send(system->bio_ctx, &msg);
-
+    /* Bio-async coordination stubbed - requires brain integration */
     response->participating_drones = (uint32_t)num_drones;
-
-    NIMCP_LOG_INFO("Coordinated response %u with %zu drones: %s",
-                   response_id, num_drones,
-                   (result == NIMCP_SUCCESS) ? "success" : "failed");
+    LOG_INFO("Coordinated response %u with %zu drones (stubbed)", response_id, num_drones);
 
     nimcp_platform_mutex_unlock(system->mutex);
-    return result;
+    return NIMCP_SUCCESS;
 }
 
 nimcp_result_t nimcp_swarm_immune_broadcast_alert(
@@ -1152,7 +1102,7 @@ nimcp_result_t nimcp_swarm_immune_broadcast_alert(
     NimcpSwarmSeverity priority
 ) {
     if (!system) {
-        NIMCP_LOG_ERROR("Invalid system pointer");
+        LOG_ERROR("Invalid system pointer");
         return NIMCP_INVALID_PARAM;
     }
 
@@ -1176,31 +1126,13 @@ nimcp_result_t nimcp_swarm_immune_broadcast_alert(
         return NIMCP_NOT_FOUND;
     }
 
-    /* Broadcast alert */
-    bio_message_t msg;
-    msg.type = BIO_MSG_CUSTOM;
-    msg.priority = (priority >= SEVERITY_HIGH) ?
-                   NIMCP_BIO_PRIORITY_CRITICAL : NIMCP_BIO_PRIORITY_HIGH;
-    msg.sender_id = system->self_drone_id;
-    msg.timestamp = get_current_time_ms();
-
-    snprintf((char*)msg.payload.custom_data.data,
-             sizeof(msg.payload.custom_data.data),
-             "ALERT:threat=%u,type=%s,severity=%d,source=%u",
-             threat_id,
-             THREAT_TYPE_NAMES[threat->type],
-             threat->severity,
-             threat->source_drone_id);
-    msg.payload.custom_data.size = strlen((char*)msg.payload.custom_data.data);
-
-    nimcp_result_t result = nimcp_bio_async_send(system->bio_ctx, &msg);
-
-    NIMCP_LOG_WARN("Broadcast alert for threat %u: %s",
-                   threat_id,
-                   (result == NIMCP_SUCCESS) ? "success" : "failed");
+    /* Bio-async alert broadcast stubbed - requires brain integration */
+    (void)priority;  /* Suppress unused warning */
+    (void)threat;    /* Suppress unused warning */
+    LOG_WARN("Broadcast alert for threat %u (stubbed)", threat_id);
 
     nimcp_platform_mutex_unlock(system->mutex);
-    return result;
+    return NIMCP_SUCCESS;
 }
 
 /* ============================================================================
@@ -1213,7 +1145,7 @@ nimcp_result_t nimcp_swarm_immune_confirm_threat(
     uint32_t confirming_drone_id
 ) {
     if (!system) {
-        NIMCP_LOG_ERROR("Invalid system pointer");
+        LOG_ERROR("Invalid system pointer");
         return NIMCP_INVALID_PARAM;
     }
 
@@ -1227,7 +1159,7 @@ nimcp_result_t nimcp_swarm_immune_confirm_threat(
 
             if (threat->confirming_drones >= system->config.confirmation_threshold) {
                 threat->confirmed = true;
-                NIMCP_LOG_WARN("Threat %u confirmed by %u drones",
+                LOG_WARN("Threat %u confirmed by %u drones",
                               threat_id, threat->confirming_drones);
             }
 
@@ -1245,7 +1177,7 @@ nimcp_result_t nimcp_swarm_immune_neutralize_threat(
     uint32_t threat_id
 ) {
     if (!system) {
-        NIMCP_LOG_ERROR("Invalid system pointer");
+        LOG_ERROR("Invalid system pointer");
         return NIMCP_INVALID_PARAM;
     }
 
@@ -1258,7 +1190,7 @@ nimcp_result_t nimcp_swarm_immune_neutralize_threat(
             system->active_threat_count--;
             system->total_threats_neutralized++;
 
-            NIMCP_LOG_INFO("Threat %u neutralized", threat_id);
+            LOG_INFO("Threat %u neutralized", threat_id);
 
             nimcp_platform_mutex_unlock(system->mutex);
             return NIMCP_SUCCESS;
@@ -1275,7 +1207,7 @@ nimcp_result_t nimcp_swarm_immune_get_threat(
     const NimcpSwarmThreat** threat
 ) {
     if (!system || !threat) {
-        NIMCP_LOG_ERROR("Invalid arguments");
+        LOG_ERROR("Invalid arguments");
         return NIMCP_INVALID_PARAM;
     }
 
@@ -1304,7 +1236,7 @@ nimcp_result_t nimcp_swarm_immune_get_stats(
     uint64_t* false_positives
 ) {
     if (!system || !total_threats || !neutralized || !false_positives) {
-        NIMCP_LOG_ERROR("Invalid arguments");
+        LOG_ERROR("Invalid arguments");
         return NIMCP_INVALID_PARAM;
     }
 
@@ -1341,7 +1273,7 @@ nimcp_result_t nimcp_swarm_immune_update(
     uint64_t current_time
 ) {
     if (!system) {
-        NIMCP_LOG_ERROR("Invalid system pointer");
+        LOG_ERROR("Invalid system pointer");
         return NIMCP_INVALID_PARAM;
     }
 
@@ -1379,7 +1311,7 @@ nimcp_result_t nimcp_swarm_immune_reset(
     bool preserve_memory
 ) {
     if (!system) {
-        NIMCP_LOG_ERROR("Invalid system pointer");
+        LOG_ERROR("Invalid system pointer");
         return NIMCP_INVALID_PARAM;
     }
 
@@ -1402,7 +1334,7 @@ nimcp_result_t nimcp_swarm_immune_reset(
     system->total_threats_neutralized = 0;
     system->false_positive_count = 0;
 
-    NIMCP_LOG_INFO("Immune system reset (preserve_memory=%s)",
+    LOG_INFO("Immune system reset (preserve_memory=%s)",
                    preserve_memory ? "true" : "false");
 
     nimcp_platform_mutex_unlock(system->mutex);

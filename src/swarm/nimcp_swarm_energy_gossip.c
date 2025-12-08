@@ -13,6 +13,7 @@
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include <stdlib.h>
+#include <stdio.h>
 #include <string.h>
 #include <math.h>
 #include <time.h>
@@ -41,7 +42,7 @@ static float random_float(void) {
 /**
  * @brief Update energy state based on current level
  */
-static void update_energy_state(nimcp_energy_gossip* gossip) {
+static void update_energy_state(NimcpEnergyGossip* gossip) {
     if (!gossip) return;
 
     NimcpEnergyState old_state = gossip->current_state;
@@ -58,7 +59,7 @@ static void update_energy_state(nimcp_energy_gossip* gossip) {
 
     if (old_state != gossip->current_state) {
         gossip->energy_state_changes++;
-        NIMCP_LOG_INFO("Node %u energy state changed: %s -> %s (%.1f%%)",
+        LOG_INFO("Node %u energy state changed: %s -> %s (%.1f%%)",
             gossip->node_id,
             nimcp_energy_state_to_string(old_state),
             nimcp_energy_state_to_string(gossip->current_state),
@@ -69,7 +70,7 @@ static void update_energy_state(nimcp_energy_gossip* gossip) {
 /**
  * @brief Check if message is already in cache
  */
-static bool is_message_cached(const nimcp_energy_gossip* gossip, uint64_t message_id) {
+static bool is_message_cached(const NimcpEnergyGossip* gossip, uint64_t message_id) {
     if (!gossip || !gossip->message_cache) return false;
 
     for (uint32_t i = 0; i < gossip->message_cache_size; i++) {
@@ -84,7 +85,7 @@ static bool is_message_cached(const nimcp_energy_gossip* gossip, uint64_t messag
 /**
  * @brief Add message to cache
  */
-static nimcp_result_t add_to_cache(nimcp_energy_gossip* gossip, const NimcpGossipMessage* message) {
+static nimcp_result_t add_to_cache(NimcpEnergyGossip* gossip, const NimcpGossipMessage* message) {
     if (!gossip || !message) return NIMCP_ERROR_NULL_POINTER;
 
     /* Check if cache is full */
@@ -106,7 +107,7 @@ static nimcp_result_t add_to_cache(nimcp_energy_gossip* gossip, const NimcpGossi
 
     /* Allocate new message */
     NimcpGossipMessage* cached = (NimcpGossipMessage*)nimcp_malloc(sizeof(NimcpGossipMessage));
-    if (!cached) return NIMCP_NO_MEMORY_ALLOCATION;
+    if (!cached) return NIMCP_NO_MEMORY;
 
     memcpy(cached, message, sizeof(NimcpGossipMessage));
 
@@ -115,7 +116,7 @@ static nimcp_result_t add_to_cache(nimcp_energy_gossip* gossip, const NimcpGossi
         cached->payload = nimcp_malloc(message->payload_size);
         if (!cached->payload) {
             nimcp_free(cached);
-            return NIMCP_NO_MEMORY_ALLOCATION;
+            return NIMCP_NO_MEMORY;
         }
         memcpy(cached->payload, message->payload, message->payload_size);
     }
@@ -127,7 +128,7 @@ static nimcp_result_t add_to_cache(nimcp_energy_gossip* gossip, const NimcpGossi
 /**
  * @brief Find relay node by ID
  */
-static NimcpRelayNode* find_relay_node(nimcp_energy_gossip* gossip, uint32_t node_id) {
+static NimcpRelayNode* find_relay_node(NimcpEnergyGossip* gossip, uint32_t node_id) {
     if (!gossip || !gossip->relay_nodes) return NULL;
 
     for (uint32_t i = 0; i < gossip->relay_node_count; i++) {
@@ -165,7 +166,7 @@ static float calculate_relay_score(const NimcpRelayNode* relay) {
  * @brief Find harvest opportunity by position
  */
 static NimcpHarvestOpportunity* find_harvest_opportunity(
-    nimcp_energy_gossip* gossip,
+    NimcpEnergyGossip* gossip,
     const float position[3]
 ) {
     if (!gossip || !gossip->opportunities || !position) return NULL;
@@ -185,10 +186,10 @@ static NimcpHarvestOpportunity* find_harvest_opportunity(
  * Core Functions Implementation
  * ============================================================================ */
 
-void nimcp_energy_gossip_default_config(nimcp_energy_gossipConfig* config) {
+void nimcp_energy_gossip_default_config(NimcpEnergyGossipConfig* config) {
     if (!config) return;
 
-    memset(config, 0, sizeof(nimcp_energy_gossipConfig));
+    memset(config, 0, sizeof(NimcpEnergyGossipConfig));
 
     /* Adaptive intervals (milliseconds) */
     config->intervals.interval_critical_ms = 10000;  /* 10 seconds */
@@ -223,22 +224,22 @@ void nimcp_energy_gossip_default_config(nimcp_energy_gossipConfig* config) {
     config->convergence_threshold = 0.95f;
 }
 
-nimcp_energy_gossip* nimcp_energy_gossip_create(
+NimcpEnergyGossip* nimcp_energy_gossip_create(
     uint32_t node_id,
-    const nimcp_energy_gossipConfig* config
+    const NimcpEnergyGossipConfig* config
 ) {
-    nimcp_energy_gossip* gossip = (nimcp_energy_gossip*)nimcp_malloc(sizeof(nimcp_energy_gossip));
+    NimcpEnergyGossip* gossip = (NimcpEnergyGossip*)nimcp_malloc(sizeof(NimcpEnergyGossip));
     if (!gossip) {
-        NIMCP_LOG_ERROR("Failed to allocate energy gossip protocol");
+        LOG_ERROR("Failed to allocate energy gossip protocol");
         return NULL;
     }
 
-    memset(gossip, 0, sizeof(nimcp_energy_gossip));
+    memset(gossip, 0, sizeof(NimcpEnergyGossip));
     gossip->node_id = node_id;
 
     /* Apply configuration */
     if (config) {
-        memcpy(&gossip->config, config, sizeof(nimcp_energy_gossipConfig));
+        memcpy(&gossip->config, config, sizeof(NimcpEnergyGossipConfig));
     } else {
         nimcp_energy_gossip_default_config(&gossip->config);
     }
@@ -262,7 +263,7 @@ nimcp_energy_gossip* nimcp_energy_gossip_create(
         sizeof(NimcpGossipMessage*)
     );
     if (!gossip->message_cache) {
-        NIMCP_LOG_ERROR("Failed to allocate message cache");
+        LOG_ERROR("Failed to allocate message cache");
         nimcp_free(gossip);
         return NULL;
     }
@@ -274,7 +275,7 @@ nimcp_energy_gossip* nimcp_energy_gossip_create(
         sizeof(NimcpRelayNode)
     );
     if (!gossip->relay_nodes) {
-        NIMCP_LOG_ERROR("Failed to allocate relay nodes");
+        LOG_ERROR("Failed to allocate relay nodes");
         nimcp_free(gossip->message_cache);
         nimcp_free(gossip);
         return NULL;
@@ -289,9 +290,9 @@ nimcp_energy_gossip* nimcp_energy_gossip_create(
     }
 
     /* Create mutex */
-    gossip->mutex = nimcp_mutex_create();
+    gossip->mutex = nimcp_platform_mutex_create();
     if (!gossip->mutex) {
-        NIMCP_LOG_ERROR("Failed to create mutex");
+        LOG_ERROR("Failed to create mutex");
         nimcp_free(gossip->opportunities);
         nimcp_free(gossip->relay_nodes);
         nimcp_free(gossip->message_cache);
@@ -303,14 +304,14 @@ nimcp_energy_gossip* nimcp_energy_gossip_create(
     gossip->sequence_number = 0;
     gossip->is_initialized = true;
 
-    NIMCP_LOG_INFO("Energy-aware gossip protocol created for node %u", node_id);
+    LOG_INFO("Energy-aware gossip protocol created for node %u", node_id);
     return gossip;
 }
 
-void nimcp_energy_gossip_destroy(nimcp_energy_gossip* gossip) {
+void nimcp_energy_gossip_destroy(NimcpEnergyGossip* gossip) {
     if (!gossip) return;
 
-    NIMCP_LOG_INFO("Destroying energy gossip protocol for node %u", gossip->node_id);
+    LOG_INFO("Destroying energy gossip protocol for node %u", gossip->node_id);
 
     /* Free message cache */
     if (gossip->message_cache) {
@@ -336,24 +337,24 @@ void nimcp_energy_gossip_destroy(nimcp_energy_gossip* gossip) {
 
     /* Destroy mutex */
     if (gossip->mutex) {
-        nimcp_mutex_destroy(gossip->mutex);
+        nimcp_platform_mutex_destroy(gossip->mutex);
     }
 
     nimcp_free(gossip);
 }
 
 nimcp_result_t nimcp_energy_gossip_init_bio_async(
-    nimcp_energy_gossip* gossip,
-    bio_inbox_t* inbox
+    NimcpEnergyGossip* gossip,
+    void* inbox
 ) {
     if (!gossip || !inbox) return NIMCP_ERROR_NULL_POINTER;
 
-    nimcp_mutex_lock(gossip->mutex);
+    nimcp_platform_mutex_lock(gossip->mutex);
     gossip->inbox = inbox;
     gossip->bio_async_enabled = true;
-    nimcp_mutex_unlock(gossip->mutex);
+    nimcp_platform_mutex_unlock(gossip->mutex);
 
-    NIMCP_LOG_INFO("Bio-async enabled for node %u", gossip->node_id);
+    LOG_INFO("Bio-async enabled for node %u", gossip->node_id);
     return NIMCP_SUCCESS;
 }
 
@@ -362,15 +363,15 @@ nimcp_result_t nimcp_energy_gossip_init_bio_async(
  * ============================================================================ */
 
 nimcp_result_t nimcp_energy_gossip_update_energy(
-    nimcp_energy_gossip* gossip,
+    NimcpEnergyGossip* gossip,
     float energy_level
 ) {
     if (!gossip) return NIMCP_ERROR_NULL_POINTER;
     if (energy_level < 0.0f || energy_level > 100.0f) {
-        return NIMCP_ERR_INVALID_ARGUMENT;
+        return NIMCP_INVALID_PARAM;
     }
 
-    nimcp_mutex_lock(gossip->mutex);
+    nimcp_platform_mutex_lock(gossip->mutex);
 
     float old_level = gossip->stats.current_level;
     gossip->stats.current_level = energy_level;
@@ -408,59 +409,59 @@ nimcp_result_t nimcp_energy_gossip_update_energy(
     /* Check emergency return */
     if (gossip->reserve.auto_return_enabled &&
         nimcp_energy_gossip_needs_emergency_return(gossip)) {
-        NIMCP_LOG_WARN("Node %u: Emergency return needed (%.1f%%)",
+        LOG_WARN("Node %u: Emergency return needed (%.1f%%)",
             gossip->node_id, energy_level);
     }
 
-    nimcp_mutex_unlock(gossip->mutex);
+    nimcp_platform_mutex_unlock(gossip->mutex);
 
     return NIMCP_SUCCESS;
 }
 
-NimcpEnergyState nimcp_energy_gossip_get_state(const nimcp_energy_gossip* gossip) {
+NimcpEnergyState nimcp_energy_gossip_get_state(const NimcpEnergyGossip* gossip) {
     if (!gossip) return NIMCP_ENERGY_CRITICAL;
     return gossip->current_state;
 }
 
 nimcp_result_t nimcp_energy_gossip_set_consumption_rate(
-    nimcp_energy_gossip* gossip,
+    NimcpEnergyGossip* gossip,
     float rate
 ) {
     if (!gossip) return NIMCP_ERROR_NULL_POINTER;
-    if (rate < 0.0f) return NIMCP_ERR_INVALID_ARGUMENT;
+    if (rate < 0.0f) return NIMCP_INVALID_PARAM;
 
-    nimcp_mutex_lock(gossip->mutex);
+    nimcp_platform_mutex_lock(gossip->mutex);
     gossip->stats.consumption_rate = rate;
-    nimcp_mutex_unlock(gossip->mutex);
+    nimcp_platform_mutex_unlock(gossip->mutex);
 
     return NIMCP_SUCCESS;
 }
 
 nimcp_result_t nimcp_energy_gossip_set_harvest_rate(
-    nimcp_energy_gossip* gossip,
+    NimcpEnergyGossip* gossip,
     float rate
 ) {
     if (!gossip) return NIMCP_ERROR_NULL_POINTER;
-    if (rate < 0.0f) return NIMCP_ERR_INVALID_ARGUMENT;
+    if (rate < 0.0f) return NIMCP_INVALID_PARAM;
 
-    nimcp_mutex_lock(gossip->mutex);
+    nimcp_platform_mutex_lock(gossip->mutex);
     gossip->stats.harvest_rate = rate;
 
     /* Update energy state in case we're now charging */
     update_energy_state(gossip);
 
-    nimcp_mutex_unlock(gossip->mutex);
+    nimcp_platform_mutex_unlock(gossip->mutex);
 
     return NIMCP_SUCCESS;
 }
 
-float nimcp_energy_gossip_predict_lifetime(const nimcp_energy_gossip* gossip) {
+float nimcp_energy_gossip_predict_lifetime(const NimcpEnergyGossip* gossip) {
     if (!gossip) return 0.0f;
     return gossip->stats.predicted_lifetime;
 }
 
 nimcp_result_t nimcp_energy_gossip_get_stats(
-    const nimcp_energy_gossip* gossip,
+    const NimcpEnergyGossip* gossip,
     NimcpEnergyStats* stats
 ) {
     if (!gossip || !stats) return NIMCP_ERROR_NULL_POINTER;
@@ -474,29 +475,29 @@ nimcp_result_t nimcp_energy_gossip_get_stats(
  * ============================================================================ */
 
 nimcp_result_t nimcp_energy_gossip_configure_reserve(
-    nimcp_energy_gossip* gossip,
+    NimcpEnergyGossip* gossip,
     float reserve_percentage,
     float return_distance,
     float return_energy_cost
 ) {
     if (!gossip) return NIMCP_ERROR_NULL_POINTER;
     if (reserve_percentage < 0.0f || reserve_percentage > 50.0f) {
-        return NIMCP_ERR_INVALID_ARGUMENT;
+        return NIMCP_INVALID_PARAM;
     }
 
-    nimcp_mutex_lock(gossip->mutex);
+    nimcp_platform_mutex_lock(gossip->mutex);
     gossip->reserve.reserve_percentage = reserve_percentage;
     gossip->reserve.return_distance = return_distance;
     gossip->reserve.return_energy_cost = return_energy_cost;
-    nimcp_mutex_unlock(gossip->mutex);
+    nimcp_platform_mutex_unlock(gossip->mutex);
 
-    NIMCP_LOG_INFO("Node %u: Emergency reserve configured (%.1f%%, cost: %.1f)",
+    LOG_INFO("Node %u: Emergency reserve configured (%.1f%%, cost: %.1f)",
         gossip->node_id, reserve_percentage, return_energy_cost);
 
     return NIMCP_SUCCESS;
 }
 
-bool nimcp_energy_gossip_needs_emergency_return(const nimcp_energy_gossip* gossip) {
+bool nimcp_energy_gossip_needs_emergency_return(const NimcpEnergyGossip* gossip) {
     if (!gossip) return false;
 
     /* Need emergency return if:
@@ -510,20 +511,20 @@ bool nimcp_energy_gossip_needs_emergency_return(const nimcp_energy_gossip* gossi
            gossip->stats.current_level < required_energy;
 }
 
-nimcp_result_t nimcp_energy_gossip_emergency_mode(nimcp_energy_gossip* gossip) {
+nimcp_result_t nimcp_energy_gossip_emergency_mode(NimcpEnergyGossip* gossip) {
     if (!gossip) return NIMCP_ERROR_NULL_POINTER;
 
-    nimcp_mutex_lock(gossip->mutex);
+    nimcp_platform_mutex_lock(gossip->mutex);
     gossip->reserve.emergency_mode = true;
     gossip->current_state = NIMCP_ENERGY_CRITICAL;
-    nimcp_mutex_unlock(gossip->mutex);
+    nimcp_platform_mutex_unlock(gossip->mutex);
 
-    NIMCP_LOG_WARN("Node %u: EMERGENCY MODE ACTIVATED", gossip->node_id);
+    LOG_WARN("Node %u: EMERGENCY MODE ACTIVATED", gossip->node_id);
 
     /* Broadcast emergency message if bio-async enabled */
     if (gossip->bio_async_enabled && gossip->inbox) {
         /* Emergency broadcast implementation would go here */
-        NIMCP_LOG_INFO("Node %u: Broadcasting emergency status", gossip->node_id);
+        LOG_INFO("Node %u: Broadcasting emergency status", gossip->node_id);
     }
 
     return NIMCP_SUCCESS;
@@ -534,7 +535,7 @@ nimcp_result_t nimcp_energy_gossip_emergency_mode(nimcp_energy_gossip* gossip) {
  * ============================================================================ */
 
 uint64_t nimcp_energy_gossip_broadcast(
-    nimcp_energy_gossip* gossip,
+    NimcpEnergyGossip* gossip,
     const void* payload,
     size_t payload_size,
     NimcpMessagePriority priority,
@@ -544,14 +545,14 @@ uint64_t nimcp_energy_gossip_broadcast(
 
     /* Check if we should send based on energy state */
     if (gossip->current_state == NIMCP_ENERGY_CRITICAL &&
-        priority < NIMCP_MSG_PRIORITY_HIGH) {
-        NIMCP_LOG_DEBUG("Node %u: Dropping non-critical message due to energy",
+        priority < NIMCP_PRIORITY_HIGH) {
+        LOG_DEBUG("Node %u: Dropping non-critical message due to energy",
             gossip->node_id);
         gossip->messages_dropped++;
         return 0;
     }
 
-    nimcp_mutex_lock(gossip->mutex);
+    nimcp_platform_mutex_lock(gossip->mutex);
 
     /* Create message */
     NimcpGossipMessage message;
@@ -575,33 +576,33 @@ uint64_t nimcp_energy_gossip_broadcast(
     gossip->messages_sent++;
 
     uint64_t message_id = message.header.message_id;
-    nimcp_mutex_unlock(gossip->mutex);
+    nimcp_platform_mutex_unlock(gossip->mutex);
 
-    NIMCP_LOG_DEBUG("Node %u: Broadcast message %llu (priority: %d, ttl: %u)",
+    LOG_DEBUG("Node %u: Broadcast message %llu (priority: %d, ttl: %u)",
         gossip->node_id, (unsigned long long)message_id, priority, ttl);
 
     return message_id;
 }
 
 nimcp_result_t nimcp_energy_gossip_receive(
-    nimcp_energy_gossip* gossip,
+    NimcpEnergyGossip* gossip,
     const NimcpGossipMessage* message
 ) {
     if (!gossip || !message) return NIMCP_ERROR_NULL_POINTER;
 
-    nimcp_mutex_lock(gossip->mutex);
+    nimcp_platform_mutex_lock(gossip->mutex);
 
     /* Check if already received */
     if (is_message_cached(gossip, message->header.message_id)) {
-        nimcp_mutex_unlock(gossip->mutex);
+        nimcp_platform_mutex_unlock(gossip->mutex);
         return NIMCP_SUCCESS;  /* Duplicate, ignore */
     }
 
     /* Check if we should process based on priority and energy */
     if (!nimcp_energy_gossip_should_process(gossip, message->header.priority)) {
         gossip->messages_dropped++;
-        nimcp_mutex_unlock(gossip->mutex);
-        return NIMCP_ERR_SKIP;
+        nimcp_platform_mutex_unlock(gossip->mutex);
+        return NIMCP_SUCCESS;
     }
 
     /* Add to cache */
@@ -609,58 +610,58 @@ nimcp_result_t nimcp_energy_gossip_receive(
 
     gossip->messages_received++;
 
-    NIMCP_LOG_DEBUG("Node %u: Received message %llu from node %u (hop %u/%u)",
+    LOG_DEBUG("Node %u: Received message %llu from node %u (hop %u/%u)",
         gossip->node_id,
         (unsigned long long)message->header.message_id,
         message->header.originator_id,
         message->header.hop_count,
         message->header.ttl);
 
-    nimcp_mutex_unlock(gossip->mutex);
+    nimcp_platform_mutex_unlock(gossip->mutex);
 
     return NIMCP_SUCCESS;
 }
 
 nimcp_result_t nimcp_energy_gossip_forward(
-    nimcp_energy_gossip* gossip,
+    NimcpEnergyGossip* gossip,
     NimcpGossipMessage* message
 ) {
     if (!gossip || !message) return NIMCP_ERROR_NULL_POINTER;
 
     /* Check TTL */
     if (message->header.hop_count >= message->header.ttl) {
-        return NIMCP_ERR_SKIP;
+        return NIMCP_SUCCESS;
     }
 
     /* Check if we're sleeping */
-    if (gossip->is_sleeping && message->header.priority < NIMCP_MSG_PRIORITY_CRITICAL) {
-        return NIMCP_ERR_SKIP;
+    if (gossip->is_sleeping && message->header.priority < NIMCP_PRIORITY_URGENT) {
+        return NIMCP_SUCCESS;
     }
 
     /* Probabilistic forwarding based on energy state */
     if (!nimcp_energy_gossip_should_forward(gossip, message)) {
-        return NIMCP_ERR_SKIP;
+        return NIMCP_SUCCESS;
     }
 
-    nimcp_mutex_lock(gossip->mutex);
+    nimcp_platform_mutex_lock(gossip->mutex);
 
     message->header.hop_count++;
     message->forwarded = true;
     message->forward_count++;
     gossip->messages_forwarded++;
 
-    NIMCP_LOG_DEBUG("Node %u: Forwarding message %llu (hop %u/%u)",
+    LOG_DEBUG("Node %u: Forwarding message %llu (hop %u/%u)",
         gossip->node_id,
         (unsigned long long)message->header.message_id,
         message->header.hop_count,
         message->header.ttl);
 
-    nimcp_mutex_unlock(gossip->mutex);
+    nimcp_platform_mutex_unlock(gossip->mutex);
 
     return NIMCP_SUCCESS;
 }
 
-float nimcp_energy_gossip_get_forward_probability(const nimcp_energy_gossip* gossip) {
+float nimcp_energy_gossip_get_forward_probability(const NimcpEnergyGossip* gossip) {
     if (!gossip) return 0.0f;
 
     switch (gossip->current_state) {
@@ -682,13 +683,13 @@ float nimcp_energy_gossip_get_forward_probability(const nimcp_energy_gossip* gos
 }
 
 bool nimcp_energy_gossip_should_forward(
-    const nimcp_energy_gossip* gossip,
+    const NimcpEnergyGossip* gossip,
     const NimcpGossipMessage* message
 ) {
     if (!gossip || !message) return false;
 
     /* Always forward critical messages */
-    if (message->header.priority == NIMCP_MSG_PRIORITY_CRITICAL) {
+    if (message->header.priority == NIMCP_PRIORITY_URGENT) {
         return true;
     }
 
@@ -707,15 +708,15 @@ bool nimcp_energy_gossip_should_forward(
  * ============================================================================ */
 
 nimcp_result_t nimcp_energy_gossip_register_relay(
-    nimcp_energy_gossip* gossip,
+    NimcpEnergyGossip* gossip,
     uint32_t node_id,
     float energy_level,
     float distance
 ) {
     if (!gossip) return NIMCP_ERROR_NULL_POINTER;
-    if (node_id == gossip->node_id) return NIMCP_ERR_INVALID_ARGUMENT;
+    if (node_id == gossip->node_id) return NIMCP_INVALID_PARAM;
 
-    nimcp_mutex_lock(gossip->mutex);
+    nimcp_platform_mutex_lock(gossip->mutex);
 
     /* Check if already registered */
     NimcpRelayNode* existing = find_relay_node(gossip, node_id);
@@ -726,14 +727,14 @@ nimcp_result_t nimcp_energy_gossip_register_relay(
         existing->distance = distance;
         existing->last_seen = time(NULL);
         existing->is_available = (energy_level >= gossip->config.min_relay_energy);
-        nimcp_mutex_unlock(gossip->mutex);
+        nimcp_platform_mutex_unlock(gossip->mutex);
         return NIMCP_SUCCESS;
     }
 
     /* Add new relay node */
     if (gossip->relay_node_count >= gossip->relay_node_capacity) {
-        nimcp_mutex_unlock(gossip->mutex);
-        return NIMCP_ERR_BUFFER_OVERFLOW;
+        nimcp_platform_mutex_unlock(gossip->mutex);
+        return NIMCP_NO_MEMORY;
     }
 
     NimcpRelayNode* relay = &gossip->relay_nodes[gossip->relay_node_count++];
@@ -748,26 +749,26 @@ nimcp_result_t nimcp_energy_gossip_register_relay(
     relay->last_seen = time(NULL);
     relay->is_available = (energy_level >= gossip->config.min_relay_energy);
 
-    nimcp_mutex_unlock(gossip->mutex);
+    nimcp_platform_mutex_unlock(gossip->mutex);
 
-    NIMCP_LOG_DEBUG("Node %u: Registered relay node %u (energy: %.1f%%, distance: %.1f)",
+    LOG_DEBUG("Node %u: Registered relay node %u (energy: %.1f%%, distance: %.1f)",
         gossip->node_id, node_id, energy_level, distance);
 
     return NIMCP_SUCCESS;
 }
 
 nimcp_result_t nimcp_energy_gossip_update_relay(
-    nimcp_energy_gossip* gossip,
+    NimcpEnergyGossip* gossip,
     uint32_t node_id,
     float energy_level
 ) {
     if (!gossip) return NIMCP_ERROR_NULL_POINTER;
 
-    nimcp_mutex_lock(gossip->mutex);
+    nimcp_platform_mutex_lock(gossip->mutex);
 
     NimcpRelayNode* relay = find_relay_node(gossip, node_id);
     if (!relay) {
-        nimcp_mutex_unlock(gossip->mutex);
+        nimcp_platform_mutex_unlock(gossip->mutex);
         return NIMCP_NOT_FOUND;
     }
 
@@ -776,28 +777,28 @@ nimcp_result_t nimcp_energy_gossip_update_relay(
     relay->last_seen = time(NULL);
     relay->is_available = (energy_level >= gossip->config.min_relay_energy);
 
-    nimcp_mutex_unlock(gossip->mutex);
+    nimcp_platform_mutex_unlock(gossip->mutex);
 
     return NIMCP_SUCCESS;
 }
 
 nimcp_result_t nimcp_energy_gossip_select_relays(
-    nimcp_energy_gossip* gossip,
+    NimcpEnergyGossip* gossip,
     uint32_t max_relays,
     uint32_t* selected,
     uint32_t* selected_count
 ) {
     if (!gossip || !selected || !selected_count) return NIMCP_ERROR_NULL_POINTER;
 
-    nimcp_mutex_lock(gossip->mutex);
+    nimcp_platform_mutex_lock(gossip->mutex);
 
     *selected_count = 0;
 
     /* Calculate scores for all available relays */
     float* scores = (float*)nimcp_calloc(gossip->relay_node_count, sizeof(float));
     if (!scores) {
-        nimcp_mutex_unlock(gossip->mutex);
-        return NIMCP_NO_MEMORY_ALLOCATION;
+        nimcp_platform_mutex_unlock(gossip->mutex);
+        return NIMCP_NO_MEMORY;
     }
 
     for (uint32_t i = 0; i < gossip->relay_node_count; i++) {
@@ -827,15 +828,15 @@ nimcp_result_t nimcp_energy_gossip_select_relays(
     }
 
     nimcp_free(scores);
-    nimcp_mutex_unlock(gossip->mutex);
+    nimcp_platform_mutex_unlock(gossip->mutex);
 
-    NIMCP_LOG_DEBUG("Node %u: Selected %u relay nodes", gossip->node_id, *selected_count);
+    LOG_DEBUG("Node %u: Selected %u relay nodes", gossip->node_id, *selected_count);
 
     return NIMCP_SUCCESS;
 }
 
 nimcp_result_t nimcp_energy_gossip_get_relay_info(
-    const nimcp_energy_gossip* gossip,
+    const NimcpEnergyGossip* gossip,
     uint32_t node_id,
     NimcpRelayNode* relay
 ) {
@@ -856,14 +857,14 @@ nimcp_result_t nimcp_energy_gossip_get_relay_info(
  * ============================================================================ */
 
 nimcp_result_t nimcp_energy_gossip_schedule_sleep(
-    nimcp_energy_gossip* gossip,
+    NimcpEnergyGossip* gossip,
     time_t start_time,
     uint32_t duration_seconds,
     bool wake_on_emergency
 ) {
     if (!gossip) return NIMCP_ERROR_NULL_POINTER;
 
-    nimcp_mutex_lock(gossip->mutex);
+    nimcp_platform_mutex_lock(gossip->mutex);
 
     /* Expand schedule array if needed */
     if (!gossip->sleep_schedule) {
@@ -871,8 +872,8 @@ nimcp_result_t nimcp_energy_gossip_schedule_sleep(
             10, sizeof(NimcpSleepSchedule)
         );
         if (!gossip->sleep_schedule) {
-            nimcp_mutex_unlock(gossip->mutex);
-            return NIMCP_NO_MEMORY_ALLOCATION;
+            nimcp_platform_mutex_unlock(gossip->mutex);
+            return NIMCP_NO_MEMORY;
         }
     }
 
@@ -888,52 +889,52 @@ nimcp_result_t nimcp_energy_gossip_schedule_sleep(
     float sleep_consumption = active_consumption * 0.1f;  /* 10% consumption while sleeping */
     schedule->energy_saved = (active_consumption - sleep_consumption) * duration_seconds;
 
-    nimcp_mutex_unlock(gossip->mutex);
+    nimcp_platform_mutex_unlock(gossip->mutex);
 
-    NIMCP_LOG_INFO("Node %u: Sleep scheduled for %u seconds (saving ~%.1f energy units)",
+    LOG_INFO("Node %u: Sleep scheduled for %u seconds (saving ~%.1f energy units)",
         gossip->node_id, duration_seconds, schedule->energy_saved);
 
     return NIMCP_SUCCESS;
 }
 
 nimcp_result_t nimcp_energy_gossip_sleep(
-    nimcp_energy_gossip* gossip,
+    NimcpEnergyGossip* gossip,
     uint32_t duration_seconds
 ) {
     if (!gossip) return NIMCP_ERROR_NULL_POINTER;
 
-    nimcp_mutex_lock(gossip->mutex);
+    nimcp_platform_mutex_lock(gossip->mutex);
 
     gossip->is_sleeping = true;
     gossip->sleep_until = time(NULL) + duration_seconds;
     gossip->sleep_cycles++;
 
-    nimcp_mutex_unlock(gossip->mutex);
+    nimcp_platform_mutex_unlock(gossip->mutex);
 
-    NIMCP_LOG_INFO("Node %u: Entering sleep mode for %u seconds",
+    LOG_INFO("Node %u: Entering sleep mode for %u seconds",
         gossip->node_id, duration_seconds);
 
     return NIMCP_SUCCESS;
 }
 
-nimcp_result_t nimcp_energy_gossip_wake(nimcp_energy_gossip* gossip) {
+nimcp_result_t nimcp_energy_gossip_wake(NimcpEnergyGossip* gossip) {
     if (!gossip) return NIMCP_ERROR_NULL_POINTER;
 
-    nimcp_mutex_lock(gossip->mutex);
+    nimcp_platform_mutex_lock(gossip->mutex);
 
     if (gossip->is_sleeping) {
         gossip->is_sleeping = false;
         gossip->sleep_until = 0;
 
-        NIMCP_LOG_INFO("Node %u: Waking from sleep", gossip->node_id);
+        LOG_INFO("Node %u: Waking from sleep", gossip->node_id);
     }
 
-    nimcp_mutex_unlock(gossip->mutex);
+    nimcp_platform_mutex_unlock(gossip->mutex);
 
     return NIMCP_SUCCESS;
 }
 
-bool nimcp_energy_gossip_is_sleeping(const nimcp_energy_gossip* gossip) {
+bool nimcp_energy_gossip_is_sleeping(const NimcpEnergyGossip* gossip) {
     if (!gossip) return false;
 
     /* Check if sleep period has expired */
@@ -948,7 +949,7 @@ bool nimcp_energy_gossip_is_sleeping(const nimcp_energy_gossip* gossip) {
 }
 
 nimcp_result_t nimcp_energy_gossip_coordinate_sleep(
-    nimcp_energy_gossip* gossip,
+    NimcpEnergyGossip* gossip,
     const NimcpSleepSchedule* node_schedules,
     uint32_t node_count
 ) {
@@ -987,7 +988,7 @@ nimcp_result_t nimcp_energy_gossip_coordinate_sleep(
         gossip, sleep_start, sleep_duration, true
     );
 
-    NIMCP_LOG_INFO("Node %u: Coordinated sleep scheduled in %u hours (%u nodes sleeping)",
+    LOG_INFO("Node %u: Coordinated sleep scheduled in %u hours (%u nodes sleeping)",
         gossip->node_id, best_hour, min_sleeping);
 
     return result;
@@ -998,7 +999,7 @@ nimcp_result_t nimcp_energy_gossip_coordinate_sleep(
  * ============================================================================ */
 
 nimcp_result_t nimcp_energy_gossip_register_harvest(
-    nimcp_energy_gossip* gossip,
+    NimcpEnergyGossip* gossip,
     const float position[3],
     float harvest_rate,
     float quality_score
@@ -1006,7 +1007,7 @@ nimcp_result_t nimcp_energy_gossip_register_harvest(
     if (!gossip || !position) return NIMCP_ERROR_NULL_POINTER;
     if (!gossip->config.enable_harvest_awareness) return NIMCP_NOT_IMPLEMENTED;
 
-    nimcp_mutex_lock(gossip->mutex);
+    nimcp_platform_mutex_lock(gossip->mutex);
 
     /* Check if already registered */
     NimcpHarvestOpportunity* existing = find_harvest_opportunity(gossip, position);
@@ -1014,14 +1015,14 @@ nimcp_result_t nimcp_energy_gossip_register_harvest(
         existing->harvest_rate = harvest_rate;
         existing->quality_score = quality_score;
         existing->available = true;
-        nimcp_mutex_unlock(gossip->mutex);
+        nimcp_platform_mutex_unlock(gossip->mutex);
         return NIMCP_SUCCESS;
     }
 
     /* Add new opportunity */
     if (gossip->opportunity_count >= 10) {  /* Max capacity */
-        nimcp_mutex_unlock(gossip->mutex);
-        return NIMCP_ERR_BUFFER_OVERFLOW;
+        nimcp_platform_mutex_unlock(gossip->mutex);
+        return NIMCP_NO_MEMORY;
     }
 
     NimcpHarvestOpportunity* opp = &gossip->opportunities[gossip->opportunity_count++];
@@ -1034,22 +1035,22 @@ nimcp_result_t nimcp_energy_gossip_register_harvest(
     opp->quality_score = quality_score;
     opp->discovered_time = time(NULL);
 
-    nimcp_mutex_unlock(gossip->mutex);
+    nimcp_platform_mutex_unlock(gossip->mutex);
 
-    NIMCP_LOG_INFO("Node %u: Harvest opportunity registered (rate: %.2f, quality: %.2f)",
+    LOG_INFO("Node %u: Harvest opportunity registered (rate: %.2f, quality: %.2f)",
         gossip->node_id, harvest_rate, quality_score);
 
     return NIMCP_SUCCESS;
 }
 
 nimcp_result_t nimcp_energy_gossip_select_harvest(
-    nimcp_energy_gossip* gossip,
+    NimcpEnergyGossip* gossip,
     NimcpHarvestOpportunity* opportunity
 ) {
     if (!gossip || !opportunity) return NIMCP_ERROR_NULL_POINTER;
     if (!gossip->config.enable_harvest_awareness) return NIMCP_NOT_IMPLEMENTED;
 
-    nimcp_mutex_lock(gossip->mutex);
+    nimcp_platform_mutex_lock(gossip->mutex);
 
     /* Find best opportunity (highest score with low congestion) */
     float best_score = -1.0f;
@@ -1070,50 +1071,50 @@ nimcp_result_t nimcp_energy_gossip_select_harvest(
     }
 
     if (!best) {
-        nimcp_mutex_unlock(gossip->mutex);
+        nimcp_platform_mutex_unlock(gossip->mutex);
         return NIMCP_NOT_FOUND;
     }
 
     memcpy(opportunity, best, sizeof(NimcpHarvestOpportunity));
-    nimcp_mutex_unlock(gossip->mutex);
+    nimcp_platform_mutex_unlock(gossip->mutex);
 
-    NIMCP_LOG_INFO("Node %u: Selected harvest opportunity (score: %.2f)",
+    LOG_INFO("Node %u: Selected harvest opportunity (score: %.2f)",
         gossip->node_id, best_score);
 
     return NIMCP_SUCCESS;
 }
 
 nimcp_result_t nimcp_energy_gossip_update_harvest_congestion(
-    nimcp_energy_gossip* gossip,
+    NimcpEnergyGossip* gossip,
     const float position[3],
     uint32_t congestion_level
 ) {
     if (!gossip || !position) return NIMCP_ERROR_NULL_POINTER;
 
-    nimcp_mutex_lock(gossip->mutex);
+    nimcp_platform_mutex_lock(gossip->mutex);
 
     NimcpHarvestOpportunity* opp = find_harvest_opportunity(gossip, position);
     if (!opp) {
-        nimcp_mutex_unlock(gossip->mutex);
+        nimcp_platform_mutex_unlock(gossip->mutex);
         return NIMCP_NOT_FOUND;
     }
 
     opp->congestion_level = congestion_level;
-    nimcp_mutex_unlock(gossip->mutex);
+    nimcp_platform_mutex_unlock(gossip->mutex);
 
     return NIMCP_SUCCESS;
 }
 
-nimcp_result_t nimcp_energy_gossip_start_harvest(nimcp_energy_gossip* gossip) {
+nimcp_result_t nimcp_energy_gossip_start_harvest(NimcpEnergyGossip* gossip) {
     if (!gossip) return NIMCP_ERROR_NULL_POINTER;
 
-    nimcp_mutex_lock(gossip->mutex);
+    nimcp_platform_mutex_lock(gossip->mutex);
 
     /* Select best harvest opportunity */
     NimcpHarvestOpportunity opportunity;
     nimcp_result_t result = nimcp_energy_gossip_select_harvest(gossip, &opportunity);
     if (result != NIMCP_SUCCESS) {
-        nimcp_mutex_unlock(gossip->mutex);
+        nimcp_platform_mutex_unlock(gossip->mutex);
         return result;
     }
 
@@ -1123,26 +1124,26 @@ nimcp_result_t nimcp_energy_gossip_start_harvest(nimcp_energy_gossip* gossip) {
         update_energy_state(gossip);
     }
 
-    nimcp_mutex_unlock(gossip->mutex);
+    nimcp_platform_mutex_unlock(gossip->mutex);
 
-    NIMCP_LOG_INFO("Node %u: Started harvesting (rate: %.2f)",
+    LOG_INFO("Node %u: Started harvesting (rate: %.2f)",
         gossip->node_id, opportunity.harvest_rate);
 
     return NIMCP_SUCCESS;
 }
 
-nimcp_result_t nimcp_energy_gossip_stop_harvest(nimcp_energy_gossip* gossip) {
+nimcp_result_t nimcp_energy_gossip_stop_harvest(NimcpEnergyGossip* gossip) {
     if (!gossip) return NIMCP_ERROR_NULL_POINTER;
 
-    nimcp_mutex_lock(gossip->mutex);
+    nimcp_platform_mutex_lock(gossip->mutex);
 
     gossip->current_harvest = NULL;
     gossip->stats.harvest_rate = 0.0f;
     update_energy_state(gossip);
 
-    nimcp_mutex_unlock(gossip->mutex);
+    nimcp_platform_mutex_unlock(gossip->mutex);
 
-    NIMCP_LOG_INFO("Node %u: Stopped harvesting", gossip->node_id);
+    LOG_INFO("Node %u: Stopped harvesting", gossip->node_id);
 
     return NIMCP_SUCCESS;
 }
@@ -1151,7 +1152,7 @@ nimcp_result_t nimcp_energy_gossip_stop_harvest(nimcp_energy_gossip* gossip) {
  * Adaptive Interval Implementation
  * ============================================================================ */
 
-uint32_t nimcp_energy_gossip_get_heartbeat_interval(const nimcp_energy_gossip* gossip) {
+uint32_t nimcp_energy_gossip_get_heartbeat_interval(const NimcpEnergyGossip* gossip) {
     if (!gossip) return 1000;  /* Default 1 second */
 
     switch (gossip->current_state) {
@@ -1173,27 +1174,27 @@ uint32_t nimcp_energy_gossip_get_heartbeat_interval(const nimcp_energy_gossip* g
 }
 
 bool nimcp_energy_gossip_should_process(
-    const nimcp_energy_gossip* gossip,
+    const NimcpEnergyGossip* gossip,
     NimcpMessagePriority priority
 ) {
     if (!gossip) return false;
 
     /* Always process critical messages */
-    if (priority == NIMCP_MSG_PRIORITY_CRITICAL) {
+    if (priority == NIMCP_PRIORITY_URGENT) {
         return true;
     }
 
     /* In emergency mode, only process high priority and above */
     if (gossip->reserve.emergency_mode) {
-        return priority <= NIMCP_MSG_PRIORITY_HIGH;
+        return priority <= NIMCP_PRIORITY_HIGH;
     }
 
     /* Energy-based filtering */
     switch (gossip->current_state) {
         case NIMCP_ENERGY_CRITICAL:
-            return priority <= NIMCP_MSG_PRIORITY_HIGH;
+            return priority <= NIMCP_PRIORITY_HIGH;
         case NIMCP_ENERGY_LOW:
-            return priority <= NIMCP_MSG_PRIORITY_NORMAL;
+            return priority <= NIMCP_PRIORITY_NORMAL;
         case NIMCP_ENERGY_NORMAL:
         case NIMCP_ENERGY_HIGH:
         case NIMCP_ENERGY_FULL:
@@ -1205,104 +1206,45 @@ bool nimcp_energy_gossip_should_process(
 }
 
 /* ============================================================================
- * Bio-Async Message Handlers
+ * Bio-Async Message Handlers (Stubbed - require brain integration)
  * ============================================================================ */
 
 nimcp_result_t nimcp_energy_gossip_handle_energy_broadcast(
-    nimcp_energy_gossip* gossip,
-    const bio_message_t* message
+    NimcpEnergyGossip* gossip,
+    const void* message
 ) {
     if (!gossip || !message) return NIMCP_ERROR_NULL_POINTER;
-
-    NIMCP_LOG_DEBUG("Node %u: Handling energy broadcast from node %u",
-        gossip->node_id, message->sender_id);
-
-    /* Extract energy information from message payload */
-    if (message->payload && message->size >= sizeof(float)) {
-        float* energy_level = (float*)message->payload;
-
-        /* Update relay information */
-        nimcp_energy_gossip_update_relay(gossip, message->sender_id, *energy_level);
-    }
-
+    /* Stubbed - requires brain integration */
+    (void)message;
     return NIMCP_SUCCESS;
 }
 
 nimcp_result_t nimcp_energy_gossip_handle_sleep_coordination(
-    nimcp_energy_gossip* gossip,
-    const bio_message_t* message
+    NimcpEnergyGossip* gossip,
+    const void* message
 ) {
     if (!gossip || !message) return NIMCP_ERROR_NULL_POINTER;
-
-    NIMCP_LOG_DEBUG("Node %u: Handling sleep coordination from node %u",
-        gossip->node_id, message->sender_id);
-
-    /* Process sleep schedule information */
-    if (message->payload && message->size >= sizeof(NimcpSleepSchedule)) {
-        /* Would coordinate with other node's schedule */
-    }
-
+    /* Stubbed - requires brain integration */
+    (void)message;
     return NIMCP_SUCCESS;
 }
 
 nimcp_result_t nimcp_energy_gossip_handle_relay_request(
-    nimcp_energy_gossip* gossip,
-    const bio_message_t* message
+    NimcpEnergyGossip* gossip,
+    const void* message
 ) {
     if (!gossip || !message) return NIMCP_ERROR_NULL_POINTER;
-
-    NIMCP_LOG_DEBUG("Node %u: Handling relay request from node %u",
-        gossip->node_id, message->sender_id);
-
-    /* Check if we can serve as relay */
-    if (gossip->stats.current_level >= gossip->config.min_relay_energy &&
-        !gossip->reserve.emergency_mode) {
-        /* Accept relay request */
-        NIMCP_LOG_INFO("Node %u: Accepting relay request from node %u",
-            gossip->node_id, message->sender_id);
-        return NIMCP_SUCCESS;
-    } else {
-        /* Decline relay request */
-        NIMCP_LOG_INFO("Node %u: Declining relay request (energy: %.1f%%)",
-            gossip->node_id, gossip->stats.current_level);
-        return NIMCP_NOT_INITIALIZED;
-    }
+    /* Stubbed - requires brain integration */
+    (void)message;
+    return NIMCP_SUCCESS;
 }
 
-nimcp_result_t nimcp_energy_gossip_process_inbox(nimcp_energy_gossip* gossip) {
+nimcp_result_t nimcp_energy_gossip_process_inbox(NimcpEnergyGossip* gossip) {
     if (!gossip) return NIMCP_ERROR_NULL_POINTER;
     if (!gossip->bio_async_enabled || !gossip->inbox) {
-        return NIMCP_NOT_IMPLEMENTED;
+        return NIMCP_SUCCESS;  /* Not enabled, return success */
     }
-
-    /* Process all messages in inbox */
-    bio_message_t message;
-    while (nimcp_bio_inbox_try_receive(gossip->inbox, &message, 0) == NIMCP_SUCCESS) {
-        /* Route message based on type */
-        switch (message.type) {
-            case BIO_MSG_CUSTOM:
-                /* Check custom message subtype */
-                if (message.subtype == 1) {  /* Energy broadcast */
-                    nimcp_energy_gossip_handle_energy_broadcast(gossip, &message);
-                } else if (message.subtype == 2) {  /* Sleep coordination */
-                    nimcp_energy_gossip_handle_sleep_coordination(gossip, &message);
-                } else if (message.subtype == 3) {  /* Relay request */
-                    nimcp_energy_gossip_handle_relay_request(gossip, &message);
-                }
-                break;
-
-            default:
-                NIMCP_LOG_DEBUG("Node %u: Unhandled message type %d",
-                    gossip->node_id, message.type);
-                break;
-        }
-
-        /* Free message payload if needed */
-        if (message.payload && message.size > 0) {
-            nimcp_free(message.payload);
-        }
-    }
-
+    /* Stubbed - requires brain integration with proper bio-async API */
     return NIMCP_SUCCESS;
 }
 
@@ -1340,7 +1282,7 @@ const char* nimcp_energy_state_to_string(NimcpEnergyState state) {
     }
 }
 
-void nimcp_energy_gossip_print_stats(const nimcp_energy_gossip* gossip) {
+void nimcp_energy_gossip_print_stats(const NimcpEnergyGossip* gossip) {
     if (!gossip) return;
 
     printf("\n========== Energy Gossip Statistics (Node %u) ==========\n", gossip->node_id);

@@ -288,7 +288,7 @@ typedef enum {
 nimcp_swarm_proprioception_t* nimcp_swarm_proprioception_create(
     uint32_t drone_id,
     const nimcp_swarm_proprio_config_t* config,
-    nimcp_bio_context_t* bio_ctx
+    void* bio_ctx
 );
 
 /**
@@ -304,7 +304,7 @@ void nimcp_swarm_proprioception_destroy(nimcp_swarm_proprioception_t* proprio);
  * @param proprio Proprioception instance
  * @return NIMCP_OK on success
  */
-nimcp_status_t nimcp_swarm_proprioception_reset(nimcp_swarm_proprioception_t* proprio);
+nimcp_result_t nimcp_swarm_proprioception_reset(nimcp_swarm_proprioception_t* proprio);
 
 /* ===================== Relative Positioning ======================== */
 
@@ -316,7 +316,7 @@ nimcp_status_t nimcp_swarm_proprioception_reset(nimcp_swarm_proprioception_t* pr
  * @param velocity Current velocity (can be NULL)
  * @return NIMCP_OK on success
  */
-nimcp_status_t nimcp_swarm_proprio_update_position(
+nimcp_result_t nimcp_swarm_proprio_update_position(
     nimcp_swarm_proprioception_t* proprio,
     const nimcp_swarm_position_t* position,
     const nimcp_swarm_velocity_t* velocity
@@ -331,7 +331,7 @@ nimcp_status_t nimcp_swarm_proprio_update_position(
  * @param signal_strength Communication signal strength
  * @return NIMCP_OK on success
  */
-nimcp_status_t nimcp_swarm_proprio_update_neighbor(
+nimcp_result_t nimcp_swarm_proprio_update_neighbor(
     nimcp_swarm_proprioception_t* proprio,
     uint32_t neighbor_id,
     const nimcp_swarm_position_t* relative_position,
@@ -346,7 +346,7 @@ nimcp_status_t nimcp_swarm_proprio_update_neighbor(
  * @param neighbor Output neighbor information
  * @return NIMCP_OK on success
  */
-nimcp_status_t nimcp_swarm_proprio_get_neighbor(
+nimcp_result_t nimcp_swarm_proprio_get_neighbor(
     const nimcp_swarm_proprioception_t* proprio,
     uint32_t neighbor_id,
     nimcp_swarm_neighbor_t* neighbor
@@ -361,7 +361,7 @@ nimcp_status_t nimcp_swarm_proprio_get_neighbor(
  * @param num_neighbors Output number of neighbors returned
  * @return NIMCP_OK on success
  */
-nimcp_status_t nimcp_swarm_proprio_get_neighbors(
+nimcp_result_t nimcp_swarm_proprio_get_neighbors(
     const nimcp_swarm_proprioception_t* proprio,
     nimcp_swarm_neighbor_t* neighbors,
     uint32_t max_neighbors,
@@ -377,7 +377,7 @@ nimcp_status_t nimcp_swarm_proprio_get_neighbors(
  * @param descriptor Output shape descriptor
  * @return NIMCP_OK on success
  */
-nimcp_status_t nimcp_swarm_proprio_classify_shape(
+nimcp_result_t nimcp_swarm_proprio_classify_shape(
     nimcp_swarm_proprioception_t* proprio,
     nimcp_swarm_shape_descriptor_t* descriptor
 );
@@ -390,7 +390,7 @@ nimcp_status_t nimcp_swarm_proprio_classify_shape(
  * @param fitness Output fitness score [0-1]
  * @return NIMCP_OK on success
  */
-nimcp_status_t nimcp_swarm_proprio_shape_fitness(
+nimcp_result_t nimcp_swarm_proprio_shape_fitness(
     const nimcp_swarm_proprioception_t* proprio,
     nimcp_swarm_shape_t target_shape,
     double* fitness
@@ -405,7 +405,7 @@ nimcp_status_t nimcp_swarm_proprio_shape_fitness(
  * @param metrics Output deformation metrics
  * @return NIMCP_OK on success, NIMCP_NO_DATA if no deformation detected
  */
-nimcp_status_t nimcp_swarm_proprio_detect_deformation(
+nimcp_result_t nimcp_swarm_proprio_detect_deformation(
     nimcp_swarm_proprioception_t* proprio,
     nimcp_swarm_deformation_metrics_t* metrics
 );
@@ -418,7 +418,7 @@ nimcp_status_t nimcp_swarm_proprio_detect_deformation(
  * @param deviation Output deviation magnitude
  * @return NIMCP_OK on success
  */
-nimcp_status_t nimcp_swarm_proprio_shape_deviation(
+nimcp_result_t nimcp_swarm_proprio_shape_deviation(
     const nimcp_swarm_proprioception_t* proprio,
     nimcp_swarm_shape_t target_shape,
     double* deviation
@@ -433,7 +433,7 @@ nimcp_status_t nimcp_swarm_proprio_shape_deviation(
  * @param descriptor Output boundary descriptor
  * @return NIMCP_OK on success
  */
-nimcp_status_t nimcp_swarm_proprio_boundary_role(
+nimcp_result_t nimcp_swarm_proprio_boundary_role(
     nimcp_swarm_proprioception_t* proprio,
     nimcp_swarm_boundary_descriptor_t* descriptor
 );
@@ -447,7 +447,7 @@ nimcp_status_t nimcp_swarm_proprio_boundary_role(
  * @param num_ids Output number of boundary drones
  * @return NIMCP_OK on success
  */
-nimcp_status_t nimcp_swarm_proprio_get_boundary_drones(
+nimcp_result_t nimcp_swarm_proprio_get_boundary_drones(
     const nimcp_swarm_proprioception_t* proprio,
     uint32_t* boundary_ids,
     uint32_t max_ids,
@@ -463,7 +463,7 @@ nimcp_status_t nimcp_swarm_proprio_get_boundary_drones(
  * @param density_info Output density information
  * @return NIMCP_OK on success
  */
-nimcp_status_t nimcp_swarm_proprio_density(
+nimcp_result_t nimcp_swarm_proprio_density(
     nimcp_swarm_proprioception_t* proprio,
     nimcp_swarm_density_info_t* density_info
 );
@@ -476,7 +476,7 @@ nimcp_status_t nimcp_swarm_proprio_density(
  * @param dense_direction Output direction to dense region
  * @return NIMCP_OK on success
  */
-nimcp_status_t nimcp_swarm_proprio_density_regions(
+nimcp_result_t nimcp_swarm_proprio_density_regions(
     const nimcp_swarm_proprioception_t* proprio,
     nimcp_swarm_position_t* sparse_direction,
     nimcp_swarm_position_t* dense_direction
@@ -491,7 +491,7 @@ nimcp_status_t nimcp_swarm_proprio_density_regions(
  * @param com_estimate Output COM estimate
  * @return NIMCP_OK on success
  */
-nimcp_status_t nimcp_swarm_proprio_estimate_com(
+nimcp_result_t nimcp_swarm_proprio_estimate_com(
     nimcp_swarm_proprioception_t* proprio,
     nimcp_swarm_com_estimate_t* com_estimate
 );
@@ -503,7 +503,7 @@ nimcp_status_t nimcp_swarm_proprio_estimate_com(
  * @param neighbor_com Neighbor's COM estimate
  * @return NIMCP_OK on success
  */
-nimcp_status_t nimcp_swarm_proprio_merge_com_estimate(
+nimcp_result_t nimcp_swarm_proprio_merge_com_estimate(
     nimcp_swarm_proprioception_t* proprio,
     const nimcp_swarm_com_estimate_t* neighbor_com
 );
@@ -517,7 +517,7 @@ nimcp_status_t nimcp_swarm_proprio_merge_com_estimate(
  * @param metrics Output formation metrics
  * @return NIMCP_OK on success
  */
-nimcp_status_t nimcp_swarm_proprio_formation_metrics(
+nimcp_result_t nimcp_swarm_proprio_formation_metrics(
     nimcp_swarm_proprioception_t* proprio,
     nimcp_swarm_formation_metrics_t* metrics
 );
@@ -530,7 +530,7 @@ nimcp_status_t nimcp_swarm_proprio_formation_metrics(
  * @param matrix_size Size of matrix (num_drones x num_drones)
  * @return NIMCP_OK on success
  */
-nimcp_status_t nimcp_swarm_proprio_connectivity_graph(
+nimcp_result_t nimcp_swarm_proprio_connectivity_graph(
     const nimcp_swarm_proprioception_t* proprio,
     bool* adjacency_matrix,
     uint32_t matrix_size
@@ -547,7 +547,7 @@ nimcp_status_t nimcp_swarm_proprio_connectivity_graph(
  * @param vibration_data Output vibration data
  * @return NIMCP_OK on success
  */
-nimcp_status_t nimcp_swarm_proprio_detect_vibration(
+nimcp_result_t nimcp_swarm_proprio_detect_vibration(
     nimcp_swarm_proprioception_t* proprio,
     const double* signal,
     uint32_t signal_length,
@@ -563,7 +563,7 @@ nimcp_status_t nimcp_swarm_proprio_detect_vibration(
  * @param source_position Output estimated source position
  * @return NIMCP_OK on success
  */
-nimcp_status_t nimcp_swarm_proprio_localize_vibration(
+nimcp_result_t nimcp_swarm_proprio_localize_vibration(
     nimcp_swarm_proprioception_t* proprio,
     const uint64_t* arrival_times,
     uint32_t num_neighbors,
@@ -578,7 +578,7 @@ nimcp_status_t nimcp_swarm_proprio_localize_vibration(
  * @param proprio Proprioception instance
  * @return NIMCP_OK on success
  */
-nimcp_status_t nimcp_swarm_proprio_broadcast_position(
+nimcp_result_t nimcp_swarm_proprio_broadcast_position(
     nimcp_swarm_proprioception_t* proprio
 );
 
@@ -588,7 +588,7 @@ nimcp_status_t nimcp_swarm_proprio_broadcast_position(
  * @param proprio Proprioception instance
  * @return NIMCP_OK on success
  */
-nimcp_status_t nimcp_swarm_proprio_broadcast_formation_state(
+nimcp_result_t nimcp_swarm_proprio_broadcast_formation_state(
     nimcp_swarm_proprioception_t* proprio
 );
 
@@ -599,7 +599,7 @@ nimcp_status_t nimcp_swarm_proprio_broadcast_formation_state(
  * @param metrics Deformation metrics to broadcast
  * @return NIMCP_OK on success
  */
-nimcp_status_t nimcp_swarm_proprio_send_deformation_alert(
+nimcp_result_t nimcp_swarm_proprio_send_deformation_alert(
     nimcp_swarm_proprioception_t* proprio,
     const nimcp_swarm_deformation_metrics_t* metrics
 );
@@ -611,7 +611,7 @@ nimcp_status_t nimcp_swarm_proprio_send_deformation_alert(
  * @param msg Received message
  * @return NIMCP_OK on success
  */
-nimcp_status_t nimcp_swarm_proprio_process_message(
+nimcp_result_t nimcp_swarm_proprio_process_message(
     nimcp_swarm_proprioception_t* proprio,
     const bio_message_header_t* msg
 );

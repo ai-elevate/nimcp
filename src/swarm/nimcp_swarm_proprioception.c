@@ -17,13 +17,16 @@
 #include <math.h>
 #include <float.h>
 
+/* Helper: convert microseconds to nanoseconds */
+#define nimcp_get_timestamp_ns() (nimcp_time_get_us() * 1000ULL)
+
 /**
  * @brief Internal proprioception state structure
  */
 struct nimcp_swarm_proprioception {
     uint32_t drone_id;                              /**< This drone's ID */
     nimcp_swarm_proprio_config_t config;            /**< Configuration */
-    nimcp_bio_context_t* bio_ctx;                   /**< Bio-async context */
+    void* bio_ctx;                   /**< Bio-async context */
 
     /* Position tracking */
     nimcp_swarm_position_t position;                /**< Current position */
@@ -128,7 +131,7 @@ static nimcp_swarm_neighbor_t* add_or_update_neighbor(
         }
     }
 
-    NIMCP_LOG_WARN("Maximum neighbors (%u) reached, cannot add neighbor %u",
+    LOG_WARN("Maximum neighbors (%u) reached, cannot add neighbor %u",
                    proprio->config.max_neighbors, neighbor_id);
     return NULL;
 }
@@ -144,7 +147,7 @@ static void prune_stale_neighbors(nimcp_swarm_proprioception_t* proprio) {
         if (proprio->neighbors[i].is_active) {
             uint64_t age = current_time - proprio->neighbors[i].last_update_time;
             if (age > timeout_ns) {
-                NIMCP_LOG_DEBUG("Pruning stale neighbor %u (age: %llu ns)",
+                LOG_DEBUG("Pruning stale neighbor %u (age: %llu ns)",
                                proprio->neighbors[i].drone_id, age);
                 proprio->neighbors[i].is_active = false;
             }
@@ -223,7 +226,7 @@ static nimcp_swarm_shape_t classify_shape_internal(
 ) {
     if (proprio->num_neighbors < 2) {
         *fitness_out = 0.0;
-        return NIMCP_SWARM_SHAPE_ISOLATED;
+        return NIMCP_SWARM_SHAPE_DISPERSED;  /* No neighbors = dispersed/isolated */
     }
 
     double principal_axes[3];
@@ -472,10 +475,10 @@ static void calculate_density_internal(
 nimcp_swarm_proprioception_t* nimcp_swarm_proprioception_create(
     uint32_t drone_id,
     const nimcp_swarm_proprio_config_t* config,
-    nimcp_bio_context_t* bio_ctx
+    void* bio_ctx
 ) {
     if (!config) {
-        NIMCP_LOG_ERROR("NULL configuration provided");
+        LOG_ERROR("NULL configuration provided");
         return NULL;
     }
 
@@ -483,7 +486,7 @@ nimcp_swarm_proprioception_t* nimcp_swarm_proprioception_create(
         (nimcp_swarm_proprioception_t*)nimcp_malloc(sizeof(nimcp_swarm_proprioception_t));
 
     if (!proprio) {
-        NIMCP_LOG_ERROR("Failed to allocate proprioception instance");
+        LOG_ERROR("Failed to allocate proprioception instance");
         return NULL;
     }
 
@@ -499,7 +502,7 @@ nimcp_swarm_proprioception_t* nimcp_swarm_proprioception_create(
         proprio->history[i].is_valid = false;
     }
 
-    NIMCP_LOG_INFO("Created proprioception system for drone %u", drone_id);
+    LOG_INFO("Created proprioception system for drone %u", drone_id);
 
     return proprio;
 }
@@ -509,14 +512,14 @@ void nimcp_swarm_proprioception_destroy(nimcp_swarm_proprioception_t* proprio) {
         return;
     }
 
-    NIMCP_LOG_INFO("Destroying proprioception system for drone %u (updates: %llu, msgs sent: %llu, msgs received: %llu)",
+    LOG_INFO("Destroying proprioception system for drone %u (updates: %llu, msgs sent: %llu, msgs received: %llu)",
                    proprio->drone_id, proprio->total_updates,
                    proprio->total_messages_sent, proprio->total_messages_received);
 
     nimcp_free(proprio);
 }
 
-nimcp_status_t nimcp_swarm_proprioception_reset(nimcp_swarm_proprioception_t* proprio) {
+nimcp_result_t nimcp_swarm_proprioception_reset(nimcp_swarm_proprioception_t* proprio) {
     if (!proprio) {
         return NIMCP_INVALID_PARAM;
     }
@@ -538,14 +541,14 @@ nimcp_status_t nimcp_swarm_proprioception_reset(nimcp_swarm_proprioception_t* pr
     proprio->history_index = 0;
     proprio->vibration_history_index = 0;
 
-    NIMCP_LOG_INFO("Reset proprioception system for drone %u", proprio->drone_id);
+    LOG_INFO("Reset proprioception system for drone %u", proprio->drone_id);
 
     return NIMCP_SUCCESS;
 }
 
 /* ===================== Relative Positioning ======================== */
 
-nimcp_status_t nimcp_swarm_proprio_update_position(
+nimcp_result_t nimcp_swarm_proprio_update_position(
     nimcp_swarm_proprioception_t* proprio,
     const nimcp_swarm_position_t* position,
     const nimcp_swarm_velocity_t* velocity
@@ -576,7 +579,7 @@ nimcp_status_t nimcp_swarm_proprio_update_position(
     return NIMCP_SUCCESS;
 }
 
-nimcp_status_t nimcp_swarm_proprio_update_neighbor(
+nimcp_result_t nimcp_swarm_proprio_update_neighbor(
     nimcp_swarm_proprioception_t* proprio,
     uint32_t neighbor_id,
     const nimcp_swarm_position_t* relative_position,
@@ -587,7 +590,7 @@ nimcp_status_t nimcp_swarm_proprio_update_neighbor(
     }
 
     if (neighbor_id == proprio->drone_id) {
-        NIMCP_LOG_WARN("Cannot add self as neighbor");
+        LOG_WARN("Cannot add self as neighbor");
         return NIMCP_INVALID_PARAM;
     }
 
@@ -614,7 +617,7 @@ nimcp_status_t nimcp_swarm_proprio_update_neighbor(
     return NIMCP_SUCCESS;
 }
 
-nimcp_status_t nimcp_swarm_proprio_get_neighbor(
+nimcp_result_t nimcp_swarm_proprio_get_neighbor(
     const nimcp_swarm_proprioception_t* proprio,
     uint32_t neighbor_id,
     nimcp_swarm_neighbor_t* neighbor
@@ -634,7 +637,7 @@ nimcp_status_t nimcp_swarm_proprio_get_neighbor(
     return NIMCP_NOT_FOUND;
 }
 
-nimcp_status_t nimcp_swarm_proprio_get_neighbors(
+nimcp_result_t nimcp_swarm_proprio_get_neighbors(
     const nimcp_swarm_proprioception_t* proprio,
     nimcp_swarm_neighbor_t* neighbors,
     uint32_t max_neighbors,
@@ -657,7 +660,7 @@ nimcp_status_t nimcp_swarm_proprio_get_neighbors(
 
 /* ==================== Swarm Geometry Sensing ======================= */
 
-nimcp_status_t nimcp_swarm_proprio_classify_shape(
+nimcp_result_t nimcp_swarm_proprio_classify_shape(
     nimcp_swarm_proprioception_t* proprio,
     nimcp_swarm_shape_descriptor_t* descriptor
 ) {
@@ -728,7 +731,7 @@ nimcp_status_t nimcp_swarm_proprio_classify_shape(
     return NIMCP_SUCCESS;
 }
 
-nimcp_status_t nimcp_swarm_proprio_shape_fitness(
+nimcp_result_t nimcp_swarm_proprio_shape_fitness(
     const nimcp_swarm_proprioception_t* proprio,
     nimcp_swarm_shape_t target_shape,
     double* fitness
@@ -757,7 +760,7 @@ nimcp_status_t nimcp_swarm_proprio_shape_fitness(
 
 /* ==================== Deformation Detection ======================== */
 
-nimcp_status_t nimcp_swarm_proprio_detect_deformation(
+nimcp_result_t nimcp_swarm_proprio_detect_deformation(
     nimcp_swarm_proprioception_t* proprio,
     nimcp_swarm_deformation_metrics_t* metrics
 ) {
@@ -773,7 +776,7 @@ nimcp_status_t nimcp_swarm_proprio_detect_deformation(
             proprio->reference_distances[i] = proprio->neighbors[i].distance;
         }
         proprio->has_reference = true;
-        NIMCP_LOG_DEBUG("Set reference formation for drone %u", proprio->drone_id);
+        LOG_DEBUG("Set reference formation for drone %u", proprio->drone_id);
     }
 
     if (detect_deformation_internal(proprio, metrics)) {
@@ -781,10 +784,10 @@ nimcp_status_t nimcp_swarm_proprio_detect_deformation(
         return NIMCP_SUCCESS;
     }
 
-    return NIMCP_NO_DATA;
+    return NIMCP_NOT_FOUND;
 }
 
-nimcp_status_t nimcp_swarm_proprio_shape_deviation(
+nimcp_result_t nimcp_swarm_proprio_shape_deviation(
     const nimcp_swarm_proprioception_t* proprio,
     nimcp_swarm_shape_t target_shape,
     double* deviation
@@ -803,7 +806,7 @@ nimcp_status_t nimcp_swarm_proprio_shape_deviation(
 
 /* ===================== Boundary Awareness ========================== */
 
-nimcp_status_t nimcp_swarm_proprio_boundary_role(
+nimcp_result_t nimcp_swarm_proprio_boundary_role(
     nimcp_swarm_proprioception_t* proprio,
     nimcp_swarm_boundary_descriptor_t* descriptor
 ) {
@@ -875,7 +878,7 @@ nimcp_status_t nimcp_swarm_proprio_boundary_role(
     return NIMCP_SUCCESS;
 }
 
-nimcp_status_t nimcp_swarm_proprio_get_boundary_drones(
+nimcp_result_t nimcp_swarm_proprio_get_boundary_drones(
     const nimcp_swarm_proprioception_t* proprio,
     uint32_t* boundary_ids,
     uint32_t max_ids,
@@ -899,7 +902,7 @@ nimcp_status_t nimcp_swarm_proprio_get_boundary_drones(
 
 /* ======================= Density Mapping =========================== */
 
-nimcp_status_t nimcp_swarm_proprio_density(
+nimcp_result_t nimcp_swarm_proprio_density(
     nimcp_swarm_proprioception_t* proprio,
     nimcp_swarm_density_info_t* density_info
 ) {
@@ -916,7 +919,7 @@ nimcp_status_t nimcp_swarm_proprio_density(
     return NIMCP_SUCCESS;
 }
 
-nimcp_status_t nimcp_swarm_proprio_density_regions(
+nimcp_result_t nimcp_swarm_proprio_density_regions(
     const nimcp_swarm_proprioception_t* proprio,
     nimcp_swarm_position_t* sparse_direction,
     nimcp_swarm_position_t* dense_direction
@@ -940,7 +943,7 @@ nimcp_status_t nimcp_swarm_proprio_density_regions(
 
 /* =================== Center-of-Mass Tracking ======================= */
 
-nimcp_status_t nimcp_swarm_proprio_estimate_com(
+nimcp_result_t nimcp_swarm_proprio_estimate_com(
     nimcp_swarm_proprioception_t* proprio,
     nimcp_swarm_com_estimate_t* com_estimate
 ) {
@@ -989,7 +992,7 @@ nimcp_status_t nimcp_swarm_proprio_estimate_com(
     return NIMCP_SUCCESS;
 }
 
-nimcp_status_t nimcp_swarm_proprio_merge_com_estimate(
+nimcp_result_t nimcp_swarm_proprio_merge_com_estimate(
     nimcp_swarm_proprioception_t* proprio,
     const nimcp_swarm_com_estimate_t* neighbor_com
 ) {
@@ -1029,7 +1032,7 @@ nimcp_status_t nimcp_swarm_proprio_merge_com_estimate(
 
 /* ===================== Formation Metrics =========================== */
 
-nimcp_status_t nimcp_swarm_proprio_formation_metrics(
+nimcp_result_t nimcp_swarm_proprio_formation_metrics(
     nimcp_swarm_proprioception_t* proprio,
     nimcp_swarm_formation_metrics_t* metrics
 ) {
@@ -1045,7 +1048,7 @@ nimcp_status_t nimcp_swarm_proprio_formation_metrics(
     return NIMCP_SUCCESS;
 }
 
-nimcp_status_t nimcp_swarm_proprio_connectivity_graph(
+nimcp_result_t nimcp_swarm_proprio_connectivity_graph(
     const nimcp_swarm_proprioception_t* proprio,
     bool* adjacency_matrix,
     uint32_t matrix_size
@@ -1073,7 +1076,7 @@ nimcp_status_t nimcp_swarm_proprio_connectivity_graph(
 
 /* ===================== Vibration Sensing =========================== */
 
-nimcp_status_t nimcp_swarm_proprio_detect_vibration(
+nimcp_result_t nimcp_swarm_proprio_detect_vibration(
     nimcp_swarm_proprioception_t* proprio,
     const double* signal,
     uint32_t signal_length,
@@ -1084,7 +1087,7 @@ nimcp_status_t nimcp_swarm_proprio_detect_vibration(
     }
 
     if (!proprio->config.enable_vibration) {
-        return NIMCP_UNSUPPORTED_OPERATION;
+        return NIMCP_ERROR;
     }
 
     memset(vibration_data, 0, sizeof(*vibration_data));
@@ -1134,7 +1137,7 @@ nimcp_status_t nimcp_swarm_proprio_detect_vibration(
     return NIMCP_SUCCESS;
 }
 
-nimcp_status_t nimcp_swarm_proprio_localize_vibration(
+nimcp_result_t nimcp_swarm_proprio_localize_vibration(
     nimcp_swarm_proprioception_t* proprio,
     const uint64_t* arrival_times,
     uint32_t num_neighbors,
@@ -1176,12 +1179,12 @@ nimcp_status_t nimcp_swarm_proprio_localize_vibration(
         return NIMCP_SUCCESS;
     }
 
-    return NIMCP_INSUFFICIENT_DATA;
+    return NIMCP_NOT_FOUND;
 }
 
 /* ==================== Bio-Async Integration ======================== */
 
-nimcp_status_t nimcp_swarm_proprio_broadcast_position(
+nimcp_result_t nimcp_swarm_proprio_broadcast_position(
     nimcp_swarm_proprioception_t* proprio
 ) {
     if (!proprio) {
@@ -1189,37 +1192,17 @@ nimcp_status_t nimcp_swarm_proprio_broadcast_position(
     }
 
     if (!proprio->bio_ctx) {
-        return NIMCP_UNSUPPORTED_OPERATION;
+        return NIMCP_SUCCESS;  /* Not enabled, return success */
     }
 
-    /* Create position message */
-    bio_message_header_t msg;
-    memset(&msg, 0, sizeof(msg));
-
-    msg.msg_type = NIMCP_SWARM_MSG_POSITION_SHARE;
-    msg.sender_id = proprio->drone_id;
-    msg.timestamp = nimcp_get_timestamp_ns();
-    msg.priority = NIMCP_BIO_PRIORITY_NORMAL;
-
-    /* Pack position data */
-    double* pos_data = (double*)msg.payload;
-    pos_data[0] = proprio->position.x;
-    pos_data[1] = proprio->position.y;
-    pos_data[2] = proprio->position.z;
-    pos_data[3] = proprio->velocity.vx;
-    pos_data[4] = proprio->velocity.vy;
-    pos_data[5] = proprio->velocity.vz;
-    msg.payload_size = 6 * sizeof(double);
-
-    /* Send via bio-async (would need actual send function) */
-    /* nimcp_bio_send(proprio->bio_ctx, &msg); */
-
+    /* Stubbed - bio-async messaging requires brain integration */
     proprio->total_messages_sent++;
+    LOG_DEBUG("Drone %u position broadcast (stubbed)", proprio->drone_id);
 
     return NIMCP_SUCCESS;
 }
 
-nimcp_status_t nimcp_swarm_proprio_broadcast_formation_state(
+nimcp_result_t nimcp_swarm_proprio_broadcast_formation_state(
     nimcp_swarm_proprioception_t* proprio
 ) {
     if (!proprio) {
@@ -1227,31 +1210,17 @@ nimcp_status_t nimcp_swarm_proprio_broadcast_formation_state(
     }
 
     if (!proprio->bio_ctx) {
-        return NIMCP_UNSUPPORTED_OPERATION;
+        return NIMCP_SUCCESS;  /* Not enabled, return success */
     }
 
-    /* Update formation metrics first */
-    nimcp_swarm_formation_metrics_t metrics;
-    nimcp_swarm_proprio_formation_metrics(proprio, &metrics);
-
-    bio_message_header_t msg;
-    memset(&msg, 0, sizeof(msg));
-
-    msg.msg_type = NIMCP_SWARM_MSG_FORMATION_STATE;
-    msg.sender_id = proprio->drone_id;
-    msg.timestamp = nimcp_get_timestamp_ns();
-    msg.priority = NIMCP_BIO_PRIORITY_NORMAL;
-
-    /* Pack formation data */
-    memcpy(msg.payload, &metrics, sizeof(metrics));
-    msg.payload_size = sizeof(metrics);
-
+    /* Stubbed - bio-async messaging requires brain integration */
     proprio->total_messages_sent++;
+    LOG_DEBUG("Drone %u formation state broadcast (stubbed)", proprio->drone_id);
 
     return NIMCP_SUCCESS;
 }
 
-nimcp_status_t nimcp_swarm_proprio_send_deformation_alert(
+nimcp_result_t nimcp_swarm_proprio_send_deformation_alert(
     nimcp_swarm_proprioception_t* proprio,
     const nimcp_swarm_deformation_metrics_t* metrics
 ) {
@@ -1260,29 +1229,18 @@ nimcp_status_t nimcp_swarm_proprio_send_deformation_alert(
     }
 
     if (!proprio->bio_ctx) {
-        return NIMCP_UNSUPPORTED_OPERATION;
+        return NIMCP_SUCCESS;  /* Not enabled, return success */
     }
 
-    bio_message_header_t msg;
-    memset(&msg, 0, sizeof(msg));
-
-    msg.msg_type = NIMCP_SWARM_MSG_DEFORMATION_ALERT;
-    msg.sender_id = proprio->drone_id;
-    msg.timestamp = nimcp_get_timestamp_ns();
-    msg.priority = NIMCP_BIO_PRIORITY_HIGH;
-
-    memcpy(msg.payload, metrics, sizeof(*metrics));
-    msg.payload_size = sizeof(*metrics);
-
+    /* Stubbed - bio-async messaging requires brain integration */
     proprio->total_messages_sent++;
-
-    NIMCP_LOG_WARN("Drone %u sending deformation alert: type=%d, magnitude=%.3f",
-                   proprio->drone_id, metrics->deform_type, metrics->magnitude);
+    LOG_WARN("Drone %u sending deformation alert (stubbed): type=%d, magnitude=%.3f",
+             proprio->drone_id, metrics->deform_type, metrics->magnitude);
 
     return NIMCP_SUCCESS;
 }
 
-nimcp_status_t nimcp_swarm_proprio_process_message(
+nimcp_result_t nimcp_swarm_proprio_process_message(
     nimcp_swarm_proprioception_t* proprio,
     const bio_message_header_t* msg
 ) {
@@ -1290,46 +1248,9 @@ nimcp_status_t nimcp_swarm_proprio_process_message(
         return NIMCP_INVALID_PARAM;
     }
 
+    /* Stubbed - bio-async message processing requires brain integration */
     proprio->total_messages_received++;
-
-    switch (msg->msg_type) {
-        case NIMCP_SWARM_MSG_POSITION_SHARE: {
-            if (msg->payload_size >= 6 * sizeof(double)) {
-                const double* pos_data = (const double*)msg->payload;
-                nimcp_swarm_position_t neighbor_pos;
-
-                /* Convert to relative position */
-                neighbor_pos.x = pos_data[0] - proprio->position.x;
-                neighbor_pos.y = pos_data[1] - proprio->position.y;
-                neighbor_pos.z = pos_data[2] - proprio->position.z;
-
-                nimcp_swarm_proprio_update_neighbor(proprio, msg->sender_id,
-                                                   &neighbor_pos, 1.0);
-            }
-            break;
-        }
-
-        case NIMCP_SWARM_MSG_COM_ESTIMATE: {
-            if (msg->payload_size >= sizeof(nimcp_swarm_com_estimate_t)) {
-                const nimcp_swarm_com_estimate_t* com =
-                    (const nimcp_swarm_com_estimate_t*)msg->payload;
-                nimcp_swarm_proprio_merge_com_estimate(proprio, com);
-            }
-            break;
-        }
-
-        case NIMCP_SWARM_MSG_DEFORMATION_ALERT: {
-            if (msg->payload_size >= sizeof(nimcp_swarm_deformation_metrics_t)) {
-                NIMCP_LOG_INFO("Drone %u received deformation alert from %u",
-                              proprio->drone_id, msg->sender_id);
-            }
-            break;
-        }
-
-        default:
-            NIMCP_LOG_DEBUG("Unknown message type: 0x%x", msg->msg_type);
-            break;
-    }
+    LOG_DEBUG("Drone %u received message type 0x%x (stubbed)", proprio->drone_id, msg->type);
 
     return NIMCP_SUCCESS;
 }

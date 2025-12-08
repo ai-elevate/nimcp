@@ -18,15 +18,15 @@
 #ifndef NIMCP_SWARM_FLOCKING_H
 #define NIMCP_SWARM_FLOCKING_H
 
-#include "core/brain/nimcp_brain.h"
+#include "utils/validation/nimcp_common.h"
 #include "async/nimcp_bio_messages.h"
+#include "async/nimcp_bio_router.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/thread/nimcp_thread.h"
+#include "utils/platform/nimcp_platform.h"
 #include <stdbool.h>
 #include <stdint.h>
 
-#include "async/nimcp_bio_router.h"
-#include "utils/thread/nimcp_thread.h"
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -180,16 +180,11 @@ typedef struct {
     uint64_t update_count;          /**< Number of updates performed */
 
     // Bio-async integration
-    nimcp_bio_inbox_t *inbox;       /**< Bio-async inbox */
-    nimcp_bio_outbox_t *outbox;     /**< Bio-async outbox */
+    bio_module_context_t bio_ctx;   /**< Bio-async module context (pointer type) */
     bool bio_async_enabled;         /**< Bio-async enabled flag */
 
     // Thread safety
-    nimcp_mutex_t *mutex;           /**< Mutex for thread safety */
-
-    // Memory management
-    nimcp_memory_pool_t *boid_pool;
-    nimcp_memory_pool_t *obstacle_pool;
+    nimcp_platform_mutex_t *mutex;  /**< Mutex for thread safety */
 
     void *user_data;                /**< User-defined data */
 } nimcp_flocking_engine_t;
@@ -552,16 +547,14 @@ int nimcp_flocking_find_neighbors(nimcp_flocking_engine_t *engine,
  * ======================================================================== */
 
 /**
- * @brief Enable bio-async integration
+ * @brief Register flocking engine with bio-async router
  *
  * @param engine Flocking engine
- * @param inbox Bio-async inbox
- * @param outbox Bio-async outbox
+ * @param router Bio-async router
  * @return 0 on success, -1 on failure
  */
-int nimcp_flocking_enable_bio_async(nimcp_flocking_engine_t *engine,
-                                    nimcp_bio_inbox_t *inbox,
-                                    nimcp_bio_outbox_t *outbox);
+int nimcp_flocking_register_bioasync(nimcp_flocking_engine_t *engine,
+                                     bio_router_t *router);
 
 /**
  * @brief Process bio-async messages
@@ -658,8 +651,6 @@ static inline float nimcp_vec3_dot(nimcp_vec3_t a, nimcp_vec3_t b) {
  */
 nimcp_vec3_t nimcp_vec3_limit(nimcp_vec3_t v, float max);
 
-#include "async/nimcp_bio_router.h"
-#include "utils/thread/nimcp_thread.h"
 #ifdef __cplusplus
 }
 #endif

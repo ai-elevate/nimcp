@@ -258,29 +258,29 @@ NimcpSwarmMorphogenesis* nimcp_swarm_morphogenesis_create(
     float transition_cooldown,
     float rebalance_threshold
 ) {
-    NIMCP_LOG_INFO("Creating swarm morphogenesis system: max_drones=%u, "
+    LOG_INFO("Creating swarm morphogenesis system: max_drones=%u, "
                    "cooldown=%.2f, rebalance_threshold=%.2f",
                    max_drones, transition_cooldown, rebalance_threshold);
 
     if (max_drones == 0 || max_drones > 100000) {
-        NIMCP_LOG_ERROR("Invalid max_drones: %u", max_drones);
+        LOG_ERROR("Invalid max_drones: %u", max_drones);
         return NULL;
     }
 
     if (transition_cooldown < NIMCP_MORPH_MIN_COOLDOWN ||
         transition_cooldown > NIMCP_MORPH_MAX_COOLDOWN) {
-        NIMCP_LOG_ERROR("Invalid transition_cooldown: %.2f", transition_cooldown);
+        LOG_ERROR("Invalid transition_cooldown: %.2f", transition_cooldown);
         return NULL;
     }
 
     if (rebalance_threshold < 0.0f || rebalance_threshold > 1.0f) {
-        NIMCP_LOG_ERROR("Invalid rebalance_threshold: %.2f", rebalance_threshold);
+        LOG_ERROR("Invalid rebalance_threshold: %.2f", rebalance_threshold);
         return NULL;
     }
 
-    NimcpSwarmMorphogenesis* morph = NIMCP_MALLOC(sizeof(NimcpSwarmMorphogenesis));
+    NimcpSwarmMorphogenesis* morph = nimcp_malloc(sizeof(NimcpSwarmMorphogenesis));
     if (!morph) {
-        NIMCP_LOG_ERROR("Failed to allocate morphogenesis system");
+        LOG_ERROR("Failed to allocate morphogenesis system");
         return NULL;
     }
 
@@ -297,22 +297,22 @@ NimcpSwarmMorphogenesis* nimcp_swarm_morphogenesis_create(
     memcpy(morph->role_specs, ROLE_SPECS, sizeof(ROLE_SPECS));
 
     /* Allocate drone states */
-    morph->drone_states = NIMCP_MALLOC(max_drones * sizeof(NimcpDroneRoleState));
+    morph->drone_states = nimcp_malloc(max_drones * sizeof(NimcpDroneRoleState));
     if (!morph->drone_states) {
-        NIMCP_LOG_ERROR("Failed to allocate drone states");
-        NIMCP_FREE(morph);
+        LOG_ERROR("Failed to allocate drone states");
+        nimcp_free(morph);
         return NULL;
     }
     memset(morph->drone_states, 0, max_drones * sizeof(NimcpDroneRoleState));
 
     /* Allocate global gradients */
-    morph->global_gradients = NIMCP_MALLOC(
+    morph->global_gradients = nimcp_malloc(
         NIMCP_MORPHOGEN_COUNT * sizeof(NimcpMorphogenGradient)
     );
     if (!morph->global_gradients) {
-        NIMCP_LOG_ERROR("Failed to allocate global gradients");
-        NIMCP_FREE(morph->drone_states);
-        NIMCP_FREE(morph);
+        LOG_ERROR("Failed to allocate global gradients");
+        nimcp_free(morph->drone_states);
+        nimcp_free(morph);
         return NULL;
     }
     memset(morph->global_gradients, 0,
@@ -330,19 +330,19 @@ NimcpSwarmMorphogenesis* nimcp_swarm_morphogenesis_create(
     }
 
     /* Initialize synchronization */
-    if (nimcp_platform_mutex_init(&morph->lock) != 0) {
-        NIMCP_LOG_ERROR("Failed to initialize mutex");
-        NIMCP_FREE(morph->global_gradients);
-        NIMCP_FREE(morph->drone_states);
-        NIMCP_FREE(morph);
+    if (nimcp_platform_mutex_init(&morph->lock, false) != 0) {
+        LOG_ERROR("Failed to initialize mutex");
+        nimcp_free(morph->global_gradients);
+        nimcp_free(morph->drone_states);
+        nimcp_free(morph);
         return NULL;
     }
 
-    nimcp_atomic_init(&morph->update_in_progress, 0);
+    nimcp_atomic_init_i32(&morph->update_in_progress, 0);
 
     morph->initialized = true;
 
-    NIMCP_LOG_INFO("Swarm morphogenesis system created successfully");
+    LOG_INFO("Swarm morphogenesis system created successfully");
     return morph;
 }
 
@@ -351,7 +351,7 @@ void nimcp_swarm_morphogenesis_destroy(NimcpSwarmMorphogenesis* morph) {
         return;
     }
 
-    NIMCP_LOG_INFO("Destroying swarm morphogenesis system");
+    LOG_INFO("Destroying swarm morphogenesis system");
 
     nimcp_platform_mutex_lock(&morph->lock);
 
@@ -359,34 +359,34 @@ void nimcp_swarm_morphogenesis_destroy(NimcpSwarmMorphogenesis* morph) {
     if (morph->drone_states) {
         for (uint32_t i = 0; i < morph->active_drones; i++) {
             if (morph->drone_states[i].transition_history) {
-                NIMCP_FREE(morph->drone_states[i].transition_history);
+                nimcp_free(morph->drone_states[i].transition_history);
             }
         }
-        NIMCP_FREE(morph->drone_states);
+        nimcp_free(morph->drone_states);
     }
 
     if (morph->global_gradients) {
-        NIMCP_FREE(morph->global_gradients);
+        nimcp_free(morph->global_gradients);
     }
 
     nimcp_platform_mutex_unlock(&morph->lock);
     nimcp_platform_mutex_destroy(&morph->lock);
 
     morph->initialized = false;
-    NIMCP_FREE(morph);
+    nimcp_free(morph);
 
-    NIMCP_LOG_INFO("Swarm morphogenesis system destroyed");
+    LOG_INFO("Swarm morphogenesis system destroyed");
 }
 
 nimcp_result_t nimcp_swarm_morphogenesis_init_bio_async(
     NimcpSwarmMorphogenesis* morph
 ) {
     if (!morph || !morph->initialized) {
-        NIMCP_LOG_ERROR("Invalid morphogenesis system");
+        LOG_ERROR("Invalid morphogenesis system");
         return NIMCP_INVALID_PARAM;
     }
 
-    NIMCP_LOG_INFO("Initializing bio-async integration for morphogenesis");
+    LOG_INFO("Initializing bio-async integration for morphogenesis");
 
     nimcp_platform_mutex_lock(&morph->lock);
 
@@ -401,7 +401,7 @@ nimcp_result_t nimcp_swarm_morphogenesis_init_bio_async(
     /* Register with bio-router */
     morph->bio_ctx = bio_router_register_module(&bio_info);
     if (!morph->bio_ctx) {
-        NIMCP_LOG_ERROR("Failed to register morphogenesis with bio-router");
+        LOG_ERROR("Failed to register morphogenesis with bio-router");
         nimcp_platform_mutex_unlock(&morph->lock);
         return NIMCP_ERROR;
     }
@@ -410,7 +410,7 @@ nimcp_result_t nimcp_swarm_morphogenesis_init_bio_async(
 
     nimcp_platform_mutex_unlock(&morph->lock);
 
-    NIMCP_LOG_INFO("Bio-async integration initialized successfully");
+    LOG_INFO("Bio-async integration initialized successfully");
     return NIMCP_SUCCESS;
 }
 
@@ -418,32 +418,32 @@ nimcp_result_t nimcp_swarm_morphogenesis_init_bio_async(
  * Drone Management Functions
  * ============================================================================ */
 
-NimcpStatus nimcp_swarm_morphogenesis_register_drone(
+nimcp_result_t nimcp_swarm_morphogenesis_register_drone(
     NimcpSwarmMorphogenesis* morph,
     uint32_t drone_id,
     const float position[3]
 ) {
     if (!morph || !morph->initialized) {
-        return NIMCP_ERROR_INVALID_ARGUMENT;
+        return NIMCP_INVALID_PARAM;
     }
 
     if (!position) {
-        return NIMCP_ERROR_INVALID_ARGUMENT;
+        return NIMCP_INVALID_PARAM;
     }
 
     nimcp_platform_mutex_lock(&morph->lock);
 
     if (morph->active_drones >= morph->max_drones) {
-        NIMCP_LOG_ERROR("Cannot register drone: max capacity reached");
+        LOG_ERROR("Cannot register drone: max capacity reached");
         nimcp_platform_mutex_unlock(&morph->lock);
-        return NIMCP_ERROR_OUT_OF_MEMORY;
+        return NIMCP_NO_MEMORY;
     }
 
     /* Check if drone already registered */
     if (find_drone_state(morph, drone_id) != NULL) {
-        NIMCP_LOG_WARN("Drone %u already registered", drone_id);
+        LOG_WARN("Drone %u already registered", drone_id);
         nimcp_platform_mutex_unlock(&morph->lock);
-        return NIMCP_ERROR_ALREADY_EXISTS;
+        return NIMCP_ALREADY_EXISTS;
     }
 
     /* Initialize drone state */
@@ -465,13 +465,13 @@ NimcpStatus nimcp_swarm_morphogenesis_register_drone(
 
     /* Allocate transition history */
     state->history_size = NIMCP_MORPH_DEFAULT_HISTORY_SIZE;
-    state->transition_history = NIMCP_MALLOC(
+    state->transition_history = nimcp_malloc(
         state->history_size * sizeof(NimcpRoleTransition)
     );
     if (!state->transition_history) {
-        NIMCP_LOG_ERROR("Failed to allocate transition history");
+        LOG_ERROR("Failed to allocate transition history");
         nimcp_platform_mutex_unlock(&morph->lock);
-        return NIMCP_ERROR_OUT_OF_MEMORY;
+        return NIMCP_NO_MEMORY;
     }
     memset(state->transition_history, 0,
            state->history_size * sizeof(NimcpRoleTransition));
@@ -490,18 +490,18 @@ NimcpStatus nimcp_swarm_morphogenesis_register_drone(
 
     nimcp_platform_mutex_unlock(&morph->lock);
 
-    NIMCP_LOG_INFO("Registered drone %u at position (%.2f, %.2f, %.2f)",
+    LOG_INFO("Registered drone %u at position (%.2f, %.2f, %.2f)",
                    drone_id, position[0], position[1], position[2]);
 
     return NIMCP_SUCCESS;
 }
 
-NimcpStatus nimcp_swarm_morphogenesis_unregister_drone(
+nimcp_result_t nimcp_swarm_morphogenesis_unregister_drone(
     NimcpSwarmMorphogenesis* morph,
     uint32_t drone_id
 ) {
     if (!morph || !morph->initialized) {
-        return NIMCP_ERROR_INVALID_ARGUMENT;
+        return NIMCP_INVALID_PARAM;
     }
 
     nimcp_platform_mutex_lock(&morph->lock);
@@ -516,14 +516,14 @@ NimcpStatus nimcp_swarm_morphogenesis_unregister_drone(
     }
 
     if (drone_idx < 0) {
-        NIMCP_LOG_WARN("Drone %u not found", drone_id);
+        LOG_WARN("Drone %u not found", drone_id);
         nimcp_platform_mutex_unlock(&morph->lock);
-        return NIMCP_ERROR_NOT_FOUND;
+        return NIMCP_NOT_FOUND;
     }
 
     /* Free transition history */
     if (morph->drone_states[drone_idx].transition_history) {
-        NIMCP_FREE(morph->drone_states[drone_idx].transition_history);
+        nimcp_free(morph->drone_states[drone_idx].transition_history);
     }
 
     /* Move last drone to this position */
@@ -541,18 +541,18 @@ NimcpStatus nimcp_swarm_morphogenesis_unregister_drone(
 
     nimcp_platform_mutex_unlock(&morph->lock);
 
-    NIMCP_LOG_INFO("Unregistered drone %u", drone_id);
+    LOG_INFO("Unregistered drone %u", drone_id);
 
     return NIMCP_SUCCESS;
 }
 
-NimcpStatus nimcp_swarm_morphogenesis_update_position(
+nimcp_result_t nimcp_swarm_morphogenesis_update_position(
     NimcpSwarmMorphogenesis* morph,
     uint32_t drone_id,
     const float position[3]
 ) {
     if (!morph || !morph->initialized || !position) {
-        return NIMCP_ERROR_INVALID_ARGUMENT;
+        return NIMCP_INVALID_PARAM;
     }
 
     nimcp_platform_mutex_lock(&morph->lock);
@@ -560,7 +560,7 @@ NimcpStatus nimcp_swarm_morphogenesis_update_position(
     NimcpDroneRoleState* state = find_drone_state(morph, drone_id);
     if (!state) {
         nimcp_platform_mutex_unlock(&morph->lock);
-        return NIMCP_ERROR_NOT_FOUND;
+        return NIMCP_NOT_FOUND;
     }
 
     /* Update position */
@@ -583,13 +583,13 @@ NimcpStatus nimcp_swarm_morphogenesis_update_position(
  * Role Assignment and Differentiation
  * ============================================================================ */
 
-NimcpStatus nimcp_swarm_morphogenesis_get_role(
+nimcp_result_t nimcp_swarm_morphogenesis_get_role(
     const NimcpSwarmMorphogenesis* morph,
     uint32_t drone_id,
     NimcpSwarmRole* out_role
 ) {
     if (!morph || !morph->initialized || !out_role) {
-        return NIMCP_ERROR_INVALID_ARGUMENT;
+        return NIMCP_INVALID_PARAM;
     }
 
     nimcp_platform_mutex_lock(&morph->lock);
@@ -600,7 +600,7 @@ NimcpStatus nimcp_swarm_morphogenesis_get_role(
     );
     if (!state) {
         nimcp_platform_mutex_unlock(&morph->lock);
-        return NIMCP_ERROR_NOT_FOUND;
+        return NIMCP_NOT_FOUND;
     }
 
     *out_role = state->current_role;
@@ -610,18 +610,18 @@ NimcpStatus nimcp_swarm_morphogenesis_get_role(
     return NIMCP_SUCCESS;
 }
 
-NimcpStatus nimcp_swarm_morphogenesis_assign_role(
+nimcp_result_t nimcp_swarm_morphogenesis_assign_role(
     NimcpSwarmMorphogenesis* morph,
     uint32_t drone_id,
     NimcpSwarmRole new_role,
     bool force
 ) {
     if (!morph || !morph->initialized) {
-        return NIMCP_ERROR_INVALID_ARGUMENT;
+        return NIMCP_INVALID_PARAM;
     }
 
     if (new_role < 0 || new_role >= NIMCP_SWARM_ROLE_COUNT) {
-        return NIMCP_ERROR_INVALID_ARGUMENT;
+        return NIMCP_INVALID_PARAM;
     }
 
     nimcp_platform_mutex_lock(&morph->lock);
@@ -629,15 +629,15 @@ NimcpStatus nimcp_swarm_morphogenesis_assign_role(
     NimcpDroneRoleState* state = find_drone_state(morph, drone_id);
     if (!state) {
         nimcp_platform_mutex_unlock(&morph->lock);
-        return NIMCP_ERROR_NOT_FOUND;
+        return NIMCP_NOT_FOUND;
     }
 
     /* Check cooldown unless forced */
     if (!force && state->cooldown_remaining > 0.0f) {
-        NIMCP_LOG_WARN("Drone %u in cooldown (%.2f seconds remaining)",
+        LOG_WARN("Drone %u in cooldown (%.2f seconds remaining)",
                        drone_id, state->cooldown_remaining);
         nimcp_platform_mutex_unlock(&morph->lock);
-        return NIMCP_ERROR_BUSY;
+        return NIMCP_ERROR;
     }
 
     NimcpSwarmRole old_role = state->current_role;
@@ -679,7 +679,7 @@ NimcpStatus nimcp_swarm_morphogenesis_assign_role(
 
     nimcp_platform_mutex_unlock(&morph->lock);
 
-    NIMCP_LOG_INFO("Drone %u role changed: %s -> %s (forced=%d)",
+    LOG_INFO("Drone %u role changed: %s -> %s (forced=%d)",
                    drone_id,
                    ROLE_SPECS[old_role].name,
                    ROLE_SPECS[new_role].name,
@@ -693,7 +693,7 @@ NimcpStatus nimcp_swarm_morphogenesis_assign_role(
     return NIMCP_SUCCESS;
 }
 
-NimcpStatus nimcp_swarm_morphogenesis_dedifferentiate(
+nimcp_result_t nimcp_swarm_morphogenesis_dedifferentiate(
     NimcpSwarmMorphogenesis* morph,
     uint32_t drone_id
 ) {
@@ -705,13 +705,13 @@ NimcpStatus nimcp_swarm_morphogenesis_dedifferentiate(
     );
 }
 
-NimcpStatus nimcp_swarm_morphogenesis_can_differentiate(
+nimcp_result_t nimcp_swarm_morphogenesis_can_differentiate(
     const NimcpSwarmMorphogenesis* morph,
     uint32_t drone_id,
     bool* out_can_differentiate
 ) {
     if (!morph || !morph->initialized || !out_can_differentiate) {
-        return NIMCP_ERROR_INVALID_ARGUMENT;
+        return NIMCP_INVALID_PARAM;
     }
 
     nimcp_platform_mutex_lock(&morph->lock);
@@ -722,7 +722,7 @@ NimcpStatus nimcp_swarm_morphogenesis_can_differentiate(
     );
     if (!state) {
         nimcp_platform_mutex_unlock(&morph->lock);
-        return NIMCP_ERROR_NOT_FOUND;
+        return NIMCP_NOT_FOUND;
     }
 
     *out_can_differentiate = (state->cooldown_remaining <= 0.0f);
@@ -736,19 +736,19 @@ NimcpStatus nimcp_swarm_morphogenesis_can_differentiate(
  * Morphogen Gradient Functions
  * ============================================================================ */
 
-NimcpStatus nimcp_swarm_morphogenesis_update_gradients(
+nimcp_result_t nimcp_swarm_morphogenesis_update_gradients(
     NimcpSwarmMorphogenesis* morph,
     float delta_time
 ) {
     if (!morph || !morph->initialized) {
-        return NIMCP_ERROR_INVALID_ARGUMENT;
+        return NIMCP_INVALID_PARAM;
     }
 
-    if (nimcp_atomic_load(&morph->update_in_progress)) {
+    if (nimcp_atomic_load_i32(&morph->update_in_progress, NIMCP_MEMORY_ORDER_SEQ_CST)) {
         return NIMCP_SUCCESS; /* Already updating */
     }
 
-    nimcp_atomic_store(&morph->update_in_progress, 1);
+    nimcp_atomic_store_i32(&morph->update_in_progress, 1, NIMCP_MEMORY_ORDER_SEQ_CST);
     nimcp_platform_mutex_lock(&morph->lock);
 
     /* Update swarm center first */
@@ -802,27 +802,27 @@ NimcpStatus nimcp_swarm_morphogenesis_update_gradients(
     }
 
     nimcp_platform_mutex_unlock(&morph->lock);
-    nimcp_atomic_store(&morph->update_in_progress, 0);
+    nimcp_atomic_store_i32(&morph->update_in_progress, 0, NIMCP_MEMORY_ORDER_SEQ_CST);
 
     return NIMCP_SUCCESS;
 }
 
-NimcpStatus nimcp_swarm_morphogenesis_set_morphogen(
+nimcp_result_t nimcp_swarm_morphogenesis_set_morphogen(
     NimcpSwarmMorphogenesis* morph,
     NimcpMorphogenType morphogen_type,
     const float position[3],
     float concentration
 ) {
     if (!morph || !morph->initialized || !position) {
-        return NIMCP_ERROR_INVALID_ARGUMENT;
+        return NIMCP_INVALID_PARAM;
     }
 
     if (morphogen_type < 0 || morphogen_type >= NIMCP_MORPHOGEN_COUNT) {
-        return NIMCP_ERROR_INVALID_ARGUMENT;
+        return NIMCP_INVALID_PARAM;
     }
 
     if (concentration < 0.0f || concentration > 1.0f) {
-        return NIMCP_ERROR_INVALID_ARGUMENT;
+        return NIMCP_INVALID_PARAM;
     }
 
     nimcp_platform_mutex_lock(&morph->lock);
@@ -848,18 +848,18 @@ NimcpStatus nimcp_swarm_morphogenesis_set_morphogen(
     return NIMCP_SUCCESS;
 }
 
-NimcpStatus nimcp_swarm_morphogenesis_get_morphogen(
+nimcp_result_t nimcp_swarm_morphogenesis_get_morphogen(
     const NimcpSwarmMorphogenesis* morph,
     NimcpMorphogenType morphogen_type,
     const float position[3],
     float* out_concentration
 ) {
     if (!morph || !morph->initialized || !position || !out_concentration) {
-        return NIMCP_ERROR_INVALID_ARGUMENT;
+        return NIMCP_INVALID_PARAM;
     }
 
     if (morphogen_type < 0 || morphogen_type >= NIMCP_MORPHOGEN_COUNT) {
-        return NIMCP_ERROR_INVALID_ARGUMENT;
+        return NIMCP_INVALID_PARAM;
     }
 
     nimcp_platform_mutex_lock(&morph->lock);
@@ -887,14 +887,14 @@ NimcpStatus nimcp_swarm_morphogenesis_get_morphogen(
     return NIMCP_SUCCESS;
 }
 
-NimcpStatus nimcp_swarm_morphogenesis_evaluate_differentiation(
+nimcp_result_t nimcp_swarm_morphogenesis_evaluate_differentiation(
     const NimcpSwarmMorphogenesis* morph,
     uint32_t drone_id,
     NimcpSwarmRole* out_suggested_role,
     float* out_confidence
 ) {
     if (!morph || !morph->initialized || !out_suggested_role || !out_confidence) {
-        return NIMCP_ERROR_INVALID_ARGUMENT;
+        return NIMCP_INVALID_PARAM;
     }
 
     nimcp_platform_mutex_lock(&morph->lock);
@@ -905,7 +905,7 @@ NimcpStatus nimcp_swarm_morphogenesis_evaluate_differentiation(
     );
     if (!state) {
         nimcp_platform_mutex_unlock(&morph->lock);
-        return NIMCP_ERROR_NOT_FOUND;
+        return NIMCP_NOT_FOUND;
     }
 
     /* Evaluate based on morphogen gradients */
@@ -960,12 +960,12 @@ NimcpStatus nimcp_swarm_morphogenesis_evaluate_differentiation(
  * Load Balancing Functions
  * ============================================================================ */
 
-NimcpStatus nimcp_swarm_morphogenesis_get_distribution(
+nimcp_result_t nimcp_swarm_morphogenesis_get_distribution(
     const NimcpSwarmMorphogenesis* morph,
     NimcpRoleDistribution* out_distribution
 ) {
     if (!morph || !morph->initialized || !out_distribution) {
-        return NIMCP_ERROR_INVALID_ARGUMENT;
+        return NIMCP_INVALID_PARAM;
     }
 
     nimcp_platform_mutex_lock(&morph->lock);
@@ -977,13 +977,13 @@ NimcpStatus nimcp_swarm_morphogenesis_get_distribution(
     return NIMCP_SUCCESS;
 }
 
-NimcpStatus nimcp_swarm_morphogenesis_is_balanced(
+nimcp_result_t nimcp_swarm_morphogenesis_is_balanced(
     const NimcpSwarmMorphogenesis* morph,
     bool* out_balanced,
     float* out_balance_score
 ) {
     if (!morph || !morph->initialized || !out_balanced || !out_balance_score) {
-        return NIMCP_ERROR_INVALID_ARGUMENT;
+        return NIMCP_INVALID_PARAM;
     }
 
     nimcp_platform_mutex_lock(&morph->lock);
@@ -996,17 +996,17 @@ NimcpStatus nimcp_swarm_morphogenesis_is_balanced(
     return NIMCP_SUCCESS;
 }
 
-NimcpStatus nimcp_swarm_morphogenesis_rebalance(
+nimcp_result_t nimcp_swarm_morphogenesis_rebalance(
     NimcpSwarmMorphogenesis* morph,
     const float* target_distribution
 ) {
     if (!morph || !morph->initialized) {
-        return NIMCP_ERROR_INVALID_ARGUMENT;
+        return NIMCP_INVALID_PARAM;
     }
 
     nimcp_platform_mutex_lock(&morph->lock);
 
-    NIMCP_LOG_INFO("Rebalancing swarm role distribution");
+    LOG_INFO("Rebalancing swarm role distribution");
 
     /* Default target distribution if none provided */
     float default_targets[NIMCP_SWARM_ROLE_COUNT] = {
@@ -1063,7 +1063,7 @@ NimcpStatus nimcp_swarm_morphogenesis_rebalance(
 
     nimcp_platform_mutex_unlock(&morph->lock);
 
-    NIMCP_LOG_INFO("Rebalancing complete - balance score: %.2f",
+    LOG_INFO("Rebalancing complete - balance score: %.2f",
                    morph->distribution.balance_score);
 
     return NIMCP_SUCCESS;
@@ -1101,7 +1101,7 @@ const char* nimcp_swarm_morphogenesis_role_name(NimcpSwarmRole role) {
  * Statistics and Monitoring
  * ============================================================================ */
 
-NimcpStatus nimcp_swarm_morphogenesis_get_transition_history(
+nimcp_result_t nimcp_swarm_morphogenesis_get_transition_history(
     const NimcpSwarmMorphogenesis* morph,
     uint32_t drone_id,
     NimcpRoleTransition* out_history,
@@ -1109,7 +1109,7 @@ NimcpStatus nimcp_swarm_morphogenesis_get_transition_history(
     uint32_t* out_count
 ) {
     if (!morph || !morph->initialized || !out_history || !out_count) {
-        return NIMCP_ERROR_INVALID_ARGUMENT;
+        return NIMCP_INVALID_PARAM;
     }
 
     nimcp_platform_mutex_lock(&morph->lock);
@@ -1120,7 +1120,7 @@ NimcpStatus nimcp_swarm_morphogenesis_get_transition_history(
     );
     if (!state) {
         nimcp_platform_mutex_unlock(&morph->lock);
-        return NIMCP_ERROR_NOT_FOUND;
+        return NIMCP_NOT_FOUND;
     }
 
     uint32_t count = state->history_count < max_entries ?
@@ -1232,7 +1232,7 @@ nimcp_result_t nimcp_swarm_morphogenesis_process_messages(
         nimcp_platform_mutex_lock(&morph->lock);
         update_role_distribution(morph);
         nimcp_platform_mutex_unlock(&morph->lock);
-        NIMCP_LOG_DEBUG("Processed %zu morphogenesis messages", processed);
+        LOG_DEBUG("Processed %zu morphogenesis messages", processed);
     }
 
     return NIMCP_SUCCESS;

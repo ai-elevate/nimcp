@@ -280,8 +280,8 @@ typedef struct {
     nimcp_comm_bridge_t bridges[NIMCP_MAX_COMM_BRIDGES];
     uint32_t bridge_count;             /**< Active bridges */
 
-    nimcp_hash_table_t* resource_requests; /**< Pending requests */
-    nimcp_vector_t* conflicts;         /**< Active conflicts */
+    void* resource_requests; /**< Pending requests */
+    void* conflicts;         /**< Active conflicts */
 
     nimcp_territory_bounds_t overall_territory; /**< Total area */
 
@@ -299,10 +299,10 @@ typedef struct {
     nimcp_super_swarm_t* super_swarms[NIMCP_MAX_SWARMS_PER_SUPER];
     uint32_t super_swarm_count;        /**< Number of super-swarms */
 
-    nimcp_hash_table_t* swarm_registry; /**< All known swarms */
-    nimcp_hash_table_t* mission_registry; /**< All missions */
+    void* swarm_registry; /**< All known swarms */
+    void* mission_registry; /**< All missions */
 
-    nimcp_brain_t* brain;              /**< Associated brain (optional) */
+    void* brain;              /**< Associated brain (optional) */
     bio_router_t* router;        /**< Bio-async router */
 
     uint64_t next_swarm_id;            /**< Next swarm ID */
@@ -357,7 +357,7 @@ typedef void (*nimcp_mission_assigner_fn)(
  * @return Newly created coordinator, or NULL on failure
  */
 nimcp_multi_swarm_coordinator_t* nimcp_multi_swarm_create(
-    nimcp_brain_t* brain,
+    void* brain,
     bio_router_t* router
 );
 
@@ -550,7 +550,7 @@ nimcp_result_t nimcp_territory_negotiate(
  */
 uint32_t nimcp_territory_detect_conflicts(
     nimcp_multi_swarm_coordinator_t* coordinator,
-    nimcp_vector_t* conflicts
+    void* conflicts
 );
 
 /* ============================================================================
@@ -880,7 +880,7 @@ uint32_t nimcp_swarm_find_by_capability(
     nimcp_multi_swarm_coordinator_t* coordinator,
     nimcp_swarm_capability_type_t capability,
     float min_proficiency,
-    nimcp_vector_t* results
+    void* results
 );
 
 /**
@@ -894,7 +894,7 @@ uint32_t nimcp_swarm_find_by_capability(
 uint32_t nimcp_swarm_find_in_territory(
     nimcp_multi_swarm_coordinator_t* coordinator,
     nimcp_territory_bounds_t territory,
-    nimcp_vector_t* results
+    void* results
 );
 
 /**

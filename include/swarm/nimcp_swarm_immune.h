@@ -203,7 +203,7 @@ typedef struct {
     uint8_t self_signature[32];
 
     /* Thread safety */
-    void* mutex;
+    nimcp_platform_mutex_t* mutex;  /**< Mutex for thread safety */
 } NimcpSwarmImmuneSystem;
 
 /* ============================================================================

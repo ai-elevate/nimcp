@@ -185,7 +185,7 @@ typedef struct nimcp_swarm_quorum {
     struct nimcp_brain* brain;            /**< Associated brain for messaging */
 
     /* Synchronization */
-    nimcp_mutex_t* mutex;        /**< Mutex for thread safety */
+    nimcp_platform_mutex_t* mutex;  /**< Mutex for thread safety */
 
     /* State */
     uint64_t creation_time;               /**< Creation timestamp */
@@ -570,8 +570,6 @@ const char* nimcp_quorum_commitment_name(nimcp_commitment_state_t state);
  */
 void nimcp_quorum_print_state(const nimcp_swarm_quorum_t* quorum);
 
-#include "async/nimcp_bio_router.h"
-#include "utils/thread/nimcp_thread.h"
 #ifdef __cplusplus
 }
 #endif

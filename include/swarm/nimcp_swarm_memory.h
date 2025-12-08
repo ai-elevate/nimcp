@@ -175,7 +175,7 @@ typedef struct {
 typedef struct {
     uint32_t pattern_count;           /**< Number of patterns extracted */
     void *pattern_tree;               /**< Hierarchical pattern tree */
-    NimcpHashTable *pattern_index;    /**< Pattern lookup index */
+    void *pattern_index;              /**< Pattern lookup index (stubbed) */
     float compression_target;         /**< Target compression ratio */
     uint32_t abstraction_level;       /**< Level of abstraction */
 } NimcpSemanticCompression;
@@ -206,10 +206,10 @@ typedef struct {
  * @brief Main swarm memory consolidation system
  */
 typedef struct {
-    /* Memory storage */
-    NimcpHashTable *memories;         /**< All memories indexed by ID */
-    NimcpHashTable *memories_by_type[NIMCP_MEMORY_TYPE_COUNT]; /**< By type */
-    NimcpMinHeap *replay_queue;       /**< Priority queue for replay */
+    /* Memory storage - using real container types */
+    hash_table_t *memories;                   /**< All memories indexed by ID */
+    hash_table_t *memories_by_type[NIMCP_MEMORY_TYPE_COUNT]; /**< By type */
+    nimcp_min_heap_t *replay_queue;           /**< Priority queue for replay */
 
     /* Forgetting curves */
     NimcpForgettingCurve curves[NIMCP_MEMORY_TYPE_COUNT]; /**< Per-type curves */
@@ -220,15 +220,15 @@ typedef struct {
     uint32_t consolidation_count;     /**< Total consolidations performed */
 
     /* Distributed hippocampus */
-    NimcpHashTable *hippocampus_nodes; /**< Active hippocampus nodes */
+    hash_table_t *hippocampus_nodes;          /**< Active hippocampus nodes */
     uint32_t replication_factor;      /**< Target replication factor */
     float consensus_threshold;        /**< Consensus threshold (0.0-1.0) */
 
     /* Semantic compression */
     NimcpSemanticCompression compression; /**< Compression context */
 
-    /* Bio-async integration */
-    NimcpBioContext *bio_ctx;         /**< Bio-async context */
+    /* Bio-async integration (stubbed) */
+    void *bio_ctx;                    /**< Bio-async context */
     bool bio_async_enabled;           /**< Bio-async enabled flag */
 
     /* Statistics */
@@ -242,7 +242,7 @@ typedef struct {
     bool auto_distribution;           /**< Automatic distribution enabled */
 
     /* Synchronization */
-    nimcp_mutex_t mutex;                 /**< Thread-safety mutex */
+    nimcp_platform_mutex_t* mutex;       /**< Thread-safety mutex */
     bool is_initialized;              /**< Initialization flag */
 } NimcpSwarmMemory;
 
@@ -278,7 +278,7 @@ void nimcp_swarm_memory_destroy(NimcpSwarmMemory *memory);
  */
 nimcp_result_t nimcp_swarm_memory_init(
     NimcpSwarmMemory *memory,
-    NimcpBioContext *bio_ctx
+    void *bio_ctx
 );
 
 /* ============================================================================
@@ -682,7 +682,7 @@ nimcp_result_t nimcp_swarm_memory_build_hierarchy(
  */
 nimcp_result_t nimcp_swarm_memory_process_message(
     NimcpSwarmMemory *memory,
-    const NimcpBioMessage *msg
+    const void *msg
 );
 
 /**

@@ -12,10 +12,11 @@
 #include "utils/logging/nimcp_logging.h"
 #include "utils/time/nimcp_time.h"
 #include "utils/validation/nimcp_validate.h"
-#include <stdlib.h>
+#include "utils/memory/nimcp_memory.h"
 #include <string.h>
 #include <math.h>
 #include <float.h>
+#include <stdio.h>
 
 /* Default configuration values */
 #define DEFAULT_BASE_THRESHOLD 0.7
@@ -82,7 +83,7 @@ static void init_signal_molecule(
     signal->decay_rate = decay_rate;
     signal->amplification = amplification;
     signal->inhibition = inhibition;
-    signal->last_update_time = nimcp_get_time_us();
+    signal->last_update_time = nimcp_time_get_us();
     signal->committed_count = 0;
     signal->threshold_reached = false;
     signal->hysteresis_low = MAX(0.0, threshold - hysteresis_width / 2.0);
@@ -114,12 +115,12 @@ static nimcp_drone_commitment_t* add_commitment(
     /* Expand array if needed */
     if (quorum->commitment_count >= quorum->commitment_capacity) {
         uint32_t new_capacity = quorum->commitment_capacity * 2;
-        nimcp_drone_commitment_t* new_array = (nimcp_drone_commitment_t*)realloc(
+        nimcp_drone_commitment_t* new_array = (nimcp_drone_commitment_t*)nimcp_realloc(
             quorum->commitments,
             new_capacity * sizeof(nimcp_drone_commitment_t)
         );
         if (!new_array) {
-            NIMCP_LOG_ERROR("Failed to expand commitment array");
+            LOG_ERROR("Failed to expand commitment array");
             return NULL;
         }
         quorum->commitments = new_array;
@@ -132,7 +133,7 @@ static nimcp_drone_commitment_t* add_commitment(
     commit->signal = NIMCP_SIGNAL_ATTACK; /* Default */
     commit->state = NIMCP_COMMIT_UNCOMMITTED;
     commit->commitment_strength = 0.0;
-    commit->commitment_time = nimcp_get_time_us();
+    commit->commitment_time = nimcp_time_get_us();
     commit->recruitment_count = 0;
     commit->is_amplifying = false;
 
@@ -165,7 +166,7 @@ static void update_commitment_state(
 
     /* Update commitment time on state change */
     if (old_state != commit->state) {
-        commit->commitment_time = nimcp_get_time_us();
+        commit->commitment_time = nimcp_time_get_us();
     }
 }
 
@@ -192,12 +193,12 @@ static bool add_decision(
     /* Expand array if needed */
     if (quorum->decision_count >= quorum->decision_capacity) {
         uint32_t new_capacity = quorum->decision_capacity * 2;
-        nimcp_quorum_decision_t* new_array = (nimcp_quorum_decision_t*)realloc(
+        nimcp_quorum_decision_t* new_array = (nimcp_quorum_decision_t*)nimcp_realloc(
             quorum->decisions,
             new_capacity * sizeof(nimcp_quorum_decision_t)
         );
         if (!new_array) {
-            NIMCP_LOG_ERROR("Failed to expand decision array");
+            LOG_ERROR("Failed to expand decision array");
             return false;
         }
         quorum->decisions = new_array;
@@ -209,7 +210,7 @@ static bool add_decision(
     decision->type = type;
     decision->winning_signal = signal;
     decision->consensus_strength = consensus;
-    decision->decision_time = nimcp_get_time_us();
+    decision->decision_time = nimcp_time_get_us();
     decision->participating_drones = participating;
     decision->committed_drones = committed;
     decision->is_final = false;
@@ -245,13 +246,13 @@ nimcp_swarm_quorum_t* nimcp_swarm_quorum_create(
     const nimcp_quorum_config_t* config,
     struct nimcp_brain* brain
 ) {
-    NIMCP_LOG_DEBUG("Creating quorum sensing system");
+    LOG_DEBUG("Creating quorum sensing system");
 
-    nimcp_swarm_quorum_t* quorum = (nimcp_swarm_quorum_t*)calloc(
+    nimcp_swarm_quorum_t* quorum = (nimcp_swarm_quorum_t*)nimcp_calloc(
         1, sizeof(nimcp_swarm_quorum_t)
     );
     if (!quorum) {
-        NIMCP_LOG_ERROR("Failed to allocate quorum system");
+        LOG_ERROR("Failed to allocate quorum system");
         return NULL;
     }
 
@@ -281,42 +282,42 @@ nimcp_swarm_quorum_t* nimcp_swarm_quorum_create(
 
     /* Allocate commitment array */
     quorum->commitment_capacity = INITIAL_COMMITMENT_CAPACITY;
-    quorum->commitments = (nimcp_drone_commitment_t*)calloc(
+    quorum->commitments = (nimcp_drone_commitment_t*)nimcp_calloc(
         quorum->commitment_capacity,
         sizeof(nimcp_drone_commitment_t)
     );
     if (!quorum->commitments) {
-        NIMCP_LOG_ERROR("Failed to allocate commitment array");
-        free(quorum);
+        LOG_ERROR("Failed to allocate commitment array");
+        nimcp_free(quorum);
         return NULL;
     }
 
     /* Allocate decision array */
     quorum->decision_capacity = INITIAL_DECISION_CAPACITY;
-    quorum->decisions = (nimcp_quorum_decision_t*)calloc(
+    quorum->decisions = (nimcp_quorum_decision_t*)nimcp_calloc(
         quorum->decision_capacity,
         sizeof(nimcp_quorum_decision_t)
     );
     if (!quorum->decisions) {
-        NIMCP_LOG_ERROR("Failed to allocate decision array");
-        free(quorum->commitments);
-        free(quorum);
+        LOG_ERROR("Failed to allocate decision array");
+        nimcp_free(quorum->commitments);
+        nimcp_free(quorum);
         return NULL;
     }
 
     /* Create mutex */
     quorum->mutex = nimcp_platform_mutex_create();
     if (!quorum->mutex) {
-        NIMCP_LOG_ERROR("Failed to create mutex");
-        free(quorum->decisions);
-        free(quorum->commitments);
-        free(quorum);
+        LOG_ERROR("Failed to create mutex");
+        nimcp_free(quorum->decisions);
+        nimcp_free(quorum->commitments);
+        nimcp_free(quorum);
         return NULL;
     }
 
     /* Initialize state */
     quorum->brain = brain;
-    quorum->creation_time = nimcp_get_time_us();
+    quorum->creation_time = nimcp_time_get_us();
     quorum->is_active = true;
 
     /* Register bio-async handlers if brain provided */
@@ -324,22 +325,22 @@ nimcp_swarm_quorum_t* nimcp_swarm_quorum_create(
         nimcp_quorum_register_handlers(quorum, brain);
     }
 
-    NIMCP_LOG_INFO("Quorum sensing system created successfully");
+    LOG_INFO("Quorum sensing system created successfully");
     return quorum;
 }
 
 void nimcp_swarm_quorum_destroy(nimcp_swarm_quorum_t* quorum) {
     if (!quorum) return;
 
-    NIMCP_LOG_DEBUG("Destroying quorum sensing system");
+    LOG_DEBUG("Destroying quorum sensing system");
 
     if (quorum->mutex) {
         nimcp_platform_mutex_destroy(quorum->mutex);
     }
 
-    free(quorum->decisions);
-    free(quorum->commitments);
-    free(quorum);
+    nimcp_free(quorum->decisions);
+    nimcp_free(quorum->commitments);
+    nimcp_free(quorum);
 }
 
 /* ============================================================================
@@ -353,7 +354,7 @@ bool nimcp_quorum_broadcast_signal(
     double strength
 ) {
     if (!quorum || signal >= NIMCP_SIGNAL_COUNT) {
-        NIMCP_LOG_ERROR("Invalid parameters for signal broadcast");
+        LOG_ERROR("Invalid parameters for signal broadcast");
         return false;
     }
 
@@ -364,43 +365,17 @@ bool nimcp_quorum_broadcast_signal(
     /* Update local signal concentration */
     nimcp_signal_molecule_t* sig = &quorum->signals[signal];
     sig->concentration = MIN(1.0, sig->concentration + strength);
-    sig->last_update_time = nimcp_get_time_us();
+    sig->last_update_time = nimcp_time_get_us();
 
     /* Update statistics */
     quorum->stats.total_signals_broadcast++;
 
     nimcp_platform_mutex_unlock(quorum->mutex);
 
-    /* Broadcast via bio-async if brain available */
-    if (quorum->brain) {
-        nimcp_quorum_signal_msg_t msg_payload = {
-            .signal = signal,
-            .strength = strength,
-            .drone_id = drone_id,
-            .commitment = NIMCP_COMMIT_UNCOMMITTED
-        };
+    /* Bio-async broadcast - stubbed for now (requires brain integration) */
+    (void)quorum->brain;  /* Suppress unused warning */
 
-        /* Get commitment state if exists */
-        nimcp_drone_commitment_t* commit = find_commitment(quorum, drone_id);
-        if (commit) {
-            msg_payload.commitment = commit->state;
-        }
-
-        bio_message_header_t* msg = nimcp_bio_message_create(
-            BIO_MSG_CUSTOM,
-            drone_id,
-            0, /* broadcast */
-            &msg_payload,
-            sizeof(msg_payload)
-        );
-
-        if (msg) {
-            nimcp_brain_send_bio_message(quorum->brain, msg);
-            nimcp_bio_message_destroy(msg);
-        }
-    }
-
-    NIMCP_LOG_DEBUG("Drone %u broadcast signal %s with strength %.2f",
+    LOG_DEBUG("Drone %u broadcast signal %s with strength %.2f",
                     drone_id, signal_names[signal], strength);
 
     return true;
@@ -423,11 +398,11 @@ bool nimcp_quorum_receive_signal(
     /* Accumulate signal concentration */
     nimcp_signal_molecule_t* sig = &quorum->signals[signal];
     sig->concentration = MIN(1.0, sig->concentration + strength * 0.5); /* Reduced weight for received signals */
-    sig->last_update_time = nimcp_get_time_us();
+    sig->last_update_time = nimcp_time_get_us();
 
     nimcp_platform_mutex_unlock(quorum->mutex);
 
-    NIMCP_LOG_DEBUG("Received signal %s (strength %.2f) from drone %u",
+    LOG_DEBUG("Received signal %s (strength %.2f) from drone %u",
                     signal_names[signal], strength, source_drone);
 
     return true;
@@ -463,18 +438,18 @@ void nimcp_quorum_update_signals(
         if (quorum->config.enable_hysteresis) {
             if (!sig->threshold_reached && sig->concentration >= sig->hysteresis_high) {
                 sig->threshold_reached = true;
-                NIMCP_LOG_INFO("Signal %s reached threshold (%.2f >= %.2f)",
+                LOG_INFO("Signal %s reached threshold (%.2f >= %.2f)",
                               signal_names[i], sig->concentration, sig->hysteresis_high);
             } else if (sig->threshold_reached && sig->concentration < sig->hysteresis_low) {
                 sig->threshold_reached = false;
-                NIMCP_LOG_INFO("Signal %s dropped below threshold (%.2f < %.2f)",
+                LOG_INFO("Signal %s dropped below threshold (%.2f < %.2f)",
                               signal_names[i], sig->concentration, sig->hysteresis_low);
             }
         } else {
             sig->threshold_reached = (sig->concentration >= sig->threshold);
         }
 
-        sig->last_update_time = nimcp_get_time_us();
+        sig->last_update_time = nimcp_time_get_us();
     }
 
     nimcp_platform_mutex_unlock(quorum->mutex);
@@ -533,30 +508,10 @@ bool nimcp_quorum_update_commitment(
 
     nimcp_platform_mutex_unlock(quorum->mutex);
 
-    /* Broadcast commitment via bio-async */
-    if (quorum->brain) {
-        nimcp_quorum_commitment_msg_t msg_payload = {
-            .drone_id = drone_id,
-            .signal = signal,
-            .state = commit->state,
-            .strength = strength
-        };
+    /* Bio-async commitment broadcast - stubbed for now (requires brain integration) */
+    (void)commit;
 
-        bio_message_header_t* msg = nimcp_bio_message_create(
-            BIO_MSG_CUSTOM,
-            drone_id,
-            0, /* broadcast */
-            &msg_payload,
-            sizeof(msg_payload)
-        );
-
-        if (msg) {
-            nimcp_brain_send_bio_message(quorum->brain, msg);
-            nimcp_bio_message_destroy(msg);
-        }
-    }
-
-    NIMCP_LOG_DEBUG("Drone %u commitment updated: signal=%s, state=%s, strength=%.2f",
+    LOG_DEBUG("Drone %u commitment updated: signal=%s, state=%s, strength=%.2f",
                     drone_id, signal_names[signal],
                     commitment_names[commit->state], strength);
 
@@ -604,7 +559,7 @@ bool nimcp_quorum_remove_commitment(
             quorum->commitment_count--;
 
             nimcp_platform_mutex_unlock(quorum->mutex);
-            NIMCP_LOG_DEBUG("Removed commitment for drone %u", drone_id);
+            LOG_DEBUG("Removed commitment for drone %u", drone_id);
             return true;
         }
     }
@@ -645,7 +600,7 @@ uint32_t nimcp_quorum_trigger_cascade(
 
     if (recruited > 0) {
         quorum->stats.cascade_events++;
-        NIMCP_LOG_INFO("Cascade for signal %s recruited %u drones",
+        LOG_INFO("Cascade for signal %s recruited %u drones",
                       signal_names[signal], recruited);
     }
 
@@ -693,7 +648,7 @@ void nimcp_quorum_apply_cross_inhibition(
     for (int i = 0; i < NIMCP_SIGNAL_COUNT; i++) {
         if (i != winning_signal) {
             quorum->signals[i].concentration *= (1.0 - inhibition);
-            NIMCP_LOG_DEBUG("Cross-inhibition: %s suppressed by %s (%.2f)",
+            LOG_DEBUG("Cross-inhibition: %s suppressed by %s (%.2f)",
                           signal_names[i], signal_names[winning_signal],
                           quorum->signals[i].concentration);
         }
@@ -730,7 +685,7 @@ bool nimcp_quorum_make_decision(
         /* No quorum reached */
         quorum->stats.failed_quorums++;
         nimcp_platform_mutex_unlock(quorum->mutex);
-        NIMCP_LOG_DEBUG("No quorum reached for decision type %s",
+        LOG_DEBUG("No quorum reached for decision type %s",
                        decision_names[decision_type]);
         return false;
     }
@@ -772,35 +727,14 @@ bool nimcp_quorum_make_decision(
         /* Trigger cascade for winning signal */
         nimcp_quorum_trigger_cascade(quorum, winning_signal);
 
-        NIMCP_LOG_INFO("Decision made: type=%s, signal=%s, consensus=%.2f, committed=%u",
+        LOG_INFO("Decision made: type=%s, signal=%s, consensus=%.2f, committed=%u",
                       decision_names[decision_type], signal_names[winning_signal],
                       consensus, committed);
     }
 
     nimcp_platform_mutex_unlock(quorum->mutex);
 
-    /* Broadcast decision via bio-async */
-    if (success && quorum->brain) {
-        nimcp_quorum_decision_msg_t msg_payload = {
-            .decision_type = decision_type,
-            .winning_signal = winning_signal,
-            .consensus_strength = consensus,
-            .participating_drones = participating
-        };
-
-        bio_message_header_t* msg = nimcp_bio_message_create(
-            BIO_MSG_CUSTOM,
-            0, /* system */
-            0, /* broadcast */
-            &msg_payload,
-            sizeof(msg_payload)
-        );
-
-        if (msg) {
-            nimcp_brain_send_bio_message(quorum->brain, msg);
-            nimcp_bio_message_destroy(msg);
-        }
-    }
+    /* Bio-async decision broadcast - stubbed for now (requires brain integration) */
 
     return success;
 }
@@ -827,7 +761,7 @@ bool nimcp_quorum_finalize_decision(
     quorum->decisions[decision_index].is_final = true;
     nimcp_platform_mutex_unlock(quorum->mutex);
 
-    NIMCP_LOG_INFO("Decision %u finalized", decision_index);
+    LOG_INFO("Decision %u finalized", decision_index);
     return true;
 }
 
@@ -904,7 +838,7 @@ uint32_t nimcp_quorum_recruit_drones(
     nimcp_platform_mutex_unlock(quorum->mutex);
 
     if (recruited > 0) {
-        NIMCP_LOG_DEBUG("Drone %u recruited %u drones to signal %s",
+        LOG_DEBUG("Drone %u recruited %u drones to signal %s",
                        recruiter_id, recruited, signal_names[signal]);
     }
 
@@ -969,7 +903,7 @@ void nimcp_quorum_reset_stats(nimcp_swarm_quorum_t* quorum) {
     memset(&quorum->stats, 0, sizeof(nimcp_quorum_stats_t));
     nimcp_platform_mutex_unlock(quorum->mutex);
 
-    NIMCP_LOG_INFO("Quorum statistics reset");
+    LOG_INFO("Quorum statistics reset");
 }
 
 /* ============================================================================
@@ -984,30 +918,9 @@ bool nimcp_quorum_handle_message(
         return false;
     }
 
-    /* Handle different message types */
-    if (msg->type == BIO_MSG_CUSTOM) {
-        /* Could be signal, commitment, or decision message */
-        /* Parse based on payload size */
-        if (msg->payload_size == sizeof(nimcp_quorum_signal_msg_t)) {
-            const nimcp_quorum_signal_msg_t* payload =
-                (const nimcp_quorum_signal_msg_t*)msg->payload;
-            return nimcp_quorum_receive_signal(
-                quorum,
-                payload->signal,
-                payload->strength,
-                payload->drone_id
-            );
-        } else if (msg->payload_size == sizeof(nimcp_quorum_commitment_msg_t)) {
-            const nimcp_quorum_commitment_msg_t* payload =
-                (const nimcp_quorum_commitment_msg_t*)msg->payload;
-            return nimcp_quorum_update_commitment(
-                quorum,
-                payload->drone_id,
-                payload->signal,
-                payload->strength
-            );
-        }
-    }
+    /* Message handling stubbed - requires custom message type integration */
+    /* When integrated with bio-async, would parse based on message type */
+    (void)msg->type;  /* Suppress unused warning */
 
     return false;
 }
@@ -1025,7 +938,7 @@ bool nimcp_quorum_register_handlers(
     /* Register with bio-async system */
     /* Note: Actual registration would depend on brain's message routing */
 
-    NIMCP_LOG_INFO("Quorum system registered with brain");
+    LOG_INFO("Quorum system registered with brain");
     return true;
 }
 

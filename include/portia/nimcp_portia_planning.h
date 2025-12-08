@@ -87,6 +87,7 @@
 #include <stdbool.h>
 #include <stddef.h>
 #include "async/nimcp_bio_async.h"
+#include "async/nimcp_bio_router.h"
 
 #ifdef __cplusplus
 extern "C" {

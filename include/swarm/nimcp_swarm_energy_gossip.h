@@ -104,16 +104,7 @@ typedef struct {
  * Gossip Protocol Structures
  * ============================================================================ */
 
-/**
- * @brief Message priority levels
- */
-typedef enum {
-    NIMCP_MSG_PRIORITY_CRITICAL = 0, /**< Emergency messages */
-    NIMCP_MSG_PRIORITY_HIGH,         /**< High priority messages */
-    NIMCP_MSG_PRIORITY_NORMAL,       /**< Normal messages */
-    NIMCP_MSG_PRIORITY_LOW,          /**< Low priority messages */
-    NIMCP_MSG_PRIORITY_BACKGROUND    /**< Background messages */
-} NimcpMessagePriority;
+/* Note: NimcpMessagePriority is defined in nimcp_common.h */
 
 /**
  * @brief Gossip message header
@@ -247,11 +238,11 @@ typedef struct NimcpEnergyGossip {
     NimcpHarvestOpportunity* current_harvest; /**< Current harvest location */
 
     /* Bio-async integration */
-    bio_inbox_t* inbox;               /**< Bio-async inbox */
+    void* inbox;               /**< Bio-async inbox */
     bool bio_async_enabled;             /**< Bio-async enabled */
 
     /* Thread safety */
-    nimcp_mutex_t* mutex;                  /**< Mutex for thread safety */
+    nimcp_platform_mutex_t* mutex;         /**< Mutex for thread safety */
 
     /* Statistics */
     uint64_t messages_sent;             /**< Total messages sent */
@@ -293,7 +284,7 @@ void nimcp_energy_gossip_destroy(NimcpEnergyGossip* gossip);
  */
 nimcp_result_t nimcp_energy_gossip_init_bio_async(
     NimcpEnergyGossip* gossip,
-    bio_inbox_t* inbox
+    void* inbox
 );
 
 /* ============================================================================
@@ -680,7 +671,7 @@ bool nimcp_energy_gossip_should_process(
  */
 nimcp_result_t nimcp_energy_gossip_handle_energy_broadcast(
     NimcpEnergyGossip* gossip,
-    const NimcpBioMessage* message
+    const void* message
 );
 
 /**
@@ -691,7 +682,7 @@ nimcp_result_t nimcp_energy_gossip_handle_energy_broadcast(
  */
 nimcp_result_t nimcp_energy_gossip_handle_sleep_coordination(
     NimcpEnergyGossip* gossip,
-    const NimcpBioMessage* message
+    const void* message
 );
 
 /**
@@ -702,7 +693,7 @@ nimcp_result_t nimcp_energy_gossip_handle_sleep_coordination(
  */
 nimcp_result_t nimcp_energy_gossip_handle_relay_request(
     NimcpEnergyGossip* gossip,
-    const NimcpBioMessage* message
+    const void* message
 );
 
 /**

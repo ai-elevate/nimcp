@@ -208,7 +208,7 @@ typedef struct NimcpSwarmMorphogenesis {
 
     /* Threading and synchronization */
     nimcp_platform_mutex_t lock;      /**< Protects morphogenesis state */
-    nimcp_atomic_int update_in_progress; /**< Update operation in progress */
+    nimcp_atomic_int32_t update_in_progress; /**< Update operation in progress */
 
     /* Bio-async integration */
     bio_module_context_t bio_ctx;     /**< Bio-async module context */
@@ -265,7 +265,7 @@ nimcp_result_t nimcp_swarm_morphogenesis_init_bio_async(
  * @param position Initial position [x, y, z]
  * @return NIMCP_OK on success, error code otherwise
  */
-NimcpStatus nimcp_swarm_morphogenesis_register_drone(
+nimcp_result_t nimcp_swarm_morphogenesis_register_drone(
     NimcpSwarmMorphogenesis* morph,
     uint32_t drone_id,
     const float position[3]
@@ -278,7 +278,7 @@ NimcpStatus nimcp_swarm_morphogenesis_register_drone(
  * @param drone_id Drone identifier to unregister
  * @return NIMCP_OK on success, error code otherwise
  */
-NimcpStatus nimcp_swarm_morphogenesis_unregister_drone(
+nimcp_result_t nimcp_swarm_morphogenesis_unregister_drone(
     NimcpSwarmMorphogenesis* morph,
     uint32_t drone_id
 );
@@ -291,7 +291,7 @@ NimcpStatus nimcp_swarm_morphogenesis_unregister_drone(
  * @param position New position [x, y, z]
  * @return NIMCP_OK on success, error code otherwise
  */
-NimcpStatus nimcp_swarm_morphogenesis_update_position(
+nimcp_result_t nimcp_swarm_morphogenesis_update_position(
     NimcpSwarmMorphogenesis* morph,
     uint32_t drone_id,
     const float position[3]
@@ -309,7 +309,7 @@ NimcpStatus nimcp_swarm_morphogenesis_update_position(
  * @param out_role Output for current role
  * @return NIMCP_OK on success, error code otherwise
  */
-NimcpStatus nimcp_swarm_morphogenesis_get_role(
+nimcp_result_t nimcp_swarm_morphogenesis_get_role(
     const NimcpSwarmMorphogenesis* morph,
     uint32_t drone_id,
     NimcpSwarmRole* out_role
@@ -324,7 +324,7 @@ NimcpStatus nimcp_swarm_morphogenesis_get_role(
  * @param force Whether to ignore cooldown
  * @return NIMCP_OK on success, error code otherwise
  */
-NimcpStatus nimcp_swarm_morphogenesis_assign_role(
+nimcp_result_t nimcp_swarm_morphogenesis_assign_role(
     NimcpSwarmMorphogenesis* morph,
     uint32_t drone_id,
     NimcpSwarmRole new_role,
@@ -338,7 +338,7 @@ NimcpStatus nimcp_swarm_morphogenesis_assign_role(
  * @param drone_id Drone identifier
  * @return NIMCP_OK on success, error code otherwise
  */
-NimcpStatus nimcp_swarm_morphogenesis_dedifferentiate(
+nimcp_result_t nimcp_swarm_morphogenesis_dedifferentiate(
     NimcpSwarmMorphogenesis* morph,
     uint32_t drone_id
 );
@@ -351,7 +351,7 @@ NimcpStatus nimcp_swarm_morphogenesis_dedifferentiate(
  * @param out_can_differentiate Output boolean
  * @return NIMCP_OK on success, error code otherwise
  */
-NimcpStatus nimcp_swarm_morphogenesis_can_differentiate(
+nimcp_result_t nimcp_swarm_morphogenesis_can_differentiate(
     const NimcpSwarmMorphogenesis* morph,
     uint32_t drone_id,
     bool* out_can_differentiate
@@ -368,7 +368,7 @@ NimcpStatus nimcp_swarm_morphogenesis_can_differentiate(
  * @param delta_time Time since last update (seconds)
  * @return NIMCP_OK on success, error code otherwise
  */
-NimcpStatus nimcp_swarm_morphogenesis_update_gradients(
+nimcp_result_t nimcp_swarm_morphogenesis_update_gradients(
     NimcpSwarmMorphogenesis* morph,
     float delta_time
 );
@@ -382,7 +382,7 @@ NimcpStatus nimcp_swarm_morphogenesis_update_gradients(
  * @param concentration Concentration value (0.0-1.0)
  * @return NIMCP_OK on success, error code otherwise
  */
-NimcpStatus nimcp_swarm_morphogenesis_set_morphogen(
+nimcp_result_t nimcp_swarm_morphogenesis_set_morphogen(
     NimcpSwarmMorphogenesis* morph,
     NimcpMorphogenType morphogen_type,
     const float position[3],
@@ -398,7 +398,7 @@ NimcpStatus nimcp_swarm_morphogenesis_set_morphogen(
  * @param out_concentration Output concentration
  * @return NIMCP_OK on success, error code otherwise
  */
-NimcpStatus nimcp_swarm_morphogenesis_get_morphogen(
+nimcp_result_t nimcp_swarm_morphogenesis_get_morphogen(
     const NimcpSwarmMorphogenesis* morph,
     NimcpMorphogenType morphogen_type,
     const float position[3],
@@ -414,7 +414,7 @@ NimcpStatus nimcp_swarm_morphogenesis_get_morphogen(
  * @param out_confidence Confidence in suggestion (0.0-1.0)
  * @return NIMCP_OK on success, error code otherwise
  */
-NimcpStatus nimcp_swarm_morphogenesis_evaluate_differentiation(
+nimcp_result_t nimcp_swarm_morphogenesis_evaluate_differentiation(
     const NimcpSwarmMorphogenesis* morph,
     uint32_t drone_id,
     NimcpSwarmRole* out_suggested_role,
@@ -432,7 +432,7 @@ NimcpStatus nimcp_swarm_morphogenesis_evaluate_differentiation(
  * @param out_distribution Output distribution statistics
  * @return NIMCP_OK on success, error code otherwise
  */
-NimcpStatus nimcp_swarm_morphogenesis_get_distribution(
+nimcp_result_t nimcp_swarm_morphogenesis_get_distribution(
     const NimcpSwarmMorphogenesis* morph,
     NimcpRoleDistribution* out_distribution
 );
@@ -445,7 +445,7 @@ NimcpStatus nimcp_swarm_morphogenesis_get_distribution(
  * @param out_balance_score Output balance score (0.0-1.0)
  * @return NIMCP_OK on success, error code otherwise
  */
-NimcpStatus nimcp_swarm_morphogenesis_is_balanced(
+nimcp_result_t nimcp_swarm_morphogenesis_is_balanced(
     const NimcpSwarmMorphogenesis* morph,
     bool* out_balanced,
     float* out_balance_score
@@ -460,7 +460,7 @@ NimcpStatus nimcp_swarm_morphogenesis_is_balanced(
  * @param target_distribution Desired distribution ratios (NULL for automatic)
  * @return NIMCP_OK on success, error code otherwise
  */
-NimcpStatus nimcp_swarm_morphogenesis_rebalance(
+nimcp_result_t nimcp_swarm_morphogenesis_rebalance(
     NimcpSwarmMorphogenesis* morph,
     const float* target_distribution
 );
@@ -511,7 +511,7 @@ const char* nimcp_swarm_morphogenesis_role_name(NimcpSwarmRole role);
  * @param out_count Actual number of entries retrieved
  * @return NIMCP_OK on success, error code otherwise
  */
-NimcpStatus nimcp_swarm_morphogenesis_get_transition_history(
+nimcp_result_t nimcp_swarm_morphogenesis_get_transition_history(
     const NimcpSwarmMorphogenesis* morph,
     uint32_t drone_id,
     NimcpRoleTransition* out_history,
@@ -559,7 +559,7 @@ void nimcp_swarm_morphogenesis_print_state(
  * @param morph Morphogenesis system
  * @return NIMCP_OK on success, error code otherwise
  */
-NimcpStatus nimcp_swarm_morphogenesis_process_messages(
+nimcp_result_t nimcp_swarm_morphogenesis_process_messages(
     NimcpSwarmMorphogenesis* morph
 );
 
@@ -571,7 +571,7 @@ NimcpStatus nimcp_swarm_morphogenesis_process_messages(
  * @param new_role New role assigned
  * @return NIMCP_OK on success, error code otherwise
  */
-NimcpStatus nimcp_swarm_morphogenesis_broadcast_role_change(
+nimcp_result_t nimcp_swarm_morphogenesis_broadcast_role_change(
     NimcpSwarmMorphogenesis* morph,
     uint32_t drone_id,
     NimcpSwarmRole new_role

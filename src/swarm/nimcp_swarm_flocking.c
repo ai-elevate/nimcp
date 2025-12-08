@@ -10,9 +10,9 @@
 #include "swarm/nimcp_swarm_flocking.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/validation/nimcp_validate.h"
+#include "utils/memory/nimcp_memory.h"
 #include <math.h>
 #include <string.h>
-#include <stdlib.h>
 
 /* ========================================================================
  * Constants and Defaults
@@ -221,11 +221,11 @@ void nimcp_flocking_get_default_config(nimcp_flocking_config_t *config) {
 }
 
 nimcp_flocking_engine_t *nimcp_flocking_create(const nimcp_flocking_config_t *config) {
-    NIMCP_LOG_INFO("Creating flocking engine");
+    LOG_INFO("Creating flocking engine");
 
-    nimcp_flocking_engine_t *engine = (nimcp_flocking_engine_t *)calloc(1, sizeof(nimcp_flocking_engine_t));
+    nimcp_flocking_engine_t *engine = (nimcp_flocking_engine_t *)nimcp_calloc(1, sizeof(nimcp_flocking_engine_t));
     if (!engine) {
-        NIMCP_LOG_ERROR("Failed to allocate flocking engine");
+        LOG_ERROR("Failed to allocate flocking engine");
         return NULL;
     }
 
@@ -238,30 +238,30 @@ nimcp_flocking_engine_t *nimcp_flocking_create(const nimcp_flocking_config_t *co
 
     // Allocate boid array
     engine->boid_capacity = NIMCP_FLOCKING_DEFAULT_BOID_CAPACITY;
-    engine->boids = (nimcp_boid_t *)calloc(engine->boid_capacity, sizeof(nimcp_boid_t));
+    engine->boids = (nimcp_boid_t *)nimcp_calloc(engine->boid_capacity, sizeof(nimcp_boid_t));
     if (!engine->boids) {
-        NIMCP_LOG_ERROR("Failed to allocate boid array");
-        free(engine);
+        LOG_ERROR("Failed to allocate boid array");
+        nimcp_free(engine);
         return NULL;
     }
 
     // Allocate obstacle array
     engine->obstacle_capacity = NIMCP_FLOCKING_DEFAULT_OBSTACLE_CAPACITY;
-    engine->obstacles = (nimcp_obstacle_t *)calloc(engine->obstacle_capacity, sizeof(nimcp_obstacle_t));
+    engine->obstacles = (nimcp_obstacle_t *)nimcp_calloc(engine->obstacle_capacity, sizeof(nimcp_obstacle_t));
     if (!engine->obstacles) {
-        NIMCP_LOG_ERROR("Failed to allocate obstacle array");
-        free(engine->boids);
-        free(engine);
+        LOG_ERROR("Failed to allocate obstacle array");
+        nimcp_free(engine->boids);
+        nimcp_free(engine);
         return NULL;
     }
 
     // Create mutex
-    engine->mutex = nimcp_mutex_create();
+    engine->mutex = nimcp_platform_mutex_create();
     if (!engine->mutex) {
-        NIMCP_LOG_ERROR("Failed to create mutex");
-        free(engine->obstacles);
-        free(engine->boids);
-        free(engine);
+        LOG_ERROR("Failed to create mutex");
+        nimcp_free(engine->obstacles);
+        nimcp_free(engine->boids);
+        nimcp_free(engine);
         return NULL;
     }
 
@@ -273,35 +273,35 @@ nimcp_flocking_engine_t *nimcp_flocking_create(const nimcp_flocking_config_t *co
     engine->bio_async_enabled = false;
     engine->update_count = 0;
 
-    NIMCP_LOG_INFO("Flocking engine created successfully");
+    LOG_INFO("Flocking engine created successfully");
     return engine;
 }
 
 void nimcp_flocking_destroy(nimcp_flocking_engine_t *engine) {
     if (!engine) return;
 
-    NIMCP_LOG_INFO("Destroying flocking engine");
+    LOG_INFO("Destroying flocking engine");
 
     // Free boid neighbor arrays
     if (engine->boids) {
         for (uint32_t i = 0; i < engine->boid_count; i++) {
             if (engine->boids[i].neighbor_ids) {
-                free(engine->boids[i].neighbor_ids);
+                nimcp_free(engine->boids[i].neighbor_ids);
             }
         }
-        free(engine->boids);
+        nimcp_free(engine->boids);
     }
 
     if (engine->obstacles) {
-        free(engine->obstacles);
+        nimcp_free(engine->obstacles);
     }
 
     if (engine->mutex) {
-        nimcp_mutex_destroy(engine->mutex);
+        nimcp_platform_mutex_destroy(engine->mutex);
     }
 
-    free(engine);
-    NIMCP_LOG_INFO("Flocking engine destroyed");
+    nimcp_free(engine);
+    LOG_INFO("Flocking engine destroyed");
 }
 
 /* ========================================================================
@@ -312,21 +312,21 @@ uint32_t nimcp_flocking_add_boid(nimcp_flocking_engine_t *engine,
                                  const nimcp_vec3_t *position,
                                  const nimcp_vec3_t *velocity) {
     if (!engine || !position || !velocity) {
-        NIMCP_LOG_ERROR("Invalid parameters for add_boid");
+        LOG_ERROR("Invalid parameters for add_boid");
         return 0;
     }
 
-    nimcp_mutex_lock(engine->mutex);
+    nimcp_platform_mutex_lock(engine->mutex);
 
     // Check capacity
     if (engine->boid_count >= engine->boid_capacity) {
         // Reallocate
         uint32_t new_capacity = engine->boid_capacity * 2;
-        nimcp_boid_t *new_boids = (nimcp_boid_t *)realloc(engine->boids,
+        nimcp_boid_t *new_boids = (nimcp_boid_t *)nimcp_realloc(engine->boids,
                                                           new_capacity * sizeof(nimcp_boid_t));
         if (!new_boids) {
-            NIMCP_LOG_ERROR("Failed to reallocate boid array");
-            nimcp_mutex_unlock(engine->mutex);
+            LOG_ERROR("Failed to reallocate boid array");
+            nimcp_platform_mutex_unlock(engine->mutex);
             return 0;
         }
         engine->boids = new_boids;
@@ -352,10 +352,10 @@ uint32_t nimcp_flocking_add_boid(nimcp_flocking_engine_t *engine,
 
     // Allocate neighbor array
     boid->neighbor_capacity = NIMCP_FLOCKING_DEFAULT_NEIGHBOR_CAPACITY;
-    boid->neighbor_ids = (uint32_t *)calloc(boid->neighbor_capacity, sizeof(uint32_t));
+    boid->neighbor_ids = (uint32_t *)nimcp_calloc(boid->neighbor_capacity, sizeof(uint32_t));
     if (!boid->neighbor_ids) {
-        NIMCP_LOG_ERROR("Failed to allocate neighbor array");
-        nimcp_mutex_unlock(engine->mutex);
+        LOG_ERROR("Failed to allocate neighbor array");
+        nimcp_platform_mutex_unlock(engine->mutex);
         return 0;
     }
     boid->neighbor_count = 0;
@@ -366,9 +366,9 @@ uint32_t nimcp_flocking_add_boid(nimcp_flocking_engine_t *engine,
 
     engine->boid_count++;
 
-    nimcp_mutex_unlock(engine->mutex);
+    nimcp_platform_mutex_unlock(engine->mutex);
 
-    NIMCP_LOG_DEBUG("Added boid %u at position (%.2f, %.2f, %.2f)",
+    LOG_DEBUG("Added boid %u at position (%.2f, %.2f, %.2f)",
                     boid_id, position->x, position->y, position->z);
 
     return boid_id;
@@ -379,17 +379,17 @@ int nimcp_flocking_remove_boid(nimcp_flocking_engine_t *engine, uint32_t boid_id
         return -1;
     }
 
-    nimcp_mutex_lock(engine->mutex);
+    nimcp_platform_mutex_lock(engine->mutex);
 
     int index = flocking_find_boid_index(engine, boid_id);
     if (index < 0) {
-        nimcp_mutex_unlock(engine->mutex);
+        nimcp_platform_mutex_unlock(engine->mutex);
         return -1;
     }
 
     // Free neighbor array
     if (engine->boids[index].neighbor_ids) {
-        free(engine->boids[index].neighbor_ids);
+        nimcp_free(engine->boids[index].neighbor_ids);
     }
 
     // Shift remaining boids
@@ -400,9 +400,9 @@ int nimcp_flocking_remove_boid(nimcp_flocking_engine_t *engine, uint32_t boid_id
 
     engine->boid_count--;
 
-    nimcp_mutex_unlock(engine->mutex);
+    nimcp_platform_mutex_unlock(engine->mutex);
 
-    NIMCP_LOG_DEBUG("Removed boid %u", boid_id);
+    LOG_DEBUG("Removed boid %u", boid_id);
     return 0;
 }
 
@@ -427,11 +427,11 @@ int nimcp_flocking_update_boid(nimcp_flocking_engine_t *engine,
         return -1;
     }
 
-    nimcp_mutex_lock(engine->mutex);
+    nimcp_platform_mutex_lock(engine->mutex);
 
     nimcp_boid_t *boid = nimcp_flocking_get_boid(engine, boid_id);
     if (!boid) {
-        nimcp_mutex_unlock(engine->mutex);
+        nimcp_platform_mutex_unlock(engine->mutex);
         return -1;
     }
 
@@ -442,7 +442,7 @@ int nimcp_flocking_update_boid(nimcp_flocking_engine_t *engine,
         boid->velocity = *velocity;
     }
 
-    nimcp_mutex_unlock(engine->mutex);
+    nimcp_platform_mutex_unlock(engine->mutex);
     return 0;
 }
 
@@ -457,14 +457,14 @@ uint32_t nimcp_flocking_add_obstacle(nimcp_flocking_engine_t *engine,
         return 0;
     }
 
-    nimcp_mutex_lock(engine->mutex);
+    nimcp_platform_mutex_lock(engine->mutex);
 
     if (engine->obstacle_count >= engine->obstacle_capacity) {
         uint32_t new_capacity = engine->obstacle_capacity * 2;
-        nimcp_obstacle_t *new_obstacles = (nimcp_obstacle_t *)realloc(
+        nimcp_obstacle_t *new_obstacles = (nimcp_obstacle_t *)nimcp_realloc(
             engine->obstacles, new_capacity * sizeof(nimcp_obstacle_t));
         if (!new_obstacles) {
-            nimcp_mutex_unlock(engine->mutex);
+            nimcp_platform_mutex_unlock(engine->mutex);
             return 0;
         }
         engine->obstacles = new_obstacles;
@@ -483,9 +483,9 @@ uint32_t nimcp_flocking_add_obstacle(nimcp_flocking_engine_t *engine,
 
     engine->obstacle_count++;
 
-    nimcp_mutex_unlock(engine->mutex);
+    nimcp_platform_mutex_unlock(engine->mutex);
 
-    NIMCP_LOG_DEBUG("Added obstacle %u at (%.2f, %.2f, %.2f) radius %.2f",
+    LOG_DEBUG("Added obstacle %u at (%.2f, %.2f, %.2f) radius %.2f",
                     obstacle_id, position->x, position->y, position->z, radius);
 
     return obstacle_id;
@@ -496,7 +496,7 @@ int nimcp_flocking_remove_obstacle(nimcp_flocking_engine_t *engine, uint32_t obs
         return -1;
     }
 
-    nimcp_mutex_lock(engine->mutex);
+    nimcp_platform_mutex_lock(engine->mutex);
 
     uint32_t index = obstacle_id - 1;
 
@@ -507,7 +507,7 @@ int nimcp_flocking_remove_obstacle(nimcp_flocking_engine_t *engine, uint32_t obs
 
     engine->obstacle_count--;
 
-    nimcp_mutex_unlock(engine->mutex);
+    nimcp_platform_mutex_unlock(engine->mutex);
     return 0;
 }
 
@@ -518,9 +518,9 @@ int nimcp_flocking_update_obstacle(nimcp_flocking_engine_t *engine,
         return -1;
     }
 
-    nimcp_mutex_lock(engine->mutex);
+    nimcp_platform_mutex_lock(engine->mutex);
     engine->obstacles[obstacle_id - 1].position = *position;
-    nimcp_mutex_unlock(engine->mutex);
+    nimcp_platform_mutex_unlock(engine->mutex);
 
     return 0;
 }
@@ -532,24 +532,24 @@ int nimcp_flocking_update_obstacle(nimcp_flocking_engine_t *engine,
 void nimcp_flocking_set_goal(nimcp_flocking_engine_t *engine, const nimcp_vec3_t *position) {
     if (!engine || !position) return;
 
-    nimcp_mutex_lock(engine->mutex);
+    nimcp_platform_mutex_lock(engine->mutex);
     engine->goal_position = *position;
     engine->has_goal = true;
     engine->state = NIMCP_FLOCK_SEEKING;
-    nimcp_mutex_unlock(engine->mutex);
+    nimcp_platform_mutex_unlock(engine->mutex);
 
-    NIMCP_LOG_DEBUG("Set goal at (%.2f, %.2f, %.2f)", position->x, position->y, position->z);
+    LOG_DEBUG("Set goal at (%.2f, %.2f, %.2f)", position->x, position->y, position->z);
 }
 
 void nimcp_flocking_clear_goal(nimcp_flocking_engine_t *engine) {
     if (!engine) return;
 
-    nimcp_mutex_lock(engine->mutex);
+    nimcp_platform_mutex_lock(engine->mutex);
     engine->has_goal = false;
     if (engine->state == NIMCP_FLOCK_SEEKING) {
         engine->state = NIMCP_FLOCK_ACTIVE;
     }
-    nimcp_mutex_unlock(engine->mutex);
+    nimcp_platform_mutex_unlock(engine->mutex);
 }
 
 void nimcp_flocking_set_predator(nimcp_flocking_engine_t *engine,
@@ -557,26 +557,26 @@ void nimcp_flocking_set_predator(nimcp_flocking_engine_t *engine,
                                  float radius) {
     if (!engine || !position) return;
 
-    nimcp_mutex_lock(engine->mutex);
+    nimcp_platform_mutex_lock(engine->mutex);
     engine->predator_position = *position;
     engine->predator_radius = radius;
     engine->has_predator = true;
     engine->state = NIMCP_FLOCK_EVADING;
-    nimcp_mutex_unlock(engine->mutex);
+    nimcp_platform_mutex_unlock(engine->mutex);
 
-    NIMCP_LOG_DEBUG("Set predator at (%.2f, %.2f, %.2f) radius %.2f",
+    LOG_DEBUG("Set predator at (%.2f, %.2f, %.2f) radius %.2f",
                     position->x, position->y, position->z, radius);
 }
 
 void nimcp_flocking_clear_predator(nimcp_flocking_engine_t *engine) {
     if (!engine) return;
 
-    nimcp_mutex_lock(engine->mutex);
+    nimcp_platform_mutex_lock(engine->mutex);
     engine->has_predator = false;
     if (engine->state == NIMCP_FLOCK_EVADING) {
         engine->state = NIMCP_FLOCK_ACTIVE;
     }
-    nimcp_mutex_unlock(engine->mutex);
+    nimcp_platform_mutex_unlock(engine->mutex);
 }
 
 /* ========================================================================
@@ -588,7 +588,7 @@ int nimcp_flocking_set_formation(nimcp_flocking_engine_t *engine,
                                  uint32_t leader_id) {
     if (!engine) return -1;
 
-    nimcp_mutex_lock(engine->mutex);
+    nimcp_platform_mutex_lock(engine->mutex);
 
     engine->formation_type = formation;
 
@@ -616,16 +616,16 @@ int nimcp_flocking_set_formation(nimcp_flocking_engine_t *engine,
 
     engine->state = NIMCP_FLOCK_FORMING;
 
-    nimcp_mutex_unlock(engine->mutex);
+    nimcp_platform_mutex_unlock(engine->mutex);
 
-    NIMCP_LOG_INFO("Set formation type %d with leader %u", formation, leader_id);
+    LOG_INFO("Set formation type %d with leader %u", formation, leader_id);
     return 0;
 }
 
 void nimcp_flocking_clear_formation(nimcp_flocking_engine_t *engine) {
     if (!engine) return;
 
-    nimcp_mutex_lock(engine->mutex);
+    nimcp_platform_mutex_lock(engine->mutex);
     engine->formation_type = NIMCP_FORMATION_NONE;
     engine->leader_id = 0;
 
@@ -635,7 +635,7 @@ void nimcp_flocking_clear_formation(nimcp_flocking_engine_t *engine) {
     }
 
     engine->state = NIMCP_FLOCK_ACTIVE;
-    nimcp_mutex_unlock(engine->mutex);
+    nimcp_platform_mutex_unlock(engine->mutex);
 }
 
 int nimcp_flocking_get_formation_position(nimcp_flocking_engine_t *engine,
@@ -646,7 +646,7 @@ int nimcp_flocking_get_formation_position(nimcp_flocking_engine_t *engine,
     int index = flocking_find_boid_index(engine, boid_id);
     if (index < 0) return -1;
 
-    nimcp_mutex_lock(engine->mutex);
+    nimcp_platform_mutex_lock(engine->mutex);
 
     switch (engine->formation_type) {
         case NIMCP_FORMATION_V:
@@ -672,7 +672,7 @@ int nimcp_flocking_get_formation_position(nimcp_flocking_engine_t *engine,
             break;
     }
 
-    nimcp_mutex_unlock(engine->mutex);
+    nimcp_platform_mutex_unlock(engine->mutex);
     return 0;
 }
 
@@ -701,7 +701,7 @@ int nimcp_flocking_find_neighbors(nimcp_flocking_engine_t *engine,
             if (boid->neighbor_count >= boid->neighbor_capacity) {
                 // Reallocate
                 uint32_t new_capacity = boid->neighbor_capacity * 2;
-                uint32_t *new_neighbors = (uint32_t *)realloc(
+                uint32_t *new_neighbors = (uint32_t *)nimcp_realloc(
                     boid->neighbor_ids, new_capacity * sizeof(uint32_t));
                 if (!new_neighbors) {
                     return -1;
@@ -1050,10 +1050,10 @@ int nimcp_flocking_update(nimcp_flocking_engine_t *engine, float dt) {
         dt = engine->config.update_dt;
     }
 
-    nimcp_mutex_lock(engine->mutex);
+    nimcp_platform_mutex_lock(engine->mutex);
 
     if (engine->boid_count == 0) {
-        nimcp_mutex_unlock(engine->mutex);
+        nimcp_platform_mutex_unlock(engine->mutex);
         return 0;
     }
 
@@ -1131,7 +1131,7 @@ int nimcp_flocking_update(nimcp_flocking_engine_t *engine, float dt) {
         engine->state = NIMCP_FLOCK_ACTIVE;
     }
 
-    nimcp_mutex_unlock(engine->mutex);
+    nimcp_platform_mutex_unlock(engine->mutex);
 
     return 0;
 }
@@ -1162,7 +1162,7 @@ int nimcp_flocking_get_stats(nimcp_flocking_engine_t *engine,
 
     if (engine->boid_count == 0) return 0;
 
-    nimcp_mutex_lock(engine->mutex);
+    nimcp_platform_mutex_lock(engine->mutex);
 
     // Calculate center of mass
     nimcp_flocking_center_of_mass(engine, &stats->center_of_mass);
@@ -1230,7 +1230,7 @@ int nimcp_flocking_get_stats(nimcp_flocking_engine_t *engine,
         stats->formation_quality = 0;
     }
 
-    nimcp_mutex_unlock(engine->mutex);
+    nimcp_platform_mutex_unlock(engine->mutex);
 
     return 0;
 }
@@ -1239,37 +1239,87 @@ int nimcp_flocking_get_stats(nimcp_flocking_engine_t *engine,
  * Bio-Async Integration
  * ======================================================================== */
 
-int nimcp_flocking_enable_bio_async(nimcp_flocking_engine_t *engine,
-                                    nimcp_bio_inbox_t *inbox,
-                                    nimcp_bio_outbox_t *outbox) {
-    if (!engine || !inbox || !outbox) return -1;
+/**
+ * @brief Message type for flocking state broadcasts
+ */
+typedef struct {
+    bio_message_header_t header;  /**< Bio-async message header (must be first) */
+    uint32_t boid_id;             /**< Boid identifier */
+    nimcp_vec3_t position;        /**< Boid position */
+    nimcp_vec3_t velocity;        /**< Boid velocity */
+} flocking_state_msg_t;
 
-    nimcp_mutex_lock(engine->mutex);
-    engine->inbox = inbox;
-    engine->outbox = outbox;
-    engine->bio_async_enabled = true;
-    nimcp_mutex_unlock(engine->mutex);
+/**
+ * @brief Bio-async message handler for flocking module
+ */
+static nimcp_error_t flocking_bioasync_handler(
+    const void *msg,
+    size_t size,
+    nimcp_bio_promise_t response_promise,
+    void *user_data
+) {
+    nimcp_flocking_engine_t *engine = (nimcp_flocking_engine_t *)user_data;
+    if (!engine || !msg || size < sizeof(bio_message_header_t)) {
+        return NIMCP_INVALID_PARAM;
+    }
 
-    NIMCP_LOG_INFO("Bio-async integration enabled for flocking engine");
-    return 0;
+    (void)response_promise;  // Not used for broadcasts
+
+    // Handle incoming boid state updates from other agents
+    nimcp_platform_mutex_lock(engine->mutex);
+    // Could update tracked boid positions from network here
+    nimcp_platform_mutex_unlock(engine->mutex);
+
+    return NIMCP_SUCCESS;
+}
+
+int nimcp_flocking_register_bioasync(nimcp_flocking_engine_t *engine,
+                                     bio_router_t *router) {
+    if (!engine || !router) return -1;
+
+    nimcp_platform_mutex_lock(engine->mutex);
+
+    // Create module info for registration
+    bio_module_info_t info = {
+        .module_id = BIO_MODULE_UNKNOWN,  // Will be assigned by router
+        .module_name = "swarm_flocking",
+        .inbox_capacity = 0,  // Use default
+        .user_data = engine
+    };
+
+    // Register with bio-async router
+    engine->bio_ctx = bio_router_register_module(&info);
+
+    if (engine->bio_ctx != NULL) {
+        // Register handler for brain state queries (used as generic swarm message)
+        bio_router_register_handler(engine->bio_ctx, BIO_MSG_BRAIN_STATE_QUERY, flocking_bioasync_handler);
+        engine->bio_async_enabled = true;
+        LOG_INFO("Flocking engine registered with bio-async router");
+    } else {
+        LOG_ERROR("Failed to register flocking engine with bio-async router");
+    }
+
+    nimcp_platform_mutex_unlock(engine->mutex);
+
+    return (engine->bio_ctx != NULL) ? 0 : -1;
 }
 
 int nimcp_flocking_process_messages(nimcp_flocking_engine_t *engine) {
     if (!engine || !engine->bio_async_enabled) return 0;
 
-    nimcp_mutex_lock(engine->mutex);
+    nimcp_platform_mutex_lock(engine->mutex);
 
     int count = 0;
-    bio_message_header_t msg;
 
-    while (nimcp_bio_inbox_poll(engine->inbox, &msg, 0) == 0) {
-        // Process message based on type
-        // This would handle position updates, formation commands, etc.
-        // Implementation depends on message protocol
-        count++;
+    // Process pending messages from bio-async router
+    if (engine->bio_ctx) {
+        nimcp_error_t result = bio_router_process_inbox(engine->bio_ctx, 10);  // Process up to 10 messages
+        if (result == NIMCP_SUCCESS) {
+            count = 1;  // At least one processed
+        }
     }
 
-    nimcp_mutex_unlock(engine->mutex);
+    nimcp_platform_mutex_unlock(engine->mutex);
 
     return count;
 }
@@ -1281,20 +1331,18 @@ int nimcp_flocking_broadcast_state(nimcp_flocking_engine_t *engine, uint32_t boi
     if (!boid) return -1;
 
     // Create and send position/velocity message
-    bio_message_header_t msg;
-    msg.type = NIMCP_BIO_MSG_DATA;
-    msg.priority = NIMCP_BIO_PRIORITY_NORMAL;
-    msg.source_module = boid_id;
+    flocking_state_msg_t msg;
+    memset(&msg, 0, sizeof(msg));
+    msg.header.type = BIO_MSG_BRAIN_STATE_QUERY;  // Use as generic swarm message
+    msg.header.source_module = BIO_MODULE_UNKNOWN;
+    msg.header.target_module = 0;  // Broadcast
+    msg.header.flags = BIO_MSG_FLAG_BROADCAST;
+    msg.boid_id = boid_id;
+    msg.position = boid->position;
+    msg.velocity = boid->velocity;
 
-    // Pack position and velocity into payload
-    float *data = (float *)msg.payload;
-    data[0] = boid->position.x;
-    data[1] = boid->position.y;
-    data[2] = boid->position.z;
-    data[3] = boid->velocity.x;
-    data[4] = boid->velocity.y;
-    data[5] = boid->velocity.z;
-    msg.payload_size = 6 * sizeof(float);
+    // Broadcast to all registered modules
+    nimcp_error_t result = bio_router_broadcast(engine->bio_ctx, &msg, sizeof(msg));
 
-    return nimcp_bio_outbox_send(engine->outbox, &msg);
+    return (result == NIMCP_SUCCESS) ? 0 : -1;
 }

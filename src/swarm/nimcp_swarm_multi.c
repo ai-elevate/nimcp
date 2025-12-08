@@ -8,9 +8,74 @@
 #include "utils/logging/nimcp_logging.h"
 #include "utils/time/nimcp_time.h"
 #include "utils/validation/nimcp_validate.h"
+#include "utils/containers/nimcp_hash_table.h"
+#include "utils/containers/nimcp_darray.h"
+#include "async/nimcp_bio_router.h"
+#include "async/nimcp_bio_messages.h"
 #include <string.h>
 #include <math.h>
 #include <stdio.h>
+
+#define LOG_MODULE "swarm_multi"
+
+/* Bio-async module context for the coordinator */
+static bio_module_context_t g_multi_swarm_ctx = NULL;
+
+/* ============================================================================
+ * Hash Table Wrapper Functions
+ * ============================================================================ */
+
+/* Create a uint64-keyed hash table using the config-based API */
+static hash_table_t* swarm_hash_table_create(size_t buckets) {
+    hash_table_config_t config = {
+        .initial_buckets = buckets,
+        .key_type = HASH_KEY_UINT32,  /* Use uint32 for now - will truncate uint64 */
+        .hash_algorithm = HASH_ALG_MURMUR3,
+        .value_destructor = NULL,
+        .case_insensitive = false,
+        .thread_safe = false
+    };
+    return hash_table_create(&config);
+}
+
+/* Wrapper to insert with uint64 key (truncated to uint32) */
+static bool swarm_hash_table_insert(hash_table_t* table, uint64_t key, void* value) {
+    return hash_table_insert_uint32(table, (uint32_t)key, value, sizeof(void*));
+}
+
+/* Wrapper to lookup with uint64 key (truncated to uint32) */
+static void* swarm_hash_table_lookup(hash_table_t* table, uint64_t key) {
+    void** result = (void**)hash_table_lookup_uint32(table, (uint32_t)key);
+    return result ? *result : NULL;
+}
+
+/* Wrapper to remove with uint64 key (truncated to uint32) */
+static bool swarm_hash_table_remove(hash_table_t* table, uint64_t key) {
+    return hash_table_remove_uint32(table, (uint32_t)key);
+}
+
+/* ============================================================================
+ * Dynamic Array Type Aliases for Clarity
+ * ============================================================================ */
+
+/* Use nimcp_darray_t for conflicts - typed wrapper macros */
+#define conflict_array_create() nimcp_darray_create(sizeof(nimcp_swarm_conflict_t), 16)
+#define conflict_array_destroy(arr) nimcp_darray_destroy(arr)
+#define conflict_array_clear(arr) nimcp_darray_clear(arr)
+#define conflict_array_push_back(arr, elem) nimcp_darray_push_back(arr, elem)
+#define conflict_array_size(arr) nimcp_darray_size(arr)
+#define conflict_array_at(arr, idx) ((nimcp_swarm_conflict_t*)nimcp_darray_at(arr, idx))
+
+/* Use nimcp_darray_t for uint64 results - typed wrapper macros */
+#define uint64_array_create() nimcp_darray_create(sizeof(uint64_t), 16)
+#define uint64_array_destroy(arr) nimcp_darray_destroy(arr)
+#define uint64_array_push_back(arr, elem) nimcp_darray_push_back(arr, elem)
+
+/* RWLock name aliases */
+#define nimcp_rwlock_write_lock(lock) nimcp_rwlock_wrlock(lock)
+#define nimcp_rwlock_write_unlock(lock) nimcp_rwlock_unlock(lock)
+#define nimcp_rwlock_read_lock(lock) nimcp_rwlock_rdlock(lock)
+#define nimcp_rwlock_read_unlock(lock) nimcp_rwlock_unlock(lock)
 
 /* ============================================================================
  * Internal Constants
@@ -25,12 +90,16 @@
  * Internal Message Types
  * ============================================================================ */
 
-#define MSG_TYPE_SWARM_DISCOVERY    0x1001
-#define MSG_TYPE_RESOURCE_REQUEST   0x1002
-#define MSG_TYPE_RESOURCE_RESPONSE  0x1003
-#define MSG_TYPE_TERRITORY_NEGOTIATE 0x1004
-#define MSG_TYPE_MISSION_UPDATE     0x1005
-#define MSG_TYPE_CONFLICT_ALERT     0x1006
+/* Swarm module ID for bio-async registration */
+#define BIO_MODULE_SWARM_COORDINATOR 0x0B00
+
+/* Swarm-specific message types (0x0B00-0x0BFF range) */
+#define MSG_TYPE_SWARM_DISCOVERY    0x0B01
+#define MSG_TYPE_RESOURCE_REQUEST   0x0B02
+#define MSG_TYPE_RESOURCE_RESPONSE  0x0B03
+#define MSG_TYPE_TERRITORY_NEGOTIATE 0x0B04
+#define MSG_TYPE_MISSION_UPDATE     0x0B05
+#define MSG_TYPE_CONFLICT_ALERT     0x0B06
 
 /* ============================================================================
  * Internal Helper Functions
@@ -41,7 +110,7 @@
  */
 static uint64_t generate_unique_id(void) {
     static uint64_t counter = 1;
-    uint64_t timestamp = nimcp_get_time_ms();
+    uint64_t timestamp = nimcp_time_get_ms();
     return (timestamp << 20) | (counter++ & 0xFFFFF);
 }
 
@@ -113,21 +182,222 @@ static int swarm_id_compare(const void* a, const void* b) {
 }
 
 /* ============================================================================
+ * Bio-Async Message Handlers
+ * ============================================================================ */
+
+/**
+ * @brief Handle swarm discovery messages
+ */
+static nimcp_error_t handle_swarm_discovery(
+    const void* msg,
+    size_t msg_size,
+    nimcp_bio_promise_t response_promise,
+    void* user_data
+) {
+    (void)response_promise;
+    nimcp_multi_swarm_coordinator_t* coordinator =
+        (nimcp_multi_swarm_coordinator_t*)user_data;
+
+    if (!coordinator || msg_size < sizeof(bio_message_header_t)) {
+        return NIMCP_INVALID_PARAM;
+    }
+
+    const bio_message_header_t* header = (const bio_message_header_t*)msg;
+    LOG_DEBUG("Received swarm discovery from module %u", header->source_module);
+
+    /* Process discovery payload if present */
+    if (msg_size > sizeof(bio_message_header_t)) {
+        /* Discovery message contains swarm identity info */
+        LOG_INFO("Processing swarm discovery with %zu bytes payload",
+                 msg_size - sizeof(bio_message_header_t));
+    }
+
+    return NIMCP_SUCCESS;
+}
+
+/**
+ * @brief Handle resource request messages
+ */
+static nimcp_error_t handle_resource_request(
+    const void* msg,
+    size_t msg_size,
+    nimcp_bio_promise_t response_promise,
+    void* user_data
+) {
+    (void)response_promise;
+    nimcp_multi_swarm_coordinator_t* coordinator =
+        (nimcp_multi_swarm_coordinator_t*)user_data;
+
+    if (!coordinator || msg_size < sizeof(bio_message_header_t)) {
+        return NIMCP_INVALID_PARAM;
+    }
+
+    LOG_DEBUG("Received resource request message");
+
+    /* Process resource request - match with available resources */
+    /* TODO: Implement resource matching and allocation logic */
+
+    return NIMCP_SUCCESS;
+}
+
+/**
+ * @brief Handle territory negotiation messages
+ */
+static nimcp_error_t handle_territory_negotiate(
+    const void* msg,
+    size_t msg_size,
+    nimcp_bio_promise_t response_promise,
+    void* user_data
+) {
+    (void)response_promise;
+    nimcp_multi_swarm_coordinator_t* coordinator =
+        (nimcp_multi_swarm_coordinator_t*)user_data;
+
+    if (!coordinator || msg_size < sizeof(bio_message_header_t)) {
+        return NIMCP_INVALID_PARAM;
+    }
+
+    LOG_DEBUG("Received territory negotiation message");
+
+    /* Process territory negotiation request */
+    /* TODO: Implement territory boundary adjustment logic */
+
+    return NIMCP_SUCCESS;
+}
+
+/**
+ * @brief Handle mission update messages
+ */
+static nimcp_error_t handle_mission_update(
+    const void* msg,
+    size_t msg_size,
+    nimcp_bio_promise_t response_promise,
+    void* user_data
+) {
+    (void)response_promise;
+    nimcp_multi_swarm_coordinator_t* coordinator =
+        (nimcp_multi_swarm_coordinator_t*)user_data;
+
+    if (!coordinator || msg_size < sizeof(bio_message_header_t)) {
+        return NIMCP_INVALID_PARAM;
+    }
+
+    LOG_DEBUG("Received mission update message");
+
+    /* Process mission status update */
+    /* TODO: Update mission state based on message content */
+
+    return NIMCP_SUCCESS;
+}
+
+/**
+ * @brief Handle conflict alert messages
+ */
+static nimcp_error_t handle_conflict_alert(
+    const void* msg,
+    size_t msg_size,
+    nimcp_bio_promise_t response_promise,
+    void* user_data
+) {
+    (void)response_promise;
+    nimcp_multi_swarm_coordinator_t* coordinator =
+        (nimcp_multi_swarm_coordinator_t*)user_data;
+
+    if (!coordinator || msg_size < sizeof(bio_message_header_t)) {
+        return NIMCP_INVALID_PARAM;
+    }
+
+    LOG_DEBUG("Received conflict alert message");
+
+    /* Process conflict notification */
+    /* TODO: Trigger conflict resolution procedures */
+
+    return NIMCP_SUCCESS;
+}
+
+/**
+ * @brief Register bio-async message handlers for the coordinator
+ */
+static nimcp_error_t register_bio_async_handlers(
+    nimcp_multi_swarm_coordinator_t* coordinator
+) {
+    if (!g_multi_swarm_ctx) {
+        LOG_WARN("Bio-async module context not initialized");
+        return NIMCP_NOT_INITIALIZED;
+    }
+
+    nimcp_error_t result;
+
+    /* Register handler for swarm discovery */
+    result = bio_router_register_handler(
+        g_multi_swarm_ctx,
+        (bio_message_type_t)MSG_TYPE_SWARM_DISCOVERY,
+        handle_swarm_discovery
+    );
+    if (result != NIMCP_SUCCESS) {
+        LOG_WARN("Failed to register swarm discovery handler: %d", result);
+    }
+
+    /* Register handler for resource requests */
+    result = bio_router_register_handler(
+        g_multi_swarm_ctx,
+        (bio_message_type_t)MSG_TYPE_RESOURCE_REQUEST,
+        handle_resource_request
+    );
+    if (result != NIMCP_SUCCESS) {
+        LOG_WARN("Failed to register resource request handler: %d", result);
+    }
+
+    /* Register handler for territory negotiations */
+    result = bio_router_register_handler(
+        g_multi_swarm_ctx,
+        (bio_message_type_t)MSG_TYPE_TERRITORY_NEGOTIATE,
+        handle_territory_negotiate
+    );
+    if (result != NIMCP_SUCCESS) {
+        LOG_WARN("Failed to register territory negotiate handler: %d", result);
+    }
+
+    /* Register handler for mission updates */
+    result = bio_router_register_handler(
+        g_multi_swarm_ctx,
+        (bio_message_type_t)MSG_TYPE_MISSION_UPDATE,
+        handle_mission_update
+    );
+    if (result != NIMCP_SUCCESS) {
+        LOG_WARN("Failed to register mission update handler: %d", result);
+    }
+
+    /* Register handler for conflict alerts */
+    result = bio_router_register_handler(
+        g_multi_swarm_ctx,
+        (bio_message_type_t)MSG_TYPE_CONFLICT_ALERT,
+        handle_conflict_alert
+    );
+    if (result != NIMCP_SUCCESS) {
+        LOG_WARN("Failed to register conflict alert handler: %d", result);
+    }
+
+    LOG_INFO("Registered bio-async handlers for multi-swarm coordinator");
+    return NIMCP_SUCCESS;
+}
+
+/* ============================================================================
  * Lifecycle Functions
  * ============================================================================ */
 
 nimcp_multi_swarm_coordinator_t* nimcp_multi_swarm_create(
-    nimcp_brain_t* brain,
+    void* brain,
     bio_router_t* router
 ) {
-    NIMCP_LOG_INFO("Creating multi-swarm coordinator");
+    LOG_INFO("Creating multi-swarm coordinator");
 
     nimcp_multi_swarm_coordinator_t* coordinator =
-        (nimcp_multi_swarm_coordinator_t*)NIMCP_MALLOC(
+        (nimcp_multi_swarm_coordinator_t*)nimcp_malloc(
             sizeof(nimcp_multi_swarm_coordinator_t));
 
     if (!coordinator) {
-        NIMCP_LOG_ERROR("Failed to allocate multi-swarm coordinator");
+        LOG_ERROR("Failed to allocate multi-swarm coordinator");
         return NULL;
     }
 
@@ -136,30 +406,28 @@ nimcp_multi_swarm_coordinator_t* nimcp_multi_swarm_create(
     coordinator->brain = brain;
     coordinator->router = router;
 
-    /* Create registries */
-    coordinator->swarm_registry = nimcp_hash_table_create(
-        64, swarm_id_hash, swarm_id_compare);
+    /* Create registries using wrapper for real hash table API */
+    coordinator->swarm_registry = swarm_hash_table_create(64);
     if (!coordinator->swarm_registry) {
-        NIMCP_LOG_ERROR("Failed to create swarm registry");
-        NIMCP_FREE(coordinator);
+        LOG_ERROR("Failed to create swarm registry");
+        nimcp_free(coordinator);
         return NULL;
     }
 
-    coordinator->mission_registry = nimcp_hash_table_create(
-        32, swarm_id_hash, swarm_id_compare);
+    coordinator->mission_registry = swarm_hash_table_create(32);
     if (!coordinator->mission_registry) {
-        NIMCP_LOG_ERROR("Failed to create mission registry");
-        nimcp_hash_table_destroy(coordinator->swarm_registry);
-        NIMCP_FREE(coordinator);
+        LOG_ERROR("Failed to create mission registry");
+        hash_table_destroy(coordinator->swarm_registry);
+        nimcp_free(coordinator);
         return NULL;
     }
 
     /* Initialize locks */
     if (nimcp_rwlock_init(&coordinator->coordinator_lock) != NIMCP_SUCCESS) {
-        NIMCP_LOG_ERROR("Failed to initialize coordinator lock");
-        nimcp_hash_table_destroy(coordinator->mission_registry);
-        nimcp_hash_table_destroy(coordinator->swarm_registry);
-        NIMCP_FREE(coordinator);
+        LOG_ERROR("Failed to initialize coordinator lock");
+        hash_table_destroy(coordinator->mission_registry);
+        hash_table_destroy(coordinator->swarm_registry);
+        nimcp_free(coordinator);
         return NULL;
     }
 
@@ -173,14 +441,41 @@ nimcp_multi_swarm_coordinator_t* nimcp_multi_swarm_create(
     coordinator->enable_resource_sharing = true;
     coordinator->enable_bridge_formation = true;
 
-    NIMCP_LOG_INFO("Multi-swarm coordinator created successfully");
+    /* Register with bio-async router if available */
+    if (bio_router_is_initialized()) {
+        bio_module_info_t module_info = {
+            .module_id = BIO_MODULE_SWARM_COORDINATOR,
+            .module_name = "swarm_coordinator",
+            .inbox_capacity = 128,
+            .user_data = coordinator
+        };
+
+        g_multi_swarm_ctx = bio_router_register_module(&module_info);
+        if (g_multi_swarm_ctx) {
+            register_bio_async_handlers(coordinator);
+            LOG_INFO("Registered swarm coordinator with bio-async router");
+        } else {
+            LOG_WARN("Failed to register with bio-async router");
+        }
+    } else {
+        LOG_DEBUG("Bio-async router not initialized, skipping registration");
+    }
+
+    LOG_INFO("Multi-swarm coordinator created successfully");
     return coordinator;
 }
 
 void nimcp_multi_swarm_destroy(nimcp_multi_swarm_coordinator_t* coordinator) {
     if (!coordinator) return;
 
-    NIMCP_LOG_INFO("Destroying multi-swarm coordinator");
+    LOG_INFO("Destroying multi-swarm coordinator");
+
+    /* Unregister from bio-async router */
+    if (g_multi_swarm_ctx) {
+        bio_router_unregister_module(g_multi_swarm_ctx);
+        g_multi_swarm_ctx = NULL;
+        LOG_DEBUG("Unregistered swarm coordinator from bio-async router");
+    }
 
     /* Destroy all super-swarms */
     for (uint32_t i = 0; i < coordinator->super_swarm_count; i++) {
@@ -191,17 +486,17 @@ void nimcp_multi_swarm_destroy(nimcp_multi_swarm_coordinator_t* coordinator) {
 
     /* Clean up registries */
     if (coordinator->swarm_registry) {
-        nimcp_hash_table_destroy(coordinator->swarm_registry);
+        hash_table_destroy(coordinator->swarm_registry);
     }
     if (coordinator->mission_registry) {
-        nimcp_hash_table_destroy(coordinator->mission_registry);
+        hash_table_destroy(coordinator->mission_registry);
     }
 
     /* Destroy lock */
     nimcp_rwlock_destroy(&coordinator->coordinator_lock);
 
-    NIMCP_FREE(coordinator);
-    NIMCP_LOG_INFO("Multi-swarm coordinator destroyed");
+    nimcp_free(coordinator);
+    LOG_INFO("Multi-swarm coordinator destroyed");
 }
 
 /* ============================================================================
@@ -214,15 +509,15 @@ nimcp_swarm_identity_t* nimcp_swarm_identity_create(
     uint32_t agent_count
 ) {
     if (!coordinator || !name) {
-        NIMCP_LOG_ERROR("Invalid parameters for swarm identity creation");
+        LOG_ERROR("Invalid parameters for swarm identity creation");
         return NULL;
     }
 
     nimcp_swarm_identity_t* identity =
-        (nimcp_swarm_identity_t*)NIMCP_MALLOC(sizeof(nimcp_swarm_identity_t));
+        (nimcp_swarm_identity_t*)nimcp_malloc(sizeof(nimcp_swarm_identity_t));
 
     if (!identity) {
-        NIMCP_LOG_ERROR("Failed to allocate swarm identity");
+        LOG_ERROR("Failed to allocate swarm identity");
         return NULL;
     }
 
@@ -238,7 +533,7 @@ nimcp_swarm_identity_t* nimcp_swarm_identity_create(
     identity->name[NIMCP_SWARM_NAME_MAX - 1] = '\0';
     identity->agent_count = agent_count;
     identity->active_agents = agent_count;
-    identity->formation_time = nimcp_get_time_ms();
+    identity->formation_time = nimcp_time_get_ms();
     identity->last_contact = identity->formation_time;
 
     /* Initialize health */
@@ -249,7 +544,7 @@ nimcp_swarm_identity_t* nimcp_swarm_identity_create(
     memset(&identity->territory, 0, sizeof(nimcp_territory_bounds_t));
     identity->territory.timestamp = identity->formation_time;
 
-    NIMCP_LOG_INFO("Created swarm identity: ID=%lu, Name=%s, Agents=%u",
+    LOG_INFO("Created swarm identity: ID=%lu, Name=%s, Agents=%u",
                    identity->swarm_id, identity->name, agent_count);
 
     return identity;
@@ -260,42 +555,42 @@ nimcp_result_t nimcp_swarm_register(
     nimcp_swarm_identity_t* identity
 ) {
     if (!coordinator || !identity) {
-        return NIMCP_ERROR_INVALID_PARAMETER;
+        return NIMCP_INVALID_PARAM;
     }
 
-    NIMCP_LOG_INFO("Registering swarm: ID=%lu, Name=%s",
+    LOG_INFO("Registering swarm: ID=%lu, Name=%s",
                    identity->swarm_id, identity->name);
 
     nimcp_rwlock_write_lock(&coordinator->coordinator_lock);
 
     /* Check if already registered */
-    if (nimcp_hash_table_get(coordinator->swarm_registry, &identity->swarm_id)) {
-        NIMCP_LOG_WARN("Swarm already registered: ID=%lu", identity->swarm_id);
+    if (swarm_hash_table_lookup(coordinator->swarm_registry, identity->swarm_id)) {
+        LOG_WARN("Swarm already registered: ID=%lu", identity->swarm_id);
         nimcp_rwlock_write_unlock(&coordinator->coordinator_lock);
-        return NIMCP_ERROR_ALREADY_EXISTS;
+        return NIMCP_ERROR;
     }
 
     /* Register swarm */
-    nimcp_result_t result = nimcp_hash_table_insert(
+    bool success = swarm_hash_table_insert(
         coordinator->swarm_registry,
-        &identity->swarm_id,
+        identity->swarm_id,
         identity
     );
 
     nimcp_rwlock_write_unlock(&coordinator->coordinator_lock);
 
-    if (result == NIMCP_SUCCESS) {
-        NIMCP_LOG_INFO("Swarm registered successfully: ID=%lu", identity->swarm_id);
+    if (success) {
+        LOG_INFO("Swarm registered successfully: ID=%lu", identity->swarm_id);
 
         /* Broadcast discovery if router available */
         if (coordinator->router && coordinator->enable_bridge_formation) {
             nimcp_multi_swarm_broadcast_discovery(coordinator, identity->swarm_id);
         }
     } else {
-        NIMCP_LOG_ERROR("Failed to register swarm: ID=%lu", identity->swarm_id);
+        LOG_ERROR("Failed to register swarm: ID=%lu", identity->swarm_id);
     }
 
-    return result;
+    return success ? NIMCP_SUCCESS : NIMCP_ERROR;
 }
 
 nimcp_result_t nimcp_swarm_unregister(
@@ -303,24 +598,27 @@ nimcp_result_t nimcp_swarm_unregister(
     uint64_t swarm_id
 ) {
     if (!coordinator) {
-        return NIMCP_ERROR_INVALID_PARAMETER;
+        return NIMCP_INVALID_PARAM;
     }
 
-    NIMCP_LOG_INFO("Unregistering swarm: ID=%lu", swarm_id);
+    LOG_INFO("Unregistering swarm: ID=%lu", swarm_id);
 
     nimcp_rwlock_write_lock(&coordinator->coordinator_lock);
 
-    nimcp_swarm_identity_t* identity =
-        nimcp_hash_table_remove(coordinator->swarm_registry, &swarm_id);
-
-    nimcp_rwlock_write_unlock(&coordinator->coordinator_lock);
+    /* Check if exists before removing */
+    nimcp_swarm_identity_t* identity = swarm_hash_table_lookup(
+        coordinator->swarm_registry, swarm_id);
 
     if (!identity) {
-        NIMCP_LOG_WARN("Swarm not found for unregistration: ID=%lu", swarm_id);
-        return NIMCP_ERROR_NOT_FOUND;
+        nimcp_rwlock_write_unlock(&coordinator->coordinator_lock);
+        LOG_WARN("Swarm not found for unregistration: ID=%lu", swarm_id);
+        return NIMCP_NOT_FOUND;
     }
 
-    NIMCP_LOG_INFO("Swarm unregistered: ID=%lu", swarm_id);
+    swarm_hash_table_remove(coordinator->swarm_registry, swarm_id);
+    nimcp_rwlock_write_unlock(&coordinator->coordinator_lock);
+
+    LOG_INFO("Swarm unregistered: ID=%lu", swarm_id);
     return NIMCP_SUCCESS;
 }
 
@@ -332,13 +630,13 @@ nimcp_result_t nimcp_swarm_add_capability(
     bool is_lendable
 ) {
     if (!identity) {
-        return NIMCP_ERROR_INVALID_PARAMETER;
+        return NIMCP_INVALID_PARAM;
     }
 
     if (identity->capability_count >= NIMCP_MAX_SWARM_CAPABILITIES) {
-        NIMCP_LOG_ERROR("Maximum capabilities reached for swarm: ID=%lu",
+        LOG_ERROR("Maximum capabilities reached for swarm: ID=%lu",
                         identity->swarm_id);
-        return NIMCP_ERROR_OUT_OF_RANGE;
+        return NIMCP_INVALID_PARAM;
     }
 
     /* Clamp proficiency to [0, 1] */
@@ -354,7 +652,7 @@ nimcp_result_t nimcp_swarm_add_capability(
     cap->available = capacity;
     cap->is_lendable = is_lendable;
 
-    NIMCP_LOG_DEBUG("Added capability to swarm ID=%lu: Type=%d, Prof=%.2f, Cap=%u",
+    LOG_DEBUG("Added capability to swarm ID=%lu: Type=%d, Prof=%.2f, Cap=%u",
                     identity->swarm_id, type, proficiency, capacity);
 
     return NIMCP_SUCCESS;
@@ -370,9 +668,9 @@ void nimcp_swarm_update_health(
     identity->health_percentage = calculate_health_percentage(
         active_agents, identity->agent_count);
     identity->health = determine_health_status(identity->health_percentage);
-    identity->last_contact = nimcp_get_time_ms();
+    identity->last_contact = nimcp_time_get_ms();
 
-    NIMCP_LOG_DEBUG("Swarm health updated: ID=%lu, Active=%u/%u, Health=%.1f%%",
+    LOG_DEBUG("Swarm health updated: ID=%lu, Active=%u/%u, Health=%.1f%%",
                     identity->swarm_id, active_agents, identity->agent_count,
                     identity->health_percentage * 100.0f);
 }
@@ -380,8 +678,8 @@ void nimcp_swarm_update_health(
 void nimcp_swarm_identity_destroy(nimcp_swarm_identity_t* identity) {
     if (!identity) return;
 
-    NIMCP_LOG_DEBUG("Destroying swarm identity: ID=%lu", identity->swarm_id);
-    NIMCP_FREE(identity);
+    LOG_DEBUG("Destroying swarm identity: ID=%lu", identity->swarm_id);
+    nimcp_free(identity);
 }
 
 /* ============================================================================
@@ -393,15 +691,15 @@ nimcp_super_swarm_t* nimcp_super_swarm_create(
     const char* name
 ) {
     if (!coordinator || !name) {
-        NIMCP_LOG_ERROR("Invalid parameters for super-swarm creation");
+        LOG_ERROR("Invalid parameters for super-swarm creation");
         return NULL;
     }
 
     nimcp_super_swarm_t* super_swarm =
-        (nimcp_super_swarm_t*)NIMCP_MALLOC(sizeof(nimcp_super_swarm_t));
+        (nimcp_super_swarm_t*)nimcp_malloc(sizeof(nimcp_super_swarm_t));
 
     if (!super_swarm) {
-        NIMCP_LOG_ERROR("Failed to allocate super-swarm");
+        LOG_ERROR("Failed to allocate super-swarm");
         return NULL;
     }
 
@@ -412,21 +710,20 @@ nimcp_super_swarm_t* nimcp_super_swarm_create(
     strncpy(super_swarm->name, name, NIMCP_SWARM_NAME_MAX - 1);
     super_swarm->name[NIMCP_SWARM_NAME_MAX - 1] = '\0';
 
-    /* Create resource request table */
-    super_swarm->resource_requests = nimcp_hash_table_create(
-        16, swarm_id_hash, swarm_id_compare);
+    /* Create resource request table (stubbed) */
+    super_swarm->resource_requests = swarm_hash_table_create(16);
     if (!super_swarm->resource_requests) {
-        NIMCP_LOG_ERROR("Failed to create resource request table");
-        NIMCP_FREE(super_swarm);
+        LOG_ERROR("Failed to create resource request table");
+        nimcp_free(super_swarm);
         return NULL;
     }
 
-    /* Create conflicts vector */
-    super_swarm->conflicts = nimcp_vector_create(sizeof(nimcp_swarm_conflict_t));
+    /* Create conflicts array */
+    super_swarm->conflicts = conflict_array_create();
     if (!super_swarm->conflicts) {
-        NIMCP_LOG_ERROR("Failed to create conflicts vector");
-        nimcp_hash_table_destroy(super_swarm->resource_requests);
-        NIMCP_FREE(super_swarm);
+        LOG_ERROR("Failed to create conflicts array");
+        hash_table_destroy(super_swarm->resource_requests);
+        nimcp_free(super_swarm);
         return NULL;
     }
 
@@ -434,10 +731,10 @@ nimcp_super_swarm_t* nimcp_super_swarm_create(
     if (nimcp_rwlock_init(&super_swarm->swarm_lock) != NIMCP_SUCCESS ||
         nimcp_rwlock_init(&super_swarm->mission_lock) != NIMCP_SUCCESS ||
         nimcp_rwlock_init(&super_swarm->bridge_lock) != NIMCP_SUCCESS) {
-        NIMCP_LOG_ERROR("Failed to initialize super-swarm locks");
-        nimcp_vector_destroy(super_swarm->conflicts);
-        nimcp_hash_table_destroy(super_swarm->resource_requests);
-        NIMCP_FREE(super_swarm);
+        LOG_ERROR("Failed to initialize super-swarm locks");
+        conflict_array_destroy((nimcp_darray_t*)super_swarm->conflicts);
+        hash_table_destroy(super_swarm->resource_requests);
+        nimcp_free(super_swarm);
         return NULL;
     }
 
@@ -446,7 +743,7 @@ nimcp_super_swarm_t* nimcp_super_swarm_create(
         coordinator->super_swarms[coordinator->super_swarm_count++] = super_swarm;
     }
 
-    NIMCP_LOG_INFO("Created super-swarm: ID=%lu, Name=%s",
+    LOG_INFO("Created super-swarm: ID=%lu, Name=%s",
                    super_swarm->super_swarm_id, super_swarm->name);
 
     return super_swarm;
@@ -457,15 +754,15 @@ nimcp_result_t nimcp_super_swarm_add_swarm(
     nimcp_swarm_identity_t* identity
 ) {
     if (!super_swarm || !identity) {
-        return NIMCP_ERROR_INVALID_PARAMETER;
+        return NIMCP_INVALID_PARAM;
     }
 
     nimcp_rwlock_write_lock(&super_swarm->swarm_lock);
 
     if (super_swarm->swarm_count >= NIMCP_MAX_SWARMS_PER_SUPER) {
-        NIMCP_LOG_ERROR("Super-swarm at maximum capacity");
+        LOG_ERROR("Super-swarm at maximum capacity");
         nimcp_rwlock_write_unlock(&super_swarm->swarm_lock);
-        return NIMCP_ERROR_OUT_OF_RANGE;
+        return NIMCP_INVALID_PARAM;
     }
 
     super_swarm->swarms[super_swarm->swarm_count++] = identity;
@@ -492,7 +789,7 @@ nimcp_result_t nimcp_super_swarm_add_swarm(
 
     nimcp_rwlock_write_unlock(&super_swarm->swarm_lock);
 
-    NIMCP_LOG_INFO("Added swarm to super-swarm: Swarm=%lu, SuperSwarm=%lu",
+    LOG_INFO("Added swarm to super-swarm: Swarm=%lu, SuperSwarm=%lu",
                    identity->swarm_id, super_swarm->super_swarm_id);
 
     return NIMCP_SUCCESS;
@@ -503,7 +800,7 @@ nimcp_result_t nimcp_super_swarm_remove_swarm(
     uint64_t swarm_id
 ) {
     if (!super_swarm) {
-        return NIMCP_ERROR_INVALID_PARAMETER;
+        return NIMCP_INVALID_PARAM;
     }
 
     nimcp_rwlock_write_lock(&super_swarm->swarm_lock);
@@ -524,25 +821,25 @@ nimcp_result_t nimcp_super_swarm_remove_swarm(
     nimcp_rwlock_write_unlock(&super_swarm->swarm_lock);
 
     if (!found) {
-        NIMCP_LOG_WARN("Swarm not found in super-swarm: ID=%lu", swarm_id);
-        return NIMCP_ERROR_NOT_FOUND;
+        LOG_WARN("Swarm not found in super-swarm: ID=%lu", swarm_id);
+        return NIMCP_NOT_FOUND;
     }
 
-    NIMCP_LOG_INFO("Removed swarm from super-swarm: Swarm=%lu", swarm_id);
+    LOG_INFO("Removed swarm from super-swarm: Swarm=%lu", swarm_id);
     return NIMCP_SUCCESS;
 }
 
 void nimcp_super_swarm_destroy(nimcp_super_swarm_t* super_swarm) {
     if (!super_swarm) return;
 
-    NIMCP_LOG_INFO("Destroying super-swarm: ID=%lu", super_swarm->super_swarm_id);
+    LOG_INFO("Destroying super-swarm: ID=%lu", super_swarm->super_swarm_id);
 
     /* Clean up resources */
     if (super_swarm->resource_requests) {
-        nimcp_hash_table_destroy(super_swarm->resource_requests);
+        hash_table_destroy(super_swarm->resource_requests);
     }
     if (super_swarm->conflicts) {
-        nimcp_vector_destroy(super_swarm->conflicts);
+        conflict_array_destroy((nimcp_darray_t*)super_swarm->conflicts);
     }
 
     /* Destroy locks */
@@ -550,7 +847,7 @@ void nimcp_super_swarm_destroy(nimcp_super_swarm_t* super_swarm) {
     nimcp_rwlock_destroy(&super_swarm->mission_lock);
     nimcp_rwlock_destroy(&super_swarm->bridge_lock);
 
-    NIMCP_FREE(super_swarm);
+    nimcp_free(super_swarm);
 }
 
 /* ============================================================================
@@ -565,22 +862,22 @@ nimcp_result_t nimcp_swarm_set_territory(
     float priority
 ) {
     if (!identity) {
-        return NIMCP_ERROR_INVALID_PARAMETER;
+        return NIMCP_INVALID_PARAM;
     }
 
     /* Validate bounds */
     if (min.x > max.x || min.y > max.y || min.z > max.z) {
-        NIMCP_LOG_ERROR("Invalid territory bounds: min > max");
-        return NIMCP_ERROR_INVALID_PARAMETER;
+        LOG_ERROR("Invalid territory bounds: min > max");
+        return NIMCP_INVALID_PARAM;
     }
 
     identity->territory.min = min;
     identity->territory.max = max;
     identity->territory.is_dynamic = is_dynamic;
     identity->territory.priority = priority;
-    identity->territory.timestamp = nimcp_get_time_ms();
+    identity->territory.timestamp = nimcp_time_get_ms();
 
-    NIMCP_LOG_INFO("Set territory for swarm ID=%lu: [%.1f,%.1f,%.1f]-[%.1f,%.1f,%.1f]",
+    LOG_INFO("Set territory for swarm ID=%lu: [%.1f,%.1f,%.1f]-[%.1f,%.1f,%.1f]",
                    identity->swarm_id,
                    min.x, min.y, min.z, max.x, max.y, max.z);
 
@@ -605,44 +902,44 @@ nimcp_result_t nimcp_territory_negotiate(
     uint64_t swarm_b
 ) {
     if (!coordinator) {
-        return NIMCP_ERROR_INVALID_PARAMETER;
+        return NIMCP_INVALID_PARAM;
     }
 
     nimcp_swarm_identity_t* identity_a = nimcp_swarm_get(coordinator, swarm_a);
     nimcp_swarm_identity_t* identity_b = nimcp_swarm_get(coordinator, swarm_b);
 
     if (!identity_a || !identity_b) {
-        NIMCP_LOG_ERROR("One or both swarms not found for negotiation");
-        return NIMCP_ERROR_NOT_FOUND;
+        LOG_ERROR("One or both swarms not found for negotiation");
+        return NIMCP_NOT_FOUND;
     }
 
     /* Check if territories overlap */
     if (!nimcp_territory_overlaps(&identity_a->territory, &identity_b->territory)) {
-        NIMCP_LOG_DEBUG("No overlap detected, negotiation not needed");
+        LOG_DEBUG("No overlap detected, negotiation not needed");
         return NIMCP_SUCCESS;
     }
 
-    NIMCP_LOG_INFO("Negotiating territory between swarms %lu and %lu",
+    LOG_INFO("Negotiating territory between swarms %lu and %lu",
                    swarm_a, swarm_b);
 
     /* Simple negotiation: adjust based on priority and dynamic flags */
     if (identity_a->territory.is_dynamic && !identity_b->territory.is_dynamic) {
         /* A adjusts to avoid B */
-        NIMCP_LOG_INFO("Swarm %lu adjusting territory (dynamic)", swarm_a);
+        LOG_INFO("Swarm %lu adjusting territory (dynamic)", swarm_a);
         /* In a real implementation, adjust bounds here */
         return NIMCP_SUCCESS;
     } else if (!identity_a->territory.is_dynamic && identity_b->territory.is_dynamic) {
         /* B adjusts to avoid A */
-        NIMCP_LOG_INFO("Swarm %lu adjusting territory (dynamic)", swarm_b);
+        LOG_INFO("Swarm %lu adjusting territory (dynamic)", swarm_b);
         return NIMCP_SUCCESS;
     } else if (identity_a->territory.priority > identity_b->territory.priority) {
         /* B yields to A */
-        NIMCP_LOG_INFO("Swarm %lu yields to higher priority swarm %lu",
+        LOG_INFO("Swarm %lu yields to higher priority swarm %lu",
                        swarm_b, swarm_a);
         return NIMCP_SUCCESS;
     } else {
         /* A yields to B */
-        NIMCP_LOG_INFO("Swarm %lu yields to higher priority swarm %lu",
+        LOG_INFO("Swarm %lu yields to higher priority swarm %lu",
                        swarm_a, swarm_b);
         return NIMCP_SUCCESS;
     }
@@ -650,7 +947,7 @@ nimcp_result_t nimcp_territory_negotiate(
 
 uint32_t nimcp_territory_detect_conflicts(
     nimcp_multi_swarm_coordinator_t* coordinator,
-    nimcp_vector_t* conflicts
+    void* conflicts
 ) {
     if (!coordinator || !conflicts) {
         return 0;
@@ -680,17 +977,17 @@ uint32_t nimcp_territory_detect_conflicts(
                     conflict.swarm_ids[0] = swarm_a->swarm_id;
                     conflict.swarm_ids[1] = swarm_b->swarm_id;
                     conflict.swarm_count = 2;
-                    conflict.detection_time = nimcp_get_time_ms();
+                    conflict.detection_time = nimcp_time_get_ms();
                     conflict.is_resolved = false;
 
                     snprintf(conflict.description, sizeof(conflict.description),
                             "Territory overlap between swarms %lu and %lu",
                             swarm_a->swarm_id, swarm_b->swarm_id);
 
-                    nimcp_vector_push_back(conflicts, &conflict);
+                    conflict_array_push_back((nimcp_darray_t*)conflicts, &conflict);
                     conflict_count++;
 
-                    NIMCP_LOG_WARN("Territory conflict detected: Swarms %lu and %lu",
+                    LOG_WARN("Territory conflict detected: Swarms %lu and %lu",
                                   swarm_a->swarm_id, swarm_b->swarm_id);
                 }
             }
@@ -723,15 +1020,15 @@ uint64_t nimcp_resource_request(
     /* Verify both swarms exist */
     if (!nimcp_swarm_get(coordinator, requesting_swarm) ||
         !nimcp_swarm_get(coordinator, target_swarm)) {
-        NIMCP_LOG_ERROR("Invalid swarm IDs for resource request");
+        LOG_ERROR("Invalid swarm IDs for resource request");
         return 0;
     }
 
     nimcp_resource_request_t* request =
-        (nimcp_resource_request_t*)NIMCP_MALLOC(sizeof(nimcp_resource_request_t));
+        (nimcp_resource_request_t*)nimcp_malloc(sizeof(nimcp_resource_request_t));
 
     if (!request) {
-        NIMCP_LOG_ERROR("Failed to allocate resource request");
+        LOG_ERROR("Failed to allocate resource request");
         return 0;
     }
 
@@ -743,7 +1040,7 @@ uint64_t nimcp_resource_request(
     request->type = type;
     request->quantity = quantity;
     request->priority = priority;
-    request->expiry_time = nimcp_get_time_ms() + RESOURCE_EXPIRY_TIME;
+    request->expiry_time = nimcp_time_get_ms() + RESOURCE_EXPIRY_TIME;
     request->is_approved = false;
 
     /* Store in appropriate super-swarm */
@@ -759,13 +1056,13 @@ uint64_t nimcp_resource_request(
         }
 
         if (has_requesting && has_target) {
-            nimcp_hash_table_insert(super->resource_requests,
-                                   &request->request_id, request);
+            swarm_hash_table_insert(super->resource_requests,
+                                   request->request_id, request);
             break;
         }
     }
 
-    NIMCP_LOG_INFO("Created resource request: ID=%lu, From=%lu, To=%lu, Type=%d",
+    LOG_INFO("Created resource request: ID=%lu, From=%lu, To=%lu, Type=%d",
                    request->request_id, requesting_swarm, target_swarm, type);
 
     return request->request_id;
@@ -777,7 +1074,7 @@ nimcp_result_t nimcp_resource_approve(
     float cost
 ) {
     if (!coordinator) {
-        return NIMCP_ERROR_INVALID_PARAMETER;
+        return NIMCP_INVALID_PARAM;
     }
 
     /* Find request in super-swarms */
@@ -786,20 +1083,20 @@ nimcp_result_t nimcp_resource_approve(
         if (!super) continue;
 
         nimcp_resource_request_t* request =
-            nimcp_hash_table_get(super->resource_requests, &request_id);
+            swarm_hash_table_lookup(super->resource_requests, request_id);
 
         if (request) {
             request->is_approved = true;
             request->cost = cost;
 
-            NIMCP_LOG_INFO("Approved resource request: ID=%lu, Cost=%.2f",
+            LOG_INFO("Approved resource request: ID=%lu, Cost=%.2f",
                           request_id, cost);
             return NIMCP_SUCCESS;
         }
     }
 
-    NIMCP_LOG_WARN("Resource request not found: ID=%lu", request_id);
-    return NIMCP_ERROR_NOT_FOUND;
+    LOG_WARN("Resource request not found: ID=%lu", request_id);
+    return NIMCP_NOT_FOUND;
 }
 
 nimcp_result_t nimcp_resource_deny(
@@ -807,7 +1104,7 @@ nimcp_result_t nimcp_resource_deny(
     uint64_t request_id
 ) {
     if (!coordinator) {
-        return NIMCP_ERROR_INVALID_PARAMETER;
+        return NIMCP_INVALID_PARAM;
     }
 
     /* Find and remove request */
@@ -816,17 +1113,18 @@ nimcp_result_t nimcp_resource_deny(
         if (!super) continue;
 
         nimcp_resource_request_t* request =
-            nimcp_hash_table_remove(super->resource_requests, &request_id);
+            swarm_hash_table_lookup(super->resource_requests, request_id);
 
         if (request) {
-            NIMCP_LOG_INFO("Denied resource request: ID=%lu", request_id);
-            NIMCP_FREE(request);
+            swarm_hash_table_remove(super->resource_requests, request_id);
+            LOG_INFO("Denied resource request: ID=%lu", request_id);
+            nimcp_free(request);
             return NIMCP_SUCCESS;
         }
     }
 
-    NIMCP_LOG_WARN("Resource request not found: ID=%lu", request_id);
-    return NIMCP_ERROR_NOT_FOUND;
+    LOG_WARN("Resource request not found: ID=%lu", request_id);
+    return NIMCP_NOT_FOUND;
 }
 
 uint32_t nimcp_resource_process_requests(
@@ -839,7 +1137,7 @@ uint32_t nimcp_resource_process_requests(
     }
 
     uint32_t processed = 0;
-    uint64_t current_time = nimcp_get_time_ms();
+    uint64_t current_time = nimcp_time_get_ms();
 
     /* Process requests in all super-swarms */
     for (uint32_t i = 0; i < coordinator->super_swarm_count; i++) {
@@ -848,7 +1146,7 @@ uint32_t nimcp_resource_process_requests(
 
         /* This is a simplified implementation */
         /* In a real implementation, iterate through hash table */
-        NIMCP_LOG_DEBUG("Processing resource requests for super-swarm %lu",
+        LOG_DEBUG("Processing resource requests for super-swarm %lu",
                        super->super_swarm_id);
     }
 
@@ -871,10 +1169,10 @@ uint64_t nimcp_mission_create(
     }
 
     nimcp_mission_assignment_t* mission =
-        (nimcp_mission_assignment_t*)NIMCP_MALLOC(sizeof(nimcp_mission_assignment_t));
+        (nimcp_mission_assignment_t*)nimcp_malloc(sizeof(nimcp_mission_assignment_t));
 
     if (!mission) {
-        NIMCP_LOG_ERROR("Failed to allocate mission");
+        LOG_ERROR("Failed to allocate mission");
         return 0;
     }
 
@@ -888,15 +1186,15 @@ uint64_t nimcp_mission_create(
     mission->priority = priority;
     mission->status = NIMCP_MISSION_STATUS_PENDING;
     mission->operation_area = operation_area;
-    mission->start_time = nimcp_get_time_ms();
+    mission->start_time = nimcp_time_get_ms();
     mission->deadline = deadline;
     mission->progress = 0.0f;
 
     /* Store in mission registry */
-    nimcp_hash_table_insert(coordinator->mission_registry,
-                           &mission->mission_id, mission);
+    swarm_hash_table_insert(coordinator->mission_registry,
+                           mission->mission_id, mission);
 
-    NIMCP_LOG_INFO("Created mission: ID=%lu, Priority=%d, Desc='%s'",
+    LOG_INFO("Created mission: ID=%lu, Priority=%d, Desc='%s'",
                    mission->mission_id, priority, description);
 
     return mission->mission_id;
@@ -909,20 +1207,20 @@ nimcp_result_t nimcp_mission_assign_swarms(
     uint32_t swarm_count
 ) {
     if (!coordinator || !swarm_ids || swarm_count == 0) {
-        return NIMCP_ERROR_INVALID_PARAMETER;
+        return NIMCP_INVALID_PARAM;
     }
 
     nimcp_mission_assignment_t* mission =
-        nimcp_hash_table_get(coordinator->mission_registry, &mission_id);
+        swarm_hash_table_lookup(coordinator->mission_registry, mission_id);
 
     if (!mission) {
-        NIMCP_LOG_ERROR("Mission not found: ID=%lu", mission_id);
-        return NIMCP_ERROR_NOT_FOUND;
+        LOG_ERROR("Mission not found: ID=%lu", mission_id);
+        return NIMCP_NOT_FOUND;
     }
 
     if (swarm_count > NIMCP_MAX_SWARMS_PER_SUPER) {
-        NIMCP_LOG_ERROR("Too many swarms for mission assignment");
-        return NIMCP_ERROR_OUT_OF_RANGE;
+        LOG_ERROR("Too many swarms for mission assignment");
+        return NIMCP_INVALID_PARAM;
     }
 
     /* Assign swarms */
@@ -930,7 +1228,7 @@ nimcp_result_t nimcp_mission_assign_swarms(
     mission->swarm_count = swarm_count;
     mission->status = NIMCP_MISSION_STATUS_ASSIGNED;
 
-    NIMCP_LOG_INFO("Assigned %u swarms to mission %lu", swarm_count, mission_id);
+    LOG_INFO("Assigned %u swarms to mission %lu", swarm_count, mission_id);
 
     return NIMCP_SUCCESS;
 }
@@ -941,14 +1239,14 @@ nimcp_result_t nimcp_mission_update_progress(
     float progress
 ) {
     if (!coordinator) {
-        return NIMCP_ERROR_INVALID_PARAMETER;
+        return NIMCP_INVALID_PARAM;
     }
 
     nimcp_mission_assignment_t* mission =
-        nimcp_hash_table_get(coordinator->mission_registry, &mission_id);
+        swarm_hash_table_lookup(coordinator->mission_registry, mission_id);
 
     if (!mission) {
-        return NIMCP_ERROR_NOT_FOUND;
+        return NIMCP_NOT_FOUND;
     }
 
     mission->progress = fmaxf(0.0f, fminf(1.0f, progress));
@@ -957,7 +1255,7 @@ nimcp_result_t nimcp_mission_update_progress(
         mission->status = NIMCP_MISSION_STATUS_ACTIVE;
     }
 
-    NIMCP_LOG_DEBUG("Mission progress updated: ID=%lu, Progress=%.1f%%",
+    LOG_DEBUG("Mission progress updated: ID=%lu, Progress=%.1f%%",
                     mission_id, mission->progress * 100.0f);
 
     return NIMCP_SUCCESS;
@@ -969,21 +1267,21 @@ nimcp_result_t nimcp_mission_complete(
     bool success
 ) {
     if (!coordinator) {
-        return NIMCP_ERROR_INVALID_PARAMETER;
+        return NIMCP_INVALID_PARAM;
     }
 
     nimcp_mission_assignment_t* mission =
-        nimcp_hash_table_get(coordinator->mission_registry, &mission_id);
+        swarm_hash_table_lookup(coordinator->mission_registry, mission_id);
 
     if (!mission) {
-        return NIMCP_ERROR_NOT_FOUND;
+        return NIMCP_NOT_FOUND;
     }
 
     mission->status = success ? NIMCP_MISSION_STATUS_COMPLETED :
                                NIMCP_MISSION_STATUS_FAILED;
     mission->progress = success ? 1.0f : mission->progress;
 
-    NIMCP_LOG_INFO("Mission completed: ID=%lu, Success=%s",
+    LOG_INFO("Mission completed: ID=%lu, Success=%s",
                    mission_id, success ? "YES" : "NO");
 
     return NIMCP_SUCCESS;
@@ -997,7 +1295,7 @@ nimcp_mission_assignment_t* nimcp_mission_get(
         return NULL;
     }
 
-    return nimcp_hash_table_get(coordinator->mission_registry, &mission_id);
+    return swarm_hash_table_lookup(coordinator->mission_registry, mission_id);
 }
 
 /* ============================================================================
@@ -1030,7 +1328,7 @@ uint64_t nimcp_comm_bridge_create(
             nimcp_rwlock_write_lock(&super->bridge_lock);
 
             if (super->bridge_count >= NIMCP_MAX_COMM_BRIDGES) {
-                NIMCP_LOG_ERROR("Maximum bridges reached for super-swarm");
+                LOG_ERROR("Maximum bridges reached for super-swarm");
                 nimcp_rwlock_write_unlock(&super->bridge_lock);
                 return 0;
             }
@@ -1043,7 +1341,7 @@ uint64_t nimcp_comm_bridge_create(
             bridge->swarm_b = swarm_b;
             bridge->link_quality = 1.0f;
             bridge->is_active = true;
-            bridge->last_message_time = nimcp_get_time_ms();
+            bridge->last_message_time = nimcp_time_get_ms();
 
             if (relay_agents && relay_count > 0) {
                 uint32_t count = (relay_count > 4) ? 4 : relay_count;
@@ -1053,14 +1351,14 @@ uint64_t nimcp_comm_bridge_create(
 
             nimcp_rwlock_write_unlock(&super->bridge_lock);
 
-            NIMCP_LOG_INFO("Created communication bridge: ID=%lu, Between %lu and %lu",
+            LOG_INFO("Created communication bridge: ID=%lu, Between %lu and %lu",
                           bridge->bridge_id, swarm_a, swarm_b);
 
             return bridge->bridge_id;
         }
     }
 
-    NIMCP_LOG_ERROR("Swarms not found in same super-swarm for bridge creation");
+    LOG_ERROR("Swarms not found in same super-swarm for bridge creation");
     return 0;
 }
 
@@ -1070,7 +1368,7 @@ nimcp_result_t nimcp_comm_bridge_update_quality(
     float link_quality
 ) {
     if (!coordinator) {
-        return NIMCP_ERROR_INVALID_PARAMETER;
+        return NIMCP_INVALID_PARAM;
     }
 
     link_quality = fmaxf(0.0f, fminf(1.0f, link_quality));
@@ -1089,7 +1387,7 @@ nimcp_result_t nimcp_comm_bridge_update_quality(
                 /* Deactivate if quality too low */
                 if (link_quality < BRIDGE_QUALITY_THRESHOLD) {
                     super->bridges[j].is_active = false;
-                    NIMCP_LOG_WARN("Bridge deactivated due to low quality: ID=%lu",
+                    LOG_WARN("Bridge deactivated due to low quality: ID=%lu",
                                   bridge_id);
                 }
 
@@ -1101,7 +1399,7 @@ nimcp_result_t nimcp_comm_bridge_update_quality(
         nimcp_rwlock_write_unlock(&super->bridge_lock);
     }
 
-    return NIMCP_ERROR_NOT_FOUND;
+    return NIMCP_NOT_FOUND;
 }
 
 nimcp_result_t nimcp_comm_bridge_deactivate(
@@ -1109,7 +1407,7 @@ nimcp_result_t nimcp_comm_bridge_deactivate(
     uint64_t bridge_id
 ) {
     if (!coordinator) {
-        return NIMCP_ERROR_INVALID_PARAMETER;
+        return NIMCP_INVALID_PARAM;
     }
 
     /* Find and deactivate bridge */
@@ -1124,7 +1422,7 @@ nimcp_result_t nimcp_comm_bridge_deactivate(
                 super->bridges[j].is_active = false;
                 nimcp_rwlock_write_unlock(&super->bridge_lock);
 
-                NIMCP_LOG_INFO("Bridge deactivated: ID=%lu", bridge_id);
+                LOG_INFO("Bridge deactivated: ID=%lu", bridge_id);
                 return NIMCP_SUCCESS;
             }
         }
@@ -1132,7 +1430,7 @@ nimcp_result_t nimcp_comm_bridge_deactivate(
         nimcp_rwlock_write_unlock(&super->bridge_lock);
     }
 
-    return NIMCP_ERROR_NOT_FOUND;
+    return NIMCP_NOT_FOUND;
 }
 
 nimcp_result_t nimcp_comm_bridge_route_message(
@@ -1142,12 +1440,12 @@ nimcp_result_t nimcp_comm_bridge_route_message(
     bio_message_header_t* message
 ) {
     if (!coordinator || !message) {
-        return NIMCP_ERROR_INVALID_PARAMETER;
+        return NIMCP_INVALID_PARAM;
     }
 
     if (!coordinator->router) {
-        NIMCP_LOG_WARN("No bio-router available for message routing");
-        return NIMCP_ERROR_NOT_INITIALIZED;
+        LOG_WARN("No bio-router available for message routing");
+        return NIMCP_ERROR;
     }
 
     /* Find appropriate bridge */
@@ -1164,14 +1462,21 @@ nimcp_result_t nimcp_comm_bridge_route_message(
                 ((bridge->swarm_a == from_swarm && bridge->swarm_b == to_swarm) ||
                  (bridge->swarm_a == to_swarm && bridge->swarm_b == from_swarm))) {
 
-                bridge->last_message_time = nimcp_get_time_ms();
+                bridge->last_message_time = nimcp_time_get_ms();
                 nimcp_rwlock_read_unlock(&super->bridge_lock);
 
-                /* Route through bio-async system */
-                nimcp_result_t result = nimcp_bio_router_route(
-                    coordinator->router, message);
+                /* Route through bio-async system using global context */
+                nimcp_result_t result = NIMCP_NOT_INITIALIZED;
+                if (g_multi_swarm_ctx) {
+                    result = bio_router_send(
+                        g_multi_swarm_ctx,
+                        message,
+                        sizeof(bio_message_header_t) + message->payload_size,
+                        100  /* 100ms timeout */
+                    );
+                }
 
-                NIMCP_LOG_DEBUG("Routed message via bridge %lu: From=%lu To=%lu",
+                LOG_DEBUG("Routed message via bridge %lu: From=%lu To=%lu",
                                bridge->bridge_id, from_swarm, to_swarm);
 
                 return result;
@@ -1181,9 +1486,9 @@ nimcp_result_t nimcp_comm_bridge_route_message(
         nimcp_rwlock_read_unlock(&super->bridge_lock);
     }
 
-    NIMCP_LOG_WARN("No active bridge found between swarms %lu and %lu",
+    LOG_WARN("No active bridge found between swarms %lu and %lu",
                    from_swarm, to_swarm);
-    return NIMCP_ERROR_NOT_FOUND;
+    return NIMCP_NOT_FOUND;
 }
 
 /* ============================================================================
@@ -1204,17 +1509,17 @@ uint32_t nimcp_conflict_detect(
         nimcp_super_swarm_t* super = coordinator->super_swarms[i];
         if (!super) continue;
 
-        nimcp_vector_t* conflicts = super->conflicts;
+        void* conflicts = super->conflicts;
         if (!conflicts) continue;
 
         /* Clear old conflicts */
-        nimcp_vector_clear(conflicts);
+        conflict_array_clear((nimcp_darray_t*)conflicts);
 
         /* Detect new conflicts */
         uint32_t count = nimcp_territory_detect_conflicts(coordinator, conflicts);
         total_conflicts += count;
 
-        NIMCP_LOG_INFO("Detected %u conflicts in super-swarm %lu",
+        LOG_INFO("Detected %u conflicts in super-swarm %lu",
                       count, super->super_swarm_id);
     }
 
@@ -1229,7 +1534,7 @@ nimcp_result_t nimcp_conflict_resolve(
     void* user_data
 ) {
     if (!coordinator) {
-        return NIMCP_ERROR_INVALID_PARAMETER;
+        return NIMCP_INVALID_PARAM;
     }
 
     /* Find conflict in super-swarms */
@@ -1237,9 +1542,9 @@ nimcp_result_t nimcp_conflict_resolve(
         nimcp_super_swarm_t* super = coordinator->super_swarms[i];
         if (!super || !super->conflicts) continue;
 
-        for (size_t j = 0; j < nimcp_vector_size(super->conflicts); j++) {
+        for (size_t j = 0; j < conflict_array_size((nimcp_darray_t*)super->conflicts); j++) {
             nimcp_swarm_conflict_t* conflict =
-                (nimcp_swarm_conflict_t*)nimcp_vector_at(super->conflicts, j);
+                conflict_array_at((nimcp_darray_t*)super->conflicts, j);
 
             if (conflict && conflict->conflict_id == conflict_id) {
                 conflict->strategy = strategy;
@@ -1261,12 +1566,12 @@ nimcp_result_t nimcp_conflict_resolve(
                             break;
 
                         case NIMCP_CONFLICT_NEGOTIATION:
-                            NIMCP_LOG_INFO("Initiating negotiation for conflict %lu",
+                            LOG_INFO("Initiating negotiation for conflict %lu",
                                           conflict_id);
                             break;
 
                         default:
-                            NIMCP_LOG_INFO("Resolving conflict %lu with strategy %d",
+                            LOG_INFO("Resolving conflict %lu with strategy %d",
                                           conflict_id, strategy);
                             break;
                     }
@@ -1274,17 +1579,17 @@ nimcp_result_t nimcp_conflict_resolve(
 
                 if (resolved) {
                     conflict->is_resolved = true;
-                    conflict->resolution_time = nimcp_get_time_ms();
-                    NIMCP_LOG_INFO("Conflict resolved: ID=%lu", conflict_id);
+                    conflict->resolution_time = nimcp_time_get_ms();
+                    LOG_INFO("Conflict resolved: ID=%lu", conflict_id);
                     return NIMCP_SUCCESS;
                 }
 
-                return NIMCP_ERROR_GENERAL;
+                return NIMCP_ERROR;
             }
         }
     }
 
-    return NIMCP_ERROR_NOT_FOUND;
+    return NIMCP_NOT_FOUND;
 }
 
 uint32_t nimcp_conflict_auto_resolve(
@@ -1303,9 +1608,9 @@ uint32_t nimcp_conflict_auto_resolve(
         nimcp_super_swarm_t* super = coordinator->super_swarms[i];
         if (!super || !super->conflicts) continue;
 
-        for (size_t j = 0; j < nimcp_vector_size(super->conflicts); j++) {
+        for (size_t j = 0; j < conflict_array_size((nimcp_darray_t*)super->conflicts); j++) {
             nimcp_swarm_conflict_t* conflict =
-                (nimcp_swarm_conflict_t*)nimcp_vector_at(super->conflicts, j);
+                conflict_array_at((nimcp_darray_t*)super->conflicts, j);
 
             if (conflict && !conflict->is_resolved) {
                 /* Try to resolve */
@@ -1324,7 +1629,7 @@ uint32_t nimcp_conflict_auto_resolve(
         }
     }
 
-    NIMCP_LOG_INFO("Auto-resolved %u conflicts", resolved_count);
+    LOG_INFO("Auto-resolved %u conflicts", resolved_count);
     return resolved_count;
 }
 
@@ -1332,47 +1637,46 @@ uint32_t nimcp_conflict_auto_resolve(
  * Bio-Async Integration
  * ============================================================================ */
 
+/**
+ * @brief Swarm discovery message payload
+ *
+ * WHAT: Message payload for swarm discovery broadcasts
+ * WHY:  Standardized format for inter-swarm communication
+ */
+typedef struct {
+    bio_message_header_t header;
+    nimcp_swarm_identity_t identity;
+} swarm_discovery_msg_t;
+
+/**
+ * @brief Generic swarm message payload
+ *
+ * WHAT: Variable-length message with header and payload
+ * WHY:  Flexible format for different message types
+ */
+typedef struct {
+    bio_message_header_t header;
+    uint8_t payload[];  /* Flexible array member */
+} swarm_generic_msg_t;
+
 uint32_t nimcp_multi_swarm_process_inbox(
     nimcp_multi_swarm_coordinator_t* coordinator
 ) {
-    if (!coordinator || !coordinator->router) {
+    if (!coordinator) {
         return 0;
     }
 
-    uint32_t processed = 0;
+    /* Use bio-router's process_inbox which invokes registered handlers */
+    if (!g_multi_swarm_ctx) {
+        LOG_DEBUG("Bio-async context not initialized for swarm coordinator");
+        return 0;
+    }
 
-    /* Process messages from bio-async router */
-    bio_message_header_t* message;
-    while ((message = nimcp_bio_router_dequeue(coordinator->router)) != NULL) {
-        /* Handle different message types */
-        switch (message->type) {
-            case MSG_TYPE_SWARM_DISCOVERY:
-                NIMCP_LOG_DEBUG("Received swarm discovery message");
-                break;
+    /* Process up to 64 messages per call to avoid blocking */
+    uint32_t processed = bio_router_process_inbox(g_multi_swarm_ctx, 64);
 
-            case MSG_TYPE_RESOURCE_REQUEST:
-                NIMCP_LOG_DEBUG("Received resource request message");
-                break;
-
-            case MSG_TYPE_TERRITORY_NEGOTIATE:
-                NIMCP_LOG_DEBUG("Received territory negotiation message");
-                break;
-
-            case MSG_TYPE_MISSION_UPDATE:
-                NIMCP_LOG_DEBUG("Received mission update message");
-                break;
-
-            case MSG_TYPE_CONFLICT_ALERT:
-                NIMCP_LOG_DEBUG("Received conflict alert message");
-                break;
-
-            default:
-                NIMCP_LOG_DEBUG("Received unknown message type: %u", message->type);
-                break;
-        }
-
-        nimcp_bio_message_destroy(message);
-        processed++;
+    if (processed > 0) {
+        LOG_DEBUG("Processed %u swarm messages", processed);
     }
 
     return processed;
@@ -1382,33 +1686,58 @@ nimcp_result_t nimcp_multi_swarm_broadcast_discovery(
     nimcp_multi_swarm_coordinator_t* coordinator,
     uint64_t swarm_id
 ) {
-    if (!coordinator || !coordinator->router) {
-        return NIMCP_ERROR_NOT_INITIALIZED;
+    if (!coordinator) {
+        return NIMCP_ERROR;
+    }
+
+    /* Require bio-async context for messaging */
+    if (!g_multi_swarm_ctx) {
+        LOG_WARN("Bio-async context not initialized, cannot broadcast");
+        return NIMCP_NOT_INITIALIZED;
     }
 
     nimcp_swarm_identity_t* identity = nimcp_swarm_get(coordinator, swarm_id);
     if (!identity) {
-        return NIMCP_ERROR_NOT_FOUND;
+        return NIMCP_NOT_FOUND;
     }
 
-    /* Create discovery message */
-    bio_message_header_t* message = nimcp_bio_message_create(
-        MSG_TYPE_SWARM_DISCOVERY,
-        identity,
+    /* Allocate discovery message with embedded identity */
+    swarm_discovery_msg_t* message = (swarm_discovery_msg_t*)nimcp_malloc(
+        sizeof(swarm_discovery_msg_t));
+    if (!message) {
+        LOG_ERROR("Failed to allocate discovery message");
+        return NIMCP_NO_MEMORY;
+    }
+
+    /* Initialize message header using bio_msg_init_header */
+    bio_msg_init_header(
+        &message->header,
+        (bio_message_type_t)MSG_TYPE_SWARM_DISCOVERY,
+        BIO_MODULE_SWARM_COORDINATOR,
+        BIO_MODULE_ALL,  /* Broadcast to all modules */
         sizeof(nimcp_swarm_identity_t)
     );
+    message->header.flags = BIO_MSG_FLAG_BROADCAST;
 
-    if (!message) {
-        NIMCP_LOG_ERROR("Failed to create discovery message");
-        return NIMCP_ERROR_OUT_OF_MEMORY;
-    }
+    /* Copy identity into message payload */
+    memcpy(&message->identity, identity, sizeof(nimcp_swarm_identity_t));
 
     /* Broadcast via router */
-    nimcp_result_t result = nimcp_bio_router_broadcast(coordinator->router, message);
+    nimcp_result_t result = bio_router_broadcast(
+        g_multi_swarm_ctx,
+        message,
+        sizeof(swarm_discovery_msg_t)
+    );
 
-    nimcp_bio_message_destroy(message);
+    /* Clean up allocated message */
+    nimcp_free(message);
 
-    NIMCP_LOG_INFO("Broadcasted discovery for swarm %lu", swarm_id);
+    if (result == NIMCP_SUCCESS) {
+        LOG_INFO("Broadcasted discovery for swarm %lu", swarm_id);
+    } else {
+        LOG_WARN("Failed to broadcast discovery for swarm %lu: %d", swarm_id, result);
+    }
+
     return result;
 }
 
@@ -1420,30 +1749,46 @@ nimcp_result_t nimcp_multi_swarm_send_message(
     const void* payload,
     size_t payload_size
 ) {
-    if (!coordinator || !payload) {
-        return NIMCP_ERROR_INVALID_PARAMETER;
+    if (!coordinator || !payload || payload_size == 0) {
+        return NIMCP_INVALID_PARAM;
     }
 
-    /* Create message */
-    bio_message_header_t* message = nimcp_bio_message_create(
-        message_type,
-        payload,
-        payload_size
+    /* Require bio-async context for messaging */
+    if (!g_multi_swarm_ctx) {
+        LOG_WARN("Bio-async context not initialized, cannot send message");
+        return NIMCP_NOT_INITIALIZED;
+    }
+
+    /* Allocate message with header + payload */
+    size_t msg_size = sizeof(bio_message_header_t) + payload_size;
+    swarm_generic_msg_t* message = (swarm_generic_msg_t*)nimcp_malloc(msg_size);
+    if (!message) {
+        LOG_ERROR("Failed to allocate swarm message");
+        return NIMCP_NO_MEMORY;
+    }
+
+    /* Initialize message header */
+    bio_msg_init_header(
+        &message->header,
+        (bio_message_type_t)message_type,
+        BIO_MODULE_SWARM_COORDINATOR,
+        BIO_MODULE_SWARM_COORDINATOR,  /* Target is another swarm coordinator */
+        (uint32_t)payload_size
     );
 
-    if (!message) {
-        return NIMCP_ERROR_OUT_OF_MEMORY;
-    }
+    /* Copy payload into message */
+    memcpy(message->payload, payload, payload_size);
 
-    /* Route through bridge */
+    /* Route through communication bridge for swarm-to-swarm messaging */
     nimcp_result_t result = nimcp_comm_bridge_route_message(
         coordinator,
         from_swarm,
         to_swarm,
-        message
+        &message->header
     );
 
-    nimcp_bio_message_destroy(message);
+    /* Clean up allocated message */
+    nimcp_free(message);
 
     return result;
 }
@@ -1462,7 +1807,7 @@ nimcp_swarm_identity_t* nimcp_swarm_get(
 
     nimcp_rwlock_read_lock(&coordinator->coordinator_lock);
     nimcp_swarm_identity_t* identity =
-        nimcp_hash_table_get(coordinator->swarm_registry, &swarm_id);
+        swarm_hash_table_lookup(coordinator->swarm_registry, swarm_id);
     nimcp_rwlock_read_unlock(&coordinator->coordinator_lock);
 
     return identity;
@@ -1472,7 +1817,7 @@ uint32_t nimcp_swarm_find_by_capability(
     nimcp_multi_swarm_coordinator_t* coordinator,
     nimcp_swarm_capability_type_t capability,
     float min_proficiency,
-    nimcp_vector_t* results
+    void* results
 ) {
     if (!coordinator || !results) {
         return 0;
@@ -1496,7 +1841,7 @@ uint32_t nimcp_swarm_find_by_capability(
             for (uint32_t k = 0; k < swarm->capability_count; k++) {
                 if (swarm->capabilities[k].type == capability &&
                     swarm->capabilities[k].proficiency >= min_proficiency) {
-                    nimcp_vector_push_back(results, &swarm->swarm_id);
+                    uint64_array_push_back((nimcp_darray_t*)results, &swarm->swarm_id);
                     found++;
                     break;
                 }
@@ -1514,7 +1859,7 @@ uint32_t nimcp_swarm_find_by_capability(
 uint32_t nimcp_swarm_find_in_territory(
     nimcp_multi_swarm_coordinator_t* coordinator,
     nimcp_territory_bounds_t territory,
-    nimcp_vector_t* results
+    void* results
 ) {
     if (!coordinator || !results) {
         return 0;
@@ -1534,7 +1879,7 @@ uint32_t nimcp_swarm_find_in_territory(
             nimcp_swarm_identity_t* swarm = super->swarms[j];
 
             if (nimcp_territory_overlaps(&swarm->territory, &territory)) {
-                nimcp_vector_push_back(results, &swarm->swarm_id);
+                uint64_array_push_back((nimcp_darray_t*)results, &swarm->swarm_id);
                 found++;
             }
         }
@@ -1586,7 +1931,7 @@ void nimcp_multi_swarm_get_stats(
         nimcp_rwlock_read_unlock(&super->mission_lock);
 
         if (super->conflicts) {
-            conflicts += (uint32_t)nimcp_vector_size(super->conflicts);
+            conflicts += (uint32_t)conflict_array_size((nimcp_darray_t*)super->conflicts);
         }
     }
 
