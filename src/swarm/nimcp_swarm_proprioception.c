@@ -9,9 +9,14 @@
  */
 
 #include "swarm/nimcp_swarm_proprioception.h"
+#include "async/nimcp_bio_router.h"
+#include "async/nimcp_bio_messages.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/time/nimcp_time.h"
+
+#define LOG_MODULE "swarm_proprioception"
+
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
@@ -1184,6 +1189,47 @@ nimcp_result_t nimcp_swarm_proprio_localize_vibration(
 
 /* ==================== Bio-Async Integration ======================== */
 
+/**
+ * @brief Helper to send bio-async message
+ */
+static nimcp_result_t proprio_send_message(
+    nimcp_swarm_proprioception_t* proprio,
+    bio_message_type_t msg_type,
+    const void* payload,
+    size_t payload_size
+) {
+    if (!bio_router_is_initialized() || !proprio->bio_ctx) {
+        return NIMCP_SUCCESS;  /* Silently succeed if not available */
+    }
+
+    size_t total_size = sizeof(bio_message_header_t) + payload_size;
+    uint8_t* buffer = nimcp_malloc(total_size);
+    if (!buffer) {
+        return NIMCP_ERROR_MEMORY;
+    }
+
+    bio_message_header_t* header = (bio_message_header_t*)buffer;
+    header->type = msg_type;
+    header->sequence_id = 0;
+    header->source_module = BIO_MODULE_SWARM_PROPRIOCEPTION;
+    header->target_module = BIO_MODULE_ALL;
+    header->timestamp_us = nimcp_time_get_us();
+    header->channel = BIO_CHANNEL_ACETYLCHOLINE;  /* Fast coordination */
+    header->payload_size = (uint32_t)payload_size;
+    header->flags = BIO_MSG_FLAG_BROADCAST;
+
+    if (payload && payload_size > 0) {
+        memcpy(buffer + sizeof(bio_message_header_t), payload, payload_size);
+    }
+
+    nimcp_error_t err = bio_router_broadcast(
+        (bio_module_context_t)proprio->bio_ctx, buffer, total_size
+    );
+    nimcp_free(buffer);
+
+    return (err == NIMCP_SUCCESS) ? NIMCP_SUCCESS : NIMCP_ERROR;
+}
+
 nimcp_result_t nimcp_swarm_proprio_broadcast_position(
     nimcp_swarm_proprioception_t* proprio
 ) {
@@ -1195,11 +1241,31 @@ nimcp_result_t nimcp_swarm_proprio_broadcast_position(
         return NIMCP_SUCCESS;  /* Not enabled, return success */
     }
 
-    /* Stubbed - bio-async messaging requires brain integration */
-    proprio->total_messages_sent++;
-    LOG_DEBUG("Drone %u position broadcast (stubbed)", proprio->drone_id);
+    /* Build position payload */
+    struct {
+        uint32_t drone_id;
+        nimcp_swarm_position_t position;
+        nimcp_swarm_velocity_t velocity;
+        uint64_t timestamp;
+    } payload = {
+        .drone_id = proprio->drone_id,
+        .position = proprio->position,
+        .velocity = proprio->velocity,
+        .timestamp = nimcp_time_get_us()
+    };
 
-    return NIMCP_SUCCESS;
+    nimcp_result_t result = proprio_send_message(
+        proprio, BIO_MSG_SWARM_POSITION_UPDATE, &payload, sizeof(payload)
+    );
+
+    if (result == NIMCP_SUCCESS) {
+        proprio->total_messages_sent++;
+        LOG_DEBUG("Drone %u broadcast position (%.2f, %.2f, %.2f)",
+                  proprio->drone_id,
+                  proprio->position.x, proprio->position.y, proprio->position.z);
+    }
+
+    return result;
 }
 
 nimcp_result_t nimcp_swarm_proprio_broadcast_formation_state(
@@ -1213,11 +1279,32 @@ nimcp_result_t nimcp_swarm_proprio_broadcast_formation_state(
         return NIMCP_SUCCESS;  /* Not enabled, return success */
     }
 
-    /* Stubbed - bio-async messaging requires brain integration */
-    proprio->total_messages_sent++;
-    LOG_DEBUG("Drone %u formation state broadcast (stubbed)", proprio->drone_id);
+    /* Build formation state payload */
+    struct {
+        uint32_t drone_id;
+        uint32_t num_neighbors;
+        nimcp_swarm_shape_descriptor_t shape;
+        nimcp_swarm_density_info_t density;
+        uint64_t timestamp;
+    } payload = {
+        .drone_id = proprio->drone_id,
+        .num_neighbors = proprio->num_neighbors,
+        .shape = proprio->current_shape,
+        .density = proprio->density,
+        .timestamp = nimcp_time_get_us()
+    };
 
-    return NIMCP_SUCCESS;
+    nimcp_result_t result = proprio_send_message(
+        proprio, BIO_MSG_SWARM_FORMATION_STATE, &payload, sizeof(payload)
+    );
+
+    if (result == NIMCP_SUCCESS) {
+        proprio->total_messages_sent++;
+        LOG_DEBUG("Drone %u broadcast formation state: neighbors=%u, local_density=%.3f",
+                  proprio->drone_id, proprio->num_neighbors, proprio->density.local_density);
+    }
+
+    return result;
 }
 
 nimcp_result_t nimcp_swarm_proprio_send_deformation_alert(
@@ -1232,12 +1319,43 @@ nimcp_result_t nimcp_swarm_proprio_send_deformation_alert(
         return NIMCP_SUCCESS;  /* Not enabled, return success */
     }
 
-    /* Stubbed - bio-async messaging requires brain integration */
+    /* Build deformation alert payload */
+    struct {
+        uint32_t drone_id;
+        nimcp_swarm_deformation_metrics_t metrics;
+        uint64_t timestamp;
+    } payload = {
+        .drone_id = proprio->drone_id,
+        .metrics = *metrics,
+        .timestamp = nimcp_time_get_us()
+    };
+
+    /* Use NOREPINEPHRINE channel for alerts */
+    nimcp_result_t result = NIMCP_SUCCESS;
+    if (bio_router_is_initialized()) {
+        size_t total_size = sizeof(bio_message_header_t) + sizeof(payload);
+        uint8_t* buffer = nimcp_malloc(total_size);
+        if (buffer) {
+            bio_message_header_t* header = (bio_message_header_t*)buffer;
+            header->type = BIO_MSG_SWARM_DEFORMATION_ALERT;
+            header->source_module = BIO_MODULE_SWARM_PROPRIOCEPTION;
+            header->target_module = BIO_MODULE_ALL;
+            header->timestamp_us = nimcp_time_get_us();
+            header->channel = BIO_CHANNEL_NOREPINEPHRINE;  /* Alert channel */
+            header->payload_size = sizeof(payload);
+            header->flags = BIO_MSG_FLAG_BROADCAST | BIO_MSG_FLAG_URGENT;
+            memcpy(buffer + sizeof(bio_message_header_t), &payload, sizeof(payload));
+
+            bio_router_broadcast((bio_module_context_t)proprio->bio_ctx, buffer, total_size);
+            nimcp_free(buffer);
+        }
+    }
+
     proprio->total_messages_sent++;
-    LOG_WARN("Drone %u sending deformation alert (stubbed): type=%d, magnitude=%.3f",
+    LOG_WARN("Drone %u sending deformation alert: type=%d, magnitude=%.3f",
              proprio->drone_id, metrics->deform_type, metrics->magnitude);
 
-    return NIMCP_SUCCESS;
+    return result;
 }
 
 nimcp_result_t nimcp_swarm_proprio_process_message(
@@ -1248,9 +1366,35 @@ nimcp_result_t nimcp_swarm_proprio_process_message(
         return NIMCP_INVALID_PARAM;
     }
 
-    /* Stubbed - bio-async message processing requires brain integration */
     proprio->total_messages_received++;
-    LOG_DEBUG("Drone %u received message type 0x%x (stubbed)", proprio->drone_id, msg->type);
+
+    /* Process based on message type */
+    switch (msg->type) {
+        case BIO_MSG_SWARM_POSITION_UPDATE: {
+            /* Update neighbor position if from another drone */
+            const uint8_t* payload = (const uint8_t*)(msg + 1);
+            uint32_t sender_id = *(const uint32_t*)payload;
+            if (sender_id != proprio->drone_id) {
+                LOG_DEBUG("Drone %u received position update from drone %u",
+                          proprio->drone_id, sender_id);
+                /* TODO: Update neighbor tracking */
+            }
+            break;
+        }
+
+        case BIO_MSG_SWARM_FORMATION_STATE:
+            LOG_DEBUG("Drone %u received formation state", proprio->drone_id);
+            break;
+
+        case BIO_MSG_SWARM_DEFORMATION_ALERT:
+            LOG_WARN("Drone %u received deformation alert", proprio->drone_id);
+            break;
+
+        default:
+            LOG_DEBUG("Drone %u received unknown message type 0x%x",
+                      proprio->drone_id, msg->type);
+            break;
+    }
 
     return NIMCP_SUCCESS;
 }

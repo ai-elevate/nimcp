@@ -78,6 +78,7 @@ typedef struct {
     uint32_t consolidation_interval_ms;
     nimcp_platform_mutex_t* mutex;
     void* inbox;                   // Bio-async inbox (opaque pointer for future use)
+    void* bio_ctx;                 // Bio-async context for message routing
     bool is_initialized;
 } portia_learning_state_t;
 

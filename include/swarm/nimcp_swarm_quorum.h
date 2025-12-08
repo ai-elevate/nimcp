@@ -183,6 +183,7 @@ typedef struct nimcp_swarm_quorum {
 
     /* Bio-async integration */
     struct nimcp_brain* brain;            /**< Associated brain for messaging */
+    void* bio_ctx;                        /**< Bio-async router context */
 
     /* Synchronization */
     nimcp_platform_mutex_t* mutex;  /**< Mutex for thread safety */

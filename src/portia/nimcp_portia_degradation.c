@@ -4,10 +4,14 @@
  */
 
 #include "portia/nimcp_portia_degradation.h"
+#include "async/nimcp_bio_router.h"
+#include "async/nimcp_bio_messages.h"
 #include "security/nimcp_blood_brain_barrier.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/time/nimcp_time.h"
+
+#define LOG_MODULE "portia_degradation"
 #include <string.h>
 #include <pthread.h>
 

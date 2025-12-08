@@ -11,11 +11,15 @@
  */
 
 #include "portia/nimcp_portia_learning.h"
+#include "async/nimcp_bio_router.h"
+#include "async/nimcp_bio_messages.h"
 #include "security/nimcp_blood_brain_barrier.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/platform/nimcp_platform.h"
 #include "utils/time/nimcp_time.h"
+
+#define LOG_MODULE "portia_learning"
 #include <string.h>
 #include <math.h>
 #include <float.h>
@@ -231,6 +235,21 @@ portia_learning_state_t* portia_learning_init(const portia_learning_config_t* co
     // Note: Bio-async inbox will be set later if needed
     state->inbox = NULL;
 
+    // Register with bio-async router
+    state->bio_ctx = NULL;
+    if (bio_router_is_initialized()) {
+        bio_module_info_t bio_info = {
+            .module_id = BIO_MODULE_PORTIA_LEARNING,
+            .module_name = "portia_learning",
+            .inbox_capacity = 16,
+            .user_data = state
+        };
+        state->bio_ctx = bio_router_register_module(&bio_info);
+        if (state->bio_ctx) {
+            LOG_DEBUG("Registered with bio-async router");
+        }
+    }
+
     state->is_initialized = true;
 
     bbb_audit_log("LEARNING_INIT", "Portia learning initialized with %u habituation, %u association entries",
@@ -251,6 +270,12 @@ void portia_learning_destroy(portia_learning_state_t* state) {
     }
 
     LOG_INFO("Destroying Portia learning system");
+
+    // Unregister from bio-async router
+    if (state->bio_ctx && bio_router_is_initialized()) {
+        bio_router_unregister_module(state->bio_ctx);
+        state->bio_ctx = NULL;
+    }
 
     if (state->mutex) {
         nimcp_platform_mutex_lock(state->mutex);
@@ -966,7 +991,7 @@ int portia_learning_export(portia_learning_state_t* state, const char* filepath)
 }
 
 /**
- * Process bio-async messages (placeholder for future bio-async integration)
+ * Process bio-async messages
  */
 int portia_learning_process_inbox(portia_learning_state_t* state) {
     bbb_validation_result_t result = {0};
@@ -976,12 +1001,18 @@ int portia_learning_process_inbox(portia_learning_state_t* state) {
         return -1;
     }
 
-    if (!state->is_initialized || !state->inbox) {
+    if (!state->is_initialized) {
         return 0;
     }
 
-    // TODO: Implement bio-async message processing when bio-async API is stabilized
-    LOG_DEBUG("Bio-async inbox processing not yet implemented");
+    // Process messages from bio-async router
+    if (state->bio_ctx && bio_router_is_initialized()) {
+        uint32_t processed = bio_router_process_inbox(state->bio_ctx, 5);
+        if (processed > 0) {
+            LOG_DEBUG("Processed %u bio-async messages", processed);
+        }
+        return (int)processed;
+    }
 
     return 0;
 }

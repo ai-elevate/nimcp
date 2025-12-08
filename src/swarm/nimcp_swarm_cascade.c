@@ -13,7 +13,10 @@
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/platform/nimcp_platform.h"
+#include "async/nimcp_bio_router.h"
 #include "async/nimcp_bio_messages.h"
+
+#define LOG_MODULE "swarm_cascade"
 #include <string.h>
 #include <math.h>
 #include <float.h>
@@ -155,7 +158,6 @@ static nimcp_health_state_t calculate_health_state(
 
 /**
  * @brief Send bio-async message
- * @note Stubbed - requires brain integration with proper bio-async API
  */
 static nimcp_result_t send_bio_message(
     void *bio_ctx,
@@ -167,11 +169,44 @@ static nimcp_result_t send_bio_message(
         return NIMCP_INVALID_PARAM;
     }
 
-    /* Bio-async message sending stubbed - requires brain integration */
-    (void)msg_type;
-    (void)data_size;
-    LOG_DEBUG("Cascade: bio-async message 0x%x stubbed (requires brain integration)", msg_type);
-    return NIMCP_SUCCESS;
+    /* Build message with header */
+    size_t total_size = sizeof(bio_message_header_t) + data_size;
+    uint8_t* msg_buffer = nimcp_malloc(total_size);
+    if (!msg_buffer) {
+        LOG_ERROR("Failed to allocate message buffer");
+        return NIMCP_ERROR_MEMORY;
+    }
+
+    bio_message_header_t* header = (bio_message_header_t*)msg_buffer;
+    header->type = (bio_message_type_t)msg_type;
+    header->sequence_id = 0;  /* Router will assign */
+    header->source_module = BIO_MODULE_SWARM_CASCADE;
+    header->target_module = BIO_MODULE_ALL;  /* Broadcast */
+    header->timestamp_us = get_time_us();
+    header->channel = BIO_CHANNEL_NOREPINEPHRINE;  /* Alert channel */
+    header->payload_size = (uint32_t)data_size;
+    header->flags = BIO_MSG_FLAG_BROADCAST;
+
+    /* Copy payload */
+    memcpy(msg_buffer + sizeof(bio_message_header_t), data, data_size);
+
+    /* Send via bio-router if available */
+    nimcp_result_t result = NIMCP_SUCCESS;
+    bio_module_context_t ctx = (bio_module_context_t)bio_ctx;
+    if (bio_router_is_initialized()) {
+        nimcp_error_t err = bio_router_broadcast(ctx, msg_buffer, total_size);
+        if (err != NIMCP_SUCCESS) {
+            LOG_WARN("Cascade: bio-async broadcast failed: %d", err);
+            result = (nimcp_result_t)err;
+        } else {
+            LOG_DEBUG("Cascade: sent bio-async message type=0x%x size=%zu", msg_type, data_size);
+        }
+    } else {
+        LOG_DEBUG("Cascade: bio-router not initialized, message type=0x%x queued", msg_type);
+    }
+
+    nimcp_free(msg_buffer);
+    return result;
 }
 
 /* ============================================================================

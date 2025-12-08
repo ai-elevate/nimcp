@@ -142,6 +142,9 @@ struct portia_context_t {
     portia_planning_engine_t* planning_engine;
     portia_target_classifier_t* target_classifier;
 
+    /* Bio-async integration */
+    bio_module_context_t bio_ctx;
+
     /* Statistics */
     uint64_t update_count;
     float total_update_time_ms;
@@ -370,19 +373,19 @@ nimcp_error_t portia_init(const portia_config_t* config) {
     }
 
     /* Register with bio-router if enabled */
-    if (cfg.enable_bio_async) {
+    ctx->bio_ctx = NULL;
+    if (cfg.enable_bio_async && bio_router_is_initialized()) {
         bio_module_info_t bio_info = {
-            .module_id = BIO_MODULE_UNKNOWN,  /* Will be assigned by router */
+            .module_id = BIO_MODULE_PORTIA,
             .module_name = "portia",
-            .inbox_capacity = 0,  /* Use default */
+            .inbox_capacity = 32,
             .user_data = ctx
         };
-        bio_module_context_t bio_ctx = bio_router_register_module(&bio_info);
-        if (!bio_ctx) {
+        ctx->bio_ctx = bio_router_register_module(&bio_info);
+        if (!ctx->bio_ctx) {
             LOG_WARN(LOG_MODULE, "Failed to register with bio-router (continuing anyway)");
         } else {
             LOG_INFO(LOG_MODULE, "Registered with bio-router");
-            /* TODO: Store bio_ctx in portia_context_t for later use */
         }
     }
 
@@ -413,10 +416,10 @@ void portia_destroy(void) {
     LOG_INFO(LOG_MODULE, "Shutting down Portia system");
 
     /* Unregister from bio-router */
-    /* TODO: Store and use bio_module_context_t */
-    /* if (ctx->config.enable_bio_async && ctx->bio_ctx) {
+    if (ctx->bio_ctx && bio_router_is_initialized()) {
         bio_router_unregister_module(ctx->bio_ctx);
-    } */
+        ctx->bio_ctx = NULL;
+    }
 
     /* Destroy subsystems */
     portia_target_classifier_destroy(ctx->target_classifier);

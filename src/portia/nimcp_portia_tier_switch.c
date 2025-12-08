@@ -7,8 +7,11 @@
 #include "utils/memory/nimcp_memory.h"
 #include "utils/thread/nimcp_thread.h"
 #include "security/nimcp_blood_brain_barrier.h"
+#include "async/nimcp_bio_router.h"
 #include "async/nimcp_bio_messages.h"
 #include "utils/validation/nimcp_common.h"
+
+#define LOG_MODULE "portia_tier_switch"
 #include <string.h>
 #include <stdio.h>
 #include <time.h>

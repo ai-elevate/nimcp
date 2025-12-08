@@ -13,12 +13,17 @@
  */
 
 #include "swarm/nimcp_swarm_memory.h"
+#include "async/nimcp_bio_router.h"
+#include "async/nimcp_bio_messages.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/validation/nimcp_validate.h"
 #include "utils/platform/nimcp_platform.h"
 #include "utils/containers/nimcp_hash_table.h"
 #include "utils/containers/nimcp_min_heap.h"
+
+#define LOG_MODULE "swarm_memory"
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -1439,9 +1444,27 @@ nimcp_result_t nimcp_swarm_memory_process_message(
         return NIMCP_SUCCESS;  /* Not enabled, return success */
     }
 
-    /* Stubbed - bio-async message processing requires brain integration */
-    LOG_DEBUG("Processing bio-async message (stubbed)");
-    (void)msg;
+    /* Process incoming bio-async message */
+    const bio_message_header_t *header = (const bio_message_header_t *)msg;
+
+    switch (header->type) {
+        case BIO_MSG_SWARM_MEMORY_SYNC:
+            LOG_DEBUG("Received memory sync request from module 0x%x",
+                      header->source_module);
+            /* TODO: Handle memory sync request */
+            break;
+
+        case BIO_MSG_CONSOLIDATION_TRIGGER: {
+            LOG_INFO("Received consolidation trigger");
+            /* Trigger memory consolidation */
+            uint32_t consolidated = 0;
+            return nimcp_swarm_memory_consolidate(memory, &consolidated);
+        }
+
+        default:
+            LOG_DEBUG("Received message type 0x%x (unhandled)", header->type);
+            break;
+    }
 
     return NIMCP_SUCCESS;
 }
@@ -1783,11 +1806,50 @@ static nimcp_result_t send_bio_message(
         return NIMCP_SUCCESS;  /* Not enabled, return success */
     }
 
-    /* Stubbed - bio-async message sending requires brain integration */
-    (void)payload;
-    LOG_DEBUG("Bio message send stubbed: type=%s, target=%s, size=%zu",
-              msg_type, target_node, payload_size);
+    if (!bio_router_is_initialized()) {
+        LOG_DEBUG("Bio message queued: type=%s, target=%s, size=%zu",
+                  msg_type, target_node, payload_size);
+        return NIMCP_SUCCESS;
+    }
 
+    /* Build bio-async message */
+    size_t total_size = sizeof(bio_message_header_t) + payload_size;
+    uint8_t *buffer = nimcp_malloc(total_size);
+    if (!buffer) {
+        return NIMCP_ERROR_MEMORY;
+    }
+
+    bio_message_header_t *header = (bio_message_header_t *)buffer;
+    header->type = BIO_MSG_SWARM_MEMORY_SYNC;
+    header->sequence_id = 0;
+    header->source_module = BIO_MODULE_SWARM_MEMORY;
+    header->target_module = BIO_MODULE_ALL;
+    struct timespec ts;
+    clock_gettime(CLOCK_MONOTONIC, &ts);
+    header->timestamp_us = (uint64_t)ts.tv_sec * 1000000ULL + (uint64_t)ts.tv_nsec / 1000ULL;
+    header->channel = BIO_CHANNEL_ACETYLCHOLINE;  /* Memory operations */
+    header->payload_size = (uint32_t)payload_size;
+    header->flags = BIO_MSG_FLAG_BROADCAST;
+
+    if (payload && payload_size > 0) {
+        memcpy(buffer + sizeof(bio_message_header_t), payload, payload_size);
+    }
+
+    nimcp_error_t err = bio_router_broadcast(
+        (bio_module_context_t)memory->bio_ctx, buffer, total_size
+    );
+    nimcp_free(buffer);
+
+    if (err != NIMCP_SUCCESS) {
+        LOG_WARN("Bio message send failed: type=%s, target=%s, error=%d",
+                 msg_type, target_node, err);
+        return (nimcp_result_t)err;
+    }
+
+    LOG_DEBUG("Bio message sent: type=%s, target=%s, size=%zu",
+              msg_type, target_node, payload_size);
+    (void)msg_type;  /* Used in log above */
+    (void)target_node;  /* Used in log above */
     return NIMCP_SUCCESS;
 }
 

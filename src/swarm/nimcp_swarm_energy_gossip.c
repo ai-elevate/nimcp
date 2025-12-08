@@ -10,8 +10,13 @@
  */
 
 #include "swarm/nimcp_swarm_energy_gossip.h"
+#include "async/nimcp_bio_router.h"
+#include "async/nimcp_bio_messages.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
+
+#define LOG_MODULE "swarm_energy_gossip"
+
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
@@ -1244,7 +1249,16 @@ nimcp_result_t nimcp_energy_gossip_process_inbox(NimcpEnergyGossip* gossip) {
     if (!gossip->bio_async_enabled || !gossip->inbox) {
         return NIMCP_SUCCESS;  /* Not enabled, return success */
     }
-    /* Stubbed - requires brain integration with proper bio-async API */
+
+    /* Process inbox if bio_router is available */
+    if (bio_router_is_initialized()) {
+        bio_module_context_t ctx = (bio_module_context_t)gossip->inbox;
+        nimcp_error_t err = bio_router_process_inbox(ctx, 16);  /* Process up to 16 messages */
+        if (err != NIMCP_SUCCESS && err != NIMCP_ERROR_NOT_FOUND) {
+            LOG_WARN("Energy gossip node %u inbox processing error: %d", gossip->node_id, err);
+            return (nimcp_result_t)err;
+        }
+    }
     return NIMCP_SUCCESS;
 }
 

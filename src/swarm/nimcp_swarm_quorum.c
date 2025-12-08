@@ -9,6 +9,8 @@
 
 #include "swarm/nimcp_swarm_quorum.h"
 #include "core/brain/nimcp_brain.h"
+#include "async/nimcp_bio_router.h"
+#include "async/nimcp_bio_messages.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/time/nimcp_time.h"
 #include "utils/validation/nimcp_validate.h"
@@ -17,6 +19,8 @@
 #include <math.h>
 #include <float.h>
 #include <stdio.h>
+
+#define LOG_MODULE "swarm_quorum"
 
 /* Default configuration values */
 #define DEFAULT_BASE_THRESHOLD 0.7
@@ -320,6 +324,21 @@ nimcp_swarm_quorum_t* nimcp_swarm_quorum_create(
     quorum->creation_time = nimcp_time_get_us();
     quorum->is_active = true;
 
+    /* Register with bio-async router */
+    quorum->bio_ctx = NULL;
+    if (bio_router_is_initialized()) {
+        bio_module_info_t bio_info = {
+            .module_id = BIO_MODULE_SWARM_QUORUM,
+            .module_name = "swarm_quorum",
+            .inbox_capacity = 32,
+            .user_data = quorum
+        };
+        quorum->bio_ctx = bio_router_register_module(&bio_info);
+        if (quorum->bio_ctx) {
+            LOG_DEBUG("Registered with bio-async router");
+        }
+    }
+
     /* Register bio-async handlers if brain provided */
     if (brain) {
         nimcp_quorum_register_handlers(quorum, brain);
@@ -333,6 +352,12 @@ void nimcp_swarm_quorum_destroy(nimcp_swarm_quorum_t* quorum) {
     if (!quorum) return;
 
     LOG_DEBUG("Destroying quorum sensing system");
+
+    /* Unregister from bio-async router */
+    if (quorum->bio_ctx && bio_router_is_initialized()) {
+        bio_router_unregister_module(quorum->bio_ctx);
+        quorum->bio_ctx = NULL;
+    }
 
     if (quorum->mutex) {
         nimcp_platform_mutex_destroy(quorum->mutex);

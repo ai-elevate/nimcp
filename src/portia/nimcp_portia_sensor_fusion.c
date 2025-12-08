@@ -4,9 +4,12 @@
  */
 
 #include "portia/nimcp_portia_sensor_fusion.h"
+#include "async/nimcp_bio_router.h"
 #include "async/nimcp_bio_messages.h"
 #include "security/nimcp_blood_brain_barrier.h"
 #include "utils/logging/nimcp_logging.h"
+
+#define LOG_MODULE "portia_sensor_fusion"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/platform/nimcp_platform.h"
 #include <string.h>

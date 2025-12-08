@@ -203,6 +203,33 @@ typedef enum {
     BIO_MSG_NLP_BRIDGE_EVENT,                   /**< Protocol bridge event */
     BIO_MSG_NLP_ERROR,                          /**< General NLP error */
 
+    /* Swarm messages (0x0B00 - 0x0BFF) */
+    BIO_MSG_SWARM_ENERGY_UPDATE = 0x0B00,       /**< Energy level update */
+    BIO_MSG_SWARM_ENERGY_GOSSIP,                /**< Energy gossip protocol */
+    BIO_MSG_SWARM_ENERGY_CRITICAL,              /**< Critical energy alert */
+    BIO_MSG_SWARM_CASCADE_FAILURE,              /**< Cascade failure detected */
+    BIO_MSG_SWARM_CASCADE_RECOVERY,             /**< Cascade recovery initiated */
+    BIO_MSG_SWARM_POSITION_UPDATE,              /**< Position broadcast */
+    BIO_MSG_SWARM_FORMATION_STATE,              /**< Formation state broadcast */
+    BIO_MSG_SWARM_DEFORMATION_ALERT,            /**< Swarm deformation alert */
+    BIO_MSG_SWARM_MEMORY_SYNC,                  /**< Memory synchronization */
+    BIO_MSG_SWARM_QUORUM_VOTE,                  /**< Quorum voting message */
+    BIO_MSG_SWARM_FLOCKING_UPDATE,              /**< Flocking behavior update */
+    BIO_MSG_SWARM_IMMUNE_ALERT,                 /**< Immune system alert */
+    BIO_MSG_SWARM_MORPHOGENESIS_SIGNAL,         /**< Morphogenesis signal */
+    BIO_MSG_SWARM_PHEROMONE_RELEASE,            /**< Pheromone release event */
+
+    /* Portia messages (0x0C00 - 0x0CFF) */
+    BIO_MSG_PORTIA_PLAN_CREATED = 0x0C00,       /**< New plan created */
+    BIO_MSG_PORTIA_PLAN_UPDATED,                /**< Plan state updated */
+    BIO_MSG_PORTIA_PLAN_COMPLETED,              /**< Plan completed */
+    BIO_MSG_PORTIA_PLAN_FAILED,                 /**< Plan failed */
+    BIO_MSG_PORTIA_TIER_CHANGE,                 /**< Platform tier changed */
+    BIO_MSG_PORTIA_DEGRADATION_EVENT,           /**< Degradation event */
+    BIO_MSG_PORTIA_SENSOR_FUSION_UPDATE,        /**< Sensor fusion update */
+    BIO_MSG_PORTIA_POWER_STATE_CHANGE,          /**< Power state changed */
+    BIO_MSG_PORTIA_LEARNING_EVENT,              /**< Learning event */
+
     /* Sentinel */
     BIO_MSG_TYPE_COUNT
 } bio_message_type_t;
@@ -469,6 +496,31 @@ typedef enum {
     BIO_MODULE_WERNICKE,
     BIO_MODULE_ANGULAR_GYRUS,
     BIO_MODULE_ARCUATE_FASCICULUS,
+
+    /* Swarm modules (0x0B00 - 0x0BFF) */
+    BIO_MODULE_SWARM_ENERGY_GOSSIP = 0x0B00,
+    BIO_MODULE_SWARM_CASCADE,
+    BIO_MODULE_SWARM_PROPRIOCEPTION,
+    BIO_MODULE_SWARM_MEMORY,
+    BIO_MODULE_SWARM_QUORUM,
+    BIO_MODULE_SWARM_FLOCKING,
+    BIO_MODULE_SWARM_IMMUNE,
+    BIO_MODULE_SWARM_MORPHOGENESIS,
+    BIO_MODULE_SWARM_MULTI,
+    BIO_MODULE_SWARM_PHEROMONE,
+
+    /* Portia modules (0x0C00 - 0x0CFF) */
+    BIO_MODULE_PORTIA = 0x0C00,
+    BIO_MODULE_PORTIA_PLANNING,
+    BIO_MODULE_PORTIA_SENSOR_FUSION,
+    BIO_MODULE_PORTIA_TIER_SWITCH,
+    BIO_MODULE_PORTIA_LEARNING,
+    BIO_MODULE_PORTIA_DEGRADATION,
+    BIO_MODULE_PORTIA_ATTENTION,
+    BIO_MODULE_PORTIA_POWER,
+    BIO_MODULE_PORTIA_ACCELERATOR,
+    BIO_MODULE_PORTIA_CLASSIFICATION,
+    BIO_MODULE_PORTIA_DECEPTION,
 
     /* Special values */
     BIO_MODULE_ALL = 0xFFFF,        /**< Broadcast to all modules */

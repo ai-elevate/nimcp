@@ -9,6 +9,8 @@
 
 #include "cognitive/ethics/nimcp_ethics.h"
 #include "cognitive/ethics/nimcp_ethics_internal.h"
+#include "async/nimcp_bio_router.h"
+#include "async/nimcp_bio_messages.h"
 #include "core/brain/nimcp_brain.h"
 #include "cognitive/nimcp_working_memory.h"
 #include "cognitive/nimcp_emotional_tagging.h"
