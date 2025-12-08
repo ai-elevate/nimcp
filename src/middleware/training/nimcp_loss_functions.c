@@ -298,6 +298,23 @@ nimcp_result_t nimcp_loss_init(nimcp_loss_context_t* ctx) {
         }
     }
 
+    /* Register with bio-async router */
+    ctx->bio_ctx = NULL;
+    ctx->bio_async_enabled = false;
+    if (bio_router_is_initialized()) {
+        bio_module_info_t bio_info = {
+            .module_id = BIO_MODULE_TRAINING_LOSS,
+            .module_name = "loss_functions",
+            .inbox_capacity = 16,
+            .user_data = ctx
+        };
+        ctx->bio_ctx = bio_router_register_module(&bio_info);
+        if (ctx->bio_ctx) {
+            ctx->bio_async_enabled = true;
+            LOG_DEBUG(LOSS_MODULE_NAME, "Registered with bio-async router");
+        }
+    }
+
     ctx->initialized = true;
     LOG_INFO(LOSS_MODULE_NAME, "Initialized loss function type=%s",
              nimcp_loss_type_name(ctx->config.type));
@@ -307,6 +324,13 @@ nimcp_result_t nimcp_loss_init(nimcp_loss_context_t* ctx) {
 
 void nimcp_loss_destroy(nimcp_loss_context_t* ctx) {
     if (!ctx) return;
+
+    /* Unregister from bio-async router */
+    if (ctx->bio_async_enabled && ctx->bio_ctx) {
+        bio_router_unregister_module(ctx->bio_ctx);
+        ctx->bio_ctx = NULL;
+        ctx->bio_async_enabled = false;
+    }
 
     /* Free working buffers */
     if (ctx->work_buffer) {

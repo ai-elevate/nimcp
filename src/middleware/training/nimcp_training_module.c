@@ -18,6 +18,7 @@
 
 #include "async/nimcp_bio_async.h"
 #include "async/nimcp_bio_router.h"
+#include "async/nimcp_bio_messages.h"
 
 #include "utils/memory/nimcp_unified_memory.h"
 #include "utils/memory/nimcp_memory.h"
@@ -62,6 +63,10 @@ struct nimcp_training_context {
     nimcp_training_weights_t** tracked_weights;
     size_t tracked_weights_count;
     size_t tracked_weights_capacity;
+
+    /* Bio-async integration */
+    bio_module_context_t bio_ctx;
+    bool bio_async_enabled;
 };
 
 //=============================================================================
@@ -243,6 +248,23 @@ nimcp_result_t nimcp_training_init(nimcp_training_context_t* ctx)
         }
     }
 
+    /* === Setup Bio-async Integration === */
+    ctx->bio_ctx = NULL;
+    ctx->bio_async_enabled = false;
+    if (bio_router_is_initialized()) {
+        bio_module_info_t bio_info = {
+            .module_id = BIO_MODULE_TRAINING_MODULE,
+            .module_name = ctx->name,
+            .inbox_capacity = 32,
+            .user_data = ctx
+        };
+        ctx->bio_ctx = bio_router_register_module(&bio_info);
+        if (ctx->bio_ctx) {
+            ctx->bio_async_enabled = true;
+            LOG_INFO("Registered %s with bio-async router", ctx->name);
+        }
+    }
+
     ctx->state = NIMCP_TRAIN_STATE_INITIALIZED;
     ctx->stats.security_module_id = ctx->security_module_id;
 
@@ -259,6 +281,13 @@ void nimcp_training_destroy(nimcp_training_context_t* ctx)
     if (!ctx) return;
 
     LOG_INFO("Destroying training module %s", ctx->name);
+
+    /* Unregister from bio-async router */
+    if (ctx->bio_async_enabled && ctx->bio_ctx) {
+        bio_router_unregister_module(ctx->bio_ctx);
+        ctx->bio_ctx = NULL;
+        ctx->bio_async_enabled = false;
+    }
 
     /* Unregister from security */
     if (ctx->security_ctx && ctx->security_module_id > 0) {

@@ -66,6 +66,10 @@ struct thalamic_router {
     routing_stats_t stats;
     double last_process_time_ms;
     uint64_t total_signal_count;
+
+    // Bio-async integration
+    bio_module_context_t bio_ctx;
+    bool bio_async_enabled;
 };
 
 // ============================================================================
@@ -275,11 +279,35 @@ thalamic_router_t* thalamic_router_create(const thalamic_router_config_t* config
     router->last_process_time_ms = get_current_time_ms();
     router->total_signal_count = 0;
 
+    // Register with bio-async router
+    router->bio_ctx = NULL;
+    router->bio_async_enabled = false;
+    if (bio_router_is_initialized()) {
+        bio_module_info_t bio_info = {
+            .module_id = BIO_MODULE_SIGNAL_ROUTER,
+            .module_name = "thalamic_router",
+            .inbox_capacity = 64,
+            .user_data = router
+        };
+        router->bio_ctx = bio_router_register_module(&bio_info);
+        if (router->bio_ctx) {
+            router->bio_async_enabled = true;
+            LOG_DEBUG(LOG_MODULE, "Registered with bio-async router");
+        }
+    }
+
     return router;
 }
 
 void thalamic_router_destroy(thalamic_router_t* router) {
     if (!router) return;
+
+    // Unregister from bio-async router
+    if (router->bio_async_enabled && router->bio_ctx) {
+        bio_router_unregister_module(router->bio_ctx);
+        router->bio_ctx = NULL;
+        router->bio_async_enabled = false;
+    }
 
     // Release queued signal wrappers
     if (router->queue) {
@@ -349,6 +377,11 @@ bool thalamic_router_process_queue(thalamic_router_t* router,
                                     uint32_t max_signals,
                                     uint32_t* num_processed) {
     if (!router) return false;
+
+    // Process bio-async messages first
+    if (router->bio_async_enabled && router->bio_ctx) {
+        bio_router_process_inbox(router->bio_ctx, 8);
+    }
 
     uint32_t processed = 0;
     double current_time = get_current_time_ms();

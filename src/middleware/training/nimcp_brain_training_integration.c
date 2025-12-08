@@ -15,6 +15,7 @@
 
 #include "async/nimcp_bio_async.h"
 #include "async/nimcp_bio_router.h"
+#include "async/nimcp_bio_messages.h"
 
 #include "middleware/training/nimcp_training_plasticity_bridge.h"
 #include "utils/logging/nimcp_logging.h"
@@ -139,6 +140,10 @@ struct nimcp_brain_training_ctx {
 
     /* Training Callbacks integration (Phase TCB-1) */
     tcb_context_t* callbacks;
+
+    /* Bio-async integration */
+    bio_module_context_t bio_ctx;
+    bool bio_async_enabled;
 };
 
 /* ============================================================================
@@ -373,6 +378,23 @@ nimcp_result_t nimcp_brain_training_init(
         }
     }
 
+    /* Register with bio-async router */
+    ctx->bio_ctx = NULL;
+    ctx->bio_async_enabled = false;
+    if (bio_router_is_initialized()) {
+        bio_module_info_t bio_info = {
+            .module_id = BIO_MODULE_TRAINING_INTEGRATION,
+            .module_name = "brain_training_integration",
+            .inbox_capacity = 32,
+            .user_data = ctx
+        };
+        ctx->bio_ctx = bio_router_register_module(&bio_info);
+        if (ctx->bio_ctx) {
+            ctx->bio_async_enabled = true;
+            LOG_INFO("Registered brain_training_integration with bio-async router");
+        }
+    }
+
     LOG_INFO("Brain-training integration initialized");
     return NIMCP_SUCCESS;
 }
@@ -381,6 +403,13 @@ void nimcp_brain_training_destroy(nimcp_brain_training_ctx_t* ctx)
 {
     if (!ctx) {
         return;
+    }
+
+    /* Unregister from bio-async router */
+    if (ctx->bio_async_enabled && ctx->bio_ctx) {
+        bio_router_unregister_module(ctx->bio_ctx);
+        ctx->bio_ctx = NULL;
+        ctx->bio_async_enabled = false;
     }
 
     /* Unregister from security */
