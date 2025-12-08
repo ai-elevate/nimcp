@@ -1,0 +1,647 @@
+/**
+ * @file nimcp_portia_classification.c
+ * @brief Target Classification System Implementation
+ *
+ * WHAT: Fast target tracking and classification
+ * WHY:  Portia spiders identify and track prey
+ * HOW:  Registry-based tracking with classification engine
+ */
+
+#include "portia/nimcp_portia_classification.h"
+#include "security/nimcp_blood_brain_barrier.h"
+#include "security/nimcp_security.h"
+#include "utils/memory/nimcp_memory.h"
+#include "utils/thread/nimcp_thread.h"
+#include "utils/time/nimcp_time.h"
+#include "utils/logging/nimcp_logging.h"
+#include "async/nimcp_bio_async.h"
+#include "async/nimcp_bio_messages.h"
+#include "async/nimcp_bio_router.h"
+#include "nimcp.h"
+
+#include <string.h>
+#include <math.h>
+#include <stdio.h>
+
+#define LOG_MODULE "portia_classification"
+
+//=============================================================================
+// Thread-Local Error Handling
+//=============================================================================
+
+static __thread char g_classification_error[512] = {0};
+
+/**
+ * WHAT: Set error message
+ * WHY:  Thread-safe error reporting
+ * HOW:  Use thread-local storage
+ */
+static void classification_set_error(const char* format, ...)
+{
+    va_list args;
+    va_start(args, format);
+    vsnprintf(g_classification_error, sizeof(g_classification_error), format, args);
+    va_end(args);
+}
+
+const char* portia_classification_get_error(void)
+{
+    return g_classification_error;
+}
+
+//=============================================================================
+// Internal Structure
+//=============================================================================
+
+struct portia_classifier_struct {
+    uint32_t magic;                          /**< Validation magic */
+    portia_classification_config_t config;   /**< Configuration */
+    target_registry_t registry;              /**< Target tracking */
+    nimcp_mutex_t lock;                      /**< Thread safety */
+    bio_module_context_t bio_ctx;            /**< Bio-async context */
+    bool bio_async_enabled;                  /**< Bio-async active */
+    uint64_t last_prune_ms;                  /**< Last prune time */
+};
+
+#define CLASSIFIER_MAGIC 0x504F5254  // 'PORT'
+
+//=============================================================================
+// Bio-Async Message Handlers
+//=============================================================================
+
+/**
+ * WHAT: Process incoming bio-async messages
+ * WHY:  Handle classification queries from other modules
+ * HOW:  Dispatch based on message type
+ */
+static void classification_inbox_handler(
+    bio_module_context_t* ctx,
+    const bio_message_t* msg,
+    void* user_data)
+{
+    portia_classifier_t classifier = (portia_classifier_t)user_data;
+
+    // Validate inputs
+    if (!bbb_validate_pointer(ctx, sizeof(*ctx))) {
+        LOG_ERROR("Invalid bio context in inbox handler");
+        return;
+    }
+
+    if (!bbb_validate_pointer(msg, sizeof(*msg))) {
+        LOG_ERROR("Invalid message in inbox handler");
+        return;
+    }
+
+    if (!bbb_validate_pointer(classifier, sizeof(*classifier))) {
+        LOG_ERROR("Invalid classifier in inbox handler");
+        return;
+    }
+
+    LOG_DEBUG("Received bio-async message type 0x%04X", msg->type);
+
+    // Handle message types
+    switch (msg->type) {
+        case BIO_MSG_TARGET_QUERY:
+            LOG_DEBUG("Processing target query request");
+            // Future: respond with target info
+            break;
+
+        case BIO_MSG_THREAT_ASSESSMENT_REQUEST:
+            LOG_DEBUG("Processing threat assessment request");
+            // Future: respond with threat list
+            break;
+
+        default:
+            LOG_DEBUG("Unhandled message type 0x%04X", msg->type);
+            break;
+    }
+}
+
+/**
+ * WHAT: Broadcast target classification event
+ * WHY:  Notify other modules of classification updates
+ * HOW:  Send bio-async message via acetylcholine (attention)
+ */
+static void broadcast_classification_event(
+    portia_classifier_t classifier,
+    uint32_t target_id,
+    target_class_t classification,
+    float confidence)
+{
+    if (!classifier->bio_async_enabled) {
+        return;
+    }
+
+    // Create classification message
+    struct {
+        uint32_t target_id;
+        uint32_t classification;
+        float confidence;
+    } payload = {
+        .target_id = target_id,
+        .classification = (uint32_t)classification,
+        .confidence = confidence
+    };
+
+    // Send via acetylcholine (fast attention signal)
+    bio_message_t msg = {
+        .type = BIO_MSG_TARGET_CLASSIFIED,
+        .priority = BIO_PRIORITY_NORMAL,
+        .payload = &payload,
+        .payload_size = sizeof(payload)
+    };
+
+    int result = bio_send_message(&classifier->bio_ctx, &msg, BIO_CHANNEL_ACETYLCHOLINE);
+    if (result != 0) {
+        LOG_WARN("Failed to broadcast classification event: %d", result);
+    } else {
+        LOG_DEBUG("Broadcast classification for target %u: class=%d, conf=%.2f",
+                  target_id, classification, confidence);
+    }
+
+    bbb_audit_log(BBB_THREAT_NONE, "Classification event broadcast",
+                  "target_id=%u class=%d confidence=%.2f",
+                  target_id, classification, confidence);
+}
+
+//=============================================================================
+// Lifecycle Functions
+//=============================================================================
+
+portia_classifier_t portia_classification_init(
+    const portia_classification_config_t* config)
+{
+    // Validate input
+    if (!bbb_validate_pointer(config, sizeof(*config))) {
+        LOG_ERROR("Invalid config pointer");
+        classification_set_error("Invalid configuration pointer");
+        return NULL;
+    }
+
+    if (config->max_targets == 0 || config->max_targets > 10000) {
+        LOG_ERROR("Invalid max_targets: %u", config->max_targets);
+        classification_set_error("Invalid max_targets (must be 1-10000)");
+        return NULL;
+    }
+
+    LOG_INFO("Initializing classification system: max_targets=%u, threshold=%.2f",
+             config->max_targets, config->classification_threshold);
+
+    // Allocate classifier
+    portia_classifier_t classifier = nimcp_calloc(1, sizeof(*classifier));
+    if (!classifier) {
+        LOG_ERROR("Failed to allocate classifier");
+        classification_set_error("Memory allocation failed");
+        return NULL;
+    }
+
+    // Initialize fields
+    classifier->magic = CLASSIFIER_MAGIC;
+    memcpy(&classifier->config, config, sizeof(*config));
+
+    // Allocate target registry
+    classifier->registry.target_capacity = config->max_targets;
+    classifier->registry.targets = nimcp_calloc(
+        config->max_targets, sizeof(target_info_t));
+
+    if (!classifier->registry.targets) {
+        LOG_ERROR("Failed to allocate target registry");
+        classification_set_error("Target registry allocation failed");
+        nimcp_free(classifier);
+        return NULL;
+    }
+
+    classifier->registry.target_count = 0;
+    classifier->registry.next_id = 1;
+
+    // Initialize mutex
+    if (nimcp_mutex_init(&classifier->lock, NULL) != 0) {
+        LOG_ERROR("Failed to initialize mutex");
+        classification_set_error("Mutex initialization failed");
+        nimcp_free(classifier->registry.targets);
+        nimcp_free(classifier);
+        return NULL;
+    }
+
+    classifier->last_prune_ms = nimcp_get_time_ms();
+
+    // Initialize bio-async if enabled
+    if (config->enable_bio_async) {
+        memset(&classifier->bio_ctx, 0, sizeof(classifier->bio_ctx));
+        strncpy(classifier->bio_ctx.module_name, "portia_classification",
+                sizeof(classifier->bio_ctx.module_name) - 1);
+        classifier->bio_ctx.inbox_handler = classification_inbox_handler;
+        classifier->bio_ctx.user_data = classifier;
+
+        int result = bio_register_module(&classifier->bio_ctx);
+        if (result == 0) {
+            classifier->bio_async_enabled = true;
+            LOG_INFO("Bio-async messaging enabled");
+        } else {
+            LOG_WARN("Failed to register bio-async module: %d", result);
+            classifier->bio_async_enabled = false;
+        }
+    }
+
+    LOG_INFO("Classification system initialized successfully");
+    bbb_audit_log(BBB_THREAT_NONE, "Classification system initialized",
+                  "max_targets=%u", config->max_targets);
+
+    return classifier;
+}
+
+void portia_classification_destroy(portia_classifier_t classifier)
+{
+    if (!bbb_validate_pointer(classifier, sizeof(*classifier))) {
+        return;
+    }
+
+    if (classifier->magic != CLASSIFIER_MAGIC) {
+        LOG_ERROR("Invalid classifier magic");
+        return;
+    }
+
+    LOG_INFO("Destroying classification system");
+
+    // Unregister bio-async if enabled
+    if (classifier->bio_async_enabled) {
+        bio_unregister_module(&classifier->bio_ctx);
+    }
+
+    // Free registry
+    if (classifier->registry.targets) {
+        nimcp_free(classifier->registry.targets);
+    }
+
+    // Destroy mutex
+    nimcp_mutex_destroy(&classifier->lock);
+
+    // Clear magic and free
+    classifier->magic = 0;
+    nimcp_free(classifier);
+
+    LOG_INFO("Classification system destroyed");
+}
+
+//=============================================================================
+// Target Management
+//=============================================================================
+
+uint32_t portia_classification_add_target(
+    portia_classifier_t classifier,
+    float x, float y, float z,
+    float size)
+{
+    // Validate inputs
+    if (!bbb_validate_pointer(classifier, sizeof(*classifier))) {
+        LOG_ERROR("Invalid classifier pointer");
+        classification_set_error("Invalid classifier");
+        return 0;
+    }
+
+    if (classifier->magic != CLASSIFIER_MAGIC) {
+        LOG_ERROR("Invalid classifier magic");
+        classification_set_error("Invalid classifier magic");
+        return 0;
+    }
+
+    if (!isfinite(x) || !isfinite(y) || !isfinite(z) || !isfinite(size)) {
+        LOG_ERROR("Invalid position or size values");
+        classification_set_error("Invalid position or size");
+        return 0;
+    }
+
+    nimcp_mutex_lock(&classifier->lock);
+
+    // Check capacity
+    if (classifier->registry.target_count >= classifier->registry.target_capacity) {
+        LOG_WARN("Target registry full");
+        classification_set_error("Target registry at capacity");
+        nimcp_mutex_unlock(&classifier->lock);
+        return 0;
+    }
+
+    // Find free slot
+    uint32_t slot = 0;
+    for (uint32_t i = 0; i < classifier->registry.target_capacity; i++) {
+        if (!classifier->registry.targets[i].active) {
+            slot = i;
+            break;
+        }
+    }
+
+    // Assign ID and initialize
+    uint32_t target_id = classifier->registry.next_id++;
+    target_info_t* target = &classifier->registry.targets[slot];
+
+    target->id = target_id;
+    target->classification = TARGET_CLASS_UNKNOWN;
+    target->confidence = 0.0f;
+    target->x = x;
+    target->y = y;
+    target->z = z;
+    target->vx = 0.0f;
+    target->vy = 0.0f;
+    target->vz = 0.0f;
+    target->size = size;
+    target->first_seen_ms = nimcp_get_time_ms();
+    target->last_seen_ms = target->first_seen_ms;
+    target->observation_count = 1;
+    target->active = true;
+
+    classifier->registry.target_count++;
+
+    nimcp_mutex_unlock(&classifier->lock);
+
+    LOG_DEBUG("Added target %u at (%.2f, %.2f, %.2f) size=%.2f",
+              target_id, x, y, z, size);
+
+    bbb_audit_log(BBB_THREAT_NONE, "Target registered",
+                  "id=%u pos=(%.2f,%.2f,%.2f)", target_id, x, y, z);
+
+    return target_id;
+}
+
+int portia_classification_update(
+    portia_classifier_t classifier,
+    uint32_t target_id,
+    float x, float y, float z)
+{
+    // Validate inputs
+    if (!bbb_validate_pointer(classifier, sizeof(*classifier))) {
+        LOG_ERROR("Invalid classifier pointer");
+        classification_set_error("Invalid classifier");
+        return NIMCP_ERROR_INVALID_PARAM;
+    }
+
+    if (classifier->magic != CLASSIFIER_MAGIC) {
+        LOG_ERROR("Invalid classifier magic");
+        return NIMCP_ERROR_INVALID_PARAM;
+    }
+
+    if (!isfinite(x) || !isfinite(y) || !isfinite(z)) {
+        LOG_ERROR("Invalid position values");
+        return NIMCP_ERROR_INVALID_PARAM;
+    }
+
+    nimcp_mutex_lock(&classifier->lock);
+
+    // Find target
+    target_info_t* target = NULL;
+    for (uint32_t i = 0; i < classifier->registry.target_capacity; i++) {
+        if (classifier->registry.targets[i].active &&
+            classifier->registry.targets[i].id == target_id) {
+            target = &classifier->registry.targets[i];
+            break;
+        }
+    }
+
+    if (!target) {
+        LOG_WARN("Target %u not found", target_id);
+        classification_set_error("Target not found");
+        nimcp_mutex_unlock(&classifier->lock);
+        return NIMCP_ERROR_NOT_FOUND;
+    }
+
+    // Compute velocity
+    uint64_t now_ms = nimcp_get_time_ms();
+    float dt = (now_ms - target->last_seen_ms) / 1000.0f;
+
+    if (dt > 0.001f) {  // Avoid division by zero
+        target->vx = (x - target->x) / dt;
+        target->vy = (y - target->y) / dt;
+        target->vz = (z - target->z) / dt;
+    }
+
+    // Update position
+    target->x = x;
+    target->y = y;
+    target->z = z;
+    target->last_seen_ms = now_ms;
+    target->observation_count++;
+
+    nimcp_mutex_unlock(&classifier->lock);
+
+    LOG_DEBUG("Updated target %u: pos=(%.2f,%.2f,%.2f) vel=(%.2f,%.2f,%.2f)",
+              target_id, x, y, z, target->vx, target->vy, target->vz);
+
+    return NIMCP_SUCCESS;
+}
+
+int portia_classification_classify(
+    portia_classifier_t classifier,
+    uint32_t target_id,
+    target_class_t* classification,
+    float* confidence)
+{
+    // Validate inputs
+    if (!bbb_validate_pointer(classifier, sizeof(*classifier))) {
+        LOG_ERROR("Invalid classifier pointer");
+        return NIMCP_ERROR_INVALID_PARAM;
+    }
+
+    if (!bbb_validate_pointer(classification, sizeof(*classification))) {
+        LOG_ERROR("Invalid classification pointer");
+        return NIMCP_ERROR_INVALID_PARAM;
+    }
+
+    if (!bbb_validate_pointer(confidence, sizeof(*confidence))) {
+        LOG_ERROR("Invalid confidence pointer");
+        return NIMCP_ERROR_INVALID_PARAM;
+    }
+
+    nimcp_mutex_lock(&classifier->lock);
+
+    // Find target
+    target_info_t* target = NULL;
+    for (uint32_t i = 0; i < classifier->registry.target_capacity; i++) {
+        if (classifier->registry.targets[i].active &&
+            classifier->registry.targets[i].id == target_id) {
+            target = &classifier->registry.targets[i];
+            break;
+        }
+    }
+
+    if (!target) {
+        nimcp_mutex_unlock(&classifier->lock);
+        return NIMCP_ERROR_NOT_FOUND;
+    }
+
+    // Classification heuristics based on observations
+    float speed = sqrtf(target->vx * target->vx +
+                       target->vy * target->vy +
+                       target->vz * target->vz);
+
+    float conf = 0.0f;
+    target_class_t class = TARGET_CLASS_UNKNOWN;
+
+    // Need multiple observations for confidence
+    if (target->observation_count < 3) {
+        class = TARGET_CLASS_UNKNOWN;
+        conf = 0.1f;
+    }
+    // Fast moving = threat or prey
+    else if (speed > 2.0f) {
+        if (target->size > 1.0f) {
+            class = TARGET_CLASS_THREAT;
+            conf = 0.7f + (speed / 10.0f) * 0.2f;
+        } else {
+            class = TARGET_CLASS_PREY;
+            conf = 0.6f + (speed / 10.0f) * 0.3f;
+        }
+    }
+    // Slow/stationary = neutral or obstacle
+    else if (speed < 0.5f) {
+        if (target->size < 0.5f) {
+            class = TARGET_CLASS_NEUTRAL;
+            conf = 0.8f;
+        } else {
+            class = TARGET_CLASS_OBSTACLE;
+            conf = 0.9f;
+        }
+    }
+    // Medium speed = prey
+    else {
+        class = TARGET_CLASS_PREY;
+        conf = 0.7f;
+    }
+
+    // Confidence increases with observations
+    float obs_bonus = fminf(target->observation_count / 10.0f, 0.2f);
+    conf = fminf(conf + obs_bonus, 1.0f);
+
+    // Update target
+    target->classification = class;
+    target->confidence = conf;
+
+    *classification = class;
+    *confidence = conf;
+
+    nimcp_mutex_unlock(&classifier->lock);
+
+    LOG_DEBUG("Classified target %u: class=%d, confidence=%.2f",
+              target_id, class, conf);
+
+    // Broadcast classification event
+    broadcast_classification_event(classifier, target_id, class, conf);
+
+    return NIMCP_SUCCESS;
+}
+
+uint32_t portia_classification_get_threats(
+    portia_classifier_t classifier,
+    uint32_t* threats,
+    uint32_t max_threats)
+{
+    if (!bbb_validate_pointer(classifier, sizeof(*classifier))) {
+        return 0;
+    }
+
+    if (!bbb_validate_pointer(threats, max_threats * sizeof(uint32_t))) {
+        return 0;
+    }
+
+    nimcp_mutex_lock(&classifier->lock);
+
+    uint32_t count = 0;
+    for (uint32_t i = 0; i < classifier->registry.target_capacity &&
+                        count < max_threats; i++) {
+        target_info_t* target = &classifier->registry.targets[i];
+        if (target->active &&
+            target->classification == TARGET_CLASS_THREAT &&
+            target->confidence >= classifier->config.classification_threshold) {
+            threats[count++] = target->id;
+        }
+    }
+
+    nimcp_mutex_unlock(&classifier->lock);
+
+    LOG_DEBUG("Found %u threats", count);
+    return count;
+}
+
+uint32_t portia_classification_prune(portia_classifier_t classifier)
+{
+    if (!bbb_validate_pointer(classifier, sizeof(*classifier))) {
+        return 0;
+    }
+
+    if (classifier->magic != CLASSIFIER_MAGIC) {
+        return 0;
+    }
+
+    nimcp_mutex_lock(&classifier->lock);
+
+    uint64_t now_ms = nimcp_get_time_ms();
+    uint32_t pruned = 0;
+
+    for (uint32_t i = 0; i < classifier->registry.target_capacity; i++) {
+        target_info_t* target = &classifier->registry.targets[i];
+        if (target->active) {
+            uint64_t age_ms = now_ms - target->last_seen_ms;
+            if (age_ms > classifier->config.retention_time_ms) {
+                LOG_DEBUG("Pruning stale target %u (age=%llu ms)",
+                          target->id, (unsigned long long)age_ms);
+                target->active = false;
+                classifier->registry.target_count--;
+                pruned++;
+            }
+        }
+    }
+
+    classifier->last_prune_ms = now_ms;
+
+    nimcp_mutex_unlock(&classifier->lock);
+
+    if (pruned > 0) {
+        LOG_INFO("Pruned %u stale targets", pruned);
+        bbb_audit_log(BBB_THREAT_NONE, "Targets pruned", "count=%u", pruned);
+    }
+
+    return pruned;
+}
+
+//=============================================================================
+// Query Functions
+//=============================================================================
+
+int portia_classification_get_target(
+    portia_classifier_t classifier,
+    uint32_t target_id,
+    target_info_t* info)
+{
+    if (!bbb_validate_pointer(classifier, sizeof(*classifier))) {
+        return NIMCP_ERROR_INVALID_PARAM;
+    }
+
+    if (!bbb_validate_pointer(info, sizeof(*info))) {
+        return NIMCP_ERROR_INVALID_PARAM;
+    }
+
+    nimcp_mutex_lock(&classifier->lock);
+
+    for (uint32_t i = 0; i < classifier->registry.target_capacity; i++) {
+        if (classifier->registry.targets[i].active &&
+            classifier->registry.targets[i].id == target_id) {
+            memcpy(info, &classifier->registry.targets[i], sizeof(*info));
+            nimcp_mutex_unlock(&classifier->lock);
+            return NIMCP_SUCCESS;
+        }
+    }
+
+    nimcp_mutex_unlock(&classifier->lock);
+    return NIMCP_ERROR_NOT_FOUND;
+}
+
+uint32_t portia_classification_get_count(portia_classifier_t classifier)
+{
+    if (!bbb_validate_pointer(classifier, sizeof(*classifier))) {
+        return 0;
+    }
+
+    nimcp_mutex_lock(&classifier->lock);
+    uint32_t count = classifier->registry.target_count;
+    nimcp_mutex_unlock(&classifier->lock);
+
+    return count;
+}
