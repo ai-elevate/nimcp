@@ -916,9 +916,124 @@ float compute_bold_signal(neurovascular_system_t* nv,
 
 ---
 
+### 16. Tensor-Based Emotional Representation ⭐⭐⭐
+
+**WHAT:** Replace scalar emotion values with multi-dimensional tensors to represent complex, mixed, and contradictory emotional states
+
+**WHY:**
+- Current scalar representation (valence, arousal) cannot capture mixed emotions
+- Humans experience emotional gradients and simultaneous contradictory feelings
+- Bittersweet, ambivalent, and layered emotions are psychologically valid
+- Richer emotional modeling enables more nuanced empathy and mental health simulation
+
+**CURRENT LIMITATION:**
+```c
+// Current scalar approach
+typedef struct {
+    float valence;   // -1 to +1 (single dimension)
+    float arousal;   // 0 to 1 (single dimension)
+} emotion_state_t;
+// Cannot represent: "happy AND sad" or "love AND anger"
+```
+
+**PROPOSED TENSOR APPROACH:**
+```c
+typedef struct {
+    // Primary emotion tensor [N_EMOTIONS]
+    // Each channel can be active simultaneously (0-1)
+    float channels[EMOTION_COUNT];  // joy, sadness, anger, fear, surprise,
+                                    // disgust, love, trust, anticipation, etc.
+
+    // Interaction matrix [N_EMOTIONS × N_EMOTIONS]
+    // Captures how emotions influence/suppress each other
+    float interactions[EMOTION_COUNT][EMOTION_COUNT];
+
+    // Temporal dynamics [N_EMOTIONS × TIME_STEPS]
+    // Emotion trajectories (rising, falling, oscillating)
+    float dynamics[EMOTION_COUNT][TEMPORAL_WINDOW];
+
+    // Appraisal dimensions per emotion (Scherer's component model)
+    float certainty[EMOTION_COUNT];     // How sure about this feeling
+    float control[EMOTION_COUNT];       // Perceived control over cause
+    float relevance[EMOTION_COUNT];     // Personal significance
+    float pleasantness[EMOTION_COUNT];  // Intrinsic hedonic quality
+
+    // Blending weights for compound emotions
+    float blend_weights[EMOTION_COUNT];
+
+    // Dominant emotion extraction
+    uint32_t primary_emotion;
+    uint32_t secondary_emotion;
+    float blend_ratio;  // How much secondary influences primary
+
+} emotion_tensor_t;
+
+// Compute compound emotions (e.g., bittersweet = joy + sadness)
+void emotion_tensor_compute_compounds(emotion_tensor_t* tensor) {
+    // Plutchik's dyads
+    tensor->compound_emotions[BITTERSWEETNESS] =
+        tensor->channels[JOY] * tensor->channels[SADNESS];
+    tensor->compound_emotions[AMBIVALENCE] =
+        tensor->channels[LOVE] * tensor->channels[ANGER];
+    tensor->compound_emotions[NOSTALGIA] =
+        tensor->channels[JOY] * tensor->channels[SADNESS] *
+        tensor->appraisal[PAST_FOCUSED];
+}
+
+// Emotion interaction dynamics
+void emotion_tensor_update_interactions(emotion_tensor_t* tensor, float dt) {
+    for (int i = 0; i < EMOTION_COUNT; i++) {
+        float inhibition = 0.0f;
+        float facilitation = 0.0f;
+
+        for (int j = 0; j < EMOTION_COUNT; j++) {
+            if (i != j) {
+                // Some emotions suppress others (anger suppresses fear)
+                // Some emotions facilitate others (fear facilitates anger)
+                float effect = tensor->interactions[j][i] * tensor->channels[j];
+                if (effect < 0) inhibition += effect;
+                else facilitation += effect;
+            }
+        }
+
+        tensor->channels[i] += (facilitation + inhibition) * dt;
+        tensor->channels[i] = clamp(tensor->channels[i], 0.0f, 1.0f);
+    }
+}
+```
+
+**THEORETICAL FOUNDATIONS:**
+- Plutchik (1980): Wheel of emotions with 8 primary emotions that blend like colors
+- Russell (1980): Circumplex model (valence × arousal) - extend to N dimensions
+- Scherer (2009): Component Process Model - appraisal dimensions
+- Barrett (2017): Constructed emotion theory - emotions as dynamic patterns
+
+**IMPACT:**
+- Model contradictory states (graduation: joy + sadness)
+- Capture emotional transitions and blending
+- Enable richer empathetic responses
+- Better mental health modeling (mixed anxiety-depression)
+- More realistic Theory of Mind
+
+**INTEGRATION POINTS:**
+- Emotional system (replace scalar state)
+- Working memory (emotional context)
+- Salience (multi-channel attention boost)
+- Mental health monitoring (detect maladaptive patterns)
+- Empathetic response (nuanced empathy)
+- Shadow emotions (maladaptive blends)
+
+**TEST PLAN:**
+- Unit tests: Tensor operations, blending, interaction dynamics
+- Integration: Mixed emotion scenarios (graduation, breakup, promotion with imposter syndrome)
+- Validation: Compare against psychological research on mixed emotions
+- Regression: Ensure backward compatibility with existing emotion API
+
+---
+
 ## PART IV: CROSS-CUTTING ENHANCEMENTS
 
-### 16. Multi-Scale Integration Framework ⭐⭐⭐
+### 17. Multi-Scale Integration Framework ⭐⭐⭐
 
 **WHY:** Need to integrate concepts across timescales and spatial scales
 
@@ -980,23 +1095,24 @@ void brain_multi_scale_update(brain_t* brain, float dt) {
 2. ✅ **Hodgkin-Huxley Dynamics** - Biophysical realism
 3. ✅ **Gene Expression** - Memory consolidation mechanisms
 4. ✅ **Electromagnetic Fields** - Fast synchronization
+5. ⬜ **Tensor-Based Emotional Representation** - Mixed/contradictory emotions
 
 ### Short-term (1-3 months)
-5. **Second Messenger Cascades** - Receptor-to-effect pathways
-6. **Nitric Oxide Signaling** - Retrograde plasticity
-7. **Epigenetics** - Long-term experience effects
-8. **Neuroimmune Interactions** - Disease modeling
+6. **Second Messenger Cascades** - Receptor-to-effect pathways
+7. **Nitric Oxide Signaling** - Retrograde plasticity
+8. **Epigenetics** - Long-term experience effects
+9. **Neuroimmune Interactions** - Disease modeling
 
 ### Medium-term (3-6 months)
-9. **Mitochondrial Dynamics** - Energy realism
-10. **Thermodynamics** - Efficiency constraints
-11. **Circadian Rhythms** - Time-of-day effects
-12. **Information Geometry** - Representational analysis
+10. **Mitochondrial Dynamics** - Energy realism
+11. **Thermodynamics** - Efficiency constraints
+12. **Circadian Rhythms** - Time-of-day effects
+13. **Information Geometry** - Representational analysis
 
 ### Long-term (6-12 months)
-13. **Neurovascular Coupling** - fMRI validation
-14. **Neurogenesis** - Developmental plasticity
-15. **pH Dynamics** - Metabolic effects
+14. **Neurovascular Coupling** - fMRI validation
+15. **Neurogenesis** - Developmental plasticity
+16. **pH Dynamics** - Metabolic effects
 
 ---
 
@@ -1014,6 +1130,7 @@ void brain_multi_scale_update(brain_t* brain, float dt) {
 | Epigenetics | Gene Expression | Persistent changes |
 | Circadian | Sleep-Wake | Time-of-day effects |
 | Neurovascular | Astrocytes, NO | BOLD fMRI |
+| Tensor Emotions | Emotional System, Empathy | Mixed/contradictory states |
 
 ---
 

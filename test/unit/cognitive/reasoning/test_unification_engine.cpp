@@ -21,8 +21,7 @@ protected:
     brain_t brain;
 
     void SetUp() override {
-        brain_config_t config = brain_config_default();
-        brain = brain_create("test_brain", BRAIN_SIZE_SMALL, &config);
+        brain = brain_create("test_brain", BRAIN_SIZE_SMALL, BRAIN_TASK_CLASSIFICATION, 10, 5);
         symbolic_logic_t* engine = create_default_symbolic_logic(REASONING_SIZE_SMALL);
         brain_attach_symbolic_logic(brain, engine);
     }

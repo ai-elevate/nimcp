@@ -27,6 +27,9 @@
  */
 
 #include "io/stream/nimcp_stream.h"
+#include "security/nimcp_security.h"
+#include "security/nimcp_blood_brain_barrier.h"
+
 #include <stdatomic.h>
 #include <stdio.h>
 #include <string.h>

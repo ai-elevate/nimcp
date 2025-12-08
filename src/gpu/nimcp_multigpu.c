@@ -26,6 +26,9 @@
 #define LOG_MODULE_ID 0x0901
 
 #include "gpu/nimcp_multigpu.h"
+#include "security/nimcp_security.h"
+#include "security/nimcp_blood_brain_barrier.h"
+
 #include "async/nimcp_bio_async.h"
 #include "async/nimcp_bio_router.h"
 #include "async/nimcp_bio_messages.h"

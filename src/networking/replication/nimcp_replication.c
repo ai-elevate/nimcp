@@ -43,6 +43,53 @@
 #include "utils/memory/nimcp_memory.h"
 #include "utils/thread/nimcp_thread.h"
 #include "utils/time/nimcp_time.h"
+#include "security/nimcp_blood_brain_barrier.h"
+
+// Global BBB security system
+static bbb_system_t g_bbb_system = NULL;
+
+
+
+//=============================================================================
+// Security Initialization
+//=============================================================================
+
+/**
+ * @brief Initialize security subsystem for replication
+ *
+ * WHAT: Create and configure BBB system for input validation
+ * WHY: Protect against malicious external input
+ * HOW: Initialize with conservative security settings
+ */
+static void replication_security_init(void) {
+    if (g_bbb_system) {
+        return;  // Already initialized
+    }
+
+    bbb_config_t config = bbb_default_config();
+    config.strict_mode = false;  // Don't block, just log
+    config.default_action = BBB_ACTION_LOG;
+    config.input.validate_strings = true;
+    config.input.validate_integers = true;
+    config.input.max_string_length = 4096;  // Reasonable limit
+
+    g_bbb_system = bbb_system_create(&config);
+    if (!g_bbb_system) {
+        LOG_ERROR("replication: Failed to initialize security subsystem");
+    } else {
+        LOG_INFO("replication: Security subsystem initialized");
+    }
+}
+
+/**
+ * @brief Cleanup security subsystem
+ */
+static void replication_security_cleanup(void) {
+    if (g_bbb_system) {
+        bbb_system_destroy(g_bbb_system);
+        g_bbb_system = NULL;
+    }
+}
 
 #define LOG_MODULE "REPLICATION"
 
@@ -464,6 +511,18 @@ static uint32_t filesystem_get_nodes(void* context, cluster_node_t* nodes, uint3
 
     // Scan for .heartbeat files
     while ((entry = readdir(dir)) != NULL && count < max_nodes) {
+
+    // BBB: Validate external input
+    // WHAT: Check input for security threats before processing
+    // WHY: Prevent injection attacks and buffer overflows
+    // TODO: Customize validation for specific input parameters
+    /*
+    bbb_validation_result_t val_result = {0};
+    if (!bbb_validate_input(system, data, size, &val_result)) {
+        LOG_ERROR("Input validation failed in while: %s", val_result.reason);
+        return NIMCP_ERROR_INVALID_INPUT;
+    }
+    */
         // Skip non-heartbeat files
         if (!strstr(entry->d_name, ".heartbeat"))
             continue;

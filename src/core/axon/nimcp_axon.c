@@ -13,6 +13,9 @@
  */
 
 #include "core/axon/nimcp_axon.h"
+#include "security/nimcp_security.h"
+#include "security/nimcp_blood_brain_barrier.h"
+
 #include "utils/memory/nimcp_unified_memory.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/time/nimcp_time.h"
@@ -84,13 +87,30 @@ static const float MIN_VELOCITY = 0.1f;
 // SPIKE QUEUE INTERNAL STRUCTURE
 //=============================================================================
 
+/**
+ * @brief Spike queue statistics
+ *
+ * WHAT: Track queue performance and dropped spikes
+ * WHY:  Monitor queue health and identify bottlenecks
+ * HOW:  Increment counters on push/pop/drop operations
+ */
+typedef struct {
+    uint64_t total_pushed;          /**< Total spikes enqueued */
+    uint64_t total_popped;          /**< Total spikes dequeued */
+    uint64_t total_dropped_full;    /**< Dropped due to full queue */
+    uint64_t total_dropped_invalid; /**< Dropped due to invalid data */
+    uint64_t current_size;          /**< Current queue size */
+    uint64_t peak_size;             /**< Maximum queue size reached */
+    double mean_latency_us;         /**< Mean spike propagation latency */
+    uint64_t latency_samples;       /**< Number of latency samples */
+} spike_queue_stats_t;
+
 struct axon_spike_queue_struct {
-    axon_spike_event_t* events;
-    uint32_t capacity;
-    uint32_t count;
-    uint32_t head;
-    uint32_t tail;
-    nimcp_mutex_t lock;
+    axon_spike_event_t* events;     /**< Array storage for heap */
+    uint32_t capacity;              /**< Maximum capacity */
+    uint32_t count;                 /**< Current count */
+    nimcp_mutex_t lock;             /**< Thread safety */
+    spike_queue_stats_t stats;      /**< Performance statistics */
 };
 
 //=============================================================================
@@ -739,6 +759,105 @@ const char* axon_type_to_string(axon_type_t type)
 }
 
 //=============================================================================
+// SPIKE QUEUE HEAP OPERATIONS
+//=============================================================================
+
+/**
+ * WHAT: Get parent index in binary heap
+ * WHY:  Navigate heap structure efficiently
+ * HOW:  Standard heap formula: (i-1)/2
+ */
+static inline uint32_t spike_heap_parent(uint32_t i)
+{
+    return (i > 0) ? (i - 1) / 2 : 0;
+}
+
+/**
+ * WHAT: Get left child index in binary heap
+ * WHY:  Navigate heap structure efficiently
+ * HOW:  Standard heap formula: 2*i + 1
+ */
+static inline uint32_t spike_heap_left(uint32_t i)
+{
+    return 2 * i + 1;
+}
+
+/**
+ * WHAT: Get right child index in binary heap
+ * WHY:  Navigate heap structure efficiently
+ * HOW:  Standard heap formula: 2*i + 2
+ */
+static inline uint32_t spike_heap_right(uint32_t i)
+{
+    return 2 * i + 2;
+}
+
+/**
+ * WHAT: Swap two spike events in heap
+ * WHY:  Restore heap property during bubble operations
+ * HOW:  Simple element swap
+ */
+static inline void spike_heap_swap(axon_spike_event_t* events,
+                                    uint32_t i,
+                                    uint32_t j)
+{
+    axon_spike_event_t temp = events[i];
+    events[i] = events[j];
+    events[j] = temp;
+}
+
+/**
+ * WHAT: Bubble up element to restore min-heap property
+ * WHY:  Maintain heap invariant after insertion
+ * HOW:  Compare with parent, swap if smaller, repeat
+ */
+static void spike_heap_bubble_up(axon_spike_event_t* events, uint32_t i)
+{
+    while (i > 0) {
+        uint32_t parent = spike_heap_parent(i);
+        if (events[i].arrival_time < events[parent].arrival_time) {
+            spike_heap_swap(events, i, parent);
+            i = parent;
+        } else {
+            break;
+        }
+    }
+}
+
+/**
+ * WHAT: Bubble down element to restore min-heap property
+ * WHY:  Maintain heap invariant after extraction
+ * HOW:  Compare with children, swap with smallest, repeat
+ */
+static void spike_heap_bubble_down(axon_spike_event_t* events,
+                                    uint32_t i,
+                                    uint32_t size)
+{
+    while (true) {
+        uint32_t smallest = i;
+        uint32_t left = spike_heap_left(i);
+        uint32_t right = spike_heap_right(i);
+
+        if (left < size &&
+            events[left].arrival_time < events[smallest].arrival_time) {
+            smallest = left;
+        }
+
+        if (right < size &&
+            events[right].arrival_time < events[smallest].arrival_time) {
+            smallest = right;
+        }
+
+        if (smallest != i) {
+            spike_heap_swap(events, i, smallest);
+            i = smallest;
+        } else {
+            break;
+        }
+    }
+}
+
+//=============================================================================
 // SPIKE QUEUE IMPLEMENTATION
 //=============================================================================
 
@@ -759,9 +878,10 @@ axon_spike_queue_t* axon_spike_queue_create(uint32_t capacity)
 
     queue->capacity = capacity;
     queue->count = 0;
-    queue->head = 0;
-    queue->tail = 0;
     nimcp_mutex_init(&queue->lock, NULL);
+
+    // Initialize statistics
+    memset(&queue->stats, 0, sizeof(spike_queue_stats_t));
 
     return queue;
 }
@@ -781,19 +901,47 @@ void axon_spike_queue_destroy(axon_spike_queue_t* queue)
 bool axon_spike_queue_push(axon_spike_queue_t* queue,
                            const axon_spike_event_t* event)
 {
+    // Guard clauses
     if (!queue || !event) return false;
+
+    // Security: Validate spike amplitude for NaN/Inf
+    // WHAT: Prevent corrupted floating point values from propagating
+    // WHY:  NaN/Inf spikes would corrupt downstream calculations
+    // HOW:  Reject spikes with invalid amplitude values
+    if (isnan(event->amplitude) || isinf(event->amplitude)) {
+        LOG_WARN(LOG_MODULE, "Rejecting spike with invalid amplitude: "
+                 "axon=%u amplitude=%f", event->axon_id, event->amplitude);
+        nimcp_mutex_lock(&queue->lock);
+        queue->stats.total_dropped_invalid++;
+        nimcp_mutex_unlock(&queue->lock);
+        return false;
+    }
 
     nimcp_mutex_lock(&queue->lock);
 
+    // Check capacity
     if (queue->count >= queue->capacity) {
+        queue->stats.total_dropped_full++;
+        LOG_WARN(LOG_MODULE, "Spike queue full, dropping spike from axon=%u",
+                 event->axon_id);
         nimcp_mutex_unlock(&queue->lock);
-        return false;  // Queue full
+        return false;
     }
 
-    // Add event at tail
-    memcpy(&queue->events[queue->tail], event, sizeof(axon_spike_event_t));
-    queue->tail = (queue->tail + 1) % queue->capacity;
+    // Insert at end of heap (O(1))
+    queue->events[queue->count] = *event;
+
+    // Restore heap property (O(log n))
+    spike_heap_bubble_up(queue->events, queue->count);
+
     queue->count++;
+
+    // Update statistics
+    queue->stats.total_pushed++;
+    queue->stats.current_size = queue->count;
+    if (queue->count > queue->stats.peak_size) {
+        queue->stats.peak_size = queue->count;
+    }
 
     nimcp_mutex_unlock(&queue->lock);
 
@@ -804,45 +952,90 @@ bool axon_spike_queue_pop(axon_spike_queue_t* queue,
                           uint64_t current_time,
                           axon_spike_event_t* event)
 {
+    // Guard clauses
     if (!queue || !event) return false;
 
     nimcp_mutex_lock(&queue->lock);
 
+    // Check if queue is empty
     if (queue->count == 0) {
         nimcp_mutex_unlock(&queue->lock);
         return false;
     }
 
-    // Find event with arrival_time <= current_time
-    // Simple linear scan (could optimize with heap)
-    for (uint32_t i = 0; i < queue->count; i++) {
-        uint32_t idx = (queue->head + i) % queue->capacity;
-        if (queue->events[idx].arrival_time <= current_time) {
-            // Copy event
-            memcpy(event, &queue->events[idx], sizeof(axon_spike_event_t));
+    // Check if earliest spike (heap root) is ready
+    // WHAT: Min-heap property guarantees root has earliest arrival_time
+    // WHY:  O(1) check instead of O(n) scan
+    // HOW:  Compare root arrival_time with current_time
+    if (queue->events[0].arrival_time > current_time) {
+        nimcp_mutex_unlock(&queue->lock);
+        return false;
+    }
 
-            // Remove by shifting (simple approach)
-            // Move last element to this position
-            if (i < queue->count - 1) {
-                uint32_t last_idx = (queue->head + queue->count - 1) % queue->capacity;
-                memcpy(&queue->events[idx], &queue->events[last_idx],
-                       sizeof(axon_spike_event_t));
-            }
-            queue->count--;
+    // Extract minimum (O(log n))
+    *event = queue->events[0];
 
-            nimcp_mutex_unlock(&queue->lock);
-            return true;
-        }
+    // Move last element to root
+    queue->count--;
+    if (queue->count > 0) {
+        queue->events[0] = queue->events[queue->count];
+        // Restore heap property
+        spike_heap_bubble_down(queue->events, 0, queue->count);
+    }
+
+    // Update statistics
+    queue->stats.total_popped++;
+    queue->stats.current_size = queue->count;
+
+    // Track latency
+    // WHAT: Measure actual propagation time
+    // WHY:  Monitor spike delivery performance
+    // HOW:  arrival_time - initiation_time
+    if (event->arrival_time >= event->initiation_time) {
+        uint64_t latency = event->arrival_time - event->initiation_time;
+        double latency_d = (double)latency;
+
+        // Update running mean (online algorithm)
+        queue->stats.latency_samples++;
+        double delta = latency_d - queue->stats.mean_latency_us;
+        queue->stats.mean_latency_us += delta / queue->stats.latency_samples;
     }
 
     nimcp_mutex_unlock(&queue->lock);
-    return false;
+
+    return true;
 }
 
 uint32_t axon_spike_queue_size(const axon_spike_queue_t* queue)
 {
     if (!queue) return 0;
     return queue->count;
+}
+
+void axon_spike_queue_get_stats(const axon_spike_queue_t* queue,
+                                 axon_spike_queue_stats_t* stats)
+{
+    // Guard clauses
+    if (!stats) return;
+    memset(stats, 0, sizeof(axon_spike_queue_stats_t));
+    if (!queue) return;
+
+    // Thread-safe copy of statistics
+    // WHAT: Copy current queue statistics to output
+    // WHY:  Provide monitoring without exposing internals
+    // HOW:  Lock and copy structure
+    nimcp_mutex_lock((nimcp_mutex_t*)&queue->lock);
+
+    stats->total_pushed = queue->stats.total_pushed;
+    stats->total_popped = queue->stats.total_popped;
+    stats->total_dropped_full = queue->stats.total_dropped_full;
+    stats->total_dropped_invalid = queue->stats.total_dropped_invalid;
+    stats->current_size = queue->stats.current_size;
+    stats->peak_size = queue->stats.peak_size;
+    stats->mean_latency_us = queue->stats.mean_latency_us;
+    stats->latency_samples = queue->stats.latency_samples;
+
+    nimcp_mutex_unlock((nimcp_mutex_t*)&queue->lock);
 }
 
 //=============================================================================
@@ -1141,43 +1334,58 @@ void axon_spike_pool_destroy(axon_spike_pool_t* pool)
 
 axon_spike_event_t* axon_spike_pool_alloc(axon_spike_pool_t* pool)
 {
+    // Guard clauses
     if (!pool) return NULL;
     if (pool->allocated_count >= pool->capacity) return NULL;
 
     // Search for free slot starting from next_search_pos
+    // WHAT: Find first free slot in bitmap efficiently
+    // WHY:  Avoid scanning full slots repeatedly
+    // HOW:  Use compiler intrinsics for bit scanning when available
     uint32_t start_word = pool->next_search_pos / 64;
 
     for (uint32_t i = 0; i < pool->bitmap_words; i++) {
         uint32_t word_idx = (start_word + i) % pool->bitmap_words;
         uint64_t word = pool->allocation_bitmap[word_idx];
 
-        // Check if any bit is free (0)
-        if (word != UINT64_MAX) {
-            // Find first zero bit
+        // Skip full words (all bits set)
+        if (word == UINT64_MAX) continue;
+
+        // Find first zero bit using bit manipulation
+        // WHAT: Fast bit scanning without loops
+        // WHY:  Much faster than sequential bit testing
+        // HOW:  Invert word, find first set bit (= first free slot)
+        uint64_t inverted = ~word;
+
+        #if defined(__GNUC__) || defined(__clang__)
+            // Use compiler intrinsic for count trailing zeros (fast)
+            uint32_t bit = (uint32_t)__builtin_ctzll(inverted);
+        #else
+            // Fallback: manual bit scan
             uint32_t bit = 0;
             uint64_t mask = 1ULL;
             while (word & mask) {
                 mask <<= 1;
                 bit++;
             }
+        #endif
 
-            uint32_t slot = word_idx * 64 + bit;
-            if (slot >= pool->capacity) continue;
+        uint32_t slot = word_idx * 64 + bit;
+        if (slot >= pool->capacity) continue;
 
-            // Mark as allocated
-            pool->allocation_bitmap[word_idx] |= mask;
-            pool->allocated_count++;
+        // Mark as allocated
+        pool->allocation_bitmap[word_idx] |= (1ULL << bit);
+        pool->allocated_count++;
 
-            // Update high water mark
-            if (pool->allocated_count > pool->high_water_mark) {
-                pool->high_water_mark = pool->allocated_count;
-            }
-
-            // Update search position
-            pool->next_search_pos = slot + 1;
-
-            return &pool->events[slot];
+        // Update high water mark
+        if (pool->allocated_count > pool->high_water_mark) {
+            pool->high_water_mark = pool->allocated_count;
         }
+
+        // Update search position for next allocation
+        pool->next_search_pos = (slot + 1) % pool->capacity;
+
+        return &pool->events[slot];
     }
 
     return NULL;
@@ -1277,38 +1485,46 @@ void axon_segment_pool_destroy(axon_segment_pool_t* pool)
 
 axon_segment_t* axon_segment_pool_alloc(axon_segment_pool_t* pool)
 {
+    // Guard clauses
     if (!pool) return NULL;
     if (pool->allocated_count >= pool->capacity) return NULL;
 
-    // Search for free slot
+    // Search for free slot using optimized bit scanning
     uint32_t start_word = pool->next_search_pos / 64;
 
     for (uint32_t i = 0; i < pool->bitmap_words; i++) {
         uint32_t word_idx = (start_word + i) % pool->bitmap_words;
         uint64_t word = pool->allocation_bitmap[word_idx];
 
-        if (word != UINT64_MAX) {
-            // Find first zero bit
+        // Skip full words
+        if (word == UINT64_MAX) continue;
+
+        // Fast bit scanning
+        uint64_t inverted = ~word;
+
+        #if defined(__GNUC__) || defined(__clang__)
+            uint32_t bit = (uint32_t)__builtin_ctzll(inverted);
+        #else
             uint32_t bit = 0;
             uint64_t mask = 1ULL;
             while (word & mask) {
                 mask <<= 1;
                 bit++;
             }
+        #endif
 
-            uint32_t slot = word_idx * 64 + bit;
-            if (slot >= pool->capacity) continue;
+        uint32_t slot = word_idx * 64 + bit;
+        if (slot >= pool->capacity) continue;
 
-            // Mark as allocated
-            pool->allocation_bitmap[word_idx] |= mask;
-            pool->allocated_count++;
-            pool->next_search_pos = slot + 1;
+        // Mark as allocated
+        pool->allocation_bitmap[word_idx] |= (1ULL << bit);
+        pool->allocated_count++;
+        pool->next_search_pos = (slot + 1) % pool->capacity;
 
-            // Clear segment data
-            memset(&pool->segments[slot], 0, sizeof(axon_segment_t));
+        // Clear segment data
+        memset(&pool->segments[slot], 0, sizeof(axon_segment_t));
 
-            return &pool->segments[slot];
-        }
+        return &pool->segments[slot];
     }
 
     return NULL;

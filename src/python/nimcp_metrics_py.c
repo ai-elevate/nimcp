@@ -7,7 +7,14 @@
 
 #define PY_SSIZE_T_CLEAN
 #include <Python.h>
+#include "security/nimcp_security.h"
+#include "security/nimcp_blood_brain_barrier.h"
+
+#include "async/nimcp_bio_async.h"
+#include "async/nimcp_bio_router.h"
+
 #include "utils/metrics/nimcp_metrics.h"
+#include "utils/logging/nimcp_logging.h"
 
 //=============================================================================
 // MetricsCollector Type
@@ -359,7 +366,10 @@ static PyTypeObject MetricsCollectorType = {
 //=============================================================================
 
 int init_metrics_module(PyObject* module) {
+    LOG_MODULE_DEBUG("bindings.python.metrics", "Initializing metrics Python module");
+
     if (PyType_Ready(&MetricsCollectorType) < 0) {
+        LOG_MODULE_ERROR("bindings.python.metrics", "Failed to initialize MetricsCollector type");
         return -1;
     }
 

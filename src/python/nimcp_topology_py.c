@@ -14,9 +14,16 @@
  */
 
 #include <Python.h>
+#include "security/nimcp_security.h"
+#include "security/nimcp_blood_brain_barrier.h"
+
+#include "async/nimcp_bio_async.h"
+#include "async/nimcp_bio_router.h"
+
 #include "core/topology/nimcp_fractal_topology.h"
 #include "core/neuralnet/nimcp_neuralnet.h"
 #include "common/nimcp_module.h"
+#include "utils/logging/nimcp_logging.h"
 
 //=============================================================================
 // Topology Configuration Type

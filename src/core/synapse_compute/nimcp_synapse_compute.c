@@ -41,6 +41,9 @@
 // NIMCP 2.7: Synapse compute functions
 // NOTE: synapse_compute.h includes neuralnet.h, which has full struct definitions
 #include "core/synapse_compute/nimcp_synapse_compute.h"
+#include "security/nimcp_security.h"
+#include "security/nimcp_blood_brain_barrier.h"
+
 #include "utils/memory/nimcp_memory.h"
 #include "plasticity/eligibility/nimcp_eligibility_trace.h"  // Option 2.2: Burst-triggered consolidation
 #include "plasticity/neuromodulators/nimcp_neuromodulators.h"  // For neuromodulator_get_level

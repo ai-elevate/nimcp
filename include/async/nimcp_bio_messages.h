@@ -143,6 +143,17 @@ typedef enum {
     BIO_MSG_ERROR_REPORT,
     BIO_MSG_LOG_EVENT,
 
+    /* Security messages (0x0750 - 0x076F) */
+    BIO_MSG_SECURITY_EVENT = 0x0750,        /**< General security event */
+    BIO_MSG_SECURITY_ALERT,                 /**< Security alert notification */
+    BIO_MSG_SECURITY_POLICY_UPDATE,         /**< Policy update notification */
+    BIO_MSG_SECURITY_THREAT_DETECTED,       /**< Threat detection event */
+    BIO_MSG_SECURITY_LEVEL_CHANGE,          /**< Security level changed */
+    BIO_MSG_SECURITY_CONSENSUS_REQUEST,     /**< Consensus protocol request */
+    BIO_MSG_SECURITY_CONSENSUS_RESPONSE,    /**< Consensus protocol response */
+    BIO_MSG_SECURITY_RATE_LIMIT,            /**< Rate limiting event */
+    BIO_MSG_SECURITY_AUDIT_EVENT,           /**< Security audit event */
+
     /* Perception messages (0x0800 - 0x08FF) */
     BIO_MSG_VISUAL_INPUT = 0x0800,
     BIO_MSG_VISUAL_FEATURE_DETECTED,
@@ -168,6 +179,29 @@ typedef enum {
     BIO_MSG_UTTERANCE_PRODUCTION_COMPLETE,
     BIO_MSG_SPEECH_FEEDBACK,
     BIO_MSG_LANGUAGE_ERROR,
+
+    /* Neural Link Protocol (NLP) networking messages (0x0A00 - 0x0AFF) */
+    BIO_MSG_NLP_SESSION_CONNECTED = 0x0A00,     /**< Peer session established */
+    BIO_MSG_NLP_SESSION_DISCONNECTED,           /**< Peer session closed */
+    BIO_MSG_NLP_SESSION_STATE_CHANGE,           /**< Session state transition */
+    BIO_MSG_NLP_MESSAGE_RECEIVED,               /**< NLP message received from peer */
+    BIO_MSG_NLP_MESSAGE_SENT,                   /**< NLP message sent to peer */
+    BIO_MSG_NLP_MESSAGE_ACK,                    /**< Message acknowledgment */
+    BIO_MSG_NLP_CRYPTO_ENCRYPT_REQUEST,         /**< Encryption request */
+    BIO_MSG_NLP_CRYPTO_ENCRYPT_COMPLETE,        /**< Encryption completed */
+    BIO_MSG_NLP_CRYPTO_DECRYPT_REQUEST,         /**< Decryption request */
+    BIO_MSG_NLP_CRYPTO_DECRYPT_COMPLETE,        /**< Decryption completed */
+    BIO_MSG_NLP_CRYPTO_KEY_EXCHANGE,            /**< Key exchange event */
+    BIO_MSG_NLP_CRYPTO_ERROR,                   /**< Cryptographic error */
+    BIO_MSG_NLP_COMPRESSION_REQUEST,            /**< Compression request */
+    BIO_MSG_NLP_COMPRESSION_COMPLETE,           /**< Compression completed */
+    BIO_MSG_NLP_PROTOCOL_MODE_CHANGE,           /**< Protocol mode changed */
+    BIO_MSG_NLP_NEURAL_ENCODE_REQUEST,          /**< Neural encoding request */
+    BIO_MSG_NLP_NEURAL_ENCODE_COMPLETE,         /**< Neural encoding completed */
+    BIO_MSG_NLP_NEURAL_DECODE_REQUEST,          /**< Neural decoding request */
+    BIO_MSG_NLP_NEURAL_DECODE_COMPLETE,         /**< Neural decoding completed */
+    BIO_MSG_NLP_BRIDGE_EVENT,                   /**< Protocol bridge event */
+    BIO_MSG_NLP_ERROR,                          /**< General NLP error */
 
     /* Sentinel */
     BIO_MSG_TYPE_COUNT
@@ -1288,6 +1322,178 @@ typedef struct {
     float error_magnitude;          /**< Error size */
     bool requires_correction;       /**< Needs speech repair */
 } bio_msg_speech_feedback_t;
+
+/*=============================================================================
+ * NEURAL LINK PROTOCOL (NLP) NETWORKING MESSAGES
+ *============================================================================*/
+
+/**
+ * @brief NLP session connected notification
+ */
+typedef struct {
+    bio_message_header_t header;
+    uint64_t peer_id;               /**< Connected peer ID */
+    uint64_t session_id;            /**< Session identifier */
+    uint8_t protocol_mode;          /**< 0=Standard, 1=Tactical, 2=Stealth */
+    uint8_t encryption_level;       /**< Encryption strength level */
+    bool authenticated;             /**< Whether peer is authenticated */
+} bio_msg_nlp_session_connected_t;
+
+/**
+ * @brief NLP session disconnected notification
+ */
+typedef struct {
+    bio_message_header_t header;
+    uint64_t peer_id;               /**< Disconnected peer ID */
+    uint64_t session_id;            /**< Session identifier */
+    uint8_t reason;                 /**< Disconnect reason code */
+    bool graceful;                  /**< Graceful vs forced disconnect */
+} bio_msg_nlp_session_disconnected_t;
+
+/**
+ * @brief NLP session state change notification
+ */
+typedef struct {
+    bio_message_header_t header;
+    uint64_t peer_id;               /**< Peer ID */
+    uint64_t session_id;            /**< Session identifier */
+    uint8_t old_state;              /**< Previous session state */
+    uint8_t new_state;              /**< New session state */
+    uint64_t state_change_time_us;  /**< When state changed */
+} bio_msg_nlp_session_state_change_t;
+
+/**
+ * @brief NLP message received notification
+ */
+typedef struct {
+    bio_message_header_t header;
+    uint64_t peer_id;               /**< Sending peer ID */
+    uint32_t message_type;          /**< NLP message type */
+    uint32_t message_size;          /**< Size of received message */
+    uint32_t sequence_num;          /**< NLP sequence number */
+    bool encrypted;                 /**< Was message encrypted */
+    bool compressed;                /**< Was message compressed */
+} bio_msg_nlp_message_received_t;
+
+/**
+ * @brief NLP message sent notification
+ */
+typedef struct {
+    bio_message_header_t header;
+    uint64_t peer_id;               /**< Destination peer ID */
+    uint32_t message_type;          /**< NLP message type */
+    uint32_t message_size;          /**< Size of sent message */
+    uint32_t sequence_num;          /**< NLP sequence number */
+    bool encrypted;                 /**< Was message encrypted */
+    bool reliable;                  /**< Requires acknowledgment */
+} bio_msg_nlp_message_sent_t;
+
+/**
+ * @brief NLP crypto operation request
+ */
+typedef struct {
+    bio_message_header_t header;
+    uint32_t operation_id;          /**< Operation identifier */
+    uint32_t data_size;             /**< Size of data to process */
+    uint8_t algorithm;              /**< Crypto algorithm (AES-GCM, ChaCha20, etc.) */
+    uint8_t key_id;                 /**< Key identifier */
+    bool async;                     /**< Asynchronous operation */
+} bio_msg_nlp_crypto_request_t;
+
+/**
+ * @brief NLP crypto operation complete notification
+ */
+typedef struct {
+    bio_message_header_t header;
+    uint32_t operation_id;          /**< Completed operation ID */
+    uint32_t output_size;           /**< Size of output data */
+    bool success;                   /**< Operation successful */
+    uint8_t error_code;             /**< Error code if failed */
+    float processing_time_us;       /**< Time taken */
+} bio_msg_nlp_crypto_complete_t;
+
+/**
+ * @brief NLP crypto error notification
+ */
+typedef struct {
+    bio_message_header_t header;
+    uint64_t peer_id;               /**< Related peer (if applicable) */
+    uint32_t operation_id;          /**< Failed operation ID */
+    uint8_t error_code;             /**< Crypto error code */
+    char error_message[64];         /**< Error description */
+    bool is_security_violation;     /**< Possible attack detected */
+} bio_msg_nlp_crypto_error_t;
+
+/**
+ * @brief NLP compression request/complete notification
+ */
+typedef struct {
+    bio_message_header_t header;
+    uint32_t operation_id;          /**< Operation identifier */
+    uint32_t input_size;            /**< Original size */
+    uint32_t output_size;           /**< Compressed/decompressed size */
+    uint8_t algorithm;              /**< Compression algorithm */
+    float compression_ratio;        /**< Achieved ratio */
+    bool success;                   /**< Operation successful */
+} bio_msg_nlp_compression_t;
+
+/**
+ * @brief NLP protocol mode change notification
+ */
+typedef struct {
+    bio_message_header_t header;
+    uint8_t old_mode;               /**< Previous mode (0=Standard, 1=Tactical, 2=Stealth) */
+    uint8_t new_mode;               /**< New mode */
+    uint64_t peer_id;               /**< Affected peer (0 = all) */
+    uint32_t reason;                /**< Reason for mode change */
+} bio_msg_nlp_mode_change_t;
+
+/**
+ * @brief NLP neural encoding/decoding request
+ */
+typedef struct {
+    bio_message_header_t header;
+    uint32_t context_id;            /**< Neural language context ID */
+    uint32_t data_size;             /**< Data size to encode/decode */
+    uint8_t encoding_type;          /**< Encoding type */
+    bool bidirectional;             /**< Two-way encoding */
+} bio_msg_nlp_neural_request_t;
+
+/**
+ * @brief NLP neural encoding/decoding complete
+ */
+typedef struct {
+    bio_message_header_t header;
+    uint32_t context_id;            /**< Neural language context ID */
+    uint32_t output_size;           /**< Output size */
+    float confidence;               /**< Encoding confidence */
+    bool success;                   /**< Operation successful */
+    uint32_t neurons_activated;     /**< Neural representation size */
+} bio_msg_nlp_neural_complete_t;
+
+/**
+ * @brief NLP protocol bridge event
+ */
+typedef struct {
+    bio_message_header_t header;
+    uint32_t bridge_id;             /**< Bridge identifier */
+    uint8_t event_type;             /**< 0=created, 1=message, 2=destroyed */
+    uint32_t source_protocol;       /**< Source protocol ID */
+    uint32_t target_protocol;       /**< Target protocol ID */
+    uint32_t messages_bridged;      /**< Messages bridged count */
+} bio_msg_nlp_bridge_event_t;
+
+/**
+ * @brief NLP general error notification
+ */
+typedef struct {
+    bio_message_header_t header;
+    uint64_t peer_id;               /**< Related peer (0 if N/A) */
+    uint32_t error_code;            /**< Error code */
+    uint8_t severity;               /**< 0=info, 1=warning, 2=error, 3=critical */
+    char module_name[32];           /**< Module that generated error */
+    char error_message[128];        /**< Error description */
+} bio_msg_nlp_error_t;
 
 /*=============================================================================
  * MESSAGE UTILITIES

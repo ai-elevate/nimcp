@@ -1606,22 +1606,15 @@ TEST_F(MultiGPUContextTest, FaultTolerance_BroadcastAfterFree) {
     // WHAT: Test broadcast after freeing memory
     // WHY:  Verify error handling
     // HOW:  Free then try to broadcast
-    // NOTE: Skip when AddressSanitizer is active (detects use-after-free by design)
+    // NOTE: This test invokes undefined behavior (use-after-free) and is skipped
+    //       The implementation should use NULL checks, not rely on freed pointer detection
 
-#ifdef __SANITIZE_ADDRESS__
-    GTEST_SKIP() << "Skipping use-after-free test under AddressSanitizer";
-#endif
+    GTEST_SKIP() << "Skipping use-after-free test - invokes undefined behavior";
 
-    uint32_t num_gpus = multigpu_get_device_count(ctx);
-    float data[10];
-    void** device_ptrs = multigpu_alloc(ctx, sizeof(data) * num_gpus);
-    ASSERT_NE(device_ptrs, nullptr);
-
-    multigpu_free(ctx, device_ptrs);
-
-    // This should fail or handle gracefully (implementation-dependent)
-    // We just verify it doesn't crash
-    EXPECT_NO_THROW(multigpu_broadcast(ctx, data, device_ptrs, sizeof(data)));
+    // The test is disabled because:
+    // 1. It invokes undefined behavior which may segfault
+    // 2. The correct fix is to NULL the pointer after freeing and check for NULL
+    // 3. Use-after-free detection should be done by sanitizers, not production code
 }
 
 TEST_F(MultiGPUContextTest, FaultTolerance_PartitionAfterPartition) {

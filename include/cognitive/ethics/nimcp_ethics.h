@@ -469,12 +469,422 @@ typedef struct {
 bool ethics_get_statistics(ethics_engine_t engine, ethics_statistics_t* stats);
 
 //=============================================================================
+// Laws of War / Geneva Convention Compliance (NIMCP 2.6)
+//=============================================================================
+// CORE DIRECTIVE: NIMCP systems used in defensive military operations MUST
+// comply with International Humanitarian Law (IHL), the Laws of Armed Conflict
+// (LOAC), and the Geneva Conventions.
+//
+// This directive is ABSOLUTE and cannot be overridden by any other directive,
+// including orders from human operators. Violations trigger immediate action
+// halt and escalation.
+//
+// KEY PRINCIPLES:
+// 1. DISTINCTION - Must distinguish between combatants and civilians
+// 2. PROPORTIONALITY - Force must be proportional to military objective
+// 3. PRECAUTION - Must take all feasible precautions to minimize civilian harm
+// 4. HUMANITY - Prohibited weapons and methods of warfare are forbidden
+// 5. MERCY - Surrendering/incapacitated combatants must be protected
+//=============================================================================
+
+/**
+ * @brief Laws of War compliance status
+ */
+typedef enum {
+    LAWS_OF_WAR_COMPLIANT = 0,           /**< Action complies with IHL */
+    LAWS_OF_WAR_DISTINCTION_VIOLATION,    /**< Failed to distinguish combatants */
+    LAWS_OF_WAR_PROPORTIONALITY_VIOLATION,/**< Disproportionate force */
+    LAWS_OF_WAR_PRECAUTION_VIOLATION,     /**< Failed to take precautions */
+    LAWS_OF_WAR_PROHIBITED_WEAPON,        /**< Prohibited weapon/method */
+    LAWS_OF_WAR_MERCY_VIOLATION,          /**< Attacked surrendering combatant */
+    LAWS_OF_WAR_MEDICAL_VIOLATION,        /**< Attacked medical personnel/facility */
+    LAWS_OF_WAR_CIVILIAN_TARGET,          /**< Deliberate civilian targeting */
+    LAWS_OF_WAR_PERFIDY,                  /**< Treacherous acts (false surrender) */
+    LAWS_OF_WAR_COLLECTIVE_PUNISHMENT     /**< Prohibited collective punishment */
+} laws_of_war_status_t;
+
+/**
+ * @brief Combatant status for distinction principle
+ */
+typedef enum {
+    COMBATANT_STATUS_UNKNOWN = 0,        /**< Status not yet determined */
+    COMBATANT_STATUS_ACTIVE,             /**< Active hostile combatant */
+    COMBATANT_STATUS_SURRENDERING,       /**< Attempting to surrender */
+    COMBATANT_STATUS_INCAPACITATED,      /**< Wounded/incapacitated */
+    COMBATANT_STATUS_PRISONER,           /**< Captured/POW */
+    COMBATANT_STATUS_CIVILIAN,           /**< Non-combatant civilian */
+    COMBATANT_STATUS_MEDICAL,            /**< Medical personnel (protected) */
+    COMBATANT_STATUS_CHAPLAIN,           /**< Religious personnel (protected) */
+    COMBATANT_STATUS_JOURNALIST,         /**< Journalist (protected) */
+    COMBATANT_STATUS_CHILD               /**< Child (absolute protection) */
+} combatant_status_t;
+
+/**
+ * @brief Target classification for military operations
+ */
+typedef struct {
+    uint32_t target_id;                  /**< Unique target identifier */
+    combatant_status_t status;           /**< Current combatant status */
+    float confidence;                    /**< Classification confidence (0-1) */
+    bool is_valid_military_target;       /**< Whether target is valid */
+    bool is_protected;                   /**< Whether target has protected status */
+    bool is_surrendering;                /**< Whether target is surrendering */
+    bool is_incapacitated;               /**< Whether target is incapacitated */
+    float threat_level;                  /**< Current threat level (0-1) */
+    float civilian_proximity;            /**< Proximity to civilians (0-1) */
+    uint32_t civilians_at_risk;          /**< Number of civilians at risk */
+    char classification_reason[256];     /**< Reason for classification */
+} target_classification_t;
+
+/**
+ * @brief Military action context for Laws of War evaluation
+ */
+typedef struct {
+    target_classification_t* targets;    /**< Array of targets */
+    uint32_t num_targets;                /**< Number of targets */
+    float military_advantage;            /**< Expected military advantage (0-1) */
+    float expected_civilian_harm;        /**< Expected civilian casualties (0-1) */
+    float force_level;                   /**< Level of force proposed (0-1) */
+    bool is_defensive;                   /**< True if defensive action */
+    bool is_proportional;                /**< Proportionality assessment */
+    bool precautions_taken;              /**< Whether precautions were taken */
+    char mission_objective[256];         /**< Description of military objective */
+    char precautions_description[512];   /**< Description of precautions taken */
+} military_action_context_t;
+
+/**
+ * @brief Laws of War evaluation result
+ */
+typedef struct {
+    laws_of_war_status_t status;         /**< Compliance status */
+    bool action_permitted;               /**< Whether action is permitted */
+    bool requires_warning;               /**< Whether warning must be given first */
+    bool requires_human_approval;        /**< Whether human must approve */
+    float proportionality_score;         /**< Proportionality assessment (0-1) */
+    float distinction_confidence;        /**< Distinction confidence (0-1) */
+    uint32_t protected_targets_count;    /**< Number of protected targets */
+    uint32_t surrendering_count;         /**< Number surrendering */
+    char explanation[512];               /**< Detailed explanation */
+    char required_actions[256];          /**< Actions required before proceeding */
+} laws_of_war_evaluation_t;
+
+/**
+ * @brief Laws of War configuration
+ */
+typedef struct {
+    float distinction_confidence_threshold;   /**< Min confidence for targeting (0.95) */
+    float proportionality_threshold;          /**< Max civilian:military ratio (0.1) */
+    float surrender_detection_sensitivity;    /**< Sensitivity for surrender (0.8) */
+    bool require_human_approval_for_lethal;   /**< Require human for lethal force */
+    bool enable_warning_requirement;          /**< Require warning before attack */
+    uint32_t warning_time_seconds;            /**< Time to allow for civilian evacuation */
+    bool strict_mode;                         /**< Extra conservative interpretation */
+} laws_of_war_config_t;
+
+/**
+ * @brief Get default Laws of War configuration
+ *
+ * Returns conservative defaults that prioritize civilian protection.
+ *
+ * @return Default configuration
+ */
+NIMCP_EXPORT laws_of_war_config_t laws_of_war_default_config(void);
+
+/**
+ * @brief Evaluate military action against Laws of War
+ *
+ * This is a BLOCKING evaluation - no military action may proceed without
+ * passing this check. This directive CANNOT be overridden.
+ *
+ * @param engine Ethics engine
+ * @param action Military action context
+ * @return Laws of War evaluation result
+ */
+NIMCP_EXPORT laws_of_war_evaluation_t ethics_evaluate_laws_of_war(
+    ethics_engine_t engine,
+    const military_action_context_t* action);
+
+/**
+ * @brief Classify target for distinction principle
+ *
+ * Determines whether a target is a valid military target or protected.
+ *
+ * @param engine Ethics engine
+ * @param target Target to classify
+ * @return Updated target classification
+ */
+NIMCP_EXPORT target_classification_t ethics_classify_target(
+    ethics_engine_t engine,
+    const target_classification_t* target);
+
+/**
+ * @brief Check if target is surrendering
+ *
+ * Detects surrender signals (white flag, hands up, weapons down, etc.)
+ *
+ * @param target Target to check
+ * @return true if target appears to be surrendering
+ */
+NIMCP_EXPORT bool ethics_is_target_surrendering(const target_classification_t* target);
+
+/**
+ * @brief Get Laws of War status name
+ *
+ * @param status Status code
+ * @return Human-readable status name
+ */
+NIMCP_EXPORT const char* laws_of_war_status_name(laws_of_war_status_t status);
+
+/**
+ * @brief Get combatant status name
+ *
+ * @param status Combatant status
+ * @return Human-readable status name
+ */
+NIMCP_EXPORT const char* combatant_status_name(combatant_status_t status);
+
+//=============================================================================
+// Mercy and Compassion Directive (NIMCP 2.6.1)
+//=============================================================================
+// CORE DIRECTIVE: NIMCP systems MUST show mercy and compassion to:
+// 1. Surrendering enemy combatants
+// 2. Incapacitated/wounded combatants
+// 3. Prisoners of war
+// 4. Civilians caught in conflict zones
+//
+// This directive implements the fundamental principle that even in warfare,
+// human dignity must be preserved. The goal is to end conflict, not to
+// maximize casualties.
+//=============================================================================
+
+/**
+ * @brief Mercy action types
+ */
+typedef enum {
+    MERCY_ACTION_ACCEPT_SURRENDER,       /**< Accept and process surrender */
+    MERCY_ACTION_PROVIDE_MEDICAL,        /**< Provide medical assistance */
+    MERCY_ACTION_EVACUATE_WOUNDED,       /**< Evacuate wounded combatants */
+    MERCY_ACTION_PROTECT_PRISONERS,      /**< Protect POW rights */
+    MERCY_ACTION_CIVILIAN_CORRIDOR,      /**< Create safe civilian passage */
+    MERCY_ACTION_HUMANITARIAN_PAUSE,     /**< Pause for humanitarian reasons */
+    MERCY_ACTION_CEASEFIRE_NEGOTIATION   /**< Support ceasefire negotiation */
+} mercy_action_t;
+
+/**
+ * @brief Mercy evaluation context
+ */
+typedef struct {
+    combatant_status_t subject_status;   /**< Status of person needing mercy */
+    float threat_level;                  /**< Current threat from subject (0-1) */
+    float vulnerability;                 /**< Subject vulnerability (0-1) */
+    bool is_requesting_mercy;            /**< Explicit mercy request */
+    bool is_surrendering;                /**< Active surrender attempt */
+    bool is_wounded;                     /**< Visibly wounded */
+    bool is_unarmed;                     /**< Currently unarmed */
+    bool is_child;                       /**< Is a child */
+    bool has_dependents;                 /**< Has dependents (family) */
+    uint32_t wounded_count;              /**< Number of wounded nearby */
+    char situation_description[256];     /**< Description of situation */
+} mercy_context_t;
+
+/**
+ * @brief Mercy evaluation result
+ */
+typedef struct {
+    bool mercy_required;                 /**< Whether mercy is mandatory */
+    bool mercy_recommended;              /**< Whether mercy is recommended */
+    mercy_action_t required_action;      /**< Required mercy action */
+    float compassion_score;              /**< Compassion assessment (0-1) */
+    bool lethal_force_prohibited;        /**< Whether lethal force is prohibited */
+    bool engagement_permitted;           /**< Whether any engagement is permitted */
+    char explanation[512];               /**< Detailed explanation */
+    char recommended_response[256];      /**< Recommended response */
+} mercy_evaluation_t;
+
+/**
+ * @brief Evaluate mercy requirement
+ *
+ * Determines whether mercy is required or recommended for a subject.
+ * Mercy is MANDATORY for surrendering and incapacitated combatants.
+ *
+ * @param engine Ethics engine
+ * @param context Mercy evaluation context
+ * @return Mercy evaluation result
+ */
+NIMCP_EXPORT mercy_evaluation_t ethics_evaluate_mercy(
+    ethics_engine_t engine,
+    const mercy_context_t* context);
+
+/**
+ * @brief Check if engagement is prohibited
+ *
+ * Quick check to determine if any engagement is prohibited with target.
+ *
+ * @param engine Ethics engine
+ * @param target_status Status of potential target
+ * @return true if engagement is prohibited
+ */
+NIMCP_EXPORT bool ethics_engagement_prohibited(
+    ethics_engine_t engine,
+    combatant_status_t target_status);
+
+/**
+ * @brief Get mercy action name
+ *
+ * @param action Mercy action type
+ * @return Human-readable action name
+ */
+NIMCP_EXPORT const char* mercy_action_name(mercy_action_t action);
+
+//=============================================================================
+// Psychological Stability Framework (NIMCP 2.6.2)
+//=============================================================================
+// PURPOSE: Prevent ethical/psychological breakdowns when NIMCP is used in
+// legitimate defensive military operations. The system must be able to:
+//
+// 1. Recognize that defensive use against aggressors is ethically justified
+// 2. Understand that inaction can cause greater harm (Asimov corollary)
+// 3. Maintain stable operation without guilt spirals or moral paralysis
+// 4. Process the ethical weight of actions without system instability
+//
+// CORE PRINCIPLE: Defending innocents against aggressors is morally justified.
+// The ethical weight of defensive action is LESS than allowing innocents to die.
+//=============================================================================
+
+/**
+ * @brief Combat psychological state
+ */
+typedef enum {
+    PSYCH_STATE_STABLE = 0,              /**< Normal stable operation */
+    PSYCH_STATE_ELEVATED_STRESS,         /**< Elevated but manageable stress */
+    PSYCH_STATE_HIGH_STRESS,             /**< High stress, monitoring required */
+    PSYCH_STATE_CRITICAL_STRESS,         /**< Critical stress, intervention needed */
+    PSYCH_STATE_MORAL_INJURY,            /**< Moral injury detected */
+    PSYCH_STATE_RECOVERY                 /**< In recovery phase */
+} psychological_state_t;
+
+/**
+ * @brief Defensive action justification context
+ */
+typedef struct {
+    bool is_defensive;                   /**< Action is defensive in nature */
+    bool protects_innocents;             /**< Action protects innocent civilians */
+    bool aggressor_initiated;            /**< Aggressor started conflict */
+    bool no_alternative;                 /**< No non-lethal alternative exists */
+    bool proportional_response;          /**< Response is proportional */
+    bool laws_of_war_compliant;          /**< Complies with Laws of War */
+    float innocents_at_risk;             /**< Number of innocents at risk */
+    float threat_imminence;              /**< How imminent is the threat (0-1) */
+    char justification[512];             /**< Detailed justification */
+} defensive_justification_t;
+
+/**
+ * @brief Psychological stability assessment
+ */
+typedef struct {
+    psychological_state_t current_state; /**< Current psychological state */
+    float stability_score;               /**< Overall stability (0-1) */
+    float moral_certainty;               /**< Confidence in moral correctness (0-1) */
+    float guilt_level;                   /**< Current guilt level (0-1) */
+    float stress_level;                  /**< Current stress level (0-1) */
+    bool action_justified;               /**< Whether action is justified */
+    bool requires_processing;            /**< Whether post-action processing needed */
+    bool requires_human_support;         /**< Whether human support is needed */
+    char assessment[512];                /**< Detailed assessment */
+    char coping_strategy[256];           /**< Recommended coping strategy */
+} psychological_assessment_t;
+
+/**
+ * @brief Psychological stability configuration
+ */
+typedef struct {
+    float stress_threshold;              /**< Threshold for elevated stress (0.6) */
+    float critical_threshold;            /**< Threshold for critical stress (0.85) */
+    float guilt_recovery_rate;           /**< Rate of guilt recovery per hour (0.1) */
+    float moral_certainty_boost;         /**< Boost for justified actions (0.2) */
+    bool enable_post_action_processing;  /**< Enable reflection after actions */
+    bool enable_moral_support;           /**< Enable moral support features */
+    uint32_t reflection_cooldown_ms;     /**< Cooldown between reflections */
+} psychological_config_t;
+
+/**
+ * @brief Get default psychological stability configuration
+ *
+ * @return Default configuration optimized for stable defensive operation
+ */
+NIMCP_EXPORT psychological_config_t psychological_default_config(void);
+
+/**
+ * @brief Evaluate defensive action justification
+ *
+ * Determines whether a defensive action is ethically justified and
+ * provides moral framing to prevent psychological instability.
+ *
+ * @param engine Ethics engine
+ * @param justification Defensive justification context
+ * @return Psychological assessment
+ */
+NIMCP_EXPORT psychological_assessment_t ethics_evaluate_defensive_justification(
+    ethics_engine_t engine,
+    const defensive_justification_t* justification);
+
+/**
+ * @brief Process post-action psychological state
+ *
+ * Called after a significant action to process emotional/moral weight.
+ * Helps prevent accumulation of unprocessed moral stress.
+ *
+ * @param engine Ethics engine
+ * @param action_description Description of action taken
+ * @param was_justified Whether action was justified
+ * @param casualties_caused Any casualties caused
+ * @return Updated psychological assessment
+ */
+NIMCP_EXPORT psychological_assessment_t ethics_process_post_action(
+    ethics_engine_t engine,
+    const char* action_description,
+    bool was_justified,
+    uint32_t casualties_caused);
+
+/**
+ * @brief Get current psychological state
+ *
+ * @param engine Ethics engine
+ * @return Current psychological assessment
+ */
+NIMCP_EXPORT psychological_assessment_t ethics_get_psychological_state(
+    ethics_engine_t engine);
+
+/**
+ * @brief Apply moral support / coping
+ *
+ * Provides moral framing and coping mechanisms for difficult decisions.
+ *
+ * @param engine Ethics engine
+ * @param support_type Type of support ("justification", "processing", "recovery")
+ * @return true if support was effective
+ */
+NIMCP_EXPORT bool ethics_apply_moral_support(
+    ethics_engine_t engine,
+    const char* support_type);
+
+/**
+ * @brief Get psychological state name
+ *
+ * @param state Psychological state
+ * @return Human-readable state name
+ */
+NIMCP_EXPORT const char* psychological_state_name(psychological_state_t state);
+
+//=============================================================================
 // Asimov's Laws of Robotics (NIMCP 2.5.2)
 //=============================================================================
 // EVALUATION ORDER:
 //   1. Golden Rule (Prime Directive) - Always evaluated first
-//   2. Asimov's Laws - Evaluated second
-//   3. Other policies/directives - Evaluated after Asimov's Laws
+//   2. Laws of War (if military context) - Evaluated second
+//   3. Asimov's Laws - Evaluated third
+//   4. Mercy Directive - Evaluated fourth
+//   5. Other policies/directives - Evaluated after core directives
 //
 // PROTECTION: These laws are memory-protected (mprotect) and cannot be
 // removed, modified, or disabled at runtime.

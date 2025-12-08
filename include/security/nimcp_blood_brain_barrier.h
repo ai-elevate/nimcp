@@ -79,6 +79,8 @@ typedef struct bbb_access_control_struct* bbb_access_control_t;
 /**
  * @brief Categories of security threats detected by BBB
  */
+#ifndef BBB_THREAT_TYPE_DEFINED
+#define BBB_THREAT_TYPE_DEFINED
 typedef enum {
     BBB_THREAT_NONE = 0,              /**< No threat detected */
     BBB_THREAT_BUFFER_OVERFLOW,       /**< Stack/heap buffer overflow */
@@ -92,8 +94,11 @@ typedef enum {
     BBB_THREAT_MEMORY_VIOLATION,      /**< Memory bounds violation */
     BBB_THREAT_UNAUTHORIZED_ACCESS,   /**< Access control violation */
     BBB_THREAT_DATA_TAMPERING,        /**< Data integrity violation */
+    BBB_THREAT_PATH_TRAVERSAL,        /**< Path traversal attack */
+    BBB_THREAT_SHELL_INJECTION,       /**< Shell command injection */
     BBB_THREAT_UNKNOWN                /**< Unknown threat type */
 } bbb_threat_type_t;
+#endif /* BBB_THREAT_TYPE_DEFINED */
 
 /**
  * @brief Severity levels for detected threats

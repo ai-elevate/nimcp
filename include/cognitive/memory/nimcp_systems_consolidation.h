@@ -110,10 +110,6 @@ typedef struct cortical_memory_node {
     // Phase 1.5: Copy-on-Write support for efficient feature sharing
     uint32_t* _cow_refcount;              /**< Shared reference count (NULL = owned) */
     bool _cow_is_shallow;                 /**< True if features pointer is shared */
-
-    // Bio-async integration
-    void* bio_ctx;                        /**< bio_module_context_t pointer */
-    bool bio_async_enabled;               /**< Bio-async registration status */
 } cortical_memory_node_t;
 
 /**
@@ -183,6 +179,10 @@ typedef struct systems_consolidation_system {
     void* node_pool;                      /**< Pool for cortical node structs */
     void* feature_pool;                   /**< Pool for feature vectors */
     void* neighbor_pool;                  /**< Pool for neighbor arrays */
+
+    // Bio-async integration (system-level, not per-node)
+    void* bio_ctx;                        /**< bio_module_context_t pointer */
+    bool bio_async_enabled;               /**< Bio-async registration status */
 } systems_consolidation_system_t;
 
 //=============================================================================

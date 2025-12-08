@@ -45,14 +45,12 @@
 class BrainCreateTest : public ::testing::Test {
 protected:
     void SetUp() override {
-        // Initialize NIMCP core system
-        nimcp_init();
+        // Clear any previous errors
         brain_clear_error();
     }
 
     void TearDown() override {
-        // Clean up NIMCP resources
-        nimcp_shutdown();
+        // No global cleanup needed
     }
 
     // Helper to check if brain was created successfully

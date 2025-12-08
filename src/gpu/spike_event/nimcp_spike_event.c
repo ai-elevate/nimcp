@@ -450,6 +450,16 @@ bool spike_queue_push(spike_queue_t* queue, const spike_event_t* event)
         return false;
     }
 
+    // Security: Validate spike amplitude for NaN/Inf
+    // WHAT: Prevent corrupted floating point values from propagating
+    // WHY:  NaN/Inf spikes would corrupt downstream calculations
+    // HOW:  Reject spikes with invalid amplitude values
+    if (isnan(event->amplitude) || isinf(event->amplitude)) {
+        LOG_WARN("Rejecting spike with invalid amplitude: source=%u target=%u amplitude=%f",
+                 event->source_id, event->target_id, event->amplitude);
+        return false;
+    }
+
     // Check if queue is full
     uint32_t current_count = ATOMIC_LOAD(&queue->count);
     if (current_count >= queue->capacity) {

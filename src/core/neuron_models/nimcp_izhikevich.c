@@ -35,6 +35,9 @@
  */
 
 #include "core/neuron_models/nimcp_izhikevich.h"
+#include "security/nimcp_security.h"
+#include "security/nimcp_blood_brain_barrier.h"
+
 #include "core/neuron_models/nimcp_neuron_model_internal.h"
 #include "utils/numerical/nimcp_integration.h"  // Part A1: RK4 integration
 #include "utils/logging/nimcp_logging.h"

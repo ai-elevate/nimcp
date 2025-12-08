@@ -8,6 +8,9 @@
  */
 
 #include "cognitive/reasoning/nimcp_reasoning_factory.h"
+#include "security/nimcp_security.h"
+#include "security/nimcp_blood_brain_barrier.h"
+
 #include "utils/logging/nimcp_logging.h"
 #include "utils/memory/nimcp_memory.h"
 

@@ -64,3 +64,16 @@ target_link_libraries(unit_middleware_patterns_oscillation_detector_phasor
     )
 add_test(NAME unit_middleware_patterns_oscillation_detector_phasor
          COMMAND unit_middleware_patterns_oscillation_detector_phasor)
+# Test All Pattern Detectors Integration
+add_executable(unit_middleware_patterns_all_detectors
+    test_pattern_detectors.cpp
+)
+target_link_libraries(unit_middleware_patterns_all_detectors
+    PRIVATE
+        GTest::GTest
+        GTest::Main
+        nimcp_middleware
+        nimcp
+    )
+add_test(NAME unit_middleware_patterns_all_detectors
+         COMMAND unit_middleware_patterns_all_detectors)

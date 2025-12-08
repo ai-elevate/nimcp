@@ -1,6 +1,13 @@
 #include <node_api.h>
+#include "security/nimcp_security.h"
+#include "security/nimcp_blood_brain_barrier.h"
+
+#include "async/nimcp_bio_async.h"
+#include "async/nimcp_bio_router.h"
+
 #include "nimcp.h"
 #include "utils/metrics/nimcp_metrics.h"
+#include "utils/logging/nimcp_logging.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -503,6 +510,8 @@ static napi_value GetStats(napi_env env, napi_callback_info info) {
 static napi_value Init(napi_env env, napi_value exports) {
     napi_status status;
 
+    LOG_MODULE_INFO("bindings.nodejs", "Initializing Node.js bindings for NIMCP");
+
     // Initialize NIMCP library
     nimcp_init();
 
@@ -563,6 +572,7 @@ static napi_value Init(napi_env env, napi_value exports) {
     napi_set_named_property(env, exports, "METRIC_CATEGORY_SYSTEM", category_system);
     napi_set_named_property(env, exports, "METRIC_CATEGORY_CUSTOM", category_custom);
 
+    LOG_MODULE_INFO("bindings.nodejs", "Successfully initialized Node.js bindings");
     return exports;
 }
 

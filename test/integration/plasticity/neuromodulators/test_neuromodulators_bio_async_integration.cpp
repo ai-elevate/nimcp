@@ -14,7 +14,6 @@ extern "C" {
 #include "async/nimcp_bio_async.h"
 #include "async/nimcp_bio_messages.h"
 #include "async/nimcp_bio_router.h"
-#include "utils/memory/nimcp_unified_memory.h"
 }
 
 //=============================================================================
@@ -27,9 +26,6 @@ protected:
     bio_module_context_t test_module_ctx_;
 
     void SetUp() override {
-        // Initialize unified memory
-        nimcp_unified_memory_init();
-
         // Initialize bio-async system
         nimcp_bio_async_config_t bio_config = nimcp_bio_async_default_config();
         ASSERT_EQ(NIMCP_SUCCESS, nimcp_bio_async_init(&bio_config));
@@ -64,7 +60,6 @@ protected:
         }
         bio_router_shutdown();
         nimcp_bio_async_shutdown();
-        nimcp_unified_memory_shutdown();
     }
 };
 

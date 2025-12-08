@@ -15,6 +15,7 @@
 
 #include <string.h>
 #include <stdio.h>
+#include "security/nimcp_blood_brain_barrier.h"
 
 //=============================================================================
 // Internal Structures

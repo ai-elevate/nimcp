@@ -51,3 +51,16 @@ target_link_libraries(unit_middleware_normalization_zscore_normalizer
     )
 add_test(NAME unit_middleware_normalization_zscore_normalizer
          COMMAND unit_middleware_normalization_zscore_normalizer)
+# Test All Normalizers Integration
+add_executable(unit_middleware_normalization_all_normalizers
+    test_normalizers.cpp
+)
+target_link_libraries(unit_middleware_normalization_all_normalizers
+    PRIVATE
+        GTest::GTest
+        GTest::Main
+        nimcp_middleware
+        nimcp
+    )
+add_test(NAME unit_middleware_normalization_all_normalizers
+         COMMAND unit_middleware_normalization_all_normalizers)

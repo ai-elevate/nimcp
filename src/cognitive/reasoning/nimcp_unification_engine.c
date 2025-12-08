@@ -8,6 +8,9 @@
  */
 
 #include "cognitive/reasoning/nimcp_unification_engine.h"
+#include "security/nimcp_security.h"
+#include "security/nimcp_blood_brain_barrier.h"
+
 #include "cognitive/reasoning/nimcp_symbolic_logic_attachment.h"
 #include "cognitive/nimcp_symbolic_logic.h"
 #include "utils/validation/nimcp_validate.h"

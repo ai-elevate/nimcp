@@ -3,6 +3,9 @@
 //=============================================================================
 
 #include "middleware/normalization/nimcp_zscore_normalizer.h"
+#include "security/nimcp_security.h"
+#include "security/nimcp_blood_brain_barrier.h"
+
 #include "middleware/buffering/nimcp_circular_buffer.h"
 #include "utils/memory/nimcp_memory.h"
 #include <string.h>

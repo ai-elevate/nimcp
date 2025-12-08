@@ -8,6 +8,9 @@
  */
 
 #include "middleware/cognitive/nimcp_working_memory_adapter.h"
+#include "security/nimcp_security.h"
+#include "security/nimcp_blood_brain_barrier.h"
+
 #include "utils/memory/nimcp_memory.h"
 #include <string.h>
 #include "async/nimcp_bio_async.h"

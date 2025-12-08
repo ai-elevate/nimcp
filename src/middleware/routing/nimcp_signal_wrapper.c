@@ -22,6 +22,7 @@
 #include "async/nimcp_bio_messages.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/memory/nimcp_unified_memory.h"
+#include "security/nimcp_blood_brain_barrier.h"
 
 
 //=============================================================================

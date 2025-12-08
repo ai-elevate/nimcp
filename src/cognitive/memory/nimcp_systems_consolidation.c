@@ -18,6 +18,9 @@
 #define LOG_MODULE "systems_consolidation"
 
 #include "cognitive/memory/nimcp_systems_consolidation.h"
+#include "security/nimcp_security.h"
+#include "security/nimcp_blood_brain_barrier.h"
+
 #include "cognitive/memory/nimcp_engram.h"
 #include "nimcp.h"  // For NIMCP_ERROR_* codes
 #include "async/nimcp_bio_async.h"
@@ -45,7 +48,7 @@ static nimcp_error_t handle_consolidation_trigger(
     const void* msg, size_t msg_size,
     nimcp_bio_promise_t response_promise, void* user_data);
 
-static void bio_broadcast_consolidation_complete(cortical_memory_node_t* node, uint32_t engram_id, float strength);
+static void bio_broadcast_consolidation_complete(systems_consolidation_system_t* system, uint32_t engram_id, float strength);
 
 //=============================================================================
 // Internal Helper Functions
@@ -183,27 +186,9 @@ static cortical_memory_node_t* cortical_node_create(
     node->is_transferred = false;
     node->neighbor_count = 0;
 
-    
-    // Bio-async registration
-    node->bio_ctx = NULL;
-    node->bio_async_enabled = false;
-    if (bio_router_is_initialized()) {
-        bio_module_info_t bio_info = {
-            .module_id = BIO_MODULE_CONSOLIDATION_SYSTEMS,
-            .module_name = "systems_consolidation",
-            .inbox_capacity = 32,
-            .user_data = node
-        };
-        node->bio_ctx = bio_router_register_module(&bio_info);
-        if (node->bio_ctx) {
-            node->bio_async_enabled = true;
-            bio_router_register_handler(node->bio_ctx, BIO_MSG_CONSOLIDATION_TRIGGER,
-                                        handle_consolidation_trigger);
-            LOG_INFO(LOG_MODULE, "Bio-async registered (module_id=0x%04X)", BIO_MODULE_SYSTEMS_CONSOLIDATION);
-        }
-    }
+    // Note: Bio-async is now handled at the system level, not per-node
 
-return node;
+    return node;
 }
 
 /*=============================================================================
@@ -218,24 +203,28 @@ static nimcp_error_t handle_consolidation_trigger(
     (void)response_promise;
     if (!msg || !user_data) { return NIMCP_ERROR_NULL_ARG; }
     const bio_msg_salience_response_t* trigger = (const bio_msg_salience_response_t*)msg;
-    cortical_memory_node_t* node = (cortical_memory_node_t*)user_data;
-    LOG_DEBUG(LOG_MODULE, "Received consolidation trigger: stimulus_id=%u, strength=%.2f, consolidation=%.2f",
-              trigger->stimulus_id, trigger->salience_score, node->consolidation_strength);
+    systems_consolidation_system_t* system = (systems_consolidation_system_t*)user_data;
+    LOG_DEBUG(LOG_MODULE, "Received consolidation trigger: stimulus_id=%u, strength=%.2f, node_count=%u",
+              trigger->stimulus_id, trigger->salience_score, system->node_count);
+
+    // Schedule replay for the triggered engram
+    systems_consolidation_schedule_replay(system, trigger->stimulus_id, trigger->salience_score);
+
     return NIMCP_SUCCESS;
 }
 
-static void bio_broadcast_consolidation_complete(cortical_memory_node_t* node, uint32_t engram_id, float strength) {
-    if (!node || !node->bio_async_enabled || !node->bio_ctx) { return; }
+static void bio_broadcast_consolidation_complete(systems_consolidation_system_t* system, uint32_t engram_id, float strength) {
+    if (!system || !system->bio_async_enabled || !system->bio_ctx) { return; }
     // Use salience response for consolidation complete notification
     bio_msg_salience_response_t msg = {0};
     bio_msg_init_header(&msg.header, BIO_MSG_SALIENCE_RESPONSE,
-                        bio_module_context_get_id(node->bio_ctx), 0, sizeof(msg));
+                        bio_module_context_get_id(system->bio_ctx), 0, sizeof(msg));
     msg.header.flags |= BIO_MSG_FLAG_BROADCAST;
     msg.stimulus_id = engram_id;
     msg.salience_score = strength;
     msg.attention_priority = strength;
     msg.requires_immediate_attention = false;
-    bio_router_broadcast(node->bio_ctx, &msg, sizeof(msg));
+    bio_router_broadcast(system->bio_ctx, &msg, sizeof(msg));
     LOG_DEBUG(LOG_MODULE, "Broadcast consolidation complete: engram=%u, strength=%.2f", engram_id, strength);
 }
 
@@ -266,14 +255,9 @@ static void cortical_node_destroy(cortical_memory_node_t* node)
         nimcp_free(node->neighbor_strengths);
     }
 
-    // WHAT: Free node structure
-    // Unregister from bio-router
-    if (node->bio_async_enabled && node->bio_ctx) {
-        bio_router_unregister_module(node->bio_ctx);
-        node->bio_ctx = NULL;
-        node->bio_async_enabled = false;
-    }
+    // Note: Bio-async is now handled at the system level, not per-node
 
+    // WHAT: Free node structure
     nimcp_free(node);
 }
 
@@ -389,6 +373,28 @@ systems_consolidation_system_t* systems_consolidation_create(void)
     };
     system->neighbor_pool = memory_pool_create(&neighbor_pool_config);
 
+    // Bio-async registration at system level
+    system->bio_ctx = NULL;
+    system->bio_async_enabled = false;
+    if (bio_router_is_initialized()) {
+        bio_module_info_t bio_info = {
+            .module_id = BIO_MODULE_SYSTEMS_CONSOLIDATION,
+            .module_name = "systems_consolidation",
+            .inbox_capacity = 64,
+            .user_data = system
+        };
+        system->bio_ctx = bio_router_register_module(&bio_info);
+        if (system->bio_ctx) {
+            system->bio_async_enabled = true;
+            bio_router_register_handler(system->bio_ctx, BIO_MSG_CONSOLIDATION_TRIGGER,
+                                        handle_consolidation_trigger);
+            LOG_INFO("Bio-async registered at system level (module_id=0x%04X)",
+                     BIO_MODULE_SYSTEMS_CONSOLIDATION);
+        } else {
+            LOG_WARN("Failed to register with bio_router (async disabled)");
+        }
+    }
+
     return system;
 }
 
@@ -397,6 +403,14 @@ void systems_consolidation_destroy(systems_consolidation_system_t* system)
     // WHAT: Guard against NULL
     if (!system) {
         return;
+    }
+
+    // Unregister from bio-router
+    if (system->bio_async_enabled && system->bio_ctx) {
+        bio_router_unregister_module(system->bio_ctx);
+        system->bio_ctx = NULL;
+        system->bio_async_enabled = false;
+        LOG_DEBUG("Unregistered from bio_router");
     }
 
     // WHAT: Free all cortical nodes
@@ -675,6 +689,11 @@ void systems_consolidation_update(
     // WHAT: Guard against invalid input
     if (!system || time_delta_seconds <= 0.0f) {
         return;
+    }
+
+    // Process pending bio-async messages
+    if (system->bio_async_enabled && system->bio_ctx) {
+        bio_router_process_inbox(system->bio_ctx, 5);
     }
 
     // WHAT: Determine consolidation rate based on sleep state

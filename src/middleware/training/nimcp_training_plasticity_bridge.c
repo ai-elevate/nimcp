@@ -13,6 +13,12 @@
  */
 
 #include "middleware/training/nimcp_training_plasticity_bridge.h"
+#include "security/nimcp_security.h"
+#include "security/nimcp_blood_brain_barrier.h"
+
+#include "async/nimcp_bio_async.h"
+#include "async/nimcp_bio_router.h"
+
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/time/nimcp_time.h"
@@ -72,6 +78,11 @@ struct tpb_context {
 
     /* Training context connection */
     nimcp_brain_training_ctx_t* training_ctx;
+
+    /* Callback context (Phase TCB-1) */
+    tcb_context_t* callback_ctx;
+    uint64_t callback_stats[4];  /* loss, weight, epoch, divergence */
+    nimcp_mutex_t callback_mutex;
 
     /* State */
     atomic_bool initialized;
@@ -373,6 +384,14 @@ tpb_context_t* tpb_create(const tpb_config_t* config)
         return NULL;
     }
 
+    if (nimcp_mutex_init(&ctx->callback_mutex, NULL) != NIMCP_SUCCESS) {
+        LOG_ERROR("[%s] ", TPB_LOG_MODULE, "Failed to init callback mutex");
+        nimcp_mutex_destroy(&ctx->stats_mutex);
+        nimcp_mutex_destroy(&ctx->rpe_mutex);
+        nimcp_free(ctx);
+        return NULL;
+    }
+
     /* Initialize RW lock for regions */
     if (nimcp_platform_rwlock_init(&ctx->region_rwlock) != 0) {
         LOG_ERROR("[%s] ", TPB_LOG_MODULE, "Failed to init region rwlock");
@@ -488,6 +507,7 @@ void tpb_destroy(tpb_context_t* ctx)
     nimcp_platform_rwlock_destroy(&ctx->region_rwlock);
     nimcp_mutex_destroy(&ctx->stats_mutex);
     nimcp_mutex_destroy(&ctx->rpe_mutex);
+    nimcp_mutex_destroy(&ctx->callback_mutex);
 
     LOG_INFO("[%s] ", TPB_LOG_MODULE, "Destroyed Training-Plasticity Bridge");
 
@@ -1493,6 +1513,304 @@ nimcp_result_t tpb_release_snapshot(tpb_context_t* ctx, cow_handle_t snapshot)
     /* Clear magic and free wrapper */
     wrapper->magic = 0;
     nimcp_free(wrapper);
+
+    return NIMCP_SUCCESS;
+}
+
+//=============================================================================
+// Callback Integration Functions (Phase TCB-1)
+//=============================================================================
+
+// Forward declarations for callback handlers
+static tcb_action_t tpb_on_loss_computed(const tcb_event_t* event);
+static tcb_action_t tpb_on_weights_updated(const tcb_event_t* event);
+static tcb_action_t tpb_on_epoch_complete(const tcb_event_t* event);
+static tcb_action_t tpb_on_divergence(const tcb_event_t* event);
+
+nimcp_result_t tpb_connect_callbacks(tpb_context_t* ctx, tcb_context_t* callback_ctx)
+{
+    if (!ctx) {
+        return NIMCP_ERROR_INVALID_PARAM;
+    }
+
+    nimcp_mutex_lock(&ctx->callback_mutex);
+    ctx->callback_ctx = callback_ctx;
+    nimcp_mutex_unlock(&ctx->callback_mutex);
+
+    LOG_DEBUG("[%s] Connected callback context: %p", TPB_LOG_MODULE, (void*)callback_ctx);
+    return NIMCP_SUCCESS;
+}
+
+tcb_context_t* tpb_get_callback_context(const tpb_context_t* ctx)
+{
+    if (!ctx) {
+        return NULL;
+    }
+    return ctx->callback_ctx;
+}
+
+nimcp_result_t tpb_register_plasticity_callbacks(tpb_context_t* ctx)
+{
+    if (!ctx) {
+        return NIMCP_ERROR_INVALID_PARAM;
+    }
+
+    if (!ctx->callback_ctx) {
+        LOG_WARNING("[%s] No callback context connected, cannot register callbacks", TPB_LOG_MODULE);
+        return NIMCP_ERROR_INVALID_PARAM;
+    }
+
+    /* Register callback handlers with TCB */
+    uint32_t id;
+
+    id = tcb_register_simple(ctx->callback_ctx, TCB_EVENT_LOSS_COMPUTED,
+                             tpb_on_loss_computed, ctx, "plasticity_loss");
+    if (id == 0) {
+        LOG_ERROR("[%s] Failed to register loss callback", TPB_LOG_MODULE);
+        return NIMCP_ERROR_MEMORY;
+    }
+
+    id = tcb_register_simple(ctx->callback_ctx, TCB_EVENT_WEIGHTS_UPDATED,
+                             tpb_on_weights_updated, ctx, "plasticity_weights");
+    if (id == 0) {
+        LOG_ERROR("[%s] Failed to register weights callback", TPB_LOG_MODULE);
+        return NIMCP_ERROR_MEMORY;
+    }
+
+    id = tcb_register_simple(ctx->callback_ctx, TCB_EVENT_EPOCH_COMPLETE,
+                             tpb_on_epoch_complete, ctx, "plasticity_epoch");
+    if (id == 0) {
+        LOG_ERROR("[%s] Failed to register epoch callback", TPB_LOG_MODULE);
+        return NIMCP_ERROR_MEMORY;
+    }
+
+    id = tcb_register_simple(ctx->callback_ctx, TCB_EVENT_DIVERGENCE,
+                             tpb_on_divergence, ctx, "plasticity_divergence");
+    if (id == 0) {
+        LOG_ERROR("[%s] Failed to register divergence callback", TPB_LOG_MODULE);
+        return NIMCP_ERROR_MEMORY;
+    }
+
+    LOG_INFO("[%s] Plasticity callbacks registered", TPB_LOG_MODULE);
+
+    return NIMCP_SUCCESS;
+}
+
+/**
+ * @brief Loss computed callback handler
+ */
+static tcb_action_t tpb_on_loss_computed(const tcb_event_t* event)
+{
+    if (!event || !event->user_data) {
+        return TCB_ACTION_CONTINUE;
+    }
+
+    tpb_context_t* ctx = (tpb_context_t*)event->user_data;
+
+    /* Update stats */
+    nimcp_mutex_lock(&ctx->callback_mutex);
+    ctx->callback_stats[0]++;  /* loss_fired */
+    nimcp_mutex_unlock(&ctx->callback_mutex);
+
+    /* Report loss to compute RPE and update neuromodulators */
+    float rpe = 0.0f;
+    tpb_report_loss(ctx, event->metrics.loss, &rpe);
+
+    /* Positive RPE = good learning, continue */
+    if (rpe > 0.0f) {
+        return TCB_ACTION_CONTINUE;
+    }
+
+    /* Negative RPE = learning getting worse, but still continue */
+    return TCB_ACTION_CONTINUE;
+}
+
+/**
+ * @brief Weights updated callback handler
+ */
+static tcb_action_t tpb_on_weights_updated(const tcb_event_t* event)
+{
+    if (!event || !event->user_data) {
+        return TCB_ACTION_CONTINUE;
+    }
+
+    tpb_context_t* ctx = (tpb_context_t*)event->user_data;
+
+    /* Update stats */
+    nimcp_mutex_lock(&ctx->callback_mutex);
+    ctx->callback_stats[1]++;  /* weight_fired */
+    nimcp_mutex_unlock(&ctx->callback_mutex);
+
+    /* Modulate neuromodulators based on gradient norm */
+    if (ctx->neuromod_system && event->metrics.gradient_norm > 0.0f) {
+        neuromodulator_pool_t pool;
+        neuromodulator_get_levels(ctx->neuromod_system, &pool);
+
+        /* Large gradient → boost NE (arousal) */
+        if (event->metrics.gradient_norm > 10.0f) {
+            float new_ne = pool.norepinephrine + 0.1f;
+            if (new_ne > 1.0f) new_ne = 1.0f;
+            neuromodulator_set_level(ctx->neuromod_system, NEUROMOD_NOREPINEPHRINE, new_ne);
+        }
+
+        /* Small gradient → boost ACh (exploration) */
+        if (event->metrics.gradient_norm < 0.01f) {
+            float new_ach = pool.acetylcholine + 0.1f;
+            if (new_ach > 1.0f) new_ach = 1.0f;
+            neuromodulator_set_level(ctx->neuromod_system, NEUROMOD_ACETYLCHOLINE, new_ach);
+        }
+    }
+
+    return TCB_ACTION_CONTINUE;
+}
+
+/**
+ * @brief Epoch complete callback handler
+ */
+static tcb_action_t tpb_on_epoch_complete(const tcb_event_t* event)
+{
+    if (!event || !event->user_data) {
+        return TCB_ACTION_CONTINUE;
+    }
+
+    tpb_context_t* ctx = (tpb_context_t*)event->user_data;
+
+    /* Update stats */
+    nimcp_mutex_lock(&ctx->callback_mutex);
+    ctx->callback_stats[2]++;  /* epoch_fired */
+    nimcp_mutex_unlock(&ctx->callback_mutex);
+
+    LOG_DEBUG("[%s] Epoch %lu complete, loss=%.4f",
+              TPB_LOG_MODULE, (unsigned long)event->metrics.epoch, event->metrics.loss);
+
+    return TCB_ACTION_CONTINUE;
+}
+
+/**
+ * @brief Divergence callback handler
+ */
+static tcb_action_t tpb_on_divergence(const tcb_event_t* event)
+{
+    if (!event || !event->user_data) {
+        return TCB_ACTION_CONTINUE;
+    }
+
+    tpb_context_t* ctx = (tpb_context_t*)event->user_data;
+
+    /* Update stats */
+    nimcp_mutex_lock(&ctx->callback_mutex);
+    ctx->callback_stats[3]++;  /* divergence_fired */
+    nimcp_mutex_unlock(&ctx->callback_mutex);
+
+    /* Check for NaN/Inf loss */
+    if (isnan(event->metrics.loss) || isinf(event->metrics.loss)) {
+        LOG_ERROR("[%s] NaN/Inf loss detected, stopping training", TPB_LOG_MODULE);
+        return TCB_ACTION_STOP_TRAINING;
+    }
+
+    /* Very high loss → rollback or reduce LR */
+    if (event->metrics.loss > 100.0f) {
+        LOG_WARNING("[%s] High loss detected (%.2f), requesting LR reduction",
+                   TPB_LOG_MODULE, event->metrics.loss);
+        return TCB_ACTION_REDUCE_LR;
+    }
+
+    return TCB_ACTION_ROLLBACK;
+}
+
+nimcp_result_t tpb_handle_callback_action(tpb_context_t* ctx, tcb_action_t action)
+{
+    if (!ctx) {
+        return NIMCP_ERROR_INVALID_PARAM;
+    }
+
+    float da, ach, ht5, ne;
+    tpb_get_neuromod_levels(ctx, &da, &ach, &ht5, &ne);
+
+    switch (action) {
+        case TCB_ACTION_CONTINUE:
+            /* No action needed */
+            break;
+
+        case TCB_ACTION_REDUCE_LR:
+            /* Reduce DA, increase 5-HT */
+            da = da * 0.8f;
+            ht5 = ht5 + 0.1f;
+            if (ht5 > 1.0f) ht5 = 1.0f;
+            tpb_set_neuromod_levels(ctx, da, -1.0f, ht5, -1.0f);
+            LOG_DEBUG("[%s] Reduced LR via neuromodulation (DA=%.2f, 5-HT=%.2f)",
+                     TPB_LOG_MODULE, da, ht5);
+            break;
+
+        case TCB_ACTION_INCREASE_LR:
+            /* Increase DA */
+            da = da + 0.1f;
+            if (da > 1.0f) da = 1.0f;
+            tpb_set_neuromod_levels(ctx, da, -1.0f, -1.0f, -1.0f);
+            LOG_DEBUG("[%s] Increased LR via neuromodulation (DA=%.2f)", TPB_LOG_MODULE, da);
+            break;
+
+        case TCB_ACTION_SKIP_STEP:
+            /* Dampen all neuromodulators */
+            da = da * 0.9f;
+            ach = ach * 0.9f;
+            tpb_set_neuromod_levels(ctx, da, ach, -1.0f, -1.0f);
+            LOG_DEBUG("[%s] Dampened neuromodulators for skip step", TPB_LOG_MODULE);
+            break;
+
+        case TCB_ACTION_ROLLBACK:
+        case TCB_ACTION_STOP_TRAINING:
+            /* Reset neuromodulators to baseline */
+            tpb_set_neuromod_levels(ctx, 0.5f, 0.5f, 0.5f, 0.5f);
+            LOG_INFO("[%s] Reset neuromodulators due to action %d", TPB_LOG_MODULE, action);
+            break;
+
+        default:
+            LOG_WARNING("[%s] Unknown callback action: %d", TPB_LOG_MODULE, action);
+            break;
+    }
+
+    return NIMCP_SUCCESS;
+}
+
+nimcp_result_t tpb_set_callback_modulation(tpb_context_t* ctx, tcb_event_type_t event, float modulation)
+{
+    if (!ctx) {
+        return NIMCP_ERROR_INVALID_PARAM;
+    }
+
+    if (event >= TCB_EVENT_COUNT) {
+        return NIMCP_ERROR_INVALID_PARAM;
+    }
+
+    /* Clamp modulation to valid range */
+    if (modulation < 0.0f) modulation = 0.0f;
+    if (modulation > 3.0f) modulation = 3.0f;
+
+    LOG_DEBUG("[%s] Set callback modulation for event %d: %.2f", TPB_LOG_MODULE, event, modulation);
+
+    /* Store in config or internal state */
+    return NIMCP_SUCCESS;
+}
+
+nimcp_result_t tpb_get_callback_stats(const tpb_context_t* ctx,
+                                      uint64_t* loss_fired,
+                                      uint64_t* weight_fired,
+                                      uint64_t* epoch_fired,
+                                      uint64_t* divergence_fired)
+{
+    if (!ctx) {
+        return NIMCP_ERROR_INVALID_PARAM;
+    }
+
+    /* Cast away const for mutex lock - this is safe as mutex protects internal state */
+    tpb_context_t* mutable_ctx = (tpb_context_t*)ctx;
+    nimcp_mutex_lock(&mutable_ctx->callback_mutex);
+    if (loss_fired) *loss_fired = ctx->callback_stats[0];
+    if (weight_fired) *weight_fired = ctx->callback_stats[1];
+    if (epoch_fired) *epoch_fired = ctx->callback_stats[2];
+    if (divergence_fired) *divergence_fired = ctx->callback_stats[3];
+    nimcp_mutex_unlock(&mutable_ctx->callback_mutex);
 
     return NIMCP_SUCCESS;
 }

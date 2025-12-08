@@ -9,6 +9,12 @@
  */
 
 #include "middleware/training/nimcp_event_driven_plasticity.h"
+#include "security/nimcp_security.h"
+#include "security/nimcp_blood_brain_barrier.h"
+
+#include "async/nimcp_bio_async.h"
+#include "async/nimcp_bio_router.h"
+
 #include "middleware/training/nimcp_training_plasticity_bridge.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/time/nimcp_time.h"

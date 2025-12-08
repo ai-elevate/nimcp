@@ -11,6 +11,9 @@
  */
 
 #include "core/brain/regions/broca/nimcp_broca_adapter.h"
+#include "security/nimcp_security.h"
+#include "security/nimcp_blood_brain_barrier.h"
+
 #include "core/brain/regions/broca/nimcp_syntax_processor.h"
 #include "core/brain/regions/broca/nimcp_phonological.h"
 #include "core/brain/regions/broca/nimcp_speech_motor.h"

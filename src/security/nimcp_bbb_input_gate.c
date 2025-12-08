@@ -485,14 +485,17 @@ bool bbb_validate_string(bbb_system_t system, const char* str,
     }
 
     /* SQL Injection Detection */
-    if (check_patterns(str, sql_patterns)) {
+    bool sql_detected = check_patterns(str, sql_patterns);
+    if (sql_detected) {
         result->valid = false;
         result->threat = BBB_THREAT_SQL_INJECTION;
         result->severity = BBB_SEVERITY_HIGH;
         snprintf(result->reason, sizeof(result->reason),
                  "SQL injection pattern detected");
-        bbb_report_threat(system, BBB_THREAT_SQL_INJECTION, BBB_SEVERITY_HIGH,
-                          result->reason, str, str, strlen(str));
+        if (system) {
+            bbb_report_threat(system, BBB_THREAT_SQL_INJECTION, BBB_SEVERITY_HIGH,
+                              result->reason, str, str, strlen(str));
+        }
         return false;
     }
 

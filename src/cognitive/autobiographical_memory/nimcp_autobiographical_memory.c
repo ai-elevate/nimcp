@@ -12,6 +12,9 @@
 #define LOG_MODULE "autobiographical_memory"
 
 #include "cognitive/nimcp_autobiographical_memory.h"
+#include "security/nimcp_security.h"
+#include "security/nimcp_blood_brain_barrier.h"
+
 #include "nimcp.h"  // For NIMCP_ERROR_* codes
 #include "async/nimcp_bio_async.h"
 #include "async/nimcp_bio_router.h"

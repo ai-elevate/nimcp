@@ -155,14 +155,110 @@ add_e2e_test(e2e_test_bio_async_training_pipeline
     ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_bio_async_training_pipeline.cpp
 )
 
+# Fixed: Lambda capture issues - now using static handlers with user_data
 add_e2e_test(e2e_test_bio_async_plasticity_pipeline
     ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_framework.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_bio_async_plasticity_pipeline.cpp
 )
 
+# Fixed: Missing header path - now using cognitive/introspection/nimcp_introspection.h
 add_e2e_test(e2e_test_bio_async_cognitive_pipeline
     ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_framework.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_bio_async_cognitive_pipeline.cpp
+)
+
+# Fixed: BBB functions are in nimcp library - should link correctly
+add_e2e_test(e2e_test_security_attack_simulation
+    ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_framework.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_security_attack_simulation.cpp
+)
+
+# Swarm E2E Tests
+add_e2e_test(e2e_test_swarm_formation
+    ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_framework.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_swarm_formation.cpp
+)
+
+add_e2e_test(e2e_test_swarm_threat_response
+    ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_framework.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_swarm_threat_response.cpp
+)
+
+add_e2e_test(e2e_test_server_swarm_pipeline
+    ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_framework.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_server_swarm_pipeline.cpp
+)
+
+# Neural Link Protocol (NLP) E2E Tests
+add_e2e_test(e2e_test_nlp_swarm_coordination
+    ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_framework.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_nlp_swarm_coordination.cpp
+)
+
+add_e2e_test(e2e_test_nlp_war_zone
+    ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_framework.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_nlp_war_zone.cpp
+)
+
+add_e2e_test(e2e_test_nlp_disaster_sar
+    ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_framework.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_nlp_disaster_sar.cpp
+)
+
+add_e2e_test(e2e_test_nlp_neural_distributed
+    ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_framework.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_nlp_neural_distributed.cpp
+)
+
+# Portia Spider E2E Tests
+add_e2e_test(e2e_test_portia_constrained_platform
+    ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_framework.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_portia_constrained_platform.cpp
+)
+
+add_e2e_test(e2e_test_portia_tier_lifecycle
+    ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_framework.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_portia_tier_lifecycle.cpp
+)
+
+add_e2e_test(e2e_test_portia_power_lifecycle
+    ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_framework.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_portia_power_lifecycle.cpp
+)
+
+add_e2e_test(e2e_test_portia_learning_adaptation
+    ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_framework.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_portia_learning_adaptation.cpp
+)
+
+add_e2e_test(e2e_test_portia_sensor_fusion_pipeline
+    ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_framework.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_portia_sensor_fusion_pipeline.cpp
+)
+
+add_e2e_test(e2e_test_portia_degradation_scenario
+    ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_framework.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_portia_degradation_scenario.cpp
+)
+
+add_e2e_test(e2e_test_portia_bio_async_pipeline
+    ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_framework.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_portia_bio_async_pipeline.cpp
+)
+
+add_e2e_test(e2e_test_portia_security_integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_framework.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_portia_security_integration.cpp
+)
+
+add_e2e_test(e2e_test_portia_planning_mission
+    ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_framework.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_portia_planning_mission.cpp
+)
+
+add_e2e_test(e2e_test_portia_threat_response
+    ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_framework.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_portia_threat_response.cpp
 )
 
 # ============================================================================

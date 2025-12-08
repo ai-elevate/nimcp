@@ -23,6 +23,9 @@
  */
 
 #include "core/brain/nimcp_brain.h"
+#include "security/nimcp_security.h"
+#include "security/nimcp_blood_brain_barrier.h"
+
 #include "core/brain/nimcp_brain_internal.h"
 #include "core/neuralnet/nimcp_neuralnet.h"
 #include "async/nimcp_bio_async.h"

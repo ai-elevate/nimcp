@@ -18,6 +18,9 @@
  */
 
 #include "gpu/nimcp_gpu_neuron.h"
+#include "security/nimcp_security.h"
+#include "security/nimcp_blood_brain_barrier.h"
+
 #include "utils/memory/nimcp_unified_memory.h"
 #include "gpu/nimcp_execution_mode.h"
 #include "utils/memory/nimcp_memory.h"

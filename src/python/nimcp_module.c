@@ -1,4 +1,11 @@
 #include "common/nimcp_module.h"
+#include "security/nimcp_security.h"
+#include "security/nimcp_blood_brain_barrier.h"
+
+#include "async/nimcp_bio_async.h"
+#include "async/nimcp_bio_router.h"
+
+#include "utils/logging/nimcp_logging.h"
 
 // Forward declaration for metrics module
 extern int init_metrics_module(PyObject* module);
@@ -29,6 +36,8 @@ static struct PyModuleDef nimcp_module = {
 PyMODINIT_FUNC PyInit_nimcp(void)
 {
     PyObject* m;
+
+    LOG_MODULE_INFO("bindings.python.module", "Initializing full Python module for NIMCP");
 
     // Initialize types
     if (PyType_Ready(&BrainType) < 0)

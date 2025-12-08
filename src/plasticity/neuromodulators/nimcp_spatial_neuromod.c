@@ -25,6 +25,9 @@
  */
 
 #include "plasticity/neuromodulators/nimcp_spatial_neuromod.h"
+#include "security/nimcp_security.h"
+#include "security/nimcp_blood_brain_barrier.h"
+
 #include "utils/memory/nimcp_unified_memory.h"
 #include "core/neuralnet/nimcp_neuralnet.h"
 #include "utils/memory/nimcp_memory.h"
@@ -45,7 +48,7 @@
 // Logging macros (fallback if logging not available)
 #define nimcp_log_error(...)   fprintf(stderr, "ERROR: " __VA_ARGS__); fprintf(stderr, "\n")
 #define nimcp_log_warning(...) fprintf(stderr, "WARNING: " __VA_ARGS__); fprintf(stderr, "\n")
-#define nimcp_log_info(...)    fprintf(stdout, "INFO: " __VA_ARGS__); fprintf(stdout, "\n")
+#define LOG_INFO(...)    fprintf(stdout, "INFO: " __VA_ARGS__); fprintf(stdout, "\n")
 
 //=============================================================================
 // Constants
@@ -306,8 +309,9 @@ static nimcp_error_t spatial_neuromod_bio_async_init(spatial_neuromod_system_t* 
     }
 
     // Register module with bio-router
+    // Use BIO_MODULE_NEUROMODULATOR (not _SPATIAL) for compatibility with existing code
     bio_module_info_t module_info = {
-        .module_id = BIO_MODULE_NEUROMODULATOR_SPATIAL,
+        .module_id = BIO_MODULE_NEUROMODULATOR,
         .module_name = "spatial_neuromodulator",
         .inbox_capacity = 100,
         .user_data = &g_spatial_bio_state
@@ -546,10 +550,10 @@ spatial_neuromod_field_t* spatial_neuromod_create(uint32_t num_neurons,
         // WARNING: Cannot initialize quantum-Shannon here because we don't have
         // the neural network pointer yet. This will be done in system_create.
         // For now, just mark that it should be created.
-        nimcp_log_info("Quantum-Shannon diffusion enabled for field type=%d", config->type);
+        LOG_INFO("Quantum-Shannon diffusion enabled for field type=%d", config->type);
     }
 
-    nimcp_log_info("Created spatial neuromodulator field: type=%d, neurons=%u, D=%.3f, k=%.3f",
+    LOG_INFO("Created spatial neuromodulator field: type=%d, neurons=%u, D=%.3f, k=%.3f",
                    config->type, num_neurons, config->diffusion_coeff, config->decay_rate);
 
     return field;
@@ -653,12 +657,12 @@ spatial_neuromod_system_t* spatial_neuromod_system_create(
                 system->fields[i]->use_quantum_shannon = false;
             } else {
                 system->fields[i]->quantum_shannon_diffusion = (void*)qsd;
-                nimcp_log_info("Quantum-Shannon created for neuromodulator type %d (√N speedup + Shannon metrics enabled)", i);
+                LOG_INFO("Quantum-Shannon created for neuromodulator type %d (√N speedup + Shannon metrics enabled)", i);
             }
         }
     }
 
-    nimcp_log_info("Created spatial neuromodulator system with %u neurons", num_neurons);
+    LOG_INFO("Created spatial neuromodulator system with %u neurons", num_neurons);
 
     // Initialize bio-async integration
     nimcp_error_t bio_err = spatial_neuromod_bio_async_init(system);
@@ -884,7 +888,7 @@ bool spatial_neuromod_update(spatial_neuromod_field_t* field,
 
                 // Log if bottlenecks detected (for debugging/optimization)
                 if (metrics.num_bottlenecks > 0) {
-                    nimcp_log_info("Neuromodulator type %d: %u bottlenecks detected (speedup: %.2fx)",
+                    LOG_INFO("Neuromodulator type %d: %u bottlenecks detected (speedup: %.2fx)",
                                    field->type, metrics.num_bottlenecks, metrics.speedup_vs_classical);
                 }
             }
@@ -1588,7 +1592,7 @@ bool spatial_neuromod_update_dynamic_adaptation(
         if (K < config->max_adaptive_sources) {
             field->current_adaptive_sources = K + 1;
             adapted = true;
-            nimcp_log_info("Dynamic adaptation: Increased K from %u to %u (EMA=%.3f < target=%.3f)",
+            LOG_INFO("Dynamic adaptation: Increased K from %u to %u (EMA=%.3f < target=%.3f)",
                           K, K + 1, ema, target);
         }
     } else if (ema > target + tolerance) {
@@ -1596,7 +1600,7 @@ bool spatial_neuromod_update_dynamic_adaptation(
         if (K > config->min_adaptive_sources) {
             field->current_adaptive_sources = K - 1;
             adapted = true;
-            nimcp_log_info("Dynamic adaptation: Decreased K from %u to %u (EMA=%.3f > target=%.3f)",
+            LOG_INFO("Dynamic adaptation: Decreased K from %u to %u (EMA=%.3f > target=%.3f)",
                           K, K - 1, ema, target);
         }
     }

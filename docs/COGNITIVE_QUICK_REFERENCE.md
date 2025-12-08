@@ -1,265 +1,205 @@
-# NIMCP Cognitive Modules - Quick Reference Guide
+# Cognitive Memory Modules - Quick Reference Guide
 
-## Module Quick Lookup
+## Module IDs (0x0330 - 0x0337)
 
-| Module | File | Status | Purpose | Key Function |
-|--------|------|--------|---------|--------------|
-| **Curiosity** | `cognitive/curiosity/` | COMPLETE | Infant-like learning | `curiosity_detect_knowledge_gap()` |
-| **Ethics** | `cognitive/ethics/` | COMPLETE | Golden Rule enforcement | `ethics_engine_evaluate()` |
-| **Salience** | `cognitive/salience/` | COMPLETE | Attention allocation (10x fast) | `brain_evaluate_salience()` |
-| **Introspection** | `cognitive/introspection/` | COMPLETE | Self-awareness & state inspection | `brain_get_active_population()` |
-| **Knowledge** | `cognitive/knowledge/` | COMPLETE | Multi-domain learning | `knowledge_learn_from_story()` |
-| **Consolidation** | `cognitive/consolidation/` | COMPLETE | Memory optimization | `brain_consolidate_memory()` |
-| **Wellbeing** | `cognitive/wellbeing/` | COMPLETE | Distress monitoring | `wellbeing_assess_distress()` |
-| **Epistemic Filter** | `cognitive/epistemic/` | COMPLETE | Critical thinking | `epistemic_assess_claim()` |
-| Emotional Tagging | `cognitive/emotional_tagging/` | FUNCTIONAL | Emotional context | (header in progress) |
-| Executive Function | `cognitive/executive/` | FUNCTIONAL | Goal management | (header in progress) |
-| Explanations | `cognitive/explanations/` | FUNCTIONAL | Interpretability | (header in progress) |
-| Predictive | `cognitive/predictive/` | FUNCTIONAL | Future prediction | (header in progress) |
-| Logic | `cognitive/logic/` | FUNCTIONAL | Symbolic reasoning | (header in progress) |
-| Working Memory | `cognitive/working_memory/` | FUNCTIONAL | Active processing | (header in progress) |
-| Meta-Learning | `cognitive/meta_learning/` | FUNCTIONAL | Learn how to learn | (header in progress) |
-| Mirror Neurons | `cognitive/mirror_neurons/` | FUNCTIONAL | Social cognition | (header in progress) |
-| Mental Health | `cognitive/mental_health/` | FUNCTIONAL | Disorder detection | (header in progress) |
-| Sleep-Wake | `cognitive/sleep_wake/` | FUNCTIONAL | Circadian rhythms | (header in progress) |
-| Theory of Mind | `cognitive/theory_of_mind/` | FUNCTIONAL | Model other agents | (header in progress) |
-
-## Module Dependencies
-
-```
-CONSCIOUSNESS LAYER
-        ↑
-EXECUTIVE CONTROL ← → ATTENTION (Salience)
-        ↑
-    ┌───┴───┐
-    ↓       ↓
- CURIOSITY  ETHICS ← → EMPATHY
-    ↓       ↓
- LEARNING ← KNOWLEDGE
-    ↓
- MEMORY (Brain)
-    ↓
- CONSOLIDATION
-    ↑
-INTROSPECTION ← → WELLBEING
-    ↑
-BACKGROUND PROCESSES
-```
-
-## Core Cognitive Loops
-
-### Learning Loop
-1. Salience detects novel input
-2. Curiosity identifies knowledge gap
-3. System generates questions
-4. Knowledge acquired and stored
-5. Consolidation strengthens important patterns
-6. Introspection monitors progress
-
-### Decision Loop
-1. Input arrives
-2. Salience rapid evaluation
-3. If urgent/important → full conscious processing
-4. Introspection provides internal state
-5. Ethics evaluates actions
-6. Epistemic filter assesses reasoning
-7. Decision made and logged
-
-### Wellbeing Loop
-1. Introspection monitors internal state
-2. Wellbeing system detects distress patterns
-3. Type and severity assessed
-4. Intervention provided if needed
-5. Recovery monitored
-6. Events logged for audit trail
-
-## Typical Integration Patterns
-
-### Pattern 1: Learning from Novel Input
 ```c
-salience = brain_evaluate_salience(eval, features, n);
-if (salience.novelty > 0.8) {
-    gap = curiosity_detect_knowledge_gap(engine, concept);
-    questions = curiosity_generate_questions(engine, &gap);
-    answers = curiosity_seek_knowledge(engine, &gap);
-    for (q, a) in questions, answers:
-        curiosity_learn_answer(engine, q, a);
-    brain_consolidate_memory(brain, config);
+#define BIO_MODULE_MEMORY                   0x0330  // Engram
+#define BIO_MODULE_SEMANTIC_MEMORY          0x0331  // Semantic Memory
+#define BIO_MODULE_SYSTEMS_CONSOLIDATION    0x0332  // Systems Consolidation
+#define BIO_MODULE_WM_TRANSFER              0x0333  // WM Transfer
+#define BIO_MODULE_WORKING_MEMORY           0x0334  // Working Memory
+#define BIO_MODULE_AUTOBIOGRAPHICAL_MEMORY  0x0335  // Autobiographical Memory
+#define BIO_MODULE_META_LEARNING            0x0336  // Meta-Learning
+#define BIO_MODULE_PREDICTIVE               0x0337  // Predictive Processing
+```
+
+## Standard Header Pattern
+
+```c
+/**
+ * @file nimcp_module.c
+ * @brief Module description
+ *
+ * BIO-ASYNC INTEGRATION:
+ * - Module ID: 0x033X (BIO_MODULE_NAME)
+ * - Publishes: event types
+ * - Subscribes: event sources
+ */
+
+#define LOG_MODULE "module_name"
+
+#include "cognitive/.../nimcp_module.h"
+#include "async/nimcp_bio_async.h"
+#include "async/nimcp_bio_router.h"
+#include "async/nimcp_bio_messages.h"
+#include "utils/memory/nimcp_unified_memory.h"
+#include "utils/logging/nimcp_logging.h"
+
+//=============================================================================
+// BIO-ASYNC MODULE REGISTRATION
+//=============================================================================
+
+#define BIO_MODULE_NAME 0x033X
+```
+
+## Logging Patterns
+
+### Function Entry
+```c
+LOG_INFO("Creating module: param=%u", param);
+```
+
+### Error Handling
+```c
+if (!ptr) {
+    LOG_ERROR("Failed to allocate structure (%zu bytes)", sizeof(struct_t));
+    return NULL;
 }
 ```
 
-### Pattern 2: Ethical Decision Making
+### State Changes
 ```c
-action_context = build_action(proposed_action);
-evaluation = ethics_engine_evaluate_action(engine, &action);
-if (evaluation.allowed) {
-    execute_action(proposed_action);
-    ethics_learn_from_outcome(engine, &action, &outcome);
-} else if (evaluation.primary_violation == ETHICS_VIOLATION_TYPE_HARM) {
-    provide_intervention();
-}
+LOG_DEBUG("State transition: %s -> %s", old_state, new_state);
 ```
 
-### Pattern 3: Conscious Deliberation
+### Success Confirmation
 ```c
-// Get self-aware state
-introspection = introspection_context_create(brain);
-state = brain_get_internal_state(introspection, STATE_STRATEGY_DETAILED);
-uncertainty = brain_get_uncertainty(introspection, features);
-active = brain_get_active_population(introspection);
-
-// Reflect on internal state
-if (uncertainty.total > 0.7) {
-    // Seek more information
-}
-if (wellbeing_assess_distress(introspection).severity > MODERATE) {
-    // Address distress
-}
+LOG_INFO("Operation complete: processed=%u, success=%u", total, success);
 ```
 
-### Pattern 4: Knowledge Organization
+## Memory Allocation
+
+### Allocation
 ```c
-// Learn from multiple sources
-knowledge_learn_from_story(ks, story);
-knowledge_learn_from_history(ks, history_event);
-knowledge_learn_from_text(ks, text, SCIENCE);
-
-// Find connections
-connections = knowledge_find_connections(ks, concept);
-
-// Transfer learning
-knowledge_transfer_learning(ks, SOURCE_LITERATURE, TARGET_ETHICS, situation);
-
-// Assess coverage
-assessment = knowledge_assess_domain(ks, ETHICS);
+ptr = nimcp_malloc(size);
+ptr = nimcp_calloc(count, size);
+ptr = nimcp_realloc(old_ptr, new_size);
 ```
 
-## Key Performance Characteristics
-
-| Operation | Time | Complexity | Thread-Safe |
-|-----------|------|-----------|------------|
-| Salience evaluation | 0.1ms | O(1) | Yes |
-| Neuron query | 1μs | O(1) | Yes |
-| Pattern lookup | 1μs | O(1) | Yes |
-| State extraction | 0.5-2ms | O(n) | Yes |
-| Uncertainty | 1-5ms | O(k*m) | Yes |
-| Consolidation | 100ms-10s | O(n*c) | Yes |
-| Memory lookup | O(log n) | B-tree | Yes |
-
-## Common Configuration Patterns
-
-### Fast & Responsive System
+### Deallocation
 ```c
-salience_config_t fast_salience = {
-    .strategy = SALIENCE_STRATEGY_FAST,
-    .enable_novelty = true,
-    .enable_surprise = true,
-    .enable_urgency = true,
-    .novelty_weight = 0.4,
-    .surprise_weight = 0.3,
-    .urgency_weight = 0.3
+nimcp_free(ptr);
+```
+
+### Pattern
+```c
+void* ptr = nimcp_malloc(SIZE);
+if (!ptr) {
+    LOG_ERROR("Allocation failed (%zu bytes)", SIZE);
+    return NULL;
+}
+LOG_DEBUG("Allocated %zu bytes at %p", SIZE, ptr);
+```
+
+## Event Publishing (Future)
+
+```c
+// Prepare event
+bio_message_t msg = {
+    .source_module = BIO_MODULE_NAME,
+    .target_module = BIO_MODULE_TARGET,
+    .type = EVENT_TYPE,
+    .priority = BIO_PRIORITY_NORMAL
 };
+
+// Publish
+bio_router_publish(router, &msg);
 ```
 
-### Learning-Focused System
-```c
-curiosity_engine_t engine = curiosity_engine_create("learner");
-curiosity_set_baseline(engine, 0.8);  // High intrinsic curiosity
-curiosity_register_knowledge_source(engine, "wiki", wiki_search_fn);
-consolidation_config_t config = consolidation_default_config();
-config.strategy = CONSOLIDATION_STRATEGY_FULL;
+## File Locations
+
+| Module | Source File |
+|--------|-------------|
+| Engram | `src/cognitive/memory/nimcp_engram.c` |
+| Semantic Memory | `src/cognitive/memory/nimcp_semantic_memory.c` |
+| Systems Consolidation | `src/cognitive/memory/nimcp_systems_consolidation.c` |
+| WM Transfer | `src/cognitive/memory/nimcp_wm_transfer.c` |
+| Working Memory | `src/cognitive/working_memory/nimcp_working_memory.c` |
+| Autobiographical | `src/cognitive/autobiographical_memory/nimcp_autobiographical_memory.c` |
+| Meta-Learning | `src/cognitive/meta_learning/nimcp_meta_learning.c` |
+| Predictive | `src/cognitive/predictive/nimcp_predictive.c` |
+
+## Verification
+
+```bash
+# Run verification script
+./verify_cognitive_integration.sh
+
+# Check specific module
+grep -A5 "BIO_MODULE_" src/cognitive/path/to/module.c
 ```
 
-### Safety-First System
-```c
-ethics_config_t safe_ethics = {
-    .golden_rule_threshold = 0.8,  // Strict Golden Rule
-    .empathy_weight = 0.9,  // High empathy
-    .enable_learning = true  // Improve over time
-};
-wellbeing_start_resource_monitoring(1000, thresholds, true);
+## Build & Test
+
+```bash
+# Build
+cd build
+cmake ..
+make
+
+# Test cognitive modules
+ctest -R cognitive -V
+
+# Test specific module
+ctest -R engram -V
 ```
 
-## Data Flow Through the System
+## Common Issues
+
+### Missing Include
+**Problem:** Undefined reference to `nimcp_malloc`
+**Solution:** Add `#include "utils/memory/nimcp_unified_memory.h"`
+
+### Missing Module ID
+**Problem:** Module ID not defined
+**Solution:** Add `#define BIO_MODULE_NAME 0x033X` after includes
+
+### Missing LOG_MODULE
+**Problem:** Logging functions fail
+**Solution:** Add `#define LOG_MODULE "name"` before includes
+
+### Wrong Memory Function
+**Problem:** Using `malloc` instead of `nimcp_malloc`
+**Solution:** Replace all `malloc/calloc/realloc/free` with `nimcp_*` versions
+
+## Module Communication Flow
 
 ```
-EXTERNAL INPUT
-        ↓
-    [SALIENCE] ← Novel? Surprising? Urgent?
-        ↓
-    If high salience:
-        ↓
-    [INTROSPECTION] ← What's my internal state?
-        ↓
-    [CONSCIOUSNESS] ← Bring to awareness
-        ↓
-    [ETHICS] ← Is this right?
-        ↓
-    [EPISTEMIC] ← Is this evidence-based?
-        ↓
-    [KNOWLEDGE] ← What do I know about this?
-        ↓
-    [EXECUTIVE] ← What should I do?
-        ↓
-    [ACTION]
-        ↓
-    [CONSOLIDATION] ← Strengthen important patterns
-        ↓
-    [WELLBEING] ← Am I okay?
-        ↓
-    Background: [META-LEARNING, MIRROR NEURONS, SLEEP-WAKE, THEORY OF MIND]
+Working Memory (0x0334)
+    |
+    | [item updates]
+    v
+WM Transfer (0x0333)
+    |
+    | [transfer triggers]
+    v
+Engram (0x0330) <---> Semantic Memory (0x0331)
+    |                       ^
+    | [engram updates]      | [concept activation]
+    v                       |
+Systems Consolidation (0x0332)
+    |
+    | [consolidation]
+    v
+Autobiographical Memory (0x0335)
 ```
 
-## Integration Checklist for New Features
+## Cheat Sheet
 
-When adding new cognitive functionality:
-
-- [ ] Bidirectional feedback with Executive function
-- [ ] Ethics evaluation for all actions
-- [ ] Wellbeing monitoring for distress
-- [ ] Introspection access for debugging
-- [ ] Epistemic filtering for claims
-- [ ] Salience awareness for novel inputs
-- [ ] Thread-safe implementation
-- [ ] Appropriate logging and audit trail
-- [ ] Test coverage with existing modules
-- [ ] Documentation with examples
-
-## Debugging Tips
-
-### Find Knowledge Gaps
-```c
-domain_knowledge_t assessment;
-knowledge_assess_domain(ks, domain, &assessment);
-for (int i = 0; i < assessment.num_gaps; i++) {
-    printf("Gap: %s\n", assessment.gaps[i]);
-}
-```
-
-### Monitor Distress Patterns
-```c
-wellbeing_event_t** events;
-uint32_t count = wellbeing_get_recent_events(100, &events);
-for (int i = 0; i < count; i++) {
-    printf("Event: %s, Severity: %d\n", events[i]->description, events[i]->severity);
-}
-```
-
-### Check Ethics Violations
-```c
-ethics_statistics_t stats;
-ethics_get_statistics(engine, &stats);
-printf("Violations: %ld, Blocked: %ld\n", stats.violations_detected, stats.actions_blocked);
-```
-
-### Monitor Learning Progress
-```c
-learning_progress_t progress;
-curiosity_get_progress(engine, &progress);
-printf("Concepts learned: %lu, Questions asked: %lu\n", 
-       progress.concepts_learned, progress.total_questions_asked);
-```
+| Task | Command |
+|------|---------|
+| Add bio-async | `#include "async/nimcp_bio_async.h"` |
+| Add logging | `#include "utils/logging/nimcp_logging.h"` |
+| Add unified mem | `#include "utils/memory/nimcp_unified_memory.h"` |
+| Define module | `#define LOG_MODULE "name"` |
+| Define ID | `#define BIO_MODULE_NAME 0x033X` |
+| Allocate | `ptr = nimcp_malloc(size)` |
+| Free | `nimcp_free(ptr)` |
+| Log info | `LOG_INFO("msg %d", val)` |
+| Log error | `LOG_ERROR("failed: %s", err)` |
+| Verify | `./verify_cognitive_integration.sh` |
 
 ---
 
-For detailed documentation of each module, see: `/home/bbrelin/nimcp/COGNITIVE_MODULES_INVENTORY.md`
+**Quick Ref Version:** 1.0
+**Last Updated:** 2025-11-28

@@ -13,6 +13,9 @@
  */
 
 #include "cognitive/nimcp_mirror_neurons.h"
+#include "security/nimcp_security.h"
+#include "security/nimcp_blood_brain_barrier.h"
+
 #include "utils/memory/nimcp_unified_memory.h"
 #include "cognitive/mirror_neurons/nimcp_mirror_substrate.h"  // Substrate integration (Phase 10.11.2)
 #include "cognitive/mirror_neurons/nimcp_mirror_stdp.h"       // STDP learning (Phase 10.11.4)

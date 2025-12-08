@@ -3,6 +3,9 @@
 //=============================================================================
 
 #include "middleware/training/nimcp_training_adapters.h"
+#include "async/nimcp_bio_async.h"
+#include "async/nimcp_bio_router.h"
+
 #include "utils/memory/nimcp_memory.h"
 #include "utils/memory/nimcp_memory_pool.h"  // Phase MP: Memory pool for hot paths
 #include "utils/logging/nimcp_logging.h"

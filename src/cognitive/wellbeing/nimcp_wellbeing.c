@@ -13,6 +13,9 @@
  */
 
 #include "cognitive/wellbeing/nimcp_wellbeing.h"
+#include "security/nimcp_security.h"
+#include "security/nimcp_blood_brain_barrier.h"
+
 #include "utils/memory/nimcp_unified_memory.h"
 #include "cognitive/introspection/nimcp_introspection.h"
 #include "core/brain/nimcp_brain.h"

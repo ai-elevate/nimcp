@@ -27,8 +27,6 @@ protected:
     neuromodulator_system_t system_;
 
     void SetUp() override {
-        nimcp_unified_memory_init();
-
         nimcp_bio_async_config_t bio_config = nimcp_bio_async_default_config();
         ASSERT_EQ(NIMCP_SUCCESS, nimcp_bio_async_init(&bio_config));
 
@@ -46,7 +44,6 @@ protected:
         }
         bio_router_shutdown();
         nimcp_bio_async_shutdown();
-        nimcp_unified_memory_shutdown();
     }
 };
 

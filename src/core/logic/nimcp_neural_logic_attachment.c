@@ -12,6 +12,9 @@
  */
 
 #include "core/logic/nimcp_neural_logic_attachment.h"
+#include "security/nimcp_security.h"
+#include "security/nimcp_blood_brain_barrier.h"
+
 #include "core/brain/nimcp_brain_internal.h"
 #include "utils/validation/nimcp_validate.h"
 #include "utils/logging/nimcp_logging.h"

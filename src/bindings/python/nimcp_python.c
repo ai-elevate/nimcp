@@ -47,7 +47,14 @@
 
 #define PY_SSIZE_T_CLEAN
 #include <Python.h>
+#include "security/nimcp_security.h"
+#include "security/nimcp_blood_brain_barrier.h"
+
+#include "async/nimcp_bio_async.h"
+#include "async/nimcp_bio_router.h"
+
 #include "nimcp.h"
+#include "utils/logging/nimcp_logging.h"
 #include <string.h>
 
 // Forward declaration for signal filter module
@@ -626,8 +633,11 @@ static struct PyModuleDef nimcp_module = {
 PyMODINIT_FUNC PyInit_nimcp(void) {
     PyObject* m;
 
+    LOG_MODULE_INFO("bindings.python", "Initializing Python bindings for NIMCP v2.7.0");
+
     // Initialize NIMCP library
     if (nimcp_init() != NIMCP_OK) {
+        LOG_MODULE_ERROR("bindings.python", "Failed to initialize NIMCP core library");
         PyErr_SetString(PyExc_RuntimeError, "Failed to initialize NIMCP");
         return NULL;
     }
@@ -668,9 +678,11 @@ PyMODINIT_FUNC PyInit_nimcp(void) {
 
     // Initialize signal filter module
     if (init_signal_filter_module(m) < 0) {
+        LOG_MODULE_ERROR("bindings.python", "Failed to initialize signal filter module");
         Py_DECREF(m);
         return NULL;
     }
 
+    LOG_MODULE_INFO("bindings.python", "Successfully initialized Python bindings");
     return m;
 }

@@ -79,7 +79,15 @@ protected:
         ASSERT_NE(test_module, nullptr);
 
         // Create test network
-        test_network = neural_network_create(NUM_NEURONS);
+        network_config_t net_config{};
+        net_config.num_neurons = NUM_NEURONS;
+        net_config.input_size = 10;
+        net_config.output_size = 10;
+        net_config.ei_ratio = 0.8f;
+        net_config.learning_rate = 0.01f;
+        net_config.min_weight = -1.0f;
+        net_config.max_weight = 1.0f;
+        test_network = neural_network_create(&net_config);
         ASSERT_NE(test_network, nullptr);
 
         // Create spatial system with dopamine and serotonin

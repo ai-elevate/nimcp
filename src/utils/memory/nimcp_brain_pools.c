@@ -18,6 +18,9 @@
  */
 
 #include "utils/memory/nimcp_brain_pools.h"
+#include "security/nimcp_security.h"
+#include "security/nimcp_blood_brain_barrier.h"
+
 #include "async/nimcp_bio_async.h"
 #include "async/nimcp_bio_messages.h"
 #include "utils/memory/nimcp_memory_pool.h"

@@ -52,7 +52,12 @@ protected:
         test_module = bio_router_register_module(&info);
         ASSERT_NE(test_module, nullptr);
 
-        test_network = neural_network_create(NUM_NEURONS);
+        // Create network using config struct
+        network_config_t net_config = {0};
+        net_config.num_neurons = NUM_NEURONS;
+        net_config.learning_rate = 0.01f;
+        net_config.enable_stdp = true;
+        test_network = neural_network_create(&net_config);
         ASSERT_NE(test_network, nullptr);
 
         bool enabled[NEUROMOD_COUNT] = {false};
@@ -127,7 +132,7 @@ TEST_F(SpatialNeuromodRegressionTest, ConfigurationCompatibility) {
     // Verify default config still works
     spatial_neuromod_config_t config = spatial_neuromod_default_config(NEUROMOD_DOPAMINE);
 
-    EXPECT_GT(config.diffusion_coefficient, 0.0f);
+    EXPECT_GT(config.diffusion_coeff, 0.0f);
     EXPECT_GT(config.decay_rate, 0.0f);
     EXPECT_GT(config.baseline, 0.0f);
 }

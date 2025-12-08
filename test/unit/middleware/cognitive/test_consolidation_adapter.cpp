@@ -77,9 +77,10 @@ protected:
 //=============================================================================
 
 TEST_F(ConsolidationAdapterTest, CreateWithDefaultConfig) {
-    // WHAT: Create adapter with NULL config (uses defaults)
+    // WHAT: Create adapter with default config
     // WHY:  Verify default configuration works
-    adapter = consol_adapter_create(nullptr);
+    config = consol_adapter_default_config();
+    adapter = consol_adapter_create(&config);
     ASSERT_NE(adapter, nullptr) << "Should create with default config";
 }
 

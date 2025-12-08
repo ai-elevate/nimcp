@@ -14,8 +14,15 @@
  */
 
 #include <Python.h>
+#include "security/nimcp_security.h"
+#include "security/nimcp_blood_brain_barrier.h"
+
+#include "async/nimcp_bio_async.h"
+#include "async/nimcp_bio_router.h"
+
 #include <numpy/arrayobject.h>
 #include "utils/signal/nimcp_signal_filter.h"
+#include "utils/logging/nimcp_logging.h"
 
 //=============================================================================
 // Signal Filter Type
@@ -253,11 +260,14 @@ static PyTypeObject SignalFilterType = {
 //=============================================================================
 
 int init_signal_filter_module(PyObject* module) {
+    LOG_MODULE_DEBUG("bindings.python.signal_filter", "Initializing signal filter Python module");
+
     // Import NumPy array API
     import_array();
 
     // Initialize SignalFilter type
     if (PyType_Ready(&SignalFilterType) < 0) {
+        LOG_MODULE_ERROR("bindings.python.signal_filter", "Failed to initialize SignalFilter type");
         return -1;
     }
 

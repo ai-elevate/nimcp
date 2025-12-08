@@ -15,6 +15,9 @@
  */
 
 #include "cognitive/knowledge/nimcp_knowledge_cow.h"
+#include "security/nimcp_security.h"
+#include "security/nimcp_blood_brain_barrier.h"
+
 #include "utils/logging/nimcp_logging.h"
 #include "async/nimcp_bio_router.h"
 #include "async/nimcp_bio_async.h"

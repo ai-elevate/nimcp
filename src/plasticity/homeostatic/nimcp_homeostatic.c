@@ -277,7 +277,7 @@ void synaptic_scaling_update_rate(synaptic_scaling_state_t* state,
 
     /* Check stability (within 20% of target) */
     float ratio = state->average_rate / params->target_rate;
-    state->is_stable = (ratio > 0.8f && ratio < 1.2f);
+    state->is_stable = (ratio >= 0.8f && ratio <= 1.2f);
 }
 
 float synaptic_scaling_compute_factor(const synaptic_scaling_state_t* state,
@@ -411,7 +411,7 @@ void intrinsic_plasticity_update_threshold(intrinsic_plasticity_state_t* state,
 
     /* Check stability */
     float ratio = state->average_rate / params->target_rate;
-    state->is_stable = (ratio > 0.8f && ratio < 1.2f);
+    state->is_stable = (ratio >= 0.8f && ratio <= 1.2f);
 }
 
 void intrinsic_plasticity_update_gain(intrinsic_plasticity_state_t* state,
@@ -686,7 +686,7 @@ void homeostatic_controller_update(homeostatic_controller_t controller,
 
             /* Check stability (within 20% of target) */
             float ratio = ss->average_rate / controller->config.scaling_params.target_rate;
-            ss->is_stable = (ratio > 0.8f && ratio < 1.2f);
+            ss->is_stable = (ratio >= 0.8f && ratio <= 1.2f);
 
             /* Compute and apply scaling factor */
             float factor = synaptic_scaling_compute_factor(ss, &controller->config.scaling_params);

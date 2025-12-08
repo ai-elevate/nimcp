@@ -8,6 +8,7 @@
 #include <chrono>
 
 extern "C" {
+    #include "nimcp.h"
     #include "portia/nimcp_portia_degradation.h"
     #include "security/nimcp_blood_brain_barrier.h"
     #include "utils/logging/nimcp_logging.h"
@@ -193,7 +194,7 @@ TEST_F(PortiaDegradationTest, ManualLevelSet) {
 
 TEST_F(PortiaDegradationTest, InvalidLevelRejected) {
     EXPECT_EQ(portia_degradation_set_level(state, (degradation_level_t)999, NULL),
-              NIMCP_ERR_INVALID_ARG);
+              NIMCP_ERROR_INVALID_PARAM);
 }
 
 // ============================================================================
@@ -260,7 +261,7 @@ TEST_F(PortiaDegradationTest, ManualFeatureEnable) {
 TEST_F(PortiaDegradationTest, CoreFeatureCannotBeDisabled) {
     // Working memory is core
     EXPECT_EQ(portia_degradation_disable_feature(state, FEATURE_MEMORY_WORKING, NULL),
-              NIMCP_ERR_INVALID_ARG);
+              NIMCP_ERROR_INVALID_PARAM);
 
     bool enabled;
     EXPECT_EQ(portia_degradation_is_feature_enabled(state, FEATURE_MEMORY_WORKING, &enabled),
@@ -429,23 +430,23 @@ TEST_F(PortiaDegradationTest, ConcurrentFeatureToggle) {
 
 TEST_F(PortiaDegradationTest, NullPointerRejected) {
     EXPECT_EQ(portia_degradation_evaluate(nullptr, 50.0f, NULL),
-              NIMCP_ERR_INVALID_ARG);
+              NIMCP_ERROR_INVALID_PARAM);
 
     EXPECT_EQ(portia_degradation_set_level(nullptr, DEGRADATION_LEVEL_MINOR, NULL),
-              NIMCP_ERR_INVALID_ARG);
+              NIMCP_ERROR_INVALID_PARAM);
 
     EXPECT_EQ(portia_degradation_get_state(nullptr, nullptr, nullptr, nullptr),
-              NIMCP_ERR_INVALID_ARG);
+              NIMCP_ERROR_INVALID_PARAM);
 }
 
 TEST_F(PortiaDegradationTest, InvalidResourceUsage) {
     // Negative usage
     EXPECT_EQ(portia_degradation_evaluate(state, -10.0f, NULL),
-              NIMCP_ERR_INVALID_ARG);
+              NIMCP_ERROR_INVALID_PARAM);
 
     // Over 100%
     EXPECT_EQ(portia_degradation_evaluate(state, 150.0f, NULL),
-              NIMCP_ERR_INVALID_ARG);
+              NIMCP_ERROR_INVALID_PARAM);
 }
 
 // ============================================================================

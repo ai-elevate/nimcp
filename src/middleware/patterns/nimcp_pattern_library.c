@@ -3,6 +3,9 @@
 //=============================================================================
 
 #include "middleware/patterns/nimcp_pattern_library.h"
+#include "security/nimcp_security.h"
+#include "security/nimcp_blood_brain_barrier.h"
+
 #include "middleware/patterns/nimcp_pattern_cow.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/memory/nimcp_memory_pool.h"

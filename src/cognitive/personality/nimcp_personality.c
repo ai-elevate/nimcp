@@ -12,6 +12,9 @@
  */
 
 #include "cognitive/nimcp_personality.h"
+#include "security/nimcp_security.h"
+#include "security/nimcp_blood_brain_barrier.h"
+
 #include "utils/platform/nimcp_platform.h"
 #include <stdlib.h>
 #include <string.h>

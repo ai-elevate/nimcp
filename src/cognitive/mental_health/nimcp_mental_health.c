@@ -18,6 +18,9 @@
  */
 
 #include "cognitive/nimcp_mental_health.h"
+#include "security/nimcp_security.h"
+#include "security/nimcp_blood_brain_barrier.h"
+
 #include "core/brain/nimcp_brain.h"
 #include "cognitive/ethics/nimcp_ethics.h"
 #include "cognitive/nimcp_emotional_tagging.h"

@@ -26,16 +26,13 @@ extern "C" {
 class LearningStabilityTest : public ::testing::Test {
 protected:
     brain_t brain;
+    static constexpr uint32_t NUM_INPUTS = 10;
+    static constexpr uint32_t NUM_OUTPUTS = 3;
 
     void SetUp() override {
-        brain_config_t config;
-        memset(&config, 0, sizeof(config));
-        config.num_inputs = 10;
-        config.num_outputs = 3;
-        config.num_hidden_neurons = 30;
-        config.learning_rate = 0.01f;
-
-        brain = brain_create(&config);
+        // Create brain with standard API
+        brain = brain_create("learning_stability_test", BRAIN_SIZE_SMALL,
+                            BRAIN_TASK_CLASSIFICATION, NUM_INPUTS, NUM_OUTPUTS);
         ASSERT_NE(brain, nullptr);
     }
 
@@ -204,7 +201,8 @@ TEST_F(LearningStabilityTest, BatchLearningConsistent) {
 
         examples[i].features = feature_data[i];
         examples[i].num_features = 10;
-        examples[i].label = "batch_class";
+        strncpy(examples[i].label, "batch_class", sizeof(examples[i].label) - 1);
+        examples[i].label[sizeof(examples[i].label) - 1] = '\0';
         examples[i].confidence = 0.9f;
     }
 

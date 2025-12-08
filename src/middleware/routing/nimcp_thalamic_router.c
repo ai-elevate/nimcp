@@ -3,6 +3,9 @@
 //=============================================================================
 
 #include "middleware/routing/nimcp_thalamic_router.h"
+#include "security/nimcp_security.h"
+#include "security/nimcp_blood_brain_barrier.h"
+
 #include "middleware/routing/nimcp_attention_gate.h"
 #include "middleware/routing/nimcp_routing_table.h"
 #include "middleware/routing/nimcp_signal_wrapper.h"

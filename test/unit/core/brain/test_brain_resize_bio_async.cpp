@@ -27,14 +27,13 @@ using ::testing::AtLeast;
 // Test Fixture
 //=============================================================================
 
-class BrainResizeBioAsyncTest : public ::testing::Test {
-protected:
-    brain_t test_brain;
-
+// Global test environment - initialize once for all tests
+class BrainResizeTestEnvironment : public ::testing::Environment {
+public:
     void SetUp() override {
         // Initialize logging
         nimcp_log_config_t log_config = nimcp_log_default_config();
-        log_config.level = LOG_LEVEL_DEBUG;
+        log_config.level = LOG_LEVEL_ERROR;  // Reduce noise
         log_config.destinations = NIMCP_LOG_DEST_CONSOLE;
         nimcp_log_init(&log_config);
 
@@ -45,8 +44,26 @@ protected:
         // Initialize bio-router
         bio_router_config_t router_config = bio_router_default_config();
         bio_router_init(&router_config);
+    }
 
-        // Create test brain
+    void TearDown() override {
+        // Shutdown bio-router
+        bio_router_shutdown();
+
+        // Shutdown bio-async
+        nimcp_bio_async_shutdown();
+
+        // Shutdown logging
+        nimcp_log_shutdown();
+    }
+};
+
+class BrainResizeBioAsyncTest : public ::testing::Test {
+protected:
+    brain_t test_brain;
+
+    void SetUp() override {
+        // Just reset test brain
         test_brain = nullptr;
     }
 
@@ -56,15 +73,6 @@ protected:
             brain_destroy(test_brain);
             test_brain = nullptr;
         }
-
-        // Shutdown bio-router
-        bio_router_shutdown();
-
-        // Shutdown bio-async
-        nimcp_bio_async_shutdown();
-
-        // Shutdown logging
-        nimcp_log_shutdown();
     }
 
     brain_t create_test_brain(brain_size_t size) {
@@ -306,5 +314,7 @@ TEST_F(BrainResizeBioAsyncTest, AutoResizeNullBrain) {
 
 int main(int argc, char** argv) {
     ::testing::InitGoogleTest(&argc, argv);
+    // Register global environment
+    ::testing::AddGlobalTestEnvironment(new BrainResizeTestEnvironment);
     return RUN_ALL_TESTS();
 }

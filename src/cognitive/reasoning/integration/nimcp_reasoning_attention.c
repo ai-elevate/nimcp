@@ -6,6 +6,9 @@
  */
 
 #include "cognitive/reasoning/integration/nimcp_reasoning_attention.h"
+#include "security/nimcp_security.h"
+#include "security/nimcp_blood_brain_barrier.h"
+
 #include "utils/memory/nimcp_memory.h"
 #include "cognitive/fault_tolerance/nimcp_fault_attention.h"
 #include "utils/logging/nimcp_logging.h"

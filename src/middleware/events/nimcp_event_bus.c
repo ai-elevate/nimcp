@@ -14,6 +14,53 @@
 #define LOG_MODULE "middleware_event_bus"
 
 #include <unistd.h>
+#include "security/nimcp_blood_brain_barrier.h"
+
+// Global BBB security system
+static bbb_system_t g_bbb_system = NULL;
+
+
+
+//=============================================================================
+// Security Initialization
+//=============================================================================
+
+/**
+ * @brief Initialize security subsystem for event_bus
+ *
+ * WHAT: Create and configure BBB system for input validation
+ * WHY: Protect against malicious external input
+ * HOW: Initialize with conservative security settings
+ */
+static void event_bus_security_init(void) {
+    if (g_bbb_system) {
+        return;  // Already initialized
+    }
+
+    bbb_config_t config = bbb_default_config();
+    config.strict_mode = false;  // Don't block, just log
+    config.default_action = BBB_ACTION_LOG;
+    config.input.validate_strings = true;
+    config.input.validate_integers = true;
+    config.input.max_string_length = 4096;  // Reasonable limit
+
+    g_bbb_system = bbb_system_create(&config);
+    if (!g_bbb_system) {
+        LOG_ERROR("event_bus: Failed to initialize security subsystem");
+    } else {
+        LOG_INFO("event_bus: Security subsystem initialized");
+    }
+}
+
+/**
+ * @brief Cleanup security subsystem
+ */
+static void event_bus_security_cleanup(void) {
+    if (g_bbb_system) {
+        bbb_system_destroy(g_bbb_system);
+        g_bbb_system = NULL;
+    }
+}
 
 //=============================================================================
 // Internal Structure

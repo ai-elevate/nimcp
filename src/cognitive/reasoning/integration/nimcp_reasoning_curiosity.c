@@ -4,6 +4,9 @@
  */
 
 #include "cognitive/reasoning/integration/nimcp_reasoning_curiosity.h"
+#include "security/nimcp_security.h"
+#include "security/nimcp_blood_brain_barrier.h"
+
 #include "utils/memory/nimcp_memory.h"
 #include "cognitive/curiosity/nimcp_curiosity.h"
 #include "utils/logging/nimcp_logging.h"

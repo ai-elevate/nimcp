@@ -26,6 +26,9 @@
  */
 
 #include "utils/fault_tolerance/nimcp_async_checkpoint.h"
+#include "security/nimcp_security.h"
+#include "security/nimcp_blood_brain_barrier.h"
+
 #include "async/nimcp_bio_async.h"
 #include "async/nimcp_bio_messages.h"
 #include "utils/fault_tolerance/nimcp_checkpoint.h"

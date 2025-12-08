@@ -84,8 +84,12 @@ typedef int32_t nimcp_result_t;
  * @defgroup error_codes Error Codes
  * @{
  */
+
+/* NIMCP uses canonical error codes from nimcp_error_codes.h (values 1000+)
+ * The NIMCP_ERROR_INVALID_PARAM alias maps to NIMCP_ERROR_INVALID_PARAMETER (1002)
+ * for consistency across the codebase. */
 #define NIMCP_SUCCESS 0                     /**< Operation completed successfully */
-#define NIMCP_ERROR_INVALID_PARAM -1        /**< Invalid parameter provided */
+#define NIMCP_ERROR_INVALID_PARAM 1002      /**< Invalid parameter - maps to NIMCP_ERROR_INVALID_PARAMETER */
 #define NIMCP_ERROR_INVALID_MAGIC -2        /**< Invalid magic number in packet */
 #define NIMCP_ERROR_VERSION_MISMATCH -3     /**< Protocol version mismatch */
 #define NIMCP_ERROR_PAYLOAD_TOO_LARGE -4    /**< Payload exceeds maximum size */

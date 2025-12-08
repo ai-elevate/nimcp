@@ -40,3 +40,17 @@ target_link_libraries(unit_middleware_encoding_population_coding
     )
 add_test(NAME unit_middleware_encoding_population_coding
          COMMAND unit_middleware_encoding_population_coding)
+
+# Test All Encoders Integration
+add_executable(unit_middleware_encoding_all_encoders
+    test_encoders.cpp
+)
+target_link_libraries(unit_middleware_encoding_all_encoders
+    PRIVATE
+        GTest::GTest
+        GTest::Main
+        nimcp_middleware
+        nimcp
+    )
+add_test(NAME unit_middleware_encoding_all_encoders
+         COMMAND unit_middleware_encoding_all_encoders)

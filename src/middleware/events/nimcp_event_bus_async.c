@@ -11,6 +11,7 @@
 #include "utils/platform/nimcp_platform_mutex.h"
 #include "utils/time/nimcp_time.h"
 #include <string.h>
+#include "security/nimcp_blood_brain_barrier.h"
 
 //=============================================================================
 // Module Configuration

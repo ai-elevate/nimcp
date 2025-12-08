@@ -61,6 +61,9 @@
 #define LOG_MODULE "brain_resize"
 
 #include "core/brain/nimcp_brain_resize.h"
+#include "security/nimcp_security.h"
+#include "security/nimcp_blood_brain_barrier.h"
+
 #include "utils/memory/nimcp_unified_memory.h"
 #include "utils/memory/nimcp_memory_guards.h"
 #include "core/brain/nimcp_brain.h"

@@ -300,7 +300,6 @@ TEST_F(MPSIntegrationTest, MPSWithSTPDynamics) {
     config.layer_sizes[0] = num_neurons;
     config.layer_sizes[1] = num_neurons;
     config.enable_stdp = true;
-    config.enable_stp = true;  // Enable STP
     config.enable_homeostasis = true;
     config.ei_ratio = 0.8f;
 
@@ -452,8 +451,8 @@ TEST_F(MPSIntegrationTest, MPSWithEligibilityTraces) {
 
     // Apply reward-based plasticity
     for (uint32_t i = 0; i < num_neurons; i++) {
-        neural_network_apply_plasticity(network_dense, i, reward_signal, 0.5f, reward_time);
-        neural_network_apply_plasticity(network_mps, i, reward_signal, 0.5f, reward_time);
+        neural_network_update_plasticity(network_dense, i, reward_time);
+        neural_network_update_plasticity(network_mps, i, reward_time);
     }
 
     // Phase 4: Verify both networks learned similarly

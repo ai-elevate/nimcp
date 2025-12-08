@@ -12,6 +12,9 @@
  */
 
 #include "core/brain_oscillations/nimcp_brain_oscillations.h"
+#include "security/nimcp_security.h"
+#include "security/nimcp_blood_brain_barrier.h"
+
 #include "utils/memory/nimcp_unified_memory.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/validation/nimcp_validate.h"

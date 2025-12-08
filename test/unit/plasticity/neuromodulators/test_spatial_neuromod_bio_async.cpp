@@ -55,8 +55,27 @@ protected:
         test_module = bio_router_register_module(&test_info);
         ASSERT_NE(test_module, nullptr);
 
-        // Create test network
-        test_network = neural_network_create(NUM_NEURONS);
+        // Create test network with proper initialization
+        network_config_t net_config = {};
+        net_config.num_neurons = NUM_NEURONS;
+        net_config.input_size = 10;  // Required by validation
+        net_config.output_size = 10; // Required by validation
+        net_config.ei_ratio = 0.8f;
+        net_config.learning_rate = 0.01f;
+        net_config.hebbian_rate = 0.001f;
+        net_config.stdp_window = 20.0f;
+        net_config.homeostatic_rate = 0.001f;
+        net_config.target_activity = 0.1f;
+        net_config.adaptation_rate = 0.01f;
+        net_config.refractory_period = 5.0f;
+        net_config.min_weight = 0.0f;
+        net_config.max_weight = 1.0f;
+        net_config.update_interval = 1;
+        net_config.enable_bio_async = true;
+        net_config.enable_stdp = true;
+        net_config.enable_hebbian = true;
+        net_config.enable_homeostasis = true;
+        test_network = neural_network_create(&net_config);
         ASSERT_NE(test_network, nullptr);
 
         // Create spatial neuromodulator system with dopamine enabled

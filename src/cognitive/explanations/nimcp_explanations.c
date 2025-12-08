@@ -18,6 +18,9 @@
  */
 
 #include "cognitive/nimcp_explanations.h"
+#include "security/nimcp_security.h"
+#include "security/nimcp_blood_brain_barrier.h"
+
 #include "core/brain/nimcp_brain.h"
 #include "cognitive/nimcp_theory_of_mind.h"
 #include "utils/memory/nimcp_memory.h"

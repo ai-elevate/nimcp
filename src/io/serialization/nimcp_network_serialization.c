@@ -11,6 +11,53 @@
 #include "async/nimcp_bio_messages.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/memory/nimcp_unified_memory.h"
+#include "security/nimcp_blood_brain_barrier.h"
+
+// Global BBB security system
+static bbb_system_t g_bbb_system = NULL;
+
+
+
+//=============================================================================
+// Security Initialization
+//=============================================================================
+
+/**
+ * @brief Initialize security subsystem for network_serialization
+ *
+ * WHAT: Create and configure BBB system for input validation
+ * WHY: Protect against malicious external input
+ * HOW: Initialize with conservative security settings
+ */
+static void network_serialization_security_init(void) {
+    if (g_bbb_system) {
+        return;  // Already initialized
+    }
+
+    bbb_config_t config = bbb_default_config();
+    config.strict_mode = false;  // Don't block, just log
+    config.default_action = BBB_ACTION_LOG;
+    config.input.validate_strings = true;
+    config.input.validate_integers = true;
+    config.input.max_string_length = 4096;  // Reasonable limit
+
+    g_bbb_system = bbb_system_create(&config);
+    if (!g_bbb_system) {
+        LOG_ERROR("network_serialization: Failed to initialize security subsystem");
+    } else {
+        LOG_INFO("network_serialization: Security subsystem initialized");
+    }
+}
+
+/**
+ * @brief Cleanup security subsystem
+ */
+static void network_serialization_security_cleanup(void) {
+    if (g_bbb_system) {
+        bbb_system_destroy(g_bbb_system);
+        g_bbb_system = NULL;
+    }
+}
 
 
 
@@ -286,6 +333,18 @@ nimcp_network_serial_result_t nimcp_network_deserialize(
     // Read header first (always unencrypted/uncompressed)
     uint8_t version, flags;
     if (!read_network_header(serializer, &version, &flags)) {
+
+    // BBB: Validate external input
+    // WHAT: Check input for security threats before processing
+    // WHY: Prevent injection attacks and buffer overflows
+    // TODO: Customize validation for specific input parameters
+    /*
+    bbb_validation_result_t val_result = {0};
+    if (!bbb_validate_input(system, data, size, &val_result)) {
+        LOG_ERROR("Input validation failed in if: %s", val_result.reason);
+        return NIMCP_ERROR_INVALID_INPUT;
+    }
+    */
         return NIMCP_NETWORK_SERIAL_ERROR_INVALID_MAGIC;
     }
 
@@ -436,6 +495,18 @@ nimcp_network_serial_result_t nimcp_network_deserialize(
     uint64_t last_maintenance = nimcp_read_uint64(working_serializer);
 
     if (!read_network_config(working_serializer, &config)) {
+
+    // BBB: Validate external input
+    // WHAT: Check input for security threats before processing
+    // WHY: Prevent injection attacks and buffer overflows
+    // TODO: Customize validation for specific input parameters
+    /*
+    bbb_validation_result_t val_result = {0};
+    if (!bbb_validate_input(system, data, size, &val_result)) {
+        LOG_ERROR("Input validation failed in if: %s", val_result.reason);
+        return NIMCP_ERROR_INVALID_INPUT;
+    }
+    */
         if (decrypted_serializer) nimcp_serializer_destroy(decrypted_serializer);
         if (decompressed_serializer) nimcp_serializer_destroy(decompressed_serializer);
         return NIMCP_NETWORK_SERIAL_ERROR_READ_FAILED;
@@ -467,9 +538,30 @@ nimcp_network_serial_result_t nimcp_network_deserialize(
         return NIMCP_NETWORK_SERIAL_ERROR_READ_FAILED;
     }
 
+    // Validate neuron count is reasonable (catch corrupted data early)
+    // MAX_NEURONS is typically 100,000
+    if (num_neurons > MAX_NEURONS) {
+        neural_network_destroy(network);
+        if (decrypted_serializer) nimcp_serializer_destroy(decrypted_serializer);
+        if (decompressed_serializer) nimcp_serializer_destroy(decompressed_serializer);
+        return NIMCP_NETWORK_SERIAL_ERROR_CORRUPT_DATA;
+    }
+
     // Read each neuron
     uint32_t total_synapses = 0;
     for (uint32_t i = 0; i < num_neurons; i++) {
+
+    // BBB: Validate external input
+    // WHAT: Check input for security threats before processing
+    // WHY: Prevent injection attacks and buffer overflows
+    // TODO: Customize validation for specific input parameters
+    /*
+    bbb_validation_result_t val_result = {0};
+    if (!bbb_validate_input(system, data, size, &val_result)) {
+        LOG_ERROR("Input validation failed in if: %s", val_result.reason);
+        return NIMCP_ERROR_INVALID_INPUT;
+    }
+    */
         if (!read_neuron(working_serializer, &network->neurons[i])) {
             neural_network_destroy(network);
             if (decrypted_serializer) nimcp_serializer_destroy(decrypted_serializer);
@@ -658,6 +750,18 @@ static bool write_synapse(NimcpSerializer* serializer, const synapse_t* synapse)
 
 static bool read_network_header(NimcpSerializer* serializer, uint8_t* version, uint8_t* flags)
 {
+
+    // BBB: Validate external input
+    // WHAT: Check input for security threats before processing
+    // WHY: Prevent injection attacks and buffer overflows
+    // TODO: Customize validation for specific input parameters
+    /*
+    bbb_validation_result_t val_result = {0};
+    if (!bbb_validate_input(system, data, size, &val_result)) {
+        LOG_ERROR("Input validation failed in read_network_header: %s", val_result.reason);
+        return NIMCP_ERROR_INVALID_INPUT;
+    }
+    */
     uint32_t magic = nimcp_read_uint32(serializer);
     if (magic != NIMCP_SERIALIZATION_MAGIC) {
         return false;
@@ -666,6 +770,18 @@ static bool read_network_header(NimcpSerializer* serializer, uint8_t* version, u
     *version = nimcp_read_uint8(serializer);
     *flags = nimcp_read_uint8(serializer);
 
+
+    // BBB: Validate external input
+    // WHAT: Check input for security threats before processing
+    // WHY: Prevent injection attacks and buffer overflows
+    // TODO: Customize validation for specific input parameters
+    /*
+    bbb_validation_result_t val_result = {0};
+    if (!bbb_validate_input(system, data, size, &val_result)) {
+        LOG_ERROR("Input validation failed in read_network_config: %s", val_result.reason);
+        return NIMCP_ERROR_INVALID_INPUT;
+    }
+    */
     return !nimcp_serializer_has_error(serializer);
 }
 
@@ -691,10 +807,27 @@ static bool read_network_config(NimcpSerializer* serializer, network_config_t* c
     config->enable_oja = nimcp_read_bool(serializer);
     config->enable_homeostasis = nimcp_read_bool(serializer);
 
+    // Validate counts are reasonable (detect corrupted data early)
+    if (config->num_neurons > MAX_NEURONS || config->num_layers > 10000) {
+        return false;  // Corrupted data
+    }
+
     // Set defaults for non-serialized fields
     config->layer_sizes = NULL;
     config->neuron_model = NEURON_MODEL_LIF;
     config->model_params = NULL;
+
+    // BBB: Validate external input
+    // WHAT: Check input for security threats before processing
+    // WHY: Prevent injection attacks and buffer overflows
+    // TODO: Customize validation for specific input parameters
+    /*
+    bbb_validation_result_t val_result = {0};
+    if (!bbb_validate_input(system, data, size, &val_result)) {
+        LOG_ERROR("Input validation failed in read_neuron: %s", val_result.reason);
+        return NIMCP_ERROR_INVALID_INPUT;
+    }
+    */
 
     return !nimcp_serializer_has_error(serializer);
 }
@@ -720,6 +853,12 @@ static bool read_neuron(NimcpSerializer* serializer, neuron_t* neuron)
     neuron->creation_time = nimcp_read_uint64(serializer);
 
     uint32_t num_synapses = nimcp_read_uint32(serializer);
+
+    // Validate synapse count is reasonable (detect corrupted data early)
+    if (num_synapses > MAX_SYNAPSES_PER_NEURON) {
+        return false;  // Corrupted data
+    }
+
     neuron->num_synapses = num_synapses;
 
     for (uint32_t i = 0; i < num_synapses; i++) {
@@ -728,6 +867,18 @@ static bool read_neuron(NimcpSerializer* serializer, neuron_t* neuron)
 
     // Initialize non-serialized fields to defaults
     neuron->num_incoming = 0;
+
+    // BBB: Validate external input
+    // WHAT: Check input for security threats before processing
+    // WHY: Prevent injection attacks and buffer overflows
+    // TODO: Customize validation for specific input parameters
+    /*
+    bbb_validation_result_t val_result = {0};
+    if (!bbb_validate_input(system, data, size, &val_result)) {
+        LOG_ERROR("Input validation failed in read_synapse: %s", val_result.reason);
+        return NIMCP_ERROR_INVALID_INPUT;
+    }
+    */
     neuron->spike_history_index = 0;
 
     return !nimcp_serializer_has_error(serializer);

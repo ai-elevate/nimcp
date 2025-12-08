@@ -11,8 +11,15 @@ endif()
 
 # Core library sources - New hierarchical structure
 set(NIMCP_CORE_SOURCES
-    # Public API facade (unified interface for all bindings)
-    ${CMAKE_CURRENT_SOURCE_DIR}/../api/nimcp.c
+    # Public API facade (unified interface for all bindings) - REFACTORED (2025-12-08)
+    # SRP Refactoring: 3024 lines split into focused API modules
+    ${CMAKE_CURRENT_SOURCE_DIR}/../api/nimcp.c                    # Core API (full implementation)
+    # DISABLED: Agent-created files with duplicate functions (originals not cleaned up)
+    # ${CMAKE_CURRENT_SOURCE_DIR}/../api/nimcp_brain_api.c         # Brain lifecycle (create, destroy, learn, predict) - 480 lines
+    # ${CMAKE_CURRENT_SOURCE_DIR}/../api/nimcp_snapshot_api.c      # Snapshot & COW operations - 400 lines
+    # ${CMAKE_CURRENT_SOURCE_DIR}/../api/nimcp_cognitive_api.c     # Working memory, workspace, resize - 550 lines
+    # ${CMAKE_CURRENT_SOURCE_DIR}/../api/nimcp_subsystems_api.c    # Network, ethics, knowledge - 350 lines
+    # ${CMAKE_CURRENT_SOURCE_DIR}/../api/nimcp_oscillation_api.c   # Complex oscillations & phasor analysis - 280 lines
 
     # Core brain components
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/nimcp_brain.c
@@ -20,14 +27,37 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/nimcp_distributed_cow.c
     # ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/nimcp_pretrained.c  # TODO: Needs libcjson-dev
 
+    # Brain modularization (Phase 12.8: Refactored from monolithic nimcp_brain.c - 6 modules)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/nimcp_brain_core.c         # Allocation, init, destroy (~2200 lines)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/nimcp_brain_processing.c   # Forward pass, decisions (~1400 lines)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/nimcp_brain_memory.c       # Working memory persistence (~300 lines)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/nimcp_brain_state.c        # State accessors, COW (~1200 lines)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/nimcp_brain_io.c           # Metadata, JSON I/O (~900 lines)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/nimcp_brain_multimodal.c   # Multimodal processing (~1500 lines)
+
     # Brain modular architecture (Phase 11: SRP Modularization) - 7 extracted modules
     # ENABLED: Type conflicts resolved, modules ready for integration
     # Modules extracted and ready in src/core/brain/{factory,learning,inference,persistence,distributed,strategy,biological}/
     # See BRAIN_MODULARIZATION_PLAN.md for integration roadmap
-    # Brain factory (Phase 11: SRP Split - 3,220 lines into 3 modules)
-    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/factory/nimcp_brain_factory.c                  # Main factory orchestration (685 lines)
-    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/factory/init/nimcp_brain_init.c               # Initialization and subsystems (2,523 lines)
-    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/factory/validation/nimcp_brain_validation.c   # Validation and caching (219 lines)
+    # Brain factory (Phase 11: SRP Split - Refactored into 7 modules)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/factory/nimcp_brain_factory.c                        # Main factory orchestration (685 lines)
+    # Brain initialization - REFACTORED into 5 modular files (2025-12-08)
+    # Original nimcp_brain_init.c (4107 lines) has been split into:
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/factory/init/nimcp_brain_init_config.c              # Configuration builders (280 lines)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/factory/init/nimcp_brain_init_validation.c          # BBB global system (112 lines)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/factory/init/nimcp_brain_init_core.c                # Core initialization (174 lines)
+    # Brain subsystems initialization - REFACTORED into 7 SRP modules (2025-12-08)
+    # Original nimcp_brain_init_subsystems.c (3124 lines) has been split into:
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/factory/init/nimcp_brain_init_subsystems.c          # Subsystem coordinator (128 lines)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/factory/init/nimcp_brain_init_perception.c          # Perception subsystems (459 lines)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/factory/init/nimcp_brain_init_neuromod.c            # Neuromodulation subsystems (474 lines)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/factory/init/nimcp_brain_init_cognitive.c           # Cognitive subsystems (731 lines)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/factory/init/nimcp_brain_init_memory.c              # Memory subsystems (418 lines)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/factory/init/nimcp_brain_init_plasticity.c          # Plasticity subsystems (553 lines)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/factory/init/nimcp_brain_init_monitoring.c          # Monitoring subsystems (476 lines)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/factory/init/nimcp_brain_init_structural.c          # Structural subsystems (624 lines)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/factory/init/nimcp_brain_init_security.c            # Security subsystem (318 lines)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/factory/validation/nimcp_brain_validation.c         # Validation and caching (219 lines)
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/learning/nimcp_brain_learning.c     # Training, backpropagation, batch processing (947 lines)
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/learning/nimcp_rule_learning.c      # Rule learning from examples (inductive learning)
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/learning/nimcp_association_learning.c  # Association learning (A→B implications)
@@ -49,7 +79,13 @@ set(NIMCP_CORE_SOURCES
     # ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/processing/multimodal_integrator.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/processing/cognitive_processor.c  # Cognitive output processing
 
-    ${CMAKE_CURRENT_SOURCE_DIR}/../core/neuralnet/nimcp_neuralnet.c
+    # Neural Network - Refactored into SRP modules (Phase 12.9: Large File Refactoring)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/neuralnet/nimcp_neuralnet.c           # Core lifecycle and neuron updates
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/neuralnet/nimcp_sparse_synapse.c      # Sparse synapse storage and operations
+    # DISABLED: Agent-created files with duplicate functions (originals not cleaned up)
+    # ${CMAKE_CURRENT_SOURCE_DIR}/../core/neuralnet/nimcp_neuralnet_activation.c  # Activation functions (Strategy pattern)
+    # ${CMAKE_CURRENT_SOURCE_DIR}/../core/neuralnet/nimcp_neuralnet_learning.c   # STDP, Oja's rule, weight updates
+    # ${CMAKE_CURRENT_SOURCE_DIR}/../core/neuralnet/nimcp_neuralnet_homeostasis.c # Homeostatic plasticity
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/neuron_types/nimcp_neuron_types.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/neuron_types/nimcp_neural_logic.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/logic/nimcp_neural_logic_brain_integration.c  # Phase 2.6.2: Neural Logic Brain Integration
@@ -103,8 +139,18 @@ set(NIMCP_CORE_SOURCES
 
     # Cognitive functions
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/ethics/nimcp_ethics.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/ethics/nimcp_ethics_evaluation.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/ethics/nimcp_ethics_asimov.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/ethics/nimcp_ethics_policies.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/ethics/nimcp_ethics_incidents.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/ethics/nimcp_ethics_learning.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/ethics/nimcp_ethics_hyperbolic.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/ethics/nimcp_combinatorial_harm.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/ethics/nimcp_ethics_warfare.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/knowledge/nimcp_knowledge.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/knowledge/nimcp_knowledge_hyperbolic.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/knowledge/nimcp_knowledge_cow.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/knowledge/nimcp_knowledge_fractal.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/curiosity/nimcp_curiosity.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/introspection/nimcp_introspection.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/introspection/nimcp_connectivity_health.c  # Phase 1.5.4: Connectivity Health Assessment
@@ -214,6 +260,16 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../networking/replication/nimcp_replication.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../networking/distributed/nimcp_distributed_cognition.c
 
+    # Neural Link Protocol (NLP) - Brain-to-Brain Communication
+    ${CMAKE_CURRENT_SOURCE_DIR}/../networking/nlp/nimcp_nlp.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../networking/nlp/nimcp_nlp_crypto.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../networking/nlp/nimcp_nlp_session.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../networking/nlp/nimcp_nlp_message.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../networking/nlp/nimcp_nlp_cortical_adapter.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../networking/nlp/nimcp_neural_language.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../networking/nlp/nimcp_nlp_compression.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../networking/nlp/nimcp_nlp_protocol_bridge.c
+
     # I/O
     ${CMAKE_CURRENT_SOURCE_DIR}/../io/dataio/nimcp_dataio.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../io/stream/nimcp_stream.c
@@ -235,10 +291,50 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../security/nimcp_security_integration.c  # Phase SC-4: Universal Security Integration Framework
     # Blood-Brain Barrier (BBB) - Neural Immune System Perimeter Defense (Phase IS-1)
     ${CMAKE_CURRENT_SOURCE_DIR}/../security/nimcp_blood_brain_barrier.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../security/nimcp_bbb_helpers.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../security/nimcp_bbb_input_gate.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../security/nimcp_bbb_code_signing.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../security/nimcp_bbb_memory_boundary.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../security/nimcp_bbb_access_control.c
+
+    # Security Phase SC-5: Enhanced Security Framework
+    # TOCTOU Guards + Rate Limiting
+    ${CMAKE_CURRENT_SOURCE_DIR}/../security/nimcp_toctou_guard.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../security/nimcp_rate_limiter.c
+    # Constant-Time Crypto + Key Derivation
+    ${CMAKE_CURRENT_SOURCE_DIR}/../security/nimcp_constant_time.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../security/nimcp_key_derivation.c
+    # Path Traversal + Shell Command Detection
+    ${CMAKE_CURRENT_SOURCE_DIR}/../security/nimcp_path_traversal.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../security/nimcp_shell_detector.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../security/nimcp_bbb_enhanced_detection.c
+    # ML-Based Anomaly Detection
+    ${CMAKE_CURRENT_SOURCE_DIR}/../security/nimcp_anomaly_detector.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../security/nimcp_bayesian_network.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../security/nimcp_feature_extractor.c
+    # Dynamic Pattern Database + Encrypted Audit
+    ${CMAKE_CURRENT_SOURCE_DIR}/../security/nimcp_pattern_db.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../security/nimcp_pattern_compiler.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../security/nimcp_encrypted_audit.c
+    # Security Level Management + Distributed Consensus
+    ${CMAKE_CURRENT_SOURCE_DIR}/../security/nimcp_security_level.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../security/nimcp_consensus_protocol.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../security/nimcp_security_consensus.c
+    # Policy Language Engine
+    ${CMAKE_CURRENT_SOURCE_DIR}/../security/nimcp_policy_ast.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../security/nimcp_policy_parser.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../security/nimcp_policy_compiler.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../security/nimcp_policy_evaluator.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../security/nimcp_policy_engine.c
+    # Post-Quantum Cryptography
+    ${CMAKE_CURRENT_SOURCE_DIR}/../security/nimcp_post_quantum.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../security/nimcp_pq_kyber.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../security/nimcp_pq_dilithium.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../security/nimcp_pq_hybrid.c
+    # Supply Chain Security
+    ${CMAKE_CURRENT_SOURCE_DIR}/../security/nimcp_supply_chain.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../security/nimcp_sbom.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../security/nimcp_artifact_verify.c
 
     # Utils - Memory & Thread
     ${CMAKE_CURRENT_SOURCE_DIR}/../utils/memory/nimcp_memory.c
@@ -474,6 +570,36 @@ set(NIMCP_CORE_SOURCES
 
     # NOTE: nimcp_training_plasticity_bridge_bioasync_handlers.c is included via #include
     # in nimcp_training_plasticity_bridge.c, not compiled separately (uses internal types)
+
+    # Swarm Intelligence Module (Phase SWARM-1: Drone Collective Intelligence)
+    # Enables distributed cognition across drone swarms with radio communication
+    ${CMAKE_CURRENT_SOURCE_DIR}/../swarm/nimcp_swarm_protocol.c       # Phoneme-based messaging protocol
+    ${CMAKE_CURRENT_SOURCE_DIR}/../swarm/nimcp_swarm_signal.c         # Radio/signal abstraction layer
+    ${CMAKE_CURRENT_SOURCE_DIR}/../swarm/nimcp_collective_workspace.c # CRDT-based shared workspace
+    ${CMAKE_CURRENT_SOURCE_DIR}/../swarm/nimcp_swarm_emergence.c      # Emergence tier detection
+    ${CMAKE_CURRENT_SOURCE_DIR}/../swarm/nimcp_swarm_consensus.c      # Byzantine-fault-tolerant voting
+    ${CMAKE_CURRENT_SOURCE_DIR}/../swarm/nimcp_swarm_brain.c          # Main swarm coordinator
+    ${CMAKE_CURRENT_SOURCE_DIR}/../swarm/nimcp_swarm_gateway.c        # Server-to-swarm gateway
+
+    # Swarm Enhancements (Biologically-Inspired)
+    # ENABLED - Uses correct bio-async pattern with embedded message headers:
+    ${CMAKE_CURRENT_SOURCE_DIR}/../swarm/nimcp_swarm_pheromone.c         # Stigmergic pheromone trails
+
+    # DISABLED - Require full API migration from NimcpStatus to nimcp_result_t,
+    # NIMCP_MALLOC to nimcp_malloc, and other naming convention updates.
+    # Reference nimcp_swarm_pheromone.c for correct bio-async integration pattern.
+    # ${CMAKE_CURRENT_SOURCE_DIR}/../swarm/nimcp_swarm_morphogenesis.c  # Needs: NimcpStatus→nimcp_result_t, NIMCP_MALLOC→nimcp_malloc
+    # ${CMAKE_CURRENT_SOURCE_DIR}/../swarm/nimcp_swarm_flocking.c       # Needs full API migration
+    # ${CMAKE_CURRENT_SOURCE_DIR}/../swarm/nimcp_swarm_quorum.c         # Needs full API migration
+    # ${CMAKE_CURRENT_SOURCE_DIR}/../swarm/nimcp_swarm_immune.c         # Needs full API migration
+    # ${CMAKE_CURRENT_SOURCE_DIR}/../swarm/nimcp_swarm_energy_gossip.c  # Needs full API migration
+    # ${CMAKE_CURRENT_SOURCE_DIR}/../swarm/nimcp_swarm_memory.c         # Needs full API migration
+    # ${CMAKE_CURRENT_SOURCE_DIR}/../swarm/nimcp_swarm_cascade.c        # Needs full API migration
+    # ${CMAKE_CURRENT_SOURCE_DIR}/../swarm/nimcp_swarm_multi.c          # Needs full API migration
+    # ${CMAKE_CURRENT_SOURCE_DIR}/../swarm/nimcp_swarm_proprioception.c # Needs full API migration
+
+    # Platform Tier System (Portia Spider Foundation)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../utils/platform/nimcp_platform_tier.c  # Platform-adaptive configuration
 )
 
 # Core library
@@ -547,8 +673,21 @@ if(SODIUM_FOUND)
     target_link_libraries(nimcp PUBLIC ${SODIUM_LIBRARIES})
 endif()
 
+# Add OpenSSL library for cryptographic operations (post-quantum, encrypted audit)
+find_package(OpenSSL QUIET)
+if(OPENSSL_FOUND)
+    target_link_libraries(nimcp PUBLIC OpenSSL::SSL OpenSSL::Crypto)
+    target_compile_definitions(nimcp PRIVATE NIMCP_HAVE_OPENSSL)
+    message(STATUS "OpenSSL found: ${OPENSSL_VERSION}")
+else()
+    message(STATUS "OpenSSL not found - some security features will be disabled")
+endif()
+
 # Add testing API support
 target_compile_definitions(nimcp PRIVATE NIMCP_TESTING)
+
+# DISABLED: Enable separate learning module - guards duplicate functions in nimcp_neuralnet.c
+# target_compile_definitions(nimcp PRIVATE NEURALNET_LEARNING_SEPARATE)
 
 # Explicitly add -fPIC for shared library with thread-local storage
 target_compile_options(nimcp PRIVATE -fPIC)

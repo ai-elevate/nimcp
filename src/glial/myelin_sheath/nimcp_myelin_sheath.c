@@ -21,6 +21,9 @@
  */
 
 #include "glial/myelin_sheath/nimcp_myelin_sheath.h"
+#include "security/nimcp_security.h"
+#include "security/nimcp_blood_brain_barrier.h"
+
 #include "async/nimcp_bio_async.h"
 #include "async/nimcp_bio_router.h"
 #include "async/nimcp_bio_messages.h"
@@ -397,15 +400,15 @@ void myelin_sheath_destroy(myelin_sheath_t* sheath)
 {
     if (!sheath) return;
 
-    // Handle CoW - if this is a shared copy, just decrement reference
-    if (sheath->cow_ref_count > 1 && sheath->cow_original) {
-        sheath->cow_ref_count--;
+    // Handle CoW copy - if this is an unmodified copy, it shares segments with original
+    // Only free the segments array, not the segments themselves
+    if (sheath->cow_original && !sheath->cow_modified) {
         nimcp_free(sheath->segments);
         nimcp_free(sheath);
         return;
     }
 
-    // Free all segments
+    // Free all segments (for original sheaths or modified CoW copies that own their segments)
     if (sheath->segments) {
         for (uint32_t i = 0; i < sheath->num_segments; i++) {
             if (sheath->segments[i]) {
@@ -1237,13 +1240,14 @@ void myelin_sheath_cow_release(myelin_sheath_t* sheath)
         nimcp_spinlock_lock(&original->lock);
         original->cow_ref_count--;
         nimcp_spinlock_unlock(&original->lock);
-        sheath->cow_original = NULL;
+        // Don't null cow_original here - destroy needs it to know this is a CoW copy
     }
 
     sheath->cow_ref_count--;
 
     if (sheath->cow_ref_count == 0) {
         nimcp_spinlock_unlock(&sheath->lock);
+        // Destroy will check cow_original to determine if segments should be freed
         myelin_sheath_destroy(sheath);
     } else {
         nimcp_spinlock_unlock(&sheath->lock);

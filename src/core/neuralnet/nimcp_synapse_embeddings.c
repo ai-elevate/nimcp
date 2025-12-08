@@ -25,6 +25,9 @@
  */
 
 #include "core/neuralnet/nimcp_neuralnet.h"
+#include "security/nimcp_security.h"
+#include "security/nimcp_blood_brain_barrier.h"
+
 #include "utils/memory/nimcp_memory.h"
 #include <stdlib.h>
 #include <math.h>

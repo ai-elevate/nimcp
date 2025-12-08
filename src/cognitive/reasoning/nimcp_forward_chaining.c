@@ -10,6 +10,9 @@
  */
 
 #include "cognitive/reasoning/nimcp_forward_chaining.h"
+#include "security/nimcp_security.h"
+#include "security/nimcp_blood_brain_barrier.h"
+
 #include "cognitive/reasoning/nimcp_symbolic_logic_attachment.h"
 #include "core/brain/nimcp_brain_internal.h"
 #include "utils/validation/nimcp_validate.h"

@@ -28,7 +28,7 @@ extern "C" {
 #include "async/nimcp_bio_async.h"
 #include "async/nimcp_bio_router.h"
 #include "async/nimcp_bio_messages.h"
-#include "cognitive/nimcp_introspection.h"
+#include "cognitive/introspection/nimcp_introspection.h"
 #include "cognitive/ethics/nimcp_ethics.h"
 #include "cognitive/salience/nimcp_salience.h"
 }
@@ -110,6 +110,7 @@ protected:
     bio_module_context_t salience_ctx_{nullptr};
     bio_module_context_t attention_ctx_{nullptr};
 
+public:
     static std::atomic<int> introspection_queries_;
     static std::atomic<int> ethics_evaluations_;
     static std::atomic<int> salience_queries_;
@@ -127,6 +128,128 @@ std::atomic<float> BioAsyncCognitiveE2ETest::last_ethics_score_{0.0f};
 std::atomic<float> BioAsyncCognitiveE2ETest::last_salience_score_{0.0f};
 
 //=============================================================================
+// Static Handler Functions (No Lambda Captures)
+//=============================================================================
+
+static nimcp_error_t intro_query_handler_static(const void* msg, size_t msg_size,
+                                                  nimcp_bio_promise_t response_promise,
+                                                  void* user_data) {
+    const bio_msg_introspection_query_t* query =
+        static_cast<const bio_msg_introspection_query_t*>(msg);
+
+    BioAsyncCognitiveE2ETest::introspection_queries_.fetch_add(1);
+
+    if (response_promise) {
+        bio_msg_introspection_response_t response;
+        bio_msg_init_header(&response.header, BIO_MSG_INTROSPECTION_RESPONSE,
+                            BIO_MODULE_INTROSPECTION, static_cast<bio_module_id_t>(query->header.source_module),
+                            sizeof(response));
+        response.query_type = query->query_type;
+        response.confidence = 0.85f;
+        response.cognitive_load = 0.65f;
+        response.emotional_valence = 0.3f;
+        response.arousal = 0.5f;
+        response.matched_pattern_count = 3;
+
+        nimcp_bio_promise_complete(response_promise, &response);
+    }
+
+    return NIMCP_SUCCESS;
+}
+
+static nimcp_error_t ethics_handler_static(const void* msg, size_t msg_size,
+                                            nimcp_bio_promise_t response_promise,
+                                            void* user_data) {
+    const bio_msg_ethics_request_t* request =
+        reinterpret_cast<const bio_msg_ethics_request_t*>(msg);
+
+    BioAsyncCognitiveE2ETest::ethics_evaluations_.fetch_add(1);
+
+    if (response_promise) {
+        bio_msg_ethics_response_t response;
+        bio_msg_init_header(&response.header, BIO_MSG_ETHICS_EVALUATION_RESPONSE,
+                            BIO_MODULE_ETHICS, static_cast<bio_module_id_t>(request->header.source_module),
+                            sizeof(response));
+        response.action_id = request->action_id;
+
+        // Simulate ethics evaluation
+        float score = (request->action_id % 2 == 0) ? 0.7f : -0.3f;
+        response.ethical_score = score;
+        response.confidence = 0.8f;
+        response.veto = (score < 0);
+        response.primary_concern = 1; // Harm principle
+        snprintf(response.explanation, sizeof(response.explanation),
+                 "Action %u evaluated with score %.2f", request->action_id, score);
+
+        BioAsyncCognitiveE2ETest::last_ethics_score_.store(score);
+
+        nimcp_bio_promise_complete(response_promise, &response);
+    }
+
+    return NIMCP_SUCCESS;
+}
+
+static nimcp_error_t salience_handler_static(const void* msg, size_t msg_size,
+                                              nimcp_bio_promise_t response_promise,
+                                              void* user_data) {
+    const bio_msg_salience_query_t* query =
+        static_cast<const bio_msg_salience_query_t*>(msg);
+
+    BioAsyncCognitiveE2ETest::salience_queries_.fetch_add(1);
+
+    if (response_promise) {
+        bio_msg_salience_response_t response;
+        bio_msg_init_header(&response.header, BIO_MSG_SALIENCE_RESPONSE,
+                            BIO_MODULE_SALIENCE, static_cast<bio_module_id_t>(query->header.source_module),
+                            sizeof(response));
+        response.stimulus_id = query->stimulus_id;
+
+        // Calculate salience from intensity, novelty, relevance
+        float salience = (query->raw_intensity * 0.3f +
+                          query->novelty * 0.4f +
+                          query->relevance * 0.3f);
+        response.salience_score = salience;
+        response.attention_priority = salience > 0.7f ? 0.9f : 0.5f;
+        response.requires_immediate_attention = (salience > 0.8f);
+
+        BioAsyncCognitiveE2ETest::last_salience_score_.store(salience);
+
+        nimcp_bio_promise_complete(response_promise, &response);
+    }
+
+    return NIMCP_SUCCESS;
+}
+
+static nimcp_error_t attention_handler_static(const void* msg, size_t msg_size,
+                                               nimcp_bio_promise_t response_promise,
+                                               void* user_data) {
+    BioAsyncCognitiveE2ETest::attention_shifts_.fetch_add(1);
+
+    if (response_promise) {
+        float ack = 1.0f;
+        nimcp_bio_promise_complete(response_promise, &ack);
+    }
+
+    return NIMCP_SUCCESS;
+}
+
+static nimcp_error_t unified_cognitive_handler_static(const void* msg, size_t msg_size,
+                                                       nimcp_bio_promise_t response_promise,
+                                                       void* user_data) {
+    std::atomic<int>* counter = static_cast<std::atomic<int>*>(user_data);
+    if (counter) {
+        counter->fetch_add(1);
+    }
+
+    if (response_promise) {
+        float ack = 1.0f;
+        nimcp_bio_promise_complete(response_promise, &ack);
+    }
+
+    return NIMCP_SUCCESS;
+}
+
+//=============================================================================
 // Pipeline 1: Introspection Query/Response
 //=============================================================================
 
@@ -136,34 +259,8 @@ TEST_F(BioAsyncCognitiveE2ETest, IntrospectionPipeline) {
     // Stage 1: Register introspection handlers
     E2E_STAGE_BEGIN("Register introspection handlers", 100);
 
-    auto intro_query_handler = [](const void* msg, size_t msg_size,
-                                    nimcp_bio_promise_t response_promise,
-                                    void* user_data) -> nimcp_error_t {
-        const bio_msg_introspection_query_t* query =
-            static_cast<const bio_msg_introspection_query_t*>(msg);
-
-        introspection_queries_.fetch_add(1);
-
-        if (response_promise) {
-            bio_msg_introspection_response_t response;
-            bio_msg_init_header(&response.header, BIO_MSG_INTROSPECTION_RESPONSE,
-                                BIO_MODULE_INTROSPECTION, query->header.source_module,
-                                sizeof(response));
-            response.query_type = query->query_type;
-            response.confidence = 0.85f;
-            response.cognitive_load = 0.65f;
-            response.emotional_valence = 0.3f;
-            response.arousal = 0.5f;
-            response.matched_pattern_count = 3;
-
-            nimcp_bio_promise_complete(response_promise, &response);
-        }
-
-        return NIMCP_SUCCESS;
-    };
-
     bio_router_register_handler(intro_ctx_, BIO_MSG_INTROSPECTION_QUERY,
-                                 intro_query_handler);
+                                 intro_query_handler_static);
 
     E2E_STAGE_END();
 
@@ -238,40 +335,8 @@ TEST_F(BioAsyncCognitiveE2ETest, EthicsPipeline) {
     // Stage 1: Register ethics handlers
     E2E_STAGE_BEGIN("Register ethics handlers", 100);
 
-    auto ethics_handler = [](const void* msg, size_t msg_size,
-                              nimcp_bio_promise_t response_promise,
-                              void* user_data) -> nimcp_error_t {
-        const bio_msg_ethics_request_t* request =
-            reinterpret_cast<const bio_msg_ethics_request_t*>(msg);
-
-        ethics_evaluations_.fetch_add(1);
-
-        if (response_promise) {
-            bio_msg_ethics_response_t response;
-            bio_msg_init_header(&response.header, BIO_MSG_ETHICS_EVALUATION_RESPONSE,
-                                BIO_MODULE_ETHICS, request->header.source_module,
-                                sizeof(response));
-            response.action_id = request->action_id;
-
-            // Simulate ethics evaluation
-            float score = (request->action_id % 2 == 0) ? 0.7f : -0.3f;
-            response.ethical_score = score;
-            response.confidence = 0.8f;
-            response.veto = (score < 0);
-            response.primary_concern = 1; // Harm principle
-            snprintf(response.explanation, sizeof(response.explanation),
-                     "Action %u evaluated with score %.2f", request->action_id, score);
-
-            last_ethics_score_.store(score);
-
-            nimcp_bio_promise_complete(response_promise, &response);
-        }
-
-        return NIMCP_SUCCESS;
-    };
-
     bio_router_register_handler(ethics_ctx_, BIO_MSG_ETHICS_EVALUATION_REQUEST,
-                                 ethics_handler);
+                                 ethics_handler_static);
 
     E2E_STAGE_END();
 
@@ -350,52 +415,8 @@ TEST_F(BioAsyncCognitiveE2ETest, AttentionPipeline) {
     // Stage 1: Register salience and attention handlers
     E2E_STAGE_BEGIN("Register salience and attention handlers", 100);
 
-    auto salience_handler = [](const void* msg, size_t msg_size,
-                                nimcp_bio_promise_t response_promise,
-                                void* user_data) -> nimcp_error_t {
-        const bio_msg_salience_query_t* query =
-            static_cast<const bio_msg_salience_query_t*>(msg);
-
-        salience_queries_.fetch_add(1);
-
-        if (response_promise) {
-            bio_msg_salience_response_t response;
-            bio_msg_init_header(&response.header, BIO_MSG_SALIENCE_RESPONSE,
-                                BIO_MODULE_SALIENCE, query->header.source_module,
-                                sizeof(response));
-            response.stimulus_id = query->stimulus_id;
-
-            // Calculate salience from intensity, novelty, relevance
-            float salience = (query->raw_intensity * 0.3f +
-                              query->novelty * 0.4f +
-                              query->relevance * 0.3f);
-            response.salience_score = salience;
-            response.attention_priority = salience > 0.7f ? 0.9f : 0.5f;
-            response.requires_immediate_attention = (salience > 0.8f);
-
-            last_salience_score_.store(salience);
-
-            nimcp_bio_promise_complete(response_promise, &response);
-        }
-
-        return NIMCP_SUCCESS;
-    };
-
-    auto attention_handler = [](const void* msg, size_t msg_size,
-                                 nimcp_bio_promise_t response_promise,
-                                 void* user_data) -> nimcp_error_t {
-        attention_shifts_.fetch_add(1);
-
-        if (response_promise) {
-            float ack = 1.0f;
-            nimcp_bio_promise_complete(response_promise, &ack);
-        }
-
-        return NIMCP_SUCCESS;
-    };
-
-    bio_router_register_handler(salience_ctx_, BIO_MSG_SALIENCE_QUERY, salience_handler);
-    bio_router_register_handler(attention_ctx_, BIO_MSG_ATTENTION_SHIFT, attention_handler);
+    bio_router_register_handler(salience_ctx_, BIO_MSG_SALIENCE_QUERY, salience_handler_static);
+    bio_router_register_handler(attention_ctx_, BIO_MSG_ATTENTION_SHIFT, attention_handler_static);
 
     E2E_STAGE_END();
 
@@ -499,26 +520,24 @@ TEST_F(BioAsyncCognitiveE2ETest, AttentionPipeline) {
 TEST_F(BioAsyncCognitiveE2ETest, CognitiveFusionPipeline) {
     E2E_PIPELINE_START("Cognitive Fusion: Multi-Module Coordination");
 
-    std::atomic<int> total_cognitive_messages{0};
+    static std::atomic<int> total_cognitive_messages{0};
 
-    // Stage 1: Register unified cognitive handler
+    // Stage 1: Re-register with user_data
     E2E_STAGE_BEGIN("Register unified cognitive handlers", 100);
 
-    auto unified_handler = [](const void* msg, size_t msg_size,
-                               nimcp_bio_promise_t response_promise,
-                               void* user_data) -> nimcp_error_t {
-        total_cognitive_messages.fetch_add(1);
-
-        if (response_promise) {
-            float ack = 1.0f;
-            nimcp_bio_promise_complete(response_promise, &ack);
-        }
-
-        return NIMCP_SUCCESS;
+    // Unregister and re-register with user_data
+    bio_router_unregister_module(intro_ctx_);
+    bio_module_info_t intro_info = {
+        .module_id = BIO_MODULE_INTROSPECTION,
+        .module_name = "introspection_test",
+        .inbox_capacity = 100,
+        .user_data = &total_cognitive_messages
     };
+    intro_ctx_ = bio_router_register_module(&intro_info);
+    ASSERT_NE(intro_ctx_, nullptr);
 
     // Register category handler for all cognitive messages (0x0300-0x03FF)
-    bio_router_register_category_handler(intro_ctx_, 0x0300, unified_handler);
+    bio_router_register_category_handler(intro_ctx_, 0x0300, unified_cognitive_handler_static);
 
     E2E_STAGE_END();
 
@@ -527,7 +546,7 @@ TEST_F(BioAsyncCognitiveE2ETest, CognitiveFusionPipeline) {
 
     std::vector<nimcp_bio_promise_t> mixed_promises;
 
-    // Send introspection queries
+    // Send introspection queries - all to intro_ctx_ since it has the category handler
     for (int i = 0; i < 3; i++) {
         bio_msg_introspection_query_t query;
         bio_msg_init_header(&query.header, BIO_MSG_INTROSPECTION_QUERY,
@@ -541,11 +560,11 @@ TEST_F(BioAsyncCognitiveE2ETest, CognitiveFusionPipeline) {
         if (promise) mixed_promises.push_back(promise);
     }
 
-    // Send ethics evaluations
+    // Send ethics evaluations - send to intro_ctx_ which has category handler for 0x0300
     for (int i = 0; i < 3; i++) {
         bio_msg_ethics_request_t request;
         bio_msg_init_header(&request.header, BIO_MSG_ETHICS_EVALUATION_REQUEST,
-                            BIO_MODULE_EXECUTIVE, BIO_MODULE_ETHICS, sizeof(request));
+                            BIO_MODULE_EXECUTIVE, BIO_MODULE_INTROSPECTION, sizeof(request));
         request.action_id = i;
         request.context_id = 200 + i;
         request.urgency = 0.6f;
@@ -556,11 +575,11 @@ TEST_F(BioAsyncCognitiveE2ETest, CognitiveFusionPipeline) {
         if (promise) mixed_promises.push_back(promise);
     }
 
-    // Send salience queries
+    // Send salience queries - send to intro_ctx_ which has category handler for 0x0300
     for (int i = 0; i < 4; i++) {
         bio_msg_salience_query_t query;
         bio_msg_init_header(&query.header, BIO_MSG_SALIENCE_QUERY,
-                            BIO_MODULE_BRAIN, BIO_MODULE_SALIENCE, sizeof(query));
+                            BIO_MODULE_BRAIN, BIO_MODULE_INTROSPECTION, sizeof(query));
         query.stimulus_id = i;
         query.raw_intensity = 0.7f;
         query.novelty = 0.8f;

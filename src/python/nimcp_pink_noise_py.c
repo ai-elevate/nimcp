@@ -14,8 +14,15 @@
  */
 
 #include <Python.h>
+#include "security/nimcp_security.h"
+#include "security/nimcp_blood_brain_barrier.h"
+
+#include "async/nimcp_bio_async.h"
+#include "async/nimcp_bio_router.h"
+
 #include "plasticity/noise/nimcp_pink_noise.h"
 #include "common/nimcp_module.h"
+#include "utils/logging/nimcp_logging.h"
 
 //=============================================================================
 // PinkNoiseGenerator Type
@@ -343,9 +350,13 @@ static PyMethodDef pink_noise_methods[] = {
 //=============================================================================
 
 int init_pink_noise_module(PyObject* module) {
+    LOG_MODULE_DEBUG("bindings.python.pink_noise", "Initializing pink noise Python module");
+
     // Prepare type
-    if (PyType_Ready(&PinkNoiseGeneratorType) < 0)
+    if (PyType_Ready(&PinkNoiseGeneratorType) < 0) {
+        LOG_MODULE_ERROR("bindings.python.pink_noise", "Failed to initialize PinkNoiseGenerator type");
         return -1;
+    }
 
     // Add type to module
     Py_INCREF(&PinkNoiseGeneratorType);

@@ -40,6 +40,7 @@ target_compile_features(regression_cognitive_modules_api_test PRIVATE cxx_std_17
 
 gtest_discover_tests(regression_cognitive_modules_api_test
     WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+    DISCOVERY_MODE PRE_TEST
     PROPERTIES
         LABELS "regression;cognitive;api;correctness"
         TIMEOUT 60

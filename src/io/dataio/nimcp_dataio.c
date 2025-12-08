@@ -20,6 +20,9 @@
  */
 
 #include "io/dataio/nimcp_dataio.h"
+#include "security/nimcp_security.h"
+#include "security/nimcp_blood_brain_barrier.h"
+
 #include <errno.h>
 #include <math.h>
 #include <stdarg.h>

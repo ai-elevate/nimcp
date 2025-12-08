@@ -84,6 +84,9 @@ protected:
             brain = nullptr;
         }
 
+        // Ensure stream module is properly shut down
+        stream_shutdown();
+
         NimcpTestBase::TearDown();
     }
 

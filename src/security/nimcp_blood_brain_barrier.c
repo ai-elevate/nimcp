@@ -132,6 +132,8 @@ NIMCP_EXPORT const char* bbb_threat_type_name(bbb_threat_type_t type)
         "MEMORY_VIOLATION",
         "UNAUTHORIZED_ACCESS",
         "DATA_TAMPERING",
+        "PATH_TRAVERSAL",
+        "SHELL_INJECTION",
         "UNKNOWN"
     };
 

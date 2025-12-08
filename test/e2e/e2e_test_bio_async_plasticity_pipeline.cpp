@@ -96,6 +96,7 @@ protected:
     bio_module_context_t homeo_ctx_{nullptr};
     bio_module_context_t neuromod_ctx_{nullptr};
 
+public:
     static std::atomic<int> stdp_events_received_;
     static std::atomic<int> weight_updates_received_;
     static std::atomic<int> neuromod_releases_received_;
@@ -109,6 +110,112 @@ std::atomic<int> BioAsyncPlasticityE2ETest::neuromod_releases_received_{0};
 std::atomic<float> BioAsyncPlasticityE2ETest::last_weight_delta_{0.0f};
 
 //=============================================================================
+// Static Handler Functions (No Lambda Captures)
+//=============================================================================
+
+static nimcp_error_t stdp_handler_static(const void* msg, size_t msg_size,
+                                         nimcp_bio_promise_t response_promise,
+                                         void* user_data) {
+    const bio_msg_stdp_event_t* stdp_msg =
+        static_cast<const bio_msg_stdp_event_t*>(msg);
+
+    BioAsyncPlasticityE2ETest::stdp_events_received_.fetch_add(1);
+
+    // Calculate weight change based on timing
+    float delta_t = stdp_msg->delta_t_ms;
+    float weight_change = 0.0f;
+
+    if (delta_t > 0) {
+        // Post after pre: potentiation
+        weight_change = 0.01f * expf(-delta_t / 20.0f);
+    } else {
+        // Pre after post: depression
+        weight_change = -0.01f * expf(delta_t / 20.0f);
+    }
+
+    BioAsyncPlasticityE2ETest::last_weight_delta_.store(weight_change);
+
+    if (response_promise) {
+        nimcp_bio_promise_complete(response_promise, &weight_change);
+    }
+
+    return NIMCP_SUCCESS;
+}
+
+static nimcp_error_t homeostatic_handler_static(const void* msg, size_t msg_size,
+                                                 nimcp_bio_promise_t response_promise,
+                                                 void* user_data) {
+    // Use generic message header - homeostatic adjustment type not defined
+    const bio_message_header_t* header =
+        reinterpret_cast<const bio_message_header_t*>(msg);
+    (void)header;  // Unused in this handler
+
+    std::atomic<int>* counter = static_cast<std::atomic<int>*>(user_data);
+    if (counter) {
+        counter->fetch_add(1);
+    }
+
+    if (response_promise) {
+        float ack = 1.0f;
+        nimcp_bio_promise_complete(response_promise, &ack);
+    }
+
+    return NIMCP_SUCCESS;
+}
+
+static nimcp_error_t neuromod_handler_static(const void* msg, size_t msg_size,
+                                              nimcp_bio_promise_t response_promise,
+                                              void* user_data) {
+    const bio_msg_neuromodulator_release_t* neuromod_msg =
+        static_cast<const bio_msg_neuromodulator_release_t*>(msg);
+
+    BioAsyncPlasticityE2ETest::neuromod_releases_received_.fetch_add(1);
+
+    if (response_promise) {
+        float concentration = neuromod_msg->current_concentration;
+        nimcp_bio_promise_complete(response_promise, &concentration);
+    }
+
+    return NIMCP_SUCCESS;
+}
+
+static nimcp_error_t learning_rate_handler_static(const void* msg, size_t msg_size,
+                                                   nimcp_bio_promise_t response_promise,
+                                                   void* user_data) {
+    const bio_msg_learning_rate_update_t* lr_msg =
+        static_cast<const bio_msg_learning_rate_update_t*>(msg);
+    (void)lr_msg;  // Unused in this handler
+
+    std::atomic<int>* counter = static_cast<std::atomic<int>*>(user_data);
+    if (counter) {
+        counter->fetch_add(1);
+    }
+
+    if (response_promise) {
+        float ack = 1.0f;
+        nimcp_bio_promise_complete(response_promise, &ack);
+    }
+
+    return NIMCP_SUCCESS;
+}
+
+static nimcp_error_t unified_handler_static(const void* msg, size_t msg_size,
+                                            nimcp_bio_promise_t response_promise,
+                                            void* user_data) {
+    std::atomic<int>* counter = static_cast<std::atomic<int>*>(user_data);
+    if (counter) {
+        counter->fetch_add(1);
+    }
+
+    if (response_promise) {
+        float ack = 1.0f;
+        nimcp_bio_promise_complete(response_promise, &ack);
+    }
+
+    return NIMCP_SUCCESS;
+}
+
+//=============================================================================
 // Pipeline 1: STDP Event Processing
 //=============================================================================
 
@@ -118,36 +225,7 @@ TEST_F(BioAsyncPlasticityE2ETest, STDPPipeline) {
     // Stage 1: Register STDP event handler
     E2E_STAGE_BEGIN("Register STDP handlers", 100);
 
-    auto stdp_handler = [](const void* msg, size_t msg_size,
-                            nimcp_bio_promise_t response_promise,
-                            void* user_data) -> nimcp_error_t {
-        const bio_msg_stdp_event_t* stdp_msg =
-            static_cast<const bio_msg_stdp_event_t*>(msg);
-
-        stdp_events_received_.fetch_add(1);
-
-        // Calculate weight change based on timing
-        float delta_t = stdp_msg->delta_t_ms;
-        float weight_change = 0.0f;
-
-        if (delta_t > 0) {
-            // Post after pre: potentiation
-            weight_change = 0.01f * expf(-delta_t / 20.0f);
-        } else {
-            // Pre after post: depression
-            weight_change = -0.01f * expf(delta_t / 20.0f);
-        }
-
-        last_weight_delta_.store(weight_change);
-
-        if (response_promise) {
-            nimcp_bio_promise_complete(response_promise, &weight_change);
-        }
-
-        return NIMCP_SUCCESS;
-    };
-
-    bio_router_register_handler(stdp_ctx_, BIO_MSG_STDP_EVENT, stdp_handler);
+    bio_router_register_handler(stdp_ctx_, BIO_MSG_STDP_EVENT, stdp_handler_static);
 
     E2E_STAGE_END();
 
@@ -217,29 +295,25 @@ TEST_F(BioAsyncPlasticityE2ETest, STDPPipeline) {
 TEST_F(BioAsyncPlasticityE2ETest, HomeostaticPipeline) {
     E2E_PIPELINE_START("Homeostatic Plasticity via Bio-Async");
 
-    std::atomic<int> homeostatic_adjustments{0};
+    static std::atomic<int> homeostatic_adjustments{0};
     std::atomic<float> total_adjustment{0.0f};
 
-    // Stage 1: Register homeostatic handler
+    // Stage 1: Re-register homeostatic handler with user_data
     E2E_STAGE_BEGIN("Register homeostatic handlers", 100);
 
-    auto homeo_handler = [](const void* msg, size_t msg_size,
-                             nimcp_bio_promise_t response_promise,
-                             void* user_data) -> nimcp_error_t {
-        const bio_msg_homeostatic_adjustment_t* homeo_msg =
-            reinterpret_cast<const bio_msg_homeostatic_adjustment_t*>(msg);
-
-        homeostatic_adjustments.fetch_add(1);
-
-        if (response_promise) {
-            float ack = 1.0f;
-            nimcp_bio_promise_complete(response_promise, &ack);
-        }
-
-        return NIMCP_SUCCESS;
+    // Unregister and re-register with user_data
+    bio_router_unregister_module(homeo_ctx_);
+    bio_module_info_t homeo_info = {
+        .module_id = BIO_MODULE_HOMEOSTATIC,
+        .module_name = "homeostatic_test",
+        .inbox_capacity = 100,
+        .user_data = &homeostatic_adjustments
     };
+    homeo_ctx_ = bio_router_register_module(&homeo_info);
+    ASSERT_NE(homeo_ctx_, nullptr);
 
-    bio_router_register_handler(homeo_ctx_, BIO_MSG_HOMEOSTATIC_ADJUSTMENT, homeo_handler);
+    bio_router_register_handler(homeo_ctx_, BIO_MSG_HOMEOSTATIC_ADJUSTMENT,
+                                 homeostatic_handler_static);
 
     E2E_STAGE_END();
 
@@ -325,48 +399,27 @@ TEST_F(BioAsyncPlasticityE2ETest, HomeostaticPipeline) {
 TEST_F(BioAsyncPlasticityE2ETest, NeuromodulatorPipeline) {
     E2E_PIPELINE_START("Neuromodulator-Gated Learning via Bio-Async");
 
-    std::atomic<int> learning_rate_updates{0};
+    static std::atomic<int> learning_rate_updates{0};
 
-    // Stage 1: Register neuromodulator handlers
+    // Stage 1: Re-register neuromodulator handlers with user_data
     E2E_STAGE_BEGIN("Register neuromodulator handlers", 100);
 
-    auto neuromod_handler = [](const void* msg, size_t msg_size,
-                                nimcp_bio_promise_t response_promise,
-                                void* user_data) -> nimcp_error_t {
-        const bio_msg_neuromodulator_release_t* neuromod_msg =
-            static_cast<const bio_msg_neuromodulator_release_t*>(msg);
-
-        neuromod_releases_received_.fetch_add(1);
-
-        if (response_promise) {
-            float concentration = neuromod_msg->current_concentration;
-            nimcp_bio_promise_complete(response_promise, &concentration);
-        }
-
-        return NIMCP_SUCCESS;
+    // Unregister and re-register with user_data
+    bio_router_unregister_module(neuromod_ctx_);
+    bio_module_info_t neuromod_info = {
+        .module_id = BIO_MODULE_NEUROMODULATOR,
+        .module_name = "neuromod_test",
+        .inbox_capacity = 100,
+        .user_data = &learning_rate_updates
     };
+    neuromod_ctx_ = bio_router_register_module(&neuromod_info);
+    ASSERT_NE(neuromod_ctx_, nullptr);
 
     bio_router_register_handler(neuromod_ctx_, BIO_MSG_NEUROMODULATOR_RELEASE,
-                                 neuromod_handler);
-
-    auto learning_rate_handler = [](const void* msg, size_t msg_size,
-                                     nimcp_bio_promise_t response_promise,
-                                     void* user_data) -> nimcp_error_t {
-        const bio_msg_learning_rate_update_t* lr_msg =
-            static_cast<const bio_msg_learning_rate_update_t*>(msg);
-
-        learning_rate_updates.fetch_add(1);
-
-        if (response_promise) {
-            float ack = 1.0f;
-            nimcp_bio_promise_complete(response_promise, &ack);
-        }
-
-        return NIMCP_SUCCESS;
-    };
+                                 neuromod_handler_static);
 
     bio_router_register_handler(neuromod_ctx_, BIO_MSG_LEARNING_RATE_UPDATE,
-                                 learning_rate_handler);
+                                 learning_rate_handler_static);
 
     E2E_STAGE_END();
 
@@ -429,7 +482,7 @@ TEST_F(BioAsyncPlasticityE2ETest, NeuromodulatorPipeline) {
     for (int i = 0; i < NUM_LR_UPDATES; i++) {
         bio_msg_learning_rate_update_t lr_msg;
         bio_msg_init_header(&lr_msg.header, BIO_MSG_LEARNING_RATE_UPDATE,
-                            BIO_MODULE_NEUROMODULATOR, BIO_MODULE_STDP, sizeof(lr_msg));
+                            BIO_MODULE_NEUROMODULATOR, BIO_MODULE_NEUROMODULATOR, sizeof(lr_msg));
         lr_msg.synapse_id = i;
         lr_msg.base_learning_rate = 0.001f;
         lr_msg.dopamine_level = 0.8f + i * 0.02f;
@@ -480,26 +533,24 @@ TEST_F(BioAsyncPlasticityE2ETest, NeuromodulatorPipeline) {
 TEST_F(BioAsyncPlasticityE2ETest, MultiPlasticityPipeline) {
     E2E_PIPELINE_START("Multi-Plasticity Coordination via Bio-Async");
 
-    std::atomic<int> total_plasticity_events{0};
+    static std::atomic<int> total_plasticity_events{0};
 
-    // Stage 1: Register handlers for all plasticity types
+    // Stage 1: Re-register handlers with user_data
     E2E_STAGE_BEGIN("Register multi-plasticity handlers", 100);
 
-    auto unified_handler = [](const void* msg, size_t msg_size,
-                               nimcp_bio_promise_t response_promise,
-                               void* user_data) -> nimcp_error_t {
-        total_plasticity_events.fetch_add(1);
-
-        if (response_promise) {
-            float ack = 1.0f;
-            nimcp_bio_promise_complete(response_promise, &ack);
-        }
-
-        return NIMCP_SUCCESS;
+    // Unregister and re-register with user_data
+    bio_router_unregister_module(stdp_ctx_);
+    bio_module_info_t stdp_info = {
+        .module_id = BIO_MODULE_STDP,
+        .module_name = "stdp_test",
+        .inbox_capacity = 100,
+        .user_data = &total_plasticity_events
     };
+    stdp_ctx_ = bio_router_register_module(&stdp_info);
+    ASSERT_NE(stdp_ctx_, nullptr);
 
     // Register category handler for all plasticity messages (0x0200-0x02FF)
-    bio_router_register_category_handler(stdp_ctx_, 0x0200, unified_handler);
+    bio_router_register_category_handler(stdp_ctx_, 0x0200, unified_handler_static);
 
     E2E_STAGE_END();
 

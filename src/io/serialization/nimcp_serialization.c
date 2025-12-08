@@ -10,6 +10,53 @@
 #include "async/nimcp_bio_messages.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/memory/nimcp_unified_memory.h"
+#include "security/nimcp_blood_brain_barrier.h"
+
+// Global BBB security system
+static bbb_system_t g_bbb_system = NULL;
+
+
+
+//=============================================================================
+// Security Initialization
+//=============================================================================
+
+/**
+ * @brief Initialize security subsystem for serialization
+ *
+ * WHAT: Create and configure BBB system for input validation
+ * WHY: Protect against malicious external input
+ * HOW: Initialize with conservative security settings
+ */
+static void serialization_security_init(void) {
+    if (g_bbb_system) {
+        return;  // Already initialized
+    }
+
+    bbb_config_t config = bbb_default_config();
+    config.strict_mode = false;  // Don't block, just log
+    config.default_action = BBB_ACTION_LOG;
+    config.input.validate_strings = true;
+    config.input.validate_integers = true;
+    config.input.max_string_length = 4096;  // Reasonable limit
+
+    g_bbb_system = bbb_system_create(&config);
+    if (!g_bbb_system) {
+        LOG_ERROR("serialization: Failed to initialize security subsystem");
+    } else {
+        LOG_INFO("serialization: Security subsystem initialized");
+    }
+}
+
+/**
+ * @brief Cleanup security subsystem
+ */
+static void serialization_security_cleanup(void) {
+    if (g_bbb_system) {
+        bbb_system_destroy(g_bbb_system);
+        g_bbb_system = NULL;
+    }
+}
 
 
 

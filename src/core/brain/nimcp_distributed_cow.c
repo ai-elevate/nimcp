@@ -11,6 +11,9 @@
 #define LOG_MODULE "distributed_cow"
 
 #include "core/brain/nimcp_distributed_cow.h"
+#include "security/nimcp_security.h"
+#include "security/nimcp_blood_brain_barrier.h"
+
 #include "utils/memory/nimcp_unified_memory.h"
 #include "utils/memory/nimcp_memory_guards.h"
 #include <stdio.h>

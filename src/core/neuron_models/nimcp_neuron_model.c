@@ -30,6 +30,9 @@
  */
 
 #include "core/neuron_models/nimcp_neuron_model.h"
+#include "security/nimcp_security.h"
+#include "security/nimcp_blood_brain_barrier.h"
+
 #include "utils/memory/nimcp_unified_memory.h"
 #include "core/neuron_models/nimcp_neuron_model_internal.h"
 #include "core/neuron_models/nimcp_izhikevich.h"  // For izhikevich_set_integration_method

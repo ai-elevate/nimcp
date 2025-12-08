@@ -3,6 +3,9 @@
 //=============================================================================
 
 #include "middleware/features/nimcp_feature_extractor.h"
+#include "security/nimcp_security.h"
+#include "security/nimcp_blood_brain_barrier.h"
+
 #include "utils/memory/nimcp_memory.h"
 #include "utils/memory/nimcp_memory_pool.h"
 #include "utils/platform/nimcp_platform_mutex.h"

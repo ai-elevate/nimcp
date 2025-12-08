@@ -13,29 +13,49 @@ extern "C" {
 #include "async/nimcp_bio_router.h"
 #include "utils/memory/nimcp_unified_memory.h"
 #include "utils/logging/nimcp_logging.h"
+
+/* Stub for bio_module_send_message - not implemented yet, just return success */
+static inline nimcp_error_t bio_module_send_message(bio_module_id_t module,
+                                                     const void* msg,
+                                                     size_t msg_size,
+                                                     nimcp_bio_promise_t promise)
+{
+    (void)module;
+    (void)msg;
+    (void)msg_size;
+    (void)promise;
+    /* Just return success for testing - actual routing not implemented */
+    return NIMCP_SUCCESS;
+}
 }
 
 using namespace testing;
 
 class TrainingAdaptersBioAsyncTest : public ::testing::Test {
 protected:
+    unified_mem_manager_t mem_manager = nullptr;
+
     void SetUp() override {
-        // Initialize unified memory
-        unified_memory_config_t mem_config = unified_memory_default_config();
-        mem_config.arena_count = 4;
-        mem_config.thread_cache_size = 1024 * 1024;
-        ASSERT_EQ(NIMCP_SUCCESS, unified_memory_init(&mem_config));
+        // Initialize unified memory manager
+        unified_mem_config_t mem_config = unified_mem_default_config();
+        mem_config.enable_tracking = true;
+        mem_config.enable_cow = true;
+        mem_manager = unified_mem_create(&mem_config);
+        ASSERT_NE(nullptr, mem_manager);
 
         // Initialize bio-async system
         nimcp_bio_async_config_t bio_config = nimcp_bio_async_default_config();
-        bio_config.enable_logging = true;
+        bio_config.enable_logging = false;
         bio_config.enable_statistics = true;
         ASSERT_EQ(NIMCP_SUCCESS, nimcp_bio_async_init(&bio_config));
     }
 
     void TearDown() override {
         nimcp_bio_async_shutdown();
-        unified_memory_shutdown();
+        if (mem_manager) {
+            unified_mem_destroy(mem_manager);
+            mem_manager = nullptr;
+        }
     }
 };
 

@@ -8,7 +8,14 @@
 
 #define PY_SSIZE_T_CLEAN
 #include <Python.h>
+#include "security/nimcp_security.h"
+#include "security/nimcp_blood_brain_barrier.h"
+
+#include "async/nimcp_bio_async.h"
+#include "async/nimcp_bio_router.h"
+
 #include "nimcp.h"
+#include "utils/logging/nimcp_logging.h"
 
 //=============================================================================
 // Brain Object Type
@@ -316,6 +323,8 @@ static struct PyModuleDef nimcp_module = {
 
 PyMODINIT_FUNC PyInit_nimcp(void) {
     PyObject* m;
+
+    LOG_MODULE_INFO("bindings.python.simple", "Initializing simple Python bindings for NIMCP");
 
     // Initialize NIMCP library
     nimcp_init();

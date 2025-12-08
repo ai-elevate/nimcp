@@ -1,0 +1,90 @@
+//=============================================================================
+// nimcp_brain_multimodal.h - Multimodal Processing and Integration
+//=============================================================================
+/**
+ * @file nimcp_brain_multimodal.h
+ * @brief Multimodal sensory processing and cognitive integration API
+ *
+ * This module provides the multimodal processing pipeline for brain inputs:
+ * - Visual, audio, speech feature extraction
+ * - Cross-modal integration with attention
+ * - Hierarchical brain regions processing
+ * - Cognitive assessments (confidence, ethics, salience)
+ * - Memory consolidation and decision formatting
+ *
+ * EXTRACTED FROM: nimcp_brain.c (SRP refactoring)
+ *
+ * @version 1.0.0
+ * @date 2025-12-08
+ */
+
+#ifndef NIMCP_BRAIN_MULTIMODAL_H
+#define NIMCP_BRAIN_MULTIMODAL_H
+
+#include "core/brain/nimcp_brain.h"
+#include "core/brain/nimcp_brain_internal.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+//=============================================================================
+// Multimodal Processing API
+//=============================================================================
+
+/**
+ * @brief Apply multihead attention to integrated features
+ *
+ * WHAT: Selective feature processing using cortical column-inspired attention
+ * WHY:  Focus on salient features, reduce computation, improve accuracy
+ * HOW:  Apply multihead attention if enabled, use guard clauses for clean code
+ *
+ * @param brain Brain handle with attention system
+ * @return true on success (or if attention skipped), false only on fatal error
+ */
+bool apply_attention_to_features(brain_t brain);
+
+/**
+ * @brief Process features through hierarchical brain regions
+ *
+ * WHAT: Process features through hierarchical brain regions
+ * WHY:  Enable specialized cortical processing with realistic layer dynamics
+ * HOW:  Feed features to brain regions, collect output from multiple regions
+ *
+ * @param brain Brain instance with brain_regions module
+ * @return true on success or if brain_regions disabled, false on fatal error
+ */
+bool process_brain_regions(brain_t brain);
+
+/**
+ * @brief Process multi-modal input through unified cognitive architecture
+ *
+ * WHAT: Process multi-modal input through unified cognitive architecture
+ * WHY:  Enable coordinated multi-modal perception and cognition
+ * HOW:  Sensory -> Integration -> Neural -> Cognitive -> Output
+ *
+ * ARCHITECTURE:
+ * 1. Sensory stage: Extract features from visual/audio/direct
+ * 2. Integration: Fuse multi-modal features
+ * 3. Neural processing: Feed to network with STDP/glial/oscillations
+ * 4. Cognitive processing: Introspection/ethics/salience/curiosity
+ * 5. Output integration: Consolidate and extract final decision
+ *
+ * COMPLEXITY: O(sensory + neural + cognitive)
+ * PERFORMANCE: ~10-50ms typical (medium brain + camera + audio)
+ * THREAD SAFETY: Not thread-safe (modifies brain state)
+ *
+ * @param brain Brain handle (required, must support multi-modal)
+ * @param input Multi-modal input bundle (required, at least one modality)
+ * @param output Pre-allocated output structure (required)
+ * @return true on success, false on failure
+ */
+bool brain_process_multimodal(brain_t brain,
+                              const brain_multimodal_input_t* input,
+                              brain_multimodal_output_t* output);
+
+#ifdef __cplusplus
+}
+#endif
+
+#endif // NIMCP_BRAIN_MULTIMODAL_H

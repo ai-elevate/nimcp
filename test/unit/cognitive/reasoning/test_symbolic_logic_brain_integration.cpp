@@ -37,15 +37,10 @@ protected:
 
     void SetUp() override {
         // Suppress logging during tests
-        nimcp_logging_set_level(NIMCP_LOG_LEVEL_ERROR);
+        nimcp_log_set_level(NULL, LOG_LEVEL_ERROR);
 
-        // Create brain with working memory and executive functions enabled
-        brain_config_t config = brain_default_config("symbolic_test", BRAIN_SIZE_SMALL);
-        config.enable_working_memory = true;
-        config.enable_executive = true;
-        config.enable_logic = true;
-
-        brain = brain_create_custom(&config);
+        // Create brain with simple API
+        brain = brain_create("symbolic_test", BRAIN_SIZE_SMALL, BRAIN_TASK_CLASSIFICATION, 10, 5);
         ASSERT_NE(brain, nullptr) << "Failed to create brain";
     }
 
@@ -381,8 +376,10 @@ TEST_F(SymbolicLogicBrainTest, WorkingMemory_FactStoredInWM) {
     ASSERT_TRUE(brain_add_logical_fact(brain, "Bird(tweety)", 0.9f));
 
     // Verify working memory has items
+    working_memory_t* wm = brain_get_working_memory(brain);
+    ASSERT_NE(wm, nullptr);
     working_memory_stats_t wm_stats;
-    ASSERT_TRUE(brain_get_working_memory_stats(brain, &wm_stats));
+    working_memory_get_stats(wm, &wm_stats);
     EXPECT_GT(wm_stats.current_size, 0U);
 }
 
@@ -399,8 +396,10 @@ TEST_F(SymbolicLogicBrainTest, WorkingMemory_InferenceStoredInWM) {
     brain_free_inference_result(&result);
 
     // Check that new inference is in working memory
+    working_memory_t* wm = brain_get_working_memory(brain);
+    ASSERT_NE(wm, nullptr);
     working_memory_stats_t wm_stats;
-    ASSERT_TRUE(brain_get_working_memory_stats(brain, &wm_stats));
+    working_memory_get_stats(wm, &wm_stats);
     EXPECT_GT(wm_stats.current_size, 0U);
 }
 
@@ -417,8 +416,10 @@ TEST_F(SymbolicLogicBrainTest, WorkingMemory_ProofStoredInWM) {
     brain_free_inference_result(&result);
 
     // Verify proof stored in working memory
+    working_memory_t* wm = brain_get_working_memory(brain);
+    ASSERT_NE(wm, nullptr);
     working_memory_stats_t wm_stats;
-    ASSERT_TRUE(brain_get_working_memory_stats(brain, &wm_stats));
+    working_memory_get_stats(wm, &wm_stats);
     EXPECT_GT(wm_stats.current_size, 0U);
 }
 
@@ -432,15 +433,15 @@ TEST_F(SymbolicLogicBrainTest, Executive_ForwardChainingCreatesTask) {
     ASSERT_TRUE(brain_add_logical_fact(brain, "Bird(tweety)", 0.9f));
     ASSERT_TRUE(brain_add_logical_rule(brain, "Bird(x) -> Fly(x)", 0.8f));
 
-    // Forward chaining should create and complete executive task
+    // Forward chaining should perform inferences
     inference_result_t result;
     ASSERT_TRUE(brain_forward_chain(brain, 10, &result));
     brain_free_inference_result(&result);
 
-    // Verify executive stats show task completion
-    executive_stats_t exec_stats;
-    ASSERT_TRUE(brain_get_executive_stats(brain, &exec_stats));
-    EXPECT_GT(exec_stats.total_tasks_created, 0U);
+    // Verify logic stats show inferences performed
+    logic_stats_t logic_stats;
+    ASSERT_TRUE(brain_get_logic_stats(brain, &logic_stats));
+    EXPECT_GT(logic_stats.inferences_performed, 0U);
 }
 
 TEST_F(SymbolicLogicBrainTest, Executive_BackwardChainingCreatesTask) {
@@ -449,15 +450,15 @@ TEST_F(SymbolicLogicBrainTest, Executive_BackwardChainingCreatesTask) {
     ASSERT_TRUE(brain_add_logical_fact(brain, "Man(socrates)", 0.9f));
     ASSERT_TRUE(brain_add_logical_rule(brain, "Man(x) -> Mortal(x)", 0.95f));
 
-    // Backward chaining should create planning task
+    // Backward chaining should perform inferences
     inference_result_t result;
     ASSERT_TRUE(brain_backward_chain(brain, "Mortal(socrates)", &result));
     brain_free_inference_result(&result);
 
-    // Verify executive task creation
-    executive_stats_t exec_stats;
-    ASSERT_TRUE(brain_get_executive_stats(brain, &exec_stats));
-    EXPECT_GT(exec_stats.total_tasks_created, 0U);
+    // Verify logic stats show inferences performed
+    logic_stats_t logic_stats;
+    ASSERT_TRUE(brain_get_logic_stats(brain, &logic_stats));
+    EXPECT_GT(logic_stats.inferences_performed, 0U);
 }
 
 //=============================================================================

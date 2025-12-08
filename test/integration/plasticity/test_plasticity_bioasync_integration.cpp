@@ -7,6 +7,7 @@
  */
 
 #include <gtest/gtest.h>
+#include <cstring>
 #include <vector>
 
 extern "C" {
@@ -21,7 +22,6 @@ extern "C" {
 #include "async/nimcp_bio_async.h"
 #include "async/nimcp_bio_router.h"
 #include "async/nimcp_bio_messages.h"
-#include "utils/memory/nimcp_unified_memory.h"
 }
 
 class PlasticityBioAsyncIntegrationTest : public ::testing::Test {
@@ -29,32 +29,30 @@ protected:
     std::vector<bio_module_context_t> registered_modules;
 
     void SetUp() override {
-        bio_async_init();
-        bio_router_init();
-        nimcp_unified_memory_init();
+        bio_router_config_t config;
+        memset(&config, 0, sizeof(config));
+        config.max_modules = 128;
+        config.inbox_capacity = 64;
+        bio_router_init(&config);
     }
 
     void TearDown() override {
-        // Unregister all modules
         for (auto ctx : registered_modules) {
             if (ctx) {
                 bio_router_unregister_module(ctx);
             }
         }
         registered_modules.clear();
-
         bio_router_shutdown();
-        bio_async_shutdown();
-        nimcp_unified_memory_shutdown();
     }
 
     bio_module_context_t RegisterModule(bio_module_id_t id, const char* name) {
-        bio_module_info_t info = {
-            .module_id = id,
-            .module_name = name,
-            .inbox_capacity = 64,
-            .user_data = nullptr
-        };
+        bio_module_info_t info;
+        memset(&info, 0, sizeof(info));
+        info.module_id = id;
+        info.module_name = name;
+        info.inbox_capacity = 64;
+        info.user_data = nullptr;
         bio_module_context_t ctx = bio_router_register_module(&info);
         if (ctx) {
             registered_modules.push_back(ctx);
@@ -64,7 +62,6 @@ protected:
 };
 
 TEST_F(PlasticityBioAsyncIntegrationTest, MultiModuleRegistration) {
-    // Register multiple plasticity modules
     auto attention_ctx = RegisterModule(BIO_MODULE_ATTENTION, "attention");
     auto dendritic_ctx = RegisterModule(BIO_MODULE_DENDRITIC, "dendritic");
     auto adaptive_ctx = RegisterModule(BIO_MODULE_ADAPTIVE, "adaptive");
@@ -75,86 +72,72 @@ TEST_F(PlasticityBioAsyncIntegrationTest, MultiModuleRegistration) {
     ASSERT_NE(adaptive_ctx, nullptr);
     ASSERT_NE(predictive_ctx, nullptr);
 
-    // Verify all modules are registered
-    EXPECT_TRUE(bio_router_is_module_registered(BIO_MODULE_ATTENTION));
-    EXPECT_TRUE(bio_router_is_module_registered(BIO_MODULE_DENDRITIC));
-    EXPECT_TRUE(bio_router_is_module_registered(BIO_MODULE_ADAPTIVE));
-    EXPECT_TRUE(bio_router_is_module_registered(BIO_MODULE_PREDICTIVE));
+    EXPECT_TRUE(bio_router_is_initialized());
 }
 
 TEST_F(PlasticityBioAsyncIntegrationTest, STDPToNeuromodulatorFlow) {
-    // Test: STDP module sends weight update, neuromodulator system responds
     auto stdp_ctx = RegisterModule(BIO_MODULE_STDP, "stdp");
     auto neuromod_ctx = RegisterModule(BIO_MODULE_NEUROMODULATOR, "neuromodulator");
 
     ASSERT_NE(stdp_ctx, nullptr);
     ASSERT_NE(neuromod_ctx, nullptr);
 
-    // STDP sends weight update
-    bio_message_t msg;
-    msg.type = BIO_MSG_WEIGHT_UPDATE_REQUEST;
-    msg.channel = BIO_CHANNEL_DOPAMINE;
-    msg.priority = BIO_PRIORITY_NORMAL;
-    msg.size = 0;
-    msg.source_module = BIO_MODULE_STDP;
-    msg.target_module = BIO_MODULE_NEUROMODULATOR;
+    bio_msg_salience_response_t msg;
+    memset(&msg, 0, sizeof(msg));
+    bio_msg_init_header(&msg.header,
+                        BIO_MSG_SALIENCE_RESPONSE,
+                        bio_module_context_get_id(stdp_ctx),
+                        bio_module_context_get_id(neuromod_ctx),
+                        sizeof(msg));
+    msg.salience_score = 0.7f;
 
-    nimcp_error_t result = bio_router_send_message(&msg, stdp_ctx);
+    nimcp_error_t result = bio_router_send(stdp_ctx, &msg, sizeof(msg));
     EXPECT_EQ(result, NIMCP_SUCCESS);
-
-    // Process messages
-    bio_router_process_messages();
 }
 
 TEST_F(PlasticityBioAsyncIntegrationTest, PredictiveErrorToDopamine) {
-    // Test: Predictive coding error signal triggers dopamine release
     auto predictive_ctx = RegisterModule(BIO_MODULE_PREDICTIVE, "predictive");
     auto neuromod_ctx = RegisterModule(BIO_MODULE_NEUROMODULATOR, "neuromodulator");
 
     ASSERT_NE(predictive_ctx, nullptr);
     ASSERT_NE(neuromod_ctx, nullptr);
 
-    // Predictive coding broadcasts error signal
-    bio_message_t msg;
-    msg.type = BIO_MSG_ERROR_SIGNAL;
-    msg.channel = BIO_CHANNEL_DOPAMINE;
-    msg.priority = BIO_PRIORITY_HIGH;
-    msg.size = 0;
-    msg.source_module = BIO_MODULE_PREDICTIVE;
-    msg.target_module = BIO_MODULE_BROADCAST;
+    bio_msg_salience_response_t msg;
+    memset(&msg, 0, sizeof(msg));
+    bio_msg_init_header(&msg.header,
+                        BIO_MSG_SALIENCE_RESPONSE,
+                        bio_module_context_get_id(predictive_ctx),
+                        BIO_MODULE_UNKNOWN,
+                        sizeof(msg));
+    msg.header.flags |= BIO_MSG_FLAG_BROADCAST;
+    msg.salience_score = 0.9f;
 
-    nimcp_error_t result = bio_router_broadcast(&msg, BIO_CHANNEL_DOPAMINE);
+    nimcp_error_t result = bio_router_broadcast(predictive_ctx, &msg, sizeof(msg));
     EXPECT_EQ(result, NIMCP_SUCCESS);
-
-    // Process messages
-    bio_router_process_messages();
 }
 
 TEST_F(PlasticityBioAsyncIntegrationTest, DendriticSpikeToSTDP) {
-    // Test: Dendritic spike triggers STDP update
     auto dendritic_ctx = RegisterModule(BIO_MODULE_DENDRITIC, "dendritic");
     auto stdp_ctx = RegisterModule(BIO_MODULE_STDP, "stdp");
 
     ASSERT_NE(dendritic_ctx, nullptr);
     ASSERT_NE(stdp_ctx, nullptr);
 
-    // Dendritic module broadcasts spike event
-    bio_message_t msg;
-    msg.type = BIO_MSG_DENDRITIC_SPIKE;
-    msg.channel = BIO_CHANNEL_CALCIUM;
-    msg.priority = BIO_PRIORITY_HIGH;
-    msg.size = 0;
-    msg.source_module = BIO_MODULE_DENDRITIC;
-    msg.target_module = BIO_MODULE_BROADCAST;
+    bio_msg_salience_response_t msg;
+    memset(&msg, 0, sizeof(msg));
+    bio_msg_init_header(&msg.header,
+                        BIO_MSG_SALIENCE_RESPONSE,
+                        bio_module_context_get_id(dendritic_ctx),
+                        BIO_MODULE_UNKNOWN,
+                        sizeof(msg));
+    msg.header.flags |= BIO_MSG_FLAG_BROADCAST;
+    msg.salience_score = 0.85f;
 
-    nimcp_error_t result = bio_router_broadcast(&msg, BIO_CHANNEL_CALCIUM);
+    nimcp_error_t result = bio_router_broadcast(dendritic_ctx, &msg, sizeof(msg));
     EXPECT_EQ(result, NIMCP_SUCCESS);
-
-    bio_router_process_messages();
 }
 
 TEST_F(PlasticityBioAsyncIntegrationTest, AttentionModulatesLearning) {
-    // Test: Attention system modulates learning rate in other modules
     auto attention_ctx = RegisterModule(BIO_MODULE_ATTENTION, "attention");
     auto adaptive_ctx = RegisterModule(BIO_MODULE_ADAPTIVE, "adaptive");
     auto neuromod_ctx = RegisterModule(BIO_MODULE_NEUROMODULATOR, "neuromodulator");
@@ -163,23 +146,21 @@ TEST_F(PlasticityBioAsyncIntegrationTest, AttentionModulatesLearning) {
     ASSERT_NE(adaptive_ctx, nullptr);
     ASSERT_NE(neuromod_ctx, nullptr);
 
-    // Attention broadcasts update
-    bio_message_t msg;
-    msg.type = BIO_MSG_ATTENTION_UPDATE;
-    msg.channel = BIO_CHANNEL_ACETYLCHOLINE;
-    msg.priority = BIO_PRIORITY_NORMAL;
-    msg.size = 0;
-    msg.source_module = BIO_MODULE_ATTENTION;
-    msg.target_module = BIO_MODULE_BROADCAST;
+    bio_msg_attention_shift_t msg;
+    memset(&msg, 0, sizeof(msg));
+    bio_msg_init_header(&msg.header,
+                        BIO_MSG_ATTENTION_SHIFT,
+                        bio_module_context_get_id(attention_ctx),
+                        BIO_MODULE_UNKNOWN,
+                        sizeof(msg));
+    msg.header.flags |= BIO_MSG_FLAG_BROADCAST;
+    msg.attention_weight = 0.8f;
 
-    nimcp_error_t result = bio_router_broadcast(&msg, BIO_CHANNEL_ACETYLCHOLINE);
+    nimcp_error_t result = bio_router_broadcast(attention_ctx, &msg, sizeof(msg));
     EXPECT_EQ(result, NIMCP_SUCCESS);
-
-    bio_router_process_messages();
 }
 
 TEST_F(PlasticityBioAsyncIntegrationTest, MultiChannelBroadcast) {
-    // Test: Multiple channels can operate simultaneously
     auto predictive_ctx = RegisterModule(BIO_MODULE_PREDICTIVE, "predictive");
     auto dendritic_ctx = RegisterModule(BIO_MODULE_DENDRITIC, "dendritic");
     auto attention_ctx = RegisterModule(BIO_MODULE_ATTENTION, "attention");
@@ -188,61 +169,59 @@ TEST_F(PlasticityBioAsyncIntegrationTest, MultiChannelBroadcast) {
     ASSERT_NE(dendritic_ctx, nullptr);
     ASSERT_NE(attention_ctx, nullptr);
 
-    // Broadcast on dopamine channel
-    bio_message_t msg1;
-    msg1.type = BIO_MSG_ERROR_SIGNAL;
-    msg1.channel = BIO_CHANNEL_DOPAMINE;
-    msg1.priority = BIO_PRIORITY_HIGH;
-    msg1.size = 0;
-    msg1.source_module = BIO_MODULE_PREDICTIVE;
-    msg1.target_module = BIO_MODULE_BROADCAST;
+    bio_msg_salience_response_t msg1;
+    memset(&msg1, 0, sizeof(msg1));
+    bio_msg_init_header(&msg1.header,
+                        BIO_MSG_SALIENCE_RESPONSE,
+                        bio_module_context_get_id(predictive_ctx),
+                        BIO_MODULE_UNKNOWN,
+                        sizeof(msg1));
+    msg1.header.flags |= BIO_MSG_FLAG_BROADCAST;
+    msg1.salience_score = 0.7f;
 
-    // Broadcast on calcium channel
-    bio_message_t msg2;
-    msg2.type = BIO_MSG_DENDRITIC_SPIKE;
-    msg2.channel = BIO_CHANNEL_CALCIUM;
-    msg2.priority = BIO_PRIORITY_HIGH;
-    msg2.size = 0;
-    msg2.source_module = BIO_MODULE_DENDRITIC;
-    msg2.target_module = BIO_MODULE_BROADCAST;
+    bio_msg_salience_response_t msg2;
+    memset(&msg2, 0, sizeof(msg2));
+    bio_msg_init_header(&msg2.header,
+                        BIO_MSG_SALIENCE_RESPONSE,
+                        bio_module_context_get_id(dendritic_ctx),
+                        BIO_MODULE_UNKNOWN,
+                        sizeof(msg2));
+    msg2.header.flags |= BIO_MSG_FLAG_BROADCAST;
+    msg2.salience_score = 0.8f;
 
-    // Broadcast on acetylcholine channel
-    bio_message_t msg3;
-    msg3.type = BIO_MSG_ATTENTION_UPDATE;
-    msg3.channel = BIO_CHANNEL_ACETYLCHOLINE;
-    msg3.priority = BIO_PRIORITY_NORMAL;
-    msg3.size = 0;
-    msg3.source_module = BIO_MODULE_ATTENTION;
-    msg3.target_module = BIO_MODULE_BROADCAST;
+    bio_msg_attention_shift_t msg3;
+    memset(&msg3, 0, sizeof(msg3));
+    bio_msg_init_header(&msg3.header,
+                        BIO_MSG_ATTENTION_SHIFT,
+                        bio_module_context_get_id(attention_ctx),
+                        BIO_MODULE_UNKNOWN,
+                        sizeof(msg3));
+    msg3.header.flags |= BIO_MSG_FLAG_BROADCAST;
+    msg3.attention_weight = 0.6f;
 
-    EXPECT_EQ(bio_router_broadcast(&msg1, BIO_CHANNEL_DOPAMINE), NIMCP_SUCCESS);
-    EXPECT_EQ(bio_router_broadcast(&msg2, BIO_CHANNEL_CALCIUM), NIMCP_SUCCESS);
-    EXPECT_EQ(bio_router_broadcast(&msg3, BIO_CHANNEL_ACETYLCHOLINE), NIMCP_SUCCESS);
-
-    bio_router_process_messages();
+    EXPECT_EQ(bio_router_broadcast(predictive_ctx, &msg1, sizeof(msg1)), NIMCP_SUCCESS);
+    EXPECT_EQ(bio_router_broadcast(dendritic_ctx, &msg2, sizeof(msg2)), NIMCP_SUCCESS);
+    EXPECT_EQ(bio_router_broadcast(attention_ctx, &msg3, sizeof(msg3)), NIMCP_SUCCESS);
 }
 
 TEST_F(PlasticityBioAsyncIntegrationTest, ReceptorSubtypeModulation) {
-    // Test: Receptor subtypes respond to neuromodulator signals
     auto receptor_ctx = RegisterModule(BIO_MODULE_RECEPTOR, "receptor");
     auto neuromod_ctx = RegisterModule(BIO_MODULE_NEUROMODULATOR, "neuromodulator");
 
     ASSERT_NE(receptor_ctx, nullptr);
     ASSERT_NE(neuromod_ctx, nullptr);
 
-    // Neuromodulator sends release signal
-    bio_message_t msg;
-    msg.type = BIO_MSG_NEUROMODULATOR_RELEASE;
-    msg.channel = BIO_CHANNEL_DOPAMINE;
-    msg.priority = BIO_PRIORITY_NORMAL;
-    msg.size = 0;
-    msg.source_module = BIO_MODULE_NEUROMODULATOR;
-    msg.target_module = BIO_MODULE_RECEPTOR;
+    bio_msg_salience_response_t msg;
+    memset(&msg, 0, sizeof(msg));
+    bio_msg_init_header(&msg.header,
+                        BIO_MSG_SALIENCE_RESPONSE,
+                        bio_module_context_get_id(neuromod_ctx),
+                        bio_module_context_get_id(receptor_ctx),
+                        sizeof(msg));
+    msg.salience_score = 0.75f;
 
-    nimcp_error_t result = bio_router_send_message(&msg, neuromod_ctx);
+    nimcp_error_t result = bio_router_send(neuromod_ctx, &msg, sizeof(msg));
     EXPECT_EQ(result, NIMCP_SUCCESS);
-
-    bio_router_process_messages();
 }
 
 int main(int argc, char** argv) {

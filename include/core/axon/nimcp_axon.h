@@ -1094,6 +1094,37 @@ bool axon_spike_queue_pop(axon_spike_queue_t* queue,
  */
 uint32_t axon_spike_queue_size(const axon_spike_queue_t* queue);
 
+/**
+ * @brief Spike queue statistics structure
+ *
+ * WHAT: Performance metrics for spike queue
+ * WHY:  Monitor queue health and identify bottlenecks
+ * HOW:  Tracked during push/pop operations
+ */
+typedef struct {
+    uint64_t total_pushed;          /**< Total spikes enqueued */
+    uint64_t total_popped;          /**< Total spikes dequeued */
+    uint64_t total_dropped_full;    /**< Dropped due to full queue */
+    uint64_t total_dropped_invalid; /**< Dropped due to invalid data */
+    uint64_t current_size;          /**< Current queue size */
+    uint64_t peak_size;             /**< Maximum queue size reached */
+    double mean_latency_us;         /**< Mean spike propagation latency (us) */
+    uint64_t latency_samples;       /**< Number of latency samples */
+} axon_spike_queue_stats_t;
+
+/**
+ * @brief Get spike queue statistics
+ *
+ * WHAT: Retrieve performance metrics from spike queue
+ * WHY:  Monitor queue health and optimize capacity
+ * HOW:  Thread-safe copy of statistics structure
+ *
+ * @param queue Queue to query
+ * @param stats Output statistics structure
+ */
+void axon_spike_queue_get_stats(const axon_spike_queue_t* queue,
+                                 axon_spike_queue_stats_t* stats);
+
 //=============================================================================
 // UTILITY FUNCTIONS
 //=============================================================================

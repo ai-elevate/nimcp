@@ -21,6 +21,9 @@
  */
 
 #include "core/brain/biological/nimcp_brain_biological.h"
+#include "security/nimcp_security.h"
+#include "security/nimcp_blood_brain_barrier.h"
+
 #include <stdio.h>
 #include <stdlib.h>
 

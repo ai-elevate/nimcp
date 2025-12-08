@@ -33,11 +33,14 @@
 #include "async/nimcp_bio_messages.h"
 #include <math.h>
 #include <string.h>
+#include <ctype.h>
+#include <stdbool.h>
 #include "plasticity/adaptive/nimcp_adaptive.h"
 #include "core/neuralnet/nimcp_neuralnet.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/time/nimcp_time.h"
 #include "security/nimcp_security.h"
+#include "security/nimcp_blood_brain_barrier.h"
 #include "utils/logging/nimcp_logging.h"
 
 #define LOG_MODULE "core_brain_learning"
@@ -48,6 +51,9 @@ extern void set_error(const char* format, ...);
 extern void brain_clear_error(void);
 extern bool ensure_writable_network(brain_t brain);
 extern void clear_cache(brain_t brain);
+
+// Import BBB global system (defined in nimcp_brain_init.c)
+extern bbb_system_t nimcp_bbb_get_global_system(void);
 
 //=============================================================================
 // Internal Helper Functions
@@ -244,6 +250,83 @@ float brain_learn_example(brain_t brain, const float* features, uint32_t num_fea
         set_error("Feature count mismatch: expected %u, got %u", brain->config.num_inputs,
                   num_features);
         return -1.0f;
+    }
+
+    // ========================================================================
+    // SECURITY VALIDATION: Check for NaN/Inf in features
+    // ========================================================================
+    // WHAT: Validate all feature values for NaN/Inf before processing
+    // WHY:  NaN/Inf can indicate adversarial attacks or corrupted data
+    // HOW:  Check each feature value and reject if invalid
+    for (uint32_t i = 0; i < num_features; i++) {
+        if (isnan(features[i]) || isinf(features[i])) {
+            set_error("Invalid feature value at index %u: NaN or Inf detected", i);
+            LOG_WARN("Security: Rejected learning example with NaN/Inf feature[%u]", i);
+            return -1.0f;
+        }
+    }
+
+    // ========================================================================
+    // SECURITY VALIDATION: Validate label for malicious patterns
+    // ========================================================================
+    // WHAT: Check label string for SQL injection, format strings, code injection
+    // WHY:  Labels are used in logging and may be stored - must be sanitized
+    // HOW:  Use Blood-Brain Barrier (BBB) validation to detect malicious patterns
+    //
+    // NOTE: We use BBB validation here because it checks for SQL injection,
+    //       format strings, XSS, and other code injection attacks. The
+    //       nimcp_security_validate_input is designed for LLM prompt injection.
+    //
+    // FALLBACK: If BBB is not initialized, perform basic pattern matching
+    bbb_system_t bbb = nimcp_bbb_get_global_system();
+    if (bbb && bbb_system_is_enabled(bbb)) {
+        bbb_validation_result_t bbb_result;
+        if (!bbb_validate_string(bbb, label, &bbb_result)) {
+            set_error("Invalid label: %s (threat: %s, severity: %s)",
+                      bbb_result.reason,
+                      bbb_threat_type_name(bbb_result.threat),
+                      bbb_severity_name(bbb_result.severity));
+            LOG_WARN("Security: Rejected learning example with malicious label: %s", label);
+            return -1.0f;
+        }
+    } else {
+        // Fallback validation when BBB is not available
+        // Check for common malicious patterns
+        const char* dangerous_patterns[] = {
+            "'; drop ", "'; delete ", "'; insert ", "'; update ",
+            "; drop ", "; delete ", "; insert ", "; update ",
+            "%n", "%s%s%s", "%x%x%x", "%p%p%p",
+            "<script", "javascript:", "onerror=",
+            NULL
+        };
+
+        // Convert label to lowercase for case-insensitive matching
+        size_t label_len = strlen(label);
+        char* label_lower = nimcp_malloc(label_len + 1);
+        if (!label_lower) {
+            set_error("Memory allocation failed for security validation");
+            return -1.0f;
+        }
+
+        for (size_t i = 0; i < label_len; i++) {
+            label_lower[i] = tolower((unsigned char)label[i]);
+        }
+        label_lower[label_len] = '\0';
+
+        bool found_threat = false;
+        for (int i = 0; dangerous_patterns[i] != NULL && !found_threat; i++) {
+            if (strstr(label_lower, dangerous_patterns[i])) {
+                found_threat = true;
+            }
+        }
+
+        nimcp_free(label_lower);
+
+        if (found_threat) {
+            set_error("Invalid label: malicious pattern detected");
+            LOG_WARN("Security: Rejected learning example with malicious label: %s", label);
+            return -1.0f;
+        }
     }
 
     // Phase 2: Ensure network is writable (trigger COW if needed)
@@ -1059,4 +1142,23 @@ float brain_learn_from_llm(brain_t brain, const float* input, uint32_t num_featu
 
     brain_clear_error();
     return loss;
+}
+
+
+//=============================================================================
+// Async Learning (stub implementation)
+//=============================================================================
+
+nimcp_future_t nimcp_brain_learn_async(brain_t brain, const float* features,
+                                        uint32_t num_features, const char* label,
+                                        float confidence)
+{
+    // Stub: Async learning not yet implemented
+    // Return NULL to indicate async not available
+    (void)brain;
+    (void)features;
+    (void)num_features;
+    (void)label;
+    (void)confidence;
+    return NULL;
 }

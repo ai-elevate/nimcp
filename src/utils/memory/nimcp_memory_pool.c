@@ -48,6 +48,9 @@
  */
 
 #include "utils/memory/nimcp_memory_pool.h"
+#include "security/nimcp_security.h"
+#include "security/nimcp_blood_brain_barrier.h"
+
 #include "async/nimcp_bio_async.h"
 #include "async/nimcp_bio_messages.h"
 #include "utils/memory/nimcp_memory.h"
@@ -209,8 +212,8 @@ NIMCP_EXPORT memory_pool_t memory_pool_create(const memory_pool_config_t* config
     if (alignment > MAX_ALIGNMENT) return NULL;
     if (!is_power_of_2(alignment)) return NULL;
 
-    // Allocate pool structure
-    struct memory_pool_struct* pool = calloc(1, sizeof(struct memory_pool_struct));
+    // Allocate pool structure using NIMCP memory
+    struct memory_pool_struct* pool = nimcp_calloc(1, sizeof(struct memory_pool_struct));
     if (!pool) return NULL;
 
     // Initialize immutable configuration
@@ -228,7 +231,7 @@ NIMCP_EXPORT memory_pool_t memory_pool_create(const memory_pool_config_t* config
     // Allocate large memory region
     pool->memory_region = nimcp_aligned_malloc(pool->total_size, alignment);
     if (!pool->memory_region) {
-        free(pool);
+        nimcp_free(pool);
         return NULL;
     }
 
@@ -260,7 +263,7 @@ NIMCP_EXPORT memory_pool_t memory_pool_create(const memory_pool_config_t* config
     // Initialize mutex
     if (nimcp_platform_mutex_init(&pool->mutex, false) != 0) {
         nimcp_aligned_free(pool->memory_region);
-        free(pool);
+        nimcp_free(pool);
         return NULL;
     }
 
@@ -300,9 +303,9 @@ NIMCP_EXPORT void memory_pool_destroy(memory_pool_t pool) {
     // Free memory region
     nimcp_aligned_free(p->memory_region);
 
-    // Invalidate magic and free pool
+    // Invalidate magic and free pool using NIMCP memory
     p->magic = 0;
-    free(p);
+    nimcp_free(p);
 }
 
 /**

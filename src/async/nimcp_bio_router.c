@@ -19,7 +19,11 @@
 #define LOG_MODULE "bio_router"
 
 #include "async/nimcp_bio_router.h"
+#include "async/nimcp_bio_async.h"
+#include "async/nimcp_bio_router.h"
+
 #include "async/nimcp_bio_messages.h"
+#include "security/nimcp_blood_brain_barrier.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/memory/nimcp_unified_memory.h"
 #include "utils/logging/nimcp_logging.h"
@@ -30,6 +34,9 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
+
+// Global BBB system accessor (defined in nimcp_brain_init.c)
+extern bbb_system_t nimcp_bbb_get_global_system(void);
 
 /*=============================================================================
  * CONSTANTS
@@ -797,6 +804,27 @@ nimcp_error_t bio_router_send(bio_module_context_t ctx,
     LOG_TRACE("Routing message type=0x%04X from=%u to=%u size=%zu",
               header->type, header->source_module, target_id, msg_size);
 
+    // BBB Security Gate: Validate message content before dispatch
+    // WHAT: Apply Blood-Brain Barrier validation to all messages
+    // WHY:  Prevent malicious or malformed messages from affecting modules
+    // HOW:  Use global BBB system to validate raw message bytes
+    bbb_system_t bbb = nimcp_bbb_get_global_system();
+    if (bbb && bbb_system_is_enabled(bbb)) {
+        bbb_validation_result_t bbb_result;
+        if (!bbb_validate_input(bbb, msg, msg_size, &bbb_result)) {
+            LOG_WARN("BBB validation failed for message type=0x%04X from=%u: threat=%d severity=%d",
+                     header->type, header->source_module, bbb_result.threat, bbb_result.severity);
+
+            // Update dropped message stats
+            nimcp_platform_mutex_lock(&g_router->stats_mutex);
+            g_router->stats.messages_dropped++;
+            nimcp_platform_mutex_unlock(&g_router->stats_mutex);
+
+            return NIMCP_ERROR_PERMISSION_DENIED;
+        }
+        LOG_TRACE("BBB validation passed for message type=0x%04X", header->type);
+    }
+
     nimcp_platform_mutex_lock(&g_router->modules_mutex);
 
     nimcp_error_t result = NIMCP_SUCCESS;
@@ -897,6 +925,27 @@ static nimcp_error_t bio_router_send_with_promise(bio_module_context_t ctx,
 
     LOG_TRACE("Routing message (with promise) type=0x%04X from=%u to=%u size=%zu",
               header->type, header->source_module, target_id, msg_size);
+
+    // BBB Security Gate: Validate message content before dispatch
+    // WHAT: Apply Blood-Brain Barrier validation to all messages
+    // WHY:  Prevent malicious or malformed messages from affecting modules
+    // HOW:  Use global BBB system to validate raw message bytes
+    bbb_system_t bbb = nimcp_bbb_get_global_system();
+    if (bbb && bbb_system_is_enabled(bbb)) {
+        bbb_validation_result_t bbb_result;
+        if (!bbb_validate_input(bbb, msg, msg_size, &bbb_result)) {
+            LOG_WARN("BBB validation failed for async message type=0x%04X from=%u: threat=%d severity=%d",
+                     header->type, header->source_module, bbb_result.threat, bbb_result.severity);
+
+            // Update dropped message stats
+            nimcp_platform_mutex_lock(&g_router->stats_mutex);
+            g_router->stats.messages_dropped++;
+            nimcp_platform_mutex_unlock(&g_router->stats_mutex);
+
+            return NIMCP_ERROR_PERMISSION_DENIED;
+        }
+        LOG_TRACE("BBB validation passed for async message type=0x%04X", header->type);
+    }
 
     nimcp_platform_mutex_lock(&g_router->modules_mutex);
 

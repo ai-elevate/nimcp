@@ -21,6 +21,9 @@
  */
 
 #include "core/neuron_models/nimcp_two_compartment.h"
+#include "security/nimcp_security.h"
+#include "security/nimcp_blood_brain_barrier.h"
+
 #include "core/neuron_models/nimcp_neuron_model_internal.h"
 #include "utils/numerical/nimcp_integration.h"
 #include "utils/logging/nimcp_logging.h"

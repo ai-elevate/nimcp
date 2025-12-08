@@ -2067,6 +2067,16 @@ bool nimcp_security_validate_weight_change(
     float new_weight,
     float max_delta)
 {
+    // Guard: NaN/Inf validation - malformed values indicate attack/corruption
+    if (isnan(old_weight) || isinf(old_weight) ||
+        isnan(new_weight) || isinf(new_weight) ||
+        isnan(max_delta) || isinf(max_delta)) {
+        security_stats.threats_detected++;
+        LOG_WARN("Weight validation failed: NaN/Inf detected (old=%.3f, new=%.3f, max_delta=%.3f)",
+                 old_weight, new_weight, max_delta);
+        return false;
+    }
+
     // Guard: Invalid delta
     if (max_delta <= 0.0f) {
         return false;
@@ -2103,6 +2113,16 @@ bool nimcp_security_validate_neuromodulator_change(
     float new_level,
     float max_rate)
 {
+    // Guard: NaN/Inf validation - malformed values indicate attack/corruption
+    if (isnan(old_level) || isinf(old_level) ||
+        isnan(new_level) || isinf(new_level) ||
+        isnan(max_rate) || isinf(max_rate)) {
+        security_stats.threats_detected++;
+        LOG_WARN("Neuromodulator validation failed: NaN/Inf detected (old=%.3f, new=%.3f, max_rate=%.3f)",
+                 old_level, new_level, max_rate);
+        return false;
+    }
+
     // Guard: Invalid levels
     if (old_level < 0.0f || old_level > 1.0f ||
         new_level < 0.0f || new_level > 1.0f) {

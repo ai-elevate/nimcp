@@ -18,6 +18,9 @@
 #define LOG_MODULE "semantic_memory"
 
 #include "cognitive/memory/nimcp_semantic_memory.h"
+#include "security/nimcp_security.h"
+#include "security/nimcp_blood_brain_barrier.h"
+
 #include "nimcp.h"  // For NIMCP_ERROR_* codes
 #include "async/nimcp_bio_async.h"
 #include "async/nimcp_bio_router.h"

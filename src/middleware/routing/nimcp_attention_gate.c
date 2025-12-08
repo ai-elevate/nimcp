@@ -3,6 +3,9 @@
 //=============================================================================
 
 #include "middleware/routing/nimcp_attention_gate.h"
+#include "security/nimcp_security.h"
+#include "security/nimcp_blood_brain_barrier.h"
+
 #include "utils/memory/nimcp_memory.h"
 #include "utils/memory/nimcp_memory_pool.h"
 #include <string.h>

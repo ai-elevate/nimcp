@@ -10,6 +10,12 @@
  */
 
 #include "middleware/training/nimcp_brain_training_integration.h"
+#include "security/nimcp_security.h"
+#include "security/nimcp_blood_brain_barrier.h"
+
+#include "async/nimcp_bio_async.h"
+#include "async/nimcp_bio_router.h"
+
 #include "middleware/training/nimcp_training_plasticity_bridge.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/time/nimcp_time.h"
@@ -130,6 +136,9 @@ struct nimcp_brain_training_ctx {
     float cumulative_da;      /* For avg dopamine tracking */
     float cumulative_lr_mod;  /* For avg LR modulation tracking */
     uint64_t bio_update_count;
+
+    /* Training Callbacks integration (Phase TCB-1) */
+    tcb_context_t* callbacks;
 };
 
 /* ============================================================================
@@ -1842,6 +1851,13 @@ nimcp_result_t nimcp_brain_training_connect_plasticity_bridge(
 
     if (bridge) {
         LOG_INFO("Plasticity bridge connected to training integration");
+
+        /* If callbacks exist, wire them to plasticity bridge */
+        if (ctx->callbacks) {
+            tpb_connect_callbacks(bridge, ctx->callbacks);
+            tpb_register_plasticity_callbacks(bridge);
+            LOG_INFO("Auto-wired callbacks to plasticity bridge");
+        }
     } else {
         LOG_INFO("Plasticity bridge disconnected from training integration");
     }
@@ -2027,4 +2043,44 @@ nimcp_result_t nimcp_brain_training_step_biological(
     ctx->stats.total_batches++;
 
     return NIMCP_SUCCESS;
+}
+
+//=============================================================================
+// Training Callbacks Integration (Phase TCB-1)
+//=============================================================================
+
+nimcp_result_t nimcp_brain_training_create_callbacks(nimcp_brain_training_ctx_t* ctx)
+{
+    if (!ctx) {
+        return NIMCP_ERROR_INVALID_PARAM;
+    }
+
+    if (ctx->callbacks) {
+        LOG_WARNING("Callbacks already created");
+        return NIMCP_SUCCESS;
+    }
+
+    /* Create callbacks context */
+    ctx->callbacks = tcb_create(NULL);
+    if (!ctx->callbacks) {
+        LOG_ERROR("Failed to create callbacks context");
+        return NIMCP_ERROR_MEMORY;
+    }
+
+    /* If plasticity bridge is connected, wire it up */
+    if (ctx->plasticity_bridge) {
+        tpb_connect_callbacks(ctx->plasticity_bridge, ctx->callbacks);
+        tpb_register_plasticity_callbacks(ctx->plasticity_bridge);
+    }
+
+    LOG_INFO("Training callbacks created");
+    return NIMCP_SUCCESS;
+}
+
+tcb_context_t* nimcp_brain_training_get_callbacks(const nimcp_brain_training_ctx_t* ctx)
+{
+    if (!ctx) {
+        return NULL;
+    }
+    return ctx->callbacks;
 }

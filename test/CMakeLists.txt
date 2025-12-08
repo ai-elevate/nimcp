@@ -391,6 +391,25 @@ if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/integration/networking/protocol")
 endif()
 
 # ============================================================================
+# Neural Link Protocol Tests
+# ============================================================================
+
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/unit/networking/nlp")
+    message(STATUS "Adding Neural Link Protocol unit tests...")
+    add_subdirectory(unit/networking/nlp)
+endif()
+
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/integration/networking/nlp")
+    message(STATUS "Adding Neural Link Protocol integration tests...")
+    add_subdirectory(integration/networking/nlp)
+endif()
+
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/regression/networking/nlp")
+    message(STATUS "Adding Neural Link Protocol regression tests...")
+    add_subdirectory(regression/networking/nlp)
+endif()
+
+# ============================================================================
 # Networking Distributed Tests (Async API)
 # ============================================================================
 
@@ -667,6 +686,78 @@ endif()
 if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/regression/async")
     message(STATUS "Adding async regression tests...")
     add_subdirectory(regression/async)
+endif()
+
+# ============================================================================
+# Swarm Intelligence Tests (Phase SWARM-1: Drone Collective Intelligence)
+# ============================================================================
+# WHAT: Tests for swarm brain coordination system
+# WHY:  Verify distributed cognition, consensus, and emergence detection
+# HOW:  Unit tests for components, integration tests for multi-drone coordination
+
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/unit/swarm")
+    message(STATUS "Adding swarm unit tests...")
+    add_subdirectory(unit/swarm)
+endif()
+
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/integration/swarm")
+    message(STATUS "Adding swarm integration tests...")
+    add_subdirectory(integration/swarm)
+endif()
+
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/regression/swarm")
+    message(STATUS "Adding swarm regression tests...")
+    add_subdirectory(regression/swarm)
+endif()
+
+# ============================================================================
+# Platform Tier Tests (Portia Spider Foundation)
+# ============================================================================
+# WHAT: Tests for platform tier detection and configuration
+# WHY:  Verify correct resource adaptation across hardware tiers
+# HOW:  Unit tests for tier detection, integration tests for brain configuration
+
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/unit/utils/platform")
+    message(STATUS "Adding platform tier unit tests...")
+    add_subdirectory(unit/utils/platform)
+endif()
+
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/integration/utils/platform")
+    message(STATUS "Adding platform tier integration tests...")
+    add_subdirectory(integration/utils/platform)
+endif()
+
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/regression/utils/platform")
+    message(STATUS "Adding platform tier regression tests...")
+    add_subdirectory(regression/utils/platform)
+endif()
+
+# ============================================================================
+# Sparse Synapse Tests (Memory Optimization)
+# ============================================================================
+
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/unit/core/neuralnet")
+    message(STATUS "Adding sparse synapse unit tests...")
+    add_subdirectory(unit/core/neuralnet)
+endif()
+
+# ============================================================================
+# Portia Spider Tests (Graceful Degradation, Learning, Sensor Fusion)
+# ============================================================================
+
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/unit/portia")
+    message(STATUS "Adding portia spider unit tests...")
+    add_subdirectory(unit/portia)
+endif()
+
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/integration/portia")
+    message(STATUS "Adding portia spider integration tests...")
+    add_subdirectory(integration/portia)
+endif()
+
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/regression/portia")
+    message(STATUS "Adding portia spider regression tests...")
+    add_subdirectory(regression/portia)
 endif()
 
 # ============================================================================

@@ -8,6 +8,12 @@
  */
 
 #include "cognitive/reasoning/nimcp_symbolic_logic_brain_integration.h"
+#include "security/nimcp_security.h"
+#include "security/nimcp_blood_brain_barrier.h"
+
+#include "async/nimcp_bio_async.h"
+#include "async/nimcp_bio_router.h"
+
 #include "core/brain/nimcp_brain_internal.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/validation/nimcp_validate.h"

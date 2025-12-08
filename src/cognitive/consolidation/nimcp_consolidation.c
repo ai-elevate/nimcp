@@ -31,6 +31,9 @@
  */
 
 #include "cognitive/consolidation/nimcp_consolidation.h"
+#include "security/nimcp_security.h"
+#include "security/nimcp_blood_brain_barrier.h"
+
 #include "utils/memory/nimcp_unified_memory.h"
 #include <math.h>
 #include <stdlib.h>

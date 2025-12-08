@@ -18,6 +18,9 @@
  */
 
 #include "cognitive/fault_tolerance/nimcp_recovery_executive.h"
+#include "security/nimcp_security.h"
+#include "security/nimcp_blood_brain_barrier.h"
+
 #include "utils/fault_tolerance/nimcp_brain_recovery_integration.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"

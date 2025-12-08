@@ -3,6 +3,9 @@
 //=============================================================================
 
 #include "core/topology/nimcp_fractal_topology.h"
+#include "security/nimcp_security.h"
+#include "security/nimcp_blood_brain_barrier.h"
+
 #include "utils/memory/nimcp_unified_memory.h"
 #include "core/neuralnet/nimcp_neuralnet.h"
 #include "utils/containers/nimcp_graph.h"

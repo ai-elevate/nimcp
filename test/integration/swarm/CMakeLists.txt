@@ -1,0 +1,38 @@
+# ============================================================================
+# Swarm Integration Tests
+# ============================================================================
+
+# Test 1: Swarm Communication Integration
+add_test_binary(
+    test_swarm_communication_integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/test_swarm_communication_integration.cpp
+    integration
+)
+
+# Test 2: Swarm Workspace Integration
+add_test_binary(
+    test_swarm_workspace_integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/test_swarm_workspace_integration.cpp
+    integration
+)
+
+# Test 3: Swarm Consensus Integration
+add_test_binary(
+    test_swarm_consensus_integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/test_swarm_consensus_integration.cpp
+    integration
+)
+
+# Test 4: Swarm Brain Integration
+add_test_binary(
+    test_swarm_brain_integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/test_swarm_brain_integration.cpp
+    integration
+)
+
+# Test 5: Swarm Gateway Integration
+add_test_binary(
+    test_swarm_gateway_integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/test_swarm_gateway_integration.cpp
+    integration
+)

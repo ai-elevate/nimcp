@@ -7,6 +7,9 @@
  */
 
 #include "utils/thread/nimcp_deadlock_detector.h"
+#include "security/nimcp_security.h"
+#include "security/nimcp_blood_brain_barrier.h"
+
 #include "async/nimcp_bio_async.h"
 #include "async/nimcp_bio_messages.h"
 #include <stdio.h>
