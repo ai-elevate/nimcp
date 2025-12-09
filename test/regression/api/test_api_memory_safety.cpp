@@ -26,7 +26,7 @@
 class APIMemorySafetyTest : public ::testing::Test {
 protected:
     void SetUp() override {
-        ASSERT_EQ(nimcp_init(), NIMCP_OK);
+        ASSERT_EQ(nimcp_init(), NIMCP_SUCCESS);
     }
 
     void TearDown() override {
@@ -397,17 +397,17 @@ TEST_F(APIMemorySafetyTest, NullSafety_NetworkOperations) {
     float outputs[2];
 
     // NULL network handle
-    EXPECT_NE(nimcp_network_forward(nullptr, inputs, 5, outputs, 2), NIMCP_OK);
-    EXPECT_NE(nimcp_network_train(nullptr, inputs, 5, targets, 2), NIMCP_OK);
+    EXPECT_NE(nimcp_network_forward(nullptr, inputs, 5, outputs, 2), NIMCP_SUCCESS);
+    EXPECT_NE(nimcp_network_train(nullptr, inputs, 5, targets, 2), NIMCP_SUCCESS);
 
     nimcp_network_t network = nimcp_network_create(5, 2, 20, 0.01f);
     ASSERT_NE(network, nullptr);
 
     // NULL input/output arrays
-    EXPECT_NE(nimcp_network_forward(network, nullptr, 5, outputs, 2), NIMCP_OK);
-    EXPECT_NE(nimcp_network_forward(network, inputs, 5, nullptr, 2), NIMCP_OK);
-    EXPECT_NE(nimcp_network_train(network, nullptr, 5, targets, 2), NIMCP_OK);
-    EXPECT_NE(nimcp_network_train(network, inputs, 5, nullptr, 2), NIMCP_OK);
+    EXPECT_NE(nimcp_network_forward(network, nullptr, 5, outputs, 2), NIMCP_SUCCESS);
+    EXPECT_NE(nimcp_network_forward(network, inputs, 5, nullptr, 2), NIMCP_SUCCESS);
+    EXPECT_NE(nimcp_network_train(network, nullptr, 5, targets, 2), NIMCP_SUCCESS);
+    EXPECT_NE(nimcp_network_train(network, inputs, 5, nullptr, 2), NIMCP_SUCCESS);
 
     nimcp_network_destroy(network);
 }
@@ -417,16 +417,16 @@ TEST_F(APIMemorySafetyTest, NullSafety_EthicsOperations) {
     float score;
 
     // NULL ethics handle
-    EXPECT_NE(nimcp_ethics_check(nullptr, situation, 5, &score), NIMCP_OK);
+    EXPECT_NE(nimcp_ethics_check(nullptr, situation, 5, &score), NIMCP_SUCCESS);
 
     nimcp_ethics_t ethics = nimcp_ethics_create();
     ASSERT_NE(ethics, nullptr);
 
     // NULL situation array
-    EXPECT_NE(nimcp_ethics_check(ethics, nullptr, 5, &score), NIMCP_OK);
+    EXPECT_NE(nimcp_ethics_check(ethics, nullptr, 5, &score), NIMCP_SUCCESS);
 
     // NULL output score
-    EXPECT_NE(nimcp_ethics_check(ethics, situation, 5, nullptr), NIMCP_OK);
+    EXPECT_NE(nimcp_ethics_check(ethics, situation, 5, nullptr), NIMCP_SUCCESS);
 
     nimcp_ethics_destroy(ethics);
 }
@@ -435,19 +435,19 @@ TEST_F(APIMemorySafetyTest, NullSafety_KnowledgeOperations) {
     char result[1024];
 
     // NULL knowledge handle
-    EXPECT_NE(nimcp_knowledge_add_fact(nullptr, "s", "p", "o"), NIMCP_OK);
-    EXPECT_NE(nimcp_knowledge_query(nullptr, "q", result, 1024), NIMCP_OK);
+    EXPECT_NE(nimcp_knowledge_add_fact(nullptr, "s", "p", "o"), NIMCP_SUCCESS);
+    EXPECT_NE(nimcp_knowledge_query(nullptr, "q", result, 1024), NIMCP_SUCCESS);
 
     nimcp_knowledge_t knowledge = nimcp_knowledge_create();
     ASSERT_NE(knowledge, nullptr);
 
     // NULL arguments
-    EXPECT_NE(nimcp_knowledge_add_fact(knowledge, nullptr, "p", "o"), NIMCP_OK);
-    EXPECT_NE(nimcp_knowledge_add_fact(knowledge, "s", nullptr, "o"), NIMCP_OK);
-    EXPECT_NE(nimcp_knowledge_add_fact(knowledge, "s", "p", nullptr), NIMCP_OK);
+    EXPECT_NE(nimcp_knowledge_add_fact(knowledge, nullptr, "p", "o"), NIMCP_SUCCESS);
+    EXPECT_NE(nimcp_knowledge_add_fact(knowledge, "s", nullptr, "o"), NIMCP_SUCCESS);
+    EXPECT_NE(nimcp_knowledge_add_fact(knowledge, "s", "p", nullptr), NIMCP_SUCCESS);
 
-    EXPECT_NE(nimcp_knowledge_query(knowledge, nullptr, result, 1024), NIMCP_OK);
-    EXPECT_NE(nimcp_knowledge_query(knowledge, "q", nullptr, 1024), NIMCP_OK);
+    EXPECT_NE(nimcp_knowledge_query(knowledge, nullptr, result, 1024), NIMCP_SUCCESS);
+    EXPECT_NE(nimcp_knowledge_query(knowledge, "q", nullptr, 1024), NIMCP_SUCCESS);
 
     nimcp_knowledge_destroy(knowledge);
 }
@@ -473,10 +473,10 @@ TEST_F(APIMemorySafetyTest, NullSafety_WorkingMemory) {
     uint32_t size, capacity;
 
     // NULL brain handle
-    EXPECT_NE(nimcp_brain_working_memory_add(nullptr, data, 256, 0.8f), NIMCP_OK);
+    EXPECT_NE(nimcp_brain_working_memory_add(nullptr, data, 256, 0.8f), NIMCP_SUCCESS);
     EXPECT_EQ(nimcp_brain_working_memory_get(nullptr, 0, &size), nullptr);
-    EXPECT_NE(nimcp_brain_working_memory_stats(nullptr, &size, &capacity), NIMCP_OK);
-    EXPECT_NE(nimcp_brain_working_memory_refresh(nullptr, 0), NIMCP_OK);
+    EXPECT_NE(nimcp_brain_working_memory_stats(nullptr, &size, &capacity), NIMCP_SUCCESS);
+    EXPECT_NE(nimcp_brain_working_memory_refresh(nullptr, 0), NIMCP_SUCCESS);
 
     // NULL data
     nimcp_status_t status = nimcp_brain_working_memory_add(brain, nullptr, 256, 0.8f);
@@ -499,9 +499,9 @@ TEST_F(APIMemorySafetyTest, NullSafety_GlobalWorkspace) {
     bool has_broadcast;
 
     // NULL brain handle
-    EXPECT_NE(nimcp_brain_workspace_compete(nullptr, NIMCP_MODULE_PERCEPTION, content, 256, 0.8f), NIMCP_OK);
-    EXPECT_NE(nimcp_brain_workspace_read(nullptr, content, 256, &dim, &source), NIMCP_OK);
-    EXPECT_NE(nimcp_brain_workspace_has_broadcast(nullptr, &has_broadcast), NIMCP_OK);
+    EXPECT_NE(nimcp_brain_workspace_compete(nullptr, NIMCP_MODULE_PERCEPTION, content, 256, 0.8f), NIMCP_SUCCESS);
+    EXPECT_NE(nimcp_brain_workspace_read(nullptr, content, 256, &dim, &source), NIMCP_SUCCESS);
+    EXPECT_NE(nimcp_brain_workspace_has_broadcast(nullptr, &has_broadcast), NIMCP_SUCCESS);
 
     // NULL content
     nimcp_status_t status = nimcp_brain_workspace_compete(brain, NIMCP_MODULE_PERCEPTION, nullptr, 256, 0.8f);

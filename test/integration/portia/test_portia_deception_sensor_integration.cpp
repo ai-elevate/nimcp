@@ -20,6 +20,7 @@ extern "C" {
 #include "portia/nimcp_portia_sensor_fusion.h"
 #include "async/nimcp_bio_async.h"
 #include "utils/validation/nimcp_common.h"
+#include "utils/time/nimcp_time.h"
 }
 
 // Mock deception system
@@ -48,11 +49,11 @@ protected:
         // Initialize bio-async
         nimcp_bio_async_config_t bio_config = nimcp_bio_async_default_config();
         nimcp_bio_async_init(&bio_config);
-        bio_ctx = (nimcp_bio_ctx_t*)nimcp_bio_async_get_context();
+        // bio_ctx removed
 
         // Initialize sensor fusion
         portia_fusion_config_t fusion_config = portia_fusion_default_config();
-        fusion_ctx = portia_fusion_init(&fusion_config, bio_ctx);
+        fusion_ctx = portia_fusion_init(&fusion_config, NULL);
         ASSERT_NE(fusion_ctx, nullptr);
 
         // Initialize deception state
@@ -283,7 +284,7 @@ TEST_F(PortiaDeceptionSensorIntegrationTest, Effectiveness_CombiningStealthAndMi
 //=============================================================================
 
 TEST_F(PortiaDeceptionSensorIntegrationTest, SensorFusion_ProcessesStealthedReadings) {
-    uint64_t timestamp = 1000;
+    uint64_t timestamp = nimcp_time_monotonic_ms();  // Use current time to avoid stale data rejection
     deception_state.stealth_mode_active = true;
 
     // Provide stealthed sensor readings
@@ -306,7 +307,7 @@ TEST_F(PortiaDeceptionSensorIntegrationTest, SensorFusion_ProcessesStealthedRead
 }
 
 TEST_F(PortiaDeceptionSensorIntegrationTest, SensorFusion_DetectsInconsistentMimicry) {
-    uint64_t timestamp = 1000;
+    uint64_t timestamp = nimcp_time_monotonic_ms();  // Use current time to avoid stale data rejection
     deception_state.mimicry_active = true;
     deception_state.mimicry_target_type = 1;  // Debris
 

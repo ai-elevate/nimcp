@@ -14,13 +14,17 @@
 #include "async/nimcp_bio_router.h"
 #include "async/nimcp_bio_messages.h"
 #include "security/nimcp_blood_brain_barrier.h"
+#include "security/nimcp_bbb_helpers.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/platform/nimcp_platform.h"
+#include "utils/thread/nimcp_thread.h"
 #include "utils/time/nimcp_time.h"
 
 #define LOG_MODULE "portia_learning"
 #include <string.h>
+#include <stdlib.h>
+#include <stdio.h>
 #include <math.h>
 #include <float.h>
 
@@ -220,12 +224,20 @@ portia_learning_state_t* portia_learning_init(const portia_learning_config_t* co
                                       DEFAULT_CONSOLIDATION_INTERVAL_MS;
 
     state->active_mode = config ? config->allowed_modes : LEARNING_MODE_FULL;
-    state->last_consolidation_ms = nimcp_time_now();
+    state->last_consolidation_ms = nimcp_time_monotonic_ms();
 
     // Create mutex
-    state->mutex = nimcp_platform_mutex_create();
+    state->mutex = (nimcp_platform_mutex_t*)nimcp_malloc(sizeof(nimcp_platform_mutex_t));
     if (!state->mutex) {
-        LOG_ERROR("Failed to create learning mutex");
+        LOG_ERROR("Failed to allocate learning mutex");
+        nimcp_free(state->association_table);
+        nimcp_free(state->habituation_table);
+        nimcp_free(state);
+        return NULL;
+    }
+    if (nimcp_platform_mutex_init(state->mutex, false) != 0) {
+        LOG_ERROR("Failed to initialize learning mutex");
+        nimcp_free(state->mutex);
         nimcp_free(state->association_table);
         nimcp_free(state->habituation_table);
         nimcp_free(state);
@@ -252,8 +264,8 @@ portia_learning_state_t* portia_learning_init(const portia_learning_config_t* co
 
     state->is_initialized = true;
 
-    bbb_audit_log("LEARNING_INIT", "Portia learning initialized with %u habituation, %u association entries",
-                  hab_capacity, assoc_capacity);
+    bbb_audit_log(BBB_AUDIT_INFO, LOG_MODULE, "init",
+                  "hab=%u assoc=%u", hab_capacity, assoc_capacity);
 
     LOG_INFO("Portia learning initialized: hab=%u, assoc=%u, lr=%.3f, fr=%.3f",
              hab_capacity, assoc_capacity, state->learning_rate, state->forgetting_rate);
@@ -292,6 +304,7 @@ void portia_learning_destroy(portia_learning_state_t* state) {
     if (state->mutex) {
         nimcp_platform_mutex_unlock(state->mutex);
         nimcp_platform_mutex_destroy(state->mutex);
+        nimcp_free(state->mutex);
     }
 
     nimcp_free(state);
@@ -322,7 +335,7 @@ int portia_learning_set_mode(portia_learning_state_t* state, portia_learning_mod
 
     nimcp_platform_mutex_unlock(state->mutex);
 
-    bbb_audit_log("LEARNING_MODE_CHANGE", "Changed learning mode from %d to %d",
+    bbb_audit_log(BBB_AUDIT_INFO, LOG_MODULE, "LEARNING_MODE_CHANGE", "Changed learning mode from %d to %d",
                   old_mode, mode);
 
     LOG_INFO("Learning mode changed: %d -> %d", old_mode, mode);
@@ -825,9 +838,8 @@ int portia_learning_consolidate(portia_learning_state_t* state, uint64_t timesta
 
     nimcp_platform_mutex_unlock(state->mutex);
 
-    bbb_audit_log("LEARNING_CONSOLIDATION",
-                  "Consolidated %u entries, removed %u weak entries",
-                  consolidated_count, removed_count);
+    bbb_audit_log(BBB_AUDIT_INFO, LOG_MODULE, "consolidation",
+                  "consolidated=%u removed=%u", consolidated_count, removed_count);
 
     LOG_INFO("Memory consolidation: strengthened=%u, removed=%u",
              consolidated_count, removed_count);
@@ -919,7 +931,7 @@ int portia_learning_reset(portia_learning_state_t* state) {
 
     nimcp_platform_mutex_unlock(state->mutex);
 
-    bbb_audit_log("LEARNING_RESET", "All learning data cleared");
+    bbb_audit_log(BBB_AUDIT_INFO, LOG_MODULE, "reset", "learning data cleared");
     LOG_INFO("Learning system reset");
 
     return 0;

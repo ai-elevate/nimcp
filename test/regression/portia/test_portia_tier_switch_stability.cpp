@@ -51,7 +51,7 @@ protected:
 
     // Helper: Get current memory usage
     size_t get_memory_usage() {
-        nimcp_memory_stats_t stats = nimcp_memory_get_stats();
+        nimcp_memory_stats_t stats = {0}; nimcp_memory_get_stats(&stats);
         return stats.current_allocated;
     }
 
@@ -121,13 +121,13 @@ TEST_F(PortiaTierSwitchStabilityTest, HysteresisPreventsRapidSwitching) {
     portia_tier_switch_update_config(switcher, &config);
 
     // Perform initial switch
-    int result1 = portia_tier_switch_request(switcher, PLATFORM_TIER_EMBEDDED);
+    int result1 = portia_tier_switch_request(switcher, PLATFORM_TIER_MINIMAL);
     ASSERT_EQ(result1, 0);
 
     auto switch_time = std::chrono::steady_clock::now();
 
     // Try to switch back immediately (should be blocked)
-    int result2 = portia_tier_switch_request(switcher, PLATFORM_TIER_WORKSTATION);
+    int result2 = portia_tier_switch_request(switcher, PLATFORM_TIER_FULL);
 
     auto now = std::chrono::steady_clock::now();
     auto elapsed_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
@@ -137,7 +137,7 @@ TEST_F(PortiaTierSwitchStabilityTest, HysteresisPreventsRapidSwitching) {
         // Hysteresis should block rapid switch
         tier_switch_state_t state;
         portia_tier_switch_get_state(switcher, &state);
-        EXPECT_EQ(state.current_tier, PLATFORM_TIER_EMBEDDED)
+        EXPECT_EQ(state.current_tier, PLATFORM_TIER_MINIMAL)
             << "Hysteresis should prevent rapid switch within " << HYSTERESIS_MS << "ms";
     }
 
@@ -146,12 +146,12 @@ TEST_F(PortiaTierSwitchStabilityTest, HysteresisPreventsRapidSwitching) {
         std::chrono::milliseconds(HYSTERESIS_MS + 100));
 
     // Now switch should succeed
-    int result3 = portia_tier_switch_request(switcher, PLATFORM_TIER_WORKSTATION);
+    int result3 = portia_tier_switch_request(switcher, PLATFORM_TIER_FULL);
     EXPECT_EQ(result3, 0);
 
     tier_switch_state_t final_state;
     portia_tier_switch_get_state(switcher, &final_state);
-    EXPECT_EQ(final_state.current_tier, PLATFORM_TIER_WORKSTATION);
+    EXPECT_EQ(final_state.current_tier, PLATFORM_TIER_FULL);
 }
 
 TEST_F(PortiaTierSwitchStabilityTest, NoOscillationNearThreshold) {
@@ -229,8 +229,8 @@ TEST_F(PortiaTierSwitchStabilityTest, SwitchLatencyWithinBounds) {
 
     for (int i = 0; i < NUM_SWITCHES; i++) {
         platform_tier_t target = (i % 2 == 0)
-            ? PLATFORM_TIER_EMBEDDED
-            : PLATFORM_TIER_MOBILE;
+            ? PLATFORM_TIER_MINIMAL
+            : PLATFORM_TIER_CONSTRAINED;
 
         auto start = std::chrono::high_resolution_clock::now();
         int result = portia_tier_switch_request(switcher, target);
@@ -339,7 +339,7 @@ TEST_F(PortiaTierSwitchStabilityTest, GracefulDowngradeUnderMemoryPressure) {
     portia_tier_switch_update_config(switcher, &config);
 
     // Start at high tier
-    portia_tier_switch_request(switcher, PLATFORM_TIER_WORKSTATION);
+    portia_tier_switch_request(switcher, PLATFORM_TIER_FULL);
     std::this_thread::sleep_for(std::chrono::milliseconds(
         config.hysteresis_ms + 100));
 
@@ -369,7 +369,7 @@ TEST_F(PortiaTierSwitchStabilityTest, EmergencyDowngradeSpeed) {
     // HOW:  Trigger emergency, verify instant downgrade
 
     // Start at high tier
-    portia_tier_switch_request(switcher, PLATFORM_TIER_WORKSTATION);
+    portia_tier_switch_request(switcher, PLATFORM_TIER_FULL);
     std::this_thread::sleep_for(std::chrono::milliseconds(
         config.hysteresis_ms + 100));
 
@@ -404,8 +404,8 @@ TEST_F(PortiaTierSwitchStabilityTest, StatisticsAccurate) {
     // Perform 5 successful switches
     for (int i = 0; i < 5; i++) {
         platform_tier_t target = (i % 2 == 0)
-            ? PLATFORM_TIER_MOBILE
-            : PLATFORM_TIER_EMBEDDED;
+            ? PLATFORM_TIER_CONSTRAINED
+            : PLATFORM_TIER_MINIMAL;
         portia_tier_switch_request(switcher, target);
         std::this_thread::sleep_for(std::chrono::milliseconds(
             config.hysteresis_ms + 50));
@@ -438,7 +438,7 @@ TEST_F(PortiaTierSwitchStabilityTest, StateConsistencyAfterOperations) {
             portia_tier_switch_evaluate(switcher, &target, &trigger);
         } else if (i % 3 == 1) {
             bool can_upgrade = portia_tier_switch_can_upgrade(
-                switcher, PLATFORM_TIER_WORKSTATION);
+                switcher, PLATFORM_TIER_FULL);
             (void)can_upgrade;  // Suppress warning
         } else {
             tier_switch_state_t state;

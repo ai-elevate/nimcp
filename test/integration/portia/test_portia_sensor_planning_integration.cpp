@@ -37,7 +37,7 @@ protected:
         // Initialize bio-async
         nimcp_bio_async_config_t bio_config = nimcp_bio_async_default_config();
         nimcp_bio_async_init(&bio_config);
-        bio_ctx = (nimcp_bio_ctx_t*)nimcp_bio_async_get_context();
+        // bio_ctx removed - not needed
 
         // Initialize sensor fusion
         portia_fusion_config_t fusion_config = portia_fusion_default_config();

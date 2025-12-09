@@ -21,7 +21,7 @@
 class APIFileFormatTest : public ::testing::Test {
 protected:
     void SetUp() override {
-        ASSERT_EQ(nimcp_init(), NIMCP_OK);
+        ASSERT_EQ(nimcp_init(), NIMCP_SUCCESS);
     }
 
     void TearDown() override {
@@ -62,10 +62,10 @@ TEST_F(APIFileFormatTest, SaveLoad_BasicBrainFile) {
     float features[] = {1.0f, 2.0f, 3.0f, 4.0f, 5.0f, 6.0f, 7.0f, 8.0f, 9.0f, 10.0f};
     char label_before[64];
     float conf_before;
-    ASSERT_EQ(nimcp_brain_predict(brain, features, 10, label_before, &conf_before), NIMCP_OK);
+    ASSERT_EQ(nimcp_brain_predict(brain, features, 10, label_before, &conf_before), NIMCP_SUCCESS);
 
     // Save brain
-    ASSERT_EQ(nimcp_brain_save(brain, save_path), NIMCP_OK);
+    ASSERT_EQ(nimcp_brain_save(brain, save_path), NIMCP_SUCCESS);
     nimcp_brain_destroy(brain);
 
     // Load brain
@@ -75,7 +75,7 @@ TEST_F(APIFileFormatTest, SaveLoad_BasicBrainFile) {
     // Get prediction after load
     char label_after[64];
     float conf_after;
-    ASSERT_EQ(nimcp_brain_predict(loaded, features, 10, label_after, &conf_after), NIMCP_OK);
+    ASSERT_EQ(nimcp_brain_predict(loaded, features, 10, label_after, &conf_after), NIMCP_SUCCESS);
 
     // Predictions should match
     EXPECT_STREQ(label_before, label_after);
@@ -108,7 +108,7 @@ TEST_F(APIFileFormatTest, SaveLoad_DifferentBrainSizes) {
         float features[] = {1.0f, 2.0f, 3.0f, 4.0f, 5.0f};
         nimcp_brain_learn_example(brain, features, 5, "test", 1.0f);
 
-        ASSERT_EQ(nimcp_brain_save(brain, paths[i]), NIMCP_OK);
+        ASSERT_EQ(nimcp_brain_save(brain, paths[i]), NIMCP_SUCCESS);
         nimcp_brain_destroy(brain);
 
         nimcp_brain_t loaded = nimcp_brain_load(paths[i]);
@@ -145,7 +145,7 @@ TEST_F(APIFileFormatTest, SaveLoad_DifferentTaskTypes) {
         float features[] = {1.0f, 2.0f, 3.0f, 4.0f, 5.0f, 6.0f, 7.0f, 8.0f};
         nimcp_brain_learn_example(brain, features, 8, "test", 1.0f);
 
-        ASSERT_EQ(nimcp_brain_save(brain, paths[i]), NIMCP_OK);
+        ASSERT_EQ(nimcp_brain_save(brain, paths[i]), NIMCP_SUCCESS);
         nimcp_brain_destroy(brain);
 
         nimcp_brain_t loaded = nimcp_brain_load(paths[i]);
@@ -165,10 +165,10 @@ TEST_F(APIFileFormatTest, SaveLoad_PreservesTrainingState) {
 
     // Get probe before save
     nimcp_brain_probe_t probe_before;
-    ASSERT_EQ(nimcp_brain_probe(brain, &probe_before), NIMCP_OK);
+    ASSERT_EQ(nimcp_brain_probe(brain, &probe_before), NIMCP_SUCCESS);
 
     // Save and load
-    ASSERT_EQ(nimcp_brain_save(brain, save_path), NIMCP_OK);
+    ASSERT_EQ(nimcp_brain_save(brain, save_path), NIMCP_SUCCESS);
     nimcp_brain_destroy(brain);
 
     nimcp_brain_t loaded = nimcp_brain_load(save_path);
@@ -176,7 +176,7 @@ TEST_F(APIFileFormatTest, SaveLoad_PreservesTrainingState) {
 
     // Get probe after load
     nimcp_brain_probe_t probe_after;
-    ASSERT_EQ(nimcp_brain_probe(loaded, &probe_after), NIMCP_OK);
+    ASSERT_EQ(nimcp_brain_probe(loaded, &probe_after), NIMCP_SUCCESS);
 
     // Key metrics should be preserved
     EXPECT_EQ(probe_before.num_neurons, probe_after.num_neurons);
@@ -202,7 +202,7 @@ TEST_F(APIFileFormatTest, Snapshot_SaveAndRestoreBasic) {
     // Create snapshot
     nimcp_status_t save_status = nimcp_brain_snapshot_save(brain, snap_name, "Test snapshot");
 
-    if (save_status == NIMCP_OK) {
+    if (save_status == NIMCP_SUCCESS) {
         // Continue training
         float features[] = {1.0f, 2.0f, 3.0f, 4.0f, 5.0f, 6.0f, 7.0f, 8.0f, 9.0f, 10.0f};
         for (int i = 0; i < 30; i++) {
@@ -216,7 +216,7 @@ TEST_F(APIFileFormatTest, Snapshot_SaveAndRestoreBasic) {
             // Verify restored brain is functional
             char label[64];
             float confidence;
-            ASSERT_EQ(nimcp_brain_predict(restored, features, 10, label, &confidence), NIMCP_OK);
+            ASSERT_EQ(nimcp_brain_predict(restored, features, 10, label, &confidence), NIMCP_SUCCESS);
 
             nimcp_brain_destroy(restored);
         }
@@ -252,7 +252,7 @@ TEST_F(APIFileFormatTest, Snapshot_MultipleSnapshots) {
     uint32_t count = 0;
     nimcp_status_t list_status = nimcp_brain_snapshot_list(brain, infos, 10, &count);
 
-    if (list_status == NIMCP_OK) {
+    if (list_status == NIMCP_SUCCESS) {
         EXPECT_GT(count, 0);
     }
 
@@ -273,12 +273,12 @@ TEST_F(APIFileFormatTest, Snapshot_InfoMetadata) {
 
     nimcp_status_t save_status = nimcp_brain_snapshot_save(brain, snap_name, description);
 
-    if (save_status == NIMCP_OK) {
+    if (save_status == NIMCP_SUCCESS) {
         // List and check metadata
         nimcp_brain_snapshot_info_t infos[10];
         uint32_t count = 0;
 
-        if (nimcp_brain_snapshot_list(brain, infos, 10, &count) == NIMCP_OK) {
+        if (nimcp_brain_snapshot_list(brain, infos, 10, &count) == NIMCP_SUCCESS) {
             // Find our snapshot
             bool found = false;
             for (uint32_t i = 0; i < count; i++) {
@@ -312,7 +312,7 @@ TEST_F(APIFileFormatTest, FileFormat_VersionInformation) {
     float features[] = {1.0f, 2.0f, 3.0f, 4.0f, 5.0f};
     nimcp_brain_learn_example(brain, features, 5, "test", 1.0f);
 
-    ASSERT_EQ(nimcp_brain_save(brain, save_path), NIMCP_OK);
+    ASSERT_EQ(nimcp_brain_save(brain, save_path), NIMCP_SUCCESS);
     nimcp_brain_destroy(brain);
 
     // Verify file exists and has reasonable size
@@ -347,7 +347,7 @@ TEST_F(APIFileFormatTest, FileFormat_BackwardCompatibility) {
     float features[] = {1.0f, 2.0f, 3.0f, 4.0f, 5.0f};
     nimcp_brain_learn_example(brain, features, 5, "test", 1.0f);
 
-    ASSERT_EQ(nimcp_brain_save(brain, save_path), NIMCP_OK);
+    ASSERT_EQ(nimcp_brain_save(brain, save_path), NIMCP_SUCCESS);
     nimcp_brain_destroy(brain);
 
     // Should be able to load
@@ -417,7 +417,7 @@ TEST_F(APIFileFormatTest, CorruptedFile_TruncatedFile) {
     float features[] = {1.0f, 2.0f, 3.0f, 4.0f, 5.0f};
     nimcp_brain_learn_example(brain, features, 5, "test", 1.0f);
 
-    ASSERT_EQ(nimcp_brain_save(brain, valid_path), NIMCP_OK);
+    ASSERT_EQ(nimcp_brain_save(brain, valid_path), NIMCP_SUCCESS);
     nimcp_brain_destroy(brain);
 
     // Read valid file
@@ -514,7 +514,7 @@ TEST_F(APIFileFormatTest, MissingFile_SaveToInvalidDirectory) {
     char label[64];
     float confidence;
     nimcp_brain_learn_example(brain, features, 5, "test", 1.0f);
-    ASSERT_EQ(nimcp_brain_predict(brain, features, 5, label, &confidence), NIMCP_OK);
+    ASSERT_EQ(nimcp_brain_predict(brain, features, 5, label, &confidence), NIMCP_SUCCESS);
 
     nimcp_brain_destroy(brain);
 }

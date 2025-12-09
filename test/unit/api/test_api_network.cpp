@@ -46,7 +46,7 @@ TEST_F(NetworkAPITest, NetworkCreateReturnsValidHandle) {
     float outputs[3];
 
     nimcp_status_t status = nimcp_network_forward(network, inputs, 5, outputs, 3);
-    EXPECT_TRUE(status == NIMCP_OK || status == NIMCP_ERROR);
+    EXPECT_TRUE(status == NIMCP_SUCCESS || status == NIMCP_ERROR);
 
     nimcp_network_destroy(network);
 }
@@ -139,7 +139,7 @@ TEST_F(NetworkAPITest, NetworkForwardSucceeds) {
     float outputs[5];
 
     nimcp_status_t status = nimcp_network_forward(network, inputs, 10, outputs, 5);
-    EXPECT_EQ(status, NIMCP_OK);
+    EXPECT_EQ(status, NIMCP_SUCCESS);
 
     nimcp_network_destroy(network);
 }
@@ -185,7 +185,7 @@ TEST_F(NetworkAPITest, NetworkForwardProducesOutputs) {
 
     nimcp_status_t status = nimcp_network_forward(network, inputs, 5, outputs, 3);
 
-    if (status == NIMCP_OK) {
+    if (status == NIMCP_SUCCESS) {
         // Outputs should have been modified (not all zero)
         bool has_non_zero = false;
         for (int i = 0; i < 3; i++) {
@@ -227,7 +227,7 @@ TEST_F(NetworkAPITest, NetworkForwardMultipleTimes) {
     // Run forward pass multiple times
     for (int i = 0; i < 10; i++) {
         nimcp_status_t status = nimcp_network_forward(network, inputs, 5, outputs, 3);
-        EXPECT_EQ(status, NIMCP_OK);
+        EXPECT_EQ(status, NIMCP_SUCCESS);
     }
 
     nimcp_network_destroy(network);
@@ -241,7 +241,7 @@ TEST_F(NetworkAPITest, NetworkForwardWithZeroInputs) {
     float outputs[3];
 
     nimcp_status_t status = nimcp_network_forward(network, inputs, 5, outputs, 3);
-    EXPECT_EQ(status, NIMCP_OK);
+    EXPECT_EQ(status, NIMCP_SUCCESS);
 
     nimcp_network_destroy(network);
 }
@@ -254,7 +254,7 @@ TEST_F(NetworkAPITest, NetworkForwardWithLargeInputs) {
     float outputs[3];
 
     nimcp_status_t status = nimcp_network_forward(network, inputs, 5, outputs, 3);
-    EXPECT_EQ(status, NIMCP_OK);
+    EXPECT_EQ(status, NIMCP_SUCCESS);
 
     nimcp_network_destroy(network);
 }
@@ -303,7 +303,7 @@ TEST_F(NetworkAPITest, CreateForwardDestroyWorkflow) {
     float outputs[5];
 
     nimcp_status_t status = nimcp_network_forward(network, inputs, 10, outputs, 5);
-    EXPECT_EQ(status, NIMCP_OK);
+    EXPECT_EQ(status, NIMCP_SUCCESS);
 
     // Destroy
     nimcp_network_destroy(network);
@@ -325,8 +325,8 @@ TEST_F(NetworkAPITest, MultipleNetworksIndependent) {
     nimcp_status_t status1 = nimcp_network_forward(network1, inputs, 5, outputs1, 3);
     nimcp_status_t status2 = nimcp_network_forward(network2, inputs, 5, outputs2, 3);
 
-    EXPECT_EQ(status1, NIMCP_OK);
-    EXPECT_EQ(status2, NIMCP_OK);
+    EXPECT_EQ(status1, NIMCP_SUCCESS);
+    EXPECT_EQ(status2, NIMCP_SUCCESS);
 
     // Destroy both
     nimcp_network_destroy(network1);

@@ -24,7 +24,7 @@ namespace {
 class PortiaDegradationRecoveryTest : public ::testing::Test {
 protected:
     void SetUp() override {
-        portia_degradation_config_t cfg;
+        degradation_internal_config_t cfg;
         cfg.level_thresholds[DEGRADATION_LEVEL_NONE] = 0.0f;
         cfg.level_thresholds[DEGRADATION_LEVEL_MINOR] = 70.0f;
         cfg.level_thresholds[DEGRADATION_LEVEL_MODERATE] = 80.0f;
@@ -35,7 +35,7 @@ protected:
         cfg.enable_auto_restore = true;
         cfg.restore_threshold = 10.0f;
 
-        state = portia_degradation_init(&cfg, nullptr);
+        state = portia_degradation_init(&cfg);
         ASSERT_NE(state, nullptr);
 
         // Register test features
@@ -117,7 +117,7 @@ TEST_F(PortiaDegradationRecoveryTest, NoStateCorruption) {
         float usage;
         nimcp_result_t result = portia_degradation_get_state(state, &level, &active, &usage);
 
-        EXPECT_EQ(result, NIMCP_OK);
+        EXPECT_EQ(result, NIMCP_SUCCESS);
         EXPECT_GE(level, DEGRADATION_LEVEL_NONE);
         EXPECT_LE(level, DEGRADATION_LEVEL_CRITICAL);
     }

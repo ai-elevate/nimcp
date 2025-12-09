@@ -57,9 +57,8 @@ typedef struct {
 } association_entry_t;
 
 /**
- * Forward declarations
+ * Forward declarations - use void* to avoid platform dependencies
  */
-typedef struct nimcp_platform_mutex_struct* nimcp_platform_mutex_t;
 
 /**
  * Learning state - main learning system state
@@ -76,7 +75,7 @@ typedef struct {
     float forgetting_rate;
     uint64_t last_consolidation_ms;
     uint32_t consolidation_interval_ms;
-    nimcp_platform_mutex_t* mutex;
+    void* mutex;                   // Opaque mutex pointer
     void* inbox;                   // Bio-async inbox (opaque pointer for future use)
     void* bio_ctx;                 // Bio-async context for message routing
     bool is_initialized;

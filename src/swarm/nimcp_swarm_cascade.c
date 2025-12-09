@@ -20,6 +20,7 @@
 #include <string.h>
 #include <math.h>
 #include <float.h>
+#include <stdio.h>
 
 /* ============================================================================
  * Internal Constants

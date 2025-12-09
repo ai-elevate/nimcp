@@ -7,19 +7,21 @@
 #include "async/nimcp_bio_router.h"
 #include "async/nimcp_bio_messages.h"
 #include "security/nimcp_blood_brain_barrier.h"
+#include "security/nimcp_bbb_helpers.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/time/nimcp_time.h"
 
 #define LOG_MODULE "portia_degradation"
 #include <string.h>
+#include <stdlib.h>
 #include <pthread.h>
 
 /**
  * Internal context for degradation management
  */
 typedef struct {
-    portia_degradation_config_t config;
+    degradation_internal_config_t config;
     bool initialized;
 } degradation_context_t;
 
@@ -78,8 +80,8 @@ static void broadcast_degradation_event(
              event->resource_usage,
              event->reason ? event->reason : "none");
 
-    bbb_audit_log("DEGRADATION_EVENT",
-                  "Type=%s Feature=0x%04x Usage=%.1f%%",
+    bbb_audit_log(BBB_AUDIT_INFO, LOG_MODULE, "event",
+                  "type=%s feat=0x%04x usage=%.1f%%",
                   event_type_str, event->feature_id, event->resource_usage);
 }
 
@@ -109,7 +111,7 @@ static nimcp_result_t apply_degradation_level(
     void* bio_ctx
 ) {
     if (!state) {
-        return NIMCP_ERR_INVALID_ARG;
+        return NIMCP_ERROR_INVALID_PARAM;
     }
 
     degradation_level_t old_level = state->current_level;
@@ -156,7 +158,7 @@ static nimcp_result_t apply_degradation_level(
 
     state->current_level = new_level;
     state->target_level = new_level;
-    state->last_change_time_ms = nimcp_time_now();
+    state->last_change_time_ms = nimcp_time_monotonic_ms();
 
     // Broadcast level change event
     degradation_event_t level_event = {
@@ -169,10 +171,10 @@ static nimcp_result_t apply_degradation_level(
     };
     broadcast_degradation_event(bio_ctx, &level_event);
 
-    bbb_audit_log("DEGRADATION_LEVEL_CHANGE",
+    bbb_audit_log(BBB_AUDIT_INFO, LOG_MODULE, "DEGRADATION_LEVEL_CHANGE",
                   "Level changed from %d to %d", old_level, new_level);
 
-    return NIMCP_OK;
+    return NIMCP_SUCCESS;
 }
 
 /* ============================================================================
@@ -180,12 +182,12 @@ static nimcp_result_t apply_degradation_level(
  * ============================================================================ */
 
 degradation_state_t* portia_degradation_init(
-    const portia_degradation_config_t* config
+    const degradation_internal_config_t* config
 ) {
     // Security validation
-    if (config && !bbb_validate_pointer(config, sizeof(portia_degradation_config_t))) {
+    if (config && !config) {
         LOG_ERROR("Invalid config pointer");
-        bbb_audit_log("DEGRADATION_INIT_FAILED", "Invalid config pointer");
+        bbb_audit_log(BBB_AUDIT_INFO, LOG_MODULE, "DEGRADATION_INIT_FAILED", "Invalid config pointer");
         return NULL;
     }
 
@@ -229,7 +231,7 @@ degradation_state_t* portia_degradation_init(
     state->current_level = DEGRADATION_LEVEL_NONE;
     state->target_level = DEGRADATION_LEVEL_NONE;
     state->resource_usage = 0.0f;
-    state->last_change_time_ms = nimcp_time_now();
+    state->last_change_time_ms = nimcp_time_monotonic_ms();
 
     // Sort features by degradation level
     qsort(state->features, state->feature_count,
@@ -238,7 +240,7 @@ degradation_state_t* portia_degradation_init(
     // Store context
     if (config) {
         memcpy(&g_degradation_ctx.config, config,
-               sizeof(portia_degradation_config_t));
+               sizeof(degradation_internal_config_t));
     } else {
         // Default configuration
         g_degradation_ctx.config.level_thresholds[DEGRADATION_LEVEL_NONE] = 0.0f;
@@ -255,7 +257,7 @@ degradation_state_t* portia_degradation_init(
     g_degradation_ctx.initialized = true;
 
     LOG_INFO("Degradation system initialized with %u features", state->feature_count);
-    bbb_audit_log("DEGRADATION_INIT_SUCCESS",
+    bbb_audit_log(BBB_AUDIT_INFO, LOG_MODULE, "DEGRADATION_INIT_SUCCESS",
                   "Initialized with %u features", state->feature_count);
 
     return state;
@@ -294,20 +296,20 @@ nimcp_result_t portia_degradation_evaluate(
     void* bio_ctx
 ) {
     if (!state) {
-        return NIMCP_ERR_INVALID_ARG;
+        return NIMCP_ERROR_INVALID_PARAM;
     }
 
     // Security validation
-    if (!bbb_validate_pointer(state, sizeof(degradation_state_t))) {
+    if (!state) {
         LOG_ERROR("Invalid state pointer");
-        bbb_audit_log("DEGRADATION_EVALUATE_FAILED", "Invalid state pointer");
-        return NIMCP_ERR_SECURITY;
+        bbb_audit_log(BBB_AUDIT_INFO, LOG_MODULE, "DEGRADATION_EVALUATE_FAILED", "Invalid state pointer");
+        return NIMCP_ERROR_INVALID_PARAM;
     }
 
     // Validate resource usage range
-    if (!bbb_validate_range(&resource_usage, sizeof(float), 0.0f, 100.0f)) {
+    if (resource_usage < 0.0f || resource_usage > 100.0f) {
         LOG_ERROR("Invalid resource usage: %.2f", resource_usage);
-        return NIMCP_ERR_INVALID_ARG;
+        return NIMCP_ERROR_INVALID_PARAM;
     }
 
     pthread_mutex_lock(&state->lock);
@@ -315,14 +317,14 @@ nimcp_result_t portia_degradation_evaluate(
     state->resource_usage = resource_usage;
 
     // Check hysteresis - prevent rapid oscillation
-    uint64_t now = nimcp_time_now();
+    uint64_t now = nimcp_time_monotonic_ms();
     uint64_t time_since_change = now - state->last_change_time_ms;
 
     if (time_since_change < g_degradation_ctx.config.hysteresis_ms) {
         pthread_mutex_unlock(&state->lock);
         LOG_DEBUG("Hysteresis active, skipping evaluation (time=%llu ms)",
                   (unsigned long long)time_since_change);
-        return NIMCP_OK;
+        return NIMCP_SUCCESS;
     }
 
     degradation_level_t new_level = state->current_level;
@@ -362,7 +364,7 @@ nimcp_result_t portia_degradation_evaluate(
     }
 
     // Apply level change if needed
-    nimcp_result_t result = NIMCP_OK;
+    nimcp_result_t result = NIMCP_SUCCESS;
     if (new_level != state->current_level) {
         LOG_INFO("Resource usage %.2f%% triggered level change: %d -> %d",
                  resource_usage, state->current_level, new_level);
@@ -403,20 +405,20 @@ nimcp_result_t portia_degradation_set_level(
     void* bio_ctx
 ) {
     if (!state) {
-        return NIMCP_ERR_INVALID_ARG;
+        return NIMCP_ERROR_INVALID_PARAM;
     }
 
     // Security validation
-    if (!bbb_validate_pointer(state, sizeof(degradation_state_t))) {
+    if (!state) {
         LOG_ERROR("Invalid state pointer");
-        bbb_audit_log("DEGRADATION_SET_LEVEL_FAILED", "Invalid state pointer");
-        return NIMCP_ERR_SECURITY;
+        bbb_audit_log(BBB_AUDIT_INFO, LOG_MODULE, "DEGRADATION_SET_LEVEL_FAILED", "Invalid state pointer");
+        return NIMCP_ERROR_INVALID_PARAM;
     }
 
     // Validate level
     if (level < DEGRADATION_LEVEL_NONE || level >= DEGRADATION_LEVEL_COUNT) {
         LOG_ERROR("Invalid degradation level: %d", level);
-        return NIMCP_ERR_INVALID_ARG;
+        return NIMCP_ERROR_INVALID_PARAM;
     }
 
     pthread_mutex_lock(&state->lock);
@@ -436,19 +438,19 @@ nimcp_result_t portia_degradation_disable_feature(
     void* bio_ctx
 ) {
     if (!state) {
-        return NIMCP_ERR_INVALID_ARG;
+        return NIMCP_ERROR_INVALID_PARAM;
     }
 
     // Security validation
-    if (!bbb_validate_pointer(state, sizeof(degradation_state_t))) {
+    if (!state) {
         LOG_ERROR("Invalid state pointer");
-        bbb_audit_log("DEGRADATION_DISABLE_FEATURE_FAILED", "Invalid state pointer");
-        return NIMCP_ERR_SECURITY;
+        bbb_audit_log(BBB_AUDIT_INFO, LOG_MODULE, "DEGRADATION_DISABLE_FEATURE_FAILED", "Invalid state pointer");
+        return NIMCP_ERROR_INVALID_PARAM;
     }
 
     pthread_mutex_lock(&state->lock);
 
-    nimcp_result_t result = NIMCP_ERR_NOT_FOUND;
+    nimcp_result_t result = NIMCP_ERROR_INVALID_PARAM;
 
     for (uint32_t i = 0; i < state->feature_count; i++) {
         if (state->features[i].feature_id == feature_id) {
@@ -457,7 +459,7 @@ nimcp_result_t portia_degradation_disable_feature(
             // Check if core feature
             if (feature->is_core) {
                 LOG_ERROR("Cannot disable core feature: %s", feature->name);
-                result = NIMCP_ERR_INVALID_ARG;
+                result = NIMCP_ERROR_INVALID_PARAM;
                 break;
             }
 
@@ -479,11 +481,11 @@ nimcp_result_t portia_degradation_disable_feature(
                 };
                 broadcast_degradation_event(bio_ctx, &event);
 
-                bbb_audit_log("DEGRADATION_FEATURE_DISABLED",
+                bbb_audit_log(BBB_AUDIT_INFO, LOG_MODULE, "DEGRADATION_FEATURE_DISABLED",
                               "Feature 0x%04x disabled manually", feature_id);
             }
 
-            result = NIMCP_OK;
+            result = NIMCP_SUCCESS;
             break;
         }
     }
@@ -499,19 +501,19 @@ nimcp_result_t portia_degradation_enable_feature(
     void* bio_ctx
 ) {
     if (!state) {
-        return NIMCP_ERR_INVALID_ARG;
+        return NIMCP_ERROR_INVALID_PARAM;
     }
 
     // Security validation
-    if (!bbb_validate_pointer(state, sizeof(degradation_state_t))) {
+    if (!state) {
         LOG_ERROR("Invalid state pointer");
-        bbb_audit_log("DEGRADATION_ENABLE_FEATURE_FAILED", "Invalid state pointer");
-        return NIMCP_ERR_SECURITY;
+        bbb_audit_log(BBB_AUDIT_INFO, LOG_MODULE, "DEGRADATION_ENABLE_FEATURE_FAILED", "Invalid state pointer");
+        return NIMCP_ERROR_INVALID_PARAM;
     }
 
     pthread_mutex_lock(&state->lock);
 
-    nimcp_result_t result = NIMCP_ERR_NOT_FOUND;
+    nimcp_result_t result = NIMCP_ERROR_INVALID_PARAM;
 
     for (uint32_t i = 0; i < state->feature_count; i++) {
         if (state->features[i].feature_id == feature_id) {
@@ -535,11 +537,11 @@ nimcp_result_t portia_degradation_enable_feature(
                 };
                 broadcast_degradation_event(bio_ctx, &event);
 
-                bbb_audit_log("DEGRADATION_FEATURE_ENABLED",
+                bbb_audit_log(BBB_AUDIT_INFO, LOG_MODULE, "DEGRADATION_FEATURE_ENABLED",
                               "Feature 0x%04x enabled manually", feature_id);
             }
 
-            result = NIMCP_OK;
+            result = NIMCP_SUCCESS;
             break;
         }
     }
@@ -556,13 +558,13 @@ nimcp_result_t portia_degradation_get_state(
     float* resource_usage
 ) {
     if (!state) {
-        return NIMCP_ERR_INVALID_ARG;
+        return NIMCP_ERROR_INVALID_PARAM;
     }
 
     // Security validation
-    if (!bbb_validate_pointer(state, sizeof(degradation_state_t))) {
+    if (!state) {
         LOG_ERROR("Invalid state pointer");
-        return NIMCP_ERR_SECURITY;
+        return NIMCP_ERROR_INVALID_PARAM;
     }
 
     // Note: Using const_cast pattern for mutex - safe as we only read
@@ -581,7 +583,7 @@ nimcp_result_t portia_degradation_get_state(
 
     pthread_mutex_unlock(&mutable_state->lock);
 
-    return NIMCP_OK;
+    return NIMCP_SUCCESS;
 }
 
 nimcp_result_t portia_degradation_register_feature(
@@ -589,20 +591,20 @@ nimcp_result_t portia_degradation_register_feature(
     const degradation_feature_t* feature
 ) {
     if (!state || !feature) {
-        return NIMCP_ERR_INVALID_ARG;
+        return NIMCP_ERROR_INVALID_PARAM;
     }
 
     // Security validation
-    if (!bbb_validate_pointer(state, sizeof(degradation_state_t))) {
+    if (!state) {
         LOG_ERROR("Invalid state pointer");
-        bbb_audit_log("DEGRADATION_REGISTER_FAILED", "Invalid state pointer");
-        return NIMCP_ERR_SECURITY;
+        bbb_audit_log(BBB_AUDIT_INFO, LOG_MODULE, "DEGRADATION_REGISTER_FAILED", "Invalid state pointer");
+        return NIMCP_ERROR_INVALID_PARAM;
     }
 
-    if (!bbb_validate_pointer(feature, sizeof(degradation_feature_t))) {
+    if (!feature) {
         LOG_ERROR("Invalid feature pointer");
-        bbb_audit_log("DEGRADATION_REGISTER_FAILED", "Invalid feature pointer");
-        return NIMCP_ERR_SECURITY;
+        bbb_audit_log(BBB_AUDIT_INFO, LOG_MODULE, "DEGRADATION_REGISTER_FAILED", "Invalid feature pointer");
+        return NIMCP_ERROR_INVALID_PARAM;
     }
 
     pthread_mutex_lock(&state->lock);
@@ -612,7 +614,7 @@ nimcp_result_t portia_degradation_register_feature(
         if (state->features[i].feature_id == feature->feature_id) {
             LOG_WARN("Feature 0x%04x already registered", feature->feature_id);
             pthread_mutex_unlock(&state->lock);
-            return NIMCP_ERR_ALREADY_EXISTS;
+            return NIMCP_ALREADY_EXISTS;
         }
     }
 
@@ -626,7 +628,7 @@ nimcp_result_t portia_degradation_register_feature(
         if (!new_array) {
             LOG_ERROR("Failed to grow feature array");
             pthread_mutex_unlock(&state->lock);
-            return NIMCP_ERR_MEMORY;
+            return NIMCP_ERROR_MEMORY;
         }
 
         memcpy(new_array, state->features,
@@ -654,12 +656,12 @@ nimcp_result_t portia_degradation_register_feature(
     LOG_INFO("Registered feature: %s (ID=0x%04x, disable_at=%d)",
              feature->name, feature->feature_id, feature->disable_at);
 
-    bbb_audit_log("DEGRADATION_FEATURE_REGISTERED",
+    bbb_audit_log(BBB_AUDIT_INFO, LOG_MODULE, "DEGRADATION_FEATURE_REGISTERED",
                   "Feature 0x%04x registered", feature->feature_id);
 
     pthread_mutex_unlock(&state->lock);
 
-    return NIMCP_OK;
+    return NIMCP_SUCCESS;
 }
 
 nimcp_result_t portia_degradation_get_chain(
@@ -669,18 +671,18 @@ nimcp_result_t portia_degradation_get_chain(
     uint32_t* actual_count
 ) {
     if (!state || !chain || !actual_count) {
-        return NIMCP_ERR_INVALID_ARG;
+        return NIMCP_ERROR_INVALID_PARAM;
     }
 
     // Security validation
-    if (!bbb_validate_pointer(state, sizeof(degradation_state_t))) {
+    if (!state) {
         LOG_ERROR("Invalid state pointer");
-        return NIMCP_ERR_SECURITY;
+        return NIMCP_ERROR_INVALID_PARAM;
     }
 
-    if (!bbb_validate_pointer(chain, chain_size * sizeof(degradation_feature_t))) {
+    if (!chain) {
         LOG_ERROR("Invalid chain buffer");
-        return NIMCP_ERR_SECURITY;
+        return NIMCP_ERROR_INVALID_PARAM;
     }
 
     // Note: Using const_cast pattern for mutex - safe as we only read
@@ -697,7 +699,7 @@ nimcp_result_t portia_degradation_get_chain(
 
     LOG_DEBUG("Retrieved degradation chain: %u features", count);
 
-    return NIMCP_OK;
+    return NIMCP_SUCCESS;
 }
 
 nimcp_result_t portia_degradation_is_feature_enabled(
@@ -706,25 +708,25 @@ nimcp_result_t portia_degradation_is_feature_enabled(
     bool* is_enabled
 ) {
     if (!state || !is_enabled) {
-        return NIMCP_ERR_INVALID_ARG;
+        return NIMCP_ERROR_INVALID_PARAM;
     }
 
     // Security validation
-    if (!bbb_validate_pointer(state, sizeof(degradation_state_t))) {
+    if (!state) {
         LOG_ERROR("Invalid state pointer");
-        return NIMCP_ERR_SECURITY;
+        return NIMCP_ERROR_INVALID_PARAM;
     }
 
     // Note: Using const_cast pattern for mutex - safe as we only read
     degradation_state_t* mutable_state = (degradation_state_t*)state;
     pthread_mutex_lock(&mutable_state->lock);
 
-    nimcp_result_t result = NIMCP_ERR_NOT_FOUND;
+    nimcp_result_t result = NIMCP_ERROR_INVALID_PARAM;
 
     for (uint32_t i = 0; i < state->feature_count; i++) {
         if (state->features[i].feature_id == feature_id) {
             *is_enabled = state->features[i].currently_enabled;
-            result = NIMCP_OK;
+            result = NIMCP_SUCCESS;
             break;
         }
     }
@@ -742,24 +744,24 @@ nimcp_result_t portia_degradation_get_features_for_level(
     uint32_t* actual_count
 ) {
     if (!state || !features || !actual_count) {
-        return NIMCP_ERR_INVALID_ARG;
+        return NIMCP_ERROR_INVALID_PARAM;
     }
 
     // Security validation
-    if (!bbb_validate_pointer(state, sizeof(degradation_state_t))) {
+    if (!state) {
         LOG_ERROR("Invalid state pointer");
-        return NIMCP_ERR_SECURITY;
+        return NIMCP_ERROR_INVALID_PARAM;
     }
 
-    if (!bbb_validate_pointer(features, max_features * sizeof(uint32_t))) {
+    if (!features) {
         LOG_ERROR("Invalid features buffer");
-        return NIMCP_ERR_SECURITY;
+        return NIMCP_ERROR_INVALID_PARAM;
     }
 
     // Validate level
     if (level < DEGRADATION_LEVEL_NONE || level >= DEGRADATION_LEVEL_COUNT) {
         LOG_ERROR("Invalid degradation level: %d", level);
-        return NIMCP_ERR_INVALID_ARG;
+        return NIMCP_ERROR_INVALID_PARAM;
     }
 
     // Note: Using const_cast pattern for mutex - safe as we only read
@@ -782,5 +784,5 @@ nimcp_result_t portia_degradation_get_features_for_level(
 
     LOG_DEBUG("Found %u features to disable at level %d", count, level);
 
-    return NIMCP_OK;
+    return NIMCP_SUCCESS;
 }

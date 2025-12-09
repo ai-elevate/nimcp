@@ -56,7 +56,7 @@ TEST_F(SwarmImmuneTest, DetectPathogen) {
     };
     
     nimcp_result_t result = nimcp_immune_detect_pathogen(system, 1, &pathogen);
-    EXPECT_EQ(result, NIMCP_OK);
+    EXPECT_EQ(result, NIMCP_SUCCESS);
 }
 
 TEST_F(SwarmImmuneTest, GenerateAntibody) {
@@ -69,7 +69,7 @@ TEST_F(SwarmImmuneTest, GenerateAntibody) {
     nimcp_result_t result = nimcp_immune_generate_antibody(
         system, &pathogen, &antibody
     );
-    EXPECT_EQ(result, NIMCP_OK);
+    EXPECT_EQ(result, NIMCP_SUCCESS);
 }
 
 TEST_F(SwarmImmuneTest, ActivateResponse) {
@@ -80,7 +80,7 @@ TEST_F(SwarmImmuneTest, ActivateResponse) {
     nimcp_result_t result = nimcp_immune_activate_response(
         system, 1, &pathogen
     );
-    EXPECT_EQ(result, NIMCP_OK);
+    EXPECT_EQ(result, NIMCP_SUCCESS);
 }
 
 TEST_F(SwarmImmuneTest, CreateMemoryCell) {
@@ -91,7 +91,7 @@ TEST_F(SwarmImmuneTest, CreateMemoryCell) {
     nimcp_result_t result = nimcp_immune_create_memory_cell(
         system, &pathogen
     );
-    EXPECT_EQ(result, NIMCP_OK);
+    EXPECT_EQ(result, NIMCP_SUCCESS);
 }
 
 TEST_F(SwarmImmuneTest, CheckMemory) {
@@ -104,7 +104,7 @@ TEST_F(SwarmImmuneTest, CheckMemory) {
     nimcp_result_t result = nimcp_immune_check_memory(
         system, &pathogen, &has_memory
     );
-    EXPECT_EQ(result, NIMCP_OK);
+    EXPECT_EQ(result, NIMCP_SUCCESS);
 }
 
 TEST_F(SwarmImmuneTest, NeutralizePathogen) {
@@ -115,18 +115,18 @@ TEST_F(SwarmImmuneTest, NeutralizePathogen) {
     nimcp_result_t result = nimcp_immune_neutralize(
         system, 1, &pathogen
     );
-    EXPECT_EQ(result, NIMCP_OK);
+    EXPECT_EQ(result, NIMCP_SUCCESS);
 }
 
 TEST_F(SwarmImmuneTest, IsolateAgent) {
     nimcp_result_t result = nimcp_immune_isolate_agent(system, 5);
-    EXPECT_EQ(result, NIMCP_OK);
+    EXPECT_EQ(result, NIMCP_SUCCESS);
 }
 
 TEST_F(SwarmImmuneTest, RecoverAgent) {
     nimcp_immune_isolate_agent(system, 5);
     nimcp_result_t result = nimcp_immune_recover_agent(system, 5);
-    EXPECT_EQ(result, NIMCP_OK);
+    EXPECT_EQ(result, NIMCP_SUCCESS);
 }
 
 TEST_F(SwarmImmuneTest, BroadcastThreat) {
@@ -142,20 +142,20 @@ TEST_F(SwarmImmuneTest, BroadcastThreat) {
 
 TEST_F(SwarmImmuneTest, UpdateSystem) {
     nimcp_result_t result = nimcp_immune_update(system, 1000);
-    EXPECT_EQ(result, NIMCP_OK);
+    EXPECT_EQ(result, NIMCP_SUCCESS);
 }
 
 TEST_F(SwarmImmuneTest, GetStatistics) {
     nimcp_immune_stats_t stats;
     nimcp_result_t result = nimcp_immune_get_stats(system, &stats);
-    EXPECT_EQ(result, NIMCP_OK);
+    EXPECT_EQ(result, NIMCP_SUCCESS);
 }
 
 TEST_F(SwarmImmuneTest, ValidateConfig) {
     nimcp_immune_config_t test_config;
     nimcp_immune_default_config(&test_config);
     nimcp_result_t result = nimcp_immune_validate_config(&test_config);
-    EXPECT_EQ(result, NIMCP_OK);
+    EXPECT_EQ(result, NIMCP_SUCCESS);
 }
 
 TEST_F(SwarmImmuneTest, CrossReactivity) {

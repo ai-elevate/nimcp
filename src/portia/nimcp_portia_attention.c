@@ -26,12 +26,15 @@
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/validation/nimcp_common.h"
+#include "utils/time/nimcp_time.h"
 #include "security/nimcp_blood_brain_barrier.h"
 #include "utils/platform/nimcp_platform.h"
+#include "utils/thread/nimcp_thread.h"
 #include "async/nimcp_bio_async.h"
 #include "async/nimcp_bio_messages.h"
 
 #include <string.h>
+#include <stdlib.h>
 #include <math.h>
 #include <float.h>
 
@@ -151,9 +154,7 @@ static void broadcast_event(portia_attention_state_t state,
  * @brief Get current time in milliseconds
  */
 static uint64_t get_current_time_ms(void) {
-    struct timespec ts;
-    nimcp_platform_clock_gettime(CLOCK_MONOTONIC, &ts);
-    return (uint64_t)ts.tv_sec * 1000ULL + (uint64_t)ts.tv_nsec / 1000000ULL;
+    return nimcp_time_monotonic_ms();
 }
 
 /**
@@ -274,7 +275,7 @@ portia_attention_state_t portia_attention_init(
     state->attention_decay_rate = state->config.decay_rate_per_second;
 
     // Initialize mutex
-    if (nimcp_platform_mutex_init(&state->mutex) != 0) {
+    if (nimcp_platform_mutex_init(&state->mutex, false) != 0) {
         LOG_ERROR("Failed to initialize mutex");
         nimcp_free(state->resources);
         nimcp_free(state);

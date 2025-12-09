@@ -50,7 +50,7 @@ TEST_F(GlobalWorkspaceAPITest, WorkspaceCompeteSucceeds) {
     );
 
     // Either succeeds or fails based on competition (both are valid)
-    EXPECT_TRUE(status == NIMCP_OK || status == NIMCP_ERROR);
+    EXPECT_TRUE(status == NIMCP_SUCCESS || status == NIMCP_ERROR);
 }
 
 TEST_F(GlobalWorkspaceAPITest, WorkspaceCompeteNullBrainFails) {
@@ -122,7 +122,7 @@ TEST_F(GlobalWorkspaceAPITest, WorkspaceCompeteWithDifferentModules) {
             brain, module, content, 256, 0.7f
         );
         // Each competition should either succeed or fail validly
-        EXPECT_TRUE(status == NIMCP_OK || status == NIMCP_ERROR);
+        EXPECT_TRUE(status == NIMCP_SUCCESS || status == NIMCP_ERROR);
     }
 }
 
@@ -134,7 +134,7 @@ TEST_F(GlobalWorkspaceAPITest, WorkspaceCompeteMinimalStrength) {
     );
 
     // Should be valid but unlikely to win
-    EXPECT_TRUE(status == NIMCP_OK || status == NIMCP_ERROR);
+    EXPECT_TRUE(status == NIMCP_SUCCESS || status == NIMCP_ERROR);
 }
 
 TEST_F(GlobalWorkspaceAPITest, WorkspaceCompeteMaximalStrength) {
@@ -145,7 +145,7 @@ TEST_F(GlobalWorkspaceAPITest, WorkspaceCompeteMaximalStrength) {
     );
 
     // Should be valid and likely to win
-    EXPECT_TRUE(status == NIMCP_OK || status == NIMCP_ERROR);
+    EXPECT_TRUE(status == NIMCP_SUCCESS || status == NIMCP_ERROR);
 }
 
 //=============================================================================
@@ -162,7 +162,7 @@ TEST_F(GlobalWorkspaceAPITest, WorkspaceReadWithoutBroadcast) {
     );
 
     // Either succeeds (if there's a broadcast) or fails (if not)
-    EXPECT_TRUE(status == NIMCP_OK || status == NIMCP_ERROR);
+    EXPECT_TRUE(status == NIMCP_SUCCESS || status == NIMCP_ERROR);
 }
 
 TEST_F(GlobalWorkspaceAPITest, WorkspaceReadNullBrainFails) {
@@ -232,7 +232,7 @@ TEST_F(GlobalWorkspaceAPITest, WorkspaceSubscribeSucceeds) {
     );
 
     // Either succeeds or fails based on workspace state
-    EXPECT_TRUE(status == NIMCP_OK || status == NIMCP_ERROR);
+    EXPECT_TRUE(status == NIMCP_SUCCESS || status == NIMCP_ERROR);
 }
 
 TEST_F(GlobalWorkspaceAPITest, WorkspaceSubscribeNullBrainFails) {
@@ -252,7 +252,7 @@ TEST_F(GlobalWorkspaceAPITest, WorkspaceSubscribeMultipleModules) {
 
     for (auto module : modules) {
         nimcp_status_t status = nimcp_brain_workspace_subscribe(brain, module);
-        EXPECT_TRUE(status == NIMCP_OK || status == NIMCP_ERROR);
+        EXPECT_TRUE(status == NIMCP_SUCCESS || status == NIMCP_ERROR);
     }
 }
 
@@ -269,7 +269,7 @@ TEST_F(GlobalWorkspaceAPITest, WorkspaceUnsubscribeSucceeds) {
         brain, NIMCP_MODULE_PERCEPTION
     );
 
-    EXPECT_TRUE(status == NIMCP_OK || status == NIMCP_ERROR);
+    EXPECT_TRUE(status == NIMCP_SUCCESS || status == NIMCP_ERROR);
 }
 
 TEST_F(GlobalWorkspaceAPITest, WorkspaceUnsubscribeNullBrainFails) {
@@ -286,7 +286,7 @@ TEST_F(GlobalWorkspaceAPITest, WorkspaceUnsubscribeWithoutSubscribe) {
     );
 
     // Should handle gracefully
-    EXPECT_TRUE(status == NIMCP_OK || status == NIMCP_ERROR);
+    EXPECT_TRUE(status == NIMCP_SUCCESS || status == NIMCP_ERROR);
 }
 
 //=============================================================================
@@ -300,7 +300,7 @@ TEST_F(GlobalWorkspaceAPITest, WorkspaceHasBroadcastSucceeds) {
         brain, &has_broadcast
     );
 
-    EXPECT_TRUE(status == NIMCP_OK || status == NIMCP_ERROR);
+    EXPECT_TRUE(status == NIMCP_SUCCESS || status == NIMCP_ERROR);
 }
 
 TEST_F(GlobalWorkspaceAPITest, WorkspaceHasBroadcastNullBrainFails) {
@@ -334,7 +334,7 @@ TEST_F(GlobalWorkspaceAPITest, WorkspaceStatsSucceeds) {
         brain, &total_broadcasts, &total_competitions, &avg_strength
     );
 
-    EXPECT_TRUE(status == NIMCP_OK || status == NIMCP_ERROR);
+    EXPECT_TRUE(status == NIMCP_SUCCESS || status == NIMCP_ERROR);
 }
 
 TEST_F(GlobalWorkspaceAPITest, WorkspaceStatsNullBrainFails) {
@@ -398,13 +398,13 @@ TEST_F(GlobalWorkspaceAPITest, CompetitionAndBroadcastWorkflow) {
     );
 
     // If competition succeeded, should be able to read broadcast
-    if (compete_status == NIMCP_OK) {
+    if (compete_status == NIMCP_SUCCESS) {
         bool has_broadcast;
         nimcp_status_t check_status = nimcp_brain_workspace_has_broadcast(
             brain, &has_broadcast
         );
 
-        EXPECT_EQ(check_status, NIMCP_OK);
+        EXPECT_EQ(check_status, NIMCP_SUCCESS);
 
         // Try to read the broadcast
         float read_content[256];
@@ -416,7 +416,7 @@ TEST_F(GlobalWorkspaceAPITest, CompetitionAndBroadcastWorkflow) {
         );
 
         // Should be able to read if there's a broadcast
-        EXPECT_TRUE(read_status == NIMCP_OK || read_status == NIMCP_ERROR);
+        EXPECT_TRUE(read_status == NIMCP_SUCCESS || read_status == NIMCP_ERROR);
     }
 }
 
@@ -451,7 +451,7 @@ TEST_F(GlobalWorkspaceAPITest, UnsubscribeStopsBroadcast) {
         brain, NIMCP_MODULE_ETHICS
     );
 
-    EXPECT_TRUE(status == NIMCP_OK || status == NIMCP_ERROR);
+    EXPECT_TRUE(status == NIMCP_SUCCESS || status == NIMCP_ERROR);
 }
 
 TEST_F(GlobalWorkspaceAPITest, MultipleCompetitionAttempts) {
@@ -474,7 +474,7 @@ TEST_F(GlobalWorkspaceAPITest, MultipleCompetitionAttempts) {
     );
 
     // Should be valid
-    EXPECT_TRUE(status2 == NIMCP_OK || status2 == NIMCP_ERROR);
+    EXPECT_TRUE(status2 == NIMCP_SUCCESS || status2 == NIMCP_ERROR);
 }
 
 // Test all cognitive module enums
@@ -515,6 +515,6 @@ TEST_F(GlobalWorkspaceAPITest, AllCognitiveModuleEnums) {
         );
 
         // All modules should be valid
-        EXPECT_TRUE(status == NIMCP_OK || status == NIMCP_ERROR);
+        EXPECT_TRUE(status == NIMCP_SUCCESS || status == NIMCP_ERROR);
     }
 }

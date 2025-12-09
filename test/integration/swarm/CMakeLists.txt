@@ -36,3 +36,17 @@ add_test_binary(
     ${CMAKE_CURRENT_SOURCE_DIR}/test_swarm_gateway_integration.cpp
     integration
 )
+
+# Test 6: Swarm Conflict Resolution Integration
+add_test_binary(
+    test_swarm_conflict_resolution_integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/test_swarm_conflict_resolution_integration.cpp
+    integration
+)
+
+# Test 7: Quorum and Immune Logic Integration
+add_test_binary(
+    test_quorum_immune_logic_integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/test_quorum_immune_logic_integration.cpp
+    integration
+)

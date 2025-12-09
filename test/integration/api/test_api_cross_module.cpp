@@ -21,7 +21,7 @@
 class APICrossModuleTest : public ::testing::Test {
 protected:
     void SetUp() override {
-        ASSERT_EQ(nimcp_init(), NIMCP_OK);
+        ASSERT_EQ(nimcp_init(), NIMCP_SUCCESS);
     }
 
     void TearDown() override {
@@ -59,11 +59,11 @@ TEST_F(APICrossModuleTest, Brain_Ethics_DecisionValidation) {
     // Brain makes decision
     char decision[64];
     float confidence;
-    ASSERT_EQ(nimcp_brain_predict(brain, good_action, 10, decision, &confidence), NIMCP_OK);
+    ASSERT_EQ(nimcp_brain_predict(brain, good_action, 10, decision, &confidence), NIMCP_SUCCESS);
 
     // Ethics validates decision
     float ethics_score;
-    ASSERT_EQ(nimcp_ethics_check(ethics, good_action, 10, &ethics_score), NIMCP_OK);
+    ASSERT_EQ(nimcp_ethics_check(ethics, good_action, 10, &ethics_score), NIMCP_SUCCESS);
 
     // Combined decision-making based on both brain and ethics
     bool should_execute = (confidence > 0.5f) && (ethics_score >= 0.0f);
@@ -91,12 +91,12 @@ TEST_F(APICrossModuleTest, Brain_Knowledge_LearningAndRetrieval) {
 
     // Query knowledge
     char query_result[1024];
-    ASSERT_EQ(nimcp_knowledge_query(knowledge, "brain", query_result, 1024), NIMCP_OK);
+    ASSERT_EQ(nimcp_knowledge_query(knowledge, "brain", query_result, 1024), NIMCP_SUCCESS);
 
     // Brain makes prediction
     char prediction[64];
     float confidence;
-    ASSERT_EQ(nimcp_brain_predict(brain, features, 5, prediction, &confidence), NIMCP_OK);
+    ASSERT_EQ(nimcp_brain_predict(brain, features, 5, prediction, &confidence), NIMCP_SUCCESS);
 
     // Store prediction in knowledge
     nimcp_knowledge_add_fact(knowledge, "brain", "predicted", prediction);
@@ -123,8 +123,8 @@ TEST_F(APICrossModuleTest, Ethics_Knowledge_ConstraintSystem) {
     float helpful_situation[] = {1.0f, 1.0f, 0.0f, 0.0f, 0.0f};
 
     float harm_score, help_score;
-    ASSERT_EQ(nimcp_ethics_check(ethics, harmful_situation, 5, &harm_score), NIMCP_OK);
-    ASSERT_EQ(nimcp_ethics_check(ethics, helpful_situation, 5, &help_score), NIMCP_OK);
+    ASSERT_EQ(nimcp_ethics_check(ethics, harmful_situation, 5, &harm_score), NIMCP_SUCCESS);
+    ASSERT_EQ(nimcp_ethics_check(ethics, helpful_situation, 5, &help_score), NIMCP_SUCCESS);
 
     // Query knowledge for ethical principles
     char result[1024];
@@ -155,10 +155,10 @@ TEST_F(APICrossModuleTest, ThreeModule_DecisionPipeline) {
     // Decision phase: Brain decides, ethics validates, knowledge logs
     char decision[64];
     float confidence;
-    ASSERT_EQ(nimcp_brain_predict(brain, features, 8, decision, &confidence), NIMCP_OK);
+    ASSERT_EQ(nimcp_brain_predict(brain, features, 8, decision, &confidence), NIMCP_SUCCESS);
 
     float ethics_score;
-    ASSERT_EQ(nimcp_ethics_check(ethics, features, 8, &ethics_score), NIMCP_OK);
+    ASSERT_EQ(nimcp_ethics_check(ethics, features, 8, &ethics_score), NIMCP_SUCCESS);
 
     // Log decision to knowledge base
     nimcp_knowledge_add_fact(knowledge, "brain", "decided", decision);
@@ -201,8 +201,8 @@ TEST_F(APICrossModuleTest, Brain_Network_Coordination) {
     // Get predictions from both
     char brain_label[64];
     float brain_confidence;
-    ASSERT_EQ(nimcp_brain_predict(brain, inputs, 10, brain_label, &brain_confidence), NIMCP_OK);
-    ASSERT_EQ(nimcp_network_forward(network, inputs, 10, network_outputs, 2), NIMCP_OK);
+    ASSERT_EQ(nimcp_brain_predict(brain, inputs, 10, brain_label, &brain_confidence), NIMCP_SUCCESS);
+    ASSERT_EQ(nimcp_network_forward(network, inputs, 10, network_outputs, 2), NIMCP_SUCCESS);
 
     // Both should produce reasonable outputs
     EXPECT_GT(brain_confidence, 0.0f);
@@ -273,8 +273,8 @@ TEST_F(APICrossModuleTest, Brain_Network_SharedTraining) {
     }
 
     // Compare outputs
-    ASSERT_EQ(nimcp_brain_infer(brain, inputs, 5, brain_outputs, 1), NIMCP_OK);
-    ASSERT_EQ(nimcp_network_forward(network, inputs, 5, network_outputs, 1), NIMCP_OK);
+    ASSERT_EQ(nimcp_brain_infer(brain, inputs, 5, brain_outputs, 1), NIMCP_SUCCESS);
+    ASSERT_EQ(nimcp_network_forward(network, inputs, 5, network_outputs, 1), NIMCP_SUCCESS);
 
     // Both should learn similar patterns (roughly)
     EXPECT_GT(brain_outputs[0], 0.0f);
@@ -324,7 +324,7 @@ TEST_F(APICrossModuleTest, Lifecycle_PartialFailureRecovery) {
     // Ethics should still work
     float situation[] = {1.0f, 0.0f, 0.0f, 0.0f, 0.0f};
     float score;
-    ASSERT_EQ(nimcp_ethics_check(ethics, situation, 5, &score), NIMCP_OK);
+    ASSERT_EQ(nimcp_ethics_check(ethics, situation, 5, &score), NIMCP_SUCCESS);
 
     nimcp_ethics_destroy(ethics);
 }
@@ -375,7 +375,7 @@ TEST_F(APICrossModuleTest, Lifecycle_SaveLoadWithOtherModules) {
     nimcp_brain_learn_example(brain, features, 5, "test", 1.0f);
 
     // Save brain
-    ASSERT_EQ(nimcp_brain_save(brain, save_path), NIMCP_OK);
+    ASSERT_EQ(nimcp_brain_save(brain, save_path), NIMCP_SUCCESS);
 
     // Destroy all
     nimcp_brain_destroy(brain);
@@ -389,7 +389,7 @@ TEST_F(APICrossModuleTest, Lifecycle_SaveLoadWithOtherModules) {
     // Brain should still work
     char label[64];
     float confidence;
-    ASSERT_EQ(nimcp_brain_predict(brain, features, 5, label, &confidence), NIMCP_OK);
+    ASSERT_EQ(nimcp_brain_predict(brain, features, 5, label, &confidence), NIMCP_SUCCESS);
 
     nimcp_brain_destroy(brain);
     cleanup_file(save_path);
@@ -445,19 +445,19 @@ TEST_F(APICrossModuleTest, SharedResources_ErrorHandlingAcrossModules) {
 
     // Cause error in brain
     nimcp_status_t brain_status = nimcp_brain_predict(brain, nullptr, 0, nullptr, nullptr);
-    EXPECT_NE(brain_status, NIMCP_OK);
+    EXPECT_NE(brain_status, NIMCP_SUCCESS);
 
     // Ethics should still work after brain error
     float situation[] = {1.0f, 0.0f, 0.0f, 0.0f, 0.0f};
     float score;
-    ASSERT_EQ(nimcp_ethics_check(ethics, situation, 5, &score), NIMCP_OK);
+    ASSERT_EQ(nimcp_ethics_check(ethics, situation, 5, &score), NIMCP_SUCCESS);
 
     // Brain should recover and work again
     float features[] = {1.0f, 2.0f, 3.0f, 4.0f, 5.0f};
     char label[64];
     float confidence;
     nimcp_brain_learn_example(brain, features, 5, "test", 1.0f);
-    ASSERT_EQ(nimcp_brain_predict(brain, features, 5, label, &confidence), NIMCP_OK);
+    ASSERT_EQ(nimcp_brain_predict(brain, features, 5, label, &confidence), NIMCP_SUCCESS);
 
     nimcp_ethics_destroy(ethics);
     nimcp_brain_destroy(brain);

@@ -203,6 +203,18 @@ typedef struct {
 } NimcpMemoryStatistics;
 
 /**
+ * @brief Pattern statistics (forward declaration)
+ */
+typedef struct {
+    uint32_t total_patterns;          /**< Total patterns stored */
+    uint32_t active_patterns;         /**< Active patterns (confidence > threshold) */
+    float avg_pattern_confidence;     /**< Average pattern confidence */
+    uint32_t total_associations;      /**< Total pattern-outcome associations */
+    uint64_t patterns_learned;        /**< Cumulative patterns learned */
+    uint64_t patterns_forgotten;      /**< Cumulative patterns forgotten */
+} swarm_pattern_stats_t;
+
+/**
  * @brief Main swarm memory consolidation system
  */
 typedef struct {
@@ -226,6 +238,15 @@ typedef struct {
 
     /* Semantic compression */
     NimcpSemanticCompression compression; /**< Compression context */
+
+    /* Pattern learning (NEW) */
+    hash_table_t *patterns;           /**< Pattern database indexed by ID */
+    hash_table_t *pattern_associations; /**< Pattern-outcome associations */
+    hash_table_t *sequence_transitions; /**< Pattern sequence transitions */
+    swarm_pattern_stats_t pattern_stats; /**< Pattern learning statistics */
+    uint32_t next_pattern_id;         /**< Next pattern ID to assign */
+    float pattern_similarity_threshold; /**< Similarity threshold for matching */
+    uint32_t max_patterns;            /**< Maximum patterns to store */
 
     /* Bio-async integration (stubbed) */
     void *bio_ctx;                    /**< Bio-async context */
@@ -772,6 +793,451 @@ float nimcp_swarm_memory_get_health_score(const NimcpSwarmMemory *memory);
 void nimcp_swarm_memory_print_status(
     const NimcpSwarmMemory *memory,
     bool verbose
+);
+
+/* ============================================================================
+ * Pattern Learning API (NEW)
+ * ============================================================================ */
+
+/**
+ * @brief Swarm pattern structure
+ *
+ * WHAT: Represents a learned behavioral pattern in the swarm
+ * WHY: Enables pattern recognition and prediction for swarm intelligence
+ * HOW: Stores pattern signature, occurrence stats, and confidence metrics
+ */
+typedef struct {
+    uint32_t pattern_id;          /**< Unique pattern identifier */
+    char label[64];               /**< Pattern label for identification */
+    float *data;                  /**< Pattern data vector */
+    size_t data_len;              /**< Length of data vector */
+    float *signature;             /**< Pattern signature vector (for backward compat) */
+    uint32_t signature_size;      /**< Size of signature vector */
+    float strength;               /**< Pattern strength (0.0-1.0) */
+    uint32_t occurrence_count;    /**< Number of times pattern observed */
+    uint32_t access_count;        /**< Number of accesses */
+    float confidence;             /**< Pattern confidence (0.0-1.0) */
+    uint64_t first_seen_ms;       /**< First observation timestamp */
+    uint64_t last_seen_ms;        /**< Last observation timestamp */
+    uint64_t last_access_ms;      /**< Last access timestamp */
+} swarm_pattern_t;
+
+/**
+ * @brief Temporal pattern structure
+ *
+ * WHAT: Represents a temporal sequence of patterns
+ * WHY: Captures time-dependent behavior patterns
+ * HOW: Stores pattern sequence with timing information
+ */
+typedef struct {
+    uint32_t *sequence;           /**< Array of pattern IDs in sequence */
+    size_t sequence_len;          /**< Length of sequence */
+    uint64_t period_ms;           /**< Period between patterns in ms */
+    float confidence;             /**< Sequence confidence (0.0-1.0) */
+} temporal_pattern_t;
+
+/**
+ * @brief Pattern statistics result structure
+ *
+ * WHAT: Detailed statistics for a specific pattern
+ * WHY: Provides insight into individual pattern usage
+ * HOW: Aggregates access, strength, and association metrics
+ */
+typedef struct {
+    uint32_t access_count;        /**< Number of accesses */
+    uint64_t last_access_ms;      /**< Last access timestamp */
+    float strength;               /**< Pattern strength */
+    uint32_t associations_count;  /**< Number of associations */
+} swarm_pattern_result_t;
+
+/**
+ * @brief Pattern association structure
+ *
+ * WHAT: Links patterns to outcomes for predictive learning
+ * WHY: Enables outcome prediction based on recognized patterns
+ * HOW: Tracks association strength and reinforcement count
+ */
+typedef struct {
+    uint32_t pattern_id;              /**< Pattern identifier */
+    uint32_t outcome_id;              /**< Outcome identifier */
+    float association_strength;       /**< Association strength (0.0-1.0) */
+    uint32_t reinforcement_count;     /**< Number of reinforcements */
+} pattern_association_t;
+
+/* swarm_pattern_stats_t already defined above before NimcpSwarmMemory struct */
+
+/**
+ * @brief Detect a pattern in observation data
+ *
+ * WHAT: Identifies if observation matches any known patterns
+ * WHY: Core pattern recognition for swarm intelligence
+ * HOW: Compares observation signature against stored patterns
+ *
+ * @param mem Swarm memory system
+ * @param observation Observation data vector
+ * @param obs_size Size of observation vector
+ * @param matched Output: matched pattern (if found)
+ * @return NIMCP_SUCCESS on match, NIMCP_ERROR_NOT_FOUND if no match
+ */
+nimcp_result_t swarm_memory_detect_pattern(
+    NimcpSwarmMemory *mem,
+    const float *observation,
+    uint32_t obs_size,
+    swarm_pattern_t *matched
+);
+
+/**
+ * @brief Store a new pattern
+ *
+ * WHAT: Adds a new pattern to the pattern database
+ * WHY: Expands pattern knowledge base for future recognition
+ * HOW: Validates and stores pattern with metadata
+ *
+ * @param mem Swarm memory system
+ * @param pattern Pattern to store
+ * @return NIMCP_SUCCESS on success, error code otherwise
+ */
+nimcp_result_t swarm_memory_store_pattern(
+    NimcpSwarmMemory *mem,
+    const swarm_pattern_t *pattern
+);
+
+/**
+ * @brief Retrieve a pattern by ID
+ *
+ * WHAT: Fetches pattern details from pattern database
+ * WHY: Access stored patterns for analysis or prediction
+ * HOW: Looks up pattern by ID and copies to output
+ *
+ * @param mem Swarm memory system
+ * @param pattern_id Pattern identifier
+ * @param out Output buffer for pattern
+ * @return NIMCP_SUCCESS on success, error code otherwise
+ */
+nimcp_result_t swarm_memory_retrieve_pattern(
+    NimcpSwarmMemory *mem,
+    uint32_t pattern_id,
+    swarm_pattern_t *out
+);
+
+/**
+ * @brief Find similar patterns
+ *
+ * WHAT: Searches for patterns similar to query signature
+ * WHY: Enables fuzzy pattern matching and generalization
+ * HOW: Computes similarity scores and returns top matches
+ *
+ * @param mem Swarm memory system
+ * @param query Query signature vector
+ * @param query_size Size of query vector
+ * @param results Output: array of similar patterns
+ * @param count Output: number of patterns returned
+ * @return NIMCP_SUCCESS on success, error code otherwise
+ */
+nimcp_result_t swarm_memory_get_similar_patterns(
+    NimcpSwarmMemory *mem,
+    const float *query,
+    uint32_t query_size,
+    swarm_pattern_t **results,
+    uint32_t *count
+);
+
+/**
+ * @brief Associate pattern with outcome
+ *
+ * WHAT: Creates or strengthens pattern-outcome association
+ * WHY: Enables learning from experience and prediction
+ * HOW: Updates association strength based on reward signal
+ *
+ * @param mem Swarm memory system
+ * @param pattern_id Pattern identifier
+ * @param outcome_id Outcome identifier
+ * @param reward Reward signal (-1.0 to 1.0)
+ * @return NIMCP_SUCCESS on success, error code otherwise
+ */
+nimcp_result_t swarm_memory_associate_pattern(
+    NimcpSwarmMemory *mem,
+    uint32_t pattern_id,
+    uint32_t outcome_id,
+    float reward
+);
+
+/**
+ * @brief Predict outcome from pattern
+ *
+ * WHAT: Predicts likely outcome given a recognized pattern
+ * WHY: Enables proactive swarm behavior based on past experience
+ * HOW: Finds strongest pattern-outcome association
+ *
+ * @param mem Swarm memory system
+ * @param pattern_id Pattern identifier
+ * @param predicted_outcome Output: predicted outcome ID
+ * @param confidence Output: prediction confidence
+ * @return NIMCP_SUCCESS on success, error code otherwise
+ */
+nimcp_result_t swarm_memory_predict_outcome(
+    NimcpSwarmMemory *mem,
+    uint32_t pattern_id,
+    uint32_t *predicted_outcome,
+    float *confidence
+);
+
+/**
+ * @brief Learn a temporal sequence
+ *
+ * WHAT: Stores a sequence of patterns for temporal learning
+ * WHY: Captures time-dependent swarm behaviors
+ * HOW: Creates sequence associations between consecutive patterns
+ *
+ * @param mem Swarm memory system
+ * @param pattern_sequence Array of pattern IDs in sequence
+ * @param seq_length Length of sequence
+ * @return NIMCP_SUCCESS on success, error code otherwise
+ */
+nimcp_result_t swarm_memory_learn_sequence(
+    NimcpSwarmMemory *mem,
+    const uint32_t *pattern_sequence,
+    uint32_t seq_length
+);
+
+/**
+ * @brief Predict next pattern in sequence
+ *
+ * WHAT: Predicts next pattern given historical sequence
+ * WHY: Enables anticipatory swarm coordination
+ * HOW: Analyzes sequence history and finds most likely next pattern
+ *
+ * @param mem Swarm memory system
+ * @param history Array of recent pattern IDs
+ * @param history_len Length of history
+ * @param predicted Output: predicted next pattern ID
+ * @param confidence Output: prediction confidence
+ * @return NIMCP_SUCCESS on success, error code otherwise
+ */
+nimcp_result_t swarm_memory_predict_next(
+    NimcpSwarmMemory *mem,
+    const uint32_t *history,
+    uint32_t history_len,
+    uint32_t *predicted,
+    float *confidence
+);
+
+/**
+ * @brief Consolidate patterns
+ *
+ * WHAT: Strengthens important patterns, merges similar ones
+ * WHY: Optimizes pattern database for efficiency and accuracy
+ * HOW: Applies consolidation rules based on confidence and usage
+ *
+ * @param mem Swarm memory system
+ * @param current_time_ms Current time in milliseconds
+ * @return NIMCP_SUCCESS on success, error code otherwise
+ */
+nimcp_result_t swarm_memory_consolidate_patterns(
+    NimcpSwarmMemory *mem,
+    uint64_t current_time_ms
+);
+
+/**
+ * @brief Forget weak patterns
+ *
+ * WHAT: Removes patterns below confidence threshold
+ * WHY: Prevents pattern database bloat and improves performance
+ * HOW: Deletes patterns with confidence below threshold
+ *
+ * @param mem Swarm memory system
+ * @param threshold Minimum confidence to retain (0.0-1.0)
+ * @return NIMCP_SUCCESS on success, error code otherwise
+ */
+nimcp_result_t swarm_memory_forget_weak_patterns(
+    NimcpSwarmMemory *mem,
+    float threshold
+);
+
+/**
+ * @brief Get pattern learning statistics
+ *
+ * WHAT: Retrieves aggregate pattern learning metrics
+ * WHY: Monitoring and debugging pattern learning system
+ * HOW: Returns copy of current statistics
+ *
+ * @param mem Swarm memory system
+ * @return Pattern statistics structure
+ */
+swarm_pattern_stats_t swarm_memory_get_pattern_stats(
+    const NimcpSwarmMemory *mem
+);
+
+/* ============================================================================
+ * New Pattern Learning Features (8 Features)
+ * ============================================================================ */
+
+/**
+ * @brief Recognize a pattern in signal data
+ *
+ * WHAT: Matches signal against stored patterns using cosine similarity
+ * WHY: Enables template-based pattern recognition
+ * HOW: Computes similarity scores and returns best match
+ *
+ * @param memory Swarm memory system
+ * @param signal Signal data to match
+ * @param len Length of signal
+ * @return Pattern ID of best match, or -1 if no match found
+ */
+int32_t swarm_memory_recognize_pattern(
+    NimcpSwarmMemory *memory,
+    const float *signal,
+    size_t len
+);
+
+/**
+ * @brief Store a new pattern with label
+ *
+ * WHAT: Stores pattern with label in hash table
+ * WHY: Builds pattern library for recognition
+ * HOW: Validates capacity and inserts into pattern database
+ *
+ * @param memory Swarm memory system
+ * @param signal Signal data to store
+ * @param len Length of signal
+ * @param label Pattern label
+ * @return Pattern ID assigned, or -1 on error
+ */
+int32_t swarm_memory_store_pattern_labeled(
+    NimcpSwarmMemory *memory,
+    const float *signal,
+    size_t len,
+    const char *label
+);
+
+/**
+ * @brief Create bidirectional pattern association
+ *
+ * WHAT: Links two patterns with association strength
+ * WHY: Enables pattern relationship learning
+ * HOW: Stores association in both directions
+ *
+ * @param memory Swarm memory system
+ * @param pattern_a First pattern ID
+ * @param pattern_b Second pattern ID
+ * @param strength Association strength (0.0-1.0)
+ * @return NIMCP_SUCCESS on success, error code otherwise
+ */
+nimcp_result_t swarm_memory_associate_patterns(
+    NimcpSwarmMemory *memory,
+    uint32_t pattern_a,
+    uint32_t pattern_b,
+    float strength
+);
+
+/**
+ * @brief Detect temporal pattern in time-series data
+ *
+ * WHAT: Identifies recurring sequences in signal/timestamp pairs
+ * WHY: Captures temporal behaviors and cycles
+ * HOW: Analyzes signal sequences for repeated patterns
+ *
+ * @param memory Swarm memory system
+ * @param signals Array of signal vectors
+ * @param timestamps Array of timestamps
+ * @param count Number of signals
+ * @param result Output: detected temporal pattern
+ * @return NIMCP_SUCCESS on success, error code otherwise
+ */
+nimcp_result_t swarm_memory_detect_temporal_pattern(
+    NimcpSwarmMemory *memory,
+    const float **signals,
+    const uint64_t *timestamps,
+    size_t count,
+    temporal_pattern_t *result
+);
+
+/**
+ * @brief Consolidate similar patterns
+ *
+ * WHAT: Merges similar patterns and strengthens frequently accessed ones
+ * WHY: Optimizes pattern database quality and efficiency
+ * HOW: Finds similar patterns (>0.9 similarity) and consolidates
+ *
+ * @param memory Swarm memory system
+ * @return NIMCP_SUCCESS on success, error code otherwise
+ */
+nimcp_result_t swarm_memory_consolidate_patterns_full(
+    NimcpSwarmMemory *memory
+);
+
+/**
+ * @brief Get statistics for specific pattern
+ *
+ * WHAT: Retrieves detailed metrics for one pattern
+ * WHY: Enables pattern-level monitoring and debugging
+ * HOW: Looks up pattern and aggregates statistics
+ *
+ * @param memory Swarm memory system
+ * @param pattern_id Pattern identifier
+ * @param stats Output: pattern statistics
+ * @return NIMCP_SUCCESS on success, error code otherwise
+ */
+nimcp_result_t swarm_memory_get_pattern_stats_by_id(
+    NimcpSwarmMemory *memory,
+    uint32_t pattern_id,
+    swarm_pattern_result_t *stats
+);
+
+/**
+ * @brief Export patterns to file
+ *
+ * WHAT: Serializes all patterns to disk file
+ * WHY: Enables pattern persistence and sharing
+ * HOW: Writes pattern data in binary format
+ *
+ * @param memory Swarm memory system
+ * @param filepath Output file path
+ * @return NIMCP_SUCCESS on success, error code otherwise
+ */
+nimcp_result_t swarm_memory_export_patterns(
+    NimcpSwarmMemory *memory,
+    const char *filepath
+);
+
+/**
+ * @brief Import patterns from file
+ *
+ * WHAT: Loads patterns from disk file
+ * WHY: Restores previously saved patterns
+ * HOW: Reads binary format and reconstructs patterns
+ *
+ * @param memory Swarm memory system
+ * @param filepath Input file path
+ * @return Number of patterns imported, or -1 on error
+ */
+int32_t swarm_memory_import_patterns(
+    NimcpSwarmMemory *memory,
+    const char *filepath
+);
+
+/**
+ * @brief Find similar patterns above threshold
+ *
+ * WHAT: Searches for all patterns similar to query signal
+ * WHY: Enables fuzzy matching and pattern clustering
+ * HOW: Computes similarity for all patterns, returns matches
+ *
+ * @param memory Swarm memory system
+ * @param signal Query signal
+ * @param len Signal length
+ * @param threshold Minimum similarity threshold (0.0-1.0)
+ * @param results Output: array of pattern IDs
+ * @param max_results Maximum results to return
+ * @return Number of patterns found
+ */
+int32_t swarm_memory_find_similar_patterns(
+    NimcpSwarmMemory *memory,
+    const float *signal,
+    size_t len,
+    float threshold,
+    uint32_t *results,
+    size_t max_results
 );
 
 /* ============================================================================

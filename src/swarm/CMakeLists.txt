@@ -12,6 +12,7 @@ set(SWARM_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/nimcp_swarm_consensus.c
     ${CMAKE_CURRENT_SOURCE_DIR}/nimcp_swarm_brain.c
     ${CMAKE_CURRENT_SOURCE_DIR}/nimcp_swarm_gateway.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/nimcp_swarm_logic_bridge.c
 )
 
 # Export to parent scope for inclusion in main library

@@ -57,3 +57,24 @@ add_test_binary(
     ${CMAKE_CURRENT_SOURCE_DIR}/test_swarm_security.cpp
     unit
 )
+
+# Test 9: Swarm Conflict Resolution
+add_test_binary(
+    test_swarm_conflict_resolution
+    ${CMAKE_CURRENT_SOURCE_DIR}/test_swarm_conflict_resolution.cpp
+    unit
+)
+
+# Test 10: Quorum Logic Validation
+add_test_binary(
+    test_quorum_logic
+    ${CMAKE_CURRENT_SOURCE_DIR}/test_quorum_logic.cpp
+    unit
+)
+
+# Test 11: Immune Threat Logic
+add_test_binary(
+    test_immune_threat_logic
+    ${CMAKE_CURRENT_SOURCE_DIR}/test_immune_threat_logic.cpp
+    unit
+)

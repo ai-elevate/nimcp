@@ -19,7 +19,7 @@ extern "C" {
 class PortiaSensorFusionE2ETest : public ::testing::Test {
 protected:
     void SetUp() override {
-        nimcp_log_init(NIMCP_LOG_LEVEL_INFO, nullptr);
+        nimcp_log_init(NULL);
         nimcp_bio_async_init(nullptr);
         fusion_ctx_ = nullptr;
     }
@@ -57,7 +57,7 @@ TEST_F(PortiaSensorFusionE2ETest, MultiSensorDataFlow) {
     EXPECT_TRUE(portia_fusion_get_state(fusion_ctx_, &state));
     EXPECT_GT(state.confidence, 0.0f);
 
-    nimcp_log(NIMCP_LOG_LEVEL_INFO, "MultiSensorDataFlow: PASS - Confidence=%.2f", state.confidence);
+    nimcp_log(LOG_LEVEL_INFO, "MultiSensorDataFlow: PASS - Confidence=%.2f", state.confidence);
 }
 
 TEST_F(PortiaSensorFusionE2ETest, SensorFailureHandling) {
@@ -81,5 +81,5 @@ TEST_F(PortiaSensorFusionE2ETest, SensorFailureHandling) {
     EXPECT_TRUE(portia_fusion_get_state(fusion_ctx_, &state));
     EXPECT_GT(state.confidence, 0.0f);
 
-    nimcp_log(NIMCP_LOG_LEVEL_INFO, "SensorFailureHandling: PASS");
+    nimcp_log(LOG_LEVEL_INFO, "SensorFailureHandling: PASS");
 }

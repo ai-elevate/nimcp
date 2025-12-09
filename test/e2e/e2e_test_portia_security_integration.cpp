@@ -12,6 +12,7 @@
 extern "C" {
 #include "portia/nimcp_portia.h"
 #include "security/nimcp_blood_brain_barrier.h"
+#include "security/nimcp_bbb_helpers.h"
 #include "async/nimcp_bio_async.h"
 #include "utils/logging/nimcp_logging.h"
 }
@@ -19,13 +20,13 @@ extern "C" {
 class PortiaSecurityIntegrationE2ETest : public ::testing::Test {
 protected:
     void SetUp() override {
-        nimcp_log_init(NIMCP_LOG_LEVEL_INFO, nullptr);
+        nimcp_log_init(NULL);
         nimcp_bio_async_init(nullptr);
-        bbb_init(nullptr);
+        bbb_helpers_init();
     }
 
     void TearDown() override {
-        bbb_shutdown();
+        bbb_helpers_shutdown();
         nimcp_bio_async_shutdown();
         nimcp_log_shutdown();
     }
@@ -41,7 +42,7 @@ TEST_F(PortiaSecurityIntegrationE2ETest, BBBValidatesAllInputs) {
     ASSERT_EQ(err, NIMCP_SUCCESS);
 
     portia_destroy();
-    nimcp_log(NIMCP_LOG_LEVEL_INFO, "BBBValidatesAllInputs: PASS");
+    nimcp_log(LOG_LEVEL_INFO, "BBBValidatesAllInputs: PASS");
 }
 
 TEST_F(PortiaSecurityIntegrationE2ETest, SecurityAuditLogging) {
@@ -56,5 +57,5 @@ TEST_F(PortiaSecurityIntegrationE2ETest, SecurityAuditLogging) {
     }
 
     portia_destroy();
-    nimcp_log(NIMCP_LOG_LEVEL_INFO, "SecurityAuditLogging: PASS");
+    nimcp_log(LOG_LEVEL_INFO, "SecurityAuditLogging: PASS");
 }

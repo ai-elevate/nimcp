@@ -22,7 +22,7 @@
 class APIMultimodalTest : public ::testing::Test {
 protected:
     void SetUp() override {
-        ASSERT_EQ(nimcp_init(), NIMCP_OK);
+        ASSERT_EQ(nimcp_init(), NIMCP_SUCCESS);
     }
 
     void TearDown() override {
@@ -59,8 +59,8 @@ TEST_F(APIMultimodalTest, COW_CloneAndModify) {
 
     // Probe both brains
     nimcp_brain_probe_t orig_probe, clone_probe;
-    ASSERT_EQ(nimcp_brain_probe(original, &orig_probe), NIMCP_OK);
-    ASSERT_EQ(nimcp_brain_probe(clone, &clone_probe), NIMCP_OK);
+    ASSERT_EQ(nimcp_brain_probe(original, &orig_probe), NIMCP_SUCCESS);
+    ASSERT_EQ(nimcp_brain_probe(clone, &clone_probe), NIMCP_SUCCESS);
 
     // Clone should be marked as COW
     EXPECT_TRUE(clone_probe.is_cow_clone);
@@ -110,7 +110,7 @@ TEST_F(APIMultimodalTest, COW_SnapshotAndRestore) {
     nimcp_brain_predict(brain, features, 10, after_label, &after_conf);
 
     // Restore from snapshot
-    ASSERT_EQ(nimcp_brain_restore_cow(brain, snapshot), NIMCP_OK);
+    ASSERT_EQ(nimcp_brain_restore_cow(brain, snapshot), NIMCP_SUCCESS);
 
     // Get prediction after restore
     char restored_label[64];
@@ -151,7 +151,7 @@ TEST_F(APIMultimodalTest, COW_MultipleSnapshots) {
 
     // Restore to first snapshot
     if (!snapshots.empty()) {
-        ASSERT_EQ(nimcp_brain_restore_cow(brain, snapshots[0]), NIMCP_OK);
+        ASSERT_EQ(nimcp_brain_restore_cow(brain, snapshots[0]), NIMCP_SUCCESS);
     }
 
     // Cleanup snapshots
@@ -181,9 +181,9 @@ TEST_F(APIMultimodalTest, COW_CloneFromClone) {
     char label[64];
     float conf;
 
-    ASSERT_EQ(nimcp_brain_predict(original, features, 5, label, &conf), NIMCP_OK);
-    ASSERT_EQ(nimcp_brain_predict(clone1, features, 5, label, &conf), NIMCP_OK);
-    ASSERT_EQ(nimcp_brain_predict(clone2, features, 5, label, &conf), NIMCP_OK);
+    ASSERT_EQ(nimcp_brain_predict(original, features, 5, label, &conf), NIMCP_SUCCESS);
+    ASSERT_EQ(nimcp_brain_predict(clone1, features, 5, label, &conf), NIMCP_SUCCESS);
+    ASSERT_EQ(nimcp_brain_predict(clone2, features, 5, label, &conf), NIMCP_SUCCESS);
 
     nimcp_brain_destroy(clone2);
     nimcp_brain_destroy(clone1);
@@ -217,15 +217,15 @@ TEST_F(APIMultimodalTest, WorkingMemory_GlobalWorkspace_Integration) {
     );
 
     // If both are enabled, verify they work together
-    if (wm_status == NIMCP_OK && gw_status == NIMCP_OK) {
+    if (wm_status == NIMCP_SUCCESS && gw_status == NIMCP_SUCCESS) {
         // Check working memory
         uint32_t wm_size, wm_capacity;
-        ASSERT_EQ(nimcp_brain_working_memory_stats(brain, &wm_size, &wm_capacity), NIMCP_OK);
+        ASSERT_EQ(nimcp_brain_working_memory_stats(brain, &wm_size, &wm_capacity), NIMCP_SUCCESS);
         EXPECT_GT(wm_size, 0);
 
         // Check global workspace
         bool has_broadcast;
-        ASSERT_EQ(nimcp_brain_workspace_has_broadcast(brain, &has_broadcast), NIMCP_OK);
+        ASSERT_EQ(nimcp_brain_workspace_has_broadcast(brain, &has_broadcast), NIMCP_SUCCESS);
         EXPECT_TRUE(has_broadcast);
     }
 
@@ -251,13 +251,13 @@ TEST_F(APIMultimodalTest, WorkingMemory_GlobalWorkspace_ContentFlow) {
         0.9f
     );
 
-    if (compete_status == NIMCP_OK) {
+    if (compete_status == NIMCP_SUCCESS) {
         // Read from global workspace
         float read_content[256];
         uint32_t dim;
         nimcp_cognitive_module_t source;
 
-        ASSERT_EQ(nimcp_brain_workspace_read(brain, read_content, 256, &dim, &source), NIMCP_OK);
+        ASSERT_EQ(nimcp_brain_workspace_read(brain, read_content, 256, &dim, &source), NIMCP_SUCCESS);
         EXPECT_EQ(source, NIMCP_MODULE_WORKING_MEMORY);
 
         // Content should match
@@ -291,7 +291,7 @@ TEST_F(APIMultimodalTest, MultiModule_Coordination) {
     float avg_strength;
     nimcp_status_t stats_status = nimcp_brain_workspace_stats(brain, &broadcasts, &competitions, &avg_strength);
 
-    if (stats_status == NIMCP_OK) {
+    if (stats_status == NIMCP_SUCCESS) {
         EXPECT_GE(competitions, 3);
     }
 
@@ -317,7 +317,7 @@ TEST_F(APIMultimodalTest, Ethics_Knowledge_Integration) {
     // Check ethics
     float situation[] = {1.0f, 0.0f, -1.0f, 0.5f, 0.5f};
     float ethics_score;
-    ASSERT_EQ(nimcp_ethics_check(ethics, situation, 5, &ethics_score), NIMCP_OK);
+    ASSERT_EQ(nimcp_ethics_check(ethics, situation, 5, &ethics_score), NIMCP_SUCCESS);
 
     // Query knowledge
     char result[1024];
@@ -389,8 +389,8 @@ TEST_F(APIMultimodalTest, Concurrent_BrainAndNetwork) {
     // Both should be functional
     char label[64];
     float confidence;
-    ASSERT_EQ(nimcp_brain_predict(brain, inputs, 10, label, &confidence), NIMCP_OK);
-    ASSERT_EQ(nimcp_network_forward(network, inputs, 10, outputs, 2), NIMCP_OK);
+    ASSERT_EQ(nimcp_brain_predict(brain, inputs, 10, label, &confidence), NIMCP_SUCCESS);
+    ASSERT_EQ(nimcp_network_forward(network, inputs, 10, outputs, 2), NIMCP_SUCCESS);
 
     nimcp_network_destroy(network);
     nimcp_brain_destroy(brain);
@@ -481,7 +481,7 @@ TEST_F(APIMultimodalTest, MemoryPressure_COW_Efficiency) {
     // Probe clones to verify COW
     for (auto clone : clones) {
         nimcp_brain_probe_t probe;
-        if (nimcp_brain_probe(clone, &probe) == NIMCP_OK) {
+        if (nimcp_brain_probe(clone, &probe) == NIMCP_SUCCESS) {
             EXPECT_TRUE(probe.is_cow_clone);
             EXPECT_GT(probe.cow_shared_bytes, probe.cow_private_bytes);
         }
@@ -505,7 +505,7 @@ TEST_F(APIMultimodalTest, MemoryPressure_SaveLoadCycle) {
 
         train_brain(brain, 10);
 
-        ASSERT_EQ(nimcp_brain_save(brain, save_path), NIMCP_OK);
+        ASSERT_EQ(nimcp_brain_save(brain, save_path), NIMCP_SUCCESS);
         nimcp_brain_destroy(brain);
 
         nimcp_brain_t loaded = nimcp_brain_load(save_path);
@@ -515,7 +515,7 @@ TEST_F(APIMultimodalTest, MemoryPressure_SaveLoadCycle) {
         float features[] = {1.0f, 2.0f, 3.0f, 4.0f, 5.0f, 6.0f, 7.0f, 8.0f, 9.0f, 10.0f};
         char label[64];
         float conf;
-        ASSERT_EQ(nimcp_brain_predict(loaded, features, 10, label, &conf), NIMCP_OK);
+        ASSERT_EQ(nimcp_brain_predict(loaded, features, 10, label, &conf), NIMCP_SUCCESS);
 
         nimcp_brain_destroy(loaded);
     }

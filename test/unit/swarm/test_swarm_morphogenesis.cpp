@@ -81,7 +81,7 @@ TEST_F(SwarmMorphogenesisTest, RegisterAgent) {
     nimcp_result_t result = nimcp_morphogenesis_register_agent(
         system, 1, SWARM_ROLE_WORKER
     );
-    EXPECT_EQ(result, NIMCP_OK);
+    EXPECT_EQ(result, NIMCP_SUCCESS);
 }
 
 TEST_F(SwarmMorphogenesisTest, RegisterMultipleAgents) {
@@ -89,7 +89,7 @@ TEST_F(SwarmMorphogenesisTest, RegisterMultipleAgents) {
         nimcp_result_t result = nimcp_morphogenesis_register_agent(
             system, i, SWARM_ROLE_WORKER
         );
-        EXPECT_EQ(result, NIMCP_OK);
+        EXPECT_EQ(result, NIMCP_SUCCESS);
     }
 }
 
@@ -105,7 +105,7 @@ TEST_F(SwarmMorphogenesisTest, RegisterDuplicateAgent) {
 TEST_F(SwarmMorphogenesisTest, UnregisterAgent) {
     nimcp_morphogenesis_register_agent(system, 1, SWARM_ROLE_WORKER);
     nimcp_result_t result = nimcp_morphogenesis_unregister_agent(system, 1);
-    EXPECT_EQ(result, NIMCP_OK);
+    EXPECT_EQ(result, NIMCP_SUCCESS);
 }
 
 //=============================================================================
@@ -118,7 +118,7 @@ TEST_F(SwarmMorphogenesisTest, GetAgentRole) {
     nimcp_swarm_role_t role;
     nimcp_result_t result = nimcp_morphogenesis_get_role(system, 1, &role);
 
-    EXPECT_EQ(result, NIMCP_OK);
+    EXPECT_EQ(result, NIMCP_SUCCESS);
     EXPECT_EQ(role, SWARM_ROLE_SCOUT);
 }
 
@@ -129,7 +129,7 @@ TEST_F(SwarmMorphogenesisTest, SetAgentRole) {
         system, 1, SWARM_ROLE_DEFENDER
     );
 
-    EXPECT_EQ(result, NIMCP_OK);
+    EXPECT_EQ(result, NIMCP_SUCCESS);
 
     nimcp_swarm_role_t role;
     nimcp_morphogenesis_get_role(system, 1, &role);
@@ -140,7 +140,7 @@ TEST_F(SwarmMorphogenesisTest, GetRoleForUnregisteredAgent) {
     nimcp_swarm_role_t role;
     nimcp_result_t result = nimcp_morphogenesis_get_role(system, 999, &role);
 
-    EXPECT_NE(result, NIMCP_OK);
+    EXPECT_NE(result, NIMCP_SUCCESS);
 }
 
 //=============================================================================
@@ -161,7 +161,7 @@ TEST_F(SwarmMorphogenesisTest, ProcessStimulus) {
         system, 1, &stimulus
     );
 
-    EXPECT_EQ(result, NIMCP_OK);
+    EXPECT_EQ(result, NIMCP_SUCCESS);
 }
 
 TEST_F(SwarmMorphogenesisTest, ThreatStimulusTriggersDefender) {
@@ -214,7 +214,7 @@ TEST_F(SwarmMorphogenesisTest, UpdateCompetency) {
         system, 1, 0.75f
     );
 
-    EXPECT_EQ(result, NIMCP_OK);
+    EXPECT_EQ(result, NIMCP_SUCCESS);
 }
 
 TEST_F(SwarmMorphogenesisTest, GetCompetency) {
@@ -226,7 +226,7 @@ TEST_F(SwarmMorphogenesisTest, GetCompetency) {
         system, 1, &competency
     );
 
-    EXPECT_EQ(result, NIMCP_OK);
+    EXPECT_EQ(result, NIMCP_SUCCESS);
     EXPECT_NEAR(competency, 0.6f, 0.01f);
 }
 
@@ -284,7 +284,7 @@ TEST_F(SwarmMorphogenesisTest, AllowReDifferentiation) {
         system, 1, SWARM_ROLE_DEFENDER
     );
 
-    EXPECT_EQ(result, NIMCP_OK);
+    EXPECT_EQ(result, NIMCP_SUCCESS);
 }
 
 TEST_F(SwarmMorphogenesisTest, ReDifferentiationCost) {
@@ -311,7 +311,7 @@ TEST_F(SwarmMorphogenesisTest, GetRoleDistribution) {
     nimcp_role_distribution_t dist;
     nimcp_result_t result = nimcp_morphogenesis_get_distribution(system, &dist);
 
-    EXPECT_EQ(result, NIMCP_OK);
+    EXPECT_EQ(result, NIMCP_SUCCESS);
     EXPECT_EQ(dist.total_agents, 10);
 }
 
@@ -322,7 +322,7 @@ TEST_F(SwarmMorphogenesisTest, RebalancePopulation) {
     }
 
     nimcp_result_t result = nimcp_morphogenesis_rebalance(system);
-    EXPECT_EQ(result, NIMCP_OK);
+    EXPECT_EQ(result, NIMCP_SUCCESS);
 }
 
 TEST_F(SwarmMorphogenesisTest, SuggestRoleNeeds) {
@@ -335,7 +335,7 @@ TEST_F(SwarmMorphogenesisTest, SuggestRoleNeeds) {
         system, &needed_role
     );
 
-    EXPECT_EQ(result, NIMCP_OK);
+    EXPECT_EQ(result, NIMCP_SUCCESS);
 }
 
 //=============================================================================
@@ -346,7 +346,7 @@ TEST_F(SwarmMorphogenesisTest, SetRoleLimit) {
     nimcp_result_t result = nimcp_morphogenesis_set_role_limit(
         system, SWARM_ROLE_LEADER, 1
     );
-    EXPECT_EQ(result, NIMCP_OK);
+    EXPECT_EQ(result, NIMCP_SUCCESS);
 }
 
 TEST_F(SwarmMorphogenesisTest, EnforceRoleLimit) {
@@ -416,7 +416,7 @@ TEST_F(SwarmMorphogenesisTest, RequestRoleAssignment) {
         system, 1, SWARM_ROLE_SCOUT
     );
 
-    EXPECT_EQ(result, NIMCP_OK);
+    EXPECT_EQ(result, NIMCP_SUCCESS);
 }
 
 //=============================================================================
@@ -431,7 +431,7 @@ TEST_F(SwarmMorphogenesisTest, GetStatistics) {
     nimcp_morphogenesis_stats_t stats;
     nimcp_result_t result = nimcp_morphogenesis_get_stats(system, &stats);
 
-    EXPECT_EQ(result, NIMCP_OK);
+    EXPECT_EQ(result, NIMCP_SUCCESS);
     EXPECT_EQ(stats.total_agents, 10);
 }
 
@@ -461,7 +461,7 @@ TEST_F(SwarmMorphogenesisTest, ValidateConfig) {
     nimcp_morphogenesis_default_config(&test_config);
 
     nimcp_result_t result = nimcp_morphogenesis_validate_config(&test_config);
-    EXPECT_EQ(result, NIMCP_OK);
+    EXPECT_EQ(result, NIMCP_SUCCESS);
 }
 
 //=============================================================================

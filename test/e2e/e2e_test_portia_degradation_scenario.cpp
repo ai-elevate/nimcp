@@ -20,7 +20,7 @@ extern "C" {
 class PortiaDegradationScenarioE2ETest : public ::testing::Test {
 protected:
     void SetUp() override {
-        nimcp_log_init(NIMCP_LOG_LEVEL_INFO, nullptr);
+        nimcp_log_init(NULL);
         nimcp_bio_async_init(nullptr);
     }
 
@@ -41,15 +41,15 @@ TEST_F(PortiaDegradationScenarioE2ETest, ProgressiveDegradation) {
     };
 
     for (auto level : levels) {
-        nimcp_log(NIMCP_LOG_LEVEL_INFO, "Testing degradation level: %d", level);
+        nimcp_log(LOG_LEVEL_INFO, "Testing degradation level: %d", level);
         // Verify system remains functional at each level
         std::this_thread::sleep_for(std::chrono::milliseconds(50));
     }
 
-    nimcp_log(NIMCP_LOG_LEVEL_INFO, "ProgressiveDegradation: PASS");
+    nimcp_log(LOG_LEVEL_INFO, "ProgressiveDegradation: PASS");
 }
 
 TEST_F(PortiaDegradationScenarioE2ETest, CoreFunctionsMaintained) {
     // Verify core functions work even under severe degradation
-    nimcp_log(NIMCP_LOG_LEVEL_INFO, "CoreFunctionsMaintained: PASS");
+    nimcp_log(LOG_LEVEL_INFO, "CoreFunctionsMaintained: PASS");
 }

@@ -36,12 +36,24 @@ extern "C" {
 typedef int32_t nimcp_result_t;
 
 /* Error codes - use canonical values for consistency with nimcp_error_codes.h */
+#ifndef NIMCP_SUCCESS
 #define NIMCP_SUCCESS 0               // Operation successful
+#endif
+#ifndef NIMCP_ERROR_INVALID_PARAM
 #define NIMCP_ERROR_INVALID_PARAM 1002 // Invalid parameter (canonical value)
+#endif
+#ifndef NIMCP_ERROR_SYSTEM
 #define NIMCP_ERROR_SYSTEM (-2)       // System error (check errno)
+#endif
+#ifndef NIMCP_ERROR_MEMORY
 #define NIMCP_ERROR_MEMORY 2000       // Memory allocation failed
+#endif
+#ifndef NIMCP_ERROR_NOT_FOUND
 #define NIMCP_ERROR_NOT_FOUND 1009    // Resource not found
+#endif
+#ifndef NIMCP_BUSY
 #define NIMCP_BUSY (-5)               // Resource busy (trylock)
+#endif
 
 //=============================================================================
 // Type Definitions

@@ -22,6 +22,7 @@
 
 #include "utils/validation/nimcp_common.h"
 #include "async/nimcp_bio_messages.h"
+#include "core/neuron_types/nimcp_neural_logic.h"
 #include <stdint.h>
 #include <stdbool.h>
 
@@ -148,6 +149,18 @@ typedef struct {
 } NimcpSwarmBehaviorProfile;
 
 /**
+ * @brief Logic-based threat detection rule
+ */
+typedef struct {
+    uint32_t threat_id;              /**< Unique rule identifier */
+    int detection_logic;             /**< Logic gate type for combining signals */
+    size_t num_sources;              /**< Number of signal sources */
+    float confidence_threshold;      /**< Required confidence for detection */
+    NimcpSwarmThreatType threat_type;/**< Type of threat to detect */
+    uint32_t* signal_sources;        /**< Array of signal source IDs */
+} immune_threat_rule_t;
+
+/**
  * @brief Swarm immune system configuration
  */
 typedef struct {
@@ -201,6 +214,11 @@ typedef struct {
     /* Self identification */
     uint32_t self_drone_id;
     uint8_t self_signature[32];
+
+    /* Logic-based threat detection */
+    immune_threat_rule_t* threat_rules;
+    size_t threat_rule_count;
+    size_t threat_rule_capacity;
 
     /* Thread safety */
     nimcp_platform_mutex_t* mutex;  /**< Mutex for thread safety */
@@ -615,6 +633,134 @@ nimcp_result_t nimcp_swarm_immune_update(
 nimcp_result_t nimcp_swarm_immune_reset(
     NimcpSwarmImmuneSystem* system,
     bool preserve_memory
+);
+
+/* ============================================================================
+ * Logic-Based Threat Detection
+ * ============================================================================ */
+
+/* NOTE: immune_threat_rule_t is defined earlier in this file at the Type Definitions section */
+
+/**
+ * @brief Immune response strategy based on logic evaluation
+ */
+typedef struct {
+    uint32_t response_id;            /**< Response rule ID */
+    logic_gate_type_t response_logic; /**< Logic for triggering response */
+    NimcpSwarmResponseType response_type; /**< Response action */
+    float intensity;                 /**< Response intensity [0,1] */
+    bool requires_coordination;      /**< Multi-agent coordination needed */
+} immune_response_t;
+
+/**
+ * @brief Add threat detection rule
+ *
+ * WHAT: Adds logic-based rule for threat detection
+ * WHY:  Enable compositional threat detection from multiple signals
+ * HOW:  Uses logic gates to combine detector outputs
+ *
+ * @param immune Immune system
+ * @param rule Threat detection rule
+ * @return NIMCP_OK on success
+ *
+ * LOGIC MODES:
+ * - IMPLIES: If signal_A AND signal_B THEN threat
+ * - OR: Any detector triggers alert
+ * - NOT: Absence of expected signal = threat
+ * - AND: Multiple detectors must agree
+ */
+nimcp_result_t immune_add_threat_rule(
+    NimcpSwarmImmuneSystem* immune,
+    const immune_threat_rule_t* rule
+);
+
+/**
+ * @brief Evaluate threats using logic gates
+ *
+ * WHAT: Evaluates all threat rules using neural logic
+ * WHY:  Detect complex multi-signal threat patterns
+ * HOW:  Evaluates logic gates over detector signals
+ *
+ * @param immune Immune system
+ * @param threat_scores Output array of threat scores per rule
+ * @param num_threats Output number of threats detected
+ * @return NIMCP_OK on success
+ *
+ * ALGORITHM:
+ * - For each threat rule
+ * - Gather signals from specified sources
+ * - Evaluate detection logic gate
+ * - Output threat score [0,1]
+ */
+nimcp_result_t immune_evaluate_threats(
+    NimcpSwarmImmuneSystem* immune,
+    float* threat_scores,
+    uint32_t* num_threats
+);
+
+/**
+ * @brief Generate logic-based immune response
+ *
+ * WHAT: Determines response strategy using logic evaluation
+ * WHY:  Choose appropriate response based on threat logic
+ * HOW:  Evaluates response rules with IMPLIES/OR/NOT gates
+ *
+ * @param immune Immune system
+ * @param threat_id Detected threat ID
+ * @param response Output response strategy
+ * @return NIMCP_OK on success
+ *
+ * LOGIC PATTERNS:
+ * - IMPLIES: If threat_severe THEN isolate
+ * - OR: Multiple response options
+ * - NOT: Suppress response if condition not met
+ */
+nimcp_result_t immune_logic_response(
+    NimcpSwarmImmuneSystem* immune,
+    uint32_t threat_id,
+    immune_response_t* response
+);
+
+/**
+ * @brief Integrate with Blood-Brain-Barrier for threat messaging
+ *
+ * WHAT: Sends threat alerts via BBB bio-async messaging
+ * WHY:  Coordinate immune response across swarm
+ * HOW:  Uses BBB_MSG_THREAT message type
+ *
+ * @param immune Immune system
+ * @param threat_id Threat to broadcast
+ * @param priority Message priority
+ * @return NIMCP_OK on success
+ */
+nimcp_result_t immune_send_bbb_threat_alert(
+    NimcpSwarmImmuneSystem* immune,
+    uint32_t threat_id,
+    NimcpSwarmSeverity priority
+);
+
+/**
+ * @brief Evaluate NOT gate threat logic
+ *
+ * WHAT: Detects threats by absence of expected signals
+ * WHY:  Identify silent failures or missing heartbeats
+ * HOW:  Uses NOT gate to invert signal presence
+ *
+ * @param immune Immune system
+ * @param expected_signal Expected signal that should be present
+ * @param time_window Time window for signal expectation (ms)
+ * @param threat_detected Output: whether threat detected
+ * @return NIMCP_OK on success
+ *
+ * EXAMPLE:
+ * - Expected heartbeat signal absent → threat
+ * - Expected acknowledgment missing → communication failure
+ */
+nimcp_result_t immune_evaluate_not_threat(
+    NimcpSwarmImmuneSystem* immune,
+    uint32_t expected_signal,
+    uint64_t time_window,
+    bool* threat_detected
 );
 
 #include "async/nimcp_bio_router.h"

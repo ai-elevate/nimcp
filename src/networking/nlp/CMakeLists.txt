@@ -16,6 +16,7 @@ set(NLP_SOURCES
     nimcp_neural_language.c
     nimcp_nlp_compression.c
     nimcp_nlp_protocol_bridge.c
+    nimcp_predictive_protocol.c
 )
 
 # Create library target

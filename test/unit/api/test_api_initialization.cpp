@@ -30,7 +30,7 @@ protected:
  */
 TEST_F(APIInitializationTest, InitSucceeds) {
     nimcp_status_t status = nimcp_init();
-    EXPECT_EQ(status, NIMCP_OK);
+    EXPECT_EQ(status, NIMCP_SUCCESS);
 }
 
 /**
@@ -38,15 +38,15 @@ TEST_F(APIInitializationTest, InitSucceeds) {
  */
 TEST_F(APIInitializationTest, InitIsIdempotent) {
     nimcp_status_t status1 = nimcp_init();
-    EXPECT_EQ(status1, NIMCP_OK);
+    EXPECT_EQ(status1, NIMCP_SUCCESS);
 
     // Second call should also succeed
     nimcp_status_t status2 = nimcp_init();
-    EXPECT_EQ(status2, NIMCP_OK);
+    EXPECT_EQ(status2, NIMCP_SUCCESS);
 
     // Third call for good measure
     nimcp_status_t status3 = nimcp_init();
-    EXPECT_EQ(status3, NIMCP_OK);
+    EXPECT_EQ(status3, NIMCP_SUCCESS);
 }
 
 /**
@@ -76,7 +76,7 @@ TEST_F(APIInitializationTest, ShutdownWithoutInit) {
  */
 TEST_F(APIInitializationTest, ErrorStateClearedAfterInit) {
     nimcp_status_t status = nimcp_init();
-    EXPECT_EQ(status, NIMCP_OK);
+    EXPECT_EQ(status, NIMCP_SUCCESS);
 
     // Error should be "No error" after successful init
     const char* error = nimcp_get_error();
@@ -89,14 +89,14 @@ TEST_F(APIInitializationTest, ErrorStateClearedAfterInit) {
 TEST_F(APIInitializationTest, InitShutdownInitCycle) {
     // First init
     nimcp_status_t status1 = nimcp_init();
-    EXPECT_EQ(status1, NIMCP_OK);
+    EXPECT_EQ(status1, NIMCP_SUCCESS);
 
     // Shutdown
     nimcp_shutdown();
 
     // Second init should succeed
     nimcp_status_t status2 = nimcp_init();
-    EXPECT_EQ(status2, NIMCP_OK);
+    EXPECT_EQ(status2, NIMCP_SUCCESS);
 }
 
 /**
@@ -105,7 +105,7 @@ TEST_F(APIInitializationTest, InitShutdownInitCycle) {
 TEST_F(APIInitializationTest, MultipleInitShutdownCycles) {
     for (int i = 0; i < 5; i++) {
         nimcp_status_t status = nimcp_init();
-        EXPECT_EQ(status, NIMCP_OK) << "Init failed on iteration " << i;
+        EXPECT_EQ(status, NIMCP_SUCCESS) << "Init failed on iteration " << i;
 
         nimcp_shutdown();
     }

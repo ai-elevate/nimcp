@@ -122,6 +122,18 @@ typedef enum {
 } nimcp_mission_status_t;
 
 /**
+ * @brief Conflict types
+ */
+typedef enum {
+    NIMCP_CONFLICT_TYPE_NONE = 0,
+    NIMCP_CONFLICT_TYPE_RESOURCE,          /**< Multiple swarms want same resource */
+    NIMCP_CONFLICT_TYPE_TERRITORY,         /**< Overlapping territories */
+    NIMCP_CONFLICT_TYPE_GOAL,              /**< Incompatible goals */
+    NIMCP_CONFLICT_TYPE_PRIORITY,          /**< Priority ordering disputes */
+    NIMCP_CONFLICT_TYPE_COMMUNICATION      /**< Message routing conflicts */
+} nimcp_swarm_conflict_type_t;
+
+/**
  * @brief Conflict resolution strategy
  */
 typedef enum {
@@ -130,7 +142,11 @@ typedef enum {
     NIMCP_CONFLICT_TIME_SHARING,       /**< Share resource over time */
     NIMCP_CONFLICT_SPATIAL_SHARING,    /**< Divide spatial region */
     NIMCP_CONFLICT_COOPERATION,        /**< Cooperate on objective */
-    NIMCP_CONFLICT_ESCALATION          /**< Escalate to super-swarm */
+    NIMCP_CONFLICT_ESCALATION,         /**< Escalate to super-swarm */
+    NIMCP_CONFLICT_RESOLVE_ARBITRATE,  /**< Central arbitrator decides */
+    NIMCP_CONFLICT_RESOLVE_MERGE,      /**< Merge conflicting swarms */
+    NIMCP_CONFLICT_RESOLVE_PARTITION,  /**< Partition resources/territory */
+    NIMCP_CONFLICT_RESOLVE_DEFER       /**< Defer to later resolution */
 } nimcp_conflict_resolution_t;
 
 /**
@@ -247,22 +263,77 @@ typedef struct {
 } nimcp_resource_request_t;
 
 /**
- * @brief Conflict between swarms
+ * @brief Negotiation round information
+ */
+typedef struct {
+    uint32_t round;                    /**< Negotiation round number */
+    uint64_t proposer_swarm_id;        /**< Swarm making proposal */
+    float* proposal;                   /**< Proposed division/solution */
+    uint32_t proposal_size;            /**< Size of proposal array */
+    float acceptance_score;            /**< How acceptable (0-1) */
+} nimcp_negotiation_round_t;
+
+/**
+ * @brief Conflict between swarms (enhanced)
  */
 typedef struct {
     uint64_t conflict_id;              /**< Conflict identifier */
+    nimcp_swarm_conflict_type_t type;  /**< Type of conflict */
     uint64_t swarm_ids[NIMCP_MAX_SWARMS_PER_SUPER];
     uint32_t swarm_count;              /**< Involved swarms */
 
     nimcp_conflict_resolution_t strategy; /**< Resolution strategy */
     nimcp_territory_bounds_t contested_area; /**< Contested region */
 
+    float severity;                    /**< Severity 0.0-1.0 */
     uint64_t detection_time;           /**< When detected */
     uint64_t resolution_time;          /**< When resolved */
     bool is_resolved;                  /**< Resolution status */
 
+    void* conflict_context;            /**< Type-specific data */
+    uint32_t context_size;             /**< Context data size */
+
+    nimcp_negotiation_round_t* negotiation; /**< Active negotiation */
+    uint32_t negotiation_round_count;  /**< Number of rounds */
+
     char description[256];             /**< Conflict description */
 } nimcp_swarm_conflict_t;
+
+/**
+ * @brief Conflict resolution result
+ */
+typedef struct {
+    uint32_t conflict_id;              /**< Conflict ID */
+    nimcp_swarm_conflict_type_t type;  /**< Conflict type */
+    nimcp_conflict_resolution_t strategy_used; /**< Strategy used */
+    bool resolved;                     /**< Was it resolved? */
+    float resolution_time_ms;          /**< Time to resolve */
+    uint32_t negotiation_rounds;       /**< Rounds of negotiation */
+    char outcome_description[256];     /**< Outcome description */
+} nimcp_swarm_resolution_result_t;
+
+/**
+ * @brief Conflict resolution statistics
+ */
+typedef struct {
+    uint32_t total_conflicts;          /**< Total conflicts detected */
+    uint32_t conflicts_resolved;       /**< Successfully resolved */
+    uint32_t conflicts_pending;        /**< Still pending */
+    float avg_resolution_time_ms;      /**< Average resolution time */
+    uint32_t escalations;              /**< Number of escalations */
+    uint32_t merges_performed;         /**< Swarms merged */
+} nimcp_conflict_resolution_stats_t;
+
+/**
+ * @brief Conflict resolution configuration
+ */
+typedef struct {
+    nimcp_conflict_resolution_t default_strategy;  /**< Default strategy */
+    float negotiation_timeout_ms;      /**< Negotiation timeout */
+    uint32_t max_negotiation_rounds;   /**< Max negotiation rounds */
+    bool allow_escalation;             /**< Allow escalation? */
+    float merge_threshold;             /**< When to merge (0-1) */
+} nimcp_conflict_resolution_config_t;
 
 /**
  * @brief Super-swarm (swarm-of-swarms) coordinator
@@ -314,6 +385,9 @@ typedef struct {
     bool enable_auto_negotiation;      /**< Auto-negotiate conflicts */
     bool enable_resource_sharing;      /**< Allow resource sharing */
     bool enable_bridge_formation;      /**< Auto-create bridges */
+
+    nimcp_conflict_resolution_config_t conflict_config; /**< Conflict config */
+    nimcp_conflict_resolution_stats_t conflict_stats;   /**< Conflict stats */
 
     void* user_data;                   /**< User-defined data */
 } nimcp_multi_swarm_coordinator_t;
@@ -766,6 +840,24 @@ nimcp_result_t nimcp_comm_bridge_route_message(
 /**
  * @brief Detect conflicts between swarms
  *
+ * WHAT: Scans all swarms for conflicts and populates conflict array
+ * WHY:  Proactive conflict detection enables early resolution
+ * HOW:  Compares territories, resources, and goals pairwise
+ *
+ * @param coordinator Multi-swarm coordinator
+ * @param conflicts Output array for detected conflicts
+ * @param count Output for number of conflicts detected
+ * @return NIMCP_OK on success, error code otherwise
+ */
+nimcp_result_t nimcp_multi_swarm_detect_conflicts(
+    nimcp_multi_swarm_coordinator_t* coordinator,
+    nimcp_swarm_conflict_t** conflicts,
+    uint32_t* count
+);
+
+/**
+ * @brief Detect conflicts (legacy interface)
+ *
  * @param coordinator Multi-swarm coordinator
  * @return Number of conflicts detected
  */
@@ -775,6 +867,26 @@ uint32_t nimcp_conflict_detect(
 
 /**
  * @brief Resolve a specific conflict
+ *
+ * WHAT: Applies resolution strategy to resolve conflict
+ * WHY:  Enables conflict-free multi-swarm coordination
+ * HOW:  Uses strategy-specific logic (priority, negotiation, etc.)
+ *
+ * @param coordinator Multi-swarm coordinator
+ * @param conflict_id Conflict ID
+ * @param strategy Resolution strategy
+ * @param result Output for resolution result (can be NULL)
+ * @return NIMCP_OK on success, error code otherwise
+ */
+nimcp_result_t nimcp_multi_swarm_resolve_conflict(
+    nimcp_multi_swarm_coordinator_t* coordinator,
+    uint32_t conflict_id,
+    nimcp_conflict_resolution_t strategy,
+    nimcp_swarm_resolution_result_t* result
+);
+
+/**
+ * @brief Resolve a specific conflict (legacy interface)
  *
  * @param coordinator Multi-swarm coordinator
  * @param conflict_id Conflict ID
@@ -803,6 +915,124 @@ uint32_t nimcp_conflict_auto_resolve(
     nimcp_multi_swarm_coordinator_t* coordinator,
     nimcp_conflict_resolver_fn resolver,
     void* user_data
+);
+
+/**
+ * @brief Start negotiation for a conflict
+ *
+ * WHAT: Initiates multi-round negotiation protocol
+ * WHY:  Allows swarms to reach mutually acceptable solution
+ * HOW:  Sets up negotiation context and sends initial messages
+ *
+ * @param coordinator Multi-swarm coordinator
+ * @param conflict_id Conflict ID to negotiate
+ * @return NIMCP_OK on success, error code otherwise
+ */
+nimcp_result_t nimcp_multi_swarm_start_negotiation(
+    nimcp_multi_swarm_coordinator_t* coordinator,
+    uint32_t conflict_id
+);
+
+/**
+ * @brief Propose a solution during negotiation
+ *
+ * WHAT: Swarm proposes specific solution to conflict
+ * WHY:  Enables collaborative problem-solving
+ * HOW:  Stores proposal and broadcasts to involved swarms
+ *
+ * @param coordinator Multi-swarm coordinator
+ * @param conflict_id Conflict ID
+ * @param proposal Proposed solution array
+ * @param proposal_size Size of proposal array
+ * @return NIMCP_OK on success, error code otherwise
+ */
+nimcp_result_t nimcp_multi_swarm_propose(
+    nimcp_multi_swarm_coordinator_t* coordinator,
+    uint32_t conflict_id,
+    const float* proposal,
+    uint32_t proposal_size
+);
+
+/**
+ * @brief Accept a negotiation proposal
+ *
+ * WHAT: Swarm accepts current proposal
+ * WHY:  Finalizes negotiated solution
+ * HOW:  Marks conflict as resolved with accepted proposal
+ *
+ * @param coordinator Multi-swarm coordinator
+ * @param conflict_id Conflict ID
+ * @return NIMCP_OK on success, error code otherwise
+ */
+nimcp_result_t nimcp_multi_swarm_accept_proposal(
+    nimcp_multi_swarm_coordinator_t* coordinator,
+    uint32_t conflict_id
+);
+
+/**
+ * @brief Reject a negotiation proposal
+ *
+ * WHAT: Swarm rejects current proposal with reason
+ * WHY:  Allows continued negotiation with feedback
+ * HOW:  Logs rejection and increments negotiation round
+ *
+ * @param coordinator Multi-swarm coordinator
+ * @param conflict_id Conflict ID
+ * @param reason Rejection reason string
+ * @return NIMCP_OK on success, error code otherwise
+ */
+nimcp_result_t nimcp_multi_swarm_reject_proposal(
+    nimcp_multi_swarm_coordinator_t* coordinator,
+    uint32_t conflict_id,
+    const char* reason
+);
+
+/**
+ * @brief Get current negotiation status
+ *
+ * WHAT: Retrieves current round information
+ * WHY:  Allows monitoring negotiation progress
+ * HOW:  Returns copy of current negotiation round data
+ *
+ * @param coordinator Multi-swarm coordinator
+ * @param conflict_id Conflict ID
+ * @param current_round Output for current round (can be NULL)
+ * @return NIMCP_OK on success, error code otherwise
+ */
+nimcp_result_t nimcp_multi_swarm_get_negotiation_status(
+    nimcp_multi_swarm_coordinator_t* coordinator,
+    uint32_t conflict_id,
+    nimcp_negotiation_round_t* current_round
+);
+
+/**
+ * @brief Get conflict resolution statistics
+ *
+ * WHAT: Returns comprehensive conflict statistics
+ * WHY:  Enables monitoring system health and performance
+ * HOW:  Aggregates stats from all super-swarms
+ *
+ * @param coordinator Multi-swarm coordinator
+ * @return Conflict resolution statistics structure
+ */
+nimcp_conflict_resolution_stats_t nimcp_multi_swarm_get_conflict_stats(
+    nimcp_multi_swarm_coordinator_t* coordinator
+);
+
+/**
+ * @brief Configure conflict resolution behavior
+ *
+ * WHAT: Sets conflict resolution configuration
+ * WHY:  Allows customization of resolution strategies
+ * HOW:  Stores config in coordinator structure
+ *
+ * @param coordinator Multi-swarm coordinator
+ * @param config Configuration to apply
+ * @return NIMCP_OK on success, error code otherwise
+ */
+nimcp_result_t nimcp_multi_swarm_set_conflict_config(
+    nimcp_multi_swarm_coordinator_t* coordinator,
+    const nimcp_conflict_resolution_config_t* config
 );
 
 /* ============================================================================

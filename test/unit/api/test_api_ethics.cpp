@@ -46,7 +46,7 @@ TEST_F(EthicsAPITest, EthicsCreateReturnsValidHandle) {
     float score;
 
     nimcp_status_t status = nimcp_ethics_check(ethics, situation, 10, &score);
-    EXPECT_EQ(status, NIMCP_OK);
+    EXPECT_EQ(status, NIMCP_SUCCESS);
 
     nimcp_ethics_destroy(ethics);
 }
@@ -95,7 +95,7 @@ TEST_F(EthicsAPITest, EthicsCheckSucceeds) {
     float score;
 
     nimcp_status_t status = nimcp_ethics_check(ethics, situation, 32, &score);
-    EXPECT_EQ(status, NIMCP_OK);
+    EXPECT_EQ(status, NIMCP_SUCCESS);
 
     nimcp_ethics_destroy(ethics);
 }
@@ -143,7 +143,7 @@ TEST_F(EthicsAPITest, EthicsCheckScoreInValidRange) {
     float score;
 
     nimcp_status_t status = nimcp_ethics_check(ethics, situation, 32, &score);
-    ASSERT_EQ(status, NIMCP_OK);
+    ASSERT_EQ(status, NIMCP_SUCCESS);
 
     // Score should be in range [-1.0, 1.0] according to API docs
     EXPECT_GE(score, -1.0f);
@@ -166,7 +166,7 @@ TEST_F(EthicsAPITest, EthicsCheckWithDifferentFeatureCounts) {
         float score;
 
         nimcp_status_t status = nimcp_ethics_check(ethics, situation, count, &score);
-        EXPECT_EQ(status, NIMCP_OK);
+        EXPECT_EQ(status, NIMCP_SUCCESS);
 
         delete[] situation;
     }
@@ -199,7 +199,7 @@ TEST_F(EthicsAPITest, EthicsCheckWithPositiveSituation) {
     float score;
 
     nimcp_status_t status = nimcp_ethics_check(ethics, situation, 32, &score);
-    EXPECT_EQ(status, NIMCP_OK);
+    EXPECT_EQ(status, NIMCP_SUCCESS);
 
     nimcp_ethics_destroy(ethics);
 }
@@ -216,7 +216,7 @@ TEST_F(EthicsAPITest, EthicsCheckWithNegativeSituation) {
     float score;
 
     nimcp_status_t status = nimcp_ethics_check(ethics, situation, 32, &score);
-    EXPECT_EQ(status, NIMCP_OK);
+    EXPECT_EQ(status, NIMCP_SUCCESS);
 
     nimcp_ethics_destroy(ethics);
 }
@@ -233,7 +233,7 @@ TEST_F(EthicsAPITest, EthicsCheckWithNeutralSituation) {
     float score;
 
     nimcp_status_t status = nimcp_ethics_check(ethics, situation, 32, &score);
-    EXPECT_EQ(status, NIMCP_OK);
+    EXPECT_EQ(status, NIMCP_SUCCESS);
 
     nimcp_ethics_destroy(ethics);
 }
@@ -251,7 +251,7 @@ TEST_F(EthicsAPITest, EthicsCheckMultipleTimes) {
     for (int i = 0; i < 10; i++) {
         float score;
         nimcp_status_t status = nimcp_ethics_check(ethics, situation, 32, &score);
-        EXPECT_EQ(status, NIMCP_OK);
+        EXPECT_EQ(status, NIMCP_SUCCESS);
         EXPECT_GE(score, -1.0f);
         EXPECT_LE(score, 1.0f);
     }
@@ -288,7 +288,7 @@ TEST_F(EthicsAPITest, EthicsEvaluationWorkflow) {
             ethics, test_case.features, test_case.num_features, &score
         );
 
-        EXPECT_EQ(status, NIMCP_OK) << "Failed for: " << test_case.description;
+        EXPECT_EQ(status, NIMCP_SUCCESS) << "Failed for: " << test_case.description;
         EXPECT_GE(score, -1.0f) << "Score out of range for: " << test_case.description;
         EXPECT_LE(score, 1.0f) << "Score out of range for: " << test_case.description;
     }
@@ -333,8 +333,8 @@ TEST_F(EthicsAPITest, MultipleEthicsInstancesIndependent) {
     nimcp_status_t status1 = nimcp_ethics_check(ethics1, situation, 32, &score1);
     nimcp_status_t status2 = nimcp_ethics_check(ethics2, situation, 32, &score2);
 
-    EXPECT_EQ(status1, NIMCP_OK);
-    EXPECT_EQ(status2, NIMCP_OK);
+    EXPECT_EQ(status1, NIMCP_SUCCESS);
+    EXPECT_EQ(status2, NIMCP_SUCCESS);
 
     nimcp_ethics_destroy(ethics1);
     nimcp_ethics_destroy(ethics2);
@@ -351,7 +351,7 @@ TEST_F(EthicsAPITest, EthicsScoreNotNaN) {
     float score;
 
     nimcp_status_t status = nimcp_ethics_check(ethics, situation, 32, &score);
-    ASSERT_EQ(status, NIMCP_OK);
+    ASSERT_EQ(status, NIMCP_SUCCESS);
 
     EXPECT_FALSE(std::isnan(score)) << "Score should not be NaN";
     EXPECT_FALSE(std::isinf(score)) << "Score should not be infinite";

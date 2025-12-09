@@ -552,6 +552,152 @@ bool swarm_brain_is_operational(const swarm_brain_t* swarm);
  */
 bool swarm_brain_reset_stats(swarm_brain_t* swarm);
 
+//=============================================================================
+// Local Brain Instantiation API (Feature 1-4)
+//=============================================================================
+
+/**
+ * @brief Brain configuration for local instances (swarm-specific)
+ */
+typedef struct {
+    uint32_t neuron_count;            /**< Number of neurons in local brain */
+    uint32_t synapse_count;           /**< Number of synapses */
+    float learning_rate;              /**< Local learning rate */
+    bool share_structure;             /**< Share common structures (true = memory efficient) */
+    bool enable_local_learning;       /**< Enable local learning (false = inference only) */
+} swarm_local_brain_config_t;
+
+/**
+ * @brief Brain synchronization configuration
+ */
+typedef struct {
+    uint32_t* layer_indices;          /**< Array of layer indices to sync (NULL = all) */
+    uint32_t layer_count;             /**< Number of layers to sync (0 = all) */
+    float sync_threshold;             /**< Minimum weight change to sync (0 = always) */
+    bool bidirectional;               /**< Bidirectional sync (false = one-way) */
+} brain_sync_config_t;
+
+/**
+ * @brief Collective learning experience
+ */
+typedef struct {
+    uint32_t agent_id;                /**< Agent that had experience */
+    float* input_data;                /**< Input sensory data */
+    uint32_t input_size;              /**< Size of input */
+    float* target_output;             /**< Target/reward signal */
+    uint32_t target_size;             /**< Size of target */
+    float importance;                 /**< Experience importance weight (0-1) */
+    uint64_t timestamp_ms;            /**< When experience occurred */
+} learning_experience_t;
+
+/**
+ * @brief Brain migration checkpoint
+ */
+typedef struct {
+    uint32_t checkpoint_size;         /**< Size of checkpoint data */
+    uint8_t* checkpoint_data;         /**< Serialized brain state */
+    uint32_t source_agent;            /**< Source agent ID */
+    uint32_t target_agent;            /**< Target agent ID */
+    uint64_t migration_time_ms;       /**< When migration started */
+} brain_migration_checkpoint_t;
+
+/**
+ * @brief Feature 1: Create local brain instance for agent
+ *
+ * WHAT: Creates lightweight brain instance for each swarm agent
+ * WHY:  Enable distributed cognition with local processing
+ * HOW:  Shares common structures, maintains local state per agent
+ *
+ * @param swarm Swarm brain coordinator
+ * @param agent_id Unique agent identifier
+ * @param config Brain configuration
+ * @return Local brain handle or NULL on failure
+ */
+brain_t swarm_brain_create_local(
+    swarm_brain_t* swarm,
+    uint16_t agent_id,
+    const swarm_local_brain_config_t* config
+);
+
+/**
+ * @brief Feature 2: Synchronize neural weights across agents
+ *
+ * WHAT: Sync neural weights from source to target agents
+ * WHY:  Enable knowledge sharing and collective learning
+ * HOW:  Partial or full weight transfer with configurable layers
+ *
+ * @param swarm Swarm brain coordinator
+ * @param source_agent Source agent ID
+ * @param target_agents Array of target agent IDs
+ * @param target_count Number of target agents
+ * @param sync_config Sync configuration (NULL = full sync)
+ * @return true on success, false on failure
+ */
+bool swarm_brain_sync_weights(
+    swarm_brain_t* swarm,
+    uint16_t source_agent,
+    const uint16_t* target_agents,
+    uint32_t target_count,
+    const brain_sync_config_t* sync_config
+);
+
+/**
+ * @brief Feature 3: Collective learning from distributed experiences
+ *
+ * WHAT: Aggregate learning across all agents using federated approach
+ * WHY:  Learn from collective experience without centralizing data
+ * HOW:  Weight experiences by importance, apply federated averaging
+ *
+ * @param swarm Swarm brain coordinator
+ * @param experiences Array of learning experiences
+ * @param experience_count Number of experiences
+ * @return true on success, false on failure
+ */
+bool swarm_brain_collective_learn(
+    swarm_brain_t* swarm,
+    const learning_experience_t* experiences,
+    uint32_t experience_count
+);
+
+/**
+ * @brief Feature 4: Migrate brain state to different host
+ *
+ * WHAT: Move brain state from one agent to another
+ * WHY:  Enable agent hot-swapping and fault tolerance
+ * HOW:  Checkpoint state, transfer, restore on new host
+ *
+ * @param swarm Swarm brain coordinator
+ * @param agent_id Source agent ID
+ * @param new_host Target agent ID for migration
+ * @return Migration checkpoint on success, NULL on failure
+ */
+brain_migration_checkpoint_t* swarm_brain_migrate(
+    swarm_brain_t* swarm,
+    uint16_t agent_id,
+    uint16_t new_host
+);
+
+/**
+ * @brief Restore brain from migration checkpoint
+ *
+ * @param swarm Swarm brain coordinator
+ * @param checkpoint Migration checkpoint
+ * @return true on success, false on failure
+ */
+bool swarm_brain_restore_migration(
+    swarm_brain_t* swarm,
+    const brain_migration_checkpoint_t* checkpoint
+);
+
+/**
+ * @brief Destroy migration checkpoint
+ *
+ * @param checkpoint Migration checkpoint to free
+ */
+void swarm_brain_migration_checkpoint_destroy(
+    brain_migration_checkpoint_t* checkpoint
+);
+
 #ifdef __cplusplus
 }
 #endif

@@ -33,8 +33,9 @@ extern "C" {
 #include "async/nimcp_bio_async.h"
 #include "async/nimcp_bio_router.h"
 #include "core/brain/nimcp_brain.h"
-#include "cognitive/working_memory/nimcp_working_memory.h"
-#include "cognitive/attention/nimcp_attention.h"
+#include "core/brain/nimcp_brain_internal.h"  // For direct struct access in tests
+#include "cognitive/nimcp_working_memory.h"
+#include "plasticity/attention/nimcp_attention.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 }
@@ -47,7 +48,7 @@ class PortiaConstrainedPlatformE2ETest : public ::testing::Test {
 protected:
     void SetUp() override {
         // Initialize logging
-        nimcp_log_init(NIMCP_LOG_LEVEL_INFO, nullptr);
+        nimcp_log_init(NULL);
 
         // Initialize bio-async
         nimcp_error_t err = nimcp_bio_async_init(nullptr);
@@ -77,7 +78,7 @@ protected:
         nimcp_log_shutdown();
     }
 
-    brain_t* brain_;
+    brain_t brain_;
     bool portia_initialized_;
 };
 
@@ -90,7 +91,7 @@ TEST_F(PortiaConstrainedPlatformE2ETest, ConstrainedPlatformStartup) {
     portia_config_t config = portia_get_default_config();
     config.resource_config.memory_threshold = 0.95f;  // Allow up to 95% memory usage
     config.degradation_config.enable_graceful_degradation = true;
-    config.degradation_config.max_degradation = DEGRADATION_LEVEL_SEVERE;
+    config.degradation_config.max_degradation = PORTIA_DEGRADATION_SEVERE;
     config.enable_bio_async = true;
     config.enable_logging = true;
 
@@ -120,11 +121,11 @@ TEST_F(PortiaConstrainedPlatformE2ETest, ConstrainedPlatformStartup) {
     platform_tier_config_t tier_config = platform_tier_get_config(status.current_tier);
 
     // Create brain with tier-appropriate constraints
-    brain_ = brain_create(tier_config.max_neurons, tier_config.initial_neurons);
+    brain_ = brain_create("portia_brain", BRAIN_SIZE_TINY, BRAIN_TASK_CLASSIFICATION, 64, 32);
     ASSERT_NE(brain_, nullptr) << "Brain creation failed";
 
     // Verify brain respects tier constraints
-    EXPECT_LE(brain_->num_neurons, tier_config.max_neurons)
+    EXPECT_LE(brain_get_neuron_count(brain_), tier_config.max_neurons)
         << "Brain exceeds tier neuron limit";
 
     // THEN: Verify cognitive modules are appropriately limited
@@ -153,7 +154,7 @@ TEST_F(PortiaConstrainedPlatformE2ETest, ConstrainedPlatformStartup) {
     ASSERT_EQ(err, NIMCP_SUCCESS);
     EXPECT_GT(status.updates, 0) << "Portia update cycles not counted";
 
-    nimcp_log(NIMCP_LOG_LEVEL_INFO, "ConstrainedPlatformStartup: PASS - "
+    nimcp_log(LOG_LEVEL_INFO, "ConstrainedPlatformStartup: PASS - "
               "Tier=%s, CPU=%.1f%%, Memory=%.1f%%",
               platform_tier_get_name(status.current_tier),
               status.cpu_usage * 100.0f, status.memory_usage * 100.0f);
@@ -181,7 +182,7 @@ TEST_F(PortiaConstrainedPlatformE2ETest, AdaptiveResourceManagement) {
     ASSERT_EQ(err, NIMCP_SUCCESS);
 
     platform_tier_t initial_tier = initial_status.current_tier;
-    nimcp_log(NIMCP_LOG_LEVEL_INFO, "Initial tier: %s",
+    nimcp_log(LOG_LEVEL_INFO, "Initial tier: %s",
               platform_tier_get_name(initial_tier));
 
     // WHEN: Force tier change to simulate resource constraint
@@ -209,7 +210,7 @@ TEST_F(PortiaConstrainedPlatformE2ETest, AdaptiveResourceManagement) {
         EXPECT_GT(new_status.tier_switches, initial_status.tier_switches)
             << "Tier switch count should have increased";
 
-        nimcp_log(NIMCP_LOG_LEVEL_INFO, "Tier switched from %s to %s",
+        nimcp_log(LOG_LEVEL_INFO, "Tier switched from %s to %s",
                   platform_tier_get_name(initial_tier),
                   platform_tier_get_name(target_tier));
     }
@@ -222,7 +223,7 @@ TEST_F(PortiaConstrainedPlatformE2ETest, AdaptiveResourceManagement) {
     EXPECT_LE(recommended_neurons, tier_config.max_neurons)
         << "Recommended neurons should not exceed tier maximum";
 
-    brain_ = brain_create(recommended_neurons * 2, recommended_neurons);
+    brain_ = brain_create("portia_brain", BRAIN_SIZE_TINY, BRAIN_TASK_CLASSIFICATION, 64, 32);
     ASSERT_NE(brain_, nullptr);
 
     // THEN: Verify brain operates within memory budget
@@ -241,7 +242,7 @@ TEST_F(PortiaConstrainedPlatformE2ETest, AdaptiveResourceManagement) {
         std::this_thread::sleep_for(std::chrono::milliseconds(50));
     }
 
-    nimcp_log(NIMCP_LOG_LEVEL_INFO, "AdaptiveResourceManagement: PASS - "
+    nimcp_log(LOG_LEVEL_INFO, "AdaptiveResourceManagement: PASS - "
               "Neurons=%u, Memory=%.1f%%",
               recommended_neurons, final_status.memory_usage * 100.0f);
 }
@@ -263,7 +264,7 @@ TEST_F(PortiaConstrainedPlatformE2ETest, CognitiveModuleEnablement) {
     platform_tier_t current_tier = status.current_tier;
     platform_tier_config_t config = platform_tier_get_config(current_tier);
 
-    nimcp_log(NIMCP_LOG_LEVEL_INFO, "Testing cognitive modules for tier: %s",
+    nimcp_log(LOG_LEVEL_INFO, "Testing cognitive modules for tier: %s",
               platform_tier_get_name(current_tier));
 
     // WHEN: Test all cognitive module flags
@@ -317,7 +318,7 @@ TEST_F(PortiaConstrainedPlatformE2ETest, CognitiveModuleEnablement) {
             << platform_tier_get_name(current_tier);
 
         if (is_enabled != expected) {
-            nimcp_log(NIMCP_LOG_LEVEL_WARN, "Module %s: expected %s, got %s",
+            nimcp_log(LOG_LEVEL_WARN, "Module %s: expected %s, got %s",
                       module.name, expected ? "ENABLED" : "DISABLED",
                       is_enabled ? "ENABLED" : "DISABLED");
         }
@@ -334,7 +335,7 @@ TEST_F(PortiaConstrainedPlatformE2ETest, CognitiveModuleEnablement) {
         }
     }
 
-    nimcp_log(NIMCP_LOG_LEVEL_INFO, "CognitiveModuleEnablement: PASS - "
+    nimcp_log(LOG_LEVEL_INFO, "CognitiveModuleEnablement: PASS - "
               "Tier=%s, Modules enabled=%u",
               platform_tier_get_name(current_tier), enabled_count);
 }
@@ -359,7 +360,7 @@ TEST_F(PortiaConstrainedPlatformE2ETest, MemoryBudgetCompliance) {
     bool got_resources = system_resources_query(&resources);
     ASSERT_TRUE(got_resources);
 
-    nimcp_log(NIMCP_LOG_LEVEL_INFO, "System resources: RAM=%lu MB (available=%lu MB)",
+    nimcp_log(LOG_LEVEL_INFO, "System resources: RAM=%lu MB (available=%lu MB)",
               resources.total_ram_mb, resources.available_ram_mb);
 
     // WHEN: Create brain sized for memory budget
@@ -371,7 +372,7 @@ TEST_F(PortiaConstrainedPlatformE2ETest, MemoryBudgetCompliance) {
     uint32_t target_neurons = std::min(tier_config.max_neurons,
                                        tier_config.initial_neurons * 2);
 
-    brain_ = brain_create(target_neurons * 2, target_neurons);
+    brain_ = brain_create("portia_brain", BRAIN_SIZE_TINY, BRAIN_TASK_CLASSIFICATION, 64, 32);
     ASSERT_NE(brain_, nullptr);
 
     // THEN: Monitor memory usage over time
@@ -412,7 +413,7 @@ TEST_F(PortiaConstrainedPlatformE2ETest, MemoryBudgetCompliance) {
     EXPECT_LT(max_memory, 0.95f) << "Peak memory exceeded safe limit";
     EXPECT_LT(avg_memory, 0.80f) << "Average memory too high";
 
-    nimcp_log(NIMCP_LOG_LEVEL_INFO, "MemoryBudgetCompliance: PASS - "
+    nimcp_log(LOG_LEVEL_INFO, "MemoryBudgetCompliance: PASS - "
               "Neurons=%u, Avg=%.1f%%, Peak=%.1f%%",
               target_neurons, avg_memory * 100.0f, max_memory * 100.0f);
 }
@@ -426,7 +427,7 @@ TEST_F(PortiaConstrainedPlatformE2ETest, GracefulResourceExhaustion) {
     portia_config_t config = portia_get_default_config();
     config.resource_config.memory_threshold = 0.70f;  // Low threshold
     config.degradation_config.enable_graceful_degradation = true;
-    config.degradation_config.max_degradation = DEGRADATION_LEVEL_EMERGENCY;
+    config.degradation_config.max_degradation = PORTIA_DEGRADATION_EMERGENCY;
     config.degradation_config.recovery_delay_ms = 100;
     config.enable_metrics = true;
 
@@ -439,7 +440,7 @@ TEST_F(PortiaConstrainedPlatformE2ETest, GracefulResourceExhaustion) {
     err = portia_get_status(&initial_status);
     ASSERT_EQ(err, NIMCP_SUCCESS);
 
-    nimcp_log(NIMCP_LOG_LEVEL_INFO, "Initial degradation level: %d",
+    nimcp_log(LOG_LEVEL_INFO, "Initial degradation level: %d",
               initial_status.degradation_level);
 
     // Force moderate degradation
@@ -468,7 +469,7 @@ TEST_F(PortiaConstrainedPlatformE2ETest, GracefulResourceExhaustion) {
     EXPECT_LT(recommended, tier_config.max_neurons)
         << "Recommended neurons should be reduced under degradation";
 
-    brain_ = brain_create(recommended * 2, recommended);
+    brain_ = brain_create("portia_brain", BRAIN_SIZE_TINY, BRAIN_TASK_CLASSIFICATION, 64, 32);
     ASSERT_NE(brain_, nullptr) << "Brain creation should succeed even under degradation";
 
     // THEN: Verify system remains functional
@@ -477,8 +478,8 @@ TEST_F(PortiaConstrainedPlatformE2ETest, GracefulResourceExhaustion) {
         EXPECT_EQ(err, NIMCP_SUCCESS) << "Portia update should succeed under degradation";
 
         // Verify brain is operational
-        EXPECT_NE(brain_->num_neurons, 0);
-        EXPECT_NE(brain_->neurons, nullptr);
+        EXPECT_GT(brain_get_neuron_count(brain_), 0u);
+        EXPECT_NE(brain_, nullptr);
 
         std::this_thread::sleep_for(std::chrono::milliseconds(20));
     }
@@ -506,7 +507,7 @@ TEST_F(PortiaConstrainedPlatformE2ETest, GracefulResourceExhaustion) {
         std::this_thread::sleep_for(std::chrono::milliseconds(20));
     }
 
-    nimcp_log(NIMCP_LOG_LEVEL_INFO, "GracefulResourceExhaustion: PASS - "
+    nimcp_log(LOG_LEVEL_INFO, "GracefulResourceExhaustion: PASS - "
               "Degradation events=%lu, Recovery successful",
               recovered_status.degradations);
 }

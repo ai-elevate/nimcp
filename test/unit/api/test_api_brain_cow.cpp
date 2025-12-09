@@ -71,7 +71,7 @@ TEST_F(BrainCOWTest, CloneCOWReturnsValidHandle) {
     // Verify clone is usable
     nimcp_brain_probe_t probe;
     nimcp_status_t status = nimcp_brain_probe(clone, &probe);
-    EXPECT_EQ(status, NIMCP_OK);
+    EXPECT_EQ(status, NIMCP_SUCCESS);
 
     nimcp_brain_destroy(clone);
 }
@@ -87,8 +87,8 @@ TEST_F(BrainCOWTest, CloneCOWIsIndependent) {
 
     // Both brains should still be valid
     nimcp_brain_probe_t probe_original, probe_clone;
-    EXPECT_EQ(nimcp_brain_probe(brain, &probe_original), NIMCP_OK);
-    EXPECT_EQ(nimcp_brain_probe(clone, &probe_clone), NIMCP_OK);
+    EXPECT_EQ(nimcp_brain_probe(brain, &probe_original), NIMCP_SUCCESS);
+    EXPECT_EQ(nimcp_brain_probe(clone, &probe_clone), NIMCP_SUCCESS);
 
     nimcp_brain_destroy(clone);
 }
@@ -96,7 +96,7 @@ TEST_F(BrainCOWTest, CloneCOWIsIndependent) {
 TEST_F(BrainCOWTest, CloneCOWPreservesState) {
     // Get original state
     nimcp_brain_probe_t original_probe;
-    ASSERT_EQ(nimcp_brain_probe(brain, &original_probe), NIMCP_OK);
+    ASSERT_EQ(nimcp_brain_probe(brain, &original_probe), NIMCP_SUCCESS);
 
     // Clone
     nimcp_brain_t clone = nimcp_brain_clone_cow(brain);
@@ -104,7 +104,7 @@ TEST_F(BrainCOWTest, CloneCOWPreservesState) {
 
     // Get clone state
     nimcp_brain_probe_t clone_probe;
-    ASSERT_EQ(nimcp_brain_probe(clone, &clone_probe), NIMCP_OK);
+    ASSERT_EQ(nimcp_brain_probe(clone, &clone_probe), NIMCP_SUCCESS);
 
     // Verify state matches
     EXPECT_EQ(original_probe.num_neurons, clone_probe.num_neurons);
@@ -126,9 +126,9 @@ TEST_F(BrainCOWTest, CloneCOWMultipleTimes) {
 
     // All clones should be valid
     nimcp_brain_probe_t probe1, probe2, probe3;
-    EXPECT_EQ(nimcp_brain_probe(clone1, &probe1), NIMCP_OK);
-    EXPECT_EQ(nimcp_brain_probe(clone2, &probe2), NIMCP_OK);
-    EXPECT_EQ(nimcp_brain_probe(clone3, &probe3), NIMCP_OK);
+    EXPECT_EQ(nimcp_brain_probe(clone1, &probe1), NIMCP_SUCCESS);
+    EXPECT_EQ(nimcp_brain_probe(clone2, &probe2), NIMCP_SUCCESS);
+    EXPECT_EQ(nimcp_brain_probe(clone3, &probe3), NIMCP_SUCCESS);
 
     nimcp_brain_destroy(clone1);
     nimcp_brain_destroy(clone2);
@@ -138,7 +138,7 @@ TEST_F(BrainCOWTest, CloneCOWMultipleTimes) {
 TEST_F(BrainCOWTest, CloneCOWSharesMemory) {
     // Get original memory usage
     nimcp_brain_probe_t original_probe;
-    ASSERT_EQ(nimcp_brain_probe(brain, &original_probe), NIMCP_OK);
+    ASSERT_EQ(nimcp_brain_probe(brain, &original_probe), NIMCP_SUCCESS);
 
     // Create clone
     nimcp_brain_t clone = nimcp_brain_clone_cow(brain);
@@ -146,7 +146,7 @@ TEST_F(BrainCOWTest, CloneCOWSharesMemory) {
 
     // Get clone memory info
     nimcp_brain_probe_t clone_probe;
-    ASSERT_EQ(nimcp_brain_probe(clone, &clone_probe), NIMCP_OK);
+    ASSERT_EQ(nimcp_brain_probe(clone, &clone_probe), NIMCP_SUCCESS);
 
     // Clone should be marked as COW clone
     EXPECT_TRUE(clone_probe.is_cow_clone);
@@ -227,7 +227,7 @@ TEST_F(BrainCOWTest, RestoreCOWSucceeds) {
     // Restore
     nimcp_status_t status = nimcp_brain_restore_cow(brain, snapshot);
 
-    EXPECT_EQ(status, NIMCP_OK);
+    EXPECT_EQ(status, NIMCP_SUCCESS);
     nimcp_brain_snapshot_destroy(snapshot);
 }
 
@@ -259,7 +259,7 @@ TEST_F(BrainCOWTest, RestoreCOWWithBothNullFails) {
 TEST_F(BrainCOWTest, RestoreCOWPreservesSnapshot) {
     // Get original state
     nimcp_brain_probe_t original_probe;
-    ASSERT_EQ(nimcp_brain_probe(brain, &original_probe), NIMCP_OK);
+    ASSERT_EQ(nimcp_brain_probe(brain, &original_probe), NIMCP_SUCCESS);
 
     // Create snapshot
     nimcp_brain_snapshot_t snapshot = nimcp_brain_snapshot_cow(brain);
@@ -275,11 +275,11 @@ TEST_F(BrainCOWTest, RestoreCOWPreservesSnapshot) {
     }
 
     // Restore
-    ASSERT_EQ(nimcp_brain_restore_cow(brain, snapshot), NIMCP_OK);
+    ASSERT_EQ(nimcp_brain_restore_cow(brain, snapshot), NIMCP_SUCCESS);
 
     // Get restored state
     nimcp_brain_probe_t restored_probe;
-    ASSERT_EQ(nimcp_brain_probe(brain, &restored_probe), NIMCP_OK);
+    ASSERT_EQ(nimcp_brain_probe(brain, &restored_probe), NIMCP_SUCCESS);
 
     // State should match original
     EXPECT_EQ(original_probe.num_neurons, restored_probe.num_neurons);
@@ -292,9 +292,9 @@ TEST_F(BrainCOWTest, RestoreCOWMultipleTimes) {
     ASSERT_NE(snapshot, nullptr);
 
     // Restore multiple times
-    EXPECT_EQ(nimcp_brain_restore_cow(brain, snapshot), NIMCP_OK);
-    EXPECT_EQ(nimcp_brain_restore_cow(brain, snapshot), NIMCP_OK);
-    EXPECT_EQ(nimcp_brain_restore_cow(brain, snapshot), NIMCP_OK);
+    EXPECT_EQ(nimcp_brain_restore_cow(brain, snapshot), NIMCP_SUCCESS);
+    EXPECT_EQ(nimcp_brain_restore_cow(brain, snapshot), NIMCP_SUCCESS);
+    EXPECT_EQ(nimcp_brain_restore_cow(brain, snapshot), NIMCP_SUCCESS);
 
     nimcp_brain_snapshot_destroy(snapshot);
 }
@@ -316,10 +316,10 @@ TEST_F(BrainCOWTest, RestoreCOWAfterSnapshot) {
     nimcp_brain_learn_example(brain, features2, 10, "class_c", 0.9f);
 
     // Restore to second snapshot
-    EXPECT_EQ(nimcp_brain_restore_cow(brain, snap2), NIMCP_OK);
+    EXPECT_EQ(nimcp_brain_restore_cow(brain, snap2), NIMCP_SUCCESS);
 
     // Restore to first snapshot
-    EXPECT_EQ(nimcp_brain_restore_cow(brain, snap1), NIMCP_OK);
+    EXPECT_EQ(nimcp_brain_restore_cow(brain, snap1), NIMCP_SUCCESS);
 
     nimcp_brain_snapshot_destroy(snap1);
     nimcp_brain_snapshot_destroy(snap2);
@@ -361,7 +361,7 @@ TEST_F(BrainCOWTest, DestroySnapshotDoesNotAffectBrain) {
 
     // Brain should still be valid
     nimcp_brain_probe_t probe;
-    EXPECT_EQ(nimcp_brain_probe(brain, &probe), NIMCP_OK);
+    EXPECT_EQ(nimcp_brain_probe(brain, &probe), NIMCP_SUCCESS);
 }
 
 TEST_F(BrainCOWTest, DestroyBrainDoesNotAffectSnapshot) {
@@ -385,7 +385,7 @@ TEST_F(BrainCOWTest, COWCloneSharesMemoryCorrectly) {
     ASSERT_NE(clone, nullptr);
 
     nimcp_brain_probe_t clone_probe;
-    ASSERT_EQ(nimcp_brain_probe(clone, &clone_probe), NIMCP_OK);
+    ASSERT_EQ(nimcp_brain_probe(clone, &clone_probe), NIMCP_SUCCESS);
 
     // Verify COW properties
     EXPECT_TRUE(clone_probe.is_cow_clone);
@@ -404,8 +404,8 @@ TEST_F(BrainCOWTest, MultipleClonesSharememory) {
 
     // Both clones should be marked as COW
     nimcp_brain_probe_t probe1, probe2;
-    ASSERT_EQ(nimcp_brain_probe(clone1, &probe1), NIMCP_OK);
-    ASSERT_EQ(nimcp_brain_probe(clone2, &probe2), NIMCP_OK);
+    ASSERT_EQ(nimcp_brain_probe(clone1, &probe1), NIMCP_SUCCESS);
+    ASSERT_EQ(nimcp_brain_probe(clone2, &probe2), NIMCP_SUCCESS);
 
     EXPECT_TRUE(probe1.is_cow_clone);
     EXPECT_TRUE(probe2.is_cow_clone);
@@ -417,7 +417,7 @@ TEST_F(BrainCOWTest, MultipleClonesSharememory) {
 TEST_F(BrainCOWTest, COWMemorySavingsVerification) {
     // Get original memory
     nimcp_brain_probe_t original_probe;
-    ASSERT_EQ(nimcp_brain_probe(brain, &original_probe), NIMCP_OK);
+    ASSERT_EQ(nimcp_brain_probe(brain, &original_probe), NIMCP_SUCCESS);
     size_t original_memory = original_probe.memory_bytes;
 
     // Create clone
@@ -425,7 +425,7 @@ TEST_F(BrainCOWTest, COWMemorySavingsVerification) {
     ASSERT_NE(clone, nullptr);
 
     nimcp_brain_probe_t clone_probe;
-    ASSERT_EQ(nimcp_brain_probe(clone, &clone_probe), NIMCP_OK);
+    ASSERT_EQ(nimcp_brain_probe(clone, &clone_probe), NIMCP_SUCCESS);
 
     // Clone should use less total memory due to sharing
     size_t clone_private = clone_probe.cow_private_bytes;
@@ -453,7 +453,7 @@ TEST_F(BrainCOWTest, SnapshotIsolationWorks) {
     }
 
     // Restore from snapshot should work
-    EXPECT_EQ(nimcp_brain_restore_cow(brain, snapshot), NIMCP_OK);
+    EXPECT_EQ(nimcp_brain_restore_cow(brain, snapshot), NIMCP_SUCCESS);
 
     nimcp_brain_snapshot_destroy(snapshot);
 }
@@ -478,8 +478,8 @@ TEST_F(BrainCOWTest, MultipleSnapshotsIsolated) {
     nimcp_brain_learn_example(brain, features2, 10, "class_c", 0.9f);
 
     // Both snapshots should be valid and isolated
-    EXPECT_EQ(nimcp_brain_restore_cow(brain, snap1), NIMCP_OK);
-    EXPECT_EQ(nimcp_brain_restore_cow(brain, snap2), NIMCP_OK);
+    EXPECT_EQ(nimcp_brain_restore_cow(brain, snap1), NIMCP_SUCCESS);
+    EXPECT_EQ(nimcp_brain_restore_cow(brain, snap2), NIMCP_SUCCESS);
 
     nimcp_brain_snapshot_destroy(snap1);
     nimcp_brain_snapshot_destroy(snap2);
@@ -500,7 +500,7 @@ TEST_F(BrainCOWTest, SnapshotPreservesStateAfterCloneModification) {
     nimcp_brain_learn_example(clone, features, 10, "clone_class", 0.85f);
 
     // Restore original from snapshot should still work
-    EXPECT_EQ(nimcp_brain_restore_cow(brain, snapshot), NIMCP_OK);
+    EXPECT_EQ(nimcp_brain_restore_cow(brain, snapshot), NIMCP_SUCCESS);
 
     nimcp_brain_destroy(clone);
     nimcp_brain_snapshot_destroy(snapshot);
@@ -511,7 +511,7 @@ TEST_F(BrainCOWTest, CloneFromRestoredBrain) {
     nimcp_brain_snapshot_t snapshot = nimcp_brain_snapshot_cow(brain);
     ASSERT_NE(snapshot, nullptr);
 
-    ASSERT_EQ(nimcp_brain_restore_cow(brain, snapshot), NIMCP_OK);
+    ASSERT_EQ(nimcp_brain_restore_cow(brain, snapshot), NIMCP_SUCCESS);
 
     nimcp_brain_t clone = nimcp_brain_clone_cow(brain);
     EXPECT_NE(clone, nullptr);

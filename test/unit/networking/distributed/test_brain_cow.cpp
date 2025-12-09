@@ -63,7 +63,7 @@ TEST_F(BrainCOWTest, CloneCOWCreatesValidBrain) {
 
     // Verify clone is valid
     nimcp_brain_probe_t probe;
-    ASSERT_EQ(nimcp_brain_probe(clone, &probe), NIMCP_OK);
+    ASSERT_EQ(nimcp_brain_probe(clone, &probe), NIMCP_SUCCESS);
     EXPECT_GT(probe.num_neurons, 0u);
     EXPECT_GT(probe.num_synapses, 0u);
 
@@ -205,7 +205,7 @@ TEST_F(BrainCOWTest, CloneCOWTriggersWriteOnLearning) {
     nimcp_status_t status = nimcp_brain_learn_example(
         clone, features, 10, "test_label", 0.9f
     );
-    EXPECT_EQ(status, NIMCP_OK);
+    EXPECT_EQ(status, NIMCP_SUCCESS);
 
     // Get cache stats after learning
     nimcp_cache_stats_t stats_after;
@@ -331,7 +331,7 @@ TEST_F(BrainCOWTest, SnapshotCOWRestoresState) {
 
     // Restore from snapshot
     nimcp_status_t restored = nimcp_brain_restore_cow(brain, snapshot);
-    EXPECT_EQ(restored, NIMCP_OK);
+    EXPECT_EQ(restored, NIMCP_SUCCESS);
 
     // Verify state restored
     nimcp_brain_probe_t probe_restored;
@@ -409,7 +409,7 @@ TEST_F(BrainCOWTest, CloneAndSnapshotTogether) {
 
     // Restore snapshot
     nimcp_status_t restored = nimcp_brain_restore_cow(clone, snapshot);
-    EXPECT_EQ(restored, NIMCP_OK);
+    EXPECT_EQ(restored, NIMCP_SUCCESS);
 
     // Verify cache stats show sharing
     nimcp_cache_stats_t stats;
@@ -509,10 +509,10 @@ TEST_F(BrainCOWTest, RestoreCOWHandlesNullInputs) {
     ASSERT_NE(snapshot, nullptr);
 
     // Null brain
-    EXPECT_NE(nimcp_brain_restore_cow(nullptr, snapshot), NIMCP_OK);
+    EXPECT_NE(nimcp_brain_restore_cow(nullptr, snapshot), NIMCP_SUCCESS);
 
     // Null snapshot
-    EXPECT_NE(nimcp_brain_restore_cow(brain, nullptr), NIMCP_OK);
+    EXPECT_NE(nimcp_brain_restore_cow(brain, nullptr), NIMCP_SUCCESS);
 
     // Cleanup
     nimcp_brain_snapshot_destroy(snapshot);
@@ -551,7 +551,7 @@ TEST_F(BrainCOWTest, Phase3_ReadOnlyInferenceDoesNotTriggerCOW) {
 
     for (int i = 0; i < 10; i++) {
         nimcp_status_t status = nimcp_brain_predict(clone, features, 10, label, &confidence);
-        EXPECT_EQ(status, NIMCP_OK);
+        EXPECT_EQ(status, NIMCP_SUCCESS);
     }
 
     // Verify network is STILL shared after 10 inferences
@@ -591,7 +591,7 @@ TEST_F(BrainCOWTest, Phase3_LearningTriggersCOW) {
     nimcp_status_t status = nimcp_brain_learn_example(
         clone, features, 10, "test_label", 0.9f
     );
-    EXPECT_EQ(status, NIMCP_OK);
+    EXPECT_EQ(status, NIMCP_SUCCESS);
 
     // Verify COW was triggered - network is now private
     nimcp_brain_probe_t probe_after;
@@ -687,7 +687,7 @@ TEST_F(BrainCOWTest, Phase3_ReferenceCountingDestroysNetworkWhenLastBrainDestroy
     char label[64];
     float confidence;
     nimcp_status_t status = nimcp_brain_predict(original, features, 10, label, &confidence);
-    EXPECT_EQ(status, NIMCP_OK);
+    EXPECT_EQ(status, NIMCP_SUCCESS);
 
     // Cleanup original (this should finally destroy the shared network)
     nimcp_brain_destroy(original);

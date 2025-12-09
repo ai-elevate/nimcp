@@ -10,7 +10,7 @@
 extern "C" {
     #include "nimcp.h"
     #include "portia/nimcp_portia_degradation.h"
-    #include "security/nimcp_blood_brain_barrier.h"
+    #include "security/nimcp_bbb_helpers.h"
     #include "utils/logging/nimcp_logging.h"
     #include "utils/memory/nimcp_memory.h"
 }
@@ -18,8 +18,10 @@ extern "C" {
 class PortiaDegradationTest : public ::testing::Test {
 protected:
     void SetUp() override {
-        // Initialize BBB
-        bbb_init();
+        // Initialize BBB helpers
+        if (!bbb_helpers_is_initialized()) {
+            bbb_helpers_init();
+        }
 
         // Default config
         config.level_thresholds[DEGRADATION_LEVEL_NONE] = 0.0f;
@@ -42,11 +44,11 @@ protected:
             state = nullptr;
         }
 
-        bbb_cleanup();
+        // BBB helpers shutdown is handled globally
     }
 
     degradation_state_t* state = nullptr;
-    portia_degradation_config_t config = {0};
+    degradation_internal_config_t config = {0};
 };
 
 // ============================================================================
@@ -60,7 +62,7 @@ TEST_F(PortiaDegradationTest, InitializationSuccess) {
     uint32_t active;
     float usage;
 
-    EXPECT_EQ(portia_degradation_get_state(state, &level, &active, &usage), NIMCP_OK);
+    EXPECT_EQ(portia_degradation_get_state(state, &level, &active, &usage), NIMCP_SUCCESS);
     EXPECT_EQ(level, DEGRADATION_LEVEL_NONE);
     EXPECT_GT(active, 0u);
     EXPECT_EQ(usage, 0.0f);
@@ -74,7 +76,7 @@ TEST_F(PortiaDegradationTest, InitializationWithNullConfig) {
 
     // Should use defaults
     degradation_level_t level;
-    EXPECT_EQ(portia_degradation_get_state(state, &level, nullptr, nullptr), NIMCP_OK);
+    EXPECT_EQ(portia_degradation_get_state(state, &level, nullptr, nullptr), NIMCP_SUCCESS);
     EXPECT_EQ(level, DEGRADATION_LEVEL_NONE);
 }
 
@@ -92,19 +94,19 @@ TEST_F(PortiaDegradationTest, CleanupSafety) {
 
 TEST_F(PortiaDegradationTest, AutoDegradationMinor) {
     // Resource usage at minor threshold
-    EXPECT_EQ(portia_degradation_evaluate(state, 72.0f, NULL), NIMCP_OK);
+    EXPECT_EQ(portia_degradation_evaluate(state, 72.0f, NULL), NIMCP_SUCCESS);
 
     degradation_level_t level;
     uint32_t active;
-    EXPECT_EQ(portia_degradation_get_state(state, &level, &active, nullptr), NIMCP_OK);
+    EXPECT_EQ(portia_degradation_get_state(state, &level, &active, nullptr), NIMCP_SUCCESS);
     EXPECT_EQ(level, DEGRADATION_LEVEL_MINOR);
 
     // Check that some features were disabled
     bool logging_enabled, metrics_enabled;
     EXPECT_EQ(portia_degradation_is_feature_enabled(state, FEATURE_LOGGING_VERBOSE,
-                                                     &logging_enabled), NIMCP_OK);
+                                                     &logging_enabled), NIMCP_SUCCESS);
     EXPECT_EQ(portia_degradation_is_feature_enabled(state, FEATURE_METRICS,
-                                                     &metrics_enabled), NIMCP_OK);
+                                                     &metrics_enabled), NIMCP_SUCCESS);
 
     // These should be disabled at minor level
     EXPECT_FALSE(logging_enabled);
@@ -112,47 +114,47 @@ TEST_F(PortiaDegradationTest, AutoDegradationMinor) {
 }
 
 TEST_F(PortiaDegradationTest, AutoDegradationModerate) {
-    EXPECT_EQ(portia_degradation_evaluate(state, 85.0f, NULL), NIMCP_OK);
+    EXPECT_EQ(portia_degradation_evaluate(state, 85.0f, NULL), NIMCP_SUCCESS);
 
     degradation_level_t level;
-    EXPECT_EQ(portia_degradation_get_state(state, &level, nullptr, nullptr), NIMCP_OK);
+    EXPECT_EQ(portia_degradation_get_state(state, &level, nullptr, nullptr), NIMCP_SUCCESS);
     EXPECT_EQ(level, DEGRADATION_LEVEL_MODERATE);
 
     // Check features
     bool learning_enabled, plasticity_enabled;
     EXPECT_EQ(portia_degradation_is_feature_enabled(state, FEATURE_LEARNING,
-                                                     &learning_enabled), NIMCP_OK);
+                                                     &learning_enabled), NIMCP_SUCCESS);
     EXPECT_EQ(portia_degradation_is_feature_enabled(state, FEATURE_PLASTICITY,
-                                                     &plasticity_enabled), NIMCP_OK);
+                                                     &plasticity_enabled), NIMCP_SUCCESS);
 
     EXPECT_FALSE(learning_enabled);
     EXPECT_FALSE(plasticity_enabled);
 }
 
 TEST_F(PortiaDegradationTest, AutoDegradationSevere) {
-    EXPECT_EQ(portia_degradation_evaluate(state, 92.0f, NULL), NIMCP_OK);
+    EXPECT_EQ(portia_degradation_evaluate(state, 92.0f, NULL), NIMCP_SUCCESS);
 
     degradation_level_t level;
-    EXPECT_EQ(portia_degradation_get_state(state, &level, nullptr, nullptr), NIMCP_OK);
+    EXPECT_EQ(portia_degradation_get_state(state, &level, nullptr, nullptr), NIMCP_SUCCESS);
     EXPECT_EQ(level, DEGRADATION_LEVEL_SEVERE);
 
     // Check high-level features disabled
     bool emotions_enabled, planning_enabled;
     EXPECT_EQ(portia_degradation_is_feature_enabled(state, FEATURE_EMOTIONS,
-                                                     &emotions_enabled), NIMCP_OK);
+                                                     &emotions_enabled), NIMCP_SUCCESS);
     EXPECT_EQ(portia_degradation_is_feature_enabled(state, FEATURE_PLANNING,
-                                                     &planning_enabled), NIMCP_OK);
+                                                     &planning_enabled), NIMCP_SUCCESS);
 
     EXPECT_FALSE(emotions_enabled);
     EXPECT_FALSE(planning_enabled);
 }
 
 TEST_F(PortiaDegradationTest, AutoDegradationCritical) {
-    EXPECT_EQ(portia_degradation_evaluate(state, 97.0f, NULL), NIMCP_OK);
+    EXPECT_EQ(portia_degradation_evaluate(state, 97.0f, NULL), NIMCP_SUCCESS);
 
     degradation_level_t level;
     uint32_t active;
-    EXPECT_EQ(portia_degradation_get_state(state, &level, &active, nullptr), NIMCP_OK);
+    EXPECT_EQ(portia_degradation_get_state(state, &level, &active, nullptr), NIMCP_SUCCESS);
     EXPECT_EQ(level, DEGRADATION_LEVEL_CRITICAL);
 
     // Should have minimal features active
@@ -161,34 +163,34 @@ TEST_F(PortiaDegradationTest, AutoDegradationCritical) {
     // Core features should still be enabled
     bool working_memory_enabled;
     EXPECT_EQ(portia_degradation_is_feature_enabled(state, FEATURE_MEMORY_WORKING,
-                                                     &working_memory_enabled), NIMCP_OK);
+                                                     &working_memory_enabled), NIMCP_SUCCESS);
     EXPECT_TRUE(working_memory_enabled);  // Core feature
 }
 
 TEST_F(PortiaDegradationTest, AutoRestoration) {
     // Degrade to severe
-    EXPECT_EQ(portia_degradation_evaluate(state, 92.0f, NULL), NIMCP_OK);
+    EXPECT_EQ(portia_degradation_evaluate(state, 92.0f, NULL), NIMCP_SUCCESS);
 
     degradation_level_t level;
-    EXPECT_EQ(portia_degradation_get_state(state, &level, nullptr, nullptr), NIMCP_OK);
+    EXPECT_EQ(portia_degradation_get_state(state, &level, nullptr, nullptr), NIMCP_SUCCESS);
     EXPECT_EQ(level, DEGRADATION_LEVEL_SEVERE);
 
     // Wait for hysteresis
     std::this_thread::sleep_for(std::chrono::milliseconds(150));
 
     // Restore with usage below threshold
-    EXPECT_EQ(portia_degradation_evaluate(state, 60.0f, NULL), NIMCP_OK);
+    EXPECT_EQ(portia_degradation_evaluate(state, 60.0f, NULL), NIMCP_SUCCESS);
 
-    EXPECT_EQ(portia_degradation_get_state(state, &level, nullptr, nullptr), NIMCP_OK);
+    EXPECT_EQ(portia_degradation_get_state(state, &level, nullptr, nullptr), NIMCP_SUCCESS);
     EXPECT_LT(level, DEGRADATION_LEVEL_SEVERE);
 }
 
 TEST_F(PortiaDegradationTest, ManualLevelSet) {
     EXPECT_EQ(portia_degradation_set_level(state, DEGRADATION_LEVEL_MODERATE, NULL),
-              NIMCP_OK);
+              NIMCP_SUCCESS);
 
     degradation_level_t level;
-    EXPECT_EQ(portia_degradation_get_state(state, &level, nullptr, nullptr), NIMCP_OK);
+    EXPECT_EQ(portia_degradation_get_state(state, &level, nullptr, nullptr), NIMCP_SUCCESS);
     EXPECT_EQ(level, DEGRADATION_LEVEL_MODERATE);
 }
 
@@ -203,25 +205,25 @@ TEST_F(PortiaDegradationTest, InvalidLevelRejected) {
 
 TEST_F(PortiaDegradationTest, HysteresisPreventRapidChange) {
     // Set to minor
-    EXPECT_EQ(portia_degradation_evaluate(state, 72.0f, NULL), NIMCP_OK);
+    EXPECT_EQ(portia_degradation_evaluate(state, 72.0f, NULL), NIMCP_SUCCESS);
 
     degradation_level_t level;
-    EXPECT_EQ(portia_degradation_get_state(state, &level, nullptr, nullptr), NIMCP_OK);
+    EXPECT_EQ(portia_degradation_get_state(state, &level, nullptr, nullptr), NIMCP_SUCCESS);
     EXPECT_EQ(level, DEGRADATION_LEVEL_MINOR);
 
     // Immediately try to change - should be blocked by hysteresis
-    EXPECT_EQ(portia_degradation_evaluate(state, 85.0f, NULL), NIMCP_OK);
+    EXPECT_EQ(portia_degradation_evaluate(state, 85.0f, NULL), NIMCP_SUCCESS);
 
-    EXPECT_EQ(portia_degradation_get_state(state, &level, nullptr, nullptr), NIMCP_OK);
+    EXPECT_EQ(portia_degradation_get_state(state, &level, nullptr, nullptr), NIMCP_SUCCESS);
     EXPECT_EQ(level, DEGRADATION_LEVEL_MINOR);  // Should not change yet
 
     // Wait for hysteresis
     std::this_thread::sleep_for(std::chrono::milliseconds(150));
 
     // Now it should change
-    EXPECT_EQ(portia_degradation_evaluate(state, 85.0f, NULL), NIMCP_OK);
+    EXPECT_EQ(portia_degradation_evaluate(state, 85.0f, NULL), NIMCP_SUCCESS);
 
-    EXPECT_EQ(portia_degradation_get_state(state, &level, nullptr, nullptr), NIMCP_OK);
+    EXPECT_EQ(portia_degradation_get_state(state, &level, nullptr, nullptr), NIMCP_SUCCESS);
     EXPECT_EQ(level, DEGRADATION_LEVEL_MODERATE);
 }
 
@@ -232,29 +234,29 @@ TEST_F(PortiaDegradationTest, HysteresisPreventRapidChange) {
 TEST_F(PortiaDegradationTest, ManualFeatureDisable) {
     bool enabled;
     EXPECT_EQ(portia_degradation_is_feature_enabled(state, FEATURE_LEARNING, &enabled),
-              NIMCP_OK);
+              NIMCP_SUCCESS);
     EXPECT_TRUE(enabled);
 
     EXPECT_EQ(portia_degradation_disable_feature(state, FEATURE_LEARNING, NULL),
-              NIMCP_OK);
+              NIMCP_SUCCESS);
 
     EXPECT_EQ(portia_degradation_is_feature_enabled(state, FEATURE_LEARNING, &enabled),
-              NIMCP_OK);
+              NIMCP_SUCCESS);
     EXPECT_FALSE(enabled);
 }
 
 TEST_F(PortiaDegradationTest, ManualFeatureEnable) {
     // First disable
     EXPECT_EQ(portia_degradation_disable_feature(state, FEATURE_LEARNING, NULL),
-              NIMCP_OK);
+              NIMCP_SUCCESS);
 
     // Then enable
     EXPECT_EQ(portia_degradation_enable_feature(state, FEATURE_LEARNING, NULL),
-              NIMCP_OK);
+              NIMCP_SUCCESS);
 
     bool enabled;
     EXPECT_EQ(portia_degradation_is_feature_enabled(state, FEATURE_LEARNING, &enabled),
-              NIMCP_OK);
+              NIMCP_SUCCESS);
     EXPECT_TRUE(enabled);
 }
 
@@ -265,7 +267,7 @@ TEST_F(PortiaDegradationTest, CoreFeatureCannotBeDisabled) {
 
     bool enabled;
     EXPECT_EQ(portia_degradation_is_feature_enabled(state, FEATURE_MEMORY_WORKING, &enabled),
-              NIMCP_OK);
+              NIMCP_SUCCESS);
     EXPECT_TRUE(enabled);  // Should still be enabled
 }
 
@@ -279,17 +281,17 @@ TEST_F(PortiaDegradationTest, RegisterCustomFeature) {
         .currently_enabled = true
     };
 
-    EXPECT_EQ(portia_degradation_register_feature(state, &custom), NIMCP_OK);
+    EXPECT_EQ(portia_degradation_register_feature(state, &custom), NIMCP_SUCCESS);
 
     bool enabled;
-    EXPECT_EQ(portia_degradation_is_feature_enabled(state, 0x1000, &enabled), NIMCP_OK);
+    EXPECT_EQ(portia_degradation_is_feature_enabled(state, 0x1000, &enabled), NIMCP_SUCCESS);
     EXPECT_TRUE(enabled);
 
     // Should be disabled at moderate level
     EXPECT_EQ(portia_degradation_set_level(state, DEGRADATION_LEVEL_MODERATE, NULL),
-              NIMCP_OK);
+              NIMCP_SUCCESS);
 
-    EXPECT_EQ(portia_degradation_is_feature_enabled(state, 0x1000, &enabled), NIMCP_OK);
+    EXPECT_EQ(portia_degradation_is_feature_enabled(state, 0x1000, &enabled), NIMCP_SUCCESS);
     EXPECT_FALSE(enabled);
 }
 
@@ -304,7 +306,7 @@ TEST_F(PortiaDegradationTest, DuplicateFeatureRejected) {
     };
 
     EXPECT_EQ(portia_degradation_register_feature(state, &duplicate),
-              NIMCP_ERR_ALREADY_EXISTS);
+              NIMCP_ALREADY_EXISTS);
 }
 
 // ============================================================================
@@ -315,7 +317,7 @@ TEST_F(PortiaDegradationTest, GetDegradationChain) {
     degradation_feature_t chain[32];
     uint32_t actual_count;
 
-    EXPECT_EQ(portia_degradation_get_chain(state, chain, 32, &actual_count), NIMCP_OK);
+    EXPECT_EQ(portia_degradation_get_chain(state, chain, 32, &actual_count), NIMCP_SUCCESS);
     EXPECT_GT(actual_count, 0u);
 
     // Verify chain is sorted by disable_at level
@@ -330,7 +332,7 @@ TEST_F(PortiaDegradationTest, GetFeaturesForLevel) {
 
     EXPECT_EQ(portia_degradation_get_features_for_level(state, DEGRADATION_LEVEL_MODERATE,
                                                          features, 32, &actual_count),
-              NIMCP_OK);
+              NIMCP_SUCCESS);
 
     // Should include features disabled at MINOR and MODERATE levels
     EXPECT_GT(actual_count, 0u);
@@ -352,22 +354,22 @@ TEST_F(PortiaDegradationTest, IsFeatureEnabled) {
 
     // Initially all features should be enabled
     EXPECT_EQ(portia_degradation_is_feature_enabled(state, FEATURE_PLASTICITY, &enabled),
-              NIMCP_OK);
+              NIMCP_SUCCESS);
     EXPECT_TRUE(enabled);
 
     // After degradation
     EXPECT_EQ(portia_degradation_set_level(state, DEGRADATION_LEVEL_SEVERE, NULL),
-              NIMCP_OK);
+              NIMCP_SUCCESS);
 
     EXPECT_EQ(portia_degradation_is_feature_enabled(state, FEATURE_PLASTICITY, &enabled),
-              NIMCP_OK);
+              NIMCP_SUCCESS);
     EXPECT_FALSE(enabled);
 }
 
 TEST_F(PortiaDegradationTest, NonExistentFeature) {
     bool enabled;
     EXPECT_EQ(portia_degradation_is_feature_enabled(state, 0xFFFF, &enabled),
-              NIMCP_ERR_NOT_FOUND);
+              NIMCP_NOT_FOUND);
 }
 
 // ============================================================================
@@ -379,7 +381,7 @@ TEST_F(PortiaDegradationTest, ConcurrentEvaluations) {
 
     auto evaluate_thread = [&](float usage) {
         for (int i = 0; i < 100; i++) {
-            if (portia_degradation_evaluate(state, usage, NULL) != NIMCP_OK) {
+            if (portia_degradation_evaluate(state, usage, NULL) != NIMCP_SUCCESS) {
                 errors++;
             }
             std::this_thread::sleep_for(std::chrono::microseconds(10));
@@ -398,7 +400,7 @@ TEST_F(PortiaDegradationTest, ConcurrentEvaluations) {
 
     // State should be consistent
     degradation_level_t level;
-    EXPECT_EQ(portia_degradation_get_state(state, &level, nullptr, nullptr), NIMCP_OK);
+    EXPECT_EQ(portia_degradation_get_state(state, &level, nullptr, nullptr), NIMCP_SUCCESS);
 }
 
 TEST_F(PortiaDegradationTest, ConcurrentFeatureToggle) {
@@ -406,8 +408,8 @@ TEST_F(PortiaDegradationTest, ConcurrentFeatureToggle) {
 
     auto toggle_thread = [&](uint32_t feature_id) {
         for (int i = 0; i < 50; i++) {
-            if (portia_degradation_disable_feature(state, feature_id, NULL) != NIMCP_OK &&
-                portia_degradation_enable_feature(state, feature_id, NULL) != NIMCP_OK) {
+            if (portia_degradation_disable_feature(state, feature_id, NULL) != NIMCP_SUCCESS &&
+                portia_degradation_enable_feature(state, feature_id, NULL) != NIMCP_SUCCESS) {
                 errors++;
             }
             std::this_thread::sleep_for(std::chrono::microseconds(10));
@@ -455,42 +457,42 @@ TEST_F(PortiaDegradationTest, InvalidResourceUsage) {
 
 TEST_F(PortiaDegradationTest, ExactThresholdTrigger) {
     // Exactly at minor threshold
-    EXPECT_EQ(portia_degradation_evaluate(state, 70.0f, NULL), NIMCP_OK);
+    EXPECT_EQ(portia_degradation_evaluate(state, 70.0f, NULL), NIMCP_SUCCESS);
 
     degradation_level_t level;
-    EXPECT_EQ(portia_degradation_get_state(state, &level, nullptr, nullptr), NIMCP_OK);
+    EXPECT_EQ(portia_degradation_get_state(state, &level, nullptr, nullptr), NIMCP_SUCCESS);
     EXPECT_EQ(level, DEGRADATION_LEVEL_MINOR);
 }
 
 TEST_F(PortiaDegradationTest, ZeroResourceUsage) {
-    EXPECT_EQ(portia_degradation_evaluate(state, 0.0f, NULL), NIMCP_OK);
+    EXPECT_EQ(portia_degradation_evaluate(state, 0.0f, NULL), NIMCP_SUCCESS);
 
     degradation_level_t level;
-    EXPECT_EQ(portia_degradation_get_state(state, &level, nullptr, nullptr), NIMCP_OK);
+    EXPECT_EQ(portia_degradation_get_state(state, &level, nullptr, nullptr), NIMCP_SUCCESS);
     EXPECT_EQ(level, DEGRADATION_LEVEL_NONE);
 }
 
 TEST_F(PortiaDegradationTest, MaxResourceUsage) {
-    EXPECT_EQ(portia_degradation_evaluate(state, 100.0f, NULL), NIMCP_OK);
+    EXPECT_EQ(portia_degradation_evaluate(state, 100.0f, NULL), NIMCP_SUCCESS);
 
     degradation_level_t level;
-    EXPECT_EQ(portia_degradation_get_state(state, &level, nullptr, nullptr), NIMCP_OK);
+    EXPECT_EQ(portia_degradation_get_state(state, &level, nullptr, nullptr), NIMCP_SUCCESS);
     EXPECT_EQ(level, DEGRADATION_LEVEL_CRITICAL);
 }
 
 TEST_F(PortiaDegradationTest, RapidDegradationAndRestoration) {
     // Degrade
     EXPECT_EQ(portia_degradation_set_level(state, DEGRADATION_LEVEL_CRITICAL, NULL),
-              NIMCP_OK);
+              NIMCP_SUCCESS);
 
     // Immediately restore
     EXPECT_EQ(portia_degradation_set_level(state, DEGRADATION_LEVEL_NONE, NULL),
-              NIMCP_OK);
+              NIMCP_SUCCESS);
 
     // Check all features restored
     degradation_level_t level;
     uint32_t active;
-    EXPECT_EQ(portia_degradation_get_state(state, &level, &active, nullptr), NIMCP_OK);
+    EXPECT_EQ(portia_degradation_get_state(state, &level, &active, nullptr), NIMCP_SUCCESS);
     EXPECT_EQ(level, DEGRADATION_LEVEL_NONE);
     EXPECT_GT(active, 8u);  // Most features should be active
 }
@@ -504,32 +506,32 @@ TEST_F(PortiaDegradationTest, FullDegradationCycle) {
     degradation_level_t level;
     uint32_t active_start, active_end;
 
-    EXPECT_EQ(portia_degradation_get_state(state, &level, &active_start, nullptr), NIMCP_OK);
+    EXPECT_EQ(portia_degradation_get_state(state, &level, &active_start, nullptr), NIMCP_SUCCESS);
     EXPECT_EQ(level, DEGRADATION_LEVEL_NONE);
 
     // Progress through degradation levels
-    EXPECT_EQ(portia_degradation_evaluate(state, 72.0f, NULL), NIMCP_OK);
+    EXPECT_EQ(portia_degradation_evaluate(state, 72.0f, NULL), NIMCP_SUCCESS);
     std::this_thread::sleep_for(std::chrono::milliseconds(150));
 
-    EXPECT_EQ(portia_degradation_evaluate(state, 85.0f, NULL), NIMCP_OK);
+    EXPECT_EQ(portia_degradation_evaluate(state, 85.0f, NULL), NIMCP_SUCCESS);
     std::this_thread::sleep_for(std::chrono::milliseconds(150));
 
-    EXPECT_EQ(portia_degradation_evaluate(state, 92.0f, NULL), NIMCP_OK);
+    EXPECT_EQ(portia_degradation_evaluate(state, 92.0f, NULL), NIMCP_SUCCESS);
     std::this_thread::sleep_for(std::chrono::milliseconds(150));
 
-    EXPECT_EQ(portia_degradation_evaluate(state, 97.0f, NULL), NIMCP_OK);
+    EXPECT_EQ(portia_degradation_evaluate(state, 97.0f, NULL), NIMCP_SUCCESS);
 
-    EXPECT_EQ(portia_degradation_get_state(state, &level, nullptr, nullptr), NIMCP_OK);
+    EXPECT_EQ(portia_degradation_get_state(state, &level, nullptr, nullptr), NIMCP_SUCCESS);
     EXPECT_EQ(level, DEGRADATION_LEVEL_CRITICAL);
 
     // Restore
     std::this_thread::sleep_for(std::chrono::milliseconds(150));
-    EXPECT_EQ(portia_degradation_evaluate(state, 60.0f, NULL), NIMCP_OK);
+    EXPECT_EQ(portia_degradation_evaluate(state, 60.0f, NULL), NIMCP_SUCCESS);
     std::this_thread::sleep_for(std::chrono::milliseconds(150));
 
-    EXPECT_EQ(portia_degradation_evaluate(state, 30.0f, NULL), NIMCP_OK);
+    EXPECT_EQ(portia_degradation_evaluate(state, 30.0f, NULL), NIMCP_SUCCESS);
 
-    EXPECT_EQ(portia_degradation_get_state(state, &level, &active_end, nullptr), NIMCP_OK);
+    EXPECT_EQ(portia_degradation_get_state(state, &level, &active_end, nullptr), NIMCP_SUCCESS);
     EXPECT_LT(level, DEGRADATION_LEVEL_CRITICAL);
 
     // Should have more features active after restoration

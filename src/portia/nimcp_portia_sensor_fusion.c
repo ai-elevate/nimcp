@@ -7,14 +7,18 @@
 #include "async/nimcp_bio_router.h"
 #include "async/nimcp_bio_messages.h"
 #include "security/nimcp_blood_brain_barrier.h"
+#include "security/nimcp_bbb_helpers.h"
 #include "utils/logging/nimcp_logging.h"
 
 #define LOG_MODULE "portia_sensor_fusion"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/platform/nimcp_platform.h"
+#include "utils/thread/nimcp_thread.h"
+#include "utils/time/nimcp_time.h"
 #include <string.h>
 #include <math.h>
 #include <float.h>
+#include <stdio.h>
 
 // Constants
 #define MAX_SENSOR_HISTORY 10
@@ -65,7 +69,7 @@ struct portia_fusion_ctx {
     portia_fusion_stats_t stats;
 
     // Thread safety
-    nimcp_platform_mutex_t mutex;
+    void* mutex;  // Opaque mutex pointer
 
     // Temporal tracking
     uint64_t last_fusion_ms;
@@ -135,14 +139,14 @@ portia_fusion_config_t portia_fusion_default_config(void) {
  * Validate fusion context
  */
 static bool validate_fusion_ctx(const portia_fusion_ctx_t* ctx) {
-    if (!bbb_validate_pointer(ctx, sizeof(portia_fusion_ctx_t))) {
+    if (!ctx) {
         LOG_ERROR("Invalid fusion context pointer");
         return false;
     }
 
     if (ctx->magic != FUSION_CTX_MAGIC) {
         LOG_ERROR("Invalid fusion context magic: 0x%08X", ctx->magic);
-        bbb_audit_log(BBB_AUDIT_VALIDATION_FAILED, "Invalid fusion context magic");
+        bbb_audit_log(BBB_AUDIT_WARNING, LOG_MODULE, "invalid_magic", "invalid fusion context magic");
         return false;
     }
 
@@ -330,18 +334,15 @@ static void broadcast_fusion_event(portia_fusion_ctx_t* ctx, const char* event_t
              ctx->active_sensors_mask,
              (unsigned long)ctx->current_state.timestamp_ms);
 
-    // Broadcast via bio-async
-    nimcp_bio_message_t msg = {
-        .type = BIO_MSG_CUSTOM,
-        .priority = BIO_MSG_PRIORITY_NORMAL,
-        .timestamp_ms = ctx->current_state.timestamp_ms
-    };
-
-    strncpy(msg.source_id, "portia_fusion", sizeof(msg.source_id) - 1);
-    strncpy(msg.data, payload, sizeof(msg.data) - 1);
-    msg.data_size = strlen(payload);
-
-    nimcp_bio_send_message(ctx->bio_ctx, &msg);
+    // Broadcast via bio-async if ctx available
+    if (ctx->bio_ctx) {
+        bio_message_header_t header = {
+            .type = BIO_MSG_INTROSPECTION_RESPONSE,
+            .timestamp_us = ctx->current_state.timestamp_ms * 1000,
+            .flags = BIO_MSG_FLAG_BROADCAST
+        };
+        bio_router_broadcast(ctx->bio_ctx, &header, sizeof(header));
+    }
 }
 
 /**
@@ -352,7 +353,7 @@ static bool process_weighted_average(portia_fusion_ctx_t* ctx) {
     float sum_weights = 0.0f;
     uint32_t active_sensors = 0;
 
-    uint64_t current_time_ms = nimcp_platform_get_time_ms();
+    uint64_t current_time_ms = nimcp_time_monotonic_ms();
 
     for (int i = 0; i < SENSOR_TYPE_COUNT; i++) {
         if (!ctx->config.sensors[i].enabled) {
@@ -423,7 +424,7 @@ static bool process_weighted_average(portia_fusion_ctx_t* ctx) {
  * Process Kalman filter fusion
  */
 static bool process_kalman_filter(portia_fusion_ctx_t* ctx) {
-    uint64_t current_time_ms = nimcp_platform_get_time_ms();
+    uint64_t current_time_ms = nimcp_time_monotonic_ms();
 
     // Prediction step
     if (ctx->kalman.last_update_ms > 0) {
@@ -492,7 +493,7 @@ portia_fusion_ctx_t* portia_fusion_init(
     nimcp_bio_ctx_t* bio_ctx
 ) {
     // Validate input
-    if (!bbb_validate_pointer(config, sizeof(portia_fusion_config_t))) {
+    if (!config) {
         LOG_ERROR("Invalid config pointer");
         return NULL;
     }
@@ -500,13 +501,13 @@ portia_fusion_ctx_t* portia_fusion_init(
     // Validate configuration ranges
     if (config->fusion_rate_hz < 1 || config->fusion_rate_hz > 1000) {
         LOG_ERROR("Invalid fusion rate: %u Hz", config->fusion_rate_hz);
-        bbb_audit_log(BBB_AUDIT_VALIDATION_FAILED, "Invalid fusion rate");
+        bbb_audit_log(BBB_AUDIT_WARNING, LOG_MODULE, "validation_failed", "Invalid fusion rate");
         return NULL;
     }
 
     if (config->outlier_threshold < 1.0f || config->outlier_threshold > 10.0f) {
         LOG_ERROR("Invalid outlier threshold: %.2f", config->outlier_threshold);
-        bbb_audit_log(BBB_AUDIT_VALIDATION_FAILED, "Invalid outlier threshold");
+        bbb_audit_log(BBB_AUDIT_WARNING, LOG_MODULE, "validation_failed", "Invalid outlier threshold");
         return NULL;
     }
 
@@ -523,8 +524,10 @@ portia_fusion_ctx_t* portia_fusion_init(
     ctx->magic = FUSION_CTX_MAGIC;
 
     // Initialize mutex
-    if (nimcp_platform_mutex_init(&ctx->mutex) != 0) {
+    ctx->mutex = nimcp_malloc(sizeof(nimcp_platform_mutex_t));
+    if (!ctx->mutex || nimcp_platform_mutex_init((nimcp_platform_mutex_t*)ctx->mutex, false) != 0) {
         LOG_ERROR("Failed to initialize fusion mutex");
+        if (ctx->mutex) nimcp_free(ctx->mutex);
         nimcp_free(ctx);
         return NULL;
     }
@@ -552,7 +555,7 @@ portia_fusion_ctx_t* portia_fusion_init(
     LOG_INFO("Initialized Portia sensor fusion: kalman=%d, rate=%u Hz, outlier_threshold=%.2f",
              config->enable_kalman, config->fusion_rate_hz, config->outlier_threshold);
 
-    bbb_audit_log(BBB_AUDIT_SYSTEM_INIT, "Portia sensor fusion initialized");
+    bbb_audit_log(BBB_AUDIT_INFO, LOG_MODULE, "init", "Portia sensor fusion initialized");
 
     if (bio_ctx) {
         broadcast_fusion_event(ctx, "init");
@@ -569,7 +572,7 @@ void portia_fusion_destroy(portia_fusion_ctx_t* ctx) {
         return;
     }
 
-    nimcp_platform_mutex_lock(&ctx->mutex);
+    nimcp_platform_mutex_lock((nimcp_platform_mutex_t*)ctx->mutex);
 
     LOG_INFO("Destroying Portia sensor fusion: fusions=%lu, outliers=%lu, dropouts=%lu",
              (unsigned long)ctx->stats.successful_fusions,
@@ -582,12 +585,12 @@ void portia_fusion_destroy(portia_fusion_ctx_t* ctx) {
 
     ctx->magic = 0;
 
-    nimcp_platform_mutex_unlock(&ctx->mutex);
-    nimcp_platform_mutex_destroy(&ctx->mutex);
+    nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)ctx->mutex);
+    nimcp_platform_mutex_destroy((nimcp_platform_mutex_t*)ctx->mutex); nimcp_free(ctx->mutex);
 
     nimcp_free(ctx);
 
-    bbb_audit_log(BBB_AUDIT_SYSTEM_SHUTDOWN, "Portia sensor fusion destroyed");
+    bbb_audit_log(BBB_AUDIT_INFO, LOG_MODULE, "shutdown", "Portia sensor fusion destroyed");
 }
 
 /**
@@ -601,29 +604,29 @@ bool portia_fusion_update_sensor(
         return false;
     }
 
-    if (!bbb_validate_pointer(reading, sizeof(sensor_reading_t))) {
+    if (!reading) {
         LOG_ERROR("Invalid reading pointer");
         return false;
     }
 
     if (reading->type >= SENSOR_TYPE_COUNT) {
         LOG_ERROR("Invalid sensor type: %d", reading->type);
-        bbb_audit_log(BBB_AUDIT_VALIDATION_FAILED, "Invalid sensor type");
+        bbb_audit_log(BBB_AUDIT_WARNING, LOG_MODULE, "validation_failed", "Invalid sensor type");
         return false;
     }
 
-    if (!bbb_validate_range(reading->confidence, 0.0f, 1.0f)) {
+    if (reading->confidence < 0.0f || reading->confidence > 1.0f) {
         LOG_ERROR("Invalid confidence: %.3f", reading->confidence);
-        bbb_audit_log(BBB_AUDIT_VALIDATION_FAILED, "Invalid sensor confidence");
+        bbb_audit_log(BBB_AUDIT_WARNING, LOG_MODULE, "validation_failed", "Invalid sensor confidence");
         return false;
     }
 
-    nimcp_platform_mutex_lock(&ctx->mutex);
+    nimcp_platform_mutex_lock((nimcp_platform_mutex_t*)ctx->mutex);
 
     // Check if sensor is enabled
     if (!ctx->config.sensors[reading->type].enabled) {
         LOG_DEBUG("Ignoring disabled sensor: %s", portia_fusion_sensor_name(reading->type));
-        nimcp_platform_mutex_unlock(&ctx->mutex);
+        nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)ctx->mutex);
         return false;
     }
 
@@ -631,7 +634,7 @@ bool portia_fusion_update_sensor(
     if (is_outlier(ctx, reading)) {
         ctx->stats.outliers_rejected++;
         LOG_DEBUG("Rejected outlier from %s", portia_fusion_sensor_name(reading->type));
-        nimcp_platform_mutex_unlock(&ctx->mutex);
+        nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)ctx->mutex);
         return false;
     }
 
@@ -646,7 +649,7 @@ bool portia_fusion_update_sensor(
               reading->value, reading->confidence,
               (unsigned long)reading->timestamp_ms);
 
-    nimcp_platform_mutex_unlock(&ctx->mutex);
+    nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)ctx->mutex);
 
     return true;
 }
@@ -659,7 +662,7 @@ bool portia_fusion_process(portia_fusion_ctx_t* ctx) {
         return false;
     }
 
-    nimcp_platform_mutex_lock(&ctx->mutex);
+    nimcp_platform_mutex_lock((nimcp_platform_mutex_t*)ctx->mutex);
 
     ctx->active_sensors_mask = 0;
 
@@ -677,7 +680,7 @@ bool portia_fusion_process(portia_fusion_ctx_t* ctx) {
     if (active_count < ctx->config.min_sensors) {
         LOG_WARN("Insufficient active sensors: %u < %u", active_count, ctx->config.min_sensors);
         ctx->current_state.confidence = MIN_CONFIDENCE;
-        nimcp_platform_mutex_unlock(&ctx->mutex);
+        nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)ctx->mutex);
         return false;
     }
 
@@ -700,7 +703,7 @@ bool portia_fusion_process(portia_fusion_ctx_t* ctx) {
         }
     }
 
-    nimcp_platform_mutex_unlock(&ctx->mutex);
+    nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)ctx->mutex);
 
     return success;
 }
@@ -716,14 +719,14 @@ bool portia_fusion_get_state(
         return false;
     }
 
-    if (!bbb_validate_pointer(state, sizeof(fused_state_t))) {
+    if (!state) {
         LOG_ERROR("Invalid state pointer");
         return false;
     }
 
-    nimcp_platform_mutex_lock((nimcp_platform_mutex_t*)&ctx->mutex);
+    nimcp_platform_mutex_lock((nimcp_platform_mutex_t*)ctx->mutex);
     *state = ctx->current_state;
-    nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)&ctx->mutex);
+    nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)ctx->mutex);
 
     return true;
 }
@@ -745,15 +748,15 @@ bool portia_fusion_set_weight(
         return false;
     }
 
-    if (!bbb_validate_range(weight, 0.0f, 1.0f)) {
+    if (weight < 0.0f || weight > 1.0f) {
         LOG_ERROR("Invalid weight: %.3f", weight);
-        bbb_audit_log(BBB_AUDIT_VALIDATION_FAILED, "Invalid sensor weight");
+        bbb_audit_log(BBB_AUDIT_WARNING, LOG_MODULE, "validation_failed", "Invalid sensor weight");
         return false;
     }
 
-    nimcp_platform_mutex_lock(&ctx->mutex);
+    nimcp_platform_mutex_lock((nimcp_platform_mutex_t*)ctx->mutex);
     ctx->config.sensors[type].weight = weight;
-    nimcp_platform_mutex_unlock(&ctx->mutex);
+    nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)ctx->mutex);
 
     LOG_INFO("Set %s weight to %.3f", portia_fusion_sensor_name(type), weight);
 
@@ -777,13 +780,13 @@ bool portia_fusion_enable_sensor(
         return false;
     }
 
-    nimcp_platform_mutex_lock(&ctx->mutex);
+    nimcp_platform_mutex_lock((nimcp_platform_mutex_t*)ctx->mutex);
     ctx->config.sensors[type].enabled = enabled;
-    nimcp_platform_mutex_unlock(&ctx->mutex);
+    nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)ctx->mutex);
 
     LOG_INFO("%s sensor %s", enabled ? "Enabled" : "Disabled", portia_fusion_sensor_name(type));
 
-    bbb_audit_log(BBB_AUDIT_CONFIG_CHANGE, enabled ? "Sensor enabled" : "Sensor disabled");
+    bbb_audit_log(BBB_AUDIT_INFO, LOG_MODULE, "config_change", enabled ? "Sensor enabled" : "Sensor disabled");
 
     return true;
 }
@@ -796,9 +799,9 @@ float portia_fusion_get_confidence(const portia_fusion_ctx_t* ctx) {
         return 0.0f;
     }
 
-    nimcp_platform_mutex_lock((nimcp_platform_mutex_t*)&ctx->mutex);
+    nimcp_platform_mutex_lock((nimcp_platform_mutex_t*)ctx->mutex);
     float confidence = ctx->current_state.confidence;
-    nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)&ctx->mutex);
+    nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)ctx->mutex);
 
     return confidence;
 }
@@ -814,14 +817,14 @@ bool portia_fusion_get_stats(
         return false;
     }
 
-    if (!bbb_validate_pointer(stats, sizeof(portia_fusion_stats_t))) {
+    if (!stats) {
         LOG_ERROR("Invalid stats pointer");
         return false;
     }
 
-    nimcp_platform_mutex_lock((nimcp_platform_mutex_t*)&ctx->mutex);
+    nimcp_platform_mutex_lock((nimcp_platform_mutex_t*)ctx->mutex);
     *stats = ctx->stats;
-    nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)&ctx->mutex);
+    nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)ctx->mutex);
 
     return true;
 }
@@ -834,7 +837,7 @@ bool portia_fusion_reset(portia_fusion_ctx_t* ctx) {
         return false;
     }
 
-    nimcp_platform_mutex_lock(&ctx->mutex);
+    nimcp_platform_mutex_lock((nimcp_platform_mutex_t*)ctx->mutex);
 
     // Reset state
     memset(&ctx->current_state, 0, sizeof(fused_state_t));
@@ -860,7 +863,7 @@ bool portia_fusion_reset(portia_fusion_ctx_t* ctx) {
     ctx->last_fusion_ms = 0;
     ctx->active_sensors_mask = 0;
 
-    nimcp_platform_mutex_unlock(&ctx->mutex);
+    nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)ctx->mutex);
 
     LOG_INFO("Reset Portia sensor fusion state");
 
@@ -868,7 +871,7 @@ bool portia_fusion_reset(portia_fusion_ctx_t* ctx) {
         broadcast_fusion_event(ctx, "reset");
     }
 
-    bbb_audit_log(BBB_AUDIT_CONFIG_CHANGE, "Fusion state reset");
+    bbb_audit_log(BBB_AUDIT_INFO, LOG_MODULE, "config_change", "Fusion state reset");
 
     return true;
 }

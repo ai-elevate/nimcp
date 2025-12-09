@@ -105,7 +105,7 @@ E2E_TEST(CognitivePipelineTest, PerceptionToDecision) {
         );
 
         // At least one should succeed (the stronger one)
-        bool one_succeeded = (status1 == NIMCP_OK) || (status2 == NIMCP_OK);
+        bool one_succeeded = (status1 == NIMCP_SUCCESS) || (status2 == NIMCP_SUCCESS);
         E2E_ASSERT(one_succeeded, "No module won workspace competition");
     }
     E2E_STAGE_END();
@@ -125,7 +125,7 @@ E2E_TEST(CognitivePipelineTest, PerceptionToDecision) {
             &source
         );
 
-        if (status == NIMCP_OK) {
+        if (status == NIMCP_SUCCESS) {
             E2E_ASSERT(actual_dim == 256, "Broadcast dimension mismatch");
             std::cout << "  Broadcast from module: " << static_cast<int>(source) << "\n";
         }
@@ -172,7 +172,7 @@ E2E_TEST(CognitivePipelineTest, PerceptionToDecision) {
             &avg_strength
         );
 
-        if (status == NIMCP_OK) {
+        if (status == NIMCP_SUCCESS) {
             std::cout << "  Workspace: " << total_broadcasts << " broadcasts, "
                       << total_competitions << " competitions\n";
             E2E_ASSERT(total_competitions > 0, "No workspace activity recorded");
@@ -474,7 +474,7 @@ E2E_TEST(CognitivePipelineTest, MultiModuleCognitiveIntegration) {
             0.9f  // High salience
         );
 
-        if (status == NIMCP_OK) {
+        if (status == NIMCP_SUCCESS) {
             std::cout << "  Perception won workspace access\n";
 
             // Add to working memory
@@ -520,7 +520,7 @@ E2E_TEST(CognitivePipelineTest, MultiModuleCognitiveIntegration) {
             brain, broadcast.data(), 128, &actual_dim, &source
         );
 
-        if (status == NIMCP_OK) {
+        if (status == NIMCP_SUCCESS) {
             std::cout << "  Executive control processing broadcast from module "
                       << static_cast<int>(source) << "\n";
 
@@ -570,7 +570,7 @@ E2E_TEST(CognitivePipelineTest, MultiModuleCognitiveIntegration) {
         std::cout << "    Avg strength: " << avg_strength << "\n";
 
         // Only assert if stats API succeeded - workspace might not be tracking in all configurations
-        if (stats_status == NIMCP_OK) {
+        if (stats_status == NIMCP_SUCCESS) {
             E2E_ASSERT(competitions > 0, "No cognitive module activity");
         } else {
             std::cout << "  Workspace stats not available (expected for some configurations)\n";

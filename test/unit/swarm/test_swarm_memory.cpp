@@ -69,7 +69,7 @@ TEST_F(SwarmMemoryTest, StoreMemory) {
         data, sizeof(data), memory_id
     );
 
-    EXPECT_EQ(result, NIMCP_OK);
+    EXPECT_EQ(result, NIMCP_SUCCESS);
     EXPECT_GT(strlen(memory_id), 0);
 }
 
@@ -84,7 +84,7 @@ TEST_F(SwarmMemoryTest, RetrieveMemory) {
         system, memory_id, retrieved, sizeof(retrieved)
     );
 
-    EXPECT_EQ(result, NIMCP_OK);
+    EXPECT_EQ(result, NIMCP_SUCCESS);
     EXPECT_EQ(memcmp(data, retrieved, sizeof(data)), 0);
 }
 
@@ -95,7 +95,7 @@ TEST_F(SwarmMemoryTest, AccessMemory) {
                              NIMCP_IMPORTANCE_HIGH, data, sizeof(data), memory_id);
 
     NimcpResult result = nimcp_swarm_memory_access(system, memory_id);
-    EXPECT_EQ(result, NIMCP_OK);
+    EXPECT_EQ(result, NIMCP_SUCCESS);
 }
 
 TEST_F(SwarmMemoryTest, RehearseMemory) {
@@ -105,7 +105,7 @@ TEST_F(SwarmMemoryTest, RehearseMemory) {
                              NIMCP_IMPORTANCE_CRITICAL, data, sizeof(data), memory_id);
 
     NimcpResult result = nimcp_swarm_memory_rehearse(system, memory_id);
-    EXPECT_EQ(result, NIMCP_OK);
+    EXPECT_EQ(result, NIMCP_SUCCESS);
 }
 
 TEST_F(SwarmMemoryTest, DeleteMemory) {
@@ -115,7 +115,7 @@ TEST_F(SwarmMemoryTest, DeleteMemory) {
                              NIMCP_IMPORTANCE_HIGH, data, sizeof(data), memory_id);
 
     NimcpResult result = nimcp_swarm_memory_delete(system, memory_id);
-    EXPECT_EQ(result, NIMCP_OK);
+    EXPECT_EQ(result, NIMCP_SUCCESS);
 }
 
 TEST_F(SwarmMemoryTest, ScheduleReplay) {
@@ -127,7 +127,7 @@ TEST_F(SwarmMemoryTest, ScheduleReplay) {
     NimcpResult result = nimcp_swarm_memory_schedule_replay(
         system, memory_id, 0.8f
     );
-    EXPECT_EQ(result, NIMCP_OK);
+    EXPECT_EQ(result, NIMCP_SUCCESS);
 }
 
 TEST_F(SwarmMemoryTest, ReplayCycle) {
@@ -145,7 +145,7 @@ TEST_F(SwarmMemoryTest, ReplayCycle) {
         system, 10, &replays_performed
     );
 
-    EXPECT_EQ(result, NIMCP_OK);
+    EXPECT_EQ(result, NIMCP_SUCCESS);
     EXPECT_GT(replays_performed, 0);
 }
 
@@ -162,7 +162,7 @@ TEST_F(SwarmMemoryTest, CompressMemory) {
         system, memory_id, &compressed
     );
 
-    EXPECT_EQ(result, NIMCP_OK);
+    EXPECT_EQ(result, NIMCP_SUCCESS);
 }
 
 TEST_F(SwarmMemoryTest, DecompressMemory) {
@@ -179,7 +179,7 @@ TEST_F(SwarmMemoryTest, DecompressMemory) {
         system, &compressed, decompressed, sizeof(decompressed)
     );
 
-    EXPECT_EQ(result, NIMCP_OK);
+    EXPECT_EQ(result, NIMCP_SUCCESS);
 }
 
 TEST_F(SwarmMemoryTest, ExtractPattern) {
@@ -193,7 +193,7 @@ TEST_F(SwarmMemoryTest, ExtractPattern) {
         system, memory_id, &pattern_hash
     );
 
-    EXPECT_EQ(result, NIMCP_OK);
+    EXPECT_EQ(result, NIMCP_SUCCESS);
 }
 
 TEST_F(SwarmMemoryTest, SetForgettingCurve) {
@@ -205,7 +205,7 @@ TEST_F(SwarmMemoryTest, SetForgettingCurve) {
         system, NIMCP_MEMORY_EPISODIC, &curve
     );
 
-    EXPECT_EQ(result, NIMCP_OK);
+    EXPECT_EQ(result, NIMCP_SUCCESS);
 }
 
 TEST_F(SwarmMemoryTest, ApplyForgetting) {
@@ -220,7 +220,7 @@ TEST_F(SwarmMemoryTest, ApplyForgetting) {
         system, &forgotten_count
     );
 
-    EXPECT_EQ(result, NIMCP_OK);
+    EXPECT_EQ(result, NIMCP_SUCCESS);
 }
 
 TEST_F(SwarmMemoryTest, ConfigureConsolidation) {
@@ -232,7 +232,7 @@ TEST_F(SwarmMemoryTest, ConfigureConsolidation) {
         system, &window
     );
 
-    EXPECT_EQ(result, NIMCP_OK);
+    EXPECT_EQ(result, NIMCP_SUCCESS);
 }
 
 TEST_F(SwarmMemoryTest, StartConsolidation) {
@@ -240,7 +240,7 @@ TEST_F(SwarmMemoryTest, StartConsolidation) {
         system, NIMCP_CONSOLIDATION_PASSIVE
     );
 
-    EXPECT_EQ(result, NIMCP_OK);
+    EXPECT_EQ(result, NIMCP_SUCCESS);
 }
 
 TEST_F(SwarmMemoryTest, ExecuteConsolidation) {
@@ -257,7 +257,7 @@ TEST_F(SwarmMemoryTest, ExecuteConsolidation) {
         system, &memories_consolidated
     );
 
-    EXPECT_EQ(result, NIMCP_OK);
+    EXPECT_EQ(result, NIMCP_SUCCESS);
 }
 
 TEST_F(SwarmMemoryTest, CheckConsolidating) {
@@ -270,7 +270,7 @@ TEST_F(SwarmMemoryTest, RegisterNode) {
         system, "node_1", 100
     );
 
-    EXPECT_EQ(result, NIMCP_OK);
+    EXPECT_EQ(result, NIMCP_SUCCESS);
 }
 
 TEST_F(SwarmMemoryTest, UnregisterNode) {
@@ -280,7 +280,7 @@ TEST_F(SwarmMemoryTest, UnregisterNode) {
         system, "node_1"
     );
 
-    EXPECT_EQ(result, NIMCP_OK);
+    EXPECT_EQ(result, NIMCP_SUCCESS);
 }
 
 TEST_F(SwarmMemoryTest, DistributeMemory) {
@@ -298,7 +298,7 @@ TEST_F(SwarmMemoryTest, DistributeMemory) {
         system, memory_id, &replicas_created
     );
 
-    EXPECT_EQ(result, NIMCP_OK);
+    EXPECT_EQ(result, NIMCP_SUCCESS);
 }
 
 TEST_F(SwarmMemoryTest, VerifyConsensus) {
@@ -315,7 +315,7 @@ TEST_F(SwarmMemoryTest, VerifyConsensus) {
         system, memory_id, &has_consensus
     );
 
-    EXPECT_EQ(result, NIMCP_OK);
+    EXPECT_EQ(result, NIMCP_SUCCESS);
 }
 
 TEST_F(SwarmMemoryTest, AbstractPattern) {
@@ -334,7 +334,7 @@ TEST_F(SwarmMemoryTest, AbstractPattern) {
         system, memory_ids, 3, &pattern_hash
     );
 
-    EXPECT_EQ(result, NIMCP_OK);
+    EXPECT_EQ(result, NIMCP_SUCCESS);
 }
 
 TEST_F(SwarmMemoryTest, GeneralizeMemories) {
@@ -353,7 +353,7 @@ TEST_F(SwarmMemoryTest, GeneralizeMemories) {
         system, specific_ids, 3, generalized_id
     );
 
-    EXPECT_EQ(result, NIMCP_OK);
+    EXPECT_EQ(result, NIMCP_SUCCESS);
 }
 
 TEST_F(SwarmMemoryTest, BuildHierarchy) {
@@ -370,14 +370,14 @@ TEST_F(SwarmMemoryTest, BuildHierarchy) {
         system, &levels
     );
 
-    EXPECT_EQ(result, NIMCP_OK);
+    EXPECT_EQ(result, NIMCP_SUCCESS);
 }
 
 TEST_F(SwarmMemoryTest, GetStatistics) {
     NimcpMemoryStatistics stats;
     NimcpResult result = nimcp_swarm_memory_get_statistics(system, &stats);
 
-    EXPECT_EQ(result, NIMCP_OK);
+    EXPECT_EQ(result, NIMCP_SUCCESS);
 }
 
 TEST_F(SwarmMemoryTest, GetCountByType) {

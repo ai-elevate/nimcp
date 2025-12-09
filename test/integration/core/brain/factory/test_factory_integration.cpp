@@ -29,7 +29,7 @@ class FactoryIntegrationTest : public ::testing::Test {
 protected:
     void SetUp() override {
         // Initialize NIMCP library
-        ASSERT_EQ(nimcp_init(), NIMCP_OK);
+        ASSERT_EQ(nimcp_init(), NIMCP_SUCCESS);
     }
 
     void TearDown() override {

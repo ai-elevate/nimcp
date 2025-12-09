@@ -348,7 +348,7 @@ E2E_TEST(DistributedPipelineTest, ConcurrentBrainOperations) {
                         3,
                         &result
                     );
-                    if (status != NIMCP_OK) {
+                    if (status != NIMCP_SUCCESS) {
                         success = false;
                         break;
                     }
@@ -388,7 +388,7 @@ E2E_TEST(DistributedPipelineTest, ConcurrentBrainOperations) {
                     3
                 );
 
-                if (status == NIMCP_OK) {
+                if (status == NIMCP_SUCCESS) {
                     successful_operations++;
                 }
             });

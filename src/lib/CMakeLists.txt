@@ -90,6 +90,8 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/neuron_types/nimcp_neural_logic.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/logic/nimcp_neural_logic_brain_integration.c  # Phase 2.6.2: Neural Logic Brain Integration
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain_regions/nimcp_brain_regions.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain_regions/nimcp_contextual_language.c    # Contextual language adaptation
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain_regions/nimcp_language_production_bridge.c  # Language production bridge API
 
     # Cortical columns - Tier 0.65: Cortical Columns Architecture (Phase CC-1)
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/cortical_columns/nimcp_cortical_column.c       # Core minicolumn/hypercolumn structures
@@ -269,6 +271,7 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../networking/nlp/nimcp_neural_language.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../networking/nlp/nimcp_nlp_compression.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../networking/nlp/nimcp_nlp_protocol_bridge.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../networking/nlp/nimcp_dialect_learning.c          # Neural protocol dialect learning
 
     # I/O
     ${CMAKE_CURRENT_SOURCE_DIR}/../io/dataio/nimcp_dataio.c
@@ -427,6 +430,7 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../async/nimcp_future.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../async/nimcp_bio_async.c      # Phase BIO-ASYNC: Biologically-inspired async
     ${CMAKE_CURRENT_SOURCE_DIR}/../async/nimcp_bio_router.c     # Phase BIO-ASYNC: Bio-router message routing
+    ${CMAKE_CURRENT_SOURCE_DIR}/../async/nimcp_predictive_protocol.c  # Predictive communication protocol
 
     # Utils - Algorithms (Graph metrics for brain topology validation)
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/topology/nimcp_community_detection.c
@@ -602,11 +606,36 @@ set(NIMCP_CORE_SOURCES
     # MIGRATED - Memory consolidation with stubbed containers:
     ${CMAKE_CURRENT_SOURCE_DIR}/../swarm/nimcp_swarm_memory.c         # Memory consolidation
 
+    # Swarm Communication Modules - Narrative Memory and Gossip Beliefs:
+    ${CMAKE_CURRENT_SOURCE_DIR}/../swarm/nimcp_swarm_narrative.c      # Narrative memory (story sharing)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../swarm/nimcp_gossip_beliefs.c       # Gossip-based belief propagation
+
     # MIGRATED - Multi-swarm coordination with stubbed containers:
     ${CMAKE_CURRENT_SOURCE_DIR}/../swarm/nimcp_swarm_multi.c          # Multi-swarm coordination
+    ${CMAKE_CURRENT_SOURCE_DIR}/../swarm/nimcp_swarm_conflict.c       # Multi-swarm conflict resolution
+
+    # Logic-Swarm Bridge - Neural Logic Gates for Swarm Intelligence
+    ${CMAKE_CURRENT_SOURCE_DIR}/../swarm/nimcp_swarm_logic_bridge.c   # Logic gate integration with swarm
+
+    # Swarm Infrastructure - Local Brain Instantiation and Protocol Metrics
+    ${CMAKE_CURRENT_SOURCE_DIR}/../swarm/nimcp_swarm_brain_local.c    # Per-agent brain management
+    ${CMAKE_CURRENT_SOURCE_DIR}/../networking/nlp/nimcp_protocol_metrics.c # Protocol metrics dashboard
 
     # Platform Tier System (Portia Spider Foundation)
     ${CMAKE_CURRENT_SOURCE_DIR}/../utils/platform/nimcp_platform_tier.c  # Platform-adaptive configuration
+
+    # Portia Spider Adaptive Intelligence System
+    ${CMAKE_CURRENT_SOURCE_DIR}/../portia/nimcp_portia.c                 # Main Portia coordinator
+    ${CMAKE_CURRENT_SOURCE_DIR}/../portia/nimcp_portia_accelerator.c     # Hardware accelerator detection
+    ${CMAKE_CURRENT_SOURCE_DIR}/../portia/nimcp_portia_attention.c       # Attention allocation
+    ${CMAKE_CURRENT_SOURCE_DIR}/../portia/nimcp_portia_classification.c  # Prey/threat classification
+    ${CMAKE_CURRENT_SOURCE_DIR}/../portia/nimcp_portia_deception.c       # Deceptive behavior
+    ${CMAKE_CURRENT_SOURCE_DIR}/../portia/nimcp_portia_degradation.c     # Graceful degradation
+    ${CMAKE_CURRENT_SOURCE_DIR}/../portia/nimcp_portia_learning.c        # Adaptive learning
+    ${CMAKE_CURRENT_SOURCE_DIR}/../portia/nimcp_portia_planning.c        # Planning and strategy
+    ${CMAKE_CURRENT_SOURCE_DIR}/../portia/nimcp_portia_power.c           # Power management
+    ${CMAKE_CURRENT_SOURCE_DIR}/../portia/nimcp_portia_sensor_fusion.c   # Multi-sensor fusion
+    ${CMAKE_CURRENT_SOURCE_DIR}/../portia/nimcp_portia_tier_switch.c     # Tier switching
 )
 
 # Core library

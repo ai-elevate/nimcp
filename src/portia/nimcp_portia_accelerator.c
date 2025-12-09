@@ -20,6 +20,7 @@
 #include "portia/nimcp_portia_accelerator.h"
 #include "async/nimcp_bio_async.h"
 #include "async/nimcp_bio_messages.h"
+#include "async/nimcp_bio_router.h"
 #include "security/nimcp_bbb_helpers.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/memory/nimcp_memory.h"
@@ -41,6 +42,9 @@
 
 #define MODULE_NAME "portia_accelerator"
 #define MAX_ACCELERATORS 32
+
+// Forward declarations
+static const char* accelerator_type_to_string(accelerator_type_t type);
 #define SYSFS_CLASS_DRM "/sys/class/drm"
 #define SYSFS_CLASS_MISC "/sys/class/misc"
 
@@ -56,7 +60,7 @@ struct portia_accelerator_system_struct {
     accelerator_registry_t registry;
     pthread_mutex_t lock;
     bool initialized;
-    nimcp_bio_async_t* bio_async;
+    bool bio_async_enabled;
 };
 
 //=============================================================================
@@ -474,17 +478,11 @@ static void handle_accelerator_query(void* user_data, const void* msg_data, size
  * @brief Register bio-async handlers
  */
 static bool register_bio_async_handlers(portia_accelerator_system_t system) {
-    if (!system->bio_async) {
+    if (!system->bio_async_enabled) {
         return true; // Not an error if bio-async not available
     }
 
-    // Register for accelerator query messages
-    nimcp_bio_inbox_handler_t handler = {
-        .callback = handle_accelerator_query,
-        .user_data = system
-    };
-
-    // This would register for relevant message types
+    // Note: Bio-async registration would happen here with proper bio_router API
     // For now, just log registration
     LOG_INFO("Bio-async handlers registered for accelerator system");
 
@@ -554,8 +552,8 @@ portia_accelerator_system_t portia_accelerator_init(
         return NULL;
     }
 
-    // Try to get bio-async handle
-    system->bio_async = nimcp_bio_async_get_global();
+    // Check if bio-async is available
+    system->bio_async_enabled = nimcp_bio_async_is_initialized();
 
     // Register bio-async handlers
     register_bio_async_handlers(system);
@@ -898,9 +896,9 @@ bool portia_accelerator_set_preferred(portia_accelerator_system_t system,
     pthread_mutex_unlock(&system->lock);
 
     LOG_INFO("Preferred accelerator type set to %s",
-             portia_accelerator_type_name(type));
+             accelerator_type_to_string(type));
     bbb_audit_log(BBB_AUDIT_INFO, MODULE_NAME, "preferred_set",
-                  "type=%s", portia_accelerator_type_name(type));
+                  "type=%s", accelerator_type_to_string(type));
 
     return true;
 }
@@ -932,7 +930,7 @@ bool portia_accelerator_is_available(portia_accelerator_system_t system,
     return available;
 }
 
-const char* portia_accelerator_type_name(accelerator_type_t type) {
+static const char* accelerator_type_to_string(accelerator_type_t type) {
     switch (type) {
         case ACCELERATOR_TYPE_NONE: return "None";
         case ACCELERATOR_TYPE_GPU:  return "GPU";
@@ -950,7 +948,7 @@ void portia_accelerator_print_info(const accelerator_info_t* info) {
     }
 
     printf("=== Accelerator Info ===\n");
-    printf("Type:         %s\n", portia_accelerator_type_name(info->type));
+    printf("Type:         %s\n", accelerator_type_to_string(info->type));
     printf("Name:         %s\n", info->name);
     printf("Vendor:       %s\n", info->vendor);
     printf("Compute Units:%u\n", info->compute_units);

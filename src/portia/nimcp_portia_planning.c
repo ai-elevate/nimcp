@@ -103,7 +103,7 @@ static float decay_confidence(float initial, uint64_t last_seen_ms)
 {
     if (initial <= 0.0f) return 0.0f;
 
-    uint64_t current_ms = nimcp_time_now_ms();
+    uint64_t current_ms = nimcp_time_monotonic_ms();
     if (current_ms <= last_seen_ms) return initial;
 
     float elapsed_s = (current_ms - last_seen_ms) / 1000.0f;
@@ -120,7 +120,7 @@ static float decay_confidence(float initial, uint64_t last_seen_ms)
  */
 static portia_plan_t* find_plan(portia_planner_t planner, uint32_t plan_id)
 {
-    if (!bbb_validate_pointer(NULL, planner, "find_plan")) {
+    if (!planner) {
         return NULL;
     }
 
@@ -210,7 +210,7 @@ portia_planner_t portia_planning_init(const portia_planning_config_t* config,
                                        bio_module_context_t bio_ctx)
 {
     // Validate configuration
-    if (!bbb_validate_pointer(NULL, config, "portia_planning_init")) {
+    if (!config) {
         portia_set_error("NULL config");
         return NULL;
     }
@@ -253,7 +253,7 @@ portia_planner_t portia_planning_init(const portia_planning_config_t* config,
     planner->plan_count = 0;
     planner->next_plan_id = 1;
     planner->bio_ctx = bio_ctx;
-    planner->last_eval_time_ms = nimcp_time_now_ms();
+    planner->last_eval_time_ms = nimcp_time_monotonic_ms();
 
     nimcp_mutex_init(&planner->lock, NULL);
 
@@ -267,7 +267,7 @@ portia_planner_t portia_planning_init(const portia_planning_config_t* config,
 
 void portia_planning_destroy(portia_planner_t planner)
 {
-    if (!bbb_validate_pointer(NULL, planner, "portia_planning_destroy")) {
+    if (!planner) {
         return;
     }
 
@@ -295,7 +295,7 @@ portia_plan_t* portia_planning_create_plan(portia_planner_t planner,
                                              float target_y,
                                              float target_z)
 {
-    if (!bbb_validate_pointer(NULL, planner, "portia_planning_create_plan")) {
+    if (!planner) {
         portia_set_error("NULL planner");
         return NULL;
     }
@@ -350,7 +350,7 @@ portia_plan_t* portia_planning_create_plan(portia_planner_t planner,
     plan->waypoints[0].y = target_y;
     plan->waypoints[0].z = target_z;
     plan->waypoints[0].confidence = 1.0f;
-    plan->waypoints[0].last_seen_ms = nimcp_time_now_ms();
+    plan->waypoints[0].last_seen_ms = nimcp_time_monotonic_ms();
     plan->waypoints[0].visible = true;
 
     planner->plan_count++;
@@ -372,7 +372,7 @@ portia_plan_t* portia_planning_create_plan(portia_planner_t planner,
 bool portia_planning_add_waypoint(portia_planner_t planner, uint32_t plan_id,
                                    float x, float y, float z, float confidence)
 {
-    if (!bbb_validate_pointer(NULL, planner, "portia_planning_add_waypoint")) {
+    if (!planner) {
         portia_set_error("NULL planner");
         return false;
     }
@@ -407,7 +407,7 @@ bool portia_planning_add_waypoint(portia_planner_t planner, uint32_t plan_id,
     plan->waypoints[insert_pos].y = y;
     plan->waypoints[insert_pos].z = z;
     plan->waypoints[insert_pos].confidence = confidence;
-    plan->waypoints[insert_pos].last_seen_ms = nimcp_time_now_ms();
+    plan->waypoints[insert_pos].last_seen_ms = nimcp_time_monotonic_ms();
     plan->waypoints[insert_pos].visible = (confidence > planner->config.confidence_threshold);
 
     plan->waypoint_count++;
@@ -422,7 +422,7 @@ bool portia_planning_add_waypoint(portia_planner_t planner, uint32_t plan_id,
 
 bool portia_planning_evaluate(portia_planner_t planner, uint32_t plan_id)
 {
-    if (!bbb_validate_pointer(NULL, planner, "portia_planning_evaluate")) {
+    if (!planner) {
         portia_set_error("NULL planner");
         return false;
     }
@@ -474,7 +474,7 @@ bool portia_planning_evaluate(portia_planner_t planner, uint32_t plan_id)
     }
 
     plan->state = PLAN_STATE_EVALUATING;
-    planner->last_eval_time_ms = nimcp_time_now_ms();
+    planner->last_eval_time_ms = nimcp_time_monotonic_ms();
 
     LOG_DEBUG("Evaluated plan %u: detour_depth=%u confidence=%.2f",
               plan_id, plan->detour_depth,
@@ -486,7 +486,7 @@ bool portia_planning_evaluate(portia_planner_t planner, uint32_t plan_id)
 
 bool portia_planning_execute_step(portia_planner_t planner, uint32_t plan_id)
 {
-    if (!bbb_validate_pointer(NULL, planner, "portia_planning_execute_step")) {
+    if (!planner) {
         portia_set_error("NULL planner");
         return false;
     }
@@ -542,7 +542,7 @@ bool portia_planning_handle_obstacle(portia_planner_t planner, uint32_t plan_id,
                                       float obstacle_x, float obstacle_y,
                                       float obstacle_z)
 {
-    if (!bbb_validate_pointer(NULL, planner, "portia_planning_handle_obstacle")) {
+    if (!planner) {
         portia_set_error("NULL planner");
         return false;
     }
@@ -590,7 +590,7 @@ bool portia_planning_handle_obstacle(portia_planner_t planner, uint32_t plan_id,
 
 bool portia_planning_can_detour(portia_planner_t planner, uint32_t plan_id)
 {
-    if (!bbb_validate_pointer(NULL, planner, "portia_planning_can_detour")) {
+    if (!planner) {
         portia_set_error("NULL planner");
         return false;
     }
@@ -617,7 +617,7 @@ bool portia_planning_can_detour(portia_planner_t planner, uint32_t plan_id)
 
 plan_state_t portia_planning_get_state(portia_planner_t planner, uint32_t plan_id)
 {
-    if (!bbb_validate_pointer(NULL, planner, "portia_planning_get_state")) {
+    if (!planner) {
         portia_set_error("NULL planner");
         return PLAN_STATE_FAILED;
     }
@@ -639,7 +639,7 @@ plan_state_t portia_planning_get_state(portia_planner_t planner, uint32_t plan_i
 
 portia_plan_t* portia_planning_get_plan(portia_planner_t planner, uint32_t plan_id)
 {
-    if (!bbb_validate_pointer(NULL, planner, "portia_planning_get_plan")) {
+    if (!planner) {
         portia_set_error("NULL planner");
         return NULL;
     }
@@ -653,7 +653,7 @@ portia_plan_t* portia_planning_get_plan(portia_planner_t planner, uint32_t plan_
 
 bool portia_planning_delete_plan(portia_planner_t planner, uint32_t plan_id)
 {
-    if (!bbb_validate_pointer(NULL, planner, "portia_planning_delete_plan")) {
+    if (!planner) {
         portia_set_error("NULL planner");
         return false;
     }

@@ -36,17 +36,8 @@ foreach(test_source ${PORTIA_INTEGRATION_TESTS})
             GTest::gtest_main
             GTest::gmock
 
-            # Portia subsystems
-            # Note: These libraries need to be created in src/portia/CMakeLists.txt
-            # For now, we'll link against the main nimcp library
+            # Main nimcp library (contains all subsystems including async, platform, validation)
             nimcp
-
-            # Async system
-            nimcp_bio_async
-
-            # Utils
-            nimcp_platform
-            nimcp_validation
 
             # Threading
             Threads::Threads

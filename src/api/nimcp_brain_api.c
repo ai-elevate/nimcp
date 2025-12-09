@@ -14,8 +14,12 @@
 #include "utils/memory/nimcp_unified_memory.h"
 #include "utils/config/nimcp_config.h"
 #include "utils/logging/nimcp_logging.h"
+#include "utils/metrics/nimcp_metrics.h"
+#include "async/nimcp_bio_router.h"
+#include "async/nimcp_bio_messages.h"
 #include <stdio.h>
 #include <string.h>
+#include <time.h>
 
 #define LOG_MODULE "API.BRAIN"
 
@@ -405,10 +409,9 @@ NIMCP_EXPORT nimcp_status_t nimcp_brain_probe(nimcp_brain_t brain, nimcp_brain_p
     probe->accuracy = internal_stats.accuracy;
     probe->memory_bytes = internal_stats.memory_bytes;
 
-    // Note: Input/output sizes are not directly accessible from internal API
-    // Set to 0 for now - could be extended if brain API exposes these
-    probe->num_inputs = 0;
-    probe->num_outputs = 0;
+    // Get input/output dimensions from internal brain
+    probe->num_inputs = brain_get_num_inputs(brain->internal_brain);
+    probe->num_outputs = brain->internal_brain->config.num_outputs;
 
     // Get COW statistics from internal brain
     brain_cow_stats_t cow_stats;
@@ -428,3 +431,110 @@ NIMCP_EXPORT nimcp_status_t nimcp_brain_probe(nimcp_brain_t brain, nimcp_brain_p
     set_error("No error");
     return NIMCP_OK;
 }
+
+//=============================================================================
+// Bio-Async Brain Probe Broadcasting (Loose Coupling)
+//=============================================================================
+
+// Module context for brain bio-router registration (lazy init)
+static bio_module_context_t g_brain_module_ctx = NULL;
+
+/**
+ * @brief Get or create the brain module context for bio-async messaging
+ */
+static bio_module_context_t get_brain_module_ctx(void) {
+    if (!bio_router_is_initialized()) {
+        return NULL;
+    }
+
+    if (!g_brain_module_ctx) {
+        bio_module_info_t info = {
+            .module_id = BIO_MODULE_BRAIN,
+            .module_name = "brain",
+            .inbox_capacity = 64,
+            .user_data = NULL
+        };
+        g_brain_module_ctx = bio_router_register_module(&info);
+    }
+    return g_brain_module_ctx;
+}
+
+/**
+ * @brief Broadcast brain probe data via bio-async for decoupled metrics collection
+ *
+ * WHAT: Sends brain probe metrics to all interested subscribers via bio-async
+ * WHY:  Enables loose coupling - metrics module receives data without direct dependency
+ * HOW:  Fills bio_msg_brain_probe_data_t and broadcasts via BIO_MSG_BRAIN_PROBE_DATA
+ *
+ * @param brain Brain handle to probe and broadcast
+ * @return NIMCP_OK on success, error code otherwise
+ */
+NIMCP_EXPORT nimcp_status_t nimcp_brain_broadcast_probe(nimcp_brain_t brain) {
+    if (!brain || !brain->internal_brain) {
+        LOG_ERROR("Invalid brain handle for probe broadcast");
+        set_error("Invalid brain handle");
+        return NIMCP_ERROR_NULL_ARG;
+    }
+
+    // Get probe data
+    nimcp_brain_probe_t probe;
+    nimcp_status_t status = nimcp_brain_probe(brain, &probe);
+    if (status != NIMCP_OK) {
+        LOG_ERROR("Failed to get brain probe data for broadcast");
+        return status;
+    }
+
+    // Get module context for bio-async
+    bio_module_context_t ctx = get_brain_module_ctx();
+    if (!ctx) {
+        LOG_DEBUG("Bio-router not available, skipping probe broadcast");
+        return NIMCP_OK;  // Not an error - router may not be initialized
+    }
+
+    // Build bio-async message
+    bio_msg_brain_probe_data_t msg;
+    memset(&msg, 0, sizeof(msg));
+
+    // Initialize header
+    bio_msg_init_header(&msg.header, BIO_MSG_BRAIN_PROBE_DATA,
+                        BIO_MODULE_BRAIN, BIO_MODULE_ALL,
+                        sizeof(bio_msg_brain_probe_data_t));
+    msg.header.flags = BIO_MSG_FLAG_BROADCAST;
+
+    // Fill probe data
+    msg.brain_id = (uint64_t)(uintptr_t)brain;  // Use pointer as unique ID
+    strncpy(msg.task_name, probe.task_name, sizeof(msg.task_name) - 1);
+    msg.task_name[sizeof(msg.task_name) - 1] = '\0';
+    msg.size = (uint32_t)probe.size;
+    msg.task = (uint32_t)probe.task;
+    msg.num_neurons = probe.num_neurons;
+    msg.num_synapses = probe.num_synapses;
+    msg.num_active_synapses = probe.num_active_synapses;
+    msg.total_inferences = probe.total_inferences;
+    msg.total_learning_steps = probe.total_learning_steps;
+    msg.avg_sparsity = probe.avg_sparsity;
+    msg.avg_inference_time_us = probe.avg_inference_time_us;
+    msg.current_learning_rate = probe.current_learning_rate;
+    msg.accuracy = probe.accuracy;
+    msg.memory_bytes = probe.memory_bytes;
+    msg.num_inputs = probe.num_inputs;
+    msg.num_outputs = probe.num_outputs;
+    msg.is_cow_clone = probe.is_cow_clone;
+    msg.cow_ref_count = probe.cow_ref_count;
+    msg.cow_shared_bytes = probe.cow_shared_bytes;
+    msg.cow_private_bytes = probe.cow_private_bytes;
+
+    // Broadcast to all subscribers
+    nimcp_error_t err = bio_router_broadcast(ctx, &msg, sizeof(msg));
+    if (err != NIMCP_SUCCESS) {
+        LOG_WARN("Failed to broadcast brain probe: %d", err);
+        return NIMCP_ERROR;
+    }
+
+    LOG_DEBUG("Brain probe broadcast: brain_id=%llu, neurons=%u, synapses=%u",
+              (unsigned long long)msg.brain_id, msg.num_neurons, msg.num_synapses);
+
+    set_error("No error");
+    return NIMCP_OK;
+}
+

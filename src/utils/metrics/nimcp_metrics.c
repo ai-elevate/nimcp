@@ -11,6 +11,7 @@
 
 #include "async/nimcp_bio_async.h"
 #include "async/nimcp_bio_messages.h"
+#include "async/nimcp_bio_router.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/time/nimcp_time.h"
@@ -761,4 +762,177 @@ int32_t nimcp_metrics_query_by_name(
     }
 
     return (int32_t)count;
+}
+
+//=============================================================================
+// Bio-Async Brain Probe Handler (Loose Coupling)
+//=============================================================================
+
+#define METRICS_LOG_MODULE "METRICS"
+
+// Global collector for bio-async message handling
+static nimcp_metrics_collector_t g_metrics_collector = NULL;
+
+// Module context for bio-router registration
+static bio_module_context_t g_metrics_module_ctx = NULL;
+
+/**
+ * @brief Handle brain probe data messages received via bio-async
+ *
+ * WHAT: Processes BIO_MSG_BRAIN_PROBE_DATA messages from brain modules
+ * WHY:  Enables loose coupling - brain broadcasts, metrics receives independently
+ * HOW:  Extracts probe data and records as metrics
+ *
+ * Signature matches bio_message_handler_t
+ */
+static nimcp_error_t metrics_handle_brain_probe(
+    const void* msg,
+    size_t msg_size,
+    nimcp_bio_promise_t response_promise,
+    void* user_data
+) {
+    (void)response_promise;  // Broadcasts don't need responses
+
+    if (!msg || msg_size < sizeof(bio_msg_brain_probe_data_t)) {
+        return NIMCP_ERROR_INVALID;
+    }
+
+    const bio_msg_brain_probe_data_t* probe_msg = (const bio_msg_brain_probe_data_t*)msg;
+
+    // Verify message type
+    if (probe_msg->header.type != BIO_MSG_BRAIN_PROBE_DATA) {
+        return NIMCP_ERROR_INVALID;
+    }
+
+    // Get collector from user_data or global
+    nimcp_metrics_collector_t collector = (nimcp_metrics_collector_t)user_data;
+    if (!collector) {
+        collector = g_metrics_collector;
+    }
+    if (!collector) {
+        // No collector registered yet - this is fine, just skip
+        return NIMCP_SUCCESS;
+    }
+
+    // Create metric prefix with brain ID for multi-brain support
+    char prefix[128];
+    snprintf(prefix, sizeof(prefix), "brain.%llx", (unsigned long long)probe_msg->brain_id);
+
+    // Record brain metrics
+    char metric_name[256];
+
+    // Architecture metrics
+    snprintf(metric_name, sizeof(metric_name), "%s.num_neurons", prefix);
+    nimcp_metrics_record_gauge(collector, metric_name, probe_msg->num_neurons,
+                                NIMCP_METRIC_CATEGORY_SYSTEM);
+
+    snprintf(metric_name, sizeof(metric_name), "%s.num_synapses", prefix);
+    nimcp_metrics_record_gauge(collector, metric_name, probe_msg->num_synapses,
+                                NIMCP_METRIC_CATEGORY_SYSTEM);
+
+    snprintf(metric_name, sizeof(metric_name), "%s.num_active_synapses", prefix);
+    nimcp_metrics_record_gauge(collector, metric_name, probe_msg->num_active_synapses,
+                                NIMCP_METRIC_CATEGORY_SYSTEM);
+
+    // Performance metrics
+    snprintf(metric_name, sizeof(metric_name), "%s.total_inferences", prefix);
+    nimcp_metrics_record_counter(collector, metric_name, probe_msg->total_inferences,
+                                  NIMCP_METRIC_CATEGORY_PERFORMANCE);
+
+    snprintf(metric_name, sizeof(metric_name), "%s.total_learning_steps", prefix);
+    nimcp_metrics_record_counter(collector, metric_name, probe_msg->total_learning_steps,
+                                  NIMCP_METRIC_CATEGORY_LEARNING);
+
+    snprintf(metric_name, sizeof(metric_name), "%s.avg_inference_time_us", prefix);
+    nimcp_metrics_record_gauge(collector, metric_name, probe_msg->avg_inference_time_us,
+                                NIMCP_METRIC_CATEGORY_PERFORMANCE);
+
+    // Learning metrics
+    snprintf(metric_name, sizeof(metric_name), "%s.learning_rate", prefix);
+    nimcp_metrics_record_gauge(collector, metric_name, probe_msg->current_learning_rate,
+                                NIMCP_METRIC_CATEGORY_LEARNING);
+
+    snprintf(metric_name, sizeof(metric_name), "%s.accuracy", prefix);
+    nimcp_metrics_record_gauge(collector, metric_name, probe_msg->accuracy,
+                                NIMCP_METRIC_CATEGORY_LEARNING);
+
+    snprintf(metric_name, sizeof(metric_name), "%s.sparsity", prefix);
+    nimcp_metrics_record_gauge(collector, metric_name, probe_msg->avg_sparsity,
+                                NIMCP_METRIC_CATEGORY_SYSTEM);
+
+    // Memory metrics
+    snprintf(metric_name, sizeof(metric_name), "%s.memory_bytes", prefix);
+    nimcp_metrics_record_gauge(collector, metric_name, (double)probe_msg->memory_bytes,
+                                NIMCP_METRIC_CATEGORY_MEMORY);
+
+    // COW metrics
+    if (probe_msg->is_cow_clone) {
+        snprintf(metric_name, sizeof(metric_name), "%s.cow_shared_bytes", prefix);
+        nimcp_metrics_record_gauge(collector, metric_name, (double)probe_msg->cow_shared_bytes,
+                                    NIMCP_METRIC_CATEGORY_MEMORY);
+
+        snprintf(metric_name, sizeof(metric_name), "%s.cow_private_bytes", prefix);
+        nimcp_metrics_record_gauge(collector, metric_name, (double)probe_msg->cow_private_bytes,
+                                    NIMCP_METRIC_CATEGORY_MEMORY);
+    }
+
+    return NIMCP_SUCCESS;
+}
+
+/**
+ * @brief Register metrics module to receive brain probe broadcasts via bio-async
+ */
+bool nimcp_metrics_register_bio_async(nimcp_metrics_collector_t collector) {
+    if (!collector) {
+        return false;
+    }
+
+    // Store collector for handler
+    g_metrics_collector = collector;
+
+    // Check if router is available
+    if (!bio_router_is_initialized()) {
+        // Router not initialized yet - this is OK, registration can be deferred
+        return true;
+    }
+
+    // Register module if not already registered
+    if (!g_metrics_module_ctx) {
+        bio_module_info_t info = {
+            .module_id = BIO_MODULE_METRICS,
+            .module_name = "metrics",
+            .inbox_capacity = 256,
+            .user_data = collector
+        };
+        g_metrics_module_ctx = bio_router_register_module(&info);
+        if (!g_metrics_module_ctx) {
+            return false;
+        }
+    }
+
+    // Register handler for brain probe messages
+    nimcp_error_t err = bio_router_register_handler(
+        g_metrics_module_ctx,
+        BIO_MSG_BRAIN_PROBE_DATA,
+        metrics_handle_brain_probe
+    );
+
+    if (err != NIMCP_SUCCESS) {
+        return false;
+    }
+
+    return true;
+}
+
+/**
+ * @brief Process pending bio-async messages for metrics module
+ */
+void nimcp_metrics_process_bio_async(void) {
+    if (!g_metrics_module_ctx) {
+        return;
+    }
+
+    // Process pending messages in inbox
+    // Handlers registered via bio_router_register_handler will be invoked
+    bio_router_process_inbox(g_metrics_module_ctx, 100);
 }

@@ -427,6 +427,38 @@ int32_t nimcp_metrics_query_by_category(
     uint32_t max_results
 );
 
+//=============================================================================
+// Bio-Async Integration (Loose Coupling)
+//=============================================================================
+
+/**
+ * @brief Register metrics module to receive brain probe broadcasts via bio-async
+ *
+ * WHAT: Registers a handler for BIO_MSG_BRAIN_PROBE_DATA messages
+ * WHY:  Enables loose coupling - metrics module receives data without direct dependency on brain API
+ * HOW:  Uses bio_router_register_handler() to subscribe to brain probe broadcasts
+ *
+ * After registration, the metrics module will automatically receive and process
+ * brain probe data from any brain that calls nimcp_brain_broadcast_probe().
+ * Supports multiple concurrent brains via unique brain_id field.
+ *
+ * @param collector Metrics collector handle to receive and record metrics
+ * @return true on success or if bio-router not available (graceful degradation)
+ */
+bool nimcp_metrics_register_bio_async(nimcp_metrics_collector_t collector);
+
+/**
+ * @brief Process pending bio-async messages for metrics module
+ *
+ * WHAT: Checks for and processes any pending brain probe messages
+ * WHY:  Allows explicit message processing when not using threaded mode
+ * HOW:  Calls bio_router_poll() to receive and handle pending messages
+ *
+ * In threaded mode, this is called automatically. In poll mode, call this
+ * periodically to process incoming brain probe broadcasts.
+ */
+void nimcp_metrics_process_bio_async(void);
+
 #ifdef __cplusplus
 }
 #endif

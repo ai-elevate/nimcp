@@ -53,7 +53,7 @@ TEST_F(SwarmQuorumTest, ProduceSignal) {
     nimcp_result_t result = nimcp_quorum_produce_signal(
         system, 1, QUORUM_SIGNAL_AGGREGATION, 0.5
     );
-    EXPECT_EQ(result, NIMCP_OK);
+    EXPECT_EQ(result, NIMCP_SUCCESS);
 }
 
 TEST_F(SwarmQuorumTest, DetectSignal) {
@@ -63,7 +63,7 @@ TEST_F(SwarmQuorumTest, DetectSignal) {
     nimcp_result_t result = nimcp_quorum_detect_signal(
         system, 1, QUORUM_SIGNAL_AGGREGATION, &concentration
     );
-    EXPECT_EQ(result, NIMCP_OK);
+    EXPECT_EQ(result, NIMCP_SUCCESS);
     EXPECT_GT(concentration, 0.0);
 }
 
@@ -76,7 +76,7 @@ TEST_F(SwarmQuorumTest, CheckThreshold) {
     nimcp_result_t result = nimcp_quorum_check_threshold(
         system, QUORUM_SIGNAL_AGGREGATION, &reached
     );
-    EXPECT_EQ(result, NIMCP_OK);
+    EXPECT_EQ(result, NIMCP_SUCCESS);
 }
 
 TEST_F(SwarmQuorumTest, ProposeDecision) {
@@ -87,7 +87,7 @@ TEST_F(SwarmQuorumTest, ProposeDecision) {
     nimcp_result_t result = nimcp_quorum_propose_decision(
         system, 1, &decision
     );
-    EXPECT_EQ(result, NIMCP_OK);
+    EXPECT_EQ(result, NIMCP_SUCCESS);
 }
 
 TEST_F(SwarmQuorumTest, VoteDecision) {
@@ -97,7 +97,7 @@ TEST_F(SwarmQuorumTest, VoteDecision) {
     nimcp_quorum_propose_decision(system, 1, &decision);
     
     nimcp_result_t result = nimcp_quorum_vote(system, 2, decision.decision_id, true);
-    EXPECT_EQ(result, NIMCP_OK);
+    EXPECT_EQ(result, NIMCP_SUCCESS);
 }
 
 TEST_F(SwarmQuorumTest, GetConsensus) {
@@ -114,14 +114,14 @@ TEST_F(SwarmQuorumTest, GetConsensus) {
     nimcp_result_t result = nimcp_quorum_check_consensus(
         system, decision.decision_id, &consensus
     );
-    EXPECT_EQ(result, NIMCP_OK);
+    EXPECT_EQ(result, NIMCP_SUCCESS);
 }
 
 TEST_F(SwarmQuorumTest, UpdateSystem) {
     nimcp_quorum_produce_signal(system, 1, QUORUM_SIGNAL_DISPERSAL, 0.5);
     
     nimcp_result_t result = nimcp_quorum_update(system, 1000);
-    EXPECT_EQ(result, NIMCP_OK);
+    EXPECT_EQ(result, NIMCP_SUCCESS);
 }
 
 TEST_F(SwarmQuorumTest, SignalDecay) {
@@ -141,14 +141,14 @@ TEST_F(SwarmQuorumTest, SignalDecay) {
 TEST_F(SwarmQuorumTest, GetStatistics) {
     nimcp_quorum_stats_t stats;
     nimcp_result_t result = nimcp_quorum_get_stats(system, &stats);
-    EXPECT_EQ(result, NIMCP_OK);
+    EXPECT_EQ(result, NIMCP_SUCCESS);
 }
 
 TEST_F(SwarmQuorumTest, ValidateConfig) {
     nimcp_quorum_config_t test_config;
     nimcp_quorum_default_config(&test_config);
     nimcp_result_t result = nimcp_quorum_validate_config(&test_config);
-    EXPECT_EQ(result, NIMCP_OK);
+    EXPECT_EQ(result, NIMCP_SUCCESS);
 }
 
 TEST_F(SwarmQuorumTest, MultipleSignalTypes) {
@@ -156,7 +156,7 @@ TEST_F(SwarmQuorumTest, MultipleSignalTypes) {
         nimcp_result_t result = nimcp_quorum_produce_signal(
             system, 1, static_cast<nimcp_quorum_signal_type_t>(i), 0.3
         );
-        EXPECT_EQ(result, NIMCP_OK);
+        EXPECT_EQ(result, NIMCP_SUCCESS);
     }
 }
 
@@ -183,7 +183,7 @@ TEST_F(SwarmQuorumTest, CollectiveThreshold) {
 TEST_F(SwarmQuorumTest, ResetSystem) {
     nimcp_quorum_produce_signal(system, 1, QUORUM_SIGNAL_AGGREGATION, 1.0);
     nimcp_result_t result = nimcp_quorum_reset(system);
-    EXPECT_EQ(result, NIMCP_OK);
+    EXPECT_EQ(result, NIMCP_SUCCESS);
 }
 
 int main(int argc, char** argv) {

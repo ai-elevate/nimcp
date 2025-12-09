@@ -31,22 +31,22 @@ TEST_F(MultiSwarmTest, CreateIdentity) {
 }
 TEST_F(MultiSwarmTest, RegisterSwarm) {
     auto* id = nimcp_swarm_identity_create(coord, "swarm1", 10);
-    EXPECT_EQ(nimcp_swarm_register(coord, id), NIMCP_OK);
+    EXPECT_EQ(nimcp_swarm_register(coord, id), NIMCP_SUCCESS);
 }
 TEST_F(MultiSwarmTest, UnregisterSwarm) {
     auto* id = nimcp_swarm_identity_create(coord, "swarm1", 10);
     nimcp_swarm_register(coord, id);
-    EXPECT_EQ(nimcp_swarm_unregister(coord, id->swarm_id), NIMCP_OK);
+    EXPECT_EQ(nimcp_swarm_unregister(coord, id->swarm_id), NIMCP_SUCCESS);
 }
 TEST_F(MultiSwarmTest, AddCapability) {
     auto* id = nimcp_swarm_identity_create(coord, "swarm1", 10);
-    EXPECT_EQ(nimcp_swarm_add_capability(id, NIMCP_SWARM_CAP_SURVEILLANCE, 0.8, 5, true), NIMCP_OK);
+    EXPECT_EQ(nimcp_swarm_add_capability(id, NIMCP_SWARM_CAP_SURVEILLANCE, 0.8, 5, true), NIMCP_SUCCESS);
     if (id) nimcp_swarm_identity_destroy(id);
 }
 TEST_F(MultiSwarmTest, SetTerritory) {
     auto* id = nimcp_swarm_identity_create(coord, "swarm1", 10);
     nimcp_coord3d_t min = {0, 0, 0}, max = {100, 100, 50};
-    EXPECT_EQ(nimcp_swarm_set_territory(id, min, max, true, 0.5), NIMCP_OK);
+    EXPECT_EQ(nimcp_swarm_set_territory(id, min, max, true, 0.5), NIMCP_SUCCESS);
     if (id) nimcp_swarm_identity_destroy(id);
 }
 TEST_F(MultiSwarmTest, CreateMission) {

@@ -41,7 +41,7 @@ extern "C" {
 class PortiaLearningAdaptationE2ETest : public ::testing::Test {
 protected:
     void SetUp() override {
-        nimcp_log_init(NIMCP_LOG_LEVEL_INFO, nullptr);
+        nimcp_log_init(NULL);
 
         nimcp_error_t err = nimcp_bio_async_init(nullptr);
         ASSERT_EQ(err, NIMCP_SUCCESS);
@@ -101,7 +101,7 @@ TEST_F(PortiaLearningAdaptationE2ETest, HabituationLearning) {
         portia_learning_query(learning_state_, stimulus_id);
 
     float initial_strength = initial_result.found ? initial_result.strength : 1.0f;
-    nimcp_log(NIMCP_LOG_LEVEL_INFO, "Initial response strength: %.3f", initial_strength);
+    nimcp_log(LOG_LEVEL_INFO, "Initial response strength: %.3f", initial_strength);
 
     // WHEN: Expose to repeated stimulus (habituation)
     const int num_exposures = 20;
@@ -145,7 +145,7 @@ TEST_F(PortiaLearningAdaptationE2ETest, HabituationLearning) {
     EXPECT_GT(stats.total_exposures, 0) << "Should have recorded exposures";
     EXPECT_GT(stats.active_habituation_entries, 0) << "Should have active entries";
 
-    nimcp_log(NIMCP_LOG_LEVEL_INFO, "HabituationLearning: PASS - "
+    nimcp_log(LOG_LEVEL_INFO, "HabituationLearning: PASS - "
               "Initial=%.3f, Final=%.3f, Exposures=%lu",
               initial_strength, final_strength, stats.total_exposures);
 }
@@ -206,7 +206,7 @@ TEST_F(PortiaLearningAdaptationE2ETest, AssociativeLearning) {
     EXPECT_EQ(stats.total_reinforcements, num_pairings)
         << "Should count all pairings";
 
-    nimcp_log(NIMCP_LOG_LEVEL_INFO, "AssociativeLearning: PASS - "
+    nimcp_log(LOG_LEVEL_INFO, "AssociativeLearning: PASS - "
               "Strength=%.3f, Pairings=%u, Total reinforcements=%lu",
               assoc_result.strength, assoc_result.exposure_count,
               stats.total_reinforcements);
@@ -276,7 +276,7 @@ TEST_F(PortiaLearningAdaptationE2ETest, TrialErrorLearning) {
     EXPECT_EQ(stats.total_reinforcements, num_trials * 2)
         << "Should count all reinforcements";
 
-    nimcp_log(NIMCP_LOG_LEVEL_INFO, "TrialErrorLearning: PASS - "
+    nimcp_log(LOG_LEVEL_INFO, "TrialErrorLearning: PASS - "
               "Good response=%.3f, Bad response=%.3f, Trials=%d",
               good_assoc.strength, bad_assoc.strength, num_trials);
 }
@@ -339,7 +339,7 @@ TEST_F(PortiaLearningAdaptationE2ETest, LearningPersistence) {
         fclose(check_file);
         remove(export_path);  // Cleanup
     } else {
-        nimcp_log(NIMCP_LOG_LEVEL_WARN, "Export file not created (may not be implemented)");
+        nimcp_log(LOG_LEVEL_WARN, "Export file not created (may not be implemented)");
     }
 
     // Verify learning can survive consolidation cycles
@@ -354,7 +354,7 @@ TEST_F(PortiaLearningAdaptationE2ETest, LearningPersistence) {
         portia_learning_query_association(learning_state_, stim2, resp1);
     EXPECT_TRUE(assoc_check.found) << "Strong association should persist";
 
-    nimcp_log(NIMCP_LOG_LEVEL_INFO, "LearningPersistence: PASS - "
+    nimcp_log(LOG_LEVEL_INFO, "LearningPersistence: PASS - "
               "Pre-consolidation: hab=%u, assoc=%u",
               pre_stats.active_habituation_entries,
               pre_stats.active_association_entries);
@@ -466,7 +466,7 @@ TEST_F(PortiaLearningAdaptationE2ETest, AdaptiveResponseImprovement) {
     // Final statistics
     portia_learning_stats_t final_stats = portia_learning_get_stats(learning_state_);
 
-    nimcp_log(NIMCP_LOG_LEVEL_INFO, "AdaptiveResponseImprovement: PASS - "
+    nimcp_log(LOG_LEVEL_INFO, "AdaptiveResponseImprovement: PASS - "
               "Early perf=%.3f, Late perf=%.3f, Improvement=%.3f, "
               "Total exposures=%lu, reinforcements=%lu",
               early_performance, late_performance, improvement,

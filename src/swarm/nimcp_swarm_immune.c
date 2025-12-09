@@ -15,12 +15,14 @@
  */
 
 #include "swarm/nimcp_swarm_immune.h"
+#include "core/neuron_types/nimcp_neural_logic.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/platform/nimcp_platform.h"
 #include <string.h>
 #include <math.h>
 #include <time.h>
+#include <stdlib.h>
 
 /* ============================================================================
  * Constants and Macros
@@ -259,10 +261,26 @@ NimcpSwarmImmuneSystem* nimcp_swarm_immune_create(
         return NULL;
     }
 
+    /* Allocate threat rules */
+    system->threat_rule_capacity = 50; /* Initial capacity */
+    system->threat_rules = (immune_threat_rule_t*)nimcp_malloc(
+        system->threat_rule_capacity * sizeof(immune_threat_rule_t)
+    );
+    if (!system->threat_rules) {
+        LOG_ERROR("Failed to allocate threat rules");
+        nimcp_free(system->behavior_profiles);
+        nimcp_free(system->active_responses);
+        nimcp_free(system->active_threats);
+        nimcp_free(system->memory_cells);
+        nimcp_free(system);
+        return NULL;
+    }
+
     /* Create mutex for thread safety */
     system->mutex = nimcp_platform_mutex_create();
     if (!system->mutex) {
         LOG_ERROR("Failed to create mutex");
+        nimcp_free(system->threat_rules);
         nimcp_free(system->behavior_profiles);
         nimcp_free(system->active_responses);
         nimcp_free(system->active_threats);
@@ -288,6 +306,14 @@ void nimcp_swarm_immune_destroy(NimcpSwarmImmuneSystem* system) {
     if (system->mutex) {
         nimcp_platform_mutex_destroy(system->mutex);
     }
+
+    /* Free threat rules and their signal_sources arrays */
+    for (size_t i = 0; i < system->threat_rule_count; i++) {
+        if (system->threat_rules[i].signal_sources) {
+            nimcp_free(system->threat_rules[i].signal_sources);
+        }
+    }
+    nimcp_free(system->threat_rules);
 
     nimcp_free(system->behavior_profiles);
     nimcp_free(system->active_responses);
@@ -1338,5 +1364,384 @@ nimcp_result_t nimcp_swarm_immune_reset(
                    preserve_memory ? "true" : "false");
 
     nimcp_platform_mutex_unlock(system->mutex);
+    return NIMCP_SUCCESS;
+}
+
+/* ============================================================================
+ * Logic-Based Threat Detection Implementation
+ * ============================================================================ */
+
+/**
+ * @brief Add threat detection rule
+ *
+ * WHAT: Adds logic-based rule for threat detection
+ * WHY:  Enable compositional threat detection from multiple signals
+ * HOW:  Uses logic gates to combine detector outputs
+ */
+nimcp_result_t immune_add_threat_rule(
+    NimcpSwarmImmuneSystem* immune,
+    const immune_threat_rule_t* rule
+) {
+    if (!immune || !rule) {
+        LOG_ERROR("Invalid parameters for adding threat rule");
+        return NIMCP_INVALID_PARAM;
+    }
+
+    /* Guard clause: Check capacity */
+    if (immune->threat_rule_count >= immune->threat_rule_capacity) {
+        LOG_WARN("Threat rule capacity reached");
+        return NIMCP_NO_MEMORY;
+    }
+
+    nimcp_platform_mutex_lock(immune->mutex);
+
+    /* Copy rule */
+    immune_threat_rule_t* new_rule = &immune->threat_rules[immune->threat_rule_count];
+    new_rule->threat_id = rule->threat_id;
+    new_rule->detection_logic = rule->detection_logic;
+    new_rule->num_sources = rule->num_sources;
+    new_rule->confidence_threshold = rule->confidence_threshold;
+    new_rule->threat_type = rule->threat_type;
+
+    /* Allocate and copy signal sources */
+    if (rule->num_sources > 0 && rule->signal_sources) {
+        new_rule->signal_sources = (uint32_t*)nimcp_malloc(
+            rule->num_sources * sizeof(uint32_t)
+        );
+        if (!new_rule->signal_sources) {
+            nimcp_platform_mutex_unlock(immune->mutex);
+            LOG_ERROR("Failed to allocate signal sources");
+            return NIMCP_NO_MEMORY;
+        }
+        memcpy(new_rule->signal_sources, rule->signal_sources,
+               rule->num_sources * sizeof(uint32_t));
+    } else {
+        new_rule->signal_sources = NULL;
+    }
+
+    immune->threat_rule_count++;
+
+    LOG_INFO("Threat rule added: id=%u, logic=%d, sources=%u, type=%s",
+             new_rule->threat_id,
+             new_rule->detection_logic,
+             new_rule->num_sources,
+             THREAT_TYPE_NAMES[new_rule->threat_type]);
+
+    nimcp_platform_mutex_unlock(immune->mutex);
+    return NIMCP_SUCCESS;
+}
+
+/**
+ * @brief Evaluate threats using logic gates
+ *
+ * WHAT: Evaluates all threat rules using neural logic
+ * WHY:  Detect complex multi-signal threat patterns
+ * HOW:  Evaluates logic gates over detector signals
+ */
+nimcp_result_t immune_evaluate_threats(
+    NimcpSwarmImmuneSystem* immune,
+    float* threat_scores,
+    uint32_t* num_threats
+) {
+    if (!immune || !threat_scores || !num_threats) {
+        LOG_ERROR("Invalid parameters for threat evaluation");
+        return NIMCP_INVALID_PARAM;
+    }
+
+    nimcp_platform_mutex_lock(immune->mutex);
+
+    *num_threats = 0;
+
+    /* Evaluate each threat rule */
+    for (size_t i = 0; i < immune->threat_rule_count; i++) {
+        immune_threat_rule_t* rule = &immune->threat_rules[i];
+
+        /* Guard clause: Skip rules with no sources */
+        if (rule->num_sources == 0 || !rule->signal_sources) {
+            continue;
+        }
+
+        /* Gather signals from sources (using anomaly scores from behavior profiles) */
+        float signal_values[256] = {0};
+        uint32_t valid_signals = 0;
+
+        for (uint32_t s = 0; s < rule->num_sources && s < 256; s++) {
+            uint32_t source_id = rule->signal_sources[s];
+
+            /* Find behavior profile for this source */
+            for (size_t p = 0; p < immune->behavior_profile_count; p++) {
+                if (immune->behavior_profiles[p].drone_id == source_id) {
+                    signal_values[s] = immune->behavior_profiles[p].anomaly_score;
+                    valid_signals++;
+                    break;
+                }
+            }
+        }
+
+        /* Guard clause: Need at least one valid signal */
+        if (valid_signals == 0) {
+            threat_scores[i] = 0.0f;
+            continue;
+        }
+
+        /* Evaluate detection logic */
+        float threat_score = 0.0f;
+
+        switch (rule->detection_logic) {
+            case LOGIC_GATE_AND:
+                /* All sources must detect threat */
+                threat_score = 1.0f;
+                for (uint32_t s = 0; s < rule->num_sources && s < 256; s++) {
+                    if (signal_values[s] < threat_score) {
+                        threat_score = signal_values[s];
+                    }
+                }
+                break;
+
+            case LOGIC_GATE_OR:
+                /* Any source detecting triggers threat */
+                threat_score = 0.0f;
+                for (uint32_t s = 0; s < rule->num_sources && s < 256; s++) {
+                    if (signal_values[s] > threat_score) {
+                        threat_score = signal_values[s];
+                    }
+                }
+                break;
+
+            case LOGIC_GATE_NOT:
+                /* Absence of expected signal = threat */
+                /* Average signal should be low for NOT to be high */
+                {
+                    float avg_signal = 0.0f;
+                    for (uint32_t s = 0; s < rule->num_sources && s < 256; s++) {
+                        avg_signal += signal_values[s];
+                    }
+                    avg_signal /= (float)rule->num_sources;
+                    threat_score = 1.0f - avg_signal; /* Invert */
+                }
+                break;
+
+            case LOGIC_GATE_IMPLIES:
+                /* If first signal, then others must follow */
+                if (rule->num_sources >= 2) {
+                    float antecedent = signal_values[0];
+                    float consequent = signal_values[1];
+
+                    /* IMPLIES: A → B = ¬A ∨ B */
+                    if (antecedent >= 0.5f && consequent < 0.5f) {
+                        /* Implication violated = threat */
+                        threat_score = 1.0f;
+                    } else {
+                        threat_score = 0.0f;
+                    }
+                }
+                break;
+
+            default:
+                /* Average of signals */
+                for (uint32_t s = 0; s < rule->num_sources && s < 256; s++) {
+                    threat_score += signal_values[s];
+                }
+                threat_score /= (float)rule->num_sources;
+                break;
+        }
+
+        threat_scores[i] = threat_score;
+
+        /* Check if threat score exceeds threshold */
+        if (threat_score >= rule->confidence_threshold) {
+            (*num_threats)++;
+            LOG_WARN("Threat detected: rule_id=%u, type=%s, score=%.2f",
+                     rule->threat_id,
+                     THREAT_TYPE_NAMES[rule->threat_type],
+                     threat_score);
+        }
+    }
+
+    nimcp_platform_mutex_unlock(immune->mutex);
+
+    if (*num_threats > 0) {
+        LOG_INFO("Threat evaluation complete: %u threats detected", *num_threats);
+    }
+
+    return NIMCP_SUCCESS;
+}
+
+/**
+ * @brief Generate logic-based immune response
+ *
+ * WHAT: Determines response strategy using logic evaluation
+ * WHY:  Choose appropriate response based on threat logic
+ * HOW:  Evaluates response rules with IMPLIES/OR/NOT gates
+ */
+nimcp_result_t immune_logic_response(
+    NimcpSwarmImmuneSystem* immune,
+    uint32_t threat_id,
+    immune_response_t* response
+) {
+    if (!immune || !response) {
+        LOG_ERROR("Invalid parameters for logic response");
+        return NIMCP_INVALID_PARAM;
+    }
+
+    nimcp_platform_mutex_lock(immune->mutex);
+
+    /* Find the threat */
+    NimcpSwarmThreat* threat = NULL;
+    for (size_t i = 0; i < immune->active_threat_count; i++) {
+        if (immune->active_threats[i].id == threat_id) {
+            threat = &immune->active_threats[i];
+            break;
+        }
+    }
+
+    /* Guard clause: Threat not found */
+    if (!threat) {
+        nimcp_platform_mutex_unlock(immune->mutex);
+        LOG_WARN("Threat %u not found for logic response", threat_id);
+        return NIMCP_NOT_FOUND;
+    }
+
+    /* Determine response using logic evaluation */
+    response->response_id = generate_unique_id();
+    response->response_logic = LOGIC_GATE_IMPLIES;
+    response->response_type = nimcp_swarm_immune_get_response(
+        immune,
+        threat->type,
+        threat->severity
+    );
+    response->intensity = threat->confidence;
+    response->requires_coordination = (threat->severity >= SEVERITY_HIGH);
+
+    /* Use IMPLIES logic: If threat_severe THEN coordinated_response */
+    if (threat->severity >= SEVERITY_HIGH) {
+        /* High severity implies coordination required */
+        response->requires_coordination = true;
+        LOG_INFO("Logic response: IMPLIES (high_severity → coordination)");
+    } else {
+        /* Low severity: individual response sufficient */
+        response->requires_coordination = false;
+        LOG_INFO("Logic response: Individual response sufficient");
+    }
+
+    LOG_INFO("Generated logic response: id=%u, type=%s, intensity=%.2f, coordinated=%s",
+             response->response_id,
+             RESPONSE_TYPE_NAMES[response->response_type],
+             response->intensity,
+             response->requires_coordination ? "YES" : "NO");
+
+    nimcp_platform_mutex_unlock(immune->mutex);
+    return NIMCP_SUCCESS;
+}
+
+/**
+ * @brief Integrate with Blood-Brain-Barrier for threat messaging
+ *
+ * WHAT: Sends threat alerts via BBB bio-async messaging
+ * WHY:  Coordinate immune response across swarm
+ * HOW:  Uses BBB_MSG_THREAT message type
+ */
+nimcp_result_t immune_send_bbb_threat_alert(
+    NimcpSwarmImmuneSystem* immune,
+    uint32_t threat_id,
+    NimcpSwarmSeverity priority
+) {
+    if (!immune) {
+        LOG_ERROR("Invalid immune system");
+        return NIMCP_INVALID_PARAM;
+    }
+
+    /* Guard clause: Bio-async not available */
+    if (!immune->bio_ctx) {
+        LOG_DEBUG("Bio-async not available for BBB threat alert");
+        return NIMCP_SUCCESS;
+    }
+
+    nimcp_platform_mutex_lock(immune->mutex);
+
+    /* Find threat */
+    NimcpSwarmThreat* threat = NULL;
+    for (size_t i = 0; i < immune->active_threat_count; i++) {
+        if (immune->active_threats[i].id == threat_id) {
+            threat = &immune->active_threats[i];
+            break;
+        }
+    }
+
+    if (!threat) {
+        nimcp_platform_mutex_unlock(immune->mutex);
+        return NIMCP_NOT_FOUND;
+    }
+
+    /* Send via BBB (stubbed - requires full BBB integration) */
+    LOG_INFO("BBB Threat Alert: id=%u, type=%s, priority=%d (stubbed)",
+             threat_id,
+             THREAT_TYPE_NAMES[threat->type],
+             priority);
+
+    /* In full implementation, would use bio_router to send message */
+    /* bio_message_header_t msg;
+     * msg.type = BBB_MSG_THREAT;
+     * msg.priority = priority;
+     * ... populate threat data ...
+     * bio_router_send(immune->bio_ctx, &msg);
+     */
+
+    nimcp_platform_mutex_unlock(immune->mutex);
+    return NIMCP_SUCCESS;
+}
+
+/**
+ * @brief Evaluate NOT gate threat logic
+ *
+ * WHAT: Detects threats by absence of expected signals
+ * WHY:  Identify silent failures or missing heartbeats
+ * HOW:  Uses NOT gate to invert signal presence
+ */
+nimcp_result_t immune_evaluate_not_threat(
+    NimcpSwarmImmuneSystem* immune,
+    uint32_t expected_signal,
+    uint64_t time_window,
+    bool* threat_detected
+) {
+    if (!immune || !threat_detected) {
+        LOG_ERROR("Invalid parameters for NOT threat evaluation");
+        return NIMCP_INVALID_PARAM;
+    }
+
+    nimcp_platform_mutex_lock(immune->mutex);
+
+    uint64_t current_time = get_current_time_ms();
+    *threat_detected = false;
+
+    /* Check if expected signal is present in recent behavior profiles */
+    bool signal_present = false;
+
+    for (size_t i = 0; i < immune->behavior_profile_count; i++) {
+        NimcpSwarmBehaviorProfile* profile = &immune->behavior_profiles[i];
+
+        /* Check if this drone matches expected signal source */
+        if (profile->drone_id == expected_signal) {
+            uint64_t time_diff = current_time - profile->last_update;
+
+            /* Signal present if updated within time window */
+            if (time_diff < time_window) {
+                signal_present = true;
+                break;
+            }
+        }
+    }
+
+    /* NOT gate: threat detected if signal NOT present */
+    *threat_detected = !signal_present;
+
+    if (*threat_detected) {
+        LOG_WARN("NOT threat detected: expected signal %u absent for %lu ms",
+                 expected_signal, time_window);
+    } else {
+        LOG_DEBUG("NOT threat evaluation: signal %u present", expected_signal);
+    }
+
+    nimcp_platform_mutex_unlock(immune->mutex);
     return NIMCP_SUCCESS;
 }

@@ -59,7 +59,7 @@ typedef struct {
 } degradation_state_t;
 
 /**
- * Configuration for degradation behavior
+ * Configuration for degradation behavior (internal)
  */
 typedef struct {
     float level_thresholds[DEGRADATION_LEVEL_COUNT];  /**< Resource % triggers */
@@ -67,7 +67,7 @@ typedef struct {
     bool enable_auto_degrade;         /**< Automatic degradation */
     bool enable_auto_restore;         /**< Automatic restoration */
     float restore_threshold;          /**< % below trigger to restore */
-} portia_degradation_config_t;
+} degradation_internal_config_t;
 
 /**
  * Feature ID definitions
@@ -112,7 +112,7 @@ typedef struct {
  * @return Degradation state or NULL on failure
  */
 degradation_state_t* portia_degradation_init(
-    const portia_degradation_config_t* config
+    const degradation_internal_config_t* config
 );
 
 /**

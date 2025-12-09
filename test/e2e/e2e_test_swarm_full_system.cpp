@@ -418,7 +418,7 @@ TEST_F(SwarmE2ETest, FaultToleranceAndRecoveryScenario) {
 
     // 5. Redistribute roles among remaining agents
     nimcp_result_t result = nimcp_morphogenesis_rebalance(swarm_system->morphogenesis);
-    EXPECT_EQ(result, NIMCP_OK);
+    EXPECT_EQ(result, NIMCP_SUCCESS);
 
     // 6. Verify swarm adaptation
     nimcp_morphogenesis_stats_t stats;

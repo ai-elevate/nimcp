@@ -366,14 +366,14 @@ TEST_F(ResizingAPITest, ResizePreservesFunctionality) {
         nimcp_status_t learn_status = nimcp_brain_learn_example(
             brain, features, 10, "test2", 0.8f
         );
-        EXPECT_EQ(learn_status, NIMCP_OK);
+        EXPECT_EQ(learn_status, NIMCP_SUCCESS);
 
         char label[64];
         float confidence;
         nimcp_status_t predict_status = nimcp_brain_predict(
             brain, features, 10, label, &confidence
         );
-        EXPECT_EQ(predict_status, NIMCP_OK);
+        EXPECT_EQ(predict_status, NIMCP_SUCCESS);
     }
 }
 

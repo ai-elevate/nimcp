@@ -24,6 +24,7 @@
 
 #include "async/nimcp_bio_router.h"
 #include "utils/thread/nimcp_thread.h"
+#include "core/neuron_types/nimcp_neural_logic.h"
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -570,6 +571,99 @@ const char* nimcp_quorum_commitment_name(nimcp_commitment_state_t state);
  * @param quorum Quorum system
  */
 void nimcp_quorum_print_state(const nimcp_swarm_quorum_t* quorum);
+
+/* ============================================================================
+ * Logic Validation Integration
+ * ============================================================================ */
+
+/**
+ * @brief Logic validation configuration for quorum decisions
+ *
+ * Uses neural logic gates to validate quorum consensus using formal logic
+ */
+typedef struct {
+    logic_gate_type_t gate_type;     /**< AND=unanimous, OR=any, THRESHOLD=custom */
+    float threshold;                  /**< For threshold voting (0.0-1.0) */
+    bool require_consistency;         /**< XOR check for contradictions */
+    uint32_t min_agents;              /**< Minimum agents for validation */
+    float confidence_threshold;       /**< Minimum confidence for validation */
+} quorum_logic_config_t;
+
+/**
+ * @brief Validate quorum decision using logic gates
+ *
+ * WHAT: Validates quorum decisions through neural logic gate evaluation
+ * WHY:  Ensures logical consistency and correctness of distributed decisions
+ * HOW:  Uses AND/OR/XOR/IMPLIES gates to verify voting patterns
+ *
+ * @param quorum Quorum system
+ * @param logic_cfg Logic validation configuration
+ * @return 1 if validation passes, 0 if fails, -1 on error
+ *
+ * LOGIC MODES:
+ * - AND gate: Unanimous agreement (all agents must agree)
+ * - OR gate: Permissive (any agent can pass decision)
+ * - XOR gate: Check for contradictions in votes
+ * - IMPLIES gate: Conditional consensus (if condition then consensus required)
+ */
+int quorum_validate_with_logic(
+    nimcp_swarm_quorum_t* quorum,
+    const quorum_logic_config_t* logic_cfg
+);
+
+/**
+ * @brief Check vote consistency using XOR logic
+ *
+ * WHAT: Detects contradicting votes among agents
+ * WHY:  Identifies Byzantine behavior or conflicting opinions
+ * HOW:  Uses XOR gate to detect mutually exclusive votes
+ *
+ * @param quorum Quorum system
+ * @param contradicting_agents Output array of contradicting agent IDs
+ * @param count Output count of contradicting agents
+ * @return 0 if consistent, 1 if contradictions found, -1 on error
+ *
+ * DETECTION:
+ * - XOR of opposing signals (e.g., ATTACK vs RETREAT)
+ * - Identifies agents voting for mutually exclusive actions
+ * - Reports all contradicting pairs
+ */
+int quorum_check_vote_consistency(
+    nimcp_swarm_quorum_t* quorum,
+    uint32_t* contradicting_agents,
+    uint32_t* count
+);
+
+/**
+ * @brief Evaluate quorum using IMPLIES logic gate
+ *
+ * WHAT: Conditional consensus validation (if A then B)
+ * WHY:  Enforce logical rules on decision-making
+ * HOW:  Uses IMPLIES gate to check antecedent → consequent
+ *
+ * @param quorum Quorum system
+ * @param antecedent_signal Signal that acts as condition
+ * @param consequent_signal Signal that must follow
+ * @param implication_holds Output: whether implication is satisfied
+ * @return 0 on success, -1 on error
+ *
+ * EXAMPLE:
+ * - IF ALERT signal THEN DEFEND signal must be present
+ * - Ensures logical consistency in decision chains
+ */
+int quorum_evaluate_implication(
+    nimcp_swarm_quorum_t* quorum,
+    nimcp_signal_type_t antecedent_signal,
+    nimcp_signal_type_t consequent_signal,
+    bool* implication_holds
+);
+
+/**
+ * @brief Get default logic validation configuration
+ *
+ * @param config Output configuration structure
+ */
+void quorum_logic_default_config(quorum_logic_config_t* config);
 
 #ifdef __cplusplus
 }

@@ -71,6 +71,7 @@ typedef struct nimcp_ethics_handle* nimcp_ethics_t;
  */
 typedef struct nimcp_knowledge_handle* nimcp_knowledge_t;
 
+
 //=============================================================================
 // Enumerations (consistent naming: NIMCP_*)
 //=============================================================================
@@ -98,14 +99,17 @@ typedef enum {
 
 /**
  * @brief Return codes for all NIMCP functions
+ *
+ * Note: These undefines prevent conflicts with internal error code macros
+ * when this header is included after internal headers.
  */
-// Undefine macros that conflict with enum values
-#ifdef NIMCP_ERROR
+#undef NIMCP_OK
+#undef NIMCP_SUCCESS
 #undef NIMCP_ERROR
-#endif
-#ifdef NIMCP_ERROR_MEMORY
+#undef NIMCP_ERROR_NULL_ARG
+#undef NIMCP_ERROR_INVALID
 #undef NIMCP_ERROR_MEMORY
-#endif
+#undef NIMCP_ERROR_IO
 
 typedef enum {
     NIMCP_OK = 0,              /**< Success */
@@ -115,6 +119,9 @@ typedef enum {
     NIMCP_ERROR_MEMORY = -4,   /**< Memory allocation failed */
     NIMCP_ERROR_IO = -5        /**< I/O operation failed */
 } nimcp_status_t;
+
+/* Alias for compatibility */
+#define NIMCP_SUCCESS NIMCP_OK
 
 //=============================================================================
 // Brain API - High-Level Learning Interface
@@ -803,6 +810,22 @@ typedef struct {
  * @return NIMCP_OK on success, error code otherwise
  */
 nimcp_status_t nimcp_brain_probe(nimcp_brain_t brain, nimcp_brain_probe_t* probe);
+
+/**
+ * @brief Broadcast brain probe data via bio-async message system
+ *
+ * WHAT: Sends brain probe metrics to all interested subscribers via bio-async
+ * WHY:  Enables loose coupling - metrics module receives data without direct dependency
+ * HOW:  Fills bio_msg_brain_probe_data_t and broadcasts via BIO_MSG_BRAIN_PROBE_DATA
+ *
+ * This function allows multiple brains to be monitored concurrently. Each brain
+ * broadcasts its metrics using its unique brain_id (pointer address), allowing
+ * subscribers to differentiate between different brain instances.
+ *
+ * @param brain Brain handle to probe and broadcast
+ * @return NIMCP_OK on success, error code otherwise
+ */
+nimcp_status_t nimcp_brain_broadcast_probe(nimcp_brain_t brain);
 
 //=============================================================================
 // Copy-on-Write (COW) Cache API - Efficient Memory Sharing

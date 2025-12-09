@@ -7,9 +7,7 @@ add_executable(test_portia_tier_switch
 
 target_link_libraries(test_portia_tier_switch
     nimcp_portia
-    nimcp_security
-    nimcp_utils
-    nimcp_async
+    nimcp
     GTest::gtest
     GTest::gtest_main
     pthread
@@ -28,9 +26,7 @@ add_executable(test_portia_power
 
 target_link_libraries(test_portia_power
     nimcp_portia
-    nimcp_security
-    nimcp_utils
-    nimcp_async
+    nimcp
     GTest::gtest
     GTest::gtest_main
     pthread
@@ -49,9 +45,7 @@ add_executable(test_portia_planning
 
 target_link_libraries(test_portia_planning
     nimcp_portia
-    nimcp_security
-    nimcp_utils
-    nimcp_async
+    nimcp
     GTest::gtest
     GTest::gtest_main
     pthread
@@ -70,9 +64,7 @@ add_executable(test_portia_attention
 
 target_link_libraries(test_portia_attention
     nimcp_portia
-    nimcp_security
-    nimcp_utils
-    nimcp_async
+    nimcp
     GTest::gtest
     GTest::gtest_main
     pthread
@@ -91,9 +83,7 @@ add_executable(test_accelerator
 
 target_link_libraries(test_accelerator
     nimcp_portia
-    nimcp_security
-    nimcp_utils
-    nimcp_async
+    nimcp
     GTest::gtest
     GTest::gtest_main
     pthread
@@ -112,9 +102,7 @@ add_executable(test_portia_learning
 
 target_link_libraries(test_portia_learning
     nimcp_portia
-    nimcp_security
-    nimcp_utils
-    nimcp_async
+    nimcp
     GTest::gtest
     GTest::gtest_main
     pthread
@@ -133,9 +121,7 @@ add_executable(test_portia_sensor_fusion
 
 target_link_libraries(test_portia_sensor_fusion
     nimcp_portia
-    nimcp_security
-    nimcp_utils
-    nimcp_async
+    nimcp
     GTest::gtest
     GTest::gtest_main
     pthread
@@ -154,9 +140,7 @@ add_executable(test_portia_degradation
 
 target_link_libraries(test_portia_degradation
     nimcp_portia
-    nimcp_security
-    nimcp_utils
-    nimcp_async
+    nimcp
     GTest::gtest
     GTest::gtest_main
     pthread
@@ -175,9 +159,7 @@ add_executable(test_portia_classification
 
 target_link_libraries(test_portia_classification
     nimcp_portia
-    nimcp_security
-    nimcp_utils
-    nimcp_async
+    nimcp
     GTest::gtest
     GTest::gtest_main
     pthread
@@ -196,9 +178,7 @@ add_executable(test_portia_deception
 
 target_link_libraries(test_portia_deception
     nimcp_portia
-    nimcp_security
-    nimcp_utils
-    nimcp_async
+    nimcp
     GTest::gtest
     GTest::gtest_main
     pthread

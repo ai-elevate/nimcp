@@ -45,7 +45,7 @@ TEST_F(KnowledgeAPITest, KnowledgeCreateReturnsValidHandle) {
     nimcp_status_t status = nimcp_knowledge_add_fact(
         knowledge, "test", "is", "valid"
     );
-    EXPECT_EQ(status, NIMCP_OK);
+    EXPECT_EQ(status, NIMCP_SUCCESS);
 
     nimcp_knowledge_destroy(knowledge);
 }
@@ -90,7 +90,7 @@ TEST_F(KnowledgeAPITest, KnowledgeAddFactSucceeds) {
     nimcp_status_t status = nimcp_knowledge_add_fact(
         knowledge, "Paris", "is_capital_of", "France"
     );
-    EXPECT_EQ(status, NIMCP_OK);
+    EXPECT_EQ(status, NIMCP_SUCCESS);
 
     nimcp_knowledge_destroy(knowledge);
 }
@@ -160,7 +160,7 @@ TEST_F(KnowledgeAPITest, KnowledgeAddMultipleFacts) {
         nimcp_status_t status = nimcp_knowledge_add_fact(
             knowledge, fact.subject, fact.predicate, fact.object
         );
-        EXPECT_EQ(status, NIMCP_OK);
+        EXPECT_EQ(status, NIMCP_SUCCESS);
     }
 
     nimcp_knowledge_destroy(knowledge);
@@ -174,7 +174,7 @@ TEST_F(KnowledgeAPITest, KnowledgeAddFactWithEmptyStrings) {
         knowledge, "", "", ""
     );
     // Should handle empty strings gracefully
-    EXPECT_TRUE(status == NIMCP_OK || status == NIMCP_ERROR_INVALID);
+    EXPECT_TRUE(status == NIMCP_SUCCESS || status == NIMCP_ERROR_INVALID);
 
     nimcp_knowledge_destroy(knowledge);
 }
@@ -192,7 +192,7 @@ TEST_F(KnowledgeAPITest, KnowledgeAddFactWithLongStrings) {
         knowledge, long_subject.c_str(), long_predicate.c_str(), long_object.c_str()
     );
     // Should handle or truncate long strings
-    EXPECT_TRUE(status == NIMCP_OK || status == NIMCP_ERROR);
+    EXPECT_TRUE(status == NIMCP_SUCCESS || status == NIMCP_ERROR);
 
     nimcp_knowledge_destroy(knowledge);
 }
@@ -213,7 +213,7 @@ TEST_F(KnowledgeAPITest, KnowledgeQuerySucceeds) {
     nimcp_status_t status = nimcp_knowledge_query(
         knowledge, "Paris", result, sizeof(result)
     );
-    EXPECT_EQ(status, NIMCP_OK);
+    EXPECT_EQ(status, NIMCP_SUCCESS);
 
     nimcp_knowledge_destroy(knowledge);
 }
@@ -266,7 +266,7 @@ TEST_F(KnowledgeAPITest, KnowledgeQueryReturnsCorrectFact) {
         knowledge, "Paris", result, sizeof(result)
     );
 
-    ASSERT_EQ(status, NIMCP_OK);
+    ASSERT_EQ(status, NIMCP_SUCCESS);
 
     // Result should contain the predicate and object
     EXPECT_TRUE(strstr(result, "is_capital_of") != nullptr ||
@@ -285,7 +285,7 @@ TEST_F(KnowledgeAPITest, KnowledgeQueryNotFoundReturnsMessage) {
         knowledge, "NonExistent", result, sizeof(result)
     );
 
-    EXPECT_EQ(status, NIMCP_OK);
+    EXPECT_EQ(status, NIMCP_SUCCESS);
 
     // Result should indicate not found
     EXPECT_TRUE(strstr(result, "No knowledge found") != nullptr ||
@@ -312,7 +312,7 @@ TEST_F(KnowledgeAPITest, KnowledgeQueryMultipleFacts) {
         nimcp_status_t status = nimcp_knowledge_query(
             knowledge, query, result, sizeof(result)
         );
-        EXPECT_EQ(status, NIMCP_OK);
+        EXPECT_EQ(status, NIMCP_SUCCESS);
     }
 
     nimcp_knowledge_destroy(knowledge);
@@ -332,7 +332,7 @@ TEST_F(KnowledgeAPITest, KnowledgeQueryWithSmallBuffer) {
     );
 
     // Should handle small buffer (truncate or error)
-    EXPECT_TRUE(status == NIMCP_OK || status == NIMCP_ERROR);
+    EXPECT_TRUE(status == NIMCP_SUCCESS || status == NIMCP_ERROR);
 
     nimcp_knowledge_destroy(knowledge);
 }
@@ -356,7 +356,7 @@ TEST_F(KnowledgeAPITest, KnowledgeAddAndQueryWorkflow) {
         knowledge, "Water", result, sizeof(result)
     );
 
-    EXPECT_EQ(status, NIMCP_OK);
+    EXPECT_EQ(status, NIMCP_SUCCESS);
     EXPECT_GT(strlen(result), 0);
 
     nimcp_knowledge_destroy(knowledge);
@@ -375,7 +375,7 @@ TEST_F(KnowledgeAPITest, KnowledgePersistsThroughQueries) {
         nimcp_status_t status = nimcp_knowledge_query(
             knowledge, "Sky", result, sizeof(result)
         );
-        EXPECT_EQ(status, NIMCP_OK);
+        EXPECT_EQ(status, NIMCP_SUCCESS);
     }
 
     nimcp_knowledge_destroy(knowledge);
@@ -421,7 +421,7 @@ TEST_F(KnowledgeAPITest, KnowledgeUpdateExistingFact) {
         knowledge, "Status", result, sizeof(result)
     );
 
-    EXPECT_EQ(status, NIMCP_OK);
+    EXPECT_EQ(status, NIMCP_SUCCESS);
 
     nimcp_knowledge_destroy(knowledge);
 }

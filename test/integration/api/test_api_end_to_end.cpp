@@ -25,7 +25,7 @@ class APIEndToEndTest : public ::testing::Test {
 protected:
     void SetUp() override {
         // Initialize NIMCP library
-        ASSERT_EQ(nimcp_init(), NIMCP_OK);
+        ASSERT_EQ(nimcp_init(), NIMCP_SUCCESS);
     }
 
     void TearDown() override {
@@ -64,20 +64,20 @@ TEST_F(APIEndToEndTest, FullLearningPipeline_Classification) {
 
     // Learn multiple examples for each class
     for (int i = 0; i < 10; i++) {
-        ASSERT_EQ(nimcp_brain_learn_example(brain, features_class_a, 10, "class_a", 1.0f), NIMCP_OK);
-        ASSERT_EQ(nimcp_brain_learn_example(brain, features_class_b, 10, "class_b", 1.0f), NIMCP_OK);
-        ASSERT_EQ(nimcp_brain_learn_example(brain, features_class_c, 10, "class_c", 1.0f), NIMCP_OK);
+        ASSERT_EQ(nimcp_brain_learn_example(brain, features_class_a, 10, "class_a", 1.0f), NIMCP_SUCCESS);
+        ASSERT_EQ(nimcp_brain_learn_example(brain, features_class_b, 10, "class_b", 1.0f), NIMCP_SUCCESS);
+        ASSERT_EQ(nimcp_brain_learn_example(brain, features_class_c, 10, "class_c", 1.0f), NIMCP_SUCCESS);
     }
 
     // Step 3: Predict before save
     char label[64];
     float confidence;
-    ASSERT_EQ(nimcp_brain_predict(brain, features_class_a, 10, label, &confidence), NIMCP_OK);
+    ASSERT_EQ(nimcp_brain_predict(brain, features_class_a, 10, label, &confidence), NIMCP_SUCCESS);
     EXPECT_STREQ(label, "class_a");
     EXPECT_GT(confidence, 0.5f);
 
     // Step 4: Save brain
-    ASSERT_EQ(nimcp_brain_save(brain, save_path), NIMCP_OK);
+    ASSERT_EQ(nimcp_brain_save(brain, save_path), NIMCP_SUCCESS);
 
     // Step 5: Destroy original brain
     nimcp_brain_destroy(brain);
@@ -89,7 +89,7 @@ TEST_F(APIEndToEndTest, FullLearningPipeline_Classification) {
     // Step 7: Predict with loaded brain (should match original)
     char loaded_label[64];
     float loaded_confidence;
-    ASSERT_EQ(nimcp_brain_predict(loaded_brain, features_class_a, 10, loaded_label, &loaded_confidence), NIMCP_OK);
+    ASSERT_EQ(nimcp_brain_predict(loaded_brain, features_class_a, 10, loaded_label, &loaded_confidence), NIMCP_SUCCESS);
     EXPECT_STREQ(loaded_label, "class_a");
     EXPECT_NEAR(confidence, loaded_confidence, 0.1f);
 
@@ -118,14 +118,14 @@ TEST_F(APIEndToEndTest, FullLearningPipeline_Regression) {
 
     // Learn multiple times
     for (int i = 0; i < 20; i++) {
-        ASSERT_EQ(nimcp_brain_learn_example(brain, features, 5, "15.0", 1.0f), NIMCP_OK);
+        ASSERT_EQ(nimcp_brain_learn_example(brain, features, 5, "15.0", 1.0f), NIMCP_SUCCESS);
     }
 
     // Get inference result
-    ASSERT_EQ(nimcp_brain_infer(brain, features, 5, outputs, 1), NIMCP_OK);
+    ASSERT_EQ(nimcp_brain_infer(brain, features, 5, outputs, 1), NIMCP_SUCCESS);
 
     // Save and reload
-    ASSERT_EQ(nimcp_brain_save(brain, save_path), NIMCP_OK);
+    ASSERT_EQ(nimcp_brain_save(brain, save_path), NIMCP_SUCCESS);
     nimcp_brain_destroy(brain);
 
     nimcp_brain_t loaded_brain = nimcp_brain_load(save_path);
@@ -133,7 +133,7 @@ TEST_F(APIEndToEndTest, FullLearningPipeline_Regression) {
 
     // Verify loaded brain produces similar output
     float loaded_outputs[1];
-    ASSERT_EQ(nimcp_brain_infer(loaded_brain, features, 5, loaded_outputs, 1), NIMCP_OK);
+    ASSERT_EQ(nimcp_brain_infer(loaded_brain, features, 5, loaded_outputs, 1), NIMCP_SUCCESS);
     EXPECT_NEAR(outputs[0], loaded_outputs[0], 0.1f);
 
     nimcp_brain_destroy(loaded_brain);
@@ -156,14 +156,14 @@ TEST_F(APIEndToEndTest, FullLearningPipeline_PatternMatching) {
     float pattern_square[] = {1, 1, 1, 1, 1, 0, 0, 1, 1, 0, 0, 1, 1, 1, 1, 1};
 
     for (int i = 0; i < 15; i++) {
-        ASSERT_EQ(nimcp_brain_learn_example(brain, pattern_cross, 16, "cross", 1.0f), NIMCP_OK);
-        ASSERT_EQ(nimcp_brain_learn_example(brain, pattern_square, 16, "square", 1.0f), NIMCP_OK);
+        ASSERT_EQ(nimcp_brain_learn_example(brain, pattern_cross, 16, "cross", 1.0f), NIMCP_SUCCESS);
+        ASSERT_EQ(nimcp_brain_learn_example(brain, pattern_square, 16, "square", 1.0f), NIMCP_SUCCESS);
     }
 
     // Test recognition
     char label[64];
     float confidence;
-    ASSERT_EQ(nimcp_brain_predict(brain, pattern_cross, 16, label, &confidence), NIMCP_OK);
+    ASSERT_EQ(nimcp_brain_predict(brain, pattern_cross, 16, label, &confidence), NIMCP_SUCCESS);
     EXPECT_STREQ(label, "cross");
 
     nimcp_brain_destroy(brain);
@@ -193,9 +193,9 @@ TEST_F(APIEndToEndTest, MultipleBrains_DifferentSizes) {
 
     // Train all simultaneously
     float features[] = {1.0f, 0.0f, 1.0f, 0.0f, 1.0f};
-    ASSERT_EQ(nimcp_brain_learn_example(tiny, features, 5, "pattern_a", 1.0f), NIMCP_OK);
-    ASSERT_EQ(nimcp_brain_learn_example(small, features, 5, "pattern_a", 1.0f), NIMCP_OK);
-    ASSERT_EQ(nimcp_brain_learn_example(medium, features, 5, "pattern_a", 1.0f), NIMCP_OK);
+    ASSERT_EQ(nimcp_brain_learn_example(tiny, features, 5, "pattern_a", 1.0f), NIMCP_SUCCESS);
+    ASSERT_EQ(nimcp_brain_learn_example(small, features, 5, "pattern_a", 1.0f), NIMCP_SUCCESS);
+    ASSERT_EQ(nimcp_brain_learn_example(medium, features, 5, "pattern_a", 1.0f), NIMCP_SUCCESS);
 
     // Cleanup
     nimcp_brain_destroy(tiny);
@@ -238,16 +238,16 @@ TEST_F(APIEndToEndTest, MultipleBrains_Concurrent_Operations) {
     float features1[] = {1.0f, 0.0f, 1.0f, 0.0f, 1.0f};
     float features2[] = {0.0f, 1.0f, 0.0f, 1.0f, 0.0f};
 
-    ASSERT_EQ(nimcp_brain_learn_example(brain1, features1, 5, "A", 1.0f), NIMCP_OK);
-    ASSERT_EQ(nimcp_brain_learn_example(brain2, features2, 5, "B", 1.0f), NIMCP_OK);
-    ASSERT_EQ(nimcp_brain_learn_example(brain3, features1, 5, "A", 1.0f), NIMCP_OK);
+    ASSERT_EQ(nimcp_brain_learn_example(brain1, features1, 5, "A", 1.0f), NIMCP_SUCCESS);
+    ASSERT_EQ(nimcp_brain_learn_example(brain2, features2, 5, "B", 1.0f), NIMCP_SUCCESS);
+    ASSERT_EQ(nimcp_brain_learn_example(brain3, features1, 5, "A", 1.0f), NIMCP_SUCCESS);
 
     char label1[64], label2[64], label3[64];
     float conf1, conf2, conf3;
 
-    ASSERT_EQ(nimcp_brain_predict(brain1, features1, 5, label1, &conf1), NIMCP_OK);
-    ASSERT_EQ(nimcp_brain_predict(brain2, features2, 5, label2, &conf2), NIMCP_OK);
-    ASSERT_EQ(nimcp_brain_predict(brain3, features1, 5, label3, &conf3), NIMCP_OK);
+    ASSERT_EQ(nimcp_brain_predict(brain1, features1, 5, label1, &conf1), NIMCP_SUCCESS);
+    ASSERT_EQ(nimcp_brain_predict(brain2, features2, 5, label2, &conf2), NIMCP_SUCCESS);
+    ASSERT_EQ(nimcp_brain_predict(brain3, features1, 5, label3, &conf3), NIMCP_SUCCESS);
 
     // Each brain should maintain independent state
     EXPECT_STREQ(label1, "A");
@@ -275,10 +275,10 @@ TEST_F(APIEndToEndTest, WorkingMemory_AddAndRetrieve) {
     nimcp_status_t status2 = nimcp_brain_working_memory_add(brain, item2, 5, 0.6f);
 
     // May not be enabled, but should not crash
-    if (status1 == NIMCP_OK) {
+    if (status1 == NIMCP_SUCCESS) {
         // Get statistics
         uint32_t size, capacity;
-        ASSERT_EQ(nimcp_brain_working_memory_stats(brain, &size, &capacity), NIMCP_OK);
+        ASSERT_EQ(nimcp_brain_working_memory_stats(brain, &size, &capacity), NIMCP_SUCCESS);
         EXPECT_GE(size, 1);
         EXPECT_LE(size, capacity);
 
@@ -306,7 +306,7 @@ TEST_F(APIEndToEndTest, WorkingMemory_CapacityLimits) {
 
     // Get capacity
     uint32_t size, capacity;
-    if (nimcp_brain_working_memory_stats(brain, &size, &capacity) == NIMCP_OK) {
+    if (nimcp_brain_working_memory_stats(brain, &size, &capacity) == NIMCP_SUCCESS) {
         // Size should not exceed capacity
         EXPECT_LE(size, capacity);
         // Capacity should be around Miller's 7±2
@@ -323,7 +323,7 @@ TEST_F(APIEndToEndTest, WorkingMemory_RefreshPreventsDecay) {
     float item[] = {1.0f, 2.0f, 3.0f, 4.0f, 5.0f};
     nimcp_status_t status = nimcp_brain_working_memory_add(brain, item, 5, 0.9f);
 
-    if (status == NIMCP_OK) {
+    if (status == NIMCP_SUCCESS) {
         // Refresh item multiple times
         for (int i = 0; i < 5; i++) {
             nimcp_brain_working_memory_refresh(brain, 0);
@@ -362,17 +362,17 @@ TEST_F(APIEndToEndTest, GlobalWorkspace_CompeteAndRead) {
     );
 
     // May not be enabled, but should not crash
-    if (compete_status == NIMCP_OK) {
+    if (compete_status == NIMCP_SUCCESS) {
         // Check if broadcast exists
         bool has_broadcast;
-        ASSERT_EQ(nimcp_brain_workspace_has_broadcast(brain, &has_broadcast), NIMCP_OK);
+        ASSERT_EQ(nimcp_brain_workspace_has_broadcast(brain, &has_broadcast), NIMCP_SUCCESS);
         EXPECT_TRUE(has_broadcast);
 
         // Read broadcast
         float read_content[256];
         uint32_t dim;
         nimcp_cognitive_module_t source;
-        ASSERT_EQ(nimcp_brain_workspace_read(brain, read_content, 256, &dim, &source), NIMCP_OK);
+        ASSERT_EQ(nimcp_brain_workspace_read(brain, read_content, 256, &dim, &source), NIMCP_SUCCESS);
         EXPECT_EQ(source, NIMCP_MODULE_PERCEPTION);
         EXPECT_EQ(dim, 256);
     }
@@ -418,7 +418,7 @@ TEST_F(APIEndToEndTest, GlobalWorkspace_Statistics) {
     float avg_strength;
     nimcp_status_t status = nimcp_brain_workspace_stats(brain, &broadcasts, &competitions, &avg_strength);
 
-    if (status == NIMCP_OK) {
+    if (status == NIMCP_SUCCESS) {
         EXPECT_GE(competitions, 5);
         EXPECT_LE(broadcasts, competitions);
     }
@@ -468,7 +468,7 @@ TEST_F(APIEndToEndTest, ErrorRecovery_AfterFailedSave) {
 
     // Brain should still be usable
     float features[] = {1.0f, 2.0f, 3.0f, 4.0f, 5.0f, 6.0f, 7.0f, 8.0f, 9.0f, 10.0f};
-    ASSERT_EQ(nimcp_brain_learn_example(brain, features, 10, "test", 1.0f), NIMCP_OK);
+    ASSERT_EQ(nimcp_brain_learn_example(brain, features, 10, "test", 1.0f), NIMCP_SUCCESS);
 
     nimcp_brain_destroy(brain);
 }
@@ -505,7 +505,7 @@ TEST_F(APIEndToEndTest, ResourceManagement_ProbeAfterOperations) {
 
     // Probe brain state
     nimcp_brain_probe_t probe;
-    ASSERT_EQ(nimcp_brain_probe(brain, &probe), NIMCP_OK);
+    ASSERT_EQ(nimcp_brain_probe(brain, &probe), NIMCP_SUCCESS);
 
     // Verify probe data is reasonable
     EXPECT_GT(probe.num_neurons, 0);
@@ -536,7 +536,7 @@ TEST_F(APIEndToEndTest, ResourceManagement_ResizeOperations) {
 
     // Brain should still be functional
     float features[] = {1.0f, 2.0f, 3.0f, 4.0f, 5.0f, 6.0f, 7.0f, 8.0f, 9.0f, 10.0f};
-    ASSERT_EQ(nimcp_brain_learn_example(brain, features, 10, "test", 1.0f), NIMCP_OK);
+    ASSERT_EQ(nimcp_brain_learn_example(brain, features, 10, "test", 1.0f), NIMCP_SUCCESS);
 
     nimcp_brain_destroy(brain);
 }

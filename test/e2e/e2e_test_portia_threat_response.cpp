@@ -16,7 +16,7 @@ extern "C" {
 class PortiaThreatResponseE2ETest : public ::testing::Test {
 protected:
     void SetUp() override {
-        nimcp_log_init(NIMCP_LOG_LEVEL_INFO, nullptr);
+        nimcp_log_init(NULL);
     }
 
     void TearDown() override {
@@ -26,10 +26,10 @@ protected:
 
 TEST_F(PortiaThreatResponseE2ETest, ThreatDetection) {
     // Test threat detection mechanisms
-    nimcp_log(NIMCP_LOG_LEVEL_INFO, "ThreatDetection: PASS");
+    nimcp_log(LOG_LEVEL_INFO, "ThreatDetection: PASS");
 }
 
 TEST_F(PortiaThreatResponseE2ETest, ThreatClassification) {
     // Test threat classification and response trigger
-    nimcp_log(NIMCP_LOG_LEVEL_INFO, "ThreatClassification: PASS");
+    nimcp_log(LOG_LEVEL_INFO, "ThreatClassification: PASS");
 }

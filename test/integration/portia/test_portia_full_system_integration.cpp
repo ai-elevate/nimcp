@@ -26,27 +26,27 @@ protected:
     degradation_state_t* degrade_state = nullptr;
     portia_fusion_ctx_t* fusion_ctx = nullptr;
     portia_learning_state_t* learning_state = nullptr;
-    nimcp_bio_async_ctx_t* bio_ctx = nullptr;
+    // bio_ctx removed
     platform_tier_t current_tier;
 
     void SetUp() override {
         // Initialize bio-async
         nimcp_bio_async_config_t bio_config = nimcp_bio_async_default_config();
         nimcp_bio_async_init(&bio_config);
-        bio_ctx = nimcp_bio_async_get_context();
+        // bio_ctx removed
 
         // Detect platform tier
         current_tier = platform_tier_detect();
 
         // Initialize degradation system
-        portia_degradation_config_t degrade_config = {
+        degradation_internal_config_t degrade_config = {
             .level_thresholds = {0.0f, 60.0f, 75.0f, 85.0f, 95.0f},
             .hysteresis_ms = 500,
             .enable_auto_degrade = true,
             .enable_auto_restore = true,
             .restore_threshold = 10.0f
         };
-        degrade_state = portia_degradation_init(&degrade_config, bio_ctx);
+        degrade_state = portia_degradation_init(&degrade_config);
         ASSERT_NE(degrade_state, nullptr);
 
         // Register all features
@@ -63,7 +63,7 @@ protected:
 
         // Initialize sensor fusion
         portia_fusion_config_t fusion_config = portia_fusion_default_config();
-        fusion_ctx = portia_fusion_init(&fusion_config, (nimcp_bio_ctx_t*)bio_ctx);
+        fusion_ctx = portia_fusion_init(&fusion_config, (nimcp_bio_ctx_t*)NULL);
         ASSERT_NE(fusion_ctx, nullptr);
 
         // Initialize learning system
@@ -107,14 +107,14 @@ TEST_F(PortiaFullSystemIntegrationTest, Initialization_AllSubsystemsReady) {
     EXPECT_NE(degrade_state, nullptr);
     EXPECT_NE(fusion_ctx, nullptr);
     EXPECT_NE(learning_state, nullptr);
-    EXPECT_NE(bio_ctx, nullptr);
+    // bio_ctx check removed - not used in tests
 
     // Verify degradation state
     degradation_level_t level;
     uint32_t active_features;
     float resource_usage;
     ASSERT_EQ(portia_degradation_get_state(degrade_state, &level,
-                                            &active_features, &resource_usage), NIMCP_OK);
+                                            &active_features, &resource_usage), NIMCP_SUCCESS);
     EXPECT_EQ(level, DEGRADATION_LEVEL_NONE);
     EXPECT_GT(active_features, 0u);
 
@@ -162,25 +162,25 @@ TEST_F(PortiaFullSystemIntegrationTest, ResourcePressure_AllSubsystemsRespond) {
     portia_learning_stats_t learning_stats_before = portia_learning_get_stats(learning_state);
 
     // Apply resource pressure
-    ASSERT_EQ(portia_degradation_evaluate(degrade_state, 70.0f, bio_ctx), NIMCP_OK);
+    ASSERT_EQ(portia_degradation_evaluate(degrade_state, 70.0f, NULL), NIMCP_SUCCESS);
 
     // Check degradation state
     degradation_level_t level;
     uint32_t active_features;
     float resource_usage;
     ASSERT_EQ(portia_degradation_get_state(degrade_state, &level,
-                                            &active_features, &resource_usage), NIMCP_OK);
+                                            &active_features, &resource_usage), NIMCP_SUCCESS);
     EXPECT_GE(level, DEGRADATION_LEVEL_MINOR);
 
     // Full sensors may be disabled
     bool full_sensors_enabled;
     ASSERT_EQ(portia_degradation_is_feature_enabled(degrade_state, FEATURE_SENSORS_FULL,
-                                                      &full_sensors_enabled), NIMCP_OK);
+                                                      &full_sensors_enabled), NIMCP_SUCCESS);
 
     // Learning may be affected at higher degradation
     bool learning_enabled;
     ASSERT_EQ(portia_degradation_is_feature_enabled(degrade_state, FEATURE_LEARNING,
-                                                      &learning_enabled), NIMCP_OK);
+                                                      &learning_enabled), NIMCP_SUCCESS);
 }
 
 TEST_F(PortiaFullSystemIntegrationTest, ResourcePressure_SensorFusionAdapts) {
@@ -201,12 +201,12 @@ TEST_F(PortiaFullSystemIntegrationTest, ResourcePressure_SensorFusionAdapts) {
     float confidence_before = portia_fusion_get_confidence(fusion_ctx);
 
     // Apply resource pressure - may reduce sensor suite
-    ASSERT_EQ(portia_degradation_evaluate(degrade_state, 70.0f, bio_ctx), NIMCP_OK);
+    ASSERT_EQ(portia_degradation_evaluate(degrade_state, 70.0f, NULL), NIMCP_SUCCESS);
 
     // Simulate sensor reduction (disable some sensors)
     bool full_sensors;
     ASSERT_EQ(portia_degradation_is_feature_enabled(degrade_state, FEATURE_SENSORS_FULL,
-                                                      &full_sensors), NIMCP_OK);
+                                                      &full_sensors), NIMCP_SUCCESS);
     if (!full_sensors) {
         // Disable non-essential sensors
         portia_fusion_enable_sensor(fusion_ctx, SENSOR_TYPE_PROXIMITY, false);
@@ -238,12 +238,12 @@ TEST_F(PortiaFullSystemIntegrationTest, ResourcePressure_LearningSlowsOrStops) {
     EXPECT_GT(stats_before.total_association_entries, 0u);
 
     // Apply severe resource pressure
-    ASSERT_EQ(portia_degradation_evaluate(degrade_state, 80.0f, bio_ctx), NIMCP_OK);
+    ASSERT_EQ(portia_degradation_evaluate(degrade_state, 80.0f, NULL), NIMCP_SUCCESS);
 
     // Check if learning disabled
     bool learning_enabled;
     ASSERT_EQ(portia_degradation_is_feature_enabled(degrade_state, FEATURE_LEARNING,
-                                                      &learning_enabled), NIMCP_OK);
+                                                      &learning_enabled), NIMCP_SUCCESS);
 
     if (!learning_enabled) {
         // Learning module should stop creating new associations
@@ -265,67 +265,67 @@ TEST_F(PortiaFullSystemIntegrationTest, FullCycle_ProgressiveDegradationThenReco
     float resource_usage;
 
     ASSERT_EQ(portia_degradation_get_state(degrade_state, &level,
-                                            &active_features, &resource_usage), NIMCP_OK);
+                                            &active_features, &resource_usage), NIMCP_SUCCESS);
     EXPECT_EQ(level, DEGRADATION_LEVEL_NONE);
     uint32_t initial_features = active_features;
 
     // Phase 2: Minor degradation
-    ASSERT_EQ(portia_degradation_evaluate(degrade_state, 65.0f, bio_ctx), NIMCP_OK);
+    ASSERT_EQ(portia_degradation_evaluate(degrade_state, 65.0f, NULL), NIMCP_SUCCESS);
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
 
     ASSERT_EQ(portia_degradation_get_state(degrade_state, &level,
-                                            &active_features, &resource_usage), NIMCP_OK);
+                                            &active_features, &resource_usage), NIMCP_SUCCESS);
     EXPECT_GE(level, DEGRADATION_LEVEL_MINOR);
 
     // Phase 3: Moderate degradation
     std::this_thread::sleep_for(std::chrono::milliseconds(600));
-    ASSERT_EQ(portia_degradation_evaluate(degrade_state, 80.0f, bio_ctx), NIMCP_OK);
+    ASSERT_EQ(portia_degradation_evaluate(degrade_state, 80.0f, NULL), NIMCP_SUCCESS);
 
     ASSERT_EQ(portia_degradation_get_state(degrade_state, &level,
-                                            &active_features, &resource_usage), NIMCP_OK);
+                                            &active_features, &resource_usage), NIMCP_SUCCESS);
     EXPECT_GE(level, DEGRADATION_LEVEL_MODERATE);
     EXPECT_LT(active_features, initial_features);
 
     // Phase 4: Severe degradation
     std::this_thread::sleep_for(std::chrono::milliseconds(600));
-    ASSERT_EQ(portia_degradation_evaluate(degrade_state, 90.0f, bio_ctx), NIMCP_OK);
+    ASSERT_EQ(portia_degradation_evaluate(degrade_state, 90.0f, NULL), NIMCP_SUCCESS);
 
     ASSERT_EQ(portia_degradation_get_state(degrade_state, &level,
-                                            &active_features, &resource_usage), NIMCP_OK);
+                                            &active_features, &resource_usage), NIMCP_SUCCESS);
     EXPECT_GE(level, DEGRADATION_LEVEL_SEVERE);
     uint32_t minimum_features = active_features;
 
     // Phase 5: Recovery begins
     std::this_thread::sleep_for(std::chrono::milliseconds(600));
-    ASSERT_EQ(portia_degradation_evaluate(degrade_state, 60.0f, bio_ctx), NIMCP_OK);
+    ASSERT_EQ(portia_degradation_evaluate(degrade_state, 60.0f, NULL), NIMCP_SUCCESS);
 
     ASSERT_EQ(portia_degradation_get_state(degrade_state, &level,
-                                            &active_features, &resource_usage), NIMCP_OK);
+                                            &active_features, &resource_usage), NIMCP_SUCCESS);
     EXPECT_LT(level, DEGRADATION_LEVEL_SEVERE);
     EXPECT_GT(active_features, minimum_features);
 
     // Phase 6: Full recovery
     std::this_thread::sleep_for(std::chrono::milliseconds(600));
-    ASSERT_EQ(portia_degradation_evaluate(degrade_state, 30.0f, bio_ctx), NIMCP_OK);
+    ASSERT_EQ(portia_degradation_evaluate(degrade_state, 30.0f, NULL), NIMCP_SUCCESS);
 
     ASSERT_EQ(portia_degradation_get_state(degrade_state, &level,
-                                            &active_features, &resource_usage), NIMCP_OK);
+                                            &active_features, &resource_usage), NIMCP_SUCCESS);
     EXPECT_LE(level, DEGRADATION_LEVEL_MINOR);
 }
 
 TEST_F(PortiaFullSystemIntegrationTest, FullCycle_SubsystemsRecoverInOrder) {
     // Degrade to severe
-    ASSERT_EQ(portia_degradation_evaluate(degrade_state, 90.0f, bio_ctx), NIMCP_OK);
+    ASSERT_EQ(portia_degradation_evaluate(degrade_state, 90.0f, NULL), NIMCP_SUCCESS);
     std::this_thread::sleep_for(std::chrono::milliseconds(600));
 
     // Check what's disabled
     bool plasticity, learning, planning;
     ASSERT_EQ(portia_degradation_is_feature_enabled(degrade_state, FEATURE_PLASTICITY,
-                                                      &plasticity), NIMCP_OK);
+                                                      &plasticity), NIMCP_SUCCESS);
     ASSERT_EQ(portia_degradation_is_feature_enabled(degrade_state, FEATURE_LEARNING,
-                                                      &learning), NIMCP_OK);
+                                                      &learning), NIMCP_SUCCESS);
     ASSERT_EQ(portia_degradation_is_feature_enabled(degrade_state, FEATURE_PLANNING,
-                                                      &planning), NIMCP_OK);
+                                                      &planning), NIMCP_SUCCESS);
 
     EXPECT_FALSE(plasticity);  // Disabled at MINOR
     EXPECT_FALSE(learning);    // Disabled at MODERATE
@@ -333,22 +333,22 @@ TEST_F(PortiaFullSystemIntegrationTest, FullCycle_SubsystemsRecoverInOrder) {
 
     // Partial recovery
     std::this_thread::sleep_for(std::chrono::milliseconds(600));
-    ASSERT_EQ(portia_degradation_evaluate(degrade_state, 70.0f, bio_ctx), NIMCP_OK);
+    ASSERT_EQ(portia_degradation_evaluate(degrade_state, 70.0f, NULL), NIMCP_SUCCESS);
 
     // Some features should restore
     ASSERT_EQ(portia_degradation_is_feature_enabled(degrade_state, FEATURE_PLANNING,
-                                                      &planning), NIMCP_OK);
+                                                      &planning), NIMCP_SUCCESS);
     EXPECT_TRUE(planning);  // Should be restored (only disabled at SEVERE)
 
     // Full recovery
     std::this_thread::sleep_for(std::chrono::milliseconds(600));
-    ASSERT_EQ(portia_degradation_evaluate(degrade_state, 30.0f, bio_ctx), NIMCP_OK);
+    ASSERT_EQ(portia_degradation_evaluate(degrade_state, 30.0f, NULL), NIMCP_SUCCESS);
 
     // All should be restored
     ASSERT_EQ(portia_degradation_is_feature_enabled(degrade_state, FEATURE_PLASTICITY,
-                                                      &plasticity), NIMCP_OK);
+                                                      &plasticity), NIMCP_SUCCESS);
     ASSERT_EQ(portia_degradation_is_feature_enabled(degrade_state, FEATURE_LEARNING,
-                                                      &learning), NIMCP_OK);
+                                                      &learning), NIMCP_SUCCESS);
     EXPECT_TRUE(plasticity);
     EXPECT_TRUE(learning);
 }
@@ -395,14 +395,14 @@ TEST_F(PortiaFullSystemIntegrationTest, CrossSubsystem_DegradationAffectsBothSen
     ASSERT_EQ(portia_learning_associate(learning_state, 1, 10, true, timestamp), 0);
 
     // Apply degradation
-    ASSERT_EQ(portia_degradation_evaluate(degrade_state, 80.0f, bio_ctx), NIMCP_OK);
+    ASSERT_EQ(portia_degradation_evaluate(degrade_state, 80.0f, NULL), NIMCP_SUCCESS);
 
     // Check both subsystems
     bool full_sensors, learning_enabled;
     ASSERT_EQ(portia_degradation_is_feature_enabled(degrade_state, FEATURE_SENSORS_FULL,
-                                                      &full_sensors), NIMCP_OK);
+                                                      &full_sensors), NIMCP_SUCCESS);
     ASSERT_EQ(portia_degradation_is_feature_enabled(degrade_state, FEATURE_LEARNING,
-                                                      &learning_enabled), NIMCP_OK);
+                                                      &learning_enabled), NIMCP_SUCCESS);
 
     // Both should be affected at moderate degradation
     EXPECT_FALSE(full_sensors);

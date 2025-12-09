@@ -1,0 +1,637 @@
+/**
+ * @file nimcp_protocol_metrics.c
+ * @brief Protocol metrics collection and dashboard implementation
+ *
+ * WHAT: Implements metrics collection, aggregation, and export
+ * WHY:  Monitor protocol health and performance
+ * HOW:  Hash table storage, time-series tracking, multiple export formats
+ *
+ * @author NIMCP Development Team
+ * @date 2025-12-08
+ */
+
+#include "async/nimcp_protocol_metrics.h"
+#include "utils/logging/nimcp_logging.h"
+#include "utils/memory/nimcp_memory.h"
+#include "utils/time/nimcp_time.h"
+#include "utils/validation/nimcp_common.h"
+
+#include <stdlib.h>
+#include <string.h>
+#include <stdio.h>
+#include <stdarg.h>
+#include <math.h>
+
+#define MODULE_NAME "protocol_metrics"
+
+//=============================================================================
+// Internal Constants
+//=============================================================================
+
+#define DEFAULT_MAX_METRICS 1024
+#define DEFAULT_RETENTION_MS (3600 * 1000)  // 1 hour
+#define DEFAULT_COLLECTION_INTERVAL_MS 1000  // 1 second
+#define METRIC_HASH_SIZE 256
+
+//=============================================================================
+// Internal Structures
+//=============================================================================
+
+/**
+ * @brief Metric entry in hash table
+ */
+typedef struct metric_entry {
+    metric_t metric;
+    histogram_metric_t* histogram;     // For histogram types
+    struct metric_entry* next;         // Hash collision chain
+} metric_entry_t;
+
+/**
+ * @brief Protocol metrics implementation
+ */
+struct protocol_metrics_struct {
+    dashboard_config_t config;
+    metric_entry_t* hash_table[METRIC_HASH_SIZE];
+    uint32_t metric_count;
+    uint64_t creation_time_ms;
+    uint64_t last_cleanup_ms;
+    metrics_summary_t cached_summary;
+    bool summary_valid;
+};
+
+//=============================================================================
+// Hash Function
+//=============================================================================
+
+/**
+ * @brief Simple string hash function
+ */
+static uint32_t hash_string(const char* str) {
+    uint32_t hash = 5381;
+    int c;
+    while ((c = *str++)) {
+        hash = ((hash << 5) + hash) + c;
+    }
+    return hash % METRIC_HASH_SIZE;
+}
+
+//=============================================================================
+// Helper Functions
+//=============================================================================
+
+/**
+ * @brief Create metric key from name and labels
+ */
+static void make_metric_key(char* key, size_t key_size, const char* name,
+                           const metric_label_t* labels, uint32_t label_count) {
+    snprintf(key, key_size, "%s", name);
+
+    for (uint32_t i = 0; i < label_count && i < MAX_METRIC_LABELS; i++) {
+        size_t len = strlen(key);
+        snprintf(key + len, key_size - len, "_%s=%s",
+                labels[i].key, labels[i].value);
+    }
+}
+
+/**
+ * @brief Find metric entry by key
+ */
+static metric_entry_t* find_metric(protocol_metrics_t metrics, const char* key) {
+    if (!metrics || !key) return NULL;
+
+    uint32_t hash = hash_string(key);
+    metric_entry_t* entry = metrics->hash_table[hash];
+
+    while (entry) {
+        if (strcmp(entry->metric.name, key) == 0) {
+            return entry;
+        }
+        entry = entry->next;
+    }
+
+    return NULL;
+}
+
+/**
+ * @brief Create new metric entry
+ */
+static metric_entry_t* create_metric_entry(const char* name, metric_type_t type,
+                                          const metric_label_t* labels,
+                                          uint32_t label_count) {
+    metric_entry_t* entry = (metric_entry_t*)nimcp_calloc(1, sizeof(metric_entry_t));
+    if (!entry) return NULL;
+
+    strncpy(entry->metric.name, name, sizeof(entry->metric.name) - 1);
+    entry->metric.type = type;
+    entry->metric.value = 0.0;
+    entry->metric.timestamp_ms = nimcp_time_get_ms();
+    entry->metric.sample_count = 0;
+    entry->metric.label_count = label_count;
+
+    for (uint32_t i = 0; i < label_count && i < MAX_METRIC_LABELS; i++) {
+        entry->metric.labels[i] = labels[i];
+    }
+
+    // Create histogram if needed
+    if (type == METRIC_TYPE_HISTOGRAM) {
+        entry->histogram = (histogram_metric_t*)nimcp_calloc(1, sizeof(histogram_metric_t));
+        if (entry->histogram) {
+            strncpy(entry->histogram->name, name, sizeof(entry->histogram->name) - 1);
+            entry->histogram->label_count = label_count;
+            for (uint32_t i = 0; i < label_count && i < MAX_METRIC_LABELS; i++) {
+                entry->histogram->labels[i] = labels[i];
+            }
+
+            // Default buckets (exponential)
+            double bounds[] = {0.001, 0.01, 0.1, 1.0, 10.0, 100.0, 1000.0};
+            entry->histogram->bucket_count = 7;
+            for (uint32_t i = 0; i < 7; i++) {
+                entry->histogram->buckets[i].upper_bound = bounds[i];
+                entry->histogram->buckets[i].count = 0;
+            }
+        }
+    }
+
+    return entry;
+}
+
+//=============================================================================
+// Lifecycle Implementation
+//=============================================================================
+
+dashboard_config_t protocol_metrics_default_config(void) {
+    dashboard_config_t config;
+    config.collection_interval_ms = DEFAULT_COLLECTION_INTERVAL_MS;
+    config.retention_ms = DEFAULT_RETENTION_MS;
+    config.default_export_format = EXPORT_FORMAT_JSON;
+    config.max_metrics = DEFAULT_MAX_METRICS;
+    config.enable_aggregation = true;
+    config.enable_histograms = true;
+    return config;
+}
+
+protocol_metrics_t protocol_metrics_create(const dashboard_config_t* config) {
+    LOG_INFO("Creating protocol metrics dashboard");
+
+    protocol_metrics_t metrics = (protocol_metrics_t)nimcp_calloc(1,
+                                    sizeof(struct protocol_metrics_struct));
+    if (!metrics) {
+        LOG_ERROR("Failed to allocate metrics structure");
+        return NULL;
+    }
+
+    if (config) {
+        metrics->config = *config;
+    } else {
+        metrics->config = protocol_metrics_default_config();
+    }
+
+    metrics->creation_time_ms = nimcp_time_get_ms();
+    metrics->last_cleanup_ms = metrics->creation_time_ms;
+    metrics->metric_count = 0;
+    metrics->summary_valid = false;
+
+    memset(metrics->hash_table, 0, sizeof(metrics->hash_table));
+
+    LOG_INFO("Metrics dashboard created: max=%u, retention=%ums",
+             metrics->config.max_metrics, metrics->config.retention_ms);
+
+    return metrics;
+}
+
+void protocol_metrics_destroy(protocol_metrics_t metrics) {
+    if (!metrics) return;
+
+    LOG_INFO("Destroying metrics dashboard");
+
+    // Free all entries
+    for (uint32_t i = 0; i < METRIC_HASH_SIZE; i++) {
+        metric_entry_t* entry = metrics->hash_table[i];
+        while (entry) {
+            metric_entry_t* next = entry->next;
+            if (entry->histogram) {
+                nimcp_free(entry->histogram);
+            }
+            nimcp_free(entry);
+            entry = next;
+        }
+    }
+
+    nimcp_free(metrics);
+    LOG_DEBUG("Metrics dashboard destroyed");
+}
+
+//=============================================================================
+// Recording Implementation
+//=============================================================================
+
+bool protocol_metrics_record(protocol_metrics_t metrics, const char* name,
+                            metric_type_t type, double value,
+                            const metric_label_t* labels, uint32_t label_count) {
+    if (!metrics || !name) {
+        LOG_ERROR("Invalid parameters for metric recording");
+        return false;
+    }
+
+    if (label_count > MAX_METRIC_LABELS) {
+        LOG_WARN("Too many labels (%u), truncating to %d", label_count, MAX_METRIC_LABELS);
+        label_count = MAX_METRIC_LABELS;
+    }
+
+    char key[256];
+    make_metric_key(key, sizeof(key), name, labels, label_count);
+
+    metric_entry_t* entry = find_metric(metrics, key);
+    if (!entry) {
+        if (metrics->metric_count >= metrics->config.max_metrics) {
+            LOG_ERROR("Maximum metrics reached (%u)", metrics->config.max_metrics);
+            return false;
+        }
+
+        entry = create_metric_entry(key, type, labels, label_count);
+        if (!entry) {
+            LOG_ERROR("Failed to create metric entry");
+            return false;
+        }
+
+        uint32_t hash = hash_string(key);
+        entry->next = metrics->hash_table[hash];
+        metrics->hash_table[hash] = entry;
+        metrics->metric_count++;
+        metrics->summary_valid = false;
+    }
+
+    entry->metric.value = value;
+    entry->metric.timestamp_ms = nimcp_time_get_ms();
+    entry->metric.sample_count++;
+
+    LOG_DEBUG("Recorded metric: %s = %.3f", key, value);
+
+    return true;
+}
+
+bool protocol_metrics_increment(protocol_metrics_t metrics, const char* name,
+                               double delta, const metric_label_t* labels,
+                               uint32_t label_count) {
+    if (!metrics || !name) return false;
+
+    char key[256];
+    make_metric_key(key, sizeof(key), name, labels, label_count);
+
+    metric_entry_t* entry = find_metric(metrics, key);
+    if (!entry) {
+        return protocol_metrics_record(metrics, key, METRIC_TYPE_COUNTER,
+                                      delta, labels, label_count);
+    }
+
+    entry->metric.value += delta;
+    entry->metric.timestamp_ms = nimcp_time_get_ms();
+    entry->metric.sample_count++;
+
+    LOG_DEBUG("Incremented counter: %s += %.3f (total=%.3f)",
+             key, delta, entry->metric.value);
+
+    return true;
+}
+
+bool protocol_metrics_set_gauge(protocol_metrics_t metrics, const char* name,
+                               double value, const metric_label_t* labels,
+                               uint32_t label_count) {
+    return protocol_metrics_record(metrics, name, METRIC_TYPE_GAUGE,
+                                  value, labels, label_count);
+}
+
+bool protocol_metrics_observe(protocol_metrics_t metrics, const char* name,
+                             double value, const metric_label_t* labels,
+                             uint32_t label_count) {
+    if (!metrics || !name) return false;
+
+    char key[256];
+    make_metric_key(key, sizeof(key), name, labels, label_count);
+
+    metric_entry_t* entry = find_metric(metrics, key);
+    if (!entry) {
+        entry = create_metric_entry(key, METRIC_TYPE_HISTOGRAM, labels, label_count);
+        if (!entry) return false;
+
+        uint32_t hash = hash_string(key);
+        entry->next = metrics->hash_table[hash];
+        metrics->hash_table[hash] = entry;
+        metrics->metric_count++;
+    }
+
+    if (entry->histogram) {
+        entry->histogram->sum += value;
+        entry->histogram->count++;
+
+        for (uint32_t i = 0; i < entry->histogram->bucket_count; i++) {
+            if (value <= entry->histogram->buckets[i].upper_bound) {
+                entry->histogram->buckets[i].count++;
+            }
+        }
+    }
+
+    entry->metric.timestamp_ms = nimcp_time_get_ms();
+    entry->metric.sample_count++;
+
+    return true;
+}
+
+//=============================================================================
+// Query Implementation
+//=============================================================================
+
+bool protocol_metrics_get(protocol_metrics_t metrics, const char* name,
+                         metric_t* out_metric) {
+    if (!metrics || !name || !out_metric) return false;
+
+    metric_entry_t* entry = find_metric(metrics, name);
+    if (!entry) return false;
+
+    *out_metric = entry->metric;
+    return true;
+}
+
+bool protocol_metrics_get_summary(protocol_metrics_t metrics,
+                                 metrics_summary_t* out_summary) {
+    if (!metrics || !out_summary) return false;
+
+    if (metrics->summary_valid) {
+        *out_summary = metrics->cached_summary;
+        return true;
+    }
+
+    memset(out_summary, 0, sizeof(metrics_summary_t));
+
+    uint64_t now = nimcp_time_get_ms();
+    out_summary->oldest_timestamp_ms = now;
+    out_summary->newest_timestamp_ms = 0;
+
+    for (uint32_t i = 0; i < METRIC_HASH_SIZE; i++) {
+        metric_entry_t* entry = metrics->hash_table[i];
+        while (entry) {
+            out_summary->total_metrics++;
+            out_summary->total_samples += entry->metric.sample_count;
+
+            switch (entry->metric.type) {
+                case METRIC_TYPE_COUNTER:
+                    out_summary->counters++;
+                    break;
+                case METRIC_TYPE_GAUGE:
+                    out_summary->gauges++;
+                    break;
+                case METRIC_TYPE_HISTOGRAM:
+                    out_summary->histograms++;
+                    break;
+                case METRIC_TYPE_SUMMARY:
+                    out_summary->summaries++;
+                    break;
+            }
+
+            if (entry->metric.timestamp_ms < out_summary->oldest_timestamp_ms) {
+                out_summary->oldest_timestamp_ms = entry->metric.timestamp_ms;
+            }
+            if (entry->metric.timestamp_ms > out_summary->newest_timestamp_ms) {
+                out_summary->newest_timestamp_ms = entry->metric.timestamp_ms;
+            }
+
+            entry = entry->next;
+        }
+    }
+
+    out_summary->memory_usage_bytes =
+        out_summary->total_metrics * sizeof(metric_entry_t) +
+        out_summary->histograms * sizeof(histogram_metric_t);
+
+    metrics->cached_summary = *out_summary;
+    metrics->summary_valid = true;
+
+    return true;
+}
+
+bool protocol_metrics_query(protocol_metrics_t metrics, const char* pattern,
+                           metric_t* out_metrics, uint32_t max_metrics,
+                           uint32_t* out_count) {
+    if (!metrics || !out_metrics || !out_count) return false;
+
+    *out_count = 0;
+
+    for (uint32_t i = 0; i < METRIC_HASH_SIZE && *out_count < max_metrics; i++) {
+        metric_entry_t* entry = metrics->hash_table[i];
+        while (entry && *out_count < max_metrics) {
+            // Simple pattern matching (NULL = match all)
+            if (!pattern || strstr(entry->metric.name, pattern)) {
+                out_metrics[*out_count] = entry->metric;
+                (*out_count)++;
+            }
+            entry = entry->next;
+        }
+    }
+
+    return true;
+}
+
+//=============================================================================
+// Export Implementation
+//=============================================================================
+
+static size_t export_json(protocol_metrics_t metrics, char* buffer, size_t size) {
+    size_t offset = 0;
+
+    offset += snprintf(buffer + offset, size - offset, "{\n  \"metrics\": [\n");
+
+    bool first = true;
+    for (uint32_t i = 0; i < METRIC_HASH_SIZE; i++) {
+        metric_entry_t* entry = metrics->hash_table[i];
+        while (entry && offset < size - 256) {
+            if (!first) {
+                offset += snprintf(buffer + offset, size - offset, ",\n");
+            }
+            first = false;
+
+            offset += snprintf(buffer + offset, size - offset,
+                "    {\n"
+                "      \"name\": \"%s\",\n"
+                "      \"type\": \"%s\",\n"
+                "      \"value\": %.6f,\n"
+                "      \"timestamp\": %llu,\n"
+                "      \"samples\": %llu\n"
+                "    }",
+                entry->metric.name,
+                entry->metric.type == METRIC_TYPE_COUNTER ? "counter" :
+                entry->metric.type == METRIC_TYPE_GAUGE ? "gauge" :
+                entry->metric.type == METRIC_TYPE_HISTOGRAM ? "histogram" : "summary",
+                entry->metric.value,
+                entry->metric.timestamp_ms,
+                entry->metric.sample_count
+            );
+
+            entry = entry->next;
+        }
+    }
+
+    offset += snprintf(buffer + offset, size - offset, "\n  ]\n}\n");
+
+    return offset;
+}
+
+static size_t export_prometheus(protocol_metrics_t metrics, char* buffer, size_t size) {
+    size_t offset = 0;
+
+    for (uint32_t i = 0; i < METRIC_HASH_SIZE; i++) {
+        metric_entry_t* entry = metrics->hash_table[i];
+        while (entry && offset < size - 256) {
+            const char* type_str =
+                entry->metric.type == METRIC_TYPE_COUNTER ? "counter" :
+                entry->metric.type == METRIC_TYPE_GAUGE ? "gauge" : "histogram";
+
+            offset += snprintf(buffer + offset, size - offset,
+                "# TYPE %s %s\n%s %.6f %llu\n",
+                entry->metric.name, type_str,
+                entry->metric.name, entry->metric.value,
+                entry->metric.timestamp_ms
+            );
+
+            entry = entry->next;
+        }
+    }
+
+    return offset;
+}
+
+bool protocol_metrics_export(protocol_metrics_t metrics, export_format_t format,
+                            char* out_buffer, size_t buffer_size, size_t* out_bytes) {
+    if (!metrics || !out_buffer || !out_bytes) return false;
+
+    size_t bytes = 0;
+
+    switch (format) {
+        case EXPORT_FORMAT_JSON:
+            bytes = export_json(metrics, out_buffer, buffer_size);
+            break;
+        case EXPORT_FORMAT_PROMETHEUS:
+            bytes = export_prometheus(metrics, out_buffer, buffer_size);
+            break;
+        case EXPORT_FORMAT_CSV:
+            // Simple CSV export
+            bytes = snprintf(out_buffer, buffer_size,
+                           "name,type,value,timestamp,samples\n");
+            break;
+    }
+
+    *out_bytes = bytes;
+    return bytes < buffer_size;
+}
+
+bool protocol_metrics_export_file(protocol_metrics_t metrics,
+                                 export_format_t format, const char* filename) {
+    if (!metrics || !filename) return false;
+
+    char buffer[65536];
+    size_t bytes = 0;
+
+    if (!protocol_metrics_export(metrics, format, buffer, sizeof(buffer), &bytes)) {
+        LOG_ERROR("Export buffer too small");
+        return false;
+    }
+
+    FILE* f = fopen(filename, "w");
+    if (!f) {
+        LOG_ERROR("Failed to open file: %s", filename);
+        return false;
+    }
+
+    fwrite(buffer, 1, bytes, f);
+    fclose(f);
+
+    LOG_INFO("Exported metrics to %s (%zu bytes)", filename, bytes);
+    return true;
+}
+
+//=============================================================================
+// Utility Implementation
+//=============================================================================
+
+bool protocol_metrics_reset(protocol_metrics_t metrics) {
+    if (!metrics) return false;
+
+    for (uint32_t i = 0; i < METRIC_HASH_SIZE; i++) {
+        metric_entry_t* entry = metrics->hash_table[i];
+        while (entry) {
+            metric_entry_t* next = entry->next;
+            if (entry->histogram) {
+                nimcp_free(entry->histogram);
+            }
+            nimcp_free(entry);
+            entry = next;
+        }
+        metrics->hash_table[i] = NULL;
+    }
+
+    metrics->metric_count = 0;
+    metrics->summary_valid = false;
+
+    LOG_INFO("All metrics reset");
+    return true;
+}
+
+uint32_t protocol_metrics_cleanup(protocol_metrics_t metrics) {
+    if (!metrics) return 0;
+
+    uint64_t now = nimcp_time_get_ms();
+    uint64_t cutoff = now - metrics->config.retention_ms;
+    uint32_t removed = 0;
+
+    for (uint32_t i = 0; i < METRIC_HASH_SIZE; i++) {
+        metric_entry_t** prev_next = &metrics->hash_table[i];
+        metric_entry_t* entry = metrics->hash_table[i];
+
+        while (entry) {
+            if (entry->metric.timestamp_ms < cutoff) {
+                *prev_next = entry->next;
+                if (entry->histogram) {
+                    nimcp_free(entry->histogram);
+                }
+                nimcp_free(entry);
+                removed++;
+                metrics->metric_count--;
+                entry = *prev_next;
+            } else {
+                prev_next = &entry->next;
+                entry = entry->next;
+            }
+        }
+    }
+
+    if (removed > 0) {
+        LOG_INFO("Cleaned up %u expired metrics", removed);
+        metrics->summary_valid = false;
+    }
+
+    metrics->last_cleanup_ms = now;
+    return removed;
+}
+
+uint32_t protocol_metrics_make_labels(metric_label_t* labels,
+                                     uint32_t max_labels, ...) {
+    if (!labels) return 0;
+
+    va_list args;
+    va_start(args, max_labels);
+
+    uint32_t count = 0;
+    while (count < max_labels) {
+        const char* key = va_arg(args, const char*);
+        if (!key) break;
+
+        const char* value = va_arg(args, const char*);
+        if (!value) break;
+
+        strncpy(labels[count].key, key, sizeof(labels[count].key) - 1);
+        strncpy(labels[count].value, value, sizeof(labels[count].value) - 1);
+        count++;
+    }
+
+    va_end(args);
+    return count;
+}

@@ -60,14 +60,14 @@ TEST_F(SwarmFlockingTest, RegisterAgent) {
         1, {0.0, 0.0, 0.0}, {1.0, 0.0, 0.0}, 1.0, true
     };
     nimcp_result_t result = nimcp_flocking_register_agent(system, &agent);
-    EXPECT_EQ(result, NIMCP_OK);
+    EXPECT_EQ(result, NIMCP_SUCCESS);
 }
 
 TEST_F(SwarmFlockingTest, UnregisterAgent) {
     nimcp_flocking_agent_t agent = {1, {0.0, 0.0, 0.0}, {1.0, 0.0, 0.0}, 1.0, true};
     nimcp_flocking_register_agent(system, &agent);
     nimcp_result_t result = nimcp_flocking_unregister_agent(system, 1);
-    EXPECT_EQ(result, NIMCP_OK);
+    EXPECT_EQ(result, NIMCP_SUCCESS);
 }
 
 TEST_F(SwarmFlockingTest, UpdatePosition) {
@@ -76,7 +76,7 @@ TEST_F(SwarmFlockingTest, UpdatePosition) {
     
     nimcp_vector3d_t new_pos = {5.0, 5.0, 0.0};
     nimcp_result_t result = nimcp_flocking_update_position(system, 1, &new_pos);
-    EXPECT_EQ(result, NIMCP_OK);
+    EXPECT_EQ(result, NIMCP_SUCCESS);
 }
 
 TEST_F(SwarmFlockingTest, CalculateSeparation) {
@@ -92,7 +92,7 @@ TEST_F(SwarmFlockingTest, CalculateSeparation) {
     nimcp_result_t result = nimcp_flocking_calculate_separation(
         system, 0, &separation
     );
-    EXPECT_EQ(result, NIMCP_OK);
+    EXPECT_EQ(result, NIMCP_SUCCESS);
 }
 
 TEST_F(SwarmFlockingTest, CalculateAlignment) {
@@ -107,7 +107,7 @@ TEST_F(SwarmFlockingTest, CalculateAlignment) {
     nimcp_result_t result = nimcp_flocking_calculate_alignment(
         system, 0, &alignment
     );
-    EXPECT_EQ(result, NIMCP_OK);
+    EXPECT_EQ(result, NIMCP_SUCCESS);
 }
 
 TEST_F(SwarmFlockingTest, CalculateCohesion) {
@@ -122,7 +122,7 @@ TEST_F(SwarmFlockingTest, CalculateCohesion) {
     nimcp_result_t result = nimcp_flocking_calculate_cohesion(
         system, 0, &cohesion
     );
-    EXPECT_EQ(result, NIMCP_OK);
+    EXPECT_EQ(result, NIMCP_SUCCESS);
 }
 
 TEST_F(SwarmFlockingTest, AvoidObstacle) {
@@ -134,7 +134,7 @@ TEST_F(SwarmFlockingTest, AvoidObstacle) {
     nimcp_result_t result = nimcp_flocking_calculate_obstacle_avoidance(
         system, 1, &obstacle, &avoidance
     );
-    EXPECT_EQ(result, NIMCP_OK);
+    EXPECT_EQ(result, NIMCP_SUCCESS);
 }
 
 TEST_F(SwarmFlockingTest, FollowLeader) {
@@ -145,7 +145,7 @@ TEST_F(SwarmFlockingTest, FollowLeader) {
     nimcp_result_t result = nimcp_flocking_follow_leader(
         system, 1, &leader_pos
     );
-    EXPECT_EQ(result, NIMCP_OK);
+    EXPECT_EQ(result, NIMCP_SUCCESS);
 }
 
 TEST_F(SwarmFlockingTest, UpdateVelocity) {
@@ -154,7 +154,7 @@ TEST_F(SwarmFlockingTest, UpdateVelocity) {
     
     nimcp_vector3d_t new_vel = {2.0, 1.0, 0.0};
     nimcp_result_t result = nimcp_flocking_update_velocity(system, 1, &new_vel);
-    EXPECT_EQ(result, NIMCP_OK);
+    EXPECT_EQ(result, NIMCP_SUCCESS);
 }
 
 TEST_F(SwarmFlockingTest, SetFormation) {
@@ -166,7 +166,7 @@ TEST_F(SwarmFlockingTest, SetFormation) {
     nimcp_result_t result = nimcp_flocking_set_formation(
         system, FORMATION_LINE
     );
-    EXPECT_EQ(result, NIMCP_OK);
+    EXPECT_EQ(result, NIMCP_SUCCESS);
 }
 
 TEST_F(SwarmFlockingTest, GetNeighbors) {
@@ -182,7 +182,7 @@ TEST_F(SwarmFlockingTest, GetNeighbors) {
     nimcp_result_t result = nimcp_flocking_get_neighbors(
         system, 5, 3.0, neighbors, 20, &count
     );
-    EXPECT_EQ(result, NIMCP_OK);
+    EXPECT_EQ(result, NIMCP_SUCCESS);
     EXPECT_GT(count, 0);
 }
 
@@ -195,20 +195,20 @@ TEST_F(SwarmFlockingTest, UpdateSystem) {
     }
     
     nimcp_result_t result = nimcp_flocking_update(system, 0.016);
-    EXPECT_EQ(result, NIMCP_OK);
+    EXPECT_EQ(result, NIMCP_SUCCESS);
 }
 
 TEST_F(SwarmFlockingTest, GetStatistics) {
     nimcp_flocking_stats_t stats;
     nimcp_result_t result = nimcp_flocking_get_stats(system, &stats);
-    EXPECT_EQ(result, NIMCP_OK);
+    EXPECT_EQ(result, NIMCP_SUCCESS);
 }
 
 TEST_F(SwarmFlockingTest, ValidateConfig) {
     nimcp_flocking_config_t test_config;
     nimcp_flocking_default_config(&test_config);
     nimcp_result_t result = nimcp_flocking_validate_config(&test_config);
-    EXPECT_EQ(result, NIMCP_OK);
+    EXPECT_EQ(result, NIMCP_SUCCESS);
 }
 
 TEST_F(SwarmFlockingTest, MaxAgents) {

@@ -171,7 +171,7 @@ portia_power_manager_t portia_power_init(const portia_power_config_t* config) {
     }
 
     // Initialize mutex
-    if (nimcp_platform_mutex_init(&mgr->state_mutex) != 0) {
+    if (nimcp_platform_mutex_init(&mgr->state_mutex, false) != 0) {
         LOG_ERROR("[%s] Failed to initialize mutex", POWER_MODULE);
         nimcp_free(mgr);
         return NULL;
@@ -225,7 +225,7 @@ portia_power_manager_t portia_power_init(const portia_power_config_t* config) {
     }
 
     // Start polling thread
-    if (nimcp_thread_create(&mgr->poll_thread, power_poll_thread, mgr) != 0) {
+    if (nimcp_thread_create(&mgr->poll_thread, power_poll_thread, mgr, NULL) != 0) {
         LOG_ERROR("[%s] Failed to create polling thread", POWER_MODULE);
         nimcp_platform_mutex_destroy(&mgr->state_mutex);
         nimcp_free(mgr);
@@ -656,7 +656,7 @@ static bool read_battery_status(portia_power_manager_t mgr, power_status_t* stat
         status->charging = false;
         status->health_good = true;
         status->plugged_in = true;
-        status->timestamp_us = nimcp_platform_get_time_us();
+        status->timestamp_us = nimcp_time_monotonic_us();
         return true;
     }
 
@@ -700,7 +700,7 @@ static bool read_battery_status(portia_power_manager_t mgr, power_status_t* stat
     status->health_good = (status->temperature_c < mgr->config.max_safe_temp_c);
 
     // Timestamp
-    status->timestamp_us = nimcp_platform_get_time_us();
+    status->timestamp_us = nimcp_time_monotonic_us();
 
     return true;
 }

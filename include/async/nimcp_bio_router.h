@@ -101,6 +101,7 @@ typedef struct {
     bool enable_logging;            /**< Log all routed messages */
     bool enable_statistics;         /**< Track routing statistics */
     float routing_timeout_ms;       /**< Default routing timeout */
+    bool enable_predictive_protocol; /**< Enable predictive prefetching */
 } bio_router_config_t;
 
 /**

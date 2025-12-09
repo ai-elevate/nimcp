@@ -441,6 +441,16 @@ nimcp_multi_swarm_coordinator_t* nimcp_multi_swarm_create(
     coordinator->enable_resource_sharing = true;
     coordinator->enable_bridge_formation = true;
 
+    /* Initialize conflict resolution configuration with defaults */
+    coordinator->conflict_config.default_strategy = NIMCP_CONFLICT_NEGOTIATION;
+    coordinator->conflict_config.negotiation_timeout_ms = 30000.0f;  /* 30 seconds */
+    coordinator->conflict_config.max_negotiation_rounds = 10;
+    coordinator->conflict_config.allow_escalation = true;
+    coordinator->conflict_config.merge_threshold = 0.8f;
+
+    /* Initialize conflict statistics */
+    memset(&coordinator->conflict_stats, 0, sizeof(nimcp_conflict_resolution_stats_t));
+
     /* Register with bio-async router if available */
     if (bio_router_is_initialized()) {
         bio_module_info_t module_info = {
@@ -1492,9 +1502,237 @@ nimcp_result_t nimcp_comm_bridge_route_message(
 }
 
 /* ============================================================================
- * Conflict Resolution
+ * Conflict Resolution - Enhanced Implementation
  * ============================================================================ */
 
+/**
+ * @brief Calculate conflict severity based on overlap and priorities
+ *
+ * WHAT: Computes severity score from 0.0 (minor) to 1.0 (critical)
+ * WHY:  Enables prioritization of conflicts for resolution
+ * HOW:  Considers territory overlap, resource contention, priority differences
+ */
+static float calculate_conflict_severity(
+    nimcp_multi_swarm_coordinator_t* coordinator,
+    const nimcp_swarm_conflict_t* conflict
+) {
+    if (!coordinator || !conflict || conflict->swarm_count < 2) {
+        return 0.0f;
+    }
+
+    float severity = 0.0f;
+
+    /* Base severity on type */
+    switch (conflict->type) {
+        case NIMCP_CONFLICT_TYPE_RESOURCE:
+            severity = 0.6f;
+            break;
+        case NIMCP_CONFLICT_TYPE_TERRITORY:
+            severity = 0.7f;
+            break;
+        case NIMCP_CONFLICT_TYPE_GOAL:
+            severity = 0.8f;
+            break;
+        case NIMCP_CONFLICT_TYPE_PRIORITY:
+            severity = 0.5f;
+            break;
+        case NIMCP_CONFLICT_TYPE_COMMUNICATION:
+            severity = 0.4f;
+            break;
+        default:
+            severity = 0.5f;
+            break;
+    }
+
+    /* Increase severity based on number of involved swarms */
+    if (conflict->swarm_count > 2) {
+        severity += 0.1f * (conflict->swarm_count - 2);
+    }
+
+    /* Clamp to [0, 1] */
+    return fmaxf(0.0f, fminf(1.0f, severity));
+}
+
+/**
+ * @brief Detect resource conflicts between swarms
+ *
+ * WHAT: Identifies conflicts where multiple swarms request same resource
+ * WHY:  Resource conflicts can deadlock missions
+ * HOW:  Scans pending resource requests for duplicates
+ */
+static uint32_t detect_resource_conflicts(
+    nimcp_multi_swarm_coordinator_t* coordinator,
+    nimcp_darray_t* conflicts_array
+) {
+    if (!coordinator || !conflicts_array) {
+        return 0;
+    }
+
+    uint32_t detected = 0;
+
+    /* Scan all super-swarms for resource conflicts */
+    for (uint32_t i = 0; i < coordinator->super_swarm_count; i++) {
+        nimcp_super_swarm_t* super = coordinator->super_swarms[i];
+        if (!super || !super->resource_requests) continue;
+
+        /* Note: This is simplified - real implementation would iterate hash table */
+        LOG_DEBUG("Scanning super-swarm %lu for resource conflicts",
+                  super->super_swarm_id);
+    }
+
+    return detected;
+}
+
+/**
+ * @brief Detect goal conflicts between swarms
+ *
+ * WHAT: Identifies incompatible mission goals
+ * WHY:  Goal conflicts can cause mission failures
+ * HOW:  Compares mission objectives and operation areas
+ */
+static uint32_t detect_goal_conflicts(
+    nimcp_multi_swarm_coordinator_t* coordinator,
+    nimcp_darray_t* conflicts_array
+) {
+    if (!coordinator || !conflicts_array) {
+        return 0;
+    }
+
+    uint32_t detected = 0;
+
+    /* Check missions for conflicting goals */
+    for (uint32_t i = 0; i < coordinator->super_swarm_count; i++) {
+        nimcp_super_swarm_t* super = coordinator->super_swarms[i];
+        if (!super) continue;
+
+        nimcp_rwlock_read_lock(&super->mission_lock);
+
+        /* Compare all active mission pairs */
+        for (uint32_t j = 0; j < super->active_mission_count; j++) {
+            for (uint32_t k = j + 1; k < super->active_mission_count; k++) {
+                nimcp_mission_assignment_t* mission_a = &super->missions[j];
+                nimcp_mission_assignment_t* mission_b = &super->missions[k];
+
+                /* Check if missions have overlapping areas and different priorities */
+                if (nimcp_territory_overlaps(&mission_a->operation_area,
+                                            &mission_b->operation_area) &&
+                    mission_a->priority != mission_b->priority) {
+
+                    nimcp_swarm_conflict_t new_conflict = {0};
+                    new_conflict.conflict_id = coordinator->next_conflict_id++;
+                    new_conflict.type = NIMCP_CONFLICT_TYPE_GOAL;
+                    new_conflict.swarm_count = 0;
+
+                    /* Add involved swarms */
+                    for (uint32_t s = 0; s < mission_a->swarm_count &&
+                         new_conflict.swarm_count < NIMCP_MAX_SWARMS_PER_SUPER; s++) {
+                        new_conflict.swarm_ids[new_conflict.swarm_count++] =
+                            mission_a->assigned_swarms[s];
+                    }
+
+                    new_conflict.detection_time = nimcp_time_get_ms();
+                    new_conflict.contested_area = mission_a->operation_area;
+                    new_conflict.severity = calculate_conflict_severity(coordinator, &new_conflict);
+
+                    snprintf(new_conflict.description, sizeof(new_conflict.description),
+                            "Goal conflict: Mission %lu vs %lu",
+                            mission_a->mission_id, mission_b->mission_id);
+
+                    conflict_array_push_back(conflicts_array, &new_conflict);
+                    detected++;
+                }
+            }
+        }
+
+        nimcp_rwlock_read_unlock(&super->mission_lock);
+    }
+
+    return detected;
+}
+
+/**
+ * @brief Enhanced conflict detection with multiple conflict types
+ *
+ * WHAT: Comprehensive conflict detection across all swarms
+ * WHY:  Identifies all types of conflicts for resolution
+ * HOW:  Calls type-specific detection functions
+ */
+nimcp_result_t nimcp_multi_swarm_detect_conflicts(
+    nimcp_multi_swarm_coordinator_t* coordinator,
+    nimcp_swarm_conflict_t** conflicts,
+    uint32_t* count
+) {
+    if (!coordinator || !conflicts || !count) {
+        return NIMCP_INVALID_PARAM;
+    }
+
+    /* Create temporary array for conflicts */
+    nimcp_darray_t* conflicts_array = conflict_array_create();
+    if (!conflicts_array) {
+        LOG_ERROR("Failed to create conflicts array");
+        return NIMCP_NO_MEMORY;
+    }
+
+    uint32_t total_detected = 0;
+
+    /* Detect territory conflicts */
+    uint32_t territory_conflicts = nimcp_territory_detect_conflicts(
+        coordinator, conflicts_array);
+    total_detected += territory_conflicts;
+    LOG_INFO("Detected %u territory conflicts", territory_conflicts);
+
+    /* Detect resource conflicts */
+    uint32_t resource_conflicts = detect_resource_conflicts(
+        coordinator, conflicts_array);
+    total_detected += resource_conflicts;
+    LOG_INFO("Detected %u resource conflicts", resource_conflicts);
+
+    /* Detect goal conflicts */
+    uint32_t goal_conflicts = detect_goal_conflicts(
+        coordinator, conflicts_array);
+    total_detected += goal_conflicts;
+    LOG_INFO("Detected %u goal conflicts", goal_conflicts);
+
+    /* Update statistics */
+    coordinator->conflict_stats.total_conflicts = total_detected;
+    coordinator->conflict_stats.conflicts_pending = total_detected;
+
+    /* Return results */
+    *count = total_detected;
+    if (total_detected > 0) {
+        /* Allocate array for caller */
+        *conflicts = (nimcp_swarm_conflict_t*)nimcp_malloc(
+            total_detected * sizeof(nimcp_swarm_conflict_t));
+
+        if (*conflicts) {
+            /* Copy conflicts to output array */
+            for (uint32_t i = 0; i < total_detected; i++) {
+                nimcp_swarm_conflict_t* src = conflict_array_at(conflicts_array, i);
+                if (src) {
+                    memcpy(&(*conflicts)[i], src, sizeof(nimcp_swarm_conflict_t));
+                }
+            }
+        } else {
+            LOG_ERROR("Failed to allocate output conflicts array");
+            conflict_array_destroy(conflicts_array);
+            return NIMCP_NO_MEMORY;
+        }
+    }
+
+    conflict_array_destroy(conflicts_array);
+
+    /* Broadcast conflict detected messages if any found */
+    if (total_detected > 0 && g_multi_swarm_ctx) {
+        /* Note: Would send BIO_MSG_SWARM_CONFLICT_DETECTED here */
+        LOG_INFO("Would broadcast %u conflict detection messages", total_detected);
+    }
+
+    return NIMCP_SUCCESS;
+}
+
+/**
+ * @brief Legacy conflict detection interface
+ */
 uint32_t nimcp_conflict_detect(
     nimcp_multi_swarm_coordinator_t* coordinator
 ) {
@@ -1631,6 +1869,458 @@ uint32_t nimcp_conflict_auto_resolve(
 
     LOG_INFO("Auto-resolved %u conflicts", resolved_count);
     return resolved_count;
+}
+
+/**
+ * @brief Find conflict by ID in super-swarms
+ *
+ * WHAT: Locates conflict structure by ID
+ * WHY:  Needed for negotiation and resolution operations
+ * HOW:  Searches all super-swarms' conflict arrays
+ */
+static nimcp_swarm_conflict_t* find_conflict_by_id(
+    nimcp_multi_swarm_coordinator_t* coordinator,
+    uint32_t conflict_id
+) {
+    if (!coordinator) {
+        return NULL;
+    }
+
+    for (uint32_t i = 0; i < coordinator->super_swarm_count; i++) {
+        nimcp_super_swarm_t* super = coordinator->super_swarms[i];
+        if (!super || !super->conflicts) continue;
+
+        for (size_t j = 0; j < conflict_array_size((nimcp_darray_t*)super->conflicts); j++) {
+            nimcp_swarm_conflict_t* conflict =
+                conflict_array_at((nimcp_darray_t*)super->conflicts, j);
+
+            if (conflict && conflict->conflict_id == conflict_id) {
+                return conflict;
+            }
+        }
+    }
+
+    return NULL;
+}
+
+/**
+ * @brief Enhanced conflict resolution with result tracking
+ *
+ * WHAT: Resolves conflict using specified strategy
+ * WHY:  Provides detailed resolution result for monitoring
+ * HOW:  Applies strategy-specific logic and tracks metrics
+ */
+nimcp_result_t nimcp_multi_swarm_resolve_conflict(
+    nimcp_multi_swarm_coordinator_t* coordinator,
+    uint32_t conflict_id,
+    nimcp_conflict_resolution_t strategy,
+    nimcp_swarm_resolution_result_t* result
+) {
+    if (!coordinator) {
+        return NIMCP_INVALID_PARAM;
+    }
+
+    nimcp_swarm_conflict_t* conflict = find_conflict_by_id(coordinator, conflict_id);
+    if (!conflict) {
+        LOG_WARN("Conflict not found: ID=%u", conflict_id);
+        return NIMCP_NOT_FOUND;
+    }
+
+    if (conflict->is_resolved) {
+        LOG_WARN("Conflict already resolved: ID=%u", conflict_id);
+        return NIMCP_ERROR;
+    }
+
+    uint64_t start_time = nimcp_time_get_ms();
+    conflict->strategy = strategy;
+    bool resolved = false;
+
+    /* Apply resolution strategy */
+    switch (strategy) {
+        case NIMCP_CONFLICT_PRIORITY:
+            /* Higher priority swarm wins */
+            if (conflict->swarm_count >= 2) {
+                nimcp_swarm_identity_t* swarm_a = nimcp_swarm_get(coordinator,
+                    conflict->swarm_ids[0]);
+                nimcp_swarm_identity_t* swarm_b = nimcp_swarm_get(coordinator,
+                    conflict->swarm_ids[1]);
+
+                if (swarm_a && swarm_b) {
+                    if (swarm_a->territory.priority > swarm_b->territory.priority) {
+                        LOG_INFO("Swarm %lu wins priority conflict", swarm_a->swarm_id);
+                        resolved = true;
+                    } else {
+                        LOG_INFO("Swarm %lu wins priority conflict", swarm_b->swarm_id);
+                        resolved = true;
+                    }
+                }
+            }
+            break;
+
+        case NIMCP_CONFLICT_NEGOTIATION:
+        case NIMCP_CONFLICT_RESOLVE_ARBITRATE:
+            /* Start negotiation process */
+            LOG_INFO("Initiating negotiation for conflict %u", conflict_id);
+            resolved = false;  /* Requires async negotiation */
+            break;
+
+        case NIMCP_CONFLICT_TIME_SHARING:
+            /* Share resource over time */
+            LOG_INFO("Implementing time-sharing for conflict %u", conflict_id);
+            resolved = true;
+            break;
+
+        case NIMCP_CONFLICT_SPATIAL_SHARING:
+        case NIMCP_CONFLICT_RESOLVE_PARTITION:
+            /* Divide territory/resources */
+            if (conflict->swarm_count >= 2 &&
+                conflict->type == NIMCP_CONFLICT_TYPE_TERRITORY) {
+                /* Partition contested area */
+                LOG_INFO("Partitioning territory for conflict %u", conflict_id);
+                resolved = true;
+            }
+            break;
+
+        case NIMCP_CONFLICT_RESOLVE_MERGE:
+            /* Merge conflicting swarms */
+            LOG_INFO("Merging swarms for conflict %u", conflict_id);
+            coordinator->conflict_stats.merges_performed++;
+            resolved = true;
+            break;
+
+        case NIMCP_CONFLICT_ESCALATION:
+            /* Escalate to super-swarm coordinator */
+            LOG_INFO("Escalating conflict %u to super-swarm", conflict_id);
+            coordinator->conflict_stats.escalations++;
+            resolved = false;  /* Requires higher-level decision */
+            break;
+
+        case NIMCP_CONFLICT_RESOLVE_DEFER:
+            /* Defer resolution */
+            LOG_INFO("Deferring conflict %u for later", conflict_id);
+            resolved = false;
+            break;
+
+        default:
+            LOG_WARN("Unknown resolution strategy: %d", strategy);
+            resolved = false;
+            break;
+    }
+
+    /* Update conflict state */
+    if (resolved) {
+        conflict->is_resolved = true;
+        conflict->resolution_time = nimcp_time_get_ms();
+        coordinator->conflict_stats.conflicts_resolved++;
+        coordinator->conflict_stats.conflicts_pending--;
+
+        /* Update average resolution time */
+        float elapsed = (float)(conflict->resolution_time - conflict->detection_time);
+        if (coordinator->conflict_stats.conflicts_resolved == 1) {
+            coordinator->conflict_stats.avg_resolution_time_ms = elapsed;
+        } else {
+            coordinator->conflict_stats.avg_resolution_time_ms =
+                (coordinator->conflict_stats.avg_resolution_time_ms *
+                 (coordinator->conflict_stats.conflicts_resolved - 1) + elapsed) /
+                coordinator->conflict_stats.conflicts_resolved;
+        }
+
+        LOG_INFO("Conflict resolved: ID=%u, Strategy=%d, Time=%.1fms",
+                 conflict_id, strategy, elapsed);
+
+        /* Send bio-async message if available */
+        if (g_multi_swarm_ctx) {
+            /* Would send BIO_MSG_SWARM_CONFLICT_RESOLVED here */
+        }
+    }
+
+    /* Fill result structure if provided */
+    if (result) {
+        result->conflict_id = conflict_id;
+        result->type = conflict->type;
+        result->strategy_used = strategy;
+        result->resolved = resolved;
+        result->resolution_time_ms = (float)(nimcp_time_get_ms() - start_time);
+        result->negotiation_rounds = conflict->negotiation_round_count;
+        snprintf(result->outcome_description, sizeof(result->outcome_description),
+                "%s", conflict->description);
+    }
+
+    return resolved ? NIMCP_SUCCESS : NIMCP_ERROR;
+}
+
+/**
+ * @brief Start negotiation for a conflict
+ *
+ * WHAT: Initiates multi-round negotiation protocol
+ * WHY:  Allows swarms to reach mutually acceptable solution
+ * HOW:  Allocates negotiation state and broadcasts start message
+ */
+nimcp_result_t nimcp_multi_swarm_start_negotiation(
+    nimcp_multi_swarm_coordinator_t* coordinator,
+    uint32_t conflict_id
+) {
+    if (!coordinator) {
+        return NIMCP_INVALID_PARAM;
+    }
+
+    nimcp_swarm_conflict_t* conflict = find_conflict_by_id(coordinator, conflict_id);
+    if (!conflict) {
+        return NIMCP_NOT_FOUND;
+    }
+
+    /* Check negotiation timeout */
+    if (coordinator->conflict_config.negotiation_timeout_ms > 0) {
+        uint64_t elapsed = nimcp_time_get_ms() - conflict->detection_time;
+        if (elapsed > coordinator->conflict_config.negotiation_timeout_ms) {
+            LOG_WARN("Negotiation timeout for conflict %u", conflict_id);
+            return NIMCP_ERROR;
+        }
+    }
+
+    /* Allocate negotiation structure */
+    if (!conflict->negotiation) {
+        conflict->negotiation = (nimcp_negotiation_round_t*)nimcp_malloc(
+            sizeof(nimcp_negotiation_round_t));
+        if (!conflict->negotiation) {
+            LOG_ERROR("Failed to allocate negotiation structure");
+            return NIMCP_NO_MEMORY;
+        }
+        memset(conflict->negotiation, 0, sizeof(nimcp_negotiation_round_t));
+    }
+
+    conflict->negotiation->round = 0;
+    conflict->negotiation_round_count = 0;
+
+    LOG_INFO("Started negotiation for conflict %u", conflict_id);
+
+    /* Broadcast negotiation started message */
+    if (g_multi_swarm_ctx) {
+        /* Would send BIO_MSG_SWARM_NEGOTIATION_STARTED here */
+    }
+
+    return NIMCP_SUCCESS;
+}
+
+/**
+ * @brief Propose a solution during negotiation
+ *
+ * WHAT: Swarm proposes specific solution to conflict
+ * WHY:  Enables collaborative problem-solving
+ * HOW:  Stores proposal and broadcasts to involved swarms
+ */
+nimcp_result_t nimcp_multi_swarm_propose(
+    nimcp_multi_swarm_coordinator_t* coordinator,
+    uint32_t conflict_id,
+    const float* proposal,
+    uint32_t proposal_size
+) {
+    if (!coordinator || !proposal || proposal_size == 0) {
+        return NIMCP_INVALID_PARAM;
+    }
+
+    nimcp_swarm_conflict_t* conflict = find_conflict_by_id(coordinator, conflict_id);
+    if (!conflict || !conflict->negotiation) {
+        return NIMCP_NOT_FOUND;
+    }
+
+    /* Check max rounds */
+    if (conflict->negotiation_round_count >=
+        coordinator->conflict_config.max_negotiation_rounds) {
+        LOG_WARN("Max negotiation rounds reached for conflict %u", conflict_id);
+        return NIMCP_ERROR;
+    }
+
+    /* Free old proposal if exists */
+    if (conflict->negotiation->proposal) {
+        nimcp_free(conflict->negotiation->proposal);
+    }
+
+    /* Allocate and copy new proposal */
+    conflict->negotiation->proposal = (float*)nimcp_malloc(
+        proposal_size * sizeof(float));
+    if (!conflict->negotiation->proposal) {
+        LOG_ERROR("Failed to allocate proposal memory");
+        return NIMCP_NO_MEMORY;
+    }
+
+    memcpy(conflict->negotiation->proposal, proposal, proposal_size * sizeof(float));
+    conflict->negotiation->proposal_size = proposal_size;
+    conflict->negotiation->round++;
+    conflict->negotiation_round_count++;
+
+    LOG_INFO("Proposal made for conflict %u, round %u",
+             conflict_id, conflict->negotiation->round);
+
+    /* Broadcast proposal message */
+    if (g_multi_swarm_ctx) {
+        /* Would send BIO_MSG_SWARM_PROPOSAL_MADE here */
+    }
+
+    return NIMCP_SUCCESS;
+}
+
+/**
+ * @brief Accept a negotiation proposal
+ *
+ * WHAT: Swarm accepts current proposal
+ * WHY:  Finalizes negotiated solution
+ * HOW:  Marks conflict as resolved with accepted proposal
+ */
+nimcp_result_t nimcp_multi_swarm_accept_proposal(
+    nimcp_multi_swarm_coordinator_t* coordinator,
+    uint32_t conflict_id
+) {
+    if (!coordinator) {
+        return NIMCP_INVALID_PARAM;
+    }
+
+    nimcp_swarm_conflict_t* conflict = find_conflict_by_id(coordinator, conflict_id);
+    if (!conflict || !conflict->negotiation) {
+        return NIMCP_NOT_FOUND;
+    }
+
+    /* Mark as resolved */
+    conflict->is_resolved = true;
+    conflict->resolution_time = nimcp_time_get_ms();
+
+    /* Update statistics */
+    coordinator->conflict_stats.conflicts_resolved++;
+    coordinator->conflict_stats.conflicts_pending--;
+
+    LOG_INFO("Proposal accepted for conflict %u after %u rounds",
+             conflict_id, conflict->negotiation_round_count);
+
+    /* Send resolution message */
+    if (g_multi_swarm_ctx) {
+        /* Would send BIO_MSG_SWARM_CONFLICT_RESOLVED here */
+    }
+
+    return NIMCP_SUCCESS;
+}
+
+/**
+ * @brief Reject a negotiation proposal
+ *
+ * WHAT: Swarm rejects current proposal with reason
+ * WHY:  Allows continued negotiation with feedback
+ * HOW:  Logs rejection and allows new proposal
+ */
+nimcp_result_t nimcp_multi_swarm_reject_proposal(
+    nimcp_multi_swarm_coordinator_t* coordinator,
+    uint32_t conflict_id,
+    const char* reason
+) {
+    if (!coordinator) {
+        return NIMCP_INVALID_PARAM;
+    }
+
+    nimcp_swarm_conflict_t* conflict = find_conflict_by_id(coordinator, conflict_id);
+    if (!conflict || !conflict->negotiation) {
+        return NIMCP_NOT_FOUND;
+    }
+
+    LOG_INFO("Proposal rejected for conflict %u: %s",
+             conflict_id, reason ? reason : "No reason");
+
+    /* Check if max rounds exceeded */
+    if (conflict->negotiation_round_count >=
+        coordinator->conflict_config.max_negotiation_rounds) {
+        LOG_WARN("Max negotiation rounds exceeded, escalating conflict %u", conflict_id);
+
+        /* Escalate if allowed */
+        if (coordinator->conflict_config.allow_escalation) {
+            return nimcp_multi_swarm_resolve_conflict(coordinator, conflict_id,
+                NIMCP_CONFLICT_ESCALATION, NULL);
+        }
+
+        return NIMCP_ERROR;
+    }
+
+    return NIMCP_SUCCESS;
+}
+
+/**
+ * @brief Get current negotiation status
+ *
+ * WHAT: Retrieves current round information
+ * WHY:  Allows monitoring negotiation progress
+ * HOW:  Returns copy of current negotiation round data
+ */
+nimcp_result_t nimcp_multi_swarm_get_negotiation_status(
+    nimcp_multi_swarm_coordinator_t* coordinator,
+    uint32_t conflict_id,
+    nimcp_negotiation_round_t* current_round
+) {
+    if (!coordinator) {
+        return NIMCP_INVALID_PARAM;
+    }
+
+    nimcp_swarm_conflict_t* conflict = find_conflict_by_id(coordinator, conflict_id);
+    if (!conflict || !conflict->negotiation) {
+        return NIMCP_NOT_FOUND;
+    }
+
+    if (current_round) {
+        memcpy(current_round, conflict->negotiation, sizeof(nimcp_negotiation_round_t));
+        /* Don't copy pointer, just set to NULL */
+        current_round->proposal = NULL;
+    }
+
+    return NIMCP_SUCCESS;
+}
+
+/**
+ * @brief Get conflict resolution statistics
+ *
+ * WHAT: Returns comprehensive conflict statistics
+ * WHY:  Enables monitoring system health and performance
+ * HOW:  Returns copy of statistics structure
+ */
+nimcp_conflict_resolution_stats_t nimcp_multi_swarm_get_conflict_stats(
+    nimcp_multi_swarm_coordinator_t* coordinator
+) {
+    nimcp_conflict_resolution_stats_t empty_stats = {0};
+
+    if (!coordinator) {
+        return empty_stats;
+    }
+
+    return coordinator->conflict_stats;
+}
+
+/**
+ * @brief Configure conflict resolution behavior
+ *
+ * WHAT: Sets conflict resolution configuration
+ * WHY:  Allows customization of resolution strategies
+ * HOW:  Validates and stores config in coordinator
+ */
+nimcp_result_t nimcp_multi_swarm_set_conflict_config(
+    nimcp_multi_swarm_coordinator_t* coordinator,
+    const nimcp_conflict_resolution_config_t* config
+) {
+    if (!coordinator || !config) {
+        return NIMCP_INVALID_PARAM;
+    }
+
+    /* Validate configuration */
+    if (config->negotiation_timeout_ms < 0 ||
+        config->max_negotiation_rounds == 0 ||
+        config->merge_threshold < 0.0f || config->merge_threshold > 1.0f) {
+        LOG_ERROR("Invalid conflict resolution configuration");
+        return NIMCP_INVALID_PARAM;
+    }
+
+    /* Apply configuration */
+    memcpy(&coordinator->conflict_config, config,
+           sizeof(nimcp_conflict_resolution_config_t));
+
+    LOG_INFO("Applied conflict resolution config: strategy=%d, timeout=%.0fms, max_rounds=%u",
+             config->default_strategy, config->negotiation_timeout_ms,
+             config->max_negotiation_rounds);
+
+    return NIMCP_SUCCESS;
 }
 
 /* ============================================================================

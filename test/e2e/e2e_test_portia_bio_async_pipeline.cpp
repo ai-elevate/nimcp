@@ -20,7 +20,7 @@ extern "C" {
 class PortiaBioAsyncPipelineE2ETest : public ::testing::Test {
 protected:
     void SetUp() override {
-        nimcp_log_init(NIMCP_LOG_LEVEL_INFO, nullptr);
+        nimcp_log_init(NULL);
         nimcp_bio_async_init(nullptr);
         bio_router_init(nullptr);
     }
@@ -45,7 +45,7 @@ TEST_F(PortiaBioAsyncPipelineE2ETest, FullMessageFlow) {
     }
 
     portia_destroy();
-    nimcp_log(NIMCP_LOG_LEVEL_INFO, "FullMessageFlow: PASS");
+    nimcp_log(LOG_LEVEL_INFO, "FullMessageFlow: PASS");
 }
 
 TEST_F(PortiaBioAsyncPipelineE2ETest, MessageHandlingUnderLoad) {
@@ -66,5 +66,5 @@ TEST_F(PortiaBioAsyncPipelineE2ETest, MessageHandlingUnderLoad) {
     EXPECT_GT(updates.load(), 40) << "Should complete most updates under load";
 
     portia_destroy();
-    nimcp_log(NIMCP_LOG_LEVEL_INFO, "MessageHandlingUnderLoad: PASS - Updates=%d", updates.load());
+    nimcp_log(LOG_LEVEL_INFO, "MessageHandlingUnderLoad: PASS - Updates=%d", updates.load());
 }

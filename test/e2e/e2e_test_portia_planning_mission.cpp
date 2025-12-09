@@ -17,7 +17,7 @@ extern "C" {
 class PortiaPlanningMissionE2ETest : public ::testing::Test {
 protected:
     void SetUp() override {
-        nimcp_log_init(NIMCP_LOG_LEVEL_INFO, nullptr);
+        nimcp_log_init(NULL);
     }
 
     void TearDown() override {
@@ -29,10 +29,10 @@ TEST_F(PortiaPlanningMissionE2ETest, MultiWaypointMission) {
     // Test multi-waypoint mission planning
     std::vector<float> waypoints = {0.0f, 1.0f, 2.0f, 3.0f};
     EXPECT_GT(waypoints.size(), 0);
-    nimcp_log(NIMCP_LOG_LEVEL_INFO, "MultiWaypointMission: PASS");
+    nimcp_log(LOG_LEVEL_INFO, "MultiWaypointMission: PASS");
 }
 
 TEST_F(PortiaPlanningMissionE2ETest, ObstacleHandling) {
     // Test planning with obstacles
-    nimcp_log(NIMCP_LOG_LEVEL_INFO, "ObstacleHandling: PASS");
+    nimcp_log(LOG_LEVEL_INFO, "ObstacleHandling: PASS");
 }

@@ -30,9 +30,11 @@ protected:
             bbb_helpers_init();
         }
 
-        // Initialize logging
-        nimcp_log_init("test_accelerator.log");
-        nimcp_log_set_level(NIMCP_LOG_LEVEL_DEBUG);
+        // Initialize logging with default config
+        nimcp_log_config_t log_config = nimcp_log_default_config();
+        log_config.level = LOG_LEVEL_DEBUG;
+        log_config.destinations = NIMCP_LOG_DEST_CONSOLE;
+        nimcp_log_init(&log_config);
     }
 
     void TearDown() override {

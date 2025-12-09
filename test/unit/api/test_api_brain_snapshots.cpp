@@ -54,7 +54,7 @@ protected:
 TEST_F(BrainSnapshotsTest, SnapshotSaveSucceeds) {
     nimcp_status_t status = nimcp_brain_snapshot_save(brain, "test_snapshot", "Test description");
 
-    EXPECT_EQ(status, NIMCP_OK);
+    EXPECT_EQ(status, NIMCP_SUCCESS);
 }
 
 TEST_F(BrainSnapshotsTest, SnapshotSaveWithNullBrainFails) {
@@ -75,13 +75,13 @@ TEST_F(BrainSnapshotsTest, SnapshotSaveWithNullDescriptionSucceeds) {
     nimcp_status_t status = nimcp_brain_snapshot_save(brain, "test_snapshot", nullptr);
 
     // NULL description should be allowed (optional parameter)
-    EXPECT_EQ(status, NIMCP_OK);
+    EXPECT_EQ(status, NIMCP_SUCCESS);
 }
 
 TEST_F(BrainSnapshotsTest, SnapshotSaveWithEmptyDescriptionSucceeds) {
     nimcp_status_t status = nimcp_brain_snapshot_save(brain, "test_snapshot", "");
 
-    EXPECT_EQ(status, NIMCP_OK);
+    EXPECT_EQ(status, NIMCP_SUCCESS);
 }
 
 TEST_F(BrainSnapshotsTest, SnapshotSaveWithLongDescription) {
@@ -92,16 +92,16 @@ TEST_F(BrainSnapshotsTest, SnapshotSaveWithLongDescription) {
     nimcp_status_t status = nimcp_brain_snapshot_save(brain, "test_snapshot", long_desc);
 
     // Should succeed even with long description (may be truncated)
-    EXPECT_EQ(status, NIMCP_OK);
+    EXPECT_EQ(status, NIMCP_SUCCESS);
 }
 
 TEST_F(BrainSnapshotsTest, SnapshotSaveMultipleTimes) {
     // Save same name multiple times (should overwrite or create new)
     nimcp_status_t status1 = nimcp_brain_snapshot_save(brain, "snapshot1", "First save");
-    EXPECT_EQ(status1, NIMCP_OK);
+    EXPECT_EQ(status1, NIMCP_SUCCESS);
 
     nimcp_status_t status2 = nimcp_brain_snapshot_save(brain, "snapshot1", "Second save");
-    EXPECT_EQ(status2, NIMCP_OK);
+    EXPECT_EQ(status2, NIMCP_SUCCESS);
 }
 
 //=============================================================================
@@ -110,7 +110,7 @@ TEST_F(BrainSnapshotsTest, SnapshotSaveMultipleTimes) {
 
 TEST_F(BrainSnapshotsTest, SnapshotRestoreSucceeds) {
     // Save snapshot
-    ASSERT_EQ(nimcp_brain_snapshot_save(brain, "restore_test", "Test"), NIMCP_OK);
+    ASSERT_EQ(nimcp_brain_snapshot_save(brain, "restore_test", "Test"), NIMCP_SUCCESS);
 
     // Restore
     nimcp_brain_t restored = nimcp_brain_snapshot_restore(brain, "restore_test");
@@ -134,7 +134,7 @@ TEST_F(BrainSnapshotsTest, SnapshotRestoreNonexistentFails) {
 
 TEST_F(BrainSnapshotsTest, SnapshotRestoreReturnsValidBrain) {
     // Save snapshot
-    ASSERT_EQ(nimcp_brain_snapshot_save(brain, "valid_test", "Test"), NIMCP_OK);
+    ASSERT_EQ(nimcp_brain_snapshot_save(brain, "valid_test", "Test"), NIMCP_SUCCESS);
 
     // Restore
     nimcp_brain_t restored = nimcp_brain_snapshot_restore(brain, "valid_test");
@@ -143,14 +143,14 @@ TEST_F(BrainSnapshotsTest, SnapshotRestoreReturnsValidBrain) {
     // Test that restored brain is valid
     nimcp_brain_probe_t probe;
     nimcp_status_t status = nimcp_brain_probe(restored, &probe);
-    EXPECT_EQ(status, NIMCP_OK);
+    EXPECT_EQ(status, NIMCP_SUCCESS);
 
     nimcp_brain_destroy(restored);
 }
 
 TEST_F(BrainSnapshotsTest, SnapshotRestoreWithNullBrainSucceeds) {
     // Save snapshot first
-    ASSERT_EQ(nimcp_brain_snapshot_save(brain, "null_brain_test", "Test"), NIMCP_OK);
+    ASSERT_EQ(nimcp_brain_snapshot_save(brain, "null_brain_test", "Test"), NIMCP_SUCCESS);
 
     // Restore with NULL brain (should create new brain from snapshot)
     nimcp_brain_t restored = nimcp_brain_snapshot_restore(nullptr, "null_brain_test");
@@ -162,10 +162,10 @@ TEST_F(BrainSnapshotsTest, SnapshotRestoreWithNullBrainSucceeds) {
 TEST_F(BrainSnapshotsTest, SnapshotRestorePreservesState) {
     // Get original state
     nimcp_brain_probe_t original_probe;
-    ASSERT_EQ(nimcp_brain_probe(brain, &original_probe), NIMCP_OK);
+    ASSERT_EQ(nimcp_brain_probe(brain, &original_probe), NIMCP_SUCCESS);
 
     // Save snapshot
-    ASSERT_EQ(nimcp_brain_snapshot_save(brain, "state_test", "Test"), NIMCP_OK);
+    ASSERT_EQ(nimcp_brain_snapshot_save(brain, "state_test", "Test"), NIMCP_SUCCESS);
 
     // Modify brain
     float features[10] = {1.0f, 1.0f, 1.0f, 1.0f, 1.0f,
@@ -178,7 +178,7 @@ TEST_F(BrainSnapshotsTest, SnapshotRestorePreservesState) {
 
     // Get restored state
     nimcp_brain_probe_t restored_probe;
-    ASSERT_EQ(nimcp_brain_probe(restored, &restored_probe), NIMCP_OK);
+    ASSERT_EQ(nimcp_brain_probe(restored, &restored_probe), NIMCP_SUCCESS);
 
     // Verify state matches original
     EXPECT_EQ(original_probe.num_neurons, restored_probe.num_neurons);
@@ -202,7 +202,7 @@ TEST_F(BrainSnapshotsTest, SnapshotListSucceeds) {
     uint32_t count = 0;
     nimcp_status_t status = nimcp_brain_snapshot_list(brain, infos, 10, &count);
 
-    EXPECT_EQ(status, NIMCP_OK);
+    EXPECT_EQ(status, NIMCP_SUCCESS);
     EXPECT_GT(count, 0);
 }
 
@@ -228,7 +228,7 @@ TEST_F(BrainSnapshotsTest, SnapshotListWithNullCountSucceeds) {
     nimcp_status_t status = nimcp_brain_snapshot_list(brain, infos, 10, nullptr);
 
     // NULL count should be allowed (optional parameter)
-    EXPECT_EQ(status, NIMCP_OK);
+    EXPECT_EQ(status, NIMCP_SUCCESS);
 }
 
 TEST_F(BrainSnapshotsTest, SnapshotListReturnsCorrectCount) {
@@ -241,7 +241,7 @@ TEST_F(BrainSnapshotsTest, SnapshotListReturnsCorrectCount) {
     uint32_t count = 0;
     nimcp_status_t status = nimcp_brain_snapshot_list(brain, infos, 10, &count);
 
-    EXPECT_EQ(status, NIMCP_OK);
+    EXPECT_EQ(status, NIMCP_SUCCESS);
     EXPECT_GE(count, 3); // At least our 3 snapshots
 }
 
@@ -256,7 +256,7 @@ TEST_F(BrainSnapshotsTest, SnapshotListWithSmallBufferLimitsResults) {
     uint32_t count = 0;
     nimcp_status_t status = nimcp_brain_snapshot_list(brain, infos, 2, &count);
 
-    EXPECT_EQ(status, NIMCP_OK);
+    EXPECT_EQ(status, NIMCP_SUCCESS);
     EXPECT_LE(count, 2); // Should not exceed buffer size
 }
 
@@ -266,12 +266,12 @@ TEST_F(BrainSnapshotsTest, SnapshotListWithSmallBufferLimitsResults) {
 
 TEST_F(BrainSnapshotsTest, SnapshotDeleteSucceeds) {
     // Create snapshot
-    ASSERT_EQ(nimcp_brain_snapshot_save(brain, "delete_test", "Test"), NIMCP_OK);
+    ASSERT_EQ(nimcp_brain_snapshot_save(brain, "delete_test", "Test"), NIMCP_SUCCESS);
 
     // Delete it
     nimcp_status_t status = nimcp_brain_snapshot_delete(brain, "delete_test");
 
-    EXPECT_EQ(status, NIMCP_OK);
+    EXPECT_EQ(status, NIMCP_SUCCESS);
 }
 
 TEST_F(BrainSnapshotsTest, SnapshotDeleteWithNullBrainFails) {
@@ -296,8 +296,8 @@ TEST_F(BrainSnapshotsTest, SnapshotDeleteNonexistentFails) {
 
 TEST_F(BrainSnapshotsTest, SnapshotDeleteRemovesSnapshot) {
     // Create and delete snapshot
-    ASSERT_EQ(nimcp_brain_snapshot_save(brain, "temp_snapshot", "Temp"), NIMCP_OK);
-    ASSERT_EQ(nimcp_brain_snapshot_delete(brain, "temp_snapshot"), NIMCP_OK);
+    ASSERT_EQ(nimcp_brain_snapshot_save(brain, "temp_snapshot", "Temp"), NIMCP_SUCCESS);
+    ASSERT_EQ(nimcp_brain_snapshot_delete(brain, "temp_snapshot"), NIMCP_SUCCESS);
 
     // Try to restore deleted snapshot (should fail)
     nimcp_brain_t restored = nimcp_brain_snapshot_restore(brain, "temp_snapshot");
@@ -310,31 +310,31 @@ TEST_F(BrainSnapshotsTest, SnapshotDeleteRemovesSnapshot) {
 
 TEST_F(BrainSnapshotsTest, MultipleSnapshotsWork) {
     // Create multiple snapshots at different states
-    ASSERT_EQ(nimcp_brain_snapshot_save(brain, "state1", "Initial state"), NIMCP_OK);
+    ASSERT_EQ(nimcp_brain_snapshot_save(brain, "state1", "Initial state"), NIMCP_SUCCESS);
 
     // Modify brain
     float features1[10] = {0.5f, 0.5f, 0.5f, 0.5f, 0.5f,
                            0.5f, 0.5f, 0.5f, 0.5f, 0.5f};
     nimcp_brain_learn_example(brain, features1, 10, "class_b", 0.8f);
-    ASSERT_EQ(nimcp_brain_snapshot_save(brain, "state2", "After learning"), NIMCP_OK);
+    ASSERT_EQ(nimcp_brain_snapshot_save(brain, "state2", "After learning"), NIMCP_SUCCESS);
 
     // Modify again
     float features2[10] = {1.0f, 1.0f, 1.0f, 1.0f, 1.0f,
                            1.0f, 1.0f, 1.0f, 1.0f, 1.0f};
     nimcp_brain_learn_example(brain, features2, 10, "class_c", 0.9f);
-    ASSERT_EQ(nimcp_brain_snapshot_save(brain, "state3", "After more learning"), NIMCP_OK);
+    ASSERT_EQ(nimcp_brain_snapshot_save(brain, "state3", "After more learning"), NIMCP_SUCCESS);
 
     // Verify all snapshots can be listed
     nimcp_brain_snapshot_info_t infos[10];
     uint32_t count = 0;
-    ASSERT_EQ(nimcp_brain_snapshot_list(brain, infos, 10, &count), NIMCP_OK);
+    ASSERT_EQ(nimcp_brain_snapshot_list(brain, infos, 10, &count), NIMCP_SUCCESS);
     EXPECT_GE(count, 3);
 }
 
 TEST_F(BrainSnapshotsTest, RestoreFromMultipleSnapshots) {
     // Create snapshots
-    ASSERT_EQ(nimcp_brain_snapshot_save(brain, "snap_alpha", "Alpha"), NIMCP_OK);
-    ASSERT_EQ(nimcp_brain_snapshot_save(brain, "snap_beta", "Beta"), NIMCP_OK);
+    ASSERT_EQ(nimcp_brain_snapshot_save(brain, "snap_alpha", "Alpha"), NIMCP_SUCCESS);
+    ASSERT_EQ(nimcp_brain_snapshot_save(brain, "snap_beta", "Beta"), NIMCP_SUCCESS);
 
     // Restore from first
     nimcp_brain_t restored1 = nimcp_brain_snapshot_restore(brain, "snap_alpha");
@@ -350,12 +350,12 @@ TEST_F(BrainSnapshotsTest, RestoreFromMultipleSnapshots) {
 
 TEST_F(BrainSnapshotsTest, DeleteOneOfMultipleSnapshots) {
     // Create multiple snapshots
-    ASSERT_EQ(nimcp_brain_snapshot_save(brain, "keep1", "Keep this"), NIMCP_OK);
-    ASSERT_EQ(nimcp_brain_snapshot_save(brain, "delete_me", "Delete this"), NIMCP_OK);
-    ASSERT_EQ(nimcp_brain_snapshot_save(brain, "keep2", "Keep this too"), NIMCP_OK);
+    ASSERT_EQ(nimcp_brain_snapshot_save(brain, "keep1", "Keep this"), NIMCP_SUCCESS);
+    ASSERT_EQ(nimcp_brain_snapshot_save(brain, "delete_me", "Delete this"), NIMCP_SUCCESS);
+    ASSERT_EQ(nimcp_brain_snapshot_save(brain, "keep2", "Keep this too"), NIMCP_SUCCESS);
 
     // Delete one
-    ASSERT_EQ(nimcp_brain_snapshot_delete(brain, "delete_me"), NIMCP_OK);
+    ASSERT_EQ(nimcp_brain_snapshot_delete(brain, "delete_me"), NIMCP_SUCCESS);
 
     // Verify others still exist
     nimcp_brain_t restored1 = nimcp_brain_snapshot_restore(brain, "keep1");
@@ -380,13 +380,13 @@ TEST_F(BrainSnapshotsTest, SnapshotMetadataContainsName) {
     // Create snapshot with unique name to avoid collisions
     char unique_name[64];
     snprintf(unique_name, sizeof(unique_name), "metadata_test_%ld", (long)time(nullptr));
-    ASSERT_EQ(nimcp_brain_snapshot_save(brain, unique_name, "Test"), NIMCP_OK);
+    ASSERT_EQ(nimcp_brain_snapshot_save(brain, unique_name, "Test"), NIMCP_SUCCESS);
 
     // List and check metadata - use heap to avoid stack overflow
     // Note: build/snapshots/ may have 1000+ snapshots from repeated test runs
     nimcp_brain_snapshot_info_t* infos = new nimcp_brain_snapshot_info_t[2000];
     uint32_t count = 0;
-    ASSERT_EQ(nimcp_brain_snapshot_list(brain, infos, 2000, &count), NIMCP_OK);
+    ASSERT_EQ(nimcp_brain_snapshot_list(brain, infos, 2000, &count), NIMCP_SUCCESS);
 
     // Find our snapshot
     bool found = false;
@@ -406,13 +406,13 @@ TEST_F(BrainSnapshotsTest, SnapshotMetadataContainsDescription) {
     // Use unique name with timestamp to ensure we can find it
     char unique_name[64];
     snprintf(unique_name, sizeof(unique_name), "desc_test_%ld", (long)time(nullptr));
-    ASSERT_EQ(nimcp_brain_snapshot_save(brain, unique_name, test_desc), NIMCP_OK);
+    ASSERT_EQ(nimcp_brain_snapshot_save(brain, unique_name, test_desc), NIMCP_SUCCESS);
 
     // Use large buffer to ensure we can find the snapshot among many
     // Note: build/snapshots/ may have 1000+ snapshots from repeated test runs
     nimcp_brain_snapshot_info_t* infos = new nimcp_brain_snapshot_info_t[2000];
     uint32_t count = 0;
-    ASSERT_EQ(nimcp_brain_snapshot_list(brain, infos, 2000, &count), NIMCP_OK);
+    ASSERT_EQ(nimcp_brain_snapshot_list(brain, infos, 2000, &count), NIMCP_SUCCESS);
 
     // Find our snapshot and check description
     bool found = false;
@@ -432,13 +432,13 @@ TEST_F(BrainSnapshotsTest, SnapshotMetadataContainsTimestamp) {
     // Create snapshot with unique name
     char unique_name[64];
     snprintf(unique_name, sizeof(unique_name), "timestamp_test_%ld", (long)time(nullptr));
-    ASSERT_EQ(nimcp_brain_snapshot_save(brain, unique_name, "Test"), NIMCP_OK);
+    ASSERT_EQ(nimcp_brain_snapshot_save(brain, unique_name, "Test"), NIMCP_SUCCESS);
 
     // Use heap allocation to avoid stack overflow
     // Note: build/snapshots/ may have 1000+ snapshots from repeated test runs
     nimcp_brain_snapshot_info_t* infos = new nimcp_brain_snapshot_info_t[2000];
     uint32_t count = 0;
-    ASSERT_EQ(nimcp_brain_snapshot_list(brain, infos, 2000, &count), NIMCP_OK);
+    ASSERT_EQ(nimcp_brain_snapshot_list(brain, infos, 2000, &count), NIMCP_SUCCESS);
 
     // Find our snapshot and check timestamp
     bool found = false;
@@ -461,15 +461,15 @@ TEST_F(BrainSnapshotsTest, SnapshotMetadataTimestampsAreOrdered) {
     snprintf(name1, sizeof(name1), "time1_%ld", ts);
     snprintf(name2, sizeof(name2), "time2_%ld", ts);
 
-    ASSERT_EQ(nimcp_brain_snapshot_save(brain, name1, "First"), NIMCP_OK);
+    ASSERT_EQ(nimcp_brain_snapshot_save(brain, name1, "First"), NIMCP_SUCCESS);
     sleep(1); // 1 second delay to ensure different timestamp (second precision)
-    ASSERT_EQ(nimcp_brain_snapshot_save(brain, name2, "Second"), NIMCP_OK);
+    ASSERT_EQ(nimcp_brain_snapshot_save(brain, name2, "Second"), NIMCP_SUCCESS);
 
     // Use heap allocation to avoid stack overflow
     // Note: build/snapshots/ may have 1000+ snapshots from repeated test runs
     nimcp_brain_snapshot_info_t* infos = new nimcp_brain_snapshot_info_t[2000];
     uint32_t count = 0;
-    ASSERT_EQ(nimcp_brain_snapshot_list(brain, infos, 2000, &count), NIMCP_OK);
+    ASSERT_EQ(nimcp_brain_snapshot_list(brain, infos, 2000, &count), NIMCP_SUCCESS);
 
     // Find both snapshots
     uint64_t time1_ts = 0, time2_ts = 0;

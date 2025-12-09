@@ -7,9 +7,11 @@
 #include "utils/memory/nimcp_memory.h"
 #include "utils/thread/nimcp_thread.h"
 #include "security/nimcp_blood_brain_barrier.h"
+#include "security/nimcp_bbb_helpers.h"
 #include "async/nimcp_bio_router.h"
 #include "async/nimcp_bio_messages.h"
 #include "utils/validation/nimcp_common.h"
+#include <stdlib.h>
 
 #define LOG_MODULE "portia_tier_switch"
 #include <string.h>
@@ -53,13 +55,15 @@ struct portia_tier_switch_struct {
     tier_switch_state_t state;
 
     // Thread synchronization
-    nimcp_mutex_t* state_mutex;
-    nimcp_thread_t* monitor_thread;
+    nimcp_platform_mutex_t state_mutex;
+    nimcp_thread_t monitor_thread;
     bool monitor_running;
+    bool monitor_thread_created;
 
     // Callbacks
     callback_entry_t callbacks[PORTIA_MAX_CALLBACKS];
-    nimcp_mutex_t* callback_mutex;
+    nimcp_platform_mutex_t callback_mutex;
+    bool callback_mutex_init;
 
     // Bio-async integration
     void* bio_ctx;
@@ -102,7 +106,7 @@ static bool validate_switcher(portia_tier_switch_t switcher) {
 
     if (switcher->magic != PORTIA_TIER_SWITCH_MAGIC) {
         LOG_ERROR("[%s] Invalid switcher magic: 0x%08X", PORTIA_MODULE_NAME, switcher->magic);
-        bbb_audit_log(NULL, "portia_tier_switch", "invalid_magic", NULL);
+        bbb_audit_log(BBB_AUDIT_WARNING, LOG_MODULE, "invalid_magic", "invalid switcher magic");
         return false;
     }
 
@@ -118,18 +122,18 @@ static bool validate_tier(platform_tier_t tier) {
 }
 
 static bool validate_config(const tier_switch_config_t* config) {
-    if (!bbb_validate_pointer(NULL, config, sizeof(tier_switch_config_t), NULL)) {
+    if (!config) {
         LOG_ERROR("[%s] Invalid config pointer", PORTIA_MODULE_NAME);
         return false;
     }
 
     // Validate threshold ranges
-    if (!bbb_validate_range(NULL, config->memory_high_threshold, 0.0f, 100.0f, NULL)) {
+    if (config->memory_high_threshold < 0.0f || config->memory_high_threshold > 100.0f) {
         LOG_ERROR("[%s] Invalid memory_high_threshold: %.2f", PORTIA_MODULE_NAME, config->memory_high_threshold);
         return false;
     }
 
-    if (!bbb_validate_range(NULL, config->memory_low_threshold, 0.0f, 100.0f, NULL)) {
+    if (config->memory_low_threshold < 0.0f || config->memory_low_threshold > 100.0f) {
         LOG_ERROR("[%s] Invalid memory_low_threshold: %.2f", PORTIA_MODULE_NAME, config->memory_low_threshold);
         return false;
     }
@@ -171,7 +175,7 @@ static bool query_system_metrics(portia_tier_switch_t switcher) {
     switcher->last_resource_query_ms = now;
 
     // Calculate metrics
-    nimcp_mutex_lock(switcher->state_mutex);
+    nimcp_platform_mutex_lock(&switcher->state_mutex);
 
     if (resources.total_ram_mb > 0) {
         uint64_t used_ram = resources.total_ram_mb - resources.available_ram_mb;
@@ -190,7 +194,7 @@ static bool query_system_metrics(portia_tier_switch_t switcher) {
         switcher->state.current_cpu_load_pct = 0.0f;  // TODO: Implement CPU load monitoring
     }
 
-    nimcp_mutex_unlock(switcher->state_mutex);
+    nimcp_platform_mutex_unlock(&switcher->state_mutex);
 
     LOG_DEBUG("[%s] System metrics: Memory=%.1f%%, Temp=%.1f°C, Battery=%.1f%%, Load=%.1f%%",
               PORTIA_MODULE_NAME,
@@ -228,7 +232,7 @@ static void broadcast_tier_switch_event(
     // Create bio-async message (using system message type)
     // In a full implementation, this would use nimcp_bio_send_message() or similar
     // For now, we log the event
-    bbb_audit_log(switcher->bbb_system, PORTIA_MODULE_NAME, "tier_switch_event", event->reason);
+    bbb_audit_log(BBB_AUDIT_INFO, LOG_MODULE, "tier_switch_event", "%s", event->reason);
 }
 
 //=============================================================================
@@ -239,11 +243,11 @@ static void invoke_callbacks(
     portia_tier_switch_t switcher,
     const tier_switch_event_t* event)
 {
-    if (!switcher->callback_mutex) {
+    if (!switcher->callback_mutex_init) {
         return;
     }
 
-    nimcp_mutex_lock(switcher->callback_mutex);
+    nimcp_platform_mutex_lock(&switcher->callback_mutex);
 
     for (int i = 0; i < PORTIA_MAX_CALLBACKS; i++) {
         if (switcher->callbacks[i].active && switcher->callbacks[i].callback) {
@@ -252,7 +256,7 @@ static void invoke_callbacks(
         }
     }
 
-    nimcp_mutex_unlock(switcher->callback_mutex);
+    nimcp_platform_mutex_unlock(&switcher->callback_mutex);
 }
 
 //=============================================================================
@@ -436,20 +440,19 @@ portia_tier_switch_t portia_tier_switch_init(const tier_switch_config_t* config)
     switcher->state.emergency_mode = false;
 
     // Create mutexes
-    switcher->state_mutex = nimcp_mutex_create();
-    if (!switcher->state_mutex) {
+    if (nimcp_platform_mutex_init(&switcher->state_mutex, false) != 0) {
         LOG_ERROR("[%s] Failed to create state mutex", PORTIA_MODULE_NAME);
         nimcp_free(switcher);
         return NULL;
     }
 
-    switcher->callback_mutex = nimcp_mutex_create();
-    if (!switcher->callback_mutex) {
+    if (nimcp_platform_mutex_init(&switcher->callback_mutex, false) != 0) {
         LOG_ERROR("[%s] Failed to create callback mutex", PORTIA_MODULE_NAME);
-        nimcp_mutex_destroy(switcher->state_mutex);
+        nimcp_platform_mutex_destroy(&switcher->state_mutex);
         nimcp_free(switcher);
         return NULL;
     }
+    switcher->callback_mutex_init = true;
 
     // Initialize callbacks
     for (int i = 0; i < PORTIA_MAX_CALLBACKS; i++) {
@@ -477,14 +480,14 @@ portia_tier_switch_t portia_tier_switch_init(const tier_switch_config_t* config)
     // Start monitoring thread if auto-switch enabled
     if (use_config->auto_switch_enabled) {
         switcher->monitor_running = true;
-        switcher->monitor_thread = nimcp_thread_create(monitoring_thread_func, switcher);
-        if (!switcher->monitor_thread) {
+        if (nimcp_thread_create(&switcher->monitor_thread, monitoring_thread_func, switcher, NULL) != 0) {
             LOG_ERROR("[%s] Failed to create monitoring thread", PORTIA_MODULE_NAME);
-            nimcp_mutex_destroy(switcher->callback_mutex);
-            nimcp_mutex_destroy(switcher->state_mutex);
+            nimcp_platform_mutex_destroy(&switcher->callback_mutex);
+            nimcp_platform_mutex_destroy(&switcher->state_mutex);
             nimcp_free(switcher);
             return NULL;
         }
+        switcher->monitor_thread_created = true;
         LOG_INFO("[%s] Monitoring thread started", PORTIA_MODULE_NAME);
     }
 
@@ -493,7 +496,7 @@ portia_tier_switch_t portia_tier_switch_init(const tier_switch_config_t* config)
              platform_tier_get_name(switcher->state.current_tier),
              use_config->auto_switch_enabled ? "enabled" : "disabled");
 
-    bbb_audit_log(NULL, PORTIA_MODULE_NAME, "tier_switch_init", "success");
+    bbb_audit_log(BBB_AUDIT_INFO, LOG_MODULE, "tier_switch_init", "success");
 
     return switcher;
 }
@@ -506,21 +509,18 @@ void portia_tier_switch_shutdown(portia_tier_switch_t switcher) {
     LOG_INFO("[%s] Shutting down tier switching system", PORTIA_MODULE_NAME);
 
     // Stop monitoring thread
-    if (switcher->monitor_thread) {
+    if (switcher->monitor_thread_created) {
         switcher->monitor_running = false;
-        nimcp_thread_join(switcher->monitor_thread);
-        nimcp_thread_destroy(switcher->monitor_thread);
+        nimcp_thread_join(switcher->monitor_thread, NULL);
         LOG_DEBUG("[%s] Monitoring thread stopped", PORTIA_MODULE_NAME);
     }
 
     // Destroy mutexes
-    if (switcher->callback_mutex) {
-        nimcp_mutex_destroy(switcher->callback_mutex);
+    if (switcher->callback_mutex_init) {
+        nimcp_platform_mutex_destroy(&switcher->callback_mutex);
     }
 
-    if (switcher->state_mutex) {
-        nimcp_mutex_destroy(switcher->state_mutex);
-    }
+    nimcp_platform_mutex_destroy(&switcher->state_mutex);
 
     // Clear magic
     switcher->magic = 0;
@@ -529,7 +529,7 @@ void portia_tier_switch_shutdown(portia_tier_switch_t switcher) {
     nimcp_free(switcher);
 
     LOG_INFO("[%s] Shutdown complete", PORTIA_MODULE_NAME);
-    bbb_audit_log(NULL, PORTIA_MODULE_NAME, "tier_switch_shutdown", "success");
+    bbb_audit_log(BBB_AUDIT_INFO, LOG_MODULE, "tier_switch_shutdown", "success");
 }
 
 //=============================================================================
@@ -559,12 +559,12 @@ bool portia_tier_switch_evaluate(
         return false;
     }
 
-    nimcp_mutex_lock(switcher->state_mutex);
+    nimcp_platform_mutex_lock(&switcher->state_mutex);
 
     // Check if switch is already in progress
     if (switcher->state.switch_in_progress) {
         LOG_DEBUG("[%s] Switch already in progress, skipping evaluation", PORTIA_MODULE_NAME);
-        nimcp_mutex_unlock(switcher->state_mutex);
+        nimcp_platform_mutex_unlock(&switcher->state_mutex);
         return false;
     }
 
@@ -671,7 +671,7 @@ bool portia_tier_switch_evaluate(
     uint64_t eval_time = get_time_ms() - eval_start;
     switcher->total_evaluation_time_ms += eval_time;
 
-    nimcp_mutex_unlock(switcher->state_mutex);
+    nimcp_platform_mutex_unlock(&switcher->state_mutex);
 
     if (should_switch) {
         LOG_INFO("[%s] Evaluation complete: %s -> %s (trigger: %s, eval_time: %lu ms)",
@@ -705,7 +705,7 @@ int portia_tier_switch_execute(
 
     uint64_t transition_start = get_time_ms();
 
-    nimcp_mutex_lock(switcher->state_mutex);
+    nimcp_platform_mutex_lock(&switcher->state_mutex);
 
     platform_tier_t current_tier = switcher->state.current_tier;
 
@@ -714,14 +714,14 @@ int portia_tier_switch_execute(
         LOG_DEBUG("[%s] Already at target tier: %s",
                   PORTIA_MODULE_NAME,
                   platform_tier_get_name(target_tier));
-        nimcp_mutex_unlock(switcher->state_mutex);
+        nimcp_platform_mutex_unlock(&switcher->state_mutex);
         return 0;
     }
 
     // Check if switch already in progress
     if (switcher->state.switch_in_progress) {
         LOG_WARN("[%s] Switch already in progress", PORTIA_MODULE_NAME);
-        nimcp_mutex_unlock(switcher->state_mutex);
+        nimcp_platform_mutex_unlock(&switcher->state_mutex);
         return -1;
     }
 
@@ -736,7 +736,7 @@ int portia_tier_switch_execute(
 
     switcher->state.emergency_mode = is_emergency;
 
-    nimcp_mutex_unlock(switcher->state_mutex);
+    nimcp_platform_mutex_unlock(&switcher->state_mutex);
 
     LOG_INFO("[%s] Executing tier switch: %s -> %s (trigger: %s, %s%s)",
              PORTIA_MODULE_NAME,
@@ -784,7 +784,7 @@ int portia_tier_switch_execute(
              new_config.cognitive_modules_enabled);
 
     // Update state
-    nimcp_mutex_lock(switcher->state_mutex);
+    nimcp_platform_mutex_lock(&switcher->state_mutex);
 
     switcher->state.previous_tier = current_tier;
     switcher->state.current_tier = target_tier;
@@ -804,7 +804,7 @@ int portia_tier_switch_execute(
     uint64_t transition_time = get_time_ms() - transition_start;
     switcher->total_transition_time_ms += transition_time;
 
-    nimcp_mutex_unlock(switcher->state_mutex);
+    nimcp_platform_mutex_unlock(&switcher->state_mutex);
 
     // Update event with transition time
     event.transition_time_ms = (uint32_t)transition_time;
@@ -821,7 +821,7 @@ int portia_tier_switch_execute(
              platform_tier_get_name(target_tier),
              (unsigned long)transition_time);
 
-    bbb_audit_log(switcher->bbb_system, PORTIA_MODULE_NAME, "tier_switch_success", event.reason);
+    bbb_audit_log(BBB_AUDIT_INFO, LOG_MODULE, "tier_switch_success", "%s", event.reason);
 
     return 0;
 }
@@ -840,13 +840,13 @@ bool portia_tier_switch_can_upgrade(
         return false;
     }
 
-    nimcp_mutex_lock(switcher->state_mutex);
+    nimcp_platform_mutex_lock(&switcher->state_mutex);
 
     platform_tier_t current = switcher->state.current_tier;
 
     // Can't upgrade if already at target or higher
     if (current <= target_tier) {
-        nimcp_mutex_unlock(switcher->state_mutex);
+        nimcp_platform_mutex_unlock(&switcher->state_mutex);
         return false;
     }
 
@@ -855,7 +855,7 @@ bool portia_tier_switch_can_upgrade(
     uint64_t time_since_last = now - switcher->state.last_switch_time_ms;
     if (time_since_last < switcher->config.hysteresis_ms) {
         LOG_DEBUG("[%s] Hysteresis active, cannot upgrade yet", PORTIA_MODULE_NAME);
-        nimcp_mutex_unlock(switcher->state_mutex);
+        nimcp_platform_mutex_unlock(&switcher->state_mutex);
         return false;
     }
 
@@ -870,7 +870,7 @@ bool portia_tier_switch_can_upgrade(
 
     bool can_upgrade = memory_ok && thermal_ok && battery_ok && load_ok;
 
-    nimcp_mutex_unlock(switcher->state_mutex);
+    nimcp_platform_mutex_unlock(&switcher->state_mutex);
 
     if (can_upgrade) {
         LOG_DEBUG("[%s] Upgrade to %s is safe",
@@ -909,7 +909,7 @@ bool portia_tier_switch_can_downgrade(
         return false;
     }
 
-    nimcp_mutex_lock(switcher->state_mutex);
+    nimcp_platform_mutex_lock(&switcher->state_mutex);
 
     platform_tier_t current = switcher->state.current_tier;
     *target_tier = current;
@@ -918,7 +918,7 @@ bool portia_tier_switch_can_downgrade(
 
     // Can't downgrade if already at minimum
     if (current == PLATFORM_TIER_MINIMAL) {
-        nimcp_mutex_unlock(switcher->state_mutex);
+        nimcp_platform_mutex_unlock(&switcher->state_mutex);
         return false;
     }
 
@@ -947,7 +947,7 @@ bool portia_tier_switch_can_downgrade(
         should_downgrade = true;
     }
 
-    nimcp_mutex_unlock(switcher->state_mutex);
+    nimcp_platform_mutex_unlock(&switcher->state_mutex);
 
     if (should_downgrade) {
         LOG_DEBUG("[%s] Downgrade needed: %s -> %s (trigger: %s)",
@@ -977,9 +977,9 @@ int portia_tier_switch_get_state(
         return -1;
     }
 
-    nimcp_mutex_lock(switcher->state_mutex);
+    nimcp_platform_mutex_lock(&switcher->state_mutex);
     memcpy(state, &switcher->state, sizeof(tier_switch_state_t));
-    nimcp_mutex_unlock(switcher->state_mutex);
+    nimcp_platform_mutex_unlock(&switcher->state_mutex);
 
     return 0;
 }
@@ -989,9 +989,9 @@ platform_tier_t portia_tier_switch_get_current_tier(portia_tier_switch_t switche
         return PLATFORM_TIER_MINIMAL;
     }
 
-    nimcp_mutex_lock(switcher->state_mutex);
+    nimcp_platform_mutex_lock(&switcher->state_mutex);
     platform_tier_t tier = switcher->state.current_tier;
-    nimcp_mutex_unlock(switcher->state_mutex);
+    nimcp_platform_mutex_unlock(&switcher->state_mutex);
 
     return tier;
 }
@@ -1001,9 +1001,9 @@ bool portia_tier_switch_is_transitioning(portia_tier_switch_t switcher) {
         return false;
     }
 
-    nimcp_mutex_lock(switcher->state_mutex);
+    nimcp_platform_mutex_lock(&switcher->state_mutex);
     bool transitioning = switcher->state.switch_in_progress;
-    nimcp_mutex_unlock(switcher->state_mutex);
+    nimcp_platform_mutex_unlock(&switcher->state_mutex);
 
     return transitioning;
 }
@@ -1027,12 +1027,12 @@ int portia_tier_switch_get_statistics(
         return -1;
     }
 
-    nimcp_mutex_lock(switcher->state_mutex);
+    nimcp_platform_mutex_lock(&switcher->state_mutex);
     *total_switches = switcher->state.switch_count;
     *upgrades = switcher->state.upgrade_count;
     *downgrades = switcher->state.downgrade_count;
     *failed = switcher->state.failed_switch_count;
-    nimcp_mutex_unlock(switcher->state_mutex);
+    nimcp_platform_mutex_unlock(&switcher->state_mutex);
 
     return 0;
 }
@@ -1049,11 +1049,11 @@ void portia_tier_switch_set_auto_switch(
         return;
     }
 
-    nimcp_mutex_lock(switcher->state_mutex);
+    nimcp_platform_mutex_lock(&switcher->state_mutex);
     bool was_enabled = switcher->state.auto_switch_active;
     switcher->state.auto_switch_active = enabled;
     switcher->config.auto_switch_enabled = enabled;
-    nimcp_mutex_unlock(switcher->state_mutex);
+    nimcp_platform_mutex_unlock(&switcher->state_mutex);
 
     LOG_INFO("[%s] Auto-switch %s -> %s",
              PORTIA_MODULE_NAME,
@@ -1071,12 +1071,12 @@ int portia_tier_switch_update_config(
         return -1;
     }
 
-    nimcp_mutex_lock(switcher->state_mutex);
+    nimcp_platform_mutex_lock(&switcher->state_mutex);
     memcpy(&switcher->config, config, sizeof(tier_switch_config_t));
-    nimcp_mutex_unlock(switcher->state_mutex);
+    nimcp_platform_mutex_unlock(&switcher->state_mutex);
 
     LOG_INFO("[%s] Configuration updated", PORTIA_MODULE_NAME);
-    bbb_audit_log(switcher->bbb_system, PORTIA_MODULE_NAME, "config_update", "success");
+    bbb_audit_log(BBB_AUDIT_INFO, LOG_MODULE, "config_update", "success");
 
     return 0;
 }
@@ -1090,12 +1090,12 @@ void portia_tier_switch_set_callback(
         return;
     }
 
-    if (!bbb_validate_pointer(NULL, callback, 1, NULL)) {
+    if (!callback) {
         LOG_ERROR("[%s] Invalid callback pointer", PORTIA_MODULE_NAME);
         return;
     }
 
-    nimcp_mutex_lock(switcher->callback_mutex);
+    nimcp_platform_mutex_lock(&switcher->callback_mutex);
 
     // Find first available slot
     for (int i = 0; i < PORTIA_MAX_CALLBACKS; i++) {
@@ -1104,12 +1104,12 @@ void portia_tier_switch_set_callback(
             switcher->callbacks[i].user_data = user_data;
             switcher->callbacks[i].active = true;
             LOG_DEBUG("[%s] Callback registered in slot %d", PORTIA_MODULE_NAME, i);
-            nimcp_mutex_unlock(switcher->callback_mutex);
+            nimcp_platform_mutex_unlock(&switcher->callback_mutex);
             return;
         }
     }
 
-    nimcp_mutex_unlock(switcher->callback_mutex);
+    nimcp_platform_mutex_unlock(&switcher->callback_mutex);
     LOG_WARN("[%s] No callback slots available", PORTIA_MODULE_NAME);
 }
 
@@ -1140,17 +1140,17 @@ int portia_tier_switch_emergency_downgrade(portia_tier_switch_t switcher) {
 
     LOG_WARN("[%s] EMERGENCY DOWNGRADE requested", PORTIA_MODULE_NAME);
 
-    nimcp_mutex_lock(switcher->state_mutex);
+    nimcp_platform_mutex_lock(&switcher->state_mutex);
     switcher->state.emergency_mode = true;
-    nimcp_mutex_unlock(switcher->state_mutex);
+    nimcp_platform_mutex_unlock(&switcher->state_mutex);
 
     int result = portia_tier_switch_execute(
         switcher,
         PLATFORM_TIER_MINIMAL,
         TIER_SWITCH_TRIGGER_MEMORY_PRESSURE);
 
-    bbb_audit_log(switcher->bbb_system, PORTIA_MODULE_NAME, "emergency_downgrade",
-                  result == 0 ? "success" : "failed");
+    bbb_audit_log(BBB_AUDIT_INFO, LOG_MODULE, "emergency_downgrade",
+                  "%s", result == 0 ? "success" : "failed");
 
     return result;
 }

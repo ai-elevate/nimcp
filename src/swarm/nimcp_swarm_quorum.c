@@ -9,6 +9,7 @@
 
 #include "swarm/nimcp_swarm_quorum.h"
 #include "core/brain/nimcp_brain.h"
+#include "core/neuron_types/nimcp_neural_logic.h"
 #include "async/nimcp_bio_router.h"
 #include "async/nimcp_bio_messages.h"
 #include "utils/logging/nimcp_logging.h"
@@ -1031,4 +1032,288 @@ void nimcp_quorum_print_state(const nimcp_swarm_quorum_t* quorum) {
     printf("  Total Commitments: %lu\n", quorum->stats.total_commitments);
 
     printf("\n");
+}
+
+/* ============================================================================
+ * Logic Validation Implementation
+ * ============================================================================ */
+
+/**
+ * @brief Get default logic validation configuration
+ *
+ * WHAT: Provides sensible defaults for logic validation
+ * WHY:  Simplify usage of logic validation features
+ * HOW:  Sets majority voting with consistency checks
+ */
+void quorum_logic_default_config(quorum_logic_config_t* config) {
+    if (!config) return;
+
+    config->gate_type = LOGIC_GATE_AND;  /* Default to unanimous */
+    config->threshold = 0.5f;             /* Majority threshold */
+    config->require_consistency = true;   /* Check for contradictions */
+    config->min_agents = 3;               /* Minimum 3 agents */
+    config->confidence_threshold = 0.7f;  /* 70% confidence required */
+}
+
+/**
+ * @brief Validate quorum decision using logic gates
+ *
+ * WHAT: Validates quorum decisions through neural logic gate evaluation
+ * WHY:  Ensures logical consistency and correctness of distributed decisions
+ * HOW:  Uses AND/OR/XOR/IMPLIES gates to verify voting patterns
+ */
+int quorum_validate_with_logic(
+    nimcp_swarm_quorum_t* quorum,
+    const quorum_logic_config_t* logic_cfg
+) {
+    if (!quorum || !logic_cfg) {
+        LOG_ERROR("Invalid parameters for logic validation");
+        return -1;
+    }
+
+    /* Guard clause: Check minimum agents */
+    if (quorum->commitment_count < logic_cfg->min_agents) {
+        LOG_WARN("Insufficient agents for validation: %u < %u",
+                 quorum->commitment_count, logic_cfg->min_agents);
+        return 0;
+    }
+
+    nimcp_platform_mutex_lock(quorum->mutex);
+
+    /* Find winning signal */
+    nimcp_signal_type_t winning_signal = NIMCP_SIGNAL_COUNT;
+    uint32_t max_committed = 0;
+
+    for (int i = 0; i < NIMCP_SIGNAL_COUNT; i++) {
+        if (quorum->signals[i].committed_count > max_committed) {
+            max_committed = quorum->signals[i].committed_count;
+            winning_signal = i;
+        }
+    }
+
+    if (winning_signal == NIMCP_SIGNAL_COUNT) {
+        nimcp_platform_mutex_unlock(quorum->mutex);
+        LOG_DEBUG("No winning signal found for validation");
+        return 0;
+    }
+
+    /* Calculate vote fractions for logic evaluation */
+    float winning_fraction = (float)max_committed / (float)quorum->commitment_count;
+    float confidence = quorum->signals[winning_signal].concentration;
+
+    /* Guard clause: Check confidence threshold */
+    if (confidence < logic_cfg->confidence_threshold) {
+        nimcp_platform_mutex_unlock(quorum->mutex);
+        LOG_WARN("Confidence below threshold: %.2f < %.2f",
+                 confidence, logic_cfg->confidence_threshold);
+        return 0;
+    }
+
+    int validation_result = 0;
+
+    /* Evaluate based on gate type */
+    switch (logic_cfg->gate_type) {
+        case LOGIC_GATE_AND:
+            /* Unanimous: All agents must agree */
+            validation_result = (winning_fraction >= 0.99f) ? 1 : 0;
+            LOG_DEBUG("AND validation: fraction=%.2f, result=%d",
+                     winning_fraction, validation_result);
+            break;
+
+        case LOGIC_GATE_OR:
+            /* Permissive: Any significant support passes */
+            validation_result = (winning_fraction > 0.0f) ? 1 : 0;
+            LOG_DEBUG("OR validation: fraction=%.2f, result=%d",
+                     winning_fraction, validation_result);
+            break;
+
+        case LOGIC_GATE_XOR:
+            /* Exclusive: Exactly one clear winner, no ties */
+            {
+                uint32_t second_max = 0;
+                for (int i = 0; i < NIMCP_SIGNAL_COUNT; i++) {
+                    if (i != winning_signal &&
+                        quorum->signals[i].committed_count > second_max) {
+                        second_max = quorum->signals[i].committed_count;
+                    }
+                }
+                /* Clear winner with no close second */
+                validation_result = (max_committed > second_max * 2) ? 1 : 0;
+                LOG_DEBUG("XOR validation: max=%u, second=%u, result=%d",
+                         max_committed, second_max, validation_result);
+            }
+            break;
+
+        case LOGIC_GATE_IMPLIES:
+            /* Threshold-based: If threshold met, then consensus required */
+            if (confidence >= logic_cfg->threshold) {
+                /* Antecedent true: consequent must be true */
+                validation_result = (winning_fraction >= logic_cfg->threshold) ? 1 : 0;
+            } else {
+                /* Antecedent false: implication vacuously true */
+                validation_result = 1;
+            }
+            LOG_DEBUG("IMPLIES validation: confidence=%.2f, threshold=%.2f, result=%d",
+                     confidence, logic_cfg->threshold, validation_result);
+            break;
+
+        default:
+            /* Fallback: Simple threshold */
+            validation_result = (winning_fraction >= logic_cfg->threshold) ? 1 : 0;
+            LOG_DEBUG("Threshold validation: fraction=%.2f, threshold=%.2f, result=%d",
+                     winning_fraction, logic_cfg->threshold, validation_result);
+            break;
+    }
+
+    /* Optional consistency check using XOR */
+    if (logic_cfg->require_consistency && validation_result == 1) {
+        uint32_t contradicting_agents[256];
+        uint32_t contradiction_count = 0;
+
+        int consistency = quorum_check_vote_consistency(
+            quorum,
+            contradicting_agents,
+            &contradiction_count
+        );
+
+        if (consistency == 1) {
+            /* Contradictions found */
+            validation_result = 0;
+            LOG_WARN("Validation failed: %u contradicting agents detected",
+                     contradiction_count);
+        }
+    }
+
+    nimcp_platform_mutex_unlock(quorum->mutex);
+
+    LOG_INFO("Logic validation complete: signal=%s, result=%s",
+             signal_names[winning_signal],
+             validation_result ? "PASS" : "FAIL");
+
+    return validation_result;
+}
+
+/**
+ * @brief Check vote consistency using XOR logic
+ *
+ * WHAT: Detects contradicting votes among agents
+ * WHY:  Identifies Byzantine behavior or conflicting opinions
+ * HOW:  Uses XOR gate to detect mutually exclusive votes
+ */
+int quorum_check_vote_consistency(
+    nimcp_swarm_quorum_t* quorum,
+    uint32_t* contradicting_agents,
+    uint32_t* count
+) {
+    if (!quorum || !contradicting_agents || !count) {
+        LOG_ERROR("Invalid parameters for consistency check");
+        return -1;
+    }
+
+    *count = 0;
+
+    nimcp_platform_mutex_lock(quorum->mutex);
+
+    /* Define mutually exclusive signal pairs (XOR constraints) */
+    struct {
+        nimcp_signal_type_t signal_a;
+        nimcp_signal_type_t signal_b;
+    } exclusive_pairs[] = {
+        {NIMCP_SIGNAL_ATTACK, NIMCP_SIGNAL_RETREAT},
+        {NIMCP_SIGNAL_ATTACK, NIMCP_SIGNAL_DEFEND},
+        {NIMCP_SIGNAL_EXPLORE, NIMCP_SIGNAL_DEFEND},
+    };
+    const int num_pairs = sizeof(exclusive_pairs) / sizeof(exclusive_pairs[0]);
+
+    /* Check each drone's commitments for contradictions */
+    for (uint32_t i = 0; i < quorum->commitment_count; i++) {
+        nimcp_drone_commitment_t* commit = &quorum->commitments[i];
+
+        /* Check against exclusive pairs */
+        for (int p = 0; p < num_pairs; p++) {
+            /* Check if this drone is committed to an exclusive signal */
+            if (commit->signal == exclusive_pairs[p].signal_a) {
+                /* Check if opposing signal also has support from this or nearby drones */
+                uint32_t opposing_count = quorum->signals[exclusive_pairs[p].signal_b].committed_count;
+
+                if (opposing_count > 0) {
+                    /* Contradiction: both exclusive signals have support */
+                    if (*count < 256) {
+                        contradicting_agents[*count] = commit->drone_id;
+                        (*count)++;
+                    }
+                    LOG_DEBUG("Contradiction detected: drone %u supports %s while %s also has support",
+                             commit->drone_id,
+                             signal_names[exclusive_pairs[p].signal_a],
+                             signal_names[exclusive_pairs[p].signal_b]);
+                }
+            }
+        }
+    }
+
+    int result = (*count > 0) ? 1 : 0;
+    nimcp_platform_mutex_unlock(quorum->mutex);
+
+    if (result == 1) {
+        LOG_WARN("Consistency check found %u contradicting agents", *count);
+    } else {
+        LOG_DEBUG("Consistency check passed: no contradictions found");
+    }
+
+    return result;
+}
+
+/**
+ * @brief Evaluate quorum using IMPLIES logic gate
+ *
+ * WHAT: Conditional consensus validation (if A then B)
+ * WHY:  Enforce logical rules on decision-making
+ * HOW:  Uses IMPLIES gate to check antecedent → consequent
+ */
+int quorum_evaluate_implication(
+    nimcp_swarm_quorum_t* quorum,
+    nimcp_signal_type_t antecedent_signal,
+    nimcp_signal_type_t consequent_signal,
+    bool* implication_holds
+) {
+    if (!quorum || !implication_holds ||
+        antecedent_signal >= NIMCP_SIGNAL_COUNT ||
+        consequent_signal >= NIMCP_SIGNAL_COUNT) {
+        LOG_ERROR("Invalid parameters for implication evaluation");
+        return -1;
+    }
+
+    nimcp_platform_mutex_lock(quorum->mutex);
+
+    /* Get signal concentrations */
+    float antecedent_concentration = quorum->signals[antecedent_signal].concentration;
+    float consequent_concentration = quorum->signals[consequent_signal].concentration;
+
+    /* IMPLIES logic: A → B = ¬A ∨ B */
+    /* Implication is false only when A is true and B is false */
+
+    float antecedent_threshold = 0.5f;
+    float consequent_threshold = 0.5f;
+
+    bool antecedent_active = (antecedent_concentration >= antecedent_threshold);
+    bool consequent_active = (consequent_concentration >= consequent_threshold);
+
+    /* Evaluate implication */
+    if (antecedent_active && !consequent_active) {
+        /* Antecedent true, consequent false: implication fails */
+        *implication_holds = false;
+        LOG_WARN("Implication FAILED: %s (%.2f) → %s (%.2f)",
+                 signal_names[antecedent_signal], antecedent_concentration,
+                 signal_names[consequent_signal], consequent_concentration);
+    } else {
+        /* All other cases: implication holds */
+        *implication_holds = true;
+        LOG_DEBUG("Implication HOLDS: %s (%.2f) → %s (%.2f)",
+                  signal_names[antecedent_signal], antecedent_concentration,
+                  signal_names[consequent_signal], consequent_concentration);
+    }
+
+    nimcp_platform_mutex_unlock(quorum->mutex);
+
+    return 0;
 }

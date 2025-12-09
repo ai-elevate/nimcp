@@ -21,7 +21,7 @@
 class APIStabilityTest : public ::testing::Test {
 protected:
     void SetUp() override {
-        ASSERT_EQ(nimcp_init(), NIMCP_OK);
+        ASSERT_EQ(nimcp_init(), NIMCP_SUCCESS);
     }
 
     void TearDown() override {
@@ -117,7 +117,7 @@ TEST_F(APIStabilityTest, BrainLearn_SignatureStable) {
         1.0f             // float confidence
     );
 
-    EXPECT_EQ(status, NIMCP_OK);
+    EXPECT_EQ(status, NIMCP_SUCCESS);
     nimcp_brain_destroy(brain);
 }
 
@@ -176,7 +176,7 @@ TEST_F(APIStabilityTest, BrainSaveLoad_SignatureStable) {
         path             // const char* filepath
     );
 
-    if (save_status == NIMCP_OK) {
+    if (save_status == NIMCP_SUCCESS) {
         nimcp_brain_destroy(brain);
 
         // Verify nimcp_brain_load signature
@@ -200,7 +200,7 @@ TEST_F(APIStabilityTest, BrainSaveLoad_SignatureStable) {
 
 TEST_F(APIStabilityTest, StatusCodes_HaveExpectedValues) {
     // Verify enum values haven't changed
-    EXPECT_EQ(NIMCP_OK, 0);
+    EXPECT_EQ(NIMCP_SUCCESS, 0);
     EXPECT_EQ(NIMCP_ERROR, -1);
     EXPECT_EQ(NIMCP_ERROR_NULL_ARG, -2);
     EXPECT_EQ(NIMCP_ERROR_INVALID, -3);
@@ -232,7 +232,7 @@ TEST_F(APIStabilityTest, StatusCodes_NetworkAPI) {
 
     // Test NULL pointer returns error
     nimcp_status_t status = nimcp_network_forward(network, nullptr, 5, nullptr, 2);
-    EXPECT_NE(status, NIMCP_OK);
+    EXPECT_NE(status, NIMCP_SUCCESS);
 
     nimcp_network_destroy(network);
 }
@@ -414,18 +414,18 @@ TEST_F(APIStabilityTest, BackwardCompat_ErrorHandling) {
 TEST_F(APIStabilityTest, BackwardCompat_InitShutdownSequence) {
     // Can call init/shutdown multiple times
     nimcp_shutdown();
-    ASSERT_EQ(nimcp_init(), NIMCP_OK);
+    ASSERT_EQ(nimcp_init(), NIMCP_SUCCESS);
 
     // Multiple init calls should be safe
-    EXPECT_EQ(nimcp_init(), NIMCP_OK);
-    EXPECT_EQ(nimcp_init(), NIMCP_OK);
+    EXPECT_EQ(nimcp_init(), NIMCP_SUCCESS);
+    EXPECT_EQ(nimcp_init(), NIMCP_SUCCESS);
 
     // Multiple shutdown calls should be safe
     nimcp_shutdown();
     nimcp_shutdown();
 
     // Re-initialize for other tests
-    ASSERT_EQ(nimcp_init(), NIMCP_OK);
+    ASSERT_EQ(nimcp_init(), NIMCP_SUCCESS);
 }
 
 //=============================================================================

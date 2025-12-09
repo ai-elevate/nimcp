@@ -9,6 +9,7 @@
 
 #include "portia/nimcp_portia_deception.h"
 #include "security/nimcp_blood_brain_barrier.h"
+#include "security/nimcp_bbb_helpers.h"
 #include "security/nimcp_security.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/thread/nimcp_thread.h"
@@ -127,91 +128,88 @@ static float calculate_effectiveness(const portia_deception_t deception)
  * WHY:  Handle stealth mode requests from other modules
  * HOW:  Dispatch based on message type
  */
-static void deception_inbox_handler(
-    bio_module_context_t* ctx,
-    const bio_message_t* msg,
+static nimcp_error_t deception_inbox_handler(
+    const void* msg,
+    size_t msg_size,
+    nimcp_bio_promise_t response_promise,
     void* user_data)
 {
+    (void)response_promise;  /* Unused for now */
     portia_deception_t deception = (portia_deception_t)user_data;
 
     // Validate inputs
-    if (!bbb_validate_pointer(ctx, sizeof(*ctx))) {
-        LOG_ERROR("Invalid bio context in inbox handler");
-        return;
-    }
-
-    if (!bbb_validate_pointer(msg, sizeof(*msg))) {
+    if (!msg || msg_size < sizeof(bio_message_header_t)) {
         LOG_ERROR("Invalid message in inbox handler");
-        return;
+        return NIMCP_ERROR_INVALID_PARAM;
     }
 
-    if (!bbb_validate_pointer(deception, sizeof(*deception))) {
+    if (!deception) {
         LOG_ERROR("Invalid deception handle in inbox handler");
-        return;
+        return NIMCP_ERROR_INVALID_PARAM;
     }
 
-    LOG_DEBUG("Received bio-async message type 0x%04X", msg->type);
+    const bio_message_header_t* header = (const bio_message_header_t*)msg;
+    LOG_DEBUG("Received bio-async message type 0x%04X", header->type);
 
-    // Handle message types
-    switch (msg->type) {
-        case BIO_MSG_STEALTH_MODE_REQUEST:
-            LOG_DEBUG("Processing stealth mode request");
+    // Handle message types - using existing Portia message types
+    switch (header->type) {
+        case BIO_MSG_PORTIA_POWER_STATE_CHANGE:
+            LOG_DEBUG("Processing power state change");
             // Future: extract mode from payload and set
             break;
 
-        case BIO_MSG_EMISSION_CONTROL_REQUEST:
-            LOG_DEBUG("Processing emission control request");
+        case BIO_MSG_SECURITY_EVENT:
+            LOG_DEBUG("Processing security event");
             // Future: extract level from payload and set
             break;
 
         default:
-            LOG_DEBUG("Unhandled message type 0x%04X", msg->type);
+            LOG_DEBUG("Unhandled message type 0x%04X", header->type);
             break;
     }
+    return NIMCP_SUCCESS;
 }
 
 /**
  * WHAT: Broadcast stealth state change event
  * WHY:  Notify other modules of mode changes
- * HOW:  Send bio-async message via serotonin (state change)
+ * HOW:  Send bio-async message via router
  */
 static void broadcast_state_change(
     portia_deception_t deception,
     stealth_mode_t old_mode,
     stealth_mode_t new_mode)
 {
-    if (!deception->bio_async_enabled) {
+    if (!deception->bio_async_enabled || !deception->bio_ctx) {
         return;
     }
 
-    // Create state change message
+    // Create state change message with header
     struct {
+        bio_message_header_t header;
         uint32_t old_mode;
         uint32_t new_mode;
         float effectiveness;
-    } payload = {
+    } msg = {
+        .header = {
+            .type = BIO_MSG_PORTIA_POWER_STATE_CHANGE,
+            .flags = BIO_MSG_FLAG_BROADCAST,
+            .payload_size = sizeof(uint32_t) * 2 + sizeof(float)
+        },
         .old_mode = (uint32_t)old_mode,
         .new_mode = (uint32_t)new_mode,
         .effectiveness = deception->state.effectiveness
     };
 
-    // Send via serotonin (state/mood change)
-    bio_message_t msg = {
-        .type = BIO_MSG_STEALTH_STATE_CHANGED,
-        .priority = BIO_PRIORITY_NORMAL,
-        .payload = &payload,
-        .payload_size = sizeof(payload)
-    };
-
-    int result = bio_send_message(&deception->bio_ctx, &msg, BIO_CHANNEL_SEROTONIN);
-    if (result != 0) {
+    nimcp_error_t result = bio_router_broadcast(deception->bio_ctx, &msg, sizeof(msg));
+    if (result != NIMCP_SUCCESS) {
         LOG_WARN("Failed to broadcast state change: %d", result);
     } else {
         LOG_DEBUG("Broadcast state change: %d -> %d, eff=%.2f",
                   old_mode, new_mode, deception->state.effectiveness);
     }
 
-    bbb_audit_log(BBB_THREAT_NONE, "Stealth state changed",
+    bbb_audit_log(BBB_AUDIT_INFO, LOG_MODULE, "state_change",
                   "old_mode=%d new_mode=%d effectiveness=%.2f",
                   old_mode, new_mode, deception->state.effectiveness);
 }
@@ -224,7 +222,7 @@ portia_deception_t portia_deception_init(
     const portia_deception_config_t* config)
 {
     // Validate input
-    if (!bbb_validate_pointer(config, sizeof(*config))) {
+    if (!(config != NULL)) {
         LOG_ERROR("Invalid config pointer");
         deception_set_error("Invalid configuration pointer");
         return NULL;
@@ -259,7 +257,7 @@ portia_deception_t portia_deception_init(
     deception->state.mimicry_profile = 0;
     deception->state.jamming_active = false;
     deception->state.effectiveness = 0.0f;
-    deception->state.mode_started_ms = nimcp_get_time_ms();
+    deception->state.mode_started_ms = nimcp_time_monotonic_ms();
 
     // Allocate profile registry if mimicry enabled
     if (config->enable_mimicry && config->profile_count > 0) {
@@ -290,25 +288,29 @@ portia_deception_t portia_deception_init(
 
     // Initialize bio-async if enabled
     if (config->enable_bio_async) {
-        memset(&deception->bio_ctx, 0, sizeof(deception->bio_ctx));
-        strncpy(deception->bio_ctx.module_name, "portia_deception",
-                sizeof(deception->bio_ctx.module_name) - 1);
-        deception->bio_ctx.inbox_handler = deception_inbox_handler;
-        deception->bio_ctx.user_data = deception;
+        bio_module_info_t info = {
+            .module_id = BIO_MODULE_PORTIA_DECEPTION,
+            .module_name = "portia_deception",
+            .inbox_capacity = 32,
+            .user_data = deception
+        };
 
-        int result = bio_register_module(&deception->bio_ctx);
-        if (result == 0) {
+        deception->bio_ctx = bio_router_register_module(&info);
+        if (deception->bio_ctx) {
+            bio_router_register_handler(deception->bio_ctx,
+                                       BIO_MSG_SECURITY_EVENT,
+                                       deception_inbox_handler);
             deception->bio_async_enabled = true;
             LOG_INFO("Bio-async messaging enabled");
         } else {
-            LOG_WARN("Failed to register bio-async module: %d", result);
+            LOG_WARN("Failed to register bio-async module");
             deception->bio_async_enabled = false;
         }
     }
 
     LOG_INFO("Deception system initialized successfully");
-    bbb_audit_log(BBB_THREAT_NONE, "Deception system initialized",
-                  "capabilities=stealth:%d,mimicry:%d,jamming:%d",
+    bbb_audit_log(BBB_AUDIT_INFO, LOG_MODULE, "init",
+                  "stealth=%d mimicry=%d jamming=%d",
                   config->enable_stealth, config->enable_mimicry,
                   config->enable_jamming);
 
@@ -317,7 +319,7 @@ portia_deception_t portia_deception_init(
 
 void portia_deception_destroy(portia_deception_t deception)
 {
-    if (!bbb_validate_pointer(deception, sizeof(*deception))) {
+    if (!(deception != NULL)) {
         return;
     }
 
@@ -329,8 +331,8 @@ void portia_deception_destroy(portia_deception_t deception)
     LOG_INFO("Destroying deception system");
 
     // Unregister bio-async if enabled
-    if (deception->bio_async_enabled) {
-        bio_unregister_module(&deception->bio_ctx);
+    if (deception->bio_async_enabled && deception->bio_ctx) {
+        bio_router_unregister_module(deception->bio_ctx);
     }
 
     // Free profile registry
@@ -357,7 +359,7 @@ int portia_deception_set_mode(
     stealth_mode_t mode)
 {
     // Validate inputs
-    if (!bbb_validate_pointer(deception, sizeof(*deception))) {
+    if (!(deception != NULL)) {
         LOG_ERROR("Invalid deception pointer");
         deception_set_error("Invalid deception handle");
         return NIMCP_ERROR_INVALID_PARAM;
@@ -378,26 +380,26 @@ int portia_deception_set_mode(
     if (mode == STEALTH_MODE_PASSIVE && !deception->config.enable_stealth) {
         LOG_ERROR("Stealth not enabled");
         deception_set_error("Stealth capability not enabled");
-        return NIMCP_ERROR_NOT_SUPPORTED;
+        return NIMCP_ERROR_NOT_IMPLEMENTED;
     }
 
     if (mode == STEALTH_MODE_ACTIVE && !deception->config.enable_stealth) {
         LOG_ERROR("Active stealth not enabled");
         deception_set_error("Active stealth not enabled");
-        return NIMCP_ERROR_NOT_SUPPORTED;
+        return NIMCP_ERROR_NOT_IMPLEMENTED;
     }
 
     if (mode == STEALTH_MODE_MIMICRY && !deception->config.enable_mimicry) {
         LOG_ERROR("Mimicry not enabled");
         deception_set_error("Mimicry capability not enabled");
-        return NIMCP_ERROR_NOT_SUPPORTED;
+        return NIMCP_ERROR_NOT_IMPLEMENTED;
     }
 
     nimcp_mutex_lock(&deception->lock);
 
     stealth_mode_t old_mode = deception->state.mode;
     deception->state.mode = mode;
-    deception->state.mode_started_ms = nimcp_get_time_ms();
+    deception->state.mode_started_ms = nimcp_time_monotonic_ms();
 
     // Recalculate effectiveness
     deception->state.effectiveness = calculate_effectiveness(deception);
@@ -410,7 +412,7 @@ int portia_deception_set_mode(
     // Broadcast state change
     broadcast_state_change(deception, old_mode, mode);
 
-    bbb_audit_log(BBB_THREAT_NONE, "Stealth mode changed",
+    bbb_audit_log(BBB_AUDIT_INFO, LOG_MODULE, "mode_change",
                   "old=%d new=%d eff=%.2f", old_mode, mode,
                   deception->state.effectiveness);
 
@@ -422,7 +424,7 @@ int portia_deception_emit(
     float level)
 {
     // Validate inputs
-    if (!bbb_validate_pointer(deception, sizeof(*deception))) {
+    if (!(deception != NULL)) {
         LOG_ERROR("Invalid deception pointer");
         return NIMCP_ERROR_INVALID_PARAM;
     }
@@ -456,7 +458,7 @@ int portia_deception_emit(
 
 float portia_deception_get_effectiveness(portia_deception_t deception)
 {
-    if (!bbb_validate_pointer(deception, sizeof(*deception))) {
+    if (!(deception != NULL)) {
         LOG_ERROR("Invalid deception pointer");
         return -1.0f;
     }
@@ -482,7 +484,7 @@ int portia_deception_mimic(
     uint32_t profile_id)
 {
     // Validate inputs
-    if (!bbb_validate_pointer(deception, sizeof(*deception))) {
+    if (!(deception != NULL)) {
         LOG_ERROR("Invalid deception pointer");
         return NIMCP_ERROR_INVALID_PARAM;
     }
@@ -495,7 +497,7 @@ int portia_deception_mimic(
     if (!deception->config.enable_mimicry) {
         LOG_ERROR("Mimicry not enabled");
         deception_set_error("Mimicry capability not enabled");
-        return NIMCP_ERROR_NOT_SUPPORTED;
+        return NIMCP_ERROR_NOT_IMPLEMENTED;
     }
 
     if (profile_id == 0 || profile_id > deception->profile_count) {
@@ -511,7 +513,7 @@ int portia_deception_mimic(
         LOG_ERROR("Profile %u not active", profile_id);
         deception_set_error("Profile not active");
         nimcp_mutex_unlock(&deception->lock);
-        return NIMCP_ERROR_INVALID_STATE;
+        return NIMCP_ERROR_INVALID_TYPE;
     }
 
     deception->state.mimicry_profile = profile_id;
@@ -526,7 +528,7 @@ int portia_deception_mimic(
              profile_id, deception->profiles[idx].name,
              deception->state.effectiveness);
 
-    bbb_audit_log(BBB_THREAT_NONE, "Mimicry activated",
+    bbb_audit_log(BBB_AUDIT_INFO, LOG_MODULE, "Mimicry activated",
                   "profile_id=%u name=%s", profile_id,
                   deception->profiles[idx].name);
 
@@ -538,12 +540,12 @@ uint32_t portia_deception_register_profile(
     const mimicry_profile_t* profile)
 {
     // Validate inputs
-    if (!bbb_validate_pointer(deception, sizeof(*deception))) {
+    if (!(deception != NULL)) {
         LOG_ERROR("Invalid deception pointer");
         return 0;
     }
 
-    if (!bbb_validate_pointer(profile, sizeof(*profile))) {
+    if (!(profile != NULL)) {
         LOG_ERROR("Invalid profile pointer");
         return 0;
     }
@@ -585,7 +587,7 @@ uint32_t portia_deception_register_profile(
     LOG_INFO("Registered mimicry profile %u: %s (eff=%.2f)",
              profile_id, profile->name, profile->effectiveness);
 
-    bbb_audit_log(BBB_THREAT_NONE, "Mimicry profile registered",
+    bbb_audit_log(BBB_AUDIT_INFO, LOG_MODULE, "Mimicry profile registered",
                   "id=%u name=%s", profile_id, profile->name);
 
     return profile_id;
@@ -596,11 +598,11 @@ uint32_t portia_deception_get_profiles(
     mimicry_profile_t* profiles,
     uint32_t max_profiles)
 {
-    if (!bbb_validate_pointer(deception, sizeof(*deception))) {
+    if (!(deception != NULL)) {
         return 0;
     }
 
-    if (!bbb_validate_pointer(profiles, max_profiles * sizeof(*profiles))) {
+    if (!profiles) {
         return 0;
     }
 
@@ -630,7 +632,7 @@ int portia_deception_jam(
     bool enable)
 {
     // Validate inputs
-    if (!bbb_validate_pointer(deception, sizeof(*deception))) {
+    if (!(deception != NULL)) {
         LOG_ERROR("Invalid deception pointer");
         return NIMCP_ERROR_INVALID_PARAM;
     }
@@ -643,7 +645,7 @@ int portia_deception_jam(
     if (!deception->config.enable_jamming) {
         LOG_ERROR("Jamming not enabled");
         deception_set_error("Jamming capability not enabled");
-        return NIMCP_ERROR_NOT_SUPPORTED;
+        return NIMCP_ERROR_NOT_IMPLEMENTED;
     }
 
     nimcp_mutex_lock(&deception->lock);
@@ -659,7 +661,7 @@ int portia_deception_jam(
     LOG_INFO("Jamming %s (eff=%.2f)", enable ? "enabled" : "disabled",
              deception->state.effectiveness);
 
-    bbb_audit_log(BBB_THREAT_NONE, "Jamming state changed",
+    bbb_audit_log(BBB_AUDIT_INFO, LOG_MODULE, "Jamming state changed",
                   "old=%d new=%d", old_state, enable);
 
     return NIMCP_SUCCESS;
@@ -669,12 +671,12 @@ int portia_deception_get_state(
     portia_deception_t deception,
     stealth_state_t* state)
 {
-    if (!bbb_validate_pointer(deception, sizeof(*deception))) {
+    if (!(deception != NULL)) {
         LOG_ERROR("Invalid deception pointer");
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
-    if (!bbb_validate_pointer(state, sizeof(*state))) {
+    if (!(state != NULL)) {
         LOG_ERROR("Invalid state pointer");
         return NIMCP_ERROR_INVALID_PARAM;
     }

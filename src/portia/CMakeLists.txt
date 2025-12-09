@@ -31,10 +31,9 @@ target_include_directories(nimcp_portia PUBLIC
 )
 
 # Link dependencies
+# Note: nimcp is a monolithic library containing security, utils, async, etc.
 target_link_libraries(nimcp_portia
-    nimcp_security        # For blood-brain barrier
-    nimcp_utils           # For logging, memory, threads, time
-    nimcp_async           # For bio-async messaging
+    nimcp                 # Main NIMCP library (contains security, utils, async)
     pthread
 )
 

@@ -142,6 +142,7 @@ typedef enum {
     BIO_MSG_CONFIG_ACK,
     BIO_MSG_ERROR_REPORT,
     BIO_MSG_LOG_EVENT,
+    BIO_MSG_BRAIN_PROBE_DATA,           /**< Brain probe metrics broadcast */
 
     /* Security messages (0x0750 - 0x076F) */
     BIO_MSG_SECURITY_EVENT = 0x0750,        /**< General security event */
@@ -218,6 +219,22 @@ typedef enum {
     BIO_MSG_SWARM_IMMUNE_ALERT,                 /**< Immune system alert */
     BIO_MSG_SWARM_MORPHOGENESIS_SIGNAL,         /**< Morphogenesis signal */
     BIO_MSG_SWARM_PHEROMONE_RELEASE,            /**< Pheromone release event */
+    BIO_MSG_SWARM_CONFLICT_DETECTED,            /**< Conflict detected between swarms */
+    BIO_MSG_SWARM_NEGOTIATION_STARTED,          /**< Negotiation initiated */
+    BIO_MSG_SWARM_PROPOSAL_MADE,                /**< Negotiation proposal made */
+    BIO_MSG_SWARM_CONFLICT_RESOLVED,            /**< Conflict resolved */
+    BIO_MSG_SWARM_PATTERN_DETECTED,             /**< Pattern detected in swarm */
+    BIO_MSG_SWARM_PATTERN_CONSOLIDATED,         /**< Patterns consolidated */
+    BIO_MSG_SWARM_SEQUENCE_LEARNED,             /**< Sequence pattern learned */
+    BIO_MSG_SWARM_QUORUM_LOGIC_RESULT,          /**< Quorum logic validation result */
+    BIO_MSG_SWARM_QUORUM_LOGIC_FAILURE,         /**< Quorum logic validation failed */
+    BIO_MSG_SWARM_IMMUNE_THREAT_LOGIC,          /**< Immune threat logic evaluation */
+    BIO_MSG_SWARM_IMMUNE_LOGIC_RESPONSE,        /**< Immune logic-based response */
+    BIO_MSG_NARRATIVE_SHARED,                   /**< Narrative shared with agents */
+    BIO_MSG_NARRATIVE_RECEIVED,                 /**< Narrative received confirmation */
+    BIO_MSG_GOSSIP_SPREAD,                      /**< Belief gossip spread */
+    BIO_MSG_BELIEF_UPDATED,                     /**< Belief certainty updated */
+    BIO_MSG_CONTRADICTION_DETECTED,             /**< Contradictory beliefs detected */
 
     /* Portia messages (0x0C00 - 0x0CFF) */
     BIO_MSG_PORTIA_PLAN_CREATED = 0x0C00,       /**< New plan created */
@@ -471,6 +488,7 @@ typedef enum {
     BIO_MODULE_CAPABILITY,
     BIO_MODULE_CFI,
     BIO_MODULE_SECURITY_AUDIT,
+    BIO_MODULE_METRICS,                  /**< Metrics collection module */
 
     /* System submodules (0x0608-0x061F) */
     BIO_MODULE_SYSTEM_FAILURE_PREDICTION = 0x0608,
@@ -1155,6 +1173,38 @@ typedef struct {
 #define BIO_ERROR_SEVERITY_ERROR    3
 #define BIO_ERROR_SEVERITY_CRITICAL 4
 
+/**
+ * @brief Brain probe data broadcast message
+ *
+ * Contains comprehensive brain metrics for decoupled monitoring.
+ * Brain module broadcasts this via BIO_MSG_BRAIN_PROBE_DATA.
+ * Metrics module (or any subscriber) handles independently.
+ * Supports multiple concurrent brains via brain_id field.
+ */
+typedef struct {
+    bio_message_header_t header;
+    uint64_t brain_id;               /**< Unique brain instance ID (allows multiple probes) */
+    char task_name[64];              /**< Brain name */
+    uint32_t size;                   /**< Size preset (cast to nimcp_brain_size_t) */
+    uint32_t task;                   /**< Task type (cast to nimcp_brain_task_t) */
+    uint32_t num_neurons;            /**< Total neurons */
+    uint32_t num_synapses;           /**< Total synapses */
+    uint32_t num_active_synapses;    /**< Non-pruned synapses */
+    uint64_t total_inferences;       /**< Total inference count */
+    uint64_t total_learning_steps;   /**< Total learning steps */
+    float avg_sparsity;              /**< Average sparsity (0.0-1.0) */
+    float avg_inference_time_us;     /**< Average inference time (microseconds) */
+    float current_learning_rate;     /**< Current learning rate */
+    float accuracy;                  /**< Validation accuracy (0.0-1.0) */
+    uint64_t memory_bytes;           /**< Memory usage in bytes */
+    uint32_t num_inputs;             /**< Number of inputs */
+    uint32_t num_outputs;            /**< Number of outputs */
+    bool is_cow_clone;               /**< True if this brain is a COW clone */
+    uint32_t cow_ref_count;          /**< Reference count for shared data */
+    uint64_t cow_shared_bytes;       /**< Bytes shared via COW */
+    uint64_t cow_private_bytes;      /**< Bytes private to this brain */
+} bio_msg_brain_probe_data_t;
+
 /*=============================================================================
  * PERCEPTION MESSAGES
  *============================================================================*/
@@ -1546,6 +1596,68 @@ typedef struct {
     char module_name[32];           /**< Module that generated error */
     char error_message[128];        /**< Error description */
 } bio_msg_nlp_error_t;
+
+/*=============================================================================
+ * SWARM LOGIC MESSAGES
+ *============================================================================*/
+
+/**
+ * @brief Quorum logic validation result
+ */
+typedef struct {
+    bio_message_header_t header;
+    uint32_t quorum_id;             /**< Quorum system ID */
+    uint32_t decision_id;           /**< Decision being validated */
+    uint32_t gate_type;             /**< Logic gate used (AND/OR/IMPLIES/XOR) */
+    float vote_fraction;            /**< Fraction of agents voting */
+    float confidence;               /**< Confidence in validation */
+    bool validation_passed;         /**< Whether validation passed */
+    uint32_t contradicting_count;   /**< Number of contradicting agents */
+    uint32_t winning_signal;        /**< Winning signal type */
+} bio_msg_swarm_quorum_logic_result_t;
+
+/**
+ * @brief Quorum logic validation failure notification
+ */
+typedef struct {
+    bio_message_header_t header;
+    uint32_t quorum_id;             /**< Quorum system ID */
+    uint32_t decision_id;           /**< Failed decision ID */
+    uint32_t failure_reason;        /**< Reason for failure */
+    uint32_t contradicting_agents[256]; /**< IDs of contradicting agents */
+    uint32_t contradiction_count;   /**< Number of contradictions */
+    char failure_message[128];      /**< Failure description */
+} bio_msg_swarm_quorum_logic_failure_t;
+
+/**
+ * @brief Immune threat logic evaluation result
+ */
+typedef struct {
+    bio_message_header_t header;
+    uint32_t immune_id;             /**< Immune system ID */
+    uint32_t threat_rule_id;        /**< Threat rule that triggered */
+    uint32_t gate_type;             /**< Logic gate used */
+    uint32_t num_sources;           /**< Number of signal sources */
+    float threat_score;             /**< Computed threat score [0,1] */
+    float confidence_threshold;     /**< Threshold for detection */
+    bool threat_detected;           /**< Whether threat was detected */
+    uint32_t threat_type;           /**< Type of threat */
+} bio_msg_swarm_immune_threat_logic_t;
+
+/**
+ * @brief Immune logic-based response notification
+ */
+typedef struct {
+    bio_message_header_t header;
+    uint32_t immune_id;             /**< Immune system ID */
+    uint32_t threat_id;             /**< Threat being responded to */
+    uint32_t response_id;           /**< Response strategy ID */
+    uint32_t response_logic;        /**< Logic gate used for response */
+    uint32_t response_type;         /**< Response action */
+    float intensity;                /**< Response intensity [0,1] */
+    bool requires_coordination;     /**< Multi-agent coordination needed */
+    uint32_t severity;              /**< Threat severity */
+} bio_msg_swarm_immune_logic_response_t;
 
 /*=============================================================================
  * MESSAGE UTILITIES

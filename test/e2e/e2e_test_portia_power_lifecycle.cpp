@@ -42,7 +42,7 @@ extern "C" {
 class PortiaPowerLifecycleE2ETest : public ::testing::Test {
 protected:
     void SetUp() override {
-        nimcp_log_init(NIMCP_LOG_LEVEL_INFO, nullptr);
+        nimcp_log_init(NULL);
 
         nimcp_error_t err = nimcp_bio_async_init(nullptr);
         ASSERT_EQ(err, NIMCP_SUCCESS);
@@ -70,7 +70,7 @@ protected:
         nimcp_log_shutdown();
     }
 
-    brain_t* brain_;
+    brain_t brain_;
     bool portia_initialized_;
 };
 
@@ -97,13 +97,13 @@ TEST_F(PortiaPowerLifecycleE2ETest, BatteryDrainScenario) {
     err = portia_get_status(&status);
     ASSERT_EQ(err, NIMCP_SUCCESS);
 
-    nimcp_log(NIMCP_LOG_LEVEL_INFO, "Initial power state: %s, battery: %.1f%%",
+    nimcp_log(LOG_LEVEL_INFO, "Initial power state: %s, battery: %.1f%%",
               portia_power_state_name(status.power_state),
               status.battery_level * 100.0f);
 
     // Create brain
     platform_tier_config_t tier_config = platform_tier_get_config(status.current_tier);
-    brain_ = brain_create(tier_config.max_neurons, tier_config.initial_neurons);
+    brain_ = brain_create("portia_brain", BRAIN_SIZE_TINY, BRAIN_TASK_CLASSIFICATION, 64, 32);
     ASSERT_NE(brain_, nullptr);
 
     // WHEN: Simulate battery drain by monitoring over time
@@ -139,8 +139,8 @@ TEST_F(PortiaPowerLifecycleE2ETest, BatteryDrainScenario) {
         }
 
         // Verify brain remains operational
-        EXPECT_NE(brain_->neurons, nullptr);
-        EXPECT_GT(brain_->num_neurons, 0);
+        EXPECT_NE(brain_, nullptr);
+        EXPECT_GT(brain_get_neuron_count(brain_), 0);
 
         std::this_thread::sleep_for(std::chrono::milliseconds(50));
     }
@@ -158,7 +158,7 @@ TEST_F(PortiaPowerLifecycleE2ETest, BatteryDrainScenario) {
         }
     }
 
-    nimcp_log(NIMCP_LOG_LEVEL_INFO, "BatteryDrainScenario: PASS - "
+    nimcp_log(LOG_LEVEL_INFO, "BatteryDrainScenario: PASS - "
               "Samples=%d, Final power state=%s, Battery=%.1f%%",
               num_samples, portia_power_state_name(status.power_state),
               status.battery_level * 100.0f);
@@ -173,7 +173,7 @@ TEST_F(PortiaPowerLifecycleE2ETest, SystemAdaptationToLowPower) {
     portia_config_t config = portia_get_default_config();
     config.power_config.enable_battery_awareness = true;
     config.degradation_config.enable_graceful_degradation = true;
-    config.degradation_config.max_degradation = DEGRADATION_LEVEL_SEVERE;
+    config.degradation_config.max_degradation = PORTIA_DEGRADATION_SEVERE;
     config.tier_config.enable_auto_switching = true;
     config.enable_metrics = true;
 
@@ -187,14 +187,14 @@ TEST_F(PortiaPowerLifecycleE2ETest, SystemAdaptationToLowPower) {
 
     // Create brain
     platform_tier_config_t tier_config = platform_tier_get_config(initial_status.current_tier);
-    brain_ = brain_create(tier_config.max_neurons, tier_config.initial_neurons);
+    brain_ = brain_create("portia_brain", BRAIN_SIZE_TINY, BRAIN_TASK_CLASSIFICATION, 64, 32);
     ASSERT_NE(brain_, nullptr);
 
-    uint32_t initial_neurons = brain_->num_neurons;
+    uint32_t initial_neurons = brain_get_neuron_count(brain_);
     platform_tier_t initial_tier = initial_status.current_tier;
 
     // WHEN: Force degradation to simulate low power
-    nimcp_log(NIMCP_LOG_LEVEL_INFO, "Simulating low power by forcing degradation");
+    nimcp_log(LOG_LEVEL_INFO, "Simulating low power by forcing degradation");
 
     err = portia_set_degradation_level(PORTIA_DEGRADATION_MODERATE);
     ASSERT_EQ(err, NIMCP_SUCCESS);
@@ -216,8 +216,8 @@ TEST_F(PortiaPowerLifecycleE2ETest, SystemAdaptationToLowPower) {
         << "Should be in moderate degradation";
 
     // System should still be functional
-    EXPECT_NE(brain_->neurons, nullptr);
-    EXPECT_GT(brain_->num_neurons, 0);
+    EXPECT_NE(brain_, nullptr);
+    EXPECT_GT(brain_get_neuron_count(brain_), 0);
 
     // Recommended neurons should be reduced
     uint32_t degraded_recommendation = portia_recommend_neuron_count();
@@ -248,10 +248,10 @@ TEST_F(PortiaPowerLifecycleE2ETest, SystemAdaptationToLowPower) {
         << "Severe degradation should further reduce recommendations";
 
     // Brain should still be operational (minimal functionality)
-    EXPECT_NE(brain_->neurons, nullptr);
-    EXPECT_GT(brain_->num_neurons, 0);
+    EXPECT_NE(brain_, nullptr);
+    EXPECT_GT(brain_get_neuron_count(brain_), 0);
 
-    nimcp_log(NIMCP_LOG_LEVEL_INFO, "SystemAdaptationToLowPower: PASS - "
+    nimcp_log(LOG_LEVEL_INFO, "SystemAdaptationToLowPower: PASS - "
               "Initial neurons=%u, Degraded rec=%u, Severe rec=%u",
               initial_neurons, degraded_recommendation, severe_recommendation);
 }
@@ -264,7 +264,7 @@ TEST_F(PortiaPowerLifecycleE2ETest, EmergencyModeOperation) {
     // GIVEN: Initialize with emergency mode enabled
     portia_config_t config = portia_get_default_config();
     config.degradation_config.enable_graceful_degradation = true;
-    config.degradation_config.max_degradation = DEGRADATION_LEVEL_EMERGENCY;
+    config.degradation_config.max_degradation = PORTIA_DEGRADATION_EMERGENCY;
     config.enable_metrics = true;
 
     nimcp_error_t err = portia_init(&config);
@@ -277,11 +277,11 @@ TEST_F(PortiaPowerLifecycleE2ETest, EmergencyModeOperation) {
 
     // Create minimal brain
     platform_tier_config_t tier_config = platform_tier_get_config(PLATFORM_TIER_MINIMAL);
-    brain_ = brain_create(tier_config.max_neurons, tier_config.initial_neurons);
+    brain_ = brain_create("portia_brain", BRAIN_SIZE_TINY, BRAIN_TASK_CLASSIFICATION, 64, 32);
     ASSERT_NE(brain_, nullptr);
 
     // WHEN: Enter emergency mode
-    nimcp_log(NIMCP_LOG_LEVEL_INFO, "Entering emergency mode");
+    nimcp_log(LOG_LEVEL_INFO, "Entering emergency mode");
 
     err = portia_set_degradation_level(PORTIA_DEGRADATION_EMERGENCY);
     ASSERT_EQ(err, NIMCP_SUCCESS);
@@ -308,8 +308,8 @@ TEST_F(PortiaPowerLifecycleE2ETest, EmergencyModeOperation) {
         << "Should be on minimal tier";
 
     // System should preserve critical functions
-    EXPECT_NE(brain_->neurons, nullptr) << "Basic brain structure should exist";
-    EXPECT_GT(brain_->num_neurons, 0) << "Should have some neurons";
+    EXPECT_NE(brain_, nullptr) << "Basic brain structure should exist";
+    EXPECT_GT(brain_get_neuron_count(brain_), 0) << "Should have some neurons";
 
     // Recommended neurons should be minimal
     uint32_t emergency_recommendation = portia_recommend_neuron_count();
@@ -328,9 +328,9 @@ TEST_F(PortiaPowerLifecycleE2ETest, EmergencyModeOperation) {
     EXPECT_FALSE(has_curiosity) << "Minimal tier should not have curiosity";
     EXPECT_FALSE(has_meta_learning) << "Minimal tier should not have meta-learning";
 
-    nimcp_log(NIMCP_LOG_LEVEL_INFO, "EmergencyModeOperation: PASS - "
+    nimcp_log(LOG_LEVEL_INFO, "EmergencyModeOperation: PASS - "
               "Neurons=%u, Recommended=%u, Updates successful",
-              brain_->num_neurons, emergency_recommendation);
+              brain_get_neuron_count(brain_), emergency_recommendation);
 }
 
 //=============================================================================
@@ -354,7 +354,7 @@ TEST_F(PortiaPowerLifecycleE2ETest, PowerRecovery) {
     ASSERT_EQ(err, NIMCP_SUCCESS);
 
     platform_tier_config_t tier_config = platform_tier_get_config(status.current_tier);
-    brain_ = brain_create(tier_config.max_neurons, tier_config.initial_neurons);
+    brain_ = brain_create("portia_brain", BRAIN_SIZE_TINY, BRAIN_TASK_CLASSIFICATION, 64, 32);
     ASSERT_NE(brain_, nullptr);
 
     // Enter degraded state
@@ -375,14 +375,14 @@ TEST_F(PortiaPowerLifecycleE2ETest, PowerRecovery) {
     err = portia_get_status(&status);
     ASSERT_EQ(err, NIMCP_SUCCESS);
 
-    nimcp_log(NIMCP_LOG_LEVEL_INFO, "Degraded state: tier=%s, degradation=%d",
+    nimcp_log(LOG_LEVEL_INFO, "Degraded state: tier=%s, degradation=%d",
               platform_tier_get_name(status.current_tier),
               status.degradation_level);
 
     uint64_t degradations_before = status.degradations;
 
     // WHEN: Simulate power recovery
-    nimcp_log(NIMCP_LOG_LEVEL_INFO, "Simulating power recovery");
+    nimcp_log(LOG_LEVEL_INFO, "Simulating power recovery");
 
     // Restore normal degradation
     err = portia_set_degradation_level(PORTIA_DEGRADATION_MINOR);
@@ -423,10 +423,10 @@ TEST_F(PortiaPowerLifecycleE2ETest, PowerRecovery) {
     EXPECT_TRUE(has_executive) << "Medium tier should have executive functions";
 
     // Brain should still be valid
-    EXPECT_NE(brain_->neurons, nullptr);
-    EXPECT_GT(brain_->num_neurons, 0);
+    EXPECT_NE(brain_, nullptr);
+    EXPECT_GT(brain_get_neuron_count(brain_), 0);
 
-    nimcp_log(NIMCP_LOG_LEVEL_INFO, "PowerRecovery: PASS - "
+    nimcp_log(LOG_LEVEL_INFO, "PowerRecovery: PASS - "
               "Recovered to tier=%s, recommended neurons=%u",
               platform_tier_get_name(status.current_tier),
               recovered_recommendation);
@@ -454,12 +454,12 @@ TEST_F(PortiaPowerLifecycleE2ETest, PowerSourceSwitching) {
     ASSERT_EQ(err, NIMCP_SUCCESS);
 
     platform_tier_config_t tier_config = platform_tier_get_config(status.current_tier);
-    brain_ = brain_create(tier_config.max_neurons, tier_config.initial_neurons);
+    brain_ = brain_create("portia_brain", BRAIN_SIZE_TINY, BRAIN_TASK_CLASSIFICATION, 64, 32);
     ASSERT_NE(brain_, nullptr);
 
     portia_power_state_t initial_power_state = status.power_state;
 
-    nimcp_log(NIMCP_LOG_LEVEL_INFO, "Initial power state: %s",
+    nimcp_log(LOG_LEVEL_INFO, "Initial power state: %s",
               portia_power_state_name(initial_power_state));
 
     // WHEN: Monitor power state over time
@@ -485,8 +485,8 @@ TEST_F(PortiaPowerLifecycleE2ETest, PowerSourceSwitching) {
         ) << "Power state should be valid enum value";
 
         // System should remain operational regardless of power source
-        EXPECT_NE(brain_->neurons, nullptr);
-        EXPECT_GT(brain_->num_neurons, 0);
+        EXPECT_NE(brain_, nullptr);
+        EXPECT_GT(brain_get_neuron_count(brain_), 0u);
 
         // Verify metrics are collected
         EXPECT_GE(status.cpu_usage, 0.0f);
@@ -500,7 +500,7 @@ TEST_F(PortiaPowerLifecycleE2ETest, PowerSourceSwitching) {
     for (size_t i = 1; i < power_states.size(); i++) {
         if (power_states[i] != power_states[i-1]) {
             had_power_transition = true;
-            nimcp_log(NIMCP_LOG_LEVEL_INFO, "Power state transition detected: %s → %s",
+            nimcp_log(LOG_LEVEL_INFO, "Power state transition detected: %s → %s",
                       portia_power_state_name(power_states[i-1]),
                       portia_power_state_name(power_states[i]));
         }
@@ -512,9 +512,9 @@ TEST_F(PortiaPowerLifecycleE2ETest, PowerSourceSwitching) {
 
     // Verify system remained stable
     EXPECT_GT(status.updates, 0);
-    EXPECT_NE(brain_->neurons, nullptr);
+    EXPECT_NE(brain_, nullptr);
 
-    nimcp_log(NIMCP_LOG_LEVEL_INFO, "PowerSourceSwitching: PASS - "
+    nimcp_log(LOG_LEVEL_INFO, "PowerSourceSwitching: PASS - "
               "Samples=%d, Transitions=%s, Final state=%s",
               num_samples, had_power_transition ? "Yes" : "No",
               portia_power_state_name(status.power_state));

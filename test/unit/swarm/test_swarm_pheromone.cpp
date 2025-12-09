@@ -113,7 +113,7 @@ TEST_F(SwarmPheromoneTest, DepositBasicPheromone) {
         system, &pos, PHEROMONE_RESOURCE, 0.5f
     );
 
-    EXPECT_EQ(result, NIMCP_OK);
+    EXPECT_EQ(result, NIMCP_SUCCESS);
 }
 
 TEST_F(SwarmPheromoneTest, DepositMultipleTypes) {
@@ -124,7 +124,7 @@ TEST_F(SwarmPheromoneTest, DepositMultipleTypes) {
         nimcp_result_t result = nimcp_pheromone_deposit(
             system, &pos, static_cast<nimcp_pheromone_type_t>(i), 0.3f
         );
-        EXPECT_EQ(result, NIMCP_OK);
+        EXPECT_EQ(result, NIMCP_SUCCESS);
     }
 }
 
@@ -133,7 +133,7 @@ TEST_F(SwarmPheromoneTest, DepositWithNullPosition) {
         system, nullptr, PHEROMONE_PATH, 0.5f
     );
 
-    EXPECT_NE(result, NIMCP_OK);
+    EXPECT_NE(result, NIMCP_SUCCESS);
 }
 
 TEST_F(SwarmPheromoneTest, DepositOutOfBounds) {
@@ -173,7 +173,7 @@ TEST_F(SwarmPheromoneTest, RetrieveDeposited) {
         system, &pos, PHEROMONE_RESOURCE, &concentration
     );
 
-    EXPECT_EQ(result, NIMCP_OK);
+    EXPECT_EQ(result, NIMCP_SUCCESS);
     EXPECT_NEAR(concentration, deposited, 0.01f);
 }
 
@@ -185,7 +185,7 @@ TEST_F(SwarmPheromoneTest, RetrieveEmpty) {
         system, &pos, PHEROMONE_PATH, &concentration
     );
 
-    EXPECT_EQ(result, NIMCP_OK);
+    EXPECT_EQ(result, NIMCP_SUCCESS);
     EXPECT_FLOAT_EQ(concentration, 0.0f);
 }
 
@@ -196,7 +196,7 @@ TEST_F(SwarmPheromoneTest, RetrieveWithNullOutput) {
         system, &pos, PHEROMONE_RESOURCE, nullptr
     );
 
-    EXPECT_NE(result, NIMCP_OK);
+    EXPECT_NE(result, NIMCP_SUCCESS);
 }
 
 //=============================================================================
@@ -218,7 +218,7 @@ TEST_F(SwarmPheromoneTest, CalculateGradient) {
         system, &query_pos, PHEROMONE_RESOURCE, &gradient
     );
 
-    EXPECT_EQ(result, NIMCP_OK);
+    EXPECT_EQ(result, NIMCP_SUCCESS);
     EXPECT_GT(gradient.magnitude, 0.0f);
 }
 
@@ -243,7 +243,7 @@ TEST_F(SwarmPheromoneTest, GradientWithNullOutput) {
         system, &pos, PHEROMONE_RESOURCE, nullptr
     );
 
-    EXPECT_NE(result, NIMCP_OK);
+    EXPECT_NE(result, NIMCP_SUCCESS);
 }
 
 //=============================================================================
@@ -265,7 +265,7 @@ TEST_F(SwarmPheromoneTest, PlanSimplePath) {
         system, &start, PHEROMONE_PATH, 100, path, &path_length
     );
 
-    EXPECT_EQ(result, NIMCP_OK);
+    EXPECT_EQ(result, NIMCP_SUCCESS);
     EXPECT_GT(path_length, 0);
 }
 
@@ -298,7 +298,7 @@ TEST_F(SwarmPheromoneTest, ReinforcePath) {
         system, path, path_len, PHEROMONE_PATH, 1.5f
     );
 
-    EXPECT_EQ(result, NIMCP_OK);
+    EXPECT_EQ(result, NIMCP_SUCCESS);
 
     // Verify increased concentration
     float concentration = 0.0f;
@@ -313,7 +313,7 @@ TEST_F(SwarmPheromoneTest, ReinforceWithNullPath) {
         system, nullptr, 10, PHEROMONE_PATH, 1.0f
     );
 
-    EXPECT_NE(result, NIMCP_OK);
+    EXPECT_NE(result, NIMCP_SUCCESS);
 }
 
 //=============================================================================
@@ -345,7 +345,7 @@ TEST_F(SwarmPheromoneTest, MultipleUpdates) {
     // Multiple time steps
     for (int i = 0; i < 5; i++) {
         nimcp_result_t result = nimcp_pheromone_update(system, 1000);
-        EXPECT_EQ(result, NIMCP_OK);
+        EXPECT_EQ(result, NIMCP_SUCCESS);
     }
 
     float concentration = 0.0f;
@@ -368,7 +368,7 @@ TEST_F(SwarmPheromoneTest, SetEnvironment) {
         system, &center, 5.0f, 0.5f
     );
 
-    EXPECT_EQ(result, NIMCP_OK);
+    EXPECT_EQ(result, NIMCP_SUCCESS);
 }
 
 TEST_F(SwarmPheromoneTest, DepositWithModifier) {
@@ -378,7 +378,7 @@ TEST_F(SwarmPheromoneTest, DepositWithModifier) {
         system, &pos, PHEROMONE_RESOURCE, 0.7f, 0.8f
     );
 
-    EXPECT_EQ(result, NIMCP_OK);
+    EXPECT_EQ(result, NIMCP_SUCCESS);
 }
 
 //=============================================================================
@@ -400,7 +400,7 @@ TEST_F(SwarmPheromoneTest, QueryRadius) {
         system, &center, 3.0f, PHEROMONE_RESOURCE, trails, 20, &count
     );
 
-    EXPECT_EQ(result, NIMCP_OK);
+    EXPECT_EQ(result, NIMCP_SUCCESS);
     EXPECT_GT(count, 0);
 }
 
@@ -418,7 +418,7 @@ TEST_F(SwarmPheromoneTest, QueryAllTypes) {
         system, &pos, 2.0f, PHEROMONE_TYPE_COUNT, trails, 20, &count
     );
 
-    EXPECT_EQ(result, NIMCP_OK);
+    EXPECT_EQ(result, NIMCP_SUCCESS);
 }
 
 //=============================================================================
@@ -432,7 +432,7 @@ TEST_F(SwarmPheromoneTest, ResetSystem) {
 
     // Reset
     nimcp_result_t result = nimcp_pheromone_reset(system);
-    EXPECT_EQ(result, NIMCP_OK);
+    EXPECT_EQ(result, NIMCP_SUCCESS);
 
     // Verify cleared
     float concentration = 0.0f;
@@ -454,7 +454,7 @@ TEST_F(SwarmPheromoneTest, GetStatistics) {
     nimcp_pheromone_stats_t stats;
     nimcp_result_t result = nimcp_pheromone_get_stats(system, &stats);
 
-    EXPECT_EQ(result, NIMCP_OK);
+    EXPECT_EQ(result, NIMCP_SUCCESS);
     EXPECT_GT(stats.total_deposits, 0);
 }
 
@@ -473,7 +473,7 @@ TEST_F(SwarmPheromoneTest, ValidateConfig) {
     nimcp_pheromone_default_config(&test_config);
 
     nimcp_result_t result = nimcp_pheromone_validate_config(&test_config);
-    EXPECT_EQ(result, NIMCP_OK);
+    EXPECT_EQ(result, NIMCP_SUCCESS);
 }
 
 TEST_F(SwarmPheromoneTest, InvalidConfig) {
@@ -482,7 +482,7 @@ TEST_F(SwarmPheromoneTest, InvalidConfig) {
     invalid_config.voxel_size = -1.0f; // Invalid
 
     nimcp_result_t result = nimcp_pheromone_validate_config(&invalid_config);
-    EXPECT_NE(result, NIMCP_OK);
+    EXPECT_NE(result, NIMCP_SUCCESS);
 }
 
 //=============================================================================

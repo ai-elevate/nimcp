@@ -55,9 +55,9 @@ TEST_F(WorkingMemoryTest, AddWithValidDataSucceeds) {
     nimcp_status_t status = nimcp_brain_working_memory_add(brain, data, 64, 0.8f);
 
     // May succeed or fail depending on whether working memory is enabled
-    // If it succeeds, it should return NIMCP_OK
+    // If it succeeds, it should return NIMCP_SUCCESS
     // If working memory not enabled, should return NIMCP_ERROR_INVALID
-    EXPECT_TRUE(status == NIMCP_OK || status == NIMCP_ERROR_INVALID);
+    EXPECT_TRUE(status == NIMCP_SUCCESS || status == NIMCP_ERROR_INVALID);
 }
 
 TEST_F(WorkingMemoryTest, AddWithNullBrainFails) {
@@ -97,7 +97,7 @@ TEST_F(WorkingMemoryTest, AddWithVariousSaliences) {
     for (float salience : saliences) {
         nimcp_status_t status = nimcp_brain_working_memory_add(brain, data, 32, salience);
         // Should either succeed or fail consistently based on WM availability
-        EXPECT_TRUE(status == NIMCP_OK || status == NIMCP_ERROR_INVALID);
+        EXPECT_TRUE(status == NIMCP_SUCCESS || status == NIMCP_ERROR_INVALID);
     }
 }
 
@@ -110,7 +110,7 @@ TEST_F(WorkingMemoryTest, AddMultipleItems) {
         }
 
         nimcp_status_t status = nimcp_brain_working_memory_add(brain, data, 16, 0.7f);
-        EXPECT_TRUE(status == NIMCP_OK || status == NIMCP_ERROR_INVALID);
+        EXPECT_TRUE(status == NIMCP_SUCCESS || status == NIMCP_ERROR_INVALID);
     }
 }
 
@@ -125,7 +125,7 @@ TEST_F(WorkingMemoryTest, AddWithDifferentSizes) {
         }
 
         nimcp_status_t status = nimcp_brain_working_memory_add(brain, data, size, 0.8f);
-        EXPECT_TRUE(status == NIMCP_OK || status == NIMCP_ERROR_INVALID);
+        EXPECT_TRUE(status == NIMCP_SUCCESS || status == NIMCP_ERROR_INVALID);
 
         delete[] data;
     }
@@ -144,7 +144,7 @@ TEST_F(WorkingMemoryTest, GetWithValidIndexSucceeds) {
 
     nimcp_status_t add_status = nimcp_brain_working_memory_add(brain, add_data, 32, 0.9f);
 
-    if (add_status == NIMCP_OK) {
+    if (add_status == NIMCP_SUCCESS) {
         // If add succeeded, try to get
         uint32_t size_out = 0;
         const float* retrieved = nimcp_brain_working_memory_get(brain, 0, &size_out);
@@ -175,7 +175,7 @@ TEST_F(WorkingMemoryTest, GetWithNullSizeOutSucceeds) {
     float add_data[16] = {0.1f, 0.2f, 0.3f};
     nimcp_status_t add_status = nimcp_brain_working_memory_add(brain, add_data, 16, 0.8f);
 
-    if (add_status == NIMCP_OK) {
+    if (add_status == NIMCP_SUCCESS) {
         // Get with NULL size_out should still work
         const float* data = nimcp_brain_working_memory_get(brain, 0, nullptr);
         // May succeed or fail, but shouldn't crash
@@ -193,7 +193,7 @@ TEST_F(WorkingMemoryTest, GetReturnsCorrectSize) {
 
     nimcp_status_t add_status = nimcp_brain_working_memory_add(brain, add_data, original_size, 0.9f);
 
-    if (add_status == NIMCP_OK) {
+    if (add_status == NIMCP_SUCCESS) {
         uint32_t retrieved_size = 0;
         const float* retrieved = nimcp_brain_working_memory_get(brain, 0, &retrieved_size);
 
@@ -235,9 +235,9 @@ TEST_F(WorkingMemoryTest, StatsWithValidParamsSucceeds) {
     nimcp_status_t status = nimcp_brain_working_memory_stats(brain, &current_size, &capacity);
 
     // Should either succeed or fail if WM not enabled
-    EXPECT_TRUE(status == NIMCP_OK || status == NIMCP_ERROR_INVALID);
+    EXPECT_TRUE(status == NIMCP_SUCCESS || status == NIMCP_ERROR_INVALID);
 
-    if (status == NIMCP_OK) {
+    if (status == NIMCP_SUCCESS) {
         // Capacity should be reasonable (typically 7 ± 2)
         EXPECT_GT(capacity, 0);
         EXPECT_LE(capacity, 20);
@@ -284,12 +284,12 @@ TEST_F(WorkingMemoryTest, StatsReflectsAddedItems) {
 
     nimcp_status_t initial_status = nimcp_brain_working_memory_stats(brain, &initial_size, &capacity);
 
-    if (initial_status == NIMCP_OK) {
+    if (initial_status == NIMCP_SUCCESS) {
         // Add an item
         float data[16] = {0.1f, 0.2f, 0.3f};
         nimcp_status_t add_status = nimcp_brain_working_memory_add(brain, data, 16, 0.9f);
 
-        if (add_status == NIMCP_OK) {
+        if (add_status == NIMCP_SUCCESS) {
             uint32_t after_size = 0;
             uint32_t after_capacity = 0;
             nimcp_brain_working_memory_stats(brain, &after_size, &after_capacity);
@@ -307,7 +307,7 @@ TEST_F(WorkingMemoryTest, StatsCapacityIsConstant) {
 
     nimcp_status_t status1 = nimcp_brain_working_memory_stats(brain, &size1, &cap1);
 
-    if (status1 == NIMCP_OK) {
+    if (status1 == NIMCP_SUCCESS) {
         // Add some items
         for (int i = 0; i < 3; i++) {
             float data[8] = {0.1f, 0.2f};
@@ -316,7 +316,7 @@ TEST_F(WorkingMemoryTest, StatsCapacityIsConstant) {
 
         nimcp_status_t status2 = nimcp_brain_working_memory_stats(brain, &size2, &cap2);
 
-        if (status2 == NIMCP_OK) {
+        if (status2 == NIMCP_SUCCESS) {
             // Capacity should not change
             EXPECT_EQ(cap1, cap2);
         }
@@ -336,10 +336,10 @@ TEST_F(WorkingMemoryTest, RefreshWithValidIndexSucceeds) {
 
     nimcp_status_t add_status = nimcp_brain_working_memory_add(brain, data, 32, 0.9f);
 
-    if (add_status == NIMCP_OK) {
+    if (add_status == NIMCP_SUCCESS) {
         // Refresh the item
         nimcp_status_t refresh_status = nimcp_brain_working_memory_refresh(brain, 0);
-        EXPECT_EQ(refresh_status, NIMCP_OK);
+        EXPECT_EQ(refresh_status, NIMCP_SUCCESS);
     }
 }
 
@@ -354,7 +354,7 @@ TEST_F(WorkingMemoryTest, RefreshWithInvalidIndexFails) {
     nimcp_status_t status = nimcp_brain_working_memory_refresh(brain, 9999);
 
     // Should fail with either INVALID or error based on WM state
-    EXPECT_NE(status, NIMCP_OK);
+    EXPECT_NE(status, NIMCP_SUCCESS);
 }
 
 TEST_F(WorkingMemoryTest, RefreshMultipleTimes) {
@@ -362,11 +362,11 @@ TEST_F(WorkingMemoryTest, RefreshMultipleTimes) {
     float data[16] = {0.1f, 0.2f, 0.3f};
     nimcp_status_t add_status = nimcp_brain_working_memory_add(brain, data, 16, 0.9f);
 
-    if (add_status == NIMCP_OK) {
+    if (add_status == NIMCP_SUCCESS) {
         // Refresh multiple times
         for (int i = 0; i < 5; i++) {
             nimcp_status_t refresh_status = nimcp_brain_working_memory_refresh(brain, 0);
-            EXPECT_EQ(refresh_status, NIMCP_OK);
+            EXPECT_EQ(refresh_status, NIMCP_SUCCESS);
         }
     }
 }
@@ -397,7 +397,7 @@ TEST_F(WorkingMemoryTest, CapacityLimitEnforced) {
     uint32_t initial_size, capacity;
     nimcp_status_t stats_status = nimcp_brain_working_memory_stats(brain, &initial_size, &capacity);
 
-    if (stats_status == NIMCP_OK) {
+    if (stats_status == NIMCP_SUCCESS) {
         // Try to add more items than capacity
         for (uint32_t i = 0; i < capacity + 5; i++) {
             float data[16];
@@ -420,7 +420,7 @@ TEST_F(WorkingMemoryTest, LowSalienceItemsEvicted) {
     uint32_t size = 0;
     nimcp_status_t stats_status = nimcp_brain_working_memory_stats(brain, &size, &capacity);
 
-    if (stats_status == NIMCP_OK && capacity > 0) {
+    if (stats_status == NIMCP_SUCCESS && capacity > 0) {
         // Fill capacity with low salience items
         for (uint32_t i = 0; i < capacity; i++) {
             float data[8];
@@ -434,7 +434,7 @@ TEST_F(WorkingMemoryTest, LowSalienceItemsEvicted) {
         float high_sal_data[8] = {9.9f, 9.9f, 9.9f, 9.9f, 9.9f, 9.9f, 9.9f, 9.9f};
         nimcp_status_t add_status = nimcp_brain_working_memory_add(brain, high_sal_data, 8, 0.99f);
 
-        EXPECT_EQ(add_status, NIMCP_OK);
+        EXPECT_EQ(add_status, NIMCP_SUCCESS);
     }
 }
 
@@ -443,7 +443,7 @@ TEST_F(WorkingMemoryTest, AddBeyondCapacitySucceeds) {
     uint32_t size = 0;
     nimcp_status_t stats_status = nimcp_brain_working_memory_stats(brain, &size, &capacity);
 
-    if (stats_status == NIMCP_OK && capacity > 0) {
+    if (stats_status == NIMCP_SUCCESS && capacity > 0) {
         // Add items beyond capacity
         for (uint32_t i = 0; i < capacity * 2; i++) {
             float data[8];
@@ -453,7 +453,7 @@ TEST_F(WorkingMemoryTest, AddBeyondCapacitySucceeds) {
             nimcp_status_t add_status = nimcp_brain_working_memory_add(brain, data, 8, 0.5f);
 
             // Each add should succeed (evicting old items)
-            EXPECT_EQ(add_status, NIMCP_OK);
+            EXPECT_EQ(add_status, NIMCP_SUCCESS);
         }
 
         // Verify size is at or below capacity
@@ -476,7 +476,7 @@ TEST_F(WorkingMemoryTest, AddGetRefreshCycle) {
 
     nimcp_status_t add_status = nimcp_brain_working_memory_add(brain, original_data, 32, 0.9f);
 
-    if (add_status == NIMCP_OK) {
+    if (add_status == NIMCP_SUCCESS) {
         // Get item
         uint32_t size_out = 0;
         const float* retrieved = nimcp_brain_working_memory_get(brain, 0, &size_out);
@@ -484,7 +484,7 @@ TEST_F(WorkingMemoryTest, AddGetRefreshCycle) {
 
         // Refresh item
         nimcp_status_t refresh_status = nimcp_brain_working_memory_refresh(brain, 0);
-        EXPECT_EQ(refresh_status, NIMCP_OK);
+        EXPECT_EQ(refresh_status, NIMCP_SUCCESS);
 
         // Get again
         retrieved = nimcp_brain_working_memory_get(brain, 0, &size_out);
@@ -506,7 +506,7 @@ TEST_F(WorkingMemoryTest, StatsAfterOperations) {
     uint32_t size_after, capacity_after;
     nimcp_status_t status = nimcp_brain_working_memory_stats(brain, &size_after, &capacity_after);
 
-    if (status == NIMCP_OK) {
+    if (status == NIMCP_SUCCESS) {
         EXPECT_EQ(capacity_after, capacity_before); // Capacity unchanged
     }
 }
@@ -523,7 +523,7 @@ TEST_F(WorkingMemoryTest, MultipleAddGetSequence) {
 
         nimcp_status_t add_status = nimcp_brain_working_memory_add(brain, data, 8, 0.7f);
 
-        if (add_status == NIMCP_OK) {
+        if (add_status == NIMCP_SUCCESS) {
             // Immediately retrieve
             uint32_t size_out = 0;
             const float* retrieved = nimcp_brain_working_memory_get(brain, 0, &size_out);

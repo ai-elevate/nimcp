@@ -61,22 +61,50 @@ typedef struct nimcp_message {
 typedef int32_t nimcp_result_t;
 
 /* Protocol-Specific Errors (-40 to -49) */
+#ifndef NIMCP_ERROR_INVALID_PACKET
 #define NIMCP_ERROR_INVALID_PACKET -40   /* Invalid packet structure or format */
+#endif
+#ifndef NIMCP_ERROR_INVALID_HEADER
 #define NIMCP_ERROR_INVALID_HEADER -41   /* Invalid packet header */
+#endif
+#ifndef NIMCP_ERROR_INVALID_VERSION
 #define NIMCP_ERROR_INVALID_VERSION -43  /* Unsupported protocol version */
+#endif
+#ifndef NIMCP_ERROR_INVALID_TYPE
 #define NIMCP_ERROR_INVALID_TYPE -44     /* Invalid message type */
+#endif
+#ifndef NIMCP_ERROR_INVALID_FLAGS
 #define NIMCP_ERROR_INVALID_FLAGS -45    /* Invalid packet flags */
+#endif
+#ifndef NIMCP_ERROR_INVALID_SEQUENCE
 #define NIMCP_ERROR_INVALID_SEQUENCE -46 /* Invalid sequence number */
+#endif
+#ifndef NIMCP_ERROR_INVALID_SIZE
 #define NIMCP_ERROR_INVALID_SIZE -47     /* Invalid payload size */
+#endif
+#ifndef NIMCP_ERROR_SERIALIZATION
 #define NIMCP_ERROR_SERIALIZATION -48    /* Serialization error */
+#endif
+#ifndef NIMCP_ERROR_DESERIALIZATION
 #define NIMCP_ERROR_DESERIALIZATION -49  /* Deserialization error */
+#endif
 
 /* Memory and Buffer Errors (-50 to -59) */
+#ifndef NIMCP_ERROR_MEMORY
 #define NIMCP_ERROR_MEMORY -50           /* Memory allocation error */
+#endif
+#ifndef NIMCP_ERROR_BUFFER_OVERFLOW
 #define NIMCP_ERROR_BUFFER_OVERFLOW -51  /* Buffer overflow error */
+#endif
+#ifndef NIMCP_ERROR_BUFFER_UNDERFLOW
 #define NIMCP_ERROR_BUFFER_UNDERFLOW -52 /* Buffer underflow error */
+#endif
+#ifndef NIMCP_ERROR_BUFFER_TOO_SMALL
 #define NIMCP_ERROR_BUFFER_TOO_SMALL -53 /* Buffer too small for operation */
+#endif
+#ifndef NIMCP_ERROR_NULL_POINTER
 #define NIMCP_ERROR_NULL_POINTER -54     /* Null pointer error */
+#endif
 
 #define MAX_ROUTES 256
 
@@ -88,19 +116,45 @@ typedef int32_t nimcp_result_t;
 /* NIMCP uses canonical error codes from nimcp_error_codes.h (values 1000+)
  * The NIMCP_ERROR_INVALID_PARAM alias maps to NIMCP_ERROR_INVALID_PARAMETER (1002)
  * for consistency across the codebase. */
+#ifndef NIMCP_SUCCESS
 #define NIMCP_SUCCESS 0                     /**< Operation completed successfully */
+#endif
+#ifndef NIMCP_ERROR_INVALID_PARAM
 #define NIMCP_ERROR_INVALID_PARAM 1002      /**< Invalid parameter - maps to NIMCP_ERROR_INVALID_PARAMETER */
+#endif
+#ifndef NIMCP_ERROR_INVALID_MAGIC
 #define NIMCP_ERROR_INVALID_MAGIC -2        /**< Invalid magic number in packet */
+#endif
+#ifndef NIMCP_ERROR_VERSION_MISMATCH
 #define NIMCP_ERROR_VERSION_MISMATCH -3     /**< Protocol version mismatch */
+#endif
+#ifndef NIMCP_ERROR_PAYLOAD_TOO_LARGE
 #define NIMCP_ERROR_PAYLOAD_TOO_LARGE -4    /**< Payload exceeds maximum size */
+#endif
+#ifndef NIMCP_ERROR_INVALID_SIGNATURE
 #define NIMCP_ERROR_INVALID_SIGNATURE -5    /**< Invalid or corrupt signature */
+#endif
+#ifndef NIMCP_ERROR_SECURITY_REQUIRED
 #define NIMCP_ERROR_SECURITY_REQUIRED -6    /**< Security context required but not provided */
+#endif
+#ifndef NIMCP_ERROR_ENCRYPTION_FAILED
 #define NIMCP_ERROR_ENCRYPTION_FAILED -7    /**< Encryption operation failed */
+#endif
+#ifndef NIMCP_ERROR_DECRYPTION_FAILED
 #define NIMCP_ERROR_DECRYPTION_FAILED -8    /**< Decryption operation failed */
+#endif
+#ifndef NIMCP_ERROR_SIGNATURE_FAILED
 #define NIMCP_ERROR_SIGNATURE_FAILED -9     /**< Signature generation failed */
+#endif
+#ifndef NIMCP_ERROR_VERIFICATION_FAILED
 #define NIMCP_ERROR_VERIFICATION_FAILED -10 /**< Signature verification failed */
+#endif
+#ifndef NIMCP_ERROR_SERIALIZER
 #define NIMCP_ERROR_SERIALIZER -11          /**< Serializer operation failed */
+#endif
+#ifndef NIMCP_ERROR_NOT_IMPLEMENTED
 #define NIMCP_ERROR_NOT_IMPLEMENTED -13     /**< Feature not implemented */
+#endif
 /* Version Information - Use nimcp.h version if already defined */
 #ifndef NIMCP_VERSION_MAJOR
 #define NIMCP_VERSION_MAJOR 2
@@ -133,66 +187,167 @@ typedef int32_t nimcp_result_t;
 #endif
 
 
-/* Success Codes (>= 0) */
-#define NIMCP_SUCCESS 0        /* Operation completed successfully */
+/* Success Codes (>= 0) - with guards to prevent redefinition */
+#ifndef NIMCP_PENDING
 #define NIMCP_PENDING 1        /* Operation is in progress */
+#endif
+#ifndef NIMCP_WOULD_BLOCK
 #define NIMCP_WOULD_BLOCK 2    /* Non-blocking operation would block */
+#endif
+#ifndef NIMCP_TIMEOUT
 #define NIMCP_TIMEOUT 3        /* Operation timed out */
+#endif
+#ifndef NIMCP_NOT_FOUND
 #define NIMCP_NOT_FOUND 4      /* Requested item not found */
+#endif
+#ifndef NIMCP_BUFFER_FULL
 #define NIMCP_BUFFER_FULL 5    /* Buffer capacity reached */
+#endif
+#ifndef NIMCP_END_OF_STREAM
 #define NIMCP_END_OF_STREAM 6  /* End of stream reached */
+#endif
+#ifndef NIMCP_ALREADY_EXISTS
 #define NIMCP_ALREADY_EXISTS 7 /* Item already exists */
+#endif
 
 /* Error Codes (< 0) */
 /* General Errors (-1 to -9) */
+#ifndef NIMCP_ERROR
 #define NIMCP_ERROR -1              /* Generic error */
+#endif
+#ifndef NIMCP_INVALID_PARAM
 #define NIMCP_INVALID_PARAM -2      /* Invalid parameter */
+#endif
+#ifndef NIMCP_ERROR_NULL_ARG
+#define NIMCP_ERROR_NULL_ARG -2     /* Null argument (alias for NIMCP_INVALID_PARAM) */
+#endif
+#ifndef NIMCP_ERROR_INVALID
+#define NIMCP_ERROR_INVALID -2      /* Invalid argument (alias for NIMCP_INVALID_PARAM) */
+#endif
+#ifndef NIMCP_NO_MEMORY
 #define NIMCP_NO_MEMORY -3          /* Memory allocation failed */
+#endif
+#ifndef NIMCP_NOT_INITIALIZED
 #define NIMCP_NOT_INITIALIZED -4    /* Component not initialized */
+#endif
+#ifndef NIMCP_NOT_IMPLEMENTED
 #define NIMCP_NOT_IMPLEMENTED -5    /* Feature not implemented */
+#endif
+#ifndef NIMCP_INVALID_STATE
 #define NIMCP_INVALID_STATE -6      /* Invalid state for operation */
+#endif
+#ifndef NIMCP_BUFFER_TOO_SMALL
 #define NIMCP_BUFFER_TOO_SMALL -7   /* Buffer too small */
+#endif
+#ifndef NIMCP_OPERATION_CANCELED
 #define NIMCP_OPERATION_CANCELED -8 /* Operation was canceled */
+#endif
+#ifndef NIMCP_PERMISSION_DENIED
 #define NIMCP_PERMISSION_DENIED -9  /* Permission denied */
+#endif
 
 /* System Errors (-10 to -19) */
-#define NIMCP_SYSTEM_ERROR -10  /* System call failed */
-#define NIMCP_IO_ERROR -11      /* I/O error */
-#define NIMCP_NETWORK_ERROR -12 /* Network operation failed */
-#define NIMCP_SOCKET_ERROR -13  /* Socket operation failed */
-#define NIMCP_THREAD_ERROR -14  /* Thread operation failed */
-#define NIMCP_LOCK_ERROR -15    /* Lock operation failed */
-#define NIMCP_TIMEOUT_ERROR -16 /* Timeout error */
+#ifndef NIMCP_SYSTEM_ERROR
+#define NIMCP_SYSTEM_ERROR -10      /* System call failed */
+#endif
+#ifndef NIMCP_IO_ERROR
+#define NIMCP_IO_ERROR -11          /* I/O error */
+#endif
+#ifndef NIMCP_NETWORK_ERROR
+#define NIMCP_NETWORK_ERROR -12     /* Network operation failed */
+#endif
+#ifndef NIMCP_SOCKET_ERROR
+#define NIMCP_SOCKET_ERROR -13      /* Socket operation failed */
+#endif
+#ifndef NIMCP_THREAD_ERROR
+#define NIMCP_THREAD_ERROR -14      /* Thread operation failed */
+#endif
+#ifndef NIMCP_LOCK_ERROR
+#define NIMCP_LOCK_ERROR -15        /* Lock operation failed */
+#endif
+#ifndef NIMCP_TIMEOUT_ERROR
+#define NIMCP_TIMEOUT_ERROR -16     /* Timeout error */
+#endif
+#ifndef NIMCP_ERROR_NOT_FOUND
+#define NIMCP_ERROR_NOT_FOUND -17   /* Item not found error */
+#endif
+#ifndef NIMCP_ERROR_NOT_SUPPORTED
+#define NIMCP_ERROR_NOT_SUPPORTED -18 /* Feature not supported */
+#endif
 
 /* Protocol Errors (-20 to -29) */
+#ifndef NIMCP_INVALID_MSG
 #define NIMCP_INVALID_MSG -20      /* Invalid message format */
+#endif
+#ifndef NIMCP_VERSION_MISMATCH
 #define NIMCP_VERSION_MISMATCH -21 /* Protocol version mismatch */
+#endif
+#ifndef NIMCP_QUEUE_FULL
 #define NIMCP_QUEUE_FULL -22       /* Message queue is full */
+#endif
+#ifndef NIMCP_QUEUE_EMPTY
 #define NIMCP_QUEUE_EMPTY -23      /* Message queue is empty */
+#endif
+#ifndef NIMCP_PROTO_ERROR
 #define NIMCP_PROTO_ERROR -24      /* Protocol error */
+#endif
+#ifndef NIMCP_HANDSHAKE_FAILED
 #define NIMCP_HANDSHAKE_FAILED -25 /* Protocol handshake failed */
+#endif
+#ifndef NIMCP_AUTH_FAILED
 #define NIMCP_AUTH_FAILED -26      /* Authentication failed */
+#endif
+#ifndef NIMCP_INVALID_SEQUENCE
 #define NIMCP_INVALID_SEQUENCE -27 /* Invalid message sequence */
+#endif
+#ifndef NIMCP_CRYPTO_ERROR
 #define NIMCP_CRYPTO_ERROR -28     /* Cryptographic operation failed */
+#endif
+#ifndef NIMCP_INVALID_CHECKSUM
 #define NIMCP_INVALID_CHECKSUM -29 /* Invalid message checksum */
+#endif
 
 /* Initialization Errors (-30 to -39) */
+#ifndef NIMCP_INIT_FAILED
 #define NIMCP_INIT_FAILED -30     /* Initialization failed */
+#endif
+#ifndef NIMCP_CONFIG_ERROR
 #define NIMCP_CONFIG_ERROR -31    /* Configuration error */
+#endif
+#ifndef NIMCP_ALREADY_RUNNING
 #define NIMCP_ALREADY_RUNNING -32 /* Already running */
+#endif
+#ifndef NIMCP_NOT_RUNNING
 #define NIMCP_NOT_RUNNING -33     /* Not running */
+#endif
 
 // Add necessary constants
+#ifndef MAX_MESSAGE_SIZE
 #define MAX_MESSAGE_SIZE (1024 * 1024)  // 1MB
+#endif
+#ifndef MAX_BATCH_SIZE
 #define MAX_BATCH_SIZE 1000
+#endif
+#ifndef MAX_PENDING_MESSAGES
 #define MAX_PENDING_MESSAGES 10000
+#endif
+#ifndef MESSAGE_QUEUE_TIMEOUT_MS
 #define MESSAGE_QUEUE_TIMEOUT_MS 1000
+#endif
 
 // Add error codes
+#ifndef NIMCP_ERROR_QUEUE_FULL
 #define NIMCP_ERROR_QUEUE_FULL -100
+#endif
+#ifndef NIMCP_ERROR_MESSAGE_TOO_LARGE
 #define NIMCP_ERROR_MESSAGE_TOO_LARGE -101
+#endif
+#ifndef NIMCP_ERROR_INVALID_MESSAGE
 #define NIMCP_ERROR_INVALID_MESSAGE -102
+#endif
+#ifndef NIMCP_ERROR_TIMEOUT
 #define NIMCP_ERROR_TIMEOUT -103
+#endif
 
 /* Common Type Definitions */
 typedef uint32_t nimcp_handle_t;

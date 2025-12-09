@@ -55,7 +55,7 @@ TEST_F(APIBrainOperationsTest, LearnExampleValidDataSucceeds) {
         1.0f
     );
 
-    EXPECT_EQ(status, NIMCP_OK);
+    EXPECT_EQ(status, NIMCP_SUCCESS);
 }
 
 /**
@@ -134,7 +134,7 @@ TEST_F(APIBrainOperationsTest, PredictValidDataSucceeds) {
         &confidence
     );
 
-    EXPECT_EQ(status, NIMCP_OK);
+    EXPECT_EQ(status, NIMCP_SUCCESS);
 }
 
 /**
@@ -228,7 +228,7 @@ TEST_F(APIBrainOperationsTest, InferValidDataSucceeds) {
         2
     );
 
-    EXPECT_EQ(status, NIMCP_OK);
+    EXPECT_EQ(status, NIMCP_SUCCESS);
 }
 
 /**
@@ -301,7 +301,7 @@ TEST_F(APIBrainOperationsTest, InferFillsOutputArrayCorrectly) {
         2
     );
 
-    EXPECT_EQ(status, NIMCP_OK);
+    EXPECT_EQ(status, NIMCP_SUCCESS);
 
     // Outputs should have been modified (not sentinel values)
     // We can't know exact values, but they should be in valid range
@@ -320,12 +320,12 @@ TEST_F(APIBrainOperationsTest, LearnAndPredictIntegration) {
     nimcp_status_t status1 = nimcp_brain_learn_example(
         brain, features1, 10, "class_a", 1.0f
     );
-    EXPECT_EQ(status1, NIMCP_OK);
+    EXPECT_EQ(status1, NIMCP_SUCCESS);
 
     nimcp_status_t status2 = nimcp_brain_learn_example(
         brain, features2, 10, "class_b", 1.0f
     );
-    EXPECT_EQ(status2, NIMCP_OK);
+    EXPECT_EQ(status2, NIMCP_SUCCESS);
 
     // Now predict
     char label[64];
@@ -334,7 +334,7 @@ TEST_F(APIBrainOperationsTest, LearnAndPredictIntegration) {
     nimcp_status_t status3 = nimcp_brain_predict(
         brain, features1, 10, label, &confidence
     );
-    EXPECT_EQ(status3, NIMCP_OK);
+    EXPECT_EQ(status3, NIMCP_SUCCESS);
 
     // Label should be valid (not empty)
     EXPECT_GT(strlen(label), 0) << "Predicted label should not be empty";
@@ -356,9 +356,9 @@ TEST_F(APIBrainOperationsTest, MultipleLearningSameLabel) {
     nimcp_status_t status2 = nimcp_brain_learn_example(brain, features2, 10, "positive", 1.0f);
     nimcp_status_t status3 = nimcp_brain_learn_example(brain, features3, 10, "positive", 1.0f);
 
-    EXPECT_EQ(status1, NIMCP_OK);
-    EXPECT_EQ(status2, NIMCP_OK);
-    EXPECT_EQ(status3, NIMCP_OK);
+    EXPECT_EQ(status1, NIMCP_SUCCESS);
+    EXPECT_EQ(status2, NIMCP_SUCCESS);
+    EXPECT_EQ(status3, NIMCP_SUCCESS);
 }
 
 /**
@@ -369,19 +369,19 @@ TEST_F(APIBrainOperationsTest, LearningWithDifferentConfidences) {
 
     // High confidence
     nimcp_status_t status1 = nimcp_brain_learn_example(brain, features, 10, "label1", 1.0f);
-    EXPECT_EQ(status1, NIMCP_OK);
+    EXPECT_EQ(status1, NIMCP_SUCCESS);
 
     // Medium confidence
     nimcp_status_t status2 = nimcp_brain_learn_example(brain, features, 10, "label2", 0.5f);
-    EXPECT_EQ(status2, NIMCP_OK);
+    EXPECT_EQ(status2, NIMCP_SUCCESS);
 
     // Low confidence
     nimcp_status_t status3 = nimcp_brain_learn_example(brain, features, 10, "label3", 0.1f);
-    EXPECT_EQ(status3, NIMCP_OK);
+    EXPECT_EQ(status3, NIMCP_SUCCESS);
 
     // Zero confidence (edge case)
     nimcp_status_t status4 = nimcp_brain_learn_example(brain, features, 10, "label4", 0.0f);
-    EXPECT_EQ(status4, NIMCP_OK);
+    EXPECT_EQ(status4, NIMCP_SUCCESS);
 }
 
 /**
@@ -393,17 +393,17 @@ TEST_F(APIBrainOperationsTest, InferWithDifferentOutputSizes) {
     // Exact size
     float outputs1[2];
     nimcp_status_t status1 = nimcp_brain_infer(brain, features, 10, outputs1, 2);
-    EXPECT_EQ(status1, NIMCP_OK);
+    EXPECT_EQ(status1, NIMCP_SUCCESS);
 
     // Smaller than brain output (should work, truncated)
     float outputs2[1];
     nimcp_status_t status2 = nimcp_brain_infer(brain, features, 10, outputs2, 1);
-    EXPECT_EQ(status2, NIMCP_OK);
+    EXPECT_EQ(status2, NIMCP_SUCCESS);
 
     // Larger than brain output (should work, zero-padded)
     float outputs3[5] = {-1.0f, -1.0f, -1.0f, -1.0f, -1.0f};
     nimcp_status_t status3 = nimcp_brain_infer(brain, features, 10, outputs3, 5);
-    EXPECT_EQ(status3, NIMCP_OK);
+    EXPECT_EQ(status3, NIMCP_SUCCESS);
 
     // Extra outputs should be zero (not sentinel)
     EXPECT_EQ(outputs3[2], 0.0f);
@@ -425,7 +425,7 @@ TEST_F(APIBrainOperationsTest, PredictReturnsValidLabel) {
     float confidence;
 
     nimcp_status_t status = nimcp_brain_predict(brain, features, 10, label, &confidence);
-    EXPECT_EQ(status, NIMCP_OK);
+    EXPECT_EQ(status, NIMCP_SUCCESS);
 
     // Label should be null-terminated
     EXPECT_NE(label[63], 0xFF) << "Label buffer was not written to";
@@ -455,7 +455,7 @@ TEST_F(APIBrainOperationsTest, BatchLearningAndPrediction) {
         nimcp_status_t status = nimcp_brain_learn_example(
             brain, features, num_features, label, 1.0f
         );
-        EXPECT_EQ(status, NIMCP_OK) << "Learning failed at example " << i;
+        EXPECT_EQ(status, NIMCP_SUCCESS) << "Learning failed at example " << i;
     }
 
     // Predict on all examples
@@ -471,6 +471,6 @@ TEST_F(APIBrainOperationsTest, BatchLearningAndPrediction) {
         nimcp_status_t status = nimcp_brain_predict(
             brain, features, num_features, predicted_label, &confidence
         );
-        EXPECT_EQ(status, NIMCP_OK) << "Prediction failed at example " << i;
+        EXPECT_EQ(status, NIMCP_SUCCESS) << "Prediction failed at example " << i;
     }
 }

@@ -23,6 +23,7 @@
 #include "async/nimcp_bio_router.h"
 
 #include "async/nimcp_bio_messages.h"
+#include "async/nimcp_predictive_protocol.h"
 #include "security/nimcp_blood_brain_barrier.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/memory/nimcp_unified_memory.h"
@@ -132,6 +133,9 @@ struct bio_router_struct {
     // Statistics
     bio_router_stats_t stats;
     nimcp_platform_mutex_t stats_mutex;
+
+    // Predictive protocol (optional)
+    predictive_protocol_t predictive_proto;
 
     unified_mem_manager_t mem_mgr;
     bool initialized;
@@ -372,7 +376,8 @@ bio_router_config_t bio_router_default_config(void) {
         .worker_threads = 4,
         .enable_logging = true,
         .enable_statistics = true,
-        .routing_timeout_ms = DEFAULT_TIMEOUT_MS
+        .routing_timeout_ms = DEFAULT_TIMEOUT_MS,
+        .enable_predictive_protocol = true  // Enable by default
     };
     return config;
 }
@@ -446,13 +451,26 @@ nimcp_error_t bio_router_init(const bio_router_config_t* config) {
         g_router->mem_mgr = unified_mem_create(&mem_cfg);
     }
 
+    // Initialize predictive protocol if enabled
+    if (cfg.enable_predictive_protocol) {
+        predictive_config_t pred_cfg = predictive_protocol_default_config();
+        g_router->predictive_proto = predictive_protocol_create(&pred_cfg);
+        if (!g_router->predictive_proto) {
+            LOG_WARN("Failed to initialize predictive protocol, continuing without it");
+        } else {
+            LOG_INFO("Predictive protocol enabled (cache_size=%u, min_confidence=%.2f)",
+                     pred_cfg.cache_size, pred_cfg.min_confidence);
+        }
+    }
+
     g_router->initialized = true;
     g_router->shutdown_requested = false;
 
     nimcp_platform_mutex_unlock(&g_router_init_mutex);
 
-    LOG_INFO("Bio-router initialized (max_modules=%u, inbox_capacity=%u)",
-             cfg.max_modules, cfg.inbox_capacity);
+    LOG_INFO("Bio-router initialized (max_modules=%u, inbox_capacity=%u, predictive=%s)",
+             cfg.max_modules, cfg.inbox_capacity,
+             cfg.enable_predictive_protocol ? "enabled" : "disabled");
 
     return NIMCP_SUCCESS;
 }
@@ -479,6 +497,18 @@ void bio_router_shutdown(void) {
         }
     }
     nimcp_platform_mutex_unlock(&g_router->modules_mutex);
+
+    // Destroy predictive protocol
+    if (g_router->predictive_proto) {
+        prefetch_result_t stats;
+        if (predictive_protocol_get_stats(g_router->predictive_proto, &stats) == 0) {
+            LOG_INFO("Predictive protocol stats: predictions=%lu, hits=%lu, misses=%lu, hit_rate=%.1f%%, wasted=%lu",
+                     stats.predictions_made, stats.cache_hits, stats.cache_misses,
+                     stats.hit_rate * 100.0f, stats.wasted_prefetches);
+        }
+        predictive_protocol_destroy(g_router->predictive_proto);
+        g_router->predictive_proto = NULL;
+    }
 
     // Destroy memory manager
     if (g_router->mem_mgr) {
@@ -903,6 +933,24 @@ nimcp_error_t bio_router_send(bio_module_context_t ctx,
         }
 
         nimcp_platform_mutex_unlock(&g_router->stats_mutex);
+
+        // Observe message with predictive protocol
+        if (g_router->predictive_proto) {
+            predictive_protocol_observe(g_router->predictive_proto, header);
+
+            // Generate predictions and prefetch
+            prediction_t predictions[5];
+            uint32_t pred_count = predictive_protocol_predict_next(g_router->predictive_proto,
+                                                                    header,
+                                                                    predictions, 5);
+
+            // Prefetch high-confidence predictions
+            for (uint32_t i = 0; i < pred_count; i++) {
+                if (predictions[i].confidence >= 0.8f) {
+                    predictive_protocol_prefetch(g_router->predictive_proto, &predictions[i]);
+                }
+            }
+        }
     }
 
     return result;

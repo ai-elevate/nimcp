@@ -4,25 +4,23 @@
  */
 
 #include <gtest/gtest.h>
+#include <thread>
+#include <vector>
+#include <cmath>
 extern "C" {
 #include "portia/nimcp_portia_sensor_fusion.h"
-#include "async/nimcp_bio_ctx.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/platform/nimcp_platform.h"
+#include "utils/platform/nimcp_platform_time.h"
 }
 
 class PortiaSensorFusionTest : public ::testing::Test {
 protected:
     portia_fusion_ctx_t* fusion_ctx;
-    nimcp_bio_ctx_t* bio_ctx;
     portia_fusion_config_t config;
 
     void SetUp() override {
-        // Initialize bio-async context
-        bio_ctx = nimcp_bio_ctx_create(32, 1024);
-        ASSERT_NE(bio_ctx, nullptr);
-
-        // Get default config
+        // Get default config - bio_ctx is optional for testing
         config = portia_fusion_default_config();
         fusion_ctx = nullptr;
     }
@@ -31,9 +29,6 @@ protected:
         if (fusion_ctx) {
             portia_fusion_destroy(fusion_ctx);
         }
-        if (bio_ctx) {
-            nimcp_bio_ctx_destroy(bio_ctx);
-        }
     }
 
     sensor_reading_t create_reading(sensor_type_t type, float value, float confidence) {
@@ -41,7 +36,7 @@ protected:
         reading.type = type;
         reading.value = value;
         reading.confidence = confidence;
-        reading.timestamp_ms = nimcp_platform_get_time_ms();
+        reading.timestamp_ms = nimcp_platform_time_monotonic_ms();
         reading.valid = true;
         return reading;
     }
@@ -49,7 +44,7 @@ protected:
 
 // Test initialization
 TEST_F(PortiaSensorFusionTest, InitializationSuccess) {
-    fusion_ctx = portia_fusion_init(&config, bio_ctx);
+    fusion_ctx = portia_fusion_init(&config, NULL);
     ASSERT_NE(fusion_ctx, nullptr);
 
     float confidence = portia_fusion_get_confidence(fusion_ctx);
@@ -58,13 +53,13 @@ TEST_F(PortiaSensorFusionTest, InitializationSuccess) {
 }
 
 TEST_F(PortiaSensorFusionTest, InitializationWithNullConfig) {
-    fusion_ctx = portia_fusion_init(nullptr, bio_ctx);
+    fusion_ctx = portia_fusion_init(nullptr, NULL);
     EXPECT_EQ(fusion_ctx, nullptr);
 }
 
 TEST_F(PortiaSensorFusionTest, InitializationWithInvalidConfig) {
     config.fusion_rate_hz = 0;  // Invalid
-    fusion_ctx = portia_fusion_init(&config, bio_ctx);
+    fusion_ctx = portia_fusion_init(&config, NULL);
     EXPECT_EQ(fusion_ctx, nullptr);
 }
 
@@ -100,7 +95,7 @@ TEST_F(PortiaSensorFusionTest, SensorNames) {
 
 // Test sensor update
 TEST_F(PortiaSensorFusionTest, UpdateSensorSuccess) {
-    fusion_ctx = portia_fusion_init(&config, bio_ctx);
+    fusion_ctx = portia_fusion_init(&config, NULL);
     ASSERT_NE(fusion_ctx, nullptr);
 
     sensor_reading_t reading = create_reading(SENSOR_TYPE_VISUAL, 10.0f, 0.9f);
@@ -109,7 +104,7 @@ TEST_F(PortiaSensorFusionTest, UpdateSensorSuccess) {
 }
 
 TEST_F(PortiaSensorFusionTest, UpdateSensorInvalidType) {
-    fusion_ctx = portia_fusion_init(&config, bio_ctx);
+    fusion_ctx = portia_fusion_init(&config, NULL);
     ASSERT_NE(fusion_ctx, nullptr);
 
     sensor_reading_t reading = create_reading(SENSOR_TYPE_COUNT, 10.0f, 0.9f);
@@ -118,7 +113,7 @@ TEST_F(PortiaSensorFusionTest, UpdateSensorInvalidType) {
 }
 
 TEST_F(PortiaSensorFusionTest, UpdateSensorInvalidConfidence) {
-    fusion_ctx = portia_fusion_init(&config, bio_ctx);
+    fusion_ctx = portia_fusion_init(&config, NULL);
     ASSERT_NE(fusion_ctx, nullptr);
 
     sensor_reading_t reading = create_reading(SENSOR_TYPE_VISUAL, 10.0f, 1.5f);  // > 1.0
@@ -127,7 +122,7 @@ TEST_F(PortiaSensorFusionTest, UpdateSensorInvalidConfidence) {
 }
 
 TEST_F(PortiaSensorFusionTest, UpdateDisabledSensor) {
-    fusion_ctx = portia_fusion_init(&config, bio_ctx);
+    fusion_ctx = portia_fusion_init(&config, NULL);
     ASSERT_NE(fusion_ctx, nullptr);
 
     // Disable visual sensor
@@ -141,7 +136,7 @@ TEST_F(PortiaSensorFusionTest, UpdateDisabledSensor) {
 // Test weighted average fusion
 TEST_F(PortiaSensorFusionTest, WeightedAverageFusion) {
     config.enable_kalman = false;  // Use weighted average
-    fusion_ctx = portia_fusion_init(&config, bio_ctx);
+    fusion_ctx = portia_fusion_init(&config, NULL);
     ASSERT_NE(fusion_ctx, nullptr);
 
     // Add multiple sensor readings
@@ -172,7 +167,7 @@ TEST_F(PortiaSensorFusionTest, WeightedAverageFusion) {
 TEST_F(PortiaSensorFusionTest, KalmanFilterFusion) {
     config.enable_kalman = true;  // Use Kalman filter
     config.process_noise = 0.05f;
-    fusion_ctx = portia_fusion_init(&config, bio_ctx);
+    fusion_ctx = portia_fusion_init(&config, NULL);
     ASSERT_NE(fusion_ctx, nullptr);
 
     // Add sensor readings over time
@@ -197,7 +192,7 @@ TEST_F(PortiaSensorFusionTest, KalmanFilterFusion) {
 
 // Test sensor weight adjustment
 TEST_F(PortiaSensorFusionTest, SetSensorWeight) {
-    fusion_ctx = portia_fusion_init(&config, bio_ctx);
+    fusion_ctx = portia_fusion_init(&config, NULL);
     ASSERT_NE(fusion_ctx, nullptr);
 
     // Set new weight
@@ -215,7 +210,7 @@ TEST_F(PortiaSensorFusionTest, SetSensorWeight) {
 
 // Test sensor enable/disable
 TEST_F(PortiaSensorFusionTest, EnableDisableSensor) {
-    fusion_ctx = portia_fusion_init(&config, bio_ctx);
+    fusion_ctx = portia_fusion_init(&config, NULL);
     ASSERT_NE(fusion_ctx, nullptr);
 
     // Disable sensor
@@ -234,7 +229,7 @@ TEST_F(PortiaSensorFusionTest, EnableDisableSensor) {
 // Test outlier rejection
 TEST_F(PortiaSensorFusionTest, OutlierRejection) {
     config.outlier_threshold = 3.0f;
-    fusion_ctx = portia_fusion_init(&config, bio_ctx);
+    fusion_ctx = portia_fusion_init(&config, NULL);
     ASSERT_NE(fusion_ctx, nullptr);
 
     // Establish baseline with normal readings
@@ -262,7 +257,7 @@ TEST_F(PortiaSensorFusionTest, OutlierRejection) {
 
 // Test multi-sensor fusion
 TEST_F(PortiaSensorFusionTest, MultiSensorFusion) {
-    fusion_ctx = portia_fusion_init(&config, bio_ctx);
+    fusion_ctx = portia_fusion_init(&config, NULL);
     ASSERT_NE(fusion_ctx, nullptr);
 
     // Add readings from all sensor types
@@ -291,7 +286,7 @@ TEST_F(PortiaSensorFusionTest, MultiSensorFusion) {
 // Test minimum sensor requirement
 TEST_F(PortiaSensorFusionTest, MinimumSensorRequirement) {
     config.min_sensors = 3;
-    fusion_ctx = portia_fusion_init(&config, bio_ctx);
+    fusion_ctx = portia_fusion_init(&config, NULL);
     ASSERT_NE(fusion_ctx, nullptr);
 
     // Add only 2 sensors (below minimum)
@@ -316,7 +311,7 @@ TEST_F(PortiaSensorFusionTest, MinimumSensorRequirement) {
 
 // Test state reset
 TEST_F(PortiaSensorFusionTest, ResetState) {
-    fusion_ctx = portia_fusion_init(&config, bio_ctx);
+    fusion_ctx = portia_fusion_init(&config, NULL);
     ASSERT_NE(fusion_ctx, nullptr);
 
     // Add sensor data and process
@@ -341,7 +336,7 @@ TEST_F(PortiaSensorFusionTest, ResetState) {
 
 // Test statistics
 TEST_F(PortiaSensorFusionTest, Statistics) {
-    fusion_ctx = portia_fusion_init(&config, bio_ctx);
+    fusion_ctx = portia_fusion_init(&config, NULL);
     ASSERT_NE(fusion_ctx, nullptr);
 
     // Perform multiple updates and fusions
@@ -364,7 +359,7 @@ TEST_F(PortiaSensorFusionTest, Statistics) {
 
 // Test thread safety
 TEST_F(PortiaSensorFusionTest, ThreadSafety) {
-    fusion_ctx = portia_fusion_init(&config, bio_ctx);
+    fusion_ctx = portia_fusion_init(&config, NULL);
     ASSERT_NE(fusion_ctx, nullptr);
 
     // Multiple threads updating different sensors
@@ -400,7 +395,7 @@ TEST_F(PortiaSensorFusionTest, ThreadSafety) {
 
 // Test confidence calculation
 TEST_F(PortiaSensorFusionTest, ConfidenceCalculation) {
-    fusion_ctx = portia_fusion_init(&config, bio_ctx);
+    fusion_ctx = portia_fusion_init(&config, NULL);
     ASSERT_NE(fusion_ctx, nullptr);
 
     // Add high confidence readings
@@ -425,7 +420,7 @@ TEST_F(PortiaSensorFusionTest, ConfidenceCalculation) {
 // Test stale data handling
 TEST_F(PortiaSensorFusionTest, StaleDataHandling) {
     config.enable_kalman = false;
-    fusion_ctx = portia_fusion_init(&config, bio_ctx);
+    fusion_ctx = portia_fusion_init(&config, NULL);
     ASSERT_NE(fusion_ctx, nullptr);
 
     // Add fresh sensor reading
@@ -446,7 +441,7 @@ TEST_F(PortiaSensorFusionTest, StaleDataHandling) {
 // Test velocity estimation
 TEST_F(PortiaSensorFusionTest, VelocityEstimation) {
     config.enable_kalman = false;
-    fusion_ctx = portia_fusion_init(&config, bio_ctx);
+    fusion_ctx = portia_fusion_init(&config, NULL);
     ASSERT_NE(fusion_ctx, nullptr);
 
     // Add sequence of readings showing movement
