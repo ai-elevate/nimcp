@@ -855,6 +855,8 @@ typedef struct {
     uint32_t predictive_levels;           /**< Number of hierarchy levels (default: 3) */
     float predictive_learning_rate;       /**< Learning rate for prediction error (default: 0.01) */
 
+    bool enable_second_messengers;        /**< Enable second messenger cascades (cAMP, IP3/DAG, Ca2+) (default: false) */
+
     // === PHASE TM-3: BRAIN-TRAINING INTEGRATION ===
     /**
      * Brain-Training Integration (Phase TM-3)

@@ -82,6 +82,23 @@ typedef enum {
     BIO_MSG_ADAPTIVE_PLASTICITY_EVENT,      /**< Adaptive plasticity event */
     BIO_MSG_PREDICTIVE_CODING_UPDATE,       /**< Predictive coding update */
 
+    /* Second messenger messages (0x0280 - 0x029F) */
+    BIO_MSG_SECOND_MESSENGER_UPDATE = 0x0280,   /**< Cascade state update */
+    BIO_MSG_SECOND_MESSENGER_QUERY,             /**< Query cascade state */
+    BIO_MSG_SECOND_MESSENGER_RESPONSE,          /**< Response with cascade state */
+    BIO_MSG_SECOND_MESSENGER_RECEPTOR_ACTIVATE, /**< Receptor activation event */
+    BIO_MSG_SECOND_MESSENGER_CAMP_CHANGE,       /**< cAMP concentration change */
+    BIO_MSG_SECOND_MESSENGER_PKA_ACTIVE,        /**< PKA kinase activated */
+    BIO_MSG_SECOND_MESSENGER_CREB_PHOSPHORYLATED, /**< CREB transcription factor activated */
+    BIO_MSG_SECOND_MESSENGER_IP3_CHANGE,        /**< IP3 concentration change */
+    BIO_MSG_SECOND_MESSENGER_DAG_CHANGE,        /**< DAG concentration change */
+    BIO_MSG_SECOND_MESSENGER_CALCIUM_RELEASE,   /**< Calcium release from ER */
+    BIO_MSG_SECOND_MESSENGER_CAMKII_ACTIVE,     /**< CaMKII activated */
+    BIO_MSG_SECOND_MESSENGER_PKC_ACTIVE,        /**< PKC activated */
+    BIO_MSG_SECOND_MESSENGER_IEG_EXPRESSED,     /**< Immediate early gene expressed */
+    BIO_MSG_SECOND_MESSENGER_PROTEIN_SYNTHESIZED, /**< Protein synthesis completed */
+    BIO_MSG_SECOND_MESSENGER_CASCADE_COMPLETE,  /**< Full cascade propagation complete */
+
     /* Cognitive messages (0x0300 - 0x03FF) */
     BIO_MSG_INTROSPECTION_QUERY = 0x0300,
     BIO_MSG_INTROSPECTION_RESPONSE,
@@ -463,6 +480,13 @@ typedef enum {
     BIO_MODULE_NEUROMODULATOR_PHASIC_TONIC = 0x0410,
     BIO_MODULE_NEUROMODULATOR_VESICLE = 0x0411,
 
+    /* Second messenger submodules (0x0420-0x042F) */
+    BIO_MODULE_SECOND_MESSENGER = 0x0420,        /**< Second messenger cascade system */
+    BIO_MODULE_SECOND_MESSENGER_CAMP = 0x0421,   /**< cAMP pathway */
+    BIO_MODULE_SECOND_MESSENGER_IP3_DAG = 0x0422, /**< IP3/DAG pathway */
+    BIO_MODULE_SECOND_MESSENGER_CALCIUM = 0x0423, /**< Calcium signaling */
+    BIO_MODULE_SECOND_MESSENGER_GENE = 0x0424,   /**< Gene expression (IEGs) */
+
     /* Middleware modules */
     BIO_MODULE_PIPELINE = 0x0500,
     BIO_MODULE_ENCODING,
@@ -790,6 +814,155 @@ typedef struct {
     float dopamine_level;
     uint64_t update_time_us;
 } bio_msg_eligibility_trace_update_t;
+
+/*=============================================================================
+ * SECOND MESSENGER MESSAGES
+ *============================================================================*/
+
+/**
+ * @brief Second messenger cascade state update
+ *
+ * WHAT: Broadcast cascade state changes
+ * WHY:  Notify downstream modules of signaling cascade activity
+ * HOW:  Published on serotonin channel (slow, modulatory)
+ */
+typedef struct {
+    bio_message_header_t header;
+    uint32_t neuron_id;
+    float camp_concentration;       /**< cAMP level [0, 1] normalized */
+    float ip3_concentration;        /**< IP3 level [0, 1] normalized */
+    float dag_concentration;        /**< DAG level [0, 1] normalized */
+    float calcium_concentration;    /**< Cytosolic Ca2+ [0, 1] normalized */
+    float pka_activity;            /**< PKA kinase activity [0, 1] */
+    float pkc_activity;            /**< PKC kinase activity [0, 1] */
+    float camkii_activity;         /**< CaMKII activity [0, 1] */
+    float creb_phosphorylation;    /**< CREB transcription factor [0, 1] */
+    uint64_t update_time_us;
+} bio_msg_second_messenger_update_t;
+
+/**
+ * @brief Second messenger query
+ */
+typedef struct {
+    bio_message_header_t header;
+    uint32_t neuron_id;
+    uint32_t query_flags;          /**< Which components to query */
+} bio_msg_second_messenger_query_t;
+
+/** Query flags for second messenger queries */
+#define BIO_SM_QUERY_CAMP       (1 << 0)
+#define BIO_SM_QUERY_IP3_DAG    (1 << 1)
+#define BIO_SM_QUERY_CALCIUM    (1 << 2)
+#define BIO_SM_QUERY_KINASES    (1 << 3)
+#define BIO_SM_QUERY_GENE_EXPR  (1 << 4)
+#define BIO_SM_QUERY_ALL        0xFFFFFFFF
+
+/**
+ * @brief Second messenger receptor activation event
+ */
+typedef struct {
+    bio_message_header_t header;
+    uint32_t neuron_id;
+    uint32_t receptor_type;        /**< GPCR type (D1, D2, 5-HT2A, etc.) */
+    uint32_t coupling_type;        /**< Gs, Gi, Gq */
+    float occupancy;               /**< Receptor occupancy [0, 1] */
+    uint64_t activation_time_us;
+} bio_msg_second_messenger_receptor_t;
+
+/** G-protein coupling types for messages */
+#define BIO_SM_COUPLING_GS      0  /**< Gs → adenylyl cyclase → cAMP ↑ */
+#define BIO_SM_COUPLING_GI      1  /**< Gi → adenylyl cyclase → cAMP ↓ */
+#define BIO_SM_COUPLING_GQ      2  /**< Gq → PLC → IP3/DAG */
+
+/**
+ * @brief cAMP concentration change event
+ */
+typedef struct {
+    bio_message_header_t header;
+    uint32_t neuron_id;
+    float previous_concentration;
+    float new_concentration;
+    float delta;                   /**< Change magnitude */
+    bool threshold_crossed;        /**< True if PKA activation threshold crossed */
+} bio_msg_second_messenger_camp_t;
+
+/**
+ * @brief Calcium release event
+ */
+typedef struct {
+    bio_message_header_t header;
+    uint32_t neuron_id;
+    float previous_calcium;
+    float new_calcium;
+    float er_store_level;          /**< ER calcium store [0, 1] */
+    bool calmodulin_bound;         /**< Calmodulin-Ca2+ binding occurred */
+    bool camkii_triggered;         /**< CaMKII activation triggered */
+} bio_msg_second_messenger_calcium_t;
+
+/**
+ * @brief Kinase activation event (PKA, PKC, CaMKII)
+ */
+typedef struct {
+    bio_message_header_t header;
+    uint32_t neuron_id;
+    uint32_t kinase_type;          /**< Which kinase (PKA, PKC, CaMKII) */
+    float activity_level;          /**< Current activity [0, 1] */
+    uint32_t substrate_count;      /**< Number of substrates phosphorylated */
+    bool nuclear_translocation;    /**< True if kinase translocated to nucleus */
+} bio_msg_second_messenger_kinase_t;
+
+/** Kinase types for messages */
+#define BIO_SM_KINASE_PKA       0
+#define BIO_SM_KINASE_PKC       1
+#define BIO_SM_KINASE_CAMKII    2
+
+/**
+ * @brief CREB phosphorylation event
+ */
+typedef struct {
+    bio_message_header_t header;
+    uint32_t neuron_id;
+    float phosphorylation_level;   /**< CREB phosphorylation [0, 1] */
+    bool cre_binding_active;       /**< CREB bound to CRE element */
+    uint32_t target_gene_count;    /**< Number of target genes affected */
+} bio_msg_second_messenger_creb_t;
+
+/**
+ * @brief Immediate early gene expression event
+ */
+typedef struct {
+    bio_message_header_t header;
+    uint32_t neuron_id;
+    uint32_t ieg_type;             /**< Which IEG (c-Fos, Arc, BDNF, etc.) */
+    float expression_level;        /**< mRNA expression [0, 1] */
+    float protein_level;           /**< Protein translation [0, 1] */
+    uint64_t expression_start_us;  /**< When expression began */
+    uint64_t peak_time_us;         /**< Expected peak time */
+} bio_msg_second_messenger_ieg_t;
+
+/** IEG types for messages */
+#define BIO_SM_IEG_CFOS         0
+#define BIO_SM_IEG_ARC          1
+#define BIO_SM_IEG_BDNF         2
+#define BIO_SM_IEG_CREB1        3
+
+/**
+ * @brief Full cascade completion event
+ */
+typedef struct {
+    bio_message_header_t header;
+    uint32_t neuron_id;
+    uint32_t cascade_type;         /**< Which cascade completed */
+    float total_signal_strength;   /**< Integrated signal strength */
+    uint64_t cascade_duration_us;  /**< Time from receptor to gene expression */
+    bool protein_synthesis;        /**< True if protein synthesis occurred */
+} bio_msg_second_messenger_complete_t;
+
+/** Cascade types for completion messages */
+#define BIO_SM_CASCADE_CAMP_PKA_CREB    0
+#define BIO_SM_CASCADE_IP3_CALCIUM      1
+#define BIO_SM_CASCADE_DAG_PKC          2
+#define BIO_SM_CASCADE_FULL             3
 
 /*=============================================================================
  * COGNITIVE MESSAGES

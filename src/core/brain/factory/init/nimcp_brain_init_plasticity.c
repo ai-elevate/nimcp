@@ -89,6 +89,7 @@
 #include "plasticity/homeostatic/nimcp_homeostatic.h"
 #include "plasticity/dendritic/nimcp_dendritic.h"
 #include "plasticity/predictive/nimcp_predictive_coding.h"
+#include "plasticity/nimcp_second_messengers.h"
 #include "core/cortical_columns/nimcp_cortical_column.h"
 
 #include <string.h>
@@ -291,6 +292,82 @@ bool nimcp_brain_factory_init_biological_predictive_subsystem(brain_t brain)
 
     LOG_INFO("Biological predictive coding subsystem initialized: levels=%u, learning_rate=%.3f",
             num_levels, config.learning_rate);
+    return true;
+}
+
+
+/**
+ * @brief Initialize second messenger cascade subsystem
+ *
+ * WHAT: Create and configure second messenger cascade system
+ * WHY:  Enable GPCR-mediated signaling (cAMP, IP3/DAG, Ca2+, gene expression)
+ * HOW:  Create second_messenger_system_t with bio-async integration
+ *
+ * BIOLOGICAL BASIS:
+ * - cAMP pathway: Gs-coupled receptors (D1, beta-adrenergic) → adenylyl cyclase → PKA
+ * - IP3/DAG pathway: Gq-coupled receptors (5-HT2A, mGluR1) → PLC → Ca2+ release + PKC
+ * - Calcium signaling: IP3 → ER Ca2+ release → calmodulin → CaMKII
+ * - Gene expression: CREB phosphorylation → IEGs (c-Fos, Arc, BDNF)
+ *
+ * INTEGRATION:
+ * - Receives neuromodulator release events via bio-async router
+ * - Broadcasts cascade state updates to plasticity modules
+ * - Coordinates with neuromodulator system for GPCR activation
+ *
+ * @param brain Brain instance
+ * @return true on success, false on error
+ */
+bool nimcp_brain_factory_init_second_messenger_subsystem(brain_t brain)
+{
+    if (!brain) {
+        return false;
+    }
+
+    /* Check if already initialized */
+    if (brain->second_messengers) {
+        return true;
+    }
+
+    /* Only create if enabled in config */
+    if (!brain->config.enable_second_messengers) {
+        brain->enable_second_messengers = false;
+        return true;  /* Not enabled, but not an error */
+    }
+
+    /* Get number of neurons from network - use default if not available */
+    uint32_t num_neurons = 1000;  /* Default */
+    if (brain->network) {
+        neural_network_t base_net = adaptive_network_get_base_network(brain->network);
+        if (base_net) {
+            num_neurons = neural_network_get_num_neurons(base_net);
+        }
+    }
+
+    /* Create second messenger config */
+    second_messenger_config_t config = second_messenger_default_config();
+    config.enable_bio_async = true;  /* Enable bio-async integration */
+    config.enable_security = (brain->security_integration != NULL);
+
+    /* Create second messenger system */
+    brain->second_messengers = second_messenger_create(num_neurons, &config);
+    if (!brain->second_messengers) {
+        set_error("Failed to create second messenger cascade system");
+        brain->enable_second_messengers = false;
+        return false;
+    }
+
+    /* Register with bio-async router for message routing */
+    nimcp_result_t result = second_messenger_register_bioasync(brain->second_messengers, NULL);
+    if (result != NIMCP_SUCCESS) {
+        LOG_WARNING("Second messengers: bio-async registration failed (result=%d), continuing without bio-async",
+                    result);
+        /* Non-fatal - can work without bio-async */
+    }
+
+    brain->enable_second_messengers = true;
+
+    LOG_INFO("Second messenger cascade subsystem initialized: neurons=%u, bio_async=%s",
+             num_neurons, config.enable_bio_async ? "enabled" : "disabled");
     return true;
 }
 

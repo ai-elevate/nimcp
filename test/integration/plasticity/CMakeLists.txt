@@ -29,3 +29,22 @@ set_tests_properties(PlasticityBioAsyncIntegration PROPERTIES
     TIMEOUT 300
     LABELS "integration;plasticity;bioasync"
 )
+
+# Second messenger cascade integration tests
+add_executable(integration_plasticity_second_messengers_test
+    second_messengers/test_second_messengers_integration.cpp
+)
+target_link_libraries(integration_plasticity_second_messengers_test
+    PRIVATE
+        nimcp
+        GTest::gtest
+        GTest::gtest_main
+        Threads::Threads
+        m
+)
+target_compile_features(integration_plasticity_second_messengers_test PRIVATE cxx_std_17)
+gtest_discover_tests(integration_plasticity_second_messengers_test
+    PROPERTIES
+        TIMEOUT 300
+        LABELS "integration;plasticity;second_messengers"
+)

@@ -29,6 +29,7 @@ extern "C" {
 bool nimcp_brain_factory_init_homeostatic_plasticity_subsystem(brain_t brain);
 bool nimcp_brain_factory_init_dendritic_computation_subsystem(brain_t brain);
 bool nimcp_brain_factory_init_biological_predictive_subsystem(brain_t brain);
+bool nimcp_brain_factory_init_second_messenger_subsystem(brain_t brain);
 bool nimcp_brain_factory_init_training_subsystem(brain_t brain);
 
 #ifdef __cplusplus

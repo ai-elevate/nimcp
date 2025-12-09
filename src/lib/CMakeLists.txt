@@ -241,6 +241,7 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../plasticity/neuromodulators/nimcp_phasic_tonic.c  # Phase C2.2 Enhancement #2: Phasic-tonic dynamics
     ${CMAKE_CURRENT_SOURCE_DIR}/../plasticity/neuromodulators/nimcp_vesicle_packaging.c  # Phase C2.3 Enhancement #3: Synaptic vesicle packaging
     ${CMAKE_CURRENT_SOURCE_DIR}/../plasticity/neuromodulators/nimcp_metabolic_pathways.c  # Phase C2.4 Enhancement #4: Metabolic pathways
+    ${CMAKE_CURRENT_SOURCE_DIR}/../plasticity/second_messengers/nimcp_second_messengers.c  # Second Messenger Cascades (cAMP, IP3/DAG, Ca2+, gene expression)
     ${CMAKE_CURRENT_SOURCE_DIR}/../plasticity/attention/nimcp_attention.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../plasticity/stp/nimcp_stp.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../plasticity/noise/nimcp_pink_noise.c

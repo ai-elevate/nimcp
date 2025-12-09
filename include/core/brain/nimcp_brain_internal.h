@@ -67,6 +67,7 @@
 #include "plasticity/homeostatic/nimcp_homeostatic.h"
 #include "plasticity/dendritic/nimcp_dendritic.h"
 #include "plasticity/predictive/nimcp_predictive_coding.h"
+#include "plasticity/nimcp_second_messengers.h"  // cAMP, IP3/DAG, Ca2+, gene expression cascades
 #include "cognitive/nimcp_fractal_cognitive.h"
 
 // Phase TM-3: Brain-Training Integration (Training Pipeline)
@@ -321,6 +322,8 @@ struct brain_struct {
     homeostatic_controller_t homeostatic;        // Synaptic scaling + intrinsic plasticity (maintains activity levels)
     dendritic_tree_t dendritic;                  // Dendritic computation with NMDA dynamics (local nonlinearities)
     pc_hierarchy_t predictive_coding;            // Free energy minimization (hierarchical error computation)
+    second_messenger_system_t* second_messengers; // Second messenger cascades (cAMP, IP3/DAG, Ca2+, gene expression)
+    bool enable_second_messengers;               // Enable second messenger cascade system
 
     // Phase TM-3: Brain-Training Integration (Training Pipeline)
     nimcp_brain_training_ctx_t* training_ctx;    // Training integration context (loss functions, optimizers)

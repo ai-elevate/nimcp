@@ -27,3 +27,22 @@ set_tests_properties(LearningStabilityRegression PROPERTIES
     TIMEOUT 600
     LABELS "regression;plasticity;stability"
 )
+
+# Second messenger cascade regression tests
+add_executable(regression_plasticity_second_messengers_test
+    second_messengers/test_second_messengers_regression.cpp
+)
+target_link_libraries(regression_plasticity_second_messengers_test
+    PRIVATE
+        nimcp
+        GTest::gtest
+        GTest::gtest_main
+        Threads::Threads
+        m
+)
+target_compile_features(regression_plasticity_second_messengers_test PRIVATE cxx_std_17)
+gtest_discover_tests(regression_plasticity_second_messengers_test
+    PROPERTIES
+        TIMEOUT 600
+        LABELS "regression;plasticity;second_messengers"
+)
