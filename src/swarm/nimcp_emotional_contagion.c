@@ -371,7 +371,7 @@ nimcp_result_t emotional_contagion_validate_config(
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
-    if (config->max_agents == 0 || config->max_agents > EMOTION_MAX_AGENTS) {
+    if (config->max_agents == 0 || config->max_agents > EMOTIONAL_CONTAGION_MAX_AGENTS) {
         LOG_ERROR(CONTAGION_MODULE, "Invalid max_agents: %u", config->max_agents);
         return NIMCP_ERROR_INVALID_PARAM;
     }
@@ -414,7 +414,7 @@ emotional_contagion_t* emotional_contagion_create(
     memset(ec->agent_hash, 0, ec->hash_size * sizeof(agent_entry_t*));
 
     /* Initialize mutex */
-    if (nimcp_platform_mutex_init(&ec->mutex) != 0) {
+    if (nimcp_platform_mutex_init(&ec->mutex, false) != 0) {
         LOG_ERROR(CONTAGION_MODULE, "Failed to initialize mutex");
         nimcp_free(ec->agent_hash);
         nimcp_free(ec);
@@ -537,14 +537,14 @@ nimcp_result_t emotional_contagion_register_agent(
     if (find_agent(ec, agent_id)) {
         LOG_WARN(CONTAGION_MODULE, "Agent %u already registered", agent_id);
         nimcp_platform_mutex_unlock(&ec->mutex);
-        return NIMCP_ERROR_ALREADY_EXISTS;
+        return NIMCP_ALREADY_EXISTS;
     }
 
     /* Check agent limit */
     if (ec->agent_count >= ec->config.max_agents) {
         LOG_ERROR(CONTAGION_MODULE, "Agent limit reached: %u", ec->config.max_agents);
         nimcp_platform_mutex_unlock(&ec->mutex);
-        return NIMCP_ERROR_BUFFER_FULL;
+        return NIMCP_ERROR_QUEUE_FULL;
     }
 
     /* Allocate agent entry */
@@ -772,7 +772,7 @@ nimcp_result_t emotional_contagion_add_connection(
     if (from_entry->connection_count >= ec->config.max_connections_per_agent) {
         nimcp_platform_mutex_unlock(&ec->mutex);
         LOG_WARN(CONTAGION_MODULE, "Connection limit reached for agent %u", from_agent);
-        return NIMCP_ERROR_BUFFER_FULL;
+        return NIMCP_ERROR_QUEUE_FULL;
     }
 
     /* Grow connection array if needed */
@@ -1131,6 +1131,156 @@ emotion_type_t emotional_contagion_emotion_from_name(const char* name) {
     }
 
     return EMOTION_NEUTRAL;
+}
+
+/* ============================================================================
+ * Outbreak Functions
+ * ============================================================================ */
+
+/**
+ * @brief Trigger emotional outbreak from source agent
+ *
+ * WHAT: Initiates emotional contagion from a source agent
+ * WHY:  Enable rapid emotional spread through swarm network
+ * HOW:  Sets source emotion and propagates through connections
+ */
+nimcp_result_t emotional_contagion_trigger_outbreak(
+    emotional_contagion_t* ec,
+    uint32_t source_agent,
+    emotion_type_t emotion,
+    float initial_intensity,
+    uint32_t max_depth) {
+
+    /* Guard: validate parameters */
+    if (!ec) {
+        return NIMCP_ERROR_NULL_POINTER;
+    }
+
+    if (emotion >= EMOTION_TYPE_COUNT) {
+        LOG_ERROR(CONTAGION_MODULE, "Invalid emotion type: %d", emotion);
+        return NIMCP_ERROR_INVALID_PARAM;
+    }
+
+    if (initial_intensity < 0.0f || initial_intensity > 1.0f) {
+        LOG_ERROR(CONTAGION_MODULE, "Invalid intensity: %.2f", initial_intensity);
+        return NIMCP_ERROR_INVALID_PARAM;
+    }
+
+    nimcp_platform_mutex_lock(&ec->mutex);
+
+    /* Find source agent */
+    agent_entry_t* source = find_agent(ec, source_agent);
+    if (!source) {
+        nimcp_platform_mutex_unlock(&ec->mutex);
+        LOG_ERROR(CONTAGION_MODULE, "Source agent %u not found", source_agent);
+        return NIMCP_ERROR_NOT_FOUND;
+    }
+
+    /* Set source agent's emotion */
+    source->state.emotion = emotion;
+    source->state.intensity = initial_intensity;
+    source->state.last_update_ms = nimcp_time_get_us() / 1000;
+
+    /* Use config max_propagation_depth if max_depth is 0 */
+    uint32_t depth = (max_depth == 0) ? ec->config.max_propagation_depth : max_depth;
+    if (depth == 0) depth = 3;  /* Default depth if config also 0 */
+
+    /* Track agents visited to prevent re-infection */
+    bool* visited = (bool*)nimcp_calloc(ec->agent_count, sizeof(bool));
+    if (!visited) {
+        nimcp_platform_mutex_unlock(&ec->mutex);
+        return NIMCP_ERROR_MEMORY;
+    }
+
+    /* BFS for propagation */
+    uint32_t* queue = (uint32_t*)nimcp_malloc(ec->agent_count * sizeof(uint32_t));
+    uint32_t* depths = (uint32_t*)nimcp_malloc(ec->agent_count * sizeof(uint32_t));
+    if (!queue || !depths) {
+        nimcp_free(visited);
+        if (queue) nimcp_free(queue);
+        if (depths) nimcp_free(depths);
+        nimcp_platform_mutex_unlock(&ec->mutex);
+        return NIMCP_ERROR_MEMORY;
+    }
+
+    size_t head = 0, tail = 0;
+    queue[tail] = source_agent;
+    depths[tail] = 0;
+    tail++;
+    visited[0] = true;  /* Mark source as visited */
+
+    uint32_t infected_count = 1;
+
+    while (head < tail) {
+        uint32_t current_agent = queue[head];
+        uint32_t current_depth = depths[head];
+        head++;
+
+        if (current_depth >= depth) continue;
+
+        agent_entry_t* current = find_agent(ec, current_agent);
+        if (!current) continue;
+
+        /* Propagate to all connected agents */
+        for (uint32_t i = 0; i < current->connection_count; i++) {
+            emotional_connection_t* conn = current->connections[i];
+            if (!conn) continue;
+
+            agent_entry_t* target = find_agent(ec, conn->to_agent);
+            if (!target) continue;
+
+            /* Check if already visited */
+            bool already_visited = false;
+            for (size_t j = 0; j < tail; j++) {
+                if (queue[j] == conn->to_agent) {
+                    already_visited = true;
+                    break;
+                }
+            }
+            if (already_visited) continue;
+
+            /* Calculate contagion strength */
+            float strength = current->state.intensity *
+                             ec->config.contagion_rate *
+                             target->state.susceptibility *
+                             conn->connection_strength;
+
+            /* Apply resistance if enabled */
+            if (ec->config.enable_resistance) {
+                strength *= (1.0f - target->state.resistance[emotion]);
+            }
+
+            /* Skip if strength too low */
+            if (strength < EPSILON) continue;
+
+            /* Infect target */
+            target->state.emotion = emotion;
+            target->state.intensity = fminf(strength, 1.0f);
+            target->state.last_update_ms = nimcp_time_get_us() / 1000;
+            infected_count++;
+
+            /* Add to queue for next depth */
+            queue[tail] = conn->to_agent;
+            depths[tail] = current_depth + 1;
+            tail++;
+
+            ec->stats.total_propagations++;
+        }
+    }
+
+    nimcp_free(visited);
+    nimcp_free(queue);
+    nimcp_free(depths);
+
+    ec->collective_dirty = true;
+    ec->stats.successful_transmissions++;
+
+    nimcp_platform_mutex_unlock(&ec->mutex);
+
+    LOG_INFO(CONTAGION_MODULE, "Outbreak from agent %u: %s at %.2f, infected %u agents",
+             source_agent, emotion_names[emotion], initial_intensity, infected_count);
+
+    return NIMCP_SUCCESS;
 }
 
 /* ============================================================================

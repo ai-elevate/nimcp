@@ -57,12 +57,12 @@ TEST_F(EngramIntegrationTest, EmotionalArouselEnhancement) {
     float activations[] = {0.8f, 0.7f, 0.9f, 0.6f};
 
     // Low arousal encoding
-    emotional_tag_t low_emotion = {0.5f, 0.2f, 0, EMOTION_CALM, 0.3f};  // valence=0.5, arousal=0.2
+    emotional_tag_t low_emotion = {0.5f, 0.2f, 0, EMOTION_CAT_CALM, 0.3f};  // valence=0.5, arousal=0.2
     uint64_t low_id = engram_encode(engram_sys, neurons, activations, 4,
                                      MEMORY_TYPE_EPISODIC, low_emotion);
 
     // High arousal encoding
-    emotional_tag_t high_emotion = {0.5f, 0.9f, 0, EMOTION_EXCITEMENT, 0.9f};  // valence=0.5, arousal=0.9
+    emotional_tag_t high_emotion = {0.5f, 0.9f, 0, EMOTION_CAT_EXCITEMENT, 0.9f};  // valence=0.5, arousal=0.9
     uint64_t high_id = engram_encode(engram_sys, neurons, activations, 4,
                                       MEMORY_TYPE_EPISODIC, high_emotion);
 
@@ -88,7 +88,7 @@ TEST_F(EngramIntegrationTest, EmotionalArouselEnhancement) {
 TEST_F(EngramIntegrationTest, SleepConsolidationBoost) {
     uint32_t neurons[] = {1, 2, 3, 4, 5};
     float activations[] = {0.8f, 0.7f, 0.9f, 0.6f, 0.85f};
-    emotional_tag_t emotion = {0.5f, 0.6f, 0, EMOTION_NEUTRAL, 0.5f};
+    emotional_tag_t emotion = {0.5f, 0.6f, 0, EMOTION_CAT_NEUTRAL, 0.5f};
 
     // Encode two identical engrams
     uint64_t awake_id = engram_encode(engram_sys, neurons, activations, 5,
@@ -133,7 +133,7 @@ TEST_F(EngramIntegrationTest, SleepConsolidationBoost) {
 TEST_F(EngramIntegrationTest, SleepReplayReactivation) {
     uint32_t neurons[] = {10, 20, 30};
     float activations[] = {0.9f, 0.8f, 0.85f};
-    emotional_tag_t emotion = {0.7f, 0.8f, 0, EMOTION_NEUTRAL, 0.5f};  // High arousal for tagging
+    emotional_tag_t emotion = {0.7f, 0.8f, 0, EMOTION_CAT_NEUTRAL, 0.5f};  // High arousal for tagging
 
     uint64_t id = engram_encode(engram_sys, neurons, activations, 3,
                                  MEMORY_TYPE_EPISODIC, emotion);
@@ -163,13 +163,13 @@ TEST_F(EngramIntegrationTest, DopamineEnhancesEncoding) {
 
     // Set low dopamine
     neuromodulator_set_level(neuromod_sys, NEUROMOD_DOPAMINE, 0.2f);
-    emotional_tag_t low_da_emotion = {0.5f, 0.5f, 0, EMOTION_NEUTRAL, 0.5f};
+    emotional_tag_t low_da_emotion = {0.5f, 0.5f, 0, EMOTION_CAT_NEUTRAL, 0.5f};
     uint64_t low_da_id = engram_encode(engram_sys, neurons, activations, 4,
                                         MEMORY_TYPE_EPISODIC, low_da_emotion);
 
     // Set high dopamine
     neuromodulator_set_level(neuromod_sys, NEUROMOD_DOPAMINE, 0.9f);
-    emotional_tag_t high_da_emotion = {0.5f, 0.5f, 0, EMOTION_NEUTRAL, 0.5f};
+    emotional_tag_t high_da_emotion = {0.5f, 0.5f, 0, EMOTION_CAT_NEUTRAL, 0.5f};
     uint64_t high_da_id = engram_encode(engram_sys, neurons, activations, 4,
                                          MEMORY_TYPE_EPISODIC, high_da_emotion);
 
@@ -193,7 +193,7 @@ TEST_F(EngramIntegrationTest, DopamineEnhancesEncoding) {
 TEST_F(EngramIntegrationTest, PatternCompletionRecall) {
     uint32_t full_neurons[] = {1, 2, 3, 4, 5, 6, 7, 8};
     float activations[] = {0.9f, 0.8f, 0.85f, 0.75f, 0.9f, 0.8f, 0.7f, 0.85f};
-    emotional_tag_t emotion = {0.6f, 0.5f, 0, EMOTION_NEUTRAL, 0.5f};
+    emotional_tag_t emotion = {0.6f, 0.5f, 0, EMOTION_CAT_NEUTRAL, 0.5f};
 
     uint64_t id = engram_encode(engram_sys, full_neurons, activations, 8,
                                  MEMORY_TYPE_EPISODIC, emotion);
@@ -230,7 +230,7 @@ TEST_F(EngramIntegrationTest, PatternCompletionRecall) {
 TEST_F(EngramIntegrationTest, ReconsolidationAfterRecall) {
     uint32_t neurons[] = {10, 20, 30, 40, 50};
     float activations[] = {0.9f, 0.85f, 0.8f, 0.9f, 0.75f};
-    emotional_tag_t emotion = {0.6f, 0.5f, 0, EMOTION_NEUTRAL, 0.5f};
+    emotional_tag_t emotion = {0.6f, 0.5f, 0, EMOTION_CAT_NEUTRAL, 0.5f};
 
     uint64_t id = engram_encode(engram_sys, neurons, activations, 5,
                                  MEMORY_TYPE_EPISODIC, emotion);
@@ -264,7 +264,7 @@ TEST_F(EngramIntegrationTest, ReconsolidationAfterRecall) {
 TEST_F(EngramIntegrationTest, BlockReconsolidation) {
     uint32_t neurons[] = {1, 2, 3};
     float activations[] = {0.8f, 0.7f, 0.9f};
-    emotional_tag_t emotion = {0.5f, 0.5f, 0, EMOTION_NEUTRAL, 0.5f};
+    emotional_tag_t emotion = {0.5f, 0.5f, 0, EMOTION_CAT_NEUTRAL, 0.5f};
 
     uint64_t id = engram_encode(engram_sys, neurons, activations, 3,
                                  MEMORY_TYPE_EPISODIC, emotion);
@@ -295,7 +295,7 @@ TEST_F(EngramIntegrationTest, BlockReconsolidation) {
 TEST_F(EngramIntegrationTest, MemoryDecay) {
     uint32_t neurons[] = {5, 10, 15};
     float activations[] = {0.8f, 0.7f, 0.9f};
-    emotional_tag_t emotion = {0.5f, 0.3f, 0, EMOTION_NEUTRAL, 0.5f};  // Low arousal
+    emotional_tag_t emotion = {0.5f, 0.3f, 0, EMOTION_CAT_NEUTRAL, 0.5f};  // Low arousal
 
     uint64_t id = engram_encode(engram_sys, neurons, activations, 3,
                                  MEMORY_TYPE_EPISODIC, emotion);
@@ -327,7 +327,7 @@ TEST_F(EngramIntegrationTest, MemoryDecay) {
 TEST_F(EngramIntegrationTest, ExtinctionThroughRetrieval) {
     uint32_t neurons[] = {20, 30, 40};
     float activations[] = {0.9f, 0.85f, 0.8f};
-    emotional_tag_t emotion = {0.7f, 0.6f, 0, EMOTION_NEUTRAL, 0.5f};
+    emotional_tag_t emotion = {0.7f, 0.6f, 0, EMOTION_CAT_NEUTRAL, 0.5f};
 
     uint64_t id = engram_encode(engram_sys, neurons, activations, 3,
                                  MEMORY_TYPE_EPISODIC, emotion);
@@ -354,7 +354,7 @@ TEST_F(EngramIntegrationTest, ExtinctionThroughRetrieval) {
 TEST_F(EngramIntegrationTest, SystemsConsolidation) {
     uint32_t neurons[] = {1, 2, 3, 4};
     float activations[] = {0.8f, 0.7f, 0.9f, 0.75f};
-    emotional_tag_t emotion = {0.6f, 0.5f, 0, EMOTION_NEUTRAL, 0.5f};
+    emotional_tag_t emotion = {0.6f, 0.5f, 0, EMOTION_CAT_NEUTRAL, 0.5f};
 
     // Enable systems consolidation
     engram_sys->systems_consolidation_enabled = true;
@@ -381,7 +381,7 @@ TEST_F(EngramIntegrationTest, SystemsConsolidation) {
 TEST_F(EngramIntegrationTest, RecognitionVsRecall) {
     uint32_t neurons[] = {15, 25, 35, 45};
     float activations[] = {0.9f, 0.8f, 0.85f, 0.75f};
-    emotional_tag_t emotion = {0.6f, 0.5f, 0, EMOTION_NEUTRAL, 0.5f};
+    emotional_tag_t emotion = {0.6f, 0.5f, 0, EMOTION_CAT_NEUTRAL, 0.5f};
 
     uint64_t id = engram_encode(engram_sys, neurons, activations, 4,
                                  MEMORY_TYPE_EPISODIC, emotion);
@@ -412,7 +412,7 @@ TEST_F(EngramIntegrationTest, OverlappingEngrams) {
     uint32_t neurons2[] = {3, 4, 5, 6, 7};  // 60% overlap
     float act1[] = {0.9f, 0.8f, 0.85f, 0.75f, 0.9f};
     float act2[] = {0.8f, 0.85f, 0.9f, 0.75f, 0.8f};
-    emotional_tag_t emotion = {0.6f, 0.5f, 0, EMOTION_NEUTRAL, 0.5f};
+    emotional_tag_t emotion = {0.6f, 0.5f, 0, EMOTION_CAT_NEUTRAL, 0.5f};
 
     uint64_t id1 = engram_encode(engram_sys, neurons1, act1, 5,
                                   MEMORY_TYPE_EPISODIC, emotion);
@@ -441,7 +441,7 @@ TEST_F(EngramIntegrationTest, OverlappingEngrams) {
 TEST_F(EngramIntegrationTest, StateTransitions) {
     uint32_t neurons[] = {10, 20, 30};
     float activations[] = {0.9f, 0.8f, 0.85f};
-    emotional_tag_t emotion = {0.6f, 0.5f, 0, EMOTION_NEUTRAL, 0.5f};
+    emotional_tag_t emotion = {0.6f, 0.5f, 0, EMOTION_CAT_NEUTRAL, 0.5f};
 
     uint64_t id = engram_encode(engram_sys, neurons, activations, 3,
                                  MEMORY_TYPE_EPISODIC, emotion);
@@ -471,7 +471,7 @@ TEST_F(EngramIntegrationTest, StateTransitions) {
 TEST_F(EngramIntegrationTest, StatisticsTracking) {
     uint32_t neurons[] = {5, 10, 15};
     float activations[] = {0.8f, 0.7f, 0.9f};
-    emotional_tag_t emotion = {0.5f, 0.5f, 0, EMOTION_NEUTRAL, 0.5f};
+    emotional_tag_t emotion = {0.5f, 0.5f, 0, EMOTION_CAT_NEUTRAL, 0.5f};
 
     uint64_t initial_encodings = engram_sys->total_encodings;
     uint64_t initial_recalls = engram_sys->total_recalls;

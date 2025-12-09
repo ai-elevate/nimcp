@@ -49,7 +49,7 @@ TEST_F(EmotionalTaggingTest, CreateNeutralEmotion) {
 
     EXPECT_FLOAT_EQ(tag.valence, 0.0f);
     EXPECT_FLOAT_EQ(tag.arousal, 0.0f);
-    EXPECT_EQ(tag.category, EMOTION_NEUTRAL);
+    EXPECT_EQ(tag.category, EMOTION_CAT_NEUTRAL);
     EXPECT_FLOAT_EQ(tag.intensity, 0.0f);
 }
 
@@ -58,7 +58,7 @@ TEST_F(EmotionalTaggingTest, CreateJoyEmotion) {
 
     EXPECT_FLOAT_EQ(tag.valence, 0.9f);
     EXPECT_FLOAT_EQ(tag.arousal, 0.8f);
-    EXPECT_EQ(tag.category, EMOTION_JOY);
+    EXPECT_EQ(tag.category, EMOTION_CAT_JOY);
     EXPECT_GT(tag.intensity, 0.8f);  // High intensity for strong emotion
 }
 
@@ -67,7 +67,7 @@ TEST_F(EmotionalTaggingTest, CreateFearEmotion) {
 
     EXPECT_FLOAT_EQ(tag.valence, -0.8f);
     EXPECT_FLOAT_EQ(tag.arousal, 0.9f);
-    EXPECT_EQ(tag.category, EMOTION_FEAR);
+    EXPECT_EQ(tag.category, EMOTION_CAT_FEAR);
     EXPECT_GT(tag.intensity, 0.8f);
 }
 
@@ -76,7 +76,7 @@ TEST_F(EmotionalTaggingTest, CreateSadnessEmotion) {
 
     EXPECT_FLOAT_EQ(tag.valence, -0.7f);
     EXPECT_FLOAT_EQ(tag.arousal, 0.2f);
-    EXPECT_EQ(tag.category, EMOTION_SADNESS);
+    EXPECT_EQ(tag.category, EMOTION_CAT_SADNESS);
 }
 
 TEST_F(EmotionalTaggingTest, CreateCalmEmotion) {
@@ -84,7 +84,7 @@ TEST_F(EmotionalTaggingTest, CreateCalmEmotion) {
 
     EXPECT_FLOAT_EQ(tag.valence, 0.5f);
     EXPECT_FLOAT_EQ(tag.arousal, 0.1f);
-    EXPECT_EQ(tag.category, EMOTION_CALM);
+    EXPECT_EQ(tag.category, EMOTION_CAT_CALM);
 }
 
 //=============================================================================
@@ -94,39 +94,39 @@ TEST_F(EmotionalTaggingTest, CreateCalmEmotion) {
 TEST_F(EmotionalTaggingTest, ClassifyHighArousalPositive) {
     // Joy: high arousal, high positive valence
     emotional_tag_t joy = emotional_tag_create(0.9f, 0.8f, timestamp_ms);
-    EXPECT_EQ(joy.category, EMOTION_JOY);
+    EXPECT_EQ(joy.category, EMOTION_CAT_JOY);
 
     // Excitement: high arousal, moderate positive valence
     emotional_tag_t excitement = emotional_tag_create(0.4f, 0.8f, timestamp_ms);
-    EXPECT_EQ(excitement.category, EMOTION_EXCITEMENT);
+    EXPECT_EQ(excitement.category, EMOTION_CAT_EXCITEMENT);
 }
 
 TEST_F(EmotionalTaggingTest, ClassifyHighArousalNegative) {
     // Fear: high arousal, strong negative valence
     emotional_tag_t fear = emotional_tag_create(-0.8f, 0.9f, timestamp_ms);
-    EXPECT_EQ(fear.category, EMOTION_FEAR);
+    EXPECT_EQ(fear.category, EMOTION_CAT_FEAR);
 
     // Anger: high arousal, moderate negative valence
     emotional_tag_t anger = emotional_tag_create(-0.5f, 0.7f, timestamp_ms);
-    EXPECT_EQ(anger.category, EMOTION_ANGER);
+    EXPECT_EQ(anger.category, EMOTION_CAT_ANGER);
 
     // Anxiety: high arousal, mild negative valence
     emotional_tag_t anxiety = emotional_tag_create(-0.3f, 0.6f, timestamp_ms);
-    EXPECT_EQ(anxiety.category, EMOTION_ANXIETY);
+    EXPECT_EQ(anxiety.category, EMOTION_CAT_ANXIETY);
 }
 
 TEST_F(EmotionalTaggingTest, ClassifyLowArousal) {
     // Calm: low arousal, positive valence
     emotional_tag_t calm = emotional_tag_create(0.3f, 0.1f, timestamp_ms);
-    EXPECT_EQ(calm.category, EMOTION_CALM);
+    EXPECT_EQ(calm.category, EMOTION_CAT_CALM);
 
     // Sadness: low arousal, negative valence
     emotional_tag_t sadness = emotional_tag_create(-0.5f, 0.3f, timestamp_ms);
-    EXPECT_EQ(sadness.category, EMOTION_SADNESS);
+    EXPECT_EQ(sadness.category, EMOTION_CAT_SADNESS);
 
     // Boredom: low arousal, mild negative valence
     emotional_tag_t boredom = emotional_tag_create(-0.2f, 0.1f, timestamp_ms);
-    EXPECT_EQ(boredom.category, EMOTION_BOREDOM);
+    EXPECT_EQ(boredom.category, EMOTION_CAT_BOREDOM);
 }
 
 //=============================================================================
@@ -266,10 +266,10 @@ TEST_F(EmotionalTaggingTest, EthicalViolationGivesStrongNegativeValence) {
     EXPECT_LT(tag.valence, -0.7f);  // Strong negative valence
     EXPECT_GT(tag.arousal, 0.2f);   // Aroused from ethical concern
     // Should be any negative emotion (FEAR, ANXIETY, ANGER, or SADNESS)
-    EXPECT_TRUE(tag.category == EMOTION_FEAR ||
-                tag.category == EMOTION_ANXIETY ||
-                tag.category == EMOTION_ANGER ||
-                tag.category == EMOTION_SADNESS);
+    EXPECT_TRUE(tag.category == EMOTION_CAT_FEAR ||
+                tag.category == EMOTION_CAT_ANXIETY ||
+                tag.category == EMOTION_CAT_ANGER ||
+                tag.category == EMOTION_CAT_SADNESS);
 }
 
 //=============================================================================
@@ -290,7 +290,7 @@ TEST_F(EmotionalTaggingTest, ClampOutOfRangeValence) {
     tag.valence = 2.0f;  // Out of range
     tag.arousal = 0.5f;
     tag.intensity = 0.5f;
-    tag.category = EMOTION_NEUTRAL;
+    tag.category = EMOTION_CAT_NEUTRAL;
 
     emotional_tag_clamp(&tag);
 
@@ -302,7 +302,7 @@ TEST_F(EmotionalTaggingTest, ClampNegativeArousal) {
     tag.valence = 0.0f;
     tag.arousal = -0.5f;  // Invalid (arousal can't be negative)
     tag.intensity = 0.0f;
-    tag.category = EMOTION_NEUTRAL;
+    tag.category = EMOTION_CAT_NEUTRAL;
 
     emotional_tag_clamp(&tag);
 
@@ -314,11 +314,11 @@ TEST_F(EmotionalTaggingTest, ClampNegativeArousal) {
 //=============================================================================
 
 TEST_F(EmotionalTaggingTest, CategoryNamesAreCorrect) {
-    EXPECT_STREQ(emotional_category_name(EMOTION_NEUTRAL), "NEUTRAL");
-    EXPECT_STREQ(emotional_category_name(EMOTION_JOY), "JOY");
-    EXPECT_STREQ(emotional_category_name(EMOTION_FEAR), "FEAR");
-    EXPECT_STREQ(emotional_category_name(EMOTION_SADNESS), "SADNESS");
-    EXPECT_STREQ(emotional_category_name(EMOTION_CALM), "CALM");
+    EXPECT_STREQ(emotional_category_name(EMOTION_CAT_NEUTRAL), "NEUTRAL");
+    EXPECT_STREQ(emotional_category_name(EMOTION_CAT_JOY), "JOY");
+    EXPECT_STREQ(emotional_category_name(EMOTION_CAT_FEAR), "FEAR");
+    EXPECT_STREQ(emotional_category_name(EMOTION_CAT_SADNESS), "SADNESS");
+    EXPECT_STREQ(emotional_category_name(EMOTION_CAT_CALM), "CALM");
 }
 
 //=============================================================================
@@ -338,7 +338,7 @@ TEST_F(EmotionalTaggingTest, ExtremeValencesHandled) {
 TEST_F(EmotionalTaggingTest, ZeroArousalHandled) {
     emotional_tag_t tag = emotional_tag_create(0.5f, 0.0f, timestamp_ms);
     EXPECT_TRUE(emotional_tag_is_valid(&tag));
-    EXPECT_EQ(tag.category, EMOTION_CALM);
+    EXPECT_EQ(tag.category, EMOTION_CAT_CALM);
 }
 
 //=============================================================================

@@ -210,7 +210,7 @@ emotional_tag_t emotional_tag_neutral(void)
         .valence = 0.0f,
         .arousal = 0.0f,
         .timestamp_ms = 0,
-        .category = EMOTION_NEUTRAL,
+        .category = EMOTION_CAT_NEUTRAL,
         .intensity = 0.0f
     };
     return tag;

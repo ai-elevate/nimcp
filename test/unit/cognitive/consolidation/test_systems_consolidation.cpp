@@ -220,7 +220,7 @@ TEST_F(SystemsConsolidationTest, ReplayExecution_SWSMode) {
     // Create a test engram
     uint32_t neurons[] = {1, 2, 3, 4, 5};
     float activations[] = {0.8f, 0.7f, 0.9f, 0.6f, 0.85f};
-    emotional_tag_t emotion = {0.5f, 0.7f, 0, EMOTION_JOY, 0.8f};
+    emotional_tag_t emotion = {0.5f, 0.7f, 0, EMOTION_CAT_JOY, 0.8f};
 
     uint64_t engram_id = engram_encode(engram_sys, neurons, activations, 5,
                                         MEMORY_TYPE_EPISODIC, emotion);
@@ -259,7 +259,7 @@ TEST_F(SystemsConsolidationTest, ReplayExecution_REMMode) {
     // Create test engram
     uint32_t neurons[] = {1, 2, 3};
     float activations[] = {0.8f, 0.7f, 0.9f};
-    emotional_tag_t emotion = {0.5f, 0.7f, 0, EMOTION_NEUTRAL, 0.6f};
+    emotional_tag_t emotion = {0.5f, 0.7f, 0, EMOTION_CAT_NEUTRAL, 0.6f};
 
     uint64_t engram_id = engram_encode(engram_sys, neurons, activations, 3,
                                         MEMORY_TYPE_EPISODIC, emotion);
@@ -296,7 +296,7 @@ TEST_F(SystemsConsolidationTest, ReplayExecution_AwakeMode) {
         // Create dummy engram
         uint32_t neurons[] = {i, i + 1, i + 2};
         float activations[] = {0.8f, 0.7f, 0.9f};
-        emotional_tag_t emotion = {0.0f, 0.0f, 0, EMOTION_NEUTRAL, 0.5f};
+        emotional_tag_t emotion = {0.0f, 0.0f, 0, EMOTION_CAT_NEUTRAL, 0.5f};
 
         uint64_t eid = engram_encode(engram_sys, neurons, activations, 3,
                                       MEMORY_TYPE_EPISODIC, emotion);
@@ -335,7 +335,7 @@ TEST_F(SystemsConsolidationTest, CorticalTransfer_CreatesNode) {
     // Create test engram
     uint32_t neurons[] = {10, 20, 30, 40};
     float activations[] = {0.9f, 0.8f, 0.7f, 0.85f};
-    emotional_tag_t emotion = {0.6f, 0.8f, 0, EMOTION_JOY, 0.9f};
+    emotional_tag_t emotion = {0.6f, 0.8f, 0, EMOTION_CAT_JOY, 0.9f};
 
     uint64_t engram_id = engram_encode(engram_sys, neurons, activations, 4,
                                         MEMORY_TYPE_EPISODIC, emotion);
@@ -376,7 +376,7 @@ TEST_F(SystemsConsolidationTest, CorticalTransfer_UpdatesExistingNode) {
     // Create test engram
     uint32_t neurons[] = {5, 10, 15};
     float activations[] = {0.8f, 0.9f, 0.7f};
-    emotional_tag_t emotion = {0.5f, 0.6f, 0, EMOTION_NEUTRAL, 0.7f};
+    emotional_tag_t emotion = {0.5f, 0.6f, 0, EMOTION_CAT_NEUTRAL, 0.7f};
 
     uint64_t engram_id = engram_encode(engram_sys, neurons, activations, 3,
                                         MEMORY_TYPE_EPISODIC, emotion);
@@ -418,7 +418,7 @@ TEST_F(SystemsConsolidationTest, ConsolidationUpdate_StrengthensMemories) {
     // Create and transfer engram
     uint32_t neurons[] = {1, 2, 3};
     float activations[] = {0.8f, 0.7f, 0.9f};
-    emotional_tag_t emotion = {0.5f, 0.6f, 0, EMOTION_NEUTRAL, 0.7f};
+    emotional_tag_t emotion = {0.5f, 0.6f, 0, EMOTION_CAT_NEUTRAL, 0.7f};
 
     uint64_t engram_id = engram_encode(engram_sys, neurons, activations, 3,
                                         MEMORY_TYPE_EPISODIC, emotion);
@@ -457,7 +457,7 @@ TEST_F(SystemsConsolidationTest, ConsolidationUpdate_SleepAcceleration) {
     // Create identical engrams and nodes
     uint32_t neurons[] = {1, 2, 3};
     float activations[] = {0.8f, 0.7f, 0.9f};
-    emotional_tag_t emotion = {0.5f, 0.6f, 0, EMOTION_NEUTRAL, 0.7f};
+    emotional_tag_t emotion = {0.5f, 0.6f, 0, EMOTION_CAT_NEUTRAL, 0.7f};
 
     uint64_t engram_id = engram_encode(engram_sys, neurons, activations, 3,
                                         MEMORY_TYPE_EPISODIC, emotion);
@@ -498,7 +498,7 @@ TEST_F(SystemsConsolidationTest, ConsolidationUpdate_HippocampalIndependence) {
     // Create node
     uint32_t neurons[] = {1, 2, 3};
     float activations[] = {0.8f, 0.7f, 0.9f};
-    emotional_tag_t emotion = {0.5f, 0.6f, 0, EMOTION_NEUTRAL, 0.7f};
+    emotional_tag_t emotion = {0.5f, 0.6f, 0, EMOTION_CAT_NEUTRAL, 0.7f};
 
     uint64_t engram_id = engram_encode(engram_sys, neurons, activations, 3,
                                         MEMORY_TYPE_EPISODIC, emotion);
@@ -536,7 +536,7 @@ TEST_F(SystemsConsolidationTest, ConsolidationUpdate_EpisodicToSemantic) {
     // Create node
     uint32_t neurons[] = {1, 2, 3, 4, 5};
     float activations[] = {0.9f, 0.8f, 0.85f, 0.75f, 0.95f};
-    emotional_tag_t emotion = {0.6f, 0.7f, 0, EMOTION_JOY, 0.8f};
+    emotional_tag_t emotion = {0.6f, 0.7f, 0, EMOTION_CAT_JOY, 0.8f};
 
     uint64_t engram_id = engram_encode(engram_sys, neurons, activations, 5,
                                         MEMORY_TYPE_EPISODIC, emotion);
@@ -581,7 +581,7 @@ TEST_F(SystemsConsolidationTest, GetNode_RetrievesCorrectNode) {
     // Create node
     uint32_t neurons[] = {7, 8, 9};
     float activations[] = {0.8f, 0.7f, 0.9f};
-    emotional_tag_t emotion = {0.5f, 0.6f, 0, EMOTION_NEUTRAL, 0.7f};
+    emotional_tag_t emotion = {0.5f, 0.6f, 0, EMOTION_CAT_NEUTRAL, 0.7f};
 
     uint64_t engram_id = engram_encode(engram_sys, neurons, activations, 3,
                                         MEMORY_TYPE_EPISODIC, emotion);
@@ -641,7 +641,7 @@ TEST_F(SystemsConsolidationTest, GetStatistics_ReturnsCorrectCounts) {
     for (uint32_t i = 0; i < 5; i++) {
         uint32_t neurons[] = {i, i + 1, i + 2};
         float activations[] = {0.8f, 0.7f, 0.9f};
-        emotional_tag_t emotion = {0.5f, 0.6f, 0, EMOTION_NEUTRAL, 0.7f};
+        emotional_tag_t emotion = {0.5f, 0.6f, 0, EMOTION_CAT_NEUTRAL, 0.7f};
 
         uint64_t eid = engram_encode(engram_sys, neurons, activations, 3,
                                       MEMORY_TYPE_EPISODIC, emotion);

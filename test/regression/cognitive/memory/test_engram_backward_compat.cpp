@@ -246,7 +246,7 @@ TEST_F(EngramRegressionTest, Consolidation_Stable) {
     // Encode test engram
     uint32_t neurons[] = {1, 2, 3, 4, 5};
     float activations[] = {0.8f, 0.7f, 0.9f, 0.6f, 0.85f};
-    emotional_tag_t emotion = {0.5f, 0.7f, 0, EMOTION_JOY, 0.8f};
+    emotional_tag_t emotion = {0.5f, 0.7f, 0, EMOTION_CAT_JOY, 0.8f};
 
     uint64_t id = engram_encode(sys, neurons, activations, 5,
                                  MEMORY_TYPE_EPISODIC, emotion);
@@ -342,7 +342,7 @@ TEST_F(EngramRegressionTest, Memory_ReliableEncoding) {
     const uint32_t TEST_ENCODINGS = 100;
     uint32_t neurons[] = {1, 2, 3};
     float activations[] = {0.8f, 0.7f, 0.9f};
-    emotional_tag_t emotion = {0.0f, 0.0f, 0, EMOTION_NEUTRAL, 0.5f};
+    emotional_tag_t emotion = {0.0f, 0.0f, 0, EMOTION_CAT_NEUTRAL, 0.5f};
 
     uint32_t successful_encodings = 0;
     for (uint32_t i = 0; i < TEST_ENCODINGS; i++) {

@@ -72,7 +72,7 @@ emotional_tag_t emotional_tag_neutral(void) {
     tag.valence = 0.0f;
     tag.arousal = 0.0f;
     tag.timestamp_ms = 0;
-    tag.category = EMOTION_NEUTRAL;
+    tag.category = EMOTION_CAT_NEUTRAL;
     tag.intensity = 0.0f;
     return tag;
 }
@@ -84,7 +84,7 @@ emotional_tag_t emotional_tag_neutral(void) {
 emotion_category_t emotional_tag_classify(const emotional_tag_t* tag) {
     /* Guard clause: Validate input */
     if (!tag) {
-        return EMOTION_NEUTRAL;
+        return EMOTION_CAT_NEUTRAL;
     }
 
     float v = tag->valence;
@@ -100,39 +100,39 @@ emotion_category_t emotional_tag_classify(const emotional_tag_t* tag) {
 
     /* Low arousal region (a < 0.4) - check SADNESS first */
     if (a < 0.4f) {
-        if (v < -0.3f) return EMOTION_SADNESS;  // Negative + low arousal
-        if (v > 0.2f && a < 0.3f) return EMOTION_CALM;  // Positive + very low arousal
-        if (v < 0.0f && a < 0.2f) return EMOTION_BOREDOM;  // Slight negative + very low
-        return EMOTION_NEUTRAL;
+        if (v < -0.3f) return EMOTION_CAT_SADNESS;  // Negative + low arousal
+        if (v > 0.2f && a < 0.3f) return EMOTION_CAT_CALM;  // Positive + very low arousal
+        if (v < 0.0f && a < 0.2f) return EMOTION_CAT_BOREDOM;  // Slight negative + very low
+        return EMOTION_CAT_NEUTRAL;
     }
 
     /* High arousal + positive valence */
     if (v > 0.5f && a > 0.5f) {
-        return EMOTION_JOY;
+        return EMOTION_CAT_JOY;
     }
     if (v > 0.3f && a > 0.7f) {
-        return EMOTION_EXCITEMENT;
+        return EMOTION_CAT_EXCITEMENT;
     }
 
     /* High arousal + VERY negative valence = FEAR (threat response)
      * Per Russell's model: extreme negative + high arousal */
     if (v < -0.6f && a > 0.6f) {
-        return EMOTION_FEAR;
+        return EMOTION_CAT_FEAR;
     }
 
     /* High arousal + MODERATELY negative = ANGER (frustration)
      * Less extreme than fear, but still activated */
     if (v < -0.3f && a > 0.6f) {
-        return EMOTION_ANGER;
+        return EMOTION_CAT_ANGER;
     }
 
     /* Moderate arousal + mildly negative = ANXIETY (worry)
      * Lower intensity negative state, catches v=-0.75,a=0.5 edge case */
     if (v < -0.2f && a >= 0.4f) {
-        return EMOTION_ANXIETY;
+        return EMOTION_CAT_ANXIETY;
     }
 
-    return EMOTION_NEUTRAL;
+    return EMOTION_CAT_NEUTRAL;
 }
 
 float emotional_tag_intensity(const emotional_tag_t* tag) {
@@ -155,15 +155,15 @@ const char* emotional_category_name(emotion_category_t category) {
      * WHY:  Human-readable debugging output
      * HOW:  Switch statement on enum */
     switch (category) {
-        case EMOTION_NEUTRAL:    return "NEUTRAL";
-        case EMOTION_JOY:        return "JOY";
-        case EMOTION_EXCITEMENT: return "EXCITEMENT";
-        case EMOTION_CALM:       return "CALM";
-        case EMOTION_FEAR:       return "FEAR";
-        case EMOTION_ANGER:      return "ANGER";
-        case EMOTION_SADNESS:    return "SADNESS";
-        case EMOTION_ANXIETY:    return "ANXIETY";
-        case EMOTION_BOREDOM:    return "BOREDOM";
+        case EMOTION_CAT_NEUTRAL:    return "NEUTRAL";
+        case EMOTION_CAT_JOY:        return "JOY";
+        case EMOTION_CAT_EXCITEMENT: return "EXCITEMENT";
+        case EMOTION_CAT_CALM:       return "CALM";
+        case EMOTION_CAT_FEAR:       return "FEAR";
+        case EMOTION_CAT_ANGER:      return "ANGER";
+        case EMOTION_CAT_SADNESS:    return "SADNESS";
+        case EMOTION_CAT_ANXIETY:    return "ANXIETY";
+        case EMOTION_CAT_BOREDOM:    return "BOREDOM";
         default:                 return "UNKNOWN";
     }
 }

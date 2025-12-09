@@ -173,6 +173,8 @@ set(NIMCP_CORE_SOURCES
     # NOTE: No centralized hub - coordination emerges from distributed event bus (mimics thalamus + white matter tracts)
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/nimcp_emotional_tagging.c  # Phase 10.3: General Emotional Tagging (Russell's circumplex model)
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/emotions/nimcp_emotional_system.c  # Phase 10.2: Integrated Emotional System
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/emotion_tensor/nimcp_emotion_tensor.c  # Advanced Concepts: Tensor-Based Emotional Representation
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/emotion_tensor/nimcp_emotion_tensor_bridge.c  # Bridge to swarm emotional contagion
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/executive/nimcp_executive.c  # Phase 10.3: Executive Functions
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/sleep_wake/nimcp_sleep_wake.c  # Phase 10.4: Sleep/Wake Cycle
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/mental_health/nimcp_mental_health.c  # Phase 10.5: Mental Health Monitoring
@@ -606,9 +608,10 @@ set(NIMCP_CORE_SOURCES
     # MIGRATED - Memory consolidation with stubbed containers:
     ${CMAKE_CURRENT_SOURCE_DIR}/../swarm/nimcp_swarm_memory.c         # Memory consolidation
 
-    # Swarm Communication Modules - Narrative Memory and Gossip Beliefs:
+    # Swarm Communication Modules - Narrative Memory, Gossip Beliefs, and Emotional Contagion:
     ${CMAKE_CURRENT_SOURCE_DIR}/../swarm/nimcp_swarm_narrative.c      # Narrative memory (story sharing)
     ${CMAKE_CURRENT_SOURCE_DIR}/../swarm/nimcp_gossip_beliefs.c       # Gossip-based belief propagation
+    ${CMAKE_CURRENT_SOURCE_DIR}/../swarm/nimcp_emotional_contagion.c  # Emotional contagion system
 
     # MIGRATED - Multi-swarm coordination with stubbed containers:
     ${CMAKE_CURRENT_SOURCE_DIR}/../swarm/nimcp_swarm_multi.c          # Multi-swarm coordination

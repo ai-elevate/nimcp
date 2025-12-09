@@ -70,7 +70,7 @@ TEST_F(EngramTest, ResetBasic) {
 
     uint32_t neurons[] = {1, 2, 3};
     float activations[] = {0.8f, 0.7f, 0.9f};
-    emotional_tag_t emotion = {0.5f, 0.6f, 0, EMOTION_JOY, 0.7f};
+    emotional_tag_t emotion = {0.5f, 0.6f, 0, EMOTION_CAT_JOY, 0.7f};
 
     uint64_t id = engram_encode(system, neurons, activations, 3,
                                 MEMORY_TYPE_EPISODIC, emotion);
@@ -101,7 +101,7 @@ TEST_F(EngramTest, EncodeBasic) {
 
     uint32_t neurons[] = {1, 2, 3, 4, 5};
     float activations[] = {0.8f, 0.7f, 0.9f, 0.6f, 0.85f};
-    emotional_tag_t emotion = {0.5f, 0.6f, 0, EMOTION_JOY, 0.7f};
+    emotional_tag_t emotion = {0.5f, 0.6f, 0, EMOTION_CAT_JOY, 0.7f};
 
     uint64_t id = engram_encode(system, neurons, activations, 5,
                                 MEMORY_TYPE_EPISODIC, emotion);
@@ -122,7 +122,7 @@ TEST_F(EngramTest, EncodeNullSystem) {
     // WHAT: Test NULL system
     uint32_t neurons[] = {1, 2, 3};
     float activations[] = {0.8f, 0.7f, 0.9f};
-    emotional_tag_t emotion = {0.5f, 0.6f, 0, EMOTION_JOY, 0.7f};
+    emotional_tag_t emotion = {0.5f, 0.6f, 0, EMOTION_CAT_JOY, 0.7f};
 
     uint64_t id = engram_encode(nullptr, neurons, activations, 3,
                                 MEMORY_TYPE_EPISODIC, emotion);
@@ -132,7 +132,7 @@ TEST_F(EngramTest, EncodeNullSystem) {
 TEST_F(EngramTest, EncodeNullNeurons) {
     // WHAT: Test NULL neurons
     float activations[] = {0.8f, 0.7f, 0.9f};
-    emotional_tag_t emotion = {0.5f, 0.6f, 0, EMOTION_JOY, 0.7f};
+    emotional_tag_t emotion = {0.5f, 0.6f, 0, EMOTION_CAT_JOY, 0.7f};
 
     uint64_t id = engram_encode(system, nullptr, activations, 3,
                                 MEMORY_TYPE_EPISODIC, emotion);
@@ -142,7 +142,7 @@ TEST_F(EngramTest, EncodeNullNeurons) {
 TEST_F(EngramTest, EncodeNullActivations) {
     // WHAT: Test NULL activations
     uint32_t neurons[] = {1, 2, 3};
-    emotional_tag_t emotion = {0.5f, 0.6f, 0, EMOTION_JOY, 0.7f};
+    emotional_tag_t emotion = {0.5f, 0.6f, 0, EMOTION_CAT_JOY, 0.7f};
 
     uint64_t id = engram_encode(system, neurons, nullptr, 3,
                                 MEMORY_TYPE_EPISODIC, emotion);
@@ -153,7 +153,7 @@ TEST_F(EngramTest, EncodeZeroCount) {
     // WHAT: Test zero neuron count
     uint32_t neurons[] = {1, 2, 3};
     float activations[] = {0.8f, 0.7f, 0.9f};
-    emotional_tag_t emotion = {0.5f, 0.6f, 0, EMOTION_JOY, 0.7f};
+    emotional_tag_t emotion = {0.5f, 0.6f, 0, EMOTION_CAT_JOY, 0.7f};
 
     uint64_t id = engram_encode(system, neurons, activations, 0,
                                 MEMORY_TYPE_EPISODIC, emotion);
@@ -170,7 +170,7 @@ TEST_F(EngramTest, EncodeMaxNeurons) {
         activations[i] = 0.8f;
     }
 
-    emotional_tag_t emotion = {0.5f, 0.6f, 0, EMOTION_JOY, 0.7f};
+    emotional_tag_t emotion = {0.5f, 0.6f, 0, EMOTION_CAT_JOY, 0.7f};
 
     uint64_t id = engram_encode(system, neurons, activations,
                                 ENGRAM_MAX_NEURONS + 10,
@@ -189,7 +189,7 @@ TEST_F(EngramTest, EncodeEmotionalEnhancement) {
     float activations[] = {0.8f, 0.7f, 0.9f};
 
     // High arousal emotion
-    emotional_tag_t emotion = {0.8f, 0.9f, 0, EMOTION_JOY, 0.9f};
+    emotional_tag_t emotion = {0.8f, 0.9f, 0, EMOTION_CAT_JOY, 0.9f};
 
     uint64_t id = engram_encode(system, neurons, activations, 3,
                                 MEMORY_TYPE_EMOTIONAL, emotion);
@@ -208,7 +208,7 @@ TEST_F(EngramTest, EncodeMultiple) {
     uint32_t neurons2[] = {4, 5, 6};
     uint32_t neurons3[] = {7, 8, 9};
     float activations[] = {0.8f, 0.7f, 0.9f};
-    emotional_tag_t emotion = {0.5f, 0.6f, 0, EMOTION_JOY, 0.7f};
+    emotional_tag_t emotion = {0.5f, 0.6f, 0, EMOTION_CAT_JOY, 0.7f};
 
     uint64_t id1 = engram_encode(system, neurons1, activations, 3,
                                  MEMORY_TYPE_EPISODIC, emotion);
@@ -236,7 +236,7 @@ TEST_F(EngramTest, RecallBasic) {
 
     uint32_t neurons[] = {1, 2, 3, 4, 5};
     float activations[] = {0.8f, 0.7f, 0.9f, 0.6f, 0.85f};
-    emotional_tag_t emotion = {0.5f, 0.6f, 0, EMOTION_JOY, 0.7f};
+    emotional_tag_t emotion = {0.5f, 0.6f, 0, EMOTION_CAT_JOY, 0.7f};
 
     uint64_t id = engram_encode(system, neurons, activations, 5,
                                 MEMORY_TYPE_EPISODIC, emotion);
@@ -298,7 +298,7 @@ TEST_F(EngramTest, RecallNoMatch) {
     // WHAT: Test recall with no matching engram
     uint32_t neurons[] = {1, 2, 3, 4, 5};
     float activations[] = {0.8f, 0.7f, 0.9f, 0.6f, 0.85f};
-    emotional_tag_t emotion = {0.5f, 0.6f, 0, EMOTION_JOY, 0.7f};
+    emotional_tag_t emotion = {0.5f, 0.6f, 0, EMOTION_CAT_JOY, 0.7f};
 
     engram_encode(system, neurons, activations, 5,
                  MEMORY_TYPE_EPISODIC, emotion);
@@ -320,7 +320,7 @@ TEST_F(EngramTest, RecallTriggersReconsolidation) {
     // WHAT: Test that recalling consolidated engram triggers reconsolidation
     uint32_t neurons[] = {1, 2, 3, 4, 5};
     float activations[] = {0.8f, 0.7f, 0.9f, 0.6f, 0.85f};
-    emotional_tag_t emotion = {0.5f, 0.6f, 0, EMOTION_JOY, 0.7f};
+    emotional_tag_t emotion = {0.5f, 0.6f, 0, EMOTION_CAT_JOY, 0.7f};
 
     uint64_t id = engram_encode(system, neurons, activations, 5,
                                 MEMORY_TYPE_EPISODIC, emotion);
@@ -354,7 +354,7 @@ TEST_F(EngramTest, RecognizeBasic) {
     // WHAT: Test basic recognition
     uint32_t neurons[] = {1, 2, 3, 4, 5};
     float activations[] = {0.8f, 0.7f, 0.9f, 0.6f, 0.85f};
-    emotional_tag_t emotion = {0.5f, 0.6f, 0, EMOTION_JOY, 0.7f};
+    emotional_tag_t emotion = {0.5f, 0.6f, 0, EMOTION_CAT_JOY, 0.7f};
 
     engram_encode(system, neurons, activations, 5,
                  MEMORY_TYPE_EPISODIC, emotion);
@@ -390,7 +390,7 @@ TEST_F(EngramTest, ConsolidateBasic) {
     // WHAT: Test consolidation progression
     uint32_t neurons[] = {1, 2, 3};
     float activations[] = {0.8f, 0.7f, 0.9f};
-    emotional_tag_t emotion = {0.5f, 0.6f, 0, EMOTION_JOY, 0.7f};
+    emotional_tag_t emotion = {0.5f, 0.6f, 0, EMOTION_CAT_JOY, 0.7f};
 
     uint64_t id = engram_encode(system, neurons, activations, 3,
                                 MEMORY_TYPE_EPISODIC, emotion);
@@ -431,7 +431,7 @@ TEST_F(EngramTest, ConsolidateSleepBoost) {
     // WHAT: Test sleep accelerates consolidation
     uint32_t neurons[] = {1, 2, 3};
     float activations[] = {0.8f, 0.7f, 0.9f};
-    emotional_tag_t emotion = {0.5f, 0.6f, 0, EMOTION_JOY, 0.7f};
+    emotional_tag_t emotion = {0.5f, 0.6f, 0, EMOTION_CAT_JOY, 0.7f};
 
     uint64_t id1 = engram_encode(system, neurons, activations, 3,
                                  MEMORY_TYPE_EPISODIC, emotion);
@@ -462,7 +462,7 @@ TEST_F(EngramTest, SleepReplayBasic) {
     // WHAT: Test sleep replay
     uint32_t neurons[] = {1, 2, 3};
     float activations[] = {0.8f, 0.7f, 0.9f};
-    emotional_tag_t emotion = {0.5f, 0.6f, 0, EMOTION_JOY, 0.7f};
+    emotional_tag_t emotion = {0.5f, 0.6f, 0, EMOTION_CAT_JOY, 0.7f};
 
     engram_encode(system, neurons, activations, 3,
                  MEMORY_TYPE_EPISODIC, emotion);
@@ -496,7 +496,7 @@ TEST_F(EngramTest, ReconsolidationTrigger) {
     // WHAT: Test reconsolidation trigger
     uint32_t neurons[] = {1, 2, 3};
     float activations[] = {0.8f, 0.7f, 0.9f};
-    emotional_tag_t emotion = {0.5f, 0.6f, 0, EMOTION_JOY, 0.7f};
+    emotional_tag_t emotion = {0.5f, 0.6f, 0, EMOTION_CAT_JOY, 0.7f};
 
     uint64_t id = engram_encode(system, neurons, activations, 3,
                                 MEMORY_TYPE_EPISODIC, emotion);
@@ -514,7 +514,7 @@ TEST_F(EngramTest, ReconsolidationBlock) {
     // WHAT: Test reconsolidation blockade
     uint32_t neurons[] = {1, 2, 3};
     float activations[] = {0.8f, 0.7f, 0.9f};
-    emotional_tag_t emotion = {0.5f, 0.6f, 0, EMOTION_JOY, 0.7f};
+    emotional_tag_t emotion = {0.5f, 0.6f, 0, EMOTION_CAT_JOY, 0.7f};
 
     uint64_t id = engram_encode(system, neurons, activations, 3,
                                 MEMORY_TYPE_EPISODIC, emotion);
@@ -545,7 +545,7 @@ TEST_F(EngramTest, DecayBasic) {
     // WHAT: Test natural decay
     uint32_t neurons[] = {1, 2, 3};
     float activations[] = {0.8f, 0.7f, 0.9f};
-    emotional_tag_t emotion = {0.5f, 0.6f, 0, EMOTION_JOY, 0.7f};
+    emotional_tag_t emotion = {0.5f, 0.6f, 0, EMOTION_CAT_JOY, 0.7f};
 
     uint64_t id = engram_encode(system, neurons, activations, 3,
                                 MEMORY_TYPE_EPISODIC, emotion);
@@ -571,7 +571,7 @@ TEST_F(EngramTest, ExtinctionBasic) {
     // WHAT: Test extinction
     uint32_t neurons[] = {1, 2, 3};
     float activations[] = {0.8f, 0.7f, 0.9f};
-    emotional_tag_t emotion = {0.5f, 0.6f, 0, EMOTION_JOY, 0.7f};
+    emotional_tag_t emotion = {0.5f, 0.6f, 0, EMOTION_CAT_JOY, 0.7f};
 
     uint64_t id = engram_encode(system, neurons, activations, 3,
                                 MEMORY_TYPE_EPISODIC, emotion);
@@ -600,7 +600,7 @@ TEST_F(EngramTest, GetByIdBasic) {
     // WHAT: Test get by ID
     uint32_t neurons[] = {1, 2, 3};
     float activations[] = {0.8f, 0.7f, 0.9f};
-    emotional_tag_t emotion = {0.5f, 0.6f, 0, EMOTION_JOY, 0.7f};
+    emotional_tag_t emotion = {0.5f, 0.6f, 0, EMOTION_CAT_JOY, 0.7f};
 
     uint64_t id = engram_encode(system, neurons, activations, 3,
                                 MEMORY_TYPE_EPISODIC, emotion);
@@ -625,7 +625,7 @@ TEST_F(EngramTest, GetStateBasic) {
     // WHAT: Test get state
     uint32_t neurons[] = {1, 2, 3};
     float activations[] = {0.8f, 0.7f, 0.9f};
-    emotional_tag_t emotion = {0.5f, 0.6f, 0, EMOTION_JOY, 0.7f};
+    emotional_tag_t emotion = {0.5f, 0.6f, 0, EMOTION_CAT_JOY, 0.7f};
 
     uint64_t id = engram_encode(system, neurons, activations, 3,
                                 MEMORY_TYPE_EPISODIC, emotion);
@@ -637,7 +637,7 @@ TEST_F(EngramTest, GetConsolidationStrength) {
     // WHAT: Test get consolidation strength
     uint32_t neurons[] = {1, 2, 3};
     float activations[] = {0.8f, 0.7f, 0.9f};
-    emotional_tag_t emotion = {0.5f, 0.6f, 0, EMOTION_JOY, 0.7f};
+    emotional_tag_t emotion = {0.5f, 0.6f, 0, EMOTION_CAT_JOY, 0.7f};
 
     uint64_t id = engram_encode(system, neurons, activations, 3,
                                 MEMORY_TYPE_EPISODIC, emotion);
@@ -655,7 +655,7 @@ TEST_F(EngramTest, GetActiveCount) {
 
     uint32_t neurons[] = {1, 2, 3};
     float activations[] = {0.8f, 0.7f, 0.9f};
-    emotional_tag_t emotion = {0.5f, 0.6f, 0, EMOTION_JOY, 0.7f};
+    emotional_tag_t emotion = {0.5f, 0.6f, 0, EMOTION_CAT_JOY, 0.7f};
 
     engram_encode(system, neurons, activations, 3,
                  MEMORY_TYPE_EPISODIC, emotion);
@@ -678,7 +678,7 @@ TEST_F(EngramTest, GetStatistics) {
 
     uint32_t neurons[] = {1, 2, 3};
     float activations[] = {0.8f, 0.7f, 0.9f};
-    emotional_tag_t emotion = {0.5f, 0.6f, 0, EMOTION_JOY, 0.7f};
+    emotional_tag_t emotion = {0.5f, 0.6f, 0, EMOTION_CAT_JOY, 0.7f};
 
     engram_encode(system, neurons, activations, 3,
                  MEMORY_TYPE_EPISODIC, emotion);

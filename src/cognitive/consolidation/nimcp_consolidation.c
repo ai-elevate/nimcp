@@ -353,7 +353,7 @@ static bool consolidate_replay(brain_t brain, const consolidation_config_t* conf
 
             /* Apply novelty boost if enabled */
             if (config->prioritize_novel && has_emotion &&
-                (emotion.category == EMOTION_EXCITEMENT || emotion.category == EMOTION_JOY)) {
+                (emotion.category == EMOTION_CAT_EXCITEMENT || emotion.category == EMOTION_CAT_JOY)) {
                 consolidation_strength *= config->novelty_boost;
                 patterns_strengthened++;
             }

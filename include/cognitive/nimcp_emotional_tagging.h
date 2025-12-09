@@ -52,15 +52,15 @@ extern "C" {
  * Based on Russell's circumplex model quadrants
  */
 typedef enum {
-    EMOTION_NEUTRAL,      /**< valence ≈ 0, arousal < 0.3 (no strong emotion) */
-    EMOTION_JOY,          /**< valence > 0.5, arousal > 0.5 (happy, excited) */
-    EMOTION_EXCITEMENT,   /**< valence > 0.3, arousal > 0.7 (energized, alert) */
-    EMOTION_CALM,         /**< valence > 0.2, arousal < 0.3 (peaceful, relaxed) */
-    EMOTION_FEAR,         /**< valence < -0.3, arousal > 0.6 (afraid, anxious) */
-    EMOTION_ANGER,        /**< valence < -0.4, arousal > 0.6 (frustrated, angry) */
-    EMOTION_SADNESS,      /**< valence < -0.3, arousal < 0.4 (sad, depressed) */
-    EMOTION_ANXIETY,      /**< valence < -0.2, arousal > 0.5 (worried, tense) */
-    EMOTION_BOREDOM       /**< valence < 0, arousal < 0.2 (disinterested) */
+    EMOTION_CAT_NEUTRAL,      /**< valence ≈ 0, arousal < 0.3 (no strong emotion) */
+    EMOTION_CAT_JOY,          /**< valence > 0.5, arousal > 0.5 (happy, excited) */
+    EMOTION_CAT_EXCITEMENT,   /**< valence > 0.3, arousal > 0.7 (energized, alert) */
+    EMOTION_CAT_CALM,         /**< valence > 0.2, arousal < 0.3 (peaceful, relaxed) */
+    EMOTION_CAT_FEAR,         /**< valence < -0.3, arousal > 0.6 (afraid, anxious) */
+    EMOTION_CAT_ANGER,        /**< valence < -0.4, arousal > 0.6 (frustrated, angry) */
+    EMOTION_CAT_SADNESS,      /**< valence < -0.3, arousal < 0.4 (sad, depressed) */
+    EMOTION_CAT_ANXIETY,      /**< valence < -0.2, arousal > 0.5 (worried, tense) */
+    EMOTION_CAT_BOREDOM       /**< valence < 0, arousal < 0.2 (disinterested) */
 } emotion_category_t;
 
 //=============================================================================
@@ -91,7 +91,7 @@ typedef struct emotional_tag {
 /**
  * @brief Default neutral emotion (no emotional content)
  */
-#define EMOTIONAL_TAG_NEUTRAL {0.0f, 0.0f, 0, EMOTION_NEUTRAL, 0.0f}
+#define EMOTIONAL_TAG_NEUTRAL {0.0f, 0.0f, 0, EMOTION_CAT_NEUTRAL, 0.0f}
 
 /**
  * @brief Arousal multiplier for salience boost

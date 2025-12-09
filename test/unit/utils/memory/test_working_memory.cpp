@@ -582,7 +582,7 @@ TEST_F(WorkingMemoryTest, GetEmotionNeutralDefault) {
     // Should be neutral
     EXPECT_FLOAT_EQ(retrieved.valence, 0.0f);
     EXPECT_FLOAT_EQ(retrieved.arousal, 0.0f);
-    EXPECT_EQ(retrieved.category, EMOTION_NEUTRAL);
+    EXPECT_EQ(retrieved.category, EMOTION_CAT_NEUTRAL);
 }
 
 TEST_F(WorkingMemoryTest, TotalSalienceWithoutEmotion) {
@@ -623,7 +623,7 @@ TEST_F(WorkingMemoryTest, AddEmotionInvalidEmotion) {
     invalid.valence = 5.0f;  // Out of range
     invalid.arousal = -1.0f;  // Invalid
     invalid.intensity = 0.0f;
-    invalid.category = EMOTION_NEUTRAL;
+    invalid.category = EMOTION_CAT_NEUTRAL;
 
     EXPECT_FALSE(working_memory_add_with_emotion(wm, item, 1, 0.5f, &invalid));
 }
@@ -654,13 +654,13 @@ TEST_F(WorkingMemoryTest, MultipleEmotionalItems) {
     emotional_tag_t retrieved;
 
     working_memory_get_emotion(wm, 0, &retrieved);
-    EXPECT_EQ(retrieved.category, EMOTION_JOY);
+    EXPECT_EQ(retrieved.category, EMOTION_CAT_JOY);
 
     working_memory_get_emotion(wm, 1, &retrieved);
-    EXPECT_EQ(retrieved.category, EMOTION_FEAR);
+    EXPECT_EQ(retrieved.category, EMOTION_CAT_FEAR);
 
     working_memory_get_emotion(wm, 2, &retrieved);
-    EXPECT_EQ(retrieved.category, EMOTION_CALM);
+    EXPECT_EQ(retrieved.category, EMOTION_CAT_CALM);
 }
 
 TEST_F(WorkingMemoryTest, EmotionalSalienceClampedTo1) {

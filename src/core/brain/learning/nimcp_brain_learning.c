@@ -765,7 +765,7 @@ float brain_learn_example(brain_t brain, const float* features, uint32_t num_fea
                 .valence = (confidence > 0.7f) ? 0.5f : 0.0f,  // Positive valence for high confidence
                 .arousal = confidence,                          // Confidence as arousal proxy
                 .timestamp_ms = current_time,
-                .category = EMOTION_NEUTRAL,
+                .category = EMOTION_CAT_NEUTRAL,
                 .intensity = confidence
             };
 

@@ -100,6 +100,16 @@ typedef enum {
     BIO_MSG_CONSOLIDATION_TRIGGER,
     BIO_MSG_MIRROR_NEURON_ACTIVATION,
 
+    /* Emotion tensor messages (0x0380 - 0x039F) */
+    BIO_MSG_EMOTION_TENSOR_UPDATE = 0x0380,     /**< Tensor state broadcast */
+    BIO_MSG_EMOTION_TENSOR_QUERY,               /**< Query tensor state */
+    BIO_MSG_EMOTION_TENSOR_RESPONSE,            /**< Response with tensor state */
+    BIO_MSG_EMOTION_TENSOR_STIMULUS,            /**< Apply stimulus to tensor */
+    BIO_MSG_EMOTION_TENSOR_PROPAGATE,           /**< Propagate tensor to swarm */
+    BIO_MSG_EMOTION_TENSOR_COMPOUND,            /**< Compound emotion detected */
+    BIO_MSG_EMOTION_TENSOR_CONTRADICTION,       /**< Contradictory emotions detected */
+    BIO_MSG_EMOTION_SWARM_SYNC,                 /**< Sync tensor with swarm contagion */
+
     /* Glial messages (0x0400 - 0x04FF) */
     BIO_MSG_ASTROCYTE_CALCIUM_WAVE = 0x0400,
     BIO_MSG_ASTROCYTE_GLUTAMATE_UPTAKE,
@@ -419,6 +429,8 @@ typedef enum {
     BIO_MODULE_EMOTIONS_PERSONALITY,
     BIO_MODULE_EMOTIONS_SHADOW,
     BIO_MODULE_EMOTIONS_SOCIAL,
+    BIO_MODULE_EMOTION_TENSOR,          /**< Tensor-based emotional representation */
+    BIO_MODULE_EMOTION_TENSOR_BRIDGE,   /**< Bridge between tensor and swarm emotions */
 
     /* Glial modules */
     BIO_MODULE_ASTROCYTE = 0x0300,
@@ -942,6 +954,162 @@ typedef struct {
     char reasoning[512];            /**< Explanation of decision */
     uint32_t selected_option;       /**< Selected option index */
 } bio_msg_decision_response_t;
+
+/*=============================================================================
+ * EMOTION TENSOR MESSAGES
+ *============================================================================*/
+
+/** Number of primary emotions in tensor (Plutchik's 8) */
+#define BIO_EMOTION_TENSOR_PRIMARY_COUNT 8
+
+/** Number of compound emotions */
+#define BIO_EMOTION_TENSOR_COMPOUND_COUNT 24
+
+/**
+ * @brief Emotion tensor state update (broadcast via serotonin)
+ *
+ * WHAT: Broadcasts current emotion tensor state
+ * WHY:  Enable other modules to react to emotional state
+ * HOW:  Contains all 8 primary channels + computed aggregates
+ */
+typedef struct {
+    bio_message_header_t header;
+    float channels[BIO_EMOTION_TENSOR_PRIMARY_COUNT];  /**< Primary emotion activations */
+    float valence;                      /**< Computed valence [-1, +1] */
+    float arousal;                      /**< Computed arousal [0, 1] */
+    float entropy;                      /**< Emotional diversity [0, 1] */
+    float stability;                    /**< Emotional stability [0, 1] */
+    uint8_t primary_emotion;            /**< Dominant primary emotion index */
+    uint8_t secondary_emotion;          /**< Secondary emotion index */
+    float blend_ratio;                  /**< Secondary/primary ratio [0, 1] */
+    uint64_t timestamp_ms;              /**< Update timestamp */
+} bio_msg_emotion_tensor_update_t;
+
+/**
+ * @brief Query emotion tensor state
+ */
+typedef struct {
+    bio_message_header_t header;
+    uint32_t query_flags;               /**< What to query */
+    uint32_t target_brain_id;           /**< Target brain (0 = local) */
+} bio_msg_emotion_tensor_query_t;
+
+#define BIO_TENSOR_QUERY_CHANNELS     (1 << 0)  /**< Query primary channels */
+#define BIO_TENSOR_QUERY_COMPOUNDS    (1 << 1)  /**< Query compound emotions */
+#define BIO_TENSOR_QUERY_AGGREGATES   (1 << 2)  /**< Query valence/arousal/entropy */
+#define BIO_TENSOR_QUERY_DYNAMICS     (1 << 3)  /**< Query temporal dynamics */
+#define BIO_TENSOR_QUERY_ALL          0xFFFFFFFF
+
+/**
+ * @brief Emotion tensor state response
+ */
+typedef struct {
+    bio_message_header_t header;
+    float channels[BIO_EMOTION_TENSOR_PRIMARY_COUNT];  /**< Primary channels */
+    float compounds[BIO_EMOTION_TENSOR_COMPOUND_COUNT]; /**< Compound emotions */
+    float valence;                      /**< Computed valence */
+    float arousal;                      /**< Computed arousal */
+    float entropy;                      /**< Emotional diversity */
+    float stability;                    /**< Emotional stability */
+    uint8_t primary_emotion;            /**< Dominant emotion */
+    uint8_t secondary_emotion;          /**< Secondary emotion */
+    bool contradictory;                 /**< Has contradictory emotions */
+    uint64_t timestamp_ms;              /**< State timestamp */
+} bio_msg_emotion_tensor_response_t;
+
+/**
+ * @brief Apply stimulus to emotion tensor
+ *
+ * WHAT: External stimulus affecting emotional state
+ * WHY:  Events, inputs, situations trigger emotions
+ * HOW:  Modify specified channel based on stimulus
+ */
+typedef struct {
+    bio_message_header_t header;
+    uint8_t target_emotion;             /**< Primary emotion index to affect */
+    float intensity;                    /**< Stimulus intensity [0, 1] */
+    bool is_positive;                   /**< Positive (add) or negative (subtract) */
+    uint32_t source_id;                 /**< Source of stimulus (module/event) */
+    uint64_t timestamp_ms;              /**< Stimulus timestamp */
+} bio_msg_emotion_tensor_stimulus_t;
+
+/**
+ * @brief Propagate emotion tensor to swarm agents
+ *
+ * WHAT: Request emotion propagation across swarm
+ * WHY:  Enable emotional contagion from individual to swarm
+ * HOW:  Convert tensor to swarm emotion, trigger propagation
+ */
+typedef struct {
+    bio_message_header_t header;
+    uint32_t source_agent_id;           /**< Originating agent */
+    uint8_t emotion_type;               /**< Swarm emotion type (converted from tensor) */
+    float intensity;                    /**< Emotion intensity [0, 1] */
+    uint32_t max_propagation_depth;     /**< Max hops (0 = unlimited) */
+    bool override_resistance;           /**< Bypass resistance checks */
+} bio_msg_emotion_tensor_propagate_t;
+
+/**
+ * @brief Compound emotion detected notification
+ *
+ * WHAT: Notification that compound emotion is active
+ * WHY:  Alert system to complex emotional states
+ * HOW:  Broadcast when compound exceeds threshold
+ */
+typedef struct {
+    bio_message_header_t header;
+    uint8_t compound_type;              /**< Compound emotion index */
+    float activation;                   /**< Activation level [0, 1] */
+    uint8_t primary_a;                  /**< First contributing primary */
+    uint8_t primary_b;                  /**< Second contributing primary */
+    float primary_a_level;              /**< First primary activation */
+    float primary_b_level;              /**< Second primary activation */
+    bool is_contradictory;              /**< Tertiary dyad (contradictory) */
+} bio_msg_emotion_tensor_compound_t;
+
+/**
+ * @brief Emotional contradiction detected
+ *
+ * WHAT: Notification of contradictory emotions
+ * WHY:  Flag ambivalence, internal conflict
+ * HOW:  Broadcast when opposing emotions both active
+ */
+typedef struct {
+    bio_message_header_t header;
+    uint8_t emotion_a;                  /**< First conflicting emotion */
+    uint8_t emotion_b;                  /**< Second conflicting emotion */
+    float level_a;                      /**< First emotion level */
+    float level_b;                      /**< Second emotion level */
+    float conflict_intensity;           /**< Magnitude of conflict [0, 1] */
+} bio_msg_emotion_tensor_contradiction_t;
+
+/**
+ * @brief Sync tensor with swarm emotional contagion
+ *
+ * WHAT: Bidirectional sync between tensor and swarm system
+ * WHY:  Keep individual and collective emotions aligned
+ * HOW:  Exchange state with emotional contagion system
+ */
+typedef struct {
+    bio_message_header_t header;
+    uint32_t agent_id;                  /**< Agent to sync with */
+    uint8_t direction;                  /**< 0=tensor->swarm, 1=swarm->tensor, 2=bidirectional */
+    float blend_factor;                 /**< How much to blend (0=keep current, 1=full replace) */
+
+    /* Tensor state (for tensor->swarm) */
+    float tensor_channels[BIO_EMOTION_TENSOR_PRIMARY_COUNT];
+    float tensor_valence;
+    float tensor_arousal;
+
+    /* Swarm state (for swarm->tensor) */
+    uint8_t swarm_emotion;              /**< Swarm emotion type */
+    float swarm_intensity;              /**< Swarm emotion intensity */
+    float susceptibility;               /**< Agent susceptibility */
+} bio_msg_emotion_swarm_sync_t;
+
+#define BIO_EMOTION_SYNC_TENSOR_TO_SWARM  0
+#define BIO_EMOTION_SYNC_SWARM_TO_TENSOR  1
+#define BIO_EMOTION_SYNC_BIDIRECTIONAL    2
 
 /*=============================================================================
  * GLIAL MESSAGES

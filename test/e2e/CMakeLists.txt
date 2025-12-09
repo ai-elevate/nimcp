@@ -261,6 +261,12 @@ add_e2e_test(e2e_test_portia_threat_response
     ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_portia_threat_response.cpp
 )
 
+# Emotion Tensor E2E Test
+add_e2e_test(e2e_test_emotion_tensor_pipeline
+    ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_framework.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_emotion_tensor_pipeline.cpp
+)
+
 # ============================================================================
 # Test Execution Instructions
 # ============================================================================

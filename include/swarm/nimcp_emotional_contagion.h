@@ -46,6 +46,16 @@
 #ifndef NIMCP_EMOTIONAL_CONTAGION_H
 #define NIMCP_EMOTIONAL_CONTAGION_H
 
+/* ============================================================================
+ * Constants
+ * ============================================================================ */
+
+/** Maximum number of agents in emotional contagion network */
+#define EMOTIONAL_CONTAGION_MAX_AGENTS 4096
+
+/** Maximum connections per agent */
+#define EMOTIONAL_CONTAGION_MAX_CONNECTIONS 256
+
 #include "utils/validation/nimcp_common.h"
 #include "async/nimcp_bio_router.h"
 #include "async/nimcp_bio_messages.h"

@@ -61,7 +61,7 @@ TEST_F(EmotionalTaggingRealTest, CreateNeutral_ReturnsZeroValues) {
 
     EXPECT_EQ(tag.valence, 0.0f);
     EXPECT_EQ(tag.arousal, 0.0f);
-    EXPECT_EQ(tag.category, EMOTION_NEUTRAL);
+    EXPECT_EQ(tag.category, EMOTION_CAT_NEUTRAL);
     EXPECT_EQ(tag.intensity, 0.0f);
 }
 
@@ -73,36 +73,36 @@ TEST_F(EmotionalTaggingRealTest, Classify_HighArousalPositiveValence_ReturnsJoyO
     emotional_tag_t tag = emotional_tag_create(0.8f, 0.8f, 0);
     emotion_category_t category = emotional_tag_classify(&tag);
 
-    EXPECT_TRUE(category == EMOTION_JOY || category == EMOTION_EXCITEMENT);
+    EXPECT_TRUE(category == EMOTION_CAT_JOY || category == EMOTION_CAT_EXCITEMENT);
 }
 
 TEST_F(EmotionalTaggingRealTest, Classify_LowArousalPositiveValence_ReturnsCalm) {
     emotional_tag_t tag = emotional_tag_create(0.5f, 0.1f, 0);
     emotion_category_t category = emotional_tag_classify(&tag);
 
-    EXPECT_EQ(category, EMOTION_CALM);
+    EXPECT_EQ(category, EMOTION_CAT_CALM);
 }
 
 TEST_F(EmotionalTaggingRealTest, Classify_HighArousalNegativeValence_ReturnsFearOrAnger) {
     emotional_tag_t tag = emotional_tag_create(-0.7f, 0.8f, 0);
     emotion_category_t category = emotional_tag_classify(&tag);
 
-    EXPECT_TRUE(category == EMOTION_FEAR || category == EMOTION_ANGER ||
-                category == EMOTION_ANXIETY);
+    EXPECT_TRUE(category == EMOTION_CAT_FEAR || category == EMOTION_CAT_ANGER ||
+                category == EMOTION_CAT_ANXIETY);
 }
 
 TEST_F(EmotionalTaggingRealTest, Classify_LowArousalNegativeValence_ReturnsSadnessOrBoredom) {
     emotional_tag_t tag = emotional_tag_create(-0.5f, 0.1f, 0);
     emotion_category_t category = emotional_tag_classify(&tag);
 
-    EXPECT_TRUE(category == EMOTION_SADNESS || category == EMOTION_BOREDOM);
+    EXPECT_TRUE(category == EMOTION_CAT_SADNESS || category == EMOTION_CAT_BOREDOM);
 }
 
 TEST_F(EmotionalTaggingRealTest, Classify_NeutralValues_ReturnsNeutral) {
     emotional_tag_t tag = emotional_tag_neutral();
     emotion_category_t category = emotional_tag_classify(&tag);
 
-    EXPECT_EQ(category, EMOTION_NEUTRAL);
+    EXPECT_EQ(category, EMOTION_CAT_NEUTRAL);
 }
 
 TEST_F(EmotionalTaggingRealTest, Intensity_NeutralTag_ReturnsZero) {
@@ -121,16 +121,16 @@ TEST_F(EmotionalTaggingRealTest, Intensity_HighValenceHighArousal_ReturnsHighInt
 }
 
 TEST_F(EmotionalTaggingRealTest, CategoryName_ReturnsNonEmptyString) {
-    const char* name = emotional_category_name(EMOTION_JOY);
+    const char* name = emotional_category_name(EMOTION_CAT_JOY);
     EXPECT_NE(name, nullptr);
     EXPECT_GT(strlen(name), 0);
 }
 
 TEST_F(EmotionalTaggingRealTest, CategoryName_AllCategories_ReturnValidStrings) {
     emotion_category_t categories[] = {
-        EMOTION_NEUTRAL, EMOTION_JOY, EMOTION_EXCITEMENT, EMOTION_CALM,
-        EMOTION_FEAR, EMOTION_ANGER, EMOTION_SADNESS, EMOTION_ANXIETY,
-        EMOTION_BOREDOM
+        EMOTION_CAT_NEUTRAL, EMOTION_CAT_JOY, EMOTION_CAT_EXCITEMENT, EMOTION_CAT_CALM,
+        EMOTION_CAT_FEAR, EMOTION_CAT_ANGER, EMOTION_CAT_SADNESS, EMOTION_CAT_ANXIETY,
+        EMOTION_CAT_BOREDOM
     };
 
     for (auto cat : categories) {
