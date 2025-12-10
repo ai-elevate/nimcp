@@ -17,6 +17,9 @@
 #include <stdbool.h>
 #include <stddef.h>
 
+// Forward declaration for positional encoding
+typedef struct nimcp_pos_encoder_s nimcp_pos_encoder_t;
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -45,6 +48,7 @@ typedef struct {
     uint32_t max_packet_size;         /**< Max payload bytes */
     uint32_t retry_count;             /**< Retransmit attempts */
     uint32_t timeout_ms;              /**< Receive timeout */
+    uint32_t node_id;                 /**< Node identifier (0 = auto-assign) */
 
     /** Custom callback for SWARM_RADIO_CUSTOM */
     bool (*custom_send)(const uint8_t* data, uint32_t len, void* ctx);
@@ -222,6 +226,62 @@ bool swarm_signal_is_operational(nimcp_swarm_signal_adapter_t* adapter);
  * @return true on success, false on failure
  */
 bool swarm_signal_flush(nimcp_swarm_signal_adapter_t* adapter);
+
+//=============================================================================
+// POSITIONAL ENCODING INTEGRATION
+//=============================================================================
+
+/**
+ * @brief Set positional encoding configuration for signal adapter
+ *
+ * WHAT: Configure sinusoidal PE and ALiBi for packet sequence ordering
+ * WHY:  Enable temporal context in swarm signal sequences
+ * HOW:  Attach PE encoder to adapter for sequence numbering
+ *
+ * @param adapter Signal adapter to configure
+ * @param encoder Positional encoder instance (SINUSOIDAL or ALIBI type)
+ * @return true on success, false on failure
+ */
+bool swarm_signal_set_pe_config(
+    nimcp_swarm_signal_adapter_t* adapter,
+    nimcp_pos_encoder_t* encoder
+);
+
+/**
+ * @brief Encode signal sequence with positional embeddings
+ *
+ * WHAT: Apply positional encoding to a sequence of signal packets
+ * WHY:  Add temporal ordering context to packet sequences
+ * HOW:  Generate PE for each position in sequence and apply to packet data
+ *
+ * @param adapter Signal adapter
+ * @param sequence_start Starting sequence number
+ * @param sequence_length Length of sequence
+ * @param embeddings_out Output buffer for embeddings (seq_length * embedding_dim floats)
+ * @return true on success, false if PE not configured
+ */
+bool swarm_signal_encode_sequence(
+    nimcp_swarm_signal_adapter_t* adapter,
+    uint32_t sequence_start,
+    uint32_t sequence_length,
+    float* embeddings_out
+);
+
+/**
+ * @brief Get temporal embedding for current signal state
+ *
+ * WHAT: Retrieve positional encoding for current packet sequence position
+ * WHY:  Add temporal context to individual signal transmissions
+ * HOW:  Use current sequence number to generate PE
+ *
+ * @param adapter Signal adapter
+ * @param output Output buffer for embedding (must be encoder's embedding_dim size)
+ * @return true on success, false if PE not configured
+ */
+bool swarm_signal_get_temporal_embedding(
+    nimcp_swarm_signal_adapter_t* adapter,
+    float* output
+);
 
 #ifdef __cplusplus
 }

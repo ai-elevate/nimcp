@@ -371,6 +371,9 @@ bool bbb_validate_input(bbb_system_t system, const void* data,
     memset(result, 0, sizeof(bbb_validation_result_t));
     result->valid = true;
 
+    /* Update validation statistics (always count validation attempts) */
+    bbb_system_inc_validations(system);
+
     /* Guard: NULL data is invalid */
     if (!data) {
         result->valid = false;
@@ -385,9 +388,6 @@ bool bbb_validate_input(bbb_system_t system, const void* data,
         return true;
     }
 
-    /* Guard: System may be NULL for standalone validation */
-    (void)system;  /* Currently unused but available for future config */
-
     /* Check for shellcode patterns */
     if (detect_shellcode(data, size)) {
         result->valid = false;
@@ -395,6 +395,8 @@ bool bbb_validate_input(bbb_system_t system, const void* data,
         result->severity = BBB_SEVERITY_CRITICAL;
         snprintf(result->reason, sizeof(result->reason),
                  "Shellcode pattern detected in input data");
+        bbb_report_threat(system, BBB_THREAT_SHELLCODE, BBB_SEVERITY_CRITICAL,
+                          result->reason, data, data, size);
         return false;
     }
 
@@ -608,31 +610,32 @@ bool bbb_validate_integer(bbb_system_t system, int64_t value,
 bool bbb_validate_pointer(bbb_system_t system, const void* ptr,
                           size_t expected_size, bbb_validation_result_t* result)
 {
-    /* Guard: NULL result */
-    if (!result) return false;
+    /* Create local result if caller doesn't want one */
+    bbb_validation_result_t local_result;
+    bbb_validation_result_t* res = result ? result : &local_result;
 
     /* Initialize result */
-    memset(result, 0, sizeof(bbb_validation_result_t));
-    result->valid = true;
+    memset(res, 0, sizeof(bbb_validation_result_t));
+    res->valid = true;
 
     (void)system;  /* Available for future configuration */
 
     /* NULL pointer check */
     if (!ptr) {
-        result->valid = false;
-        result->threat = BBB_THREAT_MEMORY_VIOLATION;
-        result->severity = BBB_SEVERITY_HIGH;
-        snprintf(result->reason, sizeof(result->reason),
+        res->valid = false;
+        res->threat = BBB_THREAT_MEMORY_VIOLATION;
+        res->severity = BBB_SEVERITY_HIGH;
+        snprintf(res->reason, sizeof(res->reason),
                  "NULL pointer detected");
         return false;
     }
 
     /* Zero size check */
     if (expected_size == 0) {
-        result->valid = false;
-        result->threat = BBB_THREAT_MEMORY_VIOLATION;
-        result->severity = BBB_SEVERITY_LOW;
-        snprintf(result->reason, sizeof(result->reason),
+        res->valid = false;
+        res->threat = BBB_THREAT_MEMORY_VIOLATION;
+        res->severity = BBB_SEVERITY_LOW;
+        snprintf(res->reason, sizeof(res->reason),
                  "Zero-size memory access");
         return false;
     }
@@ -642,10 +645,10 @@ bool bbb_validate_pointer(bbb_system_t system, const void* ptr,
 
     /* Very low addresses (often NULL-ish or kernel space) */
     if (addr < 0x1000) {
-        result->valid = false;
-        result->threat = BBB_THREAT_MEMORY_VIOLATION;
-        result->severity = BBB_SEVERITY_HIGH;
-        snprintf(result->reason, sizeof(result->reason),
+        res->valid = false;
+        res->threat = BBB_THREAT_MEMORY_VIOLATION;
+        res->severity = BBB_SEVERITY_HIGH;
+        snprintf(res->reason, sizeof(res->reason),
                  "Pointer in low memory region (0x%lx)", (unsigned long)addr);
         return false;
     }
@@ -653,8 +656,8 @@ bool bbb_validate_pointer(bbb_system_t system, const void* ptr,
     /* Alignment check for common data types */
     if (expected_size >= 8 && (addr & 0x7) != 0) {
         /* 8-byte alignment expected but not met */
-        result->severity = BBB_SEVERITY_LOW;
-        snprintf(result->reason, sizeof(result->reason),
+        res->severity = BBB_SEVERITY_LOW;
+        snprintf(res->reason, sizeof(res->reason),
                  "Pointer misaligned for 8-byte access");
         /* Not invalid, just a warning - don't fail */
     }

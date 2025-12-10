@@ -224,6 +224,60 @@ bool zscore_normalizer_reset_channel(
  */
 void zscore_normalizer_reset_all(zscore_normalizer_t* normalizer);
 
+//=============================================================================
+// TENSOR-BASED OPERATIONS
+//=============================================================================
+
+/* Forward declaration for tensor type */
+struct nimcp_tensor_s;
+typedef struct nimcp_tensor_s nimcp_tensor_t;
+
+/**
+ * @brief Transform tensor in-place using z-score normalization
+ *
+ * More efficient than scalar operations for large tensors.
+ *
+ * @param normalizer Z-score normalizer instance
+ * @param channel Channel index for statistics
+ * @param tensor Tensor to normalize (modified in place)
+ * @return true on success
+ */
+bool zscore_normalizer_transform_tensor(
+    const zscore_normalizer_t* normalizer,
+    size_t channel,
+    nimcp_tensor_t* tensor
+);
+
+/**
+ * @brief Inverse transform tensor in-place
+ *
+ * @param normalizer Z-score normalizer instance
+ * @param channel Channel index for statistics
+ * @param tensor Tensor to denormalize (modified in place)
+ * @return true on success
+ */
+bool zscore_normalizer_inverse_transform_tensor(
+    const zscore_normalizer_t* normalizer,
+    size_t channel,
+    nimcp_tensor_t* tensor
+);
+
+/**
+ * @brief Fit normalizer using tensor data
+ *
+ * Efficiently computes mean/variance from tensor using vectorized operations.
+ *
+ * @param normalizer Z-score normalizer instance
+ * @param channel Channel index to update
+ * @param tensor Tensor containing values to fit
+ * @return Number of elements processed
+ */
+size_t zscore_normalizer_fit_tensor(
+    zscore_normalizer_t* normalizer,
+    size_t channel,
+    const nimcp_tensor_t* tensor
+);
+
 #ifdef __cplusplus
 }
 #endif

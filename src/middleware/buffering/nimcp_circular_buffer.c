@@ -10,6 +10,7 @@
 #include "async/nimcp_bio_messages.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
+#include "utils/encoding/nimcp_positional_encoding.h"
 
 #define LOG_MODULE "middleware_circular_buffer"
 
@@ -45,6 +46,9 @@ struct circular_buffer {
 
     // Data storage (allocated separately for alignment)
     void* data;  /**< Element storage */
+
+    // Positional encoding support
+    nimcp_pos_encoder_t* pe_encoder;  /**< Positional encoder instance (optional) */
 };
 
 //=============================================================================
@@ -131,6 +135,9 @@ circular_buffer_t* circular_buffer_create(
 
     // Initialize statistics
     memset(&buf->stats, 0, sizeof(circular_buffer_stats_t));
+
+    // Initialize PE encoder as NULL (not configured by default)
+    buf->pe_encoder = NULL;
 
     return buf;
 }
@@ -391,4 +398,115 @@ void circular_buffer_reset_stats(circular_buffer_t* buffer) {
 
     // Reset all statistics
     memset(&buffer->stats, 0, sizeof(circular_buffer_stats_t));
+}
+
+//=============================================================================
+// POSITIONAL ENCODING INTEGRATION
+//=============================================================================
+
+bool circular_buffer_set_pe_config(
+    circular_buffer_t* buffer,
+    nimcp_pos_encoder_t* encoder
+) {
+    // Guard: validate inputs
+    if (!buffer || !encoder) {
+        LOG_ERROR("circular_buffer_set_pe_config: NULL parameter");
+        return false;
+    }
+
+    // Validate encoder type (should be SINUSOIDAL or ALIBI)
+    nimcp_pos_encoding_type_t type = nimcp_pos_get_type(encoder);
+    if (type != NIMCP_POS_SINUSOIDAL && type != NIMCP_POS_ALIBI) {
+        LOG_ERROR("circular_buffer_set_pe_config: Invalid encoder type %d (expected SINUSOIDAL or ALIBI)",
+                  type);
+        return false;
+    }
+
+    // Attach encoder to buffer
+    buffer->pe_encoder = encoder;
+
+    LOG_INFO("Circular buffer PE configured: type=%s, max_seq=%u, dim=%u",
+             nimcp_pos_type_to_string(type),
+             nimcp_pos_get_max_length(encoder),
+             nimcp_pos_get_dim(encoder));
+
+    return true;
+}
+
+bool circular_buffer_get_position_embedding(
+    const circular_buffer_t* buffer,
+    size_t index,
+    float* output
+) {
+    // Guard: validate inputs
+    if (!buffer || !output) {
+        LOG_ERROR("circular_buffer_get_position_embedding: NULL parameter");
+        return false;
+    }
+
+    // Guard: check PE configured
+    if (!buffer->pe_encoder) {
+        LOG_WARNING("circular_buffer_get_position_embedding: PE not configured");
+        return false;
+    }
+
+    // Guard: validate index within buffer size
+    size_t buffer_size = circular_buffer_size(buffer);
+    if (index >= buffer_size) {
+        LOG_ERROR("circular_buffer_get_position_embedding: index %zu out of range (size=%zu)",
+                  index, buffer_size);
+        return false;
+    }
+
+    // Encode position using PE encoder
+    int result = nimcp_pos_encode_position(buffer->pe_encoder, (uint32_t)index, output);
+    if (result != NIMCP_POS_SUCCESS) {
+        LOG_ERROR("circular_buffer_get_position_embedding: encoding failed with error %d", result);
+        return false;
+    }
+
+    return true;
+}
+
+bool circular_buffer_apply_alibi_bias(
+    const circular_buffer_t* buffer,
+    uint32_t seq_length,
+    float* bias_out
+) {
+    // Guard: validate inputs
+    if (!buffer || !bias_out) {
+        LOG_ERROR("circular_buffer_apply_alibi_bias: NULL parameter");
+        return false;
+    }
+
+    // Guard: check PE configured
+    if (!buffer->pe_encoder) {
+        LOG_WARNING("circular_buffer_apply_alibi_bias: PE not configured");
+        return false;
+    }
+
+    // Guard: validate encoder is ALiBi type
+    nimcp_pos_encoding_type_t type = nimcp_pos_get_type(buffer->pe_encoder);
+    if (type != NIMCP_POS_ALIBI) {
+        LOG_ERROR("circular_buffer_apply_alibi_bias: encoder type is %s, expected ALIBI",
+                  nimcp_pos_type_to_string(type));
+        return false;
+    }
+
+    // Guard: validate sequence length within buffer bounds
+    size_t buffer_size = circular_buffer_size(buffer);
+    if (seq_length > buffer_size) {
+        LOG_ERROR("circular_buffer_apply_alibi_bias: seq_length %u exceeds buffer size %zu",
+                  seq_length, buffer_size);
+        return false;
+    }
+
+    // Generate ALiBi bias matrix
+    int result = nimcp_pos_alibi_get_bias(buffer->pe_encoder, seq_length, bias_out);
+    if (result != NIMCP_POS_SUCCESS) {
+        LOG_ERROR("circular_buffer_apply_alibi_bias: bias generation failed with error %d", result);
+        return false;
+    }
+
+    return true;
 }

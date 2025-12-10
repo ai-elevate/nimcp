@@ -18,8 +18,11 @@
 #include "async/nimcp_bio_messages.h"
 
 #include "middleware/training/nimcp_training_plasticity_bridge.h"
+#include "plasticity/nimcp_second_messengers.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/time/nimcp_time.h"
+#include "utils/platform/nimcp_platform_tier.h"
+#include "portia/nimcp_portia.h"
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
@@ -144,6 +147,19 @@ struct nimcp_brain_training_ctx {
     /* Bio-async integration */
     bio_module_context_t bio_ctx;
     bool bio_async_enabled;
+
+    /* Second Messenger Cascade integration */
+    second_messenger_system_t* second_messengers;
+    bool second_messengers_enabled;
+
+    /* Portia Resource Management integration */
+    void* portia_context;              /* portia_context_t* - opaque to avoid circular dep */
+    platform_tier_t current_tier;
+    bool resource_aware_training;
+    float tier_batch_size_multiplier;
+    float tier_lr_multiplier;
+    bool training_paused;
+    uint32_t degradation_level;
 };
 
 /* ============================================================================
@@ -258,6 +274,16 @@ nimcp_brain_training_config_t nimcp_brain_training_default_config(void)
     config.rpe_to_da_gain = 0.5f;
     config.biological_lr_modulation = 0.5f;   /* 50% biological, 50% computational */
 
+    /* Second Messenger Cascade defaults */
+    config.enable_second_messengers = true;   /* Enable by default - biological fidelity */
+    config.num_neurons = 1000;                /* Default neuron count */
+
+    /* Portia Resource Management defaults */
+    config.enable_portia_integration = false; /* Disabled by default - opt-in */
+    config.min_batch_size_ratio = 0.25f;      /* Minimum 25% of base batch size */
+    config.allow_training_pause = true;       /* Allow pause in EMERGENCY mode */
+    config.adapt_to_tier_changes = true;      /* Automatically adapt to tier changes */
+
     return config;
 }
 
@@ -353,6 +379,38 @@ nimcp_brain_training_ctx_t* nimcp_brain_training_create(
     ctx->cumulative_lr_mod = 0.0f;
     ctx->bio_update_count = 0;
 
+    /* Initialize second messenger cascade system */
+    ctx->second_messengers = NULL;
+    ctx->second_messengers_enabled = false;
+
+    if (local_config.enable_second_messengers && local_config.num_neurons > 0) {
+        second_messenger_config_t sm_config = second_messenger_default_config();
+        sm_config.enable_bio_async = true;
+        sm_config.enable_security = local_config.enable_security;
+
+        ctx->second_messengers = second_messenger_create(
+            local_config.num_neurons,
+            &sm_config
+        );
+
+        if (ctx->second_messengers) {
+            ctx->second_messengers_enabled = true;
+            LOG_INFO("Second messenger cascade system created (%u neurons)",
+                     local_config.num_neurons);
+        } else {
+            LOG_WARNING("Failed to create second messenger cascade system");
+        }
+    }
+
+    /* Initialize Portia Resource Management fields */
+    ctx->portia_context = NULL;
+    ctx->current_tier = PLATFORM_TIER_FULL;  /* Assume best case initially */
+    ctx->resource_aware_training = local_config.enable_portia_integration;
+    ctx->tier_batch_size_multiplier = 1.0f;
+    ctx->tier_lr_multiplier = 1.0f;
+    ctx->training_paused = false;
+    ctx->degradation_level = 0;  /* DEGRADATION_LEVEL_NONE */
+
     LOG_INFO("Brain-training context created (Phase TM-3)");
     return ctx;
 }
@@ -393,6 +451,23 @@ nimcp_result_t nimcp_brain_training_init(
             ctx->bio_async_enabled = true;
             LOG_INFO("Registered brain_training_integration with bio-async router");
         }
+
+        /* Register second messengers with bio-async if enabled */
+        if (ctx->second_messengers && ctx->second_messengers_enabled) {
+            bio_router_t router = bio_router_get_global();
+            if (router) {
+                nimcp_result_t sm_res = second_messenger_register_bioasync(
+                    ctx->second_messengers,
+                    router
+                );
+                if (sm_res == NIMCP_SUCCESS) {
+                    LOG_INFO("Second messengers registered with bio-async router");
+                } else {
+                    LOG_WARNING("Failed to register second messengers with bio-async: %d",
+                                sm_res);
+                }
+            }
+        }
     }
 
     LOG_INFO("Brain-training integration initialized");
@@ -403,6 +478,14 @@ void nimcp_brain_training_destroy(nimcp_brain_training_ctx_t* ctx)
 {
     if (!ctx) {
         return;
+    }
+
+    /* Destroy second messenger cascade system */
+    if (ctx->second_messengers) {
+        second_messenger_destroy(ctx->second_messengers);
+        ctx->second_messengers = NULL;
+        ctx->second_messengers_enabled = false;
+        LOG_INFO("Second messenger cascade system destroyed");
     }
 
     /* Unregister from bio-async router */
@@ -1989,6 +2072,27 @@ nimcp_result_t nimcp_brain_training_step_biological(
         if (tpb_get_neuromod_levels(ctx->plasticity_bridge, &da_level, &ach_level,
                                      &ht5_level, &ne_level) == NIMCP_SUCCESS) {
             ctx->cumulative_da += da_level;
+
+            /* Activate second messenger cascades based on reward signal
+             * Positive RPE/dopamine activates Gs-coupled D1 receptors -> cAMP -> PKA
+             * This enhances learning for reward-related updates */
+            if (ctx->second_messengers_enabled && ctx->second_messengers && rpe > 0.0f) {
+                uint64_t timestamp_ms = nimcp_time_get_us() / 1000;
+                /* Activate Gs pathway for first neuron (representative)
+                 * occupancy scales with dopamine level [0, 1] */
+                float occupancy = da_level;
+                if (occupancy > 1.0f) occupancy = 1.0f;
+
+                second_messenger_activate_gs(
+                    ctx->second_messengers,
+                    0,  /* neuron_id */
+                    occupancy,
+                    timestamp_ms
+                );
+
+                LOG_DEBUG("Activated Gs cascade for reward (RPE=%.3f, DA=%.3f)",
+                          rpe, da_level);
+            }
         }
     }
 
@@ -2001,6 +2105,21 @@ nimcp_result_t nimcp_brain_training_step_biological(
     float blend = ctx->biological_modulation_strength;
     float effective_lr = (1.0f - blend) * base_lr + blend * bio_lr;
 
+    /* Apply second messenger cascade modulation if enabled
+     * PKA/CaMKII activity boosts learning rates for enhanced plasticity
+     * Use first neuron as representative for batch (neuron_id = 0) */
+    if (ctx->second_messengers_enabled && ctx->second_messengers) {
+        float cascade_mod = nimcp_brain_training_get_cascade_modulation(ctx, 0);
+        effective_lr *= cascade_mod;
+        LOG_DEBUG("Cascade modulation applied: %.3f (effective LR: %.6f)",
+                  cascade_mod, effective_lr);
+
+        /* Update second messenger dynamics for this timestep
+         * This advances the cascade state based on current activity */
+        uint64_t timestamp_ms = nimcp_time_get_us() / 1000;
+        second_messenger_update(ctx->second_messengers, 1.0f, timestamp_ms);
+    }
+
     ctx->cumulative_lr_mod += (effective_lr / base_lr);
 
     /* Temporarily set modulated learning rate */
@@ -2010,6 +2129,15 @@ nimcp_result_t nimcp_brain_training_step_biological(
 
     /* Step 4: Route weight updates through plasticity bridge */
     size_t update_count = (param_count < gradient_count) ? param_count : gradient_count;
+
+    /* Get CaMKII activity for STDP enhancement if cascades enabled */
+    second_messenger_state_t sm_state = {0};
+    bool have_cascade_state = false;
+    if (ctx->second_messengers_enabled && ctx->second_messengers) {
+        if (second_messenger_get_state(ctx->second_messengers, 0, &sm_state) == NIMCP_SUCCESS) {
+            have_cascade_state = true;
+        }
+    }
 
     for (size_t i = 0; i < update_count; i++) {
         /* For biological routing, we compute weight delta through the bridge */
@@ -2032,6 +2160,14 @@ nimcp_result_t nimcp_brain_training_step_biological(
         float final_delta;
         if (route_res == NIMCP_SUCCESS) {
             final_delta = (1.0f - blend) * grad_delta + blend * weight_delta;
+
+            /* Enhance STDP-like weight changes with CaMKII activity
+             * CaMKII is activated by coincident pre/post activity (calcium influx)
+             * and enhances LTP magnitude */
+            if (have_cascade_state && sm_state.calcium.camkii_activity > 0.5f) {
+                float camkii_boost = 1.0f + (sm_state.calcium.camkii_activity - 0.5f);
+                final_delta *= camkii_boost;
+            }
         } else {
             final_delta = grad_delta;  /* Fallback to pure gradient if routing fails */
         }
@@ -2040,6 +2176,24 @@ nimcp_result_t nimcp_brain_training_step_biological(
 
     ctx->stats.biological_updates += update_count;
     ctx->bio_update_count++;
+
+    /* Check for CREB phosphorylation signaling consolidation
+     * High CREB phosphorylation indicates readiness for long-term plasticity
+     * This could trigger additional consolidation mechanisms */
+    if (have_cascade_state && sm_state.gene_expr.creb_phosphorylation > 0.7f) {
+        LOG_DEBUG("CREB phosphorylation high (%.3f) - consolidation signaled",
+                  sm_state.gene_expr.creb_phosphorylation);
+
+        /* Emit training event for consolidation marker */
+        nimcp_training_event_t event = {0};
+        event.type = NIMCP_TRAINING_EVENT_WEIGHTS_UPDATED;
+        event.timestamp = nimcp_time_get_us() * 1000;
+        event.epoch = ctx->current_epoch;
+        event.batch = ctx->current_batch;
+        event.loss_value = *loss_value;
+        event.learning_rate = effective_lr;
+        nimcp_brain_training_emit_event(ctx, &event);
+    }
 
     /* Restore base learning rate */
     if (opt) {
@@ -2112,4 +2266,371 @@ tcb_context_t* nimcp_brain_training_get_callbacks(const nimcp_brain_training_ctx
         return NULL;
     }
     return ctx->callbacks;
+}
+
+/* ============================================================================
+ * Second Messenger Cascade Integration
+ * ============================================================================ */
+
+nimcp_result_t nimcp_brain_training_connect_second_messengers(
+    nimcp_brain_training_ctx_t* ctx,
+    void* second_messengers)
+{
+    if (!ctx) {
+        return NIMCP_ERROR_INVALID_PARAM;
+    }
+
+    /* Guard: NULL is allowed for disconnection */
+    ctx->second_messengers = (second_messenger_system_t*)second_messengers;
+
+    if (second_messengers) {
+        ctx->second_messengers_enabled = true;
+        LOG_INFO("Second messenger cascade system connected to training");
+    } else {
+        ctx->second_messengers_enabled = false;
+        LOG_INFO("Second messenger cascade system disconnected from training");
+    }
+
+    return NIMCP_SUCCESS;
+}
+
+float nimcp_brain_training_get_cascade_modulation(
+    const nimcp_brain_training_ctx_t* ctx,
+    uint32_t neuron_id)
+{
+    /* Guard: Return baseline modulation if context invalid */
+    if (!ctx) {
+        return 1.0f;
+    }
+
+    /* Guard: Return baseline if second messengers not enabled */
+    if (!ctx->second_messengers_enabled || !ctx->second_messengers) {
+        return 1.0f;
+    }
+
+    /* Query plasticity modulation from second messenger system
+     * Returns factor in range [0.5, 2.0] where 1.0 = baseline */
+    float modulation = second_messenger_get_plasticity_modulation(
+        ctx->second_messengers,
+        neuron_id
+    );
+
+    /* Guard: Clamp to safe range in case of error */
+    if (modulation < 0.5f) modulation = 0.5f;
+    if (modulation > 2.0f) modulation = 2.0f;
+
+    return modulation;
+}
+
+/* ============================================================================
+ * Portia Resource Management Integration
+ * ============================================================================ */
+
+/**
+ * @brief Helper: Calculate tier multipliers based on platform tier
+ *
+ * WHAT: Map platform tier to batch size and LR multipliers
+ * WHY:  Reduce compute when resources constrained
+ * HOW:  Use predefined scaling factors per tier
+ */
+static void calculate_tier_multipliers(
+    platform_tier_t tier,
+    float* batch_multiplier,
+    float* lr_multiplier)
+{
+    switch (tier) {
+        case PLATFORM_TIER_FULL:
+            *batch_multiplier = 1.0f;   /* Full batch */
+            *lr_multiplier = 1.0f;      /* Normal LR */
+            break;
+
+        case PLATFORM_TIER_MEDIUM:
+            *batch_multiplier = 0.75f;  /* 75% batch */
+            *lr_multiplier = 0.9f;      /* 90% LR */
+            break;
+
+        case PLATFORM_TIER_CONSTRAINED:
+            *batch_multiplier = 0.5f;   /* 50% batch */
+            *lr_multiplier = 0.75f;     /* 75% LR */
+            break;
+
+        case PLATFORM_TIER_MINIMAL:
+            *batch_multiplier = 0.25f;  /* 25% batch */
+            *lr_multiplier = 0.5f;      /* 50% LR */
+            break;
+
+        default:
+            *batch_multiplier = 1.0f;
+            *lr_multiplier = 1.0f;
+            break;
+    }
+}
+
+nimcp_result_t nimcp_brain_training_connect_portia(
+    nimcp_brain_training_ctx_t* ctx,
+    void* portia_ctx)
+{
+    /* Guard: Validate context */
+    if (!ctx) {
+        return NIMCP_ERROR_INVALID_PARAM;
+    }
+
+    /* Allow NULL to disconnect */
+    ctx->portia_context = portia_ctx;
+
+    if (portia_ctx) {
+        /* Query current tier from Portia */
+        ctx->current_tier = portia_get_current_tier();
+
+        /* Calculate initial multipliers */
+        calculate_tier_multipliers(
+            ctx->current_tier,
+            &ctx->tier_batch_size_multiplier,
+            &ctx->tier_lr_multiplier
+        );
+
+        ctx->resource_aware_training = true;
+        LOG_INFO("Portia connected to training system (tier=%s)",
+                 platform_tier_get_name(ctx->current_tier));
+    } else {
+        /* Reset to defaults when disconnecting */
+        ctx->resource_aware_training = false;
+        ctx->tier_batch_size_multiplier = 1.0f;
+        ctx->tier_lr_multiplier = 1.0f;
+        LOG_INFO("Portia disconnected from training system");
+    }
+
+    return NIMCP_SUCCESS;
+}
+
+nimcp_result_t nimcp_brain_training_on_tier_change(
+    nimcp_brain_training_ctx_t* ctx,
+    platform_tier_t new_tier)
+{
+    /* Guard: Validate context */
+    if (!ctx) {
+        return NIMCP_ERROR_INVALID_PARAM;
+    }
+
+    /* Guard: Check if resource-aware training enabled */
+    if (!ctx->resource_aware_training) {
+        return NIMCP_SUCCESS;  /* Silently ignore if disabled */
+    }
+
+    platform_tier_t old_tier = ctx->current_tier;
+    ctx->current_tier = new_tier;
+
+    /* Calculate new multipliers */
+    calculate_tier_multipliers(
+        new_tier,
+        &ctx->tier_batch_size_multiplier,
+        &ctx->tier_lr_multiplier
+    );
+
+    /* Log tier change */
+    LOG_INFO("Training tier change: %s -> %s (batch=%.0f%%, lr=%.0f%%)",
+             platform_tier_get_name(old_tier),
+             platform_tier_get_name(new_tier),
+             ctx->tier_batch_size_multiplier * 100.0f,
+             ctx->tier_lr_multiplier * 100.0f);
+
+    /* Handle EMERGENCY tier: pause training if allowed */
+    if (new_tier == PLATFORM_TIER_MINIMAL && !ctx->training_paused) {
+        ctx->training_paused = true;
+        LOG_WARNING("Training paused due to EMERGENCY tier");
+
+        /* TODO: Save checkpoint here in production */
+    }
+
+    /* Resume training if returning from MINIMAL tier */
+    if (old_tier == PLATFORM_TIER_MINIMAL && new_tier != PLATFORM_TIER_MINIMAL) {
+        if (ctx->training_paused) {
+            ctx->training_paused = false;
+            LOG_INFO("Training resumed after tier upgrade");
+        }
+    }
+
+    return NIMCP_SUCCESS;
+}
+
+nimcp_result_t nimcp_brain_training_on_degradation_event(
+    nimcp_brain_training_ctx_t* ctx,
+    uint32_t degradation_level)
+{
+    /* Guard: Validate context */
+    if (!ctx) {
+        return NIMCP_ERROR_INVALID_PARAM;
+    }
+
+    /* Guard: Check if resource-aware training enabled */
+    if (!ctx->resource_aware_training) {
+        return NIMCP_SUCCESS;
+    }
+
+    uint32_t old_level = ctx->degradation_level;
+    ctx->degradation_level = degradation_level;
+
+    LOG_INFO("Training degradation level change: %u -> %u",
+             old_level, degradation_level);
+
+    /* Handle critical degradation levels */
+    if (degradation_level >= 4) {  /* DEGRADATION_LEVEL_CRITICAL */
+        if (!ctx->training_paused) {
+            ctx->training_paused = true;
+            LOG_WARNING("Training paused due to CRITICAL degradation");
+        }
+    } else if (degradation_level >= 3) {  /* DEGRADATION_LEVEL_SEVERE */
+        /* Further reduce batch size beyond tier multiplier */
+        ctx->tier_batch_size_multiplier *= 0.5f;
+        LOG_INFO("Batch size reduced further due to SEVERE degradation");
+    }
+
+    /* Resume if degradation improves */
+    if (old_level >= 4 && degradation_level < 4 && ctx->training_paused) {
+        ctx->training_paused = false;
+        /* Restore tier-based multiplier */
+        calculate_tier_multipliers(
+            ctx->current_tier,
+            &ctx->tier_batch_size_multiplier,
+            &ctx->tier_lr_multiplier
+        );
+        LOG_INFO("Training resumed after degradation improvement");
+    }
+
+    return NIMCP_SUCCESS;
+}
+
+bool nimcp_brain_training_is_paused(
+    const nimcp_brain_training_ctx_t* ctx)
+{
+    if (!ctx) {
+        return false;
+    }
+
+    return ctx->training_paused;
+}
+
+nimcp_result_t nimcp_brain_training_resume(
+    nimcp_brain_training_ctx_t* ctx)
+{
+    /* Guard: Validate context */
+    if (!ctx) {
+        return NIMCP_ERROR_INVALID_PARAM;
+    }
+
+    if (ctx->training_paused) {
+        ctx->training_paused = false;
+        LOG_INFO("Training manually resumed");
+    }
+
+    return NIMCP_SUCCESS;
+}
+
+size_t nimcp_brain_training_get_adjusted_batch_size(
+    const nimcp_brain_training_ctx_t* ctx,
+    size_t base_batch_size)
+{
+    /* Guard: Return base if context invalid */
+    if (!ctx || !ctx->resource_aware_training) {
+        return base_batch_size;
+    }
+
+    /* Guard: Return 0 if training paused */
+    if (ctx->training_paused) {
+        return 0;
+    }
+
+    /* Apply tier multiplier */
+    size_t adjusted = (size_t)(base_batch_size * ctx->tier_batch_size_multiplier);
+
+    /* Ensure minimum batch size (at least 1) */
+    if (adjusted == 0 && base_batch_size > 0) {
+        adjusted = 1;
+    }
+
+    return adjusted;
+}
+
+float nimcp_brain_training_get_adjusted_lr(
+    const nimcp_brain_training_ctx_t* ctx,
+    float base_lr)
+{
+    /* Guard: Return base if context invalid */
+    if (!ctx || !ctx->resource_aware_training) {
+        return base_lr;
+    }
+
+    /* Guard: Return 0 if training paused */
+    if (ctx->training_paused) {
+        return 0.0f;
+    }
+
+    /* Apply tier multiplier */
+    float adjusted = base_lr * ctx->tier_lr_multiplier;
+
+    return adjusted;
+}
+
+nimcp_result_t nimcp_brain_training_request_resources(
+    nimcp_brain_training_ctx_t* ctx,
+    size_t batch_size,
+    size_t param_count)
+{
+    /* Guard: Validate context */
+    if (!ctx) {
+        return NIMCP_ERROR_INVALID_PARAM;
+    }
+
+    /* Guard: Check if bio-async enabled */
+    if (!ctx->bio_async_enabled) {
+        return NIMCP_SUCCESS;  /* Silently skip if bio-async disabled */
+    }
+
+    /* Guard: Check if Portia connected */
+    if (!ctx->portia_context || !ctx->resource_aware_training) {
+        return NIMCP_SUCCESS;  /* Silently skip if Portia not connected */
+    }
+
+    /* Guard: Check if bio context available */
+    if (!ctx->bio_ctx) {
+        return NIMCP_SUCCESS;  /* Silently skip if no bio context */
+    }
+
+    /* Create resource request message */
+    struct {
+        bio_message_header_t header;
+        uint64_t payload[4];
+    } msg = {
+        .header = {
+            .type = BIO_MSG_TRAINING_RESOURCE_REQUEST,
+            .sequence_id = 0,  /* Will be set by router */
+            .source_module = BIO_MODULE_TRAINING,
+            .target_module = BIO_MODULE_PORTIA,
+            .timestamp_us = 0,  /* Will be set by router */
+            .channel = BIO_CHANNEL_SEROTONIN,
+            .payload_size = sizeof(uint64_t) * 4,
+            .flags = 0
+        },
+        .payload = {
+            (uint64_t)batch_size,
+            (uint64_t)param_count,
+            (uint64_t)ctx->current_tier,
+            0  /* Reserved */
+        }
+    };
+
+    /* Send via bio-router */
+    nimcp_error_t result = bio_router_send(
+        ctx->bio_ctx,
+        &msg,
+        sizeof(msg),
+        100  /* 100ms timeout */
+    );
+
+    if (result != NIMCP_SUCCESS) {
+        LOG_WARNING("Failed to send training resource request to Portia");
+        return (nimcp_result_t)result;
+    }
+
+    return NIMCP_SUCCESS;
 }

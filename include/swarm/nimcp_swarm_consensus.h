@@ -102,6 +102,8 @@ extern "C" {
  * WHY:  Different topics have different semantic meanings
  * HOW:  Enum-based categorization
  */
+#ifndef SWARM_VOTE_TOPIC_DEFINED
+#define SWARM_VOTE_TOPIC_DEFINED
 typedef enum {
     VOTE_TOPIC_TARGET_PRIORITY,      /**< Prioritize attack target */
     VOTE_TOPIC_FORMATION_CHANGE,     /**< Change swarm formation */
@@ -110,6 +112,7 @@ typedef enum {
     VOTE_TOPIC_LEADER_ELECTION,      /**< Elect new swarm leader */
     VOTE_TOPIC_CUSTOM                /**< Custom user-defined topic */
 } swarm_vote_topic_t;
+#endif
 
 /**
  * @brief Vote choice

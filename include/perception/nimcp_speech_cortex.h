@@ -181,6 +181,10 @@ typedef struct {
     float confidence;           ///< Recognition confidence [0,1]
     uint64_t onset_time_ms;     ///< Start time (ms)
     uint64_t offset_time_ms;    ///< End time (ms)
+
+    // Positional encoding (Phase 10.13)
+    float* position_embedding;  ///< Position embedding vector (pe_embedding_dim floats)
+    uint32_t sequence_position; ///< Position in phoneme sequence
 } phoneme_event_t;
 
 //=============================================================================
@@ -212,6 +216,15 @@ typedef struct {
 
     // Bio-async communication
     bool enable_bio_async;          /**< Enable bio-async messaging */
+
+    // Second messenger cascades (Phase 10.12)
+    bool enable_second_messengers;  /**< Enable second messenger cascades */
+
+    // Positional encoding (Phase 10.13)
+    bool enable_positional_encoding; /**< Enable positional encoding for phoneme sequences */
+    uint32_t pe_embedding_dim;       /**< Positional encoding embedding dimension */
+    uint32_t pe_phoneme_type;        /**< PE type for phoneme sequences (0=sinusoidal, 1=learned) */
+    uint32_t pe_buffer_type;         /**< PE type for phonological buffer (0=sinusoidal, 1=learned) */
 } speech_cortex_config_t;
 
 /**
@@ -726,6 +739,154 @@ nimcp_error_t speech_cortex_broadcast_word(
     speech_cortex_t* cortex,
     const char* word,
     float confidence
+);
+
+//=============================================================================
+// Second Messenger Cascade API (Phase 10.12)
+//=============================================================================
+
+/**
+ * @brief Trigger receptor activation for second messenger cascades
+ *
+ * WHAT: Activate G-protein coupled receptors to trigger cascades
+ * WHY:  Neuromodulators enhance phoneme discrimination and speech processing
+ * HOW:  Norepinephrine -> beta-adrenergic -> cAMP -> PKA for phoneme sharpening
+ *       Acetylcholine -> muscarinic -> IP3/DAG for comprehension
+ *       Dopamine -> D1 -> cAMP for speech rate modulation
+ *
+ * BIOLOGICAL MAPPING:
+ * - Norepinephrine: Enhances phoneme discrimination in STG via beta-adrenergic receptors
+ * - Acetylcholine: Modulates speech comprehension in Wernicke's area
+ * - Dopamine: Affects speech processing rate and fluency
+ *
+ * @param cortex Speech cortex instance
+ * @param neuron_id Neuron ID within speech cortex
+ * @param receptor_type Receptor type (from neuromodulator system)
+ * @param occupancy Receptor occupancy [0, 1]
+ * @param timestamp_ms Current timestamp
+ * @return true on success, false on error
+ */
+bool speech_cortex_trigger_receptor(
+    speech_cortex_t* cortex,
+    uint32_t neuron_id,
+    int receptor_type,
+    float occupancy,
+    uint64_t timestamp_ms
+);
+
+/**
+ * @brief Get second messenger cascade state for neuron
+ *
+ * WHAT: Query current cascade state (PKA, PKC, CaMKII activities)
+ * WHY:  Other modules need to know cascade state for integration
+ * HOW:  Forward query to second messenger system
+ *
+ * @param cortex Speech cortex instance
+ * @param neuron_id Neuron ID to query
+ * @param state Output state buffer (must be allocated by caller)
+ * @return true on success, false on error
+ */
+bool speech_cortex_get_second_messenger_state(
+    const speech_cortex_t* cortex,
+    uint32_t neuron_id,
+    void* state  /* second_messenger_state_t* */
+);
+
+//=============================================================================
+// Positional Encoding API (Phase 10.13)
+//=============================================================================
+
+/**
+ * @brief Configure positional encoding for speech cortex
+ *
+ * WHAT: Set up positional encoding parameters for phoneme sequences
+ * WHY:  Position information is critical for speech processing serial order
+ * HOW:  Create and configure two encoders: sinusoidal for sequences, learned for buffer
+ *
+ * BIOLOGICAL BASIS:
+ * - Phonological loop maintains serial order of phonemes (Baddeley & Hitch 1974)
+ * - Speech processing is inherently sequential (STG→Wernicke)
+ * - Position encoding supports temporal ordering in language comprehension
+ * - Primacy/recency effects in working memory suggest position-dependent encoding
+ *
+ * ENCODING STRATEGIES:
+ * 1. Sinusoidal for phoneme sequences: Variable length, needs extrapolation
+ * 2. Learned for phonological buffer: Fixed capacity (9 items), optimized per-position
+ *
+ * @param cortex Speech cortex instance
+ * @param enable Enable or disable positional encoding
+ * @param embedding_dim Dimension of position embeddings (0 = use default)
+ * @param phoneme_seq_type Type for phoneme sequences (0=sinusoidal, 1=learned)
+ * @param buffer_type Type for phonological buffer (0=sinusoidal, 1=learned)
+ * @return true on success, false on error
+ */
+bool speech_cortex_set_pe_config(
+    speech_cortex_t* cortex,
+    bool enable,
+    uint32_t embedding_dim,
+    uint32_t phoneme_seq_type,
+    uint32_t buffer_type
+);
+
+/**
+ * @brief Apply positional encoding to phoneme sequence
+ *
+ * WHAT: Add position embeddings to phoneme feature representations
+ * WHY:  Enable position-aware phoneme processing for speech comprehension
+ * HOW:  Use sinusoidal encoder to generate position embeddings for each phoneme
+ *
+ * BIOLOGICAL BASIS:
+ * - Superior Temporal Gyrus (STG) neurons are sensitive to phoneme position
+ * - Serial order information critical for distinguishing words (e.g., "stop" vs "pots")
+ * - Phoneme positions affect coarticulation patterns
+ *
+ * ALGORITHM:
+ * 1. For each phoneme in sequence [0, num_phonemes):
+ *    - Generate position embedding using sinusoidal encoder
+ *    - Store embedding in phoneme_event_t.position_embedding
+ *    - Set phoneme_event_t.sequence_position = index
+ * 2. If additive mode: Add position embedding to phoneme features
+ *
+ * @param cortex Speech cortex instance
+ * @param phonemes Array of phoneme events
+ * @param num_phonemes Number of phonemes in sequence
+ * @param additive If true, add to features; if false, just store embeddings
+ * @return true on success, false on error
+ */
+bool speech_cortex_encode_phoneme_positions(
+    speech_cortex_t* cortex,
+    phoneme_event_t* phonemes,
+    uint32_t num_phonemes,
+    bool additive
+);
+
+/**
+ * @brief Get position embedding for phonological buffer slot
+ *
+ * WHAT: Retrieve learned position embedding for specific buffer position
+ * WHY:  Phonological working memory slots have distinct position encodings
+ * HOW:  Use learned encoder to get embedding for buffer slot [0, 8]
+ *
+ * BIOLOGICAL BASIS:
+ * - Phonological buffer has fixed capacity (7±2 items, Miller 1956)
+ * - Serial position effects: primacy (first items) and recency (last items)
+ * - Left inferior parietal cortex (BA 40) encodes phonological store positions
+ * - Position in buffer affects recall probability and latency
+ *
+ * USE CASES:
+ * - Retrieving phonemes from working memory in order
+ * - Implementing serial recall tasks
+ * - Modeling position-dependent decay rates
+ *
+ * @param cortex Speech cortex instance
+ * @param buffer_position Position in phonological buffer [0, 8]
+ * @param output Output position embedding (pe_embedding_dim floats, pre-allocated)
+ * @return true on success, false on error
+ */
+bool speech_cortex_get_phonological_position_embedding(
+    speech_cortex_t* cortex,
+    uint32_t buffer_position,
+    float* output
 );
 
 #ifdef __cplusplus

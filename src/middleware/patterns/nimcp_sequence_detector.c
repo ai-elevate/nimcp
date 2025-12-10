@@ -5,6 +5,7 @@
 #include "middleware/patterns/nimcp_sequence_detector.h"
 #include "security/nimcp_security.h"
 #include "security/nimcp_blood_brain_barrier.h"
+#include "utils/encoding/nimcp_positional_encoding.h"
 
 #include "utils/memory/nimcp_memory.h"
 #include <string.h>
@@ -68,6 +69,13 @@ struct sequence_detector {
     // Statistics
     uint64_t total_detections;
     double sum_strength;
+
+    // Positional Encoding
+    nimcp_pos_encoder_t* pe_encoder;      // Position encoder instance
+    uint64_t pe_matches;                   // Number of PE-enhanced matches
+    double pe_similarity_sum;              // Sum of PE similarities
+    uint64_t pe_cache_hits;                // PE cache hits
+    uint64_t pe_cache_misses;              // PE cache misses
 };
 
 // ============================================================================
@@ -262,6 +270,12 @@ sequence_detector_config_t sequence_detector_default_config(void) {
     config.enable_replay_detection = true;
     config.enable_ngram_learning = true;
     config.enable_compression = true;
+
+    // Positional Encoding defaults (disabled by default)
+    config.enable_positional_encoding = false;
+    config.pe_type = NIMCP_POS_ROTARY;  // RoPE for temporal sequences
+    config.pe_embedding_dim = 64;       // Moderate dimension
+    config.pe_similarity_weight = 0.3f; // Temporal matching still dominant
     return config;
 }
 
@@ -300,6 +314,13 @@ sequence_detector_t* sequence_detector_create(const sequence_detector_config_t* 
     detector->total_detections = 0;
     detector->sum_strength = 0.0;
 
+    // Initialize PE fields
+    detector->pe_encoder = NULL;
+    detector->pe_matches = 0;
+    detector->pe_similarity_sum = 0.0;
+    detector->pe_cache_hits = 0;
+    detector->pe_cache_misses = 0;
+
     return detector;
 }
 
@@ -311,7 +332,15 @@ void sequence_detector_destroy(sequence_detector_t* detector) {
     // Free templates
     if (detector->templates) {
         for (uint32_t i = 0; i < detector->num_templates; i++) {
-            nimcp_free(detector->templates[i].elements);
+            if (detector->templates[i].elements) {
+                // Free position embeddings for each element
+                for (uint32_t j = 0; j < detector->templates[i].length; j++) {
+                    if (detector->templates[i].elements[j].position_embedding) {
+                        nimcp_free(detector->templates[i].elements[j].position_embedding);
+                    }
+                }
+                nimcp_free(detector->templates[i].elements);
+            }
         }
         nimcp_free(detector->templates);
     }
@@ -324,6 +353,11 @@ void sequence_detector_destroy(sequence_detector_t* detector) {
             nimcp_free(node);
             node = next;
         }
+    }
+
+    // Destroy PE encoder
+    if (detector->pe_encoder) {
+        nimcp_pos_encoder_destroy(detector->pe_encoder);
     }
 
     nimcp_free(detector);
@@ -511,6 +545,410 @@ bool sequence_detector_get_stats(const sequence_detector_t* detector,
     if (avg_strength) {
         *avg_strength = (detector->total_detections > 0) ?
                        (float)(detector->sum_strength / detector->total_detections) : 0.0f;
+    }
+
+    return true;
+}
+
+// ============================================================================
+// POSITIONAL ENCODING INTEGRATION
+// ============================================================================
+
+/**
+ * @brief Compute cosine similarity between two vectors
+ *
+ * WHAT: Calculate normalized dot product for similarity measure
+ * WHY:  Standard metric for comparing position embeddings
+ * HOW:  dot(a,b) / (||a|| * ||b||)
+ */
+static float compute_cosine_similarity(const float* vec1, const float* vec2,
+                                       uint32_t dim) {
+    if (!vec1 || !vec2 || dim == 0) return 0.0f;
+
+    float dot = 0.0f;
+    float norm1 = 0.0f;
+    float norm2 = 0.0f;
+
+    for (uint32_t i = 0; i < dim; i++) {
+        dot += vec1[i] * vec2[i];
+        norm1 += vec1[i] * vec1[i];
+        norm2 += vec2[i] * vec2[i];
+    }
+
+    float norm_product = sqrtf(norm1) * sqrtf(norm2);
+    if (norm_product < 1e-8f) return 0.0f;
+
+    return dot / norm_product;
+}
+
+bool sequence_detector_set_pe_config(sequence_detector_t* detector,
+                                      const nimcp_pos_config_t* pe_config) {
+    /**
+     * WHAT: Configure positional encoding for sequence detector
+     * WHY:  Enable position-aware pattern matching with temporal context
+     * HOW:  Create PE encoder and configure detector for PE-enhanced matching
+     *
+     * BIOLOGICAL BASIS:
+     * - Hippocampal theta phase codes position within sequences
+     * - Phase precession provides temporal context for place cells
+     * - Grid cells encode relative positions in spatial/temporal domains
+     */
+
+    if (!detector || !pe_config) {
+        LOG_ERROR("SequenceDetector: NULL parameters");
+        return false;
+    }
+
+    // Validate PE configuration
+    if (nimcp_pos_validate_config(pe_config) != NIMCP_POS_SUCCESS) {
+        LOG_ERROR("SequenceDetector: Invalid PE configuration");
+        return false;
+    }
+
+    // Only support RoPE and Relative encoding for sequences
+    if (pe_config->type != NIMCP_POS_ROTARY && pe_config->type != NIMCP_POS_RELATIVE) {
+        LOG_ERROR("SequenceDetector: Unsupported PE type %d (use ROTARY or RELATIVE)",
+                  pe_config->type);
+        return false;
+    }
+
+    // Destroy existing encoder if present
+    if (detector->pe_encoder) {
+        nimcp_pos_encoder_destroy(detector->pe_encoder);
+        detector->pe_encoder = NULL;
+    }
+
+    // Create new encoder
+    detector->pe_encoder = nimcp_pos_encoder_create(pe_config);
+    if (!detector->pe_encoder) {
+        LOG_ERROR("SequenceDetector: Failed to create PE encoder");
+        return false;
+    }
+
+    // Update detector configuration
+    detector->config.enable_positional_encoding = true;
+    detector->config.pe_type = pe_config->type;
+    detector->config.pe_embedding_dim = (pe_config->type == NIMCP_POS_ROTARY) ?
+                                         pe_config->config.rope.base.embedding_dim :
+                                         pe_config->config.relative.base.embedding_dim;
+
+    // Pre-compute encodings for typical sequence lengths
+    uint32_t cache_length = (detector->config.max_sequence_length < 512) ?
+                            detector->config.max_sequence_length : 512;
+    nimcp_pos_cache_precompute(detector->pe_encoder, cache_length);
+
+    LOG_INFO("SequenceDetector: PE configured: type=%s, dim=%u",
+             nimcp_pos_type_to_string(pe_config->type),
+             detector->config.pe_embedding_dim);
+
+    return true;
+}
+
+bool sequence_detector_encode_template(sequence_detector_t* detector,
+                                        uint32_t template_id) {
+    /**
+     * WHAT: Apply positional encoding to sequence template elements
+     * WHY:  Enable position-aware matching with temporal context
+     * HOW:  Encode each element position using RoPE or Relative PE
+     *
+     * BIOLOGICAL BASIS:
+     * - Hippocampal sequences encode temporal order via phase
+     * - Replay detection benefits from position-dependent firing
+     * - Sequence consolidation uses temporal context information
+     */
+
+    if (!detector) {
+        LOG_ERROR("SequenceDetector: NULL detector");
+        return false;
+    }
+
+    if (!detector->config.enable_positional_encoding || !detector->pe_encoder) {
+        LOG_ERROR("SequenceDetector: PE not configured");
+        return false;
+    }
+
+    // Find template
+    sequence_template_t* tmpl = NULL;
+    for (uint32_t i = 0; i < detector->num_templates; i++) {
+        if (detector->templates[i].template_id == template_id) {
+            tmpl = &detector->templates[i];
+            break;
+        }
+    }
+
+    if (!tmpl) {
+        LOG_ERROR("SequenceDetector: Template %u not found", template_id);
+        return false;
+    }
+
+    // Allocate position embeddings for each element
+    for (uint32_t i = 0; i < tmpl->length; i++) {
+        sequence_element_t* elem = &tmpl->elements[i];
+
+        // Free existing embedding if present
+        if (elem->position_embedding) {
+            nimcp_free(elem->position_embedding);
+        }
+
+        // Allocate new embedding
+        elem->embedding_dim = detector->config.pe_embedding_dim;
+        elem->position_embedding = (float*)nimcp_malloc(elem->embedding_dim * sizeof(float));
+        if (!elem->position_embedding) {
+            LOG_ERROR("SequenceDetector: Failed to allocate position embedding");
+            return false;
+        }
+
+        // Encode position
+        int result = nimcp_pos_encode_position(detector->pe_encoder, i,
+                                               elem->position_embedding);
+        if (result != NIMCP_POS_SUCCESS) {
+            LOG_ERROR("SequenceDetector: PE encoding failed: %d", result);
+            return false;
+        }
+    }
+
+    LOG_DEBUG("SequenceDetector: Template %u encoded with %u positions",
+              template_id, tmpl->length);
+
+    return true;
+}
+
+/**
+ * @brief Match template with PE-enhanced similarity scoring
+ *
+ * WHAT: Match spike buffer against template with positional context
+ * WHY:  Discriminate sequences with similar content but different timing
+ * HOW:  Combine temporal matching + PE similarity for hybrid score
+ */
+static float match_template_with_pe(const spike_buffer_t* buffer,
+                                    const sequence_template_t* tmpl,
+                                    float tolerance_ms,
+                                    nimcp_pos_encoder_t* pe_encoder,
+                                    float pe_weight,
+                                    bool* is_forward, bool* is_backward,
+                                    float* compression,
+                                    float* pe_similarity_out) {
+    if (!buffer || !tmpl || !pe_encoder || buffer->count < tmpl->length) {
+        return 0.0f;
+    }
+
+    uint32_t matched = 0;
+    double first_spike_time = 0.0;
+    double last_spike_time = 0.0;
+    float total_pe_similarity = 0.0f;
+    uint32_t pe_comparisons = 0;
+
+    // Match elements with temporal and positional scoring
+    for (uint32_t i = 0; i < tmpl->length; i++) {
+        uint32_t target_neuron = tmpl->elements[i].neuron_id;
+        float target_time = tmpl->elements[i].relative_time_ms;
+
+        // Search buffer for matching spike
+        bool found = false;
+        for (uint32_t j = 0; j < buffer->count; j++) {
+            uint32_t idx = (buffer->head + buffer->capacity - buffer->count + j) %
+                          buffer->capacity;
+
+            if (buffer->spikes[idx].neuron_id == target_neuron) {
+                if (i == 0) {
+                    first_spike_time = buffer->spikes[idx].timestamp_ms;
+                    found = true;
+                    matched++;
+                } else {
+                    double expected_time = first_spike_time + target_time;
+                    double actual_time = buffer->spikes[idx].timestamp_ms;
+                    double error = fabs(actual_time - expected_time);
+
+                    if (error <= tolerance_ms) {
+                        found = true;
+                        matched++;
+                        if (i == tmpl->length - 1) {
+                            last_spike_time = actual_time;
+                        }
+
+                        // Compute PE similarity if embeddings available
+                        if (tmpl->elements[i].position_embedding) {
+                            float buffer_encoding[256]; // Max embedding dim
+                            uint32_t dim = tmpl->elements[i].embedding_dim;
+                            if (dim <= 256) {
+                                nimcp_pos_encode_position(pe_encoder, j, buffer_encoding);
+                                float sim = compute_cosine_similarity(
+                                    tmpl->elements[i].position_embedding,
+                                    buffer_encoding, dim);
+                                total_pe_similarity += sim;
+                                pe_comparisons++;
+                            }
+                        }
+                    }
+                }
+                break;
+            }
+        }
+
+        if (!found) break;
+    }
+
+    // Compute temporal match strength
+    float temporal_strength = (float)matched / (float)tmpl->length;
+
+    // Compute PE similarity score
+    float pe_similarity = (pe_comparisons > 0) ?
+                         (total_pe_similarity / (float)pe_comparisons) : 0.0f;
+
+    // Combined score: weighted average of temporal and positional
+    float combined_strength = (1.0f - pe_weight) * temporal_strength +
+                             pe_weight * pe_similarity;
+
+    // Update metadata if strong match
+    if (combined_strength > 0.5f) {
+        *is_forward = true;
+        *is_backward = false;
+
+        if (matched >= 2) {
+            double actual_duration = last_spike_time - first_spike_time;
+            *compression = (float)(actual_duration / (tmpl->duration_ms + 1e-6));
+        } else {
+            *compression = 1.0f;
+        }
+    }
+
+    if (pe_similarity_out) {
+        *pe_similarity_out = pe_similarity;
+    }
+
+    return combined_strength;
+}
+
+bool sequence_detector_match_with_pe(sequence_detector_t* detector,
+                                      sequence_detection_t* detections,
+                                      uint32_t max_detections,
+                                      uint32_t* num_detected) {
+    /**
+     * WHAT: Detect sequences with position-aware temporal matching
+     * WHY:  Discriminate similar sequences differing in temporal structure
+     * HOW:  Hybrid scoring combining temporal precision and PE similarity
+     *
+     * BIOLOGICAL BASIS:
+     * - Hippocampal replay uses both content and temporal order
+     * - Phase coding provides temporal context for sequence elements
+     * - Position-dependent firing enables disambiguation
+     */
+
+    if (!detector || !detections || !num_detected || max_detections == 0) {
+        LOG_ERROR("SequenceDetector: Invalid parameters");
+        return false;
+    }
+
+    if (!detector->config.enable_positional_encoding || !detector->pe_encoder) {
+        LOG_ERROR("SequenceDetector: PE not configured");
+        return false;
+    }
+
+    *num_detected = 0;
+
+    // Match against all templates with PE enhancement
+    for (uint32_t i = 0; i < detector->num_templates && *num_detected < max_detections; i++) {
+        bool is_forward = false;
+        bool is_backward = false;
+        float compression = 1.0f;
+        float pe_similarity = 0.0f;
+
+        float strength = match_template_with_pe(&detector->buffer,
+                                                &detector->templates[i],
+                                                detector->config.temporal_tolerance_ms,
+                                                detector->pe_encoder,
+                                                detector->config.pe_similarity_weight,
+                                                &is_forward, &is_backward,
+                                                &compression, &pe_similarity);
+
+        if (strength >= detector->config.min_strength_threshold) {
+            sequence_detection_t* det = &detections[*num_detected];
+
+            det->template_id = detector->templates[i].template_id;
+            det->strength = strength;
+            det->is_forward = is_forward;
+            det->is_backward = is_backward;
+            det->compression_factor = compression;
+            det->matched_elements = (uint32_t)(strength * detector->templates[i].length);
+            det->total_elements = detector->templates[i].length;
+
+            // Estimate start/end times
+            if (detector->buffer.count > 0) {
+                uint32_t first = (detector->buffer.head + detector->buffer.capacity -
+                                detector->buffer.count) % detector->buffer.capacity;
+                uint32_t last = (detector->buffer.head + detector->buffer.capacity - 1) %
+                               detector->buffer.capacity;
+
+                det->start_time_ms = detector->buffer.spikes[first].timestamp_ms;
+                det->end_time_ms = detector->buffer.spikes[last].timestamp_ms;
+            }
+
+            // Update statistics
+            detector->templates[i].observations++;
+            float alpha = 0.1f;
+            detector->templates[i].avg_strength =
+                (1.0f - alpha) * detector->templates[i].avg_strength + alpha * strength;
+
+            (*num_detected)++;
+            detector->total_detections++;
+            detector->sum_strength += strength;
+
+            // Update PE statistics
+            detector->pe_matches++;
+            detector->pe_similarity_sum += pe_similarity;
+        }
+    }
+
+    return true;
+}
+
+bool sequence_detector_get_pe_stats(const sequence_detector_t* detector,
+                                     float* pe_match_rate,
+                                     float* avg_pe_similarity,
+                                     float* pe_cache_hit_rate) {
+    /**
+     * WHAT: Retrieve positional encoding performance metrics
+     * WHY:  Monitor effectiveness of PE-enhanced matching
+     * HOW:  Return match rates, similarity scores, cache performance
+     */
+
+    if (!detector) {
+        LOG_ERROR("SequenceDetector: NULL detector");
+        return false;
+    }
+
+    if (!detector->config.enable_positional_encoding || !detector->pe_encoder) {
+        // Return zeros if PE not enabled
+        if (pe_match_rate) *pe_match_rate = 0.0f;
+        if (avg_pe_similarity) *avg_pe_similarity = 0.0f;
+        if (pe_cache_hit_rate) *pe_cache_hit_rate = 0.0f;
+        return true;
+    }
+
+    // PE match rate
+    if (pe_match_rate) {
+        *pe_match_rate = (detector->total_detections > 0) ?
+                        (float)detector->pe_matches / (float)detector->total_detections :
+                        0.0f;
+    }
+
+    // Average PE similarity
+    if (avg_pe_similarity) {
+        *avg_pe_similarity = (detector->pe_matches > 0) ?
+                            (float)(detector->pe_similarity_sum / detector->pe_matches) :
+                            0.0f;
+    }
+
+    // PE cache hit rate
+    if (pe_cache_hit_rate) {
+        nimcp_pos_stats_t pe_stats;
+        if (nimcp_pos_get_stats(detector->pe_encoder, &pe_stats) == NIMCP_POS_SUCCESS) {
+            uint64_t total = pe_stats.cache_hits + pe_stats.cache_misses;
+            *pe_cache_hit_rate = (total > 0) ?
+                                (float)pe_stats.cache_hits / (float)total : 0.0f;
+        } else {
+            *pe_cache_hit_rate = 0.0f;
+        }
     }
 
     return true;

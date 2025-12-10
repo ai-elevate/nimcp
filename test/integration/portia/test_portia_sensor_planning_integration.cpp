@@ -16,6 +16,7 @@ extern "C" {
 #include "portia/nimcp_portia_sensor_fusion.h"
 #include "async/nimcp_bio_async.h"
 #include "utils/validation/nimcp_common.h"
+#include "utils/time/nimcp_time.h"
 }
 
 // Mock planning system that uses fused state
@@ -67,9 +68,10 @@ protected:
     }
 
     // Helper: Update planning with fused state
-    void update_planning_with_fusion() {
+    // fusion_ok indicates whether fusion_process succeeded (optional, defaults to check get_state)
+    void update_planning_with_fusion(bool fusion_ok = true) {
         fused_state_t state;
-        if (portia_fusion_get_state(fusion_ctx, &state)) {
+        if (fusion_ok && portia_fusion_get_state(fusion_ctx, &state)) {
             planning_system.last_state = state;
             planning_system.planning_updates++;
             planning_system.has_valid_state = true;
@@ -121,7 +123,7 @@ protected:
 //=============================================================================
 
 TEST_F(PortiaSensorPlanningIntegrationTest, SensorFusion_ProvidesStateToPlanning) {
-    uint64_t timestamp = 1000;
+    uint64_t timestamp = nimcp_time_monotonic_ms();
 
     // Provide sensor readings
     provide_multisensor_reading(10.0f, 20.0f, 5.0f, timestamp);
@@ -139,7 +141,7 @@ TEST_F(PortiaSensorPlanningIntegrationTest, SensorFusion_ProvidesStateToPlanning
 }
 
 TEST_F(PortiaSensorPlanningIntegrationTest, SensorFusion_HighConfidenceImprovesPlanQuality) {
-    uint64_t timestamp = 1000;
+    uint64_t timestamp = nimcp_time_monotonic_ms();
 
     // Provide high-confidence readings
     sensor_reading_t high_conf_readings[] = {
@@ -162,7 +164,7 @@ TEST_F(PortiaSensorPlanningIntegrationTest, SensorFusion_HighConfidenceImprovesP
 }
 
 TEST_F(PortiaSensorPlanningIntegrationTest, SensorFusion_LowConfidenceReducesPlanQuality) {
-    uint64_t timestamp = 1000;
+    uint64_t timestamp = nimcp_time_monotonic_ms();
 
     // Provide low-confidence readings
     sensor_reading_t low_conf_readings[] = {
@@ -186,7 +188,7 @@ TEST_F(PortiaSensorPlanningIntegrationTest, SensorFusion_LowConfidenceReducesPla
 //=============================================================================
 
 TEST_F(PortiaSensorPlanningIntegrationTest, Planning_UsesPositionFromFusion) {
-    uint64_t timestamp = 1000;
+    uint64_t timestamp = nimcp_time_monotonic_ms();
 
     // Provide readings with known position
     provide_multisensor_reading(100.0f, 200.0f, 50.0f, timestamp);
@@ -202,15 +204,14 @@ TEST_F(PortiaSensorPlanningIntegrationTest, Planning_UsesPositionFromFusion) {
 }
 
 TEST_F(PortiaSensorPlanningIntegrationTest, Planning_TracksVelocityFromFusion) {
-    uint64_t timestamp = 1000;
-
     // First reading
-    provide_multisensor_reading(10.0f, 10.0f, 5.0f, timestamp);
+    uint64_t timestamp1 = nimcp_time_monotonic_ms();
+    provide_multisensor_reading(10.0f, 10.0f, 5.0f, timestamp1);
     ASSERT_TRUE(portia_fusion_process(fusion_ctx));
 
     // Second reading (moved)
-    timestamp += 100;
-    provide_multisensor_reading(15.0f, 12.0f, 5.0f, timestamp);
+    uint64_t timestamp2 = nimcp_time_monotonic_ms();
+    provide_multisensor_reading(15.0f, 12.0f, 5.0f, timestamp2);
     ASSERT_TRUE(portia_fusion_process(fusion_ctx));
 
     update_planning_with_fusion();
@@ -221,14 +222,14 @@ TEST_F(PortiaSensorPlanningIntegrationTest, Planning_TracksVelocityFromFusion) {
 }
 
 TEST_F(PortiaSensorPlanningIntegrationTest, Planning_UpdatesWithEachFusionCycle) {
-    uint64_t timestamp = 1000;
-
     for (int i = 0; i < 10; i++) {
+        // Get fresh timestamp each iteration to avoid stale data detection
+        uint64_t timestamp = nimcp_time_monotonic_ms();
         provide_multisensor_reading(
             static_cast<float>(i * 5),
             static_cast<float>(i * 3),
             static_cast<float>(i * 2),
-            timestamp + (i * 100)
+            timestamp
         );
 
         ASSERT_TRUE(portia_fusion_process(fusion_ctx));
@@ -245,18 +246,19 @@ TEST_F(PortiaSensorPlanningIntegrationTest, Planning_UpdatesWithEachFusionCycle)
 //=============================================================================
 
 TEST_F(PortiaSensorPlanningIntegrationTest, SensorDropout_SingleSensorFailure) {
-    uint64_t timestamp = 1000;
-
     // Initially all sensors working
+    uint64_t timestamp = nimcp_time_monotonic_ms();
     provide_multisensor_reading(10.0f, 20.0f, 5.0f, timestamp);
     ASSERT_TRUE(portia_fusion_process(fusion_ctx));
     update_planning_with_fusion();
     float quality_before = planning_system.plan_quality;
+    (void)quality_before;  // Suppress unused variable warning
 
     // Drop visual sensor
     portia_fusion_enable_sensor(fusion_ctx, SENSOR_TYPE_VISUAL, false);
 
-    timestamp += 100;
+    // Get fresh timestamp after sensor change
+    timestamp = nimcp_time_monotonic_ms();
     sensor_reading_t imu = {SENSOR_TYPE_IMU, 25.0f, 0.9f, timestamp, true};
     sensor_reading_t proximity = {SENSOR_TYPE_PROXIMITY, 6.0f, 0.7f, timestamp, true};
     portia_fusion_update_sensor(fusion_ctx, &imu);
@@ -272,7 +274,7 @@ TEST_F(PortiaSensorPlanningIntegrationTest, SensorDropout_SingleSensorFailure) {
 }
 
 TEST_F(PortiaSensorPlanningIntegrationTest, SensorDropout_MultipleSensorFailure) {
-    uint64_t timestamp = 1000;
+    uint64_t timestamp = nimcp_time_monotonic_ms();
 
     // Initially working
     provide_multisensor_reading(10.0f, 20.0f, 5.0f, timestamp);
@@ -283,13 +285,14 @@ TEST_F(PortiaSensorPlanningIntegrationTest, SensorDropout_MultipleSensorFailure)
     portia_fusion_enable_sensor(fusion_ctx, SENSOR_TYPE_VISUAL, false);
     portia_fusion_enable_sensor(fusion_ctx, SENSOR_TYPE_IMU, false);
 
-    timestamp += 100;
+    // Get fresh timestamp after sensor change
+    timestamp = nimcp_time_monotonic_ms();
     sensor_reading_t proximity = {SENSOR_TYPE_PROXIMITY, 6.0f, 0.7f, timestamp, true};
     portia_fusion_update_sensor(fusion_ctx, &proximity);
 
     // With only one sensor, fusion may still work (fallback mode)
     bool fusion_ok = portia_fusion_process(fusion_ctx);
-    update_planning_with_fusion();
+    update_planning_with_fusion(fusion_ok);
 
     // Check if fallback enabled planning
     if (fusion_ok) {
@@ -304,16 +307,14 @@ TEST_F(PortiaSensorPlanningIntegrationTest, SensorDropout_MultipleSensorFailure)
 }
 
 TEST_F(PortiaSensorPlanningIntegrationTest, SensorDropout_CompleteFailure) {
-    uint64_t timestamp = 1000;
-
     // Disable all sensors
     for (int i = 0; i < SENSOR_TYPE_COUNT; i++) {
         portia_fusion_enable_sensor(fusion_ctx, static_cast<sensor_type_t>(i), false);
     }
 
-    // Try to process fusion
+    // Try to process fusion - should fail with no sensors
     bool fusion_ok = portia_fusion_process(fusion_ctx);
-    update_planning_with_fusion();
+    update_planning_with_fusion(fusion_ok);
 
     // Planning should not have valid state
     EXPECT_FALSE(planning_system.has_valid_state);
@@ -321,7 +322,7 @@ TEST_F(PortiaSensorPlanningIntegrationTest, SensorDropout_CompleteFailure) {
 }
 
 TEST_F(PortiaSensorPlanningIntegrationTest, SensorDropout_RecoveryRestoresPlanning) {
-    uint64_t timestamp = 1000;
+    uint64_t timestamp = nimcp_time_monotonic_ms();
 
     // Start with working sensors
     provide_multisensor_reading(10.0f, 20.0f, 5.0f, timestamp);
@@ -333,17 +334,19 @@ TEST_F(PortiaSensorPlanningIntegrationTest, SensorDropout_RecoveryRestoresPlanni
     portia_fusion_enable_sensor(fusion_ctx, SENSOR_TYPE_VISUAL, false);
     portia_fusion_enable_sensor(fusion_ctx, SENSOR_TYPE_IMU, false);
 
-    timestamp += 100;
+    // Get fresh timestamp after sensor change
+    timestamp = nimcp_time_monotonic_ms();
     sensor_reading_t proximity = {SENSOR_TYPE_PROXIMITY, 6.0f, 0.7f, timestamp, true};
     portia_fusion_update_sensor(fusion_ctx, &proximity);
-    portia_fusion_process(fusion_ctx);
-    update_planning_with_fusion();
+    bool dropout_fusion_ok = portia_fusion_process(fusion_ctx);
+    update_planning_with_fusion(dropout_fusion_ok);
 
     // Re-enable sensors (recovery)
     portia_fusion_enable_sensor(fusion_ctx, SENSOR_TYPE_VISUAL, true);
     portia_fusion_enable_sensor(fusion_ctx, SENSOR_TYPE_IMU, true);
 
-    timestamp += 100;
+    // Get fresh timestamp for recovery
+    timestamp = nimcp_time_monotonic_ms();
     provide_multisensor_reading(12.0f, 22.0f, 6.0f, timestamp);
     ASSERT_TRUE(portia_fusion_process(fusion_ctx));
     update_planning_with_fusion();
@@ -359,11 +362,11 @@ TEST_F(PortiaSensorPlanningIntegrationTest, SensorDropout_RecoveryRestoresPlanni
 //=============================================================================
 
 TEST_F(PortiaSensorPlanningIntegrationTest, OutlierRejection_FiltersSpuriousReadings) {
-    uint64_t timestamp = 1000;
-
     // Establish baseline
     for (int i = 0; i < 5; i++) {
-        provide_multisensor_reading(10.0f, 20.0f, 5.0f, timestamp + (i * 100));
+        // Get fresh timestamp each iteration to avoid stale data detection
+        uint64_t timestamp = nimcp_time_monotonic_ms();
+        provide_multisensor_reading(10.0f, 20.0f, 5.0f, timestamp);
         ASSERT_TRUE(portia_fusion_process(fusion_ctx));
     }
 
@@ -371,7 +374,7 @@ TEST_F(PortiaSensorPlanningIntegrationTest, OutlierRejection_FiltersSpuriousRead
     fused_state_t baseline_state = planning_system.last_state;
 
     // Inject outlier
-    timestamp += 600;
+    uint64_t timestamp = nimcp_time_monotonic_ms();
     sensor_reading_t outlier = {
         .type = SENSOR_TYPE_VISUAL,
         .value = 1000.0f,  // Huge outlier
@@ -401,15 +404,15 @@ TEST_F(PortiaSensorPlanningIntegrationTest, OutlierRejection_FiltersSpuriousRead
 //=============================================================================
 
 TEST_F(PortiaSensorPlanningIntegrationTest, Statistics_PlanningCanQueryFusionStats) {
-    uint64_t timestamp = 1000;
-
     // Generate some fusion activity
     for (int i = 0; i < 20; i++) {
+        // Get fresh timestamp each iteration to avoid stale data detection
+        uint64_t timestamp = nimcp_time_monotonic_ms();
         provide_multisensor_reading(
             static_cast<float>(i),
             static_cast<float>(i * 2),
             static_cast<float>(i / 2),
-            timestamp + (i * 100)
+            timestamp
         );
         portia_fusion_process(fusion_ctx);
     }

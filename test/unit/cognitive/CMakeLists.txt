@@ -43,3 +43,14 @@ target_include_directories(unit_cognitive_test_bio_async_registration
         ${PROJECT_SOURCE_DIR}/test/utils
 )
 gtest_discover_tests(unit_cognitive_test_bio_async_registration)
+
+# Emotion-Attention Integration Tests
+# DISABLED: Source file nimcp_emotion_attention.c not yet implemented
+message(STATUS "  [SKIP] test_emotion_attention.cpp - source file not implemented")
+
+# Emotion-Consolidation Integration Tests
+# DISABLED: Source file nimcp_emotion_consolidation.c not yet implemented
+message(STATUS "  [SKIP] test_emotion_consolidation.cpp - source file not implemented")
+
+# Working Memory subdirectory (PE tests)
+add_subdirectory(working_memory)

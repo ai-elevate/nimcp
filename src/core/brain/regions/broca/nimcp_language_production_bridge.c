@@ -24,6 +24,12 @@
 // Unified memory integration
 #include "utils/memory/nimcp_unified_memory.h"
 
+// Second messenger integration
+#include "plasticity/nimcp_second_messengers.h"
+
+// Positional encoding integration
+#include "utils/encoding/nimcp_positional_encoding.h"
+
 #include "core/brain/regions/broca/nimcp_language_production_bridge.h"
 #include "core/brain/regions/broca/nimcp_broca_adapter.h"
 #include <stdlib.h>
@@ -51,6 +57,13 @@ struct language_production_bridge {
     speech_cortex_t* speech_cortex;
     nlp_network_t* nlp;
     working_memory_t* wm;
+
+    /* Neuromodulation */
+    second_messenger_system_t* second_messengers;
+
+    /* Positional encoding */
+    nimcp_pos_encoder_t* motor_seq_encoder;   /**< Sinusoidal PE for motor sequences */
+    nimcp_pos_encoder_t* gesture_encoder;     /**< RoPE for articulatory gestures */
 
     /* State */
     lpb_status_t status;
@@ -263,7 +276,21 @@ lpb_config_t lpb_default_config(void) {
         .enable_repetition = true,
         .enable_paraphrase = false,
         .enable_self_monitoring = true,
-        .enable_error_correction = true
+        .enable_error_correction = true,
+        .enable_second_messengers = true,
+        .enable_positional_encoding = true,
+        .pe_config = {
+            .motor_seq_pe_type = NIMCP_POS_SINUSOIDAL,
+            .gesture_pe_type = NIMCP_POS_ROTARY,
+            .motor_seq_max_length = 256,
+            .motor_seq_embedding_dim = 128,
+            .motor_seq_pe_base = 10000.0f,
+            .gesture_max_length = 512,
+            .gesture_embedding_dim = 256,
+            .gesture_rope_base = 10000.0f,
+            .enable_motor_pe_cache = true,
+            .enable_gesture_pe_cache = true
+        }
     };
     return config;
 }
@@ -305,6 +332,22 @@ language_production_bridge_t* lpb_create(const lpb_config_t* config,
         return NULL;
     }
 
+    /* Initialize second messenger system */
+    if (bridge->config.enable_second_messengers) {
+        second_messenger_config_t sm_config = second_messenger_default_config();
+        sm_config.enable_bio_async = true;
+        sm_config.enable_security = true;
+
+        /* Estimate 100 neurons for Broca's region model */
+        bridge->second_messengers = second_messenger_create(100, &sm_config);
+        if (!bridge->second_messengers) {
+            LOG_MODULE_WARN(LOG_MODULE, "%s", "Failed to create second messenger system, continuing without it");
+            bridge->config.enable_second_messengers = false;
+        } else {
+            LOG_MODULE_INFO(LOG_MODULE, "%s", "Second messenger cascades enabled for language production");
+        }
+    }
+
     /* Initialize state */
     bridge->status = LPB_STATUS_IDLE;
     bridge->last_error = LPB_ERROR_NONE;
@@ -321,6 +364,22 @@ void lpb_destroy(language_production_bridge_t* bridge) {
     /* Free priming vector */
     if (bridge->priming_vector) {
         nimcp_free(bridge->priming_vector);
+    }
+
+    /* Destroy second messenger system */
+    if (bridge->second_messengers) {
+        second_messenger_destroy(bridge->second_messengers);
+        bridge->second_messengers = NULL;
+    }
+
+    /* Destroy positional encoders */
+    if (bridge->motor_seq_encoder) {
+        nimcp_pos_encoder_destroy(bridge->motor_seq_encoder);
+        bridge->motor_seq_encoder = NULL;
+    }
+    if (bridge->gesture_encoder) {
+        nimcp_pos_encoder_destroy(bridge->gesture_encoder);
+        bridge->gesture_encoder = NULL;
     }
 
     /* Free buffers */
@@ -487,6 +546,31 @@ bool lpb_produce_from_intent(language_production_bridge_t* bridge,
     bridge->status = LPB_STATUS_ARTICULATION;
     lpb_emit_event(bridge, LPB_STATUS_ARTICULATION, NULL);
 
+    /* Query second messenger state for neuromodulation effects */
+    float pka_activity = 0.0f;
+    float production_delay_modulation = 1.0f;
+    float fluency_modulation = 0.0f;
+
+    if (bridge->second_messengers && bridge->config.enable_second_messengers) {
+        second_messenger_state_t sm_state;
+        /* Query neuron 0 as representative of Broca's region */
+        if (second_messenger_get_state(bridge->second_messengers, 0, &sm_state) == NIMCP_SUCCESS) {
+            pka_activity = sm_state.camp.pka_activity;
+
+            /* PKA activity modulates production speed (dopamine effect) */
+            /* Higher PKA (high dopamine) = faster production (reduced delay) */
+            /* Lower PKA (low dopamine) = slower production (increased delay) */
+            production_delay_modulation = 1.0f - (0.3f * pka_activity);
+
+            /* PKA activity modulates fluency */
+            /* Higher PKA = more fluent speech */
+            fluency_modulation = 0.2f * pka_activity;
+
+            LOG_MODULE_DEBUG(LOG_MODULE, "Second messenger modulation: PKA=%.3f, delay_mod=%.3f, fluency_mod=%.3f",
+                           (double)pka_activity, (double)production_delay_modulation, (double)fluency_modulation);
+        }
+    }
+
     /* Process through Broca's pipeline */
     broca_utterance_result_t broca_result;
     if (!broca_process_utterance(bridge->broca, &broca_result)) {
@@ -528,10 +612,16 @@ bool lpb_produce_from_intent(language_production_bridge_t* bridge,
         result->phonemes = bridge->phoneme_buffer;
         result->phoneme_count = broca_result.phoneme_count;
         result->motor_command_count = broca_result.command_count;
-        result->estimated_duration_ms = broca_result.total_duration_ms;
-        /* Compute fluency score from syntax/agreement validation */
-        result->fluency_score = (broca_result.syntax_valid ? 0.5f : 0.0f) +
-                                (broca_result.agreement_valid ? 0.5f : 0.0f);
+
+        /* Apply second messenger modulation to duration */
+        float modulated_duration = broca_result.total_duration_ms * production_delay_modulation;
+        result->estimated_duration_ms = modulated_duration;
+
+        /* Compute fluency score from syntax/agreement validation + PKA modulation */
+        float base_fluency = (broca_result.syntax_valid ? 0.5f : 0.0f) +
+                             (broca_result.agreement_valid ? 0.5f : 0.0f);
+        result->fluency_score = fminf(1.0f, base_fluency + fluency_modulation);
+
         if (!result->self_monitoring_passed) {
             result->semantic_match = 0.5f; /* Default if monitoring disabled */
         }
@@ -539,9 +629,12 @@ bool lpb_produce_from_intent(language_production_bridge_t* bridge,
 
     bridge->status = LPB_STATUS_READY;
     bridge->stats.productions_successful++;
+
+    /* Track modulated production delay */
+    float actual_delay = bridge->config.production_delay_ms * production_delay_modulation;
     bridge->stats.avg_production_latency_ms =
         (bridge->stats.avg_production_latency_ms * (bridge->stats.productions_successful - 1) +
-         bridge->config.production_delay_ms) / bridge->stats.productions_successful;
+         actual_delay) / bridge->stats.productions_successful;
 
     if (result) {
         bridge->stats.avg_fluency_score =
@@ -881,6 +974,442 @@ bool lpb_get_config(const language_production_bridge_t* bridge, lpb_config_t* co
     if (!bridge || !config) return false;
 
     *config = bridge->config;
+    return true;
+}
+
+/*=============================================================================
+ * POSITIONAL ENCODING INTEGRATION
+ *===========================================================================*/
+
+/**
+ * @brief Set positional encoding configuration
+ *
+ * WHAT: Initialize positional encoders for motor sequences and gestures
+ * WHY:  Enable temporal ordering in speech production pipeline
+ * HOW:  Create sinusoidal encoder for motor commands, RoPE for gestures
+ *
+ * BIOLOGICAL BASIS:
+ * - Broca's area generates sequential motor commands with precise timing
+ * - Motor cortex requires temporally ordered commands for coordinated speech
+ * - Position encoding preserves sequential information in neural representations
+ */
+bool language_production_set_pe_config(
+    language_production_bridge_t* bridge,
+    const lpb_pe_config_t* pe_config) {
+    /* Guard clause: validate inputs */
+    if (!bridge) {
+        return false;
+    }
+
+    if (!pe_config) {
+        return lpb_set_error(bridge, LPB_ERROR_INVALID_INPUT);
+    }
+
+    if (!bridge->config.enable_positional_encoding) {
+        LOG_MODULE_WARN(LOG_MODULE, "%s", "Positional encoding not enabled in config");
+        return false;
+    }
+
+    /* Update configuration */
+    bridge->config.pe_config = *pe_config;
+
+    /* Destroy existing encoders if present */
+    if (bridge->motor_seq_encoder) {
+        nimcp_pos_encoder_destroy(bridge->motor_seq_encoder);
+        bridge->motor_seq_encoder = NULL;
+    }
+    if (bridge->gesture_encoder) {
+        nimcp_pos_encoder_destroy(bridge->gesture_encoder);
+        bridge->gesture_encoder = NULL;
+    }
+
+    /* Create motor sequence encoder (sinusoidal) */
+    if (pe_config->motor_seq_pe_type == NIMCP_POS_SINUSOIDAL) {
+        nimcp_pos_config_t motor_config = {
+            .type = NIMCP_POS_SINUSOIDAL,
+            .config.sinusoidal = {
+                .base = {
+                    .max_seq_length = pe_config->motor_seq_max_length,
+                    .embedding_dim = pe_config->motor_seq_embedding_dim,
+                    .cache_enabled = pe_config->enable_motor_pe_cache,
+                    .thread_safe = false
+                },
+                .frequency_base = pe_config->motor_seq_pe_base,
+                .frequency_scale = 1.0f
+            }
+        };
+
+        bridge->motor_seq_encoder = nimcp_pos_encoder_create(&motor_config);
+        if (!bridge->motor_seq_encoder) {
+            LOG_MODULE_ERROR(LOG_MODULE, "%s", "Failed to create motor sequence PE encoder");
+            return lpb_set_error(bridge, LPB_ERROR_INTERNAL);
+        }
+
+        /* Pre-compute cache if enabled */
+        if (pe_config->enable_motor_pe_cache) {
+            int result = nimcp_pos_cache_precompute(bridge->motor_seq_encoder,
+                                                    pe_config->motor_seq_max_length);
+            if (result != NIMCP_POS_SUCCESS) {
+                LOG_MODULE_WARN(LOG_MODULE, "Failed to pre-compute motor PE cache: %d", result);
+            }
+        }
+
+        LOG_MODULE_INFO(LOG_MODULE, "Motor sequence PE encoder created: type=sinusoidal, max_len=%u, dim=%u",
+                       pe_config->motor_seq_max_length, pe_config->motor_seq_embedding_dim);
+    }
+
+    /* Create gesture encoder (RoPE) */
+    if (pe_config->gesture_pe_type == NIMCP_POS_ROTARY) {
+        nimcp_pos_config_t gesture_config = {
+            .type = NIMCP_POS_ROTARY,
+            .config.rope = {
+                .base = {
+                    .max_seq_length = pe_config->gesture_max_length,
+                    .embedding_dim = pe_config->gesture_embedding_dim,
+                    .cache_enabled = pe_config->enable_gesture_pe_cache,
+                    .thread_safe = false
+                },
+                .rope_base = pe_config->gesture_rope_base,
+                .rope_scaling = 1.0f,
+                .rope_dim = 0,  /* Apply to all dimensions */
+                .use_ntk_scaling = false,
+                .ntk_factor = 1.0f
+            }
+        };
+
+        bridge->gesture_encoder = nimcp_pos_encoder_create(&gesture_config);
+        if (!bridge->gesture_encoder) {
+            LOG_MODULE_ERROR(LOG_MODULE, "%s", "Failed to create gesture PE encoder");
+            /* Clean up motor encoder if created */
+            if (bridge->motor_seq_encoder) {
+                nimcp_pos_encoder_destroy(bridge->motor_seq_encoder);
+                bridge->motor_seq_encoder = NULL;
+            }
+            return lpb_set_error(bridge, LPB_ERROR_INTERNAL);
+        }
+
+        /* Pre-compute cache if enabled */
+        if (pe_config->enable_gesture_pe_cache) {
+            int result = nimcp_pos_cache_precompute(bridge->gesture_encoder,
+                                                    pe_config->gesture_max_length);
+            if (result != NIMCP_POS_SUCCESS) {
+                LOG_MODULE_WARN(LOG_MODULE, "Failed to pre-compute gesture PE cache: %d", result);
+            }
+        }
+
+        LOG_MODULE_INFO(LOG_MODULE, "Gesture PE encoder created: type=RoPE, max_len=%u, dim=%u",
+                       pe_config->gesture_max_length, pe_config->gesture_embedding_dim);
+    }
+
+    return true;
+}
+
+/**
+ * @brief Apply positional encoding to motor command sequence
+ *
+ * WHAT: Add sinusoidal position encodings to motor command embeddings
+ * WHY:  Preserve temporal order of motor commands for fluent articulation
+ * HOW:  Use nimcp_pos_encode_sequence to compute PE and add to embeddings
+ *
+ * BIOLOGICAL BASIS:
+ * - Primary motor cortex (M1) receives sequential commands from Broca's area
+ * - Tongue, lips, jaw movements must be precisely timed for speech
+ * - Position encoding maintains temporal dependencies in command sequences
+ */
+bool language_production_encode_motor_sequence(
+    language_production_bridge_t* bridge,
+    const float* motor_embeddings,
+    uint32_t seq_length,
+    float* output) {
+    /* Guard clause: validate inputs */
+    if (!bridge) {
+        return false;
+    }
+
+    if (!motor_embeddings || !output) {
+        return lpb_set_error(bridge, LPB_ERROR_INVALID_INPUT);
+    }
+
+    if (seq_length == 0) {
+        return lpb_set_error(bridge, LPB_ERROR_INVALID_INPUT);
+    }
+
+    if (!bridge->config.enable_positional_encoding) {
+        /* If PE disabled, just copy input to output */
+        if (output != motor_embeddings) {
+            uint32_t embedding_dim = bridge->config.pe_config.motor_seq_embedding_dim;
+            memcpy(output, motor_embeddings, seq_length * embedding_dim * sizeof(float));
+        }
+        return true;
+    }
+
+    if (!bridge->motor_seq_encoder) {
+        LOG_MODULE_ERROR(LOG_MODULE, "%s", "Motor sequence encoder not initialized");
+        return lpb_set_error(bridge, LPB_ERROR_INTERNAL);
+    }
+
+    /* Validate sequence length */
+    if (seq_length > bridge->config.pe_config.motor_seq_max_length) {
+        LOG_MODULE_ERROR(LOG_MODULE, "Sequence length %u exceeds max %u",
+                        seq_length, bridge->config.pe_config.motor_seq_max_length);
+        return lpb_set_error(bridge, LPB_ERROR_INVALID_INPUT);
+    }
+
+    /* Apply positional encoding (additive mode) */
+    int result = nimcp_pos_apply_encoding(
+        bridge->motor_seq_encoder,
+        motor_embeddings,
+        seq_length,
+        output,
+        true  /* additive: output = input + PE */
+    );
+
+    if (result != NIMCP_POS_SUCCESS) {
+        LOG_MODULE_ERROR(LOG_MODULE, "Failed to apply motor sequence PE: error=%d", result);
+        return lpb_set_error(bridge, LPB_ERROR_INTERNAL);
+    }
+
+    LOG_MODULE_DEBUG(LOG_MODULE, "Applied motor sequence PE: seq_len=%u", seq_length);
+    return true;
+}
+
+/**
+ * @brief Apply RoPE encoding to articulatory gesture sequence
+ *
+ * WHAT: Apply rotary position embedding to gesture query/key pairs
+ * WHY:  Capture relative temporal relationships between gestures
+ * HOW:  Use nimcp_pos_rope_apply for each position in sequence
+ *
+ * BIOLOGICAL BASIS:
+ * - Articulatory gestures overlap during coarticulation
+ * - Relative timing between gestures affects acoustic output
+ * - RoPE naturally encodes relative position information
+ */
+bool language_production_encode_gesture(
+    language_production_bridge_t* bridge,
+    const float* gesture_query,
+    const float* gesture_key,
+    uint32_t seq_length,
+    float* query_out,
+    float* key_out) {
+    /* Guard clause: validate inputs */
+    if (!bridge) {
+        return false;
+    }
+
+    if (!gesture_query || !gesture_key || !query_out || !key_out) {
+        return lpb_set_error(bridge, LPB_ERROR_INVALID_INPUT);
+    }
+
+    if (seq_length == 0) {
+        return lpb_set_error(bridge, LPB_ERROR_INVALID_INPUT);
+    }
+
+    if (!bridge->config.enable_positional_encoding) {
+        /* If PE disabled, just copy inputs to outputs */
+        uint32_t embedding_dim = bridge->config.pe_config.gesture_embedding_dim;
+        if (query_out != gesture_query) {
+            memcpy(query_out, gesture_query, seq_length * embedding_dim * sizeof(float));
+        }
+        if (key_out != gesture_key) {
+            memcpy(key_out, gesture_key, seq_length * embedding_dim * sizeof(float));
+        }
+        return true;
+    }
+
+    if (!bridge->gesture_encoder) {
+        LOG_MODULE_ERROR(LOG_MODULE, "%s", "Gesture encoder not initialized");
+        return lpb_set_error(bridge, LPB_ERROR_INTERNAL);
+    }
+
+    /* Validate sequence length */
+    if (seq_length > bridge->config.pe_config.gesture_max_length) {
+        LOG_MODULE_ERROR(LOG_MODULE, "Sequence length %u exceeds max %u",
+                        seq_length, bridge->config.pe_config.gesture_max_length);
+        return lpb_set_error(bridge, LPB_ERROR_INVALID_INPUT);
+    }
+
+    uint32_t embedding_dim = bridge->config.pe_config.gesture_embedding_dim;
+
+    /* Apply RoPE to each position in sequence */
+    for (uint32_t pos = 0; pos < seq_length; pos++) {
+        const float* q_in = gesture_query + (pos * embedding_dim);
+        const float* k_in = gesture_key + (pos * embedding_dim);
+        float* q_out = query_out + (pos * embedding_dim);
+        float* k_out = key_out + (pos * embedding_dim);
+
+        int result = nimcp_pos_rope_apply(
+            bridge->gesture_encoder,
+            q_in,
+            k_in,
+            pos,
+            q_out,
+            k_out
+        );
+
+        if (result != NIMCP_POS_SUCCESS) {
+            LOG_MODULE_ERROR(LOG_MODULE, "Failed to apply RoPE at position %u: error=%d",
+                           pos, result);
+            return lpb_set_error(bridge, LPB_ERROR_INTERNAL);
+        }
+    }
+
+    LOG_MODULE_DEBUG(LOG_MODULE, "Applied gesture RoPE: seq_len=%u", seq_length);
+    return true;
+}
+
+/*=============================================================================
+ * SECOND MESSENGER INTEGRATION
+ *===========================================================================*/
+
+/**
+ * @brief Trigger receptor activation in second messenger system
+ *
+ * WHAT: Activate neuromodulator receptors in Broca's region
+ * WHY:  Dopamine modulates speech production fluency via D1 -> cAMP -> PKA
+ * HOW:  Forward receptor activation to second messenger cascade system
+ *
+ * BIOLOGICAL BASIS:
+ * - D1 receptors (Gs-coupled) activate adenylyl cyclase -> cAMP -> PKA
+ * - High PKA = faster lexical selection, increased speech rate, higher fluency
+ * - Low PKA (Parkinson's) = hypophonic speech, reduced prosody, word-finding difficulty
+ * - High PKA (mania) = rapid, pressured speech with reduced self-monitoring
+ */
+bool lpb_trigger_receptor(language_production_bridge_t* bridge,
+                          uint32_t neuron_id,
+                          uint8_t receptor_type,
+                          float occupancy,
+                          uint64_t timestamp_ms) {
+    /* Guard clause: validate inputs */
+    if (!bridge) {
+        return false;
+    }
+
+    if (!bridge->second_messengers || !bridge->config.enable_second_messengers) {
+        LOG_MODULE_WARN(LOG_MODULE, "%s", "Second messenger system not enabled");
+        return false;
+    }
+
+    if (occupancy < 0.0f || occupancy > 1.0f) {
+        LOG_MODULE_ERROR(LOG_MODULE, "Invalid receptor occupancy: %.3f (must be [0,1])", (double)occupancy);
+        return false;
+    }
+
+    /* Map receptor types to cascade activation
+     * For simplicity, assume receptor_type maps to neuromodulator receptor enum
+     * D1 (dopamine receptor 1) -> Gs-coupled -> activate cAMP cascade
+     * D2 (dopamine receptor 2) -> Gi-coupled -> inhibit cAMP cascade
+     */
+
+    nimcp_result_t result;
+
+    /* Simplified receptor mapping:
+     * Assume receptor_type 0 = D1 (Gs), 1 = D2 (Gi), 2 = Gq-coupled
+     * In production, use proper receptor_type_t enum from neuromodulators
+     */
+    if (receptor_type == 0) {
+        /* D1 receptor: activate Gs pathway */
+        result = second_messenger_activate_gs(bridge->second_messengers,
+                                             neuron_id,
+                                             occupancy,
+                                             timestamp_ms);
+        if (result == NIMCP_SUCCESS) {
+            LOG_MODULE_DEBUG(LOG_MODULE, "D1 receptor activated: neuron=%u, occupancy=%.3f",
+                           neuron_id, (double)occupancy);
+        }
+    } else if (receptor_type == 1) {
+        /* D2 receptor: activate Gi pathway (inhibit cAMP) */
+        result = second_messenger_activate_gi(bridge->second_messengers,
+                                             neuron_id,
+                                             occupancy,
+                                             timestamp_ms);
+        if (result == NIMCP_SUCCESS) {
+            LOG_MODULE_DEBUG(LOG_MODULE, "D2 receptor activated: neuron=%u, occupancy=%.3f",
+                           neuron_id, (double)occupancy);
+        }
+    } else if (receptor_type == 2) {
+        /* Gq-coupled receptor: activate PLC pathway */
+        result = second_messenger_activate_gq(bridge->second_messengers,
+                                             neuron_id,
+                                             occupancy,
+                                             timestamp_ms);
+        if (result == NIMCP_SUCCESS) {
+            LOG_MODULE_DEBUG(LOG_MODULE, "Gq receptor activated: neuron=%u, occupancy=%.3f",
+                           neuron_id, (double)occupancy);
+        }
+    } else {
+        LOG_MODULE_ERROR(LOG_MODULE, "Unknown receptor type: %u", receptor_type);
+        return false;
+    }
+
+    if (result != NIMCP_SUCCESS) {
+        LOG_MODULE_ERROR(LOG_MODULE, "Failed to activate receptor cascade: type=%u, neuron=%u",
+                       receptor_type, neuron_id);
+        return false;
+    }
+
+    /* Update cascade dynamics */
+    second_messenger_update(bridge->second_messengers, 1.0f, timestamp_ms);
+
+    return true;
+}
+
+/**
+ * @brief Get second messenger cascade state
+ *
+ * WHAT: Query kinase activity levels in Broca's region
+ * WHY:  Monitor neuromodulator effects on speech production
+ * HOW:  Query PKA, PKC, CaMKII from cascade state
+ *
+ * USAGE:
+ * - PKA activity indicates dopamine (D1) effect strength
+ * - PKC activity indicates serotonin (5-HT2A) or mGluR effects
+ * - CaMKII activity indicates calcium signaling strength
+ */
+bool lpb_get_second_messenger_state(const language_production_bridge_t* bridge,
+                                    uint32_t neuron_id,
+                                    float* pka_activity,
+                                    float* pkc_activity,
+                                    float* camkii_activity) {
+    /* Guard clause: validate inputs */
+    if (!bridge) {
+        return false;
+    }
+
+    if (!pka_activity || !pkc_activity || !camkii_activity) {
+        LOG_MODULE_ERROR(LOG_MODULE, "%s", "NULL output pointers provided");
+        return false;
+    }
+
+    /* Initialize outputs to zero */
+    *pka_activity = 0.0f;
+    *pkc_activity = 0.0f;
+    *camkii_activity = 0.0f;
+
+    if (!bridge->second_messengers || !bridge->config.enable_second_messengers) {
+        /* Return baseline values if second messengers disabled */
+        return true;
+    }
+
+    /* Query cascade state */
+    second_messenger_state_t state;
+    nimcp_result_t result = second_messenger_get_state(bridge->second_messengers,
+                                                      neuron_id,
+                                                      &state);
+
+    if (result != NIMCP_SUCCESS) {
+        LOG_MODULE_WARN(LOG_MODULE, "Failed to query second messenger state for neuron %u", neuron_id);
+        return false;
+    }
+
+    /* Extract kinase activities */
+    *pka_activity = state.camp.pka_activity;
+    *pkc_activity = state.ip3_dag.pkc_activity;
+    *camkii_activity = state.calcium.camkii_activity;
+
+    LOG_MODULE_DEBUG(LOG_MODULE, "Second messenger state: neuron=%u, PKA=%.3f, PKC=%.3f, CaMKII=%.3f",
+                   neuron_id, (double)*pka_activity, (double)*pkc_activity, (double)*camkii_activity);
+
     return true;
 }
 

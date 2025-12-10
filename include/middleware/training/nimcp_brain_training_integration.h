@@ -39,6 +39,7 @@
 #include "middleware/training/nimcp_training_callbacks.h"
 #include "security/nimcp_security_integration.h"
 #include "utils/validation/nimcp_common.h"
+#include "utils/platform/nimcp_platform_tier.h"  /* For platform_tier_t (Portia integration) */
 
 /* Forward declaration for plasticity bridge (Phase TPB-1) */
 typedef struct tpb_context tpb_context_t;
@@ -191,6 +192,16 @@ typedef struct nimcp_brain_training_config {
     /* Training Callbacks integration (Phase TCB-1) */
     bool enable_training_callbacks;            /**< Enable training callback system */
     tcb_config_t* callback_config;             /**< Callback configuration (NULL for defaults) */
+
+    /* Second Messenger Cascade integration */
+    bool enable_second_messengers;             /**< Enable second messenger cascade modulation */
+    uint32_t num_neurons;                      /**< Number of neurons for second messenger system */
+
+    /* Portia Resource Management integration */
+    bool enable_portia_integration;            /**< Enable Portia resource-aware training */
+    float min_batch_size_ratio;                /**< Minimum batch size ratio (0-1, def: 0.25) */
+    bool allow_training_pause;                 /**< Allow pause in EMERGENCY mode (def: true) */
+    bool adapt_to_tier_changes;                /**< Automatically adapt to tier changes (def: true) */
 } nimcp_brain_training_config_t;
 
 /**
@@ -1142,6 +1153,170 @@ nimcp_result_t nimcp_brain_training_signal_epoch_complete(
 nimcp_result_t nimcp_brain_training_checkpoint(
     nimcp_brain_training_ctx_t* ctx,
     const char* checkpoint_name
+);
+
+/* ============================================================================
+ * Second Messenger Cascade Integration
+ * ============================================================================ */
+
+/**
+ * @brief Connect second messenger system to training integration
+ *
+ * WHAT: Links second messenger cascade to training for plasticity modulation
+ * WHY:  PKA/CaMKII/CREB activities modulate learning rates and consolidation
+ * HOW:  Stores reference and enables cascade-based learning rate modulation
+ *
+ * @param ctx Brain-training context
+ * @param second_messengers Second messenger system handle
+ * @return NIMCP_SUCCESS on success
+ */
+nimcp_result_t nimcp_brain_training_connect_second_messengers(
+    nimcp_brain_training_ctx_t* ctx,
+    void* second_messengers
+);
+
+/**
+ * @brief Get cascade modulation factor for neuron
+ *
+ * WHAT: Query current plasticity modulation from second messenger cascades
+ * WHY:  Determines effective learning rate based on kinase activities
+ * HOW:  Retrieves modulation factor [0.5, 2.0] where 1.0 = baseline
+ *
+ * @param ctx Brain-training context
+ * @param neuron_id Neuron ID to query
+ * @return Modulation factor [0.5, 2.0], 1.0 on error or if disabled
+ */
+float nimcp_brain_training_get_cascade_modulation(
+    const nimcp_brain_training_ctx_t* ctx,
+    uint32_t neuron_id
+);
+
+/* ============================================================================
+ * Portia Resource Management Integration
+ * ============================================================================ */
+
+/**
+ * @brief Connect Portia context for resource-aware training
+ *
+ * WHAT: Link training system to Portia resource management
+ * WHY:  Enable automatic adaptation to platform tier and resource constraints
+ * HOW:  Store Portia reference, register for tier/degradation events
+ *
+ * @param ctx Brain-training context
+ * @param portia_ctx Portia context (can be NULL to disconnect)
+ * @return NIMCP_SUCCESS on success
+ */
+nimcp_result_t nimcp_brain_training_connect_portia(
+    nimcp_brain_training_ctx_t* ctx,
+    void* portia_ctx
+);
+
+/**
+ * @brief Handle Portia tier change event
+ *
+ * WHAT: Adapt training parameters based on new platform tier
+ * WHY:  Reduce computational load when tier degrades
+ * HOW:  Adjust batch sizes, learning rates, skip optional processing
+ *
+ * TIER ADAPTATIONS:
+ * - TIER_OPTIMAL:   full batch (100%), normal LR (100%), all features
+ * - TIER_REDUCED:   75% batch, 90% LR, disable verbose logging
+ * - TIER_DEGRADED:  50% batch, 75% LR, skip regularization
+ * - TIER_EMERGENCY: pause training, save checkpoint
+ *
+ * @param ctx Brain-training context
+ * @param new_tier New platform tier
+ * @return NIMCP_SUCCESS on success
+ */
+nimcp_result_t nimcp_brain_training_on_tier_change(
+    nimcp_brain_training_ctx_t* ctx,
+    platform_tier_t new_tier
+);
+
+/**
+ * @brief Handle Portia degradation event
+ *
+ * WHAT: Respond to graceful degradation events
+ * WHY:  Proactively reduce training load before critical resource exhaustion
+ * HOW:  Defer gradient accumulation, reduce precision, pause non-critical ops
+ *
+ * @param ctx Brain-training context
+ * @param degradation_level New degradation level
+ * @return NIMCP_SUCCESS on success
+ */
+nimcp_result_t nimcp_brain_training_on_degradation_event(
+    nimcp_brain_training_ctx_t* ctx,
+    uint32_t degradation_level
+);
+
+/**
+ * @brief Check if training is paused due to resource constraints
+ *
+ * @param ctx Brain-training context
+ * @return true if training paused
+ */
+bool nimcp_brain_training_is_paused(
+    const nimcp_brain_training_ctx_t* ctx
+);
+
+/**
+ * @brief Resume paused training when resources available
+ *
+ * @param ctx Brain-training context
+ * @return NIMCP_SUCCESS on success
+ */
+nimcp_result_t nimcp_brain_training_resume(
+    nimcp_brain_training_ctx_t* ctx
+);
+
+/**
+ * @brief Get adjusted batch size based on current tier
+ *
+ * WHAT: Calculate effective batch size for current resource state
+ * WHY:  Allow queries before training step execution
+ * HOW:  Apply tier multiplier to base batch size
+ *
+ * @param ctx Brain-training context
+ * @param base_batch_size Original batch size
+ * @return Adjusted batch size
+ */
+size_t nimcp_brain_training_get_adjusted_batch_size(
+    const nimcp_brain_training_ctx_t* ctx,
+    size_t base_batch_size
+);
+
+/**
+ * @brief Get adjusted learning rate based on current tier
+ *
+ * WHAT: Calculate effective learning rate for current resource state
+ * WHY:  Reduce learning rate when tier degraded for stability
+ * HOW:  Apply tier multiplier to base learning rate
+ *
+ * @param ctx Brain-training context
+ * @param base_lr Original learning rate
+ * @return Adjusted learning rate
+ */
+float nimcp_brain_training_get_adjusted_lr(
+    const nimcp_brain_training_ctx_t* ctx,
+    float base_lr
+);
+
+/**
+ * @brief Send training resource request to Portia
+ *
+ * WHAT: Request resource allocation for training workload
+ * WHY:  Inform Portia of training resource needs for better planning
+ * HOW:  Send BIO_MSG_TRAINING_RESOURCE_REQUEST via bio-async
+ *
+ * @param ctx Brain-training context
+ * @param batch_size Requested batch size
+ * @param param_count Number of parameters to train
+ * @return NIMCP_SUCCESS if message sent
+ */
+nimcp_result_t nimcp_brain_training_request_resources(
+    nimcp_brain_training_ctx_t* ctx,
+    size_t batch_size,
+    size_t param_count
 );
 
 #ifdef __cplusplus

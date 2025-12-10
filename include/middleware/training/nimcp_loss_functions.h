@@ -771,6 +771,86 @@ void nimcp_loss_result_free(nimcp_loss_result_t* result);
  */
 bool nimcp_loss_is_registered(const nimcp_loss_context_t* ctx);
 
+/* ============================================================================
+ * Tensor-Based Loss Functions
+ * ============================================================================ */
+
+/* Forward declaration for tensor type */
+struct nimcp_tensor_s;
+typedef struct nimcp_tensor_s nimcp_tensor_t;
+
+/**
+ * @brief Compute MSE loss from tensors
+ *
+ * More efficient than scalar version for large batches.
+ *
+ * @param predictions Prediction tensor
+ * @param targets Target tensor
+ * @param reduction Reduction mode
+ * @return Loss value
+ */
+float nimcp_loss_mse_tensor(
+    const nimcp_tensor_t* predictions,
+    const nimcp_tensor_t* targets,
+    nimcp_loss_reduction_t reduction
+);
+
+/**
+ * @brief Compute MSE gradient tensor
+ *
+ * Returns gradient = 2 * (predictions - targets) / n
+ *
+ * @param predictions Prediction tensor
+ * @param targets Target tensor
+ * @return Gradient tensor (caller must destroy)
+ */
+nimcp_tensor_t* nimcp_loss_mse_grad_tensor(
+    const nimcp_tensor_t* predictions,
+    const nimcp_tensor_t* targets
+);
+
+/**
+ * @brief Compute softmax from logits tensor
+ *
+ * @param logits Input logits tensor
+ * @param axis Axis to compute softmax over (-1 for last)
+ * @return Probability tensor (caller must destroy)
+ */
+nimcp_tensor_t* nimcp_loss_softmax_tensor(
+    const nimcp_tensor_t* logits,
+    int axis
+);
+
+/**
+ * @brief Compute cross-entropy loss from tensors
+ *
+ * @param predictions Prediction tensor (after softmax)
+ * @param targets One-hot encoded target tensor
+ * @param epsilon Numerical stability constant
+ * @param reduction Reduction mode
+ * @return Loss value
+ */
+float nimcp_loss_cross_entropy_tensor(
+    const nimcp_tensor_t* predictions,
+    const nimcp_tensor_t* targets,
+    float epsilon,
+    nimcp_loss_reduction_t reduction
+);
+
+/**
+ * @brief Clip gradient tensor by norm
+ *
+ * Scales gradient tensor if L2 norm exceeds max_norm.
+ *
+ * @param gradients Gradient tensor (modified in place)
+ * @param max_norm Maximum allowed norm
+ * @return Original norm before clipping
+ */
+float nimcp_loss_clip_gradients_norm_tensor(
+    nimcp_tensor_t* gradients,
+    float max_norm
+);
+
 #ifdef __cplusplus
 }
 #endif

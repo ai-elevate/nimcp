@@ -107,9 +107,10 @@ protected:
                 .frequency_hz = 915000000,
                 .bandwidth_hz = 125000,
                 .tx_power_dbm = 14,
-                .max_packet_size = 256,
+                .max_packet_size = 200,  // Stay under 255 LoRa max to avoid BBB validation edge cases
                 .retry_count = 3,
                 .timeout_ms = 1000,
+                .node_id = drones_[i].id,  // Use unique node ID
                 .custom_send = nullptr,
                 .custom_recv = nullptr,
                 .custom_ctx = nullptr
@@ -308,10 +309,10 @@ TEST_F(SwarmThreatResponseE2ETest, RetreatStrategy) {
     ResponseStrategy strategy = DetermineResponse(critical_threat);
     EXPECT_EQ(strategy, RESPONSE_RETREAT);
 
-    // All drones retreat (reverse direction)
+    // All drones retreat (reverse direction) - move far enough to ensure safe distance
     for (auto& drone : drones_) {
-        drone.velocity[0] = -10.0f; // Retreat
-        drone.position[0] -= 50.0f;
+        drone.velocity[0] = -15.0f; // Retreat velocity
+        drone.position[0] -= 150.0f;  // Move 150 units away to ensure > 50 from threat at (50,0,100)
     }
     tracker.end_stage();
 

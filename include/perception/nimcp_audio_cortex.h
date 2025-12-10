@@ -79,6 +79,9 @@ typedef struct {
 
     // Bio-async communication
     bool enable_bio_async;         /**< Enable bio-async messaging */
+
+    // Second messenger cascade integration
+    bool enable_second_messengers; /**< Enable second messenger cascades */
 } audio_cortex_config_t;
 
 /**
@@ -478,6 +481,55 @@ nimcp_error_t audio_cortex_broadcast_input(
 nimcp_error_t audio_cortex_broadcast_speech_detected(
     audio_cortex_t* cortex,
     float speech_salience
+);
+
+//=============================================================================
+// Second Messenger Cascade Integration
+//=============================================================================
+
+/**
+ * @brief Activate receptor cascade in audio cortex neuron
+ *
+ * WHAT: Trigger second messenger cascade via receptor activation
+ * WHY:  Neuromodulators activate GPCRs -> cascades modulate audio processing
+ * HOW:  Route to appropriate G-protein pathway (Gs/Gi/Gq)
+ *
+ * BIOLOGY:
+ * - Dopamine D1 (Gs) -> cAMP -> PKA: Modulates frequency tuning
+ * - Acetylcholine M4 (Gq) -> IP3/DAG -> PKC: Enhances frequency selectivity
+ * - Serotonin 5-HT2A (Gq) -> IP3/DAG -> PKC: Gates auditory sensitivity
+ *
+ * @param cortex Audio cortex instance
+ * @param neuron_id Neuron ID (maps to frequency bin)
+ * @param receptor Receptor type to activate
+ * @param occupancy Receptor occupancy [0, 1]
+ * @param timestamp_ms Current timestamp
+ * @return NIMCP_SUCCESS or error code
+ */
+nimcp_error_t audio_cortex_trigger_receptor(
+    audio_cortex_t* cortex,
+    uint32_t neuron_id,
+    uint32_t receptor,
+    float occupancy,
+    uint64_t timestamp_ms
+);
+
+/**
+ * @brief Get second messenger cascade state for neuron
+ *
+ * WHAT: Query cascade state for specific frequency neuron
+ * WHY:  Monitor kinase activities and modulation levels
+ * HOW:  Return copy of cascade state from second messenger system
+ *
+ * @param cortex Audio cortex instance
+ * @param neuron_id Neuron ID (frequency bin index)
+ * @param state Output state buffer
+ * @return NIMCP_SUCCESS or error code
+ */
+nimcp_error_t audio_cortex_get_second_messenger_state(
+    audio_cortex_t* cortex,
+    uint32_t neuron_id,
+    void* state
 );
 
 #ifdef __cplusplus

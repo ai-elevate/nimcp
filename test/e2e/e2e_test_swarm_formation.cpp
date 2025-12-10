@@ -199,7 +199,7 @@ protected:
                 .frequency_hz = 915000000,
                 .bandwidth_hz = 125000,
                 .tx_power_dbm = 14,
-                .max_packet_size = 256,
+                .max_packet_size = 255,
                 .retry_count = 3,
                 .timeout_ms = 1000,
                 .custom_send = nullptr,

@@ -11,6 +11,7 @@
 #include "middleware/routing/nimcp_signal_wrapper.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/time/nimcp_time.h"
+#include "utils/tensor/nimcp_tensor.h"
 #include <string.h>
 #include <stdio.h>
 #include "async/nimcp_bio_async.h"
@@ -18,6 +19,10 @@
 #include "async/nimcp_bio_messages.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/memory/nimcp_unified_memory.h"
+#include "plasticity/nimcp_second_messengers.h"
+#include "plasticity/neuromodulators/nimcp_neuromodulators.h"
+
+/* Version 1.1.0 - Added tensor library integration for vectorized signal modulation */
 
 
 
@@ -70,6 +75,10 @@ struct thalamic_router {
     // Bio-async integration
     bio_module_context_t bio_ctx;
     bool bio_async_enabled;
+
+    // Second messenger cascades
+    second_messenger_system_t* second_messengers;
+    bool second_messengers_enabled;
 };
 
 // ============================================================================
@@ -131,6 +140,36 @@ static bool enqueue_signal(thalamic_router_t* router, const routed_signal_t* sig
     return true;
 }
 
+// Helper: Get PKA-modulated attention threshold
+static float get_attention_threshold(thalamic_router_t* router, uint32_t dest_id) {
+    // WHAT: Compute PKA-modulated attention gating threshold
+    // WHY:  ACh/NE increase PKA -> lower threshold -> more signals pass
+    // HOW:  Higher PKA activity reduces threshold (inverse relationship)
+
+    float base_threshold = router->config.min_attention_threshold;
+
+    if (!router->second_messengers_enabled || !router->second_messengers) {
+        return base_threshold;
+    }
+
+    // Query PKA activity for destination neuron
+    second_messenger_state_t sm_state;
+    nimcp_result_t result = second_messenger_get_state(
+        router->second_messengers, dest_id, &sm_state);
+
+    if (result != NIMCP_SUCCESS) {
+        return base_threshold;
+    }
+
+    float pka_activity = sm_state.camp.pka_activity;
+
+    // Modulation: PKA [0,1] -> threshold reduction [1.0, 0.1]
+    // High PKA = low threshold = more attention
+    float modulation = 1.0f - (0.9f * pka_activity);
+
+    return base_threshold * modulation;
+}
+
 // Helper: Deliver signal using CoW wrapper
 static bool deliver_signal_wrapper(thalamic_router_t* router,
                                      signal_wrapper_t wrapper,
@@ -173,13 +212,26 @@ static bool deliver_signal_wrapper(thalamic_router_t* router,
                 attention *= gate_weight;
             }
 
-            // Check attention threshold
-            if (attention >= router->config.min_attention_threshold) {
-                // Apply attention to signal (CoW: triggers copy only if needed)
+            // Check PKA-modulated attention threshold
+            float attention_threshold = get_attention_threshold(router, dest_id);
+            if (attention >= attention_threshold) {
+                // Apply attention to signal using tensor operations
                 float* modulated_signal = (float*)nimcp_malloc(signal_size * sizeof(float));
                 if (modulated_signal) {
-                    for (uint32_t k = 0; k < signal_size; k++) {
-                        modulated_signal[k] = signal_data[k] * attention;
+                    memcpy(modulated_signal, signal_data, signal_size * sizeof(float));
+
+                    /* Use tensor library for vectorized scalar multiplication */
+                    uint32_t dims[] = {signal_size};
+                    nimcp_tensor_t* t = nimcp_tensor_from_data(modulated_signal, dims, 1,
+                                                              NIMCP_DTYPE_F32, false);
+                    if (t) {
+                        nimcp_tensor_mul_scalar_(t, (double)attention);
+                        nimcp_tensor_destroy(t);
+                    } else {
+                        /* Fallback to scalar loop */
+                        for (uint32_t k = 0; k < signal_size; k++) {
+                            modulated_signal[k] *= attention;
+                        }
                     }
 
                     callback(dest_id, modulated_signal, signal_size,
@@ -224,6 +276,8 @@ thalamic_router_config_t thalamic_router_default_config(void) {
     config.enable_statistics = true;
     config.min_attention_threshold = 0.01f;
     config.enable_learning = true;
+    config.enable_second_messengers = true;  /* Enable by default - biological fidelity */
+    config.num_neurons = 0;
     return config;
 }
 
@@ -296,11 +350,36 @@ thalamic_router_t* thalamic_router_create(const thalamic_router_config_t* config
         }
     }
 
+    // Initialize second messenger cascades
+    router->second_messengers = NULL;
+    router->second_messengers_enabled = false;
+    if (config->enable_second_messengers && config->num_neurons > 0) {
+        second_messenger_config_t sm_config = second_messenger_default_config();
+        sm_config.enable_bio_async = true;
+        sm_config.enable_security = true;
+
+        router->second_messengers = second_messenger_create(config->num_neurons, &sm_config);
+        if (router->second_messengers) {
+            router->second_messengers_enabled = true;
+            LOG_INFO(LOG_MODULE, "Initialized second messenger cascades for %u neurons",
+                     config->num_neurons);
+        } else {
+            LOG_WARN(LOG_MODULE, "Failed to initialize second messenger cascades");
+        }
+    }
+
     return router;
 }
 
 void thalamic_router_destroy(thalamic_router_t* router) {
     if (!router) return;
+
+    // Destroy second messenger system
+    if (router->second_messengers_enabled && router->second_messengers) {
+        second_messenger_destroy(router->second_messengers);
+        router->second_messengers = NULL;
+        router->second_messengers_enabled = false;
+    }
 
     // Unregister from bio-async router
     if (router->bio_async_enabled && router->bio_ctx) {
@@ -383,8 +462,17 @@ bool thalamic_router_process_queue(thalamic_router_t* router,
         bio_router_process_inbox(router->bio_ctx, 8);
     }
 
-    uint32_t processed = 0;
+    // Update second messenger cascades
     double current_time = get_current_time_ms();
+    if (router->second_messengers_enabled && router->second_messengers) {
+        double dt_ms = current_time - router->last_process_time_ms;
+        if (dt_ms > 0.0) {
+            second_messenger_update(router->second_messengers, (float)dt_ms,
+                                  (uint64_t)current_time);
+        }
+    }
+
+    uint32_t processed = 0;
 
     while (processed < max_signals && router->queue_size > 0) {
         // Dequeue highest priority (front of queue)
@@ -540,4 +628,110 @@ void thalamic_router_free_signal(routed_signal_t* signal) {
     nimcp_free(signal->dest_ids);
     nimcp_free(signal->signal_data);
     nimcp_free(signal);
+}
+
+bool thalamic_router_trigger_receptor(thalamic_router_t* router,
+                                       uint32_t neuron_id,
+                                       uint32_t receptor,
+                                       float occupancy,
+                                       uint64_t timestamp_ms) {
+    // WHAT: Activate receptor and trigger second messenger cascade
+    // WHY:  Neuromodulators (ACh, NE) shift thalamic burst/tonic modes
+    // HOW:  Route receptor activation to appropriate G-protein cascade
+
+    // Guard clauses
+    if (!router) {
+        LOG_ERROR(LOG_MODULE, "NULL router in trigger_receptor");
+        return false;
+    }
+
+    if (!router->second_messengers_enabled || !router->second_messengers) {
+        LOG_DEBUG(LOG_MODULE, "Second messengers not enabled");
+        return false;
+    }
+
+    if (occupancy < 0.0f || occupancy > 1.0f) {
+        LOG_WARN(LOG_MODULE, "Invalid occupancy %.3f, clamping to [0,1]", occupancy);
+        occupancy = (occupancy < 0.0f) ? 0.0f : 1.0f;
+    }
+
+    // Determine G-protein coupling and activate cascade
+    receptor_type_t receptor_type = (receptor_type_t)receptor;
+    gpcr_coupling_t coupling = second_messenger_receptor_coupling(receptor_type);
+
+    nimcp_result_t result = NIMCP_ERROR;
+
+    switch (coupling) {
+        case GPCR_GS_COUPLED:
+            // ACh (M1), beta-adrenergic -> cAMP increase -> PKA activation
+            result = second_messenger_activate_gs(router->second_messengers,
+                                                 neuron_id, occupancy, timestamp_ms);
+            LOG_DEBUG(LOG_MODULE, "Activated Gs cascade (neuron=%u, occupancy=%.3f)",
+                     neuron_id, occupancy);
+            break;
+
+        case GPCR_GI_COUPLED:
+            // Alpha2-adrenergic, D2 -> cAMP decrease -> PKA inhibition
+            result = second_messenger_activate_gi(router->second_messengers,
+                                                 neuron_id, occupancy, timestamp_ms);
+            LOG_DEBUG(LOG_MODULE, "Activated Gi cascade (neuron=%u, occupancy=%.3f)",
+                     neuron_id, occupancy);
+            break;
+
+        case GPCR_GQ_COUPLED:
+            // 5-HT2A, mGluR1/5 -> IP3/DAG -> Ca2+ release + PKC
+            result = second_messenger_activate_gq(router->second_messengers,
+                                                 neuron_id, occupancy, timestamp_ms);
+            LOG_DEBUG(LOG_MODULE, "Activated Gq cascade (neuron=%u, occupancy=%.3f)",
+                     neuron_id, occupancy);
+            break;
+
+        default:
+            LOG_WARN(LOG_MODULE, "Unsupported receptor coupling type: %d", coupling);
+            return false;
+    }
+
+    if (result != NIMCP_SUCCESS) {
+        LOG_ERROR(LOG_MODULE, "Failed to activate cascade (result=%d)", result);
+        return false;
+    }
+
+    return true;
+}
+
+bool thalamic_router_get_second_messenger_state(const thalamic_router_t* router,
+                                                 uint32_t neuron_id,
+                                                 void* state) {
+    // WHAT: Query current cascade state for neuron
+    // WHY:  Allow inspection of PKA/PKC/CaMKII activity
+    // HOW:  Forward to second messenger system query
+
+    // Guard clauses
+    if (!router) {
+        LOG_ERROR(LOG_MODULE, "NULL router in get_second_messenger_state");
+        return false;
+    }
+
+    if (!state) {
+        LOG_ERROR(LOG_MODULE, "NULL state buffer in get_second_messenger_state");
+        return false;
+    }
+
+    if (!router->second_messengers_enabled || !router->second_messengers) {
+        LOG_DEBUG(LOG_MODULE, "Second messengers not enabled");
+        return false;
+    }
+
+    // Query cascade state
+    second_messenger_state_t* sm_state = (second_messenger_state_t*)state;
+    nimcp_result_t result = second_messenger_get_state(
+        router->second_messengers, neuron_id, sm_state);
+
+    if (result != NIMCP_SUCCESS) {
+        LOG_WARN(LOG_MODULE, "Failed to get cascade state for neuron %u (result=%d)",
+                 neuron_id, result);
+        return false;
+    }
+
+    return true;
 }

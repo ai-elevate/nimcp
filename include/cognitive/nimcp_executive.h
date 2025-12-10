@@ -31,8 +31,9 @@
 extern "C" {
 #endif
 
-// Forward declaration for brain handle
+// Forward declarations
 typedef struct brain_struct* brain_t;
+typedef struct theory_of_mind_s* theory_of_mind_t;
 
 //=============================================================================
 // Task Types
@@ -114,6 +115,11 @@ typedef struct {
     uint32_t max_plan_depth;          /**< Maximum planning depth (default: 10) */
     bool enable_task_prioritization;  /**< Enable priority-based scheduling */
     bool enable_deadline_checking;    /**< Enable deadline violations */
+    bool enable_portia_integration;   /**< Enable Portia tier awareness (default: true) */
+
+    // Theory of Mind integration (Phase 10.6.1)
+    bool enable_tom_integration;      /**< Enable ToM-informed decision making (default: false) */
+    uint32_t max_agent_models;        /**< Maximum agent models to track (default: 8) */
 } executive_config_t;
 
 /**
@@ -423,6 +429,27 @@ executive_controller_t* executive_load(FILE* file);
  */
 void executive_set_brain(executive_controller_t* exec, brain_t brain);
 
+/* Forward declaration for global workspace - must match nimcp_global_workspace.h */
+#ifndef GLOBAL_WORKSPACE_T_DEFINED
+#define GLOBAL_WORKSPACE_T_DEFINED
+typedef struct global_workspace_struct* global_workspace_t;
+#endif
+
+/**
+ * @brief Set global workspace for conscious broadcasting
+ *
+ * WHAT: Associate executive controller with global workspace
+ * WHY:  Enable conscious decision broadcasting and workspace attention
+ * HOW:  Store workspace reference and subscribe to broadcasts
+ *
+ * @param exec Executive controller
+ * @param workspace Global workspace handle (NULL to disable)
+ *
+ * COMPLEXITY: O(1)
+ * THREAD-SAFE: No
+ */
+void executive_set_workspace(executive_controller_t* exec, global_workspace_t* workspace);
+
 //=============================================================================
 // Bidirectional Feedback Functions (Phase 10.11.3)
 //=============================================================================
@@ -456,6 +483,157 @@ float executive_get_cognitive_load(executive_controller_t* exec);
 bool executive_boost_task_priority(executive_controller_t* exec,
                                     const char* task_name,
                                     float boost_amount);
+
+//=============================================================================
+// Portia Integration (Phase 11.5)
+//=============================================================================
+
+/**
+ * @brief Get current Portia tier from executive controller
+ *
+ * WHAT: Query Portia tier state for external monitoring
+ * WHY:  Allow other modules to check resource constraints
+ * HOW:  Return cached tier value from Portia integration
+ *
+ * @param exec Executive controller
+ * @return Current platform tier, or TIER_UNKNOWN if Portia disabled
+ *
+ * COMPLEXITY: O(1)
+ * THREAD-SAFE: Yes
+ */
+uint32_t executive_get_portia_tier(executive_controller_t* exec);
+
+/**
+ * @brief Check if executive is in resource-aware mode
+ *
+ * WHAT: Query whether executive is adapting to resource constraints
+ * WHY:  Diagnostic and status reporting
+ * HOW:  Return resource_aware_mode flag
+ *
+ * @param exec Executive controller
+ * @return true if resource-aware mode active
+ *
+ * COMPLEXITY: O(1)
+ * THREAD-SAFE: Yes
+ */
+bool executive_is_resource_aware(executive_controller_t* exec);
+
+/**
+ * @brief Get recommended max plan depth for current resources
+ *
+ * WHAT: Query planning depth adjusted for current tier
+ * WHY:  Allow external planners to adapt complexity
+ * HOW:  Scale max_plan_depth based on current tier
+ *
+ * BIOLOGY: Prefrontal cortex planning depth decreases under stress/fatigue
+ *
+ * @param exec Executive controller
+ * @return Recommended max plan depth
+ *
+ * COMPLEXITY: O(1)
+ * THREAD-SAFE: Yes
+ */
+uint32_t executive_get_recommended_plan_depth(executive_controller_t* exec);
+
+/**
+ * @brief Process pending bio-async messages for executive
+ *
+ * WHAT: Process incoming messages from bio-router inbox
+ * WHY:  Receive Portia tier changes and other async events
+ * HOW:  Call bio_router_process_inbox for executive's context
+ *
+ * @param exec Executive controller
+ * @param max_messages Maximum messages to process (0 = all)
+ * @return Number of messages processed
+ *
+ * COMPLEXITY: O(n) where n = number of messages
+ * THREAD-SAFE: No
+ */
+uint32_t executive_process_messages(executive_controller_t* exec, uint32_t max_messages);
+
+//=============================================================================
+// Theory of Mind Integration (Phase 10.6.1)
+//=============================================================================
+
+/**
+ * @brief Set Theory of Mind module for agent-aware decision making
+ *
+ * WHAT: Associate executive controller with ToM for social reasoning
+ * WHY:  Enable consideration of other agents' beliefs and intentions
+ * HOW:  Store ToM reference, enable query functions
+ *
+ * @param exec Executive controller
+ * @param tom Theory of Mind module (can be NULL to disable)
+ *
+ * COMPLEXITY: O(1)
+ * THREAD-SAFE: No
+ */
+void executive_set_theory_of_mind(executive_controller_t* exec, theory_of_mind_t tom);
+
+/**
+ * @brief Query agent-aware decision for a proposed action
+ *
+ * WHAT: Consider other agents' likely responses before acting
+ * WHY:  Enable socially intelligent, coordinated behavior
+ * HOW:  Use ToM to simulate agent responses, adjust decision
+ *
+ * @param exec Executive controller
+ * @param action_description What action is being considered
+ * @param affected_agent_ids Array of agent IDs that would be affected
+ * @param num_affected_agents Number of affected agents
+ * @param decision_output Output: recommended decision (buffer >= 512 bytes)
+ * @param confidence Output: confidence in this decision [0.0, 1.0]
+ * @return true if decision generated
+ *
+ * USAGE: Call before executing actions that affect other agents
+ * COMPLEXITY: O(n) where n = num_affected_agents
+ */
+bool executive_query_agent_aware_decision(executive_controller_t* exec,
+                                           const char* action_description,
+                                           const uint32_t* affected_agent_ids,
+                                           uint32_t num_affected_agents,
+                                           char* decision_output,
+                                           float* confidence);
+
+/**
+ * @brief Evaluate false belief scenarios for planning
+ *
+ * WHAT: Consider agent false beliefs when planning actions
+ * WHY:  Agents may act on incorrect beliefs, need to account for this
+ * HOW:  Query ToM for false beliefs, adjust plan accordingly
+ *
+ * @param exec Executive controller
+ * @param agent_id Which agent to check
+ * @param has_false_beliefs Output: whether agent has false beliefs
+ * @param false_belief_description Output: description (buffer >= 256 bytes)
+ * @return true if evaluation succeeded
+ *
+ * COMPLEXITY: O(1)
+ */
+bool executive_check_agent_false_beliefs(executive_controller_t* exec,
+                                          uint32_t agent_id,
+                                          bool* has_false_beliefs,
+                                          char* false_belief_description);
+
+/**
+ * @brief Model agent intentions for coordination
+ *
+ * WHAT: Get prediction of what agent plans to do
+ * WHY:  Enable proactive coordination and conflict avoidance
+ * HOW:  Query ToM for agent's current intentions
+ *
+ * @param exec Executive controller
+ * @param agent_id Which agent to query
+ * @param intention_output Output: predicted intention (buffer >= 256 bytes)
+ * @param likelihood Output: confidence in prediction [0.0, 1.0]
+ * @return true if intention retrieved
+ *
+ * COMPLEXITY: O(1)
+ */
+bool executive_model_agent_intentions(executive_controller_t* exec,
+                                       uint32_t agent_id,
+                                       char* intention_output,
+                                       float* likelihood);
 
 #ifdef __cplusplus
 }

@@ -9,6 +9,9 @@
 #include <stdint.h>
 #include <stdbool.h>
 
+// Forward declaration for positional encoding
+typedef struct nimcp_pos_encoder_s nimcp_pos_encoder_t;
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -274,6 +277,62 @@ void circular_buffer_get_stats(
  * @param buffer Buffer to reset stats for
  */
 void circular_buffer_reset_stats(circular_buffer_t* buffer);
+
+//=============================================================================
+// POSITIONAL ENCODING INTEGRATION
+//=============================================================================
+
+/**
+ * @brief Set positional encoding configuration for buffer
+ *
+ * WHAT: Configure sinusoidal PE and ALiBi for buffer position tracking
+ * WHY:  Enable position-aware buffer access patterns for temporal context
+ * HOW:  Create and attach PE encoder to buffer instance
+ *
+ * @param buffer Buffer to configure
+ * @param encoder Positional encoder instance (SINUSOIDAL or ALIBI type)
+ * @return true on success, false on failure
+ */
+bool circular_buffer_set_pe_config(
+    circular_buffer_t* buffer,
+    nimcp_pos_encoder_t* encoder
+);
+
+/**
+ * @brief Get position embedding for buffer index
+ *
+ * WHAT: Retrieve sinusoidal positional encoding for specific buffer position
+ * WHY:  Add temporal context to buffered data at read time
+ * HOW:  Calculate relative position and encode using attached PE encoder
+ *
+ * @param buffer Buffer to query
+ * @param index Buffer index (relative to read position)
+ * @param output Output buffer for embedding (must be encoder's embedding_dim size)
+ * @return true on success, false if PE not configured or index out of range
+ */
+bool circular_buffer_get_position_embedding(
+    const circular_buffer_t* buffer,
+    size_t index,
+    float* output
+);
+
+/**
+ * @brief Apply ALiBi attention bias for buffer lookups
+ *
+ * WHAT: Compute linear position bias matrix for buffer sequence
+ * WHY:  Enable position-aware attention over buffered temporal data
+ * HOW:  Use ALiBi encoder to generate bias based on buffer positions
+ *
+ * @param buffer Buffer to query
+ * @param seq_length Length of sequence to compute bias for
+ * @param bias_out Output bias matrix (num_heads * seq_length * seq_length floats)
+ * @return true on success, false if ALiBi not configured
+ */
+bool circular_buffer_apply_alibi_bias(
+    const circular_buffer_t* buffer,
+    uint32_t seq_length,
+    float* bias_out
+);
 
 #ifdef __cplusplus
 }

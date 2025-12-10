@@ -406,6 +406,60 @@ float nimcp_optimizer_clip_by_norm(
     float max_norm
 );
 
+/* ============================================================================
+ * Tensor-Based Operations (Phase TENSOR-2)
+ * ============================================================================ */
+
+/* Forward declaration for tensor type */
+struct nimcp_tensor_s;
+typedef struct nimcp_tensor_s nimcp_tensor_t;
+
+/**
+ * @brief Perform optimization step on tensor parameters
+ *
+ * WHAT: Update parameters using gradients with tensor operations
+ * WHY:  Efficient vectorized parameter updates
+ * HOW:  Extract data from tensors and apply optimizer step
+ *
+ * @param ctx Optimizer context
+ * @param params Parameter tensor (modified in place)
+ * @param gradients Gradient tensor
+ * @return NIMCP_SUCCESS on success
+ */
+nimcp_result_t nimcp_optimizer_step_tensor(
+    nimcp_optimizer_context_t* ctx,
+    nimcp_tensor_t* params,
+    const nimcp_tensor_t* gradients
+);
+
+/**
+ * @brief Compute gradient norm from tensor
+ *
+ * WHAT: Calculate L2 norm of gradient tensor
+ * WHY:  Efficient norm computation for gradient monitoring
+ * HOW:  Use tensor library's vectorized norm function
+ *
+ * @param gradients Gradient tensor
+ * @return L2 norm of gradients
+ */
+float nimcp_optimizer_gradient_norm_tensor(const nimcp_tensor_t* gradients);
+
+/**
+ * @brief Clip gradient tensor by norm
+ *
+ * WHAT: Scale gradient tensor if norm exceeds threshold
+ * WHY:  Prevent exploding gradients with tensor efficiency
+ * HOW:  Compute norm and scale in-place if needed
+ *
+ * @param gradients Gradient tensor (modified in place)
+ * @param max_norm Maximum gradient norm
+ * @return Original norm before clipping
+ */
+float nimcp_optimizer_clip_by_norm_tensor(
+    nimcp_tensor_t* gradients,
+    float max_norm
+);
+
 #ifdef __cplusplus
 }
 #endif

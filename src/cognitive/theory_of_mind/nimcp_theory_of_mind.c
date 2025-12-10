@@ -69,6 +69,35 @@
 // Internal Structures
 //=============================================================================
 
+// Maximum agents to track (Phase 10.6.1)
+#define MAX_TRACKED_AGENTS 32
+
+/**
+ * @brief Per-agent mental model (Phase 10.6.1)
+ *
+ * WHAT: Complete BDI + emotion model for one agent
+ * WHY:  Track multiple agents simultaneously
+ * HOW:  Store agent-specific state
+ */
+typedef struct {
+    agent_id_t agent_id;            /**< Agent identifier */
+    bool active;                    /**< Is this slot in use? */
+
+    // BDI Model
+    tom_belief_t belief;
+    tom_desire_t desire;
+    tom_intention_t intention;
+
+    // Current inferences
+    tom_emotion_t current_emotion;
+    float emotion_confidence;
+    char current_goal[256];
+    float goal_confidence;
+
+    // Last update time
+    uint64_t last_update_ms;
+} agent_model_t;
+
 /**
  * @brief Theory of Mind internal state
  *
@@ -80,7 +109,7 @@ struct theory_of_mind_s {
     // Reference to self (for simulation)
     brain_t self_brain;
 
-    // BDI Model
+    // BDI Model (legacy single agent - kept for backward compatibility)
     tom_belief_t beliefs[MAX_BELIEFS];
     uint32_t num_beliefs;
 
@@ -90,7 +119,7 @@ struct theory_of_mind_s {
     tom_intention_t intentions[MAX_INTENTIONS];
     uint32_t num_intentions;
 
-    // Current inferences
+    // Current inferences (legacy single agent)
     tom_emotion_t current_emotion;
     float emotion_confidence;
     char current_goal[256];
@@ -109,6 +138,10 @@ struct theory_of_mind_s {
     // Bio-async integration
     bio_module_context_t bio_ctx;   /**< Bio-async module context */
     bool bio_async_enabled;         /**< Bio-async registration status */
+
+    // Multi-agent tracking (Phase 10.6.1)
+    agent_model_t agent_models[MAX_TRACKED_AGENTS];
+    uint32_t num_active_agents;
 };
 
 //=============================================================================
@@ -775,4 +808,68 @@ const char* tom_emotion_to_string(tom_emotion_t emotion)
         case TOM_EMOTION_CALM:      return "Calm";
         default:                    return "Unknown";
     }
+}
+
+// NOTE: tom_get_last_error already defined above - removed duplicate
+
+//=============================================================================
+// Multi-Agent Helper Functions (Phase 10.6.1)
+//=============================================================================
+
+/**
+ * @brief Find agent model by ID
+ *
+ * WHAT: Locate agent model in tracking array
+ * WHY:  Need to access agent-specific state
+ * HOW:  Linear search through active agents
+ *
+ * COMPLEXITY: O(n) where n = num_active_agents
+ */
+static agent_model_t* find_agent_model(theory_of_mind_t tom, agent_id_t agent_id)
+{
+    if (!tom) return NULL;
+
+    for (uint32_t i = 0; i < MAX_TRACKED_AGENTS; i++) {
+        if (tom->agent_models[i].active && tom->agent_models[i].agent_id == agent_id) {
+            return &tom->agent_models[i];
+        }
+    }
+    return NULL;
+}
+
+/**
+ * @brief Get or create agent model
+ *
+ * WHAT: Find existing agent model or allocate new slot
+ * WHY:  Need to track agent state, create if first encounter
+ * HOW:  Search for existing, then find free slot
+ *
+ * COMPLEXITY: O(n) where n = MAX_TRACKED_AGENTS
+ */
+static agent_model_t* get_or_create_agent_model(theory_of_mind_t tom, agent_id_t agent_id)
+{
+    if (!tom) return NULL;
+
+    // First, try to find existing
+    agent_model_t* existing = find_agent_model(tom, agent_id);
+    if (existing) return existing;
+
+    // Find free slot
+    for (uint32_t i = 0; i < MAX_TRACKED_AGENTS; i++) {
+        if (!tom->agent_models[i].active) {
+            tom->agent_models[i].active = true;
+            tom->agent_models[i].agent_id = agent_id;
+            tom->agent_models[i].current_emotion = TOM_EMOTION_NEUTRAL;
+            tom->agent_models[i].emotion_confidence = DEFAULT_CONFIDENCE;
+            tom->agent_models[i].goal_confidence = DEFAULT_CONFIDENCE;
+            tom->agent_models[i].last_update_ms = nimcp_time_get_ms();
+            strncpy(tom->agent_models[i].current_goal, "Unknown",
+                    sizeof(tom->agent_models[i].current_goal));
+            tom->num_active_agents++;
+            return &tom->agent_models[i];
+        }
+    }
+
+    set_error("Agent tracking array full (max %d agents)", MAX_TRACKED_AGENTS);
+    return NULL;
 }

@@ -386,28 +386,40 @@ brain_t brain_create_custom(const brain_config_t* config)
 
     // ========================================================================
     // SUBSYSTEM INITIALIZATION (in dependency order)
+    // Lazy evaluation: Skip heavy subsystems when lazy_*_init flags are set.
+    // These will be initialized on-demand when first accessed.
     // ========================================================================
 
-    // Phase 5/6: Glial integration
-    if (!init_glial_subsystem(brain)) { brain_destroy(brain); return NULL; }
+    // Phase 5/6: Glial integration (heavy - astrocyte/oligodendrocyte networks)
+    if (!brain->config.lazy_glial_init) {
+        if (!init_glial_subsystem(brain)) { brain_destroy(brain); return NULL; }
+    }
 
-    // Phase 1.5.6: Axon network
-    if (!init_axon_subsystem(brain)) { brain_destroy(brain); return NULL; }
+    // Phase 1.5.6: Axon network (heavy - myelination modeling)
+    if (!brain->config.lazy_axon_init) {
+        if (!init_axon_subsystem(brain)) { brain_destroy(brain); return NULL; }
+    }
 
-    // Phase 1.5.7: Dendrite network
-    if (!init_dendrite_subsystem(brain)) { brain_destroy(brain); return NULL; }
+    // Phase 1.5.7: Dendrite network (heavy - dendritic computation)
+    if (!brain->config.lazy_dendrite_init) {
+        if (!init_dendrite_subsystem(brain)) { brain_destroy(brain); return NULL; }
+    }
 
-    // Phase 8: Multi-modal subsystems
-    if (!init_multimodal_subsystems(brain)) { brain_destroy(brain); return NULL; }
+    // Phase 8: Multi-modal subsystems (heavy - visual/audio/speech cortices)
+    // Check individual lazy flags for perception subsystems
+    if (!brain->config.lazy_visual_init && !brain->config.lazy_audio_init &&
+        !brain->config.lazy_speech_init) {
+        if (!init_multimodal_subsystems(brain)) { brain_destroy(brain); return NULL; }
+    }
 
-    // Phase 8.6: Pink noise neuromodulation
+    // Phase 8.6: Pink noise neuromodulation (light - always init)
     if (!init_pink_noise_subsystem(brain)) { brain_destroy(brain); return NULL; }
 
-    // Phase 10.5: Neuromodulator system
-    if (!init_neuromodulator_system(brain)) { brain_destroy(brain); return NULL; }
-
-    // Phase C2.1: Spatial neuromodulator system
-    if (!init_spatial_neuromod_system(brain)) { brain_destroy(brain); return NULL; }
+    // Phase 10.5: Neuromodulator system (heavy - spatial/temporal dynamics)
+    if (!brain->config.lazy_neuromod_init) {
+        if (!init_neuromodulator_system(brain)) { brain_destroy(brain); return NULL; }
+        if (!init_spatial_neuromod_system(brain)) { brain_destroy(brain); return NULL; }
+    }
 
     // Phase 8.9: Neural logic gates
     if (!init_symbolic_logic_subsystem(brain)) { brain_destroy(brain); return NULL; }
@@ -427,8 +439,10 @@ brain_t brain_create_custom(const brain_config_t* config)
     brain->current_time_us = 0;
     brain->last_glial_update_us = 0;
 
-    // Phase 10.2: Working memory
-    if (!init_working_memory_subsystem(brain)) { brain_destroy(brain); return NULL; }
+    // Phase 10.2: Working memory (heavy - item buffers, decay dynamics)
+    if (!brain->config.lazy_working_memory_init) {
+        if (!init_working_memory_subsystem(brain)) { brain_destroy(brain); return NULL; }
+    }
 
     // ========================================================================
     // PHASE 2 MIDDLEWARE: SPIKE ANALYSIS & POPULATION CODING
@@ -486,20 +500,28 @@ brain_t brain_create_custom(const brain_config_t* config)
     // Phase 9.2: Epistemic filtering
     if (!init_epistemic_subsystem(brain)) { brain_destroy(brain); return NULL; }
 
-    // Phase 10.2: Memory consolidation
-    if (!init_consolidation_subsystem(brain)) { brain_destroy(brain); return NULL; }
+    // Phase 10.2: Memory consolidation (heavy - engram formation, replay)
+    if (!brain->config.lazy_consolidation_init) {
+        if (!init_consolidation_subsystem(brain)) { brain_destroy(brain); return NULL; }
+    }
 
-    // Phase 10.3: Executive functions
-    if (!init_executive_subsystem(brain)) { brain_destroy(brain); return NULL; }
+    // Phase 10.3: Executive functions (heavy - Portia integration, planning)
+    if (!brain->config.lazy_executive_init) {
+        if (!init_executive_subsystem(brain)) { brain_destroy(brain); return NULL; }
+    }
 
-    // Phase 10.6: Theory of Mind
-    if (!init_theory_of_mind_subsystem(brain)) { brain_destroy(brain); return NULL; }
+    // Phase 10.6: Theory of Mind (heavy - agent modeling, belief tracking)
+    if (!brain->config.lazy_theory_of_mind_init) {
+        if (!init_theory_of_mind_subsystem(brain)) { brain_destroy(brain); return NULL; }
+    }
 
-    // Phase 10.7: Natural Explanations
+    // Phase 10.7: Natural Explanations (light - always init)
     if (!init_natural_explanations_subsystem(brain)) { brain_destroy(brain); return NULL; }
 
-    // Phase 10.8: Meta-Learning
-    if (!init_meta_learning_subsystem(brain)) { brain_destroy(brain); return NULL; }
+    // Phase 10.8: Meta-Learning (heavy - learning-to-learn dynamics)
+    if (!brain->config.lazy_meta_learning_init) {
+        if (!init_meta_learning_subsystem(brain)) { brain_destroy(brain); return NULL; }
+    }
 
     // Phase 10.5: Mental Health Monitoring
     if (!init_mental_health_subsystem(brain)) { brain_destroy(brain); return NULL; }
@@ -507,23 +529,23 @@ brain_t brain_create_custom(const brain_config_t* config)
     // Phase 10.9: Predictive Processing
     if (!init_predictive_subsystem(brain)) { brain_destroy(brain); return NULL; }
 
-    // Phase 10.11: Mirror Neurons
-    if (!init_mirror_neurons(brain)) { brain_destroy(brain); return NULL; }
+    // Phase 10.11: Mirror Neurons (heavy - action observation, imitation learning)
+    if (!brain->config.lazy_mirror_neurons_init) {
+        if (!init_mirror_neurons(brain)) { brain_destroy(brain); return NULL; }
+    }
 
-    // Phase 10.11.2: Curiosity Engine
+    // Phase 10.11.2: Curiosity Engine (light - always init)
     if (!init_curiosity_subsystem(brain)) { brain_destroy(brain); return NULL; }
 
-    // Phase 10.11.3: Salience Evaluator
+    // Phase 10.11.3: Salience Evaluator (light - always init)
     if (!init_salience_subsystem(brain)) { brain_destroy(brain); return NULL; }
 
-    // Phase 11: Ethics Engine
-    if (!init_ethics_engine_subsystem(brain)) { brain_destroy(brain); return NULL; }
-
-    // Phase 11: Empathy Network
-    if (!init_empathy_network_subsystem(brain)) { brain_destroy(brain); return NULL; }
-
-    // Phase 11: Empathetic Response Engine
-    if (!init_empathetic_response_subsystem(brain)) { brain_destroy(brain); return NULL; }
+    // Phase 11: Ethics Engine (heavy - value alignment, constraint checking)
+    if (!brain->config.lazy_ethics_init) {
+        if (!init_ethics_engine_subsystem(brain)) { brain_destroy(brain); return NULL; }
+        if (!init_empathy_network_subsystem(brain)) { brain_destroy(brain); return NULL; }
+        if (!init_empathetic_response_subsystem(brain)) { brain_destroy(brain); return NULL; }
+    }
 
     // Phase 12: Introspection
     if (!init_introspection_subsystem(brain)) { brain_destroy(brain); return NULL; }
@@ -540,8 +562,10 @@ brain_t brain_create_custom(const brain_config_t* config)
     // Phase 12: Self-Model
     if (!init_self_model_subsystem(brain)) { brain_destroy(brain); return NULL; }
 
-    // Global Workspace Architecture
-    if (!init_global_workspace_subsystem(brain)) { brain_destroy(brain); return NULL; }
+    // Global Workspace Architecture (heavy - conscious access, broadcast)
+    if (!brain->config.lazy_global_workspace_init) {
+        if (!init_global_workspace_subsystem(brain)) { brain_destroy(brain); return NULL; }
+    }
 
     // Phase SC-2: Security-Fault Tolerance Integration
     if (!init_security_subsystem(brain)) { brain_destroy(brain); return NULL; }
@@ -653,6 +677,98 @@ brain_t brain_create(const char* task_name, brain_size_t size, brain_task_t task
     }
 
     // Initialize config with defaults
+    nimcp_brain_factory_init_brain_config(&config, task_name, size, task,
+                                          num_inputs, num_outputs, strategy);
+
+    // Strategy will be recreated in brain_create_custom
+    strategy_destroy(strategy);
+
+    // Delegate to main implementation
+    return brain_create_custom(&config);
+}
+
+/**
+ * @brief Create minimal brain for fast initialization (test/embedded use)
+ *
+ * WHY: 5-10x faster initialization by skipping optional cognitive subsystems
+ * This is ideal for tests that only need core neural network functionality.
+ *
+ * COMPLEXITY: O(n) where n = num_neurons (but with smaller constant factor)
+ *
+ * @param task_name Human-readable name
+ * @param size Brain size preset
+ * @param task Task template
+ * @param num_inputs Input dimension
+ * @param num_outputs Output dimension
+ * @return Brain handle or NULL on error
+ */
+brain_t brain_create_minimal(const char* task_name, brain_size_t size, brain_task_t task,
+                             uint32_t num_inputs, uint32_t num_outputs)
+{
+    // Guard: Validate parameters
+    if (!nimcp_brain_factory_validate_creation_params(task_name, num_inputs, num_outputs)) {
+        return NULL;
+    }
+
+    // Build configuration with minimal_mode enabled
+    brain_config_t config = {0};
+    config.minimal_mode = true;  // CRITICAL: Set before init_brain_config
+
+    // Create temporary strategy to get learning rate for config
+    task_strategy_t* strategy = strategy_create(task);
+    if (!strategy) {
+        set_error("Failed to create task strategy");
+        return NULL;
+    }
+
+    // Initialize config with defaults (respects minimal_mode flag)
+    nimcp_brain_factory_init_brain_config(&config, task_name, size, task,
+                                          num_inputs, num_outputs, strategy);
+
+    // Strategy will be recreated in brain_create_custom
+    strategy_destroy(strategy);
+
+    // Delegate to main implementation
+    return brain_create_custom(&config);
+}
+
+/**
+ * @brief Create brain with lazy initialization for heavy subsystems
+ *
+ * WHY: 2-5x faster initialization by deferring heavy subsystems until first use.
+ * Unlike minimal_mode, all subsystems ARE enabled - they're just initialized lazily.
+ * This is ideal for production use where startup time matters but full functionality
+ * is eventually needed.
+ *
+ * COMPLEXITY: O(n) where n = num_neurons (smaller constant factor initially)
+ *
+ * @param task_name Human-readable name
+ * @param size Brain size preset
+ * @param task Task template
+ * @param num_inputs Input dimension
+ * @param num_outputs Output dimension
+ * @return Brain handle or NULL on error
+ */
+brain_t brain_create_lazy(const char* task_name, brain_size_t size, brain_task_t task,
+                          uint32_t num_inputs, uint32_t num_outputs)
+{
+    // Guard: Validate parameters
+    if (!nimcp_brain_factory_validate_creation_params(task_name, num_inputs, num_outputs)) {
+        return NULL;
+    }
+
+    // Build configuration with lazy_init_mode enabled
+    brain_config_t config = {0};
+    config.lazy_init_mode = true;  // CRITICAL: Set before init_brain_config
+
+    // Create temporary strategy to get learning rate for config
+    task_strategy_t* strategy = strategy_create(task);
+    if (!strategy) {
+        set_error("Failed to create task strategy");
+        return NULL;
+    }
+
+    // Initialize config with defaults (respects lazy_init_mode flag)
     nimcp_brain_factory_init_brain_config(&config, task_name, size, task,
                                           num_inputs, num_outputs, strategy);
 

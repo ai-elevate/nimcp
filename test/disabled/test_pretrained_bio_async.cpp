@@ -52,7 +52,7 @@ protected:
         nimcp_log_init(&log_config);
 
         // Initialize bio-router for message tracking
-        nimcp_bio_router_init();
+        nimcp_bio_router_config_t cfg = {0}; bio_router_init(&cfg);
     }
 
     void TearDown() override {

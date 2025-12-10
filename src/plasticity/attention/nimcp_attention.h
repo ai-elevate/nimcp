@@ -32,6 +32,7 @@
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
+#include "utils/encoding/nimcp_positional_encoding.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -73,6 +74,15 @@ typedef struct {
     bool use_thalamic_gate;       // Enable thalamic gating mechanism
     bool use_salience_weighting;  // Enable salience-based attention
     float gate_bias;              // Thalamic gate bias (default opening)
+
+    /* WHAT: Positional encoding configuration (Strategy Pattern)
+     * WHY:  Allow runtime selection of RoPE vs ALiBi vs none
+     * HOW:  Encoder created based on pe_type, applied in forward pass
+     */
+    bool use_positional_encoding; // Enable positional encoding
+    nimcp_pos_encoding_type_t pe_type;  // PE type: NIMCP_POS_ROTARY or NIMCP_POS_ALIBI
+    float rope_base;              // RoPE frequency base (default: 10000.0)
+    float alibi_slope_base;       // ALiBi slope base for geometric sequence
 } multihead_attention_config_t;
 
 /**
@@ -118,8 +128,10 @@ void attention_head_destroy(attention_head_t head);
  * @param sequence_length Length of sequences
  * @param output Output buffer [sequence_length × output_dim]
  * @param attention_weights Output attention weights [sequence_length × sequence_length] (optional)
+ * @param pos_encoder Positional encoder for RoPE/ALiBi (optional, NULL = no PE)
+ * @param head_idx Head index for ALiBi bias (only used if pos_encoder is ALiBi type)
  * @return true on success, false on error
- * PERFORMANCE: ~50μs for 128-dim, 32-length sequence
+ * PERFORMANCE: ~50μs for 128-dim, 32-length sequence (without PE)
  * THREAD_SAFETY: Not thread-safe, use separate heads per thread
  */
 bool attention_head_forward(attention_head_t head,
@@ -128,7 +140,9 @@ bool attention_head_forward(attention_head_t head,
                            const float* value,
                            uint32_t sequence_length,
                            float* output,
-                           float* attention_weights);
+                           float* attention_weights,
+                           nimcp_pos_encoder_t* pos_encoder,
+                           uint32_t head_idx);
 
 //=============================================================================
 // Multihead Attention API (Cortical Column System)
@@ -242,6 +256,99 @@ bool attention_validate_config(const multihead_attention_config_t* config);
  * ```
  */
 float multihead_attention_get_strength(multihead_attention_t mha);
+
+//=============================================================================
+// Positional Encoding Integration (Strategy Pattern)
+//=============================================================================
+
+/**
+ * WHAT: Set positional encoding type for attention system
+ * WHY:  Allow runtime switching between RoPE and ALiBi strategies
+ * HOW:  Destroy old encoder, create new one with specified type
+ *
+ * @param mha Multihead attention system
+ * @param pe_type Encoding type (NIMCP_POS_ROTARY or NIMCP_POS_ALIBI)
+ * @return true on success, false on error
+ *
+ * PERFORMANCE: ~100μs (encoder creation overhead)
+ * THREAD_SAFETY: Not thread-safe, call before forward passes
+ *
+ * BIOLOGICAL BASIS:
+ * - Different brain regions use different spatial coding schemes
+ * - Place cells: absolute position (analogous to learned PE)
+ * - Grid cells: relative position (analogous to RoPE)
+ * - Distance coding in parietal cortex (analogous to ALiBi)
+ *
+ * USAGE:
+ * ```c
+ * // Use RoPE for long-range dependencies
+ * multihead_attention_set_pe_type(mha, NIMCP_POS_ROTARY);
+ *
+ * // Use ALiBi for efficiency on very long sequences
+ * multihead_attention_set_pe_type(mha, NIMCP_POS_ALIBI);
+ * ```
+ */
+bool multihead_attention_set_pe_type(multihead_attention_t mha,
+                                     nimcp_pos_encoding_type_t pe_type);
+
+/**
+ * WHAT: Apply RoPE to query/key projections (internal helper)
+ * WHY:  Inject relative position information into attention computation
+ * HOW:  Rotate Q/K by position-dependent angles before scoring
+ *
+ * @param mha Multihead attention system (must have NIMCP_POS_ROTARY encoder)
+ * @param query_proj Query projections [seq_len × key_dim]
+ * @param key_proj Key projections [seq_len × key_dim]
+ * @param seq_length Sequence length
+ * @param key_dim Key dimension
+ * @param query_out Rotated query output [seq_len × key_dim]
+ * @param key_out Rotated key output [seq_len × key_dim]
+ * @return true on success, false on error
+ *
+ * PERFORMANCE: ~O(seq_len × key_dim)
+ * COMPLEXITY: Applied per-head in attention_head_forward()
+ *
+ * THEORETICAL BASIS:
+ * - Su et al. (2021): RoFormer - Enhanced Transformer with Rotary Position Embedding
+ * - Encodes relative position via rotation: q^T k = f(q, m) f(k, n)^T
+ * - Rotation angle proportional to position difference (m - n)
+ * - Maintains dot product structure while encoding position
+ */
+bool multihead_attention_apply_rope(multihead_attention_t mha,
+                                   const float* query_proj,
+                                   const float* key_proj,
+                                   uint32_t seq_length,
+                                   uint32_t key_dim,
+                                   float* query_out,
+                                   float* key_out);
+
+/**
+ * WHAT: Get ALiBi attention bias matrix
+ * WHY:  Add position-dependent bias to attention scores
+ * HOW:  Compute linear distance penalties: bias[i][j] = -slope * |i - j|
+ *
+ * @param mha Multihead attention system (must have NIMCP_POS_ALIBI encoder)
+ * @param seq_length Sequence length
+ * @param bias_out Output bias matrix [num_heads × seq_length × seq_length]
+ * @return true on success, false on error
+ *
+ * PERFORMANCE: ~O(num_heads × seq_length^2)
+ * USAGE: Add to attention scores before softmax
+ *
+ * THEORETICAL BASIS:
+ * - Press et al. (2022): Train Short, Test Long - ALiBi
+ * - Linear bias encourages nearby tokens: attention[i][j] += bias[i][j]
+ * - Different slopes per head: slope[h] = 2^(-8(h+1)/num_heads)
+ * - Extrapolates to longer sequences than training length
+ *
+ * BIOLOGICAL ANALOGY:
+ * - Distance-dependent synaptic strength in cortex
+ * - Lateral inhibition: nearby neurons compete, distant less so
+ * - Temporal discounting in working memory
+ */
+bool multihead_attention_get_alibi_bias(multihead_attention_t mha,
+                                       uint32_t seq_length,
+                                       float* bias_out);
 
 #ifdef __cplusplus
 }

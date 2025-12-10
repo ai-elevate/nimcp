@@ -8,6 +8,7 @@
 
 #include "swarm/nimcp_swarm_signal.h"
 #include "security/nimcp_bbb_helpers.h"
+#include <stdio.h>
 #include "security/nimcp_security.h"
 #include "utils/validation/nimcp_common.h"
 #include "utils/logging/nimcp_logging.h"
@@ -15,6 +16,7 @@
 #include "utils/thread/nimcp_thread.h"
 #include "utils/time/nimcp_time.h"
 #include "utils/platform/nimcp_platform_time.h"
+#include "utils/encoding/nimcp_positional_encoding.h"
 
 #include <stdlib.h>
 #include <string.h>
@@ -85,6 +87,9 @@ struct nimcp_swarm_signal_adapter {
 
     /* Operational state */
     bool operational;
+
+    /* Positional encoding support */
+    nimcp_pos_encoder_t* pe_encoder;  /**< Positional encoder instance (optional) */
 };
 
 /* ==================== Internal Functions ==================== */
@@ -287,9 +292,8 @@ static bool encode_lora_packet(uint8_t* output, uint32_t* output_len,
     memcpy(&output[pos], &crc, sizeof(crc));
     pos += sizeof(crc);
 
-    /* Update CRC in header */
-    packet_header_t* hdr = (packet_header_t*)&output[LORA_PREAMBLE_LENGTH + 1];
-    hdr->crc = crc;
+    /* Note: header.crc field is not modified after CRC calculation
+     * to ensure CRC verification succeeds on decode */
 
     *output_len = pos;
     return true;
@@ -302,18 +306,23 @@ static bool decode_lora_packet(const uint8_t* input, uint32_t input_len,
                                uint8_t* payload, uint32_t* payload_len,
                                uint32_t* source_id, uint32_t* dest_id) {
     if (input_len < LORA_PREAMBLE_LENGTH + 1 + sizeof(packet_header_t) + LORA_CRC_SIZE) {
+        LOG_DEBUG("decode_lora_packet: too short: len=%u need=%zu",
+                  input_len, LORA_PREAMBLE_LENGTH + 1 + sizeof(packet_header_t) + LORA_CRC_SIZE);
         return false;
     }
 
     /* Verify preamble */
     for (int i = 0; i < LORA_PREAMBLE_LENGTH; i++) {
         if (input[i] != 0xAA) {
+            LOG_DEBUG("decode_lora_packet: bad preamble at %d: 0x%02x", i, input[i]);
             return false;
         }
     }
 
     /* Verify sync word */
     if (input[LORA_PREAMBLE_LENGTH] != LORA_SYNC_WORD) {
+        LOG_DEBUG("decode_lora_packet: bad sync: 0x%02x expected 0x%02x",
+                  input[LORA_PREAMBLE_LENGTH], LORA_SYNC_WORD);
         return false;
     }
 
@@ -428,9 +437,13 @@ nimcp_swarm_signal_adapter_t* swarm_signal_adapter_create(
     /* Initialize mutexes */
     nimcp_mutex_init(&adapter->stats_lock, NULL);
 
-    /* Generate node ID based on time and random seed */
-    srand((unsigned int)time(NULL));
-    adapter->node_id = (uint32_t)rand();
+    /* Use configured node_id if provided, otherwise generate random */
+    if (config->node_id > 0) {
+        adapter->node_id = config->node_id;
+    } else {
+        srand((unsigned int)time(NULL));
+        adapter->node_id = (uint32_t)rand();
+    }
 
     /* Initialize simulation queue if needed */
     adapter->sim_queue_index = -1;
@@ -445,6 +458,9 @@ nimcp_swarm_signal_adapter_t* swarm_signal_adapter_create(
     }
 
     adapter->operational = true;
+
+    // Initialize PE encoder as NULL (not configured by default)
+    adapter->pe_encoder = NULL;
 
     // BBB: Log successful creation
     bbb_audit_log(BBB_AUDIT_INFO, "swarm_signal", "adapter_created",
@@ -848,5 +864,147 @@ bool swarm_signal_flush(nimcp_swarm_signal_adapter_t* adapter) {
     bbb_audit_log(BBB_AUDIT_INFO, "swarm_signal", "queue_flushed",
                   "node=%u", adapter->node_id);
     LOG_INFO("Flushed adapter for node %u", adapter->node_id);
+    return true;
+}
+
+//=============================================================================
+// POSITIONAL ENCODING INTEGRATION
+//=============================================================================
+
+bool swarm_signal_set_pe_config(
+    nimcp_swarm_signal_adapter_t* adapter,
+    nimcp_pos_encoder_t* encoder
+) {
+    // BBB: Validate inputs
+    if (!bbb_check_pointer(adapter, "swarm_signal_set_pe_config")) {
+        return false;
+    }
+    if (!bbb_check_pointer(encoder, "swarm_signal_set_pe_config")) {
+        return false;
+    }
+
+    // Validate encoder type (should be SINUSOIDAL or ALIBI)
+    nimcp_pos_encoding_type_t type = nimcp_pos_get_type(encoder);
+    if (type != NIMCP_POS_SINUSOIDAL && type != NIMCP_POS_ALIBI) {
+        LOG_ERROR("swarm_signal_set_pe_config: Invalid encoder type %d (expected SINUSOIDAL or ALIBI)",
+                  type);
+        bbb_audit_log(BBB_AUDIT_ERROR, "swarm_signal", "invalid_pe_type",
+                      "type=%d node=%u", type, adapter->node_id);
+        return false;
+    }
+
+    // Attach encoder to adapter
+    adapter->pe_encoder = encoder;
+
+    bbb_audit_log(BBB_AUDIT_INFO, "swarm_signal", "pe_configured",
+                  "type=%s node=%u max_seq=%u dim=%u",
+                  nimcp_pos_type_to_string(type), adapter->node_id,
+                  nimcp_pos_get_max_length(encoder),
+                  nimcp_pos_get_dim(encoder));
+
+    LOG_INFO("Swarm signal PE configured: type=%s, node=%u, max_seq=%u, dim=%u",
+             nimcp_pos_type_to_string(type), adapter->node_id,
+             nimcp_pos_get_max_length(encoder),
+             nimcp_pos_get_dim(encoder));
+
+    return true;
+}
+
+bool swarm_signal_encode_sequence(
+    nimcp_swarm_signal_adapter_t* adapter,
+    uint32_t sequence_start,
+    uint32_t sequence_length,
+    float* embeddings_out
+) {
+    // BBB: Validate inputs
+    if (!bbb_check_pointer(adapter, "swarm_signal_encode_sequence")) {
+        return false;
+    }
+    if (!bbb_check_pointer(embeddings_out, "swarm_signal_encode_sequence")) {
+        return false;
+    }
+    if (!bbb_validate_range_u(sequence_length, 1, 65536, "swarm_signal_encode_sequence")) {
+        bbb_audit_log(BBB_AUDIT_WARNING, "swarm_signal", "invalid_seq_length",
+                      "length=%u node=%u", sequence_length, adapter->node_id);
+        return false;
+    }
+
+    // Guard: check PE configured
+    if (!adapter->pe_encoder) {
+        LOG_WARNING("swarm_signal_encode_sequence: PE not configured for node %u",
+                    adapter->node_id);
+        return false;
+    }
+
+    // Validate sequence fits within encoder limits
+    uint32_t max_seq = nimcp_pos_get_max_length(adapter->pe_encoder);
+    if (sequence_start + sequence_length > max_seq) {
+        LOG_ERROR("swarm_signal_encode_sequence: sequence [%u, %u) exceeds max %u",
+                  sequence_start, sequence_start + sequence_length, max_seq);
+        bbb_audit_log(BBB_AUDIT_WARNING, "swarm_signal", "seq_out_of_range",
+                      "start=%u len=%u max=%u node=%u",
+                      sequence_start, sequence_length, max_seq, adapter->node_id);
+        return false;
+    }
+
+    // Encode sequence using PE encoder
+    int result = nimcp_pos_encode_sequence(
+        adapter->pe_encoder,
+        sequence_start,
+        sequence_length,
+        embeddings_out
+    );
+
+    if (result != NIMCP_POS_SUCCESS) {
+        LOG_ERROR("swarm_signal_encode_sequence: encoding failed with error %d", result);
+        bbb_audit_log(BBB_AUDIT_ERROR, "swarm_signal", "encoding_failed",
+                      "error=%d node=%u", result, adapter->node_id);
+        return false;
+    }
+
+    return true;
+}
+
+bool swarm_signal_get_temporal_embedding(
+    nimcp_swarm_signal_adapter_t* adapter,
+    float* output
+) {
+    // BBB: Validate inputs
+    if (!bbb_check_pointer(adapter, "swarm_signal_get_temporal_embedding")) {
+        return false;
+    }
+    if (!bbb_check_pointer(output, "swarm_signal_get_temporal_embedding")) {
+        return false;
+    }
+
+    // Guard: check PE configured
+    if (!adapter->pe_encoder) {
+        LOG_WARNING("swarm_signal_get_temporal_embedding: PE not configured for node %u",
+                    adapter->node_id);
+        return false;
+    }
+
+    // Use current sequence number as position
+    uint32_t position = adapter->sequence_num;
+
+    // Validate position within encoder limits
+    uint32_t max_seq = nimcp_pos_get_max_length(adapter->pe_encoder);
+    if (position >= max_seq) {
+        LOG_ERROR("swarm_signal_get_temporal_embedding: position %u exceeds max %u",
+                  position, max_seq);
+        bbb_audit_log(BBB_AUDIT_WARNING, "swarm_signal", "position_out_of_range",
+                      "pos=%u max=%u node=%u", position, max_seq, adapter->node_id);
+        return false;
+    }
+
+    // Encode current position
+    int result = nimcp_pos_encode_position(adapter->pe_encoder, position, output);
+    if (result != NIMCP_POS_SUCCESS) {
+        LOG_ERROR("swarm_signal_get_temporal_embedding: encoding failed with error %d", result);
+        bbb_audit_log(BBB_AUDIT_ERROR, "swarm_signal", "temporal_encoding_failed",
+                      "error=%d pos=%u node=%u", result, position, adapter->node_id);
+        return false;
+    }
+
     return true;
 }

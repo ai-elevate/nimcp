@@ -25,9 +25,10 @@
 #include "security/nimcp_blood_brain_barrier.h"
 
 #include "utils/memory/nimcp_memory.h"  // nimcp_malloc/nimcp_free
-#include "utils/time/nimcp_time.h"       // get_current_time_ms
+#include "utils/time/nimcp_time.h"       // nimcp_time_monotonic_ms
 #include "plasticity/neuromodulators/nimcp_neuromodulators.h"  // Neuromodulator integration
 #include "core/brain/nimcp_brain.h"      // Brain reference
+#include "cognitive/global_workspace/nimcp_global_workspace.h"  // Global Workspace integration
 #include <string.h>
 #include <stdio.h>
 #include <stdarg.h>
@@ -37,9 +38,14 @@
 #include "async/nimcp_bio_messages.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/memory/nimcp_unified_memory.h"
+#include "portia/nimcp_portia.h"
+#include "portia/nimcp_portia_messages.h"
+#include "utils/platform/nimcp_platform_tier.h"
 
 #define LOG_MODULE "cognitive.executive"
 
+// Forward declarations for static helpers
+static inline uint64_t exec_get_time_ms(void);
 
 //=============================================================================
 // Constants
@@ -80,9 +86,28 @@ struct executive_controller {
     // Neuromodulation (Phase 10.x - Chemical modulation integration)
     brain_t brain;  /**< Brain reference for reading neurotransmitters */
 
+    // Global Workspace integration (Phase 10.x)
+    global_workspace_t* workspace;           /**< Global workspace for conscious broadcasting */
+    bool workspace_integration_enabled;       /**< Workspace integration active */
+    float workspace_ignition_threshold;       /**< Threshold for broadcasting decisions */
+
     // Bio-async integration
     bio_module_context_t bio_ctx;  /**< Bio-async module context */
     bool bio_async_enabled;        /**< Bio-async registration status */
+
+    // Portia integration (Phase 11.5)
+    platform_tier_t current_tier;  /**< Current Portia tier */
+    portia_degradation_level_t degradation_level; /**< Current degradation level */
+    bool resource_aware_mode;      /**< Resource-aware mode active */
+    uint64_t last_tier_change_ms;  /**< Last tier change timestamp */
+    uint32_t tier_change_count;    /**< Number of tier changes */
+
+    // Swarm coordination (Phase 14.x - Swarm Intelligence Integration)
+    void* swarm;                            /**< Swarm consensus context (optional, opaque) */
+    bool swarm_coordination_enabled;        /**< Enable swarm coordination */
+    float swarm_consensus_threshold;        /**< Threshold for swarm consensus [0,1] */
+    uint32_t pending_consensus_proposals;   /**< Count of proposals awaiting consensus */
+    nimcp_mutex_t swarm_lock;               /**< Protect swarm state */
 };
 
 //=============================================================================
@@ -117,6 +142,63 @@ static nimcp_error_t handle_decision_request(
 }
 
 /**
+ * @brief Handle workspace ignition notification
+ *
+ * WHAT: Process global workspace broadcast for executive attention
+ * WHY:  Executive should attend to salient workspace content
+ * HOW:  Read workspace broadcast, integrate into decision context
+ *
+ * @param msg Workspace ignition message
+ * @param msg_size Message size
+ * @param response_promise Response promise (unused)
+ * @param user_data Executive controller instance
+ * @return NIMCP_SUCCESS on success, error code otherwise
+ */
+static nimcp_error_t handle_workspace_ignition(
+    const void* msg,
+    size_t msg_size,
+    nimcp_bio_promise_t response_promise,
+    void* user_data)
+{
+    (void)msg_size;
+    (void)response_promise;
+
+    if (!msg || !user_data) {
+        return NIMCP_ERROR_NULL_ARG;
+    }
+
+    const bio_msg_attention_shift_t* ignition = (const bio_msg_attention_shift_t*)msg;
+    executive_controller_t* exec = (executive_controller_t*)user_data;
+
+    // Guard: Workspace integration not enabled
+    if (!exec->workspace_integration_enabled || !exec->workspace) {
+        return NIMCP_SUCCESS;  // Silently ignore
+    }
+
+    LOG_DEBUG("Executive received workspace ignition: id=%u, strength=%.2f",
+              ignition->target_id, ignition->attention_weight);
+
+    // Read workspace broadcast content
+    if (global_workspace_has_broadcast(exec->workspace)) {
+        float broadcast_content[256];
+        uint32_t content_dim = 0;
+        cognitive_module_t source = MODULE_NONE;
+
+        if (global_workspace_read_broadcast(exec->workspace, broadcast_content,
+                                            256, &content_dim, &source)) {
+            LOG_DEBUG("Executive attending to workspace broadcast from %s (dim=%u)",
+                      cognitive_module_to_string(source), content_dim);
+
+            // Integrate workspace state into executive decision context
+            // For now, just log the broadcast - in real implementation, this would
+            // inform task prioritization and planning
+        }
+    }
+
+    return NIMCP_SUCCESS;
+}
+
+/**
  * @brief Broadcast executive decision made
  */
 static void bio_broadcast_decision(executive_controller_t* exec, uint32_t task_id, float confidence) {
@@ -133,6 +215,134 @@ static void bio_broadcast_decision(executive_controller_t* exec, uint32_t task_i
 
     bio_router_broadcast(exec->bio_ctx, &msg, sizeof(msg));
     LOG_DEBUG("Broadcast: executive decision for task %u", task_id);
+}
+
+/**
+ * @brief Handle Portia tier change notification
+ *
+ * WHAT: Process Portia tier transition events
+ * WHY:  Executive must adapt to resource constraints
+ * HOW:  Update tier cache, enter resource-aware mode, log transition
+ *
+ * BIOLOGY: Prefrontal cortex adapts planning depth under stress/fatigue
+ *
+ * @param msg Tier change message
+ * @param msg_size Message size
+ * @param response_promise Response promise (unused)
+ * @param user_data Executive controller instance
+ * @return NIMCP_SUCCESS on success, error code otherwise
+ */
+static nimcp_error_t handle_portia_tier_change(
+    const void* msg,
+    size_t msg_size,
+    nimcp_bio_promise_t response_promise,
+    void* user_data)
+{
+    (void)msg_size;
+    (void)response_promise;
+
+    // Guard: Validate parameters
+    if (!msg || !user_data) {
+        return NIMCP_ERROR_NULL_ARG;
+    }
+
+    const bio_msg_portia_tier_change_t* tier_msg = (const bio_msg_portia_tier_change_t*)msg;
+    executive_controller_t* exec = (executive_controller_t*)user_data;
+
+    // Guard: Portia integration not enabled
+    if (!exec->config.enable_portia_integration) {
+        return NIMCP_SUCCESS;  // Silently ignore
+    }
+
+    platform_tier_t old_tier = exec->current_tier;
+    platform_tier_t new_tier = tier_msg->new_tier;
+
+    // Update cached tier
+    exec->current_tier = new_tier;
+    exec->last_tier_change_ms = exec_get_time_ms();
+    exec->tier_change_count++;
+
+    // Enter resource-aware mode if tier degraded
+    // Note: Enum values are FULL=0, MEDIUM=1, CONSTRAINED=2, MINIMAL=3
+    // Higher enum value = worse tier, so downgrade means new_tier > old_tier
+    if (new_tier > old_tier) {
+        exec->resource_aware_mode = true;
+        LOG_MODULE_WARN(LOG_MODULE, "Tier downgrade: %u -> %u (reason=%u), entering resource-aware mode",
+                       old_tier, new_tier, tier_msg->reason);
+    } else if (new_tier < old_tier) {
+        // Consider exiting resource-aware mode on upgrade
+        if (new_tier == PLATFORM_TIER_FULL) {
+            exec->resource_aware_mode = false;
+            LOG_MODULE_INFO(LOG_MODULE, "Tier upgrade: %u -> %u, exiting resource-aware mode",
+                           old_tier, new_tier);
+        } else {
+            LOG_MODULE_INFO(LOG_MODULE, "Tier upgrade: %u -> %u, maintaining resource-aware mode",
+                           old_tier, new_tier);
+        }
+    }
+
+    LOG_MODULE_DEBUG(LOG_MODULE, "Portia tier transition processed: %u -> %u (confidence=%.2f)",
+                    old_tier, new_tier, tier_msg->confidence);
+
+    return NIMCP_SUCCESS;
+}
+
+/**
+ * @brief Handle Portia degradation event
+ *
+ * WHAT: Process Portia degradation level changes
+ * WHY:  Executive must reduce cognitive load when features disabled
+ * HOW:  Update degradation level, reduce task queue capacity if needed
+ *
+ * @param msg Degradation event message
+ * @param msg_size Message size
+ * @param response_promise Response promise (unused)
+ * @param user_data Executive controller instance
+ * @return NIMCP_SUCCESS on success, error code otherwise
+ */
+static nimcp_error_t handle_portia_degradation_event(
+    const void* msg,
+    size_t msg_size,
+    nimcp_bio_promise_t response_promise,
+    void* user_data)
+{
+    (void)msg_size;
+    (void)response_promise;
+
+    // Guard: Validate parameters
+    if (!msg || !user_data) {
+        return NIMCP_ERROR_NULL_ARG;
+    }
+
+    const bio_msg_portia_degradation_event_t* deg_msg = (const bio_msg_portia_degradation_event_t*)msg;
+    executive_controller_t* exec = (executive_controller_t*)user_data;
+
+    // Guard: Portia integration not enabled
+    if (!exec->config.enable_portia_integration) {
+        return NIMCP_SUCCESS;  // Silently ignore
+    }
+
+    portia_degradation_level_t old_level = exec->degradation_level;
+    portia_degradation_level_t new_level = deg_msg->new_level;
+
+    // Update degradation level
+    exec->degradation_level = new_level;
+
+    // Always enter resource-aware mode on degradation
+    if (new_level > PORTIA_DEGRADATION_NONE) {
+        exec->resource_aware_mode = true;
+    }
+
+    // Log degradation event
+    if (new_level > old_level) {
+        LOG_MODULE_WARN(LOG_MODULE, "Degradation: %u -> %u (%u features disabled): %s",
+                       old_level, new_level, deg_msg->features_disabled, deg_msg->description);
+    } else if (new_level < old_level) {
+        LOG_MODULE_INFO(LOG_MODULE, "Recovery: %u -> %u: %s",
+                       old_level, new_level, deg_msg->description);
+    }
+
+    return NIMCP_SUCCESS;
 }
 
 //=============================================================================
@@ -170,7 +380,7 @@ const char* executive_get_last_error(void)
  *
  * @return Current time in milliseconds since boot
  */
-static uint64_t get_current_time_ms(void)
+static inline uint64_t exec_get_time_ms(void)
 {
     return nimcp_time_monotonic_ms();
 }
@@ -390,11 +600,18 @@ executive_controller_t* executive_create_custom(const executive_config_t* config
     exec->num_tasks = 0;
     exec->active_task = NULL;
     exec->next_task_id = 1;
-    exec->last_switch_time_ms = get_current_time_ms();
+    exec->last_switch_time_ms = exec_get_time_ms();
     exec->total_decisions = 0;
 
     memset(&exec->stats, 0, sizeof(executive_stats_t));
     exec->brain = NULL;  // Initialize to NULL
+
+    // =========================================================================
+    // GLOBAL WORKSPACE: Initialize integration fields
+    // =========================================================================
+    exec->workspace = NULL;
+    exec->workspace_integration_enabled = false;
+    exec->workspace_ignition_threshold = 0.7f;  // Default threshold
 
     // =========================================================================
     // BIO-ASYNC: Register with bio-router
@@ -413,8 +630,34 @@ executive_controller_t* executive_create_custom(const executive_config_t* config
             exec->bio_async_enabled = true;
             // Register message handlers
             bio_router_register_handler(exec->bio_ctx, BIO_MSG_DECISION_REQUEST, handle_decision_request);
-            LOG_INFO("Bio-async registered for executive module with handlers");
+            bio_router_register_handler(exec->bio_ctx, BIO_MSG_ATTENTION_SHIFT, handle_workspace_ignition);
+
+            // Register Portia integration handlers
+            if (exec->config.enable_portia_integration) {
+                bio_router_register_handler(exec->bio_ctx, BIO_MSG_TYPE_PORTIA_TIER_CHANGE, handle_portia_tier_change);
+                bio_router_register_handler(exec->bio_ctx, BIO_MSG_TYPE_PORTIA_DEGRADATION_EVENT, handle_portia_degradation_event);
+                LOG_INFO("Bio-async registered for executive module with Portia handlers");
+            } else {
+                LOG_INFO("Bio-async registered for executive module with handlers");
+            }
         }
+    }
+
+    // =========================================================================
+    // PORTIA INTEGRATION: Initialize current tier
+    // =========================================================================
+    if (exec->config.enable_portia_integration && portia_is_initialized()) {
+        exec->current_tier = portia_get_current_tier();
+        // Note: FULL=0 is best, MINIMAL=3 is worst. resource_aware if NOT at full tier.
+        exec->resource_aware_mode = (exec->current_tier > PLATFORM_TIER_FULL);
+        LOG_INFO("Executive initialized with Portia tier %u, resource_aware=%d",
+                 exec->current_tier, exec->resource_aware_mode);
+    } else {
+        // Portia not initialized or integration disabled - use safe defaults
+        // Keep current_tier at 0 (PLATFORM_TIER_MINIMAL) from calloc
+        // resource_aware_mode stays false - no active resource management
+        exec->current_tier = PLATFORM_TIER_MINIMAL;
+        exec->resource_aware_mode = false;
     }
 
     return exec;
@@ -439,6 +682,109 @@ void executive_set_brain(executive_controller_t* exec, brain_t brain)
     }
 
     exec->brain = brain;
+}
+
+/**
+ * @brief Set global workspace for conscious broadcasting
+ *
+ * WHAT: Associate executive controller with global workspace
+ * WHY:  Enable conscious decision broadcasting and workspace attention
+ * HOW:  Store workspace reference and enable integration
+ *
+ * USAGE: Call after creation to enable workspace integration
+ *
+ * @param exec Executive controller
+ * @param workspace Global workspace handle (can be NULL to disable)
+ */
+void executive_set_workspace(executive_controller_t* exec, global_workspace_t* workspace)
+{
+    if (!exec) {
+        return;
+    }
+
+    exec->workspace = workspace;
+    exec->workspace_integration_enabled = (workspace != NULL);
+
+    if (workspace) {
+        // Subscribe to workspace broadcasts
+        global_workspace_subscribe(workspace, MODULE_EXECUTIVE);
+        LOG_INFO("Executive controller integrated with global workspace");
+    }
+}
+
+/**
+ * @brief Broadcast significant decision to global workspace
+ *
+ * WHAT: Submit executive decision for workspace ignition
+ * WHY:  Make important decisions consciously available
+ * HOW:  Create decision vector, compete for workspace access
+ *
+ * ALGORITHM:
+ * 1. Check if decision meets ignition threshold
+ * 2. Create decision representation vector
+ * 3. Compete for global workspace access
+ * 4. If successful, decision becomes consciously available
+ *
+ * @param exec Executive controller
+ * @param task Task descriptor for decision context
+ * @param confidence Decision confidence [0, 1]
+ * @return true if decision was broadcast to workspace
+ */
+static bool broadcast_decision_to_workspace(
+    executive_controller_t* exec,
+    const task_descriptor_t* task,
+    float confidence)
+{
+    // Guard: Workspace integration not enabled
+    if (!exec->workspace_integration_enabled || !exec->workspace || !task) {
+        return false;
+    }
+
+    // Guard: Confidence below threshold
+    if (confidence < exec->workspace_ignition_threshold) {
+        return false;
+    }
+
+    // Create decision representation vector
+    float decision_content[256] = {0};  // Workspace capacity
+
+    // Encode task information into decision vector
+    decision_content[0] = (float)task->type / 10.0f;         // Task type
+    decision_content[1] = (float)task->priority / 5.0f;      // Priority
+    decision_content[2] = (float)task->status / 6.0f;        // Status
+    decision_content[3] = confidence;                         // Confidence
+
+    // Add task progress information
+    if (task->steps_total > 0) {
+        decision_content[4] = (float)task->steps_completed / (float)task->steps_total;
+    }
+
+    // Compete for workspace access with confidence as strength
+    bool won = global_workspace_compete(exec->workspace, MODULE_EXECUTIVE,
+                                        decision_content, 256, confidence);
+
+    if (won) {
+        LOG_INFO("Executive decision broadcast to workspace: task=%s, confidence=%.2f",
+                 task->name, confidence);
+
+        // Broadcast via bio-async for distributed coordination
+        if (exec->bio_async_enabled && exec->bio_ctx) {
+            bio_msg_decision_response_t decision_msg = {0};
+            bio_msg_init_header(&decision_msg.header, BIO_MSG_DECISION_RESPONSE,
+                                BIO_MODULE_EXECUTIVE, BIO_MODULE_ALL,
+                                sizeof(bio_msg_decision_response_t));
+            decision_msg.approved = true;
+            decision_msg.confidence = confidence;
+            decision_msg.selected_option = task->task_id;
+            snprintf(decision_msg.reasoning, sizeof(decision_msg.reasoning),
+                     "Executive decision: %s", task->name);
+
+            bio_router_send(exec->bio_ctx, BIO_CHANNEL_SEROTONIN,
+                            &decision_msg, sizeof(decision_msg));
+        }
+    }
+
+    return won;
 }
 
 /**
@@ -514,7 +860,7 @@ uint32_t executive_add_task(executive_controller_t* exec, const task_descriptor_
     *new_task = *task;
     new_task->task_id = exec->next_task_id++;
     new_task->status = TASK_STATUS_PENDING;
-    new_task->created_ms = get_current_time_ms();
+    new_task->created_ms = exec_get_time_ms();
     new_task->started_ms = 0;
     new_task->completed_ms = 0;
     new_task->steps_completed = 0;
@@ -634,6 +980,13 @@ bool executive_complete_task(executive_controller_t* exec, bool success, uint64_
     } else {
         exec->stats.failed_tasks++;
     }
+
+    // Broadcast significant decision to global workspace
+    float confidence = success ? 0.8f : 0.5f;  // Higher confidence for success
+    if (exec->active_task->priority >= PRIORITY_HIGH) {
+        confidence += 0.1f;  // Boost confidence for high-priority tasks
+    }
+    broadcast_decision_to_workspace(exec, exec->active_task, confidence);
 
     // Free the completed task (it's no longer in the queue)
     nimcp_free(exec->active_task);
@@ -1175,4 +1528,108 @@ cleanup:
     }
     nimcp_free(exec);
     return NULL;
+}
+
+//=============================================================================
+// Portia Integration Functions
+//=============================================================================
+
+/**
+ * WHAT: Get current Portia platform tier
+ * WHY:  Allow executive to adapt behavior based on resource constraints
+ * HOW:  Return cached tier from Portia messages
+ */
+uint32_t executive_get_portia_tier(executive_controller_t* exec)
+{
+    // Guard: Null check
+    if (!exec) {
+        set_error("NULL executive controller");
+        return PLATFORM_TIER_MINIMAL;
+    }
+
+    // Return cached tier (updated via bio-async messages)
+    return exec->current_tier;
+}
+
+/**
+ * WHAT: Check if executive is resource-aware
+ * WHY:  Determine if Portia integration is active AND resource constraints detected
+ * HOW:  Check resource_aware_mode flag (set when tier < FULL and Portia active)
+ */
+bool executive_is_resource_aware(executive_controller_t* exec)
+{
+    // Guard: Null check
+    if (!exec) {
+        return false;
+    }
+
+    // resource_aware_mode is set when Portia is initialized AND tier < FULL
+    return exec->resource_aware_mode;
+}
+
+/**
+ * WHAT: Get recommended planning depth based on resources
+ * WHY:  Constrained platforms should use shallower search
+ * HOW:  Scale max_plan_depth based on current tier
+ */
+uint32_t executive_get_recommended_plan_depth(executive_controller_t* exec)
+{
+    // Guard: Null check - return typical max_plan_depth as safe default
+    if (!exec) {
+        return 10;  // Standard default matching typical config
+    }
+
+    // Guard: Portia integration not enabled
+    if (!exec->config.enable_portia_integration) {
+        return exec->config.max_plan_depth;
+    }
+
+    // If Portia isn't initialized, return full depth (no resource constraints known)
+    if (!portia_is_initialized()) {
+        return exec->config.max_plan_depth;
+    }
+
+    // Query Portia's current tier directly (fallback if bio-async messages not received)
+    // This ensures we always have the latest tier info even if async messaging isn't working
+    platform_tier_t current_tier = portia_get_current_tier();
+    // Update cached value
+    if (current_tier != exec->current_tier) {
+        exec->current_tier = current_tier;
+        exec->resource_aware_mode = (current_tier > PLATFORM_TIER_FULL);
+    }
+
+    // Scale depth based on tier
+    // Note: FULL=0, MEDIUM=1, CONSTRAINED=2, MINIMAL=3 (lower number = better)
+    switch (current_tier) {
+        case PLATFORM_TIER_FULL:
+            return exec->config.max_plan_depth;
+        case PLATFORM_TIER_MEDIUM:
+            return (exec->config.max_plan_depth * 3) / 4;  // 75%
+        case PLATFORM_TIER_CONSTRAINED:
+            return exec->config.max_plan_depth / 2;  // 50%
+        case PLATFORM_TIER_MINIMAL:
+            return (exec->config.max_plan_depth + 3) / 4;  // 25%, min 1
+        default:
+            return exec->config.max_plan_depth / 2;
+    }
+}
+
+/**
+ * WHAT: Process pending bio-async messages for executive
+ * WHY:  Receive Portia tier changes and other async events
+ * HOW:  Call bio_router_process_inbox for executive's context
+ */
+uint32_t executive_process_messages(executive_controller_t* exec, uint32_t max_messages)
+{
+    // Guard: Null check
+    if (!exec) {
+        return 0;
+    }
+
+    // Guard: Bio-async not enabled
+    if (!exec->bio_async_enabled || !exec->bio_ctx) {
+        return 0;
+    }
+
+    return bio_router_process_inbox(exec->bio_ctx, max_messages);
 }

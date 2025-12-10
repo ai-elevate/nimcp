@@ -470,9 +470,18 @@ nimcp_error_t portia_update(void) {
         LOG_WARN(LOG_MODULE, "Tier manager update failed: %d", err);
     }
 
-    /* Update sensor fusion */
-    portia_status_t status;
-    portia_get_status(&status);
+    /* Update sensor fusion - build status directly to avoid recursive lock */
+    portia_status_t status = {
+        .current_tier = ctx->tier_manager->current_tier,
+        .tier_switches = ctx->tier_manager->tier_switch_count,
+        .power_state = ctx->power_monitor->current_state,
+        .battery_level = ctx->power_monitor->battery_level,
+        .cpu_usage = ctx->resource_tracker->cpu_usage,
+        .memory_usage = ctx->resource_tracker->memory_usage,
+        .temperature_celsius = ctx->resource_tracker->temperature_celsius,
+        .thermal_state = ctx->resource_tracker->thermal_state,
+        .degradation_level = ctx->degradation_controller->current_level
+    };
     err = portia_sensor_fusion_update(ctx->sensor_fusion, &status);
     if (err != NIMCP_SUCCESS) {
         LOG_WARN(LOG_MODULE, "Sensor fusion update failed: %d", err);
@@ -579,8 +588,23 @@ nimcp_error_t portia_set_tier(platform_tier_t tier) {
              platform_tier_get_name(old_tier),
              platform_tier_get_name(tier));
 
-    /* TODO: Broadcast tier change if bio-async enabled */
-    /* Would need bio_module_context_t stored in ctx */
+    /* Broadcast tier change if bio-async enabled */
+    if (ctx->bio_ctx && bio_router_is_initialized()) {
+        bio_msg_portia_tier_change_t msg = {
+            .header = {
+                .type = (bio_message_type_t)BIO_MSG_TYPE_PORTIA_TIER_CHANGE,
+                .payload_size = sizeof(bio_msg_portia_tier_change_t) - sizeof(bio_message_header_t),
+                .timestamp_us = nimcp_time_get_us(),
+                .flags = BIO_MSG_FLAG_URGENT
+            },
+            .old_tier = old_tier,
+            .new_tier = tier,
+            .confidence = 1.0f,
+            .reason = PORTIA_TIER_REASON_USER_REQUEST,
+            .timestamp_us = nimcp_time_get_us()
+        };
+        bio_router_broadcast(ctx->bio_ctx, &msg, sizeof(msg));
+    }
 
     /* bbb_audit_log(BBB_AUDIT_INFO, LOG_MODULE, "Tier changed to %s", platform_tier_get_name(tier)); */
 
@@ -616,7 +640,23 @@ nimcp_error_t portia_set_degradation_level(portia_degradation_level_t level) {
              portia_degradation_level_name(old_level),
              portia_degradation_level_name(level));
 
-    /* TODO: Broadcast degradation event if bio-async enabled */
+    /* Broadcast degradation event if bio-async enabled */
+    if (ctx->bio_ctx && bio_router_is_initialized()) {
+        bio_msg_portia_degradation_event_t msg = {
+            .header = {
+                .type = (bio_message_type_t)BIO_MSG_TYPE_PORTIA_DEGRADATION_EVENT,
+                .payload_size = sizeof(bio_msg_portia_degradation_event_t) - sizeof(bio_message_header_t),
+                .timestamp_us = nimcp_time_get_us(),
+                .flags = BIO_MSG_FLAG_URGENT
+            },
+            .old_level = old_level,
+            .new_level = level,
+            .features_disabled = 0,
+            .reason = PORTIA_DEGRADE_REASON_USER,
+            .description = "Manual degradation level change"
+        };
+        bio_router_broadcast(ctx->bio_ctx, &msg, sizeof(msg));
+    }
 
     return NIMCP_SUCCESS;
 }

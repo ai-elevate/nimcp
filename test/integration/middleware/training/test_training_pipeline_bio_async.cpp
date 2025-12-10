@@ -37,7 +37,7 @@ protected:
 
     void SetUp() override {
         // Initialize bio-router
-        bio_router_init();
+        bio_router_config_t cfg = {0}; bio_router_init(&cfg);
 
         // Register test module as observer
         bio_module_info_t test_info = {

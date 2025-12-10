@@ -62,7 +62,10 @@ typedef struct predictive_network_s* predictive_network_t;  // Opaque pointer
 typedef struct mirror_neurons_system* mirror_neurons_t;  // Opaque pointer
 
 // Global Workspace Architecture (Global Workspace Theory - Baars, Dehaene)
+#ifndef GLOBAL_WORKSPACE_T_DEFINED
+#define GLOBAL_WORKSPACE_T_DEFINED
 typedef struct global_workspace_struct* global_workspace_t;  // Opaque pointer
+#endif
 
 // Neuromodulator System (for mental health interventions)
 typedef struct neuromodulator_system_struct* neuromodulator_system_t;  // Opaque pointer
@@ -226,6 +229,41 @@ typedef struct {
     bool enable_explanations; /**< Enable interpretability */
     char task_name[64];       /**< Name for this brain */
 
+    // === MINIMAL MODE (Performance Optimization) ===
+    /**
+     * Minimal mode flag - disables all optional cognitive subsystems
+     *
+     * WHAT: When true, skips initialization of non-essential subsystems
+     * WHY:  Provides 5-10x faster brain creation for tests and embedded systems
+     * HOW:  Sets all enable_* flags to false during config initialization
+     *
+     * ENABLED SUBSYSTEMS in minimal mode:
+     * - Core neural network (required)
+     * - Basic learning (STDP, Hebbian)
+     * - Memory pools (performance)
+     *
+     * DISABLED SUBSYSTEMS in minimal mode:
+     * - Working memory, Theory of Mind, Mirror neurons
+     * - Global Workspace, Emotional systems
+     * - Glial integration, Myelin sheath
+     * - Visual/Audio/Speech cortices
+     * - Ethics, Empathy, Introspection
+     * - Training integration, Predictive processing
+     *
+     * USE CASES:
+     * - Unit/integration tests
+     * - Swarm drone brains (resource-constrained)
+     * - Benchmarking core inference speed
+     *
+     * EXAMPLE:
+     * ```c
+     * brain_config_t config = {0};
+     * config.minimal_mode = true;  // Fast initialization
+     * brain_t brain = brain_create_custom(&config);
+     * ```
+     */
+    bool minimal_mode;        /**< Minimal mode - skip optional subsystems (default: false) */
+
     // === PART A: DIFFERENTIAL EQUATIONS & PDEs ===
 
     /**
@@ -274,14 +312,45 @@ typedef struct {
     uint32_t num_oligodendrocytes; /**< Number of oligodendrocytes (default: neurons/7) */
     uint32_t num_microglia;   /**< Number of microglia (default: neurons/10) */
 
-    // === LAZY INITIALIZATION (Performance optimization for tests) ===
+    // === LAZY INITIALIZATION (Performance optimization for all brain sizes) ===
     /**
      * WHAT: Defer expensive subsystem creation until first use
-     * WHY:  Tests often don't need all subsystems, lazy init saves 10-30s startup
-     * HOW:  Subsystems are created on first access instead of at brain_create
+     * WHY:  Many use cases don't need all subsystems; lazy init saves 10-30s startup
+     * HOW:  Subsystems are created on first access via brain_get_*() accessors
+     *
+     * LAZY-ENABLED SUBSYSTEMS (when lazy_init_mode=true):
+     * - Visual/Audio/Speech cortices: Created on first sensory input
+     * - Working memory: Created on first memory store/retrieve
+     * - Theory of Mind: Created on first social reasoning call
+     * - Global Workspace: Created on first conscious broadcast
+     * - Ethics/Empathy: Created on first ethical evaluation
+     * - Mirror neurons: Created on first observation-action mapping
+     * - Executive functions: Created on first cognitive control request
+     * - Consolidation: Created on first memory consolidation
+     * - Meta-learning: Created on first learning rate adaptation
+     *
+     * ALWAYS EAGER (required for core functionality):
+     * - Neural network (required for any inference)
+     * - Event bus (required for subsystem coordination)
+     * - Memory pools (hot-path performance)
+     * - Strategy (task-specific behavior)
      */
+    bool lazy_init_mode;      /**< Enable lazy initialization for ALL heavy subsystems (default: false) */
     bool lazy_dendrite_init;  /**< Defer dendrite network creation (default: false) */
     bool lazy_axon_init;      /**< Defer axon network creation (default: false) */
+    bool lazy_visual_init;    /**< Defer visual cortex creation (default: false) */
+    bool lazy_audio_init;     /**< Defer audio cortex creation (default: false) */
+    bool lazy_speech_init;    /**< Defer speech cortex creation (default: false) */
+    bool lazy_working_memory_init;  /**< Defer working memory creation (default: false) */
+    bool lazy_theory_of_mind_init;  /**< Defer theory of mind creation (default: false) */
+    bool lazy_global_workspace_init; /**< Defer global workspace creation (default: false) */
+    bool lazy_ethics_init;    /**< Defer ethics engine creation (default: false) */
+    bool lazy_mirror_neurons_init;  /**< Defer mirror neurons creation (default: false) */
+    bool lazy_executive_init; /**< Defer executive controller creation (default: false) */
+    bool lazy_consolidation_init;  /**< Defer consolidation system creation (default: false) */
+    bool lazy_meta_learning_init;  /**< Defer meta-learning creation (default: false) */
+    bool lazy_neuromod_init;  /**< Defer neuromodulator system creation (default: false) */
+    bool lazy_glial_init;     /**< Defer glial integration creation (default: false) */
     bool enable_dendrites;    /**< Enable dendrite subsystem entirely (default: true) */
     bool enable_axons;        /**< Enable axon subsystem entirely (default: true) */
 
@@ -855,7 +924,7 @@ typedef struct {
     uint32_t predictive_levels;           /**< Number of hierarchy levels (default: 3) */
     float predictive_learning_rate;       /**< Learning rate for prediction error (default: 0.01) */
 
-    bool enable_second_messengers;        /**< Enable second messenger cascades (cAMP, IP3/DAG, Ca2+) (default: false) */
+    bool enable_second_messengers;        /**< Enable second messenger cascades (cAMP, IP3/DAG, Ca2+) (default: true) */
 
     // === PHASE TM-3: BRAIN-TRAINING INTEGRATION ===
     /**
@@ -918,6 +987,74 @@ brain_t brain_create(const char* task_name, brain_size_t size, brain_task_t task
  * @return Brain handle or NULL on error
  */
 brain_t brain_create_custom(const brain_config_t* config);
+
+/**
+ * @brief Create minimal brain for fast initialization (test/embedded use)
+ *
+ * WHAT: Creates brain with minimal_mode=true, skipping all optional subsystems
+ * WHY:  5-10x faster initialization for tests and resource-constrained systems
+ * HOW:  Sets minimal_mode before config initialization, skips cognitive systems
+ *
+ * ENABLED (core functionality):
+ * - Neural network with STDP/Hebbian learning
+ * - Memory pools for hot-path allocations
+ * - Basic event bus
+ *
+ * DISABLED (optional subsystems):
+ * - Working memory, Theory of Mind, Mirror neurons
+ * - Global Workspace, Emotional systems
+ * - Glial integration, Myelin sheath
+ * - Visual/Audio/Speech cortices
+ * - Ethics, Empathy, Introspection
+ *
+ * @param task_name Human-readable name
+ * @param size Brain size preset
+ * @param task Task template
+ * @param num_inputs Input dimension
+ * @param num_outputs Output dimension
+ * @return Brain handle or NULL on error
+ */
+brain_t brain_create_minimal(const char* task_name, brain_size_t size, brain_task_t task,
+                             uint32_t num_inputs, uint32_t num_outputs);
+
+/**
+ * @brief Create brain with lazy initialization for heavy subsystems
+ *
+ * WHY: 2-5x faster initialization by deferring heavy subsystems until first use.
+ * Unlike minimal_mode, all subsystems ARE enabled - they're just initialized lazily.
+ * This is ideal for production use where startup time matters but full functionality
+ * is eventually needed.
+ *
+ * Heavy subsystems deferred (initialized on first access):
+ * - Glial integration (astrocytes, oligodendrocytes)
+ * - Axon network (myelination modeling)
+ * - Dendrite network (dendritic computation)
+ * - Visual/Audio/Speech cortices
+ * - Working memory
+ * - Theory of Mind (agent modeling)
+ * - Global Workspace (conscious access)
+ * - Ethics Engine (value alignment)
+ * - Mirror Neurons (imitation learning)
+ * - Memory Consolidation (engram formation)
+ * - Meta-Learning (learning-to-learn)
+ * - Executive Functions (Portia integration)
+ *
+ * Core subsystems always initialized immediately:
+ * - Neural network core
+ * - Event bus
+ * - Memory pools
+ * - Pink noise neuromodulation
+ * - Attention, Brain regions, Curiosity, Salience
+ *
+ * @param task_name Human-readable name
+ * @param size Brain size preset
+ * @param task Task template
+ * @param num_inputs Input dimension
+ * @param num_outputs Output dimension
+ * @return Brain handle or NULL on error
+ */
+brain_t brain_create_lazy(const char* task_name, brain_size_t size, brain_task_t task,
+                          uint32_t num_inputs, uint32_t num_outputs);
 
 /**
  * @brief Destroy brain

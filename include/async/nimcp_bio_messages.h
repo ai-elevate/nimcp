@@ -37,6 +37,27 @@
 extern "C" {
 #endif
 
+/**
+ * @brief Swarm vote topic categories
+ *
+ * WHAT: Categories of decisions requiring consensus
+ * WHY:  Different topics have different semantic meanings
+ * HOW:  Enum-based categorization (defined here to avoid circular includes)
+ *
+ * NOTE: This must be kept in sync with nimcp_swarm_consensus.h
+ */
+#ifndef SWARM_VOTE_TOPIC_DEFINED
+#define SWARM_VOTE_TOPIC_DEFINED
+typedef enum {
+    VOTE_TOPIC_TARGET_PRIORITY,      /**< Prioritize attack target */
+    VOTE_TOPIC_FORMATION_CHANGE,     /**< Change swarm formation */
+    VOTE_TOPIC_RETREAT,              /**< Initiate retreat */
+    VOTE_TOPIC_RESOURCE_ALLOCATION,  /**< Allocate swarm resources */
+    VOTE_TOPIC_LEADER_ELECTION,      /**< Elect new swarm leader */
+    VOTE_TOPIC_CUSTOM                /**< Custom user-defined topic */
+} swarm_vote_topic_t;
+#endif
+
 /*=============================================================================
  * MESSAGE TYPE ENUMERATION
  *============================================================================*/
@@ -116,6 +137,8 @@ typedef enum {
     BIO_MSG_DECISION_RESPONSE,
     BIO_MSG_CONSOLIDATION_TRIGGER,
     BIO_MSG_MIRROR_NEURON_ACTIVATION,
+    BIO_MSG_AGENT_BELIEF_UPDATE,        /**< Theory of Mind: Agent belief changed */
+    BIO_MSG_AGENT_INTENTION_INFERRED,   /**< Theory of Mind: Agent intention detected */
 
     /* Emotion tensor messages (0x0380 - 0x039F) */
     BIO_MSG_EMOTION_TENSOR_UPDATE = 0x0380,     /**< Tensor state broadcast */
@@ -159,6 +182,7 @@ typedef enum {
     BIO_MSG_CHECKPOINT_COMPLETE,
     BIO_MSG_TRAINING_METRIC,        /**< Generic training metric */
     BIO_MSG_LR_CHANGED,             /**< Learning rate changed */
+    BIO_MSG_TRAINING_RESOURCE_REQUEST,  /**< Training requests resource allocation */
 
     /* System messages (0x0700 - 0x07FF) */
     BIO_MSG_SHUTDOWN_REQUEST = 0x0700,
@@ -262,6 +286,11 @@ typedef enum {
     BIO_MSG_GOSSIP_SPREAD,                      /**< Belief gossip spread */
     BIO_MSG_BELIEF_UPDATED,                     /**< Belief certainty updated */
     BIO_MSG_CONTRADICTION_DETECTED,             /**< Contradictory beliefs detected */
+    BIO_MSG_SWARM_CONSENSUS_REACHED,            /**< Swarm consensus reached on decision */
+    BIO_MSG_SWARM_CONSENSUS_REQUEST,            /**< Request swarm consensus on action */
+    BIO_MSG_SWARM_SIGNAL_UPDATE,                /**< Swarm signal aggregation update */
+    BIO_MSG_SWARM_SALIENCE_AGGREGATE,           /**< Aggregated salience from swarm */
+    BIO_MSG_EXECUTIVE_DECISION_BROADCAST,       /**< Executive decision broadcast to swarm */
 
     /* Portia messages (0x0C00 - 0x0CFF) */
     BIO_MSG_PORTIA_PLAN_CREATED = 0x0C00,       /**< New plan created */
@@ -1127,6 +1156,39 @@ typedef struct {
     char reasoning[512];            /**< Explanation of decision */
     uint32_t selected_option;       /**< Selected option index */
 } bio_msg_decision_response_t;
+
+/**
+ * @brief Agent belief update (Theory of Mind broadcast)
+ *
+ * WHAT: Notifies modules that an agent's belief state has been updated
+ * WHY:  Executive and ethics modules need to react to belief changes
+ * HOW:  Broadcast via serotonin channel (slow, coordinated updates)
+ */
+typedef struct {
+    bio_message_header_t header;
+    uint32_t agent_id;              /**< Which agent's belief changed */
+    char belief_content[256];       /**< What the agent believes */
+    float confidence;               /**< Confidence in this belief [0.0, 1.0] */
+    bool is_false_belief;           /**< Does this contradict reality? */
+    uint64_t timestamp_ms;          /**< When belief was updated */
+} bio_msg_agent_belief_update_t;
+
+/**
+ * @brief Agent intention inferred (Theory of Mind broadcast)
+ *
+ * WHAT: Notifies modules that an agent's intention has been inferred
+ * WHY:  Enable proactive coordination and ethical evaluation
+ * HOW:  Broadcast via acetylcholine channel (fast, attention-worthy)
+ */
+typedef struct {
+    bio_message_header_t header;
+    uint32_t agent_id;              /**< Which agent's intention was inferred */
+    char action_description[256];   /**< What the agent plans to do */
+    float likelihood;               /**< Probability of executing [0.0, 1.0] */
+    uint32_t emotional_state;       /**< Agent's current emotional state (tom_emotion_t) */
+    char goal_description[256];     /**< Agent's underlying goal */
+    uint64_t timestamp_ms;          /**< When intention was inferred */
+} bio_msg_agent_intention_update_t;
 
 /*=============================================================================
  * EMOTION TENSOR MESSAGES
@@ -1999,6 +2061,108 @@ typedef struct {
     bool requires_coordination;     /**< Multi-agent coordination needed */
     uint32_t severity;              /**< Threat severity */
 } bio_msg_swarm_immune_logic_response_t;
+
+/*=============================================================================
+ * SWARM-COGNITIVE INTEGRATION MESSAGES
+ *============================================================================*/
+
+/**
+ * @brief Swarm consensus reached notification
+ *
+ * WHAT: Notification that swarm consensus has been reached
+ * WHY:  Executive needs to know when swarm agrees on action
+ * HOW:  Broadcast from consensus system with vote results
+ */
+typedef struct {
+    bio_message_header_t header;
+    uint32_t proposal_id;           /**< Consensus proposal ID */
+    uint32_t decision_id;           /**< Executive decision ID (if applicable) */
+    bool passed;                    /**< Did consensus pass */
+    float weighted_agreement;       /**< Confidence-weighted agreement [0,1] */
+    uint32_t agree_count;           /**< Number of agree votes */
+    uint32_t disagree_count;        /**< Number of disagree votes */
+    uint32_t total_voters;          /**< Total participants */
+    swarm_vote_topic_t topic;       /**< Vote topic */
+    float decision_confidence;      /**< Overall decision confidence */
+} bio_msg_swarm_consensus_reached_t;
+
+/**
+ * @brief Swarm consensus request
+ *
+ * WHAT: Request swarm consensus on executive decision
+ * WHY:  Executive wants distributed validation before action
+ * HOW:  Executive broadcasts decision for swarm voting
+ */
+typedef struct {
+    bio_message_header_t header;
+    uint32_t decision_id;           /**< Executive decision ID */
+    uint32_t task_id;               /**< Associated task ID */
+    swarm_vote_topic_t topic;       /**< Decision topic */
+    float urgency;                  /**< Decision urgency [0,1] */
+    float proposal_values[4];       /**< Topic-specific values */
+    uint32_t quorum_required;       /**< Minimum voters needed */
+    float threshold;                /**< Agreement threshold [0,1] */
+    uint64_t deadline_ms;           /**< Voting deadline */
+    char decision_context[128];     /**< Human-readable context */
+} bio_msg_swarm_consensus_request_t;
+
+/**
+ * @brief Swarm signal update
+ *
+ * WHAT: Update from swarm signal aggregation
+ * WHY:  Salience needs swarm-level activity for aggregation
+ * HOW:  Broadcast from swarm signal system
+ */
+typedef struct {
+    bio_message_header_t header;
+    uint32_t agent_id;              /**< Source agent ID */
+    uint32_t signal_type;           /**< Signal category */
+    float signal_strength;          /**< Signal strength [0,1] */
+    float propagation_count;        /**< Number of hops */
+    float collective_intensity;     /**< Aggregated swarm intensity */
+    uint64_t timestamp_ms;          /**< Signal timestamp */
+    float features[8];              /**< Signal feature vector */
+} bio_msg_swarm_signal_update_t;
+
+/**
+ * @brief Swarm salience aggregate
+ *
+ * WHAT: Aggregated salience from multiple swarm agents
+ * WHY:  Combine individual salience into collective assessment
+ * HOW:  Weighted average from swarm consensus
+ */
+typedef struct {
+    bio_message_header_t header;
+    uint32_t stimulus_id;           /**< Stimulus being evaluated */
+    uint32_t agent_count;           /**< Number of agents contributing */
+    float avg_salience;             /**< Average salience score [0,1] */
+    float avg_novelty;              /**< Average novelty [0,1] */
+    float avg_surprise;             /**< Average surprise [0,1] */
+    float avg_urgency;              /**< Average urgency [0,1] */
+    float consensus_confidence;     /**< Confidence in consensus [0,1] */
+    float variance;                 /**< Variance across agents */
+    bool high_agreement;            /**< Low variance indicates agreement */
+} bio_msg_swarm_salience_aggregate_t;
+
+/**
+ * @brief Executive decision broadcast to swarm
+ *
+ * WHAT: Broadcast executive decision to swarm members
+ * WHY:  Coordinate swarm with executive decisions
+ * HOW:  Executive broadcasts after making decision
+ */
+typedef struct {
+    bio_message_header_t header;
+    uint32_t decision_id;           /**< Decision identifier */
+    uint32_t task_id;               /**< Associated task ID */
+    uint32_t selected_option;       /**< Selected option index */
+    float decision_confidence;      /**< Decision confidence [0,1] */
+    bool requires_coordination;     /**< Needs swarm coordination */
+    swarm_vote_topic_t topic;       /**< Decision topic */
+    char decision_summary[256];     /**< Human-readable summary */
+    float priority;                 /**< Decision priority [0,1] */
+    uint64_t execution_deadline_ms; /**< Execution deadline */
+} bio_msg_executive_decision_broadcast_t;
 
 /*=============================================================================
  * MESSAGE UTILITIES

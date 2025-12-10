@@ -75,6 +75,7 @@
 #include <stdbool.h>
 #include <stddef.h>
 #include "cognitive/nimcp_emotional_tagging.h"  // Phase 10.3: Emotional tagging
+#include "utils/encoding/nimcp_positional_encoding.h"  // Positional encoding for serial position
 
 #ifdef __cplusplus
 extern "C" {
@@ -137,6 +138,9 @@ typedef struct {
     float min_salience;             /**< Eviction threshold (default: 0.01) */
     bool enable_attention_refresh;  /**< Enable rehearsal (default: true) */
     bool enable_temporal_decay;     /**< Enable forgetting (default: true) */
+    bool enable_positional_encoding; /**< Apply position encodings (default: true) */
+    nimcp_pos_encoding_type_t pe_type; /**< Type of positional encoding (default: SINUSOIDAL) */
+    uint32_t pe_embedding_dim;      /**< Dimension for position embeddings (default: 64) */
 } working_memory_config_t;
 
 /**
@@ -689,6 +693,90 @@ bool working_memory_is_full(const working_memory_t* wm);
  * @return true if current_size == 0
  */
 bool working_memory_is_empty(const working_memory_t* wm);
+
+//=============================================================================
+// Positional Encoding Functions
+//=============================================================================
+
+/**
+ * @brief Apply positional encodings to all items in working memory
+ *
+ * WHAT: Add position embeddings to each item based on its slot position
+ * WHY:  Capture serial position effects (primacy, recency) in working memory
+ * HOW:  For each item at position i, apply PE(i) using configured encoder
+ *
+ * BIOLOGICAL BASIS:
+ * - Serial position effects in working memory (Ebbinghaus, 1885)
+ * - Primacy effect: better recall of early items (position 0-2)
+ * - Recency effect: better recall of recent items (position 5-6)
+ * - Prefrontal cortex encodes temporal order of active representations
+ * - Position information aids retrieval and manipulation of memory items
+ *
+ * COMPLEXITY: O(n × d) where n = current_size, d = embedding_dim
+ *
+ * @param wm Working memory instance (non-NULL)
+ * @return true on success, false if positional encoding disabled or error
+ *
+ * @note Only applies to items currently in buffer
+ * @note Encodings are additive: item_data[j] += PE(position)[j]
+ */
+bool working_memory_encode_positions(working_memory_t* wm);
+
+/**
+ * @brief Get positional embedding for specific slot
+ *
+ * WHAT: Retrieve position encoding vector for a working memory slot
+ * WHY:  Inspect position information, external position-aware processing
+ * HOW:  Query internal positional encoder for slot's position encoding
+ *
+ * COMPLEXITY: O(1) if cached, O(d) if computed where d = embedding_dim
+ *
+ * BIOLOGICAL BASIS:
+ * - Position codes in prefrontal working memory representations
+ * - Enables comparison of relative positions between items
+ * - Supports temporal reasoning over working memory contents
+ *
+ * @param wm Working memory instance (non-NULL)
+ * @param slot_index Slot position [0, capacity)
+ * @param output Output buffer for position embedding (pe_embedding_dim floats)
+ * @return true on success, false on invalid slot or PE disabled
+ *
+ * @note Returns encoding for slot position, not item age
+ * @note Output must be pre-allocated with pe_embedding_dim floats
+ */
+bool working_memory_get_position_embedding(
+    const working_memory_t* wm,
+    uint32_t slot_index,
+    float* output
+);
+
+/**
+ * @brief Configure positional encoding type
+ *
+ * WHAT: Change the type of positional encoding used
+ * WHY:  Allow runtime switching between encoding strategies
+ * HOW:  Destroy old encoder, create new encoder with specified type
+ *
+ * ENCODING TYPES:
+ * - NIMCP_POS_SINUSOIDAL: Fixed sin/cos patterns (no training, extrapolates)
+ * - NIMCP_POS_RELATIVE: Relative position embeddings (for distance-based reasoning)
+ * - NIMCP_POS_LEARNED: Trainable embeddings (task-specific)
+ * - NIMCP_POS_ROTARY: Rotation-based (RoPE, best for long sequences)
+ * - NIMCP_POS_ALIBI: Linear attention bias (simplest)
+ *
+ * COMPLEXITY: O(capacity × embedding_dim) - must rebuild encoder cache
+ *
+ * @param wm Working memory instance (non-NULL)
+ * @param pe_type New positional encoding type
+ * @return true on success, false on invalid type or allocation failure
+ *
+ * @note Reapplies encodings to existing items after switch
+ * @note Thread-safe: locks mutex during encoder swap
+ */
+bool working_memory_set_pe_type(
+    working_memory_t* wm,
+    nimcp_pos_encoding_type_t pe_type
+);
 
 #ifdef __cplusplus
 }

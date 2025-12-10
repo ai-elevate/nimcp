@@ -13,6 +13,8 @@
 
 #include "utils/memory/nimcp_memory.h"
 #include "utils/thread/nimcp_thread.h"
+#include "utils/tensor/nimcp_tensor.h"
+#include "utils/encoding/nimcp_positional_encoding.h"
 #include <string.h>
 #include <math.h>
 #include <stdlib.h>
@@ -23,6 +25,8 @@
 #include "utils/logging/nimcp_logging.h"
 #include "utils/memory/nimcp_unified_memory.h"
 
+/* Version 1.2.0 - Added positional encoding integration for position-aware population coding */
+
 
 //=============================================================================
 // Internal Structures
@@ -31,7 +35,7 @@
 /**
  * WHAT: Population coding encoder internal state
  * WHY:  Maintain configuration and working memory
- * HOW:  Store config, working buffers, mutex for thread safety
+ * HOW:  Store config, working buffers, mutex for thread safety, PE encoder
  */
 struct population_coding_encoder_struct {
     population_coding_config_t config;  /**< Encoder configuration */
@@ -39,6 +43,10 @@ struct population_coding_encoder_struct {
     uint32_t work_buffer_size;          /**< Size of work buffer */
     nimcp_mutex_t mutex;              /**< Thread safety mutex */
     uint32_t encode_count;              /**< Number of encode operations */
+
+    /* Positional Encoding */
+    nimcp_pos_encoder_t* pos_encoder;   /**< Positional encoding encoder */
+    bool pe_initialized;                /**< PE encoder initialized flag */
 };
 
 //=============================================================================
@@ -83,13 +91,27 @@ static float calculate_covariance(
 /**
  * WHAT: Calculate mean of array
  * WHY:  Basic statistics for PCA and normalization
- * HOW:  sum(x) / n
+ * HOW:  Use tensor library for vectorized sum, fallback to scalar loop
  */
 static float calculate_mean(const float* x, uint32_t n) {
     if (!x || n == 0) {
         return 0.0f;
     }
 
+    /* Use tensor library for vectorized sum */
+    uint32_t dims[] = {n};
+    nimcp_tensor_t* t = nimcp_tensor_from_data(x, dims, 1, NIMCP_DTYPE_F32, false);
+    if (t) {
+        nimcp_tensor_t* sum_t = nimcp_tensor_sum(t);
+        nimcp_tensor_destroy(t);
+        if (sum_t) {
+            double sum = nimcp_tensor_get_flat(sum_t, 0);
+            nimcp_tensor_destroy(sum_t);
+            return (float)(sum / (double)n);
+        }
+    }
+
+    /* Fallback to scalar computation */
     float sum = 0.0f;
     for (uint32_t i = 0; i < n; i++) {
         sum += x[i];
@@ -184,17 +206,32 @@ static bool compute_principal_component(
         component_out[i] = ((float)rand() / (float)RAND_MAX) * 2.0f - 1.0f;
     }
 
-    // Normalize
+    // Normalize using tensor library
     float norm = 0.0f;
-    for (uint32_t i = 0; i < num_features; i++) {
-        norm += component_out[i] * component_out[i];
-    }
-    norm = sqrtf(norm);
-    if (norm < FLT_EPSILON) {
-        return false;
-    }
-    for (uint32_t i = 0; i < num_features; i++) {
-        component_out[i] /= norm;
+    {
+        uint32_t dims[] = {num_features};
+        nimcp_tensor_t* t = nimcp_tensor_from_data(component_out, dims, 1, NIMCP_DTYPE_F32, false);
+        if (t) {
+            norm = (float)nimcp_tensor_norm_p(t, 2.0);
+            if (norm < FLT_EPSILON) {
+                nimcp_tensor_destroy(t);
+                return false;
+            }
+            nimcp_tensor_mul_scalar_(t, 1.0 / (double)norm);
+            nimcp_tensor_destroy(t);
+        } else {
+            /* Fallback to scalar */
+            for (uint32_t i = 0; i < num_features; i++) {
+                norm += component_out[i] * component_out[i];
+            }
+            norm = sqrtf(norm);
+            if (norm < FLT_EPSILON) {
+                return false;
+            }
+            for (uint32_t i = 0; i < num_features; i++) {
+                component_out[i] /= norm;
+            }
+        }
     }
 
     // Power iteration
@@ -217,12 +254,22 @@ static bool compute_principal_component(
             }
         }
 
-        // Normalize temp
-        norm = 0.0f;
-        for (uint32_t i = 0; i < num_features; i++) {
-            norm += temp[i] * temp[i];
+        // Normalize temp using tensor library
+        {
+            uint32_t dims[] = {num_features};
+            nimcp_tensor_t* t = nimcp_tensor_from_data(temp, dims, 1, NIMCP_DTYPE_F32, false);
+            if (t) {
+                norm = (float)nimcp_tensor_norm_p(t, 2.0);
+                nimcp_tensor_destroy(t);
+            } else {
+                /* Fallback to scalar */
+                norm = 0.0f;
+                for (uint32_t i = 0; i < num_features; i++) {
+                    norm += temp[i] * temp[i];
+                }
+                norm = sqrtf(norm);
+            }
         }
-        norm = sqrtf(norm);
 
         // WHY: For low-rank data, residual may have zero variance
         // HOW: Set component to zero and eigenvalue to zero, then succeed
@@ -309,6 +356,11 @@ population_coding_encoder_t population_coding_create(
     }
 
     encoder->encode_count = 0;
+
+    // Initialize positional encoding fields
+    encoder->pos_encoder = NULL;
+    encoder->pe_initialized = false;
+
     return encoder;
 }
 
@@ -323,6 +375,12 @@ void population_coding_destroy(population_coding_encoder_t encoder) {
         nimcp_free(encoder->work_buffer);
     }
 
+    // Destroy positional encoder if initialized
+    if (encoder->pos_encoder) {
+        nimcp_pos_encoder_destroy(encoder->pos_encoder);
+        encoder->pos_encoder = NULL;
+    }
+
     nimcp_free(encoder);
 }
 
@@ -333,7 +391,13 @@ population_coding_config_t population_coding_default_config(void) {
         .synchrony_threshold = 0.5f,
         .sparsity_target = POPULATION_SPARSITY_THRESHOLD,
         .enable_pca = true,
-        .enable_synchrony = true
+        .enable_synchrony = true,
+
+        /* Positional Encoding defaults */
+        .enable_positional_encoding = false,  // Disabled by default
+        .pe_embedding_dim = 64,               // Standard embedding dimension
+        .pe_frequency_base = 10000.0f,        // Standard transformer base
+        .position_weight = 0.3f               // 30% position weighting
     };
     return config;
 }
@@ -952,5 +1016,239 @@ bool population_coding_vector3d_normalize(vector3d_t* v) {
     v->z /= mag;
     v->magnitude = 1.0f;
 
+    return true;
+}
+
+//=============================================================================
+// Positional Encoding Integration
+//=============================================================================
+
+/**
+ * WHAT: Configure positional encoding for population coding
+ * WHY:  Enable position-aware population representations
+ * HOW:  Set PE parameters and initialize internal encoder
+ *
+ * BIOLOGICAL BASIS:
+ * - Place cells have position-dependent tuning curves
+ * - Population codes represent continuous variables across neurons
+ * - Spatial organization affects neural tuning and connectivity
+ */
+bool population_coding_set_pe_config(
+    population_coding_encoder_t encoder,
+    uint32_t embedding_dim,
+    float frequency_base,
+    float position_weight
+) {
+    // Guard clauses
+    if (!encoder) {
+        return false;
+    }
+    if (embedding_dim == 0 || embedding_dim > NIMCP_POS_MAX_DIM) {
+        return false;
+    }
+    if (frequency_base <= 0.0f) {
+        return false;
+    }
+    if (position_weight < 0.0f || position_weight > 1.0f) {
+        return false;
+    }
+
+    nimcp_mutex_lock(&encoder->mutex);
+
+    // Destroy existing encoder if present
+    if (encoder->pos_encoder) {
+        nimcp_pos_encoder_destroy(encoder->pos_encoder);
+        encoder->pos_encoder = NULL;
+        encoder->pe_initialized = false;
+    }
+
+    // Update configuration
+    encoder->config.enable_positional_encoding = true;
+    encoder->config.pe_embedding_dim = embedding_dim;
+    encoder->config.pe_frequency_base = frequency_base;
+    encoder->config.position_weight = position_weight;
+
+    // Create positional encoder with sinusoidal encoding
+    nimcp_pos_config_t pe_config = {
+        .type = NIMCP_POS_SINUSOIDAL,
+        .config.sinusoidal = {
+            .base = {
+                .max_seq_length = POPULATION_MAX_NEURONS,
+                .embedding_dim = embedding_dim,
+                .cache_enabled = true,     // Cache for efficiency
+                .thread_safe = false       // Parent encoder handles thread safety
+            },
+            .frequency_base = frequency_base,
+            .frequency_scale = 1.0f
+        }
+    };
+
+    encoder->pos_encoder = nimcp_pos_encoder_create(&pe_config);
+    if (!encoder->pos_encoder) {
+        encoder->config.enable_positional_encoding = false;
+        nimcp_mutex_unlock(&encoder->mutex);
+        return false;
+    }
+
+    encoder->pe_initialized = true;
+    nimcp_mutex_unlock(&encoder->mutex);
+    return true;
+}
+
+/**
+ * WHAT: Apply positional encoding to neuron positions in population
+ * WHY:  Encode spatial layout of neurons for position-aware coding
+ * HOW:  Apply sinusoidal PE to each neuron position in population
+ *
+ * BIOLOGICAL BASIS:
+ * - Encodes the topographic organization of neural populations
+ * - Similar to how grid cells encode spatial position
+ * - Preserves relative position information in continuous space
+ */
+bool population_coding_encode_neuron_positions(
+    population_coding_encoder_t encoder,
+    uint32_t num_neurons,
+    float* position_encodings_out
+) {
+    // Guard clauses
+    if (!encoder || !position_encodings_out) {
+        return false;
+    }
+    if (num_neurons == 0 || num_neurons > POPULATION_MAX_NEURONS) {
+        return false;
+    }
+    if (!encoder->config.enable_positional_encoding) {
+        return false;
+    }
+    if (!encoder->pe_initialized || !encoder->pos_encoder) {
+        return false;
+    }
+
+    nimcp_mutex_lock(&encoder->mutex);
+
+    // WHAT: Encode each neuron position sequentially
+    // WHY:  Each neuron has a unique index in the population
+    // HOW:  Use PE sequence encoding for all positions [0, num_neurons)
+    int result = nimcp_pos_encode_sequence(
+        encoder->pos_encoder,
+        0,                                      // Start at position 0
+        num_neurons,                            // Encode all neuron positions
+        position_encodings_out                  // Output buffer
+    );
+
+    nimcp_mutex_unlock(&encoder->mutex);
+
+    return (result == NIMCP_POS_SUCCESS);
+}
+
+/**
+ * WHAT: Decode population activity with position weighting
+ * WHY:  Incorporate spatial position information in decoding
+ * HOW:  Weight decoding by position similarity using PE
+ *
+ * BIOLOGICAL BASIS:
+ * - Models how spatial context modulates population readout
+ * - Similar to attention mechanisms in cortical processing
+ * - Neurons closer to target position contribute more
+ */
+bool population_coding_position_aware_decode(
+    population_coding_encoder_t encoder,
+    const float* rates,
+    const float* position_encodings,
+    uint32_t num_neurons,
+    const float* query_position,
+    const tuning_curve_t* tuning_curves,
+    vector3d_t* vector_out
+) {
+    // Guard clauses
+    if (!encoder || !rates || !position_encodings || !query_position) {
+        return false;
+    }
+    if (!tuning_curves || !vector_out) {
+        return false;
+    }
+    if (num_neurons == 0 || num_neurons > POPULATION_MAX_NEURONS) {
+        return false;
+    }
+    if (!encoder->config.enable_positional_encoding) {
+        return false;
+    }
+    if (!encoder->pe_initialized || !encoder->pos_encoder) {
+        return false;
+    }
+
+    nimcp_mutex_lock(&encoder->mutex);
+
+    uint32_t pe_dim = encoder->config.pe_embedding_dim;
+    float position_weight = encoder->config.position_weight;
+
+    // Allocate temporary buffer for weighted rates
+    float* weighted_rates = (float*)nimcp_malloc(num_neurons * sizeof(float));
+    if (!weighted_rates) {
+        nimcp_mutex_unlock(&encoder->mutex);
+        return false;
+    }
+
+    // WHAT: Compute position-weighted firing rates
+    // WHY:  Weight each neuron by its position similarity to query
+    // HOW:  weighted_rate[i] = rate[i] * (1-w + w*dot(PE(i), query_PE))
+    for (uint32_t i = 0; i < num_neurons; i++) {
+        // Calculate dot product between neuron position and query position
+        float dot_product = 0.0f;
+        const float* neuron_pe = &position_encodings[i * pe_dim];
+
+        for (uint32_t d = 0; d < pe_dim; d++) {
+            dot_product += neuron_pe[d] * query_position[d];
+        }
+
+        // Normalize dot product to [0, 1] range
+        // WHY: PE vectors are not normalized, so normalize similarity score
+        // HOW: Use sigmoid-like scaling: similarity = (dot + pe_dim) / (2*pe_dim)
+        float similarity = (dot_product + (float)pe_dim) / (2.0f * (float)pe_dim);
+
+        // Clamp similarity to [0, 1]
+        if (similarity < 0.0f) similarity = 0.0f;
+        if (similarity > 1.0f) similarity = 1.0f;
+
+        // Apply position weighting: blend base rate with position-weighted rate
+        weighted_rates[i] = rates[i] * (1.0f - position_weight + position_weight * similarity);
+    }
+
+    // WHAT: Encode vector sum using weighted rates
+    // WHY:  Standard population vector encoding with position modulation
+    // HOW:  Weighted sum of preferred directions by position-weighted rates
+    vector_out->x = 0.0f;
+    vector_out->y = 0.0f;
+    vector_out->z = 0.0f;
+    float total_weight = 0.0f;
+
+    for (uint32_t i = 0; i < num_neurons; i++) {
+        float weight = weighted_rates[i];
+        if (weight > 0.0f) {
+            vector_out->x += weight * tuning_curves[i].preferred_direction.x;
+            vector_out->y += weight * tuning_curves[i].preferred_direction.y;
+            vector_out->z += weight * tuning_curves[i].preferred_direction.z;
+            total_weight += weight;
+        }
+    }
+
+    // Calculate magnitude before normalization
+    vector_out->magnitude = calculate_magnitude(vector_out);
+
+    // Normalize by total weight for average direction
+    if (total_weight > 0.0f) {
+        vector_out->x /= total_weight;
+        vector_out->y /= total_weight;
+        vector_out->z /= total_weight;
+    } else {
+        // No active neurons
+        nimcp_free(weighted_rates);
+        nimcp_mutex_unlock(&encoder->mutex);
+        return false;
+    }
+
+    nimcp_free(weighted_rates);
+    encoder->encode_count++;
+    nimcp_mutex_unlock(&encoder->mutex);
     return true;
 }

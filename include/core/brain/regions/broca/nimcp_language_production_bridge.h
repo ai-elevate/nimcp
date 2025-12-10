@@ -75,6 +75,33 @@ typedef struct working_memory working_memory_t;
 #define LPB_DEFAULT_PRODUCTION_DELAY_MS 150.0f
 
 /**
+ * @brief Positional encoding configuration for motor sequences
+ *
+ * WHAT: Parameters for encoding position in motor command sequences
+ * WHY:  Motor commands must preserve temporal ordering for fluent speech
+ * HOW:  Configure sinusoidal or RoPE encoding for sequence modeling
+ */
+typedef struct {
+    /* Positional encoding type */
+    uint8_t motor_seq_pe_type;       /**< 0=sinusoidal, 2=RoPE for motor sequences */
+    uint8_t gesture_pe_type;         /**< 0=sinusoidal, 2=RoPE for articulatory gestures */
+
+    /* Motor sequence PE parameters */
+    uint32_t motor_seq_max_length;   /**< Max motor command sequence length */
+    uint32_t motor_seq_embedding_dim;/**< Motor embedding dimension */
+    float motor_seq_pe_base;         /**< Frequency base for sinusoidal PE */
+
+    /* Articulatory gesture PE parameters */
+    uint32_t gesture_max_length;     /**< Max gesture sequence length */
+    uint32_t gesture_embedding_dim;  /**< Gesture embedding dimension */
+    float gesture_rope_base;         /**< RoPE base for gesture encoding */
+
+    /* Feature flags */
+    bool enable_motor_pe_cache;      /**< Pre-compute and cache motor PE */
+    bool enable_gesture_pe_cache;    /**< Pre-compute and cache gesture PE */
+} lpb_pe_config_t;
+
+/**
  * @brief Language production bridge configuration
  */
 typedef struct {
@@ -97,6 +124,13 @@ typedef struct {
     /* Feedback */
     bool enable_self_monitoring;     /**< Monitor own production */
     bool enable_error_correction;    /**< Attempt to correct errors */
+
+    /* Neuromodulation */
+    bool enable_second_messengers;   /**< Enable second messenger cascades */
+
+    /* Positional encoding */
+    bool enable_positional_encoding; /**< Enable positional encoding for sequences */
+    lpb_pe_config_t pe_config;       /**< Positional encoding configuration */
 } lpb_config_t;
 
 /*=============================================================================
@@ -519,6 +553,133 @@ bool lpb_get_stats(const language_production_bridge_t* bridge, lpb_stats_t* stat
  * @brief Get configuration
  */
 bool lpb_get_config(const language_production_bridge_t* bridge, lpb_config_t* config);
+
+/*=============================================================================
+ * POSITIONAL ENCODING INTEGRATION
+ *===========================================================================*/
+
+/**
+ * @brief Set positional encoding configuration
+ *
+ * WHAT: Configure positional encoding for motor sequences and gestures
+ * WHY:  Enable temporal ordering awareness in speech production
+ * HOW:  Create PE encoders with specified type and parameters
+ *
+ * BIOLOGICAL BASIS:
+ * - Broca's area generates sequential motor commands for speech articulation
+ * - Temporal ordering is critical for fluent, intelligible speech production
+ * - Position encoding preserves sequence information in motor planning
+ *
+ * @param bridge Bridge instance
+ * @param pe_config Positional encoding configuration
+ * @return true on success
+ */
+bool language_production_set_pe_config(
+    language_production_bridge_t* bridge,
+    const lpb_pe_config_t* pe_config
+);
+
+/**
+ * @brief Apply positional encoding to motor command sequence
+ *
+ * WHAT: Add sinusoidal position encodings to motor command embeddings
+ * WHY:  Motor commands must maintain precise temporal order
+ * HOW:  Use sinusoidal PE to encode position in command sequence
+ *
+ * BIOLOGICAL BASIS:
+ * - Motor cortex receives temporally ordered commands from Broca's area
+ * - Precise timing is essential for coordinated articulatory movements
+ * - PE helps model temporal dependencies in motor command sequences
+ *
+ * @param bridge Bridge instance
+ * @param motor_embeddings Input motor command embeddings (seq_len * dim)
+ * @param seq_length Number of motor commands in sequence
+ * @param output Output with PE applied (can be same as input for in-place)
+ * @return true on success
+ */
+bool language_production_encode_motor_sequence(
+    language_production_bridge_t* bridge,
+    const float* motor_embeddings,
+    uint32_t seq_length,
+    float* output
+);
+
+/**
+ * @brief Apply RoPE encoding to articulatory gesture sequence
+ *
+ * WHAT: Apply rotary position embedding to gesture representations
+ * WHY:  Gestures have relative temporal relationships
+ * HOW:  Use RoPE to encode relative position information
+ *
+ * BIOLOGICAL BASIS:
+ * - Articulatory gestures overlap and blend during speech production
+ * - Relative timing between gestures determines coarticulation patterns
+ * - RoPE captures relative position relationships naturally
+ *
+ * @param bridge Bridge instance
+ * @param gesture_query Query representations (seq_len * dim)
+ * @param gesture_key Key representations (seq_len * dim)
+ * @param seq_length Number of gestures in sequence
+ * @param query_out Output queries with RoPE applied
+ * @param key_out Output keys with RoPE applied
+ * @return true on success
+ */
+bool language_production_encode_gesture(
+    language_production_bridge_t* bridge,
+    const float* gesture_query,
+    const float* gesture_key,
+    uint32_t seq_length,
+    float* query_out,
+    float* key_out
+);
+
+/*=============================================================================
+ * SECOND MESSENGER INTEGRATION
+ *===========================================================================*/
+
+/**
+ * @brief Trigger receptor activation in second messenger system
+ *
+ * WHAT: Activate neuromodulator receptors in Broca's region
+ * WHY:  Dopamine modulates speech production fluency and speed
+ * HOW:  Forward receptor activation to second messenger cascades
+ *
+ * @param bridge Bridge instance
+ * @param neuron_id Neuron ID (0 for all neurons)
+ * @param receptor_type Receptor type (e.g., D1, D2)
+ * @param occupancy Receptor occupancy [0, 1]
+ * @param timestamp_ms Current timestamp
+ * @return true on success
+ */
+bool lpb_trigger_receptor(
+    language_production_bridge_t* bridge,
+    uint32_t neuron_id,
+    uint8_t receptor_type,
+    float occupancy,
+    uint64_t timestamp_ms
+);
+
+/**
+ * @brief Get second messenger cascade state
+ *
+ * WHAT: Query current cascade state for a neuron
+ * WHY:  Allows monitoring of neuromodulator effects
+ * HOW:  Returns PKA, PKC, CaMKII activity levels
+ *
+ * @param bridge Bridge instance
+ * @param neuron_id Neuron ID
+ * @param pka_activity Output: PKA activity [0, 1]
+ * @param pkc_activity Output: PKC activity [0, 1]
+ * @param camkii_activity Output: CaMKII activity [0, 1]
+ * @return true on success
+ */
+bool lpb_get_second_messenger_state(
+    const language_production_bridge_t* bridge,
+    uint32_t neuron_id,
+    float* pka_activity,
+    float* pkc_activity,
+    float* camkii_activity
+);
 
 /*=============================================================================
  * DIRECT ACCESS

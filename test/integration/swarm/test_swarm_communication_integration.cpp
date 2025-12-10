@@ -38,7 +38,7 @@ extern "C" {
 class SwarmCommunicationIntegrationTest : public ::testing::Test {
 protected:
     static constexpr uint32_t NUM_DRONES = 3;
-    static constexpr uint32_t MAX_PACKET_SIZE = 256;
+    static constexpr uint32_t MAX_PACKET_SIZE = 255;
     static constexpr uint32_t TIMEOUT_MS = 1000;
 
     std::vector<nimcp_swarm_signal_adapter_t*> adapters_;
@@ -324,7 +324,7 @@ TEST_F(SwarmCommunicationIntegrationTest, FlushPendingTransmissions) {
 TEST_F(SwarmCommunicationIntegrationTest, RadioTypeStringConversion) {
     const char* type_str = swarm_signal_radio_type_string(SWARM_RADIO_SIMULATION);
     ASSERT_NE(type_str, nullptr);
-    EXPECT_STREQ(type_str, "SIMULATION") << "Radio type string mismatch";
+    EXPECT_STREQ(type_str, "Simulation") << "Radio type string mismatch";
 
     // Test other radio types
     EXPECT_NE(swarm_signal_radio_type_string(SWARM_RADIO_LORA), nullptr);

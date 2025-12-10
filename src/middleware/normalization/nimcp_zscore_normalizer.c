@@ -1,6 +1,16 @@
 //=============================================================================
 // nimcp_zscore_normalizer.c - Z-Score Normalization Implementation
 //=============================================================================
+/**
+ * @file nimcp_zscore_normalizer.c
+ * @brief Z-Score normalization with tensor-accelerated batch operations
+ *
+ * WHAT: Statistical normalization (x - mean) / stddev
+ * WHY:  Standardize features for neural network training
+ * HOW:  Welford's online algorithm + tensor-accelerated batch ops
+ *
+ * @version 1.1.0 - Added tensor library integration
+ */
 
 #include "middleware/normalization/nimcp_zscore_normalizer.h"
 #include "security/nimcp_security.h"
@@ -8,6 +18,7 @@
 
 #include "middleware/buffering/nimcp_circular_buffer.h"
 #include "utils/memory/nimcp_memory.h"
+#include "utils/tensor/nimcp_tensor.h"
 #include <string.h>
 #include <math.h>
 #include <float.h>
@@ -202,6 +213,13 @@ size_t zscore_normalizer_fit_batch(
     return count;
 }
 
+/**
+ * @brief Batch transform using tensor operations
+ *
+ * WHAT: Transform batch of values using z-score normalization
+ * WHY:  Efficient vectorized normalization for large batches
+ * HOW:  output = (values - mean) / stddev using tensor ops
+ */
 size_t zscore_normalizer_transform_batch(
     const zscore_normalizer_t* normalizer,
     size_t channel,
@@ -210,7 +228,44 @@ size_t zscore_normalizer_transform_batch(
     size_t count
 ) {
     if (!normalizer || !values || !outputs || count == 0) return 0;
+    if (channel >= normalizer->num_channels) return 0;
 
+    const channel_stats_t* stats = &normalizer->channels[channel];
+    if (stats->count == 0) {
+        /* No statistics yet, output zeros */
+        memset(outputs, 0, count * sizeof(float));
+        return count;
+    }
+
+    /* Try tensor-accelerated batch transform for large batches */
+    if (count >= 16) {
+        uint32_t dims[] = {(uint32_t)count};
+        nimcp_tensor_t* t = nimcp_tensor_from_data(values, dims, 1, NIMCP_DTYPE_F32, true);
+        if (t) {
+            /* z = (x - mean) / stddev */
+            nimcp_tensor_add_scalar_(t, -stats->mean);
+            nimcp_tensor_mul_scalar_(t, 1.0 / (double)stats->stddev);
+
+            /* Apply clipping if configured */
+            if (normalizer->outlier_clip > 0.0f) {
+                float* data = (float*)nimcp_tensor_data(t);
+                for (size_t i = 0; i < count; i++) {
+                    if (data[i] > normalizer->outlier_clip) {
+                        data[i] = normalizer->outlier_clip;
+                    } else if (data[i] < -normalizer->outlier_clip) {
+                        data[i] = -normalizer->outlier_clip;
+                    }
+                }
+            }
+
+            /* Copy result to output */
+            memcpy(outputs, nimcp_tensor_data(t), count * sizeof(float));
+            nimcp_tensor_destroy(t);
+            return count;
+        }
+    }
+
+    /* Fallback to scalar computation for small batches or if tensor fails */
     for (size_t i = 0; i < count; i++) {
         outputs[i] = zscore_normalizer_transform(normalizer, channel, values[i]);
     }
@@ -276,4 +331,177 @@ void zscore_normalizer_reset_all(zscore_normalizer_t* normalizer) {
     for (size_t i = 0; i < normalizer->num_channels; i++) {
         zscore_normalizer_reset_channel(normalizer, i);
     }
+}
+
+/* ============================================================================
+ * Tensor-Based Operations
+ * ============================================================================ */
+
+/**
+ * @brief Transform tensor in-place using z-score normalization
+ *
+ * WHAT: Normalize all elements of tensor using channel statistics
+ * WHY:  Direct tensor API for neural network integration
+ * HOW:  (tensor - mean) / stddev applied in-place
+ *
+ * @param normalizer Z-score normalizer instance
+ * @param channel Channel index for statistics
+ * @param tensor Tensor to normalize (modified in place)
+ * @return true on success
+ */
+bool zscore_normalizer_transform_tensor(
+    const zscore_normalizer_t* normalizer,
+    size_t channel,
+    nimcp_tensor_t* tensor
+) {
+    if (!normalizer || !tensor || channel >= normalizer->num_channels) {
+        return false;
+    }
+
+    const channel_stats_t* stats = &normalizer->channels[channel];
+    if (stats->count == 0) {
+        return false;
+    }
+
+    /* z = (x - mean) / stddev */
+    nimcp_tensor_add_scalar_(tensor, -stats->mean);
+    nimcp_tensor_mul_scalar_(tensor, 1.0 / (double)stats->stddev);
+
+    /* Apply clipping if configured */
+    if (normalizer->outlier_clip > 0.0f) {
+        size_t numel = nimcp_tensor_numel(tensor);
+        float* data = (float*)nimcp_tensor_data(tensor);
+        for (size_t i = 0; i < numel; i++) {
+            if (data[i] > normalizer->outlier_clip) {
+                data[i] = normalizer->outlier_clip;
+            } else if (data[i] < -normalizer->outlier_clip) {
+                data[i] = -normalizer->outlier_clip;
+            }
+        }
+    }
+
+    return true;
+}
+
+/**
+ * @brief Inverse transform tensor in-place
+ *
+ * WHAT: Denormalize tensor back to original scale
+ * WHY:  Reconstruct original values from z-scores
+ * HOW:  tensor * stddev + mean applied in-place
+ *
+ * @param normalizer Z-score normalizer instance
+ * @param channel Channel index for statistics
+ * @param tensor Tensor to denormalize (modified in place)
+ * @return true on success
+ */
+bool zscore_normalizer_inverse_transform_tensor(
+    const zscore_normalizer_t* normalizer,
+    size_t channel,
+    nimcp_tensor_t* tensor
+) {
+    if (!normalizer || !tensor || channel >= normalizer->num_channels) {
+        return false;
+    }
+
+    const channel_stats_t* stats = &normalizer->channels[channel];
+    if (stats->count == 0) {
+        return false;
+    }
+
+    /* x = z * stddev + mean */
+    nimcp_tensor_mul_scalar_(tensor, (double)stats->stddev);
+    nimcp_tensor_add_scalar_(tensor, stats->mean);
+
+    return true;
+}
+
+/**
+ * @brief Compute statistics from tensor data
+ *
+ * WHAT: Fit normalizer using tensor elements
+ * WHY:  Efficient batch fitting from tensor data
+ * HOW:  Uses tensor mean/var operations
+ *
+ * @param normalizer Z-score normalizer instance
+ * @param channel Channel index to update
+ * @param tensor Tensor containing values to fit
+ * @return Number of elements processed
+ */
+size_t zscore_normalizer_fit_tensor(
+    zscore_normalizer_t* normalizer,
+    size_t channel,
+    const nimcp_tensor_t* tensor
+) {
+    if (!normalizer || !tensor || channel >= normalizer->num_channels) {
+        return 0;
+    }
+
+    size_t numel = nimcp_tensor_numel(tensor);
+    if (numel == 0) {
+        return 0;
+    }
+
+    /* Compute mean and variance using tensor operations */
+    nimcp_tensor_t* mean_t = nimcp_tensor_mean(tensor);
+    nimcp_tensor_t* var_t = nimcp_tensor_var(tensor, true);  /* Sample variance */
+
+    if (!mean_t || !var_t) {
+        /* Fallback to scalar computation */
+        const float* data = (const float*)nimcp_tensor_data_const(tensor);
+        for (size_t i = 0; i < numel; i++) {
+            zscore_normalizer_fit(normalizer, channel, data[i]);
+        }
+        if (mean_t) nimcp_tensor_destroy(mean_t);
+        if (var_t) nimcp_tensor_destroy(var_t);
+        return numel;
+    }
+
+    /* Update channel statistics directly */
+    channel_stats_t* stats = &normalizer->channels[channel];
+    double new_mean = nimcp_tensor_get_flat(mean_t, 0);
+    double new_var = nimcp_tensor_get_flat(var_t, 0);
+
+    /* Combine with existing statistics using weighted update */
+    if (stats->count > 0) {
+        size_t n1 = stats->count;
+        size_t n2 = numel;
+        size_t n = n1 + n2;
+        double delta = new_mean - stats->mean;
+
+        /* Combined mean */
+        stats->mean = (float)((n1 * stats->mean + n2 * new_mean) / n);
+
+        /* Combined variance (Parallel algorithm) */
+        double m2_1 = stats->variance * (n1 - 1);
+        double m2_2 = new_var * (n2 - 1);
+        double m2 = m2_1 + m2_2 + delta * delta * n1 * n2 / n;
+        stats->variance = (float)(m2 / (n - 1));
+        stats->count = n;
+    } else {
+        stats->mean = (float)new_mean;
+        stats->variance = (float)new_var;
+        stats->count = numel;
+    }
+
+    stats->stddev = sqrtf(stats->variance > 0.0f ? stats->variance : 0.0001f);
+
+    /* Update min/max */
+    nimcp_tensor_t* min_t = nimcp_tensor_min(tensor);
+    nimcp_tensor_t* max_t = nimcp_tensor_max(tensor);
+    if (min_t) {
+        float min_val = (float)nimcp_tensor_get_flat(min_t, 0);
+        if (min_val < stats->min_value) stats->min_value = min_val;
+        nimcp_tensor_destroy(min_t);
+    }
+    if (max_t) {
+        float max_val = (float)nimcp_tensor_get_flat(max_t, 0);
+        if (max_val > stats->max_value) stats->max_value = max_val;
+        nimcp_tensor_destroy(max_t);
+    }
+
+    nimcp_tensor_destroy(mean_t);
+    nimcp_tensor_destroy(var_t);
+
+    return numel;
 }

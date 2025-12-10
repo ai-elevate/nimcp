@@ -107,6 +107,8 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/broca/nimcp_speech_motor.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/broca/nimcp_broca_adapter.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/broca/nimcp_language_production_bridge.c
+    # TODO: Fix error codes and re-enable
+    # ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/nimcp_brain_region_predictive.c  # Predictive coding brain region extension
 
     # Multi-modal integration (Phase 8: Unified Architecture)
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/integration/nimcp_multimodal_integration.c
@@ -175,6 +177,9 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/emotions/nimcp_emotional_system.c  # Phase 10.2: Integrated Emotional System
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/emotion_tensor/nimcp_emotion_tensor.c  # Advanced Concepts: Tensor-Based Emotional Representation
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/emotion_tensor/nimcp_emotion_tensor_bridge.c  # Bridge to swarm emotional contagion
+    # Emotion-Attention Integration (now with positional encoding support)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/attention/nimcp_emotion_attention.c  # Emotion-modulated attention system
+    # ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/consolidation/nimcp_emotion_consolidation.c  # Emotion-modulated consolidation
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/executive/nimcp_executive.c  # Phase 10.3: Executive Functions
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/sleep_wake/nimcp_sleep_wake.c  # Phase 10.4: Sleep/Wake Cycle
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/mental_health/nimcp_mental_health.c  # Phase 10.5: Mental Health Monitoring
@@ -463,6 +468,12 @@ set(NIMCP_CORE_SOURCES
     # Utils - Tensor Networks (Phase C3.1: MPS Compression)
     ${CMAKE_CURRENT_SOURCE_DIR}/../utils/tensor_networks/nimcp_mps.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../utils/tensor_networks/nimcp_svd_lapack.c  # LAPACK SVD for tensor compression
+
+    # Utils - Tensor Operations (General-Purpose Tensor Library)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../utils/tensor/nimcp_tensor.c  # Core tensor operations and tensor calculus
+
+    # Utils - Positional Encoding (Transformer-style encodings)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../utils/encoding/nimcp_positional_encoding.c  # Sinusoidal, learned, RoPE, ALiBi encodings
 
     # Information Theory (Phase C4: Shannon Information Theory)
     ${CMAKE_CURRENT_SOURCE_DIR}/../information/nimcp_shannon.c

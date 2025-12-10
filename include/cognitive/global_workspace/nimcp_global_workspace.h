@@ -257,7 +257,10 @@ typedef enum {
  * PATTERN: Opaque pointer (Pimpl idiom)
  * THREAD-SAFETY: One workspace per brain, brain operations are single-threaded
  */
+#ifndef GLOBAL_WORKSPACE_T_DEFINED
+#define GLOBAL_WORKSPACE_T_DEFINED
 typedef struct global_workspace_struct* global_workspace_t;
+#endif
 
 /**
  * @brief Competition strategy for workspace access

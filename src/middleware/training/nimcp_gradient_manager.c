@@ -2,19 +2,25 @@
  * @file nimcp_gradient_manager.c
  * @brief Gradient Management Module Implementation
  *
+ * WHAT: Gradient management with tensor-accelerated operations
+ * WHY:  Efficient gradient accumulation, scaling, and health checking
+ * HOW:  Uses nimcp_tensor library for vectorized operations
+ *
  * Implements:
  * - Gradient accumulation for large batch training
  * - Gradient scaling for mixed precision
  * - Health checking (NaN/Inf detection)
  * - Gradient statistics and monitoring
+ * - Tensor-accelerated norm computations
  *
  * @note Part of Phase TM-6: Gradient Management
- * @version 1.0.0
+ * @version 1.1.0 - Added tensor library integration
  */
 
 #include "middleware/training/nimcp_gradient_manager.h"
 #include "security/nimcp_security_integration.h"
 #include "utils/memory/nimcp_memory.h"
+#include "utils/tensor/nimcp_tensor.h"
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
@@ -500,49 +506,98 @@ uint64_t nimcp_gradient_sanitize(
 }
 
 /* ============================================================================
- * Gradient Statistics
+ * Gradient Statistics - Tensor-Accelerated
  * ============================================================================ */
 
+/**
+ * @brief Compute L2 norm using tensor operations
+ *
+ * WHAT: Euclidean norm of gradient vector
+ * WHY:  Standard measure for gradient magnitude
+ * HOW:  Uses nimcp_tensor_norm_p for vectorized computation
+ */
 float nimcp_gradient_l2_norm(const float* gradients, size_t num_gradients) {
     if (!gradients || num_gradients == 0) {
         return 0.0f;
     }
 
-    float sum_sq = 0.0f;
-    for (size_t i = 0; i < num_gradients; i++) {
-        sum_sq += gradients[i] * gradients[i];
+    /* Create tensor view of gradient data (no copy) */
+    uint32_t dims[] = {(uint32_t)num_gradients};
+    nimcp_tensor_t* t = nimcp_tensor_from_data(gradients, dims, 1, NIMCP_DTYPE_F32, false);
+    if (!t) {
+        /* Fallback to scalar computation */
+        float sum_sq = 0.0f;
+        for (size_t i = 0; i < num_gradients; i++) {
+            sum_sq += gradients[i] * gradients[i];
+        }
+        return sqrtf(sum_sq);
     }
 
-    return sqrtf(sum_sq);
+    float norm = (float)nimcp_tensor_norm_p(t, 2.0);
+    nimcp_tensor_destroy(t);
+    return norm;
 }
 
+/**
+ * @brief Compute L1 norm using tensor operations
+ *
+ * WHAT: Sum of absolute values
+ * WHY:  Sparsity-aware gradient measure
+ * HOW:  Uses nimcp_tensor_norm_p(t, 1.0)
+ */
 float nimcp_gradient_l1_norm(const float* gradients, size_t num_gradients) {
     if (!gradients || num_gradients == 0) {
         return 0.0f;
     }
 
-    float sum = 0.0f;
-    for (size_t i = 0; i < num_gradients; i++) {
-        sum += fabsf(gradients[i]);
+    /* Create tensor view of gradient data (no copy) */
+    uint32_t dims[] = {(uint32_t)num_gradients};
+    nimcp_tensor_t* t = nimcp_tensor_from_data(gradients, dims, 1, NIMCP_DTYPE_F32, false);
+    if (!t) {
+        /* Fallback to scalar computation */
+        float sum = 0.0f;
+        for (size_t i = 0; i < num_gradients; i++) {
+            sum += fabsf(gradients[i]);
+        }
+        return sum;
     }
 
-    return sum;
+    float norm = (float)nimcp_tensor_norm_p(t, 1.0);
+    nimcp_tensor_destroy(t);
+    return norm;
 }
 
+/**
+ * @brief Compute max norm (infinity norm) using tensor operations
+ *
+ * WHAT: Maximum absolute value
+ * WHY:  Detect gradient spikes
+ * HOW:  Uses nimcp_tensor_norm_p(t, INFINITY)
+ */
 float nimcp_gradient_max_norm(const float* gradients, size_t num_gradients) {
     if (!gradients || num_gradients == 0) {
         return 0.0f;
     }
 
-    float max_abs = 0.0f;
-    for (size_t i = 0; i < num_gradients; i++) {
-        float abs_val = fabsf(gradients[i]);
-        if (abs_val > max_abs) {
-            max_abs = abs_val;
+    /* Create tensor view of gradient data (no copy) */
+    uint32_t dims[] = {(uint32_t)num_gradients};
+    nimcp_tensor_t* t = nimcp_tensor_from_data(gradients, dims, 1, NIMCP_DTYPE_F32, false);
+    if (!t) {
+        /* Fallback to scalar computation */
+        float max_abs = 0.0f;
+        for (size_t i = 0; i < num_gradients; i++) {
+            float abs_val = fabsf(gradients[i]);
+            if (abs_val > max_abs) {
+                max_abs = abs_val;
+            }
         }
+        return max_abs;
     }
 
-    return max_abs;
+    /* Infinity norm = max absolute value */
+    float norm = (float)nimcp_tensor_norm_p(t, INFINITY);
+    nimcp_tensor_destroy(t);
+    return norm;
 }
 
 nimcp_result_t nimcp_gradient_manager_get_stats(
@@ -678,6 +733,13 @@ void nimcp_gradient_prepare_allreduce(
     (void)num_workers;
 }
 
+/**
+ * @brief Finalize all-reduce using tensor operations
+ *
+ * WHAT: Average gradients after all-reduce sum
+ * WHY:  Distributed training synchronization
+ * HOW:  Uses tensor scalar multiplication for efficiency
+ */
 void nimcp_gradient_finalize_allreduce(
     float* gradients,
     size_t num_gradients,
@@ -687,9 +749,189 @@ void nimcp_gradient_finalize_allreduce(
         return;
     }
 
-    /* After all-reduce sum, divide by number of workers for average */
-    float divisor = (float)num_workers;
-    for (size_t i = 0; i < num_gradients; i++) {
-        gradients[i] /= divisor;
+    /* Use tensor operations for averaging */
+    uint32_t dims[] = {(uint32_t)num_gradients};
+    nimcp_tensor_t* t = nimcp_tensor_from_data(gradients, dims, 1, NIMCP_DTYPE_F32, false);
+    if (t) {
+        nimcp_tensor_mul_scalar_(t, 1.0 / (double)num_workers);
+        nimcp_tensor_destroy(t);
+    } else {
+        /* Fallback to scalar computation */
+        float divisor = (float)num_workers;
+        for (size_t i = 0; i < num_gradients; i++) {
+            gradients[i] /= divisor;
+        }
     }
+}
+
+/* ============================================================================
+ * Tensor-Based Gradient Operations
+ * ============================================================================ */
+
+/**
+ * @brief Accumulate gradients using tensor operations
+ *
+ * WHAT: Add gradients to accumulation buffer using tensors
+ * WHY:  More efficient for large gradient arrays
+ * HOW:  Uses nimcp_tensor_add_ for in-place accumulation
+ */
+nimcp_result_t nimcp_gradient_accumulate_tensor(
+    nimcp_gradient_manager_ctx_t* ctx,
+    const nimcp_tensor_t* grad_tensor
+) {
+    if (!ctx || !grad_tensor) {
+        return NIMCP_ERROR_INVALID_PARAM;
+    }
+
+    if (!ctx->config.use_accumulation) {
+        return NIMCP_ERROR_INVALID_PARAM;
+    }
+
+    size_t num_gradients = nimcp_tensor_numel(grad_tensor);
+    if (num_gradients == 0) {
+        return NIMCP_ERROR_INVALID_PARAM;
+    }
+
+    /* Allocate or resize buffer if needed */
+    if (!ctx->accum_initialized || ctx->accum_buffer_size < num_gradients) {
+        if (ctx->accum_buffer) {
+            nimcp_free(ctx->accum_buffer);
+        }
+        ctx->accum_buffer = (float*)nimcp_calloc(num_gradients, sizeof(float));
+        if (!ctx->accum_buffer) {
+            return NIMCP_ERROR_MEMORY;
+        }
+        ctx->accum_buffer_size = num_gradients;
+        ctx->accum_initialized = true;
+        ctx->accum_step = 0;
+    }
+
+    /* Reset buffer at start of accumulation */
+    if (ctx->accum_step == 0) {
+        memset(ctx->accum_buffer, 0, num_gradients * sizeof(float));
+    }
+
+    /* Create tensor view of accumulation buffer */
+    uint32_t dims[] = {(uint32_t)num_gradients};
+    nimcp_tensor_t* accum_tensor = nimcp_tensor_from_data(
+        ctx->accum_buffer, dims, 1, NIMCP_DTYPE_F32, false
+    );
+    if (!accum_tensor) {
+        return NIMCP_ERROR_MEMORY;
+    }
+
+    /* Accumulate using tensor in-place add */
+    int result = nimcp_tensor_add_(accum_tensor, grad_tensor);
+    nimcp_tensor_destroy(accum_tensor);
+
+    if (result != NIMCP_TENSOR_OK) {
+        return NIMCP_ERROR_INVALID;
+    }
+
+    ctx->accum_step++;
+    ctx->stats.total_accum_steps++;
+
+    return NIMCP_SUCCESS;
+}
+
+/**
+ * @brief Scale gradients using tensor operations
+ *
+ * WHAT: Multiply gradient tensor by scale factor
+ * WHY:  Mixed precision training, loss scaling
+ * HOW:  Uses nimcp_tensor_mul_scalar_ for in-place scaling
+ */
+nimcp_result_t nimcp_gradient_scale_tensor(
+    nimcp_gradient_manager_ctx_t* ctx,
+    nimcp_tensor_t* grad_tensor
+) {
+    if (!ctx || !grad_tensor) {
+        return NIMCP_ERROR_INVALID_PARAM;
+    }
+
+    if (!ctx->config.use_scaling || ctx->config.scaling.strategy == NIMCP_GRAD_SCALE_NONE) {
+        return NIMCP_SUCCESS;
+    }
+
+    int result = nimcp_tensor_mul_scalar_(grad_tensor, (double)ctx->current_scale);
+    return (result == NIMCP_TENSOR_OK) ? NIMCP_SUCCESS : NIMCP_ERROR_INVALID;
+}
+
+/**
+ * @brief Unscale gradients using tensor operations
+ *
+ * WHAT: Divide gradient tensor by scale factor
+ * WHY:  Restore original gradient magnitude after loss scaling
+ * HOW:  Uses nimcp_tensor_mul_scalar_ with inverse scale
+ */
+nimcp_result_t nimcp_gradient_unscale_tensor(
+    nimcp_gradient_manager_ctx_t* ctx,
+    nimcp_tensor_t* grad_tensor
+) {
+    if (!ctx || !grad_tensor) {
+        return NIMCP_ERROR_INVALID_PARAM;
+    }
+
+    if (!ctx->config.use_scaling || ctx->config.scaling.strategy == NIMCP_GRAD_SCALE_NONE) {
+        return NIMCP_SUCCESS;
+    }
+
+    double inv_scale = 1.0 / (double)ctx->current_scale;
+    int result = nimcp_tensor_mul_scalar_(grad_tensor, inv_scale);
+    return (result == NIMCP_TENSOR_OK) ? NIMCP_SUCCESS : NIMCP_ERROR_INVALID;
+}
+
+/**
+ * @brief Compute gradient norm using tensor operations
+ *
+ * WHAT: Compute Lp norm of gradient tensor
+ * WHY:  Gradient clipping, health monitoring
+ * HOW:  Uses nimcp_tensor_norm_p
+ *
+ * @param grad_tensor Input gradient tensor
+ * @param p Norm order (1=L1, 2=L2, INFINITY=max)
+ * @return Computed norm value
+ */
+float nimcp_gradient_tensor_norm(
+    const nimcp_tensor_t* grad_tensor,
+    double p
+) {
+    if (!grad_tensor) {
+        return 0.0f;
+    }
+    return (float)nimcp_tensor_norm_p(grad_tensor, p);
+}
+
+/**
+ * @brief Clip gradients by norm using tensor operations
+ *
+ * WHAT: Scale down gradients if norm exceeds threshold
+ * WHY:  Prevent exploding gradients
+ * HOW:  Compute norm, scale if exceeds max_norm
+ *
+ * @param grad_tensor Gradient tensor (modified in place)
+ * @param max_norm Maximum allowed norm
+ * @param norm_type Norm type (1, 2, or INFINITY)
+ * @return Actual norm before clipping
+ */
+float nimcp_gradient_clip_norm_tensor(
+    nimcp_tensor_t* grad_tensor,
+    float max_norm,
+    double norm_type
+) {
+    if (!grad_tensor || max_norm <= 0.0f) {
+        return 0.0f;
+    }
+
+    /* Compute current norm */
+    float current_norm = (float)nimcp_tensor_norm_p(grad_tensor, norm_type);
+    if (current_norm <= max_norm) {
+        return current_norm;  /* No clipping needed */
+    }
+
+    /* Scale down gradients */
+    double scale = (double)max_norm / (double)current_norm;
+    nimcp_tensor_mul_scalar_(grad_tensor, scale);
+
+    return current_norm;
 }

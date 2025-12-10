@@ -25,22 +25,42 @@ static bio_module_context_t g_multi_swarm_ctx = NULL;
  * Hash Table Wrapper Functions
  * ============================================================================ */
 
-/* Create a uint64-keyed hash table using the config-based API */
-static hash_table_t* swarm_hash_table_create(size_t buckets) {
+/* Value destructor for swarm identity hash table entries.
+ * The value stored is a pointer (void*) to the swarm identity.
+ * The hash table passes us a pointer TO this stored value. */
+static void swarm_identity_value_destructor(void* value_ptr) {
+    if (!value_ptr) return;
+    /* value_ptr points to the stored void* which is the swarm identity pointer */
+    void** identity_ptr = (void**)value_ptr;
+    if (*identity_ptr) {
+        nimcp_swarm_identity_destroy((nimcp_swarm_identity_t*)*identity_ptr);
+        *identity_ptr = NULL;
+    }
+}
+
+/* Create a uint64-keyed hash table using the config-based API.
+ * If with_destructor is true, registered values will be freed on table destroy. */
+static hash_table_t* swarm_hash_table_create_ex(size_t buckets, bool with_destructor) {
     hash_table_config_t config = {
         .initial_buckets = buckets,
         .key_type = HASH_KEY_UINT32,  /* Use uint32 for now - will truncate uint64 */
         .hash_algorithm = HASH_ALG_MURMUR3,
-        .value_destructor = NULL,
+        .value_destructor = with_destructor ? swarm_identity_value_destructor : NULL,
         .case_insensitive = false,
         .thread_safe = false
     };
     return hash_table_create(&config);
 }
 
+/* Create a uint64-keyed hash table without value destructor (for mission registry etc.) */
+static hash_table_t* swarm_hash_table_create(size_t buckets) {
+    return swarm_hash_table_create_ex(buckets, false);
+}
+
 /* Wrapper to insert with uint64 key (truncated to uint32) */
 static bool swarm_hash_table_insert(hash_table_t* table, uint64_t key, void* value) {
-    return hash_table_insert_uint32(table, (uint32_t)key, value, sizeof(void*));
+    /* Store the pointer value itself - pass address of the pointer so it copies the pointer bytes */
+    return hash_table_insert_uint32(table, (uint32_t)key, &value, sizeof(void*));
 }
 
 /* Wrapper to lookup with uint64 key (truncated to uint32) */
@@ -406,8 +426,10 @@ nimcp_multi_swarm_coordinator_t* nimcp_multi_swarm_create(
     coordinator->brain = brain;
     coordinator->router = router;
 
-    /* Create registries using wrapper for real hash table API */
-    coordinator->swarm_registry = swarm_hash_table_create(64);
+    /* Create registries using wrapper for real hash table API.
+     * Use _ex variant with destructor=true for swarm_registry so registered
+     * swarms are automatically cleaned up when coordinator is destroyed. */
+    coordinator->swarm_registry = swarm_hash_table_create_ex(64, true);
     if (!coordinator->swarm_registry) {
         LOG_ERROR("Failed to create swarm registry");
         nimcp_free(coordinator);
@@ -984,11 +1006,13 @@ uint32_t nimcp_territory_detect_conflicts(
                     /* Create conflict record */
                     nimcp_swarm_conflict_t conflict = {0};
                     conflict.conflict_id = coordinator->next_conflict_id++;
+                    conflict.type = NIMCP_CONFLICT_TYPE_TERRITORY;
                     conflict.swarm_ids[0] = swarm_a->swarm_id;
                     conflict.swarm_ids[1] = swarm_b->swarm_id;
                     conflict.swarm_count = 2;
                     conflict.detection_time = nimcp_time_get_ms();
                     conflict.is_resolved = false;
+                    conflict.severity = 0.5f;  /* Default severity for territory conflicts */
 
                     snprintf(conflict.description, sizeof(conflict.description),
                             "Territory overlap between swarms %lu and %lu",
@@ -1237,6 +1261,36 @@ nimcp_result_t nimcp_mission_assign_swarms(
     memcpy(mission->assigned_swarms, swarm_ids, swarm_count * sizeof(uint64_t));
     mission->swarm_count = swarm_count;
     mission->status = NIMCP_MISSION_STATUS_ASSIGNED;
+
+    /* Add mission to the super-swarm containing the first assigned swarm */
+    for (uint32_t i = 0; i < coordinator->super_swarm_count; i++) {
+        nimcp_super_swarm_t* super = coordinator->super_swarms[i];
+        if (!super) continue;
+
+        /* Check if this super-swarm contains any of the assigned swarms */
+        bool found = false;
+        for (uint32_t j = 0; j < super->swarm_count && !found; j++) {
+            if (super->swarms[j]) {
+                for (uint32_t k = 0; k < swarm_count && !found; k++) {
+                    if (super->swarms[j]->swarm_id == swarm_ids[k]) {
+                        found = true;
+                    }
+                }
+            }
+        }
+
+        if (found && super->active_mission_count < NIMCP_MAX_SWARM_MISSIONS) {
+            nimcp_rwlock_write_lock(&super->mission_lock);
+            memcpy(&super->missions[super->active_mission_count], mission,
+                   sizeof(nimcp_mission_assignment_t));
+            super->active_mission_count++;
+            nimcp_rwlock_write_unlock(&super->mission_lock);
+
+            LOG_INFO("Added mission %lu to super-swarm %lu",
+                     mission_id, super->super_swarm_id);
+            break;
+        }
+    }
 
     LOG_INFO("Assigned %u swarms to mission %lu", swarm_count, mission_id);
 
@@ -1554,11 +1608,51 @@ static float calculate_conflict_severity(
 }
 
 /**
+ * @brief Context for resource request collection during hash table iteration
+ */
+typedef struct {
+    nimcp_resource_request_t** requests;  /**< Array of request pointers */
+    uint32_t count;                        /**< Number of requests collected */
+    uint32_t capacity;                     /**< Array capacity */
+} resource_request_collect_ctx_t;
+
+/**
+ * @brief Iterator callback to collect resource requests from hash table
+ */
+static bool collect_resource_request_cb(const void* key, size_t key_size,
+                                        void* value, size_t value_size,
+                                        void* user_data) {
+    (void)key;
+    (void)key_size;
+    (void)value_size;
+
+    resource_request_collect_ctx_t* ctx = (resource_request_collect_ctx_t*)user_data;
+    if (!ctx || ctx->count >= ctx->capacity) {
+        return false;  /* Stop iteration if full */
+    }
+
+    /* Value is a pointer to nimcp_resource_request_t stored in hash table */
+    nimcp_resource_request_t** req_ptr = (nimcp_resource_request_t**)value;
+    if (req_ptr && *req_ptr && !(*req_ptr)->is_approved) {
+        /* Only collect pending (unapproved) requests */
+        ctx->requests[ctx->count++] = *req_ptr;
+    }
+
+    return true;  /* Continue iteration */
+}
+
+/**
  * @brief Detect resource conflicts between swarms
  *
  * WHAT: Identifies conflicts where multiple swarms request same resource
- * WHY:  Resource conflicts can deadlock missions
- * HOW:  Scans pending resource requests for duplicates
+ * WHY:  Resource conflicts can deadlock missions or cause starvation
+ * HOW:  Collects pending requests, groups by target and type, detects duplicates
+ *
+ * Resource conflict types detected:
+ * 1. Same target conflict: Multiple swarms requesting from same target swarm
+ * 2. Same resource type conflict: Multiple requests for same resource type
+ * 3. Capacity conflict: Total requests exceed target's available capacity
+ * 4. Priority conflict: Same priority requests competing for limited resources
  */
 static uint32_t detect_resource_conflicts(
     nimcp_multi_swarm_coordinator_t* coordinator,
@@ -1570,16 +1664,137 @@ static uint32_t detect_resource_conflicts(
 
     uint32_t detected = 0;
 
-    /* Scan all super-swarms for resource conflicts */
+    /* Temporary storage for all pending requests across all super-swarms */
+    #define MAX_PENDING_REQUESTS 256
+    nimcp_resource_request_t* all_requests[MAX_PENDING_REQUESTS];
+    uint32_t total_requests = 0;
+
+    /* Phase 1: Collect all pending resource requests from all super-swarms */
     for (uint32_t i = 0; i < coordinator->super_swarm_count; i++) {
         nimcp_super_swarm_t* super = coordinator->super_swarms[i];
         if (!super || !super->resource_requests) continue;
 
-        /* Note: This is simplified - real implementation would iterate hash table */
-        LOG_DEBUG("Scanning super-swarm %lu for resource conflicts",
-                  super->super_swarm_id);
+        resource_request_collect_ctx_t collect_ctx = {
+            .requests = &all_requests[total_requests],
+            .count = 0,
+            .capacity = MAX_PENDING_REQUESTS - total_requests
+        };
+
+        hash_table_iterate((hash_table_t*)super->resource_requests,
+                          collect_resource_request_cb, &collect_ctx);
+
+        total_requests += collect_ctx.count;
+
+        LOG_DEBUG("Collected %u pending requests from super-swarm %lu",
+                  collect_ctx.count, super->super_swarm_id);
     }
 
+    if (total_requests < 2) {
+        /* Need at least 2 requests for a conflict */
+        return 0;
+    }
+
+    LOG_DEBUG("Analyzing %u total pending resource requests for conflicts",
+              total_requests);
+
+    /* Phase 2: Compare all request pairs to find conflicts */
+    for (uint32_t i = 0; i < total_requests; i++) {
+        for (uint32_t j = i + 1; j < total_requests; j++) {
+            nimcp_resource_request_t* req_a = all_requests[i];
+            nimcp_resource_request_t* req_b = all_requests[j];
+
+            if (!req_a || !req_b) continue;
+
+            /* Check for conflict conditions */
+            bool is_conflict = false;
+            float severity = 0.0f;
+            const char* conflict_reason = NULL;
+
+            /* Condition 1: Same target swarm, same resource type */
+            if (req_a->target_swarm == req_b->target_swarm &&
+                req_a->type == req_b->type) {
+                is_conflict = true;
+                severity = 0.7f;
+                conflict_reason = "competing for same resource type from same target";
+
+                /* Higher severity if same priority (harder to resolve) */
+                if (req_a->priority == req_b->priority) {
+                    severity = 0.85f;
+                }
+            }
+
+            /* Condition 2: Same requesting swarm targeting multiple targets for same resource
+             * (indicates resource shortage) */
+            else if (req_a->requesting_swarm == req_b->requesting_swarm &&
+                     req_a->type == req_b->type &&
+                     req_a->target_swarm != req_b->target_swarm) {
+                is_conflict = true;
+                severity = 0.4f;  /* Lower severity - just indicates shortage */
+                conflict_reason = "resource shortage - swarm seeking from multiple sources";
+            }
+
+            /* Condition 3: Cross-requesting (A wants from B, B wants from A) */
+            else if (req_a->requesting_swarm == req_b->target_swarm &&
+                     req_b->requesting_swarm == req_a->target_swarm &&
+                     req_a->type == req_b->type) {
+                is_conflict = true;
+                severity = 0.9f;  /* High severity - potential deadlock */
+                conflict_reason = "potential deadlock - mutual resource dependency";
+            }
+
+            if (is_conflict) {
+                /* Create conflict record */
+                nimcp_swarm_conflict_t conflict = {0};
+                conflict.conflict_id = coordinator->next_conflict_id++;
+                conflict.type = NIMCP_CONFLICT_TYPE_RESOURCE;
+                conflict.swarm_ids[0] = req_a->requesting_swarm;
+                conflict.swarm_ids[1] = req_b->requesting_swarm;
+
+                /* Also track target swarms if different from requesters */
+                uint32_t swarm_idx = 2;
+                if (req_a->target_swarm != req_a->requesting_swarm &&
+                    req_a->target_swarm != req_b->requesting_swarm &&
+                    swarm_idx < NIMCP_MAX_SWARMS_PER_SUPER) {
+                    conflict.swarm_ids[swarm_idx++] = req_a->target_swarm;
+                }
+                if (req_b->target_swarm != req_a->requesting_swarm &&
+                    req_b->target_swarm != req_b->requesting_swarm &&
+                    req_b->target_swarm != req_a->target_swarm &&
+                    swarm_idx < NIMCP_MAX_SWARMS_PER_SUPER) {
+                    conflict.swarm_ids[swarm_idx++] = req_b->target_swarm;
+                }
+                conflict.swarm_count = swarm_idx;
+
+                conflict.severity = severity;
+                conflict.detection_time = nimcp_time_get_ms();
+                conflict.is_resolved = false;
+
+                /* Store request IDs in context for resolution */
+                conflict.conflict_context = nimcp_malloc(2 * sizeof(uint64_t));
+                if (conflict.conflict_context) {
+                    uint64_t* req_ids = (uint64_t*)conflict.conflict_context;
+                    req_ids[0] = req_a->request_id;
+                    req_ids[1] = req_b->request_id;
+                    conflict.context_size = 2 * sizeof(uint64_t);
+                }
+
+                snprintf(conflict.description, sizeof(conflict.description),
+                        "Resource conflict: %s (swarms %lu vs %lu, type=%d)",
+                        conflict_reason ? conflict_reason : "resource competition",
+                        req_a->requesting_swarm, req_b->requesting_swarm,
+                        (int)req_a->type);
+
+                conflict_array_push_back(conflicts_array, &conflict);
+                detected++;
+
+                LOG_WARN("Resource conflict detected: Swarms %lu and %lu - %s",
+                         req_a->requesting_swarm, req_b->requesting_swarm,
+                         conflict_reason);
+            }
+        }
+    }
+
+    #undef MAX_PENDING_REQUESTS
     return detected;
 }
 
@@ -1696,6 +1911,27 @@ nimcp_result_t nimcp_multi_swarm_detect_conflicts(
     /* Update statistics */
     coordinator->conflict_stats.total_conflicts = total_detected;
     coordinator->conflict_stats.conflicts_pending = total_detected;
+
+    /* Store conflicts in super-swarms for find_conflict_by_id() lookup.
+     * Conflicts are stored in the first super-swarm with a valid conflicts array. */
+    for (uint32_t i = 0; i < coordinator->super_swarm_count; i++) {
+        nimcp_super_swarm_t* super = coordinator->super_swarms[i];
+        if (!super || !super->conflicts) continue;
+
+        /* Clear old conflicts */
+        conflict_array_clear((nimcp_darray_t*)super->conflicts);
+
+        /* Copy all detected conflicts to this super-swarm for lookup */
+        for (uint32_t j = 0; j < conflict_array_size(conflicts_array); j++) {
+            nimcp_swarm_conflict_t* conflict = conflict_array_at(conflicts_array, j);
+            if (conflict) {
+                conflict_array_push_back((nimcp_darray_t*)super->conflicts, conflict);
+            }
+        }
+
+        /* Only store in first valid super-swarm to avoid duplicates */
+        break;
+    }
 
     /* Return results */
     *count = total_detected;
@@ -1818,6 +2054,27 @@ nimcp_result_t nimcp_conflict_resolve(
                 if (resolved) {
                     conflict->is_resolved = true;
                     conflict->resolution_time = nimcp_time_get_ms();
+
+                    /* Update coordinator statistics */
+                    coordinator->conflict_stats.conflicts_resolved++;
+                    if (coordinator->conflict_stats.conflicts_pending > 0) {
+                        coordinator->conflict_stats.conflicts_pending--;
+                    }
+
+                    /* Update average resolution time */
+                    float elapsed = (float)(conflict->resolution_time - conflict->detection_time);
+                    if (elapsed < 0.001f) {
+                        elapsed = 0.001f;  /* Minimum for meaningful stats */
+                    }
+                    if (coordinator->conflict_stats.conflicts_resolved == 1) {
+                        coordinator->conflict_stats.avg_resolution_time_ms = elapsed;
+                    } else {
+                        coordinator->conflict_stats.avg_resolution_time_ms =
+                            (coordinator->conflict_stats.avg_resolution_time_ms *
+                             (coordinator->conflict_stats.conflicts_resolved - 1) + elapsed) /
+                            coordinator->conflict_stats.conflicts_resolved;
+                    }
+
                     LOG_INFO("Conflict resolved: ID=%lu", conflict_id);
                     return NIMCP_SUCCESS;
                 }
@@ -1931,7 +2188,7 @@ nimcp_result_t nimcp_multi_swarm_resolve_conflict(
         return NIMCP_ERROR;
     }
 
-    uint64_t start_time = nimcp_time_get_ms();
+    uint64_t start_time_us = nimcp_time_get_us();
     conflict->strategy = strategy;
     bool resolved = false;
 
@@ -2014,8 +2271,11 @@ nimcp_result_t nimcp_multi_swarm_resolve_conflict(
         coordinator->conflict_stats.conflicts_resolved++;
         coordinator->conflict_stats.conflicts_pending--;
 
-        /* Update average resolution time */
-        float elapsed = (float)(conflict->resolution_time - conflict->detection_time);
+        /* Update average resolution time using microsecond precision for stats */
+        float elapsed = (float)(nimcp_time_get_us() - start_time_us) / 1000.0f;
+        if (elapsed < 0.001f) {
+            elapsed = 0.001f;  /* Minimum 1 microsecond for meaningful stats */
+        }
         if (coordinator->conflict_stats.conflicts_resolved == 1) {
             coordinator->conflict_stats.avg_resolution_time_ms = elapsed;
         } else {
@@ -2025,7 +2285,7 @@ nimcp_result_t nimcp_multi_swarm_resolve_conflict(
                 coordinator->conflict_stats.conflicts_resolved;
         }
 
-        LOG_INFO("Conflict resolved: ID=%u, Strategy=%d, Time=%.1fms",
+        LOG_INFO("Conflict resolved: ID=%u, Strategy=%d, Time=%.3fms",
                  conflict_id, strategy, elapsed);
 
         /* Send bio-async message if available */
@@ -2040,7 +2300,12 @@ nimcp_result_t nimcp_multi_swarm_resolve_conflict(
         result->type = conflict->type;
         result->strategy_used = strategy;
         result->resolved = resolved;
-        result->resolution_time_ms = (float)(nimcp_time_get_ms() - start_time);
+        /* Use microsecond precision for accurate timing, convert to ms */
+        result->resolution_time_ms = (float)(nimcp_time_get_us() - start_time_us) / 1000.0f;
+        /* Ensure at least minimal time is reported for fast resolutions */
+        if (result->resolution_time_ms < 0.001f && resolved) {
+            result->resolution_time_ms = 0.001f;  /* 1 microsecond minimum */
+        }
         result->negotiation_rounds = conflict->negotiation_round_count;
         snprintf(result->outcome_description, sizeof(result->outcome_description),
                 "%s", conflict->description);

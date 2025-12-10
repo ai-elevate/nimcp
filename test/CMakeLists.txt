@@ -545,6 +545,60 @@ if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/regression/utils/containers")
     add_subdirectory(regression/utils/containers)
 endif()
 
+# Utils Tensor Tests
+# ============================================================================
+
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/unit/utils/tensor")
+    message(STATUS "Adding utils tensor unit tests...")
+    add_subdirectory(unit/utils/tensor)
+endif()
+
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/integration/utils/tensor")
+    message(STATUS "Adding utils tensor integration tests...")
+    add_subdirectory(integration/utils/tensor)
+endif()
+
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/regression/utils/tensor")
+    message(STATUS "Adding utils tensor regression tests...")
+    add_subdirectory(regression/utils/tensor)
+endif()
+
+# Utils Encoding Tests
+# ============================================================================
+
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/unit/utils/encoding")
+    message(STATUS "Adding utils encoding unit tests...")
+    add_subdirectory(unit/utils/encoding)
+endif()
+
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/integration/utils/encoding")
+    message(STATUS "Adding utils encoding integration tests (PE + Attention, WM)...")
+    add_subdirectory(integration/utils/encoding)
+endif()
+
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/regression/utils/encoding")
+    message(STATUS "Adding utils encoding regression tests...")
+    add_subdirectory(regression/utils/encoding)
+endif()
+
+# ============================================================================
+# Cognitive Integration Tests (General)
+# ============================================================================
+
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/integration/cognitive")
+    message(STATUS "Adding cognitive integration tests (WM + PE, emotions)...")
+    add_subdirectory(integration/cognitive)
+endif()
+
+# ============================================================================
+# Brain Regions Integration Tests
+# ============================================================================
+
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/integration/core/brain_regions")
+    message(STATUS "Adding brain regions integration tests (Predictive + PE)...")
+    add_subdirectory(integration/core/brain_regions)
+endif()
+
 # ============================================================================
 # Glial Tests (Microglia, Oligodendrocytes)
 # ============================================================================

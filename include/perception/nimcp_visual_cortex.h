@@ -59,6 +59,7 @@
 #include <stdint.h>
 #include "utils/error/nimcp_error_codes.h"
 #include "plasticity/neuromodulators/nimcp_phasic_tonic.h"
+#include "plasticity/nimcp_second_messengers.h"
 
 /* Bio-async communication system */
 #include "async/nimcp_bio_async.h"
@@ -411,6 +412,9 @@ typedef struct {
 
     // Bio-async communication
     bool enable_bio_async;         /**< Enable bio-async messaging */
+
+    // Second messenger cascades
+    bool enable_second_messengers; /**< Enable second messenger cascades */
 } visual_cortex_config_t;
 
 /**
@@ -846,6 +850,54 @@ bool visual_cortex_compute_neuromod_effects(
     const visual_cortex_t* cortex,
     uint32_t layer_idx,
     neuromod_effects_t* effects);
+
+//=============================================================================
+// Second Messenger Cascade Integration
+//=============================================================================
+
+/**
+ * @brief Trigger receptor activation for second messenger cascade
+ *
+ * WHAT: Activate G-protein coupled receptor to initiate signaling cascade
+ * WHY:  Neuromodulators bind receptors -> trigger intracellular cascades
+ * HOW:  Route to appropriate cascade (Gs/Gi/Gq) based on receptor type
+ *
+ * BIOLOGY:
+ * - ACh muscarinic (M1/M3) receptors -> Gq -> IP3/DAG pathway -> PKC activation
+ * - Dopamine D1 receptors -> Gs -> cAMP pathway -> PKA activation
+ * - NE beta receptors -> Gs -> cAMP pathway -> PKA activation
+ * - NE alpha1 receptors -> Gq -> IP3/DAG pathway -> PKC activation
+ * - NE alpha2 receptors -> Gi -> inhibit cAMP
+ * - Dopamine D2 receptors -> Gi -> inhibit cAMP
+ *
+ * @param cortex Visual cortex instance
+ * @param layer_idx V1 layer (0-3)
+ * @param receptor_type Which receptor was activated
+ * @param occupancy Receptor occupancy [0, 1]
+ * @return true on success
+ */
+bool visual_cortex_trigger_receptor(
+    visual_cortex_t* cortex,
+    uint32_t layer_idx,
+    receptor_type_t receptor_type,
+    float occupancy);
+
+/**
+ * @brief Get second messenger cascade state for layer
+ *
+ * WHAT: Query cascade state (cAMP, PKA, PKC, CaMKII activities)
+ * WHY:  Enable monitoring and integration with other systems
+ * HOW:  Return state from second messenger system
+ *
+ * @param cortex Visual cortex instance
+ * @param layer_idx V1 layer (0-3)
+ * @param state Output state buffer
+ * @return true on success
+ */
+bool visual_cortex_get_second_messenger_state(
+    const visual_cortex_t* cortex,
+    uint32_t layer_idx,
+    second_messenger_state_t* state);
 
 //=============================================================================
 // Bidirectional Feedback Functions (Phase 10.11.3)

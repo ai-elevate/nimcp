@@ -143,8 +143,8 @@ struct nimcp_bio_async_module_ctx;      // Bio-async module context
 /** Maximum number of tracked peers */
 #define SWARM_MAX_PEERS 32
 
-/** Maximum message size for swarm communication */
-#define SWARM_MAX_MESSAGE_SIZE 256
+/** Maximum message size for swarm communication (max supported by signal adapter) */
+#define SWARM_MAX_MESSAGE_SIZE 255
 
 /** Default heartbeat interval (ms) */
 #define SWARM_DEFAULT_HEARTBEAT_MS 100

@@ -16,7 +16,7 @@ extern "C" {
 
 // Forward declarations for when implementation is available
 typedef enum {
-    TIER_MINIMAL = 0,      // Absolute minimum functionality
+    PLATFORM_TIER_MINIMAL = 0,      // Absolute minimum functionality
     TIER_LOW = 1,          // Reduced feature set
     TIER_MEDIUM = 2,       // Balanced performance
     TIER_HIGH = 3,         // Full features
@@ -73,7 +73,7 @@ int tier_switch_evaluate(tier_switch_state_t* state, float memory, float thermal
 
     // Simple evaluation logic
     if (memory > 0.8f || thermal > 0.8f || battery < 0.2f) {
-        if (state->current_tier > TIER_MINIMAL) {
+        if (state->current_tier > PLATFORM_TIER_MINIMAL) {
             state->target_tier = static_cast<platform_tier_t>(state->current_tier - 1);
         }
     } else if (memory < 0.5f && thermal < 0.5f && battery > 0.5f) {
@@ -94,7 +94,7 @@ int tier_switch_set_tier(tier_switch_state_t* state, platform_tier_t tier) {
 }
 
 platform_tier_t tier_switch_get_tier(const tier_switch_state_t* state) {
-    return state ? state->current_tier : TIER_MINIMAL;
+    return state ? state->current_tier : PLATFORM_TIER_MINIMAL;
 }
 
 int tier_switch_apply(tier_switch_state_t* state, uint64_t timestamp_ms) {
@@ -290,7 +290,7 @@ TEST_F(PortiaTierSwitchTest, ManualTierOverride) {
 }
 
 TEST_F(PortiaTierSwitchTest, ManualOverrideAllTiers) {
-    for (int tier = TIER_MINIMAL; tier <= TIER_PERFORMANCE; tier++) {
+    for (int tier = PLATFORM_TIER_MINIMAL; tier <= TIER_PERFORMANCE; tier++) {
         int result = tier_switch_set_tier(tier_state, static_cast<platform_tier_t>(tier));
         EXPECT_EQ(result, 0);
         EXPECT_EQ(tier_switch_get_tier(tier_state), static_cast<platform_tier_t>(tier));
@@ -304,7 +304,7 @@ TEST_F(PortiaTierSwitchTest, ManualOverrideNullState) {
 
 // State Transition Tests
 TEST_F(PortiaTierSwitchTest, TransitionMinimalToPerformance) {
-    tier_switch_set_tier(tier_state, TIER_MINIMAL);
+    tier_switch_set_tier(tier_state, PLATFORM_TIER_MINIMAL);
 
     // Gradually improve conditions
     for (int i = 0; i < 10; i++) {
@@ -317,7 +317,7 @@ TEST_F(PortiaTierSwitchTest, TransitionMinimalToPerformance) {
     }
 
     // Should have reached higher tier
-    EXPECT_GT(tier_switch_get_tier(tier_state), TIER_MINIMAL);
+    EXPECT_GT(tier_switch_get_tier(tier_state), PLATFORM_TIER_MINIMAL);
 }
 
 TEST_F(PortiaTierSwitchTest, TransitionPerformanceToMinimal) {
@@ -328,7 +328,7 @@ TEST_F(PortiaTierSwitchTest, TransitionPerformanceToMinimal) {
         tier_switch_evaluate(tier_state, 0.95f, 0.95f, 0.1f);
         tier_switch_apply(tier_state, (i + 1) * (config.hysteresis_ms + 100));
 
-        if (tier_switch_get_tier(tier_state) == TIER_MINIMAL) {
+        if (tier_switch_get_tier(tier_state) == PLATFORM_TIER_MINIMAL) {
             break;
         }
     }
@@ -372,7 +372,7 @@ TEST_F(PortiaTierSwitchTest, ConflictingPressures) {
 TEST_F(PortiaTierSwitchTest, BoundaryValues) {
     // Test extreme values
     tier_switch_evaluate(tier_state, 0.0f, 0.0f, 1.0f);
-    EXPECT_GE(tier_state->target_tier, TIER_MINIMAL);
+    EXPECT_GE(tier_state->target_tier, PLATFORM_TIER_MINIMAL);
 
     tier_switch_evaluate(tier_state, 1.0f, 1.0f, 0.0f);
     EXPECT_LE(tier_state->target_tier, TIER_PERFORMANCE);
@@ -437,7 +437,7 @@ TEST_F(PortiaTierSwitchTest, ConcurrentSwitching) {
 
     // Should end in valid state
     platform_tier_t final_tier = tier_switch_get_tier(tier_state);
-    EXPECT_GE(final_tier, TIER_MINIMAL);
+    EXPECT_GE(final_tier, PLATFORM_TIER_MINIMAL);
     EXPECT_LE(final_tier, TIER_PERFORMANCE);
 }
 
@@ -495,5 +495,5 @@ TEST_F(PortiaTierSwitchTest, AdaptiveResponse) {
     }
 
     // Should have upgraded
-    EXPECT_GT(tier_switch_get_tier(tier_state), TIER_MINIMAL);
+    EXPECT_GT(tier_switch_get_tier(tier_state), PLATFORM_TIER_MINIMAL);
 }

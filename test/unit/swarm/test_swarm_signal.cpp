@@ -136,7 +136,7 @@ swarm_signal_config_t swarm_signal_default_config(swarm_radio_type_t radio_type)
 
     switch (radio_type) {
         case SWARM_RADIO_LORA:
-            config.max_packet_size = 256;
+            config.max_packet_size = 255;
             config.frequency_khz = 915000; // 915 MHz
             break;
         case SWARM_RADIO_WIFI:
@@ -156,7 +156,7 @@ swarm_signal_config_t swarm_signal_default_config(swarm_radio_type_t radio_type)
             config.frequency_khz = 0; // N/A for optical
             break;
         default:
-            config.max_packet_size = 256;
+            config.max_packet_size = 255;
             config.frequency_khz = 0;
             break;
     }
@@ -344,7 +344,7 @@ TEST_F(SwarmSignalTest, CreateLoRaAdapter) {
 
     ASSERT_NE(adapter, nullptr);
     EXPECT_EQ(adapter->config.radio_type, SWARM_RADIO_LORA);
-    EXPECT_EQ(adapter->config.max_packet_size, 256u);
+    EXPECT_EQ(adapter->config.max_packet_size, 255u);
     EXPECT_EQ(adapter->config.frequency_khz, 915000u);
 }
 
@@ -665,7 +665,7 @@ TEST_F(SwarmSignalTest, SimulatedFailure) {
 TEST_F(SwarmSignalTest, LoRaPacketSizeLimit) {
     adapter = swarm_signal_adapter_create(SWARM_RADIO_LORA, nullptr);
 
-    EXPECT_EQ(adapter->config.max_packet_size, 256u);
+    EXPECT_EQ(adapter->config.max_packet_size, 255u);
     EXPECT_LE(sizeof(swarm_phoneme_message_t), adapter->config.max_packet_size);
 }
 
@@ -673,14 +673,14 @@ TEST_F(SwarmSignalTest, WiFiHighBandwidth) {
     adapter = swarm_signal_adapter_create(SWARM_RADIO_WIFI, nullptr);
 
     EXPECT_EQ(adapter->config.max_packet_size, 1500u);
-    EXPECT_GT(adapter->config.max_packet_size, 256u); // Higher than LoRa
+    EXPECT_GT(adapter->config.max_packet_size, 255u); // Higher than LoRa
 }
 
 TEST_F(SwarmSignalTest, UltrasonicLowBandwidth) {
     adapter = swarm_signal_adapter_create(SWARM_RADIO_ULTRASONIC, nullptr);
 
     EXPECT_EQ(adapter->config.max_packet_size, 64u);
-    EXPECT_LT(adapter->config.max_packet_size, 256u); // Lower than LoRa
+    EXPECT_LT(adapter->config.max_packet_size, 255u); // Lower than LoRa
 }
 
 //=============================================================================

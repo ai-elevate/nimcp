@@ -2,14 +2,21 @@
  * @file nimcp_loss_functions.c
  * @brief Loss Functions Module Implementation
  *
+ * WHAT: Neural network loss functions with tensor-accelerated operations
+ * WHY:  Efficient training with vectorized loss computation
+ * HOW:  Uses nimcp_tensor library for batch operations
+ *
  * Full implementation of loss functions for neural network training.
  * Includes security registration and memory pool integration.
+ *
+ * @version 1.1.0 - Added tensor library integration
  */
 
 #include "middleware/training/nimcp_loss_functions.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/validation/nimcp_common.h"
 #include "utils/memory/nimcp_memory.h"
+#include "utils/tensor/nimcp_tensor.h"
 #include "security/nimcp_blood_brain_barrier.h"
 #include "async/nimcp_bio_async.h"
 #include "async/nimcp_bio_router.h"
@@ -1261,6 +1268,13 @@ size_t nimcp_loss_clip_gradients(
     return clipped;
 }
 
+/**
+ * @brief Clip gradients by L2 norm using tensor operations
+ *
+ * WHAT: Scale gradients if L2 norm exceeds max_norm
+ * WHY:  Prevent gradient explosion during training
+ * HOW:  Uses nimcp_tensor_norm_p for vectorized norm computation
+ */
 float nimcp_loss_clip_gradients_norm(
     float* gradients,
     size_t count,
@@ -1268,14 +1282,25 @@ float nimcp_loss_clip_gradients_norm(
 {
     if (!gradients || count == 0 || max_norm <= 0.0f) return 0.0f;
 
-    /* Compute L2 norm */
+    /* Try tensor-accelerated gradient clipping */
+    uint32_t dims[] = {(uint32_t)count};
+    nimcp_tensor_t* t = nimcp_tensor_from_data(gradients, dims, 1, NIMCP_DTYPE_F32, false);
+    if (t) {
+        float norm = (float)nimcp_tensor_norm_p(t, 2.0);
+        if (norm > max_norm) {
+            nimcp_tensor_mul_scalar_(t, (double)max_norm / (double)norm);
+        }
+        nimcp_tensor_destroy(t);
+        return norm;
+    }
+
+    /* Fallback to scalar computation */
     float norm_sq = 0.0f;
     for (size_t i = 0; i < count; i++) {
         norm_sq += gradients[i] * gradients[i];
     }
     float norm = sqrtf(norm_sq);
 
-    /* Clip if necessary */
     if (norm > max_norm) {
         float scale = max_norm / norm;
         for (size_t i = 0; i < count; i++) {
@@ -1307,4 +1332,207 @@ void nimcp_loss_result_free(nimcp_loss_result_t* result) {
 bool nimcp_loss_is_registered(const nimcp_loss_context_t* ctx) {
     if (!ctx) return false;
     return ctx->security_registered;
+}
+
+/* ============================================================================
+ * Tensor-Based Loss Functions
+ * ============================================================================ */
+
+/**
+ * @brief Compute MSE loss from tensors
+ *
+ * WHAT: Mean squared error using tensor operations
+ * WHY:  Efficient batch loss computation
+ * HOW:  Uses tensor subtraction and element-wise operations
+ */
+float nimcp_loss_mse_tensor(
+    const nimcp_tensor_t* predictions,
+    const nimcp_tensor_t* targets,
+    nimcp_loss_reduction_t reduction
+) {
+    if (!predictions || !targets) {
+        return 0.0f;
+    }
+
+    size_t n = nimcp_tensor_numel(predictions);
+    if (n != nimcp_tensor_numel(targets) || n == 0) {
+        return 0.0f;
+    }
+
+    /* Compute (predictions - targets)^2 */
+    nimcp_tensor_t* diff = nimcp_tensor_sub(predictions, targets);
+    if (!diff) {
+        return 0.0f;
+    }
+
+    nimcp_tensor_t* sq = nimcp_tensor_mul(diff, diff);
+    nimcp_tensor_destroy(diff);
+    if (!sq) {
+        return 0.0f;
+    }
+
+    /* Reduce */
+    float result;
+    if (reduction == NIMCP_LOSS_REDUCE_SUM) {
+        nimcp_tensor_t* sum_t = nimcp_tensor_sum(sq);
+        result = (float)nimcp_tensor_get_flat(sum_t, 0);
+        nimcp_tensor_destroy(sum_t);
+    } else {
+        /* Default to mean */
+        nimcp_tensor_t* mean_t = nimcp_tensor_mean(sq);
+        result = (float)nimcp_tensor_get_flat(mean_t, 0);
+        nimcp_tensor_destroy(mean_t);
+    }
+
+    nimcp_tensor_destroy(sq);
+    return result;
+}
+
+/**
+ * @brief Compute MSE gradient from tensors
+ *
+ * WHAT: Gradient of MSE loss
+ * WHY:  Backpropagation for neural network training
+ * HOW:  gradient = 2 * (predictions - targets) / n
+ */
+nimcp_tensor_t* nimcp_loss_mse_grad_tensor(
+    const nimcp_tensor_t* predictions,
+    const nimcp_tensor_t* targets
+) {
+    if (!predictions || !targets) {
+        return NULL;
+    }
+
+    size_t n = nimcp_tensor_numel(predictions);
+    if (n != nimcp_tensor_numel(targets) || n == 0) {
+        return NULL;
+    }
+
+    /* gradient = 2 * (pred - target) / n */
+    nimcp_tensor_t* grad = nimcp_tensor_sub(predictions, targets);
+    if (!grad) {
+        return NULL;
+    }
+
+    double scale = 2.0 / (double)n;
+    nimcp_tensor_mul_scalar_(grad, scale);
+
+    return grad;
+}
+
+/**
+ * @brief Compute softmax from tensor
+ *
+ * WHAT: Softmax activation function
+ * WHY:  Convert logits to probabilities
+ * HOW:  Uses nimcp_tensor_softmax
+ */
+nimcp_tensor_t* nimcp_loss_softmax_tensor(
+    const nimcp_tensor_t* logits,
+    int axis
+) {
+    if (!logits) {
+        return NULL;
+    }
+    return nimcp_tensor_softmax(logits, axis);
+}
+
+/**
+ * @brief Compute cross-entropy loss from tensors
+ *
+ * WHAT: Cross-entropy loss for classification
+ * WHY:  Standard loss for multi-class classification
+ * HOW:  -sum(target * log(prediction + eps)) / n
+ */
+float nimcp_loss_cross_entropy_tensor(
+    const nimcp_tensor_t* predictions,
+    const nimcp_tensor_t* targets,
+    float epsilon,
+    nimcp_loss_reduction_t reduction
+) {
+    if (!predictions || !targets) {
+        return 0.0f;
+    }
+
+    size_t n = nimcp_tensor_numel(predictions);
+    if (n != nimcp_tensor_numel(targets) || n == 0) {
+        return 0.0f;
+    }
+
+    if (epsilon <= 0.0f) epsilon = LOSS_DEFAULT_EPSILON;
+
+    /* Clamp predictions for numerical stability */
+    nimcp_tensor_t* pred_clamped = nimcp_tensor_clone(predictions);
+    if (!pred_clamped) {
+        return 0.0f;
+    }
+
+    float* data = (float*)nimcp_tensor_data(pred_clamped);
+    for (size_t i = 0; i < n; i++) {
+        if (data[i] < epsilon) data[i] = epsilon;
+        if (data[i] > 1.0f - epsilon) data[i] = 1.0f - epsilon;
+    }
+
+    /* Compute log(pred) */
+    nimcp_tensor_t* log_pred = nimcp_tensor_log(pred_clamped);
+    nimcp_tensor_destroy(pred_clamped);
+    if (!log_pred) {
+        return 0.0f;
+    }
+
+    /* Compute -target * log(pred) */
+    nimcp_tensor_t* loss = nimcp_tensor_mul(targets, log_pred);
+    nimcp_tensor_destroy(log_pred);
+    if (!loss) {
+        return 0.0f;
+    }
+
+    nimcp_tensor_mul_scalar_(loss, -1.0);
+
+    /* Reduce */
+    float result;
+    nimcp_tensor_t* reduced = nimcp_tensor_sum(loss);
+    nimcp_tensor_destroy(loss);
+    if (!reduced) {
+        return 0.0f;
+    }
+
+    result = (float)nimcp_tensor_get_flat(reduced, 0);
+    nimcp_tensor_destroy(reduced);
+
+    if (reduction == NIMCP_LOSS_REDUCE_MEAN) {
+        /* Get batch size from first dimension */
+        const nimcp_tensor_shape_t* shape = nimcp_tensor_shape(predictions);
+        size_t batch_size = (shape->rank > 1) ? shape->dims[0] : 1;
+        result /= (float)batch_size;
+    }
+
+    return result;
+}
+
+/**
+ * @brief Clip tensor gradients by norm
+ *
+ * WHAT: Scale gradient tensor if norm exceeds threshold
+ * WHY:  Prevent gradient explosion
+ * HOW:  Uses tensor norm and scalar multiplication
+ *
+ * @param gradients Gradient tensor (modified in place)
+ * @param max_norm Maximum allowed norm
+ * @return Original norm before clipping
+ */
+float nimcp_loss_clip_gradients_norm_tensor(
+    nimcp_tensor_t* gradients,
+    float max_norm
+) {
+    if (!gradients || max_norm <= 0.0f) {
+        return 0.0f;
+    }
+
+    float norm = (float)nimcp_tensor_norm_p(gradients, 2.0);
+    if (norm > max_norm) {
+        nimcp_tensor_mul_scalar_(gradients, (double)max_norm / (double)norm);
+    }
+
+    return norm;
 }

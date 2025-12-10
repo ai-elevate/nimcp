@@ -46,3 +46,41 @@ gtest_discover_tests(regression_plasticity_second_messengers_test
         TIMEOUT 600
         LABELS "regression;plasticity;second_messengers"
 )
+
+# Second messenger module integration regression tests
+add_executable(regression_plasticity_second_messengers_module_test
+    second_messengers/test_second_messengers_module_regression.cpp
+)
+target_link_libraries(regression_plasticity_second_messengers_module_test
+    PRIVATE
+        nimcp
+        GTest::gtest
+        GTest::gtest_main
+        Threads::Threads
+        m
+)
+target_compile_features(regression_plasticity_second_messengers_module_test PRIVATE cxx_std_17)
+gtest_discover_tests(regression_plasticity_second_messengers_module_test
+    PROPERTIES
+        TIMEOUT 600
+        LABELS "regression;plasticity;second_messengers;modules"
+)
+
+# Positional encoding regression tests for attention
+add_executable(regression_plasticity_attention_pe_test
+    attention/test_attention_pe_regression.cpp
+)
+target_link_libraries(regression_plasticity_attention_pe_test
+    PRIVATE
+        nimcp
+        GTest::gtest
+        GTest::gtest_main
+        Threads::Threads
+        m
+)
+target_compile_features(regression_plasticity_attention_pe_test PRIVATE cxx_std_17)
+gtest_discover_tests(regression_plasticity_attention_pe_test
+    PROPERTIES
+        TIMEOUT 600
+        LABELS "regression;plasticity;attention;positional_encoding"
+)

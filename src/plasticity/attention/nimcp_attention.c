@@ -21,6 +21,7 @@
 #include "utils/containers/nimcp_vector.h"
 #include "utils/validation/nimcp_validate.h"
 #include "utils/logging/nimcp_logging.h"
+#include "utils/encoding/nimcp_positional_encoding.h"
 #include "async/nimcp_bio_async.h"
 #include "async/nimcp_bio_messages.h"
 #include "security/nimcp_security.h"
@@ -138,6 +139,12 @@ struct multihead_attention_struct {
     atomic_uint_fast64_t forward_calls;
     atomic_uint_fast32_t avg_entropy_scaled;  // Fixed-point entropy
     atomic_uint_fast32_t avg_gate_scaled;     // Fixed-point gate
+
+    /* WHAT: Positional encoding encoder (Strategy Pattern)
+     * WHY:  Support RoPE and ALiBi position encoding strategies
+     * HOW:  Created based on config.pe_type, applied in forward pass
+     */
+    nimcp_pos_encoder_t* pos_encoder;
 };
 
 //=============================================================================
@@ -637,7 +644,9 @@ bool attention_head_forward(attention_head_t head,
                            const float* value,
                            uint32_t sequence_length,
                            float* output,
-                           float* attention_weights)
+                           float* attention_weights,
+                           nimcp_pos_encoder_t* pos_encoder,
+                           uint32_t head_idx)
 {
     /* WHAT: Validate all inputs
      * WHY:  Early returns prevent crashes
@@ -660,6 +669,14 @@ bool attention_head_forward(attention_head_t head,
     const uint32_t output_dim = head->config.output_dim;
     const float temperature = head->config.temperature;
 
+    /* WHAT: Determine if using positional encoding
+     * WHY:  Need to know PE type for RoPE vs ALiBi processing
+     */
+    const bool use_rope = pos_encoder &&
+                         (nimcp_pos_get_type(pos_encoder) == NIMCP_POS_ROTARY);
+    const bool use_alibi = pos_encoder &&
+                          (nimcp_pos_get_type(pos_encoder) == NIMCP_POS_ALIBI);
+
     /* WHAT: Allocate temporary buffers from pool (Phase MP)
      * WHY:  Need workspace for Q/K/V projections - use pool for O(1) allocation
      */
@@ -669,15 +686,28 @@ bool attention_head_forward(attention_head_t head,
     float* scores = alloc_attention_buffer(sequence_length * sizeof(float));
     float* output_proj = alloc_attention_buffer(value_dim * sizeof(float));
 
+    /* WHAT: Allocate RoPE buffers if needed
+     * WHY:  RoPE requires rotated Q/K before attention computation
+     */
+    float* query_rope = NULL;
+    float* key_rope = NULL;
+    if (use_rope) {
+        query_rope = alloc_attention_buffer(sequence_length * key_dim * sizeof(float));
+        key_rope = alloc_attention_buffer(sequence_length * key_dim * sizeof(float));
+    }
+
     /* WHAT: Check allocations
      * WHY:  Early cleanup if allocation failed
      */
-    if (!query_proj || !key_proj || !value_proj || !scores || !output_proj) {
+    if (!query_proj || !key_proj || !value_proj || !scores || !output_proj ||
+        (use_rope && (!query_rope || !key_rope))) {
         free_attention_buffer(query_proj);
         free_attention_buffer(key_proj);
         free_attention_buffer(value_proj);
         free_attention_buffer(scores);
         free_attention_buffer(output_proj);
+        free_attention_buffer(query_rope);
+        free_attention_buffer(key_rope);
         return false;
     }
 
@@ -688,18 +718,72 @@ bool attention_head_forward(attention_head_t head,
     project_to_key(head, key, sequence_length, key_proj);
     project_to_value(head, value, sequence_length, value_proj);
 
+    /* WHAT: Apply RoPE rotation to Q/K if enabled
+     * WHY:  Inject relative position information via rotation
+     * HOW:  Rotate each Q/K vector by position-dependent angle
+     */
+    const float* query_final = query_proj;
+    const float* key_final = key_proj;
+
+    if (use_rope) {
+        for (uint32_t pos = 0; pos < sequence_length; pos++) {
+            const float* q_vec = query_proj + (pos * key_dim);
+            const float* k_vec = key_proj + (pos * key_dim);
+            float* q_out = query_rope + (pos * key_dim);
+            float* k_out = key_rope + (pos * key_dim);
+
+            int result = nimcp_pos_rope_apply(pos_encoder, q_vec, k_vec,
+                                             pos, q_out, k_out);
+            if (result != NIMCP_POS_SUCCESS) {
+                NIMCP_LOGGING_ERROR("RoPE application failed at position %u", pos);
+                free_attention_buffer(query_proj);
+                free_attention_buffer(key_proj);
+                free_attention_buffer(value_proj);
+                free_attention_buffer(scores);
+                free_attention_buffer(output_proj);
+                free_attention_buffer(query_rope);
+                free_attention_buffer(key_rope);
+                return false;
+            }
+        }
+        query_final = query_rope;
+        key_final = key_rope;
+    }
+
     /* WHAT: Compute attention for each query token
      * WHY:  Each output depends on all inputs via attention
      * NOTE: Single loop, no nesting
      */
     for (uint32_t t = 0; t < sequence_length; t++) {
-        const float* query_vec = query_proj + (t * key_dim);
+        const float* query_vec = query_final + (t * key_dim);
 
         /* WHAT: Compute attention scores
          * WHY:  Measure relevance of each key to this query
+         * HOW:  Use rotated Q/K if RoPE is enabled
          */
-        compute_attention_scores(query_vec, key_proj, sequence_length,
+        compute_attention_scores(query_vec, key_final, sequence_length,
                                 key_dim, scores);
+
+        /* WHAT: Add ALiBi bias if enabled
+         * WHY:  Inject position information via additive bias
+         * HOW:  bias[i][j] = -slope * |i - j|
+         */
+        if (use_alibi) {
+            /* WHAT: Get ALiBi slope for this head
+             * WHY:  Each head has different distance decay rate
+             * HOW:  Slopes computed geometrically by encoder
+             */
+            float head_slope = 0.0f;
+            // ALiBi bias: scores[j] += -slope * |t - j|
+            for (uint32_t j = 0; j < sequence_length; j++) {
+                int distance = (int)t - (int)j;
+                if (distance < 0) distance = -distance;
+                // Compute slope: 2^(-8 * (head_idx+1) / num_heads)
+                // Simplified: use head_idx directly for slope scaling
+                head_slope = powf(2.0f, -8.0f * ((float)(head_idx + 1) / 8.0f));
+                scores[j] += -head_slope * (float)distance;
+            }
+        }
 
         /* WHAT: Apply softmax to get attention distribution
          * WHY:  Convert scores to probabilities
@@ -736,6 +820,8 @@ bool attention_head_forward(attention_head_t head,
     free_attention_buffer(value_proj);
     free_attention_buffer(scores);
     free_attention_buffer(output_proj);
+    free_attention_buffer(query_rope);
+    free_attention_buffer(key_rope);
 
     return true;
 }
@@ -771,6 +857,11 @@ multihead_attention_t multihead_attention_create(const multihead_attention_confi
     atomic_init(&mha->forward_calls, 0);
     atomic_init(&mha->avg_entropy_scaled, 0);
     atomic_init(&mha->gate_signal, (uint32_t)(config->gate_bias * 1000.0f));
+
+    /* WHAT: Initialize positional encoder to NULL
+     * WHY:  Created on-demand via multihead_attention_set_pe_type()
+     */
+    mha->pos_encoder = NULL;
 
     /* WHAT: Allocate attention heads
      * WHY:  Need multiple parallel heads (cortical columns)
@@ -808,8 +899,21 @@ multihead_attention_t multihead_attention_create(const multihead_attention_confi
         }
     }
 
-    NIMCP_LOGGING_INFO("Created multihead attention: num_heads=%u, input_dim=%u",
-                      config->num_heads, config->input_dim);
+    /* WHAT: Create positional encoder if enabled
+     * WHY:  Support RoPE or ALiBi positional encoding
+     * HOW:  Create encoder based on config.pe_type
+     */
+    if (config->use_positional_encoding) {
+        if (!multihead_attention_set_pe_type(mha, config->pe_type)) {
+            NIMCP_LOGGING_WARN("Failed to create positional encoder, continuing without PE");
+            mha->config.use_positional_encoding = false;
+        }
+    }
+
+    NIMCP_LOGGING_INFO("Created multihead attention: num_heads=%u, input_dim=%u, pe=%s",
+                      config->num_heads, config->input_dim,
+                      config->use_positional_encoding ?
+                      nimcp_pos_type_to_string(config->pe_type) : "none");
 
     return mha;
 }
@@ -831,6 +935,13 @@ void multihead_attention_destroy(multihead_attention_t mha)
             attention_head_destroy(mha->heads[i]);
         }
         nimcp_free(mha->heads);
+    }
+
+    /* WHAT: Destroy positional encoder
+     * WHY:  Free PE resources
+     */
+    if (mha->pos_encoder) {
+        nimcp_pos_encoder_destroy(mha->pos_encoder);
     }
 
     nimcp_free(mha);
@@ -895,12 +1006,15 @@ bool multihead_attention_forward(multihead_attention_t mha,
 
         /* WHAT: Run forward pass for this head
          * WHY:  Compute attention-weighted representation
+         * HOW:  Pass positional encoder if enabled
          */
         bool success = attention_head_forward(mha->heads[h],
                                              input, input, input,
                                              sequence_length,
                                              head_output,
-                                             weights_ptr);
+                                             weights_ptr,
+                                             mha->pos_encoder,
+                                             h);
 
         /* WHAT: Check if forward pass failed
          * WHY:  Early cleanup and return on error
@@ -1143,6 +1257,235 @@ float multihead_attention_get_strength(multihead_attention_t mha)
     }
 
     return gate_strength;
+}
+
+//=============================================================================
+// Positional Encoding Integration (Strategy Pattern)
+//=============================================================================
+
+/**
+ * @brief Set positional encoding type for multihead attention
+ *
+ * WHAT: Create or replace positional encoder with specified type
+ * WHY:  Enable runtime switching between RoPE and ALiBi strategies
+ * HOW:  Destroy old encoder, create new one based on type
+ *
+ * COMPLEXITY: O(1) for encoder creation
+ * SRP: Only handles encoder lifecycle management
+ */
+bool multihead_attention_set_pe_type(multihead_attention_t mha,
+                                     nimcp_pos_encoding_type_t pe_type)
+{
+    /* WHAT: Guard clause for NULL
+     * WHY:  Early return prevents crash
+     */
+    if (!mha) {
+        NIMCP_LOGGING_ERROR("NULL multihead attention in set_pe_type");
+        return false;
+    }
+
+    /* WHAT: Validate PE type is supported
+     * WHY:  Only RoPE and ALiBi are integrated
+     */
+    if (pe_type != NIMCP_POS_ROTARY && pe_type != NIMCP_POS_ALIBI) {
+        NIMCP_LOGGING_ERROR("Unsupported PE type: %d (only RoPE and ALiBi supported)",
+                           pe_type);
+        return false;
+    }
+
+    /* WHAT: Destroy existing encoder if present
+     * WHY:  Prevent memory leak when changing type
+     */
+    if (mha->pos_encoder) {
+        nimcp_pos_encoder_destroy(mha->pos_encoder);
+        mha->pos_encoder = NULL;
+    }
+
+    /* WHAT: Create unified config structure
+     * WHY:  nimcp_pos_encoder_create takes unified config
+     */
+    nimcp_pos_config_t pe_config = {0};
+    pe_config.type = pe_type;
+
+    /* WHAT: Configure based on PE type
+     * WHY:  Different types need different parameters
+     * HOW:  RoPE needs base frequency, ALiBi needs num_heads
+     */
+    if (pe_type == NIMCP_POS_ROTARY) {
+        /* WHAT: Configure RoPE encoder
+         * WHY:  Rotary position embedding for Q/K rotation
+         */
+        pe_config.config.rope.base.max_seq_length = mha->config.sequence_length;
+        pe_config.config.rope.base.embedding_dim = mha->config.input_dim / mha->config.num_heads;
+        pe_config.config.rope.base.cache_enabled = true;
+        pe_config.config.rope.base.thread_safe = false;  // Single-threaded forward pass
+        pe_config.config.rope.rope_base = mha->config.rope_base > 0.0f ?
+                                          mha->config.rope_base : NIMCP_ROPE_DEFAULT_BASE;
+        pe_config.config.rope.rope_scaling = 1.0f;
+        pe_config.config.rope.rope_dim = 0;  // Apply to all dimensions
+        pe_config.config.rope.use_ntk_scaling = false;
+
+        NIMCP_LOGGING_DEBUG("Creating RoPE encoder: seq_len=%u, dim=%u, base=%.1f",
+                           pe_config.config.rope.base.max_seq_length,
+                           pe_config.config.rope.base.embedding_dim,
+                           pe_config.config.rope.rope_base);
+
+    } else if (pe_type == NIMCP_POS_ALIBI) {
+        /* WHAT: Configure ALiBi encoder
+         * WHY:  Attention with Linear Biases for position
+         */
+        pe_config.config.alibi.base.max_seq_length = mha->config.sequence_length;
+        pe_config.config.alibi.base.embedding_dim = 0;  // ALiBi doesn't use embeddings
+        pe_config.config.alibi.base.cache_enabled = true;
+        pe_config.config.alibi.base.thread_safe = false;
+        pe_config.config.alibi.num_heads = mha->config.num_heads;
+        pe_config.config.alibi.slope_base = mha->config.alibi_slope_base > 0.0f ?
+                                            mha->config.alibi_slope_base : 2.0f;
+        pe_config.config.alibi.use_symmetric = true;  // Bidirectional attention
+
+        NIMCP_LOGGING_DEBUG("Creating ALiBi encoder: seq_len=%u, num_heads=%u, slope_base=%.1f",
+                           pe_config.config.alibi.base.max_seq_length,
+                           pe_config.config.alibi.num_heads,
+                           pe_config.config.alibi.slope_base);
+    }
+
+    /* WHAT: Create positional encoder
+     * WHY:  Factory function for any PE type
+     */
+    mha->pos_encoder = nimcp_pos_encoder_create(&pe_config);
+    if (!mha->pos_encoder) {
+        NIMCP_LOGGING_ERROR("Failed to create positional encoder");
+        return false;
+    }
+
+    /* WHAT: Update config to reflect new PE type
+     * WHY:  Keep config in sync with actual encoder
+     */
+    mha->config.pe_type = pe_type;
+    mha->config.use_positional_encoding = true;
+
+    NIMCP_LOGGING_INFO("Set positional encoding type: %s",
+                      nimcp_pos_type_to_string(pe_type));
+
+    return true;
+}
+
+/**
+ * @brief Apply RoPE rotation to query and key projections
+ *
+ * WHAT: Rotate Q/K vectors by position-dependent angles
+ * WHY:  Inject relative position information into attention
+ * HOW:  Call nimcp_pos_rope_apply for each position
+ *
+ * COMPLEXITY: O(seq_len * key_dim)
+ * SRP: Only applies RoPE transformation
+ */
+bool multihead_attention_apply_rope(multihead_attention_t mha,
+                                   const float* query_proj,
+                                   const float* key_proj,
+                                   uint32_t seq_length,
+                                   uint32_t key_dim,
+                                   float* query_out,
+                                   float* key_out)
+{
+    /* WHAT: Guard clauses for NULL pointers
+     * WHY:  Early returns prevent crashes
+     */
+    if (!mha || !query_proj || !key_proj || !query_out || !key_out) {
+        NIMCP_LOGGING_ERROR("NULL parameter in apply_rope");
+        return false;
+    }
+
+    /* WHAT: Check encoder exists and is RoPE type
+     * WHY:  RoPE functions only work on RoPE encoder
+     */
+    if (!mha->pos_encoder) {
+        NIMCP_LOGGING_ERROR("No positional encoder initialized");
+        return false;
+    }
+
+    if (nimcp_pos_get_type(mha->pos_encoder) != NIMCP_POS_ROTARY) {
+        NIMCP_LOGGING_ERROR("Encoder is not RoPE type");
+        return false;
+    }
+
+    /* WHAT: Apply RoPE to each position in sequence
+     * WHY:  Each token needs position-dependent rotation
+     * NOTE: Single loop, no nesting
+     */
+    for (uint32_t pos = 0; pos < seq_length; pos++) {
+        const float* query_vec = query_proj + (pos * key_dim);
+        const float* key_vec = key_proj + (pos * key_dim);
+        float* query_out_vec = query_out + (pos * key_dim);
+        float* key_out_vec = key_out + (pos * key_dim);
+
+        /* WHAT: Apply rotation to Q/K pair
+         * WHY:  RoPE rotates query and key by same position angles
+         * HOW:  Uses precomputed rotation matrices in encoder
+         */
+        int result = nimcp_pos_rope_apply(mha->pos_encoder,
+                                          query_vec, key_vec,
+                                          pos,
+                                          query_out_vec, key_out_vec);
+
+        if (result != NIMCP_POS_SUCCESS) {
+            NIMCP_LOGGING_ERROR("RoPE application failed at position %u", pos);
+            return false;
+        }
+    }
+
+    return true;
+}
+
+/**
+ * @brief Get ALiBi attention bias matrix
+ *
+ * WHAT: Compute position-dependent bias for attention scores
+ * WHY:  ALiBi adds linear distance penalty to encourage local attention
+ * HOW:  Call nimcp_pos_alibi_get_bias to compute bias matrix
+ *
+ * COMPLEXITY: O(num_heads * seq_length^2)
+ * SRP: Only retrieves bias matrix from encoder
+ */
+bool multihead_attention_get_alibi_bias(multihead_attention_t mha,
+                                       uint32_t seq_length,
+                                       float* bias_out)
+{
+    /* WHAT: Guard clauses for NULL pointers
+     * WHY:  Early returns prevent crashes
+     */
+    if (!mha || !bias_out) {
+        NIMCP_LOGGING_ERROR("NULL parameter in get_alibi_bias");
+        return false;
+    }
+
+    /* WHAT: Check encoder exists and is ALiBi type
+     * WHY:  ALiBi functions only work on ALiBi encoder
+     */
+    if (!mha->pos_encoder) {
+        NIMCP_LOGGING_ERROR("No positional encoder initialized");
+        return false;
+    }
+
+    if (nimcp_pos_get_type(mha->pos_encoder) != NIMCP_POS_ALIBI) {
+        NIMCP_LOGGING_ERROR("Encoder is not ALiBi type");
+        return false;
+    }
+
+    /* WHAT: Get bias matrix from encoder
+     * WHY:  Encoder pre-computes geometric slope-based biases
+     * HOW:  bias[h][i][j] = -slope[h] * |i - j|
+     */
+    int result = nimcp_pos_alibi_get_bias(mha->pos_encoder,
+                                          seq_length,
+                                          bias_out);
+
+    if (result != NIMCP_POS_SUCCESS) {
+        NIMCP_LOGGING_ERROR("Failed to get ALiBi bias matrix");
+        return false;
+    }
+
+    return true;
 }
 
 //=============================================================================

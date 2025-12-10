@@ -18,6 +18,9 @@
  * and ethical regulation of neural activity.
  */
 
+// Forward declaration for Theory of Mind integration
+typedef struct theory_of_mind_s* theory_of_mind_t;
+
 //=============================================================================
 // Ethics Constants and Types
 //=============================================================================
@@ -123,6 +126,10 @@ typedef struct {
     uint32_t max_agents;          /**< Maximum number of agents */
     float golden_rule_threshold;  /**< Threshold for Golden Rule (default 0.0) */
     float empathy_weight;         /**< Weight for empathy signals (0-1) */
+
+    // Theory of Mind integration (Phase 10.6.1)
+    bool enable_tom_integration;  /**< Enable ToM-based perspective-taking (default: false) */
+    float perspective_weight;     /**< Weight for agent perspective in harm assessment (0-1, default: 0.5) */
 } ethics_config_t;
 
 /**
@@ -1198,6 +1205,101 @@ uint32_t ethics_get_all_incidents(ethics_engine_t engine, ethics_incident_t** in
  * THREAD-SAFE: Yes
  */
 bool ethics_export_incidents(ethics_engine_t engine, const char* filepath, const char* format);
+
+//=============================================================================
+// Theory of Mind Integration (Phase 10.6.1)
+//=============================================================================
+
+/**
+ * @brief Set Theory of Mind module for perspective-taking in ethical evaluation
+ *
+ * WHAT: Associate ethics engine with ToM for agent-aware harm assessment
+ * WHY:  Enable consideration of agent beliefs in ethical reasoning
+ * HOW:  Store ToM reference, enable perspective-based evaluation
+ *
+ * @param engine Ethics engine
+ * @param tom Theory of Mind module (can be NULL to disable)
+ *
+ * COMPLEXITY: O(1)
+ * THREAD-SAFE: No
+ */
+void ethics_set_theory_of_mind(ethics_engine_t engine, theory_of_mind_t tom);
+
+/**
+ * @brief Evaluate action with agent perspective-taking
+ *
+ * WHAT: Assess ethical implications considering agent beliefs and perceptions
+ * WHY:  Harm depends on agent's perspective, not just objective reality
+ * HOW:  Query ToM for agent perspectives, weight in harm assessment
+ *
+ * ASIMOV'S LAWS: First Law enhanced with perspective-taking -
+ *                "harm" includes perceived harm based on agent beliefs
+ *
+ * @param engine Ethics engine
+ * @param action_description Description of proposed action
+ * @param affected_agent_ids Array of agent IDs that would be affected
+ * @param num_affected_agents Number of affected agents
+ * @param harm_score Output: harm assessment [0.0, 1.0], 0=no harm
+ * @param recommended_action Output: recommended action (ALLOW/BLOCK/MODIFY)
+ * @return true if evaluation succeeded
+ *
+ * COMPLEXITY: O(n) where n = num_affected_agents
+ */
+bool ethics_evaluate_with_perspective(ethics_engine_t engine,
+                                       const char* action_description,
+                                       const uint32_t* affected_agent_ids,
+                                       uint32_t num_affected_agents,
+                                       float* harm_score,
+                                       ethics_action_t* recommended_action);
+
+/**
+ * @brief Empathy-based evaluation using ToM emotional inference
+ *
+ * WHAT: Use ToM to infer agent emotional states, apply empathy-weighted evaluation
+ * WHY:  Emotional harm is important component of ethical assessment
+ * HOW:  Query ToM for emotional states, weight by empathy configuration
+ *
+ * @param engine Ethics engine
+ * @param action_description Description of proposed action
+ * @param affected_agent_ids Array of agent IDs that would be affected
+ * @param num_affected_agents Number of affected agents
+ * @param empathy_score Output: empathy-based harm score [0.0, 1.0]
+ * @return true if evaluation succeeded
+ *
+ * COMPLEXITY: O(n) where n = num_affected_agents
+ */
+bool ethics_empathy_based_evaluation(ethics_engine_t engine,
+                                      const char* action_description,
+                                      const uint32_t* affected_agent_ids,
+                                      uint32_t num_affected_agents,
+                                      float* empathy_score);
+
+/**
+ * @brief Check Asimov's First Law with false belief consideration
+ *
+ * WHAT: Evaluate harm considering agent false beliefs
+ * WHY:  Agent may perceive harm even if objectively safe, or vice versa
+ * HOW:  Query ToM for false beliefs, assess perceived vs actual harm
+ *
+ * EXAMPLE: Agent falsely believes box contains poison (actually candy)
+ *          Opening box would cause perceived harm (fear) despite safety
+ *
+ * @param engine Ethics engine
+ * @param action_description Description of proposed action
+ * @param agent_id Agent whose beliefs to consider
+ * @param perceived_harm Output: harm from agent's perspective [0.0, 1.0]
+ * @param actual_harm Output: objectively assessed harm [0.0, 1.0]
+ * @param has_false_beliefs Output: whether agent has relevant false beliefs
+ * @return true if evaluation succeeded
+ *
+ * COMPLEXITY: O(1)
+ */
+bool ethics_check_first_law_with_beliefs(ethics_engine_t engine,
+                                          const char* action_description,
+                                          uint32_t agent_id,
+                                          float* perceived_harm,
+                                          float* actual_harm,
+                                          bool* has_false_beliefs);
 
 
 #ifdef __cplusplus

@@ -4,14 +4,17 @@
  *
  * WHAT: Cochlear processing with FFT-based frequency analysis
  * WHY:  Enable auditory perception and memory in NIMCP
- * HOW:  Mel-scale filterbank + MFCC + temporal pattern recognition
+ * HOW:  Mel-scale filterbank + MFCC + tensor-accelerated operations
+ *
+ * Phase TENSOR-2: Tensor library integration for accelerated operations
  *
  * @author NIMCP Development Team
  * @date 2025
- * @version 2.6
+ * @version 2.7.0 - Added tensor library integration
  */
 
 #include "perception/nimcp_audio_cortex.h"
+#include "utils/tensor/nimcp_tensor.h"  /* Tensor library for vectorized operations */
 #include "security/nimcp_security.h"
 #include "security/nimcp_blood_brain_barrier.h"
 
@@ -23,6 +26,7 @@
 #include "utils/validation/nimcp_validate.h"
 #include "utils/logging/nimcp_logging.h"
 #include "plasticity/neuromodulators/nimcp_neuromodulators.h"  // Neuromodulator integration
+#include "plasticity/nimcp_second_messengers.h"  // Second messenger cascade system
 #include "core/brain/nimcp_brain.h"  // Brain reference
 #include "core/neuralnet/nimcp_neuralnet.h"  // Neural network for internal A1 connections
 #include "core/topology/nimcp_fractal_topology.h"  // Scale-free topology generation
@@ -104,6 +108,10 @@ struct audio_cortex {
     // === Bio-Async Communication ===
     bio_module_context_t bio_ctx;         /**< Bio-async module context */
     bool bio_async_enabled;               /**< Whether bio-async is enabled */
+
+    // === Second Messenger Cascade System ===
+    second_messenger_system_t* second_messengers; /**< Second messenger cascade system */
+    bool second_messengers_enabled;       /**< Whether second messengers are enabled */
 
     // Statistics
     audio_cortex_stats_t stats;
@@ -696,12 +704,47 @@ audio_cortex_t* audio_cortex_create(const audio_cortex_config_t* config)
         }
     }
 
+    // === Second Messenger Cascade System ===
+    cortex->second_messengers = NULL;
+    cortex->second_messengers_enabled = false;
+
+    if (config->enable_second_messengers) {
+        // WHAT: Initialize second messenger system for frequency neurons
+        // WHY:  Enable neuromodulator-driven cascades for audio processing modulation
+        // HOW:  Create system with num_mel_filters neurons (one per frequency band)
+        uint32_t num_neurons = config->num_mel_filters;
+
+        second_messenger_config_t sm_config = second_messenger_default_config();
+        sm_config.enable_bio_async = config->enable_bio_async;
+        sm_config.enable_security = true;
+
+        cortex->second_messengers = second_messenger_create(num_neurons, &sm_config);
+        if (cortex->second_messengers) {
+            cortex->second_messengers_enabled = true;
+            LOG_INFO(AUDIO_LOG_MODULE, "Second messenger system initialized for %u frequency neurons",
+                     num_neurons);
+
+            // Note: Security integration enabled via sm_config.enable_security
+            // BBB registration is handled internally by the second messenger system
+        } else {
+            LOG_WARN(AUDIO_LOG_MODULE, "Failed to create second messenger system");
+        }
+    }
+
     return cortex;
 }
 
 void audio_cortex_destroy(audio_cortex_t* cortex)
 {
     if (!cortex) return;
+
+    // === Second Messenger System Cleanup ===
+    if (cortex->second_messengers) {
+        second_messenger_destroy(cortex->second_messengers);
+        cortex->second_messengers = NULL;
+        cortex->second_messengers_enabled = false;
+        LOG_DEBUG(AUDIO_LOG_MODULE, "Second messenger system destroyed");
+    }
 
     // === Bio-Async Unregistration ===
     if (cortex->bio_async_enabled && cortex->bio_ctx) {
@@ -789,6 +832,16 @@ bool audio_cortex_process(
     // Update neuromodulator states (assuming ~30ms frame @ 16kHz = 512 samples)
     float frame_duration = (float)num_samples / (float)cortex->config.sample_rate;
     update_neuromodulator_states(cortex, frame_duration);
+
+    // === Update Second Messenger Cascade Dynamics ===
+    // WHAT: Update cascade kinetics for all frequency neurons
+    // WHY:  Cascades evolve over time (seconds to minutes timescale)
+    // HOW:  Call update with frame duration converted to milliseconds
+    if (cortex->second_messengers_enabled && cortex->second_messengers) {
+        float dt_ms = frame_duration * 1000.0f;
+        uint64_t timestamp_ms = (uint64_t)(time(NULL) * 1000);
+        second_messenger_update(cortex->second_messengers, dt_ms, timestamp_ms);
+    }
 
     // Convert to mono if stereo
     float* mono_audio = (float*)audio_data;
@@ -939,6 +992,37 @@ bool audio_cortex_compute_mel_features(
         // Store linear energy (tests expect positive values)
         // Add small epsilon to avoid zero
         mel_features[m] = sum + 1e-10f;
+
+        // === Apply Second Messenger Cascade Modulation ===
+        // WHAT: Modulate frequency band gain by kinase activities
+        // WHY:  PKA/PKC/CaMKII affect neuronal excitability and tuning
+        // HOW:  Query cascade state and apply as multiplicative gain
+        if (cortex->second_messengers_enabled && cortex->second_messengers) {
+            second_messenger_state_t state;
+            nimcp_result_t result = second_messenger_get_state(
+                cortex->second_messengers,
+                m,  // neuron_id = frequency bin index
+                &state
+            );
+
+            if (result == NIMCP_SUCCESS) {
+                // Integrate kinase activities
+                float pka = state.camp.pka_activity;
+                float pkc = state.ip3_dag.pkc_activity;
+                float camkii = state.calcium.camkii_activity;
+
+                // BIOLOGY:
+                // - PKA enhances frequency tuning (D1 dopamine pathway)
+                // - PKC enhances selectivity (ACh M4, 5-HT2A pathways)
+                // - CaMKII enhances temporal precision
+                //
+                // Modulation range: [0.5, 1.5] where 1.0 = baseline
+                float cascade_gain = 1.0f + (pka * 0.3f) + (pkc * 0.4f) + (camkii * 0.2f) - 0.45f;
+                cascade_gain = fmaxf(0.5f, fminf(cascade_gain, 1.5f));
+
+                mel_features[m] *= cascade_gain;
+            }
+        }
     }
 
     // Apply cocktail party effect - ACh sharpens frequency tuning
@@ -1213,11 +1297,22 @@ float audio_cortex_compute_novelty(
     }
 
     // Normalize query features
+    /* Use tensor library for query norm computation */
     float query_norm = 0.0f;
-    for (uint32_t j = 0; j < cortex->config.feature_dim; j++) {
-        query_norm += features[j] * features[j];
+    {
+        uint32_t dims[] = {cortex->config.feature_dim};
+        nimcp_tensor_t* query_tensor = nimcp_tensor_from_data(features, dims, 1, NIMCP_DTYPE_F32, false);
+        if (query_tensor) {
+            query_norm = (float)nimcp_tensor_norm_p(query_tensor, 2.0);
+            nimcp_tensor_destroy(query_tensor);
+        } else {
+            /* Fallback to scalar */
+            for (uint32_t j = 0; j < cortex->config.feature_dim; j++) {
+                query_norm += features[j] * features[j];
+            }
+            query_norm = sqrtf(query_norm);
+        }
     }
-    query_norm = sqrtf(query_norm);
     if (query_norm < 1e-6f) {
         return 1.0f;  // Zero features are maximally novel
     }
@@ -1756,6 +1851,171 @@ nimcp_error_t audio_cortex_broadcast_speech_detected(
     }
 
     LOG_DEBUG(AUDIO_LOG_MODULE, "Sent speech detected: salience=%.2f", speech_salience);
+
+    return NIMCP_SUCCESS;
+}
+
+//=============================================================================
+// Second Messenger Cascade Integration Implementation
+//=============================================================================
+
+/**
+ * @brief Activate receptor cascade in audio cortex neuron
+ *
+ * WHAT: Trigger second messenger cascade via receptor activation
+ * WHY:  Neuromodulators activate GPCRs -> cascades modulate audio processing
+ * HOW:  Route to appropriate G-protein pathway (Gs/Gi/Gq)
+ *
+ * BIOLOGY:
+ * - Dopamine D1 (Gs) -> cAMP -> PKA: Modulates frequency tuning
+ * - Acetylcholine M4 (Gq) -> IP3/DAG -> PKC: Enhances frequency selectivity
+ * - Serotonin 5-HT2A (Gq) -> IP3/DAG -> PKC: Gates auditory sensitivity
+ *
+ * COMPLEXITY: O(1)
+ *
+ * @param cortex Audio cortex instance
+ * @param neuron_id Neuron ID (maps to frequency bin)
+ * @param receptor Receptor type to activate
+ * @param occupancy Receptor occupancy [0, 1]
+ * @param timestamp_ms Current timestamp
+ * @return NIMCP_SUCCESS or error code
+ */
+nimcp_error_t audio_cortex_trigger_receptor(
+    audio_cortex_t* cortex,
+    uint32_t neuron_id,
+    uint32_t receptor,
+    float occupancy,
+    uint64_t timestamp_ms)
+{
+    // Guard: Validate inputs
+    if (!cortex) {
+        return NIMCP_ERROR_INVALID_PARAM;
+    }
+
+    if (!cortex->second_messengers_enabled || !cortex->second_messengers) {
+        return NIMCP_ERROR_NOT_INITIALIZED;
+    }
+
+    // Validate neuron_id is within range
+    if (neuron_id >= cortex->config.num_mel_filters) {
+        LOG_ERROR(AUDIO_LOG_MODULE, "Invalid neuron_id %u (max %u)",
+                  neuron_id, cortex->config.num_mel_filters - 1);
+        return NIMCP_ERROR_INVALID_PARAM;
+    }
+
+    // Validate occupancy range
+    if (occupancy < 0.0f || occupancy > 1.0f) {
+        LOG_ERROR(AUDIO_LOG_MODULE, "Invalid receptor occupancy %.2f (must be [0, 1])",
+                  occupancy);
+        return NIMCP_ERROR_INVALID_PARAM;
+    }
+
+    // WHAT: Map receptor type to G-protein coupling and activate cascade
+    // WHY:  Different receptors trigger different intracellular pathways
+    // HOW:  Use receptor_type_t enum to determine Gs/Gi/Gq coupling
+    gpcr_coupling_t coupling = second_messenger_receptor_coupling((receptor_type_t)receptor);
+
+    nimcp_result_t result = NIMCP_SUCCESS;
+
+    switch (coupling) {
+        case GPCR_GS_COUPLED:
+            // D1 dopamine, beta-adrenergic -> cAMP -> PKA
+            result = second_messenger_activate_gs(
+                cortex->second_messengers,
+                neuron_id,
+                occupancy,
+                timestamp_ms
+            );
+            break;
+
+        case GPCR_GI_COUPLED:
+            // D2 dopamine, alpha2-adrenergic -> inhibit cAMP
+            result = second_messenger_activate_gi(
+                cortex->second_messengers,
+                neuron_id,
+                occupancy,
+                timestamp_ms
+            );
+            break;
+
+        case GPCR_GQ_COUPLED:
+            // 5-HT2A serotonin, M4 ACh, mGluR -> IP3/DAG -> PKC
+            result = second_messenger_activate_gq(
+                cortex->second_messengers,
+                neuron_id,
+                occupancy,
+                timestamp_ms
+            );
+            break;
+
+        default:
+            LOG_WARN(AUDIO_LOG_MODULE, "Unknown receptor coupling type %d", coupling);
+            return NIMCP_ERROR_INVALID_PARAM;
+    }
+
+    if (result != NIMCP_SUCCESS) {
+        LOG_ERROR(AUDIO_LOG_MODULE, "Failed to activate cascade for neuron %u: %d",
+                  neuron_id, result);
+        return result;
+    }
+
+    LOG_DEBUG(AUDIO_LOG_MODULE, "Activated receptor %u on neuron %u (occupancy=%.2f)",
+              receptor, neuron_id, occupancy);
+
+    return NIMCP_SUCCESS;
+}
+
+/**
+ * @brief Get second messenger cascade state for neuron
+ *
+ * WHAT: Query cascade state for specific frequency neuron
+ * WHY:  Monitor kinase activities and modulation levels
+ * HOW:  Return copy of cascade state from second messenger system
+ *
+ * COMPLEXITY: O(1)
+ *
+ * @param cortex Audio cortex instance
+ * @param neuron_id Neuron ID (frequency bin index)
+ * @param state Output state buffer (must be second_messenger_state_t*)
+ * @return NIMCP_SUCCESS or error code
+ */
+nimcp_error_t audio_cortex_get_second_messenger_state(
+    audio_cortex_t* cortex,
+    uint32_t neuron_id,
+    void* state)
+{
+    // Guard: Validate inputs
+    if (!cortex || !state) {
+        return NIMCP_ERROR_INVALID_PARAM;
+    }
+
+    if (!cortex->second_messengers_enabled || !cortex->second_messengers) {
+        return NIMCP_ERROR_NOT_INITIALIZED;
+    }
+
+    // Validate neuron_id is within range
+    if (neuron_id >= cortex->config.num_mel_filters) {
+        LOG_ERROR(AUDIO_LOG_MODULE, "Invalid neuron_id %u (max %u)",
+                  neuron_id, cortex->config.num_mel_filters - 1);
+        return NIMCP_ERROR_INVALID_PARAM;
+    }
+
+    // WHAT: Query cascade state from second messenger system
+    // WHY:  Expose cascade state for monitoring and debugging
+    // HOW:  Call second_messenger_get_state() and copy to output
+    second_messenger_state_t* output_state = (second_messenger_state_t*)state;
+
+    nimcp_result_t result = second_messenger_get_state(
+        cortex->second_messengers,
+        neuron_id,
+        output_state
+    );
+
+    if (result != NIMCP_SUCCESS) {
+        LOG_ERROR(AUDIO_LOG_MODULE, "Failed to get cascade state for neuron %u: %d",
+                  neuron_id, result);
+        return result;
+    }
 
     return NIMCP_SUCCESS;
 }

@@ -111,7 +111,7 @@ typedef struct {
 /**
  * WHAT: Population coding configuration
  * WHY:  Flexible encoding strategy parameters
- * HOW:  Control PCA components, correlation windows, sparsity
+ * HOW:  Control PCA components, correlation windows, sparsity, positional encoding
  */
 typedef struct {
     uint32_t n_pca_components;      /**< Number of PCA components to extract */
@@ -120,6 +120,12 @@ typedef struct {
     float sparsity_target;          /**< Target sparsity for distributed codes [0-1] */
     bool enable_pca;                /**< Enable PCA computation */
     bool enable_synchrony;          /**< Enable synchrony analysis */
+
+    /* Positional Encoding Parameters */
+    bool enable_positional_encoding; /**< Enable position-aware encoding */
+    uint32_t pe_embedding_dim;      /**< Positional encoding dimension */
+    float pe_frequency_base;        /**< Base for PE frequency scaling (default: 10000) */
+    float position_weight;          /**< Weight for position in decoding [0-1] */
 } population_coding_config_t;
 
 /**
@@ -479,6 +485,100 @@ float population_coding_vector3d_dot(const vector3d_t* v1, const vector3d_t* v2)
  * @return true on success, false if zero vector
  */
 bool population_coding_vector3d_normalize(vector3d_t* v);
+
+//=============================================================================
+// Positional Encoding Integration
+//=============================================================================
+
+/**
+ * WHAT: Configure positional encoding for population coding
+ * WHY:  Enable position-aware population representations
+ * HOW:  Set PE parameters and initialize internal encoder
+ *
+ * BIOLOGICAL BASIS:
+ * - Place cells have position-dependent tuning curves
+ * - Population codes represent continuous variables across neurons
+ * - Spatial organization affects neural tuning and connectivity
+ *
+ * @param encoder Encoder instance
+ * @param embedding_dim Dimension of positional encodings
+ * @param frequency_base Base for sinusoidal frequencies (default: 10000.0)
+ * @param position_weight Weight for position in decoding [0-1]
+ * @return true on success, false on error
+ *
+ * COMPLEXITY: O(1) - configuration only, no computation
+ */
+bool population_coding_set_pe_config(
+    population_coding_encoder_t encoder,
+    uint32_t embedding_dim,
+    float frequency_base,
+    float position_weight
+);
+
+/**
+ * WHAT: Apply positional encoding to neuron positions in population
+ * WHY:  Encode spatial layout of neurons for position-aware coding
+ * HOW:  Apply sinusoidal PE to each neuron position in population
+ *
+ * ALGORITHM:
+ * 1. For each neuron at position i: PE(i, 2j) = sin(i / base^(2j/d))
+ * 2. PE(i, 2j+1) = cos(i / base^(2j/d))
+ * 3. Store position encodings for later use in decoding
+ *
+ * BIOLOGICAL BASIS:
+ * - Encodes the topographic organization of neural populations
+ * - Similar to how grid cells encode spatial position
+ * - Preserves relative position information in continuous space
+ *
+ * @param encoder Encoder instance
+ * @param num_neurons Number of neurons in population
+ * @param position_encodings_out Output encodings [num_neurons * pe_dim]
+ * @return true on success, false on error
+ *
+ * COMPLEXITY: O(n * d) where n=num_neurons, d=embedding_dim
+ */
+bool population_coding_encode_neuron_positions(
+    population_coding_encoder_t encoder,
+    uint32_t num_neurons,
+    float* position_encodings_out
+);
+
+/**
+ * WHAT: Decode population activity with position weighting
+ * WHY:  Incorporate spatial position information in decoding
+ * HOW:  Weight decoding by position similarity using PE
+ *
+ * ALGORITHM:
+ * 1. Compute standard population vector from rates
+ * 2. For each neuron: position_similarity = dot(PE(i), query_position)
+ * 3. weighted_rate = rate[i] * (1-w + w*position_similarity)
+ * 4. Decode using weighted rates
+ *
+ * BIOLOGICAL BASIS:
+ * - Models how spatial context modulates population readout
+ * - Similar to attention mechanisms in cortical processing
+ * - Neurons closer to target position contribute more
+ *
+ * @param encoder Encoder instance
+ * @param rates Firing rates [num_neurons]
+ * @param position_encodings Neuron position encodings [num_neurons * pe_dim]
+ * @param num_neurons Number of neurons
+ * @param query_position Query position encoding [pe_dim]
+ * @param tuning_curves Tuning curves for vector decoding
+ * @param vector_out Output decoded vector
+ * @return true on success, false on error
+ *
+ * COMPLEXITY: O(n * d) where n=num_neurons, d=embedding_dim
+ */
+bool population_coding_position_aware_decode(
+    population_coding_encoder_t encoder,
+    const float* rates,
+    const float* position_encodings,
+    uint32_t num_neurons,
+    const float* query_position,
+    const tuning_curve_t* tuning_curves,
+    vector3d_t* vector_out
+);
 
 #ifdef __cplusplus
 }

@@ -9,6 +9,7 @@
 #include "utils/memory/nimcp_memory.h"
 #include "utils/memory/nimcp_memory_pool.h"
 #include "utils/platform/nimcp_platform_mutex.h"
+#include "utils/tensor/nimcp_tensor.h"
 #include <string.h>
 #include <math.h>
 #include <stdlib.h>
@@ -17,6 +18,8 @@
 #include "async/nimcp_bio_messages.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/memory/nimcp_unified_memory.h"
+
+/* Version 1.1.0 - Added tensor library integration for vectorized operations */
 
 
 
@@ -615,6 +618,20 @@ static float compute_mean(const float* data, uint32_t count) {
         return 0.0f;
     }
 
+    /* Use tensor library for vectorized sum */
+    uint32_t dims[] = {count};
+    nimcp_tensor_t* t = nimcp_tensor_from_data(data, dims, 1, NIMCP_DTYPE_F32, false);
+    if (t) {
+        nimcp_tensor_t* sum_t = nimcp_tensor_sum(t);
+        nimcp_tensor_destroy(t);
+        if (sum_t) {
+            double sum = nimcp_tensor_get_flat(sum_t, 0);
+            nimcp_tensor_destroy(sum_t);
+            return (float)(sum / (double)count);
+        }
+    }
+
+    /* Fallback to scalar computation */
     float sum = 0.0f;
     for (uint32_t i = 0; i < count; i++) {
         sum += data[i];

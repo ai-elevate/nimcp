@@ -329,6 +329,30 @@ __/cognitive/analysis/nimcp_network_analysis.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/analysis/nimcp_network_analysis.c.s
 .PHONY : __/cognitive/analysis/nimcp_network_analysis.c.s
 
+__/cognitive/attention/nimcp_emotion_attention.o: __/cognitive/attention/nimcp_emotion_attention.c.o
+.PHONY : __/cognitive/attention/nimcp_emotion_attention.o
+
+# target to build an object file
+__/cognitive/attention/nimcp_emotion_attention.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/attention/nimcp_emotion_attention.c.o
+.PHONY : __/cognitive/attention/nimcp_emotion_attention.c.o
+
+__/cognitive/attention/nimcp_emotion_attention.i: __/cognitive/attention/nimcp_emotion_attention.c.i
+.PHONY : __/cognitive/attention/nimcp_emotion_attention.i
+
+# target to preprocess a source file
+__/cognitive/attention/nimcp_emotion_attention.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/attention/nimcp_emotion_attention.c.i
+.PHONY : __/cognitive/attention/nimcp_emotion_attention.c.i
+
+__/cognitive/attention/nimcp_emotion_attention.s: __/cognitive/attention/nimcp_emotion_attention.c.s
+.PHONY : __/cognitive/attention/nimcp_emotion_attention.s
+
+# target to generate assembly for a file
+__/cognitive/attention/nimcp_emotion_attention.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/attention/nimcp_emotion_attention.c.s
+.PHONY : __/cognitive/attention/nimcp_emotion_attention.c.s
+
 __/cognitive/autobiographical_memory/nimcp_autobiographical_memory.o: __/cognitive/autobiographical_memory/nimcp_autobiographical_memory.c.o
 .PHONY : __/cognitive/autobiographical_memory/nimcp_autobiographical_memory.o
 
@@ -8681,6 +8705,30 @@ __/utils/containers/nimcp_vector.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/utils/containers/nimcp_vector.c.s
 .PHONY : __/utils/containers/nimcp_vector.c.s
 
+__/utils/encoding/nimcp_positional_encoding.o: __/utils/encoding/nimcp_positional_encoding.c.o
+.PHONY : __/utils/encoding/nimcp_positional_encoding.o
+
+# target to build an object file
+__/utils/encoding/nimcp_positional_encoding.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/utils/encoding/nimcp_positional_encoding.c.o
+.PHONY : __/utils/encoding/nimcp_positional_encoding.c.o
+
+__/utils/encoding/nimcp_positional_encoding.i: __/utils/encoding/nimcp_positional_encoding.c.i
+.PHONY : __/utils/encoding/nimcp_positional_encoding.i
+
+# target to preprocess a source file
+__/utils/encoding/nimcp_positional_encoding.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/utils/encoding/nimcp_positional_encoding.c.i
+.PHONY : __/utils/encoding/nimcp_positional_encoding.c.i
+
+__/utils/encoding/nimcp_positional_encoding.s: __/utils/encoding/nimcp_positional_encoding.c.s
+.PHONY : __/utils/encoding/nimcp_positional_encoding.s
+
+# target to generate assembly for a file
+__/utils/encoding/nimcp_positional_encoding.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/utils/encoding/nimcp_positional_encoding.c.s
+.PHONY : __/utils/encoding/nimcp_positional_encoding.c.s
+
 __/utils/error/nimcp_error_codes.o: __/utils/error/nimcp_error_codes.c.o
 .PHONY : __/utils/error/nimcp_error_codes.o
 
@@ -9833,6 +9881,30 @@ __/utils/spectral/nimcp_fft.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/utils/spectral/nimcp_fft.c.s
 .PHONY : __/utils/spectral/nimcp_fft.c.s
 
+__/utils/tensor/nimcp_tensor.o: __/utils/tensor/nimcp_tensor.c.o
+.PHONY : __/utils/tensor/nimcp_tensor.o
+
+# target to build an object file
+__/utils/tensor/nimcp_tensor.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/utils/tensor/nimcp_tensor.c.o
+.PHONY : __/utils/tensor/nimcp_tensor.c.o
+
+__/utils/tensor/nimcp_tensor.i: __/utils/tensor/nimcp_tensor.c.i
+.PHONY : __/utils/tensor/nimcp_tensor.i
+
+# target to preprocess a source file
+__/utils/tensor/nimcp_tensor.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/utils/tensor/nimcp_tensor.c.i
+.PHONY : __/utils/tensor/nimcp_tensor.c.i
+
+__/utils/tensor/nimcp_tensor.s: __/utils/tensor/nimcp_tensor.c.s
+.PHONY : __/utils/tensor/nimcp_tensor.s
+
+# target to generate assembly for a file
+__/utils/tensor/nimcp_tensor.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/utils/tensor/nimcp_tensor.c.s
+.PHONY : __/utils/tensor/nimcp_tensor.c.s
+
 __/utils/tensor_networks/nimcp_mps.o: __/utils/tensor_networks/nimcp_mps.c.o
 .PHONY : __/utils/tensor_networks/nimcp_mps.o
 
@@ -10201,6 +10273,9 @@ help:
 	@echo "... __/cognitive/analysis/nimcp_network_analysis.o"
 	@echo "... __/cognitive/analysis/nimcp_network_analysis.i"
 	@echo "... __/cognitive/analysis/nimcp_network_analysis.s"
+	@echo "... __/cognitive/attention/nimcp_emotion_attention.o"
+	@echo "... __/cognitive/attention/nimcp_emotion_attention.i"
+	@echo "... __/cognitive/attention/nimcp_emotion_attention.s"
 	@echo "... __/cognitive/autobiographical_memory/nimcp_autobiographical_memory.o"
 	@echo "... __/cognitive/autobiographical_memory/nimcp_autobiographical_memory.i"
 	@echo "... __/cognitive/autobiographical_memory/nimcp_autobiographical_memory.s"
@@ -11245,6 +11320,9 @@ help:
 	@echo "... __/utils/containers/nimcp_vector.o"
 	@echo "... __/utils/containers/nimcp_vector.i"
 	@echo "... __/utils/containers/nimcp_vector.s"
+	@echo "... __/utils/encoding/nimcp_positional_encoding.o"
+	@echo "... __/utils/encoding/nimcp_positional_encoding.i"
+	@echo "... __/utils/encoding/nimcp_positional_encoding.s"
 	@echo "... __/utils/error/nimcp_error_codes.o"
 	@echo "... __/utils/error/nimcp_error_codes.i"
 	@echo "... __/utils/error/nimcp_error_codes.s"
@@ -11389,6 +11467,9 @@ help:
 	@echo "... __/utils/spectral/nimcp_fft.o"
 	@echo "... __/utils/spectral/nimcp_fft.i"
 	@echo "... __/utils/spectral/nimcp_fft.s"
+	@echo "... __/utils/tensor/nimcp_tensor.o"
+	@echo "... __/utils/tensor/nimcp_tensor.i"
+	@echo "... __/utils/tensor/nimcp_tensor.s"
 	@echo "... __/utils/tensor_networks/nimcp_mps.o"
 	@echo "... __/utils/tensor_networks/nimcp_mps.i"
 	@echo "... __/utils/tensor_networks/nimcp_mps.s"

@@ -77,3 +77,18 @@ target_link_libraries(unit_middleware_patterns_all_detectors
     )
 add_test(NAME unit_middleware_patterns_all_detectors
          COMMAND unit_middleware_patterns_all_detectors)
+# Test Sequence Detector Positional Encoding
+add_executable(unit_middleware_patterns_sequence_detector_pe
+    test_sequence_detector_pe.cpp
+)
+target_link_libraries(unit_middleware_patterns_sequence_detector_pe
+    PRIVATE
+        GTest::GTest
+        GTest::Main
+        nimcp_middleware
+        nimcp
+        m  # Math library
+        pthread
+    )
+add_test(NAME unit_middleware_patterns_sequence_detector_pe
+         COMMAND unit_middleware_patterns_sequence_detector_pe)

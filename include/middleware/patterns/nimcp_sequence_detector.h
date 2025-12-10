@@ -7,6 +7,7 @@
 
 #include <stdint.h>
 #include <stdbool.h>
+#include "utils/encoding/nimcp_positional_encoding.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -48,11 +49,21 @@ extern "C" {
 // ============================================================================
 
 /**
- * @brief Sequence element (neuron ID + relative timing)
+ * @brief Sequence element (neuron ID + relative timing + position encoding)
+ *
+ * WHAT: Single element in temporal sequence with positional information
+ * WHY:  Position embeddings enable temporal context-aware pattern matching
+ * HOW:  Store both temporal and positional encoding for each element
+ *
+ * BIOLOGICAL BASIS:
+ * - Hippocampal phase precession encodes position in theta cycles
+ * - Temporal order information crucial for sequence replay detection
  */
 typedef struct {
     uint32_t neuron_id;        // Neuron identifier
     float relative_time_ms;    // Time offset from sequence start
+    float* position_embedding; // Position encoding vector (NULL if not using PE)
+    uint32_t embedding_dim;    // Dimension of position embedding
 } sequence_element_t;
 
 /**
@@ -94,6 +105,10 @@ typedef struct {
 
 /**
  * @brief Sequence detector configuration
+ *
+ * WHAT: Configuration for sequence detection with positional encoding support
+ * WHY:  Enable position-aware pattern matching for temporal sequences
+ * HOW:  Add PE type selection and dimensionality configuration
  */
 typedef struct {
     uint32_t max_templates;          // Maximum learned sequences
@@ -104,6 +119,12 @@ typedef struct {
     bool enable_replay_detection;    // Detect forward/backward replay
     bool enable_ngram_learning;      // Learn N-gram patterns
     bool enable_compression;         // Detect time-compressed replays
+
+    // Positional Encoding Configuration
+    bool enable_positional_encoding; // Enable position-aware matching
+    nimcp_pos_encoding_type_t pe_type; // PE type (ROTARY or RELATIVE)
+    uint32_t pe_embedding_dim;       // Position embedding dimension
+    float pe_similarity_weight;      // Weight for PE similarity [0-1]
 } sequence_detector_config_t;
 
 /**
@@ -250,6 +271,91 @@ bool sequence_detector_get_stats(const sequence_detector_t* detector,
  * @brief Get default configuration
  */
 sequence_detector_config_t sequence_detector_default_config(void);
+
+/**
+ * @brief Configure positional encoding for sequence detector
+ *
+ * WHAT: Set up position-aware pattern matching system
+ * WHY:  Enable temporal context discrimination in sequence detection
+ * HOW:  Create PE encoder with specified type and configuration
+ *
+ * BIOLOGICAL BASIS:
+ * - Hippocampal theta phase codes temporal position in sequences
+ * - Grid cells provide spatial and temporal context encoding
+ * - Phase precession enables position-dependent firing patterns
+ *
+ * @param detector Detector handle
+ * @param pe_config Positional encoding configuration
+ * @return true on success, false on error
+ */
+bool sequence_detector_set_pe_config(sequence_detector_t* detector,
+                                      const nimcp_pos_config_t* pe_config);
+
+/**
+ * @brief Apply positional encoding to sequence template
+ *
+ * WHAT: Encode template elements with position information
+ * WHY:  Enable position-aware matching against learned sequences
+ * HOW:  Apply RoPE or Relative encoding to each element in template
+ *
+ * BIOLOGICAL BASIS:
+ * - Sequence order encoded via relative timing and phase
+ * - Replay detection benefits from position-dependent representations
+ * - Temporal context critical for memory consolidation
+ *
+ * @param detector Detector handle
+ * @param template_id Template to encode
+ * @return true on success, false on error
+ */
+bool sequence_detector_encode_template(sequence_detector_t* detector,
+                                        uint32_t template_id);
+
+/**
+ * @brief Match sequences using position-aware similarity
+ *
+ * WHAT: Detect sequences with temporal position context
+ * WHY:  Discriminate similar sequences differing in temporal structure
+ * HOW:  Combined temporal + positional encoding similarity scoring
+ *
+ * BIOLOGICAL BASIS:
+ * - Hippocampal sequences distinguished by phase timing
+ * - Forward/backward replay uses temporal order information
+ * - Position-dependent firing enables sequence disambiguation
+ *
+ * ALGORITHM:
+ * - Compute temporal match score (existing algorithm)
+ * - Compute PE cosine similarity for matched elements
+ * - Combined score = (1-w)*temporal + w*positional
+ *   where w = pe_similarity_weight
+ *
+ * @param detector Detector handle
+ * @param detections Output array for detected sequences
+ * @param max_detections Maximum detections to return
+ * @param num_detected Output: number of sequences detected
+ * @return true on success, false on error
+ */
+bool sequence_detector_match_with_pe(sequence_detector_t* detector,
+                                      sequence_detection_t* detections,
+                                      uint32_t max_detections,
+                                      uint32_t* num_detected);
+
+/**
+ * @brief Get positional encoding statistics
+ *
+ * WHAT: Query PE-enhanced matching performance metrics
+ * WHY:  Monitor effectiveness of position-aware detection
+ * HOW:  Return PE hit rates, avg similarity, cache stats
+ *
+ * @param detector Detector handle
+ * @param pe_match_rate Output: fraction of matches using PE
+ * @param avg_pe_similarity Output: average PE cosine similarity
+ * @param pe_cache_hit_rate Output: PE cache hit rate
+ * @return true on success, false on error
+ */
+bool sequence_detector_get_pe_stats(const sequence_detector_t* detector,
+                                     float* pe_match_rate,
+                                     float* avg_pe_similarity,
+                                     float* pe_cache_hit_rate);
 
 #ifdef __cplusplus
 }

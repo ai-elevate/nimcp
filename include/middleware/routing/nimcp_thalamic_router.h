@@ -96,6 +96,8 @@ typedef struct {
     bool enable_statistics;            // Track routing metrics
     float min_attention_threshold;     // Drop signals below threshold
     bool enable_learning;              // Hebbian route strengthening
+    bool enable_second_messengers;     // Enable neuromodulator cascades
+    uint32_t num_neurons;              // Number of neurons for cascade tracking
 } thalamic_router_config_t;
 
 /**
@@ -278,6 +280,42 @@ routed_signal_t* thalamic_router_create_signal(uint32_t source_id,
  * @brief Free signal packet (helper)
  */
 void thalamic_router_free_signal(routed_signal_t* signal);
+
+/**
+ * @brief Trigger receptor activation cascade
+ *
+ * WHAT: Activate neuromodulator receptor and trigger second messenger cascade
+ * WHY:  ACh/NE shift burst<->tonic modes via cAMP/PKA cascades
+ * HOW:  Route to appropriate G-protein cascade (Gs, Gi, or Gq)
+ *
+ * @param router Router handle
+ * @param neuron_id Target neuron/thalamic nucleus
+ * @param receptor Receptor type (e.g., RECEPTOR_ACETYLCHOLINE_M1)
+ * @param occupancy Receptor occupancy [0.0, 1.0]
+ * @param timestamp_ms Current simulation time
+ * @return true on success, false if second messengers disabled
+ */
+bool thalamic_router_trigger_receptor(thalamic_router_t* router,
+                                       uint32_t neuron_id,
+                                       uint32_t receptor,
+                                       float occupancy,
+                                       uint64_t timestamp_ms);
+
+/**
+ * @brief Get second messenger cascade state
+ *
+ * WHAT: Query current intracellular signaling state
+ * WHY:  Inspect PKA, PKC, CaMKII activity for debugging/monitoring
+ * HOW:  Forward to second messenger system query
+ *
+ * @param router Router handle
+ * @param neuron_id Target neuron to query
+ * @param state Output: cascade state (caller-allocated)
+ * @return true on success, false if second messengers disabled or invalid neuron
+ */
+bool thalamic_router_get_second_messenger_state(const thalamic_router_t* router,
+                                                 uint32_t neuron_id,
+                                                 void* state);
 
 #ifdef __cplusplus
 }

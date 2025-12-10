@@ -28,8 +28,10 @@
 #define LOG_MODULE "working_memory"
 
 #include "cognitive/nimcp_working_memory.h"
+#include "plasticity/nimcp_second_messengers.h"
 #include "security/nimcp_security.h"
 #include "security/nimcp_blood_brain_barrier.h"
+#include "cognitive/global_workspace/nimcp_global_workspace.h"  // Global Workspace integration
 
 #include "nimcp.h"  // For error codes
 #include "async/nimcp_bio_async.h"
@@ -106,6 +108,23 @@ struct working_memory {
     // Bio-async integration
     bio_module_context_t bio_ctx;   // Bio-async module context
     bool bio_async_enabled;         // Bio-async registration status
+
+    // Second messenger integration
+    second_messenger_system_t* sm_system;  // Second messenger cascade system
+    bool enable_second_messengers;         // Whether cascade modulation is enabled
+    uint32_t num_neurons;                  // Number of neurons for cascade tracking
+
+    // Global Workspace integration (Phase 10.x)
+    global_workspace_t* workspace;           // Global workspace for conscious access
+    bool workspace_integration_enabled;       // Workspace integration active
+    float workspace_salience_threshold;       // Threshold for triggering ignition
+
+    // Positional encoding integration
+    nimcp_pos_encoder_t* pos_encoder;        // Positional encoder for serial position effects
+    bool enable_positional_encoding;          // Whether position encoding is active
+    nimcp_pos_encoding_type_t pe_type;       // Type of positional encoding
+    uint32_t pe_embedding_dim;               // Dimension of position embeddings
+    float* pe_buffer;                        // Temporary buffer for position encodings
 };
 
 //=============================================================================
@@ -437,7 +456,10 @@ working_memory_config_t working_memory_default_config(void) {
         .decay_tau_ms = WORKING_MEMORY_DECAY_TAU_MS,  // 1000ms
         .min_salience = WORKING_MEMORY_MIN_SALIENCE,  // 0.01
         .enable_attention_refresh = true,
-        .enable_temporal_decay = true
+        .enable_temporal_decay = true,
+        .enable_positional_encoding = true,           // Enable position encoding
+        .pe_type = NIMCP_POS_SINUSOIDAL,              // Sinusoidal (no training needed)
+        .pe_embedding_dim = 64                        // 64-dim position embeddings
     };
     return config;
 }
@@ -563,8 +585,70 @@ working_memory_t* working_memory_create_custom(
             // Register message handlers
             bio_router_register_handler(wm->bio_ctx, BIO_MSG_WORKING_MEMORY_STORE, handle_wm_store_request);
             bio_router_register_handler(wm->bio_ctx, BIO_MSG_WORKING_MEMORY_RETRIEVE, handle_wm_retrieve_request);
+            // Subscribe to neuromodulator release messages for cascade triggering
+            bio_router_register_handler(wm->bio_ctx, BIO_MSG_NEUROMODULATOR_RELEASE, handle_wm_store_request);
             LOG_INFO("Bio-async registered for working_memory module with handlers");
         }
+    }
+
+    // Second messenger integration (optional, must be set via working_memory_integrate_second_messengers)
+    wm->sm_system = NULL;
+    wm->enable_second_messengers = false;
+    wm->num_neurons = 0;
+
+    // Initialize positional encoding
+    wm->pos_encoder = NULL;
+    wm->pe_buffer = NULL;
+    wm->enable_positional_encoding = config->enable_positional_encoding;
+    wm->pe_type = config->pe_type;
+    wm->pe_embedding_dim = config->pe_embedding_dim;
+
+    if (wm->enable_positional_encoding) {
+        // Create positional encoder configuration
+        nimcp_pos_config_t pe_config;
+        pe_config.type = config->pe_type;
+
+        // Configure based on type
+        if (config->pe_type == NIMCP_POS_SINUSOIDAL) {
+            pe_config.config.sinusoidal = nimcp_pos_sinusoidal_default_config();
+            pe_config.config.sinusoidal.base.max_seq_length = config->capacity;
+            pe_config.config.sinusoidal.base.embedding_dim = config->pe_embedding_dim;
+            pe_config.config.sinusoidal.base.cache_enabled = true;
+        } else if (config->pe_type == NIMCP_POS_RELATIVE) {
+            pe_config.config.relative = nimcp_pos_relative_default_config();
+            pe_config.config.relative.base.max_seq_length = config->capacity;
+            pe_config.config.relative.base.embedding_dim = config->pe_embedding_dim;
+            pe_config.config.relative.base.cache_enabled = true;
+            pe_config.config.relative.max_relative_pos = config->capacity;
+        } else {
+            // For other types, use sinusoidal as fallback
+            LOG_WARN("Unsupported PE type %d, using SINUSOIDAL", config->pe_type);
+            pe_config.type = NIMCP_POS_SINUSOIDAL;
+            pe_config.config.sinusoidal = nimcp_pos_sinusoidal_default_config();
+            pe_config.config.sinusoidal.base.max_seq_length = config->capacity;
+            pe_config.config.sinusoidal.base.embedding_dim = config->pe_embedding_dim;
+            pe_config.config.sinusoidal.base.cache_enabled = true;
+            wm->pe_type = NIMCP_POS_SINUSOIDAL;
+        }
+
+        // Create encoder
+        wm->pos_encoder = nimcp_pos_encoder_create(&pe_config);
+        if (!wm->pos_encoder) {
+            LOG_ERROR("Failed to create positional encoder");
+            working_memory_destroy(wm);
+            return NULL;
+        }
+
+        // Allocate PE buffer for temporary position encodings
+        wm->pe_buffer = nimcp_malloc(config->pe_embedding_dim * sizeof(float));
+        if (!wm->pe_buffer) {
+            LOG_ERROR("Failed to allocate PE buffer");
+            working_memory_destroy(wm);
+            return NULL;
+        }
+
+        LOG_INFO("Positional encoding enabled: type=%d, dim=%u",
+                 wm->pe_type, wm->pe_embedding_dim);
     }
 
     return wm;
@@ -608,6 +692,16 @@ void working_memory_destroy(working_memory_t* wm) {
         bio_router_unregister_module(wm->bio_ctx);
         wm->bio_ctx = NULL;
         wm->bio_async_enabled = false;
+    }
+
+    // Destroy positional encoder
+    if (wm->pos_encoder) {
+        nimcp_pos_encoder_destroy(wm->pos_encoder);
+        wm->pos_encoder = NULL;
+    }
+    if (wm->pe_buffer) {
+        nimcp_free(wm->pe_buffer);
+        wm->pe_buffer = NULL;
     }
 
     // Destroy mutex
@@ -1350,4 +1444,260 @@ void working_memory_get_stats(
     }
 
     nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)&wm->mutex);
+}
+
+//=============================================================================
+// POSITIONAL ENCODING FUNCTIONS
+//=============================================================================
+
+/**
+ * @brief Apply positional encodings to all items in working memory
+ *
+ * WHAT: Add position embeddings to each item based on its slot position
+ * WHY:  Capture serial position effects (primacy, recency) in working memory
+ * HOW:  For each item at position i, apply PE(i) additively to item data
+ *
+ * ALGORITHM:
+ * 1. Check if positional encoding is enabled
+ * 2. For each item in buffer:
+ *    a. Get position encoding PE(i) for slot i
+ *    b. Add PE to item data: item[j] += PE(i)[j % pe_dim]
+ * 3. Handle dimension mismatch (cycle or truncate PE)
+ *
+ * BIOLOGICAL BASIS:
+ * - Serial position effects: primacy (early items) and recency (late items)
+ * - Prefrontal cortex encodes temporal order of representations
+ * - Position information aids working memory retrieval and manipulation
+ *
+ * COMPLEXITY: O(n × d) where n = current_size, d = embedding_dim
+ *
+ * @param wm Working memory instance (non-NULL)
+ * @return true on success, false if PE disabled or error
+ */
+bool working_memory_encode_positions(working_memory_t* wm) {
+    // Guard: NULL working memory
+    if (!wm) {
+        set_error("NULL working_memory_t");
+        return false;
+    }
+
+    // Guard: Positional encoding disabled
+    if (!wm->enable_positional_encoding || !wm->pos_encoder) {
+        return false;
+    }
+
+    // Lock mutex for thread-safe access
+    nimcp_platform_mutex_lock(&wm->mutex);
+
+    // Guard: Empty buffer
+    if (wm->current_size == 0) {
+        nimcp_platform_mutex_unlock(&wm->mutex);
+        return true;  // Success: nothing to encode
+    }
+
+    // Apply position encoding to each item
+    for (uint32_t pos = 0; pos < wm->current_size; pos++) {
+        // Get position encoding for this slot
+        int result = nimcp_pos_encode_position(wm->pos_encoder, pos, wm->pe_buffer);
+        if (result != NIMCP_POS_SUCCESS) {
+            LOG_WARN("Failed to encode position %u: error %d", pos, result);
+            continue;  // Skip this position, continue with others
+        }
+
+        // Add position encoding to item data
+        // Handle dimension mismatch: cycle PE if item is larger than PE dim
+        float* item_data = wm->items[pos];
+        uint32_t item_size = wm->item_sizes[pos];
+
+        for (uint32_t j = 0; j < item_size; j++) {
+            // Cycle through PE dimensions if item is larger
+            uint32_t pe_idx = j % wm->pe_embedding_dim;
+            item_data[j] += wm->pe_buffer[pe_idx];
+        }
+    }
+
+    nimcp_platform_mutex_unlock(&wm->mutex);
+    return true;
+}
+
+/**
+ * @brief Get positional embedding for specific slot
+ *
+ * WHAT: Retrieve position encoding vector for a working memory slot
+ * WHY:  Inspect position information, external position-aware processing
+ * HOW:  Query internal positional encoder for slot's position encoding
+ *
+ * COMPLEXITY: O(1) if cached, O(d) if computed where d = embedding_dim
+ *
+ * BIOLOGICAL BASIS:
+ * - Position codes in prefrontal working memory representations
+ * - Enables comparison of relative positions between items
+ * - Supports temporal reasoning over working memory contents
+ *
+ * @param wm Working memory instance (non-NULL)
+ * @param slot_index Slot position [0, capacity)
+ * @param output Output buffer for position embedding (pe_embedding_dim floats)
+ * @return true on success, false on invalid slot or PE disabled
+ */
+bool working_memory_get_position_embedding(
+    const working_memory_t* wm,
+    uint32_t slot_index,
+    float* output
+)
+{
+    // Guard: NULL working memory
+    if (!wm) {
+        set_error("NULL working_memory_t");
+        return false;
+    }
+
+    // Guard: NULL output
+    if (!output) {
+        set_error("NULL output buffer");
+        return false;
+    }
+
+    // Guard: Positional encoding disabled
+    if (!wm->enable_positional_encoding || !wm->pos_encoder) {
+        set_error("Positional encoding disabled");
+        return false;
+    }
+
+    // Guard: Invalid slot index
+    if (slot_index >= wm->capacity) {
+        set_error("Slot index out of bounds");
+        return false;
+    }
+
+    // Get position encoding (no lock needed, encoder is thread-safe)
+    int result = nimcp_pos_encode_position(wm->pos_encoder, slot_index, output);
+    if (result != NIMCP_POS_SUCCESS) {
+        set_error("Failed to encode position");
+        LOG_ERROR("Position encoding failed for slot %u: error %d", slot_index, result);
+        return false;
+    }
+
+    return true;
+}
+
+/**
+ * @brief Configure positional encoding type
+ *
+ * WHAT: Change the type of positional encoding used
+ * WHY:  Allow runtime switching between encoding strategies
+ * HOW:  Destroy old encoder, create new encoder with specified type
+ *
+ * ALGORITHM:
+ * 1. Validate new PE type
+ * 2. Lock mutex for thread safety
+ * 3. Destroy existing encoder
+ * 4. Create new encoder with specified type
+ * 5. Reapply encodings to existing items
+ * 6. Unlock mutex
+ *
+ * COMPLEXITY: O(capacity × embedding_dim) - must rebuild encoder cache
+ *
+ * @param wm Working memory instance (non-NULL)
+ * @param pe_type New positional encoding type
+ * @return true on success, false on invalid type or allocation failure
+ */
+bool working_memory_set_pe_type(
+    working_memory_t* wm,
+    nimcp_pos_encoding_type_t pe_type
+)
+{
+    // Guard: NULL working memory
+    if (!wm) {
+        set_error("NULL working_memory_t");
+        return false;
+    }
+
+    // Guard: Positional encoding disabled
+    if (!wm->enable_positional_encoding) {
+        set_error("Positional encoding disabled");
+        return false;
+    }
+
+    // Guard: Invalid PE type
+    if (pe_type >= NIMCP_POS_TYPE_COUNT) {
+        set_error("Invalid positional encoding type");
+        return false;
+    }
+
+    // Lock mutex for thread-safe access
+    nimcp_platform_mutex_lock(&wm->mutex);
+
+    // If already using this type, nothing to do
+    if (wm->pe_type == pe_type) {
+        nimcp_platform_mutex_unlock(&wm->mutex);
+        return true;
+    }
+
+    LOG_INFO("Switching PE type from %d to %d", wm->pe_type, pe_type);
+
+    // Destroy old encoder
+    if (wm->pos_encoder) {
+        nimcp_pos_encoder_destroy(wm->pos_encoder);
+        wm->pos_encoder = NULL;
+    }
+
+    // Create new encoder configuration
+    nimcp_pos_config_t pe_config;
+    pe_config.type = pe_type;
+
+    // Configure based on type
+    if (pe_type == NIMCP_POS_SINUSOIDAL) {
+        pe_config.config.sinusoidal = nimcp_pos_sinusoidal_default_config();
+        pe_config.config.sinusoidal.base.max_seq_length = wm->capacity;
+        pe_config.config.sinusoidal.base.embedding_dim = wm->pe_embedding_dim;
+        pe_config.config.sinusoidal.base.cache_enabled = true;
+    } else if (pe_type == NIMCP_POS_RELATIVE) {
+        pe_config.config.relative = nimcp_pos_relative_default_config();
+        pe_config.config.relative.base.max_seq_length = wm->capacity;
+        pe_config.config.relative.base.embedding_dim = wm->pe_embedding_dim;
+        pe_config.config.relative.base.cache_enabled = true;
+        pe_config.config.relative.max_relative_pos = wm->capacity;
+    } else if (pe_type == NIMCP_POS_LEARNED) {
+        pe_config.config.learned = nimcp_pos_learned_default_config();
+        pe_config.config.learned.base.max_seq_length = wm->capacity;
+        pe_config.config.learned.base.embedding_dim = wm->pe_embedding_dim;
+        pe_config.config.learned.base.cache_enabled = true;
+    } else if (pe_type == NIMCP_POS_ROTARY) {
+        pe_config.config.rope = nimcp_pos_rope_default_config();
+        pe_config.config.rope.base.max_seq_length = wm->capacity;
+        pe_config.config.rope.base.embedding_dim = wm->pe_embedding_dim;
+        pe_config.config.rope.base.cache_enabled = true;
+    } else if (pe_type == NIMCP_POS_ALIBI) {
+        pe_config.config.alibi = nimcp_pos_alibi_default_config();
+        pe_config.config.alibi.base.max_seq_length = wm->capacity;
+        pe_config.config.alibi.base.embedding_dim = wm->pe_embedding_dim;
+        pe_config.config.alibi.base.cache_enabled = true;
+    } else {
+        // Unsupported type, use sinusoidal as fallback
+        LOG_WARN("Unsupported PE type %d, using SINUSOIDAL", pe_type);
+        pe_config.type = NIMCP_POS_SINUSOIDAL;
+        pe_config.config.sinusoidal = nimcp_pos_sinusoidal_default_config();
+        pe_config.config.sinusoidal.base.max_seq_length = wm->capacity;
+        pe_config.config.sinusoidal.base.embedding_dim = wm->pe_embedding_dim;
+        pe_config.config.sinusoidal.base.cache_enabled = true;
+        pe_type = NIMCP_POS_SINUSOIDAL;
+    }
+
+    // Create new encoder
+    wm->pos_encoder = nimcp_pos_encoder_create(&pe_config);
+    if (!wm->pos_encoder) {
+        set_error("Failed to create new positional encoder");
+        LOG_ERROR("Failed to create PE encoder for type %d", pe_type);
+        wm->enable_positional_encoding = false;
+        nimcp_platform_mutex_unlock(&wm->mutex);
+        return false;
+    }
+
+    // Update PE type
+    wm->pe_type = pe_type;
+
+    LOG_INFO("Successfully switched to PE type %d", pe_type);
+
+    nimcp_platform_mutex_unlock(&wm->mutex);
+    return true;
 }

@@ -2,13 +2,21 @@
  * @file nimcp_optimizers.c
  * @brief Implementation of Optimizers Module for NIMCP Training Pipeline
  *
+ * WHAT: Neural network optimizers (SGD, Adam, RMSprop, etc.)
+ * WHY:  Enable gradient-based parameter updates for learning
+ * HOW:  Momentum, adaptive learning rates, tensor-accelerated operations
+ *
  * Phase TM-2: Training Pipeline Infrastructure
  * Phase BIO-1: Bio-async integration
  * Phase LOG-1: Logging integration
  * Phase SEC-1: Security validation
+ * Phase TENSOR-2: Tensor library integration
+ *
+ * @version 1.1.0 - Added tensor library integration for accelerated operations
  */
 
 #include "middleware/training/nimcp_optimizers.h"
+#include "utils/tensor/nimcp_tensor.h"  /* Tensor library for vectorized operations */
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include "security/nimcp_blood_brain_barrier.h"
@@ -1122,6 +1130,16 @@ bool nimcp_optimizer_is_registered(const nimcp_optimizer_context_t* ctx) {
 float nimcp_optimizer_gradient_norm(const float* gradients, size_t count) {
     if (!gradients || count == 0) return 0.0f;
 
+    /* Use tensor library for vectorized norm computation */
+    uint32_t dims[] = {(uint32_t)count};
+    nimcp_tensor_t* t = nimcp_tensor_from_data(gradients, dims, 1, NIMCP_DTYPE_F32, false);
+    if (t) {
+        float norm = (float)nimcp_tensor_norm_p(t, 2.0);
+        nimcp_tensor_destroy(t);
+        return norm;
+    }
+
+    /* Fallback to scalar computation */
     float sum_sq = 0.0f;
     for (size_t i = 0; i < count; i++) {
         sum_sq += gradients[i] * gradients[i];
@@ -1136,6 +1154,7 @@ size_t nimcp_optimizer_clip_by_value(
 {
     if (!gradients || count == 0 || max_value <= 0.0f) return 0;
 
+    /* Scalar computation for value clipping (preserves clip count) */
     size_t clips = 0;
     for (size_t i = 0; i < count; i++) {
         if (gradients[i] > max_value) {
@@ -1156,12 +1175,72 @@ float nimcp_optimizer_clip_by_norm(
 {
     if (!gradients || count == 0 || max_norm <= 0.0f) return 0.0f;
 
+    /* Use tensor library for vectorized operations */
+    uint32_t dims[] = {(uint32_t)count};
+    nimcp_tensor_t* t = nimcp_tensor_from_data(gradients, dims, 1, NIMCP_DTYPE_F32, false);
+    if (t) {
+        float norm = (float)nimcp_tensor_norm_p(t, 2.0);
+        if (norm > max_norm) {
+            nimcp_tensor_mul_scalar_(t, (double)max_norm / (double)norm);
+        }
+        nimcp_tensor_destroy(t);
+        return norm;
+    }
+
+    /* Fallback to scalar computation */
     float norm = nimcp_optimizer_gradient_norm(gradients, count);
     if (norm > max_norm) {
         float scale = max_norm / norm;
         for (size_t i = 0; i < count; i++) {
             gradients[i] *= scale;
         }
+    }
+    return norm;
+}
+
+/* ============================================================================
+ * Tensor-Based Operations (Phase TENSOR-2)
+ * ============================================================================ */
+
+nimcp_result_t nimcp_optimizer_step_tensor(
+    nimcp_optimizer_context_t* ctx,
+    nimcp_tensor_t* params,
+    const nimcp_tensor_t* gradients)
+{
+    if (!ctx || !params || !gradients) {
+        return NIMCP_ERROR_INVALID;
+    }
+
+    /* Get flat data pointers */
+    size_t count = nimcp_tensor_numel(params);
+    size_t grad_count = nimcp_tensor_numel(gradients);
+    if (count != grad_count) {
+        return NIMCP_ERROR_INVALID;
+    }
+
+    float* param_data = (float*)nimcp_tensor_data(params);
+    const float* grad_data = (const float*)nimcp_tensor_data((nimcp_tensor_t*)gradients);
+    if (!param_data || !grad_data) {
+        return NIMCP_ERROR_INVALID;
+    }
+
+    return nimcp_optimizer_step(ctx, param_data, grad_data, count);
+}
+
+float nimcp_optimizer_gradient_norm_tensor(const nimcp_tensor_t* gradients) {
+    if (!gradients) return 0.0f;
+    return (float)nimcp_tensor_norm_p(gradients, 2.0);
+}
+
+float nimcp_optimizer_clip_by_norm_tensor(
+    nimcp_tensor_t* gradients,
+    float max_norm)
+{
+    if (!gradients || max_norm <= 0.0f) return 0.0f;
+
+    float norm = (float)nimcp_tensor_norm_p(gradients, 2.0);
+    if (norm > max_norm) {
+        nimcp_tensor_mul_scalar_(gradients, (double)max_norm / (double)norm);
     }
     return norm;
 }

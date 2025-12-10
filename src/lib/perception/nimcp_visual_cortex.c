@@ -4,14 +4,17 @@
  *
  * WHAT: CNN-based visual cortex with V1-style edge detection
  * WHY:  Enable visual perception and memory in NIMCP
- * HOW:  Lightweight convolution + Gabor filters + feature extraction
+ * HOW:  Lightweight convolution + Gabor filters + tensor-accelerated feature extraction
+ *
+ * Phase TENSOR-2: Tensor library integration for accelerated operations
  *
  * @author NIMCP Development Team
  * @date 2025
- * @version 2.6
+ * @version 2.7.0 - Added tensor library integration
  */
 
 #include "perception/nimcp_visual_cortex.h"
+#include "utils/tensor/nimcp_tensor.h"  /* Tensor library for vectorized operations */
 #include "security/nimcp_security.h"
 #include "security/nimcp_blood_brain_barrier.h"
 
@@ -22,6 +25,7 @@
 #include "utils/validation/nimcp_validate.h"
 #include "utils/logging/nimcp_logging.h"
 #include "plasticity/neuromodulators/nimcp_neuromodulators.h"  // Neuromodulator integration
+#include "plasticity/nimcp_second_messengers.h"  // Second messenger cascades
 #include "core/brain/nimcp_brain.h"  // Brain reference
 #include "core/neuralnet/nimcp_neuralnet.h"  // Neural network for internal V1 connections
 #include "core/topology/nimcp_fractal_topology.h"  // Scale-free topology generation
@@ -693,6 +697,10 @@ struct visual_cortex_struct {
     // === Bio-Async Communication ===
     bio_module_context_t bio_ctx;         /**< Bio-async module context */
     bool bio_async_enabled;               /**< Whether bio-async is enabled */
+
+    // === Second Messenger Cascades ===
+    second_messenger_system_t* second_messengers; /**< Second messenger system per layer */
+    bool second_messengers_enabled;               /**< Whether cascades are enabled */
 };
 
 /**
@@ -947,6 +955,43 @@ visual_cortex_t* visual_cortex_create(const visual_cortex_config_t* config)
         }
     }
 
+    // === Second Messenger Cascade Initialization ===
+    cortex->second_messengers = NULL;
+    cortex->second_messengers_enabled = false;
+
+    if (config->enable_second_messengers) {
+        // WHAT: Create second messenger system for V1 layers
+        // WHY:  Enable neuromodulator-driven signaling cascades
+        // HOW:  One system tracking NUM_V1_LAYERS (4) neurons, one per cortical layer
+        second_messenger_config_t sm_config = second_messenger_default_config();
+        sm_config.enable_bio_async = config->enable_bio_async;
+        sm_config.enable_security = true;
+
+        cortex->second_messengers = second_messenger_create(NUM_V1_LAYERS, &sm_config);
+        if (cortex->second_messengers) {
+            cortex->second_messengers_enabled = true;
+            LOG_INFO(VISUAL_LOG_MODULE, "Second messenger cascades enabled for visual cortex (%u layers)",
+                     NUM_V1_LAYERS);
+
+            // Register with bio-async router if both are enabled
+            if (cortex->bio_async_enabled && cortex->bio_ctx) {
+                bio_router_t router = bio_router_get_global();
+                if (router) {
+                    nimcp_result_t result = second_messenger_register_bioasync(
+                        cortex->second_messengers, router);
+                    if (result != NIMCP_SUCCESS) {
+                        LOG_WARN(VISUAL_LOG_MODULE, "Failed to register second messengers with bio-async: %d",
+                                 result);
+                    } else {
+                        LOG_DEBUG(VISUAL_LOG_MODULE, "Second messengers registered with bio-async");
+                    }
+                }
+            }
+        } else {
+            LOG_WARN(VISUAL_LOG_MODULE, "Failed to create second messenger system");
+        }
+    }
+
     return cortex;
 }
 
@@ -957,6 +1002,13 @@ void visual_cortex_destroy(visual_cortex_t* cortex)
 {
     if (!cortex) {
         return;
+    }
+
+    // === Second Messenger Cleanup ===
+    if (cortex->second_messengers) {
+        second_messenger_destroy(cortex->second_messengers);
+        cortex->second_messengers = NULL;
+        LOG_DEBUG(VISUAL_LOG_MODULE, "Second messenger cascades destroyed");
     }
 
     // === Bio-Async Unregistration ===
@@ -1094,8 +1146,17 @@ bool visual_cortex_process(
     float combined_gain = visual_gain * neuromod_effects.gabor_gain;
 
     if (combined_gain != 1.0f) {
-        for (uint32_t i = 0; i < v1_output_size; i++) {
-            v1_output[i] *= combined_gain;
+        /* Use tensor library for vectorized gain application */
+        uint32_t v1_dims[] = {v1_output_size};
+        nimcp_tensor_t* v1_tensor = nimcp_tensor_from_data(v1_output, v1_dims, 1, NIMCP_DTYPE_F32, false);
+        if (v1_tensor) {
+            nimcp_tensor_mul_scalar_(v1_tensor, (double)combined_gain);
+            nimcp_tensor_destroy(v1_tensor);
+        } else {
+            /* Fallback to scalar */
+            for (uint32_t i = 0; i < v1_output_size; i++) {
+                v1_output[i] *= combined_gain;
+            }
         }
     }
 
@@ -1130,15 +1191,28 @@ bool visual_cortex_process(
         }
     }
 
-    // Normalize features
-    float norm = 0.0f;
-    for (uint32_t i = 0; i < cortex->feature_dim; i++) {
-        norm += features[i] * features[i];
-    }
-    norm = sqrtf(norm);
-    if (norm > 1e-6f) {
-        for (uint32_t i = 0; i < cortex->feature_dim; i++) {
-            features[i] /= norm;
+    // Normalize features using tensor library
+    {
+        uint32_t feat_dims[] = {cortex->feature_dim};
+        nimcp_tensor_t* feat_tensor = nimcp_tensor_from_data(features, feat_dims, 1, NIMCP_DTYPE_F32, false);
+        if (feat_tensor) {
+            float norm = (float)nimcp_tensor_norm_p(feat_tensor, 2.0);
+            if (norm > 1e-6f) {
+                nimcp_tensor_mul_scalar_(feat_tensor, 1.0 / (double)norm);
+            }
+            nimcp_tensor_destroy(feat_tensor);
+        } else {
+            /* Fallback to scalar */
+            float norm = 0.0f;
+            for (uint32_t i = 0; i < cortex->feature_dim; i++) {
+                norm += features[i] * features[i];
+            }
+            norm = sqrtf(norm);
+            if (norm > 1e-6f) {
+                for (uint32_t i = 0; i < cortex->feature_dim; i++) {
+                    features[i] /= norm;
+                }
+            }
         }
     }
 
@@ -1766,26 +1840,202 @@ bool visual_cortex_compute_neuromod_effects(
     // Norepinephrine effect: α1 (excitatory) + 0.5*β2 (plasticity)
     float ne_effect = (receptors->alpha1_density + 0.5f * receptors->beta2_density) * ne_effective;
 
-    // Step 4: Compute gain values
+    // Step 4: Query second messenger cascade activities
+    float pka_activity = 0.0f;
+    float pkc_activity = 0.0f;
+    float camkii_activity = 0.0f;
+
+    if (cortex->second_messengers_enabled && cortex->second_messengers) {
+        // WHAT: Get cascade state for this layer
+        // WHY:  Cascades amplify and temporally extend neuromodulator effects
+        // HOW:  Query PKA (cAMP), PKC (IP3/DAG), CaMKII (Ca2+) activities
+        second_messenger_state_t cascade_state;
+        nimcp_result_t result = second_messenger_get_state(
+            cortex->second_messengers, layer_idx, &cascade_state);
+
+        if (result == NIMCP_SUCCESS) {
+            pka_activity = cascade_state.camp.pka_activity;
+            pkc_activity = cascade_state.ip3_dag.pkc_activity;
+            camkii_activity = cascade_state.calcium.camkii_activity;
+
+            LOG_DEBUG(VISUAL_LOG_MODULE, "Layer %u cascade state: PKA=%.2f PKC=%.2f CaMKII=%.2f",
+                      layer_idx, pka_activity, pkc_activity, camkii_activity);
+        }
+    }
+
+    // Step 5: Compute gain values with cascade modulation
+    // BIOLOGY:
+    // - PKA (cAMP pathway): Enhances gain via AMPAR phosphorylation
+    // - PKC (IP3/DAG pathway): Modulates contrast gain
+    // - CaMKII (Ca2+ pathway): Gates plasticity via NMDAR modulation
+
     // Gabor gain: DA enhances signal detection, ACh enhances features, NE increases sensitivity
-    effects->gabor_gain = 1.0f + 0.5f * da_effect + 0.3f * ach_effect + 0.4f * ne_effect;
+    // PKA amplifies these effects (D1 -> Gs -> cAMP -> PKA)
+    effects->gabor_gain = 1.0f + 0.5f * da_effect + 0.3f * ach_effect + 0.4f * ne_effect
+                          + 0.3f * pka_activity;  // PKA amplifies gain
 
     // Attention boost: ACh dominates attention, NE increases alertness
-    effects->attention_boost = 1.0f + 0.7f * ach_effect + 0.3f * ne_effect;
+    // PKC modulates attention via vesicle release probability
+    effects->attention_boost = 1.0f + 0.7f * ach_effect + 0.3f * ne_effect
+                               + 0.2f * pkc_activity;  // PKC enhances attention
 
     // Plasticity gate: DA gates learning (reward), ACh gates encoding
-    // Sigmoid to keep in [0, 1]
-    float plasticity_input = 2.0f * da_effect + ach_effect;
+    // CaMKII is the primary plasticity kinase (required for LTP)
+    float plasticity_input = 2.0f * da_effect + ach_effect + 2.0f * camkii_activity;
     effects->plasticity_gate = 1.0f / (1.0f + expf(-plasticity_input));
 
     // Contrast gain: DA enhances contrast sensitivity
-    effects->contrast_gain = 1.0f + 0.4f * da_effect + 0.2f * ach_effect;
+    // PKA and PKC both contribute to contrast modulation
+    effects->contrast_gain = 1.0f + 0.4f * da_effect + 0.2f * ach_effect
+                             + 0.3f * pka_activity + 0.2f * pkc_activity;
 
     // Clamp all gains to reasonable ranges
     effects->gabor_gain = fminf(fmaxf(effects->gabor_gain, 0.5f), 2.0f);
     effects->attention_boost = fminf(fmaxf(effects->attention_boost, 0.5f), 2.0f);
     effects->plasticity_gate = fminf(fmaxf(effects->plasticity_gate, 0.0f), 1.0f);
     effects->contrast_gain = fminf(fmaxf(effects->contrast_gain, 0.5f), 2.0f);
+
+    return true;
+}
+
+//=============================================================================
+// Second Messenger Cascade Integration
+//=============================================================================
+
+/**
+ * @brief Trigger receptor activation for second messenger cascade
+ *
+ * WHAT: Activate G-protein coupled receptor to initiate signaling cascade
+ * WHY:  Neuromodulators bind receptors -> trigger intracellular cascades
+ * HOW:  Route to appropriate cascade (Gs/Gi/Gq) based on receptor type
+ *
+ * BIOLOGY:
+ * - D1 receptors -> Gs -> cAMP -> PKA
+ * - M1 receptors -> Gq -> IP3/DAG -> PKC + Ca2+
+ * - beta-adrenergic -> Gs -> cAMP -> PKA
+ * - alpha1-adrenergic -> Gq -> IP3/DAG -> PKC
+ */
+bool visual_cortex_trigger_receptor(
+    visual_cortex_t* cortex,
+    uint32_t layer_idx,
+    receptor_type_t receptor_type,
+    float occupancy)
+{
+    // Guard: Validate inputs
+    if (!nimcp_validate_pointer(cortex, "cortex")) {
+        return false;
+    }
+
+    if (layer_idx >= NUM_V1_LAYERS) {
+        LOG_ERROR(VISUAL_LOG_MODULE, "Invalid layer_idx: %u (max %u)", layer_idx, NUM_V1_LAYERS - 1);
+        return false;
+    }
+
+    if (occupancy < 0.0f || occupancy > 1.0f) {
+        LOG_WARN(VISUAL_LOG_MODULE, "Receptor occupancy out of range: %.2f, clamping to [0,1]", occupancy);
+        occupancy = fminf(fmaxf(occupancy, 0.0f), 1.0f);
+    }
+
+    // Guard: Check if second messengers enabled
+    if (!cortex->second_messengers_enabled || !cortex->second_messengers) {
+        LOG_WARN(VISUAL_LOG_MODULE, "Second messengers not enabled, cannot trigger receptor");
+        return false;
+    }
+
+    // WHAT: Get current timestamp for cascade activation
+    // WHY:  Cascades track temporal dynamics
+    // HOW:  Use system time in milliseconds
+    uint64_t timestamp_ms = (uint64_t)(time(NULL) * 1000);
+
+    // WHAT: Route to appropriate G-protein pathway
+    // WHY:  Different receptors couple to different G-proteins
+    // HOW:  Based on receptor type, activate Gs, Gi, or Gq pathway
+    nimcp_result_t result = NIMCP_ERROR_INVALID_PARAM;
+
+    switch (receptor_type) {
+        // Gs-coupled receptors (activate adenylyl cyclase -> cAMP -> PKA)
+        case RECEPTOR_D1:
+        case RECEPTOR_BETA:  // Beta-adrenergic
+            result = second_messenger_activate_gs(
+                cortex->second_messengers, layer_idx, occupancy, timestamp_ms);
+            LOG_DEBUG(VISUAL_LOG_MODULE, "Layer %u: Activated Gs pathway (receptor=%d, occupancy=%.2f)",
+                      layer_idx, receptor_type, occupancy);
+            break;
+
+        // Gq-coupled receptors (activate PLC -> IP3/DAG -> PKC + Ca2+)
+        case RECEPTOR_MUSCARINIC:  // M1/M3 muscarinic
+        case RECEPTOR_ALPHA1:      // Alpha1-adrenergic
+        case RECEPTOR_5HT2A:
+            result = second_messenger_activate_gq(
+                cortex->second_messengers, layer_idx, occupancy, timestamp_ms);
+            LOG_DEBUG(VISUAL_LOG_MODULE, "Layer %u: Activated Gq pathway (receptor=%d, occupancy=%.2f)",
+                      layer_idx, receptor_type, occupancy);
+            break;
+
+        // Gi-coupled receptors (inhibit adenylyl cyclase -> reduce cAMP)
+        case RECEPTOR_D2:
+        case RECEPTOR_ALPHA2:  // Alpha2-adrenergic (autoreceptor)
+        case RECEPTOR_5HT1A:   // 5-HT1A (also Gi-coupled)
+            result = second_messenger_activate_gi(
+                cortex->second_messengers, layer_idx, occupancy, timestamp_ms);
+            LOG_DEBUG(VISUAL_LOG_MODULE, "Layer %u: Activated Gi pathway (receptor=%d, occupancy=%.2f)",
+                      layer_idx, receptor_type, occupancy);
+            break;
+
+        default:
+            LOG_ERROR(VISUAL_LOG_MODULE, "Unknown receptor type: %d", receptor_type);
+            return false;
+    }
+
+    if (result != NIMCP_SUCCESS) {
+        LOG_ERROR(VISUAL_LOG_MODULE, "Failed to activate receptor cascade: %d", result);
+        return false;
+    }
+
+    return true;
+}
+
+/**
+ * @brief Get second messenger cascade state for layer
+ *
+ * WHAT: Query cascade state (cAMP, PKA, PKC, CaMKII activities)
+ * WHY:  Enable monitoring and integration with other systems
+ * HOW:  Return state from second messenger system
+ */
+bool visual_cortex_get_second_messenger_state(
+    const visual_cortex_t* cortex,
+    uint32_t layer_idx,
+    second_messenger_state_t* state)
+{
+    // Guard: Validate inputs
+    if (!nimcp_validate_pointer(cortex, "cortex") ||
+        !nimcp_validate_pointer(state, "state")) {
+        return false;
+    }
+
+    if (layer_idx >= NUM_V1_LAYERS) {
+        LOG_ERROR(VISUAL_LOG_MODULE, "Invalid layer_idx: %u (max %u)", layer_idx, NUM_V1_LAYERS - 1);
+        return false;
+    }
+
+    // Guard: Check if second messengers enabled
+    if (!cortex->second_messengers_enabled || !cortex->second_messengers) {
+        LOG_WARN(VISUAL_LOG_MODULE, "Second messengers not enabled");
+        // Return default state (all zeros)
+        memset(state, 0, sizeof(second_messenger_state_t));
+        return true;
+    }
+
+    // WHAT: Query cascade state from second messenger system
+    // WHY:  Provide access to intracellular signaling state
+    // HOW:  Call second_messenger_get_state for this layer
+    nimcp_result_t result = second_messenger_get_state(
+        cortex->second_messengers, layer_idx, state);
+
+    if (result != NIMCP_SUCCESS) {
+        LOG_ERROR(VISUAL_LOG_MODULE, "Failed to get second messenger state: %d", result);
+        return false;
+    }
 
     return true;
 }

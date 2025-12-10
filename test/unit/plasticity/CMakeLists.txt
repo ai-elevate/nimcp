@@ -79,3 +79,22 @@ target_link_libraries(unit_plasticity_second_messengers_test
 target_compile_features(unit_plasticity_second_messengers_test PRIVATE cxx_std_17)
 gtest_discover_tests(unit_plasticity_second_messengers_test
     PROPERTIES LABELS "unit;plasticity;second_messengers")
+
+# Second messenger module integration unit tests
+add_executable(unit_plasticity_second_messengers_modules_test
+    second_messengers/test_second_messengers_modules.cpp
+)
+target_link_libraries(unit_plasticity_second_messengers_modules_test
+    PRIVATE
+        nimcp
+        GTest::gtest
+        GTest::gtest_main
+        Threads::Threads
+        m
+)
+target_compile_features(unit_plasticity_second_messengers_modules_test PRIVATE cxx_std_17)
+gtest_discover_tests(unit_plasticity_second_messengers_modules_test
+    PROPERTIES LABELS "unit;plasticity;second_messengers;modules")
+
+# Attention subdirectory (PE tests)
+add_subdirectory(attention)

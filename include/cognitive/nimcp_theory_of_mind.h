@@ -425,6 +425,148 @@ bool tom_reset(theory_of_mind_t tom);
  */
 const char* tom_emotion_to_string(tom_emotion_t emotion);
 
+//=============================================================================
+// Bio-Async Integration API (Phase 10.6.1 - ToM Integration)
+//=============================================================================
+
+/**
+ * @brief Agent identifier for multi-agent scenarios
+ */
+typedef uint32_t agent_id_t;
+
+/**
+ * @brief Agent belief update (broadcasts via bio-async when beliefs change)
+ *
+ * WHAT: Notification that an agent's belief state has been updated
+ * WHY:  Enable executive and ethics modules to react to belief changes
+ * HOW:  Broadcast via BIO_MSG_AGENT_BELIEF_UPDATE when beliefs are inferred
+ */
+typedef struct {
+    agent_id_t agent_id;              /**< Which agent's belief changed */
+    char belief_content[256];         /**< What the agent believes */
+    float confidence;                 /**< Confidence in this belief [0.0, 1.0] */
+    bool is_false_belief;             /**< Does this contradict reality? */
+    uint64_t timestamp_ms;            /**< When belief was updated */
+} tom_agent_belief_update_t;
+
+/**
+ * @brief Agent intention update (broadcasts via bio-async when intentions change)
+ *
+ * WHAT: Notification that an agent's planned action has been inferred
+ * WHY:  Enable proactive coordination and ethical evaluation
+ * HOW:  Broadcast via BIO_MSG_AGENT_INTENTION_INFERRED when intentions are detected
+ */
+typedef struct {
+    agent_id_t agent_id;              /**< Which agent's intention was inferred */
+    char action_description[256];     /**< What the agent plans to do */
+    float likelihood;                 /**< Probability of executing [0.0, 1.0] */
+    tom_emotion_t emotional_state;    /**< Agent's current emotional state */
+    char goal_description[256];       /**< Agent's underlying goal */
+    uint64_t timestamp_ms;            /**< When intention was inferred */
+} tom_agent_intention_update_t;
+
+/**
+ * @brief Query agent's perspective for a specific action context
+ *
+ * WHAT: Request ToM to simulate how an agent would perceive an action
+ * WHY:  Enable ethics to consider agent beliefs for harm assessment
+ * HOW:  Query ToM with action context, get perspective-based response
+ *
+ * @param tom ToM handle
+ * @param agent_id Which agent to simulate
+ * @param action_description Description of the action
+ * @param perspective_output Output: agent's perspective (buffer must be at least 512 bytes)
+ * @param perceived_harm Output: how much harm agent would perceive [0.0, 1.0]
+ * @return true if perspective successfully simulated
+ *
+ * USAGE: Called by ethics module before making ethical decisions
+ * COMPLEXITY: O(1) for inference
+ */
+bool tom_query_agent_perspective(theory_of_mind_t tom,
+                                  agent_id_t agent_id,
+                                  const char* action_description,
+                                  char* perspective_output,
+                                  float* perceived_harm);
+
+/**
+ * @brief Query agent's likely response to a proposed action
+ *
+ * WHAT: Predict how an agent would respond to a specific action
+ * WHY:  Enable executive to plan agent-aware decisions
+ * HOW:  Use BDI model to simulate agent's reaction
+ *
+ * @param tom ToM handle
+ * @param agent_id Which agent to query
+ * @param proposed_action Description of proposed action
+ * @param response_output Output: predicted response (buffer must be at least 256 bytes)
+ * @param response_likelihood Output: confidence in this response [0.0, 1.0]
+ * @return true if response predicted successfully
+ *
+ * USAGE: Called by executive module before making decisions affecting other agents
+ * COMPLEXITY: O(1) for prediction
+ */
+bool tom_query_agent_response(theory_of_mind_t tom,
+                               agent_id_t agent_id,
+                               const char* proposed_action,
+                               char* response_output,
+                               float* response_likelihood);
+
+/**
+ * @brief Update ToM with observed outcome of an action
+ *
+ * WHAT: Inform ToM about actual outcome of an action involving an agent
+ * WHY:  Enable ToM to learn and refine agent models
+ * HOW:  Update BDI state based on observed response
+ *
+ * @param tom ToM handle
+ * @param agent_id Which agent was involved
+ * @param action_taken What action was performed
+ * @param actual_outcome What actually happened
+ * @param agent_satisfaction Agent's satisfaction level [0.0, 1.0]
+ * @return true if model updated successfully
+ *
+ * USAGE: Called by executive/ethics after action execution
+ * COMPLEXITY: O(1) for update
+ */
+bool tom_update_agent_model(theory_of_mind_t tom,
+                             agent_id_t agent_id,
+                             const char* action_taken,
+                             const char* actual_outcome,
+                             float agent_satisfaction);
+
+/**
+ * @brief Get agent's current mental state summary
+ *
+ * WHAT: Retrieve complete BDI + emotion state for an agent
+ * WHY:  Provide context for executive and ethics modules
+ * HOW:  Copy internal state to output structure
+ *
+ * @param tom ToM handle
+ * @param agent_id Which agent to query
+ * @param belief Output: current belief (can be NULL)
+ * @param desire Output: current desire (can be NULL)
+ * @param intention Output: current intention (can be NULL)
+ * @param emotion Output: current emotion (can be NULL)
+ * @param emotion_confidence Output: confidence in emotion inference (can be NULL)
+ * @return true if state retrieved
+ *
+ * COMPLEXITY: O(1)
+ */
+bool tom_get_agent_state(theory_of_mind_t tom,
+                         agent_id_t agent_id,
+                         tom_belief_t* belief,
+                         tom_desire_t* desire,
+                         tom_intention_t* intention,
+                         tom_emotion_t* emotion,
+                         float* emotion_confidence);
+
+/**
+ * @brief Get error message for last operation
+ *
+ * @return Error string (never NULL, may be empty)
+ */
+const char* tom_get_last_error(void);
+
 #ifdef __cplusplus
 }
 #endif

@@ -474,6 +474,80 @@ void nimcp_gradient_finalize_allreduce(
     uint32_t num_workers
 );
 
+/* ============================================================================
+ * Tensor-Based Gradient Operations
+ * ============================================================================ */
+
+/* Forward declaration for tensor type */
+struct nimcp_tensor_s;
+typedef struct nimcp_tensor_s nimcp_tensor_t;
+
+/**
+ * @brief Accumulate gradients using tensor operations
+ *
+ * More efficient than nimcp_gradient_accumulate() for large arrays.
+ *
+ * @param ctx Gradient manager context
+ * @param grad_tensor Gradient tensor to accumulate
+ * @return NIMCP_SUCCESS or error code
+ */
+nimcp_result_t nimcp_gradient_accumulate_tensor(
+    nimcp_gradient_manager_ctx_t* ctx,
+    const nimcp_tensor_t* grad_tensor
+);
+
+/**
+ * @brief Scale gradients using tensor operations
+ *
+ * @param ctx Gradient manager context
+ * @param grad_tensor Gradient tensor (modified in place)
+ * @return NIMCP_SUCCESS or error code
+ */
+nimcp_result_t nimcp_gradient_scale_tensor(
+    nimcp_gradient_manager_ctx_t* ctx,
+    nimcp_tensor_t* grad_tensor
+);
+
+/**
+ * @brief Unscale gradients using tensor operations
+ *
+ * @param ctx Gradient manager context
+ * @param grad_tensor Gradient tensor (modified in place)
+ * @return NIMCP_SUCCESS or error code
+ */
+nimcp_result_t nimcp_gradient_unscale_tensor(
+    nimcp_gradient_manager_ctx_t* ctx,
+    nimcp_tensor_t* grad_tensor
+);
+
+/**
+ * @brief Compute gradient norm using tensor operations
+ *
+ * @param grad_tensor Input gradient tensor
+ * @param p Norm order (1=L1, 2=L2, INFINITY=max)
+ * @return Computed norm value
+ */
+float nimcp_gradient_tensor_norm(
+    const nimcp_tensor_t* grad_tensor,
+    double p
+);
+
+/**
+ * @brief Clip gradients by norm using tensor operations
+ *
+ * Scales down gradients if the norm exceeds the threshold.
+ *
+ * @param grad_tensor Gradient tensor (modified in place)
+ * @param max_norm Maximum allowed norm
+ * @param norm_type Norm type (1, 2, or INFINITY)
+ * @return Actual norm before clipping
+ */
+float nimcp_gradient_clip_norm_tensor(
+    nimcp_tensor_t* grad_tensor,
+    float max_norm,
+    double norm_type
+);
+
 #ifdef __cplusplus
 }
 #endif

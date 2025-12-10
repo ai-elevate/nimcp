@@ -27,7 +27,7 @@ class LearningStabilityTest : public ::testing::Test {
 protected:
     void SetUp() override {
         bio_async_init();
-        bio_router_init();
+        bio_router_config_t cfg = {0}; bio_router_init(&cfg);
         nimcp_unified_memory_init();
     }
 

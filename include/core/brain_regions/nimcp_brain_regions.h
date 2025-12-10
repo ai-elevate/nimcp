@@ -190,6 +190,9 @@ typedef struct {
     uint64_t last_update;               /**< Last update timestamp */
     float activity_level;               /**< Current activity (0-1) */
 
+    // Predictive processing extension (NULL if not enabled)
+    void* predictive_extension;         /**< brain_region_predictive_t* (opaque) */
+
     // Thread safety
     nimcp_mutex_t lock;
 } brain_region_t;
