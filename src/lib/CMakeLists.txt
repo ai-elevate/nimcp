@@ -411,6 +411,16 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../utils/fault_tolerance/nimcp_lockfree_metrics.c              # Lock-free metrics ring buffer (4x faster)
     ${CMAKE_CURRENT_SOURCE_DIR}/../utils/fault_tolerance/nimcp_metrics_aggregator.c            # Metrics aggregation (P50/P95/P99)
 
+    # Enhanced Fault Tolerance Modules (Phase FT-2: Immune System Integration)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../utils/fault_tolerance/nimcp_distributed_fault_tolerance.c   # Cross-drone failure coordination
+    ${CMAKE_CURRENT_SOURCE_DIR}/../utils/fault_tolerance/nimcp_hierarchical_recovery.c         # Multi-level recovery orchestration
+    ${CMAKE_CURRENT_SOURCE_DIR}/../utils/fault_tolerance/nimcp_recovery_evolution.c            # Genetic/RL strategy evolution
+    ${CMAKE_CURRENT_SOURCE_DIR}/../utils/fault_tolerance/nimcp_byzantine_fault_tolerance.c     # PBFT consensus and trust
+    ${CMAKE_CURRENT_SOURCE_DIR}/../utils/fault_tolerance/nimcp_graceful_degradation.c          # Service tier management
+    ${CMAKE_CURRENT_SOURCE_DIR}/../utils/fault_tolerance/nimcp_recovery_observability.c        # MTTR/MTBF metrics and tracing
+    ${CMAKE_CURRENT_SOURCE_DIR}/../utils/fault_tolerance/nimcp_chaos_engineering.c             # Controlled fault injection
+    ${CMAKE_CURRENT_SOURCE_DIR}/../utils/fault_tolerance/nimcp_predictive_analysis.c           # Time-series anomaly detection
+
     # Utils - Error Codes (Structured Error System)
     ${CMAKE_CURRENT_SOURCE_DIR}/../utils/error/nimcp_error_codes.c
 

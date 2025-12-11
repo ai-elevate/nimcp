@@ -297,6 +297,12 @@ add_e2e_test(e2e_test_swarm_consciousness_enhanced_pipeline
     ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_swarm_consciousness_enhanced_pipeline.cpp
 )
 
+# Enhanced Fault Tolerance Pipeline E2E Test (Immune System Integration)
+add_e2e_test(e2e_test_fault_tolerance_pipeline
+    ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_framework.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_fault_tolerance_pipeline.cpp
+)
+
 # ============================================================================
 # Test Execution Instructions
 # ============================================================================

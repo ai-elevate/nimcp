@@ -4384,136 +4384,6 @@ integration_test_neural_logic_circuits/fast:
 .PHONY : integration_test_neural_logic_circuits/fast
 
 #=============================================================================
-# Target rules for targets named integration_utils_fault_tolerance_test_async_checkpoint_integration
-
-# Build rule for target.
-integration_utils_fault_tolerance_test_async_checkpoint_integration: cmake_check_build_system
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_utils_fault_tolerance_test_async_checkpoint_integration
-.PHONY : integration_utils_fault_tolerance_test_async_checkpoint_integration
-
-# fast build rule for target.
-integration_utils_fault_tolerance_test_async_checkpoint_integration/fast:
-	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/integration_utils_fault_tolerance_test_async_checkpoint_integration.dir/build.make test/CMakeFiles/integration_utils_fault_tolerance_test_async_checkpoint_integration.dir/build
-.PHONY : integration_utils_fault_tolerance_test_async_checkpoint_integration/fast
-
-#=============================================================================
-# Target rules for targets named integration_utils_fault_tolerance_test_brain_recovery_integration
-
-# Build rule for target.
-integration_utils_fault_tolerance_test_brain_recovery_integration: cmake_check_build_system
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_utils_fault_tolerance_test_brain_recovery_integration
-.PHONY : integration_utils_fault_tolerance_test_brain_recovery_integration
-
-# fast build rule for target.
-integration_utils_fault_tolerance_test_brain_recovery_integration/fast:
-	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/integration_utils_fault_tolerance_test_brain_recovery_integration.dir/build.make test/CMakeFiles/integration_utils_fault_tolerance_test_brain_recovery_integration.dir/build
-.PHONY : integration_utils_fault_tolerance_test_brain_recovery_integration/fast
-
-#=============================================================================
-# Target rules for targets named integration_utils_fault_tolerance_test_checkpoint_recovery
-
-# Build rule for target.
-integration_utils_fault_tolerance_test_checkpoint_recovery: cmake_check_build_system
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_utils_fault_tolerance_test_checkpoint_recovery
-.PHONY : integration_utils_fault_tolerance_test_checkpoint_recovery
-
-# fast build rule for target.
-integration_utils_fault_tolerance_test_checkpoint_recovery/fast:
-	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/integration_utils_fault_tolerance_test_checkpoint_recovery.dir/build.make test/CMakeFiles/integration_utils_fault_tolerance_test_checkpoint_recovery.dir/build
-.PHONY : integration_utils_fault_tolerance_test_checkpoint_recovery/fast
-
-#=============================================================================
-# Target rules for targets named integration_utils_fault_tolerance_test_diagnostics_integration
-
-# Build rule for target.
-integration_utils_fault_tolerance_test_diagnostics_integration: cmake_check_build_system
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_utils_fault_tolerance_test_diagnostics_integration
-.PHONY : integration_utils_fault_tolerance_test_diagnostics_integration
-
-# fast build rule for target.
-integration_utils_fault_tolerance_test_diagnostics_integration/fast:
-	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/integration_utils_fault_tolerance_test_diagnostics_integration.dir/build.make test/CMakeFiles/integration_utils_fault_tolerance_test_diagnostics_integration.dir/build
-.PHONY : integration_utils_fault_tolerance_test_diagnostics_integration/fast
-
-#=============================================================================
-# Target rules for targets named integration_utils_fault_tolerance_test_fast_recovery_integration
-
-# Build rule for target.
-integration_utils_fault_tolerance_test_fast_recovery_integration: cmake_check_build_system
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_utils_fault_tolerance_test_fast_recovery_integration
-.PHONY : integration_utils_fault_tolerance_test_fast_recovery_integration
-
-# fast build rule for target.
-integration_utils_fault_tolerance_test_fast_recovery_integration/fast:
-	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/integration_utils_fault_tolerance_test_fast_recovery_integration.dir/build.make test/CMakeFiles/integration_utils_fault_tolerance_test_fast_recovery_integration.dir/build
-.PHONY : integration_utils_fault_tolerance_test_fast_recovery_integration/fast
-
-#=============================================================================
-# Target rules for targets named integration_utils_fault_tolerance_test_fault_event_bus_integration
-
-# Build rule for target.
-integration_utils_fault_tolerance_test_fault_event_bus_integration: cmake_check_build_system
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_utils_fault_tolerance_test_fault_event_bus_integration
-.PHONY : integration_utils_fault_tolerance_test_fault_event_bus_integration
-
-# fast build rule for target.
-integration_utils_fault_tolerance_test_fault_event_bus_integration/fast:
-	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/integration_utils_fault_tolerance_test_fault_event_bus_integration.dir/build.make test/CMakeFiles/integration_utils_fault_tolerance_test_fault_event_bus_integration.dir/build
-.PHONY : integration_utils_fault_tolerance_test_fault_event_bus_integration/fast
-
-#=============================================================================
-# Target rules for targets named integration_utils_fault_tolerance_test_fault_tolerance_integration
-
-# Build rule for target.
-integration_utils_fault_tolerance_test_fault_tolerance_integration: cmake_check_build_system
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_utils_fault_tolerance_test_fault_tolerance_integration
-.PHONY : integration_utils_fault_tolerance_test_fault_tolerance_integration
-
-# fast build rule for target.
-integration_utils_fault_tolerance_test_fault_tolerance_integration/fast:
-	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/integration_utils_fault_tolerance_test_fault_tolerance_integration.dir/build.make test/CMakeFiles/integration_utils_fault_tolerance_test_fault_tolerance_integration.dir/build
-.PHONY : integration_utils_fault_tolerance_test_fault_tolerance_integration/fast
-
-#=============================================================================
-# Target rules for targets named integration_utils_fault_tolerance_test_lockfree_metrics_integration
-
-# Build rule for target.
-integration_utils_fault_tolerance_test_lockfree_metrics_integration: cmake_check_build_system
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_utils_fault_tolerance_test_lockfree_metrics_integration
-.PHONY : integration_utils_fault_tolerance_test_lockfree_metrics_integration
-
-# fast build rule for target.
-integration_utils_fault_tolerance_test_lockfree_metrics_integration/fast:
-	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/integration_utils_fault_tolerance_test_lockfree_metrics_integration.dir/build.make test/CMakeFiles/integration_utils_fault_tolerance_test_lockfree_metrics_integration.dir/build
-.PHONY : integration_utils_fault_tolerance_test_lockfree_metrics_integration/fast
-
-#=============================================================================
-# Target rules for targets named integration_utils_fault_tolerance_test_recovery_cache_integration
-
-# Build rule for target.
-integration_utils_fault_tolerance_test_recovery_cache_integration: cmake_check_build_system
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_utils_fault_tolerance_test_recovery_cache_integration
-.PHONY : integration_utils_fault_tolerance_test_recovery_cache_integration
-
-# fast build rule for target.
-integration_utils_fault_tolerance_test_recovery_cache_integration/fast:
-	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/integration_utils_fault_tolerance_test_recovery_cache_integration.dir/build.make test/CMakeFiles/integration_utils_fault_tolerance_test_recovery_cache_integration.dir/build
-.PHONY : integration_utils_fault_tolerance_test_recovery_cache_integration/fast
-
-#=============================================================================
-# Target rules for targets named integration_utils_fault_tolerance_test_recovery_pool_integration
-
-# Build rule for target.
-integration_utils_fault_tolerance_test_recovery_pool_integration: cmake_check_build_system
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_utils_fault_tolerance_test_recovery_pool_integration
-.PHONY : integration_utils_fault_tolerance_test_recovery_pool_integration
-
-# fast build rule for target.
-integration_utils_fault_tolerance_test_recovery_pool_integration/fast:
-	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/integration_utils_fault_tolerance_test_recovery_pool_integration.dir/build.make test/CMakeFiles/integration_utils_fault_tolerance_test_recovery_pool_integration.dir/build
-.PHONY : integration_utils_fault_tolerance_test_recovery_pool_integration/fast
-
-#=============================================================================
 # Target rules for targets named integration_utils_quantum_test_quantum_walk_integration
 
 # Build rule for target.
@@ -5502,97 +5372,6 @@ regression_test_routing_efficiency_regression/fast:
 .PHONY : regression_test_routing_efficiency_regression/fast
 
 #=============================================================================
-# Target rules for targets named regression_utils_fault_tolerance_test_checkpoint_format
-
-# Build rule for target.
-regression_utils_fault_tolerance_test_checkpoint_format: cmake_check_build_system
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_utils_fault_tolerance_test_checkpoint_format
-.PHONY : regression_utils_fault_tolerance_test_checkpoint_format
-
-# fast build rule for target.
-regression_utils_fault_tolerance_test_checkpoint_format/fast:
-	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/regression_utils_fault_tolerance_test_checkpoint_format.dir/build.make test/CMakeFiles/regression_utils_fault_tolerance_test_checkpoint_format.dir/build
-.PHONY : regression_utils_fault_tolerance_test_checkpoint_format/fast
-
-#=============================================================================
-# Target rules for targets named regression_utils_fault_tolerance_test_diagnostics_regression
-
-# Build rule for target.
-regression_utils_fault_tolerance_test_diagnostics_regression: cmake_check_build_system
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_utils_fault_tolerance_test_diagnostics_regression
-.PHONY : regression_utils_fault_tolerance_test_diagnostics_regression
-
-# fast build rule for target.
-regression_utils_fault_tolerance_test_diagnostics_regression/fast:
-	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/regression_utils_fault_tolerance_test_diagnostics_regression.dir/build.make test/CMakeFiles/regression_utils_fault_tolerance_test_diagnostics_regression.dir/build
-.PHONY : regression_utils_fault_tolerance_test_diagnostics_regression/fast
-
-#=============================================================================
-# Target rules for targets named regression_utils_fault_tolerance_test_fast_recovery_regression
-
-# Build rule for target.
-regression_utils_fault_tolerance_test_fast_recovery_regression: cmake_check_build_system
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_utils_fault_tolerance_test_fast_recovery_regression
-.PHONY : regression_utils_fault_tolerance_test_fast_recovery_regression
-
-# fast build rule for target.
-regression_utils_fault_tolerance_test_fast_recovery_regression/fast:
-	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/regression_utils_fault_tolerance_test_fast_recovery_regression.dir/build.make test/CMakeFiles/regression_utils_fault_tolerance_test_fast_recovery_regression.dir/build
-.PHONY : regression_utils_fault_tolerance_test_fast_recovery_regression/fast
-
-#=============================================================================
-# Target rules for targets named regression_utils_fault_tolerance_test_fault_event_bus_regression
-
-# Build rule for target.
-regression_utils_fault_tolerance_test_fault_event_bus_regression: cmake_check_build_system
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_utils_fault_tolerance_test_fault_event_bus_regression
-.PHONY : regression_utils_fault_tolerance_test_fault_event_bus_regression
-
-# fast build rule for target.
-regression_utils_fault_tolerance_test_fault_event_bus_regression/fast:
-	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/regression_utils_fault_tolerance_test_fault_event_bus_regression.dir/build.make test/CMakeFiles/regression_utils_fault_tolerance_test_fault_event_bus_regression.dir/build
-.PHONY : regression_utils_fault_tolerance_test_fault_event_bus_regression/fast
-
-#=============================================================================
-# Target rules for targets named regression_utils_fault_tolerance_test_lockfree_metrics_regression
-
-# Build rule for target.
-regression_utils_fault_tolerance_test_lockfree_metrics_regression: cmake_check_build_system
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_utils_fault_tolerance_test_lockfree_metrics_regression
-.PHONY : regression_utils_fault_tolerance_test_lockfree_metrics_regression
-
-# fast build rule for target.
-regression_utils_fault_tolerance_test_lockfree_metrics_regression/fast:
-	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/regression_utils_fault_tolerance_test_lockfree_metrics_regression.dir/build.make test/CMakeFiles/regression_utils_fault_tolerance_test_lockfree_metrics_regression.dir/build
-.PHONY : regression_utils_fault_tolerance_test_lockfree_metrics_regression/fast
-
-#=============================================================================
-# Target rules for targets named regression_utils_fault_tolerance_test_recovery_cache_regression
-
-# Build rule for target.
-regression_utils_fault_tolerance_test_recovery_cache_regression: cmake_check_build_system
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_utils_fault_tolerance_test_recovery_cache_regression
-.PHONY : regression_utils_fault_tolerance_test_recovery_cache_regression
-
-# fast build rule for target.
-regression_utils_fault_tolerance_test_recovery_cache_regression/fast:
-	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/regression_utils_fault_tolerance_test_recovery_cache_regression.dir/build.make test/CMakeFiles/regression_utils_fault_tolerance_test_recovery_cache_regression.dir/build
-.PHONY : regression_utils_fault_tolerance_test_recovery_cache_regression/fast
-
-#=============================================================================
-# Target rules for targets named regression_utils_fault_tolerance_test_recovery_pool_regression
-
-# Build rule for target.
-regression_utils_fault_tolerance_test_recovery_pool_regression: cmake_check_build_system
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_utils_fault_tolerance_test_recovery_pool_regression
-.PHONY : regression_utils_fault_tolerance_test_recovery_pool_regression
-
-# fast build rule for target.
-regression_utils_fault_tolerance_test_recovery_pool_regression/fast:
-	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/regression_utils_fault_tolerance_test_recovery_pool_regression.dir/build.make test/CMakeFiles/regression_utils_fault_tolerance_test_recovery_pool_regression.dir/build
-.PHONY : regression_utils_fault_tolerance_test_recovery_pool_regression/fast
-
-#=============================================================================
 # Target rules for targets named regression_utils_quantum_test_quantum_walk_regression
 
 # Build rule for target.
@@ -6020,6 +5799,58 @@ e2e_test_positional_encoding_pipeline: cmake_check_build_system
 e2e_test_positional_encoding_pipeline/fast:
 	$(MAKE) $(MAKESILENT) -f test/e2e/CMakeFiles/e2e_test_positional_encoding_pipeline.dir/build.make test/e2e/CMakeFiles/e2e_test_positional_encoding_pipeline.dir/build
 .PHONY : e2e_test_positional_encoding_pipeline/fast
+
+#=============================================================================
+# Target rules for targets named e2e_test_introspection_pipeline
+
+# Build rule for target.
+e2e_test_introspection_pipeline: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 e2e_test_introspection_pipeline
+.PHONY : e2e_test_introspection_pipeline
+
+# fast build rule for target.
+e2e_test_introspection_pipeline/fast:
+	$(MAKE) $(MAKESILENT) -f test/e2e/CMakeFiles/e2e_test_introspection_pipeline.dir/build.make test/e2e/CMakeFiles/e2e_test_introspection_pipeline.dir/build
+.PHONY : e2e_test_introspection_pipeline/fast
+
+#=============================================================================
+# Target rules for targets named e2e_test_swarm_consciousness_pipeline
+
+# Build rule for target.
+e2e_test_swarm_consciousness_pipeline: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 e2e_test_swarm_consciousness_pipeline
+.PHONY : e2e_test_swarm_consciousness_pipeline
+
+# fast build rule for target.
+e2e_test_swarm_consciousness_pipeline/fast:
+	$(MAKE) $(MAKESILENT) -f test/e2e/CMakeFiles/e2e_test_swarm_consciousness_pipeline.dir/build.make test/e2e/CMakeFiles/e2e_test_swarm_consciousness_pipeline.dir/build
+.PHONY : e2e_test_swarm_consciousness_pipeline/fast
+
+#=============================================================================
+# Target rules for targets named e2e_test_swarm_consciousness_enhanced_pipeline
+
+# Build rule for target.
+e2e_test_swarm_consciousness_enhanced_pipeline: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 e2e_test_swarm_consciousness_enhanced_pipeline
+.PHONY : e2e_test_swarm_consciousness_enhanced_pipeline
+
+# fast build rule for target.
+e2e_test_swarm_consciousness_enhanced_pipeline/fast:
+	$(MAKE) $(MAKESILENT) -f test/e2e/CMakeFiles/e2e_test_swarm_consciousness_enhanced_pipeline.dir/build.make test/e2e/CMakeFiles/e2e_test_swarm_consciousness_enhanced_pipeline.dir/build
+.PHONY : e2e_test_swarm_consciousness_enhanced_pipeline/fast
+
+#=============================================================================
+# Target rules for targets named e2e_test_fault_tolerance_pipeline
+
+# Build rule for target.
+e2e_test_fault_tolerance_pipeline: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 e2e_test_fault_tolerance_pipeline
+.PHONY : e2e_test_fault_tolerance_pipeline
+
+# fast build rule for target.
+e2e_test_fault_tolerance_pipeline/fast:
+	$(MAKE) $(MAKESILENT) -f test/e2e/CMakeFiles/e2e_test_fault_tolerance_pipeline.dir/build.make test/e2e/CMakeFiles/e2e_test_fault_tolerance_pipeline.dir/build
+.PHONY : e2e_test_fault_tolerance_pipeline/fast
 
 #=============================================================================
 # Target rules for targets named unit_middleware_integration
@@ -7712,6 +7543,58 @@ unit_cognitive_introspection_connectivity_health/fast:
 .PHONY : unit_cognitive_introspection_connectivity_health/fast
 
 #=============================================================================
+# Target rules for targets named unit_cognitive_introspection_auto_activity_history
+
+# Build rule for target.
+unit_cognitive_introspection_auto_activity_history: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_cognitive_introspection_auto_activity_history
+.PHONY : unit_cognitive_introspection_auto_activity_history
+
+# fast build rule for target.
+unit_cognitive_introspection_auto_activity_history/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/cognitive/introspection/CMakeFiles/unit_cognitive_introspection_auto_activity_history.dir/build.make test/unit/cognitive/introspection/CMakeFiles/unit_cognitive_introspection_auto_activity_history.dir/build
+.PHONY : unit_cognitive_introspection_auto_activity_history/fast
+
+#=============================================================================
+# Target rules for targets named unit_cognitive_introspection_consciousness_metrics
+
+# Build rule for target.
+unit_cognitive_introspection_consciousness_metrics: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_cognitive_introspection_consciousness_metrics
+.PHONY : unit_cognitive_introspection_consciousness_metrics
+
+# fast build rule for target.
+unit_cognitive_introspection_consciousness_metrics/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/cognitive/introspection/CMakeFiles/unit_cognitive_introspection_consciousness_metrics.dir/build.make test/unit/cognitive/introspection/CMakeFiles/unit_cognitive_introspection_consciousness_metrics.dir/build
+.PHONY : unit_cognitive_introspection_consciousness_metrics/fast
+
+#=============================================================================
+# Target rules for targets named unit_cognitive_introspection_ensemble_uncertainty
+
+# Build rule for target.
+unit_cognitive_introspection_ensemble_uncertainty: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_cognitive_introspection_ensemble_uncertainty
+.PHONY : unit_cognitive_introspection_ensemble_uncertainty
+
+# fast build rule for target.
+unit_cognitive_introspection_ensemble_uncertainty/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/cognitive/introspection/CMakeFiles/unit_cognitive_introspection_ensemble_uncertainty.dir/build.make test/unit/cognitive/introspection/CMakeFiles/unit_cognitive_introspection_ensemble_uncertainty.dir/build
+.PHONY : unit_cognitive_introspection_ensemble_uncertainty/fast
+
+#=============================================================================
+# Target rules for targets named unit_cognitive_introspection_temporal_patterns
+
+# Build rule for target.
+unit_cognitive_introspection_temporal_patterns: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_cognitive_introspection_temporal_patterns
+.PHONY : unit_cognitive_introspection_temporal_patterns
+
+# fast build rule for target.
+unit_cognitive_introspection_temporal_patterns/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/cognitive/introspection/CMakeFiles/unit_cognitive_introspection_temporal_patterns.dir/build.make test/unit/cognitive/introspection/CMakeFiles/unit_cognitive_introspection_temporal_patterns.dir/build
+.PHONY : unit_cognitive_introspection_temporal_patterns/fast
+
+#=============================================================================
 # Target rules for targets named integration_cognitive_introspection_connectivity_health
 
 # Build rule for target.
@@ -7725,6 +7608,58 @@ integration_cognitive_introspection_connectivity_health/fast:
 .PHONY : integration_cognitive_introspection_connectivity_health/fast
 
 #=============================================================================
+# Target rules for targets named integration_cognitive_introspection_auto_activity_history
+
+# Build rule for target.
+integration_cognitive_introspection_auto_activity_history: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_cognitive_introspection_auto_activity_history
+.PHONY : integration_cognitive_introspection_auto_activity_history
+
+# fast build rule for target.
+integration_cognitive_introspection_auto_activity_history/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/cognitive/introspection/CMakeFiles/integration_cognitive_introspection_auto_activity_history.dir/build.make test/integration/cognitive/introspection/CMakeFiles/integration_cognitive_introspection_auto_activity_history.dir/build
+.PHONY : integration_cognitive_introspection_auto_activity_history/fast
+
+#=============================================================================
+# Target rules for targets named integration_cognitive_introspection_consciousness_metrics
+
+# Build rule for target.
+integration_cognitive_introspection_consciousness_metrics: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_cognitive_introspection_consciousness_metrics
+.PHONY : integration_cognitive_introspection_consciousness_metrics
+
+# fast build rule for target.
+integration_cognitive_introspection_consciousness_metrics/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/cognitive/introspection/CMakeFiles/integration_cognitive_introspection_consciousness_metrics.dir/build.make test/integration/cognitive/introspection/CMakeFiles/integration_cognitive_introspection_consciousness_metrics.dir/build
+.PHONY : integration_cognitive_introspection_consciousness_metrics/fast
+
+#=============================================================================
+# Target rules for targets named integration_cognitive_introspection_ensemble_uncertainty
+
+# Build rule for target.
+integration_cognitive_introspection_ensemble_uncertainty: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_cognitive_introspection_ensemble_uncertainty
+.PHONY : integration_cognitive_introspection_ensemble_uncertainty
+
+# fast build rule for target.
+integration_cognitive_introspection_ensemble_uncertainty/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/cognitive/introspection/CMakeFiles/integration_cognitive_introspection_ensemble_uncertainty.dir/build.make test/integration/cognitive/introspection/CMakeFiles/integration_cognitive_introspection_ensemble_uncertainty.dir/build
+.PHONY : integration_cognitive_introspection_ensemble_uncertainty/fast
+
+#=============================================================================
+# Target rules for targets named integration_cognitive_introspection_temporal_patterns
+
+# Build rule for target.
+integration_cognitive_introspection_temporal_patterns: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_cognitive_introspection_temporal_patterns
+.PHONY : integration_cognitive_introspection_temporal_patterns
+
+# fast build rule for target.
+integration_cognitive_introspection_temporal_patterns/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/cognitive/introspection/CMakeFiles/integration_cognitive_introspection_temporal_patterns.dir/build.make test/integration/cognitive/introspection/CMakeFiles/integration_cognitive_introspection_temporal_patterns.dir/build
+.PHONY : integration_cognitive_introspection_temporal_patterns/fast
+
+#=============================================================================
 # Target rules for targets named regression_cognitive_introspection_connectivity_health
 
 # Build rule for target.
@@ -7736,6 +7671,58 @@ regression_cognitive_introspection_connectivity_health: cmake_check_build_system
 regression_cognitive_introspection_connectivity_health/fast:
 	$(MAKE) $(MAKESILENT) -f test/regression/cognitive/introspection/CMakeFiles/regression_cognitive_introspection_connectivity_health.dir/build.make test/regression/cognitive/introspection/CMakeFiles/regression_cognitive_introspection_connectivity_health.dir/build
 .PHONY : regression_cognitive_introspection_connectivity_health/fast
+
+#=============================================================================
+# Target rules for targets named regression_cognitive_introspection_auto_activity_history
+
+# Build rule for target.
+regression_cognitive_introspection_auto_activity_history: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_cognitive_introspection_auto_activity_history
+.PHONY : regression_cognitive_introspection_auto_activity_history
+
+# fast build rule for target.
+regression_cognitive_introspection_auto_activity_history/fast:
+	$(MAKE) $(MAKESILENT) -f test/regression/cognitive/introspection/CMakeFiles/regression_cognitive_introspection_auto_activity_history.dir/build.make test/regression/cognitive/introspection/CMakeFiles/regression_cognitive_introspection_auto_activity_history.dir/build
+.PHONY : regression_cognitive_introspection_auto_activity_history/fast
+
+#=============================================================================
+# Target rules for targets named regression_cognitive_introspection_consciousness_metrics
+
+# Build rule for target.
+regression_cognitive_introspection_consciousness_metrics: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_cognitive_introspection_consciousness_metrics
+.PHONY : regression_cognitive_introspection_consciousness_metrics
+
+# fast build rule for target.
+regression_cognitive_introspection_consciousness_metrics/fast:
+	$(MAKE) $(MAKESILENT) -f test/regression/cognitive/introspection/CMakeFiles/regression_cognitive_introspection_consciousness_metrics.dir/build.make test/regression/cognitive/introspection/CMakeFiles/regression_cognitive_introspection_consciousness_metrics.dir/build
+.PHONY : regression_cognitive_introspection_consciousness_metrics/fast
+
+#=============================================================================
+# Target rules for targets named regression_cognitive_introspection_ensemble_uncertainty
+
+# Build rule for target.
+regression_cognitive_introspection_ensemble_uncertainty: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_cognitive_introspection_ensemble_uncertainty
+.PHONY : regression_cognitive_introspection_ensemble_uncertainty
+
+# fast build rule for target.
+regression_cognitive_introspection_ensemble_uncertainty/fast:
+	$(MAKE) $(MAKESILENT) -f test/regression/cognitive/introspection/CMakeFiles/regression_cognitive_introspection_ensemble_uncertainty.dir/build.make test/regression/cognitive/introspection/CMakeFiles/regression_cognitive_introspection_ensemble_uncertainty.dir/build
+.PHONY : regression_cognitive_introspection_ensemble_uncertainty/fast
+
+#=============================================================================
+# Target rules for targets named regression_cognitive_introspection_temporal_patterns
+
+# Build rule for target.
+regression_cognitive_introspection_temporal_patterns: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_cognitive_introspection_temporal_patterns
+.PHONY : regression_cognitive_introspection_temporal_patterns
+
+# fast build rule for target.
+regression_cognitive_introspection_temporal_patterns/fast:
+	$(MAKE) $(MAKESILENT) -f test/regression/cognitive/introspection/CMakeFiles/regression_cognitive_introspection_temporal_patterns.dir/build.make test/regression/cognitive/introspection/CMakeFiles/regression_cognitive_introspection_temporal_patterns.dir/build
+.PHONY : regression_cognitive_introspection_temporal_patterns/fast
 
 #=============================================================================
 # Target rules for targets named unit_cognitive_test_bio_async
@@ -8529,6 +8516,357 @@ unit_utils_fault_tolerance_test_state_machine: cmake_check_build_system
 unit_utils_fault_tolerance_test_state_machine/fast:
 	$(MAKE) $(MAKESILENT) -f test/unit/utils/fault_tolerance/CMakeFiles/unit_utils_fault_tolerance_test_state_machine.dir/build.make test/unit/utils/fault_tolerance/CMakeFiles/unit_utils_fault_tolerance_test_state_machine.dir/build
 .PHONY : unit_utils_fault_tolerance_test_state_machine/fast
+
+#=============================================================================
+# Target rules for targets named unit_utils_fault_tolerance_test_distributed_fault_tolerance
+
+# Build rule for target.
+unit_utils_fault_tolerance_test_distributed_fault_tolerance: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_utils_fault_tolerance_test_distributed_fault_tolerance
+.PHONY : unit_utils_fault_tolerance_test_distributed_fault_tolerance
+
+# fast build rule for target.
+unit_utils_fault_tolerance_test_distributed_fault_tolerance/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/utils/fault_tolerance/CMakeFiles/unit_utils_fault_tolerance_test_distributed_fault_tolerance.dir/build.make test/unit/utils/fault_tolerance/CMakeFiles/unit_utils_fault_tolerance_test_distributed_fault_tolerance.dir/build
+.PHONY : unit_utils_fault_tolerance_test_distributed_fault_tolerance/fast
+
+#=============================================================================
+# Target rules for targets named unit_utils_fault_tolerance_test_hierarchical_recovery
+
+# Build rule for target.
+unit_utils_fault_tolerance_test_hierarchical_recovery: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_utils_fault_tolerance_test_hierarchical_recovery
+.PHONY : unit_utils_fault_tolerance_test_hierarchical_recovery
+
+# fast build rule for target.
+unit_utils_fault_tolerance_test_hierarchical_recovery/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/utils/fault_tolerance/CMakeFiles/unit_utils_fault_tolerance_test_hierarchical_recovery.dir/build.make test/unit/utils/fault_tolerance/CMakeFiles/unit_utils_fault_tolerance_test_hierarchical_recovery.dir/build
+.PHONY : unit_utils_fault_tolerance_test_hierarchical_recovery/fast
+
+#=============================================================================
+# Target rules for targets named unit_utils_fault_tolerance_test_recovery_evolution
+
+# Build rule for target.
+unit_utils_fault_tolerance_test_recovery_evolution: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_utils_fault_tolerance_test_recovery_evolution
+.PHONY : unit_utils_fault_tolerance_test_recovery_evolution
+
+# fast build rule for target.
+unit_utils_fault_tolerance_test_recovery_evolution/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/utils/fault_tolerance/CMakeFiles/unit_utils_fault_tolerance_test_recovery_evolution.dir/build.make test/unit/utils/fault_tolerance/CMakeFiles/unit_utils_fault_tolerance_test_recovery_evolution.dir/build
+.PHONY : unit_utils_fault_tolerance_test_recovery_evolution/fast
+
+#=============================================================================
+# Target rules for targets named unit_utils_fault_tolerance_test_byzantine_fault_tolerance
+
+# Build rule for target.
+unit_utils_fault_tolerance_test_byzantine_fault_tolerance: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_utils_fault_tolerance_test_byzantine_fault_tolerance
+.PHONY : unit_utils_fault_tolerance_test_byzantine_fault_tolerance
+
+# fast build rule for target.
+unit_utils_fault_tolerance_test_byzantine_fault_tolerance/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/utils/fault_tolerance/CMakeFiles/unit_utils_fault_tolerance_test_byzantine_fault_tolerance.dir/build.make test/unit/utils/fault_tolerance/CMakeFiles/unit_utils_fault_tolerance_test_byzantine_fault_tolerance.dir/build
+.PHONY : unit_utils_fault_tolerance_test_byzantine_fault_tolerance/fast
+
+#=============================================================================
+# Target rules for targets named unit_utils_fault_tolerance_test_graceful_degradation
+
+# Build rule for target.
+unit_utils_fault_tolerance_test_graceful_degradation: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_utils_fault_tolerance_test_graceful_degradation
+.PHONY : unit_utils_fault_tolerance_test_graceful_degradation
+
+# fast build rule for target.
+unit_utils_fault_tolerance_test_graceful_degradation/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/utils/fault_tolerance/CMakeFiles/unit_utils_fault_tolerance_test_graceful_degradation.dir/build.make test/unit/utils/fault_tolerance/CMakeFiles/unit_utils_fault_tolerance_test_graceful_degradation.dir/build
+.PHONY : unit_utils_fault_tolerance_test_graceful_degradation/fast
+
+#=============================================================================
+# Target rules for targets named unit_utils_fault_tolerance_test_recovery_observability
+
+# Build rule for target.
+unit_utils_fault_tolerance_test_recovery_observability: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_utils_fault_tolerance_test_recovery_observability
+.PHONY : unit_utils_fault_tolerance_test_recovery_observability
+
+# fast build rule for target.
+unit_utils_fault_tolerance_test_recovery_observability/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/utils/fault_tolerance/CMakeFiles/unit_utils_fault_tolerance_test_recovery_observability.dir/build.make test/unit/utils/fault_tolerance/CMakeFiles/unit_utils_fault_tolerance_test_recovery_observability.dir/build
+.PHONY : unit_utils_fault_tolerance_test_recovery_observability/fast
+
+#=============================================================================
+# Target rules for targets named unit_utils_fault_tolerance_test_chaos_engineering
+
+# Build rule for target.
+unit_utils_fault_tolerance_test_chaos_engineering: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_utils_fault_tolerance_test_chaos_engineering
+.PHONY : unit_utils_fault_tolerance_test_chaos_engineering
+
+# fast build rule for target.
+unit_utils_fault_tolerance_test_chaos_engineering/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/utils/fault_tolerance/CMakeFiles/unit_utils_fault_tolerance_test_chaos_engineering.dir/build.make test/unit/utils/fault_tolerance/CMakeFiles/unit_utils_fault_tolerance_test_chaos_engineering.dir/build
+.PHONY : unit_utils_fault_tolerance_test_chaos_engineering/fast
+
+#=============================================================================
+# Target rules for targets named unit_utils_fault_tolerance_test_predictive_analysis
+
+# Build rule for target.
+unit_utils_fault_tolerance_test_predictive_analysis: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_utils_fault_tolerance_test_predictive_analysis
+.PHONY : unit_utils_fault_tolerance_test_predictive_analysis
+
+# fast build rule for target.
+unit_utils_fault_tolerance_test_predictive_analysis/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/utils/fault_tolerance/CMakeFiles/unit_utils_fault_tolerance_test_predictive_analysis.dir/build.make test/unit/utils/fault_tolerance/CMakeFiles/unit_utils_fault_tolerance_test_predictive_analysis.dir/build
+.PHONY : unit_utils_fault_tolerance_test_predictive_analysis/fast
+
+#=============================================================================
+# Target rules for targets named integration_utils_fault_tolerance_test_async_checkpoint_integration
+
+# Build rule for target.
+integration_utils_fault_tolerance_test_async_checkpoint_integration: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_utils_fault_tolerance_test_async_checkpoint_integration
+.PHONY : integration_utils_fault_tolerance_test_async_checkpoint_integration
+
+# fast build rule for target.
+integration_utils_fault_tolerance_test_async_checkpoint_integration/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/utils/fault_tolerance/CMakeFiles/integration_utils_fault_tolerance_test_async_checkpoint_integration.dir/build.make test/integration/utils/fault_tolerance/CMakeFiles/integration_utils_fault_tolerance_test_async_checkpoint_integration.dir/build
+.PHONY : integration_utils_fault_tolerance_test_async_checkpoint_integration/fast
+
+#=============================================================================
+# Target rules for targets named integration_utils_fault_tolerance_test_brain_recovery_integration
+
+# Build rule for target.
+integration_utils_fault_tolerance_test_brain_recovery_integration: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_utils_fault_tolerance_test_brain_recovery_integration
+.PHONY : integration_utils_fault_tolerance_test_brain_recovery_integration
+
+# fast build rule for target.
+integration_utils_fault_tolerance_test_brain_recovery_integration/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/utils/fault_tolerance/CMakeFiles/integration_utils_fault_tolerance_test_brain_recovery_integration.dir/build.make test/integration/utils/fault_tolerance/CMakeFiles/integration_utils_fault_tolerance_test_brain_recovery_integration.dir/build
+.PHONY : integration_utils_fault_tolerance_test_brain_recovery_integration/fast
+
+#=============================================================================
+# Target rules for targets named integration_utils_fault_tolerance_test_checkpoint_recovery
+
+# Build rule for target.
+integration_utils_fault_tolerance_test_checkpoint_recovery: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_utils_fault_tolerance_test_checkpoint_recovery
+.PHONY : integration_utils_fault_tolerance_test_checkpoint_recovery
+
+# fast build rule for target.
+integration_utils_fault_tolerance_test_checkpoint_recovery/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/utils/fault_tolerance/CMakeFiles/integration_utils_fault_tolerance_test_checkpoint_recovery.dir/build.make test/integration/utils/fault_tolerance/CMakeFiles/integration_utils_fault_tolerance_test_checkpoint_recovery.dir/build
+.PHONY : integration_utils_fault_tolerance_test_checkpoint_recovery/fast
+
+#=============================================================================
+# Target rules for targets named integration_utils_fault_tolerance_test_diagnostics_integration
+
+# Build rule for target.
+integration_utils_fault_tolerance_test_diagnostics_integration: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_utils_fault_tolerance_test_diagnostics_integration
+.PHONY : integration_utils_fault_tolerance_test_diagnostics_integration
+
+# fast build rule for target.
+integration_utils_fault_tolerance_test_diagnostics_integration/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/utils/fault_tolerance/CMakeFiles/integration_utils_fault_tolerance_test_diagnostics_integration.dir/build.make test/integration/utils/fault_tolerance/CMakeFiles/integration_utils_fault_tolerance_test_diagnostics_integration.dir/build
+.PHONY : integration_utils_fault_tolerance_test_diagnostics_integration/fast
+
+#=============================================================================
+# Target rules for targets named integration_utils_fault_tolerance_test_fast_recovery_integration
+
+# Build rule for target.
+integration_utils_fault_tolerance_test_fast_recovery_integration: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_utils_fault_tolerance_test_fast_recovery_integration
+.PHONY : integration_utils_fault_tolerance_test_fast_recovery_integration
+
+# fast build rule for target.
+integration_utils_fault_tolerance_test_fast_recovery_integration/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/utils/fault_tolerance/CMakeFiles/integration_utils_fault_tolerance_test_fast_recovery_integration.dir/build.make test/integration/utils/fault_tolerance/CMakeFiles/integration_utils_fault_tolerance_test_fast_recovery_integration.dir/build
+.PHONY : integration_utils_fault_tolerance_test_fast_recovery_integration/fast
+
+#=============================================================================
+# Target rules for targets named integration_utils_fault_tolerance_test_fault_event_bus_integration
+
+# Build rule for target.
+integration_utils_fault_tolerance_test_fault_event_bus_integration: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_utils_fault_tolerance_test_fault_event_bus_integration
+.PHONY : integration_utils_fault_tolerance_test_fault_event_bus_integration
+
+# fast build rule for target.
+integration_utils_fault_tolerance_test_fault_event_bus_integration/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/utils/fault_tolerance/CMakeFiles/integration_utils_fault_tolerance_test_fault_event_bus_integration.dir/build.make test/integration/utils/fault_tolerance/CMakeFiles/integration_utils_fault_tolerance_test_fault_event_bus_integration.dir/build
+.PHONY : integration_utils_fault_tolerance_test_fault_event_bus_integration/fast
+
+#=============================================================================
+# Target rules for targets named integration_utils_fault_tolerance_test_fault_tolerance_integration
+
+# Build rule for target.
+integration_utils_fault_tolerance_test_fault_tolerance_integration: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_utils_fault_tolerance_test_fault_tolerance_integration
+.PHONY : integration_utils_fault_tolerance_test_fault_tolerance_integration
+
+# fast build rule for target.
+integration_utils_fault_tolerance_test_fault_tolerance_integration/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/utils/fault_tolerance/CMakeFiles/integration_utils_fault_tolerance_test_fault_tolerance_integration.dir/build.make test/integration/utils/fault_tolerance/CMakeFiles/integration_utils_fault_tolerance_test_fault_tolerance_integration.dir/build
+.PHONY : integration_utils_fault_tolerance_test_fault_tolerance_integration/fast
+
+#=============================================================================
+# Target rules for targets named integration_utils_fault_tolerance_test_lockfree_metrics_integration
+
+# Build rule for target.
+integration_utils_fault_tolerance_test_lockfree_metrics_integration: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_utils_fault_tolerance_test_lockfree_metrics_integration
+.PHONY : integration_utils_fault_tolerance_test_lockfree_metrics_integration
+
+# fast build rule for target.
+integration_utils_fault_tolerance_test_lockfree_metrics_integration/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/utils/fault_tolerance/CMakeFiles/integration_utils_fault_tolerance_test_lockfree_metrics_integration.dir/build.make test/integration/utils/fault_tolerance/CMakeFiles/integration_utils_fault_tolerance_test_lockfree_metrics_integration.dir/build
+.PHONY : integration_utils_fault_tolerance_test_lockfree_metrics_integration/fast
+
+#=============================================================================
+# Target rules for targets named integration_utils_fault_tolerance_test_recovery_cache_integration
+
+# Build rule for target.
+integration_utils_fault_tolerance_test_recovery_cache_integration: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_utils_fault_tolerance_test_recovery_cache_integration
+.PHONY : integration_utils_fault_tolerance_test_recovery_cache_integration
+
+# fast build rule for target.
+integration_utils_fault_tolerance_test_recovery_cache_integration/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/utils/fault_tolerance/CMakeFiles/integration_utils_fault_tolerance_test_recovery_cache_integration.dir/build.make test/integration/utils/fault_tolerance/CMakeFiles/integration_utils_fault_tolerance_test_recovery_cache_integration.dir/build
+.PHONY : integration_utils_fault_tolerance_test_recovery_cache_integration/fast
+
+#=============================================================================
+# Target rules for targets named integration_utils_fault_tolerance_test_recovery_pool_integration
+
+# Build rule for target.
+integration_utils_fault_tolerance_test_recovery_pool_integration: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_utils_fault_tolerance_test_recovery_pool_integration
+.PHONY : integration_utils_fault_tolerance_test_recovery_pool_integration
+
+# fast build rule for target.
+integration_utils_fault_tolerance_test_recovery_pool_integration/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/utils/fault_tolerance/CMakeFiles/integration_utils_fault_tolerance_test_recovery_pool_integration.dir/build.make test/integration/utils/fault_tolerance/CMakeFiles/integration_utils_fault_tolerance_test_recovery_pool_integration.dir/build
+.PHONY : integration_utils_fault_tolerance_test_recovery_pool_integration/fast
+
+#=============================================================================
+# Target rules for targets named integration_utils_fault_tolerance_test_enhanced_fault_tolerance_integration
+
+# Build rule for target.
+integration_utils_fault_tolerance_test_enhanced_fault_tolerance_integration: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_utils_fault_tolerance_test_enhanced_fault_tolerance_integration
+.PHONY : integration_utils_fault_tolerance_test_enhanced_fault_tolerance_integration
+
+# fast build rule for target.
+integration_utils_fault_tolerance_test_enhanced_fault_tolerance_integration/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/utils/fault_tolerance/CMakeFiles/integration_utils_fault_tolerance_test_enhanced_fault_tolerance_integration.dir/build.make test/integration/utils/fault_tolerance/CMakeFiles/integration_utils_fault_tolerance_test_enhanced_fault_tolerance_integration.dir/build
+.PHONY : integration_utils_fault_tolerance_test_enhanced_fault_tolerance_integration/fast
+
+#=============================================================================
+# Target rules for targets named regression_utils_fault_tolerance_test_checkpoint_format
+
+# Build rule for target.
+regression_utils_fault_tolerance_test_checkpoint_format: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_utils_fault_tolerance_test_checkpoint_format
+.PHONY : regression_utils_fault_tolerance_test_checkpoint_format
+
+# fast build rule for target.
+regression_utils_fault_tolerance_test_checkpoint_format/fast:
+	$(MAKE) $(MAKESILENT) -f test/regression/utils/fault_tolerance/CMakeFiles/regression_utils_fault_tolerance_test_checkpoint_format.dir/build.make test/regression/utils/fault_tolerance/CMakeFiles/regression_utils_fault_tolerance_test_checkpoint_format.dir/build
+.PHONY : regression_utils_fault_tolerance_test_checkpoint_format/fast
+
+#=============================================================================
+# Target rules for targets named regression_utils_fault_tolerance_test_diagnostics_regression
+
+# Build rule for target.
+regression_utils_fault_tolerance_test_diagnostics_regression: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_utils_fault_tolerance_test_diagnostics_regression
+.PHONY : regression_utils_fault_tolerance_test_diagnostics_regression
+
+# fast build rule for target.
+regression_utils_fault_tolerance_test_diagnostics_regression/fast:
+	$(MAKE) $(MAKESILENT) -f test/regression/utils/fault_tolerance/CMakeFiles/regression_utils_fault_tolerance_test_diagnostics_regression.dir/build.make test/regression/utils/fault_tolerance/CMakeFiles/regression_utils_fault_tolerance_test_diagnostics_regression.dir/build
+.PHONY : regression_utils_fault_tolerance_test_diagnostics_regression/fast
+
+#=============================================================================
+# Target rules for targets named regression_utils_fault_tolerance_test_fast_recovery_regression
+
+# Build rule for target.
+regression_utils_fault_tolerance_test_fast_recovery_regression: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_utils_fault_tolerance_test_fast_recovery_regression
+.PHONY : regression_utils_fault_tolerance_test_fast_recovery_regression
+
+# fast build rule for target.
+regression_utils_fault_tolerance_test_fast_recovery_regression/fast:
+	$(MAKE) $(MAKESILENT) -f test/regression/utils/fault_tolerance/CMakeFiles/regression_utils_fault_tolerance_test_fast_recovery_regression.dir/build.make test/regression/utils/fault_tolerance/CMakeFiles/regression_utils_fault_tolerance_test_fast_recovery_regression.dir/build
+.PHONY : regression_utils_fault_tolerance_test_fast_recovery_regression/fast
+
+#=============================================================================
+# Target rules for targets named regression_utils_fault_tolerance_test_fault_event_bus_regression
+
+# Build rule for target.
+regression_utils_fault_tolerance_test_fault_event_bus_regression: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_utils_fault_tolerance_test_fault_event_bus_regression
+.PHONY : regression_utils_fault_tolerance_test_fault_event_bus_regression
+
+# fast build rule for target.
+regression_utils_fault_tolerance_test_fault_event_bus_regression/fast:
+	$(MAKE) $(MAKESILENT) -f test/regression/utils/fault_tolerance/CMakeFiles/regression_utils_fault_tolerance_test_fault_event_bus_regression.dir/build.make test/regression/utils/fault_tolerance/CMakeFiles/regression_utils_fault_tolerance_test_fault_event_bus_regression.dir/build
+.PHONY : regression_utils_fault_tolerance_test_fault_event_bus_regression/fast
+
+#=============================================================================
+# Target rules for targets named regression_utils_fault_tolerance_test_lockfree_metrics_regression
+
+# Build rule for target.
+regression_utils_fault_tolerance_test_lockfree_metrics_regression: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_utils_fault_tolerance_test_lockfree_metrics_regression
+.PHONY : regression_utils_fault_tolerance_test_lockfree_metrics_regression
+
+# fast build rule for target.
+regression_utils_fault_tolerance_test_lockfree_metrics_regression/fast:
+	$(MAKE) $(MAKESILENT) -f test/regression/utils/fault_tolerance/CMakeFiles/regression_utils_fault_tolerance_test_lockfree_metrics_regression.dir/build.make test/regression/utils/fault_tolerance/CMakeFiles/regression_utils_fault_tolerance_test_lockfree_metrics_regression.dir/build
+.PHONY : regression_utils_fault_tolerance_test_lockfree_metrics_regression/fast
+
+#=============================================================================
+# Target rules for targets named regression_utils_fault_tolerance_test_recovery_cache_regression
+
+# Build rule for target.
+regression_utils_fault_tolerance_test_recovery_cache_regression: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_utils_fault_tolerance_test_recovery_cache_regression
+.PHONY : regression_utils_fault_tolerance_test_recovery_cache_regression
+
+# fast build rule for target.
+regression_utils_fault_tolerance_test_recovery_cache_regression/fast:
+	$(MAKE) $(MAKESILENT) -f test/regression/utils/fault_tolerance/CMakeFiles/regression_utils_fault_tolerance_test_recovery_cache_regression.dir/build.make test/regression/utils/fault_tolerance/CMakeFiles/regression_utils_fault_tolerance_test_recovery_cache_regression.dir/build
+.PHONY : regression_utils_fault_tolerance_test_recovery_cache_regression/fast
+
+#=============================================================================
+# Target rules for targets named regression_utils_fault_tolerance_test_recovery_pool_regression
+
+# Build rule for target.
+regression_utils_fault_tolerance_test_recovery_pool_regression: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_utils_fault_tolerance_test_recovery_pool_regression
+.PHONY : regression_utils_fault_tolerance_test_recovery_pool_regression
+
+# fast build rule for target.
+regression_utils_fault_tolerance_test_recovery_pool_regression/fast:
+	$(MAKE) $(MAKESILENT) -f test/regression/utils/fault_tolerance/CMakeFiles/regression_utils_fault_tolerance_test_recovery_pool_regression.dir/build.make test/regression/utils/fault_tolerance/CMakeFiles/regression_utils_fault_tolerance_test_recovery_pool_regression.dir/build
+.PHONY : regression_utils_fault_tolerance_test_recovery_pool_regression/fast
+
+#=============================================================================
+# Target rules for targets named regression_utils_fault_tolerance_test_enhanced_fault_tolerance_regression
+
+# Build rule for target.
+regression_utils_fault_tolerance_test_enhanced_fault_tolerance_regression: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_utils_fault_tolerance_test_enhanced_fault_tolerance_regression
+.PHONY : regression_utils_fault_tolerance_test_enhanced_fault_tolerance_regression
+
+# fast build rule for target.
+regression_utils_fault_tolerance_test_enhanced_fault_tolerance_regression/fast:
+	$(MAKE) $(MAKESILENT) -f test/regression/utils/fault_tolerance/CMakeFiles/regression_utils_fault_tolerance_test_enhanced_fault_tolerance_regression.dir/build.make test/regression/utils/fault_tolerance/CMakeFiles/regression_utils_fault_tolerance_test_enhanced_fault_tolerance_regression.dir/build
+.PHONY : regression_utils_fault_tolerance_test_enhanced_fault_tolerance_regression/fast
 
 #=============================================================================
 # Target rules for targets named unit_utils_memory_test_memory_pool
@@ -10338,6 +10676,32 @@ test_immune_threat_logic/fast:
 .PHONY : test_immune_threat_logic/fast
 
 #=============================================================================
+# Target rules for targets named test_swarm_consciousness
+
+# Build rule for target.
+test_swarm_consciousness: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test_swarm_consciousness
+.PHONY : test_swarm_consciousness
+
+# fast build rule for target.
+test_swarm_consciousness/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/swarm/CMakeFiles/test_swarm_consciousness.dir/build.make test/unit/swarm/CMakeFiles/test_swarm_consciousness.dir/build
+.PHONY : test_swarm_consciousness/fast
+
+#=============================================================================
+# Target rules for targets named test_swarm_consciousness_enhanced
+
+# Build rule for target.
+test_swarm_consciousness_enhanced: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test_swarm_consciousness_enhanced
+.PHONY : test_swarm_consciousness_enhanced
+
+# fast build rule for target.
+test_swarm_consciousness_enhanced/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/swarm/CMakeFiles/test_swarm_consciousness_enhanced.dir/build.make test/unit/swarm/CMakeFiles/test_swarm_consciousness_enhanced.dir/build
+.PHONY : test_swarm_consciousness_enhanced/fast
+
+#=============================================================================
 # Target rules for targets named test_swarm_communication_integration
 
 # Build rule for target.
@@ -10429,6 +10793,32 @@ test_quorum_immune_logic_integration/fast:
 .PHONY : test_quorum_immune_logic_integration/fast
 
 #=============================================================================
+# Target rules for targets named test_swarm_consciousness_integration
+
+# Build rule for target.
+test_swarm_consciousness_integration: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test_swarm_consciousness_integration
+.PHONY : test_swarm_consciousness_integration
+
+# fast build rule for target.
+test_swarm_consciousness_integration/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/swarm/CMakeFiles/test_swarm_consciousness_integration.dir/build.make test/integration/swarm/CMakeFiles/test_swarm_consciousness_integration.dir/build
+.PHONY : test_swarm_consciousness_integration/fast
+
+#=============================================================================
+# Target rules for targets named test_swarm_consciousness_enhanced_integration
+
+# Build rule for target.
+test_swarm_consciousness_enhanced_integration: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test_swarm_consciousness_enhanced_integration
+.PHONY : test_swarm_consciousness_enhanced_integration
+
+# fast build rule for target.
+test_swarm_consciousness_enhanced_integration/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/swarm/CMakeFiles/test_swarm_consciousness_enhanced_integration.dir/build.make test/integration/swarm/CMakeFiles/test_swarm_consciousness_enhanced_integration.dir/build
+.PHONY : test_swarm_consciousness_enhanced_integration/fast
+
+#=============================================================================
 # Target rules for targets named test_swarm_memory_regression
 
 # Build rule for target.
@@ -10492,6 +10882,32 @@ test_quorum_immune_logic_regression: cmake_check_build_system
 test_quorum_immune_logic_regression/fast:
 	$(MAKE) $(MAKESILENT) -f test/regression/swarm/CMakeFiles/test_quorum_immune_logic_regression.dir/build.make test/regression/swarm/CMakeFiles/test_quorum_immune_logic_regression.dir/build
 .PHONY : test_quorum_immune_logic_regression/fast
+
+#=============================================================================
+# Target rules for targets named test_swarm_consciousness_regression
+
+# Build rule for target.
+test_swarm_consciousness_regression: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test_swarm_consciousness_regression
+.PHONY : test_swarm_consciousness_regression
+
+# fast build rule for target.
+test_swarm_consciousness_regression/fast:
+	$(MAKE) $(MAKESILENT) -f test/regression/swarm/CMakeFiles/test_swarm_consciousness_regression.dir/build.make test/regression/swarm/CMakeFiles/test_swarm_consciousness_regression.dir/build
+.PHONY : test_swarm_consciousness_regression/fast
+
+#=============================================================================
+# Target rules for targets named test_swarm_consciousness_enhanced_regression
+
+# Build rule for target.
+test_swarm_consciousness_enhanced_regression: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test_swarm_consciousness_enhanced_regression
+.PHONY : test_swarm_consciousness_enhanced_regression
+
+# fast build rule for target.
+test_swarm_consciousness_enhanced_regression/fast:
+	$(MAKE) $(MAKESILENT) -f test/regression/swarm/CMakeFiles/test_swarm_consciousness_enhanced_regression.dir/build.make test/regression/swarm/CMakeFiles/test_swarm_consciousness_enhanced_regression.dir/build
+.PHONY : test_swarm_consciousness_enhanced_regression/fast
 
 #=============================================================================
 # Target rules for targets named test_platform_tier
@@ -11588,6 +12004,8 @@ help:
 	@echo "... e2e_test_core_bio_async"
 	@echo "... e2e_test_distributed_pipeline"
 	@echo "... e2e_test_emotion_tensor_pipeline"
+	@echo "... e2e_test_fault_tolerance_pipeline"
+	@echo "... e2e_test_introspection_pipeline"
 	@echo "... e2e_test_nlp_disaster_sar"
 	@echo "... e2e_test_nlp_neural_distributed"
 	@echo "... e2e_test_nlp_swarm_coordination"
@@ -11606,6 +12024,8 @@ help:
 	@echo "... e2e_test_second_messenger_pipeline"
 	@echo "... e2e_test_security_attack_simulation"
 	@echo "... e2e_test_server_swarm_pipeline"
+	@echo "... e2e_test_swarm_consciousness_enhanced_pipeline"
+	@echo "... e2e_test_swarm_consciousness_pipeline"
 	@echo "... e2e_test_swarm_formation"
 	@echo "... e2e_test_swarm_threat_response"
 	@echo "... ethics_demo"
@@ -11639,7 +12059,11 @@ help:
 	@echo "... integration_cognitive_global_workspace_test_global_workspace_integration"
 	@echo "... integration_cognitive_global_workspace_test_global_workspace_shannon_integration"
 	@echo "... integration_cognitive_grief_test_grief_and_loss_integration"
+	@echo "... integration_cognitive_introspection_auto_activity_history"
 	@echo "... integration_cognitive_introspection_connectivity_health"
+	@echo "... integration_cognitive_introspection_consciousness_metrics"
+	@echo "... integration_cognitive_introspection_ensemble_uncertainty"
+	@echo "... integration_cognitive_introspection_temporal_patterns"
 	@echo "... integration_cognitive_joy_test_joy_euphoria_integration"
 	@echo "... integration_cognitive_memory_test_engram_integration"
 	@echo "... integration_cognitive_memory_test_semantic_memory_integration"
@@ -11737,6 +12161,7 @@ help:
 	@echo "... integration_utils_fault_tolerance_test_brain_recovery_integration"
 	@echo "... integration_utils_fault_tolerance_test_checkpoint_recovery"
 	@echo "... integration_utils_fault_tolerance_test_diagnostics_integration"
+	@echo "... integration_utils_fault_tolerance_test_enhanced_fault_tolerance_integration"
 	@echo "... integration_utils_fault_tolerance_test_fast_recovery_integration"
 	@echo "... integration_utils_fault_tolerance_test_fault_event_bus_integration"
 	@echo "... integration_utils_fault_tolerance_test_fault_tolerance_integration"
@@ -11784,7 +12209,11 @@ help:
 	@echo "... regression_cognitive_global_workspace_test_global_workspace_regression"
 	@echo "... regression_cognitive_global_workspace_test_global_workspace_shannon_regression"
 	@echo "... regression_cognitive_grief_test_grief_and_loss_backward_compat"
+	@echo "... regression_cognitive_introspection_auto_activity_history"
 	@echo "... regression_cognitive_introspection_connectivity_health"
+	@echo "... regression_cognitive_introspection_consciousness_metrics"
+	@echo "... regression_cognitive_introspection_ensemble_uncertainty"
+	@echo "... regression_cognitive_introspection_temporal_patterns"
 	@echo "... regression_cognitive_joy_test_joy_euphoria_backward_compat"
 	@echo "... regression_cognitive_memory_test_engram_backward_compat"
 	@echo "... regression_cognitive_memory_test_semantic_memory_backward_compat"
@@ -11926,6 +12355,7 @@ help:
 	@echo "... regression_utils_encoding_pe_stability"
 	@echo "... regression_utils_fault_tolerance_test_checkpoint_format"
 	@echo "... regression_utils_fault_tolerance_test_diagnostics_regression"
+	@echo "... regression_utils_fault_tolerance_test_enhanced_fault_tolerance_regression"
 	@echo "... regression_utils_fault_tolerance_test_fast_recovery_regression"
 	@echo "... regression_utils_fault_tolerance_test_fault_event_bus_regression"
 	@echo "... regression_utils_fault_tolerance_test_lockfree_metrics_regression"
@@ -12004,6 +12434,12 @@ help:
 	@echo "... test_swarm_conflict_resolution"
 	@echo "... test_swarm_conflict_resolution_integration"
 	@echo "... test_swarm_conflict_resolution_regression"
+	@echo "... test_swarm_consciousness"
+	@echo "... test_swarm_consciousness_enhanced"
+	@echo "... test_swarm_consciousness_enhanced_integration"
+	@echo "... test_swarm_consciousness_enhanced_regression"
+	@echo "... test_swarm_consciousness_integration"
+	@echo "... test_swarm_consciousness_regression"
 	@echo "... test_swarm_consensus"
 	@echo "... test_swarm_consensus_integration"
 	@echo "... test_swarm_emergence"
@@ -12067,7 +12503,11 @@ help:
 	@echo "... unit_cognitive_global_workspace_test_global_workspace"
 	@echo "... unit_cognitive_global_workspace_test_global_workspace_shannon"
 	@echo "... unit_cognitive_grief_test_grief_and_loss"
+	@echo "... unit_cognitive_introspection_auto_activity_history"
 	@echo "... unit_cognitive_introspection_connectivity_health"
+	@echo "... unit_cognitive_introspection_consciousness_metrics"
+	@echo "... unit_cognitive_introspection_ensemble_uncertainty"
+	@echo "... unit_cognitive_introspection_temporal_patterns"
 	@echo "... unit_cognitive_joy_test_joy_euphoria"
 	@echo "... unit_cognitive_memory_test_engram"
 	@echo "... unit_cognitive_memory_test_semantic_memory"
@@ -12341,16 +12781,24 @@ help:
 	@echo "... unit_utils_containers_test_utils_min_heap"
 	@echo "... unit_utils_encoding_test_positional_encoding"
 	@echo "... unit_utils_fault_tolerance_test_async_checkpoint"
+	@echo "... unit_utils_fault_tolerance_test_byzantine_fault_tolerance"
+	@echo "... unit_utils_fault_tolerance_test_chaos_engineering"
 	@echo "... unit_utils_fault_tolerance_test_checkpoint"
 	@echo "... unit_utils_fault_tolerance_test_checkpoint_pool"
 	@echo "... unit_utils_fault_tolerance_test_diagnostics"
+	@echo "... unit_utils_fault_tolerance_test_distributed_fault_tolerance"
 	@echo "... unit_utils_fault_tolerance_test_fast_recovery"
 	@echo "... unit_utils_fault_tolerance_test_fault_event_bus"
+	@echo "... unit_utils_fault_tolerance_test_graceful_degradation"
 	@echo "... unit_utils_fault_tolerance_test_health_monitor"
+	@echo "... unit_utils_fault_tolerance_test_hierarchical_recovery"
 	@echo "... unit_utils_fault_tolerance_test_lockfree_metrics"
 	@echo "... unit_utils_fault_tolerance_test_metrics_aggregator"
+	@echo "... unit_utils_fault_tolerance_test_predictive_analysis"
 	@echo "... unit_utils_fault_tolerance_test_recovery"
 	@echo "... unit_utils_fault_tolerance_test_recovery_cache"
+	@echo "... unit_utils_fault_tolerance_test_recovery_evolution"
+	@echo "... unit_utils_fault_tolerance_test_recovery_observability"
 	@echo "... unit_utils_fault_tolerance_test_recovery_pool"
 	@echo "... unit_utils_fault_tolerance_test_state_machine"
 	@echo "... unit_utils_logging_test_logging_async"

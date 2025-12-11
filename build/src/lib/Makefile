@@ -1145,6 +1145,54 @@ __/cognitive/introspection/nimcp_connectivity_health.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/introspection/nimcp_connectivity_health.c.s
 .PHONY : __/cognitive/introspection/nimcp_connectivity_health.c.s
 
+__/cognitive/introspection/nimcp_consciousness_metrics.o: __/cognitive/introspection/nimcp_consciousness_metrics.c.o
+.PHONY : __/cognitive/introspection/nimcp_consciousness_metrics.o
+
+# target to build an object file
+__/cognitive/introspection/nimcp_consciousness_metrics.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/introspection/nimcp_consciousness_metrics.c.o
+.PHONY : __/cognitive/introspection/nimcp_consciousness_metrics.c.o
+
+__/cognitive/introspection/nimcp_consciousness_metrics.i: __/cognitive/introspection/nimcp_consciousness_metrics.c.i
+.PHONY : __/cognitive/introspection/nimcp_consciousness_metrics.i
+
+# target to preprocess a source file
+__/cognitive/introspection/nimcp_consciousness_metrics.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/introspection/nimcp_consciousness_metrics.c.i
+.PHONY : __/cognitive/introspection/nimcp_consciousness_metrics.c.i
+
+__/cognitive/introspection/nimcp_consciousness_metrics.s: __/cognitive/introspection/nimcp_consciousness_metrics.c.s
+.PHONY : __/cognitive/introspection/nimcp_consciousness_metrics.s
+
+# target to generate assembly for a file
+__/cognitive/introspection/nimcp_consciousness_metrics.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/introspection/nimcp_consciousness_metrics.c.s
+.PHONY : __/cognitive/introspection/nimcp_consciousness_metrics.c.s
+
+__/cognitive/introspection/nimcp_ensemble_uncertainty.o: __/cognitive/introspection/nimcp_ensemble_uncertainty.c.o
+.PHONY : __/cognitive/introspection/nimcp_ensemble_uncertainty.o
+
+# target to build an object file
+__/cognitive/introspection/nimcp_ensemble_uncertainty.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/introspection/nimcp_ensemble_uncertainty.c.o
+.PHONY : __/cognitive/introspection/nimcp_ensemble_uncertainty.c.o
+
+__/cognitive/introspection/nimcp_ensemble_uncertainty.i: __/cognitive/introspection/nimcp_ensemble_uncertainty.c.i
+.PHONY : __/cognitive/introspection/nimcp_ensemble_uncertainty.i
+
+# target to preprocess a source file
+__/cognitive/introspection/nimcp_ensemble_uncertainty.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/introspection/nimcp_ensemble_uncertainty.c.i
+.PHONY : __/cognitive/introspection/nimcp_ensemble_uncertainty.c.i
+
+__/cognitive/introspection/nimcp_ensemble_uncertainty.s: __/cognitive/introspection/nimcp_ensemble_uncertainty.c.s
+.PHONY : __/cognitive/introspection/nimcp_ensemble_uncertainty.s
+
+# target to generate assembly for a file
+__/cognitive/introspection/nimcp_ensemble_uncertainty.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/introspection/nimcp_ensemble_uncertainty.c.s
+.PHONY : __/cognitive/introspection/nimcp_ensemble_uncertainty.c.s
+
 __/cognitive/introspection/nimcp_introspection.o: __/cognitive/introspection/nimcp_introspection.c.o
 .PHONY : __/cognitive/introspection/nimcp_introspection.o
 
@@ -1168,6 +1216,30 @@ __/cognitive/introspection/nimcp_introspection.s: __/cognitive/introspection/nim
 __/cognitive/introspection/nimcp_introspection.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/introspection/nimcp_introspection.c.s
 .PHONY : __/cognitive/introspection/nimcp_introspection.c.s
+
+__/cognitive/introspection/nimcp_temporal_patterns.o: __/cognitive/introspection/nimcp_temporal_patterns.c.o
+.PHONY : __/cognitive/introspection/nimcp_temporal_patterns.o
+
+# target to build an object file
+__/cognitive/introspection/nimcp_temporal_patterns.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/introspection/nimcp_temporal_patterns.c.o
+.PHONY : __/cognitive/introspection/nimcp_temporal_patterns.c.o
+
+__/cognitive/introspection/nimcp_temporal_patterns.i: __/cognitive/introspection/nimcp_temporal_patterns.c.i
+.PHONY : __/cognitive/introspection/nimcp_temporal_patterns.i
+
+# target to preprocess a source file
+__/cognitive/introspection/nimcp_temporal_patterns.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/introspection/nimcp_temporal_patterns.c.i
+.PHONY : __/cognitive/introspection/nimcp_temporal_patterns.c.i
+
+__/cognitive/introspection/nimcp_temporal_patterns.s: __/cognitive/introspection/nimcp_temporal_patterns.c.s
+.PHONY : __/cognitive/introspection/nimcp_temporal_patterns.s
+
+# target to generate assembly for a file
+__/cognitive/introspection/nimcp_temporal_patterns.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/introspection/nimcp_temporal_patterns.c.s
+.PHONY : __/cognitive/introspection/nimcp_temporal_patterns.c.s
 
 __/cognitive/joy/nimcp_joy_euphoria.o: __/cognitive/joy/nimcp_joy_euphoria.c.o
 .PHONY : __/cognitive/joy/nimcp_joy_euphoria.o
@@ -7841,6 +7913,54 @@ __/swarm/nimcp_swarm_conflict.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/swarm/nimcp_swarm_conflict.c.s
 .PHONY : __/swarm/nimcp_swarm_conflict.c.s
 
+__/swarm/nimcp_swarm_consciousness.o: __/swarm/nimcp_swarm_consciousness.c.o
+.PHONY : __/swarm/nimcp_swarm_consciousness.o
+
+# target to build an object file
+__/swarm/nimcp_swarm_consciousness.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/swarm/nimcp_swarm_consciousness.c.o
+.PHONY : __/swarm/nimcp_swarm_consciousness.c.o
+
+__/swarm/nimcp_swarm_consciousness.i: __/swarm/nimcp_swarm_consciousness.c.i
+.PHONY : __/swarm/nimcp_swarm_consciousness.i
+
+# target to preprocess a source file
+__/swarm/nimcp_swarm_consciousness.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/swarm/nimcp_swarm_consciousness.c.i
+.PHONY : __/swarm/nimcp_swarm_consciousness.c.i
+
+__/swarm/nimcp_swarm_consciousness.s: __/swarm/nimcp_swarm_consciousness.c.s
+.PHONY : __/swarm/nimcp_swarm_consciousness.s
+
+# target to generate assembly for a file
+__/swarm/nimcp_swarm_consciousness.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/swarm/nimcp_swarm_consciousness.c.s
+.PHONY : __/swarm/nimcp_swarm_consciousness.c.s
+
+__/swarm/nimcp_swarm_consciousness_enhanced.o: __/swarm/nimcp_swarm_consciousness_enhanced.c.o
+.PHONY : __/swarm/nimcp_swarm_consciousness_enhanced.o
+
+# target to build an object file
+__/swarm/nimcp_swarm_consciousness_enhanced.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/swarm/nimcp_swarm_consciousness_enhanced.c.o
+.PHONY : __/swarm/nimcp_swarm_consciousness_enhanced.c.o
+
+__/swarm/nimcp_swarm_consciousness_enhanced.i: __/swarm/nimcp_swarm_consciousness_enhanced.c.i
+.PHONY : __/swarm/nimcp_swarm_consciousness_enhanced.i
+
+# target to preprocess a source file
+__/swarm/nimcp_swarm_consciousness_enhanced.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/swarm/nimcp_swarm_consciousness_enhanced.c.i
+.PHONY : __/swarm/nimcp_swarm_consciousness_enhanced.c.i
+
+__/swarm/nimcp_swarm_consciousness_enhanced.s: __/swarm/nimcp_swarm_consciousness_enhanced.c.s
+.PHONY : __/swarm/nimcp_swarm_consciousness_enhanced.s
+
+# target to generate assembly for a file
+__/swarm/nimcp_swarm_consciousness_enhanced.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/swarm/nimcp_swarm_consciousness_enhanced.c.s
+.PHONY : __/swarm/nimcp_swarm_consciousness_enhanced.c.s
+
 __/swarm/nimcp_swarm_consensus.o: __/swarm/nimcp_swarm_consensus.c.o
 .PHONY : __/swarm/nimcp_swarm_consensus.o
 
@@ -8801,6 +8921,54 @@ __/utils/fault_tolerance/nimcp_brain_recovery_integration.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/utils/fault_tolerance/nimcp_brain_recovery_integration.c.s
 .PHONY : __/utils/fault_tolerance/nimcp_brain_recovery_integration.c.s
 
+__/utils/fault_tolerance/nimcp_byzantine_fault_tolerance.o: __/utils/fault_tolerance/nimcp_byzantine_fault_tolerance.c.o
+.PHONY : __/utils/fault_tolerance/nimcp_byzantine_fault_tolerance.o
+
+# target to build an object file
+__/utils/fault_tolerance/nimcp_byzantine_fault_tolerance.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/utils/fault_tolerance/nimcp_byzantine_fault_tolerance.c.o
+.PHONY : __/utils/fault_tolerance/nimcp_byzantine_fault_tolerance.c.o
+
+__/utils/fault_tolerance/nimcp_byzantine_fault_tolerance.i: __/utils/fault_tolerance/nimcp_byzantine_fault_tolerance.c.i
+.PHONY : __/utils/fault_tolerance/nimcp_byzantine_fault_tolerance.i
+
+# target to preprocess a source file
+__/utils/fault_tolerance/nimcp_byzantine_fault_tolerance.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/utils/fault_tolerance/nimcp_byzantine_fault_tolerance.c.i
+.PHONY : __/utils/fault_tolerance/nimcp_byzantine_fault_tolerance.c.i
+
+__/utils/fault_tolerance/nimcp_byzantine_fault_tolerance.s: __/utils/fault_tolerance/nimcp_byzantine_fault_tolerance.c.s
+.PHONY : __/utils/fault_tolerance/nimcp_byzantine_fault_tolerance.s
+
+# target to generate assembly for a file
+__/utils/fault_tolerance/nimcp_byzantine_fault_tolerance.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/utils/fault_tolerance/nimcp_byzantine_fault_tolerance.c.s
+.PHONY : __/utils/fault_tolerance/nimcp_byzantine_fault_tolerance.c.s
+
+__/utils/fault_tolerance/nimcp_chaos_engineering.o: __/utils/fault_tolerance/nimcp_chaos_engineering.c.o
+.PHONY : __/utils/fault_tolerance/nimcp_chaos_engineering.o
+
+# target to build an object file
+__/utils/fault_tolerance/nimcp_chaos_engineering.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/utils/fault_tolerance/nimcp_chaos_engineering.c.o
+.PHONY : __/utils/fault_tolerance/nimcp_chaos_engineering.c.o
+
+__/utils/fault_tolerance/nimcp_chaos_engineering.i: __/utils/fault_tolerance/nimcp_chaos_engineering.c.i
+.PHONY : __/utils/fault_tolerance/nimcp_chaos_engineering.i
+
+# target to preprocess a source file
+__/utils/fault_tolerance/nimcp_chaos_engineering.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/utils/fault_tolerance/nimcp_chaos_engineering.c.i
+.PHONY : __/utils/fault_tolerance/nimcp_chaos_engineering.c.i
+
+__/utils/fault_tolerance/nimcp_chaos_engineering.s: __/utils/fault_tolerance/nimcp_chaos_engineering.c.s
+.PHONY : __/utils/fault_tolerance/nimcp_chaos_engineering.s
+
+# target to generate assembly for a file
+__/utils/fault_tolerance/nimcp_chaos_engineering.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/utils/fault_tolerance/nimcp_chaos_engineering.c.s
+.PHONY : __/utils/fault_tolerance/nimcp_chaos_engineering.c.s
+
 __/utils/fault_tolerance/nimcp_checkpoint.o: __/utils/fault_tolerance/nimcp_checkpoint.c.o
 .PHONY : __/utils/fault_tolerance/nimcp_checkpoint.o
 
@@ -8873,6 +9041,30 @@ __/utils/fault_tolerance/nimcp_diagnostics.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/utils/fault_tolerance/nimcp_diagnostics.c.s
 .PHONY : __/utils/fault_tolerance/nimcp_diagnostics.c.s
 
+__/utils/fault_tolerance/nimcp_distributed_fault_tolerance.o: __/utils/fault_tolerance/nimcp_distributed_fault_tolerance.c.o
+.PHONY : __/utils/fault_tolerance/nimcp_distributed_fault_tolerance.o
+
+# target to build an object file
+__/utils/fault_tolerance/nimcp_distributed_fault_tolerance.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/utils/fault_tolerance/nimcp_distributed_fault_tolerance.c.o
+.PHONY : __/utils/fault_tolerance/nimcp_distributed_fault_tolerance.c.o
+
+__/utils/fault_tolerance/nimcp_distributed_fault_tolerance.i: __/utils/fault_tolerance/nimcp_distributed_fault_tolerance.c.i
+.PHONY : __/utils/fault_tolerance/nimcp_distributed_fault_tolerance.i
+
+# target to preprocess a source file
+__/utils/fault_tolerance/nimcp_distributed_fault_tolerance.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/utils/fault_tolerance/nimcp_distributed_fault_tolerance.c.i
+.PHONY : __/utils/fault_tolerance/nimcp_distributed_fault_tolerance.c.i
+
+__/utils/fault_tolerance/nimcp_distributed_fault_tolerance.s: __/utils/fault_tolerance/nimcp_distributed_fault_tolerance.c.s
+.PHONY : __/utils/fault_tolerance/nimcp_distributed_fault_tolerance.s
+
+# target to generate assembly for a file
+__/utils/fault_tolerance/nimcp_distributed_fault_tolerance.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/utils/fault_tolerance/nimcp_distributed_fault_tolerance.c.s
+.PHONY : __/utils/fault_tolerance/nimcp_distributed_fault_tolerance.c.s
+
 __/utils/fault_tolerance/nimcp_fast_recovery.o: __/utils/fault_tolerance/nimcp_fast_recovery.c.o
 .PHONY : __/utils/fault_tolerance/nimcp_fast_recovery.o
 
@@ -8921,6 +9113,30 @@ __/utils/fault_tolerance/nimcp_fault_state_machine.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/utils/fault_tolerance/nimcp_fault_state_machine.c.s
 .PHONY : __/utils/fault_tolerance/nimcp_fault_state_machine.c.s
 
+__/utils/fault_tolerance/nimcp_graceful_degradation.o: __/utils/fault_tolerance/nimcp_graceful_degradation.c.o
+.PHONY : __/utils/fault_tolerance/nimcp_graceful_degradation.o
+
+# target to build an object file
+__/utils/fault_tolerance/nimcp_graceful_degradation.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/utils/fault_tolerance/nimcp_graceful_degradation.c.o
+.PHONY : __/utils/fault_tolerance/nimcp_graceful_degradation.c.o
+
+__/utils/fault_tolerance/nimcp_graceful_degradation.i: __/utils/fault_tolerance/nimcp_graceful_degradation.c.i
+.PHONY : __/utils/fault_tolerance/nimcp_graceful_degradation.i
+
+# target to preprocess a source file
+__/utils/fault_tolerance/nimcp_graceful_degradation.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/utils/fault_tolerance/nimcp_graceful_degradation.c.i
+.PHONY : __/utils/fault_tolerance/nimcp_graceful_degradation.c.i
+
+__/utils/fault_tolerance/nimcp_graceful_degradation.s: __/utils/fault_tolerance/nimcp_graceful_degradation.c.s
+.PHONY : __/utils/fault_tolerance/nimcp_graceful_degradation.s
+
+# target to generate assembly for a file
+__/utils/fault_tolerance/nimcp_graceful_degradation.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/utils/fault_tolerance/nimcp_graceful_degradation.c.s
+.PHONY : __/utils/fault_tolerance/nimcp_graceful_degradation.c.s
+
 __/utils/fault_tolerance/nimcp_health_monitor.o: __/utils/fault_tolerance/nimcp_health_monitor.c.o
 .PHONY : __/utils/fault_tolerance/nimcp_health_monitor.o
 
@@ -8944,6 +9160,30 @@ __/utils/fault_tolerance/nimcp_health_monitor.s: __/utils/fault_tolerance/nimcp_
 __/utils/fault_tolerance/nimcp_health_monitor.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/utils/fault_tolerance/nimcp_health_monitor.c.s
 .PHONY : __/utils/fault_tolerance/nimcp_health_monitor.c.s
+
+__/utils/fault_tolerance/nimcp_hierarchical_recovery.o: __/utils/fault_tolerance/nimcp_hierarchical_recovery.c.o
+.PHONY : __/utils/fault_tolerance/nimcp_hierarchical_recovery.o
+
+# target to build an object file
+__/utils/fault_tolerance/nimcp_hierarchical_recovery.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/utils/fault_tolerance/nimcp_hierarchical_recovery.c.o
+.PHONY : __/utils/fault_tolerance/nimcp_hierarchical_recovery.c.o
+
+__/utils/fault_tolerance/nimcp_hierarchical_recovery.i: __/utils/fault_tolerance/nimcp_hierarchical_recovery.c.i
+.PHONY : __/utils/fault_tolerance/nimcp_hierarchical_recovery.i
+
+# target to preprocess a source file
+__/utils/fault_tolerance/nimcp_hierarchical_recovery.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/utils/fault_tolerance/nimcp_hierarchical_recovery.c.i
+.PHONY : __/utils/fault_tolerance/nimcp_hierarchical_recovery.c.i
+
+__/utils/fault_tolerance/nimcp_hierarchical_recovery.s: __/utils/fault_tolerance/nimcp_hierarchical_recovery.c.s
+.PHONY : __/utils/fault_tolerance/nimcp_hierarchical_recovery.s
+
+# target to generate assembly for a file
+__/utils/fault_tolerance/nimcp_hierarchical_recovery.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/utils/fault_tolerance/nimcp_hierarchical_recovery.c.s
+.PHONY : __/utils/fault_tolerance/nimcp_hierarchical_recovery.c.s
 
 __/utils/fault_tolerance/nimcp_lockfree_metrics.o: __/utils/fault_tolerance/nimcp_lockfree_metrics.c.o
 .PHONY : __/utils/fault_tolerance/nimcp_lockfree_metrics.o
@@ -8993,6 +9233,30 @@ __/utils/fault_tolerance/nimcp_metrics_aggregator.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/utils/fault_tolerance/nimcp_metrics_aggregator.c.s
 .PHONY : __/utils/fault_tolerance/nimcp_metrics_aggregator.c.s
 
+__/utils/fault_tolerance/nimcp_predictive_analysis.o: __/utils/fault_tolerance/nimcp_predictive_analysis.c.o
+.PHONY : __/utils/fault_tolerance/nimcp_predictive_analysis.o
+
+# target to build an object file
+__/utils/fault_tolerance/nimcp_predictive_analysis.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/utils/fault_tolerance/nimcp_predictive_analysis.c.o
+.PHONY : __/utils/fault_tolerance/nimcp_predictive_analysis.c.o
+
+__/utils/fault_tolerance/nimcp_predictive_analysis.i: __/utils/fault_tolerance/nimcp_predictive_analysis.c.i
+.PHONY : __/utils/fault_tolerance/nimcp_predictive_analysis.i
+
+# target to preprocess a source file
+__/utils/fault_tolerance/nimcp_predictive_analysis.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/utils/fault_tolerance/nimcp_predictive_analysis.c.i
+.PHONY : __/utils/fault_tolerance/nimcp_predictive_analysis.c.i
+
+__/utils/fault_tolerance/nimcp_predictive_analysis.s: __/utils/fault_tolerance/nimcp_predictive_analysis.c.s
+.PHONY : __/utils/fault_tolerance/nimcp_predictive_analysis.s
+
+# target to generate assembly for a file
+__/utils/fault_tolerance/nimcp_predictive_analysis.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/utils/fault_tolerance/nimcp_predictive_analysis.c.s
+.PHONY : __/utils/fault_tolerance/nimcp_predictive_analysis.c.s
+
 __/utils/fault_tolerance/nimcp_recovery.o: __/utils/fault_tolerance/nimcp_recovery.c.o
 .PHONY : __/utils/fault_tolerance/nimcp_recovery.o
 
@@ -9040,6 +9304,54 @@ __/utils/fault_tolerance/nimcp_recovery_cache.s: __/utils/fault_tolerance/nimcp_
 __/utils/fault_tolerance/nimcp_recovery_cache.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/utils/fault_tolerance/nimcp_recovery_cache.c.s
 .PHONY : __/utils/fault_tolerance/nimcp_recovery_cache.c.s
+
+__/utils/fault_tolerance/nimcp_recovery_evolution.o: __/utils/fault_tolerance/nimcp_recovery_evolution.c.o
+.PHONY : __/utils/fault_tolerance/nimcp_recovery_evolution.o
+
+# target to build an object file
+__/utils/fault_tolerance/nimcp_recovery_evolution.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/utils/fault_tolerance/nimcp_recovery_evolution.c.o
+.PHONY : __/utils/fault_tolerance/nimcp_recovery_evolution.c.o
+
+__/utils/fault_tolerance/nimcp_recovery_evolution.i: __/utils/fault_tolerance/nimcp_recovery_evolution.c.i
+.PHONY : __/utils/fault_tolerance/nimcp_recovery_evolution.i
+
+# target to preprocess a source file
+__/utils/fault_tolerance/nimcp_recovery_evolution.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/utils/fault_tolerance/nimcp_recovery_evolution.c.i
+.PHONY : __/utils/fault_tolerance/nimcp_recovery_evolution.c.i
+
+__/utils/fault_tolerance/nimcp_recovery_evolution.s: __/utils/fault_tolerance/nimcp_recovery_evolution.c.s
+.PHONY : __/utils/fault_tolerance/nimcp_recovery_evolution.s
+
+# target to generate assembly for a file
+__/utils/fault_tolerance/nimcp_recovery_evolution.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/utils/fault_tolerance/nimcp_recovery_evolution.c.s
+.PHONY : __/utils/fault_tolerance/nimcp_recovery_evolution.c.s
+
+__/utils/fault_tolerance/nimcp_recovery_observability.o: __/utils/fault_tolerance/nimcp_recovery_observability.c.o
+.PHONY : __/utils/fault_tolerance/nimcp_recovery_observability.o
+
+# target to build an object file
+__/utils/fault_tolerance/nimcp_recovery_observability.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/utils/fault_tolerance/nimcp_recovery_observability.c.o
+.PHONY : __/utils/fault_tolerance/nimcp_recovery_observability.c.o
+
+__/utils/fault_tolerance/nimcp_recovery_observability.i: __/utils/fault_tolerance/nimcp_recovery_observability.c.i
+.PHONY : __/utils/fault_tolerance/nimcp_recovery_observability.i
+
+# target to preprocess a source file
+__/utils/fault_tolerance/nimcp_recovery_observability.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/utils/fault_tolerance/nimcp_recovery_observability.c.i
+.PHONY : __/utils/fault_tolerance/nimcp_recovery_observability.c.i
+
+__/utils/fault_tolerance/nimcp_recovery_observability.s: __/utils/fault_tolerance/nimcp_recovery_observability.c.s
+.PHONY : __/utils/fault_tolerance/nimcp_recovery_observability.s
+
+# target to generate assembly for a file
+__/utils/fault_tolerance/nimcp_recovery_observability.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/utils/fault_tolerance/nimcp_recovery_observability.c.s
+.PHONY : __/utils/fault_tolerance/nimcp_recovery_observability.c.s
 
 __/utils/fault_tolerance/nimcp_recovery_pool.o: __/utils/fault_tolerance/nimcp_recovery_pool.c.o
 .PHONY : __/utils/fault_tolerance/nimcp_recovery_pool.o
@@ -10375,9 +10687,18 @@ help:
 	@echo "... __/cognitive/introspection/nimcp_connectivity_health.o"
 	@echo "... __/cognitive/introspection/nimcp_connectivity_health.i"
 	@echo "... __/cognitive/introspection/nimcp_connectivity_health.s"
+	@echo "... __/cognitive/introspection/nimcp_consciousness_metrics.o"
+	@echo "... __/cognitive/introspection/nimcp_consciousness_metrics.i"
+	@echo "... __/cognitive/introspection/nimcp_consciousness_metrics.s"
+	@echo "... __/cognitive/introspection/nimcp_ensemble_uncertainty.o"
+	@echo "... __/cognitive/introspection/nimcp_ensemble_uncertainty.i"
+	@echo "... __/cognitive/introspection/nimcp_ensemble_uncertainty.s"
 	@echo "... __/cognitive/introspection/nimcp_introspection.o"
 	@echo "... __/cognitive/introspection/nimcp_introspection.i"
 	@echo "... __/cognitive/introspection/nimcp_introspection.s"
+	@echo "... __/cognitive/introspection/nimcp_temporal_patterns.o"
+	@echo "... __/cognitive/introspection/nimcp_temporal_patterns.i"
+	@echo "... __/cognitive/introspection/nimcp_temporal_patterns.s"
 	@echo "... __/cognitive/joy/nimcp_joy_euphoria.o"
 	@echo "... __/cognitive/joy/nimcp_joy_euphoria.i"
 	@echo "... __/cognitive/joy/nimcp_joy_euphoria.s"
@@ -11212,6 +11533,12 @@ help:
 	@echo "... __/swarm/nimcp_swarm_conflict.o"
 	@echo "... __/swarm/nimcp_swarm_conflict.i"
 	@echo "... __/swarm/nimcp_swarm_conflict.s"
+	@echo "... __/swarm/nimcp_swarm_consciousness.o"
+	@echo "... __/swarm/nimcp_swarm_consciousness.i"
+	@echo "... __/swarm/nimcp_swarm_consciousness.s"
+	@echo "... __/swarm/nimcp_swarm_consciousness_enhanced.o"
+	@echo "... __/swarm/nimcp_swarm_consciousness_enhanced.i"
+	@echo "... __/swarm/nimcp_swarm_consciousness_enhanced.s"
 	@echo "... __/swarm/nimcp_swarm_consensus.o"
 	@echo "... __/swarm/nimcp_swarm_consensus.i"
 	@echo "... __/swarm/nimcp_swarm_consensus.s"
@@ -11332,6 +11659,12 @@ help:
 	@echo "... __/utils/fault_tolerance/nimcp_brain_recovery_integration.o"
 	@echo "... __/utils/fault_tolerance/nimcp_brain_recovery_integration.i"
 	@echo "... __/utils/fault_tolerance/nimcp_brain_recovery_integration.s"
+	@echo "... __/utils/fault_tolerance/nimcp_byzantine_fault_tolerance.o"
+	@echo "... __/utils/fault_tolerance/nimcp_byzantine_fault_tolerance.i"
+	@echo "... __/utils/fault_tolerance/nimcp_byzantine_fault_tolerance.s"
+	@echo "... __/utils/fault_tolerance/nimcp_chaos_engineering.o"
+	@echo "... __/utils/fault_tolerance/nimcp_chaos_engineering.i"
+	@echo "... __/utils/fault_tolerance/nimcp_chaos_engineering.s"
 	@echo "... __/utils/fault_tolerance/nimcp_checkpoint.o"
 	@echo "... __/utils/fault_tolerance/nimcp_checkpoint.i"
 	@echo "... __/utils/fault_tolerance/nimcp_checkpoint.s"
@@ -11341,27 +11674,45 @@ help:
 	@echo "... __/utils/fault_tolerance/nimcp_diagnostics.o"
 	@echo "... __/utils/fault_tolerance/nimcp_diagnostics.i"
 	@echo "... __/utils/fault_tolerance/nimcp_diagnostics.s"
+	@echo "... __/utils/fault_tolerance/nimcp_distributed_fault_tolerance.o"
+	@echo "... __/utils/fault_tolerance/nimcp_distributed_fault_tolerance.i"
+	@echo "... __/utils/fault_tolerance/nimcp_distributed_fault_tolerance.s"
 	@echo "... __/utils/fault_tolerance/nimcp_fast_recovery.o"
 	@echo "... __/utils/fault_tolerance/nimcp_fast_recovery.i"
 	@echo "... __/utils/fault_tolerance/nimcp_fast_recovery.s"
 	@echo "... __/utils/fault_tolerance/nimcp_fault_state_machine.o"
 	@echo "... __/utils/fault_tolerance/nimcp_fault_state_machine.i"
 	@echo "... __/utils/fault_tolerance/nimcp_fault_state_machine.s"
+	@echo "... __/utils/fault_tolerance/nimcp_graceful_degradation.o"
+	@echo "... __/utils/fault_tolerance/nimcp_graceful_degradation.i"
+	@echo "... __/utils/fault_tolerance/nimcp_graceful_degradation.s"
 	@echo "... __/utils/fault_tolerance/nimcp_health_monitor.o"
 	@echo "... __/utils/fault_tolerance/nimcp_health_monitor.i"
 	@echo "... __/utils/fault_tolerance/nimcp_health_monitor.s"
+	@echo "... __/utils/fault_tolerance/nimcp_hierarchical_recovery.o"
+	@echo "... __/utils/fault_tolerance/nimcp_hierarchical_recovery.i"
+	@echo "... __/utils/fault_tolerance/nimcp_hierarchical_recovery.s"
 	@echo "... __/utils/fault_tolerance/nimcp_lockfree_metrics.o"
 	@echo "... __/utils/fault_tolerance/nimcp_lockfree_metrics.i"
 	@echo "... __/utils/fault_tolerance/nimcp_lockfree_metrics.s"
 	@echo "... __/utils/fault_tolerance/nimcp_metrics_aggregator.o"
 	@echo "... __/utils/fault_tolerance/nimcp_metrics_aggregator.i"
 	@echo "... __/utils/fault_tolerance/nimcp_metrics_aggregator.s"
+	@echo "... __/utils/fault_tolerance/nimcp_predictive_analysis.o"
+	@echo "... __/utils/fault_tolerance/nimcp_predictive_analysis.i"
+	@echo "... __/utils/fault_tolerance/nimcp_predictive_analysis.s"
 	@echo "... __/utils/fault_tolerance/nimcp_recovery.o"
 	@echo "... __/utils/fault_tolerance/nimcp_recovery.i"
 	@echo "... __/utils/fault_tolerance/nimcp_recovery.s"
 	@echo "... __/utils/fault_tolerance/nimcp_recovery_cache.o"
 	@echo "... __/utils/fault_tolerance/nimcp_recovery_cache.i"
 	@echo "... __/utils/fault_tolerance/nimcp_recovery_cache.s"
+	@echo "... __/utils/fault_tolerance/nimcp_recovery_evolution.o"
+	@echo "... __/utils/fault_tolerance/nimcp_recovery_evolution.i"
+	@echo "... __/utils/fault_tolerance/nimcp_recovery_evolution.s"
+	@echo "... __/utils/fault_tolerance/nimcp_recovery_observability.o"
+	@echo "... __/utils/fault_tolerance/nimcp_recovery_observability.i"
+	@echo "... __/utils/fault_tolerance/nimcp_recovery_observability.s"
 	@echo "... __/utils/fault_tolerance/nimcp_recovery_pool.o"
 	@echo "... __/utils/fault_tolerance/nimcp_recovery_pool.i"
 	@echo "... __/utils/fault_tolerance/nimcp_recovery_pool.s"

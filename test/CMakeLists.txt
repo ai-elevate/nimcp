@@ -514,6 +514,16 @@ if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/unit/utils/fault_tolerance")
     add_subdirectory(unit/utils/fault_tolerance)
 endif()
 
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/integration/utils/fault_tolerance")
+    message(STATUS "Adding utils fault tolerance integration tests...")
+    add_subdirectory(integration/utils/fault_tolerance)
+endif()
+
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/regression/utils/fault_tolerance")
+    message(STATUS "Adding utils fault tolerance regression tests...")
+    add_subdirectory(regression/utils/fault_tolerance)
+endif()
+
 # Utils Memory Tests
 # ============================================================================
 
