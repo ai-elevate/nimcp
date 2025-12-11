@@ -13,11 +13,15 @@ make <test_target> -j4            # Build specific test
 
 ## Test Execution
 ```bash
+# Introspection tests (173 total)
+./test/unit/cognitive/introspection/unit_cognitive_introspection_consciousness_metrics --gtest_brief=1  # 31 tests
+./test/unit/cognitive/introspection/unit_cognitive_introspection_temporal_patterns --gtest_brief=1      # 43 tests
+./test/unit/cognitive/introspection/unit_cognitive_introspection_ensemble_uncertainty --gtest_brief=1   # 27 tests
+./test/e2e/e2e_test_introspection_pipeline --gtest_brief=1                                              # 8 tests
+
 # Tensor library tests (87 total)
 ./test/unit/utils/tensor/unit_utils_tensor_test_tensor --gtest_brief=1        # 51 tests
 ./test/unit/utils/encoding/unit_utils_encoding_test_positional_encoding --gtest_brief=1  # 18 tests
-./test/integration/utils/tensor/integration_utils_tensor_test_tensor_memory_integration --gtest_brief=1  # 9 tests
-./test/regression/utils/tensor/regression_utils_tensor_test_tensor_performance --gtest_brief=1  # 9 tests
 
 # Module-specific tests
 ./test/unit/middleware/encoding/unit_middleware_encoding_population_coding --gtest_brief=1   # 64 tests
@@ -51,11 +55,38 @@ nimcp_tensor_destroy(t);
 
 ## Recent Completions
 
-### Tensor Integration (Complete)
-- Phase 1: Gradient Manager, Z-Score Normalizer, Loss Functions
-- Phase 2: Optimizers, Visual Cortex, Audio Cortex
-- Phase 3: Population Coding, Feature Extractor, Thalamic Router
-- **289 tests passed**
+### Introspection Module Enhancements (Complete - Dec 2024)
+Implemented three major introspection subsystems for brain metacognition:
+
+| Component | Description | Key Features |
+|-----------|-------------|--------------|
+| Consciousness Metrics | IIT 3.0 Φ computation | State classification, MIP analysis, monitoring callbacks |
+| Temporal Patterns | DTW-based pattern detection | Pattern library, prediction, trend analysis |
+| Ensemble Uncertainty | Epistemic/aleatoric decomposition | Calibration metrics, confidence estimation |
+
+**API Examples:**
+```c
+// Consciousness metrics
+consciousness_phi_result_t* result = introspection_compute_phi(intro, NULL);
+consciousness_state_t state = consciousness_classify_phi(result->phi);
+
+// Temporal patterns
+temporal_pattern_t* patterns = introspection_detect_patterns(intro, NULL, &count);
+introspection_register_pattern(intro, &pattern);
+introspection_clear_pattern_library(intro);
+
+// Ensemble uncertainty
+ensemble_context_t ensemble = ensemble_create(network, &config);
+ensemble_uncertainty_result_t unc = ensemble_compute_uncertainty(ensemble, features, n);
+// unc.epistemic, unc.aleatoric, unc.total
+```
+
+**Test Coverage:**
+- Unit Tests: 101 tests (31 consciousness, 43 temporal, 27 ensemble)
+- Integration Tests: 27 tests (9 per module)
+- Regression Tests: 37 tests (11 consciousness, 17 temporal, 9 ensemble)
+- E2E Tests: 8 pipeline scenarios
+- **Total: 173 tests**
 
 ### Positional Encoding Integration (Complete - Dec 2024)
 Integrated PE into 10 modules with full test coverage:
@@ -73,11 +104,11 @@ Integrated PE into 10 modules with full test coverage:
 | Language Production | Sinusoidal, RoPE | Motor commands, articulatory gestures |
 | Population Coding | Sinusoidal | Neuron position encoding |
 
-**Test Coverage Created:**
-- Unit Tests: ~220 tests across 10 files
-- Integration Tests: 3 files (~30 tests)
-- Regression Tests: 4 files (~2,840 lines)
-- E2E Tests: 1 pipeline test (8 scenarios)
+### Tensor Integration (Complete)
+- Phase 1: Gradient Manager, Z-Score Normalizer, Loss Functions
+- Phase 2: Optimizers, Visual Cortex, Audio Cortex
+- Phase 3: Population Coding, Feature Extractor, Thalamic Router
+- **289 tests passed**
 
 ## File Organization
 ```
@@ -85,6 +116,7 @@ include/
 ├── utils/tensor/          # Tensor library
 ├── utils/encoding/        # Positional encoding
 ├── plasticity/attention/  # Multihead attention with PE
+├── cognitive/introspection/  # Consciousness metrics, temporal patterns, ensemble uncertainty
 ├── cognitive/             # Working memory, emotion-attention
 ├── middleware/            # Sequence detector, circular buffer, population coding
 ├── perception/            # Speech cortex
